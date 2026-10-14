@@ -21,10 +21,10 @@ void _ZN8dActor_c22UpdatePosWithOnlySpeedEP5dCc_c(void *thiz,
 void _ZN12dEnemyBase_c12UpdateWMClsnER10dBgCh_Actrj(void *thiz, void *wm,
                                               unsigned j);
 char *_ZN8dActor_c13ClosestPlayerEv(void *thiz);
-void _ZN9Animation7AdvanceEv(void *thiz);
-int _ZNK9Animation12WillHitFrameEi(void *thiz, int frame);
-int func_ov065_02117994(char *c);
-int func_ov065_0211704c(char *c);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *thiz);
+int _ZNK15dExtFrameCtrl_c12WillHitFrameEi(void *thiz, int frame);
+int _ZN12daBasabasa_c19func_ov065_02117994Ev(char *c);
+int _ZN12daBasabasa_c19func_ov065_0211704cEv(char *c);
 
 extern char data_ov065_0211d6e0[];
 extern char data_ov065_0211d6f0[];

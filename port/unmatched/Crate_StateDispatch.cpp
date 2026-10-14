@@ -37,20 +37,20 @@
 
 extern "C" {
 /* the fourteen state halves, table order; all matched src */
-void func_ov098_02138b18(char *c);   /* state 0 init */
-void func_ov098_021389f8(char *c);   /* state 0 main */
-void func_ov098_021389cc(char *c);   /* state 1 init */
-void func_ov098_021388bc(char *c);   /* state 1 main */
-void func_ov098_02138818(char *c);   /* state 2 init */
-void func_ov098_02138734(char *c);   /* state 2 main */
-void func_ov098_021385e0(char *c);   /* state 3 init */
-void func_ov098_021384fc(char *c);   /* state 3 main */
-void func_ov098_02138484(char *c);   /* state 4 init */
-void func_ov098_02138344(char *c);   /* state 4 main */
-void func_ov098_02138318(char *c);   /* state 5 init */
-void func_ov098_02138238(char *c);   /* state 5 main */
-void func_ov098_021381e8(char *c);   /* state 6 init */
-void func_ov098_0213814c(char *c);   /* state 6 main */
+void _ZN13daObjBlockS_c19func_ov098_02138b18Ev(char *c);   /* state 0 init */
+void _ZN13daObjBlockS_c19func_ov098_021389f8Ev(char *c);   /* state 0 main */
+void _ZN13daObjBlockS_c19func_ov098_021389ccEv(char *c);   /* state 1 init */
+void _ZN13daObjBlockS_c19func_ov098_021388bcEv(char *c);   /* state 1 main */
+void _ZN13daObjBlockS_c19func_ov098_02138818Ev(char *c);   /* state 2 init */
+void _ZN13daObjBlockS_c19func_ov098_02138734Ev(char *c);   /* state 2 main */
+void _ZN13daObjBlockS_c19func_ov098_021385e0Ev(char *c);   /* state 3 init */
+void _ZN13daObjBlockS_c19func_ov098_021384fcEv(char *c);   /* state 3 main */
+void _ZN13daObjBlockS_c19func_ov098_02138484Ev(char *c);   /* state 4 init */
+void _ZN13daObjBlockS_c19func_ov098_02138344Ev(char *c);   /* state 4 main */
+void _ZN13daObjBlockS_c19func_ov098_02138318Ev(char *c);   /* state 5 init */
+void _ZN13daObjBlockS_c19func_ov098_02138238Ev(char *c);   /* state 5 main */
+void _ZN13daObjBlockS_c19func_ov098_021381e8Ev(char *c);   /* state 6 init */
+void _ZN13daObjBlockS_c19func_ov098_0213814cEv(char *c);   /* state 6 main */
 
 struct PortPmf { unsigned fn; int delta; };
 /* the RUNTIME table the dispatchers read (bss, filled by the sinit) */
@@ -77,20 +77,20 @@ extern PortPmf data_ov098_0213c4a8[], data_ov098_0213c488[],
 
 static const struct { PortPmf *slot; unsigned rom; void (*host)(char *); }
 g_crate_states[] = {
-    {data_ov098_0213c4a8, 0x02138b18, func_ov098_02138b18},
-    {data_ov098_0213c488, 0x021389f8, func_ov098_021389f8},
-    {data_ov098_0213c490, 0x021389cc, func_ov098_021389cc},
-    {data_ov098_0213c468, 0x021388bc, func_ov098_021388bc},
-    {data_ov098_0213c498, 0x02138818, func_ov098_02138818},
-    {data_ov098_0213c470, 0x02138734, func_ov098_02138734},
-    {data_ov098_0213c4b0, 0x021385e0, func_ov098_021385e0},
-    {data_ov098_0213c480, 0x021384fc, func_ov098_021384fc},
-    {data_ov098_0213c4a0, 0x02138484, func_ov098_02138484},
-    {data_ov098_0213c478, 0x02138344, func_ov098_02138344},
-    {data_ov098_0213c458, 0x02138318, func_ov098_02138318},
-    {data_ov098_0213c460, 0x02138238, func_ov098_02138238},
-    {data_ov098_0213c4c0, 0x021381e8, func_ov098_021381e8},
-    {data_ov098_0213c4b8, 0x0213814c, func_ov098_0213814c},
+    {data_ov098_0213c4a8, 0x02138b18, _ZN13daObjBlockS_c19func_ov098_02138b18Ev},
+    {data_ov098_0213c488, 0x021389f8, _ZN13daObjBlockS_c19func_ov098_021389f8Ev},
+    {data_ov098_0213c490, 0x021389cc, _ZN13daObjBlockS_c19func_ov098_021389ccEv},
+    {data_ov098_0213c468, 0x021388bc, _ZN13daObjBlockS_c19func_ov098_021388bcEv},
+    {data_ov098_0213c498, 0x02138818, _ZN13daObjBlockS_c19func_ov098_02138818Ev},
+    {data_ov098_0213c470, 0x02138734, _ZN13daObjBlockS_c19func_ov098_02138734Ev},
+    {data_ov098_0213c4b0, 0x021385e0, _ZN13daObjBlockS_c19func_ov098_021385e0Ev},
+    {data_ov098_0213c480, 0x021384fc, _ZN13daObjBlockS_c19func_ov098_021384fcEv},
+    {data_ov098_0213c4a0, 0x02138484, _ZN13daObjBlockS_c19func_ov098_02138484Ev},
+    {data_ov098_0213c478, 0x02138344, _ZN13daObjBlockS_c19func_ov098_02138344Ev},
+    {data_ov098_0213c458, 0x02138318, _ZN13daObjBlockS_c19func_ov098_02138318Ev},
+    {data_ov098_0213c460, 0x02138238, _ZN13daObjBlockS_c19func_ov098_02138238Ev},
+    {data_ov098_0213c4c0, 0x021381e8, _ZN13daObjBlockS_c19func_ov098_021381e8Ev},
+    {data_ov098_0213c4b8, 0x0213814c, _ZN13daObjBlockS_c19func_ov098_0213814cEv},
 };
 
 extern "C" void port_crate_states_seat(void)

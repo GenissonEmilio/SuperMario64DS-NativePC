@@ -769,9 +769,9 @@ extern "C" void port_scene_trampoline2_hits(void)
         unsigned f938 = 0, f428 = 0;
         port_mg_tte_floor_counts(&f938, &f428);
         std::printf("[scene] dScMgTrampoline2_c FLOORS RETIRED by run mg12 "
-                    "lane TRM: func_ov006_02123938 (the per-tick draw) is "
+                    "lane TRM: _ZN18dScMgTrampoline2_c16UpdateTouchInputEv (the per-tick draw) is "
                     "BYTE-MATCHED at 2004/b56 and enrolled in ov006's delinks; "
-                    "func_ov006_02123428 (the play-state worker) is an honest "
+                    "_ZN18dScMgTrampoline2_c9SpawnWaveEv (the play-state worker) is an honest "
                     "NONMATCHING seat. Both are slice_tte.txt lines and both "
                     "run as real code -- the retired counters read %u and %u "
                     "and can only read 0\n", f938, f428);

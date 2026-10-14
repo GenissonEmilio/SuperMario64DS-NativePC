@@ -49,7 +49,7 @@
  * the ten records into the five bss cells.
  */
 #include "ModelAnim.h"
-#include "HeaveHo.h"
+#include "daPopoi_c.h"
 
 extern "C" {
 
@@ -87,11 +87,11 @@ int func_02010844(void *unused, void *v, s16 angle);
 int _ZN12dEnemyBase_c15IsGoingOffCliffER10dBgCh_Actrisbbi(
         void *self, void *wm, Fix12i a, s16 b, int c, int d, void *e);
 void _ZN12dEnemyBase_c12UpdateWMClsnER10dBgCh_Actrj(void *self, void *wm, unsigned int j);
-void func_ov077_02126dac(char *t);
-void func_ov077_02126528(char *c);
+void _ZN9daPopoi_c19func_ov077_02126dacEv(char *t);
+void _ZN9daPopoi_c19func_ov077_02126528Ev(char *c);
 void _ZN5dCc_c5ClearEv(void *self);
 void _ZN5dCc_c6UpdateEv(void *self);
-void _ZN9Animation7AdvanceEv(void *self);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *self);
 extern int data_ov077_02127cd8[];
 
 /* HOST COPY RETIRED, run link100 lane PMFB7 gate 2. src/_ZN7HeaveHo8BehaviorEv.cpp

@@ -29,4 +29,4 @@
 # different object size 1016) -- plus the registry row, which reuses
 # QUESTION_BLOCK's shared vtable fill (fill 0, the FORTRESS_TOWER shape). No
 # new overlay data, no PMF state table, no method face.
-src/d_a_obj_hatena_block_item_block.c
+src/actors/daObjHatenaBlock_c.cpp

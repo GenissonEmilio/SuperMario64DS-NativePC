@@ -5,7 +5,7 @@
  *
  * The mechanism is the one port/unmatched/MgSmartball_HostAbi.h already uses:
  * pre-define a header's own guard macro, so the src file still says
- * `#include "FaderBrightness.h"`, the include still happens, and the body is
+ * `#include "dFdBrightness_c.h"`, the include still happens, and the body is
  * skipped because the guard is already defined.
  *
  * ---- WHAT IS WRONG WITHOUT THIS ----------------------------------------
@@ -62,19 +62,25 @@
  * decomp-side edit, which this lane does not own, so it is written up in
  * out/CRASH2/report.md and handed over instead.
  *
- * The class is left ABSTRACT on purpose: the two destructor slots below are
+ * The base is left ABSTRACT on purpose: the two destructor slots below are
  * declared and never defined, and nothing here is ever instantiated, so no
- * vtable is emitted for either class and no unresolved external appears. This
- * translation unit only ever holds faders as pointers.
+ * vtable is emitted for either class and no unresolved external appears.
+ * PORTSYNC2: main folded SetFaders into src/actors/dScene_c.cpp (compiled as
+ * its hostgen copy), renamed Fader/FaderBrightness to dFader_c/dFdBrightness_c
+ * with new include guards, and that TU now declares fader objects and makes
+ * qualified dFdBrightness_c:: calls -- see the two shadows below.
  */
 #ifndef PORT_FADER_HOSTABI_H
 #define PORT_FADER_HOSTABI_H
 
 #include "types.h"
 
-/* shadows include/Fader.h */
-#define FADER_H
-struct Fader {
+/* shadows include/dFader_c.h (was include/Fader.h; main's rename, same class
+   at the same addresses: _ZTV8dFader_c is data_0208eafc). PORTSYNC2: the guard
+   is main's DFADER_C_H now -- the old FADER_H guard no longer matched anything,
+   so the real header was read as well. */
+#define DFADER_C_H
+struct dFader_c {
     Fix12i currInterp;  /* 0x04 -- current fade level, 0..0x1000 */
     Fix12i speed;       /* 0x08 -- per-frame delta; sign selects the target */
 
@@ -94,13 +100,33 @@ struct Fader {
     virtual void SetToStart() = 0;                  /* slot 9 */
 };
 
-/* shadows include/FaderBrightness.h. It overrides slots 2..9 and adds none, so
-   for slot-numbering purposes it is Fader; keeping it empty avoids declaring
-   overrides that would need definitions. The NAME and the `struct` keyword are
-   what MSVC's mangling encodes, so
-   ?SetFaders@dScene_c@@SAXPAUFaderBrightness@@@Z is unchanged. */
-#define FADERBRIGHTNESS_H
-struct FaderBrightness : Fader {
+/* shadows include/dFdBrightness_c.h (was include/FaderBrightness.h; main's
+   rename, _ZTV15dFdBrightness_c is data_0208eacc). The NAME and the `struct`
+   keyword are what MSVC's mangling encodes, so
+   ?SetFaders@dScene_c@@SAXPAUdFdBrightness_c@@@Z is unchanged.
+   PORTSYNC2: main's TU now names this class's own overrides -- qualified,
+   non-virtual calls such as `data_0209f5d0.dFdBrightness_c::SetForwardTime(0x10)`
+   -- and declares fader OBJECTS (`extern dFdBrightness_c data_0209f5d0;`,
+   `extern dFdColor_c data_0209f5e8;`), which an abstract class cannot have.
+   So the eight overrides are declared here, with main's signatures: they keep
+   slots 2..9 (an override takes its base's slot), the qualified calls bind to
+   ?X@dFdBrightness_c@@... as on the ARM, and the class is concrete. The
+   constructor is main's own; include/dFdColor_c.h defines dFdColor_c's inline
+   constructor through it. Both are inline and the TU constructs no fader, so
+   still no vtable is emitted here. */
+#define DFDBRIGHTNESS_C_H
+struct dFdBrightness_c : dFader_c {
+    dFdBrightness_c(Fix12i initial = 0x1000);
+
+    virtual void AdvanceFade();                 /* slot 2 */
+    virtual int  SetBackwardTime(u32 frames);   /* slot 3 */
+    virtual int  SetForwardTime(u32 frames);    /* slot 4 */
+    virtual int  IsAtStart();                   /* slot 5 */
+    virtual int  IsAtEnd();                     /* slot 6 */
+    virtual int  IsBetweenStartAndEnd();        /* slot 7 */
+    virtual void SetToEnd();                    /* slot 8 */
+    virtual void SetToStart();                  /* slot 9 */
 };
+inline dFdBrightness_c::dFdBrightness_c(Fix12i initial) { currInterp = initial; speed = 0; }
 
 #endif

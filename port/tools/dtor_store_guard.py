@@ -492,17 +492,17 @@ def generated_files(root):
 # LIGHT_BEAM branch of hal/actor_classes.cpp's tr_d1, the Amilift's aml_d1
 # and daDsnBase_c's compiler-table alias, the same way.
 SRC_ARMS = {
-    "_ZN13daObjSwdoor_cD1Ev": "src/_ZN13daObjSwdoor_cD1Ev.cpp",
-    "_ZN17BigMovingIceBlockD1Ev": "src/_ZN17BigMovingIceBlockD1Ev.cpp",
-    "_ZN17BowserPuzzlePieceD1Ev": "src/_ZN17BowserPuzzlePieceD1Ev.cpp",
-    "_ZN6CoffinD1Ev": "src/_ZN6CoffinD1Ev.cpp",
-    "_ZN15dScMgPachinko_cD0Ev": "src/_ZN15dScMgPachinko_cD0Ev.cpp",
-    "_ZN19BowserPuzzleManagerD0Ev": "src/_ZN19BowserPuzzleManagerD0Ev.cpp",
-    "_ZN10dScTitle_cD0Ev": "src/_ZN10dScTitle_cD0Ev.cpp",
-    "_ZN11ShadowModelD0Ev": "src/_ZN11ShadowModelD0Ev.cpp",
-    "_ZN9LightBeamD1Ev": "src/_ZN9LightBeamD1Ev.cpp",
-    "_ZN12MetalNetLiftD1Ev": "src/_ZN12MetalNetLiftD1Ev.cpp",
-    "_ZN11daDsnBase_cD1Ev": "src/_ZN11daDsnBase_cD1Ev.cpp",
+    "_ZN13daObjSwdoor_cD1Ev": "port/unmatched/hostarm/_ZN13daObjSwdoor_cD1Ev.cpp",
+    "_ZN18daObjEwmIceBlock_cD1Ev": "port/unmatched/hostarm/_ZN17BigMovingIceBlockD1Ev.cpp",
+    "_ZN16daObjFl_Puzzle_cD1Ev": "port/unmatched/hostarm/_ZN17BowserPuzzlePieceD1Ev.cpp",
+    "_ZN13daObjCasket_cD1Ev": "port/unmatched/hostarm/_ZN6CoffinD1Ev.cpp",
+    "_ZN15dScMgPachinko_cD0Ev": "port/unmatched/hostarm/_ZN15dScMgPachinko_cD0Ev.cpp",
+    "_ZN14daObjFl_Coin_cD0Ev": "port/unmatched/hostarm/_ZN19BowserPuzzleManagerD0Ev.cpp",
+    "_ZN10dScTitle_cD0Ev": "port/unmatched/hostarm/_ZN10dScTitle_cD0Ev.cpp",
+    "_ZN17dExtShadowModel_cD0Ev": "port/unmatched/hostarm/_ZN11ShadowModelD0Ev.cpp",
+    "_ZN15daObjC1Hikari_cD1Ev": "port/unmatched/hostarm/_ZN9LightBeamD1Ev.cpp",
+    "_ZN17daObjFl_Amilift_cD1Ev": "port/unmatched/hostarm/_ZN12MetalNetLiftD1Ev.cpp",
+    "_ZN11daDsnBase_cD1Ev": "port/unmatched/hostarm/_ZN11daDsnBase_cD1Ev.cpp",
 }
 
 # A definition inside the arm: `extern "C" <ret> <flat>(<params>)` on one
@@ -541,10 +541,17 @@ def msvc_arm_text(text):
 
 def src_arm_names(path):
     """The flat destructor names a src file DEFINES in its _MSC_VER arm, or
-    None when the file does not exist."""
+    None when the file does not exist.
+
+    PORTSYNC2: the 2026-10 main merge took main's src/, which dropped these
+    arms; port/tools/hostarm_recover.py carried each to
+    port/unmatched/hostarm/<old stem>.cpp, a host-only file whose WHOLE text is
+    the arm."""
     if not os.path.exists(path):
         return None
     text = open(path, encoding="utf-8", errors="replace").read()
+    if "/unmatched/hostarm/" in path.replace(os.sep, "/"):
+        return ARM_DEF_RE.findall(text)
     return ARM_DEF_RE.findall(msvc_arm_text(text))
 
 
@@ -780,9 +787,9 @@ def selftest():
     open(p, "w", encoding="utf-8").write(
         '#include "Coffin.h"\r\n'
         '#ifdef _MSC_VER\r\n'
-        'extern "C" void _ZN6CoffinD0Ev(void *self);\r\n'
+        'extern "C" void _ZN13daObjCasket_cD0Ev(void *self);\r\n'
         '#if 1\r\n'
-        'extern "C" Coffin *_ZN6CoffinD1Ev(Coffin *self)\r\n'
+        'extern "C" Coffin *_ZN13daObjCasket_cD1Ev(Coffin *self)\r\n'
         '#endif\r\n'
         '{ self->Coffin::~Coffin(); return self; }\r\n'
         '#else\r\n'
@@ -791,7 +798,7 @@ def selftest():
         '#endif\r\n')
     got = src_arm_names(p)
     os.unlink(p)
-    if got != ["_ZN6CoffinD1Ev"]:
+    if got != ["_ZN13daObjCasket_cD1Ev"]:
         fails.append("src_arm_names: got %r" % (got,))
 
     # 16. and a file whose arm is gone (only the #else text left, or no file at
@@ -800,7 +807,7 @@ def selftest():
     os.close(fd)
     open(p, "w", encoding="utf-8").write(
         '#ifndef _MSC_VER\n'
-        'extern "C" void _ZN6CoffinD1Ev(void *self)\n{ }\n'
+        'extern "C" void _ZN13daObjCasket_cD1Ev(void *self)\n{ }\n'
         '#endif\n')
     got = src_arm_names(p)
     os.unlink(p)

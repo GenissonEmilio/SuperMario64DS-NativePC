@@ -49,11 +49,11 @@
 #                   the same words and it runs later, so the ROM's value stands.
 #   func_0200f46c   empty in the ROM. Enrolled because func_02019440 calls it.
 src/func_02053c40.c
-src/func_02053d9c.c
-src/func_02019440.c
-src/func_0203bd24.c
-src/func_0200f4f4.c
-src/func_0200f46c.c
+src/unnamed/arm9/0205/func_02053d9c.c
+src/unnamed/arm9/0201/func_02019440.c
+src/unnamed/arm9/0203/func_0203bd24.c
+src/unnamed/arm9/0200/func_0200f4f4.c
+src/unnamed/arm9/0200/func_0200f46c.c
 #
 # NOT HERE, each re-derived on today's tree rather than inherited:
 #

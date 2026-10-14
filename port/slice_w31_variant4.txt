@@ -22,18 +22,24 @@
 # THE EDGE IS THE ONE THE PORT ALREADY HAS: the ROM's own table word 17 of each
 # class relocates to its D0, and the port's slot-17 thunks call the flat name.
 # No new reference and no keep-alive.
-src/_ZN10MrBlizzardD0Ev.cpp
-src/_ZN7MinimapD0Ev.cpp
+src/actors/daSnowman_c.cpp
+port/unmatched/hostarm/_ZN10MrBlizzardD0Ev.cpp
+src/actors/dMap_c.cpp
+port/unmatched/hostarm/_ZN7MinimapD0Ev.cpp
 # Batch 4, a different arm: src/_ZN16dScMgPachinko2_cD0Ev.cpp spells the ROM's
 # own three steps (the store of its own vtable, the flat base destructor
 # _ZN11dScMgBase_cD2Ev, Memory::Deallocate), which are the host copy's calls in
 # port/unmatched/MgPachinko2_Dtor.cpp, now a forwarder. The qualified shape
 # would drop the port's one caller of that flat base destructor.
-src/_ZN16dScMgPachinko2_cD0Ev.cpp
+src/actors/dScMgPachinko2_c.cpp
+port/unmatched/hostarm/_ZN16dScMgPachinko2_cD0Ev.cpp
 # Batch 5, the slot-16 D1 rows: each file's _MSC_VER arm spells the ROM's own
 # D1 step for step, the calls the hand-written slot-16 thunk made (ml_d1 in
 # port/hal/actor_classes_ov055.cpp, bbi_d1 and ms_d1 in
 # port/hal/actor_classes_ov063.cpp), and each thunk now only forwards.
-src/_ZN11MirrorLuigiD1Ev.cpp
-src/game/actors/daTrsIcon_c/_ZN11daTrsIcon_cD1Ev.cpp
-src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_cD1Ev.cpp
+src/actors/daLuigi_c.cpp
+port/unmatched/hostarm/_ZN11MirrorLuigiD1Ev.cpp
+src/actors/daTrs_c.cpp
+port/unmatched/hostarm/_ZN11daTrsIcon_cD1Ev.cpp
+src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp
+port/unmatched/hostarm/_ZN11daTrsTrap_cD1Ev.cpp

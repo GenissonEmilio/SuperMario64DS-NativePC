@@ -34,11 +34,11 @@
 # has no vptr store at all (its whole relocation span is the three dtor calls),
 # so the host chain is the complete body. The file stays in src/ as the matched
 # proof; it is not part of the port build.
-src/d_a_obj_number.c
-src/_ZN6Number13InitResourcesEv.cpp
-src/_ZN6Number16CleanupResourcesEv.cpp
-src/_ZN6Number8BehaviorEv.cpp
-src/_ZN6Number6RenderEv.cpp
+src/game/actors/d_a_obj_number.cpp
+# FOLDED into src/game/actors/d_a_obj_number.cpp (row 37): src/_ZN6Number13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_number.cpp (row 37): src/_ZN6Number16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_number.cpp (row 37): src/_ZN6Number8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_number.cpp (row 37): src/_ZN6Number6RenderEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN6NumberD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN6NumberD0Ev.cpp
 #
@@ -53,17 +53,17 @@ src/_ZN6Number6RenderEv.cpp
 # into the vptr first; writing _ZTV11WingFeather back over a WingFeather's own
 # vptr has no effect (nothing derives from the class), so the host thunk spells
 # only the four member destructors and Actor::D2, in the ROM's own order.
-src/game/actors/WingFeather/d_a_feather.c
-src/game/actors/WingFeather/_ZN11WingFeather13InitResourcesEv.cpp
-src/game/actors/WingFeather/_ZN11WingFeather16CleanupResourcesEv.cpp
-src/game/actors/WingFeather/_ZN11WingFeather8BehaviorEv.cpp
-src/game/actors/WingFeather/_ZN11WingFeather6RenderEv.cpp
+src/game/actors/daFeather_c/daFeather_c.cpp
+# FOLDED into src/game/actors/daFeather_c/daFeather_c.cpp (row 56): src/game/actors/WingFeather/_ZN11WingFeather13InitResourcesEv.cpp
+# FOLDED into src/game/actors/daFeather_c/daFeather_c.cpp (row 56): src/game/actors/WingFeather/_ZN11WingFeather16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/daFeather_c/daFeather_c.cpp (row 56): src/game/actors/WingFeather/_ZN11WingFeather8BehaviorEv.cpp
+# FOLDED into src/game/actors/daFeather_c/daFeather_c.cpp (row 56): src/game/actors/WingFeather/_ZN11WingFeather6RenderEv.cpp
 # RETIRED at SLICE1: body now in src/game/actors/WingFeather/_ZN11WingFeatherD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/game/actors/WingFeather/_ZN11WingFeatherD0Ev.cpp
 # The shared matrix/shadow helper both WingFeather::InitResources and
 # WingFeather::Behavior call on their last line. A plain extern "C" body, no
 # face needed.
-src/game/actors/WingFeather/func_ov002_020b2c44.cpp
+# FOLDED into src/game/actors/daFeather_c/daFeather_c.cpp (row 56): src/game/actors/WingFeather/func_ov002_020b2c44.cpp
 #
 # NOT here, because they are already in the build: the CALLER,
 # src/_ZN8dActor_c11SpawnNumberERK7Vector3jbtPS_.cpp, and the little parent-link

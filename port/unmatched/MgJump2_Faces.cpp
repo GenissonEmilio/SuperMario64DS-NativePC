@@ -129,7 +129,7 @@
 //   CALLER cleans, and the callee reads neither argument.  The ROM does the
 //   same thing -- r0 and r1 ride through the veneer untouched into an empty
 //   body.
-#pragma comment(linker, "/alternatename:?LoadFile@Animation@@SAPAUBCA_File@@AAUSharedFilePtr@@@Z=__ZN9Animation8LoadFileER13SharedFilePtr")
+#pragma comment(linker, "/alternatename:?LoadFile@dExtFrameCtrl_c@@SAPAUBCA_File@@AAUSharedFilePtr@@@Z=__ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr")
 #pragma comment(linker, "/alternatename:_Scene_AfterRender=__ZN8dScene_c11AfterRenderEj")
 
 // ---- 3b. THE THIRD ONE IS NOT AN ALIAS, AND THE FIRST RUN PROVED IT ------

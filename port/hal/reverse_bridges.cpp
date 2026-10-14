@@ -43,7 +43,7 @@ int _ZN8SaveData19IsCharacterUnlockedEj(unsigned ch);
 /* gate 18 */
 void *_ZN8dActor_c13ClosestPlayerEv(void *self);
 short _ZN8dActor_c18HorzAngleToCPlayerEv(void *self);
-int _ZN8dActor_c19DropShadowRadHeightER11ShadowModelR9Matrix4x35Fix12IiES5_j(
+int _ZN8dActor_c19DropShadowRadHeightER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_j(
     void *self, void *sm, void *m, int rad, int h, unsigned f);
 }
 
@@ -188,7 +188,7 @@ short Actor::HorzAngleToCPlayer()
 { return _ZN8dActor_c18HorzAngleToCPlayerEv(this); }
 void Actor::DropShadowRadHeight(ShadowModel &sm, Matrix4x3 &m, int rad, int h,
                                 unsigned f)
-{ _ZN8dActor_c19DropShadowRadHeightER11ShadowModelR9Matrix4x35Fix12IiES5_j(
+{ _ZN8dActor_c19DropShadowRadHeightER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_j(
       this, &sm, &m, rad, h, f); }
 
 template <typename T> struct Fix12 { T val; };
@@ -393,7 +393,7 @@ extern "C" void _ZN8dActor_c22UpdatePosWithOnlySpeedEP5dCc_c(void *self,
                                                                   void *cl)
 { ((dActor_c *)self)->dActor_c::UpdatePosWithOnlySpeed((dCc_c *)cl); }
 struct Camera { void SetFlag_3(); };
-extern "C" void _ZN6Camera9SetFlag_3Ev(void *self)
+extern "C" void _ZN9dCamera_c9SetFlag_3Ev(void *self)
 { ((Camera *)self)->SetFlag_3(); }
 
 /* THE HOST BODY IS GONE (run linkw wave 3, w3-a). It read the objID at +0x1c

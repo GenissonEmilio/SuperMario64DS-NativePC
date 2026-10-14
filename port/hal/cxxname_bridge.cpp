@@ -37,7 +37,7 @@ void _ZN4dBgW7DisableEv(void *self)
 
 // ---- gate-9 method bridges (C name -> MSVC method), the gx_upload pattern -
 #include "dBgActor_c.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 #include "Model.h"
 /* Model.h only forward-declares SharedFilePtr; the Model::LoadFile face below
    binds a reference to one, so it needs the complete (fieldless) declaration. */
@@ -86,8 +86,8 @@ void _ZN10dBgActor_c21UpdateModelPosAndRotYEv(void *self)
    It is ALSO no longer the whole story: the node that faults belongs to a
    BUTTERFLY, and a butterfly's two shadows are cylinders, not cuboids. See
    port/slice_w1l1.txt under LANE w3-a for the measured chain. */
-void _ZN11ShadowModel10InitCuboidEv(void *self)
-{ ((ShadowModel *)self)->ShadowModel::InitCuboid(); }
+void _ZN17dExtShadowModel_c10InitCuboidEv(void *self)
+{ ((dExtShadowModel_c *)self)->dExtShadowModel_c::InitCuboid(); }
 }   /* extern "C" -- reopened below, after the fallback's C++ linkage */
 
 /* THE NARROW HARNESSES NEED A FALLBACK, same shape as hal_shadow_d1_fallback
@@ -122,7 +122,7 @@ void _ZN11ShadowModel10InitCuboidEv(void *self)
    claim that nothing reaches it. */
 struct ShadowModelCuboidFallback { void InitCuboid(); };
 void ShadowModelCuboidFallback::InitCuboid() {}
-#pragma comment(linker, "/alternatename:?InitCuboid@ShadowModel@@QAEXXZ=?InitCuboid@ShadowModelCuboidFallback@@QAEXXZ")
+#pragma comment(linker, "/alternatename:?InitCuboid@dExtShadowModel_c@@QAEXXZ=?InitCuboid@ShadowModelCuboidFallback@@QAEXXZ")
 
 extern "C" {
 /* ACTOR::DROPSHADOWSCALEXYZ IS GONE FROM THIS FILE, and what stood here was
@@ -173,7 +173,7 @@ extern "C" {
    SLICE_W1L3_SOURCES in port/CMakeLists.txt, which is not this lane's file. */
 extern "C" void hal_dropshadow_scalexyz_fallback(void *, void *, void *,
                                                  int, int, int, unsigned) {}
-#pragma comment(linker, "/alternatename:__ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j=_hal_dropshadow_scalexyz_fallback")
+#pragma comment(linker, "/alternatename:__ZN8dActor_c18DropShadowScaleXYZER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_S5_j=_hal_dropshadow_scalexyz_fallback")
 /* MODEL::LOADFILE IS A FACE AGAIN, and it was not one before. This definition
    used to be a hand-expanded copy of the matched Model::LoadFile -- LoadFile,
    read filePtr, check numRefs, UpdateFileOffsets, AddToCommonModelDataArr --
@@ -612,8 +612,8 @@ void hal_fill_modelanim2_vtable(void)
 }
 }
 
-#include "ShadowModel.h"
-extern "C" void _ZN11ShadowModelD1Ev(void *self);
+#include "dExtShadowModel_c.h"
+extern "C" void _ZN17dExtShadowModel_cD1Ev(void *self);
 /* Fallback so the narrow gate-8/9 harness (smoke_actor) still links: it slices
    ShadowModel's constructor but not its destructor (slice_gate9.txt carries
    _ZN11ShadowModelC1Ev only), yet it compiles this TU. The full targets
@@ -630,16 +630,16 @@ extern "C" void _ZN11ShadowModelD1Ev(void *self);
    the fallback would be a bug, and w3-a measured that it is NOT right for a
    body the narrow harnesses have been calling all along. */
 extern "C" void hal_shadow_d1_fallback(void *)
-{ std::fprintf(stderr, "hal_shadow_d1_fallback: real _ZN11ShadowModelD1Ev not "
+{ std::fprintf(stderr, "hal_shadow_d1_fallback: real _ZN17dExtShadowModel_cD1Ev not "
                        "linked in this target but the shadow slot was reached\n");
   std::abort(); }
-#pragma comment(linker, "/alternatename:__ZN11ShadowModelD1Ev=_hal_shadow_d1_fallback")
+#pragma comment(linker, "/alternatename:__ZN17dExtShadowModel_cD1Ev=_hal_shadow_d1_fallback")
 /* combined dtor (Itanium D1) thunk, __fastcall to match the MSVC virtual ABI
    the rest of this file's fills use (self in ecx, ignored second arg) */
 static void __fastcall shadow_dtor(void *self, void *)
-{ _ZN11ShadowModelD1Ev(self); }
+{ _ZN17dExtShadowModel_cD1Ev(self); }
 extern "C" {
-extern void *_ZTV11ShadowModel[8];
+extern void *_ZTV17dExtShadowModel_c[8];
 void hal_fill_shadow_vtable(void)
 {
     /* PowerStar state-5 lift-off destroys its drop shadow through slot 0
@@ -648,7 +648,7 @@ void hal_fill_shadow_vtable(void)
        plus the later non-virtual _ZN11ShadowModelD1Ev in PowerStarD1Ev) is
        self-guarding in the matched source (ShadowModelD1Ev.c:33-51 checks
        prev/head and zeroes both). */
-    _ZTV11ShadowModel[0] = (void *)shadow_dtor;
+    _ZTV17dExtShadowModel_c[0] = (void *)shadow_dtor;
     /* vt[1] IS the D0 slot, and it is a real slot again: the respelling in
        include/ModelBase.h stopped MSVC folding the pair, so this table is ROM
        numbering throughout and DoSetFile is vt[2], where

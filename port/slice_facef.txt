@@ -85,7 +85,7 @@ src/game/actors/d_a_star_gate.cpp
 #   dispatch  02121bb0  add r1,r4,#0x80 / ldr r2,[r2,#0x14] / blx r2   ModelAnim slot 5, scale = mScaleX
 #   face      hal/except_faces.cpp, cdecl onto Goomboss::Render
 #   retires   port/unmatched/Goomboss_HostSites.cpp (body cut; func_ov074_021222e0 stays)
-src/_ZN8Goomboss6RenderEv.cpp
+src/actors/daKuriKing_c.cpp
 #
 # ShipUp::Render (ov016) OK -- family E leftover, held back by the return-type
 #   second reason above
@@ -96,7 +96,7 @@ src/_ZN8Goomboss6RenderEv.cpp
 #                       blx r2 / mov r0,#1                 Model at +0xd4, slot 5
 #   face      hal/except_faces.cpp, cdecl onto ShipUp::Render
 #   retires   port/unmatched/Jrb_Renders.cpp (body cut)
-src/_ZN6ShipUp6RenderEv.cpp
+src/game/actors/d_a_obj_ki_fune.cpp
 #
 # func_ov006_020c4c54 (ov006) OK -- family E leftover, held back only by
 #   "four bodies in one file, one of which is a different shape again"
@@ -108,7 +108,7 @@ src/_ZN6ShipUp6RenderEv.cpp
 #   face      none -- the matched TU defines the C name itself
 #   retires   port/unmatched/MgD3DBase_ModelAnimRender.cpp (body cut; the other
 #             three bodies keep their host copies until gate 2)
-src/func_ov006_020c4c54.cpp
+src/actors/dMg3DHeyhoObjAdapter_c.cpp
 #
 # ============================ GATE 2, six rows =============================
 #
@@ -127,7 +127,7 @@ src/func_ov006_020c4c54.cpp
 #                       blx r2 / mov r0,#1                Model at +0xd4, slot 5
 #   face      hal/except_faces.cpp, cdecl onto FloatOnWaterPlatformJrb::Render
 #   retires   port/unmatched/Jrb_Renders.cpp (with the three rows below, whole file)
-src/_ZN10SlidingBox6RenderEv.cpp
+src/actors/daSlide_Box_c.cpp
 #
 # daObjKi_Hasira_c::Render / ROCK_PILLAR (ov016) OK
 #   referrer  _ZTV10RockPillar[9] @ 02114b24 = 02112b28   (overlay_0016.bin, base 021111a0)
@@ -141,7 +141,7 @@ src/_ZN10SlidingBox6RenderEv.cpp
 #   ADJUDICATED: this matched TU carries the inferred-stub marker and is
 #             listed REAL_DECOMP in port/tools/inferred_stub_adjudicated.txt
 #             (match.py 2004/b56 strict-reloc MATCH, lane STUBADJ)
-src/_ZN10RockPillar6RenderEv.cpp
+src/actors/daObjKi_Hasira_c.cpp
 #
 # the Platform base Render (ov002) OK -- FOUR ROM table slots reach it
 #   referrer  _ZTV17daObjFloatBoard_c[9] @ 02109000 = 020b5c24   (overlay_0002.bin, base 020ad660)
@@ -182,7 +182,7 @@ src/actors/daObjFloatBoard_c.cpp
 #                       ldr r2,[r2,#0x14] / blx r2
 #                       the object at +0x78, slot 5, scale = data_ov006_0212e02c
 #   face      none -- the matched TU defines the C name itself
-src/func_ov006_020c8e90.cpp
+src/actors/dMgTrmpln2Mario_c.cpp
 #
 # func_ov006_02122814 (ov006) OK -- the "different shape again" of the four,
 #   and the difference is only the OFFSET: the shadow is over the object
@@ -235,4 +235,4 @@ src/func_ov006_020c8e90.cpp
 #             is why the row still gains +1. Listing it here as well is
 #             the pattern port/CMakeLists.txt already documents as safe:
 #             CMake dedupes the identical absolute path.
-src/_ZN6Player8BlowAwayEs.cpp
+src/actors/Player.cpp

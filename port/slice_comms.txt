@@ -40,5 +40,5 @@
 # is the target that exercises them. Wiring them into the frame loops in place
 # of the direct writes is MP2's job, because that is the change with a
 # regression surface.
-src/func_0203bb60.c
-src/func_0203bc7c.c
+src/unnamed/arm9/0203/func_0203bb60.c
+src/unnamed/arm9/0203/func_0203bc7c.c

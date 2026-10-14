@@ -21,14 +21,14 @@
 #    against the touch record and turns them into the same rotate bits the
 #    shoulder buttons produce.
 
-src/_ZN3OAM5ResetEv.cpp
-src/_ZN3OAM12EnableSubOAMEv.cpp
-src/_ZN3OAM9RenderSubEP7OamAttrii.cpp
-src/_ZN3OAM9RenderSubEP7OamAttriiii.cpp
-src/func_020566dc.c
-src/func_02056674.c
+src/engine/oam/OAM.cpp
+# FOLDED into src/engine/oam/OAM.cpp (row 24): src/_ZN3OAM12EnableSubOAMEv.cpp
+# FOLDED into src/engine/oam/OAM.cpp (row 24): src/_ZN3OAM9RenderSubEP7OamAttrii.cpp
+# FOLDED into src/engine/oam/OAM.cpp (row 24): src/_ZN3OAM9RenderSubEP7OamAttriiii.cpp
+src/engine/gx/GXS.cpp
+# FOLDED into src/engine/gx/GXS.cpp (row 28): src/func_02056674.c
 
-src/_ZN5Stage14LoadGraphics2DEbi.cpp
+src/_ZN10dScStage_c14LoadGraphics2DEbi.cpp
 src/_ZN2G213GetBG2CharPtrEv.cpp
 src/_ZN2G212GetBG2ScrPtrEv.cpp
 src/_ZN3G2S13GetBG0CharPtrEv.cpp
@@ -37,15 +37,15 @@ src/_ZN3G2S12GetBG2ScrPtrEv.cpp
 src/LoadFont.cpp
 src/LoadFileAt.c
 src/LoadCompressedFileAt.c
-src/func_02018ac4.c
-src/_ZN2GX10LoadBGPlttEPKvjj.cpp
-src/_ZN3GXS10LoadBGPlttEPKvjj.cpp
+src/unnamed/arm9/0201/func_02018ac4.c
+src/engine/gx/GX.cpp
+# FOLDED into src/engine/gx/GXS.cpp (row 28): src/_ZN3GXS10LoadBGPlttEPKvjj.cpp
 src/GetOwnerLanguage.c
 src/SetBg0Offset.c
 src/SetSubBg0Offset.c
 src/SetSubBg2Offset.c
 
-src/_ZN5Stage16CheckCameraInputEv.cpp
+src/actors/dScStage_c.cpp
 
 # Not here, on purpose. Each was reachable only from a LoadGraphics2D branch
 # the port did not take, or dragged something the port had no seam for, and

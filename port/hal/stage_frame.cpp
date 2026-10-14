@@ -110,16 +110,16 @@
 
 extern "C" {
 /* the flat-C matched bodies the faces below forward to */
-void _ZN5Stage10PS_CleanupEv(void);
-void _ZN5Stage7VE_InitEv(void);
-void _ZN5Stage9VE_UpdateEv(void);
+void _ZN10dScStage_c10PS_CleanupEv(void);
+void _ZN10dScStage_c7VE_InitEv(void);
+void _ZN10dScStage_c9VE_UpdateEv(void);
 void _ZN8dScene_c15SetSceneToSpawnEjj(unsigned int a, unsigned int b);
 /* Stage::UpdateMessage's body, on the port: hal/message_pump.cpp */
 void port_message_pump(void);
 /* run link100, lane RENDER9: the flat-C matched bodies slot 9's faces forward
    to. Each is a real ROM body already compiled into this link; what is missing
    is only the MSVC spelling src/_ZN5Stage6RenderEv.cpp calls them by. */
-void _ZN5Stage21RenderVsModeCountdownEv(void);
+void _ZN10dScStage_c21RenderVsModeCountdownEv(void);
 void _ZN8Particle10SysTracker6UpdateEv(void *self);
 void _ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2(int draw, void *obj, int px,
                                               int py, int pal, int prio,
@@ -330,7 +330,7 @@ int OAM::Render(bool draw, OamAttr *obj, int px, int py, int pal, int prio,
 static void slot9_seam(const char *what, const char *why)
 {
     std::fprintf(stderr,
-                 "[stageframe] SEAM: %s (_ZTV5Stage slot 9, Stage::Render) is "
+                 "[stageframe] SEAM: %s (_ZTV10dScStage_c slot 9, Stage::Render) is "
                  "not hosted -- %s. See port/slice_slot9.txt and "
                  "port/stage_lifecycle_map.txt section 18.\n", what, why);
 }
@@ -346,7 +346,7 @@ static void slot9_seam(const char *what, const char *why)
  * RenderBouncingArrows row in hal/cxx_aliases.cpp is the precedent; this one
  * lives beside the retired seam rather than in that file because it exists
  * for slot 9 alone. */
-#pragma comment(linker, "/alternatename:__ZN5Stage12RenderNumberEhiibi=?RenderNumber@Stage@@SAXEHH_NH@Z")
+#pragma comment(linker, "/alternatename:__ZN10dScStage_c12RenderNumberEhiibi=?RenderNumber@dScStage_c@@SAXEHH_NH@Z")
 
 void Stage::RenderVsModeNewStar()
 {

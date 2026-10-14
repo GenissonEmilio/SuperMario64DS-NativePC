@@ -41,20 +41,20 @@
 
 extern "C" {
 /* the two per-frame helpers Behavior calls after the dispatch; matched src */
-int func_ov080_02124208(void *c);
-void func_ov080_021243d8(char *c);
+int _ZN11daChoropu_c19func_ov080_02124208Ev(void *c);
+void _ZN11daChoropu_c19func_ov080_021243d8Ev(char *c);
 /* engine faces Behavior calls; all in the map */
 void _ZN8dActor_c19MakeVanishLuigiWorkER5dCc_c(void *self, void *cyl);
 void _ZN5dCc_c5ClearEv(void *c);
 void _ZN5dCc_c6UpdateEv(void *c);
 
 /* the six state functions, table order; all matched src */
-void func_ov080_02123fcc(char *c);   /* state 0 */
-void func_ov080_02123ecc(char *c);   /* state 1 */
-void func_ov080_02123c24(char *c);   /* state 2 */
-void func_ov080_02123a34(char *c);   /* state 3 */
-void func_ov080_02123924(char *c);   /* state 4 */
-void func_ov080_02123860(char *c);   /* state 5 */
+void _ZN11daChoropu_c19func_ov080_02123fccEv(char *c);   /* state 0 */
+void _ZN11daChoropu_c19func_ov080_02123eccEv(char *c);   /* state 1 */
+void _ZN11daChoropu_c19func_ov080_02123c24Ev(char *c);   /* state 2 */
+void _ZN11daChoropu_c19func_ov080_02123a34Ev(char *c);   /* state 3 */
+void _ZN11daChoropu_c19func_ov080_02123924Ev(char *c);   /* state 4 */
+void _ZN11daChoropu_c19func_ov080_02123860Ev(char *c);   /* state 5 */
 
 struct PortPmf { unsigned fn; int delta; };
 /* the RUNTIME table Behavior reads (bss, filled by the sinit) */
@@ -96,12 +96,12 @@ extern PortPmf data_ov080_02127fa0[], data_ov080_02127f88[],
         sym((char *)self);                                                \
     }
 
-MOLE_FACE(0, func_ov080_02123fcc)
-MOLE_FACE(1, func_ov080_02123ecc)
-MOLE_FACE(2, func_ov080_02123c24)
-MOLE_FACE(3, func_ov080_02123a34)
-MOLE_FACE(4, func_ov080_02123924)
-MOLE_FACE(5, func_ov080_02123860)
+MOLE_FACE(0, _ZN11daChoropu_c19func_ov080_02123fccEv)
+MOLE_FACE(1, _ZN11daChoropu_c19func_ov080_02123eccEv)
+MOLE_FACE(2, _ZN11daChoropu_c19func_ov080_02123c24Ev)
+MOLE_FACE(3, _ZN11daChoropu_c19func_ov080_02123a34Ev)
+MOLE_FACE(4, _ZN11daChoropu_c19func_ov080_02123924Ev)
+MOLE_FACE(5, _ZN11daChoropu_c19func_ov080_02123860Ev)
 
 static const struct { PortPmf *slot; unsigned rom; void *host; }
 g_monty_mole_states[] = {

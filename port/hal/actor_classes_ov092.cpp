@@ -110,16 +110,16 @@ void port_ov092_syms_patch(void);
 void __sinit_ov092_021320cc(void);
 
 /* the bodies src spells with C names (port/slice_ov092.txt) */
-int _ZN6ToxBox13InitResourcesEv(char *self);      /* slot 0, a plain .c body */
-int _ZN6ToxBox8BehaviorEv(void *self);            /* slot 6, unmatched/ToxBox_HostSites */
-int *_ZN6ToxBoxD1Ev(int *self);                   /* slot 16 */
-int *_ZN6ToxBoxD0Ev(int *self);                   /* slot 17 */
+int _ZN8daOnms_c13InitResourcesEv(char *self);      /* slot 0, a plain .c body */
+int _ZN8daOnms_c8BehaviorEv(void *self);            /* slot 6, unmatched/ToxBox_HostSites */
+int *_ZN8daOnms_cD1Ev(int *self);                   /* slot 16 */
+int *_ZN8daOnms_cD0Ev(int *self);                   /* slot 17 */
 void *daOnms_c_classInit(void);                         /* id 309 */
 extern unsigned char g_profile_ONIMASU[];
 
 /* the host vtable, excluded from the mount */
 DSSTATE_BEGIN
-void *_ZTV6ToxBox[32];        /* 0x021322d0 */
+void *_ZTV8daOnms_c[32];        /* 0x021322d0 */
 DSSTATE_END
 }
 
@@ -129,12 +129,12 @@ DSSTATE_END
    The BabyPenguin/IceSheet/OneUpLogo/HootTheOwl/ShipWater recipe.
    InitResources needs NO face -- src/_ZN6ToxBox13InitResourcesEv.cpp is a .c
    file and already defines the flat name. */
-#include "ToxBox.h"
+#include "daOnms_c.h"
 extern "C" {
-int _ZN6ToxBox16CleanupResourcesEv(void *self)
-{ return ((ToxBox *)self)->ToxBox::CleanupResources(); }
-int _ZN6ToxBox6RenderEv(void *self)
-{ return ((ToxBox *)self)->ToxBox::Render(); }
+int _ZN8daOnms_c16CleanupResourcesEv(void *self)
+{ return ((daOnms_c *)self)->daOnms_c::CleanupResources(); }
+int _ZN8daOnms_c6RenderEv(void *self)
+{ return ((daOnms_c *)self)->daOnms_c::Render(); }
 }
 
 // ============================================================================
@@ -147,15 +147,15 @@ extern "C" {
    typed void-returning to match it and the one int-returning body is reached
    through it on plain cdecl, where an ignored eax is the same discard. See
    port/unmatched/ToxBox_HostSites.cpp for the full note. */
-void func_ov092_02130fcc(char *);
-int func_ov092_02131010(unsigned char *);
-void func_ov092_021311b0(void *);
-void func_ov092_02131578(char *);
-void func_ov092_021315ac(char *);
-void func_ov092_02131620(void *);
-void func_ov092_02131650(void *);
-void func_ov092_02131680(void *);
-void func_ov092_021316b0(void *);
+void _ZN8daOnms_c9StateSinkEv(char *);
+int _ZN8daOnms_c11StateBounceEv(unsigned char *);
+void _ZN8daOnms_c12StateKnockedEv(void *);
+void _ZN8daOnms_c19func_ov092_02131578Ev(char *);
+void _ZN8daOnms_c9StateLandEv(char *);
+void _ZN8daOnms_c13StateRollPosXEv(void *);
+void _ZN8daOnms_c13StateRollNegXEv(void *);
+void _ZN8daOnms_c13StateRollNegZEv(void *);
+void _ZN8daOnms_c13StateRollPosZEv(void *);
 
 /* the runtime table itself (bss, filled by the sinit); the mount is the whole
    88-byte span to the end of ov092's .bss, so cells 9 and 10 are real storage
@@ -228,15 +228,15 @@ static void ov092_unhosted_cell(unsigned idx)
 
 /* the STATE index each face serves, which is the sinit's permutation and not
    the source records' address order */
-OV092_FACEC(0, func_ov092_021315ac)
-OV092_FACEC(1, func_ov092_02131578)
-OV092_FACE (2, func_ov092_021316b0)
-OV092_FACE (3, func_ov092_02131680)
-OV092_FACE (4, func_ov092_02131650)
-OV092_FACE (5, func_ov092_02131620)
-OV092_FACE (6, func_ov092_021311b0)
-OV092_FACEU(7, func_ov092_02131010)
-OV092_FACEC(8, func_ov092_02130fcc)
+OV092_FACEC(0, _ZN8daOnms_c9StateLandEv)
+OV092_FACEC(1, _ZN8daOnms_c19func_ov092_02131578Ev)
+OV092_FACE (2, _ZN8daOnms_c13StateRollPosZEv)
+OV092_FACE (3, _ZN8daOnms_c13StateRollNegZEv)
+OV092_FACE (4, _ZN8daOnms_c13StateRollNegXEv)
+OV092_FACE (5, _ZN8daOnms_c13StateRollPosXEv)
+OV092_FACE (6, _ZN8daOnms_c12StateKnockedEv)
+OV092_FACEU(7, _ZN8daOnms_c11StateBounceEv)
+OV092_FACEC(8, _ZN8daOnms_c9StateSinkEv)
 OV092_ABORT(9)
 OV092_ABORT(10)
 
@@ -391,18 +391,18 @@ static int __fastcall ov92_kill(void *s, void *)
 // Lakitu/Spiny one.
 // ============================================================================
 static int __fastcall tb_init(void *s, void *)
-{ return _ZN6ToxBox13InitResourcesEv((char *)s); }
+{ return _ZN8daOnms_c13InitResourcesEv((char *)s); }
 static int __fastcall tb_clean(void *s, void *)
-{ return _ZN6ToxBox16CleanupResourcesEv(s); }
+{ return _ZN8daOnms_c16CleanupResourcesEv(s); }
 static int __fastcall tb_behavior(void *s, void *)
-{ return _ZN6ToxBox8BehaviorEv(s); }
+{ return _ZN8daOnms_c8BehaviorEv(s); }
 static int __fastcall tb_render(void *s, void *)
 { port_actor_render_probe("TOX_BOX", (char *)s + 0xd4);
-  return _ZN6ToxBox6RenderEv(s); }
+  return _ZN8daOnms_c6RenderEv(s); }
 static int __fastcall tb_d1(void *s, void *)
-{ return (int)(size_t)_ZN6ToxBoxD1Ev((int *)s); }
+{ return (int)(size_t)_ZN8daOnms_cD1Ev((int *)s); }
 static int __fastcall tb_d0(void *s, void *)
-{ return (int)(size_t)_ZN6ToxBoxD0Ev((int *)s); }
+{ return (int)(size_t)_ZN8daOnms_cD0Ev((int *)s); }
 
 // ---- the mount bring-up ----------------------------------------------------
 DSSTATE_BEGIN
@@ -430,7 +430,7 @@ extern "C" void port_ov92_bringup(void)
 extern "C" void hal_fill_tox_box_vtable(void)
 {
     port_ov92_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV6ToxBox;
+    void *volatile *vt = (void *volatile *)_ZTV8daOnms_c;
     vt[0]  = (void *)tb_init;
     vt[1]  = (void *)ov92_binit;
     vt[2]  = (void *)ov92_ainit;

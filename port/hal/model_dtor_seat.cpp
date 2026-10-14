@@ -137,30 +137,30 @@
 //     linked. The VTable_Animation_*Thunk tables keep their no-ops.
 // ===========================================================================
 
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 #include "TextureSequence.h"
 
 extern "C" {
 
 extern void *_ZTV5Model[];            /* storage in hal/model_host.cpp */
-extern void *_ZTV9Animation[];        /* storage in hal/model_host.cpp */
+extern void *_ZTV15dExtFrameCtrl_c[];        /* storage in hal/model_host.cpp */
 extern void *_ZTV9ModelAnim[];        /* storage in hal/model_host.cpp */
 extern void *_ZTV10ModelAnim2[];      /* storage in hal/actor_vtables.cpp */
 extern void *_ZTV14BlendModelAnim[];  /* storage in hal/blend_vtable.cpp */
-extern void *_ZTV11ShadowModel[];        /* storage in hal/actor_vtables.cpp */
+extern void *_ZTV17dExtShadowModel_c[];        /* storage in hal/actor_vtables.cpp */
 extern void *_ZTV15TextureSequence[];    /* storage in hal/actor_vtables.cpp */
 extern void *_ZTV15MaterialChanger[];    /* storage in hal/actor_vtables.cpp */
 extern void *_ZTV18TextureTransformer[]; /* storage in hal/method_faces.cpp */
 extern int _ZTV9ModelBase[];              /* _ZTV9ModelBase, hal/model_host.cpp */
 
 void *_ZN5ModelD0Ev(void *self);
-void *_ZN9AnimationD0Ev(void *self);
+void *_ZN15dExtFrameCtrl_cD0Ev(void *self);
 void *_ZN9ModelAnimD0Ev(void *self);
 void *_ZN10ModelAnim2D0Ev(void *self);
 void *_ZN14BlendModelAnimD0Ev(void *self);
 /* the COMPLETE-object halves, which the fold used to leave without a slot */
 void *_ZN5ModelD1Ev(void *self);
-void *_ZN9AnimationD1Ev(void *self);
+void *_ZN15dExtFrameCtrl_cD1Ev(void *self);
 void *_ZN9ModelAnimD1Ev(void *self);
 void *_ZN10ModelAnim2D1Ev(void *self);
 void *_ZN14BlendModelAnimD1Ev(void *self);
@@ -173,12 +173,12 @@ void *_ZN9ModelBaseD0Ev(void *self);
 }
 
 static void __fastcall model_d0(void *s, void *)     { _ZN5ModelD0Ev(s); }
-static void __fastcall anim_d0(void *s, void *)      { _ZN9AnimationD0Ev(s); }
+static void __fastcall anim_d0(void *s, void *)      { _ZN15dExtFrameCtrl_cD0Ev(s); }
 static void __fastcall modelanim_d0(void *s, void *) { _ZN9ModelAnimD0Ev(s); }
 static void __fastcall modelanim2_d0(void *s, void *){ _ZN10ModelAnim2D0Ev(s); }
 static void __fastcall blend_d0(void *s, void *)     { _ZN14BlendModelAnimD0Ev(s); }
 static void __fastcall model_d1(void *s, void *)     { _ZN5ModelD1Ev(s); }
-static void __fastcall anim_d1(void *s, void *)      { _ZN9AnimationD1Ev(s); }
+static void __fastcall anim_d1(void *s, void *)      { _ZN15dExtFrameCtrl_cD1Ev(s); }
 static void __fastcall modelanim_d1(void *s, void *) { _ZN9ModelAnimD1Ev(s); }
 static void __fastcall modelanim2_d1(void *s, void *){ _ZN10ModelAnim2D1Ev(s); }
 static void __fastcall blend_d1(void *s, void *)     { _ZN14BlendModelAnimD1Ev(s); }
@@ -203,7 +203,7 @@ static void __fastcall modelbase_d0(void *s, void *) { _ZN9ModelBaseD0Ev(s); }
    mv_dosetfile uses for the Model slot next door. */
 static int __fastcall shadow_dosetfile(void *self, void *, char *f, int a, int b)
 {
-    return ((ShadowModel *)self)->ShadowModel::DoSetFile(f, a, b);
+    return ((dExtShadowModel_c *)self)->dExtShadowModel_c::DoSetFile(f, a, b);
 }
 
 extern "C" void hal_seat_model_family_dtors(void)
@@ -218,8 +218,8 @@ extern "C" void hal_seat_model_family_dtors(void)
        so the five D1 TUs join the five D0 TUs in the link. */
     _ZTV5Model[0]           = (void *)model_d1;
     _ZTV5Model[1]           = (void *)model_d0;
-    _ZTV9Animation[0]       = (void *)anim_d1;
-    _ZTV9Animation[1]       = (void *)anim_d0;
+    _ZTV15dExtFrameCtrl_c[0]       = (void *)anim_d1;
+    _ZTV15dExtFrameCtrl_c[1]       = (void *)anim_d0;
     _ZTV9ModelAnim[0]       = (void *)modelanim_d1;
     _ZTV9ModelAnim[1]       = (void *)modelanim_d0;
     _ZTV10ModelAnim2[0]     = (void *)modelanim2_d1;
@@ -229,7 +229,7 @@ extern "C" void hal_seat_model_family_dtors(void)
 
     /* lane l3, wave 1: see the SEAT block at the top of this file. DoSetFile
        is the ROM's slot 2, and with the fold gone that is where it goes. */
-    _ZTV11ShadowModel[2]        = (void *)shadow_dosetfile;
+    _ZTV17dExtShadowModel_c[2]        = (void *)shadow_dosetfile;
     _ZTV15TextureSequence[0]    = (void *)texseq_d0;
     /* Run link100, lane EXCEPT: ROM slot 1, filled at last. See the
        TEXTURESEQUENCE SLOT 1 note in the seat block at the top of this file. */

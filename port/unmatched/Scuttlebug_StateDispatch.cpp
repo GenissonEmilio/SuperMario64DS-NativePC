@@ -68,24 +68,24 @@ extern "C" {
 /* the eighteen state halves, by ROM address; all matched src. ENTER halves are
    dispatched by func_ov071_021202b4 on SetState, MAIN halves by
    func_ov071_02120278 from Behavior. */
-void func_ov071_02120200(void *c);   /* state 0 enter */
-void func_ov071_021201b4(void *c);   /* state 0 main  */
-void func_ov071_02120130(void *c);   /* state 1 enter */
-void func_ov071_02120028(void *c);   /* state 1 main  */
-void func_ov071_0211ff84(void *c);   /* state 2 enter */
-void func_ov071_0211fee4(void *c);   /* state 2 main  */
-void func_ov071_0211fe38(void *c);   /* state 3 enter */
-void func_ov071_0211fd58(void *c);   /* state 3 main  */
-void func_ov071_0211fcd4(void *c);   /* state 4 enter */
-void func_ov071_0211fc60(void *c);   /* state 4 main  */
-void func_ov071_0211fbf4(void *c);   /* state 5 enter */
-void func_ov071_0211fb24(void *c);   /* state 5 main  */
-void func_ov071_0211fb0c(void *c);   /* state 6 enter */
-void func_ov071_0211fa54(void *c);   /* state 6 main  */
-void func_ov071_0211f8d0(void *c);   /* state 7 enter */
-void func_ov071_0211f7d4(void *c);   /* state 7 main  */
-void func_ov071_0211f6f8(void *c);   /* state 8 enter */
-void func_ov071_0211f694(void *c);   /* state 8 main  */
+void _ZN10Scuttlebug19func_ov071_02120200Ev(void *c);   /* state 0 enter */
+void _ZN10Scuttlebug19func_ov071_021201b4Ev(void *c);   /* state 0 main  */
+void _ZN10Scuttlebug19func_ov071_02120130Ev(void *c);   /* state 1 enter */
+void _ZN10Scuttlebug19func_ov071_02120028Ev(void *c);   /* state 1 main  */
+void _ZN10Scuttlebug19func_ov071_0211ff84Ev(void *c);   /* state 2 enter */
+void _ZN10Scuttlebug19func_ov071_0211fee4Ev(void *c);   /* state 2 main  */
+void _ZN10Scuttlebug19func_ov071_0211fe38Ev(void *c);   /* state 3 enter */
+void _ZN10Scuttlebug19func_ov071_0211fd58Ev(void *c);   /* state 3 main  */
+void _ZN10Scuttlebug19func_ov071_0211fcd4Ev(void *c);   /* state 4 enter */
+void _ZN10Scuttlebug19func_ov071_0211fc60Ev(void *c);   /* state 4 main  */
+void _ZN10Scuttlebug19func_ov071_0211fbf4Ev(void *c);   /* state 5 enter */
+void _ZN10Scuttlebug19func_ov071_0211fb24Ev(void *c);   /* state 5 main  */
+void _ZN10Scuttlebug19func_ov071_0211fb0cEv(void *c);   /* state 6 enter */
+void _ZN10Scuttlebug19func_ov071_0211fa54Ev(void *c);   /* state 6 main  */
+void _ZN10Scuttlebug19func_ov071_0211f8d0Ev(void *c);   /* state 7 enter */
+void _ZN10Scuttlebug19func_ov071_0211f7d4Ev(void *c);   /* state 7 main  */
+void _ZN10Scuttlebug19func_ov071_0211f6f8Ev(void *c);   /* state 8 enter */
+void _ZN10Scuttlebug19func_ov071_0211f694Ev(void *c);   /* state 8 main  */
 
 struct PortPmf { unsigned fn; int delta; };
 /* the RUNTIME array the dispatchers read (bss, filled by the sinit); nine
@@ -169,23 +169,23 @@ extern PortPmf data_ov071_02122b60[], data_ov071_02122b68[],
    This is 5ae983797's correction at a sixteenth class. Each thunk names the
    body it forwards to. */
 static void __fastcall sb_0211fee4(void *self, void *)
-{ func_ov071_0211fee4(self); }
+{ _ZN10Scuttlebug19func_ov071_0211fee4Ev(self); }
 static void __fastcall sb_02120028(void *self, void *)
-{ func_ov071_02120028(self); }
+{ _ZN10Scuttlebug19func_ov071_02120028Ev(self); }
 static void __fastcall sb_021201b4(void *self, void *)
-{ func_ov071_021201b4(self); }
+{ _ZN10Scuttlebug19func_ov071_021201b4Ev(self); }
 static void __fastcall sb_0211fa54(void *self, void *)
-{ func_ov071_0211fa54(self); }
+{ _ZN10Scuttlebug19func_ov071_0211fa54Ev(self); }
 static void __fastcall sb_0211f694(void *self, void *)
-{ func_ov071_0211f694(self); }
+{ _ZN10Scuttlebug19func_ov071_0211f694Ev(self); }
 static void __fastcall sb_0211f7d4(void *self, void *)
-{ func_ov071_0211f7d4(self); }
+{ _ZN10Scuttlebug19func_ov071_0211f7d4Ev(self); }
 static void __fastcall sb_0211fb24(void *self, void *)
-{ func_ov071_0211fb24(self); }
+{ _ZN10Scuttlebug19func_ov071_0211fb24Ev(self); }
 static void __fastcall sb_0211fc60(void *self, void *)
-{ func_ov071_0211fc60(self); }
+{ _ZN10Scuttlebug19func_ov071_0211fc60Ev(self); }
 static void __fastcall sb_0211fd58(void *self, void *)
-{ func_ov071_0211fd58(self); }
+{ _ZN10Scuttlebug19func_ov071_0211fd58Ev(self); }
 
 /* ---- RUN link100 WAVE 15 LANE HMC1: THE NINE *ENTER* CELLS TAKE THEIR
    RECEIVER IN ECX TOO, and the block above is wrong about the readers.
@@ -223,23 +223,23 @@ static void __fastcall sb_0211fd58(void *self, void *)
    (= animation 27 widened to Fix12 by Animation::SetAnimation's shl 12). That is
    level 13's idle-arm fault, open since wave 10. */
 static void __fastcall sb_02120200(void *self, void *)
-{ func_ov071_02120200(self); }
+{ _ZN10Scuttlebug19func_ov071_02120200Ev(self); }
 static void __fastcall sb_02120130(void *self, void *)
-{ func_ov071_02120130(self); }
+{ _ZN10Scuttlebug19func_ov071_02120130Ev(self); }
 static void __fastcall sb_0211ff84(void *self, void *)
-{ func_ov071_0211ff84(self); }
+{ _ZN10Scuttlebug19func_ov071_0211ff84Ev(self); }
 static void __fastcall sb_0211fe38(void *self, void *)
-{ func_ov071_0211fe38(self); }
+{ _ZN10Scuttlebug19func_ov071_0211fe38Ev(self); }
 static void __fastcall sb_0211fcd4(void *self, void *)
-{ func_ov071_0211fcd4(self); }
+{ _ZN10Scuttlebug19func_ov071_0211fcd4Ev(self); }
 static void __fastcall sb_0211fbf4(void *self, void *)
-{ func_ov071_0211fbf4(self); }
+{ _ZN10Scuttlebug19func_ov071_0211fbf4Ev(self); }
 static void __fastcall sb_0211fb0c(void *self, void *)
-{ func_ov071_0211fb0c(self); }
+{ _ZN10Scuttlebug19func_ov071_0211fb0cEv(self); }
 static void __fastcall sb_0211f8d0(void *self, void *)
-{ func_ov071_0211f8d0(self); }
+{ _ZN10Scuttlebug19func_ov071_0211f8d0Ev(self); }
 static void __fastcall sb_0211f6f8(void *self, void *)
-{ func_ov071_0211f6f8(self); }
+{ _ZN10Scuttlebug19func_ov071_0211f6f8Ev(self); }
 
 static const struct { PortPmf *slot; unsigned rom; void (*host)(void *); }
 g_scuttlebug_sources[] = {

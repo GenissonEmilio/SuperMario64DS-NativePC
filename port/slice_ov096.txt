@@ -301,18 +301,19 @@
 #     asserts that after every link.
 #
 # ==== THE SLICE: 41 TUs (40 of ov096's 49, plus one arm9 closure TU) =======
-src/func_02016aac.c
+src/unnamed/arm9/0201/func_02016aac.c
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (the slice_ov096 host copies).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
 #src/actors/daSanbo_c.cpp
-src/d_a_tor.c
-src/_ZN7Tornado16CleanupResourcesEv.cpp
-src/_ZN7TornadoD0Ev.cpp
-src/__sinit_ov096_0213770c.c
-src/__sinit_ov096_02137894.c
-src/_ZN7Tornado10UpdateSpinEi.cpp
-src/_ZN7Tornado6State2Ev.cpp
-src/_ZN7Tornado6State0Ev.cpp
+src/actors/daTor_c.cpp
+# FOLDED into src/actors/daTor_c.cpp (row 311): src/_ZN7Tornado16CleanupResourcesEv.cpp
+# FOLDED into src/actors/daTor_c.cpp (row 311): src/_ZN7TornadoD0Ev.cpp
+port/unmatched/hostarm/_ZN7TornadoD0Ev.cpp
+src/actors/daSanbo_c.cpp
+# FOLDED into src/actors/daTor_c.cpp (row 311): src/__sinit_ov096_02137894.c
+# FOLDED into src/actors/daTor_c.cpp (row 311): src/_ZN7Tornado10UpdateSpinEi.cpp
+# FOLDED into src/actors/daTor_c.cpp (row 311): src/_ZN7Tornado6State2Ev.cpp
+# FOLDED into src/actors/daTor_c.cpp (row 311): src/_ZN7Tornado6State0Ev.cpp

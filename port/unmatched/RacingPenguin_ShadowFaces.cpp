@@ -107,7 +107,7 @@ extern "C" void *TextureSequence_LoadFile(void *ptr)
 //
 // Free functions, cdecl on both sides, so these are aliases. All three targets
 // are defined in this build as plain C names.
-#pragma comment(linker, "/alternatename:?_ZN9Animation7AdvanceEv@@YAXPAD@Z=__ZN9Animation7AdvanceEv")
+#pragma comment(linker, "/alternatename:?_ZN15dExtFrameCtrl_c7AdvanceEv@@YAXPAD@Z=__ZN15dExtFrameCtrl_c7AdvanceEv")
 #pragma comment(linker, "/alternatename:?_ZN5dCc_c5ClearEv@@YAXPAD@Z=__ZN5dCc_c5ClearEv")
 #pragma comment(linker, "/alternatename:?_ZN5dCc_c6UpdateEv@@YAXPAD@Z=__ZN5dCc_c6UpdateEv")
 

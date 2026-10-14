@@ -116,10 +116,10 @@ extern "C" {
 
 /* ---- the class's own four, plus the factory. Flat C names out of src/, the
    way every arm9 method in this tree is spelled. */
-int   _ZN9BootScene13InitResourcesEv(char *self);        /* slot  0  InitResources          */
-int   _ZN9BootScene8BehaviorEv(void *self);        /* slot  6  Behavior               */
-void *_ZN9BootSceneD1Ev(void *self);        /* slot 16  D2  (folded, see 3)    */
-void *_ZN9BootSceneD0Ev(void *self);    /* slot 17  D0                     */
+int   _ZN9dScBoot_c13InitResourcesEv(char *self);        /* slot  0  InitResources          */
+int   _ZN9dScBoot_c8BehaviorEv(void *self);        /* slot  6  Behavior               */
+void *_ZN9dScBoot_cD1Ev(void *self);        /* slot 16  D2  (folded, see 3)    */
+void *_ZN9dScBoot_cD0Ev(void *self);    /* slot 17  D0                     */
 void *dScBoot_c_classInit(void);              /* the factory, 0x02023624         */
 
 /* the shared halves (hal/scene_boot.cpp, hal/scene_link100_base_faces.cpp) */
@@ -330,17 +330,17 @@ extern "C" void func_0201a2f8(void)
 static unsigned g_boot_hits[18];
 
 static int  __fastcall bt_init(void *s, void *)
-{ ++g_boot_hits[0];  return _ZN9BootScene13InitResourcesEv((char *)s); }
+{ ++g_boot_hits[0];  return _ZN9dScBoot_c13InitResourcesEv((char *)s); }
 static int  __fastcall bt_beh(void *s, void *)
-{ ++g_boot_hits[6];  return _ZN9BootScene8BehaviorEv(s); }
+{ ++g_boot_hits[6];  return _ZN9dScBoot_c8BehaviorEv(s); }
 static int  __fastcall bt_render(void *s, void *)
 { ++g_boot_hits[9];  return port_scene_link100_base_render(s); }
 static void __fastcall bt_pdes(void *s, void *)
 { ++g_boot_hits[12]; port_scene_link100_base_pending_destroy(s); }
 static void *__fastcall bt_d2(void *s, void *)
-{ ++g_boot_hits[16]; return _ZN9BootSceneD1Ev(s); }
+{ ++g_boot_hits[16]; return _ZN9dScBoot_cD1Ev(s); }
 static void *__fastcall bt_d0(void *s, void *)
-{ ++g_boot_hits[17]; return _ZN9BootSceneD0Ev(s); }
+{ ++g_boot_hits[17]; return _ZN9dScBoot_cD0Ev(s); }
 
 extern "C" void port_scene_fill_boot(void)
 {

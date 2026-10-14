@@ -103,31 +103,31 @@ const char *port_actor_class_name(unsigned id);   /* hal/actor_registry */
 void port_actor_render_probe(const char *cls, void *model); /* actor_classes */
 
 /* Bully's own C-linkage bodies (matched src, slice_gate177.txt). */
-int _ZN5Bully13InitResourcesEv(void *self);       /* slot 0, face below */
-int *_ZN5BullyD1Ev(int *self);                    /* slot 16, .c, DTOR-PAIRS seat (0x02117070) */
-int *_ZN5BullyD0Ev(int *self);                    /* slot 17, .c, DTOR-PAIRS seat (0x021170c4) */
+int _ZN11daDonketu_c13InitResourcesEv(void *self);       /* slot 0, face below */
+int *_ZN11daDonketu_cD1Ev(int *self);                    /* slot 16, .c, DTOR-PAIRS seat (0x02117070) */
+int *_ZN11daDonketu_cD0Ev(int *self);                    /* slot 17, .c, DTOR-PAIRS seat (0x021170c4) */
 int _ZN7daOts_c16CleanupResourcesEv(void *self);    /* slot 3, face below */
-int _ZN5Bully8BehaviorEv(char *self);             /* slot 6, .c C linkage */
+int _ZN11daDonketu_c8BehaviorEv(char *self);             /* slot 6, .c C linkage */
 int _ZN7daOts_c6RenderEv(void *self);               /* slot 9, face below */
 int _ZN7daOts_c16OnAimedAtWithEggEv(void *self);              /* slot 29, OnAimedAtWithEgg */
-int _ZN5Bully14UpdateRunStateEv(void *self);              /* slot 31 */
-int _ZN5Bully16UpdateDeathStateEv(void *self);              /* slot 32 */
-int _ZN5Bully13PlayStepSoundEv(void *self);              /* slot 33 */
-int _ZN5Bully12PlayHitSoundEv(void *self);              /* slot 34 */
-int _ZN5Bully17PlayShellHitSoundEv(void *self);              /* slot 35 */
-int _ZN5Bully14PlayDeathSoundEv(void *self);              /* slot 36 */
+int _ZN11daDonketu_c14UpdateRunStateEv(void *self);              /* slot 31 */
+int _ZN11daDonketu_c16UpdateDeathStateEv(void *self);              /* slot 32 */
+int _ZN11daDonketu_c13PlayStepSoundEv(void *self);              /* slot 33 */
+int _ZN11daDonketu_c12PlayHitSoundEv(void *self);              /* slot 34 */
+int _ZN11daDonketu_c17PlayShellHitSoundEv(void *self);              /* slot 35 */
+int _ZN11daDonketu_c14PlayDeathSoundEv(void *self);              /* slot 36 */
 void *daDonketu_c_classInit(void);
 
 /* BigBully's own bodies. Slots 3 (Cleanup) and 29 (OnAimedAtWithEgg) are
    Bully's -- the shared base bodies at 0x02116ca0 / 0x02115f84 -- so BigBully's
    table reuses them. Its six extension slots 31..36 are its own. */
-int _ZN8BigBully13InitResourcesEv(void *self);    /* slot 0, face below */
-int *_ZN8BigBullyD1Ev(int *self);                 /* slot 16, .c, DTOR-PAIRS seat (0x021174a0) */
-int *_ZN8BigBullyD0Ev(int *self);                 /* slot 17, .c, DTOR-PAIRS seat (0x021174f4) */
-int _ZN8BigBully8BehaviorEv(void *self);          /* slot 6, face below (.cpp method) */
-int _ZN8BigBully6RenderEv(void *self);            /* slot 9, face below */
-int _ZN8BigBully14UpdateRunStateEv(void *self);              /* slot 31 */
-int _ZN8BigBully16UpdateDeathStateEv(void *self);              /* slot 32 */
+int _ZN12daBDonketu_c13InitResourcesEv(void *self);    /* slot 0, face below */
+int *_ZN12daBDonketu_cD1Ev(int *self);                 /* slot 16, .c, DTOR-PAIRS seat (0x021174a0) */
+int *_ZN12daBDonketu_cD0Ev(int *self);                 /* slot 17, .c, DTOR-PAIRS seat (0x021174f4) */
+int _ZN12daBDonketu_c8BehaviorEv(void *self);          /* slot 6, face below (.cpp method) */
+int _ZN12daBDonketu_c6RenderEv(void *self);            /* slot 9, face below */
+int _ZN12daBDonketu_c14UpdateRunStateEv(void *self);              /* slot 31 */
+int _ZN12daBDonketu_c16UpdateDeathStateEv(void *self);              /* slot 32 */
 int _ZN7daOts_c13PlayStepSoundEv(void *self);              /* slot 33 */
 int _ZN7daOts_c12PlayHitSoundEv(void *self);              /* slot 34 */
 int _ZN7daOts_c17PlayShellHitSoundEv(void *self);              /* slot 35 */
@@ -135,18 +135,18 @@ int _ZN7daOts_c14PlayDeathSoundEv(void *self);              /* slot 36 */
 void *daBDonketu_c_classInit(void);
 
 /* RotatingFirebar's own bodies. D0/D1 stay in the slice (named vtables). */
-int _ZN15RotatingFirebar13InitResourcesEv(void *self);    /* slot 0, face below */
-int _ZN15RotatingFirebar16CleanupResourcesEv(void *self); /* slot 3, face below */
-int _ZN15RotatingFirebar8BehaviorEv(void *self);          /* slot 6, face below */
-int _ZN15RotatingFirebar6RenderEv(void *self);            /* slot 9, face below */
-int *_ZN15RotatingFirebarD1Ev(void *self);                /* slot 16, .c */
-int *_ZN15RotatingFirebarD0Ev(void *self);                /* slot 17, .c */
+int _ZN15daObjFl_KomaU_c13InitResourcesEv(void *self);    /* slot 0, face below */
+int _ZN15daObjFl_KomaU_c16CleanupResourcesEv(void *self); /* slot 3, face below */
+int _ZN15daObjFl_KomaU_c8BehaviorEv(void *self);          /* slot 6, face below */
+int _ZN15daObjFl_KomaU_c6RenderEv(void *self);            /* slot 9, face below */
+int *_ZN15daObjFl_KomaU_cD1Ev(void *self);                /* slot 16, .c */
+int *_ZN15daObjFl_KomaU_cD0Ev(void *self);                /* slot 17, .c */
 void *daObjFl_KomaU_c_classInit(void);
 void _ZN10dBgActor_c4KillEv(void *self);                     /* slot 31 */
 
 /* the Bully/BigBully D-tor chain's sub-object destructors and base D2, all
    C-linkage in the build */
-void _ZN11ShadowModelD1Ev(void *);          /* the ShadowModel at +0x370 */
+void _ZN17dExtShadowModel_cD1Ev(void *);          /* the ShadowModel at +0x370 */
 void _ZN7dCcAc_cD1Ev(void *);   /* the MovingCylinderClsn at +0x33c */
 void _ZN10dBgCh_ActrD1Ev(void *);         /* the WithMeshClsn at +0x174 */
 void _ZN9ModelAnimD1Ev(void *);             /* the ModelAnim at +0x110 */
@@ -160,16 +160,15 @@ extern void *data_020a0eac;                 /* Memory::gameHeapPtr (== G0) */
    factories and D-tors read (the montymole reading). Bully and BigBully spell
    their tables only by the RTTI wildcard, so decl_common.h declares those as
    _ZTV11daDonketu_c / _ZTV12daBDonketu_c (also int[]); the aliases below bridge. */
-int _ZTV5Bully[37];
-int _ZTV8BigBully[37];
-int _ZTV15RotatingFirebar[32];
+int _ZTV11daDonketu_c[37];
+int _ZTV12daBDonketu_c[37];
+int _ZTV15daObjFl_KomaU_c[32];
 }
 
 /* The factories and D-tors spell the derived tables by the RTTI wildcard names;
    point them at the host arrays -- the daChoropu_c / daBmb_c precedent. */
-#pragma comment(linker, "/alternatename:__ZTV11daDonketu_c=__ZTV5Bully")
-#pragma comment(linker, "/alternatename:__ZTV12daBDonketu_c=__ZTV8BigBully")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV11daDonketu_c=__ZTV11daDonketu_c")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV12daBDonketu_c=__ZTV12daBDonketu_c")
 /* The C++/C linkage bridge, the gate-172..176 reading: RotatingFirebar's
    InitResources spells its file table as a C++ void** global, and
    func_ov064_0211616c spells the Particle System::New call at C++ linkage
@@ -284,7 +283,7 @@ static void ov64_fill_shared_0_30(void **vt)
 // BULLY (215) and BIG_BULLY (216)
 // ============================================================================
 static int __fastcall bly_behavior(void *s, void *)
-{ return _ZN5Bully8BehaviorEv((char *)s); }
+{ return _ZN11daDonketu_c8BehaviorEv((char *)s); }
 static int __fastcall bly_clean(void *s, void *)
 { return _ZN7daOts_c16CleanupResourcesEv(s); }
 static int __fastcall bly_aimed(void *s, void *)
@@ -318,12 +317,12 @@ static int __fastcall bly_aimed(void *s, void *)
    definition, and three classes' slot 32 are three different methods. Only the
    dispatch SITE fixes a pop, which is why abicheck's authority is keyed on the
    site and why slot 32 as a whole is left UNJUDGED there. */
-static int __fastcall bly_v31(void *s, void *) { return _ZN5Bully14UpdateRunStateEv(s); }
-static int __fastcall bly_v32(void *s, void *) { return _ZN5Bully16UpdateDeathStateEv(s); }
-static int __fastcall bly_v33(void *s, void *) { return _ZN5Bully13PlayStepSoundEv(s); }
-static int __fastcall bly_v34(void *s, void *) { return _ZN5Bully12PlayHitSoundEv(s); }
-static int __fastcall bly_v35(void *s, void *) { return _ZN5Bully17PlayShellHitSoundEv(s); }
-static int __fastcall bly_v36(void *s, void *) { return _ZN5Bully14PlayDeathSoundEv(s); }
+static int __fastcall bly_v31(void *s, void *) { return _ZN11daDonketu_c14UpdateRunStateEv(s); }
+static int __fastcall bly_v32(void *s, void *) { return _ZN11daDonketu_c16UpdateDeathStateEv(s); }
+static int __fastcall bly_v33(void *s, void *) { return _ZN11daDonketu_c13PlayStepSoundEv(s); }
+static int __fastcall bly_v34(void *s, void *) { return _ZN11daDonketu_c12PlayHitSoundEv(s); }
+static int __fastcall bly_v35(void *s, void *) { return _ZN11daDonketu_c17PlayShellHitSoundEv(s); }
+static int __fastcall bly_v36(void *s, void *) { return _ZN11daDonketu_c14PlayDeathSoundEv(s); }
 /* D1/D0 (DTOR-PAIRS seat): each class's own matched flat-C pair behind
    ecx->arg adapters, where host copies of the chain stood. The VT1 the bodies
    spell is settled by the ROM's own relocation, not by the shared auto_bss
@@ -334,22 +333,22 @@ static int __fastcall bly_v36(void *s, void *) { return _ZN5Bully14PlayDeathSoun
    dead anyway -- the Enemy base D2 (_ZN12dEnemyBase_cD2Ev) writes its own table
    next -- and it is the ROM's word. G0 is the game heap by the standing alias. */
 static int __fastcall bly_d1(void *s, void *)
-{ return (int)(size_t)_ZN5BullyD1Ev((int *)s); }
+{ return (int)(size_t)_ZN11daDonketu_cD1Ev((int *)s); }
 static int __fastcall bly_d0(void *s, void *)
-{ return (int)(size_t)_ZN5BullyD0Ev((int *)s); }
+{ return (int)(size_t)_ZN11daDonketu_cD0Ev((int *)s); }
 static int __fastcall bbly_d1(void *s, void *)
-{ return (int)(size_t)_ZN8BigBullyD1Ev((int *)s); }
+{ return (int)(size_t)_ZN12daBDonketu_cD1Ev((int *)s); }
 static int __fastcall bbly_d0(void *s, void *)
-{ return (int)(size_t)_ZN8BigBullyD0Ev((int *)s); }
+{ return (int)(size_t)_ZN12daBDonketu_cD0Ev((int *)s); }
 static int __fastcall bly_init(void *s, void *)
-{ return _ZN5Bully13InitResourcesEv(s); }
+{ return _ZN11daDonketu_c13InitResourcesEv(s); }
 static int __fastcall bly_render(void *s, void *)
 { port_actor_render_probe("BULLY", (char *)s + 0x110);
   return _ZN7daOts_c6RenderEv(s); }
 
 extern "C" void hal_fill_bully_vtable(void)
 {
-    void **vt = (void **)_ZTV5Bully;
+    void **vt = (void **)_ZTV11daDonketu_c;
     ov64_fill_shared_0_30(vt);
     vt[0]  = (void *)bly_init;
     vt[3]  = (void *)bly_clean;
@@ -372,22 +371,22 @@ extern "C" void *port_factory_bully(void)
 {
     void *p = daDonketu_c_classInit();
     if (p)
-        *(void **)p = (void *)_ZTV5Bully;
+        *(void **)p = (void *)_ZTV11daDonketu_c;
     return p;
 }
 
 // ---- BIG_BULLY -------------------------------------------------------------
 static int __fastcall bbly_init(void *s, void *)
-{ return _ZN8BigBully13InitResourcesEv(s); }
+{ return _ZN12daBDonketu_c13InitResourcesEv(s); }
 static int __fastcall bbly_behavior(void *s, void *)
-{ return _ZN8BigBully8BehaviorEv(s); }
+{ return _ZN12daBDonketu_c8BehaviorEv(s); }
 static int __fastcall bbly_render(void *s, void *)
 { port_actor_render_probe("BIG_BULLY", (char *)s + 0x110);
-  return _ZN8BigBully6RenderEv(s); }
+  return _ZN12daBDonketu_c6RenderEv(s); }
 /* BigBully's own six extension virtuals. Slot 32 stays the two-parameter shape
    for bly_v32's measured reason: its dispatch site pushes nothing. */
-static int __fastcall bbly_v31(void *s, void *) { return _ZN8BigBully14UpdateRunStateEv(s); }
-static int __fastcall bbly_v32(void *s, void *) { return _ZN8BigBully16UpdateDeathStateEv(s); }
+static int __fastcall bbly_v31(void *s, void *) { return _ZN12daBDonketu_c14UpdateRunStateEv(s); }
+static int __fastcall bbly_v32(void *s, void *) { return _ZN12daBDonketu_c16UpdateDeathStateEv(s); }
 static int __fastcall bbly_v33(void *s, void *) { return _ZN7daOts_c13PlayStepSoundEv(s); }
 static int __fastcall bbly_v34(void *s, void *) { return _ZN7daOts_c12PlayHitSoundEv(s); }
 static int __fastcall bbly_v35(void *s, void *) { return _ZN7daOts_c17PlayShellHitSoundEv(s); }
@@ -398,7 +397,7 @@ static int __fastcall bbly_v36(void *s, void *) { return _ZN7daOts_c14PlayDeathS
    layout, its own table stored): bbly_d1/bbly_d0. */
 extern "C" void hal_fill_big_bully_vtable(void)
 {
-    void **vt = (void **)_ZTV8BigBully;
+    void **vt = (void **)_ZTV12daBDonketu_c;
     ov64_fill_shared_0_30(vt);
     vt[0]  = (void *)bbly_init;
     vt[3]  = (void *)bly_clean;
@@ -419,7 +418,7 @@ extern "C" void *port_factory_big_bully(void)
 {
     void *p = daBDonketu_c_classInit();
     if (p)
-        *(void **)p = (void *)_ZTV8BigBully;
+        *(void **)p = (void *)_ZTV12daBDonketu_c;
     return p;
 }
 
@@ -433,20 +432,20 @@ extern "C" void *port_factory_big_bully(void)
 extern "C" void hal_fill_platform_vtable(void);
 
 static int __fastcall fb_init(void *s, void *)
-{ return _ZN15RotatingFirebar13InitResourcesEv(s); }
+{ return _ZN15daObjFl_KomaU_c13InitResourcesEv(s); }
 static int __fastcall fb_clean(void *s, void *)
-{ return _ZN15RotatingFirebar16CleanupResourcesEv(s); }
+{ return _ZN15daObjFl_KomaU_c16CleanupResourcesEv(s); }
 static int __fastcall fb_behavior(void *s, void *)
-{ return _ZN15RotatingFirebar8BehaviorEv(s); }
+{ return _ZN15daObjFl_KomaU_c8BehaviorEv(s); }
 static int __fastcall fb_render(void *s, void *)
 { port_actor_render_probe("ROTATING_FIREBAR", (char *)s + 0xd4);
-  return _ZN15RotatingFirebar6RenderEv(s); }
+  return _ZN15daObjFl_KomaU_c6RenderEv(s); }
 /* SLOT 16 IS LIVE: the D1/D0 are matched .c that spell _ZTV10dBgActor_c and
    data_020a0eac by name (both hosted), so the fill just calls them. */
 static int __fastcall fb_d1(void *s, void *)
-{ return (int)(size_t)_ZN15RotatingFirebarD1Ev(s); }
+{ return (int)(size_t)_ZN15daObjFl_KomaU_cD1Ev(s); }
 static int __fastcall fb_d0(void *s, void *)
-{ return (int)(size_t)_ZN15RotatingFirebarD0Ev(s); }
+{ return (int)(size_t)_ZN15daObjFl_KomaU_cD0Ev(s); }
 static int __fastcall fb_aimed(void *s, void *)
 { return _ZN8dActor_c16OnAimedAtWithEggEv(s); }   /* slot 29, Actor's own */
 static int __fastcall fb_kill(void *s, void *)
@@ -454,7 +453,7 @@ static int __fastcall fb_kill(void *s, void *)
 
 extern "C" void hal_fill_rotating_firebar_vtable(void)
 {
-    void **vt = (void **)_ZTV15RotatingFirebar;
+    void **vt = (void **)_ZTV15daObjFl_KomaU_c;
     hal_fill_platform_vtable();
     ov64_fill_shared_0_30(vt);
     vt[0]  = (void *)fb_init;
@@ -472,12 +471,12 @@ extern "C" void hal_fill_rotating_firebar_vtable(void)
 // methods against include/. _ZN6Player4BurnEv (RotatingFirebar::Behavior's
 // contact path) is NOT faced here -- gate 175's flame already defines it
 // (hal/actor_classes_flame.cpp); this gate only relies on it.
-#include "Bully.h"
-#include "BigBully.h"
-#include "RotatingFirebar.h"
+#include "daDonketu_c.h"
+#include "daBDonketu_c.h"
+#include "daObjFl_KomaU_c.h"
 extern "C" {
-int _ZN5Bully13InitResourcesEv(void *self)
-{ ((Bully *)self)->Bully::InitResources(); return 1; }
+int _ZN11daDonketu_c13InitResourcesEv(void *self)
+{ ((daDonketu_c *)self)->daDonketu_c::InitResources(); return 1; }
 /* daOts_c AND NOT Bully, corrected run link100 wave 9c, lane LINK21, and the
    same defect as the Render row in hal/actor_classes_bob_world.cpp. Slot 3 holds
    0x02116ca0 in daOts_c's table and in all three children's, so Bully inherits
@@ -495,16 +494,16 @@ int _ZN7daOts_c16CleanupResourcesEv(void *self)
    names are host copies in port/unmatched/ModelAnim_Renders.cpp and the
    matched TUs are dropped from slice_gate177.txt. */
 int _ZN7daOts_c6RenderEv(void *self);
-int _ZN8BigBully13InitResourcesEv(void *self)
-{ return ((BigBully *)self)->BigBully::InitResources(); }
-int _ZN8BigBully8BehaviorEv(void *self)
-{ return ((BigBully *)self)->BigBully::Behavior(); }
-int _ZN8BigBully6RenderEv(void *self);
-int _ZN15RotatingFirebar13InitResourcesEv(void *self)
-{ return ((RotatingFirebar *)self)->RotatingFirebar::InitResources(); }
-int _ZN15RotatingFirebar16CleanupResourcesEv(void *self)
-{ return ((RotatingFirebar *)self)->RotatingFirebar::CleanupResources(); }
-int _ZN15RotatingFirebar8BehaviorEv(void *self)
-{ return ((RotatingFirebar *)self)->RotatingFirebar::Behavior(); }
-int _ZN15RotatingFirebar6RenderEv(void *self);
+int _ZN12daBDonketu_c13InitResourcesEv(void *self)
+{ return ((daBDonketu_c *)self)->daBDonketu_c::InitResources(); }
+int _ZN12daBDonketu_c8BehaviorEv(void *self)
+{ return ((daBDonketu_c *)self)->daBDonketu_c::Behavior(); }
+int _ZN12daBDonketu_c6RenderEv(void *self);
+int _ZN15daObjFl_KomaU_c13InitResourcesEv(void *self)
+{ return ((daObjFl_KomaU_c *)self)->daObjFl_KomaU_c::InitResources(); }
+int _ZN15daObjFl_KomaU_c16CleanupResourcesEv(void *self)
+{ return ((daObjFl_KomaU_c *)self)->daObjFl_KomaU_c::CleanupResources(); }
+int _ZN15daObjFl_KomaU_c8BehaviorEv(void *self)
+{ return ((daObjFl_KomaU_c *)self)->daObjFl_KomaU_c::Behavior(); }
+int _ZN15daObjFl_KomaU_c6RenderEv(void *self);
 }

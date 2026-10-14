@@ -82,14 +82,14 @@ struct PortPmf { unsigned code; int delta; };
 extern PortPmf data_ov002_02110a5c[];
 
 /* the eight matched state bodies, address order, (char *self) each */
-void func_ov002_020ec938(char *c);
-void func_ov002_020ec978(char *c);
-void func_ov002_020ec9c4(char *c);
-void func_ov002_020ecad4(char *c);
-void func_ov002_020ecf94(char *c);
-void func_ov002_020ecfc8(char *c);
-void func_ov002_020ed0d4(char *c);
-void func_ov002_020ed5b0(char *c);
+void _ZN8daYegg_c19func_ov002_020ec938Ev(char *c);
+void _ZN8daYegg_c19func_ov002_020ec978Ev(char *c);
+void _ZN8daYegg_c19func_ov002_020ec9c4Ev(char *c);
+void _ZN8daYegg_c19func_ov002_020ecad4Ev(char *c);
+void _ZN8daYegg_c19func_ov002_020ecf94Ev(char *c);
+void _ZN8daYegg_c19func_ov002_020ecfc8Ev(char *c);
+void _ZN8daYegg_c19func_ov002_020ed0d4Ev(char *c);
+void _ZN8daYegg_c19func_ov002_020ed5b0Ev(char *c);
 
 void port_yoshi_egg_states_seat(void);
 
@@ -118,21 +118,21 @@ void egg_trace(void *sv)
    matched dispatcher TAIL JUMPS, which leaves the receiver both at [esp+4] and
    in ecx, and __fastcall takes it from ecx and returns `ret 0`, which balances
    a jump into a reused frame exactly as it balances a call. */
-void __fastcall egg_main_020ed0d4(void *s, void *) { egg_trace(s); func_ov002_020ed0d4((char *)s); }
-void __fastcall egg_main_020ecf94(void *s, void *) { egg_trace(s); func_ov002_020ecf94((char *)s); }
-void __fastcall egg_main_020ec9c4(void *s, void *) { egg_trace(s); func_ov002_020ec9c4((char *)s); }
-void __fastcall egg_main_020ec938(void *s, void *) { egg_trace(s); func_ov002_020ec938((char *)s); }
+void __fastcall egg_main_020ed0d4(void *s, void *) { egg_trace(s); _ZN8daYegg_c19func_ov002_020ed0d4Ev((char *)s); }
+void __fastcall egg_main_020ecf94(void *s, void *) { egg_trace(s); _ZN8daYegg_c19func_ov002_020ecf94Ev((char *)s); }
+void __fastcall egg_main_020ec9c4(void *s, void *) { egg_trace(s); _ZN8daYegg_c19func_ov002_020ec9c4Ev((char *)s); }
+void __fastcall egg_main_020ec938(void *s, void *) { egg_trace(s); _ZN8daYegg_c19func_ov002_020ec938Ev((char *)s); }
 
 struct EggRow { unsigned slot; unsigned rom; void *host; const char *what; };
 
 const EggRow g_egg_rows[8] = {
-    { 0, 0x020ed5b0u, (void *)&func_ov002_020ed5b0, "state 0 enter" },
+    { 0, 0x020ed5b0u, (void *)&_ZN8daYegg_c19func_ov002_020ed5b0Ev, "state 0 enter" },
     { 1, 0x020ed0d4u, (void *)&egg_main_020ed0d4,   "state 0 main"  },
-    { 2, 0x020ecfc8u, (void *)&func_ov002_020ecfc8, "state 1 enter" },
+    { 2, 0x020ecfc8u, (void *)&_ZN8daYegg_c19func_ov002_020ecfc8Ev, "state 1 enter" },
     { 3, 0x020ecf94u, (void *)&egg_main_020ecf94,   "state 1 main"  },
-    { 4, 0x020ecad4u, (void *)&func_ov002_020ecad4, "state 2 enter" },
+    { 4, 0x020ecad4u, (void *)&_ZN8daYegg_c19func_ov002_020ecad4Ev, "state 2 enter" },
     { 5, 0x020ec9c4u, (void *)&egg_main_020ec9c4,   "state 2 main"  },
-    { 6, 0x020ec978u, (void *)&func_ov002_020ec978, "state 3 enter" },
+    { 6, 0x020ec978u, (void *)&_ZN8daYegg_c19func_ov002_020ec978Ev, "state 3 enter" },
     { 7, 0x020ec938u, (void *)&egg_main_020ec938,   "state 3 main"  },
 };
 

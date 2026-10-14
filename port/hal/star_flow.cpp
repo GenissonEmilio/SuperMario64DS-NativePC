@@ -991,7 +991,7 @@ void port_vs_countdown_tick(void)
  * doubles as the get-ready beat held two seconds; 2 and 1 tick once a second.
  * data_0209f2bc != 0 across the window freezes the players exactly as the DS's
  * own 3-2-1 does (func_ov002_020c71e0), and it drops to 0 at the pick. */
-extern void _ZN5Stage21RenderVsModeCountdownEv(void);
+extern void _ZN10dScStage_c21RenderVsModeCountdownEv(void);
 extern void *data_0209f5bc;   /* the installed fader; the render derefs it, unguarded */
 
 enum {
@@ -1096,7 +1096,7 @@ void port_luigi_countdown_render(void)
     if (data_0209f2d8 != 1) return;
     if (!port_luigi_enabled()) return;
     if (data_0209f5bc == 0) return;
-    _ZN5Stage21RenderVsModeCountdownEv();
+    _ZN10dScStage_c21RenderVsModeCountdownEv();
 }
 
 // =============================================================================

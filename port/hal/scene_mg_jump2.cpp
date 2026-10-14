@@ -614,7 +614,7 @@ extern "C" void port_scene_jump2_hits(void)
         port_mg_jump2_sub_counts(w, &calls, &routed, &unknown, &distinct);
         std::printf("[scene] dScMgJump2_c sub-object %s (field +0x%x): %u "
                     "call(s), %u routed, %u to the framework, %u distinct:",
-                    w ? "B, func_ov006_020c7860" : "A, func_ov006_020c4cd8",
+                    w ? "B, _ZN16dMgJump3DMario_c19func_ov006_020c7860Ev" : "A, func_ov006_020c4cd8",
                     w ? 0x3c : 0x30, calls, routed, unknown, distinct);
         for (unsigned i = 0; i < distinct; ++i) {
             unsigned code = 0;

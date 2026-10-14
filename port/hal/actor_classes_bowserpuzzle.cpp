@@ -126,36 +126,36 @@ void port_actor_render_probe(const char *cls, void *model); /* actor_classes */
    Behavior is NOT here -- it dispatches the six-state PMF table and is a host
    copy in unmatched/BowserPuzzle_StateDispatch.cpp. Render is NOT here -- it is
    the slot-5 shadow collision, host-copied in unmatched/BowserPuzzle_Render.cpp. */
-int _ZN17BowserPuzzlePiece13InitResourcesEv(void *self);   /* slot 0, .cpp method, face below */
-int _ZN17BowserPuzzlePiece16CleanupResourcesEv(void *self);/* slot 3, .cpp method, face below */
-int _ZN17BowserPuzzlePiece6RenderEv(void *self);           /* slot 9, host copy */
-int _ZN17BowserPuzzlePiece8BehaviorEv(void *self);         /* slot 6, host copy */
-int *_ZN17BowserPuzzlePieceD1Ev(void *self);              /* slot 16, .c */
-int *_ZN17BowserPuzzlePieceD0Ev(void *self);              /* slot 17, .c */
+int _ZN16daObjFl_Puzzle_c13InitResourcesEv(void *self);   /* slot 0, .cpp method, face below */
+int _ZN16daObjFl_Puzzle_c16CleanupResourcesEv(void *self);/* slot 3, .cpp method, face below */
+int _ZN16daObjFl_Puzzle_c6RenderEv(void *self);           /* slot 9, host copy */
+int _ZN16daObjFl_Puzzle_c8BehaviorEv(void *self);         /* slot 6, host copy */
+int *_ZN16daObjFl_Puzzle_cD1Ev(void *self);              /* slot 16, .c */
+int *_ZN16daObjFl_Puzzle_cD0Ev(void *self);              /* slot 17, .c */
 int *daObjFl_Coin_c_classInit(void);                        /* .c factory */
 
 /* ---- Piece's own C-linkage bodies (matched src, slice_gate179.txt) ----
    Behavior is NOT here -- forward-declared-struct PMF, host copy in unmatched/. */
-int _ZN9JetStream13InitResourcesEv(void *self);     /* slot 0, .cpp method, face below */
-int _ZN9JetStream16CleanupResourcesEv(void *self);  /* slot 3, .c C linkage */
-void _ZN9JetStream16OnPendingDestroyEv(void *self); /* slot 12, .c C linkage */
-int _ZN9JetStream6RenderEv(void *self);             /* slot 9, .c C linkage, faced below */
-int _ZN9JetStream8BehaviorEv(void *self);           /* slot 6, host copy */
-int *_ZN9JetStreamD1Ev(void *self);                /* slot 16, .c */
-int *_ZN9JetStreamD0Ev(void *self);                /* slot 17, .c */
+int _ZN18daWater_Hakidasi_c13InitResourcesEv(void *self);     /* slot 0, .cpp method, face below */
+int _ZN18daWater_Hakidasi_c16CleanupResourcesEv(void *self);  /* slot 3, .c C linkage */
+void _ZN18daWater_Hakidasi_c16OnPendingDestroyEv(void *self); /* slot 12, .c C linkage */
+int _ZN18daWater_Hakidasi_c6RenderEv(void *self);             /* slot 9, .c C linkage, faced below */
+int _ZN18daWater_Hakidasi_c8BehaviorEv(void *self);           /* slot 6, host copy */
+int *_ZN18daWater_Hakidasi_cD1Ev(void *self);                /* slot 16, .c */
+int *_ZN18daWater_Hakidasi_cD0Ev(void *self);                /* slot 17, .c */
 int *daObjFl_Puzzle_c_classInit(void);                          /* .c factory */
 
 /* ---- the id-79 coordinator SHELL (table _ZTV19BowserPuzzleManager, mounted) ---- */
-int _ZN19BowserPuzzleManager13InitResourcesEv(void *self);   /* slot 0, three byte-flags */
-int _ZN19BowserPuzzleManager8BehaviorEv(void *self);   /* slot 6, the range gate */
+int _ZN14daObjFl_Coin_c13InitResourcesEv(void *self);   /* slot 0, three byte-flags */
+int _ZN14daObjFl_Coin_c8BehaviorEv(void *self);   /* slot 6, the range gate */
 /* D1 (_ZN19BowserPuzzleManagerD1Ev) and D0 (_ZN19BowserPuzzleManagerD0Ev) were both
    host thunks below storing the HOST shell table as the mid-teardown vptr (the
    gate-178 Amilift treatment; the mounted words are DS addresses and must never
    be dispatched). Both reach the matched TUs now: slot 16 through port_bpm_d1,
    slot 17 through the flat D0 that src/_ZN19BowserPuzzleManagerD0Ev.cpp's
    _MSC_VER arm defines (run linkfull wave 27, lane V3B; see shl_d0). */
-void *_ZN19BowserPuzzleManagerD0Ev(void *self);
-extern unsigned char _ZTV19BowserPuzzleManager[];  /* the mounted shell table (0x84) */
+void *_ZN14daObjFl_Coin_cD0Ev(void *self);
+extern unsigned char _ZTV14daObjFl_Coin_c[];  /* the mounted shell table (0x84) */
 int *daObjFl_Coin_c_classInit(void);  /* .c factory, installs c1d8 itself */
 /* The slot-16 face onto the matched src/_ZN19BowserPuzzleManagerD1Ev.cpp; it is
    defined at the bottom of this file, where BowserPuzzleManager.h is included. */
@@ -175,7 +175,7 @@ int _ZTV16daObjFl_Puzzle_c[32];
    its own dsd symbol, not a slot. THE NAME ON THIS ARRAY USED TO BE
    _ZTV17BowserPuzzlePiece, which config puts on 0x0211c25c, the OTHER table in
    this file. The contents were always JetStream's; only the label was wrong. */
-int _ZTV9JetStream[31];
+int _ZTV18daWater_Hakidasi_c[31];
 }
 
 /* The Manager D-tors spell VT0 as _ZTV16daObjFl_Puzzle_c (the class's RTTI name);
@@ -206,9 +206,8 @@ int _ZTV9JetStream[31];
    _ZTV17BowserPuzzlePiece, so all fourteen puzzle pieces spawned holding
    JETSTREAM's methods, while the array this file fills with the pieces' own
    methods was installed on nothing at all. */
-#pragma comment(linker, "/alternatename:__ZTV18daWater_Hakidasi_c=__ZTV9JetStream")
-#pragma comment(linker, "/alternatename:__ZTV17BowserPuzzlePiece=__ZTV16daObjFl_Puzzle_c")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV18daWater_Hakidasi_c=__ZTV18daWater_Hakidasi_c")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV16daObjFl_Puzzle_c=__ZTV16daObjFl_Puzzle_c")
 /* BowserPuzzleManager::CleanupResources spells the collider SharedFilePtr
    data_ov064_0211c800 as data_ov075_0211c800 -- a dsd overlay mislabel: the
    address 0x0211c800 is genuinely in ov064 (ov075 has no such symbol). The .cpp
@@ -351,18 +350,18 @@ static void bp_fill_shared_0_30(void **vt)
 // BOWSER_PUZZLE_MANAGER (79)
 // ============================================================================
 static int __fastcall mgr_init(void *s, void *)
-{ return _ZN17BowserPuzzlePiece13InitResourcesEv(s); }
+{ return _ZN16daObjFl_Puzzle_c13InitResourcesEv(s); }
 static int __fastcall mgr_clean(void *s, void *)
-{ return _ZN17BowserPuzzlePiece16CleanupResourcesEv(s); }
+{ return _ZN16daObjFl_Puzzle_c16CleanupResourcesEv(s); }
 static int __fastcall mgr_behavior(void *s, void *)
-{ return _ZN17BowserPuzzlePiece8BehaviorEv(s); }     /* host copy */
+{ return _ZN16daObjFl_Puzzle_c8BehaviorEv(s); }     /* host copy */
 static int __fastcall mgr_render(void *s, void *)
 { port_actor_render_probe("BOWSER_PUZZLE_MANAGER", (char *)s + 0xd4);
-  return _ZN17BowserPuzzlePiece6RenderEv(s); }        /* host copy */
+  return _ZN16daObjFl_Puzzle_c6RenderEv(s); }        /* host copy */
 static int __fastcall mgr_d1(void *s, void *)
-{ return (int)(size_t)_ZN17BowserPuzzlePieceD1Ev(s); }
+{ return (int)(size_t)_ZN16daObjFl_Puzzle_cD1Ev(s); }
 static int __fastcall mgr_d0(void *s, void *)
-{ return (int)(size_t)_ZN17BowserPuzzlePieceD0Ev(s); }
+{ return (int)(size_t)_ZN16daObjFl_Puzzle_cD0Ev(s); }
 
 extern "C" void hal_fill_bowser_puzzle_manager_vtable(void)
 {
@@ -388,11 +387,11 @@ extern "C" void hal_fill_bowser_puzzle_manager_vtable(void)
    defaults per relocs. */
 static int port_bp_shell_vtable[31];   /* vtspan: _ZTV19BowserPuzzleManager */
 static int __fastcall shl_init(void *s, void *)
-{ return _ZN19BowserPuzzleManager13InitResourcesEv(s); }
+{ return _ZN14daObjFl_Coin_c13InitResourcesEv(s); }
 static int __fastcall shl_clean(void *s, void *)
 { return ((fBase_c *)s)->fBase_c::CleanupResources(); }
 static int __fastcall shl_behavior(void *s, void *)
-{ return _ZN19BowserPuzzleManager8BehaviorEv(s); }
+{ return _ZN14daObjFl_Coin_c8BehaviorEv(s); }
 static int __fastcall shl_render(void *s, void *)
 { return ((fBase_c *)s)->fBase_c::Render(); }
 /* SLOT 16 IS THE MATCHED TU NOW (run link100 wave 14, lane SEAT14C, BATCH 2).
@@ -428,7 +427,7 @@ static int __fastcall shl_d1(void *s, void *)
    tools/dtor_store_guard.py's SRC_ARMS re-proves that on every build. */
 static int __fastcall shl_d0(void *s, void *)
 {
-    _ZN19BowserPuzzleManagerD0Ev(s);
+    _ZN14daObjFl_Coin_cD0Ev(s);
     return (int)(size_t)s;
 }
 
@@ -457,23 +456,23 @@ extern "C" void *port_factory_bowser_puzzle_shell(void)
 // BOWSER_PUZZLE_PIECE (78)
 // ============================================================================
 static int __fastcall pce_init(void *s, void *)
-{ return _ZN9JetStream13InitResourcesEv(s); }
+{ return _ZN18daWater_Hakidasi_c13InitResourcesEv(s); }
 static int __fastcall pce_clean(void *s, void *)
-{ return _ZN9JetStream16CleanupResourcesEv(s); }
+{ return _ZN18daWater_Hakidasi_c16CleanupResourcesEv(s); }
 static int __fastcall pce_behavior(void *s, void *)
-{ return _ZN9JetStream8BehaviorEv(s); }        /* host copy */
+{ return _ZN18daWater_Hakidasi_c8BehaviorEv(s); }        /* host copy */
 static int __fastcall pce_render(void *s, void *)
-{ return _ZN9JetStream6RenderEv(s); }           /* .c stub, faced below */
+{ return _ZN18daWater_Hakidasi_c6RenderEv(s); }           /* .c stub, faced below */
 static int __fastcall pce_pdes(void *s, void *)
-{ _ZN9JetStream16OnPendingDestroyEv(s); return 0; }  /* slot 12, its own */
+{ _ZN18daWater_Hakidasi_c16OnPendingDestroyEv(s); return 0; }  /* slot 12, its own */
 static int __fastcall pce_d1(void *s, void *)
-{ return (int)(size_t)_ZN9JetStreamD1Ev(s); }
+{ return (int)(size_t)_ZN18daWater_Hakidasi_cD1Ev(s); }
 static int __fastcall pce_d0(void *s, void *)
-{ return (int)(size_t)_ZN9JetStreamD0Ev(s); }
+{ return (int)(size_t)_ZN18daWater_Hakidasi_cD0Ev(s); }
 
 extern "C" void hal_fill_bowser_puzzle_piece_vtable(void)
 {
-    void **vt = (void **)_ZTV9JetStream;
+    void **vt = (void **)_ZTV18daWater_Hakidasi_c;
     bp_fill_shared_0_30(vt);
     vt[0]  = (void *)pce_init;
     vt[3]  = (void *)pce_clean;
@@ -501,9 +500,9 @@ extern "C" void hal_fill_bowser_puzzle_pair_vtables(void)
 // CleanupResources/OnPendingDestroy are C-linkage .c bodies in the slice; they
 // need no face. The three .cpp methods (both InitResources, Manager's Cleanup) are
 // faced onto their qualified method bodies.
-#include "BowserPuzzleManager.h"
-#include "BowserPuzzlePiece.h"
-#include "JetStream.h"
+#include "daObjFl_Coin_c.h"
+#include "daObjFl_Puzzle_c.h"
+#include "daWater_Hakidasi_c.h"
 extern "C" {
 /* Each C name is bound to ITS OWN class. config/arm9/overlays/ov064 puts
    _ZN17BowserPuzzlePiece13InitResourcesEv at 0x021191a8 and
@@ -512,18 +511,18 @@ extern "C" {
    _ZN9JetStream13InitResourcesEv at 0x0211992c, which is slot 0 of table
    0x0211c334 (JetStream's). src/ agrees: each of those three TUs defines the
    method of the class its own name spells. */
-int _ZN17BowserPuzzlePiece13InitResourcesEv(void *self)
-{ return ((BowserPuzzlePiece *)self)->BowserPuzzlePiece::InitResources(); }
-int _ZN17BowserPuzzlePiece16CleanupResourcesEv(void *self)
-{ return ((BowserPuzzlePiece *)self)->BowserPuzzlePiece::CleanupResources(); }
-int _ZN9JetStream13InitResourcesEv(void *self)
-{ return ((JetStream *)self)->JetStream::InitResources(); }
+int _ZN16daObjFl_Puzzle_c13InitResourcesEv(void *self)
+{ return ((daObjFl_Puzzle_c *)self)->daObjFl_Puzzle_c::InitResources(); }
+int _ZN16daObjFl_Puzzle_c16CleanupResourcesEv(void *self)
+{ return ((daObjFl_Puzzle_c *)self)->daObjFl_Puzzle_c::CleanupResources(); }
+int _ZN18daWater_Hakidasi_c13InitResourcesEv(void *self)
+{ return ((daWater_Hakidasi_c *)self)->daWater_Hakidasi_c::InitResources(); }
 
 /* THE MANAGER'S SLOT-16 FACE (lane SEAT14C, BATCH 2). shl_d1 above calls this;
    it calls the matched ov064 0x02118bec destructor, qualified so it is the
    complete-object form and not a virtual re-dispatch. */
 void port_bpm_d1(void *self)
-{ ((BowserPuzzleManager *)self)->BowserPuzzleManager::~BowserPuzzleManager(); }
+{ ((daObjFl_Coin_c *)self)->daObjFl_Coin_c::~daObjFl_Coin_c(); }
 }
 
 /* THE TWO COMPILER-VTABLE SLOTS THE MATCHED TU NEEDS, under the ACTORPORT
@@ -540,10 +539,8 @@ void port_bpm_d1(void *self)
    dispatch the compiler table and that is a finding, not a crash to paper over.
    The bridge's generator did not emit a row for this class because nothing in
    the image referenced the pair until this batch put the TU on a slice. */
-extern "C" void __fastcall actorport_dtor_slot_trap(void *self, void *unused);
-
-void BowserPuzzleManager::Destructor1()
-{ this->BowserPuzzleManager::~BowserPuzzleManager(); }
-
-void BowserPuzzleManager::Destructor0()
-{ actorport_dtor_slot_trap(this, 0); }
+/* PORTSYNC2: main's include/daObjFl_Coin_c.h (the renamed BowserPuzzleManager.h)
+   spells the destructor as one inline `virtual ~daObjFl_Coin_c() {}` and no longer
+   declares the _MSC_VER Destructor1/Destructor0 pair, so the class inherits
+   dActor_c's two slots instead of overriding them and there is nothing of its own
+   left for this file to define. The two definitions that stood here are retired. */

@@ -26,7 +26,7 @@ src/d_s_stage.cpp
 #
 # Its one unresolved name was Model::LoadAndSetFile, a real MSVC member reached
 # here by its C name; hal/method_faces.cpp carries the __thiscall face.
-src/_ZN5Stage9LoadModelEv.cpp
+src/_ZN10dScStage_c9LoadModelEv.cpp
 
 # The level RENDER. Not simply a Render call: Stage::RenderModel is the
 # level's per-AREA visibility pass. Stage+0x8bc is the area table (stride 0xc:
@@ -35,7 +35,7 @@ src/_ZN5Stage9LoadModelEv.cpp
 # the loop either clears or sets bit 31 of every component's polygon-attribute
 # word before handing the whole model to Model::Render with the ROM's own
 # {125.0, 125.0, 125.0} scale.
-src/_ZN5Stage11RenderModelEv.cpp
+src/_ZN10dScStage_c11RenderModelEv.cpp
 
 # ...and the table's FILLER: Stage::InitResources' own call that news a
 # TextureTransformer into the area-table slot of every area entry naming a
@@ -43,7 +43,7 @@ src/_ZN5Stage11RenderModelEv.cpp
 # (hal/stage_bridges.cpp), which also runs Stage::Render's first block -- the
 # per-frame Advance of every shown area's transformer -- so the waterfall
 # scrolls instead of holding frame 0.
-src/_ZN5Stage23LoadTextureTransformersEv.cpp
+src/_ZN10dScStage_c23LoadTextureTransformersEv.cpp
 
 # ...and its companion. Stage::Render's own order is RenderModel,
 # ShadowModel::RenderAll, RenderModelTransparent, and the two model passes are
@@ -52,7 +52,7 @@ src/_ZN5Stage23LoadTextureTransformersEv.cpp
 # exactly the rest. Running only the first drew the castle grounds with its
 # moat EMPTY -- the water is translucent, so the opaque pass hides it and
 # nothing brought it back.
-src/_ZN5Stage22RenderModelTransparentEv.cpp
+src/_ZN10dScStage_c22RenderModelTransparentEv.cpp
 
 # The SKYBOX. Stage::LoadSkybox reads the skybox id out of the current
 # LVL_Overlay (GetSkyboxID: word 6, bits 4..8; 0 means no skybox), maps it
@@ -63,5 +63,5 @@ src/_ZN5Stage22RenderModelTransparentEv.cpp
 # LoadAndSetFile face (hal/method_faces.cpp), and data_02075620 comes from
 # romdata. The draw side is Stage::Render's own block, carried as
 # port_stage_render_skybox in hal/stage_bridges.cpp.
-src/_ZN5Stage11GetSkyboxIDEv.cpp
-src/_ZN5Stage10LoadSkyboxEv.cpp
+src/_ZN10dScStage_c11GetSkyboxIDEv.cpp
+src/_ZN10dScStage_c10LoadSkyboxEv.cpp

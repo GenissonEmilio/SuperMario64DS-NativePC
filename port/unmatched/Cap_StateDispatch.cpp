@@ -75,15 +75,15 @@ extern "C" void _ZN6Player14InitMetalWarioEv(void *self)
 extern "C" {
 /* int, as every definition in src/ spells them: the cells are
    `int (C::*)()` and the state setter returns what the body returns. */
-int func_ov002_020b7d94(void *); int func_ov002_020b7d6c(void *);
-int func_ov002_020b7cdc(void *); int func_ov002_020b7c30(void *);
-int func_ov002_020b7d58(void *); int func_ov002_020b7cec(void *);
-int func_ov002_020b7b70(void *); int func_ov002_020b781c(void *);
-int func_ov002_020b71f0(void *); int func_ov002_020b71e8(void *);
-int func_ov002_020b76ec(void *); int func_ov002_020b74d0(void *);
-int func_ov002_020b7f24(void *); int func_ov002_020b7e1c(void *);
-int func_ov002_020b7330(void *); int func_ov002_020b7200(void *);
-int func_ov002_020b7e08(void *); int func_ov002_020b7d9c(void *);
+int _ZN15daObjMarioCap_c13InitTouchWaitEv(void *); int _ZN15daObjMarioCap_c9TouchWaitEv(void *);
+int _ZN15daObjMarioCap_c8InitFallEv(void *); int _ZN15daObjMarioCap_c4FallEv(void *);
+int _ZN15daObjMarioCap_c14InitTimedWait2Ev(void *); int _ZN15daObjMarioCap_c10TimedWait2Ev(void *);
+int _ZN15daObjMarioCap_c9InitSlideEv(void *); int _ZN15daObjMarioCap_c5SlideEv(void *);
+int _ZN15daObjMarioCap_c11InitDormantEv(void *); int _ZN15daObjMarioCap_c7DormantEv(void *);
+int _ZN15daObjMarioCap_c9InitTakenEv(void *); int _ZN15daObjMarioCap_c5TakenEv(void *);
+int _ZN15daObjMarioCap_c8InitWaitEv(void *); int _ZN15daObjMarioCap_c4WaitEv(void *);
+int _ZN15daObjMarioCap_c8InitAnimEv(void *); int _ZN15daObjMarioCap_c4AnimEv(void *);
+int _ZN15daObjMarioCap_c13InitTimedWaitEv(void *); int _ZN15daObjMarioCap_c9TimedWaitEv(void *);
 
 struct PortCapPair { unsigned fn; int delta; };
 extern PortCapPair data_ov002_0210df04[];   /* the flat 18-pair run */
@@ -110,29 +110,29 @@ enum { PORT_CAP_PAIRS = 18 };
 #define CAP_FACE(sym)                                                         \
     static int __fastcall pmf_face_##sym(void *self, void *dead_edx)          \
     { return sym(self); }
-CAP_FACE(func_ov002_020b7d94) CAP_FACE(func_ov002_020b7d6c)
-CAP_FACE(func_ov002_020b7cdc) CAP_FACE(func_ov002_020b7c30)
-CAP_FACE(func_ov002_020b7d58) CAP_FACE(func_ov002_020b7cec)
-CAP_FACE(func_ov002_020b7b70) CAP_FACE(func_ov002_020b781c)
-CAP_FACE(func_ov002_020b71f0) CAP_FACE(func_ov002_020b71e8)
-CAP_FACE(func_ov002_020b76ec) CAP_FACE(func_ov002_020b74d0)
-CAP_FACE(func_ov002_020b7f24) CAP_FACE(func_ov002_020b7e1c)
-CAP_FACE(func_ov002_020b7330) CAP_FACE(func_ov002_020b7200)
-CAP_FACE(func_ov002_020b7e08) CAP_FACE(func_ov002_020b7d9c)
+CAP_FACE(_ZN15daObjMarioCap_c13InitTouchWaitEv) CAP_FACE(_ZN15daObjMarioCap_c9TouchWaitEv)
+CAP_FACE(_ZN15daObjMarioCap_c8InitFallEv) CAP_FACE(_ZN15daObjMarioCap_c4FallEv)
+CAP_FACE(_ZN15daObjMarioCap_c14InitTimedWait2Ev) CAP_FACE(_ZN15daObjMarioCap_c10TimedWait2Ev)
+CAP_FACE(_ZN15daObjMarioCap_c9InitSlideEv) CAP_FACE(_ZN15daObjMarioCap_c5SlideEv)
+CAP_FACE(_ZN15daObjMarioCap_c11InitDormantEv) CAP_FACE(_ZN15daObjMarioCap_c7DormantEv)
+CAP_FACE(_ZN15daObjMarioCap_c9InitTakenEv) CAP_FACE(_ZN15daObjMarioCap_c5TakenEv)
+CAP_FACE(_ZN15daObjMarioCap_c8InitWaitEv) CAP_FACE(_ZN15daObjMarioCap_c4WaitEv)
+CAP_FACE(_ZN15daObjMarioCap_c8InitAnimEv) CAP_FACE(_ZN15daObjMarioCap_c4AnimEv)
+CAP_FACE(_ZN15daObjMarioCap_c13InitTimedWaitEv) CAP_FACE(_ZN15daObjMarioCap_c9TimedWaitEv)
 #undef CAP_FACE
 
 #define CF(sym) (void (*)(void *))pmf_face_##sym
 static const struct { unsigned rom; void (*host)(void *); }
 g_cap_states[PORT_CAP_PAIRS] = {
-    {0x020b7d94, CF(func_ov002_020b7d94)}, {0x020b7d6c, CF(func_ov002_020b7d6c)},
-    {0x020b7cdc, CF(func_ov002_020b7cdc)}, {0x020b7c30, CF(func_ov002_020b7c30)},
-    {0x020b7d58, CF(func_ov002_020b7d58)}, {0x020b7cec, CF(func_ov002_020b7cec)},
-    {0x020b7b70, CF(func_ov002_020b7b70)}, {0x020b781c, CF(func_ov002_020b781c)},
-    {0x020b71f0, CF(func_ov002_020b71f0)}, {0x020b71e8, CF(func_ov002_020b71e8)},
-    {0x020b76ec, CF(func_ov002_020b76ec)}, {0x020b74d0, CF(func_ov002_020b74d0)},
-    {0x020b7f24, CF(func_ov002_020b7f24)}, {0x020b7e1c, CF(func_ov002_020b7e1c)},
-    {0x020b7330, CF(func_ov002_020b7330)}, {0x020b7200, CF(func_ov002_020b7200)},
-    {0x020b7e08, CF(func_ov002_020b7e08)}, {0x020b7d9c, CF(func_ov002_020b7d9c)},
+    {0x020b7d94, CF(_ZN15daObjMarioCap_c13InitTouchWaitEv)}, {0x020b7d6c, CF(_ZN15daObjMarioCap_c9TouchWaitEv)},
+    {0x020b7cdc, CF(_ZN15daObjMarioCap_c8InitFallEv)}, {0x020b7c30, CF(_ZN15daObjMarioCap_c4FallEv)},
+    {0x020b7d58, CF(_ZN15daObjMarioCap_c14InitTimedWait2Ev)}, {0x020b7cec, CF(_ZN15daObjMarioCap_c10TimedWait2Ev)},
+    {0x020b7b70, CF(_ZN15daObjMarioCap_c9InitSlideEv)}, {0x020b781c, CF(_ZN15daObjMarioCap_c5SlideEv)},
+    {0x020b71f0, CF(_ZN15daObjMarioCap_c11InitDormantEv)}, {0x020b71e8, CF(_ZN15daObjMarioCap_c7DormantEv)},
+    {0x020b76ec, CF(_ZN15daObjMarioCap_c9InitTakenEv)}, {0x020b74d0, CF(_ZN15daObjMarioCap_c5TakenEv)},
+    {0x020b7f24, CF(_ZN15daObjMarioCap_c8InitWaitEv)}, {0x020b7e1c, CF(_ZN15daObjMarioCap_c4WaitEv)},
+    {0x020b7330, CF(_ZN15daObjMarioCap_c8InitAnimEv)}, {0x020b7200, CF(_ZN15daObjMarioCap_c4AnimEv)},
+    {0x020b7e08, CF(_ZN15daObjMarioCap_c13InitTimedWaitEv)}, {0x020b7d9c, CF(_ZN15daObjMarioCap_c9TimedWaitEv)},
 };
 #undef CF
 

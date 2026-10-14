@@ -388,12 +388,12 @@ data_ov065_0211c0c8 data_ov065_0211c0d0 data_ov065_0211c0d4
 data_ov065_0211cb20 data_ov065_0211cb28 data_ov065_0211cb30
 data_ov065_0211cb38 data_ov065_0211cb40 data_ov065_0211cb48
 data_ov065_0211cb50 data_ov065_0211cb58 _ZTI15daYurei_Mucho_c
-_ZTS15daYurei_Mucho_c g_profile_YUREI_MUCHO data_ov065_0211cc20
-data_ov065_0211cc28 data_ov065_0211cc30 data_ov065_0211cc38
-data_ov065_0211cc40 data_ov065_0211cc48 data_ov065_0211cc50
-data_ov065_0211cc58 _ZTI12daBasabasa_c _ZTS12daBasabasa_c
-g_profile_BASABASA data_ov065_0211cd1c data_ov065_0211cd24
-data_ov065_0211cd2c _ZTS9daDossy_c _ZTI9daDossy_c
+_ZTS15daYurei_Mucho_c g_profile_YUREI_MUCHO data_ov065_0211cc20@0x0211cc20
+data_ov065_0211cc28@0x0211cc28 data_ov065_0211cc30@0x0211cc30 data_ov065_0211cc38@0x0211cc38
+data_ov065_0211cc40@0x0211cc40 data_ov065_0211cc48@0x0211cc48 data_ov065_0211cc50@0x0211cc50
+data_ov065_0211cc58@0x0211cc58 _ZTI12daBasabasa_c _ZTS12daBasabasa_c
+g_profile_BASABASA data_ov065_0211cd1c@0x0211cd1c data_ov065_0211cd24@0x0211cd24
+data_ov065_0211cd2c@0x0211cd2c _ZTS9daDossy_c _ZTI9daDossy_c
 _ZTI12daDossyCap_c _ZTS12daDossyCap_c data_ov065_0211cd68
 g_profile_DOSSY g_profile_DOSSY_CAP data_ov065_0211cec4
 data_ov065_0211cee4 data_ov065_0211cf04 data_ov065_0211cf24
@@ -416,34 +416,34 @@ data_ov065_0211d600 data_ov065_0211d608 data_ov065_0211d610
 data_ov065_0211d618 data_ov065_0211d620 data_ov065_0211d62c
 data_ov065_0211d638 data_ov065_0211d644 data_ov065_0211d650
 data_ov065_0211d660 data_ov065_0211d670 data_ov065_0211d680
-data_ov065_0211d690 data_ov065_0211d698 data_ov065_0211d6a0
-data_ov065_0211d6a8 data_ov065_0211d6b0 data_ov065_0211d6bc
-data_ov065_0211d6c8 data_ov065_0211d6d4 data_ov065_0211d6e0
+
+data_ov065_0211d6b0@0x0211d6b0 data_ov065_0211d6bc@0x0211d6bc
+data_ov065_0211d6c8@0x0211d6c8 data_ov065_0211d6d4@0x0211d6d4 data_ov065_0211d6e0
 data_ov065_0211d6f0 data_ov065_0211d700 data_ov065_0211d710
 data_ov065_0211d720 data_ov065_0211d728 data_ov065_0211d730
 data_ov065_0211d738 data_ov065_0211d740 data_ov065_0211d748
 data_ov065_0211d750 data_ov065_0211d758 data_ov065_0211d760
-data_ov065_0211d768 data_ov065_0211d770 data_ov065_0211d778
-data_ov065_0211d784 data_ov065_0211d790 data_ov065_0211d79c
-data_ov065_0211d7a8 data_ov065_0211d7b4 data_ov065_0211d7c0
-data_ov065_0211d7cc data_ov065_0211d7d8 data_ov065_0211d7e4
-data_ov065_0211d7f0 data_ov065_0211d7fc data_ov065_0211d814
+data_ov065_0211d768 data_ov065_0211d770 data_ov065_0211d778@0x0211d778
+data_ov065_0211d784@0x0211d784 data_ov065_0211d790@0x0211d790 data_ov065_0211d79c@0x0211d79c
+data_ov065_0211d7a8@0x0211d7a8 data_ov065_0211d7b4@0x0211d7b4 data_ov065_0211d7c0@0x0211d7c0
+data_ov065_0211d7cc@0x0211d7cc data_ov065_0211d7d8@0x0211d7d8 data_ov065_0211d7e4@0x0211d7e4
+data_ov065_0211d7f0@0x0211d7f0 data_ov065_0211d814
 data_ov065_0211d81c data_ov065_0211d824 data_ov065_0211d82c
-data_ov065_0211d834 data_ov065_0211d83c data_ov065_0211d844
-data_ov065_0211d850 data_ov065_0211d85c data_ov065_0211d868
-data_ov065_0211d874 data_ov065_0211d880 data_ov065_0211d88c
-data_ov065_0211d894 data_ov065_0211d89c data_ov065_0211d8a8
+data_ov065_0211d834 data_ov065_0211d83c data_ov065_0211d844@0x0211d844
+data_ov065_0211d850@0x0211d850 data_ov065_0211d85c@0x0211d85c data_ov065_0211d868@0x0211d868
+data_ov065_0211d874@0x0211d874 data_ov065_0211d880@0x0211d880
+data_ov065_0211d89c@0x0211d89c data_ov065_0211d8a8@0x0211d8a8
 data_ov065_0211d8b4 data_ov065_0211d8bc data_ov065_0211d8c4
-data_ov065_0211d8cc data_ov065_0211d8d4 data_ov065_0211d8e0
-data_ov065_0211d8ec data_ov065_0211d8f8 data_ov065_0211d904
-data_ov065_0211d90c data_ov065_0211d914 data_ov065_0211d920
+data_ov065_0211d8cc data_ov065_0211d8d4@0x0211d8d4 data_ov065_0211d8e0@0x0211d8e0
+data_ov065_0211d8ec@0x0211d8ec data_ov065_0211d8f8@0x0211d8f8 data_ov065_0211d904@0x0211d904
+data_ov065_0211d90c@0x0211d90c data_ov065_0211d914@0x0211d914 data_ov065_0211d920@0x0211d920
 data_ov065_0211d92c data_ov065_0211d934 data_ov065_0211d93c
-data_ov065_0211d944 data_ov065_0211d94c data_ov065_0211d958
-data_ov065_0211d964 data_ov065_0211d970 data_ov065_0211d97c
-data_ov065_0211d984 data_ov065_0211d98c data_ov065_0211d994
-data_ov065_0211d99c data_ov065_0211d9a8 data_ov065_0211d9b4
-data_ov065_0211d9bc data_ov065_0211d9c0 data_ov065_0211d9cc
-data_ov065_0211d9d4 data_ov065_0211d9dc data_ov065_0211d9e8:0x18
+data_ov065_0211d944 data_ov065_0211d94c@0x0211d94c data_ov065_0211d958@0x0211d958
+data_ov065_0211d964@0x0211d964 data_ov065_0211d970@0x0211d970 data_ov065_0211d97c@0x0211d97c
+data_ov065_0211d984 data_ov065_0211d98c@0x0211d98c data_ov065_0211d994
+data_ov065_0211d99c@0x0211d99c data_ov065_0211d9a8@0x0211d9a8 data_ov065_0211d9b4@0x0211d9b4:0x8
+data_ov065_0211d9bc@0x0211d9bc data_ov065_0211d9c0@0x0211d9c0
+data_ov065_0211d9dc@0x0211d9dc data_ov065_0211d9e8@0x0211d9e8:0x18
 
 
 # RETIRED at ALIAS2 (wave 8, the main -> port sync). Each symbol below was
@@ -452,3 +452,20 @@ data_ov065_0211d9d4 data_ov065_0211d9dc data_ov065_0211d9e8:0x18
 # is the place to fix that: build/port/host-src/ov065_syms.c is its output and is
 # regenerated from this list on every configure.
 #   g_profile_CT_MECHA05                       now defined by daObjCtMecha05_c.cpp.obj
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov065_0211d690                        now defined by src/actors/daBasabasa_c.cpp
+#   data_ov065_0211d698                        now defined by src/actors/daBasabasa_c.cpp
+#   data_ov065_0211d6a0                        now defined by src/actors/daBasabasa_c.cpp
+#   data_ov065_0211d6a8                        now defined by src/actors/daBasabasa_c.cpp
+#   data_ov065_0211d7fc                        now defined by src/actors/daDossy_c.cpp
+#   data_ov065_0211d88c                        now defined by src/actors/daObjCtMecha03_c.cpp
+#   data_ov065_0211d894                        now defined by src/actors/daObjCtMecha03_c.cpp
+#   data_ov065_0211d9cc                        now defined by src/actors/daObjCtMecha09_c.cpp
+#   data_ov065_0211d9d4                        now defined by src/actors/daObjCtMecha09_c.cpp

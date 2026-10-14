@@ -30,14 +30,14 @@ extern "C" {
 
 extern int data_02099edc[];      /* _ZTV9ActorBase, hal/actor_vtables.cpp */
 extern int data_0208e4b8[];      /* _ZTV12ActorDerived, hal/actor_vtables.cpp */
-extern void *_ZTV4View[];        /* hal/camera_bridges.cpp */
+extern void *_ZTV7dView_c[];        /* hal/camera_bridges.cpp */
 
 int *_ZN7fBase_cD1Ev(void *self);
 void *_ZN7fBase_cD0Ev(void *self);
 void *_ZN7dBase_cD1Ev(void *self);
 void *_ZN7dBase_cD0Ev(void *self);
-void *_ZN4ViewD1Ev(void *self);
-void *_ZN4ViewD0Ev(void *self);
+void *_ZN7dView_cD1Ev(void *self);
+void *_ZN7dView_cD0Ev(void *self);
 
 }
 
@@ -45,8 +45,8 @@ static int __fastcall ab_d1(void *s, void *) { return (int)(size_t)_ZN7fBase_cD1
 static int __fastcall ab_d0(void *s, void *) { return (int)(size_t)_ZN7fBase_cD0Ev(s); }
 static int __fastcall ad_d1(void *s, void *) { return (int)(size_t)_ZN7dBase_cD1Ev(s); }
 static int __fastcall ad_d0(void *s, void *) { return (int)(size_t)_ZN7dBase_cD0Ev(s); }
-static int __fastcall vw_d1(void *s, void *) { return (int)(size_t)_ZN4ViewD1Ev(s); }
-static int __fastcall vw_d0(void *s, void *) { return (int)(size_t)_ZN4ViewD0Ev(s); }
+static int __fastcall vw_d1(void *s, void *) { return (int)(size_t)_ZN7dView_cD1Ev(s); }
+static int __fastcall vw_d0(void *s, void *) { return (int)(size_t)_ZN7dView_cD0Ev(s); }
 
 extern "C" void hal_seat_base_actor_dtors(void)
 {
@@ -54,6 +54,6 @@ extern "C" void hal_seat_base_actor_dtors(void)
     data_02099edc[17] = (int)(size_t)ab_d0;
     data_0208e4b8[16] = (int)(size_t)PORT_D16(ad_d1);
     data_0208e4b8[17] = (int)(size_t)ad_d0;
-    _ZTV4View[16]     = (void *)PORT_D16(vw_d1);
-    _ZTV4View[17]     = (void *)vw_d0;
+    _ZTV7dView_c[16]     = (void *)PORT_D16(vw_d1);
+    _ZTV7dView_c[17]     = (void *)vw_d0;
 }

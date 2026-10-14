@@ -34,20 +34,20 @@ struct PortPmf { unsigned fn; int delta; };
 /* ==== BOWSER_PUZZLE_MANAGER =============================================== */
 
 /* the Manager Behavior's three C-linkage helpers, all matched src */
-void func_ov064_02118ee4(void *c);   /* the pre-dispatch step */
-void func_ov064_02119010(void *c);   /* the matrix step after */
-void func_ov064_02118fa4(void *c);   /* the collider transform */
+void _ZN16daObjFl_Puzzle_c19func_ov064_02118ee4Ev(void *c);   /* the pre-dispatch step */
+void _ZN16daObjFl_Puzzle_c19func_ov064_02119010Ev(void *c);   /* the matrix step after */
+void _ZN16daObjFl_Puzzle_c19func_ov064_02118fa4Ev(void *c);   /* the collider transform */
 char *_ZN8dActor_c10FindWithIDEj(unsigned int id);
 int _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(void *c, int a, int b);
 
 /* the six Manager state functions, all matched src (the daBbl_c-family movers +
    the LavaBubble Kill/Spawn) */
-void func_ov064_02118da0(void *c);   /* table slot 0 <- data_ov064_0211bf80 */
-void func_ov064_02118d3c(void *c);   /* table slot 1 <- data_ov064_0211bf68 */
-void func_ov064_02118d20(void *c);   /* table slot 2 <- data_ov064_0211bf90 */
-void func_ov064_02118d08(void *c);   /* table slot 3 <- data_ov064_0211bf70 */
-void func_ov064_02118cec(void *c);   /* table slot 4 <- data_ov064_0211bf88 */
-void func_ov064_02118cd4(void *c);   /* table slot 5 <- data_ov064_0211bf78 */
+void _ZN16daObjFl_Puzzle_c19func_ov064_02118da0Ev(void *c);   /* table slot 0 <- data_ov064_0211bf80 */
+void _ZN16daObjFl_Puzzle_c19func_ov064_02118d3cEv(void *c);   /* table slot 1 <- data_ov064_0211bf68 */
+void _ZN16daObjFl_Puzzle_c19func_ov064_02118d20Ev(void *c);   /* table slot 2 <- data_ov064_0211bf90 */
+void _ZN16daObjFl_Puzzle_c19func_ov064_02118d08Ev(void *c);   /* table slot 3 <- data_ov064_0211bf70 */
+void _ZN16daObjFl_Puzzle_c19func_ov064_02118cecEv(void *c);   /* table slot 4 <- data_ov064_0211bf88 */
+void _ZN16daObjFl_Puzzle_c19func_ov064_02118cd4Ev(void *c);   /* table slot 5 <- data_ov064_0211bf78 */
 
 /* the RUNTIME table Manager::Behavior reads (bss, six 8-byte records, filled by
    __sinit_ov064_0211b1d4) */
@@ -60,11 +60,11 @@ extern PortPmf data_ov064_0211bf68[], data_ov064_0211bf70[],
 /* ==== BOWSER_PUZZLE_PIECE ================================================= */
 
 /* the Piece Behavior's one C-linkage helper, matched src */
-void func_ov064_0211987c(void *c);
+void _ZN18daWater_Hakidasi_c19func_ov064_0211987cEv(void *c);
 unsigned short DecIfAbove0_Short(unsigned short *p);
 /* the two Piece state functions, matched src */
-int func_ov064_021193b4(void *c);    /* the .b half <- data_ov064_0211c2dc (per-frame) */
-int func_ov064_021197fc(void *c);    /* the .a half <- data_ov064_0211c2e4 (the reset) */
+int _ZN18daWater_Hakidasi_c19func_ov064_021193b4Ev(void *c);    /* the .b half <- data_ov064_0211c2dc (per-frame) */
+int _ZN18daWater_Hakidasi_c19func_ov064_021197fcEv(void *c);    /* the .a half <- data_ov064_0211c2e4 (the reset) */
 
 /* the RUNTIME Obj the Piece points its this+0x300 at (bss, {a:{fn,0}, b:{fn,0}},
    filled by __sinit_ov064_0211b4dc) */
@@ -124,12 +124,12 @@ extern PortPmf data_ov064_0211c2e4[];     /* {fn=021197fc, 0} -> c934[0] (.a) */
         sym(self);                                                        \
     }
 
-BPM_FACE(0, func_ov064_02118da0)
-BPM_FACE(1, func_ov064_02118d3c)
-BPM_FACE(2, func_ov064_02118d20)
-BPM_FACE(3, func_ov064_02118d08)
-BPM_FACE(4, func_ov064_02118cec)
-BPM_FACE(5, func_ov064_02118cd4)
+BPM_FACE(0, _ZN16daObjFl_Puzzle_c19func_ov064_02118da0Ev)
+BPM_FACE(1, _ZN16daObjFl_Puzzle_c19func_ov064_02118d3cEv)
+BPM_FACE(2, _ZN16daObjFl_Puzzle_c19func_ov064_02118d20Ev)
+BPM_FACE(3, _ZN16daObjFl_Puzzle_c19func_ov064_02118d08Ev)
+BPM_FACE(4, _ZN16daObjFl_Puzzle_c19func_ov064_02118cecEv)
+BPM_FACE(5, _ZN16daObjFl_Puzzle_c19func_ov064_02118cd4Ev)
 
 static const struct { PortPmf *slot; unsigned rom; void *host; }
 g_manager_states[] = {
@@ -145,7 +145,7 @@ g_manager_states[] = {
 static void __fastcall bpp_perframe_face(void *self, void *dead_edx)
 {
     (void)dead_edx;
-    func_ov064_021193b4(self);
+    _ZN18daWater_Hakidasi_c19func_ov064_021193b4Ev(self);
 }
 
 extern "C" void port_bowser_puzzle_manager_states_seat(void)
@@ -172,7 +172,7 @@ extern "C" void port_bowser_puzzle_manager_states_seat(void)
    called from Behavior). */
 static const struct { PortPmf *slot; unsigned rom; int (*host)(void *); }
 g_piece_states[] = {
-    {data_ov064_0211c2e4, 0x021197fc, func_ov064_021197fc},  /* .a, the reset */
+    {data_ov064_0211c2e4, 0x021197fc, _ZN18daWater_Hakidasi_c19func_ov064_021197fcEv},  /* .a, the reset */
     /* run link100 lane PMFB7 gate 1: the .b half is a FACE now --
        src/_ZN9JetStream8BehaviorEv.cpp dispatches it as a real
        pointer to member (mov eax,[cell+8] / mov ecx,[cell+12] / add ecx,this /

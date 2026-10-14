@@ -96,6 +96,15 @@ data_ov021_021149a0 data_ov021_021149a8 data_ov021_021149b0 data_ov021_021149b8
 data_ov021_021149c0 data_ov021_021149cc data_ov021_021149d8 data_ov021_021149e4
 data_ov021_021149f0 data_ov021_021149fc data_ov021_02114a08 data_ov021_02114a14
 data_ov021_02114a20 data_ov021_02114a2c data_ov021_02114a38 data_ov021_02114a44
-data_ov021_02114a50 data_ov021_02114a58
-data_ov021_02114a64 data_ov021_02114a6c data_ov021_02114a74
-data_ov021_02114a80:0xc
+data_ov021_02114a58@0x02114a58
+data_ov021_02114a64 data_ov021_02114a6c data_ov021_02114a74@0x02114a74
+data_ov021_02114a80@0x02114a80:0xc
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov021_02114a50                        now defined by src/actors/daGrock_c.cpp

@@ -48,7 +48,7 @@
 #       port/unmatched/ModelFamily_Dtors_HostCopy.c, whose remaining Model,
 #       CommonModel and ShadowModel D1 bodies call it by its flat name the way
 #       the ROM's own D1s call 0x020170b8.
-src/_ZN13PrincessPeach21UpdateGroundCollisionEP10dBgCh_Actr.cpp
-src/_ZN8WallSign8BehaviorEv.cpp
-src/game/actors/daTrs_c/_ZN7daTrs_c13InitResourcesEv.cpp
+src/actors/daPeach_c.cpp
+src/actors/daObjKanban_c.cpp
+src/actors/daTrs_c.cpp
 src/_ZN9ModelBaseD2Ev.cpp

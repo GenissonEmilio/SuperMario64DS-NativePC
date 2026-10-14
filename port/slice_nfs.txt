@@ -22,7 +22,7 @@
 # sets the proc for the same reason the cartridge does, and one it does not:
 # with no proc, a command 9 or 10 would index the hosted nine-entry
 # data_02086758 off the end. Nothing sends those today.
-src/func_0205c7c4.c
+src/unnamed/arm9/0205/func_0205c7c4.c
 
 # The ROM's once-guard around FS_Init: `if (!data_020a8058) { data_020a8058 = 1;
 # func_0205d96c(x); }`. hal/fs_names.cpp's static initialiser calls THIS rather
@@ -34,10 +34,10 @@ src/func_0205c7c4.c
 # hal/fs_names.cpp. func_0205d96c itself is a host face (the DS
 # cartridge-header mirror at 0x027FFE40 is unmapped), so it is deliberately
 # NOT listed here.
-src/func_0205d89c.c
+src/unnamed/arm9/0205/func_0205d89c.c
 
 # The archive WRITE function, and it is the ROM's real body rather than a face:
 # `return 1`. NitroSDK's rom archive is read-only and this is how it says so.
 # Faced it would be four lines of host code standing in for four lines of
 # matched src, which is the wrong trade in this repo.
-src/func_0205db24.c
+src/unnamed/arm9/0205/func_0205db24.c

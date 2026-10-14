@@ -404,9 +404,9 @@ extern int data_0209f5d0[3];
 extern unsigned char data_0209f5e8[];
 
 /* The three fader vtables hal/scene_boot.cpp hosts, for the same report. */
-extern void *data_0208eafc[12];
-extern void *data_0208eacc[12];
-extern void *data_0208eb2c[10];
+extern void *_ZTV8dFader_c[12];
+extern void *_ZTV15dFdBrightness_c[12];
+extern void *_ZTV10dFdColor_c[10];
 
 /* And that file's own answer about them: whether its seat has run, and how
    many of the thirty-four words it owns are still zero. Rung C1c installs
@@ -437,7 +437,7 @@ extern void *data_020aa3f0;
 
 /* Clipper's destructor, the first word of _ZTV7Clipper below (rung C1d).
    src/_ZN7ClipperD1Ev.cpp, arm9 0x02015720. */
-void _ZN7ClipperD1Ev(void *self);
+void _ZN8dClipperD1Ev(void *self);
 
 /* Scene's four graph callbacks, the words of data_0208ee14 below. */
 int _ZN8dGraph_c10callback_c14GraphCallback0Ev(void);
@@ -567,7 +567,7 @@ DSSTATE_END
 namespace {
 void ctor_trap_clipper_d0(void)
 {
-    std::fprintf(stderr, "  UNHOSTED: _ZTV7Clipper slot 1, _ZN7ClipperD0Ev at "
+    std::fprintf(stderr, "  UNHOSTED: _ZTV8dClipper slot 1, _ZN8dClipperD0Ev at "
                          "0x020156fc -- src/_ZN7ClipperD0Ev.cpp calls "
                          "base_dtor_Clipper, an invented name for 0x0203cbcc "
                          "that nothing in this tree defines. The only Clipper "
@@ -579,8 +579,8 @@ void ctor_trap_clipper_d0(void)
 
 DSSTATE_BEGIN
 extern "C" {
-void *_ZTV7Clipper[2] = {
-    (void *)&_ZN7ClipperD1Ev,
+void *_ZTV8dClipper[2] = {
+    (void *)&_ZN8dClipperD1Ev,
     (void *)&ctor_trap_clipper_d0,
 };
 unsigned char data_0209f388[12];
@@ -892,18 +892,18 @@ extern "C" void port_rom_entry_ctors(void)
         std::fprintf(stderr,
                      "  [ctor] fader vptrs after the walk: data_0209f5e8 -> %s, "
                      "data_0209f5d0 -> %s\n",
-                     cv == (const void *)data_0208eb2c ? "data_0208eb2c "
-                         "(_ZTV10FaderColor, ten slots seated in "
+                     cv == (const void *)_ZTV10dFdColor_c ? "_ZTV10dFdColor_c "
+                         "(_ZTV10dFdColor_c, ten slots seated in "
                          "hal/scene_boot.cpp)"
-                     : cv == (const void *)data_0208eacc ? "data_0208eacc"
-                     : cv == (const void *)data_0208eafc ? "data_0208eafc"
+                     : cv == (const void *)_ZTV15dFdBrightness_c ? "_ZTV15dFdBrightness_c"
+                     : cv == (const void *)_ZTV8dFader_c ? "_ZTV8dFader_c"
                      : cv == 0 ? "NULL"
                      : "a table this file does not name (the host "
                        "HalFaderWipe's, or something else)",
-                     bv == (const void *)data_0208eacc ? "data_0208eacc "
-                         "(_ZTV15FaderBrightness, dtor pair seated and every "
+                     bv == (const void *)_ZTV15dFdBrightness_c ? "_ZTV15dFdBrightness_c "
+                         "(_ZTV15dFdBrightness_c, dtor pair seated and every "
                          "slot from +0x08 up a named trap)"
-                     : bv == (const void *)data_0208eafc ? "data_0208eafc"
+                     : bv == (const void *)_ZTV8dFader_c ? "_ZTV8dFader_c"
                      : bv == 0 ? "NULL"
                      : "a table this file does not name");
 
@@ -912,16 +912,16 @@ extern "C" void port_rom_entry_ctors(void)
            words and zero dead ones is the pass. */
         const int seated = port_fader_vtable_seated();
         int live = 0;
-        for (int i = 0; i < 10; ++i) if (data_0208eb2c[i]) ++live;
+        for (int i = 0; i < 10; ++i) if (_ZTV10dFdColor_c[i]) ++live;
         if (seated && live == 10 && port_fader_vtable_zero_words() == 0)
             std::fprintf(stderr, "  [ctor] fader vtable seat check PASS: "
                          "hal/scene_boot.cpp seated its four fader tables "
-                         "before main, all ten words of data_0208eb2c are "
+                         "before main, all ten words of _ZTV10dFdColor_c are "
                          "live at the walk, 0 zero words across the 34 it "
                          "owns\n");
         else
             std::fprintf(stderr, "  [ctor] FADER VTABLE SEAT NOT LIVE AT THE "
-                         "WALK: seated %d, %d of data_0208eb2c's ten words "
+                         "WALK: seated %d, %d of _ZTV10dFdColor_c's ten words "
                          "live, %d zero words across the 34. An installed "
                          "fader dispatching this table would call address 0, "
                          "which is the fault run link100 lane WM9 caught\n",

@@ -41,7 +41,7 @@
 # walk_window-only block would leave the other two asking for a decorated name
 # the ledger's own face calls.
 src/_ZN12dScMgSlot1_c8BehaviorEv.cpp
-src/_ZN11dScMgJump_c13OnYoshiTryEatEi.cpp
+src/actors/dScMgJump_c.cpp
 
 # ---- TWO SEATS NOBODY MADE -------------------------------------------------
 #
@@ -68,7 +68,7 @@ src/_ZN11dScMgJump_c13OnYoshiTryEatEi.cpp
 #     Needs hostgen for the IME and IE pokes (two MMIO rewrites). Defines exactly
 #     ?SetIRQs@IRQ@@YAII@Z, references nothing at all, and the decorated static
 #     spelling the wall asks for is one alias row in port/hal/link21_rows.cpp.
-src/_ZN14ArrowSignRight11OnAttacked1ER8dActor_c.cpp
+src/actors/daObjYajirusi_c.cpp
 src/_ZN3IRQ7SetIRQsEj.cpp
 
 # ---- THIS LANE'S OWN HAL ROWS ----------------------------------------------

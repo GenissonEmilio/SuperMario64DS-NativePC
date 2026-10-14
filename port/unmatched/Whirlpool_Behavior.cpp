@@ -30,7 +30,7 @@
  * state-0 tick func_ov026_02111d4c enters state 1 (data_ov026_02113f3c) when a
  * player comes inside 0x12c000 horizontally and vertically.
  */
-#include "Submarine.h"
+#include "daObjWlSubmarine_c.h"
 
 extern "C" {
 
@@ -41,7 +41,7 @@ unsigned short DecIfAbove0_Short(unsigned short *p);
 void _ZN8dActor_c9UpdatePosEP5dCc_c(void *thiz, void *cc);
 void *_ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
     unsigned int a, unsigned int b, int fx, int t1, int t2, int s4, int s5);
-void _ZN9Animation7AdvanceEv(void *thiz);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *thiz);
 void func_ov026_02111f30(char *c);
 
 /* HOST COPY RETIRED, run link100 lane PMFB7 gate 1. src/_ZN9Whirlpool8BehaviorEv.cpp

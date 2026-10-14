@@ -25,14 +25,14 @@ data_ov062_0211d970:0x8 data_ov062_0211d978:0x8 data_ov062_0211d980:0x8
 data_ov062_0211d988:0x8 data_ov062_0211d990:0x8 data_ov062_0211d998:0x8
 _ZTI10daHolhei_c:0xc _ZTS10daHolhei_c:0x10 g_profile_HOLHEI:0x1c
 _ZTS8daNknk_c:0xc _ZTI8daNknk_c:0xc g_profile_NOKONOKO:0x1c
-g_profile_NOKONOKO_S:0x1c data_ov062_0211db30:0x8 data_ov062_0211db38:0x8
-data_ov062_0211db40:0x8 data_ov062_0211db48:0x8 data_ov062_0211db50:0x8
-data_ov062_0211db58:0x8 _ZTS7daRNk_c:0xc _ZTI7daRNk_c:0xc
+g_profile_NOKONOKO_S:0x1c data_ov062_0211db30@0x0211db30:0x8 data_ov062_0211db38@0x0211db38:0x8
+data_ov062_0211db40@0x0211db40:0x8 data_ov062_0211db48@0x0211db48:0x8 data_ov062_0211db50@0x0211db50:0x8
+data_ov062_0211db58@0x0211db58:0x8 _ZTS7daRNk_c:0xc _ZTI7daRNk_c:0xc
 g_profile_RACE_NOKO:0x1c _ZTS9daRFlag_c:0xc _ZTI9daRFlag_c:0xc
-g_profile_RACE_FLAG:0x1c data_ov062_0211dcd0:0x8 data_ov062_0211dcd8:0x8
-data_ov062_0211dce0:0x8 data_ov062_0211dce8:0x8 data_ov062_0211dcf0:0x8
-data_ov062_0211dcf8:0x8 data_ov062_0211dd00:0x8 data_ov062_0211dd08:0x8
-data_ov062_0211dd10:0x8 data_ov062_0211dd18:0x8 _ZTS9daJango_c:0xc
+g_profile_RACE_FLAG:0x1c data_ov062_0211dcd0:0x8 data_ov062_0211dcd8@0x0211dcd8:0x8
+data_ov062_0211dce0@0x0211dce0:0x8 data_ov062_0211dce8@0x0211dce8:0x8 data_ov062_0211dcf0@0x0211dcf0:0x8
+data_ov062_0211dcf8@0x0211dcf8:0x8 data_ov062_0211dd00@0x0211dd00:0x8 data_ov062_0211dd08@0x0211dd08:0x8
+data_ov062_0211dd10@0x0211dd10:0x8 data_ov062_0211dd18@0x0211dd18:0x8 _ZTS9daJango_c:0xc
 _ZTI9daJango_c:0xc g_profile_JANGO:0x1c data_ov062_0211dde0:0x8
 data_ov062_0211dde8:0x8 data_ov062_0211ddf0:0x8 data_ov062_0211ddf8:0x8
 data_ov062_0211de00:0x8 data_ov062_0211de08:0x8 data_ov062_0211de10:0xc
@@ -46,19 +46,35 @@ data_ov062_0211df14:0x4 data_ov062_0211df18:0x4 data_ov062_0211df1c:0xc
 data_ov062_0211df28:0x8 data_ov062_0211df30:0x8 data_ov062_0211df38:0x8
 data_ov062_0211df40:0x8 data_ov062_0211df48:0x8 data_ov062_0211df50:0x8
 data_ov062_0211df58:0x8 data_ov062_0211df60:0x8 data_ov062_0211df68:0x8
-data_ov062_0211df70:0x8 data_ov062_0211df78:0x8 data_ov062_0211df80:0xc
-data_ov062_0211df8c:0xc data_ov062_0211df98:0xc data_ov062_0211dfa4:0xc
-data_ov062_0211dfb0:0xc data_ov062_0211dfbc:0xc data_ov062_0211dfc8:0xc
-data_ov062_0211dfd4:0xc data_ov062_0211dfe0:0xc data_ov062_0211dfec:0xc
-data_ov062_0211dff8:0xc data_ov062_0211e004:0x8 data_ov062_0211e00c:0x8
-data_ov062_0211e014:0x8 data_ov062_0211e01c:0x8 data_ov062_0211e024:0x8
-data_ov062_0211e02c:0x8 data_ov062_0211e034:0x8 data_ov062_0211e03c:0x8
-data_ov062_0211e044:0xc data_ov062_0211e050:0xc data_ov062_0211e05c:0xc
-data_ov062_0211e068:0xc data_ov062_0211e074:0xc data_ov062_0211e080:0xc
-data_ov062_0211e08c:0xc data_ov062_0211e098:0xc data_ov062_0211e0a4:0x30
-data_ov062_0211e0d4:0x8 data_ov062_0211e0dc:0x8 data_ov062_0211e0e4:0xc
-data_ov062_0211e0f0:0xc data_ov062_0211e0fc:0x8 data_ov062_0211e104:0x8
-data_ov062_0211e10c:0x8 data_ov062_0211e114:0x8 data_ov062_0211e11c:0xc
-data_ov062_0211e128:0xc data_ov062_0211e134:0xc data_ov062_0211e140:0xc
+data_ov062_0211df70:0x8 data_ov062_0211df78:0x8 data_ov062_0211df80@0x0211df80:0xc
+data_ov062_0211df8c@0x0211df8c:0xc data_ov062_0211df98@0x0211df98:0xc data_ov062_0211dfa4@0x0211dfa4:0xc
+data_ov062_0211dfb0@0x0211dfb0:0xc data_ov062_0211dfbc@0x0211dfbc:0xc data_ov062_0211dfc8@0x0211dfc8:0xc
+data_ov062_0211dfd4@0x0211dfd4:0xc data_ov062_0211dfe0@0x0211dfe0:0xc data_ov062_0211dfec@0x0211dfec:0xc
+data_ov062_0211dff8@0x0211dff8:0xc
+
+
+data_ov062_0211e044@0x0211e044:0xc data_ov062_0211e050@0x0211e050:0xc data_ov062_0211e05c@0x0211e05c:0xc
+data_ov062_0211e068@0x0211e068:0xc data_ov062_0211e074@0x0211e074:0xc data_ov062_0211e080@0x0211e080:0xc
+data_ov062_0211e08c@0x0211e08c:0xc data_ov062_0211e098@0x0211e098:0xc data_ov062_0211e0a4:0x30
+data_ov062_0211e0d4:0x8 data_ov062_0211e0dc:0x8 data_ov062_0211e0e4@0x0211e0e4:0xc
+data_ov062_0211e0f0@0x0211e0f0:0xc data_ov062_0211e0fc:0x8 data_ov062_0211e104:0x8
+data_ov062_0211e10c:0x8 data_ov062_0211e114:0x8 data_ov062_0211e11c@0x0211e11c:0xc
+data_ov062_0211e128@0x0211e128:0xc data_ov062_0211e134@0x0211e134:0xc data_ov062_0211e140@0x0211e140:0xc
 data_ov062_0211e14c:0x10 data_ov062_0211e15c:0x10 data_ov062_0211e16c:0x10
 data_ov062_0211e17c:0x10 data_ov062_0211e18c:0x14
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov062_0211e004                        now defined by src/actors/daRNk_c.cpp
+#   data_ov062_0211e00c                        now defined by src/actors/daRNk_c.cpp
+#   data_ov062_0211e014                        now defined by src/actors/daRNk_c.cpp
+#   data_ov062_0211e01c                        now defined by src/actors/daRNk_c.cpp
+#   data_ov062_0211e024                        now defined by src/actors/daRNk_c.cpp
+#   data_ov062_0211e02c                        now defined by src/actors/daRNk_c.cpp
+#   data_ov062_0211e034                        now defined by src/actors/daRNk_c.cpp
+#   data_ov062_0211e03c                        now defined by src/actors/daRNk_c.cpp

@@ -87,16 +87,16 @@
 
 extern "C" {
 
-void func_ov002_020bba24(void *);   /* 0 Init  */
-void func_ov002_020bb9fc(void *);   /* 0 Main  */
-void func_ov002_020bb9f0(void *);   /* 1 Init  */
-void func_ov002_020bb614(void *);   /* 1 Main  (src/func_ov002_020bb614.c) */
-void func_ov002_020bbd50(void *);   /* 2 Init  */
-void func_ov002_020bbcb8(void *);   /* 2 Main  */
-void func_ov002_020bbc78(void *);   /* 3 Init  */
-void func_ov002_020bbb14(void *);   /* 3 Main  */
-void func_ov002_020bbac8(void *);   /* 4 Init  */
-void func_ov002_020bba28(void *);   /* 4 Main  */
+void _ZN15daObjTatefuda_c8InitIdleEv(void *);   /* 0 Init  */
+void _ZN15daObjTatefuda_c4IdleEv(void *);   /* 0 Main  */
+void _ZN15daObjTatefuda_c8InitTalkEv(void *);   /* 1 Init  */
+void _ZN15daObjTatefuda_c4TalkEv(void *);   /* 1 Main  (src/func_ov002_020bb614.c) */
+void _ZN15daObjTatefuda_c11InitCarriedEv(void *);   /* 2 Init  */
+void _ZN15daObjTatefuda_c7CarriedEv(void *);   /* 2 Main  */
+void _ZN15daObjTatefuda_c10InitThrownEv(void *);   /* 3 Init  */
+void _ZN15daObjTatefuda_c6ThrownEv(void *);   /* 3 Main  */
+void _ZN15daObjTatefuda_c11InitDroppedEv(void *);   /* 4 Init  */
+void _ZN15daObjTatefuda_c7DroppedEv(void *);   /* 4 Main  */
 
 struct PortStatePair { unsigned fn; int delta; };
 struct PortSignPostState { PortStatePair init, main_; };
@@ -107,11 +107,11 @@ extern PortSignPostState data_ov002_0210e084[];
 enum { PORT_SIGNPOST_STATES = 5 };
 
 static const struct { unsigned rom; void (*host)(void *); } g_states[10] = {
-    {0x020bba24, func_ov002_020bba24}, {0x020bb9fc, func_ov002_020bb9fc},
-    {0x020bb9f0, func_ov002_020bb9f0}, {0x020bb614, func_ov002_020bb614},
-    {0x020bbd50, func_ov002_020bbd50}, {0x020bbcb8, func_ov002_020bbcb8},
-    {0x020bbc78, func_ov002_020bbc78}, {0x020bbb14, func_ov002_020bbb14},
-    {0x020bbac8, func_ov002_020bbac8}, {0x020bba28, func_ov002_020bba28},
+    {0x020bba24, _ZN15daObjTatefuda_c8InitIdleEv}, {0x020bb9fc, _ZN15daObjTatefuda_c4IdleEv},
+    {0x020bb9f0, _ZN15daObjTatefuda_c8InitTalkEv}, {0x020bb614, _ZN15daObjTatefuda_c4TalkEv},
+    {0x020bbd50, _ZN15daObjTatefuda_c11InitCarriedEv}, {0x020bbcb8, _ZN15daObjTatefuda_c7CarriedEv},
+    {0x020bbc78, _ZN15daObjTatefuda_c10InitThrownEv}, {0x020bbb14, _ZN15daObjTatefuda_c6ThrownEv},
+    {0x020bbac8, _ZN15daObjTatefuda_c11InitDroppedEv}, {0x020bba28, _ZN15daObjTatefuda_c7DroppedEv},
 };
 
 extern "C" void port_sign_post_states_seat(void)

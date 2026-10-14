@@ -285,7 +285,7 @@ CLASS_A = tuple(
          cite='%s section 5d, CLASS A, REAL SEAM' % SEAT)
     for row in (
         {'frame': 'func_ov007_020add3c', 'callee': 'func_ov007_020ae558',
-         'tu': 'src/func_ov007_020add3c.c',
+         'tu': 'src/unnamed/ov007/func_ov007_020add3c.c',
          'note':
              'THE LIVE SCENE-1 FAULT, and the row being seated by another '
              'lane as this one was written. The caller pushes zero arguments '
@@ -298,14 +298,14 @@ CLASS_A = tuple(
         # names that copy as `seated` and reports RETIRED by name on every
         # build. The raw TU coming back on a slice re-arms the row.
         {'frame': 'func_ov007_020b3360', 'callee': 'func_ov007_020b3c54',
-         'tu': 'src/func_ov007_020b3360.c',
+         'tu': 'src/unnamed/ov007/func_ov007_020b3360.c',
          'seated': 'host-src/src/func_ov007_020b3360.cpp',
          'note':
              'b3360 pushes nothing and b3c54 reads its SECOND parameter on '
              'the default arm of a 24-way jump table. The damage is a STORE '
              'of garbage into the object rather than a fault.'},
         {'frame': 'func_ov007_020b3c54', 'callee': 'func_ov007_020b3d30',
-         'tu': 'src/func_ov007_020b3c54.c',
+         'tu': 'src/unnamed/ov007/func_ov007_020b3c54.c',
          'seated': 'host-src/src/func_ov007_020b3c54.cpp',
          'note':
              'b3c54 pushes one argument and b3d30 reads two. The second is '
@@ -313,25 +313,25 @@ CLASS_A = tuple(
              'those is a double dereference. 5d names this the next fault '
              'after ae558 is seated.'},
         {'frame': 'func_ov007_020b4b5c', 'callee': 'func_ov007_020c43bc',
-         'tu': 'src/func_ov007_020b4b5c.c',
+         'tu': 'src/unnamed/ov007/func_ov007_020b4b5c.c',
          'note':
              'Three pushes before the call and only one of them is an '
              'argument; c43bc reads two. 5d quotes this listing in full '
              'because an automated push counter gets it wrong.'},
         {'frame': 'func_ov007_020bcdb8', 'callee': 'func_ov007_020c99d8',
-         'tu': 'src/func_ov007_020bcdb8.cpp',
+         'tu': 'src/unnamed/ov007/func_ov007_020bcdb8.cpp',
          'note':
              'A RETURN VALUE RIDING: on ARM the previous call leaves its '
              'result in r0 and c99d8 reads r0. On the host the value is in '
              'EAX and c99d8 reads the stack, and the frame pushes nothing.'},
         {'frame': 'func_ov007_020cc600', 'callee': 'func_ov007_020cc0e4',
-         'tu': 'src/func_ov007_020cc600.c',
+         'tu': 'src/actors/dScDSMT_c.cpp',
          'note':
              'The same return-value shape. cc600 is reached from no lifecycle '
              'slot 5d could trace; its only reference is a data slot at '
              '0x021032a4.'},
         {'frame': 'func_ov007_020b6eb4', 'callee': 'func_ov007_020bd648',
-         'tu': 'src/func_ov007_020b6eb4.c',
+         'tu': 'src/unnamed/ov007/func_ov007_020b6eb4.c',
          'note':
              'ONE OF TWO CALLERS IS CORRECT, which is why the row names the '
              'frame and not the callee: src/func_ov007_020b7138.c declares '
@@ -345,18 +345,18 @@ CLASS_C = tuple(
               % SEAT)
     for row in (
         {'frame': 'func_ov007_020bdeb0', 'callee': 'func_ov007_020be098',
-         'tu': 'src/func_ov007_020bdeb0.c',
+         'tu': 'src/unnamed/ov007/func_ov007_020bdeb0.c',
          'note': 'Also found by the veneer scan; the two derivations agree.'},
         {'frame': 'func_ov007_020c05f8',
          'callee': 'func_ov007_020c3d1c',
-         'tu': 'src/func_ov007_020c05f8.c',
+         'tu': 'src/unnamed/ov007/func_ov007_020c05f8.c',
          'note':
              'Also found by the veneer scan, and one of the seventeen MSVC '
              'folded onto a single address. Its target takes void *self and '
              'hands it to a function pointer, so the whole chain is tail '
              'jumps and the argument never moves.'},
         {'frame': 'func_0204f76c', 'callee': 'func_0205ac5c',
-         'tu': 'src/func_0204f76c.c',
+         'tu': 'src/engine/sound/SoundEngine.cpp',
          'note':
              'THE arm9 TRIO, and 5d calls this one the instructive case. By '
              'declaration counting it drops two arguments across two frames. '
@@ -365,10 +365,10 @@ CLASS_C = tuple(
              '[ebp+0x10] are still the original caller second and third, '
              'exactly as r1 and r2 still hold them on ARM.'},
         {'frame': 'func_0204f79c', 'callee': 'func_0205ac84',
-         'tu': 'src/func_0204f79c.c',
+         'tu': 'src/engine/sound/SoundEngine.cpp',
          'note': 'The arm9 trio, second of three.'},
         {'frame': 'func_0204f73c', 'callee': 'func_0205ad54',
-         'tu': 'src/func_0204f73c.c',
+         'tu': 'src/engine/sound/SoundEngine.cpp',
          'note': 'The arm9 trio, third of three.'},
         # THE HEAP-TEARDOWN PAIR, added by run link60 lane RF1 when the
         # receiver-bridging face for HeapAllocator::Remove replaced the
@@ -384,7 +384,7 @@ CLASS_C = tuple(
         # nothing else.
         {'frame': '?Destroy@HeapAllocator@@QAEXXZ',
          'callee': '?Remove@HeapAllocator@@QAEXXZ',
-         'tu': 'src/_ZN13HeapAllocator7DestroyEv.cpp',
+         'tu': 'src/engine/heap/ExpandingHeapAllocator.cpp',
          'note':
              'The ExpandingHeap teardown leg. src/_ZN13ExpandingHeap8VDestroy'
              'Ev.c:23 pushes self->allocator into this frame and this frame '
@@ -399,7 +399,7 @@ CLASS_C = tuple(
              'lk4_eh_dtor_seat.cpp.obj is not this jmp\'s target.'},
         {'frame': 'func_0204ebb8',
          'callee': '_ZN13HeapAllocator6RemoveEv',
-         'tu': 'src/func_0204ebb8.c',
+         'tu': 'src/engine/heap/SolidHeapAllocator.cpp',
          'note':
              'The SolidHeap teardown leg, same shape and same consequence; '
              'its pusher is src/_ZN9SolidHeap8VDestroyEv.cpp:23.'},
@@ -418,9 +418,9 @@ CLASS_C = tuple(
         # dispatcher's frame. If it becomes a call, the collision body gets a
         # garbage `this` and a garbage shell index on every stopped shell,
         # every frame.
-        {'frame': 'func_ov006_020e285c',
-         'callee': 'func_ov006_020e20bc',
-         'tu': 'src/func_ov006_020e285c.c',
+        {'frame': '_ZN14dScMgCurling_c19func_ov006_020e285cEi',
+         'callee': '_ZN14dScMgCurling_c19func_ov006_020e20bcEi',
+         'tu': 'src/actors/dScMgCurling_c.cpp',
          'note':
              'The curling collision veneer. Its callee is the face in '
              'hal/scene_mg_faces.cpp, which forwards to the transcription; '

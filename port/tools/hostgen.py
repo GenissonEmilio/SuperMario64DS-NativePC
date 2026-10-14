@@ -395,6 +395,72 @@ def asm_excision_patch(text, sym):
     return apply_patches(text, sym, ASM_EXCISION, "ASM_EXCISION")
 
 
+# ---- MWCC-ONLY SPELLINGS MAIN'S FOLDS BROUGHT IN (PORTSYNC2) ----------------
+#
+# Spellings mwccarm accepts and a host C++ front end refuses, all new with the
+# 2026-10 main merge (the per-function files the port line compiled spelled
+# none of them):
+#
+# MWCC_SPELLING, exact rows (apply_patches: hard error if one moves):
+#  * `struct V2 v;` where V2 is `typedef struct { ... } V2;` -- an elaborated
+#    specifier naming a TYPEDEF of an unnamed struct. The old one-function
+#    file declared a real tag; the fold replaced it with the TU's shared
+#    typedef and kept the elaborated uses. The row drops the `struct`
+#    keyword: the same type, no layout or linkage change.
+#  * an implicit void* -> T* argument conversion inside a `#pragma cplusplus
+#    off` region. mwccarm compiles that region as C, where it is legal; the
+#    host compiles the whole TU as C++. The row passes the already-cast
+#    pointer the body holds, the same address.
+MWCC_SPELLING = {
+    # src/actors/dScMgSmartball_c.cpp, cMgSmartball_ball_c::HitWing.
+    "dScMgSmartball_c": [
+        ("  struct V2 v;\n  v.x = src[0];", "  V2 v;\n  v.x = src[0];"),
+    ],
+    # src/game/actors/d_a_nknk.cpp: the folded func_ov062_02118334 body and its
+    # Vec3_Asr declaration (the old src/func_ov062_02118334.c had the tag).
+    "d_a_nknk": [
+        ("extern void Vec3_Asr(struct Vec3 *d, struct Vec3 *s, int sh);",
+         "extern void Vec3_Asr(Vec3 *d, Vec3 *s, int sh);"),
+        ("  struct Vec3 v;\n  Vec3_Asr(&v, (struct Vec3 *)&mPosX, 3);",
+         "  Vec3 v;\n  Vec3_Asr(&v, (Vec3 *)&mPosX, 3);"),
+    ],
+    # src/engine/collision/dBgW_KcMbg.cpp, dBgW_KcMbg::SetFile (the C-region
+    # body): `thiz` is the void* parameter, `self` its dBgW_KcMbg* cast.
+    "dBgW_KcMbg": [
+        ("  func_02039e18(thiz, (Vector3 *) (stk + 0x60), (Vector3 *) (c + 0x28));",
+         "  func_02039e18(self, (Vector3 *) (stk + 0x60), (Vector3 *) (c + 0x28));"),
+    ],
+}
+
+# CAST_EXTERN. `((extern int(*)(unsigned int i))func_02050a5c)(a0)` -- a
+# storage-class keyword inside a cast's type-id. Main's fold of the sound
+# engine moved each per-function file's file-scope prototypes INTO the call
+# expression this way; mwccarm ignores the `extern`, every host front end
+# refuses it ("type name does not allow storage class"). Deleting the keyword
+# leaves exactly the cast mwccarm compiled. A regex rather than one row per
+# call, so the value is the exact number of casts the TU spells: a count that
+# moves is a hard error, the same discipline apply_patches keeps.
+CAST_EXTERN = {
+    "SoundEngine": 23,
+}
+CAST_EXTERN_RE = re.compile(r"\(\(extern\s+")
+
+
+def mwcc_spelling_patch(text, sym):
+    return apply_patches(text, sym, MWCC_SPELLING, "MWCC_SPELLING")
+
+
+def cast_extern_patch(text, sym):
+    want = CAST_EXTERN.get(sym)
+    if want is None:
+        return text, 0
+    text, n = CAST_EXTERN_RE.subn("((", text)
+    if n != want:
+        sys.exit("hostgen: %s: CAST_EXTERN expected %d `((extern` casts, found %d. "
+                 "The source moved; re-read it and re-count." % (sym, want, n))
+    return text, n
+
+
 # A shared header can declare a symbol with a different pointer parameter type
 # than the TU that defines it uses. That was invisible while the decl_*.h
 # headers were C++-mangled, because the two spellings were simply two different
@@ -423,8 +489,8 @@ HEADER_SHADOW = {
     "func_ov102_0214b248": "decl_common.h",   # header void*, TU char*  (gate 32)
     # gate 32, KING_BOB_OMB: header (char*,int)/(void*,int), TU (void*,int) for
     # both
-    "func_ov078_02124cf4": ("decl_common.h",
-                            ("func_ov078_02125c24", "func_0200fa8c")),
+    "_ZN12daBombking_c19func_ov078_02124cf4Ev": ("decl_common.h",
+                            ("_ZN12daBombking_c19func_ov078_02125c24Ei", "func_0200fa8c")),
     # gate 29: decl_Particle.h declares Initialise as (void*) with C++
     # linkage, the TU defines it extern "C" over Particle__SysTracker*, and
     # MSVC reads that as overloading a function with C linkage (C2733).
@@ -470,9 +536,9 @@ HEADER_SHADOW = {
     # this cluster's slice (src/_ZN15TtcRotatingCube10UpdateClsnEv.cpp defines it `(void*)`
     # and src/_ZN15TtcRotatingCube11UpdateModelEv.cpp `(void*)`), so the header is the odd one
     # out and shadowing it is what leaves every definition untouched.
-    "_ZN15TtcRotatingCube13InitResourcesEv": ("decl_common.h",
-                                              ("_ZN15TtcRotatingCube10UpdateClsnEv",
-                                               "_ZN15TtcRotatingCube11UpdateModelEv")),
+    "_ZN20daObjCtRotateBlock_c13InitResourcesEv": ("decl_common.h",
+                                              ("_ZN20daObjCtRotateBlock_c10UpdateClsnEv",
+                                               "_ZN20daObjCtRotateBlock_c11UpdateModelEv")),
     # Run link100, lane SEAT6, batch B6. src/_ZN6Player16CleanupResourcesEv.cpp
     # re-declares five functions decl_common.h has already declared, `char *`
     # against the header's `void *` (:2207-2209, :2289) and, for func_02073244
@@ -529,7 +595,7 @@ MEMBER_REDECL = {
     # spelling this TU uses, and Actor -> dActor_c) and widened Spawn's last two
     # parameters to their real types. Deleting them is still the whole patch:
     # every one of the five is declared again, correctly, inside its class.
-    "_ZN11BillBlaster8BehaviorEv": [
+    "_ZN18daObjBkKillerdai_c8BehaviorEv": [
         ("int dBgActor_c_helper::UpdateKillByMegaChar(short, short, short, "
          "FixV);\n", ""),
         ("dActor_c* Actor_s::FindWithID(unsigned int);\n", ""),
@@ -644,27 +710,57 @@ struct VObj {
 }
 
 REDECL_CONFLICT = {
+    # PORTSYNC2. src/actors/daCoin_c.cpp: main folded the coin's per-function
+    # files into one TU and each member kept its own block-scope spelling of
+    # the same ROM data, in three disagreeing types (char vs void* for the red
+    # coin's file view 0x0210d9a8, char *[] vs a member-local FileEntry *[] for
+    # the two model tables 0x020ff06c / 0x020ff060, int[] vs Matrix4x3 for the
+    # identity matrix). Separate files never met; one TU is a redeclaration
+    # with a different type. The rows make each spelling the one its sibling
+    # uses: the identity matrix takes the Matrix4x3 spelling the port already
+    # bridges (?IDENTITY_MATRIX4X3@@3UMatrix4x3@@A), the other three take the
+    # spelling DATA_C_LINKAGE gives them C linkage under, and the four
+    # `->bmd` reads go through the member's own FileEntry view by cast. Same
+    # addresses, same loads.
+    "daCoin_c": [
+        ("    extern int IDENTITY_MATRIX4X3[];\n",
+         "    extern Matrix4x3 IDENTITY_MATRIX4X3;\n"),
+        ("*(struct Matrix4x3*)&mShadowMat = *(struct Matrix4x3*)IDENTITY_MATRIX4X3;",
+         "*(struct Matrix4x3*)&mShadowMat = *(struct Matrix4x3*)&IDENTITY_MATRIX4X3;"),
+        ("    extern FileEntry* data_ov002_020ff06c[];\n"
+         "    extern FileEntry* data_ov002_020ff060[];\n"
+         "    extern void* data_ov002_0210d9a8;\n",
+         "    extern char *data_ov002_020ff06c[];\n"
+         "    extern char *data_ov002_020ff060[];\n"
+         "    extern char data_ov002_0210d9a8;\n"),
+        ("data_ov002_020ff06c[type]->bmd",
+         "((FileEntry *)data_ov002_020ff06c[type])->bmd"),
+        ("data_ov002_020ff06c[mCoinType]->bmd",
+         "((FileEntry *)data_ov002_020ff06c[mCoinType])->bmd"),
+        ("data_ov002_020ff060[mCoinType]->bmd",
+         "((FileEntry *)data_ov002_020ff060[mCoinType])->bmd"),
+    ],
     "daMky_c": [
         # The eighteen block-scope redeclarations, in file order. Each names a
         # symbol the TU already declares at lines 155-169 or defines above.
         ("    extern int func_0201267c(int a, void *b);\n", ""),
         ("    extern void *_ZN8dActor_c13ClosestPlayerEv(void *a);\n", ""),
-        ("    extern void func_ov030_02111dd0(char *c);\n", ""),
-        ("    extern void func_ov030_02111ea4(char *c);\n", ""),
-        ("    extern void func_ov030_02111bc4(void* c);\n", ""),
+        ("    extern void _ZN7daMky_c19func_ov030_02111dd0Ev(char *c);\n", ""),
+        ("    extern void _ZN7daMky_c19func_ov030_02111ea4Ev(char *c);\n", ""),
+        ("    extern void _ZN7daMky_c19func_ov030_02111bc4Ev(void* c);\n", ""),
         ("    void *_ZN8dActor_c13ClosestPlayerEv(void *self);\n", ""),
         ("    void _ZN5dCc_c5ClearEv(void *thiz);\n", ""),
-        ("    extern void func_ov030_02111bc4(void *a);\n", ""),
+        ("    extern void _ZN7daMky_c19func_ov030_02111bc4Ev(void *a);\n", ""),
         ("    extern void _ZN5dCc_c5ClearEv(void *p);\n", ""),
         ("    extern int func_0201267c(int a, void* b);\n", ""),
         ("    extern void _ZN5dCc_c5ClearEv(void* self);\n", ""),
         ("    extern void _ZN5dCc_c5ClearEv(void *self);\n", ""),
         ("    extern void *_ZN8dActor_c13ClosestPlayerEv(void *c);\n", ""),
-        ("    extern void func_ov030_02111bc4(void *c);\n", ""),
+        ("    extern void _ZN7daMky_c19func_ov030_02111bc4Ev(void *c);\n", ""),
         ("    extern void _ZN5dCc_c5ClearEv(void *c);\n", ""),
-        ("    extern void func_ov030_02111a00(char* c);\n", ""),
-        ("    extern void func_ov030_02111dd0(char* c);\n", ""),
-        ("    extern void func_ov030_02111ea4(char* c);\n", ""),
+        ("    extern void _ZN7daMky_c19func_ov030_02111a00Ev(char* c);\n", ""),
+        ("    extern void _ZN7daMky_c19func_ov030_02111dd0Ev(char* c);\n", ""),
+        ("    extern void _ZN7daMky_c19func_ov030_02111ea4Ev(char* c);\n", ""),
         # The stray forward declaration that makes a LOCAL dActor_c out of the
         # two elaborated specifiers under it. The real class is visible at file
         # scope in this TU: func_ov030_021122b0 takes a dActor_c * at line 679.
@@ -762,6 +858,28 @@ EXTERN_C_DATA = {
          "extern SharedFilePtr data_ov070_02123500;\n"
          "extern daPropeller_Heyho_c::State data_ov070_0212359c;\n"),
     ],
+    # PORTSYNC2. src/actors/unit020b2c84.cpp (main's ov004 2D-minigame unit)
+    # declares five of its tables at file scope with C++ linkage and then
+    # DEFINES the same five further down inside its own `extern "C" {` (the
+    # style tables at 0x020bf428 / 0x020bf490 / 0x020bf4f8, 0x020bf560 and
+    # 0x020bf5d4). mwccarm takes the later linkage; MSVC (C2732) and clang
+    # refuse a linkage specification that contradicts the earlier one. The
+    # row gives the five declarations the C linkage their definitions have;
+    # the run's other externs are untouched.
+    "unit020b2c84": [
+        ("extern PairW data_ov004_020bf428[];\n"
+         "extern PairW data_ov004_020bf490[];\n"
+         "extern PairW data_ov004_020bf4f8[];\n"
+         "extern int data_ov004_020bf560[];\n"
+         "extern int data_ov004_020bf5d4[];\n",
+         'extern "C" {  /* hostgen EXTERN_C_DATA: defined below in extern "C" */\n'
+         "extern PairW data_ov004_020bf428[];\n"
+         "extern PairW data_ov004_020bf490[];\n"
+         "extern PairW data_ov004_020bf4f8[];\n"
+         "extern int data_ov004_020bf560[];\n"
+         "extern int data_ov004_020bf5d4[];\n"
+         "}\n"),
+    ],
 }
 
 
@@ -833,7 +951,7 @@ DS_DIV = {
     # x/0 = 0, x86 idiv faults c0000094 (measured on the VS castle grounds,
     # level 51, actor 0x1f, reproduced with SM64DS_LEVEL=51). `/ 0x1000` above
     # is a constant divisor and stays. This retires unmatched/VS_PathDivGuard.cpp.
-    "func_ov002_020ef670": [
+    "_ZN16dPathLiftActor_c9StatePathEv": [
         ("ad2 / dv", "ds_idiv(ad2, dv)"),
         ("ad1 / dv", "ds_idiv(ad1, dv)"),
     ],
@@ -845,7 +963,7 @@ DS_DIV = {
     # c0000094 at Advance+0x1e, VS map 2 level 43, lane CAPSHOW). This entry
     # retires port/unmatched/Animation_AdvanceDivGuard.cpp, which was the
     # matched source with exactly this one modulus rerouted.
-    "_ZN9Animation7AdvanceEv": [
+    "_ZN15dExtFrameCtrl_c7AdvanceEv": [
         ("currFrame = (currFrame + speed + (int)len) % (int)len;",
          "currFrame = ds_imod(currFrame + speed + (int)len, (int)len);"),
     ],
@@ -1060,7 +1178,7 @@ FALLS_OFF_RETURN = {
     # Nothing reads the result on the host either: the one caller,
     # port/hal/actor_classes_bob_world.cpp:1583, declares the flat ROM name void
     # and its face returns 0 of its own.
-    "_ZN14ArrowSignRight11OnAttacked1ER8dActor_c": [
+    "_ZN15daObjYajirusi_c11OnAttacked1ER8dActor_c": [
         ("    if (r == 0) return;\n    Kill();\n}",
          "    if (r != 0) {\n"
          "        Kill();\n"
@@ -1323,7 +1441,7 @@ VIRTUAL_CALL = {
     # and four bytes were cleaned twice (measured: the spawn-assisted key
     # crashed frame 1, ecx=13811ba3, DEP-exec fault). Retires the
     # _ZN9RabbitKey6RenderEv body in port/unmatched/Ov085_Renders.cpp.
-    "_ZN9RabbitKey6RenderEv": [
+    "_ZN15daObj_Mip_Key_c6RenderEv": [
         ("        s->vt->fn14(s, 0);",
          "        /* hostgen VIRTUAL_CALL: byte +0x14 is word 5 of the Model\n"
          "           vptr -- Render -- and the host seats a __fastcall thunk\n"
@@ -1428,7 +1546,7 @@ VIRTUAL_CALL = {
     # word out of the live scene object on scene 387. The two src TUs are
     # byte-identical apart from their names, so the two patches are the same
     # text. Retires port/unmatched/MgBase_ShadowSlot19.cpp.
-    "func_ov004_020b6b40": [
+    "_ZN10dMgState_c19func_ov004_020b6b40Ev": [
         ("        int (*fn)(void *, int) = "
          "(int (*)(void *, int)) (*(void ***)g)[0x13];\n"
          "        if (fn(g, c->f18) == 0)",
@@ -1440,7 +1558,7 @@ VIRTUAL_CALL = {
          "(*(void ***)g)[0x13];\n"
          "        if (fn(g, 0, c->f18) == 0)"),
     ],
-    "func_ov004_020b6c9c": [
+    "_ZN10dMgState_c19func_ov004_020b6c9cEv": [
         ("        int (*fn)(void *, int) = "
          "(int (*)(void *, int)) (*(void ***)g)[0x13];\n"
          "        if (fn(g, c->f18) == 0)",
@@ -1577,7 +1695,7 @@ MG_PMF_CALL = {
     ],
     # dScMgBomroom_c, table 021416a0, arity 0 -- the counting entry, so
     # hal/scene_mg_bomroom.cpp's census still says how often this shape ran
-    "func_ov006_020d8f98": [
+    "_ZN14dScMgBomroom_c19func_ov006_020d8f98Ev": [
         ("  f(obj);",
          "  port_mg_bomroom_opencoded_call0(obj, (unsigned)e[0], off);"),
     ],
@@ -2183,7 +2301,7 @@ ARG_WIDTH = {
 # the TU no longer calls is a src that moved, and the entry has to be re-read
 # rather than left inert.
 CALLEE_SEAM = {
-    "_ZN3HUD13InitResourcesEv": [
+    "_ZN8dMeter_c13InitResourcesEv": [
         ("LoadFile",       "port_hud_loadfile"),
         ("DecompressLZ16", "port_hud_lz16"),
         ("LoadOBJPltt",    "port_hud_objpltt"),   # GX:: and GXS:: alike
@@ -2615,7 +2733,7 @@ NARROW_RETURN = {
         ("flat", "_ZN8dActor_c12ReflectAngleE5Fix12IiES1_s", "s16")],
     # src/actors/Player.cpp defines it inside an extern "C" block; the TU's own
     # St_NoControl caller declares it `extern int` and tests `!= 0`.
-    "Player": [("flat", "func_ov002_020c84b0", "u8")],
+    "Player": [("flat", "_ZN6Player19func_ov002_020c84b0Ev", "u8")],
     # static members: stem -> [("static", "Cls::Meth", kind, flat ROM name)]
     "_ZN8SaveData13GetCoinRecordEj": [
         ("static", "SaveData::GetCoinRecord", "u8", "_ZN8SaveData13GetCoinRecordEj")],
@@ -2954,10 +3072,10 @@ LEDGER_PARK = {
         # Retiring the row and deleting the park are ONE change: either half
         # alone is a broken link.
         # func_ov096_02135e2c
-        ("/* ROM ordinal 11 -- func_ov096_02135e2c, 0x02135e2c, size 0xd0 */\n",
-         "/* ROM ordinal 11 -- func_ov096_02135e2c, 0x02135e2c, size 0xd0 */\n#if 0  /* hostgen LEDGER_PARK */\n"),
-        ("/* ROM ordinal 10 -- func_ov096_02135948, 0x02135948, size 0x4e4 */\n",
-         "#endif  /* hostgen LEDGER_PARK: func_ov096_02135e2c */\n/* ROM ordinal 10 -- func_ov096_02135948, 0x02135948, size 0x4e4 */\n"),
+        ("/* ROM ordinal 11 -- _ZN9daSanbo_c19func_ov096_02135e2cEP10dBgCh_Actr, 0x02135e2c, size 0xd0 */\n",
+         "/* ROM ordinal 11 -- _ZN9daSanbo_c19func_ov096_02135e2cEP10dBgCh_Actr, 0x02135e2c, size 0xd0 */\n#if 0  /* hostgen LEDGER_PARK */\n"),
+        ("/* ROM ordinal 10 -- _ZN9daSanbo_c19func_ov096_02135948Ev, 0x02135948, size 0x4e4 */\n",
+         "#endif  /* hostgen LEDGER_PARK: _ZN9daSanbo_c19func_ov096_02135e2cEP10dBgCh_Actr */\n/* ROM ordinal 10 -- _ZN9daSanbo_c19func_ov096_02135948Ev, 0x02135948, size 0x4e4 */\n"),
     ],
     # daPkn_c (Piranha Plant). Three ledger members plus
     # func_ov084_0212f204, whose host copy
@@ -2989,12 +3107,12 @@ LEDGER_PARK = {
         # the body's own last brace, the way daWanwan_c_classInit's does. A
         # banner-to-banner bracket here would leave the extern "C" block's
         # closing brace inside the #if 0.
-        ("void func_ov084_0212f204(char* r4){\n",
-         "#if 0  /* hostgen LEDGER_PARK: func_ov084_0212f204 */\n"
-         "void func_ov084_0212f204(char* r4){\n"),
+        ("void _ZN7daPkn_c18TrackClosestPlayerEv(char* r4){\n",
+         "#if 0  /* hostgen LEDGER_PARK: _ZN7daPkn_c18TrackClosestPlayerEv */\n"
+         "void _ZN7daPkn_c18TrackClosestPlayerEv(char* r4){\n"),
         ("      *(short*)(r4 + 0x468) = *(short*)(r4 + 0x8e);\n    }\n  }\n}\n",
          "      *(short*)(r4 + 0x468) = *(short*)(r4 + 0x8e);\n    }\n  }\n}\n"
-         "#endif  /* hostgen LEDGER_PARK: func_ov084_0212f204 */\n"),
+         "#endif  /* hostgen LEDGER_PARK: _ZN7daPkn_c18TrackClosestPlayerEv */\n"),
     ],
     # daWanwan_c (Chain Chomp). Three ledger members plus daWanwan_c_classInit,
     # which is a FACTORY host copy (unmatched/ChainChomp_Spawn_hostcopy.cpp) held
@@ -3097,6 +3215,26 @@ def ledger_park(text, sym):
 # file-scope declaration sitting between a banner and a body can never fall
 # inside the #if 0.
 HOST_COPY_PARK = {
+    # fBase_c::AfterCleanupResources, arm9 0x02043b2c. PORTSYNC2: main folded
+    # it into src/actors/ActorBase.cpp; port/CMakeLists.txt's GATE9 row keeps
+    # compiling the port line's per-function copy
+    # (port/unmatched/hostarm/_ZN7fBase_c21AfterCleanupResourcesEj.cpp) under the
+    # fBase_c shadow force-include the slot-16 dispatch ruling needs, which
+    # cannot be put over the whole class TU. So the folded body is parked here.
+    "ActorBase": [
+        ("void fBase_c::AfterCleanupResources(u32 vfSuccess)\n{\n",
+         "/* hostgen HOST_COPY_PARK: port/unmatched/hostarm/\n"
+         "   _ZN7fBase_c21AfterCleanupResourcesEj.cpp defines this member under\n"
+         "   the slot-16 destructor dispatch ruling, so a second definition here\n"
+         "   is a duplicate symbol. Parked, not deleted. */\n"
+         "#if 0  /* hostgen HOST_COPY_PARK: fBase_c::AfterCleanupResources */\n"
+         "void fBase_c::AfterCleanupResources(u32 vfSuccess)\n{\n"),
+        ("    this->~fBase_c();   /* vtable+0x40 = slot 16 = D1 */\n"
+         "    _ZN6Memory10DeallocateEPvP4Heap(this, data_020a0eac);\n}\n",
+         "    this->~fBase_c();   /* vtable+0x40 = slot 16 = D1 */\n"
+         "    _ZN6Memory10DeallocateEPvP4Heap(this, data_020a0eac);\n}\n"
+         "#endif  /* hostgen HOST_COPY_PARK: fBase_c::AfterCleanupResources */\n"),
+    ],
     # func_ov006_0211ba88, ov006 0x0211ba88, host-copied by
     # port/unmatched/MgSound_ShadowSlot35.cpp, whose header lists four measured
     # defects in the matched translation unit (the dropped receiver at the
@@ -3104,17 +3242,17 @@ HOST_COPY_PARK = {
     # store where the ROM stores a byte, and the n == 0 test nested inside the
     # idx >= limit arm).
     "dScMgSound_c": [
-        ("void func_ov006_0211ba88(char *base, int idx)\n{\n",
+        ("void _ZN12dScMgSound_c19func_ov006_0211ba88Ei(char *base, int idx)\n{\n",
          "/* hostgen HOST_COPY_PARK: port/unmatched/MgSound_ShadowSlot35.cpp\n"
          "   defines this ROM name under a standing PORT_HOST_ABI ruling, so a\n"
          "   second definition here is a duplicate symbol. Parked, not deleted;\n"
          "   the host copy goes on defining the name and nothing dispatches\n"
          "   differently. See the HOST_COPY_PARK table in tools/hostgen.py. */\n"
-         "#if 0  /* hostgen HOST_COPY_PARK: func_ov006_0211ba88 */\n"
-         "void func_ov006_0211ba88(char *base, int idx)\n{\n"),
+         "#if 0  /* hostgen HOST_COPY_PARK: _ZN12dScMgSound_c19func_ov006_0211ba88Ei */\n"
+         "void _ZN12dScMgSound_c19func_ov006_0211ba88Ei(char *base, int idx)\n{\n"),
         ("    ctx->ent[idx].b0d = 0;\n    ctx->ent[idx].b0e = 0;\n}\n",
          "    ctx->ent[idx].b0d = 0;\n    ctx->ent[idx].b0e = 0;\n}\n"
-         "#endif  /* hostgen HOST_COPY_PARK: func_ov006_0211ba88 */\n"),
+         "#endif  /* hostgen HOST_COPY_PARK: _ZN12dScMgSound_c19func_ov006_0211ba88Ei */\n"),
     ],
     # func_ov078_02123f1c, ov078 0x02123f1c, host-copied by
     # port/unmatched/KingBobOmb_HeldHealthCheck.cpp. The ruling is an implicit
@@ -3128,13 +3266,13 @@ HOST_COPY_PARK = {
          "   GetHealth receiver rides r0), so a second definition here is a\n"
          "   duplicate symbol. Parked, not deleted. See the HOST_COPY_PARK\n"
          "   table in tools/hostgen.py. */\n"
-         "#if 0  /* hostgen HOST_COPY_PARK: func_ov078_02123f1c */\n"
+         "#if 0  /* hostgen HOST_COPY_PARK: _ZN12daBombking_c19func_ov078_02123f1cEv */\n"
          'extern "C" int func_ov078_02123f1c(CView* c)\n{\n'),
-        ("        KingBobOmb_SetState(c, data_ov078_0212709c);\n"
+        ("        _ZN12daBombking_c19KingBobOmb_SetStateEPv(c, data_ov078_0212709c);\n"
          "    }\n    return 1;\n}\n",
-         "        KingBobOmb_SetState(c, data_ov078_0212709c);\n"
+         "        _ZN12daBombking_c19KingBobOmb_SetStateEPv(c, data_ov078_0212709c);\n"
          "    }\n    return 1;\n}\n"
-         "#endif  /* hostgen HOST_COPY_PARK: func_ov078_02123f1c */\n"),
+         "#endif  /* hostgen HOST_COPY_PARK: _ZN12daBombking_c19func_ov078_02123f1cEv */\n"),
     ],
     # daObjBSwdoor_c_classInit, ov014, host-copied by
     # port/unmatched/ShutterBob_Spawn_hostcopy.cpp, which carries a measured
@@ -3210,6 +3348,181 @@ HOST_COPY_PARK = {
          "#endif  /* hostgen HOST_COPY_PARK: dScMgCup_c_classInit */\n"),
     ],
 }
+
+
+# ---- PARK_SYMBOL: park a folded body by its `// @symbol` marker ------------
+#
+# PORTSYNC2 (the 2026-10 main merge, 749f5799a). HOST_COPY_PARK above anchors
+# on literal text, which is right when a lane has read the body; but the merge
+# folded dozens of per-function sources that port/unmatched/ host-copies into
+# class TUs, and every one of those TUs now arrives with a second definition.
+# Main marks every body it folds with `// @symbol <ROM name>`, so this table
+# names the ROM symbols to park and the park is placed from the marker: the
+# definition that follows the marker (and any markers stacked on it, which
+# must all be listed -- a D1/D0 pair shares one destructor) up to its matching
+# closing brace goes inside #if 0. Hard error if a marker is missing, a
+# stacked marker is not listed, or the braces do not balance, so a text
+# change in main fails here rather than at the link.
+PARK_SYMBOL = {
+    # Found by the PORTSYNC2 link simulation (clang-cl objects, lld-link): each
+    # of these is defined both by the TU main folded it into and by the port's
+    # standing host copy (port/unmatched/UnchainedChomp_Behavior.cpp,
+    # unmatched/func_ov002_020f3de4.c, unmatched/MeshCollider_DetectClsn_
+    # RaycastLine.cpp, hal/link21_rows.cpp's non-polymorphic fBase_c shadow,
+    # which forwards to the recovered C2 arm). The host copy is what ran on the
+    # port line, so the folded body is parked.
+    "daWanwan2_c": ["daWanwan2_c_classInit"],
+    "daDemo_c": ["func_ov002_020f3de4"],
+    "dBgW_Kc_itcm": ["_ZN7dBgW_Kc10DetectClsnER9dBgCh_Lin"],
+    "ActorBase": ["_ZN7fBase_cC2Ev"],
+    # src/actors/daObjCvNewsLift_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # text dropped it, and port/unmatched/hostarm/ carries the body with the
+    # arm back (see its banner), so the folded copy is parked.
+    "daObjCvNewsLift_c": ["_ZN17daObjCvNewsLift_c8BehaviorEv"],
+    # src/actors/daObjBlockL_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # text dropped it, and port/unmatched/hostarm/ carries the body with the
+    # arm back (see its banner), so the folded copy is parked.
+    "daObjBlockL_c": ["_ZN13daObjBlockL_c11OnAttacked1ER8dActor_c", "_ZN13daObjBlockL_c11OnAttacked2ER8dActor_c"],
+    # src/_ZN10dScStage_c16CleanupResourcesEv.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # text dropped it, and port/unmatched/hostarm/ carries the body with the
+    # arm back (see its banner), so the folded copy is parked.
+    "_ZN10dScStage_c16CleanupResourcesEv": ["_ZN10dScStage_c16CleanupResourcesEv"],
+    # src/actors/daObjPile_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # text dropped it, and port/unmatched/hostarm/ carries the body with the
+    # arm back (see its banner), so the folded copy is parked.
+    "daObjPile_c": ["_ZN11daObjPile_c8BehaviorEv"],
+    # src/engine/view/dCamera_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # text dropped it, and port/unmatched/hostarm/ carries the body with the
+    # arm back (see its banner), so the folded copy is parked.
+    "dCamera_c": ["_ZN9dCamera_c14GoBehindPlayerEj"],
+    # src/engine/save/SaveData.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # text dropped it, and port/unmatched/hostarm/ carries the body with the
+    # arm back (see its banner), so the folded copy is parked.
+    "SaveData": ["_ZN8SaveData8SaveFileEjP12FileSaveData"],
+    # src/actors/dActor_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # text dropped it, and port/unmatched/hostarm/ carries the body with the
+    # arm back (see its banner), so the folded copy is parked.
+    "dActor_c": ["_ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE"],
+    # src/actors/dScDSMT_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # text dropped it, and port/unmatched/hostarm/ carries the body with the
+    # arm back (see its banner), so the folded copy is parked.
+    "dScDSMT_c": ["_ZN9dScDSMT_c8BehaviorEv"],
+    # src/actors/Player.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # text dropped it, and port/unmatched/hostarm/ carries the body with the
+    # arm back (see its banner), so the folded copy is parked.
+    "Player": ["_ZN6Player19func_ov002_020bd8c0Ej", "_ZN6Player19func_ov002_020bd928Ej", "_ZN6Player19func_ov002_020bd984Ej", "_ZN6Player19func_ov002_020bd9ecEj", "_ZN6Player19func_ov002_020bdb50Ei", "_ZN6Player12St_Swim_MainEv"],
+    # src/actors/dScMgRoulette_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # text dropped it, and port/unmatched/hostarm/ carries the body with the
+    # arm back (see its banner), so the folded copy is parked.
+    "dScMgRoulette_c": ["_ZN15dScMgRoulette_c13OnTurnIntoEggEi"],
+    # src/actors/unit020cd744.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # text dropped it, and port/unmatched/hostarm/ carries the body with the
+    # arm back (see its banner), so the folded copy is parked.
+    "unit020cd744": ["func_ov006_020ce988"],
+    # src/actors/dScMgPachinko2_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # text dropped it, and port/unmatched/hostarm/ carries the body with the
+    # arm back (see its banner), so the folded copy is parked.
+    "dScMgPachinko2_c": ["_ZN16dScMgPachinko2_c19func_ov006_021004c0Ev"],
+}
+
+
+def _skip_ws_comments(text, i):
+    while True:
+        while i < len(text) and text[i] in " \t\r\n":
+            i += 1
+        if text.startswith("//", i):
+            j = text.find("\n", i)
+            i = len(text) if j < 0 else j + 1
+        elif text.startswith("/*", i):
+            j = text.find("*/", i + 2)
+            if j < 0:
+                return len(text)
+            i = j + 2
+        else:
+            return i
+
+
+def _match_brace(text, i):
+    """Index just past the brace matching the '{' at text[i]."""
+    depth = 0
+    n = len(text)
+    while i < n:
+        c = text[i]
+        if text.startswith("//", i):
+            i = text.find("\n", i)
+            if i < 0:
+                return -1
+            continue
+        if text.startswith("/*", i):
+            i = text.find("*/", i + 2)
+            if i < 0:
+                return -1
+            i += 2
+            continue
+        if c in "\"'":
+            j = i + 1
+            while j < n and text[j] != c:
+                j += 2 if text[j] == "\\" else 1
+            i = j + 1
+            continue
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return -1
+
+
+def park_symbol_patch(text, sym):
+    names = PARK_SYMBOL.get(sym)
+    if not names:
+        return text, 0
+    done = set()
+    for name in names:
+        if name in done:
+            continue
+        m = re.search(r"^[ \t]*//\s*@symbol\s+%s[ \t]*$" % re.escape(name), text, re.M)
+        if not m:
+            sys.exit("hostgen: %s: PARK_SYMBOL: no `// @symbol %s` marker" % (sym, name))
+        # walk back over markers stacked above it, then forward over the rest
+        start = m.start()
+        stacked = [name]
+        k = m.end() + 1
+        while True:
+            mm = re.match(r"[ \t]*//\s*@symbol\s+(\S+)[ \t]*\n", text[k:])
+            if not mm:
+                break
+            stacked.append(mm.group(1))
+            k += mm.end()
+        prev = text.rfind("\n", 0, start - 1)
+        while prev >= 0:
+            line_start = prev + 1
+            mm = re.match(r"[ \t]*//\s*@symbol\s+(\S+)[ \t]*$",
+                          text[line_start:start - 1])
+            if not mm:
+                break
+            stacked.insert(0, mm.group(1))
+            start = line_start
+            prev = text.rfind("\n", 0, start - 1)
+        missing = [x for x in stacked if x not in names]
+        if missing:
+            sys.exit("hostgen: %s: PARK_SYMBOL: %s shares its definition with %s, "
+                     "which is not listed" % (sym, name, ", ".join(missing)))
+        d = _skip_ws_comments(text, k)
+        b = text.find("{", d)
+        semi = text.find(";", d)
+        if b < 0 or 0 <= semi < b:
+            sys.exit("hostgen: %s: PARK_SYMBOL: no body after the %s marker" % (sym, name))
+        e = _match_brace(text, b)
+        if e < 0:
+            sys.exit("hostgen: %s: PARK_SYMBOL: unbalanced braces in %s" % (sym, name))
+        tag = ", ".join(stacked)
+        text = (text[:d] + "#if 0  /* hostgen PARK_SYMBOL: %s */\n" % tag + text[d:e]
+                + "\n#endif  /* hostgen PARK_SYMBOL: %s */" % tag + text[e:])
+        done.update(stacked)
+    return text, len(done)
 
 
 def host_copy_park(text, sym):
@@ -3290,6 +3603,366 @@ def altname(text, sym):
     return block + text, len(rows)
 
 
+# ---- ONE C NAME, MANY NAMESPACE-LOCAL SPELLINGS (PORTSYNC2) -----------------
+#
+# Main's folds of the ov004/ov006 minigame units keep each folded function in
+# its OWN namespace ("Each function keeps its namespace, because the local
+# structs and externs disagree" -- src/actors/unit020cd744.cpp's header), and
+# each namespace re-declares the ROM names it uses with C linkage and the
+# per-function file's own types: data_ov006_0214059c is `int` in one namespace
+# and `void *` in the next, func_0203ce80 takes `Vec3 *` here and
+# `struct Vector3 *` there. mwccarm reads one undecorated name per declaration
+# and never compares them. C++ says two C-linkage declarations of one name in
+# different namespaces are ONE entity ([dcl.link]), so a host front end refuses
+# every disagreeing pair (C2733 / C2371; clang-cl "conflicting types",
+# "redeclaration ... with a different type") -- hundreds per TU.
+#
+# THE REPAIR KEEPS EVERY SPELLING. Each name a namespace DECLARES with C
+# linkage (and does not define) is renamed by `#define name name__hg_<ns>`,
+# held from the namespace's opening brace to the next top-level namespace (or
+# the end of the file): d_s_mg_base's namespaces hold only declarations and the
+# member written after each one uses them as `ns::name` or under a
+# using-directive. So the namespace's declaration and every use of it name a
+# distinct C symbol with the namespace's own type. A name some namespace
+# DEFINES (inline helpers, the unit's own functions; a definition after a C
+# declaration inherits C linkage) keeps its real name inside that namespace's
+# span, and is `name__hg_global` everywhere else -- from the top of the file,
+# so the TU's own global prototype block and decl_common.h's declaration are
+# renamed too, since those are the spellings that disagree with the
+# definition. One /alternatename per renamed name bridges it to the real C
+# symbol, which is defined exactly where it was before (this TU, a host copy,
+# the mount, the HAL). Nothing defines a `__hg_` name, so every alias fires and
+# port/tools/alternatename_guard.py's defeat rule cannot trip; x86 C
+# decoration is the leading underscore for data and __cdecl functions alike.
+# Calls stay direct calls, data stay direct references, no body is edited.
+#
+# MEASURED on the clang-cl stand-in: the four TUs go from 221 / 23 / 61 / 74
+# errors to none, every undefined `__hg_` symbol in each object has its
+# directive, none is defined, and none comes out C++-decorated. Whether real
+# MSVC diagnoses a cross-namespace C-linkage disagreement or not, this spelling
+# is well-formed and links to the same symbols the ROM names. Per stem,
+# listed: a TU only gets this after it has been read and its namespaces are the
+# per-function kind. Parked bodies (`#if 0`) are not read.
+NS_C_ALIAS = {
+    "dMgTrmpln2Mario_c", "unit020bfec0", "unit020cd744", "d_s_mg_base",
+    "dMg3DHeyhoObjAdapter_c",
+}
+
+# TUs whose renames end at the namespace's own closing brace instead of
+# running on to the next namespace: dMg3DHeyhoObjAdapter_c declares a folded
+# function's data again at global scope BETWEEN namespaces (with C++ linkage,
+# for the next namespace's body), and carrying the previous namespace's
+# rename over those lines turns them into a conflicting global spelling of
+# that namespace's alias. Nothing in this TU uses a name qualified from
+# outside its namespace.
+NS_C_ALIAS_TIGHT = {"dMg3DHeyhoObjAdapter_c"}
+
+_NSA_KEYWORDS = {
+    "extern", "static", "inline", "const", "volatile", "unsigned", "signed",
+    "int", "char", "short", "long", "void", "float", "double", "bool",
+    "struct", "class", "union", "enum", "typename", "register", "__cdecl",
+    "__stdcall", "__fastcall", "operator", "return", "sizeof",
+}
+
+
+def _nsa_mask(text):
+    """Same-length copy with comments, preprocessor lines, char literals,
+    `#if 0` regions and string contents blanked (newlines kept). A string
+    literal "C" is kept so `extern "C"` can be read."""
+    out = list(text)
+    n = len(text)
+    i = 0
+    bol = True
+    skip_depth = 0  # inside #if 0
+    while i < n:
+        c = text[i]
+        if bol:
+            j = i
+            while j < n and text[j] in " \t":
+                j += 1
+            if j < n and text[j] == "#":
+                k = j
+                while True:
+                    e = text.find("\n", k)
+                    if e < 0:
+                        e = n
+                    if e > 0 and text[e - 1] == "\\" and e < n:
+                        k = e + 1
+                        continue
+                    break
+                d = text[j + 1:e].strip()
+                if skip_depth:
+                    if d.startswith("if"):
+                        skip_depth += 1
+                    elif d.startswith("endif"):
+                        skip_depth -= 1
+                elif d.split() and d.split()[0] == "if" and d[2:].strip().startswith("0"):
+                    skip_depth = 1
+                for x in range(i, e):
+                    if out[x] != "\n":
+                        out[x] = " "
+                i = e
+                bol = True
+                continue
+            if skip_depth:
+                e = text.find("\n", i)
+                e = n if e < 0 else e
+                for x in range(i, e):
+                    out[x] = " "
+                i = e
+                bol = False
+                continue
+        bol = False
+        if c == "\n":
+            bol = True
+            i += 1
+            continue
+        if text.startswith("//", i):
+            e = text.find("\n", i)
+            e = n if e < 0 else e
+            for x in range(i, e):
+                out[x] = " "
+            i = e
+            continue
+        if text.startswith("/*", i):
+            e = text.find("*/", i + 2)
+            e = n if e < 0 else e + 2
+            for x in range(i, e):
+                if out[x] != "\n":
+                    out[x] = " "
+            i = e
+            continue
+        if c in "\"'":
+            j = i + 1
+            while j < n and text[j] != c and text[j] != "\n":
+                j += 2 if text[j] == "\\" else 1
+            if not (c == '"' and text[i:j + 1] == '"C"'):
+                for x in range(i + 1, min(j, n)):
+                    out[x] = " "
+            i = j + 1
+            continue
+        i += 1
+    return "".join(out)
+
+
+def _nsa_match(m, i):
+    """Index just past the brace matching m[i] == '{' in masked text."""
+    d = 0
+    for j in range(i, len(m)):
+        if m[j] == "{":
+            d += 1
+        elif m[j] == "}":
+            d -= 1
+            if d == 0:
+                return j + 1
+    return -1
+
+
+_NSA_IDENT = re.compile(r"[A-Za-z_]\w*")
+
+
+def _nsa_split_top(s, sep):
+    parts, d, cur = [], 0, []
+    for ch in s:
+        if ch in "([<":
+            d += 1
+        elif ch in ")]>":
+            d -= 1
+        if ch == sep and d == 0:
+            parts.append("".join(cur))
+            cur = []
+        else:
+            cur.append(ch)
+    parts.append("".join(cur))
+    return parts
+
+
+def _nsa_decl_names(head):
+    """Names a C-linkage declaration statement declares (no body)."""
+    h = head.strip()
+    h = re.sub(r'^extern\s*"C"\s*', "", h)
+    first = _NSA_IDENT.match(h)
+    if first and first.group(0) in ("typedef", "using", "template",
+                                     "namespace", "friend", "static_assert"):
+        return []
+    if "{" in h:
+        return []
+    names = []
+    for k, decl in enumerate(_nsa_split_top(h, ",")):
+        # drop an initializer
+        p = _nsa_split_top(decl, "=")[0]
+        # first top-level '('
+        d = 0
+        paren = -1
+        for x, ch in enumerate(p):
+            if ch in "[<":
+                d += 1
+            elif ch in "]>":
+                d -= 1
+            elif ch == "(" and d == 0:
+                paren = x
+                break
+        if paren >= 0:
+            before = p[:paren].rstrip()
+            mm = re.search(r"([A-Za-z_]\w*)$", before)
+            if mm and mm.group(1) not in _NSA_KEYWORDS:
+                names.append(mm.group(1))
+                continue
+            inner = re.match(r"\(\s*[*&\s]*(?:__cdecl\s*)?\*?\s*([A-Za-z_]\w*)",
+                             p[paren:])
+            if inner:
+                names.append(inner.group(1))
+            continue
+        p = re.sub(r"\[[^\]]*\]", "", p).rstrip()
+        mm = re.search(r"([A-Za-z_]\w*)$", p)
+        if mm and mm.group(1) not in _NSA_KEYWORDS:
+            if k == 0 and not re.search(r"\w[\s*&]+[A-Za-z_]\w*$", p):
+                continue  # a lone type name, no declarator
+            names.append(mm.group(1))
+    return names
+
+
+def _nsa_region(m, i, end, clink, declared, defined):
+    """Walk one declaration region of masked text, recording the names
+    declared / defined with C linkage."""
+    while i < end:
+        while i < end and m[i] in " \t\r\n;":
+            i += 1
+        if i >= end:
+            return
+        mm = re.match(r'extern\s*"C"\s*', m[i:end])
+        if mm:
+            j = i + mm.end()
+            if j < end and m[j] == "{":
+                k = _nsa_match(m, j)
+                _nsa_region(m, j + 1, k - 1, True, declared, defined)
+                i = k
+                continue
+            stmt_clink = True
+        else:
+            stmt_clink = clink
+        # scan the statement
+        j = i
+        d = 0
+        while j < end:
+            ch = m[j]
+            if ch == "(":
+                d += 1
+            elif ch == ")":
+                d -= 1
+            elif ch == ";" and d == 0:
+                if stmt_clink:
+                    for nm in _nsa_decl_names(m[i:j]):
+                        declared.add(nm)
+                j += 1
+                break
+            elif ch == "{" and d == 0:
+                head = m[i:j]
+                k = _nsa_match(m, j)
+                hs = re.sub(r'^extern\s*"C"\s*', "", head.strip())
+                w = _NSA_IDENT.match(hs)
+                kw = w.group(0) if w else ""
+                if kw in ("struct", "class", "union", "enum", "typedef") \
+                        or "=" in head:
+                    # type definition / initializer: run on to the ';'
+                    j = k
+                    while j < end and m[j] != ";":
+                        if m[j] == "{":
+                            j = _nsa_match(m, j)
+                            continue
+                        j += 1
+                    j += 1
+                    break
+                if kw == "namespace":
+                    j = k
+                    break
+                # Any function definition counts, not only one under an
+                # extern "C": a definition after a C-linkage declaration of
+                # its name inherits that linkage ([dcl.link]). A qualified
+                # (member) definition is not a namespace-scope C name.
+                if "(" in head and "::" not in head.split("(")[0]:
+                    mm2 = re.search(r"([A-Za-z_]\w*)\s*\(", head)
+                    if mm2:
+                        defined.add(mm2.group(1))
+                j = k
+                break
+            j += 1
+        i = j
+
+
+def ns_c_alias_patch(text, sym):
+    if sym not in NS_C_ALIAS:
+        return text, 0
+    m = _nsa_mask(text)
+    spans = []
+    i, d = 0, 0
+    n = len(m)
+    while i < n:
+        ch = m[i]
+        if ch == "{":
+            d += 1
+        elif ch == "}":
+            d -= 1
+        elif d == 0 and ch == "n" and m.startswith("namespace", i) \
+                and (i == 0 or not (m[i - 1].isalnum() or m[i - 1] == "_")):
+            mm = re.match(r"namespace\s+([A-Za-z_]\w*)\s*\{", m[i:])
+            if mm:
+                b = i + mm.end() - 1
+                e = _nsa_match(m, b)
+                if e < 0:
+                    sys.exit("hostgen: %s: NS_C_ALIAS: unbalanced namespace %s"
+                             % (sym, mm.group(1)))
+                spans.append((mm.group(1), b, e))
+                i = e
+                continue
+        i += 1
+    if not spans:
+        sys.exit("hostgen: %s: NS_C_ALIAS lists this TU but it has no "
+                 "namespace any more. Re-read it." % sym)
+    per = []
+    glob = set()
+    for k, (ns, b, e) in enumerate(spans):
+        declared, defined = set(), set()
+        _nsa_region(m, b + 1, e - 1, False, declared, defined)
+        # The renames hold from the namespace's own brace to the next
+        # top-level namespace (or the end): some TUs declare in a namespace
+        # and use the names just after it, qualified (`ns::name`) or under a
+        # using-directive, from the member the namespace was written for.
+        stop = spans[k + 1][1] if k + 1 < len(spans) else len(text)
+        stop = text.rfind("namespace", 0, stop) if k + 1 < len(spans) else stop
+        if sym in NS_C_ALIAS_TIGHT:
+            stop = e
+        per.append((ns, b, stop, sorted(declared - defined), defined))
+        glob |= defined
+    glob = sorted(glob)
+    total = len(glob)
+    edits = []
+    for ns, b, stop, local, defined in per:
+        total += len(local)
+        sfx = "__hg_" + ns
+        lift = sorted((set(local) | defined) & set(glob))
+        head = ("".join("#undef %s\n" % x for x in lift)
+                + "".join("#define %s %s%s\n" % (x, x, sfx) for x in local))
+        tail = ("".join("#undef %s\n" % x for x in local)
+                + "".join("#define %s %s__hg_global\n" % (x, x) for x in lift))
+        if head:
+            edits.append((b + 1, "\n" + head))
+            edits.append((stop, "\n" + tail))
+    for pos, ins in sorted(edits, key=lambda x: x[0], reverse=True):
+        text = text[:pos] + ins + text[pos:]
+    pragmas = ['#pragma comment(linker, "/alternatename:_%s__hg_global=_%s")'
+               % (x, x) for x in glob]
+    for ns, b, stop, local, defined in per:
+        pragmas += ['#pragma comment(linker, "/alternatename:_%s__hg_%s=_%s")'
+                    % (x, ns, x) for x in local]
+    block = ("/* hostgen NS_C_ALIAS: each namespace's own C-linkage spelling of\n"
+             "   a ROM name, bridged to the one real symbol -- see the table. */\n"
+             + "\n".join(pragmas) + "\n"
+             + "".join("#define %s %s__hg_global\n" % (x, x) for x in glob)
+             + "\n")
+    return block + text, total
+
+
 # ---- A ROM DATA EXTERN THAT MSVC DECORATED ---------------------------------
 #
 # PORT_HOST_ABI, run link100, lane HOSTGEN4: the same defect as ZTV_C_LINKAGE
@@ -3355,6 +4028,18 @@ def _c_linkage_line(line, name):
 
 
 DATA_C_LINKAGE = {
+    # PORTSYNC2. src/actors/daCoin_c.cpp declares these four at block scope,
+    # in C++ members and (data_0209f2f8 once) inside an extern "C" function,
+    # so the one TU spells the level byte with two language linkages -- a
+    # hard error once the per-function files became one TU. Every mount emits
+    # all four with C linkage (hal/cxx_aliases.cpp, ov002_syms.txt), so C it
+    # is; REDECL_CONFLICT above makes the members' types agree first.
+    "daCoin_c": ("extern int _ZN4cstd4fdivEii(int a, int b);\n}\n", [
+        ("extern signed char data_0209f2f8;", "data_0209f2f8"),
+        ("extern char data_ov002_0210d9a8;", "data_ov002_0210d9a8"),
+        ("extern char *data_ov002_020ff06c[];", "data_ov002_020ff06c"),
+        ("extern char *data_ov002_020ff060[];", "data_ov002_020ff060"),
+    ]),
     # Nine +0x3c state installs and two argument pairs, every one declared at
     # BLOCK SCOPE inside a member that carries no extern "C" region of its own.
     # The types are the TU's own two-word shadows at lines 233 and 234, so the
@@ -3372,7 +4057,7 @@ DATA_C_LINKAGE = {
     ]),
     # File scope, above this TU's own extern "C" region: the two file views the
     # step mounts and the collision-parameter block it hands dBgW_Kc.
-    "_ZN9TowerStep13InitResourcesEv": ('#include "dBgCh_Gnd.h"\n', [
+    "_ZN14daObjBk_Lift_c13InitResourcesEv": ('#include "dBgCh_Gnd.h"\n', [
         ("extern SharedFilePtr data_ov015_02114a64;", "data_ov015_02114a64"),
         ("extern SharedFilePtr data_ov015_02114a5c;", "data_ov015_02114a5c"),
         ("extern CLPS_Block data_ov015_02113594;", "data_ov015_02113594"),
@@ -3383,40 +4068,40 @@ DATA_C_LINKAGE = {
         ("extern Player *data_0209f394[];", "data_0209f394"),
         ("extern char data_020a0ebc[];", "data_020a0ebc"),
     ]),
-    "_ZN10LavaSeesaw16CleanupResourcesEv": ('#include "decl_common.h"\n', [
+    "_ZN16daObjFl_Seesaw_c16CleanupResourcesEv": ('#include "decl_common.h"\n', [
         ("extern int data_ov022_021145a0[];", "data_ov022_021145a0"),
     ]),
     # The head of the live-shadow list, hosted in hal/actor_vtables.cpp.
-    "_ZN11ShadowModelD1Ev": ('#include "ShadowModel.h"\n', [
+    "_ZN17dExtShadowModel_cD1Ev": ('#include "ShadowModel.h"\n', [
         ("extern ShadowModel *data_0209cef4;", "data_0209cef4"),
     ]),
     # The dBgW collision-callback addresses, one row per translation unit and
     # per spelling. See the block above the table.
-    "func_ov002_020b5e58":
+    "_ZN17daObjFloatBoard_c19func_ov002_020b5e58EP27daObjFloatBoard_c_Resources":
         _c_linkage_line("extern char %s;" % _DBGW_ANGS, _DBGW_ANGS),
-    "_ZN13TTC_MovingBar13InitResourcesEv":
+    "_ZN18daObjCtKaitendai_c13InitResourcesEv":
         _c_linkage_line("extern int %s;" % _DBGW_ANGS, _DBGW_ANGS),
-    "_ZN16RotatingCogSmall13InitResourcesEv":
+    "_ZN16daObjCtMecha10_c13InitResourcesEv":
         _c_linkage_line("extern int %s;" % _DBGW_ANGS, _DBGW_ANGS),
     "func_ov002_020b676c":
         _c_linkage_line("extern int %s;" % _DBGW_ANGS, _DBGW_ANGS),
-    "_ZN25RotatingUpDownPlatformUtm13InitResourcesEv":
+    "_ZN23daObjRotateUpdownLift_c13InitResourcesEv":
         _c_linkage_line("extern void *%s;" % _DBGW_ANGS, _DBGW_ANGS),
-    "func_ov091_02133254":
+    "_ZN11daDsnBase_c4InitEv":
         _c_linkage_line("extern void *%s;" % _DBGW_ANGS, _DBGW_ANGS),
-    "_ZN6ToxBox13InitResourcesEv":
+    "_ZN8daOnms_c13InitResourcesEv":
         _c_linkage_line("extern char %s;" % _DBGW_XFRM, _DBGW_XFRM),
-    "_ZN11PyramidLift13InitResourcesEv":
+    "_ZN10daDpLift_c13InitResourcesEv":
         _c_linkage_line("extern int %s;" % _DBGW_XFRM, _DBGW_XFRM),
-    "_ZN11PyramidStep13InitResourcesEv":
+    "_ZN14daObjDpBrock_c13InitResourcesEv":
         _c_linkage_line("extern int %s;" % _DBGW_XFRM, _DBGW_XFRM),
     "d_a_obj_wc_obj04":
         _c_linkage_line("extern int %s;" % _DBGW_XFRM, _DBGW_XFRM),
-    "_ZN8CccArena13InitResourcesEv":
+    "_ZN13daObjEwbIce_c13InitResourcesEv":
         _c_linkage_line("extern int %s[];" % _DBGW_XFRM, _DBGW_XFRM),
-    "_ZN9SeesawBob13InitResourcesEv":
+    "_ZN13daObjSeesaw_c13InitResourcesEv":
         _c_linkage_line("extern int %s[];" % _DBGW_XFRM, _DBGW_XFRM),
-    "_ZN6ShipUp13InitResourcesEv":
+    "_ZN14daObjKi_Fune_c13InitResourcesEv":
         _c_linkage_line("extern void* %s;" % _DBGW_XFRM, _DBGW_XFRM),
     # File scope, run linkfull lane SMALLS2: Goomboss::InitResources declares
     # these eleven ROM data externs at file scope in a //cpp TU, above any
@@ -3426,7 +4111,7 @@ DATA_C_LINKAGE = {
     # inside its extern "C" block by hand. data_02082214, the {sin, cos} table
     # the same run declares, is left out: it already resolves under its
     # decorated spelling.
-    "_ZN8Goomboss13InitResourcesEv": ("extern void *data_ov002_0210da30;\n", [
+    "_ZN12daKuriKing_c13InitResourcesEv": ("extern void *data_ov002_0210da30;\n", [
         ("extern void *data_ov002_0210da30;", "data_ov002_0210da30"),
         ("extern void *data_ov084_02130cf8;", "data_ov084_02130cf8"),
         ("extern void *data_ov074_0212292c[];", "data_ov074_0212292c"),
@@ -3461,12 +4146,12 @@ DATA_C_LINKAGE = {
 # ROM's own body. Taking &func_021123f4 raw would hand MaterialChanger and
 # TextureTransformer an address no host object lives at.
 OVERLAY_OBJECT_AT_DECL = {
-    "_ZN8Goomboss13InitResourcesEv":
+    "_ZN12daKuriKing_c13InitResourcesEv":
         '/* hostgen OVERLAY_OBJECT_AT: see the table in tools/hostgen.py */\n'
         'extern "C" void *port_ov053_at(unsigned ds);\n',
 }
 OVERLAY_OBJECT_AT = {
-    "_ZN8Goomboss13InitResourcesEv": [
+    "_ZN12daKuriKing_c13InitResourcesEv": [
         ("*(BMA_File *)&func_021123f4", "*(BMA_File *)port_ov053_at(0x021123f4)"),
         ("&func_021123f4, 0x40000000", "port_ov053_at(0x021123f4), 0x40000000"),
         ("&func_021124ac, 0, 0x1000", "port_ov053_at(0x021124ac), 0, 0x1000"),
@@ -3648,6 +4333,243 @@ def shadow_header_decl(text, sym, spec):
     return text.replace(inc, pre + inc + post, 1), 1
 
 
+# ---- STEM_FOLDS: patch keys carried across a main merge's TU folds --------
+#
+# Every table above is keyed on the SOURCE FILE'S STEM (emit() passes
+# src_path.stem), and was written when that stem was the function's own name.
+# The 2026-10 main merge (749f5799a) folded those one-function files into
+# production TUs, so a key like "_ZN15dExtFrameCtrl_c7AdvanceEv" names a file that no
+# longer exists and its patch would silently stop applying -- the defect it
+# cures goes back into the build with nothing said.
+#
+# This table maps each old stem to the stem of the TU that now OWNS that
+# function, resolved BY ADDRESS (old config/**/symbols.txt row -> (module,
+# addr) -> the delinks.txt range that owns it now), never by name: see
+# port/tools/merge_remap.py, which generated it. _fold_stem_keys() moves each
+# row onto its new key at import, merging rows that land on one TU. Every
+# patch keeps its hard error, so a row whose anchor text main rewrote fails
+# loudly at hostgen time rather than dropping out.
+STEM_FOLDS = {
+    "_ZN6Player12St_Jump_MainEv":
+        "Player",
+    "_ZN6Player13InitResourcesEv":
+        "Player",
+    "_ZN6Player16St_WallJump_MainEv":
+        "Player",
+    "func_ov002_020cfbdc":
+        "Player",
+    "func_ov002_020d6c60":
+        "Player",
+    "func_ov002_020e5948":
+        "Player",
+    "_ZN8dActor_c12ReflectAngleE5Fix12IiES1_s":
+        "dActor_c",
+    "_ZN8dActor_c18HorzAngleToCPlayerEv":
+        "dActor_c",
+    "func_ov002_020eeeb8":
+        "dBgActor_c",
+    "func_ov002_020ef070":
+        "dBgActor_c",
+    "_ZN8dMeter_c13InitResourcesEv":
+        "dMeter_c",
+    "_ZN10dMgState_c19func_ov004_020b6b40Ev":
+        "dMgState_c",
+    "_ZN10dMgState_c19func_ov004_020b6c9cEv":
+        "dMgState_c",
+    "func_ov006_020c8f20":
+        "dMgTrmpln2Mario_c",
+    "func_ov006_020cb030":
+        "dMgTrmpln2Mario_c",
+    "_ZN16dPathLiftActor_c9StatePathEv":
+        "dPathLiftActor_c",
+    "_ZN14dScMgBomroom_c19func_ov006_020d8f98Ev":
+        "dScMgBomroom_c",
+    "func_ov006_020fc7d0":
+        "dScMgPachinko_c",
+    "func_ov006_020fda7c":
+        "dScMgPachinko_c",
+    "func_ov006_020fe248":
+        "dScMgPachinko_c",
+    "_ZN15dScMgSnowball_c6RenderEv":
+        "dScMgSnowball_c",
+    "func_ov102_0214b248":
+        "daBmb_c",
+    "_ZN12daBombking_c19func_ov078_02124cf4Ev":
+        "daBombking_c",
+    "_ZN10daDpLift_c13InitResourcesEv":
+        "daDpLift_c",
+    "_ZN11daDsnBase_c4InitEv":
+        "daDsnBase_c",
+    "_ZN8daGmch_c21ApplySlopeToVertSpeedEPv":
+        "daGmch_c",
+    "_ZN12daKuriKing_c13InitResourcesEv":
+        "daKuriKing_c",
+    "_ZN18daObjBkKillerdai_c8BehaviorEv":
+        "daObjBkKillerdai_c",
+    "_ZN14daObjBk_Lift_c13InitResourcesEv":
+        "daObjBk_Lift_c",
+    "_ZN18daObjCtKaitendai_c13InitResourcesEv":
+        "daObjCtKaitendai_c",
+    "_ZN16daObjCtMecha10_c13InitResourcesEv":
+        "daObjCtMecha10_c",
+    "_ZN20daObjCtRotateBlock_c13InitResourcesEv":
+        "daObjCtRotateBlock_c",
+    "_ZN14daObjDpBrock_c13InitResourcesEv":
+        "daObjDpBrock_c",
+    "_ZN13daObjEwbIce_c13InitResourcesEv":
+        "daObjEwbIce_c",
+    "_ZN16daObjFl_Seesaw_c16CleanupResourcesEv":
+        "daObjFl_Seesaw_c",
+    "_ZN17daObjFloatBoard_c19func_ov002_020b5e58EP27daObjFloatBoard_c_Resources":
+        "daObjFloatBoard_c",
+    "func_ov002_020b676c":
+        "daObjKaitendai_c",
+    "_ZN23daObjRotateUpdownLift_c13InitResourcesEv":
+        "daObjRotateUpdownLift_c",
+    "_ZN13daObjSeesaw_c13InitResourcesEv":
+        "daObjSeesaw_c",
+    "_ZN15daObjYajirusi_c11OnAttacked1ER8dActor_c":
+        "daObjYajirusi_c",
+    "_ZN15daObj_Mip_Key_c6RenderEv":
+        "daObj_Mip_Key_c",
+    "_ZN8daOnms_c13InitResourcesEv":
+        "daOnms_c",
+    "func_ov006_020c2924":
+        "unit020bfec0",
+    "func_02053130":
+        "cstd",
+    "_ZN15dExtFrameCtrl_c7AdvanceEv":
+        "dExtFrameCtrl_c",
+    "_ZN5dBgCh21ShouldPassThroughImplEPvRK4CLPSRKS_b":
+        "dBgW",
+    "_ZN3G3i13PerspectiveW_E5Fix12IiES1_S1_S1_S1_S1_bP9Matrix4x3":
+        "G3i",
+    "_ZN15ModelComponents6RenderEP9Matrix4x3P7Vector3":
+        "ModelComponents",
+    "_ZN17dExtShadowModel_cD1Ev":
+        "dExtShadowModel_c",
+    "_ZN3OAM11GetObjWidthEii":
+        "OAM",
+    "_ZN3OAM12GetObjHeightEii":
+        "OAM",
+    "_ZN8Particle10SysTracker10InitialiseEv":
+        "Particle",
+    "_ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE":
+        "Particle",
+    "_ZN8Particle6Jitter4FuncERNS_10EffectDataEPcR7Vector3":
+        "Particle_Behavior",
+    "CollectStar":
+        "SaveData",
+    "CountStarsCollectedInLevelToDisplay":
+        "SaveData",
+    "NumStars":
+        "SaveData",
+    "_ZN8SaveData13GetCoinRecordEj":
+        "SaveData",
+    "_ZN8SaveData26CountStarsCollectedInLevelEj":
+        "SaveData",
+    "func_0200ca50":
+        "dCamera_c",
+    "func_0200cae4":
+        "dCamera_c",
+    "_ZN8daEyBm_c10HurtPlayerEv":
+        "d_a_ey_bm",
+    "_ZN14daObjKi_Fune_c13InitResourcesEv":
+        "d_a_obj_ki_fune",
+    "func_ov019_0211140c":
+        "d_a_pg_rcer",
+    "_ZN11dScMgBase_c16OnAimedAtWithEggEv":
+        "d_s_mg_base",
+    "_ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv":
+        "d_s_mg_base",
+}
+
+# Tables whose key is a source stem.  (Their value shapes differ; see
+# _fold_merge.)
+STEM_KEYED_TABLES = (
+    "ALTNAME", "ARG_WIDTH", "ASM_EXCISION", "CALLEE_SEAM", "CALL_STATE_FN",
+    "CAM_TERMS", "DATA_C_LINKAGE", "DS_DIV", "DS_SHIFT", "EXTERN_C_DATA",
+    "FALLS_OFF_RETURN", "HEADER_SHADOW", "HOST_COPY_PARK", "LEDGER_PARK",
+    "MEMBER_REDECL", "MG_PMF_CALL", "MMIO_EXTERN", "NARROW_RETURN",
+    "OVERLAY_OBJECT_AT", "OVERLAY_OBJECT_AT_DECL", "PMF_SEAM",
+    "PMF_SEAM_ALLOW", "PMF_SEAM_DECL", "REDECL_CONFLICT",
+    "REDECL_CONFLICT_DECL", "REG_RIDE_ARG", "REG_RIDE_ARG_DECL",
+    "UNINIT_LOCAL", "VIRTUAL_CALL", "ZTV_C_LINKAGE", "PARK_SYMBOL")
+
+
+def _fold_merge(table, key, have, add, old):
+    """Merge a folded row into the row already on the TU's key."""
+    if isinstance(have, list) and isinstance(add, list):
+        return have + add
+    if table == "HEADER_SHADOW":
+        def norm(spec, name):
+            return spec if isinstance(spec, tuple) else (spec, (name,))
+        (h1, n1), (h2, n2) = norm(have, key), norm(add, old)
+        if h1 == h2:
+            return (h1, tuple(n1) + tuple(n2))
+    if have == add:
+        return have
+    if isinstance(have, str) and isinstance(add, str) and table.endswith("_DECL"):
+        return have + add
+    sys.exit("hostgen: STEM_FOLDS: %s rows for %s and %s both land on %s and "
+             "cannot be merged automatically" % (table, old, key, key))
+
+
+def _fold_stem_keys():
+    g = globals()
+    for table in STEM_KEYED_TABLES:
+        t = g[table]
+        for old, new in STEM_FOLDS.items():
+            if old not in t:
+                continue
+            row = t.pop(old)
+            if table == "HEADER_SHADOW" and not isinstance(row, tuple):
+                # A bare header name meant "shadow the stem's own name"; the
+                # stem is the TU's now, so spell the old function name out.
+                row = (row, (old,))
+            if new in t:
+                t[new] = _fold_merge(table, new, t[new], row, old)
+            else:
+                t[new] = row
+
+
+_fold_stem_keys()
+
+
+# ---- REDERIVED: patch rows re-anchored on main's text ----------------------
+#
+# PORTSYNC2. A fold or a readability pass in main rewrites the text a patch
+# anchors on, and apply_patches() then refuses ("The source moved"), which is
+# the point. The rows re-derived against main's text for the 2026-10 merge live
+# in hostgen_portsync2.py beside this file, as {(TABLE, stem): new row}, and
+# REPLACE the row here whole. Kept apart so the review is one file, and so the
+# stale row above still shows what the patch meant. HOSTGEN_EXTRA (a
+# path-separated list of more such files) is for trying a row before it lands.
+def _load_rederived():
+    import importlib.util
+    import os
+    here = pathlib.Path(__file__).resolve().parent
+    files = [here / "hostgen_portsync2.py"]
+    files += [pathlib.Path(f) for f in os.environ.get("HOSTGEN_EXTRA", "").split(os.pathsep) if f]
+    g = globals()
+    for f in files:
+        if not f.is_file():
+            continue
+        spec = importlib.util.spec_from_file_location("hostgen_rows_%d" % abs(hash(str(f))), f)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        for (table, key), row in getattr(mod, "ROWS", {}).items():
+            if table not in g or not isinstance(g[table], dict):
+                sys.exit("hostgen: %s: unknown table %s" % (f.name, table))
+            if row is None:
+                g[table].pop(key, None)
+            else:
+                g[table][key] = row
+
+
+_load_rederived()
+
+
 QUIET_VPTR = False
 
 
@@ -3660,6 +4582,8 @@ def emit(src_path, out_dir, decomp_root, extern_data=False):
     if sym in HEADER_SHADOW:
         text, _ = shadow_header_decl(text, sym, HEADER_SHADOW[sym])
     text, _ = asm_excision_patch(text, sym)
+    text, _ = mwcc_spelling_patch(text, sym)
+    text, _ = cast_extern_patch(text, sym)
     text, _ = ds_div_patch(text, sym)
     text, _ = ds_shift_patch(text, sym)
     text, _ = mmio_extern_patch(text, sym)
@@ -3673,6 +4597,7 @@ def emit(src_path, out_dir, decomp_root, extern_data=False):
     text, _ = redecl_conflict_patch(text, sym)
     text, _ = ledger_park(text, sym)
     text, _ = host_copy_park(text, sym)
+    text, _ = park_symbol_patch(text, sym)
     text, _ = extern_c_data_patch(text, sym)
     text, _ = overlay_object_at_patch(text, sym)
     text, _ = call_state_fn_patch(text, sym)
@@ -3693,6 +4618,9 @@ def emit(src_path, out_dir, decomp_root, extern_data=False):
     text, nvptr = vptr_address_point(text)
     if nvptr and not QUIET_VPTR:
         print("  %s: %d vtable address-point bias(es) dropped" % (sym, nvptr))
+    text, nnsa = ns_c_alias_patch(text, sym)
+    if nnsa and not QUIET_VPTR:
+        print("  %s: %d namespace C-linkage spelling(s) aliased" % (sym, nnsa))
     pmf_seam_residue(text, sym, src_path.suffix)
     new, n = transform(text, extern_data)
     # An excision that left an asm block behind would emit a file MSVC cannot

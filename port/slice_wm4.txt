@@ -28,5 +28,5 @@
 # A session that does not fit is published into hal/wm_arm7.cpp's own buffer
 # under hal/vs_width.h's standing ruling, and at four and below the ROM's own
 # allocation is what gets written.
-src/func_0204068c.c
-src/func_02062778.c
+src/unnamed/arm9/0204/func_0204068c.c
+src/unnamed/arm9/0206/func_02062778.c

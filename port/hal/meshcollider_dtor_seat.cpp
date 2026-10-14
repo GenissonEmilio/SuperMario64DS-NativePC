@@ -115,8 +115,8 @@ extern "C" {
 extern void *_ZTV5dBgCh[];   /* WithMeshClsn's base -- storage hal/actor_vtables.cpp */
 extern void *_ZTV10dBgCh_Actr[];   /* WithMeshClsn   -- storage hal/actor_vtables.cpp */
 extern void *_ZTV9dBgCh_Gnd[];   /* RaycastGround  -- storage hal/actor_vtables.cpp */
-extern void *data_020992a4[];   /* RaycastLine    -- storage hal/cxx_aliases.cpp */
-extern void *data_02099338[];   /* SphereClsn     -- storage hal/actor_vtables.cpp */
+extern void *_ZTV9dBgCh_Lin[];   /* RaycastLine    -- storage hal/cxx_aliases.cpp */
+extern void *_ZTV12dBgCh_SphCrr[];   /* SphereClsn     -- storage hal/actor_vtables.cpp */
 extern void *data_02099368[];   /* ClsnResult     -- storage hal/actor_vtables.cpp */
 extern void *_ZTV8dM3dGSph[];   /* RaycastLine+0x64 -- storage hal/actor_vtables.cpp */
 
@@ -146,8 +146,8 @@ void *_ZN8dM3dGSphD0Ev(void *self);            /* 0x0203ac2c */
 FAMILY_DTOR_SLOTS(wmb, _ZTV5dBgCh, _ZN5dBgChD1Ev,          _ZN5dBgChD0Ev)
 FAMILY_DTOR_SLOTS(wmc, _ZTV10dBgCh_Actr, _ZN10dBgCh_ActrD1Ev,  _ZN10dBgCh_ActrD0Ev)
 FAMILY_DTOR_SLOTS(rcg, _ZTV9dBgCh_Gnd, _ZN9dBgCh_GndD1Ev, _ZN9dBgCh_GndD0Ev)
-FAMILY_DTOR_SLOTS(rcl, data_020992a4, _ZN9dBgCh_LinD1Ev,   _ZN9dBgCh_LinD0Ev)
-FAMILY_DTOR_SLOTS(sph, data_02099338, _ZN12dBgCh_SphCrrD1Ev,    _ZN12dBgCh_SphCrrD0Ev)
+FAMILY_DTOR_SLOTS(rcl, _ZTV9dBgCh_Lin, _ZN9dBgCh_LinD1Ev,   _ZN9dBgCh_LinD0Ev)
+FAMILY_DTOR_SLOTS(sph, _ZTV12dBgCh_SphCrr, _ZN12dBgCh_SphCrrD1Ev,    _ZN12dBgCh_SphCrrD0Ev)
 FAMILY_DTOR_SLOTS(clr, data_02099368, _ZN5dBgPiD1Ev,    _ZN5dBgPiD0Ev)
 FAMILY_DTOR_SLOTS(rls, _ZTV8dM3dGSph, _ZN8dM3dGSphD1Ev,          _ZN8dM3dGSphD0Ev)
 

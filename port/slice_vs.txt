@@ -314,126 +314,126 @@
 # level consumption, keeps the flag alive the way the DS does.
 #
 # ---- THE SLICE -----------------------------------------------------------
-src/d_ent_obj.cpp
-src/_ZN14UnknownVsEntry13InitResourcesEv.cpp
-src/_ZN14UnknownVsEntry16CleanupResourcesEv.cpp
-src/_ZN14UnknownVsEntry6RenderEv.cpp
-src/_ZN14UnknownVsEntry8BehaviorEv.cpp
+src/actors/dEntObj_c.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/_ZN14UnknownVsEntry13InitResourcesEv.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/_ZN14UnknownVsEntry16CleanupResourcesEv.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/_ZN14UnknownVsEntry6RenderEv.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/_ZN14UnknownVsEntry8BehaviorEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN14UnknownVsEntryD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN14UnknownVsEntryD0Ev.cpp
-src/_ZN14UnknownVsEntryD1Ev.cpp
-src/__sinit_ov075_0211b5e0.c
-src/__sinit_ov075_0211bb00.c
-src/__sinit_ov075_0211c51c.c
-src/_ZN15UnknownVsPlayerD1Ev.cpp
-src/func_ov075_02114010.c
-src/func_ov075_021140e4.c
-src/func_ov075_021141b8.c
-src/func_ov075_02114218.c
-src/func_ov075_0211427c.c
-src/func_ov075_021142fc.c
-src/func_ov075_02114300.cpp
-src/func_ov075_02114390.c
-src/func_ov075_021143e4.cpp
-src/func_ov075_02114560.cpp
-src/func_ov075_0211473c.cpp
-src/func_ov075_0211478c.c
-src/func_ov075_021147d4.cpp
-src/func_ov075_02114890.c
-src/func_ov075_02114894.cpp
-src/func_ov075_021148f0.c
-src/func_ov075_02114904.c
-src/func_ov075_02114988.cpp
-src/func_ov075_021149d0.c
-src/func_ov075_02114a58.c
-src/func_ov075_02114a6c.c
-src/func_ov075_02114ac4.cpp
-src/func_ov075_02114b60.c
-src/func_ov075_02114be4.cpp
-src/func_ov075_02114cd8.cpp
-src/func_ov075_02114ddc.cpp
-src/func_ov075_02114fa8.c
-src/func_ov075_0211505c.c
-src/func_ov075_02115098.c
-src/func_ov075_02115134.c
-src/func_ov075_021151b4.c
-src/func_ov075_0211524c.c
-src/func_ov075_02115290.c
-src/func_ov075_021152d4.cpp
-src/_ZN15UnknownVsPlayerC1Ev.cpp
-src/_ZN10dScEntry_cD1Ev.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/_ZN14UnknownVsEntryD1Ev.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/__sinit_ov075_0211b5e0.c
+src/unnamed/ov075/__sinit_ov075_0211bb00.c
+src/unnamed/ov075/__sinit_ov075_0211c51c.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/_ZN15UnknownVsPlayerD1Ev.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114010.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021140e4.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021141b8.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114218.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_0211427c.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021142fc.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114300.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114390.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021143e4.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114560.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_0211473c.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_0211478c.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021147d4.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114890.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114894.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021148f0.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114904.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114988.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021149d0.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114a58.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114a6c.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114ac4.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114b60.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114be4.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114cd8.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114ddc.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114fa8.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_0211505c.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02115098.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02115134.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021151b4.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_0211524c.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02115290.c
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021152d4.cpp
+# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/_ZN15UnknownVsPlayerC1Ev.cpp
+src/actors/dScEntry_c.cpp
 # RETIRED at SLICE1: body now in src/_ZN10dScEntry_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN10dScEntry_cD0Ev.cpp
-src/_ZN10dScEntry_c6icon_cD1Ev.cpp
-src/_ZN12OamAnimationD1Ev.cpp
-src/_ZN10dScEntry_c6icon_c6RenderEv.cpp
-src/_ZN10dScEntry_c6icon_c8BehaviorEv.cpp
-src/func_ov075_02115e8c.c
-src/func_ov075_0211601c.c
-src/func_ov075_02116028.c
-src/func_ov075_02116030.c
-src/_ZN10dScEntry_c15graphCallback_c14GraphCallback2Ev.cpp
-src/_ZN10dScEntry_c15graphCallback_cC1Ev.cpp
-src/func_ov075_021160dc.cpp
-src/func_ov075_02116128.cpp
-src/func_ov075_0211621c.c
-src/func_ov075_021165b0.c
-src/func_ov075_02116818.c
-src/func_ov075_02116ad4.c
-src/func_ov075_02116c38.c
-src/func_ov075_02116c8c.c
-src/func_ov075_02116ce4.c
-src/func_ov075_02116d40.c
-src/func_ov075_02116d9c.c
-src/func_ov075_02116e00.c
-src/func_ov075_02116e44.c
-src/func_ov075_02116ebc.c
-src/func_ov075_02116f40.cpp
-src/func_ov075_0211705c.c
-src/func_ov075_021173a8.c
-src/func_ov075_02117590.cpp
-src/func_ov075_0211763c.c
-src/func_ov075_02117918.c
-src/func_ov075_02117ac4.c
-src/func_ov075_02117b58.cpp
-src/func_ov075_02117bc4.c
-src/func_ov075_02117c0c.c
-src/func_ov075_02117d80.cpp
-src/func_ov075_02117e84.c
-src/func_ov075_02117f5c.c
-src/func_ov075_02117fe4.c
-src/func_ov075_02118248.c
-src/func_ov075_02118378.c
-src/func_ov075_021184b0.cpp
-src/func_ov075_0211867c.c
-src/func_ov075_021188b4.c
-src/func_ov075_02118a78.c
-src/func_ov075_02118a84.c
-src/func_ov075_02118bf8.c
-src/func_ov075_02118c80.cpp
-src/func_ov075_02118cd0.c
-src/func_ov075_02118d1c.c
-src/func_ov075_02118f38.c
-src/func_ov075_021190a4.c
-src/func_ov075_0211919c.c
-src/func_ov075_021192bc.c
-src/func_ov075_0211944c.c
-src/func_ov075_021194e4.cpp
-src/func_ov075_02119640.c
-src/func_ov075_021196d0.c
-src/func_ov075_0211977c.c
-src/func_ov075_021197dc.c
-src/func_ov075_021197e8.c
-src/func_ov075_02119918.c
-src/func_ov075_021199d8.cpp
-src/func_ov075_02119b34.c
-src/func_ov075_02119c38.c
-src/func_ov075_02119cc0.c
-src/func_ov075_02119d3c.c
-src/func_ov075_02119d78.c
-src/func_ov075_02119dc4.cpp
-src/func_ov075_0211a100.c
-src/func_ov075_0211a148.c
+# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/_ZN10dScEntry_c6icon_cD1Ev.cpp
+# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/_ZN12OamAnimationD1Ev.cpp
+# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/_ZN10dScEntry_c6icon_c6RenderEv.cpp
+# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/_ZN10dScEntry_c6icon_c8BehaviorEv.cpp
+# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/func_ov075_02115e8c.c
+# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/func_ov075_0211601c.c
+# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/func_ov075_02116028.c
+# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/func_ov075_02116030.c
+# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/_ZN10dScEntry_c15graphCallback_c14GraphCallback2Ev.cpp
+# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/_ZN10dScEntry_c15graphCallback_cC1Ev.cpp
+# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/func_ov075_021160dc.cpp
+src/unnamed/ov075/func_ov075_02116128.cpp
+src/unnamed/ov075/func_ov075_0211621c.c
+src/unnamed/ov075/func_ov075_021165b0.c
+src/unnamed/ov075/func_ov075_02116818.c
+src/unnamed/ov075/func_ov075_02116ad4.c
+src/unnamed/ov075/func_ov075_02116c38.c
+src/unnamed/ov075/func_ov075_02116c8c.c
+src/unnamed/ov075/func_ov075_02116ce4.c
+src/unnamed/ov075/func_ov075_02116d40.c
+src/unnamed/ov075/func_ov075_02116d9c.c
+src/unnamed/ov075/func_ov075_02116e00.c
+src/unnamed/ov075/func_ov075_02116e44.c
+src/unnamed/ov075/func_ov075_02116ebc.c
+src/unnamed/ov075/func_ov075_02116f40.cpp
+src/unnamed/ov075/func_ov075_0211705c.c
+src/unnamed/ov075/func_ov075_021173a8.c
+src/unnamed/ov075/func_ov075_02117590.cpp
+src/unnamed/ov075/func_ov075_0211763c.c
+src/unnamed/ov075/func_ov075_02117918.c
+src/unnamed/ov075/func_ov075_02117ac4.c
+src/unnamed/ov075/func_ov075_02117b58.cpp
+src/unnamed/ov075/func_ov075_02117bc4.c
+src/unnamed/ov075/func_ov075_02117c0c.c
+src/unnamed/ov075/func_ov075_02117d80.cpp
+src/unnamed/ov075/func_ov075_02117e84.c
+src/unnamed/ov075/func_ov075_02117f5c.c
+src/unnamed/ov075/func_ov075_02117fe4.c
+src/unnamed/ov075/func_ov075_02118248.c
+src/unnamed/ov075/func_ov075_02118378.c
+src/unnamed/ov075/func_ov075_021184b0.cpp
+src/unnamed/ov075/func_ov075_0211867c.c
+src/unnamed/ov075/func_ov075_021188b4.c
+src/unnamed/ov075/func_ov075_02118a78.c
+src/unnamed/ov075/func_ov075_02118a84.c
+src/unnamed/ov075/func_ov075_02118bf8.c
+src/unnamed/ov075/func_ov075_02118c80.cpp
+src/unnamed/ov075/func_ov075_02118cd0.c
+src/unnamed/ov075/func_ov075_02118d1c.c
+src/unnamed/ov075/func_ov075_02118f38.c
+src/unnamed/ov075/func_ov075_021190a4.c
+src/unnamed/ov075/func_ov075_0211919c.c
+src/unnamed/ov075/func_ov075_021192bc.c
+src/unnamed/ov075/func_ov075_0211944c.c
+src/unnamed/ov075/func_ov075_021194e4.cpp
+src/unnamed/ov075/func_ov075_02119640.c
+src/unnamed/ov075/func_ov075_021196d0.c
+src/unnamed/ov075/func_ov075_0211977c.c
+src/unnamed/ov075/func_ov075_021197dc.c
+src/unnamed/ov075/func_ov075_021197e8.c
+src/unnamed/ov075/func_ov075_02119918.c
+src/unnamed/ov075/func_ov075_021199d8.cpp
+src/unnamed/ov075/func_ov075_02119b34.c
+src/unnamed/ov075/func_ov075_02119c38.c
+src/unnamed/ov075/func_ov075_02119cc0.c
+src/unnamed/ov075/func_ov075_02119d3c.c
+src/unnamed/ov075/func_ov075_02119d78.c
+src/unnamed/ov075/func_ov075_02119dc4.cpp
+src/unnamed/ov075/func_ov075_0211a100.c
+src/unnamed/ov075/func_ov075_0211a148.c
 src/_ZN10dScEntry_c16CleanupResourcesEv.cpp
 src/_ZN10dScEntry_c16OnPendingDestroyEv.cpp
 src/_ZN10dScEntry_c13InitResourcesEv.cpp
@@ -442,24 +442,24 @@ src/d_s_entry_result.cpp
 src/_ZN12OamAnimationC1Ev.cpp
 src/_ZN10dScEntry_c6icon_cC1Ev.cpp
 src/d_s_entry_entry.cpp
-src/func_ov075_0211a948.c
-src/func_ov075_0211aa00.c
-src/func_ov075_0211aa94.c
-src/func_ov075_0211ab38.c
-src/func_ov075_0211abb0.c
-src/func_ov075_0211ad60.c
-src/func_ov075_0211addc.cpp
-src/func_ov075_0211aea4.c
-src/func_ov075_0211aeb8.c
-src/func_ov075_0211af0c.c
-src/func_ov075_0211af84.c
-src/func_ov075_0211afb0.c
-src/func_ov075_0211b1cc.c
-src/func_ov075_0211b260.c
-src/func_ov075_0211b3b8.c
-src/func_ov075_0211b3d8.cpp
-src/func_ov075_0211b418.cpp
-src/func_ov075_0211b458.cpp
+src/unnamed/ov075/func_ov075_0211a948.c
+src/unnamed/ov075/func_ov075_0211aa00.c
+src/unnamed/ov075/func_ov075_0211aa94.c
+src/unnamed/ov075/func_ov075_0211ab38.c
+src/unnamed/ov075/func_ov075_0211abb0.c
+src/unnamed/ov075/func_ov075_0211ad60.c
+src/unnamed/ov075/func_ov075_0211addc.cpp
+src/unnamed/ov075/func_ov075_0211aea4.c
+src/unnamed/ov075/func_ov075_0211aeb8.c
+src/unnamed/ov075/func_ov075_0211af0c.c
+src/unnamed/ov075/func_ov075_0211af84.c
+src/unnamed/ov075/func_ov075_0211afb0.c
+src/unnamed/ov075/func_ov075_0211b1cc.c
+src/unnamed/ov075/func_ov075_0211b260.c
+src/unnamed/ov075/func_ov075_0211b3b8.c
+src/unnamed/ov075/func_ov075_0211b3d8.cpp
+src/unnamed/ov075/func_ov075_0211b418.cpp
+src/unnamed/ov075/func_ov075_0211b458.cpp
 # ---- THE MEASURED GAP (the ov005 pattern): arm9 TUs the 138's external
 # closure needs and no other slice compiles. Enumerated from the first
 # link's own unresolved list, not guessed. func_01ffadf0 (__aeabi_uidiv,
@@ -467,65 +467,65 @@ src/func_ov075_0211b458.cpp
 # carries the host body, the cxx_aliases ITCM-block treatment.
 src/PrepareVsMode.c
 src/SetControllerMode.c
-src/_ZN11ShadowModel9RenderAllEv.cpp
-src/_ZN8dGraph_c10callback_c14GraphCallback0Ev.cpp
-src/_ZN7Message17DisplayVsExitTextEt.cpp
-src/func_0200f0bc.c
-src/func_0200f13c.cpp
-src/func_0200f220.c
-src/func_0200f2cc.c
-src/func_0201a1bc.c
-src/func_0201a244.c
-src/func_02020028.c
-src/func_02020078.c
-src/func_020200b8.c
-src/func_020200e0.c
-src/func_02020124.c
-src/func_02020168.c
-src/func_02020190.c
-src/func_020201c0.c
-src/func_020201f0.c
-src/func_0202029c.c
-src/func_020202dc.c
-src/func_02020304.c
-src/func_02020334.c
-src/func_02020364.c
-src/func_0202048c.cpp
-src/func_02020768.c
-src/func_02020820.c
-src/func_0202deac.c
-src/func_0203083c.c
-src/func_020308b4.c
-src/func_02030958.c
-src/func_02030994.c
-src/func_02030a38.c
-src/func_02030a6c.c
-src/func_02030a78.c
-src/func_02030aa4.c
-src/func_020331fc.c
-src/func_02032f9c.c
-src/func_02033390.cpp
-src/func_02033464.c
-src/func_020337ec.c
-src/func_020338b0.cpp
-src/func_02033ae0.c
-src/func_02033bb8.c
-src/func_02034414.cpp
-src/func_0202043c.c
-src/func_02030838.c
-src/func_02031028.c
-src/func_020316d8.c
-src/func_020319fc.c
-src/func_02031b84.c
-src/func_02033a80.c
-src/func_02033e50.c
-src/func_02034098.cpp
-src/func_020341a8.cpp
-src/func_02034504.c
-src/func_0202044c.c
-src/func_020318a4.c
-src/func_02031cd4.c
-src/func_02031e00.c
+src/engine/model/dExtShadowModel_c.cpp
+src/engine/graph/dGraph_c_callback_c.cpp
+src/Message3.cpp
+src/unnamed/arm9/0200/func_0200f0bc.c
+src/unnamed/arm9/0200/func_0200f13c.cpp
+src/unnamed/arm9/0200/func_0200f220.c
+src/unnamed/arm9/0200/func_0200f2cc.c
+src/unnamed/arm9/0201/func_0201a1bc.c
+src/unnamed/arm9/0201/func_0201a244.c
+src/unnamed/arm9/0202/func_02020028.c
+src/unnamed/arm9/0202/func_02020078.c
+src/unnamed/arm9/0202/func_020200b8.c
+src/unnamed/arm9/0202/func_020200e0.c
+src/unnamed/arm9/0202/func_02020124.c
+src/unnamed/arm9/0202/func_02020168.c
+src/unnamed/arm9/0202/func_02020190.c
+src/unnamed/arm9/0202/func_020201c0.c
+src/unnamed/arm9/0202/func_020201f0.c
+src/unnamed/arm9/0202/func_0202029c.c
+src/unnamed/arm9/0202/func_020202dc.c
+src/unnamed/arm9/0202/func_02020304.c
+src/unnamed/arm9/0202/func_02020334.c
+src/unnamed/arm9/0202/func_02020364.c
+src/unnamed/arm9/0202/func_0202048c.cpp
+src/unnamed/arm9/0202/func_02020768.c
+src/engine/oam/OAM.cpp
+src/unnamed/arm9/0202/func_0202deac.c
+src/unnamed/arm9/0203/func_0203083c.c
+src/unnamed/arm9/0203/func_020308b4.c
+src/unnamed/arm9/0203/func_02030958.c
+src/unnamed/arm9/0203/func_02030994.c
+src/unnamed/arm9/0203/func_02030a38.c
+src/unnamed/arm9/0203/func_02030a6c.c
+src/unnamed/arm9/0203/func_02030a78.c
+src/unnamed/arm9/0203/func_02030aa4.c
+# FOLDED into src/Message3.cpp (row 472): src/func_020331fc.c
+# FOLDED into src/Message3.cpp (row 472): src/func_02032f9c.c
+# FOLDED into src/Message3.cpp (row 472): src/func_02033390.cpp
+# FOLDED into src/Message3.cpp (row 472): src/func_02033464.c
+# FOLDED into src/Message3.cpp (row 472): src/func_020337ec.c
+# FOLDED into src/Message3.cpp (row 472): src/func_020338b0.cpp
+# FOLDED into src/Message3.cpp (row 472): src/func_02033ae0.c
+# FOLDED into src/Message3.cpp (row 472): src/func_02033bb8.c
+# FOLDED into src/Message3.cpp (row 472): src/func_02034414.cpp
+src/unnamed/arm9/0202/func_0202043c.c
+src/unnamed/arm9/0203/func_02030838.c
+src/unnamed/arm9/0203/func_02031028.c
+src/unnamed/arm9/0203/func_020316d8.c
+src/unnamed/arm9/0203/func_020319fc.c
+# FOLDED into src/Message3.cpp (row 472): src/func_02031b84.c
+# FOLDED into src/Message3.cpp (row 472): src/func_02033a80.c
+# FOLDED into src/Message3.cpp (row 472): src/func_02033e50.c
+# FOLDED into src/Message3.cpp (row 472): src/func_02034098.cpp
+# FOLDED into src/Message3.cpp (row 472): src/func_020341a8.cpp
+# FOLDED into src/Message3.cpp (row 472): src/func_02034504.c
+src/unnamed/arm9/0202/func_0202044c.c
+src/unnamed/arm9/0203/func_020318a4.c
+# FOLDED into src/Message3.cpp (row 472): src/func_02031cd4.c
+# FOLDED into src/Message3.cpp (row 472): src/func_02031e00.c
 # src/func_02058568.c is EXCLUDED: OS_InitContext, a HAND-ASM PRIMITIVE
 # (an `asm void` block MSVC cannot assemble). hal/scene_vs_menu.cpp carries
 # the host body -- the cxx_aliases ITCM/ARMSaveContext treatment.
@@ -546,24 +546,24 @@ src/func_02031e00.c
 # The seam entry points ov075 actually calls are FACED in
 # hal/scene_vs_menu.cpp, loud-once. TWENTY-NINE MATCHED TUs THIS SLICE COULD
 # HAVE COUNTED AND DID NOT.
-src/func_0203128c.c
-src/func_02031154.c
-src/func_020313d8.c
-src/LoadFont3D.c
-src/_ZN7Message10LoadTextVSEv.cpp
-src/_ZN7Message16SetTextGlobalsVSEv.cpp
-src/func_0203d7b8.c
-src/func_0203d854.c
-src/func_0203d868.c
-src/func_0203d890.c
-src/func_0203d8a0.c
-src/func_0203d8d4.c
-src/func_0203d8e8.c
-src/func_0203d8fc.c
-src/func_0203d918.c
-src/func_0203d930.c
-src/func_0203d9b4.c
-src/func_0203da2c.c
+src/unnamed/arm9/0203/func_0203128c.c
+src/unnamed/arm9/0203/func_02031154.c
+src/unnamed/arm9/0203/func_020313d8.c
+# FOLDED into src/Message3.cpp (row 472): src/LoadFont3D.c
+# FOLDED into src/Message3.cpp (row 472): src/_ZN7Message10LoadTextVSEv.cpp
+# FOLDED into src/Message3.cpp (row 472): src/_ZN7Message16SetTextGlobalsVSEv.cpp
+src/unnamed/arm9/0203/func_0203d7b8.c
+src/unnamed/arm9/0203/func_0203d854.c
+src/unnamed/arm9/0203/func_0203d868.c
+src/unnamed/arm9/0203/func_0203d890.c
+src/unnamed/arm9/0203/func_0203d8a0.c
+src/unnamed/arm9/0203/func_0203d8d4.c
+src/unnamed/arm9/0203/func_0203d8e8.c
+src/unnamed/arm9/0203/func_0203d8fc.c
+src/unnamed/arm9/0203/func_0203d918.c
+src/unnamed/arm9/0203/func_0203d930.c
+src/unnamed/arm9/0203/func_0203d9b4.c
+src/unnamed/arm9/0203/func_0203da2c.c
 # ---- THE THREE PMF DISPATCH SITES are OUT of the slice: their matched TUs
 # dispatch states and elements through MSVC pointer-to-member / virtual
 # calls (this in ecx) onto plain cdecl host bodies -- the receiver never

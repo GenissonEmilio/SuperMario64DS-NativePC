@@ -54,7 +54,9 @@ int _ZN11dScMgBase_c19BeforeInitResourcesEv(void *cv)
 {
     char *c = (char *)cv;                       /* the one added line */
     struct dScMgBase_c *self = (struct dScMgBase_c *)(void *)c;
-    if (_ZN8dScene_c19BeforeInitResourcesEv(c) == 0) return 0;
+    /* PORTSYNC2: dScene_c::BeforeInitResources is a real virtual member in main
+       (include/dScene_c.h, slot 1); the qualified call is the ROM's direct `bl`. */
+    if (((dScene_c *)c)->dScene_c::BeforeInitResources() == 0) return 0;
     if (((mg30::Obj*)c)->v26() == 0)
         func_02019028();
     else
@@ -70,8 +72,8 @@ int _ZN11dScMgBase_c19BeforeInitResourcesEv(void *cv)
     func_ov004_020b8a8c(c + 0x4000);
     ((mg30::Obj*)c)->v33();
     func_ov004_020b2cb8();
-    _ZN8dScene_c9SetFadersEP15FaderBrightness(data_0209f61c);
-    func_0202ec9c(data_0209f61c, 0);
+    _ZN8dScene_c9SetFadersEP15dFdBrightness_c(data_0209f61c);
+    _ZN7dWipe_c13func_0202ec9cEi(data_0209f61c, 0);
     data_0209d460[0] = 0;
     data_0209d458[0] = 0;
     ((mg30::Obj*)c)->v31();

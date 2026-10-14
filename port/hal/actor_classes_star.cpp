@@ -166,15 +166,15 @@ static void star31_fill_shared(void **vt)
 // POWER_STAR (actor 178), _ZTV9PowerStar @ ov002 0x0210ab3c
 // ============================================================================
 extern "C" {
-int _ZN9PowerStar13InitResourcesEv(void *self);   /* face: below */
-int _ZN9PowerStar16CleanupResourcesEv(void *self); /* face: below */
-int _ZN9PowerStar6RenderEv(void *self);            /* face: below */
-int _ZN9PowerStar8BehaviorEv(void *self);          /* host copy */
-int *_ZN9PowerStarD1Ev(int *self);
-int *_ZN9PowerStarD0Ev(int *self);
-int _ZN9PowerStar13OnYoshiTryEatEv(void *self);               /* slot 18 override */
-int _ZN9PowerStar13OnTurnIntoEggER6Player(void *self, void *player); /* slot 19 override */
-void *_ZTV9PowerStar[31];
+int _ZN8daStar_c13InitResourcesEv(void *self);   /* face: below */
+int _ZN8daStar_c16CleanupResourcesEv(void *self); /* face: below */
+int _ZN8daStar_c6RenderEv(void *self);            /* face: below */
+int _ZN8daStar_c8BehaviorEv(void *self);          /* host copy */
+int *_ZN8daStar_cD1Ev(int *self);
+int *_ZN8daStar_cD0Ev(int *self);
+int _ZN8daStar_c13OnYoshiTryEatEv(void *self);               /* slot 18 override */
+int _ZN8daStar_c13OnTurnIntoEggER6Player(void *self, void *player); /* slot 19 override */
+void *_ZTV8daStar_c[31];
 void port_power_star_states_seat(void);   /* port/unmatched/PowerStar_States */
 
 /* the two Actor combat-tail slots PowerStar leaves as Actor's own bodies but
@@ -193,8 +193,7 @@ int _ZN8dActor_c16OnAimedAtWithEggEv(void *self);     /* slot 29 */
    daStar_c_classInit_SILVER_STAR, _ZN9PowerStarD0Ev. Read out of
    extracted/overlays/overlay_0002.bin; the LHS is not a config symbol
    anywhere, so the alias cannot be defeated by a later slice. */
-#pragma comment(linker, "/alternatename:__ZTV8daStar_c=__ZTV9PowerStar")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV8daStar_c=__ZTV8daStar_c")
 /* PowerStar's Cleanup/InitResources and the state helper func_ov002_020e8ef0
    declare a handful of data symbols as bare typed globals OUTSIDE extern "C", so
    MSVC C++-mangles the references while the ov002 mount / arm9 romdata / a hal
@@ -307,20 +306,20 @@ extern "C" int port_vsstar_layout_check(void)
 #pragma comment(linker, "/alternatename:?data_020a4bb8@@3PAXA=_data_020a4bb8")
 
 static int __fastcall ps_init(void *s, void *)
-{ return _ZN9PowerStar13InitResourcesEv(s); }
+{ return _ZN8daStar_c13InitResourcesEv(s); }
 static int __fastcall ps_clean(void *s, void *)
-{ return _ZN9PowerStar16CleanupResourcesEv(s); }
+{ return _ZN8daStar_c16CleanupResourcesEv(s); }
 static int __fastcall ps_behavior(void *s, void *)
-{ return _ZN9PowerStar8BehaviorEv(s); }
+{ return _ZN8daStar_c8BehaviorEv(s); }
 static int __fastcall ps_render(void *s, void *)
 { port_actor_render_probe("POWER_STAR", (char *)s + 0x30c);
-  return _ZN9PowerStar6RenderEv(s); }
+  return _ZN8daStar_c6RenderEv(s); }
 static int __fastcall ps_d1(void *s, void *)
-{ return (int)(size_t)_ZN9PowerStarD1Ev((int *)s); }
+{ return (int)(size_t)_ZN8daStar_cD1Ev((int *)s); }
 static int __fastcall ps_d0(void *s, void *)
-{ return (int)(size_t)_ZN9PowerStarD0Ev((int *)s); }
+{ return (int)(size_t)_ZN8daStar_cD0Ev((int *)s); }
 static int __fastcall ps_yoshi(void *s, void *)
-{ return _ZN9PowerStar13OnYoshiTryEatEv(s); }
+{ return _ZN8daStar_c13OnYoshiTryEatEv(s); }
 /* Slot 19 is OnTurnIntoEgg(Player &player): the pushed player has to be
    declared so the thunk pops it, the way ps_yoshi's argument-free slot 18
    does not have to, and it has to be FORWARDED. _ZN9PowerStar13OnTurnIntoEggER6Player is the
@@ -330,13 +329,13 @@ static int __fastcall ps_yoshi(void *s, void *)
    thunk's own return address, which it stored at +0x438 and passed on to
    func_ov002_020e8ef0. */
 static int __fastcall ps_s19(void *s, void *, void *player)
-{ return _ZN9PowerStar13OnTurnIntoEggER6Player(s, player); }
+{ return _ZN8daStar_c13OnTurnIntoEggER6Player(s, player); }
 static int __fastcall ps_aimed(void *s, void *)
 { return _ZN8dActor_c16OnAimedAtWithEggEv(s); }
 
 extern "C" void hal_fill_power_star_vtable(void)
 {
-    void **vt = _ZTV9PowerStar;
+    void **vt = _ZTV8daStar_c;
     port_enemy_death_states_seat();
     port_power_star_states_seat();
     star31_fill_shared(vt);
@@ -356,12 +355,12 @@ extern "C" void hal_fill_power_star_vtable(void)
 // InitResources/CleanupResources/Render are real MSVC methods against
 // include/PowerStar.h; D1/D0 and the two func_ov002_* overrides are already
 // C-named free functions in their own TUs.
-#include "PowerStar.h"
+#include "daStar_c.h"
 extern "C" {
-int _ZN9PowerStar13InitResourcesEv(void *self)
-{ return ((PowerStar *)self)->PowerStar::InitResources(); }
-int _ZN9PowerStar16CleanupResourcesEv(void *self)
-{ return ((PowerStar *)self)->PowerStar::CleanupResources(); }
+int _ZN8daStar_c13InitResourcesEv(void *self)
+{ return ((daStar_c *)self)->daStar_c::InitResources(); }
+int _ZN8daStar_c16CleanupResourcesEv(void *self)
+{ return ((daStar_c *)self)->daStar_c::CleanupResources(); }
 /* PowerStar::Render is NOT faced here: it dispatches ModelAnim slot 5 through a
    local six-virtual shadow (sub.m5(&arg80), the ROM Render), which the host
    _ZTV9ModelAnim array numbers as Virtual18 (MSVC folds the two dtor slots into

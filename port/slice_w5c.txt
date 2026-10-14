@@ -28,7 +28,7 @@
 
 # ---- the 51 probed pack bodies --------------------------------------------
 src/game/actors/d_a_propeller_heyho.cpp
-src/game/actors/daBrq_c.cpp
+src/actors/daBrq_c.cpp
 src/game/actors/d_a_krpa.cpp
 src/game/actors/d_a_kp_fr.cpp
 
@@ -43,7 +43,7 @@ src/game/actors/d_a_kp_fr.cpp
 # ...and the collider initialiser both chomp InitResources bodies call (the
 # link named it; its decorated free-function spelling is aliased in the fill
 # file).
-src/_ZN10dCcAcPos_c4InitEP8dActor_cRK7Vector35Fix12IiES6_jj.cpp
+src/engine/collision/dCcAc_c.cpp
 
 # ---- the probe's class-b closure ------------------------------------------
 # The two TUs whose absence the census link measured (LNK2019 with all 59
@@ -59,16 +59,16 @@ port/unmatched/Actor_HorzAngleToCPlayerOrAng.cpp
 # ov70_bringup AFTER the PMF seat rewrites the source records. Each name is
 # referenced by nothing but its own defining TU (swept src-wide; the ov045
 # 0x02112280 collision has no counterpart here).
-src/__sinit_ov070_02122afc.c
-src/__sinit_ov070_02122d80.cpp
-src/__sinit_ov070_02122f30.c
-src/__sinit_ov070_02123030.c
+# FOLDED into src/game/actors/d_a_propeller_heyho.cpp (row 30): src/__sinit_ov070_02122afc.c
+src/unnamed/ov070/__sinit_ov070_02122d80.cpp
+# FOLDED into src/game/actors/d_a_krpa.cpp (row 32): src/__sinit_ov070_02122f30.c
+# FOLDED into src/game/actors/d_a_kp_fr.cpp (row 33): src/__sinit_ov070_02123030.c
 
 # ---- the pack's cross-class face targets ----------------------------------
 # Player::Shock is a real method (its face is in actor_classes_ov070.cpp);
 # the TU's own deps (func_ov002_020d82f0/020d91e0, Player::ChangeState,
 # data_ov002_021100c4) are all in today's map, checked one by one.
-src/_ZN6Player5ShockEj.cpp
+src/actors/Player.cpp
 
 # ---- POPPING_LAVA_BUBBLES (196, ov002), the census's second bonus find ----
 # The registered spawn and the one own-slot body that is a faithful matched

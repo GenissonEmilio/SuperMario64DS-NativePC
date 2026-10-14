@@ -34,4 +34,4 @@
 # and its body reads back exactly the cells the reloc sweep predicted, which is
 # what says the mount list and the sinit agree.
 src/game/actors/d_a_obj_fl_gura.cpp
-src/__sinit_ov064_0211b078.c
+# FOLDED into src/game/actors/d_a_obj_fl_gura.cpp (row 36): src/__sinit_ov064_0211b078.c

@@ -14,16 +14,16 @@ src/game/actors/d_a_obj_wc_obj01.cpp
 src/game/actors/d_a_obj_wc_obj07.cpp
 src/game/actors/d_a_obj_wc_obj04.cpp
 src/game/actors/d_a_obj_wc_mizu.cpp
-src/_ZN8dActor_c17GetWaterHeightWDWEv.cpp
+src/actors/dActor_c.cpp
 src/game/actors/d_a_obj_wc_obj03.cpp
-src/__sinit_ov029_02112b38.c
-src/__sinit_ov029_02112ba4.c
-src/__sinit_ov029_02112c10.c
-src/__sinit_ov029_02112c4c.c
-src/__sinit_ov029_02112cb8.c
-src/__sinit_ov029_02112d24.c
-src/__sinit_ov029_02112d90.c
-src/__sinit_ov029_02112dfc.c
+# FOLDED into src/game/actors/d_a_obj_wc_obj01.cpp (row 13): src/__sinit_ov029_02112b38.c
+# FOLDED into src/game/actors/d_a_obj_wc_obj02.cpp (row 11): src/__sinit_ov029_02112ba4.c
+# FOLDED into src/game/actors/d_a_obj_wc_obj03.cpp (row 18): src/__sinit_ov029_02112c10.c
+src/game/actors/d_a_obj_wc_obj05.cpp
+# FOLDED into src/game/actors/d_a_obj_wc_obj06.cpp (row 12): src/__sinit_ov029_02112cb8.c
+# FOLDED into src/game/actors/d_a_obj_wc_obj07.cpp (row 14): src/__sinit_ov029_02112d24.c
+# FOLDED into src/game/actors/d_a_obj_wc_mizu.cpp (row 16): src/__sinit_ov029_02112d90.c
+# FOLDED into src/game/actors/d_a_obj_wc_obj04.cpp (row 15): src/__sinit_ov029_02112dfc.c
 src/game/actors/d_a_obj_wc_obj05.cpp
 # EXCLUDED (guessed/inferred-stub bodies, not seated): the Square and Rectangle
 # deleting destructors _ZN14daObjWcObj01_cD0Ev.c / _ZN14daObjWcObj06_cD0Ev.c (slot 17,

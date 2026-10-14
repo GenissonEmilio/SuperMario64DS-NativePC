@@ -154,37 +154,37 @@ void port_mg_call1(void *self, unsigned code, int adj, int a);
    header names. Two parameter names differ from src's because src spells them
    `this`, which is a keyword in the language this file compiles as; a
    declaration's parameter names are not part of its type. */
-void func_ov006_020d5eb8(unsigned char *base, int idx);
-void func_ov006_020d5f28(void);              /* one-argument slot, bx lr body */
-void func_ov006_020d5f2c(char *c, int i);
-void func_ov006_020d5fd8(int c, int i);
-void func_ov006_020d6100(unsigned char *base, int idx);
-void func_ov006_020d6170(char *c, int idx);
-void func_ov006_020d61dc(char *c, int index);
-void func_ov006_020d6264(int c, int i);
-void func_ov006_020d6454(unsigned char *base, int idx);
-void func_ov006_020d64c4(void);              /* one-argument slot, bx lr body */
-void func_ov006_020d64c8(char *o, int i);
-void func_ov006_020d65b4(int c, int i);
-void func_ov006_020d7778(void);              /* one-argument slot, bx lr body */
-void func_ov006_020d777c(char *self, int idx);
-void func_ov006_020d7c4c(char *c, int i);    /* run mg7: was the missing state */
-void func_ov006_020d7958(void);              /* one-argument slot, bx lr body */
-void func_ov006_020d795c(char *o, int i);
-void func_ov006_020d7a84(char *c, int i);
-void func_ov006_020d7e7c(char *c, int i);
-void func_ov006_020d7edc(unsigned char *c, int idx);
-void func_ov006_020d7f5c(char *self, int idx);
-void func_ov006_020d816c(char *self, int idx);
-void func_ov006_020d8324(int c, int i);
-void func_ov006_020d89c4(char *self);
-void func_ov006_020d8af8(char *self);
-void func_ov006_020d8cc4(char *r5);
-void func_ov006_020d8d84(char *self);
-void func_ov006_020d8f34(char *c);
-int  func_ov006_020d8ff4(void *c);
-void func_ov006_020d9020(void *c);
-void func_ov006_020d904c(void *c);
+void _ZN14dScMgBomroom_c19func_ov006_020d5eb8Ei(unsigned char *base, int idx);
+void _ZN14dScMgBomroom_c19func_ov006_020d5f28Ev(void);              /* one-argument slot, bx lr body */
+void _ZN14dScMgBomroom_c19func_ov006_020d5f2cEi(char *c, int i);
+void _ZN14dScMgBomroom_c19func_ov006_020d5fd8Ei(int c, int i);
+void _ZN14dScMgBomroom_c19func_ov006_020d6100Ei(unsigned char *base, int idx);
+void _ZN14dScMgBomroom_c19func_ov006_020d6170Ei(char *c, int idx);
+void _ZN14dScMgBomroom_c19func_ov006_020d61dcEi(char *c, int index);
+void _ZN14dScMgBomroom_c19func_ov006_020d6264Ei(int c, int i);
+void _ZN14dScMgBomroom_c19func_ov006_020d6454Ei(unsigned char *base, int idx);
+void _ZN14dScMgBomroom_c19func_ov006_020d64c4Ev(void);              /* one-argument slot, bx lr body */
+void _ZN14dScMgBomroom_c19func_ov006_020d64c8Ei(char *o, int i);
+void _ZN14dScMgBomroom_c19func_ov006_020d65b4Ei(int c, int i);
+void _ZN14dScMgBomroom_c19func_ov006_020d7778Ev(void);              /* one-argument slot, bx lr body */
+void _ZN14dScMgBomroom_c19func_ov006_020d777cEi(char *self, int idx);
+void _ZN14dScMgBomroom_c19func_ov006_020d7c4cEi(char *c, int i);    /* run mg7: was the missing state */
+void _ZN14dScMgBomroom_c19func_ov006_020d7958Ev(void);              /* one-argument slot, bx lr body */
+void _ZN14dScMgBomroom_c19func_ov006_020d795cEi(char *o, int i);
+void _ZN14dScMgBomroom_c19func_ov006_020d7a84Ei(char *c, int i);
+void _ZN14dScMgBomroom_c19func_ov006_020d7e7cEi(char *c, int i);
+void _ZN14dScMgBomroom_c19func_ov006_020d7edcEi(unsigned char *c, int idx);
+void _ZN14dScMgBomroom_c19func_ov006_020d7f5cEi(char *self, int idx);
+void _ZN14dScMgBomroom_c19func_ov006_020d816cEi(char *self, int idx);
+void _ZN14dScMgBomroom_c19func_ov006_020d8324Ei(int c, int i);
+void _ZN14dScMgBomroom_c19func_ov006_020d89c4Ev(char *self);
+void _ZN14dScMgBomroom_c19func_ov006_020d8af8Ev(char *self);
+void _ZN14dScMgBomroom_c19func_ov006_020d8cc4Ev(char *r5);
+void _ZN14dScMgBomroom_c19func_ov006_020d8d84Ev(char *self);
+void _ZN14dScMgBomroom_c19func_ov006_020d8f34Ev(char *c);
+int  _ZN14dScMgBomroom_c19func_ov006_020d8ff4Ev(void *c);
+void _ZN14dScMgBomroom_c19func_ov006_020d9020Ev(void *c);
+void _ZN14dScMgBomroom_c19func_ov006_020d904cEv(void *c);
 
 /* the seven mount tables, re-typed to the ROM's eight-byte pair. The mount
    defines the storage; __sinit_ov006_0212fd48 fills it at scene load. */
@@ -198,9 +198,9 @@ extern MgPmf data_ov006_02141730[];
 
 /* the ordinary callees the host copies below keep, each spelled as its own src
    TU spells it */
-void func_ov006_020d5b10(char *c);
-void func_ov006_020d5d08(char *c);
-void func_ov006_020d69b8(char *a, int i);
+void _ZN14dScMgBomroom_c19func_ov006_020d5b10Ev(char *c);
+void _ZN14dScMgBomroom_c19func_ov006_020d5d08Ev(char *c);
+void _ZN14dScMgBomroom_c19func_ov006_020d69b8Ei(char *a, int i);
 
 /* the two arm9 globals src/func_ov006_020d836c.cpp reads, in its spelling.
    data_020a0e40 is read as a BYTE by the ROM (`ldrb r1,[r1]`) and indexes
@@ -218,8 +218,8 @@ extern int data_020a0de8[];
    020d5fec, 020d6278, 020d65c8, 020d836c and 020d91b0 -- are gone with the host
    copies they named. Those five symbols are their own matched TUs now and
    nothing in this file calls them. */
-void func_ov006_020d7c00(char *c, int i);
-void func_ov006_020d8f98(unsigned char *c);
+void _ZN14dScMgBomroom_c19func_ov006_020d7c00Ei(char *c, int i);
+void _ZN14dScMgBomroom_c19func_ov006_020d8f98Ev(unsigned char *c);
 
 /* the boot installer at the end of this file; hal/scene_mg.cpp calls it after
    the ov006 constructors have filled the tables. */
@@ -247,17 +247,17 @@ static int bomroom_try_0(void *self, unsigned code)
     char *c = (char *)self;
     switch (code) {
     /* data_ov006_021416e0, the table vtable slot 6 dispatches */
-    case 0x020d904cu: func_ov006_020d904c(c);            return 1;
-    case 0x020d9020u: func_ov006_020d9020(c);            return 1;
-    case 0x020d8ff4u: func_ov006_020d8ff4(c);            return 1;
-    case 0x020d8f98u: func_ov006_020d8f98((unsigned char *)c);
+    case 0x020d904cu: _ZN14dScMgBomroom_c19func_ov006_020d904cEv(c);            return 1;
+    case 0x020d9020u: _ZN14dScMgBomroom_c19func_ov006_020d9020Ev(c);            return 1;
+    case 0x020d8ff4u: _ZN14dScMgBomroom_c19func_ov006_020d8ff4Ev(c);            return 1;
+    case 0x020d8f98u: _ZN14dScMgBomroom_c19func_ov006_020d8f98Ev((unsigned char *)c);
                                                          return 1; /* host copy */
-    case 0x020d8f34u: func_ov006_020d8f34(c);            return 1;
+    case 0x020d8f34u: _ZN14dScMgBomroom_c19func_ov006_020d8f34Ev(c);            return 1;
     /* data_ov006_021416a0, the open-coded dispatcher's own table */
-    case 0x020d8d84u: func_ov006_020d8d84(c);            return 1;
-    case 0x020d8cc4u: func_ov006_020d8cc4(c);            return 1;
-    case 0x020d8af8u: func_ov006_020d8af8(c);            return 1;
-    case 0x020d89c4u: func_ov006_020d89c4(c);            return 1;
+    case 0x020d8d84u: _ZN14dScMgBomroom_c19func_ov006_020d8d84Ev(c);            return 1;
+    case 0x020d8cc4u: _ZN14dScMgBomroom_c19func_ov006_020d8cc4Ev(c);            return 1;
+    case 0x020d8af8u: _ZN14dScMgBomroom_c19func_ov006_020d8af8Ev(c);            return 1;
+    case 0x020d89c4u: _ZN14dScMgBomroom_c19func_ov006_020d89c4Ev(c);            return 1;
     default:                                             return 0;
     }
 }
@@ -267,37 +267,37 @@ static int bomroom_try_1(void *self, unsigned code, int a)
     char *c = (char *)self;
     switch (code) {
     /* data_ov006_02141730, seven slots, dispatched by func_ov006_020d836c */
-    case 0x020d8324u: func_ov006_020d8324((int)(size_t)c, a); return 1;
-    case 0x020d816cu: func_ov006_020d816c(c, a);              return 1;
-    case 0x020d7f5cu: func_ov006_020d7f5c(c, a);              return 1;
-    case 0x020d7edcu: func_ov006_020d7edc((unsigned char *)c, a); return 1;
-    case 0x020d7e7cu: func_ov006_020d7e7c(c, a);              return 1;
+    case 0x020d8324u: _ZN14dScMgBomroom_c19func_ov006_020d8324Ei((int)(size_t)c, a); return 1;
+    case 0x020d816cu: _ZN14dScMgBomroom_c19func_ov006_020d816cEi(c, a);              return 1;
+    case 0x020d7f5cu: _ZN14dScMgBomroom_c19func_ov006_020d7f5cEi(c, a);              return 1;
+    case 0x020d7edcu: _ZN14dScMgBomroom_c19func_ov006_020d7edcEi((unsigned char *)c, a); return 1;
+    case 0x020d7e7cu: _ZN14dScMgBomroom_c19func_ov006_020d7e7cEi(c, a);              return 1;
     /* Slot 5 of this table. Was the floor; run mg7 decompiled and byte-matched
        it, so this dispatches the real body and the count says it ran. */
     case 0x020d7c4cu: ++g_bomroom_flight_calls;
-                      func_ov006_020d7c4c(c, a);              return 1;
-    case 0x020d7c00u: func_ov006_020d7c00(c, a);              return 1; /* host */
+                      _ZN14dScMgBomroom_c19func_ov006_020d7c4cEi(c, a);              return 1;
+    case 0x020d7c00u: _ZN14dScMgBomroom_c19func_ov006_020d7c00Ei(c, a);              return 1; /* host */
     /* data_ov006_02141708, five slots, dispatched by func_ov006_020d7c00 */
-    case 0x020d7a84u: func_ov006_020d7a84(c, a);              return 1;
-    case 0x020d795cu: func_ov006_020d795c(c, a);              return 1;
-    case 0x020d7958u: func_ov006_020d7958();                  return 1; /* void */
-    case 0x020d777cu: func_ov006_020d777c(c, a);              return 1;
-    case 0x020d7778u: func_ov006_020d7778();                  return 1; /* void */
+    case 0x020d7a84u: _ZN14dScMgBomroom_c19func_ov006_020d7a84Ei(c, a);              return 1;
+    case 0x020d795cu: _ZN14dScMgBomroom_c19func_ov006_020d795cEi(c, a);              return 1;
+    case 0x020d7958u: _ZN14dScMgBomroom_c19func_ov006_020d7958Ev();                  return 1; /* void */
+    case 0x020d777cu: _ZN14dScMgBomroom_c19func_ov006_020d777cEi(c, a);              return 1;
+    case 0x020d7778u: _ZN14dScMgBomroom_c19func_ov006_020d7778Ev();                  return 1; /* void */
     /* data_ov006_02141680, four slots, dispatched by func_ov006_020d65c8 */
-    case 0x020d65b4u: func_ov006_020d65b4((int)(size_t)c, a); return 1;
-    case 0x020d64c8u: func_ov006_020d64c8(c, a);              return 1;
-    case 0x020d64c4u: func_ov006_020d64c4();                  return 1; /* void */
-    case 0x020d6454u: func_ov006_020d6454((unsigned char *)c, a); return 1;
+    case 0x020d65b4u: _ZN14dScMgBomroom_c19func_ov006_020d65b4Ei((int)(size_t)c, a); return 1;
+    case 0x020d64c8u: _ZN14dScMgBomroom_c19func_ov006_020d64c8Ei(c, a);              return 1;
+    case 0x020d64c4u: _ZN14dScMgBomroom_c19func_ov006_020d64c4Ev();                  return 1; /* void */
+    case 0x020d6454u: _ZN14dScMgBomroom_c19func_ov006_020d6454Ei((unsigned char *)c, a); return 1;
     /* data_ov006_021416c0, four slots, dispatched by func_ov006_020d6278 */
-    case 0x020d6264u: func_ov006_020d6264((int)(size_t)c, a); return 1;
-    case 0x020d61dcu: func_ov006_020d61dc(c, a);              return 1;
-    case 0x020d6170u: func_ov006_020d6170(c, a);              return 1;
-    case 0x020d6100u: func_ov006_020d6100((unsigned char *)c, a); return 1;
+    case 0x020d6264u: _ZN14dScMgBomroom_c19func_ov006_020d6264Ei((int)(size_t)c, a); return 1;
+    case 0x020d61dcu: _ZN14dScMgBomroom_c19func_ov006_020d61dcEi(c, a);              return 1;
+    case 0x020d6170u: _ZN14dScMgBomroom_c19func_ov006_020d6170Ei(c, a);              return 1;
+    case 0x020d6100u: _ZN14dScMgBomroom_c19func_ov006_020d6100Ei((unsigned char *)c, a); return 1;
     /* data_ov006_02141660, four slots, dispatched by func_ov006_020d5fec */
-    case 0x020d5fd8u: func_ov006_020d5fd8((int)(size_t)c, a); return 1;
-    case 0x020d5f2cu: func_ov006_020d5f2c(c, a);              return 1;
-    case 0x020d5f28u: func_ov006_020d5f28();                  return 1; /* void */
-    case 0x020d5eb8u: func_ov006_020d5eb8((unsigned char *)c, a); return 1;
+    case 0x020d5fd8u: _ZN14dScMgBomroom_c19func_ov006_020d5fd8Ei((int)(size_t)c, a); return 1;
+    case 0x020d5f2cu: _ZN14dScMgBomroom_c19func_ov006_020d5f2cEi(c, a);              return 1;
+    case 0x020d5f28u: _ZN14dScMgBomroom_c19func_ov006_020d5f28Ev();                  return 1; /* void */
+    case 0x020d5eb8u: _ZN14dScMgBomroom_c19func_ov006_020d5eb8Ei((unsigned char *)c, a); return 1;
     default:                                                  return 0;
     }
 }
@@ -511,43 +511,43 @@ extern "C" unsigned port_mg_bomroom_opencoded_calls(void)
     }
 
 /* data_ov006_02141660, arity 1 */
-BR_FACE1(func_ov006_020d5fd8, (int)(size_t))
-BR_FACE1(func_ov006_020d5f2c, (char *))
-BR_FACE1_VOID(func_ov006_020d5f28)
-BR_FACE1(func_ov006_020d5eb8, (unsigned char *))
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d5fd8Ei, (int)(size_t))
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d5f2cEi, (char *))
+BR_FACE1_VOID(_ZN14dScMgBomroom_c19func_ov006_020d5f28Ev)
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d5eb8Ei, (unsigned char *))
 /* data_ov006_02141680, arity 1 */
-BR_FACE1(func_ov006_020d65b4, (int)(size_t))
-BR_FACE1(func_ov006_020d64c8, (char *))
-BR_FACE1_VOID(func_ov006_020d64c4)
-BR_FACE1(func_ov006_020d6454, (unsigned char *))
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d65b4Ei, (int)(size_t))
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d64c8Ei, (char *))
+BR_FACE1_VOID(_ZN14dScMgBomroom_c19func_ov006_020d64c4Ev)
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d6454Ei, (unsigned char *))
 /* data_ov006_021416c0, arity 1 */
-BR_FACE1(func_ov006_020d6264, (int)(size_t))
-BR_FACE1(func_ov006_020d61dc, (char *))
-BR_FACE1(func_ov006_020d6170, (char *))
-BR_FACE1(func_ov006_020d6100, (unsigned char *))
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d6264Ei, (int)(size_t))
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d61dcEi, (char *))
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d6170Ei, (char *))
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d6100Ei, (unsigned char *))
 /* data_ov006_021416e0, arity 0 */
-BR_FACE0(func_ov006_020d904c, (char *))
-BR_FACE0(func_ov006_020d9020, (char *))
-BR_FACE0(func_ov006_020d8ff4, (char *))
-BR_FACE0(func_ov006_020d8f98, (unsigned char *))
-BR_FACE0(func_ov006_020d8f34, (char *))
+BR_FACE0(_ZN14dScMgBomroom_c19func_ov006_020d904cEv, (char *))
+BR_FACE0(_ZN14dScMgBomroom_c19func_ov006_020d9020Ev, (char *))
+BR_FACE0(_ZN14dScMgBomroom_c19func_ov006_020d8ff4Ev, (char *))
+BR_FACE0(_ZN14dScMgBomroom_c19func_ov006_020d8f98Ev, (unsigned char *))
+BR_FACE0(_ZN14dScMgBomroom_c19func_ov006_020d8f34Ev, (char *))
 /* data_ov006_02141730, arity 1 */
-BR_FACE1(func_ov006_020d8324, (int)(size_t))
-BR_FACE1(func_ov006_020d816c, (char *))
-BR_FACE1(func_ov006_020d7f5c, (char *))
-BR_FACE1(func_ov006_020d7edc, (unsigned char *))
-BR_FACE1(func_ov006_020d7e7c, (char *))
-BR_FACE1(func_ov006_020d7c00, (char *))
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d8324Ei, (int)(size_t))
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d816cEi, (char *))
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d7f5cEi, (char *))
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d7edcEi, (unsigned char *))
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d7e7cEi, (char *))
+BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d7c00Ei, (char *))
 
 /* Slot 5 of data_ov006_02141730, the bomb's free-flight state. Written out
    rather than macro-generated because it carries the census counter
    hal/scene_mg_bomroom.cpp prints. */
-static void __fastcall br_func_ov006_020d7c4c(void *self, void *dead_edx, int i)
+static void __fastcall br__ZN14dScMgBomroom_c19func_ov006_020d7c4cEi(void *self, void *dead_edx, int i)
 {
     (void)dead_edx;
     ++g_bomroom_state_hits;
     ++g_bomroom_flight_calls;
-    func_ov006_020d7c4c((char *)self, i);
+    _ZN14dScMgBomroom_c19func_ov006_020d7c4cEi((char *)self, i);
 }
 
 /* run link100 lane SEAT4: this class's remaining state tables are
@@ -572,34 +572,34 @@ extern "C" void port_mg_bomroom_states_seat(void)
         unsigned rom;
         void *face;
     } seats[] = {
-        {data_ov006_02141660, "02141660", 0, 0x020d5fd8u, (void *)br_func_ov006_020d5fd8},
-        {data_ov006_02141660, "02141660", 1, 0x020d5f2cu, (void *)br_func_ov006_020d5f2c},
-        {data_ov006_02141660, "02141660", 2, 0x020d5f28u, (void *)br_func_ov006_020d5f28},
-        {data_ov006_02141660, "02141660", 3, 0x020d5eb8u, (void *)br_func_ov006_020d5eb8},
+        {data_ov006_02141660, "02141660", 0, 0x020d5fd8u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d5fd8Ei},
+        {data_ov006_02141660, "02141660", 1, 0x020d5f2cu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d5f2cEi},
+        {data_ov006_02141660, "02141660", 2, 0x020d5f28u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d5f28Ev},
+        {data_ov006_02141660, "02141660", 3, 0x020d5eb8u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d5eb8Ei},
 
-        {data_ov006_02141680, "02141680", 0, 0x020d65b4u, (void *)br_func_ov006_020d65b4},
-        {data_ov006_02141680, "02141680", 1, 0x020d64c8u, (void *)br_func_ov006_020d64c8},
-        {data_ov006_02141680, "02141680", 2, 0x020d64c4u, (void *)br_func_ov006_020d64c4},
-        {data_ov006_02141680, "02141680", 3, 0x020d6454u, (void *)br_func_ov006_020d6454},
+        {data_ov006_02141680, "02141680", 0, 0x020d65b4u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d65b4Ei},
+        {data_ov006_02141680, "02141680", 1, 0x020d64c8u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d64c8Ei},
+        {data_ov006_02141680, "02141680", 2, 0x020d64c4u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d64c4Ev},
+        {data_ov006_02141680, "02141680", 3, 0x020d6454u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d6454Ei},
 
-        {data_ov006_021416c0, "021416c0", 0, 0x020d6264u, (void *)br_func_ov006_020d6264},
-        {data_ov006_021416c0, "021416c0", 1, 0x020d61dcu, (void *)br_func_ov006_020d61dc},
-        {data_ov006_021416c0, "021416c0", 2, 0x020d6170u, (void *)br_func_ov006_020d6170},
-        {data_ov006_021416c0, "021416c0", 3, 0x020d6100u, (void *)br_func_ov006_020d6100},
+        {data_ov006_021416c0, "021416c0", 0, 0x020d6264u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d6264Ei},
+        {data_ov006_021416c0, "021416c0", 1, 0x020d61dcu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d61dcEi},
+        {data_ov006_021416c0, "021416c0", 2, 0x020d6170u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d6170Ei},
+        {data_ov006_021416c0, "021416c0", 3, 0x020d6100u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d6100Ei},
 
-        {data_ov006_021416e0, "021416e0", 0, 0x020d904cu, (void *)br_func_ov006_020d904c},
-        {data_ov006_021416e0, "021416e0", 1, 0x020d9020u, (void *)br_func_ov006_020d9020},
-        {data_ov006_021416e0, "021416e0", 2, 0x020d8ff4u, (void *)br_func_ov006_020d8ff4},
-        {data_ov006_021416e0, "021416e0", 3, 0x020d8f98u, (void *)br_func_ov006_020d8f98},
-        {data_ov006_021416e0, "021416e0", 4, 0x020d8f34u, (void *)br_func_ov006_020d8f34},
+        {data_ov006_021416e0, "021416e0", 0, 0x020d904cu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d904cEv},
+        {data_ov006_021416e0, "021416e0", 1, 0x020d9020u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d9020Ev},
+        {data_ov006_021416e0, "021416e0", 2, 0x020d8ff4u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d8ff4Ev},
+        {data_ov006_021416e0, "021416e0", 3, 0x020d8f98u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d8f98Ev},
+        {data_ov006_021416e0, "021416e0", 4, 0x020d8f34u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d8f34Ev},
 
-        {data_ov006_02141730, "02141730", 0, 0x020d8324u, (void *)br_func_ov006_020d8324},
-        {data_ov006_02141730, "02141730", 1, 0x020d816cu, (void *)br_func_ov006_020d816c},
-        {data_ov006_02141730, "02141730", 2, 0x020d7f5cu, (void *)br_func_ov006_020d7f5c},
-        {data_ov006_02141730, "02141730", 3, 0x020d7edcu, (void *)br_func_ov006_020d7edc},
-        {data_ov006_02141730, "02141730", 4, 0x020d7e7cu, (void *)br_func_ov006_020d7e7c},
-        {data_ov006_02141730, "02141730", 5, 0x020d7c4cu, (void *)br_func_ov006_020d7c4c},
-        {data_ov006_02141730, "02141730", 6, 0x020d7c00u, (void *)br_func_ov006_020d7c00},
+        {data_ov006_02141730, "02141730", 0, 0x020d8324u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d8324Ei},
+        {data_ov006_02141730, "02141730", 1, 0x020d816cu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d816cEi},
+        {data_ov006_02141730, "02141730", 2, 0x020d7f5cu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d7f5cEi},
+        {data_ov006_02141730, "02141730", 3, 0x020d7edcu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d7edcEi},
+        {data_ov006_02141730, "02141730", 4, 0x020d7e7cu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d7e7cEi},
+        {data_ov006_02141730, "02141730", 5, 0x020d7c4cu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d7c4cEi},
+        {data_ov006_02141730, "02141730", 6, 0x020d7c00u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d7c00Ei},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {

@@ -194,26 +194,26 @@ void port_mg_call1(void *self, unsigned code, int adj, int a);
    takes one pointer and every arity-1 slot's takes a pointer and an int, which
    is what section 3 above measures against the ROM.  020e9b70 and 020e8830 are
    host copies further down this file. */
-void func_ov006_020e9bbc(char *c);                  /* f2c 0 */
-void func_ov006_020e989c(void *cc);                 /* f2c 2 */
-void func_ov006_020e97b0(char *c);                  /* fac 0 */
-void func_ov006_020e96f4(char *thiz);               /* fac 1 */
-void func_ov006_020e968c(char *c);                  /* fac 2 */
-void func_ov006_020e9670(void *t);                  /* fac 3 */
-void func_ov006_020e9318(char *c, int i);           /* f5c 0 */
-void func_ov006_020e91a0(char *self, int idx);      /* f5c 1 */
-void func_ov006_020e8f14(char *self, int i);        /* f5c 2 */
-void func_ov006_020e8cb0(char *c, int i);           /* f74 0 */
-void func_ov006_020e8c74(char *c, int i);           /* f74 1 */
-void func_ov006_020e8bd0(char *c, int i);           /* f74 2 */
-void func_ov006_020e8928(char *o, int idx);         /* f1c 0 */
-void func_ov006_020e8728(char *c, int idx);         /* f8c 0 */
-void func_ov006_020e85f0(char *c, int i);           /* f8c 1 */
-void func_ov006_020e84b8(char *c, int i);           /* f8c 2 */
-void func_ov006_020e83bc(char *c, int i);           /* f8c 3 */
-void func_ov006_020e82c8(unsigned char *c);         /* f44 0 */
-void func_ov006_020e8214(char *c);                  /* f44 1 */
-void func_ov006_020e81e0(char *self);               /* f44 2 */
+void _ZN12dScMg3DEsp_c4WaitEv(char *c);                  /* f2c 0 */
+void _ZN12dScMg3DEsp_c7ResultsEv(void *cc);                 /* f2c 2 */
+void _ZN12dScMg3DEsp_c4DealEv(char *c);                  /* fac 0 */
+void _ZN12dScMg3DEsp_c4FadeEv(char *thiz);               /* fac 1 */
+void _ZN12dScMg3DEsp_c5AwaitEv(char *c);                  /* fac 2 */
+void _ZN12dScMg3DEsp_c7ResolveEv(void *t);                  /* fac 3 */
+void _ZN12dScMg3DEsp_c8CardExitEi(char *c, int i);           /* f5c 0 */
+void _ZN12dScMg3DEsp_c9CardTouchEi(char *self, int idx);      /* f5c 1 */
+void _ZN12dScMg3DEsp_c8CardSeekEi(char *self, int i);        /* f5c 2 */
+void _ZN12dScMg3DEsp_c7RowWaitEi(char *c, int i);           /* f74 0 */
+void _ZN12dScMg3DEsp_c8RowDecayEi(char *c, int i);           /* f74 1 */
+void _ZN12dScMg3DEsp_c7RowFadeEi(char *c, int i);           /* f74 2 */
+void _ZN12dScMg3DEsp_c8SlotWaitEi(char *o, int idx);         /* f1c 0 */
+void _ZN12dScMg3DEsp_c9SlotSetupEi(char *c, int idx);         /* f8c 0 */
+void _ZN12dScMg3DEsp_c8SlotRiseEi(char *c, int i);           /* f8c 1 */
+void _ZN12dScMg3DEsp_c8SlotKickEi(char *c, int i);           /* f8c 2 */
+void _ZN12dScMg3DEsp_c10SlotDampenEi(char *c, int i);           /* f8c 3 */
+void _ZN12dScMg3DEsp_c9FlashOnceEv(unsigned char *c);         /* f44 0 */
+void _ZN12dScMg3DEsp_c9FlashSyncEv(char *c);                  /* f44 1 */
+void _ZN12dScMg3DEsp_c10FlashQuickEv(char *self);               /* f44 2 */
 
 /* the seven mount tables this file dispatches, re-typed to the ROM's eight-byte
    pair.  The ov006 mount defines the storage; __sinit_ov006_02130a08 fills it
@@ -228,7 +228,7 @@ extern MgPmf data_ov006_02141fac[];
 
 /* the ordinary callees the host copies below keep, each spelled as its own src
    TU spells it */
-void _ZN9Animation7AdvanceEv(void *anim);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *anim);
 void _ZN15dMg3DEspModel_c8BehaviorEv(void *p);
 
 /* Host-copied further down this file, and called from above their own
@@ -238,10 +238,10 @@ void _ZN15dMg3DEspModel_c8BehaviorEv(void *p);
    Run link100 lane PMFB4: 020e9374 and 020e8d08 are their own matched TUs now
    and their host copies are gone. Their declarations are dropped with them --
    nothing in this file calls either. */
-void func_ov006_020e9b70(void *c);
-void func_ov006_020e8a44(void *self);
-void func_ov006_020e8830(char *base, int idx);
-void func_ov006_020e82fc(char *c);
+void _ZN12dScMg3DEsp_c4PlayEv(void *c);
+void _ZN12dScMg3DEsp_c11UpdateSlotsEv(void *self);
+void _ZN12dScMg3DEsp_c8SlotFallEi(char *base, int idx);
+void _ZN12dScMg3DEsp_c11UpdateFlashEv(char *c);
 
 /* the boot installer at the end of this file; hal/scene_mg.cpp calls it after
    the ov006 constructors have filled the tables. */
@@ -270,22 +270,22 @@ static int esp_try_0(void *self, unsigned code)
     char *c = (char *)self;
     switch (code) {
     /* data_ov006_02141f2c, dispatched by vtable slot 6 */
-    case 0x020e9bbcu: func_ov006_020e9bbc(c);  return 1;
-    case 0x020e9b70u: func_ov006_020e9b70(c);  return 1;   /* host copy below */
+    case 0x020e9bbcu: _ZN12dScMg3DEsp_c4WaitEv(c);  return 1;
+    case 0x020e9b70u: _ZN12dScMg3DEsp_c4PlayEv(c);  return 1;   /* host copy below */
     /* the dispatched-state return value is DISCARDED at every level of this
        class: slot 6's PMF is spelled `void (C::*)()`, so nothing above ever
        reads what 020e9b70 leaves in r0, and 020e9b70 in turn only rides
        020e82fc's through.  Both host copies below return void and say so. */
-    case 0x020e989cu: func_ov006_020e989c(c);  return 1;
+    case 0x020e989cu: _ZN12dScMg3DEsp_c7ResultsEv(c);  return 1;
     /* data_ov006_02141fac, dispatched by func_ov006_020e9b70 */
-    case 0x020e97b0u: func_ov006_020e97b0(c);  return 1;
-    case 0x020e96f4u: func_ov006_020e96f4(c);  return 1;
-    case 0x020e968cu: func_ov006_020e968c(c);  return 1;
-    case 0x020e9670u: func_ov006_020e9670(c);  return 1;
+    case 0x020e97b0u: _ZN12dScMg3DEsp_c4DealEv(c);  return 1;
+    case 0x020e96f4u: _ZN12dScMg3DEsp_c4FadeEv(c);  return 1;
+    case 0x020e968cu: _ZN12dScMg3DEsp_c5AwaitEv(c);  return 1;
+    case 0x020e9670u: _ZN12dScMg3DEsp_c7ResolveEv(c);  return 1;
     /* data_ov006_02141f44, dispatched by func_ov006_020e82fc */
-    case 0x020e82c8u: func_ov006_020e82c8((unsigned char *)c); return 1;
-    case 0x020e8214u: func_ov006_020e8214(c);  return 1;
-    case 0x020e81e0u: func_ov006_020e81e0(c);  return 1;
+    case 0x020e82c8u: _ZN12dScMg3DEsp_c9FlashOnceEv((unsigned char *)c); return 1;
+    case 0x020e8214u: _ZN12dScMg3DEsp_c9FlashSyncEv(c);  return 1;
+    case 0x020e81e0u: _ZN12dScMg3DEsp_c10FlashQuickEv(c);  return 1;
     default:                                   return 0;
     }
 }
@@ -298,22 +298,22 @@ static int esp_try_1(void *self, unsigned code, int a)
        CLASS BASE and `a` is the loop counter, in that order; section 3 has the
        disassembly that says so -- r7 never moves and only r5 walks the
        records. */
-    case 0x020e9318u: func_ov006_020e9318(c, a);  return 1;
-    case 0x020e91a0u: func_ov006_020e91a0(c, a);  return 1;
-    case 0x020e8f14u: func_ov006_020e8f14(c, a);  return 1;
+    case 0x020e9318u: _ZN12dScMg3DEsp_c8CardExitEi(c, a);  return 1;
+    case 0x020e91a0u: _ZN12dScMg3DEsp_c9CardTouchEi(c, a);  return 1;
+    case 0x020e8f14u: _ZN12dScMg3DEsp_c8CardSeekEi(c, a);  return 1;
     /* data_ov006_02141f74, dispatched by func_ov006_020e8d08 */
-    case 0x020e8cb0u: func_ov006_020e8cb0(c, a);  return 1;
-    case 0x020e8c74u: func_ov006_020e8c74(c, a);  return 1;
-    case 0x020e8bd0u: func_ov006_020e8bd0(c, a);  return 1;
+    case 0x020e8cb0u: _ZN12dScMg3DEsp_c7RowWaitEi(c, a);  return 1;
+    case 0x020e8c74u: _ZN12dScMg3DEsp_c8RowDecayEi(c, a);  return 1;
+    case 0x020e8bd0u: _ZN12dScMg3DEsp_c7RowFadeEi(c, a);  return 1;
     /* data_ov006_02141f1c, dispatched by func_ov006_020e8a44 */
-    case 0x020e8928u: func_ov006_020e8928(c, a);  return 1;
+    case 0x020e8928u: _ZN12dScMg3DEsp_c8SlotWaitEi(c, a);  return 1;
     case 0x020e8830u: ++g_esp_nonmatching_calls;
-                      func_ov006_020e8830(c, a);  return 1;  /* host copy below */
+                      _ZN12dScMg3DEsp_c8SlotFallEi(c, a);  return 1;  /* host copy below */
     /* data_ov006_02141f8c, dispatched by func_ov006_020e8830 */
-    case 0x020e8728u: func_ov006_020e8728(c, a);  return 1;
-    case 0x020e85f0u: func_ov006_020e85f0(c, a);  return 1;
-    case 0x020e84b8u: func_ov006_020e84b8(c, a);  return 1;
-    case 0x020e83bcu: func_ov006_020e83bc(c, a);  return 1;
+    case 0x020e8728u: _ZN12dScMg3DEsp_c9SlotSetupEi(c, a);  return 1;
+    case 0x020e85f0u: _ZN12dScMg3DEsp_c8SlotRiseEi(c, a);  return 1;
+    case 0x020e84b8u: _ZN12dScMg3DEsp_c8SlotKickEi(c, a);  return 1;
+    case 0x020e83bcu: _ZN12dScMg3DEsp_c10SlotDampenEi(c, a);  return 1;
     default:                                      return 0;
     }
 }
@@ -481,17 +481,17 @@ extern "C" void port_mg_esp3d_table_counts(unsigned *out7)
     }
 
 /* data_ov006_02141f2c, arity 0. Slot 1 is the host copy above. */
-ES_FACE0(func_ov006_020e9bbc, T_F2C)
-ES_FACE0(func_ov006_020e9b70, T_F2C)
-ES_FACE0(func_ov006_020e989c, T_F2C)
+ES_FACE0(_ZN12dScMg3DEsp_c4WaitEv, T_F2C)
+ES_FACE0(_ZN12dScMg3DEsp_c4PlayEv, T_F2C)
+ES_FACE0(_ZN12dScMg3DEsp_c7ResultsEv, T_F2C)
 /* data_ov006_02141f5c, arity 1 */
-ES_FACE1(func_ov006_020e9318, T_F5C)
-ES_FACE1(func_ov006_020e91a0, T_F5C)
-ES_FACE1(func_ov006_020e8f14, T_F5C)
+ES_FACE1(_ZN12dScMg3DEsp_c8CardExitEi, T_F5C)
+ES_FACE1(_ZN12dScMg3DEsp_c9CardTouchEi, T_F5C)
+ES_FACE1(_ZN12dScMg3DEsp_c8CardSeekEi, T_F5C)
 /* data_ov006_02141f74, arity 1 */
-ES_FACE1(func_ov006_020e8cb0, T_F74)
-ES_FACE1(func_ov006_020e8c74, T_F74)
-ES_FACE1(func_ov006_020e8bd0, T_F74)
+ES_FACE1(_ZN12dScMg3DEsp_c7RowWaitEi, T_F74)
+ES_FACE1(_ZN12dScMg3DEsp_c8RowDecayEi, T_F74)
+ES_FACE1(_ZN12dScMg3DEsp_c7RowFadeEi, T_F74)
 
 /* ---- THE LAST TWO TABLES, run linkfull lane PMFMG1 -----------------------
  *
@@ -527,27 +527,27 @@ ES_FACE1(func_ov006_020e8bd0, T_F74)
         ++g_esp_table_hits[slot];                                             \
         sym(self, i);                                                         \
     }
-ES_CW1(func_ov006_020e8728, T_F8C)
-ES_CW1(func_ov006_020e85f0, T_F8C)
-ES_CW1(func_ov006_020e84b8, T_F8C)
-ES_CW1(func_ov006_020e83bc, T_F8C)
-static void ew_func_ov006_020e82c8(char *self)
+ES_CW1(_ZN12dScMg3DEsp_c9SlotSetupEi, T_F8C)
+ES_CW1(_ZN12dScMg3DEsp_c8SlotRiseEi, T_F8C)
+ES_CW1(_ZN12dScMg3DEsp_c8SlotKickEi, T_F8C)
+ES_CW1(_ZN12dScMg3DEsp_c10SlotDampenEi, T_F8C)
+static void ew__ZN12dScMg3DEsp_c9FlashOnceEv(char *self)
 {
     ++g_esp_state_hits;
     ++g_esp_table_hits[T_F44];
-    func_ov006_020e82c8((unsigned char *)self);
+    _ZN12dScMg3DEsp_c9FlashOnceEv((unsigned char *)self);
 }
-static void ew_func_ov006_020e8214(char *self)
+static void ew__ZN12dScMg3DEsp_c9FlashSyncEv(char *self)
 {
     ++g_esp_state_hits;
     ++g_esp_table_hits[T_F44];
-    func_ov006_020e8214(self);
+    _ZN12dScMg3DEsp_c9FlashSyncEv(self);
 }
-static void ew_func_ov006_020e81e0(char *self)
+static void ew__ZN12dScMg3DEsp_c10FlashQuickEv(char *self)
 {
     ++g_esp_state_hits;
     ++g_esp_table_hits[T_F44];
-    func_ov006_020e81e0(self);
+    _ZN12dScMg3DEsp_c10FlashQuickEv(self);
 }
 
 /* run link100 lane SEAT4: this class's remaining state tables are
@@ -572,17 +572,17 @@ extern "C" void port_mg_esp3d_states_seat(void)
         unsigned rom;
         void *face;
     } seats[] = {
-        {data_ov006_02141f2c, "02141f2c", 0, 0x020e9bbcu, (void *)es_func_ov006_020e9bbc},
-        {data_ov006_02141f2c, "02141f2c", 1, 0x020e9b70u, (void *)es_func_ov006_020e9b70},
-        {data_ov006_02141f2c, "02141f2c", 2, 0x020e989cu, (void *)es_func_ov006_020e989c},
+        {data_ov006_02141f2c, "02141f2c", 0, 0x020e9bbcu, (void *)es__ZN12dScMg3DEsp_c4WaitEv},
+        {data_ov006_02141f2c, "02141f2c", 1, 0x020e9b70u, (void *)es__ZN12dScMg3DEsp_c4PlayEv},
+        {data_ov006_02141f2c, "02141f2c", 2, 0x020e989cu, (void *)es__ZN12dScMg3DEsp_c7ResultsEv},
 
-        {data_ov006_02141f5c, "02141f5c", 0, 0x020e9318u, (void *)es_func_ov006_020e9318},
-        {data_ov006_02141f5c, "02141f5c", 1, 0x020e91a0u, (void *)es_func_ov006_020e91a0},
-        {data_ov006_02141f5c, "02141f5c", 2, 0x020e8f14u, (void *)es_func_ov006_020e8f14},
+        {data_ov006_02141f5c, "02141f5c", 0, 0x020e9318u, (void *)es__ZN12dScMg3DEsp_c8CardExitEi},
+        {data_ov006_02141f5c, "02141f5c", 1, 0x020e91a0u, (void *)es__ZN12dScMg3DEsp_c9CardTouchEi},
+        {data_ov006_02141f5c, "02141f5c", 2, 0x020e8f14u, (void *)es__ZN12dScMg3DEsp_c8CardSeekEi},
 
-        {data_ov006_02141f74, "02141f74", 0, 0x020e8cb0u, (void *)es_func_ov006_020e8cb0},
-        {data_ov006_02141f74, "02141f74", 1, 0x020e8c74u, (void *)es_func_ov006_020e8c74},
-        {data_ov006_02141f74, "02141f74", 2, 0x020e8bd0u, (void *)es_func_ov006_020e8bd0},
+        {data_ov006_02141f74, "02141f74", 0, 0x020e8cb0u, (void *)es__ZN12dScMg3DEsp_c7RowWaitEi},
+        {data_ov006_02141f74, "02141f74", 1, 0x020e8c74u, (void *)es__ZN12dScMg3DEsp_c8RowDecayEi},
+        {data_ov006_02141f74, "02141f74", 2, 0x020e8bd0u, (void *)es__ZN12dScMg3DEsp_c7RowFadeEi},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
@@ -608,13 +608,13 @@ extern "C" void port_mg_esp3d_states_seat(void)
         unsigned rom;
         void *face;
     } seats_cdecl[] = {
-        {data_ov006_02141f8c, "02141f8c", 0, 0x020e8728u, (void *)ew_func_ov006_020e8728},
-        {data_ov006_02141f8c, "02141f8c", 1, 0x020e85f0u, (void *)ew_func_ov006_020e85f0},
-        {data_ov006_02141f8c, "02141f8c", 2, 0x020e84b8u, (void *)ew_func_ov006_020e84b8},
-        {data_ov006_02141f8c, "02141f8c", 3, 0x020e83bcu, (void *)ew_func_ov006_020e83bc},
-        {data_ov006_02141f44, "02141f44", 0, 0x020e82c8u, (void *)ew_func_ov006_020e82c8},
-        {data_ov006_02141f44, "02141f44", 1, 0x020e8214u, (void *)ew_func_ov006_020e8214},
-        {data_ov006_02141f44, "02141f44", 2, 0x020e81e0u, (void *)ew_func_ov006_020e81e0},
+        {data_ov006_02141f8c, "02141f8c", 0, 0x020e8728u, (void *)ew__ZN12dScMg3DEsp_c9SlotSetupEi},
+        {data_ov006_02141f8c, "02141f8c", 1, 0x020e85f0u, (void *)ew__ZN12dScMg3DEsp_c8SlotRiseEi},
+        {data_ov006_02141f8c, "02141f8c", 2, 0x020e84b8u, (void *)ew__ZN12dScMg3DEsp_c8SlotKickEi},
+        {data_ov006_02141f8c, "02141f8c", 3, 0x020e83bcu, (void *)ew__ZN12dScMg3DEsp_c10SlotDampenEi},
+        {data_ov006_02141f44, "02141f44", 0, 0x020e82c8u, (void *)ew__ZN12dScMg3DEsp_c9FlashOnceEv},
+        {data_ov006_02141f44, "02141f44", 1, 0x020e8214u, (void *)ew__ZN12dScMg3DEsp_c9FlashSyncEv},
+        {data_ov006_02141f44, "02141f44", 2, 0x020e81e0u, (void *)ew__ZN12dScMg3DEsp_c10FlashQuickEv},
     };
     for (unsigned i = 0; i < sizeof seats_cdecl / sizeof seats_cdecl[0]; ++i) {
         MgPmf *p = &seats_cdecl[i].table[seats_cdecl[i].slot];

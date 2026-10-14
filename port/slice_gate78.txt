@@ -10,4 +10,4 @@ src/game/actors/d_a_obj_bc_switch.cpp
 # one-line forward to the shared ov002 body
 # func_ov002_020f1578 asks the paired blue-coin marker (id 0xbf) whether the
 # player is in the ground-pound state; that predicate is one more ov002 body.
-src/func_ov002_020dd8b8.cpp
+src/actors/Player.cpp

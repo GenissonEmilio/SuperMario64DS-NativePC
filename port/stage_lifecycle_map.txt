@@ -31,7 +31,7 @@ erred optimistic in slots 3, 6, 9 and 0.
 The Stage's whole lifecycle is behind ONE gate, and it is not the vtable.
 
   * The vtable is not the problem. hal/stage_bridges.cpp already hosts
-    _ZTV5Stage and trap-fills it, and thirteen of its eighteen slots have a
+    _ZTV10dScStage_c and trap-fills it, and thirteen of its eighteen slots have a
     body that closes against today's link with nothing added.
   * The dispatch is not the problem either. The port already runs all five of
     the ROM's processing passes over the ROM's own list structures
@@ -78,7 +78,7 @@ live path to a slot it had left trapped, which is section 9.
 1. THE VTABLE, DERIVED FROM THE ROM RATHER THAN COPIED
 -------------------------------------------------------
 
-_ZTV5Stage is arm9 0x020921c0 (config/arm9/symbols.txt:4171). Read out of
+_ZTV10dScStage_c is arm9 0x020921c0 (config/arm9/symbols.txt:4171). Read out of
 extracted/arm9_dec.bin at (addr - 0x02004000) and every word cross-checked
 against config/arm9/relocs.txt -- all eighteen carry a `kind:load
 module:main` relocation, so all eighteen are real slots and not incidental
@@ -125,7 +125,7 @@ vfSuccess code off a stack nobody pushed. It stays out on purpose.
 
 SLOT 12 NEEDS A FACE FOR A DIFFERENT REASON, and hal/w8a_stage_faces.cpp found
 it first: src/_ZN5Stage16OnPendingDestroyEv.cpp compiles a real C++ method and
-publishes only ?OnPendingDestroy@Stage@@QAEXXZ, never the Itanium C name. A
+publishes only ?OnPendingDestroy@dScStage_c@@QAEXXZ, never the Itanium C name. A
 plain function-pointer fill cannot spell it; a __fastcall thunk can, which is
 what every other slot in the file already is.
 
@@ -238,7 +238,7 @@ from a mode the port never entered.
   it. Both had been in port_a2_seat_body, which runs ONCE PER PROCESS, so
   neither ran on a warp -- and that pair is the star freeze: the star's collect
   handler and its camera script raise data_0209b454's 0x4000000 and 0x20000000,
-  an ordinary course star never reaches func_ov002_020e8618 or EndKuppaScript
+  an ordinary course star never reaches _ZN8daStar_c19func_ov002_020e8618Ev or EndKuppaScript
   to lower them (PowerStar state 7 takes that arm only for +0x444 == 9 or star
   index 8), and the ROM relies on this boot to reset both. With the mask still
   up, Actor::BeforeBehavior skipped the next level's fresh player every frame;
@@ -474,10 +474,10 @@ every lane's bucket counts mid-stage.
 
 port/slice_w8a.txt's blocked list is also stale in the direction of pessimism.
 It rules Stage::CleanupResources blocked on "the storage the fader closure
-needs -- _ZTV9FaderWipe, the table hal/fader_wipes.cpp stages by hand, and
-_ZN10FaderColorD2Ev". Measured today, CleanupResources wants SIX symbols and neither
-_ZTV9FaderWipe nor _ZN10FaderColorD2Ev is among them (section 5). The fader
-dependency is real but it arrives through _ZN9FaderWipeD1Ev, one level down.
+needs -- _ZTV9dFdWipe_c, the table hal/fader_wipes.cpp stages by hand, and
+_ZN10dFdColor_cD2Ev". Measured today, CleanupResources wants SIX symbols and neither
+_ZTV9dFdWipe_c nor _ZN10dFdColor_cD2Ev is among them (section 5). The fader
+dependency is real but it arrives through _ZN9dFdWipe_cD1Ev, one level down.
 
 
 4. SLOT 0 -- Stage::InitResources, THE THIRTY
@@ -522,11 +522,11 @@ FACES (6) -- the TU is compiled, publishes the MSVC method mangling, and the
 caller spells the Itanium C name. Mechanical, and hal/method_faces.cpp is the
 pattern. Three of the six are already LINKED bodies:
 
-    __ZN5Stage14LoadGraphics2DEbi          linked (MSVC name)
-    __ZN5Stage23LoadTextureTransformersEv  linked (MSVC name)
-    __ZN11ShadowModel8CleanAllEv           linked (MSVC name)
-    __ZN5Stage7LoadFogEv                   compiled in the probe only
-    __ZN9FaderWipe14LoadAndSetFileEt       compiled in the probe only
+    __ZN10dScStage_c14LoadGraphics2DEbi          linked (MSVC name)
+    __ZN10dScStage_c23LoadTextureTransformersEv  linked (MSVC name)
+    __ZN17dExtShadowModel_c8CleanAllEv           linked (MSVC name)
+    __ZN10dScStage_c7LoadFogEv                   compiled in the probe only
+    __ZN9dFdWipe_c14LoadAndSetFileEt       compiled in the probe only
     __Z17LoadLevelOverlaysi                compiled in the probe only, and see
                                            the DECLINE below
 
@@ -573,11 +573,11 @@ CALLEES (9) -- matched TUs that exist in src/ and are on no active slice:
     func_0203d81c            under func_020308a8
     LoadOverlay              under LoadLevelOverlays
     LoadOrUnloadObjectOverlays  under LoadLevelOverlays
-    _ZTV9FaderWipe           the fader vtable hal/fader_wipes.cpp stages
+    _ZTV9dFdWipe_c           the fader vtable hal/fader_wipes.cpp stages
                              CLOSED by lane SL0: /alternatename onto
                              ??_7HalFaderWipe@@6B@, the two tables compared
                              against the ROM record word for word first
-    _ZN10FaderColorD2Ev            WRONG ROW, and it was wrong when written. This
+    _ZN10dFdColor_cD2Ev            WRONG ROW, and it was wrong when written. This
                              is on port/slice_ov007.txt:678 and has been in
                              the image throughout (walk_window.map:9986).
                              Adding it to a slice is an LNK2005, not a gain
@@ -623,7 +623,7 @@ Two of those are CleanupResources-only, so SLOT 0's OWN NUMBER IS TWENTY-ONE:
                NEIGHBOURS (0x628/0x62c/0x630/0x634) are already on line 44 of
                port/ov001_syms.txt. This is two names on an existing line in a
                file this lane does not own.
-    2 fader    _ZTV9FaderWipe and _ZN10FaderColorD2Ev, under FaderWipe::FaderWipe
+    2 fader    _ZTV9dFdWipe_c and _ZN10dFdColor_cD2Ev, under FaderWipe::FaderWipe
                and FaderWipe::~FaderWipe
 
 RE-MEASURED 2026-08-16 AGAINST 17c0cf11e (run link60, lane SL0): BASE B IS
@@ -634,10 +634,10 @@ SIXTEEN. Same recipe as above, a REAL LINK, not a symbol-table reading:
   src/LoadArchive.c, which is the only duplicate this file ever named.
 
 FIVE CLOSED SINCE THE 21, and four of them are lane SL0's own work: the
-FaderWipe::LoadAndSetFile face and the _ZTV9FaderWipe alias (both
+FaderWipe::LoadAndSetFile face and the _ZTV9dFdWipe_c alias (both
 hal/fader_wipes.cpp), and data_ov001_020ad620 / data_ov001_020ad624
 (port/ov001_syms.txt). The fifth is this section's own overcount, which that
-lane caught: _ZN10FaderColorD2Ev was never a blocker. It is on
+lane caught: _ZN10dFdColor_cD2Ev was never a blocker. It is on
 port/slice_ov007.txt:678 and has been in the image all along, so the CALLEES
 list below is wrong to carry it.
 
@@ -732,7 +732,7 @@ what link.exe printed, and the seventh is what the link.exe reading omits.
 The six unresolved:
 
     __ZN5Sound21ResetPlayerVoiceGroupEv
-    __ZN9FaderWipeD1Ev                    (C name; the TU exists, uncompiled)
+    __ZN9dFdWipe_cD1Ev                    (C name; the TU exists, uncompiled)
     __Z19UnloadLevelOverlaysi             a one-line host body, section 4
     _UnloadArchive                        a one-line host body, section 4
     __ZN7Message15ResetAllGlobalsEv
@@ -977,7 +977,7 @@ THE CHAIN, end to end, every link read out of src/ or port/hal/:
      sentinel and the whole branch is unvisited.
 
 SEATED. src/_ZN5Stage16OnPendingDestroyEv.cpp is compiled, publishes only
-?OnPendingDestroy@Stage@@QAEXXZ, and its body is an empty override -- which is
+?OnPendingDestroy@dScStage_c@@QAEXXZ, and its body is an empty override -- which is
 the ROM's. The slot takes a __fastcall thunk over a Stage.h method face, the
 same shape as every other slot in the fill, and the TU had to be added by name
 to smoke_player and walk_window_hires, which compile hal/stage_bridges.cpp and
@@ -985,7 +985,7 @@ do not carry SLICE_W8A_SOURCES.
 
 LINKAGE: 4950 -> 4951, the lane's only nonzero delta. The TU was compiled by
 slice_w8a and dropped by /OPT:REF for want of a reference; the slot is the
-reference. ?OnPendingDestroy@Stage@@QAEXXZ appears in walk_window.map after,
+reference. ?OnPendingDestroy@dScStage_c@@QAEXXZ appears in walk_window.map after,
 and did not before. Battery ALL GREEN across all 46 levels, gate GREEN.
 
 EXECUTION IS UNPROVEN AND THE SEAT IS THE GUARANTEE. No run here reaches
@@ -1020,7 +1020,7 @@ hal/method_faces.cpp, and the lane's own fill and slice files.
 
 DEVIATION, DECLARED: hal/stage_bridges.cpp was on neither the owned list nor
 the do-not-touch list, and this lane took it. It is the Stage vtable's home --
-_ZTV5Stage, hal_fill_stage_vtable and port_stage_create are all in it -- so a
+_ZTV10dScStage_c, hal_fill_stage_vtable and port_stage_create are all in it -- so a
 lane told to seat the Stage vtable cannot avoid it, and putting the seat there
 kept the whole first two commits free of any CMakeLists edit. No other live
 lane of run link60 touches it. The one CMakeLists edit that did become
@@ -1080,7 +1080,7 @@ only can an /alternatename or /OPT:REF hide rows, ENROLLING a row can add rows.
 AND THE LINKAGE DELTA OF THE WHOLE CLOSURE IS ZERO. 5533 -> 5533. Nothing
 references Stage::InitResources, so /OPT:REF drops it and everything reachable
 only through it; checked name by name in walk_window.map --
-?InitResources@Stage@@QAEHXZ, ?LoadFog@Stage@@QAEXXZ, GetControllerMode,
+?InitResources@dScStage_c@@QAEHXZ, ?LoadFog@dScStage_c@@QAEXXZ, GetControllerMode,
 func_02023408, func_0203d81c, UnloadArchive and FaderWipe::FaderWipe are all
 absent, while the data rows are present because they have other references.
 Section 7's T4 note predicted exactly this and it is confirmed here. The ~490
@@ -1126,8 +1126,8 @@ SL0's own alias, described one section above where the wall is written down:
     0x08, color 0x0c, unk0e 0x0e, model[0x50] 0x10. That is 0x60 bytes, which
     is the stride Stage::InitResources passes func_02073470(7, 0x60, 8, ...),
     and src/engine/fader/_ZN9FaderWipeC1Ev.cpp declares the identical struct.
-  * that ctor's last store is `this->vtable = _ZTV9FaderWipe`, and after SL0's
-    /alternatename:__ZTV9FaderWipe=??_7HalFaderWipe@@6B@ that symbol IS the
+  * that ctor's last store is `this->vtable = _ZTV9dFdWipe_c`, and after SL0's
+    /alternatename:__ZTV9dFdWipe_c=??_7HalFaderWipe@@6B@ that symbol IS the
     host table. A FaderWipe the ROM constructs on the game heap therefore
     carries the same TEN slots, in the same ROM byte order, as a static
     hal_wipes[] entry does.
@@ -1499,13 +1499,13 @@ rather than inferred from the ActorBase slot order:
     from:0x02092204 kind:load to:0x020236f0 module:main   slot 17
 
 and config/arm9/symbols.txt puts a matched TU on each destination
-(_ZN5Stage16CleanupResourcesEv line 1084, _ZN5StageD1Ev 973, _ZN5StageD0Ev
+(_ZN10dScStage_c16CleanupResourcesEv line 1084, _ZN10dScStage_cD1Ev 973, _ZN10dScStage_cD0Ev
 974). port/slice_gate213.txt is the enrolment; hal/stage_bridges.cpp is the
 seat.
 
   SLOT 3 NEEDS A FACE. src/_ZN5Stage16CleanupResourcesEv.cpp is a real C++
   method against include/Stage.h and publishes only
-  ?CleanupResources@Stage@@QAEHXZ, so the slot cannot hold a pointer to a C
+  ?CleanupResources@dScStage_c@@QAEHXZ, so the slot cannot hold a pointer to a C
   name that does not exist -- the same shape slot 12 needed, and the face sits
   beside slot 12's.
 
@@ -1571,9 +1571,9 @@ Stage teardown is the one who retires the gate.
 
 THE GATE COSTS NO LINKAGE, which is the first thing to check when reading a gate
 like this. The thunk names port_stage_cleanup_resources on a branch the linker
-cannot prove dead, so ?CleanupResources@Stage@@QAEHXZ stays in walk_window.map
+cannot prove dead, so ?CleanupResources@dScStage_c@@QAEHXZ stays in walk_window.map
 from its own object and the count stays at 9501. The standing proof of the
-pattern is slot 0 itself: ?InitResources@Stage@@QAEHXZ has been in the map since
+pattern is slot 0 itself: ?InitResources@dScStage_c@@QAEHXZ has been in the map since
 lane SD0 under exactly this kind of getenv gate.
 
 THE PROOF is port/tools/stage_seat_proof.py, SEVEN rungs. Rungs 1-5 are the
@@ -1587,7 +1587,7 @@ into printing SEATED for everything, and rung 5 checks the overlay tranche by
 DEFINING OBJECT rather than by presence.
 
 RUNGS 6 AND 7 ARE THE GATE, and they are a pair on the same binary.
-SM64DS_STAGE_SLOT3_DISPATCH=1 dispatches _ZTV5Stage[3] on the Stage once, at
+SM64DS_STAGE_SLOT3_DISPATCH=1 dispatches _ZTV10dScStage_c[3] on the Stage once, at
 process exit, the way the cleanup Process would:
 
   RUNG 6, with SM64DS_STAGE_SLOT3_ROM unset, must abort by name and must NOT
@@ -1614,7 +1614,7 @@ tests/walk_window.cpp IS THE PORT'S HOST COPY OF Stage::Behavior, transcribed
 statement by statement into the frame loop, and no Stage lane has ever owned
 that file. Read out, each with the file's own words beside it:
 
-    tests/walk_window.cpp:9107   _ZN5Stage10CheckInputEv()
+    tests/walk_window.cpp:9107   _ZN10dScStage_c10CheckInputEv()
         Stage::Behavior:107. Called every frame from the input block, followed
         immediately (:9140-:9172) by the fan-out that copies the Ctrl record
         into the split host arrays data_0209f49c/9e/a0/a2/a4/a6/ac -- the
@@ -1680,8 +1680,8 @@ writing before someone spends a build on them:
   its own empty Message::UpdateWindow / Message::Update / Message::DisplaySaving
   / SaveData::SaveCurrentFile locally, so linking it would tick nothing. The
   second half is new: Stage::Behavior declares `static void UpdateMessage()` and
-  so spells ?UpdateMessage@Stage@@SAXXZ, while that TU defines the method
-  non-static and so publishes ?UpdateMessage@Stage@@QAEXXZ. They are different
+  so spells ?UpdateMessage@dScStage_c@@SAXXZ, while that TU defines the method
+  non-static and so publishes ?UpdateMessage@dScStage_c@@QAEXXZ. They are different
   symbols. Enrolling the TU does not even satisfy slot 6's caller; a face is
   needed either way, and what the face should point at is a question about the
   stub, not about the slot.
@@ -1689,7 +1689,7 @@ writing before someone spends a build on them:
   src/_ZN5Stage7PS_InitEv HAS TWO FILES, .c and .cpp, with the same stem.
   config/arm9/delinks.txt names the .c; config/match_attempts.jsonl records the
   .cpp as the matching attempt (0 divergences, srcPath
-  src/_ZN5Stage7PS_InitEv.cpp). Only the .cpp publishes ?PS_Init@Stage@@SAXXZ,
+  src/_ZN5Stage7PS_InitEv.cpp). Only the .cpp publishes ?PS_Init@dScStage_c@@SAXXZ,
   which is what Stage::Behavior's `static void PS_Init()` declaration spells, so
   a slot-6 slice takes the .cpp and a slice that takes both is an LNK2005.
 
@@ -1901,13 +1901,13 @@ section is what that cost.
      same reporter, same message, same abort -- because slot 3 is REACHABLE and
      removing that abort let the game keep running on a torn-down level. The
      four places that reach it are listed in 12a. LINKAGE UNCHANGED at 9501:
-     ?CleanupResources@Stage@@QAEHXZ stays in walk_window.map from its own
+     ?CleanupResources@dScStage_c@@QAEHXZ stays in walk_window.map from its own
      object because the linker cannot prove a getenv branch dead, which is the
-     same reason ?InitResources@Stage@@QAEHXZ has been in the map since lane
+     same reason ?InitResources@dScStage_c@@QAEHXZ has been in the map since lane
      SD0.
 
   2. THE DISPATCH RUNGS. port/tools/stage_seat_proof.py grows rungs 6 and 7,
-     driven by SM64DS_STAGE_SLOT3_DISPATCH=1, which dispatches _ZTV5Stage[3] on
+     driven by SM64DS_STAGE_SLOT3_DISPATCH=1, which dispatches _ZTV10dScStage_c[3] on
      the Stage at process exit. Unset gate: aborts by name, no ROM-body note.
      Set gate: the note, no abort, and the ROM's own return of 1. At exit
      because nothing may run behind the ROM's teardown. The seat probe also
@@ -2015,7 +2015,7 @@ ROM runs it:
 
   hal/actor_registry.cpp   data_0209b464 = data_0209b454, at the head of
                            phase 3                              Behavior:105
-  tests/walk_window.cpp    _ZN5Stage10CheckInputEv(), in the input phase
+  tests/walk_window.cpp    _ZN10dScStage_c10CheckInputEv(), in the input phase
                                                                 Behavior:107
   tests/walk_window.cpp    ProcessKuppaScript(), above port_actor_tick
                                                                 Behavior:111
@@ -2025,7 +2025,7 @@ ROM runs it:
   tests/walk_window.cpp    port_vs_countdown_tick() the head of the VS arm
 
 All six are retired and the ROM's own body runs all six statements from
-_ZTV5Stage slot 6. TWO OF THEM WERE NOT EQUALLY DANGEROUS, and the asymmetry is
+_ZTV10dScStage_c slot 6. TWO OF THEM WERE NOT EQUALLY DANGEROUS, and the asymmetry is
 the reason the proof has the shape it has. The freeze-mask latch is one word
 copied to another; running it twice a frame is IDEMPOTENT and survivable, which
 is why it could stand for five Stage lanes without anyone noticing. Running
@@ -2168,7 +2168,7 @@ Traced under cdb (breakpoints, f = the slot-6 thunk's own counter):
     LoadLevel f=79 lvl=19  ret=func_ov002_020b0a0c+0x3c
     RELEASE   f=79 pend=187        port_level_change_apply's head release:
                                    nothing pending, so it did nothing
-    SETSCENE  f=80 id=3            from ?Behavior@Stage@@QAEHXZ+0x2a9
+    SETSCENE  f=80 id=3            from ?Behavior@dScStage_c@@QAEHXZ+0x2a9
     A_BOOT    f=80 p110=-1         level 19 up
     MFD_STAGE f=111 pend=3         from _ZN8dScene_c14BeforeBehaviorEv+0xe1
     FATAL: Stage vtable slot 3 (CleanupResources) is not hosted
@@ -2381,7 +2381,7 @@ IT IS NOT port/ov007_seat.txt's MECHANISM. Sections 5 and 5a there are a trap
 that RETURNS 0 into a dereference, on func_0204335c (the INIT Process, slots
 1/0/2), inside InitResources, fatally. This is a null in a CALLEE-SAVED
 REGISTER, on func_02043288 (the BEHAVIOUR Process, slots 7/6/8), and it is
-survivable. The eight `data_0208ea6c vtable slot` lines that precede it are the
+survivable. The eight `_ZTV10dFdDummy_c vtable slot` lines that precede it are the
 sibling fader tables' residual traps -- the level change's own chatter, present
 at every level change -- and the same run prints 1340 trap lines in total. They
 are adjacency, not causation.
@@ -2405,16 +2405,16 @@ instruction, and no debugger was needed for the naming: the whole chain is
 legible in the linked binary, and cdb was only used afterwards to confirm the
 seat runs.
 
-THE WRITER. data_0208eb2c is _ZTV10FaderColor, ten relocated words in arm9
+THE WRITER. _ZTV10dFdColor_c is _ZTV10dFdColor_c, ten relocated words in arm9
 .data. hal/scene_boot.cpp seated slots 0 and 1 (the destructor pair, gate 225b)
 and left 2..9 pointing at l2_vt_trap, which is
 
-    static void l2_vt_trap(void) { l2_trap("data_0208ea6c vtable slot"); }
+    static void l2_vt_trap(void) { l2_trap("_ZTV10dFdDummy_c vtable slot"); }
 
 a no-argument __cdecl stub ending in a bare `ret`. IT CLEANS NOTHING.
 
 THE OBJECT. data_0209b294 is a FaderColor; src/__sinit_02073e6c.c leaves its
-vptr pointing at data_0208eb2c. src/ProcessKuppaScript.cpp -- which IS the
+vptr pointing at _ZTV10dFdColor_c. src/ProcessKuppaScript.cpp -- which IS the
 opening cutscene's interpreter, and which Stage::Behavior calls directly --
 reads that object BY ADDRESS (config/arm9/relocs.txt from:0x0200ee2c
 to:0x0209b294) and dispatches four of its slots.
@@ -2487,17 +2487,17 @@ bytes do not move -- ProcessKuppaScript matches on 2004/b56, 1.2/base, 1.2/sp2
 and 1.2/sp2p3 before and after -- and MSVC gives them two as well, so the host
 lands where the ARM does.
 
-THE SEAT. All eight remaining slots of data_0208eb2c now carry the ROM's own
+THE SEAT. All eight remaining slots of _ZTV10dFdColor_c now carry the ROM's own
 matched bodies, each in the shape ITS OWN CALL SITES use:
 
-  +0x08  _ZN10FaderColor11AdvanceFadeEv            __cdecl, receiver checked
-  +0x0c  _ZN15FaderBrightness15SetBackwardTimeEj   __fastcall, cleans 8
-  +0x10  _ZN15FaderBrightness14SetForwardTimeEj    __fastcall, cleans 8
-  +0x14  _ZN15FaderBrightness9IsAtStartEv          __fastcall, cleans 0
-  +0x18  _ZN15FaderBrightness7IsAtEndEv            __fastcall, cleans 0
-  +0x1c  _ZN15FaderBrightness20IsBetweenStartAndEndEv  through the existing face
-  +0x20  _ZN15FaderBrightness8SetToEndEv           __fastcall, cleans 0
-  +0x24  _ZN15FaderBrightness10SetToStartEv        __fastcall, cleans 0
+  +0x08  _ZN10dFdColor_c11AdvanceFadeEv            __cdecl, receiver checked
+  +0x0c  _ZN15dFdBrightness_c15SetBackwardTimeEj   __fastcall, cleans 8
+  +0x10  _ZN15dFdBrightness_c14SetForwardTimeEj    __fastcall, cleans 8
+  +0x14  _ZN15dFdBrightness_c9IsAtStartEv          __fastcall, cleans 0
+  +0x18  _ZN15dFdBrightness_c7IsAtEndEv            __fastcall, cleans 0
+  +0x1c  _ZN15dFdBrightness_c20IsBetweenStartAndEndEv  through the existing face
+  +0x20  _ZN15dFdBrightness_c8SetToEndEv           __fastcall, cleans 0
+  +0x24  _ZN15dFdBrightness_c10SetToStartEv        __fastcall, cleans 0
 
 and none is transcribed: every body was already compiled into this link.
 
@@ -2507,12 +2507,12 @@ UNQUALIFIED predicate call, and MSVC compiles those one slot early against a
 ROM-ordered table for exactly the reason above: SetBackwardTime's `IsAtStart()`
 becomes byte 0x10, which is SetForwardTime, which cleans EIGHT. A no-argument
 caller losing eight bytes returns into its own saved registers and lands
-anywhere -- which is what a crash "inside func_ov002_020f23f0" looks like. Both
+anywhere -- which is what a crash "inside _ZN8daDemo_c19func_ov002_020f23f0Ev" looks like. Both
 setters therefore run against an MSVC-ORDERED VIEW whose 0x10 and 0x14
 dispatch the real receiver's ROM 0x14 and 0x18, which is the mechanism
 hal/fdr_arm9_fader_seat.cpp already ships for IsBetweenStartAndEnd.
 
-AND THE SAME SHAPE ONE TABLE OVER. data_0208eacc is _ZTV15FaderBrightness and
+AND THE SAME SHAPE ONE TABLE OVER. _ZTV15dFdBrightness_c is _ZTV15dFdBrightness_c and
 its +0x0c / +0x10 are the same two setters behind the same shape B sites, so a
 bare `ret` there is the same leak waiting for an object of that class to be
 installed. Nothing in this image installs one -- for eacc the gate-225b audit's
@@ -2586,7 +2586,7 @@ port/ was swept the same way: 26 aggregates with virtuals, 5 with a virtual
 destructor, ONE with a virtual after it, and that one is deliberate.
 hal/fader_wipes.cpp's HalFaderWipe spells `virtual ~HalFaderWipe() {}` and then
 `virtual void DtorDeleting() {}` so that MSVC gives the pair the two words the
-ROM's _ZTV9FaderWipe has -- which is what makes that file's alias onto the ROM
+ROM's _ZTV9dFdWipe_c has -- which is what makes that file's alias onto the ROM
 symbol sound, and it is the MSVC-ordered table the two FaderWipe rows below are
 cleared against. Every other shadow class in port/ uses plain virtuals.
 
@@ -2722,9 +2722,9 @@ trap-shaped.
         abicheck's DECLINE/NORETURN exemption and the same reasoning.
    23   RETURN NORMALLY, which is the l2_vt_trap shape and the only shape that
         can corrupt a caller.
-          1  l2_vt_trap8, already `ret 8`, seated at data_0208eacc[3] and [4]
+          1  l2_vt_trap8, already `ret 8`, seated at _ZTV15dFdBrightness_c[3] and [4]
              -- section 16's own fix.
-          1  l2_vt_trap, bare `ret`, surviving on data_0208eacc slots 2 and
+          1  l2_vt_trap, bare `ret`, surviving on _ZTV15dFdBrightness_c slots 2 and
              5..11. The seat seeds all twelve of eacc with it and then
              overwrites 0, 1, 3 and 4; the eafc and eb2c seeds are all
              overwritten too, so those two tables carry no trap at all. EVERY
@@ -2758,7 +2758,7 @@ func_ov002_020eff90, the PathLift collider callback abicheck's
 ACTOR_EXT_SLOT_AUTHORITY already rules at one argument. The four slot-34 sites
 are all inside func_ov004_020ae5c4, the dScMgBase_c line rasteriser, and
 hal/scene_mg.cpp's mb_v34 takes the four and pops them. Every extension-slot
-dispatcher for the Bully family is func_ov064_02116220 / 02116560 / 021165d8 /
+dispatcher for the Bully family is _ZN7daOts_c19func_ov064_02116220Ev / 02116560 / 021165d8 /
 02116754 / 02116d1c and NONE of them pushes, so the twenty-one bare-`ret`
 traps on those tables are the right frame.
 

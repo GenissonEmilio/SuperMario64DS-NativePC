@@ -136,17 +136,17 @@ const char *port_actor_class_name(unsigned id);   /* hal/actor_registry */
 void port_actor_render_probe(const char *cls, void *model); /* actor_classes */
 
 /* ---- METAL_NET_LIFT (69) / daObjFl_Amilift_c ---- */
-int _ZN12MetalNetLift13InitResourcesEv(void *self);   /* slot 0, Init */
-int _ZN12MetalNetLift16CleanupResourcesEv(void *self);   /* slot 3, Cleanup */
-int _ZN12MetalNetLift6RenderEv(void *self);   /* slot 9, Render -- HOST COPY, see below */
+int _ZN17daObjFl_Amilift_c13InitResourcesEv(void *self);   /* slot 0, Init */
+int _ZN17daObjFl_Amilift_c16CleanupResourcesEv(void *self);   /* slot 3, Cleanup */
+int _ZN17daObjFl_Amilift_c6RenderEv(void *self);   /* slot 9, Render -- HOST COPY, see below */
 void *daObjFl_Amilift_c_classInit(void);        /* the factory, installs the host table */
 /* Behavior _ZN12MetalNetLift8BehaviorEv is a HOST COPY (PMF dispatch) -- declared in the
    states file; the fill binds the host copy at slot 6. */
-int _ZN12MetalNetLift8BehaviorEv(void *self);
+int _ZN17daObjFl_Amilift_c8BehaviorEv(void *self);
 /* D1 (_ZN12MetalNetLiftD1Ev) is NOT declared -- host thunk below. D0 IS declared:
    GATE 229 seats it, see the note above aml_d0.
    The Amilift dtor chain's sub-object destructors and base D2, all C-linkage. */
-int *_ZN12MetalNetLiftD0Ev(int *self);        /* slot 17, the ROM's own D0 */
+int *_ZN17daObjFl_Amilift_cD0Ev(int *self);        /* slot 17, the ROM's own D0 */
 void _ZN10dBgW_KcMbgD1Ev(void *);   /* MovingMeshCollider at +0x124 */
 void _ZN5ModelD1Ev(void *);                 /* Model at +0xd4 */
 void _ZN8dActor_cD2Ev(void *);                 /* the Actor base D2 */
@@ -155,30 +155,29 @@ extern void *data_020a0eac;                 /* Memory::gameHeapPtr (== G0) */
 void _ZN10dBgActor_c4KillEv(void *self);       /* slot 31, Platform's own */
 
 /* ---- LAVA_BUBBLE (214) / daBbl_c ---- */
-int _ZN10LavaBubble13InitResourcesEv(void *self);    /* slot 0, .cpp method, faced */
-int _ZN10LavaBubble16CleanupResourcesEv(void *self); /* slot 3, .c C linkage */
-int _ZN10LavaBubble6RenderEv(void *self);            /* slot 9, .c `return 1` */
-int _ZN10LavaBubble16OnPendingDestroyEv(void *self); /* slot 12, .c */
-int *_ZN10LavaBubbleD1Ev(void *self);                /* slot 16, .c named tables */
-int *_ZN10LavaBubbleD0Ev(void *self);                /* slot 17, .c named tables */
-int _ZN10LavaBubble13OnYoshiTryEatEv(void);                       /* slot 18, OnYoshiTryEat, returns 5 */
+int _ZN7daBbl_c13InitResourcesEv(void *self);    /* slot 0, .cpp method, faced */
+int _ZN7daBbl_c16CleanupResourcesEv(void *self); /* slot 3, .c C linkage */
+int _ZN7daBbl_c6RenderEv(void *self);            /* slot 9, .c `return 1` */
+int _ZN7daBbl_c16OnPendingDestroyEv(void *self); /* slot 12, .c */
+int *_ZN7daBbl_cD1Ev(void *self);                /* slot 16, .c named tables */
+int *_ZN7daBbl_cD0Ev(void *self);                /* slot 17, .c named tables */
+int _ZN7daBbl_c13OnYoshiTryEatEv(void);                       /* slot 18, OnYoshiTryEat, returns 5 */
 void *daBbl_c_classInit(void);                        /* the factory */
 /* Behavior _ZN10LavaBubble8BehaviorEv is a HOST COPY (PMF dispatch) -- declared
    in the states file; the fill binds the host copy at slot 6. */
-int _ZN10LavaBubble8BehaviorEv(void *self);
+int _ZN7daBbl_c8BehaviorEv(void *self);
 
 /* the two derived vtables, HOST arrays this file fills; 32/31 slots. Defined
    int[] with C linkage to match the extern int _ZTV*[] spellings the factories
    and dtors read (the montymole reading). The Amilift table is spelled only by
    its RTTI wildcard _ZTV17daObjFl_Amilift_c (decl_common.h, int[]). */
 int _ZTV17daObjFl_Amilift_c[32];   /* vtspan: _ZTV12MetalNetLift */
-int _ZTV10LavaBubble[31];
+int _ZTV7daBbl_c[31];
 }
 
 /* LavaBubble's D0 spells _ZTV7daBbl_c, the RTTI wildcard for the SAME table as
    _ZTV10LavaBubble (both ov064 0x0211beec). Point it at the host array. */
-#pragma comment(linker, "/alternatename:__ZTV7daBbl_c=__ZTV10LavaBubble")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV7daBbl_c=__ZTV7daBbl_c")
 /* The .cpp slice TUs spell five mounted ov064 data symbols as typed C++
    globals (SharedFilePtr / CLPS_Block / char[]), which MSVC mangles; the mount
    defines them under the C names. The standard bridge (montymole/hmc). */
@@ -298,14 +297,14 @@ static void ov64g178_fill_shared_0_30(void **vt)
 extern "C" void hal_fill_platform_vtable(void);
 
 static int __fastcall aml_init(void *s, void *)
-{ return _ZN12MetalNetLift13InitResourcesEv(s); }
+{ return _ZN17daObjFl_Amilift_c13InitResourcesEv(s); }
 static int __fastcall aml_clean(void *s, void *)
-{ return _ZN12MetalNetLift16CleanupResourcesEv(s); }
+{ return _ZN17daObjFl_Amilift_c16CleanupResourcesEv(s); }
 static int __fastcall aml_behavior(void *s, void *)
-{ return _ZN12MetalNetLift8BehaviorEv(s); }        /* HOST COPY (PMF dispatch) */
+{ return _ZN17daObjFl_Amilift_c8BehaviorEv(s); }        /* HOST COPY (PMF dispatch) */
 static int __fastcall aml_render(void *s, void *)
 { port_actor_render_probe("METAL_NET_LIFT", (char *)s + 0xd4);
-  return _ZN12MetalNetLift6RenderEv(s); }          /* HOST COPY (slot-5 collision) */
+  return _ZN17daObjFl_Amilift_c6RenderEv(s); }          /* HOST COPY (slot-5 collision) */
 static int __fastcall aml_kill(void *s, void *)
 { _ZN10dBgActor_c4KillEv(s); return 0; }       /* slot 31, Platform's own */
 /* D1/D0 host thunks: run the matched teardown with the derived table stored
@@ -323,10 +322,10 @@ static int __fastcall aml_kill(void *s, void *)
    own table where this array stood, which the ROM body (0x02117978: the store,
    two member destructors, then the base D2) leaves inert, and
    tools/dtor_store_guard.py's SRC_ARMS re-proves that on every build. */
-extern "C" int *_ZN12MetalNetLiftD1Ev(void *self);
+extern "C" int *_ZN17daObjFl_Amilift_cD1Ev(void *self);
 static int __fastcall aml_d1(void *s, void *)
 {
-    _ZN12MetalNetLiftD1Ev(s);
+    _ZN17daObjFl_Amilift_cD1Ev(s);
     return (int)(size_t)s;
 }
 /* GATE 229: THE D0 IS THE ROM BODY NOW, and the thunk that used to stand here is
@@ -350,7 +349,7 @@ static int __fastcall aml_d1(void *s, void *)
    The D1 thunk one function up is UNTOUCHED: _ZN12MetalNetLiftD1Ev is not in the
    ruling set, so nothing has changed about why it is a thunk. */
 static int __fastcall aml_d0(void *s, void *)
-{ return (int)(size_t)_ZN12MetalNetLiftD0Ev((int *)s); }
+{ return (int)(size_t)_ZN17daObjFl_Amilift_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_metal_net_lift_vtable(void)
 {
@@ -370,27 +369,27 @@ extern "C" void hal_fill_metal_net_lift_vtable(void)
 // LAVA_BUBBLE (214) -- an Enemy, 31 slots
 // ============================================================================
 static int __fastcall lb_init(void *s, void *)
-{ return _ZN10LavaBubble13InitResourcesEv(s); }
+{ return _ZN7daBbl_c13InitResourcesEv(s); }
 static int __fastcall lb_clean(void *s, void *)
-{ return _ZN10LavaBubble16CleanupResourcesEv(s); }
+{ return _ZN7daBbl_c16CleanupResourcesEv(s); }
 static int __fastcall lb_behavior(void *s, void *)
-{ return _ZN10LavaBubble8BehaviorEv(s); }   /* HOST COPY (PMF dispatch) */
+{ return _ZN7daBbl_c8BehaviorEv(s); }   /* HOST COPY (PMF dispatch) */
 static int __fastcall lb_render(void *s, void *)
-{ return _ZN10LavaBubble6RenderEv(s); }      /* bare return 1, no model */
+{ return _ZN7daBbl_c6RenderEv(s); }      /* bare return 1, no model */
 static int __fastcall lb_pdes(void *s, void *)
-{ _ZN10LavaBubble16OnPendingDestroyEv(s); return 0; }
+{ _ZN7daBbl_c16OnPendingDestroyEv(s); return 0; }
 static int __fastcall lb_yoshi(void *s, void *)
-{ return _ZN10LavaBubble13OnYoshiTryEatEv(); }            /* slot 18, LavaBubble's own, returns 5 */
+{ return _ZN7daBbl_c13OnYoshiTryEatEv(); }            /* slot 18, LavaBubble's own, returns 5 */
 /* D1/D0 stay in the slice: they spell _ZTV10LavaBubble / _ZTV7daBbl_c and
    _ZN12dEnemyBase_cD2Ev / data_020a0eac, all hosted. The fill just calls them. */
 static int __fastcall lb_d1(void *s, void *)
-{ return (int)(size_t)_ZN10LavaBubbleD1Ev(s); }
+{ return (int)(size_t)_ZN7daBbl_cD1Ev(s); }
 static int __fastcall lb_d0(void *s, void *)
-{ return (int)(size_t)_ZN10LavaBubbleD0Ev(s); }
+{ return (int)(size_t)_ZN7daBbl_cD0Ev(s); }
 
 extern "C" void hal_fill_lava_bubble_vtable(void)
 {
-    void **vt = (void **)_ZTV10LavaBubble;
+    void **vt = (void **)_ZTV7daBbl_c;
     ov64g178_fill_shared_0_30(vt);
     vt[0]  = (void *)lb_init;
     vt[3]  = (void *)lb_clean;
@@ -408,8 +407,8 @@ extern "C" void hal_fill_lava_bubble_vtable(void)
 // the states file) and its Render/Cleanup/OnPendingDestroy/D1/D0 are .c bodies
 // with C linkage already, so no face for those. The Amilift methods are all
 // func_ov064_* C bodies -- no face. _ZN12MetalNetLift6RenderEv (Render) is a host copy.
-#include "LavaBubble.h"
+#include "daBbl_c.h"
 extern "C" {
-int _ZN10LavaBubble13InitResourcesEv(void *self)
-{ return ((LavaBubble *)self)->LavaBubble::InitResources(); }
+int _ZN7daBbl_c13InitResourcesEv(void *self)
+{ return ((daBbl_c *)self)->daBbl_c::InitResources(); }
 }

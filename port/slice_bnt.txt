@@ -465,81 +465,81 @@
 
 
 
-src/func_02053ea0.c
-src/func_02053eb0.c
-src/func_02054748.c
-src/func_ov006_020bfec0.cpp
-src/func_ov006_020bfff8.cpp
-src/_ZN22dMg3DHeyhoObjAdapter_cC2Ev.cpp
-src/func_ov006_020c4060.c
-src/func_ov006_020c40e8.c
-src/func_ov006_020c4148.c
-src/func_ov006_020c425c.c
-src/func_ov006_020c42bc.c
-src/func_ov006_020c44b4.c
-src/func_ov006_020c4684.c
-src/func_ov006_020c4710.c
-src/func_ov006_020c47d4.c
-src/func_ov006_020c49d8.c
-src/func_ov006_020c4c00.c
-src/func_ov006_020c4d1c.c
-src/func_ov006_020c4d20.c
-src/func_ov006_020c4d3c.c
-src/func_ov006_020c4e8c.c
-src/func_ov006_020c4f68.c
-src/func_ov006_020c4fa4.cpp
-src/func_ov006_020c5370.c
-src/func_ov006_020c53f8.c
-src/func_ov006_020c54f4.c
-src/func_ov006_020c5530.c
-src/func_ov006_020c561c.c
-src/func_ov006_020c5658.c
-src/func_ov006_020c57d4.c
-src/func_ov006_020c5928.c
-src/func_ov006_020c5aa4.c
-src/func_ov006_020c5bf8.c
-src/func_ov006_020c5cf4.c
-src/func_ov006_020c5d28.c
-src/func_ov006_020c5ec8.c
-src/func_ov006_020c6088.c
-src/func_ov006_020c6188.c
-src/func_ov006_020c61c4.c
-src/func_ov006_020c6248.c
-src/func_ov006_020c627c.c
-src/func_ov006_020c6348.c
-src/func_ov006_020c6378.c
-src/func_ov006_020c63dc.c
-src/func_ov006_020c6400.c
-src/func_ov006_020c64e4.c
-src/func_ov006_020c66bc.c
-src/func_ov006_020c68f4.c
-src/func_ov006_020c6a9c.c
-src/func_ov006_020c6ca4.c
-src/func_ov006_020c6e4c.cpp
-src/func_ov006_020c6f3c.c
-src/func_ov006_020c6f70.c
-src/func_ov006_020c6f8c.c
-src/func_ov006_020c70d0.c
-src/func_ov006_020c712c.c
-src/func_ov006_020c719c.c
-src/func_ov006_020c72b4.c
-src/func_ov006_020c7300.c
-src/func_ov006_020c7388.c
-src/func_ov006_020c7490.c
-src/func_ov006_020c7574.c
+src/unnamed/arm9/0205/func_02053ea0.c
+src/unnamed/arm9/0205/func_02053eb0.c
+src/unnamed/arm9/0205/func_02054748.c
+src/actors/unit020bfec0.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 471): src/func_ov006_020bfff8.cpp
+src/actors/dMg3DHeyhoObjAdapter_c.cpp
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c4060.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c40e8.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c4148.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c425c.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c42bc.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c44b4.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c4684.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c4710.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c47d4.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c49d8.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c4c00.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c4d1c.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c4d20.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c4d3c.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c4e8c.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c4f68.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c4fa4.cpp
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c5370.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c53f8.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c54f4.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c5530.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c561c.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c5658.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c57d4.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c5928.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c5aa4.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c5bf8.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c5cf4.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c5d28.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c5ec8.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c6088.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c6188.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c61c4.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c6248.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c627c.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c6348.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c6378.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c63dc.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c6400.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c64e4.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c66bc.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c68f4.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c6a9c.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c6ca4.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c6e4c.cpp
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c6f3c.c
+# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 473): src/func_ov006_020c6f70.c
+src/actors/dMgJump3DMario_c.cpp
+# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 521): src/func_ov006_020c70d0.c
+# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 521): src/func_ov006_020c712c.c
+# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 521): src/func_ov006_020c719c.c
+# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 521): src/func_ov006_020c72b4.c
+# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 521): src/func_ov006_020c7300.c
+# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 521): src/func_ov006_020c7388.c
+# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 521): src/func_ov006_020c7490.c
+# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 521): src/func_ov006_020c7574.c
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (the slice_bnp host copies).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
 #src/actors/dMgJump3DMario_c.cpp
-src/func_ov006_020c8c78.c
-src/func_ov006_020c8a30.c
-src/func_ov006_020c8a64.c
-src/func_ov006_020c8a9c.c
-src/func_ov006_020c8af4.c
-src/func_ov006_020c8ba8.cpp
-src/func_ov006_020c8c6c.c
+src/actors/unit020c8a30.cpp
+# FOLDED into src/actors/unit020c8a30.cpp (row 536): src/func_ov006_020c8a30.c
+# FOLDED into src/actors/unit020c8a30.cpp (row 536): src/func_ov006_020c8a64.c
+# FOLDED into src/actors/unit020c8a30.cpp (row 536): src/func_ov006_020c8a9c.c
+# FOLDED into src/actors/unit020c8a30.cpp (row 536): src/func_ov006_020c8af4.c
+# FOLDED into src/actors/unit020c8a30.cpp (row 536): src/func_ov006_020c8ba8.cpp
+# FOLDED into src/actors/unit020c8a30.cpp (row 536): src/func_ov006_020c8c6c.c
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (the slice_bnp host copies).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
@@ -558,4 +558,4 @@ src/func_ov006_020c8c6c.c
 # the light-vector and matrix writes with it. It IS commented out of slice_bnp,
 # slice_tte, slice_pmfb7 and slice_facef, which have no such skip.
 src/minigames/d_s_mg_jump2.cpp
-src/func_ov006_020efc08.c
+# FOLDED into src/minigames/d_s_mg_jump2.cpp (row 560): src/func_ov006_020efc08.c

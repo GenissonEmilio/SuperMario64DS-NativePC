@@ -83,7 +83,7 @@ extern void *data_0209f314;           /* the level AREA table (Stage+0x8bc) */
    ActorBase default in slot 0, while 0x020921c0 is the one the constructor
    installs last. Config had the two swapped until 87a55cfab, so a checkout
    older than that calls 0x02092680 _ZTV5Stage and will not link this file. */
-void *_ZTV5Stage[20];      /* the table the ctor installs last; trap-filled */
+void *_ZTV10dScStage_c[20];      /* the table the ctor installs last; trap-filled */
 void *_ZTV8dScene_c[20];      /* transient ctor install, storage only */
 
 }  /* extern "C" */
@@ -94,7 +94,7 @@ static const char *const hal_stage_slot_name[20] = {
     "Behavior", "BeforeBehavior", "AfterBehavior",
     "Render", "BeforeRender", "AfterRender",
     "OnPendingDestroy", "Virtual34", "Virtual38", "OnHeapCreated",
-    "~Stage (D1)", "~Stage (D0)", "(past the table)", "(past the table)"};
+    "~dScStage_c (D1)", "~dScStage_c (D0)", "(past the table)", "(past the table)"};
 
 /* ---- THE TRAP, AND THE TWO DEFECTS THE 2026-08-16 EXIT-LEVEL REPORT FOUND --
  *
@@ -138,7 +138,7 @@ static int __fastcall st_trap(void *, void *)
     const char *name = "the trap did not record its slot -- fix the thunk";
     if (hal_stage_trap_slot >= 0 && hal_stage_trap_slot < 20)
         name = hal_stage_slot_name[hal_stage_trap_slot];
-    std::fprintf(stderr, "FATAL: Stage vtable slot %d (%s) is not hosted\n",
+    std::fprintf(stderr, "FATAL: dScStage_c vtable slot %d (%s) is not hosted\n",
                  hal_stage_trap_slot, name);
     std::abort();
     return 0;
@@ -169,7 +169,7 @@ extern "C" void port_stage_seat_probe(void);   /* below the seat */
 extern "C" void hal_fill_stage_vtable(void)
 {
     for (int i = 0; i < 20; ++i)
-        _ZTV5Stage[i] = hal_stage_trap_thunk[i];
+        _ZTV10dScStage_c[i] = hal_stage_trap_thunk[i];
     hal_seat_stage_lifecycle();
 }
 
@@ -317,8 +317,8 @@ int  port_stage_cleanup_resources(void *self);
    `struct Stage *f(struct Stage *thiz)`, receiver as an ordinary first
    argument -- so they need no face, only the ecx->arg adapter every seat in
    this family uses. */
-void *_ZN5StageD1Ev(void *thiz);
-void *_ZN5StageD0Ev(void *thiz);
+void *_ZN10dScStage_cD1Ev(void *thiz);
+void *_ZN10dScStage_cD0Ev(void *thiz);
 }
 
 /* Slots 13 and 14. The same local NON-VIRTUAL declaration hal/scene_boot.cpp
@@ -523,7 +523,7 @@ static int __fastcall st_render(void *, void *)   { return 1; }
    out/SEAT2/stage_binit_tailjump.txt -- and the cast is spelled here, at the
    one call site, rather than hidden in a wrong-arity extern.  Related:
    sm64ds-port-fastcall-face-arity, the face that DROPS `this`. */
-extern "C" void _ZN5Stage19BeforeInitResourcesEv(void);
+extern "C" void _ZN10dScStage_c19BeforeInitResourcesEv(void);
 /* `bool`, the face's real return type, NOT `int`. Stage::BeforeInitResources
    is slot 1 and returns bool, so the answer is in AL and the rest of EAX is
    whatever the callee left there. Reading it as `int` is the same defect this
@@ -533,7 +533,7 @@ extern "C" void _ZN5Stage19BeforeInitResourcesEv(void);
 typedef bool (*Seat2StageBeforeInit)(void *);
 
 static int  __fastcall st_binit(void *s, void *)
-{ return ((Seat2StageBeforeInit)&_ZN5Stage19BeforeInitResourcesEv)(s); }
+{ return ((Seat2StageBeforeInit)&_ZN10dScStage_c19BeforeInitResourcesEv)(s); }
 static void __fastcall st_ainit(void *s, void *, unsigned a)
 { port_scene_after_init(s, a); }
 static int  __fastcall st_bclean(void *s, void *)
@@ -921,7 +921,7 @@ static void port_stage_wipes_reclaim(void)
         return;
     data_0209f324 = g_stage_wipe_pool;
     std::fprintf(stderr, "[stage] slot 0: the fader-wipe pool %p belongs to "
-                 "the new Stage now (the old Stage's teardown released it)\n",
+                 "the new dScStage_c now (the old dScStage_c's teardown released it)\n",
                  g_stage_wipe_pool);
 }
 
@@ -970,19 +970,19 @@ static int  __fastcall st_clean(void *s, void *d)
     const int xfm = st_texxfm_vtable_fixup(s);
     const int wipes = st_wipes_withdraw();
     void *kcl = func_01ffb0c8((char *)s + 0x91c);
-    std::fprintf(stderr, "[stage] slot 3: the ROM's Stage::CleanupResources "
-                 "is tearing the Stage %p down (skybox %s; %d area "
+    std::fprintf(stderr, "[stage] slot 3: the ROM's dScStage_c::CleanupResources "
+                 "is tearing the dScStage_c %p down (skybox %s; %d area "
                  "transformer(s) given the ROM's D0 at slot 1; fader-wipe "
                  "pool %s; level KCL %p)\n", s,
                  sky > 0 ? "given the ROM's D0 at slot 1 (cdecl face)"
                          : (sky < 0 ? "no table to copy, left alone"
                                     : "absent"),
-                 xfm, wipes ? "withdrawn (the port's, not the Stage's)"
+                 xfm, wipes ? "withdrawn (the port's, not the dScStage_c's)"
                             : "already absent", kcl);
     std::fflush(stderr);
     const int r = port_stage_cleanup_resources(s);
     const int dropped = kcl ? port_level_kcl_released(kcl) : 0;
-    std::fprintf(stderr, "[stage] slot 3: Stage::CleanupResources returned %d; "
+    std::fprintf(stderr, "[stage] slot 3: dScStage_c::CleanupResources returned %d; "
                  "the KCL image went back through the ROM's own Deallocate%s\n",
                  r, dropped ? " and its LoadFile row is dropped" : "");
     std::fflush(stderr);
@@ -1001,9 +1001,9 @@ static void *__fastcall st_d2(void *s, void *)
        crossing in hal/level_change.cpp), so the note prints every time, and
        the host mirror of the Stage follows the object into its destructor
        rather than dangling past it. */
-    std::fprintf(stderr, "[stage] slot 16: ~Stage (D1) is running on %p -- the "
-                 "ROM's own teardown is destroying the Stage\n", s);
-    void *r = _ZN5StageD1Ev(s);
+    std::fprintf(stderr, "[stage] slot 16: ~dScStage_c (D1) is running on %p -- the "
+                 "ROM's own teardown is destroying the dScStage_c\n", s);
+    void *r = _ZN10dScStage_cD1Ev(s);
     st_stage_forget(s);
     return r;
 }
@@ -1013,34 +1013,34 @@ static void *__fastcall st_d0(void *s, void *)
     static int noted;
     if (!noted) {
         noted = 1;
-        std::fprintf(stderr, "[stage] slot 17: ~Stage (D0) is running -- the "
-                     "Stage is being deleted and its storage returned.\n");
+        std::fprintf(stderr, "[stage] slot 17: ~dScStage_c (D0) is running -- the "
+                     "dScStage_c is being deleted and its storage returned.\n");
     }
-    void *r = _ZN5StageD0Ev(s);
+    void *r = _ZN10dScStage_cD0Ev(s);
     st_stage_forget(s);
     return r;
 }
 
 extern "C" void hal_seat_stage_lifecycle(void)
 {
-    _ZTV5Stage[0]  = (void *)st_init;
-    _ZTV5Stage[1]  = (void *)st_binit;
-    _ZTV5Stage[2]  = (void *)st_ainit;
-    _ZTV5Stage[3]  = (void *)st_clean;
-    _ZTV5Stage[4]  = (void *)st_bclean;
-    _ZTV5Stage[5]  = (void *)st_aclean;
-    _ZTV5Stage[6]  = (void *)st_behavior;
-    _ZTV5Stage[7]  = (void *)st_bbeh;
-    _ZTV5Stage[8]  = (void *)st_abeh;
-    _ZTV5Stage[9]  = (void *)st_render;
-    _ZTV5Stage[10] = (void *)st_bren;
-    _ZTV5Stage[11] = (void *)st_aren;
-    _ZTV5Stage[12] = (void *)st_pdes;
-    _ZTV5Stage[13] = (void *)st_v34;
-    _ZTV5Stage[14] = (void *)st_v38;
-    _ZTV5Stage[15] = (void *)st_heap;
-    _ZTV5Stage[16] = (void *)PORT_D16(st_d2);
-    _ZTV5Stage[17] = (void *)st_d0;
+    _ZTV10dScStage_c[0]  = (void *)st_init;
+    _ZTV10dScStage_c[1]  = (void *)st_binit;
+    _ZTV10dScStage_c[2]  = (void *)st_ainit;
+    _ZTV10dScStage_c[3]  = (void *)st_clean;
+    _ZTV10dScStage_c[4]  = (void *)st_bclean;
+    _ZTV10dScStage_c[5]  = (void *)st_aclean;
+    _ZTV10dScStage_c[6]  = (void *)st_behavior;
+    _ZTV10dScStage_c[7]  = (void *)st_bbeh;
+    _ZTV10dScStage_c[8]  = (void *)st_abeh;
+    _ZTV10dScStage_c[9]  = (void *)st_render;
+    _ZTV10dScStage_c[10] = (void *)st_bren;
+    _ZTV10dScStage_c[11] = (void *)st_aren;
+    _ZTV10dScStage_c[12] = (void *)st_pdes;
+    _ZTV10dScStage_c[13] = (void *)st_v34;
+    _ZTV10dScStage_c[14] = (void *)st_v38;
+    _ZTV10dScStage_c[15] = (void *)st_heap;
+    _ZTV10dScStage_c[16] = (void *)PORT_D16(st_d2);
+    _ZTV10dScStage_c[17] = (void *)st_d0;
     /* 18 and 19 stay trapped -- they are past the ROM's eighteen-word table,
        host storage only, and a dispatch there is a bug worth aborting on. */
     port_stage_seat_probe();
@@ -1075,22 +1075,22 @@ extern "C" void port_stage_seat_probe(void)
     const int mode = std::atoi(e);
     for (int pass = 0; pass < (mode >= 2 ? 2 : 1); ++pass) {
         if (pass == 1) {
-            _ZTV5Stage[3]  = hal_stage_trap_thunk[3];
-            _ZTV5Stage[16] = hal_stage_trap_thunk[16];
-            _ZTV5Stage[17] = hal_stage_trap_thunk[17];
+            _ZTV10dScStage_c[3]  = hal_stage_trap_thunk[3];
+            _ZTV10dScStage_c[16] = hal_stage_trap_thunk[16];
+            _ZTV10dScStage_c[17] = hal_stage_trap_thunk[17];
             std::printf("[stage-seat] NEGATIVE CONTROL: slots 3/16/17 put back "
                         "on the trap\n");
         }
         for (int i = 0; i < 20; ++i)
             std::printf("[stage-seat] slot %2d %-22s %s\n", i,
                         hal_stage_slot_name[i],
-                        _ZTV5Stage[i] == hal_stage_trap_thunk[i] ? "TRAP"
+                        _ZTV10dScStage_c[i] == hal_stage_trap_thunk[i] ? "TRAP"
                                                                  : "SEATED");
     }
     std::printf("[stage-seat] slot 3 gate: SM64DS_STAGE_SLOT3_TRAP %s, so a "
                 "dispatch from the level-to-scene crossing reaches %s\n",
                 st_slot3_rom() ? "unset" : "SET",
-                st_slot3_rom() ? "the ROM's Stage::CleanupResources"
+                st_slot3_rom() ? "the ROM's dScStage_c::CleanupResources"
                                : "the named abort");
 }
 
@@ -1150,8 +1150,8 @@ static void st_stage_forget(void *s)
 {
     if (s && s == g_stage) {
         g_stage = 0;
-        std::fprintf(stderr, "[stage] the Stage %p is destroyed; the port holds "
-                     "no Stage until the next level boot builds one\n", s);
+        std::fprintf(stderr, "[stage] the dScStage_c %p is destroyed; the port holds "
+                     "no dScStage_c until the next level boot builds one\n", s);
     }
 }
 
@@ -1182,18 +1182,18 @@ static void st_stage_forget(void *s)
 static void port_stage_slot3_dispatch(void)
 {
     if (!g_stage) {
-        std::fprintf(stderr, "[stage-slot3] no Stage to dispatch on\n");
+        std::fprintf(stderr, "[stage-slot3] no dScStage_c to dispatch on\n");
         return;
     }
-    std::fprintf(stderr, "[stage-slot3] dispatching _ZTV5Stage[3] on %p "
+    std::fprintf(stderr, "[stage-slot3] dispatching _ZTV10dScStage_c[3] on %p "
                  "(%s)\n", g_stage,
                  st_slot3_rom() ? "the ROM's body"
                                 : "SM64DS_STAGE_SLOT3_TRAP: the named abort");
     std::fflush(stderr);
     g_slot3_probe_live = 1;
-    const int r = ((StageSlot0)_ZTV5Stage[3])(g_stage, 0);
+    const int r = ((StageSlot0)_ZTV10dScStage_c[3])(g_stage, 0);
     g_slot3_probe_live = 0;
-    std::fprintf(stderr, "[stage-slot3] Stage::CleanupResources returned %d\n",
+    std::fprintf(stderr, "[stage-slot3] dScStage_c::CleanupResources returned %d\n",
                  r);
     std::fflush(stderr);
 }
@@ -1209,7 +1209,7 @@ extern "C" void *port_stage_create(void)
        does; everything below is the per-object half and runs again. */
     static int built;
     if (built++)
-        std::fprintf(stderr, "[stage] building Stage #%d in this process (the "
+        std::fprintf(stderr, "[stage] building dScStage_c #%d in this process (the "
                      "previous one was destroyed by the ROM's own teardown)\n",
                      built);
 
@@ -1218,7 +1218,7 @@ extern "C" void *port_stage_create(void)
     const unsigned stage_id = *(unsigned short *)(g_profile_STAGE + 4);
     if (stage_id != 3)
         std::fprintf(stderr, "  [stage] SPAWNDATA LOOKS WRONG: +4 is %u, the "
-                     "ROM's Stage id is 3\n", stage_id);
+                     "ROM's dScStage_c id is 3\n", stage_id);
 
     void *saved_info = data_020a4bb8[stage_id];
     unsigned short saved_pending = data_020a4b54;
@@ -1231,7 +1231,7 @@ extern "C" void *port_stage_create(void)
     data_020a4b54 = saved_pending;
 
     if (!g_stage) {
-        std::fprintf(stderr, "FATAL: Stage::Stage returned null\n");
+        std::fprintf(stderr, "FATAL: dScStage_c::dScStage_c returned null\n");
         std::abort();
     }
 
@@ -1242,7 +1242,7 @@ extern "C" void *port_stage_create(void)
        spawned after it hangs off nothing and the phase-1 pass walks a null. */
     if (data_020a4b6c[0] != (int)(size_t)((char *)g_stage + 0x14))
         std::fprintf(stderr, "  [stage] TREE HEAD IS NOT THE STAGE: head %p, "
-                     "Stage node %p\n", (void *)(size_t)data_020a4b6c[0],
+                     "dScStage_c node %p\n", (void *)(size_t)data_020a4b6c[0],
                      (void *)((char *)g_stage + 0x14));
 
     /* ---- THE PAUSE BITS, and who really owns them -------------------------
@@ -1315,7 +1315,7 @@ extern "C" void *port_stage_create(void)
        Seated here, before the boot, because the Camera is spawned inside it. */
     data_0209f314 = (char *)g_stage + 0x8bc;
 
-    std::printf("[stage] Stage actor %p (id %u, prio beh %u ren %u), "
+    std::printf("[stage] dScStage_c actor %p (id %u, prio beh %u ren %u), "
                 "collider +0x91c %p, model +0x86c %p\n", g_stage, stage_id,
                 *(unsigned short *)(g_profile_STAGE + 4),
                 *(unsigned short *)(g_profile_STAGE + 6),
@@ -1354,7 +1354,7 @@ extern int data_020a4b64[];
 extern "C" void port_stage_tree_probe(void *child, const char *what)
 {
     char *s = (char *)g_stage;
-    std::printf("[stage] tree: head %p, Stage node %p, Stage flags %02x, "
+    std::printf("[stage] tree: head %p, dScStage_c node %p, dScStage_c flags %02x, "
                 "spawn parent node %p\n", (void *)(size_t)data_020a4b6c[0],
                 (void *)(s + 0x14), *(unsigned char *)(s + 0x13),
                 (void *)(size_t)data_020a4b64[0]);
@@ -1373,17 +1373,17 @@ extern "C" void port_stage_tree_probe(void *child, const char *what)
 // Stage::RenderModel is a real MSVC method compiled against include/Stage.h,
 // so it lands in the map as ?RenderModel@Stage@@QAEXXZ and no C caller can
 // spell it. Same face pattern as hal/method_faces.cpp.
-#include "Stage.h"
-#include "Animation.h"
+#include "dScStage_c.h"
+#include "dExtFrameCtrl_c.h"
 extern "C" void port_stage_render_model(void *self)
-{ ((Stage *)self)->Stage::RenderModel(); }
+{ ((dScStage_c *)self)->dScStage_c::RenderModel(); }
 /* _ZTV5Stage slot 12. The ROM's Stage overrides OnPendingDestroy with an empty
    body (src/_ZN5Stage16OnPendingDestroyEv.cpp, 0x0202b8a0), so the face costs
    a call and nothing else; what it buys is that the two
    ActorBase::MarkForDestruction edges in Scene::BeforeBehavior land on the
    ROM's body instead of on the slot trap. */
 extern "C" void port_stage_on_pending_destroy(void *self)
-{ ((Stage *)self)->Stage::OnPendingDestroy(); }
+{ ((dScStage_c *)self)->dScStage_c::OnPendingDestroy(); }
 /* _ZTV5Stage slot 3 (run link100, lane STAGE). Same shape and same reason as
    slot 12's face above: src/_ZN5Stage16CleanupResourcesEv.cpp is a real C++
    method against include/Stage.h and publishes only
@@ -1391,9 +1391,9 @@ extern "C" void port_stage_on_pending_destroy(void *self)
    C name that does not exist. The return value is the ROM's own 1, which the
    cleanup Process reads. */
 extern "C" int port_stage_cleanup_resources(void *self)
-{ return ((Stage *)self)->Stage::CleanupResources(); }
+{ return ((dScStage_c *)self)->dScStage_c::CleanupResources(); }
 extern "C" void port_stage_render_model_transparent(void *self)
-{ ((Stage *)self)->Stage::RenderModelTransparent(); }
+{ ((dScStage_c *)self)->dScStage_c::RenderModelTransparent(); }
 
 /* THE LEVEL'S OWN TEXTURE ANIMATIONS -- the waterfall, and every other BTA
    the stage model carries. Two halves of Stage code own them and the port
@@ -1489,7 +1489,7 @@ extern "C" void port_stage_anims_load(void *self)
         loaded_level = (int)data_0209f2f8;
         for (unsigned i = 0; i < n; ++i)
             *(void **)(slots + i * 0xc) = 0;     /* drop the old level's */
-        ((Stage *)self)->Stage::LoadTextureTransformers();
+        ((dScStage_c *)self)->dScStage_c::LoadTextureTransformers();
         int live = 0;
         for (unsigned i = 0; i < n; ++i)
             if (*(void **)(slots + i * 0xc))
@@ -1517,9 +1517,9 @@ extern "C" void port_stage_advance_anims(void *self)
     if ((data_0209f294[0] | data_0209f2c4[0] | data_0209f20c[0]) & 0xff)
         return;
     for (unsigned i = 0; i < n; ++i) {
-        Animation *a = *(Animation **)(slots + i * 0xc);
+        dExtFrameCtrl_c *a = *(dExtFrameCtrl_c **)(slots + i * 0xc);
         if (a && *(unsigned char *)(slots + i * 0xc + 4))
-            a->Animation::Advance();
+            a->dExtFrameCtrl_c::Advance();
     }
 }
 
@@ -1583,12 +1583,12 @@ extern "C" void port_stage_render_skybox(void *self)
 extern "C" void port_stage_lifecycle_boot(void)
 {
     if (!g_stage) {
-        std::fprintf(stderr, "FATAL: the level boot ran before the Stage\n");
+        std::fprintf(stderr, "FATAL: the level boot ran before the dScStage_c\n");
         std::abort();
     }
     if (*(unsigned char *)((char *)g_stage + 0x0e) == 0) {
         func_020433b8(g_stage);
         return;
     }
-    ((StageSlot0)_ZTV5Stage[0])(g_stage, 0);
+    ((StageSlot0)_ZTV10dScStage_c[0])(g_stage, 0);
 }

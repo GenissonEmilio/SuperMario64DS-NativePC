@@ -18,7 +18,7 @@
 #include <cstdlib>
 
 #include "dsstate_seg.h"
-#include "Bird.h"      /* for the cdecl face at the end of this file */
+#include "daSBird_c.h"      /* for the cdecl face at the end of this file */
 
 /* THE GUARD IS CAPTURED, and it is the same defect the level mount cache had.
  *
@@ -65,9 +65,9 @@ void port_ov009_pack_check(void);
 void port_ov009_syms_patch(void);
 
 /* the Bird's four states, in the order the sinit seats them */
-void func_ov009_021116ec(void *);   /* 0 */
-void func_ov009_021115d8(void *);   /* 1 */
-void func_ov009_02111234(void *);   /* 3 */
+void _ZN9daSBird_c19func_ov009_021116ecEv(void *);   /* 0 */
+void _ZN9daSBird_c19func_ov009_021115d8Ev(void *);   /* 1 */
+void _ZN9daSBird_c19func_ov009_02111234Ev(void *);   /* 3 */
 
 struct PortPmf { unsigned fn; int ptr; };
 extern PortPmf data_ov009_02113c48[];
@@ -80,7 +80,7 @@ extern PortPmf data_ov009_02113c48[];
    castle grounds start in state 0 and the walk says so if one ever gets here. */
 static void __fastcall port_bird_state2(void *, void *)
 {
-    std::fprintf(stderr, "FATAL: Bird state 2 (ov009 0x0211145c) is an asm "
+    std::fprintf(stderr, "FATAL: daSBird_c state 2 (ov009 0x0211145c) is an asm "
                  "hatch, not C -- no host body exists\n");
     std::abort();
 }
@@ -105,11 +105,11 @@ static void __fastcall port_bird_state2(void *, void *)
    words are one shape; it ignores its receiver either way. Each thunk NAMES
    its matched body, so trap T2's rule still holds. */
 static void __fastcall bird_state0_pmf(void *self, void *)
-{ func_ov009_021116ec(self); }
+{ _ZN9daSBird_c19func_ov009_021116ecEv(self); }
 static void __fastcall bird_state1_pmf(void *self, void *)
-{ func_ov009_021115d8(self); }
+{ _ZN9daSBird_c19func_ov009_021115d8Ev(self); }
 static void __fastcall bird_state3_pmf(void *self, void *)
-{ func_ov009_02111234(self); }
+{ _ZN9daSBird_c19func_ov009_02111234Ev(self); }
 
 static const struct { unsigned rom; void (__fastcall *host)(void *, void *); }
 g_bird[4] = {
@@ -134,7 +134,7 @@ extern "C" void port_ov009_sinits(void)
     __sinit_ov009_02112ac8();
     for (int i = 0; i < 4; ++i) {
         if (data_ov009_02113c48[i].fn != g_bird[i].rom) {
-            std::fprintf(stderr, "FATAL: Bird state %d: the sinit left %08x, "
+            std::fprintf(stderr, "FATAL: daSBird_c state %d: the sinit left %08x, "
                          "the ROM's own table says %08x -- WRONG BYTES\n", i,
                          data_ov009_02113c48[i].fn, g_bird[i].rom);
             std::abort();
@@ -143,7 +143,7 @@ extern "C" void port_ov009_sinits(void)
            -- verified against the overlay image, all four deltas zero -- so
            the host reads the first word back as a function taking `this`. */
         if (data_ov009_02113c48[i].ptr != 0) {
-            std::fprintf(stderr, "FATAL: Bird state %d is not a plain "
+            std::fprintf(stderr, "FATAL: daSBird_c state %d is not a plain "
                          "pointer-to-member (delta %d)\n", i,
                          data_ov009_02113c48[i].ptr);
             std::abort();
@@ -181,10 +181,10 @@ void Vec3_Asr(void *dst, const void *src, int n);
 void Matrix4x3_FromTranslation(void *m, int x, int y, int z);
 void Matrix4x3_ApplyInPlaceToRotationZ(void *m, short a);
 void Matrix4x3_ApplyInPlaceToRotationY(void *m, short a);
-int _ZN8dActor_c19DropShadowRadHeightER11ShadowModelR9Matrix4x35Fix12IiES5_j(
+int _ZN8dActor_c19DropShadowRadHeightER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_j(
     void *self, void *sm, void *m, int rad, int h, unsigned u);
-int _ZN9Animation7AdvanceEv(void *a);
+int _ZN15dExtFrameCtrl_c7AdvanceEv(void *a);
 extern int data_020a0e68[12];
 
-int _ZN4Bird8BehaviorEv(void *s)   { return ((Bird *)s)->Bird::Behavior(); }
+int _ZN9daSBird_c8BehaviorEv(void *s)   { return ((daSBird_c *)s)->daSBird_c::Behavior(); }
 }  /* extern "C" */

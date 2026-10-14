@@ -51,8 +51,8 @@ whole file exists to prevent.
 THE FIXTURES DRIVE THE REAL FUNCTIONS. As first written the conviction fixture
 did its own set intersection inline:
 
-    syms = {"_ZTV12daStarGate_c": {0x021483CC}, "_ZTV4Door": {0x02148188}}
-    la, ra = syms["_ZTV12daStarGate_c"], syms["_ZTV4Door"]
+    syms = {"_ZTV12daStarGate_c": {0x021483CC}, "_ZTV8daDoor_c": {0x02148188}}
+    la, ra = syms["_ZTV12daStarGate_c"], syms["_ZTV8daDoor_c"]
     if la & ra: fail
 
 which would still have passed with the entire conviction branch deleted from
@@ -188,7 +188,7 @@ def collect_aliases(root):
 
 
 def itanium(decorated):
-    """__ZTV4Door -> _ZTV4Door. MSVC prefixes a leading underscore on C names."""
+    """__ZTV8daDoor_c -> _ZTV8daDoor_c. MSVC prefixes a leading underscore on C names."""
     return decorated[1:] if decorated.startswith("__ZTV") else decorated
 
 
@@ -224,74 +224,74 @@ def fixtures():
     day the tree is correct. The addresses are the real ones, so a reader can
     check them against config, but the source text is invented.
     """
-    DOOR = {"_ZTV4Door": {0x02148188}, "_ZTV12daStarGate_c": {0x021483CC},
+    DOOR = {"_ZTV8daDoor_c": {0x02148188}, "_ZTV12daStarGate_c": {0x021483CC},
             "_ZTV8daDoor_c": {0x02148188}}
-    OV064 = {"_ZTV17BowserPuzzlePiece": {0x0211C25C},
+    OV064 = {"_ZTV16daObjFl_Puzzle_c": {0x0211C25C},
              "_ZTV16daObjFl_Puzzle_c": {0x0211C25C},
-             "_ZTV9JetStream": {0x0211C334},
+             "_ZTV18daWater_Hakidasi_c": {0x0211C334},
              "_ZTV18daWater_Hakidasi_c": {0x0211C334}}
-    OV030 = {"_ZTV7daMky_c": {0x02115BFC}, "_ZTV13RollingLogTtm": {0x02115A48}}
-    OV091 = {"_ZTV5Stump": {0x021352BC}, "_ZTV6Fwoosh": {0x021353AC},
+    OV030 = {"_ZTV7daMky_c": {0x02115BFC}, "_ZTV15daObjHmMaruta_c": {0x02115A48}}
+    OV091 = {"_ZTV11daObjPile_c": {0x021352BC}, "_ZTV10daHyuhyu_c": {0x021353AC},
              "_ZTV10daHyuhyu_c": {0x021353AC}}
     P = '#pragma comment(linker, "/alternatename:%s=%s")\n'
 
     return [
         ("the star door pair convicts",
-         P % ("__ZTV12daStarGate_c", "__ZTV4Door"), DOOR, (0, 1, 0),
+         P % ("__ZTV12daStarGate_c", "__ZTV8daDoor_c"), DOOR, (0, 1, 0),
          "the twelfth defect: two tables 0x244 apart, joined as one"),
 
         ("the plain door's true alias passes",
-         P % ("__ZTV8daDoor_c", "__ZTV4Door"), DOOR, (1, 0, 0),
+         P % ("__ZTV8daDoor_c", "__ZTV8daDoor_c"), DOOR, (1, 0, 0),
          "0x02148188 under both its names, which is what a real alias is"),
 
         ("ov064 puzzle piece onto JetStream convicts",
-         P % ("__ZTV9JetStream", "__ZTV17BowserPuzzlePiece"), OV064, (0, 1, 0),
+         P % ("__ZTV18daWater_Hakidasi_c", "__ZTV16daObjFl_Puzzle_c"), OV064, (0, 1, 0),
          "the thirteenth defect's first pair, 0x0211c334 against 0x0211c25c"),
 
         ("ov064 both true aliases pass",
-         (P % ("__ZTV18daWater_Hakidasi_c", "__ZTV9JetStream"))
-         + (P % ("__ZTV17BowserPuzzlePiece", "__ZTV16daObjFl_Puzzle_c")),
+         (P % ("__ZTV18daWater_Hakidasi_c", "__ZTV18daWater_Hakidasi_c"))
+         + (P % ("__ZTV16daObjFl_Puzzle_c", "__ZTV16daObjFl_Puzzle_c")),
          OV064, (2, 0, 0),
          "each address under both of its own names, the shape ALIAS5 left behind"),
 
         ("ov030 monkey onto rolling log convicts",
-         P % ("__ZTV7daMky_c", "__ZTV13RollingLogTtm"), OV030, (0, 1, 0),
+         P % ("__ZTV7daMky_c", "__ZTV15daObjHmMaruta_c"), OV030, (0, 1, 0),
          "0x02115bfc against 0x02115a48, ten of thirty-one slots apart"),
 
         ("ov091 Fwoosh onto Stump convicts",
-         P % ("__ZTV6Fwoosh", "__ZTV5Stump"), OV091, (0, 1, 0),
+         P % ("__ZTV10daHyuhyu_c", "__ZTV11daObjPile_c"), OV091, (0, 1, 0),
          "0x021353ac against 0x021352bc, twelve of thirty-one slots apart"),
 
         ("ov091 daHyuhyu onto Stump convicts",
-         P % ("__ZTV10daHyuhyu_c", "__ZTV5Stump"), OV091, (0, 1, 0),
+         P % ("__ZTV10daHyuhyu_c", "__ZTV11daObjPile_c"), OV091, (0, 1, 0),
          "the same wrong table reached under its other name"),
 
         ("a commented-out directive stays quiet",
-         "/* " + (P % ("__ZTV12daStarGate_c", "__ZTV4Door")) + " */\n"
-         + "// " + (P % ("__ZTV6Fwoosh", "__ZTV5Stump")),
+         "/* " + (P % ("__ZTV12daStarGate_c", "__ZTV8daDoor_c")) + " */\n"
+         + "// " + (P % ("__ZTV10daHyuhyu_c", "__ZTV11daObjPile_c")),
          DOOR, (0, 0, 0),
          "a retired row and a lane note quoting one are not linker inputs"),
 
         ("a directive quoted inside a // note stays quiet",
          '  ok // "not a comment inside a string" '
-         '/alternatename:__ZTV6Fwoosh=__ZTV5Stump',
+         '/alternatename:__ZTV10daHyuhyu_c=__ZTV11daObjPile_c',
          OV091, (0, 0, 0),
          "// wins from where it starts; the quote inside it must not reopen the line"),
 
         ("a directive inside a pragma's string literal IS read",
-         P % ("__ZTV6Fwoosh", "__ZTV5Stump"), OV091, (0, 1, 0),
+         P % ("__ZTV10daHyuhyu_c", "__ZTV11daObjPile_c"), OV091, (0, 1, 0),
          "load-bearing: EVERY real directive lives inside a string literal, so "
          "the stripper must keep literals whole and the pattern must match inside "
          "them. A first draft of the fixture above asserted the opposite, and this "
          "self-check refused it, which is the whole point of running fixtures"),
 
         ("a name config never heard of is UNKNOWN, not a pass",
-         P % ("__ZTV9SomeHostArray", "__ZTV4Door"), DOOR, (0, 0, 1),
+         P % ("__ZTV9SomeHostArray", "__ZTV8daDoor_c"), DOOR, (0, 0, 1),
          "port scaffolding has no ROM symbol; unchecked must not read as green"),
 
         ("a name in two overlays is ambiguous, not convicted",
-         P % ("__ZTV5Shared", "__ZTV4Door"),
-         {"_ZTV5Shared": {0x02148188, 0x02999999}, "_ZTV4Door": {0x02148188}},
+         P % ("__ZTV5Shared", "__ZTV8daDoor_c"),
+         {"_ZTV5Shared": {0x02148188, 0x02999999}, "_ZTV8daDoor_c": {0x02148188}},
          (1, 0, 0),
          "one address in common is enough; a genuine multi-module name passes"),
     ]
@@ -306,7 +306,7 @@ def line_fixture():
     """
     text = ("/* a block comment\n   spanning\n   four\n   lines */\n"
             "// a line comment\n"
-            '#pragma comment(linker, "/alternatename:__ZTV4Door=__ZTV8daDoor_c")\n')
+            '#pragma comment(linker, "/alternatename:__ZTV8daDoor_c=__ZTV8daDoor_c")\n')
     got = scan_text("fixture.cpp", text)
     return len(got) == 1 and got[0][1] == 6, (got[0][1] if got else None)
 
@@ -325,7 +325,7 @@ def self_check(verbose=False):
         print("           the bug that already happened: a block comment used to")
         print("           collapse to one space and every later line number was low")
 
-    if itanium("__ZTV4Door") != "_ZTV4Door" or itanium("_ZTV4Door") != "_ZTV4Door":
+    if itanium("__ZTV8daDoor_c") != "_ZTV8daDoor_c" or itanium("_ZTV8daDoor_c") != "_ZTV8daDoor_c":
         ok_all = False
         if verbose:
             print("    [FAIL] MSVC's leading underscore is not undecorated")

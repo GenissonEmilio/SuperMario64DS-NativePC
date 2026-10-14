@@ -176,8 +176,8 @@
 # a closure probe or a link wave proved the image does not already carry.
 #
 # ---- the list ---------------------------------------------------------------
-src/Camera_UpdateMatrices.c
-src/_ZN9dThIcon_c8BehaviorEv.cpp
+src/actors/unit020bfec0.cpp
+src/actors/dThIcon_c.cpp
 # HOST-COPIED (mg5 lane FLW, under the coordinator's granted displacement
 # ruling): src/func_ov004_020ad8b8.c. It calls func_ov004_020adc3c with no
 # argument while the ROM rides the pointer loaded from data_ov004_020beb68
@@ -185,23 +185,23 @@ src/_ZN9dThIcon_c8BehaviorEv.cpp
 # the TU here alongside port/unmatched/MgFlower_InitScore.cpp would be an
 # LNK2005; the host copy is the definition. That file states the delta line by
 # line and carries the ROM disassembly it was derived from.
-src/func_ov004_020af770.cpp
-src/func_ov006_020c3528.cpp
-src/func_ov006_020c35a8.cpp
-src/func_ov006_020c35e8.c
-src/func_ov006_020c3754.c
-src/func_ov006_020c3884.c
-src/func_ov006_020c38ac.c
-src/func_ov006_020c38b0.c
-src/func_ov006_020c3904.c
-src/func_ov006_020c3908.c
-src/func_ov006_020c395c.c
-src/func_ov006_020c3990.c
-src/func_ov006_020c3ad8.c
-src/func_ov006_020c3adc.c
-src/func_ov006_020c3b2c.c
-src/func_ov006_020c3b80.c
-src/func_ov006_020c3bc8.c
+src/minigames/d_s_mg_base.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3528.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c35a8.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c35e8.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3754.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3884.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c38ac.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c38b0.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3904.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3908.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c395c.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3990.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3ad8.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3adc.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3b2c.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3b80.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3bc8.c
 # HOST-COPIED (mg5 lane Y3D): src/func_ov006_020c3bf4.cpp. It draws the
 # class's 3D sub-object through a LOCAL SHADOW CLASS, so its `f5(0)` counts in
 # the ROM's vtable numbering (byte +0x14 = the sixth word = Render) while the
@@ -218,29 +218,29 @@ src/func_ov006_020c3bc8.c
 # jumps to a raw DS address the first time it runs (eip 020c395c). See
 # port/unmatched/MgFlower_SubDispatch.cpp, which is the address switch and the
 # four measured code words. The header block above this list is amended for it.
-src/func_ov006_020c3d88.cpp
-src/func_ov006_020c3e54.c
-src/func_ov006_020c3e70.cpp
-src/func_ov006_020c3f54.cpp
-src/func_ov006_020c402c.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3d88.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3e54.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3e70.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3f54.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c402c.c
 src/minigames/d_s_mg_single3_d_base.cpp
-src/_ZN12dScMgSlot1_c9betIcon_c6RenderEv.cpp
-src/_ZN13dScMgFlower_cD1Ev.cpp
+src/actors/dScMgSlots.cpp
+src/actors/dScMgFlower_c.cpp
 # RETIRED at SLICE1: body now in src/_ZN13dScMgFlower_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN13dScMgFlower_cD0Ev.cpp
-src/func_ov006_0212a650.c
-src/func_ov006_0212a654.c
+# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/func_ov006_0212a650.c
+# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/func_ov006_0212a654.c
 # Run mg5, lane INTEG: the petal-array layout, recovered on branch
 # decomp/yoshi-petal (NONMATCHING regperm floor). It had a config symbol but no
 # delink block and no src when the comment above was written; both exist now, so
 # the trap in port/hal/scene_mg_flower.cpp is removed and the real body links.
-src/func_ov006_0212a764.cpp
-src/_ZN13dScMgFlower_c13OnYoshiTryEatEi.cpp
-src/_ZN13dScMgFlower_c6RenderEv.cpp
-src/_ZN13dScMgFlower_c8BehaviorEv.cpp
-src/_ZN13dScMgFlower_c13InitResourcesEv.cpp
-src/d_s_mg_flower.cpp
-src/func_ov006_0212b88c.c
+# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/func_ov006_0212a764.cpp
+# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/_ZN13dScMgFlower_c13OnYoshiTryEatEi.cpp
+# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/_ZN13dScMgFlower_c6RenderEv.cpp
+# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/_ZN13dScMgFlower_c8BehaviorEv.cpp
+# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/_ZN13dScMgFlower_c13InitResourcesEv.cpp
+# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/d_s_mg_flower.cpp
+# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/func_ov006_0212b88c.c
 
 # ---- the arm9 lines, and why there are only eight --------------------------
 #
@@ -271,14 +271,14 @@ src/Vec2_Sub.c
 # is that caller, so it comes back for free. Lane MGA's probe named the same
 # TU for 0x169 and its slice lists it; whichever lane seats 361 will meet this
 # LNK2005 too.
-src/func_02016a04.c
-src/func_02016a14.c
-src/func_0202ffec.c
-src/func_0203ccd4.c
-src/func_0203cd80.c
+src/unnamed/arm9/0201/func_02016a04.c
+src/unnamed/arm9/0201/func_02016a14.c
+src/unnamed/arm9/0202/func_0202ffec.c
+src/unnamed/arm9/0203/func_0203ccd4.c
+src/unnamed/arm9/0203/func_0203cd80.c
 # WAVE 2, named by the linker and by nothing else: func_02016a14 above calls
 # it and no probe wave predicted it, because the probe only asks what the
 # LISTED TUs want and func_02016a14 was itself a wave-1 line.
-src/func_02045f80.c
+src/engine/model/Model4.cpp
 # WAVE 3, the previous wave's own closure: func_02045f80 calls it.
-src/func_02045fd4.c
+# FOLDED into src/engine/model/Model4.cpp (row 282): src/func_02045fd4.c

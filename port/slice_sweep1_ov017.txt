@@ -50,4 +50,4 @@
 # THE MEASURED CLOSURE GAP: none. The first link added no arm9 TU.
 
 src/game/actors/d_a_obj_ks_water.cpp
-src/__sinit_ov017_0211198c.c
+# FOLDED into src/game/actors/d_a_obj_ks_water.cpp (row 52): src/__sinit_ov017_0211198c.c

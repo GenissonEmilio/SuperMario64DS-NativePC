@@ -46,11 +46,11 @@
 # 0's tick, 540 bytes at 0x0211a4c4 -- has NO matched TU in src/ and no host
 # copy in the port. State 0 is where its InitResources leaves the chest, so
 # that body runs on the first frame one exists.
-src/d_a_obj_shell.cpp
-src/_ZN4Clam13InitResourcesEv.cpp
-src/_ZN4Clam16CleanupResourcesEv.cpp
-src/_ZN4Clam8BehaviorEv.cpp
+src/actors/daObjShell_c.cpp
+# FOLDED into src/actors/daObjShell_c.cpp (row 49): src/_ZN4Clam13InitResourcesEv.cpp
+# FOLDED into src/actors/daObjShell_c.cpp (row 49): src/_ZN4Clam16CleanupResourcesEv.cpp
+# FOLDED into src/actors/daObjShell_c.cpp (row 49): src/_ZN4Clam8BehaviorEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN4ClamD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN4ClamD0Ev.cpp
-src/func_ov064_0211a9b4.c
-src/__sinit_ov064_0211b698.c
+# FOLDED into src/actors/daObjShell_c.cpp (row 49): src/func_ov064_0211a9b4.c
+# FOLDED into src/actors/daObjShell_c.cpp (row 49): src/__sinit_ov064_0211b698.c

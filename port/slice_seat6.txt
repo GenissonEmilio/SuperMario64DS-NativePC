@@ -72,7 +72,7 @@
 #             onto the cdecl body (the Klepto c0000005)
 #   retires   port/unmatched/UnchainedChomp_Behavior.cpp (InitResources body
 #             cut; its Spawn and Behavior bodies and the PMF seat all stay)
-src/_ZN14UnchainedChomp13InitResourcesEv.cpp
+src/actors/daWanwan2_c.cpp
 #
 # MantaRay::InitResources (ov090) OK -- family F, the same missing decoration
 #   referrer  _ZTV8MantaRay[0] @ 0213423c = 02132e38   (overlay_0090.bin, base 02131ec0)
@@ -83,7 +83,7 @@ src/_ZN14UnchainedChomp13InitResourcesEv.cpp
 #   retires   port/unmatched/MantaRay_HostSites.cpp (InitResources body cut;
 #             its Render, its state setter and its Behavior stay, each with its
 #             own separate reason)
-src/_ZN8MantaRay13InitResourcesEv.cpp
+src/actors/daManta_c.cpp
 #
 # func_ov074_021222e0 (ov074) OK -- family E, and the reason is DEAD TWICE OVER
 #   referrer  config/arm9/overlays/ov074/relocs.txt
@@ -112,7 +112,7 @@ src/_ZN8MantaRay13InitResourcesEv.cpp
 #   retires   port/unmatched/Goomboss_HostSites.cpp (its second body cut; the
 #             file's first body was already retired by lane FACEF, so the file
 #             becomes a documented empty TU)
-src/func_ov074_021222e0.cpp
+src/actors/daKuriKing_c.cpp
 #
 # =================== THE FOURTEEN GENERATED ROWS ===========================
 #

@@ -151,21 +151,21 @@ void port_mg_call1(void *self, unsigned code, int adj, int a);
 
 /* The fourteen state bodies, each declared with the parameter list ITS OWN src
    TU defines.  All fourteen are (receiver, int). */
-void func_ov006_0212a274(char *self, int idx);
-void func_ov006_0212a110(char *c, int idx);
-void func_ov006_0212a000(char *base, int index);
-void func_ov006_02129eec(char *c, int idx);
-void func_ov006_02129e28(char *c, int i);
-void func_ov006_02129cb0(char *o, int i);
-void func_ov006_02129b74(char *base, int index);
-void func_ov006_02129a34(char *base, int i);
-void func_ov006_0212992c(char *self, int idx);
-void func_ov006_02129894(char *c, int i);
-void func_ov006_021297c0(unsigned char *base, int idx);
-void func_ov006_0212972c(char *c, int idx);
+void _ZN15dScMgSnowball_c19func_ov006_0212a274Ei(char *self, int idx);
+void _ZN15dScMgSnowball_c19func_ov006_0212a110Ei(char *c, int idx);
+void _ZN15dScMgSnowball_c19func_ov006_0212a000Ei(char *base, int index);
+void _ZN15dScMgSnowball_c19func_ov006_02129eecEi(char *c, int idx);
+void _ZN15dScMgSnowball_c19func_ov006_02129e28Ei(char *c, int i);
+void _ZN15dScMgSnowball_c19func_ov006_02129cb0Ei(char *o, int i);
+void _ZN15dScMgSnowball_c19func_ov006_02129b74Ei(char *base, int index);
+void _ZN15dScMgSnowball_c19func_ov006_02129a34Ei(char *base, int i);
+void _ZN15dScMgSnowball_c19func_ov006_0212992cEi(char *self, int idx);
+void _ZN15dScMgSnowball_c19func_ov006_02129894Ei(char *c, int i);
+void _ZN15dScMgSnowball_c19func_ov006_021297c0Ei(unsigned char *base, int idx);
+void _ZN15dScMgSnowball_c19func_ov006_0212972cEi(char *c, int idx);
 /* and the two second-level dispatchers, whose DEFINITIONS are in this file */
-void func_ov006_0212a224(char *base, int idx);
-void func_ov006_02129d94(char *c, int i);
+void _ZN15dScMgSnowball_c19func_ov006_0212a224Ei(char *base, int idx);
+void _ZN15dScMgSnowball_c19func_ov006_02129d94Ei(char *c, int i);
 
 /* The four tables.  The ov006 mount defines the storage;
    __sinit_ov006_021333e0 fills all fourteen slots at minigame scene load. */
@@ -211,27 +211,27 @@ static int snowball_try_1(void *self, unsigned code, int a)
 
     switch (code) {
     /* data_ov006_02143038 -- the FIRST level, three slots */
-    case 0x0212a274u: ++g_snw_slot_hits[0];  func_ov006_0212a274(c, a); return 1;
-    case 0x0212a224u: ++g_snw_slot_hits[1];  func_ov006_0212a224(c, a); return 1;
-    case 0x02129d94u: ++g_snw_slot_hits[2];  func_ov006_02129d94(c, a); return 1;
+    case 0x0212a274u: ++g_snw_slot_hits[0];  _ZN15dScMgSnowball_c19func_ov006_0212a274Ei(c, a); return 1;
+    case 0x0212a224u: ++g_snw_slot_hits[1];  _ZN15dScMgSnowball_c19func_ov006_0212a224Ei(c, a); return 1;
+    case 0x02129d94u: ++g_snw_slot_hits[2];  _ZN15dScMgSnowball_c19func_ov006_02129d94Ei(c, a); return 1;
 
     /* data_ov006_02143050 -- second level, reached only through slot 1 above */
-    case 0x0212a110u: ++g_snw_slot_hits[3];  func_ov006_0212a110(c, a); return 1;
-    case 0x0212a000u: ++g_snw_slot_hits[4];  func_ov006_0212a000(c, a); return 1;
-    case 0x02129eecu: ++g_snw_slot_hits[5];  func_ov006_02129eec(c, a); return 1;
-    case 0x02129e28u: ++g_snw_slot_hits[6];  func_ov006_02129e28(c, a); return 1;
+    case 0x0212a110u: ++g_snw_slot_hits[3];  _ZN15dScMgSnowball_c19func_ov006_0212a110Ei(c, a); return 1;
+    case 0x0212a000u: ++g_snw_slot_hits[4];  _ZN15dScMgSnowball_c19func_ov006_0212a000Ei(c, a); return 1;
+    case 0x02129eecu: ++g_snw_slot_hits[5];  _ZN15dScMgSnowball_c19func_ov006_02129eecEi(c, a); return 1;
+    case 0x02129e28u: ++g_snw_slot_hits[6];  _ZN15dScMgSnowball_c19func_ov006_02129e28Ei(c, a); return 1;
 
     /* data_ov006_02143070 -- second level, reached only through slot 2 above */
-    case 0x02129cb0u: ++g_snw_slot_hits[7];  func_ov006_02129cb0(c, a); return 1;
-    case 0x02129b74u: ++g_snw_slot_hits[8];  func_ov006_02129b74(c, a); return 1;
-    case 0x02129a34u: ++g_snw_slot_hits[9];  func_ov006_02129a34(c, a); return 1;
-    case 0x0212992cu: ++g_snw_slot_hits[10]; func_ov006_0212992c(c, a); return 1;
+    case 0x02129cb0u: ++g_snw_slot_hits[7];  _ZN15dScMgSnowball_c19func_ov006_02129cb0Ei(c, a); return 1;
+    case 0x02129b74u: ++g_snw_slot_hits[8];  _ZN15dScMgSnowball_c19func_ov006_02129b74Ei(c, a); return 1;
+    case 0x02129a34u: ++g_snw_slot_hits[9];  _ZN15dScMgSnowball_c19func_ov006_02129a34Ei(c, a); return 1;
+    case 0x0212992cu: ++g_snw_slot_hits[10]; _ZN15dScMgSnowball_c19func_ov006_0212992cEi(c, a); return 1;
 
     /* data_ov006_02143020 -- second level, the SECOND table slot 2 decodes */
-    case 0x02129894u: ++g_snw_slot_hits[11]; func_ov006_02129894(c, a); return 1;
+    case 0x02129894u: ++g_snw_slot_hits[11]; _ZN15dScMgSnowball_c19func_ov006_02129894Ei(c, a); return 1;
     case 0x021297c0u: ++g_snw_slot_hits[12];
-                      func_ov006_021297c0((unsigned char *)c, a); return 1;
-    case 0x0212972cu: ++g_snw_slot_hits[13]; func_ov006_0212972c(c, a); return 1;
+                      _ZN15dScMgSnowball_c19func_ov006_021297c0Ei((unsigned char *)c, a); return 1;
+    case 0x0212972cu: ++g_snw_slot_hits[13]; _ZN15dScMgSnowball_c19func_ov006_0212972cEi(c, a); return 1;
 
     default:                                                           return 0;
     }
@@ -313,9 +313,9 @@ extern "C" void port_mg_snowball_slot_hits(const unsigned **v, unsigned *n)
         sym((char *)self, a);                                             \
     }
 
-SNW_FACE(0, func_ov006_0212a274)
-SNW_FACE(1, func_ov006_0212a224)
-SNW_FACE(2, func_ov006_02129d94)
+SNW_FACE(0, _ZN15dScMgSnowball_c19func_ov006_0212a274Ei)
+SNW_FACE(1, _ZN15dScMgSnowball_c19func_ov006_0212a224Ei)
+SNW_FACE(2, _ZN15dScMgSnowball_c19func_ov006_02129d94Ei)
 
 /* run link100 lane SEAT4: this class's remaining state tables are
    seated in port/hal/pmf_seat4.cpp, from inside this installer, so the

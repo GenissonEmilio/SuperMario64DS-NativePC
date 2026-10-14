@@ -36,8 +36,8 @@
 #
 # All five are MATCHING at 2004/b56 with --strict-relocs (tools/match.py by ROM
 # address); none has an #ifdef _MSC_VER arm, and none needed one.
-src/func_02018a24.c
-src/func_ov000_020aa420.c
-src/func_02018a58.cpp
-src/func_020189f0.c
-src/func_02018a40.c
+src/unnamed/arm9/0201/func_02018a24.c
+src/unnamed/ov000/func_ov000_020aa420.c
+src/unnamed/arm9/0201/func_02018a58.cpp
+src/unnamed/arm9/0201/func_020189f0.c
+src/unnamed/arm9/0201/func_02018a40.c

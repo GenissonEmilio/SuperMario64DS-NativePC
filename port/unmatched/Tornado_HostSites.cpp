@@ -57,12 +57,12 @@
  *     methods that stay in the slice.
  */
 #include "ModelAnim.h"
-#include "Tornado.h"
+#include "daTor_c.h"
 
 extern "C" {
 
 /* ---- (1) the destructor ------------------------------------------------ */
-extern int _ZTV7Tornado[];
+extern int _ZTV7daTor_c[];
 void _ZN18TextureTransformerD1Ev(void *);    /* 0x0201592c, member +0x328 */
 void _ZN9ModelAnimD1Ev(void *);              /* 0x0201691c, member +0x2c4 */
 void _ZN10dBgCh_ActrD1Ev(void *);          /* 0x020373f8, member +0x108 */
@@ -70,9 +70,9 @@ void _ZN7dCcAc_cD1Ev(void *);    /* 0x020149a4, member +0xd4  */
 void _ZN8dActor_cD2Ev(void *);                  /* 0x020112c8               */
 
 /* PORT_HOST_ABI: mwcc Itanium D1 that MSVC emits no flat name for. */
-int *_ZN7TornadoD1Ev(int *t)
+int *_ZN7daTor_cD1Ev(int *t)
 {
-    t[0] = (int)(size_t)_ZTV7Tornado;
+    t[0] = (int)(size_t)_ZTV7daTor_c;
     _ZN18TextureTransformerD1Ev((char *)t + 0x328);
     _ZN9ModelAnimD1Ev((char *)t + 0x2c4);
     _ZN10dBgCh_ActrD1Ev((char *)t + 0x108);
@@ -179,9 +179,9 @@ int _ZN18TextureTransformer6UpdateER15ModelComponents(void *, void *);
  * and returns that TU too. It is
  * outside this lane's owned files, so the row stops here as a written finding.
  */
-void _ZN7Tornado6State1Ev(void *cv)
+void _ZN7daTor_c6State1Ev(void *cv)
 {
-    ((Tornado *)cv)->Tornado::State1();
+    ((daTor_c *)cv)->daTor_c::State1();
 }
 
 /* ---- (5) THE WRONG-NAMED LEVEL-DATA REFERENCE -------------------------
@@ -233,7 +233,7 @@ void _ZN7Tornado6State1Ev(void *cv)
 void *port_ov024_at(unsigned ds);
 int _ZN5Model8LoadFileER13SharedFilePtr(void *sfp);
 void _ZN9ModelBase7SetFileEP8BMD_Fileii(void *thiz, void *f, int a, int b);
-int _ZN9Animation8LoadFileER13SharedFilePtr(void *sfp);
+int _ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr(void *sfp);
 void _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void *thiz, void *f, int a,
                                                  int fix, unsigned u);
 void _ZN18TextureTransformer7PrepareER8BMD_FileR8BTA_File(void *a, void *b);
@@ -251,7 +251,7 @@ extern void *data_ov096_02137bb0[];
 
 /* PORT_HOST_ABI: a recovery-artifact name for level-overlay data, reached
    through the whole mount's rebased image instead. */
-int _ZN7Tornado13InitResourcesEv(void *selfv)
+int _ZN7daTor_c13InitResourcesEv(void *selfv)
 {
     char *c = (char *)selfv;
     void *bta = port_ov024_at(0x02112968);
@@ -260,7 +260,7 @@ int _ZN7Tornado13InitResourcesEv(void *selfv)
         c + 0x2c4,
         (void *)(size_t)_ZN5Model8LoadFileER13SharedFilePtr(data_ov096_02137ba8),
         1, 0x15);
-    _ZN9Animation8LoadFileER13SharedFilePtr(data_ov096_02137bb0);
+    _ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr(data_ov096_02137bb0);
     func_02016aac(c + 0x2c4, 0x16, 1);
     _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0x2c4,
                                                 data_ov096_02137bb0[1],

@@ -24,13 +24,13 @@ src/game/actors/d_a_obj_c0_switch.cpp
 # the real ones on disk. D1/D0 (_ZN13BasementWaterD1Ev/D0Ev) ride from src
 # (lane DTOR-PAIRS-C): the "shared placeholder" their second store spells is
 # ov002 0x0210ae38 by relocation, the hosted Platform base table.
-src/_ZN13BasementWaterD1Ev.cpp
+src/game/actors/d_a_obj_c0_water.cpp
 # RETIRED at SLICE1: body now in src/_ZN13BasementWaterD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN13BasementWaterD0Ev.cpp
-src/_ZN13BasementWater16CleanupResourcesEv.cpp
-src/_ZN13BasementWater8BehaviorEv.cpp
-src/_ZN13BasementWater13InitResourcesEv.cpp
-src/d_a_obj_c0_water.c
+# FOLDED into src/game/actors/d_a_obj_c0_water.cpp (row 27): src/_ZN13BasementWater16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_c0_water.cpp (row 27): src/_ZN13BasementWater8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_c0_water.cpp (row 27): src/_ZN13BasementWater13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_c0_water.cpp (row 27): src/d_a_obj_c0_water.c
 #
 # NOT in this list: src/_ZN13BasementWater6RenderEv.cpp (BasementWater's REAL Render -- the
 # SAME ModelAnim/Model slot-5 shadow-vtable collision SwitchPillar's own
@@ -40,5 +40,5 @@ src/d_a_obj_c0_water.c
 # ---- the two self-contained SharedFilePtr sinits (SwitchPillar's own +
 # BasementWater's own; both build ONLY SharedFilePtrs, no PMF table,
 # confirmed by reading their bodies) ----
-src/__sinit_ov012_02111a88.c
-src/__sinit_ov012_02111af4.c
+# FOLDED into src/game/actors/d_a_obj_c0_switch.cpp (row 11): src/__sinit_ov012_02111a88.c
+# FOLDED into src/game/actors/d_a_obj_c0_water.cpp (row 27): src/__sinit_ov012_02111af4.c

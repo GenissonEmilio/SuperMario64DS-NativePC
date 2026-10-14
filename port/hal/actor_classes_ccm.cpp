@@ -454,15 +454,15 @@ DSSTATE_END
 extern "C" {
 
 /* ---- ONE_UP_LOGO's own bodies (all matched src) --------------------------- */
-int _ZN9OneUpLogo13InitResourcesEv(void *self);
-int _ZN9OneUpLogo16CleanupResourcesEv(void *self);
-int _ZN9OneUpLogo8BehaviorEv(void *self);
-int _ZN9OneUpLogo6RenderEv(void *self);
-int *_ZN9OneUpLogoD0Ev(void *self);
+int _ZN14daObj1UpLogo_c13InitResourcesEv(void *self);
+int _ZN14daObj1UpLogo_c16CleanupResourcesEv(void *self);
+int _ZN14daObj1UpLogo_c8BehaviorEv(void *self);
+int _ZN14daObj1UpLogo_c6RenderEv(void *self);
+int *_ZN14daObj1UpLogo_cD0Ev(void *self);
 void _ZN5ModelD1Ev(void *self);              /* Model member at +0xd4 */
 void _ZN15TextureSequenceD1Ev(void *self);   /* TextureSequence member at +0x124 */
 void *daObj1UpLogo_c_classInit(void);                 /* installs _ZTV9OneUpLogo itself */
-int _ZTV9OneUpLogo[31];
+int _ZTV14daObj1UpLogo_c[31];
 int _ZTV14daObj1UpLogo_c[];   /* RTTI alias, ONE speller (_ZN9OneUpLogoD0Ev),
                                   not a shared placeholder -- aliased below. */
 }
@@ -480,7 +480,7 @@ int _ZTV14daObj1UpLogo_c[];   /* RTTI alias, ONE speller (_ZN9OneUpLogoD0Ev),
 #pragma comment(linker, "/alternatename:?IceSheet_ModelFile@@3PAHA=_data_ov018_02113c84")
 #pragma comment(linker, "/alternatename:?IceSheet_ClsnFile@@3PAHA=_data_ov018_02113c7c")
 /* OneUpLogo's own D0 spells its table by this RTTI name (one speller only). */
-#pragma comment(linker, "/alternatename:__ZTV14daObj1UpLogo_c=__ZTV9OneUpLogo")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV14daObj1UpLogo_c=__ZTV14daObj1UpLogo_c")
 /* MotherPenguin's own D0 (src/game/actors/d_a_pg_mthr.cpp) spells its table by the
    RTTI name _ZTV10daPgMthr_c (the class-identity finding: this IS
    MotherPenguin's own table, not a shared placeholder, confirmed by the
@@ -663,14 +663,14 @@ extern "C" void hal_fill_power_star_create_vtable(void)
 
 // ---- ONE_UP_LOGO fill (Actor, 31 slots, no Kill) ---------------------------
 static int __fastcall oul_init(void *s, void *)
-{ return _ZN9OneUpLogo13InitResourcesEv(s); }
+{ return _ZN14daObj1UpLogo_c13InitResourcesEv(s); }
 static int __fastcall oul_clean(void *s, void *)
-{ return _ZN9OneUpLogo16CleanupResourcesEv(s); }
+{ return _ZN14daObj1UpLogo_c16CleanupResourcesEv(s); }
 static int __fastcall oul_behavior(void *s, void *)
-{ return _ZN9OneUpLogo8BehaviorEv(s); }
+{ return _ZN14daObj1UpLogo_c8BehaviorEv(s); }
 static int __fastcall oul_render(void *s, void *)
 { port_actor_render_probe("ONE_UP_LOGO", (char *)s + 0xd4);
-  return _ZN9OneUpLogo6RenderEv(s); }
+  return _ZN14daObj1UpLogo_c6RenderEv(s); }
 /* slot 16: src/_ZN9OneUpLogoD1Ev.cpp is a real MSVC-synthesised destructor
    (`OneUpLogo::~OneUpLogo(){}`) over a LOCAL shadow class (Actor/Model/
    TextureSequence declared with no bodies of their own), so it is not
@@ -685,14 +685,14 @@ static int __fastcall oul_render(void *s, void *)
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (oul_d1) spelled the same chain by hand. */
 static int __fastcall oul_d0(void *s, void *)
-{ return (int)(size_t)_ZN9OneUpLogoD0Ev(s); }
+{ return (int)(size_t)_ZN14daObj1UpLogo_cD0Ev(s); }
 
 /* OneUpLogo overrides none of the Actor-tail slots (18..30) -- confirmed by
    reloc target address, every one of them the plain shared default -- so
    ccm190_fill_shared covers 18..30 unmodified, no per-class override after. */
 extern "C" void hal_fill_one_up_logo_vtable(void)
 {
-    void **vt = (void **)_ZTV9OneUpLogo;
+    void **vt = (void **)_ZTV14daObj1UpLogo_c;
     ccm190_fill_shared(vt);
     vt[0]  = (void *)oul_init;
     vt[3]  = (void *)oul_clean;
@@ -800,7 +800,7 @@ extern "C" void hal_fill_sound_object_vtable(void)
 // C function, func_ov018_*). SoundObject's Init/D1/D0 are C-linkage .c bodies
 // and its Behavior is the host copy -- no face either.
 #include "daObjIceBoard_c.h"
-#include "OneUpLogo.h"
+#include "daObj1UpLogo_c.h"
 extern "C" {
 int _ZN15daObjIceBoard_c13InitResourcesEv(void *self)
 { return ((daObjIceBoard_c *)self)->daObjIceBoard_c::InitResources(); }
@@ -810,10 +810,10 @@ int _ZN15daObjIceBoard_c8BehaviorEv(void *self)
 { return ((daObjIceBoard_c *)self)->daObjIceBoard_c::Behavior(); }
 int _ZN15daObjIceBoard_c6RenderEv(void *self)
 { return ((daObjIceBoard_c *)self)->daObjIceBoard_c::Render(); }
-int _ZN9OneUpLogo13InitResourcesEv(void *self)
-{ return ((OneUpLogo *)self)->OneUpLogo::InitResources(); }
-int _ZN9OneUpLogo6RenderEv(void *self)
-{ return ((OneUpLogo *)self)->OneUpLogo::Render(); }
+int _ZN14daObj1UpLogo_c13InitResourcesEv(void *self)
+{ return ((daObj1UpLogo_c *)self)->daObj1UpLogo_c::InitResources(); }
+int _ZN14daObj1UpLogo_c6RenderEv(void *self)
+{ return ((daObj1UpLogo_c *)self)->daObj1UpLogo_c::Render(); }
 }
 
 // ============================================================================
@@ -848,18 +848,18 @@ int _ZN9OneUpLogo6RenderEv(void *self)
 // to their own ov018 names. tools/ovsweep.py's E2 rule no longer flags this
 // file (ov018/ov022/ov036/ov056 share load window base 0x021111a0, never
 // co-resident, confirmed both via the tool and by delinks.txt ownership).
-#include "SkiLift.h"
+#include "daObjSm_Lift_c.h"
 extern "C" {
 /* the real SkiLift's own bodies (all matched src, C linkage except Behavior/
    InitResources/CleanupResources/Render below which are real methods) */
-int _ZN7SkiLift13InitResourcesEv(char *self);           /* slot 0, Init */
-int _ZN7SkiLift16CleanupResourcesEv(void *self);            /* slot 3, Cleanup */
-int _ZN7SkiLift8BehaviorEv(char *self);            /* slot 6, Behavior */
-int _ZN7SkiLift6RenderEv(void *self);             /* slot 9, Render */
-void _ZN7SkiLift15OnHitByMegaCharER6Player(char *self, void *p);  /* slot 27, OnHitByMegaChar */
+int _ZN14daObjSm_Lift_c13InitResourcesEv(char *self);           /* slot 0, Init */
+int _ZN14daObjSm_Lift_c16CleanupResourcesEv(void *self);            /* slot 3, Cleanup */
+int _ZN14daObjSm_Lift_c8BehaviorEv(char *self);            /* slot 6, Behavior */
+int _ZN14daObjSm_Lift_c6RenderEv(void *self);             /* slot 9, Render */
+void _ZN14daObjSm_Lift_c15OnHitByMegaCharER6Player(char *self, void *p);  /* slot 27, OnHitByMegaChar */
 void *daObjSm_Lift_c_classInit(void);                       /* installs _ZTV7SkiLift */
 DSSTATE_BEGIN
-int _ZTV7SkiLift[32];                     /* the class's own vtable, host array */
+int _ZTV14daObjSm_Lift_c[32];                     /* the class's own vtable, host array */
 DSSTATE_END
 extern int _ZTV10dBgActor_c[];                      /* Platform's own base table, already
                                                       hosted (hal/actor_vtables.cpp) */
@@ -892,24 +892,24 @@ int _ZTV10daPgMthr_c[31];                             /* == _ZTV10daPgMthr_c, ho
 void _ZN9ModelAnimD1Ev(void *);                   /* ModelAnim at +0xd4 */
 void _ZN15TextureSequenceD1Ev(void *);            /* TextureSequence at +0x138 (declared
                                                        above too) */
-void _ZN11ShadowModelD1Ev(void *);                /* ShadowModel at +0x14c */
+void _ZN17dExtShadowModel_cD1Ev(void *);                /* ShadowModel at +0x14c */
 void _ZN7dCcAc_cD1Ev(void *);         /* MovingCylinderClsn at +0x174 */
 void _ZN10dBgCh_ActrD1Ev(void *);               /* WithMeshClsn at +0x1a8 */
-int _ZN13RacingPenguin16OnPendingDestroyEv(void); /* .c, called by MotherPenguin's Behavior */
+int _ZN10daPgRcer_c16OnPendingDestroyEv(void); /* .c, called by MotherPenguin's Behavior */
 }
 
 // ---- SKI_LIFT fill (Platform, 32 slots, D1/D0 host thunks) -----------------
 static int __fastcall skl_init(void *s, void *)
-{ return _ZN7SkiLift13InitResourcesEv((char *)s); }
+{ return _ZN14daObjSm_Lift_c13InitResourcesEv((char *)s); }
 static int __fastcall skl_clean(void *s, void *)
-{ return _ZN7SkiLift16CleanupResourcesEv(s); }
+{ return _ZN14daObjSm_Lift_c16CleanupResourcesEv(s); }
 static int __fastcall skl_behavior(void *s, void *)
-{ return _ZN7SkiLift8BehaviorEv((char *)s); }
+{ return _ZN14daObjSm_Lift_c8BehaviorEv((char *)s); }
 static int __fastcall skl_render(void *s, void *)
 { port_actor_render_probe("SKI_LIFT", (char *)s + 0xd4);
-  return _ZN7SkiLift6RenderEv(s); }
+  return _ZN14daObjSm_Lift_c6RenderEv(s); }
 static int __fastcall skl_mega(void *s, void *, void *p)
-{ _ZN7SkiLift15OnHitByMegaCharER6Player((char *)s, p); return 0; }
+{ _ZN14daObjSm_Lift_c15OnHitByMegaCharER6Player((char *)s, p); return 0; }
 static int __fastcall skl_kill(void *s, void *)
 { _ZN10dBgActor_c4KillEv(s); return 0; }
 /* D1/D0 host thunks: the matched src stores _ZTV7SkiLift (own table)
@@ -938,16 +938,16 @@ static int __fastcall skl_kill(void *s, void *)
    TU from its own pool: 0x02111230 -> 0x021138cc (VT0), 0x02111234 ->
    0x0210ae38 (VT1) and 0x02111238 -> 0x020a0eac (G0), so the base-table store
    the thunk dropped comes back here the same way it did on slot 16. */
-extern "C" int *_ZN7SkiLiftD1Ev(int *t);   /* ov018 0x021111a0, slot 16 */
-extern "C" int *_ZN7SkiLiftD0Ev(int *t);   /* ov018 0x021111e4, slot 17 */
+extern "C" int *_ZN14daObjSm_Lift_cD1Ev(int *t);   /* ov018 0x021111a0, slot 16 */
+extern "C" int *_ZN14daObjSm_Lift_cD0Ev(int *t);   /* ov018 0x021111e4, slot 17 */
 static int __fastcall skl_d1(void *s, void *)
-{ return (int)(size_t)_ZN7SkiLiftD1Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjSm_Lift_cD1Ev((int *)s); }
 static int __fastcall skl_d0(void *s, void *)
-{ return (int)(size_t)_ZN7SkiLiftD0Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjSm_Lift_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_ski_lift_vtable(void)
 {
-    void **vt = (void **)_ZTV7SkiLift;
+    void **vt = (void **)_ZTV14daObjSm_Lift_c;
     hal_fill_platform_vtable();
     ccm190_fill_shared(vt);
     vt[0]  = (void *)skl_init;

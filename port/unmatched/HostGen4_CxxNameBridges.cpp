@@ -51,9 +51,9 @@
  * anything else calls it that way; a name bridge changes no code and cannot be
  * wrong about a caller it has not seen.
  */
-#pragma comment(linker, "/alternatename:_func_ov006_0211ea70=?func_ov006_0211ea70@@YAXPADH@Z")
-#pragma comment(linker, "/alternatename:_func_ov006_0211f9fc=?func_ov006_0211f9fc@@YAXH@Z")
-#pragma comment(linker, "/alternatename:_func_ov074_02121800=?func_ov074_02121800@@YAXPAD@Z")
+#pragma comment(linker, "/alternatename:__ZN13dScMgTeresa_c19func_ov006_0211ea70Ei=?_ZN13dScMgTeresa_c19func_ov006_0211ea70Ei@@YAXPADH@Z")
+#pragma comment(linker, "/alternatename:__ZN13dScMgTeresa_c19func_ov006_0211f9fcEv=?_ZN13dScMgTeresa_c19func_ov006_0211f9fcEv@@YAXH@Z")
+#pragma comment(linker, "/alternatename:__ZN12daKuriKing_c19func_ov074_02121800Ev=?_ZN12daKuriKing_c19func_ov074_02121800Ev@@YAXPAD@Z")
 
 /* A linker directive lives in a .drectve section, which an object only has if
    it has something to compile. */

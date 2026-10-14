@@ -149,7 +149,7 @@ void _ZN12dEnemyBase_cC2Ev(void *self);                  /* ov002 0x020aed98 */
 void _ZN10dCcAcPos_cC1Ev(void *self);
 void _ZN10dBgCh_ActrC1Ev(void *self);
 void _ZN14BlendModelAnimC1Ev(void *self);
-void _ZN11ShadowModelC1Ev(void *self);
+void _ZN17dExtShadowModel_cC1Ev(void *self);
 void __cxa_vec_ctor(void *base, int count, int stride, void *ctor, void *dtor);
 void _ZN7Vector3D1Ev(void);
 void func_0203d384(void);
@@ -433,18 +433,18 @@ extern "C" void port_ov073_overlay_load(int id)
 // BY HAND (`o+8`, then adj>>1 / adj&1) in matched src, which is why that TU is
 // right as written and only the two ChangeState veneers are host copies.
 extern "C" {
-int _ZN8CccArena13InitResourcesEv(void *self);     /* slot 0  */
-int _ZN8CccArena16CleanupResourcesEv(void *self);  /* slot 3  */
-int _ZN8CccArena8BehaviorEv(void *self);           /* slot 6  */
-int _ZN8CccArena6RenderEv(void *self);             /* slot 9  */
-int *_ZN8CccArenaD1Ev(int *self);                  /* slot 16 */
-int *_ZN8CccArenaD0Ev(int *self);                  /* slot 17 */
-int _ZN8CccArena4KillEv(char *self);               /* slot 31 */
+int _ZN13daObjEwbIce_c13InitResourcesEv(void *self);     /* slot 0  */
+int _ZN13daObjEwbIce_c16CleanupResourcesEv(void *self);  /* slot 3  */
+int _ZN13daObjEwbIce_c8BehaviorEv(void *self);           /* slot 6  */
+int _ZN13daObjEwbIce_c6RenderEv(void *self);             /* slot 9  */
+int *_ZN13daObjEwbIce_cD1Ev(int *self);                  /* slot 16 */
+int *_ZN13daObjEwbIce_cD0Ev(int *self);                  /* slot 17 */
+int _ZN13daObjEwbIce_c4KillEv(char *self);               /* slot 31 */
 void *daObjEwbIce_c_classInit_EWB_ICE_A(void);
 void *daObjEwbIce_c_classInit_EWB_ICE_B(void);
 void *daObjEwbIce_c_classInit_EWB_ICE_C(void);
 DSSTATE_BEGIN
-void *_ZTV8CccArena[32];
+void *_ZTV13daObjEwbIce_c[32];
 DSSTATE_END
 }
 /* ewb = the ice block. The D1/D0 open their teardown by restoring the OWN table
@@ -452,28 +452,28 @@ DSSTATE_END
    then store the zeroed _ZTV10dBgActor_c placeholder, which hal/actor_classes.cpp
    already defines port-wide -- a dying-object write, the ov045 reading: the two
    stores sit between direct calls with no dispatch in between. */
-#pragma comment(linker, "/alternatename:__ZTV13daObjEwbIce_c=__ZTV8CccArena")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV13daObjEwbIce_c=__ZTV13daObjEwbIce_c")
 static int __fastcall ccc_init(void *s, void *)
-{ return _ZN8CccArena13InitResourcesEv(s); }
+{ return _ZN13daObjEwbIce_c13InitResourcesEv(s); }
 static int __fastcall ccc_clean(void *s, void *)
-{ return _ZN8CccArena16CleanupResourcesEv(s); }
+{ return _ZN13daObjEwbIce_c16CleanupResourcesEv(s); }
 static int __fastcall ccc_behavior(void *s, void *)
-{ return _ZN8CccArena8BehaviorEv(s); }
+{ return _ZN13daObjEwbIce_c8BehaviorEv(s); }
 static int __fastcall ccc_render(void *s, void *)
 { port_actor_render_probe("CCC_ARENA", (char *)s + 0xd4);
-  return _ZN8CccArena6RenderEv(s); }
+  return _ZN13daObjEwbIce_c6RenderEv(s); }
 static int __fastcall ccc_d1(void *s, void *)
-{ return (int)(size_t)_ZN8CccArenaD1Ev((int *)s); }
+{ return (int)(size_t)_ZN13daObjEwbIce_cD1Ev((int *)s); }
 static int __fastcall ccc_d0(void *s, void *)
-{ return (int)(size_t)_ZN8CccArenaD0Ev((int *)s); }
+{ return (int)(size_t)_ZN13daObjEwbIce_cD0Ev((int *)s); }
 /* slot 31 is CccArena's own Kill (poof dust + bank-3 sound), not
    Platform::Kill -- the one place this cast's tail differs from ov045's. */
 static int __fastcall ccc_kill(void *s, void *)
-{ return _ZN8CccArena4KillEv((char *)s); }
+{ return _ZN13daObjEwbIce_c4KillEv((char *)s); }
 extern "C" void hal_fill_ccc_arena_vtable(void)
 {
     port_ov73_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV8CccArena;
+    void *volatile *vt = (void *volatile *)_ZTV13daObjEwbIce_c;
     ov73_fill_shared(vt);
     vt[0]  = (void *)ccc_init;
     vt[3]  = (void *)ccc_clean;
@@ -495,16 +495,16 @@ extern "C" void hal_fill_ccc_arena_vtable(void)
 // table ends on Actor::OnAimedAtWithEggReturnVec at slot 30 -- the ov060
 // Bowser/BowserTail/BowserFire/SpikeBomb shape.
 extern "C" {
-int _ZN11ChiefChilly13InitResourcesEv(void *self);    /* slot 0  (faced below) */
-int _ZN11ChiefChilly16CleanupResourcesEv(void);       /* slot 3  */
-int _ZN11ChiefChilly8BehaviorEv(void *self);          /* slot 6, HOST COPY */
-int _ZN11ChiefChilly6RenderEv(void *self);            /* slot 9, HOST COPY */
-void _ZN11ChiefChilly16OnPendingDestroyEv(void);      /* slot 12 */
-int *_ZN11ChiefChillyD1Ev(int *self);                 /* slot 16 */
-int *_ZN11ChiefChillyD0Ev(int *self);                 /* slot 17 */
-int _ZN11ChiefChilly16OnAimedAtWithEggEv(void);                        /* slot 29 */
+int _ZN16daKing_Donketu_c13InitResourcesEv(void *self);    /* slot 0  (faced below) */
+int _ZN16daKing_Donketu_c16CleanupResourcesEv(void);       /* slot 3  */
+int _ZN16daKing_Donketu_c8BehaviorEv(void *self);          /* slot 6, HOST COPY */
+int _ZN16daKing_Donketu_c6RenderEv(void *self);            /* slot 9, HOST COPY */
+void _ZN16daKing_Donketu_c16OnPendingDestroyEv(void);      /* slot 12 */
+int *_ZN16daKing_Donketu_cD1Ev(int *self);                 /* slot 16 */
+int *_ZN16daKing_Donketu_cD0Ev(int *self);                 /* slot 17 */
+int _ZN16daKing_Donketu_c16OnAimedAtWithEggEv(void);                        /* slot 29 */
 DSSTATE_BEGIN
-void *_ZTV11ChiefChilly[31];
+void *_ZTV16daKing_Donketu_c[31];
 DSSTATE_END
 }
 /* THE FACTORY, the r0 ride-through this file's header derives. */
@@ -513,11 +513,11 @@ extern "C" void *port_factory_chief_chilly(void)
     char *p = (char *)_ZN7fBase_cnwEj(0x504);
     if (p) {
         _ZN12dEnemyBase_cC2Ev(p);                     /* ROM: entered with r0 = p */
-        *(void **)p = (void *)_ZTV11ChiefChilly;
+        *(void **)p = (void *)_ZTV16daKing_Donketu_c;
         _ZN10dCcAcPos_cC1Ev(p + 0x110);
         _ZN10dBgCh_ActrC1Ev(p + 0x150);
         _ZN14BlendModelAnimC1Ev(p + 0x30c);
-        _ZN11ShadowModelC1Ev(p + 0x380);
+        _ZN17dExtShadowModel_cC1Ev(p + 0x380);
         __cxa_vec_ctor(p + 0x3e8, 8, 0xc, (void *)&func_0203d384,
                       (void *)&_ZN7Vector3D1Ev);
         __cxa_vec_ctor(p + 0x448, 8, 0xc, (void *)&func_0203d384,
@@ -528,29 +528,29 @@ extern "C" void *port_factory_chief_chilly(void)
     return p;
 }
 static int __fastcall cc_init(void *s, void *)
-{ return _ZN11ChiefChilly13InitResourcesEv(s); }
+{ return _ZN16daKing_Donketu_c13InitResourcesEv(s); }
 static int __fastcall cc_clean(void *s, void *)
-{ return _ZN11ChiefChilly16CleanupResourcesEv(); }
+{ return _ZN16daKing_Donketu_c16CleanupResourcesEv(); }
 static int __fastcall cc_behavior(void *s, void *)
-{ return _ZN11ChiefChilly8BehaviorEv(s); }
+{ return _ZN16daKing_Donketu_c8BehaviorEv(s); }
 static int __fastcall cc_render(void *s, void *)
 { port_actor_render_probe("CHIEF_CHILLY", (char *)s + 0x30c);
-  return _ZN11ChiefChilly6RenderEv(s); }
+  return _ZN16daKing_Donketu_c6RenderEv(s); }
 /* slot 12 is his own OnPendingDestroy, a bare `bx lr` in the ROM. */
 static int __fastcall cc_pdes(void *s, void *)
-{ (void)s; _ZN11ChiefChilly16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN16daKing_Donketu_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall cc_d1(void *s, void *)
-{ return (int)(size_t)_ZN11ChiefChillyD1Ev((int *)s); }
+{ return (int)(size_t)_ZN16daKing_Donketu_cD1Ev((int *)s); }
 static int __fastcall cc_d0(void *s, void *)
-{ return (int)(size_t)_ZN11ChiefChillyD0Ev((int *)s); }
+{ return (int)(size_t)_ZN16daKing_Donketu_cD0Ev((int *)s); }
 /* slot 29 overrides Actor::OnAimedAtWithEgg. The ROM body is two
    instructions, `mov r0, #0x64000; bx lr`. */
 static int __fastcall cc_egg(void *s, void *)
-{ (void)s; return _ZN11ChiefChilly16OnAimedAtWithEggEv(); }
+{ (void)s; return _ZN16daKing_Donketu_c16OnAimedAtWithEggEv(); }
 extern "C" void hal_fill_chief_chilly_vtable(void)
 {
     port_ov73_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV11ChiefChilly;
+    void *volatile *vt = (void *volatile *)_ZTV16daKing_Donketu_c;
     ov73_fill_shared(vt);
     vt[0]  = (void *)cc_init;
     vt[3]  = (void *)cc_clean;
@@ -569,17 +569,17 @@ extern "C" void hal_fill_chief_chilly_vtable(void)
 // as real methods, so the face is the C-name bridge INTO them, not a host copy.
 // ChiefChilly's Behavior and Render are NOT faced here: both are host copies in
 // port/unmatched/Ov073_State.cpp and their matched TUs are out of the slice.
-#include "CccArena.h"
-#include "ChiefChilly.h"
+#include "daObjEwbIce_c.h"
+#include "daKing_Donketu_c.h"
 extern "C" {
-int _ZN8CccArena13InitResourcesEv(void *self)
-{ return ((CccArena *)self)->CccArena::InitResources(); }
-int _ZN8CccArena16CleanupResourcesEv(void *self)
-{ return ((CccArena *)self)->CccArena::CleanupResources(); }
-int _ZN8CccArena8BehaviorEv(void *self)
-{ return ((CccArena *)self)->CccArena::Behavior(); }
-int _ZN8CccArena6RenderEv(void *self)
-{ return ((CccArena *)self)->CccArena::Render(); }
-int _ZN11ChiefChilly13InitResourcesEv(void *self)
-{ return ((ChiefChilly *)self)->ChiefChilly::InitResources(); }
+int _ZN13daObjEwbIce_c13InitResourcesEv(void *self)
+{ return ((daObjEwbIce_c *)self)->daObjEwbIce_c::InitResources(); }
+int _ZN13daObjEwbIce_c16CleanupResourcesEv(void *self)
+{ return ((daObjEwbIce_c *)self)->daObjEwbIce_c::CleanupResources(); }
+int _ZN13daObjEwbIce_c8BehaviorEv(void *self)
+{ return ((daObjEwbIce_c *)self)->daObjEwbIce_c::Behavior(); }
+int _ZN13daObjEwbIce_c6RenderEv(void *self)
+{ return ((daObjEwbIce_c *)self)->daObjEwbIce_c::Render(); }
+int _ZN16daKing_Donketu_c13InitResourcesEv(void *self)
+{ return ((daKing_Donketu_c *)self)->daKing_Donketu_c::InitResources(); }
 }

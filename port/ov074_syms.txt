@@ -234,18 +234,28 @@
 #       (0x02112404 0x0211244c 0x02112494 0x021124c4 0x02112464 0x02112434
 #       0x021124ac), addresses in the LEVEL window that ov053 owns on level 45
 data_ov074_0212290c data_ov074_0212291c data_ov074_0212292c data_ov074_02122948:0x30
-data_ov074_02122d80 data_ov074_02122d84 data_ov074_02122d8c data_ov074_02122d94
-data_ov074_02122d9c data_ov074_02122da4 data_ov074_02122dac data_ov074_02122db4
-data_ov074_02122dbc data_ov074_02122dc4 data_ov074_02122dcc data_ov074_02122dd4
-data_ov074_02122ddc data_ov074_02122de4 data_ov074_02122dec data_ov074_02122df4
-data_ov074_02122dfc data_ov074_02122e04 data_ov074_02122e0c data_ov074_02122e14
-data_ov074_02122e1c data_ov074_02122e24 _ZTI12daKuriKing_c _ZTS12daKuriKing_c
+data_ov074_02122d80 data_ov074_02122d84@0x02122d84 data_ov074_02122d8c@0x02122d8c data_ov074_02122d94@0x02122d94
+data_ov074_02122d9c data_ov074_02122da4@0x02122da4 data_ov074_02122dac@0x02122dac data_ov074_02122db4@0x02122db4
+data_ov074_02122dbc data_ov074_02122dc4@0x02122dc4 data_ov074_02122dcc@0x02122dcc data_ov074_02122dd4@0x02122dd4
+data_ov074_02122ddc@0x02122ddc data_ov074_02122de4@0x02122de4 data_ov074_02122dec@0x02122dec data_ov074_02122df4@0x02122df4
+data_ov074_02122e0c data_ov074_02122e14@0x02122e14
+data_ov074_02122e1c@0x02122e1c data_ov074_02122e24 _ZTI12daKuriKing_c _ZTS12daKuriKing_c
 data_ov074_02122e4c data_ov074_02122e5c g_profile_KURIKING g_profile_KURIKING_VANISH
 data_ov074_02122f34 data_ov074_02122f38 data_ov074_02122f3c data_ov074_02122fe0
 data_ov074_02122fe8 data_ov074_02122ff0 data_ov074_02122ff8 data_ov074_02123000
 data_ov074_02123008 data_ov074_02123010 data_ov074_02123018 data_ov074_02123020
 data_ov074_02123028 data_ov074_02123030 data_ov074_02123038 data_ov074_02123040
-data_ov074_02123048 data_ov074_02123050 data_ov074_0212305c data_ov074_02123068:0xc
-data_ov074_02123074 data_ov074_02123080 data_ov074_0212308c data_ov074_02123098
-data_ov074_021230a4 data_ov074_021230b0 data_ov074_021230bc data_ov074_021230c8
-data_ov074_021230d4 data_ov074_021230e0 data_ov074_021230ec data_ov074_021230f8:0x90
+data_ov074_02123048 data_ov074_02123050@0x02123050 data_ov074_0212305c@0x0212305c data_ov074_02123068@0x02123068:0xc
+data_ov074_02123074@0x02123074 data_ov074_02123080@0x02123080 data_ov074_0212308c@0x0212308c data_ov074_02123098@0x02123098
+data_ov074_021230a4@0x021230a4 data_ov074_021230b0@0x021230b0 data_ov074_021230bc@0x021230bc data_ov074_021230c8@0x021230c8
+data_ov074_021230d4@0x021230d4 data_ov074_021230e0@0x021230e0 data_ov074_021230ec@0x021230ec data_ov074_021230f8:0x90
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov074_02122dfc                        now defined by src/actors/daKuriKing_c.cpp
+#   data_ov074_02122e04                        now defined by src/actors/daKuriKing_c.cpp

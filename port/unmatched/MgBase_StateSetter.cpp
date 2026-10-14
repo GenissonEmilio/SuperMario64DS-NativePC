@@ -331,6 +331,7 @@
 
 #include <cstdio>
 #include <cstdlib>   /* std::abort, for the seat and the two refusals (lane MGWRITER) */
+#include "dMgState_c.h"
 
 /* The eight-byte mwcc member pointer, in the only spelling that is true on both
    machines: two words, no member-pointer type anywhere. The same struct
@@ -418,29 +419,11 @@ extern MgPmf data_ov004_020bca2c;
 extern MgPmf data_ov004_020bca34;
 
 /* ---- the twenty state bodies the table holds --------------------------- */
-/* Signatures are their src TUs', unchanged. Every one of them is reached ONLY
-   through the switch below, so before this file none of them had a caller in
-   the build and /OPT:REF had dropped all twenty despite the slice lines. */
-void func_ov004_020b8688(char *c);
-void func_ov004_020b853c(char *c);
-void func_ov004_020b83ac(char *c);
-void func_ov004_020b81f8(char *c);
-void func_ov004_020b7f5c(char *c);
-void func_ov004_020b7e38(char *c);
-void func_ov004_020b7b90(char *c);
-void func_ov004_020b79b0(char *c);
-void func_ov004_020b798c(char *c);
-void func_ov004_020b7854(char *c);
-void func_ov004_020b7744(char *c);
-void func_ov004_020b7594(char *c);
-void func_ov004_020b7460(void *c);   /* section 6's veneer, src spelling */
-void func_ov004_020b743c(char *c);
-void func_ov004_020b724c(char *c);
-void func_ov004_020b70b4(char *c);
-void func_ov004_020b7020(char *c);
-void func_ov004_020b6f14(char *c);
-void func_ov004_020b6d6c(char *c);
-void func_ov004_020b6c10(char *c);
+/* Every one of them is reached ONLY through the switch below, so before this
+   file none of them had a caller in the build and /OPT:REF had dropped all
+   twenty despite the slice lines. PORTSYNC2: main made all twenty dMgState_c
+   members (include/dMgState_c.h), so the faces call them qualified and the flat
+   extern "C" declarations that stood here are retired. */
 
 /* ---- the twenty per-frame tick bodies the state bodies install ---------- */
 /* func_ov004_020b6948 and func_ov004_020b6ad8 REALLY DO TAKE NO ARGUMENT: both
@@ -451,26 +434,26 @@ void func_ov004_020b6c10(char *c);
    the scene_actor_faces defect class: there is no callee behind them that
    wanted a pointer. Checked body by body against the disassembly, not assumed
    from the declaration. */
-void func_ov004_020b68e8(int *c);
-void func_ov004_020b6948(void);
-void func_ov004_020b6ad8(void);
-void func_ov004_020b6b40(void *c);
-void func_ov004_020b6c9c(void *c);
-void func_ov004_020b6ddc(char *c);
-void func_ov004_020b6f88(char *c);
-void func_ov004_020b7124(char *c);
-void func_ov004_020b72d4(char *c);
-void func_ov004_020b746c(char *c);
-void func_ov004_020b75e4(char *c);
-void func_ov004_020b77b4(char *c);
-void func_ov004_020b78f4(char *c);
-void func_ov004_020b7b20(char *c);
-void func_ov004_020b7cd0(char *c);
-void func_ov004_020b7eac(char *c);
-void func_ov004_020b8098(char *c);
-void func_ov004_020b8284(char *c);
-void func_ov004_020b841c(char *c);
-void func_ov004_020b8560(char *c);
+void _ZN10dMgState_c19func_ov004_020b68e8Ev(int *c);
+void _ZN10dMgState_c19func_ov004_020b6948Ev(void);
+void _ZN10dMgState_c19func_ov004_020b6ad8Ev(void);
+void _ZN10dMgState_c19func_ov004_020b6b40Ev(void *c);
+void _ZN10dMgState_c19func_ov004_020b6c9cEv(void *c);
+void _ZN10dMgState_c19func_ov004_020b6ddcEv(char *c);
+void _ZN10dMgState_c19func_ov004_020b6f88Ev(char *c);
+void _ZN10dMgState_c19func_ov004_020b7124Ev(char *c);
+void _ZN10dMgState_c19func_ov004_020b72d4Ev(char *c);
+void _ZN10dMgState_c19func_ov004_020b746cEv(char *c);
+void _ZN10dMgState_c19func_ov004_020b75e4Ev(char *c);
+void _ZN10dMgState_c19func_ov004_020b77b4Ev(char *c);
+void _ZN10dMgState_c19func_ov004_020b78f4Ev(char *c);
+void _ZN10dMgState_c19func_ov004_020b7b20Ev(char *c);
+void _ZN10dMgState_c19func_ov004_020b7cd0Ev(char *c);
+void _ZN10dMgState_c19func_ov004_020b7eacEv(char *c);
+void _ZN10dMgState_c19func_ov004_020b8098Ev(char *c);
+void _ZN10dMgState_c19func_ov004_020b8284Ev(char *c);
+void _ZN10dMgState_c19func_ov004_020b841cEv(char *c);
+void _ZN10dMgState_c19func_ov004_020b8560Ev(char *c);
 
 /* ---- group C: the rest of the ov004 member-pointer universe -------------- */
 /* THE CLOSURE, AND HOW IT WAS BOUNDED RATHER THAN GUESSED AT. Routing the forty
@@ -494,9 +477,9 @@ void func_ov004_020b4dfc(char *c);
 void func_ov004_020b4f44(char *c);
 void func_ov004_020b4ff0(char *c);
 void func_ov004_020b5288(char *c);
-void func_ov004_020b7a18(char *c);
-void func_ov004_020b7c04(char *c);
-void func_ov004_020b7fec(char *c);
+void _ZN10dMgState_c19func_ov004_020b7a18Ev(char *c);
+void _ZN10dMgState_c19func_ov004_020b7c04Ev(char *c);
+void _ZN10dMgState_c19func_ov004_020b7fecEv(char *c);
 
 /* the boot installer that puts host bodies in the three .bss framework tables,
    called by the seat at the bottom of this file so there is one entry point for
@@ -669,29 +652,29 @@ static void bw_020b38ac(void *c) { ++g_base_closure_hits; func_ov004_020b38ac((c
 static void bw_020b3978(void *c) { ++g_base_closure_hits; func_ov004_020b3978((char *)c); }
 static void bw_020b410c(void *c) { ++g_base_closure_hits; func_ov004_020b410c((char *)c); }
 static void bw_020b4214(void *c) { ++g_base_closure_hits; func_ov004_020b4214((char *)c); }
-static void __fastcall bwf_020b68e8(void *c, void *) { ++g_base_tick_hits; func_ov004_020b68e8((int *)c); }
-static void __fastcall bwf_020b6948(void *c, void *) { ++g_base_tick_hits; func_ov004_020b6948(); }
-static void __fastcall bwf_020b6ad8(void *c, void *) { ++g_base_tick_hits; func_ov004_020b6ad8(); }
-static void __fastcall bwf_020b6b40(void *c, void *) { ++g_base_tick_hits; func_ov004_020b6b40(c); }
-static void __fastcall bwf_020b6c9c(void *c, void *) { ++g_base_tick_hits; func_ov004_020b6c9c(c); }
-static void __fastcall bwf_020b6ddc(void *c, void *) { ++g_base_tick_hits; func_ov004_020b6ddc((char *)c); }
-static void __fastcall bwf_020b6f88(void *c, void *) { ++g_base_tick_hits; func_ov004_020b6f88((char *)c); }
-static void __fastcall bwf_020b7124(void *c, void *) { ++g_base_tick_hits; func_ov004_020b7124((char *)c); }
-static void __fastcall bwf_020b72d4(void *c, void *) { ++g_base_tick_hits; func_ov004_020b72d4((char *)c); }
-static void __fastcall bwf_020b746c(void *c, void *) { ++g_base_tick_hits; func_ov004_020b746c((char *)c); }
-static void __fastcall bwf_020b75e4(void *c, void *) { ++g_base_tick_hits; func_ov004_020b75e4((char *)c); }
-static void __fastcall bwf_020b77b4(void *c, void *) { ++g_base_tick_hits; func_ov004_020b77b4((char *)c); }
-static void __fastcall bwf_020b78f4(void *c, void *) { ++g_base_tick_hits; func_ov004_020b78f4((char *)c); }
-static void __fastcall bwf_020b7a18(void *c, void *) { ++g_base_closure_hits; func_ov004_020b7a18((char *)c); }
-static void __fastcall bwf_020b7b20(void *c, void *) { ++g_base_tick_hits; func_ov004_020b7b20((char *)c); }
-static void __fastcall bwf_020b7c04(void *c, void *) { ++g_base_closure_hits; func_ov004_020b7c04((char *)c); }
-static void __fastcall bwf_020b7cd0(void *c, void *) { ++g_base_tick_hits; func_ov004_020b7cd0((char *)c); }
-static void __fastcall bwf_020b7eac(void *c, void *) { ++g_base_tick_hits; func_ov004_020b7eac((char *)c); }
-static void __fastcall bwf_020b7fec(void *c, void *) { ++g_base_closure_hits; func_ov004_020b7fec((char *)c); }
-static void __fastcall bwf_020b8098(void *c, void *) { ++g_base_tick_hits; func_ov004_020b8098((char *)c); }
-static void __fastcall bwf_020b8284(void *c, void *) { ++g_base_tick_hits; func_ov004_020b8284((char *)c); }
-static void __fastcall bwf_020b841c(void *c, void *) { ++g_base_tick_hits; func_ov004_020b841c((char *)c); }
-static void __fastcall bwf_020b8560(void *c, void *) { ++g_base_tick_hits; func_ov004_020b8560((char *)c); }
+static void __fastcall bwf_020b68e8(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b68e8Ev((int *)c); }
+static void __fastcall bwf_020b6948(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b6948Ev(); }
+static void __fastcall bwf_020b6ad8(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b6ad8Ev(); }
+static void __fastcall bwf_020b6b40(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b6b40Ev(c); }
+static void __fastcall bwf_020b6c9c(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b6c9cEv(c); }
+static void __fastcall bwf_020b6ddc(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b6ddcEv((char *)c); }
+static void __fastcall bwf_020b6f88(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b6f88Ev((char *)c); }
+static void __fastcall bwf_020b7124(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b7124Ev((char *)c); }
+static void __fastcall bwf_020b72d4(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b72d4Ev((char *)c); }
+static void __fastcall bwf_020b746c(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b746cEv((char *)c); }
+static void __fastcall bwf_020b75e4(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b75e4Ev((char *)c); }
+static void __fastcall bwf_020b77b4(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b77b4Ev((char *)c); }
+static void __fastcall bwf_020b78f4(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b78f4Ev((char *)c); }
+static void __fastcall bwf_020b7a18(void *c, void *) { ++g_base_closure_hits; _ZN10dMgState_c19func_ov004_020b7a18Ev((char *)c); }
+static void __fastcall bwf_020b7b20(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b7b20Ev((char *)c); }
+static void __fastcall bwf_020b7c04(void *c, void *) { ++g_base_closure_hits; _ZN10dMgState_c19func_ov004_020b7c04Ev((char *)c); }
+static void __fastcall bwf_020b7cd0(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b7cd0Ev((char *)c); }
+static void __fastcall bwf_020b7eac(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b7eacEv((char *)c); }
+static void __fastcall bwf_020b7fec(void *c, void *) { ++g_base_closure_hits; _ZN10dMgState_c19func_ov004_020b7fecEv((char *)c); }
+static void __fastcall bwf_020b8098(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b8098Ev((char *)c); }
+static void __fastcall bwf_020b8284(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b8284Ev((char *)c); }
+static void __fastcall bwf_020b841c(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b841cEv((char *)c); }
+static void __fastcall bwf_020b8560(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b8560Ev((char *)c); }
 
 typedef void (*SeatFn)(void *);
 
@@ -752,7 +735,7 @@ static void mgbase_seat_rows(const SeatRow *rows, unsigned n)
    the ROM's table puts that pair in (section 4), and the face counts what the
    retired host copy counted for it. data_ov004_020bc9a4 is section 6's veneer,
    the ROM's own body again (src/func_ov004_020b7460.c takes the pointer). */
-#define SA_FACE(i, code)                                                           static void __fastcall sa_##i(void *c, void *)                                 {                                                                                  ++g_setter_calls;                                                              ++g_setter_idx[i];                                                             ++g_setter_dispatched;                                                         ++g_base_state_hits;                                                           func_ov004_##code((char *)c);                                              }
+#define SA_FACE(i, code)                                                           static void __fastcall sa_##i(void *c, void *)                                 {                                                                                  ++g_setter_calls;                                                              ++g_setter_idx[i];                                                             ++g_setter_dispatched;                                                         ++g_base_state_hits;                                                           ((dMgState_c *)c)->dMgState_c::func_ov004_##code();                                              }
 SA_FACE(0, 020b8688)
 SA_FACE(1, 020b853c)
 SA_FACE(2, 020b83ac)

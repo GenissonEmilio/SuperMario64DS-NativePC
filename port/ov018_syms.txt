@@ -71,8 +71,8 @@ g_profile_PENGUIN_MOTHER:0x1c
 # names 0x02112f58 (row 1) as an ambiguous symbol that nothing in ov018
 # references; the pack then padded row 1 with a zeroed gap and the ski lift's
 # row-1 triangles read an all-zero surface in place of the ROM's.
-data_ov018_02113bc8 data_ov018_02113bdc
-data_ov018_02113bc0 data_ov018_02113bd0
+data_ov018_02113bc8 data_ov018_02113bdc@0x02113bdc
+data_ov018_02113bc0 data_ov018_02113bd0@0x02113bd0
 data_ov018_02112f48:0x20
 #
 # ---- MotherPenguin's OWN vtable, _ZTV7SkiLift == _ZTV10daPgMthr_c at
@@ -113,19 +113,19 @@ data_ov018_02112f48:0x20
 # and a 0x30-byte static-to-instance data copy (0211394c..02113974 -> the
 # 02113c4c destination, six S2{int[2]} cells, natural symbol-table spacing --
 # NOT a --pack case, no gaps between the six source cells or the dest cells).
-data_ov018_02113c00 data_ov018_02113c28
-data_ov018_02113bf0 data_ov018_02113c10
-data_ov018_02113c08 data_ov018_02113c1c
-data_ov018_02113bf8 data_ov018_02113c34
-data_ov018_02113be8 data_ov018_02113c40
+data_ov018_02113c28@0x02113c28
+data_ov018_02113c10@0x02113c10
+data_ov018_02113c1c@0x02113c1c
+data_ov018_02113c34@0x02113c34
+data_ov018_02113c40@0x02113c40
 # EXPLICIT SIZE: next-symbol delta undersizes both to 4 bytes (one pointer)
 # -- InitResources indexes each as a TWO-element array (data_ov018_02112c04[i]
 # for i=0,1), so both need the full 8 bytes or index [1] reads the next
 # symbol's bytes instead of its own second element (the undersized-globals
 # trap).
 data_ov018_02112c04:0x8 data_ov018_02112c0c:0x8
-data_ov018_0211394c data_ov018_02113954 data_ov018_0211395c data_ov018_02113964 data_ov018_0211396c data_ov018_02113974
-data_ov018_02113c4c
+data_ov018_0211394c@0x0211394c data_ov018_02113954@0x02113954 data_ov018_0211395c@0x0211395c data_ov018_02113964@0x02113964 data_ov018_0211396c@0x0211396c data_ov018_02113974@0x02113974
+
 #
 # THE VTABLES STAY OUT, the ov080/ov095/ov064/ov016 rule: _ZTV15daObjIceBoard_c
 # (0x02113b34, 32 words -- the full 31-slot Actor shape, own overrides at
@@ -155,4 +155,18 @@ g_profile_ICE_BOARD:0x1c
 # IceSheet_ModelFile/ClsnFile aliases. Mount the raw names (the ov018_syms.txt
 # convention everywhere else in this file) and alias the alternate spelling in
 # the fill, the _ZTV14daObj1UpLogo_c/_ZTV9OneUpLogo treatment.
-data_ov018_02113c7c data_ov018_02113c84 data_ov018_02113c8c data_ov018_02113c98
+data_ov018_02113c7c@0x02113c7c data_ov018_02113c84@0x02113c84 data_ov018_02113c8c@0x02113c8c data_ov018_02113c98@0x02113c98
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov018_02113be8                        now defined by src/game/actors/d_a_pg_mthr.cpp
+#   data_ov018_02113bf0                        now defined by src/game/actors/d_a_pg_mthr.cpp
+#   data_ov018_02113bf8                        now defined by src/game/actors/d_a_pg_mthr.cpp
+#   data_ov018_02113c00                        now defined by src/game/actors/d_a_pg_mthr.cpp
+#   data_ov018_02113c08                        now defined by src/game/actors/d_a_pg_mthr.cpp
+#   data_ov018_02113c4c                        now defined by src/game/actors/d_a_pg_mthr.cpp

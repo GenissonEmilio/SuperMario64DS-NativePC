@@ -114,6 +114,10 @@ extern unsigned char data_020a0e40;
 extern unsigned short data_020a0e5a[];
 extern unsigned char data_020a0de8[];
 extern int data_0208ee44;
+/* local extern: main's include/decl_common.h no longer declares the record
+   pool; src/minigames/d_s_mg_base.cpp defines it (C linkage) as a local
+   `Ent[0x40]` no header carries, and this body walks it by byte offset. */
+extern char data_ov004_020bebe8[];
 
 // PORT_HOST_ABI: src drops the self argument to Scene::BeforeBehavior (decl_Scene.h empty parens); the ROM rides it through r0 but MSVC __cdecl drops it, so the host copy passes self
 int _ZN11dScMgBase_c14BeforeBehaviorEv(void *cv)

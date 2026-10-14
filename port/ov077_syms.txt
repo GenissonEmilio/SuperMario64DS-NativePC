@@ -193,20 +193,38 @@
 data_ov077_02127230 data_ov077_02127238 data_ov077_021277e0 data_ov077_021277e8
 data_ov077_021277f0 data_ov077_021277f8 data_ov077_02127800 data_ov077_02127808
 data_ov077_02127810 data_ov077_02127818 data_ov077_02127820 data_ov077_02127828
-_ZTS7daJgm_c _ZTI7daJgm_c g_profile_JUGEM data_ov077_021278e8
+_ZTS7daJgm_c _ZTI7daJgm_c data_ov077_021278e8
 data_ov077_021278f0 data_ov077_021278f8 data_ov077_02127900 data_ov077_02127908
 data_ov077_02127910 data_ov077_02127918 data_ov077_02127920 data_ov077_02127928
 data_ov077_02127930 data_ov077_02127938 data_ov077_02127940 _ZTS7daTgz_c
-_ZTI7daTgz_c g_profile_TOGEZO data_ov077_02127a00 data_ov077_02127a08
-data_ov077_02127a10 data_ov077_02127a18 data_ov077_02127a20 data_ov077_02127a28
-data_ov077_02127a30 data_ov077_02127a38 data_ov077_02127a40 data_ov077_02127a48
+_ZTI7daTgz_c g_profile_TOGEZO data_ov077_02127a00@0x02127a00 data_ov077_02127a08@0x02127a08
+data_ov077_02127a10@0x02127a10 data_ov077_02127a18@0x02127a18 data_ov077_02127a20@0x02127a20 data_ov077_02127a28@0x02127a28
+data_ov077_02127a30@0x02127a30 data_ov077_02127a38@0x02127a38 data_ov077_02127a40@0x02127a40 data_ov077_02127a48@0x02127a48
 _ZTS9daPopoi_c data_ov077_02127a5c _ZTI9daPopoi_c g_profile_POPOI
-data_ov077_02127b20 data_ov077_02127b28 data_ov077_02127b30 data_ov077_02127b38
-data_ov077_02127b40 data_ov077_02127b48 data_ov077_02127b50 data_ov077_02127b58
-data_ov077_02127b64 data_ov077_02127b70 data_ov077_02127b7c data_ov077_02127b88
-data_ov077_02127b94 data_ov077_02127ba0 data_ov077_02127bac data_ov077_02127bb8
-data_ov077_02127bc4 data_ov077_02127c14 data_ov077_02127c1c data_ov077_02127c28:0x60
+
+data_ov077_02127b58@0x02127b58
+data_ov077_02127b64@0x02127b64 data_ov077_02127b70@0x02127b70 data_ov077_02127b7c@0x02127b7c
+data_ov077_02127b94@0x02127b94 data_ov077_02127ba0@0x02127ba0 data_ov077_02127bac@0x02127bac data_ov077_02127bb8@0x02127bb8
+data_ov077_02127c14 data_ov077_02127c1c data_ov077_02127c28:0x60
 data_ov077_02127c88 data_ov077_02127c90 data_ov077_02127c98 data_ov077_02127ca0
-data_ov077_02127ca8 data_ov077_02127cb4 data_ov077_02127cc0 data_ov077_02127ccc
+data_ov077_02127ca8@0x02127ca8 data_ov077_02127cb4@0x02127cb4 data_ov077_02127cc0@0x02127cc0 data_ov077_02127ccc@0x02127ccc
 data_ov077_02127cd8 data_ov077_02127ce8 data_ov077_02127cf8 data_ov077_02127d08
 data_ov077_02127d18
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov077_02127b20                        now defined by src/game/actors/d_a_jgm.cpp
+#   data_ov077_02127b28                        now defined by src/game/actors/d_a_jgm.cpp
+#   data_ov077_02127b30                        now defined by src/game/actors/d_a_jgm.cpp
+#   data_ov077_02127b38                        now defined by src/game/actors/d_a_jgm.cpp
+#   data_ov077_02127b40                        now defined by src/game/actors/d_a_jgm.cpp
+#   data_ov077_02127b48                        now defined by src/game/actors/d_a_jgm.cpp
+#   data_ov077_02127b50                        now defined by src/game/actors/d_a_jgm.cpp
+#   data_ov077_02127b88                        now defined by src/game/actors/d_a_jgm.cpp
+#   data_ov077_02127bc4                        now defined by src/game/actors/d_a_jgm.cpp
+#   g_profile_JUGEM                            now defined by src/game/actors/d_a_jgm.cpp

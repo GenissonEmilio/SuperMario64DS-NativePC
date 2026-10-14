@@ -15,14 +15,14 @@
 # these rows do not arrive twice.
 src/OS_SleepThread.c
 src/OS_WakeupThread.c
-src/func_02057f54.c
+src/unnamed/arm9/0205/func_02057f54.c
 #
 # AND THE IDLE THREAD. A sleep needs somewhere to go, and the ROM already says
 # where: three lines that enable interrupts and halt forever on CP15's
 # wait-for-interrupt. The halt is the one primitive with a host body
 # (hal/boot2_thread.cpp), and the sleeper is woken from inside it by
 # OS_WakeupThread -- ROM code at both ends of the wait.
-src/func_02057e34.c
+src/unnamed/arm9/0205/func_02057e34.c
 #
 # ALREADY LINKED, listed here only so the set reads as one thing:
 #   src/func_0205801c.c  the ready-list pick        port/slice_gate10.txt:368

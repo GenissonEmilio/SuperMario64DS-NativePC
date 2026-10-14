@@ -674,11 +674,19 @@ void port_mg_hud_scaled_number_020b2220(int x, int y, int num, int a3, int a4,
  * port_ name, so nothing in this tree claims a decompilation that does not
  * exist. 0x020b2220 remains open decomp work.
  */
+/* PORTSYNC2 (2026-10 main merge): RETIRED. Main now carries a real
+ * decompilation of 0x020b2220 in src/minigames/d_s_mg_base.cpp (the
+ * "@symbol func_ov004_020b2220" body, seven arguments, void), which the
+ * port compiles through hostgen; the face below would be a second
+ * definition. The host copy port_mg_hud_scaled_number_020b2220 is no longer
+ * called from here. */
+#if 0
 void func_ov004_020b2220(int x, int y, int num, int a3, int a4,
                          int scale, int angle)
 {
     port_mg_hud_scaled_number_020b2220(x, y, num, a3, a4, scale, angle);
 }
+#endif
 
 /* ---- SEATED, run link60 lane CUR2 ---------------------------------------
  *
@@ -720,7 +728,7 @@ void func_ov004_020b2220(int x, int y, int num, int a3, int a4,
  * -- so the forwarder below and port_mg_curling_collide_020e20bc stay exactly
  * as they are, and so does port_mg_curling_collide_020e1dc8's own file: this
  * lane owns the face, not the transcription beneath it. */
-void func_ov006_020e20bc(char *self, int idx)
+void _ZN14dScMgCurling_c19func_ov006_020e20bcEi(char *self, int idx)
 {
     port_mg_curling_collide_020e20bc(self, idx);
 }
@@ -846,7 +854,7 @@ int func_0202e78c(void *)
 
 extern "C" {
 
-void func_ov006_020e1854(void *arg);          /* src/func_ov006_020e1854.c */
+void _ZN14dScMgCurling_c19func_ov006_020e1854Ev(void *arg);          /* src/func_ov006_020e1854.c */
 
 static unsigned g_curling_st_020e1854_entries;
 
@@ -870,12 +878,12 @@ void port_mg_curling_st_020e1854(char *c)
         traced = 1;
         std::fprintf(stderr,
                      "  [scene] dScMgCurling_c STATE 0x020e1854 ENTERED "
-                     "(func_ov006_020e1854, the ROM's matched TU, "
+                     "(_ZN14dScMgCurling_c19func_ov006_020e1854Ev, the ROM's matched TU, "
                      "src/func_ov006_020e1854.c)\n");
         std::fflush(stderr);
     }
 
-    func_ov006_020e1854(c);
+    _ZN14dScMgCurling_c19func_ov006_020e1854Ev(c);
 
     if (on) {
         std::fprintf(stderr,

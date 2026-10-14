@@ -79,7 +79,7 @@
 # Measured off the link, not guessed.
 
 # ---- BUBBA (228) -- factory, destructors, lifecycle slots ------------------
-src/game/actors/d_a_bakubaku.cpp
+src/actors/daBakubaku_c.cpp
 
 # ---- BUBBA -- the five state cells' ten handler bodies and their helpers ---
 
@@ -90,6 +90,6 @@ src/game/actors/d_a_obj_td_futa.cpp
 src/game/actors/d_a_obj_td_water.cpp
 
 # ---- the three static initialisers ----------------------------------------
-src/__sinit_ov032_02112c10.c
-src/__sinit_ov032_02112dbc.c
-src/__sinit_ov032_02112e28.c
+# FOLDED into src/actors/daBakubaku_c.cpp (row 82): src/__sinit_ov032_02112c10.c
+# FOLDED into src/game/actors/d_a_obj_td_futa.cpp (row 87): src/__sinit_ov032_02112dbc.c
+# FOLDED into src/game/actors/d_a_obj_td_water.cpp (row 90): src/__sinit_ov032_02112e28.c

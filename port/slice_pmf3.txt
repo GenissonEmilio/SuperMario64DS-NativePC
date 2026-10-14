@@ -155,11 +155,11 @@
 # a different lane's decision), so the row is named and left.
 #
 # ---- THE SIX --------------------------------------------------------------
-src/func_ov080_02125104.cpp
-src/_ZN13PrincessPeach17CallStateBehaviorEv.cpp
-src/_ZN13PrincessPeach13CallStateInitEv.cpp
-src/func_ov085_0212d268.cpp
-src/func_ov094_02136188.cpp
+src/actors/daBttBk_c.cpp
+src/actors/daPeach_c.cpp
+# FOLDED into src/actors/daPeach_c.cpp (row 159): src/_ZN13PrincessPeach13CallStateInitEv.cpp
+src/actors/daObj_Mip_Key_c.cpp
+src/actors/daOwl_c.cpp
 src/actors/daBombking_c.cpp
 
 # ---- BATCH 2: THE INDEXED-TABLE FAMILY, AND IT WAS A NAME ALL ALONG -------
@@ -283,16 +283,16 @@ src/actors/daBombking_c.cpp
 # what held YoshiEgg back, and adding a second directive would change nothing.
 #
 # ---- THE FOURTEEN ---------------------------------------------------------
-src/func_ov002_020ba4d8.cpp
-src/func_ov002_020ba520.cpp
-src/func_ov002_020bbd5c.cpp
-src/func_ov002_020bbda4.cpp
-src/_ZN13TreasureChest8SetStateEi.cpp
-src/_ZN13TreasureChest17CallStateBehaviorEv.cpp
-src/actors/Goomboss.cpp
-src/func_ov084_0212c960.cpp
-src/func_ov084_0212c9a8.cpp
-src/Crate_SetState.cpp
-src/func_ov098_02138b70.cpp
-src/func_ov102_02149da8.cpp
-src/func_ov102_02149df0.cpp
+src/actors/daObjSwitch_c.cpp
+# FOLDED into src/actors/daObjSwitch_c.cpp (row 286): src/func_ov002_020ba520.cpp
+src/actors/daObjTatefuda_c.cpp
+# FOLDED into src/actors/daObjTatefuda_c.cpp (row 288): src/func_ov002_020bbda4.cpp
+src/actors/daObjTbox_c.cpp
+# FOLDED into src/actors/daObjTbox_c.cpp (row 290): src/_ZN13TreasureChest17CallStateBehaviorEv.cpp
+src/actors/daKuriKing_c.cpp
+src/game/actors/d_a_red_bombhei.cpp
+# FOLDED into src/game/actors/d_a_red_bombhei.cpp (row 293): src/func_ov084_0212c9a8.cpp
+src/actors/daObjBlockS_c.cpp
+# FOLDED into src/actors/daObjBlockS_c.cpp (row 295): src/func_ov098_02138b70.cpp
+src/actors/daObjHatenaBlock_c.cpp
+# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 297): src/func_ov102_02149df0.cpp

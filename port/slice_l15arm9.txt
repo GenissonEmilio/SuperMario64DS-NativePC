@@ -27,14 +27,14 @@
 # instead of deleting it -- about 28 object files call the flat cdecl name
 # directly and never go through the member (PATHPTR1 measured LNK1120 across
 # that set when the flat body was deleted instead of bridged).
-src/_ZN7PathPtr6FromIDEj.cpp
+src/engine/path/PathPtr.cpp
 
 # MSL memset and its fill. func_0206e2f8 declares all three arguments now and
 # returns dst, which is what include/decl_common.h:2101 says it does; the fill
 # it forwards to is plain portable C. hal/cxxname_bridge.cpp's host loop is
 # retired for the pair.
-src/func_0206e2f8.c
-src/func_0206e330.c
+src/cstd4.cpp
+# FOLDED into src/cstd4.cpp (row 36): src/func_0206e330.c
 
 # The MSL array-delete chain. unmatched/func_02073244_hostcopy.c's copy of
 # func_02073244 named two reasons and BOTH are stale: src/func_02073244.c
@@ -44,6 +44,6 @@ src/func_0206e330.c
 # cartridge's .exceptix record at 0x02073994 is there for. func_020731fc is
 # that one's terminate hop. The host file keeps func_0203cbc0 (its own reason
 # is NOT stale) and hosts the one global the chain reads.
-src/func_02073244.c
-src/func_02073300.cpp
-src/func_020731fc.c
+src/unnamed/arm9/0207/func_02073244.c
+src/unnamed/arm9/0207/func_02073300.cpp
+src/unnamed/arm9/0207/func_020731fc.c

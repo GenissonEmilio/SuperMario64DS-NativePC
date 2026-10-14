@@ -56,7 +56,7 @@ struct ShadowMdl {
 
 extern void *data_0208e87c[];                 /* ModelBase's own table */
 extern void *_ZTV5Model[];
-extern void *_ZTV11ShadowModel[];
+extern void *_ZTV17dExtShadowModel_c[];
 extern struct ShadowMdl *data_0209cef4;       /* the shadow list head */
 
 extern void Deallocate(void *ptr);                      /* 0x02018144 */
@@ -126,12 +126,12 @@ struct Mdl *_ZN5ModelD0Ev(struct Mdl *thiz)
 
 /* ---- ShadowModel, 0x02015ff8 (D1) --------------------------------------- */
 
-struct ShadowMdl *_ZN11ShadowModelD1Ev(struct ShadowMdl *thiz)
+struct ShadowMdl *_ZN17dExtShadowModel_cD1Ev(struct ShadowMdl *thiz)
 {
     struct ShadowMdl *prev;
     struct ShadowMdl *next;
 
-    thiz->vtable = (void *)_ZTV11ShadowModel;
+    thiz->vtable = (void *)_ZTV17dExtShadowModel_c;
 
     prev = thiz->prev;
     if (prev) {
@@ -152,9 +152,9 @@ struct ShadowMdl *_ZN11ShadowModelD1Ev(struct ShadowMdl *thiz)
     return thiz;
 }
 
-struct ShadowMdl *_ZN11ShadowModelD0Ev(struct ShadowMdl *thiz)
+struct ShadowMdl *_ZN17dExtShadowModel_cD0Ev(struct ShadowMdl *thiz)
 {
-    thiz->vtable = (void *)_ZTV11ShadowModel;
+    thiz->vtable = (void *)_ZTV17dExtShadowModel_c;
 
     if (thiz->prev)
         thiz->prev->next = thiz->next;

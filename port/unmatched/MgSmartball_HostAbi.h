@@ -75,13 +75,14 @@ struct DispObj {
     virtual void __cdecl f1();
 };
 
-/* 2. shadows include/dScMgSmartball_c.h */
-#define DSCMGSMARTBALL_C_H
-#include "dScMgBase_c.h"
-struct dScMgSmartball_c : dScMgBase_c {
-    void AfterCleanupResources(u32 vfSuccess);  /* slot  5 */
-    s32  Behavior();                            /* slot  6 */
-    s32  Render();                              /* slot  9 */
-};
+/* 2. RETIRED at PORTSYNC2: the dScMgSmartball_c shadow. Main's
+ * include/dScMgSmartball_c.h is now the real class (named members, the
+ * recovered helpers, the overrides), and src/actors/dScMgSmartball_c.cpp is
+ * the promoted TU that uses all of it, so a field-less redeclaration breaks
+ * the TU outright (no mArray1..4, no EmitScore / Count*). Measured with
+ * clang-cl against the merged header: its `sizeof == 0x629c` assert now
+ * compiles on the host, so the reason section 2 above gives is gone, and the
+ * real header is included. MgSmartball_Faces.cpp's qualified Render call
+ * takes the real (virtual-member) mangling, the same one the TU defines. */
 
 #endif

@@ -23,7 +23,11 @@
 # The `#else` side is the file's own text, byte for byte, so mwccarm compiles
 # what it always compiled (tools/match.py 2004/b56 strict MATCHING and
 # tools/linkcheck.py VERIFIED, before and after, object identical).
-src/_ZN13daObjMaruta_cD1Ev.cpp
-src/_ZN13daObjMaruta_cD0Ev.cpp
-src/_ZN16daObjFallBlock_cD1Ev.cpp
-src/_ZN16daObjFallBlock_cD0Ev.cpp
+src/game/actors/d_a_obj_maruta.cpp
+port/unmatched/hostarm/_ZN13daObjMaruta_cD1Ev.cpp
+# FOLDED into src/game/actors/d_a_obj_maruta.cpp (row 26): src/_ZN13daObjMaruta_cD0Ev.cpp
+port/unmatched/hostarm/_ZN13daObjMaruta_cD0Ev.cpp
+src/actors/daObjFallBlock_c.cpp
+port/unmatched/hostarm/_ZN16daObjFallBlock_cD1Ev.cpp
+# FOLDED into src/actors/daObjFallBlock_c.cpp (row 28): src/_ZN16daObjFallBlock_cD0Ev.cpp
+port/unmatched/hostarm/_ZN16daObjFallBlock_cD0Ev.cpp

@@ -278,18 +278,18 @@ extern "C" {
    what the matching D0s do too) */
 void _ZN15TextureSequenceD1Ev(void *self);       /* Number      +0x124 */
 void _ZN5ModelD1Ev(void *self);                  /* both        +0x0d4 */
-void _ZN11ShadowModelD1Ev(void *self);           /* WingFeather +0x314 */
+void _ZN17dExtShadowModel_cD1Ev(void *self);           /* WingFeather +0x314 */
 void _ZN10dBgCh_ActrD1Ev(void *self);          /* WingFeather +0x158 */
 void _ZN7dCcAc_cD1Ev(void *self);    /* WingFeather +0x124 */
 void _ZN8dActor_cD2Ev(void *self);
 
 /* NUMBER's own bodies. The four real C++ methods are faced at the foot of this
    file; D0 and the factory are C-linkage already. */
-int _ZN6Number13InitResourcesEv(void *self);
-int _ZN6Number16CleanupResourcesEv(void *self);
-int _ZN6Number8BehaviorEv(void *self);
-int _ZN6Number6RenderEv(void *self);
-int *_ZN6NumberD0Ev(int *self);
+int _ZN13daObjNumber_c13InitResourcesEv(void *self);
+int _ZN13daObjNumber_c16CleanupResourcesEv(void *self);
+int _ZN13daObjNumber_c8BehaviorEv(void *self);
+int _ZN13daObjNumber_c6RenderEv(void *self);
+int *_ZN13daObjNumber_cD0Ev(int *self);
 void *daObjNumber_c_classInit(void);                        /* installs _ZTV15InvisibleSecret */
 extern unsigned char g_profile_OBJ_NUMBER[];         /* ov002 0x0210b0c8 */
 int _ZTV15InvisibleSecret[31];
@@ -299,21 +299,21 @@ int _ZTV13daObjNumber_c[];    /* RTTI alias, ONE speller (_ZN6NumberD0Ev),
 /* WING_FEATHER's own bodies. CleanupResources and D0 are C-linkage .c files;
    note CleanupResources takes NO argument -- it only releases one file
    pointer -- so its thunk drops the receiver rather than forwarding it. */
-int _ZN11WingFeather13InitResourcesEv(void *self);
-int _ZN11WingFeather16CleanupResourcesEv(void);
-int _ZN11WingFeather8BehaviorEv(void *self);
-int _ZN11WingFeather6RenderEv(void *self);
-int *_ZN11WingFeatherD0Ev(int *self);
+int _ZN11daFeather_c13InitResourcesEv(void *self);
+int _ZN11daFeather_c16CleanupResourcesEv(void);
+int _ZN11daFeather_c8BehaviorEv(void *self);
+int _ZN11daFeather_c6RenderEv(void *self);
+int *_ZN11daFeather_cD0Ev(int *self);
 void *daFeather_c_classInit(void);                   /* installs _ZTV11WingFeather */
 extern unsigned char g_profile_FEATHER[];    /* ov002 0x02108884 */
-int _ZTV11WingFeather[31];
+int _ZTV11daFeather_c[31];
 int _ZTV11daFeather_c[];      /* RTTI alias, ONE speller (_ZN11WingFeatherD0Ev) */
 }
 /* Both D0 bodies spell their own table by its RTTI name. One object, two C
    names; alias rather than edit the matched src -- the OneUpLogo /
    daObj1UpLogo_c treatment. */
 #pragma comment(linker, "/alternatename:__ZTV13daObjNumber_c=__ZTV15InvisibleSecret")
-#pragma comment(linker, "/alternatename:__ZTV11daFeather_c=__ZTV11WingFeather")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV11daFeather_c=__ZTV11daFeather_c")
 /* WingFeather::InitResources declares its model's SharedFilePtr at FILE SCOPE
    rather than through decl_common.h's extern "C" umbrella, so MSVC C++-mangles
    what the mount emits under its C name -- the IceSheet_ModelFile case, and the
@@ -331,13 +331,13 @@ int _ZTV11daFeather_c[];      /* RTTI alias, ONE speller (_ZN11WingFeatherD0Ev) 
 #pragma comment(linker, "/alternatename:?data_ov002_0210da58@@3USharedFilePtr@@A=_data_ov002_0210da58")
 
 static int __fastcall num_init(void *s, void *)
-{ return _ZN6Number13InitResourcesEv(s); }
+{ return _ZN13daObjNumber_c13InitResourcesEv(s); }
 static int __fastcall num_clean(void *s, void *)
-{ return _ZN6Number16CleanupResourcesEv(s); }
+{ return _ZN13daObjNumber_c16CleanupResourcesEv(s); }
 static int __fastcall num_behavior(void *s, void *)
-{ return _ZN6Number8BehaviorEv(s); }
+{ return _ZN13daObjNumber_c8BehaviorEv(s); }
 static int __fastcall num_render(void *s, void *)
-{ return _ZN6Number6RenderEv(s); }
+{ return _ZN13daObjNumber_c6RenderEv(s); }
 /* slot 16: src/_ZN6NumberD1Ev.cpp is a real MSVC-synthesised member
    destructor over a LOCAL shadow Actor/Model/TextureSequence hierarchy whose
    classes have no bodies of their own, so it is not compiled -- the gate-31
@@ -349,16 +349,16 @@ static int __fastcall num_render(void *s, void *)
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (num_d1) spelled the same chain by hand. */
 static int __fastcall num_d0(void *s, void *)
-{ return (int)(size_t)_ZN6NumberD0Ev((int *)s); }
+{ return (int)(size_t)_ZN13daObjNumber_cD0Ev((int *)s); }
 
 static int __fastcall wf_init(void *s, void *)
-{ return _ZN11WingFeather13InitResourcesEv(s); }
+{ return _ZN11daFeather_c13InitResourcesEv(s); }
 static int __fastcall wf_clean(void *, void *)
-{ return _ZN11WingFeather16CleanupResourcesEv(); }
+{ return _ZN11daFeather_c16CleanupResourcesEv(); }
 static int __fastcall wf_behavior(void *s, void *)
-{ return _ZN11WingFeather8BehaviorEv(s); }
+{ return _ZN11daFeather_c8BehaviorEv(s); }
 static int __fastcall wf_render(void *s, void *)
-{ return _ZN11WingFeather6RenderEv(s); }
+{ return _ZN11daFeather_c6RenderEv(s); }
 /* slot 16: the same shape, four members instead of two. The ROM body DOES load
    its own table into the vptr first; writing _ZTV11WingFeather back over a
    WingFeather's own vptr changes nothing (no class derives from it), so the
@@ -367,7 +367,7 @@ static int __fastcall wf_render(void *s, void *)
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (wf_d1) spelled the same chain by hand. */
 static int __fastcall wf_d0(void *s, void *)
-{ return (int)(size_t)_ZN11WingFeatherD0Ev((int *)s); }
+{ return (int)(size_t)_ZN11daFeather_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_number_vtable(void)
 {
@@ -384,7 +384,7 @@ extern "C" void hal_fill_number_vtable(void)
 
 extern "C" void hal_fill_wing_feather_vtable(void)
 {
-    void **vt = (void **)_ZTV11WingFeather;
+    void **vt = (void **)_ZTV11daFeather_c;
     vsp_fill_shared(vt);
     vt[0]  = (void *)wf_init;
     vt[3]  = (void *)wf_clean;
@@ -403,21 +403,21 @@ extern "C" void hal_fill_wing_feather_vtable(void)
 // _ZN6NumberD0Ev, _ZN11WingFeather16CleanupResourcesEv,
 // _ZN11WingFeatherD0Ev, both factories and func_ov002_020b2c44 are already
 // C-linkage bodies -- no face.
-#include "Number.h"
-#include "WingFeather.h"
+#include "daObjNumber_c.h"
+#include "daFeather_c.h"
 extern "C" {
-int _ZN6Number13InitResourcesEv(void *self)
-{ return ((Number *)self)->Number::InitResources(); }
-int _ZN6Number16CleanupResourcesEv(void *self)
-{ return ((Number *)self)->Number::CleanupResources(); }
-int _ZN6Number8BehaviorEv(void *self)
-{ return ((Number *)self)->Number::Behavior(); }
-int _ZN6Number6RenderEv(void *self)
-{ return ((Number *)self)->Number::Render(); }
-int _ZN11WingFeather13InitResourcesEv(void *self)
-{ return ((WingFeather *)self)->WingFeather::InitResources(); }
-int _ZN11WingFeather8BehaviorEv(void *self)
-{ return ((WingFeather *)self)->WingFeather::Behavior(); }
-int _ZN11WingFeather6RenderEv(void *self)
-{ return ((WingFeather *)self)->WingFeather::Render(); }
+int _ZN13daObjNumber_c13InitResourcesEv(void *self)
+{ return ((daObjNumber_c *)self)->daObjNumber_c::InitResources(); }
+int _ZN13daObjNumber_c16CleanupResourcesEv(void *self)
+{ return ((daObjNumber_c *)self)->daObjNumber_c::CleanupResources(); }
+int _ZN13daObjNumber_c8BehaviorEv(void *self)
+{ return ((daObjNumber_c *)self)->daObjNumber_c::Behavior(); }
+int _ZN13daObjNumber_c6RenderEv(void *self)
+{ return ((daObjNumber_c *)self)->daObjNumber_c::Render(); }
+int _ZN11daFeather_c13InitResourcesEv(void *self)
+{ return ((daFeather_c *)self)->daFeather_c::InitResources(); }
+int _ZN11daFeather_c8BehaviorEv(void *self)
+{ return ((daFeather_c *)self)->daFeather_c::Behavior(); }
+int _ZN11daFeather_c6RenderEv(void *self)
+{ return ((daFeather_c *)self)->daFeather_c::Render(); }
 }

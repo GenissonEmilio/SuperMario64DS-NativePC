@@ -10,25 +10,25 @@
 # runs/linkfull/out/PMFMG1/ (rom_records.txt, the sweeps, the listings).
 #
 # Coincentration (dScMgCoin_c), unmatched/MgCoin_StateDispatch.cpp
-src/func_ov006_020ddd6c.cpp
+src/actors/dScMgCoin_c.cpp
 # the curling minigame (dScMgCurling_c), unmatched/MgCurling_StateDispatch.cpp
-src/func_ov006_020e0d84.cpp
-src/func_ov006_020e1214.cpp
+src/actors/dScMgCurling_c.cpp
+# FOLDED into src/actors/dScMgCurling_c.cpp (row 15): src/func_ov006_020e1214.cpp
 # its second class (dScMgCurling2_c), unmatched/MgCurling2_StateDispatch.cpp
-src/func_ov006_020e6354.cpp
+src/actors/dScMgCurling2_c.cpp
 # Psyche Out! (dScMg3DEsp_c), unmatched/Mg3DEsp_StateDispatch.cpp
-src/func_ov006_020e82fc.cpp
-src/func_ov006_020e8830.c
+src/actors/dMg3DEspAnimSet_c.cpp
+# FOLDED into src/actors/dMg3DEspAnimSet_c.cpp (row 20): src/func_ov006_020e8830.c
 # Loves Me...? (dScMgFlower_c), unmatched/MgFlower_SubDispatch.cpp
-src/func_ov006_020c3d18.cpp
+src/actors/unit020bfec0.cpp
 # the trampoline Mario elements of Trampoline Terror and Trampoline Time, one
 # pair run for both, unmatched/MgTrmpln3DMario_StateDispatch.cpp. Both build
 # from hostgen copies (port/tools/hostgen.py MEMBER_REDECL rows for their two
 # C2761 redeclarations); the CMake block names them in W25MG_HOSTGEN_TU.
-src/func_ov006_020c8f20.cpp
-src/func_ov006_020cb030.cpp
+src/actors/dMgTrmpln2Mario_c.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 28): src/func_ov006_020cb030.cpp
 # the memory card record walk (dScMgMemory2_c), unmatched/MgMemory2_FieldPmf.cpp
-src/func_ov004_020b52fc.cpp
+src/actors/unit020b4aa4.cpp
 # the minigame framework's state setter (dMgState_c), unmatched/MgBase_StateSetter.cpp;
 # port/faces_sync.txt's row for the member flips F -> R with it
-src/_ZN10dMgState_c8SetStateEi.cpp
+src/actors/dMgState_c.cpp

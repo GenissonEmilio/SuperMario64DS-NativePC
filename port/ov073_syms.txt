@@ -110,17 +110,17 @@
 # 0x02122f40..0x02123040: ChiefChilly's THIRTY-TWO {handler, 0} state records,
 # which __sinit_ov073_02122874 pairs into the sixteen bss tables at
 # 0x02123320..0x02123420. Every one of the 32 adj words is a ROM zero.
-data_ov073_02122f40 data_ov073_02122f48 data_ov073_02122f50
-data_ov073_02122f58 data_ov073_02122f60 data_ov073_02122f68
-data_ov073_02122f70 data_ov073_02122f78 data_ov073_02122f80
-data_ov073_02122f88 data_ov073_02122f90 data_ov073_02122f98
-data_ov073_02122fa0 data_ov073_02122fa8 data_ov073_02122fb0
-data_ov073_02122fb8 data_ov073_02122fc0 data_ov073_02122fc8
-data_ov073_02122fd0 data_ov073_02122fd8 data_ov073_02122fe0
-data_ov073_02122fe8 data_ov073_02122ff0 data_ov073_02122ff8
-data_ov073_02123000 data_ov073_02123008 data_ov073_02123010
-data_ov073_02123018 data_ov073_02123020 data_ov073_02123028
-data_ov073_02123030 data_ov073_02123038
+data_ov073_02122f40@0x02122f40 data_ov073_02122f48@0x02122f48 data_ov073_02122f50@0x02122f50
+data_ov073_02122f58@0x02122f58 data_ov073_02122f60@0x02122f60 data_ov073_02122f68@0x02122f68
+data_ov073_02122f70@0x02122f70 data_ov073_02122f78@0x02122f78 data_ov073_02122f80@0x02122f80
+data_ov073_02122f88@0x02122f88 data_ov073_02122f90@0x02122f90 data_ov073_02122f98@0x02122f98
+data_ov073_02122fa0@0x02122fa0 data_ov073_02122fa8@0x02122fa8 data_ov073_02122fb0@0x02122fb0
+data_ov073_02122fb8@0x02122fb8 data_ov073_02122fc0@0x02122fc0 data_ov073_02122fc8@0x02122fc8
+data_ov073_02122fd0@0x02122fd0 data_ov073_02122fd8@0x02122fd8 data_ov073_02122fe0@0x02122fe0
+data_ov073_02122fe8@0x02122fe8 data_ov073_02122ff0@0x02122ff0 data_ov073_02122ff8@0x02122ff8
+data_ov073_02123000@0x02123000 data_ov073_02123008@0x02123008 data_ov073_02123010@0x02123010
+data_ov073_02123018@0x02123018 data_ov073_02123020@0x02123020 data_ov073_02123028@0x02123028
+data_ov073_02123030@0x02123030 data_ov073_02123038@0x02123038
 # 0x02123040 is the Vector3 ChiefChilly::Behavior hands
 # MovingCylinderClsnWithPos::SetPosRelativeToActor; 0x0212304c/0x02123058 are
 # his typeinfo and its name string.
@@ -147,11 +147,11 @@ data_ov073_021231bc data_ov073_021231c0 data_ov073_021231c4
 # pointers ChiefChilly::Behavior compares its current state against by name.
 data_ov073_02123280 data_ov073_02123288 data_ov073_02123290
 data_ov073_02123298 data_ov073_021232a0 data_ov073_021232a8
-data_ov073_021232b0 data_ov073_021232b8 data_ov073_021232c0
-data_ov073_021232cc data_ov073_021232d8 data_ov073_021232e4
-data_ov073_021232f0 data_ov073_021232fc data_ov073_02123308
-data_ov073_02123314 data_ov073_02123320 data_ov073_02123330
-data_ov073_02123340 data_ov073_0212334c data_ov073_02123350
+data_ov073_021232b0 data_ov073_021232b8 data_ov073_021232c0@0x021232c0
+data_ov073_021232cc@0x021232cc data_ov073_021232d8@0x021232d8 data_ov073_021232e4@0x021232e4
+data_ov073_021232f0@0x021232f0 data_ov073_021232fc@0x021232fc data_ov073_02123308@0x02123308
+data_ov073_02123314@0x02123314 data_ov073_02123320 data_ov073_02123330
+data_ov073_02123340:0xc data_ov073_0212334c@0x0212334c data_ov073_02123350
 data_ov073_02123360 data_ov073_02123370 data_ov073_02123380
 data_ov073_02123390 data_ov073_021233a0 data_ov073_021233b0
 data_ov073_021233c0 data_ov073_021233d0 data_ov073_021233e0
@@ -162,7 +162,16 @@ data_ov073_021233f0 data_ov073_02123400 data_ov073_02123410
 # two-record state tables __sinit_ov073_02122d48 fills.
 data_ov073_02123420 data_ov073_02123424 data_ov073_02123428
 data_ov073_02123430 data_ov073_02123438 data_ov073_02123440
-data_ov073_02123448 data_ov073_02123450 data_ov073_02123458
-data_ov073_02123464 data_ov073_02123470 data_ov073_0212347c
-data_ov073_02123488 data_ov073_02123494 data_ov073_021234a0
+data_ov073_02123448 data_ov073_02123450 data_ov073_02123458@0x02123458
+data_ov073_02123464@0x02123464 data_ov073_02123470@0x02123470 data_ov073_0212347c@0x0212347c
+data_ov073_02123488@0x02123488 data_ov073_02123494@0x02123494
 data_ov073_021234b0 data_ov073_021234c0 data_ov073_021234d0
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov073_021234a0                        now defined by src/actors/daObjEwbIce_c.cpp

@@ -60,22 +60,22 @@
 # linked; only the medium was missing. It is the seventeenth TU here and
 # port_save_current_file is now a wrapper over it.
 
-src/_ZN8SaveData14SaveDataToCartEPcjj.cpp
-src/_ZN8SaveData16ReadDataFromCartEPcjj.cpp
-src/func_0206045c.c
-src/func_0205ff70.c
-src/func_0205ff80.c
-src/func_020600e0.c
-src/func_02060188.c
-src/func_02060484.c
-src/func_02060558.cpp
-src/func_0206062c.cpp
-src/func_0206071c.c
-src/func_0206081c.c
-src/func_02060228.c
-src/func_02057e7c.c
-src/func_02057e84.c
-src/func_020584d0.c
+src/engine/save/SaveData2.cpp
+# FOLDED into src/engine/save/SaveData2.cpp (row 63): src/_ZN8SaveData16ReadDataFromCartEPcjj.cpp
+src/unnamed/arm9/0206/func_0206045c.c
+src/unnamed/arm9/0205/func_0205ff70.c
+src/unnamed/arm9/0205/func_0205ff80.c
+src/unnamed/arm9/0206/func_020600e0.c
+src/unnamed/arm9/0206/func_02060188.c
+src/unnamed/arm9/0206/func_02060484.c
+src/unnamed/arm9/0206/func_02060558.cpp
+src/unnamed/arm9/0206/func_0206062c.cpp
+src/unnamed/arm9/0206/func_0206071c.c
+src/unnamed/arm9/0206/func_0206081c.c
+src/unnamed/arm9/0206/func_02060228.c
+src/unnamed/arm9/0205/func_02057e7c.c
+src/unnamed/arm9/0205/func_02057e84.c
+src/unnamed/arm9/0205/func_020584d0.c
 
 # src/func_02057f54.c IS DELIBERATELY EXCLUDED FROM slice_gate10 AND IS HERE
 # ANYWAY, so read this before assuming one of the two lists is a mistake.
@@ -92,5 +92,5 @@ src/func_020584d0.c
 # list data_020a6134 is empty), so `if (r6 == r5) return` retires it before it
 # reaches ARMSaveContext at all. It is a load, not the deref that convicted
 # OS_SleepThread.
-src/func_02057f54.c
-src/_ZN8SaveData15SaveCurrentFileEv.cpp
+src/unnamed/arm9/0205/func_02057f54.c
+src/engine/save/SaveData.cpp

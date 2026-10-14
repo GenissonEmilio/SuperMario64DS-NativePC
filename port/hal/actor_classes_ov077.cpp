@@ -77,9 +77,9 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 #include "dActor_c.h"
 #include "dtor_faces_cpp.h"
 #include "fBase_c.h"
-#include "Lakitu.h"
-#include "Spiny.h"
-#include "HeaveHo.h"
+#include "daJgm_c.h"
+#include "daTgz_c.h"
+#include "daPopoi_c.h"
 
 extern "C" {
 
@@ -106,46 +106,46 @@ void port_actor_slot_decline(const char *what);   /* func_02043fdc_hostcopy.cpp 
 void port_actor_render_probe(const char *cls, void *model); /* hal/actor_classes */
 
 /* ---- the three host vtables (the mount excludes all three spans) -------- */
-int _ZTV6Lakitu[31];    /* == _ZTV7daJgm_c   */
-int _ZTV5Spiny[31];     /* == _ZTV7daTgz_c   */
-int _ZTV7HeaveHo[31];   /* == _ZTV9daPopoi_c */
+int _ZTV7daJgm_c[31];    /* == _ZTV7daJgm_c   */
+int _ZTV7daTgz_c[31];     /* == _ZTV7daTgz_c   */
+int _ZTV9daPopoi_c[31];   /* == _ZTV9daPopoi_c */
 
 /* ---- LAKITU (265) ------------------------------------------------------ */
-int _ZN6Lakitu13InitResourcesEv(void *self);      /* unmatched/Lakitu_HostSites */
-int _ZN6Lakitu8BehaviorEv(void *self);            /* face, bottom of file  */
-int _ZN6Lakitu6RenderEv(void *self);              /* unmatched/Lakitu_HostSites */
-int *_ZN6LakituD1Ev(int *self);                   /* unmatched/Lakitu_HostSites */
-int _ZN6Lakitu16CleanupResourcesEv(void);         /* matched src, flat      */
-void _ZN6Lakitu16OnPendingDestroyEv(void);        /* matched src, flat      */
-int *_ZN6LakituD0Ev(int *self);                   /* matched src, flat      */
-int _ZN6Lakitu13OnYoshiTryEatEv(void);                    /* slot 18, own: return 6 */
-void _ZN6Lakitu13OnTurnIntoEggER6Player(void *self, void *p);    /* slot 19, own           */
-int _ZN6Lakitu16OnAimedAtWithEggEv(void);                    /* slot 29, own: 0x3c000  */
+int _ZN7daJgm_c13InitResourcesEv(void *self);      /* unmatched/Lakitu_HostSites */
+int _ZN7daJgm_c8BehaviorEv(void *self);            /* face, bottom of file  */
+int _ZN7daJgm_c6RenderEv(void *self);              /* unmatched/Lakitu_HostSites */
+int *_ZN7daJgm_cD1Ev(int *self);                   /* unmatched/Lakitu_HostSites */
+int _ZN7daJgm_c16CleanupResourcesEv(void);         /* matched src, flat      */
+void _ZN7daJgm_c16OnPendingDestroyEv(void);        /* matched src, flat      */
+int *_ZN7daJgm_cD0Ev(int *self);                   /* matched src, flat      */
+int _ZN7daJgm_c13OnYoshiTryEatEv(void);                    /* slot 18, own: return 6 */
+void _ZN7daJgm_c13OnTurnIntoEggER6Player(void *self, void *p);    /* slot 19, own           */
+int _ZN7daJgm_c16OnAimedAtWithEggEv(void);                    /* slot 29, own: 0x3c000  */
 void *daJgm_c_classInit(void);
 extern unsigned char g_profile_JUGEM[];
 
 /* ---- SPINY (260) ------------------------------------------------------- */
-int _ZN5Spiny13InitResourcesEv(void *self);       /* face                   */
-int _ZN5Spiny8BehaviorEv(void *self);             /* face                   */
-int _ZN5Spiny6RenderEv(void *self);               /* unmatched/Spiny_HostSites */
-int *_ZN5SpinyD1Ev(int *self);                    /* unmatched/Spiny_HostSites */
-int _ZN5Spiny16CleanupResourcesEv(void);
-void _ZN5Spiny16OnPendingDestroyEv(void);
-int *_ZN5SpinyD0Ev(int *self);
-int _ZN5Spiny13OnYoshiTryEatEv(void);                    /* slot 18, own: return 6 */
-void _ZN5Spiny13OnTurnIntoEggER6Player(void *self, void *p);    /* slot 19, own           */
-int _ZN5Spiny16OnAimedAtWithEggEv(void);                    /* slot 29, own: 0x1e000  */
+int _ZN7daTgz_c13InitResourcesEv(void *self);       /* face                   */
+int _ZN7daTgz_c8BehaviorEv(void *self);             /* face                   */
+int _ZN7daTgz_c6RenderEv(void *self);               /* unmatched/Spiny_HostSites */
+int *_ZN7daTgz_cD1Ev(int *self);                    /* unmatched/Spiny_HostSites */
+int _ZN7daTgz_c16CleanupResourcesEv(void);
+void _ZN7daTgz_c16OnPendingDestroyEv(void);
+int *_ZN7daTgz_cD0Ev(int *self);
+int _ZN7daTgz_c13OnYoshiTryEatEv(void);                    /* slot 18, own: return 6 */
+void _ZN7daTgz_c13OnTurnIntoEggER6Player(void *self, void *p);    /* slot 19, own           */
+int _ZN7daTgz_c16OnAimedAtWithEggEv(void);                    /* slot 29, own: 0x1e000  */
 void *daTgz_c_classInit(void);
 extern unsigned char g_profile_TOGEZO[];
 
 /* ---- HEAVE_HO (238) ---------------------------------------------------- */
-int _ZN7HeaveHo13InitResourcesEv(void *self);     /* face                   */
-int _ZN7HeaveHo8BehaviorEv(void *self);           /* unmatched/HeaveHo_HostSites */
-int _ZN7HeaveHo6RenderEv(void *self);             /* unmatched/HeaveHo_HostSites */
-int _ZN7HeaveHo16CleanupResourcesEv(void);
-void _ZN7HeaveHo16OnPendingDestroyEv(void);
-int *_ZN7HeaveHoD1Ev(int *self);                  /* matched src, flat      */
-int *_ZN7HeaveHoD0Ev(int *self);                  /* matched src, flat      */
+int _ZN9daPopoi_c13InitResourcesEv(void *self);     /* face                   */
+int _ZN9daPopoi_c8BehaviorEv(void *self);           /* unmatched/HeaveHo_HostSites */
+int _ZN9daPopoi_c6RenderEv(void *self);             /* unmatched/HeaveHo_HostSites */
+int _ZN9daPopoi_c16CleanupResourcesEv(void);
+void _ZN9daPopoi_c16OnPendingDestroyEv(void);
+int *_ZN9daPopoi_cD1Ev(int *self);                  /* matched src, flat      */
+int *_ZN9daPopoi_cD0Ev(int *self);                  /* matched src, flat      */
 void *daPopoi_c_classInit(void);
 extern unsigned char g_profile_POPOI[];
 
@@ -154,20 +154,19 @@ extern unsigned char g_profile_POPOI[];
 /* THE THREE RTTI BRIDGES. Each LHS is declared in include/decl_common.h and
  * defined nowhere; alternatename_guard.py fails the build post-link if that
  * ever stops being true. */
-#pragma comment(linker, "/alternatename:__ZTV7daJgm_c=__ZTV6Lakitu")
-#pragma comment(linker, "/alternatename:__ZTV7daTgz_c=__ZTV5Spiny")
-#pragma comment(linker, "/alternatename:__ZTV9daPopoi_c=__ZTV7HeaveHo")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV7daJgm_c=__ZTV7daJgm_c")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV7daTgz_c=__ZTV7daTgz_c")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV9daPopoi_c=__ZTV9daPopoi_c")
 // ============================================================================
 // THE STATE SEAT
 // ============================================================================
 extern "C" {
 /* Lakitu's ten handler bodies (five {enter,tick} states). */
-int func_ov077_02124698(void *); int func_ov077_021243c0(void *);
-int func_ov077_021241ac(void *); int func_ov077_02123fcc(void *);
-int func_ov077_021242f0(void *); int func_ov077_02124118(void *);
-int func_ov077_02124038(void *); int func_ov077_02124394(void *);
-int func_ov077_021244d4(void *); int func_ov077_02124564(void *);
+int _ZN7daJgm_c15EnterHoverStateEv(void *); int _ZN7daJgm_c16UpdateThrowStateEv(void *);
+int _ZN7daJgm_c14EnterSpitStateEv(void *); int _ZN7daJgm_c15UpdateFallStateEv(void *);
+int _ZN7daJgm_c21UpdateYoshiMouthStateEv(void *); int _ZN7daJgm_c15UpdateSpitStateEv(void *);
+int _ZN7daJgm_c14EnterFallStateEv(void *); int _ZN7daJgm_c20EnterYoshiMouthStateEv(void *);
+int _ZN7daJgm_c15EnterThrowStateEv(void *); int _ZN7daJgm_c16UpdateHoverStateEv(void *);
 /* Spiny's twelve (six states). */
 int func_ov077_021258dc(void *); int func_ov077_02125a54(void *);
 int func_ov077_02125908(void *); int func_ov077_02125480(void *);
@@ -176,11 +175,11 @@ int func_ov077_02125a0c(void *); int func_ov077_021253a4(void *);
 int func_ov077_02125dd4(void *); int func_ov077_02125550(void *);
 int func_ov077_021256b4(void *); int func_ov077_02125830(void *);
 /* HeaveHo's ten (five states). */
-int func_ov077_02126640(void *); int func_ov077_0212679c(void *);
-int func_ov077_02126a04(void *); int func_ov077_02126930(void *);
-int func_ov077_02126cd4(void *); int func_ov077_02126ad0(void *);
-int func_ov077_02126758(void *); int func_ov077_02126a84(void *);
-int func_ov077_02126a50(void *); int func_ov077_021269a8(void *);
+int _ZN9daPopoi_c19func_ov077_02126640Ev(void *); int _ZN9daPopoi_c19func_ov077_0212679cEv(void *);
+int _ZN9daPopoi_c19func_ov077_02126a04Ev(void *); int _ZN9daPopoi_c19func_ov077_02126930Ev(void *);
+int _ZN9daPopoi_c19func_ov077_02126cd4Ev(void *); int _ZN9daPopoi_c19func_ov077_02126ad0Ev(void *);
+int _ZN9daPopoi_c19func_ov077_02126758Ev(void *); int _ZN9daPopoi_c19func_ov077_02126a84Ev(void *);
+int _ZN9daPopoi_c19func_ov077_02126a50Ev(void *); int _ZN9daPopoi_c19func_ov077_021269a8Ev(void *);
 
 /* the mounted SOURCE records, one 8-byte {fn, delta} pair each. */
 extern unsigned int data_ov077_021277e0[], data_ov077_021277e8[],
@@ -230,42 +229,42 @@ struct Ov077Seat {
 static void __fastcall pmfb7_ov077_02126640(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02127a00, the per-frame half */
-    ((void (*)(void *))(void *)func_ov077_02126640)(self);
+    ((void (*)(void *))(void *)_ZN9daPopoi_c19func_ov077_02126640Ev)(self);
 }
 static void __fastcall pmfb7_ov077_0212679c(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02127a08, the per-frame half */
-    ((void (*)(void *))(void *)func_ov077_0212679c)(self);
+    ((void (*)(void *))(void *)_ZN9daPopoi_c19func_ov077_0212679cEv)(self);
 }
 static void __fastcall pmfb7_ov077_02126ad0(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02127a28, the per-frame half */
-    ((void (*)(void *))(void *)func_ov077_02126ad0)(self);
+    ((void (*)(void *))(void *)_ZN9daPopoi_c19func_ov077_02126ad0Ev)(self);
 }
 static void __fastcall pmfb7_ov077_02126a50(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02127a40, the per-frame half */
-    ((void (*)(void *))(void *)func_ov077_02126a50)(self);
+    ((void (*)(void *))(void *)_ZN9daPopoi_c19func_ov077_02126a50Ev)(self);
 }
 static void __fastcall pmfb7_ov077_021269a8(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02127a48, the per-frame half */
-    ((void (*)(void *))(void *)func_ov077_021269a8)(self);
+    ((void (*)(void *))(void *)_ZN9daPopoi_c19func_ov077_021269a8Ev)(self);
 }
 
 const Ov077Seat g_ov077_seats[] = {
     /* Lakitu, 0x021277e0..0x02127830, copied into data_ov077_02127bc4[0..9]
        by __sinit_ov077_02127240. */
-    {data_ov077_021277e0, 0x02124698, func_ov077_02124698, "lakitu/021277e0"},
-    {data_ov077_021277e8, 0x021243c0, func_ov077_021243c0, "lakitu/021277e8"},
-    {data_ov077_021277f0, 0x021241ac, func_ov077_021241ac, "lakitu/021277f0"},
-    {data_ov077_021277f8, 0x02123fcc, func_ov077_02123fcc, "lakitu/021277f8"},
-    {data_ov077_02127800, 0x021242f0, func_ov077_021242f0, "lakitu/02127800"},
-    {data_ov077_02127808, 0x02124118, func_ov077_02124118, "lakitu/02127808"},
-    {data_ov077_02127810, 0x02124038, func_ov077_02124038, "lakitu/02127810"},
-    {data_ov077_02127818, 0x02124394, func_ov077_02124394, "lakitu/02127818"},
-    {data_ov077_02127820, 0x021244d4, func_ov077_021244d4, "lakitu/02127820"},
-    {data_ov077_02127828, 0x02124564, func_ov077_02124564, "lakitu/02127828"},
+    {data_ov077_021277e0, 0x02124698, _ZN7daJgm_c15EnterHoverStateEv, "lakitu/021277e0"},
+    {data_ov077_021277e8, 0x021243c0, _ZN7daJgm_c16UpdateThrowStateEv, "lakitu/021277e8"},
+    {data_ov077_021277f0, 0x021241ac, _ZN7daJgm_c14EnterSpitStateEv, "lakitu/021277f0"},
+    {data_ov077_021277f8, 0x02123fcc, _ZN7daJgm_c15UpdateFallStateEv, "lakitu/021277f8"},
+    {data_ov077_02127800, 0x021242f0, _ZN7daJgm_c21UpdateYoshiMouthStateEv, "lakitu/02127800"},
+    {data_ov077_02127808, 0x02124118, _ZN7daJgm_c15UpdateSpitStateEv, "lakitu/02127808"},
+    {data_ov077_02127810, 0x02124038, _ZN7daJgm_c14EnterFallStateEv, "lakitu/02127810"},
+    {data_ov077_02127818, 0x02124394, _ZN7daJgm_c20EnterYoshiMouthStateEv, "lakitu/02127818"},
+    {data_ov077_02127820, 0x021244d4, _ZN7daJgm_c15EnterThrowStateEv, "lakitu/02127820"},
+    {data_ov077_02127828, 0x02124564, _ZN7daJgm_c16UpdateHoverStateEv, "lakitu/02127828"},
     /* Spiny, 0x021278e8..0x02127948, copied into data_ov077_02127c28 (the
        0x60-byte array this lane had to pin -- see port/ov077_syms.txt) by
        __sinit_ov077_0212749c. */
@@ -285,12 +284,12 @@ const Ov077Seat g_ov077_seats[] = {
        cells data_ov077_02127cd8/ce8/cf8/d08/d18 by __sinit_ov077_021275fc. */
     {data_ov077_02127a00, 0x02126640, (PortOv077Fn)(void *)pmfb7_ov077_02126640, "heaveho/02127a00"},
     {data_ov077_02127a08, 0x0212679c, (PortOv077Fn)(void *)pmfb7_ov077_0212679c, "heaveho/02127a08"},
-    {data_ov077_02127a10, 0x02126a04, func_ov077_02126a04, "heaveho/02127a10"},
-    {data_ov077_02127a18, 0x02126930, func_ov077_02126930, "heaveho/02127a18"},
-    {data_ov077_02127a20, 0x02126cd4, func_ov077_02126cd4, "heaveho/02127a20"},
+    {data_ov077_02127a10, 0x02126a04, _ZN9daPopoi_c19func_ov077_02126a04Ev, "heaveho/02127a10"},
+    {data_ov077_02127a18, 0x02126930, _ZN9daPopoi_c19func_ov077_02126930Ev, "heaveho/02127a18"},
+    {data_ov077_02127a20, 0x02126cd4, _ZN9daPopoi_c19func_ov077_02126cd4Ev, "heaveho/02127a20"},
     {data_ov077_02127a28, 0x02126ad0, (PortOv077Fn)(void *)pmfb7_ov077_02126ad0, "heaveho/02127a28"},
-    {data_ov077_02127a30, 0x02126758, func_ov077_02126758, "heaveho/02127a30"},
-    {data_ov077_02127a38, 0x02126a84, func_ov077_02126a84, "heaveho/02127a38"},
+    {data_ov077_02127a30, 0x02126758, _ZN9daPopoi_c19func_ov077_02126758Ev, "heaveho/02127a30"},
+    {data_ov077_02127a38, 0x02126a84, _ZN9daPopoi_c19func_ov077_02126a84Ev, "heaveho/02127a38"},
     {data_ov077_02127a40, 0x02126a50, (PortOv077Fn)(void *)pmfb7_ov077_02126a50, "heaveho/02127a40"},
     {data_ov077_02127a48, 0x021269a8, (PortOv077Fn)(void *)pmfb7_ov077_021269a8, "heaveho/02127a48"},
 };
@@ -427,31 +426,31 @@ static void ov77_fill_shared(void **vt)
 // 12 OnPendingDestroy, 16 D1, 17 D0, 18, 19, 29.
 // ============================================================================
 static int __fastcall lak_init(void *s, void *)
-{ return _ZN6Lakitu13InitResourcesEv(s); }
+{ return _ZN7daJgm_c13InitResourcesEv(s); }
 static int __fastcall lak_clean(void *s, void *)
-{ (void)s; return _ZN6Lakitu16CleanupResourcesEv(); }
+{ (void)s; return _ZN7daJgm_c16CleanupResourcesEv(); }
 static int __fastcall lak_behavior(void *s, void *)
-{ return _ZN6Lakitu8BehaviorEv(s); }
+{ return _ZN7daJgm_c8BehaviorEv(s); }
 static int __fastcall lak_render(void *s, void *)
 { port_actor_render_probe("LAKITU", (char *)s + 0xd4);
-  return _ZN6Lakitu6RenderEv(s); }
+  return _ZN7daJgm_c6RenderEv(s); }
 static int __fastcall lak_pdes(void *s, void *)
-{ (void)s; _ZN6Lakitu16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN7daJgm_c16OnPendingDestroyEv(); return 0; }
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (lak_d1) spelled the same chain by hand. */
 static int __fastcall lak_d0(void *s, void *)
-{ return (int)(size_t)_ZN6LakituD0Ev((int *)s); }
+{ return (int)(size_t)_ZN7daJgm_cD0Ev((int *)s); }
 static int __fastcall lak_yoshi(void *s, void *)
-{ (void)s; return _ZN6Lakitu13OnYoshiTryEatEv(); }
+{ (void)s; return _ZN7daJgm_c13OnYoshiTryEatEv(); }
 static int __fastcall lak_egg(void *s, void *, void *p)
-{ _ZN6Lakitu13OnTurnIntoEggER6Player(s, p); return 0; }
+{ _ZN7daJgm_c13OnTurnIntoEggER6Player(s, p); return 0; }
 static int __fastcall lak_aimed(void *s, void *)
-{ (void)s; return _ZN6Lakitu16OnAimedAtWithEggEv(); }
+{ (void)s; return _ZN7daJgm_c16OnAimedAtWithEggEv(); }
 
 extern "C" void hal_fill_lakitu_vtable(void)
 {
     port_ov077_states_seat();
-    void **vt = (void **)_ZTV6Lakitu;
+    void **vt = (void **)_ZTV7daJgm_c;
     ov77_fill_shared(vt);
     vt[0]  = (void *)lak_init;
     vt[3]  = (void *)lak_clean;
@@ -469,31 +468,31 @@ extern "C" void hal_fill_lakitu_vtable(void)
 // SPINY (daTgz_c, 260). Same own-slot set as Lakitu.
 // ============================================================================
 static int __fastcall spn_init(void *s, void *)
-{ return _ZN5Spiny13InitResourcesEv(s); }
+{ return _ZN7daTgz_c13InitResourcesEv(s); }
 static int __fastcall spn_clean(void *s, void *)
-{ (void)s; return _ZN5Spiny16CleanupResourcesEv(); }
+{ (void)s; return _ZN7daTgz_c16CleanupResourcesEv(); }
 static int __fastcall spn_behavior(void *s, void *)
-{ return _ZN5Spiny8BehaviorEv(s); }
+{ return _ZN7daTgz_c8BehaviorEv(s); }
 static int __fastcall spn_render(void *s, void *)
 { port_actor_render_probe("SPINY", (char *)s + 0x124);
-  return _ZN5Spiny6RenderEv(s); }
+  return _ZN7daTgz_c6RenderEv(s); }
 static int __fastcall spn_pdes(void *s, void *)
-{ (void)s; _ZN5Spiny16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN7daTgz_c16OnPendingDestroyEv(); return 0; }
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (spn_d1) spelled the same chain by hand. */
 static int __fastcall spn_d0(void *s, void *)
-{ return (int)(size_t)_ZN5SpinyD0Ev((int *)s); }
+{ return (int)(size_t)_ZN7daTgz_cD0Ev((int *)s); }
 static int __fastcall spn_yoshi(void *s, void *)
-{ (void)s; return _ZN5Spiny13OnYoshiTryEatEv(); }
+{ (void)s; return _ZN7daTgz_c13OnYoshiTryEatEv(); }
 static int __fastcall spn_egg(void *s, void *, void *p)
-{ _ZN5Spiny13OnTurnIntoEggER6Player(s, p); return 0; }
+{ _ZN7daTgz_c13OnTurnIntoEggER6Player(s, p); return 0; }
 static int __fastcall spn_aimed(void *s, void *)
-{ (void)s; return _ZN5Spiny16OnAimedAtWithEggEv(); }
+{ (void)s; return _ZN7daTgz_c16OnAimedAtWithEggEv(); }
 
 extern "C" void hal_fill_spiny_vtable(void)
 {
     port_ov077_states_seat();
-    void **vt = (void **)_ZTV5Spiny;
+    void **vt = (void **)_ZTV7daTgz_c;
     ov77_fill_shared(vt);
     vt[0]  = (void *)spn_init;
     vt[3]  = (void *)spn_clean;
@@ -513,25 +512,25 @@ extern "C" void hal_fill_spiny_vtable(void)
 // what distinguishes it from the other two.
 // ============================================================================
 static int __fastcall hho_init(void *s, void *)
-{ return _ZN7HeaveHo13InitResourcesEv(s); }
+{ return _ZN9daPopoi_c13InitResourcesEv(s); }
 static int __fastcall hho_clean(void *s, void *)
-{ (void)s; return _ZN7HeaveHo16CleanupResourcesEv(); }
+{ (void)s; return _ZN9daPopoi_c16CleanupResourcesEv(); }
 static int __fastcall hho_behavior(void *s, void *)
-{ return _ZN7HeaveHo8BehaviorEv(s); }
+{ return _ZN9daPopoi_c8BehaviorEv(s); }
 static int __fastcall hho_render(void *s, void *)
 { port_actor_render_probe("HEAVE_HO", (char *)s + 0x340);
-  return _ZN7HeaveHo6RenderEv(s); }
+  return _ZN9daPopoi_c6RenderEv(s); }
 static int __fastcall hho_pdes(void *s, void *)
-{ (void)s; _ZN7HeaveHo16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN9daPopoi_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall hho_d1(void *s, void *)
-{ return (int)(size_t)_ZN7HeaveHoD1Ev((int *)s); }
+{ return (int)(size_t)_ZN9daPopoi_cD1Ev((int *)s); }
 static int __fastcall hho_d0(void *s, void *)
-{ return (int)(size_t)_ZN7HeaveHoD0Ev((int *)s); }
+{ return (int)(size_t)_ZN9daPopoi_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_heave_ho_vtable(void)
 {
     port_ov077_states_seat();
-    void **vt = (void **)_ZTV7HeaveHo;
+    void **vt = (void **)_ZTV9daPopoi_c;
     ov77_fill_shared(vt);
     vt[0]  = (void *)hho_init;
     vt[3]  = (void *)hho_clean;
@@ -556,11 +555,11 @@ extern "C" void hal_fill_heave_ho_vtable(void)
  * port/unmatched/Lakitu_HostSites.cpp -- the matched body drops the state
  * index the ROM passed in r1, which crashed all four LAKITU levels on this
  * seat's first boot. That file carries the ROM evidence for the value. */
-extern "C" int _ZN6Lakitu8BehaviorEv(void *self)
-{ return ((Lakitu *)self)->Lakitu::Behavior(); }
-extern "C" int _ZN5Spiny13InitResourcesEv(void *self)
-{ return ((Spiny *)self)->Spiny::InitResources(); }
-extern "C" int _ZN5Spiny8BehaviorEv(void *self)
-{ return ((Spiny *)self)->Spiny::Behavior(); }
-extern "C" int _ZN7HeaveHo13InitResourcesEv(void *self)
-{ return ((HeaveHo *)self)->HeaveHo::InitResources(); }
+extern "C" int _ZN7daJgm_c8BehaviorEv(void *self)
+{ return ((daJgm_c *)self)->daJgm_c::Behavior(); }
+extern "C" int _ZN7daTgz_c13InitResourcesEv(void *self)
+{ return ((daTgz_c *)self)->daTgz_c::InitResources(); }
+extern "C" int _ZN7daTgz_c8BehaviorEv(void *self)
+{ return ((daTgz_c *)self)->daTgz_c::Behavior(); }
+extern "C" int _ZN9daPopoi_c13InitResourcesEv(void *self)
+{ return ((daPopoi_c *)self)->daPopoi_c::InitResources(); }

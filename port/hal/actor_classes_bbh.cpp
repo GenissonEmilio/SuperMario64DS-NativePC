@@ -44,7 +44,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 #include "dActor_c.h"
 #include "dtor_faces_cpp.h"
 #include "fBase_c.h"
-#include "HauntedChair.h"
+#include "daChair_c.h"
 
 extern "C" {
 /* the shared lifecycle halves, the same functions every enemy fill writes */
@@ -194,12 +194,12 @@ static void bbh_fill_shared(void **vt)
 // slots are 0/3/6/9/16/17; everything past 17 is Actor's default. Init/Behavior/
 // Render are real C++ methods (faces below); Clean and D0 are plain C.
 extern "C" {
-int _ZN12HauntedChair13InitResourcesEv(void *self);   /* face: below */
-int _ZN12HauntedChair8BehaviorEv(void *self);         /* face: below */
-int _ZN12HauntedChair6RenderEv(void *self);           /* face: below */
-int _ZN12HauntedChair16CleanupResourcesEv(void *self); /* .c, C linkage */
-int *_ZN12HauntedChairD0Ev(int *self);                /* .c, C linkage */
-void *_ZTV12HauntedChair[31];
+int _ZN9daChair_c13InitResourcesEv(void *self);   /* face: below */
+int _ZN9daChair_c8BehaviorEv(void *self);         /* face: below */
+int _ZN9daChair_c6RenderEv(void *self);           /* face: below */
+int _ZN9daChair_c16CleanupResourcesEv(void *self); /* .c, C linkage */
+int *_ZN9daChair_cD0Ev(int *self);                /* .c, C linkage */
+void *_ZTV9daChair_c[31];
 int *daChair_c_classInit(void);
 /* The Itanium-named sub-object destructors, all in the build with C linkage
    (hal/actor_classes.cpp). The D1 thunk below runs the class's own teardown
@@ -207,32 +207,32 @@ int *daChair_c_classInit(void);
    byte-matched D1 is a .cpp destructor whose auto-emitted member-dtor calls
    would resolve to MSVC-mangled names that do not exist in this build. */
 void _ZN5ModelD1Ev(void *);
-void _ZN11ShadowModelD1Ev(void *);
+void _ZN17dExtShadowModel_cD1Ev(void *);
 void _ZN10dBgCh_ActrD1Ev(void *);
 void _ZN10dCcAcPos_cD1Ev(void *);
 void *_ZN8dActor_cD2Ev(void *);
-extern void *_ZTV9daChair_c;   /* aliased to _ZTV12HauntedChair below */
+/* PORTSYNC2: _ZTV9daChair_c is the array declared above (one name in main now). */
 }
 static int __fastcall hc_init(void *s, void *)
-{ return _ZN12HauntedChair13InitResourcesEv(s); }
+{ return _ZN9daChair_c13InitResourcesEv(s); }
 static int __fastcall hc_clean(void *s, void *)
-{ return _ZN12HauntedChair16CleanupResourcesEv(s); }
+{ return _ZN9daChair_c16CleanupResourcesEv(s); }
 static int __fastcall hc_behavior(void *s, void *)
-{ return _ZN12HauntedChair8BehaviorEv(s); }
+{ return _ZN9daChair_c8BehaviorEv(s); }
 static int __fastcall hc_render(void *s, void *)
 { port_actor_render_probe("HAUNTED_CHAIR", (char *)s + 0xd4);
-  return _ZN12HauntedChair6RenderEv(s); }
+  return _ZN9daChair_c6RenderEv(s); }
 /* D1, the complete-object destructor slot 16 holds: the ROM's D0 chain
    (_ZN12HauntedChairD0Ev) without the Memory::Deallocate at its tail, because
    the caller of slot 16 (ActorBase::AfterCleanupResources) deallocates itself. */
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (hc_d1) spelled the same chain by hand. */
 static int __fastcall hc_d0(void *s, void *)
-{ return (int)(size_t)_ZN12HauntedChairD0Ev((int *)s); }
+{ return (int)(size_t)_ZN9daChair_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_haunted_chair_vtable(void)
 {
-    void **vt = _ZTV12HauntedChair;
+    void **vt = _ZTV9daChair_c;
     bbh_fill_shared(vt);
     vt[0] = (void *)hc_init;
     vt[3] = (void *)hc_clean;
@@ -249,19 +249,18 @@ extern "C" void hal_fill_haunted_chair_vtable(void)
 // the face bridges cdecl to __thiscall. Clean and D0 are already C-linkage in
 // their .c src, so they get no face.
 extern "C" {
-int _ZN12HauntedChair13InitResourcesEv(void *self)
-{ return ((HauntedChair *)self)->HauntedChair::InitResources(); }
-int _ZN12HauntedChair8BehaviorEv(void *self)
-{ return ((HauntedChair *)self)->HauntedChair::Behavior(); }
-int _ZN12HauntedChair6RenderEv(void *self)
-{ return ((HauntedChair *)self)->HauntedChair::Render(); }
+int _ZN9daChair_c13InitResourcesEv(void *self)
+{ return ((daChair_c *)self)->daChair_c::InitResources(); }
+int _ZN9daChair_c8BehaviorEv(void *self)
+{ return ((daChair_c *)self)->daChair_c::Behavior(); }
+int _ZN9daChair_c6RenderEv(void *self)
+{ return ((daChair_c *)self)->daChair_c::Render(); }
 }
 
 /* _ZTV9daChair_c is the RTTI base spelling dsd names at _ZTV12HauntedChair's
    address; the .c factory/destructor reach it by that name. Point it at the host
    array. */
-#pragma comment(linker, "/alternatename:__ZTV9daChair_c=__ZTV12HauntedChair")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV9daChair_c=__ZTV9daChair_c")
 /* The C++/C linkage bridge. HauntedChair::InitResources declares the identity
    Matrix4x3 it copies (IDENTITY_MATRIX4X3) OUTSIDE its extern "C" block, so MSVC
    mangles the reference as a C++ name while romdata.c defines the one real

@@ -142,9 +142,9 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 
 #include "dActor_c.h"
 #include "fBase_c.h"
-#include "Submarine.h"
-#include "WaterSuction.h"
-#include "Whirlpool.h"
+#include "daObjWlSubmarine_c.h"
+#include "daWater_Suikomi_c.h"
+#include "daWater_Tatumaki_c.h"
 
 // ---- the two private names the G0/G1 routing needs -------------------------
 // include/decl_common.h:244-247 declares data_ov026_02113ebc / _02113eb4 /
@@ -234,7 +234,7 @@ int _ZTV17daObjWlPolelift_c[31];      /* vtspan: data_ov026_02113ae0 */
 int _ZTV21daObjWlKoopaShutter_c[32];  /* vtspan: _ZTV13BowserShutter */
 int _ZTV18daObjWlSubmarine_c[32];     /* vtspan: _ZTV9Submarine */
 int _ZTV18daWater_Tatumaki_c[31];     /* vtspan: _ZTV18daWater_Tatumaki_c */
-int _ZTV12WaterSuction[31];           /* vtspan: _ZTV12WaterSuction */
+int _ZTV17daWater_Suikomi_c[31];           /* vtspan: _ZTV12WaterSuction */
 
 // ---- the class bodies -------------------------------------------------------
 /* id 89, daObjWlPolelift_c -- all seven flat C/C++ bodies, no faces needed */
@@ -247,43 +247,43 @@ int *_ZN17daObjWlPolelift_cD0Ev(int *self);       /* slot 17 D0 */
 void *daObjWlPolelift_c_classInit(void);           /* factory, installs the table */
 
 /* id 91, daObjWlKoopaShutter_c */
-int _ZN13BowserShutter13InitResourcesEv(char *self);       /* slot 0  */
-int _ZN13BowserShutter16CleanupResourcesEv(void *self);       /* slot 3  */
-int _ZN13BowserShutter8BehaviorEv(void);             /* slot 6  Behavior, (void) */
-int _ZN13BowserShutter6RenderEv(void *self);       /* slot 9  Render (plain Model shadow) */
-int *_ZN13BowserShutterD1Ev(int *self);       /* slot 16 D1 */
-int *_ZN13BowserShutterD0Ev(int *self);       /* slot 17 D0 */
+int _ZN21daObjWlKoopaShutter_c13InitResourcesEv(char *self);       /* slot 0  */
+int _ZN21daObjWlKoopaShutter_c16CleanupResourcesEv(void *self);       /* slot 3  */
+int _ZN21daObjWlKoopaShutter_c8BehaviorEv(void);             /* slot 6  Behavior, (void) */
+int _ZN21daObjWlKoopaShutter_c6RenderEv(void *self);       /* slot 9  Render (plain Model shadow) */
+int *_ZN21daObjWlKoopaShutter_cD1Ev(int *self);       /* slot 16 D1 */
+int *_ZN21daObjWlKoopaShutter_cD0Ev(int *self);       /* slot 17 D0 */
 void *daObjWlKoopaShutter_c_classInit(void);
 extern unsigned char g_profile_WL_KOOPA_SHUTTER[];   /* ov026 0x02113b80 */
 
 /* id 90, daObjWlSubmarine_c -- NO own Behavior */
-int _ZN9Submarine13InitResourcesEv(char *self);       /* slot 0  */
-int _ZN9Submarine16CleanupResourcesEv(void *self);       /* slot 3  */
-int _ZN9Submarine6RenderEv(void *self);       /* slot 9  Render (plain Model shadow) */
-int *_ZN9SubmarineD1Ev(int *self);       /* slot 16 D1 */
-int *_ZN9SubmarineD0Ev(int *self);       /* slot 17 D0 */
+int _ZN18daObjWlSubmarine_c13InitResourcesEv(char *self);       /* slot 0  */
+int _ZN18daObjWlSubmarine_c16CleanupResourcesEv(void *self);       /* slot 3  */
+int _ZN18daObjWlSubmarine_c6RenderEv(void *self);       /* slot 9  Render (plain Model shadow) */
+int *_ZN18daObjWlSubmarine_cD1Ev(int *self);       /* slot 16 D1 */
+int *_ZN18daObjWlSubmarine_cD0Ev(int *self);       /* slot 17 D0 */
 void *daObjWlSubmarine_c_classInit(void);
 extern unsigned char g_profile_WL_SUBMARINE[];       /* ov026 0x02113c48 */
 
 /* id 246, daWater_Tatumaki_c -- the `_ZN9Submarine*` names are ITS methods */
-int _ZN9Whirlpool13InitResourcesEv(void *self);    /* slot 0, FACED below     */
-int _ZN9Whirlpool16CleanupResourcesEv(void);       /* slot 3, .c body, (void) */
-int _ZN9Whirlpool8BehaviorEv(void *self);          /* slot 6, HOST COPY       */
-int _ZN9Whirlpool6RenderEv(void *self);            /* slot 9, HOST COPY       */
-void _ZN9Whirlpool16OnPendingDestroyEv(void);      /* slot 12, own, empty     */
-int *_ZN9WhirlpoolD1Ev(int *self);                 /* slot 16 D1              */
-int *_ZN9WhirlpoolD0Ev(int *self);                 /* slot 17 D0              */
+int _ZN18daWater_Tatumaki_c13InitResourcesEv(void *self);    /* slot 0, FACED below     */
+int _ZN18daWater_Tatumaki_c16CleanupResourcesEv(void);       /* slot 3, .c body, (void) */
+int _ZN18daWater_Tatumaki_c8BehaviorEv(void *self);          /* slot 6, HOST COPY       */
+int _ZN18daWater_Tatumaki_c6RenderEv(void *self);            /* slot 9, HOST COPY       */
+void _ZN18daWater_Tatumaki_c16OnPendingDestroyEv(void);      /* slot 12, own, empty     */
+int *_ZN18daWater_Tatumaki_cD1Ev(int *self);                 /* slot 16 D1              */
+int *_ZN18daWater_Tatumaki_cD0Ev(int *self);                 /* slot 17 D0              */
 void *daWater_Tatumaki_c_classInit(void);
 extern unsigned char g_profile_WATER_TATUMAKI[];        /* ov026 0x02113d30 */
 
 /* id 247, daWater_Suikomi_c */
-int _ZN12WaterSuction13InitResourcesEv(void *self); /* slot 0, FACED below     */
-int _ZN12WaterSuction16CleanupResourcesEv(void);    /* slot 3, .c body, (void) */
-int _ZN12WaterSuction8BehaviorEv(void *self);       /* slot 6, HOST COPY       */
-int _ZN12WaterSuction6RenderEv(void);               /* slot 9, .c body, (void) */
-void _ZN12WaterSuction16OnPendingDestroyEv(void);   /* slot 12, own, empty     */
-int *_ZN12WaterSuctionD1Ev(int *self);              /* slot 16 D1              */
-int *_ZN12WaterSuctionD0Ev(int *self);              /* slot 17 D0              */
+int _ZN17daWater_Suikomi_c13InitResourcesEv(void *self); /* slot 0, FACED below     */
+int _ZN17daWater_Suikomi_c16CleanupResourcesEv(void);    /* slot 3, .c body, (void) */
+int _ZN17daWater_Suikomi_c8BehaviorEv(void *self);       /* slot 6, HOST COPY       */
+int _ZN17daWater_Suikomi_c6RenderEv(void);               /* slot 9, .c body, (void) */
+void _ZN17daWater_Suikomi_c16OnPendingDestroyEv(void);   /* slot 12, own, empty     */
+int *_ZN17daWater_Suikomi_cD1Ev(int *self);              /* slot 16 D1              */
+int *_ZN17daWater_Suikomi_cD0Ev(int *self);              /* slot 17 D0              */
 void *daWater_Suikomi_c_classInit(void);
 extern unsigned char g_profile_WATER_SUIKOMI[];      /* ov026 0x02113e00 */
 
@@ -302,10 +302,10 @@ extern PortOv026Pmf data_ov026_02113dd0;   /* suction   state 0 tick  021122b0 *
 extern PortOv026Pmf data_ov026_02113dd8;   /* suction   state 0 enter 021122cc */
 
 /* the six handler bodies those pairs point at -- all matched src in the slice */
-int func_ov026_02111ed8(void);             /* whirlpool state 0 enter (returns 1) */
-int func_ov026_02111d4c(char *self);       /* whirlpool state 0 tick  */
-int func_ov026_02111cb4(char *self);       /* whirlpool state 1 enter */
-int func_ov026_02111b24(char *self);       /* whirlpool state 1 tick  */
+int _ZN18daWater_Tatumaki_c19func_ov026_02111ed8Ev(void);             /* whirlpool state 0 enter (returns 1) */
+int _ZN18daWater_Tatumaki_c19func_ov026_02111d4cEv(char *self);       /* whirlpool state 0 tick  */
+int _ZN18daWater_Tatumaki_c19func_ov026_02111cb4Ev(char *self);       /* whirlpool state 1 enter */
+int _ZN18daWater_Tatumaki_c19func_ov026_02111b24Ev(char *self);       /* whirlpool state 1 tick  */
 int func_ov026_021122cc(void);             /* suction state 0 enter (returns 1) */
 int func_ov026_021122b0(void *self);       /* suction state 0 tick    */
 
@@ -452,8 +452,8 @@ static void ov26_fill_shared(void *volatile *vt)
         (void)dead_edx;                                                   \
         sym((char *)self);                                                \
     }
-OV026_FACE(02111d4c, func_ov026_02111d4c)   /* whirlpool  02113cec */
-OV026_FACE(02111b24, func_ov026_02111b24)   /* whirlpool  02113cfc */
+OV026_FACE(02111d4c, _ZN18daWater_Tatumaki_c19func_ov026_02111d4cEv)   /* whirlpool  02113cec */
+OV026_FACE(02111b24, _ZN18daWater_Tatumaki_c19func_ov026_02111b24Ev)   /* whirlpool  02113cfc */
 
 static void __fastcall ov026_f021122b0(void *self, void *dead_edx)
 {
@@ -465,11 +465,11 @@ typedef int (*PortOv026Fn)(void *);
 static const struct {
     PortOv026Pmf *cell; unsigned rom; PortOv026Fn host; const char *what;
 } g_ov026_pmf[6] = {
-    {&data_ov026_02113d04, 0x02111ed8, (PortOv026Fn)func_ov026_02111ed8,
+    {&data_ov026_02113d04, 0x02111ed8, (PortOv026Fn)_ZN18daWater_Tatumaki_c19func_ov026_02111ed8Ev,
      "whirlpool state 0 enter"},
     {&data_ov026_02113cec, 0x02111d4c, (PortOv026Fn)(void *)ov026_f02111d4c,
      "whirlpool state 0 tick"},
-    {&data_ov026_02113cf4, 0x02111cb4, (PortOv026Fn)func_ov026_02111cb4,
+    {&data_ov026_02113cf4, 0x02111cb4, (PortOv026Fn)_ZN18daWater_Tatumaki_c19func_ov026_02111cb4Ev,
      "whirlpool state 1 enter"},
     {&data_ov026_02113cfc, 0x02111b24, (PortOv026Fn)(void *)ov026_f02111b24,
      "whirlpool state 1 tick"},
@@ -536,18 +536,18 @@ extern "C" void hal_fill_ov026_polelift_vtable(void)
 // Own overrides: 0, 3, 6, 9, 16, 17. Slot 31 is Platform::Kill unchanged.
 // ============================================================================
 static int __fastcall ks_init(void *s, void *)
-{ return _ZN13BowserShutter13InitResourcesEv((char *)s); }
+{ return _ZN21daObjWlKoopaShutter_c13InitResourcesEv((char *)s); }
 static int __fastcall ks_clean(void *s, void *)
-{ return _ZN13BowserShutter16CleanupResourcesEv(s); }
+{ return _ZN21daObjWlKoopaShutter_c16CleanupResourcesEv(s); }
 static int __fastcall ks_behavior(void *s, void *)
-{ (void)s; return _ZN13BowserShutter8BehaviorEv(); }
+{ (void)s; return _ZN21daObjWlKoopaShutter_c8BehaviorEv(); }
 static int __fastcall ks_render(void *s, void *)
 { port_actor_render_probe("BOWSER_SHUTTER", (char *)s + 0xd4);
-  return _ZN13BowserShutter6RenderEv(s); }
+  return _ZN21daObjWlKoopaShutter_c6RenderEv(s); }
 static int __fastcall ks_d1(void *s, void *)
-{ return (int)(size_t)_ZN13BowserShutterD1Ev((int *)s); }
+{ return (int)(size_t)_ZN21daObjWlKoopaShutter_cD1Ev((int *)s); }
 static int __fastcall ks_d0(void *s, void *)
-{ return (int)(size_t)_ZN13BowserShutterD0Ev((int *)s); }
+{ return (int)(size_t)_ZN21daObjWlKoopaShutter_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_ov026_bowser_shutter_vtable(void)
 {
@@ -570,18 +570,18 @@ extern "C" void hal_fill_ov026_bowser_shutter_vtable(void)
 // Slot 31 is Platform::Kill.
 // ============================================================================
 static int __fastcall sb_init(void *s, void *)
-{ return _ZN9Submarine13InitResourcesEv((char *)s); }
+{ return _ZN18daObjWlSubmarine_c13InitResourcesEv((char *)s); }
 static int __fastcall sb_clean(void *s, void *)
-{ return _ZN9Submarine16CleanupResourcesEv(s); }
+{ return _ZN18daObjWlSubmarine_c16CleanupResourcesEv(s); }
 static int __fastcall sb_behavior(void *s, void *)
 { return ((fBase_c *)s)->fBase_c::Behavior(); }
 static int __fastcall sb_render(void *s, void *)
 { port_actor_render_probe("SUBMARINE", (char *)s + 0xd4);
-  return _ZN9Submarine6RenderEv(s); }
+  return _ZN18daObjWlSubmarine_c6RenderEv(s); }
 static int __fastcall sb_d1(void *s, void *)
-{ return (int)(size_t)_ZN9SubmarineD1Ev((int *)s); }
+{ return (int)(size_t)_ZN18daObjWlSubmarine_cD1Ev((int *)s); }
 static int __fastcall sb_d0(void *s, void *)
-{ return (int)(size_t)_ZN9SubmarineD0Ev((int *)s); }
+{ return (int)(size_t)_ZN18daObjWlSubmarine_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_ov026_submarine_vtable(void)
 {
@@ -603,20 +603,20 @@ extern "C" void hal_fill_ov026_submarine_vtable(void)
 // header and port/slice_ov026cast.txt.
 // ============================================================================
 static int __fastcall wp_init(void *s, void *)
-{ return _ZN9Whirlpool13InitResourcesEv(s); }
+{ return _ZN18daWater_Tatumaki_c13InitResourcesEv(s); }
 static int __fastcall wp_clean(void *s, void *)
-{ (void)s; return _ZN9Whirlpool16CleanupResourcesEv(); }
+{ (void)s; return _ZN18daWater_Tatumaki_c16CleanupResourcesEv(); }
 static int __fastcall wp_behavior(void *s, void *)
-{ return _ZN9Whirlpool8BehaviorEv(s); }
+{ return _ZN18daWater_Tatumaki_c8BehaviorEv(s); }
 static int __fastcall wp_render(void *s, void *)
 { port_actor_render_probe("WHIRLPOOL", (char *)s + 0x114);
-  return _ZN9Whirlpool6RenderEv(s); }
+  return _ZN18daWater_Tatumaki_c6RenderEv(s); }
 static int __fastcall wp_pdes(void *s, void *)
-{ (void)s; _ZN9Whirlpool16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN18daWater_Tatumaki_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall wp_d1(void *s, void *)
-{ return (int)(size_t)_ZN9WhirlpoolD1Ev((int *)s); }
+{ return (int)(size_t)_ZN18daWater_Tatumaki_cD1Ev((int *)s); }
 static int __fastcall wp_d0(void *s, void *)
-{ return (int)(size_t)_ZN9WhirlpoolD0Ev((int *)s); }
+{ return (int)(size_t)_ZN18daWater_Tatumaki_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_ov026_whirlpool_vtable(void)
 {
@@ -639,23 +639,23 @@ extern "C" void hal_fill_ov026_whirlpool_vtable(void)
 // its sinit's work is reachable; its proof is no-regression, not a census move.
 // ============================================================================
 static int __fastcall ws_init(void *s, void *)
-{ return _ZN12WaterSuction13InitResourcesEv(s); }
+{ return _ZN17daWater_Suikomi_c13InitResourcesEv(s); }
 static int __fastcall ws_clean(void *s, void *)
-{ (void)s; return _ZN12WaterSuction16CleanupResourcesEv(); }
+{ (void)s; return _ZN17daWater_Suikomi_c16CleanupResourcesEv(); }
 static int __fastcall ws_behavior(void *s, void *)
-{ return _ZN12WaterSuction8BehaviorEv(s); }
+{ return _ZN17daWater_Suikomi_c8BehaviorEv(s); }
 static int __fastcall ws_render(void *s, void *)
-{ (void)s; return _ZN12WaterSuction6RenderEv(); }
+{ (void)s; return _ZN17daWater_Suikomi_c6RenderEv(); }
 static int __fastcall ws_pdes(void *s, void *)
-{ (void)s; _ZN12WaterSuction16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN17daWater_Suikomi_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall ws_d1(void *s, void *)
-{ return (int)(size_t)_ZN12WaterSuctionD1Ev((int *)s); }
+{ return (int)(size_t)_ZN17daWater_Suikomi_cD1Ev((int *)s); }
 static int __fastcall ws_d0(void *s, void *)
-{ return (int)(size_t)_ZN12WaterSuctionD0Ev((int *)s); }
+{ return (int)(size_t)_ZN17daWater_Suikomi_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_ov026_water_suction_vtable(void)
 {
-    void *volatile *vt = (void *volatile *)_ZTV12WaterSuction;
+    void *volatile *vt = (void *volatile *)_ZTV17daWater_Suikomi_c;
     ov26_fill_shared(vt);
     vt[0]  = (void *)ws_init;
     vt[3]  = (void *)ws_clean;
@@ -680,8 +680,8 @@ extern "C" {
    sits in table 0x02113c6c. src/_ZN9Whirlpool13InitResourcesEv.cpp defines
    Whirlpool::InitResources and reads its ModelAnim at +0x114, where the
    Submarine body reads a Model at +0xd4. */
-int _ZN9Whirlpool13InitResourcesEv(void *self)
-{ return ((Whirlpool *)self)->Whirlpool::InitResources(); }
-int _ZN12WaterSuction13InitResourcesEv(void *self)
-{ return ((WaterSuction *)self)->WaterSuction::InitResources(); }
+int _ZN18daWater_Tatumaki_c13InitResourcesEv(void *self)
+{ return ((daWater_Tatumaki_c *)self)->daWater_Tatumaki_c::InitResources(); }
+int _ZN17daWater_Suikomi_c13InitResourcesEv(void *self)
+{ return ((daWater_Suikomi_c *)self)->daWater_Suikomi_c::InitResources(); }
 }

@@ -35,11 +35,11 @@
 # All eight are MATCHING at 2004/b56 with --strict-relocs (tools/match.py by
 # ROM address) and VERIFIED by tools/prepush_linkcheck.py; none has an
 # #ifdef _MSC_VER arm, and none needed one.
-src/func_02018270.c
-src/func_020185c0.c
-src/func_02018598.c
-src/func_0204eda4.c
+src/unnamed/arm9/0201/func_02018270.c
+src/unnamed/arm9/0201/func_020185c0.c
+src/unnamed/arm9/0201/func_02018598.c
+src/engine/sound/SoundEngine.cpp
 src/UnloadArchive.c
 src/UnloadArchives.c
-src/func_02018908.c
-src/func_0204ee10.c
+src/unnamed/arm9/0201/func_02018908.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 41): src/func_0204ee10.c

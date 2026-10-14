@@ -114,9 +114,9 @@ void port_ov024_syms_patch(void);
 void __sinit_ov024_02112808(void);
 
 /* the bodies src spells with C names (port/slice_sweep1_ov024.txt) */
-int *_ZN10PyramidTopD1Ev(int *self);              /* 0x021138c8 slot 16 */
-int *_ZN10PyramidTopD0Ev(int *self);              /* 0x021138c8 slot 17 */
-int *_ZN10PyramidTagD0Ev(int *self);              /* 0x02113844 slot 17 */
+int *_ZN16daObjDlPyramid_cD1Ev(int *self);              /* 0x021138c8 slot 16 */
+int *_ZN16daObjDlPyramid_cD0Ev(int *self);              /* 0x021138c8 slot 17 */
+int *_ZN21daObjDlPyramidDummy_cD0Ev(int *self);              /* 0x02113844 slot 17 */
 void *daObjDlPyramid_c_classInit(void);                     /* id 85 */
 void *daObjDlPyramidDummy_c_classInit(void);                     /* id 86 */
 
@@ -127,8 +127,8 @@ void *_ZN8dActor_cD2Ev(void *self);                  /* arm9 0x020112c8 */
 /* the two host vtables, both excluded from the mount. 31 and 32 -- NOT the
    same length, see this file's header. */
 DSSTATE_BEGIN
-void *_ZTV10PyramidTag[31];    /* 0x02113844, id 86, Actor close */
-void *_ZTV10PyramidTop[32];    /* 0x021138c8, id 85, Platform close */
+void *_ZTV21daObjDlPyramidDummy_c[31];    /* 0x02113844, id 86, Actor close */
+void *_ZTV16daObjDlPyramid_c[32];    /* 0x021138c8, id 85, Platform close */
 DSSTATE_END
 }
 
@@ -138,29 +138,28 @@ DSSTATE_END
    everywhere and neither alias can be defeated. The other word PyramidTop's
    destructors store, _ZTV10dBgActor_c, is Platform's base table and is already
    a host array in hal/actor_classes.cpp. */
-#pragma comment(linker, "/alternatename:__ZTV16daObjDlPyramid_c=__ZTV10PyramidTop")
-#pragma comment(linker, "/alternatename:__ZTV21daObjDlPyramidDummy_c=__ZTV10PyramidTag")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV16daObjDlPyramid_c=__ZTV16daObjDlPyramid_c")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV21daObjDlPyramidDummy_c=__ZTV21daObjDlPyramidDummy_c")
 /* The six bodies src defines as real C++ methods rather than extern-"C" free
    functions, faced here -- the ov013/ov025/ov035 recipe. Both Renders ride
    FROM SRC: PyramidTop's is a plain-Model slot-5 bare-call shadow, and it goes
    over the SECOND model at +0x320, not +0xd4 (the one its InitResources gives
    the BMD). PyramidTag has no Render at all. */
-#include "PyramidTop.h"
-#include "PyramidTag.h"
+#include "daObjDlPyramid_c.h"
+#include "daObjDlPyramidDummy_c.h"
 extern "C" {
-int _ZN10PyramidTop13InitResourcesEv(void *self)
-{ return ((PyramidTop *)self)->PyramidTop::InitResources(); }
-int _ZN10PyramidTop16CleanupResourcesEv(void *self)
-{ return ((PyramidTop *)self)->PyramidTop::CleanupResources(); }
-int _ZN10PyramidTop8BehaviorEv(void *self)
-{ return ((PyramidTop *)self)->PyramidTop::Behavior(); }
-int _ZN10PyramidTop6RenderEv(void *self)
-{ return ((PyramidTop *)self)->PyramidTop::Render(); }
-int _ZN10PyramidTag13InitResourcesEv(void *self)
-{ return ((PyramidTag *)self)->PyramidTag::InitResources(); }
-int _ZN10PyramidTag8BehaviorEv(void *self)
-{ return ((PyramidTag *)self)->PyramidTag::Behavior(); }
+int _ZN16daObjDlPyramid_c13InitResourcesEv(void *self)
+{ return ((daObjDlPyramid_c *)self)->daObjDlPyramid_c::InitResources(); }
+int _ZN16daObjDlPyramid_c16CleanupResourcesEv(void *self)
+{ return ((daObjDlPyramid_c *)self)->daObjDlPyramid_c::CleanupResources(); }
+int _ZN16daObjDlPyramid_c8BehaviorEv(void *self)
+{ return ((daObjDlPyramid_c *)self)->daObjDlPyramid_c::Behavior(); }
+int _ZN16daObjDlPyramid_c6RenderEv(void *self)
+{ return ((daObjDlPyramid_c *)self)->daObjDlPyramid_c::Render(); }
+int _ZN21daObjDlPyramidDummy_c13InitResourcesEv(void *self)
+{ return ((daObjDlPyramidDummy_c *)self)->daObjDlPyramidDummy_c::InitResources(); }
+int _ZN21daObjDlPyramidDummy_c8BehaviorEv(void *self)
+{ return ((daObjDlPyramidDummy_c *)self)->daObjDlPyramidDummy_c::Behavior(); }
 }
 
 // ---- the trap --------------------------------------------------------------
@@ -297,23 +296,23 @@ extern "C" void port_ov24_bringup(void)
 // the collider against itself. +0x3b6 is the counter PyramidTag increments,
 // which is how the four tags drive the one top.
 static int __fastcall pt_top_init(void *s, void *)
-{ return _ZN10PyramidTop13InitResourcesEv(s); }
+{ return _ZN16daObjDlPyramid_c13InitResourcesEv(s); }
 static int __fastcall pt_top_clean(void *s, void *)
-{ return _ZN10PyramidTop16CleanupResourcesEv(s); }
+{ return _ZN16daObjDlPyramid_c16CleanupResourcesEv(s); }
 static int __fastcall pt_top_behavior(void *s, void *)
-{ return _ZN10PyramidTop8BehaviorEv(s); }
+{ return _ZN16daObjDlPyramid_c8BehaviorEv(s); }
 static int __fastcall pt_top_render(void *s, void *)
 { port_actor_render_probe("PYRAMID_TOP", (char *)s + 0x320);
-  return _ZN10PyramidTop6RenderEv(s); }
+  return _ZN16daObjDlPyramid_c6RenderEv(s); }
 static int __fastcall pt_top_d1(void *s, void *)
-{ return (int)(size_t)_ZN10PyramidTopD1Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjDlPyramid_cD1Ev((int *)s); }
 static int __fastcall pt_top_d0(void *s, void *)
-{ return (int)(size_t)_ZN10PyramidTopD0Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjDlPyramid_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_pyramid_top_vtable(void)
 {
     port_ov24_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV10PyramidTop;
+    void *volatile *vt = (void *volatile *)_ZTV16daObjDlPyramid_c;
     ov24_fill_shared(vt);
     vt[0]  = (void *)pt_top_init;
     vt[3]  = (void *)pt_top_clean;
@@ -339,15 +338,15 @@ extern "C" void hal_fill_pyramid_top_vtable(void)
 // which is why registering 86 without 85 would be a silent no-op rather than
 // a fault, and why the two land together.
 static int __fastcall pt_tag_init(void *s, void *)
-{ return _ZN10PyramidTag13InitResourcesEv(s); }
+{ return _ZN21daObjDlPyramidDummy_c13InitResourcesEv(s); }
 static int __fastcall pt_tag_behavior(void *s, void *)
-{ return _ZN10PyramidTag8BehaviorEv(s); }
+{ return _ZN21daObjDlPyramidDummy_c8BehaviorEv(s); }
 /* Slot 16, HELD OUT of the slice and transcribed; see the slice file's header
    for the disassembly and the receiver-shape reason. */
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (pt_tag_d1) spelled the same chain by hand. */
 static int __fastcall pt_tag_d0(void *s, void *)
-{ return (int)(size_t)_ZN10PyramidTagD0Ev((int *)s); }
+{ return (int)(size_t)_ZN21daObjDlPyramidDummy_cD0Ev((int *)s); }
 /* The two base slots this class carries in its OWN table rather than an
    override -- filled explicitly so the 31-slot array is complete. */
 static int __fastcall pt_tag_clean(void *s, void *)
@@ -358,7 +357,7 @@ static int __fastcall pt_tag_render(void *s, void *)
 extern "C" void hal_fill_pyramid_tag_vtable(void)
 {
     port_ov24_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV10PyramidTag;
+    void *volatile *vt = (void *volatile *)_ZTV21daObjDlPyramidDummy_c;
     ov24_fill_shared(vt);
     vt[0]  = (void *)pt_tag_init;
     vt[3]  = (void *)pt_tag_clean;

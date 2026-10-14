@@ -88,11 +88,11 @@ const char *port_actor_class_name(unsigned id);   /* hal/actor_registry */
 void port_actor_slot_decline(const char *what);   /* func_02043fdc_hostcopy.cpp */
 
 /* the two classes' own matched bodies, all on slice_gate211.txt */
-int  _ZN14EnemySwitchTag13InitResourcesEv(void *self); /* slot 0, extern-C explicit this */
-int *_ZN14EnemySwitchTagD0Ev(int *self);               /* slot 17, .c C linkage */
-int  _ZN12EnemySpawner16CleanupResourcesEv(void);      /* slot 3, .c C linkage */
-int  _ZN12EnemySpawner8BehaviorEv(char *self);         /* slot 6, extern-C explicit this */
-int *_ZN12EnemySpawnerD0Ev(int *self);                 /* slot 17, .c C linkage */
+int  _ZN11daESwitch_c13InitResourcesEv(void *self); /* slot 0, extern-C explicit this */
+int *_ZN11daESwitch_cD0Ev(int *self);               /* slot 17, .c C linkage */
+int  _ZN11daECreate_c16CleanupResourcesEv(void);      /* slot 3, .c C linkage */
+int  _ZN11daECreate_c8BehaviorEv(char *self);         /* slot 6, extern-C explicit this */
+int *_ZN11daECreate_cD0Ev(int *self);                 /* slot 17, .c C linkage */
 
 /* the D1 chain's sub-object destructor and the base, both C-linkage here */
 void *_ZN7dCcAc_cD1Ev(void *);   /* EnemySwitchTag's member at +0xd4 */
@@ -103,8 +103,8 @@ void *_ZN8dActor_cD2Ev(void *);
    Defined here, not just declared -- the `int` type and C linkage match the
    `extern int _ZTV*[]` in include/decl_common.h that the factories, the D0
    bodies and the host thunks all read. Thirty-one slots each. */
-int _ZTV14EnemySwitchTag[31];
-int _ZTV12EnemySpawner[31];
+int _ZTV11daESwitch_c[31];
+int _ZTV11daECreate_c[31];
 }
 
 /* EnemySwitchTag's D0 stores _ZTV11daESwitch_c, the RTTI base spelling dsd
@@ -114,7 +114,7 @@ int _ZTV12EnemySpawner[31];
    such row: its D0 spells the table through the VT placeholder, renamed to
    _ZTV12EnemySpawner per-source in port/CMakeLists.txt, and its Spawn spells
    the array name directly. */
-#pragma comment(linker, "/alternatename:__ZTV11daESwitch_c=__ZTV14EnemySwitchTag")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV11daESwitch_c=__ZTV11daESwitch_c")
 
 // ---- the trap --------------------------------------------------------------
 static void es_trap_report(void *self, int slot)
@@ -229,7 +229,7 @@ static void es_fill_shared(void **vt)
    __thiscall members against include/EnemySwitchTag.h -- the face bridges the
    __fastcall thunk shape to each. */
 static int __fastcall est_init(void *s, void *)
-{ return _ZN14EnemySwitchTag13InitResourcesEv(s); }
+{ return _ZN11daESwitch_c13InitResourcesEv(s); }
 static int __fastcall est_clean(void *s, void *)
 { return ((EnemySwitchTag *)s)->EnemySwitchTag::CleanupResources(); }
 static int __fastcall est_behavior(void *s, void *)
@@ -242,7 +242,7 @@ static int __fastcall est_behavior(void *s, void *)
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (est_d1) spelled the same chain by hand. */
 static int __fastcall est_d0(void *s, void *)
-{ return (int)(size_t)_ZN14EnemySwitchTagD0Ev((int *)s); }
+{ return (int)(size_t)_ZN11daESwitch_cD0Ev((int *)s); }
 
 // ---- ENEMY_SPAWNER's own slots ---------------------------------------------
 /* Init is a real __thiscall member against include/EnemySpawner.h; Cleanup is
@@ -250,19 +250,19 @@ static int __fastcall est_d0(void *s, void *)
 static int __fastcall esp_init(void *s, void *)
 { return ((EnemySpawner *)s)->EnemySpawner::InitResources(); }
 static int __fastcall esp_clean(void *, void *)
-{ return _ZN12EnemySpawner16CleanupResourcesEv(); }
+{ return _ZN11daECreate_c16CleanupResourcesEv(); }
 static int __fastcall esp_behavior(void *s, void *)
-{ return _ZN12EnemySpawner8BehaviorEv((char *)s); }
+{ return _ZN11daECreate_c8BehaviorEv((char *)s); }
 /* Slot 16: EnemySpawner has no members, so the complete-object destructor is
    Actor::~D2 alone (the ac_d1_actor_only shape). */
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (esp_d1) spelled the same chain by hand. */
 static int __fastcall esp_d0(void *s, void *)
-{ return (int)(size_t)_ZN12EnemySpawnerD0Ev((int *)s); }
+{ return (int)(size_t)_ZN11daECreate_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_enemy_switch_tag_vtable(void)
 {
-    void **vt = (void **)_ZTV14EnemySwitchTag;
+    void **vt = (void **)_ZTV11daESwitch_c;
     es_fill_shared(vt);
     vt[0]  = (void *)est_init;
     vt[3]  = (void *)est_clean;
@@ -273,7 +273,7 @@ extern "C" void hal_fill_enemy_switch_tag_vtable(void)
 
 extern "C" void hal_fill_enemy_spawner_vtable(void)
 {
-    void **vt = (void **)_ZTV12EnemySpawner;
+    void **vt = (void **)_ZTV11daECreate_c;
     es_fill_shared(vt);
     vt[0]  = (void *)esp_init;
     vt[3]  = (void *)esp_clean;

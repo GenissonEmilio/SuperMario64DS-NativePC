@@ -132,7 +132,7 @@
 // 0x02111378 both read module:overlay(39)). port/CMakeLists.txt routes both
 // with a per-source -D, which a definition cannot defeat the way an
 // /alternatename can. func_ov039_02111214 is a matched TU and joins the slice;
-// data_ov039_021118e0 is a four-byte counter defined below.
+// data_ov039_021118e0 is the TU's own counter (main defines it).
 //
 // ---- THE TABLES ARE 31 SLOTS, BOTH ----------------------------------------
 // Slot 30 is Actor::OnAimedAtWithEggReturnVec (arm9 0x020100dc) in both, and
@@ -196,10 +196,9 @@ void port_ov039_pack_check(void);
 void port_ov039_syms_patch(void);
 DSSTATE_BEGIN
 void *_ZTV5Cloud[31];                            /* ov039 0x02111858 */
-/* ov039 0x021118e0, the four-byte bss counter Cloud::InitResources bumps.
-   Held out of the mount and defined here because decl_common.h declares the
-   sibling spelling as a SCALAR int, not an array. */
-int data_ov039_021118e0;
+/* ov039 0x021118e0, the four-byte bss counter InitResources bumps, is now
+   defined by src/game/actors/d_a_obj_kumo.cpp itself (main's TU fold), so
+   the host definition that stood here is retired (PORTSYNC2). */
 DSSTATE_END
 }
 

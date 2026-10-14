@@ -160,17 +160,17 @@ data_ov043_0211241c _ZTS17daObjKm1_Kuruma_c data_ov043_02112428
 data_ov043_02112434 data_ov043_0211244c
 _ZTI17daObjKm1_Dorifu_c _ZTS17daObjKm1_Dorifu_c
 
- data_ov043_021125e0 data_ov043_021125e8
-data_ov043_021125f0 data_ov043_021125fc data_ov043_02112608
-data_ov043_02112610 data_ov043_02112618 data_ov043_02112624
-data_ov043_02112630 data_ov043_02112638 data_ov043_02112640
-data_ov043_0211264c data_ov043_02112658 data_ov043_02112660
-data_ov043_02112668 data_ov043_02112670 data_ov043_02112678
-data_ov043_02112680 data_ov043_02112688 data_ov043_02112690
-data_ov043_02112698 data_ov043_021126a0 data_ov043_021126a8
-data_ov043_021126b4 data_ov043_021126c0 data_ov043_021126cc
-data_ov043_021126d8 data_ov043_021126e4 data_ov043_021126f0
-data_ov043_021126fc data_ov043_02112708 data_ov043_02112714
+
+data_ov043_021125f0@0x021125f0 data_ov043_021125fc@0x021125fc data_ov043_02112608
+data_ov043_02112610 data_ov043_02112618@0x02112618 data_ov043_02112624@0x02112624
+data_ov043_02112630 data_ov043_02112638 data_ov043_02112640@0x02112640
+data_ov043_0211264c@0x0211264c
+
+
+data_ov043_021126a8@0x021126a8
+data_ov043_021126b4@0x021126b4 data_ov043_021126c0@0x021126c0 data_ov043_021126cc@0x021126cc
+data_ov043_021126d8@0x021126d8 data_ov043_021126e4@0x021126e4 data_ov043_021126f0@0x021126f0
+data_ov043_021126fc@0x021126fc data_ov043_02112708@0x02112708 data_ov043_02112714@0x02112714
 
 # ============================================================================
 # RUN LINKW WAVE C, lane cat-actors: THE DERIVATION RE-VERIFIED, AND STILL NOT
@@ -292,3 +292,23 @@ data_ov043_021126fc data_ov043_02112708 data_ov043_02112714
 # regenerated from this list on every configure.
 #   g_profile_KM1_DORIFU                       now defined by d_a_obj_km1_dorifu.cpp.obj
 #   data_ov043_02112518                        now defined by d_a_obj_km1_dorifu.cpp.obj
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov043_021125e0                        now defined by src/game/actors/d_a_obj_km1_ukishima.cpp
+#   data_ov043_021125e8                        now defined by src/game/actors/d_a_obj_km1_ukishima.cpp
+#   data_ov043_02112658                        now defined by src/game/actors/d_a_obj_km1_dorifu.cpp
+#   data_ov043_02112660                        now defined by src/game/actors/d_a_obj_km1_dorifu.cpp
+#   data_ov043_02112668                        now defined by src/game/actors/d_a_obj_km1_dorifu.cpp
+#   data_ov043_02112670                        now defined by src/game/actors/d_a_obj_km1_dorifu.cpp
+#   data_ov043_02112678                        now defined by src/game/actors/d_a_obj_km1_dorifu.cpp
+#   data_ov043_02112680                        now defined by src/game/actors/d_a_obj_km1_dorifu.cpp
+#   data_ov043_02112688                        now defined by src/game/actors/d_a_obj_km1_dorifu.cpp
+#   data_ov043_02112690                        now defined by src/game/actors/d_a_obj_km1_dorifu.cpp
+#   data_ov043_02112698                        now defined by src/game/actors/d_a_obj_km1_dorifu.cpp
+#   data_ov043_021126a0                        now defined by src/game/actors/d_a_obj_km1_dorifu.cpp

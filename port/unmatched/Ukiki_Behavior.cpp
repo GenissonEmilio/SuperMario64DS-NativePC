@@ -121,10 +121,10 @@ void *_ZN8dActor_c13ClosestPlayerEv(void *thiz);
 void *_ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(u32 a, u32 b, const Vector3 *c,
                                                    const Vector3_16 *d, int e, int f);
 int _ZN8SaveData16HasPlayerLostCapEv(void);
-void func_ov030_021141a8(void *c, int idx);
-void func_ov030_02114134(void *c);
-void func_ov030_02112094(void *c);
-void func_ov030_02111734(char *c);
+void _ZN7daMky_c19func_ov030_021141a8Ei(void *c, int idx);
+void _ZN7daMky_c19func_ov030_02114134Ev(void *c);
+void _ZN7daMky_c19func_ov030_02112094Ev(void *c);
+void _ZN7daMky_c19func_ov030_02111734Ev(char *c);
 int port_ov030_ukiki_behavior(void *self);
 }
 
@@ -153,14 +153,14 @@ extern "C" int port_ov030_ukiki_behavior(void *self)
                     -1);
                 *(int *)(c + 0x3ac) = *(int *)((char *)spawned + 4);
                 *(unsigned char *)(c + 0x3c8) = 1;
-                func_ov030_021141a8(self, 1);   /* DELTA: SHORT-1, see header */
+                _ZN7daMky_c19func_ov030_021141a8Ei(self, 1);   /* DELTA: SHORT-1, see header */
             }
         }
-        func_ov030_02111734(c);
+        _ZN7daMky_c19func_ov030_02111734Ev(c);
     } else {
-        func_ov030_02114134(self);
+        _ZN7daMky_c19func_ov030_02114134Ev(self);
         ((ModelAnim *)(c + 0xd4))->UpdateVerts();   /* DELTA: was ->v3() */
-        func_ov030_02112094(self);
+        _ZN7daMky_c19func_ov030_02112094Ev(self);
     }
     return 1;
 }

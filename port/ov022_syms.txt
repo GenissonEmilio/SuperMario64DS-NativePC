@@ -175,19 +175,36 @@ data_ov022_0211427c _ZTS20daObjFl_Fall_Block_c g_profile_FL_KUZURE
 _ZTI15daObjFlMaruta_c _ZTI13daObjMaruta_c _ZTS13daObjMaruta_c
 _ZTS15daObjFlMaruta_c g_profile_FL_MARUTA data_ov022_02114424
 data_ov022_0211442c _ZTI21daObj_volcanoCannon_c _ZTS21daObj_volcanoCannon_c
-g_profile_OBJ_VOLCANO_CANNON data_ov022_02114500 data_ov022_02114508
-data_ov022_02114510 data_ov022_0211451c data_ov022_02114528
-data_ov022_02114530 data_ov022_02114538 data_ov022_02114544
-data_ov022_0211454c data_ov022_02114550 data_ov022_02114558
-data_ov022_02114560 data_ov022_02114568 data_ov022_0211456c
-data_ov022_02114578 data_ov022_02114580 data_ov022_02114588
-data_ov022_02114594 data_ov022_02114598 data_ov022_021145a0
-data_ov022_021145a8 data_ov022_021145b0 data_ov022_021145bc
+g_profile_OBJ_VOLCANO_CANNON
+data_ov022_02114510@0x02114510 data_ov022_0211451c@0x0211451c data_ov022_02114528
+data_ov022_02114530 data_ov022_02114538@0x02114538 data_ov022_02114544@0x02114544:0x8
+data_ov022_0211454c@0x0211454c
+data_ov022_02114560@0x02114560:0x8 data_ov022_02114568@0x02114568 data_ov022_0211456c@0x0211456c
+data_ov022_02114588@0x02114588
+data_ov022_02114594@0x02114594:0x4 data_ov022_02114598@0x02114598
+data_ov022_021145b0@0x021145b0 data_ov022_021145bc@0x021145bc
 data_ov022_021145c8 data_ov022_021145d0 data_ov022_021145d8
-data_ov022_021145e0 data_ov022_021145e4 data_ov022_021145e8
-data_ov022_021145f4 data_ov022_02114600 data_ov022_0211460c
+data_ov022_021145e0:0x4 data_ov022_021145e4@0x021145e4 data_ov022_021145e8@0x021145e8
+data_ov022_021145f4@0x021145f4 data_ov022_02114600@0x02114600 data_ov022_0211460c@0x0211460c
 data_ov022_02114618 data_ov022_02114620 data_ov022_02114628
 data_ov022_0211462c data_ov022_02114634 data_ov022_02114640
-data_ov022_02114648 data_ov022_02114650 data_ov022_0211465c
+data_ov022_02114648 data_ov022_02114650@0x02114650 data_ov022_0211465c@0x0211465c
 data_ov022_02114668 data_ov022_02114670 data_ov022_02114678
-data_ov022_02114684 data_ov022_02114690
+data_ov022_02114684
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov022_02114500                        now defined by src/actors/daObjFl_Ring_c.cpp
+#   data_ov022_02114508                        now defined by src/actors/daObjFl_Ring_c.cpp
+#   data_ov022_02114550                        now defined by src/actors/daObjFl_Block_c.cpp
+#   data_ov022_02114558                        now defined by src/actors/daObjFl_Block_c.cpp
+#   data_ov022_02114578                        now defined by src/actors/daObjFl_London_c.cpp
+#   data_ov022_02114580                        now defined by src/actors/daObjFl_London_c.cpp
+#   data_ov022_021145a0                        now defined by src/actors/daObjFl_Seesaw_c.cpp
+#   data_ov022_021145a8                        now defined by src/actors/daObjFl_Seesaw_c.cpp
+#   data_ov022_02114690                        now defined by src/game/actors/d_a_obj_fl_maruta.cpp

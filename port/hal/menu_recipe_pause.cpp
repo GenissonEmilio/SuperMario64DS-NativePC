@@ -67,7 +67,7 @@ int GetOwnerLanguage(void);
 int SublevelToLevel(int i);
 int IsStarCollected(signed char courseID, int starID);
 unsigned char CountStarsCollectedInLevelToDisplay(int courseID);
-void _ZN5Stage17UpdateMenuButtonsEb(int b);
+void _ZN10dScStage_c17UpdateMenuButtonsEb(int b);
 void func_02012790(int id);
 void pause_page_draw(const MenuLayout *lay, int piece, uint32_t *dst, int w, int h, int stride);   /* hal/settings_page.cpp (pause_page.inc) */
 int pause_page_art(int w, int h, int idx, int *id, int *dw, int *dh);
@@ -387,7 +387,7 @@ void set_chosen(int sel)
     const int last = data_0209f2b4 ? data_0209f2b4 - 1 : 0;
     if (sel < 0 || sel > last || sel == (int)data_0209f2e0) return;
     data_0209f2e0 = (unsigned char)sel;
-    _ZN5Stage17UpdateMenuButtonsEb(0);
+    _ZN10dScStage_c17UpdateMenuButtonsEb(0);
 }
 
 void publish_embed(const PauseFacts *f, int wide)

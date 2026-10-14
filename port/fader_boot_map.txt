@@ -23,18 +23,18 @@ applied to extracted/arm9_dec.bin (flat, base 0x02004000):
 
     dFader_c <- dFdBrightness_c <- dFdColor_c <- dWipe_c
 
-which is exactly the four vptr stores func_0202fc40 makes, in base-to-derived
+which is exactly the four vptr stores _ZN7dWipe_cC1Ev makes, in base-to-derived
 construction order, and which also identifies the three sibling tables the port
 already hosts by number rather than by name:
 
-    data_0208eafc = _ZTV8dFader_c            hal/scene_boot.cpp:702, ROM bytes
-    data_0208eacc = _ZTV15dFdBrightness_c    hal/scene_boot.cpp:693, trap-filled
-    data_0208eb2c = _ZTV10dFdColor_c         hal/scene_boot.cpp:688, trap-filled
-    _ZTV9FaderWipe (config name) = _ZTV9dFdWipe_c, 0x0208ea9c
+    _ZTV8dFader_c = _ZTV8dFader_c            hal/scene_boot.cpp:702, ROM bytes
+    _ZTV15dFdBrightness_c = _ZTV15dFdBrightness_c    hal/scene_boot.cpp:693, trap-filled
+    _ZTV10dFdColor_c = _ZTV10dFdColor_c         hal/scene_boot.cpp:688, trap-filled
+    _ZTV9dFdWipe_c (config name) = _ZTV9dFdWipe_c, 0x0208ea9c
 
 NOTHING IN THE HANDOVER'S CONCLUSIONS CHANGES. Every address MG2 gave is right,
-including the one that matters most ("a host fill for data_020926f0, which is
-NOT _ZTV9FaderWipe"). What changes is what a successor searches for: a lane
+including the one that matters most ("a host fill for _ZTV7dWipe_c, which is
+NOT _ZTV9dFdWipe_c"). What changes is what a successor searches for: a lane
 told "FaderBrightness" goes looking in the 0x02017xxx fader engine, and none of
 the ten bodies is there.
 
@@ -104,7 +104,7 @@ reimplement it, does not write a vptr, and does not placement-new a host class
 over the storage the way hal/fader_wipes.cpp's gate-31 block does for the
 sibling object data_0209f5e8. The ROM's initialiser is two calls,
 
-    0x02074f80  bl func_0202fc40    r0 = 0x0209f61c
+    0x02074f80  bl _ZN7dWipe_cC1Ev    r0 = 0x0209f61c
     0x02074f9c  bl func_020731dc    r0/r1/r2 = 0x0209f61c, 0x0202fc08, 0x0209f610
 
 and src/__sinit_02074f80.c is those two calls, literally.
@@ -121,13 +121,13 @@ NINE src TUs (the budget was twelve):
     src/_ZN7dWipe_c10SetToStartEv.cpp                                    slot 0x24, SetToStart
     src/engine/fader/_ZN15FaderBrightness20IsBetweenStartAndEndEv.cpp
 
-ALREADY IN THE LINK, so not TUs: func_0202ed14, func_020731dc, func_0202fb30,
-_ZN10FaderColorD2Ev, _ZN6Memory16operator_delete2EPv, IRQ::DisableIRQs,
+ALREADY IN THE LINK, so not TUs: _ZN7dWipe_c13func_0202ed14Ev, func_020731dc, _ZN7dWipe_c13func_0202fb30Ev,
+_ZN10dFdColor_cD2Ev, _ZN6Memory16operator_delete2EPv, IRQ::DisableIRQs,
 IRQ::SetIRQHandler, func_02053c10, and the matched FaderBrightness methods
 (SetToStart, SetToEnd, IsAtStart, IsAtEnd), which ride slice_w1l3.
 
 NEW HOST STORAGE, both inside the .dsstate bracket:
-    data_020926f0[12]   the dWipe_c vtable. TEN are the ROM's; two are the
+    _ZTV7dWipe_c[12]   the dWipe_c vtable. TEN are the ROM's; two are the
                         overhang, on hal/fader_wipes.cpp's HalTail28/HalTail2c
                         precedent.
     data_0209f610[3]    the destructor-registration node. 0xc by ROM span, the
@@ -136,9 +136,9 @@ NEW HOST STORAGE, both inside the .dsstate bracket:
 
 NEW FACES, receiver-bridging rather than /alternatename, because the matched
 fader bodies are MSVC __thiscall methods and the callers name them flat:
-    _ZN15FaderBrightness9IsAtStartEv
-    _ZN15FaderBrightness20IsBetweenStartAndEndEv
-    func_02017610  (= _ZN15FaderBrightness10SetToStartEv, by address)
+    _ZN15dFdBrightness_c9IsAtStartEv
+    _ZN15dFdBrightness_c20IsBetweenStartAndEndEv
+    func_02017610  (= _ZN15dFdBrightness_c10SetToStartEv, by address)
 
 FOUR ROM RULINGS were added to port/tools/inferred_stub_adjudicated.txt before
 any of the four marker-carrying bodies was seated: _ZN7dWipe_c9IsAtStartEv, _ZN7dWipe_c7IsAtEndEv,
@@ -173,8 +173,8 @@ plus four arm9 data symbols to host and two more faces", measured by reading
 each body's own callees against walk_window.map. Re-measured with
 port/tools/closure.py against the real map at 34d3a3130, the two setters alone
 need NINE TUs and NINE data symbols. The gap is entirely in the second layer:
-func_0202f58c reaches func_0202f290, which reaches func_0202ee94 and
-func_0202efa0, and the HBlank handler func_0202f2c4 reaches func_0202f3a4 --
+_ZN7dWipe_c13func_0202f58cEv reaches _ZN7dWipe_c13func_0202f290Ev, which reaches _ZN7dWipe_c13func_0202ee94Ev and
+_ZN7dWipe_c13func_0202efa0Ev, and the HBlank handler func_0202f2c4 reaches func_0202f3a4 --
 five TUs the first-layer reading never saw, and with them the scanline table
 data_0209f648 and the five flag and index words around it.
 
@@ -190,7 +190,7 @@ data_0209f648 and the five flag and index words around it.
     src/func_0202f3a4.c        its vblank-edge reset
     src/engine/fader/_ZN15FaderBrightness15SetBackwardTimeEj.cpp
 
-  ONE NEW FACE, _ZN15FaderBrightness15SetBackwardTimeEj, the SetBackwardTime
+  ONE NEW FACE, _ZN15dFdBrightness_c15SetBackwardTimeEj, the SetBackwardTime
   half of the pair hal/method_faces.cpp already owns the SetForwardTime half
   of. It takes THREE parameters where the method takes one: the ROM's `bl` at
   0x0202f940 carries r0, r1 and r2 with no reload, which is why
@@ -206,7 +206,7 @@ data_0209f648 and the five flag and index words around it.
         0x020926c4 below and 0x020926dc above), so they are byte-hosted from
         extracted/ through port/tools/romdata.py rather than written down.
     data_0209f600, data_0209f604   bss, their type == 2 counterparts.
-    data_0209f5f8, data_0209f5fc   bss, func_0202f58c's sub-engine select and
+    data_0209f5f8, data_0209f5fc   bss, _ZN7dWipe_c13func_0202f58cEv's sub-engine select and
         the handler's "table is live" flag.
     data_0209f608, data_0209f60c   bss, the working and source indices of the
         double buffer.
@@ -228,7 +228,7 @@ branch s5-seat8-fade, off 8ae5a9532.
  separating.]
 
 THE CALL DEFECT WAS REAL AND MAIN FIXED IT. src/_ZN7dWipe_c11AdvanceFadeEv.cpp's `type == 1`
-branch called _ZN10FaderColor11AdvanceFadeEv with no argument, and
+branch called _ZN10dFdColor_c11AdvanceFadeEv with no argument, and
 include/decl_FaderColor.h declared it `(void)`. main PR #1539 (merge e238b4cf3)
 declares it `(void*)` and passes obj. This lane propagated the two files BY
 ADDRESS -- `git show origin/main:<path>`, never a merge -- and byte-verified the
@@ -252,7 +252,7 @@ callers the port had already seated. What the ROM does, read out of
 config/arm9/relocs.txt and the arm9 disassembly rather than out of the map:
 
   * _ZN7dWipe_c11AdvanceFadeEv has EXACTLY ONE reference in the whole ROM,
-    `from:0x020926f8 kind:load to:0x0202f428`, which is data_020926f0 + 8. It
+    `from:0x020926f8 kind:load to:0x0202f428`, which is _ZTV7dWipe_c + 8. It
     is reached through the vtable or not at all.
   * The ROM's frame phase 2 is func_02019390, and it calls TWO fader advances:
 
@@ -265,7 +265,7 @@ config/arm9/relocs.txt and the arm9 disassembly rather than out of the map:
     too. A capstone sweep of every function in config/arm9/symbols.txt for
     "load a word at +8 of a loaded pointer and call it" returns those two and
     no third one anywhere in the fader family.
-  * _ZN8dScene_c9SetFadersEP15FaderBrightness ends
+  * _ZN8dScene_c9SetFadersEP15dFdBrightness_c ends
     `data_0209f5bc = thiz; data_0209d4ac = thiz;` and it is ALREADY IN THE
     LINK on slice_gate10. dScMgBase_c slot 1 (_ZN11dScMgBase_c19BeforeInitResourcesEv) calls it
     with data_0209f61c, so on scene 374 the ROM's own store arms this object
@@ -290,7 +290,7 @@ dtcm and all ninety overlay reloc tables:
     arm9   2   func_0202ed48, __sinit_02074f80
     ov004  6   func_ov004_020aeb24, _020b0930, _020b72d4, _020b75e4,
                _020b7c04, _020b8098
-    ov005  2   func_ov005_020c0378, _ZN11dScMiniGm_c13InitResourcesEv
+    ov005  2   _ZN11dScMiniGm_c19func_ov005_020c0378Ev, _ZN11dScMiniGm_c13InitResourcesEv
     ov006  1   _ZN12dScMgSlot1_c8BehaviorEv
 
 WHAT CARRIES THE CONCLUSION IS THE REVIEW'S OWN STRONGER FORM, and it does not
@@ -319,15 +319,15 @@ and confirmed by the link: THREE src TUs and TWO faces.
     src/engine/fader/_ZN10FaderColor11AdvanceFadeEv.cpp    its type==1 callee
     src/func_02018efc.c                                    the driver
 
-    _ZN10FaderColor11AdvanceFadeEv    face, hal/fdr_arm9_fader_seat.cpp
-    _ZN5Fader13AdvanceInterpEv        face, same file
+    _ZN10dFdColor_c11AdvanceFadeEv    face, hal/fdr_arm9_fader_seat.cpp
+    _ZN8dFader_c13AdvanceInterpEv        face, same file
 
 Both faces are receiver bridges onto MSVC methods, the shape this file's
 section 3 already uses for IsAtStart: the matched TUs are real C++ members and
 the callers spell the flat ROM names. closure.py named exactly those two as the
 unresolved set and nothing else appeared at the link.
 
-THE type == 1 BRANCH LINKS AND DOES NOT RUN. func_0202ec9c(data_0209f61c, 0)
+THE type == 1 BRANCH LINKS AND DOES NOT RUN. _ZN7dWipe_c13func_0202ec9cEi(data_0209f61c, 0)
 from dScMgBase_c slot 1 leaves the object's +0x14 at 0, so FaderColor::
 AdvanceFade and Fader::AdvanceInterp are compiled, resolved and never entered
 on any path measured here. That is in the unproven items too.
@@ -391,7 +391,7 @@ THE COUNTS GOING DOWN IS THE SECOND HALF OF THE RESULT and it took a moment to
 read as a pass rather than a regression. The fade now ENDS. _ZN7dWipe_c15SetBackwardTimeEj with
 type 0 computes its per-frame acceleration over 0x2d frames; case 1 of
 _ZN7dWipe_c11AdvanceFadeEv accumulates +0x1c until it reaches 0x200000, then clamps, calls
-func_0202fb30 and writes state 2. func_0202fb30 clears IE bit 1, clears
+_ZN7dWipe_c13func_0202fb30Ev and writes state 2. _ZN7dWipe_c13func_0202fb30Ev clears IE bit 1, clears
 DISPSTAT bit 4 and nulls the handler, so the HBlank edge closes and delivery
 stops. The arithmetic reconciles exactly:
 
@@ -414,10 +414,10 @@ that hold together and would not hold apart.
 THE SRC TU IS HOST-BROKEN in exactly the way section 5 describes for
 src/_ZN7dWipe_c8SetToEndEv.c. Its `type == 1` branch is
 
-    0202f440  bl  0x020174e0        _ZN10FaderColor11AdvanceFadeEv
+    0202f440  bl  0x020174e0        _ZN10dFdColor_c11AdvanceFadeEv
 
 with no `mov r0, r4` in front of it, because on ARM r0 still holds the
-receiver from entry. src spells that as `_ZN10FaderColor11AdvanceFadeEv()` and
+receiver from entry. src spells that as `_ZN10dFdColor_c11AdvanceFadeEv()` and
 include/decl_FaderColor.h declares it `(void)`, so the call is not even a
 warning -- and on the host the receiver is gone. Unlike slot 0x20, the broken
 call is INSIDE a larger body rather than being the whole of it, so there is no
@@ -427,13 +427,13 @@ AND THERE IS NOTHING TO BUY. Slot 0x08 has NO CALL SITE in this image; section
 9a enumerates them and explains why the port's own fade driver
 (hal/fader_wipes.cpp:port_fader_advance, which dispatches 0x08 on
 data_0209d4b0[0]) cannot reach this object: nothing writes it there.
-func_0202f58c does not, and the only writers in the link write a different
+_ZN7dWipe_c13func_0202f58cEv does not, and the only writers in the link write a different
 fader. So the slot would be a linked, undriven body carrying a receiver-
 dropping call.
 
 THE REFUSAL IS NOW MECHANICAL RATHER THAN WRITTEN DOWN.
 port/tools/closestplayer_guard.py carries a rule for
-_ZN10FaderColor11AdvanceFadeEv, so the day someone puts src/_ZN7dWipe_c11AdvanceFadeEv.cpp in
+_ZN10dFdColor_c11AdvanceFadeEv, so the day someone puts src/_ZN7dWipe_c11AdvanceFadeEv.cpp in
 a slice the build stops with the remedy printed. The guard passes today
 because the TU is in no slice, which is the same state it reports for
 _ZN7dWipe_c8SetToEndEv.
@@ -452,11 +452,11 @@ The ROM body at 0x0202ed08 is a bare tail-call veneer, three words:
 
     0202ed08  e59fc000  ldr ip, [pc]
     0202ed0c  e12fff1c  bx  ip
-    0202ed10  0201761c  .word 0x0201761c   = _ZN15FaderBrightness8SetToEndEv
+    0202ed10  0201761c  .word 0x0201761c   = _ZN15dFdBrightness_c8SetToEndEv
 
 src spells it
 
-    void _ZN7dWipe_c8SetToEndEv(void) { _ZN15FaderBrightness8SetToEndEv(); }
+    void _ZN7dWipe_c8SetToEndEv(void) { _ZN15dFdBrightness_c8SetToEndEv(); }
 
 with no parameter and no argument. Under mwccarm that is byte-correct, because
 `bx ip` leaves r0 alone and the receiver rides through. On the host the
@@ -561,8 +561,8 @@ one slot early against a table kept in ROM byte order. hal/fader_wipes.cpp
 names this and declines to delegate the method for exactly this reason.
 
 It is reachable here only through _ZN7dWipe_c20IsBetweenStartAndEndEv's `type == 1` branch, and type
-is the object's +0x14, which func_0202ed14 constructs as 0. It can be MADE 1:
-func_ov004_020aeb24 calls func_0202ec9c(data_0209f61c, 1). It is NOT reached on
+is the object's +0x14, which _ZN7dWipe_c13func_0202ed14Ev constructs as 0. It can be MADE 1:
+func_ov004_020aeb24 calls _ZN7dWipe_c13func_0202ec9cEi(data_0209f61c, 1). It is NOT reached on
 the scene-374 path, which is a measurement and not a guarantee, so the face in
 hal/fdr_arm9_fader_seat.cpp prints when the receiver's type is 1 before
 dispatching. With no stack parameters on the traps the skewed dispatch lands on
@@ -584,13 +584,13 @@ both of them say so on stderr. Fixing it goes with the three motion slots.
     The +9 is exactly the nine src TUs of section 3 and nothing else. Each was
     confirmed present in walk_window.map by name:
 
-      __sinit_02074f80   func_0202fc40   _ZN7dWipe_cD1Ev   _ZN7dWipe_cD0Ev
+      __sinit_02074f80   _ZN7dWipe_cC1Ev   _ZN7dWipe_cD1Ev   _ZN7dWipe_cD0Ev
       _ZN7dWipe_c9IsAtStartEv      _ZN7dWipe_c7IsAtEndEv   _ZN7dWipe_c20IsBetweenStartAndEndEv   _ZN7dWipe_c10SetToStartEv
-      ?IsBetweenStartAndEnd@FaderBrightness@@QAEHXZ
+      ?IsBetweenStartAndEnd@dFdBrightness_c@@QAEHXZ
 
     No body came in as a side effect, because every callee the nine reach was
     already in the image (section 3's second list). The two new data symbols
-    (_data_020926f0, _data_0209f610) are host storage and do not count as
+    (__ZTV7dWipe_c, _data_0209f610) are host storage and do not count as
     linked ROM functions.
 
 
@@ -608,7 +608,7 @@ believed. Three passes, because no one of them is complete:
   * MECHANICAL. Every function in walk_window.map's .text was disassembled and
     swept for the pattern "load the object out of a watched global, load its
     vptr, call through a slot of it". The watched globals were data_0209f5bc
-    (the INSTALLED fader), data_0209f61c (the object), data_020926f0 (the table
+    (the INSTALLED fader), data_0209f61c (the object), _ZTV7dWipe_c (the table
     itself), and data_0209d4ac and data_0209d4b0, which Scene::SetFaders and
     the fade driver also point at faders. Fifteen sites.
 
@@ -635,13 +635,13 @@ believed. Three passes, because no one of them is complete:
     both call SetFaders with &data_0209f61c. _ZN7dWipe_c20IsBetweenStartAndEndEv's `m14()`/`m18()`
     are the same shape on its own receiver.
   * BY HAND, for a dispatch the source does not spell at all: the matched
-    ?IsBetweenStartAndEnd@FaderBrightness@@QAEHXZ re-dispatches through the
+    ?IsBetweenStartAndEnd@dFdBrightness_c@@QAEHXZ re-dispatches through the
     receiver's table, and it is the site that changed this seat's design.
 
 WHAT DOES NOT REACH THE TABLE, recorded so it is not re-derived. The port's
 per-frame fade driver hal/fader_wipes.cpp:port_fader_advance dispatches slot
 0x08 on data_0209d4b0[0], the fader IN MOTION. Nothing writes this object
-there: func_0202f58c, which the two setters call, does not touch it, and the
+there: _ZN7dWipe_c13func_0202f58cEv, which the two setters call, does not touch it, and the
 only writers in the link (FUN_02029980, FUN_020299f4) write data_0209f324 +
 0x240. So slot 0x08 has no caller in this image, which is why it keeps the
 no-argument shape.
@@ -732,7 +732,7 @@ to the image, so a relink does not rot the section.
                              +0x5b   call dword ptr [eax + 0x10]
                              +0x5e   mov eax,1 / pop esi / pop ebp / ret
                            shape A:
-                             ?IsBetweenStartAndEnd@FaderBrightness@@QAEHXZ
+                             ?IsBetweenStartAndEnd@dFdBrightness_c@@QAEHXZ
                              +0x05  call dword ptr [eax + 0x10]
                            the matched body's first unqualified predicate call,
                            landing one slot early against a ROM-ordered table
@@ -744,7 +744,7 @@ to the image, so a relink does not rot the section.
                            _ZN11dScMgBase_c14BeforeBehaviorEv+0x1c and +0x110,
                            _ZN12dScStarSel_c8BehaviorEv+0x10, HUD::Behavior+0xb,
                            _ZN7dWipe_c20IsBetweenStartAndEndEv+0x1d, and
-                           ?IsBetweenStartAndEnd@FaderBrightness@@+0x10
+                           ?IsBetweenStartAndEnd@dFdBrightness_c@@+0x10
                            (the second skewed call; removed by 9e).
                            Shape C: Scene::SetFaders+0x14 and
                            Minimap::Behavior+0x36, each
@@ -810,11 +810,11 @@ to the image, so a relink does not rot the section.
  the change is safe in both directions: a shape A caller would still leave the
  stack balanced and would simply hand the stub a receiver off its own frame.
  The stub therefore checks that the word it was handed points at
- data_020926f0 and refuses loudly if not, so the garbage-receiver failure that
+ _ZTV7dWipe_c and refuses loudly if not, so the garbage-receiver failure that
  is dormant elsewhere in this table announces itself here. Read out of this
  lane's binary, ?fdr_s08@...@@YAXPAX@Z is
      +0x03  mov eax, [ebp + 8]         the stack receiver
-     +0x0a  cmp dword ptr [eax], 0xc12040    _data_020926f0 in walk_window.map
+     +0x0a  cmp dword ptr [eax], 0xc12040    __ZTV7dWipe_c in walk_window.map
      +0x16  jmp _ZN7dWipe_c11AdvanceFadeEv          tail call, argument already in place
  and it fired its refusal ZERO times across the 300-frame scene-374 run, which
  is the measurement that the shape is right.]
@@ -834,7 +834,7 @@ frame; declared for A it leaks eight on B, which is the crash this lane was
 sent to fix. There is no third option in C.
 
 The A site was removed. hal/fdr_arm9_fader_seat.cpp's
-_ZN15FaderBrightness20IsBetweenStartAndEndEv no longer delegates to the matched
+_ZN15dFdBrightness_c20IsBetweenStartAndEndEv no longer delegates to the matched
 method; it dispatches the RECEIVER'S OWN 0x14 and 0x18, which is the pair the
 ROM's two virtual calls reach, and keeps the matched body's arithmetic. That is
 hal/fader_wipes.cpp's existing ruling on this method applied to the one place
@@ -917,7 +917,7 @@ counted; nothing calls it now, and that is written into the unproven items.
      _ZN7dWipe_c11AdvanceFadeEv is the only thing that CHANGES interpVal after arm time
      (the two setters store it once each, which is why the table is uniform
      rather than absent) and the only caller of the table rebuild
-     func_0202f290 outside arm time, so section 4a's trap is now the whole of
+     _ZN7dWipe_c13func_0202f290Ev outside arm time, so section 4a's trap is now the whole of
      the remaining distance. Its acceptance test is the `1 run(s) of equal
      rows` line the scene run prints.
      A SECOND GATE WAS FOUND UNDERNEATH THIS ONE and is worth knowing before
@@ -953,7 +953,7 @@ counted; nothing calls it now, and that is written into the unproven items.
     which is the provenance; nobody here has said what is in the image.
   * OF THE SEVEN SEATED SLOTS, ONLY 0x24 IS PROVEN TO RUN. Section 2's
     disassembly is the proof for that one. 0x1c is NOT reached on this path:
-    slot 1's `func_0202ec9c(data_0209f61c, 0)` takes its early return because
+    slot 1's `_ZN7dWipe_c13func_0202ec9cEi(data_0209f61c, 0)` takes its early return because
     the freshly constructed object's +0x14 is already 0, so the m1c dispatch
     never happens, and 0x14/0x18 are reached only from 0x1c. The two
     destructors, 0x00 and 0x04, are a separate case: they are linked and
@@ -977,8 +977,8 @@ counted; nothing calls it now, and that is written into the unproven items.
      WHAT IS NOT PROVEN inside 0x08 is its `type == 1` branch. type is 0 on
      every scene-374 path, so FaderColor::AdvanceFade, Fader::AdvanceInterp
      and the two faces that bridge onto them are compiled, linked and never
-     entered. func_ov004_020aeb24 and func_ov004_020b72d4 call
-     func_0202ec9c(data_0209f61c, 1) and (..., 2), so the branch is reachable
+     entered. func_ov004_020aeb24 and _ZN10dMgState_c19func_ov004_020b72d4Ev call
+     _ZN7dWipe_c13func_0202ec9cEi(data_0209f61c, 1) and (..., 2), so the branch is reachable
      on other minigames; none of them boots today.]
   * The SEVEN ROM rulings in inferred_stub_adjudicated.txt (FDR's four, plus
     _ZN7dWipe_c11AdvanceFadeEv, _ZN7dWipe_c15SetBackwardTimeEj and _ZN7dWipe_c14SetForwardTimeEj from this tranche) are
@@ -1055,8 +1055,8 @@ counted; nothing calls it now, and that is written into the unproven items.
       slot 0x10 is seated and undispatched on this scene. So is case 3.
 
       THE type == 1 BRANCH AND BOTH NEW FACES ARE UNEXERCISED, for the reason
-      4a gives: func_0202ec9c(data_0209f61c, 0) leaves +0x14 at 0.
-      func_ov004_020aeb24, func_ov004_020b72d4 and func_ov004_020b75e4 pass 1
+      4a gives: _ZN7dWipe_c13func_0202ec9cEi(data_0209f61c, 0) leaves +0x14 at 0.
+      func_ov004_020aeb24, _ZN10dMgState_c19func_ov004_020b72d4Ev and _ZN10dMgState_c19func_ov004_020b75e4Ev pass 1
       and 2 instead, so the branch is reachable on other minigames and none
       of them boots today.
 

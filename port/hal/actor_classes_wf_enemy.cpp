@@ -208,36 +208,36 @@ static void we31_fill_shared(void **vt)
 // TextureSequence at 0x330, ShadowModel at 0x344, MovingMeshCollider at 0x418,
 // 0x610 bytes.
 extern "C" {
-int _ZN5Whomp13InitResourcesEv(void *self);   /* face: below */
-int _ZN5Whomp6RenderEv(void *self);           /* face: below */
-int _ZN5Whomp16CleanupResourcesEv(void *self);/* face: below */
-int _ZN5Whomp8BehaviorEv(void *self);         /* host copy */
-int *_ZN5WhompD1Ev(int *self);
-int *_ZN5WhompD0Ev(int *self);
-void _ZN5Whomp15OnHitByMegaCharER6Player(char *self, void *player);  /* slot 27 */
-int _ZN5Whomp16OnAimedAtWithEggEv(char *self);                 /* slot 29 */
-void _ZN5Whomp25OnAimedAtWithEggReturnVecEv(void);                      /* slot 30 veneer */
+int _ZN7daBtn_c13InitResourcesEv(void *self);   /* face: below */
+int _ZN7daBtn_c6RenderEv(void *self);           /* face: below */
+int _ZN7daBtn_c16CleanupResourcesEv(void *self);/* face: below */
+int _ZN7daBtn_c8BehaviorEv(void *self);         /* host copy */
+int *_ZN7daBtn_cD1Ev(int *self);
+int *_ZN7daBtn_cD0Ev(int *self);
+void _ZN7daBtn_c15OnHitByMegaCharER6Player(char *self, void *player);  /* slot 27 */
+int _ZN7daBtn_c16OnAimedAtWithEggEv(char *self);                 /* slot 29 */
+void _ZN7daBtn_c25OnAimedAtWithEggReturnVecEv(void);                      /* slot 30 veneer */
 void func_ov079_02123d4c(int *out, char *self);      /* slot 30, the body */
-void *_ZTV5Whomp[31];
+void *_ZTV7daBtn_c[31];
 }
 
 static int __fastcall whomp_init(void *s, void *)
-{ return _ZN5Whomp13InitResourcesEv(s); }
+{ return _ZN7daBtn_c13InitResourcesEv(s); }
 static int __fastcall whomp_clean(void *s, void *)
-{ return _ZN5Whomp16CleanupResourcesEv(s); }
+{ return _ZN7daBtn_c16CleanupResourcesEv(s); }
 static int __fastcall whomp_behavior(void *s, void *)
-{ return _ZN5Whomp8BehaviorEv(s); }
+{ return _ZN7daBtn_c8BehaviorEv(s); }
 static int __fastcall whomp_render(void *s, void *)
 { port_actor_render_probe("WHOMP", (char *)s + 0x2cc);
-  return _ZN5Whomp6RenderEv(s); }
+  return _ZN7daBtn_c6RenderEv(s); }
 static int __fastcall whomp_d1(void *s, void *)
-{ return (int)(size_t)_ZN5WhompD1Ev((int *)s); }
+{ return (int)(size_t)_ZN7daBtn_cD1Ev((int *)s); }
 static int __fastcall whomp_d0(void *s, void *)
-{ return (int)(size_t)_ZN5WhompD0Ev((int *)s); }
+{ return (int)(size_t)_ZN7daBtn_cD0Ev((int *)s); }
 static int __fastcall whomp_mega(void *s, void *, void *p)
-{ _ZN5Whomp15OnHitByMegaCharER6Player((char *)s, p); return 0; }
+{ _ZN7daBtn_c15OnHitByMegaCharER6Player((char *)s, p); return 0; }
 static int __fastcall whomp_aimed(void *s, void *)
-{ return _ZN5Whomp16OnAimedAtWithEggEv((char *)s); }
+{ return _ZN7daBtn_c16OnAimedAtWithEggEv((char *)s); }
 /* Slot 30 is OnAimedAtWithEggReturnVec(), which returns a Vector3 BY VALUE:
    MSVC passes the hidden result pointer as the one stack argument and the
    callee returns it in eax and pops it. _ZN5Whomp25OnAimedAtWithEggReturnVecEv is the ROM's
@@ -253,7 +253,7 @@ extern "C" void port_whomp_states_seat(void);   /* port/unmatched/Whomp_Behavior
 
 static void hal_fill_whomp_vtable(void)
 {
-    void **vt = _ZTV5Whomp;
+    void **vt = _ZTV7daBtn_c;
     port_enemy_death_states_seat();
     port_whomp_states_seat();
     we31_fill_shared(vt);
@@ -280,14 +280,14 @@ static void hal_fill_whomp_vtable(void)
 // WithMeshClsn at 0x150, Model at 0x30c and 0x35c, ShadowModel at 0x3ac,
 // 0x3e0 bytes.
 extern "C" {
-int _ZN10BulletBill13InitResourcesEv(void *self);   /* C-free */
-int _ZN10BulletBill16CleanupResourcesEv(void);       /* C-free */
-int _ZN10BulletBill6RenderEv(void *self);            /* face: below */
-int _ZN10BulletBill8BehaviorEv(void *self);          /* host copy */
-int *_ZN10BulletBillD1Ev(int *self);
-int *_ZN10BulletBillD0Ev(int *self);
-int _ZN10BulletBill16OnAimedAtWithEggEv(void);                       /* slot 29 */
-void *_ZTV10BulletBill[31];
+int _ZN7daKlr_c13InitResourcesEv(void *self);   /* C-free */
+int _ZN7daKlr_c16CleanupResourcesEv(void);       /* C-free */
+int _ZN7daKlr_c6RenderEv(void *self);            /* face: below */
+int _ZN7daKlr_c8BehaviorEv(void *self);          /* host copy */
+int *_ZN7daKlr_cD1Ev(int *self);
+int *_ZN7daKlr_cD0Ev(int *self);
+int _ZN7daKlr_c16OnAimedAtWithEggEv(void);                       /* slot 29 */
+void *_ZTV7daKlr_c[31];
 }
 /* PORT_HOST_ABI: two names of ONE ROM table, read off the ROM rather than
    off a comment (lane ALIASCHK). ov079 0x02127ee8 carries its own RTTI
@@ -298,29 +298,28 @@ void *_ZTV10BulletBill[31];
    _ZN10BulletBillD0Ev, _ZN10BulletBillD1Ev. Read out of
    extracted/overlays/overlay_0079.bin; the LHS is not a config symbol
    anywhere, so the alias cannot be defeated by a later slice. */
-#pragma comment(linker, "/alternatename:__ZTV7daKlr_c=__ZTV10BulletBill")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV7daKlr_c=__ZTV7daKlr_c")
 static int __fastcall klr_init(void *s, void *)
-{ return _ZN10BulletBill13InitResourcesEv(s); }
+{ return _ZN7daKlr_c13InitResourcesEv(s); }
 static int __fastcall klr_clean(void *, void *)
-{ return _ZN10BulletBill16CleanupResourcesEv(); }
+{ return _ZN7daKlr_c16CleanupResourcesEv(); }
 static int __fastcall klr_behavior(void *s, void *)
-{ return _ZN10BulletBill8BehaviorEv(s); }
+{ return _ZN7daKlr_c8BehaviorEv(s); }
 static int __fastcall klr_render(void *s, void *)
 { port_actor_render_probe("BULLET_BILL", (char *)s + 0x30c);
-  return _ZN10BulletBill6RenderEv(s); }
+  return _ZN7daKlr_c6RenderEv(s); }
 static int __fastcall klr_d1(void *s, void *)
-{ return (int)(size_t)_ZN10BulletBillD1Ev((int *)s); }
+{ return (int)(size_t)_ZN7daKlr_cD1Ev((int *)s); }
 static int __fastcall klr_d0(void *s, void *)
-{ return (int)(size_t)_ZN10BulletBillD0Ev((int *)s); }
+{ return (int)(size_t)_ZN7daKlr_cD0Ev((int *)s); }
 static int __fastcall klr_aimed(void *, void *)
-{ return _ZN10BulletBill16OnAimedAtWithEggEv(); }
+{ return _ZN7daKlr_c16OnAimedAtWithEggEv(); }
 
 extern "C" void port_bullet_bill_states_seat(void); /* port/unmatched/BulletBill_Behavior */
 
 static void hal_fill_bullet_bill_vtable(void)
 {
-    void **vt = _ZTV10BulletBill;
+    void **vt = _ZTV7daKlr_c;
     port_enemy_death_states_seat();
     port_bullet_bill_states_seat();
     we31_fill_shared(vt);
@@ -344,14 +343,14 @@ static void hal_fill_bullet_bill_vtable(void)
 // no PMF), 9 render (02126f64), 16/17 dtor (02126dbc/02126e00) and 27
 // OnHitByMegaChar (02126ecc, self+player). No host copy, no state seat.
 extern "C" {
-int _ZN11BillBlaster13InitResourcesEv(void *self);          /* slot 0  */
-int _ZN11BillBlaster16CleanupResourcesEv(char *self);          /* slot 3  */
-int _ZN11BillBlaster8BehaviorEv(char *self);          /* slot 6  */
-int _ZN11BillBlaster6RenderEv(void *self);          /* slot 9  */
-int *_ZN11BillBlasterD1Ev(int *self);          /* slot 16 */
-int *_ZN11BillBlasterD0Ev(int *self);          /* slot 17 */
-void _ZN11BillBlaster15OnHitByMegaCharER6Player(char *self, void *player); /* slot 27 */
-int _ZN11BillBlaster4KillEv(char *self);          /* slot 31, its own Kill */
+int _ZN18daObjBkKillerdai_c13InitResourcesEv(void *self);          /* slot 0  */
+int _ZN18daObjBkKillerdai_c16CleanupResourcesEv(char *self);          /* slot 3  */
+int _ZN18daObjBkKillerdai_c8BehaviorEv(char *self);          /* slot 6  */
+int _ZN18daObjBkKillerdai_c6RenderEv(void *self);          /* slot 9  */
+int *_ZN18daObjBkKillerdai_cD1Ev(int *self);          /* slot 16 */
+int *_ZN18daObjBkKillerdai_cD0Ev(int *self);          /* slot 17 */
+void _ZN18daObjBkKillerdai_c15OnHitByMegaCharER6Player(char *self, void *player); /* slot 27 */
+int _ZN18daObjBkKillerdai_c4KillEv(char *self);          /* slot 31, its own Kill */
 /* THIRTY-TWO slots, not 31. BillBlaster is a dBgActor_c (Platform) subclass,
    so its table has Platform's tail slot, and here it is the class's OWN Kill
    (ov079 0x02126e58: a poof particle, dust, bank-3 sound 0xf, then
@@ -363,33 +362,33 @@ int _ZN11BillBlaster4KillEv(char *self);          /* slot 31, its own Kill */
    through a char* face; the count is the slot count times four, so it moves
    with the slot count. */
 DSSTATE_BEGIN
-unsigned char _ZTV11BillBlaster[32 * 4];    /* the host vtable daObjBkKillerdai_c_classInit installs */
+unsigned char _ZTV18daObjBkKillerdai_c[32 * 4];    /* the host vtable daObjBkKillerdai_c_classInit installs */
 DSSTATE_END
 }
 
 static int __fastcall blz_init(void *s, void *)
-{ return _ZN11BillBlaster13InitResourcesEv(s); }
+{ return _ZN18daObjBkKillerdai_c13InitResourcesEv(s); }
 static int __fastcall blz_clean(void *s, void *)
-{ return _ZN11BillBlaster16CleanupResourcesEv((char *)s); }
+{ return _ZN18daObjBkKillerdai_c16CleanupResourcesEv((char *)s); }
 static int __fastcall blz_behavior(void *s, void *)
-{ return _ZN11BillBlaster8BehaviorEv((char *)s); }
+{ return _ZN18daObjBkKillerdai_c8BehaviorEv((char *)s); }
 static int __fastcall blz_render(void *s, void *)
-{ return _ZN11BillBlaster6RenderEv(s); }
+{ return _ZN18daObjBkKillerdai_c6RenderEv(s); }
 static int __fastcall blz_d1(void *s, void *)
-{ return (int)(size_t)_ZN11BillBlasterD1Ev((int *)s); }
+{ return (int)(size_t)_ZN18daObjBkKillerdai_cD1Ev((int *)s); }
 static int __fastcall blz_d0(void *s, void *)
-{ return (int)(size_t)_ZN11BillBlasterD0Ev((int *)s); }
+{ return (int)(size_t)_ZN18daObjBkKillerdai_cD0Ev((int *)s); }
 static int __fastcall blz_mega(void *s, void *, void *p)
-{ _ZN11BillBlaster15OnHitByMegaCharER6Player((char *)s, p); return 0; }
+{ _ZN18daObjBkKillerdai_c15OnHitByMegaCharER6Player((char *)s, p); return 0; }
 /* slot 31, the Platform tail. BillBlaster overrides Platform::Kill with its
    own body, which IS in the build (slice_gate64), so this runs the real thing
    rather than declining. */
 static int __fastcall blz_kill(void *s, void *)
-{ return _ZN11BillBlaster4KillEv((char *)s); }
+{ return _ZN18daObjBkKillerdai_c4KillEv((char *)s); }
 
 static void hal_fill_bill_blaster_vtable(void)
 {
-    void **vt = (void **)_ZTV11BillBlaster;
+    void **vt = (void **)_ZTV18daObjBkKillerdai_c;
     we31_fill_shared(vt);
     vt[0] = (void *)blz_init;
     vt[3] = (void *)blz_clean;
@@ -414,37 +413,37 @@ static void hal_fill_bill_blaster_vtable(void)
 // _ZN12FortressWall24OnHitByCannonBlastedCharER8dActor_c (OnHitByCannonBlastedChar). It is NOT an Enemy, so no
 // death-states seat.
 extern "C" {
-int _ZN12FortressWall13InitResourcesEv(void *self);   /* face: below */
-int _ZN12FortressWall6RenderEv(void *self);           /* face: below */
-int _ZN12FortressWall16CleanupResourcesEv(void *self);/* face: below */
-int _ZN12FortressWall8BehaviorEv(void *self);         /* matched src (slice) */
-int *_ZN12FortressWallD1Ev(int *self);
-int *_ZN12FortressWallD0Ev(int *self);
-void _ZN12FortressWall24OnHitByCannonBlastedCharER8dActor_c(void *self);                 /* slot 26 */
-void _ZN12FortressWall4KillEv(char *self);                 /* slot 31 */
-void *_ZTV12FortressWall[32];
+int _ZN14daObjBk_Kabe_c13InitResourcesEv(void *self);   /* face: below */
+int _ZN14daObjBk_Kabe_c6RenderEv(void *self);           /* face: below */
+int _ZN14daObjBk_Kabe_c16CleanupResourcesEv(void *self);/* face: below */
+int _ZN14daObjBk_Kabe_c8BehaviorEv(void *self);         /* matched src (slice) */
+int *_ZN14daObjBk_Kabe_cD1Ev(int *self);
+int *_ZN14daObjBk_Kabe_cD0Ev(int *self);
+void _ZN14daObjBk_Kabe_c24OnHitByCannonBlastedCharER8dActor_c(void *self);                 /* slot 26 */
+void _ZN14daObjBk_Kabe_c4KillEv(char *self);                 /* slot 31 */
+void *_ZTV14daObjBk_Kabe_c[32];
 }
 
 static int __fastcall fw_init(void *s, void *)
-{ return _ZN12FortressWall13InitResourcesEv(s); }
+{ return _ZN14daObjBk_Kabe_c13InitResourcesEv(s); }
 static int __fastcall fw_clean(void *s, void *)
-{ return _ZN12FortressWall16CleanupResourcesEv(s); }
+{ return _ZN14daObjBk_Kabe_c16CleanupResourcesEv(s); }
 static int __fastcall fw_behavior(void *s, void *)
-{ return _ZN12FortressWall8BehaviorEv(s); }
+{ return _ZN14daObjBk_Kabe_c8BehaviorEv(s); }
 static int __fastcall fw_render(void *s, void *)
-{ return _ZN12FortressWall6RenderEv(s); }
+{ return _ZN14daObjBk_Kabe_c6RenderEv(s); }
 static int __fastcall fw_d1(void *s, void *)
-{ return (int)(size_t)_ZN12FortressWallD1Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjBk_Kabe_cD1Ev((int *)s); }
 static int __fastcall fw_d0(void *s, void *)
-{ return (int)(size_t)_ZN12FortressWallD0Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjBk_Kabe_cD0Ev((int *)s); }
 static int __fastcall fw_cannon(void *s, void *, void *)
-{ _ZN12FortressWall24OnHitByCannonBlastedCharER8dActor_c(s); return 0; }
+{ _ZN14daObjBk_Kabe_c24OnHitByCannonBlastedCharER8dActor_c(s); return 0; }
 static int __fastcall fw_s31(void *s, void *)
-{ _ZN12FortressWall4KillEv((char *)s); return 0; }
+{ _ZN14daObjBk_Kabe_c4KillEv((char *)s); return 0; }
 
 static void hal_fill_fortress_wall_vtable(void)
 {
-    void **vt = _ZTV12FortressWall;
+    void **vt = _ZTV14daObjBk_Kabe_c;
     we31_fill_shared(vt);
     vt[0] = (void *)fw_init;
     vt[3] = (void *)fw_clean;
@@ -469,25 +468,25 @@ extern "C" void hal_fill_fortress_wall_vtable_c(void) { hal_fill_fortress_wall_v
 // methods against include/. Everything else in ov079 is already a C-named free
 // function in its own TU (the D1/D0, the func_ov079_*, the two Behaviors that
 // became host copies).
-#include "Whomp.h"
-#include "BulletBill.h"
-#include "FortressWall.h"
+#include "daBtn_c.h"
+#include "daKlr_c.h"
+#include "daObjBk_Kabe_c.h"
 extern "C" {
-int _ZN5Whomp13InitResourcesEv(void *self)
-{ return ((Whomp *)self)->Whomp::InitResources(); }
+int _ZN7daBtn_c13InitResourcesEv(void *self)
+{ return ((daBtn_c *)self)->daBtn_c::InitResources(); }
 /* Whomp::Render is NOT faced here: it dispatches ModelAnim slot 5 through a
    local six-virtual shadow (the ROM Render), which the host _ZTV9ModelAnim
    array numbers as Virtual18. src/_ZN5Whomp6RenderEv.cpp is dropped from
    slice_gate64.txt and _ZN5Whomp6RenderEv is the host copy in
    port/unmatched/ModelAnim_Renders.cpp, the Butterfly/Fish/QuestionBlock case. */
-int _ZN5Whomp16CleanupResourcesEv(void *self)
-{ return ((Whomp *)self)->Whomp::CleanupResources(); }
-int _ZN10BulletBill6RenderEv(void *self)
-{ return ((BulletBill *)self)->BulletBill::Render(); }
-int _ZN12FortressWall13InitResourcesEv(void *self)
-{ return ((FortressWall *)self)->FortressWall::InitResources(); }
-int _ZN12FortressWall6RenderEv(void *self)
-{ return ((FortressWall *)self)->FortressWall::Render(); }
-int _ZN12FortressWall16CleanupResourcesEv(void *self)
-{ return ((FortressWall *)self)->FortressWall::CleanupResources(); }
+int _ZN7daBtn_c16CleanupResourcesEv(void *self)
+{ return ((daBtn_c *)self)->daBtn_c::CleanupResources(); }
+int _ZN7daKlr_c6RenderEv(void *self)
+{ return ((daKlr_c *)self)->daKlr_c::Render(); }
+int _ZN14daObjBk_Kabe_c13InitResourcesEv(void *self)
+{ return ((daObjBk_Kabe_c *)self)->daObjBk_Kabe_c::InitResources(); }
+int _ZN14daObjBk_Kabe_c6RenderEv(void *self)
+{ return ((daObjBk_Kabe_c *)self)->daObjBk_Kabe_c::Render(); }
+int _ZN14daObjBk_Kabe_c16CleanupResourcesEv(void *self)
+{ return ((daObjBk_Kabe_c *)self)->daObjBk_Kabe_c::CleanupResources(); }
 }

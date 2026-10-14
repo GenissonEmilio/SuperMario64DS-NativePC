@@ -171,7 +171,7 @@ struct MgSoundVt {
    above): a dropped vtable-slot-35 receiver, an approximated modulo, a byte
    store spelled as an int store over a live neighbour, and a differently
    nested zero test. Host-copied and corrected; not an ABI wall. */
-extern "C" int func_ov006_0211ba88(char *base, int idx)
+extern "C" int _ZN12dScMgSound_c19func_ov006_0211ba88Ei(char *base, int idx)
 {
     int *cur  = (int *)(base + 0x50e8 + idx * 0x14);
     u8  *flag = (u8 *)(base + 0x50f9 + idx * 0x14);

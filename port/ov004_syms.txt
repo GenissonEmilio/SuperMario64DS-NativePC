@@ -117,7 +117,7 @@ data_ov004_020bb674 data_ov004_020bb6bc data_ov004_020bb70c data_ov004_020bb75c 
 data_ov004_020bb85c data_ov004_020bb8b4 data_ov004_020bb90c data_ov004_020bb964 data_ov004_020bb9bc data_ov004_020bba14
 data_ov004_020bba6c data_ov004_020bbac4 data_ov004_020bbb1c data_ov004_020bbb7c data_ov004_020bbbdc data_ov004_020bbc44
 data_ov004_020bbcac data_ov004_020bbd14 data_ov004_020bbd7c data_ov004_020bbdec data_ov004_020bbe5c data_ov004_020bbecc
-data_ov004_020bbf4c data_ov004_020bbf54 data_ov004_020bbf5c data_ov004_020bbf64 _ZTI11dScMgBase_c _ZTIN11dScMgBase_c15graphCallback_cE
+data_ov004_020bbf4c@0x020bbf4c data_ov004_020bbf54@0x020bbf54 data_ov004_020bbf5c@0x020bbf5c data_ov004_020bbf64@0x020bbf64 _ZTI11dScMgBase_c _ZTIN11dScMgBase_c15graphCallback_cE
 _ZTS11dScMgBase_c data_ov004_020bbf94 data_ov004_020bbfa8 data_ov004_020bbfbc data_ov004_020bbfd0 data_ov004_020bbfe4
 data_ov004_020bbff8 data_ov004_020bc00c data_ov004_020bc020 data_ov004_020bc03c _ZTSN11dScMgBase_c15graphCallback_cE data_ov004_020bc070
 data_ov004_020bc0c0 data_ov004_020bc150 data_ov004_020bc154 data_ov004_020bc15c data_ov004_020bc164 data_ov004_020bc16c
@@ -151,21 +151,40 @@ data_ov004_020bc97c data_ov004_020bc984 data_ov004_020bc98c data_ov004_020bc994 
 data_ov004_020bc9ac data_ov004_020bc9b4 data_ov004_020bc9bc data_ov004_020bc9c4 data_ov004_020bc9cc data_ov004_020bc9d4
 data_ov004_020bc9dc data_ov004_020bc9e4 data_ov004_020bc9ec data_ov004_020bc9f4 data_ov004_020bc9fc data_ov004_020bca04
 data_ov004_020bca0c data_ov004_020bca14 data_ov004_020bca1c data_ov004_020bca24 data_ov004_020bca2c data_ov004_020bca34
-data_ov004_020bca3c data_ov004_020bca44 data_ov004_020bca58 data_ov004_020bca60 _ZTIN10dMgPsOpt_c11TouchIcon_cE data_ov004_020bca7c
+data_ov004_020bca3c data_ov004_020bca44 data_ov004_020bca58 data_ov004_020bca60 _ZTIN10dMgPsOpt_c11TouchIcon_cE _ZTVN10dMgPsOpt_c11TouchIcon_cE
 _ZTSN10dMgPsOpt_c11TouchIcon_cE data_ov004_020bcaa0 data_ov004_020bd074 data_ov004_020bd698 data_ov004_020bd828 data_ov004_020bdccc
 data_ov004_020be34c data_ov004_020be9ec data_ov004_020be9f4 data_ov004_020be9fc data_ov004_020bea04 data_ov004_020bea0c
 data_ov004_020bea14 data_ov004_020bea28 data_ov004_020beac8 data_ov004_020beb60 data_ov004_020beb64 data_ov004_020beb68
-data_ov004_020beb6c data_ov004_020beb70 data_ov004_020beb74 data_ov004_020beb7c data_ov004_020beb88 data_ov004_020beb98
-data_ov004_020beba8 data_ov004_020bebe8 data_ov004_020bf3e8 data_ov004_020bf3ec data_ov004_020bf3f0 data_ov004_020bf3f4
-data_ov004_020bf3fc data_ov004_020bf404 data_ov004_020bf410 data_ov004_020bf41c data_ov004_020bf428 data_ov004_020bf490
-data_ov004_020bf4f8 data_ov004_020bf560 data_ov004_020bf5d4 data_ov004_020bf648 data_ov004_020bf9e4 data_ov004_020bf9e8
+data_ov004_020beb6c data_ov004_020beb70 data_ov004_020beb7c@0x020beb7c
+data_ov004_020bf3e8 data_ov004_020bf3ec data_ov004_020bf3f0 data_ov004_020bf3f4
+data_ov004_020bf3fc data_ov004_020bf404 data_ov004_020bf410 data_ov004_020bf41c@0x020bf41c
+data_ov004_020bf9e4 data_ov004_020bf9e8
 data_ov004_020bf9ec data_ov004_020bf9f0 data_ov004_020bf9f4 data_ov004_020bf9f8 data_ov004_020bf9fc data_ov004_020bfa00
 data_ov004_020bfa04 data_ov004_020bfa08 data_ov004_020bfa0c data_ov004_020bfa10 data_ov004_020bfa14 data_ov004_020bfa18
 data_ov004_020bfa1c data_ov004_020bfa20 data_ov004_020bfa24 data_ov004_020bfa28 data_ov004_020bfa34 data_ov004_020bfa56
-data_ov004_020bfd04 data_ov004_020bfd08 data_ov004_020bfda8 data_ov004_020bfdb4 data_ov004_020bfdc0 data_ov004_020bfdcc
+data_ov004_020bfd04@0x020bfd04 data_ov004_020bfd08@0x020bfd08 data_ov004_020bfda8 data_ov004_020bfdb4 data_ov004_020bfdc0 data_ov004_020bfdcc
 data_ov004_020bfdd8 data_ov004_020bfde4 data_ov004_020bfdf0 data_ov004_020bfdfc data_ov004_020bfe08 data_ov004_020bfe14
 data_ov004_020bfe20 data_ov004_020bfe2c data_ov004_020bfe38 data_ov004_020bfe44 data_ov004_020bfe50 data_ov004_020bfe5c
 data_ov004_020bfe68 data_ov004_020bfe74:0x2 data_ov004_020bfe76:0x2 data_ov004_020bfe78 data_ov004_020bfe7c data_ov004_020bfe80
 data_ov004_020bfe84 data_ov004_020bfe88:0x2 data_ov004_020bfe8a:0x2 data_ov004_020bfe8c data_ov004_020bfe90 data_ov004_020bfe94
 data_ov004_020bfe98 data_ov004_020bfe9c:0x2 data_ov004_020bfe9e:0x2 data_ov004_020bfea0 data_ov004_020bfea4 data_ov004_020bfea8
 data_ov004_020bfeac data_ov004_020bfeb0 data_ov004_020bfeb4
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov004_020beb74                        now defined by src/minigames/d_s_mg_base.cpp
+#   data_ov004_020beb88                        now defined by src/minigames/d_s_mg_base.cpp
+#   data_ov004_020beb98                        now defined by src/minigames/d_s_mg_base.cpp
+#   data_ov004_020beba8                        now defined by src/minigames/d_s_mg_base.cpp
+#   data_ov004_020bebe8                        now defined by src/minigames/d_s_mg_base.cpp
+#   data_ov004_020bf428                        now defined by src/actors/unit020b2c84.cpp
+#   data_ov004_020bf490                        now defined by src/actors/unit020b2c84.cpp
+#   data_ov004_020bf4f8                        now defined by src/actors/unit020b2c84.cpp
+#   data_ov004_020bf560                        now defined by src/actors/unit020b2c84.cpp
+#   data_ov004_020bf5d4                        now defined by src/actors/unit020b2c84.cpp
+#   data_ov004_020bf648                        now defined by src/actors/unit020b2c84.cpp

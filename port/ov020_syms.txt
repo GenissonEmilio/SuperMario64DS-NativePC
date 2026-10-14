@@ -27,7 +27,7 @@
 # sinit, are NOT mounted: BOOK_SHOT / BOOKEND / BOOK_SHOT_SPAWNER stay skipped
 # (BookShot's state-9 behaviour calls an undecompiled ov063 function).
 g_profile_CHAIR data_ov020_021149fc
-data_ov020_02114af0 data_ov020_02114af8
+data_ov020_02114af0 data_ov020_02114af8@0x02114af8
 
 # run linkw wave 5 (lane w5-A): the BOOK CAST joins -- Bookend (327),
 # BookShotSpawner (328), BookShot (325) and the unnamed BookSwitch record
@@ -54,8 +54,20 @@ _ZTS9daChair_c _ZTI9daChair_c
 # node at 0x02114ad8 is 12 bytes by the ROM's own write (func_020731dc
 # stores three words) -- dsd's interior split data_ov020_02114adc would
 # floor it to 4, so the node is pinned and the split skipped.
-data_ov020_02114aa0 data_ov020_02114aa8 data_ov020_02114ab0
-data_ov020_02114ab8 data_ov020_02114ac0 data_ov020_02114acc
-data_ov020_02114ad8:0xc data_ov020_02114ae4
+
+data_ov020_02114ac0@0x02114ac0 data_ov020_02114acc@0x02114acc
+data_ov020_02114ad8@0x02114ad8:0xc data_ov020_02114ae4@0x02114ae4
 # the book state machine's tuning word (4 bytes, next symbol 0211482c)
 data_ov020_02114828
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov020_02114aa0                        now defined by src/actors/daBook_c.cpp
+#   data_ov020_02114aa8                        now defined by src/actors/daBook_c.cpp
+#   data_ov020_02114ab0                        now defined by src/actors/daBook_c.cpp
+#   data_ov020_02114ab8                        now defined by src/actors/daBook_c.cpp

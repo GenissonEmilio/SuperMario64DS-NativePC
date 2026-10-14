@@ -51,7 +51,7 @@ void *_ZN7dBgW_Kc8LoadFileER13SharedFilePtr(void *ptr);
    call passes the ROM's r2=1 as a second argument the body ignores, so the face
    forwards only the opacity, the gate-16 reading of the same method. */
 int _ZN8dActor_c13DistToCPlayerEv(void *self);
-void _ZN9ModelBase12ApplyOpacityEj(void *self, unsigned a);
+void _ZN9ModelBase12ApplyOpacityEjj(void *self, unsigned a);
 }
 
 /* Actor: three methods the 1-up's type bodies and the sign's thrown state
@@ -91,7 +91,7 @@ int Actor::DistToCPlayer()
    so the face drops it. */
 struct ModelBase { void ApplyOpacity(unsigned int o, int x); };
 void ModelBase::ApplyOpacity(unsigned int o, int)
-{ _ZN9ModelBase12ApplyOpacityEj(this, o); }
+{ _ZN9ModelBase12ApplyOpacityEjj(this, o); }
 
 /* ?UpdateWMClsn@dEnemyBase_c@@QAEXAAUWithMeshClsn@@I@Z */
 struct WithMeshClsn;

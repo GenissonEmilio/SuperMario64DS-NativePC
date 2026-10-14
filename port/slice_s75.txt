@@ -312,23 +312,23 @@ src/actors/dScMgCurling2_c.cpp
 # decompile of the same address. Taking both is a duplicate symbol, and the
 # matched tree's body is the one to keep.
 #src/func_ov006_020e513c.c
-src/func_ov006_020e5450.c
-src/func_ov006_020e59b0.c
-src/func_ov006_020e5a0c.c
-src/func_ov006_020e5b70.c
-src/func_ov006_020e5b7c.c
-src/func_ov006_020e5e3c.c
-src/func_ov006_020e5ffc.c
-src/func_ov006_020e6118.c
-src/func_ov006_020e619c.c
-src/func_ov006_020e61c0.c
-src/func_ov006_020e61c4.c
-src/func_ov006_020e628c.c
-src/func_ov006_020e64e4.c
-src/func_ov006_020e6528.c
-src/func_ov006_020e667c.c
-src/func_ov006_020e668c.c
-src/_ZN15dScMgCurling2_c13OnYoshiTryEatEi.cpp
-src/_ZN15dScMgCurling2_c6RenderEv.cpp
-src/_ZN15dScMgCurling2_c13InitResourcesEv.cpp
-src/d_s_mg_curling2.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e5450.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e59b0.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e5a0c.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e5b70.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e5b7c.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e5e3c.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e5ffc.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e6118.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e619c.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e61c0.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e61c4.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e628c.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e64e4.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e6528.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e667c.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e668c.c
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/_ZN15dScMgCurling2_c13OnYoshiTryEatEi.cpp
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/_ZN15dScMgCurling2_c6RenderEv.cpp
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/_ZN15dScMgCurling2_c13InitResourcesEv.cpp
+# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/d_s_mg_curling2.c

@@ -68,7 +68,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 #include "dActor_c.h"
 #include "dtor_faces_cpp.h"
 #include "fBase_c.h"
-#include "CutsceneObject.h"
+#include "daDemo_c.h"
 #include "Model.h"   /* the model class the vtable seat below describes */
 
 extern "C" {
@@ -92,13 +92,13 @@ void _ZN8dActor_c13OnTurnIntoEggER6Player(void *s, void *p);         /* 19 */
 int _ZN8dActor_c16OnAimedAtWithEggEv(void *self);                    /* 29 */
 
 /* the class's own, all from port/slice_intro.txt */
-int _ZN14CutsceneObject13InitResourcesEv(void *self);     /* face, below */
-int _ZN14CutsceneObject8BehaviorEv(void *self);           /* face, below */
-int _ZN14CutsceneObject6RenderEv(void *self);             /* face, below */
-int _ZN14CutsceneObject16CleanupResourcesEv(void *self);  /* face, below */
-void _ZN14CutsceneObject16OnPendingDestroyEv(void);       /* C linkage in src */
-int *_ZN14CutsceneObjectD0Ev(int *self);                  /* slot 17, .c, DTOR-PAIRS seat (0x020f1f94) */
-void *_ZTV14CutsceneObject[31];
+int _ZN8daDemo_c13InitResourcesEv(void *self);     /* face, below */
+int _ZN8daDemo_c8BehaviorEv(void *self);           /* face, below */
+int _ZN8daDemo_c6RenderEv(void *self);             /* face, below */
+int _ZN8daDemo_c16CleanupResourcesEv(void *self);  /* face, below */
+void _ZN8daDemo_c16OnPendingDestroyEv(void);       /* C linkage in src */
+int *_ZN8daDemo_cD0Ev(int *self);                  /* slot 17, .c, DTOR-PAIRS seat (0x020f1f94) */
+void *_ZTV8daDemo_c[31];
 
 /* the Actor chain co_d1/co_d0 end on, and the heap every actor is allocated
    from (src/_ZN7fBase_cnwEj.cpp) */
@@ -206,7 +206,7 @@ static int __fastcall co_init(void *s, void *)
     if (on < 0)
         on = std::getenv("SM64DS_INTRO_WATCH") ? 1 : 0;
     const unsigned kind = on ? *(unsigned *)((char *)s + 8) : 0u;
-    const int r = _ZN14CutsceneObject13InitResourcesEv(s);
+    const int r = _ZN8daDemo_c13InitResourcesEv(s);
     if (on) {
         const int anim  = (kind == 0x12 || kind == 0x13 ||
                            (kind >= 0x1A && kind <= 0x2D));
@@ -230,7 +230,7 @@ static int __fastcall co_init(void *s, void *)
     return r;
 }
 static int __fastcall co_clean(void *s, void *)
-{ return _ZN14CutsceneObject16CleanupResourcesEv(s); }
+{ return _ZN8daDemo_c16CleanupResourcesEv(s); }
 
 /* THE SCRIPT VM'S OWN CURSOR, read from a place that ticks. ProcessKuppaScript
    (src/ProcessKuppaScript.cpp) holds the whole opening in two words: the script
@@ -309,12 +309,12 @@ static void co_script_watch(void)
     }
 }
 static int __fastcall co_behavior(void *s, void *)
-{ co_script_watch(); return _ZN14CutsceneObject8BehaviorEv(s); }
+{ co_script_watch(); return _ZN8daDemo_c8BehaviorEv(s); }
 static int __fastcall co_render(void *s, void *)
 { port_actor_render_probe("CUTSCENE_OBJECT", (char *)s + 0xdc);
-  return _ZN14CutsceneObject6RenderEv(s); }
+  return _ZN8daDemo_c6RenderEv(s); }
 static int __fastcall co_pdes(void *, void *)
-{ _ZN14CutsceneObject16OnPendingDestroyEv(); return 0; }
+{ _ZN8daDemo_c16OnPendingDestroyEv(); return 0; }
 
 /* Slot 16, the complete-object destructor: the ROM's D0 chain WITHOUT the
    Memory::Deallocate at its tail, because the caller of slot 16
@@ -328,7 +328,7 @@ static int __fastcall co_pdes(void *, void *)
    the header). The chain is the same one co_d1 runs plus the free to the heap
    ActorBase::operator new took it from. */
 static int __fastcall co_d0(void *s, void *)
-{ return (int)(size_t)_ZN14CutsceneObjectD0Ev((int *)s); }
+{ return (int)(size_t)_ZN8daDemo_cD0Ev((int *)s); }
 
 /* ---- A VTABLE SLOT THE SCRIPT'S OWN MODEL CLASS CALLS THROUGH --------------
    data_ov002_0210bae4 is a VTABLE, not a spawn record -- an earlier version of
@@ -645,7 +645,7 @@ extern "C" void hal_fill_cutscene_object_vtable(void)
        hal/intro_ov002_seat.cpp -- the arrays this lane added to
        port/ov002_syms.txt are byte-copied, so they carry DS addresses. */
     port_intro_seat_ov002_ptrs();
-    void **vt = _ZTV14CutsceneObject;
+    void **vt = _ZTV8daDemo_c;
     vt[1] = (void *)co_binit;
     vt[2] = (void *)co_ainit;
     vt[4] = (void *)co_bclean;
@@ -687,14 +687,14 @@ extern "C" void hal_fill_cutscene_object_vtable(void)
 // an ecx that never held `this` -- the face bridges cdecl to __thiscall.
 // OnPendingDestroy is already C linkage in its .c src, so it gets no face.
 extern "C" {
-int _ZN14CutsceneObject13InitResourcesEv(void *self)
-{ return ((CutsceneObject *)self)->CutsceneObject::InitResources(); }
-int _ZN14CutsceneObject8BehaviorEv(void *self)
-{ return ((CutsceneObject *)self)->CutsceneObject::Behavior(); }
-int _ZN14CutsceneObject6RenderEv(void *self)
-{ return ((CutsceneObject *)self)->CutsceneObject::Render(); }
-int _ZN14CutsceneObject16CleanupResourcesEv(void *self)
-{ return ((CutsceneObject *)self)->CutsceneObject::CleanupResources(); }
+int _ZN8daDemo_c13InitResourcesEv(void *self)
+{ return ((daDemo_c *)self)->daDemo_c::InitResources(); }
+int _ZN8daDemo_c8BehaviorEv(void *self)
+{ return ((daDemo_c *)self)->daDemo_c::Behavior(); }
+int _ZN8daDemo_c6RenderEv(void *self)
+{ return ((daDemo_c *)self)->daDemo_c::Render(); }
+int _ZN8daDemo_c16CleanupResourcesEv(void *self)
+{ return ((daDemo_c *)self)->daDemo_c::CleanupResources(); }
 }
 
 // ---- Model's three vtable methods, faced -----------------------------------

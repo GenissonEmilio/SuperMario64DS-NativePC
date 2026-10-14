@@ -150,19 +150,19 @@ extern unsigned char g_profile_SANBO[];
 extern unsigned char g_profile_SANBO_BODY[];
 
 /* ---- TORNADO (308) ----------------------------------------------------- */
-int _ZN7Tornado13InitResourcesEv(void *self);     /* unmatched/Tornado_HostSites */
-int _ZN7Tornado16CleanupResourcesEv(void *self);  /* matched src .c, flat  */
-int _ZN7Tornado8BehaviorEv(void *self);           /* unmatched/Tornado_HostSites */
-int _ZN7Tornado6RenderEv(void *self);             /* unmatched/Tornado_HostSites */
-int *_ZN7TornadoD1Ev(int *self);                  /* unmatched/Tornado_HostSites */
-int *_ZN7TornadoD0Ev(int *self);                  /* matched src, flat     */
+int _ZN7daTor_c13InitResourcesEv(void *self);     /* unmatched/Tornado_HostSites */
+int _ZN7daTor_c16CleanupResourcesEv(void *self);  /* matched src .c, flat  */
+int _ZN7daTor_c8BehaviorEv(void *self);           /* unmatched/Tornado_HostSites */
+int _ZN7daTor_c6RenderEv(void *self);             /* unmatched/Tornado_HostSites */
+int *_ZN7daTor_cD1Ev(int *self);                  /* unmatched/Tornado_HostSites */
+int *_ZN7daTor_cD0Ev(int *self);                  /* matched src, flat     */
 void *daTor_c_classInit(void);
 extern unsigned char g_profile_TORNADO[];
 
 /* ---- the two host vtables (the mount excludes both spans) --------------- */
 DSSTATE_BEGIN
 void *_ZTV5Pokey[31];      /* 0x021379d8 == _ZTV9daSanbo_c */
-void *_ZTV7Tornado[31];    /* 0x02137a90 == _ZTV7daTor_c   */
+void *_ZTV7daTor_c[31];    /* 0x02137a90 == _ZTV7daTor_c   */
 DSSTATE_END
 }
 
@@ -170,8 +170,7 @@ DSSTATE_END
  * defined nowhere; alternatename_guard.py fails the build post-link if that
  * ever stops being true. */
 #pragma comment(linker, "/alternatename:__ZTV9daSanbo_c=__ZTV5Pokey")
-#pragma comment(linker, "/alternatename:__ZTV7daTor_c=__ZTV7Tornado")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV7daTor_c=__ZTV7daTor_c")
 /* THE MEASURED CLOSURE GAP, four of its six rows. Taken off the first link's
  * own unresolved list, the way slice_vs.txt section 3 says to take it, not
  * guessed. The other two rows are not aliases: src/func_02016aac.c is a
@@ -217,12 +216,12 @@ extern "C" {
    own typedef is `void (C::*PMF)()` and the dispatch discards r0, so the seat
    table is typed void-returning to match it. See
    port/unmatched/Pokey_HostSites.cpp for the full note. */
-int func_ov096_021360c4(void *); int func_ov096_02136134(void *);
-int func_ov096_02136264(void *); int func_ov096_021363b4(void *);
-int func_ov096_021363c4(void *); int func_ov096_0213640c(void *);
-int func_ov096_02136434(void *); int func_ov096_02136534(void *);
-int func_ov096_021365d4(void *); void func_ov096_0213670c(void *);
-int func_ov096_02136754(void *); int func_ov096_021368a4(void *);
+int _ZN9daSanbo_c19func_ov096_021360c4Ev(void *); int _ZN9daSanbo_c19func_ov096_02136134Ev(void *);
+int _ZN9daSanbo_c19func_ov096_02136264Ev(void *); int _ZN9daSanbo_c19func_ov096_021363b4Ev(void *);
+int _ZN9daSanbo_c19func_ov096_021363c4Ev(void *); int _ZN9daSanbo_c19func_ov096_0213640cEv(void *);
+int _ZN9daSanbo_c19func_ov096_02136434Ev(void *); int _ZN9daSanbo_c19func_ov096_02136534Ev(void *);
+int _ZN9daSanbo_c19func_ov096_021365d4Ev(void *); void _ZN9daSanbo_c19func_ov096_0213670cEv(void *);
+int _ZN9daSanbo_c19func_ov096_02136754Ev(void *); int _ZN9daSanbo_c19func_ov096_021368a4Ev(void *);
 
 /* the mounted SOURCE records, one 8-byte {fn, delta} pair each. */
 extern unsigned int data_ov096_02137920[], data_ov096_02137928[],
@@ -239,18 +238,18 @@ namespace {
 // adds `this`, and calls through the record's fn word, so the receiver
 // arrives in ECX and a raw __cdecl body reads the caller's stack instead.
 // Same family as commit 5ae983797's FlameChomp rows in ov070.)
-static int  __fastcall pk_st_60c4(void *s) { return func_ov096_021360c4(s); }
-static int  __fastcall pk_st_6134(void *s) { return func_ov096_02136134(s); }
-static int  __fastcall pk_st_6264(void *s) { return func_ov096_02136264(s); }
-static int  __fastcall pk_st_63b4(void *s) { return func_ov096_021363b4(s); }
-static int  __fastcall pk_st_63c4(void *s) { return func_ov096_021363c4(s); }
-static int  __fastcall pk_st_640c(void *s) { return func_ov096_0213640c(s); }
-static int  __fastcall pk_st_6434(void *s) { return func_ov096_02136434(s); }
-static int  __fastcall pk_st_6534(void *s) { return func_ov096_02136534(s); }
-static int  __fastcall pk_st_65d4(void *s) { return func_ov096_021365d4(s); }
-static void __fastcall pk_st_670c(void *s) {        func_ov096_0213670c(s); }
-static int  __fastcall pk_st_6754(void *s) { return func_ov096_02136754(s); }
-static int  __fastcall pk_st_68a4(void *s) { return func_ov096_021368a4(s); }
+static int  __fastcall pk_st_60c4(void *s) { return _ZN9daSanbo_c19func_ov096_021360c4Ev(s); }
+static int  __fastcall pk_st_6134(void *s) { return _ZN9daSanbo_c19func_ov096_02136134Ev(s); }
+static int  __fastcall pk_st_6264(void *s) { return _ZN9daSanbo_c19func_ov096_02136264Ev(s); }
+static int  __fastcall pk_st_63b4(void *s) { return _ZN9daSanbo_c19func_ov096_021363b4Ev(s); }
+static int  __fastcall pk_st_63c4(void *s) { return _ZN9daSanbo_c19func_ov096_021363c4Ev(s); }
+static int  __fastcall pk_st_640c(void *s) { return _ZN9daSanbo_c19func_ov096_0213640cEv(s); }
+static int  __fastcall pk_st_6434(void *s) { return _ZN9daSanbo_c19func_ov096_02136434Ev(s); }
+static int  __fastcall pk_st_6534(void *s) { return _ZN9daSanbo_c19func_ov096_02136534Ev(s); }
+static int  __fastcall pk_st_65d4(void *s) { return _ZN9daSanbo_c19func_ov096_021365d4Ev(s); }
+static void __fastcall pk_st_670c(void *s) {        _ZN9daSanbo_c19func_ov096_0213670cEv(s); }
+static int  __fastcall pk_st_6754(void *s) { return _ZN9daSanbo_c19func_ov096_02136754Ev(s); }
+static int  __fastcall pk_st_68a4(void *s) { return _ZN9daSanbo_c19func_ov096_021368a4Ev(s); }
 
 struct Ov096Seat {
     unsigned int *rec;      /* the mounted source record        */
@@ -483,23 +482,23 @@ extern "C" void hal_fill_pokey_vtable(void)
 // pattern.
 // ============================================================================
 static int __fastcall tor_init(void *s, void *)
-{ return _ZN7Tornado13InitResourcesEv(s); }
+{ return _ZN7daTor_c13InitResourcesEv(s); }
 static int __fastcall tor_clean(void *s, void *)
-{ return _ZN7Tornado16CleanupResourcesEv(s); }
+{ return _ZN7daTor_c16CleanupResourcesEv(s); }
 static int __fastcall tor_behavior(void *s, void *)
-{ return _ZN7Tornado8BehaviorEv(s); }
+{ return _ZN7daTor_c8BehaviorEv(s); }
 static int __fastcall tor_render(void *s, void *)
 { port_actor_render_probe("TORNADO", (char *)s + 0x2c4);
-  return _ZN7Tornado6RenderEv(s); }
+  return _ZN7daTor_c6RenderEv(s); }
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (tor_d1) spelled the same chain by hand. */
 static int __fastcall tor_d0(void *s, void *)
-{ return (int)(size_t)_ZN7TornadoD0Ev((int *)s); }
+{ return (int)(size_t)_ZN7daTor_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_tornado_vtable(void)
 {
     port_ov96_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV7Tornado;
+    void *volatile *vt = (void *volatile *)_ZTV7daTor_c;
     ov96_fill_shared(vt);
     vt[0]  = (void *)tor_init;
     vt[3]  = (void *)tor_clean;
@@ -528,7 +527,7 @@ extern "C" void hal_fill_tornado_vtable(void)
 // two Renders differ.
 // ============================================================================
 #include "daSanbo_c.h"
-#include "Tornado.h"
+#include "daTor_c.h"
 extern "C" int _ZN9daSanbo_c13InitResourcesEv(void *self)
 { return ((daSanbo_c *)self)->daSanbo_c::InitResources(); }
 extern "C" int _ZN9daSanbo_c16CleanupResourcesEv(void *self)

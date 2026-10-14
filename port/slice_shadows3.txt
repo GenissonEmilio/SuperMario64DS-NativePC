@@ -132,18 +132,18 @@
 #   (?SetFile@ModelBase@@ in two spellings at one address, ?LoadFile@Model@@
 #   likewise), so the mirror is retired for the TU itself and no face changes.
 #
-src/func_ov091_021339fc.c
-src/func_ov006_02115248.cpp
-src/func_ov006_020e1dc8.cpp
-src/func_ov065_02118838.cpp
-src/func_ov016_02111c40.c
-src/func_ov063_021166ac.cpp
-src/func_ov071_021211e0.c
-src/game/actors/daTrs_c/_ZN7daTrs_c8BehaviorEv.cpp
-src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_c13InitResourcesEv.cpp
-src/_ZN12dEnemyBase_c14UpdateYoshiEatER10dBgCh_Actr.cpp
-src/_ZN12Flamethrower8BehaviorEv.cpp
-src/_ZN6Coffin13InitResourcesEv.cpp
+src/game/actors/d_a_hyuhyu.cpp
+src/actors/dScMgSmartball_c.cpp
+src/actors/dScMgCurling_c.cpp
+src/actors/daDossy_c.cpp
+src/actors/daMoray_c.cpp
+src/actors/daTrs_c.cpp
+src/actors/daEykn_c.cpp
+# FOLDED into src/actors/daTrs_c.cpp (row 140): src/game/actors/daTrs_c/_ZN7daTrs_c8BehaviorEv.cpp
+src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp
+src/actors/dEnemyBase_c.cpp
+src/actors/daObjFlamethrower_c.cpp
+src/actors/daObjCasket_c.cpp
 
 # ---- ONE ROW RE-SEATED, AND WHY (fixer COFFIN1) ----------------------------
 #

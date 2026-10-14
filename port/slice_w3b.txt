@@ -79,19 +79,19 @@
 # func_ov081_021261d4 (the installer) IS the genuine index-0 case -- its
 # `struct C` is defined in the TU, MSVC emits the 4-byte form, and the obj was
 # read to confirm it rather than argued from the shape.
-src/_ZN8SnowballD1Ev.cpp
+src/actors/daSnowball_c.cpp
 # RETIRED at SLICE1: body now in src/_ZN8SnowballD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN8SnowballD0Ev.cpp
-src/func_ov081_02125fb8.c
-src/func_ov081_021260fc.cpp
-src/func_ov081_021261d4.cpp
-src/func_ov081_02126224.c
-src/_ZN8Snowball16CleanupResourcesEv.cpp
-src/_ZN8Snowball16OnPendingDestroyEv.cpp
-src/_ZN8Snowball6RenderEv.cpp
-src/_ZN8Snowball8BehaviorEv.cpp
-src/_ZN8Snowball13InitResourcesEv.cpp
-src/d_a_snowball.c
+# FOLDED into src/actors/daSnowball_c.cpp (row 82): src/func_ov081_02125fb8.c
+# FOLDED into src/actors/daSnowball_c.cpp (row 82): src/func_ov081_021260fc.cpp
+# FOLDED into src/actors/daSnowball_c.cpp (row 82): src/func_ov081_021261d4.cpp
+# FOLDED into src/actors/daSnowball_c.cpp (row 82): src/func_ov081_02126224.c
+# FOLDED into src/actors/daSnowball_c.cpp (row 82): src/_ZN8Snowball16CleanupResourcesEv.cpp
+# FOLDED into src/actors/daSnowball_c.cpp (row 82): src/_ZN8Snowball16OnPendingDestroyEv.cpp
+# FOLDED into src/actors/daSnowball_c.cpp (row 82): src/_ZN8Snowball6RenderEv.cpp
+# FOLDED into src/actors/daSnowball_c.cpp (row 82): src/_ZN8Snowball8BehaviorEv.cpp
+# FOLDED into src/actors/daSnowball_c.cpp (row 82): src/_ZN8Snowball13InitResourcesEv.cpp
+# FOLDED into src/actors/daSnowball_c.cpp (row 82): src/d_a_snowball.c
 # Snowball's own sinit: it copies the class's TWO {function, delta} source
 # records (data_ov081_02128a6c -> 0x021261b8, data_ov081_02128a74 ->
 # 0x021260fc, both read out of ov081's relocs.txt) into the mutable cell
@@ -105,7 +105,7 @@ src/d_a_snowball.c
 # shape as func_ov081_02124e64, which is Spindrift's Kill AND MrBlizzard's PMF
 # cell-0 tick, and which gate 192 documents at length. It is NOT re-listed
 # here; the seat references it by the name it already has.
-src/__sinit_ov081_021284b4.c
+# FOLDED into src/actors/daSnowball_c.cpp (row 82): src/__sinit_ov081_021284b4.c
 #
 # ==== MONEYBAG (daGmch_c), an Actor ========================================
 # Object 1012 bytes; ModelAnim +0xd4, Model +0x138, ShadowModel +0x188,
@@ -174,4 +174,4 @@ src/__sinit_ov081_021284b4.c
 # data_ov081_02128f40, and the +0x2000 Vector3 offset record. The eighteen
 # function words it copies are DS code addresses; the seat in
 # hal/actor_classes_ov081.cpp rewrites them with a verify-then-abort.
-src/__sinit_ov081_021284f0.c
+src/actors/daGmch_c.cpp

@@ -12,7 +12,7 @@
 
 #include "fBase_c.h"
 #include "dBase_c.h"
-#include "Camera.h"
+#include "dCamera_c.h"
 #include "PathPtr.h"
 #include "dsstate_seg.h"
 #include "ntr/ppu.h"   /* ntr::SCREEN_W/SCREEN_H for the widescreen frustum seam */
@@ -33,32 +33,32 @@ namespace ntr { struct GxTriangle; const GxTriangle *gx_polygons(std::size_t &n)
    include chain below reaches, so the shadow was a C2011 redefinition of a
    type the header already has. The face is spelled against the real
    declaration instead -- same face, same flat callee, no second View. */
-extern "C" int _ZN4View6RenderEv(void *self);
+extern "C" int _ZN7dView_c6RenderEv(void *self);
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync): src/_ZN4View6RenderEv.cpp is a real virtual View member since main langmode migration and emits ?Render@View@@UAEHXZ itself, so this face was the second definition (LNK2005).
    The body is kept below under #if 0 rather than deleted, so the
    evidence in it stays readable. */
 #if 0
-s32 View::Render() { return _ZN4View6RenderEv(this); }
+s32 View::Render() { return _ZN7dView_c6RenderEv(this); }
 #endif
 
 extern "C" {
 
-int _ZNK6Camera12IsUnderwaterEv(const void *self);
-int _ZN6Camera16CleanupResourcesEv(void *self);
-void *_ZN6CameraD1Ev(void *self);
-void *_ZN6CameraD0Ev(void *self);
+int _ZNK9dCamera_c12IsUnderwaterEv(const void *self);
+int _ZN9dCamera_c16CleanupResourcesEv(void *self);
+void *_ZN9dCamera_cD1Ev(void *self);
+void *_ZN9dCamera_cD0Ev(void *self);
 void *dCamera_c_classInit(void *self);
 
 /* method faces (the definitions are MSVC methods; every caller and the
    vtable want C names) */
-int _ZN6Camera13InitResourcesEv(void *self)
-{ return ((Camera *)self)->Camera::InitResources(); }
-int _ZN6Camera8BehaviorEv(void *self)
-{ return ((Camera *)self)->Camera::Behavior(); }
-int _ZN6Camera6RenderEv(void *self)
-{ return ((Camera *)self)->Camera::Render(); }
-void _ZN6Camera16OnPendingDestroyEv(void *self)
-{ ((Camera *)self)->Camera::OnPendingDestroy(); }
+int _ZN9dCamera_c13InitResourcesEv(void *self)
+{ return ((dCamera_c *)self)->dCamera_c::InitResources(); }
+int _ZN9dCamera_c8BehaviorEv(void *self)
+{ return ((dCamera_c *)self)->dCamera_c::Behavior(); }
+int _ZN9dCamera_c6RenderEv(void *self)
+{ return ((dCamera_c *)self)->dCamera_c::Render(); }
+void _ZN9dCamera_c16OnPendingDestroyEv(void *self)
+{ ((dCamera_c *)self)->dCamera_c::OnPendingDestroy(); }
 
 /* ---- the vtable -------------------------------------------------------
    ROM SLOT ORDER, the ArrowSignRight layout (hal/actor_vtables.cpp): the
@@ -70,72 +70,72 @@ void _ZN6Camera16OnPendingDestroyEv(void *self)
    The one slot that actually dispatches on host is 9: Camera::InitResources
    ends in `return this->v9()`, a virtual call through the vptr the ctor just
    installed. So the table has to be up BEFORE InitResources runs (R9). */
-void *_ZTV6Camera[20];
+void *_ZTV9dCamera_c[20];
 /* transiently installed by the ctor/dtor chain and never dispatched
    through; storage only, same rule as the base tables in actor_vtables. */
-void *_ZTV4View[20];
+void *_ZTV7dView_c[20];
 
 }  /* extern "C" */
 
 static int __fastcall cs_init(void *s, void *)
-{ return _ZN6Camera13InitResourcesEv(s); }
+{ return _ZN9dCamera_c13InitResourcesEv(s); }
 static int __fastcall cs_binit(void *s, void *)
 { return ((fBase_c *)s)->fBase_c::BeforeInitResources(); }
 static void __fastcall cs_ainit(void *s, void *, unsigned a)
 { ((dBase_c *)s)->dBase_c::AfterInitResources(a); }
 static int __fastcall cs_cleanup(void *s, void *)
-{ return _ZN6Camera16CleanupResourcesEv(s); }
+{ return _ZN9dCamera_c16CleanupResourcesEv(s); }
 static int __fastcall cs_bclean(void *s, void *)
 { return ((fBase_c *)s)->fBase_c::BeforeCleanupResources(); }
 static void __fastcall cs_aclean(void *s, void *, unsigned a)
 { ((fBase_c *)s)->fBase_c::AfterCleanupResources(a); }
 static int __fastcall cs_behavior(void *s, void *)
-{ return _ZN6Camera8BehaviorEv(s); }
+{ return _ZN9dCamera_c8BehaviorEv(s); }
 static int __fastcall cs_bbeh(void *s, void *)
 { return ((fBase_c *)s)->fBase_c::BeforeBehavior(); }
 static void __fastcall cs_abeh(void *s, void *, unsigned a)
 { ((fBase_c *)s)->fBase_c::AfterBehavior(a); }
 static int __fastcall cs_render(void *s, void *)
-{ return _ZN6Camera6RenderEv(s); }
+{ return _ZN9dCamera_c6RenderEv(s); }
 static int __fastcall cs_bren(void *s, void *)
 { return ((fBase_c *)s)->fBase_c::BeforeRender(); }
 static void __fastcall cs_aren(void *s, void *, unsigned a)
 { ((fBase_c *)s)->fBase_c::AfterRender(a); }
 static int __fastcall cs_pdes(void *s, void *)
-{ _ZN6Camera16OnPendingDestroyEv(s); return 0; }
+{ _ZN9dCamera_c16OnPendingDestroyEv(s); return 0; }
 /* Slots 13/14 trap, the ArrowSignRight rule: they are the two heap-creating
    virtuals, reached only from the actor-processing lifecycle the port does
    not run. Wiring them would drag the solid-heap family in for a path
    nothing calls. */
 static void __fastcall cs_trap13(void *, void *)
-{ std::fprintf(stderr, "FATAL: Camera vtable slot 13 trap\n"); std::abort(); }
+{ std::fprintf(stderr, "FATAL: dCamera_c vtable slot 13 trap\n"); std::abort(); }
 static void __fastcall cs_trap14(void *, void *)
-{ std::fprintf(stderr, "FATAL: Camera vtable slot 14 trap\n"); std::abort(); }
+{ std::fprintf(stderr, "FATAL: dCamera_c vtable slot 14 trap\n"); std::abort(); }
 static int __fastcall cs_heap(void *s, void *)
 { return ((fBase_c *)s)->fBase_c::OnHeapCreated(); }
-static void *__fastcall cs_d1(void *s, void *) { return _ZN6CameraD1Ev(s); }
-static void *__fastcall cs_d0(void *s, void *) { return _ZN6CameraD0Ev(s); }
+static void *__fastcall cs_d1(void *s, void *) { return _ZN9dCamera_cD1Ev(s); }
+static void *__fastcall cs_d0(void *s, void *) { return _ZN9dCamera_cD0Ev(s); }
 
 extern "C" void hal_fill_camera_vtable(void)
 {
-    _ZTV6Camera[0] = (void *)cs_init;
-    _ZTV6Camera[1] = (void *)cs_binit;
-    _ZTV6Camera[2] = (void *)cs_ainit;
-    _ZTV6Camera[3] = (void *)cs_cleanup;
-    _ZTV6Camera[4] = (void *)cs_bclean;
-    _ZTV6Camera[5] = (void *)cs_aclean;
-    _ZTV6Camera[6] = (void *)cs_behavior;
-    _ZTV6Camera[7] = (void *)cs_bbeh;
-    _ZTV6Camera[8] = (void *)cs_abeh;
-    _ZTV6Camera[9] = (void *)cs_render;
-    _ZTV6Camera[10] = (void *)cs_bren;
-    _ZTV6Camera[11] = (void *)cs_aren;
-    _ZTV6Camera[12] = (void *)cs_pdes;
-    _ZTV6Camera[13] = (void *)cs_trap13;
-    _ZTV6Camera[14] = (void *)cs_trap14;
-    _ZTV6Camera[15] = (void *)cs_heap;
-    _ZTV6Camera[16] = (void *)PORT_D16(cs_d1);
-    _ZTV6Camera[17] = (void *)cs_d0;
+    _ZTV9dCamera_c[0] = (void *)cs_init;
+    _ZTV9dCamera_c[1] = (void *)cs_binit;
+    _ZTV9dCamera_c[2] = (void *)cs_ainit;
+    _ZTV9dCamera_c[3] = (void *)cs_cleanup;
+    _ZTV9dCamera_c[4] = (void *)cs_bclean;
+    _ZTV9dCamera_c[5] = (void *)cs_aclean;
+    _ZTV9dCamera_c[6] = (void *)cs_behavior;
+    _ZTV9dCamera_c[7] = (void *)cs_bbeh;
+    _ZTV9dCamera_c[8] = (void *)cs_abeh;
+    _ZTV9dCamera_c[9] = (void *)cs_render;
+    _ZTV9dCamera_c[10] = (void *)cs_bren;
+    _ZTV9dCamera_c[11] = (void *)cs_aren;
+    _ZTV9dCamera_c[12] = (void *)cs_pdes;
+    _ZTV9dCamera_c[13] = (void *)cs_trap13;
+    _ZTV9dCamera_c[14] = (void *)cs_trap14;
+    _ZTV9dCamera_c[15] = (void *)cs_heap;
+    _ZTV9dCamera_c[16] = (void *)PORT_D16(cs_d1);
+    _ZTV9dCamera_c[17] = (void *)cs_d0;
 }
 
 /* ---- who drives the camera's frame ---------------------------------------
@@ -193,13 +193,13 @@ void (*port_level_camera_render_hook)(void *cam);
 static int __fastcall cs_frame_behavior(void *s, void *)
 {
     if (port_actor_frame_camera_rom())
-        return _ZN6Camera8BehaviorEv(s);
+        return _ZN9dCamera_c8BehaviorEv(s);
     return 1;
 }
 static int __fastcall cs_frame_render(void *s, void *)
 {
     if (port_actor_frame_camera_rom()) {
-        const int r = _ZN6Camera6RenderEv(s);
+        const int r = _ZN9dCamera_c6RenderEv(s);
         if (port_level_camera_render_hook)
             port_level_camera_render_hook(s);
         return r;
@@ -209,8 +209,8 @@ static int __fastcall cs_frame_render(void *s, void *)
 
 extern "C" void hal_camera_slots_harness_owned(void)
 {
-    _ZTV6Camera[6] = (void *)cs_frame_behavior;   /* ROM frame: Behavior */
-    _ZTV6Camera[9] = (void *)cs_frame_render;     /* ROM frame: Render + rig */
+    _ZTV9dCamera_c[6] = (void *)cs_frame_behavior;   /* ROM frame: Behavior */
+    _ZTV9dCamera_c[9] = (void *)cs_frame_render;     /* ROM frame: Render + rig */
 }
 
 /* ---- the local/per-player comms blocks --------------------------------
@@ -381,7 +381,7 @@ DSSTATE_END
    (active_w/active_h)/(4/3), which is 1.333 at 16:9 and EXACTLY 1.0 at 4:3, so
    even if it were called on a 4:3 run it would be a no-op; the call guard keeps
    the 4:3 clipper untouched regardless. */
-void _ZN7Clipper13Func_0201559CEv(void *self);
+void _ZN8dClipper13Func_0201559CEv(void *self);
 
 /* SM64DS_WIDEN_PROBE=1: PHASE-1 REACHABILITY COUNTER, and the only reason it
    exists is that the call to this function is made BY HAND from one frame loop
@@ -431,7 +431,7 @@ void hal_camera_widen_frustum(void)
     long long m4c = data_0209f43c[0x4c / 4];
     data_0209f43c[0x4c / 4] =
         (int)((m4c * (ntr::active_w * 3)) / (ntr::active_h * 4));
-    _ZN7Clipper13Func_0201559CEv(&data_0209f43c);
+    _ZN8dClipper13Func_0201559CEv(&data_0209f43c);
 }
 
 /* SM64DS_WIDEN_PROBE, PHASE 2: THE SCENE PATH'S OWN LINE. Same variable, same
@@ -544,19 +544,19 @@ void hal_camera_widen_frustum_scene(void)
    the caller's own argument. The face supplies the singleton, which is what
    r0 held. */
 extern void *data_0209f318;
-void _ZN6Camera25SaveCameraStateBeforeTalkEv(void)
+void _ZN9dCamera_c25SaveCameraStateBeforeTalkEv(void)
 {
     if (data_0209f318)
-        ((Camera *)data_0209f318)->Camera::SaveCameraStateBeforeTalk();
+        ((dCamera_c *)data_0209f318)->dCamera_c::SaveCameraStateBeforeTalk();
 }
 
 int _ZNK7PathPtr5LoopsEv(void *self)
 { return ((PathPtr *)self)->PathPtr::Loops() ? 1 : 0; }
 
-int hal_camera_behavior(void *cam) { return _ZN6Camera8BehaviorEv(cam); }
-int hal_camera_render(void *cam) { return _ZN6Camera6RenderEv(cam); }
+int hal_camera_behavior(void *cam) { return _ZN9dCamera_c8BehaviorEv(cam); }
+int hal_camera_render(void *cam) { return _ZN9dCamera_c6RenderEv(cam); }
 int hal_camera_init_resources(void *cam)
-{ return _ZN6Camera13InitResourcesEv(cam); }
+{ return _ZN9dCamera_c13InitResourcesEv(cam); }
 void *hal_camera_new(void) { return dCamera_c_classInit(0); }
 
 }  /* extern "C" */

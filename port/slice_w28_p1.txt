@@ -26,7 +26,7 @@
 # does not define; the src is now the member Heap::_Sizeof(void *) calling the
 # decorated Sizeof with the pointer spelled. Callers: func_02017060 and
 # Particle::SysTracker::Initialise, through the reverse face.
-src/_ZN4Heap7_SizeofEPv.cpp
+src/engine/heap/Heap.cpp
 
 # ---- group B: SharedFilePtr::Construct (arm9 0x0201799c) -------------------
 # Host copy retired on the three hosting targets: the body in port/hal/fs.cpp,
@@ -43,14 +43,14 @@ src/_ZN13SharedFilePtr9ConstructEj.cpp
 # r0 into func_ov006_02115b0c; the src member passes this. The flat name the
 # slot-18 thunk in hal/scene_mg.cpp calls flips from a forward face to a
 # reverse one.
-src/_ZN16dScMgSmartball_c13OnYoshiTryEatEi.cpp
+src/actors/dScMgSmartball_c.cpp
 
 # ---- group D: dScMgPachinko_c's scoring tick (ov006 0x020fb7e0) -------------
 # Host copy retired: port/unmatched/MgPachinko_Award.cpp (now an empty TU; its
 # enrolment is another owner's). Its reason was the award's points riding
 # through r2 into func_ov006_020fbb2c; the src declares the third parameter and
 # passes *(u16 *)(b + 0x5962). Caller: dScMgPachinko_c::Behavior (slot 6).
-src/func_ov006_020fb7e0.c
+src/actors/dScMgPachinko_c.cpp
 
 # ---- group E: the ITCM display-list DMA submit (itcm 0x01ffde98) ------------
 # STAGE4P's DMA checkpoint 1, no model. Host copy retired on the three hosting
@@ -60,7 +60,7 @@ src/func_ov006_020fb7e0.c
 # DMAStartTransfer never sets, and starts each chunk (at most 0x1d8 bytes)
 # through that host body, which feeds GXFIFO destinations to gx_write_fifo.
 # Caller: func_0204488c, the ModelComponents part walk.
-src/func_01ffde98.c
+src/unnamed/arm9/01ff/func_01ffde98.c
 
 # ---- group F: Heap::_Deallocate (arm9 0x0203c280) --------------------------
 # Host copy retired: the member definition in port/hal/cxx_aliases.cpp (the
@@ -71,4 +71,4 @@ src/func_01ffde98.c
 # spelled. port/slice_gate10.txt still carries the old reason beside its
 # commented-out line for this file; that comment is stale and is left to its
 # owner. Callers: _ZdlPv, func_02018934, func_ov007_020cca98 (linked).
-src/_ZN4Heap11_DeallocateEPv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 29): src/_ZN4Heap11_DeallocateEPv.cpp

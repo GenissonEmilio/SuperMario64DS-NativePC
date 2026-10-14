@@ -72,7 +72,7 @@
 # it is SetSoundMode(0) -> func_02011d5c(1), which returns immediately while
 # data_0209b480 (the master sound-effects flag) is still zero at this point in
 # the boot.
-src/func_020196cc.c
-src/func_0205f8e0.c
-src/func_0205fb1c.c
-src/func_0205fb58.c
+src/unnamed/arm9/0201/func_020196cc.c
+src/unnamed/arm9/0205/func_0205f8e0.c
+src/unnamed/arm9/0205/func_0205fb1c.c
+src/unnamed/arm9/0205/func_0205fb58.c

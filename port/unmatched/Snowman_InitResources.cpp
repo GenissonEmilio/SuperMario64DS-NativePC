@@ -49,13 +49,13 @@ extern void _ZN15TextureSequence8LoadFileER13SharedFilePtr(void *f);
 /* the real three-argument bridge (hal/player_bridges.cpp): self, model, animFile */
 extern void _ZN15TextureSequence7PrepareER8BMD_FileR8BTP_File(void *self, void *bmd, void *btp);
 extern void _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(void *self, void *btp, int a, int fix, unsigned int u);
-extern int _ZN11ShadowModel12InitCylinderEv(void *self);
+extern int _ZN17dExtShadowModel_c12InitCylinderEv(void *self);
 extern void _ZN10dCcAcPos_c4InitEP8dActor_cRK7Vector35Fix12IiES6_jj(void *self, void *act, void *pos, int f1, int f2, unsigned int u1, unsigned int u2);
 extern void _ZN9dBgCh_GndC1Ev(void *self);
 extern void _ZN9dBgCh_Gnd12SetObjAndPosERK7Vector3P8dActor_c(void *self, void *pos, void *act);
 extern int _ZN9dBgCh_Gnd10DetectClsnEv(void *self);
 extern void _ZN9dBgCh_GndD1Ev(void *self);
-extern void func_ov072_021208d8(void *c);
+extern void _ZN11daBgSnwmn_c19func_ov072_021208d8Ev(void *c);
 
 extern int data_ov072_02122c70[];
 extern int data_ov072_02122c48[];

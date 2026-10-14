@@ -74,6 +74,6 @@
 # port/slice_w31_s4arc.txt with func_02018270 and the unmount; LoadFile,
 # func_0201818c, func_020186c0 and func_0204ede8 remain route R3's.
 src/LoadArchive.c
-src/func_02018934.c
-src/func_02018d98.c
-src/_ZN4Heap9_AllocateEji.cpp
+src/unnamed/arm9/0201/func_02018934.c
+src/unnamed/arm9/0201/func_02018d98.c
+src/engine/heap/Heap.cpp

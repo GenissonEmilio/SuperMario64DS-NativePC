@@ -69,20 +69,20 @@ extern PortEnemyPmf data_ov002_021081b8[], data_ov002_02108150[],
     data_ov002_02108170[], data_ov002_02108140[], data_ov002_021081a0[];
 extern PortEnemyPmf data_ov002_0210db80[];
 
-void func_ov002_020ae9f8(void *self, int a, int b);
-void func_ov002_020ae954(void *self, int a, int b);
-void func_ov002_020ae890(void *self, int a, int b);
-void func_ov002_020ae87c(void *self, int a, int b);
-void func_ov002_020ae844(void *self, int a, int b);
-void func_ov002_020ae80c(void *self, int a, int b);
-void func_ov002_020ae73c(void *self, int a, int b);
-void func_ov002_020aea2c(void *self, int a, int b);
+void _ZN6Aea30C19func_ov002_020ae9f8EP8dActor_cP10dBgCh_Actr(void *self, int a, int b);
+void _ZN6Aea30C19func_ov002_020ae954EP8dActor_cP10dBgCh_Actr(void *self, int a, int b);
+void _ZN6Aea30C19func_ov002_020ae890EP8dActor_cP10dBgCh_Actr(void *self, int a, int b);
+void _ZN6Aea30C19func_ov002_020ae87cEP8dActor_cP10dBgCh_Actr(void *self, int a, int b);
+void _ZN6Aea30C19func_ov002_020ae844EP8dActor_cP10dBgCh_Actr(void *self, int a, int b);
+void _ZN6Aea30C19func_ov002_020ae80cEP8dActor_cP10dBgCh_Actr(void *self, int a, int b);
+void _ZN6Aea30C19func_ov002_020ae73cEP8dActor_cP10dBgCh_Actr(void *self, int a, int b);
+void _ZN6Aea30C19func_ov002_020aea2cEP8dActor_cP10dBgCh_Actr(void *self, int a, int b);
 
-int func_ov002_020ae64c(void *self, void *clsn);
-int func_ov002_020ae608(void *self, void *clsn);
-int func_ov002_020ae4cc(void *self, void *clsn);
-int func_ov002_020ae454(void *self, void *clsn);
-int func_ov002_020aea24(void *self, void *clsn);
+int _ZN11EnemyDeathC19func_ov002_020ae64cER10dBgCh_Actr(void *self, void *clsn);
+int _ZN11EnemyDeathC19func_ov002_020ae608ER10dBgCh_Actr(void *self, void *clsn);
+int _ZN11EnemyDeathC19func_ov002_020ae4ccER10dBgCh_Actr(void *self, void *clsn);
+int _ZN11EnemyDeathC19func_ov002_020ae454ER10dBgCh_Actr(void *self, void *clsn);
+int _ZN11EnemyDeathC19func_ov002_020aea24ER10dBgCh_Actr(void *self, void *clsn);
 
 }  /* extern "C" */
 
@@ -122,29 +122,29 @@ typedef int (*PortEnemyDeathFn)(void *, void *);
    word, and all sixteen source pairs read {code, 0} in
    extracted/overlays/overlay_0002.bin, so the flag is never set and the test
    could never have fired. It is not being replaced because it was inert. */
-static int __fastcall pmf_face_func_ov002_020ae64c(void *self, void *dead_edx, void *clsn)
-{ return func_ov002_020ae64c(self, clsn); }
-static int __fastcall pmf_face_func_ov002_020ae608(void *self, void *dead_edx, void *clsn)
-{ return func_ov002_020ae608(self, clsn); }
-static int __fastcall pmf_face_func_ov002_020ae4cc(void *self, void *dead_edx, void *clsn)
-{ return func_ov002_020ae4cc(self, clsn); }
-static int __fastcall pmf_face_func_ov002_020ae454(void *self, void *dead_edx, void *clsn)
-{ return func_ov002_020ae454(self, clsn); }
-static int __fastcall pmf_face_func_ov002_020aea24(void *self, void *dead_edx, void *clsn)
-{ return func_ov002_020aea24(self, clsn); }
+static int __fastcall pmf_face__ZN11EnemyDeathC19func_ov002_020ae64cER10dBgCh_Actr(void *self, void *dead_edx, void *clsn)
+{ return _ZN11EnemyDeathC19func_ov002_020ae64cER10dBgCh_Actr(self, clsn); }
+static int __fastcall pmf_face__ZN11EnemyDeathC19func_ov002_020ae608ER10dBgCh_Actr(void *self, void *dead_edx, void *clsn)
+{ return _ZN11EnemyDeathC19func_ov002_020ae608ER10dBgCh_Actr(self, clsn); }
+static int __fastcall pmf_face__ZN11EnemyDeathC19func_ov002_020ae4ccER10dBgCh_Actr(void *self, void *dead_edx, void *clsn)
+{ return _ZN11EnemyDeathC19func_ov002_020ae4ccER10dBgCh_Actr(self, clsn); }
+static int __fastcall pmf_face__ZN11EnemyDeathC19func_ov002_020ae454ER10dBgCh_Actr(void *self, void *dead_edx, void *clsn)
+{ return _ZN11EnemyDeathC19func_ov002_020ae454ER10dBgCh_Actr(self, clsn); }
+static int __fastcall pmf_face__ZN11EnemyDeathC19func_ov002_020aea24ER10dBgCh_Actr(void *self, void *dead_edx, void *clsn)
+{ return _ZN11EnemyDeathC19func_ov002_020aea24ER10dBgCh_Actr(self, clsn); }
 
 #define ENTER_FACE(sym)                                                       \
     static void __fastcall pmf_face_##sym(void *self, void *dead_edx,         \
                                           int a, int b)                       \
     { sym(self, a, b); }
-ENTER_FACE(func_ov002_020ae9f8)
-ENTER_FACE(func_ov002_020ae954)
-ENTER_FACE(func_ov002_020ae890)
-ENTER_FACE(func_ov002_020ae87c)
-ENTER_FACE(func_ov002_020ae844)
-ENTER_FACE(func_ov002_020ae80c)
-ENTER_FACE(func_ov002_020ae73c)
-ENTER_FACE(func_ov002_020aea2c)
+ENTER_FACE(_ZN6Aea30C19func_ov002_020ae9f8EP8dActor_cP10dBgCh_Actr)
+ENTER_FACE(_ZN6Aea30C19func_ov002_020ae954EP8dActor_cP10dBgCh_Actr)
+ENTER_FACE(_ZN6Aea30C19func_ov002_020ae890EP8dActor_cP10dBgCh_Actr)
+ENTER_FACE(_ZN6Aea30C19func_ov002_020ae87cEP8dActor_cP10dBgCh_Actr)
+ENTER_FACE(_ZN6Aea30C19func_ov002_020ae844EP8dActor_cP10dBgCh_Actr)
+ENTER_FACE(_ZN6Aea30C19func_ov002_020ae80cEP8dActor_cP10dBgCh_Actr)
+ENTER_FACE(_ZN6Aea30C19func_ov002_020ae73cEP8dActor_cP10dBgCh_Actr)
+ENTER_FACE(_ZN6Aea30C19func_ov002_020aea2cEP8dActor_cP10dBgCh_Actr)
 #undef ENTER_FACE
 
 /* THE TWO ALIASES. Each matched TU declares its table outside its extern "C"
@@ -158,14 +158,14 @@ ENTER_FACE(func_ov002_020aea2c)
 #define DF(sym) (PortEnemyDeathFn)pmf_face_##sym
 static const struct { PortEnemyPmf *slot; unsigned rom; PortEnemyDeathFn host; }
 g_enemy_death[] = {
-    {data_ov002_021081b0, 0x020ae64c, DF(func_ov002_020ae64c)},
-    {data_ov002_021081a8, 0x020ae608, DF(func_ov002_020ae608)},
-    {data_ov002_02108148, 0x020ae608, DF(func_ov002_020ae608)},
-    {data_ov002_02108198, 0x020ae4cc, DF(func_ov002_020ae4cc)},
-    {data_ov002_02108190, 0x020ae608, DF(func_ov002_020ae608)},
-    {data_ov002_02108188, 0x020ae608, DF(func_ov002_020ae608)},
-    {data_ov002_02108180, 0x020ae454, DF(func_ov002_020ae454)},
-    {data_ov002_02108178, 0x020aea24, DF(func_ov002_020aea24)},
+    {data_ov002_021081b0, 0x020ae64c, DF(_ZN11EnemyDeathC19func_ov002_020ae64cER10dBgCh_Actr)},
+    {data_ov002_021081a8, 0x020ae608, DF(_ZN11EnemyDeathC19func_ov002_020ae608ER10dBgCh_Actr)},
+    {data_ov002_02108148, 0x020ae608, DF(_ZN11EnemyDeathC19func_ov002_020ae608ER10dBgCh_Actr)},
+    {data_ov002_02108198, 0x020ae4cc, DF(_ZN11EnemyDeathC19func_ov002_020ae4ccER10dBgCh_Actr)},
+    {data_ov002_02108190, 0x020ae608, DF(_ZN11EnemyDeathC19func_ov002_020ae608ER10dBgCh_Actr)},
+    {data_ov002_02108188, 0x020ae608, DF(_ZN11EnemyDeathC19func_ov002_020ae608ER10dBgCh_Actr)},
+    {data_ov002_02108180, 0x020ae454, DF(_ZN11EnemyDeathC19func_ov002_020ae454ER10dBgCh_Actr)},
+    {data_ov002_02108178, 0x020aea24, DF(_ZN11EnemyDeathC19func_ov002_020aea24ER10dBgCh_Actr)},
 };
 #undef DF
 
@@ -196,14 +196,14 @@ typedef void (*PortEnemyEnterFn)(void *, int, int);
 #define EF(sym) (PortEnemyEnterFn)pmf_face_##sym
 static const struct { PortEnemyPmf *slot; unsigned rom; PortEnemyEnterFn host; }
 g_enemy_enter[] = {
-    {data_ov002_021081b8, 0x020ae9f8, EF(func_ov002_020ae9f8)},
-    {data_ov002_02108150, 0x020ae954, EF(func_ov002_020ae954)},
-    {data_ov002_02108168, 0x020ae890, EF(func_ov002_020ae890)},
-    {data_ov002_02108160, 0x020ae87c, EF(func_ov002_020ae87c)},
-    {data_ov002_02108158, 0x020ae844, EF(func_ov002_020ae844)},
-    {data_ov002_02108170, 0x020ae80c, EF(func_ov002_020ae80c)},
-    {data_ov002_02108140, 0x020ae73c, EF(func_ov002_020ae73c)},
-    {data_ov002_021081a0, 0x020aea2c, EF(func_ov002_020aea2c)},
+    {data_ov002_021081b8, 0x020ae9f8, EF(_ZN6Aea30C19func_ov002_020ae9f8EP8dActor_cP10dBgCh_Actr)},
+    {data_ov002_02108150, 0x020ae954, EF(_ZN6Aea30C19func_ov002_020ae954EP8dActor_cP10dBgCh_Actr)},
+    {data_ov002_02108168, 0x020ae890, EF(_ZN6Aea30C19func_ov002_020ae890EP8dActor_cP10dBgCh_Actr)},
+    {data_ov002_02108160, 0x020ae87c, EF(_ZN6Aea30C19func_ov002_020ae87cEP8dActor_cP10dBgCh_Actr)},
+    {data_ov002_02108158, 0x020ae844, EF(_ZN6Aea30C19func_ov002_020ae844EP8dActor_cP10dBgCh_Actr)},
+    {data_ov002_02108170, 0x020ae80c, EF(_ZN6Aea30C19func_ov002_020ae80cEP8dActor_cP10dBgCh_Actr)},
+    {data_ov002_02108140, 0x020ae73c, EF(_ZN6Aea30C19func_ov002_020ae73cEP8dActor_cP10dBgCh_Actr)},
+    {data_ov002_021081a0, 0x020aea2c, EF(_ZN6Aea30C19func_ov002_020aea2cEP8dActor_cP10dBgCh_Actr)},
 };
 #undef EF
 

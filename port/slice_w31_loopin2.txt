@@ -12,9 +12,9 @@
 #
 # phase 0x17: the latch, and the two clears it makes while the latch is up
 # (PadData, TouchInfo)
-src/func_02023498.c
-src/func_0203bc50.c
-src/func_0203bb14.c
+src/unnamed/arm9/0202/func_02023498.c
+src/unnamed/arm9/0203/func_0203bc50.c
+src/unnamed/arm9/0203/func_0203bb14.c
 #
 # phase 7: OS_SleepThread(data_0209d500)
-src/func_0201a4bc.c
+src/unnamed/arm9/0201/func_0201a4bc.c

@@ -44,20 +44,20 @@
  */
 
 /* seven of the nine classes are declared in the tree's own include/ */
-#include "KnockDownPlank.h"
+#include "daObjBk_Botaosi_c.h"
 #include "daObjBk_Dossunbar_c.h"
-#include "BowserFire.h"
-#include "Whomp.h"
-#include "MontyMole.h"
-#include "RotatingUpDownPlatform.h"
-#include "Cannon.h"
-#include "Fish.h"
+#include "daKpaFire_c.h"
+#include "daBtn_c.h"
+#include "daChoropu_c.h"
+#include "daLinelift2_c.h"
+#include "daCnn_c.h"
+#include "daFish_c.h"
 /* run link100 lane FWD gate 2 */
 #include "daTrsTrap_c.h"
 /* run link100 lane PMFB6 gate 2: the two member-defining EXTENT rows */
-#include "Key.h"
-#include "UpDownLiftBbh.h"
-#include "BowserPuzzlePiece.h"
+#include "daObjKey_c.h"
+#include "daUdlift_c.h"
+#include "daObjFl_Puzzle_c.h"
 
 /* include/BowserPuzzleManager.h and include/Dorrie.h do NOT declare
    Behavior -- their matched TUs declare the class themselves -- so these two
@@ -83,37 +83,37 @@ int _ZN19daObjBk_Dossunbar_c8BehaviorEv(void *self)
 { return ((daObjBk_Dossunbar_c *)self)->daObjBk_Dossunbar_c::Behavior(); }
 
 /* ov060 0x021176d4 -- ov060 data_ov060_0211afb4, 8 cells */
-int _ZN10BowserFire8BehaviorEv(void *self)
-{ return ((BowserFire *)self)->BowserFire::Behavior(); }
+int _ZN11daKpaFire_c8BehaviorEv(void *self)
+{ return ((daKpaFire_c *)self)->daKpaFire_c::Behavior(); }
 
 /* ov064 0x021190b0 -- ov064 data_ov064_0211c904, 6 cells. 0x021190b0 is slot 6
    of the Piece's own table 0x0211c25c; the Manager's Behavior is 0x0211915c. */
-int _ZN17BowserPuzzlePiece8BehaviorEv(void *self)
-{ return ((BowserPuzzlePiece *)self)->BowserPuzzlePiece::Behavior(); }
+int _ZN16daObjFl_Puzzle_c8BehaviorEv(void *self)
+{ return ((daObjFl_Puzzle_c *)self)->daObjFl_Puzzle_c::Behavior(); }
 
 /* ov065 0x02118df0 -- ov065 data_ov065_0211d7fc, 3 cells */
-int _ZN6Dorrie8BehaviorEv(void *self)
+int _ZN9daDossy_c8BehaviorEv(void *self)
 { return ((Dorrie *)self)->Dorrie::Behavior(); }
 
 /* ov079 0x02125fcc -- ov079 data_ov079_02128280, 12 cells */
-int _ZN5Whomp8BehaviorEv(void *self)
-{ return ((Whomp *)self)->Whomp::Behavior(); }
+int _ZN7daBtn_c8BehaviorEv(void *self)
+{ return ((daBtn_c *)self)->daBtn_c::Behavior(); }
 
 /* ov080 0x02124530 -- ov080 data_ov080_02128438, 6 cells */
-int _ZN9MontyMole8BehaviorEv(void *self)
-{ return ((MontyMole *)self)->MontyMole::Behavior(); }
+int _ZN11daChoropu_c8BehaviorEv(void *self)
+{ return ((daChoropu_c *)self)->daChoropu_c::Behavior(); }
 
 /* ov091 0x02132108 -- ov091 data_ov091_021354e0, 3 cells */
-int _ZN22RotatingUpDownPlatform8BehaviorEv(void *self)
-{ return ((RotatingUpDownPlatform *)self)->RotatingUpDownPlatform::Behavior(); }
+int _ZN13daLinelift2_c8BehaviorEv(void *self)
+{ return ((daLinelift2_c *)self)->daLinelift2_c::Behavior(); }
 
 /* ov098 0x0213b26c -- ov098 data_ov098_0213c8fc, 4 cells */
-int _ZN6Cannon8BehaviorEv(void *self)
-{ return ((Cannon *)self)->Cannon::Behavior(); }
+int _ZN7daCnn_c8BehaviorEv(void *self)
+{ return ((daCnn_c *)self)->daCnn_c::Behavior(); }
 
 /* ov100 0x02146b38 -- ov100 data_ov100_02148a1c, 7 cells (TWO dispatch sites, one table) */
-int _ZN4Fish8BehaviorEv(void *self)
-{ return ((Fish *)self)->Fish::Behavior(); }
+int _ZN8daFish_c8BehaviorEv(void *self)
+{ return ((daFish_c *)self)->daFish_c::Behavior(); }
 
 
 
@@ -147,11 +147,11 @@ int _ZN11daTrsTrap_c8BehaviorEv(void *self)
    ToxBox is the third row of that gate and is NOT here: its matched TU defines
    the FLAT extern "C" name already, so it needs no forwarder -- only the table
    alias below. */
-int _ZN3Key8BehaviorEv(void *self)
-{ return ((Key *)self)->Key::Behavior(); }
+int _ZN10daObjKey_c8BehaviorEv(void *self)
+{ return ((daObjKey_c *)self)->daObjKey_c::Behavior(); }
 
-int _ZN13UpDownLiftBbh8BehaviorEv(void *self)
-{ return ((UpDownLiftBbh *)self)->UpDownLiftBbh::Behavior(); }
+int _ZN10daUdlift_c8BehaviorEv(void *self)
+{ return ((daUdlift_c *)self)->daUdlift_c::Behavior(); }
 
 }  /* extern "C" */
 
@@ -221,49 +221,49 @@ int _ZN13UpDownLiftBbh8BehaviorEv(void *self)
  * include/<Class>.h, so all nine decorate ...@@QAEHXZ, and that was checked
  * object against object in runs/link100/out/PMFB7/undef_gate1.txt.
  */
-#include "Bullet.h"
-#include "WaterSuction.h"
-#include "Submarine.h"
-#include "BowserPuzzlePiece.h"
-#include "Whirlpool.h"
-#include "JetStream.h"
-#include "LavaBubble.h"
-#include "WaterRing.h"
+#include "daPropeller_Heyho_Fire_c.h"
+#include "daWater_Suikomi_c.h"
+#include "daObjWlSubmarine_c.h"
+#include "daObjFl_Puzzle_c.h"
+#include "daWater_Tatumaki_c.h"
+#include "daWater_Hakidasi_c.h"
+#include "daBbl_c.h"
+#include "daWater_Ring_c.h"
 #include "daYurei_Mucho_c.h"
-#include "Swoop.h"
-#include "CheepCheep.h"
+#include "daBasabasa_c.h"
+#include "daPukupuku_c.h"
 
 extern "C" {
 /* ov002 0x020fee44 -- descriptor data_ov002_02111190, main half at +8 */
-int _ZN6Bullet8BehaviorEv(void *self)
-{ return ((Bullet *)self)->Bullet::Behavior(); }
+int _ZN24daPropeller_Heyho_Fire_c8BehaviorEv(void *self)
+{ return ((daPropeller_Heyho_Fire_c *)self)->daPropeller_Heyho_Fire_c::Behavior(); }
 /* ov026 0x0211233c -- cell data_ov036_02113f58, tick half at +8 */
-int _ZN12WaterSuction8BehaviorEv(void *self)
-{ return ((WaterSuction *)self)->WaterSuction::Behavior(); }
+int _ZN17daWater_Suikomi_c8BehaviorEv(void *self)
+{ return ((daWater_Suikomi_c *)self)->daWater_Suikomi_c::Behavior(); }
 /* ov026 0x0211200c -- cells data_ov026_02113f2c / _02113f3c. That address is
    slot 6 of the whirlpool's table 0x02113d54; Submarine has no Behavior of its
    own, so this used to reach the inherited base body instead. */
-int _ZN9Whirlpool8BehaviorEv(void *self)
-{ return ((Whirlpool *)self)->Whirlpool::Behavior(); }
+int _ZN18daWater_Tatumaki_c8BehaviorEv(void *self)
+{ return ((daWater_Tatumaki_c *)self)->daWater_Tatumaki_c::Behavior(); }
 /* ov064 0x021198bc -- cell data_ov064_0211c934, .b half at +8. That address is
    slot 6 of JetStream's table 0x0211c334; the Piece's Behavior is 0x021190b0. */
-int _ZN9JetStream8BehaviorEv(void *self)
-{ return ((JetStream *)self)->JetStream::Behavior(); }
+int _ZN18daWater_Hakidasi_c8BehaviorEv(void *self)
+{ return ((daWater_Hakidasi_c *)self)->daWater_Hakidasi_c::Behavior(); }
 /* ov064 0x02118850 -- cells data_ov064_0211c7b8 / _0211c7c8 */
-int _ZN10LavaBubble8BehaviorEv(void *self)
-{ return ((LavaBubble *)self)->LavaBubble::Behavior(); }
+int _ZN7daBbl_c8BehaviorEv(void *self)
+{ return ((daBbl_c *)self)->daBbl_c::Behavior(); }
 /* ov064 0x02119ffc -- cells data_ov064_0211c954 / _0211c944 */
-int _ZN9WaterRing8BehaviorEv(void *self)
-{ return ((WaterRing *)self)->WaterRing::Behavior(); }
+int _ZN14daWater_Ring_c8BehaviorEv(void *self)
+{ return ((daWater_Ring_c *)self)->daWater_Ring_c::Behavior(); }
 /* ov065 0x02116b84 -- cells data_ov065_0211d650/60/70/80 */
 int _ZN15daYurei_Mucho_c8BehaviorEv(void *self)
 { return ((daYurei_Mucho_c *)self)->daYurei_Mucho_c::Behavior(); }
 /* ov065 0x02117b64 -- cells data_ov065_0211d6e0/f0/700/710 */
-int _ZN5Swoop8BehaviorEv(void *self)
-{ return ((Swoop *)self)->Swoop::Behavior(); }
+int _ZN12daBasabasa_c8BehaviorEv(void *self)
+{ return ((daBasabasa_c *)self)->daBasabasa_c::Behavior(); }
 /* ov090 0x02133430 -- cells data_ov090_02134584 / _02134594 */
-int _ZN10CheepCheep8BehaviorEv(void *self)
-{ return ((CheepCheep *)self)->CheepCheep::Behavior(); }
+int _ZN12daPukupuku_c8BehaviorEv(void *self)
+{ return ((daPukupuku_c *)self)->daPukupuku_c::Behavior(); }
 }  /* extern "C" */
 
 /* ---- RUN link100 LANE PMFB7 GATE 2 ---------------------------------------
@@ -275,29 +275,29 @@ int _ZN10CheepCheep8BehaviorEv(void *self)
  * ...@@QAEHXZ, checked object against object in
  * runs/link100/out/PMFB7/undef_gate2.txt.
  */
-#include "HeaveHo.h"
+#include "daPopoi_c.h"
 #include "daBombking_c.h"
-#include "LakituBro.h"
-#include "Stump.h"
-#include "Fwoosh.h"
-#include "UnchainedChomp.h"
+#include "daC_Jugem_c.h"
+#include "daObjPile_c.h"
+#include "daHyuhyu_c.h"
+#include "daWanwan2_c.h"
 
 extern "C" {
 /* ov077 0x02126e88 -- five two-record cells data_ov077_02127cd8..d18 */
-int _ZN7HeaveHo8BehaviorEv(void *self)
-{ return ((HeaveHo *)self)->HeaveHo::Behavior(); }
+int _ZN9daPopoi_c8BehaviorEv(void *self)
+{ return ((daPopoi_c *)self)->daPopoi_c::Behavior(); }
 /* ov078 0x02126104 -- eighteen two-record cells from __sinit_ov078_02126660 */
 int _ZN12daBombking_c8BehaviorEv(void *self)
 { return ((daBombking_c *)self)->daBombking_c::Behavior(); }
 /* ov085 0x0212eb18 -- eleven two-record cells from __sinit_ov085_0212fe4c */
-int _ZN9LakituBro8BehaviorEv(void *self)
-{ return ((LakituBro *)self)->LakituBro::Behavior(); }
+int _ZN11daC_Jugem_c8BehaviorEv(void *self)
+{ return ((daC_Jugem_c *)self)->daC_Jugem_c::Behavior(); }
 /* ov091 0x021341ec -- the three FWOOSH cells 021356b0/c0/d0 */
-int _ZN6Fwoosh8BehaviorEv(void *self)
-{ return ((Fwoosh *)self)->Fwoosh::Behavior(); }
+int _ZN10daHyuhyu_c8BehaviorEv(void *self)
+{ return ((daHyuhyu_c *)self)->daHyuhyu_c::Behavior(); }
 /* ov100 0x02143d64 -- the cell data_ov100_021486f4, hi half at +8 */
-int _ZN14UnchainedChomp8BehaviorEv(void *self)
-{ return ((UnchainedChomp *)self)->UnchainedChomp::Behavior(); }
+int _ZN11daWanwan2_c8BehaviorEv(void *self)
+{ return ((daWanwan2_c *)self)->daWanwan2_c::Behavior(); }
 }  /* extern "C" */
 
 /* run link100 lane PMFB7 gate 2. LakituBro's matched TU declares the two ov085

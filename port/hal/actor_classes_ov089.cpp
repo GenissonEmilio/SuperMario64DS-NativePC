@@ -100,23 +100,23 @@ void port_actor_slot_decline(const char *what);   /* func_02043fdc_hostcopy.cpp 
 void port_actor_render_probe(const char *cls, void *model); /* hal/actor_classes */
 
 /* KEY's own bodies */
-int _ZN3Key13InitResourcesEv(void *self);         /* slot 0  */
-int _ZN3Key16CleanupResourcesEv(void *self);      /* slot 3  */
-int _ZN3Key8BehaviorEv(void *self);  /* slot 6, HOST COPY (Ov089_StateDispatch) */
-int _ZN3Key6RenderEv(void *self);   /* slot 9, HOST COPY (Ov089_Renders.cpp) */
-int *_ZN3KeyD1Ev(int *self);                      /* slot 16 */
-int *_ZN3KeyD0Ev(int *self);                      /* slot 17 */
+int _ZN10daObjKey_c13InitResourcesEv(void *self);         /* slot 0  */
+int _ZN10daObjKey_c16CleanupResourcesEv(void *self);      /* slot 3  */
+int _ZN10daObjKey_c8BehaviorEv(void *self);  /* slot 6, HOST COPY (Ov089_StateDispatch) */
+int _ZN10daObjKey_c6RenderEv(void *self);   /* slot 9, HOST COPY (Ov089_Renders.cpp) */
+int *_ZN10daObjKey_cD1Ev(int *self);                      /* slot 16 */
+int *_ZN10daObjKey_cD0Ev(int *self);                      /* slot 17 */
 /* slot 18 takes NO argument in src (it returns a constant 4 and never reads
    the receiver); slot 19 takes the Player the dispatch site pushes and USES
    it -- it forwards it to func_ov089_02131df4/02131dcc. Both signatures are
    the matched TUs' own, so the thunks below drop nothing. */
-int _ZN3Key13OnYoshiTryEatEv(void);                    /* slot 18, OnYoshiTryEat  */
-int _ZN3Key13OnTurnIntoEggER6Player(void *self, void *p);     /* slot 19, OnTurnIntoEgg  */
+int _ZN10daObjKey_c13OnYoshiTryEatEv(void);                    /* slot 18, OnYoshiTryEat  */
+int _ZN10daObjKey_c13OnTurnIntoEggER6Player(void *self, void *p);     /* slot 19, OnTurnIntoEgg  */
 void *daObjKey_c_classInit_OBJ_KEY(void);
 void *daObjKey_c_classInit_LAST_STAR(void);
 
 DSSTATE_BEGIN
-void *_ZTV3Key[31];
+void *_ZTV10daObjKey_c[31];
 /* func_ov089_0213162c (KEY state 3) ends with `data_02111b68 = 1`, a write
    into the twenty-way-shared LEVEL-OVERLAY window. ov089's relocs say that
    address belongs to overlays(8,13,15,17,23,24,33,41,43,47,53,54,55,56) --
@@ -155,8 +155,7 @@ DSSTATE_END
 
 /* The RTTI spelling the D1/D0 restore the table by (the daKpa2Bg_c line in
    hal/actor_classes_ov060.cpp, once more): same table, sibling name. */
-#pragma comment(linker, "/alternatename:__ZTV10daObjKey_c=__ZTV3Key")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV10daObjKey_c=__ZTV10daObjKey_c")
 /* The MSVC-decorated spellings the two Key .cpp bodies use for storage the
    per-symbol ov089/ov002 mounts already define under the C name (the
    actor_faces_bob / bowserpuzzle @@3PA precedent; data aliases are exact,
@@ -239,20 +238,20 @@ static int __fastcall ov89_egg(void *s, void *)
 
 /* KEY's own slots */
 static int __fastcall key_init(void *s, void *)
-{ return _ZN3Key13InitResourcesEv(s); }
+{ return _ZN10daObjKey_c13InitResourcesEv(s); }
 static int __fastcall key_clean(void *s, void *)
-{ return _ZN3Key16CleanupResourcesEv(s); }
+{ return _ZN10daObjKey_c16CleanupResourcesEv(s); }
 static int __fastcall key_behavior(void *s, void *)
-{ return _ZN3Key8BehaviorEv(s); }
+{ return _ZN10daObjKey_c8BehaviorEv(s); }
 static int __fastcall key_render(void *s, void *)
 { port_actor_render_probe("KEY", (char *)s + 0x114);
-  return _ZN3Key6RenderEv(s); }
+  return _ZN10daObjKey_c6RenderEv(s); }
 static int __fastcall key_d1(void *s, void *)
-{ return (int)(size_t)_ZN3KeyD1Ev((int *)s); }
+{ return (int)(size_t)_ZN10daObjKey_cD1Ev((int *)s); }
 static int __fastcall key_d0(void *s, void *)
-{ return (int)(size_t)_ZN3KeyD0Ev((int *)s); }
+{ return (int)(size_t)_ZN10daObjKey_cD0Ev((int *)s); }
 static int __fastcall key_yoshi(void *s, void *)
-{ (void)s; return _ZN3Key13OnYoshiTryEatEv(); }
+{ (void)s; return _ZN10daObjKey_c13OnYoshiTryEatEv(); }
 /* slot 19 takes the three-parameter shape so it emits `ret 4`: the dispatch
    site pushes the Player the callee pops -- the wf_turn_egg contract. And it
    FORWARDS that Player: _ZN3Key13OnTurnIntoEggER6Player hands it to
@@ -260,11 +259,11 @@ static int __fastcall key_yoshi(void *s, void *)
    silent wrong call, not a harmless extra. Slot 18 next to it genuinely takes
    nothing, which is what made the wrong shape look plausible. */
 static int __fastcall key_turn_egg(void *s, void *, void *p)
-{ return _ZN3Key13OnTurnIntoEggER6Player(s, p); }
+{ return _ZN10daObjKey_c13OnTurnIntoEggER6Player(s, p); }
 
 extern "C" void hal_fill_key_vtable(void)
 {
-    void *volatile *vt = (void *volatile *)_ZTV3Key;
+    void *volatile *vt = (void *volatile *)_ZTV10daObjKey_c;
     vt[1]  = (void *)ov89_binit;
     vt[2]  = (void *)ov89_ainit;
     vt[4]  = (void *)ov89_bclean;
@@ -302,10 +301,10 @@ extern "C" void hal_fill_key_vtable(void)
 // The three bodies src defines as real C++ methods against Key.h. The
 // IceSheet/ov045 recipe: the face is the C-name bridge INTO the matched
 // method, not a host copy of it.
-#include "Key.h"
+#include "daObjKey_c.h"
 extern "C" {
-int _ZN3Key13InitResourcesEv(void *self)
-{ return ((Key *)self)->Key::InitResources(); }
-int _ZN3Key16CleanupResourcesEv(void *self)
-{ return ((Key *)self)->Key::CleanupResources(); }
+int _ZN10daObjKey_c13InitResourcesEv(void *self)
+{ return ((daObjKey_c *)self)->daObjKey_c::InitResources(); }
+int _ZN10daObjKey_c16CleanupResourcesEv(void *self)
+{ return ((daObjKey_c *)self)->daObjKey_c::CleanupResources(); }
 }

@@ -174,17 +174,17 @@ data_ov026_02113aa0 _ZTS17daObjWlPolelift_c g_profile_WL_POLELIFT
 _ZTI21daObjWlKoopaShutter_c _ZTS21daObjWlKoopaShutter_c data_ov026_02113b7c
 g_profile_WL_KOOPA_SHUTTER data_ov026_02113b90 _ZTI18daObjWlSubmarine_c
 data_ov026_02113c28 _ZTS18daObjWlSubmarine_c g_profile_WL_SUBMARINE
-data_ov026_02113cec data_ov026_02113cf4 data_ov026_02113cfc
-data_ov026_02113d04 _ZTI18daWater_Tatumaki_c _ZTS18daWater_Tatumaki_c
+data_ov026_02113cec@0x02113cec data_ov026_02113cf4@0x02113cf4 data_ov026_02113cfc@0x02113cfc
+data_ov026_02113d04@0x02113d04 _ZTI18daWater_Tatumaki_c _ZTS18daWater_Tatumaki_c
 g_profile_WATER_TATUMAKI data_ov026_02113dd0 data_ov026_02113dd8
 _ZTI17daWater_Suikomi_c _ZTS17daWater_Suikomi_c g_profile_WATER_SUIKOMI
-data_ov026_02113ea0 data_ov026_02113ea8 data_ov026_02113eb4
-data_ov026_02113ebc data_ov026_02113ec4 data_ov026_02113ed0
-data_ov026_02113edc data_ov026_02113ee4 data_ov026_02113eec
-data_ov026_02113ef8 data_ov026_02113f04 data_ov026_02113f0c
-data_ov026_02113f14 data_ov026_02113f20 data_ov026_02113f2c
-data_ov026_02113f3c data_ov026_02113f4c data_ov026_02113f58
-data_ov026_02113f78
+data_ov026_02113ea8@0x02113ea8 data_ov026_02113eb4@0x02113eb4
+data_ov026_02113ebc@0x02113ebc data_ov026_02113ec4@0x02113ec4 data_ov026_02113ed0@0x02113ed0
+data_ov026_02113edc@0x02113edc data_ov026_02113ee4@0x02113ee4 data_ov026_02113eec@0x02113eec
+data_ov026_02113ef8@0x02113ef8
+data_ov026_02113f14@0x02113f14 data_ov026_02113f20@0x02113f20 data_ov026_02113f2c
+data_ov026_02113f3c data_ov026_02113f4c data_ov026_02113f58:0x20
+data_ov026_02113f78@0x02113f78
 
 # ============================================================================
 # RUN LINKW WAVE C, lane cat-actors: THE OPEN IDENTITY QUESTION IS SETTLED.
@@ -404,3 +404,14 @@ data_ov026_02113f78
 # in the binary called it. src/func_ov026_02111d4c.cpp -- the whirlpool's own
 # state-0 tick, the body that pulls the player in -- is its ONLY caller in the
 # tree, so seating the whirlpool is what makes it reachable.
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov026_02113ea0                        now defined by src/game/actors/d_a_obj_wl_polelift.cpp
+#   data_ov026_02113f04                        now defined by src/actors/daWater_Tatumaki_c.cpp
+#   data_ov026_02113f0c                        now defined by src/actors/daWater_Tatumaki_c.cpp

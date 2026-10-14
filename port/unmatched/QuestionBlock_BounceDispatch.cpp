@@ -74,23 +74,23 @@ extern PortPmf
 
 /* --- the CONTENT bodies the two tables reach (matched src, linked as-is) --- */
 void  func_ov102_02149684(int *dst, void *src);
-void *func_ov102_02149220(void *c);
-void  func_ov102_02149288(void *c);
-void  func_ov102_021492d4(void *c);
-void *func_ov102_02149384(void *c);
-void  func_ov102_021493dc(void *c);
-void  func_ov102_02149428(void *c);
-void  func_ov102_02149478(void *c);
-int   func_ov102_021494cc(void *c);
-void  func_ov102_0214953c(void *c, int p1, int p2);
+void *_ZN18daObjHatenaBlock_c19func_ov102_02149220Ev(void *c);
+void  _ZN18daObjHatenaBlock_c19func_ov102_02149288Ev(void *c);
+void  _ZN18daObjHatenaBlock_c19func_ov102_021492d4Ev(void *c);
+void *_ZN18daObjHatenaBlock_c19func_ov102_02149384Ev(void *c);
+void  _ZN18daObjHatenaBlock_c19func_ov102_021493dcEv(void *c);
+void  _ZN18daObjHatenaBlock_c19func_ov102_02149428Ev(void *c);
+void  _ZN18daObjHatenaBlock_c19func_ov102_02149478Ev(void *c);
+int   _ZN18daObjHatenaBlock_c19func_ov102_021494ccEv(void *c);
+void  _ZN18daObjHatenaBlock_c19func_ov102_0214953cEii(void *c, int p1, int p2);
 
 /* --- the rest of the matched body's closure (already linked) --- */
 int  DecIfAbove0_Short(short *p);
-void func_ov002_020f0438(void *a);
+void _ZN9daSCoin_c7CollectEv(void *a);
 void _ZN5Sound9PlayBank3EjRK7Vector3(int bank, void *pos);
 void _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(unsigned id, int x, int y, int z);
 int  _ZN8SaveData16HasPlayerLostCapEv(void);
-void func_ov102_02149da8(void *c, int i);
+void _ZN18daObjHatenaBlock_c19func_ov102_02149da8Ei(void *c, int i);
 
 extern short       data_02082214[];
 extern signed char data_0209f2f8;
@@ -139,21 +139,21 @@ extern signed char data_0209f2f8;
    equivalent, and the eight distinct bodies the thirty-six records name need
    eight faces. */
 static void __fastcall seat5_qb_021494cc(void *s, void *e)
-{ (void)e; port_seat5_count(5); func_ov102_021494cc(s); }
+{ (void)e; port_seat5_count(5); _ZN18daObjHatenaBlock_c19func_ov102_021494ccEv(s); }
 static void __fastcall seat5_qb_02149478(void *s, void *e)
-{ (void)e; port_seat5_count(6); func_ov102_02149478(s); }
+{ (void)e; port_seat5_count(6); _ZN18daObjHatenaBlock_c19func_ov102_02149478Ev(s); }
 static void __fastcall seat5_qb_02149428(void *s, void *e)
-{ (void)e; port_seat5_count(7); func_ov102_02149428(s); }
+{ (void)e; port_seat5_count(7); _ZN18daObjHatenaBlock_c19func_ov102_02149428Ev(s); }
 static void __fastcall seat5_qb_02149384(void *s, void *e)
-{ (void)e; port_seat5_count(8); func_ov102_02149384(s); }
+{ (void)e; port_seat5_count(8); _ZN18daObjHatenaBlock_c19func_ov102_02149384Ev(s); }
 static void __fastcall seat5_qb_021493dc(void *s, void *e)
-{ (void)e; port_seat5_count(9); func_ov102_021493dc(s); }
+{ (void)e; port_seat5_count(9); _ZN18daObjHatenaBlock_c19func_ov102_021493dcEv(s); }
 static void __fastcall seat5_qb_021492d4(void *s, void *e)
-{ (void)e; port_seat5_count(10); func_ov102_021492d4(s); }
+{ (void)e; port_seat5_count(10); _ZN18daObjHatenaBlock_c19func_ov102_021492d4Ev(s); }
 static void __fastcall seat5_qb_02149288(void *s, void *e)
-{ (void)e; port_seat5_count(11); func_ov102_02149288(s); }
+{ (void)e; port_seat5_count(11); _ZN18daObjHatenaBlock_c19func_ov102_02149288Ev(s); }
 static void __fastcall seat5_qb_02149220(void *s, void *e)
-{ (void)e; port_seat5_count(12); func_ov102_02149220(s); }
+{ (void)e; port_seat5_count(12); _ZN18daObjHatenaBlock_c19func_ov102_02149220Ev(s); }
 
 static const struct { PortPmf *slot; unsigned rom; void *host; }
 g_qblock_content_statics[] = {

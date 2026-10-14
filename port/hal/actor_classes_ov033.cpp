@@ -108,34 +108,33 @@ void __sinit_ov033_02111a54(void);
    are func_ov033_*. Their "recovered from vtable slot identity" markers are
    NAME recoveries over real decompiled bodies (T5, adjudicated in
    port/ov033_syms.txt); none is a stub. */
-int _ZN9TinyCover13InitResourcesEv(char *self);       /* slot 0,  InitResources */
-int _ZN9TinyCover16CleanupResourcesEv(void *self);       /* slot 3,  CleanupResources */
-int _ZN9TinyCover8BehaviorEv(void *self);       /* slot 6,  Behavior */
-int _ZN9TinyCover6RenderEv(void *self);       /* slot 9,  Render */
-int *_ZN9TinyCoverD1Ev(int *self);       /* slot 16, D1 */
-int *_ZN9TinyCoverD0Ev(int *self);       /* slot 17, D0 */
-void _ZN9TinyCover15OnGroundPoundedER8dActor_c(char *self, char *other); /* slot 21, OnGroundPounded */
+int _ZN13daObjTtFuta_c13InitResourcesEv(char *self);       /* slot 0,  InitResources */
+int _ZN13daObjTtFuta_c16CleanupResourcesEv(void *self);       /* slot 3,  CleanupResources */
+int _ZN13daObjTtFuta_c8BehaviorEv(void *self);       /* slot 6,  Behavior */
+int _ZN13daObjTtFuta_c6RenderEv(void *self);       /* slot 9,  Render */
+int *_ZN13daObjTtFuta_cD1Ev(int *self);       /* slot 16, D1 */
+int *_ZN13daObjTtFuta_cD0Ev(int *self);       /* slot 17, D0 */
+void _ZN13daObjTtFuta_c15OnGroundPoundedER8dActor_c(char *self, char *other); /* slot 21, OnGroundPounded */
 void *daObjTtFuta_c_classInit(void);               /* id 104 */
 
 /* id 105 TINY_WATER's own bodies -- these are the ones dsd spelled
    _ZN9TinyCover*, and they belong to the WATER class. */
-int *_ZN9TinyWaterD1Ev(int *self);         /* slot 16 */
-int *_ZN9TinyWaterD0Ev(int *self);         /* slot 17 */
-int _ZN9TinyWater8BehaviorEv(void *self);  /* slot 6, a plain .c body */
+int *_ZN14daObjTtWater_cD1Ev(int *self);         /* slot 16 */
+int *_ZN14daObjTtWater_cD0Ev(int *self);         /* slot 17 */
+int _ZN14daObjTtWater_c8BehaviorEv(void *self);  /* slot 6, a plain .c body */
 void *daObjTtWater_c_classInit(void);               /* id 105 */
 
 /* the two host vtables, both excluded from the mount. The names are dsd's for
    the addresses, NOT for the classes -- see this file's header. */
 DSSTATE_BEGIN
-int _ZTV9TinyCover[32];   /* 0x0211237c, id 104 TINY_COVER */
-void *_ZTV9TinyWater[32];      /* 0x02112440, id 105 TINY_WATER */
+int _ZTV13daObjTtFuta_c[32];   /* 0x0211237c, id 104 TINY_COVER */
+void *_ZTV14daObjTtWater_c[32];      /* 0x02112440, id 105 TINY_WATER */
 DSSTATE_END
 }
 
 /* The RTTI spelling id 104's D1 restores its table by. It is excluded from the
    mount and defined nowhere else, so the alias cannot be defeated. */
-#pragma comment(linker, "/alternatename:__ZTV13daObjTtFuta_c=__ZTV9TinyCover")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV13daObjTtFuta_c=__ZTV13daObjTtFuta_c")
 /* THE FOUR RESOLVER PLACEHOLDERS, all routed by per-source -D onto private
    names this lane owns, because each means a different object in a different
    TU and two of them collide with live host arrays:
@@ -153,8 +152,8 @@ DSSTATE_END
    live host array (hal/actor_classes.cpp) for every Platform in the port. All
    four LHS below are declared and never defined, so the aliases cannot be
    defeated and alternatename_guard stays clean. */
-#pragma comment(linker, "/alternatename:_port_ov033_tc_vt_own=__ZTV9TinyCover")
-#pragma comment(linker, "/alternatename:_port_ov033_tw_vt_own=__ZTV9TinyWater")
+#pragma comment(linker, "/alternatename:_port_ov033_tc_vt_own=__ZTV13daObjTtFuta_c")
+#pragma comment(linker, "/alternatename:_port_ov033_tw_vt_own=__ZTV14daObjTtWater_c")
 #pragma comment(linker, "/alternatename:_port_ov033_vt_base=__ZTV10dBgActor_c")
 
 /* The five bodies src defines as real C++ methods, faced here -- the
@@ -162,15 +161,15 @@ DSSTATE_END
    slot-5 bare-call shadows over +0xd4; _ZTV5Model[5] is dual-filled in
    hal/cxxname_bridge.cpp, and neither class holds a ModelAnim, so this is the
    Tree/ov013 case and not the ModelAnim slot-5 collision. */
-#include "TinyWater.h"
-#include "TinyCover.h"
+#include "daObjTtWater_c.h"
+#include "daObjTtFuta_c.h"
 extern "C" {
-int _ZN9TinyWater13InitResourcesEv(void *self)
-{ return ((TinyWater *)self)->TinyWater::InitResources(); }
-int _ZN9TinyWater16CleanupResourcesEv(void *self)
-{ return ((TinyWater *)self)->TinyWater::CleanupResources(); }
-int _ZN9TinyWater6RenderEv(void *self)
-{ return ((TinyWater *)self)->TinyWater::Render(); }
+int _ZN14daObjTtWater_c13InitResourcesEv(void *self)
+{ return ((daObjTtWater_c *)self)->daObjTtWater_c::InitResources(); }
+int _ZN14daObjTtWater_c16CleanupResourcesEv(void *self)
+{ return ((daObjTtWater_c *)self)->daObjTtWater_c::CleanupResources(); }
+int _ZN14daObjTtWater_c6RenderEv(void *self)
+{ return ((daObjTtWater_c *)self)->daObjTtWater_c::Render(); }
 }
 
 // ---- the trap --------------------------------------------------------------
@@ -301,27 +300,27 @@ extern "C" void port_ov33_bringup(void)
 // Slot 21 is the pound: particle 0x28 at the pounder's position, sound 0xf,
 // Event::SetBit(0xe), self-destruct.
 static int __fastcall tc_init(void *s, void *)
-{ return _ZN9TinyCover13InitResourcesEv((char *)s); }
+{ return _ZN13daObjTtFuta_c13InitResourcesEv((char *)s); }
 static int __fastcall tc_clean(void *s, void *)
-{ return _ZN9TinyCover16CleanupResourcesEv(s); }
+{ return _ZN13daObjTtFuta_c16CleanupResourcesEv(s); }
 static int __fastcall tc_behavior(void *s, void *)
-{ return _ZN9TinyCover8BehaviorEv(s); }
+{ return _ZN13daObjTtFuta_c8BehaviorEv(s); }
 static int __fastcall tc_render(void *s, void *)
 { port_actor_render_probe("TINY_COVER", (char *)s + 0xd4);
-  return _ZN9TinyCover6RenderEv(s); }
+  return _ZN13daObjTtFuta_c6RenderEv(s); }
 static int __fastcall tc_d1(void *s, void *)
-{ return (int)(size_t)_ZN9TinyCoverD1Ev((int *)s); }
+{ return (int)(size_t)_ZN13daObjTtFuta_cD1Ev((int *)s); }
 static int __fastcall tc_d0(void *s, void *)
-{ return (int)(size_t)_ZN9TinyCoverD0Ev((int *)s); }
+{ return (int)(size_t)_ZN13daObjTtFuta_cD0Ev((int *)s); }
 /* Slot 21, the OVERRIDE. Three parameters so it emits `ret 4`, the
    wf_turn_egg/OnGroundPounded contract the shared half's own slot 21 uses. */
 static int __fastcall tc_pounded(void *s, void *, void *o)
-{ _ZN9TinyCover15OnGroundPoundedER8dActor_c((char *)s, (char *)o); return 0; }
+{ _ZN13daObjTtFuta_c15OnGroundPoundedER8dActor_c((char *)s, (char *)o); return 0; }
 
 extern "C" void hal_fill_tiny_cover_vtable(void)
 {
     port_ov33_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV9TinyCover;
+    void *volatile *vt = (void *volatile *)_ZTV13daObjTtFuta_c;
     ov33_fill_shared(vt);
     vt[0]  = (void *)tc_init;
     vt[3]  = (void *)tc_clean;
@@ -348,23 +347,23 @@ extern "C" void hal_fill_tiny_cover_vtable(void)
 // Like the lid it returns Event::GetBit(0xe) == 0, so the water level and the
 // lid share one event bit -- pounding the lid is what drains it.
 static int __fastcall tw_init(void *s, void *)
-{ return _ZN9TinyWater13InitResourcesEv(s); }
+{ return _ZN14daObjTtWater_c13InitResourcesEv(s); }
 static int __fastcall tw_clean(void *s, void *)
-{ return _ZN9TinyWater16CleanupResourcesEv(s); }
+{ return _ZN14daObjTtWater_c16CleanupResourcesEv(s); }
 static int __fastcall tw_behavior(void *s, void *)
-{ return _ZN9TinyWater8BehaviorEv(s); }
+{ return _ZN14daObjTtWater_c8BehaviorEv(s); }
 static int __fastcall tw_render(void *s, void *)
 { port_actor_render_probe("TINY_WATER", (char *)s + 0xd4);
-  return _ZN9TinyWater6RenderEv(s); }
+  return _ZN14daObjTtWater_c6RenderEv(s); }
 static int __fastcall tw_d1(void *s, void *)
-{ return (int)(size_t)_ZN9TinyWaterD1Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjTtWater_cD1Ev((int *)s); }
 static int __fastcall tw_d0(void *s, void *)
-{ return (int)(size_t)_ZN9TinyWaterD0Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjTtWater_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_tiny_water_vtable(void)
 {
     port_ov33_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV9TinyWater;
+    void *volatile *vt = (void *volatile *)_ZTV14daObjTtWater_c;
     ov33_fill_shared(vt);
     vt[0]  = (void *)tw_init;
     vt[3]  = (void *)tw_clean;

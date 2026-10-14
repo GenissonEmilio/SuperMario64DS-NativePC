@@ -15,18 +15,18 @@
 # func_0205c5e4 does `ret = data_02086758[idx](self)` -- nine command
 # handlers for the backup-media engine, indexed by the command id its
 # callers pass (2, 3, 7, ...).
-src/func_0205bbdc.c
-src/func_0205bbe4.c
-src/func_0205bc0c.c
-src/func_0205bc88.c
-src/func_0205c048.c
-src/func_0205c264.c
-src/func_0205c378.c
-src/func_0205c410.c
-src/func_0205c448.c
-src/func_0205c480.c
-src/func_0205c4e4.c
-src/func_0205c528.cpp
+src/unnamed/arm9/0205/func_0205bbdc.c
+src/unnamed/arm9/0205/func_0205bbe4.c
+src/unnamed/arm9/0205/func_0205bc0c.c
+src/unnamed/arm9/0205/func_0205bc88.c
+src/unnamed/arm9/0205/func_0205c048.c
+src/unnamed/arm9/0205/func_0205c264.c
+src/unnamed/arm9/0205/func_0205c378.c
+src/unnamed/arm9/0205/func_0205c410.c
+src/unnamed/arm9/0205/func_0205c448.c
+src/unnamed/arm9/0205/func_0205c480.c
+src/unnamed/arm9/0205/func_0205c4e4.c
+src/unnamed/arm9/0205/func_0205c528.cpp
 # src/CpuCopy8.c is deliberately NOT here. It is an asm primitive -- a
 # hand-tuned unaligned block copy with no C body to compile -- and
 # func_0205bc88 is its only caller in this slice. hal/ptr_tables.cpp carries
@@ -40,61 +40,61 @@ src/func_0205c528.cpp
 # one call for a cdecl call on the seeded host handler; lane shadow-A); its
 # src line is in slice_gate10.txt and skipped there.
 # The 39 handlers plus the helpers they reach that nothing else links.
-src/func_020070e8.c
-src/func_020071a8.c
-src/func_020071e0.c
-src/func_020072c4.c
-src/func_020073a0.c
-src/func_02007414.c
-src/func_02007450.c
-src/func_02007484.c
-src/func_020074e8.c
-src/func_0200751c.c
-src/func_02007548.c
-src/func_020075b4.c
-src/func_0200762c.c
-src/func_02007698.c
-src/func_02007758.c
-src/func_020077f0.c
-src/func_02007870.c
+src/unnamed/arm9/0200/func_020070e8.c
+src/unnamed/arm9/0200/func_020071a8.c
+src/unnamed/arm9/0200/func_020071e0.c
+src/unnamed/arm9/0200/func_020072c4.c
+src/unnamed/arm9/0200/func_020073a0.c
+src/unnamed/arm9/0200/func_02007414.c
+src/unnamed/arm9/0200/func_02007450.c
+src/unnamed/arm9/0200/func_02007484.c
+src/unnamed/arm9/0200/func_020074e8.c
+src/unnamed/arm9/0200/func_0200751c.c
+src/unnamed/arm9/0200/func_02007548.c
+src/unnamed/arm9/0200/func_020075b4.c
+src/unnamed/arm9/0200/func_0200762c.c
+src/unnamed/arm9/0200/func_02007698.c
+src/unnamed/arm9/0200/func_02007758.c
+src/unnamed/arm9/0200/func_020077f0.c
+src/unnamed/arm9/0200/func_02007870.c
 # func_020078c4: HOST COPY at unmatched/Camera_ApproachAngleVeneer.cpp (wired in
 # CMakeLists). The matched C calls ApproachAngle with four arguments; the fifth
 # (maxStep) rides the stack as 0, which cdecl does not stage, so the host copy passes
 # the fifth argument (0) explicitly. See that file's header.
-src/func_02007910.c
-src/func_020079ac.c
-src/func_02007a8c.c
-src/func_02007b0c.c
-src/func_02007b98.c
-src/func_02007c14.c
-src/func_02007c9c.c
-src/func_02007cec.c
-src/func_02007d0c.c
-src/func_02007d58.c
-src/func_02007e5c.c
-src/func_02007f14.c
-src/func_02007fcc.c
-src/func_02008008.c
-src/func_02008028.c
-src/func_02008080.c
-src/func_020080b0.c
-src/func_020080f0.c
-src/func_0200814c.c
-src/func_02008200.c
-src/func_020082a0.c
-src/func_020082f8.c
-src/func_0200840c.c
-src/func_02008450.c
-src/func_02008474.c
-src/func_020084b0.c
-src/func_02008500.c
-src/func_02008b4c.c
-src/func_02009414.c
-src/func_020094a8.c
-src/func_0200d8ac.c
-src/func_0200e728.c
+src/unnamed/arm9/0200/func_02007910.c
+src/unnamed/arm9/0200/func_020079ac.c
+src/unnamed/arm9/0200/func_02007a8c.c
+src/unnamed/arm9/0200/func_02007b0c.c
+src/unnamed/arm9/0200/func_02007b98.c
+src/unnamed/arm9/0200/func_02007c14.c
+src/unnamed/arm9/0200/func_02007c9c.c
+src/unnamed/arm9/0200/func_02007cec.c
+src/unnamed/arm9/0200/func_02007d0c.c
+src/unnamed/arm9/0200/func_02007d58.c
+src/unnamed/arm9/0200/func_02007e5c.c
+src/unnamed/arm9/0200/func_02007f14.c
+src/unnamed/arm9/0200/func_02007fcc.c
+src/unnamed/arm9/0200/func_02008008.c
+src/unnamed/arm9/0200/func_02008028.c
+src/unnamed/arm9/0200/func_02008080.c
+src/unnamed/arm9/0200/func_020080b0.c
+src/unnamed/arm9/0200/func_020080f0.c
+src/unnamed/arm9/0200/func_0200814c.c
+src/unnamed/arm9/0200/func_02008200.c
+src/unnamed/arm9/0200/func_020082a0.c
+src/unnamed/arm9/0200/func_020082f8.c
+src/unnamed/arm9/0200/func_0200840c.c
+src/unnamed/arm9/0200/func_02008450.c
+src/unnamed/arm9/0200/func_02008474.c
+src/unnamed/arm9/0200/func_020084b0.c
+src/unnamed/arm9/0200/func_02008500.c
+src/unnamed/arm9/0200/func_02008b4c.c
+src/unnamed/arm9/0200/func_02009414.c
+src/unnamed/arm9/0200/func_020094a8.c
+src/engine/view/dCamera_c.cpp
+src/unnamed/arm9/0200/func_0200e728.c
 src/ReadUnalignedUshort.c
-src/func_ov002_020effb8.c
+src/unnamed/ov002/func_ov002_020effb8.c
 
 # ---- the one-word table, data_0209a03c ----
 # run link100, lane GLOBALS. relocs.txt has `from:0x0209a03c to:0x02057e30`:
@@ -104,4 +104,4 @@ src/func_ov002_020effb8.c
 # .cpp binds the word to the host function; this row is the callee, listed
 # here for the same reason as everything above it -- the only thing that
 # named it was a table of bytes. The ROM body is `bx lr`.
-src/func_02057e30.c
+src/unnamed/arm9/0205/func_02057e30.c

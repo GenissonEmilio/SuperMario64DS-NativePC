@@ -67,7 +67,7 @@ typedef int (*PortOv090StateFn)(void *);
    also its only declaration in this TU, so it is declared here instead. Same
    shape the removed body had; the matched TU spells the parameters (C *, PMF *)
    and both are one pointer, cdecl, extern "C". */
-int func_ov090_02132ac4(void *cv, void *pv);
+int _ZN9daManta_c19func_ov090_02132ac4EP10MantaState(void *cv, void *pv);
 
 struct MrVec3 { int x, y, z; };
 
@@ -80,7 +80,7 @@ void Matrix4x3_FromRotationY(void *m, int angle);
 void Matrix4x3_ApplyInPlaceToRotationX(void *m, short angle);
 void MulVec3Mat4x3(MrVec3 *v, void *m, MrVec3 *out);
 void _ZN8dActor_c22UpdatePosWithOnlySpeedEP5dCc_c(void *thiz, void *clsn);
-void func_ov090_02132b14(void *c);
+void _ZN9daManta_c19func_ov090_02132b14Ev(void *c);
 void _ZN5dCc_c5ClearEv(void *c);
 void _ZN5dCc_c6UpdateEv(void *c);
 void _Z14ApproachLinearRsss(short *v, short target, short step);
@@ -100,7 +100,7 @@ extern char data_020a0e68[];
 /* ---- (4) InitResources, the same PathPtr refusal ----------------------- */
 void *_ZN5Model8LoadFileER13SharedFilePtr(void *p);
 int _ZN9ModelBase7SetFileEP8BMD_Fileii(void *self, void *f, int a, int b);
-void _ZN9Animation8LoadFileER13SharedFilePtr(void *p);
+void _ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr(void *p);
 void _ZN10dCcAcPos_c4InitEP8dActor_cRK7Vector35Fix12IiES6_jj(
         void *self, void *a, const MrVec3 *v, int b, int c, unsigned d, unsigned e);
 unsigned _ZNK7PathPtr8NumNodesEv(const void *self);

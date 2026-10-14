@@ -40,4 +40,4 @@
 #   ROM's Prepare is now IN the binary instead of being spelled out by hand in
 #   the HAL. Verified from the emitted bytes after the change, not from the
 #   signature -- two pushes, no ecx, one call to the SA symbol.
-src/_ZN18TextureTransformer7PrepareER8BMD_FileR8BTA_File.cpp
+src/engine/model/TextureTransformer.cpp

@@ -37,9 +37,9 @@ extern "C" {
 
 unsigned short DecIfAbove0_Short(unsigned short *p);
 void _ZN8dActor_c9UpdatePosEP5dCc_c(void *self, void *clsn);
-void _ZN9Animation7AdvanceEv(void *anim);
-void func_ov085_0212e778(void *self);
-void func_ov085_0212e858(void *self);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *anim);
+void _ZN11daC_Jugem_c12UpdateShadowEv(void *self);
+void _ZN11daC_Jugem_c18UpdateShadowPlayerEv(void *self);
 
 /* the eleven states the sinit builds, and the two the Behavior compares
    against by identity */
@@ -59,17 +59,17 @@ extern PortPmf data_ov085_02130254[], data_ov085_0213025c[],
     data_ov085_021302f4[], data_ov085_021302fc[];
 
 /* the twenty-two state bodies */
-void func_ov085_0212d5dc(void *); void func_ov085_0212d724(void *);
-void func_ov085_0212d73c(void *); void func_ov085_0212d8ec(void *);
-void func_ov085_0212d9b8(void *); void func_ov085_0212db04(void *);
-void func_ov085_0212dbdc(void *); void func_ov085_0212dcfc(void *);
-void func_ov085_0212dd10(void *); void func_ov085_0212ddc4(void *);
-void func_ov085_0212de5c(void *); void func_ov085_0212df84(void *);
-void func_ov085_0212e078(void *); void func_ov085_0212e180(void *);
-void func_ov085_0212e19c(void *); void func_ov085_0212e2ec(void *);
-void func_ov085_0212e310(void *); void func_ov085_0212e480(void *);
-void func_ov085_0212e4a4(void *); void func_ov085_0212e59c(void *);
-void func_ov085_0212e5ac(void *); void func_ov085_0212e720(void *);
+void _ZN11daC_Jugem_c14StateIntroMainEv(void *); void _ZN11daC_Jugem_c14StateIntroInitEv(void *);
+void _ZN11daC_Jugem_c17StateApproachMainEv(void *); void _ZN11daC_Jugem_c17StateApproachInitEv(void *);
+void _ZN11daC_Jugem_c12StateBobMainEv(void *); void _ZN11daC_Jugem_c12StateBobInitEv(void *);
+void _ZN11daC_Jugem_c14StateGuideMainEv(void *); void _ZN11daC_Jugem_c14StateGuideInitEv(void *);
+void _ZN11daC_Jugem_c13StateTurnMainEv(void *); void _ZN11daC_Jugem_c13StateTurnInitEv(void *);
+void _ZN11daC_Jugem_c15StateArriveMainEv(void *); void _ZN11daC_Jugem_c15StateArriveInitEv(void *);
+void _ZN11daC_Jugem_c14StateLeaveMainEv(void *); void _ZN11daC_Jugem_c14StateLeaveInitEv(void *);
+void _ZN11daC_Jugem_c13StateTalkMainEv(void *); void _ZN11daC_Jugem_c13StateTalkInitEv(void *);
+void _ZN11daC_Jugem_c20StateFlyToPlayerMainEv(void *); void _ZN11daC_Jugem_c20StateFlyToPlayerInitEv(void *);
+void _ZN11daC_Jugem_c15StateHiddenMainEv(void *); void _ZN11daC_Jugem_c15StateHiddenInitEv(void *);
+void _ZN11daC_Jugem_c14StateHoverMainEv(void *); void _ZN11daC_Jugem_c14StateHoverInitEv(void *);
 
 }  /* extern "C" */
 
@@ -94,57 +94,57 @@ void func_ov085_0212e5ac(void *); void func_ov085_0212e720(void *);
 static void __fastcall pmfb7_ov085_0212e4a4(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 0213026c, the per-frame half */
-    ((void (*)(void *))(void *)func_ov085_0212e4a4)(self);
+    ((void (*)(void *))(void *)_ZN11daC_Jugem_c15StateHiddenMainEv)(self);
 }
 static void __fastcall pmfb7_ov085_0212d5dc(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02130274, the per-frame half */
-    ((void (*)(void *))(void *)func_ov085_0212d5dc)(self);
+    ((void (*)(void *))(void *)_ZN11daC_Jugem_c14StateIntroMainEv)(self);
 }
 static void __fastcall pmfb7_ov085_0212d9b8(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 0213027c, the per-frame half */
-    ((void (*)(void *))(void *)func_ov085_0212d9b8)(self);
+    ((void (*)(void *))(void *)_ZN11daC_Jugem_c12StateBobMainEv)(self);
 }
 static void __fastcall pmfb7_ov085_0212d73c(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02130284, the per-frame half */
-    ((void (*)(void *))(void *)func_ov085_0212d73c)(self);
+    ((void (*)(void *))(void *)_ZN11daC_Jugem_c17StateApproachMainEv)(self);
 }
 static void __fastcall pmfb7_ov085_0212dd10(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 0213028c, the per-frame half */
-    ((void (*)(void *))(void *)func_ov085_0212dd10)(self);
+    ((void (*)(void *))(void *)_ZN11daC_Jugem_c13StateTurnMainEv)(self);
 }
 static void __fastcall pmfb7_ov085_0212e19c(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02130294, the per-frame half */
-    ((void (*)(void *))(void *)func_ov085_0212e19c)(self);
+    ((void (*)(void *))(void *)_ZN11daC_Jugem_c13StateTalkMainEv)(self);
 }
 static void __fastcall pmfb7_ov085_0212dbdc(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 021302b4, the per-frame half */
-    ((void (*)(void *))(void *)func_ov085_0212dbdc)(self);
+    ((void (*)(void *))(void *)_ZN11daC_Jugem_c14StateGuideMainEv)(self);
 }
 static void __fastcall pmfb7_ov085_0212e5ac(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 021302d4, the per-frame half */
-    ((void (*)(void *))(void *)func_ov085_0212e5ac)(self);
+    ((void (*)(void *))(void *)_ZN11daC_Jugem_c14StateHoverMainEv)(self);
 }
 static void __fastcall pmfb7_ov085_0212e310(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 021302dc, the per-frame half */
-    ((void (*)(void *))(void *)func_ov085_0212e310)(self);
+    ((void (*)(void *))(void *)_ZN11daC_Jugem_c20StateFlyToPlayerMainEv)(self);
 }
 static void __fastcall pmfb7_ov085_0212e078(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 021302f4, the per-frame half */
-    ((void (*)(void *))(void *)func_ov085_0212e078)(self);
+    ((void (*)(void *))(void *)_ZN11daC_Jugem_c14StateLeaveMainEv)(self);
 }
 static void __fastcall pmfb7_ov085_0212de5c(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 021302fc, the per-frame half */
-    ((void (*)(void *))(void *)func_ov085_0212de5c)(self);
+    ((void (*)(void *))(void *)_ZN11daC_Jugem_c15StateArriveMainEv)(self);
 }
 
 static const struct {
@@ -153,26 +153,26 @@ static const struct {
     void (*host)(void *);
     const char *name;
 } g_states[] = {
-    {data_ov085_02130254, 0x0212e480, func_ov085_0212e480, "02130254"},
-    {data_ov085_0213025c, 0x0212e720, func_ov085_0212e720, "0213025c"},
-    {data_ov085_02130264, 0x0212e180, func_ov085_0212e180, "02130264"},
+    {data_ov085_02130254, 0x0212e480, _ZN11daC_Jugem_c20StateFlyToPlayerInitEv, "02130254"},
+    {data_ov085_0213025c, 0x0212e720, _ZN11daC_Jugem_c14StateHoverInitEv, "0213025c"},
+    {data_ov085_02130264, 0x0212e180, _ZN11daC_Jugem_c14StateLeaveInitEv, "02130264"},
     {data_ov085_0213026c, 0x0212e4a4, (void (*)(void *))(void *)pmfb7_ov085_0212e4a4, "0213026c"},
     {data_ov085_02130274, 0x0212d5dc, (void (*)(void *))(void *)pmfb7_ov085_0212d5dc, "02130274"},
     {data_ov085_0213027c, 0x0212d9b8, (void (*)(void *))(void *)pmfb7_ov085_0212d9b8, "0213027c"},
     {data_ov085_02130284, 0x0212d73c, (void (*)(void *))(void *)pmfb7_ov085_0212d73c, "02130284"},
     {data_ov085_0213028c, 0x0212dd10, (void (*)(void *))(void *)pmfb7_ov085_0212dd10, "0213028c"},
     {data_ov085_02130294, 0x0212e19c, (void (*)(void *))(void *)pmfb7_ov085_0212e19c, "02130294"},
-    {data_ov085_0213029c, 0x0212d724, func_ov085_0212d724, "0213029c"},
-    {data_ov085_021302a4, 0x0212e2ec, func_ov085_0212e2ec, "021302a4"},
-    {data_ov085_021302ac, 0x0212d8ec, func_ov085_0212d8ec, "021302ac"},
+    {data_ov085_0213029c, 0x0212d724, _ZN11daC_Jugem_c14StateIntroInitEv, "0213029c"},
+    {data_ov085_021302a4, 0x0212e2ec, _ZN11daC_Jugem_c13StateTalkInitEv, "021302a4"},
+    {data_ov085_021302ac, 0x0212d8ec, _ZN11daC_Jugem_c17StateApproachInitEv, "021302ac"},
     {data_ov085_021302b4, 0x0212dbdc, (void (*)(void *))(void *)pmfb7_ov085_0212dbdc, "021302b4"},
-    {data_ov085_021302bc, 0x0212e59c, func_ov085_0212e59c, "021302bc"},
-    {data_ov085_021302c4, 0x0212db04, func_ov085_0212db04, "021302c4"},
-    {data_ov085_021302cc, 0x0212df84, func_ov085_0212df84, "021302cc"},
+    {data_ov085_021302bc, 0x0212e59c, _ZN11daC_Jugem_c15StateHiddenInitEv, "021302bc"},
+    {data_ov085_021302c4, 0x0212db04, _ZN11daC_Jugem_c12StateBobInitEv, "021302c4"},
+    {data_ov085_021302cc, 0x0212df84, _ZN11daC_Jugem_c15StateArriveInitEv, "021302cc"},
     {data_ov085_021302d4, 0x0212e5ac, (void (*)(void *))(void *)pmfb7_ov085_0212e5ac, "021302d4"},
     {data_ov085_021302dc, 0x0212e310, (void (*)(void *))(void *)pmfb7_ov085_0212e310, "021302dc"},
-    {data_ov085_021302e4, 0x0212dcfc, func_ov085_0212dcfc, "021302e4"},
-    {data_ov085_021302ec, 0x0212ddc4, func_ov085_0212ddc4, "021302ec"},
+    {data_ov085_021302e4, 0x0212dcfc, _ZN11daC_Jugem_c14StateGuideInitEv, "021302e4"},
+    {data_ov085_021302ec, 0x0212ddc4, _ZN11daC_Jugem_c13StateTurnInitEv, "021302ec"},
     {data_ov085_021302f4, 0x0212e078, (void (*)(void *))(void *)pmfb7_ov085_0212e078, "021302f4"},
     {data_ov085_021302fc, 0x0212de5c, (void (*)(void *))(void *)pmfb7_ov085_0212de5c, "021302fc"},
 };

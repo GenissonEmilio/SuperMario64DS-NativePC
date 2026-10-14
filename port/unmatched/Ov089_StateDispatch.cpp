@@ -87,9 +87,9 @@ extern PortPmf data_ov089_02132b28[], data_ov089_02132b38[],
 extern PortPmf data_ov089_02132cec[];
 
 /* the three state bodies, all matched src */
-void func_ov089_02131b18(char *c);
-void func_ov089_0213162c(char *c);
-void func_ov089_021311c0(char *c);
+void _ZN10daObjKey_c9StateDropEv(char *c);
+void _ZN10daObjKey_c13StateStarJumpEv(char *c);
+void _ZN10daObjKey_c16StateFlyToCenterEv(char *c);
 
 }  /* extern "C" */
 
@@ -120,14 +120,14 @@ static void ov089_unhosted(unsigned idx)
         ov089_unhosted(cell);                                             \
     }
 
-OV089_FACE(0, func_ov089_02131b18)
-OV089_FACE(1, func_ov089_02131b18)
-OV089_FACE(2, func_ov089_02131b18)
-OV089_FACE(3, func_ov089_0213162c)
-OV089_FACE(4, func_ov089_02131b18)
-OV089_FACE(5, func_ov089_02131b18)
-OV089_FACE(6, func_ov089_02131b18)
-OV089_FACE(7, func_ov089_021311c0)
+OV089_FACE(0, _ZN10daObjKey_c9StateDropEv)
+OV089_FACE(1, _ZN10daObjKey_c9StateDropEv)
+OV089_FACE(2, _ZN10daObjKey_c9StateDropEv)
+OV089_FACE(3, _ZN10daObjKey_c13StateStarJumpEv)
+OV089_FACE(4, _ZN10daObjKey_c9StateDropEv)
+OV089_FACE(5, _ZN10daObjKey_c9StateDropEv)
+OV089_FACE(6, _ZN10daObjKey_c9StateDropEv)
+OV089_FACE(7, _ZN10daObjKey_c16StateFlyToCenterEv)
 OV089_ABORT(8)
 OV089_ABORT(9)
 

@@ -235,7 +235,7 @@ SysTracker::~SysTracker() { _ZN8Particle10SysTrackerD1Ev(this); }
    the link any more. same member, same convention, same 1 argument slots, types spelled differently
    was: #pragma comment(linker, "/alternatename:?PlayBank2_2D@Sound@@SAXI@Z=__ZN5Sound12PlayBank2_2DEj") */
 #pragma comment(linker, "/alternatename:?PlayBank2_2D@Sound@@SAXI@Z=?PlayBank2_2D@Sound@@YAII@Z")
-#pragma comment(linker, "/alternatename:?RenderAll@ShadowModel@@YAXXZ=?RenderAll@ShadowModel@@SAXXZ")
+#pragma comment(linker, "/alternatename:?RenderAll@dExtShadowModel_c@@YAXXZ=?RenderAll@dExtShadowModel_c@@SAXXZ")
 
 /* THE NAME-SPELLING ALIAS ONTO A DATA WORD. src/actors/dScMgMemory2_c.cpp (slot 18)
    and src/actors/dScMgMemory2_c.cpp (slot 0) both store through a symbol they

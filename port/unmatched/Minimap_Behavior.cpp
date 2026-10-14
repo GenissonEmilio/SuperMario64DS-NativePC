@@ -132,9 +132,9 @@ extern void SetSubBg2Offset(s32 a, s32 b);
 extern void _ZN3G2x13SetBlendAlphaEPVttttj(volatile u16 *p, u16 a, u16 b, u16 c, u16 d);
 extern s32  SublevelToLevel(s32 i);
 extern Fix12 _ZN4cstd4fdivEii(s32 a, s32 b);
-extern void _ZN7Minimap21FixTHIPaintingRoomPosER7Vector3(Vector3 *v);
-extern void _ZN7Minimap15GetPosOnMinimapER7Vector3S1_5Fix12IiEsS1_(Vector3 *a, Vector3 *b, Fix12 c, s16 d, Vector3 *e);
-extern void _ZN7Minimap20GetPosFromMinimapPosER7Vector3S1_5Fix12IiEsS1_(Vector3 *a, Vector3 *b, Fix12 c, s16 d, Vector3 *e);
+extern void _ZN6dMap_c21FixTHIPaintingRoomPosER7Vector3(Vector3 *v);
+extern void _ZN6dMap_c15GetPosOnMinimapER7Vector3S1_5Fix12IiEsS1_(Vector3 *a, Vector3 *b, Fix12 c, s16 d, Vector3 *e);
+extern void _ZN6dMap_c20GetPosFromMinimapPosER7Vector3S1_5Fix12IiEsS1_(Vector3 *a, Vector3 *b, Fix12 c, s16 d, Vector3 *e);
 extern void Vec3_Sub(Vector3 *out, Vector3 *a, Vector3 *b);
 extern void AddVec3(Vector3 *a, Vector3 *b, Vector3 *c);
 extern s32  GetMinimapID(Obj *obj, s32 arg);
@@ -147,9 +147,9 @@ extern void UpdateMinimap(s32 *a, s32 b, s32 c, s32 d, s32 e);
 #define F254 (*(u8 *)(((int)self + 0x254)))
 #define FMUL(a, b) ((s32)((((long long)(a) * (b)) + 0x800) >> 12))
 
-extern "C" s32 _ZN7Minimap8BehaviorEv(Minimap *self);
+extern "C" s32 _ZN6dMap_c8BehaviorEv(Minimap *self);
 
-s32 _ZN7Minimap8BehaviorEv(Minimap *self)
+s32 _ZN6dMap_c8BehaviorEv(Minimap *self)
 {
     Obj *obj;
     Vector3 v8, v14, v20, v2c, v38;
@@ -305,8 +305,8 @@ L4d8:
 
     op = (Vector3 *)(((int)obj + 0x5c));
     v14 = *op;
-    _ZN7Minimap21FixTHIPaintingRoomPosER7Vector3(&v14);
-    _ZN7Minimap15GetPosOnMinimapER7Vector3S1_5Fix12IiEsS1_(&v14, &self->v1f4, self->f1f0, self->ang, &v8);
+    _ZN6dMap_c21FixTHIPaintingRoomPosER7Vector3(&v14);
+    _ZN6dMap_c15GetPosOnMinimapER7Vector3S1_5Fix12IiEsS1_(&v14, &self->v1f4, self->f1f0, self->ang, &v8);
     {
         s32 p = data_0209f250;
         g_mm_iconX[p] = (v8.x + 0x800) >> 12;
@@ -332,7 +332,7 @@ L6f0:
         else if (g_mm_iconY[p] > 0x9c) { v8.z = 0x9c000; }
     }
 L738:
-    _ZN7Minimap20GetPosFromMinimapPosER7Vector3S1_5Fix12IiEsS1_(&v8, &self->v1f4, self->f1f0, self->ang, &v20);
+    _ZN6dMap_c20GetPosFromMinimapPosER7Vector3S1_5Fix12IiEsS1_(&v8, &self->v1f4, self->f1f0, self->ang, &v20);
     Vec3_Sub(&v38, &v14, &v20);
     AddVec3(&self->v1f4, &v38, &self->v1f4);
     self->f60 = self->f1dc + ((FMUL(self->v1f4.x, self->f1d4) + 0x800) >> 12);
@@ -344,8 +344,8 @@ L738:
         Obj *o = data_0209f394[i];
         if (o != 0) {
         v2c = *(Vector3 *)(((int)o + 0x5c));
-        _ZN7Minimap21FixTHIPaintingRoomPosER7Vector3(&v2c);
-        _ZN7Minimap15GetPosOnMinimapER7Vector3S1_5Fix12IiEsS1_(&v2c, &self->v1f4, self->f1f0, self->ang, &v8);
+        _ZN6dMap_c21FixTHIPaintingRoomPosER7Vector3(&v2c);
+        _ZN6dMap_c15GetPosOnMinimapER7Vector3S1_5Fix12IiEsS1_(&v2c, &self->v1f4, self->f1f0, self->ang, &v8);
         g_mm_iconX[i] = (v8.x + 0x800) >> 12;
         g_mm_iconY[i] = (v8.z + 0x800) >> 12;
         if (i != data_0209f250)
@@ -360,7 +360,7 @@ L738:
     for (i = 0; i < 0xc; i++) {
         Obj *o = data_0209f40c[i];
         if (o != 0) {
-        _ZN7Minimap15GetPosOnMinimapER7Vector3S1_5Fix12IiEsS1_(&o->pos, &self->v1f4, self->f1f0, self->ang, &v8);
+        _ZN6dMap_c15GetPosOnMinimapER7Vector3S1_5Fix12IiEsS1_(&o->pos, &self->v1f4, self->f1f0, self->ang, &v8);
         self->aa0[i] = (v8.x + 0x800) >> 12;
         self->ad0[i] = (v8.z + 0x800) >> 12;
         if (data_0209f37c[i] != 4)
@@ -375,7 +375,7 @@ L738:
     for (i = 0; i < 9; i++) {
         Obj *o = data_0209f3e8[i];
         if (o != 0) {
-        _ZN7Minimap15GetPosOnMinimapER7Vector3S1_5Fix12IiEsS1_(&o->pos, &self->v1f4, self->f1f0, self->ang, &v8);
+        _ZN6dMap_c15GetPosOnMinimapER7Vector3S1_5Fix12IiEsS1_(&o->pos, &self->v1f4, self->f1f0, self->ang, &v8);
         self->a100[i] = (v8.x + 0x800) >> 12;
         self->a124[i] = (v8.z + 0x800) >> 12;
         self->a23a[i] = (s8)GetMinimapID(o, -1);
@@ -387,7 +387,7 @@ L738:
     {
         Obj *o = data_0209f33c;
         if (o == 0) { self->f248 = -1; goto La64; }
-        _ZN7Minimap15GetPosOnMinimapER7Vector3S1_5Fix12IiEsS1_(&o->pos, &self->v1f4, self->f1f0, self->ang, &v8);
+        _ZN6dMap_c15GetPosOnMinimapER7Vector3S1_5Fix12IiEsS1_(&o->pos, &self->v1f4, self->f1f0, self->ang, &v8);
         self->f178 = (v8.x + 0x800) >> 12;
         self->f17c = (v8.z + 0x800) >> 12;
         self->f248 = 1;
@@ -397,7 +397,7 @@ La64:
     for (i = 0; i < 8; i++) {
         Obj *o = data_0209f3a4[i];
         if (o != 0) {
-        _ZN7Minimap15GetPosOnMinimapER7Vector3S1_5Fix12IiEsS1_(&o->pos, &self->v1f4, self->f1f0, self->ang, &v8);
+        _ZN6dMap_c15GetPosOnMinimapER7Vector3S1_5Fix12IiEsS1_(&o->pos, &self->v1f4, self->f1f0, self->ang, &v8);
         self->a180[i] = (v8.x + 0x800) >> 12;
         self->a1a0[i] = (v8.z + 0x800) >> 12;
         self->a249[i] = o->f0cc;

@@ -161,9 +161,9 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 #include "dActor_c.h"
 #include "dtor_faces_cpp.h"
 #include "fBase_c.h"
-#include "BabyPenguin.h"
+#include "daPgBby_c.h"
 #include "daBgSnmBdy_c.h"
-#include "SnowmanHead.h"
+#include "daBgSnmHed_c.h"
 
 extern "C" {
 int _ZN8dActor_c19BeforeInitResourcesEv(void *self);
@@ -188,7 +188,7 @@ extern unsigned char data_020a4b4c;  /* the spawn spine's own step */
 const char *port_actor_class_name(unsigned id);  /* hal/actor_registry */
 void port_actor_slot_decline(const char *what);  /* func_02043fdc_hostcopy.cpp */
 void _ZN9ModelAnimD1Ev(void *self);
-void _ZN11ShadowModelD1Ev(void *self);
+void _ZN17dExtShadowModel_cD1Ev(void *self);
 void _ZN7dCcAc_cD1Ev(void *self);
 void _ZN10dBgCh_ActrD1Ev(void *self);
 extern void *data_020a0eac;
@@ -365,16 +365,16 @@ extern "C" void hal_fill_snowman_vtable(void)
 // before InitResources can dispatch through it.
 // ============================================================================
 extern "C" {
-int _ZN11BabyPenguin13InitResourcesEv(void *self);      /* slot 0, faced */
-int _ZN11BabyPenguin16CleanupResourcesEv(void);         /* slot 3, .c body takes void */
-int _ZN11BabyPenguin8BehaviorEv(void *self);             /* slot 6, faced */
-int _ZN11BabyPenguin6RenderEv(void *self);                /* slot 9, faced */
-void _ZN11BabyPenguin16OnPendingDestroyEv(void);        /* slot 12, own, .c body takes void */
-int *_ZN11BabyPenguinD0Ev(int *self);                    /* slot 17, spells its own table */
-int _ZN11BabyPenguin13OnYoshiTryEatEv(void);                            /* slot 18, own OnYoshiTryEat, returns 7 */
-void _ZN11BabyPenguin13OnTurnIntoEggER6Player(void *self);                     /* slot 19, own OnTurnIntoEgg */
+int _ZN9daPgBby_c13InitResourcesEv(void *self);      /* slot 0, faced */
+int _ZN9daPgBby_c16CleanupResourcesEv(void);         /* slot 3, .c body takes void */
+int _ZN9daPgBby_c8BehaviorEv(void *self);             /* slot 6, faced */
+int _ZN9daPgBby_c6RenderEv(void *self);                /* slot 9, faced */
+void _ZN9daPgBby_c16OnPendingDestroyEv(void);        /* slot 12, own, .c body takes void */
+int *_ZN9daPgBby_cD0Ev(int *self);                    /* slot 17, spells its own table */
+int _ZN9daPgBby_c13OnYoshiTryEatEv(void);                            /* slot 18, own OnYoshiTryEat, returns 7 */
+void _ZN9daPgBby_c13OnTurnIntoEggER6Player(void *self);                     /* slot 19, own OnTurnIntoEgg */
 void *daPgBby_c_classInit(void);                             /* installs _ZTV11BabyPenguin */
-int _ZTV11BabyPenguin[31];
+int _ZTV9daPgBby_c[31];
 
 /* the six-cell PMF state table: each cell is TWO 8-byte {fn,delta} pairs
    back to back (the .a=enter half, .b=tick half __sinit_ov072_02122414's
@@ -391,18 +391,18 @@ extern PortBabyPenguinPair data_ov072_02122d6c[6];
    SHORT-1 caller -- same address, same signature, transparent to the seat
    below). All twelve take one pointer, return int -- the uniform shape
    every state handler in this table shares. */
-int func_ov072_02121c94(char *p);
-int func_ov072_02121a84(void *c);
-int func_ov072_02121a28(char *c);
-int func_ov072_021218dc(char *self);
-int func_ov072_02121890(char *c);
-int func_ov072_021217ac(void *thiz);
-int func_ov072_02121758(char *c);
-int func_ov072_02121670(char *c);
-int func_ov072_02121640(char *c);
-int func_ov072_021214dc(void *thiz);
-int func_ov072_02121368(char *self);
-int func_ov072_021212c0(void *thiz);
+int _ZN9daPgBby_c19func_ov072_02121c94Ev(char *p);
+int _ZN9daPgBby_c19func_ov072_02121a84Ev(void *c);
+int _ZN9daPgBby_c19func_ov072_02121a28Ev(char *c);
+int _ZN9daPgBby_c19func_ov072_021218dcEv(char *self);
+int _ZN9daPgBby_c19func_ov072_02121890Ev(char *c);
+int _ZN9daPgBby_c19func_ov072_021217acEv(void *thiz);
+int _ZN9daPgBby_c19func_ov072_02121758Ev(char *c);
+int _ZN9daPgBby_c19func_ov072_02121670Ev(char *c);
+int _ZN9daPgBby_c19func_ov072_02121640Ev(char *c);
+int _ZN9daPgBby_c19func_ov072_021214dcEv(void *thiz);
+int _ZN9daPgBby_c19func_ov072_02121368Ev(char *self);
+int _ZN9daPgBby_c19func_ov072_021212c0Ev(void *thiz);
 }
 
 /* {ROM address the sinit's own source cell carries, verified against
@@ -413,12 +413,12 @@ int func_ov072_021212c0(void *thiz);
 typedef int (*PortBpFn)(void *);
 static const struct { unsigned enter_rom, tick_rom; PortBpFn enter_host, tick_host; }
 g_bp_cells[6] = {
-    {0x02121c94, 0x02121a84, (PortBpFn)func_ov072_02121c94, (PortBpFn)func_ov072_02121a84},
-    {0x02121a28, 0x021218dc, (PortBpFn)func_ov072_02121a28, (PortBpFn)func_ov072_021218dc},
-    {0x02121890, 0x021217ac, (PortBpFn)func_ov072_02121890, (PortBpFn)func_ov072_021217ac},
-    {0x02121758, 0x02121670, (PortBpFn)func_ov072_02121758, (PortBpFn)func_ov072_02121670},
-    {0x02121640, 0x021214dc, (PortBpFn)func_ov072_02121640, (PortBpFn)func_ov072_021214dc},
-    {0x02121368, 0x021212c0, (PortBpFn)func_ov072_02121368, (PortBpFn)func_ov072_021212c0},
+    {0x02121c94, 0x02121a84, (PortBpFn)_ZN9daPgBby_c19func_ov072_02121c94Ev, (PortBpFn)_ZN9daPgBby_c19func_ov072_02121a84Ev},
+    {0x02121a28, 0x021218dc, (PortBpFn)_ZN9daPgBby_c19func_ov072_02121a28Ev, (PortBpFn)_ZN9daPgBby_c19func_ov072_021218dcEv},
+    {0x02121890, 0x021217ac, (PortBpFn)_ZN9daPgBby_c19func_ov072_02121890Ev, (PortBpFn)_ZN9daPgBby_c19func_ov072_021217acEv},
+    {0x02121758, 0x02121670, (PortBpFn)_ZN9daPgBby_c19func_ov072_02121758Ev, (PortBpFn)_ZN9daPgBby_c19func_ov072_02121670Ev},
+    {0x02121640, 0x021214dc, (PortBpFn)_ZN9daPgBby_c19func_ov072_02121640Ev, (PortBpFn)_ZN9daPgBby_c19func_ov072_021214dcEv},
+    {0x02121368, 0x021212c0, (PortBpFn)_ZN9daPgBby_c19func_ov072_02121368Ev, (PortBpFn)_ZN9daPgBby_c19func_ov072_021212c0Ev},
 };
 
 /* Seat the six cells with HOST function addresses, the MrBlizzard shape:
@@ -438,7 +438,7 @@ extern "C" void port_baby_penguin_states_seat(void)
         PortBabyPenguinPair &cell = data_ov072_02122d6c[i];
         if (cell.enter_fn != g_bp_cells[i].enter_rom || cell.enter_delta != 0 ||
             cell.tick_fn != g_bp_cells[i].tick_rom || cell.tick_delta != 0) {
-            std::fprintf(stderr, "FATAL: BabyPenguin state cell %d: the sinit "
+            std::fprintf(stderr, "FATAL: daPgBby_c state cell %d: the sinit "
                          "left %08x/%u %08x/%u, the ROM's own records say "
                          "%08x/0 %08x/0 -- WRONG BYTES\n", i,
                          cell.enter_fn, cell.enter_delta, cell.tick_fn, cell.tick_delta,
@@ -451,16 +451,16 @@ extern "C" void port_baby_penguin_states_seat(void)
 }
 
 static int __fastcall bp_init(void *s, void *)
-{ return _ZN11BabyPenguin13InitResourcesEv(s); }
+{ return _ZN9daPgBby_c13InitResourcesEv(s); }
 static int __fastcall bp_clean(void *s, void *)
-{ (void)s; return _ZN11BabyPenguin16CleanupResourcesEv(); }
+{ (void)s; return _ZN9daPgBby_c16CleanupResourcesEv(); }
 static int __fastcall bp_behavior(void *s, void *)
-{ return _ZN11BabyPenguin8BehaviorEv(s); }
+{ return _ZN9daPgBby_c8BehaviorEv(s); }
 static int __fastcall bp_render(void *s, void *)
 { port_actor_render_probe("BABY_PENGUIN", (char *)s + 0xd4);
-  return _ZN11BabyPenguin6RenderEv(s); }
+  return _ZN9daPgBby_c6RenderEv(s); }
 static int __fastcall bp_pdes(void *s, void *)
-{ (void)s; _ZN11BabyPenguin16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN9daPgBby_c16OnPendingDestroyEv(); return 0; }
 /* D1: a real MSVC-synthesised empty destructor over a LOCAL shadow class
    (no vtable-store write) -- the MotherPenguin/OneUpLogo shape, not
    compiled. Chain spelled directly, HIGH ADDRESS FIRST (WithMeshClsn
@@ -469,9 +469,9 @@ static int __fastcall bp_pdes(void *s, void *)
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (bp_d1) spelled the same chain by hand. */
 static int __fastcall bp_d0(void *s, void *)
-{ return (int)(size_t)_ZN11BabyPenguinD0Ev((int *)s); }
+{ return (int)(size_t)_ZN9daPgBby_cD0Ev((int *)s); }
 static int __fastcall bp_yoshi(void *s, void *)
-{ (void)s; return _ZN11BabyPenguin13OnYoshiTryEatEv(); }
+{ (void)s; return _ZN9daPgBby_c13OnYoshiTryEatEv(); }
 /* Slot 19 is OnTurnIntoEgg(Player &player): the caller pushes the player, so
    the thunk needs the third parameter to pop it. The ov072 body takes
    nothing of its own, but it is the ROM's `ldr ip,[pc]; bx ip` veneer onto
@@ -480,7 +480,7 @@ static int __fastcall bp_yoshi(void *s, void *)
    MarkForDestruction reading this thunk's own return address as its self,
    marking a code address for destruction and leaving the penguin alive. */
 static int __fastcall bp_egg(void *s, void *, void *)
-{ _ZN11BabyPenguin13OnTurnIntoEggER6Player(s); return 0; }
+{ _ZN9daPgBby_c13OnTurnIntoEggER6Player(s); return 0; }
 
 extern "C" void hal_fill_baby_penguin_vtable(void)
 {
@@ -488,7 +488,7 @@ extern "C" void hal_fill_baby_penguin_vtable(void)
        through them (func_ov072_02121d50/02121d18 dispatch the "enter"
        half from InitResources' own body). */
     port_baby_penguin_states_seat();
-    void **vt = (void **)_ZTV11BabyPenguin;
+    void **vt = (void **)_ZTV9daPgBby_c;
     ov72_fill_shared(vt);
     vt[0]  = (void *)bp_init;
     vt[3]  = (void *)bp_clean;
@@ -516,10 +516,10 @@ extern "C" void hal_fill_baby_penguin_vtable(void)
 // host copy in port/unmatched/ModelAnim_Renders.cpp, the Whomp/Butterfly/
 // Fish/QuestionBlock case (see this file's own header).
 extern "C" {
-int _ZN11BabyPenguin13InitResourcesEv(void *self)
-{ return ((BabyPenguin *)self)->BabyPenguin::InitResources(); }
-int _ZN11BabyPenguin8BehaviorEv(void *self)
-{ return ((BabyPenguin *)self)->BabyPenguin::Behavior(); }
+int _ZN9daPgBby_c13InitResourcesEv(void *self)
+{ return ((daPgBby_c *)self)->daPgBby_c::InitResources(); }
+int _ZN9daPgBby_c8BehaviorEv(void *self)
+{ return ((daPgBby_c *)self)->daPgBby_c::Behavior(); }
 }
 
 // ============================================================================
@@ -592,15 +592,15 @@ extern unsigned char g_profile_BIG_SNOWMAN_BODY[];         /* ov072 0x0212279c *
 int _ZTV11SnowmanBody[31];   /* vtspan: 0x021227c0, 31 words to 0x0212283c */
 
 /* ---- SNOWMAN_HEAD (273) own slots ---- */
-int _ZN11SnowmanHead13InitResourcesEv(void *self);    /* slot 0, faced below */
-int _ZN11SnowmanHead16CleanupResourcesEv(void);       /* slot 3, .c body takes void */
-int _ZN11SnowmanHead8BehaviorEv(void *self);          /* slot 6, faced below */
-int _ZN11SnowmanHead6RenderEv(void *self);            /* slot 9, faced below */
-void _ZN11SnowmanHead16OnPendingDestroyEv(void);      /* slot 12, own empty body */
-int *_ZN11SnowmanHeadD0Ev(int *self);                 /* slot 17, stores its own table */
+int _ZN12daBgSnmHed_c13InitResourcesEv(void *self);    /* slot 0, faced below */
+int _ZN12daBgSnmHed_c16CleanupResourcesEv(void);       /* slot 3, .c body takes void */
+int _ZN12daBgSnmHed_c8BehaviorEv(void *self);          /* slot 6, faced below */
+int _ZN12daBgSnmHed_c6RenderEv(void *self);            /* slot 9, faced below */
+void _ZN12daBgSnmHed_c16OnPendingDestroyEv(void);      /* slot 12, own empty body */
+int *_ZN12daBgSnmHed_cD0Ev(int *self);                 /* slot 17, stores its own table */
 void *daBgSnmHed_c_classInit(void);
 extern unsigned char g_profile_BIG_SNOWMAN_HEAD[];         /* ov072 0x02122898 */
-int _ZTV11SnowmanHead[31];   /* vtspan: 0x021228bc, 31 words to 0x02122938 */
+int _ZTV12daBgSnmHed_c[31];   /* vtspan: 0x021228bc, 31 words to 0x02122938 */
 
 /* the state cells both sinits build: TWO 8-byte {fn,delta} pairs per cell,
    0x10 bytes/cell -- the same unit PortBabyPenguinPair is above. */
@@ -623,16 +623,16 @@ int _ZN12daBgSnmBdy_c10InitState5Ev(char *c);
 int _ZN12daBgSnmBdy_c6State5Ev(char *c);
 
 /* SnowmanHead's eight state handlers (four enter/tick pairs) */
-int _ZN11SnowmanHead10InitState0Ev(char *c);
-int _ZN11SnowmanHead6State0Ev(void *self);   /* int, like its seven siblings and
+int _ZN12daBgSnmHed_c10InitState0Ev(char *c);
+int _ZN12daBgSnmHed_c6State0Ev(void *self);   /* int, like its seven siblings and
    like the body: src/_ZN11SnowmanHead6State0Ev.cpp:9 is `int SnowmanHead::State0()`,
    and the seat table below casts every one of these to PortSnFn, int (*)(void *). */
-int _ZN11SnowmanHead10InitState1Ev(char *p);
-int _ZN11SnowmanHead6State1Ev(void *thiz);
-int _ZN11SnowmanHead10InitState2Ev(char *base);
-int _ZN11SnowmanHead6State2Ev(char *self);
-int _ZN11SnowmanHead10InitState3Ev(char *c);
-int _ZN11SnowmanHead6State3Ev(char *c);
+int _ZN12daBgSnmHed_c10InitState1Ev(char *p);
+int _ZN12daBgSnmHed_c6State1Ev(void *thiz);
+int _ZN12daBgSnmHed_c10InitState2Ev(char *base);
+int _ZN12daBgSnmHed_c6State2Ev(char *self);
+int _ZN12daBgSnmHed_c10InitState3Ev(char *c);
+int _ZN12daBgSnmHed_c6State3Ev(char *c);
 }
 
 /* One seat row: the ROM addresses the sinit's own source pairs carry, and the
@@ -711,14 +711,14 @@ static int __fastcall smb_st4(void *s) { return _ZN12daBgSnmBdy_c6State4Ev((char
 static int __fastcall smb_is5(void *s) { return _ZN12daBgSnmBdy_c10InitState5Ev((char *)s); }
 static int __fastcall smb_st5(void *s) { return _ZN12daBgSnmBdy_c6State5Ev((char *)s); }
 
-static int __fastcall smh_is0(void *s) { return _ZN11SnowmanHead10InitState0Ev((char *)s); }
-static int __fastcall smh_st0(void *s) { return _ZN11SnowmanHead6State0Ev(s); }
-static int __fastcall smh_is1(void *s) { return _ZN11SnowmanHead10InitState1Ev((char *)s); }
-static int __fastcall smh_st1(void *s) { return _ZN11SnowmanHead6State1Ev(s); }
-static int __fastcall smh_is2(void *s) { return _ZN11SnowmanHead10InitState2Ev((char *)s); }
-static int __fastcall smh_st2(void *s) { return _ZN11SnowmanHead6State2Ev((char *)s); }
-static int __fastcall smh_is3(void *s) { return _ZN11SnowmanHead10InitState3Ev((char *)s); }
-static int __fastcall smh_st3(void *s) { return _ZN11SnowmanHead6State3Ev((char *)s); }
+static int __fastcall smh_is0(void *s) { return _ZN12daBgSnmHed_c10InitState0Ev((char *)s); }
+static int __fastcall smh_st0(void *s) { return _ZN12daBgSnmHed_c6State0Ev(s); }
+static int __fastcall smh_is1(void *s) { return _ZN12daBgSnmHed_c10InitState1Ev((char *)s); }
+static int __fastcall smh_st1(void *s) { return _ZN12daBgSnmHed_c6State1Ev(s); }
+static int __fastcall smh_is2(void *s) { return _ZN12daBgSnmHed_c10InitState2Ev((char *)s); }
+static int __fastcall smh_st2(void *s) { return _ZN12daBgSnmHed_c6State2Ev((char *)s); }
+static int __fastcall smh_is3(void *s) { return _ZN12daBgSnmHed_c10InitState3Ev((char *)s); }
+static int __fastcall smh_st3(void *s) { return _ZN12daBgSnmHed_c6State3Ev((char *)s); }
 
 typedef int (__fastcall *PortSnFn)(void *);
 struct PortSnRow { unsigned enter_rom, tick_rom; PortSnFn enter_host, tick_host; };
@@ -784,7 +784,7 @@ extern "C" void port_snowman_head_states_seat(void)
     static int done;
     if (done) return;
     done = 1;
-    ov72_seat_cells("SnowmanHead", data_ov072_02122c00, g_smh_cells, 4);
+    ov72_seat_cells("daBgSnmHed_c", data_ov072_02122c00, g_smh_cells, 4);
 }
 
 // ---- SNOWMAN_BODY (274) ----------------------------------------------------
@@ -836,16 +836,16 @@ extern "C" void hal_fill_snowman_body_vtable(void)
 
 // ---- SNOWMAN_HEAD (273) ----------------------------------------------------
 static int __fastcall smh_init(void *s, void *)
-{ return _ZN11SnowmanHead13InitResourcesEv(s); }
+{ return _ZN12daBgSnmHed_c13InitResourcesEv(s); }
 static int __fastcall smh_clean(void *s, void *)
-{ (void)s; return _ZN11SnowmanHead16CleanupResourcesEv(); }
+{ (void)s; return _ZN12daBgSnmHed_c16CleanupResourcesEv(); }
 static int __fastcall smh_behavior(void *s, void *)
-{ return _ZN11SnowmanHead8BehaviorEv(s); }
+{ return _ZN12daBgSnmHed_c8BehaviorEv(s); }
 static int __fastcall smh_render(void *s, void *)
 { port_actor_render_probe("SNOWMAN_HEAD", (char *)s + 0xd4);
-  return _ZN11SnowmanHead6RenderEv(s); }
+  return _ZN12daBgSnmHed_c6RenderEv(s); }
 static int __fastcall smh_pdes(void *s, void *)
-{ (void)s; _ZN11SnowmanHead16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN12daBgSnmHed_c16OnPendingDestroyEv(); return 0; }
 /* D1: same shape as smb_d1, transcribed from the ROM listing at 0x0211ff34
    (literal 0x021228bc). The member set differs -- TextureSequence at +0x124
    where SnowmanBody has a ShadowModel, and the two clsn members sit lower,
@@ -854,12 +854,12 @@ static int __fastcall smh_pdes(void *s, void *)
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (smh_d1) spelled the same chain by hand. */
 static int __fastcall smh_d0(void *s, void *)
-{ return (int)(size_t)_ZN11SnowmanHeadD0Ev((int *)s); }
+{ return (int)(size_t)_ZN12daBgSnmHed_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_snowman_head_vtable(void)
 {
     port_snowman_head_states_seat();
-    void **vt = (void **)_ZTV11SnowmanHead;
+    void **vt = (void **)_ZTV12daBgSnmHed_c;
     ov72_fill_shared(vt);
     vt[0]  = (void *)smh_init;
     vt[3]  = (void *)smh_clean;
@@ -887,10 +887,10 @@ int _ZN12daBgSnmBdy_c8BehaviorEv(void *self)
 { return ((daBgSnmBdy_c *)self)->daBgSnmBdy_c::Behavior(); }
 int _ZN12daBgSnmBdy_c6RenderEv(void *self)
 { return ((daBgSnmBdy_c *)self)->daBgSnmBdy_c::Render(); }
-int _ZN11SnowmanHead13InitResourcesEv(void *self)
-{ return ((SnowmanHead *)self)->SnowmanHead::InitResources(); }
-int _ZN11SnowmanHead8BehaviorEv(void *self)
-{ return ((SnowmanHead *)self)->SnowmanHead::Behavior(); }
-int _ZN11SnowmanHead6RenderEv(void *self)
-{ return ((SnowmanHead *)self)->SnowmanHead::Render(); }
+int _ZN12daBgSnmHed_c13InitResourcesEv(void *self)
+{ return ((daBgSnmHed_c *)self)->daBgSnmHed_c::InitResources(); }
+int _ZN12daBgSnmHed_c8BehaviorEv(void *self)
+{ return ((daBgSnmHed_c *)self)->daBgSnmHed_c::Behavior(); }
+int _ZN12daBgSnmHed_c6RenderEv(void *self)
+{ return ((daBgSnmHed_c *)self)->daBgSnmHed_c::Render(); }
 }

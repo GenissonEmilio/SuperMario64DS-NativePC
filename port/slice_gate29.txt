@@ -51,129 +51,129 @@
 # ---- the Particle namespace: tracker lifecycle, the ten Callback classes,
 # the System::New family and the spawn wrappers
 
-src/_ZN8Particle10SysTracker8Contents6UnlinkERNS1_5EntryE.cpp
-src/_ZN8Particle10SysTracker8Contents5ClearEv.cpp
-src/_ZN8Particle10SysTracker8Contents6UpdateEv.cpp
-src/_ZN8Particle10SysTracker8ContentsC1Ev.cpp
-src/_ZN8Particle10SysTracker8Contents5Entry5ResetEv.cpp
-src/_ZN5dPa_c7level_c23cleanParticleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-src/_ZN5dPa_c7level_c14clipCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-src/_ZN5dPa_c7level_c18fitWaterCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-src/_ZN5dPa_c7level_c26checkWaterRippleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-src/_ZN5dPa_c7level_c20checkWaterCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-src/_ZN5dPa_c7level_c20edStarKiraCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-src/_ZN5dPa_c7level_c20edStarKiraCallback_c14SpawnParticlesERN8Particle6SystemE.cpp
-src/func_02022260.c
-src/_ZN5dPa_c7level_c20edStarKiraCallback_cC1Ev.cpp
-src/_ZN5dPa_c7level_c20checkYoganCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-src/_ZN5dPa_c7level_c20checkYoganCallback_c14SpawnParticlesERN8Particle6SystemE.cpp
-src/_ZN5dPa_c7level_c24fitWaterSimpleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-src/_ZN5dPa_c7level_c16bubbleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-src/_ZN5dPa_c7level_c16splashCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-src/_ZN5dPa_c7level_c15scaleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-src/_ZN5dPa_c7level_c15scaleCallback_c14SpawnParticlesERN8Particle6SystemE.cpp
-src/_ZN5dPa_c7level_c15scaleCallback_cC1Ev.cpp
-src/_ZN5dPa_c7level_c16simpleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-src/_ZN5dPa_c7level_c16simpleCallback_cC1Ev.cpp
+src/engine/particle/Particle_SysTracker_Contents.cpp
+# FOLDED into src/engine/particle/Particle_SysTracker_Contents.cpp (row 54): src/_ZN8Particle10SysTracker8Contents5ClearEv.cpp
+# FOLDED into src/engine/particle/Particle_SysTracker_Contents.cpp (row 54): src/_ZN8Particle10SysTracker8Contents6UpdateEv.cpp
+# FOLDED into src/engine/particle/Particle_SysTracker_Contents.cpp (row 54): src/_ZN8Particle10SysTracker8ContentsC1Ev.cpp
+# FOLDED into src/engine/particle/Particle_SysTracker_Contents.cpp (row 54): src/_ZN8Particle10SysTracker8Contents5Entry5ResetEv.cpp
+src/engine/particle/dPa_c.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c14clipCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c18fitWaterCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c26checkWaterRippleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c20checkWaterCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c20edStarKiraCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c20edStarKiraCallback_c14SpawnParticlesERN8Particle6SystemE.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/func_02022260.c
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c20edStarKiraCallback_cC1Ev.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c20checkYoganCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c20checkYoganCallback_c14SpawnParticlesERN8Particle6SystemE.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c24fitWaterSimpleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c16bubbleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c16splashCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c15scaleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c15scaleCallback_c14SpawnParticlesERN8Particle6SystemE.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c15scaleCallback_cC1Ev.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c16simpleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c16simpleCallback_cC1Ev.cpp
 # RETIRED at ALIAS2 (wave 8, the main -> port sync): MSVC folds the Itanium
 # C1 and C2 constructors into one ??0simpleCallback_c@level_c@dPa_c@@QAE@XZ,
 # so the two per-function TUs became the same symbol and the link reported it
 # twice (LNK2005). The C1 row above is kept, the same C1-wins/D1-wins rule
 # lane SLICE1 applied to the destructor pairs.
 #src/_ZN5dPa_c7level_c16simpleCallback_cC2Ev.cpp
-src/_ZN5dPa_c7level_c10callback_c8OnUpdateERN8Particle6SystemEb.cpp
-src/_ZN5dPa_c7level_c10callback_c14SpawnParticlesERN8Particle6SystemE.cpp
-src/_ZN8Particle19SetSelfDestructFlagEj.cpp
-src/func_020226fc.c
-src/func_02022774.c
-src/func_020227ec.c
-src/func_02022864.c
-src/func_020228dc.c
-src/func_0202293c.c
-src/_ZN8Particle6System9NewRippleE5Fix12IiES2_S2_.c
-src/_ZN8Particle6System12NewBigSplashE5Fix12IiES2_S2_.c
-src/_ZN8Particle20RunningSlidingDustAtE5Fix12IiES1_S1_.c
-src/func_02022c3c.c
-src/_ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE.c
-src/_ZN8Particle6System12FromUniqueIDEj.cpp
-src/_ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_.c
-src/_ZN8Particle9RenderAllEv.cpp
-src/_ZN8Particle10SysTracker6UpdateEv.cpp
-src/_ZN8Particle10SysTracker10InitialiseEv.cpp
-src/_ZN8Particle7Texture12AllocPalVramEjb.cpp
-src/_ZN8Particle7Texture12AllocTexVramEjb.cpp
-src/func_02023178.c
-src/_ZN8Particle10SysTrackerD1Ev.cpp
-src/_ZN8Particle10SysTrackerC1Ev.cpp
-src/func_020233f0.c
-src/func_020233f4.c
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c10callback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c10callback_c14SpawnParticlesERN8Particle6SystemE.cpp
+src/engine/particle/Particle.cpp
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/func_020226fc.c
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/func_02022774.c
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/func_020227ec.c
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/func_02022864.c
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/func_020228dc.c
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/func_0202293c.c
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/_ZN8Particle6System9NewRippleE5Fix12IiES2_S2_.c
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/_ZN8Particle6System12NewBigSplashE5Fix12IiES2_S2_.c
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/_ZN8Particle20RunningSlidingDustAtE5Fix12IiES1_S1_.c
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/func_02022c3c.c
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/_ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE.c
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/_ZN8Particle6System12FromUniqueIDEj.cpp
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/_ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_.c
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/_ZN8Particle9RenderAllEv.cpp
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/_ZN8Particle10SysTracker6UpdateEv.cpp
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/_ZN8Particle10SysTracker10InitialiseEv.cpp
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/_ZN8Particle7Texture12AllocPalVramEjb.cpp
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/_ZN8Particle7Texture12AllocTexVramEjb.cpp
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/func_02023178.c
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/_ZN8Particle10SysTrackerD1Ev.cpp
+# FOLDED into src/engine/particle/Particle.cpp (row 86): src/_ZN8Particle10SysTrackerC1Ev.cpp
+src/unnamed/arm9/0202/func_020233f0.c
+src/unnamed/arm9/0202/func_020233f4.c
 
 # ---- Particle::Manager and the engine underneath it: the engine constructor,
 # the definition-blob parser, the per-frame update and the six effect Funcs
 
-src/func_02049d60.c
-src/func_02049d78.c
-src/func_02049ee8.c
-src/func_02049f58.c
-src/func_0204a028.c
-src/func_0204a0dc.c
-src/func_0204a17c.cpp
-src/func_0204a4c8.c
-src/func_0204a5c8.c
-src/func_0204a730.c
-src/func_0204af38.c
-src/func_0204af3c.c
-src/func_0204b028.c
-src/func_0204b244.c
-src/func_0204b460.c
-src/func_0204b81c.c
-src/func_0204bbd8.c
-src/func_0204be40.c
-src/func_0204c0a8.c
-src/func_0204c0e8.c
-src/func_0204c194.c
-src/func_0204c24c.c
-src/func_0204c304.c
-src/func_0204c584.c
-src/func_0204cd5c.c
-src/func_0204cebc.c
-src/func_0204d0b8.c
-src/func_0204d104.c
-src/func_0204d150.c
-src/func_0204d1b4.c
-src/func_0204d294.c
-src/func_0204d440.c
-src/_ZN8Particle14RadiusConverge4FuncERNS_10EffectDataEPcR7Vector3.cpp
-src/_ZN8Particle10LimitPlane4FuncERNS_10EffectDataEPcR7Vector3.cpp
-src/_ZN8Particle4Turn4FuncERNS_10EffectDataEPcR7Vector3.cpp
-src/_ZN8Particle8Converge4FuncERNS_10EffectDataEPcR7Vector3.cpp
-src/_ZN8Particle6Jitter4FuncERNS_10EffectDataEPcR7Vector3.cpp
-src/_ZN8Particle12Acceleration4FuncERNS_10EffectDataEPcR7Vector3.cpp
-src/func_0204d8e8.c
-src/func_0204d9f0.c
-src/func_0204da4c.c
-src/func_0204dab4.c
-src/func_0204dc84.c
-src/func_0204dcc0.c
+src/unnamed/arm9/0204/func_02049d60.c
+src/unnamed/arm9/0204/func_02049d78.c
+src/unnamed/arm9/0204/func_02049ee8.c
+src/unnamed/arm9/0204/func_02049f58.c
+src/unnamed/arm9/0204/func_0204a028.c
+src/unnamed/arm9/0204/func_0204a0dc.c
+src/unnamed/arm9/0204/func_0204a17c.cpp
+src/unnamed/arm9/0204/func_0204a4c8.c
+src/unnamed/arm9/0204/func_0204a5c8.c
+src/unnamed/arm9/0204/func_0204a730.c
+src/unnamed/arm9/0204/func_0204af38.c
+src/unnamed/arm9/0204/func_0204af3c.c
+src/unnamed/arm9/0204/func_0204b028.c
+src/unnamed/arm9/0204/func_0204b244.c
+src/unnamed/arm9/0204/func_0204b460.c
+src/unnamed/arm9/0204/func_0204b81c.c
+src/unnamed/arm9/0204/func_0204bbd8.c
+src/unnamed/arm9/0204/func_0204be40.c
+src/unnamed/arm9/0204/func_0204c0a8.c
+src/unnamed/arm9/0204/func_0204c0e8.c
+src/unnamed/arm9/0204/func_0204c194.c
+src/unnamed/arm9/0204/func_0204c24c.c
+src/unnamed/arm9/0204/func_0204c304.c
+src/unnamed/arm9/0204/func_0204c584.c
+src/unnamed/arm9/0204/func_0204cd5c.c
+src/unnamed/arm9/0204/func_0204cebc.c
+src/unnamed/arm9/0204/func_0204d0b8.c
+src/unnamed/arm9/0204/func_0204d104.c
+src/unnamed/arm9/0204/func_0204d150.c
+src/unnamed/arm9/0204/func_0204d1b4.c
+src/unnamed/arm9/0204/func_0204d294.c
+src/unnamed/arm9/0204/func_0204d440.c
+src/engine/particle/Particle_Behavior.cpp
+# FOLDED into src/engine/particle/Particle_Behavior.cpp (row 146): src/_ZN8Particle10LimitPlane4FuncERNS_10EffectDataEPcR7Vector3.cpp
+# FOLDED into src/engine/particle/Particle_Behavior.cpp (row 146): src/_ZN8Particle4Turn4FuncERNS_10EffectDataEPcR7Vector3.cpp
+# FOLDED into src/engine/particle/Particle_Behavior.cpp (row 146): src/_ZN8Particle8Converge4FuncERNS_10EffectDataEPcR7Vector3.cpp
+# FOLDED into src/engine/particle/Particle_Behavior.cpp (row 146): src/_ZN8Particle6Jitter4FuncERNS_10EffectDataEPcR7Vector3.cpp
+# FOLDED into src/engine/particle/Particle_Behavior.cpp (row 146): src/_ZN8Particle12Acceleration4FuncERNS_10EffectDataEPcR7Vector3.cpp
+src/unnamed/arm9/0204/func_0204d8e8.c
+src/unnamed/arm9/0204/func_0204d9f0.c
+src/unnamed/arm9/0204/func_0204da4c.c
+src/unnamed/arm9/0204/func_0204dab4.c
+src/unnamed/arm9/0204/func_0204dc84.c
+src/unnamed/arm9/0204/func_0204dcc0.c
 
 # ---- leaves SysTracker::Initialise reaches directly
 
-src/func_0206e28c.c
-src/func_02045ce0.c
-src/func_02045cf0.c
-src/func_02045d10.c
+src/cstd4.cpp
+src/engine/model/Model4.cpp
+# FOLDED into src/engine/model/Model4.cpp (row 162): src/func_02045cf0.c
+# FOLDED into src/engine/model/Model4.cpp (row 162): src/func_02045d10.c
 
 # ---- leaves the effect VM reaches that no other gate carries
 # func_0203cbc0 rides on gate 24 only; the other three are on no gate at all.
 # MulVec3Mat3x3 is the billboard transform every particle quad goes through.
-src/func_02052550.c
+src/unnamed/arm9/0205/func_02052550.c
 src/func_02053380.c
 src/MulVec3Mat3x3.c
 # cstd::div, which nothing had needed before: the effect VM's scale ramp is
 # the only caller in the port so far. It reaches the DS hardware divider
 # through raw MMIO, which is precisely what this gate's hostgen routing is
 # for -- port/ntr/io.cpp emulates DIVCNT/NUMER/DENOM/RESULT.
-src/_ZN4cstd3divEii.cpp
+src/cstd.cpp
 
 # ---- moved off gate 10's raw list into this hostgen'd one
 # _ZN8Particle10SysTracker8Contents5Entry10InitialiseEjjR7Vector3PK11Vector3_16fPN5dPa_c7level_c10callback_cE is the spawn's tail: it calls Manager::AddSystem and then
@@ -194,7 +194,7 @@ src/_ZN4cstd3divEii.cpp
 # the counter and not a pointer. The line is the matched source's own call
 # again, and the file still rides this gate's hostgen routing like every other
 # file listed here.
-src/_ZN8Particle10SysTracker8Contents5Entry10InitialiseEjjR7Vector3PK11Vector3_16fPN5dPa_c7level_c10callback_cE.cpp
+# FOLDED into src/engine/particle/Particle_SysTracker_Contents.cpp (row 54): src/_ZN8Particle10SysTracker8Contents5Entry10InitialiseEjjR7Vector3PK11Vector3_16fPN5dPa_c7level_c10callback_cE.cpp
 
 # ---- NOT HERE: three ARM argument ride-throughs
 # src/func_0204a5bc.c, src/func_0203cbc0.c and

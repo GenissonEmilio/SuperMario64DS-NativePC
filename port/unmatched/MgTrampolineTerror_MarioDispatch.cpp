@@ -119,7 +119,7 @@ void func_ov006_020cfa44(void *c);
 
 /* src/func_ov006_020cea2c.cpp's own callees, spelled as that file spells them */
 void AddVec3(void *a, void *b, void *c);
-void _ZN9Animation7AdvanceEv(void *anim);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *anim);
 
 /* run link100 lane FWD gate 3: both are src TUs on port/slice_fwd.txt now,
    not definitions in this file. The declarations stay because the class's

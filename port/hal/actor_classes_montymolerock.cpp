@@ -59,7 +59,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 
 #include "dActor_c.h"
 #include "fBase_c.h"
-#include "MontyMoleRock.h"
+#include "daChoro_Rock_c.h"
 
 extern "C" {
 /* the shared lifecycle halves, the same functions every sibling fill writes */
@@ -87,9 +87,9 @@ void port_actor_slot_decline(const char *what);   /* func_02043fdc_hostcopy.cpp 
 void port_actor_render_probe(const char *cls, void *model); /* actor_classes */
 
 /* the rock's own C-linkage bodies, all matched src on slice_gate208.txt */
-int _ZN13MontyMoleRock16CleanupResourcesEv(void);   /* slot 3,  .c C linkage */
-int *_ZN13MontyMoleRockD1Ev(int *self);             /* slot 16, .c C linkage */
-int *_ZN13MontyMoleRockD0Ev(int *self);             /* slot 17, .c C linkage */
+int _ZN14daChoro_Rock_c16CleanupResourcesEv(void);   /* slot 3,  .c C linkage */
+int *_ZN14daChoro_Rock_cD1Ev(int *self);             /* slot 16, .c C linkage */
+int *_ZN14daChoro_Rock_cD0Ev(int *self);             /* slot 17, .c C linkage */
 void *daChoro_Rock_c_classInit(void);
 
 /* The one array the ROM factory installs (daChoro_Rock_c_classInit does
@@ -97,15 +97,14 @@ void *daChoro_Rock_c_classInit(void);
    declared: the `int` type and C linkage match the
    `extern int _ZTV13MontyMoleRock[]` in include/decl_common.h that the .c
    factory and both destructors read. */
-int _ZTV13MontyMoleRock[31];
+int _ZTV14daChoro_Rock_c[31];
 }
 
 /* D0 stores _ZTV14daChoro_Rock_c, the RTTI base spelling dsd dual-names at the
    same address -- vtspan prints both at ov080 0x0212802c. Both references are
    C linkage, so point the underscore spelling at the one host array, the
    daChoropu_c precedent next door. */
-#pragma comment(linker, "/alternatename:__ZTV14daChoro_Rock_c=__ZTV13MontyMoleRock")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV14daChoro_Rock_c=__ZTV14daChoro_Rock_c")
 /* InitResources declares the model SharedFilePtr as a typed C++ global outside
    its extern "C" block -- an MSVC data spelling of the mounted C symbol. The
    same cell hal/actor_classes_montymole.cpp already routes for the mole's own
@@ -196,28 +195,28 @@ static int __fastcall mr_aimed(void *s, void *)
    include/MontyMoleRock.h; the face bridges cdecl to __thiscall so the ecx that
    never held `this` is not handed to the body. */
 static int __fastcall mr_init(void *s, void *)
-{ return ((MontyMoleRock *)s)->MontyMoleRock::InitResources(); }
+{ return ((daChoro_Rock_c *)s)->daChoro_Rock_c::InitResources(); }
 static int __fastcall mr_behavior(void *s, void *)
-{ return ((MontyMoleRock *)s)->MontyMoleRock::Behavior(); }
+{ return ((daChoro_Rock_c *)s)->daChoro_Rock_c::Behavior(); }
 /* Slot 9 is the matched Render, on the adjudication in the header comment: the
    member at +0x110 is a plain Model and _ZTV5Model[5] is dual-filled. The probe
    is the sibling-fill convention and reports the model the shadow dispatches. */
 static int __fastcall mr_render(void *s, void *)
 { port_actor_render_probe("MONTY_MOLE_ROCK", (char *)s + 0x110);
-  return ((MontyMoleRock *)s)->MontyMoleRock::Render(); }
+  return ((daChoro_Rock_c *)s)->daChoro_Rock_c::Render(); }
 /* Cleanup, D1 and D0 are plain C bodies, all matched, all on the slice. D1 is
    the ROM's own complete-object destructor -- no host thunk stands in for it
    here, unlike the mole's slot 16. */
 static int __fastcall mr_clean(void *s, void *)
-{ (void)s; return _ZN13MontyMoleRock16CleanupResourcesEv(); }
+{ (void)s; return _ZN14daChoro_Rock_c16CleanupResourcesEv(); }
 static int __fastcall mr_d1(void *s, void *)
-{ return (int)(size_t)_ZN13MontyMoleRockD1Ev((int *)s); }
+{ return (int)(size_t)_ZN14daChoro_Rock_cD1Ev((int *)s); }
 static int __fastcall mr_d0(void *s, void *)
-{ return (int)(size_t)_ZN13MontyMoleRockD0Ev((int *)s); }
+{ return (int)(size_t)_ZN14daChoro_Rock_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_monty_mole_rock_vtable(void)
 {
-    void **vt = (void **)_ZTV13MontyMoleRock;
+    void **vt = (void **)_ZTV14daChoro_Rock_c;
     vt[0]  = (void *)mr_init;
     vt[1]  = (void *)mr_binit;
     vt[2]  = (void *)mr_ainit;

@@ -10,7 +10,7 @@
 #
 # L5, phase 0x15: the pad read. The ROM's own wrapper round func_0203df40
 # (linked since run mg16 lane MP3), which retires that loop's direct call.
-src/func_0201ffcc.c
+src/unnamed/arm9/0201/func_0201ffcc.c
 #
 # Phase 0x17's input ring: the three words the level loop writes after
 # func_0203bc7c, hosted inside the .dsstate bracket. (func_02023498, the soft-

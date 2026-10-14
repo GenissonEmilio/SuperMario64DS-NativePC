@@ -76,12 +76,12 @@ extern "C" {
 
 /* the six state halves. Four are matched src (this lane's slice); the two
    MAIN halves of states 1 and 2 are the host copies in MrI_StateMains.cpp. */
-int func_ov071_02121570(void *c);   /* state 0 enter, matched src */
-int func_ov071_0212152c(void *c);   /* state 0 main , matched src */
-int func_ov071_021214f4(void *c);   /* state 1 enter, matched src */
-int func_ov071_021211e0(char *c);   /* state 1 main , HOST COPY */
-int func_ov071_0212110c(char *c);   /* state 2 enter, matched src */
-int func_ov071_02120d30(char *c);   /* state 2 main , matched src (wave 9) */
+int _ZN8daEykn_c12St_Wait_InitEv(void *c);   /* state 0 enter, matched src */
+int _ZN8daEykn_c12St_Wait_MainEv(void *c);   /* state 0 main , matched src */
+int _ZN8daEykn_c14St_Attack_InitEv(void *c);   /* state 1 enter, matched src */
+int _ZN8daEykn_c14St_Attack_MainEv(char *c);   /* state 1 main , HOST COPY */
+int _ZN8daEykn_c11St_Die_InitEv(char *c);   /* state 2 enter, matched src */
+int _ZN8daEykn_c11St_Die_MainEv(char *c);   /* state 2 main , matched src (wave 9) */
 
 struct PortPmf { unsigned fn; int delta; };
 
@@ -90,8 +90,8 @@ extern PortPmf data_ov071_02122ca8[], data_ov071_02122cb0[],
     data_ov071_02122cb8[], data_ov071_02122cc0[], data_ov071_02122cc8[],
     data_ov071_02122cd0[];
 
-void func_ov071_021215c0(void *c);
-void func_ov071_021215fc(void *c);
+void _ZN8daEykn_c8RunStateEv(void *c);
+void _ZN8daEykn_c12RunStateInitEv(void *c);
 void port_mri_states_seat(void);
 
 }  /* extern "C" */
@@ -117,12 +117,12 @@ void port_mri_states_seat(void);
    the host body that replaces it. */
 static const struct { PortPmf *slot; unsigned rom; int (*host)(void *); }
 g_mri_sources[] = {
-    {data_ov071_02122ca8, 0x021214f4, (int (*)(void *))func_ov071_021214f4}, /* s1 enter */
-    {data_ov071_02122cb0, 0x0212110c, (int (*)(void *))func_ov071_0212110c}, /* s2 enter */
-    {data_ov071_02122cb8, 0x02121570, (int (*)(void *))func_ov071_02121570}, /* s0 enter */
-    {data_ov071_02122cc0, 0x0212152c, (int (*)(void *))func_ov071_0212152c}, /* s0 main  */
-    {data_ov071_02122cc8, 0x02120d30, (int (*)(void *))func_ov071_02120d30}, /* s2 main  */
-    {data_ov071_02122cd0, 0x021211e0, (int (*)(void *))func_ov071_021211e0}, /* s1 main  */
+    {data_ov071_02122ca8, 0x021214f4, (int (*)(void *))_ZN8daEykn_c14St_Attack_InitEv}, /* s1 enter */
+    {data_ov071_02122cb0, 0x0212110c, (int (*)(void *))_ZN8daEykn_c11St_Die_InitEv}, /* s2 enter */
+    {data_ov071_02122cb8, 0x02121570, (int (*)(void *))_ZN8daEykn_c12St_Wait_InitEv}, /* s0 enter */
+    {data_ov071_02122cc0, 0x0212152c, (int (*)(void *))_ZN8daEykn_c12St_Wait_MainEv}, /* s0 main  */
+    {data_ov071_02122cc8, 0x02120d30, (int (*)(void *))_ZN8daEykn_c11St_Die_MainEv}, /* s2 main  */
+    {data_ov071_02122cd0, 0x021211e0, (int (*)(void *))_ZN8daEykn_c14St_Attack_MainEv}, /* s1 main  */
 };
 
 extern "C" void port_mri_states_seat(void)

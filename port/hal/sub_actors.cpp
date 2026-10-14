@@ -70,13 +70,13 @@
 
 extern "C" {
 /* HUD's own C-named halves: the two destructors */
-void *_ZN3HUDD1Ev(void *self);
-void *_ZN3HUDD0Ev(void *self);
+void *_ZN8dMeter_cD1Ev(void *self);
+void *_ZN8dMeter_cD0Ev(void *self);
 
 /* Minimap's own C-named halves: the two destructors and Behavior */
-void *_ZN7MinimapD1Ev(void *self);
-void *_ZN7MinimapD0Ev(void *self);
-int _ZN7Minimap8BehaviorEv(void *self);
+void *_ZN6dMap_cD1Ev(void *self);
+void *_ZN6dMap_cD0Ev(void *self);
+int _ZN6dMap_c8BehaviorEv(void *self);
 /* the sixteen-wide per-player blip tables the host copies own (Minimap_wide.h);
    map_render's SM64DS_MM_TRACE reads slot 0 out of them */
 extern int g_mm_iconX[16];
@@ -151,7 +151,7 @@ struct Minimap {
 /* UpdateLevelSpecific is the reverse shape: its own TU defines a real MSVC
    member and InitResources calls it by the Itanium C name, so it needs a face
    the way HUD::RenderCoinCount and friends do. */
-extern "C" void _ZN7Minimap19UpdateLevelSpecificEv(void)
+extern "C" void _ZN6dMap_c19UpdateLevelSpecificEv(void)
 { Minimap::UpdateLevelSpecific(); }
 
 // ---- the arm9 bss the Minimap reads ----------------------------------------
@@ -254,18 +254,18 @@ DSSTATE_END
    the C name themselves, so a face here would be a duplicate symbol. Which of
    the two shapes a leaf has is not a pattern to guess at: it is whichever the
    decomp recovered, and the linker names the ones that disagree. */
-HUD_FACE(_ZN3HUD15RenderCoinCountEv, RenderCoinCount)
-HUD_FACE(_ZN3HUD15RenderLifeCountEv, RenderLifeCount)
-HUD_FACE(_ZN3HUD15RenderTimeTimerEv, RenderTimeTimer)
-HUD_FACE(_ZN3HUD17RenderHealthMeterEv, RenderHealthMeter)
-HUD_FACE(_ZN3HUD17UpdateHealthMeterEv, UpdateHealthMeter)
+HUD_FACE(_ZN8dMeter_c15RenderCoinCountEv, RenderCoinCount)
+HUD_FACE(_ZN8dMeter_c15RenderLifeCountEv, RenderLifeCount)
+HUD_FACE(_ZN8dMeter_c15RenderTimeTimerEv, RenderTimeTimer)
+HUD_FACE(_ZN8dMeter_c17RenderHealthMeterEv, RenderHealthMeter)
+HUD_FACE(_ZN8dMeter_c17UpdateHealthMeterEv, UpdateHealthMeter)
 
 #undef HUD_FACE
 
 /* RenderCameraButtons is a STATIC member (no `this` at all -- it draws the two
    arrows and the zoom button from OAM's own templates), so its face takes and
    passes nothing. */
-extern "C" void _ZN3HUD19RenderCameraButtonsEv(void *) { HUD::RenderCameraButtons(); }
+extern "C" void _ZN8dMeter_c19RenderCameraButtonsEv(void *) { HUD::RenderCameraButtons(); }
 
 /* Player::IsInsideOfCannon is a real MSVC member, and HUD::RenderHealthMeter
    reaches it as a free function taking void*. That was a C++ free function
@@ -333,14 +333,14 @@ extern "C" int _ZN6Player12Unk_020ca8f8Ev(void *s)
 
 /* ...and the reverse. CalculateDigits' TU is a .c file, so it defines the C
    name, while RenderCoinCount and RenderLifeCount call it as a member. */
-extern "C" void _ZN3HUD15CalculateDigitsEt(void *self, unsigned short n);
+extern "C" void _ZN8dMeter_c15CalculateDigitsEt(void *self, unsigned short n);
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync): src/_ZN3HUD15CalculateDigitsEt.cpp is a real HUD member since main langmode migration and emits ?CalculateDigits@HUD@@QAEXG@Z itself, so this face was the second definition (LNK2005).
    The body is kept below under #if 0 rather than deleted, so the
    evidence in it stays readable. */
 #if 0
 void HUD::CalculateDigits(unsigned short n)
 {
-    _ZN3HUD15CalculateDigitsEt(this, n);
+    _ZN8dMeter_c15CalculateDigitsEt(this, n);
 }
 #endif
 
@@ -518,9 +518,9 @@ void sa_fill_shared(void **vt)
 // SM64DS_VS_COINS_TOP_Y=<n> moves the stack; 0 puts the coins back on the star
 // count's own coordinates, which is how the 268 px overlap above is reproduced.
 extern "C" {
-void _ZN3HUD13RenderVsTimerEv(void *self);
-void _ZN3HUD15RenderStarCountEv(void *self);
-void _ZN3HUD19RenderCameraButtonsEv(void *self);
+void _ZN8dMeter_c13RenderVsTimerEv(void *self);
+void _ZN8dMeter_c15RenderStarCountEv(void *self);
+void _ZN8dMeter_c19RenderCameraButtonsEv(void *self);
 void _ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2(int sub, void *attr, int x, int y,
                                               int a, int b, void *m);
 extern void *func_020aba70[];    /* the ten digit sprites          */
@@ -553,8 +553,8 @@ static int port_vs_hud_render_coins_on_top(HUD *self)
     if (((data_0209f2c4 | data_0209f20c | data_0209f294) & 0xff) != 0)
         return 0;
 
-    _ZN3HUD13RenderVsTimerEv((void *)self);
-    _ZN3HUD15RenderStarCountEv((void *)self);
+    _ZN8dMeter_c13RenderVsTimerEv((void *)self);
+    _ZN8dMeter_c15RenderStarCountEv((void *)self);
 
     /* src/_ZN3HUD15RenderCoinCountEv.cpp's VS arm, verbatim except for the
        leading argument of the three OAM::Render calls. digits[3] is at HUD+0x74
@@ -577,7 +577,7 @@ static int port_vs_hud_render_coins_on_top(HUD *self)
                                                  2 + dy, -1, 1, 0);
     }
 
-    _ZN3HUD19RenderCameraButtonsEv((void *)self);
+    _ZN8dMeter_c19RenderCameraButtonsEv((void *)self);
     return 1;
 }
 
@@ -646,12 +646,12 @@ static int port_vs_hud_render_coins_on_top(HUD *self)
 // SM64DS_ADV_HUD_TOP=0 leaves the ROM alone (star+life back on the bottom) on
 // the same binary, which is how the before/after capture pair is taken.
 extern "C" {
-void _ZN3HUD17RenderHealthMeterEv(void *self);
-void _ZN3HUD15RenderCoinCountEv(void *self);
-void _ZN3HUD14RenderRedCoinsEv(void *self);
-void _ZN3HUD17RenderSilverStarsEv(void *self);
-void _ZN3HUD15RenderTimeTimerEv(void *self);
-void _ZN5Stage20RenderBouncingArrowsEv(void);
+void _ZN8dMeter_c17RenderHealthMeterEv(void *self);
+void _ZN8dMeter_c15RenderCoinCountEv(void *self);
+void _ZN8dMeter_c14RenderRedCoinsEv(void *self);
+void _ZN8dMeter_c17RenderSilverStarsEv(void *self);
+void _ZN8dMeter_c15RenderTimeTimerEv(void *self);
+void _ZN10dScStage_c20RenderBouncingArrowsEv(void);
 int _ZN5Event6GetBitEj(unsigned int);
 void _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii(int sub, void *attr, int x,
                                                  int y, int e, int f, int g,
@@ -936,14 +936,14 @@ static int port_adv_hud_render_stars_lives_on_top(HUD *self)
 
     unsigned char v = data_0209f20c;
     if (((data_0209f2c4 | v | data_0209f294) & 0xff) == 0) {
-        _ZN3HUD17RenderHealthMeterEv((void *)self);
+        _ZN8dMeter_c17RenderHealthMeterEv((void *)self);
         if (_ZN5Event6GetBitEj(0x1d) == 0) {
             port_adv_coin_count_top(self, coin_dy);
             if (rs_bottom) {
                 port_adv_red_silver_bottom();
             } else {
-                _ZN3HUD14RenderRedCoinsEv((void *)self);
-                _ZN3HUD17RenderSilverStarsEv((void *)self);
+                _ZN8dMeter_c14RenderRedCoinsEv((void *)self);
+                _ZN8dMeter_c17RenderSilverStarsEv((void *)self);
             }
             port_adv_time_timer_top(coin_dy);
         }
@@ -967,7 +967,7 @@ static int port_adv_hud_render_stars_lives_on_top(HUD *self)
             if (force) data_0209f284 = 1;
         }
         if (data_0209f284 != 0)
-            _ZN5Stage20RenderBouncingArrowsEv();
+            _ZN10dScStage_c20RenderBouncingArrowsEv();
     } else {
         if (v != 0) {
             port_adv_life_count_top(self, life_dy);
@@ -983,7 +983,7 @@ static int port_adv_hud_render_stars_lives_on_top(HUD *self)
             return 1;
     }
     port_adv_star_count_top(self, star_dy);
-    _ZN3HUD19RenderCameraButtonsEv((void *)self);
+    _ZN8dMeter_c19RenderCameraButtonsEv((void *)self);
     port_adv_life_count_top(self, life_dy);
     return 1;
 }
@@ -1024,13 +1024,13 @@ int __fastcall hud_render(void *s, void *)
     return ((HUD *)s)->HUD::Render();
 }
 void __fastcall hud_pdes(void *s, void *) { ((HUD *)s)->HUD::OnPendingDestroy(); }
-void *__fastcall hud_d1(void *s, void *) { return _ZN3HUDD1Ev(s); }
-void *__fastcall hud_d0(void *s, void *) { return _ZN3HUDD0Ev(s); }
+void *__fastcall hud_d1(void *s, void *) { return _ZN8dMeter_cD1Ev(s); }
+void *__fastcall hud_d0(void *s, void *) { return _ZN8dMeter_cD0Ev(s); }
 
 // ---- Minimap ---------------------------------------------------------------
 int __fastcall map_init(void *s, void *) { return ((Minimap *)s)->Minimap::InitResources(); }
 int __fastcall map_clean(void *s, void *) { return ((Minimap *)s)->Minimap::CleanupResources(); }
-int __fastcall map_behavior(void *s, void *) { return _ZN7Minimap8BehaviorEv(s); }
+int __fastcall map_behavior(void *s, void *) { return _ZN6dMap_c8BehaviorEv(s); }
 int __fastcall map_render(void *s, void *)
 {
     /* SM64DS_MM_TRACE=1: the marker's own minimap coordinates and the live sub
@@ -1057,8 +1057,8 @@ int __fastcall map_render(void *s, void *)
     return ((Minimap *)s)->Minimap::Render();
 }
 void __fastcall map_pdes(void *s, void *) { ((Minimap *)s)->Minimap::OnPendingDestroy(); }
-void *__fastcall map_d1(void *s, void *) { return _ZN7MinimapD1Ev(s); }
-void *__fastcall map_d0(void *s, void *) { return _ZN7MinimapD0Ev(s); }
+void *__fastcall map_d1(void *s, void *) { return _ZN6dMap_cD1Ev(s); }
+void *__fastcall map_d0(void *s, void *) { return _ZN6dMap_cD0Ev(s); }
 
 }  // namespace
 

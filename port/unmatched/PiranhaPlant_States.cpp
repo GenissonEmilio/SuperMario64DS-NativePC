@@ -61,19 +61,19 @@ extern PortPirPmf data_ov084_02130bb4[], data_ov084_02130ba4[],
 extern PortPirPmf data_ov084_02130e80[];
 
 /* the nine state bodies (all matched src) */
-void func_ov084_0212fc10(void *self); void func_ov084_0212fa7c(void *self);
-void func_ov084_0212f6d8(void *self); void func_ov084_0212f630(void *self);
-void func_ov084_0212f588(void *self); void func_ov084_0212f460(void *self);
-void func_ov084_0212f33c(void *self); void func_ov084_0212f2dc(void *self);
-void func_ov084_0212f298(void *self);
+void _ZN7daPkn_c9StateWaitEv(void *self); void _ZN7daPkn_c10StateSleepEv(void *self);
+void _ZN7daPkn_c9StateBiteEv(void *self); void _ZN7daPkn_c9StateWakeEv(void *self);
+void _ZN7daPkn_c9StateDozeEv(void *self); void _ZN7daPkn_c8StateDieEv(void *self);
+void _ZN7daPkn_c11StateShrinkEv(void *self); void _ZN7daPkn_c9StateGoneEv(void *self);
+void _ZN7daPkn_c11StateRegrowEv(void *self);
 
 /* the two per-frame helpers Behavior closes over, plus the Enemy kill check */
-void func_ov084_0212f204(void *self);
-void func_ov084_0212ec60(void *self);
+void _ZN7daPkn_c18TrackClosestPlayerEv(void *self);
+void _ZN7daPkn_c10UpdatePoseEv(void *self);
 int _ZN12dEnemyBase_c26UpdateKillByInvincibleCharER10dBgCh_ActrR9ModelAnimj(
     void *self, void *clsn, void *anim, unsigned n);
 void _ZN8dActor_c19MakeVanishLuigiWorkER5dCc_c(void *self, void *clsn);
-void _ZN9Animation7AdvanceEv(void *self);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *self);
 void _ZN5dCc_c5ClearEv(void *self);
 void _ZN5dCc_c6UpdateEv(void *self);
 void _ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3(
@@ -113,15 +113,15 @@ typedef void (*PortPirFn)(void *);
 #define PIR_FACE(sym)                                                         \
     static void __fastcall pmf_face_##sym(void *self, void *dead_edx)         \
     { sym(self); }
-PIR_FACE(func_ov084_0212fc10)
-PIR_FACE(func_ov084_0212fa7c)
-PIR_FACE(func_ov084_0212f6d8)
-PIR_FACE(func_ov084_0212f630)
-PIR_FACE(func_ov084_0212f588)
-PIR_FACE(func_ov084_0212f460)
-PIR_FACE(func_ov084_0212f33c)
-PIR_FACE(func_ov084_0212f2dc)
-PIR_FACE(func_ov084_0212f298)
+PIR_FACE(_ZN7daPkn_c9StateWaitEv)
+PIR_FACE(_ZN7daPkn_c10StateSleepEv)
+PIR_FACE(_ZN7daPkn_c9StateBiteEv)
+PIR_FACE(_ZN7daPkn_c9StateWakeEv)
+PIR_FACE(_ZN7daPkn_c9StateDozeEv)
+PIR_FACE(_ZN7daPkn_c8StateDieEv)
+PIR_FACE(_ZN7daPkn_c11StateShrinkEv)
+PIR_FACE(_ZN7daPkn_c9StateGoneEv)
+PIR_FACE(_ZN7daPkn_c11StateRegrowEv)
 #undef PIR_FACE
 
 /* the nine states in the sinit's store order (== the data_ov084_02130e80
@@ -129,15 +129,15 @@ PIR_FACE(func_ov084_0212f298)
 #define PF(sym) (PortPirFn)pmf_face_##sym
 static const struct { PortPirPmf *slot; unsigned rom; PortPirFn host; }
 g_piranha_states[] = {
-    {data_ov084_02130bb4, 0x0212fc10, PF(func_ov084_0212fc10)},
-    {data_ov084_02130ba4, 0x0212fa7c, PF(func_ov084_0212fa7c)},
-    {data_ov084_02130bbc, 0x0212f6d8, PF(func_ov084_0212f6d8)},
-    {data_ov084_02130bac, 0x0212f630, PF(func_ov084_0212f630)},
-    {data_ov084_02130bc4, 0x0212f588, PF(func_ov084_0212f588)},
-    {data_ov084_02130bcc, 0x0212f460, PF(func_ov084_0212f460)},
-    {data_ov084_02130bdc, 0x0212f33c, PF(func_ov084_0212f33c)},
-    {data_ov084_02130bd4, 0x0212f2dc, PF(func_ov084_0212f2dc)},
-    {data_ov084_02130be4, 0x0212f298, PF(func_ov084_0212f298)},
+    {data_ov084_02130bb4, 0x0212fc10, PF(_ZN7daPkn_c9StateWaitEv)},
+    {data_ov084_02130ba4, 0x0212fa7c, PF(_ZN7daPkn_c10StateSleepEv)},
+    {data_ov084_02130bbc, 0x0212f6d8, PF(_ZN7daPkn_c9StateBiteEv)},
+    {data_ov084_02130bac, 0x0212f630, PF(_ZN7daPkn_c9StateWakeEv)},
+    {data_ov084_02130bc4, 0x0212f588, PF(_ZN7daPkn_c9StateDozeEv)},
+    {data_ov084_02130bcc, 0x0212f460, PF(_ZN7daPkn_c8StateDieEv)},
+    {data_ov084_02130bdc, 0x0212f33c, PF(_ZN7daPkn_c11StateShrinkEv)},
+    {data_ov084_02130bd4, 0x0212f2dc, PF(_ZN7daPkn_c9StateGoneEv)},
+    {data_ov084_02130be4, 0x0212f298, PF(_ZN7daPkn_c11StateRegrowEv)},
 };
 #undef PF
 

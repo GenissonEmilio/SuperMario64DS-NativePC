@@ -74,8 +74,8 @@ struct ModelAnim {
 };
 
 extern "C" {
-void _ZN6Camera9SetLookAtERK7Vector3(void *self, const void *v);
-void _ZN6Camera6SetPosERK7Vector3(void *self, const void *v);
+void _ZN9dCamera_c9SetLookAtERK7Vector3(void *self, const void *v);
+void _ZN9dCamera_c6SetPosERK7Vector3(void *self, const void *v);
 void _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void *self, void *f, int flags,
                                                  int speed, unsigned start);
 }

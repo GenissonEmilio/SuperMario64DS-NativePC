@@ -57,7 +57,7 @@
 # rewrites anything -- the MgCup shape, one file over. Only the ENTER word
 # changes: it stops being the raw cdecl func_ov055_021112bc and becomes the
 # __fastcall face the matched TU's own `call edx` needs.
-src/func_ov055_021112c4.cpp
+src/actors/daLuigi_c.cpp
 
 # ===========================================================================
 # GATE 2 -- THE func_-NAMED ROWS, BY THE CLASS'S OWN VTABLE
@@ -225,8 +225,8 @@ src/func_ov055_021112c4.cpp
 #   body that still carries the "recovered from vtable slot identity" marker
 #   with no REAL_DECOMP ruling -- which port/tools/inferred_stub_guard.py
 #   forbids seating, and is right to.
-src/game/actors/d_a_bakubaku.cpp
-src/func_ov100_021453d8.cpp
+src/actors/daBakubaku_c.cpp
+src/actors/daDoor_c.cpp
 src/game/actors/d_a_star_gate.cpp
 
 # ===========================================================================
@@ -308,4 +308,4 @@ src/game/actors/d_a_star_gate.cpp
 # present in walk_window.map before the link, and ___security_cookie /
 # @__security_check_cookie@4 are the CRT's /GS pair, which this TU needs because
 # it has a local array.
-src/func_ov006_020c07e8.cpp
+src/actors/unit020bfec0.cpp

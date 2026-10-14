@@ -22,12 +22,13 @@ src/actors/daObjMarioCap_c.cpp
 # gate 10). The metal/vanish/wing form-change closure (Player::InitMetalWario,
 # InitVanishLuigi and their file loads) is already linked -- the cap's
 # InitResources reached it when the class was built at gate 33.
-src/_Z11UpdateAngleRssis.cpp
-src/func_02013a88.c
-src/func_020139b8.c
-src/_ZN8SaveData13PlayerLoseCapEv.cpp
+src/ApproachAngle.cpp
+src/engine/save/SaveData.cpp
+# FOLDED into src/engine/save/SaveData.cpp (row 26): src/func_020139b8.c
+# FOLDED into src/engine/save/SaveData.cpp (row 26): src/_ZN8SaveData13PlayerLoseCapEv.cpp
 # the metal/vanish form-change entry points func_ov002_020b6fcc dispatches
 src/actors/Player.cpp
+port/unmatched/hostarm/Player.cpp
 
 # ---- EXCLAMATION_SWITCH (11): the ten state halves + closure ----------------
 # StarSwitch's five-state machine, the ten records data_ov002_0210e00c holds.
@@ -35,16 +36,16 @@ src/actors/Player.cpp
 # these are the states they call and the two arm9/ov002 helpers they reach that
 # no earlier gate linked. func_ov002_020ba4d8/020ba520 are EXCLUDED from
 # slice_gate33 -- see the note there.
-src/func_ov002_020ba3fc.cpp
-src/func_ov002_020ba3a8.c
-src/func_ov002_020ba4c0.c
-src/func_ov002_020ba2d0.c
-src/func_ov002_020ba2ac.c
-src/func_ov002_020ba1ac.c
-src/func_ov002_020ba0f8.cpp
-src/func_ov002_020ba0bc.c
-src/func_02012310.c
-src/func_ov002_020e7104.c
+src/actors/daObjSwitch_c.cpp
+# FOLDED into src/actors/daObjSwitch_c.cpp (row 38): src/func_ov002_020ba3a8.c
+# FOLDED into src/actors/daObjSwitch_c.cpp (row 38): src/func_ov002_020ba4c0.c
+# FOLDED into src/actors/daObjSwitch_c.cpp (row 38): src/func_ov002_020ba2d0.c
+# FOLDED into src/actors/daObjSwitch_c.cpp (row 38): src/func_ov002_020ba2ac.c
+# FOLDED into src/actors/daObjSwitch_c.cpp (row 38): src/func_ov002_020ba1ac.c
+# FOLDED into src/actors/daObjSwitch_c.cpp (row 38): src/func_ov002_020ba0f8.cpp
+# FOLDED into src/actors/daObjSwitch_c.cpp (row 38): src/func_ov002_020ba0bc.c
+src/engine/sound/Sound.cpp
+src/actors/daStar_c.cpp
 
 # ---- ROLLING_IRON_BALL (220, ov100): the four state functions + helpers -----
 # RollingIronBall::Behavior dispatches data_ov100_0214867c[idx] as a plain
@@ -53,13 +54,13 @@ src/func_ov002_020e7104.c
 # helpers they reach that no earlier gate linked. The particle/collision/Actor
 # closure and the FS/decompress path are already host-provided (the ntr layer
 # and earlier gates), so nothing below descends into them.
-src/func_ov100_02142b90.c
-src/func_ov100_02142918.cpp
-src/func_ov100_021424c0.c
-src/func_ov100_0214272c.cpp
-src/func_ov100_02141fb0.cpp
-src/func_ov100_02142130.cpp
-src/func_ov100_02142264.cpp
-src/func_ov100_0214233c.cpp
-src/func_ov002_020ad660.cpp
-src/func_02012694.cpp
+src/actors/daIbl_c.cpp
+# FOLDED into src/actors/daIbl_c.cpp (row 56): src/func_ov100_02142918.cpp
+# FOLDED into src/actors/daIbl_c.cpp (row 56): src/func_ov100_021424c0.c
+# FOLDED into src/actors/daIbl_c.cpp (row 56): src/func_ov100_0214272c.cpp
+# FOLDED into src/actors/daIbl_c.cpp (row 56): src/func_ov100_02141fb0.cpp
+# FOLDED into src/actors/daIbl_c.cpp (row 56): src/func_ov100_02142130.cpp
+# FOLDED into src/actors/daIbl_c.cpp (row 56): src/func_ov100_02142264.cpp
+# FOLDED into src/actors/daIbl_c.cpp (row 56): src/func_ov100_0214233c.cpp
+src/actors/dEnemyBase_c.cpp
+# FOLDED into src/engine/sound/Sound.cpp (row 46): src/func_02012694.cpp

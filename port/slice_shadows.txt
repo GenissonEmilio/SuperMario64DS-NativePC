@@ -63,8 +63,8 @@
 # (func_ov080_02124e60) are not shadow rows -- neither name is in the queue --
 # so retiring them would be a change with no measurement behind it.
 #
-src/_ZN11BabyPenguin13InitResourcesEv.cpp
-src/_ZN11CrazedCrate13InitResourcesEv.cpp
+src/game/actors/d_a_pg_bby.cpp
+src/actors/daBttBk_c.cpp
 
 # ---------------------------------------------------------------------------
 # RUNG 2: THE LAKITU BRO'S InitResources, AND THE THIRD ARGUMENT THAT IS THE
@@ -110,7 +110,7 @@ src/_ZN11CrazedCrate13InitResourcesEv.cpp
 # port/unmatched/Ov085_LakituBro_IntroEnd.cpp -- so the watch still reports on
 # the opening; this one line of it does not.
 #
-src/_ZN9LakituBro13InitResourcesEv.cpp
+src/actors/daC_Jugem_c.cpp
 
 # ---------------------------------------------------------------------------
 # RUNG 3: THE SHADOW WHOSE SEAM IS A RETURN TYPE

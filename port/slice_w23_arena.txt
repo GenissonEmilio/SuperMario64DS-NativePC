@@ -48,6 +48,10 @@
 # shared object of all three hosting targets, so every one of them takes this
 # slice (a definition retired on one and not the others would leave the
 # others asking for a name nothing defines).
-src/func_02058eb4.c
-src/func_02058d58.c
-src/func_02058cd0.c
+src/unnamed/arm9/0205/func_02058eb4.c
+# PORTSYNC2: main folded src/func_02058d58.c and src/func_02058cd0.c into
+# src/engine/cp15/CP15.cpp with seven asm CP15 cache primitives (host: ntr/runtime.cpp);
+# the row is those two bodies, carried in port/unmatched/ (see its banner).
+#src/engine/cp15/CP15.cpp
+port/unmatched/CP15_arena_hostcopy.c
+# FOLDED into src/engine/cp15/CP15.cpp (row 52): src/func_02058cd0.c

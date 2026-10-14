@@ -55,9 +55,9 @@ unsigned short DecIfAbove0_Short(unsigned short *p);
 void _ZN8dActor_c9UpdatePosEP5dCc_c(void *self, dCc_c *cc);
 void _ZN12dEnemyBase_c12UpdateWMClsnER10dBgCh_Actrj(void *self, dBgCh_Actr *wm,
                                               unsigned int j);
-void func_ov032_02112044(char *c);
-void _ZN9Animation7AdvanceEv(void *self);
-void func_ov032_021113fc(void *self);
+void _ZN12daBakubaku_c19func_ov032_02112044Ev(char *c);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *self);
+void _ZN12daBakubaku_c19func_ov032_021113fcEv(void *self);
 void _ZN5dCc_c5ClearEv(dCc_c *self);
 void *_ZN8dActor_c13ClosestPlayerEv(void *self);
 void _ZN5dCc_c6UpdateEv(dCc_c *self);

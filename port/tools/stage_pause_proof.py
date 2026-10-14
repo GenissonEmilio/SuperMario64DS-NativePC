@@ -183,16 +183,16 @@ def run(exe, root, rundir, name, frames, extra=None, level="1"):
 # .obj regardless of which alias currently sits at that address, and
 # accepts whichever spelling(s) the map currently has for it.
 GATE_OBJECTS = [
-    "_ZN5Stage8BehaviorEv",
-    "_ZN5Stage7PS_InitEv",
-    "_ZN5Stage9PS_UpdateEv",
-    "_ZN5Stage9LC_UpdateEv",
-    "_ZN5Stage20PS_UpdateOptionsMenuEv",
-    "_ZN5Stage25PS_UpdateOkAndBackButtonsEb",
+    "_ZN10dScStage_c8BehaviorEv",
+    "_ZN10dScStage_c7PS_InitEv",
+    "_ZN10dScStage_c9PS_UpdateEv",
+    "_ZN10dScStage_c9LC_UpdateEv",
+    "_ZN10dScStage_c20PS_UpdateOptionsMenuEv",
+    "_ZN10dScStage_c25PS_UpdateOkAndBackButtonsEb",
     "_ZN7Message7DisplayEj",
     "_ZN7Message18DisplayPauseTextVSEt",
-    "_ZN5Stage10PS_CleanupEv",
-    "_ZN5Stage7VE_InitEv",
+    "_ZN10dScStage_c10PS_CleanupEv",
+    "_ZN10dScStage_c7VE_InitEv",
     "_ZN5Sound10PauseMusicEv",
 ]
 ROW = re.compile(r"\s+[0-9a-fA-F]{4}:[0-9a-fA-F]{8}\s+(\S+)\s+[0-9a-fA-F]{8}"

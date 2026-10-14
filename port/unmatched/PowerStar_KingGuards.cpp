@@ -32,13 +32,13 @@ extern void GiveVsStars(int idx, int delta);
 extern void func_ov002_020e8244(int *out, char *c);
 extern void _ZN8dActor_c11SpawnNumberERK7Vector3jbtPS_(char *c, int *pos, int num, int b, int t, char *p);
 extern void _ZN8dActor_c11UntrackStarERa(char *c, signed char *p);
-extern void func_ov002_020e7e58(char *c);
+extern void _ZN8daStar_c19func_ov002_020e7e58Ev(char *c);
 extern void _ZN7fBase_c18MarkForDestructionEv(char *c);
 extern void _ZN8dActor_c24KillAndTrackInDeathTableEv(char *c);
-extern void func_ov002_020e8098(char *c);
+extern void _ZN8daStar_c19func_ov002_020e8098Ev(char *c);
 
 /* the ROM state-5 body, dispatched normally; the wrapper reconciles after it */
-extern void func_ov002_020ea100(char *c);
+extern void _ZN8daStar_c19func_ov002_020ea100Ev(char *c);
 
 /* the single source of truth for "is this a King of the Star match" */
 extern int port_vs_king_target(void);
@@ -71,7 +71,7 @@ void port_king_power_star_state13(void *selfv)
         }
         *(unsigned short *)(((int)c + 0x4a2)) &= ~2;
         if (*(unsigned short *)(c + 0x490) < 0x64) return;
-        func_ov002_020e7e58(c);
+        _ZN8daStar_c19func_ov002_020e7e58Ev(c);
         if ((int)(data_0209f2d8 == 1) != 0) {
             _ZN7fBase_c18MarkForDestructionEv(c);
         } else {
@@ -84,7 +84,7 @@ void port_king_power_star_state13(void *selfv)
         *(int *)(c + 0x60) = src[1];
         *(int *)(c + 0x64) = src[2];
         *(int *)(((int)c + 0x60)) += 0x104000;
-        func_ov002_020e8098(c);
+        _ZN8daStar_c19func_ov002_020e8098Ev(c);
     }
 }
 
@@ -99,7 +99,7 @@ void port_king_power_star_state13(void *selfv)
 void port_king_power_star_state5(void *selfv)
 {
     char *c = (char *)selfv;
-    func_ov002_020ea100(c);
+    _ZN8daStar_c19func_ov002_020ea100Ev(c);
     if (port_vs_king_target() > 0) {
         char *common = *(char **)(c + 0x438);
         if (common != 0 && *(int *)(c + 0x440) == 6) {

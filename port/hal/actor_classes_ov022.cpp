@@ -281,9 +281,9 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
      74  D1 / D0                                               -> C names
      82  InitResources / Render                                -> methods
      82  Behavior / D1 / D0                                    -> C names */
-#include "RotatingPlatformLll.h"
-#include "FloatOnLavaPlatform.h"
-#include "LavaPlank.h"
+#include "daObjFl_Koma_D_c.h"
+#include "daObjFl_Block_c.h"
+#include "daObjFl_UkiKi_c.h"
 
 extern "C" {
 /* the arm9 shared half -- every address read off this lane's own reloc runs
@@ -487,15 +487,15 @@ extern "C" void port_ov22_bringup(void)
 // than by direct literal -- which is why the table has to be MOUNTED and the
 // ov064 CLPS block with it.
 extern "C" {
-int _ZN11VolcanoRing13InitResourcesEv(char *self);   /* slot 0  InitResources */
-int _ZN11VolcanoRing16CleanupResourcesEv(void *self);   /* slot 3  CleanupResources */
-int _ZN11VolcanoRing8BehaviorEv(char *self);   /* slot 6  Behavior */
-int _ZN11VolcanoRing6RenderEv(void *self);   /* slot 9  Render */
-int *_ZN11VolcanoRingD1Ev(int *self);   /* slot 16 D1 */
-int *_ZN11VolcanoRingD0Ev(int *self);   /* slot 17 D0 */
+int _ZN14daObjFl_Ring_c13InitResourcesEv(char *self);   /* slot 0  InitResources */
+int _ZN14daObjFl_Ring_c16CleanupResourcesEv(void *self);   /* slot 3  CleanupResources */
+int _ZN14daObjFl_Ring_c8BehaviorEv(char *self);   /* slot 6  Behavior */
+int _ZN14daObjFl_Ring_c6RenderEv(void *self);   /* slot 9  Render */
+int *_ZN14daObjFl_Ring_cD1Ev(int *self);   /* slot 16 D1 */
+int *_ZN14daObjFl_Ring_cD0Ev(int *self);   /* slot 17 D0 */
 void *daObjFl_Ring_c_classInit(void);
 DSSTATE_BEGIN
-void *_ZTV11VolcanoRing[32];
+void *_ZTV14daObjFl_Ring_c[32];
 DSSTATE_END
 }
 /* _ZN11VolcanoRing13InitResourcesEv hands func_020393c4 the address of ov022's own
@@ -506,22 +506,22 @@ DSSTATE_END
    the mount defines the plain C name; data has no calling convention. */
 #pragma comment(linker, "/alternatename:?data_ov022_02113cc8@@3HA=_data_ov022_02113cc8")
 static int __fastcall vr_init(void *s, void *)
-{ return _ZN11VolcanoRing13InitResourcesEv((char *)s); }
+{ return _ZN14daObjFl_Ring_c13InitResourcesEv((char *)s); }
 static int __fastcall vr_clean(void *s, void *)
-{ return _ZN11VolcanoRing16CleanupResourcesEv(s); }
+{ return _ZN14daObjFl_Ring_c16CleanupResourcesEv(s); }
 static int __fastcall vr_behavior(void *s, void *)
-{ return _ZN11VolcanoRing8BehaviorEv((char *)s); }
+{ return _ZN14daObjFl_Ring_c8BehaviorEv((char *)s); }
 static int __fastcall vr_render(void *s, void *)
 { port_actor_render_probe("VOLCANO_RING", (char *)s + 0xd4);
-  return _ZN11VolcanoRing6RenderEv(s); }
+  return _ZN14daObjFl_Ring_c6RenderEv(s); }
 static int __fastcall vr_d1(void *s, void *)
-{ return (int)(size_t)_ZN11VolcanoRingD1Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjFl_Ring_cD1Ev((int *)s); }
 static int __fastcall vr_d0(void *s, void *)
-{ return (int)(size_t)_ZN11VolcanoRingD0Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjFl_Ring_cD0Ev((int *)s); }
 extern "C" void hal_fill_volcano_ring_vtable(void)
 {
     port_ov22_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV11VolcanoRing;
+    void *volatile *vt = (void *volatile *)_ZTV14daObjFl_Ring_c;
     ov22_fill_shared(vt);
     vt[0]  = (void *)vr_init;
     vt[3]  = (void *)vr_clean;
@@ -542,15 +542,15 @@ extern "C" void hal_fill_volcano_ring_vtable(void)
 // CLPS block 0x0211bb0c to MovingMeshCollider::SetFile. RTTI daObjFl_Block_c.
 extern "C" {
 /* slots 0/3/6/9 are C++ methods -- see the note at the top of the file */
-int *_ZN19FloatOnLavaPlatformD1Ev(int *self);                  /* slot 16 */
-int *_ZN19FloatOnLavaPlatformD0Ev(int *self);                  /* slot 17 */
+int *_ZN15daObjFl_Block_cD1Ev(int *self);                  /* slot 16 */
+int *_ZN15daObjFl_Block_cD0Ev(int *self);                  /* slot 17 */
 void *daObjFl_Block_c_classInit(void);
 DSSTATE_BEGIN
-void *_ZTV19FloatOnLavaPlatform[32];
+void *_ZTV15daObjFl_Block_c[32];
 DSSTATE_END
 }
 /* 0x02113eac answers to both names; the D1/D0 restore it by the RTTI one. */
-#pragma comment(linker, "/alternatename:__ZTV15daObjFl_Block_c=__ZTV19FloatOnLavaPlatform")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV15daObjFl_Block_c=__ZTV15daObjFl_Block_c")
 /* 74's InitResources declares its SharedFilePtr pair as `char *` while the
    ov022 mount defines the plain C name; data has no calling convention, so an
    alias onto the one object is exact (the hal/actor_faces_bob.cpp rule 1). */
@@ -558,22 +558,22 @@ DSSTATE_END
 /* Slots 0/3/6/9 are this class's OWN four bodies, read off the ROM table at
    0x02113eac; the wave-8 spelling dispatched RotatingPlatformLll's instead. */
 static int __fastcall fl_init(void *s, void *)
-{ return ((FloatOnLavaPlatform *)s)->FloatOnLavaPlatform::InitResources(); }
+{ return ((daObjFl_Block_c *)s)->daObjFl_Block_c::InitResources(); }
 static int __fastcall fl_clean(void *s, void *)
-{ return ((FloatOnLavaPlatform *)s)->FloatOnLavaPlatform::CleanupResources(); }
+{ return ((daObjFl_Block_c *)s)->daObjFl_Block_c::CleanupResources(); }
 static int __fastcall fl_behavior(void *s, void *)
-{ return ((FloatOnLavaPlatform *)s)->FloatOnLavaPlatform::Behavior(); }
+{ return ((daObjFl_Block_c *)s)->daObjFl_Block_c::Behavior(); }
 static int __fastcall fl_render(void *s, void *)
 { port_actor_render_probe("FLOAT_ON_LAVA_PLATFORM", (char *)s + 0xd4);
-  return ((FloatOnLavaPlatform *)s)->FloatOnLavaPlatform::Render(); }
+  return ((daObjFl_Block_c *)s)->daObjFl_Block_c::Render(); }
 static int __fastcall fl_d1(void *s, void *)
-{ return (int)(size_t)_ZN19FloatOnLavaPlatformD1Ev((int *)s); }
+{ return (int)(size_t)_ZN15daObjFl_Block_cD1Ev((int *)s); }
 static int __fastcall fl_d0(void *s, void *)
-{ return (int)(size_t)_ZN19FloatOnLavaPlatformD0Ev((int *)s); }
+{ return (int)(size_t)_ZN15daObjFl_Block_cD0Ev((int *)s); }
 extern "C" void hal_fill_float_on_lava_platform_vtable(void)
 {
     port_ov22_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV19FloatOnLavaPlatform;
+    void *volatile *vt = (void *volatile *)_ZTV15daObjFl_Block_c;
     ov22_fill_shared(vt);
     vt[0]  = (void *)fl_init;
     vt[3]  = (void *)fl_clean;
@@ -599,23 +599,23 @@ extern "C" void hal_fill_float_on_lava_platform_vtable(void)
 //
 // BOTH factories are VT1 wrappers (see the header, item 1).
 extern "C" {
-int _ZN21FloatingFloorLllSmall13InitResourcesEv(void *self);     /* slot 0  */
-int _ZN21FloatingFloorLllSmall16CleanupResourcesEv(void *self);  /* slot 3  */
+int _ZN17daObjFl_Ukiyuka_c13InitResourcesEv(void *self);     /* slot 0  */
+int _ZN17daObjFl_Ukiyuka_c16CleanupResourcesEv(void *self);  /* slot 3  */
 int _ZN14daObjUkiyuka_c8BehaviorEv(char *self);                             /* slot 6  */
 int _ZN14daObjUkiyuka_c6RenderEv(void *self);                             /* slot 9  */
-int *_ZN21FloatingFloorLllSmallD1Ev(int *self);                  /* slot 16 */
-int *_ZN21FloatingFloorLllSmallD0Ev(int *self);                  /* slot 17 */
+int *_ZN17daObjFl_Ukiyuka_cD1Ev(int *self);                  /* slot 16 */
+int *_ZN17daObjFl_Ukiyuka_cD0Ev(int *self);                  /* slot 17 */
 void *daObjFl_Ukiyuka_c_classInit_FL_UKIYUKA_L(void);
 void *daObjFl_Ukiyuka_c_classInit_FL_UKIYUKA(void);
 DSSTATE_BEGIN
-void *_ZTV21FloatingFloorLllSmall[32];
+void *_ZTV17daObjFl_Ukiyuka_c[32];
 DSSTATE_END
 }
 /* uki-yuka = the floating floor; the D1/D0 restore the table by this name
    (their literal at the first store IS 0x0211412c -- checked in the reloc
    run -- while the SPAWNS bind the same name to the ov002 base literal,
    which is what the wrappers below make transient). */
-#pragma comment(linker, "/alternatename:__ZTV17daObjFl_Ukiyuka_c=__ZTV21FloatingFloorLllSmall")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV17daObjFl_Ukiyuka_c=__ZTV17daObjFl_Ukiyuka_c")
 /* THE SECOND NAME RACE. 76's InitResources reaches its own overlay's
    six-word file/CLPS table at 0x021140d4 under ov036's spelling -- ov018,
    ov022, ov036 and ov056 all share level-overlay base 0x021111a0, and ov036's
@@ -640,33 +640,33 @@ extern "C" void *port_factory_floating_floor_lll_small(void)
 {
     void *p = daObjFl_Ukiyuka_c_classInit_FL_UKIYUKA_L();
     if (p)
-        *(void **)p = (void *)_ZTV21FloatingFloorLllSmall;
+        *(void **)p = (void *)_ZTV17daObjFl_Ukiyuka_c;
     return p;
 }
 extern "C" void *port_factory_floating_floor_lll_big(void)
 {
     void *p = daObjFl_Ukiyuka_c_classInit_FL_UKIYUKA();
     if (p)
-        *(void **)p = (void *)_ZTV21FloatingFloorLllSmall;
+        *(void **)p = (void *)_ZTV17daObjFl_Ukiyuka_c;
     return p;
 }
 static int __fastcall ff_init(void *s, void *)
-{ return _ZN21FloatingFloorLllSmall13InitResourcesEv(s); }
+{ return _ZN17daObjFl_Ukiyuka_c13InitResourcesEv(s); }
 static int __fastcall ff_clean(void *s, void *)
-{ return _ZN21FloatingFloorLllSmall16CleanupResourcesEv(s); }
+{ return _ZN17daObjFl_Ukiyuka_c16CleanupResourcesEv(s); }
 static int __fastcall ff_behavior(void *s, void *)
 { return _ZN14daObjUkiyuka_c8BehaviorEv((char *)s); }
 static int __fastcall ff_render(void *s, void *)
 { port_actor_render_probe("FLOATING_FLOOR_LLL", (char *)s + 0xd4);
   return _ZN14daObjUkiyuka_c6RenderEv(s); }
 static int __fastcall ff_d1(void *s, void *)
-{ return (int)(size_t)_ZN21FloatingFloorLllSmallD1Ev((int *)s); }
+{ return (int)(size_t)_ZN17daObjFl_Ukiyuka_cD1Ev((int *)s); }
 static int __fastcall ff_d0(void *s, void *)
-{ return (int)(size_t)_ZN21FloatingFloorLllSmallD0Ev((int *)s); }
+{ return (int)(size_t)_ZN17daObjFl_Ukiyuka_cD0Ev((int *)s); }
 extern "C" void hal_fill_floating_floor_lll_vtable(void)
 {
     port_ov22_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV21FloatingFloorLllSmall;
+    void *volatile *vt = (void *volatile *)_ZTV17daObjFl_Ukiyuka_c;
     ov22_fill_shared(vt);
     vt[0]  = (void *)ff_init;
     vt[3]  = (void *)ff_clean;
@@ -688,22 +688,22 @@ extern "C" void hal_fill_floating_floor_lll_vtable(void)
 // see the header, item 2, for the instruction-level derivation.
 extern "C" {
 /* slots 0 and 9 are C++ methods; slot 6 is extern "C" in src/ */
-int _ZN9LavaPlank8BehaviorEv(char *self);           /* slot 6  */
-int *_ZN9LavaPlankD1Ev(int *self);                  /* slot 16 */
-int *_ZN9LavaPlankD0Ev(int *self);                  /* slot 17 */
+int _ZN15daObjFl_UkiKi_c8BehaviorEv(char *self);           /* slot 6  */
+int *_ZN15daObjFl_UkiKi_cD1Ev(int *self);                  /* slot 16 */
+int *_ZN15daObjFl_UkiKi_cD0Ev(int *self);                  /* slot 17 */
 void *daObjFl_UkiKi_c_classInit(void);
 DSSTATE_BEGIN
-void *_ZTV9LavaPlank[32];
+void *_ZTV15daObjFl_UkiKi_c[32];
 DSSTATE_END
 }
 /* uki-ki = the floating wood; the D1/D0 restore the table by this name. */
-#pragma comment(linker, "/alternatename:__ZTV15daObjFl_UkiKi_c=__ZTV9LavaPlank")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV15daObjFl_UkiKi_c=__ZTV15daObjFl_UkiKi_c")
 /* 82's Behavior indexes the arm9 sine-ish table at 0x02082214 through its own
    two-short `SEnt` declaration; the arm9 mount defines the plain C name. Same
    data-alias rule as 74's file pointers above. */
 #pragma comment(linker, "/alternatename:?data_02082214@@3PAUSEnt@@A=_data_02082214")
 static int __fastcall lp_init(void *s, void *)
-{ return ((LavaPlank *)s)->LavaPlank::InitResources(); }
+{ return ((daObjFl_UkiKi_c *)s)->daObjFl_UkiKi_c::InitResources(); }
 /* slot 3, THE MATCHED TU (run link100 wave 14, lane SEAT14B). The host thunk
    lp_clean stood here from wave 8 over a G0/G1 refusal that has since gone
    stale. The old reason: the matched TU spelled its two SharedFilePtrs G0/G1,
@@ -729,20 +729,20 @@ static int __fastcall lp_init(void *s, void *)
 #pragma comment(linker, "/alternatename:?FloatingFloorLllBig_ModelFile@@3PAHA=_data_ov022_02114620")
 #pragma comment(linker, "/alternatename:?FloatingFloorLllBig_ClsnFile@@3PAHA=_data_ov022_02114618")
 static int __fastcall lp_clean(void *s, void *)
-{ return ((LavaPlank *)s)->LavaPlank::CleanupResources(); }
+{ return ((daObjFl_UkiKi_c *)s)->daObjFl_UkiKi_c::CleanupResources(); }
 static int __fastcall lp_behavior(void *s, void *)
-{ return _ZN9LavaPlank8BehaviorEv((char *)s); }
+{ return _ZN15daObjFl_UkiKi_c8BehaviorEv((char *)s); }
 static int __fastcall lp_render(void *s, void *)
 { port_actor_render_probe("LAVA_PLANK", (char *)s + 0xd4);
-  return ((LavaPlank *)s)->LavaPlank::Render(); }
+  return ((daObjFl_UkiKi_c *)s)->daObjFl_UkiKi_c::Render(); }
 static int __fastcall lp_d1(void *s, void *)
-{ return (int)(size_t)_ZN9LavaPlankD1Ev((int *)s); }
+{ return (int)(size_t)_ZN15daObjFl_UkiKi_cD1Ev((int *)s); }
 static int __fastcall lp_d0(void *s, void *)
-{ return (int)(size_t)_ZN9LavaPlankD0Ev((int *)s); }
+{ return (int)(size_t)_ZN15daObjFl_UkiKi_cD0Ev((int *)s); }
 extern "C" void hal_fill_lava_plank_vtable(void)
 {
     port_ov22_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV9LavaPlank;
+    void *volatile *vt = (void *volatile *)_ZTV15daObjFl_UkiKi_c;
     ov22_fill_shared(vt);
     vt[0]  = (void *)lp_init;
     vt[3]  = (void *)lp_clean;

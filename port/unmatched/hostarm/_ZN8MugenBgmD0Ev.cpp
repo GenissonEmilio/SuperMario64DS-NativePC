@@ -1,0 +1,13 @@
+/* HOST ARM recovered by port/tools/hostarm_recover.py.
+ * The port line carried this in src/_ZN8MugenBgmD0Ev.cpp under #ifdef _MSC_VER; the
+ * 2026-10 main merge (749f5799a) took main's src/, where that code
+ * now lives in src/actors/daMugenBGM_c.cpp without the arm. mwccarm never saw the arm,
+ * so nothing here moves a ROM byte. */
+#include "daMugenBGM_c.h"
+
+extern "C" daMugenBGM_c *_ZN12daMugenBGM_cD0Ev(daMugenBGM_c *thiz)
+{
+    thiz->daMugenBGM_c::~daMugenBGM_c();    /* the D1 body, through MSVC's one destructor */
+    daMugenBGM_c::operator delete(thiz);  /* the class-specific delete D0 ends with */
+    return thiz;
+}

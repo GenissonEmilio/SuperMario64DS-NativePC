@@ -505,56 +505,56 @@
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
 #src/actors/dScMgD3DBase_c.cpp
-src/func_ov006_020cac30.cpp
-src/_ZN6Player29TryExitCharacterDoorWithIntroEv.cpp
-src/func_020169f4.c
-src/func_0203cc28.c
-src/func_02045e70.c
-src/func_02053ea0.c
-src/func_02053eb0.c
-src/func_02054748.c
-src/func_ov006_020bfec0.cpp
-src/func_ov006_020bfff8.cpp
-src/func_ov006_020c8a30.c
-src/func_ov006_020c8a64.c
-src/func_ov006_020c8a9c.c
-src/func_ov006_020c8af4.c
-src/func_ov006_020c8ba8.cpp
-src/func_ov006_020c8c6c.c
-src/func_ov006_020c8c78.c
-src/func_ov006_020c8dd4.c
-src/func_ov006_020c8ddc.c
-src/func_ov006_020c8e80.c
-src/func_ov006_020c8e88.c
-src/func_ov006_020c8ecc.cpp
-src/func_ov006_020c9024.cpp
-src/func_ov006_020c905c.c
-src/func_ov006_020c9098.cpp
-src/func_ov006_020c91ac.cpp
-src/func_ov006_020c94e0.cpp
-src/func_ov006_020c97bc.cpp
-src/func_ov006_020c9aa0.cpp
-src/func_ov006_020c9c8c.cpp
-src/func_ov006_020c9d7c.c
-src/func_ov006_020c9e7c.c
-src/func_ov006_020c9efc.cpp
-src/func_ov006_020c9fe4.cpp
-src/func_ov006_020ca070.cpp
-src/func_ov006_020ca2ec.c
-src/func_ov006_020ca310.cpp
-src/func_ov006_020ca374.c
-src/func_ov006_020ca39c.c
-src/func_ov006_020ca3a8.cpp
-src/func_ov006_020ca430.c
-src/func_ov006_020ca604.cpp
-src/func_ov006_020ca7b8.c
-src/func_ov006_020ca840.c
-src/func_ov006_020ca8e0.cpp
-src/func_ov006_020caa08.c
-src/func_ov006_020caadc.c
-src/func_ov006_020cac9c.c
-src/func_ov006_020cad3c.c
-src/func_ov006_020cae9c.c
+src/actors/dMgTrmpln2Mario_c.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/_ZN6Player29TryExitCharacterDoorWithIntroEv.cpp
+src/unnamed/arm9/0201/func_020169f4.c
+src/unnamed/arm9/0203/func_0203cc28.c
+src/engine/model/Model4.cpp
+src/unnamed/arm9/0205/func_02053ea0.c
+src/unnamed/arm9/0205/func_02053eb0.c
+src/unnamed/arm9/0205/func_02054748.c
+src/actors/unit020bfec0.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 516): src/func_ov006_020bfff8.cpp
+src/actors/unit020c8a30.cpp
+# FOLDED into src/actors/unit020c8a30.cpp (row 518): src/func_ov006_020c8a64.c
+# FOLDED into src/actors/unit020c8a30.cpp (row 518): src/func_ov006_020c8a9c.c
+# FOLDED into src/actors/unit020c8a30.cpp (row 518): src/func_ov006_020c8af4.c
+# FOLDED into src/actors/unit020c8a30.cpp (row 518): src/func_ov006_020c8ba8.cpp
+# FOLDED into src/actors/unit020c8a30.cpp (row 518): src/func_ov006_020c8c6c.c
+# FOLDED into src/actors/unit020c8a30.cpp (row 518): src/func_ov006_020c8c78.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c8dd4.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c8ddc.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c8e80.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c8e88.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c8ecc.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c9024.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c905c.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c9098.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c91ac.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c94e0.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c97bc.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c9aa0.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c9c8c.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c9d7c.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c9e7c.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c9efc.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020c9fe4.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020ca070.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020ca2ec.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020ca310.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020ca374.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020ca39c.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020ca3a8.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020ca430.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020ca604.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020ca7b8.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020ca840.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020ca8e0.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020caa08.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020caadc.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cac9c.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cad3c.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cae9c.c
 # src/func_ov006_020cb16c.c is OUT at the mg11 merge. Lane TTI host-copies
 # this body in unmatched/MgTrmpln3DMario_ModuleFix.cpp, because the src TU
 # calls data_ov007_020ccd78() -- an ov007 DATA address used as a call from an
@@ -563,76 +563,77 @@ src/func_ov006_020cae9c.c
 # (LNK2005) and, if it had won, would jump into mounted data. The host copy
 # wins for the reason every dup-guard block in port/CMakeLists.txt gives.
 # Neither lane could see this: each checked the other's FILENAMES.
-src/func_ov006_020cb2b4.c
-src/func_ov006_020cb528.cpp
-src/func_ov006_020cb5c4.c
-src/func_ov006_020cb690.cpp
-src/func_ov006_020cb72c.c
-src/func_ov006_020cb814.c
-src/func_ov006_020cb838.cpp
-src/func_ov006_020cbaec.cpp
-src/func_ov006_020cbd7c.cpp
-src/func_ov006_020cbfd8.cpp
-src/func_ov006_020cc198.cpp
-src/func_ov006_020cc2ac.c
-src/func_ov006_020cc37c.cpp
-src/func_ov006_020cc408.cpp
-src/func_ov006_020cc618.c
-src/func_ov006_020cc63c.c
-src/func_ov006_020cc698.cpp
-src/func_ov006_020cc724.c
-src/func_ov006_020cc8c8.c
-src/func_ov006_020cc9b8.c
-src/func_ov006_020cc9fc.cpp
-src/func_ov006_020ccae0.c
-src/func_ov006_020ccc8c.cpp
-src/func_ov006_020ccd64.c
-src/func_ov006_020ccd78.cpp
-src/func_ov006_020cd6d8.c
-src/func_ov006_020cd6f4.c
-src/func_ov006_020cd720.c
-src/func_ov006_020cd72c.c
-src/func_ov006_020cd744.c
-src/func_ov006_020cd7b8.c
-src/func_ov006_020cd864.c
-src/func_ov006_020cd98c.c
-src/func_ov006_020cd9b0.c
-src/func_ov006_020cdad0.c
-src/func_ov006_020cdaec.c
-src/func_ov006_020cdc14.c
-src/func_ov006_020cdc38.c
-src/func_ov006_020cdc68.c
-src/func_ov006_020cdc8c.c
-src/func_ov006_020cdce4.c
-src/func_ov006_020cdd08.c
-src/func_ov006_020cde28.c
-src/func_ov006_020cde4c.c
-src/func_ov006_020cde7c.c
-src/func_ov006_020cdea0.c
-src/func_ov006_020cdeec.c
-src/func_ov006_020cdf1c.c
-src/func_ov006_020cdf20.c
-src/func_ov006_020cdf3c.c
-src/func_ov006_020ce0ac.cpp
-src/func_ov006_020ce108.cpp
-src/func_ov006_020ce46c.c
-src/func_ov006_020ce674.c
-src/func_ov006_020ce8a0.cpp
-src/func_ov006_020ce988.cpp
-src/func_ov006_020ceabc.c
-src/func_ov006_020cecb4.c
-src/func_ov006_020cecc0.cpp
-src/func_ov006_020ced84.c
-src/func_ov006_020cedf0.c
-src/func_ov006_020cee5c.c
-src/func_ov006_020ceedc.c
-src/func_ov006_020cef14.c
-src/func_ov006_020cefa4.c
-src/func_ov006_020cf124.c
-src/func_ov006_020cf790.c
-src/func_ov006_020cf804.c
-src/func_ov006_020cf820.c
-src/func_ov006_020cfa44.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cb2b4.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cb528.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cb5c4.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cb690.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cb72c.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cb814.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cb838.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cbaec.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cbd7c.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cbfd8.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cc198.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cc2ac.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cc37c.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cc408.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cc618.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cc63c.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cc698.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cc724.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cc8c8.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cc9b8.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cc9fc.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020ccae0.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020ccc8c.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020ccd64.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020ccd78.cpp
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cd6d8.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cd6f4.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cd720.c
+# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 508): src/func_ov006_020cd72c.c
+src/actors/unit020cd744.cpp
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cd7b8.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cd864.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cd98c.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cd9b0.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cdad0.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cdaec.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cdc14.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cdc38.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cdc68.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cdc8c.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cdce4.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cdd08.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cde28.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cde4c.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cde7c.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cdea0.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cdeec.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cdf1c.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cdf20.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cdf3c.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020ce0ac.cpp
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020ce108.cpp
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020ce46c.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020ce674.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020ce8a0.cpp
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020ce988.cpp
+port/unmatched/hostarm/func_ov006_020ce988.cpp
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020ceabc.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cecb4.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cecc0.cpp
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020ced84.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cedf0.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cee5c.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020ceedc.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cef14.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cefa4.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cf124.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cf790.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cf804.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cf820.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cfa44.c
 # The 0x800 STROKE INSTALLER, seated by run mg12 lane INST. Listed in BOTH
 # trampoline slices; see the note beside it in slice_tti.txt. It replaces the
 # trap in unmatched/MgTrampolineTime_Floors.cpp, which no longer defines it.
@@ -648,11 +649,11 @@ src/func_ov006_020cfa44.c
 # register-allocation luck, at measured zero cost. Emitted game code is
 # byte-identical across the conversion; the banner has the proof and the one
 # spelling that had to change to keep it so.
-src/func_ov006_020d01e0.cpp
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020d01e0.cpp
 # THE MESH DRAW, seated by run mg13 lane TRAMP. Listed in BOTH trampoline
 # slices; see the note beside it in slice_tti.txt. A TT_SHARED_HOSTGEN symbol,
 # so the generated copy is what this target compiles.
-src/func_ov006_020cf2fc.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cf2fc.c
 # THE BOUNCE, seated by run mg13 lane BOUNCE, and the last floor between a drawn
 # trampoline and a character that lands on it. src/func_ov006_020cfa44.c -- one
 # of the record states this class dispatches, and a slice_tte line already --
@@ -688,18 +689,18 @@ src/func_ov006_020cf2fc.c
 # the size, the whole literal pool and all 28 call offsets exactly the ROM's, and
 # every divergence a permutation or re-association of the same computation -- and
 # the banner in the file states each one.
-src/func_ov006_020cfc74.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cfc74.c
 # the installer's own three callees; see the note beside them in slice_tti.txt.
 # None was in any slice before the installer was seated.
-src/func_ov006_020cf040.c
-src/func_ov006_020cfa28.c
-src/func_ov006_020cfc58.c
-src/func_ov006_020d09e0.c
-src/func_ov006_020d0ac0.c
-src/func_ov006_020d0b04.c
-src/func_ov006_020d0b2c.cpp
-src/func_ov006_020d0b78.c
-src/func_ov006_020d0c38.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cf040.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cfa28.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020cfc58.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020d09e0.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020d0ac0.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020d0b04.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020d0b2c.cpp
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020d0b78.c
+# FOLDED into src/actors/unit020cd744.cpp (row 595): src/func_ov006_020d0c38.c
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): this row is the raw
 # consolidated TU. slice_bnt.txt's BNT_HOSTGEN_SRCS substitutes a hostgen'd copy of
 # the WHOLE TU so its light-vector and matrix writes reach the geometry engine instead of
@@ -707,7 +708,7 @@ src/func_ov006_020d0c38.c
 # symbol; taking it instead would put the defect back. The generated copy is in
 # this slice's target set, so the bodies still arrive.
 #src/minigames/d_s_mg_jump2.cpp
-src/func_ov006_020efc08.c
+src/minigames/d_s_mg_jump2.cpp
 src/minigames/d_s_mg_trampoline.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): this row is the raw
 # consolidated TU. slice_tte.txt's TTE_HOSTGEN_SRCS substitutes a hostgen'd copy of

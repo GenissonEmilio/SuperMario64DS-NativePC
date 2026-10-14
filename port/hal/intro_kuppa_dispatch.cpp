@@ -67,22 +67,22 @@ extern "C" {
    the header) rather than each body's narrower one. */
 typedef void (*KuppaCmd)(void *self, unsigned char *p, int a2, int a3);
 
-void func_ov002_020bccfc(void *, unsigned char *, int, int);
-void func_ov002_020bcd18(void *, unsigned char *, int, int);
-void func_ov002_020bcd38(void *, unsigned char *, int, int);
-void func_ov002_020bd20c(void *, unsigned char *, int, int);
-void func_ov002_020bd354(void *, unsigned char *, int, int);
-void func_ov002_020bd3a0(void *, unsigned char *, int, int);
-void func_ov002_020bd438(void *, unsigned char *, int, int);
-void func_ov002_020bd45c(void *, unsigned char *, int, int);
-void func_ov002_020bd4ac(void *, unsigned char *, int, int);
-void func_ov002_020bd4c8(void *, unsigned char *, int, int);
-void func_ov002_020bd4e0(void *, unsigned char *, int, int);
-void func_ov002_020bd600(void *, unsigned char *, int, int);
+void _ZN6Player19func_ov002_020bccfcEPhii(void *, unsigned char *, int, int);
+void _ZN6Player19func_ov002_020bcd18EPhii(void *, unsigned char *, int, int);
+void _ZN6Player19func_ov002_020bcd38EPhii(void *, unsigned char *, int, int);
+void _ZN6Player19func_ov002_020bd20cEPhii(void *, unsigned char *, int, int);
+void _ZN6Player19func_ov002_020bd354EPhii(void *, unsigned char *, int, int);
+void _ZN6Player19func_ov002_020bd3a0EPhii(void *, unsigned char *, int, int);
+void _ZN6Player19func_ov002_020bd438EPhii(void *, unsigned char *, int, int);
+void _ZN6Player19func_ov002_020bd45cEPhii(void *, unsigned char *, int, int);
+void _ZN6Player19func_ov002_020bd4acEPhii(void *, unsigned char *, int, int);
+void _ZN6Player19func_ov002_020bd4c8EPhii(void *, unsigned char *, int, int);
+void _ZN6Player19func_ov002_020bd4e0EPhii(void *, unsigned char *, int, int);
+void _ZN6Player19func_ov002_020bd600EPhii(void *, unsigned char *, int, int);
 /* HOST COPY, unmatched/Ov002_KuppaCmd_020bd480.cpp -- see the trap note
    below. Same four-word declaration as the other twelve. */
-void func_ov002_020bd480(void *, unsigned char *, int, int);
-void func_ov002_020bd250(void *, unsigned char *, int, int);
+void _ZN6Player19func_ov002_020bd480EPhii(void *, unsigned char *, int, int);
+void _ZN6Player19func_ov002_020bd250EPhii(void *, unsigned char *, int, int);
 
 /* The fourteen {function, delta} statics, in the ROM's own table order (the
    order func_ov002_020bd664's initialiser lists them, which is the command
@@ -143,20 +143,20 @@ static const struct {
     KuppaCmd host;
     const char *name;
 } g_cmds[14] = {
-    { data_ov002_0210a14c, 0x020bd600, func_ov002_020bd600, "0210a14c" },
-    { data_ov002_0210a124, 0x020bd4e0, func_ov002_020bd4e0, "0210a124" },
-    { data_ov002_0210a054, 0x020bd4c8, func_ov002_020bd4c8, "0210a054" },
-    { data_ov002_0210a0dc, 0x020bd4ac, func_ov002_020bd4ac, "0210a0dc" },
-    { data_ov002_0210a534, 0x020bd480, func_ov002_020bd480, "0210a534" },
-    { data_ov002_0210a0b4, 0x020bd45c, func_ov002_020bd45c, "0210a0b4" },
-    { data_ov002_0210a094, 0x020bd438, func_ov002_020bd438, "0210a094" },
-    { data_ov002_0210a40c, 0x020bd3a0, func_ov002_020bd3a0, "0210a40c" },
-    { data_ov002_0210a474, 0x020bd354, func_ov002_020bd354, "0210a474" },
-    { data_ov002_0210a44c, 0x020bd250, func_ov002_020bd250, "0210a44c" },
-    { data_ov002_0210a3fc, 0x020bd20c, func_ov002_020bd20c, "0210a3fc" },
-    { data_ov002_0210a3c4, 0x020bcd38, func_ov002_020bcd38, "0210a3c4" },
-    { data_ov002_0210a064, 0x020bcd18, func_ov002_020bcd18, "0210a064" },
-    { data_ov002_0210a36c, 0x020bccfc, func_ov002_020bccfc, "0210a36c" },
+    { data_ov002_0210a14c, 0x020bd600, _ZN6Player19func_ov002_020bd600EPhii, "0210a14c" },
+    { data_ov002_0210a124, 0x020bd4e0, _ZN6Player19func_ov002_020bd4e0EPhii, "0210a124" },
+    { data_ov002_0210a054, 0x020bd4c8, _ZN6Player19func_ov002_020bd4c8EPhii, "0210a054" },
+    { data_ov002_0210a0dc, 0x020bd4ac, _ZN6Player19func_ov002_020bd4acEPhii, "0210a0dc" },
+    { data_ov002_0210a534, 0x020bd480, _ZN6Player19func_ov002_020bd480EPhii, "0210a534" },
+    { data_ov002_0210a0b4, 0x020bd45c, _ZN6Player19func_ov002_020bd45cEPhii, "0210a0b4" },
+    { data_ov002_0210a094, 0x020bd438, _ZN6Player19func_ov002_020bd438EPhii, "0210a094" },
+    { data_ov002_0210a40c, 0x020bd3a0, _ZN6Player19func_ov002_020bd3a0EPhii, "0210a40c" },
+    { data_ov002_0210a474, 0x020bd354, _ZN6Player19func_ov002_020bd354EPhii, "0210a474" },
+    { data_ov002_0210a44c, 0x020bd250, _ZN6Player19func_ov002_020bd250EPhii, "0210a44c" },
+    { data_ov002_0210a3fc, 0x020bd20c, _ZN6Player19func_ov002_020bd20cEPhii, "0210a3fc" },
+    { data_ov002_0210a3c4, 0x020bcd38, _ZN6Player19func_ov002_020bcd38EPhii, "0210a3c4" },
+    { data_ov002_0210a064, 0x020bcd18, _ZN6Player19func_ov002_020bcd18EPhii, "0210a064" },
+    { data_ov002_0210a36c, 0x020bccfc, _ZN6Player19func_ov002_020bccfcEPhii, "0210a36c" },
 };
 
 /* ---- RUNG 2: THE MATCHED TU RUNS, AND THIS IS WHAT LETS IT ----------------
@@ -266,20 +266,20 @@ static unsigned g_kuppa_hits[14];
         sym(self, p, a2, a3);                                                 \
     }
 
-KUPPA_FACE(0,  func_ov002_020bd600)
-KUPPA_FACE(1,  func_ov002_020bd4e0)
-KUPPA_FACE(2,  func_ov002_020bd4c8)
-KUPPA_FACE(3,  func_ov002_020bd4ac)
-KUPPA_FACE(4,  func_ov002_020bd480)
-KUPPA_FACE(5,  func_ov002_020bd45c)
-KUPPA_FACE(6,  func_ov002_020bd438)
-KUPPA_FACE(7,  func_ov002_020bd3a0)
-KUPPA_FACE(8,  func_ov002_020bd354)
-KUPPA_FACE(9,  func_ov002_020bd250)
-KUPPA_FACE(10, func_ov002_020bd20c)
-KUPPA_FACE(11, func_ov002_020bcd38)
-KUPPA_FACE(12, func_ov002_020bcd18)
-KUPPA_FACE(13, func_ov002_020bccfc)
+KUPPA_FACE(0,  _ZN6Player19func_ov002_020bd600EPhii)
+KUPPA_FACE(1,  _ZN6Player19func_ov002_020bd4e0EPhii)
+KUPPA_FACE(2,  _ZN6Player19func_ov002_020bd4c8EPhii)
+KUPPA_FACE(3,  _ZN6Player19func_ov002_020bd4acEPhii)
+KUPPA_FACE(4,  _ZN6Player19func_ov002_020bd480EPhii)
+KUPPA_FACE(5,  _ZN6Player19func_ov002_020bd45cEPhii)
+KUPPA_FACE(6,  _ZN6Player19func_ov002_020bd438EPhii)
+KUPPA_FACE(7,  _ZN6Player19func_ov002_020bd3a0EPhii)
+KUPPA_FACE(8,  _ZN6Player19func_ov002_020bd354EPhii)
+KUPPA_FACE(9,  _ZN6Player19func_ov002_020bd250EPhii)
+KUPPA_FACE(10, _ZN6Player19func_ov002_020bd20cEPhii)
+KUPPA_FACE(11, _ZN6Player19func_ov002_020bcd38EPhii)
+KUPPA_FACE(12, _ZN6Player19func_ov002_020bcd18EPhii)
+KUPPA_FACE(13, _ZN6Player19func_ov002_020bccfcEPhii)
 
 static void kuppa_census_dump(void)
 {
@@ -304,20 +304,20 @@ static void kuppa_census_dump(void)
 
 /* the faces in g_cmds order, which is the command index order */
 static void *const g_cmd_faces[14] = {
-    (void *)&kuppa_face_func_ov002_020bd600,
-    (void *)&kuppa_face_func_ov002_020bd4e0,
-    (void *)&kuppa_face_func_ov002_020bd4c8,
-    (void *)&kuppa_face_func_ov002_020bd4ac,
-    (void *)&kuppa_face_func_ov002_020bd480,
-    (void *)&kuppa_face_func_ov002_020bd45c,
-    (void *)&kuppa_face_func_ov002_020bd438,
-    (void *)&kuppa_face_func_ov002_020bd3a0,
-    (void *)&kuppa_face_func_ov002_020bd354,
-    (void *)&kuppa_face_func_ov002_020bd250,
-    (void *)&kuppa_face_func_ov002_020bd20c,
-    (void *)&kuppa_face_func_ov002_020bcd38,
-    (void *)&kuppa_face_func_ov002_020bcd18,
-    (void *)&kuppa_face_func_ov002_020bccfc,
+    (void *)&kuppa_face__ZN6Player19func_ov002_020bd600EPhii,
+    (void *)&kuppa_face__ZN6Player19func_ov002_020bd4e0EPhii,
+    (void *)&kuppa_face__ZN6Player19func_ov002_020bd4c8EPhii,
+    (void *)&kuppa_face__ZN6Player19func_ov002_020bd4acEPhii,
+    (void *)&kuppa_face__ZN6Player19func_ov002_020bd480EPhii,
+    (void *)&kuppa_face__ZN6Player19func_ov002_020bd45cEPhii,
+    (void *)&kuppa_face__ZN6Player19func_ov002_020bd438EPhii,
+    (void *)&kuppa_face__ZN6Player19func_ov002_020bd3a0EPhii,
+    (void *)&kuppa_face__ZN6Player19func_ov002_020bd354EPhii,
+    (void *)&kuppa_face__ZN6Player19func_ov002_020bd250EPhii,
+    (void *)&kuppa_face__ZN6Player19func_ov002_020bd20cEPhii,
+    (void *)&kuppa_face__ZN6Player19func_ov002_020bcd38EPhii,
+    (void *)&kuppa_face__ZN6Player19func_ov002_020bcd18EPhii,
+    (void *)&kuppa_face__ZN6Player19func_ov002_020bccfcEPhii,
 };
 
 /* Called from ov002's bring-up in tests/walk_window.cpp and
@@ -368,30 +368,30 @@ extern "C" void port_kuppa_cmd_seat(void)
  * slice_gate10.txt:874, directly below the first dispatcher's.
  */
 extern "C" {
-void func_ov002_020f7bb8(void *, unsigned char *, int, int);
-void func_ov002_020f79c0(void *, unsigned char *, int, int);
-void func_ov002_020f7780(void *, unsigned char *, int, int);
-void func_ov002_020f7538(void *, unsigned char *, int, int);
-void func_ov002_020f7410(void *, unsigned char *, int, int);
-void func_ov002_020f7384(void *, unsigned char *, int, int);
-void func_ov002_020f72bc(void *, unsigned char *, int, int);
-void func_ov002_020f71c4(void *, unsigned char *, int, int);
-void func_ov002_020f7038(void *, unsigned char *, int, int);
-void func_ov002_020f7020(void *, unsigned char *, int, int);
-void func_ov002_020f6e48(void *, unsigned char *, int, int);
-void func_ov002_020f6c60(void *, unsigned char *, int, int);
-void func_ov002_020f6c34(void *, unsigned char *, int, int);
-void func_ov002_020f6c24(void *, unsigned char *, int, int);
-void func_ov002_020f6bc0(void *, unsigned char *, int, int);
-void func_ov002_020f6b4c(void *, unsigned char *, int, int);
-void func_ov002_020f6b28(void *, unsigned char *, int, int);
-void func_ov002_020f6ae4(void *, unsigned char *, int, int);
-void func_ov002_020f6ab8(void *, unsigned char *, int, int);
-void func_ov002_020f6a9c(void *, unsigned char *, int, int);
-void func_ov002_020f6448(void *, unsigned char *, int, int);
-void func_ov002_020f63f8(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f7bb8EPht(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f79c0EPvi(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f7780EPvi(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f7538EPhi(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f7410EPhi(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f7384EPhi(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f72bcEv(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f71c4Eii(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f7038Eii(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f7020Ev(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f6e48EPh(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f6c60EPvii(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f6c34EPh(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f6c24EPh(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f6bc0EPh(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f6b4cEPh(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f6b28EPh(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f6ae4EPh(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f6ab8EPh(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f6a9cEv(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f6448EPh(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f63f8EPh(void *, unsigned char *, int, int);
 void func_ov002_020f26d4(void *, unsigned char *, int, int);
-void func_ov002_020f26c4(void *, unsigned char *, int, int);
+void _ZN8daDemo_c19func_ov002_020f26c4EPh(void *, unsigned char *, int, int);
 
 extern PortPmf data_ov002_0210b708[], data_ov002_0210b678[],
     data_ov002_0210b618[], data_ov002_0210b620[], data_ov002_0210b640[],
@@ -457,30 +457,30 @@ static unsigned g_objcmd_hits[24];
         sym(self, p, a2, a3);                                                 \
     }
 
-KUPPA_OBJ_FACE(0,  func_ov002_020f7bb8)
-KUPPA_OBJ_FACE(1,  func_ov002_020f79c0)
-KUPPA_OBJ_FACE(2,  func_ov002_020f7780)
-KUPPA_OBJ_FACE(3,  func_ov002_020f7538)
-KUPPA_OBJ_FACE(4,  func_ov002_020f7410)
-KUPPA_OBJ_FACE(5,  func_ov002_020f7384)
-KUPPA_OBJ_FACE(6,  func_ov002_020f72bc)
-KUPPA_OBJ_FACE(7,  func_ov002_020f71c4)
-KUPPA_OBJ_FACE(8,  func_ov002_020f7038)
-KUPPA_OBJ_FACE(9,  func_ov002_020f7020)
-KUPPA_OBJ_FACE(10, func_ov002_020f6e48)
-KUPPA_OBJ_FACE(11, func_ov002_020f6c60)
-KUPPA_OBJ_FACE(12, func_ov002_020f6c34)
-KUPPA_OBJ_FACE(13, func_ov002_020f6c24)
-KUPPA_OBJ_FACE(14, func_ov002_020f6bc0)
-KUPPA_OBJ_FACE(15, func_ov002_020f6b4c)
-KUPPA_OBJ_FACE(16, func_ov002_020f6b28)
-KUPPA_OBJ_FACE(17, func_ov002_020f6ae4)
-KUPPA_OBJ_FACE(18, func_ov002_020f6ab8)
-KUPPA_OBJ_FACE(19, func_ov002_020f6a9c)
-KUPPA_OBJ_FACE(20, func_ov002_020f6448)
-KUPPA_OBJ_FACE(21, func_ov002_020f63f8)
+KUPPA_OBJ_FACE(0,  _ZN8daDemo_c19func_ov002_020f7bb8EPht)
+KUPPA_OBJ_FACE(1,  _ZN8daDemo_c19func_ov002_020f79c0EPvi)
+KUPPA_OBJ_FACE(2,  _ZN8daDemo_c19func_ov002_020f7780EPvi)
+KUPPA_OBJ_FACE(3,  _ZN8daDemo_c19func_ov002_020f7538EPhi)
+KUPPA_OBJ_FACE(4,  _ZN8daDemo_c19func_ov002_020f7410EPhi)
+KUPPA_OBJ_FACE(5,  _ZN8daDemo_c19func_ov002_020f7384EPhi)
+KUPPA_OBJ_FACE(6,  _ZN8daDemo_c19func_ov002_020f72bcEv)
+KUPPA_OBJ_FACE(7,  _ZN8daDemo_c19func_ov002_020f71c4Eii)
+KUPPA_OBJ_FACE(8,  _ZN8daDemo_c19func_ov002_020f7038Eii)
+KUPPA_OBJ_FACE(9,  _ZN8daDemo_c19func_ov002_020f7020Ev)
+KUPPA_OBJ_FACE(10, _ZN8daDemo_c19func_ov002_020f6e48EPh)
+KUPPA_OBJ_FACE(11, _ZN8daDemo_c19func_ov002_020f6c60EPvii)
+KUPPA_OBJ_FACE(12, _ZN8daDemo_c19func_ov002_020f6c34EPh)
+KUPPA_OBJ_FACE(13, _ZN8daDemo_c19func_ov002_020f6c24EPh)
+KUPPA_OBJ_FACE(14, _ZN8daDemo_c19func_ov002_020f6bc0EPh)
+KUPPA_OBJ_FACE(15, _ZN8daDemo_c19func_ov002_020f6b4cEPh)
+KUPPA_OBJ_FACE(16, _ZN8daDemo_c19func_ov002_020f6b28EPh)
+KUPPA_OBJ_FACE(17, _ZN8daDemo_c19func_ov002_020f6ae4EPh)
+KUPPA_OBJ_FACE(18, _ZN8daDemo_c19func_ov002_020f6ab8EPh)
+KUPPA_OBJ_FACE(19, _ZN8daDemo_c19func_ov002_020f6a9cEv)
+KUPPA_OBJ_FACE(20, _ZN8daDemo_c19func_ov002_020f6448EPh)
+KUPPA_OBJ_FACE(21, _ZN8daDemo_c19func_ov002_020f63f8EPh)
 KUPPA_OBJ_FACE(22, func_ov002_020f26d4)
-KUPPA_OBJ_FACE(23, func_ov002_020f26c4)
+KUPPA_OBJ_FACE(23, _ZN8daDemo_c19func_ov002_020f26c4EPh)
 
 /* command index -> {the ROM slot, the address the record must hold, the face,
    its name}. The slot order is the ROM's own initialiser order, which is the
@@ -493,30 +493,30 @@ static const struct {
     KuppaObjFace face;
     const char *name;
 } g_objcmd_seats[24] = {
-    { data_ov002_0210b708, 0x020f7bb8, objcmd_face_func_ov002_020f7bb8, "0210b708" },
-    { data_ov002_0210b678, 0x020f79c0, objcmd_face_func_ov002_020f79c0, "0210b678" },
-    { data_ov002_0210b618, 0x020f7780, objcmd_face_func_ov002_020f7780, "0210b618" },
-    { data_ov002_0210b620, 0x020f7538, objcmd_face_func_ov002_020f7538, "0210b620" },
-    { data_ov002_0210b640, 0x020f7410, objcmd_face_func_ov002_020f7410, "0210b640" },
-    { data_ov002_0210b628, 0x020f7384, objcmd_face_func_ov002_020f7384, "0210b628" },
-    { data_ov002_0210b648, 0x020f72bc, objcmd_face_func_ov002_020f72bc, "0210b648" },
-    { data_ov002_0210b8c0, 0x020f71c4, objcmd_face_func_ov002_020f71c4, "0210b8c0" },
-    { data_ov002_0210b900, 0x020f7038, objcmd_face_func_ov002_020f7038, "0210b900" },
-    { data_ov002_0210b938, 0x020f7020, objcmd_face_func_ov002_020f7020, "0210b938" },
-    { data_ov002_0210b930, 0x020f6e48, objcmd_face_func_ov002_020f6e48, "0210b930" },
-    { data_ov002_0210b928, 0x020f6c60, objcmd_face_func_ov002_020f6c60, "0210b928" },
-    { data_ov002_0210b920, 0x020f6c34, objcmd_face_func_ov002_020f6c34, "0210b920" },
-    { data_ov002_0210b918, 0x020f6c24, objcmd_face_func_ov002_020f6c24, "0210b918" },
-    { data_ov002_0210b910, 0x020f6bc0, objcmd_face_func_ov002_020f6bc0, "0210b910" },
-    { data_ov002_0210b908, 0x020f6b4c, objcmd_face_func_ov002_020f6b4c, "0210b908" },
-    { data_ov002_0210b750, 0x020f6b28, objcmd_face_func_ov002_020f6b28, "0210b750" },
-    { data_ov002_0210b8f8, 0x020f6ae4, objcmd_face_func_ov002_020f6ae4, "0210b8f8" },
-    { data_ov002_0210b8f0, 0x020f6ab8, objcmd_face_func_ov002_020f6ab8, "0210b8f0" },
-    { data_ov002_0210b8e8, 0x020f6a9c, objcmd_face_func_ov002_020f6a9c, "0210b8e8" },
-    { data_ov002_0210b8e0, 0x020f6448, objcmd_face_func_ov002_020f6448, "0210b8e0" },
-    { data_ov002_0210b8d8, 0x020f63f8, objcmd_face_func_ov002_020f63f8, "0210b8d8" },
+    { data_ov002_0210b708, 0x020f7bb8, objcmd_face__ZN8daDemo_c19func_ov002_020f7bb8EPht, "0210b708" },
+    { data_ov002_0210b678, 0x020f79c0, objcmd_face__ZN8daDemo_c19func_ov002_020f79c0EPvi, "0210b678" },
+    { data_ov002_0210b618, 0x020f7780, objcmd_face__ZN8daDemo_c19func_ov002_020f7780EPvi, "0210b618" },
+    { data_ov002_0210b620, 0x020f7538, objcmd_face__ZN8daDemo_c19func_ov002_020f7538EPhi, "0210b620" },
+    { data_ov002_0210b640, 0x020f7410, objcmd_face__ZN8daDemo_c19func_ov002_020f7410EPhi, "0210b640" },
+    { data_ov002_0210b628, 0x020f7384, objcmd_face__ZN8daDemo_c19func_ov002_020f7384EPhi, "0210b628" },
+    { data_ov002_0210b648, 0x020f72bc, objcmd_face__ZN8daDemo_c19func_ov002_020f72bcEv, "0210b648" },
+    { data_ov002_0210b8c0, 0x020f71c4, objcmd_face__ZN8daDemo_c19func_ov002_020f71c4Eii, "0210b8c0" },
+    { data_ov002_0210b900, 0x020f7038, objcmd_face__ZN8daDemo_c19func_ov002_020f7038Eii, "0210b900" },
+    { data_ov002_0210b938, 0x020f7020, objcmd_face__ZN8daDemo_c19func_ov002_020f7020Ev, "0210b938" },
+    { data_ov002_0210b930, 0x020f6e48, objcmd_face__ZN8daDemo_c19func_ov002_020f6e48EPh, "0210b930" },
+    { data_ov002_0210b928, 0x020f6c60, objcmd_face__ZN8daDemo_c19func_ov002_020f6c60EPvii, "0210b928" },
+    { data_ov002_0210b920, 0x020f6c34, objcmd_face__ZN8daDemo_c19func_ov002_020f6c34EPh, "0210b920" },
+    { data_ov002_0210b918, 0x020f6c24, objcmd_face__ZN8daDemo_c19func_ov002_020f6c24EPh, "0210b918" },
+    { data_ov002_0210b910, 0x020f6bc0, objcmd_face__ZN8daDemo_c19func_ov002_020f6bc0EPh, "0210b910" },
+    { data_ov002_0210b908, 0x020f6b4c, objcmd_face__ZN8daDemo_c19func_ov002_020f6b4cEPh, "0210b908" },
+    { data_ov002_0210b750, 0x020f6b28, objcmd_face__ZN8daDemo_c19func_ov002_020f6b28EPh, "0210b750" },
+    { data_ov002_0210b8f8, 0x020f6ae4, objcmd_face__ZN8daDemo_c19func_ov002_020f6ae4EPh, "0210b8f8" },
+    { data_ov002_0210b8f0, 0x020f6ab8, objcmd_face__ZN8daDemo_c19func_ov002_020f6ab8EPh, "0210b8f0" },
+    { data_ov002_0210b8e8, 0x020f6a9c, objcmd_face__ZN8daDemo_c19func_ov002_020f6a9cEv, "0210b8e8" },
+    { data_ov002_0210b8e0, 0x020f6448, objcmd_face__ZN8daDemo_c19func_ov002_020f6448EPh, "0210b8e0" },
+    { data_ov002_0210b8d8, 0x020f63f8, objcmd_face__ZN8daDemo_c19func_ov002_020f63f8EPh, "0210b8d8" },
     { data_ov002_0210b8d0, 0x020f26d4, objcmd_face_func_ov002_020f26d4, "0210b8d0" },
-    { data_ov002_0210b8c8, 0x020f26c4, objcmd_face_func_ov002_020f26c4, "0210b8c8" },
+    { data_ov002_0210b8c8, 0x020f26c4, objcmd_face__ZN8daDemo_c19func_ov002_020f26c4EPh, "0210b8c8" },
 };
 
 static void kuppa_objcmd_census_dump(void)

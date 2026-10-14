@@ -29,7 +29,7 @@ void _ZN7PathPtrC1Ev(void* self);
 void _ZN7PathPtr6FromIDEj(void* self, u32 id);
 s32 _ZNK7PathPtr8NumNodesEv(const void* self);
 void _ZNK7PathPtr7GetNodeER7Vector3j(const void* self, void* out, u32 idx);
-u32 func_0203ad54(void* c);
+u32 _ZNK7PathPtr9GetUnk004Ev(void* c);
 s16 Vec3_HorzAngle(const void* v0, const void* v1);
 s16 Vec3_VertAngle(const void* v0, const void* v1);
 s32 func_ov002_020e0478(void* c);
@@ -52,7 +52,7 @@ extern struct State data_ov002_0211064c;
 extern struct State data_ov002_021101b4;
 extern struct State data_ov002_021102d4;
 
-int func_ov002_020bfa74(char* self)
+int _ZN6Player19func_ov002_020bfa74Ev(char* self)
 {
     struct Frame fr;
     s32 numNodes;
@@ -81,7 +81,7 @@ int func_ov002_020bfa74(char* self)
         } while (i < numNodes);
     }
 
-    fr.bodyIdx = (u8)func_0203ad54(&fr.path);
+    fr.bodyIdx = (u8)_ZNK7PathPtr9GetUnk004Ev(&fr.path);
     if (fr.bodyIdx >= 4) fr.bodyIdx = 1;
 
     horzAngle = Vec3_HorzAngle(&fr.nodes[0], &fr.nodes[1]);

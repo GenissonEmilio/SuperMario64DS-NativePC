@@ -114,8 +114,8 @@ RULES = [
         # _ZN10FaderColor11AdvanceFadeEv call" and exits 1, over a TU that is
         # in a slice -- which is the state the row could never reach before,
         # because the refusal kept the TU out of every slice.
-        "symbol": "_ZN10FaderColor11AdvanceFadeEv",
-        "pattern": re.compile(r"_ZN10FaderColor11AdvanceFadeEv\s*\(\s*\)"),
+        "symbol": "_ZN10dFdColor_c11AdvanceFadeEv",
+        "pattern": re.compile(r"_ZN10dFdColor_c11AdvanceFadeEv\s*\(\s*\)"),
         "remedy": (
             "FaderColor::AdvanceFade is thiscall. The ROM reaches it with the "
             "receiver riding through in r0, and a call spelled with no "

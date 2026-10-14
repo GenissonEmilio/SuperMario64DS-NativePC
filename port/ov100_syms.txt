@@ -30,10 +30,10 @@
 # --pack turns each exclusion into a zeroed gap of the right length, so the
 # rest of the overlay's data keeps its ROM spacing and the emitted check still
 # asserts every offset at boot.
-data_ov100_021473a4:0xc data_ov100_021473b0:0xc data_ov100_02147e20:0x8
-data_ov100_02147e28:0x8 data_ov100_02147e30:0x8 data_ov100_02147e38:0x8
-data_ov100_02147e40:0x8 data_ov100_02147e48:0x8 data_ov100_02147e50:0x8
-data_ov100_02147e58:0x8 _ZTS9daBtfly_c:0xc _ZTI9daBtfly_c:0xc
+data_ov100_021473a4:0xc data_ov100_021473b0:0xc data_ov100_02147e20@0x02147e20:0x8
+data_ov100_02147e28@0x02147e28:0x8 data_ov100_02147e30@0x02147e30:0x8 data_ov100_02147e38@0x02147e38:0x8
+data_ov100_02147e40@0x02147e40:0x8 data_ov100_02147e48@0x02147e48:0x8 data_ov100_02147e50@0x02147e50:0x8
+data_ov100_02147e58@0x02147e58:0x8 _ZTS9daBtfly_c:0xc _ZTI9daBtfly_c:0xc
 g_profile_BUTTERFLY:0x1c data_ov100_02147f18:0x8 data_ov100_02147f20:0x8
 data_ov100_02147f28:0x8 data_ov100_02147f30:0x8 data_ov100_02147f38:0x8
 _ZTS7daIbl_c:0xc _ZTI7daIbl_c:0xc g_profile_IRONBALL:0x1c
@@ -53,35 +53,54 @@ data_ov100_02148448:0x8 data_ov100_02148450:0x8
 data_ov100_02148458:0x8 data_ov100_02148460:0x8 data_ov100_02148468:0x8
 data_ov100_02148470:0x8 data_ov100_02148478:0x8 _ZTS8daFish_c:0xc
 _ZTI8daFish_c:0xc g_profile_FISH:0x1c _ZTI15daObjPathLift_c:0xc _ZTS15daObjPathLift_c:0x14
-g_profile_PATH_LIFT:0x1c data_ov100_02148600:0x8 data_ov100_02148608:0x8
-data_ov100_02148610:0xc data_ov100_0214861c:0xc data_ov100_02148628:0x40
+g_profile_PATH_LIFT:0x1c
+data_ov100_02148610@0x02148610:0xc data_ov100_0214861c@0x0214861c:0xc
 data_ov100_02148668:0x8 data_ov100_02148670:0xc data_ov100_0214867c:0x28
 data_ov100_021486a4:0x8 data_ov100_021486ac:0x8 data_ov100_021486b4:0x8
-data_ov100_021486bc:0x8 data_ov100_021486c4:0xc data_ov100_021486d0:0xc
-data_ov100_021486dc:0xc data_ov100_021486e8:0xc data_ov100_021486f4:0x10
+data_ov100_021486bc:0x8 data_ov100_021486c4@0x021486c4:0xc data_ov100_021486d0@0x021486d0:0xc
+data_ov100_021486dc@0x021486dc:0xc data_ov100_021486e8@0x021486e8:0xc
 data_ov100_02148704:0x4 data_ov100_02148708:0x4 data_ov100_0214870c:0x4
 data_ov100_02148710:0x4 data_ov100_02148714:0x4 data_ov100_02148718:0x4
 data_ov100_0214871c:0x4 data_ov100_02148720:0x4 data_ov100_02148724:0x8
 data_ov100_0214872c:0x8 data_ov100_02148734:0x8 data_ov100_0214873c:0x8
 data_ov100_02148744:0x8 data_ov100_0214874c:0x8 data_ov100_02148754:0x8
 data_ov100_0214875c:0x8 data_ov100_02148764:0x8 data_ov100_0214876c:0x8
-data_ov100_02148774:0x8 data_ov100_0214877c:0x8 data_ov100_02148784:0xc
-data_ov100_02148790:0xc data_ov100_0214879c:0xc data_ov100_021487a8:0xc
+data_ov100_02148774:0x8 data_ov100_0214877c:0x8 data_ov100_02148784@0x02148784:0xc
+data_ov100_02148790:0xc data_ov100_0214879c:0xc data_ov100_021487a8@0x021487a8:0xc
 data_ov100_021487b4:0xc data_ov100_021487c0:0xc data_ov100_021487cc:0xc
 data_ov100_021487d8:0xc data_ov100_021487e4:0xc data_ov100_021487f0:0xc
-data_ov100_021487fc:0xc data_ov100_02148808:0xc data_ov100_02148814:0xc
-data_ov100_02148820:0xc data_ov100_0214882c:0xc data_ov100_02148838:0xc
-data_ov100_02148844:0xc data_ov100_02148850:0xc data_ov100_0214885c:0xc
-data_ov100_02148868:0xc data_ov100_02148874:0xc data_ov100_02148880:0xc
-data_ov100_0214888c:0xc data_ov100_02148898:0xc data_ov100_021488a4:0x10
+data_ov100_021487fc:0xc data_ov100_02148808:0xc data_ov100_02148814@0x02148814:0xc
+data_ov100_02148820@0x02148820:0xc data_ov100_0214882c@0x0214882c:0xc data_ov100_02148838@0x02148838:0xc
+data_ov100_02148844@0x02148844:0xc data_ov100_02148850:0xc data_ov100_0214885c@0x0214885c:0xc
+data_ov100_02148868@0x02148868:0xc data_ov100_02148874@0x02148874:0xc data_ov100_02148880:0xc
+data_ov100_0214888c@0x0214888c:0xc data_ov100_02148898@0x02148898:0xc data_ov100_021488a4:0x10
 data_ov100_021488b4:0x10 data_ov100_021488c4:0x10 data_ov100_021488d4:0x10
 data_ov100_021488e4:0x10 data_ov100_021488f4:0x10 data_ov100_02148904:0x10
 data_ov100_02148914:0x10 data_ov100_02148924:0x10
 data_ov100_0214893c@0x0214893c:0xc _ZN12daStarGate_c13ST_OPEN_CLOSEE:0x10
 _ZN12daStarGate_c14ST_STAY_CLOSEDE:0x10 _ZN12daStarGate_c7ST_WAITE:0x10 _ZN12daStarGate_c20ST_TALKING_TO_PLAYERE:0x10
-_ZN12daStarGate_c12ST_UNLOCKINGE:0x10 data_ov100_021489a4:0x8 data_ov100_021489ac:0x8
-data_ov100_021489b4:0x8 data_ov100_021489bc:0x8 data_ov100_021489c4:0x8
-data_ov100_021489cc:0x8 data_ov100_021489d4:0xc data_ov100_021489e0:0xc
-data_ov100_021489ec:0xc data_ov100_021489f8:0xc data_ov100_02148a04:0xc
-data_ov100_02148a10:0xc data_ov100_02148a1c:0x38 data_ov100_02148a54:0x8
-data_ov100_02148a5c:0x8 data_ov100_02148a64:0xc data_ov100_02148a70:0x10
+_ZN12daStarGate_c12ST_UNLOCKINGE:0x10
+
+data_ov100_021489d4@0x021489d4:0xc data_ov100_021489e0@0x021489e0:0xc
+data_ov100_021489ec@0x021489ec:0xc data_ov100_021489f8@0x021489f8:0xc data_ov100_02148a04@0x02148a04:0xc
+data_ov100_02148a10@0x02148a10:0xc data_ov100_02148a54:0x8
+data_ov100_02148a5c:0x8 data_ov100_02148a64@0x02148a64:0xc data_ov100_02148a70@0x02148a70:0x10
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov100_02148600                        now defined by src/actors/daBtfly_c.cpp
+#   data_ov100_02148608                        now defined by src/actors/daBtfly_c.cpp
+#   data_ov100_02148628                        now defined by src/actors/daBtfly_c.cpp
+#   data_ov100_021486f4                        now defined by src/actors/daWanwan2_c.cpp
+#   data_ov100_021489a4                        now defined by src/game/actors/d_a_fish.cpp
+#   data_ov100_021489ac                        now defined by src/game/actors/d_a_fish.cpp
+#   data_ov100_021489b4                        now defined by src/game/actors/d_a_fish.cpp
+#   data_ov100_021489bc                        now defined by src/game/actors/d_a_fish.cpp
+#   data_ov100_021489c4                        now defined by src/game/actors/d_a_fish.cpp
+#   data_ov100_021489cc                        now defined by src/game/actors/d_a_fish.cpp
+#   data_ov100_02148a1c                        now defined by src/game/actors/d_a_fish.cpp

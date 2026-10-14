@@ -56,7 +56,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 #include "dActor_c.h"
 #include "dtor_faces_cpp.h"
 #include "fBase_c.h"
-#include "MontyMole.h"
+#include "daChoropu_c.h"
 
 extern "C" {
 /* the shared lifecycle halves, the same functions every fill writes */
@@ -84,10 +84,10 @@ void port_actor_render_probe(const char *cls, void *model); /* actor_classes */
 
 /* MontyMole's own C-linkage bodies. Behavior is the HOST COPY in
    port/unmatched/MontyMole_StateDispatch.cpp, not the matched src. */
-int _ZN9MontyMole8BehaviorEv(void *self);         /* slot 6, HOST copy */
-int _ZN9MontyMole16CleanupResourcesEv(void);      /* slot 3, .c C linkage */
-int *_ZN9MontyMoleD0Ev(int *self);                /* slot 17, .c C linkage */
-int _ZN9MontyMole16OnAimedAtWithEggEv(void);                    /* slot 29, OnAimedAtWithEgg */
+int _ZN11daChoropu_c8BehaviorEv(void *self);         /* slot 6, HOST copy */
+int _ZN11daChoropu_c16CleanupResourcesEv(void);      /* slot 3, .c C linkage */
+int *_ZN11daChoropu_cD0Ev(int *self);                /* slot 17, .c C linkage */
+int _ZN11daChoropu_c16OnAimedAtWithEggEv(void);                    /* slot 29, OnAimedAtWithEgg */
 void *daChoropu_c_classInit(void);
 
 /* the D1 chain's sub-object destructors, all C-linkage in the build */
@@ -99,15 +99,14 @@ void *_ZN8dActor_cD2Ev(void *);               /* the Actor base */
    `p[0] = (int)_ZTV9MontyMole`); thirty-one slots. Defined here, not just
    declared: the `int` type and C linkage match the `extern int _ZTV9MontyMole[]`
    in include/decl_common.h that the .c factory and D0 read. */
-int _ZTV9MontyMole[31];
+int _ZTV11daChoropu_c[31];
 }
 
 /* MontyMoleD0.c stores _ZTV11daChoropu_c (the RTTI base spelling dsd names at
    the same address) into the object's slot 0; both references are C linkage, so
    point the underscore spelling at the one host array -- the daChair_c
    precedent. */
-#pragma comment(linker, "/alternatename:__ZTV11daChoropu_c=__ZTV9MontyMole")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV11daChoropu_c=__ZTV11daChoropu_c")
 /* The C++/C linkage bridge, the gate-172/173 reading. InitResources declares
    the two model SharedFilePtrs and the anim-table pointer array as typed C++
    globals outside its extern "C" block -- three MSVC data spellings of the
@@ -191,7 +190,7 @@ static int __fastcall mm_under(void *s, void *, void *o)
 /* Init and Render are real __thiscall members; the face bridges cdecl to
    __thiscall so the ecx that never held `this` is not handed to the body. */
 static int __fastcall mm_init(void *s, void *)
-{ return ((MontyMole *)s)->MontyMole::InitResources(); }
+{ return ((daChoropu_c *)s)->daChoropu_c::InitResources(); }
 /* GATE 230: the matched Render is back, the same reading as the three ov065
    classes -- the ModelAnim virtual-destructor unfold in this branch's base put
    slot 5 back on Render, so the six-virtual shadow this body dispatches lands
@@ -200,16 +199,16 @@ static int __fastcall mm_init(void *s, void *)
    _ZN9MontyMole6RenderEv kind:function(arm,size=0x28). */
 static int __fastcall mm_render(void *s, void *)
 { port_actor_render_probe("MONTY_MOLE", (char *)s + 0xd4);
-  return ((MontyMole *)s)->MontyMole::Render(); }
+  return ((daChoropu_c *)s)->daChoropu_c::Render(); }
 /* Behavior is the HOST copy (C linkage), Cleanup and D0 are plain C. */
 static int __fastcall mm_behavior(void *s, void *)
-{ return _ZN9MontyMole8BehaviorEv(s); }
+{ return _ZN11daChoropu_c8BehaviorEv(s); }
 static int __fastcall mm_clean(void *s, void *)
-{ return _ZN9MontyMole16CleanupResourcesEv(); }
+{ return _ZN11daChoropu_c16CleanupResourcesEv(); }
 static int __fastcall mm_d0(void *s, void *)
-{ return (int)(size_t)_ZN9MontyMoleD0Ev((int *)s); }
+{ return (int)(size_t)_ZN11daChoropu_cD0Ev((int *)s); }
 static int __fastcall mm_aimed(void *s, void *)
-{ (void)s; return _ZN9MontyMole16OnAimedAtWithEggEv(); }
+{ (void)s; return _ZN11daChoropu_c16OnAimedAtWithEggEv(); }
 /* D1, the complete-object destructor slot 16 holds: the D0 chain
    (_ZN9MontyMoleD0Ev) without the Memory::Deallocate at its tail, because the
    caller of slot 16 (ActorBase::AfterCleanupResources) deallocates itself.
@@ -219,7 +218,7 @@ static int __fastcall mm_aimed(void *s, void *)
 
 extern "C" void hal_fill_monty_mole_vtable(void)
 {
-    void **vt = (void **)_ZTV9MontyMole;
+    void **vt = (void **)_ZTV11daChoropu_c;
     vt[0]  = (void *)mm_init;
     vt[1]  = (void *)mm_binit;
     vt[2]  = (void *)mm_ainit;

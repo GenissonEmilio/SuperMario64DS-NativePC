@@ -27,17 +27,17 @@ src/actors/Scuttlebug.cpp
 # port/unmatched/ModelAnim_Renders.cpp.
 # RETIRED at SLICE1: body now in src/_ZN10ScuttlebugD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN10ScuttlebugD0Ev.cpp
-src/__sinit_ov071_021226ac.c
-src/__sinit_ov071_021228c8.c
-src/__sinit_ov071_02122a1c.c
-src/__sinit_ov071_02122a64.c
+# FOLDED into src/actors/Scuttlebug.cpp (row 24): src/__sinit_ov071_021226ac.c
+src/unnamed/ov071/__sinit_ov071_021228c8.c
+src/game/actors/d_a_ey_bm.cpp
+src/actors/daObjCasket_c.cpp
 # Three arm9 helpers the state bodies call, matched C-form src the supervisor
 # added after the closure audit: the raycast probe, the non-vanish player
 # finder and the wall-result flag read.
-src/_ZN8dActor_c17DetectRaycastClsnER7Vector3S1_b.cpp
-src/_ZN8dActor_c22ClosestNonVanishPlayerEv.cpp
-src/_ZNK10dBgCh_Actr14GetResultFlag1Ev.cpp
+src/actors/dActor_c.cpp
+# FOLDED into src/actors/dActor_c.cpp (row 37): src/_ZN8dActor_c22ClosestNonVanishPlayerEv.cpp
+src/engine/collision/dBgCh_Actr.cpp
 # The anim loader InitResources reaches through decl_common's friendly
 # AnimLoadFile name: the STATIC Animation::LoadFile, matched src, aliased in
 # the fill.
-src/_ZN9Animation8LoadFileER13SharedFilePtr.cpp
+src/_ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr.cpp

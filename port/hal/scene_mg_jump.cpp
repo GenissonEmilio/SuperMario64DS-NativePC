@@ -284,7 +284,7 @@
    src/actors/dScMgD3DBase_c.cpp defines it under that name inside extern "C".
    One body, two spellings, and the caller has the one the config retired. */
 #pragma comment(linker, "/alternatename:_func_ov006_020e6df0=_Sound_PlayBank1Panned")
-#pragma comment(linker, "/alternatename:?LoadFile@Animation@@SAPAUBCA_File@@AAUSharedFilePtr@@@Z=__ZN9Animation8LoadFileER13SharedFilePtr")
+#pragma comment(linker, "/alternatename:?LoadFile@dExtFrameCtrl_c@@SAPAUBCA_File@@AAUSharedFilePtr@@@Z=__ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr")
 /* The int-spelled ModelAnim::SetAnim alias that used to sit here MOVED to the
    ROM-faithful int chain at the mg11 merge (unmatched/MgJump2_Faces.cpp): the
    void mapping was safe only while every caller discarded the result. */
@@ -404,7 +404,7 @@ extern char *data_ov006_02140420[];
 /* The ROM's own state-0 installer. This seat no longer calls it: the section-5
    diagnostic that did is gone, and the ignition at slot 18 reaches it the way
    the ROM does. Kept declared because the witness prose names it. */
-void  func_ov006_020ee658(void *self);
+void  _ZN11dScMgJump_c19func_ov006_020ee658Ev(void *self);
 
 /* the factory */
 void *dScMgJump_c_classInit(void);

@@ -54,33 +54,25 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "daOwl_c.h"
 
 extern "C" {
 struct PortHootPmf { unsigned fn; int delta; };
 
 /* the ten matched state-handler bodies (slice_gate194.txt) each cell's
    enter/tick fn word targets, reloc-confirmed against
-   config/arm9/overlays/ov094/relocs.txt. */
-int func_ov094_02135c28(void *self);
-int func_ov094_02136024(void *self);
-int func_ov094_02135bd4(void *self);
-int func_ov094_02135e64(void *self);
-int func_ov094_02136150(void *self);
-int func_ov094_021358b4(void *self);
-int func_ov094_0213598c(void *self);
-int func_ov094_02135fe0(void *self);
-int func_ov094_02135ee0(void *self);
-int func_ov094_021359d8(void *self);
+   config/arm9/overlays/ov094/relocs.txt. Main folded them into
+   src/actors/daOwl_c.cpp as daOwl_c members (include/daOwl_c.h), so the faces
+   below call the member, qualified, instead of a flat C body. */
 
 /* the five bss cells, each a 2-entry array of {fn,delta} -- [0]=enter,
    [1]=tick, per __sinit_ov094_021367e8's own copy order. */
 extern PortHootPmf data_ov094_02136b30[2], data_ov094_02136b40[2],
     data_ov094_02136b50[2], data_ov094_02136b60[2], data_ov094_02136b70[2];
 
-/* The ten faces: receiver in ecx, body called with it as its one cdecl
-   argument. */
+/* The ten faces: receiver in ecx, handed on as the member's own receiver. */
 #define HOOT_FACE(a) static int __fastcall hoot_st_##a(void *s) \
-    { return func_ov094_##a(s); }
+    { return ((daOwl_c *)s)->daOwl_c::func_ov094_##a(); }
 HOOT_FACE(02136150) HOOT_FACE(02136024) HOOT_FACE(02135fe0) HOOT_FACE(02135ee0)
 HOOT_FACE(02135e64) HOOT_FACE(02135c28) HOOT_FACE(02135bd4) HOOT_FACE(021359d8)
 HOOT_FACE(0213598c) HOOT_FACE(021358b4)

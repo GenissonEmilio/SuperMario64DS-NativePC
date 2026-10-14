@@ -110,16 +110,16 @@ int _ZN12dEnemyBase_cC2Ev(void *self);
 int _ZN10dCcAcPos_cC1Ev(void *self);
 int _ZN10dBgCh_ActrC1Ev(void *self);
 int _ZN9ModelAnimC1Ev(void *self);
-int _ZN11ShadowModelC1Ev(void *self);
+int _ZN17dExtShadowModel_cC1Ev(void *self);
 int __cxa_vec_ctor(void *arr, int n, int stride, void *ctor, void *dtor);
 void _ZN5ModelC1Ev(void);
 void _ZN5ModelD1Ev(void);
-void _ZN11ShadowModelD1Ev(void);
+void _ZN17dExtShadowModel_cD1Ev(void);
 void _ZN7Vector3D1Ev(void);
 void func_0203d384(void);
 void _ZN8Vector3sD1Ev(void);
 void func_0203d73c(void);
-extern int _ZTV14UnchainedChomp;
+extern int _ZTV11daWanwan2_c;
 
 /* PORT_HOST_ABI: ARM no-arg ctor call ride-through (operator new's `this`
    already sits in r0); cdecl needs it passed explicitly. daWanwan_c_classInit
@@ -129,13 +129,13 @@ void *daWanwan2_c_classInit(void)
     char *p = (char *)_ZN7fBase_cnwEj(0x7a4);
     if (p) {
         _ZN12dEnemyBase_cC2Ev(p);
-        *(int *)p = (int)&_ZTV14UnchainedChomp;
+        *(int *)p = (int)&_ZTV11daWanwan2_c;
         _ZN10dCcAcPos_cC1Ev(p + 0x110);
         _ZN10dBgCh_ActrC1Ev(p + 0x150);
         _ZN9ModelAnimC1Ev(p + 0x30c);
         __cxa_vec_ctor(p + 0x370, 6, 0x50, (void *)_ZN5ModelC1Ev, (void *)_ZN5ModelD1Ev);
-        __cxa_vec_ctor(p + 0x550, 6, 0x28, (void *)_ZN11ShadowModelC1Ev, (void *)_ZN11ShadowModelD1Ev);
-        _ZN11ShadowModelC1Ev(p + 0x640);
+        __cxa_vec_ctor(p + 0x550, 6, 0x28, (void *)_ZN17dExtShadowModel_cC1Ev, (void *)_ZN17dExtShadowModel_cD1Ev);
+        _ZN17dExtShadowModel_cC1Ev(p + 0x640);
         __cxa_vec_ctor(p + 0x6d8, 6, 0xc, (void *)func_0203d384, (void *)_ZN7Vector3D1Ev);
         __cxa_vec_ctor(p + 0x720, 6, 0xc, (void *)func_0203d384, (void *)_ZN7Vector3D1Ev);
         __cxa_vec_ctor(p + 0x768, 6, 6, (void *)func_0203d73c, (void *)_ZN8Vector3sD1Ev);
@@ -152,9 +152,9 @@ void *daWanwan2_c_classInit(void)
  * id); ...). Everything else is the matched source line for line. */
 void* _ZN5Model8LoadFileER13SharedFilePtr(void *p);
 int _ZN9ModelBase7SetFileEP8BMD_Fileii(void *self, void *f, int a, int b);
-void _ZN9Animation8LoadFileER13SharedFilePtr(void *p);
+void _ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr(void *p);
 void LoadSilverStarAndNumber(void);
-void _ZN11ShadowModel12InitCylinderEv(void *self);
+void _ZN17dExtShadowModel_c12InitCylinderEv(void *self);
 void _ZN10dCcAcPos_c4InitEP8dActor_cRK7Vector35Fix12IiES6_jj(
     void *self, void *a, const void *v, int fix12, int c, unsigned d, unsigned e);
 int func_ov100_02143b18(void *c, void *p);   /* defined below (the installer) */

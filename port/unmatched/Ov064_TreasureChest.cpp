@@ -109,11 +109,11 @@ int AngleDiff(int a, int b);
 void _ZN6Player5ShockEj(void *self, unsigned a);
 
 /* the five state bodies that DO have matched TUs (slice_w3c.txt) */
-int _ZN13TreasureChest6State2Ev(void *c);   /* Entry[2].tick  */
-int _ZN13TreasureChest10InitState2Ev(void *c);   /* Entry[2].enter */
-int _ZN13TreasureChest6State1Ev(void *c);   /* Entry[1].tick  */
-int _ZN13TreasureChest10InitState1Ev(void *c);   /* Entry[1].enter */
-int _ZN13TreasureChest10InitState0Ev(void *c);   /* Entry[0].enter */
+int _ZN11daObjTbox_c6State2Ev(void *c);   /* Entry[2].tick  */
+int _ZN11daObjTbox_c10InitState2Ev(void *c);   /* Entry[2].enter */
+int _ZN11daObjTbox_c6State1Ev(void *c);   /* Entry[1].tick  */
+int _ZN11daObjTbox_c10InitState1Ev(void *c);   /* Entry[1].enter */
+int _ZN11daObjTbox_c10InitState0Ev(void *c);   /* Entry[0].enter */
 
 /* the six SOURCE records the sinit copies from (data, { fn, 0 }) */
 extern PortPmf data_ov064_0211c49c[];   /* {0211a2c4, 0} -> Entry[2].tick  */
@@ -126,7 +126,7 @@ extern PortPmf data_ov064_0211c4c4[];   /* {0211a6e0, 0} -> Entry[0].enter */
 /* the RUNTIME table, three 16-byte Entries, filled by __sinit_ov064_0211b59c */
 extern PortEntry data_ov064_0211c98c[3];
 
-int _ZN13TreasureChest6State0Ev(void *self);
+int _ZN11daObjTbox_c6State0Ev(void *self);
 
 /* the arm9 body the receiver face below forwards into. Its matched TU is
    src/_ZN8dActor_c19UntrackAndSpawnStarERajRK7Vector3h.cpp, already in
@@ -185,7 +185,7 @@ void Actor::UntrackAndSpawnStar(signed char &trackStarID, unsigned starID,
    body transcribed in this file -- before a chest can exist. The six source
    pairs at ov064 0x0211c49c..0x0211c4c4 were re-read out of overlay_0064.bin
    with their relocations, every adjustment word ROM zero. */
-extern "C" void _ZN13TreasureChest8SetStateEi(void *self, int i);
+extern "C" void _ZN11daObjTbox_c8SetStateEi(void *self, int i);
 
 /* ============ THE TRANSCRIBED BODY IS RETIRED ==============================
    run link100 wave 15, lane SEAT15A -- the stale-banner harvest, round 2.
@@ -217,7 +217,7 @@ extern "C" void _ZN13TreasureChest8SetStateEi(void *self, int i);
 struct TreasureChest {
     public: void State0();
 };
-extern "C" int _ZN13TreasureChest6State0Ev(void *self)
+extern "C" int _ZN11daObjTbox_c6State0Ev(void *self)
 {
     ((TreasureChest *)self)->TreasureChest::State0();
     return 0;
@@ -260,17 +260,17 @@ extern "C" int _ZN13TreasureChest6State0Ev(void *self)
    make one class over. Each thunk NAMES its matched body or face, so trap T2's
    rule still holds, and the seat's abort-on-wrong-bytes check is untouched. */
 static int __fastcall tc_is0_pmf(void *self, void *)
-{ return _ZN13TreasureChest10InitState0Ev(self); }
+{ return _ZN11daObjTbox_c10InitState0Ev(self); }
 static int __fastcall tc_st0_pmf(void *self, void *)
-{ return _ZN13TreasureChest6State0Ev(self); }
+{ return _ZN11daObjTbox_c6State0Ev(self); }
 static int __fastcall tc_is1_pmf(void *self, void *)
-{ return _ZN13TreasureChest10InitState1Ev(self); }
+{ return _ZN11daObjTbox_c10InitState1Ev(self); }
 static int __fastcall tc_st1_pmf(void *self, void *)
-{ return _ZN13TreasureChest6State1Ev(self); }
+{ return _ZN11daObjTbox_c6State1Ev(self); }
 static int __fastcall tc_is2_pmf(void *self, void *)
-{ return _ZN13TreasureChest10InitState2Ev(self); }
+{ return _ZN11daObjTbox_c10InitState2Ev(self); }
 static int __fastcall tc_st2_pmf(void *self, void *)
-{ return _ZN13TreasureChest6State2Ev(self); }
+{ return _ZN11daObjTbox_c6State2Ev(self); }
 
 static const struct { PortPmf *slot; unsigned rom; int (__fastcall *host)(void *, void *); }
 g_treasure_chest_states[] = {

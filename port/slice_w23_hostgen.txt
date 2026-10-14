@@ -45,7 +45,7 @@
 # Consumed by the "W23-6 HOSTGEN REFUSALS" block in port/CMakeLists.txt, on
 # walk_window, walk_window_hires and smoke_player: the three targets that
 # carried the host copies.
-src/func_ov080_02124088.cpp
-src/func_ov064_02119afc.cpp
-src/func_ov002_020f7780.c
-src/_ZN5Bully16UpdateDeathStateEv.cpp
+src/actors/daChoropu_c.cpp
+src/actors/daWater_Ring_c.cpp
+src/actors/daDemo_c.cpp
+src/actors/daDonketu_c.cpp

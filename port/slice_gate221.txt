@@ -130,7 +130,7 @@
 # and nothing read past offset 0.  Seating this body makes the read real, so
 # the object is sized to its ROM span in the same commit -- the data_0209d3c4
 # shape three lines above it in that file, one more time.
-src/func_02058158.c
+src/unnamed/arm9/0205/func_02058158.c
 #
 # ---------------------------------------------------------------------------
 # ROWS 2 AND 3: src/func_02040a5c.c and src/func_02040a84.c -- THE STATUS-WORD
@@ -159,5 +159,5 @@ src/func_02058158.c
 # The storage and the section it goes in, and a decomp discrepancy the move
 # surfaced (a5c writes 0xB50, a84 reads 0xB58), are written up at the
 # retirement note in hal/comms_seam.cpp.
-src/func_02040a5c.c
-src/func_02040a84.c
+src/unnamed/arm9/0204/func_02040a5c.c
+src/unnamed/arm9/0204/func_02040a84.c

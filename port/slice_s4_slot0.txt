@@ -63,40 +63,40 @@
 # writing fifteen here borrowed the map's figure for a different slice.)
 
 # ---- the function itself
-src/_ZN5Stage13InitResourcesEv.cpp
+src/_ZN10dScStage_c13InitResourcesEv.cpp
 src/Enable3dEngines.c
 src/ResetInput.c
 src/LoadTextNarcs.c
 src/Initialise3dGraphics.cpp
-src/InitialiseVramGlobals.c
-src/func_02039218.c
+src/engine/model/Model4.cpp
+src/engine/collision/dBgW.cpp
 src/ResetKuppaScript.c
 src/LoadDebugFont.c
 src/IsLevelInsideCastle.c
 src/IsLevelTinyHugeIslandOutside.c
-src/func_020308a8.c
-src/func_0203da3c.c
-src/func_0203dad4.c
-src/func_ov001_020ab2e4.c
-src/engine/fader/_ZN9FaderWipeC1Ev.cpp
-src/engine/fader/_ZN9FaderWipeD1Ev.cpp
-src/_ZN8dScene_c20Initialise3dGraphicsEv.cpp
-src/_ZN4Heap10SetDefaultEv.cpp
-src/_ZN2GX15DisableAllBanksEv.cpp
-src/_ZN5Stage12SetVramBanksEv.cpp
+src/unnamed/arm9/0203/func_020308a8.c
+src/unnamed/arm9/0203/func_0203da3c.c
+src/unnamed/arm9/0203/func_0203dad4.c
+src/actors/dCapIcon_c.cpp
+src/engine/fader/dFader_c.cpp
+# FOLDED into src/engine/fader/dFader_c.cpp (row 81): src/engine/fader/_ZN9FaderWipeD1Ev.cpp
+src/actors/dScene_c.cpp
+src/engine/heap/Heap.cpp
+# FOLDED into src/actors/dScene_c.cpp (row 83): src/_ZN2GX15DisableAllBanksEv.cpp
+# FOLDED into src/actors/dScene_c.cpp (row 83): src/_ZN5Stage12SetVramBanksEv.cpp
 src/_ZN2GX15SetGraphicsModeEiii.cpp
 src/_ZN3GXS15SetGraphicsModeEi.cpp
 src/_ZN2GX6DispOnEv.cpp
-src/_ZN5Stage14LoadGraphics2DEbi.cpp
-src/_ZN5Sound8SetMusicEjj.cpp
-src/_ZN5Stage7LoadFogEv.cpp
-src/_ZN5Stage23LoadTextureTransformersEv.cpp
-src/_ZN11ShadowModel8CleanAllEv.cpp
+src/_ZN10dScStage_c14LoadGraphics2DEbi.cpp
+src/engine/sound/Sound.cpp
+src/_ZN10dScStage_c7LoadFogEv.cpp
+src/_ZN10dScStage_c23LoadTextureTransformersEv.cpp
+src/engine/model/dExtShadowModel_c.cpp
 
 # ---- the three unsliced matched callees the closure names
 src/GetControllerMode.c
-src/func_02023408.c
-src/func_0203d81c.c
+src/unnamed/arm9/0202/func_02023408.c
+src/unnamed/arm9/0203/func_0203d81c.c
 
 # src/engine/fader/_ZN9FaderWipe14LoadAndSetFileEt.cpp is NOT listed here.
 # Lane SL0 already names it by absolute path on the three targets that compile

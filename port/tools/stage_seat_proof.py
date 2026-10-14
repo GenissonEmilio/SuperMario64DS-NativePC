@@ -111,11 +111,11 @@ DEFAULT_ROOT = os.path.abspath(
 # /MAP writes them: one leading underscore of cdecl decoration on the C names,
 # none on the MSVC-mangled method.
 WANT_SYMS = (
-    "?CleanupResources@Stage@@QAEHXZ",
+    "?CleanupResources@dScStage_c@@QAEHXZ",
     "__ZN5Sound21ResetPlayerVoiceGroupEv",
     "__ZN7Message15ResetAllGlobalsEv",
-    "__ZN5StageD1Ev",
-    "__ZN5StageD0Ev",
+    "__ZN10dScStage_cD1Ev",
+    "__ZN10dScStage_cD0Ev",
 )
 
 # The overlay tranche, checked by DEFINING OBJECT rather than by presence.
@@ -140,7 +140,7 @@ TRAP_SLOTS = (18, 19)
 SLOT3_TRAP_LINE = "FATAL: Stage vtable slot 3 (CleanupResources) is not hosted"
 SLOT3_ROM_NOTE = ("[stage] slot 3: the ROM's Stage::CleanupResources is "
                   "tearing the Stage")
-SLOT3_DISPATCHED = "[stage-slot3] dispatching _ZTV5Stage[3]"
+SLOT3_DISPATCHED = "[stage-slot3] dispatching _ZTV10dScStage_c[3]"
 SLOT3_RETURNED = "[stage-slot3] Stage::CleanupResources returned 1"
 
 # One map row: "  0001:00012345  _name  10012345 f  obj". The object is the
@@ -296,7 +296,7 @@ def main():
 
     print("RUNG 6 -- gate shut: a slot-3 dispatch still aborts by name")
     rc6, t6 = run_dispatch(root, exe, out, a.frames, False)
-    check(SLOT3_DISPATCHED in t6, "the probe dispatched _ZTV5Stage[3]")
+    check(SLOT3_DISPATCHED in t6, "the probe dispatched _ZTV10dScStage_c[3]")
     check(SLOT3_TRAP_LINE in t6,
           "the dispatch landed on the named abort for slot 3")
     check(SLOT3_ROM_NOTE not in t6,
@@ -309,7 +309,7 @@ def main():
 
     print("RUNG 7 -- gate open: the same dispatch reaches the ROM's body")
     rc7, t7 = run_dispatch(root, exe, out, a.frames, True)
-    check(SLOT3_DISPATCHED in t7, "the probe dispatched _ZTV5Stage[3]")
+    check(SLOT3_DISPATCHED in t7, "the probe dispatched _ZTV10dScStage_c[3]")
     check(SLOT3_ROM_NOTE in t7, "the ROM's Stage::CleanupResources ran")
     check("FATAL: Stage vtable slot" not in t7,
           "no Stage trap fired in the gated-open run")

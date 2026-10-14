@@ -237,34 +237,33 @@ static void rs_probe(const char *cls, void *s, int word)
 // cap/coin drop on a wall hit) are on the slice; the three particle tables
 // they index (data_ov002_02100320/334/348) joined the ov002 mount.
 extern "C" {
-int _ZN8Fireball13InitResourcesEv(void *self);    /* face below */
-int _ZN8Fireball8BehaviorEv(void *self);          /* C-named in its own TU */
-int _ZN8Fireball6RenderEv(void);                  /* `return 1` stub */
-int *_ZN8FireballD1Ev(int *self);
-int *_ZN8FireballD0Ev(int *self);
-int _ZN8Fireball13OnYoshiTryEatEv(char *self);              /* slot 18, own */
-extern int _ZTV8Fireball[];                       /* ov002 mount, 31 slots */
+int _ZN12daFPknBall_c13InitResourcesEv(void *self);    /* face below */
+int _ZN12daFPknBall_c8BehaviorEv(void *self);          /* C-named in its own TU */
+int _ZN12daFPknBall_c6RenderEv(void);                  /* `return 1` stub */
+int *_ZN12daFPknBall_cD1Ev(int *self);
+int *_ZN12daFPknBall_cD0Ev(int *self);
+int _ZN12daFPknBall_c13OnYoshiTryEatEv(char *self);              /* slot 18, own */
+extern int _ZTV12daFPknBall_c[];                       /* ov002 mount, 31 slots */
 }
 /* The fireball's own D0 spells its table by the RTTI name. */
-#pragma comment(linker, "/alternatename:__ZTV12daFPknBall_c=__ZTV8Fireball")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV12daFPknBall_c=__ZTV12daFPknBall_c")
 static int __fastcall fb_init(void *s, void *)
-{ return _ZN8Fireball13InitResourcesEv(s); }
+{ return _ZN12daFPknBall_c13InitResourcesEv(s); }
 static int __fastcall fb_behavior(void *s, void *)
-{ return _ZN8Fireball8BehaviorEv(s); }
+{ return _ZN12daFPknBall_c8BehaviorEv(s); }
 static int __fastcall fb_render(void *s, void *)
-{ (void)s; return _ZN8Fireball6RenderEv(); }
+{ (void)s; return _ZN12daFPknBall_c6RenderEv(); }
 static int __fastcall fb_d1(void *s, void *)
-{ return (int)(size_t)_ZN8FireballD1Ev((int *)s); }
+{ return (int)(size_t)_ZN12daFPknBall_cD1Ev((int *)s); }
 static int __fastcall fb_d0(void *s, void *)
-{ return (int)(size_t)_ZN8FireballD0Ev((int *)s); }
+{ return (int)(size_t)_ZN12daFPknBall_cD0Ev((int *)s); }
 static int __fastcall fb_yoshi(void *s, void *)
-{ return _ZN8Fireball13OnYoshiTryEatEv((char *)s); }
+{ return _ZN12daFPknBall_c13OnYoshiTryEatEv((char *)s); }
 
 extern "C" void hal_fill_fireball_vtable(void)
 {
     port_enemy_death_states_seat();
-    void *volatile *vt = (void *volatile *)_ZTV8Fireball;
+    void *volatile *vt = (void *volatile *)_ZTV12daFPknBall_c;
     rs_fill_shared(vt);
     vt[0]  = (void *)fb_init;
     vt[3]  = (void *)rs_clean_base;   /* ROM slot 3: ActorBase::CleanupResources */
@@ -278,10 +277,10 @@ extern "C" void hal_fill_fireball_vtable(void)
 /* ---- method faces ---------------------------------------------------------
    The C-named references the tables take onto definitions that are real MSVC
    methods against include/. */
-#include "Fireball.h"
+#include "daFPknBall_c.h"
 extern "C" {
-int _ZN8Fireball13InitResourcesEv(void *self)
-{ return ((Fireball *)self)->Fireball::InitResources(); }
+int _ZN12daFPknBall_c13InitResourcesEv(void *self)
+{ return ((daFPknBall_c *)self)->daFPknBall_c::InitResources(); }
 }
 
 // ============================================================================
@@ -307,13 +306,13 @@ int _ZN8Fireball13InitResourcesEv(void *self)
 // the mounted koopa2_boss arena the owner is ov046, so both are aliased onto
 // the ov046 per-symbol mount (the arena-CLPS treatment in actor_classes_ov060).
 extern "C" {
-int _ZN16BowserShockwaves13InitResourcesEv(void *self);   /* face below */
-int _ZN16BowserShockwaves16CleanupResourcesEv(void);      /* three releases */
-int _ZN16BowserShockwaves8BehaviorEv(void *self);         /* face below */
-int _ZN16BowserShockwaves6RenderEv(void *self);           /* host copy */
-int *_ZN16BowserShockwavesD1Ev(int *self);
-int *_ZN16BowserShockwavesD0Ev(int *self);
-void *_ZTV16BowserShockwaves[31];
+int _ZN9daFRing_c13InitResourcesEv(void *self);   /* face below */
+int _ZN9daFRing_c16CleanupResourcesEv(void);      /* three releases */
+int _ZN9daFRing_c8BehaviorEv(void *self);         /* face below */
+int _ZN9daFRing_c6RenderEv(void *self);           /* host copy */
+int *_ZN9daFRing_cD1Ev(int *self);
+int *_ZN9daFRing_cD0Ev(int *self);
+void *_ZTV9daFRing_c[31];
 }
 /* PORT_HOST_ABI: two names of ONE ROM table, read off the ROM rather than
    off a comment (lane ALIASCHK). ov060 0x0211ab54 carries its own RTTI
@@ -324,27 +323,27 @@ void *_ZTV16BowserShockwaves[31];
    _ZN16BowserShockwavesD0Ev, _ZN16BowserShockwavesD1Ev. Read out of
    extracted/overlays/overlay_0060.bin; the LHS is not a config symbol
    anywhere, so the alias cannot be defeated by a later slice. */
-#pragma comment(linker, "/alternatename:__ZTV9daFRing_c=__ZTV16BowserShockwaves")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV9daFRing_c=__ZTV9daFRing_c")
 #pragma comment(linker, "/alternatename:_func_021115e4=_data_ov046_021115e4")
 #pragma comment(linker, "/alternatename:_func_021115f4=_data_ov046_021115f4")
 
 static int __fastcall bsw_init(void *s, void *)
-{ return _ZN16BowserShockwaves13InitResourcesEv(s); }
+{ return _ZN9daFRing_c13InitResourcesEv(s); }
 static int __fastcall bsw_clean(void *s, void *)
-{ (void)s; return _ZN16BowserShockwaves16CleanupResourcesEv(); }
+{ (void)s; return _ZN9daFRing_c16CleanupResourcesEv(); }
 static int __fastcall bsw_behavior(void *s, void *)
-{ return _ZN16BowserShockwaves8BehaviorEv(s); }
+{ return _ZN9daFRing_c8BehaviorEv(s); }
 static int __fastcall bsw_render(void *s, void *)
 { port_actor_render_probe("BOWSER_SHOCKWAVES", (char *)s + 0xd4);
-  return _ZN16BowserShockwaves6RenderEv(s); }
+  return _ZN9daFRing_c6RenderEv(s); }
 static int __fastcall bsw_d1(void *s, void *)
-{ return (int)(size_t)_ZN16BowserShockwavesD1Ev((int *)s); }
+{ return (int)(size_t)_ZN9daFRing_cD1Ev((int *)s); }
 static int __fastcall bsw_d0(void *s, void *)
-{ return (int)(size_t)_ZN16BowserShockwavesD0Ev((int *)s); }
+{ return (int)(size_t)_ZN9daFRing_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_bowser_shockwaves_vtable(void)
 {
-    void *volatile *vt = (void *volatile *)_ZTV16BowserShockwaves;
+    void *volatile *vt = (void *volatile *)_ZTV9daFRing_c;
     rs_fill_shared(vt);
     vt[0]  = (void *)bsw_init;
     vt[3]  = (void *)bsw_clean;
@@ -354,12 +353,12 @@ extern "C" void hal_fill_bowser_shockwaves_vtable(void)
     vt[17] = (void *)bsw_d0;
 }
 
-#include "BowserShockwaves.h"
+#include "daFRing_c.h"
 extern "C" {
-int _ZN16BowserShockwaves13InitResourcesEv(void *self)
-{ return ((BowserShockwaves *)self)->BowserShockwaves::InitResources(); }
-int _ZN16BowserShockwaves8BehaviorEv(void *self)
-{ return ((BowserShockwaves *)self)->BowserShockwaves::Behavior(); }
+int _ZN9daFRing_c13InitResourcesEv(void *self)
+{ return ((daFRing_c *)self)->daFRing_c::InitResources(); }
+int _ZN9daFRing_c8BehaviorEv(void *self)
+{ return ((daFRing_c *)self)->daFRing_c::Behavior(); }
 }
 
 // ============================================================================
@@ -446,13 +445,13 @@ extern "C" void hal_fill_bubble_vtable(void)
 // so the spelling is aliased onto it -- the same treatment BowserShockwaves'
 // two BMA spellings get above.
 extern "C" {
-int _ZN8YoshiEgg13InitResourcesEv(void *self);     /* flat C TU */
-int _ZN8YoshiEgg16CleanupResourcesEv(void *self);  /* face below */
-int _ZN8YoshiEgg8BehaviorEv(void *self);           /* face below */
-int _ZN8YoshiEgg6RenderEv(void *self);             /* host copy */
-int *_ZN8YoshiEggD1Ev(int *self);
-int *_ZN8YoshiEggD0Ev(int *self);
-extern int _ZTV8YoshiEgg[];                        /* ov002 mount, 31 slots */
+int _ZN8daYegg_c13InitResourcesEv(void *self);     /* flat C TU */
+int _ZN8daYegg_c16CleanupResourcesEv(void *self);  /* face below */
+int _ZN8daYegg_c8BehaviorEv(void *self);           /* face below */
+int _ZN8daYegg_c6RenderEv(void *self);             /* host copy */
+int *_ZN8daYegg_cD1Ev(int *self);
+int *_ZN8daYegg_cD0Ev(int *self);
+extern int _ZTV8daYegg_c[];                        /* ov002 mount, 31 slots */
 }
 /* PORT_HOST_ABI: two names of ONE ROM table, read off the ROM rather than
    off a comment (lane ALIASCHK). ov002 0x0210adb4 carries its own RTTI
@@ -463,20 +462,20 @@ extern int _ZTV8YoshiEgg[];                        /* ov002 mount, 31 slots */
    _ZN8YoshiEggD0Ev, _ZN8YoshiEggD1Ev. Read out of
    extracted/overlays/overlay_0002.bin; the LHS is not a config symbol
    anywhere, so the alias cannot be defeated by a later slice. */
-#pragma comment(linker, "/alternatename:__ZTV8daYegg_c=__ZTV8YoshiEgg")
-#pragma comment(linker, "/alternatename:_func_02123804=_func_ov079_02123804")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV8daYegg_c=__ZTV8daYegg_c")
+#pragma comment(linker, "/alternatename:_func_02123804=__ZN7daBtn_c19func_ov079_02123804EP8dActor_c")
 /* CleanupResources.cpp releases the two animation SharedFilePtrs as C++
    `extern char` objects; the mount defines them under the C spelling. */
 #pragma comment(linker, "/alternatename:?data_ov002_0210e6b0@@3DA=_data_ov002_0210e6b0")
 #pragma comment(linker, "/alternatename:?data_ov002_0210eb78@@3DA=_data_ov002_0210eb78")
 
 static int __fastcall ye_init(void *s, void *)
-{ return _ZN8YoshiEgg13InitResourcesEv(s); }
+{ return _ZN8daYegg_c13InitResourcesEv(s); }
 static int __fastcall ye_clean(void *s, void *)
-{ return _ZN8YoshiEgg16CleanupResourcesEv(s); }
+{ return _ZN8daYegg_c16CleanupResourcesEv(s); }
 static int __fastcall ye_behavior(void *s, void *)
 { rs_probe("YOSHI_EGG", s, *(int *)((char *)s + 0x3f0));
-  return _ZN8YoshiEgg8BehaviorEv(s); }
+  return _ZN8daYegg_c8BehaviorEv(s); }
 /* SM64DS_EGG_TRIS=1: what the egg's OWN Render puts into the frame's polygon
    list, and where on the screen it lands. Tango's report is "yoshi egg doesnt
    show up", which is a DRAWING report, and the two instruments that existed
@@ -503,12 +502,12 @@ static int __fastcall ye_render(void *s, void *)
     static int on = -1;
     if (on < 0) on = std::getenv("SM64DS_EGG_TRIS") != 0;
     if (!on)
-        return _ZN8YoshiEgg6RenderEv(s);
+        return _ZN8daYegg_c6RenderEv(s);
 
     static int call;
     size_t before = 0, after = 0;
     ntr::gx_polygons(before);
-    const int r = _ZN8YoshiEgg6RenderEv(s);
+    const int r = _ZN8daYegg_c6RenderEv(s);
     const ntr::GxTriangle *t = ntr::gx_polygons(after);
     const size_t n = after > before ? after - before : 0;
     float mnx = 1e30f, mxx = -1e30f, mny = 1e30f, mxy = -1e30f;
@@ -538,14 +537,14 @@ static int __fastcall ye_render(void *s, void *)
     return r;
 }
 static int __fastcall ye_d1(void *s, void *)
-{ return (int)(size_t)_ZN8YoshiEggD1Ev((int *)s); }
+{ return (int)(size_t)_ZN8daYegg_cD1Ev((int *)s); }
 static int __fastcall ye_d0(void *s, void *)
-{ return (int)(size_t)_ZN8YoshiEggD0Ev((int *)s); }
+{ return (int)(size_t)_ZN8daYegg_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_yoshi_egg_vtable(void)
 {
     port_enemy_death_states_seat();
-    void *volatile *vt = (void *volatile *)_ZTV8YoshiEgg;
+    void *volatile *vt = (void *volatile *)_ZTV8daYegg_c;
     rs_fill_shared(vt);
     vt[0]  = (void *)ye_init;
     vt[3]  = (void *)ye_clean;
@@ -555,10 +554,10 @@ extern "C" void hal_fill_yoshi_egg_vtable(void)
     vt[17] = (void *)ye_d0;
 }
 
-#include "YoshiEgg.h"
+#include "daYegg_c.h"
 extern "C" {
-int _ZN8YoshiEgg16CleanupResourcesEv(void *self)
-{ return ((YoshiEgg *)self)->YoshiEgg::CleanupResources(); }
-int _ZN8YoshiEgg8BehaviorEv(void *self)
-{ return ((YoshiEgg *)self)->YoshiEgg::Behavior(); }
+int _ZN8daYegg_c16CleanupResourcesEv(void *self)
+{ return ((daYegg_c *)self)->daYegg_c::CleanupResources(); }
+int _ZN8daYegg_c8BehaviorEv(void *self)
+{ return ((daYegg_c *)self)->daYegg_c::Behavior(); }
 }

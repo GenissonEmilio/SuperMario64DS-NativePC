@@ -367,23 +367,23 @@
 # never opens the file.
 
 # ---- arm9: the one line the framework half did not already carry -----------
-src/func_0203d5dc.c
+src/unnamed/arm9/0203/func_0203d5dc.c
 
 # ---- ov006: the class's own closure, minus the five host copies ------------
 src/minigames/d_s_mg_hanachan.cpp
-src/_ZN15dScMgHanachan_cD1Ev.cpp
+src/actors/dScMgHanachan_c.cpp
 # RETIRED at SLICE1: body now in src/_ZN15dScMgHanachan_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN15dScMgHanachan_cD0Ev.cpp
-src/func_ov006_020ea324.c
-src/func_ov006_020ea350.c
-src/func_ov006_020ea3d0.c
-src/func_ov006_020ea5f0.c
-src/func_ov006_020ea658.c
-src/func_ov006_020ea670.c
-src/func_ov006_020ea71c.c
-src/func_ov006_020ea81c.c
-src/func_ov006_020ea8e0.c
-src/func_ov006_020ea914.c
+# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea324.c
+# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea350.c
+# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea3d0.c
+# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea5f0.c
+# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea658.c
+# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea670.c
+# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea71c.c
+# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea81c.c
+# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea8e0.c
+# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea914.c
 # UN-QUARANTINED, run link100 lane HOSTGEN2. The TU is a whole-TU hostgen
 # substitution now (port/CMakeLists.txt's PORT_HOSTGEN_TU list), and the five
 # bodies unmatched/MgWiggler_StateDispatch.cpp host-copied out of it are

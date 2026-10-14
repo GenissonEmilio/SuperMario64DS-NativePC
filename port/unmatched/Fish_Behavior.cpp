@@ -36,8 +36,8 @@ void _ZN8dActor_c9UpdatePosEP5dCc_c(void *self, void *clsn);
 void Vec3_Asr(PortVec3 *d, PortVec3 *s, int sh);
 void Matrix4x3_FromTranslation(PortM48 *m, int x, int y, int z);
 void Matrix4x3_ApplyInPlaceToRotationY(PortM48 *m, short angY);
-void _ZN9Animation7AdvanceEv(void *anim);
-int func_ov100_0214639c(void *other);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *anim);
+int _ZN8daFish_c19func_ov100_0214639cEv(void *other);
 
 struct PortPmf { unsigned fn; int delta; };
 /* the seven statics __sinit_ov100_02147bc0 copies into data_ov100_02148a1c */
@@ -46,13 +46,13 @@ extern PortPmf data_ov100_02148448[], data_ov100_02148450[],
     data_ov100_02148470[], data_ov100_02148478[];
 extern PortPmf data_ov100_02148a1c[];
 
-void func_ov100_021463b0(void *);
-void func_ov100_02146468(void *);
-void func_ov100_021464f4(void *);
-void func_ov100_02146640(void *);
-void func_ov100_021467d4(void *);
-void func_ov100_021467e8(void *);
-void func_ov100_02146828(void *);
+void _ZN8daFish_c19func_ov100_021463b0Ev(void *);
+void _ZN8daFish_c19func_ov100_02146468Ev(void *);
+void _ZN8daFish_c19func_ov100_021464f4Ev(void *);
+void _ZN8daFish_c19func_ov100_02146640Ev(void *);
+void _ZN8daFish_c19func_ov100_021467d4Ev(void *);
+void _ZN8daFish_c19func_ov100_021467e8Ev(void *);
+void _ZN8daFish_c19func_ov100_02146828Ev(void *);
 
 }  /* extern "C" */
 
@@ -79,13 +79,13 @@ void func_ov100_02146828(void *);
         sym(self);                                                        \
     }
 
-FISH_FACE(0, func_ov100_021467d4)
-FISH_FACE(1, func_ov100_02146828)
-FISH_FACE(2, func_ov100_021464f4)
-FISH_FACE(3, func_ov100_021467e8)
-FISH_FACE(4, func_ov100_02146640)
-FISH_FACE(5, func_ov100_02146468)
-FISH_FACE(6, func_ov100_021463b0)
+FISH_FACE(0, _ZN8daFish_c19func_ov100_021467d4Ev)
+FISH_FACE(1, _ZN8daFish_c19func_ov100_02146828Ev)
+FISH_FACE(2, _ZN8daFish_c19func_ov100_021464f4Ev)
+FISH_FACE(3, _ZN8daFish_c19func_ov100_021467e8Ev)
+FISH_FACE(4, _ZN8daFish_c19func_ov100_02146640Ev)
+FISH_FACE(5, _ZN8daFish_c19func_ov100_02146468Ev)
+FISH_FACE(6, _ZN8daFish_c19func_ov100_021463b0Ev)
 
 static const struct { PortPmf *slot; unsigned rom; void *host; }
 g_fish_states[] = {

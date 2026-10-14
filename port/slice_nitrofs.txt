@@ -29,7 +29,7 @@
 # come off the mirror the way the DS reads them.
 #   func_02060890 -> port_nitrofs_card_bringup  (static-init ORDER, not hardware)
 #   func_0205db2c -> port_nitrofs_read          (the card ROM DMA; there is no card)
-src/func_0205d96c.c
+src/unnamed/arm9/0205/func_0205d96c.c
 
 # The archive command proc, and it is not a formality: SM64DS_NFS_TRACE on
 # level 1 shows the ROM's own readers send command 9 four times and command 10
@@ -37,25 +37,25 @@ src/func_0205d96c.c
 # both and said "nothing in the link sends them", which was measured false.
 # The ROM's body takes and releases the cartridge lock across each read, which
 # is what the two commands mean.
-src/func_0205da94.c
+src/unnamed/arm9/0205/func_0205da94.c
 
 # Command 9, the lock: reference-count the card work object, then take the
 # ARM7/ARM9 cartridge lock at 0x027FFFE0 and clear EXMEMCNT bit 11.
-src/func_0205ffb0.c
-src/func_0205710c.c
-src/func_020572b8.c
-src/func_020572c8.c
+src/unnamed/arm9/0205/func_0205ffb0.c
+src/unnamed/arm9/0205/func_0205710c.c
+src/unnamed/arm9/0205/func_020572b8.c
+src/unnamed/arm9/0205/func_020572c8.c
 #   func_020570d8 is the ROM's own body now (SEAT1 retired the face)
 # The retry arm of the lock. func_02059d8c under it is hal/boot_hw.cpp's
 # cycle-counted busy wait, faced; the loop is never entered here because
 # nothing else on the host holds that word.
-src/func_020570a8.c
+src/unnamed/arm9/0205/func_020570a8.c
 
 # Command 10, the unlock: give the slot back and drop the reference count.
-src/func_0205ff90.c
-src/func_020570f0.c
-src/func_02057218.c
-src/func_02057228.c
+src/unnamed/arm9/0205/func_0205ff90.c
+src/unnamed/arm9/0205/func_020570f0.c
+src/unnamed/arm9/0205/func_02057218.c
+src/unnamed/arm9/0205/func_02057228.c
 #   func_020570c0 is the ROM's own body now (SEAT1 retired the face)
 
 # The lock primitive both commands bottom out on (run link100, lane LOADOV).
@@ -67,7 +67,7 @@ src/func_02057228.c
 # host copy is deleted. Same two targets as the rest of this slice: the swp
 # primitive func_0205a74c and the IRQ::DisableAll / RestoreAll pair it calls
 # are hal/boot_hw.cpp's, and that file rides SLICE214_SOURCES.
-src/func_02057198.c
+src/unnamed/arm9/0205/func_02057198.c
 
 # NOT HERE, and each one has a reason rather than an omission.
 #

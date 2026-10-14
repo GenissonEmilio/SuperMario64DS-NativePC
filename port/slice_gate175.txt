@@ -16,4 +16,4 @@
 # constructed and its St_BurnFire bodies already linked -- the face in the
 # fill bridges the C spelling.
 src/actors/daObjFire_c.cpp
-src/_ZN6Player4BurnEv.cpp
+src/actors/Player.cpp

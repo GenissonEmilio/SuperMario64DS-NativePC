@@ -40,20 +40,20 @@ void _ZN5dCc_c6UpdateEv(void *self);
 int LenVec3(void *v);
 extern unsigned char data_0209f2d8;      /* the mega-char state byte */
 
-int func_ov002_020b10a0(void *self);     /* "am I collected / gone" */
-int func_ov002_020b12ec(void *self);     /* "am I in the retire path" */
-void func_ov002_020b14d8(void *self);
-void func_ov002_020b10e4(void *self);
-int func_ov002_020b19dc(void *self);
+int _ZN8daCoin_c19func_ov002_020b10a0Ev(void *self);     /* "am I collected / gone" */
+int _ZN8daCoin_c19func_ov002_020b12ecEv(void *self);     /* "am I in the retire path" */
+void _ZN8daCoin_c19func_ov002_020b14d8Ev(void *self);
+void _ZN8daCoin_c19func_ov002_020b10e4Ev(void *self);
+int _ZN8daCoin_c19func_ov002_020b19dcEv(void *self);
 
 /* the nine states, in the order __sinit_ov002_02100c50 seats them */
-void func_ov002_020b2150(void *);
-void func_ov002_020b20b4(void *);
-void func_ov002_020b1cc0(void *);
-void func_ov002_020b1bfc(void *);
-void func_ov002_020b2070(void *);
-void func_ov002_020b1ad4(void *);
-void func_ov002_020b1a60(void *);
+void _ZN8daCoin_c19func_ov002_020b2150Ev(void *);
+void _ZN8daCoin_c19func_ov002_020b20b4Ev(void *);
+void _ZN8daCoin_c19func_ov002_020b1cc0Ev(void *);
+void _ZN8daCoin_c19func_ov002_020b1bfcEv(void *);
+void _ZN8daCoin_c19func_ov002_020b2070Ev(void *);
+void _ZN8daCoin_c19func_ov002_020b1ad4Ev(void *);
+void _ZN8daCoin_c19func_ov002_020b1a60Ev(void *);
 
 struct PortPmf { unsigned fn; int delta; };
 extern PortPmf data_ov002_0210dc70[];
@@ -89,26 +89,26 @@ enum { PORT_COIN_STATES = 9 };
 #define COIN_FACE(sym)                                                        \
     static void __fastcall pmf_face_##sym(void *self, void *dead_edx)         \
     { sym(self); }
-COIN_FACE(func_ov002_020b2150)
-COIN_FACE(func_ov002_020b20b4)
-COIN_FACE(func_ov002_020b1cc0)
-COIN_FACE(func_ov002_020b1bfc)
-COIN_FACE(func_ov002_020b2070)
-COIN_FACE(func_ov002_020b1ad4)
-COIN_FACE(func_ov002_020b1a60)
+COIN_FACE(_ZN8daCoin_c19func_ov002_020b2150Ev)
+COIN_FACE(_ZN8daCoin_c19func_ov002_020b20b4Ev)
+COIN_FACE(_ZN8daCoin_c19func_ov002_020b1cc0Ev)
+COIN_FACE(_ZN8daCoin_c19func_ov002_020b1bfcEv)
+COIN_FACE(_ZN8daCoin_c19func_ov002_020b2070Ev)
+COIN_FACE(_ZN8daCoin_c19func_ov002_020b1ad4Ev)
+COIN_FACE(_ZN8daCoin_c19func_ov002_020b1a60Ev)
 #undef COIN_FACE
 
 #define CF(sym) (void (*)(void *))pmf_face_##sym
 static const struct { unsigned rom; void (*host)(void *); } g_states[] = {
-    {0x020b2150, CF(func_ov002_020b2150)},   /* 0 <- 0x02108730 */
-    {0x020b20b4, CF(func_ov002_020b20b4)},   /* 1 <- 0x02108770 */
-    {0x020b1cc0, CF(func_ov002_020b1cc0)},   /* 2 <- 0x02108748 */
-    {0x020b1bfc, CF(func_ov002_020b1bfc)},   /* 3 <- 0x02108760 */
-    {0x020b2070, CF(func_ov002_020b2070)},   /* 4 <- 0x02108740 */
-    {0x020b1ad4, CF(func_ov002_020b1ad4)},   /* 5 <- 0x02108758 */
-    {0x020b1cc0, CF(func_ov002_020b1cc0)},   /* 6 <- 0x02108750 (same as 2) */
-    {0x020b20b4, CF(func_ov002_020b20b4)},   /* 7 <- 0x02108768 (same as 1) */
-    {0x020b1a60, CF(func_ov002_020b1a60)},   /* 8 <- 0x02108738 */
+    {0x020b2150, CF(_ZN8daCoin_c19func_ov002_020b2150Ev)},   /* 0 <- 0x02108730 */
+    {0x020b20b4, CF(_ZN8daCoin_c19func_ov002_020b20b4Ev)},   /* 1 <- 0x02108770 */
+    {0x020b1cc0, CF(_ZN8daCoin_c19func_ov002_020b1cc0Ev)},   /* 2 <- 0x02108748 */
+    {0x020b1bfc, CF(_ZN8daCoin_c19func_ov002_020b1bfcEv)},   /* 3 <- 0x02108760 */
+    {0x020b2070, CF(_ZN8daCoin_c19func_ov002_020b2070Ev)},   /* 4 <- 0x02108740 */
+    {0x020b1ad4, CF(_ZN8daCoin_c19func_ov002_020b1ad4Ev)},   /* 5 <- 0x02108758 */
+    {0x020b1cc0, CF(_ZN8daCoin_c19func_ov002_020b1cc0Ev)},   /* 6 <- 0x02108750 (same as 2) */
+    {0x020b20b4, CF(_ZN8daCoin_c19func_ov002_020b20b4Ev)},   /* 7 <- 0x02108768 (same as 1) */
+    {0x020b1a60, CF(_ZN8daCoin_c19func_ov002_020b1a60Ev)},   /* 8 <- 0x02108738 */
 };
 #undef CF
 

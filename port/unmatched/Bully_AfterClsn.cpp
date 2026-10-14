@@ -44,5 +44,5 @@ struct Bully {
 };
 
 /* ROM 0x02117220 -> ?UpdateDeathState@Bully@@UAEXXZ */
-extern "C" void _ZN5Bully16UpdateDeathStateEv(void *self)
+extern "C" void _ZN11daDonketu_c16UpdateDeathStateEv(void *self)
 { ((Bully *)self)->Bully::UpdateDeathState(); }

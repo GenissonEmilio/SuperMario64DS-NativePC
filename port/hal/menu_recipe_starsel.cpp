@@ -35,7 +35,7 @@ int  SublevelToLevel(int);
 extern signed char data_02092110;
 void *port_scene_live_object(void);
 int  port_scene_live_id(void);
-void func_ov003_020b0730(void *self, int arg);
+void _ZN13dScGameOver_c19func_ov003_020b0730Ei(void *self, int arg);
 void func_02012790(int id);
 }
 
@@ -276,7 +276,7 @@ int rom_cursor_gameover(int dir, int *sel_out)
     if (s[0x91] != want || !g_go_shown) {
         g_go_shown = 1;      /* the plates show no highlight until something paints one: the first press always does */
         s[0x91] = (unsigned char)want;
-        func_ov003_020b0730(o, 0);
+        _ZN13dScGameOver_c19func_ov003_020b0730Ei(o, 0);
         func_02012790(0x12e);
         moved = 1;
     }

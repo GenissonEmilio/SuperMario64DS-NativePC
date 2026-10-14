@@ -175,7 +175,7 @@
 #src/_ZN8dM3dGSphD0Ev.cpp
 
 # 2 unresolved: __ZN15TextureSequenceD1Ev, __ZN9ModelAnimD1Ev
-src/d_a_hanachan.c
+src/actors/daHanachan_c.cpp
 
 # 2 unresolved: __ZN13daObjKi_Ita_c13InitResourcesEv, _daObjKi_Ita_c_classInit
 # RETIRED at SYNC6: this TU is already named by an older slice list, and
@@ -606,13 +606,13 @@ src/d_a_hanachan.c
 #src/_ZN10dCcAcPos_cD0Ev.cpp
 
 # 1 unresolved: ?AdvanceFade@dFdDummy_c@@UAEXXZ
-src/_ZN10dFdDummy_c11AdvanceFadeEv.cpp
+src/engine/fader/dFader_c.cpp
 
 # 1 unresolved: ?SetForwardTime@dFdDummy_c@@UAEHI@Z
-src/_ZN10dFdDummy_c14SetForwardTimeEj.cpp
+# FOLDED into src/engine/fader/dFader_c.cpp (row 609): src/_ZN10dFdDummy_c14SetForwardTimeEj.cpp
 
 # 1 unresolved: ?SetBackwardTime@dFdDummy_c@@UAEHI@Z
-src/_ZN10dFdDummy_c15SetBackwardTimeEj.cpp
+# FOLDED into src/engine/fader/dFader_c.cpp (row 609): src/_ZN10dFdDummy_c15SetBackwardTimeEj.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -653,7 +653,7 @@ src/_ZN10dFdDummy_c15SetBackwardTimeEj.cpp
 #src/_ZN10dScEntry_cD0Ev.cpp
 
 # 1 unresolved: ?CleanupResources@daKpa2Bg_c@@UAEHXZ
-src/_ZN10daKpa2Bg_c16CleanupResourcesEv.cpp
+src/actors/daKpa2Bg_c.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -1407,13 +1407,13 @@ src/_ZN10daKpa2Bg_c16CleanupResourcesEv.cpp
 #src/_ZN13RacingPenguinD0Ev.cpp
 
 # 1 unresolved: ?InitResources@RollingLogLll@@UAEHXZ
-src/_ZN13RollingLogLll13InitResourcesEv.cpp
+src/game/actors/d_a_obj_fl_maruta.cpp
 
 # 1 unresolved: ?CleanupResources@RollingLogLll@@UAEHXZ
-src/_ZN13RollingLogLll16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_maruta.cpp (row 1410): src/_ZN13RollingLogLll16CleanupResourcesEv.cpp
 
 # 1 unresolved: ?Behavior@RollingLogLll@@UAEHXZ
-src/_ZN13RollingLogLll8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_maruta.cpp (row 1410): src/_ZN13RollingLogLll8BehaviorEv.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -1643,10 +1643,10 @@ src/_ZN13RollingLogLll8BehaviorEv.cpp
 #src/_ZN14EnemySwitchTagD0Ev.cpp
 
 # 1 unresolved: ?CleanupResources@KnockDownPlank@@UAEHXZ
-src/_ZN14KnockDownPlank16CleanupResourcesEv.cpp
+src/actors/daObjBk_Botaosi_c.cpp
 
 # 1 unresolved: ?Render@KnockDownPlank@@UAEHXZ
-src/_ZN14KnockDownPlank6RenderEv.cpp
+# FOLDED into src/actors/daObjBk_Botaosi_c.cpp (row 1646): src/_ZN14KnockDownPlank6RenderEv.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -2922,7 +2922,7 @@ src/_ZN14KnockDownPlank6RenderEv.cpp
 #src/_ZN6NumberD0Ev.cpp
 
 # 1 unresolved: ?Render@Player@@UAEHXZ
-src/_ZN6Player6RenderEv.cpp
+src/actors/Player.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -3172,7 +3172,7 @@ src/_ZN6Player6RenderEv.cpp
 #src/_ZN7dScMB_cD0Ev.cpp
 
 # 1 unresolved: ?SetToEnd@dWipe_c@@UAEXXZ
-src/_ZN7dWipe_c8SetToEndEv.cpp
+src/engine/fader/dWipe_c.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -3460,7 +3460,7 @@ src/_ZN7dWipe_c8SetToEndEv.cpp
 #src/_ZN8YoshiEggD0Ev.cpp
 
 # 1 unresolved: ?AfterCleanupResources@dActor_c@@UAEXI@Z
-src/_ZN8dActor_c21AfterCleanupResourcesEj.cpp
+src/actors/dActor_c.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -3501,7 +3501,7 @@ src/_ZN8dActor_c21AfterCleanupResourcesEj.cpp
 #src/_ZN8dCcPos_cD0Ev.cpp
 
 # 1 unresolved: ?AfterInitResources@dScene_c@@UAEXI@Z
-src/_ZN8dScene_c18AfterInitResourcesEj.cpp
+src/actors/dScene_c.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -3922,10 +3922,10 @@ src/_ZN8dScene_c18AfterInitResourcesEj.cpp
 #src/_ZN9TinyWaterD0Ev.cpp
 
 # 1 unresolved: ?CleanupResources@TowerStep@@UAEHXZ
-src/_ZN9TowerStep16CleanupResourcesEv.cpp
+src/actors/daObjBk_Lift_c.cpp
 
 # 1 unresolved: ?Render@TowerStep@@UAEHXZ
-src/_ZN9TowerStep6RenderEv.cpp
+# FOLDED into src/actors/daObjBk_Lift_c.cpp (row 3925): src/_ZN9TowerStep6RenderEv.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -4109,7 +4109,7 @@ src/_ZN9TowerStep6RenderEv.cpp
 #src/engine/fader/_ZN10FaderColorD0Ev.cpp
 
 # 1 unresolved: ?AdvanceFade@FaderBrightness@@UAEXXZ
-src/engine/fader/_ZN15FaderBrightness11AdvanceFadeEv.cpp
+# FOLDED into src/engine/fader/dFader_c.cpp (row 609): src/engine/fader/_ZN15FaderBrightness11AdvanceFadeEv.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -4150,10 +4150,10 @@ src/engine/fader/_ZN15FaderBrightness11AdvanceFadeEv.cpp
 #src/engine/fader/_ZN5FaderD0Ev.cpp
 
 # 1 unresolved: ?AdvanceFade@FaderWipe@@UAEXXZ
-src/engine/fader/_ZN9FaderWipe11AdvanceFadeEv.cpp
+# FOLDED into src/engine/fader/dFader_c.cpp (row 609): src/engine/fader/_ZN9FaderWipe11AdvanceFadeEv.cpp
 
 # 1 unresolved: ?DisableIRQs@IRQ@@YAII@Z
-src/func_0205f77c.cpp
+src/unnamed/arm9/0205/func_0205f77c.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -4194,7 +4194,7 @@ src/func_0205f77c.cpp
 #src/game/actors/daObjTh_Fall_Block_c/_ZN12FallBlockBbhD0Ev.cpp
 
 # 1 unresolved: ?CleanupResources@MadPiano@@UAEHXZ
-src/game/actors/daPiano_c/_ZN8MadPiano16CleanupResourcesEv.cpp
+src/game/actors/daPiano_c/d_a_piano.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was

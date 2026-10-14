@@ -52,7 +52,7 @@ data_ov071_02122bc0 data_ov071_02122bc8 data_ov071_02122bd0 data_ov071_02122bd8
 data_ov071_02122be0 data_ov071_02122be8
 # the model/anim SharedFilePtr handles and their aux blocks (bss), and the live
 # state array the sinit fills and the seat rewrites in place
-data_ov071_02122f80 data_ov071_02122f88 data_ov071_02122f90 data_ov071_02122f9c
+data_ov071_02122f80 data_ov071_02122f88 data_ov071_02122f90@0x02122f90 data_ov071_02122f9c@0x02122f9c
 data_ov071_02122fa8:0x90
 # Two bss words __sinit_ov071_021228c8 writes that the first cut of this mount
 # missed (the link named them): the sinit's own registration pair.
@@ -66,11 +66,11 @@ data_ov071_02123050 data_ov071_02123058
 data_ov071_02122ca8 data_ov071_02122cb0 data_ov071_02122cb8 data_ov071_02122cc0
 data_ov071_02122cc8 data_ov071_02122cd0
 data_ov071_02122e74 data_ov071_02122e7c data_ov071_02122e84 data_ov071_02122e8c
-data_ov071_02122ecc
+
 data_ov071_02123038 data_ov071_02123040 data_ov071_02123048
 data_ov071_02123064 data_ov071_02123070 data_ov071_0212307c data_ov071_02123088
-data_ov071_021230b8 data_ov071_021230c4 data_ov071_021230d0 data_ov071_021230d8
-data_ov071_021230e0 data_ov071_021230ec:0x14
+data_ov071_021230b8 data_ov071_021230c4@0x021230c4
+data_ov071_021230e0@0x021230e0 data_ov071_021230ec@0x021230ec:0x14
 # run linkw wave 5 (lane w5-A): COFFIN (64) joins. Its record is config-named
 # and `ambiguous` (the shared ov070/071/073/074 window); settled by the raw
 # readback in overlay_0071.bin: w0 = 0x02122670 = daObjCasket_c_classInit, +4 reads 64.
@@ -125,3 +125,14 @@ data_ov071_021226a4:0x8
 # is the place to fix that: build/port/host-src/ov071_syms.c is its output and is
 # regenerated from this list on every configure.
 #   g_profile_EYEKUN_BEAM                      now defined by d_a_ey_bm.cpp.obj
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov071_02122ecc                        now defined by src/actors/daObjCasket_c.cpp
+#   data_ov071_021230d0                        now defined by src/actors/daObjCasket_c.cpp
+#   data_ov071_021230d8                        now defined by src/actors/daObjCasket_c.cpp

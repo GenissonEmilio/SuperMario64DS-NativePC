@@ -69,7 +69,7 @@ int _ZN4cstd4fdivEii(int a, int b);
 extern void *_ZTV8dCcPos_c[];
 extern void *_ZTV7dCcAc_c[];
 extern void *_ZTV10dCcAcPos_c[];
-extern void *_ZTV9LakituBro[];
+extern void *_ZTV11daC_Jugem_c[];
 }
 
 /* PORT_TRACE_CYL=1 walks the list without dispatching anything and names each
@@ -100,8 +100,8 @@ static int cyl_scan(const char *when)
                     "[cylbad] %s: node %d %p vt=%p (lakitu vt=%p delta=%ld) "
                     "vt[2]=%p vt[3]=%p\n",
                     when, n, (void *)p, (void *)p->vt,
-                    (void *)_ZTV9LakituBro,
-                    (long)((char *)p->vt - (char *)_ZTV9LakituBro),
+                    (void *)_ZTV11daC_Jugem_c,
+                    (long)((char *)p->vt - (char *)_ZTV11daC_Jugem_c),
                     p->vt[2], p->vt[3]);
             bad = 1;
         }

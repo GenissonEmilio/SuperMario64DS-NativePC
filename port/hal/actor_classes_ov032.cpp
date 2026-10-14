@@ -148,16 +148,16 @@ int _ZN12daBakubaku_c16OnAimedAtWithEggEv(void);             /* slot 29, OnAimed
 int *daBakubaku_c_classInit(void);            /* id 228's factory */
 
 /* BUBBA's ten state handlers, five {enter, tick} pairs */
-int func_ov032_02111f9c(char *c);
-int func_ov032_02111e24(char *c);
-int func_ov032_02111dd8(char *c);
-int func_ov032_02111d7c(void *c);
-int func_ov032_02111d58(char *c);
-int func_ov032_02111b9c(unsigned char *c);
-int func_ov032_02111b50(char *c);
-int func_ov032_02111830(char *c);
-int func_ov032_02111814(char *c);
-int func_ov032_02111620(void *c);
+int _ZN12daBakubaku_c19func_ov032_02111f9cEv(char *c);
+int _ZN12daBakubaku_c19func_ov032_02111e24Ev(char *c);
+int _ZN12daBakubaku_c19func_ov032_02111dd8Ev(char *c);
+int _ZN12daBakubaku_c19func_ov032_02111d7cEv(void *c);
+int _ZN12daBakubaku_c19func_ov032_02111d58Ev(char *c);
+int _ZN12daBakubaku_c19func_ov032_02111b9cEv(unsigned char *c);
+int _ZN12daBakubaku_c19func_ov032_02111b50Ev(char *c);
+int _ZN12daBakubaku_c19func_ov032_02111830Ev(char *c);
+int _ZN12daBakubaku_c19func_ov032_02111814Ev(char *c);
+int _ZN12daBakubaku_c19func_ov032_02111620Ev(void *c);
 
 /* ---- id 106 HUGE_COVER --------------------------------------------------
    dsd left this class unnamed too, so its six lifecycle slots are all
@@ -409,17 +409,17 @@ typedef int (*PortBubbaFn)(void *);
         return ((PortBubbaFn)sym)(self);                                  \
     }
 
-BUBBA_TICK_FACE(func_ov032_02111e24)
-BUBBA_TICK_FACE(func_ov032_02111d7c)
-BUBBA_TICK_FACE(func_ov032_02111b9c)
-BUBBA_TICK_FACE(func_ov032_02111830)
-BUBBA_TICK_FACE(func_ov032_02111620)
+BUBBA_TICK_FACE(_ZN12daBakubaku_c19func_ov032_02111e24Ev)
+BUBBA_TICK_FACE(_ZN12daBakubaku_c19func_ov032_02111d7cEv)
+BUBBA_TICK_FACE(_ZN12daBakubaku_c19func_ov032_02111b9cEv)
+BUBBA_TICK_FACE(_ZN12daBakubaku_c19func_ov032_02111830Ev)
+BUBBA_TICK_FACE(_ZN12daBakubaku_c19func_ov032_02111620Ev)
 
-BUBBA_ENTER_FACE(func_ov032_02111f9c)
-BUBBA_ENTER_FACE(func_ov032_02111dd8)
-BUBBA_ENTER_FACE(func_ov032_02111d58)
-BUBBA_ENTER_FACE(func_ov032_02111b50)
-BUBBA_ENTER_FACE(func_ov032_02111814)
+BUBBA_ENTER_FACE(_ZN12daBakubaku_c19func_ov032_02111f9cEv)
+BUBBA_ENTER_FACE(_ZN12daBakubaku_c19func_ov032_02111dd8Ev)
+BUBBA_ENTER_FACE(_ZN12daBakubaku_c19func_ov032_02111d58Ev)
+BUBBA_ENTER_FACE(_ZN12daBakubaku_c19func_ov032_02111b50Ev)
+BUBBA_ENTER_FACE(_ZN12daBakubaku_c19func_ov032_02111814Ev)
 
 static const struct {
     PortBubbaCell *cell;
@@ -427,15 +427,15 @@ static const struct {
     PortBubbaFn enter_host, tick_host;
 } g_bubba_cells[5] = {
     { &data_ov032_02113a8c, 0x02111f9c, 0x02111e24,
-      (PortBubbaFn)bb_enter_func_ov032_02111f9c, (PortBubbaFn)bb_tick_func_ov032_02111e24 },
+      (PortBubbaFn)bb_enter__ZN12daBakubaku_c19func_ov032_02111f9cEv, (PortBubbaFn)bb_tick__ZN12daBakubaku_c19func_ov032_02111e24Ev },
     { &data_ov032_02113a9c, 0x02111dd8, 0x02111d7c,
-      (PortBubbaFn)bb_enter_func_ov032_02111dd8, (PortBubbaFn)bb_tick_func_ov032_02111d7c },
+      (PortBubbaFn)bb_enter__ZN12daBakubaku_c19func_ov032_02111dd8Ev, (PortBubbaFn)bb_tick__ZN12daBakubaku_c19func_ov032_02111d7cEv },
     { &data_ov032_02113aac, 0x02111d58, 0x02111b9c,
-      (PortBubbaFn)bb_enter_func_ov032_02111d58, (PortBubbaFn)bb_tick_func_ov032_02111b9c },
+      (PortBubbaFn)bb_enter__ZN12daBakubaku_c19func_ov032_02111d58Ev, (PortBubbaFn)bb_tick__ZN12daBakubaku_c19func_ov032_02111b9cEv },
     { &data_ov032_02113abc, 0x02111b50, 0x02111830,
-      (PortBubbaFn)bb_enter_func_ov032_02111b50, (PortBubbaFn)bb_tick_func_ov032_02111830 },
+      (PortBubbaFn)bb_enter__ZN12daBakubaku_c19func_ov032_02111b50Ev, (PortBubbaFn)bb_tick__ZN12daBakubaku_c19func_ov032_02111830Ev },
     { &data_ov032_02113a7c, 0x02111814, 0x02111620,
-      (PortBubbaFn)bb_enter_func_ov032_02111814, (PortBubbaFn)bb_tick_func_ov032_02111620 },
+      (PortBubbaFn)bb_enter__ZN12daBakubaku_c19func_ov032_02111814Ev, (PortBubbaFn)bb_tick__ZN12daBakubaku_c19func_ov032_02111620Ev },
 };
 
 extern "C" void port_bubba_states_seat(void)

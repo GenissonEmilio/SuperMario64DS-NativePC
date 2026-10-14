@@ -104,7 +104,7 @@ def check(text, rc):
                      "did not run, so nothing was exercised")
     elif cap.group(2) in ("(nil)", "0000000000000000", "00000000"):
         fails.append("1 HELD: the cap fired at f%s with an EMPTY mouth "
-                     "(held=%s) -- func_ov002_020bdb50 returns before either "
+                     "(held=%s) -- _ZN6Player19func_ov002_020bdb50Ei returns before either "
                      "dispatch, so this run proves nothing. Retune "
                      "PROOF_CAP_FRAME." % (cap.group(1), cap.group(2)))
     else:

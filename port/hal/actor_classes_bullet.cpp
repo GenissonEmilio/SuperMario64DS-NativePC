@@ -35,14 +35,14 @@
 #include <cstdio>
 
 extern "C" {
-int _ZN6Bullet13InitResourcesEv(void *self);      /* face below            */
-int _ZN6Bullet8BehaviorEv(void *self);            /* host copy (StateDispatch) */
-int _ZN6Bullet6RenderEv(void *self);              /* face below            */
-int _ZN6Bullet16CleanupResourcesEv(void);         /* C-named in its own .c TU */
-void _ZN6Bullet16OnPendingDestroyEv(void);        /* empty body, its own .c TU */
-int *_ZN6BulletD1Ev(int *self);
-int *_ZN6BulletD0Ev(int *self);
-void *_ZTV6Bullet[31];
+int _ZN24daPropeller_Heyho_Fire_c13InitResourcesEv(void *self);      /* face below            */
+int _ZN24daPropeller_Heyho_Fire_c8BehaviorEv(void *self);            /* host copy (StateDispatch) */
+int _ZN24daPropeller_Heyho_Fire_c6RenderEv(void *self);              /* face below            */
+int _ZN24daPropeller_Heyho_Fire_c16CleanupResourcesEv(void);         /* C-named in its own .c TU */
+void _ZN24daPropeller_Heyho_Fire_c16OnPendingDestroyEv(void);        /* empty body, its own .c TU */
+int *_ZN24daPropeller_Heyho_Fire_cD1Ev(int *self);
+int *_ZN24daPropeller_Heyho_Fire_cD0Ev(int *self);
+void *_ZTV24daPropeller_Heyho_Fire_c[31];
 void port_bullet_states_seat(void);               /* port/unmatched        */
 void port_enemy_death_states_seat(void);          /* Enemy tier death table */
 void port_actor_render_probe(const char *cls, void *model);
@@ -53,7 +53,7 @@ void ac31_fill_shared(void **vt);
 
 /* The projectile's own D0 spells its table by the RTTI name; both names are the
    same ROM word, so this aliases the one nominal to the host array. */
-#pragma comment(linker, "/alternatename:__ZTV24daPropeller_Heyho_Fire_c=__ZTV6Bullet")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV24daPropeller_Heyho_Fire_c=__ZTV24daPropeller_Heyho_Fire_c")
 /* Bullet's InitResources / CleanupResources reach the shared model-file handle
    under two spellings of the one ov065 bss word 0x0211d610 (Snufit owns the
    file it fires from); bridge the bare name onto the mounted ov065 symbol. */
@@ -68,24 +68,24 @@ void ac31_fill_shared(void **vt);
 #pragma comment(linker, "/alternatename:?_ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_@@YAXPADPAUActor@@HHPAUVector3_16@@H@Z=__ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_")
 
 static int __fastcall bl_init(void *s, void *)
-{ return _ZN6Bullet13InitResourcesEv(s); }
+{ return _ZN24daPropeller_Heyho_Fire_c13InitResourcesEv(s); }
 static int __fastcall bl_clean(void *, void *)
-{ return _ZN6Bullet16CleanupResourcesEv(); }
+{ return _ZN24daPropeller_Heyho_Fire_c16CleanupResourcesEv(); }
 static int __fastcall bl_behavior(void *s, void *)
-{ return _ZN6Bullet8BehaviorEv(s); }
+{ return _ZN24daPropeller_Heyho_Fire_c8BehaviorEv(s); }
 static int __fastcall bl_render(void *s, void *)
 { port_actor_render_probe("BULLET", (char *)s + 0x300);
-  return _ZN6Bullet6RenderEv(s); }
+  return _ZN24daPropeller_Heyho_Fire_c6RenderEv(s); }
 static int __fastcall bl_pdes(void *s, void *)
-{ (void)s; _ZN6Bullet16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN24daPropeller_Heyho_Fire_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall bl_d1(void *s, void *)
-{ return (int)(size_t)_ZN6BulletD1Ev((int *)s); }
+{ return (int)(size_t)_ZN24daPropeller_Heyho_Fire_cD1Ev((int *)s); }
 static int __fastcall bl_d0(void *s, void *)
-{ return (int)(size_t)_ZN6BulletD0Ev((int *)s); }
+{ return (int)(size_t)_ZN24daPropeller_Heyho_Fire_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_bullet_vtable(void)
 {
-    void **vt = (void **)_ZTV6Bullet;
+    void **vt = (void **)_ZTV24daPropeller_Heyho_Fire_c;
     port_bullet_states_seat();      /* seat the two dispatch cells BEFORE spawn */
     port_enemy_death_states_seat();
     ac31_fill_shared(vt);
@@ -106,10 +106,10 @@ extern "C" void hal_fill_bullet_vtable(void)
 // thunks reference the Itanium C name, so face each onto the MSVC method.
 // CleanupResources, OnPendingDestroy, D0, D1 are .c C-linkage in their own TUs;
 // Behavior is the host copy. Render is faced, not host-copied (see the note).
-#include "Bullet.h"
+#include "daPropeller_Heyho_Fire_c.h"
 extern "C" {
-int _ZN6Bullet13InitResourcesEv(void *self)
-{ return ((Bullet *)self)->Bullet::InitResources(); }
-int _ZN6Bullet6RenderEv(void *self)
-{ return ((Bullet *)self)->Bullet::Render(); }
+int _ZN24daPropeller_Heyho_Fire_c13InitResourcesEv(void *self)
+{ return ((daPropeller_Heyho_Fire_c *)self)->daPropeller_Heyho_Fire_c::InitResources(); }
+int _ZN24daPropeller_Heyho_Fire_c6RenderEv(void *self)
+{ return ((daPropeller_Heyho_Fire_c *)self)->daPropeller_Heyho_Fire_c::Render(); }
 }

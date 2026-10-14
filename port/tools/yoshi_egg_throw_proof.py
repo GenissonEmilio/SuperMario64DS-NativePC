@@ -139,7 +139,7 @@ def check(text, rc):
     aimed = [m for m in thrown if m.group(3) != "0"]
     if not aimed:
         fails.append("3 TARGET: the egg flew but never acquired a target "
-                     "(+0x410 stayed 0) -- func_ov002_020ecd18 never reached "
+                     "(+0x410 stayed 0) -- _ZN8daYegg_c19func_ov002_020ecd18Ev never reached "
                      "the slot-30 dispatch, so this run proves nothing")
     else:
         print("  3 TARGET   ok: %d flight frames with a target acquired "

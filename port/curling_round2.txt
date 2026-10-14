@@ -20,8 +20,8 @@ is wrong in two places. What the evidence says:
 
   log line                              defect
   ------------------------------------  ---------------------------------------
-  func_ov006_020e1dc8 entered           collision (shot-time half)     FIXED
-  func_ov006_020e20bc entered           collision (per-frame half)     FIXED
+  _ZN14dScMgCurling_c19func_ov006_020e1dc8Ei entered           collision (shot-time half)     FIXED
+  _ZN14dScMgCurling_c19func_ov006_020e20bcEi entered           collision (per-frame half)     FIXED
   snd command 0x04 param 0x0a ignored   NOT the music. 3D SFX trim.    FIXED
   snd command 0x04 param 0x0c ignored   NOT the music. 3D SFX trim.    FIXED
   func_0202e78c entered                 candidate for the tint         ROUTED
@@ -42,17 +42,17 @@ hal/scene_mg_faces.cpp. Neither has a delink block in
 config/arm9/overlays/ov006/delinks.txt and neither has a src TU, so the port
 had refused both and the shells slid through one another.
 
-  func_ov006_020e1dc8  size 0x2f4  the SHOT-TIME separation. Called once per
+  _ZN14dScMgCurling_c19func_ov006_020e1dc8Ei  size 0x2f4  the SHOT-TIME separation. Called once per
                                    shot by src/func_ov006_020e2c08.c, the
                                    matched release handler, right after it
                                    writes the shot shell's heading and speed.
                                    Un-stacks whatever the shot shell is already
                                    overlapping, one level of cascade deep.
-  func_ov006_020e20bc  size 0x5e0  the PER-FRAME collision. Called by
+  _ZN14dScMgCurling_c19func_ov006_020e20bcEi  size 0x5e0  the PER-FRAME collision. Called by
                                    src/func_ov006_020e2868.c, the matched
                                    physics tick, every frame for every shell it
                                    ticks, and again through the veneer
-                                   func_ov006_020e285c for shells at rest. This
+                                   _ZN14dScMgCurling_c19func_ov006_020e285cEi for shells at rest. This
                                    is the one that carries the physics: equal-
                                    mass elastic exchange along the contact
                                    normal, new heading and speed for both
@@ -380,13 +380,13 @@ The minigame music start is _ZN5Sound22LoadAndSetMusic_Layer1Ei, the SAME
 function a course boot uses. Four matched TUs call it on the minigame side:
 
     src/func_ov004_020ae20c.c   \
-    src/func_ov004_020ae2c8.cpp  }  called only from func_ov004_020b7124,
-                                 }  func_ov004_020b746c, func_ov004_020b77b4
+    src/func_ov004_020ae2c8.cpp  }  called only from _ZN10dMgState_c19func_ov004_020b7124Ev,
+                                 }  _ZN10dMgState_c19func_ov004_020b746cEv, _ZN10dMgState_c19func_ov004_020b77b4Ev
     src/func_ov004_020ae330.c   -- called from _ZN11dScMgBase_c18AfterInitResourcesEj
     src/actors/dScMgSound_c.cpp   -- a different minigame
 
 THE FIRST THREE HAVE NO CALLER IN src/ AT ALL. Nothing in the decomp reaches
-func_ov004_020b7124, _020b746c or _020b77b4 by name; they are reachable only
+_ZN10dMgState_c19func_ov004_020b7124Ev, _020b746c or _020b77b4 by name; they are reachable only
 through a member-pointer dispatch. That dispatch is dScMgBase_c's state setter,
 _ZN10dMgState_c8SetStateEi, which is THE WALL -- still a reporting trap in
 hal/scene_mg_faces.cpp, and unmatched/MgBase_StateDispatch.cpp's section 4 says
@@ -481,7 +481,7 @@ every map on every build and now reports
                     97 assertions over 21 map(s) ... forms OK
 
 -- 8 class-C rows where the base had 7, and the new one is
-func_ov006_020e285c -> func_ov006_020e20bc. That green is the statement that
+_ZN14dScMgCurling_c19func_ov006_020e285cEi -> _ZN14dScMgCurling_c19func_ov006_020e20bcEi. That green is the statement that
 MSVC really did emit the jmp, so the two arguments really do ride the frame.
 
 

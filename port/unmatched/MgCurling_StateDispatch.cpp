@@ -118,21 +118,21 @@ void port_mg_call0(void *self, unsigned code, int adj);
 void port_mg_call1(void *self, unsigned code, int adj, int a);
 
 /* ---- the twenty-four matched state bodies, in address order ------------- */
-void func_ov006_020e071c(char *c, int i);
-void func_ov006_020e07b0(char *o, int i);
-void func_ov006_020e0884(char *c, int i);
-void func_ov006_020e091c(char *base, int i);
-void func_ov006_020e0a24(char *base, int idx);
-void func_ov006_020e0b64(char *base, int index);
-void func_ov006_020e0ca0(char *o, int i);
-void func_ov006_020e0d84(char *c, int i);
-void func_ov006_020e0e18(char *base, int idx);
-void func_ov006_020e0edc(char *c, int idx);
-void func_ov006_020e0ff0(void *base, int idx);
-void func_ov006_020e1100(char *c, int idx);
-void func_ov006_020e1214(char *base, int idx);
-void func_ov006_020e1264(char *c, int idx);
-void func_ov006_020e1b54(char *c);
+void _ZN14dScMgCurling_c19func_ov006_020e071cEi(char *c, int i);
+void _ZN14dScMgCurling_c19func_ov006_020e07b0Ei(char *o, int i);
+void _ZN14dScMgCurling_c19func_ov006_020e0884Ei(char *c, int i);
+void _ZN14dScMgCurling_c19func_ov006_020e091cEi(char *base, int i);
+void _ZN14dScMgCurling_c19func_ov006_020e0a24Ei(char *base, int idx);
+void _ZN14dScMgCurling_c19func_ov006_020e0b64Ei(char *base, int index);
+void _ZN14dScMgCurling_c19func_ov006_020e0ca0Ei(char *o, int i);
+void _ZN14dScMgCurling_c19func_ov006_020e0d84Ei(char *c, int i);
+void _ZN14dScMgCurling_c19func_ov006_020e0e18Ei(char *base, int idx);
+void _ZN14dScMgCurling_c19func_ov006_020e0edcEi(char *c, int idx);
+void _ZN14dScMgCurling_c19func_ov006_020e0ff0Ei(void *base, int idx);
+void _ZN14dScMgCurling_c19func_ov006_020e1100Ei(char *c, int idx);
+void _ZN14dScMgCurling_c19func_ov006_020e1214Ei(char *base, int idx);
+void _ZN14dScMgCurling_c19func_ov006_020e1264Ei(char *c, int idx);
+void _ZN14dScMgCurling_c19func_ov006_020e1b54Ev(char *c);
 
 /* THE TWENTY-FIFTH STATE, hosted as of run link60 lane CT1. Deliberately NOT
    named func_ov006_020e1854: the decomp still has no body and no delink block
@@ -143,16 +143,16 @@ void func_ov006_020e1b54(char *c);
    prints for port_player_st_climb_main at 0x020cb5bc. Derivation, provenance
    and the full ROM listing are in unmatched/MgCurling_State_020e1854.cpp. */
 void port_mg_curling_st_020e1854(char *c);
-void func_ov006_020e26f8(void *w, int i);
-void func_ov006_020e285c(char *c, int idx);  /* one-argument slot; riders named
+void _ZN14dScMgCurling_c19func_ov006_020e26f8Ei(void *w, int i);
+void _ZN14dScMgCurling_c19func_ov006_020e285cEi(char *c, int idx);  /* one-argument slot; riders named
                                                 by lane CUR2, see the header */
-void func_ov006_020e2868(char *c, int idx);
-void func_ov006_020e2c08(char *self, int idx);
-void func_ov006_020e2eb8(void);              /* zero-argument slot, (void) body */
-void func_ov006_020e2ebc(char *thiz);
-void func_ov006_020e2f78(char *c);
-void func_ov006_020e3078(char *c);
-void func_ov006_020e3210(char *c);
+void _ZN14dScMgCurling_c19func_ov006_020e2868Ei(char *c, int idx);
+void _ZN14dScMgCurling_c19func_ov006_020e2c08Ei(char *self, int idx);
+void _ZN14dScMgCurling_c19func_ov006_020e2eb8Ev(void);              /* zero-argument slot, (void) body */
+void _ZN14dScMgCurling_c19func_ov006_020e2ebcEv(char *thiz);
+void _ZN14dScMgCurling_c19func_ov006_020e2f78Ev(char *c);
+void _ZN14dScMgCurling_c19func_ov006_020e3078Ev(char *c);
+void _ZN14dScMgCurling_c19func_ov006_020e3210Ev(char *c);
 
 /* the seven mount tables, re-typed to the ROM's eight-byte pair. The mount
    defines the storage; __sinit_ov006_021304ac fills it at scene load. */
@@ -166,12 +166,12 @@ extern MgPmf data_ov006_02141950[];
 
 /* the ordinary callees the host copies below keep */
 int  RandomIntInternal(int *seed);
-void func_ov006_020e1680(char *c);
+void _ZN14dScMgCurling_c19func_ov006_020e1680Ev(char *c);
 extern int data_0209d4b8;
 
 /* host-copied further down this file, and called by the Behavior host copy
    above its own definition */
-void func_ov006_020e12d0(char *o);
+void _ZN14dScMgCurling_c19func_ov006_020e12d0Ev(char *o);
 
 /* the boot installer at the end of this file; hal/scene_mg.cpp calls it after
    the ov006 constructors have filled the tables (run link100 lane PMFB5). */
@@ -188,13 +188,13 @@ extern "C" int port_mg_try_ov006_0(void *self, unsigned code)
     char *c = (char *)self;
     ++g_curling_state_hits;
     switch (code) {
-    case 0x020e1b54u: func_ov006_020e1b54(c); return 1;
+    case 0x020e1b54u: _ZN14dScMgCurling_c19func_ov006_020e1b54Ev(c); return 1;
     case 0x020e1854u: port_mg_curling_st_020e1854(c); return 1;
-    case 0x020e2eb8u: func_ov006_020e2eb8();  return 1;   /* (void) body */
-    case 0x020e2ebcu: func_ov006_020e2ebc(c); return 1;
-    case 0x020e2f78u: func_ov006_020e2f78(c); return 1;
-    case 0x020e3078u: func_ov006_020e3078(c); return 1;
-    case 0x020e3210u: func_ov006_020e3210(c); return 1;
+    case 0x020e2eb8u: _ZN14dScMgCurling_c19func_ov006_020e2eb8Ev();  return 1;   /* (void) body */
+    case 0x020e2ebcu: _ZN14dScMgCurling_c19func_ov006_020e2ebcEv(c); return 1;
+    case 0x020e2f78u: _ZN14dScMgCurling_c19func_ov006_020e2f78Ev(c); return 1;
+    case 0x020e3078u: _ZN14dScMgCurling_c19func_ov006_020e3078Ev(c); return 1;
+    case 0x020e3210u: _ZN14dScMgCurling_c19func_ov006_020e3210Ev(c); return 1;
     default: --g_curling_state_hits;          return 0;
     }
 }
@@ -204,24 +204,24 @@ extern "C" int port_mg_try_ov006_1(void *self, unsigned code, int a)
     char *c = (char *)self;
     ++g_curling_state_hits;
     switch (code) {
-    case 0x020e071cu: func_ov006_020e071c(c, a); return 1;
-    case 0x020e07b0u: func_ov006_020e07b0(c, a); return 1;
-    case 0x020e0884u: func_ov006_020e0884(c, a); return 1;
-    case 0x020e091cu: func_ov006_020e091c(c, a); return 1;
-    case 0x020e0a24u: func_ov006_020e0a24(c, a); return 1;
-    case 0x020e0b64u: func_ov006_020e0b64(c, a); return 1;
-    case 0x020e0ca0u: func_ov006_020e0ca0(c, a); return 1;
-    case 0x020e0d84u: func_ov006_020e0d84(c, a); return 1;
-    case 0x020e0e18u: func_ov006_020e0e18(c, a); return 1;
-    case 0x020e0edcu: func_ov006_020e0edc(c, a); return 1;
-    case 0x020e0ff0u: func_ov006_020e0ff0(c, a); return 1;
-    case 0x020e1100u: func_ov006_020e1100(c, a); return 1;
-    case 0x020e1214u: func_ov006_020e1214(c, a); return 1;
-    case 0x020e1264u: func_ov006_020e1264(c, a); return 1;
-    case 0x020e26f8u: func_ov006_020e26f8(c, a); return 1;
-    case 0x020e285cu: func_ov006_020e285c(c, a); return 1;  /* riders named */
-    case 0x020e2868u: func_ov006_020e2868(c, a); return 1;
-    case 0x020e2c08u: func_ov006_020e2c08(c, a); return 1;
+    case 0x020e071cu: _ZN14dScMgCurling_c19func_ov006_020e071cEi(c, a); return 1;
+    case 0x020e07b0u: _ZN14dScMgCurling_c19func_ov006_020e07b0Ei(c, a); return 1;
+    case 0x020e0884u: _ZN14dScMgCurling_c19func_ov006_020e0884Ei(c, a); return 1;
+    case 0x020e091cu: _ZN14dScMgCurling_c19func_ov006_020e091cEi(c, a); return 1;
+    case 0x020e0a24u: _ZN14dScMgCurling_c19func_ov006_020e0a24Ei(c, a); return 1;
+    case 0x020e0b64u: _ZN14dScMgCurling_c19func_ov006_020e0b64Ei(c, a); return 1;
+    case 0x020e0ca0u: _ZN14dScMgCurling_c19func_ov006_020e0ca0Ei(c, a); return 1;
+    case 0x020e0d84u: _ZN14dScMgCurling_c19func_ov006_020e0d84Ei(c, a); return 1;
+    case 0x020e0e18u: _ZN14dScMgCurling_c19func_ov006_020e0e18Ei(c, a); return 1;
+    case 0x020e0edcu: _ZN14dScMgCurling_c19func_ov006_020e0edcEi(c, a); return 1;
+    case 0x020e0ff0u: _ZN14dScMgCurling_c19func_ov006_020e0ff0Ei(c, a); return 1;
+    case 0x020e1100u: _ZN14dScMgCurling_c19func_ov006_020e1100Ei(c, a); return 1;
+    case 0x020e1214u: _ZN14dScMgCurling_c19func_ov006_020e1214Ei(c, a); return 1;
+    case 0x020e1264u: _ZN14dScMgCurling_c19func_ov006_020e1264Ei(c, a); return 1;
+    case 0x020e26f8u: _ZN14dScMgCurling_c19func_ov006_020e26f8Ei(c, a); return 1;
+    case 0x020e285cu: _ZN14dScMgCurling_c19func_ov006_020e285cEi(c, a); return 1;  /* riders named */
+    case 0x020e2868u: _ZN14dScMgCurling_c19func_ov006_020e2868Ei(c, a); return 1;
+    case 0x020e2c08u: _ZN14dScMgCurling_c19func_ov006_020e2c08Ei(c, a); return 1;
     /* arity-0 body reached through a one-argument slot. data_ov006_021418b0 is
        an arity-0 table so this case should never fire, but the ROM body ignores
        r1 anyway, so calling it here is the same ride-through this file already
@@ -383,22 +383,22 @@ extern "C" unsigned port_mg_curling_state_hits(void)
     }
 
 /* data_ov006_021418b0, arity 0 */
-CUR_FACE0(b0, 0, func_ov006_020e1b54)
+CUR_FACE0(b0, 0, _ZN14dScMgCurling_c19func_ov006_020e1b54Ev)
 CUR_FACE0(b0, 1, port_mg_curling_st_020e1854)
 
 /* data_ov006_02141910, arity 1 */
-CUR_FACE1(t10, 0, func_ov006_020e2c08)
-CUR_FACE1(t10, 1, func_ov006_020e2868)
-CUR_FACE1(t10, 2, func_ov006_020e285c)
-CUR_FACE1(t10, 3, func_ov006_020e26f8)
+CUR_FACE1(t10, 0, _ZN14dScMgCurling_c19func_ov006_020e2c08Ei)
+CUR_FACE1(t10, 1, _ZN14dScMgCurling_c19func_ov006_020e2868Ei)
+CUR_FACE1(t10, 2, _ZN14dScMgCurling_c19func_ov006_020e285cEi)
+CUR_FACE1(t10, 3, _ZN14dScMgCurling_c19func_ov006_020e26f8Ei)
 
 /* data_ov006_02141950, arity 0. Slot 1 is func_ov006_020e3078, which is the
    matched src TU now and not the host copy this file used to define. */
-CUR_FACE0(t50, 0, func_ov006_020e3210)
-CUR_FACE0(t50, 1, func_ov006_020e3078)
-CUR_FACE0(t50, 2, func_ov006_020e2f78)
-CUR_FACE0(t50, 3, func_ov006_020e2ebc)
-CUR_FACE0_VOID(t50, 4, func_ov006_020e2eb8)
+CUR_FACE0(t50, 0, _ZN14dScMgCurling_c19func_ov006_020e3210Ev)
+CUR_FACE0(t50, 1, _ZN14dScMgCurling_c19func_ov006_020e3078Ev)
+CUR_FACE0(t50, 2, _ZN14dScMgCurling_c19func_ov006_020e2f78Ev)
+CUR_FACE0(t50, 3, _ZN14dScMgCurling_c19func_ov006_020e2ebcEv)
+CUR_FACE0_VOID(t50, 4, _ZN14dScMgCurling_c19func_ov006_020e2eb8Ev)
 
 /* ---- THE LAST THREE TABLES, run linkfull lane PMFMG1 ---------------------
  *
@@ -437,19 +437,19 @@ CUR_FACE0_VOID(t50, 4, func_ov006_020e2eb8)
 #pragma comment(linker, "/alternatename:?data_ov006_021418d8@@3PAP8C@@AEXH@ZA=_data_ov006_021418d8")
 
 /* data_ov006_021418f0, arity 1, dispatched by func_ov006_020e1214 */
-CUR_FACE1(tf0, 0, func_ov006_020e1100)
-CUR_FACE1(tf0, 1, func_ov006_020e0ff0)
-CUR_FACE1(tf0, 2, func_ov006_020e0edc)
-CUR_FACE1(tf0, 3, func_ov006_020e0e18)
+CUR_FACE1(tf0, 0, _ZN14dScMgCurling_c19func_ov006_020e1100Ei)
+CUR_FACE1(tf0, 1, _ZN14dScMgCurling_c19func_ov006_020e0ff0Ei)
+CUR_FACE1(tf0, 2, _ZN14dScMgCurling_c19func_ov006_020e0edcEi)
+CUR_FACE1(tf0, 3, _ZN14dScMgCurling_c19func_ov006_020e0e18Ei)
 /* data_ov006_02141930, arity 1, dispatched by func_ov006_020e0d84 */
-CUR_FACE1(t30, 0, func_ov006_020e0ca0)
-CUR_FACE1(t30, 1, func_ov006_020e0b64)
-CUR_FACE1(t30, 2, func_ov006_020e0a24)
-CUR_FACE1(t30, 3, func_ov006_020e091c)
+CUR_FACE1(t30, 0, _ZN14dScMgCurling_c19func_ov006_020e0ca0Ei)
+CUR_FACE1(t30, 1, _ZN14dScMgCurling_c19func_ov006_020e0b64Ei)
+CUR_FACE1(t30, 2, _ZN14dScMgCurling_c19func_ov006_020e0a24Ei)
+CUR_FACE1(t30, 3, _ZN14dScMgCurling_c19func_ov006_020e091cEi)
 /* data_ov006_021418d8, arity 1, dispatched by func_ov006_020e0d84 */
-CUR_FACE1(td8, 0, func_ov006_020e0884)
-CUR_FACE1(td8, 1, func_ov006_020e07b0)
-CUR_FACE1(td8, 2, func_ov006_020e071c)
+CUR_FACE1(td8, 0, _ZN14dScMgCurling_c19func_ov006_020e0884Ei)
+CUR_FACE1(td8, 1, _ZN14dScMgCurling_c19func_ov006_020e07b0Ei)
+CUR_FACE1(td8, 2, _ZN14dScMgCurling_c19func_ov006_020e071cEi)
 
 /* run link100 lane SEAT4: this class's remaining state tables are
    seated in port/hal/pmf_seat4.cpp, from inside this installer, so the

@@ -1902,16 +1902,16 @@ def selftest():
         # the hand-file parsers, on fabricated rows in both shapes
         hm = tdp / "hand_mg.cpp"
         hm.write_text(
-            "    case 0x020e1b54u: func_ov006_020e1b54(c); return 1;\n"
+            "    case 0x020e1b54u: _ZN14dScMgCurling_c19func_ov006_020e1b54Ev(c); return 1;\n"
             "    case 0x020e1854u: curling_no_body(-1);    return 1;\n"
-            "    case 0x020e2eb8u: func_ov006_020e2eb8();  return 1;\n"
+            "    case 0x020e2eb8u: _ZN14dScMgCurling_c19func_ov006_020e2eb8Ev();  return 1;\n"
             # a case that calls NOTHING. A parser that takes the first
             # word after the colon reads `break` as the target symbol and
             # invents a row; requiring the call paren is what stops it.
             "    case 0x020e0000u: break;\n")
-        expect(parse_hand_mg(hm) == {0x020e1b54: "func_ov006_020e1b54",
+        expect(parse_hand_mg(hm) == {0x020e1b54: "_ZN14dScMgCurling_c19func_ov006_020e1b54Ev",
                                      0x020e1854: "curling_no_body",
-                                     0x020e2eb8: "func_ov006_020e2eb8"},
+                                     0x020e2eb8: "_ZN14dScMgCurling_c19func_ov006_020e2eb8Ev"},
                "hand mg switch parse: a case that calls nothing yields no "
                "row", parse_hand_mg(hm))
         hp = tdp / "hand_pl.inc"

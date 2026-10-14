@@ -209,7 +209,7 @@
 # TouchesWater rides slice_gate16.txt, and both were in w2-a's 132. Their
 # swaps are pure reference edges in the host files. InitCuboid was in no slice
 # at all, so it needs the line.
-src/_ZN11ShadowModel10InitCuboidEv.cpp
+src/engine/model/dExtShadowModel_c.cpp
 #
 # The edge: SIGN_POST calls the METHOD ?InitCuboid@ShadowModel@@QAEXXZ, and
 # hal/actor_class_faces.cpp used to define that decorated name itself over a

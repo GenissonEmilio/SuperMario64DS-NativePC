@@ -20,7 +20,7 @@
 # The phase itself: the graphics block's word 0 decides the arm; the full arm
 # runs OAM::Reset, the GX reset, the empty func_0200f468 and the three fader
 # steps; the early arm only the first two fader steps.
-src/func_02019390.c
+src/unnamed/arm9/0201/func_02019390.c
 #
 # The GX reset (full arm, when func_02019018's data_0208ee00 is up, which is
 # its ROM value): func_020557b4 (linked, hostgen-routed by the TIDEP block),
@@ -28,17 +28,17 @@ src/func_02019390.c
 # command ports, so the copy goes through hostgen: a plain store would land in
 # the mapped window and the geometry engine would never see it (gxport_guard
 # refuses one).
-src/func_0200f4b4.c hostgen
+src/unnamed/arm9/0200/func_0200f4b4.c hostgen
 #
 # An empty body, called on the full arm.
-src/func_0200f468.c
+src/unnamed/arm9/0200/func_0200f468.c
 #
 # The fader IN MOTION's advance: vt[2] on data_0209d4b0, the ROM body the old
 # stand-in reproduced. Its settle-clear, which the ROM does not have, stays in
 # port_frame_phase2 (read its banner for why).
-src/func_02018ec0.c
+src/unnamed/arm9/0201/func_02018ec0.c
 #
 # vt[2] on data_0209f1e4, the soft-reset fader. Only dScene_c::BeforeBehavior's
 # soft-reset branch writes that word, and the latch behind it never rises on
 # this port (func_02023498 is not linked), so this is the ROM's null test.
-src/func_0202345c.c
+src/unnamed/arm9/0202/func_0202345c.c

@@ -69,61 +69,62 @@
 #                           graph.  Nothing there changes a body; each row
 #                           names the same function twice.
 #
-src/Message_DrawCenteredLine.c
+src/Message.cpp
 src/_ZN3G2S12GetBG1ScrPtrEv.cpp
-src/_ZN5Sound10PauseMusicEv.cpp
-src/_ZN5Sound12PlayBank3_2DEj.cpp
-src/_ZN5Sound12UnpauseMusicEv.cpp
-src/_ZN5Stage10PS_CleanupEv.cpp
-src/_ZN5Stage17PS_UpdateSaveMenuEb.cpp
-src/_ZN5Stage17UpdateMenuButtonsEb.cpp
-src/_ZN5Stage20PS_UpdateOptionsMenuEv.cpp
-src/_ZN5Stage25PS_UpdateOkAndBackButtonsEb.cpp
-src/_ZN5Stage7PS_InitEv.cpp
-src/_ZN5Stage7VE_InitEv.cpp
-src/_ZN5Stage8BehaviorEv.cpp
-src/_ZN5Stage9LC_UpdateEv.cpp
-src/_ZN5Stage9PS_UpdateEv.cpp
-src/_ZN5Stage9VE_UpdateEv.cpp
+src/engine/sound/Sound.cpp
+# FOLDED into src/engine/sound/Sound.cpp (row 74): src/_ZN5Sound12PlayBank3_2DEj.cpp
+# FOLDED into src/engine/sound/Sound.cpp (row 74): src/_ZN5Sound12UnpauseMusicEv.cpp
+src/actors/dScStage_c.cpp
+# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage17PS_UpdateSaveMenuEb.cpp
+# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage17UpdateMenuButtonsEb.cpp
+# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage20PS_UpdateOptionsMenuEv.cpp
+# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage25PS_UpdateOkAndBackButtonsEb.cpp
+src/_ZN10dScStage_c7PS_InitEv.cpp
+# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage7VE_InitEv.cpp
+src/_ZN10dScStage_c8BehaviorEv.cpp
+# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage9LC_UpdateEv.cpp
+# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage9PS_UpdateEv.cpp
+# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage9VE_UpdateEv.cpp
 src/actors/Player.cpp
-src/_ZN7Message11DisplayTextEt.cpp
-src/_ZN7Message16DisplayPauseTextEth.cpp
-src/_ZN7Message18DisplayPauseTextVSEt.cpp
-src/_ZN7Message19DisplayDontSaveTextEt.cpp
-src/_ZN7Message19DisplaySaveMenuTextEt.cpp
-src/_ZN7Message21DisplayLevelClearTextEta.cpp
-src/_ZN7Message21DisplaySaveStatusTextEt.cpp
-src/_ZN7Message22DisplayOptionsMenuTextEt.cpp
-src/_ZN7Message25DisplayControllerModeTextEt.cpp
-src/_ZN7Message7DisplayEj.cpp
-src/func_02011c24.c
-src/func_02011c54.c
-src/func_02011db4.c
-src/func_02019a58.c
-src/func_0201b100.c
-src/func_0201cfb8.c
-src/func_0201d418.c
-src/func_0201d850.c
-src/func_0201e220.cpp
-src/func_02029408.c
-src/func_02031428.c
-src/func_020321fc.c
-src/func_020326ac.c
-src/func_02032f54.c
-src/func_020345b0.c
-src/func_0204efe0.c
-src/func_0204f558.c
-src/func_0204f958.c
-src/func_0204fce8.c
-src/func_0204fed0.cpp
-src/func_020501b8.c
-src/func_02052234.c
-src/func_0205ac28.c
-src/func_0205ad6c.c
-src/func_0205f650.c
-src/func_0205f66c.c
-src/func_0205f68c.c
-src/func_0205fa78.c
-src/func_0205fab4.c
-src/_ZN5Stage8CanPauseEv.cpp
-src/_ZN5Stage15IsPauseDisabledEv.cpp
+port/unmatched/hostarm/Player.cpp
+# FOLDED into src/Message.cpp (row 72): src/_ZN7Message11DisplayTextEt.cpp
+# FOLDED into src/Message.cpp (row 72): src/_ZN7Message16DisplayPauseTextEth.cpp
+src/Message3.cpp
+# FOLDED into src/Message.cpp (row 72): src/_ZN7Message19DisplayDontSaveTextEt.cpp
+# FOLDED into src/Message.cpp (row 72): src/_ZN7Message19DisplaySaveMenuTextEt.cpp
+# FOLDED into src/Message.cpp (row 72): src/_ZN7Message21DisplayLevelClearTextEta.cpp
+# FOLDED into src/Message.cpp (row 72): src/_ZN7Message21DisplaySaveStatusTextEt.cpp
+# FOLDED into src/Message.cpp (row 72): src/_ZN7Message22DisplayOptionsMenuTextEt.cpp
+# FOLDED into src/Message.cpp (row 72): src/_ZN7Message25DisplayControllerModeTextEt.cpp
+# FOLDED into src/Message.cpp (row 72): src/_ZN7Message7DisplayEj.cpp
+# FOLDED into src/engine/sound/Sound.cpp (row 74): src/func_02011c24.c
+# FOLDED into src/engine/sound/Sound.cpp (row 74): src/func_02011c54.c
+# FOLDED into src/engine/sound/Sound.cpp (row 74): src/func_02011db4.c
+src/unnamed/arm9/0201/func_02019a58.c
+src/unnamed/arm9/0201/func_0201b100.c
+# FOLDED into src/Message.cpp (row 72): src/func_0201cfb8.c
+# FOLDED into src/Message.cpp (row 72): src/func_0201d418.c
+# FOLDED into src/Message.cpp (row 72): src/func_0201d850.c
+# FOLDED into src/Message.cpp (row 72): src/func_0201e220.cpp
+src/unnamed/arm9/0202/func_02029408.c
+src/unnamed/arm9/0203/func_02031428.c
+# FOLDED into src/Message3.cpp (row 91): src/func_020321fc.c
+# FOLDED into src/Message3.cpp (row 91): src/func_020326ac.c
+# FOLDED into src/Message3.cpp (row 91): src/func_02032f54.c
+# FOLDED into src/Message3.cpp (row 91): src/func_020345b0.c
+src/engine/sound/SoundEngine.cpp
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 114): src/func_0204f558.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 114): src/func_0204f958.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 114): src/func_0204fce8.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 114): src/func_0204fed0.cpp
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 114): src/func_020501b8.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 114): src/func_02052234.c
+src/unnamed/arm9/0205/func_0205ac28.c
+src/unnamed/arm9/0205/func_0205ad6c.c
+src/unnamed/arm9/0205/func_0205f650.c
+src/unnamed/arm9/0205/func_0205f66c.c
+src/unnamed/arm9/0205/func_0205f68c.c
+src/unnamed/arm9/0205/func_0205fa78.c
+src/unnamed/arm9/0205/func_0205fab4.c
+src/_ZN10dScStage_c8CanPauseEv.cpp
+src/_ZN10dScStage_c15IsPauseDisabledEv.cpp

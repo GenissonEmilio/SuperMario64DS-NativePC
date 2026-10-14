@@ -165,7 +165,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
      70  D1 / D0                                       -> C names
     243  InitResources / Behavior                      -> methods
     243  CleanupResources / D0                         -> C names  */
-#include "RollingLogLll.h"
+#include "daObjFlMaruta_c.h"
 #include "daObj_volcanoCannon_c.h"
 
 extern "C" {
@@ -343,15 +343,15 @@ static void ov22e_bringup(void)
 // block joins port/ov064_syms.txt with this lane. Slots 6 and 9 are ov002's
 // shared platform bodies, already linked.
 extern "C" {
-int _ZN19RotatingPlatformLll13InitResourcesEv(unsigned char *self);  /* slot 0  InitResources */
-int _ZN19RotatingPlatformLll16CleanupResourcesEv(void *self);           /* slot 3  CleanupResources */
+int _ZN16daObjFl_Koma_D_c13InitResourcesEv(unsigned char *self);  /* slot 0  InitResources */
+int _ZN16daObjFl_Koma_D_c16CleanupResourcesEv(void *self);           /* slot 3  CleanupResources */
 int _ZN16daObjKaitendai_c8BehaviorEv(char *self);           /* slot 6  Behavior, ov002 */
 int _ZN16daObjKaitendai_c6RenderEv(void *self);           /* slot 9  Render,   ov002 */
-int *_ZN19RotatingPlatformLllD1Ev(int *self);           /* slot 16 D1 */
-int *_ZN19RotatingPlatformLllD0Ev(int *self);           /* slot 17 D0 */
+int *_ZN16daObjFl_Koma_D_cD1Ev(int *self);           /* slot 16 D1 */
+int *_ZN16daObjFl_Koma_D_cD0Ev(int *self);           /* slot 17 D0 */
 void *daObjFl_Koma_D_c_classInit(void);
 DSSTATE_BEGIN
-void *_ZTV19RotatingPlatformLll[32];
+void *_ZTV16daObjFl_Koma_D_c[32];
 DSSTATE_END
 }
 /* 0x02113de8 answers to its RTTI name too; the D1 and D0 restore it by that
@@ -360,24 +360,24 @@ DSSTATE_END
    on the dead FIRST store of a `str r1,[r4]; str r0,[r4]` pair, so pointing it
    at the own table costs nothing; the live second store is the per-source
    -DVT1 in port/CMakeLists.txt.) */
-#pragma comment(linker, "/alternatename:__ZTV16daObjFl_Koma_D_c=__ZTV19RotatingPlatformLll")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV16daObjFl_Koma_D_c=__ZTV16daObjFl_Koma_D_c")
 static int __fastcall rp_init(void *s, void *)
-{ return _ZN19RotatingPlatformLll13InitResourcesEv((unsigned char *)s); }
+{ return _ZN16daObjFl_Koma_D_c13InitResourcesEv((unsigned char *)s); }
 static int __fastcall rp_clean(void *s, void *)
-{ return _ZN19RotatingPlatformLll16CleanupResourcesEv(s); }
+{ return _ZN16daObjFl_Koma_D_c16CleanupResourcesEv(s); }
 static int __fastcall rp_behavior(void *s, void *)
 { return _ZN16daObjKaitendai_c8BehaviorEv((char *)s); }
 static int __fastcall rp_render(void *s, void *)
 { port_actor_render_probe("ROTATING_PLATFORM_LLL", (char *)s + 0xd4);
   return _ZN16daObjKaitendai_c6RenderEv(s); }
 static int __fastcall rp_d1(void *s, void *)
-{ return (int)(size_t)_ZN19RotatingPlatformLllD1Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjFl_Koma_D_cD1Ev((int *)s); }
 static int __fastcall rp_d0(void *s, void *)
-{ return (int)(size_t)_ZN19RotatingPlatformLllD0Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjFl_Koma_D_cD0Ev((int *)s); }
 extern "C" void hal_fill_rotating_platform_lll_vtable(void)
 {
     ov22e_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV19RotatingPlatformLll;
+    void *volatile *vt = (void *volatile *)_ZTV16daObjFl_Koma_D_c;
     ov22e_fill_shared(vt);
     vt[0]  = (void *)rp_init;
     vt[3]  = (void *)rp_clean;
@@ -467,15 +467,15 @@ extern "C" void hal_fill_lava_bridge_vtable(void)
 // FLOATING_FLOOR_LLL). Its CleanupResources (0x02111d90) is the same G0/G1
 // shape as 73's; pool 0x02111dcc -> 0x021145a8, 0x02111dd0 -> 0x021145a0.
 extern "C" {
-int _ZN10LavaSeesaw13InitResourcesEv(void *self);   /* slot 0  InitResources */
-int _ZN10LavaSeesaw16CleanupResourcesEv(void *self);   /* slot 3  CleanupResources */
-int _ZN10LavaSeesaw8BehaviorEv(void *self);   /* slot 6  Behavior */
-int _ZN10LavaSeesaw6RenderEv(void *self);   /* slot 9  Render */
-int *_ZN10LavaSeesawD1Ev(int *self);   /* slot 16 D1 */
-int *_ZN10LavaSeesawD0Ev(int *self);   /* slot 17 D0 */
+int _ZN16daObjFl_Seesaw_c13InitResourcesEv(void *self);   /* slot 0  InitResources */
+int _ZN16daObjFl_Seesaw_c16CleanupResourcesEv(void *self);   /* slot 3  CleanupResources */
+int _ZN16daObjFl_Seesaw_c8BehaviorEv(void *self);   /* slot 6  Behavior */
+int _ZN16daObjFl_Seesaw_c6RenderEv(void *self);   /* slot 9  Render */
+int *_ZN16daObjFl_Seesaw_cD1Ev(int *self);   /* slot 16 D1 */
+int *_ZN16daObjFl_Seesaw_cD0Ev(int *self);   /* slot 17 D0 */
 void *daObjFl_Seesaw_c_classInit(void);
 DSSTATE_BEGIN
-void *_ZTV10LavaSeesaw[32];
+void *_ZTV16daObjFl_Seesaw_c[32];
 DSSTATE_END
 }
 /* PORT_HOST_ABI: two names of ONE ROM table, read off the ROM rather than
@@ -487,28 +487,28 @@ DSSTATE_END
    daObjFl_Seesaw_c_classInit, _ZN10LavaSeesawD1Ev, _ZN10LavaSeesawD0Ev. Read out of
    extracted/overlays/overlay_0022.bin; the LHS is not a config symbol
    anywhere, so the alias cannot be defeated by a later slice. */
-#pragma comment(linker, "/alternatename:__ZTV16daObjFl_Seesaw_c=__ZTV10LavaSeesaw")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV16daObjFl_Seesaw_c=__ZTV16daObjFl_Seesaw_c")
 /* 77's InitResources, same C++-decoration bridge as 73's above. */
 #pragma comment(linker, "/alternatename:?data_ov022_021145a8@@3USharedFilePtr@@A=_data_ov022_021145a8")
 #pragma comment(linker, "/alternatename:?data_ov022_021145a0@@3USharedFilePtr@@A=_data_ov022_021145a0")
 #pragma comment(linker, "/alternatename:?data_ov064_0211bacc@@3UCLPS_Block@@A=_data_ov064_0211bacc")
 static int __fastcall ls_init(void *s, void *)
-{ return _ZN10LavaSeesaw13InitResourcesEv(s); }
+{ return _ZN16daObjFl_Seesaw_c13InitResourcesEv(s); }
 static int __fastcall ls_clean(void *s, void *)
-{ return _ZN10LavaSeesaw16CleanupResourcesEv(s); }
+{ return _ZN16daObjFl_Seesaw_c16CleanupResourcesEv(s); }
 static int __fastcall ls_behavior(void *s, void *)
-{ return _ZN10LavaSeesaw8BehaviorEv(s); }
+{ return _ZN16daObjFl_Seesaw_c8BehaviorEv(s); }
 static int __fastcall ls_render(void *s, void *)
 { port_actor_render_probe("LAVA_SEESAW", (char *)s + 0xd4);
-  return _ZN10LavaSeesaw6RenderEv(s); }
+  return _ZN16daObjFl_Seesaw_c6RenderEv(s); }
 static int __fastcall ls_d1(void *s, void *)
-{ return (int)(size_t)_ZN10LavaSeesawD1Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjFl_Seesaw_cD1Ev((int *)s); }
 static int __fastcall ls_d0(void *s, void *)
-{ return (int)(size_t)_ZN10LavaSeesawD0Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjFl_Seesaw_cD0Ev((int *)s); }
 extern "C" void hal_fill_lava_seesaw_vtable(void)
 {
     ov22e_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV10LavaSeesaw;
+    void *volatile *vt = (void *volatile *)_ZTV16daObjFl_Seesaw_c;
     ov22e_fill_shared(vt);
     vt[0]  = (void *)ls_init;
     vt[3]  = (void *)ls_clean;
@@ -531,32 +531,32 @@ extern "C" void hal_fill_lava_seesaw_vtable(void)
 // ov064 0x0211bbcc } -- the third CLPS block this lane mounts.
 extern "C" {
 /* slots 0/3/6 are C++ methods -- see the note at the top of the file */
-int *_ZN13RollingLogLllD1Ev(int *self);         /* slot 16 */
-int *_ZN13RollingLogLllD0Ev(int *self);         /* slot 17 */
+int *_ZN15daObjFlMaruta_cD1Ev(int *self);         /* slot 16 */
+int *_ZN15daObjFlMaruta_cD0Ev(int *self);         /* slot 17 */
 int _ZN13daObjMaruta_c6RenderEv(void *self);           /* slot 9  Render,          ov080 */
 void _ZN13daObjMaruta_c15OnHitByMegaCharER6Player(void *self, void *p); /* slot 27 OnHitByMegaChar, ov080 */
 void *daObjFlMaruta_c_classInit(void);
 DSSTATE_BEGIN
-void *_ZTV13RollingLogLll[32];
+void *_ZTV15daObjFlMaruta_c[32];
 DSSTATE_END
 }
 /* 0x021143a4 answers to its RTTI name as well, and the D1/D0 restore it by
    that spelling. (daObjFlMaruta_c_classInit spells it too, on the dead first store
    of its two-store pair; the live one is the per-source -DVT1.) */
-#pragma comment(linker, "/alternatename:__ZTV15daObjFlMaruta_c=__ZTV13RollingLogLll")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV15daObjFlMaruta_c=__ZTV15daObjFlMaruta_c")
 static int __fastcall rl_init(void *s, void *)
-{ return ((RollingLogLll *)s)->RollingLogLll::InitResources(); }
+{ return ((daObjFlMaruta_c *)s)->daObjFlMaruta_c::InitResources(); }
 static int __fastcall rl_clean(void *s, void *)
-{ return ((RollingLogLll *)s)->RollingLogLll::CleanupResources(); }
+{ return ((daObjFlMaruta_c *)s)->daObjFlMaruta_c::CleanupResources(); }
 static int __fastcall rl_behavior(void *s, void *)
-{ return ((RollingLogLll *)s)->RollingLogLll::Behavior(); }
+{ return ((daObjFlMaruta_c *)s)->daObjFlMaruta_c::Behavior(); }
 static int __fastcall rl_render(void *s, void *)
 { port_actor_render_probe("ROLLING_LOG_LLL", (char *)s + 0xd4);
   return _ZN13daObjMaruta_c6RenderEv(s); }
 static int __fastcall rl_d1(void *s, void *)
-{ return (int)(size_t)_ZN13RollingLogLllD1Ev((int *)s); }
+{ return (int)(size_t)_ZN15daObjFlMaruta_cD1Ev((int *)s); }
 static int __fastcall rl_d0(void *s, void *)
-{ return (int)(size_t)_ZN13RollingLogLllD0Ev((int *)s); }
+{ return (int)(size_t)_ZN15daObjFlMaruta_cD0Ev((int *)s); }
 /* slot 27 takes the three-parameter shape so it emits `ret 4`, the same
    contract ov22e_mega has: the dispatch site pushes the Player. */
 static int __fastcall rl_mega(void *s, void *, void *p)
@@ -564,7 +564,7 @@ static int __fastcall rl_mega(void *s, void *, void *p)
 extern "C" void hal_fill_rolling_log_lll_vtable(void)
 {
     ov22e_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV13RollingLogLll;
+    void *volatile *vt = (void *volatile *)_ZTV15daObjFlMaruta_c;
     ov22e_fill_shared(vt);
     vt[0]  = (void *)rl_init;
     vt[3]  = (void *)rl_clean;

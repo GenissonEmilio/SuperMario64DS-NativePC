@@ -171,14 +171,14 @@ struct PortCodePair { unsigned fn; int delta; };
 extern PortCodePair data_ov018_02113c4c[6];   /* three entries, two records */
 
 /* the six ROM bodies, all matched src, all on port/slice_mpg.txt */
-int func_ov018_021122ec(char *self);          /* entry 0 enter -- AfterClsn */
-int func_ov018_02112234(char *self);          /* entry 0 tick               */
-int func_ov018_021121dc(char *self);          /* entry 1 enter              */
-int func_ov018_02111fac(char *self);          /* entry 1 tick  -- the talk  */
-int func_ov018_02111f1c(char *self);          /* entry 2 enter              */
-int func_ov018_02111e28(char *self);          /* entry 2 tick  -- the chase */
+int _ZN10daPgMthr_c19func_ov018_021122ecEv(char *self);          /* entry 0 enter -- AfterClsn */
+int _ZN10daPgMthr_c19func_ov018_02112234Ev(char *self);          /* entry 0 tick               */
+int _ZN10daPgMthr_c19func_ov018_021121dcEv(char *self);          /* entry 1 enter              */
+int _ZN10daPgMthr_c19func_ov018_02111facEv(char *self);          /* entry 1 tick  -- the talk  */
+int _ZN10daPgMthr_c19func_ov018_02111f1cEv(char *self);          /* entry 2 enter              */
+int _ZN10daPgMthr_c19func_ov018_02111e28Ev(char *self);          /* entry 2 tick  -- the chase */
 
-void func_ov018_021123d0(char *self, int i);  /* the state setter           */
+void _ZN10daPgMthr_c19func_ov018_021123d0Ei(char *self, int i);  /* the state setter           */
 }
 
 enum { PORT_MPG_RECORDS = 6 };
@@ -191,7 +191,7 @@ typedef int (__fastcall *PortMpgFn)(char *);
    func_ov018_021123d0 in src/ spells both arguments. */
 extern "C" void port_mpg_set_state_zero(char *self)
 {
-    func_ov018_021123d0(self, 0);
+    _ZN10daPgMthr_c19func_ov018_021123d0Ei(self, 0);
 }
 
 /* ---- the tick witness ----------------------------------------------------
@@ -200,17 +200,17 @@ extern "C" void port_mpg_set_state_zero(char *self)
 static unsigned g_mpg_hits[PORT_MPG_RECORDS];
 
 static int __fastcall mpg_r0_enter(char *self)
-{ ++g_mpg_hits[0]; return func_ov018_021122ec(self); }
+{ ++g_mpg_hits[0]; return _ZN10daPgMthr_c19func_ov018_021122ecEv(self); }
 static int __fastcall mpg_r0_tick(char *self)
-{ ++g_mpg_hits[1]; return func_ov018_02112234(self); }
+{ ++g_mpg_hits[1]; return _ZN10daPgMthr_c19func_ov018_02112234Ev(self); }
 static int __fastcall mpg_r1_enter(char *self)
-{ ++g_mpg_hits[2]; return func_ov018_021121dc(self); }
+{ ++g_mpg_hits[2]; return _ZN10daPgMthr_c19func_ov018_021121dcEv(self); }
 static int __fastcall mpg_r1_tick(char *self)
-{ ++g_mpg_hits[3]; return func_ov018_02111fac(self); }
+{ ++g_mpg_hits[3]; return _ZN10daPgMthr_c19func_ov018_02111facEv(self); }
 static int __fastcall mpg_r2_enter(char *self)
-{ ++g_mpg_hits[4]; return func_ov018_02111f1c(self); }
+{ ++g_mpg_hits[4]; return _ZN10daPgMthr_c19func_ov018_02111f1cEv(self); }
 static int __fastcall mpg_r2_tick(char *self)
-{ ++g_mpg_hits[5]; return func_ov018_02111e28(self); }
+{ ++g_mpg_hits[5]; return _ZN10daPgMthr_c19func_ov018_02111e28Ev(self); }
 
 /* {ROM code address the sinit's own source record carries, host entry point}
    -- verified against the ROM's own record before the rewrite, the Cap seat

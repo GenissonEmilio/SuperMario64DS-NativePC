@@ -59,20 +59,46 @@ data_ov085_0213052c:0xc data_ov085_02130538:0xc data_ov085_02130544:0xc
 data_ov085_02130550:0xc data_ov085_0213055c:0x50 data_ov085_021305ac:0x4
 data_ov085_021305b0:0x8 data_ov085_021305b8:0x8 data_ov085_021305c0:0x8
 data_ov085_021305c8:0x8 data_ov085_021305d0:0x8 data_ov085_021305d8:0x8
-data_ov085_021305e0:0x8 data_ov085_021305e8:0xc data_ov085_021305f4:0xc
-data_ov085_02130600:0xc data_ov085_0213060c:0xc data_ov085_02130618:0xc
-data_ov085_02130624:0xc data_ov085_02130630:0xc data_ov085_0213063c:0xc
-data_ov085_02130648:0xc data_ov085_02130654:0xc data_ov085_02130660:0xc
+data_ov085_021305e0:0x8 data_ov085_021305e8@0x021305e8:0xc data_ov085_021305f4@0x021305f4:0xc
+data_ov085_02130600@0x02130600:0xc data_ov085_0213060c@0x0213060c:0xc data_ov085_02130618@0x02130618:0xc
+data_ov085_02130624@0x02130624:0xc data_ov085_02130630@0x02130630:0xc data_ov085_0213063c@0x0213063c:0xc
+data_ov085_02130648@0x02130648:0xc data_ov085_02130654@0x02130654:0xc data_ov085_02130660@0x02130660:0xc
 data_ov085_0213066c:0x10 data_ov085_0213067c:0x10 data_ov085_0213068c:0x10
 data_ov085_0213069c:0x10 data_ov085_021306ac:0x10 data_ov085_021306bc:0x10
 data_ov085_021306cc:0x10 data_ov085_021306dc:0x10 data_ov085_021306ec:0xc
 data_ov085_021306f8:0xc data_ov085_02130704:0xc data_ov085_02130710:0xc
-data_ov085_0213071c:0x10 data_ov085_0213072c:0x10 data_ov085_0213073c:0x8
-data_ov085_02130744:0x8 data_ov085_0213074c:0x8 data_ov085_02130754:0xc
-data_ov085_02130760:0xc data_ov085_0213076c:0xc data_ov085_02130778:0xc
-data_ov085_02130784:0xc data_ov085_02130790:0x10 data_ov085_021307a0:0x10
-data_ov085_021307b0:0x10 data_ov085_021307c0:0x10 data_ov085_021307d0:0x10
-data_ov085_021307e0:0x10 data_ov085_021307f0:0x10 data_ov085_02130800:0x10
-data_ov085_02130810:0x10 data_ov085_02130820:0x10 data_ov085_02130830:0x10
-data_ov085_02130840:0xc data_ov085_0213084c:0xc data_ov085_02130858:0x8
-data_ov085_02130860:0x20
+
+data_ov085_02130754@0x02130754:0xc
+data_ov085_02130760@0x02130760:0xc data_ov085_0213076c@0x0213076c:0xc data_ov085_02130778@0x02130778:0xc
+data_ov085_02130784@0x02130784:0xc
+
+
+
+data_ov085_02130858:0x8
+data_ov085_02130860@0x02130860:0x20
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov085_0213071c                        now defined by src/actors/daObj_Mip_Key_c.cpp
+#   data_ov085_0213072c                        now defined by src/actors/daObj_Mip_Key_c.cpp
+#   data_ov085_0213073c                        now defined by src/actors/daC_Jugem_c.cpp
+#   data_ov085_02130744                        now defined by src/actors/daC_Jugem_c.cpp
+#   data_ov085_0213074c                        now defined by src/actors/daC_Jugem_c.cpp
+#   data_ov085_02130790                        now defined by src/actors/daC_Jugem_c.cpp
+#   data_ov085_021307a0                        now defined by src/actors/daC_Jugem_c.cpp
+#   data_ov085_021307b0                        now defined by src/actors/daC_Jugem_c.cpp
+#   data_ov085_021307c0                        now defined by src/actors/daC_Jugem_c.cpp
+#   data_ov085_021307d0                        now defined by src/actors/daC_Jugem_c.cpp
+#   data_ov085_021307e0                        now defined by src/actors/daC_Jugem_c.cpp
+#   data_ov085_021307f0                        now defined by src/actors/daC_Jugem_c.cpp
+#   data_ov085_02130800                        now defined by src/actors/daC_Jugem_c.cpp
+#   data_ov085_02130810                        now defined by src/actors/daC_Jugem_c.cpp
+#   data_ov085_02130820                        now defined by src/actors/daC_Jugem_c.cpp
+#   data_ov085_02130830                        now defined by src/actors/daC_Jugem_c.cpp
+#   data_ov085_02130840                        now defined by src/actors/daC_Jugem_c.cpp
+#   data_ov085_0213084c                        now defined by src/actors/daC_Jugem_c.cpp

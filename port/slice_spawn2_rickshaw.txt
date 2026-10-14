@@ -48,4 +48,4 @@
 # rebases (build/port/host-src/ov043_syms.c). It was left out of slice_bdw.txt
 # on the "a sinit for an unhosted class stays off" rule; 137 is hosted now.
 src/game/actors/d_a_obj_km1_kurumajiku.cpp
-src/__sinit_ov043_02111868.c
+# FOLDED into src/game/actors/d_a_obj_km1_kurumajiku.cpp (row 50): src/__sinit_ov043_02111868.c

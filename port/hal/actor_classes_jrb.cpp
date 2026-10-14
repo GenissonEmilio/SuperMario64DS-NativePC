@@ -143,42 +143,42 @@ void port_actor_render_probe(const char *cls, void *model); /* actor_classes */
 /* ---- UNAGI (242) own bodies. Render + D1/D0 stay in the slice. -------------
    Behavior is the host copy (PMF dispatch, extern-C in Unagi_StateDispatch.cpp);
    the fill binds it at slot 6. */
-int _ZN5Unagi13InitResourcesEv(void *self);          /* slot 0, faced below */
-int _ZN5Unagi8BehaviorEv(void *self);                /* slot 6, HOST COPY */
-int _ZN5Unagi6RenderEv(void *self);                  /* slot 9, .c, Model by C name */
-int _ZN5Unagi16CleanupResourcesEv(void);             /* slot 3, .c C linkage */
-void _ZN5Unagi16OnPendingDestroyEv(void);            /* slot 12, .c C linkage, empty */
-int *_ZN5UnagiD1Ev(void *self);                      /* slot 16, .c, spells _ZTV5Unagi */
-void *_ZN5UnagiD0Ev(void *self);                     /* slot 17, .cpp, spells _ZTV5Unagi */
+int _ZN9daMoray_c13InitResourcesEv(void *self);          /* slot 0, faced below */
+int _ZN9daMoray_c8BehaviorEv(void *self);                /* slot 6, HOST COPY */
+int _ZN9daMoray_c6RenderEv(void *self);                  /* slot 9, .c, Model by C name */
+int _ZN9daMoray_c16CleanupResourcesEv(void);             /* slot 3, .c C linkage */
+void _ZN9daMoray_c16OnPendingDestroyEv(void);            /* slot 12, .c C linkage, empty */
+int *_ZN9daMoray_cD1Ev(void *self);                      /* slot 16, .c, spells _ZTV5Unagi */
+void *_ZN9daMoray_cD0Ev(void *self);                     /* slot 17, .cpp, spells _ZTV5Unagi */
 void *daMoray_c_classInit(void);                             /* installs _ZTV5Unagi itself */
 
 /* ---- SHIP_UP (57) own bodies. Init/Cleanup/Behavior are real methods, faced
    below; Render is the host copy; D1/D0 are host thunks. ------------------- */
-int _ZN6ShipUp13InitResourcesEv(void *self);         /* slot 0, faced */
-int *_ZN6ShipUpD1Ev(int *self);                      /* slot 16, .c, DTOR-PAIRS seat (0x0211260c) */
-int *_ZN6ShipUpD0Ev(int *self);                      /* slot 17, .c, DTOR-PAIRS seat (0x02112650) */
-int _ZN6ShipUp16CleanupResourcesEv(void *self);      /* slot 3, faced */
-int _ZN6ShipUp8BehaviorEv(void *self);               /* slot 6, faced */
-int _ZN6ShipUp6RenderEv(void *self);                 /* slot 9, HOST COPY */
+int _ZN14daObjKi_Fune_c13InitResourcesEv(void *self);         /* slot 0, faced */
+int *_ZN14daObjKi_Fune_cD1Ev(int *self);                      /* slot 16, .c, DTOR-PAIRS seat (0x0211260c) */
+int *_ZN14daObjKi_Fune_cD0Ev(int *self);                      /* slot 17, .c, DTOR-PAIRS seat (0x02112650) */
+int _ZN14daObjKi_Fune_c16CleanupResourcesEv(void *self);      /* slot 3, faced */
+int _ZN14daObjKi_Fune_c8BehaviorEv(void *self);               /* slot 6, faced */
+int _ZN14daObjKi_Fune_c6RenderEv(void *self);                 /* slot 9, HOST COPY */
 void *daObjKi_Fune_c_classInit_KI_FUNE_UP(void);                            /* installs _ZTV6ShipUp itself */
 
 /* ---- ROCK_PILLAR (58) own bodies (all func_ov016_* C linkage) ------------- */
-int _ZN10RockPillar13InitResourcesEv(void *self);   /* slot 0, Init */
-int _ZN10RockPillar16CleanupResourcesEv(void *self);   /* slot 3, Cleanup */
-int _ZN10RockPillar8BehaviorEv(void *self);   /* slot 6, Behavior */
-int _ZN10RockPillar6RenderEv(void *self);   /* slot 9, Render -- HOST COPY */
+int _ZN16daObjKi_Hasira_c13InitResourcesEv(void *self);   /* slot 0, Init */
+int _ZN16daObjKi_Hasira_c16CleanupResourcesEv(void *self);   /* slot 3, Cleanup */
+int _ZN16daObjKi_Hasira_c8BehaviorEv(void *self);   /* slot 6, Behavior */
+int _ZN16daObjKi_Hasira_c6RenderEv(void *self);   /* slot 9, Render -- HOST COPY */
 void *daObjKi_Hasira_c_classInit(void);          /* installs _ZTV10RockPillar itself */
 
 /* ---- id 313 SLIDING_BOX == the DERIVED _ZN23FloatOnWaterPlatformJrb* class
    (installs _ZTV23FloatOnWaterPlatformJrb). Init/Cleanup faced; Behavior is a
    plain C-linkage body (the COUPLED FindWithActorID(0x39) one); Render host copy;
    D1/D0 host thunks. -- */
-int _ZN10SlidingBox13InitResourcesEv(void *self);    /* slot 0, faced */
-int *_ZN10SlidingBoxD1Ev(int *self);    /* slot 16, .c, DTOR-PAIRS seat (0x02112ff8) */
-int *_ZN10SlidingBoxD0Ev(int *self);    /* slot 17, .c, DTOR-PAIRS seat (0x02113044) */
-int _ZN10SlidingBox16CleanupResourcesEv(void *self); /* slot 3, faced */
-int _ZN10SlidingBox8BehaviorEv(void *self);          /* slot 6, .c C linkage */
-int _ZN10SlidingBox6RenderEv(void *self);            /* slot 9, HOST COPY */
+int _ZN13daSlide_Box_c13InitResourcesEv(void *self);    /* slot 0, faced */
+int *_ZN13daSlide_Box_cD1Ev(int *self);    /* slot 16, .c, DTOR-PAIRS seat (0x02112ff8) */
+int *_ZN13daSlide_Box_cD0Ev(int *self);    /* slot 17, .c, DTOR-PAIRS seat (0x02113044) */
+int _ZN13daSlide_Box_c16CleanupResourcesEv(void *self); /* slot 3, faced */
+int _ZN13daSlide_Box_c8BehaviorEv(void *self);          /* slot 6, .c C linkage */
+int _ZN13daSlide_Box_c6RenderEv(void *self);            /* slot 9, HOST COPY */
 void *daSlide_Box_c_classInit(void);              /* id 313: installs _ZTV23FloatOnWaterPlatformJrb directly */
 
 /* ---- id 60 FLOAT_ON_WATER_PLATFORM_JRB == the daObjKi_Ita_c BASE (installs
@@ -205,11 +205,11 @@ void _ZN10dBgActor_c4KillEv(void *self);       /* slot 31, Platform's own */
    include/decl_common.h that the factories and matched teardowns read (the
    montymole reading). _ZTV10RockPillar is RockPillar's UNNAMED table -- not
    in decl_common.h, so it is declared here too, an int[] host array. */
-int _ZTV5Unagi[31];
-int _ZTV6ShipUp[32];
+int _ZTV9daMoray_c[31];
+int _ZTV14daObjKi_Fune_c[32];
 int _ZTV23FloatOnWaterPlatformJrb[37];   /* id 313 SlidingBox (derived) */
 DSSTATE_BEGIN
-int _ZTV10RockPillar[32];             /* id 58 RockPillar (daObjKi_Hasira_c) */
+int _ZTV16daObjKi_Hasira_c[32];             /* id 58 RockPillar (daObjKi_Hasira_c) */
 DSSTATE_END
 DSSTATE_BEGIN
 int _ZTV13daObjKi_Ita_c[32];             /* id 60 FloatOnWaterPlatformJrb (daObjKi_Ita_c base) */
@@ -225,8 +225,7 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:__ZTV13daSlide_Box_c=__ZTV23FloatOnWaterPlatformJrb")
 /* ShipUp's D1/D0 spell their table by its RTTI name; the ROM store relocates
    to ov016 0x02114a3c, _ZTV6ShipUp (the host array above). */
-#pragma comment(linker, "/alternatename:__ZTV14daObjKi_Fune_c=__ZTV6ShipUp")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV14daObjKi_Fune_c=__ZTV14daObjKi_Fune_c")
 // ---- the trap --------------------------------------------------------------
 static void jrb_trap_report(void *self, int slot)
 {
@@ -337,26 +336,26 @@ extern "C" void hal_fill_platform_vtable(void);
 // UNAGI (242) -- an Enemy, 31 slots
 // ============================================================================
 static int __fastcall una_init(void *s, void *)
-{ return _ZN5Unagi13InitResourcesEv(s); }
+{ return _ZN9daMoray_c13InitResourcesEv(s); }
 static int __fastcall una_clean(void *s, void *)
-{ (void)s; return _ZN5Unagi16CleanupResourcesEv(); }   /* .c body takes void */
+{ (void)s; return _ZN9daMoray_c16CleanupResourcesEv(); }   /* .c body takes void */
 static int __fastcall una_behavior(void *s, void *)
-{ return _ZN5Unagi8BehaviorEv(s); }                     /* HOST COPY (PMF dispatch) */
+{ return _ZN9daMoray_c8BehaviorEv(s); }                     /* HOST COPY (PMF dispatch) */
 static int __fastcall una_render(void *s, void *)
 { port_actor_render_probe("UNAGI", (char *)s + 0x350);
-  return _ZN5Unagi6RenderEv(s); }                        /* .c, Model by C name */
+  return _ZN9daMoray_c6RenderEv(s); }                        /* .c, Model by C name */
 static int __fastcall una_pdes(void *s, void *)
-{ (void)s; _ZN5Unagi16OnPendingDestroyEv(); return 0; }  /* .c body takes void, empty */
+{ (void)s; _ZN9daMoray_c16OnPendingDestroyEv(); return 0; }  /* .c body takes void, empty */
 /* D1/D0 stay in the slice: they spell _ZTV5Unagi (the class's own host table),
    _ZN12dEnemyBase_cD2Ev (Enemy base D2) and data_020a0eac (heap), all hosted. */
 static int __fastcall una_d1(void *s, void *)
-{ return (int)(size_t)_ZN5UnagiD1Ev(s); }
+{ return (int)(size_t)_ZN9daMoray_cD1Ev(s); }
 static int __fastcall una_d0(void *s, void *)
-{ return (int)(size_t)_ZN5UnagiD0Ev(s); }
+{ return (int)(size_t)_ZN9daMoray_cD0Ev(s); }
 
 extern "C" void hal_fill_unagi_vtable(void)
 {
-    void **vt = (void **)_ZTV5Unagi;
+    void **vt = (void **)_ZTV9daMoray_c;
     jrb_fill_shared_0_30(vt);
     vt[0]  = (void *)una_init;
     vt[3]  = (void *)una_clean;
@@ -371,14 +370,14 @@ extern "C" void hal_fill_unagi_vtable(void)
 // SHIP_UP (57) -- a Platform, 32 slots. D1/D0 at ROM words 14/15.
 // ============================================================================
 static int __fastcall shu_init(void *s, void *)
-{ return _ZN6ShipUp13InitResourcesEv(s); }
+{ return _ZN14daObjKi_Fune_c13InitResourcesEv(s); }
 static int __fastcall shu_clean(void *s, void *)
-{ return _ZN6ShipUp16CleanupResourcesEv(s); }
+{ return _ZN14daObjKi_Fune_c16CleanupResourcesEv(s); }
 static int __fastcall shu_behavior(void *s, void *)
-{ return _ZN6ShipUp8BehaviorEv(s); }
+{ return _ZN14daObjKi_Fune_c8BehaviorEv(s); }
 static int __fastcall shu_render(void *s, void *)
 { port_actor_render_probe("SHIP_UP", (char *)s + 0xd4);
-  return _ZN6ShipUp6RenderEv(s); }                        /* HOST COPY (slot-5) */
+  return _ZN14daObjKi_Fune_c6RenderEv(s); }                        /* HOST COPY (slot-5) */
 static int __fastcall shu_kill(void *s, void *)
 { _ZN10dBgActor_c4KillEv(s); return 0; }                     /* slot 31 */
 /* D1/D0 (DTOR-PAIRS seat): the matched flat-C pair behind ecx->arg
@@ -389,13 +388,13 @@ static int __fastcall shu_kill(void *s, void *)
    (hal/lk2_platform_dtor_seat.cpp), and the first store is this class's own
    table by its RTTI name, aliased onto the host array above. */
 static int __fastcall shu_d1(void *s, void *)
-{ return (int)(size_t)_ZN6ShipUpD1Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjKi_Fune_cD1Ev((int *)s); }
 static int __fastcall shu_d0(void *s, void *)
-{ return (int)(size_t)_ZN6ShipUpD0Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjKi_Fune_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_ship_up_vtable(void)
 {
-    void **vt = (void **)_ZTV6ShipUp;
+    void **vt = (void **)_ZTV14daObjKi_Fune_c;
     hal_fill_platform_vtable();
     jrb_fill_shared_0_30(vt);
     vt[0]  = (void *)shu_init;
@@ -411,14 +410,14 @@ extern "C" void hal_fill_ship_up_vtable(void)
 // ROCK_PILLAR (58) -- a Platform, 32 slots (_ZTV10RockPillar). D1/D0 at 16/17.
 // ============================================================================
 static int __fastcall rkp_init(void *s, void *)
-{ return _ZN10RockPillar13InitResourcesEv(s); }
+{ return _ZN16daObjKi_Hasira_c13InitResourcesEv(s); }
 static int __fastcall rkp_clean(void *s, void *)
-{ return _ZN10RockPillar16CleanupResourcesEv(s); }
+{ return _ZN16daObjKi_Hasira_c16CleanupResourcesEv(s); }
 static int __fastcall rkp_behavior(void *s, void *)
-{ return _ZN10RockPillar8BehaviorEv(s); }
+{ return _ZN16daObjKi_Hasira_c8BehaviorEv(s); }
 static int __fastcall rkp_render(void *s, void *)
 { port_actor_render_probe("ROCK_PILLAR", (char *)s + 0xd4);
-  return _ZN10RockPillar6RenderEv(s); }                        /* HOST COPY (slot-5) */
+  return _ZN16daObjKi_Hasira_c6RenderEv(s); }                        /* HOST COPY (slot-5) */
 static int __fastcall rkp_kill(void *s, void *)
 { _ZN10dBgActor_c4KillEv(s); return 0; }                     /* slot 31 */
 /* D1/D0 host thunks: _ZN10RockPillarD1Ev (D1) / _ZN10RockPillarD0Ev (D0) store
@@ -443,16 +442,16 @@ static int __fastcall rkp_kill(void *s, void *)
      0x02112a94 -> ov002 0x0210ae38 (_ZTV10dBgActor_c)
      0x02112a98 -> main  0x020a0eac (the game heap word)
    -- so the base-table store this thunk left out comes back here too. */
-extern "C" int *_ZN10RockPillarD1Ev(int *t);   /* ov016 0x02112a00, slot 16 */
-extern "C" int *_ZN10RockPillarD0Ev(int *t);   /* ov016 0x02112a44, slot 17 */
+extern "C" int *_ZN16daObjKi_Hasira_cD1Ev(int *t);   /* ov016 0x02112a00, slot 16 */
+extern "C" int *_ZN16daObjKi_Hasira_cD0Ev(int *t);   /* ov016 0x02112a44, slot 17 */
 static int __fastcall rkp_d1(void *s, void *)
-{ return (int)(size_t)_ZN10RockPillarD1Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjKi_Hasira_cD1Ev((int *)s); }
 static int __fastcall rkp_d0(void *s, void *)
-{ return (int)(size_t)_ZN10RockPillarD0Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjKi_Hasira_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_rock_pillar_vtable(void)
 {
-    void **vt = (void **)_ZTV10RockPillar;
+    void **vt = (void **)_ZTV16daObjKi_Hasira_c;
     hal_fill_platform_vtable();
     jrb_fill_shared_0_30(vt);
     vt[0]  = (void *)rkp_init;
@@ -472,14 +471,14 @@ extern "C" void hal_fill_rock_pillar_vtable(void)
 // decomp's FloatOnWaterPlatformJrb (the decoy inversion, from relocs).
 // ============================================================================
 static int __fastcall sbx_init(void *s, void *)
-{ return _ZN10SlidingBox13InitResourcesEv(s); }
+{ return _ZN13daSlide_Box_c13InitResourcesEv(s); }
 static int __fastcall sbx_clean(void *s, void *)
-{ return _ZN10SlidingBox16CleanupResourcesEv(s); }
+{ return _ZN13daSlide_Box_c16CleanupResourcesEv(s); }
 static int __fastcall sbx_behavior(void *s, void *)
-{ return _ZN10SlidingBox8BehaviorEv(s); }    /* .c C-linkage, coupled */
+{ return _ZN13daSlide_Box_c8BehaviorEv(s); }    /* .c C-linkage, coupled */
 static int __fastcall sbx_render(void *s, void *)
 { port_actor_render_probe("SLIDING_BOX", (char *)s + 0xd4);
-  return _ZN10SlidingBox6RenderEv(s); }       /* HOST COPY (slot-5) */
+  return _ZN13daSlide_Box_c6RenderEv(s); }       /* HOST COPY (slot-5) */
 static int __fastcall sbx_kill(void *s, void *)
 { _ZN10dBgActor_c4KillEv(s); return 0; }                     /* slot 31 */
 /* D1/D0 (DTOR-PAIRS seat): the matched flat-C pair behind ecx->arg
@@ -490,9 +489,9 @@ static int __fastcall sbx_kill(void *s, void *)
    (hal/lk2_platform_dtor_seat.cpp), and the first store is this class's own
    table by its RTTI name, aliased onto the host array above. */
 static int __fastcall sbx_d1(void *s, void *)
-{ return (int)(size_t)_ZN10SlidingBoxD1Ev((int *)s); }
+{ return (int)(size_t)_ZN13daSlide_Box_cD1Ev((int *)s); }
 static int __fastcall sbx_d0(void *s, void *)
-{ return (int)(size_t)_ZN10SlidingBoxD0Ev((int *)s); }
+{ return (int)(size_t)_ZN13daSlide_Box_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_sliding_box_vtable(void)
 {
@@ -591,20 +590,20 @@ extern "C" void *port_factory_float_on_water_jrb(void)
 // OnPendingDestroy/Render and every RockPillar func_ body are already C-linkage
 // bodies -- no face. The three collided Renders (ShipUp/FloatOnWater/RockPillar)
 // are host copies in port/unmatched/Jrb_Renders.cpp -- declared, not faced here.
-#include "ShipUp.h"
-#include "SlidingBox.h"
-#include "Unagi.h"
+#include "daObjKi_Fune_c.h"
+#include "daSlide_Box_c.h"
+#include "daMoray_c.h"
 extern "C" {
-int _ZN6ShipUp13InitResourcesEv(void *self)
-{ return ((ShipUp *)self)->ShipUp::InitResources(); }
-int _ZN6ShipUp16CleanupResourcesEv(void *self)
-{ return ((ShipUp *)self)->ShipUp::CleanupResources(); }
-int _ZN6ShipUp8BehaviorEv(void *self)
-{ return ((ShipUp *)self)->ShipUp::Behavior(); }
-int _ZN10SlidingBox13InitResourcesEv(void *self)
-{ return ((SlidingBox *)self)->SlidingBox::InitResources(); }
-int _ZN10SlidingBox16CleanupResourcesEv(void *self)
-{ return ((SlidingBox *)self)->SlidingBox::CleanupResources(); }
-int _ZN5Unagi13InitResourcesEv(void *self)
-{ return ((Unagi *)self)->Unagi::InitResources(); }
+int _ZN14daObjKi_Fune_c13InitResourcesEv(void *self)
+{ return ((daObjKi_Fune_c *)self)->daObjKi_Fune_c::InitResources(); }
+int _ZN14daObjKi_Fune_c16CleanupResourcesEv(void *self)
+{ return ((daObjKi_Fune_c *)self)->daObjKi_Fune_c::CleanupResources(); }
+int _ZN14daObjKi_Fune_c8BehaviorEv(void *self)
+{ return ((daObjKi_Fune_c *)self)->daObjKi_Fune_c::Behavior(); }
+int _ZN13daSlide_Box_c13InitResourcesEv(void *self)
+{ return ((daSlide_Box_c *)self)->daSlide_Box_c::InitResources(); }
+int _ZN13daSlide_Box_c16CleanupResourcesEv(void *self)
+{ return ((daSlide_Box_c *)self)->daSlide_Box_c::CleanupResources(); }
+int _ZN9daMoray_c13InitResourcesEv(void *self)
+{ return ((daMoray_c *)self)->daMoray_c::InitResources(); }
 }

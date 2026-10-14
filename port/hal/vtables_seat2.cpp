@@ -96,14 +96,14 @@ extern "C" {
 /* The matched bodies this file seats.  Both are C-named ROM spellings with the
    receiver as an ordinary first argument (src/_ZN7ClipperD0Ev.c and
    src/_ZN11ShadowModelD0Ev.c are both .c). */
-void *_ZN7ClipperD0Ev(void *thiz);         /* 0x020156fc */
-void *_ZN11ShadowModelD0Ev(void *thiz);    /* 0x02015f80 */
+void *_ZN8dClipperD0Ev(void *thiz);         /* 0x020156fc */
+void *_ZN17dExtShadowModel_cD0Ev(void *thiz);    /* 0x02015f80 */
 
 /* The host storage for the two cartridge tables.
    _ZTV7Clipper is hal/ctor_runner.cpp's two-word array; _ZTV11ShadowModel is
    hal/actor_vtables.cpp's eight-word array. */
-extern void *_ZTV7Clipper[2];
-extern void *_ZTV11ShadowModel[8];
+extern void *_ZTV8dClipper[2];
+extern void *_ZTV17dExtShadowModel_c[8];
 
 }  /* extern "C" */
 
@@ -134,8 +134,8 @@ void seat2_note(const char *what, const void *self)
    explicitly; nothing here rides a register through. */
 void *__fastcall seat2_shadow_d0(void *self, void *)
 {
-    seat2_note("ShadowModel D0 (_ZTV11ShadowModel+0x04)", self);
-    return _ZN11ShadowModelD0Ev(self);
+    seat2_note("ShadowModel D0 (_ZTV17dExtShadowModel_c+0x04)", self);
+    return _ZN17dExtShadowModel_cD0Ev(self);
 }
 
 /* _ZTV7Clipper's word 0 is the matched _ZN7ClipperD1Ev ITSELF, not a face:
@@ -146,15 +146,15 @@ void *__fastcall seat2_shadow_d0(void *self, void *)
    receiver on. */
 void *seat2_clipper_d0(void *self)
 {
-    seat2_note("Clipper D0 (_ZTV7Clipper+0x04)", self);
-    return _ZN7ClipperD0Ev(self);
+    seat2_note("Clipper D0 (_ZTV8dClipper+0x04)", self);
+    return _ZN8dClipperD0Ev(self);
 }
 
 struct Seat2VtableSeat {
     Seat2VtableSeat()
     {
-        _ZTV7Clipper[1]      = (void *)&seat2_clipper_d0;
-        _ZTV11ShadowModel[1] = (void *)&seat2_shadow_d0;
+        _ZTV8dClipper[1]      = (void *)&seat2_clipper_d0;
+        _ZTV17dExtShadowModel_c[1] = (void *)&seat2_shadow_d0;
     }
 };
 Seat2VtableSeat seat2_vtable_seat;
@@ -166,5 +166,5 @@ Seat2VtableSeat seat2_vtable_seat;
    rather than assumed, the way port_fader_vtable_seated is. */
 extern "C" int port_seat2_words_live(void)
 {
-    return (_ZTV7Clipper[1] != 0) + (_ZTV11ShadowModel[1] != 0);
+    return (_ZTV8dClipper[1] != 0) + (_ZTV17dExtShadowModel_c[1] != 0);
 }

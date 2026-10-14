@@ -217,51 +217,51 @@ static void ov81_fill_shared(void **vt)
 // SPINDRIFT (312), an Enemy, 32 slots (own Kill)
 // ============================================================================
 extern "C" {
-int _ZN9Spindrift13InitResourcesEv(void *self);      /* slot 0, faced */
-int _ZN9Spindrift16CleanupResourcesEv(void);          /* slot 3, .c, void */
-int _ZN9Spindrift8BehaviorEv(void *self);             /* slot 6, faced */
-int _ZN9Spindrift6RenderEv(void *self);               /* slot 9, faced */
-int _ZN9SpindriftD1Ev(void *self);                    /* slot 16, .c, spells own table */
-int _ZN9SpindriftD0Ev(void *self);                    /* slot 17, .c, spells own table */
-int _ZN9Spindrift13OnYoshiTryEatEv(void);                        /* slot 18, OnYoshiTryEat -- no
+int _ZN8daHuwa_c13InitResourcesEv(void *self);      /* slot 0, faced */
+int _ZN8daHuwa_c16CleanupResourcesEv(void);          /* slot 3, .c, void */
+int _ZN8daHuwa_c8BehaviorEv(void *self);             /* slot 6, faced */
+int _ZN8daHuwa_c6RenderEv(void *self);               /* slot 9, faced */
+int _ZN8daHuwa_cD1Ev(void *self);                    /* slot 16, .c, spells own table */
+int _ZN8daHuwa_cD0Ev(void *self);                    /* slot 17, .c, spells own table */
+int _ZN8daHuwa_c13OnYoshiTryEatEv(void);                        /* slot 18, OnYoshiTryEat -- no
                                                            args at all, returns int */
-void _ZN9Spindrift13OnTurnIntoEggER6Player(void *self, void *p);        /* slot 19, OnTurnIntoEgg */
-int _ZN9Spindrift16OnAimedAtWithEggEv(void);                        /* slot 29, OnAimedAtWithEgg --
+void _ZN8daHuwa_c13OnTurnIntoEggER6Player(void *self, void *p);        /* slot 19, OnTurnIntoEgg */
+int _ZN8daHuwa_c16OnAimedAtWithEggEv(void);                        /* slot 29, OnAimedAtWithEgg --
                                                            no args, returns int */
-int func_ov081_02124e64(void *self);                  /* slot 31, Kill -- returns int;
+int _ZN11daSnowman_c19func_ov081_02124e64Ev(void *self);                  /* slot 31, Kill -- returns int;
                                                            ALSO MrBlizzard's own PMF
                                                            cell-0 tick target, one real
                                                            ROM address serving both
                                                            roles, see the note below */
 void *daHuwa_c_classInit(void);                          /* installs _ZTV9Spindrift */
-int _ZTV9Spindrift[32];
+int _ZTV8daHuwa_c[32];
 }
 
 static int __fastcall spd_init(void *s, void *)
-{ return _ZN9Spindrift13InitResourcesEv(s); }
+{ return _ZN8daHuwa_c13InitResourcesEv(s); }
 static int __fastcall spd_clean(void *s, void *)
-{ (void)s; return _ZN9Spindrift16CleanupResourcesEv(); }
+{ (void)s; return _ZN8daHuwa_c16CleanupResourcesEv(); }
 static int __fastcall spd_behavior(void *s, void *)
-{ return _ZN9Spindrift8BehaviorEv(s); }
+{ return _ZN8daHuwa_c8BehaviorEv(s); }
 static int __fastcall spd_render(void *s, void *)
 { port_actor_render_probe("SPINDRIFT", (char *)s + 0x110);
-  return _ZN9Spindrift6RenderEv(s); }
+  return _ZN8daHuwa_c6RenderEv(s); }
 static int __fastcall spd_d1(void *s, void *)
-{ return _ZN9SpindriftD1Ev(s); }
+{ return _ZN8daHuwa_cD1Ev(s); }
 static int __fastcall spd_d0(void *s, void *)
-{ return _ZN9SpindriftD0Ev(s); }
+{ return _ZN8daHuwa_cD0Ev(s); }
 static int __fastcall spd_yoshi(void *s, void *)
-{ (void)s; return _ZN9Spindrift13OnYoshiTryEatEv(); }
+{ (void)s; return _ZN8daHuwa_c13OnYoshiTryEatEv(); }
 static int __fastcall spd_egg(void *s, void *, void *p)
-{ _ZN9Spindrift13OnTurnIntoEggER6Player(s, p); return 0; }
+{ _ZN8daHuwa_c13OnTurnIntoEggER6Player(s, p); return 0; }
 static int __fastcall spd_aimed(void *s, void *)
-{ (void)s; return _ZN9Spindrift16OnAimedAtWithEggEv(); }
+{ (void)s; return _ZN8daHuwa_c16OnAimedAtWithEggEv(); }
 static int __fastcall spd_kill(void *s, void *)
-{ return func_ov081_02124e64(s); }
+{ return _ZN11daSnowman_c19func_ov081_02124e64Ev(s); }
 
 extern "C" void hal_fill_spindrift_vtable(void)
 {
-    void **vt = (void **)_ZTV9Spindrift;
+    void **vt = (void **)_ZTV8daHuwa_c;
     ov81_fill_shared(vt);
     vt[0]  = (void *)spd_init;
     vt[3]  = (void *)spd_clean;
@@ -279,21 +279,21 @@ extern "C" void hal_fill_spindrift_vtable(void)
 // MR_BLIZZARD (223), an Enemy, 32 slots (own Kill, own OnPendingDestroy)
 // ============================================================================
 extern "C" {
-int _ZN10MrBlizzard13InitResourcesEv(void *self);     /* slot 0, faced */
-int _ZN10MrBlizzard16CleanupResourcesEv(void);        /* slot 3, .c body takes void */
-int _ZN10MrBlizzard8BehaviorEv(void *self);           /* slot 6, faced */
-int _ZN10MrBlizzard6RenderEv(void *self);             /* slot 9, faced */
-void _ZN10MrBlizzard16OnPendingDestroyEv(void);       /* slot 12, own -- NOT shared, .c
+int _ZN11daSnowman_c13InitResourcesEv(void *self);     /* slot 0, faced */
+int _ZN11daSnowman_c16CleanupResourcesEv(void);        /* slot 3, .c body takes void */
+int _ZN11daSnowman_c8BehaviorEv(void *self);           /* slot 6, faced */
+int _ZN11daSnowman_c6RenderEv(void *self);             /* slot 9, faced */
+void _ZN11daSnowman_c16OnPendingDestroyEv(void);       /* slot 12, own -- NOT shared, .c
                                                            body takes void, empty */
-int _ZN10MrBlizzardD1Ev(void *self);                  /* slot 16, .c, spells own table */
-int _ZN10MrBlizzardD0Ev(void *self);                  /* slot 17, .c, spells own table
+int _ZN11daSnowman_cD1Ev(void *self);                  /* slot 16, .c, spells own table */
+int _ZN11daSnowman_cD0Ev(void *self);                  /* slot 17, .c, spells own table
                                                            under RTTI alias daSnowman_c */
-int _ZN10MrBlizzard16OnAimedAtWithEggEv(void);                        /* slot 29, OnAimedAtWithEgg --
+int _ZN11daSnowman_c16OnAimedAtWithEggEv(void);                        /* slot 29, OnAimedAtWithEgg --
                                                            no args, returns int */
 /* func_ov081_021261b8 is NOT a virtual -- see the [31] note below. It is the
    ENTER half of the Snowball state cell at 0x02128eb4 and is reached through
    port_snowball_states_seat further down this file. */
-int func_ov081_021261b8(void *self);
+int _ZN12daSnowball_c19func_ov081_021261b8Ev(void *self);
 void *daSnowman_c_classInit(void);                         /* installs _ZTV10MrBlizzard */
 /* THIRTY-ONE SLOTS, NOT THIRTY-TWO, and the four sibling Enemy classes in this
    tree were right where this one was wrong. Settled from the ROM three ways,
@@ -319,7 +319,7 @@ void *daSnowman_c_classInit(void);                         /* installs _ZTV10MrB
    dispatches it through carried it; it was memory-safe only by luck of the
    [32] declaration, which is why nothing ever crashed. Costs zero linkage: the
    body stays referenced through the state cell. */
-int _ZTV10MrBlizzard[31];
+int _ZTV11daSnowman_c[31];
 
 /* the ten state cells: each is TWO 8-byte {fn,delta} PMF pairs back to
    back (the .x=enter half, .y=tick half __sinit_ov081_02128154's own
@@ -331,28 +331,28 @@ int _ZTV10MrBlizzard[31];
    (tick) every frame through the same pointer + 1 PMF-width (8 bytes). */
 struct PortMrBlizzardPair { unsigned enter_fn, enter_delta, tick_fn, tick_delta; };
 extern PortMrBlizzardPair data_ov081_02128e14[10];
-int func_ov081_02124ec0(void *self);   /* cell 0 (e14) enter */
+int _ZN11daSnowman_c19func_ov081_02124ec0Ev(void *self);   /* cell 0 (e14) enter */
 /* cell 0 (e14) tick is func_ov081_02124e64, ALREADY declared above as
    Spindrift's own Kill (slot 31) -- one real ROM address serves both
    roles, see the note below. Not redeclared here. */
-int func_ov081_0212479c(void *self);   /* cell 1 (e24) enter */
-int func_ov081_021246a0(void *self);   /* cell 1 (e24) tick */
-int func_ov081_02124dfc(void *self);   /* cell 2 (e34) enter */
-int func_ov081_02124d50(void *self);   /* cell 2 (e34) tick */
-int func_ov081_02124d14(void *self);   /* cell 3 (e44) enter */
-int func_ov081_02124b98(void *self);   /* cell 3 (e44) tick */
-int func_ov081_0212538c(void *self);   /* cell 4 (e54) enter */
-int func_ov081_02125208(void *self);   /* cell 4 (e54) tick */
-int func_ov081_02124b08(void *self);   /* cell 5 (e64) enter */
-int func_ov081_021249f4(void *self);   /* cell 5 (e64) tick */
-int func_ov081_02125200(void *self);   /* cell 6 (e74) enter */
-int func_ov081_021250c8(void *self);   /* cell 6 (e74) tick */
-int func_ov081_02125068(void *self);   /* cell 7 (e84) enter */
-int func_ov081_02125038(void *self);   /* cell 7 (e84) tick */
-int func_ov081_0212498c(void *self);   /* cell 8 (e94) enter */
-int func_ov081_02124894(void *self);   /* cell 8 (e94) tick */
-int func_ov081_02124f7c(void *self);   /* cell 9 (ea4) enter */
-int func_ov081_02124f20(void *self);   /* cell 9 (ea4) tick */
+int _ZN11daSnowman_c19func_ov081_0212479cEv(void *self);   /* cell 1 (e24) enter */
+int _ZN11daSnowman_c19func_ov081_021246a0Ev(void *self);   /* cell 1 (e24) tick */
+int _ZN11daSnowman_c19func_ov081_02124dfcEv(void *self);   /* cell 2 (e34) enter */
+int _ZN11daSnowman_c19func_ov081_02124d50Ev(void *self);   /* cell 2 (e34) tick */
+int _ZN11daSnowman_c19func_ov081_02124d14Ev(void *self);   /* cell 3 (e44) enter */
+int _ZN11daSnowman_c19func_ov081_02124b98Ev(void *self);   /* cell 3 (e44) tick */
+int _ZN11daSnowman_c19func_ov081_0212538cEv(void *self);   /* cell 4 (e54) enter */
+int _ZN11daSnowman_c19func_ov081_02125208Ev(void *self);   /* cell 4 (e54) tick */
+int _ZN11daSnowman_c19func_ov081_02124b08Ev(void *self);   /* cell 5 (e64) enter */
+int _ZN11daSnowman_c19func_ov081_021249f4Ev(void *self);   /* cell 5 (e64) tick */
+int _ZN11daSnowman_c19func_ov081_02125200Ev(void *self);   /* cell 6 (e74) enter */
+int _ZN11daSnowman_c19func_ov081_021250c8Ev(void *self);   /* cell 6 (e74) tick */
+int _ZN11daSnowman_c19func_ov081_02125068Ev(void *self);   /* cell 7 (e84) enter */
+int _ZN11daSnowman_c19func_ov081_02125038Ev(void *self);   /* cell 7 (e84) tick */
+int _ZN11daSnowman_c19func_ov081_0212498cEv(void *self);   /* cell 8 (e94) enter */
+int _ZN11daSnowman_c19func_ov081_02124894Ev(void *self);   /* cell 8 (e94) tick */
+int _ZN11daSnowman_c19func_ov081_02124f7cEv(void *self);   /* cell 9 (ea4) enter */
+int _ZN11daSnowman_c19func_ov081_02124f20Ev(void *self);   /* cell 9 (ea4) tick */
 }
 
 /* NOTE ON func_ov081_02124e64: reloc-derivation independently identified
@@ -397,16 +397,16 @@ int func_ov081_02124f20(void *self);   /* cell 9 (ea4) tick */
         (void)dead_edx;                                                      \
         return sym(self);                                                    \
     }
-MB_PMF_FACE(func_ov081_02124ec0) MB_PMF_FACE(func_ov081_02124e64)
-MB_PMF_FACE(func_ov081_0212479c) MB_PMF_FACE(func_ov081_021246a0)
-MB_PMF_FACE(func_ov081_02124dfc) MB_PMF_FACE(func_ov081_02124d50)
-MB_PMF_FACE(func_ov081_02124d14) MB_PMF_FACE(func_ov081_02124b98)
-MB_PMF_FACE(func_ov081_0212538c) MB_PMF_FACE(func_ov081_02125208)
-MB_PMF_FACE(func_ov081_02124b08) MB_PMF_FACE(func_ov081_021249f4)
-MB_PMF_FACE(func_ov081_02125200) MB_PMF_FACE(func_ov081_021250c8)
-MB_PMF_FACE(func_ov081_02125068) MB_PMF_FACE(func_ov081_02125038)
-MB_PMF_FACE(func_ov081_0212498c) MB_PMF_FACE(func_ov081_02124894)
-MB_PMF_FACE(func_ov081_02124f7c) MB_PMF_FACE(func_ov081_02124f20)
+MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_02124ec0Ev) MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_02124e64Ev)
+MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_0212479cEv) MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_021246a0Ev)
+MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_02124dfcEv) MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_02124d50Ev)
+MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_02124d14Ev) MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_02124b98Ev)
+MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_0212538cEv) MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_02125208Ev)
+MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_02124b08Ev) MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_021249f4Ev)
+MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_02125200Ev) MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_021250c8Ev)
+MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_02125068Ev) MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_02125038Ev)
+MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_0212498cEv) MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_02124894Ev)
+MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_02124f7cEv) MB_PMF_FACE(_ZN11daSnowman_c19func_ov081_02124f20Ev)
 
 /* {ROM address the sinit's own source cell carries, host face} --
    verified against the ROM's own record before the rewrite (the
@@ -418,16 +418,16 @@ MB_PMF_FACE(func_ov081_02124f7c) MB_PMF_FACE(func_ov081_02124f20)
 typedef int (__fastcall *PortMbFace)(void *, void *);
 static const struct { unsigned enter_rom, tick_rom; PortMbFace enter_face, tick_face; }
 g_mb_cells[10] = {
-    {0x02124ec0, 0x02124e64, mb_pmf_func_ov081_02124ec0, mb_pmf_func_ov081_02124e64},
-    {0x0212479c, 0x021246a0, mb_pmf_func_ov081_0212479c, mb_pmf_func_ov081_021246a0},
-    {0x02124dfc, 0x02124d50, mb_pmf_func_ov081_02124dfc, mb_pmf_func_ov081_02124d50},
-    {0x02124d14, 0x02124b98, mb_pmf_func_ov081_02124d14, mb_pmf_func_ov081_02124b98},
-    {0x0212538c, 0x02125208, mb_pmf_func_ov081_0212538c, mb_pmf_func_ov081_02125208},
-    {0x02124b08, 0x021249f4, mb_pmf_func_ov081_02124b08, mb_pmf_func_ov081_021249f4},
-    {0x02125200, 0x021250c8, mb_pmf_func_ov081_02125200, mb_pmf_func_ov081_021250c8},
-    {0x02125068, 0x02125038, mb_pmf_func_ov081_02125068, mb_pmf_func_ov081_02125038},
-    {0x0212498c, 0x02124894, mb_pmf_func_ov081_0212498c, mb_pmf_func_ov081_02124894},
-    {0x02124f7c, 0x02124f20, mb_pmf_func_ov081_02124f7c, mb_pmf_func_ov081_02124f20},
+    {0x02124ec0, 0x02124e64, mb_pmf__ZN11daSnowman_c19func_ov081_02124ec0Ev, mb_pmf__ZN11daSnowman_c19func_ov081_02124e64Ev},
+    {0x0212479c, 0x021246a0, mb_pmf__ZN11daSnowman_c19func_ov081_0212479cEv, mb_pmf__ZN11daSnowman_c19func_ov081_021246a0Ev},
+    {0x02124dfc, 0x02124d50, mb_pmf__ZN11daSnowman_c19func_ov081_02124dfcEv, mb_pmf__ZN11daSnowman_c19func_ov081_02124d50Ev},
+    {0x02124d14, 0x02124b98, mb_pmf__ZN11daSnowman_c19func_ov081_02124d14Ev, mb_pmf__ZN11daSnowman_c19func_ov081_02124b98Ev},
+    {0x0212538c, 0x02125208, mb_pmf__ZN11daSnowman_c19func_ov081_0212538cEv, mb_pmf__ZN11daSnowman_c19func_ov081_02125208Ev},
+    {0x02124b08, 0x021249f4, mb_pmf__ZN11daSnowman_c19func_ov081_02124b08Ev, mb_pmf__ZN11daSnowman_c19func_ov081_021249f4Ev},
+    {0x02125200, 0x021250c8, mb_pmf__ZN11daSnowman_c19func_ov081_02125200Ev, mb_pmf__ZN11daSnowman_c19func_ov081_021250c8Ev},
+    {0x02125068, 0x02125038, mb_pmf__ZN11daSnowman_c19func_ov081_02125068Ev, mb_pmf__ZN11daSnowman_c19func_ov081_02125038Ev},
+    {0x0212498c, 0x02124894, mb_pmf__ZN11daSnowman_c19func_ov081_0212498cEv, mb_pmf__ZN11daSnowman_c19func_ov081_02124894Ev},
+    {0x02124f7c, 0x02124f20, mb_pmf__ZN11daSnowman_c19func_ov081_02124f7cEv, mb_pmf__ZN11daSnowman_c19func_ov081_02124f20Ev},
 };
 
 extern "C" void port_mr_blizzard_states_seat(void)
@@ -440,7 +440,7 @@ extern "C" void port_mr_blizzard_states_seat(void)
         PortMrBlizzardPair &cell = data_ov081_02128e14[i];
         if (cell.enter_fn != g_mb_cells[i].enter_rom || cell.enter_delta != 0 ||
             cell.tick_fn != g_mb_cells[i].tick_rom || cell.tick_delta != 0) {
-            std::fprintf(stderr, "FATAL: MrBlizzard state cell %d: the sinit "
+            std::fprintf(stderr, "FATAL: daSnowman_c state cell %d: the sinit "
                          "left %08x/%u %08x/%u, the ROM's own records say "
                          "%08x/0 %08x/0 -- WRONG BYTES\n", i,
                          cell.enter_fn, cell.enter_delta, cell.tick_fn, cell.tick_delta,
@@ -453,9 +453,9 @@ extern "C" void port_mr_blizzard_states_seat(void)
 }
 
 static int __fastcall mb_init(void *s, void *)
-{ return _ZN10MrBlizzard13InitResourcesEv(s); }
+{ return _ZN11daSnowman_c13InitResourcesEv(s); }
 static int __fastcall mb_clean(void *s, void *)
-{ (void)s; return _ZN10MrBlizzard16CleanupResourcesEv(); }
+{ (void)s; return _ZN11daSnowman_c16CleanupResourcesEv(); }
 /* SM64DS_ACTOR_PROBE=3: is MrBlizzard's own Behavior really being dispatched,
    and is its state machine moving? The class was parked unregistered for six
    weeks on a "frame-0 fault in Behavior's callee chain" that the PMF host
@@ -482,7 +482,7 @@ static int __fastcall mb_behavior(void *s, void *)
                         *(void *const *)(c + 0x3f8));
         }
     }
-    return _ZN10MrBlizzard8BehaviorEv(s);
+    return _ZN11daSnowman_c8BehaviorEv(s);
 }
 /* HISTORY, CLOSED: both reasons MR_BLIZZARD was kept out of the registry are
    spent. The func_0204488c raw-DMA fear is RESOLVED (the dma verdict --
@@ -504,15 +504,15 @@ static int __fastcall mb_behavior(void *s, void *)
    no ModelAnim slot-5 exposure). */
 static int __fastcall mb_render(void *s, void *)
 { port_actor_render_probe("MR_BLIZZARD", (char *)s + 0x30c);
-  return _ZN10MrBlizzard6RenderEv(s); }
+  return _ZN11daSnowman_c6RenderEv(s); }
 static int __fastcall mb_pdes(void *s, void *)
-{ (void)s; _ZN10MrBlizzard16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN11daSnowman_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall mb_d1(void *s, void *)
-{ return _ZN10MrBlizzardD1Ev(s); }
+{ return _ZN11daSnowman_cD1Ev(s); }
 static int __fastcall mb_d0(void *s, void *)
-{ return _ZN10MrBlizzardD0Ev(s); }
+{ return _ZN11daSnowman_cD0Ev(s); }
 static int __fastcall mb_aimed(void *s, void *)
-{ (void)s; return _ZN10MrBlizzard16OnAimedAtWithEggEv(); }
+{ (void)s; return _ZN11daSnowman_c16OnAimedAtWithEggEv(); }
 /* No mb_kill: there is no slot 31 on a 31-slot table. See the [31] note. */
 
 extern "C" void hal_fill_mr_blizzard_vtable(void)
@@ -520,7 +520,7 @@ extern "C" void hal_fill_mr_blizzard_vtable(void)
     /* seat the ten PMF cells BEFORE InitResources can dispatch through them
        (func_ov081_02125488 dispatches the "enter" half immediately). */
     port_mr_blizzard_states_seat();
-    void **vt = (void **)_ZTV10MrBlizzard;
+    void **vt = (void **)_ZTV11daSnowman_c;
     ov81_fill_shared(vt);
     vt[0]  = (void *)mb_init;
     vt[3]  = (void *)mb_clean;
@@ -539,37 +539,36 @@ extern "C" void hal_fill_mr_blizzard_vtable(void)
 // _ZTV10dBgActor_c placeholder (the ShipUp/RockPillar/SkiLift shape).
 // ============================================================================
 extern "C" {
-int _ZN8IceBlock13InitResourcesEv(void *self);        /* slot 0, faced */
-int _ZN8IceBlock16CleanupResourcesEv(void *self);     /* slot 3, faced */
-int _ZN8IceBlock8BehaviorEv(void *self);              /* slot 6, faced */
-int _ZN8IceBlock6RenderEv(void *self);                /* slot 9, faced */
-int *_ZN8IceBlockD1Ev(int *self);                     /* slot 16, .c, DTOR-PAIRS seat (0x02127b34) */
-int *_ZN8IceBlockD0Ev(int *self);                     /* slot 17, .c, DTOR-PAIRS seat (0x02127b80) */
-void _ZN8IceBlock15OnHitByMegaCharER6Player(void *self, void *p);        /* slot 27, OnHitByMegaChar */
-void _ZN8IceBlock4KillEv(void *self);                 /* slot 31, Kill */
+int _ZN15daObjIceBlock_c13InitResourcesEv(void *self);        /* slot 0, faced */
+int _ZN15daObjIceBlock_c16CleanupResourcesEv(void *self);     /* slot 3, faced */
+int _ZN15daObjIceBlock_c8BehaviorEv(void *self);              /* slot 6, faced */
+int _ZN15daObjIceBlock_c6RenderEv(void *self);                /* slot 9, faced */
+int *_ZN15daObjIceBlock_cD1Ev(int *self);                     /* slot 16, .c, DTOR-PAIRS seat (0x02127b34) */
+int *_ZN15daObjIceBlock_cD0Ev(int *self);                     /* slot 17, .c, DTOR-PAIRS seat (0x02127b80) */
+void _ZN15daObjIceBlock_c15OnHitByMegaCharER6Player(void *self, void *p);        /* slot 27, OnHitByMegaChar */
+void _ZN15daObjIceBlock_c4KillEv(void *self);                 /* slot 31, Kill */
 void *daObjIceBlock_c_classInit(void);                           /* installs _ZTV15daObjIceBlock_c */
-int _ZTV8IceBlock[32];
+int _ZTV15daObjIceBlock_c[32];
 extern int _ZTV15daObjIceBlock_c[];
 }
 /* IceBlock's own D0/D1 spell the RTTI name _ZTV15daObjIceBlock_c for their
    FIRST (later overwritten) store, but the factory installs it too --
    confirmed against daObjIceBlock_c_classInit.c. Alias the RTTI name onto this fill's
    host array (the OneUpLogo/daObj1UpLogo_c treatment). */
-#pragma comment(linker, "/alternatename:__ZTV15daObjIceBlock_c=__ZTV8IceBlock")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV15daObjIceBlock_c=__ZTV15daObjIceBlock_c")
 static int __fastcall icb_init(void *s, void *)
-{ return _ZN8IceBlock13InitResourcesEv(s); }
+{ return _ZN15daObjIceBlock_c13InitResourcesEv(s); }
 static int __fastcall icb_clean(void *s, void *)
-{ return _ZN8IceBlock16CleanupResourcesEv(s); }
+{ return _ZN15daObjIceBlock_c16CleanupResourcesEv(s); }
 static int __fastcall icb_behavior(void *s, void *)
-{ return _ZN8IceBlock8BehaviorEv(s); }
+{ return _ZN15daObjIceBlock_c8BehaviorEv(s); }
 static int __fastcall icb_render(void *s, void *)
 { port_actor_render_probe("ICE_BLOCK", (char *)s + 0xd4);
-  return _ZN8IceBlock6RenderEv(s); }
+  return _ZN15daObjIceBlock_c6RenderEv(s); }
 static int __fastcall icb_mega(void *s, void *, void *p)
-{ _ZN8IceBlock15OnHitByMegaCharER6Player(s, p); return 0; }
+{ _ZN15daObjIceBlock_c15OnHitByMegaCharER6Player(s, p); return 0; }
 static int __fastcall icb_kill(void *s, void *)
-{ _ZN8IceBlock4KillEv(s); return 0; }
+{ _ZN15daObjIceBlock_c4KillEv(s); return 0; }
 /* D1/D0 (DTOR-PAIRS seat): the matched flat-C pair behind ecx->arg adapters,
    replacing the host copies of the chain that stood here. The "_ZTV10dBgActor_c
    placeholder" the copies were written to avoid is the ONE Platform base table
@@ -577,13 +576,13 @@ static int __fastcall icb_kill(void *s, void *)
    hal/lk2_platform_dtor_seat.cpp), and the first store is this table by its
    RTTI name, aliased above. */
 static int __fastcall icb_d1(void *s, void *)
-{ return (int)(size_t)_ZN8IceBlockD1Ev((int *)s); }
+{ return (int)(size_t)_ZN15daObjIceBlock_cD1Ev((int *)s); }
 static int __fastcall icb_d0(void *s, void *)
-{ return (int)(size_t)_ZN8IceBlockD0Ev((int *)s); }
+{ return (int)(size_t)_ZN15daObjIceBlock_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_ice_block_vtable(void)
 {
-    void **vt = (void **)_ZTV8IceBlock;
+    void **vt = (void **)_ZTV15daObjIceBlock_c;
     hal_fill_platform_vtable();
     ov81_fill_shared(vt);
     vt[0]  = (void *)icb_init;
@@ -622,15 +621,15 @@ extern "C" void hal_fill_ice_block_vtable(void)
 // shape models -- hal/actor_classes_montymolerock.cpp's ruling, verbatim).
 // Slot 31 is simply never written for these two, so their arrays are 31 long.
 extern "C" {
-int _ZN8Snowball13InitResourcesEv(void *self);        /* slot 0,  faced below */
-int _ZN8Snowball16CleanupResourcesEv(void);           /* slot 3,  .c, takes void */
-int _ZN8Snowball8BehaviorEv(void *self);              /* slot 6,  faced below */
-int _ZN8Snowball6RenderEv(void *self);                /* slot 9,  faced below */
-void _ZN8Snowball16OnPendingDestroyEv(void);          /* slot 12, OWN, .c, empty */
-int _ZN8SnowballD1Ev(void *self);                     /* slot 16, .c, own table */
-int _ZN8SnowballD0Ev(void *self);                     /* slot 17, .c, RTTI spelling */
+int _ZN12daSnowball_c13InitResourcesEv(void *self);        /* slot 0,  faced below */
+int _ZN12daSnowball_c16CleanupResourcesEv(void);           /* slot 3,  .c, takes void */
+int _ZN12daSnowball_c8BehaviorEv(void *self);              /* slot 6,  faced below */
+int _ZN12daSnowball_c6RenderEv(void *self);                /* slot 9,  faced below */
+void _ZN12daSnowball_c16OnPendingDestroyEv(void);          /* slot 12, OWN, .c, empty */
+int _ZN12daSnowball_cD1Ev(void *self);                     /* slot 16, .c, own table */
+int _ZN12daSnowball_cD0Ev(void *self);                     /* slot 17, .c, RTTI spelling */
 void *daSnowball_c_classInit(void);                           /* installs _ZTV8Snowball */
-int _ZTV8Snowball[31];
+int _ZTV12daSnowball_c[31];
 
 /* The class's TWO PMF halves. func_ov081_021261d4 (InitResources' last call)
    stores &data_ov081_02128eb4 at self+0x378 and dispatches the ENTER half
@@ -644,7 +643,7 @@ extern PortSnowballPair data_ov081_02128eb4;
 /* enter = func_ov081_021261b8, ALREADY declared above as MrBlizzard's own Kill
    (slot 31): one real ROM address, two roles, the func_ov081_02124e64 shape
    this file already documents at length. Not redeclared. */
-int func_ov081_021260fc(void *self);   /* tick */
+int _ZN12daSnowball_c19func_ov081_021260fcEv(void *self);   /* tick */
 }
 
 /* D0 stores the RTTI spelling _ZTV12daSnowball_c (dsd dual-names it at the
@@ -655,8 +654,7 @@ int func_ov081_021260fc(void *self);   /* tick */
    (ov081_syms.txt listed the dual-named pair ONCE, under _ZTV8Snowball, so
    dropping that line drops both spellings), which is what an /alternatename
    needs: a defined LHS is defeated silently, the R3 ov071/ov073 failure. */
-#pragma comment(linker, "/alternatename:__ZTV12daSnowball_c=__ZTV8Snowball")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV12daSnowball_c=__ZTV12daSnowball_c")
 /* THE TWO HALVES OF THIS ONE CELL ARE REACHED THROUGH DIFFERENT CALLING
    CONVENTIONS ON THE HOST, so the seat writes a different kind of host address
    into each. That asymmetry is not a preference; it is what the two dispatch
@@ -697,7 +695,7 @@ int func_ov081_021260fc(void *self);   /* tick */
    is ever dropped from that TU the width goes wrong again and the class faults
    on frame 1, loudly, which is how this was found in the first place. */
 static int __fastcall sb_state_tick(void *s, void *)
-{ return func_ov081_021260fc(s); }
+{ return _ZN12daSnowball_c19func_ov081_021260fcEv(s); }
 
 /* {ROM address the sinit's own source record carries, host body}, verified
    before the rewrite -- the MrBlizzard seat above, one class over. */
@@ -710,23 +708,23 @@ extern "C" void port_snowball_states_seat(void)
     PortSnowballPair &cell = data_ov081_02128eb4;
     if (cell.enter_fn != 0x021261b8u || cell.enter_delta != 0 ||
         cell.tick_fn != 0x021260fcu || cell.tick_delta != 0) {
-        std::fprintf(stderr, "FATAL: Snowball state cell: the sinit left "
+        std::fprintf(stderr, "FATAL: daSnowball_c state cell: the sinit left "
                      "%08x/%u %08x/%u, the ROM's own records say "
                      "021261b8/0 021260fc/0 -- WRONG BYTES\n",
                      cell.enter_fn, cell.enter_delta,
                      cell.tick_fn, cell.tick_delta);
         std::abort();
     }
-    cell.enter_fn = (unsigned)(size_t)func_ov081_021261b8;   /* cdecl, tail-jumped */
+    cell.enter_fn = (unsigned)(size_t)_ZN12daSnowball_c19func_ov081_021261b8Ev;   /* cdecl, tail-jumped */
     cell.tick_fn = (unsigned)(size_t)sb_state_tick;          /* __fastcall thunk */
 }
 
 static int __fastcall sb_init(void *s, void *)
-{ return _ZN8Snowball13InitResourcesEv(s); }
+{ return _ZN12daSnowball_c13InitResourcesEv(s); }
 static int __fastcall sb_clean(void *s, void *)
-{ (void)s; return _ZN8Snowball16CleanupResourcesEv(); }
+{ (void)s; return _ZN12daSnowball_c16CleanupResourcesEv(); }
 static int __fastcall sb_behavior(void *s, void *)
-{ return _ZN8Snowball8BehaviorEv(s); }
+{ return _ZN12daSnowball_c8BehaviorEv(s); }
 /* Render is the MATCHED TU, not a host copy: its six-virtual ROM-order shadow
    sits over a plain Model at +0x300 (constructed by _ZN5ModelC1Ev in
    daSnowball_c_classInit, filled through ModelBase::SetFile in InitResources,
@@ -737,13 +735,13 @@ static int __fastcall sb_behavior(void *s, void *)
    in this same file; the member type is the only difference. */
 static int __fastcall sb_render(void *s, void *)
 { port_actor_render_probe("SNOWBALL", (char *)s + 0x300);
-  return _ZN8Snowball6RenderEv(s); }
+  return _ZN12daSnowball_c6RenderEv(s); }
 static int __fastcall sb_pdes(void *s, void *)
-{ (void)s; _ZN8Snowball16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN12daSnowball_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall sb_d1(void *s, void *)
-{ return _ZN8SnowballD1Ev(s); }
+{ return _ZN12daSnowball_cD1Ev(s); }
 static int __fastcall sb_d0(void *s, void *)
-{ return _ZN8SnowballD0Ev(s); }
+{ return _ZN12daSnowball_cD0Ev(s); }
 
 extern "C" void hal_fill_snowball_vtable(void)
 {
@@ -751,7 +749,7 @@ extern "C" void hal_fill_snowball_vtable(void)
        half -- func_ov081_021261d4 dispatches it in the same statement that
        installs the cell pointer. */
     port_snowball_states_seat();
-    void **vt = (void **)_ZTV8Snowball;
+    void **vt = (void **)_ZTV12daSnowball_c;
     ov81_fill_shared(vt);
     vt[0]  = (void *)sb_init;
     vt[3]  = (void *)sb_clean;
@@ -785,7 +783,7 @@ void *daGmch_c_classInit(void);                           /* installs _ZTV8Money
 int _ZTV8Moneybag[31];
 
 void _ZN9ModelAnimD1Ev(void *);                       /* ModelAnim at +0xd4 */
-void _ZN11ShadowModelD1Ev(void *);                    /* ShadowModel at +0x188 */
+void _ZN17dExtShadowModel_cD1Ev(void *);                    /* ShadowModel at +0x188 */
 void _ZN10dBgCh_ActrD1Ev(void *);                   /* WithMeshClsn at +0x1e4 */
 
 /* NINE STATES x {enter, tick}: the eighteen records __sinit_ov081_021284f0
@@ -996,18 +994,18 @@ extern "C" void hal_fill_moneybag_vtable(void)
 // ---- method faces ------------------------------------------------------
 // The C-named references the thunks above take onto the real MSVC methods
 // against include/, the IceSheet/gate-190 treatment.
-#include "Spindrift.h"
-#include "MrBlizzard.h"
-#include "IceBlock.h"
-#include "Snowball.h"
+#include "daHuwa_c.h"
+#include "daSnowman_c.h"
+#include "daObjIceBlock_c.h"
+#include "daSnowball_c.h"
 #include "daGmch_c.h"
 extern "C" {
-int _ZN8Snowball13InitResourcesEv(void *self)
-{ return ((Snowball *)self)->Snowball::InitResources(); }
-int _ZN8Snowball8BehaviorEv(void *self)
-{ return ((Snowball *)self)->Snowball::Behavior(); }
-int _ZN8Snowball6RenderEv(void *self)
-{ return ((Snowball *)self)->Snowball::Render(); }
+int _ZN12daSnowball_c13InitResourcesEv(void *self)
+{ return ((daSnowball_c *)self)->daSnowball_c::InitResources(); }
+int _ZN12daSnowball_c8BehaviorEv(void *self)
+{ return ((daSnowball_c *)self)->daSnowball_c::Behavior(); }
+int _ZN12daSnowball_c6RenderEv(void *self)
+{ return ((daSnowball_c *)self)->daSnowball_c::Render(); }
 int _ZN8daGmch_c13InitResourcesEv(void *self)
 { return ((daGmch_c *)self)->daGmch_c::InitResources(); }
 int _ZN8daGmch_c8BehaviorEv(void *self)
@@ -1017,26 +1015,26 @@ int _ZN8daGmch_c8BehaviorEv(void *self)
    shadow off mModelAnim (+0xd4); host copy in
    port/unmatched/ModelAnim_Renders.cpp spells it as qualified
    ModelAnim::Render. */
-int _ZN9Spindrift13InitResourcesEv(void *self)
-{ return ((Spindrift *)self)->Spindrift::InitResources(); }
-int _ZN9Spindrift8BehaviorEv(void *self)
-{ return ((Spindrift *)self)->Spindrift::Behavior(); }
+int _ZN8daHuwa_c13InitResourcesEv(void *self)
+{ return ((daHuwa_c *)self)->daHuwa_c::InitResources(); }
+int _ZN8daHuwa_c8BehaviorEv(void *self)
+{ return ((daHuwa_c *)self)->daHuwa_c::Behavior(); }
 /* _ZN9Spindrift6RenderEv is NOT faced here -- the ModelAnim slot-5 collision.
    The matched Spindrift::Render dispatches ROM slot 5 through a six-virtual
    shadow off mModelAnim (+0x110); host copy in
    port/unmatched/ModelAnim_Renders.cpp spells it as qualified ModelAnim::Render. */
-int _ZN10MrBlizzard13InitResourcesEv(void *self)
-{ return ((MrBlizzard *)self)->MrBlizzard::InitResources(); }
-int _ZN10MrBlizzard8BehaviorEv(void *self)
-{ return ((MrBlizzard *)self)->MrBlizzard::Behavior(); }
-int _ZN10MrBlizzard6RenderEv(void *self)
-{ return ((MrBlizzard *)self)->MrBlizzard::Render(); }
-int _ZN8IceBlock13InitResourcesEv(void *self)
-{ return ((IceBlock *)self)->IceBlock::InitResources(); }
-int _ZN8IceBlock16CleanupResourcesEv(void *self)
-{ return ((IceBlock *)self)->IceBlock::CleanupResources(); }
-int _ZN8IceBlock8BehaviorEv(void *self)
-{ return ((IceBlock *)self)->IceBlock::Behavior(); }
-int _ZN8IceBlock6RenderEv(void *self)
-{ return ((IceBlock *)self)->IceBlock::Render(); }
+int _ZN11daSnowman_c13InitResourcesEv(void *self)
+{ return ((daSnowman_c *)self)->daSnowman_c::InitResources(); }
+int _ZN11daSnowman_c8BehaviorEv(void *self)
+{ return ((daSnowman_c *)self)->daSnowman_c::Behavior(); }
+int _ZN11daSnowman_c6RenderEv(void *self)
+{ return ((daSnowman_c *)self)->daSnowman_c::Render(); }
+int _ZN15daObjIceBlock_c13InitResourcesEv(void *self)
+{ return ((daObjIceBlock_c *)self)->daObjIceBlock_c::InitResources(); }
+int _ZN15daObjIceBlock_c16CleanupResourcesEv(void *self)
+{ return ((daObjIceBlock_c *)self)->daObjIceBlock_c::CleanupResources(); }
+int _ZN15daObjIceBlock_c8BehaviorEv(void *self)
+{ return ((daObjIceBlock_c *)self)->daObjIceBlock_c::Behavior(); }
+int _ZN15daObjIceBlock_c6RenderEv(void *self)
+{ return ((daObjIceBlock_c *)self)->daObjIceBlock_c::Render(); }
 }

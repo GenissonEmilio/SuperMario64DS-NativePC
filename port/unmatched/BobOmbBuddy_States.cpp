@@ -46,12 +46,12 @@ extern PortBuddyPmf data_ov084_021309dc[], data_ov084_021309ec[],
     data_ov084_021309d4[];
 extern PortBuddyState data_ov084_02130dc4[];
 
-void func_ov084_0212c92c(void *self);
-void func_ov084_0212c8b0(void *self);
-void func_ov084_0212c89c(void *self);
-void func_ov084_0212c508(void *self);
-void func_ov084_0212c4a0(void *self);
-void func_ov084_0212c1a0(void *self);
+void _ZN14daRedBombhei_c19func_ov084_0212c92cEv(void *self);
+void _ZN14daRedBombhei_c19func_ov084_0212c8b0Ev(void *self);
+void _ZN14daRedBombhei_c19func_ov084_0212c89cEv(void *self);
+void _ZN14daRedBombhei_c19func_ov084_0212c508Ev(void *self);
+void _ZN14daRedBombhei_c19func_ov084_0212c4a0Ev(void *self);
+void _ZN14daRedBombhei_c19func_ov084_0212c1a0Ev(void *self);
 
 }  /* extern "C" */
 
@@ -59,12 +59,12 @@ typedef void (*PortBuddyFn)(void *);
 
 static const struct { PortBuddyPmf *slot; unsigned rom; PortBuddyFn host; }
 g_buddy_states[] = {
-    {data_ov084_021309dc, 0x0212c92c, func_ov084_0212c92c},
-    {data_ov084_021309ec, 0x0212c8b0, func_ov084_0212c8b0},
-    {data_ov084_021309cc, 0x0212c89c, func_ov084_0212c89c},
-    {data_ov084_021309e4, 0x0212c508, func_ov084_0212c508},
-    {data_ov084_021309c4, 0x0212c4a0, func_ov084_0212c4a0},
-    {data_ov084_021309d4, 0x0212c1a0, func_ov084_0212c1a0},
+    {data_ov084_021309dc, 0x0212c92c, _ZN14daRedBombhei_c19func_ov084_0212c92cEv},
+    {data_ov084_021309ec, 0x0212c8b0, _ZN14daRedBombhei_c19func_ov084_0212c8b0Ev},
+    {data_ov084_021309cc, 0x0212c89c, _ZN14daRedBombhei_c19func_ov084_0212c89cEv},
+    {data_ov084_021309e4, 0x0212c508, _ZN14daRedBombhei_c19func_ov084_0212c508Ev},
+    {data_ov084_021309c4, 0x0212c4a0, _ZN14daRedBombhei_c19func_ov084_0212c4a0Ev},
+    {data_ov084_021309d4, 0x0212c1a0, _ZN14daRedBombhei_c19func_ov084_0212c1a0Ev},
 };
 
 static void port_buddy_seat_one(PortBuddyPmf *p, unsigned rom, PortBuddyFn host,
@@ -131,24 +131,24 @@ extern "C" void port_bob_omb_buddy_states_seat(void)
 
    STATES: 0 walk, 1 turn, 2 squashed, 3 knocked back, 4 the spawner's wait. */
 extern "C" {
-extern PortBuddyPmf data_ov084_021308bc[], data_ov084_021308b4[],
-    data_ov084_021308c4[], data_ov084_021308ac[], data_ov084_021308cc[];
+extern PortBuddyPmf krbStateDesc_Walk[], krbStateDesc_HopStart[],
+    data_ov084_021308c4[], krbStateDesc_Tumble[], krbStateDesc_Pause[];
 extern PortBuddyPmf data_ov084_02130d74[];
 
 void func_ov084_0212b2dc(void *self);
 void func_ov084_0212ab48(void *self);
-void func_ov084_0212aab0(void *self);
+void _ZN7daKrb_c19func_ov084_0212aab0Ev(void *self);
 void func_ov084_0212a774(void *self);
 void func_ov084_0212a6f8(void *self);
 }
 
 static const struct { PortBuddyPmf *slot; unsigned rom; PortBuddyFn host; }
 g_goomba_states[] = {
-    {data_ov084_021308bc, 0x0212b2dc, func_ov084_0212b2dc},
-    {data_ov084_021308b4, 0x0212ab48, func_ov084_0212ab48},
-    {data_ov084_021308c4, 0x0212aab0, func_ov084_0212aab0},
-    {data_ov084_021308ac, 0x0212a774, func_ov084_0212a774},
-    {data_ov084_021308cc, 0x0212a6f8, func_ov084_0212a6f8},
+    {krbStateDesc_Walk, 0x0212b2dc, func_ov084_0212b2dc},
+    {krbStateDesc_HopStart, 0x0212ab48, func_ov084_0212ab48},
+    {data_ov084_021308c4, 0x0212aab0, _ZN7daKrb_c19func_ov084_0212aab0Ev},
+    {krbStateDesc_Tumble, 0x0212a774, func_ov084_0212a774},
+    {krbStateDesc_Pause, 0x0212a6f8, func_ov084_0212a6f8},
 };
 
 extern "C" void port_goomba_states_seat(void)

@@ -230,8 +230,8 @@ Grep of build/port/walk_window.map at the baseline commit:
     TouchArea_Update                func_0205eeac  (auto sampling start)
     func_ov004_020b8f78             func_0205edc8  (the ring cursor)
     func_ov004_020aeb24             func_0205edd8  (stability params)
-    func_ov006_020e1b54             func_0205f0e0, func_0205f1e4, func_0205f270
-    func_ov006_020e26f8
+    _ZN14dScMgCurling_c19func_ov006_020e1b54Ev             func_0205f0e0, func_0205f1e4, func_0205f270
+    _ZN14dScMgCurling_c19func_ov006_020e26f8Ei
     _ZN9dScDSMT_c8BehaviorEv
     func_ov007_020b7090
 
@@ -424,10 +424,10 @@ THE CURLING TOUCH GATE, DERIVED BEFORE IT WAS RUN.
     index at self+0x4eac to 1.
     Behavior (_ZN14dScMgCurling_c8BehaviorEv, host copied in
     port/unmatched/MgCurling_StateDispatch.cpp) dispatches
-    data_ov006_02141950[index]. Index 1 is func_ov006_020e3078.
-    func_ov006_020e3078 dispatches data_ov006_021418b0[self+0x4ee4]. Slot 0 is
-    func_ov006_020e1b54. Slot 1 is 0x020e1854.
-    func_ov006_020e1b54 IS the touch state. It reads
+    data_ov006_02141950[index]. Index 1 is _ZN14dScMgCurling_c19func_ov006_020e3078Ev.
+    _ZN14dScMgCurling_c19func_ov006_020e3078Ev dispatches data_ov006_021418b0[self+0x4ee4]. Slot 0 is
+    _ZN14dScMgCurling_c19func_ov006_020e1b54Ev. Slot 1 is 0x020e1854.
+    _ZN14dScMgCurling_c19func_ov006_020e1b54Ev IS the touch state. It reads
     data_020a0de8[data_020a0e40 * 4] and returns immediately unless BOTH
     touched and held are set. On a drag it computes the aim vector into
     self+0x4ec0 and +0x4ec4 from the stylus position, requests sound 0x1d2, and
@@ -465,7 +465,7 @@ THE RUNS. Same binary as the gate baseline, no source change, all headless.
 
     ONE POKED RUN DID NOT TRIP IT, and it is not a counterexample, it is the
     warm up. SM64DS_SCENE_FRAMES=20 with SM64DS_TOUCH_PROBE="0-19:120:150"
-    produced no line. func_ov006_020e3078 opens by decrementing a timer at
+    produced no line. _ZN14dScMgCurling_c19func_ov006_020e3078Ev opens by decrementing a timer at
     self+0x4ee2 and returning while it is nonzero, so the sub state is not
     dispatched at all for the first stretch of the scene. The counters below
     measure that stretch exactly: 020e3078 entered 299 and 020e1b54 entered
@@ -488,7 +488,7 @@ down and again on the frame it comes up, clear for the whole hold in
 between. poll_touch was writing "down and was down", the opposite shape, so the
 trace above is the defect and not the derivation. Run mg5 lane PLUNGER
 measured what it cost on scene 368 and corrected the store; the two frames
-now read touched 1 edge 1 then touched 1 edge 0, and func_ov006_020e1b54
+now read touched 1 edge 1 then touched 1 edge 0, and _ZN14dScMgCurling_c19func_ov006_020e1b54Ev
 consumes on the first of them rather than the second.
 
 A THROWAWAY PROBE, SINCE STRIPPED, COUNTED THE STATES. It added per address
@@ -612,14 +612,14 @@ double dispatch reason with it. This lane does not rule between them.
 Touch already reaches dScMgCurling_c (section 5), so nothing in 6b is needed to
 make the class READ a tap. What blocks the class is downstream of the read:
 
-    self+0x4eac  1 = func_ov006_020e3078, the sub state dispatcher
-                 2 = func_ov006_020e2f78, which 020e3078 advances to only after
+    self+0x4eac  1 = _ZN14dScMgCurling_c19func_ov006_020e3078Ev, the sub state dispatcher
+                 2 = _ZN14dScMgCurling_c19func_ov006_020e2f78Ev, which 020e3078 advances to only after
                      its five entity loop reports count 0
-    self+0x4ee4  0 = func_ov006_020e1b54, WAIT FOR A DRAG. Touch gates here.
+    self+0x4ee4  0 = _ZN14dScMgCurling_c19func_ov006_020e1b54Ev, WAIT FOR A DRAG. Touch gates here.
                  1 = 0x020e1854, NO DECOMPILED BODY. The shot cannot be taken.
 
     self+0x4688  selects data_ov006_02141910 per entity inside 020e3078's loop.
-                 Slot 3 is func_ov006_020e26f8, the second touch reader in the
+                 Slot 3 is _ZN14dScMgCurling_c19func_ov006_020e26f8Ei, the second touch reader in the
                  class, which drags an entity under the stylus and clamps its
                  x. It was entered ZERO times in every run above, control and
                  tap alike.
@@ -646,7 +646,7 @@ is that THE PER ENTITY SELECTOR AT self+0x4688 NEVER TAKES THE VALUE 3. That is
 where a lane chasing the second touch reader should look. Reviewer counters
 corroborate it from the other side and are recorded as the reviewer's, not this
 lane's: 020e2f78 entered 0 with 020e3078 entered 299, and slot 0 of the same
-table (func_ov006_020e2c08) entered 235 in BOTH runs, which is one dispatch per
+table (_ZN14dScMgCurling_c19func_ov006_020e2c08Ei) entered 235 in BOTH runs, which is one dispatch per
 non timer frame at selector 0.
 
 So the honest curling statement is: one of the class's two touch states runs
@@ -673,7 +673,7 @@ does not need a probe build:
 
     The line is emitted by production code (port/unmatched/
     MgCurling_StateDispatch.cpp), not by a probe. The only way to reach that
-    address is for func_ov006_020e1b54 to have read touched AND held out of
+    address is for _ZN14dScMgCurling_c19func_ov006_020e1b54Ev to have read touched AND held out of
     data_020a0de8 and written self+0x4ee4. So the line IS the assertion "the
     minigame consumed a tap", with no instrumentation to trust.
 
@@ -699,7 +699,7 @@ past, and three of them arrived from the review of this file rather than from
 writing it.
 
   - WHAT SETS self+0x4688, AND WHY IT NEVER REACHES 3. Section 6c proves the
-    entities are active and the selector is the reason func_ov006_020e26f8
+    entities are active and the selector is the reason _ZN14dScMgCurling_c19func_ov006_020e26f8Ei
     never runs. It does NOT say what writes that byte or what value would
     select slot 3. That is the next question for the curling lane and this lane
     did not open it.
@@ -929,7 +929,7 @@ FAULTS_FATAL=1, the two runs identical but for the click script:
     [touch] f151 release after 71 frame(s), last DS (128,43)
 
 Per 6d that line IS the assertion "the minigame consumed a tap": the only way
-to reach that address is for func_ov006_020e1b54 to have read touched AND held
+to reach that address is for _ZN14dScMgCurling_c19func_ov006_020e1b54Ev to have read touched AND held
 out of data_020a0de8 and written self+0x4ee4. So the mouse, the window, the
 present rectangle, the transform, the record and the ROM's own reader are
 proven end to end on the path a player actually uses.
@@ -944,7 +944,7 @@ IDENTICAL between the control and the drag:
     frames=200  both md5 1aa356598f72c6cd861afddb717a8406  IDENTICAL
 
 The consumed tap advances self+0x4ee4 from 0 to 1, and slot 1 is
-func_ov006_020e1854 -- 0x300 bytes with a symbol in ov006/symbols.txt, no
+_ZN14dScMgCurling_c19func_ov006_020e1854Ev -- 0x300 bytes with a symbol in ov006/symbols.txt, no
 delink block, and no src file. The class cannot take the shot, so the FIRST
 drag a player makes moves the machine into a state with no body and every later
 drag is ignored. That is what "touch does not work in curling" is, and it is
@@ -980,7 +980,7 @@ upstream of it is green.
     DS coordinates; the frames between them do not, and SM64DS_TOUCH_PROBE is
     still the tool for a per-frame record.
   - THE SECOND TOUCH READER IS STILL NEVER DISPATCHED. Section 6c's finding
-    about func_ov006_020e26f8 and the self+0x4688 selector is untouched by this
+    about _ZN14dScMgCurling_c19func_ov006_020e26f8Ei and the self+0x4688 selector is untouched by this
     lane; nothing here looked at it.
 
 ================================================================================

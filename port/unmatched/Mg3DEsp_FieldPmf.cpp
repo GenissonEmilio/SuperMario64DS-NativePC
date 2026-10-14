@@ -111,14 +111,14 @@ void port_mg_call0(void *self, unsigned code, int adj);
    defines.  func_ov006_020e7fac takes (void) and is the idle body -- there is
    nothing for an ignored receiver to be wrong about, which is the
    MgCoin_StateDispatch.cpp ruling for the same shape. */
-void func_ov006_020e7cc0(char *thiz);
-void func_ov006_020e7de8(char *c);
-void func_ov006_020e7f04(char *c);
-void func_ov006_020e7fac(void);
+void _ZN15dMg3DEspModel_c3HitEv(char *thiz);
+void _ZN15dMg3DEspModel_c5IntroEv(char *c);
+void _ZN15dMg3DEspModel_c4WaitEv(char *c);
+void _ZN15dMg3DEspModel_c4IdleEv(void);
 
 /* the ordinary callees the host copy keeps, spelled as their own src TUs
    spell them */
-int   _ZN9Animation7AdvanceEv(void *anim);
+int   _ZN15dExtFrameCtrl_c7AdvanceEv(void *anim);
 void  _ZN17dMg3DEspAnimSet_c8BehaviorEv(void *p);
 void *_ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
         unsigned int a, unsigned int b, int c, int d, int e,
@@ -190,10 +190,10 @@ static unsigned g_esp_field_calls, g_esp_field_routed;
         call;                                                             \
     }
 
-ESP_FACE(020e7cc0, func_ov006_020e7cc0((char *)self))
-ESP_FACE(020e7de8, func_ov006_020e7de8((char *)self))
-ESP_FACE(020e7f04, func_ov006_020e7f04((char *)self))
-ESP_FACE(020e7fac, func_ov006_020e7fac())
+ESP_FACE(020e7cc0, _ZN15dMg3DEspModel_c3HitEv((char *)self))
+ESP_FACE(020e7de8, _ZN15dMg3DEspModel_c5IntroEv((char *)self))
+ESP_FACE(020e7f04, _ZN15dMg3DEspModel_c4WaitEv((char *)self))
+ESP_FACE(020e7fac, _ZN15dMg3DEspModel_c4IdleEv())
 
 extern "C" {
 extern MgPmf data_ov006_0213c744, data_ov006_0213c754, data_ov006_0213c764,

@@ -47,6 +47,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "daJango_c.h"
 
 extern "C" {
 
@@ -58,12 +59,11 @@ extern PortPmf data_ov062_0211dcd0, data_ov062_0211dcd8, data_ov062_0211dce0,
     data_ov062_0211dd00, data_ov062_0211dd08, data_ov062_0211dd10,
     data_ov062_0211dd18;
 
-/* the ten matched handlers (cdecl, receiver as the first stack argument) */
-int func_ov062_0211ba84(void *c); int func_ov062_0211c594(void *c);
-int func_ov062_0211bd10(void *c); int func_ov062_0211b880(void *c);
-int func_ov062_0211c2f4(void *c); int func_ov062_0211bc54(void *c);
-int func_ov062_0211b8d8(void *c); int func_ov062_0211b800(void *c);
-int func_ov062_0211c218(void *c); int func_ov062_0211b930(void *c);
+/* the ten matched handlers. 0x0211ba84 is still a C body (cdecl, receiver as
+   the first stack argument); main folded the other nine into
+   src/actors/daJango_c.cpp as daJango_c members (include/daJango_c.h), which
+   the faces below call qualified. */
+int func_ov062_0211ba84(void *c);
 
 }  /* extern "C" */
 
@@ -85,9 +85,10 @@ int func_ov062_0211c218(void *c); int func_ov062_0211b930(void *c);
    matched against its own reloc destination in
    config/arm9/overlays/ov062/relocs.txt. Rewritten BEFORE
    __sinit_ov062_0211d6fc copies them into the five bss descriptors. */
+static int __fastcall kl_st_0211ba84(void *s) { return func_ov062_0211ba84(s); }
 #define KLEPTO_FACE(a) static int __fastcall kl_st_##a(void *s) \
-    { return func_ov062_##a(s); }
-KLEPTO_FACE(0211ba84) KLEPTO_FACE(0211c594) KLEPTO_FACE(0211bd10)
+    { return ((daJango_c *)s)->daJango_c::func_ov062_##a(); }
+KLEPTO_FACE(0211c594) KLEPTO_FACE(0211bd10)
 KLEPTO_FACE(0211b880) KLEPTO_FACE(0211c2f4) KLEPTO_FACE(0211bc54)
 KLEPTO_FACE(0211b8d8) KLEPTO_FACE(0211b800) KLEPTO_FACE(0211c218)
 KLEPTO_FACE(0211b930)

@@ -10,14 +10,14 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "Animation.h"
+#include "dExtFrameCtrl_c.h"
 #include "dBgCh.h"
 #include "NestedHeapIterator.h"
 #include "Player.h"
 #include "player_fields.h"   /* run mg16 lane MP4: the one place field offsets live */
 #include "host_settings.h"   /* port::adventure_ghost_mode() for the ghost pass */
 #include "comms_seam.h"      /* port::sync_stats(): the local-write witness */
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 #include "TextureSequence.h"
 #include "Heap.h"
 #include "ModelAnim.h"
@@ -37,20 +37,20 @@ namespace ntr { struct GxTriangle; const GxTriangle *gx_polygons(std::size_t &n)
 extern "C" unsigned g_port_unhosted_hits = 0;
 
 extern "C" unsigned int _ZNK6Player14GetBodyModelIDEjb(char *, unsigned int, char);
-extern "C" unsigned func_ov002_020becf4(char *self, unsigned j, int b);
+extern "C" unsigned _ZN6Player19func_ov002_020becf4Eii(char *self, unsigned j, int b);
 extern "C" int func_ov002_020d225c(char *o);   /* src/func_ov002_020d225c.c */
 extern "C" void func_ov002_020e3e00(void *obj, const void *vec,
                                     unsigned opacity);  /* src/func_ov002_020e3e00.cpp */
 extern "C" int _ZN6Player13InitResourcesEv(void *);
 
 /* C++-linkage globals some slice TUs call under Itanium-style names */
-int _ZNK9Animation12WillHitFrameEi(void *self, int f)
-{ return ((Animation *)self)->Animation::WillHitFrame(f) ? 1 : 0; }
+int _ZNK15dExtFrameCtrl_c12WillHitFrameEi(void *self, int f)
+{ return ((dExtFrameCtrl_c *)self)->dExtFrameCtrl_c::WillHitFrame(f) ? 1 : 0; }
 /* GetFlags is C linkage now: main's mangled-declaration sweep gave the Player
    state TUs an extern "C" declaration, so they call the plain name. The alias
    at the head of hal/cxx_aliases.cpp still serves the old C++ mangling. */
-extern "C" int _ZN9Animation8GetFlagsEv(void *self)
-{ return ((Animation *)self)->Animation::GetFlags(); }
+extern "C" int _ZN15dExtFrameCtrl_c8GetFlagsEv(void *self)
+{ return ((dExtFrameCtrl_c *)self)->dExtFrameCtrl_c::GetFlags(); }
 void _ZN6Player4HealEi(Player *p, int amt)
 { p->Player::Heal(amt); }
 
@@ -399,10 +399,10 @@ static unsigned ghost_alpha()
    model's components and stamps the alpha into each material, the same call
    Player::Render makes on the wings. Re-applied every frame because the
    material flags are rebuilt by the per-frame update. */
-extern "C" void _ZN9ModelBase12ApplyOpacityEj(void *self, unsigned a);
+extern "C" void _ZN9ModelBase12ApplyOpacityEjj(void *self, unsigned a);
 static void ghost_opacity(void *model)
 {
-    if (model) _ZN9ModelBase12ApplyOpacityEj(model, ghost_alpha());
+    if (model) _ZN9ModelBase12ApplyOpacityEjj(model, ghost_alpha());
 }
 
 /* ---- THE NO-COLLISION HALF OF THE GHOST PASS ------------------------------
@@ -1061,7 +1061,7 @@ extern "C" void port_party_probe(int frame)
    gates and destinations are the matched TU's, byte for byte of intent. */
 extern "C" void _ZN15TextureSequence6UpdateER15ModelComponents(void *seq,
                                                                void *mc);
-extern "C" int func_ov002_020bea7c(char *self);
+extern "C" int _ZN6Player19func_ov002_020bea7cEv(char *self);
 extern "C" int port_player_render_hidden(const void *player);  /* below, hoisted */
 
 static void hal_player_texseq_body(char *c)
@@ -1081,7 +1081,7 @@ static void hal_player_texseq_head(char *c, unsigned hid)
             _ZN15TextureSequence6UpdateER15ModelComponents(c + 0x268, mdl + 8);
         *(int *)(c + 0x270) = (int)*(unsigned char *)(c + 0x6fc) << 12;
     }
-    if (func_ov002_020bea7c(c) == 0) {             /* face timer idle */
+    if (_ZN6Player19func_ov002_020bea7cEv(c) == 0) {             /* face timer idle */
         char *head = ((char **)(c + 0x154))[hid];
         if (head)
             _ZN15TextureSequence6UpdateER15ModelComponents(
@@ -1117,7 +1117,7 @@ extern "C" void hal_player_texseq_tick(void *player)
     char *c = (char *)player;
     if (port_player_render_hidden(c)) return;
     hal_player_texseq_body(c);
-    const unsigned hid = func_ov002_020becf4(c, *(unsigned char *)(c + 0x6db), 1);
+    const unsigned hid = _ZN6Player19func_ov002_020becf4Eii(c, *(unsigned char *)(c + 0x6db), 1);
     if (hid != 8 && hid != 9)
         hal_player_texseq_head(c, hid);
 }
@@ -1496,7 +1496,7 @@ static void vscol_probe(char *c, int frame, std::size_t tris_before)
         _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 0);
     vscol_model("body", frame, no, (char *)((ModelAnim **)(c + 0xdc))[id]);
     const unsigned hid =
-        func_ov002_020becf4(c, *(unsigned char *)(c + 0x6db), 1);
+        _ZN6Player19func_ov002_020becf4Eii(c, *(unsigned char *)(c + 0x6db), 1);
     if (hid != 8 && hid != 9)
         vscol_model("head", frame, no, ((char **)(c + 0x154))[hid]);
 }
@@ -1749,7 +1749,7 @@ void hal_render_player_world(void *player)
     std::size_t hsink_t1 = 0;
     if (balloon) {
         ModelAnim *m3 = (ModelAnim *)(c + 0xf0);    /* mModelAnim3 */
-        _ZN9ModelBase12ApplyOpacityEj(m3, *(const unsigned char *)(c + 0x6f5));
+        _ZN9ModelBase12ApplyOpacityEjj(m3, *(const unsigned char *)(c + 0x6f5));
         if (ghost) ghost_opacity(m3);
         m3->Render((const Vector3 *)(c + 0x80));    /* virtual, as the ROM's */
     } else {
@@ -1762,7 +1762,7 @@ void hal_render_player_world(void *player)
         func_ov002_020e3e00(ma, c + 0x80, *(const unsigned char *)(c + 0x6f5));
     }
 
-    unsigned hid = func_ov002_020becf4(c, *(unsigned char *)(c + 0x6db), 1);
+    unsigned hid = _ZN6Player19func_ov002_020becf4Eii(c, *(unsigned char *)(c + 0x6db), 1);
     if (hid != 8 && hid != 9) {
         char *head = ((char **)(c + 0x154))[hid];
         if (head) {
@@ -1902,7 +1902,7 @@ void hal_render_player_world(void *player)
         if (gate != 0 && !balloon) {
             char *bones = *(char **)((char *)ma + 0x14);
             const int *src;
-            _ZN9ModelBase12ApplyOpacityEj(m4, *(const unsigned char *)(c + 0x6f5));
+            _ZN9ModelBase12ApplyOpacityEjj(m4, *(const unsigned char *)(c + 0x6f5));
             if (*(unsigned char *)(c + 0x6db) == 3) {
                 Matrix4x3_FromTranslation(&data_020a0e68, -0x1b33, -0x666, 0);
                 Matrix4x3_ApplyInPlaceToRotationZ(&data_020a0e68, 0x4000);
@@ -1955,7 +1955,7 @@ void hal_render_player_body_ex(void *player, int with_head)
     /* the head is its own model; Player::Render seats it by copying the
        body's neck-bone matrix (+0x2d0 in the bone array) into the head's
        matrix slot, then renders through the object's own vtable */
-    unsigned hid = func_ov002_020becf4(c, *(unsigned char *)(c + 0x6db), 1);
+    unsigned hid = _ZN6Player19func_ov002_020becf4Eii(c, *(unsigned char *)(c + 0x6db), 1);
     if (with_head && hid != 8 && hid != 9) {
         char *head = ((char **)(c + 0x154))[hid];
         if (head) {
@@ -1987,23 +1987,23 @@ void hal_render_player_body_ex(void *player, int with_head)
 extern "C" int _ZN6Player18St_LevelEnter_MainEv(int *c);
 extern "C" int _ZN6Player12St_Jump_InitEv(char *c);
 extern "C" void func_ov002_020e200c(char *c);
-extern "C" void func_ov002_020c9c4c(char *c);
+extern "C" void _ZN6Player19func_ov002_020c9c4cEv(char *c);
 extern "C" void func_ov002_020c9de4(char *c);
-extern "C" void func_ov002_020c9d68(char *c);
-extern "C" void func_ov002_020c9d1c(char *c);
-extern "C" void func_ov002_020c9cc0(char *c);
-extern "C" void func_ov002_020c9c00(char *c);
+extern "C" void _ZN6Player19func_ov002_020c9d68Ev(char *c);
+extern "C" void _ZN6Player19func_ov002_020c9d1cEv(char *c);
+extern "C" void _ZN6Player19func_ov002_020c9cc0Ev(char *c);
+extern "C" void _ZN6Player19func_ov002_020c9c00Ev(char *c);
 extern "C" void func_ov002_020c9b7c(char *c);
-extern "C" void func_ov002_020c9b5c(char *c);
-extern "C" void func_ov002_020c9ac0(char *c);
-extern "C" void func_ov002_020c9b10(char *c);
-extern "C" void func_ov002_020c9a04(char *c);
+extern "C" void _ZN6Player19func_ov002_020c9b5cEv(char *c);
+extern "C" void _ZN6Player19func_ov002_020c9ac0Ev(char *c);
+extern "C" void _ZN6Player19func_ov002_020c9b10Ev(char *c);
+extern "C" void _ZN6Player19func_ov002_020c9a04Ev(char *c);
 extern "C" void func_ov002_020c9998(char *c);
 extern "C" void func_ov002_020c990c(char *c);
-extern "C" void func_ov002_020c98a4(char *c);
-extern "C" void func_ov002_020c9840(char *c);
-extern "C" void func_ov002_020c97f8(char *c);
-extern "C" void func_ov002_020c97e0(char *c);
+extern "C" void _ZN6Player19func_ov002_020c98a4Ev(char *c);
+extern "C" void _ZN6Player19func_ov002_020c9840Ev(char *c);
+extern "C" void _ZN6Player19func_ov002_020c97f8Ev(char *c);
+extern "C" void _ZN6Player19func_ov002_020c97e0Ev(char *c);
 extern "C" void func_ov002_020e1e70(char *c);
 extern "C" void func_ov002_020e1c20(char *c);
 /* Three state slots the ROM fills with plain ov002 functions rather than
@@ -2015,13 +2015,13 @@ extern "C" int _ZN6Player16St_WallJump_InitEv(void *c);
 extern "C" int _ZN6Player16St_BurnLava_MainEv(char *c);
 /* gate 14: the level-boot state and the seven entrance-step handlers */
 extern "C" int func_ov002_020c6f3c(void *c);
-extern "C" void func_ov002_020c75f0(char *c);
-extern "C" void func_ov002_020c7350(char *c);
-extern "C" void func_ov002_020c71e0(char *c);
-extern "C" void func_ov002_020c7194(char *c);
+extern "C" void _ZN6Player19func_ov002_020c75f0Ev(char *c);
+extern "C" void _ZN6Player19func_ov002_020c7350Ev(char *c);
+extern "C" void _ZN6Player19func_ov002_020c71e0Ev(char *c);
+extern "C" void _ZN6Player19func_ov002_020c7194Ev(char *c);
 extern "C" void func_ov002_020c72a4(void *c);
-extern "C" void func_ov002_020c70ac(char *c);
-extern "C" void func_ov002_020c6fe4(char *c);
+extern "C" void _ZN6Player19func_ov002_020c70acEv(char *c);
+extern "C" void _ZN6Player19func_ov002_020c6fe4Ev(char *c);
 /* SM64DS_TRACE_STATE: every state function the dispatcher runs. The state
    machine is otherwise opaque from outside -- the Player carries a State* and
    the port switches on the DS address inside it -- and this is how the water
@@ -2083,7 +2083,7 @@ extern "C" int hal_call_state_fn(void *self, unsigned ds_addr)
                              *(unsigned char *)data_0209f2bc,
                              port::player::invincible_timer(c),
                              *(int *)(anim + 8), *(unsigned *)(anim + 4),
-                             ((Animation *)anim)->Animation::Finished());
+                             ((dExtFrameCtrl_c *)anim)->dExtFrameCtrl_c::Finished());
             }
         } else if (on) {
             static unsigned said[64];
@@ -2317,22 +2317,22 @@ extern "C++" int ApproachLinear(int &ref, int target, int step);
 int _Z14ApproachLinearRiii(int *ref, int target, int step)
 { return ApproachLinear(*ref, target, step); }
 int hal_anim_willhit(void *self, int f)
-{ return ((Animation *)self)->Animation::WillHitFrame(f) ? 1 : 0; }
+{ return ((dExtFrameCtrl_c *)self)->dExtFrameCtrl_c::WillHitFrame(f) ? 1 : 0; }
 int hal_nhi_next(void *self, void *h)
 { return ((NestedHeapIterator *)self)->NestedHeapIterator::Next(
       (HeapAllocator *)h); }
 
-void _ZN9Animation7AdvanceEv(void *self)
-{ ((Animation *)self)->Animation::Advance(); }
-int _ZN9Animation8FinishedEv(void *self)
-{ return ((Animation *)self)->Animation::Finished(); }
-char *_ZN9Animation8LoadFileER13SharedFilePtr(void *fp)
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *self)
+{ ((dExtFrameCtrl_c *)self)->dExtFrameCtrl_c::Advance(); }
+int _ZN15dExtFrameCtrl_c8FinishedEv(void *self)
+{ return ((dExtFrameCtrl_c *)self)->dExtFrameCtrl_c::Finished(); }
+char *_ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr(void *fp)
 {
     if (!fp) {
         std::fprintf(stderr, "  [anim] LoadFile on NULL fileptr (table hole)\n");
         return 0;
     }
-    return Animation::LoadFile(*(SharedFilePtr *)fp);
+    return dExtFrameCtrl_c::LoadFile(*(SharedFilePtr *)fp);
 }
 
 int _ZN6Player6IsAnimEj(void *self, unsigned a)
@@ -2408,21 +2408,21 @@ void _ZN5dBgCh19StartDetectingWaterEv(void *self)
    (hal_seat_model_family_dtors, beside the four hal_fill_*_vtable calls) or
    one line in hal/cxxname_bridge.cpp's hal_fill_shadow_vtable; neither file is
    this lane's. */
-int _ZN11ShadowModel12InitCylinderEv(void *self)
+int _ZN17dExtShadowModel_c12InitCylinderEv(void *self)
 {
     void **vt = *(void ***)self;
     if (!vt || !vt[2]) {
         static int told;
         if (!told) {
             told = 1;
-            std::fprintf(stderr, "InitCylinder: _ZTV11ShadowModel[2] "
+            std::fprintf(stderr, "InitCylinder: _ZTV17dExtShadowModel_c[2] "
                          "(DoSetFile) is null in this target -- no shadow "
                          "installed\n");
         }
         return 0;
     }
-    ((ShadowModel *)self)->ShadowModel::InitCylinder();
-    return ((ShadowModel *)self)->data != 0;
+    ((dExtShadowModel_c *)self)->dExtShadowModel_c::InitCylinder();
+    return ((dExtShadowModel_c *)self)->data != 0;
 }
 
 /* PORT_HOST_ABI CORRECTION (run link100, lane CRASH3). TextureSequence::Prepare

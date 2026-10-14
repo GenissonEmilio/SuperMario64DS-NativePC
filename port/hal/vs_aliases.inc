@@ -93,4 +93,4 @@
 /* the one REVERSE bridge: the matched ShadowModel::RenderAll TU defines
    the DECORATED static-member spelling; UnknownVsEntry::Render calls the
    flat one (hal/reverse_bridges.cpp is the precedent for this shape) */
-#pragma comment(linker, "/alternatename:__ZN11ShadowModel9RenderAllEv=?RenderAll@ShadowModel@@SAXXZ")
+#pragma comment(linker, "/alternatename:__ZN17dExtShadowModel_c9RenderAllEv=?RenderAll@dExtShadowModel_c@@SAXXZ")

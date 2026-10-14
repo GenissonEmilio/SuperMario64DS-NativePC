@@ -463,9 +463,9 @@ static void *__fastcall scene_d0(void *self, void *) { return _ZN8dScene_cD0Ev(s
 extern "C" {
 
 extern int VTable_dBgPi_dBgCh_GndThunk[];   /* 0x02099274, storage hal/actor_vtables.cpp */
-extern void *data_020992b4[];               /* 0x020992b4, storage hal/cxx_aliases.cpp */
-extern int data_02099348[];                 /* 0x02099348, storage hal/actor_vtables.cpp */
-extern int data_02099358[];                 /* 0x02099358, storage hal/actor_vtables.cpp */
+extern void *VTable_dBgPi_dBgCh_LinThunk[];               /* 0x020992b4, storage hal/cxx_aliases.cpp */
+extern int VTable_dBgPi_dBgCh_SphCrrThunk[];                 /* 0x02099348, storage hal/actor_vtables.cpp */
+extern int VTable_dM3dGSph_dBgCh_SphCrrThunk[];                 /* 0x02099358, storage hal/actor_vtables.cpp */
 
 void _ZThn16_N9dBgCh_GndD1Ev(void *thiz);           /* arm9 0x020375c0 */
 void *_ZThn16_N9dBgCh_GndD0Ev(void *thiz);          /* arm9 0x020375b0 */
@@ -491,12 +491,12 @@ static void seat_collider_thunk_tables(void)
 {
     VTable_dBgPi_dBgCh_GndThunk[0] = (int)(size_t)gnd_thn16_d1;
     VTable_dBgPi_dBgCh_GndThunk[1] = (int)(size_t)gnd_thn16_d0;
-    data_020992b4[0] = (void *)lin_thn16_d1;
-    data_020992b4[1] = (void *)lin_thn16_d0;
-    data_02099348[0] = (int)(size_t)sph_thn16_d1;
-    data_02099348[1] = (int)(size_t)sph_thn16_d0;
-    data_02099358[0] = (int)(size_t)sph_thn56_d1;
-    data_02099358[1] = (int)(size_t)sph_thn56_d0;
+    VTable_dBgPi_dBgCh_LinThunk[0] = (void *)lin_thn16_d1;
+    VTable_dBgPi_dBgCh_LinThunk[1] = (void *)lin_thn16_d0;
+    VTable_dBgPi_dBgCh_SphCrrThunk[0] = (int)(size_t)sph_thn16_d1;
+    VTable_dBgPi_dBgCh_SphCrrThunk[1] = (int)(size_t)sph_thn16_d0;
+    VTable_dM3dGSph_dBgCh_SphCrrThunk[0] = (int)(size_t)sph_thn56_d1;
+    VTable_dM3dGSph_dBgCh_SphCrrThunk[1] = (int)(size_t)sph_thn56_d0;
 }
 
 // ===========================================================================

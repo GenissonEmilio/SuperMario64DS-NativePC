@@ -48,8 +48,8 @@
 # retired host bodies lived) is target_sourced only into walk_window,
 # walk_window_hires and smoke_player (measured, not assumed -- grepped before
 # writing this file). The CMake anchor below adds this row to those three.
-src/func_02017ab4.c
-src/func_02017e34.c
+src/unnamed/arm9/0201/func_02017ab4.c
+src/unnamed/arm9/0201/func_02017e34.c
 src/SharedFilePtr_Destruct_TexSeq.c
 src/SharedFilePtr_Destruct_Anim.c
 

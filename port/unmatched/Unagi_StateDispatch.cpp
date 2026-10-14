@@ -63,16 +63,16 @@ extern PortPmf BookSwitch_SpawnInfo, data_ov016_02114878; /* d7c enter/main */
 
 /* the ten matched state bodies (nine on slice_gate188.txt, the d7c ENTER on
    slice_small7.txt) */
-int BookSwitch_Spawn(void *c);       /* d7c enter, ov016 0x021115a4 */
-void func_ov016_02111bac(void *c);   /* d8c enter */
-void func_ov016_021119ec(void *c);   /* d8c main  */
-void func_ov016_02111860(void *c);   /* d9c enter */
-void func_ov016_02111758(void *c);   /* d9c main  */
-void func_ov016_02111994(void *c);   /* dac enter */
-void func_ov016_021118b4(void *c);   /* dac main  */
-void func_ov016_02111718(void *c);   /* dbc enter */
-void func_ov016_021115c0(void *c);   /* dbc main  */
-void func_ov016_02111534(void *c);   /* d7c main  */
+int _ZN9daMoray_c16BookSwitch_SpawnEv(void *c);       /* d7c enter, ov016 0x021115a4 */
+void _ZN9daMoray_c19func_ov016_02111bacEv(void *c);   /* d8c enter */
+void _ZN9daMoray_c19func_ov016_021119ecEv(void *c);   /* d8c main  */
+void _ZN9daMoray_c19func_ov016_02111860Ev(void *c);   /* d9c enter */
+void _ZN9daMoray_c19func_ov016_02111758Ev(void *c);   /* d9c main  */
+void _ZN9daMoray_c19func_ov016_02111994Ev(void *c);   /* dac enter */
+void _ZN9daMoray_c19func_ov016_021118b4Ev(void *c);   /* dac main  */
+void _ZN9daMoray_c19func_ov016_02111718Ev(void *c);   /* dbc enter */
+void _ZN9daMoray_c19func_ov016_021115c0Ev(void *c);   /* dbc main  */
+void _ZN9daMoray_c19func_ov016_02111534Ev(void *c);   /* d7c main  */
 
 /* the whole-Behavior call graph (everything except the inlined PMF dispatch) */
 unsigned short DecIfAbove0_Short(unsigned short *p);
@@ -86,8 +86,8 @@ void *_ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(unsigned a, unsigned b,
 void _ZN5dCc_c5ClearEv(void *self);
 void _ZN5dCc_c6UpdateEv(void *self);
 void _ZN14BlendModelAnim7AdvanceEv(void *self);
-void func_ov016_02111c40(void *c);
-void func_ov016_02111284(void *c);
+void _ZN9daMoray_c19func_ov016_02111c40Ev(void *c);
+void _ZN9daMoray_c19func_ov016_02111284Ev(void *c);
 extern unsigned char data_0209f220;
 
 }  /* extern "C" */
@@ -155,32 +155,32 @@ extern "C" int func_ov018_02111bf0(void *c, void *cell);
    in port/hal/pmf_seat5.cpp: the matched TU is a real C++ member and publishes
    ?Behavior@Unagi@@QAEHXZ. */
 static void __fastcall seat5_unagi_main_021119ec(void *self, void *dead_edx)
-{ (void)dead_edx; port_seat5_count(0); func_ov016_021119ec(self); }  /* d8c MAIN */
+{ (void)dead_edx; port_seat5_count(0); _ZN9daMoray_c19func_ov016_021119ecEv(self); }  /* d8c MAIN */
 static void __fastcall seat5_unagi_main_02111758(void *self, void *dead_edx)
-{ (void)dead_edx; port_seat5_count(1); func_ov016_02111758(self); }  /* d9c MAIN */
+{ (void)dead_edx; port_seat5_count(1); _ZN9daMoray_c19func_ov016_02111758Ev(self); }  /* d9c MAIN */
 static void __fastcall seat5_unagi_main_021118b4(void *self, void *dead_edx)
-{ (void)dead_edx; port_seat5_count(2); func_ov016_021118b4(self); }  /* dac MAIN */
+{ (void)dead_edx; port_seat5_count(2); _ZN9daMoray_c19func_ov016_021118b4Ev(self); }  /* dac MAIN */
 static void __fastcall seat5_unagi_main_021115c0(void *self, void *dead_edx)
-{ (void)dead_edx; port_seat5_count(3); func_ov016_021115c0(self); }  /* dbc MAIN */
+{ (void)dead_edx; port_seat5_count(3); _ZN9daMoray_c19func_ov016_021115c0Ev(self); }  /* dbc MAIN */
 static void __fastcall seat5_unagi_main_02111534(void *self, void *dead_edx)
-{ (void)dead_edx; port_seat5_count(4); func_ov016_02111534(self); }  /* d7c MAIN */
+{ (void)dead_edx; port_seat5_count(4); _ZN9daMoray_c19func_ov016_02111534Ev(self); }  /* d7c MAIN */
 
 static const struct { PortPmf *rec; unsigned rom; void (*host)(void *); }
 g_unagi_sources[] = {
-    {&data_ov016_021148a0, 0x02111bac, func_ov016_02111bac},  /* d8c enter */
+    {&data_ov016_021148a0, 0x02111bac, _ZN9daMoray_c19func_ov016_02111bacEv},  /* d8c enter */
     {&data_ov016_021148a8, 0x021119ec,
      (void (*)(void *))(void *)seat5_unagi_main_021119ec},  /* d8c main  */
-    {&data_ov016_021148b8, 0x02111860, func_ov016_02111860},  /* d9c enter */
+    {&data_ov016_021148b8, 0x02111860, _ZN9daMoray_c19func_ov016_02111860Ev},  /* d9c enter */
     {&data_ov016_021148c0, 0x02111758,
      (void (*)(void *))(void *)seat5_unagi_main_02111758},  /* d9c main  */
-    {&data_ov016_02114888, 0x02111994, func_ov016_02111994},  /* dac enter */
+    {&data_ov016_02114888, 0x02111994, _ZN9daMoray_c19func_ov016_02111994Ev},  /* dac enter */
     {&data_ov016_02114880, 0x021118b4,
      (void (*)(void *))(void *)seat5_unagi_main_021118b4},  /* dac main  */
-    {&data_ov016_021148b0, 0x02111718, func_ov016_02111718},  /* dbc enter */
+    {&data_ov016_021148b0, 0x02111718, _ZN9daMoray_c19func_ov016_02111718Ev},  /* dbc enter */
     {&data_ov016_02114890, 0x021115c0,
      (void (*)(void *))(void *)seat5_unagi_main_021115c0},  /* dbc main  */
     {&BookSwitch_SpawnInfo, 0x021115a4,
-     (void (*)(void *))(void *)BookSwitch_Spawn},  /* d7c enter */
+     (void (*)(void *))(void *)_ZN9daMoray_c16BookSwitch_SpawnEv},  /* d7c enter */
     {&data_ov016_02114878, 0x02111534,
      (void (*)(void *))(void *)seat5_unagi_main_02111534},  /* d7c main  */
 };

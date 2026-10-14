@@ -64,7 +64,7 @@ extern "C" {
     void _ZN7daMip_c8SetStateEPv(char* c, void* p);
     int RandomIntInternal(int* seed);
     s16 Vec3_HorzAngle(const Vector3* a, const Vector3* b);
-    int _ZN9Animation8FinishedEv(void* a);
+    int _ZN15dExtFrameCtrl_c8FinishedEv(void* a);
     void _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void* self, void* bca, int a, Fix12i fix, u32 t);
     void ApproachAngle(short* p, s16 target, int a, int b, int step);
 
@@ -128,7 +128,7 @@ extern "C" int _ZN7daMip_c13StateIdleMainEv(char* c)
         }
     }
 
-    if (_ZN9Animation8FinishedEv(c + 0x350) != 0) {
+    if (_ZN15dExtFrameCtrl_c8FinishedEv(c + 0x350) != 0) {
         switch (*(int*)(c + 0x41c)) {
         case 1:
             *(int*)(c + 0x98) = 0x4000;

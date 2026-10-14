@@ -138,30 +138,30 @@ void port_ov034_syms_patch(void);
 void __sinit_ov034_021138ec(void);
 
 /* the class's own bodies */
-int *_ZN7WigglerD1Ev(void *self);                 /* slot 16 */
-int *_ZN7WigglerD0Ev(void *self);                 /* slot 17 */
-int _ZN7Wiggler16CleanupResourcesEv(void);        /* slot 3, a plain .c body */
-int _ZN7Wiggler6RenderEv(void *self);             /* slot 9,  HOST COPY */
+int *_ZN12daHanachan_cD1Ev(void *self);                 /* slot 16 */
+int *_ZN12daHanachan_cD0Ev(void *self);                 /* slot 17 */
+int _ZN12daHanachan_c16CleanupResourcesEv(void);        /* slot 3, a plain .c body */
+int _ZN12daHanachan_c6RenderEv(void *self);             /* slot 9,  HOST COPY */
 /* slot 6, propagated from main 36e8cbcce by lane prop18. Its own source
    spells the receiver `void *` and returns int; that is the shape here. */
-int _ZN7Wiggler8BehaviorEv(void *self);           /* slot 6,  src/ */
+int _ZN12daHanachan_c8BehaviorEv(void *self);           /* slot 6,  src/ */
 
 /* the twenty-two state handlers, {enter, tick} per state */
-void func_ov034_02112484(void *c); void func_ov034_02112348(void *c);
-void func_ov034_02112330(void *c); void func_ov034_02112284(void *c);
-void func_ov034_02112270(void *c); void func_ov034_021120ac(void *c);
-void func_ov034_02112020(void *c); void func_ov034_02111e68(void *c);
-void func_ov034_02111e4c(void *c); void func_ov034_02111c48(void *c);
-void func_ov034_02111bb0(void *c); void func_ov034_02111a64(void *c);
-void func_ov034_02111a0c(void *c); void func_ov034_021119ac(void *c);
-void func_ov034_02111974(void *c); void func_ov034_02111788(void *c);
-void func_ov034_02111720(void *c); void func_ov034_021115cc(void *c);
-void func_ov034_021115c0(void *c); void func_ov034_02111588(void *c);
-void func_ov034_02111520(void *c); void func_ov034_021113d4(void *c);
+void _ZN12daHanachan_c17StateDemoWaitInitEv(void *c); void _ZN12daHanachan_c17StateDemoWaitMainEv(void *c);
+void _ZN12daHanachan_c17StateDemoCallInitEv(void *c); void _ZN12daHanachan_c17StateDemoCallMainEv(void *c);
+void _ZN12daHanachan_c17StateMoveStopInitEv(void *c); void _ZN12daHanachan_c17StateMoveStopMainEv(void *c);
+void _ZN12daHanachan_c18StateMoveStartInitEv(void *c); void _ZN12daHanachan_c18StateMoveStartMainEv(void *c);
+void _ZN12daHanachan_c13StateMoveInitEv(void *c); void _ZN12daHanachan_c13StateMoveMainEv(void *c);
+void _ZN12daHanachan_c15StateDamageInitEv(void *c); void _ZN12daHanachan_c15StateDamageMainEv(void *c);
+void _ZN12daHanachan_c19StateDamageTalkInitEv(void *c); void _ZN12daHanachan_c19StateDamageTalkMainEv(void *c);
+void _ZN12daHanachan_c13StateDeadInitEv(void *c); void _ZN12daHanachan_c13StateDeadMainEv(void *c);
+void _ZN12daHanachan_c19StateDamageStopInitEv(void *c); void _ZN12daHanachan_c19StateDamageStopMainEv(void *c);
+void _ZN12daHanachan_c19StateDamageWaitInitEv(void *c); void _ZN12daHanachan_c19StateDamageWaitMainEv(void *c);
+void _ZN12daHanachan_c20StateDamageStartInitEv(void *c); void _ZN12daHanachan_c20StateDamageStartMainEv(void *c);
 
 /* the host vtable, excluded from the mount */
 DSSTATE_BEGIN
-void *_ZTV7Wiggler[31];        /* 0x021144bc, id 248 WIGGLER */
+void *_ZTV12daHanachan_c[31];        /* 0x021144bc, id 248 WIGGLER */
 DSSTATE_END
 }
 
@@ -262,10 +262,10 @@ extern "C" char port_ov015_kdp_clsn_files[];
    faced here -- the ov013/ov024/ov025/ov032/ov033/ov035 recipe. Render is NOT
    faced: it is the host copy in port/unmatched/Wiggler_Render.cpp, which
    exports the Itanium name directly. */
-#include "Wiggler.h"
+#include "daHanachan_c.h"
 extern "C" {
-int _ZN7Wiggler13InitResourcesEv(void *self)
-{ return ((Wiggler *)self)->Wiggler::InitResources(); }
+int _ZN12daHanachan_c13InitResourcesEv(void *self)
+{ return ((daHanachan_c *)self)->daHanachan_c::InitResources(); }
 }
 
 // ============================================================================
@@ -377,17 +377,17 @@ static const struct {
     unsigned enter_rom, tick_rom;
     PortWigglerFn enter_host, tick_host;
 } g_wiggler_states[11] = {
-    { "DEMOWAIT",     0x02112484, 0x02112348, func_ov034_02112484, func_ov034_02112348 },
-    { "DEMOCALL",     0x02112330, 0x02112284, func_ov034_02112330, func_ov034_02112284 },
-    { "MOVE_STOP",    0x02112270, 0x021120ac, func_ov034_02112270, func_ov034_021120ac },
-    { "MOVE_START",   0x02112020, 0x02111e68, func_ov034_02112020, func_ov034_02111e68 },
-    { "MOVE",         0x02111e4c, 0x02111c48, func_ov034_02111e4c, func_ov034_02111c48 },
-    { "DAMAGE",       0x02111bb0, 0x02111a64, func_ov034_02111bb0, func_ov034_02111a64 },
-    { "DAMAGETALK",   0x02111a0c, 0x021119ac, func_ov034_02111a0c, func_ov034_021119ac },
-    { "DEAD",         0x02111974, 0x02111788, func_ov034_02111974, func_ov034_02111788 },
-    { "DAMAGE_STOP",  0x02111720, 0x021115cc, func_ov034_02111720, func_ov034_021115cc },
-    { "DAMAGE_WAIT",  0x021115c0, 0x02111588, func_ov034_021115c0, func_ov034_02111588 },
-    { "DAMAGE_START", 0x02111520, 0x021113d4, func_ov034_02111520, func_ov034_021113d4 },
+    { "DEMOWAIT",     0x02112484, 0x02112348, _ZN12daHanachan_c17StateDemoWaitInitEv, _ZN12daHanachan_c17StateDemoWaitMainEv },
+    { "DEMOCALL",     0x02112330, 0x02112284, _ZN12daHanachan_c17StateDemoCallInitEv, _ZN12daHanachan_c17StateDemoCallMainEv },
+    { "MOVE_STOP",    0x02112270, 0x021120ac, _ZN12daHanachan_c17StateMoveStopInitEv, _ZN12daHanachan_c17StateMoveStopMainEv },
+    { "MOVE_START",   0x02112020, 0x02111e68, _ZN12daHanachan_c18StateMoveStartInitEv, _ZN12daHanachan_c18StateMoveStartMainEv },
+    { "MOVE",         0x02111e4c, 0x02111c48, _ZN12daHanachan_c13StateMoveInitEv, _ZN12daHanachan_c13StateMoveMainEv },
+    { "DAMAGE",       0x02111bb0, 0x02111a64, _ZN12daHanachan_c15StateDamageInitEv, _ZN12daHanachan_c15StateDamageMainEv },
+    { "DAMAGETALK",   0x02111a0c, 0x021119ac, _ZN12daHanachan_c19StateDamageTalkInitEv, _ZN12daHanachan_c19StateDamageTalkMainEv },
+    { "DEAD",         0x02111974, 0x02111788, _ZN12daHanachan_c13StateDeadInitEv, _ZN12daHanachan_c13StateDeadMainEv },
+    { "DAMAGE_STOP",  0x02111720, 0x021115cc, _ZN12daHanachan_c19StateDamageStopInitEv, _ZN12daHanachan_c19StateDamageStopMainEv },
+    { "DAMAGE_WAIT",  0x021115c0, 0x02111588, _ZN12daHanachan_c19StateDamageWaitInitEv, _ZN12daHanachan_c19StateDamageWaitMainEv },
+    { "DAMAGE_START", 0x02111520, 0x021113d4, _ZN12daHanachan_c20StateDamageStartInitEv, _ZN12daHanachan_c20StateDamageStartMainEv },
 };
 
 extern "C" void port_wiggler_states_seat(void)
@@ -400,7 +400,7 @@ extern "C" void port_wiggler_states_seat(void)
         PortWigglerEntry &e = data_ov034_02114538[i];
         if (e.enter_fn != g_wiggler_states[i].enter_rom || e.enter_delta != 0 ||
             e.tick_fn != g_wiggler_states[i].tick_rom || e.tick_delta != 0) {
-            std::fprintf(stderr, "FATAL: Wiggler state %d (%s): the sinit left "
+            std::fprintf(stderr, "FATAL: daHanachan_c state %d (%s): the sinit left "
                          "%08x/%u %08x/%u, the ROM's own records say "
                          "%08x/0 %08x/0 -- WRONG BYTES\n", i,
                          g_wiggler_states[i].name,
@@ -445,9 +445,9 @@ extern "C" void port_ov34_bringup(void)
 // +0x5b8 -- the head and four body segments -- plus a WithMeshClsn at +0x708.
 // The state index is at +0x8c4.
 static int __fastcall wg_init(void *s, void *)
-{ return _ZN7Wiggler13InitResourcesEv(s); }
+{ return _ZN12daHanachan_c13InitResourcesEv(s); }
 static int __fastcall wg_clean(void *s, void *)
-{ (void)s; return _ZN7Wiggler16CleanupResourcesEv(); }
+{ (void)s; return _ZN12daHanachan_c16CleanupResourcesEv(); }
 /* Slot 6, the propagated body, seated bare. The wrapper is the same
    __fastcall(self, dummy) shape every other slot in this table uses -- MSVC
    calls a vtable entry __thiscall with the receiver in ecx and the dummy edx
@@ -456,19 +456,19 @@ static int __fastcall wg_clean(void *s, void *)
    reference in the ROM (relocs.txt: one `kind:load` from 0x021144d4, no
    code-pointer record), so the seat is the whole of its coverage. */
 static int __fastcall wg_behavior(void *s, void *)
-{ return _ZN7Wiggler8BehaviorEv(s); }
+{ return _ZN12daHanachan_c8BehaviorEv(s); }
 static int __fastcall wg_render(void *s, void *)
 { port_actor_render_probe("WIGGLER", (char *)s + 0x110);
-  return _ZN7Wiggler6RenderEv(s); }          /* HOST COPY */
+  return _ZN12daHanachan_c6RenderEv(s); }          /* HOST COPY */
 static int __fastcall wg_d1(void *s, void *)
-{ return (int)(size_t)_ZN7WigglerD1Ev(s); }
+{ return (int)(size_t)_ZN12daHanachan_cD1Ev(s); }
 static int __fastcall wg_d0(void *s, void *)
-{ return (int)(size_t)_ZN7WigglerD0Ev(s); }
+{ return (int)(size_t)_ZN12daHanachan_cD0Ev(s); }
 
 extern "C" void hal_fill_wiggler_vtable(void)
 {
     port_ov34_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV7Wiggler;
+    void *volatile *vt = (void *volatile *)_ZTV12daHanachan_c;
     vt[1]  = (void *)ov34_binit;
     vt[2]  = (void *)ov34_ainit;
     vt[4]  = (void *)ov34_bclean;

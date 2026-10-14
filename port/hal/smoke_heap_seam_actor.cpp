@@ -108,7 +108,12 @@ extern "C" void _ZN7fBase_c18MarkForDestructionEv(void *self)
 #pragma comment(linker, "/alternatename:?InitializeSolidHeapAsDefault@Heap@@SAPAU1@IPAU1@H@Z=?InitializeSolidHeapAsDefault@Heap@@SAPAXIPAU1@H@Z")
 #pragma comment(linker, "/alternatename:__ZN4Heap28InitializeSolidHeapAsDefaultEjPS_i=?InitializeSolidHeapAsDefault@Heap@@SAPAXIPAU1@H@Z")
 #pragma comment(linker, "/alternatename:?MaxAllocationUnitSize@Heap@@QAEHXZ=?MaxAllocationUnitSize@Heap@@QAEIXZ")
-#pragma comment(linker, "/alternatename:__ZN4Heap21MaxAllocationUnitSizeEv=?MaxAllocationUnitSize@Heap@@QAEIXZ")
+/* PORTSYNC2 (the 2026-10 main merge): aliascheck reads this pair as a receiver
+   crossing now -- the flat __cdecl name on the left, main's __thiscall member
+   on the right -- so it is a FACE, copied from where the window build carries
+   the same one (hal/player_bridges.cpp, _ZN4Heap21MaxAllocationUnitSizeEv). */
+extern "C" int _ZN4Heap21MaxAllocationUnitSizeEv(void *self)
+{ return ((Heap *)self)->Heap::MaxAllocationUnitSize(); }
 #pragma comment(linker, "/alternatename:__ZN4Heap20RestoreFromTemporaryEv=?RestoreFromTemporary@Heap@@SAXXZ")
 #pragma comment(linker, "/alternatename:__ZN18NestedHeapIterator10FindNestedEPv=?FindNested@NestedHeapIterator@@SAPAU1@PAX@Z")
 
@@ -117,4 +122,7 @@ extern "C" void _ZN7fBase_c18MarkForDestructionEv(void *self)
 // src/_ZN13HeapAllocator6RemoveEv.cpp -- already on this batch -- compiles
 // the decorated member): the same flat/decorated pair shape as the seven
 // above.
-#pragma comment(linker, "/alternatename:__ZN13HeapAllocator6RemoveEv=?Remove@HeapAllocator@@QAEXXZ")
+/* PORTSYNC2: the same receiver crossing, the same remedy -- a face copied from
+   the window build's own (hal/lk4_eh_dtor_seat.cpp, _ZN13HeapAllocator6RemoveEv). */
+extern "C" void _ZN13HeapAllocator6RemoveEv(void *thiz)
+{ ((HeapAllocator *)thiz)->HeapAllocator::Remove(); }

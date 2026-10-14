@@ -51,8 +51,8 @@ extern PortPmf data_ov079_021282e0[];       /* the bss table, dispatched each fr
 extern PortPmf data_ov079_02127e9c[];       /* entry 1 source static */
 extern PortPmf data_ov079_02127ea4[];       /* entry 0 source static */
 
-void func_ov079_0212682c(void *);           /* state 0 */
-void func_ov079_02126794(void *);           /* state 1 */
+void _ZN7daKlr_c19func_ov079_0212682cEv(void *);           /* state 0 */
+void _ZN7daKlr_c19func_ov079_02126794Ev(void *);           /* state 1 */
 }
 
 /* ---- data_ov079_021282e0 IS DISPATCHED BY THE MATCHED TU NOW -------------
@@ -88,8 +88,8 @@ void func_ov079_02126794(void *);           /* state 1 */
         sym(self);                                                        \
     }
 
-BB_FACE(0, func_ov079_0212682c)
-BB_FACE(1, func_ov079_02126794)
+BB_FACE(0, _ZN7daKlr_c19func_ov079_0212682cEv)
+BB_FACE(1, _ZN7daKlr_c19func_ov079_02126794Ev)
 
 static const struct { PortPmf *slot; unsigned rom; void *host; }
 g_bullet_bill_states[] = {

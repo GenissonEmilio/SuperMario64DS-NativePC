@@ -41,7 +41,7 @@ void _ZN5dCc_c5ClearEv(void *c);
 void _ZN5dCc_c6UpdateEv(void *c);
 unsigned short DecIfAbove0_Short(unsigned short *p);
 void _ZN8dActor_c9UpdatePosEP5dCc_c(void *thiz, void *clsn);
-void _ZN9Animation7AdvanceEv(void *thiz);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *thiz);
 char *_ZN8dActor_c13ClosestPlayerEv(void *thiz);
 void func_ov090_02133338(void *c);
 void func_ov090_021330c8(void *c);

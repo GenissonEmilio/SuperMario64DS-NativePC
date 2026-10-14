@@ -195,8 +195,8 @@ extern "C" void port_input_probe_trace_cannon(int frame)
 extern "C" {
 extern void *data_0209b468;                 /* the live-actor list head node */
 extern void *_ZN8dActor_c10FindWithIDEj(unsigned int id);
-extern void func_ov084_0212c8b0(void *buddy);   /* buddy state-0 main */
-extern void func_ov084_0212c960(void *buddy, int i);  /* buddy ChangeState */
+extern void _ZN14daRedBombhei_c19func_ov084_0212c8b0Ev(void *buddy);   /* buddy state-0 main */
+extern void _ZN14daRedBombhei_c19func_ov084_0212c960Ei(void *buddy, int i);  /* buddy ChangeState */
 extern unsigned char data_0209f49e[];        /* per-player pressed word, stride 0x18 */
 extern int _ZN6Player12GetTalkStateEv(void *p);
 /* STAGE 0 (temporary, investigation only): the VS carried-star array and the
@@ -208,7 +208,7 @@ extern unsigned char data_0209f204;          /* VS "time is up" flag         */
 extern unsigned short data_ov002_02111188;   /* VS timer sub-counter         */
 extern int data_0209fc68;                    /* wireless session state       */
 extern unsigned char data_0209f2bc;          /* the 3-2-1 countdown          */
-extern void _ZN10StarMarker7CollectEv(char *m);    /* StarMarker's own ball break  */
+extern void _ZN12daStarBase_c7CollectEv(char *m);    /* StarMarker's own ball break  */
 }
 
 /* STAGE 0 (temporary): walk EVERY class-178 PowerStar in the live list and
@@ -310,7 +310,7 @@ extern "C" void port_stage0_vs_breakall(int frame)
         std::fprintf(stderr, "[breakall] f%d breaking marker %p (uid %08x)%s\n",
                      frame, (void *)a, *(unsigned int *)(a + 4),
                      king ? " [king: active marker only]" : "");
-        _ZN10StarMarker7CollectEv(a);
+        _ZN12daStarBase_c7CollectEv(a);
     }
 }
 
@@ -630,7 +630,7 @@ extern "C" void port_input_probe_star_trigger(int frame)
     *(unsigned int *)(star + 0x130) |= 0x400000;
     std::fprintf(stderr, "  [startrig] f%d armed the touch: star %p (kind=%d "
                  "state=%d idx=%u) +0x134 = "
-                 "player uid 0x%x, +0x130 |= 0x400000; func_ov002_020e930c "
+                 "player uid 0x%x, +0x130 |= 0x400000; _ZN8daStar_c19func_ov002_020e930cEv "
                  "runs the real collect handler this frame\n",
                  frame, (void *)star, *(int *)(star + 0x43c),
                  *(int *)(star + 0x440),
@@ -646,7 +646,7 @@ extern "C" void port_input_probe_star_trigger(int frame)
    holder by a deterministic list walk, so it fires identically on every console.
    Does nothing once the match is frozen. */
 extern "C" int port_vs_king_target(void);
-extern "C" int func_ov002_020d94cc(char *self);
+extern "C" int _ZN6Player19func_ov002_020d94ccEv(char *self);
 
 extern "C" void port_input_probe_king_drop(int frame)
 {
@@ -670,9 +670,9 @@ extern "C" void port_input_probe_king_drop(int frame)
         if (!a || *(unsigned short *)(a + 0xc) != 0xbf) continue;   /* a Player */
         const unsigned char idx = *(unsigned char *)(a + 0x6d8);
         if (idx < 16 && data_0209f310[idx] >= 1) {
-            const int r = func_ov002_020d94cc(a);
+            const int r = _ZN6Player19func_ov002_020d94ccEv(a);
             std::fprintf(stderr, "  [kingdrop] f%d holder P%u dropped the one "
-                         "star (ROM func_ov002_020d94cc -> %d); it re-enters the "
+                         "star (ROM _ZN6Player19func_ov002_020d94ccEv -> %d); it re-enters the "
                          "field as a fresh 0xb2 for anyone to re-grab\n",
                          frame, idx, r);
             return;
@@ -775,7 +775,7 @@ extern "C" void port_input_probe_buddy_trigger(int frame)
     if (!entered && _ZN6Player12GetTalkStateEv(player) < 0) {
         int idx = (int)data_020a0e40; if (idx < 0 || idx > 3) idx = 0;
         *(unsigned short *)(data_0209f49e + idx * 0x18) |= 0x1;  /* A pressed */
-        func_ov084_0212c8b0(buddy);   /* real state-0 main -> real StartTalk */
+        _ZN14daRedBombhei_c19func_ov084_0212c8b0Ev(buddy);   /* real state-0 main -> real StartTalk */
         if (_ZN6Player12GetTalkStateEv(player) >= 0) {
             entered = 1;
             std::fprintf(stderr, "  [buddy] f%d StartTalk ENTERED the talk: "
@@ -804,7 +804,7 @@ extern "C" void port_input_probe_buddy_trigger(int frame)
            own -- hand the buddy to his OpenCannon state (its main opens it) */
         if (!staged2 && _ZN6Player12GetTalkStateEv(player) < 0) {
             staged2 = 1;
-            func_ov084_0212c960(buddy, 2);
+            _ZN14daRedBombhei_c19func_ov084_0212c960Ei(buddy, 2);
             std::fprintf(stderr, "  [buddy] f%d talk over (camera cleared the "
                          "talk latch itself), buddy -> OpenCannon state; its main "
                          "runs the real OpenCannonInCurLevel\n", frame);
@@ -850,7 +850,7 @@ extern "C" void port_input_probe_buddy_trigger(int frame)
  *   SM64DS_SIGN_TRIGGER=1  -- arm the sign's talk from frame 60 on.
  */
 extern "C" {
-extern int func_ov002_020bb520(void *sign);   /* the sign's planted talk check */
+extern int _ZN15daObjTatefuda_c12TryStartTalkEv(void *sign);   /* the sign's planted talk check */
 }
 extern "C" int Vec3_HorzDist(void *a, void *b);
 static int port_sign_prev_dist;
@@ -914,10 +914,10 @@ extern "C" void port_input_probe_sign_trigger(int frame)
     *(short *)(sign + 0x8e) = Vec3_HorzAngle(sign + 0x5c, player + 0x5c);
     int idx = (int)data_020a0e40; if (idx < 0 || idx > 3) idx = 0;
     *(unsigned short *)(data_0209f49e + idx * 0x18) |= 0x1;   /* A pressed */
-    int r = func_ov002_020bb520(sign);   /* -> real StartTalk */
+    int r = _ZN15daObjTatefuda_c12TryStartTalkEv(sign);   /* -> real StartTalk */
     if (_ZN6Player12GetTalkStateEv(player) >= 0) {
         entered = 1;
-        std::fprintf(stderr, "  [sign] f%d func_ov002_020bb520 returned %d, "
+        std::fprintf(stderr, "  [sign] f%d _ZN15daObjTatefuda_c12TryStartTalkEv returned %d, "
                      "StartTalk ENTERED the talk: GetTalkState=%d\n", frame, r,
                      _ZN6Player12GetTalkStateEv(player));
     }
@@ -1159,11 +1159,11 @@ extern void _ZN7daMip_c10UpdateGrabEv(void *rabbit);
 extern int _ZN6Player7IsStateERNS_5StateE(void *p, void *st);
 extern char data_ov002_02110574, data_ov002_0211067c, data_ov002_021105bc;
 /* the four gates St_HoldLight_Main's carry-bit write sits behind */
-extern int func_ov002_020c0434(void *p);
+extern int _ZN6Player19func_ov002_020c0434Ev(void *p);
 extern int _ZN6Player6IsAnimEj(void *p, unsigned int anim);
 extern int _ZN6Player12FinishedAnimEv(void *p);
 extern unsigned int _ZNK6Player14GetBodyModelIDEjb(void *p, unsigned int a, char b);
-extern int _ZNK9Animation12WillHitFrameEi(void *anim, int f);
+extern int _ZNK15dExtFrameCtrl_c12WillHitFrameEi(void *anim, int f);
 /* the nine Player::State objects StartTalk's b==1 path tests */
 extern char data_ov002_0211046c, data_ov002_0211013c, data_ov002_02110154,
             data_ov002_021104e4, data_ov002_02110514, data_ov002_02110364,
@@ -1213,7 +1213,7 @@ extern "C" void port_probe_rabbit_trigger(int frame)
     if ((data_0209caa0[2] & 0x20000) == 0) {
         data_0209caa0[2] |= 0x20000;
         std::fprintf(stderr, "  [rabbit] f%d set data_0209caa0[2] |= 0x20000 "
-                     "(stands in for the LakituBro intro func_ov085_0212e2ec; "
+                     "(stands in for the LakituBro intro _ZN11daC_Jugem_c13StateTalkInitEv; "
                      "without it Rabbit::Behavior returns at its own line 53 and "
                      "the actor never ticks)\n", frame);
     }
@@ -1306,11 +1306,11 @@ extern "C" void port_probe_rabbit_trigger(int frame)
                     "carried=%d\n",
                     frame, *(void **)(player + 0x370),
                     (int)*(unsigned char *)(player + 0x6e3), held,
-                    func_ov002_020c0434(player),
+                    _ZN6Player19func_ov002_020c0434Ev(player),
                     _ZN6Player6IsAnimEj(player, 0x2f),
                     _ZN6Player6IsAnimEj(player, 0x86),
                     _ZN6Player12FinishedAnimEv(player),
-                    anim ? _ZNK9Animation12WillHitFrameEi(anim + 0x50, 6) : -1,
+                    anim ? _ZNK15dExtFrameCtrl_c12WillHitFrameEi(anim + 0x50, 6) : -1,
                     (unsigned)*(int *)(rb + 0xb0),
                     (*(int *)(rb + 0xb0) & 0x4000) != 0);
 

@@ -43,11 +43,11 @@
 # be stuck at a dead object.
 #
 # ---- the five slot bodies -------------------------------------------------
-src/_ZN13QuestionBlock19OnHitFromUnderneathER8dActor_c.cpp
-src/_ZN13QuestionBlock15OnHitByMegaCharER6Player.cpp
-src/_ZN13QuestionBlock8OnKickedER8dActor_c.cpp
-src/_ZN13QuestionBlock11OnAttacked1ER8dActor_c.cpp
-src/_ZN13QuestionBlock15OnGroundPoundedER8dActor_c.cpp
+src/actors/daObjHatenaBlock_c.cpp
+# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 46): src/_ZN13QuestionBlock15OnHitByMegaCharER6Player.cpp
+# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 46): src/_ZN13QuestionBlock8OnKickedER8dActor_c.cpp
+# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 46): src/_ZN13QuestionBlock11OnAttacked1ER8dActor_c.cpp
+# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 46): src/_ZN13QuestionBlock15OnGroundPoundedER8dActor_c.cpp
 
 # ---- transitive closure ----------------------------------------------------
 # func_ov102_02149078 is the shared refusal test all five consult: on level
@@ -63,4 +63,4 @@ src/_ZN13QuestionBlock15OnGroundPoundedER8dActor_c.cpp
 # receiver (self->ClosestPlayer() in its promoted daObjHatenaBlock_c TU); the
 # per-function src takes that one fix as `(self)` (run linkfull, lane RS5A,
 # route (a)), byte-identical under mwccarm, and links here again.
-src/func_ov102_02149078.c
+# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 46): src/func_ov102_02149078.c

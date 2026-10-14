@@ -21,7 +21,7 @@ extern "C" {
 int _ZN12dEnemyBase_c14UpdateYoshiEatER10dBgCh_Actr(void *thiz, void *c);
 void _ZN5dCc_c5ClearEv(void *thiz);
 void _ZN5dCc_c6UpdateEv(void *thiz);
-int func_ov065_0211691c(char *c, unsigned *table);
+int _ZN15daYurei_Mucho_c19func_ov065_0211691cEPNS_5StateE(char *c, unsigned *table);
 int _ZN12dEnemyBase_c26UpdateKillByInvincibleCharER10dBgCh_ActrR9ModelAnimj(
     void *thiz, void *wm, void *ma, unsigned j);
 int ApproachAngle(short *target, short from, short start, short speed,
@@ -34,9 +34,9 @@ void _ZN8dActor_c22UpdatePosWithOnlySpeedEP5dCc_c(void *thiz,
 void _ZN12dEnemyBase_c12UpdateWMClsnER10dBgCh_Actrj(void *thiz, void *wm,
                                               unsigned j);
 char *_ZN8dActor_c13ClosestPlayerEv(void *thiz);
-void _ZN9Animation7AdvanceEv(void *thiz);
-int func_ov065_0211696c(char *c);
-void func_ov065_02115ff0(char *c);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *thiz);
+int _ZN15daYurei_Mucho_c19func_ov065_0211696cEv(char *c);
+void _ZN15daYurei_Mucho_c19func_ov065_02115ff0Ev(char *c);
 
 extern short data_02082214[];
 extern int data_ov065_0211d670[];

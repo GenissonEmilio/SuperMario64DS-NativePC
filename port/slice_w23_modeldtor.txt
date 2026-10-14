@@ -20,9 +20,12 @@
 # not this batch's row to move). ShadowModel's D0 is NOT here either: no
 # _MSC_VER arm has been written for it yet, so item 6 is still open for that
 # class and its host copy stays.
-src/_ZN5ModelD0Ev.cpp
-src/_ZN5ModelD2Ev.cpp
+src/engine/model/Model.cpp
+port/unmatched/hostarm/_ZN5ModelD0Ev.cpp
+# FOLDED into src/engine/model/Model.cpp (row 23): src/_ZN5ModelD2Ev.cpp
+port/unmatched/hostarm/_ZN5ModelD2Ev.cpp
 src/_ZN9ModelBaseD0Ev.cpp
 src/_ZN10ModelAnim2D0Ev.cpp
-src/_ZN11CommonModelD0Ev.cpp
+src/engine/model/dExtCommonModel_c.cpp
+port/unmatched/hostarm/_ZN11CommonModelD0Ev.cpp
 src/_ZN14BlendModelAnimD0Ev.cpp

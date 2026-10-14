@@ -388,8 +388,8 @@ int _ZN7dScMB_c15graphCallback_c14GraphCallback3Ev(char *self);
    /OPT:ICF-folded onto each other); 1 and 2 come in on port/slice_gate225.txt,
    2 through the reverse face that takes the block as its one argument. ---- */
 int _ZN8dGraph_c10callback_c14GraphCallback0Ev(void);
-int _ZN5Stage14GraphCallback1Ev(void);
-int _ZN5Stage14GraphCallback2Ev(void *self);
+int _ZN10dScStage_c14GraphCallback1Ev(void);
+int _ZN10dScStage_c14GraphCallback2Ev(void *self);
 int _ZN8dGraph_c10callback_c14GraphCallback3Ev(void);
 /* hal/scene_boot.cpp: the frame beat dispatches only a registered table */
 void port_graph_block_register(void *vt);
@@ -468,8 +468,8 @@ extern "C" void hal_seat_arm9_link100_tables(void)
     /* 3. data_02092188 -- the Stage's, all four slots seated, and registered
        so the frame beat dispatches it (section 3 of the header). */
     data_02092188[0] = (void *)_ZN8dGraph_c10callback_c14GraphCallback0Ev;
-    data_02092188[1] = (void *)_ZN5Stage14GraphCallback1Ev;
-    data_02092188[2] = (void *)_ZN5Stage14GraphCallback2Ev;
+    data_02092188[1] = (void *)_ZN10dScStage_c14GraphCallback1Ev;
+    data_02092188[2] = (void *)_ZN10dScStage_c14GraphCallback2Ev;
     data_02092188[3] = (void *)_ZN8dGraph_c10callback_c14GraphCallback3Ev;
     port_graph_block_register(data_02092188);
 

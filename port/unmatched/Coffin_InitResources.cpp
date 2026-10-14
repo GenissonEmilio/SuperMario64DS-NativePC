@@ -14,7 +14,7 @@
 /* recovered: named members + shared header, real C++ method, declarations from a shared header */
 #include "decl_common.h"
 /* recovered: named members + shared header, real C++ method */
-#include "Coffin.h"
+#include "daObjCasket_c.h"
 typedef int CoffinShimFix12;   /* was `Fix12`: main's math/Fix12.h now owns
                                   that name (C2921). Still int, so the shim
                                   method below decorates unchanged. */
@@ -69,7 +69,7 @@ extern "C" {
 extern int _ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_;
 }
 
-int Coffin::InitResources()
+int daObjCasket_c::InitResources()
 {
     ((ModelBase*)((char*)&mModel))->SetFile(
         (BMD_File*)Model::LoadFile(data_ov071_021230d0), 1, -1);
@@ -90,7 +90,7 @@ int Coffin::InitResources()
     mPosX = res.x;
     mPosY = res.y;
     mPosZ = res.z;
-    func_ov071_02122080(((char*)this));
+    _ZN13daObjCasket_c20UpdateModelTransformEv(((char*)this));
     ((Platform*)((char*)this))->UpdateClsnPosAndRot();
     ((MovingMeshCollider*)((char*)&mMeshCollider))->SetFile(
         MeshCollider::LoadFile(data_ov071_021230d8),

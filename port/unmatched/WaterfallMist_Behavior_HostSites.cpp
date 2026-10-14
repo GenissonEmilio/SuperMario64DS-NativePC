@@ -57,8 +57,8 @@ extern void _Z14ApproachLinearRiii(int *x, int target, int step);
 extern void _ZN8dActor_c9UpdatePosEP5dCc_c(Enemy *thiz, void *clsn);
 extern void _ZN12dEnemyBase_c12UpdateWMClsnER10dBgCh_Actrj(Enemy *thiz, dBgCh_Actr *wm, u32 j);
 extern int _ZNK10dBgCh_Actr10IsOnGroundEv(void *thiz);
-extern void func_ov002_020b7f7c(char *c);
-extern void _ZN9Animation7AdvanceEv(void *thiz);
+extern void _ZN15daObjMarioCap_c12UpdateMatrixEv(char *c);
+extern void _ZN15dExtFrameCtrl_c7AdvanceEv(void *thiz);
 extern void func_020167a4(char *p);
 extern int _ZN12dEnemyBase_c14UpdateYoshiEatER10dBgCh_Actr(Enemy *thiz, dBgCh_Actr *wm);
 extern void _ZN5dCc_c5ClearEv(void *thiz);
@@ -128,8 +128,8 @@ int daObjMarioCap_c::Behavior()
         }
     }
 
-    func_ov002_020b7f7c(c);
-    _ZN9Animation7AdvanceEv(c + 0x350);
+    _ZN15daObjMarioCap_c12UpdateMatrixEv(c);
+    _ZN15dExtFrameCtrl_c7AdvanceEv(c + 0x350);
 
     if (*(int *)(c + 0x360) != 0) {
         func_020167a4(c + 0x300);

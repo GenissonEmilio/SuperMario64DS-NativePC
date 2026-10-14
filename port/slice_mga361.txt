@@ -153,34 +153,34 @@
 #   361, so it is available rather than blocking.
 #
 # ---- the list ---------------------------------------------------------------
-src/Camera_UpdateMatrices.c
-src/_ZN8Particle10SysTrackerD1Ev.cpp
-src/func_02012174.c
-src/func_02016a04.c
-src/_ZN8Particle10SysTracker8Contents5ClearEv.cpp
-src/func_0203ccd4.c
-src/func_0203cd80.c
-src/func_0203d738.c
-src/func_ov004_020af770.cpp
+src/actors/unit020bfec0.cpp
+src/engine/particle/Particle.cpp
+src/engine/sound/Sound.cpp
+src/unnamed/arm9/0201/func_02016a04.c
+src/engine/particle/Particle_SysTracker_Contents.cpp
+src/unnamed/arm9/0203/func_0203ccd4.c
+src/unnamed/arm9/0203/func_0203cd80.c
+src/unnamed/arm9/0203/func_0203d738.c
 src/minigames/d_s_mg_base.cpp
-src/func_ov004_020b0cac.c
-src/func_ov004_020b1b78.c
-src/func_ov004_020b1e34.c
-src/func_ov004_020b2574.c
-src/func_ov004_020b6808.c
-src/func_ov006_020c225c.c
-src/func_ov006_020c2290.c
-src/func_ov006_020c2440.cpp
-src/func_ov006_020c2594.c
-src/func_ov006_020c2664.c
-src/func_ov006_020c2848.cpp
-src/func_ov006_020c2924.cpp
-src/func_ov006_020c2994.c
-src/func_ov006_020c29dc.cpp
-src/func_ov006_020c2b8c.cpp
-src/func_ov006_020c2be8.c
-src/func_ov006_020c3050.c
-src/func_ov006_020c3288.c
-src/func_ov006_020c33dc.c
+src/minigames/d_s_mg_base.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 164): src/func_ov004_020b0cac.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 164): src/func_ov004_020b1b78.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 164): src/func_ov004_020b1e34.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 164): src/func_ov004_020b2574.c
+src/actors/dMgState_c.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 156): src/func_ov006_020c225c.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 156): src/func_ov006_020c2290.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 156): src/func_ov006_020c2440.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 156): src/func_ov006_020c2594.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 156): src/func_ov006_020c2664.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 156): src/func_ov006_020c2848.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 156): src/func_ov006_020c2924.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 156): src/func_ov006_020c2994.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 156): src/func_ov006_020c29dc.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 156): src/func_ov006_020c2b8c.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 156): src/func_ov006_020c2be8.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 156): src/func_ov006_020c3050.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 156): src/func_ov006_020c3288.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 156): src/func_ov006_020c33dc.c
 src/actors/dScMgCup_c.cpp
 src/minigames/d_s_mg_single3_d_base.cpp

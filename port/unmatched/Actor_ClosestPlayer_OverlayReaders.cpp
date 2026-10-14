@@ -81,7 +81,7 @@ short Vec3_HorzAngle(const struct Vector3 *a, const struct Vector3 *b);
 
 /* ---- func_ov084_0212f204 (receiver r4) ------------------------------------ */
 // PORT_HOST_ABI: implicit-register-arg (ClosestPlayer's this rode r0 from the enclosing member; the host passes r4).
-extern "C" void func_ov084_0212f204(char* r4)
+extern "C" void _ZN7daPkn_c18TrackClosestPlayerEv(char* r4)
 {
     struct Vector3 v;
     *(char**)(r4 + 0x460) = (char*)_ZN8dActor_c13ClosestPlayerEv(r4);   /* <-- this, the ROM's r0 */

@@ -420,41 +420,41 @@
 #     guessed vtable body seated
 #   post-link -- gxband_guard layout OK, tailjump_guard forms OK
 #
-src/d_s_mg_teresa.c
+src/actors/dScMgTeresa_c.cpp
 src/actors/dScMgTeresa_c.cpp
 src/func_ov006_0211e72c.c
-src/func_ov006_0211e7d8.c
-src/func_ov006_0211e8a8.c
-src/func_ov006_0211ea70.c
-src/func_ov006_0211eb90.c
-src/func_ov006_0211ebdc.c
-src/func_ov006_0211ee34.c
-src/func_ov006_0211f040.cpp
-src/func_ov006_0211f0d0.c
-src/func_ov006_0211f1a4.c
-src/func_ov006_0211f224.c
-src/func_ov006_0211f34c.c
-src/func_ov006_0211f454.c
-src/func_ov006_0211f51c.c
-src/func_ov006_0211f554.c
-src/func_ov006_0211f5d4.c
-src/func_ov006_0211f664.c
-src/func_ov006_0211f77c.c
-src/func_ov006_0211f9fc.c
-src/func_ov006_0211fb1c.c
-src/func_ov006_0211fbf8.c
-src/func_ov006_0211fd44.c
-src/func_ov006_0211fe78.c
-src/func_ov006_02120008.c
-src/func_ov006_021200a8.c
-src/func_ov006_021200cc.c
-src/_ZN13dScMgTeresa_c9Virtual88Eiiii.cpp
-src/_ZN13dScMgTeresa_c9Virtual50Ev.cpp
-src/_ZN13dScMgTeresa_c13OnYoshiTryEatEi.cpp
-src/_ZN13dScMgTeresa_c6RenderEv.cpp
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211e7d8.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211e8a8.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211ea70.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211eb90.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211ebdc.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211ee34.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f040.cpp
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f0d0.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f1a4.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f224.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f34c.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f454.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f51c.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f554.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f5d4.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f664.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f77c.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f9fc.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211fb1c.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211fbf8.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211fd44.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211fe78.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_02120008.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_021200a8.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_021200cc.c
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/_ZN13dScMgTeresa_c9Virtual88Eiiii.cpp
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/_ZN13dScMgTeresa_c9Virtual50Ev.cpp
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/_ZN13dScMgTeresa_c13OnYoshiTryEatEi.cpp
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/_ZN13dScMgTeresa_c6RenderEv.cpp
 # run linkfull, lane RS4PORT: vtable slot 0 is back as the matched TU. main
 # #3107 dropped the `f2 += 0;` no-op that MSVC refused with C2036 (the ROM has
 # no instruction for it), so port/unmatched/MgTeresa_InitResources.cpp is
 # retired; port/faces_sync.txt's reverse face gives hal/scene_mg_booseek.cpp's
 # flat calls the member.
-src/_ZN13dScMgTeresa_c13InitResourcesEv.cpp
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/_ZN13dScMgTeresa_c13InitResourcesEv.cpp

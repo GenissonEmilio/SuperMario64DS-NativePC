@@ -156,11 +156,11 @@ extern "C" {
 void port_mg_call0(void *self, unsigned code, int adj);
 
 /* ---- the five state bodies, section 3 ---------------------------------- */
-void func_ov006_02123b20(void);          /* `bx lr`, the terminal idle state */
-void func_ov006_02123b24(char *c);
-void func_ov006_02123bf4(char *c);
-void func_ov006_02123cb4(char *c);
-void func_ov006_02124088(char *c);
+void _ZN18dScMgTrampoline2_c9StateDoneEv(void);          /* `bx lr`, the terminal idle state */
+void _ZN18dScMgTrampoline2_c13StateWaitExitEv(char *c);
+void _ZN18dScMgTrampoline2_c12StateResultsEv(char *c);
+void _ZN18dScMgTrampoline2_c9StatePlayEv(char *c);
+void _ZN18dScMgTrampoline2_c10StateIntroEv(char *c);
 
 /* ---- slot 6's other callees, spelled the way the ROM names them -------- */
 void  func_ov006_02120c40(void);
@@ -184,8 +184,8 @@ extern int data_ov006_02140830;
 /* Formerly the two bodiless floors; both are decompiled and seated as of run
    mg12 lane TRM, so these are ordinary forward declarations of slice bodies
    (src/func_ov006_02123938.c and src/func_ov006_02123428.c) now. */
-void func_ov006_02123938(void *self);
-void func_ov006_02123428(char *c);
+void _ZN18dScMgTrampoline2_c16UpdateTouchInputEv(void *self);
+void _ZN18dScMgTrampoline2_c9SpawnWaveEv(char *c);
 
 }  /* extern "C" */
 
@@ -279,11 +279,11 @@ static void tte_note(int ord)
         call;                                                             \
     }
 
-TTE_FACE(02123b20, 0, func_ov006_02123b20())
-TTE_FACE(02124088, 1, func_ov006_02124088((char *)self))
-TTE_FACE(02123b24, 2, func_ov006_02123b24((char *)self))
-TTE_FACE(02123cb4, 3, func_ov006_02123cb4((char *)self))
-TTE_FACE(02123bf4, 4, func_ov006_02123bf4((char *)self))
+TTE_FACE(02123b20, 0, _ZN18dScMgTrampoline2_c9StateDoneEv())
+TTE_FACE(02124088, 1, _ZN18dScMgTrampoline2_c10StateIntroEv((char *)self))
+TTE_FACE(02123b24, 2, _ZN18dScMgTrampoline2_c13StateWaitExitEv((char *)self))
+TTE_FACE(02123cb4, 3, _ZN18dScMgTrampoline2_c9StatePlayEv((char *)self))
+TTE_FACE(02123bf4, 4, _ZN18dScMgTrampoline2_c12StateResultsEv((char *)self))
 
 extern "C" {
 extern MgPmf data_ov006_0213fbd0, data_ov006_0213fbd8, data_ov006_0213fbe0,
@@ -328,15 +328,15 @@ namespace {
 struct TteSeat { MgPmf *rec; unsigned rom; void *host; void *face;
                  const char *what; };
 const TteSeat g_tte_seats[] = {
-    {&data_ov006_0213fbd0, 0x02123b20u, (void *)func_ov006_02123b20,
+    {&data_ov006_0213fbd0, 0x02123b20u, (void *)_ZN18dScMgTrampoline2_c9StateDoneEv,
      (void *)tte_f02123b20, "0213fbd0"},
-    {&data_ov006_0213fbd8, 0x02124088u, (void *)func_ov006_02124088,
+    {&data_ov006_0213fbd8, 0x02124088u, (void *)_ZN18dScMgTrampoline2_c10StateIntroEv,
      (void *)tte_f02124088, "0213fbd8"},
-    {&data_ov006_0213fbe0, 0x02123b24u, (void *)func_ov006_02123b24,
+    {&data_ov006_0213fbe0, 0x02123b24u, (void *)_ZN18dScMgTrampoline2_c13StateWaitExitEv,
      (void *)tte_f02123b24, "0213fbe0"},
-    {&data_ov006_0213fbe8, 0x02123cb4u, (void *)func_ov006_02123cb4,
+    {&data_ov006_0213fbe8, 0x02123cb4u, (void *)_ZN18dScMgTrampoline2_c9StatePlayEv,
      (void *)tte_f02123cb4, "0213fbe8"},
-    {&data_ov006_0213fbf0, 0x02123bf4u, (void *)func_ov006_02123bf4,
+    {&data_ov006_0213fbf0, 0x02123bf4u, (void *)_ZN18dScMgTrampoline2_c12StateResultsEv,
      (void *)tte_f02123bf4, "0213fbf0"},
 };
 }  /* namespace */

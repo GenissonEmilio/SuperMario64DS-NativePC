@@ -72,12 +72,12 @@ DSSTATE_END
 
 /* BASEMENT_WATER (daObjC0Water_c) own bodies -- misnamed _ZN12SwitchPillar*
    by dsd (the class-identity swap), matched src under those filenames */
-int _ZN13BasementWater13InitResourcesEv(void *self);      /* slot 0, faced (real C++ method) */
-int *_ZN13BasementWaterD1Ev(int *self);                   /* slot 16, .c, DTOR-PAIRS seat (0x02111450) */
-int *_ZN13BasementWaterD0Ev(int *self);                   /* slot 17, .c, DTOR-PAIRS seat (0x0211149c) */
-int _ZN13BasementWater16CleanupResourcesEv(void *self);   /* slot 3 */
-int _ZN13BasementWater8BehaviorEv(void *self);            /* slot 6, faced (real C++ method) */
-int _ZN13BasementWater6RenderEv(void *self);              /* slot 9, HOST COPY (the ModelAnim
+int _ZN14daObjC0Water_c13InitResourcesEv(void *self);      /* slot 0, faced (real C++ method) */
+int *_ZN14daObjC0Water_cD1Ev(int *self);                   /* slot 16, .c, DTOR-PAIRS seat (0x02111450) */
+int *_ZN14daObjC0Water_cD0Ev(int *self);                   /* slot 17, .c, DTOR-PAIRS seat (0x0211149c) */
+int _ZN14daObjC0Water_c16CleanupResourcesEv(void *self);   /* slot 3 */
+int _ZN14daObjC0Water_c8BehaviorEv(void *self);            /* slot 6, faced (real C++ method) */
+int _ZN14daObjC0Water_c6RenderEv(void *self);              /* slot 9, HOST COPY (the ModelAnim
                                                               slot-5 collision, TWO of them in
                                                               this file -- ModelAnim_Renders.cpp) */
 void *daObjC0Water_c_classInit(void);           /* installs _ZTV12SwitchPillar == _ZTV14daObjC0Water_c */
@@ -282,14 +282,14 @@ extern "C" void hal_fill_switch_pillar_vtable(void)
 // raw vtable dump (word 21 matches the shared arm9 default byte for byte).
 // ============================================================================
 static int __fastcall bw_init(void *s, void *)
-{ return _ZN13BasementWater13InitResourcesEv(s); }
+{ return _ZN14daObjC0Water_c13InitResourcesEv(s); }
 static int __fastcall bw_clean(void *s, void *)
-{ return _ZN13BasementWater16CleanupResourcesEv(s); }
+{ return _ZN14daObjC0Water_c16CleanupResourcesEv(s); }
 static int __fastcall bw_behavior(void *s, void *)
-{ return _ZN13BasementWater8BehaviorEv(s); }
+{ return _ZN14daObjC0Water_c8BehaviorEv(s); }
 static int __fastcall bw_render(void *s, void *)
 { port_actor_render_probe("BASEMENT_WATER", (char *)s + 0xd4);
-  return _ZN13BasementWater6RenderEv(s); }
+  return _ZN14daObjC0Water_c6RenderEv(s); }
 /* D1/D0 (DTOR-PAIRS seat): BasementWater's own matched pair, the src files
    spelled _ZN13BasementWaterD1Ev.c/D0Ev.c per the class-identity swap, behind
    ecx->arg adapters where host copies of the chain stood. The ROM's table at
@@ -298,9 +298,9 @@ static int __fastcall bw_render(void *s, void *)
    0x0210ae38 by relocation, the one Platform base table the port hosts
    (hal/lk2_platform_dtor_seat.cpp) -- not a placeholder. */
 static int __fastcall bw_d1(void *s, void *)
-{ return (int)(size_t)_ZN13BasementWaterD1Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjC0Water_cD1Ev((int *)s); }
 static int __fastcall bw_d0(void *s, void *)
-{ return (int)(size_t)_ZN13BasementWaterD0Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjC0Water_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_basement_water_vtable(void)
 {
@@ -324,12 +324,12 @@ extern "C" void hal_fill_basement_water_vtable(void)
 // a real C++ method per its own file (a .cpp), faced the same way. Render
 // is NOT faced here: it is a host copy (the ModelAnim slot-5 collision,
 // port/unmatched/ModelAnim_Renders.cpp), declared extern "C" above.
-#include "BasementWater.h"
+#include "daObjC0Water_c.h"
 extern "C" {
-int _ZN13BasementWater13InitResourcesEv(void *self)
-{ return ((BasementWater *)self)->BasementWater::InitResources(); }
-int _ZN13BasementWater16CleanupResourcesEv(void *self)
-{ return ((BasementWater *)self)->BasementWater::CleanupResources(); }
-int _ZN13BasementWater8BehaviorEv(void *self)
-{ return ((BasementWater *)self)->BasementWater::Behavior(); }
+int _ZN14daObjC0Water_c13InitResourcesEv(void *self)
+{ return ((daObjC0Water_c *)self)->daObjC0Water_c::InitResources(); }
+int _ZN14daObjC0Water_c16CleanupResourcesEv(void *self)
+{ return ((daObjC0Water_c *)self)->daObjC0Water_c::CleanupResources(); }
+int _ZN14daObjC0Water_c8BehaviorEv(void *self)
+{ return ((daObjC0Water_c *)self)->daObjC0Water_c::Behavior(); }
 }

@@ -83,7 +83,7 @@ extern unsigned char data_ov027_021139d4[];
 extern unsigned char data_ov027_021139dc[];
 
 /* the four states, all matched, all in port/slice_ov027cast.txt */
-int func_ov027_02111a28(char *self);
+int _ZN10daPgDfdr_c19func_ov027_02111a28Ev(char *self);
 void func_ov027_02111b2c(char *self);
 int func_ov027_02111c48(char *self);
 int func_ov027_02111ca8(char *self);
@@ -167,7 +167,7 @@ void pair_set_code(unsigned char *p, unsigned v)
 int __fastcall dfdr_st_1ca8(void *s) { return func_ov027_02111ca8((char *)s); }
 int __fastcall dfdr_st_1c48(void *s) { return func_ov027_02111c48((char *)s); }
 void __fastcall dfdr_st_1b2c(void *s) { func_ov027_02111b2c((char *)s); }
-int __fastcall dfdr_st_1a28(void *s) { return func_ov027_02111a28((char *)s); }
+int __fastcall dfdr_st_1a28(void *s) { return _ZN10daPgDfdr_c19func_ov027_02111a28Ev((char *)s); }
 
 DfdrRow *dfdr_rows(void)
 {

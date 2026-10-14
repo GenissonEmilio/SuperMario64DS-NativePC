@@ -325,7 +325,7 @@ FIXTURES = [
     ("__ZN4Heap7DestroyEv", "?Destroy@Heap@@QAEXXZ", "DROPPED"),
     ("__ZN4Heap11ResizeToFitEv", "?ResizeToFit@Heap@@QAEIXZ", "DROPPED"),
     ("__ZN4Heap8_DestroyEv", "?_Destroy@Heap@@QAEXXZ", "DROPPED"),
-    ("__ZN10FaderColor11AdvanceFadeEv", "?AdvanceFade@FaderColor@@QAEHXZ",
+    ("__ZN10dFdColor_c11AdvanceFadeEv", "?AdvanceFade@dFdColor_c@@QAEHXZ",
      "DROPPED"),
     ("__ZN5Enemy16InitEnemyStandardEjRK7Vector3",
      "?InitEnemyStandard@dEnemyBase_c@@QAEXIABUVector3@@@Z", "DROPPED"),
@@ -348,7 +348,7 @@ FIXTURES = [
     ("?ChangeState@Player@@QAEHAAUState@1@@Z",
      "?ChangeState@PlayerChangeStateFace@@QAEHAAUState@1@@Z", None),
     ("?IDENTITY_MATRIX4X3@@3UM48@@A", "_data_02082128", None),   # data bridge
-    ("__ZTV9FaderWipe", "??_7HalFaderWipe@@6B@", None),     # vftable bridge
+    ("__ZTV9dFdWipe_c", "??_7HalFaderWipe@@6B@", None),     # vftable bridge
     ("_port_crash_dir_get", "_port_crash_dir_get_stub", None),  # flat/flat
     # -- a virtual thiscall is still a thiscall (the UAE forms)
     ("__ZN6Player13OnYoshiTryEatEv", "?OnYoshiTryEat@Player@@UAEHXZ",

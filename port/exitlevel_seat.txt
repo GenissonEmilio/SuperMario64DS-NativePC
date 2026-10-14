@@ -9,7 +9,7 @@ The crash was never slot 0. The abort message was lying, in three independent
 ways, and slot 0 -- the slot it named -- has been seated since lane L4
 (885cd16c2) and could not have been the caller.
 
-The real trap was _ZTV5Stage SLOT 3, Stage::CleanupResources, and the reason it
+The real trap was _ZTV10dScStage_c SLOT 3, Stage::CleanupResources, and the reason it
 was reached is a ROM global the port takes out of its sentinel state and never
 puts back: data_02092664, Scene::SetSceneToSpawn's pending-scene id.
 
@@ -143,7 +143,7 @@ the tree is inside this lane's own comments describing the bug.
 
 THE CLASS SWEEP IS COMPLETE AT ONE TABLE, which is worth stating because the
 brief asked for "every stage vtable reachable by ExitLevel from every mounted
-level". config/arm9/symbols.txt carries exactly one: _ZTV5Stage at 0x020921c0.
+level". config/arm9/symbols.txt carries exactly one: _ZTV10dScStage_c at 0x020921c0.
 There is no per-level Stage subclass -- per-level behaviour comes from the
 LVL_Overlay table at data_02092208, not from a derived class -- and the port
 keeps ONE Stage object alive across every level change, so all 35 mounted
@@ -152,7 +152,7 @@ levels dispatch the same eighteen slots audited in section 5.
 ONE THING THE SWEEP FOUND AND THIS LANE DID NOT CHANGE. _ZTV8dScene_c
 (0x02092680, hal/stage_bridges.cpp:83) is declared as plain storage and is
 never trap-filled, so it holds nulls rather than named traps. Stage::Stage
-installs it transiently and _ZTV5Stage wins, so nothing dispatches through it
+installs it transiently and _ZTV10dScStage_c wins, so nothing dispatches through it
 today -- but if anything ever did, the result would be a jump through a null
 instead of the named abort the rest of the file is built around. Filling it
 would be behaviour-neutral and is a one-line change; it is left alone here
@@ -164,7 +164,7 @@ BMP-layout comparison still. Named so it is not rediscovered.
 ------------------------------------------------------
 
 Not copied from the file's own comment. Read back from the relocation table,
-_ZTV5Stage at 0x020921c0, one `kind:load module:main` per word:
+_ZTV10dScStage_c at 0x020921c0, one `kind:load module:main` per word:
 
     slot  0  0x0202cc0c  Stage::InitResources        SEATED  (st_init)
     slot  1  0x0202ddc8  Stage::BeforeInitResources  SEATED  (veneer target)
@@ -214,7 +214,7 @@ for arm9 .text at these addresses arm9_dec.bin is the one that reads.)
 6. WHY SLOT 3 WAS REACHED
 --------------------------
 
-_ZTV5Stage slot 7 is Scene::BeforeBehavior, the ROM's own matched body
+_ZTV10dScStage_c slot 7 is Scene::BeforeBehavior, the ROM's own matched body
 (src/_ZN8dScene_c14BeforeBehaviorEv.cpp), dispatched on the Stage every frame
 since lane L4 put the Stage on the behaviour list. It contains:
 

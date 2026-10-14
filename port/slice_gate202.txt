@@ -31,5 +31,5 @@ src/actors/daObjClock_c.cpp
 # against ClockPaintingHandShort.h, faced in the gate file)
 # ---- the two self-contained SharedFilePtr sinits (three SFPs total, no
 # PMF table, confirmed by reading their bodies) ----
-src/__sinit_ov013_021116b8.c
-src/__sinit_ov013_021116f8.c
+# FOLDED into src/game/actors/d_a_obj_clock_huriko.cpp (row 26): src/__sinit_ov013_021116b8.c
+# FOLDED into src/actors/daObjClock_c.cpp (row 29): src/__sinit_ov013_021116f8.c

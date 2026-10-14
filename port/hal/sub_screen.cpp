@@ -214,11 +214,11 @@ extern unsigned char data_020a0de9[];   /* +1 edge    */
 extern unsigned char data_020a0dea[];   /* +2 x       */
 extern unsigned char data_020a0deb[];   /* +3 y       */
 /* Stage::CheckCameraInput's own inputs and outputs */
-void _ZN5Stage16CheckCameraInputEv(void);
+void _ZN10dScStage_c16CheckCameraInputEv(void);
 /* Stage::SetVramBanks, InitResources:262-263's own call. Ends in
    GX::SetBankForSubBGExtPltt(0x80); cxx_aliases.cpp:3281 already carries its
    /alternatename row, so it links with no new seat. */
-void _ZN5Stage12SetVramBanksEv(void);
+void _ZN10dScStage_c12SetVramBanksEv(void);
 extern int data_0209f498[];      /* the Ctrl[4] block, stride 0x18 */
 extern char data_0209f49c[];     /* split: held buttons  (DS: f498 + 4) */
 extern char data_0209f49e[];     /* split: pressed       (DS: f498 + 6) */
@@ -3137,7 +3137,7 @@ extern "C" void hal_sub_screen_level_init(void)
        round trip reads back to restore the bit after clearing it -- without
        this call nothing is recorded, the restore passes 0, and the bit stays
        off after the second and every later level entry. */
-    _ZN5Stage12SetVramBanksEv();
+    _ZN10dScStage_c12SetVramBanksEv();
 
     /* ENGINE A'S BG SCREEN BASE OFFSET, Stage::InitResources:272:
      *
@@ -4505,7 +4505,7 @@ void hal_sub_camera_zone_live(void)
 void hal_sub_camera_input(void)
 {
     const char *ctrl = (const char *)data_0209f498;
-    _ZN5Stage16CheckCameraInputEv();
+    _ZN10dScStage_c16CheckCameraInputEv();
     *(unsigned short *)data_0209f49c |= *(const unsigned short *)(ctrl + 4);
     *(unsigned short *)data_0209f49e |= *(const unsigned short *)(ctrl + 6);
 

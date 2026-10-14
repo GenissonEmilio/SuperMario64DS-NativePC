@@ -131,24 +131,23 @@ void port_actor_render_probe(const char *cls, void *model);
 void __sinit_ov064_0211b698(void);
 
 /* Clam's own slots, and what clam_d1 spells by hand */
-int _ZN4Clam13InitResourcesEv(void *self);   /* slot 0, faced at file bottom */
-int _ZN4Clam16CleanupResourcesEv(void *self);/* slot 3  */
-int _ZN4Clam8BehaviorEv(void *self);         /* slot 6  */
-int _ZN4Clam6RenderEv(void *self);           /* slot 9, HOST COPY */
-int *_ZN4ClamD0Ev(int *self);                /* slot 17 */
+int _ZN12daObjShell_c13InitResourcesEv(void *self);   /* slot 0, faced at file bottom */
+int _ZN12daObjShell_c16CleanupResourcesEv(void *self);/* slot 3  */
+int _ZN12daObjShell_c8BehaviorEv(void *self);         /* slot 6  */
+int _ZN12daObjShell_c6RenderEv(void *self);           /* slot 9, HOST COPY */
+int *_ZN12daObjShell_cD0Ev(int *self);                /* slot 17 */
 void *ClamSpawn_unused(void);
 void *daObjShell_c_classInit(void);
 void _ZN7dCcAc_cD1Ev(void *self);
 void _ZN9ModelAnimD1Ev(void *self);
 void *_ZN8dActor_cD2Ev(void *self);
 DSSTATE_BEGIN
-void *_ZTV4Clam[31];
+void *_ZTV12daObjShell_c[31];
 DSSTATE_END
 }
 /* dsd names 0x0211c5c8 twice and both names are out of the mount; the RTTI
    spelling is the one _ZN4ClamD0Ev restores by. */
-#pragma comment(linker, "/alternatename:__ZTV12daObjShell_c=__ZTV4Clam")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV12daObjShell_c=__ZTV12daObjShell_c")
 /* TWO C++-MANGLED DATA SPELLINGS, the IDENTITY_MATRIX4X3 / data_020a0e68 precedent.
    src/_ZN4Clam13InitResourcesEv.cpp declares two of Clam's three SharedFilePtrs
    at FILE SCOPE as `extern int data_ov064_0211c9bc[];` rather than inside its
@@ -223,19 +222,19 @@ static int __fastcall cl_egg(void *s, void *)
 { return _ZN8dActor_c16OnAimedAtWithEggEv(s); }
 
 static int __fastcall cl_init(void *s, void *)
-{ return _ZN4Clam13InitResourcesEv(s); }
+{ return _ZN12daObjShell_c13InitResourcesEv(s); }
 static int __fastcall cl_clean(void *s, void *)
-{ return _ZN4Clam16CleanupResourcesEv(s); }
+{ return _ZN12daObjShell_c16CleanupResourcesEv(s); }
 static int __fastcall cl_behavior(void *s, void *)
-{ return _ZN4Clam8BehaviorEv(s); }
+{ return _ZN12daObjShell_c8BehaviorEv(s); }
 static int __fastcall cl_render(void *s, void *)
 { port_actor_render_probe("CLAM", (char *)s + 0xd4);
-  return _ZN4Clam6RenderEv(s); }
+  return _ZN12daObjShell_c6RenderEv(s); }
 /* slot 16, HOST CHAIN -- see this file's header. */
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (cl_d1) spelled the same chain by hand. */
 static int __fastcall cl_d0(void *s, void *)
-{ return (int)(size_t)_ZN4ClamD0Ev((int *)s); }
+{ return (int)(size_t)_ZN12daObjShell_cD0Ev((int *)s); }
 
 /* CAPTURED, and the argument is hal/level_boot.cpp's on g_level_mounted: this
    flag says "hal_fill_clam_vtable has run", and everything that pass writes --
@@ -255,7 +254,7 @@ extern "C" void hal_fill_clam_vtable(void)
         g_clam_vtable_done = 1;
         __sinit_ov064_0211b698();
     }
-    void *volatile *vt = (void *volatile *)_ZTV4Clam;
+    void *volatile *vt = (void *volatile *)_ZTV12daObjShell_c;
     vt[0]  = (void *)cl_init;
     vt[1]  = (void *)cl_binit;
     vt[2]  = (void *)cl_ainit;
@@ -293,6 +292,6 @@ extern "C" void hal_fill_clam_vtable(void)
 // ---- method face -----------------------------------------------------------
 // The one body src defines as a real C++ method. Its Cleanup, Behavior and D0
 // are extern-C already; its Render is a host copy and its D1 has no C name.
-#include "Clam.h"
-extern "C" int _ZN4Clam13InitResourcesEv(void *self)
-{ return ((Clam *)self)->Clam::InitResources(); }
+#include "daObjShell_c.h"
+extern "C" int _ZN12daObjShell_c13InitResourcesEv(void *self)
+{ return ((daObjShell_c *)self)->daObjShell_c::InitResources(); }

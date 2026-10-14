@@ -22,7 +22,7 @@
 #    onto the __thiscall method. ROM: from:0x0210bd84 (vtable 0x0210bd60 + 4*9)
 #    -> 0x020f80ac, symbols.txt _ZN14CutsceneObject6RenderEv
 #    kind:function(arm,size=0x118).
-src/_ZN14CutsceneObject6RenderEv.cpp
+src/actors/daDemo_c.cpp
 
 # 2. src/game/actors/d_a_obj_c0_switch.cpp  (daObjC0_Switch_c::Render, SWITCH_PILLAR id 34)
 #    RETIRES port/unmatched/ModelAnim_Renders.cpp (whole file -- this was the
@@ -50,7 +50,7 @@ src/game/actors/d_a_obj_c0_switch.cpp
 #    thunk calling the C symbol directly -- no face needed. ROM:
 #    from:0x0211bc8c (_ZTV12MetalNetLift + 4*9) -> 0x02117cfc,
 #    kind:function(arm,size=0x28).
-src/_ZN12MetalNetLift6RenderEv.cpp
+src/actors/daObjFl_Amilift_c.cpp
 
 # 4. src/game/actors/d_a_star_gate.cpp  (daDoor_c::CleanupResources)
 #    RETIRES port/unmatched/Door_CleanupResources.cpp (whole file).
@@ -105,4 +105,4 @@ src/game/actors/d_a_star_gate.cpp
 #    which calls the cdecl face _ZN14CutsceneObject16CleanupResourcesEv onto the
 #    __thiscall method. ROM: from:0x0210bd6c (vtable 0x0210bd60 + 4*3) ->
 #    0x020f8028, kind:function(arm,size=0x80).
-src/_ZN14CutsceneObject16CleanupResourcesEv.cpp
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/_ZN14CutsceneObject16CleanupResourcesEv.cpp

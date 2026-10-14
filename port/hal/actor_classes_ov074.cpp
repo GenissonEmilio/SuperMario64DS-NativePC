@@ -158,7 +158,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 
 #include "dActor_c.h"
 #include "fBase_c.h"
-#include "Goomboss.h"
+#include "daKuriKing_c.h"
 
 extern "C" {
 /* the arm9 shared half */
@@ -197,12 +197,12 @@ void __sinit_ov074_02122978(void);
    ?Behavior@Goomboss@@QAEHXZ and the ROM's C name is not provided by the
    object at all; both get a thin face at the bottom of this file, the
    ov036 ShipWing/DonutBlock recipe. Render is a HOST COPY. */
-int _ZN8Goomboss13InitResourcesEv(void *self);       /* slot 0, extern "C" src */
-int _ZN8Goomboss16CleanupResourcesEv(void *self);    /* slot 3, face below  */
-int _ZN8Goomboss8BehaviorEv(void *self);             /* slot 6, face below  */
-int _ZN8Goomboss6RenderEv(void *self);               /* slot 9, HOST COPY  */
-int _ZN8GoombossD1Ev(void *self);                    /* slot 16 */
-int _ZN8GoombossD0Ev(void *self);                    /* slot 17 */
+int _ZN12daKuriKing_c13InitResourcesEv(void *self);       /* slot 0, extern "C" src */
+int _ZN12daKuriKing_c16CleanupResourcesEv(void *self);    /* slot 3, face below  */
+int _ZN12daKuriKing_c8BehaviorEv(void *self);             /* slot 6, face below  */
+int _ZN12daKuriKing_c6RenderEv(void *self);               /* slot 9, HOST COPY  */
+int _ZN12daKuriKing_cD1Ev(void *self);                    /* slot 16 */
+int _ZN12daKuriKing_cD0Ev(void *self);                    /* slot 17 */
 void *daKuriKing_c_classInit_KURIKING(void);                          /* id 198 */
 void *daKuriKing_c_classInit_KURIKING_VANISH(void);                   /* id 199 */
 extern unsigned char g_profile_KURIKING[];           /* mount, +4 = 198 */
@@ -214,7 +214,7 @@ extern unsigned char g_profile_KURIKING_VANISH[];    /* mount, +4 = 199 */
    _ZTV8Goomboss[]` / `extern void *_ZTV8Goomboss[]`, and both factories store
    it as `void **`. One host object, three spellings, one decorated name. */
 DSSTATE_BEGIN
-void *_ZTV8Goomboss[31];   /* 0x02122eb8, == _ZTV12daKuriKing_c */
+void *_ZTV12daKuriKing_c[31];   /* 0x02122eb8, == _ZTV12daKuriKing_c */
 DSSTATE_END
 
 /* ---- THE EIGHTEEN PMF SOURCE RECORDS the sinit copies -------------------
@@ -270,26 +270,26 @@ extern unsigned char data_ov074_02122e1c[];
    in hal/scene_vs_menu.cpp is correct THERE because ov075 kept a real MSVC
    member-pointer call through a matched TU, and it is exactly backwards here.
    Bare cdecl bodies, all eighteen. */
-void func_ov074_0211f5b8(void *self);
-void func_ov074_0211fa08(void *self);
-void func_ov074_0211fa74(void *self);
-void func_ov074_0211fb84(void *self);
-void func_ov074_0211fbd0(void *self);
-void func_ov074_0211fc34(void *self);
-void func_ov074_0211fc38(void *self);
-void func_ov074_0211fd48(void *self);
-void func_ov074_0211fd74(void *self);
-void func_ov074_0211ffac(void *self);
-void func_ov074_0211ffcc(void *self);
+void _ZN12daKuriKing_c19func_ov074_0211f5b8Ev(void *self);
+void _ZN12daKuriKing_c19func_ov074_0211fa08Ev(void *self);
+void _ZN12daKuriKing_c19func_ov074_0211fa74Ev(void *self);
+void _ZN12daKuriKing_c19func_ov074_0211fb84Ev(void *self);
+void _ZN12daKuriKing_c19func_ov074_0211fbd0Ev(void *self);
+void _ZN12daKuriKing_c19func_ov074_0211fc34Ev(void *self);
+void _ZN12daKuriKing_c19func_ov074_0211fc38Ev(void *self);
+void _ZN12daKuriKing_c19func_ov074_0211fd48Ev(void *self);
+void _ZN12daKuriKing_c19func_ov074_0211fd74Ev(void *self);
+void _ZN12daKuriKing_c19func_ov074_0211ffacEv(void *self);
+void _ZN12daKuriKing_c19func_ov074_0211ffccEv(void *self);
 void func_ov074_0212007c(void *self);
-void func_ov074_02120080(void *self);
-void func_ov074_0212016c(void *self);
-void func_ov074_0212018c(void *self);
+void _ZN12daKuriKing_c19func_ov074_02120080Ev(void *self);
+void _ZN12daKuriKing_c19func_ov074_0212016cEv(void *self);
+void _ZN12daKuriKing_c19func_ov074_0212018cEv(void *self);
 void func_ov074_021201ec(void *self);
 /* state 0's tick, propagated from main 6906f2af5 by lane prop17. Its own
    source spells the receiver `char *`; declared `void *` here with the rest
    because this file only ever takes its address. */
-void func_ov074_021201f0(void *self);
+void _ZN12daKuriKing_c19func_ov074_021201f0Ev(void *self);
 void func_ov074_021203e0(void *self);
 
 /* the ov053 whole-image mount's DS-to-host resolver, for the level-file seat
@@ -539,23 +539,23 @@ struct Ov074Seat {
  * reading it from the stack is right only on one. */
 #define OV74_STATE_FACE(sym)                                                  static void __fastcall ov74_st_##sym(void *self, void *dead_edx)          {                                                                             (void)dead_edx;                                                           sym(self);                                                            }
 
-OV74_STATE_FACE(func_ov074_0211f5b8)
-OV74_STATE_FACE(func_ov074_0211fa08)
-OV74_STATE_FACE(func_ov074_0211fa74)
-OV74_STATE_FACE(func_ov074_0211fb84)
-OV74_STATE_FACE(func_ov074_0211fbd0)
-OV74_STATE_FACE(func_ov074_0211fc34)
-OV74_STATE_FACE(func_ov074_0211fc38)
-OV74_STATE_FACE(func_ov074_0211fd48)
-OV74_STATE_FACE(func_ov074_0211fd74)
-OV74_STATE_FACE(func_ov074_0211ffac)
-OV74_STATE_FACE(func_ov074_0211ffcc)
+OV74_STATE_FACE(_ZN12daKuriKing_c19func_ov074_0211f5b8Ev)
+OV74_STATE_FACE(_ZN12daKuriKing_c19func_ov074_0211fa08Ev)
+OV74_STATE_FACE(_ZN12daKuriKing_c19func_ov074_0211fa74Ev)
+OV74_STATE_FACE(_ZN12daKuriKing_c19func_ov074_0211fb84Ev)
+OV74_STATE_FACE(_ZN12daKuriKing_c19func_ov074_0211fbd0Ev)
+OV74_STATE_FACE(_ZN12daKuriKing_c19func_ov074_0211fc34Ev)
+OV74_STATE_FACE(_ZN12daKuriKing_c19func_ov074_0211fc38Ev)
+OV74_STATE_FACE(_ZN12daKuriKing_c19func_ov074_0211fd48Ev)
+OV74_STATE_FACE(_ZN12daKuriKing_c19func_ov074_0211fd74Ev)
+OV74_STATE_FACE(_ZN12daKuriKing_c19func_ov074_0211ffacEv)
+OV74_STATE_FACE(_ZN12daKuriKing_c19func_ov074_0211ffccEv)
 OV74_STATE_FACE(func_ov074_0212007c)
-OV74_STATE_FACE(func_ov074_02120080)
-OV74_STATE_FACE(func_ov074_0212016c)
-OV74_STATE_FACE(func_ov074_0212018c)
+OV74_STATE_FACE(_ZN12daKuriKing_c19func_ov074_02120080Ev)
+OV74_STATE_FACE(_ZN12daKuriKing_c19func_ov074_0212016cEv)
+OV74_STATE_FACE(_ZN12daKuriKing_c19func_ov074_0212018cEv)
 OV74_STATE_FACE(func_ov074_021201ec)
-OV74_STATE_FACE(func_ov074_021201f0)
+OV74_STATE_FACE(_ZN12daKuriKing_c19func_ov074_021201f0Ev)
 OV74_STATE_FACE(func_ov074_021203e0)
 
 /* Nine {enter, tick} cells, in the order src/__sinit_ov074_02122978.c copies
@@ -568,31 +568,31 @@ OV74_STATE_FACE(func_ov074_021203e0)
 const Ov074Seat g_ov074_seats[] = {
     /* state 0 */
     {data_ov074_02122dbc, 0x021203e0, (void *)ov74_st_func_ov074_021203e0,          "s0.enter/02122dbc"},
-    {data_ov074_02122de4, 0x021201f0, (void *)ov74_st_func_ov074_021201f0,          "s0.tick /02122de4"},
+    {data_ov074_02122de4, 0x021201f0, (void *)ov74_st__ZN12daKuriKing_c19func_ov074_021201f0Ev,          "s0.tick /02122de4"},
     /* state 1 */
     {data_ov074_02122e0c, 0x021201ec, (void *)ov74_st_func_ov074_021201ec,          "s1.enter/02122e0c"},
-    {data_ov074_02122dc4, 0x0212018c, (void *)ov74_st_func_ov074_0212018c,          "s1.tick /02122dc4"},
+    {data_ov074_02122dc4, 0x0212018c, (void *)ov74_st__ZN12daKuriKing_c19func_ov074_0212018cEv,          "s1.tick /02122dc4"},
     /* state 2 */
-    {data_ov074_02122d8c, 0x0211ffac, (void *)ov74_st_func_ov074_0211ffac,          "s2.enter/02122d8c"},
-    {data_ov074_02122dcc, 0x0211fd74, (void *)ov74_st_func_ov074_0211fd74,          "s2.tick /02122dcc"},
+    {data_ov074_02122d8c, 0x0211ffac, (void *)ov74_st__ZN12daKuriKing_c19func_ov074_0211ffacEv,          "s2.enter/02122d8c"},
+    {data_ov074_02122dcc, 0x0211fd74, (void *)ov74_st__ZN12daKuriKing_c19func_ov074_0211fd74Ev,          "s2.tick /02122dcc"},
     /* state 3 */
-    {data_ov074_02122dd4, 0x0212016c, (void *)ov74_st_func_ov074_0212016c,          "s3.enter/02122dd4"},
-    {data_ov074_02122d94, 0x02120080, (void *)ov74_st_func_ov074_02120080,          "s3.tick /02122d94"},
+    {data_ov074_02122dd4, 0x0212016c, (void *)ov74_st__ZN12daKuriKing_c19func_ov074_0212016cEv,          "s3.enter/02122dd4"},
+    {data_ov074_02122d94, 0x02120080, (void *)ov74_st__ZN12daKuriKing_c19func_ov074_02120080Ev,          "s3.tick /02122d94"},
     /* state 4 */
     {data_ov074_02122d9c, 0x0212007c, (void *)ov74_st_func_ov074_0212007c,          "s4.enter/02122d9c"},
-    {data_ov074_02122da4, 0x0211ffcc, (void *)ov74_st_func_ov074_0211ffcc,          "s4.tick /02122da4"},
+    {data_ov074_02122da4, 0x0211ffcc, (void *)ov74_st__ZN12daKuriKing_c19func_ov074_0211ffccEv,          "s4.tick /02122da4"},
     /* state 5 */
-    {data_ov074_02122d84, 0x0211fd48, (void *)ov74_st_func_ov074_0211fd48,          "s5.enter/02122d84"},
-    {data_ov074_02122dac, 0x0211fc38, (void *)ov74_st_func_ov074_0211fc38,          "s5.tick /02122dac"},
+    {data_ov074_02122d84, 0x0211fd48, (void *)ov74_st__ZN12daKuriKing_c19func_ov074_0211fd48Ev,          "s5.enter/02122d84"},
+    {data_ov074_02122dac, 0x0211fc38, (void *)ov74_st__ZN12daKuriKing_c19func_ov074_0211fc38Ev,          "s5.tick /02122dac"},
     /* state 6 */
-    {data_ov074_02122e1c, 0x0211fb84, (void *)ov74_st_func_ov074_0211fb84,          "s6.enter/02122e1c"},
-    {data_ov074_02122e14, 0x0211fa74, (void *)ov74_st_func_ov074_0211fa74,          "s6.tick /02122e14"},
+    {data_ov074_02122e1c, 0x0211fb84, (void *)ov74_st__ZN12daKuriKing_c19func_ov074_0211fb84Ev,          "s6.enter/02122e1c"},
+    {data_ov074_02122e14, 0x0211fa74, (void *)ov74_st__ZN12daKuriKing_c19func_ov074_0211fa74Ev,          "s6.tick /02122e14"},
     /* state 7 */
-    {data_ov074_02122db4, 0x0211fa08, (void *)ov74_st_func_ov074_0211fa08,          "s7.enter/02122db4"},
-    {data_ov074_02122df4, 0x0211f5b8, (void *)ov74_st_func_ov074_0211f5b8,          "s7.tick /02122df4"},
+    {data_ov074_02122db4, 0x0211fa08, (void *)ov74_st__ZN12daKuriKing_c19func_ov074_0211fa08Ev,          "s7.enter/02122db4"},
+    {data_ov074_02122df4, 0x0211f5b8, (void *)ov74_st__ZN12daKuriKing_c19func_ov074_0211f5b8Ev,          "s7.tick /02122df4"},
     /* state 8 */
-    {data_ov074_02122dec, 0x0211fc34, (void *)ov74_st_func_ov074_0211fc34,          "s8.enter/02122dec"},
-    {data_ov074_02122ddc, 0x0211fbd0, (void *)ov74_st_func_ov074_0211fbd0,          "s8.tick /02122ddc"},
+    {data_ov074_02122dec, 0x0211fc34, (void *)ov74_st__ZN12daKuriKing_c19func_ov074_0211fc34Ev,          "s8.enter/02122dec"},
+    {data_ov074_02122ddc, 0x0211fbd0, (void *)ov74_st__ZN12daKuriKing_c19func_ov074_0211fbd0Ev,          "s8.tick /02122ddc"},
 };
 DSSTATE_BEGIN
 bool g_ov074_seated;
@@ -697,18 +697,18 @@ static int __fastcall ov74_egg(void *s, void *)
 
 /* the class's own slots */
 static int __fastcall gb_init(void *s, void *)
-{ return _ZN8Goomboss13InitResourcesEv(s); }
+{ return _ZN12daKuriKing_c13InitResourcesEv(s); }
 static int __fastcall gb_clean(void *s, void *)
-{ return _ZN8Goomboss16CleanupResourcesEv(s); }
+{ return _ZN12daKuriKing_c16CleanupResourcesEv(s); }
 static int __fastcall gb_behavior(void *s, void *)
-{ return _ZN8Goomboss8BehaviorEv(s); }
+{ return _ZN12daKuriKing_c8BehaviorEv(s); }
 static int __fastcall gb_render(void *s, void *)
 { port_actor_render_probe("GOOMBOSS", (char *)s + 0x210);
-  return _ZN8Goomboss6RenderEv(s); }
+  return _ZN12daKuriKing_c6RenderEv(s); }
 static int __fastcall gb_d1(void *s, void *)
-{ return _ZN8GoombossD1Ev(s); }
+{ return _ZN12daKuriKing_cD1Ev(s); }
 static int __fastcall gb_d0(void *s, void *)
-{ return _ZN8GoombossD0Ev(s); }
+{ return _ZN12daKuriKing_cD0Ev(s); }
 
 /* ONE table and TWO registry rows (198 and 199) but ONE caller shape, so the
    shared half is written inline -- the gate-200 elided-stores bug needs two
@@ -724,7 +724,7 @@ extern "C" void hal_fill_goomboss_vtable(void)
 {
     port_ov074_states_seat();
     port_ov074_level_files_seat();
-    void *volatile *vt = (void *volatile *)_ZTV8Goomboss;
+    void *volatile *vt = (void *volatile *)_ZTV12daKuriKing_c;
     vt[0]  = (void *)gb_init;
     vt[1]  = (void *)ov74_binit;
     vt[2]  = (void *)ov74_ainit;
@@ -770,8 +770,8 @@ extern "C" void hal_fill_goomboss_vtable(void)
 // its src TU is held out of the slice and port/unmatched/Goomboss_HostSites.cpp
 // defines _ZN8Goomboss6RenderEv directly (the ModelAnim slot-5 collision).
 extern "C" {
-int _ZN8Goomboss16CleanupResourcesEv(void *self)
-{ return ((Goomboss *)self)->Goomboss::CleanupResources(); }
-int _ZN8Goomboss8BehaviorEv(void *self)
-{ return ((Goomboss *)self)->Goomboss::Behavior(); }
+int _ZN12daKuriKing_c16CleanupResourcesEv(void *self)
+{ return ((daKuriKing_c *)self)->daKuriKing_c::CleanupResources(); }
+int _ZN12daKuriKing_c8BehaviorEv(void *self)
+{ return ((daKuriKing_c *)self)->daKuriKing_c::Behavior(); }
 }

@@ -90,15 +90,15 @@
 # so it keeps the retired stand-in under PORT_COMMS_SEAM_PROBE_FACE_020408B0 --
 # the same shape mp_sleepwake uses for the retired OS_SleepThread pair. No
 # shipped target compiles it.
-src/func_020408b0.c
-src/func_020616e8.c
-src/func_02061188.c
-src/func_0206116c.c
-src/func_0206152c.c
-src/func_02061674.c
-src/func_02061c88.c
-src/func_02058894.c
-src/func_02058940.c
-src/func_020672d0.c
+src/unnamed/arm9/0204/func_020408b0.c
+src/unnamed/arm9/0206/func_020616e8.c
+src/unnamed/arm9/0206/func_02061188.c
+src/unnamed/arm9/0206/func_0206116c.c
+src/unnamed/arm9/0206/func_0206152c.c
+src/unnamed/arm9/0206/func_02061674.c
+src/unnamed/arm9/0206/func_02061c88.c
+src/unnamed/arm9/0205/func_02058894.c
+src/unnamed/arm9/0205/func_02058940.c
+src/unnamed/arm9/0206/func_020672d0.c
 src/WM_CheckStateEx.c
 src/WM_GetSystemWork.c

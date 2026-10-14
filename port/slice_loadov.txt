@@ -67,4 +67,4 @@
 # rides SLICE214_SOURCES, which smoke_player does not carry. smoke_player keeps
 # the face, moved out of hal/scene_boot.cpp (where it would be a duplicate
 # symbol on the two window targets) into hal/nitrofs_face.cpp.
-src/func_02017e94.c
+src/unnamed/arm9/0201/func_02017e94.c

@@ -112,14 +112,14 @@
 # smoke_player and mp_comms_seam do not.
 #
 # Plain C, eleven files, no struct layout option and no pointer-to-member.
-src/func_020652fc.c
-src/func_02065234.c
-src/func_02065050.c
-src/func_020650d8.c
-src/func_020654d0.c
-src/func_02065500.c
-src/func_02063ea8.c
-src/func_02064470.c
-src/func_02064674.c
-src/func_020647a4.c
-src/func_020647d8.c
+src/unnamed/arm9/0206/func_020652fc.c
+src/unnamed/arm9/0206/func_02065234.c
+src/unnamed/arm9/0206/func_02065050.c
+src/unnamed/arm9/0206/func_020650d8.c
+src/unnamed/arm9/0206/func_020654d0.c
+src/unnamed/arm9/0206/func_02065500.c
+src/unnamed/arm9/0206/func_02063ea8.c
+src/unnamed/arm9/0206/func_02064470.c
+src/unnamed/arm9/0206/func_02064674.c
+src/unnamed/arm9/0206/func_020647a4.c
+src/unnamed/arm9/0206/func_020647d8.c

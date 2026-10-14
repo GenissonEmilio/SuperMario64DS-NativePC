@@ -2596,7 +2596,7 @@ static void port_stage_suppress(PortLvlOverlay *o, unsigned kind_mask,
 }
 
 extern "C" {
-void _ZN5Stage18LoadClsnAndObjectsER11LVL_OverlayjR7dBgW_Kc(void *ovl,
+void _ZN10dScStage_c18LoadClsnAndObjectsER11LVL_OverlayjR7dBgW_Kc(void *ovl,
                                                                   unsigned p,
                                                                   void *mc);
 extern signed char data_0209f2f8;    /* current level */
@@ -2771,7 +2771,7 @@ extern "C" void *port_stage_boot_body(void *mc, int spawn);
    run, which is the legacy no-Stage boot; _ZN5Stage9LoadModelEv is matched
    src, on slice_gate26.txt:29 and already linked. */
 extern "C" void *port_stage_object(void);
-extern "C" void _ZN5Stage9LoadModelEv(char *self);
+extern "C" void _ZN10dScStage_c9LoadModelEv(char *self);
 extern "C" void port_fader_wipes_load(void);   /* hal/fader_wipes.cpp */
 
 void *port_stage_a_boot(void *mc, int spawn)
@@ -3960,7 +3960,7 @@ extern "C" void *port_stage_boot_body(void *mc, int spawn)
     {
         void *st = port_stage_object();
         if (st)
-            _ZN5Stage9LoadModelEv((char *)st);
+            _ZN10dScStage_c9LoadModelEv((char *)st);
     }
 
     /* THE FRAME DIVIDER, Stage::InitResources:381 -- the statement between
@@ -4002,7 +4002,7 @@ extern "C" void *port_stage_boot_body(void *mc, int spawn)
     /* Stage::InitResources:382 passes data_0209f264, not a literal: it is
        the entrance record index LoadEntranceObjects offsets its array by
        (`e += p3`). The hard-coded 0 put every level change on record 0. */
-    _ZN5Stage18LoadClsnAndObjectsER11LVL_OverlayjR7dBgW_Kc(
+    _ZN10dScStage_c18LoadClsnAndObjectsER11LVL_OverlayjR7dBgW_Kc(
         o, (unsigned)data_0209f264[0], mc);
     port_intro_watch("after LoadClsnAndObjects");
     port_scene_canary("after LoadClsnAndObjects");
@@ -5976,7 +5976,7 @@ extern "C" int port_model_shrink_enabled(void)
 // than a wrong number.
 extern "C" {
 void _ZN6Memory10DeallocateEPv(void *p);  /* hal/fs.cpp: Memory::Deallocate */
-void _ZN5Stage18ResetMeshCollidersEv(void);
+void _ZN10dScStage_c18ResetMeshCollidersEv(void);
 int port_level_mount_register(int level, void *(*fn)(void));
 unsigned port_level_ds_overlay(int level);
 void port_actor_census_reset(void);      /* hal/actor_registry.cpp */
@@ -6453,7 +6453,7 @@ extern "C" void port_level_stage_reseat(void *stagev)
 {
     char *stage = (char *)stagev;
 
-    _ZN5Stage18ResetMeshCollidersEv();
+    _ZN10dScStage_c18ResetMeshCollidersEv();
 
     /* The registry that pointed at the outgoing level's KCL image is now empty,
        so it is safe to return that image to the allocator. port_level_reset_host

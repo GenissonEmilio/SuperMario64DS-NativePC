@@ -15,5 +15,5 @@
 # rows spell the argument the ROM passes; the table there carries the ROM
 # listings. src/ is untouched and each object still carries its TU's stem.
 # They were rows of port/slice_ov007.txt, which marks where each one was.
-src/func_ov007_020b3360.c
-src/func_ov007_020b3c54.c
+src/unnamed/ov007/func_ov007_020b3360.c
+src/unnamed/ov007/func_ov007_020b3c54.c

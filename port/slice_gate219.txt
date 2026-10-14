@@ -22,55 +22,55 @@
 #
 # Every line below was checked to exist on disk and to carry no NONMATCHING
 # banner and no guess marker before it was written.
-src/func_ov002_020f32e4.c
-src/func_ov002_020f30f8.c
-src/func_ov002_020f3d38.c
-src/func_ov002_020f3ba0.c
-src/func_ov002_020f3ae8.c
-src/func_ov002_020f378c.c
-src/func_ov002_020f57c0.c
-src/func_ov002_020f569c.c
-src/func_ov002_020f5678.c
-src/func_ov002_020f5894.c
-src/func_ov002_020f35e4.c
-src/func_ov002_020f34bc.c
-src/func_ov002_020f340c.c
-src/func_ov002_020f335c.c
-src/func_ov002_020f2d70.c
-src/func_ov002_020f2d0c.c
-src/func_ov002_020f2bf4.c
-src/func_ov002_020f2aec.c
-src/func_ov002_020f2a88.c
-src/func_ov002_020f2a78.c
-src/func_ov002_020f55b4.c
-src/func_ov002_020f5328.c
-src/func_ov002_020f4d70.c
-src/func_ov002_020f4a2c.c
-src/func_ov002_020f4710.c
-src/func_ov002_020f40fc.c
-src/func_ov002_020f5d34.c
-src/func_ov002_020f5cd0.c
-src/func_ov002_020f5c88.c
-src/func_ov002_020f5c40.c
-src/func_ov002_020f5bf4.c
-src/func_ov002_020f5bcc.c
-src/func_ov002_020f5b98.c
-src/func_ov002_020f5b8c.c
-src/func_ov002_020f5b88.c
-src/func_ov002_020f5b84.c
-src/func_ov002_020f5b80.c
-src/func_ov002_020f5b7c.c
-src/func_ov002_020f5b24.c
-src/func_ov002_020f5efc.c
-src/func_ov002_020f5ef0.c
-src/func_ov002_020f5ee4.c
-src/func_ov002_020f5ed8.c
-src/func_ov002_020f5eb8.c
-src/func_ov002_020f5e98.c
-src/func_ov002_020f5e78.c
-src/func_ov002_020f5e58.c
-src/func_ov002_020f5e38.c
-src/func_ov002_020f5e18.c
+src/actors/daDemo_c.cpp
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f30f8.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f3d38.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f3ba0.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f3ae8.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f378c.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f57c0.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f569c.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5678.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5894.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f35e4.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f34bc.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f340c.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f335c.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f2d70.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f2d0c.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f2bf4.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f2aec.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f2a88.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f2a78.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f55b4.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5328.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f4d70.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f4a2c.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f4710.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f40fc.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5d34.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5cd0.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5c88.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5c40.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5bf4.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5bcc.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5b98.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5b8c.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5b88.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5b84.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5b80.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5b7c.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5b24.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5efc.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5ef0.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5ee4.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5ed8.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5eb8.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5e98.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5e78.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5e58.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5e38.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5e18.c
 
 # ---- SECTION 2: THE THREE TRAP-FILLED FADER TABLES -- REMOVED --------------
 #
@@ -97,12 +97,12 @@ src/func_ov002_020f5e18.c
 # (func_0201ef50, func_ov002_020f2e30 and func_ov002_020f39ec are the three
 # closure names that were ALREADY offered, on slice_intro.txt, and are not
 # repeated here.)
-src/func_ov002_020f2958.c
-src/func_ov002_020f2a48.c
-src/func_ov002_020f2f18.c
-src/func_ov002_020f2f64.c
-src/func_ov002_020f2f9c.c
-src/func_ov002_020f37fc.c
-src/func_ov002_020f3828.c
-src/func_ov002_020f3954.c
-src/func_ov002_020f5a94.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f2958.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f2a48.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f2f18.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f2f64.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f2f9c.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f37fc.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f3828.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f3954.c
+# FOLDED into src/actors/daDemo_c.cpp (row 25): src/func_ov002_020f5a94.c

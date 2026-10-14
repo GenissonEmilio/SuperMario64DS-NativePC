@@ -46,12 +46,12 @@
 # PORT_HOST_ABI in hal/boot2_thread.cpp with the reason (an x86 frame is not an
 # ARM frame; 1 KB of one is gone inside the entry function's prologue), beside
 # the existing exception for the context block itself.
-src/func_02058200.c
+src/unnamed/arm9/0205/func_02058200.c
 #
 # THE SLOT ALLOCATOR. `for i in 0..15: if table[i] == 0 return i`, over the
 # same sixteen words func_02058200 then writes. Its correctness depends on the
 # grouped OSThreadInfo above and on nothing else.
-src/func_02058538.c
+src/unnamed/arm9/0205/func_02058538.c
 #
 # THE EXIT THUNK, whose ADDRESS func_02058200 stores in every context it
 # builds (`str r0, [sb, #0x3c]`, pool word 0x020581a8) -- so the link needs it
@@ -63,7 +63,7 @@ src/func_02058538.c
 #     hal/boot_hw.cpp already carries the two /alternatename bridges this TU
 #     needs (?data_020a612c@@3PAUObj581@@A and ?data_020a6148@@3PAHA): it is
 #     a .cpp that spells both names outside extern "C".
-src/func_020581a8.cpp
+src/unnamed/arm9/0205/func_020581a8.cpp
 #
 # ITS TWO CALLEES, both reached only from the thunk:
 #   func_02058488  unlink the exiting thread from the ready list -- the mirror
@@ -76,9 +76,9 @@ src/func_020581a8.cpp
 #                  body would call it with a garbage queue pointer. That is a
 #                  defect in the decompiled TU, not in this seat -- named here
 #                  so the next reader does not have to find it twice.)
-src/func_02058488.c
-src/func_02058a44.c
-src/func_02058960.c
+src/unnamed/arm9/0205/func_02058488.c
+src/unnamed/arm9/0205/func_02058a44.c
+src/unnamed/arm9/0205/func_02058960.c
 #
 # MAKE-RUNNABLE-AND-RESCHEDULE. Four lines: IRQ off, state = 1, func_02057f54,
 # IRQ back. hal/scene_vs_menu.cpp faced this and said so outright -- "its ROM
@@ -88,7 +88,7 @@ src/func_02058960.c
 # the CARD driver's thread at data_020a81bc -- a thread nothing in this build
 # created". This gate creates it, which is the exact condition that note put
 # on the row, so the face is retired and the ROM body takes its place.
-src/func_02058048.c
+src/unnamed/arm9/0205/func_02058048.c
 #
 # ===========================================================================
 # 2. THE CARD DRIVER'S THREAD, WHICH IS WHAT THE CREATION IS FOR
@@ -107,7 +107,7 @@ src/func_02058048.c
 # THR's (the port has not run on one fiber since), the channel is lane IPC's
 # (hal/boot2_ipc.cpp claims 0xb at power-on and src/func_0205ba64.c is on
 # port/slice_gate2ipc.txt). What was left was the creation, and it is above.
-src/func_0206002c.c
+src/unnamed/arm9/0206/func_0206002c.c
 #
 # THE THREAD'S OWN BODY. It disables interrupts, and while the work object's
 # state word has no bit 8 set it parks its own record pointer at +0xd0 and
@@ -115,7 +115,7 @@ src/func_0206002c.c
 # reschedule. So the first thing the card thread does after being entered is
 # go back to sleep, which is exactly what port/tools/thread_create_proof.py
 # measures, and it is ROM code doing it.
-src/func_020602bc.cpp
+src/unnamed/arm9/0206/func_020602bc.cpp
 #
 # AND THE PXI CALLBACK func_0206002c REGISTERS FOR CHANNEL 0xB. Its address is
 # taken by the line above, so the link needs it. It is never CALLED in this
@@ -124,7 +124,7 @@ src/func_020602bc.cpp
 # the ARM7 model never replies with one. If a later lane enrols the ROM's
 # func_02060f60, this is the body that wakes the card thread when the answer
 # comes back -- func_02058048 on the record parked at +0xd0.
-src/func_02060310.c
+src/unnamed/arm9/0206/func_02060310.c
 #
 # ===========================================================================
 # 3. WHAT IS NOT HERE

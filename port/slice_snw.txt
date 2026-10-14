@@ -392,30 +392,30 @@
 # with #, so a trailing comment kills the line silently and the linkage delta
 # comes up short.  Run mg9 lane PSY banked that one.
 #
-src/d_s_mg_snowball.cpp
-src/func_ov006_021295ac.cpp
-src/_ZN15dScMgSnowball_c13InitResourcesEv.cpp
-src/_ZN15dScMgSnowball_c16CleanupResourcesEv.cpp
-src/_ZN15dScMgSnowball_c8BehaviorEv.cpp
-src/_ZN15dScMgSnowball_cD1Ev.cpp
+src/actors/dScMgSnowball_c.cpp
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_021295ac.cpp
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_c13InitResourcesEv.cpp
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_c16CleanupResourcesEv.cpp
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_c8BehaviorEv.cpp
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_cD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN15dScMgSnowball_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN15dScMgSnowball_cD0Ev.cpp
-src/_ZN15dScMgSnowball_c13OnYoshiTryEatEi.cpp
-src/_ZN15dScMgSnowball_c11OnAttacked2Ev.cpp
-src/_ZN15dScMgSnowball_c8OnKickedEv.cpp
-src/_ZN15dScMgSnowball_c8OnPushedEv.cpp
-src/func_ov006_0212a274.c
-src/func_ov006_0212a110.c
-src/func_ov006_0212a000.c
-src/func_ov006_02129eec.c
-src/func_ov006_02129e28.c
-src/func_ov006_02129cb0.c
-src/func_ov006_02129b74.c
-src/func_ov006_02129a34.c
-src/func_ov006_0212992c.c
-src/func_ov006_02129894.cpp
-src/func_ov006_021297c0.c
-src/func_ov006_0212972c.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_c13OnYoshiTryEatEi.cpp
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_c11OnAttacked2Ev.cpp
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_c8OnKickedEv.cpp
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_c8OnPushedEv.cpp
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_0212a274.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_0212a110.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_0212a000.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02129eec.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02129e28.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02129cb0.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02129b74.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02129a34.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_0212992c.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02129894.cpp
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_021297c0.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_0212972c.c
 #
 # ---- 12. WAVE 1: WHAT THE LINK ASKED FOR --------------------------------
 #
@@ -443,14 +443,14 @@ src/func_ov006_0212972c.c
 # port/mg_fanout_costs.txt says to budget ONE wave plus its own alias row;
 # this class took one wave, one alias and two traps.
 #
-src/func_ov006_02125800.c
-src/func_ov006_02125804.c
-src/func_ov006_02125890.c
-src/func_ov006_02126948.c
-src/func_ov006_02126a98.c
-src/func_ov006_021279b0.cpp
-src/func_ov006_0212968c.c
-src/func_ov006_02129690.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02125800.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02125804.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02125890.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02126948.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02126a98.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_021279b0.cpp
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_0212968c.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02129690.c
 #
 # ---- 13. WAVE 2: THE TRAP RULE FIRING -----------------------------------
 #
@@ -481,8 +481,8 @@ src/func_ov006_02129690.c
 # against section 14's "one wave plus its own alias row".  The trap rule is the
 # whole of the difference and it is predictable: budget an extra wave per trap.
 #
-src/func_ov006_02125994.c
-src/func_ov006_0212a3c0.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02125994.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_0212a3c0.c
 #
 # ---- 14. WAVE 3: A DEFECT ONLY A RUN COULD FIND -------------------------
 #
@@ -671,12 +671,12 @@ src/func_ov006_0212a3c0.c
 #                               +0xac58/+0xacd8 that func_ov006_02126ee4 fills
 #   src/func_ov006_02125cdc.c   the course-geometry (wall) probe
 #
-src/func_ov006_02125f68.cpp
-src/func_ov006_02126ee4.cpp
-src/func_ov006_02126b4c.c
-src/func_ov006_021259d8.c
-src/func_ov006_02125bbc.c
-src/func_ov006_02125cdc.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02125f68.cpp
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02126ee4.cpp
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02126b4c.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_021259d8.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02125bbc.c
+# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02125cdc.c
 
 # ---- 18. THE GOAL CRITERION WAS A PRE-SEAT RESULT, AND IS RE-SCOPED --------
 #

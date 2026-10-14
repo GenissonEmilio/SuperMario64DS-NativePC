@@ -155,61 +155,61 @@ void _ZN5ModelD1Ev(void *self);
 void _ZN9ModelAnimD1Ev(void *self);
 void _ZN15TextureSequenceD1Ev(void *self);
 void _ZN10dBgCh_ActrD1Ev(void *self);
-void _ZN11ShadowModelD1Ev(void *self);
+void _ZN17dExtShadowModel_cD1Ev(void *self);
 void _ZN7dCcAc_cD1Ev(void *self);
 void _ZN10dCcAcPos_cD1Ev(void *self);
 
 /* SPIKE BOMB (284) -- the SHIFTED spellings, see the class block below */
-int _ZN9SpikeBomb13InitResourcesEv(void *self);   /* slot 0  */
-int _ZN9SpikeBomb16CleanupResourcesEv(void);      /* slot 3  */
-int _ZN9SpikeBomb8BehaviorEv(void *self);         /* slot 6  */
-int _ZN9SpikeBomb6RenderEv(void *self);           /* slot 9  */
-int *_ZN9SpikeBombD0Ev(int *self);                /* slot 17 */
+int _ZN9daKirai_c13InitResourcesEv(void *self);   /* slot 0  */
+int _ZN9daKirai_c16CleanupResourcesEv(void);      /* slot 3  */
+int _ZN9daKirai_c8BehaviorEv(void *self);         /* slot 6  */
+int _ZN9daKirai_c6RenderEv(void *self);           /* slot 9  */
+int *_ZN9daKirai_cD0Ev(int *self);                /* slot 17 */
 void *daKirai_c_classInit(void);
 
 /* BOWSER (279) */
-int _ZN6Bowser13InitResourcesEv(void *self);               /* slot 0  */
-int _ZN6Bowser16CleanupResourcesEv(void);                  /* slot 3  */
-int _ZN6Bowser8BehaviorEv(void *self);   /* slot 6, HOST COPY (StateDispatch) */
-int _ZN6Bowser6RenderEv(void *self);   /* slot 9, HOST COPY (Ov060_Renders) */
-void _ZN6Bowser16OnPendingDestroyEv(void);                 /* slot 12 */
-int *_ZN6BowserD0Ev(int *self);                            /* slot 17 */
+int _ZN7daKpa_c13InitResourcesEv(void *self);               /* slot 0  */
+int _ZN7daKpa_c16CleanupResourcesEv(void);                  /* slot 3  */
+int _ZN7daKpa_c8BehaviorEv(void *self);   /* slot 6, HOST COPY (StateDispatch) */
+int _ZN7daKpa_c6RenderEv(void *self);   /* slot 9, HOST COPY (Ov060_Renders) */
+void _ZN7daKpa_c16OnPendingDestroyEv(void);                 /* slot 12 */
+int *_ZN7daKpa_cD0Ev(int *self);                            /* slot 17 */
 void *daKpa_c_classInit(void);
 
 /* BOWSER TAIL (278) */
-int _ZN10BowserTail13InitResourcesEv(void *self);          /* slot 0  */
-int _ZN10BowserTail16CleanupResourcesEv(void);             /* slot 3  */
-int _ZN10BowserTail8BehaviorEv(void *self);                /* slot 6  */
-int _ZN10BowserTail6RenderEv(void);                        /* slot 9  */
-int *_ZN10BowserTailD0Ev(int *self);                       /* slot 17 */
+int _ZN11daKpaTail_c13InitResourcesEv(void *self);          /* slot 0  */
+int _ZN11daKpaTail_c16CleanupResourcesEv(void);             /* slot 3  */
+int _ZN11daKpaTail_c8BehaviorEv(void *self);                /* slot 6  */
+int _ZN11daKpaTail_c6RenderEv(void);                        /* slot 9  */
+int *_ZN11daKpaTail_cD0Ev(int *self);                       /* slot 17 */
 void *daKpaTail_c_classInit(void);
 
 /* BOWSER FIRE (280) -- an Enemy build; Init/Behavior are HOST COPIES */
-int _ZN10BowserFire13InitResourcesEv(void *self);          /* slot 0  */
-int _ZN10BowserFire16CleanupResourcesEv(void);             /* slot 3  */
-int _ZN10BowserFire8BehaviorEv(void *self);                /* slot 6  */
-int _ZN10BowserFire6RenderEv(void);                        /* slot 9  */
-int *_ZN10BowserFireD1Ev(int *self);                       /* slot 16 */
-int *_ZN10BowserFireD0Ev(int *self);                       /* slot 17 */
+int _ZN11daKpaFire_c13InitResourcesEv(void *self);          /* slot 0  */
+int _ZN11daKpaFire_c16CleanupResourcesEv(void);             /* slot 3  */
+int _ZN11daKpaFire_c8BehaviorEv(void *self);                /* slot 6  */
+int _ZN11daKpaFire_c6RenderEv(void);                        /* slot 9  */
+int *_ZN11daKpaFire_cD1Ev(int *self);                       /* slot 16 */
+int *_ZN11daKpaFire_cD0Ev(int *self);                       /* slot 17 */
 void *daKpaFire_c_classInit(void);
 
 /* BOWSER SKY PLATFORM (167) -- every own body is a func_ov060_* already in
    slice_w5e.txt; only slot 6 is a host copy (Ov060_StateDispatch). */
-int _ZN17BowserSkyPlatform13InitResourcesEv(void *self);                       /* slot 0  */
-int _ZN17BowserSkyPlatform16CleanupResourcesEv(void *self);                       /* slot 3  */
-int _ZN17BowserSkyPlatform8BehaviorEv(void *self);                       /* slot 6  */
-int _ZN17BowserSkyPlatform6RenderEv(void *self);                       /* slot 9  */
-int *_ZN17BowserSkyPlatformD1Ev(int *self);                       /* slot 16 */
-int *_ZN17BowserSkyPlatformD0Ev(int *self);                       /* slot 17 */
+int _ZN10daKpa3Bg_c13InitResourcesEv(void *self);                       /* slot 0  */
+int _ZN10daKpa3Bg_c16CleanupResourcesEv(void *self);                       /* slot 3  */
+int _ZN10daKpa3Bg_c8BehaviorEv(void *self);                       /* slot 6  */
+int _ZN10daKpa3Bg_c6RenderEv(void *self);                       /* slot 9  */
+int *_ZN10daKpa3Bg_cD1Ev(int *self);                       /* slot 16 */
+int *_ZN10daKpa3Bg_cD0Ev(int *self);                       /* slot 17 */
 void *daKpa3Bg_c_classInit(void);
 
 DSSTATE_BEGIN
 void *_ZTV18BowserFireSeaArena[32];
-void *_ZTV9SpikeBomb[31];   /* SPIKE BOMB's table, 0x0211aa8c */
-void *_ZTV6Bowser[31];               /* 0x0211a6b8 */
-void *_ZTV10BowserTail[31];          /* 0x0211a634 */
-void *_ZTV10BowserFire[31];          /* 0x0211a7f4 */
-void *_ZTV17BowserSkyPlatform[32];       /* BOWSER SKY PLATFORM's, Kill @31 */
+void *_ZTV9daKirai_c[31];   /* SPIKE BOMB's table, 0x0211aa8c */
+void *_ZTV7daKpa_c[31];               /* 0x0211a6b8 */
+void *_ZTV11daKpaTail_c[31];          /* 0x0211a634 */
+void *_ZTV11daKpaFire_c[31];          /* 0x0211a7f4 */
+void *_ZTV10daKpa3Bg_c[32];       /* BOWSER SKY PLATFORM's, Kill @31 */
 DSSTATE_END
 }
 
@@ -226,11 +226,10 @@ DSSTATE_END
    restore their tables by. Same table, sibling name -- the daKpa2Bg_c line
    above, four more times. kirai = the naval mine = SPIKE BOMB (the label
    shift; the daKirai_c name belongs to the table daKirai_c_classInit stores). */
-#pragma comment(linker, "/alternatename:__ZTV9daKirai_c=__ZTV9SpikeBomb")
-#pragma comment(linker, "/alternatename:__ZTV7daKpa_c=__ZTV6Bowser")
-#pragma comment(linker, "/alternatename:__ZTV11daKpaTail_c=__ZTV10BowserTail")
-#pragma comment(linker, "/alternatename:__ZTV11daKpaFire_c=__ZTV10BowserFire")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV9daKirai_c=__ZTV9daKirai_c")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV7daKpa_c=__ZTV7daKpa_c")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV11daKpaTail_c=__ZTV11daKpaTail_c")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV11daKpaFire_c=__ZTV11daKpaFire_c")
 /* The ov066-window spellings of ov060's own bss cells (ov060_syms.txt's
    window note): same bytes, one storage, sibling names aliased on.
    THE THREE /alternatename ROWS THAT USED TO SIT HERE ARE GONE. run rel0215
@@ -296,7 +295,7 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:?func_020393d4@@YAHPAX0@Z=_func_020393d4")
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines __ZN4dBgW16UpdatePosAndAngsERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_, and nothing references ?_ZN4dBgW16UpdatePosAndAngsERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_@@YAHXZ, so the row can never fire and nothing wants it to. */
 // #pragma comment(linker, "/alternatename:?_ZN4dBgW16UpdatePosAndAngsERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_@@YAHXZ=__ZN4dBgW16UpdatePosAndAngsERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_")
-#pragma comment(linker, "/alternatename:?GetFrameCount@Animation@@QBEHXZ=?GetFrameCount@Animation@@QBEIXZ")
+#pragma comment(linker, "/alternatename:?GetFrameCount@dExtFrameCtrl_c@@QBEHXZ=?GetFrameCount@dExtFrameCtrl_c@@QBEIXZ")
 #pragma comment(linker, "/alternatename:__ZN5Sound22StopLoadedMusic_Layer1Ej=?StopLoadedMusic_Layer1@Sound@@SAXI@Z")
 
 /* ?Enable@dBgW@@QAEXPAUActor@@@Z -- the STRUCT-Actor variant of
@@ -591,14 +590,14 @@ extern "C" void hal_fill_bowser_fire_sea_arena_vtable(void)
 //     because Virtual18 already occupies its slot 5, and this class has no
 //     ModelAnim.
 static int __fastcall spikebomb_init(void *s, void *)
-{ return _ZN9SpikeBomb13InitResourcesEv(s); }
+{ return _ZN9daKirai_c13InitResourcesEv(s); }
 static int __fastcall spikebomb_clean(void *s, void *)
-{ return _ZN9SpikeBomb16CleanupResourcesEv(); }
+{ return _ZN9daKirai_c16CleanupResourcesEv(); }
 static int __fastcall spikebomb_behavior(void *s, void *)
-{ return _ZN9SpikeBomb8BehaviorEv(s); }
+{ return _ZN9daKirai_c8BehaviorEv(s); }
 static int __fastcall spikebomb_render(void *s, void *)
 { port_actor_render_probe("SPIKE_BOMB", (char *)s + 0xd4);
-  return _ZN9SpikeBomb6RenderEv(s); }
+  return _ZN9daKirai_c6RenderEv(s); }
 /* SLOT 16 IS THIS CLASS'S OWN D1. The ROM word 16 of 0x0211aa8c is 0x02118438,
    SpikeBomb's D1: its own vptr, then dCcAcPos_c +0x124, Model +0xd4, then
    dActor_c's D2 (read out of overlay_0060.bin). The slot used to seat
@@ -611,11 +610,11 @@ extern "C" void __fastcall actorport_d16t_SpikeBomb(void *, void *);
 static int __fastcall spikebomb_d1(void *s, void *e)
 { actorport_d16t_SpikeBomb(s, e); return (int)(size_t)s; }
 static int __fastcall spikebomb_d0(void *s, void *)
-{ return (int)(size_t)_ZN9SpikeBombD0Ev((int *)s); }
+{ return (int)(size_t)_ZN9daKirai_cD0Ev((int *)s); }
 extern "C" void hal_fill_spike_bomb_vtable(void)
 {
     port_ov60_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV9SpikeBomb;
+    void *volatile *vt = (void *volatile *)_ZTV9daKirai_c;
     ov60_fill_shared(vt);
     vt[0]  = (void *)spikebomb_init;
     vt[3]  = (void *)spikebomb_clean;
@@ -694,24 +693,24 @@ extern "C" void hal_fill_spike_bomb_vtable(void)
 // Actor { }` (stride 4) and Behavior over a never-defined one (stride 16),
 // against the ROM's 8. Its D1/D0 are .c and link directly.
 static int __fastcall bowser_init(void *s, void *)
-{ return _ZN6Bowser13InitResourcesEv(s); }
+{ return _ZN7daKpa_c13InitResourcesEv(s); }
 static int __fastcall bowser_clean(void *s, void *)
-{ return _ZN6Bowser16CleanupResourcesEv(); }
+{ return _ZN7daKpa_c16CleanupResourcesEv(); }
 static int __fastcall bowser_behavior(void *s, void *)
-{ return _ZN6Bowser8BehaviorEv(s); }
+{ return _ZN7daKpa_c8BehaviorEv(s); }
 static int __fastcall bowser_render(void *s, void *)
 { port_actor_render_probe("BOWSER", (char *)s + 0xd4);
-  return _ZN6Bowser6RenderEv(s); }
+  return _ZN7daKpa_c6RenderEv(s); }
 static int __fastcall bowser_pdes(void *s, void *)
-{ (void)s; _ZN6Bowser16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN7daKpa_c16OnPendingDestroyEv(); return 0; }
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (bowser_d1) spelled the same chain by hand. */
 static int __fastcall bowser_d0(void *s, void *)
-{ return (int)(size_t)_ZN6BowserD0Ev((int *)s); }
+{ return (int)(size_t)_ZN7daKpa_cD0Ev((int *)s); }
 extern "C" void hal_fill_bowser_vtable(void)
 {
     port_ov60_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV6Bowser;
+    void *volatile *vt = (void *volatile *)_ZTV7daKpa_c;
     ov60_fill_shared(vt);
     vt[0]  = (void *)bowser_init;
     vt[3]  = (void *)bowser_clean;
@@ -723,21 +722,21 @@ extern "C" void hal_fill_bowser_vtable(void)
 }
 
 static int __fastcall btail_init(void *s, void *)
-{ return _ZN10BowserTail13InitResourcesEv(s); }
+{ return _ZN11daKpaTail_c13InitResourcesEv(s); }
 static int __fastcall btail_clean(void *s, void *)
-{ return _ZN10BowserTail16CleanupResourcesEv(); }
+{ return _ZN11daKpaTail_c16CleanupResourcesEv(); }
 static int __fastcall btail_behavior(void *s, void *)
-{ return _ZN10BowserTail8BehaviorEv(s); }
+{ return _ZN11daKpaTail_c8BehaviorEv(s); }
 static int __fastcall btail_render(void *s, void *)
-{ (void)s; return _ZN10BowserTail6RenderEv(); }
+{ (void)s; return _ZN11daKpaTail_c6RenderEv(); }
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (btail_d1) spelled the same chain by hand. */
 static int __fastcall btail_d0(void *s, void *)
-{ return (int)(size_t)_ZN10BowserTailD0Ev((int *)s); }
+{ return (int)(size_t)_ZN11daKpaTail_cD0Ev((int *)s); }
 extern "C" void hal_fill_bowser_tail_vtable(void)
 {
     port_ov60_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV10BowserTail;
+    void *volatile *vt = (void *volatile *)_ZTV11daKpaTail_c;
     ov60_fill_shared(vt);
     vt[0]  = (void *)btail_init;
     vt[3]  = (void *)btail_clean;
@@ -748,21 +747,21 @@ extern "C" void hal_fill_bowser_tail_vtable(void)
 }
 
 static int __fastcall bfire_init(void *s, void *)
-{ return _ZN10BowserFire13InitResourcesEv(s); }
+{ return _ZN11daKpaFire_c13InitResourcesEv(s); }
 static int __fastcall bfire_clean(void *s, void *)
-{ return _ZN10BowserFire16CleanupResourcesEv(); }
+{ return _ZN11daKpaFire_c16CleanupResourcesEv(); }
 static int __fastcall bfire_behavior(void *s, void *)
-{ return _ZN10BowserFire8BehaviorEv(s); }
+{ return _ZN11daKpaFire_c8BehaviorEv(s); }
 static int __fastcall bfire_render(void *s, void *)
-{ (void)s; return _ZN10BowserFire6RenderEv(); }
+{ (void)s; return _ZN11daKpaFire_c6RenderEv(); }
 static int __fastcall bfire_d1(void *s, void *)
-{ return (int)(size_t)_ZN10BowserFireD1Ev((int *)s); }
+{ return (int)(size_t)_ZN11daKpaFire_cD1Ev((int *)s); }
 static int __fastcall bfire_d0(void *s, void *)
-{ return (int)(size_t)_ZN10BowserFireD0Ev((int *)s); }
+{ return (int)(size_t)_ZN11daKpaFire_cD0Ev((int *)s); }
 extern "C" void hal_fill_bowser_fire_vtable(void)
 {
     port_ov60_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV10BowserFire;
+    void *volatile *vt = (void *volatile *)_ZTV11daKpaFire_c;
     ov60_fill_shared(vt);
     vt[0]  = (void *)bfire_init;
     vt[3]  = (void *)bfire_clean;
@@ -794,22 +793,22 @@ extern "C" void hal_fill_bowser_fire_vtable(void)
 // registers here because the seat, the mount and the cast map are all in hand
 // and the row costs one line; level 40's mount is a separate lane.
 static int __fastcall skyplat_init(void *s, void *)
-{ return _ZN17BowserSkyPlatform13InitResourcesEv(s); }
+{ return _ZN10daKpa3Bg_c13InitResourcesEv(s); }
 static int __fastcall skyplat_clean(void *s, void *)
-{ return _ZN17BowserSkyPlatform16CleanupResourcesEv(s); }
+{ return _ZN10daKpa3Bg_c16CleanupResourcesEv(s); }
 static int __fastcall skyplat_behavior(void *s, void *)
-{ return _ZN17BowserSkyPlatform8BehaviorEv(s); }
+{ return _ZN10daKpa3Bg_c8BehaviorEv(s); }
 static int __fastcall skyplat_render(void *s, void *)
 { port_actor_render_probe("BOWSER_SKY_PLATFORM", (char *)s + 0xd4);
-  return _ZN17BowserSkyPlatform6RenderEv(s); }
+  return _ZN10daKpa3Bg_c6RenderEv(s); }
 static int __fastcall skyplat_d1(void *s, void *)
-{ return (int)(size_t)_ZN17BowserSkyPlatformD1Ev((int *)s); }
+{ return (int)(size_t)_ZN10daKpa3Bg_cD1Ev((int *)s); }
 static int __fastcall skyplat_d0(void *s, void *)
-{ return (int)(size_t)_ZN17BowserSkyPlatformD0Ev((int *)s); }
+{ return (int)(size_t)_ZN10daKpa3Bg_cD0Ev((int *)s); }
 extern "C" void hal_fill_bowser_sky_platform_vtable(void)
 {
     port_ov60_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV17BowserSkyPlatform;
+    void *volatile *vt = (void *volatile *)_ZTV10daKpa3Bg_c;
     ov60_fill_shared(vt);
     vt[0]  = (void *)skyplat_init;
     vt[3]  = (void *)skyplat_clean;
@@ -846,18 +845,18 @@ int _ZN10daKpa2Bg_c6RenderEv(void *self)
 // 0x02118ad4, and BowserSkyPlatform's own three at 0x021182b0 / 0x02118254 /
 // 0x0211822c. src/_ZN9SpikeBomb*.cpp define SpikeBomb's methods against
 // include/SpikeBomb.h, so each face is bound to its own class.
-#include "BowserSkyPlatform.h"
-#include "BowserTail.h"
-#include "SpikeBomb.h"
+#include "daKpa3Bg_c.h"
+#include "daKpaTail_c.h"
+#include "daKirai_c.h"
 extern "C" {
-int _ZN9SpikeBomb13InitResourcesEv(void *self)
-{ return ((SpikeBomb *)self)->SpikeBomb::InitResources(); }
-int _ZN9SpikeBomb8BehaviorEv(void *self)
-{ return ((SpikeBomb *)self)->SpikeBomb::Behavior(); }
-int _ZN9SpikeBomb6RenderEv(void *self)
-{ return ((SpikeBomb *)self)->SpikeBomb::Render(); }
-int _ZN10BowserTail13InitResourcesEv(void *self)
-{ return ((BowserTail *)self)->BowserTail::InitResources(); }
-int _ZN10BowserTail8BehaviorEv(void *self)
-{ return ((BowserTail *)self)->BowserTail::Behavior(); }
+int _ZN9daKirai_c13InitResourcesEv(void *self)
+{ return ((daKirai_c *)self)->daKirai_c::InitResources(); }
+int _ZN9daKirai_c8BehaviorEv(void *self)
+{ return ((daKirai_c *)self)->daKirai_c::Behavior(); }
+int _ZN9daKirai_c6RenderEv(void *self)
+{ return ((daKirai_c *)self)->daKirai_c::Render(); }
+int _ZN11daKpaTail_c13InitResourcesEv(void *self)
+{ return ((daKpaTail_c *)self)->daKpaTail_c::InitResources(); }
+int _ZN11daKpaTail_c8BehaviorEv(void *self)
+{ return ((daKpaTail_c *)self)->daKpaTail_c::Behavior(); }
 }

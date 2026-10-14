@@ -144,12 +144,12 @@ extern "C" {
 void port_mg_call0(void *self, unsigned code, int adj);
 
 /* ---- the six state bodies, all of them `void f(char *)` in the ROM ------ */
-void func_ov006_020ee2c0(void);          /* 4 bytes in the ROM, `bx lr` */
-void func_ov006_020ee2c4(char *c);
-void func_ov006_020ee3ec(char *c);
-void func_ov006_020ee44c(char *c);
-void func_ov006_020ee508(char *c);
-void func_ov006_020ee5b8(char *c);
+void _ZN11dScMgJump_c19func_ov006_020ee2c0Ev(void);          /* 4 bytes in the ROM, `bx lr` */
+void _ZN11dScMgJump_c19func_ov006_020ee2c4Ev(char *c);
+void _ZN11dScMgJump_c19func_ov006_020ee3ecEv(char *c);
+void _ZN11dScMgJump_c19func_ov006_020ee44cEv(char *c);
+void _ZN11dScMgJump_c19func_ov006_020ee508Ev(char *c);
+void _ZN11dScMgJump_c19func_ov006_020ee5b8Ev(char *c);
 
 /* the host copy of vtable slot 6, defined below */
 int _ZN11dScMgJump_c8BehaviorEv(void *c);
@@ -240,12 +240,12 @@ static void bnp_note(unsigned code)
         call;                                                             \
     }
 
-BNP_FACE(020ee2c0, func_ov006_020ee2c0())
-BNP_FACE(020ee2c4, func_ov006_020ee2c4((char *)self))
-BNP_FACE(020ee3ec, func_ov006_020ee3ec((char *)self))
-BNP_FACE(020ee44c, func_ov006_020ee44c((char *)self))
-BNP_FACE(020ee508, func_ov006_020ee508((char *)self))
-BNP_FACE(020ee5b8, func_ov006_020ee5b8((char *)self))
+BNP_FACE(020ee2c0, _ZN11dScMgJump_c19func_ov006_020ee2c0Ev())
+BNP_FACE(020ee2c4, _ZN11dScMgJump_c19func_ov006_020ee2c4Ev((char *)self))
+BNP_FACE(020ee3ec, _ZN11dScMgJump_c19func_ov006_020ee3ecEv((char *)self))
+BNP_FACE(020ee44c, _ZN11dScMgJump_c19func_ov006_020ee44cEv((char *)self))
+BNP_FACE(020ee508, _ZN11dScMgJump_c19func_ov006_020ee508Ev((char *)self))
+BNP_FACE(020ee5b8, _ZN11dScMgJump_c19func_ov006_020ee5b8Ev((char *)self))
 
 extern "C" {
 extern MgPmf data_ov006_0213cb4c, data_ov006_0213cb54, data_ov006_0213cb5c,

@@ -94,8 +94,8 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 #include <cstring>
 #include "dActor_c.h"
 #include "fBase_c.h"
-#include "CheepCheep.h"
-#include "Shark.h"
+#include "daPukupuku_c.h"
+#include "daShark_c.h"
 
 extern "C" {
 
@@ -122,56 +122,56 @@ void port_actor_slot_decline(const char *what);   /* func_02043fdc_hostcopy.cpp 
 void port_actor_render_probe(const char *cls, void *model); /* hal/actor_classes */
 
 /* ---- the four host vtables (the mount excludes all four spans) ---------- */
-int _ZTV7Skeeter[31];      /* == _ZTV9daMenbo_c     */
-int _ZTV8MantaRay[31];     /* no second spelling    */
-int _ZTV10CheepCheep[31];  /* == _ZTV12daPukupuku_c */
-int _ZTV5Shark[31];        /* == _ZTV9daShark_c     */
+int _ZTV9daMenbo_c[31];      /* == _ZTV9daMenbo_c     */
+int _ZTV9daManta_c[31];     /* no second spelling    */
+int _ZTV12daPukupuku_c[31];  /* == _ZTV12daPukupuku_c */
+int _ZTV9daShark_c[31];        /* == _ZTV9daShark_c     */
 
 /* ---- SKEETER (230) ----------------------------------------------------- */
-int _ZN7Skeeter13InitResourcesEv(void *self);     /* matched src, flat      */
-int _ZN7Skeeter8BehaviorEv(void *self);           /* unmatched/Skeeter_HostSites */
-int _ZN7Skeeter6RenderEv(void *self);             /* unmatched/Skeeter_HostSites */
-int _ZN7Skeeter16CleanupResourcesEv(void);        /* matched src, flat      */
-void _ZN7Skeeter16OnPendingDestroyEv(void);       /* matched src, flat      */
-int *_ZN7SkeeterD1Ev(int *self);                  /* matched src, flat      */
-int *_ZN7SkeeterD0Ev(int *self);                  /* matched src, flat      */
-int _ZN7Skeeter13OnYoshiTryEatEv(void);                    /* slot 18, own: return 4 */
-void _ZN7Skeeter13OnTurnIntoEggER6Player(void *self, void *p);    /* slot 19, own           */
-int _ZN7Skeeter16OnAimedAtWithEggEv(void);                    /* slot 29, own: 0x20000  */
+int _ZN9daMenbo_c13InitResourcesEv(void *self);     /* matched src, flat      */
+int _ZN9daMenbo_c8BehaviorEv(void *self);           /* unmatched/Skeeter_HostSites */
+int _ZN9daMenbo_c6RenderEv(void *self);             /* unmatched/Skeeter_HostSites */
+int _ZN9daMenbo_c16CleanupResourcesEv(void);        /* matched src, flat      */
+void _ZN9daMenbo_c16OnPendingDestroyEv(void);       /* matched src, flat      */
+int *_ZN9daMenbo_cD1Ev(int *self);                  /* matched src, flat      */
+int *_ZN9daMenbo_cD0Ev(int *self);                  /* matched src, flat      */
+int _ZN9daMenbo_c13OnYoshiTryEatEv(void);                    /* slot 18, own: return 4 */
+void _ZN9daMenbo_c13OnTurnIntoEggER6Player(void *self, void *p);    /* slot 19, own           */
+int _ZN9daMenbo_c16OnAimedAtWithEggEv(void);                    /* slot 29, own: 0x20000  */
 void *daMenbo_c_classInit(void);
 extern unsigned char g_profile_MENBO[];
 
 /* ---- MANTA_RAY (226) --------------------------------------------------- */
-int _ZN8MantaRay13InitResourcesEv(void *self);    /* matched src, flat      */
-int _ZN8MantaRay8BehaviorEv(void *self);          /* unmatched/MantaRay_HostSites */
-int _ZN8MantaRay6RenderEv(void *self);            /* unmatched/MantaRay_HostSites */
-int _ZN8MantaRay16CleanupResourcesEv(void);
-void _ZN8MantaRay16OnPendingDestroyEv(void);
-int *_ZN8MantaRayD1Ev(void *self);
-int *_ZN8MantaRayD0Ev(void *self);
+int _ZN9daManta_c13InitResourcesEv(void *self);    /* matched src, flat      */
+int _ZN9daManta_c8BehaviorEv(void *self);          /* unmatched/MantaRay_HostSites */
+int _ZN9daManta_c6RenderEv(void *self);            /* unmatched/MantaRay_HostSites */
+int _ZN9daManta_c16CleanupResourcesEv(void);
+void _ZN9daManta_c16OnPendingDestroyEv(void);
+int *_ZN9daManta_cD1Ev(void *self);
+int *_ZN9daManta_cD0Ev(void *self);
 void *daManta_c_classInit(void);
 extern unsigned char g_profile_MANTA[];
 
 /* ---- CHEEP_CHEEP (227) ------------------------------------------------- */
 /* InitResources is a REAL C++ METHOD in src (int CheepCheep::InitResources()),
    so it is reached through include/CheepCheep.h, not by a flat name. */
-int _ZN10CheepCheep8BehaviorEv(void *self);       /* unmatched/CheepCheep_HostSites */
-int _ZN10CheepCheep6RenderEv(void *self);         /* unmatched/CheepCheep_HostSites */
-int _ZN10CheepCheep16CleanupResourcesEv(void);
-void _ZN10CheepCheep16OnPendingDestroyEv(void);
-int *_ZN10CheepCheepD1Ev(int *self);
-int *_ZN10CheepCheepD0Ev(int *self);
+int _ZN12daPukupuku_c8BehaviorEv(void *self);       /* unmatched/CheepCheep_HostSites */
+int _ZN12daPukupuku_c6RenderEv(void *self);         /* unmatched/CheepCheep_HostSites */
+int _ZN12daPukupuku_c16CleanupResourcesEv(void);
+void _ZN12daPukupuku_c16OnPendingDestroyEv(void);
+int *_ZN12daPukupuku_cD1Ev(int *self);
+int *_ZN12daPukupuku_cD0Ev(int *self);
 void *daPukupuku_c_classInit(void);
 extern unsigned char g_profile_PUKUPUKU[];
 
 /* ---- SHARK (225) ------------------------------------------------------- */
 /* InitResources is a REAL C++ METHOD in src (int Shark::InitResources()). */
-int _ZN5Shark8BehaviorEv(void *self);             /* unmatched/Shark_HostSites */
-int _ZN5Shark6RenderEv(void *self);               /* unmatched/Shark_HostSites */
-int _ZN5Shark16CleanupResourcesEv(void);
-void _ZN5Shark16OnPendingDestroyEv(void);
-int *_ZN5SharkD1Ev(int *self);
-int *_ZN5SharkD0Ev(int *self);
+int _ZN9daShark_c8BehaviorEv(void *self);             /* unmatched/Shark_HostSites */
+int _ZN9daShark_c6RenderEv(void *self);               /* unmatched/Shark_HostSites */
+int _ZN9daShark_c16CleanupResourcesEv(void);
+void _ZN9daShark_c16OnPendingDestroyEv(void);
+int *_ZN9daShark_cD1Ev(int *self);
+int *_ZN9daShark_cD0Ev(int *self);
 void *daShark_c_classInit(void);
 extern unsigned char g_profile_SHARK[];
 
@@ -194,19 +194,19 @@ extern unsigned int data_ov090_021343a0[];
 extern unsigned int data_ov090_021343a8[];
 
 /* ---- the sixteen host state bodies ------------------------------------- */
-int func_ov090_02131648(void *c);
-int func_ov090_02131a74(void *c);
-int func_ov090_02131608(void *c);
-int func_ov090_02131ac4(void *c);
-int func_ov090_02131584(void *c);
-int func_ov090_02131c48(void *c);
-int func_ov090_02131db0(void *c);
-int func_ov090_02131b94(void *c);
-int func_ov090_021327e4(void *c);
-int func_ov090_02132a58(void *c);
-int func_ov090_02133200(void *c);
+int _ZN9daMenbo_c19func_ov090_02131648Ev(void *c);
+int _ZN9daMenbo_c19func_ov090_02131a74Ev(void *c);
+int _ZN9daMenbo_c19func_ov090_02131608Ev(void *c);
+int _ZN9daMenbo_c19func_ov090_02131ac4Ev(void *c);
+int _ZN9daMenbo_c19func_ov090_02131584Ev(void *c);
+int _ZN9daMenbo_c19func_ov090_02131c48Ev(void *c);
+int _ZN9daMenbo_c19func_ov090_02131db0Ev(void *c);
+int _ZN9daMenbo_c19func_ov090_02131b94Ev(void *c);
+int _ZN9daManta_c19func_ov090_021327e4Ev(void *c);
+int _ZN9daManta_c19func_ov090_02132a58Ev(void *c);
+int _ZN12daPukupuku_c19func_ov090_02133200Ev(void *c);
 int func_ov090_02133290(void *c);
-int func_ov090_02133190(void *c);
+int _ZN12daPukupuku_c19func_ov090_02133190Ev(void *c);
 int func_ov090_021331c4(void *c);
 int func_ov090_0213387c(void *c);
 int func_ov090_02133830(void *c);
@@ -247,13 +247,13 @@ int func_ov090_02133830(void *c);
         sym(self);                                                        \
     }
 
-OV090_FACE(02131648, func_ov090_02131648)   /* skeeter    021340e0 */
-OV090_FACE(02131ac4, func_ov090_02131ac4)   /* skeeter    021340f8 */
-OV090_FACE(02131584, func_ov090_02131584)   /* skeeter    02134100 */
-OV090_FACE(02131c48, func_ov090_02131c48)   /* skeeter    02134108 */
-OV090_FACE(021327e4, func_ov090_021327e4)   /* mantaray   021341e4 */
-OV090_FACE(02133200, func_ov090_02133200)   /* cheepcheep 021342b8 */
-OV090_FACE(02133190, func_ov090_02133190)   /* cheepcheep 021342c8 */
+OV090_FACE(02131648, _ZN9daMenbo_c19func_ov090_02131648Ev)   /* skeeter    021340e0 */
+OV090_FACE(02131ac4, _ZN9daMenbo_c19func_ov090_02131ac4Ev)   /* skeeter    021340f8 */
+OV090_FACE(02131584, _ZN9daMenbo_c19func_ov090_02131584Ev)   /* skeeter    02134100 */
+OV090_FACE(02131c48, _ZN9daMenbo_c19func_ov090_02131c48Ev)   /* skeeter    02134108 */
+OV090_FACE(021327e4, _ZN9daManta_c19func_ov090_021327e4Ev)   /* mantaray   021341e4 */
+OV090_FACE(02133200, _ZN12daPukupuku_c19func_ov090_02133200Ev)   /* cheepcheep 021342b8 */
+OV090_FACE(02133190, _ZN12daPukupuku_c19func_ov090_02133190Ev)   /* cheepcheep 021342c8 */
 OV090_FACE(02133830, func_ov090_02133830)   /* shark      021343a8 */
 
 /* ============================================================================
@@ -278,17 +278,17 @@ const Ov090Seat g_ov090_seats[] = {
        cells data_ov090_021344e4/_021344f4/_02134504/_02134514 by
        __sinit_ov090_02133ce8. */
     {data_ov090_021340e0, 0x02131648, (int (*)(void *))(void *)ov090_f02131648, "skeeter/021340e0"},
-    {data_ov090_021340e8, 0x02131a74, func_ov090_02131a74, "skeeter/021340e8"},
-    {data_ov090_021340f0, 0x02131608, func_ov090_02131608, "skeeter/021340f0"},
+    {data_ov090_021340e8, 0x02131a74, _ZN9daMenbo_c19func_ov090_02131a74Ev, "skeeter/021340e8"},
+    {data_ov090_021340f0, 0x02131608, _ZN9daMenbo_c19func_ov090_02131608Ev, "skeeter/021340f0"},
     {data_ov090_021340f8, 0x02131ac4, (int (*)(void *))(void *)ov090_f02131ac4, "skeeter/021340f8"},
     {data_ov090_02134100, 0x02131584, (int (*)(void *))(void *)ov090_f02131584, "skeeter/02134100"},
     {data_ov090_02134108, 0x02131c48, (int (*)(void *))(void *)ov090_f02131c48, "skeeter/02134108"},
-    {data_ov090_02134110, 0x02131db0, func_ov090_02131db0, "skeeter/02134110"},
-    {data_ov090_02134118, 0x02131b94, func_ov090_02131b94, "skeeter/02134118"},
+    {data_ov090_02134110, 0x02131db0, _ZN9daMenbo_c19func_ov090_02131db0Ev, "skeeter/02134110"},
+    {data_ov090_02134118, 0x02131b94, _ZN9daMenbo_c19func_ov090_02131b94Ev, "skeeter/02134118"},
     /* MantaRay, 0x021341e4..0x021341f4, into data_ov090_0213454c by
        __sinit_ov090_02133ea8. */
     {data_ov090_021341e4, 0x021327e4, (int (*)(void *))(void *)ov090_f021327e4, "mantaray/021341e4"},
-    {data_ov090_021341ec, 0x02132a58, func_ov090_02132a58, "mantaray/021341ec"},
+    {data_ov090_021341ec, 0x02132a58, _ZN9daManta_c19func_ov090_02132a58Ev, "mantaray/021341ec"},
     /* CheepCheep, 0x021342b8..0x021342d8, into data_ov090_02134584 and
        _02134594 by __sinit_ov090_02133f4c. */
     {data_ov090_021342b8, 0x02133200, (int (*)(void *))(void *)ov090_f02133200, "cheepcheep/021342b8"},
@@ -432,31 +432,31 @@ static void ov90_fill_shared(void **vt)
 // 12 OnPendingDestroy, 16 D1, 17 D0, 18, 19, 29.
 // ============================================================================
 static int __fastcall skt_init(void *s, void *)
-{ return _ZN7Skeeter13InitResourcesEv(s); }
+{ return _ZN9daMenbo_c13InitResourcesEv(s); }
 static int __fastcall skt_clean(void *s, void *)
-{ (void)s; return _ZN7Skeeter16CleanupResourcesEv(); }
+{ (void)s; return _ZN9daMenbo_c16CleanupResourcesEv(); }
 static int __fastcall skt_behavior(void *s, void *)
-{ return _ZN7Skeeter8BehaviorEv(s); }
+{ return _ZN9daMenbo_c8BehaviorEv(s); }
 static int __fastcall skt_render(void *s, void *)
 { port_actor_render_probe("SKEETER", (char *)s + 0x30c);
-  return _ZN7Skeeter6RenderEv(s); }
+  return _ZN9daMenbo_c6RenderEv(s); }
 static int __fastcall skt_pdes(void *s, void *)
-{ (void)s; _ZN7Skeeter16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN9daMenbo_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall skt_d1(void *s, void *)
-{ return (int)(size_t)_ZN7SkeeterD1Ev((int *)s); }
+{ return (int)(size_t)_ZN9daMenbo_cD1Ev((int *)s); }
 static int __fastcall skt_d0(void *s, void *)
-{ return (int)(size_t)_ZN7SkeeterD0Ev((int *)s); }
+{ return (int)(size_t)_ZN9daMenbo_cD0Ev((int *)s); }
 static int __fastcall skt_yoshi(void *s, void *)
-{ (void)s; return _ZN7Skeeter13OnYoshiTryEatEv(); }
+{ (void)s; return _ZN9daMenbo_c13OnYoshiTryEatEv(); }
 static int __fastcall skt_egg(void *s, void *, void *p)
-{ _ZN7Skeeter13OnTurnIntoEggER6Player(s, p); return 0; }
+{ _ZN9daMenbo_c13OnTurnIntoEggER6Player(s, p); return 0; }
 static int __fastcall skt_aimed(void *s, void *)
-{ (void)s; return _ZN7Skeeter16OnAimedAtWithEggEv(); }
+{ (void)s; return _ZN9daMenbo_c16OnAimedAtWithEggEv(); }
 
 extern "C" void hal_fill_skeeter_vtable(void)
 {
     port_ov090_states_seat();
-    void **vt = (void **)_ZTV7Skeeter;
+    void **vt = (void **)_ZTV9daMenbo_c;
     ov90_fill_shared(vt);
     vt[0]  = (void *)skt_init;
     vt[3]  = (void *)skt_clean;
@@ -474,25 +474,25 @@ extern "C" void hal_fill_skeeter_vtable(void)
 // MANTA_RAY (9daManta_c, 226). Own: 0, 3, 6, 9, 12, 16, 17. 18/19/29 arm9.
 // ============================================================================
 static int __fastcall mrp_init(void *s, void *)
-{ return _ZN8MantaRay13InitResourcesEv(s); }
+{ return _ZN9daManta_c13InitResourcesEv(s); }
 static int __fastcall mrp_clean(void *s, void *)
-{ (void)s; return _ZN8MantaRay16CleanupResourcesEv(); }
+{ (void)s; return _ZN9daManta_c16CleanupResourcesEv(); }
 static int __fastcall mrp_behavior(void *s, void *)
-{ return _ZN8MantaRay8BehaviorEv(s); }
+{ return _ZN9daManta_c8BehaviorEv(s); }
 static int __fastcall mrp_render(void *s, void *)
 { port_actor_render_probe("MANTA_RAY", (char *)s + 0x30c);
-  return _ZN8MantaRay6RenderEv(s); }
+  return _ZN9daManta_c6RenderEv(s); }
 static int __fastcall mrp_pdes(void *s, void *)
-{ (void)s; _ZN8MantaRay16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN9daManta_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall mrp_d1(void *s, void *)
-{ return (int)(size_t)_ZN8MantaRayD1Ev(s); }
+{ return (int)(size_t)_ZN9daManta_cD1Ev(s); }
 static int __fastcall mrp_d0(void *s, void *)
-{ return (int)(size_t)_ZN8MantaRayD0Ev(s); }
+{ return (int)(size_t)_ZN9daManta_cD0Ev(s); }
 
 extern "C" void hal_fill_manta_ray_vtable(void)
 {
     port_ov090_states_seat();
-    void **vt = (void **)_ZTV8MantaRay;
+    void **vt = (void **)_ZTV9daManta_c;
     ov90_fill_shared(vt);
     vt[0]  = (void *)mrp_init;
     vt[3]  = (void *)mrp_clean;
@@ -508,25 +508,25 @@ extern "C" void hal_fill_manta_ray_vtable(void)
 // InitResources is a real C++ method and is called through the header.
 // ============================================================================
 static int __fastcall chp_init(void *s, void *)
-{ return ((CheepCheep *)s)->CheepCheep::InitResources(); }
+{ return ((daPukupuku_c *)s)->daPukupuku_c::InitResources(); }
 static int __fastcall chp_clean(void *s, void *)
-{ (void)s; return _ZN10CheepCheep16CleanupResourcesEv(); }
+{ (void)s; return _ZN12daPukupuku_c16CleanupResourcesEv(); }
 static int __fastcall chp_behavior(void *s, void *)
-{ return _ZN10CheepCheep8BehaviorEv(s); }
+{ return _ZN12daPukupuku_c8BehaviorEv(s); }
 static int __fastcall chp_render(void *s, void *)
 { port_actor_render_probe("CHEEP_CHEEP", (char *)s + 0x30c);
-  return _ZN10CheepCheep6RenderEv(s); }
+  return _ZN12daPukupuku_c6RenderEv(s); }
 static int __fastcall chp_pdes(void *s, void *)
-{ (void)s; _ZN10CheepCheep16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN12daPukupuku_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall chp_d1(void *s, void *)
-{ return (int)(size_t)_ZN10CheepCheepD1Ev((int *)s); }
+{ return (int)(size_t)_ZN12daPukupuku_cD1Ev((int *)s); }
 static int __fastcall chp_d0(void *s, void *)
-{ return (int)(size_t)_ZN10CheepCheepD0Ev((int *)s); }
+{ return (int)(size_t)_ZN12daPukupuku_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_cheep_cheep_vtable(void)
 {
     port_ov090_states_seat();
-    void **vt = (void **)_ZTV10CheepCheep;
+    void **vt = (void **)_ZTV12daPukupuku_c;
     ov90_fill_shared(vt);
     vt[0]  = (void *)chp_init;
     vt[3]  = (void *)chp_clean;
@@ -542,25 +542,25 @@ extern "C" void hal_fill_cheep_cheep_vtable(void)
 // InitResources is a real C++ method and is called through the header.
 // ============================================================================
 static int __fastcall shk_init(void *s, void *)
-{ return ((Shark *)s)->Shark::InitResources(); }
+{ return ((daShark_c *)s)->daShark_c::InitResources(); }
 static int __fastcall shk_clean(void *s, void *)
-{ (void)s; return _ZN5Shark16CleanupResourcesEv(); }
+{ (void)s; return _ZN9daShark_c16CleanupResourcesEv(); }
 static int __fastcall shk_behavior(void *s, void *)
-{ return _ZN5Shark8BehaviorEv(s); }
+{ return _ZN9daShark_c8BehaviorEv(s); }
 static int __fastcall shk_render(void *s, void *)
 { port_actor_render_probe("SHARK", (char *)s + 0x30c);
-  return _ZN5Shark6RenderEv(s); }
+  return _ZN9daShark_c6RenderEv(s); }
 static int __fastcall shk_pdes(void *s, void *)
-{ (void)s; _ZN5Shark16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN9daShark_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall shk_d1(void *s, void *)
-{ return (int)(size_t)_ZN5SharkD1Ev((int *)s); }
+{ return (int)(size_t)_ZN9daShark_cD1Ev((int *)s); }
 static int __fastcall shk_d0(void *s, void *)
-{ return (int)(size_t)_ZN5SharkD0Ev((int *)s); }
+{ return (int)(size_t)_ZN9daShark_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_shark_vtable(void)
 {
     port_ov090_states_seat();
-    void **vt = (void **)_ZTV5Shark;
+    void **vt = (void **)_ZTV9daShark_c;
     ov90_fill_shared(vt);
     vt[0]  = (void *)shk_init;
     vt[3]  = (void *)shk_clean;
@@ -575,10 +575,9 @@ extern "C" void hal_fill_shark_vtable(void)
  * right-hand side is the array defined above and the left-hand side is
  * defined nowhere; alternatename_guard.py fails the build post-link if that
  * ever stops being true. MantaRay has no second spelling and gets no line. */
-#pragma comment(linker, "/alternatename:__ZTV9daMenbo_c=__ZTV7Skeeter")
-#pragma comment(linker, "/alternatename:__ZTV12daPukupuku_c=__ZTV10CheepCheep")
-#pragma comment(linker, "/alternatename:__ZTV9daShark_c=__ZTV5Shark")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV9daMenbo_c=__ZTV9daMenbo_c")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV12daPukupuku_c=__ZTV12daPukupuku_c")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV9daShark_c=__ZTV9daShark_c")
 /* ============================================================================
  * TEN LINKAGE ALIASES, ALL MEASURED OFF THE FIRST LINK, NONE PREDICTED.
  *

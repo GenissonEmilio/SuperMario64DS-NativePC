@@ -1473,7 +1473,7 @@ extern "C" void port_scene_fill_curling(void)
         data_0209f61c[0] == 0) {
         std::printf("[scene] MINIGAME BLOCKED: the arm9 dWipe_c at "
                     "data_0209f61c has a NULL vptr, because "
-                    "__sinit_02074f80 (func_0202fc40) does not run in the "
+                    "__sinit_02074f80 (_ZN7dWipe_cC1Ev) does not run in the "
                     "port. dScMgBase_c slot 1 passes it to Scene::SetFaders, "
                     "which dispatches vtable slot 0x24 off it.\n");
         std::fflush(stdout);
@@ -3043,7 +3043,7 @@ extern "C" void port_scene_fill_smartball(void)
                     "lane INTEG seated slot 0 InitResources (_ZN16dScMgSmartball_c13InitResourcesEv "
                     "aliased onto the plain-C "
                     "_ZN16dScMgSmartball_c13InitResourcesEv, NONMATCHING) and the "
-                    "aux ball-table seeder func_ov006_02114800. Run mg5 lane "
+                    "aux ball-table seeder _ZN16dScMgSmartball_c10EmitSparksEPii. Run mg5 lane "
                     "SMBSEAT closed the last two floors: slot 9 Render is "
                     "src/_ZN16dScMgSmartball_c6RenderEv.cpp, main's matched "
                     "__thiscall member, reached through a cdecl forwarder in "
@@ -3097,7 +3097,7 @@ extern "C" void port_scene_mg_smartball_hits(void)
                 port_mg_smartball_trap_hits(),
                 (m & 1) ? "  [slot 0 InitResources RE-ARMED]" : "",
                 (m & 2) ? "  [slot 9 Render RE-ARMED]" : "",
-                (m & 4) ? "  [func_ov006_02115248]" : "");
+                (m & 4) ? "  [_ZN16dScMgSmartball_c9SpawnDustEPi]" : "");
     /* The sub-object witness. Zero here with a clean run is NOT a pass: it
        means the twelve tables were relocated and then never dispatched, which
        is the one failure a fill cannot tell from a success on its own. */

@@ -125,9 +125,9 @@ data_ov070_021230f0 data_ov070_021230f8 data_ov070_02123100
 data_ov070_02123108 data_ov070_02123110 data_ov070_02123118
 data_ov070_0212320c data_ov070_02123214 data_ov070_0212321c
 data_ov070_02123224 data_ov070_0212322c data_ov070_02123234
-data_ov070_021232f4 data_ov070_021232fc data_ov070_02123304
-data_ov070_0212330c data_ov070_02123314 data_ov070_0212331c
-data_ov070_02123324 data_ov070_0212332c
+data_ov070_021232f4@0x021232f4 data_ov070_021232fc@0x021232fc data_ov070_02123304@0x02123304
+data_ov070_0212330c@0x0212330c data_ov070_02123314@0x02123314 data_ov070_0212331c@0x0212331c
+data_ov070_02123324@0x02123324 data_ov070_0212332c@0x0212332c
 data_ov070_021233ec data_ov070_021233f4 data_ov070_021233fc
 data_ov070_02123404
 
@@ -152,9 +152,9 @@ data_ov070_021234c4 data_ov070_021234dc
 # their chain nodes, and the six state PMF pair arrays ----------------------
 data_ov070_02123500 data_ov070_02123508 data_ov070_02123510
 data_ov070_02123518 data_ov070_02123520 data_ov070_02123528
-data_ov070_02123530 data_ov070_02123538 data_ov070_02123544
-data_ov070_02123550 data_ov070_0212355c data_ov070_02123568
-data_ov070_02123574 data_ov070_02123580
+data_ov070_02123530 data_ov070_02123538@0x02123538 data_ov070_02123544@0x02123544
+data_ov070_02123550@0x02123550 data_ov070_0212355c@0x0212355c data_ov070_02123568@0x02123568
+data_ov070_02123574@0x02123574 data_ov070_02123580@0x02123580
 data_ov070_0212358c data_ov070_0212359c data_ov070_021235ac
 data_ov070_021235bc data_ov070_021235cc data_ov070_021235dc
 
@@ -166,8 +166,8 @@ data_ov070_02123604 data_ov070_0212360c data_ov070_02123614
 data_ov070_02123620 data_ov070_0212362c data_ov070_02123638
 data_ov070_02123644 data_ov070_02123650 data_ov070_0212365c
 data_ov070_02123668
-data_ov070_02123698 data_ov070_021236a0 data_ov070_021236ac
-data_ov070_021236ec:0x20
+data_ov070_021236a0@0x021236a0
+
 
 
 # RETIRED at ALIAS2 (wave 8, the main -> port sync). Each symbol below was
@@ -179,3 +179,14 @@ data_ov070_021236ec:0x20
 #   g_profile_BIRIKYU                          now defined by daBrq_c.cpp.obj
 #   g_profile_KERONPA                          now defined by d_a_krpa.cpp.obj
 #   g_profile_KERONPA_FIRE                     now defined by d_a_kp_fr.cpp.obj
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov070_02123698                        now defined by src/game/actors/d_a_krpa.cpp
+#   data_ov070_021236ac                        now defined by src/game/actors/d_a_krpa.cpp
+#   data_ov070_021236ec                        now defined by src/game/actors/d_a_kp_fr.cpp

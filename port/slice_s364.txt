@@ -503,28 +503,28 @@
 # byte-identity across three frame counts WITHIN ONE BUILD, which the section
 # move cannot touch.
 
-src/_ZN12dScMgSlot1_cD1Ev.cpp
+src/actors/dScMgSlots.cpp
 # RETIRED at SLICE1: body now in src/_ZN12dScMgSlot1_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN12dScMgSlot1_cD0Ev.cpp
-src/func_ov006_0210c180.c
-src/func_ov006_0210c1a8.c
-src/func_ov006_0210c208.c
-src/func_ov006_0210c218.c
-src/func_ov006_0210c234.c
-src/func_ov006_0210c278.c
-src/func_ov006_0210c2b0.c
-src/func_ov006_0210c2c0.c
-src/func_ov006_0210c2d4.c
-src/func_ov006_0210c354.c
-src/_ZN12dScMgSlot1_c9betIcon_c6RenderEv.cpp
-src/_ZN12dScMgSlot1_c9betIcon_c8BehaviorEv.cpp
-src/func_ov006_0210c478.c
-src/_ZN12dScMgSlot1_c19OnHitFromUnderneathEv.cpp
-src/_ZN12dScMgSlot1_c15OnHitByMegaCharEv.cpp
-src/func_ov006_0210c500.c
-src/func_ov006_0210c638.c
-src/_ZN12dScMgSlot1_c13OnYoshiTryEatEi.cpp
-src/_ZN12dScMgSlot1_c6RenderEv.cpp
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c180.c
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c1a8.c
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c208.c
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c218.c
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c234.c
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c278.c
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c2b0.c
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c2c0.c
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c2d4.c
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c354.c
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/_ZN12dScMgSlot1_c9betIcon_c6RenderEv.cpp
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/_ZN12dScMgSlot1_c9betIcon_c8BehaviorEv.cpp
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c478.c
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/_ZN12dScMgSlot1_c19OnHitFromUnderneathEv.cpp
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/_ZN12dScMgSlot1_c15OnHitByMegaCharEv.cpp
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c500.c
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c638.c
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/_ZN12dScMgSlot1_c13OnYoshiTryEatEi.cpp
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/_ZN12dScMgSlot1_c6RenderEv.cpp
 src/func_ov006_0210c9e0.cpp
-src/_ZN12dScMgSlot1_c13InitResourcesEv.cpp
-src/d_s_mg_slot1.cpp
+src/minigames/d_s_mg_slot1.cpp
+# FOLDED into src/minigames/d_s_mg_slot1.cpp (row 529): src/d_s_mg_slot1.cpp

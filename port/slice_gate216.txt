@@ -54,8 +54,8 @@
 # of the receiver, and its first statement tests the ARGUMENT. That is the
 # CRASH half of the dropped-receiver mode, so slot 5 keeps calling the target
 # directly and the TU stays unlinked.
-src/_ZN8dActor_c13AfterBehaviorEj.cpp
-src/_ZN8dActor_c11AfterRenderEj.cpp
+src/actors/dActor_c.cpp
+# FOLDED into src/actors/dActor_c.cpp (row 57): src/_ZN8dActor_c11AfterRenderEj.cpp
 #
 # ---- 2. FOUR ABSTRACT ov002 INTERMEDIATES' OWN DESTRUCTOR PAIRS -------------
 #
@@ -80,14 +80,18 @@ src/_ZN8dActor_c11AfterRenderEj.cpp
 # source in port/CMakeLists.txt from each body's own literal pool -- read out
 # of the relocations inside each function's span, not from the recovery's
 # names. G0 is the game heap (data_020a0eac) in the three deleting halves.
-src/_ZN13daObjDorifu_cD1Ev.cpp
-src/_ZN13daObjDorifu_cD0Ev.cpp
-src/_ZN16daObjKaitendai_cD1Ev.cpp
-src/_ZN16daObjKaitendai_cD0Ev.cpp
-src/_ZN13daObjKuruma_cD1Ev.cpp
-src/_ZN13daObjKuruma_cD0Ev.cpp
-src/_ZN17daObjKurumajiku_cD1Ev.cpp
-src/_ZN17daObjKurumajiku_cD0Ev.cpp
+src/actors/daObjDorifu_c.cpp
+# FOLDED into src/actors/daObjDorifu_c.cpp (row 83): src/_ZN13daObjDorifu_cD0Ev.cpp
+port/unmatched/hostarm/_ZN13daObjDorifu_cD0Ev.cpp
+src/actors/daObjKaitendai_c.cpp
+# FOLDED into src/actors/daObjKaitendai_c.cpp (row 85): src/_ZN16daObjKaitendai_cD0Ev.cpp
+port/unmatched/hostarm/_ZN16daObjKaitendai_cD0Ev.cpp
+src/actors/daObjKuruma_c.cpp
+# FOLDED into src/actors/daObjKuruma_c.cpp (row 87): src/_ZN13daObjKuruma_cD0Ev.cpp
+port/unmatched/hostarm/_ZN13daObjKuruma_cD0Ev.cpp
+src/actors/daObjKurumajiku_c.cpp
+# FOLDED into src/actors/daObjKurumajiku_c.cpp (row 89): src/_ZN17daObjKurumajiku_cD0Ev.cpp
+port/unmatched/hostarm/_ZN17daObjKurumajiku_cD0Ev.cpp
 #
 # ---- 3. THE BULLY/BIGBULLY BASE TABLE, four words --------------------------
 #
@@ -158,10 +162,10 @@ src/actors/daOts_c.cpp
 # slots keep the host thunks.
 src/game/actors/d_a_obj_c0_switch.cpp
 src/game/actors/d_a_obj_clock_huriko.cpp
-src/_ZN10RockPillarD1Ev.cpp
+src/actors/daObjKi_Hasira_c.cpp
 src/game/actors/d_a_pg_mthr.cpp
 src/game/actors/d_a_star_gate.cpp
-src/_ZN14UnchainedChompD1Ev.cpp
+src/actors/daWanwan2_c.cpp
 #
 # ---- NOT IN THIS GATE, and why, so the rows stop reading as work -----------
 #

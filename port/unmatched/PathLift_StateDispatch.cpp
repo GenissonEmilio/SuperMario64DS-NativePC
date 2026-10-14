@@ -57,12 +57,12 @@ struct PortPathLiftEntry { PortPathLiftPair enter, tick; const char *name; };
 extern PortPathLiftEntry data_ov002_0210af2c[3];
 
 /* the six matched state bodies (port/slice_w6d.txt) */
-void func_ov002_020ef3f0(void *c);   /* WAIT enter */
-void func_ov002_020ef3ec(void *c);   /* WAIT tick  */
-void func_ov002_020efa44(void *c);   /* PATH enter */
-void func_ov002_020ef670(void *c);   /* PATH tick  */
-void func_ov002_020ef57c(void *c);   /* FALL enter */
-void func_ov002_020ef408(void *c);   /* FALL tick  */
+void _ZN16dPathLiftActor_c13StateWaitInitEv(void *c);   /* WAIT enter */
+void _ZN16dPathLiftActor_c9StateWaitEv(void *c);   /* WAIT tick  */
+void _ZN16dPathLiftActor_c13StatePathInitEv(void *c);   /* PATH enter */
+void _ZN16dPathLiftActor_c9StatePathEv(void *c);   /* PATH tick  */
+void _ZN16dPathLiftActor_c13StateFallInitEv(void *c);   /* FALL enter */
+void _ZN16dPathLiftActor_c9StateFallEv(void *c);   /* FALL tick  */
 
 void port_pathlift_states_seat(void);
 void _ZN16dPathLiftActor_c12BaseBehaviorEv(void *c);
@@ -88,12 +88,12 @@ void _ZN16dPathLiftActor_c12BaseBehaviorEv(void *c);
    MSVC compiles it as a TAIL JUMP: the callee inherits the forwarder's own
    cdecl frame, so a plain cdecl body is still correct there. Nothing about
    that row changes and this lane does not touch the three words it reads. */
-static void __fastcall pmf_face_func_ov002_020ef3ec(void *self, void *dead_edx)
-{ func_ov002_020ef3ec(self); }
-static void __fastcall pmf_face_func_ov002_020ef670(void *self, void *dead_edx)
-{ func_ov002_020ef670(self); }
-static void __fastcall pmf_face_func_ov002_020ef408(void *self, void *dead_edx)
-{ func_ov002_020ef408(self); }
+static void __fastcall pmf_face__ZN16dPathLiftActor_c9StateWaitEv(void *self, void *dead_edx)
+{ _ZN16dPathLiftActor_c9StateWaitEv(self); }
+static void __fastcall pmf_face__ZN16dPathLiftActor_c9StatePathEv(void *self, void *dead_edx)
+{ _ZN16dPathLiftActor_c9StatePathEv(self); }
+static void __fastcall pmf_face__ZN16dPathLiftActor_c9StateFallEv(void *self, void *dead_edx)
+{ _ZN16dPathLiftActor_c9StateFallEv(self); }
 
 void port_pathlift_states_seat(void)
 {
@@ -107,12 +107,12 @@ void port_pathlift_states_seat(void)
        field is only ever taken as an ADDRESS. */
     static const struct { unsigned rec, half, rom; void (*host)(void *); }
     seats[] = {
-        {0, 0, 0x020ef3f0u, func_ov002_020ef3f0},
-        {0, 1, 0x020ef3ecu, (void (*)(void *))pmf_face_func_ov002_020ef3ec},
-        {1, 0, 0x020efa44u, func_ov002_020efa44},
-        {1, 1, 0x020ef670u, (void (*)(void *))pmf_face_func_ov002_020ef670},
-        {2, 0, 0x020ef57cu, func_ov002_020ef57c},
-        {2, 1, 0x020ef408u, (void (*)(void *))pmf_face_func_ov002_020ef408},
+        {0, 0, 0x020ef3f0u, _ZN16dPathLiftActor_c13StateWaitInitEv},
+        {0, 1, 0x020ef3ecu, (void (*)(void *))pmf_face__ZN16dPathLiftActor_c9StateWaitEv},
+        {1, 0, 0x020efa44u, _ZN16dPathLiftActor_c13StatePathInitEv},
+        {1, 1, 0x020ef670u, (void (*)(void *))pmf_face__ZN16dPathLiftActor_c9StatePathEv},
+        {2, 0, 0x020ef57cu, _ZN16dPathLiftActor_c13StateFallInitEv},
+        {2, 1, 0x020ef408u, (void (*)(void *))pmf_face__ZN16dPathLiftActor_c9StateFallEv},
     };
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
         PortPathLiftPair *p = seats[i].half

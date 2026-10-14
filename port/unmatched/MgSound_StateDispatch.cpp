@@ -238,63 +238,63 @@ extern MgPmf data_ov006_02142db0[];
    spelled `(void)` below are empty bodies in src and are declared and called
    with no argument, which is the shape port/tools/aritycheck.py checks and the
    shape MgPanel_StateDispatch.cpp already uses for func_ov006_02104ec8. */
-void func_ov006_0211bf44(char *c, int i);   /* 02142df8 p0 */
-void func_ov006_0211bc8c(char *c, int i);   /* 02142df8 p1, was THE FLOOR */
-void func_ov006_0211bc68(char *c, int i);   /* 02142df8 p2 */
-void func_ov006_0211bbe0(char *c, int i);   /* 02142df8 p3 */
-int  func_ov006_0211ba88(char *c, int i);   /* 02142df8 p4, host copy */
-void func_ov006_0211b590(char *c, int i);   /* 02142e20 p0,  sub-dispatcher */
-void func_ov006_0211b398(char *c, int i);   /* 02142e20 p1,  sub-dispatcher */
-void func_ov006_0211b17c(char *c, int i);   /* 02142e20 p2,  sub-dispatcher */
-void func_ov006_0211af60(char *c, int i);   /* 02142e20 p3,  sub-dispatcher */
-void func_ov006_0211ad44(char *c, int i);   /* 02142e20 p4,  sub-dispatcher */
-void func_ov006_0211abdc(char *c, int i);   /* 02142e20 p5,  sub-dispatcher */
-void func_ov006_0211aa44(char *c, int i);   /* 02142e20 p6,  sub-dispatcher */
-void func_ov006_0211a7ac(char *c, int i);   /* 02142e20 p7,  sub-dispatcher */
-void func_ov006_0211a648(char *c, int i);   /* 02142e20 p8,  sub-dispatcher */
-void func_ov006_0211a4b0(char *c, int i);   /* 02142e20 p9,  sub-dispatcher */
-void func_ov006_0211a2c4(char *c, int i);   /* 02142e20 p10, sub-dispatcher */
-void func_ov006_0211a0d8(char *c, int i);   /* 02142e20 p11, sub-dispatcher */
-void func_ov006_02119eec(char *c, int i);   /* 02142e20 p12, sub-dispatcher */
-void func_ov006_0211b4fc(char *c, int i);   /* 02142d38 p0 */
-void func_ov006_0211b3ec(char *c, int i);   /* 02142d38 p1 */
-void func_ov006_0211b3e8(void);             /* 02142d38 p2, empty body */
-void func_ov006_0211b308(char *c, int i);   /* 02142d50 p0 */
-void func_ov006_0211b278(char *c, int i);   /* 02142d50 p1 */
-void func_ov006_0211b1cc(char *c, int i);   /* 02142d50 p2 */
-void func_ov006_0211b0ec(char *c, int i);   /* 02142d80 p0 */
-void func_ov006_0211b05c(char *c, int i);   /* 02142d80 p1 */
-void func_ov006_0211afb0(char *c, int i);   /* 02142d80 p2 */
-void func_ov006_0211aed0(char *c, int i);   /* 02142dc8 p0 */
-void func_ov006_0211ae40(char *c, int i);   /* 02142dc8 p1 */
-void func_ov006_0211ad94(char *c, int i);   /* 02142dc8 p2 */
-void func_ov006_0211ad00(char *c, int i);   /* 02142de0 p0 */
-void func_ov006_0211ac30(char *c, int i);   /* 02142de0 p1 */
-void func_ov006_0211ac2c(void);             /* 02142de0 p2, empty body */
-void func_ov006_0211ab80(char *c, int i);   /* 02142cd8 p0 */
-void func_ov006_0211ab0c(char *c, int i);   /* 02142cd8 p1 */
-void func_ov006_0211aa94(char *c, int i);   /* 02142cd8 p2 */
-void func_ov006_0211a9fc(char *c, int i);   /* 02142cf0 p0 */
-void func_ov006_0211a910(char *c, int i);   /* 02142cf0 p1 */
-void func_ov006_0211a7fc(char *c, int i);   /* 02142cf0 p2 */
-void func_ov006_0211a714(char *c, int i);   /* 02142d20 p0 */
-void func_ov006_0211a69c(char *c, int i);   /* 02142d20 p1 */
-void func_ov006_0211a698(void);             /* 02142d20 p2, empty body */
-void func_ov006_0211a5ec(char *c, int i);   /* 02142d68 p0 */
-void func_ov006_0211a578(char *c, int i);   /* 02142d68 p1 */
-void func_ov006_0211a500(char *c, int i);   /* 02142d68 p2 */
-void func_ov006_0211a420(char *c, int i);   /* 02142d98 p0 */
-void func_ov006_0211a388(char *c, int i);   /* 02142d98 p1 */
-void func_ov006_0211a314(char *c, int i);   /* 02142d98 p2 */
-void func_ov006_0211a234(char *c, int i);   /* 02142cc0 p0 */
-void func_ov006_0211a19c(char *c, int i);   /* 02142cc0 p1 */
-void func_ov006_0211a128(char *c, int i);   /* 02142cc0 p2 */
-void func_ov006_0211a048(char *c, int i);   /* 02142d08 p0 */
-void func_ov006_02119fb0(char *c, int i);   /* 02142d08 p1 */
-void func_ov006_02119f3c(char *c, int i);   /* 02142d08 p2 */
-void func_ov006_02119e5c(char *c, int i);   /* 02142db0 p0 */
-void func_ov006_02119dc4(char *c, int i);   /* 02142db0 p1 */
-void func_ov006_02119d50(char *c, int i);   /* 02142db0 p2 */
+void _ZN12dScMgSound_c19func_ov006_0211bf44Ei(char *c, int i);   /* 02142df8 p0 */
+void _ZN12dScMgSound_c19func_ov006_0211bc8cEi(char *c, int i);   /* 02142df8 p1, was THE FLOOR */
+void _ZN12dScMgSound_c19func_ov006_0211bc68Ei(char *c, int i);   /* 02142df8 p2 */
+void _ZN12dScMgSound_c19func_ov006_0211bbe0Ei(char *c, int i);   /* 02142df8 p3 */
+int  _ZN12dScMgSound_c19func_ov006_0211ba88Ei(char *c, int i);   /* 02142df8 p4, host copy */
+void _ZN12dScMgSound_c19func_ov006_0211b590Ei(char *c, int i);   /* 02142e20 p0,  sub-dispatcher */
+void _ZN12dScMgSound_c19func_ov006_0211b398Ei(char *c, int i);   /* 02142e20 p1,  sub-dispatcher */
+void _ZN12dScMgSound_c19func_ov006_0211b17cEi(char *c, int i);   /* 02142e20 p2,  sub-dispatcher */
+void _ZN12dScMgSound_c19func_ov006_0211af60Ei(char *c, int i);   /* 02142e20 p3,  sub-dispatcher */
+void _ZN12dScMgSound_c19func_ov006_0211ad44Ei(char *c, int i);   /* 02142e20 p4,  sub-dispatcher */
+void _ZN12dScMgSound_c19func_ov006_0211abdcEi(char *c, int i);   /* 02142e20 p5,  sub-dispatcher */
+void _ZN12dScMgSound_c19func_ov006_0211aa44Ei(char *c, int i);   /* 02142e20 p6,  sub-dispatcher */
+void _ZN12dScMgSound_c19func_ov006_0211a7acEi(char *c, int i);   /* 02142e20 p7,  sub-dispatcher */
+void _ZN12dScMgSound_c19func_ov006_0211a648Ei(char *c, int i);   /* 02142e20 p8,  sub-dispatcher */
+void _ZN12dScMgSound_c19func_ov006_0211a4b0Ei(char *c, int i);   /* 02142e20 p9,  sub-dispatcher */
+void _ZN12dScMgSound_c19func_ov006_0211a2c4Ei(char *c, int i);   /* 02142e20 p10, sub-dispatcher */
+void _ZN12dScMgSound_c19func_ov006_0211a0d8Ei(char *c, int i);   /* 02142e20 p11, sub-dispatcher */
+void _ZN12dScMgSound_c19func_ov006_02119eecEi(char *c, int i);   /* 02142e20 p12, sub-dispatcher */
+void _ZN12dScMgSound_c19func_ov006_0211b4fcEi(char *c, int i);   /* 02142d38 p0 */
+void _ZN12dScMgSound_c19func_ov006_0211b3ecEi(char *c, int i);   /* 02142d38 p1 */
+void _ZN12dScMgSound_c19func_ov006_0211b3e8Ev(void);             /* 02142d38 p2, empty body */
+void _ZN12dScMgSound_c19func_ov006_0211b308Ei(char *c, int i);   /* 02142d50 p0 */
+void _ZN12dScMgSound_c19func_ov006_0211b278Ei(char *c, int i);   /* 02142d50 p1 */
+void _ZN12dScMgSound_c19func_ov006_0211b1ccEi(char *c, int i);   /* 02142d50 p2 */
+void _ZN12dScMgSound_c19func_ov006_0211b0ecEi(char *c, int i);   /* 02142d80 p0 */
+void _ZN12dScMgSound_c19func_ov006_0211b05cEi(char *c, int i);   /* 02142d80 p1 */
+void _ZN12dScMgSound_c19func_ov006_0211afb0Ei(char *c, int i);   /* 02142d80 p2 */
+void _ZN12dScMgSound_c19func_ov006_0211aed0Ei(char *c, int i);   /* 02142dc8 p0 */
+void _ZN12dScMgSound_c19func_ov006_0211ae40Ei(char *c, int i);   /* 02142dc8 p1 */
+void _ZN12dScMgSound_c19func_ov006_0211ad94Ei(char *c, int i);   /* 02142dc8 p2 */
+void _ZN12dScMgSound_c19func_ov006_0211ad00Ei(char *c, int i);   /* 02142de0 p0 */
+void _ZN12dScMgSound_c19func_ov006_0211ac30Ei(char *c, int i);   /* 02142de0 p1 */
+void _ZN12dScMgSound_c19func_ov006_0211ac2cEv(void);             /* 02142de0 p2, empty body */
+void _ZN12dScMgSound_c19func_ov006_0211ab80Ei(char *c, int i);   /* 02142cd8 p0 */
+void _ZN12dScMgSound_c19func_ov006_0211ab0cEi(char *c, int i);   /* 02142cd8 p1 */
+void _ZN12dScMgSound_c19func_ov006_0211aa94Ei(char *c, int i);   /* 02142cd8 p2 */
+void _ZN12dScMgSound_c19func_ov006_0211a9fcEi(char *c, int i);   /* 02142cf0 p0 */
+void _ZN12dScMgSound_c19func_ov006_0211a910Ei(char *c, int i);   /* 02142cf0 p1 */
+void _ZN12dScMgSound_c19func_ov006_0211a7fcEi(char *c, int i);   /* 02142cf0 p2 */
+void _ZN12dScMgSound_c19func_ov006_0211a714Ei(char *c, int i);   /* 02142d20 p0 */
+void _ZN12dScMgSound_c19func_ov006_0211a69cEi(char *c, int i);   /* 02142d20 p1 */
+void _ZN12dScMgSound_c19func_ov006_0211a698Ev(void);             /* 02142d20 p2, empty body */
+void _ZN12dScMgSound_c19func_ov006_0211a5ecEi(char *c, int i);   /* 02142d68 p0 */
+void _ZN12dScMgSound_c19func_ov006_0211a578Ei(char *c, int i);   /* 02142d68 p1 */
+void _ZN12dScMgSound_c19func_ov006_0211a500Ei(char *c, int i);   /* 02142d68 p2 */
+void _ZN12dScMgSound_c19func_ov006_0211a420Ei(char *c, int i);   /* 02142d98 p0 */
+void _ZN12dScMgSound_c19func_ov006_0211a388Ei(char *c, int i);   /* 02142d98 p1 */
+void _ZN12dScMgSound_c19func_ov006_0211a314Ei(char *c, int i);   /* 02142d98 p2 */
+void _ZN12dScMgSound_c19func_ov006_0211a234Ei(char *c, int i);   /* 02142cc0 p0 */
+void _ZN12dScMgSound_c19func_ov006_0211a19cEi(char *c, int i);   /* 02142cc0 p1 */
+void _ZN12dScMgSound_c19func_ov006_0211a128Ei(char *c, int i);   /* 02142cc0 p2 */
+void _ZN12dScMgSound_c19func_ov006_0211a048Ei(char *c, int i);   /* 02142d08 p0 */
+void _ZN12dScMgSound_c19func_ov006_02119fb0Ei(char *c, int i);   /* 02142d08 p1 */
+void _ZN12dScMgSound_c19func_ov006_02119f3cEi(char *c, int i);   /* 02142d08 p2 */
+void _ZN12dScMgSound_c19func_ov006_02119e5cEi(char *c, int i);   /* 02142db0 p0 */
+void _ZN12dScMgSound_c19func_ov006_02119dc4Ei(char *c, int i);   /* 02142db0 p1 */
+void _ZN12dScMgSound_c19func_ov006_02119d50Ei(char *c, int i);   /* 02142db0 p2 */
 
 /* THE SUB-OBJECT'S FIELD-HELD PMF DISPATCH MOVED OUT OF THIS FILE.
    func_ov006_020c2b8c belongs to the +0x4f38 sub-object, which dScMgCup_c
@@ -406,57 +406,57 @@ static unsigned g_snd_unknown;
     }
 
 /* data_ov006_02142d38 */
-SND2_FACE(func_ov006_0211b4fc)
-SND2_FACE(func_ov006_0211b3ec)
-SND2_FACE0(func_ov006_0211b3e8)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211b4fcEi)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211b3ecEi)
+SND2_FACE0(_ZN12dScMgSound_c19func_ov006_0211b3e8Ev)
 /* data_ov006_02142d50 */
-SND2_FACE(func_ov006_0211b308)
-SND2_FACE(func_ov006_0211b278)
-SND2_FACE(func_ov006_0211b1cc)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211b308Ei)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211b278Ei)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211b1ccEi)
 /* data_ov006_02142d80 */
-SND2_FACE(func_ov006_0211b0ec)
-SND2_FACE(func_ov006_0211b05c)
-SND2_FACE(func_ov006_0211afb0)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211b0ecEi)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211b05cEi)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211afb0Ei)
 /* data_ov006_02142dc8 */
-SND2_FACE(func_ov006_0211aed0)
-SND2_FACE(func_ov006_0211ae40)
-SND2_FACE(func_ov006_0211ad94)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211aed0Ei)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211ae40Ei)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211ad94Ei)
 /* data_ov006_02142de0 */
-SND2_FACE(func_ov006_0211ad00)
-SND2_FACE(func_ov006_0211ac30)
-SND2_FACE0(func_ov006_0211ac2c)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211ad00Ei)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211ac30Ei)
+SND2_FACE0(_ZN12dScMgSound_c19func_ov006_0211ac2cEv)
 /* data_ov006_02142cd8 */
-SND2_FACE(func_ov006_0211ab80)
-SND2_FACE(func_ov006_0211ab0c)
-SND2_FACE(func_ov006_0211aa94)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211ab80Ei)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211ab0cEi)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211aa94Ei)
 /* data_ov006_02142cf0 */
-SND2_FACE(func_ov006_0211a9fc)
-SND2_FACE(func_ov006_0211a910)
-SND2_FACE(func_ov006_0211a7fc)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211a9fcEi)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211a910Ei)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211a7fcEi)
 /* data_ov006_02142d20 */
-SND2_FACE(func_ov006_0211a714)
-SND2_FACE(func_ov006_0211a69c)
-SND2_FACE0(func_ov006_0211a698)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211a714Ei)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211a69cEi)
+SND2_FACE0(_ZN12dScMgSound_c19func_ov006_0211a698Ev)
 /* data_ov006_02142d68 */
-SND2_FACE(func_ov006_0211a5ec)
-SND2_FACE(func_ov006_0211a578)
-SND2_FACE(func_ov006_0211a500)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211a5ecEi)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211a578Ei)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211a500Ei)
 /* data_ov006_02142d98 */
-SND2_FACE(func_ov006_0211a420)
-SND2_FACE(func_ov006_0211a388)
-SND2_FACE(func_ov006_0211a314)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211a420Ei)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211a388Ei)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211a314Ei)
 /* data_ov006_02142cc0 */
-SND2_FACE(func_ov006_0211a234)
-SND2_FACE(func_ov006_0211a19c)
-SND2_FACE(func_ov006_0211a128)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211a234Ei)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211a19cEi)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211a128Ei)
 /* data_ov006_02142d08 */
-SND2_FACE(func_ov006_0211a048)
-SND2_FACE(func_ov006_02119fb0)
-SND2_FACE(func_ov006_02119f3c)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_0211a048Ei)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_02119fb0Ei)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_02119f3cEi)
 /* data_ov006_02142db0 */
-SND2_FACE(func_ov006_02119e5c)
-SND2_FACE(func_ov006_02119dc4)
-SND2_FACE(func_ov006_02119d50)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_02119e5cEi)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_02119dc4Ei)
+SND2_FACE(_ZN12dScMgSound_c19func_ov006_02119d50Ei)
 
 #undef SND2_FACE
 #undef SND2_FACE0
@@ -466,7 +466,7 @@ SND2_FACE(func_ov006_02119d50)
 static void snd1_state1_0211bc8c(char *c, int i)
 {
     ++g_snd_state1_0211bc8c;
-    func_ov006_0211bc8c(c, i);
+    _ZN12dScMgSound_c19func_ov006_0211bc8cEi(c, i);
 }
 
 /* ---- THE BOOT INSTALLER, lanes PMFB2 (level 1) and PMFB3 (level 2) -------
@@ -534,30 +534,30 @@ extern "C" void port_mg_sound_states_seat(void)
         void (*host)(char *, int);
     } seats[] = {
         /* data_ov006_02142df8, 5 slots, read by func_ov006_0211b954 */
-        {data_ov006_02142df8, "02142df8",  0, 0x0211bf44u, func_ov006_0211bf44},
+        {data_ov006_02142df8, "02142df8",  0, 0x0211bf44u, _ZN12dScMgSound_c19func_ov006_0211bf44Ei},
         {data_ov006_02142df8, "02142df8",  1, 0x0211bc8cu, snd1_state1_0211bc8c},
-        {data_ov006_02142df8, "02142df8",  2, 0x0211bc68u, func_ov006_0211bc68},
-        {data_ov006_02142df8, "02142df8",  3, 0x0211bbe0u, func_ov006_0211bbe0},
+        {data_ov006_02142df8, "02142df8",  2, 0x0211bc68u, _ZN12dScMgSound_c19func_ov006_0211bc68Ei},
+        {data_ov006_02142df8, "02142df8",  3, 0x0211bbe0u, _ZN12dScMgSound_c19func_ov006_0211bbe0Ei},
         /* the one state that returns a value; cdecl leaves eax to the caller,
            and the ROM's own dispatch ignores it exactly as this cast does. */
         {data_ov006_02142df8, "02142df8",  4, 0x0211ba88u,
-                                    (void (*)(char *, int))func_ov006_0211ba88},
+                                    (void (*)(char *, int))_ZN12dScMgSound_c19func_ov006_0211ba88Ei},
         /* data_ov006_02142e20, 13 slots, read by func_ov006_0211b5e0. Every
            one of the thirteen is itself a sub-dispatcher, still host-copied
            below, still reading a level-2 table full of DS words. */
-        {data_ov006_02142e20, "02142e20",  0, 0x0211b590u, func_ov006_0211b590},
-        {data_ov006_02142e20, "02142e20",  1, 0x0211b398u, func_ov006_0211b398},
-        {data_ov006_02142e20, "02142e20",  2, 0x0211b17cu, func_ov006_0211b17c},
-        {data_ov006_02142e20, "02142e20",  3, 0x0211af60u, func_ov006_0211af60},
-        {data_ov006_02142e20, "02142e20",  4, 0x0211ad44u, func_ov006_0211ad44},
-        {data_ov006_02142e20, "02142e20",  5, 0x0211abdcu, func_ov006_0211abdc},
-        {data_ov006_02142e20, "02142e20",  6, 0x0211aa44u, func_ov006_0211aa44},
-        {data_ov006_02142e20, "02142e20",  7, 0x0211a7acu, func_ov006_0211a7ac},
-        {data_ov006_02142e20, "02142e20",  8, 0x0211a648u, func_ov006_0211a648},
-        {data_ov006_02142e20, "02142e20",  9, 0x0211a4b0u, func_ov006_0211a4b0},
-        {data_ov006_02142e20, "02142e20", 10, 0x0211a2c4u, func_ov006_0211a2c4},
-        {data_ov006_02142e20, "02142e20", 11, 0x0211a0d8u, func_ov006_0211a0d8},
-        {data_ov006_02142e20, "02142e20", 12, 0x02119eecu, func_ov006_02119eec},
+        {data_ov006_02142e20, "02142e20",  0, 0x0211b590u, _ZN12dScMgSound_c19func_ov006_0211b590Ei},
+        {data_ov006_02142e20, "02142e20",  1, 0x0211b398u, _ZN12dScMgSound_c19func_ov006_0211b398Ei},
+        {data_ov006_02142e20, "02142e20",  2, 0x0211b17cu, _ZN12dScMgSound_c19func_ov006_0211b17cEi},
+        {data_ov006_02142e20, "02142e20",  3, 0x0211af60u, _ZN12dScMgSound_c19func_ov006_0211af60Ei},
+        {data_ov006_02142e20, "02142e20",  4, 0x0211ad44u, _ZN12dScMgSound_c19func_ov006_0211ad44Ei},
+        {data_ov006_02142e20, "02142e20",  5, 0x0211abdcu, _ZN12dScMgSound_c19func_ov006_0211abdcEi},
+        {data_ov006_02142e20, "02142e20",  6, 0x0211aa44u, _ZN12dScMgSound_c19func_ov006_0211aa44Ei},
+        {data_ov006_02142e20, "02142e20",  7, 0x0211a7acu, _ZN12dScMgSound_c19func_ov006_0211a7acEi},
+        {data_ov006_02142e20, "02142e20",  8, 0x0211a648u, _ZN12dScMgSound_c19func_ov006_0211a648Ei},
+        {data_ov006_02142e20, "02142e20",  9, 0x0211a4b0u, _ZN12dScMgSound_c19func_ov006_0211a4b0Ei},
+        {data_ov006_02142e20, "02142e20", 10, 0x0211a2c4u, _ZN12dScMgSound_c19func_ov006_0211a2c4Ei},
+        {data_ov006_02142e20, "02142e20", 11, 0x0211a0d8u, _ZN12dScMgSound_c19func_ov006_0211a0d8Ei},
+        {data_ov006_02142e20, "02142e20", 12, 0x02119eecu, _ZN12dScMgSound_c19func_ov006_02119eecEi},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
@@ -601,57 +601,57 @@ extern "C" void port_mg_sound_states_seat(void)
         void (__fastcall *face)(void *, void *, int);
     } seats2[] = {
         /* data_ov006_02142d38 */
-        {data_ov006_02142d38, "02142d38", 0, 0x0211b4fcu, snd2_func_ov006_0211b4fc},
-        {data_ov006_02142d38, "02142d38", 1, 0x0211b3ecu, snd2_func_ov006_0211b3ec},
-        {data_ov006_02142d38, "02142d38", 2, 0x0211b3e8u, snd2_func_ov006_0211b3e8},
+        {data_ov006_02142d38, "02142d38", 0, 0x0211b4fcu, snd2__ZN12dScMgSound_c19func_ov006_0211b4fcEi},
+        {data_ov006_02142d38, "02142d38", 1, 0x0211b3ecu, snd2__ZN12dScMgSound_c19func_ov006_0211b3ecEi},
+        {data_ov006_02142d38, "02142d38", 2, 0x0211b3e8u, snd2__ZN12dScMgSound_c19func_ov006_0211b3e8Ev},
         /* data_ov006_02142d50 */
-        {data_ov006_02142d50, "02142d50", 0, 0x0211b308u, snd2_func_ov006_0211b308},
-        {data_ov006_02142d50, "02142d50", 1, 0x0211b278u, snd2_func_ov006_0211b278},
-        {data_ov006_02142d50, "02142d50", 2, 0x0211b1ccu, snd2_func_ov006_0211b1cc},
+        {data_ov006_02142d50, "02142d50", 0, 0x0211b308u, snd2__ZN12dScMgSound_c19func_ov006_0211b308Ei},
+        {data_ov006_02142d50, "02142d50", 1, 0x0211b278u, snd2__ZN12dScMgSound_c19func_ov006_0211b278Ei},
+        {data_ov006_02142d50, "02142d50", 2, 0x0211b1ccu, snd2__ZN12dScMgSound_c19func_ov006_0211b1ccEi},
         /* data_ov006_02142d80 */
-        {data_ov006_02142d80, "02142d80", 0, 0x0211b0ecu, snd2_func_ov006_0211b0ec},
-        {data_ov006_02142d80, "02142d80", 1, 0x0211b05cu, snd2_func_ov006_0211b05c},
-        {data_ov006_02142d80, "02142d80", 2, 0x0211afb0u, snd2_func_ov006_0211afb0},
+        {data_ov006_02142d80, "02142d80", 0, 0x0211b0ecu, snd2__ZN12dScMgSound_c19func_ov006_0211b0ecEi},
+        {data_ov006_02142d80, "02142d80", 1, 0x0211b05cu, snd2__ZN12dScMgSound_c19func_ov006_0211b05cEi},
+        {data_ov006_02142d80, "02142d80", 2, 0x0211afb0u, snd2__ZN12dScMgSound_c19func_ov006_0211afb0Ei},
         /* data_ov006_02142dc8 */
-        {data_ov006_02142dc8, "02142dc8", 0, 0x0211aed0u, snd2_func_ov006_0211aed0},
-        {data_ov006_02142dc8, "02142dc8", 1, 0x0211ae40u, snd2_func_ov006_0211ae40},
-        {data_ov006_02142dc8, "02142dc8", 2, 0x0211ad94u, snd2_func_ov006_0211ad94},
+        {data_ov006_02142dc8, "02142dc8", 0, 0x0211aed0u, snd2__ZN12dScMgSound_c19func_ov006_0211aed0Ei},
+        {data_ov006_02142dc8, "02142dc8", 1, 0x0211ae40u, snd2__ZN12dScMgSound_c19func_ov006_0211ae40Ei},
+        {data_ov006_02142dc8, "02142dc8", 2, 0x0211ad94u, snd2__ZN12dScMgSound_c19func_ov006_0211ad94Ei},
         /* data_ov006_02142de0 */
-        {data_ov006_02142de0, "02142de0", 0, 0x0211ad00u, snd2_func_ov006_0211ad00},
-        {data_ov006_02142de0, "02142de0", 1, 0x0211ac30u, snd2_func_ov006_0211ac30},
-        {data_ov006_02142de0, "02142de0", 2, 0x0211ac2cu, snd2_func_ov006_0211ac2c},
+        {data_ov006_02142de0, "02142de0", 0, 0x0211ad00u, snd2__ZN12dScMgSound_c19func_ov006_0211ad00Ei},
+        {data_ov006_02142de0, "02142de0", 1, 0x0211ac30u, snd2__ZN12dScMgSound_c19func_ov006_0211ac30Ei},
+        {data_ov006_02142de0, "02142de0", 2, 0x0211ac2cu, snd2__ZN12dScMgSound_c19func_ov006_0211ac2cEv},
         /* data_ov006_02142cd8 */
-        {data_ov006_02142cd8, "02142cd8", 0, 0x0211ab80u, snd2_func_ov006_0211ab80},
-        {data_ov006_02142cd8, "02142cd8", 1, 0x0211ab0cu, snd2_func_ov006_0211ab0c},
-        {data_ov006_02142cd8, "02142cd8", 2, 0x0211aa94u, snd2_func_ov006_0211aa94},
+        {data_ov006_02142cd8, "02142cd8", 0, 0x0211ab80u, snd2__ZN12dScMgSound_c19func_ov006_0211ab80Ei},
+        {data_ov006_02142cd8, "02142cd8", 1, 0x0211ab0cu, snd2__ZN12dScMgSound_c19func_ov006_0211ab0cEi},
+        {data_ov006_02142cd8, "02142cd8", 2, 0x0211aa94u, snd2__ZN12dScMgSound_c19func_ov006_0211aa94Ei},
         /* data_ov006_02142cf0 */
-        {data_ov006_02142cf0, "02142cf0", 0, 0x0211a9fcu, snd2_func_ov006_0211a9fc},
-        {data_ov006_02142cf0, "02142cf0", 1, 0x0211a910u, snd2_func_ov006_0211a910},
-        {data_ov006_02142cf0, "02142cf0", 2, 0x0211a7fcu, snd2_func_ov006_0211a7fc},
+        {data_ov006_02142cf0, "02142cf0", 0, 0x0211a9fcu, snd2__ZN12dScMgSound_c19func_ov006_0211a9fcEi},
+        {data_ov006_02142cf0, "02142cf0", 1, 0x0211a910u, snd2__ZN12dScMgSound_c19func_ov006_0211a910Ei},
+        {data_ov006_02142cf0, "02142cf0", 2, 0x0211a7fcu, snd2__ZN12dScMgSound_c19func_ov006_0211a7fcEi},
         /* data_ov006_02142d20 */
-        {data_ov006_02142d20, "02142d20", 0, 0x0211a714u, snd2_func_ov006_0211a714},
-        {data_ov006_02142d20, "02142d20", 1, 0x0211a69cu, snd2_func_ov006_0211a69c},
-        {data_ov006_02142d20, "02142d20", 2, 0x0211a698u, snd2_func_ov006_0211a698},
+        {data_ov006_02142d20, "02142d20", 0, 0x0211a714u, snd2__ZN12dScMgSound_c19func_ov006_0211a714Ei},
+        {data_ov006_02142d20, "02142d20", 1, 0x0211a69cu, snd2__ZN12dScMgSound_c19func_ov006_0211a69cEi},
+        {data_ov006_02142d20, "02142d20", 2, 0x0211a698u, snd2__ZN12dScMgSound_c19func_ov006_0211a698Ev},
         /* data_ov006_02142d68 */
-        {data_ov006_02142d68, "02142d68", 0, 0x0211a5ecu, snd2_func_ov006_0211a5ec},
-        {data_ov006_02142d68, "02142d68", 1, 0x0211a578u, snd2_func_ov006_0211a578},
-        {data_ov006_02142d68, "02142d68", 2, 0x0211a500u, snd2_func_ov006_0211a500},
+        {data_ov006_02142d68, "02142d68", 0, 0x0211a5ecu, snd2__ZN12dScMgSound_c19func_ov006_0211a5ecEi},
+        {data_ov006_02142d68, "02142d68", 1, 0x0211a578u, snd2__ZN12dScMgSound_c19func_ov006_0211a578Ei},
+        {data_ov006_02142d68, "02142d68", 2, 0x0211a500u, snd2__ZN12dScMgSound_c19func_ov006_0211a500Ei},
         /* data_ov006_02142d98 */
-        {data_ov006_02142d98, "02142d98", 0, 0x0211a420u, snd2_func_ov006_0211a420},
-        {data_ov006_02142d98, "02142d98", 1, 0x0211a388u, snd2_func_ov006_0211a388},
-        {data_ov006_02142d98, "02142d98", 2, 0x0211a314u, snd2_func_ov006_0211a314},
+        {data_ov006_02142d98, "02142d98", 0, 0x0211a420u, snd2__ZN12dScMgSound_c19func_ov006_0211a420Ei},
+        {data_ov006_02142d98, "02142d98", 1, 0x0211a388u, snd2__ZN12dScMgSound_c19func_ov006_0211a388Ei},
+        {data_ov006_02142d98, "02142d98", 2, 0x0211a314u, snd2__ZN12dScMgSound_c19func_ov006_0211a314Ei},
         /* data_ov006_02142cc0 */
-        {data_ov006_02142cc0, "02142cc0", 0, 0x0211a234u, snd2_func_ov006_0211a234},
-        {data_ov006_02142cc0, "02142cc0", 1, 0x0211a19cu, snd2_func_ov006_0211a19c},
-        {data_ov006_02142cc0, "02142cc0", 2, 0x0211a128u, snd2_func_ov006_0211a128},
+        {data_ov006_02142cc0, "02142cc0", 0, 0x0211a234u, snd2__ZN12dScMgSound_c19func_ov006_0211a234Ei},
+        {data_ov006_02142cc0, "02142cc0", 1, 0x0211a19cu, snd2__ZN12dScMgSound_c19func_ov006_0211a19cEi},
+        {data_ov006_02142cc0, "02142cc0", 2, 0x0211a128u, snd2__ZN12dScMgSound_c19func_ov006_0211a128Ei},
         /* data_ov006_02142d08 */
-        {data_ov006_02142d08, "02142d08", 0, 0x0211a048u, snd2_func_ov006_0211a048},
-        {data_ov006_02142d08, "02142d08", 1, 0x02119fb0u, snd2_func_ov006_02119fb0},
-        {data_ov006_02142d08, "02142d08", 2, 0x02119f3cu, snd2_func_ov006_02119f3c},
+        {data_ov006_02142d08, "02142d08", 0, 0x0211a048u, snd2__ZN12dScMgSound_c19func_ov006_0211a048Ei},
+        {data_ov006_02142d08, "02142d08", 1, 0x02119fb0u, snd2__ZN12dScMgSound_c19func_ov006_02119fb0Ei},
+        {data_ov006_02142d08, "02142d08", 2, 0x02119f3cu, snd2__ZN12dScMgSound_c19func_ov006_02119f3cEi},
         /* data_ov006_02142db0 */
-        {data_ov006_02142db0, "02142db0", 0, 0x02119e5cu, snd2_func_ov006_02119e5c},
-        {data_ov006_02142db0, "02142db0", 1, 0x02119dc4u, snd2_func_ov006_02119dc4},
-        {data_ov006_02142db0, "02142db0", 2, 0x02119d50u, snd2_func_ov006_02119d50},
+        {data_ov006_02142db0, "02142db0", 0, 0x02119e5cu, snd2__ZN12dScMgSound_c19func_ov006_02119e5cEi},
+        {data_ov006_02142db0, "02142db0", 1, 0x02119dc4u, snd2__ZN12dScMgSound_c19func_ov006_02119dc4Ei},
+        {data_ov006_02142db0, "02142db0", 2, 0x02119d50u, snd2__ZN12dScMgSound_c19func_ov006_02119d50Ei},
     };
 
     for (unsigned i = 0; i < sizeof seats2 / sizeof seats2[0]; ++i) {

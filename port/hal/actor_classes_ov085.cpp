@@ -151,8 +151,8 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
      185  InitResources / Render / D0            -> C names
    183's Behavior is a method too, reached through the generated reverse face
    for its flat name (port/faces_sync.txt).  */
-#include "WallSign.h"
-#include "Toad.h"
+#include "daObjKanban_c.h"
+#include "daKinopio_c.h"
 
 extern "C" {
 /* ---- the arm9 shared half, read off both tables' own reloc runs ---------- */
@@ -179,20 +179,20 @@ void port_actor_slot_decline(const char *what);   /* func_02043fdc_hostcopy */
 void port_actor_render_probe(const char *cls, void *model); /* actor_classes */
 
 /* ---- WALL_SIGN (183), _ZTV8WallSign / _ZTV13daObjKanban_c 0x02130400 ----- */
-int _ZN8WallSign16CleanupResourcesEv(void);        /* slot 3, takes nothing */
-int _ZN8WallSign8BehaviorEv(void *self);           /* slot 6, reverse face  */
-int *_ZN8WallSignD1Ev(int *self);                  /* slot 16 */
-int *_ZN8WallSignD0Ev(int *self);                  /* slot 17 */
+int _ZN13daObjKanban_c16CleanupResourcesEv(void);        /* slot 3, takes nothing */
+int _ZN13daObjKanban_c8BehaviorEv(void *self);           /* slot 6, reverse face  */
+int *_ZN13daObjKanban_cD1Ev(int *self);                  /* slot 16 */
+int *_ZN13daObjKanban_cD0Ev(int *self);                  /* slot 17 */
 void *daObjKanban_c_classInit(void);                        /* the factory */
 
 /* ---- TOAD (185), _ZTV4Toad / _ZTV11daKinopio_c 0x0212feb8 ---------------- */
-int _ZN4Toad13InitResourcesEv(char *self);         /* slot 0  */
-int _ZN4Toad6RenderEv(char *self);                 /* slot 9  */
-int *_ZN4ToadD0Ev(int *self);                      /* slot 17 */
+int _ZN11daKinopio_c13InitResourcesEv(char *self);         /* slot 0  */
+int _ZN11daKinopio_c6RenderEv(char *self);                 /* slot 9  */
+int *_ZN11daKinopio_cD0Ev(int *self);                      /* slot 17 */
 void *daKinopio_c_classInit(void);                            /* the factory */
 
 /* what Toad's hosted slot 16 has to spell out by hand */
-void _ZN11ShadowModelD1Ev(void *self);
+void _ZN17dExtShadowModel_cD1Ev(void *self);
 void _ZN9ModelAnimD1Ev(void *self);
 void *_ZN7dCcAc_cD1Ev(void *self);
 void *_ZN8dActor_cD2Ev(void *self);
@@ -207,16 +207,15 @@ void *_ZN8dActor_cD2Ev(void *self);
    Rabbit/RabbitKey/LakituBro recipe three sections up in
    hal/actor_classes.cpp, unchanged. */
 DSSTATE_BEGIN
-void *_ZTV8WallSign[32];
-void *_ZTV4Toad[31];
+void *_ZTV13daObjKanban_c[32];
+void *_ZTV11daKinopio_c[31];
 DSSTATE_END
 }
 /* Both LHS names are declared extern by the destructor TUs (include/
    decl_common.h lines 474 and 536) and DEFINED nowhere in this link, which is
    what port/tools/alternatename_guard.py requires. */
-#pragma comment(linker, "/alternatename:__ZTV13daObjKanban_c=__ZTV8WallSign")
-#pragma comment(linker, "/alternatename:__ZTV11daKinopio_c=__ZTV4Toad")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV13daObjKanban_c=__ZTV13daObjKanban_c")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV11daKinopio_c=__ZTV11daKinopio_c")
 /* ---- five C++-mangled DATA references onto their C-named definitions ------
    The hal/cxx_aliases.cpp case, kept in this lane's own file so the shared one
    is not touched. Two matched TUs in this slice declare mount symbols at
@@ -333,24 +332,24 @@ static void ov85_fill_shared(void **vt)
 // WALL_SIGN (actor 183, ov085) x9
 // ============================================================================
 static int __fastcall ws_init(void *s, void *)
-{ return ((WallSign *)s)->WallSign::InitResources(); }
+{ return ((daObjKanban_c *)s)->daObjKanban_c::InitResources(); }
 static int __fastcall ws_clean(void *, void *)
-{ return _ZN8WallSign16CleanupResourcesEv(); }
+{ return _ZN13daObjKanban_c16CleanupResourcesEv(); }
 static int __fastcall ws_behavior(void *s, void *)
-{ return _ZN8WallSign8BehaviorEv(s); }
+{ return _ZN13daObjKanban_c8BehaviorEv(s); }
 /* the matched TU, dispatching ROM slot 5 over the plain Model at +0xd4; see
    this file's header for why that is the linkable half of the w19 split */
 static int __fastcall ws_render(void *s, void *)
 { port_actor_render_probe("WALL_SIGN", (char *)s + 0xd4);
-  return ((WallSign *)s)->WallSign::Render(); }
+  return ((daObjKanban_c *)s)->daObjKanban_c::Render(); }
 static int __fastcall ws_d1(void *s, void *)
-{ return (int)(size_t)_ZN8WallSignD1Ev((int *)s); }
+{ return (int)(size_t)_ZN13daObjKanban_cD1Ev((int *)s); }
 static int __fastcall ws_d0(void *s, void *)
-{ return (int)(size_t)_ZN8WallSignD0Ev((int *)s); }
+{ return (int)(size_t)_ZN13daObjKanban_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_wall_sign_vtable(void)
 {
-    void **vt = _ZTV8WallSign;
+    void **vt = _ZTV13daObjKanban_c;
     ov85_fill_shared(vt);
     vt[0]  = (void *)ws_init;
     vt[3]  = (void *)ws_clean;
@@ -365,16 +364,16 @@ extern "C" void hal_fill_wall_sign_vtable(void)
 // TOAD (actor 185, ov085) x10
 // ============================================================================
 static int __fastcall td_init(void *s, void *)
-{ return _ZN4Toad13InitResourcesEv((char *)s); }
+{ return _ZN11daKinopio_c13InitResourcesEv((char *)s); }
 static int __fastcall td_clean(void *s, void *)
-{ return ((Toad *)s)->Toad::CleanupResources(); }
+{ return ((daKinopio_c *)s)->daKinopio_c::CleanupResources(); }
 /* the matched src/_ZN4Toad8BehaviorEv.cpp, the ROM's own body (run linkfull
    lane SEATS3; the host reimplementation it replaces is retired) */
 static int __fastcall td_behavior(void *s, void *)
-{ return ((Toad *)s)->Toad::Behavior(); }
+{ return ((daKinopio_c *)s)->daKinopio_c::Behavior(); }
 static int __fastcall td_render(void *s, void *)
 { port_actor_render_probe("TOAD", (char *)s + 0x108);
-  return _ZN4Toad6RenderEv((char *)s); }
+  return _ZN11daKinopio_c6RenderEv((char *)s); }
 /* Slot 16, the ROM D1's own five relocs; see this file's header. Member
    destruction in REVERSE declaration order, which is the order the ROM runs
    them in: ShadowModel 0x16c, ModelAnim 0x108, MovingCylinderClsn 0xd4, then
@@ -385,11 +384,11 @@ static int __fastcall td_render(void *s, void *)
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (td_d1) spelled the same chain by hand. */
 static int __fastcall td_d0(void *s, void *)
-{ return (int)(size_t)_ZN4ToadD0Ev((int *)s); }
+{ return (int)(size_t)_ZN11daKinopio_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_toad_vtable(void)
 {
-    void **vt = _ZTV4Toad;
+    void **vt = _ZTV11daKinopio_c;
     ov85_fill_shared(vt);
     vt[0]  = (void *)td_init;
     vt[3]  = (void *)td_clean;
@@ -481,15 +480,15 @@ extern "C" void hal_fill_toad_vtable(void)
 // numbering comes into a direct call, so unlike Behavior it needs no host copy
 // -- the same split TOAD's Render and Behavior sit on either side of.
 // ============================================================================
-#include "PrincessPeach.h"
+#include "daPeach_c.h"
 
 extern "C" {
 /* ---- PRINCESS_PEACH (186), _ZTV13PrincessPeach / _ZTV9daPeach_c 0x0212ffc0 */
-int _ZN13PrincessPeach16CleanupResourcesEv(void);   /* slot 3,  takes nothing */
-int _ZN13PrincessPeach8BehaviorEv(void *self);      /* slot 6,  HOST COPY     */
-int _ZN13PrincessPeach6RenderEv(char *self);        /* slot 9                 */
-void _ZN13PrincessPeach16OnPendingDestroyEv(void);  /* slot 12, own override  */
-int *_ZN13PrincessPeachD0Ev(int *self);             /* slot 17                */
+int _ZN9daPeach_c16CleanupResourcesEv(void);   /* slot 3,  takes nothing */
+int _ZN9daPeach_c8BehaviorEv(void *self);      /* slot 6,  HOST COPY     */
+int _ZN9daPeach_c6RenderEv(char *self);        /* slot 9                 */
+void _ZN9daPeach_c16OnPendingDestroyEv(void);  /* slot 12, own override  */
+int *_ZN9daPeach_cD0Ev(int *self);             /* slot 17                */
 void *daPeach_c_classInit(void);                    /* the factory            */
 
 /* what her hosted slot 16 has to spell out by hand, beside the four TOAD's
@@ -497,7 +496,7 @@ void *daPeach_c_classInit(void);                    /* the factory            */
 void *_ZN10dBgCh_ActrD1Ev(void *self);
 
 DSSTATE_BEGIN
-void *_ZTV13PrincessPeach[31];
+void *_ZTV9daPeach_c[31];
 DSSTATE_END
 }
 /* The LHS is declared extern by include/decl_common.h:835 and DEFINED nowhere
@@ -505,19 +504,18 @@ DSSTATE_END
    stores it -- which is what port/tools/alternatename_guard.py requires.
    port/ov085_syms.txt leaves every _ZTV* out of the mount on purpose, so
    nothing else can define either name. */
-#pragma comment(linker, "/alternatename:__ZTV9daPeach_c=__ZTV13PrincessPeach")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV9daPeach_c=__ZTV9daPeach_c")
 static int __fastcall pp_init(void *s, void *)
-{ return ((PrincessPeach *)s)->PrincessPeach::InitResources(); }
+{ return ((daPeach_c *)s)->daPeach_c::InitResources(); }
 static int __fastcall pp_clean(void *, void *)
-{ return _ZN13PrincessPeach16CleanupResourcesEv(); }
+{ return _ZN9daPeach_c16CleanupResourcesEv(); }
 static int __fastcall pp_behavior(void *s, void *)
-{ return _ZN13PrincessPeach8BehaviorEv(s); }
+{ return _ZN9daPeach_c8BehaviorEv(s); }
 static int __fastcall pp_render(void *s, void *)
 { port_actor_render_probe("PRINCESS_PEACH", (char *)s + 0xd4);
-  return _ZN13PrincessPeach6RenderEv((char *)s); }
+  return _ZN9daPeach_c6RenderEv((char *)s); }
 static int __fastcall pp_pdes(void *, void *)
-{ _ZN13PrincessPeach16OnPendingDestroyEv(); return 0; }
+{ _ZN9daPeach_c16OnPendingDestroyEv(); return 0; }
 /* slot 16, the ROM D1's own five relocs; see this section's header. The vtable
    store the ROM opens with is kept, as TOAD's is and for the same reason: this
    class has a host array under that name, so the store has somewhere real to
@@ -525,11 +523,11 @@ static int __fastcall pp_pdes(void *, void *)
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (pp_d1) spelled the same chain by hand. */
 static int __fastcall pp_d0(void *s, void *)
-{ return (int)(size_t)_ZN13PrincessPeachD0Ev((int *)s); }
+{ return (int)(size_t)_ZN9daPeach_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_princess_peach_vtable(void)
 {
-    void **vt = _ZTV13PrincessPeach;
+    void **vt = _ZTV9daPeach_c;
     ov85_fill_shared(vt);
     vt[0]  = (void *)pp_init;
     vt[3]  = (void *)pp_clean;

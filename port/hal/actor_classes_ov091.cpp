@@ -147,9 +147,9 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 
 #include "dActor_c.h"
 #include "fBase_c.h"
-#include "RotatingUpDownPlatform.h"
-#include "Stump.h"
-#include "Fwoosh.h"
+#include "daLinelift2_c.h"
+#include "daObjPile_c.h"
+#include "daHyuhyu_c.h"
 
 extern "C" {
 
@@ -181,30 +181,30 @@ void hal_fill_platform_vtable(void);              /* the dBgActor_c base table *
 
 /* ---- the two host vtable arrays. Both spans are gaps in the gate-32 mount,
         so nothing else defines them and a factory gets host addresses. ---- */
-void *_ZTV22RotatingUpDownPlatform[32];  /* ov091 0x02134ec0, == _ZTV13daLinelift2_c */
-void *_ZTV6Fwoosh[31];                   /* ov091 0x021353ac, == _ZTV10daHyuhyu_c */
+void *_ZTV13daLinelift2_c[32];  /* ov091 0x02134ec0, == _ZTV13daLinelift2_c */
+void *_ZTV10daHyuhyu_c[31];                   /* ov091 0x021353ac, == _ZTV10daHyuhyu_c */
 
 /* ---- ARROW_PATH_LIFT (157) + SQUARE_METAL_NET_LIFT (144) ----------------- */
-int _ZN22RotatingUpDownPlatform13InitResourcesEv(void *self);    /* face: below */
-int _ZN22RotatingUpDownPlatform16CleanupResourcesEv(void *self); /* face: below */
-int _ZN22RotatingUpDownPlatform6RenderEv(void *self);            /* face: below */
-int _ZN22RotatingUpDownPlatform8BehaviorEv(void *self);          /* unmatched/Ov091_HostSites */
-int *_ZN22RotatingUpDownPlatformD1Ev(int *self);                 /* .c, C linkage */
-int *_ZN22RotatingUpDownPlatformD0Ev(int *self);                 /* .c, C linkage */
+int _ZN13daLinelift2_c13InitResourcesEv(void *self);    /* face: below */
+int _ZN13daLinelift2_c16CleanupResourcesEv(void *self); /* face: below */
+int _ZN13daLinelift2_c6RenderEv(void *self);            /* face: below */
+int _ZN13daLinelift2_c8BehaviorEv(void *self);          /* unmatched/Ov091_HostSites */
+int *_ZN13daLinelift2_cD1Ev(int *self);                 /* .c, C linkage */
+int *_ZN13daLinelift2_cD0Ev(int *self);                 /* .c, C linkage */
 void *daLinelift2_c_classInit_KM3_LIFT(void);
 void *daLinelift2_c_classInit_KM2_SUSUMU(void);
 extern unsigned char g_profile_KM3_LIFT[];
 extern unsigned char g_profile_KM2_SUSUMU[];
 
 /* ---- FWOOSH (231) -------------------------------------------------------- */
-int _ZN6Fwoosh13InitResourcesEv(void *self);      /* face: below */
-int _ZN6Fwoosh16CleanupResourcesEv(void *self);   /* face: below */
-int _ZN6Fwoosh6RenderEv(void *self);              /* unmatched/Ov091_HostSites */
-int _ZN6Fwoosh8BehaviorEv(void *self);            /* unmatched/Ov091_HostSites */
-void _ZN6Fwoosh16OnPendingDestroyEv(void);        /* slot 12, .c body takes void */
-int *_ZN6FwooshD1Ev(int *self);                   /* slot 16 */
-int *_ZN6FwooshD0Ev(int *self);                   /* slot 17 */
-int _ZN6Fwoosh13OnYoshiTryEatEv(void);                   /* slot 18, own OnYoshiTryEat: returns 4 */
+int _ZN10daHyuhyu_c13InitResourcesEv(void *self);      /* face: below */
+int _ZN10daHyuhyu_c16CleanupResourcesEv(void *self);   /* face: below */
+int _ZN10daHyuhyu_c6RenderEv(void *self);              /* unmatched/Ov091_HostSites */
+int _ZN10daHyuhyu_c8BehaviorEv(void *self);            /* unmatched/Ov091_HostSites */
+void _ZN10daHyuhyu_c16OnPendingDestroyEv(void);        /* slot 12, .c body takes void */
+int *_ZN10daHyuhyu_cD1Ev(int *self);                   /* slot 16 */
+int *_ZN10daHyuhyu_cD0Ev(int *self);                   /* slot 17 */
+int _ZN10daHyuhyu_c13OnYoshiTryEatEv(void);                   /* slot 18, own OnYoshiTryEat: returns 4 */
 /* Slot 19's body is a tail-call VENEER -- the ROM bytes at 0x0213448c are
    `e59fc000 e12fff1c 02043824`, ldr ip,[pc]; bx ip onto
    _ZN7fBase_c18MarkForDestructionEv -- and src declares it (void). It is
@@ -213,8 +213,8 @@ int _ZN6Fwoosh13OnYoshiTryEatEv(void);                   /* slot 18, own OnYoshi
    _ZN7daMky_c13OnTurnIntoEggER6Player: a veneer is a tail jump on the host too, so it forwards
    whatever this thunk pushed, and pushing nothing would leave
    MarkForDestruction reading the thunk's own return address as its self. */
-void _ZN6Fwoosh13OnTurnIntoEggER6Player(void *self);            /* slot 19, own OnTurnIntoEgg */
-int _ZN6Fwoosh16OnAimedAtWithEggEv(void);                   /* slot 29, own: returns 0x1f000 */
+void _ZN10daHyuhyu_c13OnTurnIntoEggER6Player(void *self);            /* slot 19, own OnTurnIntoEgg */
+int _ZN10daHyuhyu_c16OnAimedAtWithEggEv(void);                   /* slot 29, own: returns 0x1f000 */
 void *daHyuhyu_c_classInit(void);
 extern unsigned char g_profile_HYUHYU[];
 
@@ -230,15 +230,15 @@ extern unsigned int data_ov091_0213535c[];   /* fwoosh: 021356d0 tick */
 extern unsigned int data_ov091_02135364[];   /* fwoosh: 021356d0 enter */
 
 /* ---- the nine host state bodies ------------------------------------------ */
-void func_ov091_02131ef0(void *c);
-void func_ov091_02131f9c(void *c);
-void func_ov091_02132000(void *c);
-int func_ov091_02133c6c(void *c);
-int func_ov091_02133d1c(void *c);
-int func_ov091_02133d30(void *c);
-int func_ov091_02133f24(void *c);
-int func_ov091_02133f60(void *c);
-int func_ov091_0213400c(void *c);
+void _ZN13daLinelift2_c19func_ov091_02131ef0Ev(void *c);
+void _ZN13daLinelift2_c19func_ov091_02131f9cEv(void *c);
+void _ZN13daLinelift2_c19func_ov091_02132000Ev(void *c);
+int _ZN10daHyuhyu_c19func_ov091_02133c6cEv(void *c);
+int _ZN10daHyuhyu_c19func_ov091_02133d1cEv(void *c);
+int _ZN10daHyuhyu_c19func_ov091_02133d30Ev(void *c);
+int _ZN10daHyuhyu_c19func_ov091_02133f24Ev(void *c);
+int _ZN10daHyuhyu_c19func_ov091_02133f60Ev(void *c);
+int _ZN10daHyuhyu_c19func_ov091_0213400cEv(void *c);
 
 }  /* extern "C" */
 
@@ -297,9 +297,9 @@ template <typename F> inline void (*as_state(F f))(void *)
    ROWS DO NOT CHANGE: func_ov091_02134044 and Stump::Behavior TAIL JUMP into
    their cell, which leaves the caller's own first argument at [esp+4], so a
    plain cdecl body is right there. */
-void __fastcall ov91_lift_c0(void *self, void *) { func_ov091_02132000(self); }
-void __fastcall ov91_lift_c1(void *self, void *) { func_ov091_02131f9c(self); }
-void __fastcall ov91_lift_c2(void *self, void *) { func_ov091_02131ef0(self); }
+void __fastcall ov91_lift_c0(void *self, void *) { _ZN13daLinelift2_c19func_ov091_02132000Ev(self); }
+void __fastcall ov91_lift_c1(void *self, void *) { _ZN13daLinelift2_c19func_ov091_02131f9cEv(self); }
+void __fastcall ov91_lift_c2(void *self, void *) { _ZN13daLinelift2_c19func_ov091_02131ef0Ev(self); }
 
 /* ---- RUN link100 LANE PMFB7 GATE 2: THE PER-FRAME RECORDS ARE FACES -------
  * Stump's matched TU dispatches its state cell's +8 half as a real
@@ -322,17 +322,17 @@ void __fastcall ov91_lift_c2(void *self, void *) { func_ov091_02131ef0(self); }
 static void __fastcall pmfb7_ov091_02133c6c(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 0213533c, the per-frame half */
-    ((void (*)(void *))(void *)func_ov091_02133c6c)(self);
+    ((void (*)(void *))(void *)_ZN10daHyuhyu_c19func_ov091_02133c6cEv)(self);
 }
 static void __fastcall pmfb7_ov091_02133d30(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02135354, the per-frame half */
-    ((void (*)(void *))(void *)func_ov091_02133d30)(self);
+    ((void (*)(void *))(void *)_ZN10daHyuhyu_c19func_ov091_02133d30Ev)(self);
 }
 static void __fastcall pmfb7_ov091_02133f60(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 0213535c, the per-frame half */
-    ((void (*)(void *))(void *)func_ov091_02133f60)(self);
+    ((void (*)(void *))(void *)_ZN10daHyuhyu_c19func_ov091_02133f60Ev)(self);
 }
 
 const Ov091Seat g_ov091_seats[] = {
@@ -341,11 +341,11 @@ const Ov091Seat g_ov091_seats[] = {
     {data_ov091_02134e44, 0x02131f9c, as_state(ov91_lift_c1), "lift/state1"},
     {data_ov091_02134e4c, 0x02131ef0, as_state(ov91_lift_c2), "lift/state2"},
     /* FWOOSH, into 021356d0 / 021356b0 / 021356c0 by __sinit_ov091_02134a30 */
-    {data_ov091_02135364, 0x0213400c, as_state(func_ov091_0213400c), "fwoosh/d0-enter"},
+    {data_ov091_02135364, 0x0213400c, as_state(_ZN10daHyuhyu_c19func_ov091_0213400cEv), "fwoosh/d0-enter"},
     {data_ov091_0213535c, 0x02133f60, as_state(pmfb7_ov091_02133f60), "fwoosh/d0-tick"},
-    {data_ov091_0213534c, 0x02133f24, as_state(func_ov091_02133f24), "fwoosh/b0-enter"},
+    {data_ov091_0213534c, 0x02133f24, as_state(_ZN10daHyuhyu_c19func_ov091_02133f24Ev), "fwoosh/b0-enter"},
     {data_ov091_02135354, 0x02133d30, as_state(pmfb7_ov091_02133d30), "fwoosh/b0-tick"},
-    {data_ov091_02135344, 0x02133d1c, as_state(func_ov091_02133d1c), "fwoosh/c0-enter"},
+    {data_ov091_02135344, 0x02133d1c, as_state(_ZN10daHyuhyu_c19func_ov091_02133d1cEv), "fwoosh/c0-enter"},
     {data_ov091_0213533c, 0x02133c6c, as_state(pmfb7_ov091_02133c6c), "fwoosh/c0-tick"},
 };
 bool g_ov091_seated = false;
@@ -497,18 +497,18 @@ static void ov91_fill_shared(void **vt)
 // read off the ROM table's own relocations (0x02043ac0 and 0x020ee55c).
 // ============================================================================
 static int __fastcall lift_init(void *s, void *)
-{ return _ZN22RotatingUpDownPlatform13InitResourcesEv(s); }
+{ return _ZN13daLinelift2_c13InitResourcesEv(s); }
 static int __fastcall lift_clean(void *s, void *)
-{ return _ZN22RotatingUpDownPlatform16CleanupResourcesEv(s); }
+{ return _ZN13daLinelift2_c16CleanupResourcesEv(s); }
 static int __fastcall lift_behavior(void *s, void *)
-{ return _ZN22RotatingUpDownPlatform8BehaviorEv(s); }
+{ return _ZN13daLinelift2_c8BehaviorEv(s); }
 static int __fastcall lift_render(void *s, void *)
 { port_actor_render_probe("ARROW_PATH_LIFT/SQUARE_METAL_NET_LIFT", (char *)s + 0xd4);
-  return _ZN22RotatingUpDownPlatform6RenderEv(s); }
+  return _ZN13daLinelift2_c6RenderEv(s); }
 static int __fastcall lift_d1(void *s, void *)
-{ return (int)(size_t)_ZN22RotatingUpDownPlatformD1Ev((int *)s); }
+{ return (int)(size_t)_ZN13daLinelift2_cD1Ev((int *)s); }
 static int __fastcall lift_d0(void *s, void *)
-{ return (int)(size_t)_ZN22RotatingUpDownPlatformD0Ev((int *)s); }
+{ return (int)(size_t)_ZN13daLinelift2_cD0Ev((int *)s); }
 static int __fastcall lift_kill(void *s, void *)
 { _ZN10dBgActor_c4KillEv(s); return 0; }
 
@@ -520,7 +520,7 @@ extern "C" void hal_fill_rotating_up_down_platform_lift_vtable(void)
     port_ov091_states_seat();
     /* the base table the two destructors install mid-teardown */
     hal_fill_platform_vtable();
-    void **vt = _ZTV22RotatingUpDownPlatform;
+    void **vt = _ZTV13daLinelift2_c;
     ov91_fill_shared(vt);
     vt[0]  = (void *)lift_init;
     vt[3]  = (void *)lift_clean;
@@ -537,31 +537,31 @@ extern "C" void hal_fill_rotating_up_down_platform_lift_vtable(void)
 // 19 OnTurnIntoEgg, 29 OnAimedAtWithEgg. Slot 30 stays the trap.
 // ============================================================================
 static int __fastcall fwo_init(void *s, void *)
-{ return _ZN6Fwoosh13InitResourcesEv(s); }
+{ return _ZN10daHyuhyu_c13InitResourcesEv(s); }
 static int __fastcall fwo_clean(void *s, void *)
-{ return _ZN6Fwoosh16CleanupResourcesEv(s); }
+{ return _ZN10daHyuhyu_c16CleanupResourcesEv(s); }
 static int __fastcall fwo_behavior(void *s, void *)
-{ return _ZN6Fwoosh8BehaviorEv(s); }
+{ return _ZN10daHyuhyu_c8BehaviorEv(s); }
 static int __fastcall fwo_render(void *s, void *)
 { port_actor_render_probe("FWOOSH", (char *)s + 0x300);
-  return _ZN6Fwoosh6RenderEv(s); }
+  return _ZN10daHyuhyu_c6RenderEv(s); }
 static int __fastcall fwo_pdes(void *s, void *)
-{ (void)s; _ZN6Fwoosh16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN10daHyuhyu_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall fwo_d1(void *s, void *)
-{ return (int)(size_t)_ZN6FwooshD1Ev((int *)s); }
+{ return (int)(size_t)_ZN10daHyuhyu_cD1Ev((int *)s); }
 static int __fastcall fwo_d0(void *s, void *)
-{ return (int)(size_t)_ZN6FwooshD0Ev((int *)s); }
+{ return (int)(size_t)_ZN10daHyuhyu_cD0Ev((int *)s); }
 static int __fastcall fwo_yoshi(void *s, void *)
-{ (void)s; return _ZN6Fwoosh13OnYoshiTryEatEv(); }
+{ (void)s; return _ZN10daHyuhyu_c13OnYoshiTryEatEv(); }
 static int __fastcall fwo_egg(void *s, void *, void *)
-{ _ZN6Fwoosh13OnTurnIntoEggER6Player(s); return 0; }
+{ _ZN10daHyuhyu_c13OnTurnIntoEggER6Player(s); return 0; }
 static int __fastcall fwo_aimed(void *s, void *)
-{ (void)s; return _ZN6Fwoosh16OnAimedAtWithEggEv(); }
+{ (void)s; return _ZN10daHyuhyu_c16OnAimedAtWithEggEv(); }
 
 extern "C" void hal_fill_fwoosh_vtable(void)
 {
     port_ov091_states_seat();
-    void **vt = _ZTV6Fwoosh;
+    void **vt = _ZTV10daHyuhyu_c;
     ov91_fill_shared(vt);
     vt[0]  = (void *)fwo_init;
     vt[3]  = (void *)fwo_clean;
@@ -581,16 +581,16 @@ extern "C" void hal_fill_fwoosh_vtable(void)
 // needs the flat ROM name the vtable and the ROM's own callers use. Behavior is
 // NOT here for either class: it is host-copied and defines its own flat name.
 extern "C" {
-int _ZN22RotatingUpDownPlatform13InitResourcesEv(void *self)
-{ return ((RotatingUpDownPlatform *)self)->RotatingUpDownPlatform::InitResources(); }
-int _ZN22RotatingUpDownPlatform16CleanupResourcesEv(void *self)
-{ return ((RotatingUpDownPlatform *)self)->RotatingUpDownPlatform::CleanupResources(); }
-int _ZN22RotatingUpDownPlatform6RenderEv(void *self)
-{ return ((RotatingUpDownPlatform *)self)->RotatingUpDownPlatform::Render(); }
-int _ZN6Fwoosh13InitResourcesEv(void *self)
-{ return ((Fwoosh *)self)->Fwoosh::InitResources(); }
-int _ZN6Fwoosh16CleanupResourcesEv(void *self)
-{ return ((Fwoosh *)self)->Fwoosh::CleanupResources(); }
+int _ZN13daLinelift2_c13InitResourcesEv(void *self)
+{ return ((daLinelift2_c *)self)->daLinelift2_c::InitResources(); }
+int _ZN13daLinelift2_c16CleanupResourcesEv(void *self)
+{ return ((daLinelift2_c *)self)->daLinelift2_c::CleanupResources(); }
+int _ZN13daLinelift2_c6RenderEv(void *self)
+{ return ((daLinelift2_c *)self)->daLinelift2_c::Render(); }
+int _ZN10daHyuhyu_c13InitResourcesEv(void *self)
+{ return ((daHyuhyu_c *)self)->daHyuhyu_c::InitResources(); }
+int _ZN10daHyuhyu_c16CleanupResourcesEv(void *self)
+{ return ((daHyuhyu_c *)self)->daHyuhyu_c::CleanupResources(); }
 }
 
 /* THE TWO RTTI-SPELLING BRIDGES. Each is ONE table under two names; the
@@ -605,7 +605,7 @@ int _ZN6Fwoosh16CleanupResourcesEv(void *self)
  * it, and hal/actor_classes.cpp:591 already DEFINES it -- an alias would be
  * inert and the guard would fail the build. The destructors reference the real
  * array, which hal_fill_platform_vtable() above has filled. */
-#pragma comment(linker, "/alternatename:__ZTV13daLinelift2_c=__ZTV22RotatingUpDownPlatform")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV13daLinelift2_c=__ZTV13daLinelift2_c")
 /* 0x021353ac's OTHER config name. config/arm9/overlays/ov091/symbols.txt puts
    _ZTV6Fwoosh (line 167) and _ZTV10daHyuhyu_c (line 168) on that one address,
    adjacent rows: a genuine two-name table, and the array above now carries the
@@ -624,8 +624,7 @@ int _ZN6Fwoosh16CleanupResourcesEv(void *self)
    Render reads a ModelAnim at +0x300 that an 0x330-byte stump does not even
    have room for -- while the stump's own filled array was installed on nothing
    at all. */
-#pragma comment(linker, "/alternatename:__ZTV10daHyuhyu_c=__ZTV6Fwoosh")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV10daHyuhyu_c=__ZTV10daHyuhyu_c")
 /* ============================================================================
  * SIXTEEN LINKAGE ALIASES, ALL MEASURED OFF THE FIRST LINK, NONE PREDICTED.
  *

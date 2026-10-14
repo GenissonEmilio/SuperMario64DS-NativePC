@@ -246,26 +246,48 @@ data_ov032_02112f64
 data_ov032_02112f98 data_ov032_02112fb8:0x20
 
 # ---- .data: the ten 8-byte PMF source pairs the sinit copies --------------
-data_ov032_0211377c data_ov032_02113784 data_ov032_0211378c
-data_ov032_02113794 data_ov032_0211379c data_ov032_021137a4
-data_ov032_021137ac data_ov032_021137b4 data_ov032_021137bc
-data_ov032_021137c4
+data_ov032_0211377c@0x0211377c data_ov032_02113784@0x02113784 data_ov032_0211378c@0x0211378c
+data_ov032_02113794@0x02113794 data_ov032_0211379c@0x0211379c data_ov032_021137a4@0x021137a4
+data_ov032_021137ac@0x021137ac data_ov032_021137b4@0x021137b4 data_ov032_021137bc@0x021137bc
+data_ov032_021137c4@0x021137c4
 
 # ---- .data: BUBBA's two Vector3 collider offsets --------------------------
-data_ov032_021137cc data_ov032_021137d8
+
 
 # ---- .data: the three SpawnInfo records, all pinned to the ROM's 0x1c -----
 
 g_profile_TD_FUTA:0x1c g_profile_TD_WATER:0x1c
 
 # ---- .bss: BUBBA's three SharedFilePtrs, three chain nodes, five cells ----
-data_ov032_02113a40 data_ov032_02113a48 data_ov032_02113a50
-data_ov032_02113a58 data_ov032_02113a64 data_ov032_02113a70:0xc
-data_ov032_02113a7c data_ov032_02113a8c data_ov032_02113a9c:0x10
-data_ov032_02113aac data_ov032_02113abc
+
+data_ov032_02113a58@0x02113a58 data_ov032_02113a64@0x02113a64 data_ov032_02113a70@0x02113a70:0xc
+
+
 
 # ---- .bss: HUGE_COVER's and HUGE_WATER's file pointers and chain nodes ----
-data_ov032_02113acc data_ov032_02113ad4
-data_ov032_02113adc data_ov032_02113ae8
-data_ov032_02113af4 data_ov032_02113afc
-data_ov032_02113b04 data_ov032_02113b10
+
+data_ov032_02113adc@0x02113adc data_ov032_02113ae8@0x02113ae8
+
+data_ov032_02113b04@0x02113b04 data_ov032_02113b10@0x02113b10
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov032_021137cc                        now defined by src/actors/daBakubaku_c.cpp
+#   data_ov032_021137d8                        now defined by src/actors/daBakubaku_c.cpp
+#   data_ov032_02113a40                        now defined by src/actors/daBakubaku_c.cpp
+#   data_ov032_02113a48                        now defined by src/actors/daBakubaku_c.cpp
+#   data_ov032_02113a50                        now defined by src/actors/daBakubaku_c.cpp
+#   data_ov032_02113a7c                        now defined by src/actors/daBakubaku_c.cpp
+#   data_ov032_02113a8c                        now defined by src/actors/daBakubaku_c.cpp
+#   data_ov032_02113a9c                        now defined by src/actors/daBakubaku_c.cpp
+#   data_ov032_02113aac                        now defined by src/actors/daBakubaku_c.cpp
+#   data_ov032_02113abc                        now defined by src/actors/daBakubaku_c.cpp
+#   data_ov032_02113acc                        now defined by src/game/actors/d_a_obj_td_futa.cpp
+#   data_ov032_02113ad4                        now defined by src/game/actors/d_a_obj_td_futa.cpp
+#   data_ov032_02113af4                        now defined by src/game/actors/d_a_obj_td_water.cpp
+#   data_ov032_02113afc                        now defined by src/game/actors/d_a_obj_td_water.cpp

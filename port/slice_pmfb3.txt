@@ -279,6 +279,6 @@ src/game/actors/d_a_sound_obj.cpp
 # four files is a lane, not a row, and half-doing it would leave a writer
 # handing a host address to a switch that only knows DS ones. Named here so the
 # next lane starts from the measurement rather than from the census.
-src/func_ov004_020add88.cpp
-src/func_ov004_020adf2c.cpp
+src/minigames/d_s_mg_base.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 282): src/func_ov004_020adf2c.cpp
 src/actors/dScMgPanel_c.cpp

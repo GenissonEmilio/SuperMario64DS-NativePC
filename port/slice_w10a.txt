@@ -141,4 +141,4 @@
 # now come from there and the per-function file is gone from main's tree.
 #src/d_a_obj_hs_billboard_hs_b_star.c
 src/game/actors/d_a_obj_hs_billboard.cpp
-src/__sinit_ov031_02111434.c
+# FOLDED into src/game/actors/d_a_obj_hs_billboard.cpp (row 143): src/__sinit_ov031_02111434.c

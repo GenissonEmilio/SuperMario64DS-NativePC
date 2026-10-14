@@ -83,14 +83,14 @@ void _ZN7daMip_c13StateIdleMainEv(void *); void _ZN7daMip_c13StateIdleInitEv(voi
 void func_ov085_0212cd80(void *); void func_ov085_0212d038(void *);
 void func_ov085_0212d108(void *); void func_ov085_0212d24c(void *);
 /* TOAD's four (run link60, lane A1) */
-void _ZN4Toad12St_Idle_InitEv(void *); void _ZN4Toad12St_Idle_MainEv(void *);
-void _ZN4Toad12St_Talk_InitEv(void *); void _ZN4Toad12St_Talk_MainEv(void *);
+void _ZN11daKinopio_c12St_Idle_InitEv(void *); void _ZN11daKinopio_c12St_Idle_MainEv(void *);
+void _ZN11daKinopio_c12St_Talk_InitEv(void *); void _ZN11daKinopio_c12St_Talk_MainEv(void *);
 /* PRINCESS_PEACH's ten (run rel0215 wave 3, lane w3-f), five enter/main pairs */
-void _ZN13PrincessPeach6State4Ev(void *); void _ZN13PrincessPeach10InitState3Ev(void *);
-void _ZN13PrincessPeach10InitState1Ev(void *); void _ZN13PrincessPeach6State3Ev(void *);
-void _ZN13PrincessPeach6State1Ev(void *); void _ZN13PrincessPeach10InitState4Ev(void *);
-void _ZN13PrincessPeach10InitState2Ev(void *); void _ZN13PrincessPeach6State2Ev(void *);
-void _ZN13PrincessPeach6State0Ev(void *); void _ZN13PrincessPeach10InitState0Ev(void *);
+void _ZN9daPeach_c6State4Ev(void *); void _ZN9daPeach_c10InitState3Ev(void *);
+void _ZN9daPeach_c10InitState1Ev(void *); void _ZN9daPeach_c6State3Ev(void *);
+void _ZN9daPeach_c6State1Ev(void *); void _ZN9daPeach_c10InitState4Ev(void *);
+void _ZN9daPeach_c10InitState2Ev(void *); void _ZN9daPeach_c6State2Ev(void *);
+void _ZN9daPeach_c6State0Ev(void *); void _ZN9daPeach_c10InitState0Ev(void *);
 
 /* LakituBro's twenty-two {function, delta} statics carry DS code addresses,
    and __sinit_ov085_0212fa40 copies them into his eleven State objects. Seat
@@ -261,16 +261,16 @@ extern PortPmfPt data_ov080_02128214[], data_ov080_0212821c[],
     data_ov080_02128254[], data_ov080_0212825c[], data_ov080_02128264[],
     data_ov080_0212826c[];
 
-void func_ov080_02126124(void *); void func_ov080_02126a54(void *);
-void func_ov080_021269b8(void *); void func_ov080_02126120(void *);
-void func_ov080_02125fd0(void *); void func_ov080_0212677c(void *);
-void func_ov080_021265ec(void *); void func_ov080_02125f00(void *);
-void func_ov080_021264ec(void *);
+void _ZN11daPicGate_c19func_ov080_02126124Ev(void *); void _ZN11daPicGate_c19func_ov080_02126a54Ev(void *);
+void _ZN11daPicGate_c19func_ov080_021269b8Ev(void *); void _ZN11daPicGate_c19func_ov080_02126120Ev(void *);
+void _ZN11daPicGate_c19func_ov080_02125fd0Ev(void *); void _ZN11daPicGate_c19func_ov080_0212677cEv(void *);
+void _ZN11daPicGate_c19func_ov080_021265ecEv(void *); void _ZN11daPicGate_c19func_ov080_02125f00Ev(void *);
+void _ZN11daPicGate_c19func_ov080_021264ecEv(void *);
 /* The twelfth body is the host transcription in
    port/unmatched/Painting_StateRender_021261f4.cpp, not a src/ TU. It is
    declared with the char* receiver its own definition uses rather than the
    void* the nine above take, so the two spellings cannot drift. */
-void func_ov080_021261f4(char *);
+void _ZN11daPicGate_c19func_ov080_021261f4Ev(char *);
 
 /* ov102: QUESTION_BLOCK (and the bob-omb, the koopa shell, the warp pipe and
    the rest of the level-furniture set other levels name). Its CODE has been
@@ -328,9 +328,9 @@ extern PortPmf3 data_ov062_0211db48[], data_ov062_0211db30[],
     data_ov062_0211db58[], data_ov062_0211db50[], data_ov062_0211db40[],
     data_ov062_0211db38[];
 
-void func_ov062_0211a9c4(void *); void func_ov062_0211a740(void *);
-void func_ov062_0211a1f4(void *); void func_ov062_0211a168(void *);
-void func_ov062_0211a0f0(void *); void func_ov062_02119be0(void *);
+void _ZN7daRNk_c19func_ov062_0211a9c4Ev(void *); void _ZN7daRNk_c19func_ov062_0211a740Ev(void *);
+void _ZN7daRNk_c19func_ov062_0211a1f4Ev(void *); void _ZN7daRNk_c19func_ov062_0211a168Ev(void *);
+void _ZN7daRNk_c19func_ov062_0211a0f0Ev(void *); void _ZN7daRNk_c19func_ov062_02119be0Ev(void *);
 
 void port_ov062_pack_check(void);
 void port_ov062_syms_patch(void);
@@ -394,24 +394,24 @@ extern PortPmf4 data_ov078_02126ce0[], data_ov078_02126ce8[],
     data_ov078_02126de0[], data_ov078_02126de8[], data_ov078_02126df0[],
     data_ov078_02126df8[];
 
-void func_ov078_021238ac(void *); void func_ov078_02123a3c(void *);
-void func_ov078_02123aa0(void *); void func_ov078_02123bc4(void *);
-void func_ov078_02123c20(void *); void func_ov078_02123cf0(void *);
-void func_ov078_02123d3c(void *); void func_ov078_02123eb8(void *);
-void func_ov078_02123f1c(void *); void func_ov078_02123fb4(void *);
-void func_ov078_02124000(void *); void func_ov078_02124060(void *);
-void func_ov078_021240a0(void *); void func_ov078_021243c0(void *);
-void func_ov078_02124470(void *); void func_ov078_021244d0(void *);
-void func_ov078_02124520(void *); void func_ov078_02124778(void *);
-void func_ov078_021247bc(void *); void func_ov078_02124b40(void *);
-void func_ov078_02124bc4(void *); void func_ov078_02124c94(void *);
-void func_ov078_02124cf4(void *); void func_ov078_02124e9c(void *);
-void func_ov078_02124f28(void *); void func_ov078_021250d0(void *);
-void func_ov078_021250f8(void *); void func_ov078_02125350(void *);
-void func_ov078_02125448(void *); void func_ov078_02125734(void *);
-void func_ov078_02125790(void *); void func_ov078_021258e4(void *);
-void func_ov078_02125950(void *); void func_ov078_021259e4(void *);
-void func_ov078_021259ec(void *); void func_ov078_02125bc8(void *);
+void _ZN12daBombking_c19func_ov078_021238acEv(void *); void _ZN12daBombking_c19func_ov078_02123a3cEv(void *);
+void _ZN12daBombking_c19func_ov078_02123aa0Ev(void *); void _ZN12daBombking_c19func_ov078_02123bc4Ev(void *);
+void _ZN12daBombking_c19func_ov078_02123c20Ev(void *); void _ZN12daBombking_c19func_ov078_02123cf0Ev(void *);
+void _ZN12daBombking_c19func_ov078_02123d3cEv(void *); void _ZN12daBombking_c19func_ov078_02123eb8Ev(void *);
+void _ZN12daBombking_c19func_ov078_02123f1cEv(void *); void _ZN12daBombking_c19func_ov078_02123fb4Ev(void *);
+void _ZN12daBombking_c19func_ov078_02124000Ev(void *); void _ZN12daBombking_c19func_ov078_02124060Ev(void *);
+void func_ov078_021240a0(void *); void _ZN12daBombking_c19func_ov078_021243c0Ev(void *);
+void _ZN12daBombking_c19func_ov078_02124470Ev(void *); void _ZN12daBombking_c19func_ov078_021244d0Ev(void *);
+void _ZN12daBombking_c19func_ov078_02124520Ev(void *); void _ZN12daBombking_c19func_ov078_02124778Ev(void *);
+void _ZN12daBombking_c19func_ov078_021247bcEv(void *); void _ZN12daBombking_c19func_ov078_02124b40Ev(void *);
+void _ZN12daBombking_c19func_ov078_02124bc4Ev(void *); void _ZN12daBombking_c19func_ov078_02124c94Ev(void *);
+void _ZN12daBombking_c19func_ov078_02124cf4Ev(void *); void _ZN12daBombking_c19func_ov078_02124e9cEv(void *);
+void _ZN12daBombking_c19func_ov078_02124f28Ev(void *); void _ZN12daBombking_c19func_ov078_021250d0Ev(void *);
+void _ZN12daBombking_c19func_ov078_021250f8Ev(void *); void _ZN12daBombking_c19func_ov078_02125350Ev(void *);
+void _ZN12daBombking_c19func_ov078_02125448Ev(void *); void _ZN12daBombking_c19func_ov078_02125734Ev(void *);
+void _ZN12daBombking_c19func_ov078_02125790Ev(void *); void _ZN12daBombking_c19func_ov078_021258e4Ev(void *);
+void _ZN12daBombking_c19func_ov078_02125950Ev(void *); void _ZN12daBombking_c19func_ov078_021259e4Ev(void *);
+void _ZN12daBombking_c19func_ov078_021259ecEv(void *); void _ZN12daBombking_c19func_ov078_02125bc8Ev(void *);
 
 /* the fish's seven {function, delta} statics, seated the same way -- its own
    Behavior is a host copy for the PMF reason, so both live in
@@ -455,10 +455,10 @@ extern PortPmf2 data_ov100_02147e20[], data_ov100_02147e28[],
     data_ov100_02147e30[], data_ov100_02147e38[], data_ov100_02147e40[],
     data_ov100_02147e48[], data_ov100_02147e50[], data_ov100_02147e58[];
 
-void _ZN9Butterfly6State6Ev(void *); void _ZN9Butterfly6State5Ev(void *);
-void _ZN9Butterfly6State4Ev(void *); void _ZN9Butterfly6State7Ev(void *);
-void _ZN9Butterfly6State3Ev(void *); void _ZN9Butterfly6State2Ev(void *);
-void _ZN9Butterfly6State1Ev(void *); void _ZN9Butterfly6State0Ev(void *);
+void _ZN9daBtfly_c6State6Ev(void *); void _ZN9daBtfly_c6State5Ev(void *);
+void _ZN9daBtfly_c6State4Ev(void *); void _ZN9daBtfly_c6State7Ev(void *);
+void _ZN9daBtfly_c6State3Ev(void *); void _ZN9daBtfly_c6State2Ev(void *);
+void _ZN9daBtfly_c6State1Ev(void *); void _ZN9daBtfly_c6State0Ev(void *);
 
 /* ---- gate 51: the ROLLING_IRON_BALL's five states -------------------------
    __sinit_ov100_021474e8 copies five {function, delta} statics from ov100
@@ -470,8 +470,8 @@ void _ZN9Butterfly6State1Ev(void *); void _ZN9Butterfly6State0Ev(void *);
    virtual-bit and this-adjustment arithmetic itself. All five deltas are zero. */
 extern PortPmf2 data_ov100_02147f38[], data_ov100_02147f18[],
     data_ov100_02147f20[], data_ov100_02147f30[], data_ov100_02147f28[];
-void func_ov100_02142b90(void *); void func_ov100_02142918(void *);
-void func_ov100_021424c0(void *); void func_ov100_0214272c(void *);
+void _ZN7daIbl_c19func_ov100_02142b90Ev(void *); void _ZN7daIbl_c19func_ov100_02142918Ev(void *);
+void _ZN7daIbl_c19func_ov100_021424c0Ev(void *); void _ZN7daIbl_c19func_ov100_0214272cEv(void *);
 
 }  /* extern "C" */
 
@@ -496,21 +496,21 @@ void func_ov100_021424c0(void *); void func_ov100_0214272c(void *);
    5ae983797's correction at another class. Each thunk NAMES its matched face,
    so trap T2's rule still holds. */
 static void __fastcall bf_state5_pmf(void *self, void *)
-{ _ZN9Butterfly6State5Ev(self); }
+{ _ZN9daBtfly_c6State5Ev(self); }
 static void __fastcall bf_state3_pmf(void *self, void *)
-{ _ZN9Butterfly6State3Ev(self); }
+{ _ZN9daBtfly_c6State3Ev(self); }
 static void __fastcall bf_state4_pmf(void *self, void *)
-{ _ZN9Butterfly6State4Ev(self); }
+{ _ZN9daBtfly_c6State4Ev(self); }
 static void __fastcall bf_state7_pmf(void *self, void *)
-{ _ZN9Butterfly6State7Ev(self); }
+{ _ZN9daBtfly_c6State7Ev(self); }
 static void __fastcall bf_state1_pmf(void *self, void *)
-{ _ZN9Butterfly6State1Ev(self); }
+{ _ZN9daBtfly_c6State1Ev(self); }
 static void __fastcall bf_state0_pmf(void *self, void *)
-{ _ZN9Butterfly6State0Ev(self); }
+{ _ZN9daBtfly_c6State0Ev(self); }
 static void __fastcall bf_state2_pmf(void *self, void *)
-{ _ZN9Butterfly6State2Ev(self); }
+{ _ZN9daBtfly_c6State2Ev(self); }
 static void __fastcall bf_state6_pmf(void *self, void *)
-{ _ZN9Butterfly6State6Ev(self); }
+{ _ZN9daBtfly_c6State6Ev(self); }
 
 static const struct { PortPmf2 *slot; unsigned rom; void (*host)(void *); }
 g_butterfly_states[] = {
@@ -659,11 +659,11 @@ static void port_butterfly_states_seat(void)
    sinit's copy order). */
 static const struct { PortPmf2 *slot; unsigned rom; void (*host)(void *); }
 g_iron_ball_states[] = {
-    {data_ov100_02147f38, 0x02142b90, func_ov100_02142b90},
-    {data_ov100_02147f18, 0x02142918, func_ov100_02142918},
-    {data_ov100_02147f20, 0x021424c0, func_ov100_021424c0},
-    {data_ov100_02147f30, 0x0214272c, func_ov100_0214272c},
-    {data_ov100_02147f28, 0x021424c0, func_ov100_021424c0},
+    {data_ov100_02147f38, 0x02142b90, _ZN7daIbl_c19func_ov100_02142b90Ev},
+    {data_ov100_02147f18, 0x02142918, _ZN7daIbl_c19func_ov100_02142918Ev},
+    {data_ov100_02147f20, 0x021424c0, _ZN7daIbl_c19func_ov100_021424c0Ev},
+    {data_ov100_02147f30, 0x0214272c, _ZN7daIbl_c19func_ov100_0214272cEv},
+    {data_ov100_02147f28, 0x021424c0, _ZN7daIbl_c19func_ov100_021424c0Ev},
 };
 
 static void port_iron_ball_states_seat(void)
@@ -781,12 +781,12 @@ g_rabbit_states[] = {
 
 static const struct { PortPmf3 *slot; unsigned rom; void (*host)(void *); }
 g_koopa_quick_states[] = {
-    {data_ov062_0211db48, 0x0211a9c4, func_ov062_0211a9c4},
-    {data_ov062_0211db30, 0x0211a740, func_ov062_0211a740},
-    {data_ov062_0211db58, 0x0211a1f4, func_ov062_0211a1f4},
-    {data_ov062_0211db50, 0x0211a168, func_ov062_0211a168},
-    {data_ov062_0211db40, 0x0211a0f0, func_ov062_0211a0f0},
-    {data_ov062_0211db38, 0x02119be0, func_ov062_02119be0},
+    {data_ov062_0211db48, 0x0211a9c4, _ZN7daRNk_c19func_ov062_0211a9c4Ev},
+    {data_ov062_0211db30, 0x0211a740, _ZN7daRNk_c19func_ov062_0211a740Ev},
+    {data_ov062_0211db58, 0x0211a1f4, _ZN7daRNk_c19func_ov062_0211a1f4Ev},
+    {data_ov062_0211db50, 0x0211a168, _ZN7daRNk_c19func_ov062_0211a168Ev},
+    {data_ov062_0211db40, 0x0211a0f0, _ZN7daRNk_c19func_ov062_0211a0f0Ev},
+    {data_ov062_0211db38, 0x02119be0, _ZN7daRNk_c19func_ov062_02119be0Ev},
 };
 
 static void port_koopa_quick_states_seat(void)
@@ -829,42 +829,42 @@ static void port_koopa_quick_states_seat(void)
 static void __fastcall pmfb7_ov078_02125790(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126ce0, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_02125790)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02125790Ev)(self);
 }
 static void __fastcall pmfb7_ov078_02124000(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126cf0, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_02124000)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02124000Ev)(self);
 }
 static void __fastcall pmfb7_ov078_021247bc(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126d20, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_021247bc)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_021247bcEv)(self);
 }
 static void __fastcall pmfb7_ov078_02124cf4(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126d38, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_02124cf4)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02124cf4Ev)(self);
 }
 static void __fastcall pmfb7_ov078_021259ec(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126d40, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_021259ec)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_021259ecEv)(self);
 }
 static void __fastcall pmfb7_ov078_02123c20(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126d48, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_02123c20)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02123c20Ev)(self);
 }
 static void __fastcall pmfb7_ov078_02124bc4(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126d50, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_02124bc4)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02124bc4Ev)(self);
 }
 static void __fastcall pmfb7_ov078_021238ac(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126d58, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_021238ac)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_021238acEv)(self);
 }
 static void __fastcall pmfb7_ov078_021240a0(void *self, void *dead_edx)
 {
@@ -874,47 +874,47 @@ static void __fastcall pmfb7_ov078_021240a0(void *self, void *dead_edx)
 static void __fastcall pmfb7_ov078_02124520(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126d88, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_02124520)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02124520Ev)(self);
 }
 static void __fastcall pmfb7_ov078_02124470(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126da0, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_02124470)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02124470Ev)(self);
 }
 static void __fastcall pmfb7_ov078_02123aa0(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126da8, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_02123aa0)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02123aa0Ev)(self);
 }
 static void __fastcall pmfb7_ov078_02123d3c(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126db0, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_02123d3c)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02123d3cEv)(self);
 }
 static void __fastcall pmfb7_ov078_02125950(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126db8, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_02125950)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02125950Ev)(self);
 }
 static void __fastcall pmfb7_ov078_02125448(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126dc8, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_02125448)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02125448Ev)(self);
 }
 static void __fastcall pmfb7_ov078_02124f28(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126dd0, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_02124f28)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02124f28Ev)(self);
 }
 static void __fastcall pmfb7_ov078_02123f1c(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126de0, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_02123f1c)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02123f1cEv)(self);
 }
 static void __fastcall pmfb7_ov078_021250f8(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02126de8, the per-frame half */
-    ((void (*)(void *))(void *)func_ov078_021250f8)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_021250f8Ev)(self);
 }
 
 
@@ -954,92 +954,92 @@ static void __fastcall pmfb7_ov078_021250f8(void *self, void *dead_edx)
 static void __fastcall pmfsw_ov078_02123a3c(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_02123a3c)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02123a3cEv)(self);
 }
 static void __fastcall pmfsw_ov078_02123bc4(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_02123bc4)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02123bc4Ev)(self);
 }
 static void __fastcall pmfsw_ov078_02123cf0(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_02123cf0)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02123cf0Ev)(self);
 }
 static void __fastcall pmfsw_ov078_02123eb8(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_02123eb8)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02123eb8Ev)(self);
 }
 static void __fastcall pmfsw_ov078_02123fb4(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_02123fb4)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02123fb4Ev)(self);
 }
 static void __fastcall pmfsw_ov078_02124060(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_02124060)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02124060Ev)(self);
 }
 static void __fastcall pmfsw_ov078_021243c0(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_021243c0)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_021243c0Ev)(self);
 }
 static void __fastcall pmfsw_ov078_021244d0(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_021244d0)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_021244d0Ev)(self);
 }
 static void __fastcall pmfsw_ov078_02124778(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_02124778)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02124778Ev)(self);
 }
 static void __fastcall pmfsw_ov078_02124b40(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_02124b40)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02124b40Ev)(self);
 }
 static void __fastcall pmfsw_ov078_02124c94(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_02124c94)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02124c94Ev)(self);
 }
 static void __fastcall pmfsw_ov078_02124e9c(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_02124e9c)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02124e9cEv)(self);
 }
 static void __fastcall pmfsw_ov078_021250d0(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_021250d0)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_021250d0Ev)(self);
 }
 static void __fastcall pmfsw_ov078_02125350(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_02125350)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02125350Ev)(self);
 }
 static void __fastcall pmfsw_ov078_02125734(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_02125734)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02125734Ev)(self);
 }
 static void __fastcall pmfsw_ov078_021258e4(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_021258e4)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_021258e4Ev)(self);
 }
 static void __fastcall pmfsw_ov078_021259e4(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_021259e4)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_021259e4Ev)(self);
 }
 static void __fastcall pmfsw_ov078_02125bc8(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* the ENTER half of its record */
-    ((void (*)(void *))(void *)func_ov078_02125bc8)(self);
+    ((void (*)(void *))(void *)_ZN12daBombking_c19func_ov078_02125bc8Ev)(self);
 }
 
 static const struct { PortPmf4 *slot; unsigned rom; void (*host)(void *); }
@@ -1187,13 +1187,13 @@ static void port_rabbit_key_states_seat(void)
    leaked. A pointer-to-member call with no arguments pushes nothing, so there
    is nothing to leak and nothing to clean. */
 static void __fastcall toad_idle_init_pmf(void *self, void *)
-{ _ZN4Toad12St_Idle_InitEv(self); }
+{ _ZN11daKinopio_c12St_Idle_InitEv(self); }
 static void __fastcall toad_idle_main_pmf(void *self, void *)
-{ _ZN4Toad12St_Idle_MainEv(self); }
+{ _ZN11daKinopio_c12St_Idle_MainEv(self); }
 static void __fastcall toad_talk_init_pmf(void *self, void *)
-{ _ZN4Toad12St_Talk_InitEv(self); }
+{ _ZN11daKinopio_c12St_Talk_InitEv(self); }
 static void __fastcall toad_talk_main_pmf(void *self, void *)
-{ _ZN4Toad12St_Talk_MainEv(self); }
+{ _ZN11daKinopio_c12St_Talk_MainEv(self); }
 
 static const struct { PortPmf *slot; unsigned rom;
                       void (__fastcall *host)(void *, void *); }
@@ -1266,25 +1266,25 @@ static void port_toad_states_seat(void)
    way it transfers, so the thunk is right on the tail-jump path too. Each
    thunk NAMES its matched face, so trap T2's rule still holds. */
 static void __fastcall pp_state4_pmf(void *self, void *)
-{ _ZN13PrincessPeach6State4Ev(self); }
+{ _ZN9daPeach_c6State4Ev(self); }
 static void __fastcall pp_initstate3_pmf(void *self, void *)
-{ _ZN13PrincessPeach10InitState3Ev(self); }
+{ _ZN9daPeach_c10InitState3Ev(self); }
 static void __fastcall pp_initstate1_pmf(void *self, void *)
-{ _ZN13PrincessPeach10InitState1Ev(self); }
+{ _ZN9daPeach_c10InitState1Ev(self); }
 static void __fastcall pp_state3_pmf(void *self, void *)
-{ _ZN13PrincessPeach6State3Ev(self); }
+{ _ZN9daPeach_c6State3Ev(self); }
 static void __fastcall pp_state1_pmf(void *self, void *)
-{ _ZN13PrincessPeach6State1Ev(self); }
+{ _ZN9daPeach_c6State1Ev(self); }
 static void __fastcall pp_initstate4_pmf(void *self, void *)
-{ _ZN13PrincessPeach10InitState4Ev(self); }
+{ _ZN9daPeach_c10InitState4Ev(self); }
 static void __fastcall pp_initstate2_pmf(void *self, void *)
-{ _ZN13PrincessPeach10InitState2Ev(self); }
+{ _ZN9daPeach_c10InitState2Ev(self); }
 static void __fastcall pp_state2_pmf(void *self, void *)
-{ _ZN13PrincessPeach6State2Ev(self); }
+{ _ZN9daPeach_c6State2Ev(self); }
 static void __fastcall pp_state0_pmf(void *self, void *)
-{ _ZN13PrincessPeach6State0Ev(self); }
+{ _ZN9daPeach_c6State0Ev(self); }
 static void __fastcall pp_initstate0_pmf(void *self, void *)
-{ _ZN13PrincessPeach10InitState0Ev(self); }
+{ _ZN9daPeach_c10InitState0Ev(self); }
 
 static const struct { PortPmf *slot; unsigned rom; void (*host)(void *); }
 g_princess_peach_states[] = {
@@ -1361,7 +1361,7 @@ static void __fastcall port_painting_state_021261f4(void *s, void *)
                      *(unsigned char *)((char *)s + 0x1bb));
         std::fflush(stderr);
     }
-    func_ov080_021261f4((char *)s);
+    _ZN11daPicGate_c19func_ov080_021261f4Ev((char *)s);
     if (trace) {
         std::fprintf(stderr, "[paint5] leave 021261f4: obj=%p\n", s);
         std::fflush(stderr);
@@ -1390,15 +1390,15 @@ static void __fastcall port_painting_state_021261f4(void *s, void *)
    parameters returns with `ret 0`, which balances a `call` and equally
    survives the tail-jump form. So the table holds a face and the face holds
    the body; nothing about either body changes. */
-static void __fastcall pt_f_02126124(void *s, void *) { func_ov080_02126124(s); }
-static void __fastcall pt_f_02126a54(void *s, void *) { func_ov080_02126a54(s); }
-static void __fastcall pt_f_021269b8(void *s, void *) { func_ov080_021269b8(s); }
-static void __fastcall pt_f_02126120(void *s, void *) { func_ov080_02126120(s); }
-static void __fastcall pt_f_02125fd0(void *s, void *) { func_ov080_02125fd0(s); }
-static void __fastcall pt_f_0212677c(void *s, void *) { func_ov080_0212677c(s); }
-static void __fastcall pt_f_021265ec(void *s, void *) { func_ov080_021265ec(s); }
-static void __fastcall pt_f_02125f00(void *s, void *) { func_ov080_02125f00(s); }
-static void __fastcall pt_f_021264ec(void *s, void *) { func_ov080_021264ec(s); }
+static void __fastcall pt_f_02126124(void *s, void *) { _ZN11daPicGate_c19func_ov080_02126124Ev(s); }
+static void __fastcall pt_f_02126a54(void *s, void *) { _ZN11daPicGate_c19func_ov080_02126a54Ev(s); }
+static void __fastcall pt_f_021269b8(void *s, void *) { _ZN11daPicGate_c19func_ov080_021269b8Ev(s); }
+static void __fastcall pt_f_02126120(void *s, void *) { _ZN11daPicGate_c19func_ov080_02126120Ev(s); }
+static void __fastcall pt_f_02125fd0(void *s, void *) { _ZN11daPicGate_c19func_ov080_02125fd0Ev(s); }
+static void __fastcall pt_f_0212677c(void *s, void *) { _ZN11daPicGate_c19func_ov080_0212677cEv(s); }
+static void __fastcall pt_f_021265ec(void *s, void *) { _ZN11daPicGate_c19func_ov080_021265ecEv(s); }
+static void __fastcall pt_f_02125f00(void *s, void *) { _ZN11daPicGate_c19func_ov080_02125f00Ev(s); }
+static void __fastcall pt_f_021264ec(void *s, void *) { _ZN11daPicGate_c19func_ov080_021264ecEv(s); }
 
 static const struct {
     PortPmfPt *slot; unsigned rom; void (__fastcall *host)(void *, void *);

@@ -96,7 +96,7 @@ void _ZN5dCc_c6UpdateEv(void *self);                /* 0x02014ff0 */
 unsigned short DecIfAbove0_Short(unsigned short *p);        /* 0x0203adbc */
 void _ZN8dActor_c22UpdatePosWithOnlySpeedEP5dCc_c(void *self, void *c); /* 0x02010d40 */
 void _ZN12dEnemyBase_c12UpdateWMClsnER10dBgCh_Actrj(void *self, void *wm, unsigned j); /* ov002 0x020aebf8 */
-void _ZN9Animation7AdvanceEv(void *self);                   /* 0x02015c3c */
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *self);                   /* 0x02015c3c */
 
 void *_ZN8dActor_c10FindWithIDEj(unsigned int id);             /* 0x02010f3c */
 /* 0x020aea30, and the spelling matters -- see the shared-window note at (3).
@@ -114,8 +114,8 @@ void *_ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(unsigned id, unsigned flag
         struct Vector3 *pos, short *rot, int a, int b);     /* 0x02010e2c */
 
 /* ---- the ov091 leaves these four call ------------------------------------ */
-void func_ov091_02134094(char *c);
-void func_ov091_021339fc(char *c);
+void _ZN10daHyuhyu_c19func_ov091_02134094Ev(char *c);
+void _ZN10daHyuhyu_c19func_ov091_021339fcEv(char *c);
 
 /* ---- the mounted state cells --------------------------------------------- */
 extern unsigned int data_ov091_021354e0[];   /* three records, 157/144 */

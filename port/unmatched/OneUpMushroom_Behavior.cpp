@@ -44,24 +44,24 @@ extern "C" {
 int _ZN12dEnemyBase_c14UpdateYoshiEatER10dBgCh_Actr(void *self, void *clsn);
 void _ZN5dCc_c5ClearEv(void *self);
 void _ZN5dCc_c6UpdateEv(void *self);
-void func_ov002_020af4ec(void *self);
+void _ZN7da1up_c19func_ov002_020af4ecEv(void *self);
 
 /* the fourteen type behaviours, in the order __sinit_ov002_02100adc seats
    them (mushroom type 0..13) */
-void func_ov002_020aff10(void *);   /* 0  */
-void func_ov002_020afe4c(void *);   /* 1  */
-void func_ov002_020afd10(void *);   /* 2  */
-void func_ov002_020afc44(void *);   /* 3  -- the castle grounds' three */
-void func_ov002_020afbb4(void *);   /* 4  */
-void func_ov002_020afa98(void *);   /* 5  */
-void func_ov002_020afa6c(void *);   /* 6  */
-void func_ov002_020af950(void *);   /* 7  */
-void func_ov002_020af924(void *);   /* 8  */
-void func_ov002_020af838(void *);   /* 9  */
-void func_ov002_020af7cc(void *);   /* 10 */
-void func_ov002_020afa50(void *);   /* 11 */
-void func_ov002_020af908(void *);   /* 12 */
-void func_ov002_020af724(void *);   /* 13 */
+void _ZN7da1up_c19func_ov002_020aff10Ev(void *);   /* 0  */
+void _ZN7da1up_c19func_ov002_020afe4cEv(void *);   /* 1  */
+void _ZN7da1up_c19func_ov002_020afd10Ev(void *);   /* 2  */
+void _ZN7da1up_c19func_ov002_020afc44Ev(void *);   /* 3  -- the castle grounds' three */
+void _ZN7da1up_c19func_ov002_020afbb4Ev(void *);   /* 4  */
+void _ZN7da1up_c19func_ov002_020afa98Ev(void *);   /* 5  */
+void _ZN7da1up_c19func_ov002_020afa6cEv(void *);   /* 6  */
+void _ZN7da1up_c19func_ov002_020af950Ev(void *);   /* 7  */
+void _ZN7da1up_c19func_ov002_020af924Ev(void *);   /* 8  */
+void _ZN7da1up_c19func_ov002_020af838Ev(void *);   /* 9  */
+void _ZN7da1up_c19func_ov002_020af7ccEv(void *);   /* 10 */
+void _ZN7da1up_c19func_ov002_020afa50Ev(void *);   /* 11 */
+void _ZN7da1up_c19func_ov002_020af908Ev(void *);   /* 12 */
+void _ZN7da1up_c19func_ov002_020af724Ev(void *);   /* 13 */
 
 /* the sinit's fourteen {function, delta} pairs; storage is the ov002 mount */
 struct PortPmf { unsigned fn; int delta; };
@@ -88,31 +88,31 @@ enum { PORT_MUSHROOM_TYPES = 14 };
 #define MUSHROOM_FACE(sym)                                                    \
     static void __fastcall pmf_face_##sym(void *self, void *dead_edx)         \
     { sym(self); }
-MUSHROOM_FACE(func_ov002_020aff10)
-MUSHROOM_FACE(func_ov002_020afe4c)
-MUSHROOM_FACE(func_ov002_020afd10)
-MUSHROOM_FACE(func_ov002_020afc44)
-MUSHROOM_FACE(func_ov002_020afbb4)
-MUSHROOM_FACE(func_ov002_020afa98)
-MUSHROOM_FACE(func_ov002_020afa6c)
-MUSHROOM_FACE(func_ov002_020af950)
-MUSHROOM_FACE(func_ov002_020af924)
-MUSHROOM_FACE(func_ov002_020af838)
-MUSHROOM_FACE(func_ov002_020af7cc)
-MUSHROOM_FACE(func_ov002_020afa50)
-MUSHROOM_FACE(func_ov002_020af908)
-MUSHROOM_FACE(func_ov002_020af724)
+MUSHROOM_FACE(_ZN7da1up_c19func_ov002_020aff10Ev)
+MUSHROOM_FACE(_ZN7da1up_c19func_ov002_020afe4cEv)
+MUSHROOM_FACE(_ZN7da1up_c19func_ov002_020afd10Ev)
+MUSHROOM_FACE(_ZN7da1up_c19func_ov002_020afc44Ev)
+MUSHROOM_FACE(_ZN7da1up_c19func_ov002_020afbb4Ev)
+MUSHROOM_FACE(_ZN7da1up_c19func_ov002_020afa98Ev)
+MUSHROOM_FACE(_ZN7da1up_c19func_ov002_020afa6cEv)
+MUSHROOM_FACE(_ZN7da1up_c19func_ov002_020af950Ev)
+MUSHROOM_FACE(_ZN7da1up_c19func_ov002_020af924Ev)
+MUSHROOM_FACE(_ZN7da1up_c19func_ov002_020af838Ev)
+MUSHROOM_FACE(_ZN7da1up_c19func_ov002_020af7ccEv)
+MUSHROOM_FACE(_ZN7da1up_c19func_ov002_020afa50Ev)
+MUSHROOM_FACE(_ZN7da1up_c19func_ov002_020af908Ev)
+MUSHROOM_FACE(_ZN7da1up_c19func_ov002_020af724Ev)
 #undef MUSHROOM_FACE
 
 #define MF(sym) (void (*)(void *))pmf_face_##sym
 static const struct { unsigned rom; void (*host)(void *); } g_types[] = {
-    {0x020aff10, MF(func_ov002_020aff10)}, {0x020afe4c, MF(func_ov002_020afe4c)},
-    {0x020afd10, MF(func_ov002_020afd10)}, {0x020afc44, MF(func_ov002_020afc44)},
-    {0x020afbb4, MF(func_ov002_020afbb4)}, {0x020afa98, MF(func_ov002_020afa98)},
-    {0x020afa6c, MF(func_ov002_020afa6c)}, {0x020af950, MF(func_ov002_020af950)},
-    {0x020af924, MF(func_ov002_020af924)}, {0x020af838, MF(func_ov002_020af838)},
-    {0x020af7cc, MF(func_ov002_020af7cc)}, {0x020afa50, MF(func_ov002_020afa50)},
-    {0x020af908, MF(func_ov002_020af908)}, {0x020af724, MF(func_ov002_020af724)},
+    {0x020aff10, MF(_ZN7da1up_c19func_ov002_020aff10Ev)}, {0x020afe4c, MF(_ZN7da1up_c19func_ov002_020afe4cEv)},
+    {0x020afd10, MF(_ZN7da1up_c19func_ov002_020afd10Ev)}, {0x020afc44, MF(_ZN7da1up_c19func_ov002_020afc44Ev)},
+    {0x020afbb4, MF(_ZN7da1up_c19func_ov002_020afbb4Ev)}, {0x020afa98, MF(_ZN7da1up_c19func_ov002_020afa98Ev)},
+    {0x020afa6c, MF(_ZN7da1up_c19func_ov002_020afa6cEv)}, {0x020af950, MF(_ZN7da1up_c19func_ov002_020af950Ev)},
+    {0x020af924, MF(_ZN7da1up_c19func_ov002_020af924Ev)}, {0x020af838, MF(_ZN7da1up_c19func_ov002_020af838Ev)},
+    {0x020af7cc, MF(_ZN7da1up_c19func_ov002_020af7ccEv)}, {0x020afa50, MF(_ZN7da1up_c19func_ov002_020afa50Ev)},
+    {0x020af908, MF(_ZN7da1up_c19func_ov002_020af908Ev)}, {0x020af724, MF(_ZN7da1up_c19func_ov002_020af724Ev)},
 };
 #undef MF
 

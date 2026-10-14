@@ -56,12 +56,12 @@
 # 16/17 instead, the ShipUp/RockPillar gate-188 treatment. Both files stay
 # byte-locked in src/ as the matched proof; neither is referenced from
 # CMakeLists' gate-191 source list.
-src/d_a_obj_sm_lift.c
-src/_ZN7SkiLift15OnHitByMegaCharER6Player.cpp
-src/func_ov018_02111278.cpp
+src/actors/daObjSm_Lift_c.cpp
+# FOLDED into src/actors/daObjSm_Lift_c.cpp (row 59): src/_ZN7SkiLift15OnHitByMegaCharER6Player.cpp
+# FOLDED into src/actors/daObjSm_Lift_c.cpp (row 59): src/func_ov018_02111278.cpp
 src/game/actors/d_a_pg_mthr.cpp
-src/func_ov018_021117e8.cpp
-src/func_ov018_02111804.c
+# FOLDED into src/actors/daObjSm_Lift_c.cpp (row 59): src/func_ov018_021117e8.cpp
+# FOLDED into src/actors/daObjSm_Lift_c.cpp (row 59): src/func_ov018_02111804.c
 #
 # ==== MOTHER_PENGUIN (daPgMthr_c), a plain Actor, 31 slots (no Kill) ========
 # _ZTV7SkiLift == _ZTV10daPgMthr_c (0x021139bc..02113a34 inclusive), read
@@ -137,12 +137,12 @@ src/func_ov018_02111804.c
 # copy dispatches UpdateVerts through the real typed method call instead.
 # Matched src stays byte-locked in src/, dropped from CMakeLists' gate-191
 # source list.
-src/_ZN13RacingPenguin16OnPendingDestroyEv.cpp
+src/game/actors/d_a_pg_rcer.cpp
 #
 # ---- the two sinits (SkiLift's own + MotherPenguin's own; both
 # self-contained, only ov018 symbols, verified by reading their bodies) ----
-src/__sinit_ov018_02112c14.c
-src/__sinit_ov018_02112c80.cpp
+# FOLDED into src/actors/daObjSm_Lift_c.cpp (row 59): src/__sinit_ov018_02112c14.c
+# FOLDED into src/game/actors/d_a_pg_mthr.cpp (row 62): src/__sinit_ov018_02112c80.cpp
 #
 # NOT in this slice (matched src that MUST NOT be compiled -- host thunks or
 # host copies cover their slots): src/game/actors/d_a_pg_mthr.cpp (SkiLift D1),

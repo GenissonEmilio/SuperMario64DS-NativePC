@@ -19,7 +19,7 @@ and KingBobOmb):
   way each time: it reasons that the dispatcher is a tail jump, so the caller's
   own argument is still in place.  That is true of a FLAT C dispatcher whose
   first stack argument is the receiver (BabyPenguin's host copies, the path
-  lift's func_ov002_020efa54, the puzzle piece's func_ov064_0211982c), and it
+  lift's _ZN16dPathLiftActor_c8SetStateEi, the puzzle piece's func_ov064_0211982c), and it
   is false as soon as the dispatcher is a __thiscall member, and false again as
   soon as /O2 inlines it into a caller in the same translation unit.
 
@@ -74,7 +74,7 @@ except ImportError:
 # checked; CDECL rows are the adjudicated exceptions and are only reported.
 LEDGER = [
     ("ECX", r"^\?g_treasure_chest_states@@",
-     "TreasureChest: ?SetState@TreasureChest@@QAEXH@Z calls through "
+     "TreasureChest: ?SetState@daObjTbox_c@@QAEXH@Z calls through "
      "_data_ov064_0211c98c with ecx = this + delta, ?CallStateBehavior tail "
      "jumps the same way; both are __thiscall members, so no receiver is ever "
      "on the stack"),
@@ -83,15 +83,15 @@ LEDGER = [
      "through the record at +0x350 with ecx = this + delta, the shape "
      "00732a5ab fixed for SnowmanHead one overlay over"),
     ("ECX", r"^\?g_butterfly_states@@",
-     "Butterfly: ?Behavior@Butterfly@@UAEHXZ carries the call inline through "
+     "Butterfly: ?Behavior@daBtfly_c@@UAEHXZ carries the call inline through "
      "_data_ov100_02148628 with ecx = this + delta and nothing pushed"),
     ("ECX", r"^\?g_bird@@",
-     "Bird: ?Behavior@Bird@@UAEHXZ calls through _data_ov009_02113c48 with "
+     "Bird: ?Behavior@daSBird_c@@UAEHXZ calls through _data_ov009_02113c48 with "
      "ecx = this + delta and nothing pushed"),
     ("ECX", r"^\?g_king_states@@",
      "KingBobOmb: five of the class's own matched bodies inline the state "
      "change and call through _data_ov078_02126ffc with ecx = this + delta; "
-     "_KingBobOmb_SetState carries ecx on its tail-jump path too"),
+     "__ZN12daBombking_c19KingBobOmb_SetStateEPv carries ecx on its tail-jump path too"),
     ("ECX", r"^\?g_smb_cells@@",
      "daBgSnmBdy_c: ?Behavior and ?InitResources both carry the call inline "
      "with ecx = this + delta (00732a5ab)"),
@@ -139,7 +139,7 @@ LEDGER = [
      "thunk here breaks what works (00732a5ab left these alone on purpose)"),
     ("CDECL", r"^\?seats@\?1\?\?port_pathlift_states_seat@@",
      "dPathLiftActor_c: the three TICK halves already carry __fastcall faces; "
-     "the three ENTER halves are read by NOTHING but func_ov002_020efa54, a "
+     "the three ENTER halves are read by NOTHING but _ZN16dPathLiftActor_c8SetStateEi, a "
      "flat C dispatcher f(self, state) that tail jumps, so [esp+4] really is "
      "the receiver there (proved by a byte scan of .text for every reference "
      "to _data_ov002_0210af2c+0/+4)"),
@@ -162,12 +162,12 @@ LEDGER = [
      "seat's source records into the runtime ones those sites read, so the "
      "seat's word is the word they call"),
     ("ECX", r"^\?g_ov077_seats@",
-     "ov077 HeaveHo's per-frame halves: ?Behavior@HeaveHo@@UAEHXZ +0x51 mov "
+     "ov077 HeaveHo's per-frame halves: ?Behavior@daPopoi_c@@UAEHXZ +0x51 mov "
      "ecx,[edi+0x3fc]; +0x5a mov eax,[ecx+8]; +0x61 mov ecx,[ecx+0xc]; +0x64 "
      "add ecx,edi; +0x66 call eax -- the dispatcher is INLINE in a member and "
      "pushes nothing. The rest of this table is the adjudicated __cdecl set "
      "below: the enter halves and Lakitu's and Spiny's tick halves are reached "
-     "only by the flat f(self) tail jumps _func_ov077_02124754 (va 00529ab0), "
+     "only by the flat f(self) tail jumps __ZN7daJgm_c10EnterStateEv (va 00529ab0), "
      "_02124718 (00529a90), _02125e5c (00529af0), _02125e20 (00529ad0) and "
      "_02126d5c (0052adc0), each `mov eax,[ebp+8] / mov ecx,[rec+4] / add "
      "ecx,eax / pop ebp / jmp`, so [esp+4] really is the receiver there",
@@ -177,9 +177,9 @@ LEDGER = [
      "pointer-to-member call (?Behavior and ?InitResources of BowserFire, "
      "?Behavior of BowserSkyPlatform, the Bowser tail, and since run linkfull "
      "lane SEATS3 retired HOST COPY 1, Bowser's 0211aeb4 through the matched "
-     "_func_ov060_02112434, receiver in ecx) carry the ov60_* __fastcall faces "
+     "__ZN7daKpa_c19func_ov060_02112434Ev, receiver in ecx) carry the ov60_* __fastcall faces "
      "and must keep them. The raw matched bodies in this table are the "
-     "adjudicated __cdecl set below: _func_ov060_021128c0 decodes 0211aed4's "
+     "adjudicated __cdecl set below: __ZN7daKpa_c19func_ov060_021128c0Ev decodes 0211aed4's "
      "record by hand and dispatches it `push edx / call eax`, PUSHING the "
      "receiver, and ?Behavior@SpikeBomb reads 0211b1d8 as int[] and does the "
      "same",
@@ -193,7 +193,7 @@ LEDGER = [
      "cells go through ?Behavior@Scuttlebug@@UAEHXZ +0x1 mov esi,ecx; +0x10 mov "
      "eax,[esi+0x380]; +0x19 mov ecx,[eax+0xc]; +0x1c mov eax,[eax+8]; +0x1f add "
      "ecx,esi; +0x21 call eax. The nine ENTER cells were excused here as __cdecl "
-     "on the reading that the flat _Scuttlebug_SetState (va 005eb460) is their "
+     "on the reading that the flat __ZN10Scuttlebug8SetStateEi (va 005eb460) is their "
      "only reader. It is not, and this file's own docstring says why: /O2 inlines "
      "that dispatcher into fourteen sites in the same TU, thirteen of them `lea "
      "ecx,[ecx+this]; call dword ptr [cell]` with nothing pushed. Run link100 lane "
@@ -202,7 +202,7 @@ LEDGER = [
      "as leaving the receiver on the stack, so they are unaffected"),
     ("CDECL", r"^\?g_crate_states@@",
      "Crate: the readers are _Crate_SetState (va 0052ce50, +0x21 jmp eax) and "
-     "_func_ov098_02138b70 (va 0052ce80, +0x1e jmp eax), both flat f(self) "
+     "__ZN13daObjBlockS_c19func_ov098_02138b70Ev (va 0052ce80, +0x1e jmp eax), both flat f(self) "
      "tail jumps that load the pair out of the table with the receiver in "
      "[ebp+8] and leave it at [esp+4]"),
     ("ECX", r"^\?g_ukiki_cells@@",
@@ -210,7 +210,7 @@ LEDGER = [
      "TICK cells go through ?Behavior@daMky_c@@UAEHXZ +0x1f5 mov eax,"
      "[edi+0x3a4]; +0x1fb mov ecx,[eax+0xc]; +0x1fe mov eax,[eax+8]; +0x201 "
      "add ecx,edi; +0x203 call eax, and the flat tail jumps "
-     "_func_ov030_021141a8 and _02114134, _02113324, _02113d20, _02113ff0 "
+     "__ZN7daMky_c19func_ov030_021141a8Ei and _02114134, _02113324, _02113d20, _02113ff0 "
      "ride the receiver through while also setting ecx. The eleven ENTER "
      "cells were excused here as __cdecl on the reading that those flat "
      "jumps are their only readers. They are not: run link100 lane UKIKI2 "
@@ -276,9 +276,9 @@ LEDGER = [
      "callee-cleaned -- the first dispatcher's shape (port_kuppa_cmd_seat)"),
     ("ECX", r"^\?g_mb_cells@@",
      "MrBlizzard: the ten cells at data_ov081_02128e14, pointed to from "
-     "[self+0x3f8]. ?Behavior@MrBlizzard@@UAEHXZ (src/_ZN10MrBlizzard8Behavior"
+     "[self+0x3f8]. ?Behavior@daSnowman_c@@UAEHXZ (src/_ZN10MrBlizzard8Behavior"
      "Ev.cpp) calls the tick half at +8 with ecx = this + delta and nothing "
-     "pushed; _func_ov081_02125488 tail jumps into the enter half with `mov "
+     "pushed; __ZN11daSnowman_c19func_ov081_02125488EPNS_5StateE tail jumps into the enter half with `mov "
      "ecx,[ecx+4]; add ecx,eax; pop ebp; jmp edx`. Every other reader "
      "compares the cell pointer by address"),
 
@@ -608,11 +608,11 @@ VERDICTS = [
     ("an ECX cell in a checked table passes",
      [_row("ECX", "?g_rabbit_states@@3QBU", "?rb_0212b4b4@@YIXPAX0@Z", "ECX")], 0, 0),
     ("the named __cdecl exception inside a checked table is excused",
-     [_row("ECX", "?g_ov077_seats@?A0x1@@3QBU", "_func_ov077_02124118", "STACK")], 0, 1),
+     [_row("ECX", "?g_ov077_seats@?A0x1@@3QBU", "__ZN7daJgm_c15UpdateSpitStateEv", "STACK")], 0, 1),
     ("a body the exception does NOT name still refuses",
-     [_row("ECX", "?g_ov077_seats@?A0x1@@3QBU", "_func_ov077_02126640", "STACK")], 1, 0),
+     [_row("ECX", "?g_ov077_seats@?A0x1@@3QBU", "__ZN9daPopoi_c19func_ov077_02126640Ev", "STACK")], 1, 0),
     ("a stack-receiver cell in an adjudicated table is only reported",
-     [_row("CDECL", "?g_bp_cells@@3QBU", "_func_ov072_02121c94", "STACK")], 0, 0),
+     [_row("CDECL", "?g_bp_cells@@3QBU", "__ZN9daPgBby_c19func_ov072_02121c94Ev", "STACK")], 0, 0),
 ]
 
 

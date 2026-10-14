@@ -105,10 +105,10 @@ src/game/actors/d_a_obj_km3_kuruma.cpp
 src/game/actors/d_a_obj_km3_dorifu.cpp
 
 # ---- the four static initialisers, one per class -------------------------
-src/__sinit_ov047_021116dc.c
-src/__sinit_ov047_02111748.c
-src/__sinit_ov047_021117b4.c
-src/__sinit_ov047_0211181c.c
+# FOLDED into src/game/actors/d_a_obj_km3_kurumajiku.cpp (row 96): src/__sinit_ov047_021116dc.c
+# FOLDED into src/game/actors/d_a_obj_km3_kaitendai.cpp (row 99): src/__sinit_ov047_02111748.c
+# FOLDED into src/game/actors/d_a_obj_km3_kuruma.cpp (row 102): src/__sinit_ov047_021117b4.c
+# FOLDED into src/game/actors/d_a_obj_km3_dorifu.cpp (row 105): src/__sinit_ov047_0211181c.c
 
 # ---- THE MEASURED CLOSURE: nine ov002 bodies ----------------------------
 # The first eight came off the first link's own unresolved list; the ninth,
@@ -116,12 +116,12 @@ src/__sinit_ov047_0211181c.c
 # _ZN17daObjKurumajiku_c8BehaviorEv and func_ov002_020b6c54 call and neither of those was in
 # the build until the eighth line above put them there. Two rounds, both
 # measured, neither guessed.
-src/_ZN17daObjKurumajiku_c8BehaviorEv.cpp
-src/_ZN17daObjKurumajiku_c6RenderEv.cpp
-src/func_ov002_020b6ac8.cpp
-src/func_ov002_020b6c54.c
-src/_ZN13daObjKuruma_c8BehaviorEv.cpp
-src/_ZN13daObjKuruma_c6RenderEv.cpp
-src/func_ov002_020b68b0.cpp
-src/func_ov002_020b6958.c
-src/func_ov002_020b6a80.c
+src/actors/daObjKurumajiku_c.cpp
+# FOLDED into src/actors/daObjKurumajiku_c.cpp (row 119): src/_ZN17daObjKurumajiku_c6RenderEv.cpp
+# FOLDED into src/actors/daObjKurumajiku_c.cpp (row 119): src/func_ov002_020b6ac8.cpp
+# FOLDED into src/actors/daObjKurumajiku_c.cpp (row 119): src/func_ov002_020b6c54.c
+src/actors/daObjKuruma_c.cpp
+# FOLDED into src/actors/daObjKuruma_c.cpp (row 123): src/_ZN13daObjKuruma_c6RenderEv.cpp
+# FOLDED into src/actors/daObjKuruma_c.cpp (row 123): src/func_ov002_020b68b0.cpp
+# FOLDED into src/actors/daObjKuruma_c.cpp (row 123): src/func_ov002_020b6958.c
+# FOLDED into src/actors/daObjKurumajiku_c.cpp (row 119): src/func_ov002_020b6a80.c

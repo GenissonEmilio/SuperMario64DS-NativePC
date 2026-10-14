@@ -52,7 +52,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 
 #include "dActor_c.h"
 #include "fBase_c.h"
-#include "UpDownLiftBbh.h"
+#include "daUdlift_c.h"
 
 extern "C" {
 /* the shared lifecycle halves, the same functions every fill writes */
@@ -90,10 +90,10 @@ void port_actor_render_probe(const char *cls, void *model); /* actor_classes */
    here would collide with the qualified call, so the host copy is C-named and
    the thunk calls the C name -- the Coin/WaterBomb reading. The seat rewrites
    the five state statics before the ov095 sinit copies them. */
-int _ZN13UpDownLiftBbh8BehaviorEv(void *self);   /* port/unmatched host copy */
-int _ZN13UpDownLiftBbh6RenderEv(void *self);     /* ModelAnim slot-5 host copy */
-void *_ZN13UpDownLiftBbhD1Ev(void *self);        /* slot 16, .c extern "C" */
-void *_ZN13UpDownLiftBbhD0Ev(void *self);        /* slot 17, .c extern "C" */
+int _ZN10daUdlift_c8BehaviorEv(void *self);   /* port/unmatched host copy */
+int _ZN10daUdlift_c6RenderEv(void *self);     /* ModelAnim slot-5 host copy */
+void *_ZN10daUdlift_cD1Ev(void *self);        /* slot 16, .c extern "C" */
+void *_ZN10daUdlift_cD0Ev(void *self);        /* slot 17, .c extern "C" */
 void port_updownlift_states_seat(void);          /* port/unmatched */
 
 /* The one array the ROM factory installs (daUdlift_c_classInit_UDLIFT does
@@ -101,7 +101,7 @@ void port_updownlift_states_seat(void);          /* port/unmatched */
    declared: the `int` type and C linkage match the `extern int
    _ZTV13UpDownLiftBbh[]` in decl_common.h that the factory and both destructor
    TUs reference. */
-int _ZTV13UpDownLiftBbh[32];
+int _ZTV10daUdlift_c[32];
 }
 
 /* The class's two destructors store the vtable back by its RTTI names: VT0 =
@@ -110,8 +110,7 @@ int _ZTV13UpDownLiftBbh[32];
    onto the host array so the dtors write the same storage the factory installs
    -- the SeesawBob daObjSeesaw_c precedent. dBgActor_c is left alone: it is a
    real linked vtable and writing it back is the ROM's own second store. */
-#pragma comment(linker, "/alternatename:__ZTV10daUdlift_c=__ZTV13UpDownLiftBbh")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV10daUdlift_c=__ZTV10daUdlift_c")
 /* The C++/C linkage bridge, the gate-172 reading: InitResources declares the
    two variant file tables `extern int ...[]` and CleanupResources declares the
    same two `extern void* ...[]`, both OUTSIDE their extern "C" blocks, so MSVC
@@ -174,22 +173,22 @@ static int __fastcall udl_heap(void *s, void *)
 
 // ---- UP_DOWN_LIFT_HMC's own slots ------------------------------------------
 static int __fastcall udl_init(void *s, void *)
-{ return ((UpDownLiftBbh *)s)->UpDownLiftBbh::InitResources(); }
+{ return ((daUdlift_c *)s)->daUdlift_c::InitResources(); }
 static int __fastcall udl_clean(void *s, void *)
-{ return ((UpDownLiftBbh *)s)->UpDownLiftBbh::CleanupResources(); }
+{ return ((daUdlift_c *)s)->daUdlift_c::CleanupResources(); }
 static int __fastcall udl_behavior(void *s, void *)
-{ return _ZN13UpDownLiftBbh8BehaviorEv(s); }
+{ return _ZN10daUdlift_c8BehaviorEv(s); }
 static int __fastcall udl_render(void *s, void *)
 { port_actor_render_probe("UP_DOWN_LIFT_HMC", (char *)s + 0xd4);
   /* the C name, not the C++ method: Render is a ModelAnim slot-5 host copy in
      port/unmatched/ModelAnim_Renders.cpp (the Whomp/Scuttlebug case), so the
      matched src is dropped from slice_gate173.txt and this dispatches the host
      copy by its extern-"C" name, the way udl_behavior does. */
-  return _ZN13UpDownLiftBbh6RenderEv(s); }
+  return _ZN10daUdlift_c6RenderEv(s); }
 static int __fastcall udl_d1(void *s, void *)
-{ return (int)(size_t)_ZN13UpDownLiftBbhD1Ev(s); }
+{ return (int)(size_t)_ZN10daUdlift_cD1Ev(s); }
 static int __fastcall udl_d0(void *s, void *)
-{ return (int)(size_t)_ZN13UpDownLiftBbhD0Ev(s); }
+{ return (int)(size_t)_ZN10daUdlift_cD0Ev(s); }
 
 // ---- the Actor interaction tail, the ROM's own base bodies -----------------
 static int __fastcall udl_yoshi(void *s, void *)
@@ -222,7 +221,7 @@ static int __fastcall udl_kill(void *s, void *)
 
 extern "C" void hal_fill_up_down_lift_hmc_vtable(void)
 {
-    void **vt = (void **)_ZTV13UpDownLiftBbh;
+    void **vt = (void **)_ZTV10daUdlift_c;
     /* the state seat is NOT called here: hal/actor_overlays.cpp runs it after
        port_ov095_syms_patch and before __sinit_ov095_0213722c, the established
        seat order. Calling it here too would set its done flag before the

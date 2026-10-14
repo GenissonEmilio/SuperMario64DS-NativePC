@@ -75,23 +75,23 @@ void port_actor_slot_decline(const char *what);   /* func_02043fdc_hostcopy.cpp 
 void port_actor_render_probe(const char *cls, void *model); /* hal/actor_classes */
 
 /* PUSH_BLOCK own bodies */
-int _ZN11PowerFlower13InitResourcesEv(void *self);    /* slot 0, faced (real C++ method) */
-int _ZN11PowerFlower16CleanupResourcesEv(void);       /* slot 3, extern-C .c, ignores this */
-int _ZN11PowerFlower8BehaviorEv(void *self);          /* slot 6, faced (real C++ method) */
-int _ZN11PowerFlower6RenderEv(void *self);            /* slot 9, HOST COPY
+int _ZN18daObjPowerUpItem_c13InitResourcesEv(void *self);    /* slot 0, faced (real C++ method) */
+int _ZN18daObjPowerUpItem_c16CleanupResourcesEv(void);       /* slot 3, extern-C .c, ignores this */
+int _ZN18daObjPowerUpItem_c8BehaviorEv(void *self);          /* slot 6, faced (real C++ method) */
+int _ZN18daObjPowerUpItem_c6RenderEv(void *self);            /* slot 9, HOST COPY
                                                        (ModelAnim_Renders.cpp) */
-int _ZN11PowerFlower13OnYoshiTryEatEv(void);                     /* slot 18, returns 5 */
+int _ZN18daObjPowerUpItem_c13OnYoshiTryEatEv(void);                     /* slot 18, returns 5 */
 void port_pushblock_states_seat(void);             /* PushBlock_StateDispatch.cpp */
 extern int _ZTV9PushBlock[];                       /* ov002 mount, 31 slots */
 
 /* MUGEN_BGM own bodies (extern-C .c except the two faced .cpp methods) */
-int _ZN8MugenBgm13InitResourcesEv(void *self);     /* slot 0, faced */
-int _ZN8MugenBgm16CleanupResourcesEv(void);        /* slot 3, .c, ignores this */
-int _ZN8MugenBgm8BehaviorEv(void *self);           /* slot 6, faced */
-int _ZN8MugenBgm6RenderEv(void);                   /* slot 9, .c stub, ignores this */
-void _ZN8MugenBgm16OnPendingDestroyEv(void);       /* slot 12, .c stub (no arg) */
-extern int _ZTV8MugenBgm[];                        /* ov002 mount, 31 slots */
-int *_ZN8MugenBgmD0Ev(int *self);                  /* slot 17, matched, gate 207 */
+int _ZN12daMugenBGM_c13InitResourcesEv(void *self);     /* slot 0, faced */
+int _ZN12daMugenBGM_c16CleanupResourcesEv(void);        /* slot 3, .c, ignores this */
+int _ZN12daMugenBGM_c8BehaviorEv(void *self);           /* slot 6, faced */
+int _ZN12daMugenBGM_c6RenderEv(void);                   /* slot 9, .c stub, ignores this */
+void _ZN12daMugenBGM_c16OnPendingDestroyEv(void);       /* slot 12, .c stub (no arg) */
+extern int _ZTV12daMugenBGM_c[];                        /* ov002 mount, 31 slots */
+int *_ZN12daMugenBGM_cD0Ev(int *self);                  /* slot 17, matched, gate 207 */
 
 /* D1/D0 teardown members, all hosted seams. PushBlock's chain is read out
    of its OWN matched D0 body (src/_ZN11PowerFlowerD0Ev.cpp): WithMeshClsn
@@ -104,7 +104,7 @@ int *_ZN8MugenBgmD0Ev(int *self);                  /* slot 17, matched, gate 207
    table; host thunks spell the chain instead, the gate-199 treatment. */
 void _ZN10dBgCh_ActrD1Ev(void *self);
 void _ZN7dCcAc_cD1Ev(void *self);
-void _ZN11ShadowModelD1Ev(void *self);
+void _ZN17dExtShadowModel_cD1Ev(void *self);
 void _ZN5ModelD1Ev(void *self);
 void *_ZN8dActor_cD2Ev(void *self);
 void _ZN6Memory10DeallocateEPvP4Heap(void *, void *);
@@ -229,16 +229,16 @@ static void g200_fill_shared(void *volatile *vt)
 // POWER_FLOWER (306, the host table is still named _ZTV9PushBlock), 31 slots.
 // ============================================================================
 static int __fastcall pb_init(void *s, void *)
-{ return _ZN11PowerFlower13InitResourcesEv(s); }
+{ return _ZN18daObjPowerUpItem_c13InitResourcesEv(s); }
 static int __fastcall pb_clean(void *s, void *)
-{ (void)s; return _ZN11PowerFlower16CleanupResourcesEv(); }
+{ (void)s; return _ZN18daObjPowerUpItem_c16CleanupResourcesEv(); }
 static int __fastcall pb_behavior(void *s, void *)
-{ return _ZN11PowerFlower8BehaviorEv(s); }
+{ return _ZN18daObjPowerUpItem_c8BehaviorEv(s); }
 static int __fastcall pb_render(void *s, void *)
 { port_actor_render_probe("POWER_FLOWER", (char *)s + 0xd4);
-  return _ZN11PowerFlower6RenderEv(s); }
+  return _ZN18daObjPowerUpItem_c6RenderEv(s); }
 static int __fastcall pb_yoshi(void *s, void *)
-{ (void)s; return _ZN11PowerFlower13OnYoshiTryEatEv(); }
+{ (void)s; return _ZN18daObjPowerUpItem_c13OnYoshiTryEatEv(); }
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (pb_d1) spelled the same chain by hand. */
 /* GATE 204: slot 17 runs the ROM's own body now, not the chain above typed out
@@ -249,9 +249,9 @@ static int __fastcall pb_yoshi(void *s, void *)
    slice_gate204.txt; this line is the reference edge that keeps /OPT:REF from
    dropping it. The D1 half stays hand-spelled: its matched TU is a real MSVC
    destructor over local struct decls, which the header above records. */
-extern "C" int *_ZN11PowerFlowerD0Ev(int *self);
+extern "C" int *_ZN18daObjPowerUpItem_cD0Ev(int *self);
 static int __fastcall pb_d0(void *s, void *)
-{ return (int)(size_t)_ZN11PowerFlowerD0Ev((int *)s); }
+{ return (int)(size_t)_ZN18daObjPowerUpItem_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_pushblock_vtable(void)
 {
@@ -274,15 +274,15 @@ extern "C" void hal_fill_pushblock_vtable(void)
 // no members past Actor, all its own slots matched src.
 // ============================================================================
 static int __fastcall mb_init(void *s, void *)
-{ return _ZN8MugenBgm13InitResourcesEv(s); }
+{ return _ZN12daMugenBGM_c13InitResourcesEv(s); }
 static int __fastcall mb_clean(void *s, void *)
-{ (void)s; return _ZN8MugenBgm16CleanupResourcesEv(); }
+{ (void)s; return _ZN12daMugenBGM_c16CleanupResourcesEv(); }
 static int __fastcall mb_behavior(void *s, void *)
-{ return _ZN8MugenBgm8BehaviorEv(s); }
+{ return _ZN12daMugenBGM_c8BehaviorEv(s); }
 static int __fastcall mb_render(void *s, void *)
-{ (void)s; return _ZN8MugenBgm6RenderEv(); }
+{ (void)s; return _ZN12daMugenBGM_c6RenderEv(); }
 static int __fastcall mb_pdes(void *s, void *)
-{ (void)s; _ZN8MugenBgm16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN12daMugenBGM_c16OnPendingDestroyEv(); return 0; }
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (mb_d1) spelled the same chain by hand. */
 /* GATE 207 replaced the hand-spelled slot-17 chain with the body it was
@@ -296,11 +296,11 @@ static int __fastcall mb_pdes(void *s, void *)
    table, the single-factory count and the [reg+44h] sweep are in
    port/slice_gate207.txt. */
 static int __fastcall mb_d0(void *s, void *)
-{ return (int)(size_t)_ZN8MugenBgmD0Ev((int *)s); }
+{ return (int)(size_t)_ZN12daMugenBGM_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_mugen_bgm_vtable(void)
 {
-    void *volatile *vt = (void *volatile *)_ZTV8MugenBgm;
+    void *volatile *vt = (void *volatile *)_ZTV12daMugenBGM_c;
     g200_fill_shared(vt);
     vt[0]  = (void *)mb_init;
     vt[3]  = (void *)mb_clean;
@@ -317,15 +317,15 @@ extern "C" void hal_fill_mugen_bgm_vtable(void)
 // ..., not _ZN9PushBlock...) -- faced here, the IceSheet/SwitchPillar recipe.
 // PushBlock::Render is NOT faced: it is a host copy (two plain-Model slot-5
 // shadows, port/unmatched/ModelAnim_Renders.cpp), declared extern "C" above.
-#include "PowerFlower.h"
-#include "MugenBgm.h"
+#include "daObjPowerUpItem_c.h"
+#include "daMugenBGM_c.h"
 extern "C" {
-int _ZN11PowerFlower13InitResourcesEv(void *self)
-{ return ((PowerFlower *)self)->PowerFlower::InitResources(); }
-int _ZN11PowerFlower8BehaviorEv(void *self)
-{ return ((PowerFlower *)self)->PowerFlower::Behavior(); }
-int _ZN8MugenBgm13InitResourcesEv(void *self)
-{ return ((MugenBgm *)self)->MugenBgm::InitResources(); }
-int _ZN8MugenBgm8BehaviorEv(void *self)
-{ return ((MugenBgm *)self)->MugenBgm::Behavior(); }
+int _ZN18daObjPowerUpItem_c13InitResourcesEv(void *self)
+{ return ((daObjPowerUpItem_c *)self)->daObjPowerUpItem_c::InitResources(); }
+int _ZN18daObjPowerUpItem_c8BehaviorEv(void *self)
+{ return ((daObjPowerUpItem_c *)self)->daObjPowerUpItem_c::Behavior(); }
+int _ZN12daMugenBGM_c13InitResourcesEv(void *self)
+{ return ((daMugenBGM_c *)self)->daMugenBGM_c::InitResources(); }
+int _ZN12daMugenBGM_c8BehaviorEv(void *self)
+{ return ((daMugenBGM_c *)self)->daMugenBGM_c::Behavior(); }
 }

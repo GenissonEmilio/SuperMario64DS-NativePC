@@ -18,8 +18,8 @@
 # (DistToCPlayer's row flipped F -> R, FarthestPlayer's row new). The Fix12i
 # IsPlayerInRange overload and the two ov020 bodies are extern "C" definitions
 # of their own flat names and need no face.
-src/_ZN8dActor_c13DistToCPlayerEv.cpp
-src/_ZN8dActor_c14FarthestPlayerEv.cpp
-src/_ZN8dActor_c15IsPlayerInRangeE5Fix12IiES1_S1_i.cpp
-src/func_ov020_02111fc4.cpp
-src/func_ov020_02111418.cpp
+src/actors/dActor_c.cpp
+# FOLDED into src/actors/dActor_c.cpp (row 21): src/_ZN8dActor_c14FarthestPlayerEv.cpp
+# FOLDED into src/actors/dActor_c.cpp (row 21): src/_ZN8dActor_c15IsPlayerInRangeE5Fix12IiES1_S1_i.cpp
+src/actors/daBook_c.cpp
+# FOLDED into src/actors/daBook_c.cpp (row 24): src/func_ov020_02111418.cpp

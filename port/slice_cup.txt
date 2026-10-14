@@ -256,19 +256,19 @@
 # something a headless run can say. Section 9's notes stand for this class too.
 #
 # ---- the list ---------------------------------------------------------------
-src/func_02012174.c
-src/func_ov004_020b2574.c
-src/func_ov004_020b6808.c
-src/func_ov006_020c225c.c
-src/func_ov006_020c2290.c
-src/func_ov006_020c23a8.cpp
-src/func_ov006_020c2440.cpp
-src/func_ov006_020c24e4.cpp
-src/func_ov006_020c2594.c
-src/func_ov006_020c263c.c
-src/func_ov006_020c2664.c
-src/func_ov006_020c27c4.cpp
-src/func_ov006_020c2848.cpp
+src/engine/sound/Sound.cpp
+src/minigames/d_s_mg_base.cpp
+src/actors/dMgState_c.cpp
+src/actors/unit020bfec0.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2290.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c23a8.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2440.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c24e4.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2594.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c263c.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2664.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c27c4.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2848.cpp
 # HOST-COPIED (mg9 adjudication): src/func_ov006_020c2924.cpp -- a RECEIVER
 #   DROP at a host C++ virtual. The src spells the byte +0x18 call as
 #   `int (**vt)(void*)`, a __cdecl pointer that PUSHES the object, against
@@ -278,10 +278,10 @@ src/func_ov006_020c2848.cpp
 #   from vtable slot 18 (_ZN10dScMgCup_c13OnYoshiTryEatEi @ 0x020e0018), so scene 361 was
 #   running the defect too. The fix is
 #   port/unmatched/MgShared4f38_ShadowFader_020c2924.cpp and src/ is untouched.
-src/func_ov006_020c2984.c
-src/func_ov006_020c2994.c
-src/func_ov006_020c2be8.c
-src/func_ov006_020c3050.c
-src/func_ov006_020c3288.c
-src/func_ov006_020c33dc.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2984.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2994.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2be8.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c3050.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c3288.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c33dc.c
 src/actors/dScMgCup_c.cpp

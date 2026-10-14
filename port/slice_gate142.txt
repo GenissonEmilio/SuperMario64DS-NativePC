@@ -14,4 +14,4 @@
 # Behavior's externs (Actor::DistToCPlayer, Sound::PlaySub, DecIfAbove0_Short,
 # Actor::KillAndTrackInDeathTable) are provided by existing hal faces.
 src/game/actors/d_a_sld_mng.cpp
-src/__sinit_ov019_02112b14.c
+# FOLDED into src/game/actors/d_a_sld_mng.cpp (row 16): src/__sinit_ov019_02112b14.c

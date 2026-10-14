@@ -24,7 +24,7 @@
  * proves by no-regression on the levels that do place it, not by a level-18
  * census move.
  */
-#include "WaterSuction.h"
+#include "daWater_Suikomi_c.h"
 
 extern "C" {
 

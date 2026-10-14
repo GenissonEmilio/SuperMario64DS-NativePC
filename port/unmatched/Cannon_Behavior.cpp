@@ -28,7 +28,7 @@
 
 extern "C" {
 
-int func_ov098_0213a984(void *self);
+int _ZN7daCnn_c19func_ov098_0213a984Ev(void *self);
 void _ZN5dCc_c5ClearEv(void *self);
 void _ZN5dCc_c6UpdateEv(void *self);
 
@@ -38,10 +38,10 @@ extern PortPmf data_ov098_0213c644[], data_ov098_0213c64c[],
     data_ov098_0213c654[], data_ov098_0213c65c[];
 extern PortPmf data_ov098_0213c8fc[];
 
-void func_ov098_0213aa28(void *);   /* state 3 */
-void func_ov098_0213ad08(void *);   /* state 2, the closed lid */
-void func_ov098_0213b0a4(void *);   /* state 0, the aim */
-void func_ov098_0213ade8(void *);   /* state 1, the lid opening (matched src) */
+void _ZN7daCnn_c19func_ov098_0213aa28Ev(void *);   /* state 3 */
+void _ZN7daCnn_c19func_ov098_0213ad08Ev(void *);   /* state 2, the closed lid */
+void _ZN7daCnn_c19func_ov098_0213b0a4Ev(void *);   /* state 0, the aim */
+void _ZN7daCnn_c19func_ov098_0213ade8Ev(void *);   /* state 1, the lid opening (matched src) */
 
 }  /* extern "C" */
 
@@ -64,10 +64,10 @@ void func_ov098_0213ade8(void *);   /* state 1, the lid opening (matched src) */
         sym(self);                                                        \
     }
 
-CANNON_FACE(0, func_ov098_0213aa28)
-CANNON_FACE(1, func_ov098_0213b0a4)
-CANNON_FACE(2, func_ov098_0213ad08)
-CANNON_FACE(3, func_ov098_0213ade8)
+CANNON_FACE(0, _ZN7daCnn_c19func_ov098_0213aa28Ev)
+CANNON_FACE(1, _ZN7daCnn_c19func_ov098_0213b0a4Ev)
+CANNON_FACE(2, _ZN7daCnn_c19func_ov098_0213ad08Ev)
+CANNON_FACE(3, _ZN7daCnn_c19func_ov098_0213ade8Ev)
 
 static const struct { PortPmf *slot; unsigned rom; void *host; }
 g_cannon_states[] = {

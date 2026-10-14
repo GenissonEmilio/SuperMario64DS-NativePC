@@ -219,7 +219,7 @@ void func_020553a4(int *m);
 extern int data_0209b3ec;
 extern unsigned char data_ov080_0212771c[64];
 
-void func_ov080_021261f4(char *self);
+void _ZN11daPicGate_c19func_ov080_021261f4Ev(char *self);
 
 }  /* extern "C" */
 
@@ -257,7 +257,7 @@ inline unsigned short rom_v16(int v)
 /* 0x021261f4..0x021261fc   push {r4-r8,sb,sl,fp,lr}; sub sp,#0x34; mov r4,r0.
    tmp is the 0x30 bytes at sp+4; sp+0 is the inner counter's spill slot, which
    is why this frame is four bytes wider than the sibling's. */
-void func_ov080_021261f4(char *self)
+void _ZN11daPicGate_c19func_ov080_021261f4Ev(char *self)
 {
     int tmp[12];
     int i;

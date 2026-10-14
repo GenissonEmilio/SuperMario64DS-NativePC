@@ -27,7 +27,7 @@
 # the factory: ActorBase::operator new(0x98), the ActorBase ctor, the three
 # vptr writes the ROM makes in order and the two +0x13 flag bits. It already
 # spells data_ov003_020b179c and _ZTV8dScene_c by name, so it needs no rename.
-src/d_s_game_over.cpp
+src/actors/dScGameOver_c.cpp
 # slot 0  InitResources
 src/actors/dScGameOver_c.cpp
 # slot 3  CleanupResources
@@ -45,7 +45,7 @@ src/actors/dScGameOver_c.cpp
 # ---- the arm9 closure the game over screen opens up ------------------------
 # func_0201cebc is the text-drawing helper InitResources calls; no level path
 # reaches it.
-src/func_0201cebc.c
+src/Message.cpp
 # src/func_0202ae74.c is NOT LISTED HERE ON PURPOSE, and it is the one TU of
 # this gate's twelve that is not in this file. It is already an ACTIVE line in
 # port/slice_gate31.txt (the StartFile wrapper), so it is compiled today and

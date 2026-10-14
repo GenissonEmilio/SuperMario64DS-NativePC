@@ -47,15 +47,15 @@
 # the factory: fBase_c::operator new(0x54), the fBase_c ctor, the three vptr
 # writes the ROM makes in order and the two +0x13 flag bits. It already spells
 # data_ov003_020b1650 and _ZTV8dScene_c by name, so it needs no rename.
-src/d_s_title.cpp
+src/actors/dScTitle_c.cpp
 # slot 3  CleanupResources -- 0x020ada80, one Sound::UnsetPlayerVoiceGroup call
-src/_ZN10dScTitle_c16CleanupResourcesEv.cpp
+# FOLDED into src/actors/dScTitle_c.cpp (row 50): src/_ZN10dScTitle_c16CleanupResourcesEv.cpp
 # slot 9  Render -- 0x020ad7a4, OAM::EnableSubOAM plus one OAM word
-src/_ZN10dScTitle_c6RenderEv.cpp
+# FOLDED into src/actors/dScTitle_c.cpp (row 50): src/_ZN10dScTitle_c6RenderEv.cpp
 # slot 12 OnPendingDestroy -- 0x020ad7a0, 4 bytes, bx lr
-src/_ZN10dScTitle_c16OnPendingDestroyEv.cpp
+# FOLDED into src/actors/dScTitle_c.cpp (row 50): src/_ZN10dScTitle_c16OnPendingDestroyEv.cpp
 # slot 16 D2 -- 0x020ad660
-src/_ZN10dScTitle_cD1Ev.cpp
+# FOLDED into src/actors/dScTitle_c.cpp (row 50): src/_ZN10dScTitle_cD1Ev.cpp
 # slot 17 D0 -- 0x020ad69c. NOT LISTED, and that is the same call
 # port/slice_scene1.txt made for src/_ZN12dScStarSel_cD0Ev.cpp: MSVC folds the
 # ROM's destructor variants into ONE symbol, so only one of a class's two
@@ -66,14 +66,14 @@ src/_ZN10dScTitle_cD1Ev.cpp
 # as well, or it is compiled twice.)
 #src/_ZN10dScTitle_cD0Ev.cpp
 # slot 0  InitResources -- 0x020ada9c
-src/_ZN10dScTitle_c13InitResourcesEv.cpp
+# FOLDED into src/actors/dScTitle_c.cpp (row 50): src/_ZN10dScTitle_c13InitResourcesEv.cpp
 # slot 6  Behavior -- 0x020ad814, the level/entrance picker state machine
-src/_ZN10dScTitle_c8BehaviorEv.cpp
+# FOLDED into src/actors/dScTitle_c.cpp (row 50): src/_ZN10dScTitle_c8BehaviorEv.cpp
 #
 # ---- the class's own closure ----------------------------------------------
 # 0x020ad6ec is named by InitResources and by Behavior and by nothing else in
 # this build, so it is a real gain rather than a re-count.
-src/func_ov003_020ad6ec.c
+# FOLDED into src/actors/dScTitle_c.cpp (row 50): src/func_ov003_020ad6ec.c
 #
 # THREE RIDERS ARE NOT LISTED HERE ON PURPOSE. src/func_ov003_020adc74.cpp,
 # src/func_ov003_020adcbc.cpp and src/_ZN2G212GetBG0ScrPtrEv.cpp are ALREADY

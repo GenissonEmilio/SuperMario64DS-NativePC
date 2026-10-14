@@ -50,22 +50,22 @@
 extern "C" {
 
 /* ---- (1) the destructor ------------------------------------------------ */
-extern int _ZTV5Spiny[];
+extern int _ZTV7daTgz_c[];
 void _ZN10dBgCh_ActrD1Ev(void *);
 void _ZN7dCcAc_cD1Ev(void *);
-void _ZN11ShadowModelD1Ev(void *);
+void _ZN17dExtShadowModel_cD1Ev(void *);
 void _ZN9ModelAnimD1Ev(void *);
 void _ZN5ModelD1Ev(void *);
 void _ZN8dActor_cD2Ev(void *);
 
 /* PORT_HOST_ABI: mwcc-Itanium destructor name MSVC cannot emit; ROM call
  * order and offsets from relocs.txt + src/_ZN5SpinyD0Ev.c. */
-int *_ZN5SpinyD1Ev(int *t)
+int *_ZN7daTgz_cD1Ev(int *t)
 {
-    t[0] = (int)(size_t)_ZTV5Spiny;
+    t[0] = (int)(size_t)_ZTV7daTgz_c;
     _ZN10dBgCh_ActrD1Ev((char *)t + 0x1e4);
     _ZN7dCcAc_cD1Ev((char *)t + 0x1b0);
-    _ZN11ShadowModelD1Ev((char *)t + 0x188);
+    _ZN17dExtShadowModel_cD1Ev((char *)t + 0x188);
     _ZN9ModelAnimD1Ev((char *)t + 0x124);
     _ZN5ModelD1Ev((char *)t + 0xd4);
     _ZN8dActor_cD2Ev(t);

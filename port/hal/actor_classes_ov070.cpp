@@ -188,7 +188,7 @@ void *daKpFr_c_classInit(void);
 void _ZN10dBgCh_ActrD1Ev(void *self);
 void _ZN10dCcAcPos_cD1Ev(void *self);
 void _ZN7dCcAc_cD1Ev(void *self);
-void _ZN11ShadowModelD1Ev(void *self);
+void _ZN17dExtShadowModel_cD1Ev(void *self);
 void _ZN18TextureTransformerD1Ev(void *self);
 void _ZN15TextureSequenceD1Ev(void *self);
 void _ZN5ModelD1Ev(void *self);
@@ -231,24 +231,24 @@ extern unsigned char data_ov070_021234c4[];
 /* the 28 unmarked state handlers the seat installs (all matched src on the
    slice; the two marked Kill roots are the transcriptions below) */
 int func_ov070_0211fa80(void *); int func_ov070_0211fd98(void *);
-int func_ov070_0211f62c(void *); int func_ov070_0211fd60(void *);
-int func_ov070_0211f48c(void *); int func_ov070_0211ffa8(void *);
+int _ZN19daPropeller_Heyho_c19func_ov070_0211f62cEv(void *); int func_ov070_0211fd60(void *);
+int _ZN19daPropeller_Heyho_c19func_ov070_0211f48cEv(void *); int func_ov070_0211ffa8(void *);
 int func_ov070_0211fae4(void *); int func_ov070_0211f450(void *);
 int func_ov070_0211f368(void *); int func_ov070_0211f694(void *);
-int func_ov070_0211f5f0(void *); int func_ov070_0211f6e0(void *);
+int func_ov070_0211f5f0(void *); int _ZN19daPropeller_Heyho_c19func_ov070_0211f6e0Ev(void *);
 int _ZN7daBrq_c18EnterCooldownStateEv(void *); int _ZN7daBrq_c16EnterActiveStateEv(void *);
 int _ZN7daBrq_c18EnterDefeatedStateEv(void *); int _ZN7daBrq_c19UpdateCooldownStateEv(void *);
 int _ZN7daBrq_c19UpdateDefeatedStateEv(void *); int _ZN7daBrq_c17UpdateActiveStateEv(void *);
-int func_ov070_02121548(void *); int func_ov070_0212156c(void *);
-int func_ov070_021214f8(void *); int func_ov070_021216b8(void *);
-int func_ov070_02121710(void *); int func_ov070_021213cc(void *);
-int func_ov070_021217ac(void *);
-int func_ov070_02121ef8(void *); int func_ov070_02121f18(void *);
-int func_ov070_02121eb0(void *);
+int _ZN8daKrpa_c19func_ov070_02121548Ev(void *); int _ZN8daKrpa_c19func_ov070_0212156cEv(void *);
+int _ZN8daKrpa_c19func_ov070_021214f8Ev(void *); int _ZN8daKrpa_c19func_ov070_021216b8Ev(void *);
+int _ZN8daKrpa_c19func_ov070_02121710Ev(void *); int _ZN8daKrpa_c19func_ov070_021213ccEv(void *);
+int _ZN8daKrpa_c19func_ov070_021217acEv(void *);
+int _ZN8daKpFr_c19func_ov070_02121ef8Ev(void *); int _ZN8daKpFr_c19func_ov070_02121f18Ev(void *);
+int _ZN8daKpFr_c19func_ov070_02121eb0Ev(void *);
 /* the four bodies lane mount-ov070 adjudicated REAL_DECOMP (byte-matched):
    the two state-0 Kill roots and the two slot-18 OnYoshiTryEat returns */
-int func_ov070_02121438(void *);                  /* FlameChomp state 0 */
-int func_ov070_02121fb0(void *);                  /* FlameChompFire state 0 */
+int _ZN8daKrpa_c19func_ov070_02121438Ev(void *);                  /* FlameChomp state 0 */
+int _ZN8daKpFr_c19func_ov070_02121fb0Ev(void *);                  /* FlameChompFire state 0 */
 int _ZN8daKrpa_c13OnYoshiTryEatEv(void);                    /* FlameChomp slot 18 */
 int _ZN8daKpFr_c13OnYoshiTryEatEv(void);                    /* FlameChompFire slot 18 */
 }
@@ -312,7 +312,7 @@ int _ZN8daKpFr_c13OnYoshiTryEatEv(void);                    /* FlameChompFire sl
    copied: func_02015bcc IS _ZN9Animation8FinishedEv (arm9 symbols.txt names
    the address; the matched method TU and hal/player_bridges.cpp's C bridge
    are both in the link already). The ov070 TUs spell it by address. */
-#pragma comment(linker, "/alternatename:_func_02015bcc=__ZN9Animation8FinishedEv")
+#pragma comment(linker, "/alternatename:_func_02015bcc=__ZN15dExtFrameCtrl_c8FinishedEv")
 
 // ---- the trap (the ov45 pattern, ov070's spelling) -------------------------
 static void ov70_trap_report(void *self, int slot)
@@ -464,12 +464,12 @@ static void ov70_fill_shared(void *volatile *vt)
 //
 // One register argument, so MSVC reads the receiver from ecx and returns with
 // a bare `ret` -- which is what the call site wants, having pushed nothing.
-static int __fastcall fg_tick_f48c(void *s) { return func_ov070_0211f48c(s); }
+static int __fastcall fg_tick_f48c(void *s) { return _ZN19daPropeller_Heyho_c19func_ov070_0211f48cEv(s); }
 static int __fastcall fg_tick_fd98(void *s) { return func_ov070_0211fd98(s); }
 static int __fastcall fg_tick_fae4(void *s) { return func_ov070_0211fae4(s); }
 static int __fastcall fg_tick_f368(void *s) { return func_ov070_0211f368(s); }
-static int __fastcall fg_tick_f6e0(void *s) { return func_ov070_0211f6e0(s); }
-static int __fastcall fg_tick_f62c(void *s) { return func_ov070_0211f62c(s); }
+static int __fastcall fg_tick_f6e0(void *s) { return _ZN19daPropeller_Heyho_c19func_ov070_0211f6e0Ev(s); }
+static int __fastcall fg_tick_f62c(void *s) { return _ZN19daPropeller_Heyho_c19func_ov070_0211f62cEv(s); }
 
 // ---- AND FLYGUY'S SIX ENTER BODIES NEED IT TOO -----------------------------
 //
@@ -546,18 +546,18 @@ static int __fastcall fg_enter_f5f0(void *s) { return func_ov070_0211f5f0(s); }
 // transfer happened to be a tail jump. One register argument, so the thunk
 // returns with a bare `ret`, which is what a call site that pushed nothing
 // wants.
-static int __fastcall fc_st_1438(void *s) { return func_ov070_02121438(s); }
-static int __fastcall fc_st_14f8(void *s) { return func_ov070_021214f8(s); }
-static int __fastcall fc_st_1548(void *s) { return func_ov070_02121548(s); }
-static int __fastcall fc_st_156c(void *s) { return func_ov070_0212156c(s); }
-static int __fastcall fc_st_16b8(void *s) { return func_ov070_021216b8(s); }
-static int __fastcall fc_st_1710(void *s) { return func_ov070_02121710(s); }
-static int __fastcall fc_st_13cc(void *s) { return func_ov070_021213cc(s); }
-static int __fastcall fc_st_17ac(void *s) { return func_ov070_021217ac(s); }
-static int __fastcall ff_st_1fb0(void *s) { return func_ov070_02121fb0(s); }
-static int __fastcall ff_st_1ef8(void *s) { return func_ov070_02121ef8(s); }
-static int __fastcall ff_st_1f18(void *s) { return func_ov070_02121f18(s); }
-static int __fastcall ff_st_1eb0(void *s) { return func_ov070_02121eb0(s); }
+static int __fastcall fc_st_1438(void *s) { return _ZN8daKrpa_c19func_ov070_02121438Ev(s); }
+static int __fastcall fc_st_14f8(void *s) { return _ZN8daKrpa_c19func_ov070_021214f8Ev(s); }
+static int __fastcall fc_st_1548(void *s) { return _ZN8daKrpa_c19func_ov070_02121548Ev(s); }
+static int __fastcall fc_st_156c(void *s) { return _ZN8daKrpa_c19func_ov070_0212156cEv(s); }
+static int __fastcall fc_st_16b8(void *s) { return _ZN8daKrpa_c19func_ov070_021216b8Ev(s); }
+static int __fastcall fc_st_1710(void *s) { return _ZN8daKrpa_c19func_ov070_02121710Ev(s); }
+static int __fastcall fc_st_13cc(void *s) { return _ZN8daKrpa_c19func_ov070_021213ccEv(s); }
+static int __fastcall fc_st_17ac(void *s) { return _ZN8daKrpa_c19func_ov070_021217acEv(s); }
+static int __fastcall ff_st_1fb0(void *s) { return _ZN8daKpFr_c19func_ov070_02121fb0Ev(s); }
+static int __fastcall ff_st_1ef8(void *s) { return _ZN8daKpFr_c19func_ov070_02121ef8Ev(s); }
+static int __fastcall ff_st_1f18(void *s) { return _ZN8daKpFr_c19func_ov070_02121f18Ev(s); }
+static int __fastcall ff_st_1eb0(void *s) { return _ZN8daKpFr_c19func_ov070_02121eb0Ev(s); }
 
 // ---- THE AMP'S SIX STATE BODIES NEED THE SAME THUNK ------------------------
 //

@@ -317,17 +317,17 @@ int _ZN7daBmb_c13InitResourcesEv(void *self)
 // MovingCylinderClsn at 0x110, WithMeshClsn at 0x144, Model at 0x300,
 // ShadowModel at 0x350, MovingCylinderClsn at 0x378, 992 bytes.
 extern "C" {
-int _ZN10KoopaShell13InitResourcesEv(void *self);      /* C-named in its own TU */
-int _ZN10KoopaShell8BehaviorEv(void *self);            /* C-named in its own TU */
-int _ZN10KoopaShell6RenderEv(void *self);              /* C-named in its own TU */
-int _ZN10KoopaShell16CleanupResourcesEv(void *self);   /* C-named in its own TU */
-void _ZN10KoopaShell16OnPendingDestroyEv(void);        /* empty body */
-int *_ZN10KoopaShellD1Ev(int *self);
-int *_ZN10KoopaShellD0Ev(int *self);
-void *_ZTV10KoopaShell[31];
+int _ZN7daShl_c13InitResourcesEv(void *self);      /* C-named in its own TU */
+int _ZN7daShl_c8BehaviorEv(void *self);            /* C-named in its own TU */
+int _ZN7daShl_c6RenderEv(void *self);              /* C-named in its own TU */
+int _ZN7daShl_c16CleanupResourcesEv(void *self);   /* C-named in its own TU */
+void _ZN7daShl_c16OnPendingDestroyEv(void);        /* empty body */
+int *_ZN7daShl_cD1Ev(int *self);
+int *_ZN7daShl_cD0Ev(int *self);
+void *_ZTV7daShl_c[31];
 }
 /* The shell's own D0 spells its table by the RTTI name. */
-#pragma comment(linker, "/alternatename:__ZTV7daShl_c=__ZTV10KoopaShell")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV7daShl_c=__ZTV7daShl_c")
 /* The class's .cpp bodies reach the mounted ov102 data under C++ mangled names;
    bridge each to the C mount symbol (the ov064 bowserpuzzle pattern). The model
    file array and the four PMF state statics (ea68 reached under two shadows:
@@ -345,30 +345,30 @@ void *_ZTV10KoopaShell[31];
 #pragma comment(linker, "/alternatename:?UpdateCarry@dActor_c@@QAEAAUMatrix4x3@@AAUPlayer@@ABUVector3@@@Z=?UpdateCarry@dActor_c@@QAEPAUMatrix4x3@@AAUPlayer@@ABUVector3@@@Z")
 
 static int __fastcall ksh_init(void *s, void *)
-{ return _ZN10KoopaShell13InitResourcesEv(s); }
+{ return _ZN7daShl_c13InitResourcesEv(s); }
 static int __fastcall ksh_clean(void *s, void *)
-{ return _ZN10KoopaShell16CleanupResourcesEv(s); }
+{ return _ZN7daShl_c16CleanupResourcesEv(s); }
 static int __fastcall ksh_behavior(void *s, void *)
-{ return _ZN10KoopaShell8BehaviorEv(s); }
+{ return _ZN7daShl_c8BehaviorEv(s); }
 static int __fastcall ksh_render(void *s, void *)
 { port_actor_render_probe("KOOPA_SHELL", (char *)s + 0x300);
-  return _ZN10KoopaShell6RenderEv(s); }
+  return _ZN7daShl_c6RenderEv(s); }
 static int __fastcall ksh_pdes(void *, void *)
-{ _ZN10KoopaShell16OnPendingDestroyEv(); return 0; }
+{ _ZN7daShl_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall ksh_d1(void *s, void *)
-{ return (int)(size_t)_ZN10KoopaShellD1Ev((int *)s); }
+{ return (int)(size_t)_ZN7daShl_cD1Ev((int *)s); }
 static int __fastcall ksh_d0(void *s, void *)
-{ return (int)(size_t)_ZN10KoopaShellD0Ev((int *)s); }
+{ return (int)(size_t)_ZN7daShl_cD0Ev((int *)s); }
 /* slot 18, OnYoshiTryEat. GATE 228; see the fill for the table word. */
-extern "C" int _ZN10KoopaShell13OnYoshiTryEatEv(unsigned char *self);   /* ov102 0x0214d6a0 */
+extern "C" int _ZN7daShl_c13OnYoshiTryEatEv(unsigned char *self);   /* ov102 0x0214d6a0 */
 static int __fastcall ksh_yoshi(void *s, void *)
-{ return _ZN10KoopaShell13OnYoshiTryEatEv((unsigned char *)s); }
+{ return _ZN7daShl_c13OnYoshiTryEatEv((unsigned char *)s); }
 
 extern "C" void port_koopa_shell_states_seat(void);   /* port/unmatched */
 
 extern "C" void hal_fill_koopa_shell_vtable(void)
 {
-    void **vt = _ZTV10KoopaShell;
+    void **vt = _ZTV7daShl_c;
     port_koopa_shell_states_seat();
     port_enemy_death_states_seat();
     ac31_fill_shared(vt);
@@ -415,7 +415,7 @@ void _ZN7daKrb_c16OnPendingDestroyEv(void);
 int *_ZN7daKrb_cD1Ev(int *self);
 int *_ZN7daKrb_cD0Ev(int *self);
 int _ZN7daKrb_c13OnYoshiTryEatEv(void *self);                /* slot 18, its own */
-void func_ov084_0212b344(void *self, void *player); /* slot 19, its own */
+void _ZN7daKrb_c13OnTurnIntoEggER6Player(void *self, void *player); /* slot 19, its own */
 int _ZN7daKrb_c16OnAimedAtWithEggEv(void *self);                /* slot 29, its own */
 void *_ZTV6Goomba[31];
 }
@@ -442,7 +442,7 @@ static int __fastcall gmb_d0(void *s, void *)
 static int __fastcall gmb_yoshi(void *s, void *)
 { return _ZN7daKrb_c13OnYoshiTryEatEv(s); }
 static int __fastcall gmb_egg(void *s, void *, void *p)
-{ func_ov084_0212b344(s, p); return 0; }
+{ _ZN7daKrb_c13OnTurnIntoEggER6Player(s, p); return 0; }
 static int __fastcall gmb_aimed(void *s, void *)
 { return _ZN7daKrb_c16OnAimedAtWithEggEv(s); }
 
@@ -480,17 +480,17 @@ extern "C" void hal_fill_goomba_vtable(void)
 // host copies for the pointer-to-member reason
 // (port/unmatched/BobOmbBuddy_States.cpp).
 extern "C" {
-int _ZN11BobOmbBuddy13InitResourcesEv(void *self);     /* face: below */
-int _ZN11BobOmbBuddy8BehaviorEv(void *self);           /* face: below */
-int _ZN11BobOmbBuddy6RenderEv(void *self);             /* host copy */
-int _ZN11BobOmbBuddy16CleanupResourcesEv(void);        /* two file releases */
-int *_ZN11BobOmbBuddyD0Ev(int *self);
+int _ZN14daRedBombhei_c13InitResourcesEv(void *self);     /* face: below */
+int _ZN14daRedBombhei_c8BehaviorEv(void *self);           /* face: below */
+int _ZN14daRedBombhei_c6RenderEv(void *self);             /* host copy */
+int _ZN14daRedBombhei_c16CleanupResourcesEv(void);        /* two file releases */
+int *_ZN14daRedBombhei_cD0Ev(int *self);
 /* the three member teardowns the hosted D1 runs, plus Actor's D2 */
-void _ZN11ShadowModelD1Ev(void *);
+void _ZN17dExtShadowModel_cD1Ev(void *);
 void _ZN9ModelAnimD1Ev(void *);
 void *_ZN7dCcAc_cD1Ev(void *);
 void *_ZN8dActor_cD2Ev(void *);
-void *_ZTV11BobOmbBuddy[31];
+void *_ZTV14daRedBombhei_c[31];
 }
 /* PORT_HOST_ABI: two names of ONE ROM table, read off the ROM rather than
    off a comment (lane ALIASCHK). ov084 0x02130a38 carries its own RTTI
@@ -501,17 +501,16 @@ void *_ZTV11BobOmbBuddy[31];
    daRedBombhei_c_classInit, _ZN11BobOmbBuddyD0Ev, _ZN11BobOmbBuddyD1Ev. Read out
    of extracted/overlays/overlay_0084.bin; the LHS is not a config symbol
    anywhere, so the alias cannot be defeated by a later slice. */
-#pragma comment(linker, "/alternatename:__ZTV14daRedBombhei_c=__ZTV11BobOmbBuddy")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV14daRedBombhei_c=__ZTV14daRedBombhei_c")
 static int __fastcall bbud_init(void *s, void *)
-{ return _ZN11BobOmbBuddy13InitResourcesEv(s); }
+{ return _ZN14daRedBombhei_c13InitResourcesEv(s); }
 static int __fastcall bbud_clean(void *, void *)
-{ return _ZN11BobOmbBuddy16CleanupResourcesEv(); }
+{ return _ZN14daRedBombhei_c16CleanupResourcesEv(); }
 static int __fastcall bbud_behavior(void *s, void *)
-{ return _ZN11BobOmbBuddy8BehaviorEv(s); }
+{ return _ZN14daRedBombhei_c8BehaviorEv(s); }
 static int __fastcall bbud_render(void *s, void *)
 { port_actor_render_probe("BOB_OMB_BUDDY", (char *)s + 0x108);
-  return _ZN11BobOmbBuddy6RenderEv(s); }
+  return _ZN14daRedBombhei_c6RenderEv(s); }
 /* SLOT 16 IS HOSTED rather than taken from src. src/_ZN11BobOmbBuddyD1Ev.cpp
    is a REAL C++ DESTRUCTOR -- `BobOmbBuddy::~BobOmbBuddy() {}` over a shadow
    class with three members -- so MSVC emits ??1BobOmbBuddy@@UAE@XZ and calls
@@ -522,13 +521,13 @@ static int __fastcall bbud_render(void *s, void *)
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (bbud_d1) spelled the same chain by hand. */
 static int __fastcall bbud_d0(void *s, void *)
-{ return (int)(size_t)_ZN11BobOmbBuddyD0Ev((int *)s); }
+{ return (int)(size_t)_ZN14daRedBombhei_cD0Ev((int *)s); }
 
 extern "C" void port_bob_omb_buddy_states_seat(void);   /* port/unmatched */
 
 extern "C" void hal_fill_bob_omb_buddy_vtable(void)
 {
-    void **vt = _ZTV11BobOmbBuddy;
+    void **vt = _ZTV14daRedBombhei_c;
     port_bob_omb_buddy_states_seat();
     port_enemy_death_states_seat();
     ac31_fill_shared(vt);
@@ -542,16 +541,16 @@ extern "C" void hal_fill_bob_omb_buddy_vtable(void)
 
 /* ---- ov084's method faces ------------------------------------------------- */
 #include "daKrb_c.h"
-#include "BobOmbBuddy.h"
+#include "daRedBombhei_c.h"
 extern "C" {
 int _ZN7daKrb_c8BehaviorEv(void *self)
 { return ((daKrb_c *)self)->daKrb_c::Behavior(); }
 int _ZN7daKrb_c16CleanupResourcesEv(void *self)
 { return ((daKrb_c *)self)->daKrb_c::CleanupResources(); }
-int _ZN11BobOmbBuddy13InitResourcesEv(void *self)
-{ return ((BobOmbBuddy *)self)->BobOmbBuddy::InitResources(); }
-int _ZN11BobOmbBuddy8BehaviorEv(void *self)
-{ return ((BobOmbBuddy *)self)->BobOmbBuddy::Behavior(); }
+int _ZN14daRedBombhei_c13InitResourcesEv(void *self)
+{ return ((daRedBombhei_c *)self)->daRedBombhei_c::InitResources(); }
+int _ZN14daRedBombhei_c8BehaviorEv(void *self)
+{ return ((daRedBombhei_c *)self)->daRedBombhei_c::Behavior(); }
 }
 
 // ============================================================================
@@ -686,13 +685,13 @@ extern "C" void hal_fill_chain_chomp_fence_vtable(void)
 // func_ov091_021334b8, which takes one hit off it, and Behavior spawns five
 // coins when the player has twisted it far enough.
 extern "C" {
-int _ZN5Stump13InitResourcesEv(char *self);            /* InitResources */
-int _ZN5Stump16CleanupResourcesEv(void *self);            /* CleanupResources */
-int _ZN5Stump8BehaviorEv(char *self);            /* Behavior */
-int _ZN5Stump6RenderEv(void *self);            /* Render */
-int *_ZN5StumpD1Ev(int *self);            /* D1 */
-void _ZN5Stump15OnGroundPoundedER8dActor_c(char *self, void *o);  /* slot 21, its own */
-void _ZN5Stump15OnHitByMegaCharER6Player(char *self, void *o);  /* slot 27, its own */
+int _ZN11daObjPile_c13InitResourcesEv(char *self);            /* InitResources */
+int _ZN11daObjPile_c16CleanupResourcesEv(void *self);            /* CleanupResources */
+int _ZN11daObjPile_c8BehaviorEv(char *self);            /* Behavior */
+int _ZN11daObjPile_c6RenderEv(void *self);            /* Render */
+int *_ZN11daObjPile_cD1Ev(int *self);            /* D1 */
+void _ZN11daObjPile_c15OnGroundPoundedER8dActor_c(char *self, void *o);  /* slot 21, its own */
+void _ZN11daObjPile_c15OnHitByMegaCharER6Player(char *self, void *o);  /* slot 27, its own */
 void _ZN10dBgActor_c4KillEv(void *self);           /* slot 31 */
 /* A hosted vtable array, not a ROM constant: hal fills its slots at boot, so
    it is mutable hosted state and belongs in the captured section along with
@@ -717,17 +716,16 @@ DSSTATE_END
    "10daHyuhyu_c". _ZTV11daObjPile_c is the port's own spelling (config carries
    no _ZTV under it, only the RTTI string), so this row states an identity
    rather than joining two addresses. */
-#pragma comment(linker, "/alternatename:__ZTV5Stump=__ZTV11daObjPile_c")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV11daObjPile_c=__ZTV11daObjPile_c")
 static int __fastcall pile_init(void *s, void *)
-{ return _ZN5Stump13InitResourcesEv((char *)s); }
+{ return _ZN11daObjPile_c13InitResourcesEv((char *)s); }
 static int __fastcall pile_clean(void *s, void *)
-{ return _ZN5Stump16CleanupResourcesEv(s); }
+{ return _ZN11daObjPile_c16CleanupResourcesEv(s); }
 static int __fastcall pile_behavior(void *s, void *)
-{ return _ZN5Stump8BehaviorEv((char *)s); }
+{ return _ZN11daObjPile_c8BehaviorEv((char *)s); }
 static int __fastcall pile_render(void *s, void *)
 { port_actor_render_probe("STUMP", (char *)s + 0xd4);
-  return _ZN5Stump6RenderEv(s); }
+  return _ZN11daObjPile_c6RenderEv(s); }
 /* SLOT 16 IS LIVE: a post that has taken its third pound marks itself for
    destruction and the cleanup pass dispatches D1 the next frame. SLOT 17 IS
    SEATED NOW (gate 228). The old note here was right about the defect and wrong
@@ -739,15 +737,15 @@ static int __fastcall pile_render(void *s, void *)
    instead of leaving them to resolve to another TU's objects. Table word
    0x021352bc + 17*4 = 0x02135300 relocates to 0x02133440,
    kind:function(arm,size=0x58); lane STUBADJ ruled the body REAL DECOMP. */
-extern "C" int *_ZN5StumpD0Ev(int *t);   /* ov091 0x02133440, slot 17 */
+extern "C" int *_ZN11daObjPile_cD0Ev(int *t);   /* ov091 0x02133440, slot 17 */
 static int __fastcall pile_d0(void *s, void *)
-{ return (int)(size_t)_ZN5StumpD0Ev((int *)s); }
+{ return (int)(size_t)_ZN11daObjPile_cD0Ev((int *)s); }
 static int __fastcall pile_d1(void *s, void *)
-{ return (int)(size_t)_ZN5StumpD1Ev((int *)s); }
+{ return (int)(size_t)_ZN11daObjPile_cD1Ev((int *)s); }
 static int __fastcall pile_pounded(void *s, void *, void *o)
-{ _ZN5Stump15OnGroundPoundedER8dActor_c((char *)s, o); return 0; }
+{ _ZN11daObjPile_c15OnGroundPoundedER8dActor_c((char *)s, o); return 0; }
 static int __fastcall pile_mega(void *s, void *, void *o)
-{ _ZN5Stump15OnHitByMegaCharER6Player((char *)s, o); return 0; }
+{ _ZN11daObjPile_c15OnHitByMegaCharER6Player((char *)s, o); return 0; }
 static int __fastcall pile_kill(void *s, void *)
 { _ZN10dBgActor_c4KillEv(s); return 0; }
 
@@ -782,13 +780,13 @@ extern "C" void hal_fill_stump_vtable(void)
 // Nothing here needs a host copy but the Render: his Behavior dispatches no
 // pointer-to-member at all, which makes him the simplest class in this gate.
 extern "C" {
-int _ZN13KoopaTheQuick13InitResourcesEv(void *self);    /* face: below */
-int _ZN13KoopaTheQuick8BehaviorEv(void *self);          /* face: below */
-int _ZN13KoopaTheQuick6RenderEv(void *self);            /* host copy */
-int _ZN13KoopaTheQuick16CleanupResourcesEv(void *self); /* face: below */
-int *_ZN13KoopaTheQuickD1Ev(int *self);
-int *_ZN13KoopaTheQuickD0Ev(int *self);
-void *_ZTV13KoopaTheQuick[31];
+int _ZN7daRNk_c13InitResourcesEv(void *self);    /* face: below */
+int _ZN7daRNk_c8BehaviorEv(void *self);          /* face: below */
+int _ZN7daRNk_c6RenderEv(void *self);            /* host copy */
+int _ZN7daRNk_c16CleanupResourcesEv(void *self); /* face: below */
+int *_ZN7daRNk_cD1Ev(int *self);
+int *_ZN7daRNk_cD0Ev(int *self);
+void *_ZTV7daRNk_c[31];
 }
 /* PORT_HOST_ABI: two names of ONE ROM table, read off the ROM rather than
    off a comment (lane ALIASCHK). ov062 0x0211db9c carries its own RTTI
@@ -799,25 +797,24 @@ void *_ZTV13KoopaTheQuick[31];
    _ZN13KoopaTheQuickD0Ev, _ZN13KoopaTheQuickD1Ev. Read out of
    extracted/overlays/overlay_0062.bin; the LHS is not a config symbol
    anywhere, so the alias cannot be defeated by a later slice. */
-#pragma comment(linker, "/alternatename:__ZTV7daRNk_c=__ZTV13KoopaTheQuick")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV7daRNk_c=__ZTV7daRNk_c")
 static int __fastcall ktq_init(void *s, void *)
-{ return _ZN13KoopaTheQuick13InitResourcesEv(s); }
+{ return _ZN7daRNk_c13InitResourcesEv(s); }
 static int __fastcall ktq_clean(void *s, void *)
-{ return _ZN13KoopaTheQuick16CleanupResourcesEv(s); }
+{ return _ZN7daRNk_c16CleanupResourcesEv(s); }
 static int __fastcall ktq_behavior(void *s, void *)
-{ return _ZN13KoopaTheQuick8BehaviorEv(s); }
+{ return _ZN7daRNk_c8BehaviorEv(s); }
 static int __fastcall ktq_render(void *s, void *)
 { port_actor_render_probe("KOOPA_THE_QUICK", (char *)s + 0x300);
-  return _ZN13KoopaTheQuick6RenderEv(s); }
+  return _ZN7daRNk_c6RenderEv(s); }
 static int __fastcall ktq_d1(void *s, void *)
-{ return (int)(size_t)_ZN13KoopaTheQuickD1Ev((int *)s); }
+{ return (int)(size_t)_ZN7daRNk_cD1Ev((int *)s); }
 static int __fastcall ktq_d0(void *s, void *)
-{ return (int)(size_t)_ZN13KoopaTheQuickD0Ev((int *)s); }
+{ return (int)(size_t)_ZN7daRNk_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_koopa_the_quick_vtable(void)
 {
-    void **vt = _ZTV13KoopaTheQuick;
+    void **vt = _ZTV7daRNk_c;
     port_enemy_death_states_seat();
     ac31_fill_shared(vt);
     vt[0] = (void *)ktq_init;
@@ -905,7 +902,7 @@ extern "C" void hal_fill_blendmodelanim_vtable(void);
    of the two fills won and why, is in the comment above
    port_fill_common_model_vtable there. This gate keeps only the reference. */
 extern "C" {
-void *_ZTV11CommonModel[];
+void *_ZTV17dExtCommonModel_c[];
 void port_fill_common_model_vtable(void);
 }
 
@@ -942,12 +939,12 @@ extern "C" void hal_fill_king_bob_omb_vtable(void)
 // was handed and watches for that actor's own id word to read 0xbf, PLAYER.
 // When it does it stops the level timer and starts a ninety-frame sound.
 extern "C" {
-int _ZN9KoopaFlag13InitResourcesEv(void *self);        /* face: below */
-int _ZN9KoopaFlag8BehaviorEv(void *self);              /* face: below */
-int _ZN9KoopaFlag6RenderEv(void *self);                /* host copy */
-int _ZN9KoopaFlag16CleanupResourcesEv(void);
-int *_ZN9KoopaFlagD0Ev(int *self);
-void *_ZTV9KoopaFlag[31];
+int _ZN9daRFlag_c13InitResourcesEv(void *self);        /* face: below */
+int _ZN9daRFlag_c8BehaviorEv(void *self);              /* face: below */
+int _ZN9daRFlag_c6RenderEv(void *self);                /* host copy */
+int _ZN9daRFlag_c16CleanupResourcesEv(void);
+int *_ZN9daRFlag_cD0Ev(int *self);
+void *_ZTV9daRFlag_c[31];
 }
 /* PORT_HOST_ABI: two names of ONE ROM table, read off the ROM rather than
    off a comment (lane ALIASCHK). ov062 0x0211dc54 carries its own RTTI
@@ -958,17 +955,16 @@ void *_ZTV9KoopaFlag[31];
    _ZN9KoopaFlagD0Ev, _ZN9KoopaFlagD1Ev. Read out of
    extracted/overlays/overlay_0062.bin; the LHS is not a config symbol
    anywhere, so the alias cannot be defeated by a later slice. */
-#pragma comment(linker, "/alternatename:__ZTV9daRFlag_c=__ZTV9KoopaFlag")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV9daRFlag_c=__ZTV9daRFlag_c")
 static int __fastcall kfl_init(void *s, void *)
-{ return _ZN9KoopaFlag13InitResourcesEv(s); }
+{ return _ZN9daRFlag_c13InitResourcesEv(s); }
 static int __fastcall kfl_clean(void *, void *)
-{ return _ZN9KoopaFlag16CleanupResourcesEv(); }
+{ return _ZN9daRFlag_c16CleanupResourcesEv(); }
 static int __fastcall kfl_behavior(void *s, void *)
-{ return _ZN9KoopaFlag8BehaviorEv(s); }
+{ return _ZN9daRFlag_c8BehaviorEv(s); }
 static int __fastcall kfl_render(void *s, void *)
 { port_actor_render_probe("KOOPA_FLAG", (char *)s + 0x108);
-  return _ZN9KoopaFlag6RenderEv(s); }
+  return _ZN9daRFlag_c6RenderEv(s); }
 /* SLOT 16 IS HOSTED rather than taken from src, the bob-omb buddy's case for
    the second time: src/_ZN9KoopaFlagD1Ev.cpp is a REAL C++ DESTRUCTOR over a
    shadow class with two members, so MSVC emits ??1KoopaFlag@@UAE@XZ and calls
@@ -978,11 +974,11 @@ static int __fastcall kfl_render(void *s, void *)
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (kfl_d1) spelled the same chain by hand. */
 static int __fastcall kfl_d0(void *s, void *)
-{ return (int)(size_t)_ZN9KoopaFlagD0Ev((int *)s); }
+{ return (int)(size_t)_ZN9daRFlag_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_koopa_flag_vtable(void)
 {
-    void **vt = _ZTV9KoopaFlag;
+    void **vt = _ZTV9daRFlag_c;
     ac31_fill_shared(vt);
     vt[0] = (void *)kfl_init;
     vt[3] = (void *)kfl_clean;
@@ -995,7 +991,7 @@ extern "C" void hal_fill_koopa_flag_vtable(void)
 /* ---- the last four classes' method faces ---------------------------------- */
 #include "daWanwan_c.h"
 #include "daObjWanwanShutter_c.h"
-#include "KoopaTheQuick.h"
+#include "daRNk_c.h"
 extern "C" {
 int _ZN10daWanwan_c13InitResourcesEv(void *self)
 { return ((daWanwan_c *)self)->daWanwan_c::InitResources(); }
@@ -1007,19 +1003,19 @@ int _ZN20daObjWanwanShutter_c8BehaviorEv(void *self)
 { return ((daObjWanwanShutter_c *)self)->daObjWanwanShutter_c::Behavior(); }
 int _ZN20daObjWanwanShutter_c16CleanupResourcesEv(void *self)
 { return ((daObjWanwanShutter_c *)self)->daObjWanwanShutter_c::CleanupResources(); }
-int _ZN13KoopaTheQuick13InitResourcesEv(void *self)
-{ return ((KoopaTheQuick *)self)->KoopaTheQuick::InitResources(); }
-int _ZN13KoopaTheQuick8BehaviorEv(void *self)
-{ return ((KoopaTheQuick *)self)->KoopaTheQuick::Behavior(); }
-int _ZN13KoopaTheQuick16CleanupResourcesEv(void *self)
-{ return ((KoopaTheQuick *)self)->KoopaTheQuick::CleanupResources(); }
+int _ZN7daRNk_c13InitResourcesEv(void *self)
+{ return ((daRNk_c *)self)->daRNk_c::InitResources(); }
+int _ZN7daRNk_c8BehaviorEv(void *self)
+{ return ((daRNk_c *)self)->daRNk_c::Behavior(); }
+int _ZN7daRNk_c16CleanupResourcesEv(void *self)
+{ return ((daRNk_c *)self)->daRNk_c::CleanupResources(); }
 }
-#include "KoopaFlag.h"
+#include "daRFlag_c.h"
 extern "C" {
-int _ZN9KoopaFlag13InitResourcesEv(void *self)
-{ return ((KoopaFlag *)self)->KoopaFlag::InitResources(); }
-int _ZN9KoopaFlag8BehaviorEv(void *self)
-{ return ((KoopaFlag *)self)->KoopaFlag::Behavior(); }
+int _ZN9daRFlag_c13InitResourcesEv(void *self)
+{ return ((daRFlag_c *)self)->daRFlag_c::InitResources(); }
+int _ZN9daRFlag_c8BehaviorEv(void *self)
+{ return ((daRFlag_c *)self)->daRFlag_c::Behavior(); }
 }
 #include "daBombking_c.h"
 extern "C" {

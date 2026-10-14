@@ -38,7 +38,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 
 #include "dActor_c.h"
 #include "fBase_c.h"
-#include "HootTheOwl.h"
+#include "daOwl_c.h"
 
 extern "C" {
 int _ZN8dActor_c19BeforeInitResourcesEv(void *self);             /* slot 1  */
@@ -63,24 +63,24 @@ void port_actor_slot_decline(const char *what);   /* func_02043fdc_hostcopy.cpp 
 void port_actor_render_probe(const char *cls, void *model); /* hal/actor_classes */
 
 /* the two host-copied PMF-dispatch bodies, port/unmatched/HootTheOwl_StateDispatch.cpp */
-int func_ov094_02136188(void *self, void *cell);
-int _ZN10HootTheOwl8BehaviorEv(void *self);
+int _ZN7daOwl_c19func_ov094_02136188EPNS_5StateE(void *self, void *cell);
+int _ZN7daOwl_c8BehaviorEv(void *self);
 void port_hoot_the_owl_states_seat(void);   /* same file, seats the 5 state cells */
 /* the ModelAnim slot-5 Render host copy, port/unmatched/ModelAnim_Renders.cpp */
-int _ZN10HootTheOwl6RenderEv(void *self);
+int _ZN7daOwl_c6RenderEv(void *self);
 
 /* plain matched src, own body */
-int _ZN10HootTheOwl16CleanupResourcesEv(void);
-void _ZN10HootTheOwl16OnPendingDestroyEv(void);
-int *_ZN10HootTheOwlD1Ev(int *self);
-int *_ZN10HootTheOwlD0Ev(int *self);
+int _ZN7daOwl_c16CleanupResourcesEv(void);
+void _ZN7daOwl_c16OnPendingDestroyEv(void);
+int *_ZN7daOwl_cD1Ev(int *self);
+int *_ZN7daOwl_cD0Ev(int *self);
 void *daOwl_c_classInit(void);
 extern unsigned char g_profile_OWL[];
-int _ZTV10HootTheOwl[31];                          /* == _ZTV7daOwl_c, host array */
+int _ZTV7daOwl_c[31];                          /* == _ZTV7daOwl_c, host array */
 /* the method face, defined at the bottom of this file (real C++ method
    call against HootTheOwl.h -- needs C++ linkage, forward-declared here
    extern "C" so hoot_init below can call it like every other flat name). */
-int _ZN10HootTheOwl13InitResourcesEv(void *self);
+int _ZN7daOwl_c13InitResourcesEv(void *self);
 }
 
 /* D0 (src/_ZN10HootTheOwlD0Ev.cpp) stores its own table under the RTTI-alias
@@ -88,8 +88,7 @@ int _ZN10HootTheOwl13InitResourcesEv(void *self);
    _ZTV7daOwl_c[];`), the SAME address as _ZTV10HootTheOwl under two names --
    the SkiLift/MotherPenguin (_ZTV7SkiLift == _ZTV10daPgMthr_c) one-speller
    shape. Bridge the second name onto the real host array. */
-#pragma comment(linker, "/alternatename:__ZTV7daOwl_c=__ZTV10HootTheOwl")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV7daOwl_c=__ZTV7daOwl_c")
 // ---- the shared 1..30 half, the ov081 Enemy shared half re-derived here
 // (address-identical, see this file's own header) under a local name ------
 static void ov94_trap_report(void *self, int slot)
@@ -193,27 +192,27 @@ static void ov94_fill_shared(void **vt)
 // shared Enemy trap).
 // ============================================================================
 static int __fastcall hoot_init(void *s, void *)
-{ return _ZN10HootTheOwl13InitResourcesEv(s); }
+{ return _ZN7daOwl_c13InitResourcesEv(s); }
 static int __fastcall hoot_clean(void *s, void *)
-{ (void)s; return _ZN10HootTheOwl16CleanupResourcesEv(); }
+{ (void)s; return _ZN7daOwl_c16CleanupResourcesEv(); }
 static int __fastcall hoot_behavior(void *s, void *)
-{ return _ZN10HootTheOwl8BehaviorEv(s); }
+{ return _ZN7daOwl_c8BehaviorEv(s); }
 static int __fastcall hoot_render(void *s, void *)
 { port_actor_render_probe("HOOT_THE_OWL", (char *)s + 0x30c);
-  return _ZN10HootTheOwl6RenderEv(s); }
+  return _ZN7daOwl_c6RenderEv(s); }
 static int __fastcall hoot_pdes(void *s, void *)
-{ (void)s; _ZN10HootTheOwl16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN7daOwl_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall hoot_d1(void *s, void *)
-{ return (int)(size_t)_ZN10HootTheOwlD1Ev((int *)s); }
+{ return (int)(size_t)_ZN7daOwl_cD1Ev((int *)s); }
 static int __fastcall hoot_d0(void *s, void *)
-{ return (int)(size_t)_ZN10HootTheOwlD0Ev((int *)s); }
+{ return (int)(size_t)_ZN7daOwl_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_hoot_the_owl_vtable(void)
 {
     /* seat the five state cells BEFORE InitResources can dispatch through
        them (func_ov094_02136188 dispatches the "enter" half immediately). */
     port_hoot_the_owl_states_seat();
-    void **vt = (void **)_ZTV10HootTheOwl;
+    void **vt = (void **)_ZTV7daOwl_c;
     ov94_fill_shared(vt);
     vt[0]  = (void *)hoot_init;
     vt[3]  = (void *)hoot_clean;
@@ -231,5 +230,5 @@ extern "C" void hal_fill_hoot_the_owl_vtable(void)
 // faced here, the BabyPenguin/IceSheet/OneUpLogo recipe. Behavior and
 // Render are NOT faced: both are host copies (port/unmatched/
 // HootTheOwl_StateDispatch.cpp and port/unmatched/ModelAnim_Renders.cpp).
-extern "C" int _ZN10HootTheOwl13InitResourcesEv(void *self)
-{ return ((HootTheOwl *)self)->HootTheOwl::InitResources(); }
+extern "C" int _ZN7daOwl_c13InitResourcesEv(void *self)
+{ return ((daOwl_c *)self)->daOwl_c::InitResources(); }

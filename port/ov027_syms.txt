@@ -283,13 +283,28 @@ data_ov027_021139f4 g_profile_PENGUIN_DEFENDER data_ov027_02113a1c
 data_ov027_02113a20 data_ov027_02113a24:0x2 data_ov027_02113a26
 data_ov027_02113a50 data_ov027_02113a74 _ZTI10daSnmBth_c
 _ZTS10daSnmBth_c g_profile_SNOWMAN_BREATH data_ov027_02113be0
-data_ov027_02113be8 data_ov027_02113bf0 data_ov027_02113bfc
+data_ov027_02113be8 data_ov027_02113bf0@0x02113bf0 data_ov027_02113bfc@0x02113bfc
 data_ov027_02113c08 data_ov027_02113c10:0x8 data_ov027_02113c18
-data_ov027_02113c20 data_ov027_02113c28 data_ov027_02113c30
-data_ov027_02113c3c data_ov027_02113c48 data_ov027_02113c54
-data_ov027_02113c60 data_ov027_02113c6c data_ov027_02113c74
-data_ov027_02113c7c data_ov027_02113c84 data_ov027_02113c8c
-data_ov027_02113c94 data_ov027_02113c9c data_ov027_02113ca8
-data_ov027_02113cb4 data_ov027_02113cc0 data_ov027_02113ccc:0xc
-data_ov027_02113cd8 data_ov027_02113ce4:0x20 data_ov027_02113d04
+data_ov027_02113c20 data_ov027_02113c28 data_ov027_02113c30@0x02113c30
+data_ov027_02113c3c@0x02113c3c data_ov027_02113c48@0x02113c48 data_ov027_02113c54@0x02113c54
+data_ov027_02113c60@0x02113c60
+
+data_ov027_02113c9c@0x02113c9c data_ov027_02113ca8@0x02113ca8
+data_ov027_02113cb4@0x02113cb4 data_ov027_02113cc0@0x02113cc0 data_ov027_02113ccc@0x02113ccc:0xc
+data_ov027_02113cd8@0x02113cd8 data_ov027_02113d04
 data_ov027_02113d10
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov027_02113c6c                        now defined by src/actors/daPgDfdr_c.cpp
+#   data_ov027_02113c74                        now defined by src/actors/daPgDfdr_c.cpp
+#   data_ov027_02113c7c                        now defined by src/actors/daPgDfdr_c.cpp
+#   data_ov027_02113c84                        now defined by src/actors/daPgDfdr_c.cpp
+#   data_ov027_02113c8c                        now defined by src/actors/daPgDfdr_c.cpp
+#   data_ov027_02113c94                        now defined by src/actors/daPgDfdr_c.cpp
+#   data_ov027_02113ce4                        now defined by src/actors/daPgDfdr_c.cpp

@@ -212,19 +212,19 @@ src/actors/dScMgLuigi_c.cpp
 # arm9 TU that NO slice in the tree compiles, so /OPT:REF had nothing to keep.
 # port/mg_fanout_costs.txt section 2's wave 2 met twenty of these; this lane
 # meets one.
-src/func_020127a4.c
+src/engine/sound/Sound.cpp
 
 # ---- ov004: what this class adds over curling's slice ----------------------
-src/func_ov004_020afb20.cpp
-src/func_ov004_020b1e34.c
+src/minigames/d_s_mg_base.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 218): src/func_ov004_020b1e34.c
 # Run mg5, lane INTEG: the "Wanted!" score HUD (0x66c), copy-across from
 # origin/main. dScMgLuigi_c slot 9 (Render) reaches it through the veneer
 # func_ov004_020b1e34; it was trapped in MgLuigi_Faces.cpp, now seated. Uses the
 # Obj vtable layout in include/private/ov004_obj_vtbl.h (also copied across).
-src/func_ov004_020b0e84.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 218): src/func_ov004_020b0e84.cpp
 # already in port/slice_mg1.txt; listed for the closure, deduped by CMake
-src/func_ov004_020af5e0.c
-src/func_ov004_020b0cac.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 218): src/func_ov004_020af5e0.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 218): src/func_ov004_020b0cac.c
 # HOST-COPIED (MG2), in port/unmatched/MgBase_StateDispatch.cpp:
 #   src/func_ov004_020b3278.cpp
 # TRAPPED (MG1), in port/hal/scene_mg_faces.cpp:

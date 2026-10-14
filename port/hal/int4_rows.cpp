@@ -48,38 +48,38 @@
 
 #include "ModelBase.h"
 #include "Model.h"
-#include "CommonModel.h"
+#include "dExtCommonModel_c.h"
 #include "ModelAnim2.h"
 #include "BlendModelAnim.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 
 extern "C" {
 void _ZN9ModelBaseD1Ev(void *self);
 void _ZN9ModelBaseD0Ev(void *self);
 void _ZN5ModelD1Ev(void *self);
 void _ZN5ModelD0Ev(void *self);
-void _ZN11CommonModelD1Ev(void *self);
-void _ZN11CommonModelD0Ev(void *self);
+void _ZN17dExtCommonModel_cD1Ev(void *self);
+void _ZN17dExtCommonModel_cD0Ev(void *self);
 void _ZN10ModelAnim2D1Ev(void *self);
 void _ZN10ModelAnim2D0Ev(void *self);
 void _ZN14BlendModelAnimD1Ev(void *self);
 void _ZN14BlendModelAnimD0Ev(void *self);
-void _ZN11ShadowModelD1Ev(void *self);
-void _ZN11ShadowModelD0Ev(void *self);
+void _ZN17dExtShadowModel_cD1Ev(void *self);
+void _ZN17dExtShadowModel_cD0Ev(void *self);
 }
 
 void ModelBase::Destructor1()      { _ZN9ModelBaseD1Ev(this); }
 void ModelBase::Destructor0()      { _ZN9ModelBaseD0Ev(this); }
 void Model::Destructor1()          { _ZN5ModelD1Ev(this); }
 void Model::Destructor0()          { _ZN5ModelD0Ev(this); }
-void CommonModel::Destructor1()    { _ZN11CommonModelD1Ev(this); }
-void CommonModel::Destructor0()    { _ZN11CommonModelD0Ev(this); }
+void dExtCommonModel_c::Destructor1()    { _ZN17dExtCommonModel_cD1Ev(this); }
+void dExtCommonModel_c::Destructor0()    { _ZN17dExtCommonModel_cD0Ev(this); }
 void ModelAnim2::Destructor1()     { _ZN10ModelAnim2D1Ev(this); }
 void ModelAnim2::Destructor0()     { _ZN10ModelAnim2D0Ev(this); }
 void BlendModelAnim::Destructor1() { _ZN14BlendModelAnimD1Ev(this); }
 void BlendModelAnim::Destructor0() { _ZN14BlendModelAnimD0Ev(this); }
-void ShadowModel::Destructor1()    { _ZN11ShadowModelD1Ev(this); }
-void ShadowModel::Destructor0()    { _ZN11ShadowModelD0Ev(this); }
+void dExtShadowModel_c::Destructor1()    { _ZN17dExtShadowModel_cD1Ev(this); }
+void dExtShadowModel_c::Destructor0()    { _ZN17dExtShadowModel_cD0Ev(this); }
 
 // =========================================================================
 // FOUR MORE ROWS THE LEDGER COULD NOT SPELL, one hand face each
@@ -331,8 +331,8 @@ Vector3 dBgCh_Lin::GetClsnPos()
 //       0x08e, mModel 0x0d4), so every base subobject is at offset 0.
 #pragma comment(linker, "/alternatename:?_ZN8dActor_c15FindWithActorIDEjPS_@dActor_c@@SAPAU1@IPAU1@@Z=?FindWithActorID@dActor_c@@SAPAU1@IPAU1@@Z")
 #pragma comment(linker, "/alternatename:?SpawnMegaCharParticles@Enemy@@QAEXAAUActor@@PAD@Z=?SpawnMegaCharParticles@dEnemyBase_c@@QAEXAAUdActor_c@@PAD@Z")
-#pragma comment(linker, "/alternatename:?DisappearPoofDustAt@ArrowSignRight@@QAEXABUVector3@@@Z=?DisappearPoofDustAt@dActor_c@@QAEXABUVector3@@@Z")
-#pragma comment(linker, "/alternatename:?MarkForDestruction@ArrowSignRight@@QAEXXZ=?MarkForDestruction@fBase_c@@QAEXXZ")
+#pragma comment(linker, "/alternatename:?DisappearPoofDustAt@daObjYajirusi_c@@QAEXABUVector3@@@Z=?DisappearPoofDustAt@dActor_c@@QAEXABUVector3@@@Z")
+#pragma comment(linker, "/alternatename:?MarkForDestruction@daObjYajirusi_c@@QAEXXZ=?MarkForDestruction@fBase_c@@QAEXXZ")
 
 // THE FIFTH IS A FACE, because the two sides do NOT agree about the call.
 // port/hal/cxx_aliases.cpp:689 declares a private shadow

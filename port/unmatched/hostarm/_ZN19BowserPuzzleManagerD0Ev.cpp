@@ -1,0 +1,13 @@
+/* HOST ARM recovered by port/tools/hostarm_recover.py.
+ * The port line carried this in src/_ZN19BowserPuzzleManagerD0Ev.cpp under #ifdef _MSC_VER; the
+ * 2026-10 main merge (749f5799a) took main's src/, where that code
+ * now lives in src/actors/daObjFl_Coin_c.cpp without the arm. mwccarm never saw the arm,
+ * so nothing here moves a ROM byte. */
+#include "daObjFl_Coin_c.h"
+
+extern "C" daObjFl_Coin_c *_ZN14daObjFl_Coin_cD0Ev(daObjFl_Coin_c *thiz)
+{
+    thiz->daObjFl_Coin_c::~daObjFl_Coin_c();    /* the D1 body, through MSVC's one destructor */
+    daObjFl_Coin_c::operator delete(thiz);  /* the class-specific delete D0 ends with */
+    return thiz;
+}

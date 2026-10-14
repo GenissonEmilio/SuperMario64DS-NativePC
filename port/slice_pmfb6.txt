@@ -33,16 +33,16 @@
 #   func_ov002_020f562c  <- data_ov002_02110e7c[2]  (this gate's face)
 #   func_ov002_020f5848  <- data_ov002_02110e7c[1]  (this gate's face)
 # ===========================================================================
-src/func_ov002_020f3310.cpp
-src/func_ov002_020f3d98.cpp
-src/func_ov002_020f37a0.cpp
-src/func_ov002_020f5848.cpp
-src/func_ov002_020f5990.cpp
-src/func_ov002_020f3740.cpp
-src/func_ov002_020f2dd4.cpp
-src/func_ov002_020f562c.cpp
-src/func_ov002_020f5dd8.cpp
-src/func_ov002_020f5f0c.cpp
+src/actors/daDemo_c.cpp
+# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f3d98.cpp
+# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f37a0.cpp
+# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f5848.cpp
+# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f5990.cpp
+# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f3740.cpp
+# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f2dd4.cpp
+# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f562c.cpp
+# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f5dd8.cpp
+# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f5f0c.cpp
 
 # ---- gate 2: THE THREE EXTENT-OPEN TABLES ---------------------------------
 #
@@ -76,9 +76,9 @@ src/func_ov002_020f5f0c.cpp
 # Key and UpDownLiftBbh define real C++ MEMBERS and go through the forwarders in
 # port/hal/fwd_forwarders.cpp; ToxBox defines the flat extern "C" name and needs
 # only its table alias.
-src/_ZN3Key8BehaviorEv.cpp
-src/_ZN13UpDownLiftBbh8BehaviorEv.cpp
-src/_ZN6ToxBox8BehaviorEv.cpp
+src/actors/daObjKey_c.cpp
+src/actors/daUdlift_c.cpp
+src/actors/daOnms_c.cpp
 
 # ---- gate 3: THE OBJECT-FIELD ROWS THE ov006 RANGE SWEEP CLOSES ------------
 #
@@ -115,8 +115,8 @@ src/_ZN6ToxBox8BehaviorEv.cpp
 # 0x020c27c4 as the installed record 0213adc8; a face per record would give them
 # different addresses and the comparison would go permanently false while the
 # dispatch still looked right. A face per code word gives them the same address.
-src/func_ov006_020c2b8c.cpp
-src/func_ov006_020c4cd8.cpp
+src/actors/unit020bfec0.cpp
+src/actors/dMg3DHeyhoObjAdapter_c.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (the slice_bnp host copies).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a

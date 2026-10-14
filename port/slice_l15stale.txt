@@ -96,5 +96,5 @@
 #   battery cannot vouch for on its own, so this row owes the level captures
 #   listed in this lane's report.
 
-src/func_ov060_021140c0.c
-src/_ZN13TreasureChest6State0Ev.cpp
+src/actors/daKpa_c.cpp
+src/actors/daObjTbox_c.cpp

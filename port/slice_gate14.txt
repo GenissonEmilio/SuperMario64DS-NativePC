@@ -14,11 +14,11 @@
 # setters fill.
 
 # ---- the boot itself
-src/_ZN5Stage18LoadClsnAndObjectsER11LVL_OverlayjR7dBgW_Kc.cpp
-src/_Z11LoadObjectsRN11LVL_Overlay8ObjTableEij.cpp
+src/stage/LevelObjects.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z11LoadObjectsRN11LVL_Overlay8ObjTableEij.cpp
 
 # ---- the fifteen sub-loaders, in dispatch-table order (index 0..14)
-src/_Z19LoadStandardObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z19LoadStandardObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
 # LoadEntranceObjects is back (run linkfull, lane RS4PORT). Its last call used
 # to ride the wipe type through ARM r0 into StartEntranceFaderWipe, so
 # port/unmatched/LoadEntranceObjects.cpp hosted it. main #3106 (f0f946a92)
@@ -27,38 +27,38 @@ src/_Z19LoadStandardObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
 # byte-identical under mwccarm 2004/b56, and the host copy is retired.
 # port/hal/cxx_aliases.cpp gives the flat name the port's dispatch calls its
 # alias onto the C++ definition, the same row its fourteen siblings have.
-src/_Z19LoadEntranceObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-src/_Z19LoadPathNodeObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-src/_Z15LoadPathObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-src/_Z15LoadViewObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-src/_Z17LoadSimpleObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-src/_Z25LoadTeleportSourceObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-src/_Z23LoadTeleportDestObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-src/_Z14LoadFogObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-src/_Z15LoadDoorObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-src/_Z15LoadExitObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-src/_Z22LoadMinimapTileObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-src/_Z23LoadMinimapScaleObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-src/_Z23LoadUnusedType13ObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-src/_Z21LoadStarCameraObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z19LoadEntranceObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z19LoadPathNodeObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z15LoadPathObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z15LoadViewObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z17LoadSimpleObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z25LoadTeleportSourceObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z23LoadTeleportDestObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z14LoadFogObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z15LoadDoorObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z15LoadExitObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z22LoadMinimapTileObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z23LoadMinimapScaleObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z23LoadUnusedType13ObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z21LoadStarCameraObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
 
 # ---- the pointer-store setters the sub-loaders are veneers over
-src/func_0203aca0.c
-src/func_0203accc.c
-src/func_0202af80.c
-src/func_0202b044.c
-src/func_0202b060.c
-src/func_0202b090.c
-src/func_0202b0c4.c
-src/func_0202b0e0.c
+src/engine/path/PathPtr.cpp
+# FOLDED into src/engine/path/PathPtr.cpp (row 46): src/func_0203accc.c
+src/unnamed/arm9/0202/func_0202af80.c
+src/unnamed/arm9/0202/func_0202b044.c
+src/unnamed/arm9/0202/func_0202b060.c
+src/unnamed/arm9/0202/func_0202b090.c
+src/unnamed/arm9/0202/func_0202b0c4.c
+src/unnamed/arm9/0202/func_0202b0e0.c
 
 # ---- world-Y bounds from the octree, and the minimap-change list
-src/func_0202a850.c
+src/unnamed/arm9/0202/func_0202a850.c
 src/_Z23LoadMinimapChangeObjecti5Fix12IiEh.c
 
 # ---- the octree extent the world-Y bounds come out of
-src/_ZNK7dBgW_Kc16GetOctreeOriginYEv.cpp
-src/_ZNK7dBgW_Kc13GetUnkOctreeYEv.cpp
+src/engine/collision/dBgW_Kc_itcm.cpp
+# FOLDED into src/engine/collision/dBgW_Kc_itcm.cpp (row 60): src/_ZNK7dBgW_Kc13GetUnkOctreeYEv.cpp
 
 # ---- the two tails LoadClsnAndObjects ends in
 src/ContinueKuppaScriptIfNecessary.c
@@ -72,44 +72,45 @@ src/StartIntroCutscene.c
 # harmless while nothing called it -- and the day something did has arrived.
 # The debug character swap calls Player::SetRealCharacter, which reaches it two
 # frames down the voice-bank load, so the host owns it now (see below).
-src/_ZN5Sound16LoadInitialGroupEi.cpp
+src/engine/sound/Sound.cpp
 # Sound::LoadGroupAndSetBank compiles from src/ again: main #3102 passes
 # func_020134d8's return to func_0203d7d4 explicitly, the value the ROM leaves
 # in r0, so the host copy that did the same in port/unmatched/ is gone.
-src/_ZN5Sound19LoadGroupAndSetBankEii.cpp
+# FOLDED into src/engine/sound/Sound.cpp (row 75): src/_ZN5Sound19LoadGroupAndSetBankEii.cpp
 # src/_ZN5Sound6Player19SetPlayableSeqCountEii.cpp is also listed in
 # slice_gate10.txt, which is the one place it compiles from. It used to be
 # filtered there and hosted in hal/sdat/sound_abi.cpp (it wrote through
 # data_020a4d84); it writes data_020a4d6c's record field +0x18 now
 # (include/SoundPlayerRecord.h) and links as it is.
-src/DisableSoundPlayersForCredits.c
+# FOLDED into src/engine/sound/Sound.cpp (row 75): src/DisableSoundPlayersForCredits.c
 # src/func_0203d974.c is the same case: also listed in slice_gate10.txt, where
 # SLICE10_CAM_SOURCES filters it out, and hosted in hal/sdat/sound_abi.cpp
 # because its 0x027ffc40 read is unmapped on the host and the DS-faithful
 # answer walks into a null sound heap. Left live here it would come straight
 # back into the link, since gate 14 is appended unfiltered.
-src/func_0203d7d4.c
-src/func_020134d8.c
-src/func_0205117c.c
-src/func_020510a4.c
+src/unnamed/arm9/0203/func_0203d7d4.c
+# FOLDED into src/engine/sound/Sound.cpp (row 75): src/func_020134d8.c
+src/engine/sound/SoundEngine.cpp
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 93): src/func_020510a4.c
 
 # ---- Stage A2: the entrance spawns the Player and the Camera.
 # The two factories the registry calls, the Actor init hooks the spawn
 # spine's Process dispatches, and the St_LevelEnter trio with the seven
 # entrance-step handlers its Main dispatches through the ov002 PMF table.
 src/d_a_ply.cpp
-src/_ZN8dActor_c19BeforeInitResourcesEv.cpp
+src/actors/dActor_c.cpp
 # _ZN8dActor_c18AfterInitResourcesEj is C++ inside a .c (the gate-9 case
 # again); it goes through hostgen, see GATE14_SYMS in CMakeLists.txt
 src/actors/Player.cpp
+port/unmatched/hostarm/Player.cpp
 # func_ov002_020c6fe4 does void-pointer arithmetic on the anim probe
 # (the NoControl case); hostgen retypes the deref -- GATE14_SYMS
 # the ring the step handlers reach: the death-table guard the init hook
 # tests, the message/star-count branches steps 2 and 3 take, and the ov089
 # animation setter step 1 calls.
-src/_ZN8dActor_c18GetBitInDeathTableEv.cpp
-src/func_ov089_0213115c.cpp
+# FOLDED into src/actors/dActor_c.cpp (row 101): src/_ZN8dActor_c18GetBitInDeathTableEv.cpp
+src/actors/daObjKey_c.cpp
 src/DeathTable_GetBit.c
-src/_ZN8SaveData26CountStarsCollectedInLevelEj.cpp
-src/func_ov100_02145070.c
+src/engine/save/SaveData.cpp
+src/actors/daDoor_c.cpp
 src/GetLevelPart.c

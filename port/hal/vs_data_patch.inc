@@ -11,19 +11,19 @@
 void _ZN8dGraph_c10callback_c14GraphCallback0Ev(void);
 void _ZN8dGraph_c10callback_c14GraphCallback1Ev(void);
 void _ZN8dGraph_c10callback_c14GraphCallback3Ev(void);
-void func_ov075_02114010(void);
-void func_ov075_021140e4(void);
-void func_ov075_021141b8(void);
-void func_ov075_02114218(void);
-void func_ov075_0211427c(void);
-void func_ov075_021142fc(void);
-void func_ov075_02114300(void);
-void func_ov075_02114390(void);
-void func_ov075_021143e4(void);
-void func_ov075_02114560(void);
-void func_ov075_0211473c(void);
-void func_ov075_021147d4(void);
-void func_ov075_02114890(void);
+void _ZN15UnknownVsPlayer19func_ov075_02114010Ev(void);
+void _ZN15UnknownVsPlayer19func_ov075_021140e4Ev(void);
+void _ZN15UnknownVsPlayer19func_ov075_021141b8Ev(void);
+void _ZN15UnknownVsPlayer19func_ov075_02114218Ev(void);
+void _ZN15UnknownVsPlayer19func_ov075_0211427cEv(void);
+void _ZN15UnknownVsPlayer19func_ov075_021142fcEv(void);
+void _ZN15UnknownVsPlayer19func_ov075_02114300Ev(void);
+void _ZN15UnknownVsPlayer19func_ov075_02114390Ev(void);
+void _ZN15UnknownVsPlayer19func_ov075_021143e4Ev(void);
+void _ZN15UnknownVsPlayer19func_ov075_02114560Ev(void);
+void _ZN15UnknownVsPlayer19func_ov075_0211473cEv(void);
+void _ZN15UnknownVsPlayer19func_ov075_021147d4Ev(void);
+void _ZN15UnknownVsPlayer19func_ov075_02114890Ev(void);
 void _ZN10dScEntry_c6icon_c8BehaviorEv(void);
 void _ZN10dScEntry_c15graphCallback_c14GraphCallback2Ev(void);
 void func_ov075_02116e44(void);
@@ -154,22 +154,22 @@ extern unsigned char data_ov075_0211d35c[];
 
 typedef struct { unsigned char *sym; unsigned off; void *host; } VsPatch;
 static const VsPatch vs_data_patch[] = {
-    { data_ov075_0211c5c0, 0x0, (void *)func_ov075_021147d4 },  /* 0x0211c5c0 -> ov075 0x021147d4 */
-    { data_ov075_0211c5c8, 0x0, (void *)func_ov075_02114300 },  /* 0x0211c5c8 -> ov075 0x02114300 */
-    { data_ov075_0211c5d0, 0x0, (void *)func_ov075_02114890 },  /* 0x0211c5d0 -> ov075 0x02114890 */
-    { data_ov075_0211c5d8, 0x0, (void *)func_ov075_021143e4 },  /* 0x0211c5d8 -> ov075 0x021143e4 */
-    { data_ov075_0211c5e0, 0x0, (void *)func_ov075_02114390 },  /* 0x0211c5e0 -> ov075 0x02114390 */
-    { data_ov075_0211c5e8, 0x0, (void *)func_ov075_02114890 },  /* 0x0211c5e8 -> ov075 0x02114890 */
-    { data_ov075_0211c5f0, 0x0, (void *)func_ov075_021141b8 },  /* 0x0211c5f0 -> ov075 0x021141b8 */
-    { data_ov075_0211c5f8, 0x0, (void *)func_ov075_02114218 },  /* 0x0211c5f8 -> ov075 0x02114218 */
-    { data_ov075_0211c600, 0x0, (void *)func_ov075_0211427c },  /* 0x0211c600 -> ov075 0x0211427c */
-    { data_ov075_0211c608, 0x0, (void *)func_ov075_021142fc },  /* 0x0211c608 -> ov075 0x021142fc */
+    { data_ov075_0211c5c0, 0x0, (void *)_ZN15UnknownVsPlayer19func_ov075_021147d4Ev },  /* 0x0211c5c0 -> ov075 0x021147d4 */
+    { data_ov075_0211c5c8, 0x0, (void *)_ZN15UnknownVsPlayer19func_ov075_02114300Ev },  /* 0x0211c5c8 -> ov075 0x02114300 */
+    { data_ov075_0211c5d0, 0x0, (void *)_ZN15UnknownVsPlayer19func_ov075_02114890Ev },  /* 0x0211c5d0 -> ov075 0x02114890 */
+    { data_ov075_0211c5d8, 0x0, (void *)_ZN15UnknownVsPlayer19func_ov075_021143e4Ev },  /* 0x0211c5d8 -> ov075 0x021143e4 */
+    { data_ov075_0211c5e0, 0x0, (void *)_ZN15UnknownVsPlayer19func_ov075_02114390Ev },  /* 0x0211c5e0 -> ov075 0x02114390 */
+    { data_ov075_0211c5e8, 0x0, (void *)_ZN15UnknownVsPlayer19func_ov075_02114890Ev },  /* 0x0211c5e8 -> ov075 0x02114890 */
+    { data_ov075_0211c5f0, 0x0, (void *)_ZN15UnknownVsPlayer19func_ov075_021141b8Ev },  /* 0x0211c5f0 -> ov075 0x021141b8 */
+    { data_ov075_0211c5f8, 0x0, (void *)_ZN15UnknownVsPlayer19func_ov075_02114218Ev },  /* 0x0211c5f8 -> ov075 0x02114218 */
+    { data_ov075_0211c600, 0x0, (void *)_ZN15UnknownVsPlayer19func_ov075_0211427cEv },  /* 0x0211c600 -> ov075 0x0211427c */
+    { data_ov075_0211c608, 0x0, (void *)_ZN15UnknownVsPlayer19func_ov075_021142fcEv },  /* 0x0211c608 -> ov075 0x021142fc */
     { data_ov075_0211c618, 0x0, (void *)port_vs_body_0211478c },  /* 0x0211c618 -> ov075 0x0211478c */
-    { data_ov075_0211c620, 0x0, (void *)func_ov075_02114560 },  /* 0x0211c620 -> ov075 0x02114560 */
-    { data_ov075_0211c628, 0x0, (void *)func_ov075_02114010 },  /* 0x0211c628 -> ov075 0x02114010 */
-    { data_ov075_0211c630, 0x0, (void *)func_ov075_02114890 },  /* 0x0211c630 -> ov075 0x02114890 */
-    { data_ov075_0211c638, 0x0, (void *)func_ov075_021140e4 },  /* 0x0211c638 -> ov075 0x021140e4 */
-    { data_ov075_0211c640, 0x0, (void *)func_ov075_0211473c },  /* 0x0211c640 -> ov075 0x0211473c */
+    { data_ov075_0211c620, 0x0, (void *)_ZN15UnknownVsPlayer19func_ov075_02114560Ev },  /* 0x0211c620 -> ov075 0x02114560 */
+    { data_ov075_0211c628, 0x0, (void *)_ZN15UnknownVsPlayer19func_ov075_02114010Ev },  /* 0x0211c628 -> ov075 0x02114010 */
+    { data_ov075_0211c630, 0x0, (void *)_ZN15UnknownVsPlayer19func_ov075_02114890Ev },  /* 0x0211c630 -> ov075 0x02114890 */
+    { data_ov075_0211c638, 0x0, (void *)_ZN15UnknownVsPlayer19func_ov075_021140e4Ev },  /* 0x0211c638 -> ov075 0x021140e4 */
+    { data_ov075_0211c640, 0x0, (void *)_ZN15UnknownVsPlayer19func_ov075_0211473cEv },  /* 0x0211c640 -> ov075 0x0211473c */
     { _ZTI9dEntObj_c, 0x8, (void *)_ZTI7dBase_c },  /* 0x0211c674 -> arm9 0x02086e78 (data) */
     { data_ov075_0211c6f8, 0x0, (void *)func_ov075_02119918 },  /* 0x0211c6f8 -> ov075 0x02119918 */
     { data_ov075_0211c700, 0x0, (void *)func_ov075_02119d3c },  /* 0x0211c700 -> ov075 0x02119d3c */

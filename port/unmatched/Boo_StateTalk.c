@@ -81,7 +81,7 @@ typedef signed int s32;
 extern void *_ZN8dActor_c13ClosestPlayerEv(void *self);   /* host edit 1: receiver */
 extern int LenVec3(int *v);
 extern u16 _ZN6Player9StartTalkER7fBase_cb(void *p, void *a, int b);
-extern void _ZN6Camera9SetFlag_3Ev(void *c);
+extern void _ZN9dCamera_c9SetFlag_3Ev(void *c);
 extern s16 Vec3_HorzAngle(const int *v0, const int *v1);
 extern int func_020092c4(void *a, void *out, void *target);
 extern int _Z14ApproachLinearRsss(s16 *a, s16 b, s16 c);
@@ -103,7 +103,7 @@ extern int data_0209e650;
 
 #define LAU(p) ((void *)((long long)(int)(p) & 0xFFFFFFFFFFFFFFFFLL))
 
-void func_ov063_02117cdc(u8 *arg0) {
+void _ZN7daTrs_c19func_ov063_02117cdcEv(u8 *arg0) {
     s16 v[3];
     int w[3];
     void *r5;
@@ -147,7 +147,7 @@ void func_ov063_02117cdc(u8 *arg0) {
         if (_ZN6Player9StartTalkER7fBase_cb(*(void **)(arg0 + 0x488), arg0, 1) == 0) {
             return;
         }
-        _ZN6Camera9SetFlag_3Ev(r5);
+        _ZN9dCamera_c9SetFlag_3Ev(r5);
         *(int *)(arg0 + 0x54c) = w[0];
         *(int *)(arg0 + 0x550) = w[1];
         *(int *)(arg0 + 0x554) = w[2];

@@ -86,11 +86,11 @@
 // call, which is the method_faces.cpp checklist item (c).
 // ---------------------------------------------------------------------------
 
-#include "RabbitKey.h"
+#include "daObj_Mip_Key_c.h"
 
-extern "C" int _ZN9RabbitKey6RenderEv(void *self)
+extern "C" int _ZN15daObj_Mip_Key_c6RenderEv(void *self)
 {
-    return ((RabbitKey *)self)->RabbitKey::Render();
+    return ((daObj_Mip_Key_c *)self)->daObj_Mip_Key_c::Render();
 }
 
 struct PathPtr {

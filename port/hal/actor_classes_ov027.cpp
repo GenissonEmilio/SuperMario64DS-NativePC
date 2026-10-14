@@ -217,9 +217,9 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 
 #include "dActor_c.h"
 #include "fBase_c.h"
-#include "Bully.h"
-#include "SlidingIce.h"
-#include "SnowmanBreath.h"
+#include "daDonketu_c.h"
+#include "daObjSlIceBlock_c.h"
+#include "daSnmBth_c.h"
 
 // ---- two decorated references onto bodies the port already carries ---------
 // src/_ZN13SnowmanBreath8BehaviorEv.cpp is a .cpp that declares two arm9/ov002
@@ -282,10 +282,10 @@ int _ZN8dActor_c16OnAimedAtWithEggEv(void *self);                 /* slot 29 */
 void _ZN10dBgActor_c4KillEv(void *self);                          /* slot 31 */
 
 /* ---- SLIDING_ICE (92, 93), 0x02113824 ---- */
-int _ZN10SlidingIce13InitResourcesEv(char *self);   /* slot 0, a C name */
-int *_ZN10SlidingIceD1Ev(int *self);                /* slot 16 */
-int *_ZN10SlidingIceD0Ev(int *self);                /* slot 17 */
-void _ZN10SlidingIce15OnHitByMegaCharER6Player(void *self, void *player); /* slot 27 override */
+int _ZN17daObjSlIceBlock_c13InitResourcesEv(char *self);   /* slot 0, a C name */
+int *_ZN17daObjSlIceBlock_cD1Ev(int *self);                /* slot 16 */
+int *_ZN17daObjSlIceBlock_cD0Ev(int *self);                /* slot 17 */
+void _ZN17daObjSlIceBlock_c15OnHitByMegaCharER6Player(void *self, void *player); /* slot 27 override */
 void *daObjSlIceBlock_c_classInit_SL_ICEBLOCK_SHOT(void);
 void *daObjSlIceBlock_c_classInit_SL_ICEBLOCK(void);
 
@@ -315,10 +315,10 @@ int *_ZN10daPgDfdr_cD0Ev(int *self);                /* slot 17, D0 */
 void *daPgDfdr_c_classInit(void);                    /* the UNNAMED factory */
 
 /* ---- SNOWMAN_BREATH (275), 0x02113b50 ---- */
-int _ZN13SnowmanBreath16CleanupResourcesEv(void);         /* slot 3, NO receiver */
-void _ZN13SnowmanBreath16OnPendingDestroyEv(void);        /* slot 12, NO receiver */
-int _ZN13SnowmanBreathD1Ev(char *self);                   /* slot 16 */
-void *_ZN13SnowmanBreathD0Ev(char *self);                 /* slot 17 */
+int _ZN10daSnmBth_c16CleanupResourcesEv(void);         /* slot 3, NO receiver */
+void _ZN10daSnmBth_c16OnPendingDestroyEv(void);        /* slot 12, NO receiver */
+int _ZN10daSnmBth_cD1Ev(char *self);                   /* slot 16 */
+void *_ZN10daSnmBth_cD0Ev(char *self);                 /* slot 17 */
 void *daSnmBth_c_classInit(void);
 
 extern int data_02099f24[];          /* the frame phase the lists are in */
@@ -342,8 +342,8 @@ void *_ZTV10daPgDfdr_c[32];  /* vtspan: _ZTV10daPgDfdr_c, DA_PG_DFDR */
 void *data_ov064_0211b768[37];  /* vtspan: Bully/BigBully base, ov064 0x0211b768 */
 DSSTATE_END
 
-int _ZTV10SlidingIce[32];       /* vtspan: _ZTV10SlidingIce, SLIDING_ICE 92+93 */
-int _ZTV13SnowmanBreath[31];    /* vtspan: _ZTV13SnowmanBreath, SNOWMAN_BREATH */
+int _ZTV17daObjSlIceBlock_c[32];       /* vtspan: _ZTV10SlidingIce, SLIDING_ICE 92+93 */
+int _ZTV10daSnmBth_c[31];    /* vtspan: _ZTV13SnowmanBreath, SNOWMAN_BREATH */
 }
 
 // ---- one __thiscall face onto an @@QAE body --------------------------------
@@ -387,13 +387,13 @@ static int __fastcall ov27_trap30(void *s, void *)
    installed only between two member teardowns; this says which slot instead of
    running a derived body on a base that has not finished constructing. */
 static int __fastcall ov27_base_trap0(void *s, void *)
-{ ov27_trap_report(s, 0, "Bully base InitResources"); return 0; }
+{ ov27_trap_report(s, 0, "daDonketu_c base InitResources"); return 0; }
 static int __fastcall ov27_base_trap3(void *s, void *)
-{ ov27_trap_report(s, 3, "Bully base CleanupResources"); return 0; }
+{ ov27_trap_report(s, 3, "daDonketu_c base CleanupResources"); return 0; }
 static int __fastcall ov27_base_trap6(void *s, void *)
-{ ov27_trap_report(s, 6, "Bully base Behavior"); return 0; }
+{ ov27_trap_report(s, 6, "daDonketu_c base Behavior"); return 0; }
 static int __fastcall ov27_base_trap9(void *s, void *)
-{ ov27_trap_report(s, 9, "Bully base Render"); return 0; }
+{ ov27_trap_report(s, 9, "daDonketu_c base Render"); return 0; }
 
 // ---- the shared 1..30 half -------------------------------------------------
 static int __fastcall ov27_binit(void *s, void *)
@@ -565,27 +565,27 @@ static void ov27_bully_base_bringup(void)
 // Own 0/3/6/9/16/17 and slot 27.
 // ============================================================================
 static int __fastcall si_init(void *s, void *)
-{ return _ZN10SlidingIce13InitResourcesEv((char *)s); }
+{ return _ZN17daObjSlIceBlock_c13InitResourcesEv((char *)s); }
 static int __fastcall si_clean(void *s, void *)
-{ return ((SlidingIce *)s)->SlidingIce::CleanupResources(); }
+{ return ((daObjSlIceBlock_c *)s)->daObjSlIceBlock_c::CleanupResources(); }
 static int __fastcall si_behavior(void *s, void *)
-{ return ((SlidingIce *)s)->SlidingIce::Behavior(); }
+{ return ((daObjSlIceBlock_c *)s)->daObjSlIceBlock_c::Behavior(); }
 static int __fastcall si_render(void *s, void *)
 { port_actor_render_probe("SLIDING_ICE", (char *)s + 0xd4);
-  return ((SlidingIce *)s)->SlidingIce::Render(); }
+  return ((daObjSlIceBlock_c *)s)->daObjSlIceBlock_c::Render(); }
 static int __fastcall si_d1(void *s, void *)
-{ return (int)(size_t)_ZN10SlidingIceD1Ev((int *)s); }
+{ return (int)(size_t)_ZN17daObjSlIceBlock_cD1Ev((int *)s); }
 static int __fastcall si_d0(void *s, void *)
-{ return (int)(size_t)_ZN10SlidingIceD0Ev((int *)s); }
+{ return (int)(size_t)_ZN17daObjSlIceBlock_cD0Ev((int *)s); }
 /* slot 27 takes the three-parameter shape for slot 19's reason: the dispatch
    site pushes the Player the callee pops. The body itself dispatches slot 31
    back through this same table -- see TRAP T1 in the header. */
 static int __fastcall si_mega(void *s, void *, void *p)
-{ _ZN10SlidingIce15OnHitByMegaCharER6Player(s, p); return 0; }
+{ _ZN17daObjSlIceBlock_c15OnHitByMegaCharER6Player(s, p); return 0; }
 
 extern "C" void hal_fill_sliding_ice_vtable(void)
 {
-    void *volatile *vt = (void *volatile *)_ZTV10SlidingIce;
+    void *volatile *vt = (void *volatile *)_ZTV17daObjSlIceBlock_c;
     ov27_fill_shared(vt);
     vt[0]  = (void *)si_init;
     vt[3]  = (void *)si_clean;
@@ -709,24 +709,24 @@ extern "C" void hal_fill_da_pg_dfdr_vtable(void)
 // loops _ZN21SnowmanBreathParticle6RenderEv fifty times.
 // ============================================================================
 static int __fastcall sb_init(void *s, void *)
-{ return ((SnowmanBreath *)s)->SnowmanBreath::InitResources(); }
+{ return ((daSnmBth_c *)s)->daSnmBth_c::InitResources(); }
 static int __fastcall sb_clean(void *s, void *)
-{ return _ZN13SnowmanBreath16CleanupResourcesEv(); }
+{ return _ZN10daSnmBth_c16CleanupResourcesEv(); }
 static int __fastcall sb_behavior(void *s, void *)
-{ return ((SnowmanBreath *)s)->SnowmanBreath::Behavior(); }
+{ return ((daSnmBth_c *)s)->daSnmBth_c::Behavior(); }
 static int __fastcall sb_render(void *s, void *)
 { port_actor_render_probe("SNOWMAN_BREATH", (char *)s + 0xd4);
-  return ((SnowmanBreath *)s)->SnowmanBreath::Render(); }
+  return ((daSnmBth_c *)s)->daSnmBth_c::Render(); }
 static int __fastcall sb_pdes(void *s, void *)
-{ _ZN13SnowmanBreath16OnPendingDestroyEv(); return 0; }
+{ _ZN10daSnmBth_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall sb_d1(void *s, void *)
-{ return _ZN13SnowmanBreathD1Ev((char *)s); }
+{ return _ZN10daSnmBth_cD1Ev((char *)s); }
 static int __fastcall sb_d0(void *s, void *)
-{ return (int)(size_t)_ZN13SnowmanBreathD0Ev((char *)s); }
+{ return (int)(size_t)_ZN10daSnmBth_cD0Ev((char *)s); }
 
 extern "C" void hal_fill_snowman_breath_vtable(void)
 {
-    void *volatile *vt = (void *volatile *)_ZTV13SnowmanBreath;
+    void *volatile *vt = (void *volatile *)_ZTV10daSnmBth_c;
     ov27_fill_shared(vt);
     vt[0]  = (void *)sb_init;
     vt[3]  = (void *)sb_clean;

@@ -31,15 +31,15 @@ struct PortCylinderClsn;
 
 extern "C" {
 int _ZN8dActor_c13DistToCPlayerEv(void *self);
-void func_ov079_02123f34(void *self);
+void _ZN7daBtn_c19func_ov079_02123f34Ev(void *self);
 void _ZN8dActor_c9UpdatePosEP5dCc_c(void *self, void *c);
 int _ZN12dEnemyBase_c15IsGoingOffCliffER10dBgCh_Actrisbbi(
     void *self, void *w, int a, short b, int c, int d, void *e);
 void _ZN12dEnemyBase_c12UpdateWMClsnER10dBgCh_Actrj(void *self, void *w, unsigned n);
-void func_ov079_02124188(void *self);
-int func_ov079_021243e0(char *c, int r4);
-int func_ov079_02123a8c(void *self);
-void func_ov079_02124008(void *self);
+void _ZN7daBtn_c19func_ov079_02124188Ev(void *self);
+int _ZN7daBtn_c19func_ov079_021243e0Ei(char *c, int r4);
+int _ZN7daBtn_c19func_ov079_02123a8cEv(void *self);
+void _ZN7daBtn_c19func_ov079_02124008Ev(void *self);
 
 extern int data_0209f318;
 
@@ -54,12 +54,12 @@ extern PortPmf data_ov079_02127bc0[], data_ov079_02127bc8[],
     data_ov079_02127c08[], data_ov079_02127c10[], data_ov079_02127c18[],
     data_ov079_02127c20[];
 
-void func_ov079_02124530(void *); void func_ov079_02124638(void *);
-void func_ov079_021246d8(void *); void func_ov079_021246dc(void *);
-void func_ov079_021249f0(void *); void func_ov079_02124b08(void *);
-void func_ov079_02125240(void *); void func_ov079_0212538c(void *);
-void func_ov079_021254b4(void *); void func_ov079_021256d4(void *);
-void func_ov079_021258fc(void *); void func_ov079_02125b44(void *);
+void _ZN7daBtn_c19func_ov079_02124530Ev(void *); void _ZN7daBtn_c19func_ov079_02124638Ev(void *);
+void _ZN7daBtn_c19func_ov079_021246d8Ev(void *); void _ZN7daBtn_c19func_ov079_021246dcEv(void *);
+void _ZN7daBtn_c19func_ov079_021249f0Ev(void *); void _ZN7daBtn_c19func_ov079_02124b08Ev(void *);
+void _ZN7daBtn_c19func_ov079_02125240Ev(void *); void _ZN7daBtn_c19func_ov079_0212538cEv(void *);
+void _ZN7daBtn_c19func_ov079_021254b4Ev(void *); void _ZN7daBtn_c19func_ov079_021256d4Ev(void *);
+void _ZN7daBtn_c19func_ov079_021258fcEv(void *); void _ZN7daBtn_c19func_ov079_02125b44Ev(void *);
 }
 
 /* Seated over the SOURCE side, one row per static, checked against the ROM
@@ -83,18 +83,18 @@ void func_ov079_021258fc(void *); void func_ov079_02125b44(void *);
         sym(self);                                                        \
     }
 
-WHOMP_FACE(0, func_ov079_0212538c)
-WHOMP_FACE(1, func_ov079_02125240)
-WHOMP_FACE(2, func_ov079_021258fc)
-WHOMP_FACE(3, func_ov079_021254b4)
-WHOMP_FACE(4, func_ov079_02124638)
-WHOMP_FACE(5, func_ov079_021246dc)
-WHOMP_FACE(6, func_ov079_021246d8)
-WHOMP_FACE(7, func_ov079_02125b44)
-WHOMP_FACE(8, func_ov079_02124530)
-WHOMP_FACE(9, func_ov079_021256d4)
-WHOMP_FACE(10, func_ov079_02124b08)
-WHOMP_FACE(11, func_ov079_021249f0)
+WHOMP_FACE(0, _ZN7daBtn_c19func_ov079_0212538cEv)
+WHOMP_FACE(1, _ZN7daBtn_c19func_ov079_02125240Ev)
+WHOMP_FACE(2, _ZN7daBtn_c19func_ov079_021258fcEv)
+WHOMP_FACE(3, _ZN7daBtn_c19func_ov079_021254b4Ev)
+WHOMP_FACE(4, _ZN7daBtn_c19func_ov079_02124638Ev)
+WHOMP_FACE(5, _ZN7daBtn_c19func_ov079_021246dcEv)
+WHOMP_FACE(6, _ZN7daBtn_c19func_ov079_021246d8Ev)
+WHOMP_FACE(7, _ZN7daBtn_c19func_ov079_02125b44Ev)
+WHOMP_FACE(8, _ZN7daBtn_c19func_ov079_02124530Ev)
+WHOMP_FACE(9, _ZN7daBtn_c19func_ov079_021256d4Ev)
+WHOMP_FACE(10, _ZN7daBtn_c19func_ov079_02124b08Ev)
+WHOMP_FACE(11, _ZN7daBtn_c19func_ov079_021249f0Ev)
 
 static const struct { PortPmf *slot; unsigned rom; void *host; }
 g_whomp_states[] = {

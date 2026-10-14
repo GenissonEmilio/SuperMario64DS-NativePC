@@ -226,7 +226,7 @@ SM64DS_FAULTS_FATAL=1, stdout, verbatim, exit 0xC0000005:
       [scene] sublevel NOT written (SCENE_TITLE does not read data_02092110;
               0 relocations from ov007). It holds -1.
       [scene] 1 = SCENE_TITLE
-        [scene] UNMATCHED ov007 body entered: data_0208ea6c vtable slot
+        [scene] UNMATCHED ov007 body entered: _ZTV10dFdDummy_c vtable slot
         [scene] UNMATCHED ov007 body entered: func_02054c80
         [scene] UNMATCHED ov007 body entered: func_ov007_020c9688   x6
       (then the fault in section 5; the trailing "(returns 0;
@@ -330,7 +330,7 @@ THE FIX IS A DECOMP, NOT A PORT CHANGE. Nothing in hal/ can make this run.
 
 TWENTY-FOUR TRAPPING SITES ARE STANDING, all named in hal/scene_boot.cpp
 section 3, and they count as 23 L2_UNMATCHED bodies (19 ov007, 4 arm9/itcm/
-cross-overlay) plus the twelve slots of data_0208ea6c, which all point at one
+cross-overlay) plus the twelve slots of _ZTV10dFdDummy_c, which all point at one
 shared trap and are the 24th site rather than twelve more. The run reports how
 many were entered so "none of them fired" is a measurement.
 
@@ -345,16 +345,16 @@ In run A above, three sites fired:
 
     func_ov007_020c9688       6   the blocker
     func_02054c80             1   an arm9 address with no symbol and no C
-    data_0208ea6c slot        1   a dispatch through a hosted arm9 vtable this
+    _ZTV10dFdDummy_c slot        1   a dispatch through a hosted arm9 vtable this
                                   lane trap-filled rather than leaving raw
 
-The other twenty were not reached. THE data_0208ea6c HIT IS ITS OWN FINDING and
+The other twenty were not reached. THE _ZTV10dFdDummy_c HIT IS ITS OWN FINDING and
 is the reason trap-filling was chosen over ROM bytes: something really does
 dispatch through the +0x54 member's vtable, and had it been left carrying raw
 DS addresses the run would have jumped to 0x02017254 interpreted as a host
 address instead of saying so. Three of that member's four tables are now
-trap-filled here (data_0208ea6c, data_0208eacc, data_0208eb2c) and the fourth,
-data_0208eafc, still ships raw ROM bytes because nothing asked for it. FILLING
+trap-filled here (_ZTV10dFdDummy_c, _ZTV15dFdBrightness_c, _ZTV10dFdColor_c) and the fourth,
+_ZTV8dFader_c, still ships raw ROM bytes because nothing asked for it. FILLING
 THEM FOR REAL IS TWELVE MORE BODIES PER TABLE AND IS NOT THIS LANE'S.
 
 WHAT WAS TRIED AND REFUSED. SM64DS_SCENE_SLOT0=0 exists as the direct analogue
@@ -476,7 +476,7 @@ reach for a transcription only if the address is genuinely stuck.
 
 ALSO STANDING IN THE SAME RUN, and none of them is the stop: func_ov007_020b46b0
 enters 24 times (the loop in src/func_ov007_020aed98.cpp runs it 0x18 times),
-func_ov007_020c20b8 once, func_02054c80 once, and one data_0208ea6c vtable slot
+func_ov007_020c20b8 once, func_02054c80 once, and one _ZTV10dFdDummy_c vtable slot
 once. They return 0 and the run keeps going, so they are debt rather than
 blockers today, and the run reports them by name every time.
 
@@ -755,7 +755,7 @@ Scene::SetFaders, the whole func_ov007_020b7138 subtree AND the widget setup at
 func_ov007_020b2998 before dying. The trap census in the same run is four names
 and none of them is the blocker: func_ov007_020b46b0 twenty-four times (the
 0x18 loop in src/func_ov007_020aed98.cpp), then func_ov007_020c20b8,
-func_02054c80 and one data_0208ea6c slot once each. func_ov007_020b2998 is off
+func_02054c80 and one _ZTV10dFdDummy_c slot once each. func_ov007_020b2998 is off
 that list for the first time since lane L2 wrote it.
 
 NO BMP. The scene still faults inside InitResources, so no frame is reached and
@@ -832,8 +832,8 @@ THE SCENE STILL DOES NOT FINISH, so this row CONVERTS rather than retires, and
 the battery says so. It was worth checking whether the seam had really been
 crossed rather than merely relocated, and the trap census answers it directly:
 
-    PC2's run    b46b0 x24, c20b8 x1, func_02054c80 x1, data_0208ea6c slot x1
-    this run     b46b0 x24, c20b8 x1, func_02054c80 x1, data_0208ea6c slot x1,
+    PC2's run    b46b0 x24, c20b8 x1, func_02054c80 x1, _ZTV10dFdDummy_c slot x1
+    this run     b46b0 x24, c20b8 x1, func_02054c80 x1, _ZTV10dFdDummy_c slot x1,
                  AND func_ov007_020ae834 x24
 
 A FIFTH NAME, twenty-four times, that no scene-1 run had ever reached. The
@@ -1641,9 +1641,9 @@ is also a single-fault run. The 300-frame runs further down are about 300 times
 larger (18599 traps, both of them) and none of the counts below come from
 those.
 
-    5c's run     b46b0 x24, c20b8 x1, func_02054c80 x1, data_0208ea6c slot x1,
+    5c's run     b46b0 x24, c20b8 x1, func_02054c80 x1, _ZTV10dFdDummy_c slot x1,
                  ae834 x24
-    this run     b46b0 x24, c20b8 x1, func_02054c80 x1, data_0208ea6c slot x2,
+    this run     b46b0 x24, c20b8 x1, func_02054c80 x1, _ZTV10dFdDummy_c slot x2,
                  ae834 x33, AND func_ov007_020c4684 x27
 
 A SIXTH NAME, twenty-seven times, and ae834 goes from 24 to 33. The nine extra
@@ -1780,7 +1780,7 @@ is exactly the kind that is right until it is not:
     ?SetDefaultValues@SaveData@@QAE...    `mov esi, ecx`   __thiscall   latent
     ?SetDefaultValuesMg@SaveData@@QAE...  `mov esi, ecx`   __thiscall   latent
     ?SaveFile@SaveData@@SAH...            reads [ebp+8]    __cdecl      fine
-    ?UpdateFileOffsets@Animation@@SAX...  reads [ebp+8]    __cdecl      fine
+    ?UpdateFileOffsets@dExtFrameCtrl_c@@SAX...  reads [ebp+8]    __cdecl      fine
     ?UpdateFileOffsets@TextureSequence... static member    __cdecl      fine
     ?LoadTexAndPal@Model@@SAX...          reads [ebp+8]    __cdecl      fine
 
@@ -1979,7 +1979,7 @@ census over the rendered run, by name:
     func_ov007_020ae834   9900    (33/frame)
     func_ov007_020c4684   8100    (27/frame)
     func_ov007_020b46b0   7200    (24/frame)
-    data_0208ea6c         1198
+    _ZTV10dFdDummy_c         1198
     func_ov007_020c20b8    300    (1/frame)
     func_02054c80            1
                          ------
@@ -2908,7 +2908,7 @@ so these are all of them and not the ones that happened to surface.
 
 ONE EXCLUSION IS A MISROUTE THIS LANE COULD NOT FIX FROM ITS OWN FILES.
 src/func_ov007_020c5dec.cpp stays out because hal/cxx_aliases.cpp carries
-/alternatename:_func_ov007_020c5dec=_func_ov002_020c5dec for two PLAYER TUs
+/alternatename:_func_ov007_020c5dec=__ZN6Player19func_ov002_020c5decEi for two PLAYER TUs
 already in the build that name the ov007 spelling for what is really ov002's
 body at that address. Compiling the ov007 TU makes the alias LHS a DEFINED
 symbol -- which alternatename_guard refuses -- AND hands those two level-path
@@ -2922,7 +2922,7 @@ routed the same way.
 NINETEEN ov007 BODIES AND FOUR OTHERS ARE UNMATCHED and stand as named traps
 rather than guesses; hal/scene_boot.cpp section 3 lists all twenty-three with
 the reason each is there, and counts them alongside the trap-filled
-data_0208ea6c as twenty-four trapping sites. A twentieth unmatched ov007
+_ZTV10dFdDummy_c as twenty-four trapping sites. A twentieth unmatched ov007
 function, func_ov007_020c49bc, has no trap because nothing in the slice
 references it; section 5 says why that is the right answer.
 
@@ -3328,10 +3328,10 @@ same limit VP1's 12d and 5h record.
   - The four Scene:: veneer slots and the eleven shared thunks are seated for
     this class but only the ones InitResources reaches were exercised, and
     InitResources did not finish.
-  - The twelve slots of data_0208ea6c, ten of data_0208eb2c and twelve of
-    data_0208eacc are TRAPS, not bodies. One of them was entered. What the ROM
+  - The twelve slots of _ZTV10dFdDummy_c, ten of _ZTV10dFdColor_c and twelve of
+    _ZTV15dFdBrightness_c are TRAPS, not bodies. One of them was entered. What the ROM
     does there is unknown to this lane.
-  - data_0208eafc still ships raw ROM bytes, as it did before this lane.
+  - _ZTV8dFader_c still ships raw ROM bytes, as it did before this lane.
   - A SAVE STATE TAKEN BEFORE THE FILL AND RESTORED AFTER IT WOULD PUT THE RAW
     DS WORDS BACK. The two vtables, the graph-callback table and the two words
     at 0x02103254 / 0x02103258 all live inside the ov007 mount, which is inside

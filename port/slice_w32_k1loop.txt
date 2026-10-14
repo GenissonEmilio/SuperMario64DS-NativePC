@@ -7,10 +7,10 @@
 # port_scene_tick), in place of the host split (port_actor_tick /
 # port_actor_render / port_actor_scene_pass), which stays for the frames that
 # are not the ROM's.
-src/func_02044120.c
+src/unnamed/arm9/0204/func_02044120.c
 #
 # The static initialiser that fills the five list heads func_02044120 walks,
 # from the five pointer-to-member records unmatched/func_02043fdc_hostcopy.cpp
 # now hosts. hal/ctor_runner.cpp's table binds its word to this body (it was a
 # face), so every target that compiles the runner takes it.
-src/__sinit_02075154.c
+src/unnamed/arm9/0207/__sinit_02075154.c

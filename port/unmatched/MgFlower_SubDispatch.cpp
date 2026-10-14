@@ -146,7 +146,7 @@ void func_ov006_020c3904(void *self);
 int  func_ov006_020c395c(int *self);
 
 /* the rest of the dispatching TU, verbatim from src */
-int  _ZN9Animation7AdvanceEv(void *);
+int  _ZN15dExtFrameCtrl_c7AdvanceEv(void *);
 int  func_ov006_020c35e8(void *);
 
 void func_ov006_020c3d18(char *c);

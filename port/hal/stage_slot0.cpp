@@ -337,19 +337,19 @@ extern "C" {
 /* No receiver: static, and the ROM caller passes two arguments. `bool` is the
    low byte of the 4-byte stack slot the caller's `int` fills, and the caller's
    value is the 0/1 of a `== 1` comparison. */
-void _ZN5Stage14LoadGraphics2DEbi(int b, int level)
+void _ZN10dScStage_c14LoadGraphics2DEbi(int b, int level)
 { Stage::LoadGraphics2D(b != 0, level); }
 
 /* Receiver delivered: the ROM caller pushes the Stage, the qualified call puts
    it in ECX. Qualified so nothing re-dispatches through a vtable. */
-void _ZN5Stage7LoadFogEv(void *thiz)
+void _ZN10dScStage_c7LoadFogEv(void *thiz)
 { ((Stage *)thiz)->Stage::LoadFog(); }
 
-void _ZN5Stage23LoadTextureTransformersEv(void *thiz)
+void _ZN10dScStage_c23LoadTextureTransformersEv(void *thiz)
 { ((Stage *)thiz)->Stage::LoadTextureTransformers(); }
 
 /* No receiver: static, no arguments. CleanAll, not RenderAll. */
-void _ZN11ShadowModel8CleanAllEv(void)
+void _ZN17dExtShadowModel_c8CleanAllEv(void)
 { ShadowModel::CleanAll(); }
 
 }  /* extern "C" */

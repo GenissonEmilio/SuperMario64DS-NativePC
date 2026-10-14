@@ -175,6 +175,7 @@
  * of src/. An alias here changes a name and not a convention.
  */
 #include "MgSmartball_HostAbi.h"
+#include "dScMgSmartball_c.h" /* PORTSYNC2: the real class; the HostAbi shadow of it is retired */
 #include "cMgSmartball_board_c.h"
 
 extern "C" s32 _ZN16dScMgSmartball_c6RenderEv(void *self)

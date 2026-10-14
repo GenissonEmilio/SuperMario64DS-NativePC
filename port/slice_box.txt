@@ -509,20 +509,20 @@
 #   src/func_ov006_0211bc8c.cpp, listed below in address order, byte-matched
 #   and delinked. It is the only line this run adds.
 src/actors/dScMgSound_c.cpp
-src/func_ov006_020c225c.c
-src/func_ov006_020c2290.c
-src/func_ov006_020c22d8.c
-src/func_ov006_020c2300.c
-src/func_ov006_020c23a8.cpp
-src/func_ov006_020c2440.cpp
-src/func_ov006_020c24e4.cpp
-src/func_ov006_020c2594.c
-src/func_ov006_020c263c.c
-src/func_ov006_020c2664.c
-src/func_ov006_020c26f4.c
-src/func_ov006_020c271c.c
-src/func_ov006_020c27c4.cpp
-src/func_ov006_020c2848.cpp
+src/actors/unit020bfec0.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c2290.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c22d8.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c2300.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c23a8.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c2440.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c24e4.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c2594.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c263c.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c2664.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c26f4.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c271c.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c27c4.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c2848.cpp
 # HOST-COPIED (mg9 lane BOX): src/func_ov006_020c2924.cpp -- a RECEIVER
 #   DROP at a host C++ virtual. It reads the installed fader's vtable
 #   through `int (**vt)(void*)` and calls vt[6](obj), which is __cdecl
@@ -534,8 +534,8 @@ src/func_ov006_020c2848.cpp
 #   at the SAME byte correctly, with a seven-virtual shadow class, and the
 #   host copy borrows that spelling. See
 #   port/unmatched/MgShared4f38_ShadowFader_020c2924.cpp.
-src/func_ov006_020c2984.c
-src/func_ov006_020c2994.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c2984.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c2994.c
 # HOST-COPIED (mg9 lane BOX): src/func_ov006_020c29dc.cpp -- the sub-object's
 #   per-frame model draw, and the SAME PAIR of defects run mg6 lane MEM
 #   recorded for 020c1804 and run mg5 lane Y3D for 020c3bf4: a local shadow
@@ -545,10 +545,10 @@ src/func_ov006_020c2994.c
 #   that need the geometry proxy. A NO_RENDER boot cannot see either -- this
 #   one was found by port/tools/battery.py, which renders. See
 #   port/unmatched/MgShared4f38_ModelRender_020c29dc.cpp.
-src/func_ov006_020c2be8.c
-src/func_ov006_020c3050.c
-src/func_ov006_020c3288.c
-src/func_ov006_020c33dc.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c2be8.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c3050.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c3288.c
+# FOLDED into src/actors/unit020bfec0.cpp (row 512): src/func_ov006_020c33dc.c
 # RETIRED at SLICE1: body now in src/actors/dScMgSound_c.cpp. main consolidation put this body in the class TU, which the build already compiles, so the per-function leftover is a second definition.
 #src/func_ov006_0211bc8c.cpp
 
@@ -559,8 +559,8 @@ src/func_ov006_020c33dc.c
 # (InitResources) and sets two ov004 globals; 020b2574 is on the HUD path
 # slot 33 reaches. port/slice_mga361.txt lists both, and that file is in NO
 # target, so this seat is the first to build them.
-src/func_ov004_020b2574.c
-src/func_ov004_020b6808.c
+src/minigames/d_s_mg_base.cpp
+src/actors/dMgState_c.cpp
 
 # ---- WAVE 2: the one arm9 line the closure listing did not print ----------
 #
@@ -582,4 +582,4 @@ src/func_ov004_020b6808.c
 # g_020beb68, which include/decl_common.h declares and no config defines). The
 # framework half being already paid is why this is one wave and not eight, and
 # a lane taking a thirteenth class should budget the same.
-src/func_02012174.c
+src/engine/sound/Sound.cpp

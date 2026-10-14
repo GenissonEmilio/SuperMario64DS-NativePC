@@ -130,8 +130,7 @@ void __sinit_ov056_02112b48(void);
    first is this array under the other of dsd's two names for 0x02113368.
    BOTH names are excluded from the per-symbol mount, so this LHS is undefined
    everywhere and the alias cannot be defeated. */
-#pragma comment(linker, "/alternatename:__ZTV18daObjEwmIceBlock_c=__ZTV17BigMovingIceBlock")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV18daObjEwmIceBlock_c=__ZTV18daObjEwmIceBlock_c")
 // ---- the trap --------------------------------------------------------------
 static void ov56_trap_report(void *self, int slot)
 {
@@ -209,41 +208,41 @@ static int __fastcall ov56_kill(void *s, void *)
 // does not loop -- the SquarePathLift shape a level over. Its file table is
 // data_ov056_02113314, whose third word is a CLPS_Block in ov064.
 extern "C" {
-int _ZN17BigMovingIceBlock16CleanupResourcesEv(char *self);   /* slot 3  */
-int *_ZN17BigMovingIceBlockD1Ev(int *self);                   /* slot 16 */
-int *_ZN17BigMovingIceBlockD0Ev(int *self);                   /* slot 17 */
+int _ZN18daObjEwmIceBlock_c16CleanupResourcesEv(char *self);   /* slot 3  */
+int *_ZN18daObjEwmIceBlock_cD1Ev(int *self);                   /* slot 16 */
+int *_ZN18daObjEwmIceBlock_cD0Ev(int *self);                   /* slot 17 */
 void *daObjEwmIceBlock_c_classInit(void);
 DSSTATE_BEGIN
-void *_ZTV17BigMovingIceBlock[32];
+void *_ZTV18daObjEwmIceBlock_c[32];
 DSSTATE_END
 }
 
 /* The three bodies src defines as real C++ methods rather than extern-"C" free
    functions. The other three (both destructors and CleanupResources) are
    extern-C in src already. */
-#include "BigMovingIceBlock.h"
+#include "daObjEwmIceBlock_c.h"
 extern "C" {
-int _ZN17BigMovingIceBlock13InitResourcesEv(void *self)
-{ return ((BigMovingIceBlock *)self)->BigMovingIceBlock::InitResources(); }
-int _ZN17BigMovingIceBlock8BehaviorEv(void *self)
-{ return ((BigMovingIceBlock *)self)->BigMovingIceBlock::Behavior(); }
-int _ZN17BigMovingIceBlock6RenderEv(void *self)
-{ return ((BigMovingIceBlock *)self)->BigMovingIceBlock::Render(); }
+int _ZN18daObjEwmIceBlock_c13InitResourcesEv(void *self)
+{ return ((daObjEwmIceBlock_c *)self)->daObjEwmIceBlock_c::InitResources(); }
+int _ZN18daObjEwmIceBlock_c8BehaviorEv(void *self)
+{ return ((daObjEwmIceBlock_c *)self)->daObjEwmIceBlock_c::Behavior(); }
+int _ZN18daObjEwmIceBlock_c6RenderEv(void *self)
+{ return ((daObjEwmIceBlock_c *)self)->daObjEwmIceBlock_c::Render(); }
 }
 
 static int __fastcall ice_init(void *s, void *)
-{ return _ZN17BigMovingIceBlock13InitResourcesEv(s); }
+{ return _ZN18daObjEwmIceBlock_c13InitResourcesEv(s); }
 static int __fastcall ice_clean(void *s, void *)
-{ return _ZN17BigMovingIceBlock16CleanupResourcesEv((char *)s); }
+{ return _ZN18daObjEwmIceBlock_c16CleanupResourcesEv((char *)s); }
 static int __fastcall ice_behavior(void *s, void *)
-{ return _ZN17BigMovingIceBlock8BehaviorEv(s); }
+{ return _ZN18daObjEwmIceBlock_c8BehaviorEv(s); }
 static int __fastcall ice_render(void *s, void *)
 { port_actor_render_probe("BIG_MOVING_ICE_BLOCK", (char *)s + 0xd4);
-  return _ZN17BigMovingIceBlock6RenderEv(s); }
+  return _ZN18daObjEwmIceBlock_c6RenderEv(s); }
 static int __fastcall ice_d1(void *s, void *)
-{ return (int)(size_t)_ZN17BigMovingIceBlockD1Ev((int *)s); }
+{ return (int)(size_t)_ZN18daObjEwmIceBlock_cD1Ev((int *)s); }
 static int __fastcall ice_d0(void *s, void *)
-{ return (int)(size_t)_ZN17BigMovingIceBlockD0Ev((int *)s); }
+{ return (int)(size_t)_ZN18daObjEwmIceBlock_cD0Ev((int *)s); }
 
 // ---- the mount bring-up ----------------------------------------------------
 /* CAPTURED, and the argument is hal/level_boot.cpp's on g_level_mounted: this
@@ -277,7 +276,7 @@ extern "C" void hal_fill_big_moving_ice_block_vtable(void)
     port_ov56_bringup();
     /* THE POINTER IS VOLATILE ON PURPOSE -- the gate-200 elided-stores bug,
        repro in hal/actor_classes_ov002g200.cpp. */
-    void *volatile *vt = (void *volatile *)_ZTV17BigMovingIceBlock;
+    void *volatile *vt = (void *volatile *)_ZTV18daObjEwmIceBlock_c;
     vt[0]  = (void *)ice_init;
     vt[1]  = (void *)ov56_binit;
     vt[2]  = (void *)ov56_ainit;

@@ -32,6 +32,6 @@
 # that run. Their natural next-symbol deltas would be 0x4, 0x1c and 0x8 -- two of
 # the three wrong, and 0x4 would truncate the record before the +4 id halfword
 # the registry cross-checks.
-src/d_a_obj_seesaw_km1_seesaw.c
-src/d_a_obj_seesaw_km3_seesaw.c
-src/d_a_obj_seesaw_km3_yokoseesaw.c
+src/actors/daObjSeesaw_c.cpp
+# FOLDED into src/actors/daObjSeesaw_c.cpp (row 35): src/d_a_obj_seesaw_km3_seesaw.c
+# FOLDED into src/actors/daObjSeesaw_c.cpp (row 35): src/d_a_obj_seesaw_km3_yokoseesaw.c

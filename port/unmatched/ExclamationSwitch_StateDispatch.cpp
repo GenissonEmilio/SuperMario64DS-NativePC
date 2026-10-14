@@ -45,16 +45,16 @@
 
 extern "C" {
 /* the ten state halves, in record order */
-void func_ov002_020ba3fc(void *);   /* [0] state 0 init */
-void func_ov002_020ba3a8(void *);   /* [1] state 0 main */
-void func_ov002_020ba4c0(void *);   /* [2] state 1 init (the shared empty init) */
-void func_ov002_020ba2d0(void *);   /* [3] state 1 main */
-void func_ov002_020ba2ac(void *);   /* [4] state 2 init */
-void func_ov002_020ba1ac(void *);   /* [5] state 2 main */
+void _ZN13daObjSwitch_c19func_ov002_020ba3fcEv(void *);   /* [0] state 0 init */
+void _ZN13daObjSwitch_c19func_ov002_020ba3a8Ev(void *);   /* [1] state 0 main */
+void _ZN13daObjSwitch_c19func_ov002_020ba4c0Ev(void *);   /* [2] state 1 init (the shared empty init) */
+void _ZN13daObjSwitch_c19func_ov002_020ba2d0Ev(void *);   /* [3] state 1 main */
+void _ZN13daObjSwitch_c19func_ov002_020ba2acEv(void *);   /* [4] state 2 init */
+void _ZN13daObjSwitch_c19func_ov002_020ba1acEv(void *);   /* [5] state 2 main */
 /* [6] state 3 init is 020ba4c0 again */
-void func_ov002_020ba0f8(void *);   /* [7] state 3 main */
+void _ZN13daObjSwitch_c19func_ov002_020ba0f8Ev(void *);   /* [7] state 3 main */
 /* [8] state 4 init is 020ba4c0 again */
-void func_ov002_020ba0bc(void *);   /* [9] state 4 main */
+void _ZN13daObjSwitch_c19func_ov002_020ba0bcEv(void *);   /* [9] state 4 main */
 
 struct PortSwitchPair { unsigned fn; int delta; };
 extern PortSwitchPair data_ov002_0210e00c[];   /* ten flat records */
@@ -66,11 +66,11 @@ enum { PORT_SWITCH_RECS = 10 };
 
 static const struct { unsigned rom; void (*host)(void *); }
 g_switch_states[PORT_SWITCH_RECS] = {
-    {0x020ba3fc, func_ov002_020ba3fc}, {0x020ba3a8, func_ov002_020ba3a8},
-    {0x020ba4c0, func_ov002_020ba4c0}, {0x020ba2d0, func_ov002_020ba2d0},
-    {0x020ba2ac, func_ov002_020ba2ac}, {0x020ba1ac, func_ov002_020ba1ac},
-    {0x020ba4c0, func_ov002_020ba4c0}, {0x020ba0f8, func_ov002_020ba0f8},
-    {0x020ba4c0, func_ov002_020ba4c0}, {0x020ba0bc, func_ov002_020ba0bc},
+    {0x020ba3fc, _ZN13daObjSwitch_c19func_ov002_020ba3fcEv}, {0x020ba3a8, _ZN13daObjSwitch_c19func_ov002_020ba3a8Ev},
+    {0x020ba4c0, _ZN13daObjSwitch_c19func_ov002_020ba4c0Ev}, {0x020ba2d0, _ZN13daObjSwitch_c19func_ov002_020ba2d0Ev},
+    {0x020ba2ac, _ZN13daObjSwitch_c19func_ov002_020ba2acEv}, {0x020ba1ac, _ZN13daObjSwitch_c19func_ov002_020ba1acEv},
+    {0x020ba4c0, _ZN13daObjSwitch_c19func_ov002_020ba4c0Ev}, {0x020ba0f8, _ZN13daObjSwitch_c19func_ov002_020ba0f8Ev},
+    {0x020ba4c0, _ZN13daObjSwitch_c19func_ov002_020ba4c0Ev}, {0x020ba0bc, _ZN13daObjSwitch_c19func_ov002_020ba0bcEv},
 };
 
 extern "C" void port_exclamation_switch_states_seat(void)

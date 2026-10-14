@@ -154,28 +154,28 @@ void port_mg_call1(void *self, unsigned code, int adj, int a);
    ride-through is called the way the ROM calls it rather than the way the
    slot's arity would suggest. The four (void) ones are the empty bodies the
    header names. */
-void func_ov006_020dbf7c(void *sb, int i);
-void func_ov006_020dc154(char *base, int idx);
-void func_ov006_020dc1c4(void *thiz, int idx);
-void func_ov006_020dc294(void);              /* one-argument slot, bx lr body */
-void func_ov006_020dc414(char *base, int idx);
-void func_ov006_020dc4b0(char *c, int i);
-void func_ov006_020dc4c8(char *c, int i);
-void func_ov006_020dc5c4(char *c, int i);
-void func_ov006_020dc6d0(int o, int idx);
-void func_ov006_020dcffc(void);              /* one-argument slot, bx lr body */
-void func_ov006_020dd000(char *c, int i);
-void func_ov006_020dd0e0(char *c, int i);    /* THE TOUCH STATE, see header */
-void func_ov006_020dd658(char *self, int i);
-void func_ov006_020dd7bc(void);              /* one-argument slot, bx lr body */
-void func_ov006_020dd7c0(char *thiz, int index);
-void func_ov006_020dd880(char *c, int i);
-void func_ov006_020dda94(char *self, int i);
-void func_ov006_020ddca0(char *c, int i);
-void func_ov006_020de0e0(char *self);
-void func_ov006_020de1d4(char *c);
-void func_ov006_020de584(void *a);
-void func_ov006_020de5ac(void);              /* zero-argument slot, bx lr body */
+void _ZN11dScMgCoin_c19func_ov006_020dbf7cEi(void *sb, int i);
+void _ZN11dScMgCoin_c19func_ov006_020dc154Ei(char *base, int idx);
+void _ZN11dScMgCoin_c19func_ov006_020dc1c4Ei(void *thiz, int idx);
+void _ZN11dScMgCoin_c19func_ov006_020dc294Ev(void);              /* one-argument slot, bx lr body */
+void _ZN11dScMgCoin_c19func_ov006_020dc414Ei(char *base, int idx);
+void _ZN11dScMgCoin_c19func_ov006_020dc4b0Ei(char *c, int i);
+void _ZN11dScMgCoin_c19func_ov006_020dc4c8Ei(char *c, int i);
+void _ZN11dScMgCoin_c19func_ov006_020dc5c4Ei(char *c, int i);
+void _ZN11dScMgCoin_c19func_ov006_020dc6d0Ei(int o, int idx);
+void _ZN11dScMgCoin_c19func_ov006_020dcffcEv(void);              /* one-argument slot, bx lr body */
+void _ZN11dScMgCoin_c19func_ov006_020dd000Ei(char *c, int i);
+void _ZN11dScMgCoin_c19func_ov006_020dd0e0Ei(char *c, int i);    /* THE TOUCH STATE, see header */
+void _ZN11dScMgCoin_c19func_ov006_020dd658Ei(char *self, int i);
+void _ZN11dScMgCoin_c19func_ov006_020dd7bcEv(void);              /* one-argument slot, bx lr body */
+void _ZN11dScMgCoin_c19func_ov006_020dd7c0Ei(char *thiz, int index);
+void _ZN11dScMgCoin_c19func_ov006_020dd880Ei(char *c, int i);
+void _ZN11dScMgCoin_c19func_ov006_020dda94Ei(char *self, int i);
+void _ZN11dScMgCoin_c19func_ov006_020ddca0Ei(char *c, int i);
+void _ZN11dScMgCoin_c19func_ov006_020de0e0Ev(char *self);
+void _ZN11dScMgCoin_c19func_ov006_020de1d4Ev(char *c);
+void _ZN11dScMgCoin_c19func_ov006_020de584Ev(void *a);
+void _ZN11dScMgCoin_c19func_ov006_020de5acEv(void);              /* zero-argument slot, bx lr body */
 
 /* the five mount tables, re-typed to the ROM's eight-byte pair. The mount
    defines the storage; __sinit_ov006_0213014c fills it at scene load. */
@@ -188,11 +188,11 @@ extern MgPmf data_ov006_02141840[];
 /* the ordinary callees the host copies below keep, each spelled as its own src
    TU spells it */
 void _ZN5Sound12PlayBank2_2DEj(unsigned int);
-void func_ov006_020dde28(void *c, int index);
-void func_ov006_020dca04(void *c);
-void func_ov006_020dc348(void *c);
-void func_ov006_020dc900(void *c);
-void func_ov006_020dce3c(void *c);
+void _ZN11dScMgCoin_c19func_ov006_020dde28Ei(void *c, int index);
+void _ZN11dScMgCoin_c19func_ov006_020dca04Ev(void *c);
+void _ZN11dScMgCoin_c19func_ov006_020dc348Ev(void *c);
+void _ZN11dScMgCoin_c19func_ov006_020dc900Ev(void *c);
+void _ZN11dScMgCoin_c19func_ov006_020dce3cEv(void *c);
 void func_ov004_020b0cac(int c, int a1, int a2, int a3, int arg5, short arg6);
 void func_ov004_020ae274(void *c);
 void func_ov004_020adb1c(int arg);
@@ -212,12 +212,12 @@ extern char *func_020beb68;
    and their host copies are gone. The declarations stay, at the same C linkage
    and the same signatures, because the seat's faces name both -- 020de26c is
    slot 3 of the seated data_ov006_02141810. */
-void func_ov006_020dd2cc(void *c);
-void func_ov006_020ddd6c(char *thiz);
-void func_ov006_020dc298(void *self);
-void func_ov006_020dc754(void *self);
-void func_ov006_020de26c(char *self);
-void func_ov006_020de440(char *c);
+void _ZN11dScMgCoin_c19func_ov006_020dd2ccEv(void *c);
+void _ZN11dScMgCoin_c19func_ov006_020ddd6cEv(char *thiz);
+void _ZN11dScMgCoin_c19func_ov006_020dc298Ev(void *self);
+void _ZN11dScMgCoin_c19func_ov006_020dc754Ev(void *self);
+void _ZN11dScMgCoin_c19func_ov006_020de26cEv(char *self);
+void _ZN11dScMgCoin_c19func_ov006_020de440Ev(char *c);
 
 /* the boot installer at the end of this file; hal/scene_mg.cpp calls it after
    the ov006 constructors have filled the tables. */
@@ -243,12 +243,12 @@ static int coin_try_0(void *self, unsigned code)
 {
     char *c = (char *)self;
     switch (code) {
-    case 0x020de0e0u: func_ov006_020de0e0(c); return 1;
-    case 0x020de1d4u: func_ov006_020de1d4(c); return 1;
-    case 0x020de26cu: func_ov006_020de26c(c); return 1;   /* host copy below */
-    case 0x020de440u: func_ov006_020de440(c); return 1;   /* host copy below */
-    case 0x020de584u: func_ov006_020de584(c); return 1;
-    case 0x020de5acu: func_ov006_020de5ac();  return 1;   /* (void) body */
+    case 0x020de0e0u: _ZN11dScMgCoin_c19func_ov006_020de0e0Ev(c); return 1;
+    case 0x020de1d4u: _ZN11dScMgCoin_c19func_ov006_020de1d4Ev(c); return 1;
+    case 0x020de26cu: _ZN11dScMgCoin_c19func_ov006_020de26cEv(c); return 1;   /* host copy below */
+    case 0x020de440u: _ZN11dScMgCoin_c19func_ov006_020de440Ev(c); return 1;   /* host copy below */
+    case 0x020de584u: _ZN11dScMgCoin_c19func_ov006_020de584Ev(c); return 1;
+    case 0x020de5acu: _ZN11dScMgCoin_c19func_ov006_020de5acEv();  return 1;   /* (void) body */
     default:                                  return 0;
     }
 }
@@ -261,27 +261,27 @@ static int coin_try_1(void *self, unsigned code, int a)
     /* THE TOUCH STATE. (class base, coin index), the order func_ov006_020dd2cc
        passes them in the ROM; see the header for the disassembly. */
     case 0x020dd0e0u: ++g_coin_touch_calls;
-                      func_ov006_020dd0e0(c, a);  return 1;
-    case 0x020dd000u: func_ov006_020dd000(c, a);  return 1;
-    case 0x020dcffcu: func_ov006_020dcffc();      return 1;  /* (void) body */
+                      _ZN11dScMgCoin_c19func_ov006_020dd0e0Ei(c, a);  return 1;
+    case 0x020dd000u: _ZN11dScMgCoin_c19func_ov006_020dd000Ei(c, a);  return 1;
+    case 0x020dcffcu: _ZN11dScMgCoin_c19func_ov006_020dcffcEv();      return 1;  /* (void) body */
     /* data_ov006_021417c8 */
-    case 0x020dc294u: func_ov006_020dc294();      return 1;  /* (void) body */
-    case 0x020dc1c4u: func_ov006_020dc1c4(c, a);  return 1;
-    case 0x020dc154u: func_ov006_020dc154(c, a);  return 1;
-    case 0x020dbf7cu: func_ov006_020dbf7c(c, a);  return 1;
+    case 0x020dc294u: _ZN11dScMgCoin_c19func_ov006_020dc294Ev();      return 1;  /* (void) body */
+    case 0x020dc1c4u: _ZN11dScMgCoin_c19func_ov006_020dc1c4Ei(c, a);  return 1;
+    case 0x020dc154u: _ZN11dScMgCoin_c19func_ov006_020dc154Ei(c, a);  return 1;
+    case 0x020dbf7cu: _ZN11dScMgCoin_c19func_ov006_020dbf7cEi(c, a);  return 1;
     /* data_ov006_021417e8 */
-    case 0x020dc6d0u: func_ov006_020dc6d0((int)(size_t)c, a); return 1;
-    case 0x020dc5c4u: func_ov006_020dc5c4(c, a);  return 1;
-    case 0x020dc4c8u: func_ov006_020dc4c8(c, a);  return 1;
-    case 0x020dc4b0u: func_ov006_020dc4b0(c, a);  return 1;
-    case 0x020dc414u: func_ov006_020dc414(c, a);  return 1;
+    case 0x020dc6d0u: _ZN11dScMgCoin_c19func_ov006_020dc6d0Ei((int)(size_t)c, a); return 1;
+    case 0x020dc5c4u: _ZN11dScMgCoin_c19func_ov006_020dc5c4Ei(c, a);  return 1;
+    case 0x020dc4c8u: _ZN11dScMgCoin_c19func_ov006_020dc4c8Ei(c, a);  return 1;
+    case 0x020dc4b0u: _ZN11dScMgCoin_c19func_ov006_020dc4b0Ei(c, a);  return 1;
+    case 0x020dc414u: _ZN11dScMgCoin_c19func_ov006_020dc414Ei(c, a);  return 1;
     /* data_ov006_02141840 */
-    case 0x020ddca0u: func_ov006_020ddca0(c, a);  return 1;
-    case 0x020dda94u: func_ov006_020dda94(c, a);  return 1;
-    case 0x020dd880u: func_ov006_020dd880(c, a);  return 1;
-    case 0x020dd7c0u: func_ov006_020dd7c0(c, a);  return 1;
-    case 0x020dd7bcu: func_ov006_020dd7bc();      return 1;  /* (void) body */
-    case 0x020dd658u: func_ov006_020dd658(c, a);  return 1;
+    case 0x020ddca0u: _ZN11dScMgCoin_c19func_ov006_020ddca0Ei(c, a);  return 1;
+    case 0x020dda94u: _ZN11dScMgCoin_c19func_ov006_020dda94Ei(c, a);  return 1;
+    case 0x020dd880u: _ZN11dScMgCoin_c19func_ov006_020dd880Ei(c, a);  return 1;
+    case 0x020dd7c0u: _ZN11dScMgCoin_c19func_ov006_020dd7c0Ei(c, a);  return 1;
+    case 0x020dd7bcu: _ZN11dScMgCoin_c19func_ov006_020dd7bcEv();      return 1;  /* (void) body */
+    case 0x020dd658u: _ZN11dScMgCoin_c19func_ov006_020dd658Ei(c, a);  return 1;
     default:                                      return 0;
     }
 }
@@ -494,29 +494,29 @@ extern "C" unsigned port_mg_coin_touch_calls(void)
 
 /* data_ov006_021417b0, arity 1. Slot 0 is the touch state and carries the
    count hal/scene_mg.cpp prints, so it is written out rather than generated. */
-static void __fastcall cn_func_ov006_020dd0e0(void *self, void *dead_edx, int i)
+static void __fastcall cn__ZN11dScMgCoin_c19func_ov006_020dd0e0Ei(void *self, void *dead_edx, int i)
 {
     (void)dead_edx;
     ++g_coin_state_hits;
     ++g_coin_touch_calls;
-    func_ov006_020dd0e0((char *)self, i);
+    _ZN11dScMgCoin_c19func_ov006_020dd0e0Ei((char *)self, i);
 }
-CN_FACE1(func_ov006_020dd000, (char *))
-CN_FACE1_VOID(func_ov006_020dcffc)
+CN_FACE1(_ZN11dScMgCoin_c19func_ov006_020dd000Ei, (char *))
+CN_FACE1_VOID(_ZN11dScMgCoin_c19func_ov006_020dcffcEv)
 /* data_ov006_02141810, arity 0 */
-CN_FACE0_VOID(func_ov006_020de5ac)
-CN_FACE0(func_ov006_020de584, (char *))
-CN_FACE0(func_ov006_020de440, (char *))
-CN_FACE0(func_ov006_020de26c, (char *))
-CN_FACE0(func_ov006_020de1d4, (char *))
-CN_FACE0(func_ov006_020de0e0, (char *))
+CN_FACE0_VOID(_ZN11dScMgCoin_c19func_ov006_020de5acEv)
+CN_FACE0(_ZN11dScMgCoin_c19func_ov006_020de584Ev, (char *))
+CN_FACE0(_ZN11dScMgCoin_c19func_ov006_020de440Ev, (char *))
+CN_FACE0(_ZN11dScMgCoin_c19func_ov006_020de26cEv, (char *))
+CN_FACE0(_ZN11dScMgCoin_c19func_ov006_020de1d4Ev, (char *))
+CN_FACE0(_ZN11dScMgCoin_c19func_ov006_020de0e0Ev, (char *))
 /* data_ov006_02141840, arity 1 */
-CN_FACE1(func_ov006_020ddca0, (char *))
-CN_FACE1(func_ov006_020dda94, (char *))
-CN_FACE1(func_ov006_020dd880, (char *))
-CN_FACE1(func_ov006_020dd7c0, (char *))
-CN_FACE1_VOID(func_ov006_020dd7bc)
-CN_FACE1(func_ov006_020dd658, (char *))
+CN_FACE1(_ZN11dScMgCoin_c19func_ov006_020ddca0Ei, (char *))
+CN_FACE1(_ZN11dScMgCoin_c19func_ov006_020dda94Ei, (char *))
+CN_FACE1(_ZN11dScMgCoin_c19func_ov006_020dd880Ei, (char *))
+CN_FACE1(_ZN11dScMgCoin_c19func_ov006_020dd7c0Ei, (char *))
+CN_FACE1_VOID(_ZN11dScMgCoin_c19func_ov006_020dd7bcEv)
+CN_FACE1(_ZN11dScMgCoin_c19func_ov006_020dd658Ei, (char *))
 
 /* run link100 lane SEAT4: this class's remaining state tables are
    seated in port/hal/pmf_seat4.cpp, from inside this installer, so the
@@ -540,23 +540,23 @@ extern "C" void port_mg_coin_states_seat(void)
         unsigned rom;
         void *face;
     } seats[] = {
-        {data_ov006_021417b0, "021417b0", 0, 0x020dd0e0u, (void *)cn_func_ov006_020dd0e0},
-        {data_ov006_021417b0, "021417b0", 1, 0x020dd000u, (void *)cn_func_ov006_020dd000},
-        {data_ov006_021417b0, "021417b0", 2, 0x020dcffcu, (void *)cn_func_ov006_020dcffc},
+        {data_ov006_021417b0, "021417b0", 0, 0x020dd0e0u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dd0e0Ei},
+        {data_ov006_021417b0, "021417b0", 1, 0x020dd000u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dd000Ei},
+        {data_ov006_021417b0, "021417b0", 2, 0x020dcffcu, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dcffcEv},
 
-        {data_ov006_02141810, "02141810", 0, 0x020de5acu, (void *)cn_func_ov006_020de5ac},
-        {data_ov006_02141810, "02141810", 1, 0x020de584u, (void *)cn_func_ov006_020de584},
-        {data_ov006_02141810, "02141810", 2, 0x020de440u, (void *)cn_func_ov006_020de440},
-        {data_ov006_02141810, "02141810", 3, 0x020de26cu, (void *)cn_func_ov006_020de26c},
-        {data_ov006_02141810, "02141810", 4, 0x020de1d4u, (void *)cn_func_ov006_020de1d4},
-        {data_ov006_02141810, "02141810", 5, 0x020de0e0u, (void *)cn_func_ov006_020de0e0},
+        {data_ov006_02141810, "02141810", 0, 0x020de5acu, (void *)cn__ZN11dScMgCoin_c19func_ov006_020de5acEv},
+        {data_ov006_02141810, "02141810", 1, 0x020de584u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020de584Ev},
+        {data_ov006_02141810, "02141810", 2, 0x020de440u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020de440Ev},
+        {data_ov006_02141810, "02141810", 3, 0x020de26cu, (void *)cn__ZN11dScMgCoin_c19func_ov006_020de26cEv},
+        {data_ov006_02141810, "02141810", 4, 0x020de1d4u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020de1d4Ev},
+        {data_ov006_02141810, "02141810", 5, 0x020de0e0u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020de0e0Ev},
 
-        {data_ov006_02141840, "02141840", 0, 0x020ddca0u, (void *)cn_func_ov006_020ddca0},
-        {data_ov006_02141840, "02141840", 1, 0x020dda94u, (void *)cn_func_ov006_020dda94},
-        {data_ov006_02141840, "02141840", 2, 0x020dd880u, (void *)cn_func_ov006_020dd880},
-        {data_ov006_02141840, "02141840", 3, 0x020dd7c0u, (void *)cn_func_ov006_020dd7c0},
-        {data_ov006_02141840, "02141840", 4, 0x020dd7bcu, (void *)cn_func_ov006_020dd7bc},
-        {data_ov006_02141840, "02141840", 5, 0x020dd658u, (void *)cn_func_ov006_020dd658},
+        {data_ov006_02141840, "02141840", 0, 0x020ddca0u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020ddca0Ei},
+        {data_ov006_02141840, "02141840", 1, 0x020dda94u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dda94Ei},
+        {data_ov006_02141840, "02141840", 2, 0x020dd880u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dd880Ei},
+        {data_ov006_02141840, "02141840", 3, 0x020dd7c0u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dd7c0Ei},
+        {data_ov006_02141840, "02141840", 4, 0x020dd7bcu, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dd7bcEv},
+        {data_ov006_02141840, "02141840", 5, 0x020dd658u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dd658Ei},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {

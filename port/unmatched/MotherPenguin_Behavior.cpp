@@ -61,8 +61,8 @@
  * it assembles to the same `bl 0x0211235c` either way, which is exactly why
  * no byte gate ever caught this); the crossing is reported decomp-side.
  */
-#include "SkiLift.h"
-#include "Animation.h"
+#include "daObjSm_Lift_c.h"
+#include "dExtFrameCtrl_c.h"
 #include "daPgMthr_c.h"
 /* SYNC4: include/SkiLift.h used to carry MOTHER PENGUIN's layout under the
    misnamed header, which is what this transcription reads its fields out of.
@@ -96,10 +96,10 @@
 #define MP(f) (self->f)
 
 extern "C" {
-extern void _ZN9Animation7AdvanceEv(void*);
+extern void _ZN15dExtFrameCtrl_c7AdvanceEv(void*);
 extern void _ZN5dCc_c5ClearEv(void*);
 extern void _ZN5dCc_c6UpdateEv(void*);
-extern int func_ov018_02111d28(void*);
+extern int _ZN10daPgMthr_c19func_ov018_02111d28Ev(void*);
 extern void func_ov018_0211235c(void*);   /* ov018's own TICK DISPATCHER */
 }
 
@@ -107,11 +107,11 @@ extern "C" int port_mother_penguin_behavior(void *selfv)
 {
   daPgMthr_c *self = (daPgMthr_c *)selfv;
   func_ov018_0211235c((char*)self);
-  _ZN9Animation7AdvanceEv((char*)(Animation *)&MP(mModelAnim));
-  _ZN9Animation7AdvanceEv((char*)&MP(mTextureSequence));
+  _ZN15dExtFrameCtrl_c7AdvanceEv((char*)(dExtFrameCtrl_c *)&MP(mModelAnim));
+  _ZN15dExtFrameCtrl_c7AdvanceEv((char*)&MP(mTextureSequence));
   _ZN5dCc_c5ClearEv((char*)&MP(mdCcAc_c));
   _ZN5dCc_c6UpdateEv((char*)&MP(mdCcAc_c));
   MP(mModelAnim).ModelAnim::UpdateVerts();
-  func_ov018_02111d28(((char*)self));
+  _ZN10daPgMthr_c19func_ov018_02111d28Ev(((char*)self));
   return 1;
 }

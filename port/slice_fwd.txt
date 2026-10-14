@@ -332,18 +332,18 @@
 # ===========================================================================
 port/hal/fwd_forwarders.cpp
 src/game/actors/d_a_obj_bk_dossunbar.cpp
-src/_ZN10BowserFire8BehaviorEv.cpp
-src/_ZN9JetStream8BehaviorEv.cpp
-src/_ZN6Dorrie8BehaviorEv.cpp
-src/_ZN5Whomp8BehaviorEv.cpp
-src/_ZN9MontyMole8BehaviorEv.cpp
-src/_ZN22RotatingUpDownPlatform8BehaviorEv.cpp
-src/_ZN6Cannon8BehaviorEv.cpp
-src/_ZN4Fish8BehaviorEv.cpp
+src/actors/daKpaFire_c.cpp
+src/actors/daWater_Hakidasi_c.cpp
+src/actors/daDossy_c.cpp
+src/game/actors/d_a_btn.cpp
+src/actors/daChoropu_c.cpp
+src/game/actors/d_a_linelift2.cpp
+src/game/actors/d_a_cnn.cpp
+src/game/actors/d_a_fish.cpp
 # ---- gate 2 ----
-src/_ZN12MetalNetLift8BehaviorEv.cpp
-src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_c8BehaviorEv.cpp
-src/func_ov006_0212a2e0.cpp
+src/actors/daObjFl_Amilift_c.cpp
+src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp
+src/actors/dScMgSnowball_c.cpp
 # ---- gate 3: the trampoline pair ----
-src/func_ov006_020cf758.cpp
-src/func_ov006_020cea2c.cpp
+src/actors/unit020cd744.cpp
+# FOLDED into src/actors/unit020cd744.cpp (row 348): src/func_ov006_020cea2c.cpp

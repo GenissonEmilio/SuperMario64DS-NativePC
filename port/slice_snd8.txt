@@ -37,36 +37,36 @@
 # and R8 does not link without them. Measured with port/tools/closure.py over
 # the whole set before a line was written. R6's real content -- DS sound CAPTURE
 # and the 24-tap echo DSP, which the host mixer models nowhere -- is untouched.
-src/func_020508a0.c
-src/func_020522c4.c
-src/func_0204fda4.cpp
-src/func_0204fde8.c
-src/func_0204fe5c.c
-src/func_0204ff9c.c
-src/func_0204ffcc.c
-src/func_02050008.c
-src/func_020520a4.c
-src/func_020520dc.c
-src/func_0205212c.cpp
-src/func_02052208.c
-src/func_0205aa68.c
-src/func_0205b63c.c
+src/engine/sound/SoundEngine.cpp
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_020522c4.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_0204fda4.cpp
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_0204fde8.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_0204fe5c.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_0204ff9c.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_0204ffcc.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_02050008.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_020520a4.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_020520dc.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_0205212c.cpp
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_02052208.c
+src/unnamed/arm9/0205/func_0205aa68.c
+src/unnamed/arm9/0205/func_0205b63c.c
 # The stop path the two frame bodies reach, listed apart because of where the
 # scout put it (see above).
-src/func_0205abb8.c
-src/func_0204f0b8.c
-src/func_0204f11c.c
-src/func_0204f15c.c
-src/func_020502b8.c
-src/func_0205a958.c
-src/func_0205aa9c.c
-src/func_0205b504.c
+src/unnamed/arm9/0205/func_0205abb8.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_0204f0b8.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_0204f11c.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_0204f15c.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_020502b8.c
+src/unnamed/arm9/0205/func_0205a958.c
+src/unnamed/arm9/0205/func_0205aa9c.c
+src/unnamed/arm9/0205/func_0205b504.c
 
 # ---------------------------------------------------------------------------
 # R9: the ROM's own sound frame, whole. Four transcribed lines in
 # hal/sdat/consumer.cpp become this call, and the two SKIPs inside it become
 # the two TUs above.
-src/func_0204f03c.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 40): src/func_0204f03c.c
 
 # ---------------------------------------------------------------------------
 # R10: THE UNDERWATER MUSIC FILTER, which this port has never had.
@@ -87,9 +87,9 @@ src/func_0204f03c.c
 # no `from:` row exists anywhere in 0x020821f0..0x02082214), so they are read
 # out of the cartridge by port/tools/romdata.py's NAMED list rather than
 # written down.
-src/func_020494cc.c
-src/func_020490b0.cpp
-src/func_020132d8.cpp
+src/unnamed/arm9/0204/func_020494cc.c
+src/unnamed/arm9/0204/func_020490b0.cpp
+src/engine/sound/Sound.cpp
 
 # NOT HERE, and each one has a reason rather than an omission.
 #

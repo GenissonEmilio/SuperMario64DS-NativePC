@@ -167,33 +167,33 @@ extern PortPmf data_ov060_0211af74[];
 extern PortPmf data_ov060_0211afb4[];
 
 /* ---- every state body, all matched src (cdecl, `this` by argument) ------- */
-void func_ov060_021128c0(char *c);
-void func_ov060_02112724(char *c);
-void func_ov060_021125f0(char *c);
+void _ZN7daKpa_c19func_ov060_021128c0Ev(char *c);
+void _ZN7daKpa_c19func_ov060_02112724Ev(char *c);
+void _ZN7daKpa_c19func_ov060_021125f0Ev(char *c);
 
-void func_ov060_02114f88(char *c);
-void func_ov060_02113b5c(char *c);
-void func_ov060_02113740(char *c);
-void func_ov060_02113710(char *c);
-void func_ov060_02112ddc(char *c);
-void func_ov060_021154e8(char *c);
-void func_ov060_021153f8(char *c);
-void func_ov060_02113d8c(char *c);
-void func_ov060_02114858(char *c);
-void func_ov060_021142b4(char *c);
-void func_ov060_02113fcc(char *c);
-void func_ov060_021146d0(char *c);
-void func_ov060_021143b8(char *c);
-void func_ov060_02114d08(char *c);
-void func_ov060_02114e9c(char *c);
-void func_ov060_02114b60(char *c);
-void func_ov060_02114300(char *c);
-void func_ov060_02114ff8(char *c);
-void func_ov060_02112bfc(char *c);
+void _ZN7daKpa_c19func_ov060_02114f88Ev(char *c);
+void _ZN7daKpa_c19func_ov060_02113b5cEv(char *c);
+void _ZN7daKpa_c19func_ov060_02113740Ev(char *c);
+void _ZN7daKpa_c19func_ov060_02113710Ev(char *c);
+void _ZN7daKpa_c19func_ov060_02112ddcEv(char *c);
+void _ZN7daKpa_c19func_ov060_021154e8Ev(char *c);
+void _ZN7daKpa_c19func_ov060_021153f8Ev(char *c);
+void _ZN7daKpa_c19func_ov060_02113d8cEv(char *c);
+void _ZN7daKpa_c19func_ov060_02114858Ev(char *c);
+void _ZN7daKpa_c19func_ov060_021142b4Ev(char *c);
+void _ZN7daKpa_c19func_ov060_02113fccEv(char *c);
+void _ZN7daKpa_c19func_ov060_021146d0Ev(char *c);
+void _ZN7daKpa_c19func_ov060_021143b8Ev(char *c);
+void _ZN7daKpa_c19func_ov060_02114d08Ev(char *c);
+void _ZN7daKpa_c19func_ov060_02114e9cEv(char *c);
+void _ZN7daKpa_c19func_ov060_02114b60Ev(char *c);
+void _ZN7daKpa_c19func_ov060_02114300Ev(char *c);
+void _ZN7daKpa_c19func_ov060_02114ff8Ev(char *c);
+void _ZN7daKpa_c19func_ov060_02112bfcEv(char *c);
 
-void func_ov060_02115d68(char *c);
-void func_ov060_02115d50(char *c);
-void func_ov060_02115c1c(char *c);
+void _ZN11daKpaTail_c19func_ov060_02115d68Ev(char *c);
+void _ZN11daKpaTail_c19func_ov060_02115d50Ev(char *c);
+void _ZN11daKpaTail_c19func_ov060_02115c1cEv(char *c);
 
 void func_ov060_0211747c(char *c);
 void func_ov060_021169f8(char *c);
@@ -214,14 +214,14 @@ void func_ov060_02116f74(char *c);
 void func_ov060_0211722c(char *c);
 void func_ov060_021171e8(char *c);
 
-void func_ov060_02118970(char *c);
-void func_ov060_021188e8(char *c);
-void func_ov060_02118834(char *c);
-void func_ov060_02118728(char *c);
+void _ZN9daKirai_c19func_ov060_02118970Ev(char *c);
+void _ZN9daKirai_c19func_ov060_021188e8Ev(char *c);
+void _ZN9daKirai_c19func_ov060_02118834Ev(char *c);
+void _ZN9daKirai_c19func_ov060_02118728Ev(char *c);
 
-void func_ov060_021181b4(char *c);
-void func_ov060_021180e0(char *c);
-void func_ov060_02117db8(char *c);
+void _ZN10daKpa3Bg_c19func_ov060_021181b4Ev(char *c);
+void _ZN10daKpa3Bg_c19func_ov060_021180e0Ev(char *c);
+void _ZN10daKpa3Bg_c19func_ov060_02117db8Ev(char *c);
 
 /* what the five host copies below called; all five are retired, and the
    declarations stay as the record of the pack's call surface, as HOST COPY 7's
@@ -234,7 +234,7 @@ void _ZN5dCc_c5ClearEv(void *cc);
 void _ZN5dCc_c6UpdateEv(void *cc);
 void _ZN10dBgActor_c21UpdateModelPosAndRotYEv(void *p);
 void _ZN10dBgActor_c19UpdateClsnPosAndRotEv(void *p);
-int _ZN11ShadowModel12InitCylinderEv(void *self);
+int _ZN17dExtShadowModel_c12InitCylinderEv(void *self);
 void _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(
     void *self, void *actor, int a, int b, unsigned c, unsigned d);
 void _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(
@@ -337,17 +337,17 @@ int _ZN6Player9GetHealthEv(void *self);        /* ov002 0x020bf548, thiscall
                                                   receiver, not the zero-arg
                                                   reader shape the
                                                   closestplayer guard hunts */
-int _ZNK9Animation12WillHitFrameEi(void *anim, int frame);   /* 0x02015a98 */
+int _ZNK15dExtFrameCtrl_c12WillHitFrameEi(void *anim, int frame);   /* 0x02015a98 */
 void _ZN8dActor_c13SpawnFireballERK7Vector3PK10Vector3_165Fix12IiES7_j(
     void *self, const void *pos, const void *rot, int horzSpeed, int unk35c,
     unsigned param1);                                        /* 0x020102b0 */
 void func_02012694(int id, void *pos);                       /* 0x02012694 */
-bool Bowser_IsAnimAtLastFrame(void *c);        /* ov060 0x02115a30 -- the
+bool _ZN7daKpa_c24Bowser_IsAnimAtLastFrameEv(void *c);        /* ov060 0x02115a30 -- the
                                                   matched TU returns bool, so
                                                   this decl says bool: an int
                                                   decl would read the undefined
                                                   high 24 bits of MSVC's al */
-void func_ov060_02111cc0(char *c, int idx, int fix);   /* ov060 0x02111cc0 --
+void _ZN7daKpa_c19func_ov060_02111cc0Eii(char *c, int idx, int fix);   /* ov060 0x02111cc0 --
                                                   THREE arguments: the ROM
                                                   callee reads r0/r1/r2 and the
                                                   matched TU spends r2 on its
@@ -412,7 +412,7 @@ static_assert(sizeof(PortPmf) == 8, "the ROM's dispatch record is 8 bytes");
  * before the retirement and every one is present.  The ov60_ran("BOWSER state
  * 9") trace call leaves with the host copy: the ROM's body carries no trace.
  */
-extern "C" void func_ov060_021140c0(char *c);
+extern "C" void _ZN7daKpa_c19func_ov060_021140c0Ev(char *c);
 
 /* ============ HOST COPY 1 IS RETIRED =====================================
  * run linkfull lane SEATS3. func_ov060_02112434, BOWSER's per-frame target /
@@ -551,15 +551,15 @@ extern "C" void func_ov060_021140c0(char *c);
    /vmg /vmm pointer-to-member call with the receiver in ECX and nothing
    pushed, so its four cells take faces like the tables below. ONE FACE PER
    CELL: cells 2 and 3 carry the SAME code word (0x021125f0). */
-OV60_FACE(aeb4, 0, func_ov060_021128c0)
-OV60_FACE(aeb4, 1, func_ov060_02112724)
-OV60_FACE(aeb4, 2, func_ov060_021125f0)
-OV60_FACE(aeb4, 3, func_ov060_021125f0)
+OV60_FACE(aeb4, 0, _ZN7daKpa_c19func_ov060_021128c0Ev)
+OV60_FACE(aeb4, 1, _ZN7daKpa_c19func_ov060_02112724Ev)
+OV60_FACE(aeb4, 2, _ZN7daKpa_c19func_ov060_021125f0Ev)
+OV60_FACE(aeb4, 3, _ZN7daKpa_c19func_ov060_021125f0Ev)
 
 /* data_ov060_0211ae9c -- BOWSER TAIL, three */
-OV60_FACE(ae9c, 0, func_ov060_02115d68)
-OV60_FACE(ae9c, 1, func_ov060_02115d50)
-OV60_FACE(ae9c, 2, func_ov060_02115c1c)
+OV60_FACE(ae9c, 0, _ZN11daKpaTail_c19func_ov060_02115d68Ev)
+OV60_FACE(ae9c, 1, _ZN11daKpaTail_c19func_ov060_02115d50Ev)
+OV60_FACE(ae9c, 2, _ZN11daKpaTail_c19func_ov060_02115c1cEv)
 
 /* data_ov060_0211af74 -- BOWSER FIRE init, eight */
 OV60_FACE(af74, 0, func_ov060_021167c8)
@@ -572,9 +572,9 @@ OV60_FACE(af74, 6, func_ov060_0211722c)
 OV60_FACE(af74, 7, func_ov060_021171e8)
 
 /* data_ov060_0211b1ac -- SKY PLATFORM, three */
-OV60_FACE(b1ac, 0, func_ov060_021181b4)
-OV60_FACE(b1ac, 1, func_ov060_021180e0)
-OV60_FACE(b1ac, 2, func_ov060_02117db8)
+OV60_FACE(b1ac, 0, _ZN10daKpa3Bg_c19func_ov060_021181b4Ev)
+OV60_FACE(b1ac, 1, _ZN10daKpa3Bg_c19func_ov060_021180e0Ev)
+OV60_FACE(b1ac, 2, _ZN10daKpa3Bg_c19func_ov060_02117db8Ev)
 
 /* data_ov060_0211afb4 -- BOWSER FIRE behaviour, eight. Run link100 lane FWD:
    HOST COPY 5 is gone and src/_ZN10BowserFire8BehaviorEv.cpp dispatches this
@@ -604,26 +604,26 @@ const Seat g_ov060_states[] = {
     {data_ov060_0211a518, 0x021125f0, (void *)ov60_aeb4_s2, "aeb4[2]"},
     {data_ov060_0211a520, 0x021125f0, (void *)ov60_aeb4_s3, "aeb4[3]"},
     /* 0x0211aed4 -- BOWSER, twenty */
-    {data_ov060_0211a568, 0x02114f88, (void *)func_ov060_02114f88, "aed4[0]"},
-    {data_ov060_0211a560, 0x02113b5c, (void *)func_ov060_02113b5c, "aed4[1]"},
-    {data_ov060_0211a538, 0x02113740, (void *)func_ov060_02113740, "aed4[2]"},
-    {data_ov060_0211a4e8, 0x02113710, (void *)func_ov060_02113710, "aed4[3]"},
-    {data_ov060_0211a4f0, 0x02112ddc, (void *)func_ov060_02112ddc, "aed4[4]"},
-    {data_ov060_0211a500, 0x021154e8, (void *)func_ov060_021154e8, "aed4[5]"},
-    {data_ov060_0211a540, 0x021153f8, (void *)func_ov060_021153f8, "aed4[6]"},
-    {data_ov060_0211a5b8, 0x02113d8c, (void *)func_ov060_02113d8c, "aed4[7]"},
-    {data_ov060_0211a5b0, 0x02114858, (void *)func_ov060_02114858, "aed4[8]"},
-    {data_ov060_0211a5a0, 0x021140c0, (void *)func_ov060_021140c0, "aed4[9] HOLE"},
-    {data_ov060_0211a5a8, 0x021142b4, (void *)func_ov060_021142b4, "aed4[10]"},
-    {data_ov060_0211a530, 0x02113fcc, (void *)func_ov060_02113fcc, "aed4[11]"},
-    {data_ov060_0211a508, 0x021146d0, (void *)func_ov060_021146d0, "aed4[12]"},
-    {data_ov060_0211a528, 0x021143b8, (void *)func_ov060_021143b8, "aed4[13]"},
-    {data_ov060_0211a598, 0x02114d08, (void *)func_ov060_02114d08, "aed4[14]"},
-    {data_ov060_0211a590, 0x02114e9c, (void *)func_ov060_02114e9c, "aed4[15]"},
-    {data_ov060_0211a588, 0x02114b60, (void *)func_ov060_02114b60, "aed4[16]"},
-    {data_ov060_0211a580, 0x02114300, (void *)func_ov060_02114300, "aed4[17]"},
-    {data_ov060_0211a4f8, 0x02114ff8, (void *)func_ov060_02114ff8, "aed4[18]"},
-    {data_ov060_0211a570, 0x02112bfc, (void *)func_ov060_02112bfc, "aed4[19]"},
+    {data_ov060_0211a568, 0x02114f88, (void *)_ZN7daKpa_c19func_ov060_02114f88Ev, "aed4[0]"},
+    {data_ov060_0211a560, 0x02113b5c, (void *)_ZN7daKpa_c19func_ov060_02113b5cEv, "aed4[1]"},
+    {data_ov060_0211a538, 0x02113740, (void *)_ZN7daKpa_c19func_ov060_02113740Ev, "aed4[2]"},
+    {data_ov060_0211a4e8, 0x02113710, (void *)_ZN7daKpa_c19func_ov060_02113710Ev, "aed4[3]"},
+    {data_ov060_0211a4f0, 0x02112ddc, (void *)_ZN7daKpa_c19func_ov060_02112ddcEv, "aed4[4]"},
+    {data_ov060_0211a500, 0x021154e8, (void *)_ZN7daKpa_c19func_ov060_021154e8Ev, "aed4[5]"},
+    {data_ov060_0211a540, 0x021153f8, (void *)_ZN7daKpa_c19func_ov060_021153f8Ev, "aed4[6]"},
+    {data_ov060_0211a5b8, 0x02113d8c, (void *)_ZN7daKpa_c19func_ov060_02113d8cEv, "aed4[7]"},
+    {data_ov060_0211a5b0, 0x02114858, (void *)_ZN7daKpa_c19func_ov060_02114858Ev, "aed4[8]"},
+    {data_ov060_0211a5a0, 0x021140c0, (void *)_ZN7daKpa_c19func_ov060_021140c0Ev, "aed4[9] HOLE"},
+    {data_ov060_0211a5a8, 0x021142b4, (void *)_ZN7daKpa_c19func_ov060_021142b4Ev, "aed4[10]"},
+    {data_ov060_0211a530, 0x02113fcc, (void *)_ZN7daKpa_c19func_ov060_02113fccEv, "aed4[11]"},
+    {data_ov060_0211a508, 0x021146d0, (void *)_ZN7daKpa_c19func_ov060_021146d0Ev, "aed4[12]"},
+    {data_ov060_0211a528, 0x021143b8, (void *)_ZN7daKpa_c19func_ov060_021143b8Ev, "aed4[13]"},
+    {data_ov060_0211a598, 0x02114d08, (void *)_ZN7daKpa_c19func_ov060_02114d08Ev, "aed4[14]"},
+    {data_ov060_0211a590, 0x02114e9c, (void *)_ZN7daKpa_c19func_ov060_02114e9cEv, "aed4[15]"},
+    {data_ov060_0211a588, 0x02114b60, (void *)_ZN7daKpa_c19func_ov060_02114b60Ev, "aed4[16]"},
+    {data_ov060_0211a580, 0x02114300, (void *)_ZN7daKpa_c19func_ov060_02114300Ev, "aed4[17]"},
+    {data_ov060_0211a4f8, 0x02114ff8, (void *)_ZN7daKpa_c19func_ov060_02114ff8Ev, "aed4[18]"},
+    {data_ov060_0211a570, 0x02112bfc, (void *)_ZN7daKpa_c19func_ov060_02112bfcEv, "aed4[19]"},
     /* 0x0211ae9c -- BOWSER TAIL, three */
     {data_ov060_0211a558, 0x02115d68, (void *)ov60_ae9c_s0, "ae9c[0]"},
     {data_ov060_0211a550, 0x02115d50, (void *)ov60_ae9c_s1, "ae9c[1]"},
@@ -649,10 +649,10 @@ const Seat g_ov060_states[] = {
     {data_ov060_0211a7a4, 0x0211722c, (void *)ov60_af74_s6, "af74[6]"},
     {data_ov060_0211a79c, 0x021171e8, (void *)ov60_af74_s7, "af74[7]"},
     /* 0x0211b1d8 -- SPIKE BOMB, four */
-    {data_ov060_0211aa30, 0x02118970, (void *)func_ov060_02118970, "b1d8[0]"},
-    {data_ov060_0211aa48, 0x021188e8, (void *)func_ov060_021188e8, "b1d8[1]"},
-    {data_ov060_0211aa40, 0x02118834, (void *)func_ov060_02118834, "b1d8[2]"},
-    {data_ov060_0211aa38, 0x02118728, (void *)func_ov060_02118728, "b1d8[3]"},
+    {data_ov060_0211aa30, 0x02118970, (void *)_ZN9daKirai_c19func_ov060_02118970Ev, "b1d8[0]"},
+    {data_ov060_0211aa48, 0x021188e8, (void *)_ZN9daKirai_c19func_ov060_021188e8Ev, "b1d8[1]"},
+    {data_ov060_0211aa40, 0x02118834, (void *)_ZN9daKirai_c19func_ov060_02118834Ev, "b1d8[2]"},
+    {data_ov060_0211aa38, 0x02118728, (void *)_ZN9daKirai_c19func_ov060_02118728Ev, "b1d8[3]"},
     /* 0x0211b1ac -- SKY PLATFORM, three (sinit copy order) */
     {data_ov060_0211a938, 0x021181b4, (void *)ov60_b1ac_s0, "b1ac[0]"},
     {data_ov060_0211a940, 0x021180e0, (void *)ov60_b1ac_s1, "b1ac[1]"},

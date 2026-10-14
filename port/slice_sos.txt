@@ -156,33 +156,33 @@
 # but for the table declaration and the dispatch site.
 
 # ---- ov006: the class's own closure, minus the seven host copies -----------
-src/d_s_mg_bomroom.c
 src/actors/dScMgBomroom_c.cpp
-src/_ZN14dScMgBomroom_cD1Ev.cpp
+src/actors/dScMgBomroom_c.cpp
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/_ZN14dScMgBomroom_cD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN14dScMgBomroom_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN14dScMgBomroom_cD0Ev.cpp
-src/func_ov006_020d5ab0.cpp
-src/func_ov006_020d5b00.c
-src/func_ov006_020d5b10.c
-src/func_ov006_020d5c60.c
-src/func_ov006_020d5c88.c
-src/func_ov006_020d5d08.c
-src/func_ov006_020d5d90.c
-src/func_ov006_020d5dd4.c
-src/func_ov006_020d5dfc.cpp
-src/func_ov006_020d5e1c.c
-src/func_ov006_020d5e3c.c
-src/func_ov006_020d5e5c.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5ab0.cpp
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5b00.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5b10.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5c60.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5c88.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5d08.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5d90.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5dd4.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5dfc.cpp
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5e1c.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5e3c.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5e5c.c
 # HOST-COPIED (SOS): src/actors/dScMgBomroom_c.cpp -- table data_ov006_02141660, arity 1 (constant 0), member-pointer typed through an Entry wrapper
 # HOST-COPIED (SOS): src/actors/dScMgBomroom_c.cpp -- table data_ov006_021416c0, arity 1, member-pointer typed
 # HOST-COPIED (SOS): src/actors/dScMgBomroom_c.cpp -- table data_ov006_02141680, arity 1, member-pointer typed
 # HOST-COPIED (SOS): src/actors/dScMgBomroom_c.cpp -- table data_ov006_02141708, arity 1, member-pointer typed through an Entry wrapper; ALSO state slot 6 of 02141730
-src/func_ov006_020d7c4c.cpp
-src/func_ov006_020d7e7c.c
-src/func_ov006_020d7edc.c
-src/func_ov006_020d7f5c.c
-src/func_ov006_020d816c.c
-src/func_ov006_020d8324.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d7c4c.cpp
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d7e7c.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d7edc.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d7f5c.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d816c.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8324.c
 # HOST-COPIED (SOS): src/func_ov006_020d836c.cpp -- table data_ov006_02141730, arity 1, member-pointer typed
 # func_ov006_020d8408 is back (run linkfull, lane RS4PORT). SCENES2 (run link100
 # wave 10 round 2) host-copied it into port/unmatched/MgBomroom_Slot8408.c
@@ -190,21 +190,21 @@ src/func_ov006_020d8324.c
 # one-parameter cast, the second argument riding ARM r1 (scene 370 died at
 # func_ov006_020d66c4+0xc). main #3107 passes both; this is main's blob,
 # byte-identical under mwccarm 2004/b56, and the host copy is retired.
-src/func_ov006_020d8408.c
-src/func_ov006_020d8904.c
-src/func_ov006_020d893c.c
-src/func_ov006_020d89c4.c
-src/func_ov006_020d8af8.c
-src/func_ov006_020d8c88.c
-src/func_ov006_020d8cc4.cpp
-src/func_ov006_020d8d84.c
-src/func_ov006_020d8f34.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8408.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8904.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d893c.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d89c4.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8af8.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8c88.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8cc4.cpp
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8d84.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8f34.c
 # HOST-COPIED (SOS): src/func_ov006_020d8f98.cpp -- table data_ov006_021416a0, arity 0, OPEN-CODED IN INTS; neither the link nor a member-pointer source sweep can see it. ALSO state slot 3 of 021416e0
-src/func_ov006_020d8ff4.c
-src/func_ov006_020d9020.c
-src/func_ov006_020d904c.c
-src/func_ov006_020d907c.c
-src/_ZN14dScMgBomroom_c13OnYoshiTryEatEi.cpp
-src/_ZN14dScMgBomroom_c6RenderEv.cpp
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8ff4.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d9020.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d904c.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d907c.c
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/_ZN14dScMgBomroom_c13OnYoshiTryEatEi.cpp
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/_ZN14dScMgBomroom_c6RenderEv.cpp
 # HOST-COPIED (SOS): src/_ZN14dScMgBomroom_c8BehaviorEv.cpp -- table data_ov006_021416e0, arity 0, member-pointer typed; VTABLE SLOT 6, Behavior
-src/_ZN14dScMgBomroom_c13InitResourcesEv.cpp
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/_ZN14dScMgBomroom_c13InitResourcesEv.cpp

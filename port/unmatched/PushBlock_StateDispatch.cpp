@@ -61,12 +61,12 @@ struct PortPushBlockEntry { PortPushBlockPair enter, tick; int gap; };
 extern PortPushBlockEntry data_ov002_021097bc[3];
 
 /* the six matched state bodies (slice_gate200.txt) */
-void func_ov002_020b96c0(void *c);   /* entry 0 enter */
-void func_ov002_020b94c4(void *c);   /* entry 0 tick  */
-void func_ov002_020b9450(void *c);   /* entry 1 enter */
-void func_ov002_020b92c4(void *c);   /* entry 1 tick  */
-void func_ov002_020b92b8(void *c);   /* entry 2 enter */
-void func_ov002_020b91fc(void *c);   /* entry 2 tick  */
+void _ZN18daObjPowerUpItem_c13BeginLaunchedEv(void *c);   /* entry 0 enter */
+void _ZN18daObjPowerUpItem_c13StateLaunchedEv(void *c);   /* entry 0 tick  */
+void _ZN18daObjPowerUpItem_c12BeginOpeningEv(void *c);   /* entry 1 enter */
+void _ZN18daObjPowerUpItem_c12StateOpeningEv(void *c);   /* entry 1 tick  */
+void _ZN18daObjPowerUpItem_c12BeginRestingEv(void *c);   /* entry 2 enter */
+void _ZN18daObjPowerUpItem_c12StateRestingEv(void *c);   /* entry 2 tick  */
 
 /* Seat the six dest fn words the sinit filled with DS addresses. Called from
    hal_fill_pushblock_vtable (registration runs after the ov002 sinit chain).
@@ -80,12 +80,12 @@ void port_pushblock_states_seat(void)
     done = 1;
     static const struct { unsigned entry, half, rom; void (*host)(void *); }
     seats[] = {
-        {0, 0, 0x020b96c0, func_ov002_020b96c0},
-        {0, 1, 0x020b94c4, func_ov002_020b94c4},
-        {1, 0, 0x020b9450, func_ov002_020b9450},
-        {1, 1, 0x020b92c4, func_ov002_020b92c4},
-        {2, 0, 0x020b92b8, func_ov002_020b92b8},
-        {2, 1, 0x020b91fc, func_ov002_020b91fc},
+        {0, 0, 0x020b96c0, _ZN18daObjPowerUpItem_c13BeginLaunchedEv},
+        {0, 1, 0x020b94c4, _ZN18daObjPowerUpItem_c13StateLaunchedEv},
+        {1, 0, 0x020b9450, _ZN18daObjPowerUpItem_c12BeginOpeningEv},
+        {1, 1, 0x020b92c4, _ZN18daObjPowerUpItem_c12StateOpeningEv},
+        {2, 0, 0x020b92b8, _ZN18daObjPowerUpItem_c12BeginRestingEv},
+        {2, 1, 0x020b91fc, _ZN18daObjPowerUpItem_c12StateRestingEv},
     };
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
         PortPushBlockPair *p = seats[i].half

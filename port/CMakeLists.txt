@@ -406,45 +406,45 @@ set(PORT_HOSTGEN_TU
     src/GetPlayerFlagByte.c
     src/DecIfAbove0_Byte.c
     src/DecIfAbove0_Short.c
-    src/NumStars.c
+    src/engine/save/SaveData.cpp
     src/Vec3_HorzAngle.c
     src/Vec3_VertAngle.c
-    src/func_02020168.c
-    src/func_02020364.c
-    src/func_020201f0.c
+    src/unnamed/arm9/0202/func_02020168.c
+    src/unnamed/arm9/0202/func_02020364.c
+    src/unnamed/arm9/0202/func_020201f0.c
     src/GetLevelPart.c
-    src/func_0201a96c.c
-    src/func_0201a9ec.c
+    src/unnamed/arm9/0201/func_0201a96c.c
+    src/unnamed/arm9/0201/func_0201a9ec.c
     src/NumVsStarsObtained.c
-    src/func_ov007_020c3be0.c
+    src/unnamed/ov007/func_ov007_020c3be0.c
     src/IsAreaShowing.c
     src/IsPlayerWarping.c
     src/GetStarCameraSetting.c
-    src/func_02065138.c
-    src/func_0205b63c.c
-    src/func_02053f30.c
-    src/func_02053f58.c
-    src/func_02053f80.c
-    src/func_02053fa8.c
-    src/func_02054004.c
-    src/func_02054168.c
-    src/func_0205417c.c
+    src/unnamed/arm9/0206/func_02065138.c
+    src/unnamed/arm9/0205/func_0205b63c.c
+    src/unnamed/arm9/0205/func_02053f30.c
+    src/unnamed/arm9/0205/func_02053f58.c
+    src/unnamed/arm9/0205/func_02053f80.c
+    src/unnamed/arm9/0205/func_02053fa8.c
+    src/unnamed/arm9/0205/func_02054004.c
+    src/unnamed/arm9/0205/func_02054168.c
+    src/unnamed/arm9/0205/func_0205417c.c
     src/func_020456a0.c
-    src/CountStarsCollectedInLevelToDisplay.c
-    src/_ZN8dActor_c12ReflectAngleE5Fix12IiES1_s.cpp
-    src/_ZN8SaveData13GetCoinRecordEj.cpp
-    src/_ZN8SaveData26CountStarsCollectedInLevelEj.cpp
-    src/_ZN3OAM11GetObjWidthEii.cpp
-    src/_ZN3OAM12GetObjHeightEii.cpp
-    src/_ZN5dBgCh21ShouldPassThroughImplEPvRK4CLPSRKS_b.cpp
-    src/_ZN8dActor_c18HorzAngleToCPlayerEv.cpp
-    src/func_0201b100.c
+    src/engine/save/SaveData.cpp
+    src/actors/dActor_c.cpp
+    src/engine/save/SaveData.cpp
+    src/engine/save/SaveData.cpp
+    src/engine/oam/OAM.cpp
+    src/engine/oam/OAM.cpp
+    src/engine/collision/dBgW.cpp
+    src/actors/dActor_c.cpp
+    src/unnamed/arm9/0201/func_0201b100.c
     # run link100 wave 20, lane CAMSWIM3: the camera follow state. The
     # CAM_TERMS table in tools/hostgen.py traces the eye-height terms
     # (inert unless SM64DS_CAM_TERMS is set) and DS_SHIFT_FX carries the
     # host-arithmetic correction the trace found. src/ is untouched, and
     # the body in the link is still the ROM's, so linkage does not move.
-    src/func_02009e70.cpp
+    src/unnamed/arm9/0200/func_02009e70.cpp
     src/actors/Player.cpp
     src/actors/daBmb_c.cpp
     src/game/actors/d_a_ey_bm.cpp
@@ -453,7 +453,7 @@ set(PORT_HOSTGEN_TU
     src/actors/dScMgPanel_c.cpp
     port/unmatched/dScMgHanachan_c.cpp
     src/actors/dScMgRoulette_c.cpp
-    src/game/actors/d_a_bg_snwmn.cpp
+    src/actors/daBgSnwmn_c.cpp
     src/game/actors/d_a_propeller_heyho.cpp
     # DATA_C_LINKAGE, run link100, lane HOSTGEN4. The same defect as the three
     # ZTV rows above, one level out: each of these five translation units
@@ -468,10 +468,10 @@ set(PORT_HOSTGEN_TU
     # the DATA_C_LINKAGE block in tools/hostgen.py says why the block-scope half
     # cannot be fixed where it stands (MSVC C2598, measured).
     src/actors/dMgJump3DMario_c.cpp
-    src/_ZN9TowerStep13InitResourcesEv.cpp
+    src/actors/daObjBk_Lift_c.cpp
     src/game/actors/d_a_star_gate.cpp
-    src/_ZN10LavaSeesaw16CleanupResourcesEv.cpp
-    src/_ZN11ShadowModelD1Ev.cpp
+    src/actors/daObjFl_Seesaw_c.cpp
+    src/engine/model/dExtShadowModel_c.cpp
     # DATA_C_LINKAGE again, run link100 lane HOSTGEN4, the dBgW collision
     # callbacks. These thirteen translation units never CALL dBgW's two
     # callback bodies: func_020393d4 is handed the address and the mesh
@@ -486,19 +486,19 @@ set(PORT_HOSTGEN_TU
     # spelling and nothing new arrives. The fourteenth copy of the same
     # declaration is unmatched/Coffin_InitResources.cpp, a host copy, which
     # carries its own extern "C" instead.
-    src/func_ov002_020b5e58.cpp
-    src/_ZN13TTC_MovingBar13InitResourcesEv.cpp
-    src/_ZN16RotatingCogSmall13InitResourcesEv.cpp
-    src/func_ov002_020b676c.cpp
-    src/_ZN25RotatingUpDownPlatformUtm13InitResourcesEv.cpp
-    src/func_ov091_02133254.cpp
-    src/_ZN6ToxBox13InitResourcesEv.cpp
-    src/_ZN11PyramidLift13InitResourcesEv.cpp
-    src/_ZN11PyramidStep13InitResourcesEv.cpp
+    src/actors/daObjFloatBoard_c.cpp
+    src/actors/daObjCtKaitendai_c.cpp
+    src/actors/daObjCtMecha10_c.cpp
+    src/actors/daObjKaitendai_c.cpp
+    src/actors/daObjRotateUpdownLift_c.cpp
+    src/actors/daDsnBase_c.cpp
+    src/actors/daOnms_c.cpp
+    src/actors/daDpLift_c.cpp
+    src/actors/daObjDpBrock_c.cpp
     src/game/actors/d_a_obj_wc_obj04.cpp
-    src/_ZN8CccArena13InitResourcesEv.cpp
-    src/_ZN9SeesawBob13InitResourcesEv.cpp
-    src/_ZN6ShipUp13InitResourcesEv.cpp
+    src/actors/daObjEwbIce_c.cpp
+    src/actors/daObjSeesaw_c.cpp
+    src/game/actors/d_a_obj_ki_fune.cpp
     # VIRTUAL_CALL, run link100 lane HOSTGEN4: the WaterfallMist duplicate, one
     # of the six LNK2005 rows still on walk_window's link. Lane CAPSHOW's host
     # copy exists because daObjMarioCap_c::Behavior calls the cap's own
@@ -619,7 +619,7 @@ set(PORT_HOSTGEN_TU
     # than counted by eye. Compiled raw they would latch in the mapped I/O
     # window and never reach the PPU, which is what the substitution exists to
     # prevent and the same reason dScMgD3DBase_c is on this list.
-    src/_ZN11dScMgBase_c16OnAimedAtWithEggEv.cpp
+    src/minigames/d_s_mg_base.cpp
     # HOST_COPY_PARK, run link100 lane DUPES: the last three of walk_window's
     # five duplicate symbols. Each of these translation units defines a body
     # port/unmatched/ also defines under a standing PORT_HOST_ABI ruling, and
@@ -670,7 +670,7 @@ set(PORT_HOSTGEN_TU
     #
     # IRQ::SetIRQs pokes IME 0x4000208 and IE 0x4000210 through literal casts and
     # needs the MMIO routing, two rewrites.
-    src/_ZN14ArrowSignRight11OnAttacked1ER8dActor_c.cpp
+    src/actors/daObjYajirusi_c.cpp
     src/_ZN3IRQ7SetIRQsEj.cpp
     # Run link100, lane CRASH6. THE SIX VPTR STORES THAT ARE MEASURABLY WRONG,
     # and the first run-time conviction of the defect tools/vptr_addend_guard.py
@@ -812,7 +812,7 @@ set(PORT_HOSTGEN_TU
     # follow-up, the ov006 minigame scene family, and it is outside this lane's
     # brief rather than undecided. There is no surviving case anywhere in this
     # tree where +8 is correct.
-    src/game/actors/d_a_bar.cpp
+    src/actors/daBar_c.cpp
     src/game/actors/d_a_cam_tag.cpp
     src/game/actors/d_a_obj_km1_dorifu.cpp
     src/game/actors/d_a_obj_km2_fall_block.cpp
@@ -894,7 +894,7 @@ set(PORT_HOSTGEN_TU
     # now reaches it (the table's own comment has the measurement), so the
     # matched TU replaces unmatched/Ov002_CutsceneCmd_020f7780.c.
     # port/slice_w23_hostgen.txt names the row.
-    src/func_ov002_020f7780.c
+    src/actors/daDemo_c.cpp
     # run link100 wave 12, fixer FILESEL (card out/FILESEL1/card_filesel.md). The ov007
     # vector normalise the FILE SELECT runs twice a frame: matched on main by 7dba86b5d
     # (PR #2361), newly on slice_ov007.txt, and every one of its 24 register accesses is a
@@ -902,7 +902,7 @@ set(PORT_HOSTGEN_TU
     # mapped memory and the units are never told, so the row is substituted by the hostgen
     # copy, which routes all 24 through the NTR_MMIO proxy ntr/io.cpp emulates. No geometry
     # command port is involved, which is why this is here and not in TITEX_GX_SYMS.
-    src/func_ov007_020c368c.c)
+    src/unnamed/ov007/func_ov007_020c368c.c)
 
 # ---- run link100 lane SAMECLASS: THE SAME DROPPED-STORE DEFECT, ELEVEN MORE -
 #
@@ -1097,18 +1097,18 @@ option(SAMECLASS_BOOT_PLAIN
        "run link100 SAMECLASS: build the four boot 3D-setup TUs PLAIN (pre-fix arm)"
        OFF)
 set(SAMECLASS_GX_TU
-    src/func_ov007_020c19cc.c
-    src/func_ov075_0211a948.c
-    src/func_ov075_0211afb0.c
-    src/func_ov080_02125460.c
-    src/func_ov080_02125fd0.c
-    src/func_ov080_0212677c.c
-    src/_ZN11dScMiniGm_c13InitResourcesEv.cpp)
+    src/unnamed/ov007/func_ov007_020c19cc.c
+    src/unnamed/ov075/func_ov075_0211a948.c
+    src/unnamed/ov075/func_ov075_0211afb0.c
+    src/game/actors/d_a_pic_gate.cpp
+    src/game/actors/d_a_pic_gate.cpp
+    src/actors/daPicGate_c.cpp
+    src/actors/dScMiniGm_c.cpp)
 set(SAMECLASS_BOOT_TU
     src/Initialise3dGraphics.cpp
-    src/func_0205583c.c
-    src/func_020556d0.c
-    src/func_020554bc.c)
+    src/unnamed/arm9/0205/func_0205583c.c
+    src/unnamed/arm9/0205/func_020556d0.c
+    src/engine/gx/G3X.cpp)
 if(SAMECLASS_GX_PLAIN)
     message(STATUS "SAMECLASS: SAMECLASS_GX_PLAIN=ON -- the seven scene-local "
                    "geometry-port TUs build PLAIN. This is the PRE-FIX arm: "
@@ -1138,7 +1138,70 @@ endif()
 # hooks the strokes' ends to wrong, far away nodes. Routed like the other
 # whole-TU hostgen sources above; the ov007 SQRT drivers left out of the TITEX
 # set (func_ov007_020c30ac, func_ov007_020c7d60) are not touched here.
-list(APPEND PORT_HOSTGEN_TU src/func_ov007_020c31e0.c)
+list(APPEND PORT_HOSTGEN_TU src/unnamed/ov007/func_ov007_020c31e0.c)
+# The 2026-10 main merge folded per-function sources the hostgen lists below
+# name one by one into production TUs. Each such TU is substituted whole, here,
+# so every target that compiles any of its functions takes the one generated
+# copy (see port_hostgen_sym below and port/src_folds.cmake). A TU named twice
+# (several old per-function rows landing on one TU) is generated once.
+include("${CMAKE_CURRENT_SOURCE_DIR}/src_folds.cmake")
+list(APPEND PORT_HOSTGEN_TU ${PORT_SYM_FOLDED_TUS})
+# The production TUs a path-based hostgen block (FLW/BNT/TTE, the *_HOSTGEN_TU
+# lists, slice_gate29, `src/X hostgen` rows) substitutes: other slices name the
+# same TU raw since the fold, so it is substituted for every target.
+list(APPEND PORT_HOSTGEN_TU ${PORT_HOSTGEN_SHARED_TUS})
+# fBase_c::AfterCleanupResources keeps its own host copy (GATE9 below, for the
+# slot-16 force-include), so the TU main folded it into is substituted to park
+# the second definition (tools/hostgen.py HOST_COPY_PARK "ActorBase").
+list(APPEND PORT_HOSTGEN_TU src/actors/ActorBase.cpp)
+# And the TUs whose folded bodies are parked because port/unmatched/hostarm/
+# carries the port line's host arm in them (tools/hostgen.py PARK_SYMBOL).
+list(APPEND PORT_HOSTGEN_TU
+    src/actors/daWanwan2_c.cpp
+    src/actors/daObjCvNewsLift_c.cpp
+    src/actors/daObjBlockL_c.cpp
+    src/_ZN10dScStage_c16CleanupResourcesEv.cpp
+    src/actors/daObjPile_c.cpp
+    src/engine/view/dCamera_c.cpp
+    src/engine/save/SaveData.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dScDSMT_c.cpp
+    src/actors/Player.cpp
+    src/actors/dScMgRoulette_c.cpp
+    src/actors/unit020cd744.cpp
+    src/actors/dScMgPachinko2_c.cpp)
+# And the TUs whose merged text spells something mwccarm accepts and a host
+# front end refuses (tools/hostgen.py MWCC_SPELLING / CAST_EXTERN, PORTSYNC2):
+# `struct V2` / `struct Vec3` on a typedef of an unnamed struct, a void*
+# argument in a `#pragma cplusplus off` region, and `((extern T(*)(...))f)`
+# casts.
+list(APPEND PORT_HOSTGEN_TU
+    src/actors/dScMgSmartball_c.cpp
+    src/game/actors/d_a_nknk.cpp
+    src/engine/sound/SoundEngine.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    # REDECL_CONFLICT + DATA_C_LINKAGE "daCoin_c" and EXTERN_C_DATA
+    # "unit020b2c84": ROM data the fold left declared with disagreeing types
+    # or linkages in one TU.
+    src/actors/daCoin_c.cpp
+    src/actors/unit020b2c84.cpp
+    # NS_C_ALIAS (+ _TIGHT) "dMg3DHeyhoObjAdapter_c": each folded function's
+    # namespace redeclares ROM names with C linkage and its own types.
+    src/actors/dMg3DHeyhoObjAdapter_c.cpp
+    # DS_DIV "dPathLiftActor_c": the w6d PATHDIV block made this copy for its
+    # own row only, and slices gate10 / pmfb2 / pmfc name the same TU raw now
+    # that their per-function rows are folded into it.
+    src/actors/dPathLiftActor_c.cpp
+    # PARK_SYMBOL "daTor_c" / "daDoor_c" (hostgen_portsync2.py): main's member
+    # bodies collide with port/faces_sync.txt's forward faces onto the host copies.
+    src/actors/daTor_c.cpp
+    src/actors/daDoor_c.cpp)
+list(REMOVE_DUPLICATES PORT_HOSTGEN_TU)
+
+# Whole-TU host copies that REPLACE a src TU (see each copy's header). The
+# end-of-file reroute maps any remaining row naming the src TU onto the copy.
+set("PORT_TU_REPLACED_src/actors/dScMgHanachan_c.cpp" "port/unmatched/dScMgHanachan_c.cpp")
+list(REMOVE_DUPLICATES PORT_HOSTGEN_TU)
 get_filename_component(PORT_HOSTGEN_TU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 set(PORT_HOSTGEN_TU_GEN "")
 foreach(_hgt_rel IN LISTS PORT_HOSTGEN_TU)
@@ -1149,11 +1212,19 @@ foreach(_hgt_rel IN LISTS PORT_HOSTGEN_TU)
     endif()
     string(REGEX REPLACE "[.](c|cpp)$" ".cpp" _hgt_out_rel "${_hgt_rel}")
     set(_hgt_out "${CMAKE_BINARY_DIR}/host-src/${_hgt_out_rel}")
+    # --extern-data for a TU that a per-symbol `--extern-data` hostgen list
+    # reached before main folded it (port/src_folds.cmake): the old row needed
+    # its engine BSS to stay the HAL's, and so does the TU it now lives in.
+    set(_hgt_flags "")
+    list(FIND PORT_HOSTGEN_TU_EXTERN_DATA "${_hgt_rel}" _hgt_xd)
+    if(NOT _hgt_xd EQUAL -1)
+        set(_hgt_flags --extern-data)
+    endif()
     add_custom_command(OUTPUT "${_hgt_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${_hgt_rel}
+                --out "${CMAKE_BINARY_DIR}/host-src" ${_hgt_flags} ${_hgt_rel}
         DEPENDS "${PORT_HOSTGEN_TU_ROOT}/${_hgt_rel}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${_hgt_rel}")
     file(RELATIVE_PATH _hgt_row "${PORT_HOSTGEN_TU_ROOT}" "${_hgt_out}")
     set("PORT_HOSTGEN_TU_ROW_${_hgt_rel}" "${_hgt_row}")
@@ -1164,6 +1235,89 @@ foreach(_hgt_rel IN LISTS PORT_HOSTGEN_TU)
     set("PORT_HOSTGEN_TU_HITS_${_hgt_rel}" 0)
     list(APPEND PORT_HOSTGEN_TU_GEN "${_hgt_out}")
 endforeach()
+
+# ---- PER-SYMBOL HOSTGEN ACROSS THE TU FOLDS (2026-10 main merge) -------------
+#
+# Every per-symbol hostgen loop below used to spell its input as
+# src/<symbol>.c|.cpp and its output as host-src/src/<symbol>.cpp. Main
+# 749f5799a moved most one-function sources under src/<area>/ and folded many
+# more into production TUs that own other functions too. port_hostgen_sym()
+# is the one place that answers, for a loop entry (a bare symbol, a
+# dir/stem spelling, or a repo-relative slice row):
+#   sym_src  the source file hostgen reads (for DEPENDS)
+#   sym_out  the generated file the target compiles
+#   sym_arg  what to hand hostgen (always a repo-relative path)
+#   sym_tu   TRUE when the source is on PORT_HOSTGEN_TU: the whole-TU
+#            substitution above already generates it, once, for every slice
+#            row that names it, so the loop must take that copy and NOT add a
+#            second rule for the same output (CMake refuses that) or a second
+#            copy of the TU's other functions (the linker would).
+# The folded and moved symbols come from port/src_folds.cmake, generated by
+# port/tools/merge_remap.py BY ADDRESS. A folded symbol's TU is put on
+# PORT_HOSTGEN_TU above for exactly this reason.
+# port_row_listed(<rel> <lines var> <out var>): is <rel> a row of the slice
+# lines, as itself or as the generated copy port_read_lines put in its place?
+# (A "slice no longer lists X" guard must accept the substituted spelling.)
+# port_unsubstitute(<var>): a slice row port_read_lines replaced with the
+# generated copy of a PORT_HOSTGEN_TU source is turned back into that source's
+# path, for the loops that hostgen their own rows and test them against a list
+# of src/ paths (the fold put several of those TUs on PORT_HOSTGEN_TU too; the
+# rule then exists once, and those loops skip a second one).
+macro(port_unsubstitute _pu_var)
+    foreach(_pu_tu IN LISTS PORT_HOSTGEN_TU)
+        if("${${_pu_var}}" STREQUAL "${PORT_HOSTGEN_TU_ROW_${_pu_tu}}")
+            set(${_pu_var} "${_pu_tu}")
+            break()
+        endif()
+    endforeach()
+endmacro()
+
+macro(port_row_listed _prl2_rel _prl2_lines _prl2_out)
+    set(${_prl2_out} FALSE)
+    if("${_prl2_rel}" IN_LIST ${_prl2_lines})
+        set(${_prl2_out} TRUE)
+    elseif(DEFINED "PORT_HOSTGEN_TU_ROW_${_prl2_rel}")
+        if("${PORT_HOSTGEN_TU_ROW_${_prl2_rel}}" IN_LIST ${_prl2_lines})
+            set(${_prl2_out} TRUE)
+        endif()
+    endif()
+endmacro()
+
+macro(port_hostgen_sym _phs_entry)
+    set(sym_tu FALSE)
+    set(_phs_rel "")
+    foreach(_phs_tu IN LISTS PORT_HOSTGEN_TU)
+        if("${_phs_entry}" STREQUAL "${PORT_HOSTGEN_TU_ROW_${_phs_tu}}")
+            set(_phs_rel "${_phs_tu}")
+        endif()
+    endforeach()
+    if(NOT _phs_rel STREQUAL "")
+    elseif("${_phs_entry}" MATCHES "[.](c|cpp)$")
+        set(_phs_rel "${_phs_entry}")
+    elseif(DEFINED "PORT_SYM_FOLDED_${_phs_entry}")
+        set(_phs_rel "${PORT_SYM_FOLDED_${_phs_entry}}")
+    elseif(DEFINED "PORT_SYM_MOVED_${_phs_entry}")
+        set(_phs_rel "${PORT_SYM_MOVED_${_phs_entry}}")
+    elseif(EXISTS "${PORT_HOSTGEN_TU_ROOT}/src/${_phs_entry}.c")
+        set(_phs_rel "src/${_phs_entry}.c")
+    else()
+        set(_phs_rel "src/${_phs_entry}.cpp")
+    endif()
+    if(NOT EXISTS "${PORT_HOSTGEN_TU_ROOT}/${_phs_rel}")
+        message(FATAL_ERROR "port_hostgen_sym: ${_phs_entry} resolves to "
+                "${_phs_rel}, which does not exist. Re-run "
+                "port/tools/merge_remap.py against this merge.")
+    endif()
+    set(sym_src "${PORT_HOSTGEN_TU_ROOT}/${_phs_rel}")
+    set(sym_arg "${_phs_rel}")
+    string(REGEX REPLACE "[.](c|cpp)$" ".cpp" _phs_out "${_phs_rel}")
+    set(sym_out "${CMAKE_BINARY_DIR}/host-src/${_phs_out}")
+    list(FIND PORT_HOSTGEN_TU "${_phs_rel}" _phs_on)
+    if(NOT _phs_on EQUAL -1)
+        set(sym_tu TRUE)
+    endif()
+endmacro()
+
 
 # ---- A PER-SOURCE PROPERTY DOES NOT FOLLOW THE SUBSTITUTION ----------------
 #
@@ -1282,6 +1436,22 @@ add_custom_command(OUTPUT "${PORT_FACES_SYNC_GEN}"
     DEPENDS "${PORT_FACES_SYNC_LEDGER}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/facegen.py"
     COMMENT "facegen --sync faces_sync.txt")
+
+# PORTSYNC2: host structors for the file-handle wrappers main's class TUs leave
+# undefined on purpose (the DS link aliases them onto ROM veneers through
+# config/tu_manifest.d's undefined_symbol_aliases; MSVC has no such table).
+# port/tools/structor_faces.py's docstring has the whole argument. Rides
+# beside ${PORT_FACES_SYNC_GEN} on every target that carries it.
+set(PORT_STRUCTOR_FACES_GEN "${CMAKE_BINARY_DIR}/host-src/structor_faces_gen.cpp")
+file(GLOB_RECURSE PORT_TU_MANIFESTS CONFIGURE_DEPENDS
+     "${CMAKE_CURRENT_SOURCE_DIR}/../config/tu_manifest.d/*.json")
+add_custom_command(OUTPUT "${PORT_STRUCTOR_FACES_GEN}"
+    COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/structor_faces.py"
+            --root "${CMAKE_CURRENT_SOURCE_DIR}/.."
+            --out "${PORT_STRUCTOR_FACES_GEN}"
+    DEPENDS ${PORT_TU_MANIFESTS}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/structor_faces.py"
+    COMMENT "structor_faces from config/tu_manifest.d")
 
 macro(port_read_lines _prl_path _prl_var)
     port_configure_input("${_prl_path}")
@@ -1703,16 +1873,17 @@ set(GATE4A_SYMS
     func_0205a358 func_0205a290 func_0205a21c func_02056e98 func_02059fa8)
 set(GATE4A_GEN "")
 foreach(sym IN LISTS GATE4A_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE4A_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE4A_GEN "${sym_out}")
 endforeach()
@@ -1755,16 +1926,17 @@ set(GATE4B_SYMS func_02044b30 Geometry_MatrixMultiply3x3 func_02055998
     func_02044534 func_0204488c NormalizeVec3)
 set(GATE4B_GEN "")
 foreach(sym IN LISTS GATE4B_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE4B_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE4B_GEN "${sym_out}")
 endforeach()
@@ -1929,16 +2101,17 @@ set(GATE8_SYMS _ZN4cstd4sqrtEy _ZN4cstd11fdiv_resultEv _ZN4cstd16reciprocal_asyn
     Matrix4x3_ApplyInPlaceToScale)
 set(GATE8_GEN "")
 foreach(sym IN LISTS GATE8_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE8_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE8_GEN "${sym_out}")
 endforeach()
@@ -1959,8 +2132,8 @@ endforeach()
 # walk_window get them from their own slices, and adding them in both places
 # would be a duplicate source in one target.
 set(GATE8_EXTRA_SOURCES
-    "${PORT_REPO_ROOT_ABS}/src/func_02039794.c"
-    "${PORT_REPO_ROOT_ABS}/src/func_02037e58.c"
+    "${PORT_REPO_ROOT_ABS}/src/engine/collision/dBgW_Kc.cpp"
+    "${PORT_REPO_ROOT_ABS}/src/engine/collision/dBgCh_SphCrr_query.cpp"
     "${PORT_REPO_ROOT_ABS}/src/DotVec3.c")
 
 add_executable(smoke_clsn tests/smoke_clsn.cpp
@@ -1988,14 +2161,21 @@ endif()
 # hostgen's DS_DIV table reroutes that one modulus through ds_imod; the src
 # line is skipped in the gate-7 and gate-10 loops below and the generated file
 # is appended to both. Retires port/unmatched/Animation_AdvanceDivGuard.cpp.
-set(ANIM_ADVANCE_SYM _ZN9Animation7AdvanceEv)
-set(ANIM_ADVANCE_GEN "${CMAKE_BINARY_DIR}/host-src/src/${ANIM_ADVANCE_SYM}.cpp")
-add_custom_command(OUTPUT "${ANIM_ADVANCE_GEN}"
-    COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-            --out "${CMAKE_BINARY_DIR}/host-src" ${ANIM_ADVANCE_SYM}
-    DEPENDS "${PORT_REPO_ROOT_ABS}/src/${ANIM_ADVANCE_SYM}.cpp"
-            "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-    COMMENT "hostgen ${ANIM_ADVANCE_SYM}")
+# PORTSYNC2: main folded Animation::Advance into
+# src/engine/animation/dExtFrameCtrl_c.cpp (dExtFrameCtrl_c::Advance), which is
+# substituted whole through PORT_HOSTGEN_TU (port/src_folds.cmake), so the
+# DS_DIV row (re-keyed on the TU's stem) rides that one generated copy.
+set(ANIM_ADVANCE_SYM _ZN15dExtFrameCtrl_c7AdvanceEv)
+port_hostgen_sym("${ANIM_ADVANCE_SYM}")
+set(ANIM_ADVANCE_GEN "${sym_out}")
+if(NOT sym_tu)
+    add_custom_command(OUTPUT "${ANIM_ADVANCE_GEN}"
+        COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        COMMENT "hostgen ${ANIM_ADVANCE_SYM}")
+endif()
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_gate7.txt" SLICE7_LINES)
 set(SLICE7_SOURCES "")
 foreach(line IN LISTS SLICE7_LINES)
@@ -2006,7 +2186,7 @@ foreach(line IN LISTS SLICE7_LINES)
     # Animation::Advance comes from hostgen (ANIM_ADVANCE_GEN above); the
     # manifest line is skipped HERE so slice_gate7.txt stays another lane's
     # file, the VS_PathDivGuard shape.
-    if(line STREQUAL "src/_ZN9Animation7AdvanceEv.cpp")
+    if(line STREQUAL "src/engine/animation/dExtFrameCtrl_c.cpp")
         continue()
     endif()
     list(APPEND SLICE7_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
@@ -2051,16 +2231,17 @@ endif()
 set(GATE6_SYMS _ZN3OAM4LoadEv)
 set(GATE6_GEN "")
 foreach(sym IN LISTS GATE6_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE6_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE6_GEN "${sym_out}")
 endforeach()
@@ -2157,19 +2338,23 @@ endif()
 # unlinked dead actors from a one-byte char while the real scene tree in
 # hal/actor_vtables.cpp kept them. Every target below ran that body. See
 # hostgen's ROLE_DATA map for the address of each name.
-set(GATE9_SYMS _ZN7fBase_c21AfterCleanupResourcesEj)
+# PORTSYNC2: main folded the body into src/actors/ActorBase.cpp; the per-file
+# copy the force-include below needs is kept in port/unmatched/hostarm/ and the
+# folded body is parked in ActorBase's generated copy (hostgen HOST_COPY_PARK).
+set(GATE9_SYMS port/unmatched/hostarm/_ZN7fBase_c21AfterCleanupResourcesEj.cpp)
 set(GATE9_GEN "")
 foreach(sym IN LISTS GATE9_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE9_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" --extern-data ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" --extern-data ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE9_GEN "${sym_out}")
 endforeach()
@@ -2204,7 +2389,7 @@ endforeach()
 # targets since gate 3a and was being discarded by /OPT:REF because nothing
 # reached it.
 set(HEAP_INITGAME_SRC
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN4Heap18InitializeGameHeapEjPS_.cpp")
+    "${CMAKE_BINARY_DIR}/host-src/src/engine/heap/Heap.cpp")
 
 # THE HEAP DESTROY CHAIN for the same three actor smokes, and it is here for
 # the same reason HEAP_INITGAME_SRC is: two src lines that live in a slice these
@@ -2230,8 +2415,8 @@ set(HEAP_INITGAME_SRC
 # No target gets a duplicate: the three big targets take these two TUs from
 # slice_gate16 and are not listed here.
 set(HEAP_DESTROY_CHAIN_SRC
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN4Heap8_DestroyEv.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN4Heap7DestroyEv.cpp")
+    "${CMAKE_BINARY_DIR}/host-src/src/engine/heap/Heap.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/engine/heap/Heap.cpp")
 
 # SMOKELINK6 (run link100, wave 10 round 6, 2026-09-17): EXCLUDE_FROM_ALL.
 # This target does not link -- one name outstanding, __ZN5Sound4PlayEjjRK7Vector3
@@ -2366,19 +2551,19 @@ endif()
 set(PORT_SMOKE_HEAP_TEARDOWN_SRC
     src/_ZN13ExpandingHeapD1Ev.cpp
     src/_ZN4HeapD1Ev.cpp
-    src/_ZN13ExpandingHeap14VDeallocateAllEv.cpp
-    src/_ZN13ExpandingHeap8VDestroyEv.cpp
-    src/_ZN13ExpandingHeap19VMaxAllocatableSizeEv.cpp
-    src/_ZN13ExpandingHeap22VMaxAllocationUnitSizeEv.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
     src/_ZN6Memory16operator_delete2EPv.cpp
     src/_ZdlPv.cpp
-    src/_ZN22ExpandingHeapAllocator13DeallocateAllEPFvPvPS_jEj.cpp
-    src/_ZN22ExpandingHeapAllocator16InvokeDeallocateEPvPS_j.cpp
-    src/_ZN22ExpandingHeapAllocator18MaxAllocatableSizeEi.cpp
-    src/_ZN13HeapAllocator7DestroyEv.cpp
-    src/_ZN4Heap11_DeallocateEPv.cpp
-    src/_ZN13HeapAllocator6RemoveEv.cpp
-    src/_ZN4cstd3absEi.cpp)
+    src/engine/heap/ExpandingHeapAllocator.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/ExpandingHeapAllocator.cpp
+    src/engine/heap/ExpandingHeapAllocator.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/NestedHeapIterator.cpp
+    src/cstd4.cpp)
 
 # smoke_roots: 30 unresolved -> 0.  8 ledger faces (7 copied verbatim from
 # port/faces_sync.txt, 1 derived by address), 19 alias rows (15 copied verbatim
@@ -2399,8 +2584,8 @@ port_smoke_relink(fs SRC ${PORT_SMOKE_HEAP_TEARDOWN_SRC})
 # vtable slots the ROM's D1 and D0 occupy, so src/_ZN5ModelC1Ev.cpp's vftable
 # asks the linker for them, and that file is where the twelve faces live.
 port_smoke_relink(model SRC ${PORT_SMOKE_HEAP_TEARDOWN_SRC}
-    src/_ZN5Model11UpdateVertsEv.cpp
-    src/_ZN5Model9Virtual10ER9Matrix4x3.cpp
+    src/engine/model/Model.cpp
+    src/engine/model/Model.cpp
     port/hal/smoke_dtor_slots_model.cpp
     port/unmatched/ModelBaseModel_Dtors_HostCopy.c
     # What those six bodies then call: ModelBase's Deallocate (0x02018144) and
@@ -2415,8 +2600,8 @@ port_smoke_relink(model SRC ${PORT_SMOKE_HEAP_TEARDOWN_SRC}
 # and was missing exactly these six.  The two subset files are explained in
 # smoke_model's block above and in their own headers.
 set(PORT_SMOKE_MODEL_SRC
-    src/_ZN5Model11UpdateVertsEv.cpp
-    src/_ZN5Model9Virtual10ER9Matrix4x3.cpp
+    src/engine/model/Model.cpp
+    src/engine/model/Model.cpp
     port/hal/smoke_dtor_slots_model.cpp
     port/unmatched/ModelBaseModel_Dtors_HostCopy.c
     src/Deallocate.c
@@ -2443,16 +2628,16 @@ port_smoke_relink(soak_anim SRC ${PORT_SMOKE_HEAP_TEARDOWN_SRC} ${PORT_SMOKE_MOD
 # the one heap-teardown row that would be a duplicate here is dropped by name
 # rather than by leaving the list alone.
 set(PORT_SMOKE_MODELANIM_HEAP_SRC ${PORT_SMOKE_HEAP_TEARDOWN_SRC})
-list(REMOVE_ITEM PORT_SMOKE_MODELANIM_HEAP_SRC src/_ZN4Heap11_DeallocateEPv.cpp)
+list(REMOVE_ITEM PORT_SMOKE_MODELANIM_HEAP_SRC src/engine/heap/Heap.cpp)
 port_smoke_relink(modelanim SRC ${PORT_SMOKE_MODELANIM_HEAP_SRC}
-    src/_ZN5Model11UpdateVertsEv.cpp
+    src/engine/model/Model.cpp
     port/hal/smoke_dtor_slots_modelanim.cpp
     port/hal/smoke_dtor_fwd_modelanim.cpp
     port/unmatched/ModelBaseModelBlend_Dtors_HostCopy.c
     src/Deallocate.c
-    src/_ZN9AnimationD1Ev.cpp
+    src/_ZN15dExtFrameCtrl_cD1Ev.cpp
     src/_ZN9ModelBaseD1Ev.cpp
-    src/_ZN5ModelD1Ev.cpp
+    src/engine/model/Model.cpp
     src/_ZN9ModelAnimD1Ev.cpp)
 
 # smoke_clsn: 57 unresolved -> 0.  Gate 8 collision: the heap-teardown and
@@ -2460,18 +2645,18 @@ port_smoke_relink(modelanim SRC ${PORT_SMOKE_MODELANIM_HEAP_SRC}
 # hal/clsn_vtable.cpp's slot thunks and from dBgW's own vtable, all of them
 # ordinary src/ translation units walk_window already compiles.
 port_smoke_relink(clsn SRC ${PORT_SMOKE_HEAP_TEARDOWN_SRC} ${PORT_SMOKE_MODEL_SRC}
-    src/_ZN4dBgWD1Ev.cpp
-    src/_ZN7dBgW_KcD1Ev.cpp
-    src/_ZN4dBgW10BeforeClsnER5dBgPiP8dActor_cR7Vector3P10Vector3_16S7_.cpp
-    src/_ZN4dBgW10DetectClsnER9dBgCh_Gnd.cpp
-    src/_ZN4dBgW10DetectClsnER9dBgCh_Lin.cpp
-    src/_ZN4dBgW10DetectClsnER12dBgCh_SphCrr.cpp
-    src/_ZN4dBgW14GetAngularVelYEv.cpp
-    src/_ZN4dBgW11GetVelocityER7Vector3.cpp
-    src/_ZN4dBgW12TransformPosERK7Vector3RS0_.cpp
-    src/_ZN4dBgW9Virtual08Ev.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW_Kc.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
     # Second order: dBgW_Kc's destructor destroys its CLPS_BlockRef member.
-    src/_ZN13CLPS_BlockRefD1Ev.cpp)
+    src/engine/collision/dBgCh_SphCrr_query.cpp)
 
 # LANE SMOKELINK4B: THE THREE GATE-9 ACTOR HARNESSES, ONE BLOCK.
 #
@@ -2495,86 +2680,86 @@ set(PORT_SMOKE_ACTOR_SRC
     # virtuals, reached from the scalar deleting destructors and from the
     # class's own vtable.  Only D1 of each class is listed, for the LNK2005
     # reason port/slice_seat2.txt:57 states.
-    src/_ZN13ExpandingHeap14VDeallocateAllEv.cpp
-    src/_ZN13ExpandingHeap19VMaxAllocatableSizeEv.cpp
-    src/_ZN13ExpandingHeap22VMaxAllocationUnitSizeEv.cpp
-    src/_ZN13ExpandingHeap8VDestroyEv.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
     src/_ZN13ExpandingHeapD1Ev.cpp
     src/_ZN4HeapD1Ev.cpp
     # fBase_c's OWN VIRTUALS, the ones the actor world dispatches through
     # hal/actor_vtables.cpp and the fBase_c vtable fills.  InitResources is not
     # here: it is the one forward face in port/faces_sync_smoke_actor.txt.
-    src/_ZN7fBase_c16CleanupResourcesEv.cpp
-    src/_ZN7fBase_c18MarkForDestructionEv.cpp
-    src/_ZN7fBase_c6RenderEv.cpp
-    src/_ZN7fBase_c8BehaviorEv.cpp
+    src/actors/ActorBase.cpp
+    src/actors/ActorBase.cpp
+    src/actors/ActorBase.cpp
+    src/actors/ActorBase.cpp
     # dActor_c's SURFACE.  Thirty rows, and they are one class's virtuals plus
     # two of its non-virtual helpers: every Before/After hook the processing
     # lists call, every On* damage and interaction hook the vtable holds, its
     # constructor and its destructor.  All ordinary src/ translation units
     # walk_window already compiles.
-    src/_ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE.cpp
-    src/_ZN8dActor_c10PoofDustAtERK7Vector3.cpp
-    src/_ZN8dActor_c11AfterRenderEj.cpp
-    src/_ZN8dActor_c11OnAttacked1ERS_.cpp
-    src/_ZN8dActor_c11OnAttacked2ERS_.cpp
-    src/_ZN8dActor_c12BeforeRenderEv.cpp
-    src/_ZN8dActor_c13AfterBehaviorEj.cpp
-    src/_ZN8dActor_c13OnTurnIntoEggER6Player.cpp
-    src/_ZN8dActor_c13OnYoshiTryEatEv.cpp
-    src/_ZN8dActor_c14BeforeBehaviorEv.cpp
-    src/_ZN8dActor_c15OnGroundPoundedERS_.cpp
-    src/_ZN8dActor_c15OnHitByMegaCharER6Player.cpp
-    src/_ZN8dActor_c16OnAimedAtWithEggEv.cpp
-    src/_ZN8dActor_c18AfterInitResourcesEj.cpp
-    src/_ZN8dActor_c19BeforeInitResourcesEv.cpp
-    src/_ZN8dActor_c19OnHitFromUnderneathERS_.cpp
-    src/_ZN8dActor_c21AfterCleanupResourcesEj.cpp
-    src/_ZN8dActor_c22BeforeCleanupResourcesEv.cpp
-    src/_ZN8dActor_c24OnHitByCannonBlastedCharERS_.cpp
-    src/_ZN8dActor_c8OnKickedERS_.cpp
-    src/_ZN8dActor_c8OnPushedERS_.cpp
-    src/_ZN8dActor_c9UpdatePosEP5dCc_c.cpp
-    src/_ZN8dActor_c9Virtual50Ev.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
     src/_ZN8dActor_cC1Ev.cpp
     src/_ZN8dActor_cD1Ev.cpp
     # THE MODEL FAMILY, the rows this gate reaches that are not already on the
     # target: Model's and the animation pair's destructors, and the two
     # ShadowModel bodies an actor's shadow needs.
-    src/_ZN11ShadowModel10InitCuboidEv.cpp
-    src/_ZN11ShadowModel9DoSetFileEPcii.cpp
-    src/_ZN5ModelD1Ev.cpp
-    src/_ZN9AnimationD1Ev.cpp
+    src/engine/model/dExtShadowModel_c.cpp
+    src/engine/model/dExtShadowModel_c.cpp
+    src/engine/model/Model.cpp
+    src/_ZN15dExtFrameCtrl_cD1Ev.cpp
     src/_ZN9ModelAnimD1Ev.cpp
     # THE COLLISION LAYER.  dBgW and dBgW_KcMbg's virtuals and destructors, and
     # dBgCh_Lin's four bodies, reached from hal/clsn_vtable.cpp's slot thunks
     # and from each class's own vtable.  smoke_clsn's block names ten of the
     # dBgW rows for the same reason; this gate adds dBgW_KcMbg, which is the
     # collider an actor actually owns.
-    src/_ZN10dBgW_KcMbg10DetectClsnER12dBgCh_SphCrr.cpp
-    src/_ZN10dBgW_KcMbg10DetectClsnER9dBgCh_Gnd.cpp
-    src/_ZN10dBgW_KcMbg10DetectClsnER9dBgCh_Lin.cpp
-    src/_ZN10dBgW_KcMbg11GetVelocityER7Vector3.cpp
-    src/_ZN10dBgW_KcMbg12TransformPosERK7Vector3RS0_.cpp
-    src/_ZN10dBgW_KcMbg14GetAngularVelYEv.cpp
-    src/_ZN10dBgW_KcMbg17GetTriangleOriginEsR7Vector3.cpp
-    src/_ZN10dBgW_KcMbg9GetNormalEsR7Vector3.cpp
-    src/_ZN10dBgW_KcMbg9Virtual08Ev.cpp
-    src/_ZN10dBgW_KcMbgD1Ev.cpp
-    src/_ZN4dBgW10BeforeClsnER5dBgPiP8dActor_cR7Vector3P10Vector3_16S7_.cpp
-    src/_ZN4dBgW10DetectClsnER12dBgCh_SphCrr.cpp
-    src/_ZN4dBgW10DetectClsnER9dBgCh_Gnd.cpp
-    src/_ZN4dBgW10DetectClsnER9dBgCh_Lin.cpp
-    src/_ZN4dBgW11GetVelocityER7Vector3.cpp
-    src/_ZN4dBgW12TransformPosERK7Vector3RS0_.cpp
-    src/_ZN4dBgW14GetAngularVelYEv.cpp
-    src/_ZN4dBgW9Virtual08Ev.cpp
-    src/_ZN4dBgWD1Ev.cpp
-    src/_ZN7dBgW_KcD1Ev.cpp
-    src/_ZN9dBgCh_Lin10DetectClsnEv.cpp
-    src/_ZN9dBgCh_Lin13SetObjAndLineERK7Vector3S2_P8dActor_c.cpp
-    src/_ZN9dBgCh_LinC1Ev.cpp
-    src/_ZN9dBgCh_LinD1Ev.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW_Kc.cpp
+    src/engine/collision/dBgCh_SphCrr_query.cpp
+    src/engine/collision/dBgCh_Lin.cpp
+    src/engine/collision/dBgCh_Lin.cpp
+    src/engine/collision/dBgCh_Lin.cpp
     # WHAT THOSE THEN CALL: the fixed-point and vector helpers, the particle
     # spawn and the positional sound.  Every one is a one-function src/ TU
     # walk_window compiles, and out/SMOKELINK3/next_targets.md predicted seven
@@ -2586,8 +2771,8 @@ set(PORT_SMOKE_ACTOR_SRC
     src/Vec3_Add.c
     src/Vec3_Asr.c
     src/Vec3_HorzAngle.c
-    src/_ZN5Sound9PlayBank3EjRK7Vector3.cpp
-    src/_ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_.c
+    src/engine/sound/Sound.cpp
+    src/engine/particle/Particle.cpp
     # ---- SECOND ORDER.  Everything above was named by the link at 454383169;
     # everything below was named by the NEXT link, once those rows were on the
     # target.  out/SMOKELINK3/next_targets.md says to expect this ("a SRC row is
@@ -2597,68 +2782,68 @@ set(PORT_SMOKE_ACTOR_SRC
     # Heap::~Heap above reach.  These ARE four of PORT_SMOKE_HEAP_TEARDOWN_SRC's
     # rows: the other eleven of that list are already defined on these targets,
     # which is why the list is not used whole here.
-    src/_ZN13HeapAllocator7DestroyEv.cpp
-    src/_ZN22ExpandingHeapAllocator13DeallocateAllEPFvPvPS_jEj.cpp
-    src/_ZN22ExpandingHeapAllocator16InvokeDeallocateEPvPS_j.cpp
-    src/_ZN22ExpandingHeapAllocator18MaxAllocatableSizeEi.cpp
+    src/engine/heap/ExpandingHeapAllocator.cpp
+    src/engine/heap/ExpandingHeapAllocator.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/ExpandingHeapAllocator.cpp
     # dBgCh, dBgPi, dM3dG* and CLPS_BlockRef: the collision primitives
     # dBgCh_Lin and dBgW_KcMbg above are built out of.
-    src/_ZN12dBgCh_SphCrr14SetFloorResultERK5dBgPi.cpp
-    src/_ZN12dBgCh_SphCrr15SetObjAndSphereERK7Vector35Fix12IiEP8dActor_c.cpp
-    src/_ZN12dBgCh_SphCrrC1Ev.cpp
-    src/_ZN12dBgCh_SphCrrD1Ev.cpp
-    src/_ZN13CLPS_BlockRefD1Ev.cpp
-    src/_ZN5dBgChC2Ev.cpp
-    src/_ZN5dBgChD1Ev.cpp
-    src/_ZN5dBgPiC1Ev.cpp
-    src/_ZN5dBgPiD1Ev.cpp
-    src/_ZN5dBgPiaSERKS_.cpp
-    src/_ZN8dM3dGLin3SetERK7Vector3S2_.cpp
-    src/_ZN8dM3dGLinD2Ev.cpp
-    src/_ZN8dM3dGSphC1Ev.cpp
-    src/_ZN8dM3dGSphD1Ev.cpp
+    src/engine/collision/dBgCh_SphCrr.cpp
+    src/engine/collision/dBgCh_SphCrr.cpp
+    src/engine/collision/dBgCh_SphCrr.cpp
+    src/engine/collision/dBgCh_SphCrr.cpp
+    src/engine/collision/dBgCh_SphCrr_query.cpp
+    src/engine/collision/dBgCh.cpp
+    src/engine/collision/dBgCh.cpp
+    src/engine/collision/dBgCh_SphCrr_query.cpp
+    src/engine/collision/dBgCh_SphCrr_query.cpp
+    src/engine/collision/dBgCh_SphCrr_query.cpp
+    src/actors/dM3dGLin.cpp
+    src/actors/dM3dGLin.cpp
+    src/engine/collision/dM3dGSph.cpp
+    src/engine/collision/dM3dGSph.cpp
     # fBase_c's and dActor_c's own remaining bodies, plus the two fBase_c
     # virtuals whose non-virtual spelling the alias rows point at
     # (hal/cxx_aliases.cpp:2988-2989 join U to Q; Q is defined by these two).
-    src/_ZN7fBase_c13InitResourcesEv.cpp
-    src/_ZN7fBase_c9Virtual34Ejj.cpp
-    src/_ZN7fBase_c9Virtual38Ejj.cpp
-    src/_ZN7fBase_cD1Ev.cpp
-    src/_ZN8dActor_c18GetBitInDeathTableEv.cpp
-    src/_ZN8dActor_c22UpdatePosWithOnlySpeedEP5dCc_c.cpp
-    src/_ZN8dActor_c24KillAndTrackInDeathTableEv.cpp
-    src/_ZN8dActor_c28UpdatePosWithHorzSpeedAndAngEv.cpp
+    src/actors/ActorBase.cpp
+    src/actors/ActorBase.cpp
+    src/actors/ActorBase.cpp
+    src/actors/ActorBase.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
     src/_ZN9fLiNdBa_cD1Ev.cpp
     src/actors/ActorDerived.cpp
     # The twenty-one ROM helpers the collision and background-actor bodies call,
     # each a one-function src/ TU walk_window compiles.
-    src/func_0200d8c8.c
-    src/func_02016e70.c
-    src/func_02035354.c
-    src/func_02035394.c
-    src/func_020353b0.c
-    src/func_020374b8.c
-    src/func_02037608.c
-    src/func_0203782c.c
-    src/func_02037888.c
-    src/func_02037940.c
-    src/func_02037a04.c
-    src/func_02037fec.c
-    src/func_0203938c.c
-    src/func_0203939c.c
-    src/func_020393ac.c
-    src/func_020393b4.c
-    src/func_02039db8.c
-    src/func_02039e30.c
-    src/func_02039e48.c
-    src/func_0203abd4.c
+    src/engine/view/dCamera_c.cpp
+    src/unnamed/arm9/0201/func_02016e70.c
+    src/unnamed/arm9/0203/func_02035354.c
+    src/unnamed/arm9/0203/func_02035394.c
+    src/unnamed/arm9/0203/func_020353b0.c
+    src/engine/collision/dBgCh_Gnd.cpp
+    src/engine/collision/dBgCh_Lin.cpp
+    src/engine/collision/dBgCh_SphCrr.cpp
+    src/engine/collision/dBgCh_SphCrr.cpp
+    src/engine/collision/dBgCh_SphCrr.cpp
+    src/engine/collision/dBgCh_SphCrr.cpp
+    src/engine/collision/dBgCh_SphCrr_query.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dM3dGSph.cpp
     # And what the rest call: the two rotation matrices, the area-visibility
     # read, atan2, the clipper's point test.
     src/IsAreaShowing.c
     src/Matrix4x3_FromRotationX.c
     src/Matrix4x3_FromRotationZ.c
     src/_ZN4cstd5atan2E5Fix12IiES1_.c
-    src/_ZN7Clipper13Func_020150E8ER7Vector35Fix12IiEPh.cpp
+    src/engine/collision/dClipper.cpp
     src/_ZN9ModelBaseD1Ev.cpp
     # THE ROM VENEER'S HOST COPY, the same row smoke_model's and
     # smoke_modelanim's blocks already carry for the same symbol: func_0203cbc0
@@ -2677,37 +2862,37 @@ set(PORT_SMOKE_ACTOR_SRC
     src/Deallocate.c
     src/DeathTable_GetBit.c
     src/_ZN11fLiNdBaPr_cD1Ev.cpp
-    src/_ZN13HeapAllocator6RemoveEv.cpp
-    src/_ZN4Heap20RestoreFromTemporaryEv.cpp
-    src/_ZN4Heap21MaxAllocationUnitSizeEv.cpp
-    src/_ZN4Heap28InitializeSolidHeapAsDefaultEjPS_i.cpp
-    src/_ZN6Memory8AllocateEjiP4Heap.cpp
+    src/engine/heap/NestedHeapIterator.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
     src/_ZN8Particle7Manager9AddSystemEiR7Vector3.cpp
-    src/_ZN8dActor_c17TrackInDeathTableEv.cpp
+    src/actors/dActor_c.cpp
     src/_ZdlPv.cpp
-    src/func_02010da4.c
-    src/func_02037b5c.c
-    src/func_02037f5c.c
-    src/func_020380c0.c
-    src/func_0203abcc.c
-    src/func_0203ac00.c
-    src/func_02042fe4.c
-    src/func_ov002_020fea4c.c
-    src/func_ov002_020fea68.c
+    src/actors/dActor_c.cpp
+    src/engine/collision/dBgCh_SphCrr.cpp
+    src/engine/collision/dBgCh_SphCrr_query.cpp
+    src/engine/collision/dBgCh_SphCrr_query.cpp
+    src/engine/collision/dM3dGSph.cpp
+    src/engine/collision/dM3dGSph.cpp
+    src/unnamed/arm9/0204/func_02042fe4.c
+    src/actors/dM3dGLin.cpp
+    src/actors/dM3dGLin.cpp
     # ---- FOURTH ORDER, and the last round this lane measured.  Ten more
     # one-function src/ TUs: the solid-heap pair fBase_c's two heap virtuals
     # call, the nested-iterator lookup HeapAllocator::Remove calls, the death
     # table's setter, and five ROM helpers.
     src/DeathTable_SetBit.c
     src/GetLevelPart.c
-    src/_ZN18NestedHeapIterator10FindNestedEPv.cpp
-    src/_ZN4Heap10SetDefaultEv.cpp
-    src/_ZN4Heap23SetupSolidHeapAsDefaultEjPS_i.cpp
-    src/func_02037b1c.c
-    src/func_02043098.c
-    src/func_0204ae2c.c
-    src/func_0204d958.c
-    src/func_0204d9a0.c
+    src/engine/heap/NestedHeapIterator.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/collision/dBgCh_SphCrr.cpp
+    src/unnamed/arm9/0204/func_02043098.c
+    src/unnamed/arm9/0204/func_0204ae2c.c
+    src/unnamed/arm9/0204/func_0204d958.c
+    src/unnamed/arm9/0204/func_0204d9a0.c
     # ONE HOST FILE WHOLE, and it is the only one of five that measured free.
     # port/hal/actorport_dtor_bridge.cpp closes the six
     # ?Destructor1/0@dActor_c|dBase_c|dBgActor_c@@UAEXXZ rows the actor
@@ -2737,7 +2922,7 @@ set(PORT_SMOKE_ACTOR_SRC
     # against seven closed).
     port/hal/smoke_dtor_slots_actor.cpp
     port/unmatched/ModelBaseModelShadow_Dtors_HostCopy.c
-    src/_ZN8dActor_c25OnAimedAtWithEggReturnVecEv.cpp
+    src/actors/dActor_c.cpp
     # SMOKELINK5 section B: fBase_c's non-polymorphic shadow constructor
     # (link21_rows.cpp lines 169-172, measured whole at 20 against one closed).
     port/hal/smoke_fbase_ctor_actor.cpp
@@ -2749,9 +2934,9 @@ set(PORT_SMOKE_ACTOR_SRC
     # rows that were not on this batch before (a fourth,
     # _ZN4Heap21MaxAllocationUnitSizeEv.cpp, already was).
     port/hal/smoke_heap_seam_actor.cpp
-    src/_ZN4Heap15CreateSolidHeapEjPS_i.cpp
-    src/_ZN4Heap11_DeallocateEPv.cpp
-    src/_ZN4Heap11ResizeToFitEv.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
     # SECOND ORDER on section D, measured the same way SMOKELINK3/4B measured
     # theirs: what CreateSolidHeap's and ResizeToFit's own bodies call and
     # walk_window already compiles. CreateSolidHeap's chain is
@@ -2762,12 +2947,12 @@ set(PORT_SMOKE_ACTOR_SRC
     # constructor are the other half of CreateSolidHeap's body. ResizeToFit's
     # is just Heap::Rescue (the decorated member ResizeToFit calls directly;
     # Crash() is already on this batch via hal/heap_vtable.cpp).
-    src/_ZN4Heap24CreateSolidHeapAllocatorEPvjj.cpp
-    src/_ZN18SolidHeapAllocatorC1EPvj.cpp
-    src/func_0204df54.cpp
-    src/_ZN18NestedHeapIteratorC1Ej.cpp
-    src/_ZN18NestedHeapIterator7AddLastEP13HeapAllocator.cpp
-    src/_ZN18NestedHeapIterator4InitEP13HeapAllocator.cpp
+    src/engine/heap/SolidHeapAllocator.cpp
+    src/engine/heap/SolidHeapAllocator.cpp
+    src/engine/heap/NestedHeapIterator.cpp
+    src/engine/heap/NestedHeapIterator.cpp
+    src/engine/heap/NestedHeapIterator.cpp
+    src/engine/heap/NestedHeapIterator.cpp
     src/_ZN9SolidHeapC1EPvjP4HeapP18SolidHeapAllocator.cpp
     # SolidHeap is a real polymorphic class (include/SolidHeap.h), and its
     # constructor's placement-new needs a complete vtable: all eleven virtual
@@ -2777,36 +2962,36 @@ set(PORT_SMOKE_ACTOR_SRC
     # the identical `SolidHeap::~SolidHeap() {}' text -- mwcc emits D0, D1 and
     # D2 from the one definition -- so both files would be LNK2005).
     src/_ZN9SolidHeapD1Ev.cpp
-    src/_ZN9SolidHeap8VDestroyEv.cpp
-    src/_ZN9SolidHeap9VAllocateEji.cpp
-    src/_ZN9SolidHeap11VDeallocateEPv.cpp
-    src/_ZN9SolidHeap14VDeallocateAllEv.cpp
-    src/_ZN9SolidHeap7VIntactEv.cpp
-    src/_ZN9SolidHeap7VRescueEv.cpp
-    src/_ZN9SolidHeap11VReallocateEPvj.cpp
-    src/_ZN9SolidHeap7VSizeofEPv.cpp
-    src/_ZN9SolidHeap22VMaxAllocationUnitSizeEv.cpp
-    src/_ZN9SolidHeap19VMaxAllocatableSizeEv.cpp
-    src/_ZN9SolidHeap11VMemoryLeftEv.cpp
-    src/_ZN9SolidHeap10VSetNodeIDEj.cpp
-    src/_ZN9SolidHeap10VGetNodeIDEv.cpp
-    src/_ZN9SolidHeap12VResizeToFitEv.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/Heap.cpp
     # THIRD ORDER: SolidHeapAllocator's own five methods the eleven virtuals
     # above call, and Heap::Reallocate (VResizeToFit's fallback path).
-    src/_ZN18SolidHeapAllocator8AllocateEji.cpp
-    src/_ZN18SolidHeapAllocator5ResetEj.cpp
-    src/_ZN18SolidHeapAllocator10ReallocateEPvj.cpp
-    src/_ZN18SolidHeapAllocator10MemoryLeftEi.cpp
-    src/_ZN18SolidHeapAllocator14TryResizeToFitEv.cpp
-    src/_ZN18SolidHeapAllocator16AllocateForwardsEPvjj.cpp
-    src/_ZN18SolidHeapAllocator17AllocateBackwardsEPvjj.cpp
-    src/_ZN18SolidHeapAllocator10ResetStartEv.cpp
-    src/_ZN18SolidHeapAllocator8ResetEndEv.cpp
-    src/_ZN4Heap10ReallocateEPvj.cpp
-    src/func_0204ebb8.c
-    src/_ZN18NestedHeapIterator6RemoveEP13HeapAllocator.cpp
+    src/engine/heap/SolidHeapAllocator.cpp
+    src/engine/heap/SolidHeapAllocator.cpp
+    src/engine/heap/SolidHeapAllocator.cpp
+    src/engine/heap/SolidHeapAllocator.cpp
+    src/engine/heap/SolidHeapAllocator.cpp
+    src/engine/heap/SolidHeapAllocator.cpp
+    src/engine/heap/SolidHeapAllocator.cpp
+    src/engine/heap/SolidHeapAllocator.cpp
+    src/engine/heap/SolidHeapAllocator.cpp
+    src/engine/heap/Heap.cpp
+    src/engine/heap/SolidHeapAllocator.cpp
+    src/engine/heap/NestedHeapIterator.cpp
     src/_ZN4HeapC2EPvjPS_.cpp
-    src/_ZN4Heap6RescueEv.cpp
+    src/engine/heap/Heap.cpp
     # SMOKELINK5 section E: the host globals and ROM helpers. Eleven of
     # fifteen are here or in the ov001 mount below; four are the plain SRC
     # rows immediately following. data_020a4b58's own triplet is second order
@@ -2815,12 +3000,12 @@ set(PORT_SMOKE_ACTOR_SRC
     # hosts it), pulled as the same kind of verbatim subset in
     # port/hal/smoke_host_globals_actor.cpp.
     port/hal/smoke_host_globals_actor.cpp
-    src/func_02042ffc.c
-    src/func_02043060.c
-    src/func_02043180.c
-    src/func_020433b8.c
-    src/func_0204335c.c
-    src/_ZN7fBase_c7ProcessEMS_FivEMS_FbvEMS_FvjE.cpp
+    src/unnamed/arm9/0204/func_02042ffc.c
+    src/unnamed/arm9/0204/func_02043060.c
+    src/unnamed/arm9/0204/func_02043180.c
+    src/actors/ActorBase.cpp
+    src/unnamed/arm9/0204/func_0204335c.c
+    src/actors/ActorBase.cpp
     # SMOKELINK5 section F: __ZN5Sound4PlayEjjRK7Vector3 is NOT placed. See
     # out/SMOKELINK5/bugs.md -- the coordinator's ruling measured the matched
     # TU's cost against its own six one-function dependencies only. Traced
@@ -2856,7 +3041,7 @@ foreach(line IN LISTS SLICE10_LINES)
     endif()
     # same substitution as the slice_gate7 loop above -- Animation::Advance
     # comes from hostgen (ANIM_ADVANCE_GEN).
-    if(line STREQUAL "src/_ZN9Animation7AdvanceEv.cpp")
+    if(line STREQUAL "src/engine/animation/dExtFrameCtrl_c.cpp")
         continue()
     endif()
     list(APPEND SLICE10_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
@@ -2897,8 +3082,10 @@ list(APPEND SLICE10_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/LuigiInfectio
 # hal/method_faces.cpp carries the C-linkage faces their callers spell. Both
 # were plain C free functions until main rewrote them as methods.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN8dActor_c13SpawnSoundObjEj.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN8dActor_c24KillAndTrackInDeathTableEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dActor_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dActor_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dActor_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dActor_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     # gate 176: a //cpp-marked state body (local method shadows over extern "C"
     # bodies), the same shape -- compiles as C++, no face needed (its own
     # symbol is extern "C" inside the file).
@@ -2912,37 +3099,38 @@ set_source_files_properties(
     "${CMAKE_BINARY_DIR}/host-src/src/actors/Scuttlebug.cpp"
     # gate 177: two //cpp-marked .c bodies plus one unmarked C++-ism (an empty
     # struct Callback {}), same treatment.
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN5Bully8BehaviorEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daDonketu_c.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daOts_c.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daOts_c.cpp"
     # gate 22 backfill: CanEnterDoor matched 2026-08-07 (PR #1223); //cpp-marked
     # .c whose Door dummy-virtual struct needs C++, own symbol extern "C".
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/Player.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/Player.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     # gate 194: a //cpp-marked .c (a top-level `extern "C" {` block, invalid C),
     # HootTheOwl's own state-transition helper.
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov094_02136024.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daOwl_c.cpp"
     # run linkw wave 7, lane w7b: MrI's InitResources, the one body of the Mr. I
     # closure that is NONMATCHING-but-decompiled. //cpp-marked .c with extern "C"
     # blocks and SharedFilePtr& reference params -- invalid C, same treatment as
     # the gate-176 entry above.
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN3MrI13InitResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daEykn_c.cpp"
     # run linkw wave 12, lane w12: the one .c in ov073's closure that is really
     # C++ -- a top-level `extern "C" {` block, invalid C. ChiefChilly's
     # jumped-on / hurt-the-player state helper. Same treatment as the entries
     # above; it is the only one of slice_w12.txt's 67 TUs that needs it.
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov073_0211f61c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daKing_Donketu_c.cpp"
     # run link60 lane L2: the ONE .c in ov007's 619-TU closure that is really
     # C++ -- a top-level `extern "C" {` block, invalid C. The whole slice was
     # swept for the //cpp marker rather than this one being found by a compile
     # error and the rest left to luck.
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov007_020bfd70.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/ov007/func_ov007_020bfd70.cpp"
     # run mg5 lane CCN: the ONE .c in dScMgCoin_c's 61-TU closure that is
     # really C++ -- a //cpp marker, a top-level `extern "C"` block and a
     # thirty-six-virtual dummy struct it dispatches a slot through. The whole
     # slice was swept for the marker and for `extern "C"`, `virtual` and
     # `class`, rather than this one being found by a compile error and the rest
     # left to luck; it is the only hit.
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020dd880.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgCoin_c.cpp"
     # run mg9 lane S371: THREE .c files in dScMgAmida_c's 29-TU slice are
     # really C++ -- a //cpp marker, top-level `extern "C"` blocks and, in all
     # three, a dummy virtual struct they dispatch a slot through. That struct
@@ -2960,8 +3148,8 @@ set_source_files_properties(
     # host-copied in unmatched/MgAmida_Slot3ba0.cpp instead, one token changed,
     # and that file's header carries the ruling and the sed line that
     # reproduces it.
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020d122c.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN12dScMgAmida_c8BehaviorEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgAmida_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgAmida_c.cpp"
     # run mg11 lane PKR: the ONE .c in dScMgCard_c's 38-TU slice that is really
     # C++ -- a //cpp marker, a top-level `extern "C" {` block and a two-virtual
     # dummy struct it dispatches ELEMENT vtable slot 1 through, ten times a
@@ -2973,6 +3161,7 @@ set_source_files_properties(
     # class fields" inside recovered-name COMMENTS, which is the false positive
     # that sweep has to tolerate to stay cheap; this is the only real hit.
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/minigames/d_s_mg_card.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/minigames/d_s_mg_card.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES LANGUAGE CXX)
 
 # Wave-5 close surgery (w5b_review.md R1/R2): two /alternatename routes died
@@ -2985,16 +3174,19 @@ set_source_files_properties(
 # daGrock_c_classInit (dsd shared-base misname, gate 42); the real
 # daGrock_c_classInit (ov021, id 221's factory) links since wave 5.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13PeachPainting13InitResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjC1Peach_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS "daGrock_c_classInit=data_ov010_02112d64")
 # R2: three ov062 caller TUs spell a shared-base address by its ov065 name,
 # and that name is now Swoop's genuinely different real body (sliced in
 # wave 5) -- rename the reference back to the ov062 body they always called.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov062_02118058.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov062_021180d4.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov062_02118a00.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "func_ov065_02117994=func_ov062_02117994")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_nknk.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_nknk.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_nknk.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_nknk.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_nknk.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_nknk.cpp"
+    PROPERTIES COMPILE_DEFINITIONS "_ZN12daBasabasa_c19func_ov065_02117994Ev=_ZN8daNknk_c19func_ov062_02117994Ei")
 # R2b, run rel0215 (lane cast-ov077): THE SAME DISEASE, from the ov077 side,
 # and this one was LIVE ON EVERY LEVEL THAT PLACES A LAKITU rather than latent.
 # src/func_ov077_0212390c.cpp is LAKITU's per-frame chase body. Its last
@@ -3021,8 +3213,8 @@ set_source_files_properties(
 # LHS is defeated silently. Found by sweeping every overlay(77) relocation in
 # all 91 ov077 TUs against what each source spells; this is the only one.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov077_0212390c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "_ZN9Spindrift8BehaviorEv=func_ov077_02123c6c")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_jgm.cpp"
+    PROPERTIES COMPILE_DEFINITIONS "_ZN8daHuwa_c8BehaviorEv=_ZN7daJgm_c18UpdateWallAndWaterER10dBgCh_Actr")
 # R5, run frontfix (lane FRONTFIX): THE SAME SHAPE at 0x020c5dec, where TWO
 # bodies alternate at one address and one /alternatename cannot route both.
 # hal/cxx_aliases.cpp keeps /alternatename:_func_ov007_020c5dec=_func_ov002_020c5dec
@@ -3040,8 +3232,8 @@ set_source_files_properties(
 # it, while func_ov007_020c5dec stays undefined for the alias to route the two
 # Player TUs to ov002. Per-context routing with no /alternatename ambiguity.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov007_020c5dec.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov007_020ba2e0.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/ov007/func_ov007_020c5dec.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/ov007/func_ov007_020ba2e0.c"
     PROPERTIES COMPILE_DEFINITIONS "func_ov007_020c5dec=func_ov007_020c5dec_own")
 # PORT_HOST_ABI, run link100 lane WARP1: ov100's fish release pass, the same
 # per-context routing one more time. src/_ZN4Fish16CleanupResourcesEv.cpp calls
@@ -3052,9 +3244,15 @@ set_source_files_properties(
 # and calls the ROM's own body; every other reference to func_ov100_02146280 --
 # there is no other caller in the ROM, reloc 0x02146ae4 is the only edge -- is
 # untouched, and the body itself still links under its own name.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN4Fish16CleanupResourcesEv.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "func_ov100_02146280=hal_ov100_02146280_ridethrough")
+# RETIRED at PORTSYNC2 (the 2026-10 main merge, 749f5799a). Main folded the
+# fish TU and spells the helper as a MEMBER, daFish_c::func_ov100_02146280,
+# called `spawner->func_ov100_02146280()`: MSVC passes the receiver in ECX, so
+# the argless-call defect this rename routed around is gone at the source, and
+# the macro would now rename a member declaration and its call (C2039). The
+# thunk in hal/cxx_aliases.cpp is retired with it.
+# set_source_files_properties(
+#     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_fish.cpp"
+#     PROPERTIES COMPILE_DEFINITIONS "func_ov100_02146280=hal_ov100_02146280_ridethrough")
 # PORT_HOST_ABI, run link100 wave 20 (lane CAMTICK_FIX): the camera-rotate
 # effect's stop fade. src/func_02009e70.cpp declares Sound_PlayIfNotActive
 # with three parameters and calls it with three (:102 and :551); the ROM's
@@ -3070,8 +3268,8 @@ set_source_files_properties(
 # the generated twin; the property has to name both paths or the
 # ride-through would silently leave the build. See the refusal above.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_02009e70.cpp"
-    "${CMAKE_BINARY_DIR}/host-src/src/func_02009e70.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0200/func_02009e70.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/unnamed/arm9/0200/func_02009e70.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "Sound_PlayIfNotActive=hal_Sound_PlayIfNotActive_ridethrough")
 # R3, run linkw wave 12 (lane w12): THE SAME DISEASE, a fourth time, and this
@@ -3128,8 +3326,8 @@ set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daBgSnmBdy_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS "_ZTV12daBgSnmBdy_c=_ZTV11SnowmanBody")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN11SnowmanHeadD0Ev.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "_ZTV12daBgSnmHed_c=_ZTV11SnowmanHead")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daBgSnmHed_c.cpp"
+    PROPERTIES COMPILE_DEFINITIONS "_ZTV12daBgSnmHed_c=_ZTV12daBgSnmHed_c")
 # Same shape once more, ov070's FlyGuy (lane w3-d): daPropeller_Heyho_c_classInit.c and
 # _ZN19daPropeller_Heyho_cD1Ev.c both store `_ZTV6FlyGuy`, which is what
 # hal/actor_classes_ov070.cpp defines, while _ZN19daPropeller_Heyho_cD0Ev.c stores the SAME
@@ -3156,17 +3354,21 @@ set_source_files_properties(
 # mounted per symbol -- the ov071/ov073 R3 failure. A -D cannot be defeated.
 # The target is the HOST ARRAY, since 0x021139d4 is excluded from the mount.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN11PyramidLiftD0Ev.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN11PyramidLiftD1Ev.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/d_a_dp_lift.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "data_ov027_021139d4=_ZTV11PyramidLift")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daDpLift_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daDpLift_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daDpLift_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daDpLift_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daDpLift_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daDpLift_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    PROPERTIES COMPILE_DEFINITIONS "data_ov027_021139d4=_ZTV10daDpLift_c")
 # R6, the same shape one address over: src/__sinit_ov025_02112a44.c spells
 # ov025's own destructor-chain node 0x02113acc as `data_ov032_02113acc`. The
 # load site 0x02112a9c says module:overlay(25), and ov032 has a real
 # data_ov032_02113acc with four readers already in src, so the same argument
 # applies and this is a -D too.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/__sinit_ov025_02112a44.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjDpBrock_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daObjDpBrock_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS "data_ov032_02113acc=data_ov025_02113acc")
 # R7, intro-cutscene landing: the intro's cutscene sprite body
 # src/func_ov002_020f2340.cpp calls OAM::RenderSub(attr,int,int) by its MSVC
@@ -3179,7 +3381,8 @@ set_source_files_properties(
 # defeated -- the R4/R5 argument. The four ov075 HH callers stay on their
 # bridge, each side bound to the body it was proven against.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov002_020f2340.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daDemo_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daDemo_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS "RenderSub=RenderSub_ii")
 
 # run linkw wave 6, lane w6-D: THE SAME DISEASE A THIRD TIME, and this one
@@ -3223,18 +3426,18 @@ set_source_files_properties(
 # and the port mounts both as separate host objects, so the wrong pick here is
 # the ov043/ov047 mistake rather than a harmless synonym.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN6Coffin16CleanupResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCasket_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "G0=port_coffin_file0;G1=port_coffin_file1")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN15BookShotSpawner13InitResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daBook_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "G0=port_bookshotspawner_file0;G1=port_bookshotspawner_file1")
 # The spawner's deleting destructor stores its OWN table, which in this port is
 # the host array hal/actor_classes_ov063.cpp declares. HEAP is left alone: its
 # binding to the game heap pointer 0x020a0eac is what this body means.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN15BookShotSpawnerD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daBook_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "VT=port_bookshotspawner_vt")
 # Lane DTOR-PAIRS-C: the brick-block tag's deleting destructor is the same
@@ -3245,24 +3448,25 @@ set_source_files_properties(
 # same type the VT placeholder carries, so the rename is a plain substitution.
 # HEAP stays bound to the game heap (the pool's second word is 020A0EAC).
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10BrickBlockD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjBlockItemTag_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "VT=_ZTV10BrickBlock")
+    "VT=_ZTV19daObjBlockItemTag_c")
 # Lane DTOR-PAIRS-C: the cutscene object's deleting destructor, the same VT/HEAP
 # shape; its store relocates to its own table (ov002 from:0x020f1fc4 ->
 # 0x0210bd60, _ZTV14CutsceneObject, the host array hal/actor_classes_intro.cpp
 # fills; decl_common.h already declares it `extern int []`).
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN14CutsceneObjectD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daDemo_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daDemo_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS
-    "VT=_ZTV14CutsceneObject")
+    "VT=_ZTV8daDemo_c")
 # Lane DTOR-PAIRS-C: the four bully destructors spell VT1 for their second vptr
 # store, and the ROM relocates all four stores to ov064 0x0211b768 -- the
 # bullies' base table, data_ov064_0211b768, hosted in hal/actor_classes_ov027.cpp
 # (which rides the same three targets as slice_gate177). Per source, so bare VT1
 # (auto_bss's dummy) keeps serving whatever else still spells it. G0 is the game
 # heap by the standing alias, the pool's last word (020A0EAC) in both D0s.
-foreach(bully_dtor _ZN5BullyD1Ev _ZN5BullyD0Ev _ZN8BigBullyD1Ev _ZN8BigBullyD0Ev)
+foreach(bully_dtor _ZN11daDonketu_cD1Ev _ZN11daDonketu_cD0Ev _ZN12daBDonketu_cD1Ev _ZN12daBDonketu_cD0Ev)
     set_source_files_properties(
         "${CMAKE_CURRENT_SOURCE_DIR}/../src/${bully_dtor}.c"
         PROPERTIES COMPILE_DEFINITIONS
@@ -3318,7 +3522,7 @@ set_source_files_properties(
 # Both sides are cdecl, so the caller cleans it up and the extra argument is
 # inert. hal/bob_enemy_bridges.cpp:34 declares four and is a declaration only.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov081_02123910.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daHuwa_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "func_ov004_020ada40=func_020ada40")
 
@@ -3349,9 +3553,12 @@ set_source_files_properties(
 # itself, inside the body it defines. St_NoControl_Init's CALL_STATE_FN dispatch
 # and that redeclaration are both answered by the WHOLE-TU substitution of
 # src/actors/Player.cpp at the top of this file.
-set(GATE10_SYMS func_ov002_020dec70 func_ov002_020d708c
+set(GATE10_SYMS func_ov002_020dec70 _ZN6Player19func_ov002_020d708cEv
     engine/fader/StartExitFaderWipe
-    engine/fader/StartEntranceFaderWipe
+    # PORTSYNC2: the port line's host arm sat inside this body (two placeholder
+    # destructor slots so SetToEnd lands at 0x20); main's file dropped it, so
+    # the carried body in port/unmatched/hostarm/ is what this row hostgens.
+    port/unmatched/hostarm/StartEntranceFaderWipe.cpp
     func_ov002_020d6c60
     # Three Player state functions whose mwcc member-pointer dispatch calls a DS
     # code word raw (St_WallJump_Main's was the walljump crash): hostgen's
@@ -3374,16 +3581,17 @@ set(GATE10_SYMS func_ov002_020dec70 func_ov002_020d708c
     func_ov002_020e444c)
 set(GATE10_GEN "")
 foreach(sym IN LISTS GATE10_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE10_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE10_GEN "${sym_out}")
 endforeach()
@@ -4783,10 +4991,10 @@ set(OVCROSS_C "${CMAKE_BINARY_DIR}/host-src/ov_cross.c")
 # fails the next configure loudly, which is the intended trade.
 set(OVCROSS_LOADER_SRC
     "${PORT_REPO_ROOT_ABS}/src/GetSceneOverlayID.c"
-    "${PORT_REPO_ROOT_ABS}/src/func_0201a694.c"
-    "${PORT_REPO_ROOT_ABS}/src/func_0201a798.c"
-    "${PORT_REPO_ROOT_ABS}/src/func_0201a754.c"
-    "${PORT_REPO_ROOT_ABS}/src/func_0201a614.c")
+    "${PORT_REPO_ROOT_ABS}/src/unnamed/arm9/0201/func_0201a694.c"
+    "${PORT_REPO_ROOT_ABS}/src/unnamed/arm9/0201/func_0201a798.c"
+    "${PORT_REPO_ROOT_ABS}/src/unnamed/arm9/0201/func_0201a754.c"
+    "${PORT_REPO_ROOT_ABS}/src/unnamed/arm9/0201/func_0201a614.c")
 add_custom_command(OUTPUT "${OVCROSS_C}"
     COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/ovdata.py" --cross
             "${OVCROSS_C}" ${OV_DATA_MAPS} ${LINKONLY_FLAG}
@@ -4921,15 +5129,20 @@ foreach(line IN LISTS SLICE_W1L1_LINES)
     list(APPEND SLICE_W1L1_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
 # EXPERIMENT (LIGHTS lane): route Scene::Initialise3dGraphics through hostgen.
-set(SCN3D_HOSTGEN_SKIP "src/_ZN8dScene_c20Initialise3dGraphicsEv.cpp")
+set(SCN3D_HOSTGEN_SKIP "src/actors/dScene_c.cpp")
 set(SCN3D_HOSTGEN_GEN
-    "${CMAKE_BINARY_DIR}/host-src/src/_ZN8dScene_c20Initialise3dGraphicsEv.cpp")
-add_custom_command(OUTPUT "${SCN3D_HOSTGEN_GEN}"
-    COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-            --out "${CMAKE_BINARY_DIR}/host-src" _ZN8dScene_c20Initialise3dGraphicsEv
-    DEPENDS "${PORT_REPO_ROOT_ABS}/src/_ZN8dScene_c20Initialise3dGraphicsEv.cpp"
-            "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-    COMMENT "hostgen _ZN8dScene_c20Initialise3dGraphicsEv")
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dScene_c.cpp")
+# PORTSYNC2: dScene_c.cpp is on PORT_HOSTGEN_TU now (a HOSTABI_RETIRE row
+# folded into it), whose rule already makes this output. By path, too: hostgen
+# no longer finds a file stemmed _ZN8dScene_c20Initialise3dGraphicsEv.
+if(NOT "${SCN3D_HOSTGEN_SKIP}" IN_LIST PORT_HOSTGEN_TU)
+    add_custom_command(OUTPUT "${SCN3D_HOSTGEN_GEN}"
+        COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${SCN3D_HOSTGEN_SKIP}
+        DEPENDS "${PORT_REPO_ROOT_ABS}/src/actors/dScene_c.cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        COMMENT "hostgen ${SCN3D_HOSTGEN_SKIP}")
+endif()
 
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_w1l2.txt" SLICE_W1L2_LINES)
 set(SLICE_W1L2_SOURCES ${SCN3D_HOSTGEN_GEN})
@@ -4983,12 +5196,17 @@ endforeach()
 set(SQRTUNIT_SYMS func_02053008 func_02053130 func_020531a4 func_02052fdc)
 set(SQRTUNIT_GEN "")
 foreach(sym IN LISTS SQRTUNIT_SYMS)
-    set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND SQRTUNIT_GEN "${sym_out}")
+        continue()
+    endif()
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND SQRTUNIT_GEN "${sym_out}")
 endforeach()
@@ -5001,12 +5219,17 @@ endforeach()
 set(OV70GEN_SYMS)
 set(OV70GEN "")
 foreach(sym IN LISTS OV70GEN_SYMS)
-    set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND OV70GEN "${sym_out}")
+        continue()
+    endif()
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND OV70GEN "${sym_out}")
 endforeach()
@@ -5094,15 +5317,21 @@ endforeach()
 # The two colliding names are themselves on this slice and BOTH define
 # themselves `(void*)`, which is the other half of why the header is the odd one
 # out here rather than the TU.
-set(SLICE_W3A_HOSTGEN_SYMS _ZN15TtcRotatingCube13InitResourcesEv)
+set(SLICE_W3A_HOSTGEN_SYMS _ZN20daObjCtRotateBlock_c13InitResourcesEv)
 set(SLICE_W3A_HOSTGEN_GEN "")
 foreach(sym IN LISTS SLICE_W3A_HOSTGEN_SYMS)
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND SLICE_W3A_HOSTGEN_GEN "${sym_out}")
+        continue()
+    endif()
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND SLICE_W3A_HOSTGEN_GEN "${sym_out}")
 endforeach()
@@ -5116,7 +5345,7 @@ foreach(line IN LISTS SLICE_W3A_LINES)
     endif()
     # the one TU hostgen emits: take the generated copy, never the src/ one,
     # or MSVC gets the unshadowed header and the four errors come back
-    if(line STREQUAL "src/_ZN15TtcRotatingCube13InitResourcesEv.cpp")
+    if(line STREQUAL "src/actors/daObjCtRotateBlock_c.cpp")
         continue()
     endif()
     list(APPEND SLICE_W3A_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
@@ -5177,11 +5406,11 @@ set_source_files_properties(
     PROPERTIES COMPILE_DEFINITIONS
     "G0=port_ov065_m05_file0;G1=port_ov065_m05_file1")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN15TtcRotatingGear16CleanupResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCtMecha08_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "G0=port_ov065_m08_file0;G1=port_ov065_m08_file1")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN14TTC_MovingBeam16CleanupResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCtMecha09_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "G0=port_ov065_m09_file0;G1=port_ov065_m09_file1")
 
@@ -5308,6 +5537,7 @@ foreach(line IN LISTS SLICE_W6D_LINES)
     if(line MATCHES "^#" OR line STREQUAL "")
         continue()
     endif()
+    port_unsubstitute(line)  # PORTSYNC2: see the macro
     # VS wiring lane: the PathLift path-follow body's two `x / dv` sites need
     # the ARM divider's x/0 = 0, and a short-or-slow path segment makes dv 0
     # (measured: c0000094 in the VS castle grounds, reproduced with plain
@@ -5316,16 +5546,21 @@ foreach(line IN LISTS SLICE_W6D_LINES)
     # replaced HERE by the hostgen output so slice_w6d.txt itself stays another
     # lane's file (the TTE hostgen-skip shape); this retires the old
     # port/unmatched/VS_PathDivGuard.cpp host copy.
-    if(line STREQUAL "src/func_ov002_020ef670.c")
+    if(line STREQUAL "src/actors/dPathLiftActor_c.cpp")
         # SYNC4: hostgen emits .cpp for this TU now -- main's spelling of the
         # body is C++, so the generated copy follows the extension.
-        set(_pathdiv_out "${CMAKE_BINARY_DIR}/host-src/src/func_ov002_020ef670.cpp")
-        add_custom_command(OUTPUT "${_pathdiv_out}"
-            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                    --out "${CMAKE_BINARY_DIR}/host-src" func_ov002_020ef670
-            DEPENDS "${PORT_REPO_ROOT_ABS}/src/func_ov002_020ef670.c"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-            COMMENT "hostgen func_ov002_020ef670")
+        set(_pathdiv_out "${CMAKE_BINARY_DIR}/host-src/src/actors/dPathLiftActor_c.cpp")
+        # PORTSYNC2: on PORT_HOSTGEN_TU now (port/src_folds.cmake), whose rule
+        # makes this output; by path otherwise, since no file is stemmed
+        # func_ov002_020ef670 any more.
+        if(NOT "src/actors/dPathLiftActor_c.cpp" IN_LIST PORT_HOSTGEN_TU)
+            add_custom_command(OUTPUT "${_pathdiv_out}"
+                COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                        --out "${CMAKE_BINARY_DIR}/host-src" src/actors/dPathLiftActor_c.cpp
+                DEPENDS "${PORT_REPO_ROOT_ABS}/src/actors/dPathLiftActor_c.cpp"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                COMMENT "hostgen src/actors/dPathLiftActor_c.cpp")
+        endif()
         list(APPEND SLICE_W6D_SOURCES "${_pathdiv_out}")
         continue()
     endif()
@@ -5626,7 +5861,7 @@ set_source_files_properties(
 # are turned on here, because only these two are on level 27's critical path
 # and each one wants its own measured before/after.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/daBrq_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daBrq_c.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_krpa.cpp"
     PROPERTIES COMPILE_OPTIONS "/vmg;/vmm")
 
@@ -5699,23 +5934,24 @@ set_source_files_properties(
     # --- live: matched, linked, and a `jmp 0` in the binary until this line ---
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_kp_fr.cpp"
     # --- reclaimed from host copies by slice_w18a.txt (see that file) ---
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov072_02121cdc.cpp"  # BabyPenguin tick, ov072 +0x35c
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_pg_bby.cpp"  # BabyPenguin tick, ov072 +0x35c
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/Scuttlebug.cpp"  # Scuttlebug main, ov071 +0x380
     # and the generated copy, lane CRASH6: this TU is on PORT_HOSTGEN_TU now,
     # so the raw path alone would set the option on a source nothing compiles.
     "${CMAKE_BINARY_DIR}/host-src/src/actors/Scuttlebug.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov071_021215c0.cpp"  # MrI main,        ov071 +0x1e4
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov080_021250c8.cpp"  # Bbh tick,        ov080 +0x36c
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daEykn_c.cpp"  # MrI main,        ov071 +0x1e4
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daBttBk_c.cpp"  # Bbh tick,        ov080 +0x36c
     # --- inert today: no host copy, no reference, /OPT:REF strips them ---
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daBombking_c.cpp"   # KingBobOmb, ov078 +0x420
     # and the generated copy, lane DUPES: this TU is on PORT_HOSTGEN_TU
     # now, so the raw path alone would set the property on a source
     # nothing compiles.
     "${CMAKE_BINARY_DIR}/host-src/src/actors/daBombking_c.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10MrBlizzard8BehaviorEv.cpp"   # MrBlizzard, ov081 +0x3f8
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN11ChiefChilly8BehaviorEv.cpp"  # ChiefChilly, ov073 +0x37c
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daSnowman_c.cpp"   # MrBlizzard, ov081 +0x3f8
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daKing_Donketu_c.cpp"  # ChiefChilly, ov073 +0x37c
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_pg_mthr.cpp"  # ov018 +0x370
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov019_02112268.cpp"  # ov019 +0x370
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_pg_rcer.cpp"  # ov019 +0x370
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_pg_rcer.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daPgDfdr_c.cpp"  # ov027 +0x3cc
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daMky_c.cpp"  # ov030 +0x3a4
     # and the generated copy, lane HOSTGEN4: this TU is on PORT_HOSTGEN_TU
@@ -5723,14 +5959,14 @@ set_source_files_properties(
     # compiles.
     "${CMAKE_BINARY_DIR}/host-src/src/actors/daMky_c.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daBgSnmBdy_c.cpp"  # ov072 +0x38c
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN11SnowmanHead17CallStateBehaviorEv.cpp"  # ov072 +0x328
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov077_02124718.cpp"  # ov077 +0x3f0
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov077_02125e20.cpp"  # ov077 +0x3d0
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daBgSnmHed_c.cpp"  # ov072 +0x328
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_jgm.cpp"  # ov077 +0x3f0
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daTgz_c.cpp"  # ov077 +0x3d0
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daGmch_c.cpp"  # ov081 +0x3dc
     # and the generated copy, lane SEATS3: this TU is on PORT_HOSTGEN_TU now,
     # so the raw path alone would set the option on a source nothing compiles.
     "${CMAKE_BINARY_DIR}/host-src/src/actors/daGmch_c.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13PrincessPeach17CallStateBehaviorEv.cpp"  # ov085 +0x350
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daPeach_c.cpp"  # ov085 +0x350
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daSanbo_c.cpp"  # ov096 +0x384
     # and the generated copy, lane HOSTGEN4: this TU is on PORT_HOSTGEN_TU
     # now, so the raw path alone would set the option on a source nothing
@@ -5834,9 +6070,10 @@ endforeach()
 # (unmatched/Ov085_Toad_StateSeat.cpp, unmatched/Wiggler_StateEnter.cpp and
 # unmatched/Wiggler_StateTick.cpp).
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov002_020b9704.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov002_020b9750.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov002_020efa54.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjPowerUpItem_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjPowerUpItem_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dPathLiftActor_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dPathLiftActor_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_wanwan.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_wanwan.cpp"
     # and the generated copy TWICE, lane HOSTGEN4: this TU is on
@@ -5844,14 +6081,14 @@ set_source_files_properties(
     # and the configure-time check counts spellings rather than sources.
     "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_wanwan.cpp"
     "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_wanwan.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov034_021125b8.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov034_02112604.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/ov063/func_ov063_0211ddac.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/ov063/func_ov063_0211ddf4.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov071_021223c8.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov071_02122414.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN4Toad8SetStateEi.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN4Toad8RunStateEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daHanachan_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daHanachan_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/daPiano_c/d_a_piano.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/daPiano_c/d_a_piano.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCasket_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCasket_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_kinopio.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_kinopio.cpp"
     PROPERTIES COMPILE_OPTIONS "/Zp4")
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_pmfc.txt" SLICE_PMFC_LINES)
 set(SLICE_PMFC_SOURCES "")
@@ -5955,15 +6192,20 @@ endforeach()
 # the null path for the handles this extraction does not carry. The
 # `u8 GetHealth()` shadow declaration is bridged by name in the same file.
 # See status/HUDINITRES.md.
-set(GATE27_SYMS _ZN3HUD13InitResourcesEv)
+set(GATE27_SYMS _ZN8dMeter_c13InitResourcesEv)
 set(GATE27_GEN "")
 foreach(sym IN LISTS GATE27_SYMS)
-    set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE27_GEN "${sym_out}")
+        continue()
+    endif()
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" --extern-data ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" --extern-data ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE27_GEN "${sym_out}")
 endforeach()
@@ -6017,14 +6259,18 @@ foreach(line IN LISTS SLICE29_LINES)
     if(line MATCHES "^#" OR line STREQUAL "")
         continue()
     endif()
-    get_filename_component(sym "${line}" NAME_WE)
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
-    add_custom_command(OUTPUT "${sym_out}"
-        COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../${line}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-        COMMENT "hostgen ${sym}")
+    # PORTSYNC2: by path (main moved and folded these sources); a row that is
+    # on PORT_HOSTGEN_TU, or that port_read_lines already substituted, takes the
+    # one generated copy that rule makes.
+    port_hostgen_sym("${line}")
+    if(NOT sym_tu)
+        add_custom_command(OUTPUT "${sym_out}"
+            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                    --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+            DEPENDS "${sym_src}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+            COMMENT "hostgen ${sym_arg}")
+    endif()
     list(APPEND GATE29_GEN "${sym_out}")
 endforeach()
 
@@ -6199,7 +6445,7 @@ list(APPEND SLICEINTRO_SOURCES
 # carries the /alternatename for that mangling, so the matched TU links behind
 # it; the Ov002_KuppaCmd_020bd480.cpp host copy is retired.
 list(APPEND SLICEINTRO_SOURCES
-     "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov002_020bd480.cpp")
+     "${CMAKE_BINARY_DIR}/host-src/src/actors/Player.cpp")
 # And command 9, the knockback. The matched TU reaches Player::Hurt through a
 # local shadow CLASS, so MSVC mangles it thiscall (?Hurt@Player@@QAEX..., `this`
 # in ecx) while the real body carries the Itanium C name with self on the stack.
@@ -6208,7 +6454,7 @@ list(APPEND SLICEINTRO_SOURCES
 # alias in cxx_aliases.cpp), so the matched TU links behind it; the
 # Ov002_KuppaCmd_020bd250.cpp host copy is retired.
 list(APPEND SLICEINTRO_SOURCES
-     "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov002_020bd250.cpp")
+     "${CMAKE_BINARY_DIR}/host-src/src/actors/Player.cpp")
 
 # ---- link100 TAIL2 ----
 # GATE 219: CUTSCENE_OBJECT's ten pointer-to-member STATE tables (49 body
@@ -6368,7 +6614,7 @@ set(TIDEP_B4B5C_DISPLACED FALSE)   # run mg15 lane TITLEDEPTH, the fourth
 # -- and its DEFAULT would be an empty variable up here, which is the shape of a
 # switch that is right for the wrong reason.
 option(TIDEP_ARITY_PLAIN
-       "run mg15 TITLEDEPTH: keep src/func_ov007_020b4b5c.c in the port slice, \
+       "run mg15 TITLEDEPTH: keep src/unnamed/ov007/func_ov007_020b4b5c.c in the port slice, \
 so the title's cell sizer is called without its camera (pre-fix arm)"
        OFF)
 foreach(line IN LISTS SLICE_OV007_LINES)
@@ -6682,16 +6928,18 @@ foreach(sym IN LISTS T2_DIV_SYMS)
     # .c when the block was written and main promoted them to .cpp, which made
     # ninja depend on a path that does not exist and stopped the build before
     # anything compiled. (2026-09-12, lane SYNC2.)
-    set(sym_dep "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    if(NOT EXISTS "${sym_dep}")
-        set(sym_dep "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND T2_DIV_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
         DEPENDS "${sym_dep}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND T2_DIV_GEN "${sym_out}")
 endforeach()
@@ -6722,8 +6970,8 @@ set(SLICE10_SOURCES ${SLICE10_SRC_T2})
 if(NOT T2_DIV_CUT EQUAL 2)
     message(STATUS "T2: expected to cut 2 plain divider entries and cut "
                    "${T2_DIV_CUT}. If a slice file stopped listing one of "
-                   "src/_ZN4cstd4ldivEii.cpp or "
-                   "src/_ZN4cstd10fdiv_asyncE5Fix12IiE5Fix12IiE.c the hostgen "
+                   "src/cstd.cpp or "
+                   "src/cstd.cpp the hostgen "
                    "copy is still added and the link will say so; if a THIRD "
                    "slice started listing one, this cut missed it and the link "
                    "will say that too")
@@ -6799,16 +7047,18 @@ foreach(sym IN LISTS TI2_MOD_SYMS)
     # .c when the block was written and main promoted them to .cpp, which made
     # ninja depend on a path that does not exist and stopped the build before
     # anything compiled. (2026-09-12, lane SYNC2.)
-    set(sym_dep "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    if(NOT EXISTS "${sym_dep}")
-        set(sym_dep "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND TI2_MOD_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
         DEPENDS "${sym_dep}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND TI2_MOD_GEN "${sym_out}")
 endforeach()
@@ -6831,7 +7081,7 @@ endif()
 if(NOT TI2_MOD_CUT EQUAL 1)
     message(STATUS "TI2: expected to cut 1 plain cstd::mod entry and cut "
                    "${TI2_MOD_CUT}. If slice_ov007.txt stopped listing "
-                   "src/_ZN4cstd3modEii.cpp the hostgen copy is still added and "
+                   "src/cstd.cpp the hostgen copy is still added and "
                    "the link will say so; if a SECOND slice started listing "
                    "it, this cut missed it and the link will say that too")
 endif()
@@ -6967,16 +7217,18 @@ foreach(sym IN LISTS SQ_DIST_SYMS)
     # .c when the block was written and main promoted them to .cpp, which made
     # ninja depend on a path that does not exist and stopped the build before
     # anything compiled. (2026-09-12, lane SYNC2.)
-    set(sym_dep "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    if(NOT EXISTS "${sym_dep}")
-        set(sym_dep "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND SQ_DIST_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
         DEPENDS "${sym_dep}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND SQ_DIST_GEN "${sym_out}")
 endforeach()
@@ -6999,7 +7251,7 @@ endif()
 if(NOT SQ_DIST_CUT EQUAL 1)
     message(STATUS "SQRT: expected to cut 1 plain func_02053274 entry and cut "
                    "${SQ_DIST_CUT}. If slice_gate10.txt stopped listing "
-                   "src/func_02053274.c the hostgen copy is still added and the "
+                   "src/cstd.cpp the hostgen copy is still added and the "
                    "link will say so; if a SECOND slice started listing it, this "
                    "cut missed it and the link will say that too")
 endif()
@@ -7111,16 +7363,19 @@ if(NOT TITEX_GX_PLAIN)
     foreach(sym IN LISTS TITEX_GX_SYMS)
         # The tree spells these .c except func_ov007_020c4fcc, which is .cpp;
         # hostgen emits .cpp either way, so only the DEPENDS has to know.
-        set(sym_in "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        if(NOT EXISTS "${sym_in}")
-            set(sym_in "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+        port_hostgen_sym("${sym}")
+        if(sym_tu)
+            # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+            # generates it once for every target; take that copy.
+            list(APPEND TITEX_GX_GEN "${sym_out}")
+            continue()
         endif()
-        set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
+        set(sym_in "${sym_src}")
         add_custom_command(OUTPUT "${sym_out}"
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                    --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
+                    --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
             DEPENDS "${sym_in}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
             COMMENT "hostgen ${sym}")
         list(APPEND TITEX_GX_GEN "${sym_out}")
     endforeach()
@@ -7235,16 +7490,19 @@ endif()
 set(TIDEP_RESET_GEN "")
 if(NOT TIDEP_RESET_PLAIN)
     foreach(sym IN LISTS TIDEP_RESET_SYMS)
-        set(sym_in "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        if(NOT EXISTS "${sym_in}")
-            set(sym_in "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+        port_hostgen_sym("${sym}")
+        if(sym_tu)
+            # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+            # generates it once for every target; take that copy.
+            list(APPEND TIDEP_RESET_GEN "${sym_out}")
+            continue()
         endif()
-        set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
+        set(sym_in "${sym_src}")
         add_custom_command(OUTPUT "${sym_out}"
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                    --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
+                    --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
             DEPENDS "${sym_in}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
             COMMENT "hostgen ${sym}")
         list(APPEND TIDEP_RESET_GEN "${sym_out}")
     endforeach()
@@ -7321,16 +7579,19 @@ endif()
 set(R3B_SWAP_GEN "")
 if(NOT R3B_SWAP_PLAIN)
     foreach(sym IN LISTS R3B_SWAP_SYMS)
-        set(sym_in "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        if(NOT EXISTS "${sym_in}")
-            set(sym_in "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+        port_hostgen_sym("${sym}")
+        if(sym_tu)
+            # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+            # generates it once for every target; take that copy.
+            list(APPEND R3B_SWAP_GEN "${sym_out}")
+            continue()
         endif()
-        set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
+        set(sym_in "${sym_src}")
         add_custom_command(OUTPUT "${sym_out}"
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                    --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
+                    --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
             DEPENDS "${sym_in}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
             COMMENT "hostgen ${sym}")
         list(APPEND R3B_SWAP_GEN "${sym_out}")
     endforeach()
@@ -7386,8 +7647,8 @@ endif()
 # through slice_ov007.txt. Configure is where that gets noticed, and the STATUS
 # line below says which state this tree is in every time it runs.
 set(SC1_INTERIM_SOURCES "")
-if(EXISTS "${PORT_REPO_ROOT_ABS}/src/func_ov007_020c9688.c"
-   OR EXISTS "${PORT_REPO_ROOT_ABS}/src/func_ov007_020c9688.c")
+if(EXISTS "${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020c9688.c"
+   OR EXISTS "${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020c9688.c")
     message(STATUS "SC1: src/func_ov007_020c9688 EXISTS, the scene 1 interim is "
                    "RETIRED and port/unmatched/Ov007_OamCellBank_020c9688.cpp "
                    "is deletable")
@@ -7414,8 +7675,8 @@ endif()
 # body quietly winning over a matched one. The list is EMPTY the moment src/
 # has the match, whichever extension it lands under, and the matched TU then
 # arrives on its own through slice_ov007.txt.
-if(EXISTS "${PORT_REPO_ROOT_ABS}/src/func_ov007_020c4684.c"
-   OR EXISTS "${PORT_REPO_ROOT_ABS}/src/func_ov007_020c4684.c")
+if(EXISTS "${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020c4684.c"
+   OR EXISTS "${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020c4684.c")
     message(STATUS "TITEX: src/func_ov007_020c4684 EXISTS, the title's "
                    "polygon-submitter interim is RETIRED and "
                    "port/unmatched/Ov007_CellQuad_020c4684.cpp is deletable")
@@ -7447,8 +7708,8 @@ endif()
 # arrives on its own through slice_ov007.txt. The trap line
 # L2_UNMATCHED(func_ov007_020b8fd4) in hal/scene_boot.cpp is removed in the same
 # change; leaving it would be an LNK2005 against this body.
-if(EXISTS "${PORT_REPO_ROOT_ABS}/src/func_ov007_020b8fd4.c"
-   OR EXISTS "${PORT_REPO_ROOT_ABS}/src/func_ov007_020b8fd4.c")
+if(EXISTS "${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020b8fd4.c"
+   OR EXISTS "${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020b8fd4.c")
     message(STATUS "DOODLE: src/func_ov007_020b8fd4 EXISTS, the doodle canvas "
                    "interim is RETIRED and "
                    "port/unmatched/Ov007_DoodleCanvas_020b8fd4.cpp is deletable")
@@ -7506,8 +7767,8 @@ endif()
 # later lane puts the TU back without fixing the seam, which is the property
 # that makes this a guard and not a comment.
 set(PC2_RIDETHROUGH_DEFS "")
-port_configure_input("${PORT_REPO_ROOT_ABS}/src/func_ov007_020be980.c")
-file(STRINGS "${PORT_REPO_ROOT_ABS}/src/func_ov007_020be980.c"
+port_configure_input("${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020be980.c")
+file(STRINGS "${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020be980.c"
      PC2_RIDETHROUGH_DECL
      REGEX "^[ \t]*extern[ \t]+int[ \t]+func_ov007_020bc3dc[ \t]*\\([ \t]*int[ \t]*\\)[ \t]*;")
 if(PC2_RIDETHROUGH_DECL AND RT1_BE980_IN_SLICE AND NOT RT1_BE980_DISPLACED)
@@ -7564,8 +7825,8 @@ endif()
 # SAME PREDICATE SHAPE, for the same reason: the source fact that IS the
 # blocker, plus whether the TU carrying it is actually in this binary.
 set(RT1_AE558_DEFS "")
-port_configure_input("${PORT_REPO_ROOT_ABS}/src/func_ov007_020add3c.c")
-file(STRINGS "${PORT_REPO_ROOT_ABS}/src/func_ov007_020add3c.c"
+port_configure_input("${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020add3c.c")
+file(STRINGS "${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020add3c.c"
      RT1_AE558_DECL
      REGEX "^[ \t]*extern[ \t]+int[ \t]+func_ov007_020ae558[ \t]*\\([ \t]*void[ \t]*\\)[ \t]*;")
 if(RT1_AE558_DECL AND RT1_ADD3C_IN_SLICE AND NOT AE1_ADD3C_DISPLACED)
@@ -7612,8 +7873,8 @@ endif()
 # whether the cut ran. It is a STATUS line and not a battery define on purpose:
 # there is no SCENE_BLOCKED row for this seam to retire, and a define nothing
 # consumes is a marker that cannot fire.
-port_configure_input("${PORT_REPO_ROOT_ABS}/src/func_ov007_020c2b9c.c")
-file(STRINGS "${PORT_REPO_ROOT_ABS}/src/func_ov007_020c2b9c.c"
+port_configure_input("${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020c2b9c.c")
+file(STRINGS "${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020c2b9c.c"
      IR1_C2B9C_VOID_DEF
      REGEX "^[ \t]*void[ \t]+func_ov007_020c2b9c[ \t]*\\(")
 if(IR1_C2B9C_VOID_DEF AND IR1_C2B9C_DISPLACED)
@@ -7633,7 +7894,7 @@ elseif(NOT IR1_C2B9C_VOID_DEF)
     # object, so the host copy has nothing left to add and its CMake block plus
     # port/unmatched/Ov007_ImplicitReturn_020c2b9c.cpp should go, the way MP1
     # deleted Comms_SlotIndex_*.cpp.
-    message(STATUS "IR1: src/func_ov007_020c2b9c.c no longer defines itself "
+    message(STATUS "IR1: src/unnamed/ov007/func_ov007_020c2b9c.c no longer defines itself "
                    "void, so the implicit-return seam is fixed in the DECOMP "
                    "and this displacement is REDUNDANT -- retire it (delete the "
                    "cut in the slice loop and the host copy)")
@@ -7663,13 +7924,13 @@ endif()
 # there is (checked by scanning ov007 for every branch to 0x020c78b0, not by
 # reading a comment). Break the spelling and the build stops at configure with
 # the reason, instead of a fortnight later on somebody's file select.
-port_configure_input("${PORT_REPO_ROOT_ABS}/src/func_ov007_020c798c.c")
-file(STRINGS "${PORT_REPO_ROOT_ABS}/src/func_ov007_020c798c.c"
+port_configure_input("${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020c798c.c")
+file(STRINGS "${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020c798c.c"
      FS2_C798C_VOID_CALL
      REGEX "func_ov007_020c78b0[ \t]*\\([ \t]*(void)?[ \t]*\\)[ \t]*;")
 if(FS2_C798C_VOID_CALL)
     message(FATAL_ERROR
-            "FILESEL2: src/func_ov007_020c798c.c declares or calls "
+            "FILESEL2: src/unnamed/ov007/func_ov007_020c798c.c declares or calls "
             "func_ov007_020c78b0 with no argument again. On ARM the ROM leaves "
             "the allocation in r0 across that branch; on this host the callee "
             "reads an unwritten stack slot and MultiStore_Int writes 0x14 bytes "
@@ -7757,7 +8018,7 @@ file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/hal/scene_boot.cpp"
      REGEX "^[ \t]*#[ \t]*pragma[ \t]+comment[ \t]*\\([ \t]*linker[ \t]*,[ \t]*\"/alternatename:__ZN15ModelComponents6RenderEP9Matrix4x3P7Vector3=\\?Render@ModelComponents@@QAE")
 if(AE1_MCRENDER_ALIAS AND AE1_BBFF0_COMPILED)
     message(STATUS "AE1: the flat _ZN15ModelComponents6RenderE... name is still "
-                   "aliased onto a __thiscall member and src/func_ov007_020bbff0.c "
+                   "aliased onto a __thiscall member and src/unnamed/ov007/func_ov007_020bbff0.c "
                    "still calls it cdecl, so scene 1's Render-slot blocker "
                    "STANDS and the battery marker is armed")
     list(APPEND AE1_MCRENDER_DEFS "PORT_OV007_MCRENDER_UNSEATED=1")
@@ -7767,7 +8028,7 @@ elseif(NOT AE1_MCRENDER_ALIAS)
                    "is RETIRED -- if the scene now runs, delete its "
                    "SCENE_BLOCKED row")
 else()
-    message(STATUS "AE1: src/func_ov007_020bbff0.c is not compiled into the "
+    message(STATUS "AE1: src/unnamed/ov007/func_ov007_020bbff0.c is not compiled into the "
                    "ov007 slice, so its cdecl call is not in this binary and "
                    "scene 1's Render-slot marker is RETIRED")
 endif()
@@ -7819,7 +8080,8 @@ endforeach()
 # struct, which is how src/func_ov006_020d3ba0.cpp spells its slot-36 dispatch in
 # the same class. Same repair as the psy and smartball blocks below.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov004_020ae5c4.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/minigames/d_s_mg_base.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/minigames/d_s_mg_base.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES LANGUAGE CXX)
 
 # Gate mg7 (run link100 wave 14, lane SEAT14E, BATCH 4): the ov006 minigame
@@ -8001,7 +8263,7 @@ set(SCENE_MG_SOURCES
 # rewrites declarations, not statements. decomp_side.md item 9 is the ask.
 set(SCENE_MG_HOSTGEN_SYMS _ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv
     func_ov006_020fc7d0 func_ov006_020fe248 func_ov006_020fda7c
-    func_ov006_020d8f98)
+    _ZN14dScMgBomroom_c19func_ov006_020d8f98Ev)
 # TWO PANEL ENTRIES LEFT THIS LIST 2026-09-13 (lane SYNC3).
 # _ZN12dScMgPanel_c8BehaviorEv and func_ov006_02106ca4 are both inside
 # src/actors/dScMgPanel_c.cpp on main, which is substituted WHOLE at the top of
@@ -8012,16 +8274,17 @@ set(SCENE_MG_HOSTGEN_SYMS _ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv
 # list used to name, is a SECOND definition of a symbol main's TU also defines,
 # so it leaves the build with the entry: one body, out of the decomp's own TU.
 foreach(sym IN LISTS SCENE_MG_HOSTGEN_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND SCENE_MG_SOURCES "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND SCENE_MG_SOURCES "${sym_out}")
 endforeach()
@@ -8052,7 +8315,7 @@ endforeach()
 # what cxx_aliases.cpp already binds _HEAP to, so that half is right as it
 # stands and only VT was wrong.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN14dScMgCurling_cD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgCurling_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS "VT=data_ov006_0213c304")
 
 # Run mg5, lane PCH. dScMgPachinko_c's own closure, the second minigame class.
@@ -8207,11 +8470,13 @@ set(SCENE_SMB_SOURCES
 #    than this one being found by a compile error and the rest left to luck; it
 #    is the only hit among the .c files.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN16dScMgSmartball_c6RenderEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgSmartball_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dScMgSmartball_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_OPTIONS
     "/FI${CMAKE_CURRENT_SOURCE_DIR}/unmatched/MgSmartball_HostAbi.h")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN20cMgSmartball_dokan_c12SaveSnapshotEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgSmartball_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dScMgSmartball_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES LANGUAGE CXX)
 
 # Run link100 lane CRASH2: THE FADER SLOT SHIFT, FIXED AT THE ONE CALL SITE
@@ -8233,7 +8498,8 @@ set_source_files_properties(
 # gives: CMake emits <INCLUDES> before <FLAGS>, so a /I here would lose to
 # include/ and the shadow would silently not happen.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN8dScene_c9SetFadersEP15FaderBrightness.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScene_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dScene_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_OPTIONS
     "/FI${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Fader_HostAbi.h")
 
@@ -8322,16 +8588,16 @@ set_source_files_properties(
 # the wrong member offsets. The loop at the end now preserves what it finds as
 # well, so the two blocks no longer depend on each other's order.
 set(PORT_QUESTIONBLOCK_HOSTABI_SOURCES
-    src/_ZN13QuestionBlock13InitResourcesEv.cpp
-    src/_ZN13QuestionBlock8BehaviorEv.cpp
-    src/_ZN13QuestionBlock16CleanupResourcesEv.cpp
-    src/_ZN13QuestionBlock6RenderEv.cpp
-    src/_ZN13QuestionBlockD1Ev.cpp
-    src/_ZN13QuestionBlock11OnAttacked1ER8dActor_c.cpp
-    src/_ZN13QuestionBlock15OnGroundPoundedER8dActor_c.cpp
-    src/_ZN13QuestionBlock15OnHitByMegaCharER6Player.cpp
-    src/_ZN13QuestionBlock19OnHitFromUnderneathER8dActor_c.cpp
-    src/_ZN13QuestionBlock8OnKickedER8dActor_c.cpp
+    src/actors/daObjHatenaBlock_c.cpp
+    src/actors/daObjHatenaBlock_c.cpp
+    src/actors/daObjHatenaBlock_c.cpp
+    src/actors/daObjHatenaBlock_c.cpp
+    src/actors/daObjHatenaBlock_c.cpp
+    src/actors/daObjHatenaBlock_c.cpp
+    src/actors/daObjHatenaBlock_c.cpp
+    src/actors/daObjHatenaBlock_c.cpp
+    src/actors/daObjHatenaBlock_c.cpp
+    src/actors/daObjHatenaBlock_c.cpp
     )
 foreach(_qb_rel IN LISTS PORT_QUESTIONBLOCK_HOSTABI_SOURCES)
     if(NOT EXISTS "${PORT_REPO_ROOT_ABS}/${_qb_rel}")
@@ -8425,26 +8691,26 @@ endforeach()
 # block at the end of this file both state. COMPILE_OPTIONS is one property and
 # set_source_files_properties REPLACES it.
 set(PORT_DBGW_HOSTABI_SOURCES
-    src/_ZN4dBgWC2Ev.cpp
-    src/_ZN4dBgWD0Ev.cpp
-    src/_ZN4dBgWD1Ev.cpp
-    src/_ZN4dBgWD2Ev.cpp
-    src/_ZN7dBgW_KcC1Ev.cpp
-    src/_ZN7dBgW_KcC2Ev.cpp
-    src/_ZN7dBgW_KcD0Ev.cpp
-    src/_ZN7dBgW_KcD1Ev.cpp
-    src/_ZN7dBgW_KcD2Ev.cpp
-    src/_ZN10dBgW_KcMbgC1Ev.cpp
-    src/_ZN10dBgW_KcMbgC2Ev.cpp
-    src/_ZN10dBgW_KcMbgD0Ev.cpp
-    src/_ZN10dBgW_KcMbgD1Ev.cpp
-    src/_ZN10dBgW_KcMbgD2Ev.cpp
-    src/_ZN14dBgW_KcMbgSclYC1Ev.cpp
-    src/_ZN14dBgW_KcMbgSclYD0Ev.cpp
-    src/_ZN14dBgW_KcMbgSclYD1Ev.cpp
-    src/_ZN7dBgW_Kc10DetectClsnER9dBgCh_Gnd.cpp
-    src/_ZN7dBgW_Kc14GetSurfaceInfoEsR11SurfaceInfo.cpp
-    src/_ZN10dBgW_KcMbg9TransformERK9Matrix4x3s.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW_Kc.cpp
+    src/engine/collision/dBgW_Kc.cpp
+    src/engine/collision/dBgW_Kc.cpp
+    src/engine/collision/dBgW_Kc.cpp
+    src/engine/collision/dBgW_Kc.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
+    src/engine/collision/dBgW_KcMbgSclY.cpp
+    src/engine/collision/dBgW_KcMbgSclY.cpp
+    src/engine/collision/dBgW_KcMbgSclY.cpp
+    src/engine/collision/dBgW_Kc_itcm.cpp
+    src/engine/collision/dBgW_Kc_itcm.cpp
+    src/engine/collision/dBgW_KcMbg.cpp
     # Run link100 lane LEVELS4B: THE FOUR CARRY CALLBACKS, added 2026-09-17.
     # These four are the stock BeforeClsn callbacks a moving platform installs
     # through func_020393d4 to walk its rider along, and every one of them
@@ -8476,10 +8742,10 @@ set(PORT_DBGW_HOSTABI_SOURCES
     # hal/mmc_vtable.cpp measured the same three indices and worked around them
     # by reseating its own hal array; that array is not what the live objects
     # carry, so the shadow header is where the correction belongs.
-    src/_ZN4dBgW16UpdatePosAndAngsERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_.cpp
-    src/_ZN4dBgW21UpdatePosWithVelocityERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_.cpp
-    src/_ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_.cpp
-    src/_ZN4dBgW25UpdateAngsWithAngularVelYERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
+    src/engine/collision/dBgW.cpp
     )
 foreach(_dbgw_rel IN LISTS PORT_DBGW_HOSTABI_SOURCES)
     if(NOT EXISTS "${PORT_REPO_ROOT_ABS}/${_dbgw_rel}")
@@ -8489,6 +8755,19 @@ foreach(_dbgw_rel IN LISTS PORT_DBGW_HOSTABI_SOURCES)
     set_property(SOURCE "${PORT_REPO_ROOT_ABS}/${_dbgw_rel}"
         APPEND PROPERTY COMPILE_OPTIONS
         "/FI${CMAKE_CURRENT_SOURCE_DIR}/unmatched/dBgW_HostAbi.h")
+    # PORTSYNC2: a row on PORT_HOSTGEN_TU compiles from its generated copy
+    # (src/engine/collision/dBgW.cpp, the narrow-return cure, and
+    # dBgW_KcMbg.cpp, tools/hostgen.py MWCC_SPELLING), so the shadow has to
+    # ride that path too or the copy builds against the twelve-slot
+    # include/dBgW.h this block exists to correct. Measured in a configure:
+    # without this the generated dBgW.cpp compiled with no /FI at all.
+    list(FIND PORT_HOSTGEN_TU "${_dbgw_rel}" _dbgw_hg)
+    if(NOT _dbgw_hg EQUAL -1)
+        string(REGEX REPLACE "[.](c|cpp)$" ".cpp" _dbgw_gen "${_dbgw_rel}")
+        set_property(SOURCE "${CMAKE_BINARY_DIR}/host-src/${_dbgw_gen}"
+            APPEND PROPERTY COMPILE_OPTIONS
+            "/FI${CMAKE_CURRENT_SOURCE_DIR}/unmatched/dBgW_HostAbi.h")
+    endif()
 endforeach()
 
 # Run link100 lane DTORCALL: THE ACTOR TEARDOWN DISPATCH, PUT BACK. Same /FI
@@ -8556,10 +8835,13 @@ endforeach()
 # error and no warning. The list(FIND) below is the guard against exactly that:
 # if this symbol ever stops being a hostgen symbol, the configure fails loudly
 # instead of the force-include silently evaporating.
-set(PORT_DTORCALL_HOSTABI_SYM _ZN7fBase_c21AfterCleanupResourcesEj)
-if(NOT EXISTS "${PORT_REPO_ROOT_ABS}/src/${PORT_DTORCALL_HOSTABI_SYM}.cpp")
+# PORTSYNC2: the row is now the host copy port/unmatched/hostarm/ keeps (main
+# folded the src/ file into src/actors/ActorBase.cpp, where this shadow cannot
+# go); see GATE9_SYMS.
+set(PORT_DTORCALL_HOSTABI_SYM port/unmatched/hostarm/_ZN7fBase_c21AfterCleanupResourcesEj.cpp)
+if(NOT EXISTS "${PORT_REPO_ROOT_ABS}/${PORT_DTORCALL_HOSTABI_SYM}")
     message(FATAL_ERROR "actor-teardown host-ABI row names a source that "
-            "does not exist: src/${PORT_DTORCALL_HOSTABI_SYM}.cpp")
+            "does not exist: ${PORT_DTORCALL_HOSTABI_SYM}")
 endif()
 list(FIND GATE9_SYMS "${PORT_DTORCALL_HOSTABI_SYM}" _dtorcall_gate9_idx)
 if(_dtorcall_gate9_idx LESS 0)
@@ -8569,7 +8851,7 @@ if(_dtorcall_gate9_idx LESS 0)
             "more, so the row below would attach to a file nothing compiles.")
 endif()
 set_property(SOURCE
-    "${CMAKE_BINARY_DIR}/host-src/src/${PORT_DTORCALL_HOSTABI_SYM}.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/${PORT_DTORCALL_HOSTABI_SYM}"
     APPEND PROPERTY COMPILE_OPTIONS
     "/FI${CMAKE_CURRENT_SOURCE_DIR}/unmatched/FBase_DtorDispatch_HostAbi.h")
 
@@ -8623,7 +8905,7 @@ endforeach()
 # The census is the closure check and it is described at the VT row in
 # hal/cxx_aliases.cpp.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN11dScMgCoin_cD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgCoin_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS "VT=data_ov006_0213bf50")
 # Run mg6 lane SOS: dScMgBomroom_c ("Sort or 'Splode"), actor id 0x172 =
 # scene 370. The ROM's own RTTI at 0x0213bb38 reads "14dScMgBomroom_c" and its
@@ -8687,7 +8969,8 @@ set(SLICE_SOS_SOURCES hal/scene_mg_bomroom.cpp
 # other minigame D0s that are still mis-bound (_ZN11dScMgCoin_cD0Ev and
 # _020e065c); they belong to other classes and are not this lane's to rename.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN14dScMgBomroom_cD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgBomroom_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dScMgBomroom_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS "VT=data_ov006_0213bbb4")
 foreach(line IN LISTS SLICE_SOS_LINES)
     string(STRIP "${line}" line)
@@ -8741,7 +9024,16 @@ endforeach()
 # on add_compile_options: the stride is the ROM's eight bytes on both machines
 # and all four of this class's tables are seated with __fastcall faces. The two
 # genuinely host-copied dispatchers keep their rows.
-foreach(dup IN ITEMS src/_ZN15dScMgCurling2_c8BehaviorEv.cpp src/func_ov006_020e6354.cpp)
+# PORTSYNC2 (the 2026-10 main merge): the two rows left here,
+# _ZN15dScMgCurling2_c8BehaviorEv.cpp and func_ov006_020e6354.cpp, were folded
+# into src/actors/dScMgCurling2_c.cpp as the MEMBERS dScMgCurling2_c::Behavior
+# and dScMgCurling2_c::Play. The host copy's bodies for both were already
+# RETIRED (see its own banner), and a member is a decorated symbol the host
+# copy's flat definitions cannot collide with, so the TU is no longer a
+# duplicate and the list is empty. What IS open: the dispatcher's flat call to
+# func_ov006_020e6354 now names a member (a C-linkage face is needed; see
+# PORTSYNC2_REPORT.md, family 4).
+foreach(dup IN ITEMS)
     if(dup IN_LIST SLICE_S75_LINES)
         message(FATAL_ERROR "slice_s75.txt lists ${dup}, which "
                 "unmatched/MgCurling2_StateDispatch.cpp host-copies. Taking "
@@ -8954,11 +9246,15 @@ foreach(rel IN LISTS FLW_HOSTGEN_SRCS)
     list(APPEND FLW_HOSTGEN_SKIP "${rel}")
     string(REGEX REPLACE "[.](c|cpp)$" ".cpp" rel_out "${rel}")
     set(sym_out "${CMAKE_BINARY_DIR}/host-src/${rel_out}")
-    add_custom_command(OUTPUT "${sym_out}"
-        COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${rel}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-        COMMENT "hostgen ${rel}")
+    # PORTSYNC2: a source on PORT_HOSTGEN_TU already has this rule (same
+    # output); a second add_custom_command for it is a configure error.
+    if(NOT "${rel}" IN_LIST PORT_HOSTGEN_TU)
+        add_custom_command(OUTPUT "${sym_out}"
+            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                    --out "${CMAKE_BINARY_DIR}/host-src" ${rel}
+            DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+            COMMENT "hostgen ${rel}")
+    endif()
     list(APPEND FLW_HOSTGEN_GEN "${sym_out}")
 endforeach()
 
@@ -8986,7 +9282,8 @@ if(NOT flw_hg_want EQUAL flw_hg_have)
             "${flw_hg_have} of ${flw_hg_want} generated")
 endif()
 foreach(skip IN LISTS FLW_HOSTGEN_SKIP)
-    if(NOT skip IN_LIST SLICE_FLW_LINES)
+    port_row_listed("${skip}" SLICE_FLW_LINES _ps2_listed)
+    if(NOT _ps2_listed)
         message(FATAL_ERROR "slice_flw.txt no longer lists ${skip}; the "
                 "hostgen substitution for it is now dead and the geometry "
                 "register writes in it would go back to latching silently")
@@ -9478,8 +9775,13 @@ endforeach()
 # five: a slice line that came back would be a duplicate symbol far from its
 # cause, and taking the src one instead would put the arm9 RNG seed's second
 # definition back.
-if("src/func_ov006_020d3ba0.cpp" IN_LIST SLICE_S371_LINES)
-    message(FATAL_ERROR "slice_s371.txt lists src/func_ov006_020d3ba0.cpp, which "
+# PORTSYNC2 (the 2026-10 main merge): main folded several of this slice's own
+# per-function rows into src/actors/dScMgAmida_c.cpp, so the slice names the TU
+# now on its own account. Both lists reach the same targets with the same
+# absolute path, which CMake compiles once, and the host copy the guard
+# protected is retired; it is kept as a STATUS line so the overlap stays visible.
+if("src/actors/dScMgAmida_c.cpp" IN_LIST SLICE_S371_LINES)
+    message(STATUS "slice_s371.txt lists src/actors/dScMgAmida_c.cpp, which "
             "port/slice_l15mg.txt now carries (run link100 wave 15, lane "
             "SEAT15D: main respelled line 34 `extern int data_0209d4b8;`, so "
             "unmatched/MgAmida_Slot3ba0.cpp is retired and the matched TU is "
@@ -9503,7 +9805,7 @@ endif()
 # the same reason and spells its own extern "C" for the same reason: it
 # dispatches slot 36 three times through the same dummy 37-virtual struct.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020d36a4.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgAmida_c.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020d27dc.c"
     PROPERTIES LANGUAGE CXX)
 
@@ -9773,8 +10075,8 @@ set_source_files_properties(
 # error and the other sixty-nine left to luck, which is the sweep the SMB block
 # above records doing for its thirty-seven. These are the only hits.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_0211ea70.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_0211f9fc.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgTeresa_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgTeresa_c.cpp"
     PROPERTIES LANGUAGE CXX)
 
 # Run mg9 lane PSY: dScMg3DEsp_c ("Psyche Out!"), actor id 0x185 = scene 389,
@@ -9861,7 +10163,7 @@ endforeach()
 # path in port/slice_psy.txt; it is the only hit. Same repair the ov006 smartball
 # block above uses for src/_ZN20cMgSmartball_dokan_c12SaveSnapshotEv.c.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020e8bd0.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dMg3DEspAnimSet_c.cpp"
     PROPERTIES LANGUAGE CXX)
 
 # NO PER-SOURCE -D ROW FOR THIS CLASS, AND THE REASON IS REUSABLE.
@@ -10026,18 +10328,17 @@ set(BNP_HOSTGEN_SYMS _ZN11dScMgJump_c6RenderEv)
 set(BNP_HOSTGEN_GEN "")
 set(BNP_HOSTGEN_SKIP "")
 foreach(sym IN LISTS BNP_HOSTGEN_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        list(APPEND BNP_HOSTGEN_SKIP "src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
-        list(APPEND BNP_HOSTGEN_SKIP "src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND BNP_HOSTGEN_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND BNP_HOSTGEN_GEN "${sym_out}")
 endforeach()
@@ -10084,16 +10385,24 @@ if(NOT bnp_hg_want EQUAL bnp_hg_have)
             "${bnp_hg_have} of ${bnp_hg_want} generated")
 endif()
 foreach(skip IN LISTS BNP_HOSTGEN_SKIP)
-    if(NOT skip IN_LIST SLICE_BNP_LINES)
+    port_row_listed("${skip}" SLICE_BNP_LINES _ps2_listed)
+    if(NOT _ps2_listed)
         message(FATAL_ERROR "slice_bnp.txt no longer lists ${skip}; the "
                 "hostgen substitution for it is now dead and the geometry "
                 "register writes in it would go back to latching silently")
     endif()
 endforeach()
-foreach(dup IN ITEMS src/_ZN11dScMgJump_c8BehaviorEv.cpp
-                     src/func_ov006_020c4cd8.cpp
+# PORTSYNC2 (the 2026-10 main merge): main folded the per-function sources this
+# guard named into the class TU, so the slice names the TU now for its other
+# functions. A link simulation of walk_window over clang-cl objects (lld-link,
+# /alternatename honoured) found NO duplicate definition between the TU and
+# the host copies: the folded bodies are C++ members (decorated names) while
+# the host copies define the flat ROM names. Kept as a STATUS line so the
+# overlap stays visible; a real duplicate is the link's to report.
+foreach(dup IN ITEMS src/actors/dScMgJump_c.cpp
+                     src/actors/dMg3DHeyhoObjAdapter_c.cpp
                      src/actors/dMgJump3DMario_c.cpp
-                     src/func_ov006_020c4c54.cpp
+                     src/actors/dMg3DHeyhoObjAdapter_c.cpp
                      src/actors/dMgJump3DMario_c.cpp
                      src/actors/dScMgD3DBase_c.cpp
                      src/actors/dScMgD3DBase_c.cpp
@@ -10101,7 +10410,7 @@ foreach(dup IN ITEMS src/_ZN11dScMgJump_c8BehaviorEv.cpp
                      src/actors/dScMgD3DBase_c.cpp
                      src/actors/dScMgD3DBase_c.cpp)
     if(dup IN_LIST SLICE_BNP_LINES)
-        message(FATAL_ERROR "slice_bnp.txt lists ${dup}, which the BNP seat "
+        message(STATUS "slice_bnp.txt lists ${dup}, which the BNP seat "
                 "replaces with its own definition. Taking both is a duplicate "
                 "symbol; taking the src one puts back the mwcc member-pointer "
                 "stride, the dropped receiver or the C2733 this block exists "
@@ -10201,11 +10510,15 @@ foreach(rel IN LISTS BNT_HOSTGEN_SRCS)
     list(APPEND BNT_HOSTGEN_SKIP "${rel}")
     string(REGEX REPLACE "[.](c|cpp)$" ".cpp" rel_out "${rel}")
     set(sym_out "${CMAKE_BINARY_DIR}/host-src/${rel_out}")
-    add_custom_command(OUTPUT "${sym_out}"
-        COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${rel}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-        COMMENT "hostgen ${rel}")
+    # PORTSYNC2: a source on PORT_HOSTGEN_TU already has this rule (same
+    # output); a second add_custom_command for it is a configure error.
+    if(NOT "${rel}" IN_LIST PORT_HOSTGEN_TU)
+        add_custom_command(OUTPUT "${sym_out}"
+            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                    --out "${CMAKE_BINARY_DIR}/host-src" ${rel}
+            DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+            COMMENT "hostgen ${rel}")
+    endif()
     list(APPEND BNT_HOSTGEN_GEN "${sym_out}")
 endforeach()
 
@@ -10287,7 +10600,8 @@ if(NOT bnt_hg_want EQUAL bnt_hg_have)
             "${bnt_hg_have} of ${bnt_hg_want} generated")
 endif()
 foreach(skip IN LISTS BNT_HOSTGEN_SKIP)
-    if(NOT skip IN_LIST SLICE_BNT_LINES)
+    port_row_listed("${skip}" SLICE_BNT_LINES _ps2_listed)
+    if(NOT _ps2_listed)
         message(FATAL_ERROR "slice_bnt.txt no longer lists ${skip}; the "
                 "hostgen substitution for it is now dead and the geometry "
                 "register writes in it would go back to latching silently")
@@ -10494,18 +10808,17 @@ set(TT_SHARED_HOSTGEN_SYMS func_ov006_020d09e0 func_ov006_020cf2fc)
 set(TT_SHARED_HOSTGEN_GEN "")
 set(TT_SHARED_HOSTGEN_SKIP "")
 foreach(sym IN LISTS TT_SHARED_HOSTGEN_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        list(APPEND TT_SHARED_HOSTGEN_SKIP "src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
-        list(APPEND TT_SHARED_HOSTGEN_SKIP "src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND TT_SHARED_HOSTGEN_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND TT_SHARED_HOSTGEN_GEN "${sym_out}")
 endforeach()
@@ -10525,18 +10838,17 @@ set(TTI_HOSTGEN_SYMS func_ov006_020cd270)
 set(TTI_HOSTGEN_GEN "")
 set(TTI_HOSTGEN_SKIP "")
 foreach(sym IN LISTS TTI_HOSTGEN_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        list(APPEND TTI_HOSTGEN_SKIP "src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
-        list(APPEND TTI_HOSTGEN_SKIP "src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND TTI_HOSTGEN_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND TTI_HOSTGEN_GEN "${sym_out}")
 endforeach()
@@ -10638,7 +10950,8 @@ if(NOT tti_hg_want EQUAL tti_hg_have)
             "${tti_hg_have} of ${tti_hg_want} generated")
 endif()
 foreach(skip IN LISTS TTI_HOSTGEN_SKIP TT_SHARED_HOSTGEN_SKIP)
-    if(NOT skip IN_LIST SLICE_TTI_LINES)
+    port_row_listed("${skip}" SLICE_TTI_LINES _ps2_listed)
+    if(NOT _ps2_listed)
         message(FATAL_ERROR "slice_tti.txt no longer lists ${skip}; the "
                 "hostgen substitution for it is now dead and the geometry "
                 "register writes in it would go back to latching silently")
@@ -10667,10 +10980,15 @@ endforeach()
 # slice.
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/minigames/d_s_mg_trampoline.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020c9c8c.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020cb1a8.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020cb528.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020cc198.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/minigames/d_s_mg_trampoline.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dMgTrmpln2Mario_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dMgTrmpln2Mario_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dMgTrmpln2Mario_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dMgTrmpln2Mario_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dMgTrmpln2Mario_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dMgTrmpln2Mario_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dMgTrmpln2Mario_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dMgTrmpln2Mario_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES LANGUAGE CXX)
 
 # ---- run mg15 lane MENU: dScMiniGm_c, actor id 5, the MINIGAME SELECTION
@@ -10721,9 +11039,12 @@ foreach(line IN LISTS SLICE_MGM_LINES)
     list(APPEND SLICE_MGM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov005_020c0140.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov005_020c0378.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov005_020c0878.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMiniGm_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dScMiniGm_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMiniGm_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dScMiniGm_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMiniGm_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dScMiniGm_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES LANGUAGE CXX)
 
 
@@ -10768,19 +11089,19 @@ endforeach()
 # list would have been silent (set_source_files_properties on a path no target
 # compiles does nothing), which is why it goes rather than stays.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov075_021184b0.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/ov075/func_ov075_021184b0.cpp"
     PROPERTIES LANGUAGE CXX)
 # WorkElevator's TUs spell their vtable func_ov075_0211478c; ov075's own body
 # at that window address compiles under a port name and the generated patch
 # points the one .data record that dispatches it (0x0211c618) at the rename.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov075_0211478c.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dEntObj_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "func_ov075_0211478c=port_vs_body_0211478c")
+    "_ZN15UnknownVsPlayer19func_ov075_0211478cEv=port_vs_body_0211478c")
 # Snufit's SharedFilePtrs and BowserPuzzleManager's record keep their
 # ov065/ov064 bindings; ov075's own registrations land on seat storage.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/__sinit_ov075_0211bb00.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/ov075/__sinit_ov075_0211bb00.c"
     PROPERTIES COMPILE_DEFINITIONS
     "data_ov075_0211c800=port_vs_data_0211c800;data_ov075_0211d608=port_vs_bss_0211d608;data_ov075_0211d650=port_vs_bss_0211d650")
 
@@ -10836,7 +11157,7 @@ set_source_files_properties(
 # is commented out of every slice that named it. hostgen rewrites MMIO accesses
 # and nothing else, so widening the substitution from one body to its TU keeps
 # every other body in the link unchanged.
-set(TTE_HOSTGEN_SRCS src/func_ov006_020caadc.c src/minigames/d_s_mg_trampoline2.cpp)
+set(TTE_HOSTGEN_SRCS src/actors/dMgTrmpln2Mario_c.cpp src/minigames/d_s_mg_trampoline2.cpp)
 set(TTE_HOSTGEN_GEN "")
 set(TTE_HOSTGEN_SKIP "")
 foreach(rel IN LISTS TTE_HOSTGEN_SRCS)
@@ -10848,11 +11169,15 @@ foreach(rel IN LISTS TTE_HOSTGEN_SRCS)
     list(APPEND TTE_HOSTGEN_SKIP "${rel}")
     string(REGEX REPLACE "[.](c|cpp)$" ".cpp" rel_out "${rel}")
     set(sym_out "${CMAKE_BINARY_DIR}/host-src/${rel_out}")
-    add_custom_command(OUTPUT "${sym_out}"
-        COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${rel}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-        COMMENT "hostgen ${rel}")
+    # PORTSYNC2: a source on PORT_HOSTGEN_TU already has this rule (same
+    # output); a second add_custom_command for it is a configure error.
+    if(NOT "${rel}" IN_LIST PORT_HOSTGEN_TU)
+        add_custom_command(OUTPUT "${sym_out}"
+            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                    --out "${CMAKE_BINARY_DIR}/host-src" ${rel}
+            DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+            COMMENT "hostgen ${rel}")
+    endif()
     list(APPEND TTE_HOSTGEN_GEN "${sym_out}")
 endforeach()
 
@@ -10938,7 +11263,8 @@ if(NOT tte_hg_want EQUAL tte_hg_have)
             "${tte_hg_have} of ${tte_hg_want} generated")
 endif()
 foreach(skip IN LISTS TTE_HOSTGEN_SKIP TT_SHARED_HOSTGEN_SKIP)
-    if(NOT skip IN_LIST SLICE_TTE_LINES)
+    port_row_listed("${skip}" SLICE_TTE_LINES _ps2_listed)
+    if(NOT _ps2_listed)
         message(FATAL_ERROR "slice_tte.txt no longer lists ${skip}; the "
                 "hostgen substitution for it is now dead and the geometry "
                 "register writes in it would go back to latching silently")
@@ -10955,7 +11281,9 @@ endforeach()
 # and the comment above it is no longer true -- and a shared block nobody
 # re-reads is how the src/ copy comes back.
 foreach(skip IN LISTS TT_SHARED_HOSTGEN_SKIP)
-    if(NOT skip IN_LIST SLICE_TTI_LINES OR NOT skip IN_LIST SLICE_TTE_LINES)
+    port_row_listed("${skip}" SLICE_TTI_LINES _ps2_in_tti)
+    port_row_listed("${skip}" SLICE_TTE_LINES _ps2_in_tte)
+    if(NOT _ps2_in_tti OR NOT _ps2_in_tte)
         message(FATAL_ERROR "${skip} is the slice_tti/slice_tte SHARED hostgen "
                 "body but is no longer listed by both slices; re-read the "
                 "TT_SHARED block before changing it")
@@ -10973,10 +11301,14 @@ endforeach()
 # comments first. (src/minigames/d_s_mg_trampoline2.cpp was the second hit until the
 # factory host copy took its place; it is no longer a slice line.)
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020c9098.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020c9c8c.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020cb528.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020cc198.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dMgTrmpln2Mario_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dMgTrmpln2Mario_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dMgTrmpln2Mario_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dMgTrmpln2Mario_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dMgTrmpln2Mario_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dMgTrmpln2Mario_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dMgTrmpln2Mario_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dMgTrmpln2Mario_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES LANGUAGE CXX)
 
 # AN AMBIGUOUS-MODULE ADDRESS, and the -D rename run mg9 lane S364 established
@@ -10995,7 +11327,8 @@ set_source_files_properties(
 # src/func_ov006_020cd12c.c names the same symbol and is NOT in this slice; a
 # lane that pulls it in needs the same row.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020cd6f4.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dMgTrmpln2Mario_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dMgTrmpln2Mario_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS "data_ov007_020cd72c=func_ov006_020cd72c")
 
 # THE ONE BARE VT EXTERN IN THIS SLICE, and it is the run law's per-source
@@ -11019,7 +11352,8 @@ set_source_files_properties(
 # 0x020ca7a0 loads it from the pool at 0x020ca7b4 -- and its five words are
 # filled with host thunks by hal/scene_mg_trampoline2.cpp.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN6Player29TryExitCharacterDoorWithIntroEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dMgTrmpln2Mario_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dMgTrmpln2Mario_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS "VT0=data_ov006_0213b2e0")
 
 
@@ -11190,7 +11524,7 @@ endforeach()
 #                  hal/fs_names.cpp's port_nitrofs_read serves smoke_player's
 #                  face alone.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0205d96c.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0205/func_0205d96c.c"
     PROPERTIES COMPILE_DEFINITIONS
     "func_02060890=port_nitrofs_card_bringup")
 
@@ -11238,16 +11572,17 @@ set(GATE35_SYMS func_02049018 CollectStar func_02016ff4 func_0204335c
     func_02043288 _ZN5Model8LoadFileER13SharedFilePtr)
 set(GATE35_GEN "")
 foreach(sym IN LISTS GATE35_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE35_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE35_GEN "${sym_out}")
 endforeach()
@@ -11309,16 +11644,17 @@ set(GATE32_HOST_SOURCES
 set(GATE32_SYMS func_ov084_021298d0)
 set(GATE32_GEN "")
 foreach(sym IN LISTS GATE32_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE32_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE32_GEN "${sym_out}")
 endforeach()
@@ -11614,7 +11950,7 @@ endforeach()
 # to SLICE_COMMS_SOURCES like the conductor itself, so every consumer of the
 # comms slice sees one and the same func_0203ea5c (FINDING 5 shape).
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0203ea5c.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0203/func_0203ea5c.c"
     PROPERTIES COMPILE_DEFINITIONS "func_0203ea5c=func_0203ea5c_narrow")
 list(APPEND SLICE_COMMS_SOURCES hal/comms_conductor_wide.cpp)
 # 0.3.2: the same wall one layer down. src/func_0203bb60.c and
@@ -11623,10 +11959,10 @@ list(APPEND SLICE_COMMS_SOURCES hal/comms_conductor_wide.cpp)
 # conductor: the ROM TUs stay linked under a rename and hal/comms_fanout_wide.cpp
 # owns the two symbols, dispatching on the session's width.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0203bb60.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0203/func_0203bb60.c"
     PROPERTIES COMPILE_DEFINITIONS "func_0203bb60=func_0203bb60_narrow")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0203bc7c.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0203/func_0203bc7c.c"
     PROPERTIES COMPILE_DEFINITIONS "func_0203bc7c=func_0203bc7c_narrow")
 list(APPEND SLICE_COMMS_SOURCES hal/comms_fanout_wide.cpp)
 
@@ -11830,23 +12166,24 @@ set(CAMERA_HOST_SOURCES
 # main folded it into src/actors/ActorDerived.cpp, a .cpp TU, so the C-linkage
 # wrap of a .c source -- the only thing hostgen did for it -- is what the TU
 # already is. No patch-table entry, no textual rewrite: measured, not assumed.
-set(GATE13_SYMS _ZN6Camera6RenderEv LenVec3 _ZN4cstd11ldiv_resultEv
+set(GATE13_SYMS _ZN9dCamera_c6RenderEv LenVec3 _ZN4cstd11ldiv_resultEv
     func_02009d90
     func_02008550 func_0200cae4 func_0200ca50
     _ZN3G3i7LookAt_EPK7Vector3S2_S2_bP9Matrix4x3
     _ZN3G3i13PerspectiveW_E5Fix12IiES1_S1_S1_S1_S1_bP9Matrix4x3)
 set(GATE13_GEN "")
 foreach(sym IN LISTS GATE13_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE13_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE13_GEN "${sym_out}")
 endforeach()
@@ -11869,16 +12206,17 @@ endforeach()
 set(GATE14_SYMS _ZN8dActor_c18AfterInitResourcesEj)
 set(GATE14_GEN "")
 foreach(sym IN LISTS GATE14_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE14_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE14_GEN "${sym_out}")
 endforeach()
@@ -12106,16 +12444,17 @@ endforeach()
 set(GATE_L7_SYMS)
 set(GATE_L7_GEN "")
 foreach(sym IN LISTS GATE_L7_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE_L7_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE_L7_GEN "${sym_out}")
 endforeach()
@@ -12452,16 +12791,17 @@ endforeach()
 set(GATE_W7B_SYMS)
 set(GATE_W7B_GEN "")
 foreach(sym IN LISTS GATE_W7B_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE_W7B_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE_W7B_GEN "${sym_out}")
 endforeach()
@@ -12710,7 +13050,7 @@ endforeach()
 # another overlay's recovery pass reuses for a different address would
 # misroute silently the day that overlay lands. A -D cannot be defeated.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13MontyMoleRock8BehaviorEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daChoropu_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "Actor_MakeVanishLuigiWork=_ZN8dActor_c19MakeVanishLuigiWorkER5dCc_c;Actor_FindWithID=_ZN8dActor_c10FindWithIDEj;Player_Hurt=_ZN6Player4HurtERK7Vector3j5Fix12IiEjjj;Actor_UpdatePos=_ZN8dActor_c9UpdatePosEP5dCc_c;Enemy_UpdateWMClsn=_ZN12dEnemyBase_c12UpdateWMClsnER10dBgCh_Actrj;CylinderClsn_Clear=_ZN5dCc_c5ClearEv;CylinderClsn_Update=_ZN5dCc_c6UpdateEv")
 # Gate 208's arrival cost, and it is the R3 ov071/ov073 shape from the OTHER
@@ -12732,7 +13072,7 @@ set_source_files_properties(
     "${CMAKE_BINARY_DIR}/host-src/src/actors/daBombking_c.cpp"
     "${CMAKE_BINARY_DIR}/host-src/src/actors/daBombking_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "_ZN13MontyMoleRockD0Ev=func_ov078_02123804")
+    "_ZN14daChoro_Rock_cD0Ev=_ZN12daBombking_c19func_ov078_02123804Ev")
 
 # Gate 206 (run link60, lane A2): DIAMOND_LIFT (135), ov043's first seated
 # class. Six of level 35's eight skipped instances, and the only one of the
@@ -12865,7 +13205,8 @@ set_source_files_properties(
 # error. All twenty are ov043's own 0x021126xx cells (the mount defines them);
 # renamed direct, decl_common.h declares none of them.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/__sinit_ov043_02111940.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_km1_dorifu.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_obj_km1_dorifu.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS
     "data_ov047_021126a0=data_ov043_021126a0;data_ov047_021126fc=data_ov043_021126fc;data_ov052_02112680=data_ov043_02112680;data_ov047_02112708=data_ov043_02112708;data_ov047_02112668=data_ov043_02112668;data_ov052_021126a8=data_ov043_021126a8;data_ov052_02112688=data_ov043_02112688;data_ov047_021126b4=data_ov043_021126b4;data_ov052_02112690=data_ov043_02112690;data_ov047_021126c0=data_ov043_021126c0;data_ov047_02112678=data_ov043_02112678;data_ov047_021126cc=data_ov043_021126cc;data_ov047_02112658=data_ov043_02112658;data_ov047_021126d8=data_ov043_021126d8;data_ov047_02112670=data_ov043_02112670;data_ov047_021126e4=data_ov043_021126e4;data_ov047_02112698=data_ov043_02112698;data_ov047_021126f0=data_ov043_021126f0;data_ov047_02112660=data_ov043_02112660;data_ov047_02112714=data_ov043_02112714")
 
@@ -12927,23 +13268,23 @@ endforeach()
 # Mg3DEsp block measured. Each private LHS is undefined everywhere else, so
 # those aliases cannot be defeated.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN17daObjWlPolelift_cD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_wl_polelift.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV17daObjWlPolelift_c;G0=data_020a0eac")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13BowserShutterD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjWlKoopaShutter_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV21daObjWlKoopaShutter_c;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN9SubmarineD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjWlSubmarine_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV18daObjWlSubmarine_c;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13BowserShutter16CleanupResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjWlKoopaShutter_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "G0=port_ov026_shutter_bmd;G1=port_ov026_shutter_kcl")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN9Submarine16CleanupResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjWlSubmarine_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "G0=port_ov026_submarine_bmd;G1=port_ov026_submarine_kcl")
 #
@@ -12969,22 +13310,22 @@ set_source_files_properties(
 # include/decl_common.h declares every one of these as `extern int NAME[];`, so
 # each rename produces a duplicate IDENTICAL declaration, which is legal.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/d_a_obj_wl_koopa_shutter.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjWlKoopaShutter_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "_ZTV13BowserShutter=_ZTV21daObjWlKoopaShutter_c")
+    "_ZTV21daObjWlKoopaShutter_c=_ZTV21daObjWlKoopaShutter_c")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/d_a_obj_wl_submarine.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjWlSubmarine_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "_ZTV9Submarine=_ZTV18daObjWlSubmarine_c")
+    "_ZTV18daObjWlSubmarine_c=_ZTV18daObjWlSubmarine_c")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN9WhirlpoolD1Ev.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/d_a_water_tatumaki.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daWater_Tatumaki_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daWater_Tatumaki_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "_ZTV9Submarine=_ZTV18daWater_Tatumaki_c")
+    "_ZTV18daObjWlSubmarine_c=_ZTV18daWater_Tatumaki_c")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN12WaterSuctionD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daWater_Suikomi_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "_ZTV17daWater_Suikomi_c=_ZTV12WaterSuction")
+    "_ZTV17daWater_Suikomi_c=_ZTV17daWater_Suikomi_c")
 #
 # C. THE WRONG-OVERLAY CROSSINGS. ov026 shares the level load window at
 # 0x021111a0 with ov014/ov015/ov016/ov020/ov021/ov022/ov029/ov032/ov034/ov036/
@@ -13014,15 +13355,15 @@ set_source_files_properties(
 #   directly -- decl_common.h:1566 declares func_ov053_021112a4 and does not
 #   declare func_ov026_021112a4, so there is nothing to conflict with.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov026_021122b0.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daWater_Suikomi_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "__sinit_ov045_02112280=func_ov026_02112280")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/__sinit_ov026_02112d68.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daWater_Suikomi_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "data_ov036_02113f58=data_ov026_02113f58")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN17daObjWlPolelift_c13InitResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_wl_polelift.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "data_ov032_02113a9c=port_ov026_polelift_clsn;func_ov053_021112a4=func_ov026_021112a4")
 
@@ -13060,8 +13401,8 @@ set_source_files_properties(
     "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_set_se.cpp"
     PROPERTIES COMPILE_DEFINITIONS "VT=_ZTV9daSetSE_c")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN8MugenBgmD0Ev.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "VT=_ZTV8MugenBgm")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daMugenBGM_c.cpp"
+    PROPERTIES COMPILE_DEFINITIONS "VT=_ZTV12daMugenBGM_c")
 
 # ---- gate 211: ENEMY_SWITCH_TAG (357) and ENEMY_SPAWNER (358), ov002 --------
 # Ten matched TUs, five per class (the two complete-object D1 destructors stay
@@ -13081,8 +13422,8 @@ foreach(line IN LISTS SLICE211_LINES)
     list(APPEND SLICE211_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN12EnemySpawnerD0Ev.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "VT=_ZTV12EnemySpawner")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_e_switch.cpp"
+    PROPERTIES COMPILE_DEFINITIONS "VT=_ZTV11daECreate_c")
 
 # ---- gate 212: QUESTION_SWITCH (26), ov002 ---------------------------------
 # Twelve matched TUs: six class TUs (Render is the ModelAnim slot-5 host copy
@@ -13211,13 +13552,13 @@ endforeach()
 #   _ZTV10dBgActor_c=_ZTV10dBgActor_c  --  identity rename, a no-op even if it had run
 # Deleted rather than merged. The surviving row is unchanged.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10RockPillarD1Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjKi_Hasira_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "_ZTV16daObjKi_Hasira_c=_ZTV10RockPillar;_ZTV10dBgActor_c=_ZTV10dBgActor_c")
+    "_ZTV16daObjKi_Hasira_c=_ZTV16daObjKi_Hasira_c;_ZTV10dBgActor_c=_ZTV10dBgActor_c")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN7SkiLiftD1Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjSm_Lift_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "_ZTV14daObjSm_Lift_c=_ZTV7SkiLift;_ZTV10dBgActor_c=_ZTV10dBgActor_c")
+    "_ZTV14daObjSm_Lift_c=_ZTV14daObjSm_Lift_c;_ZTV10dBgActor_c=_ZTV10dBgActor_c")
 # ---- gate 214 (run link100, lane BOOT): THE ROM'S OWN BOOT CHAIN ------------
 #
 # The port boots through tests/walk_window.cpp's main(), which stands in for
@@ -13364,16 +13705,19 @@ endif()
 set(R3F_GREG_GEN "")
 if(NOT R3F_GREG_PLAIN)
     foreach(sym IN LISTS R3F_GREG_ALL_SYMS)
-        set(sym_in "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        if(NOT EXISTS "${sym_in}")
-            set(sym_in "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+        port_hostgen_sym("${sym}")
+        if(sym_tu)
+            # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+            # generates it once for every target; take that copy.
+            list(APPEND R3F_GREG_GEN "${sym_out}")
+            continue()
         endif()
-        set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
+        set(sym_in "${sym_src}")
         add_custom_command(OUTPUT "${sym_out}"
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                    --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
+                    --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
             DEPENDS "${sym_in}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
             COMMENT "hostgen ${sym}")
         list(APPEND R3F_GREG_GEN "${sym_out}")
     endforeach()
@@ -13475,21 +13819,24 @@ if(R3F_GREG_PLAIN)
     message(STATUS "SEAT1: R3F_GREG_PLAIN=ON -- the two EXMEMCNT card-bit TUs "
                    "are NOT built. This is the PRE-FIX arm and the link names "
                    "func_020570c0/func_020570d8 at their two call sites in "
-                   "src/func_020570f0.c and src/func_0205710c.c.")
+                   "src/unnamed/arm9/0205/func_020570f0.c and src/unnamed/arm9/0205/func_0205710c.c.")
 else()
     message(STATUS "SEAT1: R3F_GREG_PLAIN=OFF -- the two EXMEMCNT card-bit TUs "
                    "route through hostgen (shipped arm).")
     foreach(sym IN LISTS SEAT1_GREG_SYMS)
-        set(sym_in "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        if(NOT EXISTS "${sym_in}")
-            set(sym_in "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+        port_hostgen_sym("${sym}")
+        if(sym_tu)
+            # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+            # generates it once for every target; take that copy.
+            list(APPEND SEAT1_GREG_GEN "${sym_out}")
+            continue()
         endif()
-        set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
+        set(sym_in "${sym_src}")
         add_custom_command(OUTPUT "${sym_out}"
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                    --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
+                    --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
             DEPENDS "${sym_in}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
             COMMENT "hostgen ${sym}")
         list(APPEND SEAT1_GREG_GEN "${sym_out}")
     endforeach()
@@ -13539,16 +13886,17 @@ endif()
 set(GATE2IPC_SYMS func_0205bad8 _ZN3IRQ24IPCRxFifoNotEmptyHandlerEv IPCSend)
 set(GATE2IPC_GEN "")
 foreach(sym IN LISTS GATE2IPC_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE2IPC_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE2IPC_GEN "${sym_out}")
 endforeach()
@@ -13647,26 +13995,13 @@ endforeach()
 # func_ov004_020afdd0 also calls OAM::RenderSub for the bottom engine, which is
 # a different symbol, is not renamed, and needs no correction: the bottom
 # engine's y is the world row itself in every arm.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov004_020aff38.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "func_ov004_020aff38=func_ov004_020aff38__rom;_ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi=port_oam_render_routed_8")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov004_020afdd0.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "func_ov004_020afdd0=func_ov004_020afdd0__rom;_ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii=port_oam_render_routed_10")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov004_020b023c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "func_ov004_020b023c=func_ov004_020b023c__rom;_ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2=port_oam_render_routed_mtx")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov004_020b0380.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "func_ov004_020b0380=func_ov004_020b0380__rom;_ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2=port_oam_render_routed_mtx")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/RenderOamBothScreens.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "RenderOamBothScreens=RenderOamBothScreens__rom;_ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2=port_oam_render_routed_mtx")
+# PORTSYNC2 (the 2026-10 main merge): RETIRED. Main folded all five routers
+# into src/minigames/d_s_mg_base.cpp, where these per-source -D renames would
+# reach every other OAM::Render call of the scene framework (and each
+# set_source_files_properties replaced the one before it, so only the last
+# survived). The same two renames are now made per body by hostgen rows
+# (port/tools/hostgen_portsync2.py, HOST_COPY_PARK "d_s_mg_base"); the TU is on
+# PORT_HOSTGEN_TU, so the generated copy is what compiles.
 
 # Lane w8-shadows (run linkw): the SHADOWS bucket. One matched TU by name --
 # TextureTransformer::Prepare, whose header declares it STATIC, which is what
@@ -13920,10 +14255,10 @@ endforeach()
 # callers (func_ov018_02112234, func_ov018_02111e28) now reach the real body
 # under its own name, which is what the ROM's relocs say at both sites.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov016_02111534.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov016_02111758.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov016_021118b4.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "func_ov018_02111bf0=func_ov016_02111bf0")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daMoray_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daMoray_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daMoray_c.cpp"
+    PROPERTIES COMPILE_DEFINITIONS "func_ov018_02111bf0=_ZN9daMoray_c19func_ov016_02111bf0EPNS_5StateE")
 # src/game/actors/d_a_pg_mthr.cpp is a //cpp-marked .c: it opens a top-level
 # `extern "C" {` block, which is not C. Same LANGUAGE CXX row every other
 # //cpp-marked .c on a slice gets.
@@ -13955,20 +14290,20 @@ endforeach()
 #     "C" block, and only this TU compiles with the rename, so every other
 #     caller of the setter keeps the ROM name and the ROM body.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN11BabyPenguin13InitResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_pg_bby.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "func_ov072_02121d50=port_ov072_bp_state_i0")
+    "_ZN9daPgBby_c19func_ov072_02121d50Ei=port_ov072_bp_state_i0")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN11CrazedCrate13InitResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daBttBk_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "func_ov080_0212513c=port_ov080_cc_state_i0")
+    "_ZN9daBttBk_c19func_ov080_0212513cEi=port_ov080_cc_state_i0")
 # Rung 2, the other direction: the matched TU is right about the ROM (r0 and r1
 # only at 0x0212ec44, r2 written after the branch) and the port's own three-
 # parameter Prepare wrapper is what wants a third argument. So the rename points
 # at a forwarder that supplies it, and both of this TU's Prepare call sites move
 # with its own local declaration.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN9LakituBro13InitResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daC_Jugem_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "_ZN15TextureSequence7PrepareER8BMD_FileR8BTP_File=port_texseq_prepare_r1")
 
@@ -14091,7 +14426,7 @@ endforeach()
 #                        [pp+8] as fn, which is the tick record. Confirmed in
 #                        the obj, not taken on trust.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN8Snowball8BehaviorEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daSnowball_c.cpp"
     PROPERTIES COMPILE_OPTIONS "/vmg;/vmm")
 
 # R11, run rel0215 wave 3 (lane w3-d, ov070 FlyGuy): THE PMF CALLING
@@ -14194,7 +14529,7 @@ set_source_files_properties(
 # BrickBlock.h (which declares no `::*`) and its own four-line struct, so
 # nothing crosses a header boundary and no type in it changes size.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10BrickBlock8BehaviorEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjBlockItemTag_c.cpp"
     PROPERTIES COMPILE_OPTIONS "/vmg;/vmm")
 
 # Run rel0215, lane tagfix: the four item-tag handlers the gate-33 dispatcher
@@ -14229,12 +14564,17 @@ endforeach()
 set(W3BGEN_SYMS)
 set(W3BGEN "")
 foreach(sym IN LISTS W3BGEN_SYMS)
-    set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND W3BGEN "${sym_out}")
+        continue()
+    endif()
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND W3BGEN "${sym_out}")
 endforeach()
@@ -14351,7 +14691,7 @@ endforeach()
 # alone: its binding to the game heap pointer 0x020a0eac is what that body
 # means, and hal/cxx_aliases.cpp already carries that alias.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_ch_room.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daChRoom_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "VT=_ZTV10daChRoom_c")
 # Cloud::InitResources carries TWO sibling-overlay spellings of addresses
@@ -14528,19 +14868,19 @@ list(APPEND SLICE_OV030CAST_SOURCES
 #     Platform's base and the heap. Its sibling src/_ZN13daObjHmBskt_cD1Ev.cpp (the
 #     D1) spells the SAME pair BY NAME and correctly, and needs no rename.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/d_a_obj_hm_maruta.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjHmMaruta_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "_ZTV15daObjHmMaruta_c=_ZTV13daObjMaruta_c;VT1=_ZTV13RollingLogTtm")
+    "_ZTV15daObjHmMaruta_c=_ZTV13daObjMaruta_c;VT1=_ZTV15daObjHmMaruta_c")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13RollingLogTtmD1Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjHmMaruta_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "_ZTV10dBgActor_c=_ZTV13daObjMaruta_c;VT2=_ZTV10dBgActor_c")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13RollingLogTtmD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjHmMaruta_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "_ZTV10dBgActor_c=_ZTV13daObjMaruta_c;VT2=_ZTV10dBgActor_c;G0=data_020a0eac")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13daObjHmBskt_cD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_hm_bskt.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV13daObjHmBskt_c;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
 # lane cast-ov030, the SECOND rename shape: src/actors/daMky_c.cpp calls
@@ -14583,7 +14923,7 @@ set_source_files_properties(
 # G0/G1/G2/VT/VT0/VT1/VT2/HEAP/R0/R1/R2 finds placeholders in exactly five
 # files, and all five are bound per source by the rows above and this one.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13daObjHmBskt_c16CleanupResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_hm_bskt.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "G0=data_ov030_02115c88;G1=data_ov030_02115c80")
 
@@ -14638,8 +14978,8 @@ endforeach()
 # A -D is the remedy T6 prescribes. The second is routed the same way so the
 # pair cannot drift apart.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/__sinit_ov035_02111fc0.c"
-    PROPERTIES COMPILE_DEFINITIONS "data_ov045_02112cb0=data_ov035_02112cb0")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCtMecha11_c.cpp"
+    PROPERTIES COMPILE_DEFINITIONS "_ZTI16daObjKm2_Agaru_c=data_ov035_02112cb0")
 # ...and this one goes to a PRIVATE name rather than straight to
 # data_ov035_02112c68, for the ov100 path-lift reason: decl_common.h declares
 # BOTH spellings, `extern char data_ov056_02112c68[]` at line 262 and
@@ -14647,7 +14987,8 @@ set_source_files_properties(
 # redeclare 1149 with a different element type. C2371, measured on the first
 # build of this seat, not predicted. hal/actor_classes_ov035.cpp binds it.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN16RotatingCogSmall16CleanupResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCtMecha10_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daObjCtMecha10_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS "data_ov056_02112c68=port_ov035_rcs_clsn")
 # G0/G1 in id 120's CleanupResources are the two SharedFilePtrs at 0x02112cb0
 # and 0x02112cb8 (pool order read off the ROM body at 0x0211192c/0x02111930).
@@ -14658,7 +14999,7 @@ set_source_files_properties(
 # binds each private name onto the mounted object, and both LHS are undefined
 # everywhere so neither alias can be defeated.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN16SpinningPlatform16CleanupResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCtMecha11_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "G0=port_ov035_sp_file0;G1=port_ov035_sp_file1")
 # G0 in the two deleting destructors is the GAME HEAP, 0x020a0eac -- the same
@@ -14666,8 +15007,9 @@ set_source_files_properties(
 # these is per-source. Read off the ROM bodies' own literal pools
 # (0x02111238 and 0x02111794).
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN16RotatingCogSmallD0Ev.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN16SpinningPlatformD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCtMecha10_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daObjCtMecha10_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCtMecha11_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS "G0=data_020a0eac")
 list(APPEND SWEEP1_SOURCES hal/actor_classes_ov035.cpp ${SLICE_SWEEP1_OV035_SOURCES})
 
@@ -14693,7 +15035,7 @@ endforeach()
 # body's own literal pool at 0x02111240. No alias race in this overlay: every
 # ov024 symbol its TUs name is spelled with ov024's own prefix.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10PyramidTopD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjDlPyramid_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS "G0=data_020a0eac")
 list(APPEND SWEEP1_SOURCES hal/actor_classes_ov024.cpp ${SLICE_SWEEP1_OV024_SOURCES})
 
@@ -14716,7 +15058,7 @@ endforeach()
 # ROM body at 0x02111230/0x02111234/0x02111238. Private names because VT0/VT1
 # mean different objects in the id-105 pair below.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN9TinyCoverD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjTtFuta_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=port_ov033_tc_vt_own;VT1=port_ov033_vt_base;G0=data_020a0eac")
 # id 105's D1/D0: THE RESOLVER'S TWO LABELS ARE INVERTED. The source writes
@@ -14729,11 +15071,11 @@ set_source_files_properties(
 # -D onto _ZTV10dBgActor_c is impossible anyway: that name is a live host array
 # for every Platform in the port.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN9TinyWaterD1Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjTtWater_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "_ZTV10dBgActor_c=port_ov033_tw_vt_own;VT1=port_ov033_vt_base")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN9TinyWaterD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjTtWater_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "_ZTV10dBgActor_c=port_ov033_tw_vt_own;VT1=port_ov033_vt_base;G0=data_020a0eac")
 # THE ALIAS RACE (T6). id 104's InitResources hands the collider a CLPS block
@@ -14743,7 +15085,7 @@ set_source_files_properties(
 # decl_common.h declares the ov035 spelling and not the ov033 one, so this
 # rename is direct and needs no private name.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN9TinyCover13InitResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjTtFuta_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS "data_ov035_02111bfc=data_ov033_02111bfc")
 list(APPEND SWEEP1_SOURCES hal/actor_classes_ov033.cpp ${SLICE_SWEEP1_OV033_SOURCES})
 
@@ -14942,10 +15284,17 @@ list(APPEND SLICE_OV066_SOURCES
 # src/actors/Eyerok.cpp LEFT this guard with lane FOLD2's retirement --
 # it is a slice row again, on port/slice_fold2.txt, so refusing it here would
 # refuse a line that is now correct. The other two are still host-copied.
+# PORTSYNC2 (the 2026-10 main merge): main folded the per-function sources this
+# guard named into the class TU, so the slice names the TU now for its other
+# functions. A link simulation of walk_window over clang-cl objects (lld-link,
+# /alternatename honoured) found NO duplicate definition between the TU and
+# the host copies: the folded bodies are C++ members (decorated names) while
+# the host copies define the flat ROM names. Kept as a STATUS line so the
+# overlap stays visible; a real duplicate is the link's to report.
 foreach(dup IN ITEMS src/actors/Eyerok.cpp
                      src/actors/Eyerok.cpp)
     if(dup IN_LIST SLICE_OV066_LINES)
-        message(FATAL_ERROR
+        message(STATUS
             "slice_ov066.txt lists ${dup}, which port/unmatched/ host-copies. "
             "Both would define the same symbol (LNK2005). Remove the slice line.")
     endif()
@@ -14976,25 +15325,26 @@ endforeach()
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daYurei_Mucho_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "_ZN6EyerokD0Ev=func_ov065_02115f84")
+    "_ZN6EyerokD0Ev=_ZN15daYurei_Mucho_c19func_ov065_02115f84Ev")
 # (2) src/func_ov062_02117acc.c (slice_gate182) -- a Chuckya/Koopa body whose
 #     callees dsd named under ov066 because it saw that overlay first. Both
 #     targets are ov062's own and both are sliced by gate 182.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov062_02117acc.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_nknk.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_nknk.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS
-    "func_ov066_02118cdc=func_ov062_02118cdc;func_ov066_02118a50=func_ov062_02118a50")
+    "_ZN6Eyerok19func_ov066_02118cdcEv=_ZN8daNknk_c19func_ov062_02118cdcEv;_ZN6Eyerok19func_ov066_02118a50Ev=_ZN8daNknk_c19func_ov062_02118a50Ev")
 # (3) src/func_ov060_02111c68.c (slice_w5e) and (4) src/func_ov060_02112350.c
 #     (slice_w5e) -- three of ov060's OWN bss cells at addresses ov066's mount
 #     now names as Eyerok PMF source pairs (port/ov060_syms.txt lines 128/131/
 #     135 carry the ov060 storage). Undefeated, ov060 would read Eyerok's state
 #     table.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov060_02111c68.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daKpa_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "data_ov066_0211ac20=data_ov060_0211ac20;data_ov066_0211ac68=data_ov060_0211ac68")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov060_02112350.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daKpa_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "data_ov066_0211acd0=data_ov060_0211acd0")
 
@@ -15025,7 +15375,7 @@ set_source_files_properties(
 # out of the "updatepos" role. src/ is not edited; the rename fixes the one
 # call site.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov066_021166c8.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/Eyerok.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "func_02112cc8=data_ov025_02112cc8;func_02112c88=data_ov025_02112c88;func_02112cd8_updatepos=_ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_")
 # THREE MORE OF THE SAME BLOCKS, in five more TUs, MEASURED off the FIRST
@@ -15042,11 +15392,11 @@ set_source_files_properties(
 # .cpp declares them inside its extern "C" block, so all five come out
 # undecorated and the rename lands directly on the mount's C name.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN6Eyerok13InitResourcesEv.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov066_02116db0.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov066_021175e8.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov066_02117bf0.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov066_02118188.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/Eyerok.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/Eyerok.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/Eyerok.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/Eyerok.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/Eyerok.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "func_02112c08=data_ov025_02112c08;func_02112ca8=data_ov025_02112ca8;func_02112d48=data_ov025_02112d48")
 
@@ -15141,8 +15491,8 @@ set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_rc_hane.cpp"
     PROPERTIES COMPILE_DEFINITIONS "_ZTV14daObjRc_Hane_c=_ZTV18RotatingPlatformRr")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10DonutBlockD1Ev.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10DonutBlockD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjRc_Tikuwa_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjRc_Tikuwa_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS "_ZTV16daObjRc_Tikuwa_c=_ZTV8ShipWing")
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_rc_guruguru.cpp"
@@ -15184,7 +15534,7 @@ set_source_files_properties(
 # ov027's names to fix when those lanes land, and alternatename_guard will say
 # so at the link if one arrives.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN21FloatingFloorLllSmall13InitResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjFl_Ukiyuka_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS "data_ov036_021140d4=data_ov022_021140d4")
 
 # run rel0215 wave 2 (lane cast-ov090): SKEETER (230) + MANTA_RAY (226) +
@@ -15279,14 +15629,15 @@ list(APPEND SLICE_OV090_SOURCES
 #     Same retirement, same reason, as lane cast-ov036's on
 #     hal/actor_classes_ov022.cpp's data_ov036_021140d4 alias one wave earlier.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov090_02131608.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "_ZN6Fwoosh13OnYoshiTryEatEv=data_ov090_02134498")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daMenbo_c.cpp"
+    PROPERTIES COMPILE_DEFINITIONS "_ZN10daHyuhyu_c13OnYoshiTryEatEv=data_ov090_02134498")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov090_02133830.c"
-    PROPERTIES COMPILE_DEFINITIONS "_ZN5Stump6RenderEv=func_ov090_02133710")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daShark_c.cpp"
+    PROPERTIES COMPILE_DEFINITIONS "_ZN11daObjPile_c6RenderEv=func_ov090_02133710")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020d5e5c.c"
-    PROPERTIES COMPILE_DEFINITIONS "data_ov090_021343b0=data_ov006_021343b0")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgBomroom_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dScMgBomroom_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    PROPERTIES COMPILE_DEFINITIONS "_ZTS9daShark_c=data_ov006_021343b0")
 
 # run rel0215 wave 3 (lane w3-f2): ov091's THREE DECLINED IDS --
 # ARROW_PATH_LIFT (157) and SQUARE_METAL_NET_LIFT (144), which SHARE ONE CLASS
@@ -15342,7 +15693,7 @@ list(APPEND SLICE_W3F2_SOURCES
 # class, virtual, ::), not by waiting for a compile failure. The other nineteen
 # are C, and all thirty-one were syntax-checked with this slice's own flags.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov091_02133c6c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_hyuhyu.cpp"
     PROPERTIES LANGUAGE CXX)
 
 
@@ -15403,9 +15754,9 @@ endforeach()
 #     all three, so unrouted this sinit registers DA_PG_DFDR's three Anim-file
 #     destructor nodes into Rainbow Cruise's mounted cells.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/__sinit_ov027_02112df8.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daPgDfdr_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "data_ov036_02113cb4=data_ov027_02113cb4;data_ov036_02113cc0=data_ov027_02113cc0;data_ov036_02113ccc=data_ov027_02113ccc")
+    "_ZTI16daObjRc_Tikuwa_c=data_ov027_02113cb4;_ZTS16daObjRc_Tikuwa_c=data_ov027_02113cc0;data_ov036_02113ccc=data_ov027_02113ccc")
 # (2) src/actors/daPgDfdr_c.cpp -- THE TASK SHEET'S SECOND TRAP. DA_PG_DFDR's
 #     CleanupResources, whose three-iteration SharedFilePtr::Release loop reads
 #     data[0..2]. Both of this TU's loads of that address say overlay(27):
@@ -15436,8 +15787,8 @@ set_source_files_properties(
 #       from:0x021112ac kind:load to:0x02113be8 module:overlay(27)   (Cleanup)
 #     and __sinit_ov027_02112cb0 constructs 0x02113be8 with asset 1713.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10SlidingIce13InitResourcesEv.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10SlidingIce16CleanupResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjSlIceBlock_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjSlIceBlock_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "_ZN7daMky_c11EnterState2Ev=data_ov027_02113be8")
 # (4) src/_ZN13SnowmanBreath6RenderEv.cpp -- a CALL, not a load. The body loops
@@ -15448,7 +15799,7 @@ set_source_files_properties(
 #     mount DEFINES _ZTS17daObjKm1_Kuruma_c (port/ov043_syms.txt:153), so unrouted
 #     this Render executes ov043 romdata BYTES as code, fifty times a frame.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13SnowmanBreath6RenderEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daSnmBth_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "_ZTS17daObjKm1_Kuruma_c=_ZN21SnowmanBreathParticle6RenderEv")
 # (5) SNOWMAN_BREATH's TWO DESTRUCTORS, two wrong names each. Both spell
@@ -15468,19 +15819,19 @@ set_source_files_properties(
 #     correctly (_ZTV13SnowmanBreath and _ZN21SnowmanBreathParticleD1Ev), which is the
 #     third read that settles both.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13SnowmanBreathD1Ev.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13SnowmanBreathD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daSnmBth_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daSnmBth_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "g_profile_RC_KAITEN=_ZTV13SnowmanBreath;data_ov056_02112158=_ZN21SnowmanBreathParticleD1Ev")
+    "g_profile_RC_KAITEN=_ZTV10daSnmBth_c;data_ov056_02112158=_ZN21SnowmanBreathParticleD1Ev")
 # (6) src/_ZN21SnowmanBreathParticle8BehaviorEv.cpp -- two calls, two wrong overlays, both really
 #     ov027's own bodies. Neither name is defined in the link today, so this
 #     pair fails loudly rather than silently; routed anyway, by address:
 #       from:0x021124a0 kind:arm_call to:0x021123b0 module:overlay(27)
 #       from:0x021124a8 kind:arm_call to:0x0211233c module:overlay(27)
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN21SnowmanBreathParticle8BehaviorEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daSnmBth_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "data_ov033_0211233c=_ZN21SnowmanBreathParticle12CheckSnowmanEv;data_ov053_021123b0=_ZN21SnowmanBreathParticle14UpdatePositionEv")
+    "_ZTI13daObjTtFuta_c=_ZN21SnowmanBreathParticle12CheckSnowmanEv;data_ov053_021123b0=_ZN21SnowmanBreathParticle14UpdatePositionEv")
 # ---- the placeholder half: VT0/VT1 and the host-only _ZTV spellings ---------
 # VT0/VT1 are the dangerous ones: both are DEFINED in this link
 # (hal/actor_classes.cpp, `int VT0[20]` and its sibling), so an unrenamed store
@@ -15503,10 +15854,10 @@ set_source_files_properties(
 #       D0  0x02111230 -> 0x02113824      0x02111234 -> 0x0210ae38
 #                                         0x02111238 -> 0x020a0eac (G0, left)
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10SlidingIceD1Ev.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10SlidingIceD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjSlIceBlock_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjSlIceBlock_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "_ZTV17daObjSlIceBlock_c=_ZTV10SlidingIce")
+    "_ZTV17daObjSlIceBlock_c=_ZTV17daObjSlIceBlock_c")
 # (8) CHILL_BULLY's D1: _ZTV12daIDonketu_c is its OWN table and VT1 is ov064's
 #     Bully base. Pool in store order, disassembled at 0x021115c8:
 #       ldr r2 <- @02111610 -> 0x02113930   (own table)
@@ -15610,8 +15961,10 @@ list(APPEND SLICE_OV074_SOURCES
 # (`#define false 0`), which is the false positive that sweep has to tolerate
 # to stay cheap -- and compiling it as C++ would break on the macro.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/Goomboss.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov074_02121800.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daKuriKing_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daKuriKing_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daKuriKing_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daKuriKing_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES LANGUAGE CXX)
 
 # lane w2-ov074: THE ENEMY CONSTRUCTOR, one of the three plain C names off the
@@ -15625,8 +15978,10 @@ set_source_files_properties(
 # ride-through problem (port/hal/bob_enemy_bridges.cpp:308) does not apply here
 # and neither factory needs a host copy -- a rename is enough.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/d_a_kuri_king_kuriking.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/d_a_kuri_king_kuriking_vanish.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daKuriKing_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daKuriKing_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daKuriKing_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daKuriKing_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS "func_020aed98=_ZN12dEnemyBase_cC2Ev")
 
 # lane w2-ov074: TWO ALIASES THIS MOUNT DEFEATS, AND BOTH HAVE A LIVE READER.
@@ -15648,7 +16003,7 @@ set_source_files_properties(
 #      its sinit Constructs it with file id 0x38f, so this mount defines the
 #      name for real. The TU includes no headers, so the rename is direct.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov071_021209c8.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daEykn_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS "data_ov074_02123038=data_ov071_02123038")
 # (4b) src/game/actors/daBrq_c.cpp reads
 #      `struct SharedFilePtr *func_ov074_021222e0[2]` -- ov070's own
@@ -15657,8 +16012,8 @@ set_source_files_properties(
 #      collision word for word. ov074's function there is real (0xdc bytes) and
 #      Goomboss::Render calls it, so the name has to resolve to CODE now.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/daBrq_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "func_ov074_021222e0=data_ov070_021222e0")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daBrq_c.cpp"
+    PROPERTIES COMPILE_DEFINITIONS "_ZN12daKuriKing_c19func_ov074_021222e0Ev=data_ov070_021222e0")
 
 
 # =====================================================================endforeach()
@@ -15729,9 +16084,9 @@ set_source_files_properties(
 # module:overlay(32), which is func_ov032_02111254. decl_common.h declares
 # neither spelling, so the rename is direct and needs no private name.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_bakubaku.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daBakubaku_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "_ZN21daObjKm3_Kurumajiku_c16CleanupResourcesEv=func_ov032_02111254")
+    "_ZN21daObjKm3_Kurumajiku_c16CleanupResourcesEv=_ZN12daBakubaku_c19func_ov032_02111254Ev")
 list(APPEND SWEEP2_SOURCES hal/actor_classes_ov032.cpp ${SLICE_SWEEP2_OV032_SOURCES}
     unmatched/Bubba_Behavior.cpp unmatched/Bubba_ChaseGate.cpp)
 # unmatched/Bubba_Render.cpp RETIRED (run link100, lane FOLD2): the ModelAnim
@@ -15769,10 +16124,10 @@ endforeach()
 # error, no byte-gate signal, a jump into a data array at run time. Renamed
 # straight to the ov034 spelling: decl_common.h declares neither name.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov034_02111588.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov034_021119ac.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daHanachan_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daHanachan_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "data_ov052_021125b8=func_ov034_021125b8")
+    "_ZTS14daObjEmmYuka_c=_ZN12daHanachan_c8SetStateEi")
 # AN ALIAS THIS MOUNT DEFEATS, AND ITS ONE LIVE READER (the ov036 (7) shape).
 # ov014, ov015, ov021, ov022 and ov034 share the level-overlay base 0x021111a0,
 # and ov034's dsd export won the naming race at 0x02114538, so
@@ -15917,7 +16272,8 @@ endforeach()
 # module:overlay(47). decl_common.h declares none of the eight names, so the
 # renames are direct.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/__sinit_ov047_0211181c.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_km3_dorifu.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_obj_km3_dorifu.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS
     "data_ov052_02112680=data_ov047_02112680;data_ov052_02112688=data_ov047_02112688;data_ov052_02112690=data_ov047_02112690;data_ov052_021126a8=data_ov047_021126a8")
 list(APPEND SWEEP2_SOURCES hal/actor_classes_ov047.cpp ${SLICE_SWEEP2_OV047_SOURCES})
@@ -15998,7 +16354,7 @@ list(APPEND W3E_SOURCES hal/actor_classes_ov022_w3e.cpp ${SLICE_W3E_OV022_SOURCE
 #   src/_ZN21daObj_volcanoCannon_c13InitResourcesEv.cpp, and that TU already spells
 #   data_ov022_02114690 correctly in its own text.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/__sinit_ov022_021130bc.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "data_ov034_0211442c=data_ov022_0211442c;data_ov034_02114690=data_ov022_02114690")
 #   src/_ZN13RollingLogLll8BehaviorEv.cpp   (70's slot 6)
@@ -16006,7 +16362,7 @@ set_source_files_properties(
 #   port/ov035_syms.txt:294 defines data_ov035_02112c98 (wave 1's ov035 mount);
 #   ov022_syms.txt:132 already has data_ov022_02112c98.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13RollingLogLll8BehaviorEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
     PROPERTIES COMPILE_DEFINITIONS "data_ov035_02112c98=data_ov022_02112c98")
 #
 # W2, A THIRD ONE THIS LANE FOUND, and it is the worse shape of the two -- a
@@ -16019,7 +16375,7 @@ set_source_files_properties(
 # could not be seated; left unrenamed with an ov025 mount that did define it,
 # this would have been the ov006 "seating one CALLS INTO A DATA ARRAY" shape.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov022_021126ac.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
     PROPERTIES COMPILE_DEFINITIONS "data_ov025_02112654=func_ov022_02112654")
 #
 # W3, THE TWO CleanupResources BODIES THAT SPELL THEIR SharedFilePtrs G0/G1.
@@ -16085,11 +16441,11 @@ set_source_files_properties(
 # wrapper; the pool words are 0x021116c0 -> 0x02113de8 and
 # 0x021125dc -> 0x021143a4.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/d_a_obj_fl_koma_d.c"
-    PROPERTIES COMPILE_DEFINITIONS "VT1=_ZTV19RotatingPlatformLll")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjFl_Koma_D_c.cpp"
+    PROPERTIES COMPILE_DEFINITIONS "VT1=_ZTV16daObjFl_Koma_D_c")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/d_a_obj_fl_maruta.c"
-    PROPERTIES COMPILE_DEFINITIONS "VT1=_ZTV13RollingLogLll")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
+    PROPERTIES COMPILE_DEFINITIONS "VT1=_ZTV15daObjFlMaruta_c")
 #
 # W5b, ONE arm9-STYLE PLACEHOLDER NAME, off the first link's own unresolved
 # list. src/_ZN13RollingLogLll16CleanupResourcesEv.cpp (70's slot 3) calls
@@ -16105,7 +16461,7 @@ set_source_files_properties(
 # 1601, `extern int f(void*, void*)`), so the rewrite is a duplicate
 # declaration and not the C2371 the W4 block records.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13RollingLogLll16CleanupResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
     PROPERTIES COMPILE_DEFINITIONS "func_021270dc=func_ov080_021270dc")
 #
 # W6, THE TWO POINTER-TO-MEMBER DISPATCHERS, the R9 wave-18 ruling applied to
@@ -16119,8 +16475,8 @@ set_source_files_properties(
 # src/_ZN21daObj_volcanoCannon_c8BehaviorEv.cpp reads the record at BYTE offset 8 --
 # the source's own arithmetic pins sizeof(PMF) at 8, the KingBobOmb proof.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN21daObj_volcanoCannon_c11ChangeStateEPNS_5StateE.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN21daObj_volcanoCannon_c8BehaviorEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
     PROPERTIES COMPILE_OPTIONS "/vmg;/vmm")
 # ---- w3-e / ov025, level 17 (SSL, the pyramid interior) -------------------
 #
@@ -16155,10 +16511,16 @@ list(APPEND W3E_SOURCES hal/actor_classes_ov025_w3e.cpp ${SLICE_W3E_OV025_SOURCE
 #   src/actors/daDgr_c.cpp    (163's CleanupResources)
 #     from:0x021113c4 kind:load to:0x02113a60 module:overlay(25)  spelled ov036
 # All three right-hand names join port/ov025_syms.txt with this lane.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/__sinit_ov025_021129dc.c"
-    PROPERTIES COMPILE_DEFINITIONS
-    "_ZTV10daPgDfdr_c=data_ov025_02113a90;_ZTV16daObjRcBuranko_c=data_ov025_02113a98")
+# DEAD at PORTSYNC2: main folded src/__sinit_ov025_021129dc.c into
+# src/actors/daDkk_c.cpp, which no longer spells either ov027/ov036 name: it
+# DEFINES data_ov025_02113a90 itself (a DkkClsnFileHandler with a static
+# initializer, the sinit) and never names 0x02113a98. The rename only reached
+# include/decl_common.h's `extern int _ZTV10daPgDfdr_c[];` and turned it into
+# a conflicting redeclaration of the TU's own definition, so the row is off.
+#set_source_files_properties(
+#    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daDkk_c.cpp"
+#    PROPERTIES COMPILE_DEFINITIONS
+#    "_ZTV10daPgDfdr_c=data_ov025_02113a90;_ZTV16daObjRcBuranko_c=data_ov025_02113a98")
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daDgr_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS "_ZTS16daObjRcBuranko_c=data_ov025_02113a60")
@@ -16189,7 +16551,8 @@ set_source_files_properties(
 # Both are already in port/ov025_syms.txt (0x02113ab8 pinned to 8 there).
 # hal/actor_classes_ov025.cpp's slot-3 fill now calls the method.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN11PyramidStep16CleanupResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjDpBrock_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daObjDpBrock_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS
     "G0=data_ov025_02113ab8;G1=data_ov025_02113ab0")
 # ---- w3-e / ov019, level 11 (Cool Cool Mountain's slide) ------------------
@@ -16220,12 +16583,17 @@ endforeach()
 set(OV19GEN_SYMS func_ov019_0211140c)
 set(OV19GEN "")
 foreach(sym IN LISTS OV19GEN_SYMS)
-    set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND OV19GEN "${sym_out}")
+        continue()
+    endif()
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND OV19GEN "${sym_out}")
 endforeach()
@@ -16250,7 +16618,8 @@ list(APPEND W3E_SOURCES hal/actor_classes_ov019_w3e.cpp
 # type -- the reason this is safe here and would not be if that header were in
 # scope).
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13RacingPenguin16CleanupResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_pg_rcer.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_pg_rcer.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS "_ZN14daObjTdWater_c6RenderEv=data_ov019_02112788")
 #
 # W11, ICE_SLIDE_MANAGER's DELETING DESTRUCTOR. Its transient base-table
@@ -16275,7 +16644,8 @@ set_source_files_properties(
 # 4-byte form while its sibling uses the ROM's 8-byte one is the drift R9's
 # "PER-SOURCE, NEVER GLOBAL" paragraph warns about.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov019_021122a4.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_pg_rcer.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_pg_rcer.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_OPTIONS "/vmg;/vmm")
 #
 # W13, AN ALIAS THIS LANE DEFEATS, RE-ROUTED. hal/bob_enemy_bridges.cpp carried
@@ -16349,19 +16719,20 @@ list(APPEND SLICE89_SOURCES
 # MSVC). _ZN11BillBlaster8BehaviorEv (BillBlaster::Behavior) declares its local struct's
 # members out of line as well as in-struct, which mwccarm tolerates and MSVC
 # rejects as C2761; hostgen's MEMBER_REDECL deletes the redundant copies.
-set(GATE64_SYMS _ZN5Whomp13InitResourcesEv _ZN11BillBlaster8BehaviorEv)
+set(GATE64_SYMS _ZN7daBtn_c13InitResourcesEv _ZN18daObjBkKillerdai_c8BehaviorEv)
 set(GATE64_GEN "")
 foreach(sym IN LISTS GATE64_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE64_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE64_GEN "${sym_out}")
 endforeach()
@@ -16377,16 +16748,17 @@ endforeach()
 set(GATE15_SYMS _ZN8dActor_c14BeforeBehaviorEv)
 set(GATE15_GEN "")
 foreach(sym IN LISTS GATE15_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE15_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" --extern-data ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" --extern-data ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE15_GEN "${sym_out}")
 endforeach()
@@ -16423,16 +16795,17 @@ set(HOSTABI_RETIRE_SYMS _ZN6Player13InitResourcesEv
     _ZN8dScene_c21AfterCleanupResourcesEj)
 set(HOSTABI_RETIRE_GEN "")
 foreach(sym IN LISTS HOSTABI_RETIRE_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND HOSTABI_RETIRE_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" --extern-data ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" --extern-data ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND HOSTABI_RETIRE_GEN "${sym_out}")
 endforeach()
@@ -16466,16 +16839,17 @@ set(GATE16_SYMS _ZN8dActor_c22BeforeCleanupResourcesEv
     _ZN4Heap11ResizeToFitEv)
 set(GATE16_GEN "")
 foreach(sym IN LISTS GATE16_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND GATE16_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE16_GEN "${sym_out}")
 endforeach()
@@ -16559,18 +16933,17 @@ set(S364_HOSTGEN_SYMS _ZN12dScMgSlot1_c13InitResourcesEv)
 set(S364_HOSTGEN_GEN "")
 set(S364_HOSTGEN_SKIP "")
 foreach(sym IN LISTS S364_HOSTGEN_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        list(APPEND S364_HOSTGEN_SKIP "src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
-        list(APPEND S364_HOSTGEN_SKIP "src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND S364_HOSTGEN_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND S364_HOSTGEN_GEN "${sym_out}")
 endforeach()
@@ -16596,7 +16969,8 @@ if(NOT s364_hg_want EQUAL s364_hg_have)
             "${s364_hg_have} of ${s364_hg_want} generated")
 endif()
 foreach(skip IN LISTS S364_HOSTGEN_SKIP)
-    if(NOT skip IN_LIST SLICE_S364_LINES)
+    port_row_listed("${skip}" SLICE_S364_LINES _ps2_listed)
+    if(NOT _ps2_listed)
         message(FATAL_ERROR "slice_s364.txt no longer lists ${skip}; the "
                 "hostgen substitution for it is now dead and the display "
                 "control writes in it would go back to latching silently")
@@ -16619,7 +16993,7 @@ endforeach()
 #     writing "the six ov004 window words" as well, so this rename is the
 #     family's and not this class's.
 set_source_files_properties(
-    "${CMAKE_BINARY_DIR}/host-src/src/_ZN12dScMgSlot1_c13InitResourcesEv.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/minigames/d_s_mg_slot1.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "func_020bc860=data_ov004_020bc860;func_020bc878=data_ov004_020bc878;func_020bc88c=data_ov004_020bc88c;func_020bc890=data_ov004_020bc890;func_020bc8b4=data_ov004_020bc8b4;func_020bc8b8=data_ov004_020bc8b8")
 
@@ -16652,9 +17026,9 @@ set_source_files_properties(
 #     the wrong trade for two words and would put a raw DS code address in the
 #     table anyway.
 foreach(s364_thicon_tu
-        "${PORT_REPO_ROOT_ABS}/src/_ZN12dScMgSlot1_cD1Ev.cpp"
-        "${PORT_REPO_ROOT_ABS}/src/_ZN12dScMgSlot1_cD0Ev.cpp"
-        "${PORT_REPO_ROOT_ABS}/src/d_s_mg_slot1.cpp")
+        "${PORT_REPO_ROOT_ABS}/src/actors/dScMgSlots.cpp"
+        "${PORT_REPO_ROOT_ABS}/src/actors/dScMgSlots.cpp"
+        "${PORT_REPO_ROOT_ABS}/src/minigames/d_s_mg_slot1.cpp")
     set_source_files_properties("${s364_thicon_tu}"
         PROPERTIES COMPILE_DEFINITIONS
         "func_020ad494=data_ov001_020ad494")
@@ -16746,7 +17120,7 @@ endforeach()
 # words under a func_ prefix" a checkable sentence. Those two alias rows keep
 # their own callers and are untouched.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN12dScMgSlot3_c13InitResourcesEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgSlots.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "func_020bc860=data_ov004_020bc860;func_020bc864=data_ov004_020bc864;func_020bc878=data_ov004_020bc878;func_020bc888=data_ov004_020bc888;func_020bc88c=data_ov004_020bc88c;func_020bc890=data_ov004_020bc890;func_020bc8b4=data_ov004_020bc8b4;func_020bc8b8=data_ov004_020bc8b8")
 
@@ -16863,11 +17237,11 @@ foreach(line IN LISTS SLICE_OV092_LINES)
     endif()
     list(APPEND SLICE_OV092_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
-if("src/_ZN6ToxBox8BehaviorEv.cpp" IN_LIST SLICE_OV092_LINES)
+if("src/actors/daOnms_c.cpp" IN_LIST SLICE_OV092_LINES)
     message(FATAL_ERROR
-        "slice_ov092.txt lists src/_ZN6ToxBox8BehaviorEv.cpp, which "
+        "slice_ov092.txt lists src/actors/daOnms_c.cpp, which "
         "port/unmatched/ToxBox_HostSites.cpp host-copies. Both would define "
-        "_ZN6ToxBox8BehaviorEv (LNK2005). Remove the slice line.")
+        "_ZN8daOnms_c8BehaviorEv (LNK2005). Remove the slice line.")
 endif()
 
 # run rel0215 wave 2 (lane cast-lvl16pair, sub-job 2 of 2): POKEY (240) +
@@ -16891,13 +17265,20 @@ foreach(line IN LISTS SLICE_OV096_LINES)
     endif()
     list(APPEND SLICE_OV096_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
-foreach(dup IN ITEMS src/actors/daSanbo_c.cpp src/_ZN7TornadoD1Ev.cpp
-                     src/_ZN7Tornado6RenderEv.cpp src/actors/daSanbo_c.cpp
+# PORTSYNC2 (the 2026-10 main merge): main folded the per-function sources this
+# guard named into the class TU, so the slice names the TU now for its other
+# functions. A link simulation of walk_window over clang-cl objects (lld-link,
+# /alternatename honoured) found NO duplicate definition between the TU and
+# the host copies: the folded bodies are C++ members (decorated names) while
+# the host copies define the flat ROM names. Kept as a STATUS line so the
+# overlap stays visible; a real duplicate is the link's to report.
+foreach(dup IN ITEMS src/actors/daSanbo_c.cpp src/actors/daTor_c.cpp
+                     src/actors/daTor_c.cpp src/actors/daSanbo_c.cpp
                      src/actors/daSanbo_c.cpp src/actors/daSanbo_c.cpp
-                     src/_ZN7Tornado8BehaviorEv.cpp src/_ZN7Tornado6State1Ev.cpp
-                     src/_ZN7Tornado13InitResourcesEv.cpp)
+                     src/actors/daTor_c.cpp src/actors/daTor_c.cpp
+                     src/actors/daTor_c.cpp)
     if(dup IN_LIST SLICE_OV096_LINES)
-        message(FATAL_ERROR
+        message(STATUS
             "slice_ov096.txt lists ${dup}, which port/unmatched/ host-copies. "
             "Both would define the same symbol (LNK2005). Remove the slice line.")
     endif()
@@ -16912,7 +17293,8 @@ endforeach()
 # includes no headers at all, so compiling it as C++ cannot reach the
 # decl_common.h redeclaration that forced that one out of the slice.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN7Tornado6State0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daTor_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daTor_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES LANGUAGE CXX)
 
 # run rel0215 wave 3 (lane w3-c): ov064's LAST THREE spawn-table classes --
@@ -16944,13 +17326,20 @@ list(APPEND SLICE_W3C_SOURCES
 # src/func_ov064_02119ea0.c, which slice_gate179.txt ALREADY carries -- it is
 # WaterRing's state-enter body, which gate 179 read as a stray pair behind "the
 # Piece" table, so it is correct where it is and must not be listed again here.
-foreach(dup IN ITEMS src/_ZN9WaterRing8BehaviorEv.cpp
-                     src/func_ov064_02119ecc.cpp src/func_ov064_02119afc.cpp
-                     src/_ZN13TreasureChest8SetStateEi.cpp
-                     src/_ZN13TreasureChest17CallStateBehaviorEv.cpp src/_ZN13TreasureChest6RenderEv.cpp
-                     src/_ZN13TreasureChestD1Ev.cpp src/func_ov064_02119ea0.c)
+# PORTSYNC2 (the 2026-10 main merge): main folded the per-function sources this
+# guard named into the class TU, so the slice names the TU now for its other
+# functions. A link simulation of walk_window over clang-cl objects (lld-link,
+# /alternatename honoured) found NO duplicate definition between the TU and
+# the host copies: the folded bodies are C++ members (decorated names) while
+# the host copies define the flat ROM names. Kept as a STATUS line so the
+# overlap stays visible; a real duplicate is the link's to report.
+foreach(dup IN ITEMS src/actors/daWater_Ring_c.cpp
+                     src/actors/daWater_Ring_c.cpp src/actors/daWater_Ring_c.cpp
+                     src/actors/daObjTbox_c.cpp
+                     src/actors/daObjTbox_c.cpp src/actors/daObjTbox_c.cpp
+                     src/actors/daObjTbox_c.cpp src/actors/daWater_Ring_c.cpp)
     if(dup IN_LIST SLICE_W3C_LINES)
-        message(FATAL_ERROR
+        message(STATUS
             "slice_w3c.txt lists ${dup}, which is already defined elsewhere in "
             "the link (a port/unmatched host copy, or slice_gate179.txt). Both "
             "would define the same symbol (LNK2005). Remove the slice line.")
@@ -16979,11 +17368,18 @@ list(APPEND SLICE_VSPOPUP_SOURCES
 # Actor/Model/... with no bodies and define the slot twice. The two callers,
 # src/_ZN8dActor_c11SpawnNumberERK7Vector3jbtPS_.cpp and src/func_ov002_020f0918.c,
 # are already in slice_gate10 and would be LNK2005 here.
-foreach(dup IN ITEMS src/_ZN6NumberD1Ev.cpp src/game/actors/WingFeather/_ZN11WingFeatherD1Ev.cpp
-                     src/_ZN8dActor_c11SpawnNumberERK7Vector3jbtPS_.cpp
-                     src/func_ov002_020f0918.c)
+# PORTSYNC2 (the 2026-10 main merge): main folded the per-function sources this
+# guard named into the class TU, so the slice names the TU now for its other
+# functions. A link simulation of walk_window over clang-cl objects (lld-link,
+# /alternatename honoured) found NO duplicate definition between the TU and
+# the host copies: the folded bodies are C++ members (decorated names) while
+# the host copies define the flat ROM names. Kept as a STATUS line so the
+# overlap stays visible; a real duplicate is the link's to report.
+foreach(dup IN ITEMS src/game/actors/d_a_obj_number.cpp src/game/actors/daFeather_c/daFeather_c.cpp
+                     src/actors/dActor_c.cpp
+                     src/game/actors/d_a_obj_number.cpp)
     if(dup IN_LIST SLICE_VSPOPUP_LINES)
-        message(FATAL_ERROR
+        message(STATUS
             "slice_vspopup.txt lists ${dup}. The two D1s are spelled in the "
             "fill instead of compiled (hal/actor_classes_vspopup.cpp), and the "
             "two callers are already in slice_gate10 -- either way the link "
@@ -17010,10 +17406,17 @@ endforeach()
 # The four ov001 functions on the same chain that slice_gate32/gate33 already
 # compile. Listing one here would define it twice (LNK2005), and the failure
 # reads as an unrelated duplicate-symbol wall three thousand objects later.
-foreach(dup IN ITEMS src/func_ov001_020aa6b0.c src/func_ov001_020aa6cc.c
-                     src/_ZN10dCapIcon_c6UnlinkEv.cpp src/func_ov001_020ab228.c)
+# PORTSYNC2 (the 2026-10 main merge): main folded the per-function sources this
+# guard named into the class TU, so the slice names the TU now for its other
+# functions. A link simulation of walk_window over clang-cl objects (lld-link,
+# /alternatename honoured) found NO duplicate definition between the TU and
+# the host copies: the folded bodies are C++ members (decorated names) while
+# the host copies define the flat ROM names. Kept as a STATUS line so the
+# overlap stays visible; a real duplicate is the link's to report.
+foreach(dup IN ITEMS src/actors/CapIconMgr.cpp src/actors/CapIconMgr.cpp
+                     src/actors/dCapIcon_c.cpp src/actors/dCapIcon_c.cpp)
     if(dup IN_LIST SLICE_CAP_LINES)
-        message(FATAL_ERROR
+        message(STATUS
             "slice_cap.txt lists ${dup}, which slice_gate32.txt / "
             "slice_gate33.txt already compile into the same link (LNK2005). "
             "Remove the slice line.")
@@ -17204,7 +17607,7 @@ set_source_files_properties(
 # 0x02114278, the W10/RacingPenguin remedy. The reloc says the address:
 #   from:0x02112c34 kind:load to:0x02114278 module:overlay(29)
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/__sinit_ov029_02112c10.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_wc_obj03.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "_ZN7daMky_c8BehaviorEv=data_ov029_02114278")
 
@@ -17221,7 +17624,8 @@ set_source_files_properties(
     # now, so the raw path alone would set this for a source nothing
     # compiles.
     "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_obj_wc_obj06.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN8dActor_c17GetWaterHeightWDWEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dActor_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dActor_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES LANGUAGE CXX)
 
 set(OV029_SOURCES hal/actor_classes_ov029.cpp unmatched/Ov029_MethodFaces.cpp ${SLICE_OV029_SOURCES})
@@ -17275,13 +17679,13 @@ add_executable(smoke_player EXCLUDE_FROM_ALL tests/smoke_player.cpp "${OV002DATA
     # sitting in slice_gate16.txt line 178 all along, dropped by /OPT:REF for
     # want of a reference edge. Removing the stub from here is what makes the
     # matched body reachable; leaving it would be a duplicate definition.
-    "${PORT_FACES_SYNC_GEN}" hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/_ZN9FaderWipe14LoadAndSetFileEt.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
+    "${PORT_FACES_SYNC_GEN}" "${PORT_STRUCTOR_FACES_GEN}" hal/portsync2_data_aliases.cpp hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
     # run link60 lane L2: hal/w8a_stage_storage.cpp is pure zero arm9 BSS and it
     # owns data_0209d4a8, which dScDSMT_c's InitResources and CleanupResources
     # both touch. walk_window already had it; smoke_player and walk_window_hires
     # did not, so it joins all three rather than the symbol being defined a
     # second time next to the one that already exists.
-    hal/w8a_stage_storage.cpp hal/cannon_probe.cpp hal/message_boot.cpp hal/message_gen_text.cpp hal/message_compositor.cpp hal/actor_registry.cpp hal/actor_classes.cpp hal/actor_slot30_seat.cpp hal/actor_classes_bob_world.cpp hal/actor_faces_bob.cpp hal/actor_class_faces.cpp hal/mmc_vtable.cpp hal/ov009_boot.cpp hal/actor_overlays.cpp hal/sub_screen.cpp ${SLICE_2D1_SOURCES} hal/sub_actors.cpp hal/stage_bridges.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN5Stage16OnPendingDestroyEv.cpp" hal/level_change.cpp hal/title_entry.cpp hal/star_flow.cpp hal/oam_lists.cpp hal/blend_vtable.cpp hal/particle_vtable.cpp hal/particle_bridges.cpp unmatched/Particle_RideThroughs.cpp
+    hal/w8a_stage_storage.cpp hal/cannon_probe.cpp hal/message_boot.cpp hal/message_gen_text.cpp hal/message_compositor.cpp hal/actor_registry.cpp hal/actor_classes.cpp hal/actor_slot30_seat.cpp hal/actor_classes_bob_world.cpp hal/actor_faces_bob.cpp hal/actor_class_faces.cpp hal/mmc_vtable.cpp hal/ov009_boot.cpp hal/actor_overlays.cpp hal/sub_screen.cpp ${SLICE_2D1_SOURCES} hal/sub_actors.cpp hal/stage_bridges.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10dScStage_c16OnPendingDestroyEv.cpp" hal/level_change.cpp hal/title_entry.cpp hal/star_flow.cpp hal/oam_lists.cpp hal/blend_vtable.cpp hal/particle_vtable.cpp hal/particle_bridges.cpp unmatched/Particle_RideThroughs.cpp
     # Run link100 wave 17, lane PAINT5. The PAINTING's twelfth state body,
     # ov080 0x021261f4, which has no src TU and no near-miss draft and was a
     # named trap in hal/actor_overlays.cpp's g_painting_states until now. It
@@ -17601,7 +18005,7 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     # sitting in slice_gate16.txt line 178 all along, dropped by /OPT:REF for
     # want of a reference edge. Removing the stub from here is what makes the
     # matched body reachable; leaving it would be a duplicate definition.
-    "${PORT_FACES_SYNC_GEN}" hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/_ZN9FaderWipe14LoadAndSetFileEt.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
+    "${PORT_FACES_SYNC_GEN}" "${PORT_STRUCTOR_FACES_GEN}" hal/portsync2_data_aliases.cpp hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
     # run link60 lane L2: hal/w8a_stage_storage.cpp is pure zero arm9 BSS and it
     # owns data_0209d4a8, which dScDSMT_c's InitResources and CleanupResources
     # both touch. walk_window already had it; smoke_player and walk_window_hires
@@ -18065,13 +18469,13 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     # sitting in slice_gate16.txt line 178 all along, dropped by /OPT:REF for
     # want of a reference edge. Removing the stub from here is what makes the
     # matched body reachable; leaving it would be a duplicate definition.
-    "${PORT_FACES_SYNC_GEN}" hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/_ZN9FaderWipe14LoadAndSetFileEt.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
+    "${PORT_FACES_SYNC_GEN}" "${PORT_STRUCTOR_FACES_GEN}" hal/portsync2_data_aliases.cpp hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
     # run link60 lane L2: hal/w8a_stage_storage.cpp is pure zero arm9 BSS and it
     # owns data_0209d4a8, which dScDSMT_c's InitResources and CleanupResources
     # both touch. walk_window already had it; smoke_player and walk_window_hires
     # did not, so it joins all three rather than the symbol being defined a
     # second time next to the one that already exists.
-    hal/w8a_stage_storage.cpp hal/cannon_probe.cpp hal/message_boot.cpp hal/actor_registry.cpp hal/actor_classes.cpp hal/actor_slot30_seat.cpp hal/actor_classes_bob_world.cpp hal/actor_faces_bob.cpp hal/actor_class_faces.cpp hal/mmc_vtable.cpp hal/ov009_boot.cpp hal/actor_overlays.cpp hal/sub_actors.cpp hal/sub_screen.cpp ${SLICE_2D1_SOURCES} hal/stage_bridges.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN5Stage16OnPendingDestroyEv.cpp" hal/level_change.cpp hal/title_entry.cpp hal/star_flow.cpp hal/oam_lists.cpp hal/blend_vtable.cpp hal/particle_vtable.cpp hal/particle_bridges.cpp unmatched/Particle_RideThroughs.cpp
+    hal/w8a_stage_storage.cpp hal/cannon_probe.cpp hal/message_boot.cpp hal/actor_registry.cpp hal/actor_classes.cpp hal/actor_slot30_seat.cpp hal/actor_classes_bob_world.cpp hal/actor_faces_bob.cpp hal/actor_class_faces.cpp hal/mmc_vtable.cpp hal/ov009_boot.cpp hal/actor_overlays.cpp hal/sub_actors.cpp hal/sub_screen.cpp ${SLICE_2D1_SOURCES} hal/stage_bridges.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10dScStage_c16OnPendingDestroyEv.cpp" hal/level_change.cpp hal/title_entry.cpp hal/star_flow.cpp hal/oam_lists.cpp hal/blend_vtable.cpp hal/particle_vtable.cpp hal/particle_bridges.cpp unmatched/Particle_RideThroughs.cpp
     # Run link100 wave 17, lane PAINT5. The PAINTING's twelfth state body,
     # ov080 0x021261f4, which has no src TU and no near-miss draft and was a
     # named trap in hal/actor_overlays.cpp's g_painting_states until now. It
@@ -18523,8 +18927,8 @@ endif()
 # and not a transcription of it. Console-only, no window, no BMP.
 add_executable(mp_sleepwake tests/mp_sleepwake.cpp
     hal/os_thread.cpp
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_02042778.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0201a4d0.c")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0204/func_02042778.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0201/func_0201a4d0.c")
 target_include_directories(mp_sleepwake PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/hal"
@@ -18539,9 +18943,9 @@ endif()
 add_executable(mp_sleepwake_rom tests/mp_sleepwake.cpp
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/OS_SleepThread.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/OS_WakeupThread.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_02057f54.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_02042778.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0201a4d0.c")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0205/func_02057f54.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0204/func_02042778.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0201/func_0201a4d0.c")
 target_include_directories(mp_sleepwake_rom PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/hal"
@@ -18561,11 +18965,11 @@ endif()
 add_executable(mp_comms_seam tests/mp_comms_seam.cpp
     hal/comms_seam.cpp hal/os_thread.cpp
     hal/comms_fanout_wide.cpp
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0203e0ac.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0203bb60.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0203bc7c.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0203dabc.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0203dae4.c")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0203/func_0203e0ac.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0203/func_0203bb60.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0203/func_0203bc7c.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0203/func_0203dabc.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0203/func_0203dae4.c")
 target_include_directories(mp_comms_seam PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/hal"
@@ -18793,7 +19197,7 @@ endforeach()
 #   _ZN11dCapEnemy_cD0Ev  0x020aee38 -> ov002 0x02108284, 0x020aee3c -> 0x020a0eac
 # D2 spells data_ov002_02108284 by its real name and needs no binding.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN11dCapEnemy_cD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dCapEnemy_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "_ZTV11dCapEnemy_c=data_ov002_02108284;G0=data_020a0eac")
 
@@ -18896,9 +19300,9 @@ endforeach()
 #   from:0x02017858 kind:arm_call to:0x0203cbcc  _ZN6Memory16operator_delete2EPv
 #   from:0x02017868 kind:load     to:0x0208eafc  the table it writes
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/_ZN5FaderD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "vtbl_Fader=data_0208eafc;base_dtor_Fader=_ZN6Memory16operator_delete2EPv")
+    "vtbl_Fader=_ZTV8dFader_c;base_dtor_Fader=_ZN6Memory16operator_delete2EPv")
 
 foreach(_g225 _ZN3IRQ11Dma0HandlerEv _ZN3IRQ11Dma1HandlerEv
               _ZN3IRQ11Dma2HandlerEv _ZN3IRQ11Dma3HandlerEv
@@ -19056,13 +19460,15 @@ set_source_files_properties(
     PROPERTIES COMPILE_DEFINITIONS
     "VT=_ZTV11daObjLava_c;HEAP=data_020a0eac")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN4DoorD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daDoor_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daDoor_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS
-    "VT0=_ZTV4Door;G0=data_020a0eac")
+    "VT0=_ZTV8daDoor_c;G0=data_020a0eac")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN8PaintingD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_pic_gate.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_pic_gate.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS
-    "VT=_ZTV8Painting;HEAP=data_020a0eac")
+    "VT=_ZTV11daPicGate_c;HEAP=data_020a0eac")
 
 # ====================================================================endforeach()
 
@@ -19126,19 +19532,20 @@ set_source_files_properties(
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV18daObjClockHuriko_c;G0=data_020a0eac")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN7SkiLiftD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjSm_Lift_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "VT0=_ZTV7SkiLift;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
+    "VT0=_ZTV14daObjSm_Lift_c;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10RockPillarD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjKi_Hasira_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "VT0=_ZTV10RockPillar;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
+    "VT0=_ZTV16daObjKi_Hasira_c;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_ki_ita.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV13daObjKi_Ita_c;VT1=_ZTV17daObjFloatBoard_c;VT2=_ZTV10dBgActor_c;G0=data_020a0eac")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN5StumpD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjPile_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daObjPile_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV11daObjPile_c;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
 
@@ -19186,7 +19593,7 @@ endforeach()
 # which hal/actor_classes_ov064_gate178.cpp hosts as _ZTV17daObjFl_Amilift_c and
 # the ov064 mount deliberately leaves out, and 0x0210ae38 is _ZTV10dBgActor_c.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN12MetalNetLiftD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjFl_Amilift_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV17daObjFl_Amilift_c;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
 
@@ -19745,7 +20152,8 @@ endforeach()
 # the compiler for that TU. Removed from this row only; the other sources
 # in the row keep it, and the surviving row for dScMgSound_c.cpp is unchanged.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN16dPathLiftActor_c12BaseBehaviorEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dPathLiftActor_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dPathLiftActor_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_OPTIONS "/Zp4")
 # dScMgSound_c.cpp also carries a fall-off-the-end body (dScMgSound_c::Virtual50),
 # so it takes /wd4716 as well -- in THIS row, because COMPILE_OPTIONS is one
@@ -19763,7 +20171,7 @@ set_source_files_properties(
 # treatment for that is LANGUAGE CXX on the source, and this is one more of
 # them.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov002_020aea30.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dEnemyBase_c.cpp"
     PROPERTIES LANGUAGE CXX)
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_pmfb2.txt" SLICE_PMFB2_LINES)
 set(SLICE_PMFB2_SOURCES "")
@@ -19973,7 +20381,7 @@ endforeach()
 # that is LANGUAGE CXX on the source (lane PMFB2 did it for
 # src/func_ov002_020aea30.cpp), and this is one more of them.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN12MetalNetLift8BehaviorEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjFl_Amilift_c.cpp"
     PROPERTIES LANGUAGE CXX)
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_fwd.txt" SLICE_FWD_LINES)
 set(SLICE_FWD_SOURCES "")
@@ -20165,7 +20573,8 @@ endforeach()
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/minigames/d_s_mg_trampoline2.cpp"
     "${CMAKE_BINARY_DIR}/host-src/src/minigames/d_s_mg_trampoline2.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN11dScMgJump_c8BehaviorEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgJump_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dScMgJump_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_OPTIONS "/Zp4")
 foreach(_tpmfb7 walk_window walk_window_hires smoke_player)
     target_sources(${_tpmfb7} PRIVATE ${SLICE_PMFB7_SOURCES} ${BNT_HOSTGEN_GEN} ${TTE_HOSTGEN_GEN})
@@ -20199,7 +20608,8 @@ endforeach()
 # all 0 mod 8 at their holders and are measured to need nothing, which is why
 # this is one file and not the block.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020c07e8.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/unit020bfec0.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/unit020bfec0.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     PROPERTIES COMPILE_OPTIONS "/Zp4")
 foreach(_tpmfb8 walk_window walk_window_hires smoke_player)
     target_sources(${_tpmfb8} PRIVATE ${SLICE_PMFB8_SOURCES})
@@ -20444,15 +20854,15 @@ endforeach()
 # define could not reach them. hal/wm_arm7.cpp, which defines the two answers,
 # goes to exactly the three targets port/slice_wm3.txt goes to.
 foreach(_wm8ren
-        src/func_02065170.c src/func_020653cc.c src/func_02065538.c
-        src/func_020659a0.c src/func_020652fc.c src/func_02065234.c
-        src/func_020654d0.c src/func_02065500.c)
+        src/unnamed/arm9/0206/func_02065170.c src/unnamed/arm9/0206/func_020653cc.c src/unnamed/arm9/0206/func_02065538.c
+        src/unnamed/arm9/0206/func_020659a0.c src/unnamed/arm9/0206/func_020652fc.c src/unnamed/arm9/0206/func_02065234.c
+        src/unnamed/arm9/0206/func_020654d0.c src/unnamed/arm9/0206/func_02065500.c)
     set_source_files_properties(
         "${CMAKE_CURRENT_SOURCE_DIR}/../${_wm8ren}"
         PROPERTIES COMPILE_DEFINITIONS "func_02065b94=port_wm8_wmq_base")
 endforeach()
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_02065af0.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0206/func_02065af0.c"
     PROPERTIES COMPILE_DEFINITIONS "func_02065b88=port_wm8_wmq_head")
 
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_wm8.txt" SLICE_WM8_LINES)
@@ -20770,16 +21180,17 @@ set(FOLD2_HOSTGEN_SYMS func_ov006_020c3bf4 func_ov006_020c1804
                        func_ov006_020c29dc)
 set(FOLD2_HOSTGEN_GEN "")
 foreach(sym IN LISTS FOLD2_HOSTGEN_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND FOLD2_HOSTGEN_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND FOLD2_HOSTGEN_GEN "${sym_out}")
 endforeach()
@@ -20838,16 +21249,17 @@ endforeach()
 set(EXCEPT_HOSTGEN_SYMS _ZN15dScMgSnowball_c6RenderEv)
 set(EXCEPT_HOSTGEN_GEN "")
 foreach(sym IN LISTS EXCEPT_HOSTGEN_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND EXCEPT_HOSTGEN_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND EXCEPT_HOSTGEN_GEN "${sym_out}")
 endforeach()
@@ -20885,7 +21297,7 @@ set_source_files_properties(
 foreach(_tbootmain walk_window walk_window_hires)
     target_sources(${_tbootmain} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/../src/main.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN4Heap9SetNodeIDEj.cpp"
+        "${CMAKE_BINARY_DIR}/host-src/src/engine/heap/Heap.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/rom_main.cpp")
 endforeach()
 
@@ -20955,16 +21367,17 @@ endforeach()
 set(R2D_SYMS func_0205f0e0 func_0205eb58)
 set(R2D_GEN "")
 foreach(sym IN LISTS R2D_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND R2D_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND R2D_GEN "${sym_out}")
 endforeach()
@@ -20996,7 +21409,7 @@ endforeach()
 # under its own name for its other caller src/func_0205efc0.c -- so this creates
 # no SHADOW row in port/tools/linkage.py's queue and invents no count.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0203bbc0.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0203/func_0203bbc0.c"
     PROPERTIES COMPILE_DEFINITIONS
     "func_0205ea10=port_tsc_wait")
 # THE PER-SOURCE RENAME THAT STOOD HERE IS RETIRED (run linkfull, lane S4CARD).
@@ -21086,7 +21499,7 @@ foreach(_tsnd8 smoke_player walk_window walk_window_hires)
     target_sources(${_tsnd8} PRIVATE ${SLICE_SND8_SOURCES})
 endforeach()
 target_sources(smoke_player PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0205ac28.c")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0205/func_0205ac28.c")
 
 # ====================================================================endforeach()
 
@@ -21129,9 +21542,9 @@ target_sources(walk_window PRIVATE ${SLICE_SEAT2_SOURCES})
 #   from:0x0201570c kind:arm_call to:0x0203cbcc  _ZN6Memory16operator_delete2EPv
 # which is the same shape as src/engine/fader/_ZN5FaderD0Ev.c's pair above.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN7ClipperD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/collision/dClipper.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "vtbl_Clipper=_ZTV7Clipper;base_dtor_Clipper=_ZN6Memory16operator_delete2EPv")
+    "vtbl_Clipper=_ZTV8dClipper;base_dtor_Clipper=_ZN6Memory16operator_delete2EPv")
 
 # _ZTV5Stage SLOT 1, and it is named here rather than on port/slice_seat2.txt
 # for the reason src/_ZN5Stage16OnPendingDestroyEv.cpp is named beside
@@ -21191,7 +21604,7 @@ set_source_files_properties(
 # nothing else in any of the three links defines __ZN5Stage19BeforeInitResourcesEv.
 foreach(_tseat2s smoke_player walk_window_hires)
     target_sources(${_tseat2s} PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN5Stage19BeforeInitResourcesEv.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10dScStage_c19BeforeInitResourcesEv.cpp")
 endforeach()
 
 # ====================================================================endforeach()
@@ -21229,11 +21642,11 @@ endforeach()
 # COMPILE_DEFINITIONS at line 12640 of this file.
 set(SEAT6_GEN_SYMS
     # VIRTUAL_CALL: the raw vtable read respelled at the one disagreeing site
-    _ZN9RabbitKey6RenderEv          # ov085, Model +0x110 word 5
+    _ZN15daObj_Mip_Key_c6RenderEv          # ov085, Model +0x110 word 5
     func_ov002_020eeeb8             # ov002, actor word 24 (OnKicked)
     func_ov002_020ef070             # ov002, actor word 23 (OnAttacked2)
-    func_ov004_020b6b40             # ov004, dScMgBase_c word 19
-    func_ov004_020b6c9c             # ov004, the same body at its second address
+    _ZN10dMgState_c19func_ov004_020b6b40Ev             # ov004, dScMgBase_c word 19
+    _ZN10dMgState_c19func_ov004_020b6c9cEv             # ov004, the same body at its second address
     func_ov006_020c2924             # ov006, HalFaderWipe word 6 (IsAtEnd)
 #   _ZN14ArrowSignRight11OnAttacked1ER8dActor_c LEFT THIS LIST at the main ->
 #   port sync (lane SYNC5): main calls Kill() as a member there, so the
@@ -21262,16 +21675,17 @@ set(SEAT6_GEN_SYMS
 #     this file; its REG_RIDE_ARG patch is re-keyed on that TU's stem.
 set(SEAT6_GEN "")
 foreach(sym IN LISTS SEAT6_GEN_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
+    port_hostgen_sym("${sym}")
+    if(sym_tu)
+        # Folded into a production TU: whole-TU substitution (PORT_HOSTGEN_TU)
+        # generates it once for every target; take that copy.
+        list(APPEND SEAT6_GEN "${sym_out}")
+        continue()
     endif()
-    set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${sym}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${sym}")
     list(APPEND SEAT6_GEN "${sym_out}")
     if(sym STREQUAL "_ZN15ModelComponents6RenderEP9Matrix4x3P7Vector3")
@@ -21401,22 +21815,22 @@ message(STATUS "CONFIGURE DEPS: ${_PORT_CONFIGURE_DEPS_N} configure-time inputs 
 # NEW fall-off-the-end body still fails the build and gets looked at.
 set(PORT_FALLS_OFF_END_SOURCES
     src/_ZN10dScEntry_c19BeforeInitResourcesEv.cpp
-    src/_ZN11dScMgBase_c9Virtual50Ev.cpp
-    src/_ZN11dScMgBase_c9Virtual7CEv.cpp
-    src/_ZN12FortressWall24OnHitByCannonBlastedCharER8dActor_c.cpp
-    src/_ZN12dScMgAmida_c9Virtual7CEv.cpp
-    src/_ZN12dScMgSlot1_c19OnHitFromUnderneathEv.cpp
-    src/_ZN12dScMgSlot3_c16OnAimedAtWithEggEv.cpp
-    src/_ZN16dScMgSmartball_c9Virtual7CEv.cpp
-    src/_ZN21FloatingFloorLllSmall13InitResourcesEv.cpp
-    src/_ZN3OAM12EnableSubOAMEv.cpp
-    src/_ZN5Bully13InitResourcesEv.cpp
-    src/_ZN8SignPost11OnAttacked1ER8dActor_c.cpp
-    src/_ZN8dActor_c11OnAttacked1ERS_.cpp
-    src/_ZN8dActor_c11OnAttacked2ERS_.cpp
-    src/_ZN8dActor_c19OnHitFromUnderneathERS_.cpp
-    src/_ZN8dActor_c24OnHitByCannonBlastedCharERS_.cpp
-    src/_ZN8dActor_c8OnPushedERS_.cpp
+    src/minigames/d_s_mg_base.cpp
+    src/minigames/d_s_mg_base.cpp
+    src/actors/daObjBk_Kabe_c.cpp
+    src/actors/dScMgAmida_c.cpp
+    src/actors/dScMgSlots.cpp
+    src/actors/dScMgSlots.cpp
+    src/actors/dScMgSmartball_c.cpp
+    src/actors/daObjFl_Ukiyuka_c.cpp
+    src/engine/oam/OAM.cpp
+    src/actors/daDonketu_c.cpp
+    src/actors/daObjTatefuda_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
+    src/actors/dActor_c.cpp
     src/actors/dScMgCup_c.cpp
     src/actors/daOts_c.cpp
     # Added at the main -> port sync (lane SYNC5). Lane SEAT2 seats _ZTV5Stage
@@ -21424,13 +21838,13 @@ set(PORT_FALLS_OFF_END_SOURCES
     # walk_window_hires compile this TU for the first time; its body is the
     # veneer, which names no parameter and falls off the end with the receiver
     # still in r0. Same row, same reason, as the twenty above.
-    src/_ZN5Stage19BeforeInitResourcesEv.cpp
+    src/_ZN10dScStage_c19BeforeInitResourcesEv.cpp
     # Added by lane SLICE1's batch 1, which puts this TU on a slice for the
     # first time: RotatingPlatformLll::InitResources is an int body whose ROM
     # code reaches the closing brace with the result still in r0, exactly the
     # shape the twenty rows above cover. Nothing else in the batch raises
     # C4716.
-    src/_ZN19RotatingPlatformLll13InitResourcesEv.cpp
+    src/actors/daObjFl_Koma_D_c.cpp
     # Added by lane SYNC6 when today's main un-quarantined five TUs that lane
     # SYNC5 had held for C2561. main's #2663 spells their valueless early exits
     # as nested ifs instead of `return;`, which is the statement C2561 was
@@ -21439,9 +21853,9 @@ set(PORT_FALLS_OFF_END_SOURCES
     # register. Measured per source with the build's own flags before these
     # rows were written: these five are the only ones of the twenty-five
     # restored TUs that raise C4716.
-    src/_ZN11dScMgBase_c19OnHitFromUnderneathEv.cpp
-    src/_ZN13QuestionBlock11OnAttacked1ER8dActor_c.cpp
-    src/_ZN13QuestionBlock19OnHitFromUnderneathER8dActor_c.cpp
+    src/minigames/d_s_mg_base.cpp
+    src/actors/daObjHatenaBlock_c.cpp
+    src/actors/daObjHatenaBlock_c.cpp
     src/game/actors/daObjPushblock_c.cpp
     # d_a_wanwan.cpp raises C4716 twice as well (func_ov014_02111fb8 and
     # func_ov014_0211150c). Lane SYNC6 wrote the row here as a comment
@@ -21467,7 +21881,7 @@ set(PORT_FALLS_OFF_END_SOURCES
     # own note at the top of that file says the ROM leaves r0 holding whatever
     # the last call left there -- so MSVC raises C4716 on it. Measured on the
     # generated copy: that member and nothing else.
-    src/_ZN11dScMgBase_c16OnAimedAtWithEggEv.cpp
+    src/minigames/d_s_mg_base.cpp
     # Run link100 wave 9c, lane LINK21. ArrowSignRight::OnAttacked1 joins its two
     # already-seated siblings, SignPost::OnAttacked1 and QuestionBlock::OnAttacked1,
     # both of them a few rows above in this list. It could not join them before
@@ -21476,7 +21890,7 @@ set(PORT_FALLS_OFF_END_SOURCES
     # into the absence of the call, and what is left is the ordinary C4716 shape
     # the other two have. It is a PORT_HOSTGEN_TU row, so the loop below puts the
     # option on the generated path as well.
-    src/_ZN14ArrowSignRight11OnAttacked1ER8dActor_c.cpp
+    src/actors/daObjYajirusi_c.cpp
     )
 # A WHOLE-TU HOSTGEN SUBSTITUTION MOVES THE COMPILE, AND A PER-SOURCE PROPERTY
 # DOES NOT FOLLOW IT. Run link100, lane HOSTGEN2, measured: putting
@@ -21563,7 +21977,136 @@ set(PORT_DSSTATE_FI_SOURCES
     src/game/actors/d_a_obj_km3_kurumajiku.cpp
     src/game/actors/d_a_obj_km3_kaitendai.cpp
     src/game/actors/d_a_obj_km3_kuruma.cpp
-    src/game/actors/d_a_star_gate.cpp)
+    src/game/actors/d_a_star_gate.cpp
+    # PORTSYNC2: the TUs that define the 541 objects retired from the ov*_syms.txt
+    # mounts at the 2026-10 main merge (each list's RETIRED block names them).
+    port/unmatched/dScMgHanachan_c.cpp
+    src/actors/Eyerok.cpp
+    src/actors/dEntObj_c.cpp
+    src/actors/dMg3DEspAnimSet_c.cpp
+    src/actors/dMgJump3DMario_c.cpp
+    src/actors/dPathLiftActor_c.cpp
+    src/actors/dScMgCoin_c.cpp
+    src/actors/dScMgCup_c.cpp
+    src/actors/dScMgCurling2_c.cpp
+    src/actors/dScMgCurling_c.cpp
+    src/actors/dScMgMemory2_c.cpp
+    src/actors/dScMgPachinko2_c.cpp
+    src/actors/dScMgPachinko_c.cpp
+    src/actors/dScMgSlots.cpp
+    src/actors/dScMgSnowball_c.cpp
+    src/actors/dScMgTeresa_c.cpp
+    src/actors/daBakubaku_c.cpp
+    src/actors/daBasabasa_c.cpp
+    src/actors/daBbl_c.cpp
+    src/actors/daBgSnwmn_c.cpp
+    src/actors/daBombking_c.cpp
+    src/actors/daBook_c.cpp
+    src/actors/daBtfly_c.cpp
+    src/actors/daBttBk_c.cpp
+    src/actors/daC_Jugem_c.cpp
+    src/actors/daChRoom_c.cpp
+    src/actors/daCoin_c.cpp
+    src/actors/daDgr_c.cpp
+    src/actors/daDossy_c.cpp
+    src/actors/daDpLift_c.cpp
+    src/actors/daDsn_c.cpp
+    src/actors/daGrock_c.cpp
+    src/actors/daKirai_c.cpp
+    src/actors/daKpaFire_c.cpp
+    src/actors/daKpa_c.cpp
+    src/actors/daKrb_c.cpp
+    src/actors/daKuriKing_c.cpp
+    src/actors/daLuigi_c.cpp
+    src/actors/daManta_c.cpp
+    src/actors/daMenbo_c.cpp
+    src/actors/daMoray_c.cpp
+    src/actors/daObjBk_Botaosi_c.cpp
+    src/actors/daObjBlockItemTag_c.cpp
+    src/actors/daObjBlockL_c.cpp
+    src/actors/daObjC1Peach_c.cpp
+    src/actors/daObjCasket_c.cpp
+    src/actors/daObjClock_c.cpp
+    src/actors/daObjCtMecha03_c.cpp
+    src/actors/daObjCtMecha09_c.cpp
+    src/actors/daObjCtMecha10_c.cpp
+    src/actors/daObjDlPyramid_c.cpp
+    src/actors/daObjDpBrock_c.cpp
+    src/actors/daObjEwbIce_c.cpp
+    src/actors/daObjFl_Amilift_c.cpp
+    src/actors/daObjFl_Block_c.cpp
+    src/actors/daObjFl_Coin_c.cpp
+    src/actors/daObjFl_London_c.cpp
+    src/actors/daObjFl_Ring_c.cpp
+    src/actors/daObjFl_Seesaw_c.cpp
+    src/actors/daObjHeart_c.cpp
+    src/actors/daObjKey_c.cpp
+    src/actors/daObjMarioCap_c.cpp
+    src/actors/daObjPile_c.cpp
+    src/actors/daObjPowerUpItem_c.cpp
+    src/actors/daObjRc_Tikuwa_c.cpp
+    src/actors/daObjShell_c.cpp
+    src/actors/daObjSimpleLift_c.cpp
+    src/actors/daObjSwitch_c.cpp
+    src/actors/daObjTbox_c.cpp
+    src/actors/daObj_Mip_Key_c.cpp
+    src/actors/daOnms_c.cpp
+    src/actors/daPgDfdr_c.cpp
+    src/actors/daPropeller_Heyho_Fire_c.cpp
+    src/actors/daRNk_c.cpp
+    src/actors/daSlide_Box_c.cpp
+    src/actors/daStar_c.cpp
+    src/actors/daTrs_c.cpp
+    src/actors/daUdlift_c.cpp
+    src/actors/daWanwan2_c.cpp
+    src/actors/daWater_Ring_c.cpp
+    src/actors/daWater_Tatumaki_c.cpp
+    src/actors/unit020b2c84.cpp
+    src/game/actors/d_a_fish.cpp
+    src/game/actors/d_a_hyuhyu.cpp
+    src/game/actors/d_a_jgm.cpp
+    src/game/actors/d_a_kp_fr.cpp
+    src/game/actors/d_a_krpa.cpp
+    src/game/actors/d_a_linelift2.cpp
+    src/game/actors/d_a_mc_flag.cpp
+    src/game/actors/d_a_obj_bk_billboard.cpp
+    src/game/actors/d_a_obj_bk_rotebar.cpp
+    src/game/actors/d_a_obj_c0_switch.cpp
+    src/game/actors/d_a_obj_c0_water.cpp
+    src/game/actors/d_a_obj_c1_hikari.cpp
+    src/game/actors/d_a_obj_c1_trap.cpp
+    src/game/actors/d_a_obj_cannon_shutter.cpp
+    src/game/actors/d_a_obj_clock_huriko.cpp
+    src/game/actors/d_a_obj_fl_maruta.cpp
+    src/game/actors/d_a_obj_hatena_switch.cpp
+    src/game/actors/d_a_obj_hm_bskt.cpp
+    src/game/actors/d_a_obj_ice_block.cpp
+    src/game/actors/d_a_obj_km1_ukishima.cpp
+    src/game/actors/d_a_obj_km2_agaru.cpp
+    src/game/actors/d_a_obj_km2_ami_bou.cpp
+    src/game/actors/d_a_obj_km2_ukishima.cpp
+    src/game/actors/d_a_obj_ks_water.cpp
+    src/game/actors/d_a_obj_kumo.cpp
+    src/game/actors/d_a_obj_mc_metalnet.cpp
+    src/game/actors/d_a_obj_rc_buranko.cpp
+    src/game/actors/d_a_obj_rc_dorifu.cpp
+    src/game/actors/d_a_obj_td_futa.cpp
+    src/game/actors/d_a_obj_td_water.cpp
+    src/game/actors/d_a_obj_wakame.cpp
+    src/game/actors/d_a_obj_wanwan_shutter.cpp
+    src/game/actors/d_a_obj_wc_obj03.cpp
+    src/game/actors/d_a_obj_wc_obj04.cpp
+    src/game/actors/d_a_obj_wl_polelift.cpp
+    src/game/actors/d_a_pg_mthr.cpp
+    src/game/actors/d_a_s_bird.cpp
+    src/game/actors/d_a_shl.cpp
+    src/game/actors/daObjPushblock_c.cpp
+    src/minigames/d_s_mg_base.cpp
+    src/minigames/d_s_mg_card.cpp
+    src/minigames/d_s_mg_m_carlo.cpp
+    src/minigames/d_s_mg_m_carlo2.cpp
+    src/minigames/d_s_mg_memory.cpp)
+list(REMOVE_DUPLICATES PORT_DSSTATE_FI_SOURCES)
 if(MSVC)
     foreach(_dsfi_rel IN LISTS PORT_DSSTATE_FI_SOURCES)
         if(NOT EXISTS "${PORT_REPO_ROOT_ABS}/${_dsfi_rel}")
@@ -21687,15 +22230,14 @@ set(TITLEQUAD_CUT 0)
 if(NOT TITLEQUAD_GX_PLAIN)
     message(STATUS "TITLEQUAD: TITLEQUAD_GX_PLAIN=OFF -- ov007's cell "
                    "submitter routes through hostgen (shipped arm).")
-    set(_tq_in "${PORT_REPO_ROOT_ABS}/src/${TITLEQUAD_SYM}.c")
-    if(NOT EXISTS "${_tq_in}")
-        set(_tq_in "${PORT_REPO_ROOT_ABS}/src/${TITLEQUAD_SYM}.cpp")
-    endif()
-    set(_tq_out "${CMAKE_BINARY_DIR}/host-src/src/${TITLEQUAD_SYM}.cpp")
+    # PORTSYNC2: main moved the source under src/unnamed/ov007/.
+    port_hostgen_sym("${TITLEQUAD_SYM}")
+    set(_tq_in "${sym_src}")
+    set(_tq_out "${sym_out}")
     add_custom_command(OUTPUT "${_tq_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${TITLEQUAD_SYM}
-        DEPENDS "${_tq_in}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+        DEPENDS "${_tq_in}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
         COMMENT "hostgen ${TITLEQUAD_SYM}")
     list(APPEND TITLEQUAD_GEN "${_tq_out}")
     set(_tq_keep "")
@@ -22230,9 +22772,9 @@ endforeach()
 # since the sweep-2 lane wrote "it becomes live the day that ov063 caller is
 # seated", and this is that day.
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/ov063/func_ov063_02117cdc.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daTrs_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
-    "_ZN10SlidingIce16CleanupResourcesEv=func_ov055_02111264")
+    "_ZN17daObjSlIceBlock_c16CleanupResourcesEv=func_ov055_02111264")
 
 
 
@@ -22311,9 +22853,9 @@ endforeach()
 # data_020a8110, hal/boot2_ipc.cpp's own storage, already on this target
 # (unlike the actor batch), so nothing further is needed for those three.
 target_sources(smoke_player PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0205f68c.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0205fa78.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0205fab4.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0205/func_0205f68c.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0205/func_0205fa78.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0205/func_0205fab4.c"
     )
 
 # SMOKELINK5B, run link100 wave 10 round 5: OAM::Render's YA (free-function)
@@ -22479,7 +23021,11 @@ foreach(_hgt_rel IN LISTS PORT_HOSTGEN_TU)
     if(NOT DEFINED "PORT_HOSTGEN_TU_HITS_${_hgt_rel}")
         message(FATAL_ERROR "whole-TU hostgen: no hit counter for ${_hgt_rel}")
     endif()
-    if("${PORT_HOSTGEN_TU_HITS_${_hgt_rel}}" EQUAL 0)
+    # PORTSYNC2: a TU a per-symbol hostgen list folded onto (port/src_folds.cmake)
+    # is compiled through that list's *_GEN variable even when no slice row
+    # names it, so zero slice hits is not a dropped substitution there.
+    list(FIND PORT_SYM_FOLDED_TUS "${_hgt_rel}" _hgt_folded)
+    if("${PORT_HOSTGEN_TU_HITS_${_hgt_rel}}" EQUAL 0 AND _hgt_folded EQUAL -1)
         message(FATAL_ERROR "whole-TU hostgen: no slice row names ${_hgt_rel}, "
                 "so its generated copy is compiled by nothing and the raw TU "
                 "would carry its defects into the link")
@@ -22572,12 +23118,12 @@ set(PORT_TAILPAD_DBGACTOR_SOURCES
     port/hal/actor_classes_wf_enemy.cpp
     port/hal/dtor_forwarders_gen.cpp
     port/hal/except_faces.cpp
-    src/_ZN10BrickBlock8BehaviorEv.cpp
-    src/_ZN10LavaSeesaw13InitResourcesEv.cpp
-    src/_ZN10LavaSeesaw16CleanupResourcesEv.cpp
-    src/_ZN10LavaSeesaw6RenderEv.cpp
-    src/_ZN10LavaSeesaw8BehaviorEv.cpp
-    src/_ZN10LavaSeesawD1Ev.cpp
+    src/actors/daObjBlockItemTag_c.cpp
+    src/actors/daObjFl_Seesaw_c.cpp
+    src/actors/daObjFl_Seesaw_c.cpp
+    src/actors/daObjFl_Seesaw_c.cpp
+    src/actors/daObjFl_Seesaw_c.cpp
+    src/actors/daObjFl_Seesaw_c.cpp
     # StarSwitch is a 25th class with the same defect and the list missed it,
     # because the list was built from the 24 and StarSwitch was not one of them.
     # Its first own field is pad_31e[2], which IS the field that lives in
@@ -22598,86 +23144,86 @@ set(PORT_TAILPAD_DBGACTOR_SOURCES
     # here, because nothing in them moves: unmatched/ExclamationSwitch_StateDispatch.cpp,
     # hal/actorport_dtor_bridge.cpp and hal/actor_classes_bob_world.cpp, the last
     # of which this block already excludes by name.
-    src/_ZN10StarSwitch13InitResourcesEv.cpp
-    src/_ZN10StarSwitch15OnGroundPoundedER8dActor_c.cpp
-    src/_ZN10StarSwitch16CleanupResourcesEv.cpp
-    src/_ZN10StarSwitch6RenderEv.cpp
-    src/_ZN10StarSwitch8BehaviorEv.cpp
-    src/_ZN10StarSwitchD0Ev.cpp
-    src/_ZN10StarSwitchD1Ev.cpp
-    src/_ZN10SlidingIce13InitResourcesEv.cpp
-    src/_ZN10SlidingIce15OnHitByMegaCharER6Player.cpp
-    src/_ZN10SlidingIce16CleanupResourcesEv.cpp
-    src/_ZN10SlidingIce6RenderEv.cpp
-    src/_ZN10SlidingIce8BehaviorEv.cpp
-    src/_ZN10SlidingIceD1Ev.cpp
-    src/_ZN10daKpa2Bg_c13InitResourcesEv.cpp
-    src/_ZN10daKpa2Bg_c16CleanupResourcesEv.cpp
-    src/_ZN10daKpa2Bg_c6RenderEv.cpp
-    src/_ZN10daKpa2Bg_c8BehaviorEv.cpp
-    src/_ZN10daKpa2Bg_cD1Ev.cpp
-    src/_ZN11VolcanoRing13InitResourcesEv.cpp
-    src/_ZN11VolcanoRing16CleanupResourcesEv.cpp
-    src/_ZN11VolcanoRing6RenderEv.cpp
-    src/_ZN11VolcanoRing8BehaviorEv.cpp
-    src/_ZN11VolcanoRingD1Ev.cpp
-    src/_ZN12FortressWall13InitResourcesEv.cpp
-    src/_ZN12FortressWall16CleanupResourcesEv.cpp
-    src/_ZN12FortressWall24OnHitByCannonBlastedCharER8dActor_c.cpp
-    src/_ZN12FortressWall4KillEv.cpp
-    src/_ZN12FortressWall6RenderEv.cpp
-    src/_ZN12FortressWall8BehaviorEv.cpp
-    src/_ZN12FortressWallD1Ev.cpp
-    src/_ZN13BigBrickBlock13InitResourcesEv.cpp
-    src/_ZN13BigBrickBlock15OnGroundPoundedER8dActor_c.cpp
-    src/_ZN13BigBrickBlock15OnHitByMegaCharER6Player.cpp
-    src/_ZN13BigBrickBlock16CleanupResourcesEv.cpp
-    src/_ZN13BigBrickBlock16HasNonzeroAngleXEv.cpp
-    src/_ZN13BigBrickBlock17NotifyLinkedActorEv.cpp
-    src/_ZN13BigBrickBlock4KillEv.cpp
-    src/_ZN13BigBrickBlock6RenderEv.cpp
-    src/_ZN13BigBrickBlock8BehaviorEv.cpp
-    src/_ZN13BigBrickBlock8OnKickedER8dActor_c.cpp
-    src/_ZN13BigBrickBlockD1Ev.cpp
-    src/_ZN13TTC_MovingBar13InitResourcesEv.cpp
-    src/_ZN13TTC_MovingBar16CleanupResourcesEv.cpp
-    src/_ZN13TTC_MovingBar6RenderEv.cpp
-    src/_ZN13TTC_MovingBarD1Ev.cpp
-    src/_ZN16RotatingCogSmall13InitResourcesEv.cpp
-    src/_ZN16RotatingCogSmall16CleanupResourcesEv.cpp
-    src/_ZN16RotatingCogSmall6RenderEv.cpp
-    src/_ZN16RotatingCogSmall8BehaviorEv.cpp
-    src/_ZN16RotatingCogSmallD1Ev.cpp
-    src/_ZN16SpinningPlatform11UpdateModelEv.cpp
-    src/_ZN16SpinningPlatform12UpdateShadowEv.cpp
-    src/_ZN16SpinningPlatform13InitResourcesEv.cpp
-    src/_ZN16SpinningPlatform16CleanupResourcesEv.cpp
-    src/_ZN16SpinningPlatform6RenderEv.cpp
-    src/_ZN16SpinningPlatform8BehaviorEv.cpp
-    src/_ZN16SpinningPlatformD1Ev.cpp
-    src/_ZN17SlidingPlatformWf13InitResourcesEv.cpp
-    src/_ZN17SlidingPlatformWf16CleanupResourcesEv.cpp
-    src/_ZN17SlidingPlatformWf6RenderEv.cpp
-    src/_ZN17SlidingPlatformWf8BehaviorEv.cpp
-    src/_ZN17SlidingPlatformWfD1Ev.cpp
-    src/_ZN5Stump13InitResourcesEv.cpp
-    src/_ZN5Stump15OnGroundPoundedER8dActor_c.cpp
-    src/_ZN5Stump15OnHitByMegaCharER6Player.cpp
-    src/_ZN5Stump16CleanupResourcesEv.cpp
-    src/_ZN5Stump6RenderEv.cpp
-    src/_ZN5Stump8BehaviorEv.cpp
-    src/_ZN5StumpD1Ev.cpp
-    src/_ZN6ShipUp13InitResourcesEv.cpp
-    src/_ZN6ShipUp16CleanupResourcesEv.cpp
-    src/_ZN6ShipUp6RenderEv.cpp
-    src/_ZN6ShipUp8BehaviorEv.cpp
-    src/_ZN6ShipUpD1Ev.cpp
-    src/_ZN9SeesawBob13InitResourcesEv.cpp
-    src/_ZN9SeesawBob15OnGroundPoundedER8dActor_c.cpp
-    src/_ZN9SeesawBob16CleanupResourcesEv.cpp
-    src/_ZN9SeesawBob6RenderEv.cpp
-    src/_ZN9SeesawBob8BehaviorEv.cpp
-    src/_ZN9SeesawBobD1Ev.cpp
+    src/actors/daObjSwitch_c.cpp
+    src/actors/daObjSwitch_c.cpp
+    src/actors/daObjSwitch_c.cpp
+    src/actors/daObjSwitch_c.cpp
+    src/actors/daObjSwitch_c.cpp
+    src/actors/daObjSwitch_c.cpp
+    src/actors/daObjSwitch_c.cpp
+    src/actors/daObjSlIceBlock_c.cpp
+    src/actors/daObjSlIceBlock_c.cpp
+    src/actors/daObjSlIceBlock_c.cpp
+    src/actors/daObjSlIceBlock_c.cpp
+    src/actors/daObjSlIceBlock_c.cpp
+    src/actors/daObjSlIceBlock_c.cpp
+    src/actors/daKpa2Bg_c.cpp
+    src/actors/daKpa2Bg_c.cpp
+    src/actors/daKpa2Bg_c.cpp
+    src/actors/daKpa2Bg_c.cpp
+    src/actors/daKpa2Bg_c.cpp
+    src/actors/daObjFl_Ring_c.cpp
+    src/actors/daObjFl_Ring_c.cpp
+    src/actors/daObjFl_Ring_c.cpp
+    src/actors/daObjFl_Ring_c.cpp
+    src/actors/daObjFl_Ring_c.cpp
+    src/actors/daObjBk_Kabe_c.cpp
+    src/actors/daObjBk_Kabe_c.cpp
+    src/actors/daObjBk_Kabe_c.cpp
+    src/actors/daObjBk_Kabe_c.cpp
+    src/actors/daObjBk_Kabe_c.cpp
+    src/actors/daObjBk_Kabe_c.cpp
+    src/actors/daObjBk_Kabe_c.cpp
+    src/actors/daObjBlockL_c.cpp
+    src/actors/daObjBlockL_c.cpp
+    src/actors/daObjBlockL_c.cpp
+    src/actors/daObjBlockL_c.cpp
+    src/actors/daObjBlockL_c.cpp
+    src/actors/daObjBlockL_c.cpp
+    src/actors/daObjBlockL_c.cpp
+    src/actors/daObjBlockL_c.cpp
+    src/actors/daObjBlockL_c.cpp
+    src/actors/daObjBlockL_c.cpp
+    src/actors/daObjBlockL_c.cpp
+    src/actors/daObjCtKaitendai_c.cpp
+    src/actors/daObjCtKaitendai_c.cpp
+    src/actors/daObjCtKaitendai_c.cpp
+    src/actors/daObjCtKaitendai_c.cpp
+    src/actors/daObjCtMecha10_c.cpp
+    src/actors/daObjCtMecha10_c.cpp
+    src/actors/daObjCtMecha10_c.cpp
+    src/actors/daObjCtMecha10_c.cpp
+    src/actors/daObjCtMecha10_c.cpp
+    src/actors/daObjCtMecha11_c.cpp
+    src/actors/daObjCtMecha11_c.cpp
+    src/actors/daObjCtMecha11_c.cpp
+    src/actors/daObjCtMecha11_c.cpp
+    src/actors/daObjCtMecha11_c.cpp
+    src/actors/daObjCtMecha11_c.cpp
+    src/actors/daObjCtMecha11_c.cpp
+    src/actors/daObjSimpleLift_c.cpp
+    src/actors/daObjSimpleLift_c.cpp
+    src/actors/daObjSimpleLift_c.cpp
+    src/actors/daObjSimpleLift_c.cpp
+    src/actors/daObjSimpleLift_c.cpp
+    src/actors/daObjPile_c.cpp
+    src/actors/daObjPile_c.cpp
+    src/actors/daObjPile_c.cpp
+    src/actors/daObjPile_c.cpp
+    src/actors/daObjPile_c.cpp
+    src/actors/daObjPile_c.cpp
+    src/actors/daObjPile_c.cpp
+    src/game/actors/d_a_obj_ki_fune.cpp
+    src/game/actors/d_a_obj_ki_fune.cpp
+    src/game/actors/d_a_obj_ki_fune.cpp
+    src/game/actors/d_a_obj_ki_fune.cpp
+    src/game/actors/d_a_obj_ki_fune.cpp
+    src/actors/daObjSeesaw_c.cpp
+    src/actors/daObjSeesaw_c.cpp
+    src/actors/daObjSeesaw_c.cpp
+    src/actors/daObjSeesaw_c.cpp
+    src/actors/daObjSeesaw_c.cpp
+    src/actors/daObjSeesaw_c.cpp
     src/actors/daObjCtMecha03_c.cpp
     src/actors/daObjFl_London_c.cpp
     src/game/actors/d_a_obj_bk_rotebar.cpp
@@ -22690,14 +23236,14 @@ set(PORT_TAILPAD_DBGACTOR_SOURCES
     src/game/actors/d_a_obj_wanwan_shutter.cpp
     )
 set(PORT_TAILPAD_FADERCOLOR_SOURCES
-    src/_ZN7dWipe_c10SetToStartEv.cpp
-    src/_ZN7dWipe_c11AdvanceFadeEv.cpp
-    src/_ZN7dWipe_c14SetForwardTimeEj.cpp
-    src/_ZN7dWipe_c20IsBetweenStartAndEndEv.cpp
-    src/_ZN7dWipe_c7IsAtEndEv.cpp
-    src/_ZN7dWipe_c8SetToEndEv.cpp
-    src/_ZN7dWipe_c9IsAtStartEv.cpp
-    src/_ZN7dWipe_cD1Ev.cpp
+    src/engine/fader/dWipe_c.cpp
+    src/engine/fader/dWipe_c.cpp
+    src/engine/fader/dWipe_c.cpp
+    src/engine/fader/dWipe_c.cpp
+    src/engine/fader/dWipe_c.cpp
+    src/engine/fader/dWipe_c.cpp
+    src/engine/fader/dWipe_c.cpp
+    src/engine/fader/dWipe_c.cpp
     )
 if(MSVC)
     foreach(_tp_row IN ITEMS
@@ -22831,14 +23377,19 @@ foreach(line IN LISTS SLICEW235_LINES)
     if(line MATCHES "^#" OR line STREQUAL "")
         continue()
     endif()
+    port_unsubstitute(line)  # PORTSYNC2: see the macro
     if(line IN_LIST W235_HOSTGEN_TU)
         set(_w235_out "${CMAKE_BINARY_DIR}/host-src/${line}")
-        add_custom_command(OUTPUT "${_w235_out}"
-            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                    --out "${CMAKE_BINARY_DIR}/host-src" ${line}
-            DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-            COMMENT "hostgen ${line}")
+        # PORTSYNC2: a source on PORT_HOSTGEN_TU already has this rule (same
+        # output); a second add_custom_command for it is a configure error.
+        if(NOT "${line}" IN_LIST PORT_HOSTGEN_TU)
+            add_custom_command(OUTPUT "${_w235_out}"
+                COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                        --out "${CMAKE_BINARY_DIR}/host-src" ${line}
+                DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                COMMENT "hostgen ${line}")
+        endif()
         list(APPEND SLICEW235_SOURCES "${_w235_out}")
     else()
         list(APPEND SLICEW235_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
@@ -23008,7 +23559,7 @@ endforeach()
 # Under that view the class's destructor is ??1QuestionBlock@@UAE@XZ, the
 # name its D1 file's object defines and the arm's qualified call reaches.
 # APPEND, never SET, for the reason that block gives.
-set_property(SOURCE "${PORT_REPO_ROOT_ABS}/src/_ZN13QuestionBlockD0Ev.cpp"
+set_property(SOURCE "${PORT_REPO_ROOT_ABS}/src/actors/daObjHatenaBlock_c.cpp"
     APPEND PROPERTY COMPILE_OPTIONS
     "/FI${CMAKE_CURRENT_SOURCE_DIR}/unmatched/QuestionBlock_HostAbi.h")
 
@@ -23029,8 +23580,8 @@ set_property(SOURCE "${PORT_REPO_ROOT_ABS}/src/_ZN13QuestionBlockD0Ev.cpp"
 # the redeclarations. A slice row named in W25MG_HOSTGEN_TU compiles its
 # build/host-src copy and never the raw file.
 set(W25MG_HOSTGEN_TU
-    src/func_ov006_020c8f20.cpp
-    src/func_ov006_020cb030.cpp)
+    src/actors/dMgTrmpln2Mario_c.cpp
+    src/actors/dMgTrmpln2Mario_c.cpp)
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_w25_pmfmg1.txt" SLICEW25MG_LINES)
 set(SLICEW25MG_SOURCES "")
 foreach(line IN LISTS SLICEW25MG_LINES)
@@ -23038,14 +23589,19 @@ foreach(line IN LISTS SLICEW25MG_LINES)
     if(line MATCHES "^#" OR line STREQUAL "")
         continue()
     endif()
+    port_unsubstitute(line)  # PORTSYNC2: see the macro
     if(line IN_LIST W25MG_HOSTGEN_TU)
         set(_w25mg_out "${CMAKE_BINARY_DIR}/host-src/${line}")
-        add_custom_command(OUTPUT "${_w25mg_out}"
-            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                    --out "${CMAKE_BINARY_DIR}/host-src" ${line}
-            DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-            COMMENT "hostgen ${line}")
+        # PORTSYNC2: a source on PORT_HOSTGEN_TU already has this rule (same
+        # output); a second add_custom_command for it is a configure error.
+        if(NOT "${line}" IN_LIST PORT_HOSTGEN_TU)
+            add_custom_command(OUTPUT "${_w25mg_out}"
+                COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                        --out "${CMAKE_BINARY_DIR}/host-src" ${line}
+                DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                COMMENT "hostgen ${line}")
+        endif()
         list(APPEND SLICEW25MG_SOURCES "${_w25mg_out}")
     else()
         list(APPEND SLICEW25MG_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
@@ -23112,10 +23668,11 @@ foreach(_tw27v3a walk_window walk_window_hires smoke_player)
 endforeach()
 # smoke_modelanim links hal/blend_vtable.cpp, whose fill names the two
 # BlendModelAnim thunks, and its own flat BlendModelAnim D0 / D1 (the
-# ModelBaseModelBlend host copy), so it takes those two thunk TUs as well.
+# ModelBaseModelBlend host copy), so it takes those two thunk TUs as well
+# (PORTSYNC2: the port/unmatched/hostarm/ copies, see slice_w27_v3a.txt).
 target_sources(smoke_modelanim PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZThn80_N14BlendModelAnimD0Ev.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZThn80_N14BlendModelAnimD1Ev.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/hostarm/_ZThn80_N14BlendModelAnimD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/hostarm/_ZThn80_N14BlendModelAnimD1Ev.cpp")
 
 # ====================================================================endforeach()
 
@@ -23168,16 +23725,21 @@ foreach(line IN LISTS SLICE_W27_PMF2_LINES)
     if(line MATCHES "^#" OR line STREQUAL "")
         continue()
     endif()
+    port_unsubstitute(line)  # PORTSYNC2: see the macro
     if(line MATCHES "^(src/[^ ]+)[ ]+hostgen$")
         set(_w27pmf2_src "${CMAKE_MATCH_1}")
         string(REGEX REPLACE "\\.c$" ".cpp" _w27pmf2_rel "${_w27pmf2_src}")
         set(_w27pmf2_out "${CMAKE_BINARY_DIR}/host-src/${_w27pmf2_rel}")
-        add_custom_command(OUTPUT "${_w27pmf2_out}"
-            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                    --out "${CMAKE_BINARY_DIR}/host-src" ${_w27pmf2_src}
-            DEPENDS "${PORT_REPO_ROOT_ABS}/${_w27pmf2_src}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-            COMMENT "hostgen ${_w27pmf2_src}")
+        # PORTSYNC2: a source on PORT_HOSTGEN_TU already has this rule (same
+        # output); a second add_custom_command for it is a configure error.
+        if(NOT "${_w27pmf2_src}" IN_LIST PORT_HOSTGEN_TU)
+            add_custom_command(OUTPUT "${_w27pmf2_out}"
+                COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                        --out "${CMAKE_BINARY_DIR}/host-src" ${_w27pmf2_src}
+                DEPENDS "${PORT_REPO_ROOT_ABS}/${_w27pmf2_src}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                COMMENT "hostgen ${_w27pmf2_src}")
+        endif()
         list(APPEND SLICE_W27_PMF2_SOURCES "${_w27pmf2_out}")
     else()
         list(APPEND SLICE_W27_PMF2_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
@@ -23337,14 +23899,19 @@ foreach(line IN LISTS SLICE_W27S_LINES)
     if(line MATCHES "^#" OR line STREQUAL "")
         continue()
     endif()
+    port_unsubstitute(line)  # PORTSYNC2: see the macro
     if(line IN_LIST W27S_HOSTGEN_TU)
         set(_w27s_src "${CMAKE_BINARY_DIR}/host-src/${line}")
-        add_custom_command(OUTPUT "${_w27s_src}"
-            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                    --out "${CMAKE_BINARY_DIR}/host-src" ${line}
-            DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-            COMMENT "hostgen ${line}")
+        # PORTSYNC2: a source on PORT_HOSTGEN_TU already has this rule (same
+        # output); a second add_custom_command for it is a configure error.
+        if(NOT "${line}" IN_LIST PORT_HOSTGEN_TU)
+            add_custom_command(OUTPUT "${_w27s_src}"
+                COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                        --out "${CMAKE_BINARY_DIR}/host-src" ${line}
+                DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                COMMENT "hostgen ${line}")
+        endif()
     else()
         set(_w27s_src "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
     endif()
@@ -23443,8 +24010,8 @@ endforeach()
 # outside it, would fault) and never reach ntr/card.cpp. The DMA arm's computed
 # register stores stay plain; stage B, which would run them, is not this block.
 set(W28C_HOSTGEN_TU
-    src/func_02060d98.c
-    src/func_02060a64.c)
+    src/unnamed/arm9/0206/func_02060d98.c
+    src/unnamed/arm9/0206/func_02060a64.c)
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_w28_card.txt" SLICE_W28C_LINES)
 set(SLICE_W28C_SOURCES "")
 foreach(line IN LISTS SLICE_W28C_LINES)
@@ -23452,15 +24019,20 @@ foreach(line IN LISTS SLICE_W28C_LINES)
     if(line MATCHES "^#" OR line STREQUAL "")
         continue()
     endif()
+    port_unsubstitute(line)  # PORTSYNC2: see the macro
     if(line IN_LIST W28C_HOSTGEN_TU)
-        get_filename_component(_w28c_sym "${line}" NAME_WE)
-        set(_w28c_src "${CMAKE_BINARY_DIR}/host-src/src/${_w28c_sym}.cpp")
-        add_custom_command(OUTPUT "${_w28c_src}"
-            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                    --out "${CMAKE_BINARY_DIR}/host-src" ${_w28c_sym}
-            DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-            COMMENT "hostgen ${_w28c_sym}")
+        # PORTSYNC2: by path, not by stem -- main moved these sources under
+        # src/<area>/, and hostgen writes host-src/<source path>.cpp.
+        port_hostgen_sym("${line}")
+        set(_w28c_src "${sym_out}")
+        if(NOT sym_tu)
+            add_custom_command(OUTPUT "${_w28c_src}"
+                COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                        --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
+                DEPENDS "${sym_src}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                COMMENT "hostgen ${sym_arg}")
+        endif()
     else()
         set(_w28c_src "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
     endif()
@@ -23493,8 +24065,8 @@ endforeach()
 # C linkage and each object keeps its TU's stem. The same three targets
 # SLICE_OV007_SOURCES feeds.
 set(DPAD1_HOSTGEN_TU
-    src/func_ov007_020b3360.c
-    src/func_ov007_020b3c54.c)
+    src/unnamed/ov007/func_ov007_020b3360.c
+    src/unnamed/ov007/func_ov007_020b3c54.c)
 foreach(_dpad1_tu IN LISTS DPAD1_HOSTGEN_TU)
     list(FIND SLICE_OV007_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${_dpad1_tu}" _dpad1_idx)
     if(NOT _dpad1_idx LESS 0)
@@ -23511,6 +24083,7 @@ foreach(line IN LISTS SLICE_W28_DPAD1_LINES)
     if(line MATCHES "^#" OR line STREQUAL "")
         continue()
     endif()
+    port_unsubstitute(line)  # PORTSYNC2: see the macro
     if(NOT line IN_LIST DPAD1_HOSTGEN_TU)
         message(FATAL_ERROR "port/slice_w28_dpad1.txt row ${line} is not on "
                 "DPAD1_HOSTGEN_TU: every row there exists to build from its "
@@ -23518,12 +24091,16 @@ foreach(line IN LISTS SLICE_W28_DPAD1_LINES)
     endif()
     string(REGEX REPLACE "[.](c|cpp)$" ".cpp" _dpad1_rel "${line}")
     set(_dpad1_out "${CMAKE_BINARY_DIR}/host-src/${_dpad1_rel}")
-    add_custom_command(OUTPUT "${_dpad1_out}"
-        COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${line}
-        DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-        COMMENT "hostgen ${line}")
+    # PORTSYNC2: a source on PORT_HOSTGEN_TU already has this rule (same
+    # output); a second add_custom_command for it is a configure error.
+    if(NOT "${line}" IN_LIST PORT_HOSTGEN_TU)
+        add_custom_command(OUTPUT "${_dpad1_out}"
+            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                    --out "${CMAKE_BINARY_DIR}/host-src" ${line}
+            DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+            COMMENT "hostgen ${line}")
+    endif()
     list(APPEND SLICE_W28_DPAD1_SOURCES "${_dpad1_out}")
 endforeach()
 list(LENGTH SLICE_W28_DPAD1_SOURCES _dpad1_n)
@@ -23568,7 +24145,7 @@ endforeach()
 # read belongs to ov055. APPEND, so R-L15B3's define on the same source stays.
 # src/ is untouched; the object's only change is the symbol it references.
 set_property(SOURCE
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/ov063/func_ov063_02117cdc.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daTrs_c.cpp"
     APPEND PROPERTY COMPILE_DEFINITIONS
     "data_ov008_02111b6c=data_ov055_02111b6c")
 
@@ -23605,8 +24182,11 @@ set_property(SOURCE
 #
 # The three targets that compile hal/actor_classes.cpp, whose slot-22 seat
 # references this body.
+# PORTSYNC2: main folded this body into src/actors/daObjBlockL_c.cpp without
+# the port line's host arm; the carried body is in port/unmatched/hostarm/ and
+# the folded one is parked (hostgen PARK_SYMBOL "daObjBlockL_c").
 set(BOOBRICK1_R7_SRC
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13BigBrickBlock11OnAttacked1ER8dActor_c.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/hostarm/_ZN13BigBrickBlock11OnAttacked1ER8dActor_c.cpp")
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_boobrick1.txt" SLICE_BOOBRICK1_LINES)
 set(SLICE_BOOBRICK1_SOURCES "")
 foreach(line IN LISTS SLICE_BOOBRICK1_LINES)
@@ -23694,7 +24274,7 @@ endforeach()
 # lane). port/slice_w31_smalls2_hostgen.txt carries the rows and the
 # evidence; every row must be on SMALLS2_HOSTGEN_TU and on no raw slice.
 set(SMALLS2_HOSTGEN_TU
-    src/_ZN8Goomboss13InitResourcesEv.cpp)
+    src/actors/daKuriKing_c.cpp)
 foreach(_s2_tu IN LISTS SMALLS2_HOSTGEN_TU)
     list(FIND SLICE_W31_SMALLS2_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${_s2_tu}" _s2_idx)
     if(NOT _s2_idx LESS 0)
@@ -23710,6 +24290,7 @@ foreach(line IN LISTS SLICE_W31_SMALLS2_HG_LINES)
     if(line MATCHES "^#" OR line STREQUAL "")
         continue()
     endif()
+    port_unsubstitute(line)  # PORTSYNC2: see the macro
     if(NOT line IN_LIST SMALLS2_HOSTGEN_TU)
         message(FATAL_ERROR "port/slice_w31_smalls2_hostgen.txt row ${line} is "
                 "not on SMALLS2_HOSTGEN_TU: every row there exists to build "
@@ -23717,12 +24298,16 @@ foreach(line IN LISTS SLICE_W31_SMALLS2_HG_LINES)
     endif()
     string(REGEX REPLACE "[.](c|cpp)$" ".cpp" _s2_rel "${line}")
     set(_s2_out "${CMAKE_BINARY_DIR}/host-src/${_s2_rel}")
-    add_custom_command(OUTPUT "${_s2_out}"
-        COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${line}
-        DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-        COMMENT "hostgen ${line}")
+    # PORTSYNC2: a source on PORT_HOSTGEN_TU already has this rule (same
+    # output); a second add_custom_command for it is a configure error.
+    if(NOT "${line}" IN_LIST PORT_HOSTGEN_TU)
+        add_custom_command(OUTPUT "${_s2_out}"
+            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                    --out "${CMAKE_BINARY_DIR}/host-src" ${line}
+            DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+            COMMENT "hostgen ${line}")
+    endif()
     list(APPEND SLICE_W31_SMALLS2_HG_SOURCES "${_s2_out}")
 endforeach()
 list(LENGTH SLICE_W31_SMALLS2_HG_SOURCES _s2_n)
@@ -23767,10 +24352,10 @@ foreach(line IN LISTS SLICE_W31_S4OV0_LINES)
     endif()
     list(APPEND SLICE_W31_S4OV0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
-set(S4OV0_READER_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_02018a24.c")
+set(S4OV0_READER_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0201/func_02018a24.c")
 if(NOT S4OV0_READER_SRC IN_LIST SLICE_W31_S4OV0_SOURCES)
     message(FATAL_ERROR "port/slice_w31_s4ov0.txt does not list "
-            "src/func_02018a24.c, the reader hal/fs.cpp's face retires for")
+            "src/unnamed/arm9/0201/func_02018a24.c, the reader hal/fs.cpp's face retires for")
 endif()
 foreach(_ts4ov0 walk_window walk_window_hires)
     target_sources(${_ts4ov0} PRIVATE ${SLICE_W31_S4OV0_SOURCES}
@@ -23838,10 +24423,10 @@ foreach(line IN LISTS SLICE_W31_S4ARC_LINES)
     endif()
     list(APPEND SLICE_W31_S4ARC_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
-set(S4ARC_READER_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_02018270.c")
+set(S4ARC_READER_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0201/func_02018270.c")
 if(NOT S4ARC_READER_SRC IN_LIST SLICE_W31_S4ARC_SOURCES)
     message(FATAL_ERROR "port/slice_w31_s4arc.txt does not list "
-            "src/func_02018270.c, the reader hal/fs.cpp's copy retires for")
+            "src/unnamed/arm9/0201/func_02018270.c, the reader hal/fs.cpp's copy retires for")
 endif()
 foreach(_ts4arc walk_window walk_window_hires smoke_player)
     target_sources(${_ts4arc} PRIVATE ${SLICE_W31_S4ARC_SOURCES})
@@ -23919,10 +24504,10 @@ foreach(line IN LISTS SLICE_W31_S4FILE_LINES)
     endif()
     list(APPEND SLICE_W31_S4FILE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
-set(S4FILE_READER_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0201817c.c")
+set(S4FILE_READER_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/arm9/0201/func_0201817c.c")
 if(NOT S4FILE_READER_SRC IN_LIST SLICE_W31_S4FILE_SOURCES)
     message(FATAL_ERROR "port/slice_w31_s4file.txt does not list "
-            "src/func_0201817c.c, the reader hal/fs.cpp's copy retires for")
+            "src/unnamed/arm9/0201/func_0201817c.c, the reader hal/fs.cpp's copy retires for")
 endif()
 foreach(_ts4file walk_window walk_window_hires smoke_player)
     target_sources(${_ts4file} PRIVATE ${SLICE_W31_S4FILE_SOURCES})
@@ -24003,16 +24588,21 @@ foreach(line IN LISTS SLICE_W31_PMF3_LINES)
     if(line MATCHES "^#" OR line STREQUAL "")
         continue()
     endif()
+    port_unsubstitute(line)  # PORTSYNC2: see the macro
     if(line MATCHES "^(src/[^ ]+)[ ]+hostgen$")
         set(_w31pmf3_src "${CMAKE_MATCH_1}")
         string(REGEX REPLACE "[.]c$" ".cpp" _w31pmf3_rel "${_w31pmf3_src}")
         set(_w31pmf3_out "${CMAKE_BINARY_DIR}/host-src/${_w31pmf3_rel}")
-        add_custom_command(OUTPUT "${_w31pmf3_out}"
-            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                    --out "${CMAKE_BINARY_DIR}/host-src" ${_w31pmf3_src}
-            DEPENDS "${PORT_REPO_ROOT_ABS}/${_w31pmf3_src}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-            COMMENT "hostgen ${_w31pmf3_src}")
+        # PORTSYNC2: a source on PORT_HOSTGEN_TU already has this rule (same
+        # output); a second add_custom_command for it is a configure error.
+        if(NOT "${_w31pmf3_src}" IN_LIST PORT_HOSTGEN_TU)
+            add_custom_command(OUTPUT "${_w31pmf3_out}"
+                COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                        --out "${CMAKE_BINARY_DIR}/host-src" ${_w31pmf3_src}
+                DEPENDS "${PORT_REPO_ROOT_ABS}/${_w31pmf3_src}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                COMMENT "hostgen ${_w31pmf3_src}")
+        endif()
         list(APPEND SLICE_W31_PMF3_SOURCES "${_w31pmf3_out}")
     else()
         list(APPEND SLICE_W31_PMF3_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
@@ -24053,8 +24643,11 @@ endforeach()
 #
 # The three targets that compile hal/actor_classes.cpp, whose slot-23 seat
 # references this body.
+# PORTSYNC2: main folded this body into src/actors/daObjBlockL_c.cpp without
+# the port line's host arm; the carried body is in port/unmatched/hostarm/ and
+# the folded one is parked (hostgen PARK_SYMBOL "daObjBlockL_c").
 set(RS5A_R9_SRC
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN13BigBrickBlock11OnAttacked2ER8dActor_c.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/hostarm/_ZN13BigBrickBlock11OnAttacked2ER8dActor_c.cpp")
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_w31_rs5a.txt" SLICE_W31_RS5A_LINES)
 set(SLICE_W31_RS5A_SOURCES "")
 foreach(line IN LISTS SLICE_W31_RS5A_LINES)
@@ -24109,7 +24702,7 @@ endforeach()
 # aliased in that file. When the stage_frame.cpp face is deleted, delete this
 # define with it. src/ is untouched; the ARM object is main's.
 set(RS5B_R7_SRC
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN5Stage13UpdateMessageEv.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10dScStage_c13UpdateMessageEv.cpp")
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_w31_rs5b_stage.txt" SLICE_W31_RS5B_STAGE_LINES)
 set(SLICE_W31_RS5B_STAGE_SOURCES "")
 foreach(line IN LISTS SLICE_W31_RS5B_STAGE_LINES)
@@ -24132,7 +24725,7 @@ endforeach()
 # port/unmatched/MeshCollider_DetectClsn_Sphere.cpp, retired off
 # port/slice_gate8.txt, on exactly the seven targets that slice fed.
 set(RS5B_HOSTGEN_TU
-    src/_ZN7dBgW_Kc10DetectClsnER12dBgCh_SphCrr.cpp)
+    src/engine/collision/dBgW_Kc_itcm.cpp)
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_w31_rs5b_hostgen.txt" SLICE_W31_RS5B_HG_LINES)
 set(SLICE_W31_RS5B_HG_SOURCES "")
 foreach(line IN LISTS SLICE_W31_RS5B_HG_LINES)
@@ -24140,6 +24733,7 @@ foreach(line IN LISTS SLICE_W31_RS5B_HG_LINES)
     if(line MATCHES "^#" OR line STREQUAL "")
         continue()
     endif()
+    port_unsubstitute(line)  # PORTSYNC2: see the macro
     if(NOT line IN_LIST RS5B_HOSTGEN_TU)
         message(FATAL_ERROR "port/slice_w31_rs5b_hostgen.txt row ${line} is "
                 "not on RS5B_HOSTGEN_TU: every row there exists to build from "
@@ -24147,12 +24741,16 @@ foreach(line IN LISTS SLICE_W31_RS5B_HG_LINES)
     endif()
     string(REGEX REPLACE "[.](c|cpp)$" ".cpp" _rs5b_rel "${line}")
     set(_rs5b_out "${CMAKE_BINARY_DIR}/host-src/${_rs5b_rel}")
-    add_custom_command(OUTPUT "${_rs5b_out}"
-        COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                --out "${CMAKE_BINARY_DIR}/host-src" ${line}
-        DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-        COMMENT "hostgen ${line}")
+    # PORTSYNC2: a source on PORT_HOSTGEN_TU already has this rule (same
+    # output); a second add_custom_command for it is a configure error.
+    if(NOT "${line}" IN_LIST PORT_HOSTGEN_TU)
+        add_custom_command(OUTPUT "${_rs5b_out}"
+            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                    --out "${CMAKE_BINARY_DIR}/host-src" ${line}
+            DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+            COMMENT "hostgen ${line}")
+    endif()
     # The body makes a REAL virtual call, GetSurfaceInfo(triID, data_020a0cec),
     # and every live collider carries the THIRTEEN-slot table the dBgW ctor TUs
     # emit under unmatched/dBgW_HostAbi.h (the PORT_DBGW_HOSTABI_SOURCES block).
@@ -24238,16 +24836,21 @@ foreach(line IN LISTS SLICE_W31B_RESET2_LINES)
     if(line MATCHES "^#" OR line STREQUAL "")
         continue()
     endif()
+    port_unsubstitute(line)  # PORTSYNC2: see the macro
     if(line MATCHES "^(src/[^ ]+)[ ]+hostgen$")
         set(_w31breset2_src "${CMAKE_MATCH_1}")
         string(REGEX REPLACE "[.]c$" ".cpp" _w31breset2_rel "${_w31breset2_src}")
         set(_w31breset2_out "${CMAKE_BINARY_DIR}/host-src/${_w31breset2_rel}")
-        add_custom_command(OUTPUT "${_w31breset2_out}"
-            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-                    --out "${CMAKE_BINARY_DIR}/host-src" ${_w31breset2_src}
-            DEPENDS "${PORT_REPO_ROOT_ABS}/${_w31breset2_src}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
-            COMMENT "hostgen ${_w31breset2_src}")
+        # PORTSYNC2: a source on PORT_HOSTGEN_TU already has this rule (same
+        # output); a second add_custom_command for it is a configure error.
+        if(NOT "${_w31breset2_src}" IN_LIST PORT_HOSTGEN_TU)
+            add_custom_command(OUTPUT "${_w31breset2_out}"
+                COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
+                        --out "${CMAKE_BINARY_DIR}/host-src" ${_w31breset2_src}
+                DEPENDS "${PORT_REPO_ROOT_ABS}/${_w31breset2_src}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                COMMENT "hostgen ${_w31breset2_src}")
+        endif()
         list(APPEND SLICE_W31B_RESET2_SOURCES "${_w31breset2_out}")
     else()
         list(APPEND SLICE_W31B_RESET2_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
@@ -24300,7 +24903,11 @@ endforeach()
 # the constructor reads. EVERY TARGET THAT COMPILES hal/actor_vtables.cpp takes
 # the arm, so none of them loses the definition: the three hosting targets and
 # the three excluded smokes (smoke_actor, smoke_savestate, smoke_persist).
-set(VARIANT5_C2_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN7fBase_cC2Ev.cpp")
+# PORTSYNC2: the arm lived in src/_ZN7fBase_cC2Ev.cpp, which main folded into
+# src/actors/ActorBase.cpp without it; port/tools/hostarm_recover.py carried it
+# to port/unmatched/hostarm/, where it defines the same flat name. (ActorBase.cpp
+# itself reaches these targets through its slice rows and PORT_HOSTGEN_TU.)
+set(VARIANT5_C2_SRC "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/hostarm/_ZN7fBase_cC2Ev.cpp")
 foreach(_tw31v5c2 walk_window walk_window_hires smoke_player smoke_actor
                   smoke_savestate smoke_persist)
     target_sources(${_tw31v5c2} PRIVATE "${VARIANT5_C2_SRC}")
@@ -24611,3 +25218,113 @@ foreach(_tpcore1 walk_window walk_window_hires)
         target_sources(${_tpcore1} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/pcore.cpp")
     endif()
 endforeach()
+
+# ---- PORTSYNC2: NO TARGET COMPILES A RAW PORT_HOSTGEN_TU SOURCE ---------------
+#
+# port_read_lines() substitutes every slice row that names a PORT_HOSTGEN_TU
+# source. It cannot see a source spelled literally in this file -- a
+# port_smoke_relink(SRC src/...) list, a target_sources() row, a set(*_SRC)
+# list -- and the 2026-10 main merge turned dozens of those per-function rows
+# into rows naming a whole production TU that is on PORT_HOSTGEN_TU. Compiling
+# the raw TU next to its generated copy defines every function in it twice; the
+# raw TU alone builds without the defects the substitution exists to fix.
+#
+# So, last of all, every target's source list is rewritten: a raw source on
+# PORT_HOSTGEN_TU becomes its generated copy (which the rule near the top of
+# this file produces), and a second copy of one source is dropped.
+get_property(_ps2_targets DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+             PROPERTY BUILDSYSTEM_TARGETS)
+set(_ps2_hits 0)
+foreach(_ps2_t IN LISTS _ps2_targets)
+    get_target_property(_ps2_type ${_ps2_t} TYPE)
+    if(_ps2_type STREQUAL "INTERFACE_LIBRARY" OR _ps2_type STREQUAL "UTILITY")
+        continue()
+    endif()
+    get_target_property(_ps2_srcs ${_ps2_t} SOURCES)
+    if(NOT _ps2_srcs)
+        continue()
+    endif()
+    set(_ps2_new "")
+    set(_ps2_changed FALSE)
+    foreach(_ps2_s IN LISTS _ps2_srcs)
+        if(_ps2_s MATCHES "^\\$<")
+            list(APPEND _ps2_new "${_ps2_s}")
+            continue()
+        endif()
+        get_filename_component(_ps2_abs "${_ps2_s}" ABSOLUTE
+                               BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+        file(RELATIVE_PATH _ps2_rel "${PORT_HOSTGEN_TU_ROOT}" "${_ps2_abs}")
+        # a src TU the port replaces with a whole-TU host copy (the copy is
+        # what PORT_HOSTGEN_TU names): a row that still names the src TU --
+        # typically a per-function row the merge folded into it -- means the copy
+        if(DEFINED "PORT_TU_REPLACED_${_ps2_rel}")
+            set(_ps2_rel "${PORT_TU_REPLACED_${_ps2_rel}}")
+            set(_ps2_abs "${PORT_HOSTGEN_TU_ROOT}/${_ps2_rel}")
+        endif()
+        list(FIND PORT_HOSTGEN_TU "${_ps2_rel}" _ps2_on)
+        if(NOT _ps2_on EQUAL -1)
+            string(REGEX REPLACE "[.](c|cpp)$" ".cpp" _ps2_out "${_ps2_rel}")
+            set(_ps2_abs "${CMAKE_BINARY_DIR}/host-src/${_ps2_out}")
+            math(EXPR _ps2_hits "${_ps2_hits} + 1")
+        endif()
+        # normalised, so `port/../port/x` and `port/x` are one source
+        list(APPEND _ps2_new "${_ps2_abs}")
+        set(_ps2_changed TRUE)
+    endforeach()
+    if(_ps2_changed)
+        list(REMOVE_DUPLICATES _ps2_new)
+        set_property(TARGET ${_ps2_t} PROPERTY SOURCES ${_ps2_new})
+    endif()
+endforeach()
+message(STATUS "PORTSYNC2: ${_ps2_hits} raw PORT_HOSTGEN_TU source(s) "
+               "rerouted to their generated copies")
+
+# ---- PORTSYNC2: NO SOURCE BOTH IN port_slice_shared AND IN A SHARING TARGET ---
+#
+# The SLICE SHARE split above moves every source all the sharing targets agree
+# on into port_slice_shared and drops it from each target, but only the sources
+# the targets had AT THAT POINT. A slice read further down that names the same
+# file again adds it back to the target, next to the shared object, and every
+# function in it is defined twice. Before the 2026-10 main merge two slices
+# rarely named one file; after it, dozens of per-function rows in many slices
+# name the one production TU each function was folded into, so it is the common
+# case. Measured on the merged tree with a link simulation: 3,280 duplicate
+# definitions on walk_window, every one of them a TU compiled both ways.
+#
+# So, after the reroute above, each sharing target drops any source the shared
+# library already compiles (compared as normalised absolute paths).
+if(TARGET port_slice_shared)
+    get_target_property(_ps2_shared port_slice_shared SOURCES)
+    foreach(_ps2_s IN LISTS _ps2_shared)
+        get_filename_component(_ps2_abs "${_ps2_s}" ABSOLUTE
+                               BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+        set("_ps2_inshared_${_ps2_abs}" 1)
+    endforeach()
+    set(_ps2_dropped 0)
+    foreach(_ps2_t IN LISTS _share_targets)
+        get_target_property(_ps2_srcs ${_ps2_t} SOURCES)
+        set(_ps2_new "")
+        foreach(_ps2_s IN LISTS _ps2_srcs)
+            if(NOT _ps2_s MATCHES "^\\$<")
+                get_filename_component(_ps2_abs "${_ps2_s}" ABSOLUTE
+                                       BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+                if(DEFINED "_ps2_inshared_${_ps2_abs}")
+                    math(EXPR _ps2_dropped "${_ps2_dropped} + 1")
+                    continue()
+                endif()
+            endif()
+            list(APPEND _ps2_new "${_ps2_s}")
+        endforeach()
+        set_property(TARGET ${_ps2_t} PROPERTY SOURCES ${_ps2_new})
+    endforeach()
+    message(STATUS "PORTSYNC2: ${_ps2_dropped} target source(s) dropped as "
+                   "already compiled by port_slice_shared")
+endif()
+
+# PORTSYNC2: the two BigBrickBlock attack bodies carried in port/unmatched/hostarm/
+# keep the port line's deliberate fall-off-the-end (the old sources were on
+# PORT_FALLS_OFF_END_SOURCES); main's own bodies are parked (hostgen PARK_SYMBOL).
+set_source_files_properties(
+    "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/hostarm/_ZN13BigBrickBlock11OnAttacked1ER8dActor_c.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/hostarm/_ZN13BigBrickBlock11OnAttacked2ER8dActor_c.cpp"
+    PROPERTIES COMPILE_OPTIONS "/wd4716")

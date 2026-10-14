@@ -54,7 +54,7 @@
 extern "C" {
 
 void *_ZN8dActor_c13ClosestPlayerEv(void *self);
-int func_ov066_02119454(void *c, void *p);
+int _ZN6Eyerok19func_ov066_02119454EPv(void *c, void *p);
 extern unsigned char data_ov066_0211ae08;
 extern unsigned char data_ov066_0211ae04;
 extern int data_ov066_0211b0ac;
@@ -73,7 +73,7 @@ extern int data_ov066_0211b0ac;
    consolidated class TU, and lane FOLD2's slice row returns. Text kept, not
    deleted. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-int func_ov066_02119398(char *c)
+int _ZN6Eyerok19func_ov066_02119398Ev(char *c)
 {
     char *p = (char *)_ZN8dActor_c13ClosestPlayerEv(c);   /* <-- this, the ROM's r0 */
 
@@ -93,7 +93,7 @@ int func_ov066_02119398(char *c)
     if (data_ov066_0211ae08 > 2) {
         data_ov066_0211ae08 = 0;
         data_ov066_0211ae04 = 2;
-        func_ov066_02119454(c, &data_ov066_0211b0ac);
+        _ZN6Eyerok19func_ov066_02119454EPv(c, &data_ov066_0211b0ac);
     }
     return 1;
 }

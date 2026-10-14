@@ -249,12 +249,12 @@ void port_mg_call0(void *self, unsigned code, int adj);
    it both ways and they are the same address, and int* is what
    hal/player_bridges.cpp defines and what the /alternatename pragma in
    hal/cxx_aliases.cpp decorates (PAH). */
-void _ZN9Animation7AdvanceEv(void *a);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *a);
 void func_ov006_020c4c00(void *c);
 void _Z14ApproachLinearRiii(int *r, int target, int step);
 void AddVec3(void *a, void *b, void *c);
 void func_ov006_020bfec0(void *a, char *b, short *d);
-void func_ov006_020c76e0(char *c);
+void _ZN16dMgJump3DMario_c19func_ov006_020c76e0Ev(char *c);
 extern int   data_ov006_0213b010;
 extern int   data_ov006_0213b018;
 extern void *data_ov006_02141a40;

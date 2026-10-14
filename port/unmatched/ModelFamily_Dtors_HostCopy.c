@@ -114,9 +114,9 @@ struct ShadowMdl {
 extern void *data_0208e87c[];                 /* ModelBase's own table */
 extern void *_ZTV5Model[];
 extern void *_ZTV10ModelAnim2[];
-extern void *_ZTV11CommonModel[];
+extern void *_ZTV17dExtCommonModel_c[];
 extern void *_ZTV14BlendModelAnim[];
-extern void *_ZTV11ShadowModel[];
+extern void *_ZTV17dExtShadowModel_c[];
 extern void *VTable_Animation_ModelAnim2Thunk[];
 extern void *VTable_Animation_BlendModelAnimThunk[];
 extern struct ShadowMdl *data_0209cef4;       /* the shadow list head */
@@ -125,7 +125,7 @@ extern void Deallocate(void *ptr);                      /* 0x02018144 */
 extern void func_0203cbc0(void *ptr);                   /* operator delete */
 extern void _ZdlPv(void *ptr);                          /* the same entry */
 extern void _ZN6Memory16operator_delete2EPv(void *p);   /* 0x0203cbcc */
-extern void _ZN9AnimationD1Ev(void *thiz);
+extern void _ZN15dExtFrameCtrl_cD1Ev(void *thiz);
 extern void _ZN9ModelAnimD2Ev(void *thiz);              /* 0x0201689c */
 
 /* ---- ModelBase, 0x020170b8 (D2), 0x02017120 (D1), 0x020170e8 (D0) -------- */
@@ -174,7 +174,7 @@ struct MdlAnim2 *_ZN10ModelAnim2D1Ev(struct MdlAnim2 *thiz)
 {
     thiz->vtable = (void *)_ZTV10ModelAnim2;
     thiz->animVtable = (void *)VTable_Animation_ModelAnim2Thunk;
-    _ZN9AnimationD1Ev((char *)thiz + 0x68);
+    _ZN15dExtFrameCtrl_cD1Ev((char *)thiz + 0x68);
     _ZN9ModelAnimD2Ev(thiz);
     return thiz;
 }
@@ -183,9 +183,9 @@ struct MdlAnim2 *_ZN10ModelAnim2D1Ev(struct MdlAnim2 *thiz)
 
 /* ---- CommonModel, 0x020161e0 (D1) --------------------------------------- */
 
-struct CommonMdl *_ZN11CommonModelD1Ev(struct CommonMdl *thiz)
+struct CommonMdl *_ZN17dExtCommonModel_cD1Ev(struct CommonMdl *thiz)
 {
-    thiz->vtable = (void *)_ZTV11CommonModel;
+    thiz->vtable = (void *)_ZTV17dExtCommonModel_c;
     _ZN9ModelBaseD2Ev((struct MdlBase *)thiz);
     return thiz;
 }
@@ -208,12 +208,12 @@ struct BlendMdlAnim *_ZN14BlendModelAnimD1Ev(struct BlendMdlAnim *thiz)
 
 /* ---- ShadowModel, 0x02015ff8 (D1) --------------------------------------- */
 
-struct ShadowMdl *_ZN11ShadowModelD1Ev(struct ShadowMdl *thiz)
+struct ShadowMdl *_ZN17dExtShadowModel_cD1Ev(struct ShadowMdl *thiz)
 {
     struct ShadowMdl *prev;
     struct ShadowMdl *next;
 
-    thiz->vtable = (void *)_ZTV11ShadowModel;
+    thiz->vtable = (void *)_ZTV17dExtShadowModel_c;
 
     prev = thiz->prev;
     if (prev) {

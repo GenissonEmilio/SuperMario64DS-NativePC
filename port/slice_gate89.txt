@@ -18,18 +18,18 @@
 # and the ActorBase/Actor base lifecycle virtuals its base vtable dispatches
 # (InitResources/Behavior/Render/Cleanup default to ActorBase; the two Virtual
 # hooks; Actor's own D1/D0). All matched src, pulled in for the base vtable fill.
-src/StarCamera_Spawn.cpp
+src/actors/StarCamera_Spawn.cpp
 src/_ZN8dActor_cC1Ev.cpp
-src/_ZN7fBase_c13InitResourcesEv.cpp
-src/_ZN7fBase_c16CleanupResourcesEv.cpp
-src/_ZN7fBase_c8BehaviorEv.cpp
-src/_ZN7fBase_c6RenderEv.cpp
+src/actors/ActorBase.cpp
+# FOLDED into src/actors/ActorBase.cpp (row 23): src/_ZN7fBase_c16CleanupResourcesEv.cpp
+# FOLDED into src/actors/ActorBase.cpp (row 23): src/_ZN7fBase_c8BehaviorEv.cpp
+# FOLDED into src/actors/ActorBase.cpp (row 23): src/_ZN7fBase_c6RenderEv.cpp
 src/_ZN8dActor_cD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN8dActor_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN8dActor_cD0Ev.cpp
 src/d_a_star_star.c
-src/_ZN9PowerStar13InitResourcesEv.cpp
-src/_ZN9PowerStar16CleanupResourcesEv.cpp
+src/actors/daStar_c.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/_ZN9PowerStar16CleanupResourcesEv.cpp
 # _ZN9PowerStar6RenderEv IS NOT HERE: it dispatches ModelAnim slot 5 through a
 # local six-virtual ROM-order shadow (sub.m5(&arg80)), which lands on the host
 # _ZTV9ModelAnim's Virtual18 (MSVC folds the two dtor slots into one) instead
@@ -38,73 +38,74 @@ src/_ZN9PowerStar16CleanupResourcesEv.cpp
 # port/unmatched/ModelAnim_Renders.cpp, the Whomp/Fish/QuestionBlock case.
 # RETIRED at SLICE1: body now in src/_ZN9PowerStarD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN9PowerStarD0Ev.cpp
-src/_ZN9PowerStarD1Ev.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/_ZN9PowerStarD1Ev.cpp
 # the fourteen state bodies the host-copy Behavior dispatches
-src/func_ov002_020e96a0.c
-src/func_ov002_020e9804.cpp
-src/func_ov002_020e9840.c
-src/func_ov002_020e99e8.c
-src/func_ov002_020e9af4.c
-src/func_ov002_020e9d18.c
-src/func_ov002_020ea06c.cpp
-src/func_ov002_020ea100.cpp
-src/func_ov002_020ea410.c
-src/func_ov002_020ea420.c
-src/func_ov002_020ea7ac.c
-src/func_ov002_020ea824.c
-src/func_ov002_020ea90c.cpp
-src/func_ov002_020ea9d0.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e96a0.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e9804.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e9840.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e99e8.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e9af4.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e9d18.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020ea06c.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020ea100.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020ea410.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020ea420.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020ea7ac.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020ea824.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020ea90c.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020ea9d0.c
 # the two class-override tail slots (OnYoshiTryEat / egg)
-src/_ZN9PowerStar13OnYoshiTryEatEv.cpp
-src/_ZN9PowerStar13OnTurnIntoEggER6Player.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/_ZN9PowerStar13OnYoshiTryEatEv.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/_ZN9PowerStar13OnTurnIntoEggER6Player.cpp
 # the PowerStar per-frame helpers the host-copy Behavior calls
-src/func_ov002_020e700c.c
-src/func_ov002_020e763c.c
-src/func_ov002_020e84ec.c
-src/func_ov002_020e7eb8.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e700c.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e763c.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e84ec.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e7eb8.cpp
 # the transitive closure of the fourteen state bodies (func_ov002_* helpers
 # each state calls; all matched ov002 src)
-src/func_ov002_020e8244.c
-src/func_ov002_020e7e58.cpp
-src/func_ov002_020e8098.cpp
-src/func_ov002_020e7fcc.c
-src/func_ov002_020e9590.cpp
-src/func_ov002_020e8c34.c
-src/func_ov002_020e86ec.c
-src/func_ov002_020e88a8.c
-src/func_ov002_020e930c.c
-src/func_ov002_020e7f2c.c
-src/func_ov002_020e8618.c
-src/func_ov002_020e7eb4.c
-src/func_ov002_020e9630.c
-src/func_ov002_020e73ac.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e8244.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e7e58.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e8098.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e7fcc.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e9590.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e8c34.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e86ec.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e88a8.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e930c.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e7f2c.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e8618.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e7eb4.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e9630.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e73ac.cpp
 src/actors/Player.cpp
-src/func_ov002_020e8ef0.cpp
-src/func_ov002_020e7e14.c
-src/func_ov002_020e7e24.c
-src/func_ov002_020e81e0.cpp
-src/func_ov002_020e947c.c
-src/func_ov002_020e8e80.c
+port/unmatched/hostarm/Player.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e8ef0.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e7e14.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e7e24.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e81e0.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e947c.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e8e80.c
 # second round of the state-body closure
-src/func_ov002_020e6df8.cpp
-src/func_ov002_020e6edc.c
-src/func_ov002_020e7934.cpp
-src/func_ov002_020e7c90.cpp
-src/func_ov002_020e7d08.cpp
-src/func_ov002_020e8398.c
-src/func_ov002_020e8abc.c
-src/func_ov002_020e8dd8.c
-src/func_ov002_020e9448.c
-src/func_ov002_020e7454.c
-src/func_0203d024.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e6df8.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e6edc.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e7934.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e7c90.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e7d08.cpp
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e8398.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e8abc.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e8dd8.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e9448.c
+# FOLDED into src/actors/daStar_c.cpp (row 31): src/func_ov002_020e7454.c
+src/unnamed/arm9/0203/func_0203d024.c
 # named matched funcs the closure reaches
 src/NumVsStarsObtained.c
 # _ZN8dActor_c14FarthestPlayerEv: HOST COPY at unmatched/Actor_ClosestPlayerWrappers.cpp
 # (wired in CMakeLists, added there alongside DistToCPlayer). The matched C calls
 # Actor::ClosestPlayer() with no argument and relies on `this` being live in ARM r0;
 # cdecl drops it, so the host copy passes `this` explicitly. See that file's header.
-src/_ZN8SaveData13GetCoinRecordEj.cpp
-src/_ZN8SaveData21SetCoinRecordIfHigherEah.cpp
+src/engine/save/SaveData.cpp
+# FOLDED into src/engine/save/SaveData.cpp (row 106): src/_ZN8SaveData21SetCoinRecordIfHigherEah.cpp
 # Particle::System::New (the star-collect effect func_ov002_020e81e0 spawns)
 # is already linked elsewhere; only the third MSVC mangling of its name needed
 # an /alternatename (in hal/actor_classes_star.cpp), not a second copy here.

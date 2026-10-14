@@ -42,7 +42,7 @@
    longer resolve), so the whole body is wrapped extern "C" -- the only
    edit beyond A's handoff content, which was generated from the .c. */
 extern "C" {
-extern void _ZN9Animation8LoadFileER13SharedFilePtr(void* sfp);
+extern void _ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr(void* sfp);
 extern void* _ZN5Model8LoadFileER13SharedFilePtr(void* sfp);
 extern void _ZN15TextureSequence8LoadFileER13SharedFilePtr(void* sfp);
 extern void LoadSilverStarAndNumber(void);
@@ -56,7 +56,7 @@ extern void func_ov002_020e6780(void* p);
 extern void* _ZN9ModelAnimC1Ev(void* thiz);
 extern void _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void* thiz, void* f, s32 i, Fix12i fx, u32 j);
 extern void* _ZN5ModelC1Ev(void* thiz);
-extern void _ZN11ShadowModel12InitCylinderEv(void* thiz);
+extern void _ZN17dExtShadowModel_c12InitCylinderEv(void* thiz);
 extern s32 _ZNK6Player14GetBodyModelIDEjb(void* thiz, u32 a, s32 b);
 extern void _ZN15TextureSequence7PrepareER8BMD_FileR8BTP_File(void* bmd, void* btp, void* btp2);
 extern void _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(void* thiz, void* f, s32 i, Fix12i fx, u32 j);

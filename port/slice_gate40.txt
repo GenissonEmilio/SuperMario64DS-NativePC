@@ -59,3 +59,4 @@ src/game/actors/d_a_star_gate.cpp
 # func_02012694, func_ov100_02145070/02145014/02144fcc) is already linked by
 # the Player/Camera/DOOR gates.
 src/actors/Player.cpp
+port/unmatched/hostarm/Player.cpp

@@ -83,7 +83,7 @@
 # pending character at :7743, the opening-seen bit at :8134). The ROM's memset
 # writes zeros over zeros. The seat is that the ROM's own body does it, on the
 # ROM's own object, at the ROM's own point in its own boot.
-src/func_02013e64.c
+src/engine/save/SaveData.cpp
 
 # ===========================================================================
 # R2b -- src/func_0201fec8.c: TAKEN (run link100, lane R2BD). The refusal
@@ -291,10 +291,10 @@ src/func_02013e64.c
 # the seam moved. R2e and R2f will meet more of them.
 #
 # THE FOUR TUs.
-src/func_0201fec8.c
-src/func_0203db64.c
-src/func_02059f2c.c
-src/func_0203daac.c
+src/unnamed/arm9/0201/func_0201fec8.c
+src/unnamed/arm9/0203/func_0203db64.c
+src/unnamed/arm9/0205/func_02059f2c.c
+src/unnamed/arm9/0203/func_0203daac.c
 
 # ===========================================================================
 # R2c -- src/func_02042f68.c and the device identify
@@ -374,12 +374,12 @@ src/func_0203daac.c
 #
 # THE SIX THAT LINK. func_02042f68 itself, its second arm, and the four bodies
 # behind that arm.
-src/func_02042f68.c
-src/func_020603c8.cpp
-src/func_020607e8.c
-src/func_02060364.c
-src/func_02060398.c
-src/func_02060470.c
+src/unnamed/arm9/0204/func_02042f68.c
+src/unnamed/arm9/0206/func_020603c8.cpp
+src/unnamed/arm9/0206/func_020607e8.c
+src/unnamed/arm9/0206/func_02060364.c
+src/unnamed/arm9/0206/func_02060398.c
+src/unnamed/arm9/0206/func_02060470.c
 #
 # ARM 1 IS HERE NOW, on port/slice_w28_card.txt (run linkfull, lane S4CARD).
 # This block used to say src/func_02060890.c could not link, over two
@@ -490,10 +490,10 @@ src/func_02060470.c
 # hardware divider through literal MMIO and are built through hostgen from
 # port/CMakeLists.txt's R2D_SYMS, which is where their reason is written down.
 # The nine TUs of the rung are those two plus the seven rows here.
-src/func_0203bbc0.c
-src/func_0205f270.c
-src/func_0205f300.c
-src/func_0205f1e4.c
-src/func_0205edd8.cpp
-src/func_0205eeac.cpp
-src/func_0205e9fc.c
+src/unnamed/arm9/0203/func_0203bbc0.c
+src/unnamed/arm9/0205/func_0205f270.c
+src/unnamed/arm9/0205/func_0205f300.c
+src/unnamed/arm9/0205/func_0205f1e4.c
+src/unnamed/arm9/0205/func_0205edd8.cpp
+src/unnamed/arm9/0205/func_0205eeac.cpp
+src/unnamed/arm9/0205/func_0205e9fc.c

@@ -638,17 +638,21 @@ def selftest():
 
     print('\n  RIDE -- a declared tail-jump frame cannot drop the argument')
     ride_cases = [
-        (('src/_ZN13HeapAllocator7DestroyEv.cpp',
-          '_ZN13HeapAllocator6RemoveEv'), True,
+        # tailjump_guard re-keyed this row 2026-09-17 (lane TAILJUMP2) onto the
+        # decorated member pair once the chain became C++ members; the case
+        # follows the row, or the selftest refuses the whole suite over a key
+        # that moved (PORTSYNC2).
+        (('src/engine/heap/ExpandingHeapAllocator.cpp',
+          '?Remove@HeapAllocator@@QAEXXZ'), True,
          'the arm9 heap veneer this exclusion was added for'),
-        (('src/func_0204ebb8.c', '_ZN13HeapAllocator6RemoveEv'), True,
+        (('src/engine/heap/SolidHeapAllocator.cpp', '_ZN13HeapAllocator6RemoveEv'), True,
          'its SolidHeap sibling'),
-        (('src/func_ov007_020c05f8.c',
+        (('src/unnamed/ov007/func_ov007_020c05f8.c',
           'func_ov007_020c3d1c'), True,
          'a Class C row that predates this exclusion'),
-        (('src/func_ov007_020add3c.c', 'func_ov007_020ae558'), False,
+        (('src/unnamed/ov007/func_ov007_020add3c.c', 'func_ov007_020ae558'), False,
          'CLASS A is form=call: a REAL seam and NOT excluded'),
-        (('src/_ZN13HeapAllocator7DestroyEv.cpp', 'func_0205ac5c'), False,
+        (('src/engine/heap/ExpandingHeapAllocator.cpp', 'func_0205ac5c'), False,
          'right frame, wrong callee: the pair is the key, not the file'),
     ]
     for key, want, note in ride_cases:

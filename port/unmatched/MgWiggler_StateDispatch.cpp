@@ -157,11 +157,11 @@ void port_mg_call0(void *self, unsigned code, int adj);
 
 /* ---- the six SCENE-object states, +0x4660 ------------------------------- */
 void func_ov006_020ed270(void);          /* 4 bytes in the ROM, `bx lr` */
-void func_ov006_020ed274(char *c);
+void _ZN15dScMgHanachan_c19func_ov006_020ed274Ev(char *c);
 void func_ov006_020ed328(void);          /* 4 bytes in the ROM, `bx lr` */
-void func_ov006_020ed34c(char *p);
-void func_ov006_020ed494(char *c);
-void func_ov006_020ed844(char *c);
+void _ZN15dScMgHanachan_c19func_ov006_020ed34cEv(char *p);
+void _ZN15dScMgHanachan_c19func_ov006_020ed494Ev(char *c);
+void _ZN15dScMgHanachan_c19func_ov006_020ed844Ev(char *c);
 
 /* ---- the nine WIGGLER sub-object states, +0x00, +0x08 and +0x10 --------- */
 void func_ov006_020eb1e0(char *c);
@@ -245,11 +245,11 @@ static int wig_try(void *self, unsigned code)
     switch (code) {
     /* the scene object's own six, +0x4660 */
     case 0x020ed270u: func_ov006_020ed270();  ++g_wig_scene_hits; return 1;
-    case 0x020ed274u: func_ov006_020ed274(c); ++g_wig_scene_hits; return 1;
+    case 0x020ed274u: _ZN15dScMgHanachan_c19func_ov006_020ed274Ev(c); ++g_wig_scene_hits; return 1;
     case 0x020ed328u: func_ov006_020ed328();  ++g_wig_scene_hits; return 1;
-    case 0x020ed34cu: func_ov006_020ed34c(c); ++g_wig_scene_hits; return 1;
-    case 0x020ed494u: func_ov006_020ed494(c); ++g_wig_scene_hits; return 1;
-    case 0x020ed844u: func_ov006_020ed844(c); ++g_wig_scene_hits; return 1;
+    case 0x020ed34cu: _ZN15dScMgHanachan_c19func_ov006_020ed34cEv(c); ++g_wig_scene_hits; return 1;
+    case 0x020ed494u: _ZN15dScMgHanachan_c19func_ov006_020ed494Ev(c); ++g_wig_scene_hits; return 1;
+    case 0x020ed844u: _ZN15dScMgHanachan_c19func_ov006_020ed844Ev(c); ++g_wig_scene_hits; return 1;
     /* the wiggler sub-object's nine, +0x00, +0x08 and +0x10 */
     case 0x020eb018u: func_ov006_020eb018(c); return 1;
     case 0x020eb0c8u: func_ov006_020eb0c8(c); return 1;

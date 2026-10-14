@@ -171,14 +171,14 @@ def fake_d0_root(td):
 
 SYMBOLS = [
     # 1. a Q target: public non-virtual
-    ("_ZN13BigBrickBlock4KillEv", 0x020B38A0),
+    ("_ZN13daObjBlockL_c4KillEv", 0x020B38A0),
     # 2. a U target: public virtual
-    ("_ZN11BillBlaster8BehaviorEv", 0x02126F8C),
+    ("_ZN18daObjBkKillerdai_c8BehaviorEv", 0x02126F8C),
     # 3. the sibling pair: D1 and D2 of one class at two addresses. Equal
     #    sizes and equal relocations, so the structor twin rule PROVES them
     #    one body emitted twice and both bind to the one ??1.
-    ("_ZN10FaderColorD1Ev", 0x02017574, 0x50),
-    ("_ZN10FaderColorD2Ev", 0x020175C4, 0x50),
+    ("_ZN10dFdColor_cD1Ev", 0x02017574, 0x50),
+    ("_ZN10dFdColor_cD2Ev", 0x020175C4, 0x50),
     # 3b. the same shape with the sizes APART: not one body, still refused.
     ("_ZN8MismatchD1Ev", 0x02017700, 0x50),
     ("_ZN8MismatchD2Ev", 0x02017760, 0x40),
@@ -189,9 +189,9 @@ SYMBOLS = [
     ("_ZN8Overload6UpdateEi", 0x02017800),
     ("_ZN8Overload6UpdateEs", 0x02017840),
     # a class with a D1 and NO D2 must still generate
-    ("_ZN10BowserFireD1Ev", 0x02116484),
+    ("_ZN11daKpaFire_cD1Ev", 0x02116484),
     # 4. the arity ruling
-    ("_ZN9ModelBase12ApplyOpacityEj", 0x0201A0B0),
+    ("_ZN9ModelBase12ApplyOpacityEjj", 0x0201A0B0),
     # 5. a two-argument reverse face
     ("_ZN5Actor9TrackStarEjj", 0x02012340),
     # a flat name with no ROM address at all
@@ -200,10 +200,10 @@ SYMBOLS = [
 
 def run():
     universe = [
-        "?Kill@BigBrickBlock@@QAEXXZ",            # Q: public non-virtual
-        "?Behavior@BillBlaster@@UAEHXZ",          # U: public virtual
-        "??1FaderColor@@UAE@XZ",                  # one dtor for D1 AND D2
-        "??1BowserFire@@UAE@XZ",
+        "?Kill@daObjBlockL_c@@QAEXXZ",            # Q: public non-virtual
+        "?Behavior@daObjBkKillerdai_c@@UAEHXZ",          # U: public virtual
+        "??1dFdColor_c@@UAE@XZ",                  # one dtor for D1 AND D2
+        "??1daKpaFire_c@@UAE@XZ",
         "?ApplyOpacity@ModelBase@@QAEXIH@Z",      # 2 params, ROM name takes 1
         # THREE parameters where the ROM name takes two: TrackStar is the
         # second arity arm, and it must refuse here rather than drop one.
@@ -222,10 +222,10 @@ def run():
         why = dict(refusals)
 
         print("case 1: a Q target keeps a NON-virtual shadow")
-        r = by_flat.get("__ZN13BigBrickBlock4KillEv")
+        r = by_flat.get("__ZN13daObjBlockL_c4KillEv")
         check(r is not None, "BigBrickBlock::Kill derived")
         if r:
-            check(r["target"] == "?Kill@BigBrickBlock@@QAEXXZ",
+            check(r["target"] == "?Kill@daObjBlockL_c@@QAEXXZ",
                   "bound to the Q spelling")
             check(r["sig"]["virtual"] is False, "shadow is non-virtual")
             check(r["addr"] == 0x020B38A0, "carries the ROM address")
@@ -235,7 +235,7 @@ def run():
             check(decl.startswith("public:"), "declared public")
 
         print("case 2: a U target gets a VIRTUAL shadow")
-        r = by_flat.get("__ZN11BillBlaster8BehaviorEv")
+        r = by_flat.get("__ZN18daObjBkKillerdai_c8BehaviorEv")
         check(r is not None, "BillBlaster::Behavior derived")
         if r:
             check(r["sig"]["virtual"] is True, "shadow is virtual")
@@ -259,15 +259,15 @@ def run():
               % why.get("__ZN8Overload6UpdateEi", "")[-80:])
 
         print("case 3b: a D1/D2 pair the ROM proves identical DOES bind")
-        for flat in ("__ZN10FaderColorD1Ev", "__ZN10FaderColorD2Ev"):
+        for flat in ("__ZN10dFdColor_cD1Ev", "__ZN10dFdColor_cD2Ev"):
             r = by_flat.get(flat)
             check(r is not None, "%s derived: %s"
                   % (flat, why.get(flat, "")[:90]))
             if r:
-                check(r["target"] == "??1FaderColor@@UAE@XZ",
+                check(r["target"] == "??1dFdColor_c@@UAE@XZ",
                       "%s bound to the one MSVC destructor" % flat)
-        check(by_flat["__ZN10FaderColorD1Ev"]["addr"] == 0x02017574
-              and by_flat["__ZN10FaderColorD2Ev"]["addr"] == 0x020175C4,
+        check(by_flat["__ZN10dFdColor_cD1Ev"]["addr"] == 0x02017574
+              and by_flat["__ZN10dFdColor_cD2Ev"]["addr"] == 0x020175C4,
               "each row keeps its OWN ROM address")
 
         print("case 3c: a D1/D2 pair whose bodies differ is still REFUSED")
@@ -276,11 +276,11 @@ def run():
             check("not one body emitted twice" in why.get(flat, ""),
                   "%s refused with the twin reason: %s"
                   % (flat, why.get(flat, "")[-70:]))
-        check("__ZN10BowserFireD1Ev" in by_flat,
+        check("__ZN11daKpaFire_cD1Ev" in by_flat,
               "a D1 with no D2 sibling still generates")
 
         print("case 4: an arg-count mismatch is REFUSED")
-        flat = "__ZN9ModelBase12ApplyOpacityEj"
+        flat = "__ZN9ModelBase12ApplyOpacityEjj"
         check(flat not in by_flat, "ApplyOpacity not generated")
         check("ARITY MISMATCH" in why.get(flat, ""),
               "refused with the arity reason: %s" % why.get(flat, "")[:70])
@@ -321,48 +321,48 @@ def run():
 
     print("case 7: the ledger round-trips and a disagreeing row is refused")
     with tempfile.TemporaryDirectory() as td:
-        root = fake_root(td, [("_ZN13BigBrickBlock4KillEv", 0x020B38A0)])
+        root = fake_root(td, [("_ZN13daObjBlockL_c4KillEv", 0x020B38A0)])
         led = pathlib.Path(td) / "faces_sync.txt"
         led.write_text(
             "# a ledger\n"
-            "__ZN13BigBrickBlock4KillEv  ?Kill@BigBrickBlock@@QAEXXZ  "
+            "__ZN13daObjBlockL_c4KillEv  ?Kill@daObjBlockL_c@@QAEXXZ  "
             "0x020b38a0 R\n")
         out = pathlib.Path(td) / "gen.cpp"
         rows, refusals = facegen.run_sync(str(led), root, str(out),
                                           strict=False)
         check(len(rows) == 1 and not refusals, "the good ledger generates")
         led.write_text(
-            "__ZN13BigBrickBlock4KillEv  ?Kill@BigBrickBlock@@QAEXXZ  "
+            "__ZN13daObjBlockL_c4KillEv  ?Kill@daObjBlockL_c@@QAEXXZ  "
             "0x0deadbee R\n")
         rows, refusals = facegen.run_sync(str(led), root, str(out),
                                           strict=False)
         check(not rows and "LEDGER DISAGREES" in dict(refusals).get(
-            "__ZN13BigBrickBlock4KillEv", ""),
+            "__ZN13daObjBlockL_c4KillEv", ""),
             "a wrong address in the ledger is refused, not trusted")
 
     print("case 8: a forward face DEFINES the caller's member")
     with tempfile.TemporaryDirectory() as td:
-        root = fake_root(td, [("_ZN13BigBrickBlock4KillEv", 0x020B38A0)])
+        root = fake_root(td, [("_ZN13daObjBlockL_c4KillEv", 0x020B38A0)])
         rows, refusals = facegen.derive_forward_rows(
-            ["?Kill@BigBrickBlock@@UAEXXZ"],
-            {"__ZN13BigBrickBlock4KillEv"}, root)
+            ["?Kill@daObjBlockL_c@@UAEXXZ"],
+            {"__ZN13daObjBlockL_c4KillEv"}, root)
         check(len(rows) == 1, "derived: %s" % (dict(refusals) or "yes"))
         if rows:
             text = facegen.emit_sync(rows, pathlib.Path(td) / "fwd.cpp")
             check("void BigBrickBlock::Kill()" in text,
                   "the member is DEFINED, not declared")
-            check("{ _ZN13BigBrickBlock4KillEv(this); }" in text,
+            check("{ _ZN13daObjBlockL_c4KillEv(this); }" in text,
                   "the body passes the receiver first")
             check("public: virtual void Kill();" in text,
                   "the shadow keeps the caller's virtualness")
 
     print("case 9: two faces that would call each other forever are broken up")
     with tempfile.TemporaryDirectory() as td:
-        root = fake_root(td, [("_ZN13BigBrickBlock4KillEv", 0x020B38A0)])
-        rev, _r = facegen.derive_rows(["__ZN13BigBrickBlock4KillEv"],
-                                      {"?Kill@BigBrickBlock@@QAEXXZ"}, root)
-        fwd, _f = facegen.derive_forward_rows(["?Kill@BigBrickBlock@@QAEXXZ"],
-                                              {"__ZN13BigBrickBlock4KillEv"},
+        root = fake_root(td, [("_ZN13daObjBlockL_c4KillEv", 0x020B38A0)])
+        rev, _r = facegen.derive_rows(["__ZN13daObjBlockL_c4KillEv"],
+                                      {"?Kill@daObjBlockL_c@@QAEXXZ"}, root)
+        fwd, _f = facegen.derive_forward_rows(["?Kill@daObjBlockL_c@@QAEXXZ"],
+                                              {"__ZN13daObjBlockL_c4KillEv"},
                                               root)
         check(len(rev) == 1 and len(fwd) == 1, "both directions derive alone")
         kept, cyc = facegen.refuse_face_cycles(rev + fwd)
@@ -380,11 +380,11 @@ def run():
     # shape, which at reloc level is an extra pooled address.
     print("case 9b: a forward face for a STRUCTOR is refused, and says why")
     with tempfile.TemporaryDirectory() as td:
-        root = fake_root(td, [("_ZN10BowserFireD1Ev", 0x02116484)])
+        root = fake_root(td, [("_ZN11daKpaFire_cD1Ev", 0x02116484)])
         rows, ref = facegen.derive_forward_rows(
-            ["??1BowserFire@@UAE@XZ"], {"__ZN10BowserFireD1Ev"}, root)
+            ["??1daKpaFire_c@@UAE@XZ"], {"__ZN11daKpaFire_cD1Ev"}, root)
         check(not rows and len(ref) == 1, "refused, not generated")
-        check(ref and "??_7BowserFire@@6B@" in ref[0][1],
+        check(ref and "??_7daKpaFire_c@@6B@" in ref[0][1],
               "the reason names the vftable it would emit: %s"
               % (ref[0][1][:90] if ref else None))
         check(ref and "not a class-member mangle" not in ref[0][1],

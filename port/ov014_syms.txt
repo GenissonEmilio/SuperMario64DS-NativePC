@@ -59,13 +59,23 @@ data_ov014_021146d8:0x8 data_ov014_021146e0:0x8 data_ov014_021146e8:0x8
 data_ov014_021146f0:0x8 data_ov014_021146f8:0x8 data_ov014_02114700:0xc
 data_ov014_0211470c:0xc _ZTI10daWanwan_c:0xc data_ov014_02114724:0xc
 data_ov014_02114730:0x10 _ZTS10daWanwan_c:0x10 g_profile_WANWAN:0x1c
-data_ov014_0211476c:0x58 data_ov014_021147c4:0x28 data_ov014_02114824:0x3c
+data_ov014_0211476c:0x58 data_ov014_021147c4@0x021147c4:0x28 data_ov014_02114824:0x3c
 data_ov014_02114860:0x8 _ZTI20daObjWanwanShutter_c:0xc _ZTS20daObjWanwanShutter_c:0x8
 data_ov014_0211487c:0x10 g_profile_WANWAN_SHUTTER:0x1c
 data_ov014_021148b4:0x4 data_ov014_021148b8:0x28 data_ov014_021148e0:0x10
 data_ov014_021148f0:0x50 data_ov014_02114940:0x8 data_ov014_02114948:0x8
-data_ov014_02114950:0xc data_ov014_0211495c:0xc data_ov014_02114968:0x8
+data_ov014_02114950@0x02114950:0xc data_ov014_0211495c@0x0211495c:0xc data_ov014_02114968:0x8
 data_ov014_02114970:0x8 data_ov014_02114978:0x8 data_ov014_02114980:0x8
-data_ov014_02114988:0xc data_ov014_02114994:0xc data_ov014_021149a0:0xc
-data_ov014_021149ac:0xc data_ov014_021149b8:0x8 data_ov014_021149c0:0x8
-data_ov014_021149c8:0xc data_ov014_021149d4:0xc
+data_ov014_02114988@0x02114988:0xc data_ov014_02114994@0x02114994:0xc data_ov014_021149a0@0x021149a0:0xc
+data_ov014_021149ac@0x021149ac:0xc
+data_ov014_021149c8@0x021149c8:0xc data_ov014_021149d4@0x021149d4:0xc
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov014_021149b8                        now defined by src/game/actors/d_a_obj_wanwan_shutter.cpp
+#   data_ov014_021149c0                        now defined by src/game/actors/d_a_obj_wanwan_shutter.cpp

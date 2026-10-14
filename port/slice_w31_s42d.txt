@@ -31,10 +31,10 @@
 # unmounted and its seam stays in hal/stage_frame.cpp).
 
 # Slot 9's two renderers, the two window targets.
-src/_ZN5Stage9PS_RenderEv.cpp
-src/_ZN5Stage9LC_RenderEv.cpp
+src/actors/dScStage_c.cpp
+# FOLDED into src/actors/dScStage_c.cpp (row 34): src/_ZN5Stage9LC_RenderEv.cpp
 
 # The controller-mode captions (the BG2 text layer of the top screen), every
 # target that compiles hal/sub_screen.cpp.
-src/LoadControllerModeText.c alltargets
-src/func_0201d590.cpp alltargets
+src/Message.cpp alltargets
+src/Message.cpp alltargets

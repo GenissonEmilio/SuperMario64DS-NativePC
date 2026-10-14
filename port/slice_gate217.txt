@@ -29,7 +29,7 @@
 # per source to _ZTV10daChRoom_c, the host array the fill writes and the factory
 # installs. HEAP is left alone: its binding to the game heap pointer
 # 0x020a0eac is what that body means.
-src/game/actors/d_a_ch_room.cpp
+src/actors/daChRoom_c.cpp
 #
 # ---- 314, ov039 (9 TUs) ---------------------------------------------------
 # Tiny-Huge Island's sky clouds: level 31 places seventeen and no other level
@@ -52,7 +52,7 @@ src/game/actors/d_a_ch_room.cpp
 # bring-up runs it before the registry installs. Both cells come from the new
 # per-symbol ov039 mount (port/ov039_syms.txt).
 src/game/actors/d_a_obj_kumo.cpp
-src/__sinit_ov039_021113b4.c
+# FOLDED into src/game/actors/d_a_obj_kumo.cpp (row 54): src/__sinit_ov039_021113b4.c
 #
 # ---- WHAT IS DELIBERATELY NOT HERE ----------------------------------------
 # Nothing from the other four unregistered actor ids. 99 (ov029 CageLift),

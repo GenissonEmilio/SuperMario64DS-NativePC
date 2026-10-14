@@ -7,4 +7,4 @@
 # particle submission; hal/scene_boot.cpp's port_scene_tick), after the frame's
 # render walk and before phase 6. rom_frame.cpp is compiled by all three
 # hosting targets, so all three take the slice.
-src/func_02019404.c
+src/unnamed/arm9/0201/func_02019404.c

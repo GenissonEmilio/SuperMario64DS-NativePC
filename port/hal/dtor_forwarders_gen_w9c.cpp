@@ -46,11 +46,11 @@
 // making MSVC emit one.  Each row below says which.
 
 #include "types.h"
-#include "KnockDownPlank.h"
+#include "daObjBk_Botaosi_c.h"
 #include "ModelAnim.h"
 #include "TextureSequence.h"
 #include "TextureTransformer.h"
-#include "TowerStep.h"
+#include "daObjBk_Lift_c.h"
 #include "dCapEnemy_c.h"
 #include "daObjFl_Fall_Block_c.h"
 #include "daObjWc_Mizu_c.h"
@@ -106,8 +106,8 @@ extern "C" void _ZN11dCapEnemy_cD1Ev(void *self)
 { ((dCapEnemy_c *)self)->dCapEnemy_c::~dCapEnemy_c(); }
 
 /* ROM 0x02111314 _ZN14KnockDownPlankD1Ev -- batch 5, ~KnockDownPlank(), defined out of line by src/_ZN14KnockDownPlankD1Ev.cpp */
-extern "C" void _ZN14KnockDownPlankD1Ev(void *self)
-{ ((KnockDownPlank *)self)->KnockDownPlank::~KnockDownPlank(); }
+extern "C" void _ZN17daObjBk_Botaosi_cD1Ev(void *self)
+{ ((daObjBk_Botaosi_c *)self)->daObjBk_Botaosi_c::~daObjBk_Botaosi_c(); }
 
 /* ROM 0x02015a2c _ZN15TextureSequenceD1Ev -- batch 5, ~TextureSequence(), defined out of line by src/_ZN15TextureSequenceD1Ev.cpp */
 extern "C" void _ZN15TextureSequenceD1Ev(void *self)
@@ -122,8 +122,8 @@ extern "C" void _ZN9ModelAnimD1Ev(void *self)
 { ((ModelAnim *)self)->ModelAnim::~ModelAnim(); }
 
 /* ROM 0x02112290 _ZN9TowerStepD1Ev -- batch 5, ~TowerStep(), defined out of line by src/_ZN9TowerStepD1Ev.cpp */
-extern "C" void _ZN9TowerStepD1Ev(void *self)
-{ ((TowerStep *)self)->TowerStep::~TowerStep(); }
+extern "C" void _ZN14daObjBk_Lift_cD1Ev(void *self)
+{ ((daObjBk_Lift_c *)self)->daObjBk_Lift_c::~daObjBk_Lift_c(); }
 
 /* ODR-USE ONLY, no ROM name. The wall wants ??1daSanbo_c@@UAE@XZ,
    which hal/dtor_faces_cpp.cpp's hal_cppd1_daSanbo_c calls off a ROM vtable slot. daSanbo_c's

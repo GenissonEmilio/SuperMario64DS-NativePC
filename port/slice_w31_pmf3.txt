@@ -8,14 +8,14 @@
 # {code, adjust} record; port_actor_lists_seat (hal/actor_registry.cpp) writes
 # the five pairs with __fastcall faces that carry the per-actor quarantine,
 # and unmatched/func_02043fdc_hostcopy.cpp no longer defines either walk.
-src/func_02043fdc.cpp
-src/func_020441cc.cpp
+src/actors/ActorBase.cpp
+src/unnamed/arm9/0204/func_020441cc.cpp
 #
 # SignPost's read state (ov002 state 1 Main, the read loop). The sign's seat
 # (unmatched/SignPost_StateDispatch.cpp) installs this body in its table cell
 # where a logic-verified near-miss host copy stood; the other nine cells and
 # both dispatchers are unchanged.
-src/func_ov002_020bb614.c
+src/actors/daObjTatefuda_c.cpp
 #
 # Mario's own state machine (ov002): Player::ChangeState (the old state's
 # Cleanup, the new state's Init) and Player::Behavior (the state's Main, every
@@ -24,5 +24,5 @@ src/func_ov002_020bb614.c
 # port_player_states_seat (hal/pmf3_player_states.cpp); the host copies in
 # unmatched/Player_ChangeState.cpp and unmatched/Player_Behavior.cpp define
 # nothing now.
-src/_ZN6Player11ChangeStateERNS_5StateE.cpp
-src/_ZN6Player8BehaviorEv.cpp
+src/actors/Player.cpp
+# FOLDED into src/actors/Player.cpp (row 27): src/_ZN6Player8BehaviorEv.cpp

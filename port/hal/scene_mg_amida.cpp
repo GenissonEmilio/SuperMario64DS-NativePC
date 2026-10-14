@@ -516,8 +516,8 @@ extern "C" void port_scene_amida_hits(void)
        pre-seat 1331 at 300 frames and 5831 at 1200 is the witness for the
        walker tick. */
     std::printf("[scene] dScMgAmida_c floor asks: NONE. All three are CLOSED "
-                "-- func_ov006_020d27dc (0xe48, the walker tick, one caller, "
-                "inside vtable slot 6), func_ov006_020d36a4 (0x4fc, the round "
+                "-- _ZN12dScMgAmida_c11StepWalkersEv (0xe48, the walker tick, one caller, "
+                "inside vtable slot 6), _ZN12dScMgAmida_c11InitWalkersEv (0x4fc, the round "
                 "setup) and func_ov004_020ae5c4 (0x294, ov004, the family's "
                 "line rasteriser and the tree's only slot-34 dispatcher) all "
                 "have bodies\n");

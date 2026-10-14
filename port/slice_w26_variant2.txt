@@ -17,13 +17,19 @@
 # the build the arm's object makes the retired forwarder's calls, in order,
 # with its data words (runs/linkfull/out/VARIANT2/). port/tools/dtorfwd.py
 # carries each retired row in its RETIRED note.
-src/_ZN15TextureSequenceD0Ev.cpp
-src/_ZN18TextureTransformerD0Ev.cpp
+src/engine/model/TextureSequence.cpp
+port/unmatched/hostarm/_ZN15TextureSequenceD0Ev.cpp
+src/engine/model/TextureTransformer.cpp
+port/unmatched/hostarm/_ZN18TextureTransformerD0Ev.cpp
 src/_ZN9ModelAnimD0Ev.cpp
-src/_ZN11dCapEnemy_cD0Ev.cpp
-src/_ZN15dScMgSnowball_cD0Ev.cpp
-src/_ZN14KnockDownPlankD0Ev.cpp
-src/_ZN9TowerStepD0Ev.cpp
+src/actors/dCapEnemy_c.cpp
+# PORTSYNC2: main's src defines this flat D0 in its own _MSC_VER arm; no host copy.
+src/actors/dScMgSnowball_c.cpp
+port/unmatched/hostarm/_ZN15dScMgSnowball_cD0Ev.cpp
+src/actors/daObjBk_Botaosi_c.cpp
+port/unmatched/hostarm/_ZN14KnockDownPlankD0Ev.cpp
+src/actors/daObjBk_Lift_c.cpp
+port/unmatched/hostarm/_ZN9TowerStepD0Ev.cpp
 #
 # BATCH B4, THE BASE-OBJECT VARIANTS A HOST CALLER NAMES. Each file below is
 # a C2 or D2 file whose code is the class's one constructor or destructor;
@@ -37,16 +43,18 @@ src/_ZN9TowerStepD0Ev.cpp
 # qualified. The ROM's C2 / D2 body is the C1 / D1 body (none of these
 # classes has a virtual base; the ROM words differ only at pc-relative
 # branches).
-src/_ZN5ModelC2Ev.cpp
+src/engine/model/Model.cpp
+port/unmatched/hostarm/_ZN5ModelC2Ev.cpp
 src/_ZN8dActor_cC2Ev.cpp
 src/_ZN9ModelAnimC2Ev.cpp
 src/_ZN8dActor_cD2Ev.cpp
 src/_ZN9ModelAnimD2Ev.cpp
-src/_ZN11dScMgBase_cD2Ev.cpp
+src/minigames/d_s_mg_base.cpp
 #
 # BATCH B5, ArrowSignRight's D0. The header's PC + MSVC branch is a flat host
 # view with no base class, so there is no inherited operator delete for the
 # campaign's arm to name; this arm calls the D1 body and then the deallocation
 # the ROM's D0 ends with, Memory::Deallocate on the word at 0x020a0eac, by
 # name: the two calls the retired port/faces_sync.txt face made.
-src/_ZN14ArrowSignRightD0Ev.cpp
+src/actors/daObjYajirusi_c.cpp
+port/unmatched/hostarm/_ZN14ArrowSignRightD0Ev.cpp

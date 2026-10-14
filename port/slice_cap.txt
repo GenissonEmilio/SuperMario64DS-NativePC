@@ -107,14 +107,14 @@
 # ambient handle) and func_02029600 (the minimap-area test aa6e4 gates its
 # jingle on). Neither was in the link and both are three-line matched files.
 
-src/func_ov001_020aaf40.c
-src/func_ov001_020aa420.c
-src/func_ov001_020aa79c.c
-src/func_ov001_020aa7b8.cpp
-src/func_ov001_020aa858.cpp
-src/func_ov001_020aa960.cpp
-src/func_ov001_020aa6e4.cpp
-src/func_ov001_020aaa54.cpp
-src/func_ov001_020aadac.c
-src/func_0202a8e0.c
-src/func_02029600.c
+src/actors/CapIconMgr.cpp
+# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aa420.c
+# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aa79c.c
+# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aa7b8.cpp
+# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aa858.cpp
+# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aa960.cpp
+# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aa6e4.cpp
+# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aaa54.cpp
+# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aadac.c
+src/unnamed/arm9/0202/func_0202a8e0.c
+src/unnamed/arm9/0202/func_02029600.c

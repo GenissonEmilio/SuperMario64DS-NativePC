@@ -64,7 +64,7 @@
 #       have collided with this TU (LNK2005). port/unmatched/Mg3DEsp_Cleanup.cpp
 #       is retired the way SEAT15D retired its three.
 #
-src/func_ov006_020d3ba0.cpp
-src/func_ov006_020fa7b8.cpp
-src/func_ov004_020ad8b8.c
-src/_ZN12dScMg3DEsp_c16CleanupResourcesEv.cpp
+src/actors/dScMgAmida_c.cpp
+src/actors/dScMgPachinko_c.cpp
+src/minigames/d_s_mg_base.cpp
+src/actors/dMg3DEspAnimSet_c.cpp

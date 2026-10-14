@@ -276,11 +276,11 @@ HAND = {
     "_Z14ApproachLinearRiii": ("FORWARDS", "calls ApproachLinear, the int "
         "overload"),
     "_ZNK7PathPtr8NumNodesEv": ("FORWARDS", "qualified PathPtr::NumNodes"),
-    "_ZNK9Animation13GetFrameCountEv": ("FORWARDS", "Animation::GetFrameCount "
+    "_ZNK15dExtFrameCtrl_c13GetFrameCountEv": ("FORWARDS", "Animation::GetFrameCount "
         "through a const cast"),
-    "_ZN11ShadowModel12InitCylinderEv": ("FORWARDS", "null-vtable guard then "
+    "_ZN17dExtShadowModel_c12InitCylinderEv": ("FORWARDS", "null-vtable guard then "
         "ShadowModel::InitCylinder"),
-    "_ZN9Animation8LoadFileER13SharedFilePtr": ("FORWARDS", "null-fileptr "
+    "_ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr": ("FORWARDS", "null-fileptr "
         "guard then Animation::LoadFile"),
     "_ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii": ("FORWARDS", "0xffff "
         "terminator guard then OAM::Render; the guard turns a runaway walk "
@@ -300,16 +300,16 @@ HAND = {
     # The four HUD_FACE rows cite the INVOCATION line, which is where the
     # definition is written; the braces are in the #define at line 283. They
     # used to cite `sub_actors.cpp:None`, a location nobody can check.
-    "_ZN3HUD15RenderCoinCountEv": ("FORWARDS", "HUD_FACE macro (defined at "
+    "_ZN8dMeter_c15RenderCoinCountEv": ("FORWARDS", "HUD_FACE macro (defined at "
         "sub_actors.cpp:283), expands to ((HUD *)s)->HUD::RenderCoinCount()"),
-    "_ZN3HUD15RenderLifeCountEv": ("FORWARDS", "HUD_FACE macro (defined at "
+    "_ZN8dMeter_c15RenderLifeCountEv": ("FORWARDS", "HUD_FACE macro (defined at "
         "sub_actors.cpp:283), expands to ((HUD *)s)->HUD::RenderLifeCount()"),
-    "_ZN3HUD15RenderTimeTimerEv": ("FORWARDS", "HUD_FACE macro (defined at "
+    "_ZN8dMeter_c15RenderTimeTimerEv": ("FORWARDS", "HUD_FACE macro (defined at "
         "sub_actors.cpp:283), expands to ((HUD *)s)->HUD::RenderTimeTimer()"),
-    "_ZN3HUD17RenderHealthMeterEv": ("FORWARDS", "HUD_FACE macro (defined at "
+    "_ZN8dMeter_c17RenderHealthMeterEv": ("FORWARDS", "HUD_FACE macro (defined at "
         "sub_actors.cpp:283), expands to "
         "((HUD *)s)->HUD::RenderHealthMeter()"),
-    "_ZNK9Animation12WillHitFrameEi": ("FORWARDS", "two hops: hal_anim_willhit "
+    "_ZNK15dExtFrameCtrl_c12WillHitFrameEi": ("FORWARDS", "two hops: hal_anim_willhit "
         "at player_bridges.cpp:763 calls Animation::WillHitFrame"),
     "_ZN5dPa_c7level_c20checkYoganCallback_c14SpawnParticlesERN8Particle6SystemE":
         ("FORWARDS", "nested-namespace method through a cast"),
@@ -324,12 +324,12 @@ HAND = {
     "_ZNK7PathPtr5LoopsEv": ("FORWARDS", "qualified PathPtr::Loops"),
     "_ZN2GX7LoadTexEPKvjj": ("FORWARDS", "optional texture log then "
         "GX::LoadTex"),
-    "_ZN11CommonModel6RenderEPK7Vector3": ("FORWARDS", "qualified "
+    "_ZN17dExtCommonModel_c6RenderEPK7Vector3": ("FORWARDS", "qualified "
         "CommonModel::Render, returns 1 for a caller that ignores it"),
     "_ZN10dBgActor_c20UpdateKillByMegaCharEsss5Fix12IiE": ("FORWARDS",
         "both branches call Platform::UpdateKillByMegaChar; the probe only "
         "counts"),
-    "_ZN10StarMarker27SpawnRedCoinStarIfNecessaryEv": ("FORWARDS",
+    "_ZN12daStarBase_c27SpawnRedCoinStarIfNecessaryEv": ("FORWARDS",
         "shadow-class idiom, alias pragma at actor_classes_bob_world.cpp:311"),
     "_ZN5Model6RenderEPK7Vector3": ("FORWARDS",
         "shadow-class idiom, alias pragma at actor_faces_bob.cpp:172"),

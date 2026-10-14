@@ -190,7 +190,7 @@ ACTOR_EXT_SLOT_AUTHORITY = {
     # same count the Eyerok row above and the cleanup-w2 block below reached
     # independently on their own builds.
     # Evidence: ...runs/rel0215/out/w3-f2/slot31_dispatch_sweep.txt
-    ('__ZTV22RotatingUpDownPlatform', 31): 0,
+    ('__ZTV13daLinelift2_c', 31): 0,
     # ------------------------------------------------------------------
     # run rel0215, lane cleanup-w2. THE NINETEEN ROWS WAVE 1 AND WAVE 2 LEFT
     # UNJUDGED, retired here on measurement rather than parked as debt.
@@ -244,14 +244,14 @@ ACTOR_EXT_SLOT_AUTHORITY = {
     # its receiver. The address of the slot word itself is quoted per row.
     ('__ZTV9ShipWater', 31): 0,               # ov017  @0x02111c74
     ('__ZTV16daObjFm_Battan_c', 31): 0,                # ov023  @0x02112060
-    ('__ZTV10PyramidTop', 31): 0,             # ov024  @0x02113944
+    ('__ZTV16daObjDlPyramid_c', 31): 0,             # ov024  @0x02113944
     ('__ZTV21daObjWlKoopaShutter_c', 31): 0,  # ov026  @0x02113c20
     ('__ZTV18daObjWlSubmarine_c', 31): 0,     # ov026  @0x02113ce8
     ('__ZTV13daObjHmBskt_c', 31): 0,          # ov030  @0x021159f0
     ('__ZTV15daObjHmMaruta_c', 31): 0,        # ov030  @0x02115ac4
     ('_data_ov033_0211237c', 31): 0,          # ov033  @0x021123f8
-    ('__ZTV9TinyWater', 31): 0,               # ov033  @0x021124bc
-    ('__ZTV16RotatingCogSmall', 31): 0,       # ov035  @0x02112b7c
+    ('__ZTV14daObjTtWater_c', 31): 0,               # ov033  @0x021124bc
+    ('__ZTV16daObjCtMecha10_c', 31): 0,       # ov035  @0x02112b7c
     ('__ZTV17RotatingClockHand', 31): 0,      # ov035  @0x02112c48
     ('_data_ov036_02113a98', 31): 0,          # ov036  @0x02113b14
     ('_data_ov036_02113b74', 31): 0,          # ov036  @0x02113bf0
@@ -259,7 +259,7 @@ ACTOR_EXT_SLOT_AUTHORITY = {
     ('__ZTV18daObjRc_Guruguru_c', 31): 0,             # ov036  @0x02113e48
     ('__ZTV16daObjRc_Dorifu_c', 31): 0,  # ov036  @0x02113f48
     ('_data_ov036_02113f9c', 31): 0,          # ov036  @0x02114018
-    ('__ZTV6ToxBox', 31): 0,                  # ov092  @0x0213234c
+    ('__ZTV8daOnms_c', 31): 0,                  # ov092  @0x0213234c
     # ------------------------------------------------------------------
     # run rel0215 wave 3, lane w3-e. SIX MORE, and they are CHECKED rather than
     # baselined for the reason the block above gives: a slot-31 row is only
@@ -290,7 +290,7 @@ ACTOR_EXT_SLOT_AUTHORITY = {
     ('_data_ov022_02113de8', 31): 0,          # ov022 id 80   @0x02113e64
     ('_data_ov022_02113f70', 31): 0,          # ov022 id 73   @0x02113fec
     ('_data_ov022_02114034', 31): 0,          # ov022 id 77   @0x021140b0
-    ('__ZTV13RollingLogLll', 31): 0,           # ov022 id 70   @0x02114420
+    ('__ZTV15daObjFlMaruta_c', 31): 0,           # ov022 id 70   @0x02114420
     ('_data_ov025_02113760', 31): 0,          # ov025 id 163  @0x021137dc
     ('_data_ov025_02113850', 31): 0,          # ov025 id 162  @0x021138cc
     # THE NINETEENTH IS THE SLOT-32 ONE AND IT IS THE OPPOSITE ANSWER.
@@ -903,7 +903,7 @@ def selftest():
           'the table that has one' % ('ok' if ok else 'FAIL'))
 
     print('\n  ACTOR31 classification')
-    ok = '__ZTV5Crate' in actor31
+    ok = '__ZTV5Crate' in actor31  # the fixture's own (pre-merge) name
     bad += 0 if ok else 1
     print('    %-4s a table with a slot in 18..30 is the Actor layout'
           % ('ok' if ok else 'FAIL'))

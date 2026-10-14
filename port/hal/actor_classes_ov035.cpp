@@ -122,10 +122,10 @@ void __sinit_ov035_02111f04(void);
 void __sinit_ov035_02111fc0(void);
 
 /* the bodies src spells with C names (port/slice_sweep1_ov035.txt) */
-int *_ZN16RotatingCogSmallD1Ev(int *self);        /* 0x02112b00 slot 16 */
-int *_ZN16RotatingCogSmallD0Ev(int *self);        /* 0x02112b00 slot 17 */
-int *_ZN16SpinningPlatformD1Ev(int *self);       /* 0x02112bcc slot 16 */
-int *_ZN16SpinningPlatformD0Ev(int *self);       /* 0x02112bcc slot 17 */
+int *_ZN16daObjCtMecha10_cD1Ev(int *self);        /* 0x02112b00 slot 16 */
+int *_ZN16daObjCtMecha10_cD0Ev(int *self);        /* 0x02112b00 slot 17 */
+int *_ZN16daObjCtMecha11_cD1Ev(int *self);       /* 0x02112bcc slot 16 */
+int *_ZN16daObjCtMecha11_cD0Ev(int *self);       /* 0x02112bcc slot 17 */
 void *daObjCtMecha10_c_classInit_CT_MECHA12S(void);               /* id 122 */
 void *daObjCtMecha10_c_classInit_CT_MECHA12L(void);                  /* id 121 */
 void *daObjCtMecha10_c_classInit_CT_MECHA10(void);              /* id 119 */
@@ -133,7 +133,7 @@ void *daObjCtMecha11_c_classInit(void);               /* id 120 */
 
 /* the two host vtables, both 32-slot Platform, both excluded from the mount */
 DSSTATE_BEGIN
-void *_ZTV16RotatingCogSmall[32];    /* 0x02112b00, ids 119/121/122 */
+void *_ZTV16daObjCtMecha10_c[32];    /* 0x02112b00, ids 119/121/122 */
 void *_ZTV17RotatingClockHand[32];   /* 0x02112bcc, id 120 */
 DSSTATE_END
 }
@@ -147,7 +147,7 @@ DSSTATE_END
    defeated. The second store both destructors make, _ZTV10dBgActor_c, is
    Platform's base table and is already a host array in
    hal/actor_classes.cpp. */
-#pragma comment(linker, "/alternatename:__ZTV16daObjCtMecha10_c=__ZTV16RotatingCogSmall")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV16daObjCtMecha10_c=__ZTV16daObjCtMecha10_c")
 #pragma comment(linker, "/alternatename:__ZTV16daObjCtMecha11_c=__ZTV17RotatingClockHand")
 
 /* id 120's CleanupResources spells its two SharedFilePtrs G0 and G1 -- the
@@ -210,25 +210,25 @@ DSSTATE_END
    _ZTV5Model[5] is dual-filled in hal/cxxname_bridge.cpp (the Tree/ov013
    precedent, NOT the ModelAnim slot-5 collision -- neither class holds a
    ModelAnim). */
-#include "RotatingCogSmall.h"
-#include "SpinningPlatform.h"
+#include "daObjCtMecha10_c.h"
+#include "daObjCtMecha11_c.h"
 extern "C" {
-int _ZN16RotatingCogSmall13InitResourcesEv(void *self)
-{ return ((RotatingCogSmall *)self)->RotatingCogSmall::InitResources(); }
-int _ZN16RotatingCogSmall16CleanupResourcesEv(void *self)
-{ return ((RotatingCogSmall *)self)->RotatingCogSmall::CleanupResources(); }
-int _ZN16RotatingCogSmall8BehaviorEv(void *self)
-{ return ((RotatingCogSmall *)self)->RotatingCogSmall::Behavior(); }
-int _ZN16RotatingCogSmall6RenderEv(void *self)
-{ return ((RotatingCogSmall *)self)->RotatingCogSmall::Render(); }
-int _ZN16SpinningPlatform13InitResourcesEv(void *self)
-{ return ((SpinningPlatform *)self)->SpinningPlatform::InitResources(); }
-int _ZN16SpinningPlatform16CleanupResourcesEv(void *self)
-{ return ((SpinningPlatform *)self)->SpinningPlatform::CleanupResources(); }
-int _ZN16SpinningPlatform8BehaviorEv(void *self)
-{ return ((SpinningPlatform *)self)->SpinningPlatform::Behavior(); }
-int _ZN16SpinningPlatform6RenderEv(void *self)
-{ return ((SpinningPlatform *)self)->SpinningPlatform::Render(); }
+int _ZN16daObjCtMecha10_c13InitResourcesEv(void *self)
+{ return ((daObjCtMecha10_c *)self)->daObjCtMecha10_c::InitResources(); }
+int _ZN16daObjCtMecha10_c16CleanupResourcesEv(void *self)
+{ return ((daObjCtMecha10_c *)self)->daObjCtMecha10_c::CleanupResources(); }
+int _ZN16daObjCtMecha10_c8BehaviorEv(void *self)
+{ return ((daObjCtMecha10_c *)self)->daObjCtMecha10_c::Behavior(); }
+int _ZN16daObjCtMecha10_c6RenderEv(void *self)
+{ return ((daObjCtMecha10_c *)self)->daObjCtMecha10_c::Render(); }
+int _ZN16daObjCtMecha11_c13InitResourcesEv(void *self)
+{ return ((daObjCtMecha11_c *)self)->daObjCtMecha11_c::InitResources(); }
+int _ZN16daObjCtMecha11_c16CleanupResourcesEv(void *self)
+{ return ((daObjCtMecha11_c *)self)->daObjCtMecha11_c::CleanupResources(); }
+int _ZN16daObjCtMecha11_c8BehaviorEv(void *self)
+{ return ((daObjCtMecha11_c *)self)->daObjCtMecha11_c::Behavior(); }
+int _ZN16daObjCtMecha11_c6RenderEv(void *self)
+{ return ((daObjCtMecha11_c *)self)->daObjCtMecha11_c::Render(); }
 }
 
 // ---- the trap --------------------------------------------------------------
@@ -382,23 +382,23 @@ extern "C" void port_ov35_bringup(void)
 // One fill serves all three registry rows -- the table is the same array and
 // the fill is idempotent, the ov013 CLOCK_HAND_SHORT/LONG shape.
 static int __fastcall rcs_init(void *s, void *)
-{ return _ZN16RotatingCogSmall13InitResourcesEv(s); }
+{ return _ZN16daObjCtMecha10_c13InitResourcesEv(s); }
 static int __fastcall rcs_clean(void *s, void *)
-{ return _ZN16RotatingCogSmall16CleanupResourcesEv(s); }
+{ return _ZN16daObjCtMecha10_c16CleanupResourcesEv(s); }
 static int __fastcall rcs_behavior(void *s, void *)
-{ return _ZN16RotatingCogSmall8BehaviorEv(s); }
+{ return _ZN16daObjCtMecha10_c8BehaviorEv(s); }
 static int __fastcall rcs_render(void *s, void *)
 { port_actor_render_probe("ROTATING_COG", (char *)s + 0xd4);
-  return _ZN16RotatingCogSmall6RenderEv(s); }
+  return _ZN16daObjCtMecha10_c6RenderEv(s); }
 static int __fastcall rcs_d1(void *s, void *)
-{ return (int)(size_t)_ZN16RotatingCogSmallD1Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjCtMecha10_cD1Ev((int *)s); }
 static int __fastcall rcs_d0(void *s, void *)
-{ return (int)(size_t)_ZN16RotatingCogSmallD0Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjCtMecha10_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_rotating_cog_vtable(void)
 {
     port_ov35_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV16RotatingCogSmall;
+    void *volatile *vt = (void *volatile *)_ZTV16daObjCtMecha10_c;
     ov35_fill_shared(vt);
     vt[0]  = (void *)rcs_init;
     vt[3]  = (void *)rcs_clean;
@@ -426,18 +426,18 @@ extern "C" void hal_fill_rotating_cog_vtable(void)
 // data_ov035_02112b80 with the selector data_0209f2c0[0] for its per-frame
 // spin, and on selector 2 re-randomises sign and dwell.
 static int __fastcall sp_init(void *s, void *)
-{ return _ZN16SpinningPlatform13InitResourcesEv(s); }
+{ return _ZN16daObjCtMecha11_c13InitResourcesEv(s); }
 static int __fastcall sp_clean(void *s, void *)
-{ return _ZN16SpinningPlatform16CleanupResourcesEv(s); }
+{ return _ZN16daObjCtMecha11_c16CleanupResourcesEv(s); }
 static int __fastcall sp_behavior(void *s, void *)
-{ return _ZN16SpinningPlatform8BehaviorEv(s); }
+{ return _ZN16daObjCtMecha11_c8BehaviorEv(s); }
 static int __fastcall sp_render(void *s, void *)
 { port_actor_render_probe("SPINNING_PLATFORM", (char *)s + 0xd4);
-  return _ZN16SpinningPlatform6RenderEv(s); }
+  return _ZN16daObjCtMecha11_c6RenderEv(s); }
 static int __fastcall sp_d1(void *s, void *)
-{ return (int)(size_t)_ZN16SpinningPlatformD1Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjCtMecha11_cD1Ev((int *)s); }
 static int __fastcall sp_d0(void *s, void *)
-{ return (int)(size_t)_ZN16SpinningPlatformD0Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjCtMecha11_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_spinning_platform_vtable(void)
 {

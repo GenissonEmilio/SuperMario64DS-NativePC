@@ -93,34 +93,34 @@
 //                              simply becomes the definition of the same
 //                              MSVC-mangled symbol the host copy provided.
 
-#include "BowserPuzzleManager.h"
-#include "Cannon.h"
-#include "Klepto.h"
+#include "daObjFl_Coin_c.h"
+#include "daCnn_c.h"
+#include "daJango_c.h"
 #include "Koopa.h"
-#include "Bowser.h"
-#include "PrincessPeach.h"
-#include "Key.h"
-#include "RacingPenguin.h"
-#include "Submarine.h"
-#include "Wiggler.h"
-#include "BowserPuzzlePiece.h"
-#include "Whirlpool.h"
+#include "daKpa_c.h"
+#include "daPeach_c.h"
+#include "daObjKey_c.h"
+#include "daPgRcer_c.h"
+#include "daObjWlSubmarine_c.h"
+#include "daHanachan_c.h"
+#include "daObjFl_Puzzle_c.h"
+#include "daWater_Tatumaki_c.h"
 
 extern "C" {
 /* ov064 0x02119088, slot 9 of the Piece's table 0x0211c25c; the Manager has no
    Render of its own, so this used to reach the inherited base instead. */
-int _ZN17BowserPuzzlePiece6RenderEv(void *s) { return ((BowserPuzzlePiece *)s)->BowserPuzzlePiece::Render(); }
-int _ZN6Cannon6RenderEv(void *s)               { return ((Cannon *)s)->Cannon::Render(); }
-int _ZN6Klepto6RenderEv(void *s)               { return ((Klepto *)s)->Klepto::Render(); }
-int _ZN5Koopa6RenderEv(void *s)                { return ((Koopa *)s)->Koopa::Render(); }
-int _ZN6Bowser6RenderEv(void *s)               { return ((Bowser *)s)->Bowser::Render(); }
-int _ZN13PrincessPeach8BehaviorEv(void *s)     { return ((PrincessPeach *)s)->PrincessPeach::Behavior(); }
-int _ZN3Key6RenderEv(void *s)                  { return ((Key *)s)->Key::Render(); }
+int _ZN16daObjFl_Puzzle_c6RenderEv(void *s) { return ((daObjFl_Puzzle_c *)s)->daObjFl_Puzzle_c::Render(); }
+int _ZN7daCnn_c6RenderEv(void *s)               { return ((daCnn_c *)s)->daCnn_c::Render(); }
+int _ZN9daJango_c6RenderEv(void *s)               { return ((daJango_c *)s)->daJango_c::Render(); }
+int _ZN8daNknk_c6RenderEv(void *s)                { return ((Koopa *)s)->Koopa::Render(); }
+int _ZN7daKpa_c6RenderEv(void *s)               { return ((daKpa_c *)s)->daKpa_c::Render(); }
+int _ZN9daPeach_c8BehaviorEv(void *s)     { return ((daPeach_c *)s)->daPeach_c::Behavior(); }
+int _ZN10daObjKey_c6RenderEv(void *s)                  { return ((daObjKey_c *)s)->daObjKey_c::Render(); }
 /* char*, not void*: hal/actor_classes_ov019_w3e.cpp declares this one
    `int _ZN13RacingPenguin6RenderEv(char *self)` and calls it with a cast. */
-int _ZN13RacingPenguin6RenderEv(char *s)       { return ((RacingPenguin *)s)->RacingPenguin::Render(); }
+int _ZN10daPgRcer_c6RenderEv(char *s)       { return ((daPgRcer_c *)s)->daPgRcer_c::Render(); }
 /* ov026 0x02111fd8, slot 9 of the whirlpool's table 0x02113d54; Submarine's own
    Render is 0x02111998 in table 0x02113c6c. */
-int _ZN9Whirlpool6RenderEv(void *s)            { return ((Whirlpool *)s)->Whirlpool::Render(); }
-int _ZN7Wiggler6RenderEv(void *s)              { return ((Wiggler *)s)->Wiggler::Render(); }
+int _ZN18daWater_Tatumaki_c6RenderEv(void *s)            { return ((daWater_Tatumaki_c *)s)->daWater_Tatumaki_c::Render(); }
+int _ZN12daHanachan_c6RenderEv(void *s)              { return ((daHanachan_c *)s)->daHanachan_c::Render(); }
 }

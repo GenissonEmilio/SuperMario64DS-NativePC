@@ -135,17 +135,17 @@ void __sinit_ov025_02112a44(void);   /* id 87's files 1503 + 1504 */
 void __sinit_ov025_02112aac(void);   /* id 88's files 1505 + 1506 */
 
 /* the class bodies src spells with C names (port/slice_w15c.txt) */
-int *_ZN11PyramidStepD1Ev(int *self);                   /* 87 slot 16 */
-int *_ZN11PyramidStepD0Ev(int *self);                   /* 87 slot 17 */
+int *_ZN14daObjDpBrock_cD1Ev(int *self);                   /* 87 slot 16 */
+int *_ZN14daObjDpBrock_cD0Ev(int *self);                   /* 87 slot 17 */
 void *daObjDpBrock_c_classInit(void);
-int _ZN11PyramidLift16CleanupResourcesEv(void);         /* 88 slot 3  */
-void *_ZN11PyramidLiftD1Ev(void *self);                 /* 88 slot 16 */
-int *_ZN11PyramidLiftD0Ev(void *self);                  /* 88 slot 17 */
+int _ZN10daDpLift_c16CleanupResourcesEv(void);         /* 88 slot 3  */
+void *_ZN10daDpLift_cD1Ev(void *self);                 /* 88 slot 16 */
+int *_ZN10daDpLift_cD0Ev(void *self);                  /* 88 slot 17 */
 void *daDpLift_c_classInit(void);
 
 DSSTATE_BEGIN
-void *_ZTV11PyramidStep[32];
-void *_ZTV11PyramidLift[32];
+void *_ZTV14daObjDpBrock_c[32];
+void *_ZTV10daDpLift_c[32];
 DSSTATE_END
 }
 
@@ -153,8 +153,7 @@ DSSTATE_END
    0x02113914 are excluded from the mount, so this LHS is undefined everywhere
    and the alias cannot be defeated. id 88's table needs no alias: its second
    spelling is another OVERLAY's name and is routed by a per-source -D. */
-#pragma comment(linker, "/alternatename:__ZTV14daObjDpBrock_c=__ZTV11PyramidStep")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV14daObjDpBrock_c=__ZTV14daObjDpBrock_c")
 /* FOUR C++-MANGLED DATA SPELLINGS, the IDENTITY_MATRIX4X3 / data_020a0e68 /
    ov052 data_ov052_021124d4 precedent. src/_ZN11PyramidLift13InitResourcesEv
    .cpp declares its two SharedFilePtrs, ov002's second model file and its
@@ -171,21 +170,21 @@ DSSTATE_END
 
 /* The six bodies src defines as real C++ methods rather than extern-"C" free
    functions, three per class. */
-#include "PyramidStep.h"
-#include "PyramidLift.h"
+#include "daObjDpBrock_c.h"
+#include "daDpLift_c.h"
 extern "C" {
-int _ZN11PyramidStep13InitResourcesEv(void *self)
-{ return ((PyramidStep *)self)->PyramidStep::InitResources(); }
-int _ZN11PyramidStep8BehaviorEv(void *self)
-{ return ((PyramidStep *)self)->PyramidStep::Behavior(); }
-int _ZN11PyramidStep6RenderEv(void *self)
-{ return ((PyramidStep *)self)->PyramidStep::Render(); }
-int _ZN11PyramidLift13InitResourcesEv(void *self)
-{ return ((PyramidLift *)self)->PyramidLift::InitResources(); }
-int _ZN11PyramidLift8BehaviorEv(void *self)
-{ return ((PyramidLift *)self)->PyramidLift::Behavior(); }
-int _ZN11PyramidLift6RenderEv(void *self)
-{ return ((PyramidLift *)self)->PyramidLift::Render(); }
+int _ZN14daObjDpBrock_c13InitResourcesEv(void *self)
+{ return ((daObjDpBrock_c *)self)->daObjDpBrock_c::InitResources(); }
+int _ZN14daObjDpBrock_c8BehaviorEv(void *self)
+{ return ((daObjDpBrock_c *)self)->daObjDpBrock_c::Behavior(); }
+int _ZN14daObjDpBrock_c6RenderEv(void *self)
+{ return ((daObjDpBrock_c *)self)->daObjDpBrock_c::Render(); }
+int _ZN10daDpLift_c13InitResourcesEv(void *self)
+{ return ((daDpLift_c *)self)->daDpLift_c::InitResources(); }
+int _ZN10daDpLift_c8BehaviorEv(void *self)
+{ return ((daDpLift_c *)self)->daDpLift_c::Behavior(); }
+int _ZN10daDpLift_c6RenderEv(void *self)
+{ return ((daDpLift_c *)self)->daDpLift_c::Render(); }
 }
 
 // ---- the trap --------------------------------------------------------------
@@ -327,7 +326,7 @@ extern "C" void port_ov25_bringup(void)
 // frames, rebuilding the collider transform whenever Platform::IsClsnInRange
 // says the player is near. Its files are 1503 (model) and 1504 (collision).
 static int __fastcall ps_init(void *s, void *)
-{ return _ZN11PyramidStep13InitResourcesEv(s); }
+{ return _ZN14daObjDpBrock_c13InitResourcesEv(s); }
 /* Slot 3, THE MATCHED TU -- run rel0215 wave 3 (lane w3-e) retired the
    transcription this was. The ruling that held it out stands: the body spells
    its two SharedFilePtrs as the shared placeholders G0/G1, and
@@ -343,23 +342,23 @@ static int __fastcall ps_init(void *s, void *)
      _ZN4dBgW7DisableEv(this + 0x124);
      SharedFilePtr::Release(0x02113ab8);  SharedFilePtr::Release(0x02113ab0); */
 static int __fastcall ps_clean(void *s, void *)
-{ return ((PyramidStep *)s)->PyramidStep::CleanupResources(); }
+{ return ((daObjDpBrock_c *)s)->daObjDpBrock_c::CleanupResources(); }
 static int __fastcall ps_behavior(void *s, void *)
-{ return _ZN11PyramidStep8BehaviorEv(s); }
+{ return _ZN14daObjDpBrock_c8BehaviorEv(s); }
 static int __fastcall ps_render(void *s, void *)
 { port_actor_render_probe("PYRAMID_STEP", (char *)s + 0x320);
-  return _ZN11PyramidStep6RenderEv(s); }
+  return _ZN14daObjDpBrock_c6RenderEv(s); }
 static int __fastcall ps_d1(void *s, void *)
-{ return (int)(size_t)_ZN11PyramidStepD1Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjDpBrock_cD1Ev((int *)s); }
 static int __fastcall ps_d0(void *s, void *)
-{ return (int)(size_t)_ZN11PyramidStepD0Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjDpBrock_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_pyramid_step_vtable(void)
 {
     port_ov25_bringup();
     /* THE POINTER IS VOLATILE ON PURPOSE -- the gate-200 elided-stores bug,
        repro in hal/actor_classes_ov002g200.cpp. */
-    void *volatile *vt = (void *volatile *)_ZTV11PyramidStep;
+    void *volatile *vt = (void *volatile *)_ZTV14daObjDpBrock_c;
     ov25_fill_shared(vt);
     vt[0]  = (void *)ps_init;
     vt[3]  = (void *)ps_clean;
@@ -384,23 +383,23 @@ extern "C" void hal_fill_pyramid_step_vtable(void)
 // InitResources hands func_020393c4; it forwards to func_ov025_021125bc, which
 // sets +0x3f7 when the colliding actor's id reads 0xbf (the Player).
 static int __fastcall pl_init(void *s, void *)
-{ return _ZN11PyramidLift13InitResourcesEv(s); }
+{ return _ZN10daDpLift_c13InitResourcesEv(s); }
 static int __fastcall pl_clean(void *s, void *)
-{ return _ZN11PyramidLift16CleanupResourcesEv(); }
+{ return _ZN10daDpLift_c16CleanupResourcesEv(); }
 static int __fastcall pl_behavior(void *s, void *)
-{ return _ZN11PyramidLift8BehaviorEv(s); }
+{ return _ZN10daDpLift_c8BehaviorEv(s); }
 static int __fastcall pl_render(void *s, void *)
 { port_actor_render_probe("PYRAMID_LIFT", (char *)s + 0xd4);
-  return _ZN11PyramidLift6RenderEv(s); }
+  return _ZN10daDpLift_c6RenderEv(s); }
 static int __fastcall pl_d1(void *s, void *)
-{ return (int)(size_t)_ZN11PyramidLiftD1Ev(s); }
+{ return (int)(size_t)_ZN10daDpLift_cD1Ev(s); }
 static int __fastcall pl_d0(void *s, void *)
-{ return (int)(size_t)_ZN11PyramidLiftD0Ev(s); }
+{ return (int)(size_t)_ZN10daDpLift_cD0Ev(s); }
 
 extern "C" void hal_fill_pyramid_lift_vtable(void)
 {
     port_ov25_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV11PyramidLift;
+    void *volatile *vt = (void *volatile *)_ZTV10daDpLift_c;
     ov25_fill_shared(vt);
     vt[0]  = (void *)pl_init;
     vt[3]  = (void *)pl_clean;

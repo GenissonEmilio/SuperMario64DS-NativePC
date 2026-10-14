@@ -104,11 +104,11 @@ void port_mg_call0(void *self, unsigned code, int adj);
    func_ov006_020ef47c is FOUR BYTES -- a bare `bx lr` -- and is this class's
    idle body; there is nothing for an ignored receiver to be wrong about, which
    is the MgCoin_StateDispatch.cpp ruling for the same shape. */
-void func_ov006_020ef47c(void);
-void func_ov006_020ef480(char *c);
-void func_ov006_020ef4ec(char *c);
-void func_ov006_020ef5ac(char *self);
-void func_ov006_020ef794(char *self);
+void _ZN12dScMgJump2_c19func_ov006_020ef47cEv(void);
+void _ZN12dScMgJump2_c19func_ov006_020ef480Ev(char *c);
+void _ZN12dScMgJump2_c19func_ov006_020ef4ecEv(char *c);
+void _ZN12dScMgJump2_c19func_ov006_020ef5acEv(char *self);
+void _ZN12dScMgJump2_c19func_ov006_020ef794Ev(char *self);
 
 /* the ordinary callees slot 6 keeps, spelled as src/minigames/d_s_mg_jump2.cpp
    spells them */
@@ -199,11 +199,11 @@ extern "C" unsigned port_mg_jump2_field_capacity(void) { return FIELD_SEEN_MAX; 
         call;                                                             \
     }
 
-JUMP2_FACE(020ef47c, func_ov006_020ef47c())
-JUMP2_FACE(020ef480, func_ov006_020ef480((char *)self))
-JUMP2_FACE(020ef4ec, func_ov006_020ef4ec((char *)self))
-JUMP2_FACE(020ef5ac, func_ov006_020ef5ac((char *)self))
-JUMP2_FACE(020ef794, func_ov006_020ef794((char *)self))
+JUMP2_FACE(020ef47c, _ZN12dScMgJump2_c19func_ov006_020ef47cEv())
+JUMP2_FACE(020ef480, _ZN12dScMgJump2_c19func_ov006_020ef480Ev((char *)self))
+JUMP2_FACE(020ef4ec, _ZN12dScMgJump2_c19func_ov006_020ef4ecEv((char *)self))
+JUMP2_FACE(020ef5ac, _ZN12dScMgJump2_c19func_ov006_020ef5acEv((char *)self))
+JUMP2_FACE(020ef794, _ZN12dScMgJump2_c19func_ov006_020ef794Ev((char *)self))
 
 extern "C" {
 extern MgPmf data_ov006_0213cc74, data_ov006_0213cc84, data_ov006_0213cc8c,

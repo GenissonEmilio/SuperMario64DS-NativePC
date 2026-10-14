@@ -294,4 +294,4 @@ src/actors/dScMgPanel_c.cpp
 # THE JOIN MISS, section 4. Outside the delinks join and bannered NONMATCHING,
 # so the closure walk could not reach it and stategen could not emit its case;
 # both are boundaries of a tool rather than floors for the port.
-src/d_s_mg_panel.c
+# FOLDED into src/actors/dScMgPanel_c.cpp (row 288): src/d_s_mg_panel.c

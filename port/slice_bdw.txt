@@ -55,5 +55,5 @@ src/game/actors/d_a_obj_km1_dorifu.cpp
 # already in gate 206's port_ov43_bringup; 137's __sinit_02111868 stays off).
 # 021118d4 builds 136's pair, 02111940 builds 134's five-stair array (20
 # name-shift -D fixes in port/CMakeLists.txt).
-src/__sinit_ov043_021118d4.c
-src/__sinit_ov043_02111940.c
+# FOLDED into src/game/actors/d_a_obj_km1_kuruma.cpp (row 51): src/__sinit_ov043_021118d4.c
+# FOLDED into src/game/actors/d_a_obj_km1_dorifu.cpp (row 53): src/__sinit_ov043_02111940.c

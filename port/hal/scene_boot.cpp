@@ -529,7 +529,7 @@ int  _ZN8dGraph_c10callback_c14GraphCallback1Ev(void *self);/* gc slot 1, matche
 int  _ZN8dGraph_c10callback_c14GraphCallback3Ev(void *self);/* gc slot 3, matched arm9 */
 
 /* the seat, minus the Stage (hal/level_boot.cpp) */
-void _ZN8dScene_c9SetFadersEP15FaderBrightness(void *thiz);
+void _ZN8dScene_c9SetFadersEP15dFdBrightness_c(void *thiz);
 
 void port_scene_a2_seat(void);
 
@@ -1327,10 +1327,10 @@ static void port_save_probe(int frame)
 // typeinfo, pointing at 0x0208ea18 = "9dFdWipe_c". They are not this class's
 // slots, nothing may dispatch them, and they keep the trap.
 static void l2_trap(const char *name);
-static void l2_vt_trap(void) { l2_trap("data_0208ea6c vtable slot"); }
+static void l2_vt_trap(void) { l2_trap("_ZTV10dFdDummy_c vtable slot"); }
 DSSTATE_BEGIN
 extern "C" {
-void *data_0208ea6c[12];
+void *_ZTV10dFdDummy_c[12];
 /* data_0208eb2c is the SAME SHAPE and the same critical path: func_02017278
    writes it as the third of the member's four vptrs, and its ten words are
    relocated code addresses too (0x020175c4, 0x02017598, 0x020174e0,
@@ -1340,12 +1340,12 @@ void *data_0208ea6c[12];
 /* ALL TEN SEATED as of run link100 lane STAGEBUG: 0 and 1 by gate 225b, and
    2..9 by the block above l2_eb2c_s08, which is also where the fault that
    forced it is written down. */
-void *data_0208eb2c[10];
+void *_ZTV10dFdColor_c[10];
 /* data_0208eacc, the SECOND of the member's four vptrs, joins them: 48 bytes,
    twelve words, relocated code addresses. Three of the four are now filled
    here and only data_0208eafc is still shipping raw ROM bytes, because
    nothing this lane compiled asked for it. */
-void *data_0208eacc[12];
+void *_ZTV15dFdBrightness_c[12];
 /* AND THE FOURTH, data_0208eafc, which closes the set func_02017278 writes.
    This one is NOT uniformly pointers: only three of its twelve words are
    relocated (+0 -> 0x0201786c, +4 -> 0x02017848, +44 -> 0x0208ea00) and the
@@ -1354,7 +1354,7 @@ void *data_0208eacc[12];
    the difference between hosting a vtable and hosting a table that happens to
    start with two function pointers. The +44 word points at another arm9 data
    symbol rather than at code and is left as the ROM has it. */
-unsigned char data_0208eafc[48] = {
+unsigned char _ZTV8dFader_c[48] = {
     108,120,1,2, 72,120,1,2, 0,0,0,0, 0,0,0,0,
     0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
     0,0,0,0, 0,0,0,0, 0,0,0,0, 0,234,8,2
@@ -1507,7 +1507,7 @@ DSSTATE_END
    src TUs are the three guess-marked bodies port/tools/inferred_stub_guard.py
    refuses, and which this file already routes past. */
 
-#include "FaderBrightness.h"
+#include "dFdBrightness_c.h"
 
 extern "C" {
 /* The ROM body and the four receiver-bridging faces this fill reaches. Every
@@ -1522,14 +1522,14 @@ extern "C" {
                                                 port/slice_gate225.txt        */
 void *_ZN10dFdDummy_cD1Ev(void *self);
 void *_ZN10dFdDummy_cD0Ev(void *self);
-void  _ZN5Fader13AdvanceInterpEv(void *self);
-int   _ZN15FaderBrightness9IsAtStartEv(void *self);
-int   _ZN15FaderBrightness7IsAtEndEv(void *self);
-int   _ZN15FaderBrightness20IsBetweenStartAndEndEv(void *self);
+void  _ZN8dFader_c13AdvanceInterpEv(void *self);
+int   _ZN15dFdBrightness_c9IsAtStartEv(void *self);
+int   _ZN15dFdBrightness_c7IsAtEndEv(void *self);
+int   _ZN15dFdBrightness_c20IsBetweenStartAndEndEv(void *self);
 /* and one more for data_0208eb2c +0x08, the flat face
    hal/fdr_arm9_fader_seat.cpp already owns over
    src/engine/fader/_ZN10FaderColor11AdvanceFadeEv.cpp. */
-void  _ZN10FaderColor11AdvanceFadeEv(void *self);
+void  _ZN10dFdColor_c11AdvanceFadeEv(void *self);
 }
 
 /* SM64DS_EA6C_TRACE=1: one line the first time each seated slot is entered,
@@ -1625,12 +1625,12 @@ static void *__fastcall l2_ea6c_s04(void *s, void *)
    word off its own frame, so the stub says so rather than running on it. */
 static void __cdecl l2_ea6c_s08(void *s)
 {
-    if (s == 0 || *(void **)s != (void *)data_0208ea6c) {
-        l2_trap("data_0208ea6c vtable slot");
+    if (s == 0 || *(void **)s != (void *)_ZTV10dFdDummy_c) {
+        l2_trap("_ZTV10dFdDummy_c vtable slot");
         return;
     }
     l2_ea6c_note(2);
-    _ZN5Fader13AdvanceInterpEv(s);
+    _ZN8dFader_c13AdvanceInterpEv(s);
 }
 
 /* The ROM-ordered dispatch the two setters end in. Byte offsets, because that
@@ -1724,13 +1724,13 @@ static int l2_ea6c_receiver_ok(void *s)
     const std::size_t v = (std::size_t)s;
     if (v < 0x10000 || (v & 3) != 0)
         return 0;
-    return *(void **)s == (void *)data_0208ea6c;
+    return *(void **)s == (void *)_ZTV10dFdDummy_c;
 }
 
 static int __cdecl l2_ea6c_s0c(void *s, int, int)
 {
     if (!l2_ea6c_receiver_ok(s)) {
-        l2_trap("data_0208ea6c vtable slot");
+        l2_trap("_ZTV10dFdDummy_c vtable slot");
         return 0;
     }
     l2_ea6c_note(3);
@@ -1740,7 +1740,7 @@ static int __cdecl l2_ea6c_s0c(void *s, int, int)
 static int __cdecl l2_ea6c_s10(void *s, int, int)
 {
     if (!l2_ea6c_receiver_ok(s)) {
-        l2_trap("data_0208ea6c vtable slot");
+        l2_trap("_ZTV10dFdDummy_c vtable slot");
         return 0;
     }
     l2_ea6c_note(4);
@@ -1752,9 +1752,9 @@ static int __cdecl l2_ea6c_s10(void *s, int, int)
    hal files already own, each of which makes a QUALIFIED call so nothing
    re-dispatches. */
 static int __fastcall l2_ea6c_s14(void *s, void *)
-{ l2_ea6c_note(5); return _ZN15FaderBrightness9IsAtStartEv(s); }
+{ l2_ea6c_note(5); return _ZN15dFdBrightness_c9IsAtStartEv(s); }
 static int __fastcall l2_ea6c_s18(void *s, void *)
-{ l2_ea6c_note(6); return _ZN15FaderBrightness7IsAtEndEv(s); }
+{ l2_ea6c_note(6); return _ZN15dFdBrightness_c7IsAtEndEv(s); }
 
 /* +0x1c. THE SLOT THE SKEW IS ABOUT, and the one that must NOT call the
    matched method the way its five neighbours do. hal/fdr_arm9_fader_seat.cpp's
@@ -1765,20 +1765,20 @@ static int __fastcall l2_ea6c_s18(void *s, void *)
    which is l2_ea6c_s10: a wrong answer, a clobbered `speed`, and eight bytes
    off the caller's frame. l2_ea6c_selftest below measures exactly that. */
 static int __fastcall l2_ea6c_s1c(void *s, void *)
-{ l2_ea6c_note(7); return _ZN15FaderBrightness20IsBetweenStartAndEndEv(s); }
+{ l2_ea6c_note(7); return _ZN15dFdBrightness_c20IsBetweenStartAndEndEv(s); }
 
 /* +0x20 and +0x24. Both matched, both non-virtual in the header, so a
    qualified call is a direct call and the host vtable is not read. */
 static void __fastcall l2_ea6c_s20(void *s, void *)
-{ l2_ea6c_note(8); ((FaderBrightness *)s)->FaderBrightness::SetToEnd(); }
+{ l2_ea6c_note(8); ((dFdBrightness_c *)s)->dFdBrightness_c::SetToEnd(); }
 static void __fastcall l2_ea6c_s24(void *s, void *)
-{ l2_ea6c_note(9); ((FaderBrightness *)s)->FaderBrightness::SetToStart(); }
+{ l2_ea6c_note(9); ((dFdBrightness_c *)s)->dFdBrightness_c::SetToStart(); }
 
 /* +0x28 and +0x2c are the next table's header, not this class's slots (see the
    head of section 2b). Nothing may dispatch them; they keep the trap so that
    something which does says so instead of jumping into the offset-to-top. */
 static int __fastcall l2_ea6c_over(void *, void *)
-{ l2_trap("data_0208ea6c vtable slot"); return 0; }
+{ l2_trap("_ZTV10dFdDummy_c vtable slot"); return 0; }
 
 /* ---- data_0208eb2c, _ZTV10FaderColor: THE EIGHT SLOTS THE AUDIT MISSED ----
    run link100 lane STAGEBUG.
@@ -1883,7 +1883,7 @@ static int __fastcall l2_eb2c_view_is_at_end(L2Eb2cView *v, void *)
 static int __fastcall l2_eb2c_view_unreached(void *, void *)
 {
     std::fprintf(stderr, "  [eb2c] the MSVC-ordered view built for the "
-                 "FaderBrightness setters was dispatched below byte 0x10. "
+                 "dFdBrightness_c setters was dispatched below byte 0x10. "
                  "Those bodies are supposed to reach 0x10 or 0x14 and nothing "
                  "else, so their codegen has changed and the view no longer "
                  "describes them.\n");
@@ -1907,9 +1907,9 @@ static int l2_eb2c_run_setter(void *s, unsigned frames, int backward)
     v.currInterp = ((int *)s)[1];
     v.speed = ((int *)s)[2];
     v.real = s;
-    FaderBrightness *fb = (FaderBrightness *)(void *)&v;
-    const int r = backward ? fb->FaderBrightness::SetBackwardTime(frames)
-                           : fb->FaderBrightness::SetForwardTime(frames);
+    dFdBrightness_c *fb = (dFdBrightness_c *)(void *)&v;
+    const int r = backward ? fb->dFdBrightness_c::SetBackwardTime(frames)
+                           : fb->dFdBrightness_c::SetForwardTime(frames);
     ((int *)s)[2] = v.speed;
     return r;
 }
@@ -1926,12 +1926,12 @@ static int l2_eb2c_run_setter(void *s, unsigned frames, int backward)
    and it says so instead of running on it. */
 static void __cdecl l2_eb2c_s08(void *s)
 {
-    if (s == 0 || *(void **)s != (void *)data_0208eb2c) {
-        l2_trap("data_0208ea6c vtable slot");
+    if (s == 0 || *(void **)s != (void *)_ZTV10dFdColor_c) {
+        l2_trap("_ZTV10dFdDummy_c vtable slot");
         return;
     }
     l2_eb2c_note(2);
-    _ZN10FaderColor11AdvanceFadeEv(s);
+    _ZN10dFdColor_c11AdvanceFadeEv(s);
 }
 
 /* +0x0c and +0x10. THE TWO THAT CLEAN NOTHING, and the paragraph this replaces
@@ -2007,8 +2007,8 @@ static void __cdecl l2_eb2c_s08(void *s)
 extern "C" int __cdecl l2_eb2c_s0c_body(void *s, int frames, int)
 {
     if (s == 0 || ((std::size_t)s & 3) != 0 ||
-        *(void **)s != (void *)data_0208eb2c) {
-        l2_trap("data_0208eb2c vtable slot 0x0c, WRONG RECEIVER");
+        *(void **)s != (void *)_ZTV10dFdColor_c) {
+        l2_trap("_ZTV10dFdColor_c vtable slot 0x0c, WRONG RECEIVER");
         return 0;
     }
     l2_eb2c_note(3); return l2_eb2c_run_setter(s, (unsigned)frames, 1);
@@ -2016,8 +2016,8 @@ extern "C" int __cdecl l2_eb2c_s0c_body(void *s, int frames, int)
 extern "C" int __cdecl l2_eb2c_s10_body(void *s, int frames, int)
 {
     if (s == 0 || ((std::size_t)s & 3) != 0 ||
-        *(void **)s != (void *)data_0208eb2c) {
-        l2_trap("data_0208eb2c vtable slot 0x10, WRONG RECEIVER");
+        *(void **)s != (void *)_ZTV10dFdColor_c) {
+        l2_trap("_ZTV10dFdColor_c vtable slot 0x10, WRONG RECEIVER");
         return 0;
     }
     l2_eb2c_note(4); return l2_eb2c_run_setter(s, (unsigned)frames, 0);
@@ -2028,7 +2028,7 @@ __declspec(naked) static void l2_eb2c_s0c(void)
     __asm {
         /* caller 1 (__cdecl, dScene_c::BeforeBehavior) leaves the VTABLE in ecx;
            caller 2 (__thiscall, ProcessKuppaScript) leaves the OBJECT in ecx. */
-        cmp  ecx, offset data_0208eb2c
+        cmp  ecx, offset _ZTV10dFdColor_c
         je   shape_cdecl
         /* __thiscall: receiver in ecx, [esp+4] frames, [esp+8] arg2, callee cleans 8 */
         push dword ptr [esp+8]          /* arg2 */
@@ -2048,7 +2048,7 @@ __declspec(naked) static void l2_eb2c_s10(void)
     __asm {
         /* caller 1 (__cdecl, dScene_c::BeforeBehavior) leaves the VTABLE in ecx;
            caller 2 (__thiscall, ProcessKuppaScript) leaves the OBJECT in ecx. */
-        cmp  ecx, offset data_0208eb2c
+        cmp  ecx, offset _ZTV10dFdColor_c
         je   shape_cdecl
         /* __thiscall: receiver in ecx, [esp+4] frames, [esp+8] arg2, callee cleans 8 */
         push dword ptr [esp+8]          /* arg2 */
@@ -2096,7 +2096,7 @@ static int l2_eb2c_is_fader(const void *p)
     if (!p || ((size_t)p & 3) || IsBadReadPtr(p, 4))
         return 0;
     const void *vt = *(const void *const *)p;
-    return vt == (const void *)data_0208eb2c || vt == (const void *)data_0208eacc;
+    return vt == (const void *)_ZTV10dFdColor_c || vt == (const void *)_ZTV15dFdBrightness_c;
 }
 
 static void *l2_eb2c_recv(void *ecx_recv, void *const *ret_slot)
@@ -2112,25 +2112,25 @@ static void *l2_eb2c_recv(void *ecx_recv, void *const *ret_slot)
 static int __fastcall l2_eb2c_s14(void *s, void *)
 {
     s = l2_eb2c_recv(s, (void *const *)_AddressOfReturnAddress());
-    l2_eb2c_note(5); return _ZN15FaderBrightness9IsAtStartEv(s);
+    l2_eb2c_note(5); return _ZN15dFdBrightness_c9IsAtStartEv(s);
 }
 static int __fastcall l2_eb2c_s18(void *s, void *)
 {
     s = l2_eb2c_recv(s, (void *const *)_AddressOfReturnAddress());
-    l2_eb2c_note(6); return _ZN15FaderBrightness7IsAtEndEv(s);
+    l2_eb2c_note(6); return _ZN15dFdBrightness_c7IsAtEndEv(s);
 }
 static int __fastcall l2_eb2c_s1c(void *s, void *)
 {
     s = l2_eb2c_recv(s, (void *const *)_AddressOfReturnAddress());
-    l2_eb2c_note(7); return _ZN15FaderBrightness20IsBetweenStartAndEndEv(s);
+    l2_eb2c_note(7); return _ZN15dFdBrightness_c20IsBetweenStartAndEndEv(s);
 }
 
 /* +0x20 and +0x24. Both matched, both non-virtual in the header, so a
    qualified call is a direct call and no host vtable is read. */
 static void __fastcall l2_eb2c_s20(void *s, void *)
-{ l2_eb2c_note(8); ((FaderBrightness *)s)->FaderBrightness::SetToEnd(); }
+{ l2_eb2c_note(8); ((dFdBrightness_c *)s)->dFdBrightness_c::SetToEnd(); }
 static void __fastcall l2_eb2c_s24(void *s, void *)
-{ l2_eb2c_note(9); ((FaderBrightness *)s)->FaderBrightness::SetToStart(); }
+{ l2_eb2c_note(9); ((dFdBrightness_c *)s)->dFdBrightness_c::SetToStart(); }
 
 /* THE SAME DEFECT, ONE TABLE OVER, HARDENED RATHER THAN SEATED.
    data_0208eacc is _ZTV15FaderBrightness and its +0x0c / +0x10 are the same
@@ -2148,7 +2148,7 @@ static void __fastcall l2_eb2c_s24(void *s, void *)
    argument and cleans all twelve bytes itself. A `ret 8` here would leave the
    stack eight bytes high on the one path this trap exists to survive. */
 static int __cdecl l2_vt_trap8(void *, int, int)
-{ l2_trap("data_0208ea6c vtable slot"); return 0; }
+{ l2_trap("_ZTV10dFdDummy_c vtable slot"); return 0; }
 
 /* SM64DS_EA6C_SELFTEST=1: DOES +0x1c REACH THE REAL PREDICATES? Env-gated and
    inert unset, and it is a measurement rather than an assertion that the fill
@@ -2178,16 +2178,16 @@ static void l2_ea6c_selftest(void)
     int fails = 0;
     l2_ea6c_quiet = 1;
     for (int i = 0; i < 3; ++i) {
-        p.vt = (void **)data_0208ea6c;
+        p.vt = (void **)_ZTV10dFdDummy_c;
         p.currInterp = cases[i];
         p.speed = sentinel;
-        FaderBrightness *fb = (FaderBrightness *)(void *)&p;
-        const int want_start = fb->FaderBrightness::IsAtStart();
-        const int want_end = fb->FaderBrightness::IsAtEnd();
+        dFdBrightness_c *fb = (dFdBrightness_c *)(void *)&p;
+        const int want_start = fb->dFdBrightness_c::IsAtStart();
+        const int want_end = fb->dFdBrightness_c::IsAtEnd();
         const int want_between = (want_start == 0 && want_end == 0) ? 1 : 0;
-        const int got_start = ((L2Ea6cSlot)data_0208ea6c[5])(&p, 0);
-        const int got_end = ((L2Ea6cSlot)data_0208ea6c[6])(&p, 0);
-        const int got_between = ((L2Ea6cSlot)data_0208ea6c[7])(&p, 0);
+        const int got_start = ((L2Ea6cSlot)_ZTV10dFdDummy_c[5])(&p, 0);
+        const int got_end = ((L2Ea6cSlot)_ZTV10dFdDummy_c[6])(&p, 0);
+        const int got_between = ((L2Ea6cSlot)_ZTV10dFdDummy_c[7])(&p, 0);
         const int kept = (p.speed == sentinel);
         const int ok = got_start == want_start && got_end == want_end &&
                        got_between == want_between && kept;
@@ -2302,12 +2302,12 @@ static void l2_ea6c_selftest(void)
    seat nothing dispatches and a seat that runs every frame are opposite
    findings and both are silent. Six lines a run at most. */
 extern "C" {
-int   _ZN15FaderBrightnessD1Ev(int *self);   /* 0x02017814  eacc +0x00 */
-void *_ZN15FaderBrightnessD0Ev(void *self);  /* 0x020177e8  eacc +0x04 */
-void  _ZN5FaderD1Ev(int *self);              /* 0x0201786c  eafc +0x00 */
-void *_ZN5FaderD0Ev(void *self);             /* 0x02017848  eafc +0x04 */
-int   _ZN10FaderColorD1Ev(int *self);        /* 0x020175c4  eb2c +0x00 */
-void *_ZN10FaderColorD0Ev(void *self);       /* 0x02017598  eb2c +0x04 */
+int   _ZN15dFdBrightness_cD1Ev(int *self);   /* 0x02017814  eacc +0x00 */
+void *_ZN15dFdBrightness_cD0Ev(void *self);  /* 0x020177e8  eacc +0x04 */
+void  _ZN8dFader_cD1Ev(int *self);              /* 0x0201786c  eafc +0x00 */
+void *_ZN8dFader_cD0Ev(void *self);             /* 0x02017848  eafc +0x04 */
+int   _ZN10dFdColor_cD1Ev(int *self);        /* 0x020175c4  eb2c +0x00 */
+void *_ZN10dFdColor_cD0Ev(void *self);       /* 0x02017598  eb2c +0x04 */
 }
 
 static void l2_sib_note(int tab, int slot)
@@ -2324,17 +2324,17 @@ static void l2_sib_note(int tab, int slot)
 }
 
 static void *__fastcall l2_eacc_s00(void *s, void *)
-{ l2_sib_note(0, 0); return (void *)_ZN15FaderBrightnessD1Ev((int *)s); }
+{ l2_sib_note(0, 0); return (void *)_ZN15dFdBrightness_cD1Ev((int *)s); }
 static void *__fastcall l2_eacc_s04(void *s, void *)
-{ l2_sib_note(0, 1); return _ZN15FaderBrightnessD0Ev(s); }
+{ l2_sib_note(0, 1); return _ZN15dFdBrightness_cD0Ev(s); }
 static void *__fastcall l2_eafc_s00(void *s, void *)
-{ l2_sib_note(1, 0); _ZN5FaderD1Ev((int *)s); return s; }
+{ l2_sib_note(1, 0); _ZN8dFader_cD1Ev((int *)s); return s; }
 static void *__fastcall l2_eafc_s04(void *s, void *)
-{ l2_sib_note(1, 1); return _ZN5FaderD0Ev(s); }
+{ l2_sib_note(1, 1); return _ZN8dFader_cD0Ev(s); }
 static void *__fastcall l2_eb2c_s00(void *s, void *)
-{ l2_sib_note(2, 0); return (void *)_ZN10FaderColorD1Ev((int *)s); }
+{ l2_sib_note(2, 0); return (void *)_ZN10dFdColor_cD1Ev((int *)s); }
 static void *__fastcall l2_eb2c_s04(void *s, void *)
-{ l2_sib_note(2, 1); return _ZN10FaderColorD0Ev(s); }
+{ l2_sib_note(2, 1); return _ZN10dFdColor_cD0Ev(s); }
 
 /* ---- THE FOUR FADER VTABLES ARE SEATED BEFORE main -----------------------
    run link100 lane CTOR3, rung 1, and it is a FIX rather than a preference.
@@ -2373,18 +2373,18 @@ static void l2_seat_fader_vtables(void)
 {
     if (l2_fader_vt_seated) return;
     l2_fader_vt_seated = 1;
-    data_0208ea6c[0]  = (void *)l2_ea6c_s00;
-    data_0208ea6c[1]  = (void *)l2_ea6c_s04;
-    data_0208ea6c[2]  = (void *)l2_ea6c_s08;
-    data_0208ea6c[3]  = (void *)l2_ea6c_s0c;
-    data_0208ea6c[4]  = (void *)l2_ea6c_s10;
-    data_0208ea6c[5]  = (void *)l2_ea6c_s14;
-    data_0208ea6c[6]  = (void *)l2_ea6c_s18;
-    data_0208ea6c[7]  = (void *)l2_ea6c_s1c;
-    data_0208ea6c[8]  = (void *)l2_ea6c_s20;
-    data_0208ea6c[9]  = (void *)l2_ea6c_s24;
-    data_0208ea6c[10] = (void *)l2_ea6c_over;
-    data_0208ea6c[11] = (void *)l2_ea6c_over;
+    _ZTV10dFdDummy_c[0]  = (void *)l2_ea6c_s00;
+    _ZTV10dFdDummy_c[1]  = (void *)l2_ea6c_s04;
+    _ZTV10dFdDummy_c[2]  = (void *)l2_ea6c_s08;
+    _ZTV10dFdDummy_c[3]  = (void *)l2_ea6c_s0c;
+    _ZTV10dFdDummy_c[4]  = (void *)l2_ea6c_s10;
+    _ZTV10dFdDummy_c[5]  = (void *)l2_ea6c_s14;
+    _ZTV10dFdDummy_c[6]  = (void *)l2_ea6c_s18;
+    _ZTV10dFdDummy_c[7]  = (void *)l2_ea6c_s1c;
+    _ZTV10dFdDummy_c[8]  = (void *)l2_ea6c_s20;
+    _ZTV10dFdDummy_c[9]  = (void *)l2_ea6c_s24;
+    _ZTV10dFdDummy_c[10] = (void *)l2_ea6c_over;
+    _ZTV10dFdDummy_c[11] = (void *)l2_ea6c_over;
     /* THE TRAP GOES DOWN FIRST AND THE SEAT OVERWRITES THE WORDS OF IT THIS
        BLOCK NAMES, so a slot it does not name keeps exactly the trap it had.
        [AMENDED, run link100 lane STAGEBUG. The sentence here used to read
@@ -2394,16 +2394,16 @@ static void l2_seat_fader_vtables(void)
         are dispatched by src/ProcessKuppaScript.cpp off data_0209b294 -- a
         reader of neither installed-fader pointer, so the enumeration never
         looked at it. All ten of eb2c are seated now.] */
-    for (int i = 0; i < 10; ++i) data_0208eb2c[i] = (void *)l2_vt_trap;
-    for (int i = 0; i < 12; ++i) data_0208eacc[i] = (void *)l2_vt_trap;
-    ((void **)data_0208eafc)[0] = (void *)l2_vt_trap;
-    ((void **)data_0208eafc)[1] = (void *)l2_vt_trap;
-    data_0208eacc[0] = (void *)l2_eacc_s00;
-    data_0208eacc[1] = (void *)l2_eacc_s04;
+    for (int i = 0; i < 10; ++i) _ZTV10dFdColor_c[i] = (void *)l2_vt_trap;
+    for (int i = 0; i < 12; ++i) _ZTV15dFdBrightness_c[i] = (void *)l2_vt_trap;
+    ((void **)_ZTV8dFader_c)[0] = (void *)l2_vt_trap;
+    ((void **)_ZTV8dFader_c)[1] = (void *)l2_vt_trap;
+    _ZTV15dFdBrightness_c[0] = (void *)l2_eacc_s00;
+    _ZTV15dFdBrightness_c[1] = (void *)l2_eacc_s04;
     /* eacc's two shape B slots keep the trap and lose the eight-byte leak with
        it -- same string, same return, correct frame. See l2_vt_trap8. */
-    data_0208eacc[3] = (void *)l2_vt_trap8;
-    data_0208eacc[4] = (void *)l2_vt_trap8;
+    _ZTV15dFdBrightness_c[3] = (void *)l2_vt_trap8;
+    _ZTV15dFdBrightness_c[4] = (void *)l2_vt_trap8;
     /* eacc slots 2 and 5-9: run link100 lane FADERTRAP, the last unfinished
        corner of this seat. relocs.txt (0208eae0..0208eaf0) resolves five of
        the six remaining ROM words to the SAME FaderBrightness bodies the
@@ -2424,28 +2424,28 @@ static void l2_seat_fader_vtables(void)
        slot 2"), is the same CDECL/caller-cleans shape as slots 3 and 4's, so
        it gets the trap those already use rather than the bare one:
        l2_vt_trap8, not l2_vt_trap. */
-    data_0208eacc[2] = (void *)l2_vt_trap8;
-    data_0208eacc[5] = (void *)l2_eb2c_s14;
-    data_0208eacc[6] = (void *)l2_eb2c_s18;
-    data_0208eacc[7] = (void *)l2_eb2c_s1c;
-    data_0208eacc[8] = (void *)l2_eb2c_s20;
-    data_0208eacc[9] = (void *)l2_eb2c_s24;
-    ((void **)data_0208eafc)[0] = (void *)l2_eafc_s00;
-    ((void **)data_0208eafc)[1] = (void *)l2_eafc_s04;
-    data_0208eb2c[0] = (void *)l2_eb2c_s00;
-    data_0208eb2c[1] = (void *)l2_eb2c_s04;
+    _ZTV15dFdBrightness_c[2] = (void *)l2_vt_trap8;
+    _ZTV15dFdBrightness_c[5] = (void *)l2_eb2c_s14;
+    _ZTV15dFdBrightness_c[6] = (void *)l2_eb2c_s18;
+    _ZTV15dFdBrightness_c[7] = (void *)l2_eb2c_s1c;
+    _ZTV15dFdBrightness_c[8] = (void *)l2_eb2c_s20;
+    _ZTV15dFdBrightness_c[9] = (void *)l2_eb2c_s24;
+    ((void **)_ZTV8dFader_c)[0] = (void *)l2_eafc_s00;
+    ((void **)_ZTV8dFader_c)[1] = (void *)l2_eafc_s04;
+    _ZTV10dFdColor_c[0] = (void *)l2_eb2c_s00;
+    _ZTV10dFdColor_c[1] = (void *)l2_eb2c_s04;
     /* +0x08 up: run link100 lane STAGEBUG. ProcessKuppaScript dispatches this
        table BY ADDRESS off data_0209b294, which is what the installed-fader
        audit below did not cover, and one of those dispatches was corrupting
        its caller. The block above l2_eb2c_s08 is the account. */
-    data_0208eb2c[2] = (void *)l2_eb2c_s08;
-    data_0208eb2c[3] = (void *)l2_eb2c_s0c;
-    data_0208eb2c[4] = (void *)l2_eb2c_s10;
-    data_0208eb2c[5] = (void *)l2_eb2c_s14;
-    data_0208eb2c[6] = (void *)l2_eb2c_s18;
-    data_0208eb2c[7] = (void *)l2_eb2c_s1c;
-    data_0208eb2c[8] = (void *)l2_eb2c_s20;
-    data_0208eb2c[9] = (void *)l2_eb2c_s24;
+    _ZTV10dFdColor_c[2] = (void *)l2_eb2c_s08;
+    _ZTV10dFdColor_c[3] = (void *)l2_eb2c_s0c;
+    _ZTV10dFdColor_c[4] = (void *)l2_eb2c_s10;
+    _ZTV10dFdColor_c[5] = (void *)l2_eb2c_s14;
+    _ZTV10dFdColor_c[6] = (void *)l2_eb2c_s18;
+    _ZTV10dFdColor_c[7] = (void *)l2_eb2c_s1c;
+    _ZTV10dFdColor_c[8] = (void *)l2_eb2c_s20;
+    _ZTV10dFdColor_c[9] = (void *)l2_eb2c_s24;
 
     /* NEVER ADDRESS 0, CHECKED RATHER THAN CLAIMED. Every word of the three
        tables this fill owns has to be a callable host address when this
@@ -2465,13 +2465,13 @@ static void l2_seat_fader_vtables(void)
        Filling them would be a divergence from the cartridge bought with
        nothing. */
     l2_fader_vt_zero_words = 0;
-    for (int i = 0; i < 12; ++i) if (data_0208ea6c[i] == 0) ++l2_fader_vt_zero_words;
-    for (int i = 0; i < 10; ++i) if (data_0208eb2c[i] == 0) ++l2_fader_vt_zero_words;
-    for (int i = 0; i < 12; ++i) if (data_0208eacc[i] == 0) ++l2_fader_vt_zero_words;
+    for (int i = 0; i < 12; ++i) if (_ZTV10dFdDummy_c[i] == 0) ++l2_fader_vt_zero_words;
+    for (int i = 0; i < 10; ++i) if (_ZTV10dFdColor_c[i] == 0) ++l2_fader_vt_zero_words;
+    for (int i = 0; i < 12; ++i) if (_ZTV15dFdBrightness_c[i] == 0) ++l2_fader_vt_zero_words;
     if (l2_fader_vt_zero_words != 0)
         std::fprintf(stderr, "  [eb2c] FADER VTABLE SEAT INCOMPLETE: %d of the "
-                     "34 words of data_0208ea6c, data_0208eb2c and "
-                     "data_0208eacc are still zero after the seat, so a "
+                     "34 words of _ZTV10dFdDummy_c, _ZTV10dFdColor_c and "
+                     "_ZTV15dFdBrightness_c are still zero after the seat, so a "
                      "dispatch through one of them is a call to address 0\n",
                      l2_fader_vt_zero_words);
 }
@@ -3026,12 +3026,12 @@ L2_UNMATCHED(func_02140d80)
 //     hal/scene_actor_faces.cpp's veneer trap in a new dress: an alias cannot
 //     change a calling convention, so where the conventions differ the answer
 //     is a FACE that re-lands the arguments.
-struct FaderBrightness;
-struct Scene { void SetFaders(FaderBrightness *fb); };
-void Scene::SetFaders(FaderBrightness *)
+struct dFdBrightness_c;
+struct Scene { void SetFaders(dFdBrightness_c *fb); };
+void Scene::SetFaders(dFdBrightness_c *)
 {
     /* the ROM body ignores its second argument; only `this` is used */
-    _ZN8dScene_c9SetFadersEP15FaderBrightness(this);
+    _ZN8dScene_c9SetFadersEP15dFdBrightness_c(this);
 }
 //     ...and THREE IN THE OPPOSITE DIRECTION. Here the ov007 caller spells the
 //     FLAT Itanium name and the matched TU defines a real C++ static member,
@@ -3041,7 +3041,7 @@ void Scene::SetFaders(FaderBrightness *)
 //     Stage 5 lane MR1, and the three that remain all target an SA (static,
 //     __cdecl) member, so both sides are __cdecl and each is a name-only
 //     bridge. The fourth was not, and it is the face below.
-#pragma comment(linker, "/alternatename:__ZN9Animation17UpdateFileOffsetsER8BCA_File=?UpdateFileOffsets@Animation@@SAXAAUBCA_File@@@Z")
+#pragma comment(linker, "/alternatename:__ZN15dExtFrameCtrl_c17UpdateFileOffsetsER8BCA_File=?UpdateFileOffsets@dExtFrameCtrl_c@@SAXAAUBCA_File@@@Z")
 #pragma comment(linker, "/alternatename:__ZN15TextureSequence17UpdateFileOffsetsER8BTP_File=?UpdateFileOffsets@TextureSequence@@SAXAAUBTP_File@@@Z")
 #pragma comment(linker, "/alternatename:__ZN5Model13LoadTexAndPalER8BMD_File=?LoadTexAndPal@Model@@SAXAAUBMD_File@@@Z")
 //

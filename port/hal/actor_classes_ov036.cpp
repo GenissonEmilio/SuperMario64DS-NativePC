@@ -192,10 +192,10 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 #include "fBase_c.h"
 #include "daObjRc_Dorifu_c.h"
 #include "daObjRc_Guruguru_c.h"
-#include "DonutBlock.h"
+#include "daObjRc_Tikuwa_c.h"
 #include "PathLift.h"
 #include "daObjRc_Hane_c.h"
-#include "DonutBlock.h"
+#include "daObjRc_Tikuwa_c.h"
 
 // ---- five decorated references onto mounted cells --------------------------
 // Five ov036 TUs in this slice are .cpp files that declare a mounted symbol
@@ -243,7 +243,7 @@ void _ZN10dBgActor_c4KillEv(void *self);                          /* slot 31 */
 int _ZN4dBgW9IsEnabledEv(void *self);
 int _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(void *self, int a, int b);
 void _ZN8dActor_cD2Ev(void *self);
-void _ZN11CommonModelD1Ev(void *self);
+void _ZN17dExtCommonModel_cD1Ev(void *self);
 
 extern int data_02099f24[];          /* the frame phase the lists are in */
 extern unsigned char data_020a4b4c;  /* the spawn spine's own step */
@@ -663,32 +663,32 @@ extern "C" void hal_fill_ship_wing_vtable(void)
 // level's skip list. The only one of the seven with its own slot 12.
 // ============================================================================
 extern "C" {
-int _ZN10DonutBlock13InitResourcesEv(void *self);      /* slot 0,  faced */
-int _ZN10DonutBlock16CleanupResourcesEv(void *self);   /* slot 3,  faced */
-int _ZN10DonutBlock8BehaviorEv(void *self);            /* slot 6,  faced */
-int _ZN10DonutBlock6RenderEv(void *self);              /* slot 9,  faced */
-void _ZN10DonutBlock16OnPendingDestroyEv(void);        /* slot 12, own, .c body takes void */
-int *_ZN10DonutBlockD1Ev(int *self);                   /* slot 16, D1 */
-int *_ZN10DonutBlockD0Ev(int *self);                   /* slot 17, D0 */
+int _ZN16daObjRc_Tikuwa_c13InitResourcesEv(void *self);      /* slot 0,  faced */
+int _ZN16daObjRc_Tikuwa_c16CleanupResourcesEv(void *self);   /* slot 3,  faced */
+int _ZN16daObjRc_Tikuwa_c8BehaviorEv(void *self);            /* slot 6,  faced */
+int _ZN16daObjRc_Tikuwa_c6RenderEv(void *self);              /* slot 9,  faced */
+void _ZN16daObjRc_Tikuwa_c16OnPendingDestroyEv(void);        /* slot 12, own, .c body takes void */
+int *_ZN16daObjRc_Tikuwa_cD1Ev(int *self);                   /* slot 16, D1 */
+int *_ZN16daObjRc_Tikuwa_cD0Ev(int *self);                   /* slot 17, D0 */
 void *daObjRc_Tikuwa_c_classInit(void);
 int _ZTV8ShipWing[32];  /* vtspan: _ZTV8ShipWing */
 }
 
 static int __fastcall db_init(void *s, void *)
-{ return _ZN10DonutBlock13InitResourcesEv(s); }
+{ return _ZN16daObjRc_Tikuwa_c13InitResourcesEv(s); }
 static int __fastcall db_clean(void *s, void *)
-{ return _ZN10DonutBlock16CleanupResourcesEv(s); }
+{ return _ZN16daObjRc_Tikuwa_c16CleanupResourcesEv(s); }
 static int __fastcall db_behavior(void *s, void *)
-{ return _ZN10DonutBlock8BehaviorEv(s); }
+{ return _ZN16daObjRc_Tikuwa_c8BehaviorEv(s); }
 static int __fastcall db_render(void *s, void *)
 { port_actor_render_probe("DONUT_BLOCK", (char *)s + 0xd4);
-  return _ZN10DonutBlock6RenderEv(s); }
+  return _ZN16daObjRc_Tikuwa_c6RenderEv(s); }
 static int __fastcall db_pdes(void *s, void *)
-{ (void)s; _ZN10DonutBlock16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN16daObjRc_Tikuwa_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall db_d1(void *s, void *)
-{ return (int)(size_t)_ZN10DonutBlockD1Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjRc_Tikuwa_cD1Ev((int *)s); }
 static int __fastcall db_d0(void *s, void *)
-{ return (int)(size_t)_ZN10DonutBlockD0Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjRc_Tikuwa_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_donut_block_vtable(void)
 {
@@ -881,14 +881,14 @@ int _ZN14daObjRc_Hane_c13InitResourcesEv(void *self)
 int _ZN14daObjRc_Hane_c8BehaviorEv(void *self)
 { return ((daObjRc_Hane_c *)self)->daObjRc_Hane_c::Behavior(); }
 
-int _ZN10DonutBlock13InitResourcesEv(void *self)
-{ return ((DonutBlock *)self)->DonutBlock::InitResources(); }
-int _ZN10DonutBlock16CleanupResourcesEv(void *self)
-{ return ((DonutBlock *)self)->DonutBlock::CleanupResources(); }
-int _ZN10DonutBlock8BehaviorEv(void *self)
-{ return ((DonutBlock *)self)->DonutBlock::Behavior(); }
-int _ZN10DonutBlock6RenderEv(void *self)
-{ return ((DonutBlock *)self)->DonutBlock::Render(); }
+int _ZN16daObjRc_Tikuwa_c13InitResourcesEv(void *self)
+{ return ((daObjRc_Tikuwa_c *)self)->daObjRc_Tikuwa_c::InitResources(); }
+int _ZN16daObjRc_Tikuwa_c16CleanupResourcesEv(void *self)
+{ return ((daObjRc_Tikuwa_c *)self)->daObjRc_Tikuwa_c::CleanupResources(); }
+int _ZN16daObjRc_Tikuwa_c8BehaviorEv(void *self)
+{ return ((daObjRc_Tikuwa_c *)self)->daObjRc_Tikuwa_c::Behavior(); }
+int _ZN16daObjRc_Tikuwa_c6RenderEv(void *self)
+{ return ((daObjRc_Tikuwa_c *)self)->daObjRc_Tikuwa_c::Render(); }
 
 int _ZN18daObjRc_Guruguru_c13InitResourcesEv(void *self)
 { return ((daObjRc_Guruguru_c *)self)->daObjRc_Guruguru_c::InitResources(); }

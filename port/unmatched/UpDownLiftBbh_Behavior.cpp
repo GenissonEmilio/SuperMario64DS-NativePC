@@ -62,11 +62,11 @@
 
 extern "C" {
 /* the five state bodies, table order = mState order; all matched src */
-void func_ov095_02136368(char *c);   /* state 0 (source 0x02137594) */
-void func_ov095_02136298(char *c);   /* state 1 (source 0x0213757c) */
-void func_ov095_02136178(char *c);   /* state 2 (source 0x02137584) */
-void func_ov095_02136090(char *c);   /* state 3 (source 0x0213758c) */
-void func_ov095_02136104(char *c);   /* state 4 (source 0x0213759c) */
+void _ZN10daUdlift_c9StateWaitEv(char *c);   /* state 0 (source 0x02137594) */
+void _ZN10daUdlift_c11StateMoveUpEv(char *c);   /* state 1 (source 0x0213757c) */
+void _ZN10daUdlift_c13StateMoveDownEv(char *c);   /* state 2 (source 0x02137584) */
+void _ZN10daUdlift_c9StateStopEv(char *c);   /* state 3 (source 0x0213758c) */
+void _ZN10daUdlift_c17StateStopAtBottomEv(char *c);   /* state 4 (source 0x0213759c) */
 
 struct PortPmf { unsigned fn; int delta; };
 /* the five SOURCE statics __sinit_ov095_0213722c copies from, in the sinit's
@@ -85,11 +85,11 @@ extern PortPmf data_ov095_02137594[], data_ov095_0213757c[],
         sym((char *)self);                                                \
     }
 
-UDL_FACE(0, func_ov095_02136368)
-UDL_FACE(1, func_ov095_02136298)
-UDL_FACE(2, func_ov095_02136178)
-UDL_FACE(3, func_ov095_02136090)
-UDL_FACE(4, func_ov095_02136104)
+UDL_FACE(0, _ZN10daUdlift_c9StateWaitEv)
+UDL_FACE(1, _ZN10daUdlift_c11StateMoveUpEv)
+UDL_FACE(2, _ZN10daUdlift_c13StateMoveDownEv)
+UDL_FACE(3, _ZN10daUdlift_c9StateStopEv)
+UDL_FACE(4, _ZN10daUdlift_c17StateStopAtBottomEv)
 
 static const struct { PortPmf *slot; unsigned rom; void *host; }
 g_updownlift_states[] = {

@@ -127,8 +127,8 @@
 # linkage, same one-pointer signature, same int return -- and neither file is
 # this lane's to edit, so the prose is left alone and named here.
 src/actors/dScMgBomroom_c.cpp
-src/_ZN14dScMgBomroom_c8BehaviorEv.cpp
-src/func_ov006_020d836c.cpp
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 129): src/_ZN14dScMgBomroom_c8BehaviorEv.cpp
+# FOLDED into src/actors/dScMgBomroom_c.cpp (row 129): src/func_ov006_020d836c.cpp
 #
 # ---- BATCH 1 CONTINUED: dScMgLuigi_c, THREE TABLES --------------------------
 #
@@ -234,9 +234,9 @@ src/actors/dScMgLuigi_c.cpp
 # under which an incomplete class's pointer to member is the general eight-byte
 # representation, and the TU's own listing reads [eax*8] against the ROM's
 # lsl #3. The file is not this lane's to edit, so the prose is left and named.
-src/_ZN13dScMgTeresa_c8BehaviorEv.cpp
 src/actors/dScMgTeresa_c.cpp
-src/func_ov006_0211f6fc.cpp
+src/actors/dScMgTeresa_c.cpp
+# FOLDED into src/actors/dScMgTeresa_c.cpp (row 237): src/func_ov006_0211f6fc.cpp
 #
 # ---- BATCH 2 CONTINUED: dScMgCoin_c, THREE TABLES OF FIVE -------------------
 #
@@ -296,9 +296,9 @@ src/func_ov006_0211f6fc.cpp
 # storage, in this lane's own seat file, read off the object with dumpbin. The
 # failed link deleted walk_window.exe and truncated the map, which is the shape
 # the house law warns about; the gate was re-built from clean after the fix.
-src/_ZN11dScMgCoin_c8BehaviorEv.cpp
-src/func_ov006_020dd2cc.cpp
-src/func_ov006_020de26c.cpp
+src/actors/dScMgCoin_c.cpp
+# FOLDED into src/actors/dScMgCoin_c.cpp (row 299): src/func_ov006_020dd2cc.cpp
+# FOLDED into src/actors/dScMgCoin_c.cpp (row 299): src/func_ov006_020de26c.cpp
 #
 # ---- BATCH 2 CONTINUED: dScMg3DEsp_c, THREE TABLES OF SEVEN -----------------
 #
@@ -350,9 +350,9 @@ src/func_ov006_020de26c.cpp
 #
 # STALE COMMENT DISCLOSED, NOT EDITED: hal/scene_mg_psycheout.cpp:203-208 still
 # calls _ZN12dScMg3DEsp_c8BehaviorEv "the HOST COPY".
-src/_ZN12dScMg3DEsp_c8BehaviorEv.cpp
-src/func_ov006_020e9374.cpp
-src/func_ov006_020e8d08.cpp
+src/actors/dMg3DEspAnimSet_c.cpp
+# FOLDED into src/actors/dMg3DEspAnimSet_c.cpp (row 353): src/func_ov006_020e9374.cpp
+# FOLDED into src/actors/dMg3DEspAnimSet_c.cpp (row 353): src/func_ov006_020e8d08.cpp
 #
 # ---- BATCH 3: dScMgPachinko2_c, ALL THREE TABLES (the class closes) ---------
 #
@@ -387,9 +387,9 @@ src/func_ov006_020e8d08.cpp
 # twenty-eight per-slot counts fed from inside the switch and printed by
 # hal/scene_mg_slot3.cpp to say which state of which table ran. Each face takes
 # its own count, one per dispatch of its own cell.
-src/func_ov006_020fff84.cpp
-src/func_ov006_02102e8c.cpp
-src/func_ov006_0210246c.cpp
+src/actors/dScMgPachinko2_c.cpp
+# FOLDED into src/actors/dScMgPachinko2_c.cpp (row 390): src/func_ov006_02102e8c.cpp
+# FOLDED into src/actors/dScMgPachinko2_c.cpp (row 390): src/func_ov006_0210246c.cpp
 #
 # ---- BATCH 3 CONTINUED: dScMgMemory_c, TWO TABLES --------------------------
 #
@@ -471,8 +471,8 @@ src/actors/dScMgMemory2_c.cpp
 # port_mg_pachinko_call1. Nothing on that path moves.
 #
 # ONE /alternatename (?data_ov006_0214266c@@3PAP8C@@AEXH@ZA).
-src/func_ov006_020fad34.cpp
-src/func_ov006_020fb60c.cpp
+src/actors/dScMgPachinko_c.cpp
+# FOLDED into src/actors/dScMgPachinko_c.cpp (row 474): src/func_ov006_020fb60c.cpp
 #
 # ---- NOT TAKEN IN BATCH 3, WITH THE MEASUREMENT THAT STOPS IT --------------
 #

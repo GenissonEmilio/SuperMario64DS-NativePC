@@ -20,7 +20,7 @@
 extern "C" {
 /* the C-named definitions the aliases below land on */
 void *_ZN5Model8LoadFileER13SharedFilePtr(void *fp);      /* cxxname_bridge */
-char *_ZN9Animation8LoadFileER13SharedFilePtr(void *fp);  /* player_bridges */
+char *_ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr(void *fp);  /* player_bridges */
 void *_ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(unsigned, unsigned,
                                                    const void *, const void *,
                                                    int, int);
@@ -43,7 +43,7 @@ int _ZN12dEnemyBase_c20KillByInvincibleCharERK10Vector3_16R6Player5Fix12IiE(void
    func_ov102_0214b248's Sound::PlayLong are the same shape, and
    Enemy::SpawnMegaCharParticles declares Particle::System::New by its ITANIUM
    name inside C++ without extern "C", so MSVC mangles the mangled name. */
-#pragma comment(linker, "/alternatename:?LoadFile@Animation@@SAXAAUSharedFilePtr@@@Z=__ZN9Animation8LoadFileER13SharedFilePtr")
+#pragma comment(linker, "/alternatename:?LoadFile@dExtFrameCtrl_c@@SAXAAUSharedFilePtr@@@Z=__ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr")
 #pragma comment(linker, "/alternatename:?LoadFile@Model@@SAPAUBMD_File@@AAUSharedFilePtr@@@Z=__ZN5Model8LoadFileER13SharedFilePtr")
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines __ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as, and nothing references ?Spawn@dActor_c@@SAPAU1@IIABUVector3@@PBUVector3_16@@HH@Z, so the row can never fire and nothing wants it to. */
 // #pragma comment(linker, "/alternatename:?Spawn@dActor_c@@SAPAU1@IIABUVector3@@PBUVector3_16@@HH@Z=__ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as")
@@ -407,7 +407,7 @@ DSSTATE_END
    register in all three. Its two SharedFilePtrs and the level timer its
    Behavior stops are the declared-type case again -- data_0209d4c8 is arm9
    bss (hal/auto_bss.cpp) and the flag's TU spells it `extern char[]` in C++. */
-#pragma comment(linker, "/alternatename:?LoadFile@Animation@@SAPAXAAUSharedFilePtr@@@Z=__ZN9Animation8LoadFileER13SharedFilePtr")
+#pragma comment(linker, "/alternatename:?LoadFile@dExtFrameCtrl_c@@SAPAXAAUSharedFilePtr@@@Z=__ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr")
 #pragma comment(linker, "/alternatename:?data_ov062_0211e0d4@@3USharedFilePtr@@A=_data_ov062_0211e0d4")
 #pragma comment(linker, "/alternatename:?data_ov062_0211e0dc@@3USharedFilePtr@@A=_data_ov062_0211e0dc")
 #pragma comment(linker, "/alternatename:?data_0209d4c8@@3PADA=_data_0209d4c8")

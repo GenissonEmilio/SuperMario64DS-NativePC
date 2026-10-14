@@ -468,5 +468,5 @@
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
 #src/minigames/d_s_mg_roulette.cpp
-src/func_ov006_020c0e8c.c
-src/func_ov006_020c0efc.c
+src/actors/unit020bfec0.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 471): src/func_ov006_020c0efc.c

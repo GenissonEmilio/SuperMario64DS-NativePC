@@ -47,5 +47,5 @@
 #
 # COUNT: +2. Exactly two translation units are newly linked by this file, and
 # the two host faces of the same names are deleted in the same commit.
-src/func_02040714.c
-src/func_02040704.c
+src/unnamed/arm9/0204/func_02040714.c
+src/unnamed/arm9/0204/func_02040704.c

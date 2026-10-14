@@ -244,24 +244,24 @@
     /* the door-walk entry (kind 7), dispatched by NoControl_Init's PMF
        table: per-side door anim, then step 7/8 so Main's 020c8cb0 walks
        Mario through. The missing piece of the door warp until 2026-08-08. */
-    case 0x020c9c4c: func_ov002_020c9c4c((char *)self); return 1;
+    case 0x020c9c4c: _ZN6Player19func_ov002_020c9c4cEv((char *)self); return 1;
     /* ...and the other nineteen kinds' entries (kinds 0/2/3 share 9de4) */
     case 0x020c9de4: func_ov002_020c9de4((char *)self); return 1;
-    case 0x020c9d68: func_ov002_020c9d68((char *)self); return 1;
-    case 0x020c9d1c: func_ov002_020c9d1c((char *)self); return 1;
-    case 0x020c9cc0: func_ov002_020c9cc0((char *)self); return 1;
-    case 0x020c9c00: func_ov002_020c9c00((char *)self); return 1;
+    case 0x020c9d68: _ZN6Player19func_ov002_020c9d68Ev((char *)self); return 1;
+    case 0x020c9d1c: _ZN6Player19func_ov002_020c9d1cEv((char *)self); return 1;
+    case 0x020c9cc0: _ZN6Player19func_ov002_020c9cc0Ev((char *)self); return 1;
+    case 0x020c9c00: _ZN6Player19func_ov002_020c9c00Ev((char *)self); return 1;
     case 0x020c9b7c: func_ov002_020c9b7c((char *)self); return 1;
-    case 0x020c9b5c: func_ov002_020c9b5c((char *)self); return 1;
-    case 0x020c9ac0: func_ov002_020c9ac0((char *)self); return 1;
-    case 0x020c9b10: func_ov002_020c9b10((char *)self); return 1;
-    case 0x020c9a04: func_ov002_020c9a04((char *)self); return 1;
+    case 0x020c9b5c: _ZN6Player19func_ov002_020c9b5cEv((char *)self); return 1;
+    case 0x020c9ac0: _ZN6Player19func_ov002_020c9ac0Ev((char *)self); return 1;
+    case 0x020c9b10: _ZN6Player19func_ov002_020c9b10Ev((char *)self); return 1;
+    case 0x020c9a04: _ZN6Player19func_ov002_020c9a04Ev((char *)self); return 1;
     case 0x020c9998: func_ov002_020c9998((char *)self); return 1;
     case 0x020c990c: func_ov002_020c990c((char *)self); return 1;
-    case 0x020c98a4: func_ov002_020c98a4((char *)self); return 1;
-    case 0x020c9840: func_ov002_020c9840((char *)self); return 1;
-    case 0x020c97f8: func_ov002_020c97f8((char *)self); return 1;
-    case 0x020c97e0: func_ov002_020c97e0((char *)self); return 1;
+    case 0x020c98a4: _ZN6Player19func_ov002_020c98a4Ev((char *)self); return 1;
+    case 0x020c9840: _ZN6Player19func_ov002_020c9840Ev((char *)self); return 1;
+    case 0x020c97f8: _ZN6Player19func_ov002_020c97f8Ev((char *)self); return 1;
+    case 0x020c97e0: _ZN6Player19func_ov002_020c97e0Ev((char *)self); return 1;
     case 0x020c816c: return ((Player *)self)->Player::St_NoControl_Main();
     case 0x020c976c: return ((Player *)self)->Player::St_NoControl_Init();
     case 0x020c8128: return ((Player *)self)->Player::St_NoControl_Cleanup();
@@ -303,10 +303,10 @@
     case 0x020c7838: return ((Player *)self)->Player::St_LevelEnter_Init();
     case 0x020c6f3c: return func_ov002_020c6f3c(self);
     case 0x020c6f34: return ((Player *)self)->Player::St_LevelEnter_Cleanup();
-    case 0x020c75f0: func_ov002_020c75f0((char *)self); return 1;
-    case 0x020c7350: func_ov002_020c7350((char *)self); return 1;
-    case 0x020c71e0: func_ov002_020c71e0((char *)self); return 1;
-    case 0x020c7194: func_ov002_020c7194((char *)self); return 1;
+    case 0x020c75f0: _ZN6Player19func_ov002_020c75f0Ev((char *)self); return 1;
+    case 0x020c7350: _ZN6Player19func_ov002_020c7350Ev((char *)self); return 1;
+    case 0x020c71e0: _ZN6Player19func_ov002_020c71e0Ev((char *)self); return 1;
+    case 0x020c7194: _ZN6Player19func_ov002_020c7194Ev((char *)self); return 1;
     case 0x020c72a4: func_ov002_020c72a4((void *)self); return 1;
-    case 0x020c70ac: func_ov002_020c70ac((char *)self); return 1;
-    case 0x020c6fe4: func_ov002_020c6fe4((char *)self); return 1;
+    case 0x020c70ac: _ZN6Player19func_ov002_020c70acEv((char *)self); return 1;
+    case 0x020c6fe4: _ZN6Player19func_ov002_020c6fe4Ev((char *)self); return 1;

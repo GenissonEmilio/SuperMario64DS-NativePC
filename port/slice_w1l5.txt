@@ -23,8 +23,9 @@
 # symbols.txt gives it. These are the last three ov002 St_ addresses the
 # generated player_states.inc did not carry.
 src/actors/Player.cpp
-src/_ZN6Player19St_SwingPlayer_InitEv.cpp
-src/_ZN6Player22St_SwingPlayer_CleanupEv.cpp
+port/unmatched/hostarm/Player.cpp
+# FOLDED into src/actors/Player.cpp (row 25): src/_ZN6Player19St_SwingPlayer_InitEv.cpp
+# FOLDED into src/actors/Player.cpp (row 25): src/_ZN6Player22St_SwingPlayer_CleanupEv.cpp
 
 # ---------------------------------------------------------------------------
 # SUPPLY SEATS. Every line below compiles clean against the port headers and
@@ -64,11 +65,11 @@ src/_ZN6Player22St_SwingPlayer_CleanupEv.cpp
 #   020de328  func_ov092_02131010, _ZN7Tornado6State1Ev
 #   020de33c  _ZN7Tornado8BehaviorEv
 #   020ee5d0  _ZN10dBgActor_c20UpdateKillByMegaCharEsss5Fix12IiE
-src/func_ov002_020d5f98.cpp
-src/func_ov002_020d6048.cpp
-src/func_ov002_020db674.c
-src/func_ov002_020de328.c
-src/func_ov002_020de33c.c
+# FOLDED into src/actors/Player.cpp (row 25): src/func_ov002_020d5f98.cpp
+# FOLDED into src/actors/Player.cpp (row 25): src/func_ov002_020d6048.cpp
+# FOLDED into src/actors/Player.cpp (row 25): src/func_ov002_020db674.c
+# FOLDED into src/actors/Player.cpp (row 25): src/func_ov002_020de328.c
+# FOLDED into src/actors/Player.cpp (row 25): src/func_ov002_020de33c.c
 src/actors/dBgActor_c.cpp
 #
 # Player methods, same story -- none of them is a state function, so none has
@@ -79,9 +80,9 @@ src/actors/dBgActor_c.cpp
 #   EnterWhirlpool   no caller anywhere in src/ yet
 #   JumpIntoBooCage  no caller anywhere in src/ yet
 #   CanPause         no caller in src/ yet (the arm9 pause menu calls it)
-src/_ZN6Player12GetHurtStateEv.cpp
-src/_ZN6Player5ShockEj.cpp
-src/_ZN6Player8BlowAwayEs.cpp
+# FOLDED into src/actors/Player.cpp (row 25): src/_ZN6Player12GetHurtStateEv.cpp
+# FOLDED into src/actors/Player.cpp (row 25): src/_ZN6Player5ShockEj.cpp
+# FOLDED into src/actors/Player.cpp (row 25): src/_ZN6Player8BlowAwayEs.cpp
 
 # ---------------------------------------------------------------------------
 # WAVE 2 / LANE w2-e: ov002's REAL St_EndingFly_Main and everything under it.
@@ -117,7 +118,7 @@ src/_ZN6Player8BlowAwayEs.cpp
 #   0200eec8  arm9; RunKuppaScript(data_02088610)
 #   020c38a0  calls func_ov002_020c2fec, plus 020c3148/020c37a4 (both seated)
 #   020c2fec  walks data_ov002_0210a8b8, mounted for this in port/ov002_syms.txt
-src/func_0200eec8.c
+src/unnamed/arm9/0200/func_0200eec8.c
 
 # ---------------------------------------------------------------------------
 # NOT SEATABLE, and why. None of these is a wiring problem this lane can fix.
@@ -215,4 +216,4 @@ src/func_0200eec8.c
 # none of those four is linked, so HUD::Render is the whole edge today, gated
 # on data_0209f284 (zeroed bss on this boot) -- a linkage win first, a visible
 # one only on a level that sets it.
-src/_ZN5Stage20RenderBouncingArrowsEv.cpp
+src/actors/dScStage_c.cpp

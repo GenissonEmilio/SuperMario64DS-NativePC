@@ -182,34 +182,34 @@ void port_mg_call1(void *self, unsigned code, int adj, int a);
    symbols, the declaration cannot change the mangling, and a host copy that
    repeated two dozen private struct definitions would be two dozen more places
    for a layout to drift. */
-void func_ov006_020ff8c8(void *c, int i);   /* mg7 lane L369 */
-void func_ov006_020ff690(void *c, int i);
-void func_ov006_020ffb54(void *c, int i);   /* mg7 lane L369 */
-void func_ov006_020ffde4(void *c, int i);
-void func_ov006_020fff54(void *c, int i);
-void func_ov006_021009b8(void *c, int i);
-void func_ov006_02100b08(void *c, int i);
-void func_ov006_02100bac(void *c, int i);
-void func_ov006_02100d90(void *c, int i);
-void func_ov006_02100e3c(void *c, int i);
-void func_ov006_02100f7c(void *c, int i);
-void func_ov006_02101088(void *c, int i);
-void func_ov006_02101224(void *c, int i);
-void func_ov006_021012cc(void *c, int i);
-void func_ov006_021016ec(void *c, int i);
-void func_ov006_021019e0(void *c, int i);
-void func_ov006_02101af0(void *c, int i);
-void func_ov006_02101e88(void *c, int i);
-void func_ov006_021020c4(void *c, int i);
-void func_ov006_02102274(void *c, int i);   /* mg7 lane L369 */
-void func_ov006_02102f3c(void *c, int i);
-void func_ov006_02102fe8(void *c, int i);   /* mg7 lane L369 */
-void func_ov006_02103360(void *c, int i);
-void func_ov006_02103608(void *c, int i);
-void func_ov006_0210371c(void *c, int i);
-void func_ov006_02103870(void *c, int i);
-void func_ov006_0210397c(void *c, int i);
-void func_ov006_02103994(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_020ff8c8Ei(void *c, int i);   /* mg7 lane L369 */
+void _ZN16dScMgPachinko2_c19func_ov006_020ff690Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_020ffb54Ei(void *c, int i);   /* mg7 lane L369 */
+void _ZN16dScMgPachinko2_c19func_ov006_020ffde4Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_020fff54Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_021009b8Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_02100b08Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_02100bacEi(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_02100d90Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_02100e3cEi(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_02100f7cEi(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_02101088Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_02101224Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_021012ccEi(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_021016ecEi(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_021019e0Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_02101af0Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_02101e88Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_021020c4Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_02102274Ei(void *c, int i);   /* mg7 lane L369 */
+void _ZN16dScMgPachinko2_c19func_ov006_02102f3cEi(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_02102fe8Ei(void *c, int i);   /* mg7 lane L369 */
+void _ZN16dScMgPachinko2_c19func_ov006_02103360Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_02103608Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_0210371cEi(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_02103870Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_0210397cEi(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_02103994Ei(void *c, int i);
 
 /* the three mount tables, re-typed to the ROM's eight-byte pair. The mount
    defines the storage; __sinit_ov006_02131cd0 fills it at scene load. */
@@ -222,7 +222,7 @@ extern MgPmf data_ov006_02142734[];
    in src/func_ov006_0210076c.c), so unmatched/MgPachinko2_Traps.cpp -- which
    existed for this one symbol and nothing else -- is DELETED. A trap standing
    beside a real definition is a duplicate symbol, not a safety net. */
-void func_ov006_0210076c(void *c, int i);
+void _ZN16dScMgPachinko2_c19func_ov006_0210076cEi(void *c, int i);
 
 /* the boot installer at the end of this file; hal/scene_mg.cpp calls it after
    the ov006 constructors have filled the tables. */
@@ -262,46 +262,46 @@ extern "C" int port_mg_try_pachinko2_1(void *self, unsigned code, int a)
     ++g_pachinko2_state_hits;
     switch (code) {
     /* data_ov006_021426cc, the 2-entry loop at +0x5634 */
-    case 0x020fff54u: func_ov006_020fff54(self, a); lkt_census(g_lkt_cc, 5, 0); return 1;
-    case 0x020ffde4u: func_ov006_020ffde4(self, a); lkt_census(g_lkt_cc, 5, 1); return 1;
+    case 0x020fff54u: _ZN16dScMgPachinko2_c19func_ov006_020fff54Ei(self, a); lkt_census(g_lkt_cc, 5, 0); return 1;
+    case 0x020ffde4u: _ZN16dScMgPachinko2_c19func_ov006_020ffde4Ei(self, a); lkt_census(g_lkt_cc, 5, 1); return 1;
     /* slots 2 and 3, the two Lakitu carriers. Run mg7 lane L369, both
        byte-matched at 1.2/sp2p3. */
-    case 0x020ffb54u: func_ov006_020ffb54(self, a); lkt_census(g_lkt_cc, 5, 2); return 1;
-    case 0x020ff8c8u: func_ov006_020ff8c8(self, a); lkt_census(g_lkt_cc, 5, 3); return 1;
-    case 0x020ff690u: func_ov006_020ff690(self, a); lkt_census(g_lkt_cc, 5, 4); return 1;
+    case 0x020ffb54u: _ZN16dScMgPachinko2_c19func_ov006_020ffb54Ei(self, a); lkt_census(g_lkt_cc, 5, 2); return 1;
+    case 0x020ff8c8u: _ZN16dScMgPachinko2_c19func_ov006_020ff8c8Ei(self, a); lkt_census(g_lkt_cc, 5, 3); return 1;
+    case 0x020ff690u: _ZN16dScMgPachinko2_c19func_ov006_020ff690Ei(self, a); lkt_census(g_lkt_cc, 5, 4); return 1;
 
     /* data_ov006_021426f4, the 0x30-entry loop at +0x4698 */
-    case 0x02102f3cu: func_ov006_02102f3c(self, a); lkt_census(g_lkt_f4, 8, 0); return 1;
+    case 0x02102f3cu: _ZN16dScMgPachinko2_c19func_ov006_02102f3cEi(self, a); lkt_census(g_lkt_f4, 8, 0); return 1;
     /* slot 1, the stylus driver. Run mg7 lane L369, NONMATCHING at 2004/b56
        (register naming only; the diff is pasted in the source). */
-    case 0x02102fe8u: func_ov006_02102fe8(self, a); lkt_census(g_lkt_f4, 8, 1); return 1;
-    case 0x02103360u: func_ov006_02103360(self, a); lkt_census(g_lkt_f4, 8, 2); return 1;
-    case 0x02103608u: func_ov006_02103608(self, a); lkt_census(g_lkt_f4, 8, 3); return 1;
-    case 0x0210371cu: func_ov006_0210371c(self, a); lkt_census(g_lkt_f4, 8, 4); return 1;
-    case 0x02103870u: func_ov006_02103870(self, a); lkt_census(g_lkt_f4, 8, 5); return 1;
-    case 0x0210397cu: func_ov006_0210397c(self, a); lkt_census(g_lkt_f4, 8, 6); return 1;
-    case 0x02103994u: func_ov006_02103994(self, a); lkt_census(g_lkt_f4, 8, 7); return 1;
+    case 0x02102fe8u: _ZN16dScMgPachinko2_c19func_ov006_02102fe8Ei(self, a); lkt_census(g_lkt_f4, 8, 1); return 1;
+    case 0x02103360u: _ZN16dScMgPachinko2_c19func_ov006_02103360Ei(self, a); lkt_census(g_lkt_f4, 8, 2); return 1;
+    case 0x02103608u: _ZN16dScMgPachinko2_c19func_ov006_02103608Ei(self, a); lkt_census(g_lkt_f4, 8, 3); return 1;
+    case 0x0210371cu: _ZN16dScMgPachinko2_c19func_ov006_0210371cEi(self, a); lkt_census(g_lkt_f4, 8, 4); return 1;
+    case 0x02103870u: _ZN16dScMgPachinko2_c19func_ov006_02103870Ei(self, a); lkt_census(g_lkt_f4, 8, 5); return 1;
+    case 0x0210397cu: _ZN16dScMgPachinko2_c19func_ov006_0210397cEi(self, a); lkt_census(g_lkt_f4, 8, 6); return 1;
+    case 0x02103994u: _ZN16dScMgPachinko2_c19func_ov006_02103994Ei(self, a); lkt_census(g_lkt_f4, 8, 7); return 1;
 
     /* data_ov006_02142734, the 3-entry loop at +0x5294 */
     /* slot 0, selected on EVERY tick of every live entry: the respawn timer
        and the launch setup. Run mg7 lane L369, byte-matched at 1.2/sp2p3. */
-    case 0x02102274u: func_ov006_02102274(self, a); lkt_census(g_lkt_34, 15, 0); return 1;
-    case 0x021020c4u: func_ov006_021020c4(self, a); lkt_census(g_lkt_34, 15, 1); return 1;
-    case 0x02101e88u: func_ov006_02101e88(self, a); lkt_census(g_lkt_34, 15, 2); return 1;
-    case 0x02101af0u: func_ov006_02101af0(self, a); lkt_census(g_lkt_34, 15, 3); return 1;
+    case 0x02102274u: _ZN16dScMgPachinko2_c19func_ov006_02102274Ei(self, a); lkt_census(g_lkt_34, 15, 0); return 1;
+    case 0x021020c4u: _ZN16dScMgPachinko2_c19func_ov006_021020c4Ei(self, a); lkt_census(g_lkt_34, 15, 1); return 1;
+    case 0x02101e88u: _ZN16dScMgPachinko2_c19func_ov006_02101e88Ei(self, a); lkt_census(g_lkt_34, 15, 2); return 1;
+    case 0x02101af0u: _ZN16dScMgPachinko2_c19func_ov006_02101af0Ei(self, a); lkt_census(g_lkt_34, 15, 3); return 1;
     /* slot 4, the word the sibling class's phantom slot 36 would have
        clobbered. See the header. */
-    case 0x021019e0u: func_ov006_021019e0(self, a); lkt_census(g_lkt_34, 15, 4); return 1;
-    case 0x021016ecu: func_ov006_021016ec(self, a); lkt_census(g_lkt_34, 15, 5); return 1;
-    case 0x021012ccu: func_ov006_021012cc(self, a); lkt_census(g_lkt_34, 15, 6); return 1;
-    case 0x02101224u: func_ov006_02101224(self, a); lkt_census(g_lkt_34, 15, 7); return 1;
-    case 0x02101088u: func_ov006_02101088(self, a); lkt_census(g_lkt_34, 15, 8); return 1;
-    case 0x02100f7cu: func_ov006_02100f7c(self, a); lkt_census(g_lkt_34, 15, 9); return 1;
-    case 0x02100e3cu: func_ov006_02100e3c(self, a); lkt_census(g_lkt_34, 15, 10); return 1;
-    case 0x02100d90u: func_ov006_02100d90(self, a); lkt_census(g_lkt_34, 15, 11); return 1;
-    case 0x02100bacu: func_ov006_02100bac(self, a); lkt_census(g_lkt_34, 15, 12); return 1;
-    case 0x02100b08u: func_ov006_02100b08(self, a); lkt_census(g_lkt_34, 15, 13); return 1;
-    case 0x021009b8u: func_ov006_021009b8(self, a); lkt_census(g_lkt_34, 15, 14); return 1;
+    case 0x021019e0u: _ZN16dScMgPachinko2_c19func_ov006_021019e0Ei(self, a); lkt_census(g_lkt_34, 15, 4); return 1;
+    case 0x021016ecu: _ZN16dScMgPachinko2_c19func_ov006_021016ecEi(self, a); lkt_census(g_lkt_34, 15, 5); return 1;
+    case 0x021012ccu: _ZN16dScMgPachinko2_c19func_ov006_021012ccEi(self, a); lkt_census(g_lkt_34, 15, 6); return 1;
+    case 0x02101224u: _ZN16dScMgPachinko2_c19func_ov006_02101224Ei(self, a); lkt_census(g_lkt_34, 15, 7); return 1;
+    case 0x02101088u: _ZN16dScMgPachinko2_c19func_ov006_02101088Ei(self, a); lkt_census(g_lkt_34, 15, 8); return 1;
+    case 0x02100f7cu: _ZN16dScMgPachinko2_c19func_ov006_02100f7cEi(self, a); lkt_census(g_lkt_34, 15, 9); return 1;
+    case 0x02100e3cu: _ZN16dScMgPachinko2_c19func_ov006_02100e3cEi(self, a); lkt_census(g_lkt_34, 15, 10); return 1;
+    case 0x02100d90u: _ZN16dScMgPachinko2_c19func_ov006_02100d90Ei(self, a); lkt_census(g_lkt_34, 15, 11); return 1;
+    case 0x02100bacu: _ZN16dScMgPachinko2_c19func_ov006_02100bacEi(self, a); lkt_census(g_lkt_34, 15, 12); return 1;
+    case 0x02100b08u: _ZN16dScMgPachinko2_c19func_ov006_02100b08Ei(self, a); lkt_census(g_lkt_34, 15, 13); return 1;
+    case 0x021009b8u: _ZN16dScMgPachinko2_c19func_ov006_021009b8Ei(self, a); lkt_census(g_lkt_34, 15, 14); return 1;
 
     default: --g_pachinko2_state_hits;          return 0;
     }
@@ -410,36 +410,36 @@ extern "C" void port_mg_pachinko2_state_counts(unsigned *hits, unsigned *missing
     }
 
 /* data_ov006_021426cc */
-P2_FACE(func_ov006_020fff54, g_lkt_cc, 5, 0)
-P2_FACE(func_ov006_020ffde4, g_lkt_cc, 5, 1)
-P2_FACE(func_ov006_020ffb54, g_lkt_cc, 5, 2)
-P2_FACE(func_ov006_020ff8c8, g_lkt_cc, 5, 3)
-P2_FACE(func_ov006_020ff690, g_lkt_cc, 5, 4)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_020fff54Ei, g_lkt_cc, 5, 0)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_020ffde4Ei, g_lkt_cc, 5, 1)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_020ffb54Ei, g_lkt_cc, 5, 2)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_020ff8c8Ei, g_lkt_cc, 5, 3)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_020ff690Ei, g_lkt_cc, 5, 4)
 /* data_ov006_021426f4 */
-P2_FACE(func_ov006_02102f3c, g_lkt_f4, 8, 0)
-P2_FACE(func_ov006_02102fe8, g_lkt_f4, 8, 1)
-P2_FACE(func_ov006_02103360, g_lkt_f4, 8, 2)
-P2_FACE(func_ov006_02103608, g_lkt_f4, 8, 3)
-P2_FACE(func_ov006_0210371c, g_lkt_f4, 8, 4)
-P2_FACE(func_ov006_02103870, g_lkt_f4, 8, 5)
-P2_FACE(func_ov006_0210397c, g_lkt_f4, 8, 6)
-P2_FACE(func_ov006_02103994, g_lkt_f4, 8, 7)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02102f3cEi, g_lkt_f4, 8, 0)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02102fe8Ei, g_lkt_f4, 8, 1)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02103360Ei, g_lkt_f4, 8, 2)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02103608Ei, g_lkt_f4, 8, 3)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_0210371cEi, g_lkt_f4, 8, 4)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02103870Ei, g_lkt_f4, 8, 5)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_0210397cEi, g_lkt_f4, 8, 6)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02103994Ei, g_lkt_f4, 8, 7)
 /* data_ov006_02142734 */
-P2_FACE(func_ov006_02102274, g_lkt_34, 15, 0)
-P2_FACE(func_ov006_021020c4, g_lkt_34, 15, 1)
-P2_FACE(func_ov006_02101e88, g_lkt_34, 15, 2)
-P2_FACE(func_ov006_02101af0, g_lkt_34, 15, 3)
-P2_FACE(func_ov006_021019e0, g_lkt_34, 15, 4)
-P2_FACE(func_ov006_021016ec, g_lkt_34, 15, 5)
-P2_FACE(func_ov006_021012cc, g_lkt_34, 15, 6)
-P2_FACE(func_ov006_02101224, g_lkt_34, 15, 7)
-P2_FACE(func_ov006_02101088, g_lkt_34, 15, 8)
-P2_FACE(func_ov006_02100f7c, g_lkt_34, 15, 9)
-P2_FACE(func_ov006_02100e3c, g_lkt_34, 15, 10)
-P2_FACE(func_ov006_02100d90, g_lkt_34, 15, 11)
-P2_FACE(func_ov006_02100bac, g_lkt_34, 15, 12)
-P2_FACE(func_ov006_02100b08, g_lkt_34, 15, 13)
-P2_FACE(func_ov006_021009b8, g_lkt_34, 15, 14)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02102274Ei, g_lkt_34, 15, 0)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_021020c4Ei, g_lkt_34, 15, 1)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02101e88Ei, g_lkt_34, 15, 2)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02101af0Ei, g_lkt_34, 15, 3)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_021019e0Ei, g_lkt_34, 15, 4)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_021016ecEi, g_lkt_34, 15, 5)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_021012ccEi, g_lkt_34, 15, 6)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02101224Ei, g_lkt_34, 15, 7)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02101088Ei, g_lkt_34, 15, 8)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02100f7cEi, g_lkt_34, 15, 9)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02100e3cEi, g_lkt_34, 15, 10)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02100d90Ei, g_lkt_34, 15, 11)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02100bacEi, g_lkt_34, 15, 12)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02100b08Ei, g_lkt_34, 15, 13)
+P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_021009b8Ei, g_lkt_34, 15, 14)
 
 extern "C" void port_mg_pachinko2_states_seat(void)
 {
@@ -455,36 +455,36 @@ extern "C" void port_mg_pachinko2_states_seat(void)
         unsigned rom;
         void *face;
     } seats[] = {
-        {data_ov006_021426cc, "021426cc", 0, 0x020fff54u, (void *)p2_func_ov006_020fff54},
-        {data_ov006_021426cc, "021426cc", 1, 0x020ffde4u, (void *)p2_func_ov006_020ffde4},
-        {data_ov006_021426cc, "021426cc", 2, 0x020ffb54u, (void *)p2_func_ov006_020ffb54},
-        {data_ov006_021426cc, "021426cc", 3, 0x020ff8c8u, (void *)p2_func_ov006_020ff8c8},
-        {data_ov006_021426cc, "021426cc", 4, 0x020ff690u, (void *)p2_func_ov006_020ff690},
+        {data_ov006_021426cc, "021426cc", 0, 0x020fff54u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_020fff54Ei},
+        {data_ov006_021426cc, "021426cc", 1, 0x020ffde4u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_020ffde4Ei},
+        {data_ov006_021426cc, "021426cc", 2, 0x020ffb54u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_020ffb54Ei},
+        {data_ov006_021426cc, "021426cc", 3, 0x020ff8c8u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_020ff8c8Ei},
+        {data_ov006_021426cc, "021426cc", 4, 0x020ff690u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_020ff690Ei},
 
-        {data_ov006_021426f4, "021426f4", 0, 0x02102f3cu, (void *)p2_func_ov006_02102f3c},
-        {data_ov006_021426f4, "021426f4", 1, 0x02102fe8u, (void *)p2_func_ov006_02102fe8},
-        {data_ov006_021426f4, "021426f4", 2, 0x02103360u, (void *)p2_func_ov006_02103360},
-        {data_ov006_021426f4, "021426f4", 3, 0x02103608u, (void *)p2_func_ov006_02103608},
-        {data_ov006_021426f4, "021426f4", 4, 0x0210371cu, (void *)p2_func_ov006_0210371c},
-        {data_ov006_021426f4, "021426f4", 5, 0x02103870u, (void *)p2_func_ov006_02103870},
-        {data_ov006_021426f4, "021426f4", 6, 0x0210397cu, (void *)p2_func_ov006_0210397c},
-        {data_ov006_021426f4, "021426f4", 7, 0x02103994u, (void *)p2_func_ov006_02103994},
+        {data_ov006_021426f4, "021426f4", 0, 0x02102f3cu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02102f3cEi},
+        {data_ov006_021426f4, "021426f4", 1, 0x02102fe8u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02102fe8Ei},
+        {data_ov006_021426f4, "021426f4", 2, 0x02103360u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02103360Ei},
+        {data_ov006_021426f4, "021426f4", 3, 0x02103608u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02103608Ei},
+        {data_ov006_021426f4, "021426f4", 4, 0x0210371cu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_0210371cEi},
+        {data_ov006_021426f4, "021426f4", 5, 0x02103870u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02103870Ei},
+        {data_ov006_021426f4, "021426f4", 6, 0x0210397cu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_0210397cEi},
+        {data_ov006_021426f4, "021426f4", 7, 0x02103994u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02103994Ei},
 
-        {data_ov006_02142734, "02142734",  0, 0x02102274u, (void *)p2_func_ov006_02102274},
-        {data_ov006_02142734, "02142734",  1, 0x021020c4u, (void *)p2_func_ov006_021020c4},
-        {data_ov006_02142734, "02142734",  2, 0x02101e88u, (void *)p2_func_ov006_02101e88},
-        {data_ov006_02142734, "02142734",  3, 0x02101af0u, (void *)p2_func_ov006_02101af0},
-        {data_ov006_02142734, "02142734",  4, 0x021019e0u, (void *)p2_func_ov006_021019e0},
-        {data_ov006_02142734, "02142734",  5, 0x021016ecu, (void *)p2_func_ov006_021016ec},
-        {data_ov006_02142734, "02142734",  6, 0x021012ccu, (void *)p2_func_ov006_021012cc},
-        {data_ov006_02142734, "02142734",  7, 0x02101224u, (void *)p2_func_ov006_02101224},
-        {data_ov006_02142734, "02142734",  8, 0x02101088u, (void *)p2_func_ov006_02101088},
-        {data_ov006_02142734, "02142734",  9, 0x02100f7cu, (void *)p2_func_ov006_02100f7c},
-        {data_ov006_02142734, "02142734", 10, 0x02100e3cu, (void *)p2_func_ov006_02100e3c},
-        {data_ov006_02142734, "02142734", 11, 0x02100d90u, (void *)p2_func_ov006_02100d90},
-        {data_ov006_02142734, "02142734", 12, 0x02100bacu, (void *)p2_func_ov006_02100bac},
-        {data_ov006_02142734, "02142734", 13, 0x02100b08u, (void *)p2_func_ov006_02100b08},
-        {data_ov006_02142734, "02142734", 14, 0x021009b8u, (void *)p2_func_ov006_021009b8},
+        {data_ov006_02142734, "02142734",  0, 0x02102274u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02102274Ei},
+        {data_ov006_02142734, "02142734",  1, 0x021020c4u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_021020c4Ei},
+        {data_ov006_02142734, "02142734",  2, 0x02101e88u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02101e88Ei},
+        {data_ov006_02142734, "02142734",  3, 0x02101af0u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02101af0Ei},
+        {data_ov006_02142734, "02142734",  4, 0x021019e0u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_021019e0Ei},
+        {data_ov006_02142734, "02142734",  5, 0x021016ecu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_021016ecEi},
+        {data_ov006_02142734, "02142734",  6, 0x021012ccu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_021012ccEi},
+        {data_ov006_02142734, "02142734",  7, 0x02101224u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02101224Ei},
+        {data_ov006_02142734, "02142734",  8, 0x02101088u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02101088Ei},
+        {data_ov006_02142734, "02142734",  9, 0x02100f7cu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02100f7cEi},
+        {data_ov006_02142734, "02142734", 10, 0x02100e3cu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02100e3cEi},
+        {data_ov006_02142734, "02142734", 11, 0x02100d90u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02100d90Ei},
+        {data_ov006_02142734, "02142734", 12, 0x02100bacu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02100bacEi},
+        {data_ov006_02142734, "02142734", 13, 0x02100b08u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02100b08Ei},
+        {data_ov006_02142734, "02142734", 14, 0x021009b8u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_021009b8Ei},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {

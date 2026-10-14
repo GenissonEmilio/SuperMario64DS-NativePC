@@ -41,7 +41,7 @@ extern unsigned char data_0209f2e0;   /* the chosen plate */
 extern unsigned char data_0209f2b4;   /* how many buttons the menu has */
 extern unsigned char data_0209f22c;   /* LC_Update's own wait */
 extern unsigned char data_0209f244;   /* the chosen plate's blink */
-void _ZN5Stage17UpdateMenuButtonsEb(int b);
+void _ZN10dScStage_c17UpdateMenuButtonsEb(int b);
 void func_02012790(int id);
 int GetOwnerLanguage(void);
 }
@@ -239,7 +239,7 @@ int rom_cursor_lc(int dir, int *sel_out)
     }
     if (moved) {
         data_0209f2e0 = (unsigned char)sel;
-        _ZN5Stage17UpdateMenuButtonsEb(0);
+        _ZN10dScStage_c17UpdateMenuButtonsEb(0);
         func_02012790(0x12e);
     }
     if (sel_out) *sel_out = sel;
@@ -314,7 +314,7 @@ void set_chosen(int sel)
     const int last = data_0209f2b4 ? data_0209f2b4 - 1 : 0;
     if (sel < 0 || sel > last || sel == (int)data_0209f2e0) return;
     data_0209f2e0 = (unsigned char)sel;
-    _ZN5Stage17UpdateMenuButtonsEb(0);
+    _ZN10dScStage_c17UpdateMenuButtonsEb(0);
 }
 
 /* the cursor starts on Save and Continue (the ROM's own: LC_Update case 0 sets data_0209f2e0 = 0), so the first press already moves */
@@ -328,7 +328,7 @@ int rom_cursor_lc2(int dir, int *sel_out)
     else if (dir == MENU_DIR_DOWN && sel < last) { ++sel; moved = 1; }
     if (moved) {
         data_0209f2e0 = (unsigned char)sel;
-        _ZN5Stage17UpdateMenuButtonsEb(0);
+        _ZN10dScStage_c17UpdateMenuButtonsEb(0);
         func_02012790(0x12e);
     }
     if (sel_out) *sel_out = sel;

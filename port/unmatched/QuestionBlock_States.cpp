@@ -34,23 +34,23 @@ extern PortPmf data_ov102_0214e278[], data_ov102_0214e260[],
     data_ov102_0214e398[];
 extern PortPmf data_ov102_0214e890[];      /* 3 entries x 2 pmfs */
 
-void func_ov102_02149d80(void *);   /* state 0 enter */
-void func_ov102_02149ccc(void *);   /* state 0 main  */
-void func_ov102_02149c78(void *);   /* state 1 enter */
-void func_ov102_021498e0(void *);   /* state 1 main  (host copy, gate 180) */
-void func_ov102_021498c4(void *);   /* state 2 enter */
-void func_ov102_02149878(void *);   /* state 2 main  */
+void _ZN18daObjHatenaBlock_c19func_ov102_02149d80Ev(void *);   /* state 0 enter */
+void _ZN18daObjHatenaBlock_c19func_ov102_02149cccEv(void *);   /* state 0 main  */
+void _ZN18daObjHatenaBlock_c19func_ov102_02149c78Ev(void *);   /* state 1 enter */
+void _ZN18daObjHatenaBlock_c19func_ov102_021498e0Ev(void *);   /* state 1 main  (host copy, gate 180) */
+void _ZN18daObjHatenaBlock_c19func_ov102_021498c4Ev(void *);   /* state 2 enter */
+void _ZN18daObjHatenaBlock_c19func_ov102_02149878Ev(void *);   /* state 2 main  */
 
 }  /* extern "C" */
 
 static const struct { PortPmf *slot; unsigned rom; void (*host)(void *); }
 g_qblock_states[] = {
-    {data_ov102_0214e278, 0x02149d80, func_ov102_02149d80},
-    {data_ov102_0214e260, 0x02149ccc, func_ov102_02149ccc},
-    {data_ov102_0214e268, 0x02149c78, func_ov102_02149c78},
-    {data_ov102_0214e258, 0x021498e0, func_ov102_021498e0},
-    {data_ov102_0214e3a0, 0x021498c4, func_ov102_021498c4},
-    {data_ov102_0214e398, 0x02149878, func_ov102_02149878},
+    {data_ov102_0214e278, 0x02149d80, _ZN18daObjHatenaBlock_c19func_ov102_02149d80Ev},
+    {data_ov102_0214e260, 0x02149ccc, _ZN18daObjHatenaBlock_c19func_ov102_02149cccEv},
+    {data_ov102_0214e268, 0x02149c78, _ZN18daObjHatenaBlock_c19func_ov102_02149c78Ev},
+    {data_ov102_0214e258, 0x021498e0, _ZN18daObjHatenaBlock_c19func_ov102_021498e0Ev},
+    {data_ov102_0214e3a0, 0x021498c4, _ZN18daObjHatenaBlock_c19func_ov102_021498c4Ev},
+    {data_ov102_0214e398, 0x02149878, _ZN18daObjHatenaBlock_c19func_ov102_02149878Ev},
 };
 
 extern "C" void port_question_block_states_seat(void)

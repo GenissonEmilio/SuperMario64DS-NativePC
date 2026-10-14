@@ -136,23 +136,23 @@ void hal_fill_bowser_puzzle_piece_vtable(void);
 /* ---- WATER_RING (244) bodies ---------------------------------------------
    Behavior and Render are HOST COPIES (unmatched/Ov064_WaterRing.cpp); the
    other five are matched src in port/slice_w3c.txt. */
-int _ZN9WaterRing13InitResourcesEv(void *self);     /* slot 0, .cpp, faced */
-int _ZN9WaterRing16CleanupResourcesEv(void *self);  /* slot 3, .c  */
-int _ZN9WaterRing8BehaviorEv(void *self);           /* slot 6, HOST COPY */
-int _ZN9WaterRing6RenderEv(void *self);             /* slot 9, HOST COPY */
-void _ZN9WaterRing16OnPendingDestroyEv(void *self); /* slot 12, .c */
-int *_ZN9WaterRingD1Ev(void *self);                 /* slot 16, .c */
-int *_ZN9WaterRingD0Ev(void *self);                 /* slot 17, .c */
+int _ZN14daWater_Ring_c13InitResourcesEv(void *self);     /* slot 0, .cpp, faced */
+int _ZN14daWater_Ring_c16CleanupResourcesEv(void *self);  /* slot 3, .c  */
+int _ZN14daWater_Ring_c8BehaviorEv(void *self);           /* slot 6, HOST COPY */
+int _ZN14daWater_Ring_c6RenderEv(void *self);             /* slot 9, HOST COPY */
+void _ZN14daWater_Ring_c16OnPendingDestroyEv(void *self); /* slot 12, .c */
+int *_ZN14daWater_Ring_cD1Ev(void *self);                 /* slot 16, .c */
+int *_ZN14daWater_Ring_cD0Ev(void *self);                 /* slot 17, .c */
 void *daWater_Ring_c_classInit(void);
 void port_water_ring_states_seat(void);
 void __sinit_ov064_0211b518(void);
 
 /* ---- TREASURE_CHEST (13) bodies ------------------------------------------- */
-int _ZN13TreasureChest13InitResourcesEv(void *self);    /* slot 0, .cpp, faced */
-int _ZN13TreasureChest16CleanupResourcesEv(void *self); /* slot 3, .c */
-int _ZN13TreasureChest8BehaviorEv(void *self);          /* slot 6, .cpp, faced */
-int _ZN13TreasureChest6RenderEv(void *self);            /* slot 9, HOST COPY */
-int *_ZN13TreasureChestD0Ev(int *self);                 /* slot 17, .c */
+int _ZN11daObjTbox_c13InitResourcesEv(void *self);    /* slot 0, .cpp, faced */
+int _ZN11daObjTbox_c16CleanupResourcesEv(void *self); /* slot 3, .c */
+int _ZN11daObjTbox_c8BehaviorEv(void *self);          /* slot 6, .cpp, faced */
+int _ZN11daObjTbox_c6RenderEv(void *self);            /* slot 9, HOST COPY */
+int *_ZN11daObjTbox_cD0Ev(int *self);                 /* slot 17, .c */
 void *daObjTbox_c_classInit(void);
 void port_treasure_chest_states_seat(void);
 void __sinit_ov064_0211b59c(void);
@@ -167,8 +167,8 @@ void *_ZN8dActor_cD2Ev(void *self);
    factories and D-tors read (the montymole reading). JetStream's is gate 179's
    _ZTV17BowserPuzzlePiece and is NOT redeclared here. */
 DSSTATE_BEGIN
-int _ZTV9WaterRing[31];
-int _ZTV13TreasureChest[31];
+int _ZTV14daWater_Ring_c[31];
+int _ZTV11daObjTbox_c[31];
 DSSTATE_END
 }
 
@@ -176,9 +176,8 @@ DSSTATE_END
    RTTI spelling is the one each class's own D0 restores by
    (src/_ZN9WaterRingD0Ev.cpp and src/_ZN13TreasureChestD0Ev.cpp). Both LHS are
    declared and never defined, so tools/alternatename_guard.py stays clean. */
-#pragma comment(linker, "/alternatename:__ZTV14daWater_Ring_c=__ZTV9WaterRing")
-#pragma comment(linker, "/alternatename:__ZTV11daObjTbox_c=__ZTV13TreasureChest")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV14daWater_Ring_c=__ZTV14daWater_Ring_c")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV11daObjTbox_c=__ZTV11daObjTbox_c")
 /* FOUR C++/C DATA-LINKAGE BRIDGES, the montymole / gate-179 reading and every
    one MEASURED off this slice's first link rather than predicted. Both
    InitResources are real C++ methods that declare their mounted data at file
@@ -315,20 +314,20 @@ extern "C" void hal_fill_jet_stream_vtable(void)
 // +0x150, Model at +0x30c, TextureTransformer at +0x35c, the state record
 // pointer at +0x370. Overrides 0/3/6/9/12/16/17; slot 29 is Actor's own.
 static int __fastcall wr_init(void *s, void *)
-{ return _ZN9WaterRing13InitResourcesEv(s); }
+{ return _ZN14daWater_Ring_c13InitResourcesEv(s); }
 static int __fastcall wr_clean(void *s, void *)
-{ return _ZN9WaterRing16CleanupResourcesEv(s); }
+{ return _ZN14daWater_Ring_c16CleanupResourcesEv(s); }
 static int __fastcall wr_behavior(void *s, void *)
-{ return _ZN9WaterRing8BehaviorEv(s); }          /* HOST COPY */
+{ return _ZN14daWater_Ring_c8BehaviorEv(s); }          /* HOST COPY */
 static int __fastcall wr_render(void *s, void *)
 { port_actor_render_probe("WATER_RING", (char *)s + 0x30c);
-  return _ZN9WaterRing6RenderEv(s); }            /* HOST COPY */
+  return _ZN14daWater_Ring_c6RenderEv(s); }            /* HOST COPY */
 static int __fastcall wr_pdes(void *s, void *)
-{ _ZN9WaterRing16OnPendingDestroyEv(s); return 0; }
+{ _ZN14daWater_Ring_c16OnPendingDestroyEv(s); return 0; }
 static int __fastcall wr_d1(void *s, void *)
-{ return (int)(size_t)_ZN9WaterRingD1Ev(s); }
+{ return (int)(size_t)_ZN14daWater_Ring_cD1Ev(s); }
 static int __fastcall wr_d0(void *s, void *)
-{ return (int)(size_t)_ZN9WaterRingD0Ev(s); }
+{ return (int)(size_t)_ZN14daWater_Ring_cD0Ev(s); }
 
 // ============================================================================
 // TREASURE_CHEST (13) -- table 0x0211c50c, RTTI "11daObjTbox_c".
@@ -339,14 +338,14 @@ static int __fastcall wr_d0(void *s, void *)
 // +0x170. Overrides 0/3/6/9/16/17; slot 12 keeps ActorBase's OnPendingDestroy
 // and slot 29 is Actor's own, both read off the reloc run.
 static int __fastcall tc_init(void *s, void *)
-{ return _ZN13TreasureChest13InitResourcesEv(s); }
+{ return _ZN11daObjTbox_c13InitResourcesEv(s); }
 static int __fastcall tc_clean(void *s, void *)
-{ return _ZN13TreasureChest16CleanupResourcesEv(s); }
+{ return _ZN11daObjTbox_c16CleanupResourcesEv(s); }
 static int __fastcall tc_behavior(void *s, void *)
-{ return _ZN13TreasureChest8BehaviorEv(s); }
+{ return _ZN11daObjTbox_c8BehaviorEv(s); }
 static int __fastcall tc_render(void *s, void *)
 { port_actor_render_probe("TREASURE_CHEST", (char *)s + 0xd4);
-  return _ZN13TreasureChest6RenderEv(s); }       /* HOST COPY */
+  return _ZN11daObjTbox_c6RenderEv(s); }       /* HOST COPY */
 /* slot 16, HOST CHAIN -- src/_ZN13TreasureChestD1Ev.cpp is a real MSVC
    destructor over structs declared inside itself, so it emits
    ??1TreasureChest@@UAE@XZ and never the C name. Transcribed from ROM
@@ -355,7 +354,7 @@ static int __fastcall tc_render(void *s, void *)
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (tc_d1) spelled the same chain by hand. */
 static int __fastcall tc_d0(void *s, void *)
-{ return (int)(size_t)_ZN13TreasureChestD0Ev((int *)s); }
+{ return (int)(size_t)_ZN11daObjTbox_cD0Ev((int *)s); }
 
 /* CAPTURED, the hal/level_boot.cpp g_level_mounted argument: this flag says
    "the wave-3 bring-up has run", and everything those two sinits write -- the
@@ -385,7 +384,7 @@ static void w3c_bringup(void)
 extern "C" void hal_fill_water_ring_vtable(void)
 {
     w3c_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV9WaterRing;
+    void *volatile *vt = (void *volatile *)_ZTV14daWater_Ring_c;
     w3c_fill_shared((void **)vt);
     vt[0]  = (void *)wr_init;
     vt[3]  = (void *)wr_clean;
@@ -400,7 +399,7 @@ extern "C" void hal_fill_water_ring_vtable(void)
 extern "C" void hal_fill_treasure_chest_vtable(void)
 {
     w3c_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV13TreasureChest;
+    void *volatile *vt = (void *volatile *)_ZTV11daObjTbox_c;
     w3c_fill_shared((void **)vt);
     vt[0]  = (void *)tc_init;
     vt[3]  = (void *)tc_clean;
@@ -416,13 +415,13 @@ extern "C" void hal_fill_treasure_chest_vtable(void)
 // The bodies src defines as real C++ methods. WaterRing's Cleanup /
 // OnPendingDestroy / D1 / D0 and TreasureChest's Cleanup / D0 are extern-C
 // already; both Renders and WaterRing's Behavior are host copies.
-#include "WaterRing.h"
-#include "TreasureChest.h"
+#include "daWater_Ring_c.h"
+#include "daObjTbox_c.h"
 extern "C" {
-int _ZN9WaterRing13InitResourcesEv(void *self)
-{ return ((WaterRing *)self)->WaterRing::InitResources(); }
-int _ZN13TreasureChest13InitResourcesEv(void *self)
-{ return ((TreasureChest *)self)->TreasureChest::InitResources(); }
-int _ZN13TreasureChest8BehaviorEv(void *self)
-{ return ((TreasureChest *)self)->TreasureChest::Behavior(); }
+int _ZN14daWater_Ring_c13InitResourcesEv(void *self)
+{ return ((daWater_Ring_c *)self)->daWater_Ring_c::InitResources(); }
+int _ZN11daObjTbox_c13InitResourcesEv(void *self)
+{ return ((daObjTbox_c *)self)->daObjTbox_c::InitResources(); }
+int _ZN11daObjTbox_c8BehaviorEv(void *self)
+{ return ((daObjTbox_c *)self)->daObjTbox_c::Behavior(); }
 }

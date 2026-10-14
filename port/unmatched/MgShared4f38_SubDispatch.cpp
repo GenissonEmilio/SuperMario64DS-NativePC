@@ -222,7 +222,7 @@ void func_ov006_020c27c4(char *c);   /* src/func_ov006_020c27c4.cpp void(char*) 
 /* the rest of the dispatching TU, verbatim from src */
 void func_ov006_020c2be8(char *c);   /* src/func_ov006_020c2be8.c   void(char*) */
 void func_ov006_020c2290(char *c);   /* src/func_ov006_020c2290.c   void(char*) */
-void _ZN9Animation7AdvanceEv(void *anim);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *anim);
 void _ZN14BlendModelAnim7AdvanceEv(void *anim);
 
 /* The parameter is `char *`, which is what include/decl_common.h:2401 already

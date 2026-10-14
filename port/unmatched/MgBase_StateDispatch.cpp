@@ -281,10 +281,10 @@ extern "C" {
    build before this file: the pair words are mounted DATA holding DS
    addresses, so /OPT:REF had dropped all four. They join port/slice_mg1.txt in
    the same commit as this file, which is what gives them one. */
-void func_ov004_020adc80(int *c);
-void func_ov004_020adcc8(short *obj);
-void func_ov004_020addcc(char *r5);
-void func_ov004_020adeb0(char *c);
+void _ZN3Ent19func_ov004_020adc80Ev(int *c);
+void _ZN3Ent19func_ov004_020adcc8Ev(short *obj);
+void _ZN3Ent19func_ov004_020addccEv(char *r5);
+void _ZN3Ent19func_ov004_020adeb0Ev(char *c);
 
 /* THE TWO SLOT-12 STATES, added by run mg5 lane FWK; section 5 is the
    derivation. Both are matched src TUs with delink blocks, both are reached
@@ -580,13 +580,13 @@ extern "C" void port_mg_framework_states_seat(void)
         void (*host)(void *);
     } seats[] = {
         {data_ov004_020beb88, "020beb88", 0, 0x020adeb0u,
-                                        (void (*)(void *))func_ov004_020adeb0},
+                                        (void (*)(void *))_ZN3Ent19func_ov004_020adeb0Ev},
         {data_ov004_020beb88, "020beb88", 1, 0x020addccu,
-                                        (void (*)(void *))func_ov004_020addcc},
+                                        (void (*)(void *))_ZN3Ent19func_ov004_020addccEv},
         {data_ov004_020beb98, "020beb98", 0, 0x020adcc8u,
-                                        (void (*)(void *))func_ov004_020adcc8},
+                                        (void (*)(void *))_ZN3Ent19func_ov004_020adcc8Ev},
         {data_ov004_020beb98, "020beb98", 1, 0x020adc80u,
-                                        (void (*)(void *))func_ov004_020adc80},
+                                        (void (*)(void *))_ZN3Ent19func_ov004_020adc80Ev},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {

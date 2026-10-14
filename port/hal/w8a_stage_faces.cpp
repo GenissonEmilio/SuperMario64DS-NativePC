@@ -136,7 +136,7 @@
 // #pragma comment(linker, "/alternatename:?IsPauseDisabled@Stage@@SAHXZ=__ZN5Stage15IsPauseDisabledEv")
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEFEATED: the left hand side is a real definition in this link now (_ZN5Stage20RenderBouncingArrowsEv.cpp.obj), so the directive is inert and alternatename_guard fails on it. */
 // #pragma comment(linker, "/alternatename:?RenderBouncingArrows@Stage@@SAXXZ=__ZN5Stage20RenderBouncingArrowsEv")
-#pragma comment(linker, "/alternatename:?CheckInput@Stage@@QAEXXZ=__ZN5Stage10CheckInputEv")
+#pragma comment(linker, "/alternatename:?CheckInput@dScStage_c@@QAEXXZ=__ZN10dScStage_c10CheckInputEv")
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines _func_020aba70, and nothing references ?func_020aba70@@3PAPAUOamAttr@@A, so the row can never fire and nothing wants it to. */
 // #pragma comment(linker, "/alternatename:?func_020aba70@@3PAPAUOamAttr@@A=_func_020aba70")
 

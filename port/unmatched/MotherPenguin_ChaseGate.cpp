@@ -46,7 +46,7 @@ extern "C" char *_ZN8dActor_c13ClosestPlayerEv(void *self);
 
 extern "C" {
 extern int Vec3_Dist(const struct Vector3 *a, const struct Vector3 *b);
-extern void func_ov018_021123d0(char *c, int i);
+extern void _ZN10daPgMthr_c19func_ov018_021123d0Ei(char *c, int i);
 
 /* RETIRED, run link100 lane HOSTGEN2. The ruling is "ARM r0 passthrough into a
    thiscall Actor::ClosestPlayer", and main's text no longer has it:
@@ -57,7 +57,7 @@ extern void func_ov018_021123d0(char *c, int i);
    build-active TU before configure, so a wrong reading here refuses the build
    rather than shipping a garbage receiver. Text kept, not deleted. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-void func_ov018_02111b3c(char *c)
+void _ZN10daPgMthr_c19func_ov018_02111b3cEv(char *c)
 {
     char *p = _ZN8dActor_c13ClosestPlayerEv(c);
     char *r1;
@@ -73,7 +73,7 @@ void func_ov018_02111b3c(char *c)
     }
     if (*(int *)(r1 + 8) != 0) return;
     *(char **)(c + 0x374) = p;
-    func_ov018_021123d0(c, 2);
+    _ZN10daPgMthr_c19func_ov018_021123d0Ei(c, 2);
 }
 #endif  /* HOSTGEN2: func_ov018_02111b3c retired to src */
 }

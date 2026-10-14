@@ -124,13 +124,13 @@ void _ZN5dCc_c6UpdateEv(void *self);
    The seven source PMF fn words, by ROM address, and the host bodies that
    replace them. Rewritten BEFORE __sinit_ov064_0211afc0 / __sinit_ov064_0211b150
    copy them into the bss runtime tables. */
-int func_ov064_02117c24(void *c);   /* Amilift state 0 */
-int func_ov064_02117bdc(void *c);   /* Amilift state 1 */
-int func_ov064_02117b8c(void *c);   /* Amilift state 2 */
-int func_ov064_02118760(void *c);   /* LavaBubble c7b8[1] / MAIN of unk_310==0 */
-int func_ov064_02118644(void *c);   /* LavaBubble c7c8[1] / MAIN of unk_310!=0 */
-int func_ov064_021187d0(void *c);   /* LavaBubble c7b8[0] / ENTER of unk_310==0 */
-int func_ov064_0211873c(void *c);   /* LavaBubble c7c8[0] / ENTER of unk_310!=0 */
+int _ZN17daObjFl_Amilift_c19func_ov064_02117c24Ev(void *c);   /* Amilift state 0 */
+int _ZN17daObjFl_Amilift_c19func_ov064_02117bdcEv(void *c);   /* Amilift state 1 */
+int _ZN17daObjFl_Amilift_c19func_ov064_02117b8cEv(void *c);   /* Amilift state 2 */
+int _ZN7daBbl_c19func_ov064_02118760Ev(void *c);   /* LavaBubble c7b8[1] / MAIN of unk_310==0 */
+int _ZN7daBbl_c19func_ov064_02118644Ev(void *c);   /* LavaBubble c7c8[1] / MAIN of unk_310!=0 */
+int _ZN7daBbl_c19func_ov064_021187d0Ev(void *c);   /* LavaBubble c7b8[0] / ENTER of unk_310==0 */
+int _ZN7daBbl_c19func_ov064_0211873cEv(void *c);   /* LavaBubble c7c8[0] / ENTER of unk_310!=0 */
 
 /* the source PMF blocks, as 8-byte { fn, delta } records, mounted from ov064 */
 extern PortPmf data_ov064_0211bc0c, data_ov064_0211bc14, data_ov064_0211bc1c;
@@ -153,9 +153,9 @@ extern PortPmf data_ov064_0211be90, data_ov064_0211be98,
         sym(self);                                                        \
     }
 
-AMI_FACE(0, func_ov064_02117c24)
-AMI_FACE(1, func_ov064_02117bdc)
-AMI_FACE(2, func_ov064_02117b8c)
+AMI_FACE(0, _ZN17daObjFl_Amilift_c19func_ov064_02117c24Ev)
+AMI_FACE(1, _ZN17daObjFl_Amilift_c19func_ov064_02117bdcEv)
+AMI_FACE(2, _ZN17daObjFl_Amilift_c19func_ov064_02117b8cEv)
 
 /* RUN link100 LANE PMFB7 GATE 1: THE TWO LAVABUBBLE MAIN HALVES ARE FACES.
    The paragraph above says "THE FOUR LAVABUBBLE ROWS DO NOT CHANGE: their
@@ -164,8 +164,8 @@ AMI_FACE(2, func_ov064_02117b8c)
    pointer to member (mov eax,[cell+8] / mov ecx,[cell+12] / add ecx,this /
    call eax, arity 0, /Zp4 diff 0 lines), so the two MAIN records take faces.
    The two ENTER records (c7b8[0], c7c8[0]) keep their plain cdecl bodies. */
-AMI_FACE(_lava0, func_ov064_02118760)
-AMI_FACE(_lava1, func_ov064_02118644)
+AMI_FACE(_lava0, _ZN7daBbl_c19func_ov064_02118760Ev)
+AMI_FACE(_lava1, _ZN7daBbl_c19func_ov064_02118644Ev)
 
 static const struct { PortPmf *slot; unsigned rom; void *host; }
 g_ov064_gate178_sources[] = {
@@ -176,8 +176,8 @@ g_ov064_gate178_sources[] = {
     /* LavaBubble states, source -> __sinit_ov064_0211b150 -> c7b8/c7c8 */
     {&data_ov064_0211be90, 0x02118760, (void *)ami_c_lava0},
     {&data_ov064_0211be98, 0x02118644, (void *)ami_c_lava1},
-    {&data_ov064_0211bea0, 0x021187d0, (void *)func_ov064_021187d0},
-    {&data_ov064_0211bea8, 0x0211873c, (void *)func_ov064_0211873c},
+    {&data_ov064_0211bea0, 0x021187d0, (void *)_ZN7daBbl_c19func_ov064_021187d0Ev},
+    {&data_ov064_0211bea8, 0x0211873c, (void *)_ZN7daBbl_c19func_ov064_0211873cEv},
 };
 
 extern "C" void port_ov064_gate178_states_seat(void)

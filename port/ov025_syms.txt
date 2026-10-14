@@ -210,10 +210,24 @@ data_ov025_02113814
 #     src/__sinit_ov025_021129dc.c spells _ZTV16daObjRcBuranko_c
 #   from:0x021113c4 kind:load to:0x02113a60 module:overlay(25)
 #     src/actors/daDgr_c.cpp spells _ZTS16daObjRcBuranko_c
-data_ov025_02113a60 data_ov025_02113a68 data_ov025_02113a70
-data_ov025_02113a7c data_ov025_02113a88 data_ov025_02113a90
-data_ov025_02113a98 data_ov025_02113aa4
-data_ov025_02113ab0 data_ov025_02113ab8:0x8
-data_ov025_02113ac0 data_ov025_02113acc
-data_ov025_02113ad8 data_ov025_02113ae0
-data_ov025_02113ae8 data_ov025_02113af4
+data_ov025_02113a70@0x02113a70
+data_ov025_02113a7c@0x02113a7c data_ov025_02113a88 data_ov025_02113a90
+data_ov025_02113a98@0x02113a98 data_ov025_02113aa4@0x02113aa4
+
+data_ov025_02113ac0@0x02113ac0 data_ov025_02113acc@0x02113acc
+
+data_ov025_02113ae8@0x02113ae8 data_ov025_02113af4@0x02113af4
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov025_02113a60                        now defined by src/actors/daDgr_c.cpp
+#   data_ov025_02113a68                        now defined by src/actors/daDgr_c.cpp
+#   data_ov025_02113ab0                        now defined by src/actors/daObjDpBrock_c.cpp
+#   data_ov025_02113ab8                        now defined by src/actors/daObjDpBrock_c.cpp
+#   data_ov025_02113ad8                        now defined by src/actors/daDpLift_c.cpp
+#   data_ov025_02113ae0                        now defined by src/actors/daDpLift_c.cpp

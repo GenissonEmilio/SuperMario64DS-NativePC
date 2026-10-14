@@ -91,12 +91,12 @@
 #   src/func_02059dd4.c. Its only ROM caller is src/func_01ffdd98.c, the soft
 #       reset, which is a host stub in hal/cxx_aliases.cpp.
 #
-src/func_0205b858.c
-src/func_0205ba3c.c
-src/func_0205ba64.c
-src/func_02059e48.c
-src/func_02059e04.c
-src/func_0205fde8.c
-src/func_0205fcfc.c
-src/func_0205feac.c
-src/func_02058b9c.c
+src/unnamed/arm9/0205/func_0205b858.c
+src/unnamed/arm9/0205/func_0205ba3c.c
+src/unnamed/arm9/0205/func_0205ba64.c
+src/unnamed/arm9/0205/func_02059e48.c
+src/unnamed/arm9/0205/func_02059e04.c
+src/unnamed/arm9/0205/func_0205fde8.c
+src/unnamed/arm9/0205/func_0205fcfc.c
+src/unnamed/arm9/0205/func_0205feac.c
+src/unnamed/arm9/0205/func_02058b9c.c

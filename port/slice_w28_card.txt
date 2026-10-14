@@ -16,26 +16,26 @@
 # through func_02060d98 and reads the block out of the data port; then
 # func_02060e38 wakes the waiters and calls func_0205db78, which tells the FS
 # layer (func_0205cd5c) the read is done.
-src/func_0205db2c.c
-src/func_0205db78.c
-src/func_02060918.c
-src/func_0206090c.c
-src/func_0205ffd0.c
-src/func_02060a30.c
-src/func_02060b64.c
-src/func_02060ebc.c
-src/func_02060a64.c
-src/func_02060d98.c
-src/func_02060e38.c
+src/unnamed/arm9/0205/func_0205db2c.c
+src/unnamed/arm9/0205/func_0205db78.c
+src/unnamed/arm9/0206/func_02060918.c
+src/unnamed/arm9/0206/func_0206090c.c
+src/unnamed/arm9/0205/func_0205ffd0.c
+src/unnamed/arm9/0206/func_02060a30.c
+src/unnamed/arm9/0206/func_02060b64.c
+src/unnamed/arm9/0206/func_02060ebc.c
+src/unnamed/arm9/0206/func_02060a64.c
+src/unnamed/arm9/0206/func_02060d98.c
+src/unnamed/arm9/0206/func_02060e38.c
 #
 # THE DMA ARM, linked because func_02060918 and func_02060b64 name it and dead
 # while FS_Init's channel is -1 (func_02060918 skips func_02059f58 above channel
 # 3 and func_02060b64's aligned test needs channel <= 3). Built plain: their
 # computed DMA-register stores are that dead arm. Stage B (FS_Init(2), card DMA,
 # IRQ 19) would route them; it is not this lane.
-src/func_02059f58.c
-src/func_02060cac.c
-src/func_02060d1c.c
+src/unnamed/arm9/0205/func_02059f58.c
+src/unnamed/arm9/0206/func_02060cac.c
+src/unnamed/arm9/0206/func_02060d1c.c
 #
 # THE BRING-UP. func_02042f68's arm 1 is src/func_02060890.c again (the
 # func_02060890=port_rom_card_bringup rename is gone), in the ROM's order inside
@@ -43,7 +43,7 @@ src/func_02060d1c.c
 # read of any run: it seeds the work object, creates the card thread
 # (func_0206002c), points data_020a8780 at func_02060a64 and installs the IREQ_MC
 # handler on IRQ bit 20 (func_02061138), which nothing raises on this port.
-src/func_02060890.c
-src/func_02061138.c
+src/unnamed/arm9/0206/func_02060890.c
+src/unnamed/arm9/0206/func_02061138.c
 src/_ZN3IRQ21GameCardIREQMCHandlerEv.cpp
-src/func_020610fc.c
+src/unnamed/arm9/0206/func_020610fc.c

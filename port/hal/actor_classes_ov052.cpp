@@ -126,8 +126,7 @@ void __sinit_ov052_02111bd0(void);
    0x021125f0 carries the Yuka name as a dsd symbol of its own and it is
    excluded from the mount with the table, so this LHS is undefined everywhere
    and the alias cannot be defeated. */
-#pragma comment(linker, "/alternatename:__ZTV14daObjEmmYuka_c=__ZTV14SquarePathLift")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV14daObjEmmYuka_c=__ZTV14daObjEmmYuka_c")
 /* ONE C++-MANGLED DATA SPELLING, the IDENTITY_MATRIX4X3 / data_020a0e68 precedent.
    src/game/actors/d_a_obj_emm_log.cpp declares id 174's file table at FILE SCOPE as
    `struct DataT { SharedFilePtr *a, *b; CLPS_Block *c; }` rather than inside an
@@ -322,34 +321,34 @@ extern "C" void hal_fill_bobbing_log_emm_vtable(void)
 // reversing at the ends when the path does not loop. Its file table is
 // data_ov052_021125a0 -- the three words id 174's reloc run overran into.
 extern "C" {
-int _ZN14SquarePathLift13InitResourcesEv(void *self);     /* slot 0  */
-int _ZN14SquarePathLift16CleanupResourcesEv(void *self);  /* slot 3  */
-int _ZN14SquarePathLift8BehaviorEv(void *self);           /* slot 6  */
-int _ZN14SquarePathLift6RenderEv(void *self);             /* slot 9  */
-int *_ZN14SquarePathLiftD1Ev(int *self);                  /* slot 16 */
-int *_ZN14SquarePathLiftD0Ev(int *self);                  /* slot 17 */
+int _ZN14daObjEmmYuka_c13InitResourcesEv(void *self);     /* slot 0  */
+int _ZN14daObjEmmYuka_c16CleanupResourcesEv(void *self);  /* slot 3  */
+int _ZN14daObjEmmYuka_c8BehaviorEv(void *self);           /* slot 6  */
+int _ZN14daObjEmmYuka_c6RenderEv(void *self);             /* slot 9  */
+int *_ZN14daObjEmmYuka_cD1Ev(int *self);                  /* slot 16 */
+int *_ZN14daObjEmmYuka_cD0Ev(int *self);                  /* slot 17 */
 void *daObjEmmYuka_c_classInit(void);
 DSSTATE_BEGIN
-void *_ZTV14SquarePathLift[32];
+void *_ZTV14daObjEmmYuka_c[32];
 DSSTATE_END
 }
 static int __fastcall spl_init(void *s, void *)
-{ return _ZN14SquarePathLift13InitResourcesEv(s); }
+{ return _ZN14daObjEmmYuka_c13InitResourcesEv(s); }
 static int __fastcall spl_clean(void *s, void *)
-{ return _ZN14SquarePathLift16CleanupResourcesEv(s); }
+{ return _ZN14daObjEmmYuka_c16CleanupResourcesEv(s); }
 static int __fastcall spl_behavior(void *s, void *)
-{ return _ZN14SquarePathLift8BehaviorEv(s); }
+{ return _ZN14daObjEmmYuka_c8BehaviorEv(s); }
 static int __fastcall spl_render(void *s, void *)
 { port_actor_render_probe("SQUARE_PATH_LIFT", (char *)s + 0xd4);
-  return _ZN14SquarePathLift6RenderEv(s); }
+  return _ZN14daObjEmmYuka_c6RenderEv(s); }
 static int __fastcall spl_d1(void *s, void *)
-{ return (int)(size_t)_ZN14SquarePathLiftD1Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjEmmYuka_cD1Ev((int *)s); }
 static int __fastcall spl_d0(void *s, void *)
-{ return (int)(size_t)_ZN14SquarePathLiftD0Ev((int *)s); }
+{ return (int)(size_t)_ZN14daObjEmmYuka_cD0Ev((int *)s); }
 extern "C" void hal_fill_square_path_lift_vtable(void)
 {
     port_ov52_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV14SquarePathLift;
+    void *volatile *vt = (void *volatile *)_ZTV14daObjEmmYuka_c;
     ov52_fill_shared(vt);
     vt[0]  = (void *)spl_init;
     vt[3]  = (void *)spl_clean;
@@ -363,14 +362,14 @@ extern "C" void hal_fill_square_path_lift_vtable(void)
 // ---- method faces ----------------------------------------------------------
 // The four bodies src defines as real C++ methods rather than extern-C free
 // functions -- all four of SquarePathLift's. id 174's six are extern-C already.
-#include "SquarePathLift.h"
+#include "daObjEmmYuka_c.h"
 extern "C" {
-int _ZN14SquarePathLift13InitResourcesEv(void *self)
-{ return ((SquarePathLift *)self)->SquarePathLift::InitResources(); }
-int _ZN14SquarePathLift16CleanupResourcesEv(void *self)
-{ return ((SquarePathLift *)self)->SquarePathLift::CleanupResources(); }
-int _ZN14SquarePathLift8BehaviorEv(void *self)
-{ return ((SquarePathLift *)self)->SquarePathLift::Behavior(); }
-int _ZN14SquarePathLift6RenderEv(void *self)
-{ return ((SquarePathLift *)self)->SquarePathLift::Render(); }
+int _ZN14daObjEmmYuka_c13InitResourcesEv(void *self)
+{ return ((daObjEmmYuka_c *)self)->daObjEmmYuka_c::InitResources(); }
+int _ZN14daObjEmmYuka_c16CleanupResourcesEv(void *self)
+{ return ((daObjEmmYuka_c *)self)->daObjEmmYuka_c::CleanupResources(); }
+int _ZN14daObjEmmYuka_c8BehaviorEv(void *self)
+{ return ((daObjEmmYuka_c *)self)->daObjEmmYuka_c::Behavior(); }
+int _ZN14daObjEmmYuka_c6RenderEv(void *self)
+{ return ((daObjEmmYuka_c *)self)->daObjEmmYuka_c::Render(); }
 }

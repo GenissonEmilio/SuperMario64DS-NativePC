@@ -224,21 +224,21 @@
 # also appended below) declares it a static member of class Sound, so MSVC
 # emits ?Func_02048ee4@Sound@@SAXXZ -- the same shape the other way round,
 # bridged with the rest and confirmed with dumpbin /symbols on the object.
-src/d_a_kuri_king_kuriking_vanish.cpp
-src/d_a_kuri_king_kuriking.cpp
-src/_ZN8Goomboss16CleanupResourcesEv.cpp
-src/_ZN8Goomboss8BehaviorEv.cpp
+src/actors/daKuriKing_c.cpp
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/d_a_kuri_king_kuriking.cpp
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/_ZN8Goomboss16CleanupResourcesEv.cpp
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/_ZN8Goomboss8BehaviorEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN8GoombossD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN8GoombossD0Ev.cpp
-src/_ZN8GoombossD1Ev.cpp
-src/__sinit_ov074_02122978.c
-src/actors/Goomboss.cpp
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/_ZN8GoombossD1Ev.cpp
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/__sinit_ov074_02122978.c
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/actors/Goomboss.cpp
 # RETIRED at SLICE1: body now in src/actors/Goomboss.cpp. main consolidation put this body in the class TU, which the build already compiles, so the per-function leftover is a second definition.
 #src/func_ov074_021201f0.c
 # RETIRED at SLICE1: body now in src/actors/Goomboss.cpp. main consolidation put this body in the class TU, which the build already compiles, so the per-function leftover is a second definition.
 #src/func_ov074_021204c0.c
-src/func_ov074_021216f4.c
-src/func_ov074_02121800.c
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/func_ov074_021216f4.c
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/func_ov074_02121800.c
 # SEATED 2026-09-17 (run link100 wave 10, fixer GOOMBOSS, card
 # out/TRIAGE3/card_goomboss.md). The collision-cylinder rebuild, and the last hole in this
 # overlay. main 6d4ffd596 (PR #2018) landed it as a DECLARED NONMATCHING body: 11 residue
@@ -253,14 +253,14 @@ src/func_ov074_02121800.c
 # lines 1 to 90 carry the whole record. This is the func_ov074_02121800 shape one row up
 # (the ov005/ov075 precedent that slice section 1 names), and the face it replaces in
 # hal/actor_classes_ov074.cpp is deleted rather than left beside a live body.
-src/func_ov074_02121380.c
-src/func_ov074_0212195c.c
-src/func_ov074_0212199c.c
-src/func_ov074_02121a20.c
-src/func_ov074_02121a4c.cpp
-src/func_ov074_0212229c.c
-src/func_ov074_021223bc.cpp
-src/func_ov074_02122634.cpp
-src/func_02011d20.c
-src/func_ov084_021296b0.c
-src/_ZN5Sound13Func_02048ee4Ev.cpp
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/func_ov074_02121380.c
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/func_ov074_0212195c.c
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/func_ov074_0212199c.c
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/func_ov074_02121a20.c
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/func_ov074_02121a4c.cpp
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/func_ov074_0212229c.c
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/func_ov074_021223bc.cpp
+# FOLDED into src/actors/daKuriKing_c.cpp (row 227): src/func_ov074_02122634.cpp
+src/engine/sound/Sound.cpp
+src/actors/daKrb_c.cpp
+src/engine/sound/Sound2.cpp

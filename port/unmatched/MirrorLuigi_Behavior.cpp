@@ -55,12 +55,12 @@
 #include "hal/pmf_seat5.h"
 #include <cstdio>
 #include <cstdlib>
-#include "MirrorLuigi.h"
+#include "daLuigi_c.h"
 
 extern "C" {
 struct PortMirrorLuigiCell { unsigned enter_fn, enter_delta, tick_fn, tick_delta; };
 extern PortMirrorLuigiCell data_ov055_02111b70;
-int func_ov055_02111288(void *dst, void *src);
+int _ZN9daLuigi_c13ExecuteMirrorEP6Player(void *dst, void *src);
 }
 
 /* the TICK half: func_ov055_02111288, the mirror of the player's position, as
@@ -70,24 +70,24 @@ static int __fastcall ml_tick_face_02111288(void *self, void *dead_edx,
 {
     (void)dead_edx;
     port_seat5_count(13);
-    return func_ov055_02111288(self, val);
+    return _ZN9daLuigi_c13ExecuteMirrorEP6Player(self, val);
 }
 
-extern "C" int _ZN11MirrorLuigi8BehaviorEv(void *selfv)
+extern "C" int _ZN9daLuigi_c8BehaviorEv(void *selfv)
 {
     static int seated;
     if (!seated) {
         seated = 1;
         PortMirrorLuigiCell &cell = data_ov055_02111b70;
-        if (cell.tick_fn != (unsigned)(size_t)&func_ov055_02111288) {
-            std::fprintf(stderr, "FATAL: MirrorLuigi TICK word: the cell holds "
+        if (cell.tick_fn != (unsigned)(size_t)&_ZN9daLuigi_c13ExecuteMirrorEP6Player) {
+            std::fprintf(stderr, "FATAL: daLuigi_c TICK word: the cell holds "
                          "%08x, port_mirrorluigi_state_seat's own host body is "
                          "%08x -- WRONG BYTES, refusing to seat the face\n",
                          cell.tick_fn,
-                         (unsigned)(size_t)&func_ov055_02111288);
+                         (unsigned)(size_t)&_ZN9daLuigi_c13ExecuteMirrorEP6Player);
             std::abort();
         }
         cell.tick_fn = (unsigned)(size_t)&ml_tick_face_02111288;
     }
-    return ((MirrorLuigi *)selfv)->MirrorLuigi::Behavior();
+    return ((daLuigi_c *)selfv)->daLuigi_c::Behavior();
 }

@@ -551,6 +551,22 @@ def _src_defining(root, func):
         p = root / "src" / (func + ext)
         if p.exists():
             return p
+    # PORTSYNC2: src/ has structure now (src/unnamed/arm9/0201/..., folded
+    # production TUs), so ask the decomp's own path oracle, as AGENTS.md says
+    # every tool should, before the flat-layout glob below.
+    sys.path.insert(0, str(root / "tools"))
+    try:
+        import srcpath
+        hit = srcpath.path_for(func)
+    except Exception:
+        hit = None
+    finally:
+        sys.path.pop(0)
+    if hit:
+        p = pathlib.Path(hit)
+        p = p if p.is_absolute() else root / p
+        if p.exists():
+            return p
     hits = [p for p in sorted((root / "src").glob(f"*{func}*"))
             if p.suffix in (".c", ".cpp")]
     if len(hits) == 1:

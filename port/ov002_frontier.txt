@@ -46,7 +46,7 @@ reproducible next to the order. It is, first match wins:
      7  word in a vtable the port does not host
      8  nothing above -- a plain callee
 
-A TU can qualify for several. _ZN4CoinD1Ev is both an MSVC-method form and a
+A TU can qualify for several. _ZN8daCoin_cD1Ev is both an MSVC-method form and a
 hosted vtable word, and lands in 4 because 4 is the binding constraint: no
 slice line reaches a body MSVC will not compile against the host seams. Read a
 bucket as "the first thing that has to change", not as "the only thing true of
@@ -72,7 +72,7 @@ THE THREE FINDINGS WORTH CARRYING FORWARD
    in no slice", and BLACK_BRICK_BLOCK's says slot 23 "stays on ac_trap23 only
    because its real body is not sliced yet -- seating it is a follow-up".
 
-   Every one of those six bodies -- _ZN8SignPost15OnGroundPoundedER8dActor_c, 020bb23c, 020bb374,
+   Every one of those six bodies -- _ZN15daObjTatefuda_c15OnGroundPoundedER8dActor_c, 020bb23c, 020bb374,
    020bb3b8, 020b3788, 020b36dc -- carries the `recovered from vtable slot
    identity` marker, so seating any of them fails port/tools/
    inferred_stub_guard.py. So does every other unlinked ov002 body the ROM's own
@@ -99,7 +99,7 @@ THE THREE FINDINGS WORTH CARRYING FORWARD
    `?Behavior@Player@@UAEHXZ`, which is not any TU's stem, so the pair is never
    examined. Ten ov002 matched TUs are shadowed that way today:
 
-     _ZN3HUD13InitResourcesEv          HUD_InitResources.cpp
+     _ZN8dMeter_c13InitResourcesEv          HUD_InitResources.cpp
      _ZN6Player11ChangeStateERNS_5StateE   reverse_bridges.cpp
      _ZN6Player12St_Jump_MainEv        Player_St_Jump_Main.cpp
      _ZN6Player12St_Swim_MainEv        method_faces.cpp -> Player_SwimMain.cpp
@@ -108,7 +108,7 @@ THE THREE FINDINGS WORTH CARRYING FORWARD
      _ZN6Player17St_NoControl_InitEv   Player_St_NoControl_Init.cpp
      _ZN6Player8BehaviorEv             Player_Behavior.cpp
      _ZN16dPathLiftActor_c12BaseBehaviorEv      PathLift_StateDispatch.cpp
-     _ZN9OneUpLogo13InitResourcesEv    OneUpLogo_InitResources.cpp
+     _ZN14daObj1UpLogo_c13InitResourcesEv    OneUpLogo_InitResources.cpp
 
    Each host file's header documents a real host-ABI reason (the mwcc
    pointer-to-member dispatch over DS code words, the TextureSequence::Prepare
@@ -139,7 +139,7 @@ THE THREE FINDINGS WORTH CARRYING FORWARD
    have each host copy also carry the Itanium spelling the way the three above
    do.
 
-3. func_ov002_020bd664's POINTER-TO-MEMBER TABLE IS LIVE AND UNSEATED.
+3. _ZN6Player19func_ov002_020bd664EPhii's POINTER-TO-MEMBER TABLE IS LIVE AND UNSEATED.
    UNPROVEN AT RUNTIME -- stated as a shape read off the source and the map,
    not as an observed fault.
 
@@ -154,7 +154,7 @@ THE THREE FINDINGS WORTH CARRYING FORWARD
    against; no port_*_states_seat covers this table.
 
    The fourteen bodies those records name are all in the unlinked set
-   (func_ov002_020bccfc, 020bcd18, 020bcd38, 020bd20c, 020bd250, 020bd354,
+   (_ZN6Player19func_ov002_020bccfcEPhii, 020bcd18, 020bcd38, 020bd20c, 020bd250, 020bd354,
    020bd3a0, 020bd438, 020bd45c, 020bd480, 020bd4ac, 020bd4c8, 020bd4e0,
    020bd600), so a seat over this table both closes a latent wild call and
    links fourteen TUs. It was not taken here: it needs the SignPost/Coin
@@ -170,11 +170,11 @@ Each needs one per-source COMPILE_DEFINITIONS line, which belongs to the actors
 lane this wave. `HEAP` needs nothing -- it is already bound to data_020a0eac,
 which is what all five want.
 
-    src/_ZN10BrickBlockD0Ev.cpp            VT=_ZTV10BrickBlock
+    src/_ZN10BrickBlockD0Ev.cpp            VT=_ZTV19daObjBlockItemTag_c
     src/game/actors/d_a_ch_scene.cpp           VT=_ZTV11daChScene_c
     src/game/actors/d_a_obj_waterfall.cpp    VT=_ZTV16daObjWaterfall_c
     src/game/actors/d_a_set_se.cpp   VT=_ZTV9daSetSE_c
-    src/_ZN8MugenBgmD0Ev.cpp               VT=_ZTV8MugenBgm
+    src/_ZN8MugenBgmD0Ev.cpp               VT=_ZTV12daMugenBGM_c
 
 Two more want a host object rather than a -D: src/_ZN10StarSwitchD0Ev.cpp and
 src/game/actors/d_a_obj_cannon_shutter.cpp both store _ZTV10dBgActor_c, the shared base table,
@@ -259,7 +259,7 @@ status file, because this is where the next person will look.
    TWO WRITERS, not one:
      GiveVsStars @ 0x0202a5ac (0x18 bytes) is the only DELTA mutator
        (data_0209f310[idx] += delta), byte-verified from arm9_dec.bin.
-     _ZN5Stage13InitResourcesEv @ 0x0202cc0c (literal pool 0x0202d564) zeroes
+     _ZN10dScStage_c13InitResourcesEv @ 0x0202cc0c (literal pool 0x0202d564) zeroes
        the array per player at stage load, across the same data_0209f21c count.
        That is where a fresh VS match resets its scores.
 
@@ -273,7 +273,7 @@ status file, because this is where the next person will look.
    0x020e9e44 and 0x020e9eb8 (animation phases 1 and 5, +1 each), 0x020ea33c
    (-1 when the carrier dies without a valid drop).
 
-   DROP is func_ov002_020d94cc @ 0x020d94cc (0x188): the victim must have a star
+   DROP is _ZN6Player19func_ov002_020d94ccEv @ 0x020d94cc (0x188): the victim must have a star
    (data_0209f310[slot] > 0), GiveVsStars(victim, -1), then spawn actor 0xb2
    (STAR, 178) when data_0209f2d8 == 1, else 0xb3 (SILVER_STAR, 179). Called
    from three Player damage states -- St_Hurt_Main, St_DeadHit_Main,
@@ -282,7 +282,7 @@ status file, because this is where the next person will look.
    mHurtDamage test. (Both of those are the review's corrections to the worker's
    first reading: the worker claimed one writer and a uniform mHurtDamage gate.)
 
-   COLLECT -- the "steal" -- is func_ov002_020e8ef0 @ 0x020e8ef0 (0x41c), the
+   COLLECT -- the "steal" -- is _ZN8daStar_c19func_ov002_020e8ef0EPv @ 0x020e8ef0 (0x41c), the
    PowerStar collect handler. Its VS branch (line ~104) calls
    GiveVsStars(toucher, +1); the solo branch sets Event bit 0x1e instead.
 
@@ -406,7 +406,7 @@ half all along ("align(4) on every member would pad each one to four and put
 
 WHAT IT COST, and why nothing ever faulted. Every WRITER indexes the array:
 GiveVsStars(idx, delta) does data_0209f310[idx] += delta, Stage::InitResources
-zeroes it with a walking p2, func_ov002_020d94cc's drop tests
+zeroes it with a walking p2, _ZN6Player19func_ov002_020d94ccEv's drop tests
 data_0209f310[slot] > 0, the three HUD readers index by data_0209f250, and
 func_ov075_021165b0 reads [0]..[3]. All of those land on host +0..+3. The one
 READER that walks by pointer is NumVsStarsObtained -- and its sum IS the VS win

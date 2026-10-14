@@ -68,14 +68,14 @@ unsigned short DecIfAbove0_Short(unsigned short *p);
 void _ZN8dActor_c9UpdatePosEP5dCc_c(char *self, char *cc);
 void _ZN5dCc_c5ClearEv(char *c);
 void _ZN5dCc_c6UpdateEv(char *c);
-void _ZN9Animation7AdvanceEv(char *c);
-void func_ov064_02119f1c(char *c);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(char *c);
+void _ZN14daWater_Ring_c19func_ov064_02119f1cEv(char *c);
 
 /* the four state bodies, all matched src */
-int func_ov064_02119ea0(void *c);   /* c954 enter */
-int func_ov064_02119d28(void *c);   /* c954 tick  */
-int func_ov064_02119ce4(void *c);   /* c944 enter */
-int func_ov064_02119c60(void *c);   /* c944 tick  */
+int _ZN14daWater_Ring_c19func_ov064_02119ea0Ev(void *c);   /* c954 enter */
+int _ZN14daWater_Ring_c19func_ov064_02119d28Ev(void *c);   /* c954 tick  */
+int _ZN14daWater_Ring_c19func_ov064_02119ce4Ev(void *c);   /* c944 enter */
+int _ZN14daWater_Ring_c19func_ov064_02119c60Ev(void *c);   /* c944 tick  */
 
 /* the four SOURCE records the sinit copies from (data, { fn, 0 }) */
 extern PortPmf data_ov064_0211c3b0[];   /* {02119ea0, 0} */
@@ -119,15 +119,15 @@ extern PortPmf data_ov064_0211c3c8[];   /* {02119d28, 0} */
         (void)dead_edx;                                                   \
         sym(self);                                                        \
     }
-WR_FACE(02119d28, func_ov064_02119d28)
-WR_FACE(02119c60, func_ov064_02119c60)
+WR_FACE(02119d28, _ZN14daWater_Ring_c19func_ov064_02119d28Ev)
+WR_FACE(02119c60, _ZN14daWater_Ring_c19func_ov064_02119c60Ev)
 
 static const struct { PortPmf *slot; unsigned rom; int (*host)(void *); }
 g_water_ring_states[] = {
-    {data_ov064_0211c3b0, 0x02119ea0, func_ov064_02119ea0},  /* c954 enter */
+    {data_ov064_0211c3b0, 0x02119ea0, _ZN14daWater_Ring_c19func_ov064_02119ea0Ev},  /* c954 enter */
     {data_ov064_0211c3c8, 0x02119d28,
      (int (*)(void *))(void *)wr_02119d28},                  /* c954 tick  */
-    {data_ov064_0211c3c0, 0x02119ce4, func_ov064_02119ce4},  /* c944 enter */
+    {data_ov064_0211c3c0, 0x02119ce4, _ZN14daWater_Ring_c19func_ov064_02119ce4Ev},  /* c944 enter */
     {data_ov064_0211c3b8, 0x02119c60,
      (int (*)(void *))(void *)wr_02119c60},                  /* c944 tick  */
 };

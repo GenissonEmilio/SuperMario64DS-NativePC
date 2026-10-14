@@ -35,32 +35,32 @@
 # 10/13), _ZN12dEnemyBase_cC2Ev / _ZN12dEnemyBase_cD2Ev (gate 16), _ZN6Player4BurnEv +
 # Player::ChangeState (gate 175 + unmatched/Player_ChangeState.cpp), the Platform
 # Update*/IsClsnInRange helpers, _ZN12dEnemyBase_c12UpdateWMClsnER10dBgCh_Actrj.
-src/d_a_obj_fl_amilift.c
+src/actors/daObjFl_Amilift_c.cpp
 src/game/actors/d_a_obj_fl_gura.cpp
-src/func_ov064_02117a14.cpp
-src/func_ov064_02117a44.cpp
-src/func_ov064_02117b8c.c
-src/func_ov064_02117bdc.c
-src/func_ov064_02117c24.c
-src/func_ov064_02117fb4.cpp
-src/func_ov064_02117fd4.c
-src/d_a_bbl.c
-src/_ZN10LavaBubble13InitResourcesEv.cpp
-src/_ZN10LavaBubble16CleanupResourcesEv.cpp
-src/_ZN10LavaBubble16OnPendingDestroyEv.cpp
-src/_ZN10LavaBubble6RenderEv.cpp
+# FOLDED into src/actors/daObjFl_Amilift_c.cpp (row 38): src/func_ov064_02117a14.cpp
+# FOLDED into src/actors/daObjFl_Amilift_c.cpp (row 38): src/func_ov064_02117a44.cpp
+# FOLDED into src/actors/daObjFl_Amilift_c.cpp (row 38): src/func_ov064_02117b8c.c
+# FOLDED into src/actors/daObjFl_Amilift_c.cpp (row 38): src/func_ov064_02117bdc.c
+# FOLDED into src/actors/daObjFl_Amilift_c.cpp (row 38): src/func_ov064_02117c24.c
+# FOLDED into src/actors/daObjFl_Amilift_c.cpp (row 38): src/func_ov064_02117fb4.cpp
+# FOLDED into src/actors/daObjFl_Amilift_c.cpp (row 38): src/func_ov064_02117fd4.c
+src/actors/daBbl_c.cpp
+# FOLDED into src/actors/daBbl_c.cpp (row 47): src/_ZN10LavaBubble13InitResourcesEv.cpp
+# FOLDED into src/actors/daBbl_c.cpp (row 47): src/_ZN10LavaBubble16CleanupResourcesEv.cpp
+# FOLDED into src/actors/daBbl_c.cpp (row 47): src/_ZN10LavaBubble16OnPendingDestroyEv.cpp
+# FOLDED into src/actors/daBbl_c.cpp (row 47): src/_ZN10LavaBubble6RenderEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN10LavaBubbleD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN10LavaBubbleD0Ev.cpp
-src/_ZN10LavaBubbleD1Ev.cpp
-src/func_ov064_02118644.c
-src/func_ov064_0211873c.c
-src/func_ov064_02118760.c
-src/func_ov064_021187d0.c
-src/_ZN10LavaBubble13OnYoshiTryEatEv.cpp
+# FOLDED into src/actors/daBbl_c.cpp (row 47): src/_ZN10LavaBubbleD1Ev.cpp
+# FOLDED into src/actors/daBbl_c.cpp (row 47): src/func_ov064_02118644.c
+# FOLDED into src/actors/daBbl_c.cpp (row 47): src/func_ov064_0211873c.c
+# FOLDED into src/actors/daBbl_c.cpp (row 47): src/func_ov064_02118760.c
+# FOLDED into src/actors/daBbl_c.cpp (row 47): src/func_ov064_021187d0.c
+# FOLDED into src/actors/daBbl_c.cpp (row 47): src/_ZN10LavaBubble13OnYoshiTryEatEv.cpp
 # the two RUNNABLE sinits: __sinit_ov064_0211afc0 constructs the Amilift's two
 # SharedFilePtrs (model 0x5ef, collider 0x5f0) and copies the 3 Behavior-state
 # source PMFs into data_ov064_0211c750; __sinit_ov064_0211b150 copies LavaBubble's
 # 4 source PMFs into data_ov064_0211c7b8/c7c8. Both are seated first (the seat in
 # unmatched/Ov064Gate178_States.cpp), then run from hal/actor_overlays.cpp.
-src/__sinit_ov064_0211afc0.c
-src/__sinit_ov064_0211b150.c
+# FOLDED into src/actors/daObjFl_Amilift_c.cpp (row 38): src/__sinit_ov064_0211afc0.c
+# FOLDED into src/actors/daBbl_c.cpp (row 47): src/__sinit_ov064_0211b150.c

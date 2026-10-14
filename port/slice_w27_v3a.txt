@@ -18,23 +18,46 @@
 # (runs/linkfull/out/V3A/).
 #
 # BATCH A, the collider thunks (tables filled in hal/w2_dtor_heads.cpp).
-src/_ZThn16_N9dBgCh_GndD0Ev.cpp
-src/_ZThn16_N9dBgCh_GndD1Ev.cpp
-src/_ZThn16_N9dBgCh_LinD0Ev.cpp
-src/_ZThn16_N9dBgCh_LinD1Ev.cpp
-src/_ZThn16_N12dBgCh_SphCrrD0Ev.cpp
-src/_ZThn16_N12dBgCh_SphCrrD1Ev.cpp
-src/_ZThn56_N12dBgCh_SphCrrD0Ev.cpp
-src/_ZThn56_N12dBgCh_SphCrrD1Ev.cpp
+src/engine/collision/dBgCh_Gnd.cpp
+port/unmatched/hostarm/_ZThn16_N9dBgCh_GndD0Ev.cpp
+# FOLDED into src/engine/collision/dBgCh_Gnd.cpp (row 21): src/_ZThn16_N9dBgCh_GndD1Ev.cpp
+port/unmatched/hostarm/_ZThn16_N9dBgCh_GndD1Ev.cpp
+src/engine/collision/dBgCh_Lin.cpp
+port/unmatched/hostarm/_ZThn16_N9dBgCh_LinD0Ev.cpp
+# FOLDED into src/engine/collision/dBgCh_Lin.cpp (row 23): src/_ZThn16_N9dBgCh_LinD1Ev.cpp
+port/unmatched/hostarm/_ZThn16_N9dBgCh_LinD1Ev.cpp
+src/engine/collision/dBgCh_SphCrr.cpp
+port/unmatched/hostarm/_ZThn16_N12dBgCh_SphCrrD0Ev.cpp
+# FOLDED into src/engine/collision/dBgCh_SphCrr.cpp (row 25): src/_ZThn16_N12dBgCh_SphCrrD1Ev.cpp
+port/unmatched/hostarm/_ZThn16_N12dBgCh_SphCrrD1Ev.cpp
+# FOLDED into src/engine/collision/dBgCh_SphCrr.cpp (row 25): src/_ZThn56_N12dBgCh_SphCrrD0Ev.cpp
+port/unmatched/hostarm/_ZThn56_N12dBgCh_SphCrrD0Ev.cpp
+# FOLDED into src/engine/collision/dBgCh_SphCrr.cpp (row 25): src/_ZThn56_N12dBgCh_SphCrrD1Ev.cpp
+port/unmatched/hostarm/_ZThn56_N12dBgCh_SphCrrD1Ev.cpp
 #
 # BATCH B, the Animation-base thunks (tables filled in hal/cxxname_bridge.cpp and
 # hal/blend_vtable.cpp) and daDemo_c::anmModel_c's (its ov002 table, filled in
 # hal/w2_dtor_heads.cpp).
-src/_ZThn80_N9ModelAnimD0Ev.cpp
-src/_ZThn80_N9ModelAnimD1Ev.cpp
-src/_ZThn80_N10ModelAnim2D0Ev.cpp
-src/_ZThn80_N10ModelAnim2D1Ev.cpp
-src/_ZThn80_N14BlendModelAnimD0Ev.cpp
-src/_ZThn80_N14BlendModelAnimD1Ev.cpp
-src/_ZThn80_N8daDemo_c10anmModel_cD0Ev.cpp
-src/_ZThn80_N8daDemo_c10anmModel_cD1Ev.cpp
+# PORTSYNC2: main renamed the thunks' base class Animation to dExtFrameCtrl_c, so the
+# _MSC_VER arms these seven src files still carry no longer compile on the host. The
+# rows build port/unmatched/hostarm/ copies of the same arms with the type renamed.
+#src/_ZThn80_N9ModelAnimD0Ev.cpp
+port/unmatched/hostarm/_ZThn80_N9ModelAnimD0Ev.cpp
+#src/_ZThn80_N9ModelAnimD1Ev.cpp
+port/unmatched/hostarm/_ZThn80_N9ModelAnimD1Ev.cpp
+#src/_ZThn80_N10ModelAnim2D0Ev.cpp
+port/unmatched/hostarm/_ZThn80_N10ModelAnim2D0Ev.cpp
+#src/_ZThn80_N10ModelAnim2D1Ev.cpp
+port/unmatched/hostarm/_ZThn80_N10ModelAnim2D1Ev.cpp
+#src/_ZThn80_N14BlendModelAnimD0Ev.cpp
+port/unmatched/hostarm/_ZThn80_N14BlendModelAnimD0Ev.cpp
+#src/_ZThn80_N14BlendModelAnimD1Ev.cpp
+port/unmatched/hostarm/_ZThn80_N14BlendModelAnimD1Ev.cpp
+#src/_ZThn80_N8daDemo_c10anmModel_cD0Ev.cpp
+port/unmatched/hostarm/_ZThn80_N8daDemo_c10anmModel_cD0Ev.cpp
+# PORTSYNC2: src/_ZThn80_N8daDemo_c10anmModel_cD1Ev.cpp is not compiled any more: under
+# MSVC it emits only ~anmModel_c/~simpleModel_c, which main's folded daDemo_c.cpp now
+# defines too (a link simulation measured the pair). The thunk itself MSVC never
+# emits; port/unmatched/hostarm/ carries it (next row).
+#src/_ZThn80_N8daDemo_c10anmModel_cD1Ev.cpp
+port/unmatched/hostarm/_ZThn80_N8daDemo_c10anmModel_cD1Ev.cpp

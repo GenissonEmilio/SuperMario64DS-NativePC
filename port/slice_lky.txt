@@ -307,7 +307,7 @@
 # absolute paths, so nothing is compiled twice.
 
 src/minigames/d_s_mg_bsc.cpp
-src/func_ov004_020b0a38.c
-src/func_ov004_020b5c18.cpp
-src/func_ov004_020b5ed0.c
-src/func_ov004_020b6324.c
+src/minigames/d_s_mg_base.cpp
+src/actors/unit020b4aa4.cpp
+# FOLDED into src/actors/unit020b4aa4.cpp (row 311): src/func_ov004_020b5ed0.c
+# FOLDED into src/actors/unit020b4aa4.cpp (row 311): src/func_ov004_020b6324.c

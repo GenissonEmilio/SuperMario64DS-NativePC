@@ -66,7 +66,7 @@
 #include "dActor_c.h"
 #include "fBase_c.h"
 #include "dBgCh.h"
-#include "Camera.h"
+#include "dCamera_c.h"
 #include "dBgPi.h"
 #include "dCc_c.h"
 #include "dCcPos_c.h"
@@ -424,12 +424,11 @@ extern "C" void _ZN7fBase_c13AfterBehaviorEj(void) {}
    argument read; /OPT:ICF folds the two matched bodies onto one address. */
 extern "C" void _ZN7fBase_c11AfterRenderEj(void) {}
 
-/* gate 16: ModelBase::ApplyOpacity is a real method whose only caller,
-   Tree::Render, spells it as an Itanium C name (and passes a third argument
-   the ROM's r2 carried into a two-parameter body; cdecl lets the caller keep
-   cleaning it). */
-extern "C" void _ZN9ModelBase12ApplyOpacityEj(void *self, unsigned a)
-{ ((ModelBase *)self)->ModelBase::ApplyOpacity(a); }
+/* gate 16: ModelBase::ApplyOpacity is a real method whose callers spell it as
+   an Itanium C name. Main declares the ROM's r2 as the method's own second
+   (unused) parameter now -- the `jj` in the name -- so the face forwards it. */
+extern "C" void _ZN9ModelBase12ApplyOpacityEjj(void *self, unsigned a, unsigned b)
+{ ((ModelBase *)self)->ModelBase::ApplyOpacity(a, b); }
 
 /* Model::UpdateFileOffsets is a STATIC member (include/Model.h), which is why
    func_02016ff4 calls it with the file alone and no `this` -- the Itanium name
@@ -521,14 +520,14 @@ int _ZN6Player20IsStateEnteringLevelEv(void *self)
 { return ((Player *)self)->Player::IsStateEnteringLevel(); }
 }
 
-#include "PowerStar.h"
+#include "daStar_c.h"
 extern "C" {
 void _ZN10dBgCh_Actr20UpdateDiscreteNoLavaEv(void *self)
 { ((dBgCh_Actr *)self)->dBgCh_Actr::UpdateDiscreteNoLava(); }
 void _ZN10dBgCh_Actr22UpdateDiscreteNoLava_2Ev(void *self)
 { ((dBgCh_Actr *)self)->dBgCh_Actr::UpdateDiscreteNoLava_2(); }
-void _ZN9PowerStar13AddStarMarkerEv(void *self)
-{ ((PowerStar *)self)->PowerStar::AddStarMarker(); }
+void _ZN8daStar_c13AddStarMarkerEv(void *self)
+{ ((daStar_c *)self)->daStar_c::AddStarMarker(); }
 }
 
 /* ---- gate 17: the level overlay's own classes ---------------------------
@@ -538,12 +537,12 @@ void _ZN9PowerStar13AddStarMarkerEv(void *self)
 
    CASTLE_WATER is not here: its four src files spell their own Itanium names
    in extern "C", so a face would be a second definition of each. */
-#include "Bird.h"
+#include "daSBird_c.h"
 #include "daObjMc_Metalnet_c.h"
 #include "daMcFlag_c.h"
 extern "C" {
-int _ZN4Bird13InitResourcesEv(void *self)
-{ return ((Bird *)self)->Bird::InitResources(); }
+int _ZN9daSBird_c13InitResourcesEv(void *self)
+{ return ((daSBird_c *)self)->daSBird_c::InitResources(); }
 /* BIRD::RENDER AND FLAG::RENDER ARE RETIRED (run link100, lane PMFB2). Both
    are on port/slice_pmfb2.txt and compile from src/_ZN4Bird6RenderEv.cpp and
    src/game/actors/d_a_mc_flag.cpp; each matched TU recovered as a real C++ method
@@ -729,12 +728,12 @@ void _ZN5Model14LoadAndSetFileEtii(void *self, unsigned short id, int a, int b)
    host array is MSVC's -- gate 17's Bird/FLAG case with a body attached.
    port/unmatched/Ov085_Renders.cpp. */
 #include "daMip_c.h"
-#include "LakituBro.h"
+#include "daC_Jugem_c.h"
 extern "C" {
 int _ZN7daMip_c13InitResourcesEv(void *self)
 { return ((daMip_c *)self)->daMip_c::InitResources(); }
-int _ZN9LakituBro13InitResourcesEv(void *self)
-{ return ((LakituBro *)self)->LakituBro::InitResources(); }
+int _ZN11daC_Jugem_c13InitResourcesEv(void *self)
+{ return ((daC_Jugem_c *)self)->daC_Jugem_c::InitResources(); }
 }
 
 /* ---- gate 18: RABBIT_KEY (actor 229) -- the caught rabbit's grant actor ----
@@ -747,12 +746,12 @@ int _ZN9LakituBro13InitResourcesEv(void *self)
    frame-1 DEP fault on the spawn-assisted key. The state PMF (this+0x188) is
    handled by the hand-rolled dispatcher host copy
    (port/unmatched/RabbitKey_StateSeat.cpp), not here. */
-#include "RabbitKey.h"
+#include "daObj_Mip_Key_c.h"
 extern "C" {
-int _ZN9RabbitKey13InitResourcesEv(void *self)
-{ return ((RabbitKey *)self)->RabbitKey::InitResources(); }
-int _ZN9RabbitKey8BehaviorEv(void *self)
-{ return ((RabbitKey *)self)->RabbitKey::Behavior(); }
+int _ZN15daObj_Mip_Key_c13InitResourcesEv(void *self)
+{ return ((daObj_Mip_Key_c *)self)->daObj_Mip_Key_c::InitResources(); }
+int _ZN15daObj_Mip_Key_c8BehaviorEv(void *self)
+{ return ((daObj_Mip_Key_c *)self)->daObj_Mip_Key_c::Behavior(); }
 }
 
 /* ---- gate 40: ov100's STAR_DOOR (the config's _ZN4Door* family) ----------
@@ -762,7 +761,7 @@ int _ZN9RabbitKey8BehaviorEv(void *self)
    src, and slot 16 reuses ac_d1_door (the member is a CommonModel at 0xd4, the
    real door's layout), so only these two need a face. */
 #include "daStarGate_c.h"
-#include "Door.h"
+#include "daDoor_c.h"
 extern "C" {
 int _ZN12daStarGate_c13InitResourcesEv(void *self)
 { return ((daStarGate_c *)self)->daStarGate_c::InitResources(); }
@@ -775,14 +774,14 @@ int _ZN12daStarGate_c8BehaviorEv(void *self)
    InitResources, Behavior and Render are real C++ methods; its
    CleanupResources and D0 are already C-named in src, and slots 16/17 trap
    (nothing destroys one on the castle-interior boot -- the gate-17 reading). */
-#include "LightBeam.h"
+#include "daObjC1Hikari_c.h"
 extern "C" {
-int _ZN9LightBeam13InitResourcesEv(void *self)
-{ return ((LightBeam *)self)->LightBeam::InitResources(); }
-int _ZN9LightBeam8BehaviorEv(void *self)
-{ return ((LightBeam *)self)->LightBeam::Behavior(); }
-int _ZN9LightBeam6RenderEv(void *self)
-{ return ((LightBeam *)self)->LightBeam::Render(); }
+int _ZN15daObjC1Hikari_c13InitResourcesEv(void *self)
+{ return ((daObjC1Hikari_c *)self)->daObjC1Hikari_c::InitResources(); }
+int _ZN15daObjC1Hikari_c8BehaviorEv(void *self)
+{ return ((daObjC1Hikari_c *)self)->daObjC1Hikari_c::Behavior(); }
+int _ZN15daObjC1Hikari_c6RenderEv(void *self)
+{ return ((daObjC1Hikari_c *)self)->daObjC1Hikari_c::Render(); }
 }
 
 /* ---- gate 42: ov010's PEACH_PAINTING ------------------------------------
@@ -792,14 +791,14 @@ int _ZN9LightBeam6RenderEv(void *self)
    thunk in hal/actor_classes.cpp (Model at 0xd4 then Actor::~Actor). The class
    was mislabeled as blocked on ov052/RollingRock; the relocs prove both
    references stay inside ov010 -- see slice_gate42.txt. */
-#include "PeachPainting.h"
+#include "daObjC1Peach_c.h"
 extern "C" {
-int _ZN13PeachPainting13InitResourcesEv(void *self)
-{ return ((PeachPainting *)self)->PeachPainting::InitResources(); }
-int _ZN13PeachPainting8BehaviorEv(void *self)
-{ return ((PeachPainting *)self)->PeachPainting::Behavior(); }
-int _ZN13PeachPainting6RenderEv(void *self)
-{ return ((PeachPainting *)self)->PeachPainting::Render(); }
+int _ZN14daObjC1Peach_c13InitResourcesEv(void *self)
+{ return ((daObjC1Peach_c *)self)->daObjC1Peach_c::InitResources(); }
+int _ZN14daObjC1Peach_c8BehaviorEv(void *self)
+{ return ((daObjC1Peach_c *)self)->daObjC1Peach_c::Behavior(); }
+int _ZN14daObjC1Peach_c6RenderEv(void *self)
+{ return ((daObjC1Peach_c *)self)->daObjC1Peach_c::Render(); }
 }
 
 /* Three more C-named references onto method definitions, reached through
@@ -838,10 +837,10 @@ void _ZN9ModelAnim6RenderEPK7Vector3(void *self, const void *scale)
    One more, the same shape. Its Render is a host copy for the Model slot-3
    reason and its Behavior for the pointer-to-member one
    (port/unmatched/Cannon_Render.cpp, Cannon_Behavior.cpp). */
-#include "Cannon.h"
+#include "daCnn_c.h"
 extern "C" {
-int _ZN6Cannon13InitResourcesEv(void *self)
-{ return ((Cannon *)self)->Cannon::InitResources(); }
+int _ZN7daCnn_c13InitResourcesEv(void *self)
+{ return ((daCnn_c *)self)->daCnn_c::InitResources(); }
 }
 
 /* ---- gate 20: ov002's WATERFALL_MIST -------------------------------------
@@ -881,35 +880,35 @@ int _ZN16daObjWaterfall_c13InitResourcesEv(void *self)
    Itanium name. Their Renders are NOT faced here: those are host copies in
    port/unmatched/ModelAnim_Renders.cpp, which define the Itanium names
    themselves. */
-#include "Butterfly.h"
-#include "Fish.h"
+#include "daBtfly_c.h"
+#include "daFish_c.h"
 extern "C" {
-int _ZN9Butterfly13InitResourcesEv(void *self)
-{ return ((Butterfly *)self)->Butterfly::InitResources(); }
-int _ZN4Fish13InitResourcesEv(void *self)
-{ return ((Fish *)self)->Fish::InitResources(); }
-int _ZN4Fish16CleanupResourcesEv(void *self)
-{ return ((Fish *)self)->Fish::CleanupResources(); }
+int _ZN9daBtfly_c13InitResourcesEv(void *self)
+{ return ((daBtfly_c *)self)->daBtfly_c::InitResources(); }
+int _ZN8daFish_c13InitResourcesEv(void *self)
+{ return ((daFish_c *)self)->daFish_c::InitResources(); }
+int _ZN8daFish_c16CleanupResourcesEv(void *self)
+{ return ((daFish_c *)self)->daFish_c::CleanupResources(); }
 }
 
 /* Animation::GetFrameCount is a real const method too, and gate 21 is the
    first thing to call it: the butterfly asks its own animation how long it is
    before it will loop, and one of the fish's states does the same. */
-#include "Animation.h"
+#include "dExtFrameCtrl_c.h"
 extern "C" {
-unsigned _ZNK9Animation13GetFrameCountEv(const void *self)
-{ return ((const Animation *)self)->GetFrameCount(); }
+unsigned _ZNK15dExtFrameCtrl_c13GetFrameCountEv(const void *self)
+{ return ((const dExtFrameCtrl_c *)self)->GetFrameCount(); }
 }
 
 /* ---- gate 23: ov102's QUESTION_BLOCK -------------------------------------
    Two more of the same shape; its InitResources is already C-named and its
    Render is a host copy (port/unmatched/ModelAnim_Renders.cpp). */
-#include "QuestionBlock.h"
+#include "daObjHatenaBlock_c.h"
 extern "C" {
-int _ZN13QuestionBlock8BehaviorEv(void *self)
-{ return ((QuestionBlock *)self)->QuestionBlock::Behavior(); }
-int _ZN13QuestionBlock16CleanupResourcesEv(void *self)
-{ return ((QuestionBlock *)self)->QuestionBlock::CleanupResources(); }
+int _ZN18daObjHatenaBlock_c8BehaviorEv(void *self)
+{ return ((daObjHatenaBlock_c *)self)->daObjHatenaBlock_c::Behavior(); }
+int _ZN18daObjHatenaBlock_c16CleanupResourcesEv(void *self)
+{ return ((daObjHatenaBlock_c *)self)->daObjHatenaBlock_c::CleanupResources(); }
 }
 
 /* ---- wave 4 lane d: the two FaderBrightness faces Scene::BeforeBehavior needs
@@ -1016,7 +1015,7 @@ int _ZN13QuestionBlock16CleanupResourcesEv(void *self)
    body -- is the one the dumpbin paragraph above reads, whether MSVC ends it
    in a call or a tail jmp. hal/auto_bss.cpp's sizing note still reads "no
    linked writer"; that note is history now. */
-#include "FaderBrightness.h"
+#include "dFdBrightness_c.h"
 extern "C" {
 extern unsigned char data_0209f1e0[4];   /* hal/auto_bss.cpp: the latch */
 extern int data_0209f5d0[3];             /* hal/auto_bss.cpp: the reset fader */
@@ -1028,15 +1027,15 @@ void port_fader_latch_face_hits(unsigned *set_forward, unsigned *is_at_end)
     *set_forward = g_fb_latch_setfwd;
     *is_at_end = g_fb_latch_atend;
 }
-int _ZN15FaderBrightness7IsAtEndEv(void *self)
+int _ZN15dFdBrightness_c7IsAtEndEv(void *self)
 {
     if (data_0209f1e0[0] && self == (void *)data_0209f5d0) ++g_fb_latch_atend;
-    return ((FaderBrightness *)self)->FaderBrightness::IsAtEnd();
+    return ((dFdBrightness_c *)self)->dFdBrightness_c::IsAtEnd();
 }
-int _ZN15FaderBrightness14SetForwardTimeEj(void *self, u32 frames)
+int _ZN15dFdBrightness_c14SetForwardTimeEj(void *self, u32 frames)
 {
     if (data_0209f1e0[0] && self == (void *)data_0209f5d0) ++g_fb_latch_setfwd;
-    return ((FaderBrightness *)self)->FaderBrightness::SetForwardTime(frames);
+    return ((dFdBrightness_c *)self)->dFdBrightness_c::SetForwardTime(frames);
 }
 }
 
@@ -1106,11 +1105,11 @@ void _ZN6Player13InitFireYoshiEv(void *self)
  * from this file (nothing in include/ includes it), so its one-argument
  * declaration of func_ov080_0212513c does not collide with this one. */
 extern "C" {
-void func_ov072_02121d50(void *c, int i);
-void func_ov080_0212513c(void *c, int i);
+void _ZN9daPgBby_c19func_ov072_02121d50Ei(void *c, int i);
+void _ZN9daBttBk_c19func_ov080_0212513cEi(void *c, int i);
 
-void port_ov072_bp_state_i0(void *c) { func_ov072_02121d50(c, 0); }
-void port_ov080_cc_state_i0(void *c) { func_ov080_0212513c(c, 0); }
+void port_ov072_bp_state_i0(void *c) { _ZN9daPgBby_c19func_ov072_02121d50Ei(c, 0); }
+void port_ov080_cc_state_i0(void *c) { _ZN9daBttBk_c19func_ov080_0212513cEi(c, 0); }
 }  /* extern "C" */
 
 /* The third forwarder of the same gate, and the one that reads the other way

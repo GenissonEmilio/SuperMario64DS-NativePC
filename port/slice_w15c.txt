@@ -60,23 +60,24 @@
 #       module:overlay(25). ov032 has a real data_ov032_02113acc with four
 #       readers already in src, so the same argument applies.
 
-src/_ZN11PyramidStep13InitResourcesEv.cpp
-src/_ZN11PyramidStep8BehaviorEv.cpp
-src/_ZN11PyramidStep6RenderEv.cpp
-src/_ZN11PyramidStepD1Ev.cpp
+src/actors/daObjDpBrock_c.cpp
+# FOLDED into src/actors/daObjDpBrock_c.cpp (row 63): src/_ZN11PyramidStep8BehaviorEv.cpp
+# FOLDED into src/actors/daObjDpBrock_c.cpp (row 63): src/_ZN11PyramidStep6RenderEv.cpp
+# FOLDED into src/actors/daObjDpBrock_c.cpp (row 63): src/_ZN11PyramidStepD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN11PyramidStepD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN11PyramidStepD0Ev.cpp
-src/d_a_obj_dp_brock.c
-src/func_ov025_02111dec.cpp
-src/func_ov025_02111e30.c
-src/_ZN11PyramidLift13InitResourcesEv.cpp
-src/_ZN11PyramidLift16CleanupResourcesEv.cpp
-src/_ZN11PyramidLift8BehaviorEv.cpp
-src/_ZN11PyramidLift6RenderEv.cpp
-src/_ZN11PyramidLiftD1Ev.cpp
-src/_ZN11PyramidLiftD0Ev.cpp
-src/d_a_dp_lift.cpp
-src/func_ov025_021125bc.cpp
-src/func_ov025_021125dc.c
-src/__sinit_ov025_02112a44.c
-src/__sinit_ov025_02112aac.c
+# FOLDED into src/actors/daObjDpBrock_c.cpp (row 63): src/d_a_obj_dp_brock.c
+# FOLDED into src/actors/daObjDpBrock_c.cpp (row 63): src/func_ov025_02111dec.cpp
+# FOLDED into src/actors/daObjDpBrock_c.cpp (row 63): src/func_ov025_02111e30.c
+src/actors/daDpLift_c.cpp
+# FOLDED into src/actors/daDpLift_c.cpp (row 72): src/_ZN11PyramidLift16CleanupResourcesEv.cpp
+# FOLDED into src/actors/daDpLift_c.cpp (row 72): src/_ZN11PyramidLift8BehaviorEv.cpp
+# FOLDED into src/actors/daDpLift_c.cpp (row 72): src/_ZN11PyramidLift6RenderEv.cpp
+# FOLDED into src/actors/daDpLift_c.cpp (row 72): src/_ZN11PyramidLiftD1Ev.cpp
+# FOLDED into src/actors/daDpLift_c.cpp (row 72): src/_ZN11PyramidLiftD0Ev.cpp
+port/unmatched/hostarm/_ZN11PyramidLiftD0Ev.cpp
+# FOLDED into src/actors/daDpLift_c.cpp (row 72): src/d_a_dp_lift.cpp
+# FOLDED into src/actors/daDpLift_c.cpp (row 72): src/func_ov025_021125bc.cpp
+# FOLDED into src/actors/daDpLift_c.cpp (row 72): src/func_ov025_021125dc.c
+# FOLDED into src/actors/daObjDpBrock_c.cpp (row 63): src/__sinit_ov025_02112a44.c
+# FOLDED into src/actors/daDpLift_c.cpp (row 72): src/__sinit_ov025_02112aac.c

@@ -36,10 +36,10 @@ extern KshPmf data_ov102_0214e5fc, data_ov102_0214e5dc,
 extern KshState data_ov102_0214ea48, data_ov102_0214ea58,
     data_ov102_0214ea68, data_ov102_0214ea78;
 
-void func_ov102_0214d0bc(void); void func_ov102_0214d044(void);
-void func_ov102_0214d020(void); void func_ov102_0214cfe4(void);
-void func_ov102_0214d1b8(void); void func_ov102_0214d1b0(void);
-void func_ov102_0214d148(void); void func_ov102_0214d114(void);
+void _ZN7daShl_c19func_ov102_0214d0bcEv(void); void _ZN7daShl_c19func_ov102_0214d044Ev(void);
+void _ZN7daShl_c19func_ov102_0214d020Ev(void); void _ZN7daShl_c19func_ov102_0214cfe4Ev(void);
+void _ZN7daShl_c19func_ov102_0214d1b8Ev(void); void _ZN7daShl_c19func_ov102_0214d1b0Ev(void);
+void _ZN7daShl_c19func_ov102_0214d148Ev(void); void _ZN7daShl_c19func_ov102_0214d114Ev(void);
 
 }  /* extern "C" */
 
@@ -68,14 +68,14 @@ extern "C" void port_koopa_shell_states_seat(void)
 
     struct Row { KshPmf *src; KshState *state; int is_main; unsigned rom; KshFn host; };
     static const Row rows[8] = {
-        {&data_ov102_0214e5fc, &data_ov102_0214ea48, 0, 0x0214d0bc, func_ov102_0214d0bc},
-        {&data_ov102_0214e5dc, &data_ov102_0214ea48, 1, 0x0214d044, func_ov102_0214d044},
-        {&data_ov102_0214e5ec, &data_ov102_0214ea58, 0, 0x0214d020, func_ov102_0214d020},
-        {&data_ov102_0214e5d4, &data_ov102_0214ea58, 1, 0x0214cfe4, func_ov102_0214cfe4},
-        {&data_ov102_0214e5e4, &data_ov102_0214ea68, 0, 0x0214d1b8, func_ov102_0214d1b8},
-        {&data_ov102_0214e5f4, &data_ov102_0214ea68, 1, 0x0214d1b0, func_ov102_0214d1b0},
-        {&data_ov102_0214e604, &data_ov102_0214ea78, 0, 0x0214d148, func_ov102_0214d148},
-        {&data_ov102_0214e60c, &data_ov102_0214ea78, 1, 0x0214d114, func_ov102_0214d114},
+        {&data_ov102_0214e5fc, &data_ov102_0214ea48, 0, 0x0214d0bc, _ZN7daShl_c19func_ov102_0214d0bcEv},
+        {&data_ov102_0214e5dc, &data_ov102_0214ea48, 1, 0x0214d044, _ZN7daShl_c19func_ov102_0214d044Ev},
+        {&data_ov102_0214e5ec, &data_ov102_0214ea58, 0, 0x0214d020, _ZN7daShl_c19func_ov102_0214d020Ev},
+        {&data_ov102_0214e5d4, &data_ov102_0214ea58, 1, 0x0214cfe4, _ZN7daShl_c19func_ov102_0214cfe4Ev},
+        {&data_ov102_0214e5e4, &data_ov102_0214ea68, 0, 0x0214d1b8, _ZN7daShl_c19func_ov102_0214d1b8Ev},
+        {&data_ov102_0214e5f4, &data_ov102_0214ea68, 1, 0x0214d1b0, _ZN7daShl_c19func_ov102_0214d1b0Ev},
+        {&data_ov102_0214e604, &data_ov102_0214ea78, 0, 0x0214d148, _ZN7daShl_c19func_ov102_0214d148Ev},
+        {&data_ov102_0214e60c, &data_ov102_0214ea78, 1, 0x0214d114, _ZN7daShl_c19func_ov102_0214d114Ev},
     };
     for (unsigned i = 0; i < 8; ++i) {
         KshPmf *dst = rows[i].is_main ? &rows[i].state->main : &rows[i].state->init;

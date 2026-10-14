@@ -147,18 +147,18 @@ extern MgC2Pair data_ov006_021419f8[];   /* 4, arity 1 */
 extern MgC2Pair data_ov006_02141a18[];   /* 5, arity 0 */
 
 /* the 0-arity state bodies */
-void func_ov006_020e64e4(int c);
-void func_ov006_020e628c(char *c);
-void func_ov006_020e61c4(char *c);
-void func_ov006_020e61c0(void);
+void _ZN15dScMgCurling2_c10BeginRoundEv(int c);
+void _ZN15dScMgCurling2_c9NextThrowEv(char *c);
+void _ZN15dScMgCurling2_c8EndRoundEv(char *c);
+void _ZN15dScMgCurling2_c4IdleEv(void);
 void _ZN15dScMgCurling2_c9DragBeginEv(char *c);
 void _ZN15dScMgCurling2_c10DragUpdateEv(char *c);
 
 /* the 1-arity state bodies */
-void func_ov006_020e5e3c(char *c, int i);
-void func_ov006_020e5b7c(char *c, int i);
-void func_ov006_020e5b70(char *c, int i);
-void func_ov006_020e5a0c(char *c, int i);
+void _ZN15dScMgCurling2_c9StoneWaitEi(char *c, int i);
+void _ZN15dScMgCurling2_c10StoneSlideEi(char *c, int i);
+void _ZN15dScMgCurling2_c9StoneRestEi(char *c, int i);
+void _ZN15dScMgCurling2_c10StoneSteerEi(char *c, int i);
 void _ZN15dScMgCurling2_c12PickStepModeEi(char *c, int i);
 void _ZN15dScMgCurling2_c13StepXPickFastEi(char *c, int i);
 void _ZN15dScMgCurling2_c16StepXPushPosFastEi(char *c, int i);
@@ -177,11 +177,11 @@ int  RandomIntInternal(int *seed);
 extern int data_0209d4b8;                /* src spells it at C++ linkage; a
                                             host copy has no reason to, and
                                             spelling it here saves an alias */
-void func_ov006_020e3948(char *c);
+void _ZN15dScMgCurling2_c9AgeValuesEv(char *c);
 
 /* the five this file defines */
-void func_ov006_020e6354(char *c);
-void func_ov006_020e4800(char *o);
+void _ZN15dScMgCurling2_c4PlayEv(char *c);
+void _ZN15dScMgCurling2_c10StepPiecesEv(char *o);
 void _ZN15dScMgCurling2_c9StepXAndYEi(char *c, int i);
 void _ZN15dScMgCurling2_c9StepXOnlyEi(char *o, int i);
 int  _ZN15dScMgCurling2_c8BehaviorEv(char *c);
@@ -259,11 +259,11 @@ static void c2_call0(void *p, const MgC2Pair &e)
         return;
     }
     switch ((unsigned)e.code) {
-    case 0x020e64e4u: func_ov006_020e64e4((int)(size_t)p);  return;
-    case 0x020e6354u: func_ov006_020e6354((char *)p);       return;
-    case 0x020e628cu: func_ov006_020e628c((char *)p);       return;
-    case 0x020e61c4u: func_ov006_020e61c4((char *)p);       return;
-    case 0x020e61c0u: func_ov006_020e61c0();                return;
+    case 0x020e64e4u: _ZN15dScMgCurling2_c10BeginRoundEv((int)(size_t)p);  return;
+    case 0x020e6354u: _ZN15dScMgCurling2_c4PlayEv((char *)p);       return;
+    case 0x020e628cu: _ZN15dScMgCurling2_c9NextThrowEv((char *)p);       return;
+    case 0x020e61c4u: _ZN15dScMgCurling2_c8EndRoundEv((char *)p);       return;
+    case 0x020e61c0u: _ZN15dScMgCurling2_c4IdleEv();                return;
     case 0x020e4ed4u: _ZN15dScMgCurling2_c9DragBeginEv((char *)p);       return;
     case 0x020e4bd4u: ++g_4bd4; _ZN15dScMgCurling2_c10DragUpdateEv((char *)p); return;
     default: break;
@@ -289,16 +289,16 @@ static void c2_call1(void *p, const MgC2Pair &e, int i)
         return;
     }
     switch ((unsigned)e.code) {
-    case 0x020e5e3cu: func_ov006_020e5e3c((char *)p, i);    return;
-    case 0x020e5b7cu: func_ov006_020e5b7c((char *)p, i);    return;
+    case 0x020e5e3cu: _ZN15dScMgCurling2_c9StoneWaitEi((char *)p, i);    return;
+    case 0x020e5b7cu: _ZN15dScMgCurling2_c10StoneSlideEi((char *)p, i);    return;
     /* THE VENEER TAKES ITS ARGUMENTS. func_ov006_020e5b70 is `ldr ip,[pc];
        bx ip; .word 0x020e5450` in the image -- a tail jump, so r0 and r1 ride
        through untouched -- and both this site and src/func_ov006_020e5b70.c
        used to drop them. That was harmless only while 0x020e5450 was a trap
        that ignored its parameters; it now strides an eleven-entry 0x30-byte
        record array by that index. Both halves are fixed. */
-    case 0x020e5b70u: func_ov006_020e5b70((char *)p, i);   return;
-    case 0x020e5a0cu: func_ov006_020e5a0c((char *)p, i);    return;
+    case 0x020e5b70u: _ZN15dScMgCurling2_c9StoneRestEi((char *)p, i);   return;
+    case 0x020e5a0cu: _ZN15dScMgCurling2_c10StoneSteerEi((char *)p, i);    return;
     case 0x020e4794u: _ZN15dScMgCurling2_c12PickStepModeEi((char *)p, i);    return;
     case 0x020e4744u: _ZN15dScMgCurling2_c9StepXOnlyEi((char *)p, i);    return;
     case 0x020e42b4u: _ZN15dScMgCurling2_c9StepXAndYEi((char *)p, i);    return;
@@ -441,11 +441,11 @@ static void __fastcall c2_78_s1(void *self, void *dead_edx)
         ++g_d8[slot];                                                     \
         sym((char *)self, i);                                             \
     }
-C2_D8_FACE(0, func_ov006_020e5e3c)
-C2_D8_FACE(1, func_ov006_020e5b7c)
-C2_D8_FACE(2, func_ov006_020e5b70)   /* the veneer onto 0x020e5450; it takes
+C2_D8_FACE(0, _ZN15dScMgCurling2_c9StoneWaitEi)
+C2_D8_FACE(1, _ZN15dScMgCurling2_c10StoneSlideEi)
+C2_D8_FACE(2, _ZN15dScMgCurling2_c9StoneRestEi)   /* the veneer onto 0x020e5450; it takes
                                         both words, see c2_call1 */
-C2_D8_FACE(3, func_ov006_020e5a0c)
+C2_D8_FACE(3, _ZN15dScMgCurling2_c10StoneSteerEi)
 
 /* run link100 lane SEAT4: this class's remaining state tables are
    seated in port/hal/pmf_seat4.cpp, from inside this installer, so the

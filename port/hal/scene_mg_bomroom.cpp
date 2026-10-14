@@ -253,7 +253,7 @@ int  *_ZN14dScMgBomroom_cD0Ev(int *self);           /* slot 17 D0 */
 void  _ZN14dScMgBomroom_c13OnYoshiTryEatEi(unsigned char *self); /* slot 18 state reset */
 
 /* the ROM's own drop-inside-a-bin handler, for the bin-full probe below */
-void  func_ov006_020d6b88(void *self, int idx);
+void  _ZN14dScMgBomroom_c19func_ov006_020d6b88Ei(void *self, int idx);
 
 /* the factory */
 void *dScMgBomroom_c_classInit(void);
@@ -365,13 +365,13 @@ static void sos_binfill(char *s, int n, int side)
            y in (0x40,0x80). Fixed-point 20.12, the same as the spawner's. */
         *(int *)(b + 0x660) = (side ? 0xe0 : 0x20) << 12;
         *(int *)(b + 0x664) = 0x60 << 12;
-        func_ov006_020d6b88(s, i);
+        _ZN14dScMgBomroom_c19func_ov006_020d6b88Ei(s, i);
         ++placed;
     }
     std::fprintf(stderr, "  [scene] SM64DS_SOS_FILL: parked %d bomb(s) of "
-                 "side %d inside the bin through func_ov006_020d6b88, the "
+                 "side %d inside the bin through _ZN14dScMgBomroom_c19func_ov006_020d6b88Ei, the "
                  "ROM's own drop handler. STATE-SEEDED, not input-driven: "
-                 "func_ov006_020d6784 wants 0x28 of them and forty stylus "
+                 "_ZN14dScMgBomroom_c19func_ov006_020d6784Ev wants 0x28 of them and forty stylus "
                  "drags do not fit in a touch script.\n", placed, side);
     std::fflush(stderr);
 }
@@ -614,7 +614,7 @@ extern "C" void port_scene_bomroom_hits(void)
        it fired, because a zero here means the class never entered the state
        that dispatches it and NOT that the shape is absent. */
     std::printf("[scene] dScMgBomroom_c open-coded dispatcher "
-                "(func_ov006_020d8f98, table data_ov006_021416a0): %u "
+                "(_ZN14dScMgBomroom_c19func_ov006_020d8f98Ev, table data_ov006_021416a0): %u "
                 "dispatch(es) through the host decode\n",
                 port_mg_bomroom_opencoded_calls());
     /* THE TWO FORMER FLOORS, REPORTED WHETHER OR NOT THEY FIRED. Run mg7 lane
@@ -625,7 +625,7 @@ extern "C" void port_scene_bomroom_hits(void)
     std::printf("[scene] dScMgBomroom_c former floors: state 0x020d7c4c "
                 "(slot 5 of data_ov006_02141730, byte-matched) ran %u "
                 "time(s) -- it is the free-flight state and is PLAYER-GATED, "
-                "entered only when func_ov006_020d6b88 sees a dropped bomb "
+                "entered only when _ZN14dScMgBomroom_c19func_ov006_020d6b88Ei sees a dropped bomb "
                 "inside a bin, so zero on a no-input run is the game's answer "
                 "and not a missing body; callee 0x020d8408 (0x4fc, called by "
                 "state 2 of data_ov006_021416e0) is linked and its spawn "

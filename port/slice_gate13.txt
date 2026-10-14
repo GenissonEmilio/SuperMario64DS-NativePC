@@ -15,73 +15,74 @@
 # (CMakeLists.txt GATE13_SYMS).
 
 # ---- the actor itself
-src/d_camera.cpp
-src/_ZN6CameraD1Ev.cpp
+src/engine/view/dCamera_c.cpp
+src/_ZN9dCamera_cD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN6CameraD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN6CameraD0Ev.cpp
-src/_ZN6Camera13InitResourcesEv.cpp
-src/_ZN6Camera8BehaviorEv.cpp
-src/_ZN6Camera16CleanupResourcesEv.cpp
-src/_ZN6Camera16OnPendingDestroyEv.cpp
-src/_ZNK6Camera12IsUnderwaterEv.cpp
-src/_ZN4View6RenderEv.cpp
+# FOLDED into src/engine/view/dCamera_c.cpp (row 18): src/_ZN6Camera13InitResourcesEv.cpp
+# FOLDED into src/engine/view/dCamera_c.cpp (row 18): src/_ZN6Camera8BehaviorEv.cpp
+# FOLDED into src/engine/view/dCamera_c.cpp (row 18): src/_ZN6Camera16CleanupResourcesEv.cpp
+# FOLDED into src/engine/view/dCamera_c.cpp (row 18): src/_ZN6Camera16OnPendingDestroyEv.cpp
+# FOLDED into src/engine/view/dCamera_c.cpp (row 18): src/_ZNK6Camera12IsUnderwaterEv.cpp
+src/engine/view/dView_c.cpp
 src/_Z13CopyToViewMatPK9Matrix4x3.cpp
 
 # ---- the follow core: state 0's main is func_02009e70, THE follow camera
-src/func_02009e70.cpp
-src/func_0200af0c.c
-src/func_0200af20.c
-src/func_0200b0fc.c
-src/func_0200b590.c
-src/func_0200b798.c
-src/func_0200b990.c
-src/func_0200bb28.c
-src/func_0200bec4.c
-src/func_0200c394.c
-src/func_0200c66c.c
-src/func_0200c9e0.c
-src/func_02008cb4.c
-src/func_02009374.c
-src/func_0200cbe0.c
+src/unnamed/arm9/0200/func_02009e70.cpp
+src/unnamed/arm9/0200/func_0200af0c.c
+src/unnamed/arm9/0200/func_0200af20.c
+src/unnamed/arm9/0200/func_0200b0fc.c
+src/unnamed/arm9/0200/func_0200b590.c
+src/unnamed/arm9/0200/func_0200b798.c
+src/unnamed/arm9/0200/func_0200b990.c
+src/unnamed/arm9/0200/func_0200bb28.c
+# FOLDED into src/engine/view/dCamera_c.cpp (row 18): src/func_0200bec4.c
+# FOLDED into src/engine/view/dCamera_c.cpp (row 18): src/func_0200c394.c
+# FOLDED into src/engine/view/dCamera_c.cpp (row 18): src/func_0200c66c.c
+# FOLDED into src/engine/view/dCamera_c.cpp (row 18): src/func_0200c9e0.c
+src/unnamed/arm9/0200/func_02008cb4.c
+src/unnamed/arm9/0200/func_02009374.c
+# FOLDED into src/engine/view/dCamera_c.cpp (row 18): src/func_0200cbe0.c
 
 # ---- the other 18 states (onEnter + main), all matched
-src/func_02009e50.c
-src/func_02009e30.c
-src/func_02009e10.c
-src/func_02009df0.c
-src/func_02009dd0.c
-src/func_02009db0.c
-src/func_02009d70.c
-src/func_02009d30.c
-src/func_02009aa8.c
-src/func_020098b8.c
-src/func_0200987c.c
-src/func_0200985c.c
-src/func_020097ec.c
-src/func_020095e4.c
-src/func_02005324.c
-src/func_02005110.c
-src/func_020050dc.c
-src/func_02005098.c
-src/func_020095c4.c
-src/func_02009540.c
-src/func_02009a8c.c
-src/func_020098e0.c
-src/func_020094e4.c
-src/func_020094c0.c
-src/func_02005060.c
-src/func_02005000.c
+src/unnamed/arm9/0200/func_02009e50.c
+src/unnamed/arm9/0200/func_02009e30.c
+src/unnamed/arm9/0200/func_02009e10.c
+src/unnamed/arm9/0200/func_02009df0.c
+src/unnamed/arm9/0200/func_02009dd0.c
+src/unnamed/arm9/0200/func_02009db0.c
+src/unnamed/arm9/0200/func_02009d70.c
+src/unnamed/arm9/0200/func_02009d30.c
+src/unnamed/arm9/0200/func_02009aa8.c
+src/unnamed/arm9/0200/func_020098b8.c
+src/unnamed/arm9/0200/func_0200987c.c
+src/unnamed/arm9/0200/func_0200985c.c
+src/unnamed/arm9/0200/func_020097ec.c
+src/unnamed/arm9/0200/func_020095e4.c
+src/actors/dScBoot_c.cpp
+src/unnamed/arm9/0200/func_02005110.c
+src/unnamed/arm9/0200/func_020050dc.c
+src/unnamed/arm9/0200/func_02005098.c
+src/unnamed/arm9/0200/func_020095c4.c
+src/unnamed/arm9/0200/func_02009540.c
+src/unnamed/arm9/0200/func_02009a8c.c
+src/unnamed/arm9/0200/func_020098e0.c
+src/unnamed/arm9/0200/func_020094e4.c
+src/unnamed/arm9/0200/func_020094c0.c
+src/unnamed/arm9/0200/func_02005060.c
+src/unnamed/arm9/0200/func_02005000.c
 
 # ---- plumbing the camera's probes and the comms chain need
-src/func_020092c4.c
+src/unnamed/arm9/0200/func_020092c4.c
 src/actors/Player.cpp
-src/func_0201a03c.c
-src/func_0203dafc.c
-src/func_0203e0ac.c
-src/func_0203ad44.c
-src/func_0203ce80.c
-src/func_0203cf00.c
-src/func_0203cf94.c
+port/unmatched/hostarm/Player.cpp
+src/unnamed/arm9/0201/func_0201a03c.c
+src/unnamed/arm9/0203/func_0203dafc.c
+src/unnamed/arm9/0203/func_0203e0ac.c
+src/engine/path/PathPtr.cpp
+src/unnamed/arm9/0203/func_0203ce80.c
+src/unnamed/arm9/0203/func_0203cf00.c
+src/unnamed/arm9/0203/func_0203cf94.c
 src/_ZN11fLiNdBaPr_cD1Ev.cpp
 
 # Matrix4x3_LoadIdentity, func_0206e2f8 and func_0206e330 are ARM asm-hatch
@@ -92,30 +93,31 @@ src/NormalizeVec3IfNonZero.c
 src/Vec3_AsrInPlace.c
 src/Vec3_Equal.c
 src/Math_Function_0203b0fc.c
-src/_Z14ApproachLinearRsss.cpp
-src/_Z14ApproachLinearR7Vector3RKS_5Fix12IiE.cpp
+src/ApproachAngle.cpp
+src/Vec3_ApproachHorz.cpp
 
 # ---- link-sweep round 1: the rest of the follow chain's callees
 src/DotVec3.c
-src/FUN_02029ab0.c
-src/func_020089d8.c
-src/func_02008a70.c
-src/func_02008abc.c
-src/func_02008b08.c
-src/func_02009138.c
-src/func_020091f8.c
+src/unnamed/arm9/0202/FUN_02029ab0.c
+src/unnamed/arm9/0200/func_020089d8.c
+src/unnamed/arm9/0200/func_02008a70.c
+src/unnamed/arm9/0200/func_02008abc.c
+src/unnamed/arm9/0200/func_02008b08.c
+src/unnamed/arm9/0200/func_02009138.c
+src/unnamed/arm9/0200/func_020091f8.c
 # RETIRED at SLICE1: body now in src/_ZN7fBase_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN7fBase_cD2Ev.cpp
 # Lane DTOR-PAIRS-C: the three root tables' own D1/D0 pairs, seated into
 # words 16/17 of the host arrays by hal/dtor_seats_base.cpp (ROM relocs named
 # there). Nothing dispatches them; the seat is the ROM's word and the edge.
-src/_ZN7fBase_cD1Ev.cpp
+src/actors/ActorBase.cpp
 # RETIRED at SLICE1: body now in src/_ZN7fBase_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN7fBase_cD0Ev.cpp
 src/actors/ActorDerived.cpp
-src/_ZN4ViewD1Ev.cpp
-src/_ZN4ViewD0Ev.cpp
-src/_ZNK7PathPtr5LoopsEv.cpp
-src/_ZN6Camera25SaveCameraStateBeforeTalkEv.cpp
-src/_ZN3G2x13SetBlendAlphaEPVttttj.cpp
-src/_ZN8Particle6System10NewWeatherEjj5Fix12IiES2_S2_PK11Vector3_16fj.c
+# FOLDED into src/engine/view/dView_c.cpp (row 27): src/_ZN4ViewD1Ev.cpp
+# FOLDED into src/engine/view/dView_c.cpp (row 27): src/_ZN4ViewD0Ev.cpp
+port/unmatched/hostarm/_ZN4ViewD0Ev.cpp
+# FOLDED into src/engine/path/PathPtr.cpp (row 81): src/_ZNK7PathPtr5LoopsEv.cpp
+# FOLDED into src/engine/view/dCamera_c.cpp (row 18): src/_ZN6Camera25SaveCameraStateBeforeTalkEv.cpp
+src/engine/gx/G2x.cpp
+src/engine/particle/Particle.cpp

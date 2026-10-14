@@ -11,6 +11,11 @@
 #include "dBgW_Kc.h"
 
 struct dBgPi { u8 raw[0x1c]; };
+/* Local copy kept deliberately: this file is the host adoption and is not in
+   the NDS build. include/SurfaceInfo.h now carries the real 0x14 definition
+   (added 2026-08-19) -- an earlier comment here saying include/ "only
+   forward-declares it" is stale. Folding this onto that header is a port-build
+   change and wants the port build to verify it, which the NDS gates cannot. */
 struct SurfaceInfo { u8 clps[8]; Vector3 normal; };
 
 struct dBgCh_Lin {
@@ -30,8 +35,8 @@ int  func_020397dc(s32 x);
 int  func_020397b8(s32 x);
 void _ZN5dBgPcC1Ev(SurfaceInfo *info);
 void _ZN5dBgPcD1Ev(SurfaceInfo *info);
-void func_02037fd4(dBgPi *res, s16 triIdx, SurfaceInfo *info);
-void func_020375ec(dBgCh_Lin *ray, Vector3 *pos);
+void _ZN5dBgPi9RecordHitEsP11SurfaceInfo(dBgPi *res, s16 triIdx, SurfaceInfo *info);
+void _ZN9dBgCh_Lin10SetClsnPosERK7Vector3(dBgCh_Lin *ray, Vector3 *pos);
 u32  func_020396dc(dBgW_Kc *self, KCL_Tri *prism);
 int  _ZN5dBgCh21ShouldPassThroughImplEPvRK4CLPSRKS_b(void *self, SurfaceInfo *surf,
                                                     dBgCh_Lin *ray, int isSteep);
@@ -235,7 +240,7 @@ s32 dBgW_Kc::DetectClsn(dBgCh_Lin &ray)
                         best.y = hit.y;
                         best.z = hit.z;
                         bestDist = dist;
-                        func_02037fd4(&ray.result, triIdx, &info);
+                        _ZN5dBgPi9RecordHitEsP11SurfaceInfo(&ray.result, triIdx, &info);
                         found = 1;
                     } else ++g_walk_dbg[12];
                     _ZN5dBgPcD1Ev(&info);
@@ -252,7 +257,7 @@ s32 dBgW_Kc::DetectClsn(dBgCh_Lin &ray)
     pos.x = best.x << 6;
     pos.y = best.y << 6;
     pos.z = best.z << 6;
-    func_020375ec(&ray, &pos);
+    _ZN9dBgCh_Lin10SetClsnPosERK7Vector3(&ray, &pos);
     ray.hasClsn = 1;
     return 1;
 }

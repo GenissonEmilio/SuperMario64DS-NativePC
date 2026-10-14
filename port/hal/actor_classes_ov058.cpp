@@ -93,16 +93,16 @@ void port_ov058_pack_check(void);
 void port_ov058_syms_patch(void);
 
 /* the class's own bodies (port/slice_sweep1_ov058.txt) */
-int _ZN15RecRoomCupboard13InitResourcesEv(char *self);  /* slot 0  */
-int _ZN15RecRoomCupboard16CleanupResourcesEv(void);     /* slot 3, `return 1` */
-int _ZN15RecRoomCupboard8BehaviorEv(char *self);        /* slot 6  */
-int _ZN15RecRoomCupboardD1Ev(char *self);               /* slot 16 */
-void *_ZN15RecRoomCupboardD0Ev(char *self);             /* slot 17 */
+int _ZN13daObjCloset_c13InitResourcesEv(char *self);  /* slot 0  */
+int _ZN13daObjCloset_c16CleanupResourcesEv(void);     /* slot 3, `return 1` */
+int _ZN13daObjCloset_c8BehaviorEv(char *self);        /* slot 6  */
+int _ZN13daObjCloset_cD1Ev(char *self);               /* slot 16 */
+void *_ZN13daObjCloset_cD0Ev(char *self);             /* slot 17 */
 void *daObjCloset_c_classInit(void);                      /* id 182 */
 
 /* the host vtable, excluded from the mount. THIRTY-ONE, not thirty-two. */
 DSSTATE_BEGIN
-void *_ZTV15RecRoomCupboard[31];   /* 0x02111a70 */
+void *_ZTV13daObjCloset_c[31];   /* 0x02111a70 */
 DSSTATE_END
 }
 
@@ -120,7 +120,7 @@ DSSTATE_END
    by port/unmatched/RecRoomCupboard_ActorDtorSeam.cpp -- a four-line
    forwarder, which costs one file instead of holding both destructor TUs
    out the way ov024's PyramidTag D1 had to be. */
-#pragma comment(linker, "/alternatename:?_ZTV15RecRoomCupboard@@3HA=__ZTV15RecRoomCupboard")
+#pragma comment(linker, "/alternatename:?_ZTV13daObjCloset_c@@3HA=__ZTV13daObjCloset_c")
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines __ZN10dCcAcPos_cD1Ev, and nothing references ?_ZN10dCcAcPos_cD1Ev@@3HA, so the row can never fire and nothing wants it to. */
 // #pragma comment(linker, "/alternatename:?_ZN10dCcAcPos_cD1Ev@@3HA=__ZN10dCcAcPos_cD1Ev")
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines _data_020a0eac, and nothing references ?data_020a0eac@@3HA, so the row can never fire and nothing wants it to. */
@@ -198,15 +198,15 @@ static int __fastcall ov58_egg(void *s, void *)
 
 // ---- the class's own slots -------------------------------------------------
 static int __fastcall rc_init(void *s, void *)
-{ return _ZN15RecRoomCupboard13InitResourcesEv((char *)s); }
+{ return _ZN13daObjCloset_c13InitResourcesEv((char *)s); }
 static int __fastcall rc_clean(void *s, void *)
-{ (void)s; return _ZN15RecRoomCupboard16CleanupResourcesEv(); }
+{ (void)s; return _ZN13daObjCloset_c16CleanupResourcesEv(); }
 static int __fastcall rc_behavior(void *s, void *)
-{ return _ZN15RecRoomCupboard8BehaviorEv((char *)s); }
+{ return _ZN13daObjCloset_c8BehaviorEv((char *)s); }
 static int __fastcall rc_d1(void *s, void *)
-{ return _ZN15RecRoomCupboardD1Ev((char *)s); }
+{ return _ZN13daObjCloset_cD1Ev((char *)s); }
 static int __fastcall rc_d0(void *s, void *)
-{ return (int)(size_t)_ZN15RecRoomCupboardD0Ev((char *)s); }
+{ return (int)(size_t)_ZN13daObjCloset_cD0Ev((char *)s); }
 
 // ---- the mount bring-up ----------------------------------------------------
 DSSTATE_BEGIN
@@ -232,7 +232,7 @@ extern "C" void port_ov58_bringup(void)
 extern "C" void hal_fill_rec_room_cupboard_vtable(void)
 {
     port_ov58_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV15RecRoomCupboard;
+    void *volatile *vt = (void *volatile *)_ZTV13daObjCloset_c;
     vt[0]  = (void *)rc_init;
     vt[1]  = (void *)ov58_binit;
     vt[2]  = (void *)ov58_ainit;

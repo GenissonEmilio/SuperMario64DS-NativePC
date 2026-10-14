@@ -49,7 +49,7 @@
 #    from:0x020e7bd8 kind:arm_call to:0x020e777c (_ZN15dMg3DEspModel_c6RenderEv + 0x94).
 #    RECORD: _ZN17dMg3DEspAnimSet_c6RenderEv kind:function(arm,size=0x9c) addr:0x020e777c,
 #    body e92d41f0 e1a07000 e59f0088.
-src/_ZN17dMg3DEspAnimSet_c6RenderEv.cpp
+src/actors/dMg3DEspAnimSet_c.cpp
 
 # 2. src/_ZN15dMg3DEspModel_c6RenderEv.cpp -- the same class's render half, on the plain
 #    ModelAnim at the sub-object's +0xc (constructor src/_ZN15dMg3DEspModel_cC1Ev.cpp
@@ -61,7 +61,7 @@ src/_ZN17dMg3DEspAnimSet_c6RenderEv.cpp
 #    (_ZN12dScMg3DEsp_c6RenderEv + 0xa0, the class's slot-9 Render).
 #    RECORD: _ZN15dMg3DEspModel_c6RenderEv kind:function(arm,size=0xa4) addr:0x020e7b44,
 #    body e92d4010 e1a04000 e59f2090.
-src/_ZN15dMg3DEspModel_c6RenderEv.cpp
+# FOLDED into src/actors/dMg3DEspAnimSet_c.cpp (row 52): src/_ZN15dMg3DEspModel_c6RenderEv.cpp
 
 # 3. src/func_ov006_020c06dc.cpp -- dScMgMemory2_c, the shadow at +0x18 whose
 #    four-virtual `m()` is ROM index 3, UpdateVerts. RETIRES port/unmatched/
@@ -72,7 +72,7 @@ src/_ZN15dMg3DEspModel_c6RenderEv.cpp
 #    (func_ov006_020c07a0 + 0xc).
 #    RECORD: func_ov006_020c06dc kind:function(arm,size=0xc4) addr:0x020c06dc,
 #    body e92d4030 e24dd004 e1a04000.
-src/func_ov006_020c06dc.cpp
+src/actors/unit020bfec0.cpp
 
 # 4. src/actors/dScMgRoulette_c.cpp -- dScMgRoulette_c's two plain Models at +0x10
 #    and +0x60, both drawn through a six-virtual shadow's `m(0)`. RETIRES
@@ -91,6 +91,7 @@ src/func_ov006_020c06dc.cpp
 # slice_rlt's own assertion still refuses it there for the factory host copy,
 # which is a separate TU and a separate ruling.
 src/actors/dScMgRoulette_c.cpp
+port/unmatched/hostarm/dScMgRoulette_c.cpp
 
 # 5. src/func_ov006_020c1f4c.cpp -- dScMgSlot3_c's sub-object update, whose
 #    four-virtual shadow calls `v3()` on the BlendModelAnim at +0x10: ROM index
@@ -100,7 +101,7 @@ src/actors/dScMgRoulette_c.cpp
 #    (func_ov006_020c201c + 0x10c).
 #    RECORD: func_ov006_020c1f4c kind:function(arm,size=0xd0) addr:0x020c1f4c,
 #    body e92d4030 e24dd004 e1a04000.
-src/func_ov006_020c1f4c.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 75): src/func_ov006_020c1f4c.cpp
 
 # 6. src/func_ov006_020cafb4.cpp -- dScMgTrampoline_c's 3D Mario element, one
 #    six-virtual shadow call at +0x6c with data_ov006_0212e038 as the scale.
@@ -109,7 +110,7 @@ src/func_ov006_020c1f4c.cpp
 #    (func_ov006_020cd270 + 0xf0).
 #    RECORD: func_ov006_020cafb4 kind:function(arm,size=0x28) addr:0x020cafb4,
 #    body e92d4000 e24dd004 e5b0206c.
-src/func_ov006_020cafb4.cpp
+src/actors/dMgTrmpln2Mario_c.cpp
 
 # ---------------------------------------------------------------------------
 # THREE MORE ROWS ARE IN THIS BATCH AND ARE NOT LISTED HERE, because they do
@@ -212,7 +213,7 @@ src/func_ov006_020cafb4.cpp
 #    hal/actor_classes_bowserpuzzle.cpp:327.
 #    RECORD: kind:function(arm,size=0x28) addr:0x02119088, body e92d4000
 #    e24dd004 e5b020d4.
-src/_ZN9JetStream6RenderEv.cpp
+src/actors/daWater_Hakidasi_c.cpp
 
 # 8. src/game/actors/d_a_bakubaku.cpp -- BUBBA's Render, the ModelAnim at +0x34c
 #    behind the 0x40000 flag gate. RETIRES port/unmatched/Bubba_Render.cpp
@@ -223,7 +224,7 @@ src/_ZN9JetStream6RenderEv.cpp
 #    data_ov032_0211382c, so the base is quoted from the ARM store order).
 #    RECORD: kind:function(arm,size=0x50) addr:0x02112164, body e92d4000
 #    e24dd004 e59010b0.
-src/game/actors/d_a_bakubaku.cpp
+src/actors/daBakubaku_c.cpp
 
 # 9. src/_ZN6Cannon6RenderEv.cpp -- the Model at +0xd4, UpdateVerts then Render,
 #    ROM indices 3 and 5 through the same six-virtual shadow. RETIRES
@@ -232,7 +233,7 @@ src/game/actors/d_a_bakubaku.cpp
 #    to:0x0213b214 module:overlay(98); the fill is hal/actor_classes.cpp:1718.
 #    RECORD: kind:function(arm,size=0x58) addr:0x0213b214, body e92d4010
 #    e1a04000 e5940180.
-src/_ZN6Cannon6RenderEv.cpp
+src/game/actors/d_a_cnn.cpp
 
 # 10. src/actors/daPgDfdr_c.cpp -- DA_PG_DFDR's Render, a TextureSequence
 #     update then the ModelAnim at +0x320. RETIRES port/unmatched/
@@ -290,7 +291,7 @@ src/game/actors/d_a_obj_rc_carpet.cpp
 #     hal/actor_classes_koopa_chuckya.cpp:535.
 #     RECORD: kind:function(arm,size=0x2c) addr:0x0211c920, body e92d4000
 #     e24dd004 e2800fcd.
-src/_ZN6Klepto6RenderEv.cpp
+src/actors/daJango_c.cpp
 
 # 14. src/_ZN5Koopa6RenderEv.cpp -- the shell/material swap, then the ModelAnim
 #     at +0x300 with the saved scale triple. RETIRES port/unmatched/
@@ -300,7 +301,7 @@ src/_ZN6Klepto6RenderEv.cpp
 #     hal/actor_classes_koopa_chuckya.cpp:370.
 #     RECORD: kind:function(arm,size=0x168) addr:0x02118f84, body e92d4010
 #     e24dd010 e1a04000.
-src/_ZN5Koopa6RenderEv.cpp
+src/game/actors/d_a_nknk.cpp
 
 # 15. src/_ZN6Bowser6RenderEv.cpp -- BOWSER's own Render, the ModelAnim at +0xd4
 #     with the scale triple at +0x80. FACE.
@@ -309,7 +310,7 @@ src/_ZN5Koopa6RenderEv.cpp
 #     hal/actor_classes_ov060.cpp:633.
 #     RECORD: kind:function(arm,size=0x50) addr:0x02115f0c, body e92d4010
 #     e1a04000 e5d4041c.
-src/_ZN6Bowser6RenderEv.cpp
+src/actors/daKpa_c.cpp
 
 # 16. src/_ZN16BowserShockwaves6RenderEv.cpp -- the SECOND body in the same host
 #     copy: six texture/material updates then two ModelAnim draws. Together with
@@ -321,7 +322,7 @@ src/_ZN6Bowser6RenderEv.cpp
 #     to:0x02118e1c module:overlay(60).
 #     RECORD: kind:function(arm,size=0x9c) addr:0x02118e1c, body e92d4010
 #     e24dd010 e1a04000.
-src/_ZN16BowserShockwaves6RenderEv.cpp
+src/actors/daFRing_c.cpp
 
 # 17. src/_ZN13PrincessPeach8BehaviorEv.cpp -- the one BEHAVIOR row of the
 #     lane, and the one that lands on index 3 rather than 5: its four-virtual
@@ -332,7 +333,7 @@ src/_ZN16BowserShockwaves6RenderEv.cpp
 #     hal/actor_classes_ov085.cpp:509.
 #     RECORD: kind:function(arm,size=0x5c) addr:0x0212a52c, body e92d4010
 #     e1a04000 ebffffbd.
-src/_ZN13PrincessPeach8BehaviorEv.cpp
+src/actors/daPeach_c.cpp
 
 # 18. src/_ZN3Key6RenderEv.cpp -- the ModelAnim at +0x114 on both arms and the
 #     Model at +0x178 behind the state table. RETIRES port/unmatched/
@@ -342,7 +343,7 @@ src/_ZN13PrincessPeach8BehaviorEv.cpp
 #     hal/actor_classes_ov089.cpp:247.
 #     RECORD: kind:function(arm,size=0xa4) addr:0x021320f0, body e92d4010
 #     e1a04000 e59400b0.
-src/_ZN3Key6RenderEv.cpp
+src/actors/daObjKey_c.cpp
 
 # 19. src/_ZN13RacingPenguin6RenderEv.cpp -- a TextureSequence update then the
 #     ModelAnim at +0xd4 with the scale at +0x80. RETIRES port/unmatched/
@@ -353,7 +354,7 @@ src/_ZN3Key6RenderEv.cpp
 #     kind:load to:0x02112360 module:overlay(19).
 #     RECORD: kind:function(arm,size=0x34) addr:0x02112360, body e92d4010
 #     e1a04000 e2840f4e.
-src/_ZN13RacingPenguin6RenderEv.cpp
+src/game/actors/d_a_pg_rcer.cpp
 
 # 20. src/_ZN9Whirlpool6RenderEv.cpp -- a TextureTransformer update then the
 #     ModelAnim at +0x114. RETIRES port/unmatched/Whirlpool_Render.cpp (whole
@@ -364,7 +365,7 @@ src/_ZN13RacingPenguin6RenderEv.cpp
 #     hal/actor_classes_ov026.cpp:579.
 #     RECORD: kind:function(arm,size=0x34) addr:0x02111fd8, body e92d4010
 #     e1a04000 e2840f5e.
-src/_ZN9Whirlpool6RenderEv.cpp
+src/actors/daWater_Tatumaki_c.cpp
 
 # 21. src/_ZN7Wiggler6RenderEv.cpp -- five segments, each a TextureSequence
 #     update and a ModelAnim draw at stride 0x64. RETIRES port/unmatched/
@@ -374,7 +375,7 @@ src/_ZN9Whirlpool6RenderEv.cpp
 #     hal/actor_classes_ov034.cpp:514.
 #     RECORD: kind:function(arm,size=0x68) addr:0x02112af4, body e92d40f0
 #     e24dd004 e59f1054.
-src/_ZN7Wiggler6RenderEv.cpp
+src/actors/daHanachan_c.cpp
 
 # 22. src/func_ov002_020e4768.cpp -- the Player's head-model matrix seat, whose
 #     five-virtual shadow calls index 4: ROM Virtual10, which the fold had put
@@ -384,7 +385,7 @@ src/_ZN7Wiggler6RenderEv.cpp
 #     (func_ov002_020e4bb8 + 0x114) -- a direct call, not a vtable slot.
 #     RECORD: kind:function(arm,size=0x204) addr:0x020e4768, body e92d4030
 #     e24dd004 e1a04000.
-src/func_ov002_020e4768.cpp
+src/actors/Player.cpp
 
 # ---------------------------------------------------------------------------
 # THE ROWS OF THE THIRTY THAT STAY, with the measured reason for each.

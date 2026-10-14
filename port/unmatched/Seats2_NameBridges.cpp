@@ -45,12 +45,12 @@
  * Each left-hand side was checked NOT defined and each right-hand side
  * checked DEFINED in walk_window's own 8670 link inputs.
  */
-#pragma comment(linker, "/alternatename:?Behavior@BowserPuzzleManager@@QAEHXZ=?Behavior@BowserPuzzleManager@@UAEHXZ")
-#pragma comment(linker, "/alternatename:?Behavior@TTC_MovingBar@@UAEHXZ=?Behavior@TTC_MovingBar@@QAEHXZ")
+#pragma comment(linker, "/alternatename:?Behavior@daObjFl_Coin_c@@QAEHXZ=?Behavior@daObjFl_Coin_c@@UAEHXZ")
+#pragma comment(linker, "/alternatename:?Behavior@daObjCtKaitendai_c@@UAEHXZ=?Behavior@daObjCtKaitendai_c@@QAEHXZ")
 /* This one only fires because gate 3 also seats
  * src/_ZN14TTC_MovingBeam8BehaviorEv.cpp, which is what defines the
  * right-hand side. Seat and bridge are one change. */
-#pragma comment(linker, "/alternatename:?Behavior@TTC_MovingBeam@@UAEHXZ=?Behavior@TTC_MovingBeam@@QAEHXZ")
+#pragma comment(linker, "/alternatename:?Behavior@daObjCtMecha09_c@@UAEHXZ=?Behavior@daObjCtMecha09_c@@QAEHXZ")
 
 /* A translation unit with no code in it still has to have something to
  * compile, and the pragmas above are directives rather than definitions. */

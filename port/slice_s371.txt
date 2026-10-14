@@ -370,27 +370,27 @@
 # the link's own waves. Nothing here is host-copied, so no line is excluded and
 # there is no duplicate-symbol assertion for this slice to carry.
 
-src/__sinit_ov006_0212fc7c.c
-src/func_ov006_020d0fe4.c
-src/func_ov006_020d1008.c
-src/func_ov006_020d100c.c
-src/_ZN12dScMgAmida_cD1Ev.cpp
+src/unnamed/ov006/__sinit_ov006_0212fc7c.c
+src/actors/unit020cd744.cpp
+# FOLDED into src/actors/unit020cd744.cpp (row 374): src/func_ov006_020d1008.c
+# FOLDED into src/actors/unit020cd744.cpp (row 374): src/func_ov006_020d100c.c
+src/actors/dScMgAmida_c.cpp
 # RETIRED at SLICE1: body now in src/_ZN12dScMgAmida_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN12dScMgAmida_cD0Ev.cpp
-src/func_ov006_020d116c.c
-src/_ZN12dScMgAmida_c9Virtual8CEv.cpp
-src/_ZN12dScMgAmida_c5Unk36Ev.cpp
-src/_ZN12dScMgAmida_c9Virtual7CEv.cpp
-src/func_ov006_020d122c.cpp
-src/func_ov006_020d1450.c
-src/_ZN12dScMgAmida_c9Virtual88Eiiii.cpp
-src/func_ov006_020d1958.cpp
-src/func_ov006_020d1a3c.cpp
-src/func_ov006_020d1ba0.cpp
-src/func_ov006_020d2580.c
-src/func_ov006_020d25fc.c
-src/func_ov006_020d3624.cpp
-src/func_ov006_020d3668.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d116c.c
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c9Virtual8CEv.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c5Unk36Ev.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c9Virtual7CEv.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d122c.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d1450.c
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c9Virtual88Eiiii.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d1958.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d1a3c.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d1ba0.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d2580.c
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d25fc.c
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d3624.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d3668.cpp
 # src/func_ov006_020d3ba0.cpp IS DELIBERATELY ABSENT and host-copied in
 # port/unmatched/MgAmida_Slot3ba0.cpp. Its extern "C" block writes a bare
 # `int data_0209d4b8;`, which mwccarm takes as a tentative definition and MSVC
@@ -398,19 +398,19 @@ src/func_ov006_020d3668.cpp
 # arm9 RNG seed. Listing both would be a duplicate symbol and listing neither
 # would drop the body. The copy is mechanical and its header carries the sed
 # line that reproduces it.
-src/func_ov006_020d452c.c
-src/func_ov006_020d47f4.c
-src/_ZN12dScMgAmida_c6RenderEv.cpp
-src/_ZN12dScMgAmida_c8BehaviorEv.cpp
-src/_ZN12dScMgAmida_c13OnYoshiTryEatEi.cpp
-src/_ZN12dScMgAmida_c13InitResourcesEv.cpp
-src/_ZN12dScMgAmida_c21AfterCleanupResourcesEj.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d452c.c
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d47f4.c
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c6RenderEv.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c8BehaviorEv.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c13OnYoshiTryEatEi.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c13InitResourcesEv.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c21AfterCleanupResourcesEj.cpp
 # WAVE 2. The factory registers func_ov006_020d5a50 as an array element
 # destructor (its pool word at 0x020d5a4c), and 0x020d5a50 is the first
 # function AFTER this class's code block rather than inside it, so the block
 # walk did not reach it. It is a two-line empty body.
-src/func_ov006_020d5a50.c
-src/d_s_mg_amida.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d5a50.c
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/d_s_mg_amida.cpp
 # WAVE 3, run mg10 lane F371. THE FIRST OF THIS CLASS'S TWO ov006 FLOORS IS
 # CLOSED. func_ov006_020d36a4 is the ROUND SETUP: it shuffles the four ladder
 # lanes with the game's 15-bit range draw, refuses a board that repeats the
@@ -430,7 +430,7 @@ src/d_s_mg_amida.cpp
 # It is a .c compiled as C++ (the slot-36 dispatch is spelled through a dummy
 # 37-virtual struct, the same device src/func_ov006_020d3ba0.cpp uses in this
 # class), so it carries a LANGUAGE CXX row in port/CMakeLists.txt.
-src/func_ov006_020d36a4.cpp
+# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d36a4.cpp
 # WAVE 4, run mg10 lane WALKER. THE LAST FLOOR IN THIS SCENE IS CLOSED.
 # func_ov006_020d27dc is THE WALKER TICK, 0xe48 = 3656 bytes, the largest single
 # hole in any seated minigame, one caller at 0x020d4d78 inside vtable slot 6.

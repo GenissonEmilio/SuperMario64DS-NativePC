@@ -221,12 +221,12 @@
 # returns when main lands the fix.
 #src/actors/daMky_c.cpp
 src/actors/daBgSnmBdy_c.cpp
-src/_ZN11SnowmanHead17CallStateBehaviorEv.cpp
-src/_ZN11SnowmanHead13CallStateInitEv.cpp
-src/func_ov077_02124718.cpp
-src/func_ov077_02124754.cpp
-src/func_ov077_02125e20.cpp
-src/func_ov077_02125e5c.cpp
+src/actors/daBgSnmHed_c.cpp
+# FOLDED into src/actors/daBgSnmHed_c.cpp (row 224): src/_ZN11SnowmanHead13CallStateInitEv.cpp
+src/game/actors/d_a_jgm.cpp
+# FOLDED into src/game/actors/d_a_jgm.cpp (row 226): src/func_ov077_02124754.cpp
+src/actors/daTgz_c.cpp
+# FOLDED into src/actors/daTgz_c.cpp (row 228): src/func_ov077_02125e5c.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (the slice_ov096 host copies).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
@@ -234,27 +234,27 @@ src/func_ov077_02125e5c.cpp
 # row returns when the host copy covers the whole consolidated TU.
 #src/actors/daSanbo_c.cpp
 # setter plus null guard
-src/ChiefChilly_ChangeState.cpp
-src/func_ov073_021223a4.cpp
-src/func_ov026_02111ee0.cpp
-src/func_ov026_021122d4.cpp
-src/game/actors/d_a_bakubaku.cpp
+src/actors/daKing_Donketu_c.cpp
+src/actors/daObjEwbIce_c.cpp
+src/actors/daWater_Tatumaki_c.cpp
+src/actors/daWater_Suikomi_c.cpp
+src/actors/daBakubaku_c.cpp
 src/actors/daYurei_Mucho_c.cpp
-src/func_ov065_02117944.cpp
+src/actors/daBasabasa_c.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (the slice_ov066 host copies).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
 #src/actors/Eyerok.cpp
-src/func_ov077_02126d5c.cpp
-src/func_ov081_02125488.cpp
-src/func_ov090_02131e00.cpp
-src/func_ov090_02132ac4.cpp
-src/func_ov090_021332e8.cpp
-src/func_ov090_021338b4.cpp
-src/func_ov091_02134044.cpp
-src/func_ov100_02143b18.cpp
+src/actors/daPopoi_c.cpp
+src/actors/daSnowman_c.cpp
+src/actors/daMenbo_c.cpp
+src/actors/daManta_c.cpp
+src/actors/daPukupuku_c.cpp
+src/actors/daShark_c.cpp
+src/game/actors/d_a_hyuhyu.cpp
+src/actors/daWanwan2_c.cpp
 
 # ---- BATCH 2, THE SAME GATE, EIGHT MORE ------------------------------------
 #
@@ -303,11 +303,11 @@ src/func_ov100_02143b18.cpp
 # above passes, so they wait for either a static re-read of the overlay bytes or
 # a delta assertion added to their seat. That is the next lane's batch and it is
 # a small one.
-src/func_ov071_021215fc.cpp
-src/Chuckya_ChangeState.cpp
-src/func_ov002_020fed2c.cpp
-src/func_ov016_02111bf0.cpp
-src/func_ov062_0211c658.cpp
-src/func_ov064_021187ec.cpp
-src/func_ov064_0211982c.cpp
-src/func_ov064_02119ecc.cpp
+src/actors/daEykn_c.cpp
+src/game/actors/d_a_holhei.cpp
+src/actors/daPropeller_Heyho_Fire_c.cpp
+src/actors/daMoray_c.cpp
+src/actors/daJango_c.cpp
+src/actors/daBbl_c.cpp
+src/actors/daWater_Hakidasi_c.cpp
+src/actors/daWater_Ring_c.cpp

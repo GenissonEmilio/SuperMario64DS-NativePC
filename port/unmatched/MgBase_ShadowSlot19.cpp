@@ -106,11 +106,11 @@ extern struct P2 data_02086b58;
 
 void FreeGfxSlotsById(int arg);
 int  func_ov004_020adbe0(void);
-void func_ov004_020b6f14(void *c);
-void func_ov004_020b7020(char *c);
+void _ZN10dMgState_c19func_ov004_020b6f14Ev(void *c);
+void _ZN10dMgState_c19func_ov004_020b7020Ev(char *c);
 
-void func_ov004_020b6b40(void *c);
-void func_ov004_020b6c9c(void *c);
+void _ZN10dMgState_c19func_ov004_020b6b40Ev(void *c);
+void _ZN10dMgState_c19func_ov004_020b6c9cEv(void *c);
 
 }  /* extern "C" */
 

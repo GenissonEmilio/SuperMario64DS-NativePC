@@ -111,7 +111,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 
 #include "dActor_c.h"
 #include "fBase_c.h"
-#include "Flamethrower.h"
+#include "daObjFlamethrower_c.h"
 
 extern "C" {
 /* the shared lifecycle halves, the same functions every fill writes */
@@ -151,9 +151,9 @@ void port_actor_slot_decline(const char *what);   /* func_02043fdc_hostcopy.cpp 
    (measured, cl.exe C2039) and a face to carry the C name into an MSVC-mangled
    C++ method. Run linkw wave 9, lane w9-harvest; the reading is in the host
    file's banner. */
-int _ZN12Flamethrower8BehaviorEv(void *self);    /* slot 6, host copy */
-int _ZN12FlamethrowerD1Ev(char *self);           /* slot 16, matched .cpp */
-void *_ZN12FlamethrowerD0Ev(char *self);         /* slot 17, matched .cpp */
+int _ZN19daObjFlamethrower_c8BehaviorEv(void *self);    /* slot 6, host copy */
+int _ZN19daObjFlamethrower_cD1Ev(char *self);           /* slot 16, matched .cpp */
+void *_ZN19daObjFlamethrower_cD0Ev(char *self);         /* slot 17, matched .cpp */
 void *daObjFlamethrower_c_classInit(void);                  /* the ROM factory */
 
 /* The array daObjFlamethrower_c_classInit installs (`*(void***)p = _ZTV12Flamethrower`)
@@ -161,7 +161,7 @@ void *daObjFlamethrower_c_classInit(void);                  /* the ROM factory *
    the banner. Defined here, not just declared: the `int` type and C linkage
    match the `extern int _ZTV12Flamethrower[]` in decl_common.h that all three
    matched TUs reference. */
-int _ZTV12Flamethrower[31];
+int _ZTV19daObjFlamethrower_c[31];
 }
 
 // ---- the trap --------------------------------------------------------------
@@ -245,17 +245,17 @@ static int __fastcall ft_aimed(void *s, void *)
 
 // ---- FLAMETHROWER's own four slots -----------------------------------------
 static int __fastcall ft_init(void *s, void *)
-{ return ((Flamethrower *)s)->Flamethrower::InitResources(); }
+{ return ((daObjFlamethrower_c *)s)->daObjFlamethrower_c::InitResources(); }
 static int __fastcall ft_behavior(void *s, void *)
-{ return _ZN12Flamethrower8BehaviorEv(s); }
+{ return _ZN19daObjFlamethrower_c8BehaviorEv(s); }
 static int __fastcall ft_d1(void *s, void *)
-{ return _ZN12FlamethrowerD1Ev((char *)s); }
+{ return _ZN19daObjFlamethrower_cD1Ev((char *)s); }
 static int __fastcall ft_d0(void *s, void *)
-{ return (int)(size_t)_ZN12FlamethrowerD0Ev((char *)s); }
+{ return (int)(size_t)_ZN19daObjFlamethrower_cD0Ev((char *)s); }
 
 extern "C" void hal_fill_flamethrower_vtable(void)
 {
-    void **vt = (void **)_ZTV12Flamethrower;
+    void **vt = (void **)_ZTV19daObjFlamethrower_c;
     vt[0]  = (void *)ft_init;
     vt[1]  = (void *)ft_binit;
     vt[2]  = (void *)ft_ainit;

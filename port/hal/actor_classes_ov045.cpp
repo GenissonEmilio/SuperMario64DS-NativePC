@@ -398,15 +398,15 @@ extern "C" void port_ov45_bringup(void)
 // MovingMeshCollider at +0x124. The rising/falling lift: its Behavior is a
 // three-case state machine on +0x327 that walks +0x60 up 0x5dc000 and back.
 extern "C" {
-int _ZN15FireSeaElevator13InitResourcesEv(char *self);   /* slot 0  InitResources */
-int _ZN15FireSeaElevator16CleanupResourcesEv(void *self);   /* slot 3  CleanupResources */
-int _ZN15FireSeaElevator8BehaviorEv(char *self);   /* slot 6  Behavior */
-int _ZN15FireSeaElevator6RenderEv(void *self);   /* slot 9  Render (extern-C in a .cpp) */
-int *_ZN15FireSeaElevatorD1Ev(int *self);   /* slot 16 D1 */
-int *_ZN15FireSeaElevatorD0Ev(int *self);   /* slot 17 D0 */
+int _ZN16daObjKm2_Agaru_c13InitResourcesEv(char *self);   /* slot 0  InitResources */
+int _ZN16daObjKm2_Agaru_c16CleanupResourcesEv(void *self);   /* slot 3  CleanupResources */
+int _ZN16daObjKm2_Agaru_c8BehaviorEv(char *self);   /* slot 6  Behavior */
+int _ZN16daObjKm2_Agaru_c6RenderEv(void *self);   /* slot 9  Render (extern-C in a .cpp) */
+int *_ZN16daObjKm2_Agaru_cD1Ev(int *self);   /* slot 16 D1 */
+int *_ZN16daObjKm2_Agaru_cD0Ev(int *self);   /* slot 17 D0 */
 void *daObjKm2_Agaru_c_classInit(void);
 DSSTATE_BEGIN
-void *_ZTV15FireSeaElevator[32];         /* dsd split it at 0x02112d48 */
+void *_ZTV16daObjKm2_Agaru_c[32];         /* dsd split it at 0x02112d48 */
 DSSTATE_END
 }
 /* _ZN15FireSeaElevator13InitResourcesEv hands func_020393c4 the address of ov045's own
@@ -416,24 +416,24 @@ DSSTATE_END
 /* the RTTI name the D1 restores; agaru = rises */
 /* SYNC4: the host object at 0x02112cf4 now carries main's own name for it,
    so the alias follows it rather than the retired data_ spelling. */
-#pragma comment(linker, "/alternatename:__ZTV16daObjKm2_Agaru_c=__ZTV15FireSeaElevator")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV16daObjKm2_Agaru_c=__ZTV16daObjKm2_Agaru_c")
 static int __fastcall fse_init(void *s, void *)
-{ return _ZN15FireSeaElevator13InitResourcesEv((char *)s); }
+{ return _ZN16daObjKm2_Agaru_c13InitResourcesEv((char *)s); }
 static int __fastcall fse_clean(void *s, void *)
-{ return _ZN15FireSeaElevator16CleanupResourcesEv(s); }
+{ return _ZN16daObjKm2_Agaru_c16CleanupResourcesEv(s); }
 static int __fastcall fse_behavior(void *s, void *)
-{ return _ZN15FireSeaElevator8BehaviorEv((char *)s); }
+{ return _ZN16daObjKm2_Agaru_c8BehaviorEv((char *)s); }
 static int __fastcall fse_render(void *s, void *)
 { port_actor_render_probe("FIRE_SEA_ELEVATOR", (char *)s + 0xd4);
-  return _ZN15FireSeaElevator6RenderEv(s); }
+  return _ZN16daObjKm2_Agaru_c6RenderEv(s); }
 static int __fastcall fse_d1(void *s, void *)
-{ return (int)(size_t)_ZN15FireSeaElevatorD1Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjKm2_Agaru_cD1Ev((int *)s); }
 static int __fastcall fse_d0(void *s, void *)
-{ return (int)(size_t)_ZN15FireSeaElevatorD0Ev((int *)s); }
+{ return (int)(size_t)_ZN16daObjKm2_Agaru_cD0Ev((int *)s); }
 extern "C" void hal_fill_fire_sea_elevator_vtable(void)
 {
     port_ov45_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV15FireSeaElevator;
+    void *volatile *vt = (void *volatile *)_ZTV16daObjKm2_Agaru_c;
     ov45_fill_shared(vt);
     vt[0]  = (void *)fse_init;
     vt[3]  = (void *)fse_clean;
@@ -453,37 +453,37 @@ extern "C" void hal_fill_fire_sea_elevator_vtable(void)
 // tear down first. Four of them on level 37. Init/Clean/Behavior/Render are all
 // real C++ methods against FireSeaElevator.h, faced at the bottom of this file.
 extern "C" {
-int _ZN8PoleLift13InitResourcesEv(void *self);     /* slot 0  */
-int _ZN8PoleLift16CleanupResourcesEv(void *self);  /* slot 3  */
-int _ZN8PoleLift8BehaviorEv(void *self);           /* slot 6  */
-int _ZN8PoleLift6RenderEv(void *self);             /* slot 9  */
-int *_ZN8PoleLiftD1Ev(int *self);                  /* slot 16 */
-int *_ZN8PoleLiftD0Ev(int *self);                  /* slot 17 */
+int _ZN18daObjKm2_Ami_Bou_c13InitResourcesEv(void *self);     /* slot 0  */
+int _ZN18daObjKm2_Ami_Bou_c16CleanupResourcesEv(void *self);  /* slot 3  */
+int _ZN18daObjKm2_Ami_Bou_c8BehaviorEv(void *self);           /* slot 6  */
+int _ZN18daObjKm2_Ami_Bou_c6RenderEv(void *self);             /* slot 9  */
+int *_ZN18daObjKm2_Ami_Bou_cD1Ev(int *self);                  /* slot 16 */
+int *_ZN18daObjKm2_Ami_Bou_cD0Ev(int *self);                  /* slot 17 */
 void *daObjKm2_Ami_Bou_c_classInit(void);
 DSSTATE_BEGIN
-void *_ZTV8PoleLift[32];
+void *_ZTV18daObjKm2_Ami_Bou_c[32];
 DSSTATE_END
 }
 /* 0x02112dbc answers to both names; the D1/D0 restore it by the RTTI one
    (ami_bou = the net pole). */
-#pragma comment(linker, "/alternatename:__ZTV18daObjKm2_Ami_Bou_c=__ZTV8PoleLift")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV18daObjKm2_Ami_Bou_c=__ZTV18daObjKm2_Ami_Bou_c")
 static int __fastcall pl_init(void *s, void *)
-{ return _ZN8PoleLift13InitResourcesEv(s); }
+{ return _ZN18daObjKm2_Ami_Bou_c13InitResourcesEv(s); }
 static int __fastcall pl_clean(void *s, void *)
-{ return _ZN8PoleLift16CleanupResourcesEv(s); }
+{ return _ZN18daObjKm2_Ami_Bou_c16CleanupResourcesEv(s); }
 static int __fastcall pl_behavior(void *s, void *)
-{ return _ZN8PoleLift8BehaviorEv(s); }
+{ return _ZN18daObjKm2_Ami_Bou_c8BehaviorEv(s); }
 static int __fastcall pl_render(void *s, void *)
 { port_actor_render_probe("POLE_LIFT", (char *)s + 0xd4);
-  return _ZN8PoleLift6RenderEv(s); }
+  return _ZN18daObjKm2_Ami_Bou_c6RenderEv(s); }
 static int __fastcall pl_d1(void *s, void *)
-{ return (int)(size_t)_ZN8PoleLiftD1Ev((int *)s); }
+{ return (int)(size_t)_ZN18daObjKm2_Ami_Bou_cD1Ev((int *)s); }
 static int __fastcall pl_d0(void *s, void *)
-{ return (int)(size_t)_ZN8PoleLiftD0Ev((int *)s); }
+{ return (int)(size_t)_ZN18daObjKm2_Ami_Bou_cD0Ev((int *)s); }
 extern "C" void hal_fill_pole_lift_vtable(void)
 {
     port_ov45_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV8PoleLift;
+    void *volatile *vt = (void *volatile *)_ZTV18daObjKm2_Ami_Bou_c;
     ov45_fill_shared(vt);
     vt[0]  = (void *)pl_init;
     vt[3]  = (void *)pl_clean;
@@ -513,11 +513,11 @@ extern "C" void hal_fill_pole_lift_vtable(void)
 // only class in the cast that overrides it; slot 3 is a host thunk and slot 16 a
 // host chain, both for the reasons in this file's header.
 extern "C" {
-int _ZN17ExtendingPlatform13InitResourcesEv(void *self);        /* slot 0  */
-int _ZN17ExtendingPlatform8BehaviorEv(char *self);              /* slot 6, extern-C .cpp */
-int _ZN17ExtendingPlatform6RenderEv(void *self);                /* slot 9  */
-void _ZN17ExtendingPlatform16OnPendingDestroyEv(void);          /* slot 12 */
-int *_ZN17ExtendingPlatformD0Ev(int *self);                     /* slot 17 */
+int _ZN17daObjKm2_Nobiru_c13InitResourcesEv(void *self);        /* slot 0  */
+int _ZN17daObjKm2_Nobiru_c8BehaviorEv(char *self);              /* slot 6, extern-C .cpp */
+int _ZN17daObjKm2_Nobiru_c6RenderEv(void *self);                /* slot 9  */
+void _ZN17daObjKm2_Nobiru_c16OnPendingDestroyEv(void);          /* slot 12 */
+int *_ZN17daObjKm2_Nobiru_cD0Ev(int *self);                     /* slot 17 */
 void *daObjKm2_Nobiru_c_classInit(void);
 /* what ep_clean and ep_d1 need to spell out by hand */
 int _ZN4dBgW9IsEnabledEv(void *self);
@@ -527,13 +527,13 @@ void *_ZN14dBgW_KcMbgSclYD1Ev(void *self);
 void _ZN5ModelD1Ev(void *self);
 void *_ZN8dActor_cD2Ev(void *self);
 DSSTATE_BEGIN
-void *_ZTV17ExtendingPlatform[31];
+void *_ZTV17daObjKm2_Nobiru_c[31];
 DSSTATE_END
 }
 /* nobiru = the one that stretches; the D0 restores the table by this name */
-#pragma comment(linker, "/alternatename:__ZTV17daObjKm2_Nobiru_c=__ZTV17ExtendingPlatform")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV17daObjKm2_Nobiru_c=__ZTV17daObjKm2_Nobiru_c")
 static int __fastcall ep_init(void *s, void *)
-{ return _ZN17ExtendingPlatform13InitResourcesEv(s); }
+{ return _ZN17daObjKm2_Nobiru_c13InitResourcesEv(s); }
 /* slot 3, HOST THUNK, not the matched TU. src/_ZN17ExtendingPlatform16CleanupResourcesEv
    .cpp spells its two SharedFilePtrs G0/G1, which hal/cxx_aliases.cpp has bound
    to SignPost's ov002 pointers; linking it would Release those live. relocs.txt
@@ -553,23 +553,23 @@ static int __fastcall ep_clean(void *s, void *)
     return 1;
 }
 static int __fastcall ep_behavior(void *s, void *)
-{ return _ZN17ExtendingPlatform8BehaviorEv((char *)s); }
+{ return _ZN17daObjKm2_Nobiru_c8BehaviorEv((char *)s); }
 static int __fastcall ep_render(void *s, void *)
 { port_actor_render_probe("EXTENDING_PLATFORM", (char *)s + 0xd8);
-  return _ZN17ExtendingPlatform6RenderEv(s); }
+  return _ZN17daObjKm2_Nobiru_c6RenderEv(s); }
 static int __fastcall ep_pdes(void *s, void *)
-{ (void)s; _ZN17ExtendingPlatform16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN17daObjKm2_Nobiru_c16OnPendingDestroyEv(); return 0; }
 /* slot 16, HOST CHAIN: src/_ZN17ExtendingPlatformD1Ev.cpp is a real MSVC destructor over
    structs local to that TU, so there is no C name to call. The chain is the one
    its D0 sibling spells and relocs.txt confirms at 0x02111854/5c/64/74. */
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (ep_d1) spelled the same chain by hand. */
 static int __fastcall ep_d0(void *s, void *)
-{ return (int)(size_t)_ZN17ExtendingPlatformD0Ev((int *)s); }
+{ return (int)(size_t)_ZN17daObjKm2_Nobiru_cD0Ev((int *)s); }
 extern "C" void hal_fill_extending_platform_vtable(void)
 {
     port_ov45_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV17ExtendingPlatform;
+    void *volatile *vt = (void *volatile *)_ZTV17daObjKm2_Nobiru_c;
     ov45_fill_shared(vt);
     vt[0]  = (void *)ep_init;
     vt[3]  = (void *)ep_clean;
@@ -836,20 +836,20 @@ extern "C" void hal_fill_fall_block_bfs_vtable(void)
 // which on that object is mGrowing, so ModelBase::SetFile ran on a byte field
 // and faulted on a null vtable pointer. That is run link100's boot sweep level
 // 37.
-#include "ExtendingPlatform.h"
-#include "FireSeaElevator.h"
-#include "PoleLift.h"
+#include "daObjKm2_Nobiru_c.h"
+#include "daObjKm2_Agaru_c.h"
+#include "daObjKm2_Ami_Bou_c.h"
 extern "C" {
-int _ZN8PoleLift13InitResourcesEv(void *self)
-{ return ((PoleLift *)self)->PoleLift::InitResources(); }
-int _ZN8PoleLift16CleanupResourcesEv(void *self)
-{ return ((PoleLift *)self)->PoleLift::CleanupResources(); }
-int _ZN8PoleLift8BehaviorEv(void *self)
-{ return ((PoleLift *)self)->PoleLift::Behavior(); }
-int _ZN8PoleLift6RenderEv(void *self)
-{ return ((PoleLift *)self)->PoleLift::Render(); }
-int _ZN17ExtendingPlatform13InitResourcesEv(void *self)
-{ return ((ExtendingPlatform *)self)->ExtendingPlatform::InitResources(); }
-int _ZN17ExtendingPlatform6RenderEv(void *self)
-{ return ((ExtendingPlatform *)self)->ExtendingPlatform::Render(); }
+int _ZN18daObjKm2_Ami_Bou_c13InitResourcesEv(void *self)
+{ return ((daObjKm2_Ami_Bou_c *)self)->daObjKm2_Ami_Bou_c::InitResources(); }
+int _ZN18daObjKm2_Ami_Bou_c16CleanupResourcesEv(void *self)
+{ return ((daObjKm2_Ami_Bou_c *)self)->daObjKm2_Ami_Bou_c::CleanupResources(); }
+int _ZN18daObjKm2_Ami_Bou_c8BehaviorEv(void *self)
+{ return ((daObjKm2_Ami_Bou_c *)self)->daObjKm2_Ami_Bou_c::Behavior(); }
+int _ZN18daObjKm2_Ami_Bou_c6RenderEv(void *self)
+{ return ((daObjKm2_Ami_Bou_c *)self)->daObjKm2_Ami_Bou_c::Render(); }
+int _ZN17daObjKm2_Nobiru_c13InitResourcesEv(void *self)
+{ return ((daObjKm2_Nobiru_c *)self)->daObjKm2_Nobiru_c::InitResources(); }
+int _ZN17daObjKm2_Nobiru_c6RenderEv(void *self)
+{ return ((daObjKm2_Nobiru_c *)self)->daObjKm2_Nobiru_c::Render(); }
 }

@@ -507,11 +507,11 @@ extern "C" void port_scene_flower_hits(void)
                 port_mg_flower_sub_calls(), port_mg_flower_sub_unknown());
 
     if (port_mg_flower_trap_hits())
-        std::printf("[scene] func_ov006_0212a764 (undecompiled, no delink "
+        std::printf("[scene] _ZN13dScMgFlower_c19func_ov006_0212a764Ev (undecompiled, no delink "
                     "block, no src) entered %u time(s) -- the petal layout did "
                     "NOT run\n", port_mg_flower_trap_hits());
     else
-        std::printf("[scene] func_ov006_0212a764 trap entered: 0\n");
+        std::printf("[scene] _ZN13dScMgFlower_c19func_ov006_0212a764Ev trap entered: 0\n");
     std::fflush(stdout);
 }
 

@@ -14,14 +14,18 @@
 #   src/minigames/d_s_mg_trampoline.cpp     does not compile under MSVC: `obj + 0x6c` on a
 #                                 void* at line 37, C2036. A decomp-side cast.
 #   the seven guess-marked bodies on _ZTV16daObjPushblock_c -- those slots trap.
-src/_ZN17daObjFloatBoard_cD0Ev.cpp
-src/_ZN17daObjFloatBoard_cD1Ev.cpp
-src/_ZN15daObjGuragura_cD0Ev.cpp
-src/_ZN15daObjGuragura_cD1Ev.cpp
-src/_ZN14daObjUkiyuka_cD0Ev.cpp
-src/_ZN14daObjUkiyuka_cD1Ev.cpp
+src/actors/daObjFloatBoard_c.cpp
+port/unmatched/hostarm/_ZN17daObjFloatBoard_cD0Ev.cpp
+# FOLDED into src/actors/daObjFloatBoard_c.cpp (row 17): src/_ZN17daObjFloatBoard_cD1Ev.cpp
+src/actors/daObjGuragura_c.cpp
+port/unmatched/hostarm/_ZN15daObjGuragura_cD0Ev.cpp
+# FOLDED into src/actors/daObjGuragura_c.cpp (row 19): src/_ZN15daObjGuragura_cD1Ev.cpp
+src/actors/daObjUkiyuka_c.cpp
+port/unmatched/hostarm/_ZN14daObjUkiyuka_cD0Ev.cpp
+# FOLDED into src/actors/daObjUkiyuka_c.cpp (row 21): src/_ZN14daObjUkiyuka_cD1Ev.cpp
 src/game/actors/daObjPushblock_c.cpp
-src/_ZN13daObjSwdoor_cD0Ev.cpp
-src/_ZN13daObjSwdoor_cD1Ev.cpp
+src/actors/daObjSwdoor_c.cpp
+# FOLDED into src/actors/daObjSwdoor_c.cpp (row 24): src/_ZN13daObjSwdoor_cD1Ev.cpp
+port/unmatched/hostarm/_ZN13daObjSwdoor_cD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN6PlayerD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN6PlayerD0Ev.cpp

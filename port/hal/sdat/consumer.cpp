@@ -1005,7 +1005,7 @@ static void snd_coin_probe(void)
  * was started on, printed by the [sseq] line immediately above it. */
 extern "C" {
 extern int data_020a4b78[];               /* the behaviour list head */
-extern void _ZN10StarMarker7CollectEv(char *c); /* StarMarker's own break */
+extern void _ZN12daStarBase_c7CollectEv(char *c); /* StarMarker's own break */
 extern void func_02012694(unsigned int id, const void *camSpacePos);
 }
 
@@ -1018,7 +1018,7 @@ static void snd_break_probe(void)
         at = e ? atoi(e) : 0;
         if (at > 0)
             fprintf(stderr, "[breakprobe] armed for frame %d: the ROM's own "
-                    "_ZN10StarMarker7CollectEv on a live STAR_MARKER container\n",
+                    "_ZN12daStarBase_c7CollectEv on a live STAR_MARKER container\n",
                     at);
     }
     if (at <= 0) return;
@@ -1042,7 +1042,7 @@ static void snd_break_probe(void)
                 frame, (void *)hit, (int)*(unsigned char *)(hit + 0x1d8),
                 p[0] >> 12, p[1] >> 12, p[2] >> 12,
                 c[0] >> 12, c[1] >> 12, c[2] >> 12);
-        _ZN10StarMarker7CollectEv(hit);
+        _ZN12daStarBase_c7CollectEv(hit);
     } else {
         fprintf(stderr, "[breakprobe] frame %d: no STAR_MARKER with "
                 "mState != 0 on the behaviour list\n", frame);

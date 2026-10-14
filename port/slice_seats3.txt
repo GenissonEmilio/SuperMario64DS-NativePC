@@ -117,7 +117,7 @@ src/minigames/d_s_mg_roulette.cpp
 # outside the wall (__ZN2GX10LoadBGPlttEPKvjj and its GXS twin) are both on
 # live /alternatename rows at port/hal/cxx_aliases.cpp:3200 and :3201 whose
 # right-hand sides are defined in this link.
-src/_ZN11dScMgBase_c16OnAimedAtWithEggEv.cpp
+src/minigames/d_s_mg_base.cpp
 
 # ---- GATE 2: two dActor_c members a fresh sweep found on the 234-row wall --
 #
@@ -156,13 +156,13 @@ src/_ZN11dScMgBase_c16OnAimedAtWithEggEv.cpp
 # member with its receiver, not through the flat C spelling with no argument,
 # which is the text the guard refuses and the PORT_HOST_ABI ruling
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp exists for.
-src/_ZN8dActor_c15IsPlayerInRangeERK7Vector3i.cpp
+src/actors/dActor_c.cpp
 
 # dActor_c::HorzAngleToCPlayerOrAng(), ROM 0x0201097c, 0x3c bytes. Closes
 # ?HorzAngleToCPlayerOrAng@dActor_c@@QAEFXZ. The F in the mangle is s16, and
 # the decomp's note on the body proves that width off the ROM's own
 # `ldrsheq r0, [r4, #0x8e]`, a signed halfword load of mAngleY.
-src/_ZN8dActor_c23HorzAngleToCPlayerOrAngEv.cpp
+# FOLDED into src/actors/dActor_c.cpp (row 159): src/_ZN8dActor_c23HorzAngleToCPlayerOrAngEv.cpp
 
 # ---- the name bridges the seats need, and two flat rows of their own -------
 # Thirty-three decorated ROM data names across the daGmch_c and daMip_c seats,

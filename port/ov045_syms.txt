@@ -126,9 +126,9 @@ data_ov045_02112b08 data_ov045_02112b84 data_ov045_02112ba8
 data_ov045_02112bdc data_ov045_02112bec data_ov045_02112c08
 data_ov045_02112c18 data_ov045_02112c44 data_ov045_02112c4c
 data_ov045_02112c58 data_ov045_02112c68 data_ov045_02112c88
-data_ov045_02112ca8 data_ov045_02112cb0 _ZTS16daObjKm2_Agaru_c
+data_ov045_02112ca8 _ZTI16daObjKm2_Agaru_c _ZTS16daObjKm2_Agaru_c
 data_ov045_02112cc8 g_profile_KM2_AGARU _ZTI18daObjKm2_Ami_Bou_c
-_ZTS18daObjKm2_Ami_Bou_c g_profile_KM2_AMI_BOU _ZTI17daObjKm2_Nobiru_c
+_ZTS18daObjKm2_Ami_Bou_c _ZTI17daObjKm2_Nobiru_c
 _ZTS17daObjKm2_Nobiru_c g_profile_KM2_NOBIRU _ZTI19daObjKm2_Ukishima_c
 data_ov045_02112f08 _ZTS19daObjKm2_Ukishima_c
 _ZTI15daObjKm2_Gura_c _ZTS15daObjKm2_Gura_c
@@ -144,14 +144,14 @@ _ZTS21daObjKm2_Fall_Block_c data_ov045_021130cc g_profile_KM2_KUZURE
 #   021122ec -> model 02113200 (1643)      + clsn 021131f8 (1644)
 #   02112358 -> model 02113220 (1631)      + clsn 02113228 (1632)
 #   021123c0 -> model 02113250 (1633)      + clsn 02113248 (1634)
-data_ov045_02113180 data_ov045_02113188 data_ov045_02113190
-data_ov045_0211319c data_ov045_021131a8 data_ov045_021131b0
-data_ov045_021131b8 data_ov045_021131c4 data_ov045_021131d0
-data_ov045_021131d8 data_ov045_021131e0 data_ov045_021131ec
-data_ov045_021131f8 data_ov045_02113200 data_ov045_02113208
-data_ov045_02113214 data_ov045_02113220 data_ov045_02113228
-data_ov045_02113230 data_ov045_0211323c data_ov045_02113248
-data_ov045_02113250 data_ov045_02113258 data_ov045_02113264:0x1c
+data_ov045_02113190@0x02113190
+data_ov045_0211319c@0x0211319c
+data_ov045_021131b8@0x021131b8 data_ov045_021131c4@0x021131c4 data_ov045_021131d0@0x021131d0
+data_ov045_021131d8@0x021131d8 data_ov045_021131e0@0x021131e0 data_ov045_021131ec@0x021131ec
+data_ov045_02113208@0x02113208
+data_ov045_02113214@0x02113214
+data_ov045_02113230@0x02113230 data_ov045_0211323c@0x0211323c data_ov045_02113248
+data_ov045_02113250 data_ov045_02113258@0x02113258 data_ov045_02113264@0x02113264:0x1c
 
 
 # RETIRED at ALIAS2 (wave 8, the main -> port sync). Each symbol below was
@@ -161,3 +161,20 @@ data_ov045_02113250 data_ov045_02113258 data_ov045_02113264:0x1c
 # regenerated from this list on every configure.
 #   data_ov045_02112fdc                        now defined by d_a_obj_km2_gura.cpp.obj
 #   g_profile_KM2_GURA                         now defined by d_a_obj_km2_gura.cpp.obj
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov045_02113180                        now defined by src/game/actors/d_a_obj_km2_agaru.cpp
+#   data_ov045_02113188                        now defined by src/game/actors/d_a_obj_km2_agaru.cpp
+#   data_ov045_021131a8                        now defined by src/game/actors/d_a_obj_km2_ami_bou.cpp
+#   data_ov045_021131b0                        now defined by src/game/actors/d_a_obj_km2_ami_bou.cpp
+#   data_ov045_021131f8                        now defined by src/game/actors/d_a_obj_km2_ukishima.cpp
+#   data_ov045_02113200                        now defined by src/game/actors/d_a_obj_km2_ukishima.cpp
+#   data_ov045_02113220                        now defined by src/game/actors/d_a_obj_km2_gura.cpp
+#   data_ov045_02113228                        now defined by src/game/actors/d_a_obj_km2_gura.cpp
+#   g_profile_KM2_AMI_BOU                      now defined by src/game/actors/d_a_obj_km2_ami_bou.cpp

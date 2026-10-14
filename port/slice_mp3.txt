@@ -66,28 +66,28 @@
 # its own.
 
 # The two the lane exists for.
-src/func_0203df40.c
-src/func_0203ea5c.c
+src/unnamed/arm9/0203/func_0203df40.c
+src/unnamed/arm9/0203/func_0203ea5c.c
 
 # The dispatcher's own pull: the touch quad, read off the touch-panel ring.
 # func_0203e20c (Download Play) and func_02040724 (leave) are hosted seam faces;
 # func_0203e0ac is already linked through slice_gate13.
-src/func_0203b9bc.c
-src/func_0205edc8.c
+src/unnamed/arm9/0203/func_0203b9bc.c
+src/unnamed/arm9/0205/func_0205edc8.c
 
 # The conductor's eight non-seam callees. func_02040a5c and func_02040a84 are
 # the WM status-word pair and are already hosted in hal/comms_seam.cpp, so six
 # of the eight are here.
-src/func_0204271c.c
-src/func_02042748.c
-src/func_0203fd64.c
-src/func_02042778.c
-src/func_0203f604.c
-src/func_0203f644.c
+src/unnamed/arm9/0204/func_0204271c.c
+src/unnamed/arm9/0204/func_02042748.c
+src/unnamed/arm9/0203/func_0203fd64.c
+src/unnamed/arm9/0204/func_02042778.c
+src/unnamed/arm9/0203/func_0203f604.c
+src/unnamed/arm9/0203/func_0203f644.c
 
 # What those six reach in turn. func_0206259c is deliberately absent: it is the
 # radio, and it is hosted. Memory::Allocate and Memory::Deallocate, which
 # func_0203f604 reaches, are already linked through slice_gate3a.
-src/func_0201a4d0.c
-src/func_02040a94.c
-src/func_02040634.c
+src/unnamed/arm9/0201/func_0201a4d0.c
+src/unnamed/arm9/0204/func_02040a94.c
+src/unnamed/arm9/0204/func_02040634.c

@@ -75,8 +75,8 @@ void _ZN12dEnemyBase_c12UpdateWMClsnER10dBgCh_Actrj(void *self, void *wm,
 void func_ov062_02116010(void *self);   /* the held/thrown-player step */
 void _ZN5dCc_c5ClearEv(void *self);
 void _ZN5dCc_c6UpdateEv(void *self);
-void _ZN9Animation7AdvanceEv(void *self);
-void func_ov062_02116d28(void *c);      /* the held-by-player short-circuit */
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *self);
+void _ZN10daHolhei_c19func_ov062_02116d28Ev(void *c);      /* the held-by-player short-circuit */
 void func_ov062_02116e80(void *c);      /* the post step */
 void func_ov062_02116dbc(void *c);      /* the shadow drop */
 extern signed char data_0209f2f8;       /* the current level id */
@@ -100,12 +100,12 @@ int func_ov062_021161a8(void *c); int func_ov062_02116238(void *c);
 int func_ov062_02116274(void *c); int func_ov062_021162b8(void *c);
 int func_ov062_0211632c(void *c); int func_ov062_02116368(void *c);
 int func_ov062_021163b0(void *c); int func_ov062_02116498(void *c);
-int func_ov062_021164e8(void *c); int func_ov062_021165e0(void *c);
-int func_ov062_021165e8(void *c); int func_ov062_02116784(void *c);
-int func_ov062_021167c0(void *c); int func_ov062_02116850(void *c);
-int func_ov062_02116894(void *c); int func_ov062_02116980(void *c);
+int _ZN10daHolhei_c19func_ov062_021164e8Ev(void *c); int func_ov062_021165e0(void *c);
+int _ZN10daHolhei_c19func_ov062_021165e8Ev(void *c); int func_ov062_02116784(void *c);
+int _ZN10daHolhei_c19func_ov062_021167c0Ev(void *c); int func_ov062_02116850(void *c);
+int _ZN10daHolhei_c19func_ov062_02116894Ev(void *c); int _ZN10daHolhei_c19func_ov062_02116980Ev(void *c);
 int func_ov062_02116a08(void *c); int func_ov062_02116b80(void *c);
-int func_ov062_02116bf8(void *c); int func_ov062_02116c78(void *c);
+int _ZN10daHolhei_c19func_ov062_02116bf8Ev(void *c); int _ZN10daHolhei_c19func_ov062_02116c78Ev(void *c);
 
 /* the twenty SOURCE records the sinit copies from (data, {fn, 0}) */
 extern PortPmf data_ov062_0211d900, data_ov062_0211d908, data_ov062_0211d910,
@@ -159,7 +159,7 @@ extern PortPmf data_ov062_0211d900, data_ov062_0211d908, data_ov062_0211d910,
 static void __fastcall pmfb7_ov062_021167c0(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 0211d908, the per-frame half */
-    ((void (*)(void *))(void *)func_ov062_021167c0)(self);
+    ((void (*)(void *))(void *)_ZN10daHolhei_c19func_ov062_021167c0Ev)(self);
 }
 static void __fastcall pmfb7_ov062_0211632c(void *self, void *dead_edx)
 {
@@ -169,7 +169,7 @@ static void __fastcall pmfb7_ov062_0211632c(void *self, void *dead_edx)
 static void __fastcall pmfb7_ov062_021165e8(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 0211d918, the per-frame half */
-    ((void (*)(void *))(void *)func_ov062_021165e8)(self);
+    ((void (*)(void *))(void *)_ZN10daHolhei_c19func_ov062_021165e8Ev)(self);
 }
 static void __fastcall pmfb7_ov062_02116274(void *self, void *dead_edx)
 {
@@ -184,7 +184,7 @@ static void __fastcall pmfb7_ov062_021163b0(void *self, void *dead_edx)
 static void __fastcall pmfb7_ov062_02116bf8(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 0211d938, the per-frame half */
-    ((void (*)(void *))(void *)func_ov062_02116bf8)(self);
+    ((void (*)(void *))(void *)_ZN10daHolhei_c19func_ov062_02116bf8Ev)(self);
 }
 static void __fastcall pmfb7_ov062_02116a08(void *self, void *dead_edx)
 {
@@ -194,7 +194,7 @@ static void __fastcall pmfb7_ov062_02116a08(void *self, void *dead_edx)
 static void __fastcall pmfb7_ov062_02116894(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 0211d960, the per-frame half */
-    ((void (*)(void *))(void *)func_ov062_02116894)(self);
+    ((void (*)(void *))(void *)_ZN10daHolhei_c19func_ov062_02116894Ev)(self);
 }
 static void __fastcall pmfb7_ov062_021161a8(void *self, void *dead_edx)
 {
@@ -204,7 +204,7 @@ static void __fastcall pmfb7_ov062_021161a8(void *self, void *dead_edx)
 static void __fastcall pmfb7_ov062_021164e8(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 0211d990, the per-frame half */
-    ((void (*)(void *))(void *)func_ov062_021164e8)(self);
+    ((void (*)(void *))(void *)_ZN10daHolhei_c19func_ov062_021164e8Ev)(self);
 }
 
 static const struct { PortPmf *slot; unsigned rom; int (*host)(void *); }
@@ -217,10 +217,10 @@ g_chuckya_states[] = {
     {&data_ov062_0211d928, 0x02116274, (int (*)(void *))(void *)pmfb7_ov062_02116274},
     {&data_ov062_0211d930, 0x021163b0, (int (*)(void *))(void *)pmfb7_ov062_021163b0},
     {&data_ov062_0211d938, 0x02116bf8, (int (*)(void *))(void *)pmfb7_ov062_02116bf8},
-    {&data_ov062_0211d940, 0x02116c78, func_ov062_02116c78},
+    {&data_ov062_0211d940, 0x02116c78, _ZN10daHolhei_c19func_ov062_02116c78Ev},
     {&data_ov062_0211d948, 0x02116238, func_ov062_02116238},
     {&data_ov062_0211d950, 0x02116a08, (int (*)(void *))(void *)pmfb7_ov062_02116a08},
-    {&data_ov062_0211d958, 0x02116980, func_ov062_02116980},
+    {&data_ov062_0211d958, 0x02116980, _ZN10daHolhei_c19func_ov062_02116980Ev},
     {&data_ov062_0211d960, 0x02116894, (int (*)(void *))(void *)pmfb7_ov062_02116894},
     {&data_ov062_0211d968, 0x021162b8, func_ov062_021162b8},
     {&data_ov062_0211d970, 0x021161a8, (int (*)(void *))(void *)pmfb7_ov062_021161a8},

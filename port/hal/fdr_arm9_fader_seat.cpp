@@ -235,8 +235,8 @@
 
 #include <cstdio>
 #include "types.h"
-#include "FaderBrightness.h"
-#include "FaderColor.h"
+#include "dFdBrightness_c.h"
+#include "dFdColor_c.h"
 #include "dsstate_seg.h"
 
 extern "C" {
@@ -274,8 +274,8 @@ extern int data_0209f61c[];        /* hal/auto_bss.cpp, 0x2c by ROM span */
    Each call is QUALIFIED so nothing re-dispatches through the host table. */
 extern "C" {
 
-int _ZN15FaderBrightness9IsAtStartEv(void *self)
-{ return ((FaderBrightness *)self)->FaderBrightness::IsAtStart(); }
+int _ZN15dFdBrightness_c9IsAtStartEv(void *self)
+{ return ((dFdBrightness_c *)self)->dFdBrightness_c::IsAtStart(); }
 
 /* THE TWO FACES SLOT 0x08 DRAGGED IN, run link60 Stage 5 lane SEAT8, and
    port/tools/closure.py named both before a line of this was written: they
@@ -295,11 +295,11 @@ int _ZN15FaderBrightness9IsAtStartEv(void *self)
    constructor leaves it 0), so the branch that reaches them is compiled and
    not entered. They are here because the link needs them, which is stated
    rather than dressed up as coverage. */
-void _ZN10FaderColor11AdvanceFadeEv(void *self)
-{ ((FaderColor *)self)->FaderColor::AdvanceFade(); }
+void _ZN10dFdColor_c11AdvanceFadeEv(void *self)
+{ ((dFdColor_c *)self)->dFdColor_c::AdvanceFade(); }
 
-void _ZN5Fader13AdvanceInterpEv(void *self)
-{ ((Fader *)self)->Fader::AdvanceInterp(); }
+void _ZN8dFader_c13AdvanceInterpEv(void *self)
+{ ((dFader_c *)self)->dFader_c::AdvanceInterp(); }
 
 /* THIS ONE DOES NOT DELEGATE, AND THE REASON STOPPED BEING COSMETIC.
    The matched FaderBrightness::IsBetweenStartAndEnd ends in two UNQUALIFIED
@@ -392,7 +392,7 @@ static int __fastcall fdr_view_is_at_end(FdrMsvcOrderView *view, void *)
 static int __fastcall fdr_view_unreached(void *, void *)
 {
     std::fprintf(stderr, "  [fdr] the MSVC-ordered view built for "
-                 "FaderBrightness::IsBetweenStartAndEnd was dispatched below "
+                 "dFdBrightness_c::IsBetweenStartAndEnd was dispatched below "
                  "byte 0x10. That body is supposed to reach 0x10 and 0x14 and "
                  "nothing else, so its codegen has changed and the view no "
                  "longer describes it. See port/fader_boot_map.txt section "
@@ -463,7 +463,7 @@ static int __fastcall fdr_setter_is_at_end(FdrSetterView *v, void *)
 static int __fastcall fdr_setter_unreached(void *, void *)
 {
     std::fprintf(stderr, "  [fdr] the MSVC-ordered view built for "
-                 "FaderBrightness::SetBackwardTime was dispatched below byte "
+                 "dFdBrightness_c::SetBackwardTime was dispatched below byte "
                  "0x10. That body is supposed to reach 0x10 and nothing else, "
                  "so its codegen has changed and the view no longer describes "
                  "it.\n");
@@ -482,13 +482,13 @@ static void *fdr_setter_msvc_vt[6] = {
 
 }  /* extern "C" -- the view's internals are C++ and not ROM names */
 
-extern "C" int _ZN15FaderBrightness20IsBetweenStartAndEndEv(void *self)
+extern "C" int _ZN15dFdBrightness_c20IsBetweenStartAndEndEv(void *self)
 {
     FdrMsvcOrderView view;
     view.vt = fdr_msvc_order_vt;
     view.real = self;
-    return ((FaderBrightness *)(void *)&view)->
-        FaderBrightness::IsBetweenStartAndEnd();
+    return ((dFdBrightness_c *)(void *)&view)->
+        dFdBrightness_c::IsBetweenStartAndEnd();
 }
 
 extern "C" {
@@ -498,7 +498,7 @@ extern "C" {
    _ZN15FaderBrightness10SetToStartEv (config/arm9/symbols.txt), whose matched
    TU rides slice_gate1. */
 void func_02017610(void *self)
-{ ((FaderBrightness *)self)->FaderBrightness::SetToStart(); }
+{ ((dFdBrightness_c *)self)->dFdBrightness_c::SetToStart(); }
 
 /* THE BASE-CLASS BRANCH OF SLOT 0x0c, run link60 lane FDR2.
    _ZN7dWipe_c15SetBackwardTimeEj's `type == 1` case tail-calls the ROM's 0x020176d8, which
@@ -520,15 +520,15 @@ void func_02017610(void *self)
    THE MATCHED BODY RUNS AGAINST FdrSetterView, run hunt4 lane RECROOM1: its
    closing IsAtStart() is one MSVC slot low against this object's ROM-ordered
    table, and the view is what lands it on the ROM's byte 0x14. See the view. */
-int _ZN15FaderBrightness15SetBackwardTimeEj(void *self, u32 frames, u32)
+int _ZN15dFdBrightness_c15SetBackwardTimeEj(void *self, u32 frames, u32)
 {
     FdrSetterView v;
     v.vt = fdr_setter_msvc_vt;
     v.currInterp = ((int *)self)[1];
     v.speed = ((int *)self)[2];
     v.real = self;
-    const int r = ((FaderBrightness *)(void *)&v)->
-        FaderBrightness::SetBackwardTime(frames);
+    const int r = ((dFdBrightness_c *)(void *)&v)->
+        dFdBrightness_c::SetBackwardTime(frames);
     ((int *)self)[2] = v.speed;
     return r;
 }
@@ -571,7 +571,7 @@ int _ZN15FaderBrightness15SetBackwardTimeEj(void *self, u32 frames, u32)
    restore a fader pointing into a stale table. */
 DSSTATE_BEGIN
 extern "C" {
-void *data_020926f0[12];
+void *_ZTV7dWipe_c[12];
 void *data_0209f610[3];
 int data_0209f5f8[1];
 int data_0209f5fc[1];
@@ -663,7 +663,7 @@ void fdr_trap(const char *slot, const char *rom_body)
    in the image ever puts this object there. */
 void __cdecl fdr_s08(void *s)
 {
-    if (s == 0 || *(void **)s != (void *)data_020926f0) {
+    if (s == 0 || *(void **)s != (void *)_ZTV7dWipe_c) {
         fdr_trap("slot 0x08 AdvanceFade, WRONG RECEIVER",
                  "_ZN7dWipe_c11AdvanceFadeEv -- the caller did not pass the object on the "
                  "stack, so it is not the cdecl shape this stub is declared "
@@ -761,7 +761,7 @@ void __cdecl fdr_s08(void *s)
 
 extern "C" int __cdecl port_fdr_s0c_body(void *s, int frames, int c)
 {
-    if (s == 0 || ((std::size_t)s & 3) != 0 || *(void **)s != (void *)data_020926f0) {
+    if (s == 0 || ((std::size_t)s & 3) != 0 || *(void **)s != (void *)_ZTV7dWipe_c) {
         fdr_trap("slot 0x0c SetBackwardTime, WRONG RECEIVER",
                  "_ZN7dWipe_c15SetBackwardTimeEj -- neither the stack word nor ECX "
                  "was the object");
@@ -771,7 +771,7 @@ extern "C" int __cdecl port_fdr_s0c_body(void *s, int frames, int c)
 }
 extern "C" int __cdecl port_fdr_s10_body(void *s, int frames, int)
 {
-    if (s == 0 || ((std::size_t)s & 3) != 0 || *(void **)s != (void *)data_020926f0) {
+    if (s == 0 || ((std::size_t)s & 3) != 0 || *(void **)s != (void *)_ZTV7dWipe_c) {
         fdr_trap("slot 0x10 SetForwardTime, WRONG RECEIVER",
                  "_ZN7dWipe_c14SetForwardTimeEj -- neither the stack word nor ECX "
                  "was the object");
@@ -787,7 +787,7 @@ __declspec(naked) void fdr_s0c(void)
     __asm {
         /* shape C (__cdecl, dScene_c::BeforeBehavior) leaves the VTABLE in ecx;
            shape B (__thiscall, the minigame framework) leaves the OBJECT. */
-        cmp  ecx, offset data_020926f0
+        cmp  ecx, offset _ZTV7dWipe_c
         je   shape_cdecl
         /* __thiscall: receiver in ecx, [esp+4] frames, [esp+8] arg2, callee cleans 8 */
         push dword ptr [esp+8]          /* arg2 */
@@ -804,7 +804,7 @@ __declspec(naked) void fdr_s0c(void)
 __declspec(naked) void fdr_s10(void)
 {
     __asm {
-        cmp  ecx, offset data_020926f0
+        cmp  ecx, offset _ZTV7dWipe_c
         je   shape_cdecl
         push dword ptr [esp+8]
         push dword ptr [esp+8]
@@ -839,27 +839,27 @@ int   __fastcall fdr_s18(void *s, void *) { return _ZN7dWipe_c7IsAtEndEv(s); }
    FaderBrightness body through the view that lands its two calls on this
    object's ROM 0x14 and 0x18, which is the cartridge's answer on both
    branches. The dWipe_c TU stays in the link: ??_7dWipe_c@@6B@ names it. */
-int   __fastcall fdr_s1c(void *s, void *) { return _ZN15FaderBrightness20IsBetweenStartAndEndEv(s); }
+int   __fastcall fdr_s1c(void *s, void *) { return _ZN15dFdBrightness_c20IsBetweenStartAndEndEv(s); }
 /* 0x20: the target the ROM's veneer at 0x0202ed08 tail-calls. See the header
    for why src/_ZN7dWipe_c8SetToEndEv.cpp is not in the link. */
 void  __fastcall fdr_s20(void *s, void *)
-{ ((FaderBrightness *)s)->FaderBrightness::SetToEnd(); }
+{ ((dFdBrightness_c *)s)->dFdBrightness_c::SetToEnd(); }
 void  __fastcall fdr_s24(void *s, void *) { _ZN7dWipe_c10SetToStartEv(s); }
 
 void fdr_fill(void)
 {
-    data_020926f0[0] = (void *)fdr_s00;
-    data_020926f0[1] = (void *)fdr_s04;
-    data_020926f0[2] = (void *)fdr_s08;
-    data_020926f0[3] = (void *)fdr_s0c;
-    data_020926f0[4] = (void *)fdr_s10;
-    data_020926f0[5] = (void *)fdr_s14;
-    data_020926f0[6] = (void *)fdr_s18;
-    data_020926f0[7] = (void *)fdr_s1c;
-    data_020926f0[8] = (void *)fdr_s20;
-    data_020926f0[9] = (void *)fdr_s24;
-    data_020926f0[10] = (void *)fdr_s28;
-    data_020926f0[11] = (void *)fdr_s2c;
+    _ZTV7dWipe_c[0] = (void *)fdr_s00;
+    _ZTV7dWipe_c[1] = (void *)fdr_s04;
+    _ZTV7dWipe_c[2] = (void *)fdr_s08;
+    _ZTV7dWipe_c[3] = (void *)fdr_s0c;
+    _ZTV7dWipe_c[4] = (void *)fdr_s10;
+    _ZTV7dWipe_c[5] = (void *)fdr_s14;
+    _ZTV7dWipe_c[6] = (void *)fdr_s18;
+    _ZTV7dWipe_c[7] = (void *)fdr_s1c;
+    _ZTV7dWipe_c[8] = (void *)fdr_s20;
+    _ZTV7dWipe_c[9] = (void *)fdr_s24;
+    _ZTV7dWipe_c[10] = (void *)fdr_s28;
+    _ZTV7dWipe_c[11] = (void *)fdr_s2c;
 }
 
 /* Fill the table. The ROM's initialiser used to be called from here too; run
@@ -940,7 +940,7 @@ extern "C" void port_fdr_fader_report(void)
 {
     std::printf("[fdr] dWipe_c at data_0209f61c: vptr %p (table %p), "
                 "%d unseated-slot hit(s)\n",
-                (void *)(size_t)data_0209f61c[0], (void *)data_020926f0,
+                (void *)(size_t)data_0209f61c[0], (void *)_ZTV7dWipe_c,
                 fdr_trap_hits);
     std::fflush(stdout);
 }

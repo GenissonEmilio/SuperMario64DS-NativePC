@@ -123,7 +123,7 @@
 data_ov055_02111a90
 
 # ---- .data: the two 8-byte PMF source pairs the sinit copies -------------
-data_ov055_02111a94 data_ov055_02111a9c
+data_ov055_02111a94@0x02111a94 data_ov055_02111a9c@0x02111a9c
 
 # ---- .data: the SpawnInfo record, pinned to the ROM's 0x1c ---------------
 g_profile_LUIGI:0x1c
@@ -131,4 +131,12 @@ g_profile_LUIGI:0x1c
 # ---- .bss: four state words and the sixteen-byte cell --------------------
 data_ov055_02111b60 data_ov055_02111b64
 data_ov055_02111b68 data_ov055_02111b6c
-data_ov055_02111b70:0x10
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov055_02111b70                        now defined by src/actors/daLuigi_c.cpp

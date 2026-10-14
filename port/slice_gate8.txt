@@ -14,48 +14,48 @@ port/unmatched/MeshCollider_DetectClsn_RaycastLine.cpp
 # from its tools/hostgen.py copy (the DS square-root unit it drives has to reach
 # the port's I/O model) by port/slice_w31_rs5b_hostgen.txt and the RS5B block at
 # the end of port/CMakeLists.txt, on the same seven targets this slice feeds.
-src/func_020379f4.c
-src/func_020379c0.c
-src/func_0203798c.c
-src/func_0203794c.c
-src/func_02037a6c.c
-src/_ZN7dBgW_KcC1Ev.cpp
-src/_ZN7dBgW_Kc7SetFileEP8KCL_FileR10CLPS_Block.cpp
-src/_ZN7dBgW_Kc17UpdateFileOffsetsER8KCL_File.cpp
+src/engine/collision/dBgCh_SphCrr.cpp
+# FOLDED into src/engine/collision/dBgCh_SphCrr.cpp (row 17): src/func_020379c0.c
+# FOLDED into src/engine/collision/dBgCh_SphCrr.cpp (row 17): src/func_0203798c.c
+# FOLDED into src/engine/collision/dBgCh_SphCrr.cpp (row 17): src/func_0203794c.c
+# FOLDED into src/engine/collision/dBgCh_SphCrr.cpp (row 17): src/func_02037a6c.c
+src/engine/collision/dBgW_Kc.cpp
+# FOLDED into src/engine/collision/dBgW_Kc.cpp (row 22): src/_ZN7dBgW_Kc7SetFileEP8KCL_FileR10CLPS_Block.cpp
+# FOLDED into src/engine/collision/dBgW_Kc.cpp (row 22): src/_ZN7dBgW_Kc17UpdateFileOffsetsER8KCL_File.cpp
 src/_ZN7dBgW_Kc8LoadFileER13SharedFilePtr.cpp
-src/_ZN7dBgW_Kc14GetSurfaceInfoEsR11SurfaceInfo.cpp
-src/_ZN7dBgW_Kc9GetNormalEsR7Vector3.cpp
-src/_ZN7dBgW_Kc17GetTriangleOriginEsR7Vector3.cpp
-src/_ZN7dBgW_Kc9Virtual08Ev.cpp
-src/func_020397dc.c
-src/func_020397b8.c
-src/_ZN5dBgPcC1Ev.cpp
-src/_ZN5dBgPcD1Ev.cpp
-src/func_02037fd4.c
-src/func_020375ec.c
-src/func_020396dc.c
-src/func_02039624.c
-src/_ZN13CLPS_BlockRefaSER10CLPS_Block.cpp
-src/func_020381cc.c
-src/func_02037eb0.c
+src/engine/collision/dBgW_Kc_itcm.cpp
+# FOLDED into src/engine/collision/dBgW_Kc_itcm.cpp (row 26): src/_ZN7dBgW_Kc9GetNormalEsR7Vector3.cpp
+# FOLDED into src/engine/collision/dBgW_Kc_itcm.cpp (row 26): src/_ZN7dBgW_Kc17GetTriangleOriginEsR7Vector3.cpp
+# FOLDED into src/engine/collision/dBgW_Kc.cpp (row 22): src/_ZN7dBgW_Kc9Virtual08Ev.cpp
+# FOLDED into src/engine/collision/dBgW_Kc.cpp (row 22): src/func_020397dc.c
+# FOLDED into src/engine/collision/dBgW_Kc.cpp (row 22): src/func_020397b8.c
+src/engine/collision/dBgCh_SphCrr_query.cpp
+# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 32): src/_ZN5dBgPcD1Ev.cpp
+# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 32): src/func_02037fd4.c
+src/engine/collision/dBgCh_Lin.cpp
+# FOLDED into src/engine/collision/dBgW_Kc.cpp (row 22): src/func_020396dc.c
+src/engine/collision/dBgW.cpp
+# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 32): src/_ZN13CLPS_BlockRefaSER10CLPS_Block.cpp
+# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 32): src/func_020381cc.c
+# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 32): src/func_02037eb0.c
 src/Vec3_Dist.c
-src/_ZN5dBgCh21ShouldPassThroughImplEPvRK4CLPSRKS_b.cpp
-src/_ZNK11SurfaceInfo12CopyNormalToER7Vector3.cpp
-src/_ZN4dBgWC2Ev.cpp
-src/_ZN13CLPS_BlockRefC1Ev.cpp
-src/SurfaceInfo_TestFlag0x20.c
+# FOLDED into src/engine/collision/dBgW.cpp (row 37): src/_ZN5dBgCh21ShouldPassThroughImplEPvRK4CLPSRKS_b.cpp
+# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 32): src/_ZNK11SurfaceInfo12CopyNormalToER7Vector3.cpp
+# FOLDED into src/engine/collision/dBgW.cpp (row 37): src/_ZN4dBgWC2Ev.cpp
+# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 32): src/_ZN13CLPS_BlockRefC1Ev.cpp
+# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 32): src/SurfaceInfo_TestFlag0x20.c
 src/func_020353d4.c
 src/func_02035408.c
 src/func_0203543c.c
-src/func_0203545c.c
-src/func_0203547c.c
-src/func_020354b0.c
-src/func_02037e14.c
-src/func_02037e20.c
-src/func_02037e2c.c
-src/func_02037e38.c
-src/func_02037de8.c
-src/func_02037e9c.c
+src/engine/collision/dBgCh.cpp
+# FOLDED into src/engine/collision/dBgCh.cpp (row 50): src/func_0203547c.c
+# FOLDED into src/engine/collision/dBgCh.cpp (row 50): src/func_020354b0.c
+# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 32): src/func_02037e14.c
+# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 32): src/func_02037e20.c
+# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 32): src/func_02037e2c.c
+# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 32): src/func_02037e38.c
+# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 32): src/func_02037de8.c
+# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 32): src/func_02037e9c.c
 # BATCH 3 LINKAGE SEAT: MeshCollider::DetectClsn(RaycastGround&) (ITCM
 # 0x01ffd3f8, 2004/b56 byte-match) seated into slot 6 of the concrete
 # _ZTV7dBgW_Kc table (hal/clsn_vtable.cpp), replacing the stack-RaycastLine
@@ -63,4 +63,4 @@ src/func_02037e9c.c
 # everywhere. The dtor pair (D0/D1) is seated separately in the walk_window
 # family only (hal/meshcollider_dtor_seat.cpp), because its ROM body drags
 # func callees the gate-8/9 smoke targets do not carry and never dispatch.
-src/_ZN7dBgW_Kc10DetectClsnER9dBgCh_Gnd.cpp
+# FOLDED into src/engine/collision/dBgW_Kc_itcm.cpp (row 26): src/_ZN7dBgW_Kc10DetectClsnER9dBgCh_Gnd.cpp

@@ -54,7 +54,7 @@
 # Consumed by the "W24 FACEFLIP1" block at the end of port/CMakeLists.txt, on
 # walk_window, walk_window_hires and smoke_player: the three targets that
 # compiled the host copies, and the three that link the generated faces.
-src/_ZN10HootTheOwl8BehaviorEv.cpp
-src/_ZN6Klepto8BehaviorEv.cpp
-src/_ZN13PrincessPeach12UpdateLookAtEv.cpp
-src/_ZN6Bowser8BehaviorEv.cpp
+src/actors/daOwl_c.cpp
+src/actors/daJango_c.cpp
+src/actors/daPeach_c.cpp
+src/actors/daKpa_c.cpp

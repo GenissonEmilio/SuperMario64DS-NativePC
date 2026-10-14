@@ -158,43 +158,43 @@ extern MgPmf data_ov006_02142f18[];
    whole body is a single `bx lr` at size 0x4 and whose src takes void. */
 
 /* data_ov006_02142eb0, arity 0 -- the Behavior's own five */
-void func_ov006_021200cc(char *c);
-void func_ov006_021200a8(char *c);
-void func_ov006_02120008(char *c);
-void func_ov006_0211fe78(char *c);
-void func_ov006_0211fd44(char *c);
+void _ZN13dScMgTeresa_c19func_ov006_021200ccEv(char *c);
+void _ZN13dScMgTeresa_c19func_ov006_021200a8Ev(char *c);
+void _ZN13dScMgTeresa_c19func_ov006_02120008Ev(char *c);
+void _ZN13dScMgTeresa_c19func_ov006_0211fe78Ev(char *c);
+void _ZN13dScMgTeresa_c19func_ov006_0211fd44Ev(char *c);
 
 /* data_ov006_02142e88, arity 1 */
-void func_ov006_0211dce0(char *c, int i);
-void func_ov006_0211db7c(char *c, int i);
-void func_ov006_0211dad0(char *c, int i);
-void func_ov006_0211d924(char *c, int i);
-void func_ov006_0211d86c(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211dce0Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211db7cEi(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211dad0Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211d924Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211d86cEi(char *c, int i);
 
 /* data_ov006_02142ed8, arity 1 */
-void func_ov006_0211f5d4(char *c, int i);
-void func_ov006_0211f554(char *c, int i);
-void func_ov006_0211f224(char *c, int i);
-void func_ov006_0211f1a4(char *c, int i);
-void func_ov006_0211f0d0(char *c, int i);
-void func_ov006_0211f040(char *c, int i);
-void func_ov006_0211ee34(char *c, int i);
-void func_ov006_0211ebdc(char *c, int i);   /* mg9's floor, decompiled in mg10 */
+void _ZN13dScMgTeresa_c19func_ov006_0211f5d4Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211f554Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211f224Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211f1a4Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211f0d0Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211f040Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211ee34Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211ebdcEi(char *c, int i);   /* mg9's floor, decompiled in mg10 */
 
 /* data_ov006_02142f18, arity 1 */
-void func_ov006_0211d4e8(char *c, int i);
-void func_ov006_0211d368(char *c, int i);
-void func_ov006_0211d224(char *c, int i);
-void func_ov006_0211d0f8(char *c, int i);
-void func_ov006_0211d018(char *c, int i);
-void func_ov006_0211cef4(char *c, int i);
-void func_ov006_0211ce94(char *c, int i);
-void func_ov006_0211ce90(void);          /* `bx lr`, size 0x4, no argument */
-void func_ov006_0211cd24(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211d4e8Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211d368Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211d224Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211d0f8Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211d018Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211cef4Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211ce94Ei(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211ce90Ev(void);          /* `bx lr`, size 0x4, no argument */
+void _ZN13dScMgTeresa_c19func_ov006_0211cd24Ei(char *c, int i);
 
 /* the one non-dispatching callee the four host copies below reach */
-void func_ov006_0211e4e0(char *c);
-void func_ov006_0211f664(char *c, int i);
+void _ZN13dScMgTeresa_c19func_ov006_0211e4e0Ev(char *c);
+void _ZN13dScMgTeresa_c19func_ov006_0211f664Ei(char *c, int i);
 
 /* Run link100 lane PMFB4 retired all four host copies. These four declarations
    named them; they name the matched TUs now, at the same C linkage and the same
@@ -202,9 +202,9 @@ void func_ov006_0211f664(char *c, int i);
    hal/scene_mg_booseek.cpp's vtable thunk for slot 6 declares
    _ZN13dScMgTeresa_c8BehaviorEv the same way and the two must agree. */
 int  _ZN13dScMgTeresa_c8BehaviorEv(char *c);
-void func_ov006_0211dd0c(char *c);
-void func_ov006_0211f6fc(char *c);
-void func_ov006_0211d5a8(char *c);
+void _ZN13dScMgTeresa_c19func_ov006_0211dd0cEv(char *c);
+void _ZN13dScMgTeresa_c19func_ov006_0211f6fcEv(char *c);
+void _ZN13dScMgTeresa_c19func_ov006_0211d5a8Ev(char *c);
 
 void port_mg_teresa_counts(unsigned *hits, unsigned *unknown);
 /* the boot installer at the end of this file; hal/scene_mg.cpp calls it
@@ -234,11 +234,11 @@ static int teresa_try_0(void *self, unsigned code)
     char *c = (char *)self;
     switch (code) {
     /* data_ov006_02142eb0, the Behavior's own five */
-    case 0x021200ccu: func_ov006_021200cc(c); return 1;
-    case 0x021200a8u: func_ov006_021200a8(c); return 1;
-    case 0x02120008u: func_ov006_02120008(c); return 1;
-    case 0x0211fe78u: func_ov006_0211fe78(c); return 1;
-    case 0x0211fd44u: func_ov006_0211fd44(c); return 1;
+    case 0x021200ccu: _ZN13dScMgTeresa_c19func_ov006_021200ccEv(c); return 1;
+    case 0x021200a8u: _ZN13dScMgTeresa_c19func_ov006_021200a8Ev(c); return 1;
+    case 0x02120008u: _ZN13dScMgTeresa_c19func_ov006_02120008Ev(c); return 1;
+    case 0x0211fe78u: _ZN13dScMgTeresa_c19func_ov006_0211fe78Ev(c); return 1;
+    case 0x0211fd44u: _ZN13dScMgTeresa_c19func_ov006_0211fd44Ev(c); return 1;
     default:
         return 0;
     }
@@ -249,33 +249,33 @@ static int teresa_try_1(void *self, unsigned code, int a)
     char *c = (char *)self;
     switch (code) {
     /* data_ov006_02142e88 */
-    case 0x0211dce0u: func_ov006_0211dce0(c, a); return 1;
-    case 0x0211db7cu: func_ov006_0211db7c(c, a); return 1;
-    case 0x0211dad0u: func_ov006_0211dad0(c, a); return 1;
-    case 0x0211d924u: func_ov006_0211d924(c, a); return 1;
-    case 0x0211d86cu: func_ov006_0211d86c(c, a); return 1;
+    case 0x0211dce0u: _ZN13dScMgTeresa_c19func_ov006_0211dce0Ei(c, a); return 1;
+    case 0x0211db7cu: _ZN13dScMgTeresa_c19func_ov006_0211db7cEi(c, a); return 1;
+    case 0x0211dad0u: _ZN13dScMgTeresa_c19func_ov006_0211dad0Ei(c, a); return 1;
+    case 0x0211d924u: _ZN13dScMgTeresa_c19func_ov006_0211d924Ei(c, a); return 1;
+    case 0x0211d86cu: _ZN13dScMgTeresa_c19func_ov006_0211d86cEi(c, a); return 1;
     /* data_ov006_02142ed8 */
-    case 0x0211f5d4u: func_ov006_0211f5d4(c, a); return 1;
-    case 0x0211f554u: func_ov006_0211f554(c, a); return 1;
-    case 0x0211f224u: func_ov006_0211f224(c, a); return 1;
-    case 0x0211f1a4u: func_ov006_0211f1a4(c, a); return 1;
-    case 0x0211f0d0u: func_ov006_0211f0d0(c, a); return 1;
-    case 0x0211f040u: func_ov006_0211f040(c, a); return 1;
-    case 0x0211ee34u: func_ov006_0211ee34(c, a); return 1;
+    case 0x0211f5d4u: _ZN13dScMgTeresa_c19func_ov006_0211f5d4Ei(c, a); return 1;
+    case 0x0211f554u: _ZN13dScMgTeresa_c19func_ov006_0211f554Ei(c, a); return 1;
+    case 0x0211f224u: _ZN13dScMgTeresa_c19func_ov006_0211f224Ei(c, a); return 1;
+    case 0x0211f1a4u: _ZN13dScMgTeresa_c19func_ov006_0211f1a4Ei(c, a); return 1;
+    case 0x0211f0d0u: _ZN13dScMgTeresa_c19func_ov006_0211f0d0Ei(c, a); return 1;
+    case 0x0211f040u: _ZN13dScMgTeresa_c19func_ov006_0211f040Ei(c, a); return 1;
+    case 0x0211ee34u: _ZN13dScMgTeresa_c19func_ov006_0211ee34Ei(c, a); return 1;
     /* slot 7, run mg9's reported floor, decompiled by run mg10 lane F387.
        0x0211ee34 above is slot 6 of the same table and the two read the same
        record fields, which is the cross-check on the layout. */
-    case 0x0211ebdcu: func_ov006_0211ebdc(c, a); return 1;
+    case 0x0211ebdcu: _ZN13dScMgTeresa_c19func_ov006_0211ebdcEi(c, a); return 1;
     /* data_ov006_02142f18 */
-    case 0x0211d4e8u: func_ov006_0211d4e8(c, a); return 1;
-    case 0x0211d368u: func_ov006_0211d368(c, a); return 1;
-    case 0x0211d224u: func_ov006_0211d224(c, a); return 1;
-    case 0x0211d0f8u: func_ov006_0211d0f8(c, a); return 1;
-    case 0x0211d018u: func_ov006_0211d018(c, a); return 1;
-    case 0x0211cef4u: func_ov006_0211cef4(c, a); return 1;
-    case 0x0211ce94u: func_ov006_0211ce94(c, a); return 1;
-    case 0x0211ce90u: func_ov006_0211ce90();     return 1;
-    case 0x0211cd24u: func_ov006_0211cd24(c, a); return 1;
+    case 0x0211d4e8u: _ZN13dScMgTeresa_c19func_ov006_0211d4e8Ei(c, a); return 1;
+    case 0x0211d368u: _ZN13dScMgTeresa_c19func_ov006_0211d368Ei(c, a); return 1;
+    case 0x0211d224u: _ZN13dScMgTeresa_c19func_ov006_0211d224Ei(c, a); return 1;
+    case 0x0211d0f8u: _ZN13dScMgTeresa_c19func_ov006_0211d0f8Ei(c, a); return 1;
+    case 0x0211d018u: _ZN13dScMgTeresa_c19func_ov006_0211d018Ei(c, a); return 1;
+    case 0x0211cef4u: _ZN13dScMgTeresa_c19func_ov006_0211cef4Ei(c, a); return 1;
+    case 0x0211ce94u: _ZN13dScMgTeresa_c19func_ov006_0211ce94Ei(c, a); return 1;
+    case 0x0211ce90u: _ZN13dScMgTeresa_c19func_ov006_0211ce90Ev();     return 1;
+    case 0x0211cd24u: _ZN13dScMgTeresa_c19func_ov006_0211cd24Ei(c, a); return 1;
     default:
         return 0;
     }
@@ -444,36 +444,36 @@ extern "C" void port_mg_teresa_state_index(int *l1)
     }
 
 /* data_ov006_02142f18, arity 1 */
-TR_FACE1(func_ov006_0211d4e8)
-TR_FACE1(func_ov006_0211d368)
-TR_FACE1(func_ov006_0211d224)
-TR_FACE1(func_ov006_0211d0f8)
-TR_FACE1(func_ov006_0211d018)
-TR_FACE1(func_ov006_0211cef4)
-TR_FACE1(func_ov006_0211ce94)
-TR_FACE1_VOID(func_ov006_0211ce90)
-TR_FACE1(func_ov006_0211cd24)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211d4e8Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211d368Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211d224Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211d0f8Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211d018Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211cef4Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211ce94Ei)
+TR_FACE1_VOID(_ZN13dScMgTeresa_c19func_ov006_0211ce90Ev)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211cd24Ei)
 /* data_ov006_02142e88, arity 1 */
-TR_FACE1(func_ov006_0211dce0)
-TR_FACE1(func_ov006_0211db7c)
-TR_FACE1(func_ov006_0211dad0)
-TR_FACE1(func_ov006_0211d924)
-TR_FACE1(func_ov006_0211d86c)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211dce0Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211db7cEi)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211dad0Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211d924Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211d86cEi)
 /* data_ov006_02142ed8, arity 1 */
-TR_FACE1(func_ov006_0211f5d4)
-TR_FACE1(func_ov006_0211f554)
-TR_FACE1(func_ov006_0211f224)
-TR_FACE1(func_ov006_0211f1a4)
-TR_FACE1(func_ov006_0211f0d0)
-TR_FACE1(func_ov006_0211f040)
-TR_FACE1(func_ov006_0211ee34)
-TR_FACE1(func_ov006_0211ebdc)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211f5d4Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211f554Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211f224Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211f1a4Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211f0d0Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211f040Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211ee34Ei)
+TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211ebdcEi)
 /* data_ov006_02142eb0, arity 0 */
-TR_FACE0(func_ov006_021200cc)
-TR_FACE0(func_ov006_021200a8)
-TR_FACE0(func_ov006_02120008)
-TR_FACE0(func_ov006_0211fe78)
-TR_FACE0(func_ov006_0211fd44)
+TR_FACE0(_ZN13dScMgTeresa_c19func_ov006_021200ccEv)
+TR_FACE0(_ZN13dScMgTeresa_c19func_ov006_021200a8Ev)
+TR_FACE0(_ZN13dScMgTeresa_c19func_ov006_02120008Ev)
+TR_FACE0(_ZN13dScMgTeresa_c19func_ov006_0211fe78Ev)
+TR_FACE0(_ZN13dScMgTeresa_c19func_ov006_0211fd44Ev)
 
 extern "C" void port_mg_teresa_states_seat(void)
 {
@@ -489,36 +489,36 @@ extern "C" void port_mg_teresa_states_seat(void)
         unsigned rom;
         void *face;
     } seats[] = {
-        {data_ov006_02142f18, "02142f18", 0, 0x0211d4e8u, (void *)tr_func_ov006_0211d4e8},
-        {data_ov006_02142f18, "02142f18", 1, 0x0211d368u, (void *)tr_func_ov006_0211d368},
-        {data_ov006_02142f18, "02142f18", 2, 0x0211d224u, (void *)tr_func_ov006_0211d224},
-        {data_ov006_02142f18, "02142f18", 3, 0x0211d0f8u, (void *)tr_func_ov006_0211d0f8},
-        {data_ov006_02142f18, "02142f18", 4, 0x0211d018u, (void *)tr_func_ov006_0211d018},
-        {data_ov006_02142f18, "02142f18", 5, 0x0211cef4u, (void *)tr_func_ov006_0211cef4},
-        {data_ov006_02142f18, "02142f18", 6, 0x0211ce94u, (void *)tr_func_ov006_0211ce94},
-        {data_ov006_02142f18, "02142f18", 7, 0x0211ce90u, (void *)tr_func_ov006_0211ce90},
-        {data_ov006_02142f18, "02142f18", 8, 0x0211cd24u, (void *)tr_func_ov006_0211cd24},
+        {data_ov006_02142f18, "02142f18", 0, 0x0211d4e8u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211d4e8Ei},
+        {data_ov006_02142f18, "02142f18", 1, 0x0211d368u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211d368Ei},
+        {data_ov006_02142f18, "02142f18", 2, 0x0211d224u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211d224Ei},
+        {data_ov006_02142f18, "02142f18", 3, 0x0211d0f8u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211d0f8Ei},
+        {data_ov006_02142f18, "02142f18", 4, 0x0211d018u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211d018Ei},
+        {data_ov006_02142f18, "02142f18", 5, 0x0211cef4u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211cef4Ei},
+        {data_ov006_02142f18, "02142f18", 6, 0x0211ce94u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211ce94Ei},
+        {data_ov006_02142f18, "02142f18", 7, 0x0211ce90u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211ce90Ev},
+        {data_ov006_02142f18, "02142f18", 8, 0x0211cd24u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211cd24Ei},
 
-        {data_ov006_02142e88, "02142e88", 0, 0x0211dce0u, (void *)tr_func_ov006_0211dce0},
-        {data_ov006_02142e88, "02142e88", 1, 0x0211db7cu, (void *)tr_func_ov006_0211db7c},
-        {data_ov006_02142e88, "02142e88", 2, 0x0211dad0u, (void *)tr_func_ov006_0211dad0},
-        {data_ov006_02142e88, "02142e88", 3, 0x0211d924u, (void *)tr_func_ov006_0211d924},
-        {data_ov006_02142e88, "02142e88", 4, 0x0211d86cu, (void *)tr_func_ov006_0211d86c},
+        {data_ov006_02142e88, "02142e88", 0, 0x0211dce0u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211dce0Ei},
+        {data_ov006_02142e88, "02142e88", 1, 0x0211db7cu, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211db7cEi},
+        {data_ov006_02142e88, "02142e88", 2, 0x0211dad0u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211dad0Ei},
+        {data_ov006_02142e88, "02142e88", 3, 0x0211d924u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211d924Ei},
+        {data_ov006_02142e88, "02142e88", 4, 0x0211d86cu, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211d86cEi},
 
-        {data_ov006_02142ed8, "02142ed8", 0, 0x0211f5d4u, (void *)tr_func_ov006_0211f5d4},
-        {data_ov006_02142ed8, "02142ed8", 1, 0x0211f554u, (void *)tr_func_ov006_0211f554},
-        {data_ov006_02142ed8, "02142ed8", 2, 0x0211f224u, (void *)tr_func_ov006_0211f224},
-        {data_ov006_02142ed8, "02142ed8", 3, 0x0211f1a4u, (void *)tr_func_ov006_0211f1a4},
-        {data_ov006_02142ed8, "02142ed8", 4, 0x0211f0d0u, (void *)tr_func_ov006_0211f0d0},
-        {data_ov006_02142ed8, "02142ed8", 5, 0x0211f040u, (void *)tr_func_ov006_0211f040},
-        {data_ov006_02142ed8, "02142ed8", 6, 0x0211ee34u, (void *)tr_func_ov006_0211ee34},
-        {data_ov006_02142ed8, "02142ed8", 7, 0x0211ebdcu, (void *)tr_func_ov006_0211ebdc},
+        {data_ov006_02142ed8, "02142ed8", 0, 0x0211f5d4u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211f5d4Ei},
+        {data_ov006_02142ed8, "02142ed8", 1, 0x0211f554u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211f554Ei},
+        {data_ov006_02142ed8, "02142ed8", 2, 0x0211f224u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211f224Ei},
+        {data_ov006_02142ed8, "02142ed8", 3, 0x0211f1a4u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211f1a4Ei},
+        {data_ov006_02142ed8, "02142ed8", 4, 0x0211f0d0u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211f0d0Ei},
+        {data_ov006_02142ed8, "02142ed8", 5, 0x0211f040u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211f040Ei},
+        {data_ov006_02142ed8, "02142ed8", 6, 0x0211ee34u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211ee34Ei},
+        {data_ov006_02142ed8, "02142ed8", 7, 0x0211ebdcu, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211ebdcEi},
 
-        {data_ov006_02142eb0, "02142eb0", 0, 0x021200ccu, (void *)tr_func_ov006_021200cc},
-        {data_ov006_02142eb0, "02142eb0", 1, 0x021200a8u, (void *)tr_func_ov006_021200a8},
-        {data_ov006_02142eb0, "02142eb0", 2, 0x02120008u, (void *)tr_func_ov006_02120008},
-        {data_ov006_02142eb0, "02142eb0", 3, 0x0211fe78u, (void *)tr_func_ov006_0211fe78},
-        {data_ov006_02142eb0, "02142eb0", 4, 0x0211fd44u, (void *)tr_func_ov006_0211fd44},
+        {data_ov006_02142eb0, "02142eb0", 0, 0x021200ccu, (void *)tr__ZN13dScMgTeresa_c19func_ov006_021200ccEv},
+        {data_ov006_02142eb0, "02142eb0", 1, 0x021200a8u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_021200a8Ev},
+        {data_ov006_02142eb0, "02142eb0", 2, 0x02120008u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_02120008Ev},
+        {data_ov006_02142eb0, "02142eb0", 3, 0x0211fe78u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211fe78Ev},
+        {data_ov006_02142eb0, "02142eb0", 4, 0x0211fd44u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211fd44Ev},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {

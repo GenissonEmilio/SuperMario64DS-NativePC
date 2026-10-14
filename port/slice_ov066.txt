@@ -181,44 +181,44 @@
 # func_02011d2c's veneer target func_02048ef4 (a one-line forwarder to
 # func_02048fd4, which slice_gate10.txt already carries). Three arm9 lines
 # total, none of them predicted.
-src/func_020398fc.c
-src/func_02011d2c.c
-src/func_02048ef4.c
-src/_ZN6EyerokD1Ev.cpp
+src/engine/collision/dBgW_KcMbg.cpp
+src/engine/sound/Sound.cpp
+src/engine/sound/Sound2.cpp
+src/actors/Eyerok.cpp
 # RETIRED at SLICE1: body now in src/_ZN6EyerokD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN6EyerokD0Ev.cpp
-src/func_ov066_0211603c.c
-src/func_ov066_021162e8.c
-src/func_ov066_0211632c.c
-src/func_ov066_02116390.c
-src/func_ov066_021164ec.c
-src/func_ov066_021165cc.c
-src/func_ov066_021166c8.cpp
-src/func_ov066_021168b0.c
-src/func_ov066_021168ec.c
-src/func_ov066_02116a68.c
-src/func_ov066_02116ac4.c
-src/func_ov066_02116b78.c
-src/func_ov066_02116c6c.c
-src/func_ov066_02116d14.cpp
-src/func_ov066_02116db0.c
-src/func_ov066_02117190.c
-src/func_ov066_021171b0.c
-src/func_ov066_021175bc.c
-src/func_ov066_021175e8.c
-src/func_ov066_02117bd0.c
-src/func_ov066_02117bf0.c
-src/func_ov066_02118168.c
-src/func_ov066_02118188.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_0211603c.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021162e8.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_0211632c.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02116390.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021164ec.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021165cc.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021166c8.cpp
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021168b0.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021168ec.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02116a68.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02116ac4.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02116b78.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02116c6c.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02116d14.cpp
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02116db0.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02117190.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021171b0.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021175bc.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021175e8.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02117bd0.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02117bf0.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02118168.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02118188.c
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (the slice_ov066 host copies).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
 #src/actors/Eyerok.cpp
-src/_ZN6Eyerok13InitResourcesEv.cpp
-src/_ZN6Eyerok16OnAimedAtWithEggEv.cpp
-src/func_ov066_0211a2e4.c
-src/func_ov066_0211a35c.c
-src/d_a_iwante.cpp
-src/__sinit_ov066_0211a418.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/_ZN6Eyerok13InitResourcesEv.cpp
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/_ZN6Eyerok16OnAimedAtWithEggEv.cpp
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_0211a2e4.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_0211a35c.c
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/d_a_iwante.cpp
+# FOLDED into src/actors/Eyerok.cpp (row 187): src/__sinit_ov066_0211a418.c

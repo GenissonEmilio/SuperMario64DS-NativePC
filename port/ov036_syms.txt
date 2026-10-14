@@ -295,28 +295,28 @@ g_profile_RC_BURANKO data_ov036_02113b18 data_ov036_02113b1c
 _ZTI19daObjRc_Kaitendai_c data_ov036_02113b2c _ZTS19daObjRc_Kaitendai_c
 g_profile_RC_KAITEN _ZTI14daObjRc_Hane_c _ZTS14daObjRc_Hane_c
 data_ov036_02113c08 g_profile_RC_HANE data_ov036_02113c20
-data_ov036_02113c28 data_ov036_02113cb4 data_ov036_02113cc0
+data_ov036_02113c28 _ZTI16daObjRc_Tikuwa_c _ZTS16daObjRc_Tikuwa_c
 data_ov036_02113ccc g_profile_RC_TIKUWA data_ov036_02113cec
 data_ov036_02113cf4 data_ov036_02113d78 _ZTI18daObjRc_Guruguru_c
 _ZTS18daObjRc_Guruguru_c g_profile_RC_GURUGURU data_ov036_02113dc4
 _ZTI16daObjRc_Dorifu_c _ZTS16daObjRc_Dorifu_c
-data_ov036_02113e88 _ZTI15daObjRcCarpet_c
+_ZTI15daObjRcCarpet_c
 _ZTS15daObjRcCarpet_c
-data_ov036_02114020 data_ov036_02114028 data_ov036_02114030
-data_ov036_0211403c data_ov036_02114048 data_ov036_02114050
-data_ov036_02114058 data_ov036_02114064 data_ov036_02114070
-data_ov036_02114078 data_ov036_02114084 data_ov036_0211408c
-data_ov036_02114094 data_ov036_021140a0 data_ov036_021140ac
-data_ov036_021140b4:0x8 data_ov036_021140bc data_ov036_021140c8
-data_ov036_021140d4 data_ov036_021140dc data_ov036_021140e4
-data_ov036_021140ec data_ov036_021140f4:0x8 data_ov036_021140fc
-data_ov036_02114104:0x8 data_ov036_0211410c data_ov036_02114114
-data_ov036_0211411c data_ov036_02114124 data_ov036_02114130
-data_ov036_0211413c data_ov036_02114148 data_ov036_02114154
-data_ov036_02114160 data_ov036_0211416c data_ov036_02114178:0xc
-data_ov036_02114184 data_ov036_02114190 data_ov036_0211419c
-data_ov036_021141a4 data_ov036_021141ac data_ov036_021141b4
-data_ov036_021141c0 data_ov036_021141cc
+data_ov036_02114030@0x02114030
+data_ov036_0211403c@0x0211403c data_ov036_02114048 data_ov036_02114050
+data_ov036_02114058@0x02114058 data_ov036_02114064@0x02114064 data_ov036_02114070
+data_ov036_02114078@0x02114078
+data_ov036_02114094@0x02114094 data_ov036_021140a0@0x021140a0 data_ov036_021140ac
+data_ov036_021140b4:0x8 data_ov036_021140bc@0x021140bc data_ov036_021140c8@0x021140c8
+
+
+
+data_ov036_02114124@0x02114124 data_ov036_02114130@0x02114130
+data_ov036_0211413c@0x0211413c data_ov036_02114148@0x02114148 data_ov036_02114154@0x02114154
+data_ov036_02114160@0x02114160 data_ov036_0211416c@0x0211416c data_ov036_02114178@0x02114178:0xc
+data_ov036_02114184@0x02114184 data_ov036_02114190@0x02114190
+data_ov036_021141b4@0x021141b4
+data_ov036_021141c0@0x021141c0 data_ov036_021141cc@0x021141cc
 
 
 # RETIRED at ALIAS2 (wave 8, the main -> port sync). Each symbol below was
@@ -327,3 +327,29 @@ data_ov036_021141c0 data_ov036_021141cc
 #   g_profile_RC_DORIFU                        now defined by d_a_obj_rc_dorifu.cpp.obj
 #   data_ov036_02113f58                        now defined by d_a_obj_rc_carpet.cpp.obj
 #   g_profile_RC_CARPET                        now defined by d_a_obj_rc_carpet.cpp.obj
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov036_02113e88                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
+#   data_ov036_02114020                        now defined by src/game/actors/d_a_obj_rc_buranko.cpp
+#   data_ov036_02114028                        now defined by src/game/actors/d_a_obj_rc_buranko.cpp
+#   data_ov036_02114084                        now defined by src/actors/daObjRc_Tikuwa_c.cpp
+#   data_ov036_0211408c                        now defined by src/actors/daObjRc_Tikuwa_c.cpp
+#   data_ov036_021140d4                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
+#   data_ov036_021140dc                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
+#   data_ov036_021140e4                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
+#   data_ov036_021140ec                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
+#   data_ov036_021140f4                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
+#   data_ov036_021140fc                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
+#   data_ov036_02114104                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
+#   data_ov036_0211410c                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
+#   data_ov036_02114114                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
+#   data_ov036_0211411c                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
+#   data_ov036_0211419c                        now defined by src/game/actors/d_a_obj_rc_carpet.cpp
+#   data_ov036_021141a4                        now defined by src/game/actors/d_a_obj_rc_carpet.cpp
+#   data_ov036_021141ac                        now defined by src/game/actors/d_a_obj_rc_carpet.cpp

@@ -59,15 +59,15 @@ void Matrix4x3_FromRotationY(void *m, int angle);
 void MulVec3Mat4x3(void *src, void *m, void *dst);
 u32 _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
     u32 a, u32 b, int x, int y, int z, const void *v, void *cb);
-void func_ov066_021194fc(char *c);
+void _ZN6Eyerok19func_ov066_021194fcEv(char *c);
 int _ZN4dBgW9IsEnabledEv(char *c);
-void func_ov066_021194a4(char *c);
+void _ZN6Eyerok19func_ov066_021194a4Ev(char *c);
 void _ZN8dActor_c9UpdatePosEP5dCc_c(char *c, void *clsn);
 void _ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3(char *c, const Vector3 *v);
 void _ZN5dCc_c5ClearEv(char *c);
 void _ZN5dCc_c6UpdateEv(char *c);
 void _ZN14BlendModelAnim7AdvanceEv(char *c);
-void _ZN9Animation7AdvanceEv(char *c);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(char *c);
 
 extern int data_0209e650;
 extern char data_ov066_0211b07c;

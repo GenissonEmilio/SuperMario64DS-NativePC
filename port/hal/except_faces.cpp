@@ -48,23 +48,23 @@
 // overlay image at that overlay's .text base) and the kind:function record at
 // the destination are in port/slice_except2.txt.
 
-#include "CheepCheep.h"
-#include "ChiefChilly.h"
-#include "Clam.h"
-#include "FirePiranhaPlantBig.h"
-#include "HeaveHo.h"
-#include "Lakitu.h"
-#include "LakituBro.h"
-#include "MantaRay.h"
-#include "MrI.h"
+#include "daPukupuku_c.h"
+#include "daKing_Donketu_c.h"
+#include "daObjShell_c.h"
+#include "daFPkn_c.h"
+#include "daPopoi_c.h"
+#include "daJgm_c.h"
+#include "daC_Jugem_c.h"
+#include "daManta_c.h"
+#include "daEykn_c.h"
 #include "daPkn_c.h"
 #include "daMip_c.h"
-#include "Shark.h"
-#include "Skeeter.h"
-#include "Spiny.h"
-#include "Stump.h"
-#include "Fwoosh.h"
-#include "TreasureChest.h"
+#include "daShark_c.h"
+#include "daMenbo_c.h"
+#include "daTgz_c.h"
+#include "daObjPile_c.h"
+#include "daHyuhyu_c.h"
+#include "daObjTbox_c.h"
 
 /* TWO NAME BRIDGES, and they are the whole reason this file has a pragma in it.
    Two of the sixteen matched sources declare a mount symbol OUTSIDE their own
@@ -93,22 +93,22 @@
 
 extern "C" {
 
-int _ZN3MrI6RenderEv(void *s)                 { return ((MrI *)s)->MrI::Render(); }
-int _ZN11ChiefChilly6RenderEv(void *s)        { return ((ChiefChilly *)s)->ChiefChilly::Render(); }
-int _ZN4Clam6RenderEv(void *s)                { return ((Clam *)s)->Clam::Render(); }
-int _ZN13TreasureChest6RenderEv(void *s)      { return ((TreasureChest *)s)->TreasureChest::Render(); }
-int _ZN5Spiny6RenderEv(void *s)               { return ((Spiny *)s)->Spiny::Render(); }
-int _ZN5Shark6RenderEv(void *s)               { return ((Shark *)s)->Shark::Render(); }
-int _ZN7Skeeter6RenderEv(void *s)             { return ((Skeeter *)s)->Skeeter::Render(); }
-int _ZN8MantaRay6RenderEv(void *s)            { return ((MantaRay *)s)->MantaRay::Render(); }
-int _ZN6Lakitu6RenderEv(void *s)              { return ((Lakitu *)s)->Lakitu::Render(); }
-int _ZN7HeaveHo6RenderEv(void *s)             { return ((HeaveHo *)s)->HeaveHo::Render(); }
-int _ZN10CheepCheep6RenderEv(void *s)         { return ((CheepCheep *)s)->CheepCheep::Render(); }
-int _ZN6Fwoosh6RenderEv(void *s)              { return ((Fwoosh *)s)->Fwoosh::Render(); }
+int _ZN8daEykn_c6RenderEv(void *s)                 { return ((daEykn_c *)s)->daEykn_c::Render(); }
+int _ZN16daKing_Donketu_c6RenderEv(void *s)        { return ((daKing_Donketu_c *)s)->daKing_Donketu_c::Render(); }
+int _ZN12daObjShell_c6RenderEv(void *s)                { return ((daObjShell_c *)s)->daObjShell_c::Render(); }
+int _ZN11daObjTbox_c6RenderEv(void *s)      { return ((daObjTbox_c *)s)->daObjTbox_c::Render(); }
+int _ZN7daTgz_c6RenderEv(void *s)               { return ((daTgz_c *)s)->daTgz_c::Render(); }
+int _ZN9daShark_c6RenderEv(void *s)               { return ((daShark_c *)s)->daShark_c::Render(); }
+int _ZN9daMenbo_c6RenderEv(void *s)             { return ((daMenbo_c *)s)->daMenbo_c::Render(); }
+int _ZN9daManta_c6RenderEv(void *s)            { return ((daManta_c *)s)->daManta_c::Render(); }
+int _ZN7daJgm_c6RenderEv(void *s)              { return ((daJgm_c *)s)->daJgm_c::Render(); }
+int _ZN9daPopoi_c6RenderEv(void *s)             { return ((daPopoi_c *)s)->daPopoi_c::Render(); }
+int _ZN12daPukupuku_c6RenderEv(void *s)         { return ((daPukupuku_c *)s)->daPukupuku_c::Render(); }
+int _ZN10daHyuhyu_c6RenderEv(void *s)              { return ((daHyuhyu_c *)s)->daHyuhyu_c::Render(); }
 int _ZN7daPkn_c6RenderEv(void *s)       { return ((daPkn_c *)s)->daPkn_c::Render(); }
-int _ZN19FirePiranhaPlantBig6RenderEv(void *s){ return ((FirePiranhaPlantBig *)s)->FirePiranhaPlantBig::Render(); }
+int _ZN8daFPkn_c6RenderEv(void *s){ return ((daFPkn_c *)s)->daFPkn_c::Render(); }
 int _ZN7daMip_c6RenderEv(void *s)              { return ((daMip_c *)s)->daMip_c::Render(); }
-int _ZN9LakituBro6RenderEv(void *s)           { return ((LakituBro *)s)->LakituBro::Render(); }
+int _ZN11daC_Jugem_c6RenderEv(void *s)           { return ((daC_Jugem_c *)s)->daC_Jugem_c::Render(); }
 
 }  /* extern "C" */
 /* ==========================================================================
@@ -150,24 +150,24 @@ int _ZN9LakituBro6RenderEv(void *s)           { return ((LakituBro *)s)->LakituB
    return type only decides whether EAX is read after the call, and every one
    of these bodies discards it. Lane EXCEPT shipped four seats of exactly that
    shape and the battery was green. */
-#include "SlidingBox.h"
-#include "Goomboss.h"
+#include "daSlide_Box_c.h"
+#include "daKuriKing_c.h"
 #include "Player.h"
-#include "ShipUp.h"
+#include "daObjKi_Fune_c.h"
 
 extern "C" {
 
 /* Goomboss::Render, ROM 0x02121b70, _ZTV8Goomboss[9] @ 0x02122edc ("12daKuriKing_c"). */
-int _ZN8Goomboss6RenderEv(void *s)            { return ((Goomboss *)s)->Goomboss::Render(); }
+int _ZN12daKuriKing_c6RenderEv(void *s)            { return ((daKuriKing_c *)s)->daKuriKing_c::Render(); }
 /* ShipUp::Render, ROM 0x02112744, _ZTV6ShipUp[9] @ 0x02114a60 ("14daObjKi_Fune_c"). */
-int _ZN6ShipUp6RenderEv(void *s)              { return ((ShipUp *)s)->ShipUp::Render(); }
+int _ZN14daObjKi_Fune_c6RenderEv(void *s)              { return ((daObjKi_Fune_c *)s)->daObjKi_Fune_c::Render(); }
 /* FloatOnWaterPlatformJrb::Render, ROM 0x02113130. The class name on the table
    is a decoy the host file recorded and this lane re-read from the ROM: the
    RTTI name string behind _ZTV23FloatOnWaterPlatformJrb[-1] @ 0x02114c88 says
    "13daSlide_Box_c", so the table SLIDING_BOX (313) installs is the one that
    holds this body at slot 9 @ 0x02114cb0. */
-int _ZN10SlidingBox6RenderEv(void *s)
-{ return ((SlidingBox *)s)->SlidingBox::Render(); }
+int _ZN13daSlide_Box_c6RenderEv(void *s)
+{ return ((daSlide_Box_c *)s)->daSlide_Box_c::Render(); }
 /* Player::BlowAway, ROM 0x020d4fe4. Not a vtable row: the ROM reaches this body
    by two arm_calls (ov027 from:0x0211221c, ov091 from:0x02133b84), and every
    caller in the tree spells the FLAT name include/decl_Player.h:38 declares at
@@ -192,14 +192,14 @@ void _ZN6Player8BlowAwayEs(void *s, short v) { ((Player *)s)->Player::BlowAway(v
    hal/actor_classes.cpp:1334 and :1506 call the Itanium C name at C linkage,
    so each row is one cdecl definition of that name onto the method and no fill
    site changes. */
-#include "Bird.h"
+#include "daSBird_c.h"
 #include "daMcFlag_c.h"
 
 extern "C" {
 
 /* Bird::Render, ROM 0x02111870 (ov009, kind:function(arm,size=0x28)); the fill
    site is hal/actor_classes.cpp:1334. */
-int _ZN4Bird6RenderEv(void *s)                { return ((Bird *)s)->Bird::Render(); }
+int _ZN9daSBird_c6RenderEv(void *s)                { return ((daSBird_c *)s)->daSBird_c::Render(); }
 /* Flag::Render, ROM 0x0211211c (ov009, kind:function(arm,size=0x28)); the fill
    site is hal/actor_classes.cpp:1506. */
 int _ZN10daMcFlag_c6RenderEv(void *s)                { return ((daMcFlag_c *)s)->daMcFlag_c::Render(); }
@@ -222,20 +222,20 @@ int _ZN10daMcFlag_c6RenderEv(void *s)                { return ((daMcFlag_c *)s)-
    bodies are plain cdecl. Those faces live in the seat files
    (port/unmatched/Coin_Behavior.cpp, PowerStar_States.cpp,
    PiranhaPlant_States.cpp) with the per-table ROM evidence. */
-#include "Coin.h"
+#include "daCoin_c.h"
 #include "da1up_c.h"
-#include "PowerStar.h"
+#include "daStar_c.h"
 #include "daPkn_c.h"
 
 extern "C" {
 
 /* Coin::Behavior, ROM 0x020b2324 (ov002); the fill site is
    hal/actor_classes.cpp. */
-int _ZN4Coin8BehaviorEv(void *s)              { return ((Coin *)s)->Coin::Behavior(); }
+int _ZN8daCoin_c8BehaviorEv(void *s)              { return ((daCoin_c *)s)->daCoin_c::Behavior(); }
 /* OneUpMushroom::Behavior, ROM 0x020b00e8 (ov002). */
 int _ZN7da1up_c8BehaviorEv(void *s)    { return ((da1up_c *)s)->da1up_c::Behavior(); }
 /* PowerStar::Behavior, ROM 0x020eb05c (ov002). */
-int _ZN9PowerStar8BehaviorEv(void *s)         { return ((PowerStar *)s)->PowerStar::Behavior(); }
+int _ZN8daStar_c8BehaviorEv(void *s)         { return ((daStar_c *)s)->daStar_c::Behavior(); }
 /* PiranhaPlant::Behavior, ROM 0x0212fd4c (ov084). */
 int _ZN7daPkn_c8BehaviorEv(void *s)     { return ((daPkn_c *)s)->daPkn_c::Behavior(); }
 

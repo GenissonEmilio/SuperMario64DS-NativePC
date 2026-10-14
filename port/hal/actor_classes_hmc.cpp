@@ -37,7 +37,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 
 #include "dActor_c.h"
 #include "fBase_c.h"
-#include "Crate.h"
+#include "daObjBlockS_c.h"
 
 extern "C" {
 /* the shared lifecycle halves, the same functions every fill writes */
@@ -53,25 +53,25 @@ const char *port_actor_class_name(unsigned id);   /* hal/actor_registry */
 void port_actor_render_probe(const char *cls, void *model); /* actor_classes */
 
 /* Crate's own C-linkage bodies (matched src, slice_gate172.txt) */
-void *_ZN5CrateD1Ev(void *self);              /* slot 16, .cpp extern "C" */
-void *_ZN5CrateD0Ev(void *self);              /* slot 17, .c */
-int _ZN5Crate13OnYoshiTryEatEv(unsigned char *c);    /* slot 18, OnYoshiTryEat */
-void _ZN5Crate13OnTurnIntoEggER6Player(char *self, char *other); /* slot 19, OnTurnIntoEgg */
-void _ZN5Crate15OnGroundPoundedER8dActor_c(void *self);         /* slot 21, OnGroundPounded */
-void _ZN5Crate4KillEv(char *self);         /* slot 31, Kill */
+void *_ZN13daObjBlockS_cD1Ev(void *self);              /* slot 16, .cpp extern "C" */
+void *_ZN13daObjBlockS_cD0Ev(void *self);              /* slot 17, .c */
+int _ZN13daObjBlockS_c13OnYoshiTryEatEv(unsigned char *c);    /* slot 18, OnYoshiTryEat */
+void _ZN13daObjBlockS_c13OnTurnIntoEggER6Player(char *self, char *other); /* slot 19, OnTurnIntoEgg */
+void _ZN13daObjBlockS_c15OnGroundPoundedER8dActor_c(void *self);         /* slot 21, OnGroundPounded */
+void _ZN13daObjBlockS_c4KillEv(char *self);         /* slot 31, Kill */
 void *daObjBlockS_c_classInit(void);
 
 /* The one array the ROM factory installs (daObjBlockS_c_classInit does
    `*(void **)p = &_ZTV5Crate`); thirty-two slots. Defined here, not just
    declared: the `int` type and C linkage match the `extern int _ZTV5Crate[]`
    in the destructor TUs. */
-int _ZTV5Crate[32];
+int _ZTV13daObjBlockS_c[32];
 }
 
 /* daObjBlockS_c_classInit.cpp declares the table `extern void *_ZTV5Crate;` OUTSIDE any
    extern "C" block, so MSVC mangles that one reference as a C++ data name.
    Point the mangled spelling at the C symbol -- the IDENTITY_MATRIX4X3 precedent. */
-#pragma comment(linker, "/alternatename:?_ZTV5Crate@@3PAXA=__ZTV5Crate")
+#pragma comment(linker, "/alternatename:?_ZTV13daObjBlockS_c@@3PAXA=__ZTV13daObjBlockS_c")
 
 /* The C++/C linkage bridge, the gate-42 pragma block's reading. Crate's
    InitResources and CleanupResources declare data_ov098_0213c4c8 (the model
@@ -140,23 +140,23 @@ static int __fastcall hmc_heap(void *s, void *)
 
 // ---- CRATE's own slots -----------------------------------------------------
 static int __fastcall crate_init(void *s, void *)
-{ return ((Crate *)s)->Crate::InitResources(); }
+{ return ((daObjBlockS_c *)s)->daObjBlockS_c::InitResources(); }
 static int __fastcall crate_clean(void *s, void *)
-{ return ((Crate *)s)->Crate::CleanupResources(); }
+{ return ((daObjBlockS_c *)s)->daObjBlockS_c::CleanupResources(); }
 static int __fastcall crate_behavior(void *s, void *)
-{ return ((Crate *)s)->Crate::Behavior(); }
+{ return ((daObjBlockS_c *)s)->daObjBlockS_c::Behavior(); }
 static int __fastcall crate_render(void *s, void *)
 { port_actor_render_probe("CRATE", (char *)s + 0xd4);
-  return ((Crate *)s)->Crate::Render(); }
+  return ((daObjBlockS_c *)s)->daObjBlockS_c::Render(); }
 static int __fastcall crate_d1(void *s, void *)
-{ return (int)(size_t)_ZN5CrateD1Ev(s); }
+{ return (int)(size_t)_ZN13daObjBlockS_cD1Ev(s); }
 static int __fastcall crate_d0(void *s, void *)
-{ return (int)(size_t)_ZN5CrateD0Ev(s); }
+{ return (int)(size_t)_ZN13daObjBlockS_cD0Ev(s); }
 static int __fastcall crate_yoshi(void *s, void *)
-{ return _ZN5Crate13OnYoshiTryEatEv((unsigned char *)s); }
+{ return _ZN13daObjBlockS_c13OnYoshiTryEatEv((unsigned char *)s); }
 /* slot 19's second argument arrives on the stack, the cap_egg reading */
 static int __fastcall crate_egg(void *s, void *, void *o)
-{ _ZN5Crate13OnTurnIntoEggER6Player((char *)s, (char *)o); return 0; }
+{ _ZN13daObjBlockS_c13OnTurnIntoEggER6Player((char *)s, (char *)o); return 0; }
 /* Slot 29, OnAimedAtWithEgg: the Crate does NOT override it. _ZTV5Crate
    (ov098 0x0213c534) holds the arm9 base 0x02010124 there, so this is the
    ROM's word. It was trapped, and it has to answer now because slot 30 below
@@ -174,13 +174,13 @@ static int __fastcall crate_aimed(void *s, void *)
    pops one slot short, and its `ret` takes the saved EBP -- a stack address
    -- as the return address. Declare the argument, ignore it like the ROM. */
 static int __fastcall crate_pounded(void *s, void *, void *)
-{ _ZN5Crate15OnGroundPoundedER8dActor_c(s); return 0; }
+{ _ZN13daObjBlockS_c15OnGroundPoundedER8dActor_c(s); return 0; }
 static int __fastcall crate_kill(void *s, void *)
-{ _ZN5Crate4KillEv((char *)s); return 0; }
+{ _ZN13daObjBlockS_c4KillEv((char *)s); return 0; }
 
 extern "C" void hal_fill_crate_vtable(void)
 {
-    void **vt = (void **)_ZTV5Crate;
+    void **vt = (void **)_ZTV13daObjBlockS_c;
     vt[0]  = (void *)crate_init;
     vt[1]  = (void *)hmc_binit;
     vt[2]  = (void *)hmc_ainit;

@@ -82,9 +82,9 @@ extern "C" {
 void *_ZN8dActor_cD2Ev(void *self);
 void _ZN7dCcAc_cD1Ev(void *self);
 void _ZN10dCcAcPos_cD1Ev(void *self);
-void _ZN11ShadowModelD1Ev(void *self);
+void _ZN17dExtShadowModel_cD1Ev(void *self);
 void _ZN10dBgCh_ActrD1Ev(void *self);
-void _ZN11CommonModelD1Ev(void *self);
+void _ZN17dExtCommonModel_cD1Ev(void *self);
 void _ZN14dBgW_KcMbgSclYD1Ev(void *self);
 }
 
@@ -134,10 +134,25 @@ ExtendingMeshCollider::~ExtendingMeshCollider() { _ZN14dBgW_KcMbgSclYD1Ev(this);
     int __fastcall hal_cppd1_##Class(void *s, void *) \
     { ((Class *)s)->Class::~Class(); return (int)(size_t)s; }
 
+/* PORTSYNC2 (the 2026-10 main merge): the face keeps its port-side name
+   (hal_cppd1_<Old>, which the seats call) but names the class main defines
+   now, and spells the destructor the way main's header declares it on the
+   host: CPPD1V where the header lost its `#ifdef _MSC_VER` Destructor1/
+   Destructor0 pair and ~Cls() is virtual (??1Cls@@UAE@XZ), CPPD1Q where the
+   pair is still there and ~Cls() holds no slot (??1Cls@@QAE@XZ). */
+#define CPPD1V(Old, Cls) \
+    struct Cls { virtual ~Cls(); }; \
+    int __fastcall hal_cppd1_##Old(void *s, void *) \
+    { ((Cls *)s)->Cls::~Cls(); return (int)(size_t)s; }
+#define CPPD1Q(Old, Cls) \
+    struct Cls { ~Cls(); }; \
+    int __fastcall hal_cppd1_##Old(void *s, void *) \
+    { ((Cls *)s)->Cls::~Cls(); return (int)(size_t)s; }
+
 /* group 1 (the proof): Coin, hal/actor_classes_bob_world.cpp.
    ROM 0x020b0f54 (ov002): WithMeshClsn, MovingCylinderClsn, ShadowModel,
    CommonModel x2, Actor D2. */
-CPPD1(Coin)
+CPPD1V(Coin, daCoin_c)
 
 /* group 2: hal/actor_classes.cpp. StarMarker (ov002 0x020e6cf4; the host
    copy unmatched/StarMarker_D1.cpp is deleted), Bird (ov009), Butterfly,
@@ -147,65 +162,65 @@ CPPD1(Coin)
    ac_d1_actor_only thunk. Trap is NOT here: hal/actor_classes.cpp's tr_d1
    ruling (TRAP 0x24 and LIGHT_BEAM 0x25 share the table with different
    layouts, and the ROM chain fits only LIGHT_BEAM) stands. */
-CPPD1(StarMarker)
-CPPD1(Bird)
-CPPD1(Butterfly)
-CPPD1(Fish)
-CPPD1(PeachPainting)
-CPPD1(daMcFlag_c)
-CPPD1(Cannon)
-CPPD1(daChScene_c)
-CPPD1(daObjWaterfall_c)
-CPPD1(daSetSE_c)
-CPPD1(Door)
+CPPD1V(StarMarker, daStarBase_c)
+CPPD1V(Bird, daSBird_c)
+CPPD1V(Butterfly, daBtfly_c)
+CPPD1V(Fish, daFish_c)
+CPPD1V(PeachPainting, daObjC1Peach_c)
+CPPD1Q(daMcFlag_c, daMcFlag_c)
+CPPD1V(Cannon, daCnn_c)
+CPPD1Q(daChScene_c, daChScene_c)
+CPPD1V(daObjWaterfall_c, daObjWaterfall_c)
+CPPD1V(daSetSE_c, daSetSE_c)
+CPPD1V(Door, daDoor_c)
 /* daStarGate_c: ov100 0x021458d4, the ROM word 16 of _ZTV12daStarGate_c
    (0x021483cc). Added by lane CRASH12 once the two door tables were separated.
    Gate 40's slot 16 used to hold hal_cppd1_Door, which destroys a ModelAnim at
    +0xd4; the star door's member there is a CommonModel, and the ROM gives that
    table its own D1. */
-CPPD1(daStarGate_c)
+CPPD1Q(daStarGate_c, daStarGate_c)
 
 /* group 3: ov060 / ov070 / ov071 / ov072, the enemy overlays */
 CPPD1(BowserTail)
 CPPD1(Bowser)
-CPPD1(BowserSkyPlatform)
-CPPD1(daBrq_c)
-CPPD1(daKrpa_c)
-CPPD1(daKpFr_c)
-CPPD1(MrI)
-CPPD1(daEyBm_c)
-CPPD1(Scuttlebug)
-CPPD1(BabyPenguin)
-CPPD1(daBgSnmBdy_c)
-CPPD1(SnowmanHead)
+CPPD1V(BowserSkyPlatform, daKpa3Bg_c)
+CPPD1V(daBrq_c, daBrq_c)
+CPPD1V(daKrpa_c, daKrpa_c)
+CPPD1V(daKpFr_c, daKpFr_c)
+CPPD1V(MrI, daEykn_c)
+CPPD1Q(daEyBm_c, daEyBm_c)
+CPPD1V(Scuttlebug, Scuttlebug)
+CPPD1V(BabyPenguin, daPgBby_c)
+CPPD1Q(daBgSnmBdy_c, daBgSnmBdy_c)
+CPPD1V(SnowmanHead, daBgSnmHed_c)
 
 /* group 4: the small-cast level overlays and ov002 tags */
-CPPD1(PyramidTag)
-CPPD1(CrazedCrate)
-CPPD1(BookShotSpawner)
-CPPD1(WingFeather)
-CPPD1(Number)
-CPPD1(EnemySpawner)
-CPPD1(EnemySwitchTag)
-CPPD1(HauntedChair)
-CPPD1(PrincessPeach)
-CPPD1(Toad)
-CPPD1(RacingPenguin)
-CPPD1(daSldMng_c)
-CPPD1(RollingLogLll)
-CPPD1(RollingLogTtm)
-CPPD1(TreasureChest)
-CPPD1(Clam)
-CPPD1(CutsceneObject)
+CPPD1V(PyramidTag, daObjDlPyramidDummy_c)
+CPPD1V(CrazedCrate, daBttBk_c)
+CPPD1V(BookShotSpawner, daBookGen_c)
+CPPD1V(WingFeather, daFeather_c)
+CPPD1V(Number, daObjNumber_c)
+CPPD1V(EnemySpawner, daECreate_c)
+CPPD1V(EnemySwitchTag, daESwitch_c)
+CPPD1V(HauntedChair, daChair_c)
+CPPD1V(PrincessPeach, daPeach_c)
+CPPD1V(Toad, daKinopio_c)
+CPPD1V(RacingPenguin, daPgRcer_c)
+CPPD1Q(daSldMng_c, daSldMng_c)
+CPPD1V(RollingLogLll, daObjFlMaruta_c)
+CPPD1V(RollingLogTtm, daObjHmMaruta_c)
+CPPD1V(TreasureChest, daObjTbox_c)
+CPPD1V(Clam, daObjShell_c)
+CPPD1V(CutsceneObject, daDemo_c)
 
 /* group 5: the rest of the seated cast */
-CPPD1(daObjKinokoTag_c)
-CPPD1(daObjClock_c)
-CPPD1(daObjHsBillboard_c)
-CPPD1(daObjRc_Hane_c)
-CPPD1(daObjKb1Billboard_c)
-CPPD1(daSanbo_c)
-CPPD1(Tornado)
+CPPD1Q(daObjKinokoTag_c, daObjKinokoTag_c)
+CPPD1Q(daObjClock_c, daObjClock_c)
+CPPD1Q(daObjHsBillboard_c, daObjHsBillboard_c)
+CPPD1V(daObjRc_Hane_c, daObjRc_Hane_c)
+CPPD1Q(daObjKb1Billboard_c, daObjKb1Billboard_c)
+CPPD1Q(daSanbo_c, daSanbo_c)
+CPPD1V(Tornado, daTor_c)
 /* TORNADO IS THE ONE CLASS IN THIS FILE THAT ALSO NEEDS THE BOTTOM HALF.
    Run link100 wave 9c, lane LINK21, and it is the shape section 1 above uses
    for "a face the ledger cannot spell".
@@ -236,33 +251,37 @@ CPPD1(Tornado)
    cartridge's own order. Nothing about dispatch changes: hal_cppd1_Tornado's
    call is QUALIFIED, so it was always a direct call to this name, and until now
    that name simply had no body. */
-extern "C" int *_ZN7TornadoD1Ev(int *self);   /* unmatched/Tornado_HostSites.cpp:72 */
-Tornado::~Tornado()                             { _ZN7TornadoD1Ev((int *)this); }
-CPPD1(Spiny)
-CPPD1(Lakitu)
+/* PORTSYNC2: RETIRED. Main's src/actors/daTor_c.cpp now defines
+   daTor_c::~daTor_c() itself (??1daTor_c@@UAE@XZ), so the name has a body and
+   this hand definition would be a second one; hal_cppd1_Tornado above calls it.
+extern "C" int *_ZN7daTor_cD1Ev(int *self);
+Tornado::~Tornado()                             { _ZN7daTor_cD1Ev((int *)this); }
+*/
+CPPD1V(Spiny, daTgz_c)
+CPPD1V(Lakitu, daJgm_c)
 CPPD1(daGmch_c)
-CPPD1(MugenBgm)
-CPPD1(PowerFlower)
-CPPD1(PoleLift)
+CPPD1V(MugenBgm, daMugenBGM_c)
+CPPD1V(PowerFlower, daObjPowerUpItem_c)
+CPPD1V(PoleLift, daObjKm2_Ami_Bou_c)
 
 /* ExtendingPlatform (ov045 0x02112e80 word 16 -> 0x02111840, its own D1).
    This slot used to be filled with hal_cppd1_PoleLift, one class off. */
-CPPD1(ExtendingPlatform)
-CPPD1(daObjFire_c)
-CPPD1(KoopaFlag)
-CPPD1(BobOmbBuddy)
-CPPD1(MontyMole)
-CPPD1(OneUpLogo)
-CPPD1(SkiLift)
-CPPD1(HealingHeart)
-CPPD1(BrickBlock)
+CPPD1V(ExtendingPlatform, daObjKm2_Nobiru_c)
+CPPD1Q(daObjFire_c, daObjFire_c)
+CPPD1V(KoopaFlag, daRFlag_c)
+CPPD1V(BobOmbBuddy, daRedBombhei_c)
+CPPD1V(MontyMole, daChoropu_c)
+CPPD1V(OneUpLogo, daObj1UpLogo_c)
+CPPD1V(SkiLift, daObjSm_Lift_c)
+CPPD1V(HealingHeart, daObjHeart_c)
+CPPD1V(BrickBlock, daObjBlockItemTag_c)
 /* ArrowLift: the ROM word 16 of _ZTV9ArrowLift (ov029 0x02113db4), which
    hal/actor_classes_ov029.cpp fills as WaterDiamond's live table; the slot
    was a trap. SkiLift above is the ROM word 16 of _ZTV7SkiLift, which the
    port fills as MotherPenguin's table (the ccm name shift), and Seaweed is
    the word of _ZTV7Seaweed, HealingHeart's table. */
-CPPD1(daObjWc_Obj03_c)
+CPPD1Q(daObjWc_Obj03_c, daObjWc_Obj03_c)
 /* lane SEAT-CAMERATAG: the ROM word 16 of the table at ov002 0x0210853c, the
    config's _ZTV10daCamTag_c, which daCamTag_c_classInit installs (RTTI
    daCamTag_c). Actor-only chain: Actor::D2 and nothing else. */
-CPPD1(daCamTag_c)
+CPPD1V(daCamTag_c, daCamTag_c)

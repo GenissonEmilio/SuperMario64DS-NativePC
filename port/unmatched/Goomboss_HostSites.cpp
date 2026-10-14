@@ -56,7 +56,7 @@ extern void Matrix4x3_FromTranslation(void *m, int x, int y, int z);
 extern void Matrix4x3_ApplyInPlaceToTranslation(void *m, int x, int y, int z);
 extern void Matrix4x3_ApplyInPlaceToRotationZXYExt(void *m, int x, int y, int z);
 extern Matrix4x3 data_020a0e68;
-extern int func_ov074_021222e0(char *c);
+extern int _ZN12daKuriKing_c19func_ov074_021222e0Ev(char *c);
 
 /* ---- (1) Goomboss::Render, ROM 0x02121b70 -- RETIRED --------------------
    Run link100, lane FACEF. The stated reason above ("hal/cxxname_bridge.cpp

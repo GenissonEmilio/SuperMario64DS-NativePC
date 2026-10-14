@@ -155,7 +155,7 @@ void *_Znwj(unsigned size);
 void *_ZN5ModelC1Ev(void *self);
 void _ZN5Model14LoadAndSetFileEtii(void *self, unsigned short fileID,
                                    int a, int b);
-int _ZN5Stage11GetSkyboxIDEv(void);
+int _ZN10dScStage_c11GetSkyboxIDEv(void);
 
 /* Model::~Model, the DELETING variant (src/_ZN5ModelD0Ev.cpp). Frees the owned
    block at +0x4c, runs ModelBase::~ModelBase -- which Deallocates the BMD
@@ -297,7 +297,7 @@ void resync(void *stage)
     g_cache_level = lvl;
     g_cache_stage = stage;
 
-    int boot = _ZN5Stage11GetSkyboxIDEv();
+    int boot = _ZN10dScStage_c11GetSkyboxIDEv();
     void *m = *(void **)((char *)stage + OFF_STAGE_SKYBOX);
     if (boot >= 1 && boot <= SKY_MAX && looks_like_model(m)) {
         g_boot_id = boot;

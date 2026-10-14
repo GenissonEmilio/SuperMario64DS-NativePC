@@ -1863,8 +1863,8 @@ PORT_SHADOW_DEFINITIONS = {
     "?LoadFile@SharedFilePtr@@QAEXXZ": (
         "?LoadFile@SharedFilePtr@@QAEPAXXZ", "port/hal/gx_upload_bridge.cpp",
         "the host spells the return void, the owning TU void *"),
-    "?ChangeState@Camera@@QAEXPAUState@1@@Z": (
-        "?ChangeState@Camera@@QAEHPAUState@1@@Z", "port/hal/door_ring_faces.cpp",
+    "?ChangeState@dCamera_c@@QAEXPAUState@1@@Z": (
+        "?ChangeState@dCamera_c@@QAEHPAUState@1@@Z", "port/hal/door_ring_faces.cpp",
         "the host spells the return void, the owning TU int"),
     "?IsState@Player@@QAEHAAUState@1@@Z": (
         "?IsState@Player@@QAE_NAAUState@1@@Z", "port/hal/reverse_bridges.cpp",
@@ -3240,7 +3240,7 @@ def selftest():
         "__ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_",
         "__ZNK10dBgCh_Actr8IsOnWallEv",
         "__ZNK10dBgCh_Actr13JustHitGroundEv",
-        "__ZN9ModelBase12ApplyOpacityEj",
+        "__ZN9ModelBase12ApplyOpacityEjj",
         "_data_ov004_020beb68",
         "?TrackInDeathTable@dActor_c@@QAEXXZ",
         "_data_ov006_02141950",
@@ -3452,7 +3452,7 @@ def main():
             print("  looked: %s" % place)
         if exe:
             print("undname: %s" % exe)
-            probe = _undname_direct(exe, ["?Behavior@BillBlaster@@UAEHXZ"])
+            probe = _undname_direct(exe, ["?Behavior@daObjBkKillerdai_c@@UAEHXZ"])
             for key in sorted(probe):
                 print("  probe: %s -> %s" % (key, probe[key]))
             sys.exit(0 if probe else

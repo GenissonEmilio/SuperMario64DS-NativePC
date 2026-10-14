@@ -41,7 +41,7 @@ extern "C" {
     void func_ov002_020e6330(void* p);
     void func_ov002_020e6350(void* p);
     void func_ov002_020e5948(void* p);
-    void func_ov002_020beabc(void* p);
+    void _ZN6Player19func_ov002_020beabcEv(void* p);
     void* func_02073470(int a, int b, int c, void* d, void* e);
     void* _ZN6Memory13operator_new2Ej(unsigned int sz);
     void func_ov002_020e63a4(void* p);
@@ -51,7 +51,7 @@ extern "C" {
     void LoadSilverStarAndNumber(void);
     int _ZN8SaveData16HasPlayerLostCapEv(void);
     void func_02013a00(void);
-    void func_ov002_020c7dd0(void* p, int a);
+    void _ZN6Player19func_ov002_020c7dd0Ei(void* p, int a);
     void _ZN9dBgCh_GndC1Ev(void* p);
     void _ZN9dBgCh_Gnd12SetObjAndPosERK7Vector3P8dActor_c(void* p, void* v, void* a);
     void _ZN5dBgCh19StartDetectingWaterEv(void* p);
@@ -148,7 +148,7 @@ Lac:
     }
 Ld0:
     func_ov002_020e5948(c);
-    if (changed != 0) func_ov002_020beabc(c);
+    if (changed != 0) _ZN6Player19func_ov002_020beabcEv(c);
     IR_MARK("pool");
     *(void**)(c + 0x578) = func_02073470(0x32, 0xc, 8, (void*)func_0203d384, (void*)_ZN7Vector3D1Ev);
     *(void**)(c + 0x57c) = _ZN6Memory13operator_new2Ej(0x32);
@@ -194,7 +194,7 @@ Ld0:
     if (data_0209f2fc == 1) {
         if (_ZN8SaveData16HasPlayerLostCapEv() != 0) func_02013a00();
     }
-    func_ov002_020c7dd0(c, n8);
+    _ZN6Player19func_ov002_020c7dd0Ei(c, n8);
     IR_MARK("raycast");
     _ZN9dBgCh_GndC1Ev(rc);
     tz = *(int*)(c + 0x64);

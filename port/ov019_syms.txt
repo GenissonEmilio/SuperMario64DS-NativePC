@@ -23,7 +23,7 @@
 # is deliberately not run -- it constructs a dozen SharedFilePtrs that class needs
 # and this one does not.
 g_profile_SLIDER_MANAGER:0x1c
-data_ov019_021135d8 data_ov019_021135cc
+data_ov019_021135d8 data_ov019_021135cc@0x021135cc
 # run rel0215 wave 3 (lane w3-e): RACING PENGUIN's mount. Gate 142's three
 # symbols above are IceSlideManager's; these are 259's, and they are what its
 # static initialiser builds and its bodies read BY NAME. Additive only.

@@ -20,7 +20,7 @@
  *     ov047 / ov055 recipe.
  */
 #include "pmf_seat5.h"
-#include "Unagi.h"
+#include "daMoray_c.h"
 
 /* src/_ZN5Unagi8BehaviorEv.cpp: `extern void* data_ov016_02114dbc;` at file
    scope -> ?data_ov016_02114dbc@@3PAXA. The cell is ov016 bss; the mount emits
@@ -36,9 +36,9 @@
 #pragma comment(linker, "/alternatename:?data_ov102_0214e870@@3PAY03P8C@@AEXXZA=_data_ov102_0214e870")
 #pragma comment(linker, "/alternatename:?data_ov102_0214e8c0@@3PAY03P8C@@AEXXZA=_data_ov102_0214e8c0")
 
-extern "C" int _ZN5Unagi8BehaviorEv(void *self)
+extern "C" int _ZN9daMoray_c8BehaviorEv(void *self)
 {
-    return ((Unagi *)self)->Unagi::Behavior();
+    return ((daMoray_c *)self)->daMoray_c::Behavior();
 }
 
 /* ---------------------------------------------------------------------------

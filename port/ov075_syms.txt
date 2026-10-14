@@ -12,13 +12,13 @@
 # bytes of the excluded c800 record inside a mounted extent; the seat
 # rebuilds the record itself (it is one code pointer plus a zero).
 data_ov075_0211b524 data_ov075_0211b52c data_ov075_0211b534 data_ov075_0211b544
-data_ov075_0211b554 data_ov075_0211b594 data_ov075_0211b5d4 data_ov075_0211c5c0
-data_ov075_0211c5c8 data_ov075_0211c5d0 data_ov075_0211c5d8 data_ov075_0211c5e0
-data_ov075_0211c5e8 data_ov075_0211c5f0 data_ov075_0211c5f8 data_ov075_0211c600
-data_ov075_0211c608 g_profile_ENTRY_OBJECT data_ov075_0211c618 data_ov075_0211c620
-data_ov075_0211c628 data_ov075_0211c630 data_ov075_0211c638 data_ov075_0211c640
+data_ov075_0211b554 data_ov075_0211b594 data_ov075_0211b5d4 data_ov075_0211c5c0@0x0211c5c0
+data_ov075_0211c5c8@0x0211c5c8 data_ov075_0211c5d0@0x0211c5d0 data_ov075_0211c5d8@0x0211c5d8 data_ov075_0211c5e0@0x0211c5e0
+data_ov075_0211c5e8@0x0211c5e8 data_ov075_0211c5f0@0x0211c5f0 data_ov075_0211c5f8@0x0211c5f8 data_ov075_0211c600@0x0211c600
+data_ov075_0211c608@0x0211c608 data_ov075_0211c618@0x0211c618 data_ov075_0211c620@0x0211c620
+data_ov075_0211c628@0x0211c628 data_ov075_0211c630@0x0211c630 data_ov075_0211c638@0x0211c638 data_ov075_0211c640@0x0211c640
 _ZTS9dEntObj_c data_ov075_0211c654 data_ov075_0211c660 _ZTI9dEntObj_c
-data_ov075_0211c678 data_ov075_0211c688 _ZTV14UnknownVsEntry data_ov075_0211c6e8
+data_ov075_0211c678 data_ov075_0211c688 _ZTV9dEntObj_c data_ov075_0211c6e8
 data_ov075_0211c6ec data_ov075_0211c6f0 data_ov075_0211c6f8 data_ov075_0211c700
 data_ov075_0211c708 data_ov075_0211c710 data_ov075_0211c718 data_ov075_0211c720
 data_ov075_0211c728 data_ov075_0211c730 data_ov075_0211c738 data_ov075_0211c740
@@ -57,19 +57,19 @@ data_ov075_0211d0c8 data_ov075_0211d104 data_ov075_0211d144 data_ov075_0211d18c
 data_ov075_0211d1ac data_ov075_0211d1c8 data_ov075_0211d1d4 data_ov075_0211d21c
 data_ov075_0211d264 data_ov075_0211d290 data_ov075_0211d2ac data_ov075_0211d304
 data_ov075_0211d34c data_ov075_0211d354 data_ov075_0211d35c data_ov075_0211d374
-data_ov075_0211d380 data_ov075_0211d384 data_ov075_0211d38c data_ov075_0211d390
-data_ov075_0211d394 data_ov075_0211d39c data_ov075_0211d3a4 data_ov075_0211d3ac
-data_ov075_0211d3b4 data_ov075_0211d3bc data_ov075_0211d3c4 data_ov075_0211d3cc
-data_ov075_0211d3d4 data_ov075_0211d3dc data_ov075_0211d3e4 data_ov075_0211d3ec
-data_ov075_0211d3f4 data_ov075_0211d3fc data_ov075_0211d404 data_ov075_0211d40c
-data_ov075_0211d414 data_ov075_0211d41c data_ov075_0211d424 data_ov075_0211d42c
-data_ov075_0211d434 data_ov075_0211d440 data_ov075_0211d44c data_ov075_0211d454
-data_ov075_0211d458 data_ov075_0211d464 data_ov075_0211d470 data_ov075_0211d47c
-data_ov075_0211d488 data_ov075_0211d494 data_ov075_0211d4a0 data_ov075_0211d4ac
-data_ov075_0211d4b8 data_ov075_0211d4c4 data_ov075_0211d4d0 data_ov075_0211d4dc
-data_ov075_0211d4e8 data_ov075_0211d4f4 data_ov075_0211d500 data_ov075_0211d50c
-data_ov075_0211d518 data_ov075_0211d524 data_ov075_0211d530 data_ov075_0211d53c
-data_ov075_0211d544 data_ov075_0211d56c data_ov075_0211d5bc data_ov075_0211d5c0
+data_ov075_0211d380 data_ov075_0211d390@0x0211d390
+
+
+
+
+
+data_ov075_0211d434@0x0211d434 data_ov075_0211d440@0x0211d440 data_ov075_0211d44c@0x0211d44c:0x8 data_ov075_0211d454@0x0211d454
+data_ov075_0211d458@0x0211d458 data_ov075_0211d464@0x0211d464 data_ov075_0211d470@0x0211d470 data_ov075_0211d47c@0x0211d47c
+data_ov075_0211d488@0x0211d488 data_ov075_0211d494@0x0211d494 data_ov075_0211d4a0@0x0211d4a0 data_ov075_0211d4ac@0x0211d4ac
+data_ov075_0211d4b8@0x0211d4b8 data_ov075_0211d4c4@0x0211d4c4 data_ov075_0211d4d0@0x0211d4d0 data_ov075_0211d4dc@0x0211d4dc
+data_ov075_0211d4e8@0x0211d4e8 data_ov075_0211d4f4@0x0211d4f4 data_ov075_0211d500@0x0211d500 data_ov075_0211d50c@0x0211d50c
+data_ov075_0211d518@0x0211d518 data_ov075_0211d524@0x0211d524 data_ov075_0211d530@0x0211d530
+data_ov075_0211d544@0x0211d544 data_ov075_0211d5bc data_ov075_0211d5c0
 data_ov075_0211d5cc data_ov075_0211d5d8 data_ov075_0211d5e4 data_ov075_0211d5f0
 data_ov075_0211d5fc data_ov075_0211d614 data_ov075_0211d620 data_ov075_0211d62c
 data_ov075_0211d638 data_ov075_0211d644 data_ov075_0211d65c data_ov075_0211d668
@@ -92,3 +92,36 @@ data_ov075_0211d95c data_ov075_0211d960 data_ov075_0211d964 data_ov075_0211d968
 data_ov075_0211d96c data_ov075_0211d970 data_ov075_0211d974 data_ov075_0211d978
 data_ov075_0211d97c data_ov075_0211d980 data_ov075_0211d988 data_ov075_0211d994
 data_ov075_0211d9bc
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov075_0211d384                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d38c                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d394                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d39c                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d3a4                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d3ac                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d3b4                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d3bc                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d3c4                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d3cc                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d3d4                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d3dc                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d3e4                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d3ec                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d3f4                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d3fc                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d404                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d40c                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d414                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d41c                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d424                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d42c                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d53c                        now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d56c                        now defined by src/actors/dEntObj_c.cpp
+#   g_profile_ENTRY_OBJECT                     now defined by src/actors/dEntObj_c.cpp

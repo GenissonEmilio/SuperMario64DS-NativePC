@@ -202,7 +202,7 @@ void func_ov006_020cafdc(char *o);
 extern int data_ov006_0214059c;
 int  _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
         int a, unsigned b, int x, int y, int z, const void *v, void *cb);
-void _ZN9Animation7AdvanceEv(void *self);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *self);
 
 }  /* extern "C" */
 

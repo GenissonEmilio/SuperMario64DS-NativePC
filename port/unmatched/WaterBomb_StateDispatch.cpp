@@ -30,9 +30,9 @@
 #include <cstdlib>
 
 extern "C" {
-void func_ov098_0213b9d8(void *c);   /* state 0, the fire */
-void func_ov098_0213bb1c(void *c);   /* state 1, the landing */
-void func_ov098_0213b7e8(void *c);   /* state 2, the fall / Cannon_Kill share */
+void _ZN7daWbm_c9StateDropEv(void *c);   /* state 0, the fire */
+void _ZN7daWbm_c9StateFallEv(void *c);   /* state 1, the landing */
+void _ZN7daWbm_c11StateBounceEv(void *c);   /* state 2, the fall / Cannon_Kill share */
 
 struct PortPmf { unsigned fn; int delta; };
 /* the three source statics __sinit_ov098_0213c2b4 copies into
@@ -43,9 +43,9 @@ extern PortPmf data_ov098_0213c724[], data_ov098_0213c72c[],
 
 static const struct { PortPmf *slot; unsigned rom; void (*host)(void *); }
 g_water_bomb_states[] = {
-    {data_ov098_0213c724, 0x0213b9d8, func_ov098_0213b9d8},
-    {data_ov098_0213c72c, 0x0213bb1c, func_ov098_0213bb1c},
-    {data_ov098_0213c71c, 0x0213b7e8, func_ov098_0213b7e8},
+    {data_ov098_0213c724, 0x0213b9d8, _ZN7daWbm_c9StateDropEv},
+    {data_ov098_0213c72c, 0x0213bb1c, _ZN7daWbm_c9StateFallEv},
+    {data_ov098_0213c71c, 0x0213b7e8, _ZN7daWbm_c11StateBounceEv},
 };
 
 extern "C" void port_water_bomb_states_seat(void)

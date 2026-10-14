@@ -52,14 +52,14 @@
 # referenced by the flat name the matched TU defines.
 
 # ---- sub-batch A: the four construct veneers -------------------------------
-src/func_02017acc.c
+src/unnamed/arm9/0201/func_02017acc.c
 src/SharedFilePtr_Construct_TexSeq.c
-src/func_02017b4c.c
-src/func_020178cc.c
+src/unnamed/arm9/0201/func_02017b4c.c
+src/unnamed/arm9/0201/func_020178cc.c
 
 # ---- sub-batch B: the two spelled-callee rows ------------------------------
-src/func_0201fc88.c
-src/func_02018e3c.c
+src/Message.cpp
+src/unnamed/arm9/0201/func_02018e3c.c
 
 # SEVENTH ROW, not in the census, found by reading the family rather than the
 # list: src/func_02017a24.c is the same shape and is also fixed now. Run mg9
@@ -68,4 +68,4 @@ src/func_02018e3c.c
 # that measurement (scene 389, "FATAL: fs fileID 0xf40c matches no archive
 # range") is what the whole family's evidence rests on. Its src now spells both.
 # It goes in last and alone.
-src/func_02017a24.c
+src/unnamed/arm9/0201/func_02017a24.c

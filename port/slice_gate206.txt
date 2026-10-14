@@ -130,4 +130,4 @@
 #       It stays OFF and is not on the slice.
 # Running only 021117fc is what the hosted class needs and nothing more.
 src/game/actors/d_a_obj_km1_ukishima.cpp
-src/__sinit_ov043_021117fc.c
+# FOLDED into src/game/actors/d_a_obj_km1_ukishima.cpp (row 132): src/__sinit_ov043_021117fc.c

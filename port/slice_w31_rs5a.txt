@@ -10,4 +10,5 @@
 # an int body) and nothing else, and hal/actor_classes.cpp seats slot 23 on it
 # (bbb_atk2). Built by port/CMakeLists.txt's RS5A block on the three targets that
 # compile hal/actor_classes.cpp.
-src/_ZN13BigBrickBlock11OnAttacked2ER8dActor_c.cpp
+src/actors/daObjBlockL_c.cpp
+port/unmatched/hostarm/_ZN13BigBrickBlock11OnAttacked2ER8dActor_c.cpp

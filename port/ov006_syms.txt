@@ -379,11 +379,11 @@ data_ov006_0213cb5c g_profile_MG_JUMP data_ov006_0213cb6c data_ov006_0213cb74 da
 data_ov006_0213cb8c _ZTI11dScMgJump_c _ZTS11dScMgJump_c data_ov006_0213cbb4 data_ov006_0213cbc8 _ZTV11dScMgJump_c
 data_ov006_0213cc74 g_profile_MG_JUMP2 data_ov006_0213cc84 data_ov006_0213cc8c data_ov006_0213cc94 data_ov006_0213cc9c
 _ZTI12dScMgJump2_c data_ov006_0213ccb0 _ZTS12dScMgJump2_c data_ov006_0213cccc data_ov006_0213cce0 _ZTV12dScMgJump2_c
-data_ov006_0213cd8c data_ov006_0213cd94 data_ov006_0213cd9c data_ov006_0213cda4 data_ov006_0213cdac data_ov006_0213cdb4
-data_ov006_0213cdbc data_ov006_0213cdc4 data_ov006_0213cdcc data_ov006_0213cdd4 data_ov006_0213cddc data_ov006_0213cde4
-data_ov006_0213cdec data_ov006_0213cdf4 data_ov006_0213cdfc data_ov006_0213ce04 g_profile_MG_LUIGI data_ov006_0213ce14
-data_ov006_0213ce1c data_ov006_0213ce24 data_ov006_0213ce2c data_ov006_0213ce34 data_ov006_0213ce3c data_ov006_0213ce44
-data_ov006_0213ce4c _ZTI12dScMgLuigi_c _ZTS12dScMgLuigi_c data_ov006_0213ce70 data_ov006_0213ce84 data_ov006_0213ce98
+data_ov006_0213cd8c@0x0213cd8c data_ov006_0213cd94@0x0213cd94 data_ov006_0213cd9c@0x0213cd9c data_ov006_0213cda4@0x0213cda4 data_ov006_0213cdac@0x0213cdac data_ov006_0213cdb4@0x0213cdb4
+data_ov006_0213cdbc@0x0213cdbc data_ov006_0213cdc4@0x0213cdc4 data_ov006_0213cdcc@0x0213cdcc data_ov006_0213cdd4@0x0213cdd4 data_ov006_0213cddc@0x0213cddc data_ov006_0213cde4@0x0213cde4
+data_ov006_0213cdec data_ov006_0213cdf4@0x0213cdf4 data_ov006_0213cdfc@0x0213cdfc data_ov006_0213ce04@0x0213ce04 g_profile_MG_LUIGI data_ov006_0213ce14@0x0213ce14
+data_ov006_0213ce1c@0x0213ce1c data_ov006_0213ce24@0x0213ce24 data_ov006_0213ce2c@0x0213ce2c data_ov006_0213ce34@0x0213ce34 data_ov006_0213ce3c@0x0213ce3c data_ov006_0213ce44@0x0213ce44
+data_ov006_0213ce4c@0x0213ce4c _ZTI12dScMgLuigi_c _ZTS12dScMgLuigi_c data_ov006_0213ce70 data_ov006_0213ce84 data_ov006_0213ce98
 data_ov006_0213ceac data_ov006_0213cec0 data_ov006_0213cee0 data_ov006_0213cf10 data_ov006_0213cfa0 data_ov006_0213cfc0
 data_ov006_0213cfc8 data_ov006_0213cfd0 g_profile_MG_MEMORY data_ov006_0213cfe0 data_ov006_0213cfe8 data_ov006_0213cff0
 data_ov006_0213cff8 data_ov006_0213d000 data_ov006_0213d008 data_ov006_0213d010 data_ov006_0213d018 data_ov006_0213d020
@@ -413,12 +413,12 @@ data_ov006_0213daac data_ov006_0213dab4 data_ov006_0213dabc data_ov006_0213dac4 
 data_ov006_0213dadc data_ov006_0213dae4 data_ov006_0213daec data_ov006_0213daf4 data_ov006_0213dafc data_ov006_0213db04
 data_ov006_0213db0c data_ov006_0213db14 data_ov006_0213db1c data_ov006_0213db24 data_ov006_0213db2c data_ov006_0213db34
 data_ov006_0213db3c data_ov006_0213db44 _ZTI16dScMgPachinko2_c _ZTS16dScMgPachinko2_c data_ov006_0213db6c data_ov006_0213db84
-data_ov006_0213db9c data_ov006_0213dbbc data_ov006_0213dc4c data_ov006_0213dc54 data_ov006_0213dc5c g_profile_MG_PANEL
-data_ov006_0213dc6c data_ov006_0213dc74 data_ov006_0213dc7c data_ov006_0213dc84 data_ov006_0213dc8c data_ov006_0213dc94
-data_ov006_0213dc9c data_ov006_0213dca4 data_ov006_0213dcac data_ov006_0213dcb4 data_ov006_0213dcbc data_ov006_0213dcc4
-data_ov006_0213dccc data_ov006_0213dcd4 data_ov006_0213dcdc data_ov006_0213dce4 data_ov006_0213dcec data_ov006_0213dcf4
-data_ov006_0213dcfc data_ov006_0213dd04 data_ov006_0213dd0c data_ov006_0213dd14 data_ov006_0213dd1c data_ov006_0213dd24
-data_ov006_0213dd2c data_ov006_0213dd34 _ZTI12dScMgPanel_c data_ov006_0213dd4c data_ov006_0213dd58 data_ov006_0213dd64
+data_ov006_0213db9c data_ov006_0213dbbc data_ov006_0213dc4c@0x0213dc4c data_ov006_0213dc54@0x0213dc54 data_ov006_0213dc5c@0x0213dc5c g_profile_MG_PANEL
+data_ov006_0213dc6c@0x0213dc6c data_ov006_0213dc74@0x0213dc74 data_ov006_0213dc7c@0x0213dc7c data_ov006_0213dc84@0x0213dc84 data_ov006_0213dc8c@0x0213dc8c data_ov006_0213dc94
+data_ov006_0213dc9c@0x0213dc9c data_ov006_0213dca4@0x0213dca4 data_ov006_0213dcac@0x0213dcac data_ov006_0213dcb4@0x0213dcb4 data_ov006_0213dcbc@0x0213dcbc data_ov006_0213dcc4@0x0213dcc4
+data_ov006_0213dccc@0x0213dccc data_ov006_0213dcd4@0x0213dcd4 data_ov006_0213dcdc@0x0213dcdc data_ov006_0213dce4@0x0213dce4 data_ov006_0213dcec@0x0213dcec data_ov006_0213dcf4@0x0213dcf4
+data_ov006_0213dcfc@0x0213dcfc data_ov006_0213dd04@0x0213dd04 data_ov006_0213dd0c@0x0213dd0c data_ov006_0213dd14@0x0213dd14 data_ov006_0213dd1c@0x0213dd1c data_ov006_0213dd24@0x0213dd24
+data_ov006_0213dd2c@0x0213dd2c data_ov006_0213dd34 _ZTI12dScMgPanel_c data_ov006_0213dd4c data_ov006_0213dd58 data_ov006_0213dd64
 data_ov006_0213dd74 _ZTS12dScMgPanel_c data_ov006_0213dd94 data_ov006_0213dda4 data_ov006_0213ddb4 data_ov006_0213ddc4
 data_ov006_0213ddd4 data_ov006_0213dde4 data_ov006_0213ddf4 data_ov006_0213de0c data_ov006_0213de28 data_ov006_0213de44
 data_ov006_0213de60 data_ov006_0213de7c data_ov006_0213de98 data_ov006_0213deb4 data_ov006_0213ded0 data_ov006_0213def0
@@ -480,23 +480,23 @@ data_ov006_0213fd54 data_ov006_0213fd5c data_ov006_0213fd64 g_profile_MG_BS_CARD
 data_ov006_0213fd84 _ZTI10dScMgBSC_c _ZTS10dScMgBSC_c data_ov006_0213fda8 data_ov006_0213fdb8 data_ov006_0213fdc8
 data_ov006_0213fdd8 data_ov006_0213fde8 data_ov006_0213fdf8 data_ov006_0213fe08 data_ov006_0213fe18 data_ov006_0213fe28
 data_ov006_0213fe38 data_ov006_0213fe48 data_ov006_0213fe58 data_ov006_0213fe68 data_ov006_0213fe78 data_ov006_0213fe8c
-_ZTV10dScMgBSC_c data_ov006_0213ff58 data_ov006_0213ff60 data_ov006_0213ff68 data_ov006_0213ff70 data_ov006_0213ff78
-data_ov006_0213ff80 data_ov006_0213ff88 data_ov006_0213ff90 data_ov006_0213ff98 data_ov006_0213ffa0 data_ov006_0213ffa8
-data_ov006_0213ffb0 g_profile_MG_SNOWBALL data_ov006_0213ffc0 data_ov006_0213ffc8 _ZTI15dScMgSnowball_c _ZTS15dScMgSnowball_c
+_ZTV10dScMgBSC_c data_ov006_0213ff58@0x0213ff58 data_ov006_0213ff60@0x0213ff60 data_ov006_0213ff68@0x0213ff68 data_ov006_0213ff70@0x0213ff70 data_ov006_0213ff78@0x0213ff78
+data_ov006_0213ff80@0x0213ff80 data_ov006_0213ff88@0x0213ff88 data_ov006_0213ff90@0x0213ff90 data_ov006_0213ff98@0x0213ff98 data_ov006_0213ffa0@0x0213ffa0 data_ov006_0213ffa8@0x0213ffa8
+data_ov006_0213ffb0@0x0213ffb0 g_profile_MG_SNOWBALL data_ov006_0213ffc0@0x0213ffc0 data_ov006_0213ffc8@0x0213ffc8 _ZTI15dScMgSnowball_c _ZTS15dScMgSnowball_c
 data_ov006_0213fff0 data_ov006_02140000 _ZTV15dScMgSnowball_c data_ov006_0214009c data_ov006_021400bc data_ov006_021400dc
 data_ov006_021400fc data_ov006_02140108 g_profile_MG_FLOWER _ZTI13dScMgFlower_c _ZTS13dScMgFlower_c _ZTV13dScMgFlower_c
 data_ov006_021401d0 data_ov006_021401f4 data_ov006_02140218 data_ov006_0214023c data_ov006_02140260 data_ov006_02140284
 data_ov006_021402a8 data_ov006_021402c4 data_ov006_021402e0 data_ov006_021402e4 data_ov006_021402f0 data_ov006_021402fc
 data_ov006_02140300 data_ov006_02140304 data_ov006_02140308 data_ov006_0214030c data_ov006_02140310 data_ov006_02140314
 data_ov006_02140318 data_ov006_0214031c data_ov006_02140320 data_ov006_02140324 data_ov006_02140328 data_ov006_0214032c
-data_ov006_02140330 data_ov006_02140338 data_ov006_02140340 data_ov006_0214034c data_ov006_02140358 data_ov006_02140364
+data_ov006_02140330 data_ov006_02140338 data_ov006_02140340@0x02140340 data_ov006_0214034c@0x0214034c data_ov006_02140358 data_ov006_02140364
 data_ov006_02140370 data_ov006_0214037c data_ov006_02140388 data_ov006_02140394 data_ov006_021403a0 data_ov006_021403ac
 data_ov006_021403b8 data_ov006_021403c4 data_ov006_021403d0 data_ov006_021403dc data_ov006_021403e8 data_ov006_021403f4
 data_ov006_02140400 data_ov006_02140404 data_ov006_02140408 data_ov006_0214040c data_ov006_02140410 data_ov006_02140414
 data_ov006_02140418 data_ov006_0214041c data_ov006_02140420 data_ov006_02140424 data_ov006_02140428 data_ov006_0214042c
-data_ov006_02140430 data_ov006_02140434 data_ov006_02140438 data_ov006_02140440 data_ov006_02140448 data_ov006_02140450
-data_ov006_02140458 data_ov006_02140460 data_ov006_02140468 data_ov006_02140470 data_ov006_0214047c data_ov006_02140488
-data_ov006_02140494 data_ov006_021404a0 data_ov006_021404ac data_ov006_021404b8 data_ov006_021404c4 data_ov006_021404c8
+data_ov006_02140430 data_ov006_02140434
+data_ov006_02140470@0x02140470 data_ov006_0214047c@0x0214047c data_ov006_02140488@0x02140488
+data_ov006_02140494@0x02140494 data_ov006_021404a0@0x021404a0 data_ov006_021404ac@0x021404ac data_ov006_021404b8@0x021404b8 data_ov006_021404c4 data_ov006_021404c8
 data_ov006_021404cc data_ov006_021404d8 data_ov006_021404dc data_ov006_021404e0 data_ov006_021404e4 data_ov006_021404e8
 data_ov006_021404ec data_ov006_021404f0:0x2 data_ov006_021404f2:0x2 data_ov006_021404f4:0x2 data_ov006_021404f6 data_ov006_02140518
 data_ov006_02140538 data_ov006_0214053c data_ov006_02140540 data_ov006_02140544 data_ov006_02140548 data_ov006_0214054c
@@ -524,28 +524,28 @@ data_ov006_02140938 data_ov006_02140944 data_ov006_02140950 data_ov006_0214095c 
 data_ov006_02140990 data_ov006_02140cae data_ov006_02140cb4:0x2 data_ov006_02140cb6 data_ov006_02140d80 data_ov006_02141314
 data_ov006_02141402 data_ov006_02141590 data_ov006_02141640 data_ov006_02141650 data_ov006_02141660 data_ov006_02141680
 data_ov006_021416a0 data_ov006_021416c0 data_ov006_021416e0 data_ov006_02141708 data_ov006_02141730 data_ov006_02141768
-data_ov006_0214176c data_ov006_02141770 data_ov006_02141774 data_ov006_021417b0 data_ov006_021417c8 data_ov006_021417e8
-data_ov006_02141810 data_ov006_02141840 data_ov006_02141870 data_ov006_021418b0 data_ov006_021418c0 data_ov006_021418d8
-data_ov006_021418f0 data_ov006_02141910 data_ov006_02141930 data_ov006_02141950 data_ov006_02141978 data_ov006_02141988
-data_ov006_021419a0 data_ov006_021419b8 data_ov006_021419d8 data_ov006_021419f8 data_ov006_02141a18 data_ov006_02141a40
-data_ov006_02141a44 data_ov006_02141a48 data_ov006_02141a4c data_ov006_02141a50 data_ov006_02141a54 data_ov006_02141e54
-data_ov006_02141e5c data_ov006_02141e64 data_ov006_02141e6c data_ov006_02141e74 data_ov006_02141e7c data_ov006_02141e84
-data_ov006_02141e8c data_ov006_02141e94 data_ov006_02141e9c data_ov006_02141ea4 data_ov006_02141eb0 data_ov006_02141ebc
-data_ov006_02141ec8 data_ov006_02141ed4 data_ov006_02141ee0 data_ov006_02141eec data_ov006_02141ef8 data_ov006_02141f04
-data_ov006_02141f10 data_ov006_02141f1c data_ov006_02141f2c data_ov006_02141f44 data_ov006_02141f5c data_ov006_02141f74
-data_ov006_02141f8c data_ov006_02141fac data_ov006_02141fcc data_ov006_02141fd0 data_ov006_02141fd4 data_ov006_02141fd8
-data_ov006_02141fdc data_ov006_02141fe4 data_ov006_02141ff0 data_ov006_02141ff8 data_ov006_02142018 data_ov006_02142044
+data_ov006_0214176c data_ov006_02141770
+
+
+data_ov006_02141a40
+data_ov006_02141a44 data_ov006_02141a48 data_ov006_02141a4c data_ov006_02141a50 data_ov006_02141a54
+
+data_ov006_02141ea4@0x02141ea4 data_ov006_02141eb0@0x02141eb0 data_ov006_02141ebc@0x02141ebc
+data_ov006_02141ec8@0x02141ec8 data_ov006_02141ed4@0x02141ed4 data_ov006_02141ee0@0x02141ee0 data_ov006_02141eec@0x02141eec data_ov006_02141ef8@0x02141ef8 data_ov006_02141f04@0x02141f04
+data_ov006_02141f10@0x02141f10
+data_ov006_02141fcc data_ov006_02141fd0 data_ov006_02141fd4 data_ov006_02141fd8
+data_ov006_02141fdc data_ov006_02141fe4 data_ov006_02141ff0 data_ov006_02141ff8 data_ov006_02142044
 data_ov006_02142048 data_ov006_0214204c data_ov006_02142050:0x2 data_ov006_02142052:0x1 data_ov006_02142053:0x1 data_ov006_02142054
-data_ov006_02142184 data_ov006_02142188 data_ov006_02142190 data_ov006_02142198 data_ov006_021421a4 data_ov006_021421b0
+data_ov006_02142184 data_ov006_02142188 data_ov006_02142190 data_ov006_02142198@0x02142198 data_ov006_021421a4@0x021421a4 data_ov006_021421b0
 data_ov006_021421b4 data_ov006_021421b8 data_ov006_021421bc data_ov006_021421c0 data_ov006_021421c4 data_ov006_021421cc
-data_ov006_021421d4 data_ov006_021421e0 data_ov006_021421ec data_ov006_02142204 data_ov006_0214221c data_ov006_02142234
-data_ov006_02142254 data_ov006_021422a4 data_ov006_021422bc data_ov006_021422dc data_ov006_02142304 data_ov006_02142334
-data_ov006_0214236c data_ov006_021423a8 data_ov006_021423c0 data_ov006_021423e0 data_ov006_02142408 data_ov006_02142440
-data_ov006_02142490 data_ov006_021424ec data_ov006_021424f0 data_ov006_021424f4 data_ov006_021424f8 data_ov006_021424fc
-data_ov006_02142500 data_ov006_02142504 data_ov006_02142508 data_ov006_0214250c data_ov006_02142558 data_ov006_0214255c
+data_ov006_021421d4@0x021421d4 data_ov006_021421e0@0x021421e0 data_ov006_021421ec data_ov006_02142204 data_ov006_0214221c data_ov006_02142234
+data_ov006_02142254 data_ov006_02142304 data_ov006_02142334
+data_ov006_021423a8
+data_ov006_021424ec data_ov006_021424f0 data_ov006_021424f4 data_ov006_021424f8 data_ov006_021424fc
+data_ov006_02142500 data_ov006_02142504 data_ov006_02142508 data_ov006_02142558 data_ov006_0214255c
 data_ov006_02142560 data_ov006_02142564 data_ov006_02142568 data_ov006_0214256c data_ov006_02142570 data_ov006_02142574
-data_ov006_02142578 data_ov006_0214257c data_ov006_02142580 data_ov006_021425a8 data_ov006_02142604 data_ov006_02142624
-data_ov006_02142644 data_ov006_0214266c data_ov006_02142694 data_ov006_021426cc data_ov006_021426f4 data_ov006_02142734
+data_ov006_02142578 data_ov006_0214257c data_ov006_02142580
+
 data_ov006_021427ac data_ov006_021427bc data_ov006_021427d4 data_ov006_021427ec data_ov006_02142804 data_ov006_02142820
 data_ov006_02142840 data_ov006_02142860 data_ov006_02142888 data_ov006_021428c8 data_ov006_021428cc data_ov006_021428d0
 data_ov006_021428d4 data_ov006_021428dc data_ov006_021428e8 data_ov006_021428f4 data_ov006_02142900 data_ov006_0214290c
@@ -561,13 +561,13 @@ data_ov006_02142b1c data_ov006_02142b24 data_ov006_02142b2c data_ov006_02142b34 
 data_ov006_02142b4c data_ov006_02142b54 data_ov006_02142b5c data_ov006_02142b64 data_ov006_02142b6c data_ov006_02142b74
 data_ov006_02142b7c data_ov006_02142b84 data_ov006_02142b8c data_ov006_02142b94 data_ov006_02142b9c data_ov006_02142ba4
 data_ov006_02142bac data_ov006_02142bb4 data_ov006_02142bbc data_ov006_02142bc4 data_ov006_02142bcc data_ov006_02142bd4
-data_ov006_02142bdc data_ov006_02142c1c data_ov006_02142c40 data_ov006_02142cc0 data_ov006_02142cd8 data_ov006_02142cf0
+data_ov006_02142c1c data_ov006_02142c40 data_ov006_02142cc0 data_ov006_02142cd8 data_ov006_02142cf0
 data_ov006_02142d08 data_ov006_02142d20 data_ov006_02142d38 data_ov006_02142d50 data_ov006_02142d68 data_ov006_02142d80
 data_ov006_02142d98 data_ov006_02142db0 data_ov006_02142dc8 data_ov006_02142de0 data_ov006_02142df8 data_ov006_02142e02
-data_ov006_02142e20 data_ov006_02142e88 data_ov006_02142eb0 data_ov006_02142ed8 data_ov006_02142f18 data_ov006_02142f60
+data_ov006_02142e20 data_ov006_02142f60
 data_ov006_02142f64 data_ov006_02142f68 data_ov006_02142f6c data_ov006_02142f70 data_ov006_02142f74 data_ov006_02142f78
-data_ov006_02142f7c data_ov006_02142f80 data_ov006_02142f88 data_ov006_02142f94 data_ov006_02143004 data_ov006_02143008
-data_ov006_02143014 data_ov006_02143020 data_ov006_02143038 data_ov006_02143050 data_ov006_02143070
+data_ov006_02142f7c data_ov006_02142f88@0x02142f88 data_ov006_02142f94 data_ov006_02143004 data_ov006_02143008
+data_ov006_02143014 data_ov006_02143020 data_ov006_02143070
 
 
 # RETIRED at ALIAS2 (wave 8, the main -> port sync). Each symbol below was
@@ -596,3 +596,84 @@ data_ov006_02143014 data_ov006_02143020 data_ov006_02143038 data_ov006_02143050 
 #   data_ov006_0213fc20                        now defined by d_s_mg_trampoline2.cpp.obj
 #   data_ov006_0213fc34                        now defined by d_s_mg_trampoline2.cpp.obj
 #   data_ov006_0213fc48                        now defined by d_s_mg_trampoline2.cpp.obj
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov006_02140438                        now defined by src/actors/dMgJump3DMario_c.cpp
+#   data_ov006_02140440                        now defined by src/actors/dMgJump3DMario_c.cpp
+#   data_ov006_02140448                        now defined by src/actors/dMgJump3DMario_c.cpp
+#   data_ov006_02140450                        now defined by src/actors/dMgJump3DMario_c.cpp
+#   data_ov006_02140458                        now defined by src/actors/dMgJump3DMario_c.cpp
+#   data_ov006_02140460                        now defined by src/actors/dMgJump3DMario_c.cpp
+#   data_ov006_02140468                        now defined by src/actors/dMgJump3DMario_c.cpp
+#   data_ov006_02141774                        now defined by src/minigames/d_s_mg_card.cpp
+#   data_ov006_021417b0                        now defined by src/actors/dScMgCoin_c.cpp
+#   data_ov006_021417c8                        now defined by src/actors/dScMgCoin_c.cpp
+#   data_ov006_021417e8                        now defined by src/actors/dScMgCoin_c.cpp
+#   data_ov006_02141810                        now defined by src/actors/dScMgCoin_c.cpp
+#   data_ov006_02141840                        now defined by src/actors/dScMgCoin_c.cpp
+#   data_ov006_02141870                        now defined by src/actors/dScMgCup_c.cpp
+#   data_ov006_021418b0                        now defined by src/actors/dScMgCurling_c.cpp
+#   data_ov006_021418c0                        now defined by src/actors/dScMgCurling_c.cpp
+#   data_ov006_021418d8                        now defined by src/actors/dScMgCurling_c.cpp
+#   data_ov006_021418f0                        now defined by src/actors/dScMgCurling_c.cpp
+#   data_ov006_02141910                        now defined by src/actors/dScMgCurling_c.cpp
+#   data_ov006_02141930                        now defined by src/actors/dScMgCurling_c.cpp
+#   data_ov006_02141950                        now defined by src/actors/dScMgCurling_c.cpp
+#   data_ov006_02141978                        now defined by src/actors/dScMgCurling2_c.cpp
+#   data_ov006_02141988                        now defined by src/actors/dScMgCurling2_c.cpp
+#   data_ov006_021419a0                        now defined by src/actors/dScMgCurling2_c.cpp
+#   data_ov006_021419b8                        now defined by src/actors/dScMgCurling2_c.cpp
+#   data_ov006_021419d8                        now defined by src/actors/dScMgCurling2_c.cpp
+#   data_ov006_021419f8                        now defined by src/actors/dScMgCurling2_c.cpp
+#   data_ov006_02141a18                        now defined by src/actors/dScMgCurling2_c.cpp
+#   data_ov006_02141e54                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141e5c                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141e64                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141e6c                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141e74                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141e7c                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141e84                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141e8c                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141e94                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141e9c                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141f1c                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141f2c                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141f44                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141f5c                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141f74                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141f8c                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02141fac                        now defined by src/actors/dMg3DEspAnimSet_c.cpp
+#   data_ov006_02142018                        now defined by port/unmatched/dScMgHanachan_c.cpp
+#   data_ov006_021422a4                        now defined by src/minigames/d_s_mg_memory.cpp
+#   data_ov006_021422bc                        now defined by src/minigames/d_s_mg_memory.cpp
+#   data_ov006_021422dc                        now defined by src/minigames/d_s_mg_memory.cpp
+#   data_ov006_0214236c                        now defined by src/minigames/d_s_mg_memory.cpp
+#   data_ov006_021423c0                        now defined by src/actors/dScMgMemory2_c.cpp
+#   data_ov006_021423e0                        now defined by src/actors/dScMgMemory2_c.cpp
+#   data_ov006_02142408                        now defined by src/actors/dScMgMemory2_c.cpp
+#   data_ov006_02142440                        now defined by src/actors/dScMgMemory2_c.cpp
+#   data_ov006_02142490                        now defined by src/actors/dScMgMemory2_c.cpp
+#   data_ov006_0214250c                        now defined by src/minigames/d_s_mg_m_carlo.cpp
+#   data_ov006_021425a8                        now defined by src/minigames/d_s_mg_m_carlo2.cpp
+#   data_ov006_02142604                        now defined by src/actors/dScMgPachinko_c.cpp
+#   data_ov006_02142624                        now defined by src/actors/dScMgPachinko_c.cpp
+#   data_ov006_02142644                        now defined by src/actors/dScMgPachinko_c.cpp
+#   data_ov006_0214266c                        now defined by src/actors/dScMgPachinko_c.cpp
+#   data_ov006_02142694                        now defined by src/actors/dScMgPachinko_c.cpp
+#   data_ov006_021426cc                        now defined by src/actors/dScMgPachinko2_c.cpp
+#   data_ov006_021426f4                        now defined by src/actors/dScMgPachinko2_c.cpp
+#   data_ov006_02142734                        now defined by src/actors/dScMgPachinko2_c.cpp
+#   data_ov006_02142bdc                        now defined by src/actors/dScMgSlots.cpp
+#   data_ov006_02142e88                        now defined by src/actors/dScMgTeresa_c.cpp
+#   data_ov006_02142eb0                        now defined by src/actors/dScMgTeresa_c.cpp
+#   data_ov006_02142ed8                        now defined by src/actors/dScMgTeresa_c.cpp
+#   data_ov006_02142f18                        now defined by src/actors/dScMgTeresa_c.cpp
+#   data_ov006_02142f80                        now defined by src/minigames/d_s_mg_trampoline2.cpp
+#   data_ov006_02143038                        now defined by src/actors/dScMgSnowball_c.cpp
+#   data_ov006_02143050                        now defined by src/actors/dScMgSnowball_c.cpp

@@ -39,8 +39,8 @@
 # (hal/actor_vtables.cpp), and every symbol under these two bodies is already
 # in the link: Heap::CreateSolidHeapAllocator, func_0204ebb8,
 # NestedHeapIterator::NestedHeapIterator(u32) and func_02050fd4.
-src/func_0205130c.c
-src/func_02051024.c
+src/engine/sound/SoundEngine.cpp
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 42): src/func_02051024.c
 
 # --- RUNG R3: the player/group table --------------------------------------
 #
@@ -64,11 +64,11 @@ src/func_02051024.c
 # R4. Everything else it calls is already linked: func_02050d2c,
 # func_020511d4, NestedHeapIterator::AddLast and ::Remove, and the
 # SetPlayableSeqCount alias in hal/sdat/sound_abi.cpp.
-src/func_0204f278.cpp
-src/func_0204fa3c.c
-src/func_02050ae8.cpp
-src/func_020512f0.c
-src/func_02052008.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 42): src/func_0204f278.cpp
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 42): src/func_0204fa3c.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 42): src/func_02050ae8.cpp
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 42): src/func_020512f0.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 42): src/func_02052008.c
 
 # --- RUNG R4: the SDAT archive opened off the card -------------------------
 #
@@ -90,8 +90,8 @@ src/func_02052008.c
 # port/tools/romdata.py's NAMED list with its size PINNED at 0x18: the delta
 # to the next symbol is 0x20 and the last word of that span is the
 # _ZTV12ActorDerived RTTI-pointer prefix, which carries a relocation.
-src/func_02050970.c
-src/func_0205097c.c
-src/func_02050988.c
-src/func_02050d54.c
-src/func_02050f34.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 42): src/func_02050970.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 42): src/func_0205097c.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 42): src/func_02050988.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 42): src/func_02050d54.c
+# FOLDED into src/engine/sound/SoundEngine.cpp (row 42): src/func_02050f34.c

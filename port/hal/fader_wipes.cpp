@@ -103,11 +103,11 @@
    LAYOUT and the method declarations, never to derive from. Pulls types.h,
    whose `typedef s32 Fix12i` is the same `int` this file used to typedef
    locally, so the local typedef is gone rather than shadowed. */
-#include "FaderBrightness.h"
+#include "dFdBrightness_c.h"
 /* For the C-name face at the bottom of this file. FaderWipe.h's FaderWipe is
    the auto-generated NON-polymorphic view -- pad_000[4] where the vptr sits,
    no virtuals -- so including it cannot collide with HalFaderWipe below. */
-#include "FaderWipe.h"
+#include "dFdWipe_c.h"
 
 /* Fader::AdvanceInterp calls the 20.12 approach helper by its ROM spelling,
    func_0203ae58. That name is DEFINED only in hal/shims.cpp, the gate-1 smoke's
@@ -159,7 +159,7 @@ void Matrix4x3_ApplyInPlaceToScale(void *m, int x, int y, int z);
 void Matrix4x3_ApplyInPlaceToRotationX(void *m, short ang);
 void _ZN15ModelComponents6RenderEP9Matrix4x3P7Vector3(void *thiz, void *mtx,
                                                       void *vec);
-void _ZN9FaderWipe14LoadAndSetFileEt(void *thiz, unsigned short fileID);
+void _ZN9dFdWipe_c14LoadAndSetFileEt(void *thiz, unsigned short fileID);
 extern unsigned short data_020755e0[], data_020755f0[], data_02075600[];
 extern signed char data_0209f2f8;       /* the level being built */
 }
@@ -286,7 +286,7 @@ void hal_wipe_note(const char *what, const void *self)
    and confirmed by config/arm9/relocs.txt's `from:0x0208eaa0 kind:load
    to:0x02017418`.  That word is THIS class's slot 0x04, because the alias at
    the bottom of this file makes ??_7HalFaderWipe@@6B@ the ROM's table. */
-extern "C" void *_ZN9FaderWipeD0Ev(void *thiz);
+extern "C" void *_ZN9dFdWipe_cD0Ev(void *thiz);
 
 struct HalFaderWipe {
     Fix12i currInterp;
@@ -313,7 +313,7 @@ struct HalFaderWipe {
     virtual void DtorDeleting()                      /* 0x04  ROM D0 */
     {
         hal_wipe_note("DtorDeleting (ROM D0, the matched body)", this);
-        _ZN9FaderWipeD0Ev(this);
+        _ZN9dFdWipe_cD0Ev(this);
     }
     virtual int AdvanceFade()                        /* 0x08 */
     {
@@ -338,7 +338,7 @@ struct HalFaderWipe {
         Fix12i target = speed >= 0 ? 0x1000 : 0;
         /* the step itself is the matched body: it picks target and |step| from
            the sign of speed exactly as the three lines here used to */
-        ((Fader *)(void *)this)->Fader::AdvanceInterp();
+        ((dFader_c *)(void *)this)->dFader_c::AdvanceInterp();
         if (currInterp == old)
             return currInterp == target;
         /* FaderColor::AdvanceFade, verbatim on the numbers: color != 0 means a
@@ -421,9 +421,9 @@ struct HalFaderWipe {
     }
     /* 0x14 / 0x18 -- the matched predicates, reached qualified */
     virtual int IsAtStart()
-    { return ((FaderBrightness *)(void *)this)->FaderBrightness::IsAtStart(); }
+    { return ((dFdBrightness_c *)(void *)this)->dFdBrightness_c::IsAtStart(); }
     virtual int IsAtEnd()
-    { return ((FaderBrightness *)(void *)this)->FaderBrightness::IsAtEnd(); }
+    { return ((dFdBrightness_c *)(void *)this)->dFdBrightness_c::IsAtEnd(); }
     virtual int IsBetweenStartAndEnd()                         /* 0x1c */
     {
         return HalFaderWipe::IsAtStart() == 0 &&
@@ -432,12 +432,12 @@ struct HalFaderWipe {
     virtual void SetToEnd()                                    /* 0x20 */
     {
         hal_wipe_note("SetToEnd", this);
-        ((FaderBrightness *)(void *)this)->FaderBrightness::SetToEnd();
+        ((dFdBrightness_c *)(void *)this)->dFdBrightness_c::SetToEnd();
     }
     virtual void SetToStart()                                  /* 0x24 */
     {
         hal_wipe_note("SetToStart", this);
-        ((FaderBrightness *)(void *)this)->FaderBrightness::SetToStart();
+        ((dFdBrightness_c *)(void *)this)->dFdBrightness_c::SetToStart();
     }
     virtual void HalTail28() { hal_wipe_note("tail slot 0x28", this); }
     virtual void HalTail2c() { hal_wipe_note("tail slot 0x2c", this); }
@@ -686,7 +686,7 @@ int hal_wipe_advance_rom(void *self)
     const unsigned short color = *(unsigned short *)((char *)self + 0xc);
     const Fix12i target = spd >= 0 ? 0x1000 : 0;
     const Fix12i old = cur;
-    ((Fader *)self)->Fader::AdvanceInterp();
+    ((dFader_c *)self)->dFader_c::AdvanceInterp();
     if (cur == 0 && cur == old)
         return cur == target;
     if (cur == 0x1000) {
@@ -804,7 +804,7 @@ DSSTATE_END
 
    The alias, not a definition, so a target that one day compiles a real
    FaderWipe vtable keeps its own strong symbol and nothing collides. */
-#pragma comment(linker, "/alternatename:__ZTV9FaderWipe=??_7HalFaderWipe@@6B@")
+#pragma comment(linker, "/alternatename:__ZTV9dFdWipe_c=??_7HalFaderWipe@@6B@")
 
 /* ---- FaderWipe::LoadAndSetFile, the C-name face --------------------------
    run link60 lane SL0, and the fifth of slot 0's five faces.
@@ -820,8 +820,8 @@ DSSTATE_END
    receiver as its first STACK argument. Aliasing one onto the other would run
    the method with a garbage `this` out of ECX. hal/method_faces.cpp's
    Model::UpdateFileOffsets row is the same call and the same resolution. */
-extern "C" void _ZN9FaderWipe14LoadAndSetFileEt(void *thiz, unsigned short fileID)
-{ ((FaderWipe *)thiz)->FaderWipe::LoadAndSetFile(fileID); }
+extern "C" void _ZN9dFdWipe_c14LoadAndSetFileEt(void *thiz, unsigned short fileID)
+{ ((dFdWipe_c *)thiz)->dFdWipe_c::LoadAndSetFile(fileID); }
 
 /* ---- THE ROM'S FRAME PHASE 2, AND THE ONE HOST STEP LEFT BESIDE IT --------
    run linkfull, lane RESET2.
@@ -988,7 +988,7 @@ void port_fader_wipes_reset(void)
     const int freed = hal_wipes_release();
     if (freed)
         std::fprintf(stderr, "  [wipe] level %d's %d wipe mesh(es) freed with "
-                     "the level (Stage::CleanupResources' FaderWipe "
+                     "the level (Stage::CleanupResources' dFdWipe_c "
                      "destructors)\n", (int)data_0209f2f8, freed);
     for (int i = 0; i < 7; ++i) {
         hal_wipes[i].currInterp = 0x1000;
@@ -1044,7 +1044,7 @@ extern "C" void port_fader_wipes_load(void)
     int loaded = 0;
     for (int i = 0; i < 7; ++i) {
         _ZN5ModelC1Ev(hal_wipes[i].model);
-        _ZN9FaderWipe14LoadAndSetFileEt(&hal_wipes[i], tbl[i]);
+        _ZN9dFdWipe_c14LoadAndSetFileEt(&hal_wipes[i], tbl[i]);
         if (*(void **)(hal_wipes[i].model + 4)) {
             ++loaded;
             hal_wipe_tex_note(i);
@@ -1055,7 +1055,7 @@ extern "C" void port_fader_wipes_load(void)
         }
     }
     std::fprintf(stderr, "  [wipe] level %d boot: %d/7 wipe meshes loaded "
-                 "(Stage::InitResources' FaderWipe::LoadAndSetFile loop)%s\n",
+                 "(Stage::InitResources' dFdWipe_c::LoadAndSetFile loop)%s\n",
                  (int)data_0209f2f8, loaded,
                  stale ? "; the previous level's were still held and were "
                          "freed first" : "");

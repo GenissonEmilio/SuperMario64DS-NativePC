@@ -23,13 +23,13 @@ src/_ZN14BlendModelAnimC1Ev.cpp
 # the fix.
 #src/_ZN14BlendModelAnimD0Ev.cpp
 src/_ZN14BlendModelAnimD1Ev.cpp
-src/_ZN14BlendModelAnim9DoSetFileEPcii.cpp
-src/_ZN14BlendModelAnim11UpdateVertsEv.cpp
-src/_ZN14BlendModelAnim9Virtual10ER9Matrix4x3.cpp
-src/_ZN14BlendModelAnim6RenderEPK7Vector3.cpp
-src/_ZN14BlendModelAnim9Virtual18EjPK7Vector3.cpp
-src/_ZN14BlendModelAnim7AdvanceEv.cpp
-src/_ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt.cpp
+src/engine/model/BlendModelAnim.cpp
+# FOLDED into src/engine/model/BlendModelAnim.cpp (row 26): src/_ZN14BlendModelAnim11UpdateVertsEv.cpp
+# FOLDED into src/engine/model/BlendModelAnim.cpp (row 26): src/_ZN14BlendModelAnim9Virtual10ER9Matrix4x3.cpp
+# FOLDED into src/engine/model/BlendModelAnim.cpp (row 26): src/_ZN14BlendModelAnim6RenderEPK7Vector3.cpp
+# FOLDED into src/engine/model/BlendModelAnim.cpp (row 26): src/_ZN14BlendModelAnim9Virtual18EjPK7Vector3.cpp
+# FOLDED into src/engine/model/BlendModelAnim.cpp (row 26): src/_ZN14BlendModelAnim7AdvanceEv.cpp
+# FOLDED into src/engine/model/BlendModelAnim.cpp (row 26): src/_ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt.cpp
 
 # Deliberately excluded from this slice, with the reason recorded so the next
 # person doesn't re-litigate:
@@ -76,8 +76,8 @@ src/_ZN6Memory16operator_delete2EPv.cpp
 # calling _ZdlPv() with no argument -- right on ARM, where the pointer is
 # already in r0, and wrong under cdecl, where the callee reads the stack for
 # an argument nobody declared. Listed here it links twice and MSVC says so.
-src/func_0204531c.c
-src/func_020165c4.c
-src/func_02047910.c
-src/func_020462b4.c
-src/func_020462bc.c
+src/engine/model/ModelComponents.cpp
+# FOLDED into src/engine/model/BlendModelAnim.cpp (row 26): src/func_020165c4.c
+src/unnamed/arm9/0204/func_02047910.c
+src/engine/model/Model4.cpp
+# FOLDED into src/engine/model/Model4.cpp (row 82): src/func_020462bc.c

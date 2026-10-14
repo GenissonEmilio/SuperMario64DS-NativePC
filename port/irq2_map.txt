@@ -73,7 +73,7 @@ windows 0 and 1 on both engines, WINOUT (0x400004a) low six cleared, and
 DISPCNT (0x4000000) bits 0xe000 masked and set to 0x6000, which is the WIN0
 and WIN1 display-enable pair with the OBJ window off. A brightness fader has
 no reason to touch any of those. The handler streaming WIN0H per scanline is
-what the wipe DOES; func_0202f58c turning the window unit on is what the wipe
+what the wipe DOES; _ZN7dWipe_c13func_0202f58cEv turning the window unit on is what the wipe
 IS.
 
 THE HANDLER PROGRAMS THE NEXT LINE, not this one: at HBlank of line L it writes
@@ -115,7 +115,7 @@ bare clear, so not one of them can introduce a 1:
         saved = IME; IME = 0; ...; IME = saved
     func_02013f28
         IME = 0, then the idle spin
-    _ZN7dWipe_c14SetForwardTimeEj  _ZN7dWipe_c15SetBackwardTimeEj  func_0202fb30
+    _ZN7dWipe_c14SetForwardTimeEj  _ZN7dWipe_c15SetBackwardTimeEj  _ZN7dWipe_c13func_0202fb30Ev
         the dWipe_c bracket above, which restores only `if (saved)`
 
 So "the only writer of a 1 into IME in the whole IMAGE was ntr::rt_run" is
@@ -189,7 +189,7 @@ extended that loop to raise the edge on each line, which is constraint 2's
 
 THE GATE IS RE-ASKED PER LINE and not hoisted, because a handler may disarm
 itself mid-frame and the ROM's own does: _ZN7dWipe_c11AdvanceFadeEv's case 1 and case 3 both
-call func_0202fb30 at the end of the fade.
+call _ZN7dWipe_c13func_0202fb30Ev at the end of the fade.
 
 THE STATUS BIT IS RAISED AND DROPPED AROUND THE CALL. The handler reads
 `DISPSTAT & 2` and returns early if it is clear, so the host has to model the
@@ -284,7 +284,7 @@ does not change is not a wipe.
 
 WHAT CHANGES IT IS _ZN7dWipe_c11AdvanceFadeEv, dWipe_c slot 0x08, AdvanceFade. Read the
 body: it STEPS the object's +0x1c (interpVal) and +0x20 by the per-frame deltas
-the setters computed, and its last statement is func_0202f290(obj) -- THE TABLE
+the setters computed, and its last statement is _ZN7dWipe_c13func_0202f290Ev(obj) -- THE TABLE
 REBUILD.
 
 BE PRECISE ABOUT "ONLY", because a draft of this paragraph was not and the
@@ -294,7 +294,7 @@ both at arm time, and that is exactly why the table is uniform rather than
 absent. What _ZN7dWipe_c11AdvanceFadeEv is the only thing to do is CHANGE IT AFTER ARM
 TIME -- it is the only `+=` on the field in the image, and the setters' writes
 are single stores that happen once. The same distinction applies to the
-rebuild: func_0202f290 has exactly two callers, func_0202f58c (twice, at arm
+rebuild: _ZN7dWipe_c13func_0202f290Ev has exactly two callers, _ZN7dWipe_c13func_0202f58cEv (twice, at arm
 time, once per buffer) and _ZN7dWipe_c11AdvanceFadeEv, so slot 0x08 is the only thing that
 ever writes a SECOND table.
 
@@ -311,8 +311,8 @@ many runs, and the same line is the check.
            last row 00807F00 (WIN1H:WIN0H)
 
  THE READ COUNT FALLING IS PART OF THE PASS, not a hole in it. The fade now
- ENDS: case 1 of _ZN7dWipe_c11AdvanceFadeEv clamps +0x1c at 0x200000, calls func_0202fb30
- and writes state 2, and func_0202fb30 clears IE bit 1 and DISPSTAT bit 4 and
+ ENDS: case 1 of _ZN7dWipe_c11AdvanceFadeEv clamps +0x1c at 0x200000, calls _ZN7dWipe_c13func_0202fb30Ev
+ and writes state 2, and _ZN7dWipe_c13func_0202fb30Ev clears IE bit 1 and DISPSTAT bit 4 and
  nulls the handler, so the edge closes. 17280 / 384 = 45 and 11835 / 263 = 45,
  and 45 is 0x2d, the frame count _ZN7dWipe_c15SetBackwardTimeEj derived for a type-0 backward
  fade. The gates read handler=0 ie=0 dispstat=0 at exit for the same reason,
@@ -322,7 +322,7 @@ many runs, and the same line is the check.
 SLOT 0x08 IS NOT THIS LANE'S TO SEAT, and the refusal is already written and
 already mechanical. port/fader_boot_map.txt section 4a rules it REAL_DECOMP and
 declines it for two reasons that hold together: its `type == 1` branch calls
-_ZN10FaderColor11AdvanceFadeEv with no receiver (the ARM body relies on r0
+_ZN10dFdColor_c11AdvanceFadeEv with no receiver (the ARM body relies on r0
 riding through, and include/decl_FaderColor.h declares it `(void)`), and the
 call is INSIDE the body rather than being the whole of it, so there is no
 veneer to route around. port/tools/closestplayer_guard.py stops the build if
@@ -396,7 +396,7 @@ of them is still open.
       WRITING AND data_0209d4b0 IS THE WRONG POINTER: the ROM's frame phase 2
       (func_02019390) advances TWO faders, func_02018ec0 on d4b0 and
       func_02018efc on data_0209d4ac, and it is d4ac that
-      _ZN8dScene_c9SetFadersEP15FaderBrightness writes -- with this very object,
+      _ZN8dScene_c9SetFadersEP15dFdBrightness_c writes -- with this very object,
       from dScMgBase_c slot 1, on scene 374. Nothing in the image ever stores
       data_0209f61c into d4b0, and the proof is the review's rather than the
       one written here first: THE TWO REFERENCE SETS DO NOT INTERSECT. Eleven

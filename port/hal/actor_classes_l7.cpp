@@ -206,18 +206,18 @@ static void l7_fill_shared(void **vt)
 // slot 29 (_ZN6Thwomp16OnAimedAtWithEggEv, OnAimedAtWithEgg). Init/Clean/Behavior/Render
 // are real C++ methods; D1/D0 are plain C.
 #include "daDsnBase_c.h"
-#include "Thwomp.h"
+#include "daDsn_c.h"
 extern "C" {
-int _ZN6Thwomp13InitResourcesEv(void *self);       /* face: below */
+int _ZN7daDsn_c13InitResourcesEv(void *self);       /* face: below */
 int _ZN11daDsnBase_c16CleanupResourcesEv(void *self);    /* face: below */
-int _ZN6Thwomp8BehaviorEv(void *self);             /* face: below */
+int _ZN7daDsn_c8BehaviorEv(void *self);             /* face: below */
 int _ZN11daDsnBase_c6RenderEv(void *self);               /* face: below */
-int *_ZN6ThwompD1Ev(int *self);                    /* .c, C linkage */
-int *_ZN6ThwompD0Ev(int *self);                    /* .c, C linkage */
-void _ZN6Thwomp15OnHitByMegaCharER6Player(void *self, void *o);     /* slot 27, its own */
-int _ZN6Thwomp16OnAimedAtWithEggEv(void *self);               /* slot 29, its own */
+int *_ZN7daDsn_cD1Ev(int *self);                    /* .c, C linkage */
+int *_ZN7daDsn_cD0Ev(int *self);                    /* .c, C linkage */
+void _ZN7daDsn_c15OnHitByMegaCharER6Player(void *self, void *o);     /* slot 27, its own */
+int _ZN7daDsn_c16OnAimedAtWithEggEv(void *self);               /* slot 29, its own */
 void _ZN10dBgActor_c4KillEv(void *self);              /* slot 31 */
-void *_ZTV6Thwomp[32];
+void *_ZTV7daDsn_c[32];
 extern unsigned char _ZTV11daDsnBase_c[];        /* daDsnBase_c base table */
 int *daDsn_c_classInit(void);
 }
@@ -230,16 +230,16 @@ extern "C" void *port_factory_thwomp(void)
 {
     void *p = daDsn_c_classInit();
     if (p)
-        *(void **)p = (void *)_ZTV6Thwomp;
+        *(void **)p = (void *)_ZTV7daDsn_c;
     return p;
 }
 
 static int __fastcall thw_init(void *s, void *)
-{ return _ZN6Thwomp13InitResourcesEv(s); }
+{ return _ZN7daDsn_c13InitResourcesEv(s); }
 static int __fastcall thw_clean(void *s, void *)
 { return _ZN11daDsnBase_c16CleanupResourcesEv(s); }
 static int __fastcall thw_behavior(void *s, void *)
-{ return _ZN6Thwomp8BehaviorEv(s); }
+{ return _ZN7daDsn_c8BehaviorEv(s); }
 static int __fastcall thw_render(void *s, void *)
 { port_actor_render_probe("THWOMP", (char *)s + 0xd4);
   return _ZN11daDsnBase_c6RenderEv(s); }
@@ -247,19 +247,19 @@ static int __fastcall thw_render(void *s, void *)
    cleanup pass dispatches D1 when the level tears down, so both are the class's
    own. */
 static int __fastcall thw_d1(void *s, void *)
-{ return (int)(size_t)_ZN6ThwompD1Ev((int *)s); }
+{ return (int)(size_t)_ZN7daDsn_cD1Ev((int *)s); }
 static int __fastcall thw_d0(void *s, void *)
-{ return (int)(size_t)_ZN6ThwompD0Ev((int *)s); }
+{ return (int)(size_t)_ZN7daDsn_cD0Ev((int *)s); }
 static int __fastcall thw_mega(void *s, void *, void *o)
-{ _ZN6Thwomp15OnHitByMegaCharER6Player(s, o); return 0; }
+{ _ZN7daDsn_c15OnHitByMegaCharER6Player(s, o); return 0; }
 static int __fastcall thw_aimed(void *s, void *)
-{ return _ZN6Thwomp16OnAimedAtWithEggEv(s); }
+{ return _ZN7daDsn_c16OnAimedAtWithEggEv(s); }
 static int __fastcall thw_kill(void *s, void *)
 { _ZN10dBgActor_c4KillEv(s); return 0; }
 
 extern "C" void hal_fill_thwomp_vtable(void)
 {
-    void **vt = _ZTV6Thwomp;
+    void **vt = _ZTV7daDsn_c;
     hal_fill_platform_vtable();
     l7_fill_shared(vt);
     vt[0] = (void *)thw_init;
@@ -276,12 +276,12 @@ extern "C" void hal_fill_thwomp_vtable(void)
 /* ---- method faces ---------------------------------------------------------
    Thwomp's Init/Clean/Behavior/Render are real MSVC methods against include/. */
 extern "C" {
-int _ZN6Thwomp13InitResourcesEv(void *self)
-{ return ((Thwomp *)self)->Thwomp::InitResources(); }
+int _ZN7daDsn_c13InitResourcesEv(void *self)
+{ return ((daDsn_c *)self)->daDsn_c::InitResources(); }
 int _ZN11daDsnBase_c16CleanupResourcesEv(void *self)
 { return ((daDsnBase_c *)self)->daDsnBase_c::CleanupResources(); }
-int _ZN6Thwomp8BehaviorEv(void *self)
-{ return ((Thwomp *)self)->Thwomp::Behavior(); }
+int _ZN7daDsn_c8BehaviorEv(void *self)
+{ return ((daDsn_c *)self)->daDsn_c::Behavior(); }
 int _ZN11daDsnBase_c6RenderEv(void *self)
 { return ((daDsnBase_c *)self)->daDsnBase_c::Render(); }
 }
@@ -300,35 +300,35 @@ int _ZN11daDsnBase_c6RenderEv(void *self)
 // Behavior/Render real C++ methods, the two destructors plain C -- and its
 // Render dispatches Model slot 5 through a `void m(int)` shadow, which
 // _ZTV5Model is dual-filled for, so it serves from src unchanged.
-#include "SlidingPlatformWf.h"
+#include "daObjSimpleLift_c.h"
 extern "C" {
-int _ZN17SlidingPlatformWf13InitResourcesEv(void *self);    /* face: below */
-int _ZN17SlidingPlatformWf16CleanupResourcesEv(void *self); /* face: below */
-int _ZN17SlidingPlatformWf8BehaviorEv(void *self);          /* face: below */
-int _ZN17SlidingPlatformWf6RenderEv(void *self);            /* face: below */
-int *_ZN17SlidingPlatformWfD1Ev(int *self);                 /* .c, C linkage */
-int *_ZN17SlidingPlatformWfD0Ev(int *self);                 /* .c, C linkage */
-void *_ZTV17SlidingPlatformWf[32];
+int _ZN17daObjSimpleLift_c13InitResourcesEv(void *self);    /* face: below */
+int _ZN17daObjSimpleLift_c16CleanupResourcesEv(void *self); /* face: below */
+int _ZN17daObjSimpleLift_c8BehaviorEv(void *self);          /* face: below */
+int _ZN17daObjSimpleLift_c6RenderEv(void *self);            /* face: below */
+int *_ZN17daObjSimpleLift_cD1Ev(int *self);                 /* .c, C linkage */
+int *_ZN17daObjSimpleLift_cD0Ev(int *self);                 /* .c, C linkage */
+void *_ZTV17daObjSimpleLift_c[32];
 }
 static int __fastcall swf_init(void *s, void *)
-{ return _ZN17SlidingPlatformWf13InitResourcesEv(s); }
+{ return _ZN17daObjSimpleLift_c13InitResourcesEv(s); }
 static int __fastcall swf_clean(void *s, void *)
-{ return _ZN17SlidingPlatformWf16CleanupResourcesEv(s); }
+{ return _ZN17daObjSimpleLift_c16CleanupResourcesEv(s); }
 static int __fastcall swf_behavior(void *s, void *)
-{ return _ZN17SlidingPlatformWf8BehaviorEv(s); }
+{ return _ZN17daObjSimpleLift_c8BehaviorEv(s); }
 static int __fastcall swf_render(void *s, void *)
 { port_actor_render_probe("SLIDING_PLATFORM_WF", (char *)s + 0xd4);
-  return _ZN17SlidingPlatformWf6RenderEv(s); }
+  return _ZN17daObjSimpleLift_c6RenderEv(s); }
 static int __fastcall swf_d1(void *s, void *)
-{ return (int)(size_t)_ZN17SlidingPlatformWfD1Ev((int *)s); }
+{ return (int)(size_t)_ZN17daObjSimpleLift_cD1Ev((int *)s); }
 static int __fastcall swf_d0(void *s, void *)
-{ return (int)(size_t)_ZN17SlidingPlatformWfD0Ev((int *)s); }
+{ return (int)(size_t)_ZN17daObjSimpleLift_cD0Ev((int *)s); }
 static int __fastcall swf_kill(void *s, void *)
 { _ZN10dBgActor_c4KillEv(s); return 0; }
 
 extern "C" void hal_fill_sliding_platform_wf_vtable(void)
 {
-    void **vt = _ZTV17SlidingPlatformWf;
+    void **vt = _ZTV17daObjSimpleLift_c;
     hal_fill_platform_vtable();
     l7_fill_shared(vt);
     vt[0] = (void *)swf_init;
@@ -341,14 +341,14 @@ extern "C" void hal_fill_sliding_platform_wf_vtable(void)
 }
 
 extern "C" {
-int _ZN17SlidingPlatformWf13InitResourcesEv(void *self)
-{ return ((SlidingPlatformWf *)self)->SlidingPlatformWf::InitResources(); }
-int _ZN17SlidingPlatformWf16CleanupResourcesEv(void *self)
-{ return ((SlidingPlatformWf *)self)->SlidingPlatformWf::CleanupResources(); }
-int _ZN17SlidingPlatformWf8BehaviorEv(void *self)
-{ return ((SlidingPlatformWf *)self)->SlidingPlatformWf::Behavior(); }
-int _ZN17SlidingPlatformWf6RenderEv(void *self)
-{ return ((SlidingPlatformWf *)self)->SlidingPlatformWf::Render(); }
+int _ZN17daObjSimpleLift_c13InitResourcesEv(void *self)
+{ return ((daObjSimpleLift_c *)self)->daObjSimpleLift_c::InitResources(); }
+int _ZN17daObjSimpleLift_c16CleanupResourcesEv(void *self)
+{ return ((daObjSimpleLift_c *)self)->daObjSimpleLift_c::CleanupResources(); }
+int _ZN17daObjSimpleLift_c8BehaviorEv(void *self)
+{ return ((daObjSimpleLift_c *)self)->daObjSimpleLift_c::Behavior(); }
+int _ZN17daObjSimpleLift_c6RenderEv(void *self)
+{ return ((daObjSimpleLift_c *)self)->daObjSimpleLift_c::Render(); }
 }
 
 // ============================================================================
@@ -369,22 +369,21 @@ int _ZN17SlidingPlatformWf6RenderEv(void *self)
 // Init/Clean/Behavior/Render are real C++ methods; the two destructors are C.
 // Its Render dispatches Model slot 5 through a `void doit(int)` shadow, the
 // dual-filled slot, so it serves from src unchanged.
-#include "RotatingUpDownPlatformUtm.h"
+#include "daObjRotateUpdownLift_c.h"
 extern "C" {
-int _ZN25RotatingUpDownPlatformUtm13InitResourcesEv(void *self);    /* face */
-int _ZN25RotatingUpDownPlatformUtm16CleanupResourcesEv(void *self); /* face */
-int _ZN25RotatingUpDownPlatformUtm8BehaviorEv(void *self);          /* face */
-int _ZN25RotatingUpDownPlatformUtm6RenderEv(void *self);            /* face */
-int *_ZN25RotatingUpDownPlatformUtmD1Ev(int *self);                 /* .c */
-int *_ZN25RotatingUpDownPlatformUtmD0Ev(int *self);                 /* .c */
-void _ZN25RotatingUpDownPlatformUtm15OnHitByMegaCharER6Player(void *self, void *o);   /* slot 27, its own */
-void _ZN25RotatingUpDownPlatformUtm4KillEv(void *self);            /* slot 31, its own Kill */
-void *_ZTV25RotatingUpDownPlatformUtm[32];
+int _ZN23daObjRotateUpdownLift_c13InitResourcesEv(void *self);    /* face */
+int _ZN23daObjRotateUpdownLift_c16CleanupResourcesEv(void *self); /* face */
+int _ZN23daObjRotateUpdownLift_c8BehaviorEv(void *self);          /* face */
+int _ZN23daObjRotateUpdownLift_c6RenderEv(void *self);            /* face */
+int *_ZN23daObjRotateUpdownLift_cD1Ev(int *self);                 /* .c */
+int *_ZN23daObjRotateUpdownLift_cD0Ev(int *self);                 /* .c */
+void _ZN23daObjRotateUpdownLift_c15OnHitByMegaCharER6Player(void *self, void *o);   /* slot 27, its own */
+void _ZN23daObjRotateUpdownLift_c4KillEv(void *self);            /* slot 31, its own Kill */
+void *_ZTV23daObjRotateUpdownLift_c[32];
 int *daObjRotateUpdownLift_c_classInit_UPDOWN_LIFT(void);
 }
 /* The class D1/D0 restore the vtable by its RTTI name mid-teardown. */
-#pragma comment(linker, "/alternatename:__ZTV23daObjRotateUpdownLift_c=__ZTV25RotatingUpDownPlatformUtm")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV23daObjRotateUpdownLift_c=__ZTV23daObjRotateUpdownLift_c")
 /* ---- the Utm's own Kill (_ZN25RotatingUpDownPlatformUtm4KillEv) reaches three engine leaves ---
    as C++-decorated calls over local shadow classes: Particle::System::NewSimple
    (pointer-returning), Actor::PoofDustAt and Sound::PlayBank3. The particle
@@ -423,26 +422,26 @@ void PlayBank3(unsigned id, const L7Vector3 &v)
 #pragma comment(linker, "/alternatename:__ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_=_port_l7_particle_newsimple_stub")
 extern "C" void *port_l7_particle_newsimple_stub(unsigned, int, int, int) { return 0; }
 static int __fastcall rud_init(void *s, void *)
-{ return _ZN25RotatingUpDownPlatformUtm13InitResourcesEv(s); }
+{ return _ZN23daObjRotateUpdownLift_c13InitResourcesEv(s); }
 static int __fastcall rud_clean(void *s, void *)
-{ return _ZN25RotatingUpDownPlatformUtm16CleanupResourcesEv(s); }
+{ return _ZN23daObjRotateUpdownLift_c16CleanupResourcesEv(s); }
 static int __fastcall rud_behavior(void *s, void *)
-{ return _ZN25RotatingUpDownPlatformUtm8BehaviorEv(s); }
+{ return _ZN23daObjRotateUpdownLift_c8BehaviorEv(s); }
 static int __fastcall rud_render(void *s, void *)
 { port_actor_render_probe("ROTATING_UP_DOWN_PLATFORM", (char *)s + 0xd4);
-  return _ZN25RotatingUpDownPlatformUtm6RenderEv(s); }
+  return _ZN23daObjRotateUpdownLift_c6RenderEv(s); }
 static int __fastcall rud_d1(void *s, void *)
-{ return (int)(size_t)_ZN25RotatingUpDownPlatformUtmD1Ev((int *)s); }
+{ return (int)(size_t)_ZN23daObjRotateUpdownLift_cD1Ev((int *)s); }
 static int __fastcall rud_d0(void *s, void *)
-{ return (int)(size_t)_ZN25RotatingUpDownPlatformUtmD0Ev((int *)s); }
+{ return (int)(size_t)_ZN23daObjRotateUpdownLift_cD0Ev((int *)s); }
 static int __fastcall rud_mega(void *s, void *, void *o)
-{ _ZN25RotatingUpDownPlatformUtm15OnHitByMegaCharER6Player(s, o); return 0; }
+{ _ZN23daObjRotateUpdownLift_c15OnHitByMegaCharER6Player(s, o); return 0; }
 static int __fastcall rud_kill(void *s, void *)
-{ _ZN25RotatingUpDownPlatformUtm4KillEv(s); return 0; }
+{ _ZN23daObjRotateUpdownLift_c4KillEv(s); return 0; }
 
 extern "C" void hal_fill_rotating_up_down_platform_vtable(void)
 {
-    void **vt = _ZTV25RotatingUpDownPlatformUtm;
+    void **vt = _ZTV23daObjRotateUpdownLift_c;
     hal_fill_platform_vtable();
     l7_fill_shared(vt);
     vt[0] = (void *)rud_init;
@@ -456,14 +455,14 @@ extern "C" void hal_fill_rotating_up_down_platform_vtable(void)
 }
 
 extern "C" {
-int _ZN25RotatingUpDownPlatformUtm13InitResourcesEv(void *self)
-{ return ((RotatingUpDownPlatformUtm *)self)->RotatingUpDownPlatformUtm::InitResources(); }
-int _ZN25RotatingUpDownPlatformUtm16CleanupResourcesEv(void *self)
-{ return ((RotatingUpDownPlatformUtm *)self)->RotatingUpDownPlatformUtm::CleanupResources(); }
-int _ZN25RotatingUpDownPlatformUtm8BehaviorEv(void *self)
-{ return ((RotatingUpDownPlatformUtm *)self)->RotatingUpDownPlatformUtm::Behavior(); }
-int _ZN25RotatingUpDownPlatformUtm6RenderEv(void *self)
-{ return ((RotatingUpDownPlatformUtm *)self)->RotatingUpDownPlatformUtm::Render(); }
+int _ZN23daObjRotateUpdownLift_c13InitResourcesEv(void *self)
+{ return ((daObjRotateUpdownLift_c *)self)->daObjRotateUpdownLift_c::InitResources(); }
+int _ZN23daObjRotateUpdownLift_c16CleanupResourcesEv(void *self)
+{ return ((daObjRotateUpdownLift_c *)self)->daObjRotateUpdownLift_c::CleanupResources(); }
+int _ZN23daObjRotateUpdownLift_c8BehaviorEv(void *self)
+{ return ((daObjRotateUpdownLift_c *)self)->daObjRotateUpdownLift_c::Behavior(); }
+int _ZN23daObjRotateUpdownLift_c6RenderEv(void *self)
+{ return ((daObjRotateUpdownLift_c *)self)->daObjRotateUpdownLift_c::Render(); }
 }
 
 // ============================================================================
@@ -487,43 +486,42 @@ int _ZN25RotatingUpDownPlatformUtm6RenderEv(void *self)
 // so it serves from src unchanged. Only its Render needs a host copy, the
 // ModelAnim slot-5 case: port/unmatched/PiranhaPlant_States.cpp.
 extern "C" {
-int _ZN19FirePiranhaPlantBig13InitResourcesEv(void *self);    /* C-named in its own TU */
-int _ZN19FirePiranhaPlantBig16CleanupResourcesEv(void *self); /* face: below */
-int _ZN19FirePiranhaPlantBig8BehaviorEv(void *self);          /* face: below */
-int _ZN19FirePiranhaPlantBig6RenderEv(void *self);            /* host copy */
-int *_ZN19FirePiranhaPlantBigD1Ev(int *self);                 /* .c */
-int *_ZN19FirePiranhaPlantBigD0Ev(int *self);                 /* .c */
-int _ZN19FirePiranhaPlantBig13OnYoshiTryEatEv(void *self);              /* slot 18, its own */
-void _ZN19FirePiranhaPlantBig13OnTurnIntoEggER6Player(void *self, void *p);    /* slot 19, its own */
-int _ZN19FirePiranhaPlantBig16OnAimedAtWithEggEv(void *self);              /* slot 29, its own */
-void *_ZTV19FirePiranhaPlantBig[31];
+int _ZN8daFPkn_c13InitResourcesEv(void *self);    /* C-named in its own TU */
+int _ZN8daFPkn_c16CleanupResourcesEv(void *self); /* face: below */
+int _ZN8daFPkn_c8BehaviorEv(void *self);          /* face: below */
+int _ZN8daFPkn_c6RenderEv(void *self);            /* host copy */
+int *_ZN8daFPkn_cD1Ev(int *self);                 /* .c */
+int *_ZN8daFPkn_cD0Ev(int *self);                 /* .c */
+int _ZN8daFPkn_c13OnYoshiTryEatEv(void *self);              /* slot 18, its own */
+void _ZN8daFPkn_c13OnTurnIntoEggER6Player(void *self, void *p);    /* slot 19, its own */
+int _ZN8daFPkn_c16OnAimedAtWithEggEv(void *self);              /* slot 29, its own */
+void *_ZTV8daFPkn_c[31];
 }
 /* The class D0 spells its table by the RTTI name. */
-#pragma comment(linker, "/alternatename:__ZTV8daFPkn_c=__ZTV19FirePiranhaPlantBig")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV8daFPkn_c=__ZTV8daFPkn_c")
 static int __fastcall fpir_init(void *s, void *)
-{ return _ZN19FirePiranhaPlantBig13InitResourcesEv(s); }
+{ return _ZN8daFPkn_c13InitResourcesEv(s); }
 static int __fastcall fpir_clean(void *s, void *)
-{ return _ZN19FirePiranhaPlantBig16CleanupResourcesEv(s); }
+{ return _ZN8daFPkn_c16CleanupResourcesEv(s); }
 static int __fastcall fpir_behavior(void *s, void *)
-{ return _ZN19FirePiranhaPlantBig8BehaviorEv(s); }
+{ return _ZN8daFPkn_c8BehaviorEv(s); }
 static int __fastcall fpir_render(void *s, void *)
 { port_actor_render_probe("FIRE_PIRANHA_PLANT", (char *)s + 0x110);
-  return _ZN19FirePiranhaPlantBig6RenderEv(s); }
+  return _ZN8daFPkn_c6RenderEv(s); }
 static int __fastcall fpir_d1(void *s, void *)
-{ return (int)(size_t)_ZN19FirePiranhaPlantBigD1Ev((int *)s); }
+{ return (int)(size_t)_ZN8daFPkn_cD1Ev((int *)s); }
 static int __fastcall fpir_d0(void *s, void *)
-{ return (int)(size_t)_ZN19FirePiranhaPlantBigD0Ev((int *)s); }
+{ return (int)(size_t)_ZN8daFPkn_cD0Ev((int *)s); }
 static int __fastcall fpir_yoshi(void *s, void *)
-{ return _ZN19FirePiranhaPlantBig13OnYoshiTryEatEv(s); }
+{ return _ZN8daFPkn_c13OnYoshiTryEatEv(s); }
 static int __fastcall fpir_egg(void *s, void *, void *p)
-{ _ZN19FirePiranhaPlantBig13OnTurnIntoEggER6Player(s, p); return 0; }
+{ _ZN8daFPkn_c13OnTurnIntoEggER6Player(s, p); return 0; }
 static int __fastcall fpir_aimed(void *s, void *)
-{ return _ZN19FirePiranhaPlantBig16OnAimedAtWithEggEv(s); }
+{ return _ZN8daFPkn_c16OnAimedAtWithEggEv(s); }
 
 extern "C" void hal_fill_fire_piranha_plant_vtable(void)
 {
-    void **vt = _ZTV19FirePiranhaPlantBig;
+    void **vt = _ZTV8daFPkn_c;
     port_enemy_death_states_seat();
     l7_fill_shared(vt);
     vt[0] = (void *)fpir_init;
@@ -539,12 +537,12 @@ extern "C" void hal_fill_fire_piranha_plant_vtable(void)
 
 /* InitResources is C-named in its own TU (like the goomba's); only Behavior and
    CleanupResources are real MSVC methods that need a face. */
-#include "FirePiranhaPlantBig.h"
+#include "daFPkn_c.h"
 extern "C" {
-int _ZN19FirePiranhaPlantBig16CleanupResourcesEv(void *self)
-{ return ((FirePiranhaPlantBig *)self)->FirePiranhaPlantBig::CleanupResources(); }
-int _ZN19FirePiranhaPlantBig8BehaviorEv(void *self)
-{ return ((FirePiranhaPlantBig *)self)->FirePiranhaPlantBig::Behavior(); }
+int _ZN8daFPkn_c16CleanupResourcesEv(void *self)
+{ return ((daFPkn_c *)self)->daFPkn_c::CleanupResources(); }
+int _ZN8daFPkn_c8BehaviorEv(void *self)
+{ return ((daFPkn_c *)self)->daFPkn_c::Behavior(); }
 }
 
 // ============================================================================

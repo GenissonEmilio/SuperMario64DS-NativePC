@@ -105,40 +105,41 @@
 # _ZTV5Stage slot 1. Its whole body is Scene::ResetFadersAndSound plus two
 # flag stores; both are already in the link. One of the four the vtable seat
 # will reach.
-src/_ZN5Stage19BeforeInitResourcesEv.cpp
+src/_ZN10dScStage_c19BeforeInitResourcesEv.cpp
 
 # _ZTV5Stage slot 12. Reachable by the seat, but its object publishes ONLY
 # ?OnPendingDestroy@Stage@@QAEXXZ (__thiscall) and never the C name, so the
 # slot needs a face or a __fastcall thunk on top of the table fill.
-src/_ZN5Stage16OnPendingDestroyEv.cpp
+src/_ZN10dScStage_c16OnPendingDestroyEv.cpp
 
 # _ZTV5Stage slots 16 and 17 -- ~Stage (D2/D1) and the deleting ~Stage (D0).
 # Between them they name _ZTV5Stage, _ZTV8dScene_c, MeshCollider::~MeshCollider,
 # Model::~Model, Particle::SysTracker::~SysTracker, ActorBase::~ActorBase and
 # Memory::Deallocate. Every one of those already resolves, which is why these
 # two close with nothing added.
-src/_ZN5StageD1Ev.cpp
+src/actors/dScStage_c.cpp
 # RETIRED at SLICE1: body now in src/_ZN5StageD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN5StageD0Ev.cpp
 
 # The Stage's SceneRelated graphics block, slot 1: Particle::RenderAll. NOT a
 # _ZTV5Stage entry -- func_02019144 dispatches it, and the port does not run
 # that beat.
-src/_ZN5Stage14GraphCallback1Ev.cpp
+src/_ZN10dScStage_c14GraphCallback1Ev.cpp
 
 # Stage::Behavior's two pause gates -- reached from Behavior, not from the
 # vtable. IsPauseDisabled's only callee is func_ov002_020bd8ac, below.
-src/_ZN5Stage8CanPauseEv.cpp
-src/_ZN5Stage15IsPauseDisabledEv.cpp
+src/_ZN10dScStage_c8CanPauseEv.cpp
+src/_ZN10dScStage_c15IsPauseDisabledEv.cpp
 
 # The pause / VS / level-clear menu button rows, reached from Stage::PS_Update,
 # VE_Init, VE_Update and LC_Update. This is the one body in the slice that
 # needs the storage batch: data_0209f244, data_0209f2b4, data_0209f2e0 and the
 # four-slot data_0209f360[0..3], all hosted by hal/w8a_stage_storage.cpp in
 # this same piece.
-src/_ZN5Stage17UpdateMenuButtonsEb.cpp
+# FOLDED into src/actors/dScStage_c.cpp (row 120): src/_ZN5Stage17UpdateMenuButtonsEb.cpp
 
 # ---- the one callee those eight drag that no slice already names (1) ------
 
 # Stage::IsPauseDisabled's only callee.
 src/actors/Player.cpp
+port/unmatched/hostarm/Player.cpp

@@ -82,11 +82,11 @@
 extern "C" {
 
 /* ---- (1) the destructor ------------------------------------------------ */
-extern int _ZTV6Lakitu[];
+extern int _ZTV7daJgm_c[];
 void _ZN10dBgCh_ActrD1Ev(void *);
 void _ZN10dCcAcPos_cD1Ev(void *);
 void _ZN15TextureSequenceD1Ev(void *);
-void _ZN11ShadowModelD1Ev(void *);
+void _ZN17dExtShadowModel_cD1Ev(void *);
 void _ZN5ModelD1Ev(void *);
 void _ZN9ModelAnimD1Ev(void *);
 void _ZN8dActor_cD2Ev(void *);
@@ -94,13 +94,13 @@ int _ZN15TextureSequence6UpdateER15ModelComponents(void *seq, void *comp);
 
 /* PORT_HOST_ABI: mwcc-Itanium destructor name MSVC cannot emit; ROM call
  * order and offsets from relocs.txt + src/_ZN6LakituD0Ev.c. */
-int *_ZN6LakituD1Ev(int *t)
+int *_ZN7daJgm_cD1Ev(int *t)
 {
-    t[0] = (int)(size_t)_ZTV6Lakitu;
+    t[0] = (int)(size_t)_ZTV7daJgm_c;
     _ZN10dBgCh_ActrD1Ev((char *)t + 0x204);
     _ZN10dCcAcPos_cD1Ev((char *)t + 0x1c4);
     _ZN15TextureSequenceD1Ev((char *)t + 0x1b0);
-    _ZN11ShadowModelD1Ev((char *)t + 0x188);
+    _ZN17dExtShadowModel_cD1Ev((char *)t + 0x188);
     _ZN5ModelD1Ev((char *)t + 0x138);
     _ZN9ModelAnimD1Ev((char *)t + 0xd4);
     _ZN8dActor_cD2Ev(t);

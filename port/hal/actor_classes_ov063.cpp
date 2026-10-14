@@ -138,14 +138,14 @@ extern unsigned char data_ov063_0211e9bc[], data_ov063_0211e9c4[];
 extern unsigned char data_ov063_0211ecd8[], data_ov063_0211ece0[];
 extern unsigned char data_ov063_0211ece8[], data_ov063_0211ecf0[];
 /* ...and the eight matched bodies they must point at */
-void func_ov063_0211cc18(char *c);   /* furniture mode 0, stairs   */
-void func_ov063_0211cb54(char *c);   /* furniture mode 1, trapdoor */
-void func_ov063_0211c89c(char *c);   /* furniture mode 2, bookshelf */
-void func_ov063_0211c7b0(char *c);   /* furniture mode 3, merry-go-round */
-void func_ov063_0211dd78(char *c);   /* piano [0].pmf0 */
-void func_ov063_0211dbb8(char *c);   /* piano [0].pmf1 */
-void func_ov063_0211dba4(char *c);   /* piano [1].pmf0 */
-void func_ov063_0211d8cc(char *c);   /* piano [1].pmf1 */
+void _ZN11daTrsTrap_c19func_ov063_0211cc18Ev(char *c);   /* furniture mode 0, stairs   */
+void _ZN11daTrsTrap_c19func_ov063_0211cb54Ev(char *c);   /* furniture mode 1, trapdoor */
+void _ZN11daTrsTrap_c19func_ov063_0211c89cEv(char *c);   /* furniture mode 2, bookshelf */
+void _ZN11daTrsTrap_c19func_ov063_0211c7b0Ev(char *c);   /* furniture mode 3, merry-go-round */
+void _ZN9daPiano_c19func_ov063_0211dd78Ev(char *c);   /* piano [0].pmf0 */
+void _ZN9daPiano_c19func_ov063_0211dbb8Ev(char *c);   /* piano [0].pmf1 */
+void _ZN9daPiano_c19func_ov063_0211dba4Ev(char *c);   /* piano [1].pmf0 */
+void _ZN9daPiano_c19func_ov063_0211d8ccEv(char *c);   /* piano [1].pmf1 */
 }  /* extern "C" */
 
 // ---- the trap --------------------------------------------------------------
@@ -280,10 +280,10 @@ DSSTATE_END
         sym((char *)self);                                                \
     }
 
-MS_STATE_FACE(0, func_ov063_0211cc18)
-MS_STATE_FACE(1, func_ov063_0211cb54)
-MS_STATE_FACE(2, func_ov063_0211c89c)
-MS_STATE_FACE(3, func_ov063_0211c7b0)
+MS_STATE_FACE(0, _ZN11daTrsTrap_c19func_ov063_0211cc18Ev)
+MS_STATE_FACE(1, _ZN11daTrsTrap_c19func_ov063_0211cb54Ev)
+MS_STATE_FACE(2, _ZN11daTrsTrap_c19func_ov063_0211c89cEv)
+MS_STATE_FACE(3, _ZN11daTrsTrap_c19func_ov063_0211c7b0Ev)
 
 extern "C" void port_ov63_bringup(void)
 {
@@ -310,10 +310,10 @@ extern "C" void port_ov63_bringup(void)
     *(void **)data_ov063_0211e9bc = (void *)ms_state_c1;
     *(void **)data_ov063_0211e9c4 = (void *)ms_state_c2;
     *(void **)data_ov063_0211e9ac = (void *)ms_state_c3;
-    *(void **)data_ov063_0211ecd8 = (void *)func_ov063_0211dd78;
-    *(void **)data_ov063_0211ece8 = (void *)func_ov063_0211dbb8;
-    *(void **)data_ov063_0211ece0 = (void *)func_ov063_0211dba4;
-    *(void **)data_ov063_0211ecf0 = (void *)func_ov063_0211d8cc;
+    *(void **)data_ov063_0211ecd8 = (void *)_ZN9daPiano_c19func_ov063_0211dd78Ev;
+    *(void **)data_ov063_0211ece8 = (void *)_ZN9daPiano_c19func_ov063_0211dbb8Ev;
+    *(void **)data_ov063_0211ece0 = (void *)_ZN9daPiano_c19func_ov063_0211dba4Ev;
+    *(void **)data_ov063_0211ecf0 = (void *)_ZN9daPiano_c19func_ov063_0211d8ccEv;
     __sinit_ov063_0211e29c();
     __sinit_ov063_0211e3cc();
     __sinit_ov063_0211e590();
@@ -575,13 +575,13 @@ extern "C" void hal_fill_mansion_steps_vtable(void)
 extern "C" {
 int _ZN16daObjFallBlock_c8BehaviorEv(char *self);            /* slot 6  Behavior */
 int _ZN16daObjFallBlock_c6RenderEv(char *self);            /* slot 9  Render */
-int *_ZN12FallBlockBbhD1Ev(void *t);            /* slot 16, matched .c */
-int *_ZN12FallBlockBbhD0Ev(void *t);            /* slot 17, matched .c */
+int *_ZN20daObjTh_Fall_Block_cD1Ev(void *t);            /* slot 16, matched .c */
+int *_ZN20daObjTh_Fall_Block_cD0Ev(void *t);            /* slot 17, matched .c */
 void _ZN16daObjFallBlock_c15OnHitByMegaCharER6Player(char *self);           /* slot 27 */
 void _ZN16daObjFallBlock_c4KillEv(char *self);           /* slot 31 */
 void *daObjTh_Fall_Block_c_classInit(void);
 DSSTATE_BEGIN
-void *_ZTV12FallBlockBbh[32];
+void *_ZTV20daObjTh_Fall_Block_c[32];
 DSSTATE_END
 }
 /* PORT_HOST_ABI: two names of ONE ROM table, read off the ROM rather than
@@ -593,12 +593,12 @@ DSSTATE_END
    daObjTh_Fall_Block_c_classInit, _ZN12FallBlockBbhD0Ev, _ZN12FallBlockBbhD1Ev. Read
    out of extracted/overlays/overlay_0063.bin; the LHS is not a config
    symbol anywhere, so the alias cannot be defeated by a later slice. */
-#pragma comment(linker, "/alternatename:__ZTV20daObjTh_Fall_Block_c=__ZTV12FallBlockBbh")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV20daObjTh_Fall_Block_c=__ZTV20daObjTh_Fall_Block_c")
 extern "C" void *port_factory_fall_block_bbh(void)
 {
     void *p = daObjTh_Fall_Block_c_classInit();
     if (p)
-        *(void **)p = (void *)_ZTV12FallBlockBbh;
+        *(void **)p = (void *)_ZTV20daObjTh_Fall_Block_c;
     return p;
 }
 struct FallBlockBbh { int InitResources(); int CleanupResources(); };
@@ -612,9 +612,9 @@ static int __fastcall fbb_render(void *s, void *)
 { port_actor_render_probe("FALL_BLOCK_BBH", (char *)s + 0xd4);
   return _ZN16daObjFallBlock_c6RenderEv((char *)s); }
 static int __fastcall fbb_d1(void *s, void *)
-{ return (int)(size_t)_ZN12FallBlockBbhD1Ev(s); }
+{ return (int)(size_t)_ZN20daObjTh_Fall_Block_cD1Ev(s); }
 static int __fastcall fbb_d0(void *s, void *)
-{ return (int)(size_t)_ZN12FallBlockBbhD0Ev(s); }
+{ return (int)(size_t)_ZN20daObjTh_Fall_Block_cD0Ev(s); }
 /* Slot 27 is OnHitByMegaChar(Player &): the caller pushes the player, so the
    veneer takes the third parameter to pop it even though the ov098 body reads
    only the receiver -- the fb_slot27 contract in hal/actor_classes_wf.cpp. */
@@ -625,7 +625,7 @@ static int __fastcall fbb_slot31(void *s, void *)
 extern "C" void hal_fill_fall_block_bbh_vtable(void)
 {
     port_ov63_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV12FallBlockBbh;
+    void *volatile *vt = (void *volatile *)_ZTV20daObjTh_Fall_Block_c;
     ov63_fill_shared(vt);
     vt[0]  = (void *)fbb_init;
     vt[3]  = (void *)fbb_clean;
@@ -649,7 +649,7 @@ extern "C" void hal_fill_fall_block_bbh_vtable(void)
 // Its two PMF state dispatchers are the host copies in Bbh_PmfDispatch.c and
 // its state table is seated in ov63_bringup above.
 extern "C" {
-int *_ZN8MadPianoD1Ev(void *self);              /* slot 16, matched .c */
+int *_ZN9daPiano_cD1Ev(void *self);              /* slot 16, matched .c */
 /* read, never written, by the SEATS042 slot-3 trace: the piano's three file
    cells and SignPost's two, the pair the old G0/G1 placeholders were bound
    to (decl_common.h's spelling for the last two) */
@@ -657,10 +657,10 @@ extern unsigned char data_ov063_0211ef80[], data_ov063_0211ef88[],
                      data_ov063_0211ef90[];
 extern char data_ov002_0210e064;
 extern char data_ov002_0210e05c;
-void *_ZN8MadPianoD0Ev(void *thiz);             /* slot 17, matched extern-C */
+void *_ZN9daPiano_cD0Ev(void *thiz);             /* slot 17, matched extern-C */
 void *daPiano_c_classInit(void);
 DSSTATE_BEGIN
-void *_ZTV8MadPiano[32];
+void *_ZTV9daPiano_c[32];
 DSSTATE_END
 }
 struct MadPiano { int InitResources(); int CleanupResources();
@@ -732,7 +732,7 @@ static int __fastcall mp_clean(void *s, void *)
     const int r = ((MadPiano *)s)->MadPiano::CleanupResources();
     void *word = (*(void ***)s)[3];
     const unsigned id = *(const unsigned short *)((const char *)s + 0xc);
-    std::fprintf(stderr, "SEATS042: _ZTV8MadPiano[3] CleanupResources (ov063 "
+    std::fprintf(stderr, "SEATS042: _ZTV9daPiano_c[3] CleanupResources (ov063 "
                  "0x0211de3c, the matched TU) ENTERED this=%p id=%u %s; slot 3 "
                  "word=%p, seated thunk=%p -- %s; returned %d\n", s, id,
                  port_actor_class_name(id), word, (void *)mp_clean,
@@ -756,13 +756,13 @@ static int __fastcall mp_render(void *s, void *)
 { port_actor_render_probe("MAD_PIANO", (char *)s + 0x320);
   return ((MadPiano *)s)->MadPiano::Render(); }
 static int __fastcall mp_d1(void *s, void *)
-{ return (int)(size_t)_ZN8MadPianoD1Ev(s); }
+{ return (int)(size_t)_ZN9daPiano_cD1Ev(s); }
 static int __fastcall mp_d0(void *s, void *)
-{ return (int)(size_t)_ZN8MadPianoD0Ev(s); }
+{ return (int)(size_t)_ZN9daPiano_cD0Ev(s); }
 extern "C" void hal_fill_mad_piano_vtable(void)
 {
     port_ov63_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV8MadPiano;
+    void *volatile *vt = (void *volatile *)_ZTV9daPiano_c;
     ov63_fill_shared(vt);
     vt[0]  = (void *)mp_init;
     vt[3]  = (void *)mp_clean;
@@ -821,7 +821,7 @@ extern "C" void _ZN11dCapEnemy_c12UpdateCapPosERK7Vector3RK10Vector3_16(
 #pragma comment(linker, "/alternatename:?data_ov063_0211edec@@3PAXA=_data_ov063_0211edec")
 /* MadPianoD0's vtable externs sit outside its extern-C block, same rule;
    both names already have host storage (this file / hal/actor_vtables.cpp) */
-#pragma comment(linker, "/alternatename:?_ZTV8MadPiano@@3PAPAXA=__ZTV8MadPiano")
+#pragma comment(linker, "/alternatename:?_ZTV9daPiano_c@@3PAPAXA=__ZTV9daPiano_c")
 #pragma comment(linker, "/alternatename:?_ZTV10dBgActor_c@@3PAPAXA=__ZTV10dBgActor_c")
 /* mp_clean's call through the local `struct MadPiano` above spells the
    method non-virtual (QAE); src/game/actors/daPiano_c/
@@ -830,7 +830,7 @@ extern "C" void _ZN11dCapEnemy_c12UpdateCapPosERK7Vector3RK10Vector3_16(
    argument list, so only the decoration differs: the row hal/cxx_aliases.cpp
    carries for InitResources, Behavior and Render (its lines 3084-3086), for
    the fourth sibling (lane SEATS042). */
-#pragma comment(linker, "/alternatename:?CleanupResources@MadPiano@@QAEHXZ=?CleanupResources@MadPiano@@UAEHXZ")
+#pragma comment(linker, "/alternatename:?CleanupResources@daPiano_c@@QAEHXZ=?CleanupResources@daPiano_c@@UAEHXZ")
 /* ...and the ov020 book TUs' spellings of the four SharedFilePtrs (two TUs,
    two type vocabularies for the same storage) plus two @@YA cdecl free
    functions -- the one alias-legal class (hal/cxx_aliases.cpp's law). */
@@ -894,21 +894,21 @@ extern "C" void _ZN11dCapEnemy_c12UpdateCapPosERK7Vector3RK10Vector3_16(
 // from bk_bringup below -- same lane-ownership note as ov63_bringup; fold
 // both into actor_overlays.cpp when someone owns it.
 extern "C" {
-int _ZN8BookShot6RenderEv(char *c);              /* slot 9, matched extern-C */
-int _ZN15BookShotSpawner8BehaviorEv(char *c);    /* slot 6, matched extern-C */
-int *_ZN8BookShotD1Ev(void *t);                  /* slot 16, matched .c */
-int *_ZN8BookShotD0Ev(void *t);                  /* slot 17, matched .c */
-int _ZN8BookShot13OnYoshiTryEatEv(char *c);                /* slot 18, matched */
-int _ZN8BookShot16OnAimedAtWithEggEv(char *c);                /* slot 29, matched */
-int *_ZN15BookShotSpawnerD0Ev(void *t);          /* slot 17, matched .c */
+int _ZN8daBook_c6RenderEv(char *c);              /* slot 9, matched extern-C */
+int _ZN11daBookGen_c8BehaviorEv(char *c);    /* slot 6, matched extern-C */
+int *_ZN8daBook_cD1Ev(void *t);                  /* slot 16, matched .c */
+int *_ZN8daBook_cD0Ev(void *t);                  /* slot 17, matched .c */
+int _ZN8daBook_c13OnYoshiTryEatEv(char *c);                /* slot 18, matched */
+int _ZN8daBook_c16OnAimedAtWithEggEv(char *c);                /* slot 29, matched */
+int *_ZN11daBookGen_cD0Ev(void *t);          /* slot 17, matched .c */
 void *daBook_c_classInit_KILLER_BOOK(void);
 void *daBook_c_classInit_SHOOT_BOOK(void);
 void *daBook_c_classInit_BOOK_SWITCH(void);                 /* BookSwitch's factory */
 void *daBookGen_c_classInit(void);
 void __sinit_ov020_02113674(void);               /* the book SharedFilePtrs */
 DSSTATE_BEGIN
-void *_ZTV8BookShot[31];
-void *_ZTV15BookShotSpawner[31];
+void *_ZTV8daBook_c[31];
+void *_ZTV11daBookGen_c[31];
 DSSTATE_END
 }
 /* PORT_HOST_ABI: two names of ONE ROM table, read off the ROM rather than
@@ -920,7 +920,7 @@ DSSTATE_END
    daBook_c_classInit_KILLER_BOOK, _ZN8BookShotD0Ev. Read out of
    extracted/overlays/overlay_0020.bin; the LHS is not a config symbol
    anywhere, so the alias cannot be defeated by a later slice. */
-#pragma comment(linker, "/alternatename:__ZTV8daBook_c=__ZTV8BookShot")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV8daBook_c=__ZTV8daBook_c")
 struct BookShot { int InitResources(); int CleanupResources(); int Behavior(); };
 struct BookShotSpawner { int InitResources(); int CleanupResources(); };
 
@@ -952,19 +952,19 @@ static int __fastcall bk_behavior(void *s, void *)
 { return ((BookShot *)s)->BookShot::Behavior(); }
 static int __fastcall bk_render(void *s, void *)
 { port_actor_render_probe("BOOK", (char *)s + 0x174);
-  return _ZN8BookShot6RenderEv((char *)s); }
+  return _ZN8daBook_c6RenderEv((char *)s); }
 static int __fastcall bk_d1(void *s, void *)
-{ return (int)(size_t)_ZN8BookShotD1Ev(s); }
+{ return (int)(size_t)_ZN8daBook_cD1Ev(s); }
 static int __fastcall bk_d0(void *s, void *)
-{ return (int)(size_t)_ZN8BookShotD0Ev(s); }
+{ return (int)(size_t)_ZN8daBook_cD0Ev(s); }
 static int __fastcall bk_yoshi(void *s, void *)
-{ return _ZN8BookShot13OnYoshiTryEatEv((char *)s); }
+{ return _ZN8daBook_c13OnYoshiTryEatEv((char *)s); }
 static int __fastcall bk_egg(void *s, void *)
-{ return _ZN8BookShot16OnAimedAtWithEggEv((char *)s); }
+{ return _ZN8daBook_c16OnAimedAtWithEggEv((char *)s); }
 extern "C" void hal_fill_book_shot_vtable(void)
 {
     port_bk_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV8BookShot;
+    void *volatile *vt = (void *volatile *)_ZTV8daBook_c;
     ov63_fill_shared(vt);
     vt[0]  = (void *)bk_init;
     vt[3]  = (void *)bk_clean;
@@ -981,17 +981,17 @@ static int __fastcall bks_init(void *s, void *)
 static int __fastcall bks_clean(void *s, void *)
 { return ((BookShotSpawner *)s)->BookShotSpawner::CleanupResources(); }
 static int __fastcall bks_behavior(void *s, void *)
-{ return _ZN15BookShotSpawner8BehaviorEv((char *)s); }
+{ return _ZN11daBookGen_c8BehaviorEv((char *)s); }
 static int __fastcall bks_render(void *s, void *)
 { return ((fBase_c *)s)->fBase_c::Render(); }
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (bks_d1) spelled the same chain by hand. */
 static int __fastcall bks_d0(void *s, void *)
-{ return (int)(size_t)_ZN15BookShotSpawnerD0Ev(s); }
+{ return (int)(size_t)_ZN11daBookGen_cD0Ev(s); }
 extern "C" void hal_fill_book_shot_spawner_vtable(void)
 {
     port_bk_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV15BookShotSpawner;
+    void *volatile *vt = (void *volatile *)_ZTV11daBookGen_c;
     ov63_fill_shared(vt);
     vt[0]  = (void *)bks_init;
     vt[3]  = (void *)bks_clean;
@@ -1026,25 +1026,25 @@ extern "C" void hal_fill_book_shot_spawner_vtable(void)
 // registry ran. The fill overwrites all six fn words with the host bodies;
 // raw-image pair values in the comments (delta stays 0 on all six).
 extern "C" {
-int _ZN11CrazedCrate16CleanupResourcesEv(void);     /* slot 3, matched .c */
-void _ZN11CrazedCrate16OnPendingDestroyEv(void);    /* slot 12, matched .c */
-int *_ZN11CrazedCrateD0Ev(void *t);                 /* slot 17, matched .c */
-int _ZN11CrazedCrate13OnYoshiTryEatEv(void);                      /* slot 18, matched */
-void _ZN11CrazedCrate13OnTurnIntoEggER6Player(char *self, void *player); /* slot 19, matched */
+int _ZN9daBttBk_c16CleanupResourcesEv(void);     /* slot 3, matched .c */
+void _ZN9daBttBk_c16OnPendingDestroyEv(void);    /* slot 12, matched .c */
+int *_ZN9daBttBk_cD0Ev(void *t);                 /* slot 17, matched .c */
+int _ZN9daBttBk_c13OnYoshiTryEatEv(void);                      /* slot 18, matched */
+void _ZN9daBttBk_c13OnTurnIntoEggER6Player(char *self, void *player); /* slot 19, matched */
 void *daBttBk_c_classInit(void);
 void _ZN10dBgCh_ActrD1Ev(void *self);
 void _ZN7dCcAc_cD1Ev(void *self);
-void _ZN11ShadowModelD1Ev(void *self);
+void _ZN17dExtShadowModel_cD1Ev(void *self);
 /* the six state bodies the table seat installs (all matched, on the slice) */
-void func_ov080_0212509c(char *c);   /* state 0 enter  <- src pair 0x0212814c */
-void func_ov080_0212500c(char *c);   /* state 0 tick   <- 0x02128144 */
-void func_ov080_02124fec(char *c);   /* state 1 enter  <- 0x0212813c */
-void func_ov080_02124edc(char *c);   /* state 1 tick   <- 0x02128154 */
-void func_ov080_02124eb0(char *c);   /* state 2 enter  <- 0x0212812c */
-void func_ov080_02124e60(char *c);   /* state 2 tick   <- 0x02128134 */
+void _ZN9daBttBk_c19func_ov080_0212509cEv(char *c);   /* state 0 enter  <- src pair 0x0212814c */
+void _ZN9daBttBk_c19func_ov080_0212500cEv(char *c);   /* state 0 tick   <- 0x02128144 */
+void _ZN9daBttBk_c19func_ov080_02124fecEv(char *c);   /* state 1 enter  <- 0x0212813c */
+void _ZN9daBttBk_c19func_ov080_02124edcEv(char *c);   /* state 1 tick   <- 0x02128154 */
+void _ZN9daBttBk_c19func_ov080_02124eb0Ev(char *c);   /* state 2 enter  <- 0x0212812c */
+void _ZN9daBttBk_c19func_ov080_02124e60Ev(char *c);   /* state 2 tick   <- 0x02128134 */
 extern unsigned char data_ov080_0212847c[];
 DSSTATE_BEGIN
-void *_ZTV11CrazedCrate[31];
+void *_ZTV9daBttBk_c[31];
 DSSTATE_END
 }
 /* PORT_HOST_ABI: two names of ONE ROM table, read off the ROM rather than
@@ -1056,30 +1056,30 @@ DSSTATE_END
    _ZN11CrazedCrateD0Ev, _ZN11CrazedCrateD1Ev. Read out of
    extracted/overlays/overlay_0080.bin; the LHS is not a config symbol
    anywhere, so the alias cannot be defeated by a later slice. */
-#pragma comment(linker, "/alternatename:__ZTV9daBttBk_c=__ZTV11CrazedCrate")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV9daBttBk_c=__ZTV9daBttBk_c")
 struct CrazedCrate { int InitResources(); int Behavior(); int Render(); };
 static int __fastcall cc_init(void *s, void *)
 { return ((CrazedCrate *)s)->CrazedCrate::InitResources(); }
 static int __fastcall cc_clean(void *s, void *)
-{ return _ZN11CrazedCrate16CleanupResourcesEv(); }
+{ return _ZN9daBttBk_c16CleanupResourcesEv(); }
 static int __fastcall cc_behavior(void *s, void *)
 { return ((CrazedCrate *)s)->CrazedCrate::Behavior(); }
 static int __fastcall cc_render(void *s, void *)
 { port_actor_render_probe("CRAZED_CRATE", (char *)s + 0xd4);
   return ((CrazedCrate *)s)->CrazedCrate::Render(); }
 static int __fastcall cc_pdes(void *s, void *)
-{ (void)s; _ZN11CrazedCrate16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN9daBttBk_c16OnPendingDestroyEv(); return 0; }
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (cc_d1) spelled the same chain by hand. */
 static int __fastcall cc_d0(void *s, void *)
-{ return (int)(size_t)_ZN11CrazedCrateD0Ev(s); }
+{ return (int)(size_t)_ZN9daBttBk_cD0Ev(s); }
 static int __fastcall cc_yoshi(void *s, void *)
-{ (void)s; return _ZN11CrazedCrate13OnYoshiTryEatEv(); }
+{ (void)s; return _ZN9daBttBk_c13OnYoshiTryEatEv(); }
 static int __fastcall cc_turn_egg(void *s, void *, void *p)
-{ _ZN11CrazedCrate13OnTurnIntoEggER6Player((char *)s, p); return 0; }
+{ _ZN9daBttBk_c13OnTurnIntoEggER6Player((char *)s, p); return 0; }
 extern "C" void hal_fill_crazed_crate_vtable(void)
 {
-    void *volatile *vt = (void *volatile *)_ZTV11CrazedCrate;
+    void *volatile *vt = (void *volatile *)_ZTV9daBttBk_c;
     ov63_fill_shared(vt);
     vt[0]  = (void *)cc_init;
     vt[3]  = (void *)cc_clean;
@@ -1093,9 +1093,9 @@ extern "C" void hal_fill_crazed_crate_vtable(void)
     /* the state-table re-seat (see the header block) */
     {
         static void *const seat[6] = {
-            (void *)func_ov080_0212509c, (void *)func_ov080_0212500c,
-            (void *)func_ov080_02124fec, (void *)func_ov080_02124edc,
-            (void *)func_ov080_02124eb0, (void *)func_ov080_02124e60,
+            (void *)_ZN9daBttBk_c19func_ov080_0212509cEv, (void *)_ZN9daBttBk_c19func_ov080_0212500cEv,
+            (void *)_ZN9daBttBk_c19func_ov080_02124fecEv, (void *)_ZN9daBttBk_c19func_ov080_02124edcEv,
+            (void *)_ZN9daBttBk_c19func_ov080_02124eb0Ev, (void *)_ZN9daBttBk_c19func_ov080_02124e60Ev,
         };
         int i;
         for (i = 0; i < 6; ++i) {
@@ -1121,17 +1121,17 @@ extern "C" void hal_fill_crazed_crate_vtable(void)
 // affair, plus the two dispatcher host copies (Bbh_PmfDispatch.c, addendum
 // 2) and the four-word state-table re-seat below.
 extern "C" {
-int *_ZN6CoffinD1Ev(void *t);                   /* slot 16, matched .c */
-int *_ZN6CoffinD0Ev(void *t);                   /* slot 17, matched .c */
+int *_ZN13daObjCasket_cD1Ev(void *t);                   /* slot 16, matched .c */
+int *_ZN13daObjCasket_cD0Ev(void *t);                   /* slot 17, matched .c */
 void *daObjCasket_c_classInit(void);
 /* the four state bodies the re-seat installs (matched, on the slice) */
-void func_ov071_021223b0(char *c);   /* entry 0 pmf@0 <- src pair 0x02122e74 */
-void func_ov071_021221bc(char *c);   /* entry 0 pmf@8 <- 0x02122e8c */
-void func_ov071_02122194(char *c);   /* entry 1 pmf@0 <- 0x02122e84 */
-void func_ov071_021220c8(char *c);   /* entry 1 pmf@8 <- 0x02122e7c */
+void _ZN13daObjCasket_c12St_Wait_InitEv(char *c);   /* entry 0 pmf@0 <- src pair 0x02122e74 */
+void _ZN13daObjCasket_c12St_Wait_MainEv(char *c);   /* entry 0 pmf@8 <- 0x02122e8c */
+void _ZN13daObjCasket_c15St_StandUp_InitEv(char *c);   /* entry 1 pmf@0 <- 0x02122e84 */
+void _ZN13daObjCasket_c15St_StandUp_MainEv(char *c);   /* entry 1 pmf@8 <- 0x02122e7c */
 extern unsigned char data_ov071_02122ecc[];
 DSSTATE_BEGIN
-void *_ZTV6Coffin[32];
+void *_ZTV13daObjCasket_c[32];
 DSSTATE_END
 }
 struct Coffin { int InitResources(); int CleanupResources(); int Behavior(); int Render(); };
@@ -1145,12 +1145,12 @@ static int __fastcall cf_render(void *s, void *)
 { port_actor_render_probe("COFFIN", (char *)s + 0xd4);
   return ((Coffin *)s)->Coffin::Render(); }
 static int __fastcall cf_d1(void *s, void *)
-{ return (int)(size_t)_ZN6CoffinD1Ev(s); }
+{ return (int)(size_t)_ZN13daObjCasket_cD1Ev(s); }
 static int __fastcall cf_d0(void *s, void *)
-{ return (int)(size_t)_ZN6CoffinD0Ev(s); }
+{ return (int)(size_t)_ZN13daObjCasket_cD0Ev(s); }
 extern "C" void hal_fill_coffin_vtable(void)
 {
-    void *volatile *vt = (void *volatile *)_ZTV6Coffin;
+    void *volatile *vt = (void *volatile *)_ZTV13daObjCasket_c;
     ov63_fill_shared(vt);
     vt[0]  = (void *)cf_init;
     vt[3]  = (void *)cf_clean;
@@ -1160,12 +1160,12 @@ extern "C" void hal_fill_coffin_vtable(void)
     vt[17] = (void *)cf_d0;
     vt[31] = (void *)ov63_kill;
     /* the 20-byte-entry state-table re-seat (Bbh_PmfDispatch.c addendum 2) */
-    *(void *volatile *)(data_ov071_02122ecc + 0)  = (void *)func_ov071_021223b0;
+    *(void *volatile *)(data_ov071_02122ecc + 0)  = (void *)_ZN13daObjCasket_c12St_Wait_InitEv;
     *(int volatile *)(data_ov071_02122ecc + 4)   = 0;
-    *(void *volatile *)(data_ov071_02122ecc + 8)  = (void *)func_ov071_021221bc;
+    *(void *volatile *)(data_ov071_02122ecc + 8)  = (void *)_ZN13daObjCasket_c12St_Wait_MainEv;
     *(int volatile *)(data_ov071_02122ecc + 12)  = 0;
-    *(void *volatile *)(data_ov071_02122ecc + 20) = (void *)func_ov071_02122194;
+    *(void *volatile *)(data_ov071_02122ecc + 20) = (void *)_ZN13daObjCasket_c15St_StandUp_InitEv;
     *(int volatile *)(data_ov071_02122ecc + 24)  = 0;
-    *(void *volatile *)(data_ov071_02122ecc + 28) = (void *)func_ov071_021220c8;
+    *(void *volatile *)(data_ov071_02122ecc + 28) = (void *)_ZN13daObjCasket_c15St_StandUp_MainEv;
     *(int volatile *)(data_ov071_02122ecc + 32)  = 0;
 }

@@ -145,7 +145,7 @@ extern char data_ov073_02123400[];
 extern unsigned short DecIfAbove0_Short(unsigned short *p);
 extern void _ZN8dActor_c9UpdatePosEP5dCc_c(void *self, void *clsn);
 extern void _ZN8dActor_c22UpdatePosWithOnlySpeedEP5dCc_c(void *self, void *clsn);
-extern int _ZNK9Animation12WillHitFrameEi(void *self, int f);
+extern int _ZNK15dExtFrameCtrl_c12WillHitFrameEi(void *self, int f);
 extern void MulMat4x3Mat4x3(void *d, void *a, void *b);
 extern void Vec3_Lsl(Vector3 *d, Vector3 *s, int sh);
 extern void func_02012694(int a, void *b);
@@ -159,10 +159,10 @@ extern int _ZN9dBgCh_Lin10DetectClsnEv(void *self);
 extern void _ZN9dBgCh_LinD1Ev(void *self);
 extern void _ZN12dEnemyBase_c12UpdateWMClsnER10dBgCh_Actrj(void *self, void *wmc, unsigned int flags);
 extern void _ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3(void *self, const Vector3 *v);
-extern void func_ov073_0211f61c(void *self);
+extern void _ZN16daKing_Donketu_c19func_ov073_0211f61cEv(void *self);
 extern void _ZN5dCc_c5ClearEv(void *self);
 extern void _ZN5dCc_c6UpdateEv(void *self);
-extern void func_ov073_021215cc(void *self);
+extern void _ZN16daKing_Donketu_c19func_ov073_021215ccEv(void *self);
 extern void _ZN14BlendModelAnim7AdvanceEv(void *self);
 }
 
@@ -179,38 +179,38 @@ extern "C" {
 /* the forty state bodies, all matched src carried by port/slice_w12.txt.
    Declared only so their host addresses can be taken; each is a cdecl
    `int f(<one pointer>)` in its own TU and the seat stores the address. */
-void func_ov073_0211fa74(void);
-void func_ov073_0211fbec(void);
-void func_ov073_0211fbf4(void);
-void func_ov073_0211fc70(void);
-void func_ov073_0211fc78(void);
-void func_ov073_0211fe84(void);
-void func_ov073_0211fe8c(void);
-void func_ov073_0212000c(void);
-void func_ov073_0212005c(void);
-void func_ov073_02120098(void);
-void func_ov073_021200e0(void);
-void func_ov073_02120390(void);
-void func_ov073_021203ac(void);
-void func_ov073_021205f0(void);
-void func_ov073_02120610(void);
-void func_ov073_0212081c(void);
-void func_ov073_02120844(void);
-void func_ov073_021208e4(void);
-void func_ov073_02120910(void);
-void func_ov073_02120ad8(void);
-void func_ov073_02120b78(void);
-void func_ov073_02120c08(void);
-void func_ov073_02120c7c(void);
-void func_ov073_02120d80(void);
-void func_ov073_02120dec(void);
-void func_ov073_02120e60(void);
-void func_ov073_02120ed0(void);
-void func_ov073_0212122c(void);
-void func_ov073_0212128c(void);
-void func_ov073_02121378(void);
-void func_ov073_02121388(void);
-void func_ov073_02121538(void);
+void _ZN16daKing_Donketu_c19func_ov073_0211fa74Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_0211fbecEv(void);
+void _ZN16daKing_Donketu_c19func_ov073_0211fbf4Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_0211fc70Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_0211fc78Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_0211fe84Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_0211fe8cEv(void);
+void _ZN16daKing_Donketu_c19func_ov073_0212000cEv(void);
+void _ZN16daKing_Donketu_c19func_ov073_0212005cEv(void);
+void _ZN16daKing_Donketu_c19func_ov073_02120098Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_021200e0Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_02120390Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_021203acEv(void);
+void _ZN16daKing_Donketu_c19func_ov073_021205f0Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_02120610Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_0212081cEv(void);
+void _ZN16daKing_Donketu_c19func_ov073_02120844Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_021208e4Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_02120910Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_02120ad8Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_02120b78Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_02120c08Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_02120c7cEv(void);
+void _ZN16daKing_Donketu_c19func_ov073_02120d80Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_02120decEv(void);
+void _ZN16daKing_Donketu_c19func_ov073_02120e60Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_02120ed0Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_0212122cEv(void);
+void _ZN16daKing_Donketu_c19func_ov073_0212128cEv(void);
+void _ZN16daKing_Donketu_c19func_ov073_02121378Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_02121388Ev(void);
+void _ZN16daKing_Donketu_c19func_ov073_02121538Ev(void);
 void func_ov073_0212202c(void);
 void func_ov073_02122034(void);
 void func_ov073_021220c0(void);
@@ -283,82 +283,82 @@ static void ov73_seat(unsigned char *rec, unsigned rom, void *host,
 static void __fastcall pmfb7_ov073_02120ed0(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02122f40, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_02120ed0)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_02120ed0Ev)(self);
 }
 static void __fastcall pmfb7_ov073_0211fc78(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02122f58, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_0211fc78)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_0211fc78Ev)(self);
 }
 static void __fastcall pmfb7_ov073_0211fbf4(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02122f68, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_0211fbf4)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_0211fbf4Ev)(self);
 }
 static void __fastcall pmfb7_ov073_0212005c(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02122f70, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_0212005c)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_0212005cEv)(self);
 }
 static void __fastcall pmfb7_ov073_0212128c(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02122f80, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_0212128c)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_0212128cEv)(self);
 }
 static void __fastcall pmfb7_ov073_021200e0(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02122f88, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_021200e0)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_021200e0Ev)(self);
 }
 static void __fastcall pmfb7_ov073_02120910(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02122f90, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_02120910)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_02120910Ev)(self);
 }
 static void __fastcall pmfb7_ov073_02120b78(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02122fa0, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_02120b78)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_02120b78Ev)(self);
 }
 static void __fastcall pmfb7_ov073_02120dec(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02122fb0, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_02120dec)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_02120decEv)(self);
 }
 static void __fastcall pmfb7_ov073_02120610(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02122fb8, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_02120610)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_02120610Ev)(self);
 }
 static void __fastcall pmfb7_ov073_0211fa74(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02122fc0, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_0211fa74)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_0211fa74Ev)(self);
 }
 static void __fastcall pmfb7_ov073_02120844(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02122fe0, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_02120844)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_02120844Ev)(self);
 }
 static void __fastcall pmfb7_ov073_021203ac(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02122fe8, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_021203ac)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_021203acEv)(self);
 }
 static void __fastcall pmfb7_ov073_02121388(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02123000, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_02121388)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_02121388Ev)(self);
 }
 static void __fastcall pmfb7_ov073_02120c7c(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02123028, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_02120c7c)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_02120c7cEv)(self);
 }
 static void __fastcall pmfb7_ov073_0211fe8c(void *self, void *dead_edx)
 {
     (void)dead_edx;   /* record 02123038, the per-frame half */
-    ((void (*)(void *))(void *)func_ov073_0211fe8c)(self);
+    ((void (*)(void *))(void *)_ZN16daKing_Donketu_c19func_ov073_0211fe8cEv)(self);
 }
 
 extern "C" void port_ov073_states_seat(void)
@@ -369,36 +369,36 @@ extern "C" void port_ov073_states_seat(void)
     done = 1;
     /* ChiefChilly: 32 records -> the sixteen tables at 0x02123320.. */
     OV73_SEAT(data_ov073_02122f40, 0x02120ed0, pmfb7_ov073_02120ed0);
-    OV73_SEAT(data_ov073_02122f48, 0x02120e60, func_ov073_02120e60);
-    OV73_SEAT(data_ov073_02122f50, 0x0212000c, func_ov073_0212000c);
+    OV73_SEAT(data_ov073_02122f48, 0x02120e60, _ZN16daKing_Donketu_c19func_ov073_02120e60Ev);
+    OV73_SEAT(data_ov073_02122f50, 0x0212000c, _ZN16daKing_Donketu_c19func_ov073_0212000cEv);
     OV73_SEAT(data_ov073_02122f58, 0x0211fc78, pmfb7_ov073_0211fc78);
-    OV73_SEAT(data_ov073_02122f60, 0x02120098, func_ov073_02120098);
+    OV73_SEAT(data_ov073_02122f60, 0x02120098, _ZN16daKing_Donketu_c19func_ov073_02120098Ev);
     OV73_SEAT(data_ov073_02122f68, 0x0211fbf4, pmfb7_ov073_0211fbf4);
     OV73_SEAT(data_ov073_02122f70, 0x0212005c, pmfb7_ov073_0212005c);
-    OV73_SEAT(data_ov073_02122f78, 0x02121378, func_ov073_02121378);
+    OV73_SEAT(data_ov073_02122f78, 0x02121378, _ZN16daKing_Donketu_c19func_ov073_02121378Ev);
     OV73_SEAT(data_ov073_02122f80, 0x0212128c, pmfb7_ov073_0212128c);
     OV73_SEAT(data_ov073_02122f88, 0x021200e0, pmfb7_ov073_021200e0);
     OV73_SEAT(data_ov073_02122f90, 0x02120910, pmfb7_ov073_02120910);
-    OV73_SEAT(data_ov073_02122f98, 0x02120ad8, func_ov073_02120ad8);
+    OV73_SEAT(data_ov073_02122f98, 0x02120ad8, _ZN16daKing_Donketu_c19func_ov073_02120ad8Ev);
     OV73_SEAT(data_ov073_02122fa0, 0x02120b78, pmfb7_ov073_02120b78);
-    OV73_SEAT(data_ov073_02122fa8, 0x02120d80, func_ov073_02120d80);
+    OV73_SEAT(data_ov073_02122fa8, 0x02120d80, _ZN16daKing_Donketu_c19func_ov073_02120d80Ev);
     OV73_SEAT(data_ov073_02122fb0, 0x02120dec, pmfb7_ov073_02120dec);
     OV73_SEAT(data_ov073_02122fb8, 0x02120610, pmfb7_ov073_02120610);
     OV73_SEAT(data_ov073_02122fc0, 0x0211fa74, pmfb7_ov073_0211fa74);
-    OV73_SEAT(data_ov073_02122fc8, 0x02120390, func_ov073_02120390);
-    OV73_SEAT(data_ov073_02122fd0, 0x021205f0, func_ov073_021205f0);
-    OV73_SEAT(data_ov073_02122fd8, 0x0211fbec, func_ov073_0211fbec);
+    OV73_SEAT(data_ov073_02122fc8, 0x02120390, _ZN16daKing_Donketu_c19func_ov073_02120390Ev);
+    OV73_SEAT(data_ov073_02122fd0, 0x021205f0, _ZN16daKing_Donketu_c19func_ov073_021205f0Ev);
+    OV73_SEAT(data_ov073_02122fd8, 0x0211fbec, _ZN16daKing_Donketu_c19func_ov073_0211fbecEv);
     OV73_SEAT(data_ov073_02122fe0, 0x02120844, pmfb7_ov073_02120844);
     OV73_SEAT(data_ov073_02122fe8, 0x021203ac, pmfb7_ov073_021203ac);
-    OV73_SEAT(data_ov073_02122ff0, 0x02121538, func_ov073_02121538);
-    OV73_SEAT(data_ov073_02122ff8, 0x0211fc70, func_ov073_0211fc70);
+    OV73_SEAT(data_ov073_02122ff0, 0x02121538, _ZN16daKing_Donketu_c19func_ov073_02121538Ev);
+    OV73_SEAT(data_ov073_02122ff8, 0x0211fc70, _ZN16daKing_Donketu_c19func_ov073_0211fc70Ev);
     OV73_SEAT(data_ov073_02123000, 0x02121388, pmfb7_ov073_02121388);
-    OV73_SEAT(data_ov073_02123008, 0x021208e4, func_ov073_021208e4);
-    OV73_SEAT(data_ov073_02123010, 0x0212081c, func_ov073_0212081c);
-    OV73_SEAT(data_ov073_02123018, 0x0212122c, func_ov073_0212122c);
-    OV73_SEAT(data_ov073_02123020, 0x0211fe84, func_ov073_0211fe84);
+    OV73_SEAT(data_ov073_02123008, 0x021208e4, _ZN16daKing_Donketu_c19func_ov073_021208e4Ev);
+    OV73_SEAT(data_ov073_02123010, 0x0212081c, _ZN16daKing_Donketu_c19func_ov073_0212081cEv);
+    OV73_SEAT(data_ov073_02123018, 0x0212122c, _ZN16daKing_Donketu_c19func_ov073_0212122cEv);
+    OV73_SEAT(data_ov073_02123020, 0x0211fe84, _ZN16daKing_Donketu_c19func_ov073_0211fe84Ev);
     OV73_SEAT(data_ov073_02123028, 0x02120c7c, pmfb7_ov073_02120c7c);
-    OV73_SEAT(data_ov073_02123030, 0x02120c08, func_ov073_02120c08);
+    OV73_SEAT(data_ov073_02123030, 0x02120c08, _ZN16daKing_Donketu_c19func_ov073_02120c08Ev);
     OV73_SEAT(data_ov073_02123038, 0x0211fe8c, pmfb7_ov073_0211fe8c);
     /* CccArena: 8 records -> the four tables at 0x021234a0.. */
     OV73_SEAT(data_ov073_0212310c, 0x02122200, func_ov073_02122200);

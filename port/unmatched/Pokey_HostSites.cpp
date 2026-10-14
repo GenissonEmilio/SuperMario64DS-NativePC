@@ -101,7 +101,7 @@ typedef void (*PortOv096StateFn)(void *);
 extern int _ZTV5Pokey[];
 void _ZN10dBgCh_ActrD1Ev(void *);          /* 0x020373f8, member +0x180 */
 void _ZN7dCcAc_cD1Ev(void *);    /* 0x020149a4, member +0x14c */
-void _ZN11ShadowModelD1Ev(void *);           /* 0x02015ff8, member +0x124 */
+void _ZN17dExtShadowModel_cD1Ev(void *);           /* 0x02015ff8, member +0x124 */
 void _ZN5ModelD1Ev(void *);                  /* 0x02016d20, member +0xd4  */
 void _ZN8dActor_cD2Ev(void *);                  /* 0x020112c8               */
 
@@ -111,7 +111,7 @@ int *_ZN9daSanbo_cD1Ev(int *t)
     t[0] = (int)(size_t)_ZTV5Pokey;
     _ZN10dBgCh_ActrD1Ev((char *)t + 0x180);
     _ZN7dCcAc_cD1Ev((char *)t + 0x14c);
-    _ZN11ShadowModelD1Ev((char *)t + 0x124);
+    _ZN17dExtShadowModel_cD1Ev((char *)t + 0x124);
     _ZN5ModelD1Ev((char *)t + 0xd4);
     _ZN8dActor_cD2Ev(t);
     return t;
@@ -180,7 +180,7 @@ void *_ZNK10dBgCh_Actr13GetWallResultEv(void *c);
 /* PORT_HOST_ABI: mwcc lets an int body fall off the end; MSVC refuses to
    compile it. The ROM sets no r0 at the tail and the one caller declares this
    void, so the value is unobservable. */
-int func_ov096_02135e2c(int *self, void *clsn)
+int _ZN9daSanbo_c19func_ov096_02135e2cEP10dBgCh_Actr(int *self, void *clsn)
 {
     int n0[3];
     int n1[3];

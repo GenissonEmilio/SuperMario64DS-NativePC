@@ -40,34 +40,34 @@
 # below. The function stays named here because it is still unmatched code.
 
 # ---- the seven own vtable slots plus their closure (28 funcs) --------------
-src/_ZN8PaintingD1Ev.cpp
+src/game/actors/d_a_pic_gate.cpp
 # _ZN8PaintingD0Ev.c (D0, slot 17) is EXCLUDED: its recovered src spells the
 # vtable and heap through decl_common's generic VT/HEAP externs, which would
 # collide across classes. hal/actor_classes_painting.cpp hosts the deleting
 # destructor as a thunk (D1 + Memory::Deallocate), the BrickBlock treatment.
-src/func_ov080_02125460.c
-src/func_ov080_0212555c.c
-src/func_ov080_02125630.cpp
-src/func_ov080_021256f8.c
-src/func_ov080_02125940.c
-src/func_ov080_02125af0.c
-src/func_ov080_02125bb0.c
-src/func_ov080_02125cd4.c
-src/func_ov080_02125d08.c
-src/func_ov080_02125d64.c
-src/func_ov080_02125de0.c
-src/func_ov080_02125f00.c
-src/func_ov080_02125fd0.c
-src/func_ov080_02126120.c
-src/func_ov080_02126124.c
-src/func_ov080_021264ec.c
-src/func_ov080_021265ec.c
-src/func_ov080_0212677c.c
-src/func_ov080_021269b8.c
-src/func_ov080_02126a54.c
-src/_ZN8Painting16CleanupResourcesEv.cpp
-src/_ZN8Painting16OnPendingDestroyEv.cpp
-src/d_a_pic_gate.c
+# FOLDED into src/game/actors/d_a_pic_gate.cpp (row 43): src/func_ov080_02125460.c
+# FOLDED into src/game/actors/d_a_pic_gate.cpp (row 43): src/func_ov080_0212555c.c
+# FOLDED into src/game/actors/d_a_pic_gate.cpp (row 43): src/func_ov080_02125630.cpp
+# FOLDED into src/game/actors/d_a_pic_gate.cpp (row 43): src/func_ov080_021256f8.c
+# FOLDED into src/game/actors/d_a_pic_gate.cpp (row 43): src/func_ov080_02125940.c
+# FOLDED into src/game/actors/d_a_pic_gate.cpp (row 43): src/func_ov080_02125af0.c
+# FOLDED into src/game/actors/d_a_pic_gate.cpp (row 43): src/func_ov080_02125bb0.c
+# FOLDED into src/game/actors/d_a_pic_gate.cpp (row 43): src/func_ov080_02125cd4.c
+# FOLDED into src/game/actors/d_a_pic_gate.cpp (row 43): src/func_ov080_02125d08.c
+# FOLDED into src/game/actors/d_a_pic_gate.cpp (row 43): src/func_ov080_02125d64.c
+# FOLDED into src/game/actors/d_a_pic_gate.cpp (row 43): src/func_ov080_02125de0.c
+# FOLDED into src/game/actors/d_a_pic_gate.cpp (row 43): src/func_ov080_02125f00.c
+# FOLDED into src/game/actors/d_a_pic_gate.cpp (row 43): src/func_ov080_02125fd0.c
+# FOLDED into src/game/actors/d_a_pic_gate.cpp (row 43): src/func_ov080_02126120.c
+# FOLDED into src/game/actors/d_a_pic_gate.cpp (row 43): src/func_ov080_02126124.c
+src/actors/daPicGate_c.cpp
+# FOLDED into src/actors/daPicGate_c.cpp (row 63): src/func_ov080_021265ec.c
+# FOLDED into src/actors/daPicGate_c.cpp (row 63): src/func_ov080_0212677c.c
+# FOLDED into src/actors/daPicGate_c.cpp (row 63): src/func_ov080_021269b8.c
+# FOLDED into src/actors/daPicGate_c.cpp (row 63): src/func_ov080_02126a54.c
+# FOLDED into src/actors/daPicGate_c.cpp (row 63): src/_ZN8Painting16CleanupResourcesEv.cpp
+# FOLDED into src/actors/daPicGate_c.cpp (row 63): src/_ZN8Painting16OnPendingDestroyEv.cpp
+# FOLDED into src/actors/daPicGate_c.cpp (row 63): src/d_a_pic_gate.c
 
 # ---- two shared Actor tail methods the painting inherits (slots 19, 29) ----
 # The painting overrides neither, so its vtable slots 19/29 hold the base
@@ -75,8 +75,8 @@ src/d_a_pic_gate.c
 # linked at gate 16) and Actor::OnAimedAtWithEgg (returns a constant radius).
 # The enemy classes never needed these because each overrides both with its
 # own; the painting is the first hosted class to inherit the Actor defaults.
-src/_ZN8dActor_c13OnTurnIntoEggER6Player.cpp
-src/_ZN8dActor_c16OnAimedAtWithEggEv.cpp
+src/actors/dActor_c.cpp
+# FOLDED into src/actors/dActor_c.cpp (row 78): src/_ZN8dActor_c16OnAimedAtWithEggEv.cpp
 # ---- the third Actor tail method, slot 30 ---------------------------------
 # Actor::OnAimedAtWithEggReturnVec (arm9 0x020100dc). This is the ROM word in
 # slot 30 of EVERY Actor-width vtable the port fills except Whomp's -- read out
@@ -86,14 +86,14 @@ src/_ZN8dActor_c16OnAimedAtWithEggEv.cpp
 # slice, so 85 of the 86 fills trapped the slot instead -- and slot 30 is the
 # one a thrown Yoshi egg dispatches on its target every frame of its flight.
 # The sret thunk that reaches it is hal/actor_slot30_seat.cpp.
-src/_ZN8dActor_c25OnAimedAtWithEggReturnVecEv.cpp
+# FOLDED into src/actors/dActor_c.cpp (row 78): src/_ZN8dActor_c25OnAimedAtWithEggReturnVecEv.cpp
 
 # ---- the three static initialisers -----------------------------------------
 # __sinit_ov080_02127b2c builds the twelve-record dispatch table; the other two
 # construct the SharedFilePtrs the InitResources loads through.
-src/__sinit_ov080_021278c0.c
-src/__sinit_ov080_02127a60.c
-src/__sinit_ov080_02127b2c.c
+src/actors/daChoropu_c.cpp
+src/actors/daBttBk_c.cpp
+# FOLDED into src/actors/daPicGate_c.cpp (row 63): src/__sinit_ov080_02127b2c.c
 
 # ---- arm9 closure the painting reaches, not linked by an earlier gate ------
 # SharedFilePtr resolve/load (func_0201787c) and the two texture-copy helpers
@@ -108,6 +108,6 @@ src/__sinit_ov080_02127b2c.c
 # -- measured: "fs fileID 0xf11c matches no archive range"). They are hosted in
 # hal/cxx_aliases.cpp beside func_02017acc, which the ride-through catalog
 # already carried for the other two sinits.
-src/func_0201787c.c
-src/func_02045a50.c
-src/func_02045ad8.c
+src/unnamed/arm9/0201/func_0201787c.c
+src/engine/model/Model4.cpp
+# FOLDED into src/engine/model/Model4.cpp (row 112): src/func_02045ad8.c

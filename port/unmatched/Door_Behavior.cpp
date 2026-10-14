@@ -59,7 +59,7 @@
 
 extern "C" {
 
-void *func_ov100_02145370(void *self);
+void *_ZN8daDoor_c19func_ov100_02145370Ev(void *self);
 
 struct PortPmf { unsigned fn; int delta; };
 extern PortPmf data_ov100_021480d4[], data_ov100_021480dc[],
@@ -69,20 +69,20 @@ extern PortPmf data_ov100_021480d4[], data_ov100_021480dc[],
     data_ov100_0214812c[], data_ov100_02148134[], data_ov100_0214813c[],
     data_ov100_02148144[];
 
-int func_ov100_02144730(void *, void *);
-int func_ov100_02144ccc(void *, void *);
-int func_ov100_02144c6c(void *, void *);
-int func_ov100_02144bf4(void *, void *);
-int func_ov100_02144c64(void *, void *);
-int func_ov100_021449c8(void *, void *);
-int func_ov100_02144a38(void *, void *);
-int func_ov100_02144468(void *, void *);
-int func_ov100_02144950(void *, void *);
-int func_ov100_021446f8(void *, void *);
-int func_ov100_02144528(void *, void *);
-int func_ov100_021444e8(void *, void *);
-int func_ov100_02144cf8(void *, void *);
-int func_ov100_0214491c(void *, void *);
+int _ZN8daDoor_c19func_ov100_02144730EP6Player(void *, void *);
+int _ZN8daDoor_c19func_ov100_02144cccEv(void *, void *);
+int _ZN8daDoor_c19func_ov100_02144c6cEP6Player(void *, void *);
+int _ZN8daDoor_c19func_ov100_02144bf4EP6Player(void *, void *);
+int _ZN8daDoor_c19func_ov100_02144c64Ev(void *, void *);
+int _ZN8daDoor_c19func_ov100_021449c8EP6Player(void *, void *);
+int _ZN8daDoor_c19func_ov100_02144a38EP6Player(void *, void *);
+int _ZN8daDoor_c19func_ov100_02144468Ei(void *, void *);
+int _ZN8daDoor_c19func_ov100_02144950EP6Playeri(void *, void *);
+int _ZN8daDoor_c19func_ov100_021446f8EP6Player(void *, void *);
+int _ZN8daDoor_c19func_ov100_02144528EP6Player(void *, void *);
+int _ZN8daDoor_c19func_ov100_021444e8Ei(void *, void *);
+int _ZN8daDoor_c19func_ov100_02144cf8EP6Player(void *, void *);
+int _ZN8daDoor_c19func_ov100_0214491cEv(void *, void *);
 
 }  /* extern "C" */
 
@@ -112,38 +112,38 @@ typedef int (*PortDoorFn)(void *, void *);
         return sym(self, arg);                                             \
     }
 
-DOOR_FACE(func_ov100_02144730)
-DOOR_FACE(func_ov100_02144ccc)
-DOOR_FACE(func_ov100_02144c6c)
-DOOR_FACE(func_ov100_02144bf4)
-DOOR_FACE(func_ov100_02144c64)
-DOOR_FACE(func_ov100_021449c8)
-DOOR_FACE(func_ov100_02144a38)
-DOOR_FACE(func_ov100_02144468)
-DOOR_FACE(func_ov100_02144950)
-DOOR_FACE(func_ov100_021446f8)
-DOOR_FACE(func_ov100_02144528)
-DOOR_FACE(func_ov100_021444e8)
-DOOR_FACE(func_ov100_02144cf8)
-DOOR_FACE(func_ov100_0214491c)
+DOOR_FACE(_ZN8daDoor_c19func_ov100_02144730EP6Player)
+DOOR_FACE(_ZN8daDoor_c19func_ov100_02144cccEv)
+DOOR_FACE(_ZN8daDoor_c19func_ov100_02144c6cEP6Player)
+DOOR_FACE(_ZN8daDoor_c19func_ov100_02144bf4EP6Player)
+DOOR_FACE(_ZN8daDoor_c19func_ov100_02144c64Ev)
+DOOR_FACE(_ZN8daDoor_c19func_ov100_021449c8EP6Player)
+DOOR_FACE(_ZN8daDoor_c19func_ov100_02144a38EP6Player)
+DOOR_FACE(_ZN8daDoor_c19func_ov100_02144468Ei)
+DOOR_FACE(_ZN8daDoor_c19func_ov100_02144950EP6Playeri)
+DOOR_FACE(_ZN8daDoor_c19func_ov100_021446f8EP6Player)
+DOOR_FACE(_ZN8daDoor_c19func_ov100_02144528EP6Player)
+DOOR_FACE(_ZN8daDoor_c19func_ov100_021444e8Ei)
+DOOR_FACE(_ZN8daDoor_c19func_ov100_02144cf8EP6Player)
+DOOR_FACE(_ZN8daDoor_c19func_ov100_0214491cEv)
 
 static const struct { PortPmf *slot; unsigned rom; PortDoorFn host; }
 g_door_callbacks[] = {
-    {data_ov100_021480d4, 0x02144730, (PortDoorFn)door_f_func_ov100_02144730},
-    {data_ov100_021480dc, 0x02144ccc, (PortDoorFn)door_f_func_ov100_02144ccc},
-    {data_ov100_021480e4, 0x02144c6c, (PortDoorFn)door_f_func_ov100_02144c6c},
-    {data_ov100_021480ec, 0x02144bf4, (PortDoorFn)door_f_func_ov100_02144bf4},
-    {data_ov100_021480f4, 0x02144c64, (PortDoorFn)door_f_func_ov100_02144c64},
-    {data_ov100_021480fc, 0x021449c8, (PortDoorFn)door_f_func_ov100_021449c8},
-    {data_ov100_02148104, 0x02144730, (PortDoorFn)door_f_func_ov100_02144730},
-    {data_ov100_0214810c, 0x02144a38, (PortDoorFn)door_f_func_ov100_02144a38},
-    {data_ov100_02148114, 0x02144468, (PortDoorFn)door_f_func_ov100_02144468},
-    {data_ov100_0214811c, 0x02144950, (PortDoorFn)door_f_func_ov100_02144950},
-    {data_ov100_02148124, 0x021446f8, (PortDoorFn)door_f_func_ov100_021446f8},
-    {data_ov100_0214812c, 0x02144528, (PortDoorFn)door_f_func_ov100_02144528},
-    {data_ov100_02148134, 0x021444e8, (PortDoorFn)door_f_func_ov100_021444e8},
-    {data_ov100_0214813c, 0x02144cf8, (PortDoorFn)door_f_func_ov100_02144cf8},
-    {data_ov100_02148144, 0x0214491c, (PortDoorFn)door_f_func_ov100_0214491c},
+    {data_ov100_021480d4, 0x02144730, (PortDoorFn)door_f__ZN8daDoor_c19func_ov100_02144730EP6Player},
+    {data_ov100_021480dc, 0x02144ccc, (PortDoorFn)door_f__ZN8daDoor_c19func_ov100_02144cccEv},
+    {data_ov100_021480e4, 0x02144c6c, (PortDoorFn)door_f__ZN8daDoor_c19func_ov100_02144c6cEP6Player},
+    {data_ov100_021480ec, 0x02144bf4, (PortDoorFn)door_f__ZN8daDoor_c19func_ov100_02144bf4EP6Player},
+    {data_ov100_021480f4, 0x02144c64, (PortDoorFn)door_f__ZN8daDoor_c19func_ov100_02144c64Ev},
+    {data_ov100_021480fc, 0x021449c8, (PortDoorFn)door_f__ZN8daDoor_c19func_ov100_021449c8EP6Player},
+    {data_ov100_02148104, 0x02144730, (PortDoorFn)door_f__ZN8daDoor_c19func_ov100_02144730EP6Player},
+    {data_ov100_0214810c, 0x02144a38, (PortDoorFn)door_f__ZN8daDoor_c19func_ov100_02144a38EP6Player},
+    {data_ov100_02148114, 0x02144468, (PortDoorFn)door_f__ZN8daDoor_c19func_ov100_02144468Ei},
+    {data_ov100_0214811c, 0x02144950, (PortDoorFn)door_f__ZN8daDoor_c19func_ov100_02144950EP6Playeri},
+    {data_ov100_02148124, 0x021446f8, (PortDoorFn)door_f__ZN8daDoor_c19func_ov100_021446f8EP6Player},
+    {data_ov100_0214812c, 0x02144528, (PortDoorFn)door_f__ZN8daDoor_c19func_ov100_02144528EP6Player},
+    {data_ov100_02148134, 0x021444e8, (PortDoorFn)door_f__ZN8daDoor_c19func_ov100_021444e8Ei},
+    {data_ov100_0214813c, 0x02144cf8, (PortDoorFn)door_f__ZN8daDoor_c19func_ov100_02144cf8EP6Player},
+    {data_ov100_02148144, 0x0214491c, (PortDoorFn)door_f__ZN8daDoor_c19func_ov100_0214491cEv},
 };
 
 extern "C" void port_door_callbacks_seat(void)

@@ -15,4 +15,4 @@
 #       It replaces the host transcription
 #       port/unmatched/MeshCollider_DetectClsn_Sphere.cpp (retired, off
 #       port/slice_gate8.txt), on the seven targets that slice fed.
-src/_ZN7dBgW_Kc10DetectClsnER12dBgCh_SphCrr.cpp
+src/engine/collision/dBgW_Kc_itcm.cpp

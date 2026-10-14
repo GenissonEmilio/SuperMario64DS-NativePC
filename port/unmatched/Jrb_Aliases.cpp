@@ -44,13 +44,13 @@
 #include <cstddef>
 
 extern "C" {
-int func_ov002_020b5e58(char *self, char *fp);
+int _ZN17daObjFloatBoard_c19func_ov002_020b5e58EP27daObjFloatBoard_c_Resources(char *self, char *fp);
 }
 
 /* #1 is gone: the three ov016 callers name func_ov016_02111bf0 directly now,
    through the per-source renames in the gate-smalls CMake block. */
 /* #2: the bare func_020b5e58 -> the ov002 matched body. Both C linkage. */
-#pragma comment(linker, "/alternatename:_func_020b5e58=_func_ov002_020b5e58")
+#pragma comment(linker, "/alternatename:_func_020b5e58=__ZN17daObjFloatBoard_c19func_ov002_020b5e58EP27daObjFloatBoard_c_Resources")
 /* #3: ShipUp's void* data reference to UpdatePosWithTransform -> the real
    static method (the gate-59 host body). */
 #pragma comment(linker, "/alternatename:?_ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_@@3PAXA=?UpdatePosWithTransform@dBgW@@SAXAAU1@PAUActor@@AAUClsnResult@@AAUVector3@@PAUVector3_16@@4@Z")

@@ -114,5 +114,5 @@ g_profile_HS_Y_STAR:0x1c g_profile_HS_B_STAR:0x1c
 # Four SharedFilePtrs (8 bytes each, sized by the delta rule) and their four
 # destructor-chain nodes (12 bytes each; the last one pinned, see above).
 data_ov031_02111a00 data_ov031_02111a08 data_ov031_02111a10
-data_ov031_02111a18 data_ov031_02111a20 data_ov031_02111a2c
-data_ov031_02111a38 data_ov031_02111a44:0xc
+data_ov031_02111a18 data_ov031_02111a20@0x02111a20 data_ov031_02111a2c@0x02111a2c
+data_ov031_02111a38@0x02111a38 data_ov031_02111a44@0x02111a44:0xc

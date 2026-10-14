@@ -48,13 +48,13 @@ struct PortPmf { unsigned fn; int delta; };
 extern PortPmf data_ov002_021109d8[];
 
 /* the fourteen state bodies, all matched ov002 src */
-void func_ov002_020e9af4(void *); void func_ov002_020ea06c(void *);
-void func_ov002_020ea420(void *); void func_ov002_020ea9d0(void *);
-void func_ov002_020e9804(void *); void func_ov002_020e9d18(void *);
-void func_ov002_020e96a0(void *); void func_ov002_020e99e8(void *);
-void func_ov002_020ea410(void *); void func_ov002_020e9840(void *);
-void func_ov002_020ea100(void *); void func_ov002_020ea7ac(void *);
-void func_ov002_020ea824(void *); void func_ov002_020ea90c(void *);
+void _ZN8daStar_c19func_ov002_020e9af4Ev(void *); void _ZN8daStar_c19func_ov002_020ea06cEv(void *);
+void _ZN8daStar_c19func_ov002_020ea420Ev(void *); void _ZN8daStar_c19func_ov002_020ea9d0Ev(void *);
+void _ZN8daStar_c19func_ov002_020e9804Ev(void *); void _ZN8daStar_c19func_ov002_020e9d18Ev(void *);
+void _ZN8daStar_c19func_ov002_020e96a0Ev(void *); void _ZN8daStar_c19func_ov002_020e99e8Ev(void *);
+void _ZN8daStar_c19func_ov002_020ea410Ev(void *); void _ZN8daStar_c19func_ov002_020e9840Ev(void *);
+void _ZN8daStar_c19func_ov002_020ea100Ev(void *); void _ZN8daStar_c19func_ov002_020ea7acEv(void *);
+void _ZN8daStar_c19func_ov002_020ea824Ev(void *); void _ZN8daStar_c19func_ov002_020ea90cEv(void *);
 
 /* KING OF THE STAR dupe guards (port/unmatched/PowerStar_KingGuards.cpp). They
    seat in place of the src bodies for dispatch states 5 (collect confirm/revoke)
@@ -64,15 +64,15 @@ void port_king_power_star_state13(void *);
 
 /* the matched-src calls PowerStar::Behavior makes around the dispatch */
 int _ZN12dEnemyBase_c14UpdateYoshiEatER10dBgCh_Actr(char *c, char *clsn);
-void func_ov002_020d718c(void *p);
+void _ZN6Player19func_ov002_020d718cEv(void *p);
 void _ZN5dCc_c5ClearEv(char *c);
 void _ZN8dActor_c9UpdatePosEP5dCc_c(char *c, void *clsn);
 void _ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3(char *c, const void *v);
 void _ZN5dCc_c6UpdateEv(char *c);
-void func_ov002_020e700c(void *p);
-void func_ov002_020e763c(void *p);
-void func_ov002_020e84ec(void *p);
-void func_ov002_020e7eb8(void *p);
+void _ZN8daStar_c19func_ov002_020e700cEv(void *p);
+void _ZN8daStar_c19func_ov002_020e763cEv(void *p);
+void _ZN8daStar_c19func_ov002_020e84ecEv(void *p);
+void _ZN8daStar_c19func_ov002_020e7eb8Ev(void *p);
 extern int data_0209b454;
 extern int data_ov002_0210aa0c[3];
 
@@ -105,38 +105,38 @@ extern int data_ov002_0210aa0c[3];
 #define STAR_FACE(sym)                                                        \
     static void __fastcall pmf_face_##sym(void *self, void *dead_edx)         \
     { sym(self); }
-STAR_FACE(func_ov002_020ea9d0)
-STAR_FACE(func_ov002_020ea90c)
-STAR_FACE(func_ov002_020ea824)
-STAR_FACE(func_ov002_020ea7ac)
-STAR_FACE(func_ov002_020ea420)
+STAR_FACE(_ZN8daStar_c19func_ov002_020ea9d0Ev)
+STAR_FACE(_ZN8daStar_c19func_ov002_020ea90cEv)
+STAR_FACE(_ZN8daStar_c19func_ov002_020ea824Ev)
+STAR_FACE(_ZN8daStar_c19func_ov002_020ea7acEv)
+STAR_FACE(_ZN8daStar_c19func_ov002_020ea420Ev)
 STAR_FACE(port_king_power_star_state5)
-STAR_FACE(func_ov002_020ea06c)
-STAR_FACE(func_ov002_020e9d18)
-STAR_FACE(func_ov002_020e99e8)
-STAR_FACE(func_ov002_020e9840)
-STAR_FACE(func_ov002_020ea410)
-STAR_FACE(func_ov002_020e9af4)
-STAR_FACE(func_ov002_020e9804)
+STAR_FACE(_ZN8daStar_c19func_ov002_020ea06cEv)
+STAR_FACE(_ZN8daStar_c19func_ov002_020e9d18Ev)
+STAR_FACE(_ZN8daStar_c19func_ov002_020e99e8Ev)
+STAR_FACE(_ZN8daStar_c19func_ov002_020e9840Ev)
+STAR_FACE(_ZN8daStar_c19func_ov002_020ea410Ev)
+STAR_FACE(_ZN8daStar_c19func_ov002_020e9af4Ev)
+STAR_FACE(_ZN8daStar_c19func_ov002_020e9804Ev)
 STAR_FACE(port_king_power_star_state13)
 #undef STAR_FACE
 
 #define SF(sym) (void (*)(void *))pmf_face_##sym
 static const struct { unsigned rom; void (*host)(void *); }
 g_power_star_states[14] = {
-    {0x020ea9d0, SF(func_ov002_020ea9d0)},   /* [0]  */
-    {0x020ea90c, SF(func_ov002_020ea90c)},   /* [1]  */
-    {0x020ea824, SF(func_ov002_020ea824)},   /* [2]  */
-    {0x020ea7ac, SF(func_ov002_020ea7ac)},   /* [3]  */
-    {0x020ea420, SF(func_ov002_020ea420)},   /* [4]  */
+    {0x020ea9d0, SF(_ZN8daStar_c19func_ov002_020ea9d0Ev)},   /* [0]  */
+    {0x020ea90c, SF(_ZN8daStar_c19func_ov002_020ea90cEv)},   /* [1]  */
+    {0x020ea824, SF(_ZN8daStar_c19func_ov002_020ea824Ev)},   /* [2]  */
+    {0x020ea7ac, SF(_ZN8daStar_c19func_ov002_020ea7acEv)},   /* [3]  */
+    {0x020ea420, SF(_ZN8daStar_c19func_ov002_020ea420Ev)},   /* [4]  */
     {0x020ea100, SF(port_king_power_star_state5)},   /* [5]  king guard wraps src */
-    {0x020ea06c, SF(func_ov002_020ea06c)},   /* [6]  */
-    {0x020e9d18, SF(func_ov002_020e9d18)},   /* [7]  */
-    {0x020e99e8, SF(func_ov002_020e99e8)},   /* [8]  */
-    {0x020e9840, SF(func_ov002_020e9840)},   /* [9]  */
-    {0x020ea410, SF(func_ov002_020ea410)},   /* [10] */
-    {0x020e9af4, SF(func_ov002_020e9af4)},   /* [11] */
-    {0x020e9804, SF(func_ov002_020e9804)},   /* [12] */
+    {0x020ea06c, SF(_ZN8daStar_c19func_ov002_020ea06cEv)},   /* [6]  */
+    {0x020e9d18, SF(_ZN8daStar_c19func_ov002_020e9d18Ev)},   /* [7]  */
+    {0x020e99e8, SF(_ZN8daStar_c19func_ov002_020e99e8Ev)},   /* [8]  */
+    {0x020e9840, SF(_ZN8daStar_c19func_ov002_020e9840Ev)},   /* [9]  */
+    {0x020ea410, SF(_ZN8daStar_c19func_ov002_020ea410Ev)},   /* [10] */
+    {0x020e9af4, SF(_ZN8daStar_c19func_ov002_020e9af4Ev)},   /* [11] */
+    {0x020e9804, SF(_ZN8daStar_c19func_ov002_020e9804Ev)},   /* [12] */
     {0x020e96a0, SF(port_king_power_star_state13)},   /* [13] king guard (host copy) */
 };
 #undef SF

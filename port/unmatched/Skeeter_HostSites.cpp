@@ -95,7 +95,7 @@ int  func_02035638(u8 *p);
 void *_ZN8dActor_c13ClosestPlayerEv(void *self);
 void func_020aea30(void *self, void *p, int n);
 u16  DecIfAbove0_Short(u16 *p);
-void _ZN9Animation7AdvanceEv(void *self);
+void _ZN15dExtFrameCtrl_c7AdvanceEv(void *self);
 void func_ov090_021310b4(void *c);
 extern signed char data_0209f2f8;
 

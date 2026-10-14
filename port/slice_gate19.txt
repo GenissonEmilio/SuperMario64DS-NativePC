@@ -17,8 +17,8 @@
 # save's cannon-unlock bit before it will open; with a fresh save the lid
 # stays shut, which is exactly what the level looks like before Bob-omb Buddy
 # opens it. Nothing here chases the cannon-entry path.
-src/d_a_cnn.cpp
-src/_ZN6Cannon13InitResourcesEv.cpp
+src/game/actors/d_a_cnn.cpp
+# FOLDED into src/game/actors/d_a_cnn.cpp (row 20): src/_ZN6Cannon13InitResourcesEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN6CannonD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN6CannonD0Ev.cpp
 # _ZN6Cannon8BehaviorEv is NOT here either: it dispatches an mwcc
@@ -26,8 +26,8 @@ src/_ZN6Cannon13InitResourcesEv.cpp
 # fourth time. The dispatch frame and the state seat stay host
 # (port/unmatched/Cannon_Behavior.cpp); the state bodies are matched src.
 # State 1 (the lid opening) went byte-perfect at 2004/b56 in PR #1227:
-src/func_ov098_0213ade8.c
-src/_ZN6Cannon16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_cnn.cpp (row 20): src/func_ov098_0213ade8.c
+# FOLDED into src/game/actors/d_a_cnn.cpp (row 20): src/_ZN6Cannon16CleanupResourcesEv.cpp
 # _ZN6Cannon6RenderEv is NOT here: it dispatches Model slots 3 and 5 through
 # a local shadow class, which is ROM numbering, and the host _ZTV5Model is
 # MSVC's. Slot 5 the host array already serves both ways (the dual fill in
@@ -42,29 +42,30 @@ src/_ZN6Cannon16CleanupResourcesEv.cpp
 # member destructor calls against a layout that is not the ROM's.
 
 # ---- the overlay's own static initialisers --------------------------------
-src/__sinit_ov098_0213bf9c.c
-src/__sinit_ov098_0213c058.c
-src/__sinit_ov098_0213c214.c
-src/__sinit_ov098_0213c2b4.c
+src/unnamed/ov098/__sinit_ov098_0213bf9c.c
+src/actors/daObjBlockS_c.cpp
+# FOLDED into src/game/actors/d_a_cnn.cpp (row 20): src/__sinit_ov098_0213c214.c
+src/actors/daWbm_c.cpp
 
 # ---- the two helpers the cannon's own Behavior closes over -----------------
 # 0213a984 is the save read that keeps the lid shut; 0213b15c is the aim/lid
 # update it runs once the save says otherwise.
-src/func_ov098_0213a984.c
-src/func_ov098_0213b15c.cpp
+# FOLDED into src/game/actors/d_a_cnn.cpp (row 20): src/func_ov098_0213a984.c
+# FOLDED into src/game/actors/d_a_cnn.cpp (row 20): src/func_ov098_0213b15c.cpp
 
 # --- linkloop round 0 ---
-src/func_ov098_0213aa28.c
-src/func_ov098_0213ad08.c
-src/func_ov098_0213b0a4.cpp
+# FOLDED into src/game/actors/d_a_cnn.cpp (row 20): src/func_ov098_0213aa28.c
+# FOLDED into src/game/actors/d_a_cnn.cpp (row 20): src/func_ov098_0213ad08.c
+# FOLDED into src/game/actors/d_a_cnn.cpp (row 20): src/func_ov098_0213b0a4.cpp
 
 # --- linkloop round 1 ---
-src/_ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE.cpp
-src/func_ov002_020df300.c
-src/func_ov002_020df34c.cpp
+src/actors/dActor_c.cpp
+port/unmatched/hostarm/_ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE.cpp
+src/actors/Player.cpp
+# FOLDED into src/actors/Player.cpp (row 63): src/func_ov002_020df34c.cpp
 src/actors/daBmb_c.cpp
 
 # --- linkloop round 2 ---
-src/func_0200d438.c
-src/func_0200d474.c
-src/func_ov002_020ef228.cpp
+src/engine/view/dCamera_c.cpp
+# FOLDED into src/engine/view/dCamera_c.cpp (row 68): src/func_0200d474.c
+src/actors/dBgActor_c.cpp

@@ -150,7 +150,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 #include "dActor_c.h"
 #include "dtor_faces_cpp.h"
 #include "fBase_c.h"
-#include "MrI.h"
+#include "daEykn_c.h"
 #include "daEyBm_c.h"
 
 extern "C" {
@@ -184,11 +184,11 @@ void port_actor_render_probe(const char *cls, void *model); /* actor_classes */
    below, not by the _ZN name -- the Scuttlebug Init/Behavior/Render treatment.
    InitResources IS spelled extern "C" inside its own TU, so it keeps the
    _ZN name; Render is this lane's host copy. */
-int _ZN3MrI13InitResourcesEv(char *self);      /* slot 0,  nonmatching src, extern "C" */
-int _ZN3MrI16CleanupResourcesEv(void);         /* slot 3,  C linkage, no self */
-int _ZN3MrI6RenderEv(void *self);              /* slot 9,  HOST COPY */
-void _ZN3MrI16OnPendingDestroyEv(void);        /* slot 12, empty, no self */
-int *_ZN3MrID0Ev(int *self);                   /* slot 17, C linkage */
+int _ZN8daEykn_c13InitResourcesEv(char *self);      /* slot 0,  nonmatching src, extern "C" */
+int _ZN8daEykn_c16CleanupResourcesEv(void);         /* slot 3,  C linkage, no self */
+int _ZN8daEykn_c6RenderEv(void *self);              /* slot 9,  HOST COPY */
+void _ZN8daEykn_c16OnPendingDestroyEv(void);        /* slot 12, empty, no self */
+int *_ZN8daEykn_cD0Ev(int *self);                   /* slot 17, C linkage */
 void *daEykn_c_classInit_EYEKUN(void);
 void *daEykn_c_classInit_EYEKUN_BOSS(void);
 
@@ -204,7 +204,7 @@ void *daEyBm_c_classInit(void);
 /* the D1 chains' sub-object destructors, all C-linkage in the build (the same
    node dtors the two D0 TUs call) */
 void _ZN10dCcAcPos_cD1Ev(void *);
-void _ZN11ShadowModelD1Ev(void *);
+void _ZN17dExtShadowModel_cD1Ev(void *);
 void _ZN15TextureSequenceD1Ev(void *);
 void _ZN9ModelAnimD1Ev(void *);
 void _ZN10dBgCh_ActrD1Ev(void *);
@@ -215,7 +215,7 @@ void *_ZN8dActor_cD2Ev(void *);
    slots each. Defined here, not just declared: the `int` type and C linkage
    match the `extern int _ZTV3MrI[]` in include/decl_common.h that the .c
    factories and D0s read. */
-int _ZTV3MrI[31];
+int _ZTV8daEykn_c[31];
 int _ZTV14MrI_Projectile[31];
 }
 
@@ -223,7 +223,7 @@ int _ZTV14MrI_Projectile[31];
    addresses) into slot 0; both references are C linkage, so point the
    underscore spellings at the one host array each -- the daSpd_c / daChoropu_c
    precedent in the sibling fill. */
-#pragma comment(linker, "/alternatename:__ZTV8daEykn_c=__ZTV3MrI")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV8daEykn_c=__ZTV8daEykn_c")
 #pragma comment(linker, "/alternatename:__ZTV8daEyBm_c=__ZTV14MrI_Projectile")
 
 /* NAME RACE RESOLVED BY ADDRESS (the shared-window rule, and the same disease
@@ -338,20 +338,20 @@ static int __fastcall mri_aimed(void *s, void *)
 
 // ---- MR. I's own slots ------------------------------------------------------
 static int __fastcall mri_init(void *s, void *)
-{ return _ZN3MrI13InitResourcesEv((char *)s); }
+{ return _ZN8daEykn_c13InitResourcesEv((char *)s); }
 static int __fastcall mri_clean(void *s, void *)
-{ (void)s; return _ZN3MrI16CleanupResourcesEv(); }
+{ (void)s; return _ZN8daEykn_c16CleanupResourcesEv(); }
 static int __fastcall mri_behavior(void *s, void *)
-{ return ((MrI *)s)->MrI::Behavior(); }
+{ return ((daEykn_c *)s)->daEykn_c::Behavior(); }
 /* Render is the MrI_Render host copy (ROM-order ModelAnim slot-5 dispatch, the
    Whomp/Fish case), not the matched TU. */
 static int __fastcall mri_render(void *s, void *)
 { port_actor_render_probe("MR_I", (char *)s + 0xd4);
-  return _ZN3MrI6RenderEv(s); }
+  return _ZN8daEykn_c6RenderEv(s); }
 static int __fastcall mri_pdes(void *s, void *)
-{ (void)s; _ZN3MrI16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN8daEykn_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall mri_d0(void *s, void *)
-{ return (int)(size_t)_ZN3MrID0Ev((int *)s); }
+{ return (int)(size_t)_ZN8daEykn_cD0Ev((int *)s); }
 /* D1, the complete-object destructor ROM slot 16 holds: the D0 chain without
    the Memory::Deallocate at its tail. */
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
@@ -410,7 +410,7 @@ static int __fastcall mrp_yoshi(void *s, void *)
    _ZTV3MrI, and the class tells the two apart by its own actor id. */
 extern "C" void hal_fill_mri_vtable(void)
 {
-    void **vt = (void **)_ZTV3MrI;
+    void **vt = (void **)_ZTV8daEykn_c;
     vt[0]  = (void *)mri_init;
     vt[3]  = (void *)mri_clean;
     vt[6]  = (void *)mri_behavior;

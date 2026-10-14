@@ -30,7 +30,7 @@
 # address) and VERIFIED by tools/prepush_linkcheck.py; none has an
 # #ifdef _MSC_VER arm, and none needed one.
 src/LoadFile.c
-src/func_0201817c.c
-src/func_0201818c.c
-src/func_020186c0.c
-src/func_0204ede8.c
+src/unnamed/arm9/0201/func_0201817c.c
+src/unnamed/arm9/0201/func_0201818c.c
+src/unnamed/arm9/0201/func_020186c0.c
+src/engine/sound/SoundEngine.cpp

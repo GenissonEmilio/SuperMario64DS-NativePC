@@ -102,7 +102,7 @@ void *daSpd_c_classInit(void);
    node dtors ScuttlebugD0 calls) */
 void _ZN10dBgCh_ActrD1Ev(void *);         /* the WithMeshClsn at +0x194 */
 void _ZN7dCcAc_cD1Ev(void *);   /* the MovingCylinderClsn at +0x160 */
-void _ZN11ShadowModelD1Ev(void *);          /* the ShadowModel at +0x138 */
+void _ZN17dExtShadowModel_cD1Ev(void *);          /* the ShadowModel at +0x138 */
 void _ZN9ModelAnimD1Ev(void *);             /* the ModelAnim at +0xd4 */
 void *_ZN8dActor_cD2Ev(void *);                /* the Actor base */
 
@@ -158,7 +158,7 @@ int _ZTV10Scuttlebug[31];
      compiled body (slice_gate10) is the int-return spelling. eax either way.
    - func_ov071_0211f524 declares the arm9 identity matrix as a C++ Mtx43;
      romdata.c defines the C symbol. */
-#pragma comment(linker, "/alternatename:_AnimLoadFile=?LoadFile@Animation@@SAPADAAUSharedFilePtr@@@Z")
+#pragma comment(linker, "/alternatename:_AnimLoadFile=?LoadFile@dExtFrameCtrl_c@@SAPADAAUSharedFilePtr@@@Z")
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines ?Init@dBgCh_Actr@@QAEXPAUActor@@HHPAUVector3_16@@H@Z, and nothing references ?Init@dBgCh_Actr@@QAEXPAUActor@@HHPAXH@Z, so the row can never fire and nothing wants it to. */
 // #pragma comment(linker, "/alternatename:?Init@dBgCh_Actr@@QAEXPAUActor@@HHPAXH@Z=?Init@dBgCh_Actr@@QAEXPAUActor@@HHPAUVector3_16@@H@Z")
 #pragma comment(linker, "/alternatename:?GetFloorResult@dBgCh_Actr@@QBEPAXXZ=?GetFloorResult@dBgCh_Actr@@QBEHXZ")

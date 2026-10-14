@@ -49,4 +49,4 @@
 # retires and the matched TU takes the seat. The ROM's own reference is the
 # record at BookSwitch_SpawnInfo (0x02114898), whose fn word holds 0x021115a4
 # and which the seat checks against the mount before it rewrites it.
-src/BookSwitch_Spawn.c
+src/actors/daMoray_c.cpp

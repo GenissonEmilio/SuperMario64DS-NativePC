@@ -82,12 +82,12 @@
 # dropped). If either frame is ever displaced into a host copy, the guard row
 # retires, the exclusion stops matching, and both rows come back here.
 
-_ZN10FaderColorD1Ev|src/__sinit_02073e6c.c
-_ZN10FaderColorD1Ev|src/__sinit_02074edc.c
+_ZN10dFdColor_cD1Ev|src/__sinit_02073e6c.c
+_ZN10dFdColor_cD1Ev|src/__sinit_02074edc.c
 _ZN9dBgCh_LinC1Ev|src/__sinit_0207501c.c
-_ZN11ShadowModel12InitCylinderEv|port/unmatched/Boo_InitResources.c
-_ZN11ShadowModel12InitCylinderEv|src/game/actors/daTrs_c/_ZN7daTrs_c13InitResourcesEv.cpp
-_ZN11ShadowModel9InitModelEP9Matrix4x35Fix12IiES3_S3_j|src/func_ov006_020c07a0.c
+_ZN17dExtShadowModel_c12InitCylinderEv|port/unmatched/Boo_InitResources.c
+_ZN17dExtShadowModel_c12InitCylinderEv|src/game/actors/daTrs_c/_ZN7daTrs_c13InitResourcesEv.cpp
+_ZN17dExtShadowModel_c9InitModelEP9Matrix4x35Fix12IiES3_S3_j|src/func_ov006_020c07a0.c
 _ZN10dBgCh_Actr13SetLimMovFlagEv|src/func_ov077_02125a0c.c
 _ZN10dBgCh_Actr16UpdateContinuousEv|src/dBgCh_Actr_UpdateContinuous_Veneer.c
 _ZN10dBgCh_Actr20UpdateDiscreteNoLavaEv|src/dBgCh_Actr_UpdateDiscreteNoLava_veneer.c
@@ -119,7 +119,7 @@ _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt|src/actors/daBombking_c.cpp
 _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt|src/actors/daBombking_c.cpp
 _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt|src/actors/daBombking_c.cpp
 _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt|src/actors/daBombking_c.cpp
-_ZN15FaderBrightnessD1Ev|src/__sinit_02074edc.c
+_ZN15dFdBrightness_cD1Ev|src/__sinit_02074edc.c
 _ZN4dBgW7DisableEv|src/_ZN17BigMovingIceBlock16CleanupResourcesEv.cpp
 _ZN4dBgW7DisableEv|src/game/actors/d_a_obj_emm_log.cpp
 _ZN4dBgW9IsEnabledEv|src/_ZN17BigMovingIceBlock16CleanupResourcesEv.cpp
@@ -164,7 +164,7 @@ _ZN8dActor_c9UpdatePosEP5dCc_c|src/func_ov077_02123fcc.c
 _ZN5Event6GetBitEj|src/_ZN9TinyWater8BehaviorEv.cpp
 _ZN5Event6SetBitEj|src/func_ov089_02131dcc.c
 _ZN5Event8ClearBitEj|src/func_ov002_020ba0bc.c
-_ZN5Fader13AdvanceInterpEv|include/decl_Fader.h
+_ZN8dFader_c13AdvanceInterpEv|include/decl_Fader.h
 _ZN5Model12HideMaterialEii|src/func_ov006_020c0e8c.c
 _ZN5Model12ShowMaterialEii|src/func_ov006_020c0e8c.c
 _ZN5Model6RenderEPK7Vector3|src/func_ov006_020c07a0.c
@@ -191,7 +191,7 @@ _ZN6Player18St_LevelEnter_MainEv|include/decl_Player.h
 _ZN6Player29TryExitCharacterDoorWithIntroEv|src/minigames/d_s_mg_trampoline2.cpp
 _ZN6Player9GetHealthEv|src/actors/Player.cpp
 _ZN6Player9GetHealthEv|src/actors/daBombking_c.cpp
-_ZN7ClipperD1Ev|src/__sinit_02074e84.cpp
+_ZN8dClipperD1Ev|src/__sinit_02074e84.cpp
 _ZN7Message6UpdateEv|src/_ZN7Message13DisplaySavingEt.cpp
 _ZN7Message6UpdateEv|src/func_0201f138.cpp
 _ZN7Message6UpdateEv|src/func_0201f32c.c
@@ -215,16 +215,16 @@ _ZN7fBase_c18MarkForDestructionEv|src/func_ov089_02131dcc.c
 _ZN7fBase_c18MarkForDestructionEv|src/_ZN6Fwoosh13OnTurnIntoEggER6Player.cpp
 _ZN7fBase_c18MarkForDestructionEv|src/unnamed/ov063/func_ov063_02116dbc.c
 _ZN7fBase_c21AfterCleanupResourcesEj|src/_ZN8dActor_c21AfterCleanupResourcesEj.cpp
-_ZN9Animation7AdvanceEv|src/_ZN9TinyWater8BehaviorEv.cpp
-_ZN9Animation7AdvanceEv|src/game/actors/daBrq_c.cpp
-_ZN9Animation7AdvanceEv|src/game/actors/d_a_krpa.cpp
-_ZN9Animation7AdvanceEv|src/func_ov077_02123fcc.c
-_ZN9Animation8FinishedEv|src/func_ov006_020c0ce8.c
-_ZN9Animation8FinishedEv|src/func_ov006_020c395c.c
-_ZN9Animation8FinishedEv|src/func_ov075_021141b8.c
-_ZN9Animation8FinishedEv|src/func_ov075_02114218.c
-_ZN9Animation8LoadFileER13SharedFilePtr|port/unmatched/Boo_InitResources.c
-_ZN9Animation8LoadFileER13SharedFilePtr|src/game/actors/daTrs_c/_ZN7daTrs_c13InitResourcesEv.cpp
+_ZN15dExtFrameCtrl_c7AdvanceEv|src/_ZN9TinyWater8BehaviorEv.cpp
+_ZN15dExtFrameCtrl_c7AdvanceEv|src/game/actors/daBrq_c.cpp
+_ZN15dExtFrameCtrl_c7AdvanceEv|src/game/actors/d_a_krpa.cpp
+_ZN15dExtFrameCtrl_c7AdvanceEv|src/func_ov077_02123fcc.c
+_ZN15dExtFrameCtrl_c8FinishedEv|src/func_ov006_020c0ce8.c
+_ZN15dExtFrameCtrl_c8FinishedEv|src/func_ov006_020c395c.c
+_ZN15dExtFrameCtrl_c8FinishedEv|src/func_ov075_021141b8.c
+_ZN15dExtFrameCtrl_c8FinishedEv|src/func_ov075_02114218.c
+_ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr|port/unmatched/Boo_InitResources.c
+_ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr|src/game/actors/daTrs_c/_ZN7daTrs_c13InitResourcesEv.cpp
 _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj|port/unmatched/Boo_InitResources.c
 _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj|src/game/actors/daTrs_c/_ZN7daTrs_c13InitResourcesEv.cpp
 _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj|src/func_ov062_02116238.c
@@ -241,9 +241,9 @@ _ZN9ModelBase7SetFileEP8BMD_Fileii|port/unmatched/Boo_InitResources.c
 _ZN9ModelBase7SetFileEP8BMD_Fileii|src/game/actors/d_a_obj_kb1_billboard.cpp
 _ZN9ModelBase7SetFileEP8BMD_Fileii|src/game/actors/daTrs_c/_ZN7daTrs_c13InitResourcesEv.cpp
 _ZN9ModelBase7SetFileEP8BMD_Fileii|src/func_ov006_020c3884.c
-_ZN9PowerStar13AddStarMarkerEv|src/func_ov002_020e8dd8.c
+_ZN8daStar_c13AddStarMarkerEv|src/func_ov002_020e8dd8.c
 _ZNK10dBgCh_Actr10IsOnGroundEv|src/func_ov073_02120844.c
 _ZNK10dBgCh_Actr13JustHitGroundEv|src/game/actors/daBrq_c.cpp
 _ZNK10dBgCh_Actr13JustHitGroundEv|src/game/actors/d_a_krpa.cpp
 _ZNK10dBgCh_Actr13JustHitGroundEv|src/func_ov077_02123fcc.c
-_ZNK9Animation12WillHitFrameEi|src/_ZN5Bully13PlayStepSoundEv.cpp
+_ZNK15dExtFrameCtrl_c12WillHitFrameEi|src/_ZN5Bully13PlayStepSoundEv.cpp

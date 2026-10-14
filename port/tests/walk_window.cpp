@@ -538,7 +538,7 @@ extern char dsstate_lo, dsstate_hi;
 void *_ZN6PlayerC1Ev(void *self);
 /* Player::InitResources' own character-propagation helper: +0x6d9 forward
    into the swap pair at +0x6dc/+0x6dd (src/actors/Player.cpp) */
-void func_ov002_020beabc(void *p);
+void _ZN6Player19func_ov002_020beabcEv(void *p);
 void *_ZN4Heap13SetupRootHeapEv(void);
 /* the ROM's entry into the above: clears the OS globals word, tail-calls it.
    Seated from src/_ZN4Heap18InitializeRootHeapEv.cpp; the C name reaches the
@@ -626,7 +626,7 @@ extern int data_0209f4a6[];   /* pad stick WORLD angle -- auto_bss split
    Stage::Behavior calls it now (_ZTV5Stage slot 6, run link100 lane FRAME);
    this file calls it only on the frames that never dispatch the Stage at all
    -- see the fallback beside the Ctrl fan-out, past the tick chain. */
-void _ZN5Stage10CheckInputEv(void);
+void _ZN10dScStage_c10CheckInputEv(void);
 /* how many times the slot-6 thunk has run the ROM's Stage::Behavior, counted
    by the thunk itself (hal/stage_frame.cpp). The fallback above reads it to
    tell "the Stage ticked this frame" from "it did not", which is the only
@@ -723,7 +723,7 @@ extern unsigned char data_ov002_0211049c[];  /* St_Wait state object */
    helpers, so the log shows the numbers the physics actually used and not a
    second guess at them. 020c031c is the slip class (Player+0x658, promoted
    for one state); 020bf56c scales a brake rate by that class. */
-int func_ov002_020c031c(void *c);
+int _ZN6Player19func_ov002_020c031cEv(void *c);
 int func_ov002_020bf56c(void *c, int b);
 int Player_ScaleByCharFactor(void *c, int a);
 /* SM64DS_FORCE_STATE=walljump probe: the ST_WALL_JUMP State record and the
@@ -869,7 +869,7 @@ extern unsigned char data_02086efc[];  /* up vector {0, 0x1000, 0} */
 extern unsigned char data_020a1050[];  /* the heading func_0203dafc publishes */
 extern int data_0209f43c[];          /* the Clipper (hal/camera_bridges) */
 extern int data_020a4b78[];          /* the behaviour processing list */
-int _ZN7Clipper13Func_020150E8ER7Vector35Fix12IiEPh(void *clipper, void *pos,
+int _ZN8dClipper13Func_020150E8ER7Vector35Fix12IiEPh(void *clipper, void *pos,
                                                     int clip, unsigned char *h);
 /* the two matrix calls VirtualDoor::Behavior itself uses to put the Player in
    an exit's local frame and to take a local point back out to the world */
@@ -1008,9 +1008,9 @@ void port_stage_render_model_transparent(void *self);
 void port_stage_advance_anims(void *self); /* Stage::Render's first block: the
                                               level's BTA texture animations */
 void port_stage_render_skybox(void *self); /* the +0x9bc Model, camera-glued */
-void _ZN5Stage9LoadModelEv(char *self);   /* matched src, slice_gate24 */
-void _ZN5Stage10LoadSkyboxEv(char *self); /* matched src, slice_gate26 */
-unsigned _ZN5Stage11GetSkyboxIDEv(void);  /* the LVL_Overlay's skybox bits */
+void _ZN10dScStage_c9LoadModelEv(char *self);   /* matched src, slice_gate24 */
+void _ZN10dScStage_c10LoadSkyboxEv(char *self); /* matched src, slice_gate26 */
+unsigned _ZN10dScStage_c11GetSkyboxIDEv(void);  /* the LVL_Overlay's skybox bits */
 extern int data_0209f320;                 /* the Stage's ModelComponents */
 int port_stage_path_guard(void *player);
 /* the HOST-side description of the level (hal/level_boot.cpp's own statics,
@@ -2364,8 +2364,8 @@ static void port_exit_place(char *ex, char *player, int z, int beside)
    It never calls into the door, never calls CanEnterDoor, and never writes a
    State: the door opens because the ROM's own test passes. Inert with the
    two variables unset. */
-extern "C" void *_ZTV4Door[31];   /* hal/actor_classes.cpp, ov100 0x02148188 */
-extern "C" int func_ov100_021452e4(char *door, char *player);
+extern "C" void *_ZTV8daDoor_c[31];   /* hal/actor_classes.cpp, ov100 0x02148188 */
+extern "C" int _ZN8daDoor_c19func_ov100_021452e4EP6Player(char *door, char *player);
 extern "C" void Vec3_RotateYAndTranslate(int *out, int *in, short angle,
                                          int *src);
 
@@ -2375,7 +2375,7 @@ static char *port_door_nth(int idx)
     for (int *node = (int *)(size_t)data_020a4b78[0]; node;
          node = (int *)(size_t)node[1]) {
         char *o = (char *)(size_t)node[2];
-        if (!o || *(void ***)o != _ZTV4Door)
+        if (!o || *(void ***)o != _ZTV8daDoor_c)
             continue;
         if (n++ == idx)
             return o;
@@ -2416,7 +2416,7 @@ static char *port_door_opening(void)
     for (int *node = (int *)(size_t)data_020a4b78[0]; node;
          node = (int *)(size_t)node[1]) {
         char *o = (char *)(size_t)node[2];
-        if (!o || *(void ***)o != _ZTV4Door)
+        if (!o || *(void ***)o != _ZTV8daDoor_c)
             continue;
         void *cb = *(void **)(o + 0x140);
         if (cb == (void *)data_ov100_021488f4 ||
@@ -2436,7 +2436,7 @@ static void port_door_watch(int frame, char *c)
     for (int *node = (int *)(size_t)data_020a4b78[0]; node;
          node = (int *)(size_t)node[1]) {
         char *o = (char *)(size_t)node[2];
-        if (!o || *(void ***)o != _ZTV4Door)
+        if (!o || *(void ***)o != _ZTV8daDoor_c)
             continue;
         void *cb = *(void **)(o + 0x140);
         fprintf(stderr, "[door] f%d #%d p1=%u pos(%d,%d,%d) yaw %04x "
@@ -2448,7 +2448,7 @@ static void port_door_watch(int frame, char *c)
                 (unsigned short)*(short *)(o + 0x8e),
                 *(int *)(o + 0x80) >> 12, *(int *)(o + 0x84) >> 12,
                 *(int *)(o + 0x88) >> 12,
-                c ? func_ov100_021452e4(o, c) : -1,
+                c ? _ZN8daDoor_c19func_ov100_021452e4EP6Player(o, c) : -1,
                 port_door_node_name(cb),
                 c ? *(int *)(c + 0x5c) >> 12 : 0,
                 c ? *(int *)(c + 0x60) >> 12 : 0,
@@ -2467,7 +2467,7 @@ static void port_door_dump(void)
     for (int *node = (int *)(size_t)data_020a4b78[0]; node;
          node = (int *)(size_t)node[1]) {
         char *o = (char *)(size_t)node[2];
-        if (!o || *(void ***)o != _ZTV4Door)
+        if (!o || *(void ***)o != _ZTV8daDoor_c)
             continue;
         fprintf(stderr, "[door] %2d actorID %u param1 %u at (%d,%d,%d) "
                 "yaw %04x  key model %d  node %s\n", n,
@@ -13446,9 +13446,9 @@ int main(void)
            and parks it at Stage+0x9bc; port_stage_render_skybox draws it in
            front of the opaque pass, glued to the camera eye. Id 0 leaves
            +0x9bc NULL and both sides no-op, same as the ROM. */
-        _ZN5Stage10LoadSkyboxEv(stage);
+        _ZN10dScStage_c10LoadSkyboxEv(stage);
         printf("skybox loaded by Stage::LoadSkybox, id %u, model %s\n",
-               _ZN5Stage11GetSkyboxIDEv(),
+               _ZN10dScStage_c11GetSkyboxIDEv(),
                *(void **)(stage + 0x9bc) ? "set" : "none");
     } else {
         static struct { unsigned short id; unsigned char refs; void *p; } mp;
@@ -15597,7 +15597,7 @@ int main(void)
                     srst_answered = 1;
                     fprintf(stderr, "[loopin2] f%d soft reset: the ROM's latch "
                             "is up and its clears ran this frame; its fade "
-                            "cannot step on this port (data_0208eacc slot 2 is "
+                            "cannot step on this port (_ZTV15dFdBrightness_c slot 2 is "
                             "trapped), so the level loop answers it as a return "
                             "to the front door\n", frame);
                     if (g_selftest_frames) {
@@ -16351,7 +16351,7 @@ int main(void)
                     *(int *)(c + 0xa8) = 0;
                     *(int *)(c + 0xac) = 0;
                     fprintf(stderr, "[void] f%d drop to (%d,%d,%d); the plane "
-                            "func_ov002_020c5d60 tests is -29952 and the "
+                            "_ZN6Player19func_ov002_020c5d60Ev tests is -29952 and the "
                             "level's own is player+0x644 = %d\n", frame,
                             *(int *)(c + 0x5c) >> 12, vd_y,
                             *(int *)(c + 0x64) >> 12,
@@ -16886,7 +16886,7 @@ int main(void)
                        filePtr back inside one level. */
                     void *bmd = *(void **)(level_model + 0x04);
                     level_shift = bmd ? *(int *)bmd : 0;
-                    _ZN5Stage10LoadSkyboxEv(stage);
+                    _ZN10dScStage_c10LoadSkyboxEv(stage);
                 }
                 an_pivot_live = 0;        /* do not ease the camera across it */
                 if (cam_mode != CAM_DS && cam) fc_seed(cam);
@@ -17550,7 +17550,7 @@ int main(void)
             static unsigned frame_beh_seen;
             const unsigned frame_beh_now = port_stage_behavior_calls();
             if (frame_beh_now == frame_beh_seen) {
-                _ZN5Stage10CheckInputEv();
+                _ZN10dScStage_c10CheckInputEv();
                 port_frame_ctrl_publish();
             }
             frame_beh_seen = frame_beh_now;
@@ -17831,7 +17831,7 @@ int main(void)
         if (decel_probe && !decel_stopped) {
             static int prev_spd = 0, prev_px = 0, prev_pz = 0;
             const int spd = *(int *)(c + 0x98);
-            const int cls = func_ov002_020c031c(c);
+            const int cls = _ZN6Player19func_ov002_020c031cEv(c);
             const int px = *(int *)(c + 0x5c), pz = *(int *)(c + 0x64);
             /* step is what the speed scalar was WORTH in world units this
                frame. If step and spd ever disagree the bug is downstream of
@@ -18192,7 +18192,7 @@ int main(void)
                 if (id != 336 && id != 344 && id != 343 && id != 187)
                     continue;
                 unsigned char hint = *(unsigned char *)(o + 0xc4);
-                int r = _ZN7Clipper13Func_020150E8ER7Vector35Fix12IiEPh(
+                int r = _ZN8dClipper13Func_020150E8ER7Vector35Fix12IiEPh(
                     (char *)data_0209f43c, o + 0x74, *(int *)(o + 0xb8),
                     &hint);
                 int k = 0;

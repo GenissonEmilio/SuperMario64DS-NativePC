@@ -134,9 +134,9 @@ src/actors/daMky_c.cpp
 # close nothing themselves, so the trade is five translation units for one row
 # and a fresh closure into the OS boot path that hal/boot_os.cpp already has
 # opinions about. Left for a lane that wants that whole region.
-src/__sinit_ov023_02111aa8.c
-src/func_0205fc44.c
-src/func_ov002_020e3e00.cpp
+port/unmatched/__sinit_ov023_02111aa8.c
+src/unnamed/arm9/0205/func_0205fc44.c
+src/actors/Player.cpp
 
 # ---------------------------------------------------------------------------
 # dScMgD3DBase_c, THE MINIGAME 3D BASE CLASS

@@ -184,8 +184,8 @@ ALIAS_FIXTURES = [
 # --------------------------------------------------------------------------
 ARITY_FIXTURES = [
     ("FaderColor::AdvanceFade", "include/decl_FaderColor.h",
-     "extern void _ZN10FaderColor11AdvanceFadeEv(void);",
-     "extern void _ZN10FaderColor11AdvanceFadeEv(void*);",
+     "extern void _ZN10dFdColor_c11AdvanceFadeEv(void);",
+     "extern void _ZN10dFdColor_c11AdvanceFadeEv(void*);",
      "a member's receiver rides r0; declared (void) the caller passes nothing "
      "and the body reads its own caller's return address as `this`",
      "PR #1539, cons ba1b0a670, 2026-08-16"),
@@ -207,8 +207,8 @@ ARITY_FIXTURES = [
 # --------------------------------------------------------------------------
 PLAIN_FIXTURES = [
     ("Sort or 'Splode per-bomb tick", "src/func_ov006_020d8cc4.cpp",
-     'extern "C" void func_ov006_020d836c(void);',
-     'extern "C" void func_ov006_020d836c(char* c);',
+     'extern "C" void _ZN14dScMgBomroom_c19func_ov006_020d836cEv(void);',
+     'extern "C" void _ZN14dScMgBomroom_c19func_ov006_020d836cEv(char* c);',
      "the bin-full sweep waits on the per-bomb tick; declared (void) the "
      "host call pushes nothing, 020d836c reads a garbage receiver out of "
      "the caller's saved registers, and scene 370 softlocks the first time "

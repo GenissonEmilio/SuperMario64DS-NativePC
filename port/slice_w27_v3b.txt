@@ -28,10 +28,14 @@
 # match.py 2004/b56 strict MATCHING, linkcheck VERIFIED blind 0, and the
 # arm's object checked against the call list of the body it replaces
 # (runs/linkfull/out/V3B/).
-src/_ZN15dScMgPachinko_cD0Ev.cpp
-src/_ZN19BowserPuzzleManagerD0Ev.cpp
-src/_ZN10dScTitle_cD0Ev.cpp
-src/_ZN11ShadowModelD0Ev.cpp
+src/actors/dScMgPachinko_c.cpp
+port/unmatched/hostarm/_ZN15dScMgPachinko_cD0Ev.cpp
+src/actors/daObjFl_Coin_c.cpp
+port/unmatched/hostarm/_ZN19BowserPuzzleManagerD0Ev.cpp
+src/actors/dScTitle_c.cpp
+port/unmatched/hostarm/_ZN10dScTitle_cD0Ev.cpp
+src/engine/model/dExtShadowModel_c.cpp
+port/unmatched/hostarm/_ZN11ShadowModelD0Ev.cpp
 #
 # BATCH 3, THREE COMPLETE-OBJECT DESTRUCTORS (D1, vtable slot 16), each named
 # by a slot-16 host path that spelled its body by hand or aliased past it:
@@ -47,6 +51,9 @@ src/_ZN11ShadowModelD0Ev.cpp
 # refused daDsnBase_c's TU when it was enrolled WITHOUT an arm (it defined no
 # name of its own); with the arm it defines the ROM's flat D1, which the
 # ROM's _ZTV11daDsnBase_c holds in slot 16, and slot 16 names it.
-src/_ZN9LightBeamD1Ev.cpp
-src/_ZN12MetalNetLiftD1Ev.cpp
-src/_ZN11daDsnBase_cD1Ev.cpp
+src/game/actors/d_a_obj_c1_hikari.cpp
+port/unmatched/hostarm/_ZN9LightBeamD1Ev.cpp
+src/actors/daObjFl_Amilift_c.cpp
+port/unmatched/hostarm/_ZN12MetalNetLiftD1Ev.cpp
+src/actors/daDsnBase_c.cpp
+port/unmatched/hostarm/_ZN11daDsnBase_cD1Ev.cpp

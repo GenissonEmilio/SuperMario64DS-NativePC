@@ -134,45 +134,44 @@ void port_enemy_death_states_seat(void);  /* unmatched/Enemy_UpdateDeath.cpp */
    host-copied in unmatched/KoopaChuckya_StateDispatch.cpp with
    Chuckya_ChangeState. Render IS here: the .c calls Model::Render by its
    Itanium C name, no shadow, and stays in the slice. */
-int _ZN7Chuckya13InitResourcesEv(void *self);    /* slot 0,  .c */
-int _ZN7Chuckya16CleanupResourcesEv(void *self); /* slot 3,  .c */
-int _ZN7Chuckya8BehaviorEv(void *self);          /* slot 6,  HOST COPY */
-int _ZN7Chuckya6RenderEv(void *self);            /* slot 9,  .c, direct call */
-void _ZN7Chuckya16OnPendingDestroyEv(void);      /* slot 12, .c, empty (void) */
-int *_ZN7ChuckyaD1Ev(int *self);                 /* slot 16, .c, own table */
-int *_ZN7ChuckyaD0Ev(int *self);                 /* slot 17, .c, own table */
-int _ZN7Chuckya16OnAimedAtWithEggEv(void);                   /* slot 29, returns 0xCA000 */
+int _ZN10daHolhei_c13InitResourcesEv(void *self);    /* slot 0,  .c */
+int _ZN10daHolhei_c16CleanupResourcesEv(void *self); /* slot 3,  .c */
+int _ZN10daHolhei_c8BehaviorEv(void *self);          /* slot 6,  HOST COPY */
+int _ZN10daHolhei_c6RenderEv(void *self);            /* slot 9,  .c, direct call */
+void _ZN10daHolhei_c16OnPendingDestroyEv(void);      /* slot 12, .c, empty (void) */
+int *_ZN10daHolhei_cD1Ev(int *self);                 /* slot 16, .c, own table */
+int *_ZN10daHolhei_cD0Ev(int *self);                 /* slot 17, .c, own table */
+int _ZN10daHolhei_c16OnAimedAtWithEggEv(void);                   /* slot 29, returns 0xCA000 */
 void *daHolhei_c_classInit(void);                       /* installs _ZTV7Chuckya itself */
 
 /* ---- KOOPA (203) / daNknk_c: the bodies ----
    Init/Cleanup/Behavior are real MSVC .cpp methods against include/Koopa.h,
    faced below. Render is the ModelAnim slot-5 collision -- host copy in
    unmatched/Koopa_Render.cpp. The rest are C linkage in the slice. */
-int _ZN5Koopa13InitResourcesEv(void *self);      /* slot 0,  face below */
-int _ZN5Koopa16CleanupResourcesEv(void *self);   /* slot 3,  face below */
-int _ZN5Koopa8BehaviorEv(void *self);            /* slot 6,  face below */
-int _ZN5Koopa6RenderEv(void *self);              /* slot 9,  HOST COPY */
-void _ZN5Koopa16OnPendingDestroyEv(void);        /* slot 12, .c, empty (void) */
-int *_ZN5KoopaD1Ev(int *self);                   /* slot 16, .c, own table */
-int *_ZN5KoopaD0Ev(int *self);                   /* slot 17, .c, own table */
-int _ZN5Koopa13OnYoshiTryEatEv(void *self);             /* slot 18, OnYoshiTryEat */
-void _ZN5Koopa13OnTurnIntoEggER6Player(void *self, void *p);   /* slot 19, OnTurnIntoEgg */
-int _ZN5Koopa16OnAimedAtWithEggEv(void *self);             /* slot 29, OnAimedAtWithEgg */
+int _ZN8daNknk_c13InitResourcesEv(void *self);      /* slot 0,  face below */
+int _ZN8daNknk_c16CleanupResourcesEv(void *self);   /* slot 3,  face below */
+int _ZN8daNknk_c8BehaviorEv(void *self);            /* slot 6,  face below */
+int _ZN8daNknk_c6RenderEv(void *self);              /* slot 9,  HOST COPY */
+void _ZN8daNknk_c16OnPendingDestroyEv(void);        /* slot 12, .c, empty (void) */
+int *_ZN8daNknk_cD1Ev(int *self);                   /* slot 16, .c, own table */
+int *_ZN8daNknk_cD0Ev(int *self);                   /* slot 17, .c, own table */
+int _ZN8daNknk_c13OnYoshiTryEatEv(void *self);             /* slot 18, OnYoshiTryEat */
+void _ZN8daNknk_c13OnTurnIntoEggER6Player(void *self, void *p);   /* slot 19, OnTurnIntoEgg */
+int _ZN8daNknk_c16OnAimedAtWithEggEv(void *self);             /* slot 29, OnAimedAtWithEgg */
 void *daNknk_c_classInit_NOKONOKO(void);                         /* installs _ZTV5Koopa itself */
 
 /* the two derived vtables, HOST arrays this file fills; 31 slots each. `int[]`
    with C linkage matches the `extern int _ZTV..[]` decls in include/decl_common.h
    that the .c factories and D-tors read (the montymole reading). */
-int _ZTV7Chuckya[31];
-int _ZTV5Koopa[31];
+int _ZTV10daHolhei_c[31];
+int _ZTV8daNknk_c[31];
 }
 
 /* Each D0 spells its class's table by the RTTI alias -- the SAME ROM address
    (_ZTV10daHolhei_c = _ZTV7Chuckya = 0x0211d9e0; _ZTV8daNknk_c = _ZTV5Koopa =
    0x0211dab4). Point both at the host arrays -- the daBbl_c reading. */
-#pragma comment(linker, "/alternatename:__ZTV10daHolhei_c=__ZTV7Chuckya")
-#pragma comment(linker, "/alternatename:__ZTV8daNknk_c=__ZTV5Koopa")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV10daHolhei_c=__ZTV10daHolhei_c")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV8daNknk_c=__ZTV8daNknk_c")
 /* Shared-base sibling spellings: two ov062 bodies whose CALLERS spell them
    by the sibling overlays' names (dsd names a shared-image function under the
    overlay that saw it first). Same address family, same cdecl bodies -- alias
@@ -325,26 +324,26 @@ static void kc182_fill_shared_0_30(void **vt)
 // CHUCKYA (190) -- daHolhei_c, 31 slots
 // ============================================================================
 static int __fastcall chk_init(void *s, void *)
-{ return _ZN7Chuckya13InitResourcesEv(s); }
+{ return _ZN10daHolhei_c13InitResourcesEv(s); }
 static int __fastcall chk_clean(void *s, void *)
-{ return _ZN7Chuckya16CleanupResourcesEv(s); }
+{ return _ZN10daHolhei_c16CleanupResourcesEv(s); }
 static int __fastcall chk_behavior(void *s, void *)
-{ return _ZN7Chuckya8BehaviorEv(s); }        /* HOST COPY (PMF dispatch) */
+{ return _ZN10daHolhei_c8BehaviorEv(s); }        /* HOST COPY (PMF dispatch) */
 static int __fastcall chk_render(void *s, void *)
 { port_actor_render_probe("CHUCKYA", (char *)s + 0x300);
-  return _ZN7Chuckya6RenderEv(s); }           /* .c, direct Model::Render call */
+  return _ZN10daHolhei_c6RenderEv(s); }           /* .c, direct Model::Render call */
 static int __fastcall chk_pdes(void *s, void *)
-{ (void)s; _ZN7Chuckya16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN10daHolhei_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall chk_d1(void *s, void *)
-{ return (int)(size_t)_ZN7ChuckyaD1Ev((int *)s); }
+{ return (int)(size_t)_ZN10daHolhei_cD1Ev((int *)s); }
 static int __fastcall chk_d0(void *s, void *)
-{ return (int)(size_t)_ZN7ChuckyaD0Ev((int *)s); }
+{ return (int)(size_t)_ZN10daHolhei_cD0Ev((int *)s); }
 static int __fastcall chk_aimed(void *s, void *)
-{ (void)s; return _ZN7Chuckya16OnAimedAtWithEggEv(); }    /* slot 29, its own, no args */
+{ (void)s; return _ZN10daHolhei_c16OnAimedAtWithEggEv(); }    /* slot 29, its own, no args */
 
 extern "C" void hal_fill_chuckya_vtable(void)
 {
-    void **vt = (void **)_ZTV7Chuckya;
+    void **vt = (void **)_ZTV10daHolhei_c;
     port_enemy_death_states_seat();
     kc182_fill_shared_0_30(vt);
     vt[0]  = (void *)chk_init;
@@ -362,30 +361,30 @@ extern "C" void hal_fill_chuckya_vtable(void)
 // not registered this gate)
 // ============================================================================
 static int __fastcall kp_init(void *s, void *)
-{ return _ZN5Koopa13InitResourcesEv(s); }
+{ return _ZN8daNknk_c13InitResourcesEv(s); }
 static int __fastcall kp_clean(void *s, void *)
-{ return _ZN5Koopa16CleanupResourcesEv(s); }
+{ return _ZN8daNknk_c16CleanupResourcesEv(s); }
 static int __fastcall kp_behavior(void *s, void *)
-{ return _ZN5Koopa8BehaviorEv(s); }
+{ return _ZN8daNknk_c8BehaviorEv(s); }
 static int __fastcall kp_render(void *s, void *)
 { port_actor_render_probe("KOOPA", (char *)s + 0x300);
-  return _ZN5Koopa6RenderEv(s); }             /* HOST COPY (slot-5 collision) */
+  return _ZN8daNknk_c6RenderEv(s); }             /* HOST COPY (slot-5 collision) */
 static int __fastcall kp_pdes(void *s, void *)
-{ (void)s; _ZN5Koopa16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN8daNknk_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall kp_d1(void *s, void *)
-{ return (int)(size_t)_ZN5KoopaD1Ev((int *)s); }
+{ return (int)(size_t)_ZN8daNknk_cD1Ev((int *)s); }
 static int __fastcall kp_d0(void *s, void *)
-{ return (int)(size_t)_ZN5KoopaD0Ev((int *)s); }
+{ return (int)(size_t)_ZN8daNknk_cD0Ev((int *)s); }
 static int __fastcall kp_yoshi(void *s, void *)
-{ return _ZN5Koopa13OnYoshiTryEatEv(s); }            /* slot 18, its own: 5 or 6 */
+{ return _ZN8daNknk_c13OnYoshiTryEatEv(s); }            /* slot 18, its own: 5 or 6 */
 static int __fastcall kp_egg(void *s, void *, void *p)
-{ _ZN5Koopa13OnTurnIntoEggER6Player(s, p); return 0; }      /* slot 19, its own */
+{ _ZN8daNknk_c13OnTurnIntoEggER6Player(s, p); return 0; }      /* slot 19, its own */
 static int __fastcall kp_aimed(void *s, void *)
-{ return _ZN5Koopa16OnAimedAtWithEggEv(s); }            /* slot 29, its own */
+{ return _ZN8daNknk_c16OnAimedAtWithEggEv(s); }            /* slot 29, its own */
 
 extern "C" void hal_fill_koopa_vtable(void)
 {
-    void **vt = (void **)_ZTV5Koopa;
+    void **vt = (void **)_ZTV8daNknk_c;
     port_enemy_death_states_seat();
     kc182_fill_shared_0_30(vt);
     vt[0]  = (void *)kp_init;
@@ -408,11 +407,11 @@ extern "C" void hal_fill_koopa_vtable(void)
 // Behavior/ChangeState are host copies (extern "C" in the StateDispatch file).
 #include "Koopa.h"
 extern "C" {
-int _ZN5Koopa13InitResourcesEv(void *self)
+int _ZN8daNknk_c13InitResourcesEv(void *self)
 { return ((Koopa *)self)->Koopa::InitResources(); }
-int _ZN5Koopa16CleanupResourcesEv(void *self)
+int _ZN8daNknk_c16CleanupResourcesEv(void *self)
 { return ((Koopa *)self)->Koopa::CleanupResources(); }
-int _ZN5Koopa8BehaviorEv(void *self)
+int _ZN8daNknk_c8BehaviorEv(void *self)
 { return ((Koopa *)self)->Koopa::Behavior(); }
 }
 
@@ -452,19 +451,19 @@ int _ZN5Koopa8BehaviorEv(void *self)
 // the five BlendModelAnim owners (Klepto among them), so Render stays a faced
 // .cpp method here, not a host copy.
 extern "C" {
-int _ZN6Klepto13InitResourcesEv(void *self);      /* face below */
-int _ZN6Klepto8BehaviorEv(void *self);            /* host copy (StateDispatch) */
-int _ZN6Klepto6RenderEv(void *self);              /* host copy (Klepto_Render) */
-int _ZN6Klepto16CleanupResourcesEv(void);         /* C-named in its own .c TU */
-void _ZN6Klepto16OnPendingDestroyEv(void);        /* empty body, its own .c TU */
-int *_ZN6KleptoD1Ev(int *self);
-int *_ZN6KleptoD0Ev(int *self);
-void *_ZTV6Klepto[31];
+int _ZN9daJango_c13InitResourcesEv(void *self);      /* face below */
+int _ZN9daJango_c8BehaviorEv(void *self);            /* host copy (StateDispatch) */
+int _ZN9daJango_c6RenderEv(void *self);              /* host copy (Klepto_Render) */
+int _ZN9daJango_c16CleanupResourcesEv(void);         /* C-named in its own .c TU */
+void _ZN9daJango_c16OnPendingDestroyEv(void);        /* empty body, its own .c TU */
+int *_ZN9daJango_cD1Ev(int *self);
+int *_ZN9daJango_cD0Ev(int *self);
+void *_ZTV9daJango_c[31];
 void port_klepto_states_seat(void);               /* port/unmatched */
 }
 /* The bird's own D0 spells its table by the RTTI name; both names are the same
    ROM word, so this aliases the one nominal to the host array. */
-#pragma comment(linker, "/alternatename:__ZTV9daJango_c=__ZTV6Klepto")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV9daJango_c=__ZTV9daJango_c")
 /* The class's .cpp bodies (InitResources, Render, and the .cpp state handlers)
    reach the mounted ov062/arm9 data and the real ROM methods under C++ mangled
    names; bridge each to the C mount/decomp symbol (the KoopaShell / bowserpuzzle
@@ -492,9 +491,9 @@ void port_klepto_states_seat(void);               /* port/unmatched */
 // #pragma comment(linker, "/alternatename:?Spawn@dActor_c@@SAIIIABUVector3@@PBUVector3_16@@HH@Z=__ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as")
 
 static int __fastcall klp_init(void *s, void *)
-{ return _ZN6Klepto13InitResourcesEv(s); }
+{ return _ZN9daJango_c13InitResourcesEv(s); }
 static int __fastcall klp_clean(void *, void *)
-{ return _ZN6Klepto16CleanupResourcesEv(); }
+{ return _ZN9daJango_c16CleanupResourcesEv(); }
 /* SM64DS_KLEPTO_PROBE=1: one line per Behavior tick -- position, which of
    the five state descriptors is seated at +0x42c (14c..18c, by distance from
    data_ov062_0211e14c), the held-actor id (+0x44c), the two timers (+0x100,
@@ -509,7 +508,7 @@ static int __fastcall klp_behavior(void *s, void *)
 {
     static int on = -1;
     if (on < 0) on = std::getenv("SM64DS_KLEPTO_PROBE") != 0;
-    int r = _ZN6Klepto8BehaviorEv(s);
+    int r = _ZN9daJango_c8BehaviorEv(s);
     if (on) {
         char *c = (char *)s;
         int st = (int)(*(unsigned char **)(c + 0x42c) - data_ov062_0211e14c);
@@ -535,22 +534,22 @@ static int __fastcall klp_behavior(void *s, void *)
 }
 static int __fastcall klp_render(void *s, void *)
 { port_actor_render_probe("KLEPTO", (char *)s + 0x334);
-  return _ZN6Klepto6RenderEv(s); }
+  return _ZN9daJango_c6RenderEv(s); }
 static int __fastcall klp_pdes(void *s, void *)
-{ (void)s; _ZN6Klepto16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN9daJango_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall klp_d1(void *s, void *)
-{ return (int)(size_t)_ZN6KleptoD1Ev((int *)s); }
+{ return (int)(size_t)_ZN9daJango_cD1Ev((int *)s); }
 static int __fastcall klp_d0(void *s, void *)
-{ return (int)(size_t)_ZN6KleptoD0Ev((int *)s); }
+{ return (int)(size_t)_ZN9daJango_cD0Ev((int *)s); }
 /* slot 29, OnAimedAtWithEgg. GATE 228; see the fill for the table word. The ROM
    body takes no parameters at all, receiver included. */
-extern "C" int _ZN6Klepto16OnAimedAtWithEggEv(void);   /* ov062 0x0211ce78 */
+extern "C" int _ZN9daJango_c16OnAimedAtWithEggEv(void);   /* ov062 0x0211ce78 */
 static int __fastcall klp_aimed(void *, void *)
-{ return _ZN6Klepto16OnAimedAtWithEggEv(); }
+{ return _ZN9daJango_c16OnAimedAtWithEggEv(); }
 
 extern "C" void hal_fill_klepto_vtable(void)
 {
-    void **vt = (void **)_ZTV6Klepto;
+    void **vt = (void **)_ZTV9daJango_c;
     port_klepto_states_seat();
     port_enemy_death_states_seat();
     kc182_fill_shared_0_30(vt);
@@ -583,8 +582,8 @@ extern "C" void hal_fill_klepto_vtable(void)
 // _ZTV14BlendModelAnim is MSVC-ordered (Render 4, Virtual18 5), so a shadow
 // slot-5 lands on Virtual18 and faults in Model::Virtual10 (the ModelAnim_
 // Renders / blend_vtable trap). It lives in unmatched/Klepto_Render.cpp.
-#include "Klepto.h"
+#include "daJango_c.h"
 extern "C" {
-int _ZN6Klepto13InitResourcesEv(void *self)
-{ return ((Klepto *)self)->Klepto::InitResources(); }
+int _ZN9daJango_c13InitResourcesEv(void *self)
+{ return ((daJango_c *)self)->daJango_c::InitResources(); }
 }

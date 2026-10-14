@@ -52,10 +52,10 @@ int _ZN6Player12Unk_020c6a10Ej(void *self, unsigned a)
 /* CommonModel::DoSetFile (arm9 0x02016144), which is the whole of that class's
    ROM vtable past its two destructors, and the two Sound layer-3 methods the
    king's boss music starts and stops. Same shape as the rest of this file. */
-#include "CommonModel.h"
-extern "C" int _ZN11CommonModel9DoSetFileEPcii(void *self, char *f, int a,
+#include "dExtCommonModel_c.h"
+extern "C" int _ZN17dExtCommonModel_c9DoSetFileEPcii(void *self, char *f, int a,
                                                int b)
-{ return ((CommonModel *)self)->CommonModel::DoSetFile(f, a, b); }
+{ return ((dExtCommonModel_c *)self)->dExtCommonModel_c::DoSetFile(f, a, b); }
 
 
 /* Model::HideMaterial (arm9 0x02016a58), which KOOPA_THE_QUICK's Render calls

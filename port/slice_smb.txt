@@ -168,59 +168,59 @@
 # unreadable as a closure. The genuinely new content is the 41 ov006 lines.
 
 # ---- ov006: dScMgSmartball_c's own closure, 41 TUs (42 reached, 1 excluded)
-src/minigames/d_s_mg_smartball.cpp
-src/_ZN16dScMgSmartball_cD1Ev.cpp
+src/actors/dScMgSmartball_c.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN16dScMgSmartball_cD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN16dScMgSmartball_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN16dScMgSmartball_cD0Ev.cpp
-src/func_ov006_0210d894.c
-src/func_ov006_0210d898.c
-src/func_ov006_0210e0d0.c
-src/func_ov006_0210e480.c
-src/func_ov006_0210e4c8.c
-src/func_ov006_0210f9f8.c
-src/func_ov006_021101bc.cpp
-src/func_ov006_02110874.c
-src/func_ov006_02110bc0.c
-src/func_ov006_02111220.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210d894.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210d898.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210e0d0.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210e480.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210e4c8.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210f9f8.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_021101bc.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02110874.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02110bc0.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02111220.c
 # Run mg5, lane INTEG: the spring placement-new helper the seated InitResources
 # (_ZN16dScMgSmartball_c13InitResourcesEv) calls; the link named it. Matched, has
 # its own delink block; its callees (func_ov006_0211474c, _ZTV21cMgSmartball_spring_c)
 # are already in this slice and the ov006 mount.
-src/func_ov006_0211157c.c
-src/func_ov006_02111774.c
-src/func_ov006_02111b40.c
-src/func_ov006_02111d6c.c
-src/func_ov006_02111d74.c
-src/func_ov006_02111dcc.c
-src/func_ov006_02111df4.c
-src/func_ov006_02111e48.c
-src/func_ov006_02114548.c
-src/func_ov006_021146cc.c
-src/func_ov006_021146e0.c
-src/func_ov006_0211470c.c
-src/func_ov006_0211474c.c
-src/_ZN16dScMgSmartball_c8OnPushedEv.cpp
-src/func_ov006_021147d0.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0211157c.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02111774.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02111b40.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02111d6c.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02111d74.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02111dcc.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02111df4.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02111e48.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02114548.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_021146cc.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_021146e0.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0211470c.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0211474c.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN16dScMgSmartball_c8OnPushedEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_021147d0.c
 # Run mg5, lane INTEG: the ball-table seeder (branch decomp/smb-bodies, MATCHED),
 # recovered with its delink block. Replaces the aux trap in MgSmartball_Traps.cpp.
-src/func_ov006_02114800.c
-src/func_ov006_02114c04.c
-src/func_ov006_02114dd0.c
-src/func_ov006_02114f98.c
-src/func_ov006_02115150.c
-src/func_ov006_02115480.c
-src/func_ov006_02115598.cpp
-src/func_ov006_021156f8.c
-src/func_ov006_02115830.c
-src/func_ov006_02115a5c.c
-src/func_ov006_02115b0c.c
-src/_ZN16dScMgSmartball_c8BehaviorEv.cpp
-src/_ZN16dScMgSmartball_c9Virtual7CEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02114800.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02114c04.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02114dd0.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02114f98.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02115150.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02115480.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02115598.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_021156f8.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02115830.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02115a5c.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02115b0c.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN16dScMgSmartball_c8BehaviorEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN16dScMgSmartball_c9Virtual7CEv.cpp
 # Run mg5, lane INTEG: dScMgSmartball_c::InitResources, vtable slot 0 (branch
 # decomp/smb-bodies, NONMATCHING, the flagged weak point). Plain C carrying the
 # mangled symbol; the _ZN16dScMgSmartball_c13InitResourcesEv trap name is aliased onto it in
 # MgSmartball_Faces.cpp. Builds the sub-objects the class needs to tick.
-src/_ZN16dScMgSmartball_c13InitResourcesEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN16dScMgSmartball_c13InitResourcesEv.cpp
 
 # ---- Run mg5, lane SMBSEAT: THE SUB-OBJECT FAMILY, 37 further TUs ---------
 #
@@ -248,9 +248,9 @@ src/_ZN16dScMgSmartball_c13InitResourcesEv.cpp
 #       port reaches it through the host-ABI declaration in
 #       port/unmatched/MgSmartball_HostAbi.h and the cdecl forwarder in
 #       port/unmatched/MgSmartball_Faces.cpp.
-src/_ZN16dScMgSmartball_c6RenderEv.cpp
-src/_ZN20cMgSmartball_board_c12SaveSnapshotEv.cpp
-src/_ZN24cMgSmartball_propeller_c12SaveSnapshotEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN16dScMgSmartball_c6RenderEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN20cMgSmartball_board_c12SaveSnapshotEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN24cMgSmartball_propeller_c12SaveSnapshotEv.cpp
 # src/_ZN19cMgSmartball_slot_c14RestoreInitialEv.cpp (0x02110154, cMgSmartball_slot_c's RestoreInitial)
 # was DELIBERATELY ABSENT while its src dropped the receiver on the base call the
 # ROM makes with r0 = this (the callee STORES through it), and
@@ -260,107 +260,107 @@ src/_ZN24cMgSmartball_propeller_c12SaveSnapshotEv.cpp
 # is that same blob, so the copy is retired (run linkfull, lane RS5A) and the
 # matched TU is back. hal/scene_mg.cpp's smb_slt_s2 calls the member qualified;
 # the flat name stays the ov002 alias hal/cxx_aliases.cpp documents.
-src/_ZN19cMgSmartball_slot_c14RestoreInitialEv.cpp
-src/_ZN19cMgSmartball_wing_c6UpdateEv.cpp
-src/_ZN19cMgSmartball_wing_c12SaveSnapshotEv.cpp
-src/_ZN19cMgSmartball_wing_c14RestoreInitialEv.cpp
-src/_ZN25cMgSmartball_pushswitch_c6UpdateEv.cpp
-src/_ZN25cMgSmartball_pushswitch_c12SaveSnapshotEv.cpp
-src/_ZN25cMgSmartball_pushswitch_c14RestoreInitialEv.cpp
-src/_ZN20cMgSmartball_board_c6UpdateEv.cpp
-src/_ZN20cMgSmartball_board_c14RestoreInitialEv.cpp
-src/_ZN19cMgSmartball_slot_c6UpdateEv.cpp
-src/_ZN19cMgSmartball_slot_c12SaveSnapshotEv.cpp
-src/_ZN21cMgSmartball_pakkun_c14RestoreInitialEv.cpp
-src/_ZN20cMgSmartball_dokan_c6UpdateEv.cpp
-src/_ZN20cMgSmartball_dokan_c12SaveSnapshotEv.cpp
-src/_ZN20cMgSmartball_dokan_c14RestoreInitialEv.cpp
-src/_ZN21cMgSmartball_pakkun_c6UpdateEv.cpp
-src/_ZN21cMgSmartball_pakkun_c12SaveSnapshotEv.cpp
-src/_ZN24cMgSmartball_propeller_c6UpdateEv.cpp
-src/_ZN24cMgSmartball_propeller_c14RestoreInitialEv.cpp
-src/_ZN21cMgSmartball_spring_c6UpdateEv.cpp
-src/_ZN21cMgSmartball_spring_c12SaveSnapshotEv.cpp
-src/_ZN21cMgSmartball_spring_c14RestoreInitialEv.cpp
-src/_ZN18cMgSmartball_ana_c6UpdateEv.cpp
-src/_ZN18cMgSmartball_ana_c12SaveSnapshotEv.cpp
-src/_ZN18cMgSmartball_ana_c14RestoreInitialEv.cpp
-src/_ZN21cMgSmartball_kinoko_c6UpdateEv.cpp
-src/_ZN21cMgSmartball_kinoko_c14RestoreInitialEv.cpp
-src/_ZN21cMgSmartball_kinoko_c12SaveSnapshotEv.cpp
-src/_ZN19cMgSmartball_ball_c6UpdateEv.cpp
-src/_ZN19cMgSmartball_ball_c12SaveSnapshotEv.cpp
-src/_ZN19cMgSmartball_ball_c14RestoreInitialEv.cpp
-src/_ZN21cMgSmartball_object_c6UpdateEv.cpp
-src/_ZN21cMgSmartball_object_c12SaveSnapshotEv.cpp
-src/_ZN21cMgSmartball_object_c14RestoreInitialEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN19cMgSmartball_slot_c14RestoreInitialEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN19cMgSmartball_wing_c6UpdateEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN19cMgSmartball_wing_c12SaveSnapshotEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN19cMgSmartball_wing_c14RestoreInitialEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN25cMgSmartball_pushswitch_c6UpdateEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN25cMgSmartball_pushswitch_c12SaveSnapshotEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN25cMgSmartball_pushswitch_c14RestoreInitialEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN20cMgSmartball_board_c6UpdateEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN20cMgSmartball_board_c14RestoreInitialEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN19cMgSmartball_slot_c6UpdateEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN19cMgSmartball_slot_c12SaveSnapshotEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN21cMgSmartball_pakkun_c14RestoreInitialEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN20cMgSmartball_dokan_c6UpdateEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN20cMgSmartball_dokan_c12SaveSnapshotEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN20cMgSmartball_dokan_c14RestoreInitialEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN21cMgSmartball_pakkun_c6UpdateEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN21cMgSmartball_pakkun_c12SaveSnapshotEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN24cMgSmartball_propeller_c6UpdateEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN24cMgSmartball_propeller_c14RestoreInitialEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN21cMgSmartball_spring_c6UpdateEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN21cMgSmartball_spring_c12SaveSnapshotEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN21cMgSmartball_spring_c14RestoreInitialEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN18cMgSmartball_ana_c6UpdateEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN18cMgSmartball_ana_c12SaveSnapshotEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN18cMgSmartball_ana_c14RestoreInitialEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN21cMgSmartball_kinoko_c6UpdateEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN21cMgSmartball_kinoko_c14RestoreInitialEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN21cMgSmartball_kinoko_c12SaveSnapshotEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN19cMgSmartball_ball_c6UpdateEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN19cMgSmartball_ball_c12SaveSnapshotEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN19cMgSmartball_ball_c14RestoreInitialEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN21cMgSmartball_object_c6UpdateEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN21cMgSmartball_object_c12SaveSnapshotEv.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN21cMgSmartball_object_c14RestoreInitialEv.cpp
 
 # ---- SMBSEAT wave 2: the closure the LINKER asked for, 18 TUs ------------
 # Each line here is an unresolved external from the wave-1 link, resolved by
 # the TU that defines it. Every one already existed in src/ and none needed a
 # face, a host copy or a trap.
-src/func_0203d524.c
-src/func_ov006_0210d8bc.c
-src/func_ov006_0210d93c.c
-src/func_ov006_0210e120.c
-src/func_ov006_0210ef48.c
-src/func_ov006_0210f998.c
-src/func_ov006_0210fa6c.c
-src/func_ov006_0210fb04.c
-src/func_ov006_0210fb58.c
-src/func_ov006_02110e28.c
-src/func_ov006_021128fc.c
-src/func_ov006_02112ad8.c
-src/func_ov006_02113c14.c
-src/func_ov006_02114590.c
-src/func_ov006_02114b10.c
-src/func_ov006_02114ec0.c
-src/func_ov006_02114fd0.c
-src/func_ov006_02115008.c
-src/_ZN16dScMgSmartball_c21AfterCleanupResourcesEj.cpp
+src/unnamed/arm9/0203/func_0203d524.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210d8bc.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210d93c.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210e120.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210ef48.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210f998.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210fa6c.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210fb04.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210fb58.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02110e28.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_021128fc.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02112ad8.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02113c14.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02114590.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02114b10.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02114ec0.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02114fd0.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02115008.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/_ZN16dScMgSmartball_c21AfterCleanupResourcesEj.cpp
 
 # ---- ov004: the framework half, 32 TUs, all inherited from slice_mg1 --
-src/FreeGfxSlotsById.c
-src/GetGameLanguage.c
-src/Ov004_Deallocate.c
-src/func_ov004_020ada40.c
-src/func_ov004_020ad6fc.c
-src/func_ov004_020ad90c.c
-src/func_ov004_020ad940.cpp
-src/func_ov004_020ada20.c
-src/func_ov004_020adafc.c
-src/func_ov004_020adb1c.c
-src/func_ov004_020adbc0.c
-src/func_ov004_020adc00.c
-src/func_ov004_020adc1c.c
-src/func_ov004_020adc3c.c
-src/func_ov004_020adc74.c
-src/_ZN11dScMgBase_c8OnPushedEv.cpp
-src/func_ov004_020ae1cc.c
-src/func_ov004_020ae1f0.c
-src/func_ov004_020ae20c.c
-src/func_ov004_020b04d0.c
+src/minigames/d_s_mg_base.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/GetGameLanguage.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/Ov004_Deallocate.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020ada40.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020ad6fc.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020ad90c.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020ad940.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020ada20.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020adafc.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020adb1c.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020adbc0.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020adc00.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020adc1c.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020adc3c.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020adc74.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/_ZN11dScMgBase_c8OnPushedEv.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020ae1cc.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020ae1f0.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020ae20c.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020b04d0.c
 # Run mg5, lane BASESET. src/minigames/d_s_mg_base.cpp IS EXCLUDED, host-copied in
 # port/unmatched/MgBase_Slot5.cpp. This slice carried the line as well as
 # slice_mg1.txt, and both had to drop it: CMake dedupes identical absolute paths
 # within a target, so leaving it in either list would keep the src body in the
 # build and collide with the host copy. See slice_mg1.txt for the derivation.
 # HOST-COPIED (BASESET): src/minigames/d_s_mg_base.cpp
-src/func_ov004_020b0a54.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/func_ov004_020b0a54.cpp
 # RETIRED at SLICE1: body now in src/_ZN11dScMgBase_cD0Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN11dScMgBase_cD2Ev.cpp
-src/_ZN11dScMgBase_cC2Ev.cpp
-src/func_ov004_020b2c84.c
-src/func_ov004_020b3194.c
-src/_ZN10dMgState_cC1Ev.cpp
-src/func_ov004_020b8dc0.c
-src/_ZN10dMgPsOpt_c11TouchIcon_cD1Ev.cpp
-src/_ZN10dMgPsOpt_cD1Ev.cpp
-src/_ZN10dMgPsOpt_cC1Ev.cpp
-src/_ZN10dMgPsOpt_c11TouchIcon_cC1Ev.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 323): src/_ZN11dScMgBase_cC2Ev.cpp
+src/actors/unit020b2c84.cpp
+# FOLDED into src/actors/unit020b2c84.cpp (row 353): src/func_ov004_020b3194.c
+src/actors/dMgState_c.cpp
+src/actors/dMgPsOpt_c.cpp
+# FOLDED into src/actors/dMgPsOpt_c.cpp (row 356): src/_ZN10dMgPsOpt_c11TouchIcon_cD1Ev.cpp
+# FOLDED into src/actors/dMgPsOpt_c.cpp (row 356): src/_ZN10dMgPsOpt_cD1Ev.cpp
+# FOLDED into src/actors/dMgPsOpt_c.cpp (row 356): src/_ZN10dMgPsOpt_cC1Ev.cpp
+# FOLDED into src/actors/dMgPsOpt_c.cpp (row 356): src/_ZN10dMgPsOpt_c11TouchIcon_cC1Ev.cpp
 
 # ---- ov001: ov004's touch layer, 1 TU, inherited from slice_mg1 ------
-src/func_ov001_020ab5b0.c
+src/actors/dThIcon_c.cpp
 
 # ---- SECOND WAVE: 6 arm9 TUs, and they are MG1's wave-2 exception ---------
 # port/mg_fanout_costs.txt section 5's rule is that the arm9 half comes back
@@ -377,68 +377,68 @@ src/func_ov001_020ab5b0.c
 #   func_02057d00   wanted by src/func_ov006_02115b0c.c
 src/Vec2_Len.c
 src/Vec2_Sub.c
-src/func_0203d388.c
-src/func_0203d434.c
-src/func_0203d738.c
-src/func_02057d00.c
+src/unnamed/arm9/0203/func_0203d388.c
+src/unnamed/arm9/0203/func_0203d434.c
+src/unnamed/arm9/0203/func_0203d738.c
+src/unnamed/arm9/0205/func_02057d00.c
 
 # ---- THIRD WAVE: 2 more arm9, the second wave's own closure ---------------
 # The converging shape port/mg_fanout_costs.txt section 10 describes: each
 # wave is the previous wave's closure and each is smaller than the last.
 #   func_0203d480   wanted by src/func_0203d434.c
 #   func_02057ce8   wanted by src/func_02057d00.c
-src/func_0203d480.c
-src/func_02057ce8.c
+src/unnamed/arm9/0203/func_0203d480.c
+src/unnamed/arm9/0205/func_02057ce8.c
 
 # ---- FOURTH WAVE: 1 arm9, the third wave's own closure --------------------
 #   func_02057410   wanted by src/func_02057ce8.c
-src/func_02057410.c
+src/unnamed/arm9/0205/func_02057410.c
 
 # ---- FIFTH WAVE: 3 arm9, the fourth wave's own closure --------------------
 #   func_02057d30   wanted by src/func_02057410.c
 #   func_02057d94   wanted by src/func_02057410.c
 #   func_02057e00   wanted by src/func_02057410.c
-src/func_02057d30.c
-src/func_02057d94.c
-src/func_02057e00.c
+src/unnamed/arm9/0205/func_02057d30.c
+src/unnamed/arm9/0205/func_02057d94.c
+src/unnamed/arm9/0205/func_02057e00.c
 
 # ---- SMBSEAT wave 3: 25 further TUs, each one an unresolved external
 # from the previous link resolved by the TU that defines it.
-src/func_0203d4d0.c
-src/func_0203d570.c
-src/func_0203d5bc.c
-src/func_ov006_0210eca4.c
-src/func_ov006_0210fa40.c
-src/func_ov006_021115c4.c
-src/func_ov006_021115cc.c
-src/func_ov006_02111b90.c
-src/func_ov006_02111e7c.c
-src/func_ov006_02111e90.c
-src/func_ov006_02111ee8.c
-src/func_ov006_02111f8c.cpp
-src/func_ov006_02112030.c
-src/func_ov006_021120d4.c
-src/func_ov006_02112190.c
-src/func_ov006_021122e0.c
-src/func_ov006_0211248c.c
-src/func_ov006_02112504.c
-src/func_ov006_021126b4.c
-src/func_ov006_021146f4.c
-src/func_ov006_02114dfc.c
-src/func_ov006_02114fb4.c
-src/func_ov006_02115024.c
-src/func_ov006_02115040.c
-src/func_ov006_02115060.c
+src/unnamed/arm9/0203/func_0203d4d0.c
+src/unnamed/arm9/0203/func_0203d570.c
+src/unnamed/arm9/0203/func_0203d5bc.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210eca4.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210fa40.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_021115c4.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_021115cc.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02111b90.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02111e7c.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02111e90.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02111ee8.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02111f8c.cpp
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02112030.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_021120d4.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02112190.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_021122e0.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0211248c.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02112504.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_021126b4.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_021146f4.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02114dfc.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02114fb4.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02115024.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02115040.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02115060.c
 
 # ---- SMBSEAT wave 4: 10 further TUs, each one an unresolved external
 # from the previous link resolved by the TU that defines it.
-src/func_ov006_02110244.c
-src/func_ov006_0210dbb0.c
-src/func_ov006_0210e1fc.c
-src/func_ov006_021108bc.c
-src/func_ov006_02110c08.c
-src/func_ov006_02111d4c.c
-src/func_ov006_021146ac.c
-src/func_ov006_02114fec.c
-src/func_ov006_0211507c.c
-src/func_ov006_02115680.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02110244.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210dbb0.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0210e1fc.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_021108bc.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02110c08.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02111d4c.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_021146ac.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02114fec.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_0211507c.c
+# FOLDED into src/actors/dScMgSmartball_c.cpp (row 171): src/func_ov006_02115680.c

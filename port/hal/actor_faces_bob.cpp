@@ -36,7 +36,7 @@ void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
     void *self, void *kcl, const void *mat, int scale, short angY, void *clps);
 void _ZN10dBgActor_c19UpdateClsnPosAndRotEv(void *self);
 void _ZN10dBgActor_c21UpdateModelPosAndRotYEv(void *self);
-int _ZN11ShadowModel12InitCylinderEv(void *self);
+int _ZN17dExtShadowModel_c12InitCylinderEv(void *self);
 }
 
 // ---- 2. the placeholder names ---------------------------------------------
@@ -87,7 +87,7 @@ int ModelBaseFace::SetFile(BMD_File *file, int a, int b)
    InitCuboid face hal/actor_class_faces.cpp already carries. */
 struct ShadowModelFace { int InitCylinder(); };
 int ShadowModelFace::InitCylinder()
-{ return _ZN11ShadowModel12InitCylinderEv(this); }
+{ return _ZN17dExtShadowModel_c12InitCylinderEv(this); }
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEFEATED: the left hand side is a real definition in this link now (_ZN11ShadowModel12InitCylinderEv.cpp.obj), so the directive is inert and alternatename_guard fails on it. */
 // #pragma comment(linker, "/alternatename:?InitCylinder@ShadowModel@@QAEHXZ=?InitCylinder@ShadowModelFace@@QAEHXZ")
 
@@ -99,9 +99,9 @@ int ShadowModelFace::InitCylinder()
 #pragma comment(linker, "/alternatename:?Vec3_Equal@@YAHPAX0@Z=_Vec3_Equal")
 #pragma comment(linker, "/alternatename:?_ZN8dActor_c13ClosestPlayerEv@@YAHPAX@Z=__ZN8dActor_c13ClosestPlayerEv")
 #pragma comment(linker, "/alternatename:?_ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_@@YAXPAX0HH0H@Z=__ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_")
-#pragma comment(linker, "/alternatename:?func_ov001_020ab228@@YAXPAX0HHH@Z=_func_ov001_020ab228")
-#pragma comment(linker, "/alternatename:?func_ov002_020b7f2c@@YAXPAX0@Z=_func_ov002_020b7f2c")
-#pragma comment(linker, "/alternatename:?func_ov002_020b7f7c@@YAXPAX@Z=_func_ov002_020b7f7c")
+#pragma comment(linker, "/alternatename:?_ZN10dCapIcon_c19func_ov001_020ab228EPciih@@YAXPAX0HHH@Z=__ZN10dCapIcon_c19func_ov001_020ab228EPciih")
+#pragma comment(linker, "/alternatename:?_ZN15daObjMarioCap_c10EnterStateEPv@@YAXPAX0@Z=__ZN15daObjMarioCap_c10EnterStateEPv")
+#pragma comment(linker, "/alternatename:?_ZN15daObjMarioCap_c12UpdateMatrixEv@@YAXPAX@Z=__ZN15daObjMarioCap_c12UpdateMatrixEv")
 
 // ---- 1. the data aliases ---------------------------------------------------
 #pragma comment(linker, "/alternatename:?data_02092138@@3HA=_data_02092138")
@@ -153,8 +153,7 @@ int ShadowModelFace::InitCylinder()
 
 /* The ROM's own RTTI name for the arrow signs' table; ArrowSignRight's D0
    spells it that way. */
-#pragma comment(linker, "/alternatename:__ZTV15daObjYajirusi_c=__ZTV14ArrowSignRight")
-
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV15daObjYajirusi_c=__ZTV15daObjYajirusi_c")
 /* --- linkloop round 4 -------------------------------------------------------
    Two more static members and two more data spellings. Actor::Spawn and
    Actor::FindWithActorID are STATICS, cdecl on both sides, so the aliases are

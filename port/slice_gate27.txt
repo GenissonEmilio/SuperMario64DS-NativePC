@@ -20,28 +20,28 @@
 # port/unmatched/HUD_InitResources.cpp, the hand copy that carried both by
 # hand, is retired. See status/HUDINITRES.md.
 
-src/d_meter.cpp
+src/actors/dMeter_c.cpp
 # RETIRED at SLICE1: body now in src/_ZN3HUDD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN3HUDD0Ev.cpp
-src/_ZN3HUDD1Ev.cpp
-src/_ZN3HUD16CleanupResourcesEv.cpp
-src/_ZN3HUD16OnPendingDestroyEv.cpp
-src/_ZN3HUD8BehaviorEv.cpp
-src/_ZN3HUD6RenderEv.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUDD1Ev.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD16CleanupResourcesEv.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD16OnPendingDestroyEv.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD8BehaviorEv.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD6RenderEv.cpp
 
 # the render leaves
-src/_ZN3HUD15CalculateDigitsEt.cpp
-src/_ZN3HUD15RenderCoinCountEv.cpp
-src/_ZN3HUD15RenderLifeCountEv.cpp
-src/_ZN3HUD15RenderStarCountEv.cpp
-src/_ZN3HUD15RenderTimeTimerEv.cpp
-src/_ZN3HUD17RenderHealthMeterEv.cpp
-src/_ZN3HUD17RenderSilverStarsEv.cpp
-src/_ZN3HUD14RenderRedCoinsEv.cpp
-src/_ZN3HUD19RenderCameraButtonsEv.cpp
-src/_ZN3HUD13RenderVsTimerEv.cpp
-src/_ZN3HUD13UpdateVsTimerEv.cpp
-src/_ZN3HUD17UpdateHealthMeterEv.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD15CalculateDigitsEt.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD15RenderCoinCountEv.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD15RenderLifeCountEv.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD15RenderStarCountEv.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD15RenderTimeTimerEv.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD17RenderHealthMeterEv.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD17RenderSilverStarsEv.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD14RenderRedCoinsEv.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD19RenderCameraButtonsEv.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD13RenderVsTimerEv.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD13UpdateVsTimerEv.cpp
+# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD17UpdateHealthMeterEv.cpp
 
 # Stage::RenderVsModeCountdown -- the VS start-of-round READY? / red 3-2-1 /
 # START draw. Not a HUD leaf, but it rides here because it emits through the
@@ -49,20 +49,20 @@ src/_ZN3HUD17UpdateHealthMeterEv.cpp
 # GetOwnerLanguage that RenderVsTimer above already pulls into this slice. Its
 # banner/START templates (0x0210d008..0x0210d420) are mounted in ov002_syms.txt.
 # Hosted for the Luigi Infection pre-round countdown (hal/star_flow.cpp).
-src/_ZN5Stage21RenderVsModeCountdownEv.cpp
+src/_ZN10dScStage_c21RenderVsModeCountdownEv.cpp
 
 # the two OAM entry points the leaves emit through that gate 25 did not need
-src/_ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2.cpp
-src/_ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi.c
+src/engine/oam/OAM.cpp
+# FOLDED into src/engine/oam/OAM.cpp (row 55): src/_ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi.c
 
 # the arm9 leaf HUD::InitResources ends on: clears the pad-repeat latch
-src/func_0203da4c.c
+src/unnamed/arm9/0203/func_0203da4c.c
 
 # the leaves' own callees
-src/_ZN2GX11LoadOBJPlttEPKvjj.cpp
-src/_ZN3GXS11LoadOBJPlttEPKvjj.cpp
-src/_ZN5Timer7GetTimeEv.cpp
-src/_ZN6Player16IsInsideOfCannonEv.cpp
+src/engine/gx/GXS.cpp
+# FOLDED into src/engine/gx/GXS.cpp (row 62): src/_ZN3GXS11LoadOBJPlttEPKvjj.cpp
+src/Timer.cpp
+src/actors/Player.cpp
 src/GiveLives.c
 
 # NOT HERE: src/_ZN5Stage20RenderBouncingArrowsEv.cpp. It draws its sprite from

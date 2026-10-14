@@ -64,7 +64,7 @@
 
 #include "ModelBase.h"
 #include "Model.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 #include "dActor_c.h"
 
 extern "C" {
@@ -72,8 +72,8 @@ void _ZN9ModelBaseD1Ev(void *self);
 void _ZN9ModelBaseD0Ev(void *self);
 void _ZN5ModelD1Ev(void *self);
 void _ZN5ModelD0Ev(void *self);
-void _ZN11ShadowModelD1Ev(void *self);
-void _ZN11ShadowModelD0Ev(void *self);
+void _ZN17dExtShadowModel_cD1Ev(void *self);
+void _ZN17dExtShadowModel_cD0Ev(void *self);
 void _ZN8dActor_c25OnAimedAtWithEggReturnVecEv(Vector3 *ret, void *self);
 }
 
@@ -81,8 +81,8 @@ void ModelBase::Destructor1()      { _ZN9ModelBaseD1Ev(this); }
 void ModelBase::Destructor0()      { _ZN9ModelBaseD0Ev(this); }
 void Model::Destructor1()          { _ZN5ModelD1Ev(this); }
 void Model::Destructor0()          { _ZN5ModelD0Ev(this); }
-void ShadowModel::Destructor1()    { _ZN11ShadowModelD1Ev(this); }
-void ShadowModel::Destructor0()    { _ZN11ShadowModelD0Ev(this); }
+void dExtShadowModel_c::Destructor1()    { _ZN17dExtShadowModel_cD1Ev(this); }
+void dExtShadowModel_c::Destructor0()    { _ZN17dExtShadowModel_cD0Ev(this); }
 
 Vector3 dActor_c::OnAimedAtWithEggReturnVec()
 {

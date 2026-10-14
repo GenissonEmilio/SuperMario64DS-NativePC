@@ -179,7 +179,7 @@ import sys
 # tools/dtor_store_guard.py) and then the class's own operator delete, the
 # same two steps the retired forwarder made. The arm is what keeps that file's
 # key-function forcer, an EMPTY SignPost::Kill, out of the MSVC build: it had
-# been the port's only ?Kill@SignPost@@UAEXXZ, so a signpost's slot 31 ran
+# been the port's only ?Kill@daObjTatefuda_c@@UAEXXZ, so a signpost's slot 31 ran
 # nothing. The row came out of batch 1 rather than being skipped, so the
 # generated files carry the name exactly once.
 

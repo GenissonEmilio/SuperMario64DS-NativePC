@@ -628,7 +628,7 @@ int func_02035638(void *c);
 void *func_0203567c(void *c);
 unsigned _ZNK5dBgPi9GetClsnIDEv(void *r);
 /* the block's own refusal test and the closest-player cache it consults */
-int func_ov102_02149078(void *self);
+int _ZN18daObjHatenaBlock_c19func_ov102_02149078Ev(void *self);
 void *_ZN8dActor_c13ClosestPlayerEv(void *self);
 extern signed char data_0209f2f8;      /* current level */
 extern void *data_0209b458;            /* the closest-player cache itself */
@@ -906,10 +906,10 @@ static void port_pound_probe(void)
            cached closest player, and the +0x706 byte it actually tests. */
         {
             void *cp_arg = _ZN8dActor_c13ClosestPlayerEv(target);
-            std::fprintf(stderr, "[pound]   gate   func_ov102_02149078 -> %d "
+            std::fprintf(stderr, "[pound]   gate   _ZN18daObjHatenaBlock_c19func_ov102_02149078Ev -> %d "
                          "| level %d | cache %p | ClosestPlayer(this) %p "
                          "+0x706 %u | player %p +0x706 %u\n",
-                         func_ov102_02149078(target), (int)data_0209f2f8,
+                         _ZN18daObjHatenaBlock_c19func_ov102_02149078Ev(target), (int)data_0209f2f8,
                          (void *)data_0209b458, cp_arg,
                          cp_arg ? *(unsigned char *)((char *)cp_arg + 0x706) : 0u,
                          player, *(unsigned char *)((char *)player + 0x706));

@@ -106,25 +106,25 @@ void __sinit_ov055_021118d4(void);
    the //cpp real-destructor shape, the ov024 PyramidTag case) */
 int __cxa_vec_cleanup(void *base, int n, int stride, void *dtor);
 void _ZN15TextureSequenceD1Ev(void *p);
-void _ZN11ShadowModelD1Ev(void *p);
+void _ZN17dExtShadowModel_cD1Ev(void *p);
 void _ZN5ModelD1Ev(void *p);
 void _ZN9ModelAnimD1Ev(void *p);
 void _ZN8dActor_cD2Ev(void *p);
 
 /* the class's own bodies */
 void *daLuigi_c_classInit(void);                       /* id 195 */
-int *_ZN11MirrorLuigiD0Ev(void *self);               /* slot 17 */
-int _ZN11MirrorLuigi16CleanupResourcesEv(void);      /* slot 3,  a plain .c body */
-void _ZN11MirrorLuigi16OnPendingDestroyEv(void);     /* slot 12, a plain .c body */
-int _ZN11MirrorLuigi8BehaviorEv(void *self);         /* slot 6,  HOST COPY */
+int *_ZN9daLuigi_cD0Ev(void *self);               /* slot 17 */
+int _ZN9daLuigi_c16CleanupResourcesEv(void);      /* slot 3,  a plain .c body */
+void _ZN9daLuigi_c16OnPendingDestroyEv(void);     /* slot 12, a plain .c body */
+int _ZN9daLuigi_c8BehaviorEv(void *self);         /* slot 6,  HOST COPY */
 
 /* the two state halves the seat rewrites into the cell */
-int func_ov055_021112bc(void);                       /* ENTER */
-int func_ov055_02111288(void *dst, void *src);       /* TICK  */
+int _ZN9daLuigi_c11EnterMirrorEP6Player(void);                       /* ENTER */
+int _ZN9daLuigi_c13ExecuteMirrorEP6Player(void *dst, void *src);       /* TICK  */
 
 /* the host vtable, excluded from the mount */
 DSSTATE_BEGIN
-void *_ZTV11MirrorLuigi[31];   /* 0x02111ae0, id 195 MIRROR_LUIGI */
+void *_ZTV9daLuigi_c[31];   /* 0x02111ae0, id 195 MIRROR_LUIGI */
 DSSTATE_END
 }
 
@@ -161,23 +161,23 @@ DSSTATE_END
    this is a correctness gain rather than a yield one. The same shape as
    `/alternatename:_func_02012664=__ZN5Sound9PlayBank3EjRK7Vector3` in
    hal/actor_classes_wf.cpp. */
-#pragma comment(linker, "/alternatename:_ShadowModel_InitCylinder=__ZN11ShadowModel12InitCylinderEv")
+#pragma comment(linker, "/alternatename:_ShadowModel_InitCylinder=__ZN17dExtShadowModel_c12InitCylinderEv")
 #pragma comment(linker, "/alternatename:_ModelAnim_SetAnim=__ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj")
 #pragma comment(linker, "/alternatename:_TextureSequence_Prepare=__ZN15TextureSequence7PrepareER8BMD_FileR8BTP_File")
 #pragma comment(linker, "/alternatename:_TextureSequence_SetFile=__ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj")
-#pragma comment(linker, "/alternatename:_Animation_LoadFile=__ZN9Animation8LoadFileER13SharedFilePtr")
+#pragma comment(linker, "/alternatename:_Animation_LoadFile=__ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr")
 
 /* The two bodies src defines as real C++ methods against include/MirrorLuigi.h,
    faced here -- the ov013/ov024/ov025/ov032/ov033/ov034/ov035/ov047 recipe.
    Behavior is the THIRD such method and is NOT faced: it is the host copy in
    port/unmatched/MirrorLuigi_Behavior.cpp, which exports the Itanium name
    directly. */
-#include "MirrorLuigi.h"
+#include "daLuigi_c.h"
 extern "C" {
-int _ZN11MirrorLuigi13InitResourcesEv(void *self)
-{ return ((MirrorLuigi *)self)->MirrorLuigi::InitResources(); }
-int _ZN11MirrorLuigi6RenderEv(void *self)
-{ return ((MirrorLuigi *)self)->MirrorLuigi::Render(); }
+int _ZN9daLuigi_c13InitResourcesEv(void *self)
+{ return ((daLuigi_c *)self)->daLuigi_c::InitResources(); }
+int _ZN9daLuigi_c6RenderEv(void *self)
+{ return ((daLuigi_c *)self)->daLuigi_c::Render(); }
 }
 
 // ---- the trap --------------------------------------------------------------
@@ -272,7 +272,7 @@ static int __fastcall ml_enter_face_021112bc(void *self, void *dead_edx, int a2)
     (void)self;
     (void)dead_edx;
     (void)a2;
-    return func_ov055_021112bc();
+    return _ZN9daLuigi_c11EnterMirrorEP6Player();
 }
 
 extern "C" void port_mirrorluigi_state_seat(void)
@@ -284,7 +284,7 @@ extern "C" void port_mirrorluigi_state_seat(void)
     PortMirrorLuigiCell &cell = data_ov055_02111b70;
     if (cell.enter_fn != 0x021112bc || cell.enter_delta != 0 ||
         cell.tick_fn != 0x02111288 || cell.tick_delta != 0) {
-        std::fprintf(stderr, "FATAL: MirrorLuigi state cell: the sinit left "
+        std::fprintf(stderr, "FATAL: daLuigi_c state cell: the sinit left "
                      "%08x/%u %08x/%u, the ROM's own records say "
                      "021112bc/0 02111288/0 -- WRONG BYTES\n",
                      cell.enter_fn, cell.enter_delta,
@@ -292,7 +292,7 @@ extern "C" void port_mirrorluigi_state_seat(void)
         std::abort();
     }
     cell.enter_fn = (unsigned)(size_t)&ml_enter_face_021112bc;
-    cell.tick_fn = (unsigned)(size_t)&func_ov055_02111288;
+    cell.tick_fn = (unsigned)(size_t)&_ZN9daLuigi_c13ExecuteMirrorEP6Player;
 }
 
 // ---- the mount bring-up ----------------------------------------------------
@@ -341,35 +341,35 @@ extern "C" void port_ov55_bringup(void)
 // and no Memory::Deallocate, because the caller of slot 16
 // (ActorBase::AfterCleanupResources) deallocates itself.
 static int __fastcall ml_init(void *s, void *)
-{ return _ZN11MirrorLuigi13InitResourcesEv(s); }
+{ return _ZN9daLuigi_c13InitResourcesEv(s); }
 static int __fastcall ml_clean(void *s, void *)
-{ (void)s; return _ZN11MirrorLuigi16CleanupResourcesEv(); }
+{ (void)s; return _ZN9daLuigi_c16CleanupResourcesEv(); }
 static int __fastcall ml_behavior(void *s, void *)
-{ return _ZN11MirrorLuigi8BehaviorEv(s); }        /* HOST COPY */
+{ return _ZN9daLuigi_c8BehaviorEv(s); }        /* HOST COPY */
 static int __fastcall ml_render(void *s, void *)
 { port_actor_render_probe("MIRROR_LUIGI", (char *)s + 0x138);
-  return _ZN11MirrorLuigi6RenderEv(s); }
+  return _ZN9daLuigi_c6RenderEv(s); }
 static int __fastcall ml_pdes(void *s, void *)
-{ (void)s; _ZN11MirrorLuigi16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN9daLuigi_c16OnPendingDestroyEv(); return 0; }
 /* SLOT 16 IS THE ROM'S OWN D1 NOW (run linkfull wave 31, lane VARIANT4). The
    transcription above moved into src/_ZN11MirrorLuigiD1Ev.cpp's _MSC_VER arm,
    which defines the flat ROM name and makes the same calls in the same order
    with the same offsets and the same table (its MSVC object and this thunk's
    old body are compared in runs/linkfull/out/VARIANT4/). The thunk keeps the
    slot's __fastcall shape and the PORT_D16 census and only forwards. */
-extern "C" void *_ZN11MirrorLuigiD1Ev(void *self);
+extern "C" void *_ZN9daLuigi_cD1Ev(void *self);
 static int __fastcall ml_d1(void *s, void *)
 {
-    _ZN11MirrorLuigiD1Ev(s);
+    _ZN9daLuigi_cD1Ev(s);
     return (int)(size_t)s;
 }
 static int __fastcall ml_d0(void *s, void *)
-{ return (int)(size_t)_ZN11MirrorLuigiD0Ev(s); }
+{ return (int)(size_t)_ZN9daLuigi_cD0Ev(s); }
 
 extern "C" void hal_fill_mirror_luigi_vtable(void)
 {
     port_ov55_bringup();
-    void *volatile *vt = (void *volatile *)_ZTV11MirrorLuigi;
+    void *volatile *vt = (void *volatile *)_ZTV9daLuigi_c;
     vt[1]  = (void *)ov55_binit;
     vt[2]  = (void *)ov55_ainit;
     vt[4]  = (void *)ov55_bclean;

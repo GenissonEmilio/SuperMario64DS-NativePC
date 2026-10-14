@@ -51,10 +51,10 @@ g_profile_SLIDE_BOX:0x1c
 # in this overlay -- mount them all so the copy reads the right bytes and the
 # BookSwitch_SpawnInfo address it stores resolves. The 6-model shadow table the
 # Render walks is data_ov016_02114908 (0x50 bytes).
-data_ov016_02114878 data_ov016_02114880 data_ov016_02114888 data_ov016_02114890
-BookSwitch_SpawnInfo
-data_ov016_021148a0 data_ov016_021148a8 data_ov016_021148b0 data_ov016_021148b8
-data_ov016_021148c0
+data_ov016_02114878@0x02114878 data_ov016_02114880@0x02114880 data_ov016_02114888@0x02114888 data_ov016_02114890@0x02114890
+BookSwitch_SpawnInfo@0x02114898
+data_ov016_021148a0@0x021148a0 data_ov016_021148a8@0x021148a8 data_ov016_021148b0@0x021148b0 data_ov016_021148b8@0x021148b8
+data_ov016_021148c0@0x021148c0
 data_ov016_02114908
 #
 # ---- FLOAT_ON_WATER_PLATFORM_JRB (60, daObjKi_Ita_c) Init config block -------
@@ -107,19 +107,30 @@ data_ov016_02113bec:0x20
 # with their four destruct-node cells (d40/d58/d64/d70), plus the five PMF
 # dispatch cells (d7c/d8c/d9c/dac/dbc) and the spare d4c.
 data_ov016_02114d20 data_ov016_02114d28 data_ov016_02114d30 data_ov016_02114d38
-data_ov016_02114d40 data_ov016_02114d4c data_ov016_02114d58 data_ov016_02114d64
-data_ov016_02114d70 data_ov016_02114d7c data_ov016_02114d8c data_ov016_02114d9c
+data_ov016_02114d40@0x02114d40 data_ov016_02114d58@0x02114d58 data_ov016_02114d64@0x02114d64
+data_ov016_02114d70@0x02114d70 data_ov016_02114d7c data_ov016_02114d8c data_ov016_02114d9c
 data_ov016_02114dac data_ov016_02114dbc
 # __sinit_ov016_021138bc -> SHIP_UP: four SharedFilePtrs (dcc/dd4/ddc/de4) and
 # their four destruct-node cells (dec/df8/e04/e10).
 data_ov016_02114dcc data_ov016_02114dd4 data_ov016_02114ddc data_ov016_02114de4
-data_ov016_02114dec data_ov016_02114df8 data_ov016_02114e04 data_ov016_02114e10
+data_ov016_02114dec@0x02114dec data_ov016_02114df8@0x02114df8 data_ov016_02114e04@0x02114e04 data_ov016_02114e10@0x02114e10
 # __sinit_ov016_02113978 -> ROCK_PILLAR: two SharedFilePtrs (e1c/e24) + two
 # destruct-node cells (e2c/e38).
-data_ov016_02114e1c data_ov016_02114e24 data_ov016_02114e2c data_ov016_02114e38
+data_ov016_02114e1c@0x02114e1c data_ov016_02114e24@0x02114e24 data_ov016_02114e2c@0x02114e2c data_ov016_02114e38@0x02114e38
 # __sinit_ov016_021139e4 -> SHIP_DOWN: two SharedFilePtrs (e44/e4c) + two
 # destruct-node cells (e54/e60).
-data_ov016_02114e44 data_ov016_02114e4c data_ov016_02114e54 data_ov016_02114e60
+data_ov016_02114e44 data_ov016_02114e4c data_ov016_02114e54@0x02114e54 data_ov016_02114e60@0x02114e60
 # __sinit_ov016_02113a50 -> FLOAT_ON_WATER_PLATFORM_JRB / SLIDING_BOX: two
 # SharedFilePtrs (e6c model, e74 collision) + two destruct-node cells (e7c/e88).
-data_ov016_02114e6c data_ov016_02114e74 data_ov016_02114e7c data_ov016_02114e88
+data_ov016_02114e7c@0x02114e7c data_ov016_02114e88@0x02114e88
+
+# RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
+# hosted here as a ROM data blob AND is now defined by a translation unit the
+# build compiles (main folded it into the class TU, or the rename by address
+# made a host array's name and this row one name), so the link would report it
+# twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
+# in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
+# (hal/dsstate_all.h says why).
+#   data_ov016_02114d4c                        now defined by src/actors/daMoray_c.cpp
+#   data_ov016_02114e6c                        now defined by src/actors/daSlide_Box_c.cpp
+#   data_ov016_02114e74                        now defined by src/actors/daSlide_Box_c.cpp

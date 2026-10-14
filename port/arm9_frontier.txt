@@ -114,19 +114,19 @@ reachable if the root links, counting the root itself:
      738  Entry                    0x02004800  the CRT0 entry point, hand-asm
      531  _ZN7dScMB_c13InitResourcesEv            0x0203506c  dScMB_c_InitResources, in the
                                                scene vtable data_020943c4
-     528  _ZN9BootScene13InitResourcesEv            0x02005a58  dScBoot_c_InitResources, in the
+     528  _ZN9dScBoot_c13InitResourcesEv            0x02005a58  dScBoot_c_InitResources, in the
                                                scene vtable data_02091528
      483  func_02030b58            0x02030b58  in the callback table
                                                data_020927ec
      479  func_02030c38            0x02030c38  same table
-     182  _ZN5Stage8BehaviorEv                 _ZTV5Stage
+     182  _ZN10dScStage_c8BehaviorEv                 _ZTV10dScStage_c
      162  _ZN7dScMB_c8BehaviorEv            0x02034da4  dScMB_c_Behavior, data_020943c4
-     146  _ZN5Stage13InitResourcesEv           _ZTV5Stage
-      91  _ZN5Stage16CleanupResourcesEv        _ZTV5Stage
-      89  _ZN9BootScene8BehaviorEv            0x02005418  dScBoot_c_Behavior,
+     146  _ZN10dScStage_c13InitResourcesEv           _ZTV10dScStage_c
+      91  _ZN10dScStage_c16CleanupResourcesEv        _ZTV10dScStage_c
+      89  _ZN9dScBoot_c8BehaviorEv            0x02005418  dScBoot_c_Behavior,
                                                data_02091528
       80  func_0202deac            0x0202deac
-      71  _ZN5Stage6RenderEv                   _ZTV5Stage
+      71  _ZN10dScStage_c6RenderEv                   _ZTV10dScStage_c
       68  func_02017e94            0x02017e94
       54  LoadFont3D
       50  func_0201817c
@@ -147,7 +147,7 @@ OBJECT THE PORT NEVER CONSTRUCTS. data_02091528 and data_020943c4 are two
 Scene-derived class tables, eighteen-plus slots each sharing the Scene base
 virtuals; the ROM's scene manager builds the scene and dispatches
 InitResources, Behavior, Render and the eight Before/After hooks through them.
-The port builds no Scene at all. _ZTV5Stage is the same story one level down:
+The port builds no Scene at all. _ZTV10dScStage_c is the same story one level down:
 walk_window.cpp drives a host frame loop that calls into the pieces, and
 hal/w8a_stage_faces.cpp plus hal/level_boot.cpp stand in for the Stage the ROM
 would have built.
@@ -238,14 +238,14 @@ DROPPED (52). Compiled and dropped for want of a reference edge. By what
 would have to change for the edge to exist:
 
     38   every ROM caller is itself unlinked -- downstream of the spine above.
-     8   a vtable slot with no call reloc: four are _ZTV5Stage (InitResources,
+     8   a vtable slot with no call reloc: four are _ZTV10dScStage_c (InitResources,
          BeforeInitResources, D0, D2), plus Stage::OnPendingDestroy,
          Stage::GraphCallback1, CommonModel::D0 and CapEnemy::D2.
      5   the ROM caller's port body is a host stand-in that open-codes the
          call, and in each case the stand-in exists BECAUSE of an ABI break:
          func_02017e48 (SharedFilePtr::Construct's r1 ride-through, excluded on
          purpose in slice_gate3b.txt), func_0201a03c (reached from the ROM's
-         Crash and main, both replaced by the host), func_0203ad6c (the whole
+         Crash and main, both replaced by the host), _ZN7PathPtr6SetDefEP7PathDef (the whole
          body of PathPtr::FromID's two-word struct return -- the ride-through
          itself), _ZN4cstd10fdiv_asyncE5Fix12IiE5Fix12IiE (a thin wrapper over
          the DS hardware divider) and
@@ -283,7 +283,7 @@ works the same case through for CommonModel and lands on "no"; nothing found
 here changes that reasoning for the other eleven pairs.
 
 The remaining eight are four Actor After-hooks in data_0208e3a4 and four
-func_0203* pairs in VTable_dBgPi_dBgCh_GndThunk / data_02099348 / data_02099358. All eight
+func_0203* pairs in VTable_dBgPi_dBgCh_GndThunk / VTable_dBgPi_dBgCh_SphCrrThunk / VTable_dM3dGSph_dBgCh_SphCrrThunk. All eight
 live in hal/actor_vtables.cpp or hal/cxx_aliases.cpp, which the actors lane
 owns this wave, so this lane looked and did not touch. They are the most
 promising eight in the bucket and they belong in an actors-lane pass, not here.
@@ -336,7 +336,7 @@ WHAT WOULD ACTUALLY MOVE ARM9
 In the order the evidence supports, not the order of effort:
 
 1.  The Stage lifecycle. Four slots already compiled, ~490 TUs downstream, one
-    hosted vtable (_ZTV5Stage) to seat them into. This is the single largest
+    hosted vtable (_ZTV10dScStage_c) to seat them into. This is the single largest
     honest arm9 move available and it is a behaviour campaign: every seated
     slot replaces host boot code that exists because the real one needed
     subsystems that were not there yet. Needs a lane that owns level_boot.cpp

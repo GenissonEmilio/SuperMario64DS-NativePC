@@ -429,11 +429,11 @@
 # PPP's measured "ov004 delta over what is seated: 0" both hold as statements
 # about the FRAMEWORK; what this class reaches past it is one self-contained
 # score-tally state machine that no seated class had a caller for.
-src/func_0203d5dc.c
-src/func_ov004_020b4e78.c
-src/func_ov004_020b586c.cpp
-src/func_ov004_020b58c4.cpp
-src/func_ov004_020b5e40.c
-src/func_ov006_020c1164.c
-src/func_ov006_020c16b4.c
+src/unnamed/arm9/0203/func_0203d5dc.c
+src/actors/unit020b4aa4.cpp
+# FOLDED into src/actors/unit020b4aa4.cpp (row 433): src/func_ov004_020b586c.cpp
+# FOLDED into src/actors/unit020b4aa4.cpp (row 433): src/func_ov004_020b58c4.cpp
+# FOLDED into src/actors/unit020b4aa4.cpp (row 433): src/func_ov004_020b5e40.c
+src/actors/unit020bfec0.cpp
+# FOLDED into src/actors/unit020bfec0.cpp (row 437): src/func_ov006_020c16b4.c
 src/minigames/d_s_mg_m_carlo.cpp

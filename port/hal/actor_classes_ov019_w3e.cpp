@@ -111,7 +111,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 
 #include "dActor_c.h"
 #include "fBase_c.h"
-#include "RacingPenguin.h"
+#include "daPgRcer_c.h"
 
 extern "C" {
 /* the arm9 shared half, read off this table's own reloc run */
@@ -141,16 +141,16 @@ void port_actor_render_probe(const char *cls, void *model);
    InitResources and Behavior are real C++ methods (RacingPenguin.h declares
    them), CleanupResources / OnPendingDestroy / D0 are extern "C", and
    CleanupResources and OnPendingDestroy take NO receiver on the ROM either. */
-int _ZN13RacingPenguin16CleanupResourcesEv(void);       /* slot 3  */
-int _ZN13RacingPenguin6RenderEv(char *self);            /* slot 9, host copy */
-void _ZN13RacingPenguin16OnPendingDestroyEv(void);      /* slot 12 */
-int *_ZN13RacingPenguinD0Ev(int *self);                 /* slot 17 */
+int _ZN10daPgRcer_c16CleanupResourcesEv(void);       /* slot 3  */
+int _ZN10daPgRcer_c6RenderEv(char *self);            /* slot 9, host copy */
+void _ZN10daPgRcer_c16OnPendingDestroyEv(void);      /* slot 12 */
+int *_ZN10daPgRcer_cD0Ev(int *self);                 /* slot 17 */
 void *daPgRcer_c_classInit(void);
 
 /* the member destructors rp_d1 spells out */
 void _ZN10dBgCh_ActrD1Ev(void *self);
 void _ZN7dCcAc_cD1Ev(void *self);
-void _ZN11ShadowModelD1Ev(void *self);
+void _ZN17dExtShadowModel_cD1Ev(void *self);
 void _ZN15TextureSequenceD1Ev(void *self);
 void _ZN9ModelAnimD1Ev(void *self);
 
@@ -161,7 +161,7 @@ void __sinit_ov019_021127a4(void);
    read out of overlay_0019.bin at 0x02113270, deltas all zero */
 int func_ov019_02111754(char *self);   /* pair 0x02113270 */
 int func_ov019_02111f54(char *self);   /* pair 0x02113278 */
-int func_ov019_02112168(char *self);   /* pair 0x02113280 */
+int _ZN10daPgRcer_c19func_ov019_02112168Ev(char *self);   /* pair 0x02113280 */
 int func_ov019_02111904(char *self);   /* pair 0x02113288 */
 int func_ov019_02111dec(char *self);   /* pair 0x02113290 */
 int func_ov019_021117a8(char *self);   /* pair 0x02113298 */
@@ -190,14 +190,14 @@ extern unsigned char data_ov019_021132c8[];
    `extern int _ZTV13RacingPenguin[]` in decl_common.h that daPgRcer_c_classInit
    sees, exactly as hal/actor_classes_ccm.cpp declares IceSlideManager's. */
 DSSTATE_BEGIN
-int _ZTV13RacingPenguin[31];
+int _ZTV10daPgRcer_c[31];
 DSSTATE_END
 }
 
 /* 0x02113310's other dsd spelling, which the deleting destructor restores the
    table by. Both names are excluded from the mount, so this LHS is undefined
    everywhere and the alias cannot be defeated. */
-#pragma comment(linker, "/alternatename:__ZTV10daPgRcer_c=__ZTV13RacingPenguin")
+/* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV10daPgRcer_c=__ZTV10daPgRcer_c")
 /* THE ONE CODE CROSS-NAME IN THIS OVERLAY, and it is an /alternatename rather
    than a -D for a measured reason. src/_ZN13RacingPenguin8BehaviorEv.cpp ends
    in `p__sinit_ov031_02111434(this)`, dsd's .ctor-entry spelling of an address
@@ -280,25 +280,25 @@ static int __fastcall rp_egg(void *s, void *)
 
 // ---- the class's own slots -------------------------------------------------
 static int __fastcall rp_init(void *s, void *)
-{ return ((RacingPenguin *)s)->RacingPenguin::InitResources(); }
+{ return ((daPgRcer_c *)s)->daPgRcer_c::InitResources(); }
 /* slot 3: the ROM body takes no receiver either -- it Releases twelve file
    pointers out of statics and returns 1 -- so the thunk drops `this`. */
 static int __fastcall rp_clean(void *s, void *)
-{ (void)s; return _ZN13RacingPenguin16CleanupResourcesEv(); }
+{ (void)s; return _ZN10daPgRcer_c16CleanupResourcesEv(); }
 static int __fastcall rp_behavior(void *s, void *)
-{ return ((RacingPenguin *)s)->RacingPenguin::Behavior(); }
+{ return ((daPgRcer_c *)s)->daPgRcer_c::Behavior(); }
 static int __fastcall rp_render(void *s, void *)
 { port_actor_render_probe("RACING_PENGUIN", (char *)s + 0xd4);
-  return _ZN13RacingPenguin6RenderEv((char *)s); }
+  return _ZN10daPgRcer_c6RenderEv((char *)s); }
 /* slot 12: an empty override, and empty on the ROM too (a bare `bx lr`). */
 static int __fastcall rp_pdes(void *s, void *)
-{ (void)s; _ZN13RacingPenguin16OnPendingDestroyEv(); return 0; }
+{ (void)s; _ZN10daPgRcer_c16OnPendingDestroyEv(); return 0; }
 /* slot 16, the held-out D1 -- see this file's header for why the matched TU
    cannot carry the Itanium name, and for where this chain comes from. */
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
    the transcribed thunk that stood here (rp_d1) spelled the same chain by hand. */
 static int __fastcall rp_d0(void *s, void *)
-{ return (int)(size_t)_ZN13RacingPenguinD0Ev((int *)s); }
+{ return (int)(size_t)_ZN10daPgRcer_cD0Ev((int *)s); }
 
 // ---- the twelve state records ----------------------------------------------
 #define RP_STATE(n, body) \
@@ -306,7 +306,7 @@ static int __fastcall rp_d0(void *s, void *)
     { return body((char *)s); }
 RP_STATE(0,  func_ov019_02111754)
 RP_STATE(1,  func_ov019_02111f54)
-RP_STATE(2,  func_ov019_02112168)
+RP_STATE(2,  _ZN10daPgRcer_c19func_ov019_02112168Ev)
 RP_STATE(3,  func_ov019_02111904)
 RP_STATE(4,  func_ov019_02111dec)
 RP_STATE(5,  func_ov019_021117a8)
@@ -359,7 +359,7 @@ extern "C" void hal_fill_racing_penguin_vtable(void)
     rp_bringup();
     /* THE POINTER IS VOLATILE ON PURPOSE -- the gate-200 elided-stores bug,
        repro and dumpbin proof in hal/actor_classes_ov002g200.cpp. */
-    void *volatile *vt = (void *volatile *)_ZTV13RacingPenguin;
+    void *volatile *vt = (void *volatile *)_ZTV10daPgRcer_c;
     vt[0]  = (void *)rp_init;
     vt[1]  = (void *)rp_binit;
     vt[2]  = (void *)rp_ainit;

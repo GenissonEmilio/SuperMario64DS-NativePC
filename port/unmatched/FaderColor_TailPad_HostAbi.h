@@ -29,10 +29,10 @@
 #define PORT_FADERCOLOR_TAILPAD_HOSTABI_H
 
 #include "types.h"
-#include "FaderBrightness.h"
+#include "dFdBrightness_c.h"
 
 #pragma pack(push, 2)
-#include "FaderColor.h"
+#include "dFdColor_c.h"
 #pragma pack(pop)
 
 #endif

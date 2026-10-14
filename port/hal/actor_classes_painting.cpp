@@ -82,15 +82,15 @@ const char *port_actor_class_name(unsigned id);
 void port_actor_render_probe(const char *cls, void *model);
 
 /* the painting's seven own methods, C faces in their own TUs */
-int _ZN8Painting13InitResourcesEv(void *self);      /* slot 0  InitResources */
-int _ZN8Painting16CleanupResourcesEv(void *self);      /* slot 3  CleanupResources */
-int _ZN8Painting8BehaviorEv(void *self);      /* slot 6  Behavior (PMF dispatch) */
-int _ZN8Painting6RenderEv(void *self);      /* slot 9  Render (PMF dispatch) */
-void _ZN8Painting16OnPendingDestroyEv(void);           /* slot 12 OnPendingDestroy (empty) */
-int _ZN8PaintingD1Ev(void *self);      /* slot 16 D1 */
+int _ZN11daPicGate_c13InitResourcesEv(void *self);      /* slot 0  InitResources */
+int _ZN11daPicGate_c16CleanupResourcesEv(void *self);      /* slot 3  CleanupResources */
+int _ZN11daPicGate_c8BehaviorEv(void *self);      /* slot 6  Behavior (PMF dispatch) */
+int _ZN11daPicGate_c6RenderEv(void *self);      /* slot 9  Render (PMF dispatch) */
+void _ZN11daPicGate_c16OnPendingDestroyEv(void);           /* slot 12 OnPendingDestroy (empty) */
+int _ZN11daPicGate_cD1Ev(void *self);      /* slot 16 D1 */
 
 DSSTATE_BEGIN
-void *_ZTV8Painting[33];            /* the host vtable daPicGate_c_classInit installs */
+void *_ZTV11daPicGate_c[33];            /* the host vtable daPicGate_c_classInit installs */
 DSSTATE_END
 
 /* The ROM D0 (_ZN8PaintingD0Ev) is the D1 body plus one Deallocate against
@@ -276,7 +276,7 @@ extern "C" void port_painting_texcache_overlay_load(int id)
 
 static int __fastcall pt_init(void *s, void *)
 {
-    int r = _ZN8Painting13InitResourcesEv(s);
+    int r = _ZN11daPicGate_c13InitResourcesEv(s);
     fprintf(stderr, "[paint] init: obj=%p buf=%p n=%u\n", s,
             *(void **)((char *)s + 0x1a0),
             *(unsigned short *)((char *)s + 0x1b8));
@@ -296,7 +296,7 @@ static int __fastcall pt_init(void *s, void *)
     return r;
 }
 static int __fastcall pt_clean(void *s, void *)
-{ return _ZN8Painting16CleanupResourcesEv(s); }
+{ return _ZN11daPicGate_c16CleanupResourcesEv(s); }
 static int __fastcall pt_behavior(void *s, void *)
 {
     /* 2026-08-08, the star door to BoB: a painting ticked with +0x1a0 holding
@@ -313,7 +313,7 @@ static int __fastcall pt_behavior(void *s, void *)
         fflush(stderr);
         return 1;
     }
-    return _ZN8Painting8BehaviorEv(s);
+    return _ZN11daPicGate_c8BehaviorEv(s);
 }
 /* The painting owns no Model at a fixed offset -- InitResources loads its
    textures straight to VRAM through func_ov080_02125630 rather than a
@@ -322,10 +322,10 @@ static int __fastcall pt_behavior(void *s, void *)
 static int __fastcall pt_render(void *s, void *)
 { port_actor_render_probe("PAINTING", s);
   if (!pt_tex_probe())
-      return _ZN8Painting6RenderEv(s);
+      return _ZN11daPicGate_c6RenderEv(s);
   std::size_t before = 0, after = 0;
   ntr::gx_polygons(before);
-  const int r = _ZN8Painting6RenderEv(s);
+  const int r = _ZN11daPicGate_c6RenderEv(s);
   const ntr::GxTriangle *t = ntr::gx_polygons(after);
   const std::size_t n = after > before ? after - before : 0;
   float mnx = 1e30f, mxx = -1e30f, mny = 1e30f, mxy = -1e30f;
@@ -365,9 +365,9 @@ static int __fastcall pt_render(void *s, void *)
   std::fflush(stderr);
   return r; }
 static int __fastcall pt_pdes(void *, void *)
-{ _ZN8Painting16OnPendingDestroyEv(); return 0; }
+{ _ZN11daPicGate_c16OnPendingDestroyEv(); return 0; }
 static int __fastcall pt_d1(void *s, void *)
-{ return _ZN8PaintingD1Ev(s); }
+{ return _ZN11daPicGate_cD1Ev(s); }
 /* slot 17, the ROM's own D0, GATE 227. This file used to host the deleting
    destructor as a HAND-WRITTEN THUNK -- run the D1, then Deallocate against the
    game heap -- because slice_gate50.txt had to exclude the real body: its
@@ -384,13 +384,13 @@ static int __fastcall pt_d1(void *s, void *)
    an interior address of a tail-shared body. The ROM body is the thunk's two
    steps written out (store the vtable, Actor::~Actor, Deallocate), which is why
    this replaces a stand-in rather than a decline. */
-extern "C" int *_ZN8PaintingD0Ev(int *t);   /* ov080 0x02125428 */
+extern "C" int *_ZN11daPicGate_cD0Ev(int *t);   /* ov080 0x02125428 */
 static int __fastcall pt_d0(void *s, void *)
-{ return (int)(size_t)_ZN8PaintingD0Ev((int *)s); }
+{ return (int)(size_t)_ZN11daPicGate_cD0Ev((int *)s); }
 
 extern "C" void hal_fill_painting_vtable(void)
 {
-    void **vt = _ZTV8Painting;
+    void **vt = _ZTV11daPicGate_c;
     pt_fill_shared(vt);
     vt[0] = (void *)pt_init;
     vt[3] = (void *)pt_clean;

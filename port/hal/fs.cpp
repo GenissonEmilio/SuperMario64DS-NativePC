@@ -1305,7 +1305,11 @@ struct SharedFilePtrC *_ZN13SharedFilePtr9ConstructEj(
    spelling forwarding to the other. */
 #include "SharedFilePtr.h"
 
+/* Only where the host Load above exists: a SM64DS_SFP_LOAD_ROM target links
+   src/_ZN13SharedFilePtr4LoadEv.cpp, which defines this member itself. */
+#ifndef SM64DS_SFP_LOAD_ROM
 void *SharedFilePtr::Load()
 {
     return _ZN13SharedFilePtr4LoadEv((struct SharedFilePtrC *)this);
 }
+#endif /* SM64DS_SFP_LOAD_ROM */

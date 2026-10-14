@@ -122,4 +122,4 @@ __ZN4dBgW11GetVelocityER7Vector3=?GetVelocity@dBgW@@UAEXAAUVector3@@@Z  # INERT:
 # misplace, and both sides return with a bare ret. Its one caller
 # src/_ZN5Stage8BehaviorEv.cpp:107 is in no port/slice_*.txt and no CMake
 # source list, so the LHS is referenced by nothing that compiles today.
-?CheckInput@Stage@@QAEXXZ=__ZN5Stage10CheckInputEv  # INERT: body has no receiver parameter, and the caller is unlinked
+?CheckInput@dScStage_c@@QAEXXZ=__ZN10dScStage_c10CheckInputEv  # INERT: body has no receiver parameter, and the caller is unlinked

@@ -41,10 +41,10 @@ trampoline, so the callers were splicing a return address out of two lists.
 
 AMENDED AGAIN 2026-08-22 by run mg8 lane SBN's follow-up, after the receiver
 ratchet's own scoping shipped a softlock: src/func_ov006_020d8cc4.cpp declared
-`extern "C" int func_ov006_020d836c(void);` where the definition takes the
+`extern "C" int _ZN14dScMgBomroom_c19func_ov006_020d836cEv(void);` where the definition takes the
 per-bomb receiver, and scene 370's Sort or 'Splode hung forever at the first
 full sorting bin (fixed in ba2224f88; the byte gate was green over it because
-the ROM leaves the receiver in r0 across the call). func_ov006_020d836c is not
+the ROM leaves the receiver in r0 across the call). _ZN14dScMgBomroom_c19func_ov006_020d836cEv is not
 a _ZN name, so --gate-receiver never looked at it. What changed here:
   * aritycheck gained a SECOND ratchet, --gate-plainfunc, for the plain
     func_XXXXXXXX / func_ovNNN_XXXXXXXX names: a PROTOTYPED declaration that
@@ -1269,7 +1269,7 @@ Ranked by blast radius.
           80h]` finds exactly three slot-32 dispatches --
             _ZN11dScMgBase_c18AfterInitResourcesEj +0xb    pushes 0
             func_ov002_020eff90 +0xb    pushes 1
-            func_ov064_02116d1c +0x129  pushes 0
+            _ZN7daOts_c14BehaviorCommonEv +0x129  pushes 0
           -- so only the two PathLift tables have a row.
       (c) EXT_UNJUDGED for an extension slot with no per-table authority, LOUD
           and RATCHETED against port/tools/abicheck_extslot_baseline.txt. 78

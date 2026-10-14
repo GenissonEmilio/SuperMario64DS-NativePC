@@ -42,27 +42,27 @@
 
 extern "C" {
 /* Snufit's eight state bodies, all matched src (slice_w5b.txt) */
-int func_ov065_0211672c(char *c);
-short func_ov065_02116588(char *c);
-int func_ov065_021168a8(char *c);
-int func_ov065_02116328(char *c);
-int func_ov065_021165d8(char *c);
-int func_ov065_021162c0(char *c);
-int func_ov065_02116364(char *c);
-int func_ov065_02116744(char *c);
+int _ZN15daYurei_Mucho_c19func_ov065_0211672cEv(char *c);
+short _ZN15daYurei_Mucho_c19func_ov065_02116588Ev(char *c);
+int _ZN15daYurei_Mucho_c19func_ov065_021168a8Ev(char *c);
+int _ZN15daYurei_Mucho_c19func_ov065_02116328Ev(char *c);
+int _ZN15daYurei_Mucho_c19func_ov065_021165d8Ev(char *c);
+int _ZN15daYurei_Mucho_c19func_ov065_021162c0Ev(char *c);
+int _ZN15daYurei_Mucho_c19func_ov065_02116364Ev(char *c);
+int _ZN15daYurei_Mucho_c19func_ov065_02116744Ev(char *c);
 /* Swoop's eight */
-int func_ov065_021177e4(char *c);
-int func_ov065_021176fc(char *c);
-int func_ov065_021178fc(char *c);
-int func_ov065_02117624(char *c);
-int func_ov065_02117780(char *c);
-int func_ov065_02117404(char *c);
-int func_ov065_02117888(char *c);
-int func_ov065_021175b0(char *c);
+int _ZN12daBasabasa_c9EnterDropEv(char *c);
+int _ZN12daBasabasa_c10EnterChaseEv(char *c);
+int _ZN12daBasabasa_c10EnterPerchEv(char *c);
+int _ZN12daBasabasa_c12ExecuteChaseEv(char *c);
+int _ZN12daBasabasa_c11ExecuteDropEv(char *c);
+int _ZN12daBasabasa_c13ExecuteReturnEv(char *c);
+int _ZN12daBasabasa_c12ExecutePerchEv(char *c);
+int _ZN12daBasabasa_c11EnterReturnEv(char *c);
 /* Dorrie's three */
-int func_ov065_021183c8(char *c);
-int func_ov065_021182e4(char *c);
-int func_ov065_02118634(char *c);
+int _ZN9daDossy_c19func_ov065_021183c8Ev(char *c);
+int _ZN9daDossy_c19func_ov065_021182e4Ev(char *c);
+int _ZN9daDossy_c19func_ov065_02118634Ev(char *c);
 
 /* the mounted source statics (port/ov065_syms.txt) */
 extern unsigned data_ov065_0211cb20[], data_ov065_0211cb28[],
@@ -115,14 +115,14 @@ extern unsigned data_ov065_0211cd1c[], data_ov065_0211cd24[],
         sym((char *)self);                                                \
     }
 
-OV065_FACE(021165d8, func_ov065_021165d8)   /* snufit 0211cb40 */
-OV065_FACE(021162c0, func_ov065_021162c0)   /* snufit 0211cb48 */
-OV065_FACE(02116364, func_ov065_02116364)   /* snufit 0211cb50 */
-OV065_FACE(02116744, func_ov065_02116744)   /* snufit 0211cb58 */
-OV065_FACE(02117624, func_ov065_02117624)   /* swoop  0211cc38 */
-OV065_FACE(02117780, func_ov065_02117780)   /* swoop  0211cc40 */
-OV065_FACE(02117404, func_ov065_02117404)   /* swoop  0211cc48 */
-OV065_FACE(02117888, func_ov065_02117888)   /* swoop  0211cc50 */
+OV065_FACE(021165d8, _ZN15daYurei_Mucho_c19func_ov065_021165d8Ev)   /* snufit 0211cb40 */
+OV065_FACE(021162c0, _ZN15daYurei_Mucho_c19func_ov065_021162c0Ev)   /* snufit 0211cb48 */
+OV065_FACE(02116364, _ZN15daYurei_Mucho_c19func_ov065_02116364Ev)   /* snufit 0211cb50 */
+OV065_FACE(02116744, _ZN15daYurei_Mucho_c19func_ov065_02116744Ev)   /* snufit 0211cb58 */
+OV065_FACE(02117624, _ZN12daBasabasa_c12ExecuteChaseEv)   /* swoop  0211cc38 */
+OV065_FACE(02117780, _ZN12daBasabasa_c11ExecuteDropEv)   /* swoop  0211cc40 */
+OV065_FACE(02117404, _ZN12daBasabasa_c13ExecuteReturnEv)   /* swoop  0211cc48 */
+OV065_FACE(02117888, _ZN12daBasabasa_c12ExecutePerchEv)   /* swoop  0211cc50 */
 
 /* RUN link100 LANE MODELS: THE EIGHT ENTER RECORDS ARE FACES TOO.
    The paragraph above keeps the eight ENTER records raw because
@@ -169,18 +169,18 @@ OV065_FACE(02117888, func_ov065_02117888)   /* swoop  0211cc50 */
         return sym((char *)self);                                         \
     }
 
-OV065_ENTER_FACE(0211672c, func_ov065_0211672c)   /* snufit 0211cb20 */
-OV065_ENTER_FACE(02116588, func_ov065_02116588)   /* snufit 0211cb28 */
-OV065_ENTER_FACE(021168a8, func_ov065_021168a8)   /* snufit 0211cb30 */
-OV065_ENTER_FACE(02116328, func_ov065_02116328)   /* snufit 0211cb38 */
-OV065_ENTER_FACE(021177e4, func_ov065_021177e4)   /* swoop  0211cc20 */
-OV065_ENTER_FACE(021176fc, func_ov065_021176fc)   /* swoop  0211cc28 */
-OV065_ENTER_FACE(021178fc, func_ov065_021178fc)   /* swoop  0211cc30 */
-OV065_ENTER_FACE(021175b0, func_ov065_021175b0)   /* swoop  0211cc58 */
+OV065_ENTER_FACE(0211672c, _ZN15daYurei_Mucho_c19func_ov065_0211672cEv)   /* snufit 0211cb20 */
+OV065_ENTER_FACE(02116588, _ZN15daYurei_Mucho_c19func_ov065_02116588Ev)   /* snufit 0211cb28 */
+OV065_ENTER_FACE(021168a8, _ZN15daYurei_Mucho_c19func_ov065_021168a8Ev)   /* snufit 0211cb30 */
+OV065_ENTER_FACE(02116328, _ZN15daYurei_Mucho_c19func_ov065_02116328Ev)   /* snufit 0211cb38 */
+OV065_ENTER_FACE(021177e4, _ZN12daBasabasa_c9EnterDropEv)   /* swoop  0211cc20 */
+OV065_ENTER_FACE(021176fc, _ZN12daBasabasa_c10EnterChaseEv)   /* swoop  0211cc28 */
+OV065_ENTER_FACE(021178fc, _ZN12daBasabasa_c10EnterPerchEv)   /* swoop  0211cc30 */
+OV065_ENTER_FACE(021175b0, _ZN12daBasabasa_c11EnterReturnEv)   /* swoop  0211cc58 */
 
-DORRIE_FACE(0, func_ov065_021183c8)
-DORRIE_FACE(1, func_ov065_021182e4)
-DORRIE_FACE(2, func_ov065_02118634)
+DORRIE_FACE(0, _ZN9daDossy_c19func_ov065_021183c8Ev)
+DORRIE_FACE(1, _ZN9daDossy_c19func_ov065_021182e4Ev)
+DORRIE_FACE(2, _ZN9daDossy_c19func_ov065_02118634Ev)
 
 namespace {
 struct SeatRow {

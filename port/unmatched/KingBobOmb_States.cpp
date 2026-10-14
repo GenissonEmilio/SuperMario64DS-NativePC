@@ -66,11 +66,11 @@ void _ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3(
     void *self, const void *v);
 void _ZN5dCc_c5ClearEv(void *self);
 void _ZN5dCc_c6UpdateEv(void *self);
-void func_ov078_02125de0(void *self);
-void func_ov078_02125c98(void *self);
+void _ZN12daBombking_c19func_ov078_02125de0Ev(void *self);
+void _ZN12daBombking_c19func_ov078_02125c98Ev(void *self);
 extern void *data_0209f318;            /* the camera the king registers with */
 
-int KingBobOmb_SetState(void *self, void *state);
+int _ZN12daBombking_c19KingBobOmb_SetStateEPv(void *self, void *state);
 int _ZN12daBombking_c8BehaviorEv(void *self);
 
 }  /* extern "C" */

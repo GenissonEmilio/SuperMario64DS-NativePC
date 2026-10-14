@@ -157,4 +157,4 @@
 # headless proof can exercise the dispatch. The seat is taken on the byte-for-
 # byte arm of the rule, and a click-driven play proof of Slots Shot's curling
 # scene with Tango present is OWED and named in this lane's report.
-src/func_ov006_020e1854.c
+src/actors/dScMgCurling_c.cpp

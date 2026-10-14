@@ -160,46 +160,46 @@ void port_mg_panel_states_seat(void);
    defined in this file join port/slice_ppp.txt in the same commit. */
 
 /* arity 0 */
-void func_ov006_021071d4(char *c);
-void func_ov006_0210713c(char *c);
-void func_ov006_02105730(char *c);
-void func_ov006_02105670(char *c);
-void func_ov006_021051dc(char *c);
-void func_ov006_0210508c(char *c);
-void func_ov006_0210500c(char *c);
-void func_ov006_02104fb4(unsigned char *c);
-void func_ov006_02104ecc(char *c);
-void func_ov006_02104ec8(void);          /* empty body, no argument */
-void func_ov006_02104c08(char *c);
-void func_ov006_02104bb0(char *c);
-void func_ov006_02104bac(void);          /* empty body, no argument */
+void _ZN12dScMgPanel_c19func_ov006_021071d4Ev(char *c);
+void _ZN12dScMgPanel_c19func_ov006_0210713cEv(char *c);
+void _ZN12dScMgPanel_c19func_ov006_02105730Ev(char *c);
+void _ZN12dScMgPanel_c19func_ov006_02105670Ev(char *c);
+void _ZN12dScMgPanel_c19func_ov006_021051dcEv(char *c);
+void _ZN12dScMgPanel_c19func_ov006_0210508cEv(char *c);
+void _ZN12dScMgPanel_c19func_ov006_0210500cEv(char *c);
+void _ZN12dScMgPanel_c19func_ov006_02104fb4Ev(unsigned char *c);
+void _ZN12dScMgPanel_c19func_ov006_02104eccEv(char *c);
+void _ZN12dScMgPanel_c19func_ov006_02104ec8Ev(void);          /* empty body, no argument */
+void _ZN12dScMgPanel_c19func_ov006_02104c08Ev(char *c);
+void _ZN12dScMgPanel_c19func_ov006_02104bb0Ev(char *c);
+void _ZN12dScMgPanel_c19func_ov006_02104bacEv(void);          /* empty body, no argument */
 
 /* arity 1 */
-void func_ov006_02106bac(char *c, int i);
-void func_ov006_02106aa8(char *c, int i);
-void func_ov006_02106a08(char *c, int i);
-void func_ov006_02106910(char *c, int i);
-void func_ov006_02104ac0(void);          /* empty body, no argument */
-void func_ov006_02104a10(char *c, int i);
-void func_ov006_02104920(char *c, int i);
+void _ZN12dScMgPanel_c19func_ov006_02106bacEi(char *c, int i);
+void _ZN12dScMgPanel_c19func_ov006_02106aa8Ei(char *c, int i);
+void _ZN12dScMgPanel_c19func_ov006_02106a08Ei(char *c, int i);
+void _ZN12dScMgPanel_c19func_ov006_02106910Ei(char *c, int i);
+void _ZN12dScMgPanel_c19func_ov006_02104ac0Ei(void);          /* empty body, no argument */
+void _ZN12dScMgPanel_c19func_ov006_02104a10Ei(char *c, int i);
+void _ZN12dScMgPanel_c19func_ov006_02104920Ei(char *c, int i);
 
 /* the non-dispatching callees the eleven host copies below reach */
-void func_ov006_02104c60(void *c);
-void func_ov006_021050bc(void *c);
-void func_ov006_021057f0(void *c);
-void func_ov006_02105134(void *c);
-void func_ov006_02105854(void *c);
-void func_ov006_02105c88(void *c);
-void func_ov006_02105d20(void *c);
-void func_ov006_02105de4(void *c);
-void func_ov006_02104354(void *c);
-void func_ov006_02104ac4(void *c);
-void func_ov006_02104ea8(char *c);
+void _ZN12dScMgPanel_c19func_ov006_02104c60Ev(void *c);
+void _ZN12dScMgPanel_c19func_ov006_021050bcEv(void *c);
+void _ZN12dScMgPanel_c19func_ov006_021057f0Ev(void *c);
+void _ZN12dScMgPanel_c19func_ov006_02105134Ev(void *c);
+void _ZN12dScMgPanel_c19func_ov006_02105854Ev(void *c);
+void _ZN12dScMgPanel_c19func_ov006_02105c88Ev(void *c);
+void _ZN12dScMgPanel_c19func_ov006_02105d20Ev(void *c);
+void _ZN12dScMgPanel_c19func_ov006_02105de4Ev(void *c);
+void _ZN12dScMgPanel_c19func_ov006_02104354Ev(void *c);
+void _ZN12dScMgPanel_c19func_ov006_02104ac4Ev(void *c);
+void _ZN12dScMgPanel_c19func_ov006_02104ea8Ev(char *c);
 void func_ov004_020b0a54(int c);
 /* the round-end state's own callees, run mg7 lane L380 */
-void func_ov006_02104580(char *c);
-void func_ov006_02104870(char *c);
-void func_ov006_021068d8(char *c);
+void _ZN12dScMgPanel_c19func_ov006_02104580Ev(char *c);
+void _ZN12dScMgPanel_c19func_ov006_02104870Ev(char *c);
+void _ZN12dScMgPanel_c19func_ov006_021068d8Ev(char *c);
 void func_ov004_020adb1c(int n);
 extern unsigned char data_020a0e40;
 extern unsigned char data_020a0de8[];
@@ -208,12 +208,12 @@ extern char *data_ov004_020beb68;
 
 /* the eleven host copies this file DEFINES, so the seat can name them */
 int  _ZN12dScMgPanel_c8BehaviorEv(char *c);
-void func_ov006_02106ca4(char *c);
-void func_ov006_02106bc0(char *c);
-void func_ov006_02106eb8(char *c);
-void func_ov006_02106f44(char *c);
-void func_ov006_02106fdc(void *c);
-void func_ov006_0210709c(void *c);
+void _ZN12dScMgPanel_c19func_ov006_02106ca4Ev(char *c);
+void _ZN12dScMgPanel_c19func_ov006_02106bc0Ev(char *c);
+void _ZN12dScMgPanel_c19func_ov006_02106eb8Ev(char *c);
+void _ZN12dScMgPanel_c19func_ov006_02106f44Ev(char *c);
+void _ZN12dScMgPanel_c19func_ov006_02106fdcEv(void *c);
+void _ZN12dScMgPanel_c19func_ov006_0210709cEv(void *c);
 
 void port_mg_panel_counts(unsigned *hits, unsigned *floor, unsigned *unknown);
 
@@ -235,28 +235,28 @@ static int panel_try_0(void *self, unsigned code)
     char *c = (char *)self;
     switch (code) {
     /* data_ov006_02142888, the Behavior's own eight */
-    case 0x021071d4u: func_ov006_021071d4(c);       return 1;
-    case 0x0210713cu: func_ov006_0210713c(c);       return 1;
-    case 0x0210709cu: func_ov006_0210709c(c);       return 1;
-    case 0x02106fdcu: func_ov006_02106fdc(c);       return 1;
-    case 0x02106f44u: func_ov006_02106f44(c);       return 1;
-    case 0x02106eb8u: func_ov006_02106eb8(c);       return 1;
-    case 0x02106ca4u: func_ov006_02106ca4(c);       return 1;
-    case 0x02106bc0u: func_ov006_02106bc0(c);       return 1;
+    case 0x021071d4u: _ZN12dScMgPanel_c19func_ov006_021071d4Ev(c);       return 1;
+    case 0x0210713cu: _ZN12dScMgPanel_c19func_ov006_0210713cEv(c);       return 1;
+    case 0x0210709cu: _ZN12dScMgPanel_c19func_ov006_0210709cEv(c);       return 1;
+    case 0x02106fdcu: _ZN12dScMgPanel_c19func_ov006_02106fdcEv(c);       return 1;
+    case 0x02106f44u: _ZN12dScMgPanel_c19func_ov006_02106f44Ev(c);       return 1;
+    case 0x02106eb8u: _ZN12dScMgPanel_c19func_ov006_02106eb8Ev(c);       return 1;
+    case 0x02106ca4u: _ZN12dScMgPanel_c19func_ov006_02106ca4Ev(c);       return 1;
+    case 0x02106bc0u: _ZN12dScMgPanel_c19func_ov006_02106bc0Ev(c);       return 1;
     /* data_ov006_02142820 */
-    case 0x02105730u: func_ov006_02105730(c);       return 1;
-    case 0x02105670u: func_ov006_02105670(c);       return 1;
-    case 0x021051dcu: func_ov006_021051dc(c);       return 1;
+    case 0x02105730u: _ZN12dScMgPanel_c19func_ov006_02105730Ev(c);       return 1;
+    case 0x02105670u: _ZN12dScMgPanel_c19func_ov006_02105670Ev(c);       return 1;
+    case 0x021051dcu: _ZN12dScMgPanel_c19func_ov006_021051dcEv(c);       return 1;
     /* data_ov006_02142860 */
-    case 0x0210508cu: func_ov006_0210508c(c);       return 1;
-    case 0x0210500cu: func_ov006_0210500c(c);       return 1;
-    case 0x02104fb4u: func_ov006_02104fb4((unsigned char *)c); return 1;
-    case 0x02104eccu: func_ov006_02104ecc(c);       return 1;
-    case 0x02104ec8u: func_ov006_02104ec8();        return 1;
+    case 0x0210508cu: _ZN12dScMgPanel_c19func_ov006_0210508cEv(c);       return 1;
+    case 0x0210500cu: _ZN12dScMgPanel_c19func_ov006_0210500cEv(c);       return 1;
+    case 0x02104fb4u: _ZN12dScMgPanel_c19func_ov006_02104fb4Ev((unsigned char *)c); return 1;
+    case 0x02104eccu: _ZN12dScMgPanel_c19func_ov006_02104eccEv(c);       return 1;
+    case 0x02104ec8u: _ZN12dScMgPanel_c19func_ov006_02104ec8Ev();        return 1;
     /* data_ov006_021427ec */
-    case 0x02104c08u: func_ov006_02104c08(c);       return 1;
-    case 0x02104bb0u: func_ov006_02104bb0(c);       return 1;
-    case 0x02104bacu: func_ov006_02104bac();        return 1;
+    case 0x02104c08u: _ZN12dScMgPanel_c19func_ov006_02104c08Ev(c);       return 1;
+    case 0x02104bb0u: _ZN12dScMgPanel_c19func_ov006_02104bb0Ev(c);       return 1;
+    case 0x02104bacu: _ZN12dScMgPanel_c19func_ov006_02104bacEv();        return 1;
 
     /* ---- THE ONE REMAINING FLOOR, REPORTED AND NEVER CALLED -------------
      *
@@ -286,14 +286,14 @@ static int panel_try_1(void *self, unsigned code, int a)
     char *c = (char *)self;
     switch (code) {
     /* data_ov006_02142840, dispatched at arity 1 by five level-1 states */
-    case 0x02106bacu: func_ov006_02106bac(c, a); return 1;
-    case 0x02106aa8u: func_ov006_02106aa8(c, a); return 1;
-    case 0x02106a08u: func_ov006_02106a08(c, a); return 1;
-    case 0x02106910u: func_ov006_02106910(c, a); return 1;
+    case 0x02106bacu: _ZN12dScMgPanel_c19func_ov006_02106bacEi(c, a); return 1;
+    case 0x02106aa8u: _ZN12dScMgPanel_c19func_ov006_02106aa8Ei(c, a); return 1;
+    case 0x02106a08u: _ZN12dScMgPanel_c19func_ov006_02106a08Ei(c, a); return 1;
+    case 0x02106910u: _ZN12dScMgPanel_c19func_ov006_02106910Ei(c, a); return 1;
     /* data_ov006_021427bc */
-    case 0x02104ac0u: func_ov006_02104ac0();     return 1;
-    case 0x02104a10u: func_ov006_02104a10(c, a); return 1;
-    case 0x02104920u: func_ov006_02104920(c, a); return 1;
+    case 0x02104ac0u: _ZN12dScMgPanel_c19func_ov006_02104ac0Ei();     return 1;
+    case 0x02104a10u: _ZN12dScMgPanel_c19func_ov006_02104a10Ei(c, a); return 1;
+    case 0x02104920u: _ZN12dScMgPanel_c19func_ov006_02104920Ei(c, a); return 1;
     default:
         return 0;
     }
@@ -373,7 +373,7 @@ extern "C" void port_mg_panel_counts(unsigned *hits, unsigned *floor,
    is untouched: panel_try_0 still names these bodies, and it now reaches the
    matched ones. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void func_ov006_02106bc0(char *c)
+extern "C" void _ZN12dScMgPanel_c19func_ov006_02106bc0Ev(char *c)
 {
     int i;
     for (i = 0; i < *(int *)(c + 0x4cb8); i++) {
@@ -390,7 +390,7 @@ extern "C" void func_ov006_02106bc0(char *c)
     func_ov004_020b0a54(0x12);
     *(unsigned char *)(c + 0xc3) = 0;
     *(unsigned char *)(c + 0x4fe3) = 0;
-    func_ov006_02104ea8(c);
+    _ZN12dScMgPanel_c19func_ov006_02104ea8Ev(c);
 }
 #endif  /* HOSTGEN2: func_ov006_02106bc0 retired to src */
 
@@ -416,11 +416,11 @@ extern "C" void func_ov006_02106bc0(char *c)
    is untouched: panel_try_0 still names these bodies, and it now reaches the
    matched ones. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void func_ov006_02106eb8(char *c)
+extern "C" void _ZN12dScMgPanel_c19func_ov006_02106eb8Ev(char *c)
 {
     int i;
-    func_ov006_021050bc(c);
-    func_ov006_021057f0(c);
+    _ZN12dScMgPanel_c19func_ov006_021050bcEv(c);
+    _ZN12dScMgPanel_c19func_ov006_021057f0Ev(c);
     for (i = 0; i < *(int *)(c + 0x4cb8); i++) {
         const unsigned char idx = *(unsigned char *)(c + i + 0x4efa);
         const MgPmf *e = &data_ov006_02142840[idx];
@@ -449,12 +449,12 @@ extern "C" void func_ov006_02106eb8(char *c)
    is untouched: panel_try_0 still names these bodies, and it now reaches the
    matched ones. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void func_ov006_02106f44(char *c)
+extern "C" void _ZN12dScMgPanel_c19func_ov006_02106f44Ev(char *c)
 {
     int i;
-    func_ov006_021050bc(c);
+    _ZN12dScMgPanel_c19func_ov006_021050bcEv(c);
     *(unsigned char *)(c + 0x4fe9) = 1;
-    func_ov006_02105854(c);
+    _ZN12dScMgPanel_c19func_ov006_02105854Ev(c);
     for (i = 0; i < *(int *)(c + 0x4cb8); i++) {
         const unsigned char idx = *(unsigned char *)(c + i + 0x4efa);
         const MgPmf *e = &data_ov006_02142840[idx];
@@ -487,12 +487,12 @@ extern "C" void func_ov006_02106f44(char *c)
    is untouched: panel_try_0 still names these bodies, and it now reaches the
    matched ones. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void func_ov006_02106fdc(void *p)
+extern "C" void _ZN12dScMgPanel_c19func_ov006_02106fdcEv(void *p)
 {
     char *c = (char *)p;
     int found = 0;
     int i = 0;
-    func_ov006_021050bc(c);
+    _ZN12dScMgPanel_c19func_ov006_021050bcEv(c);
     *(unsigned char *)(c + 0x4fe9) = 1;
     if (*(int *)(c + 0x4cb8) > 0) {
         do {
@@ -531,21 +531,21 @@ extern "C" void func_ov006_02106fdc(void *p)
    is untouched: panel_try_0 still names these bodies, and it now reaches the
    matched ones. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void func_ov006_0210709c(void *p)
+extern "C" void _ZN12dScMgPanel_c19func_ov006_0210709cEv(void *p)
 {
     char *c = (char *)p;
     int i;
-    func_ov006_02105de4(c);
-    func_ov006_021050bc(c);
+    _ZN12dScMgPanel_c19func_ov006_02105de4Ev(c);
+    _ZN12dScMgPanel_c19func_ov006_021050bcEv(c);
     *(unsigned char *)(c + 0x4fe9) = 0;
     for (i = 0; i < *(int *)(c + 0x4cb8); i++) {
         const unsigned char idx = *(unsigned char *)(c + i + 0x4efa);
         const MgPmf *e = &data_ov006_02142840[idx];
         port_mg_panel_call1(c, e->code, e->adj, i);
     }
-    func_ov006_02105d20(c);
-    func_ov006_02105c88(c);
-    func_ov006_02105134(c);
+    _ZN12dScMgPanel_c19func_ov006_02105d20Ev(c);
+    _ZN12dScMgPanel_c19func_ov006_02105c88Ev(c);
+    _ZN12dScMgPanel_c19func_ov006_02105134Ev(c);
 }
 #endif  /* HOSTGEN2: func_ov006_0210709c retired to src */
 
@@ -615,9 +615,9 @@ extern "C" void func_ov006_0210709c(void *p)
         sym();                                                            \
     }
 
-PN_FACE_VOID(0, func_ov006_02104ac0)
-PN_FACE(1, func_ov006_02104a10)
-PN_FACE(2, func_ov006_02104920)
+PN_FACE_VOID(0, _ZN12dScMgPanel_c19func_ov006_02104ac0Ei)
+PN_FACE(1, _ZN12dScMgPanel_c19func_ov006_02104a10Ei)
+PN_FACE(2, _ZN12dScMgPanel_c19func_ov006_02104920Ei)
 
 /* src/actors/dScMgPanel_c.cpp, table 021427ec, arity 0.
    ROM 0x02104c60: guard byte at +0x4684; the pooled literal 0x00004680 added
@@ -642,7 +642,7 @@ PN_FACE(2, func_ov006_02104920)
    is untouched: panel_try_0 still names these bodies, and it now reaches the
    matched ones. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void func_ov006_02104c60(void *p)
+extern "C" void _ZN12dScMgPanel_c19func_ov006_02104c60Ev(void *p)
 {
     char *c = (char *)p;
     if (*(unsigned char *)(c + 0x4684) == 0)
@@ -704,11 +704,11 @@ extern "C" void port_mg_panel_states_seat(void)
         unsigned    rom;
         void       *host;
     } seats[] = {
-        {data_ov006_02142860, "02142860", 0, 0x0210508cu, (void *)func_ov006_0210508c},
-        {data_ov006_02142860, "02142860", 1, 0x0210500cu, (void *)func_ov006_0210500c},
-        {data_ov006_02142860, "02142860", 2, 0x02104fb4u, (void *)func_ov006_02104fb4},
-        {data_ov006_02142860, "02142860", 3, 0x02104eccu, (void *)func_ov006_02104ecc},
-        {data_ov006_02142860, "02142860", 4, 0x02104ec8u, (void *)func_ov006_02104ec8},
+        {data_ov006_02142860, "02142860", 0, 0x0210508cu, (void *)_ZN12dScMgPanel_c19func_ov006_0210508cEv},
+        {data_ov006_02142860, "02142860", 1, 0x0210500cu, (void *)_ZN12dScMgPanel_c19func_ov006_0210500cEv},
+        {data_ov006_02142860, "02142860", 2, 0x02104fb4u, (void *)_ZN12dScMgPanel_c19func_ov006_02104fb4Ev},
+        {data_ov006_02142860, "02142860", 3, 0x02104eccu, (void *)_ZN12dScMgPanel_c19func_ov006_02104eccEv},
+        {data_ov006_02142860, "02142860", 4, 0x02104ec8u, (void *)_ZN12dScMgPanel_c19func_ov006_02104ec8Ev},
 
         /* Run link100 lane PMFB5: data_ov006_021427bc, whose dispatcher
            func_ov006_02104ac4 now compiles from src. THE TWO HALVES OF THIS
@@ -718,9 +718,9 @@ extern "C" void port_mg_panel_states_seat(void)
            02104ac4 compiles to `push 0 / mov ecx, tab[i*8+4] / mov eax,
            tab[i*8] / add ecx, edx / call eax` with no caller cleanup, so its
            three cells take one-argument __fastcall faces. */
-        {data_ov006_021427bc, "021427bc", 0, 0x02104ac0u, (void *)pn_s0_func_ov006_02104ac0},
-        {data_ov006_021427bc, "021427bc", 1, 0x02104a10u, (void *)pn_s1_func_ov006_02104a10},
-        {data_ov006_021427bc, "021427bc", 2, 0x02104920u, (void *)pn_s2_func_ov006_02104920},
+        {data_ov006_021427bc, "021427bc", 0, 0x02104ac0u, (void *)pn_s0__ZN12dScMgPanel_c19func_ov006_02104ac0Ei},
+        {data_ov006_021427bc, "021427bc", 1, 0x02104a10u, (void *)pn_s1__ZN12dScMgPanel_c19func_ov006_02104a10Ei},
+        {data_ov006_021427bc, "021427bc", 2, 0x02104920u, (void *)pn_s2__ZN12dScMgPanel_c19func_ov006_02104920Ei},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
@@ -764,7 +764,7 @@ extern "C" void port_mg_panel_states_seat(void)
    is untouched: panel_try_0 still names these bodies, and it now reaches the
    matched ones. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void func_ov006_021057f0(void *p)
+extern "C" void _ZN12dScMgPanel_c19func_ov006_021057f0Ev(void *p)
 {
     char *c = (char *)p;
     void **vt = *(void ***)c;
@@ -775,6 +775,6 @@ extern "C" void func_ov006_021057f0(void *p)
     const unsigned j = *(unsigned char *)(c + 0x4fe0);
     const MgPmf *e = &data_ov006_02142820[j];
     port_mg_panel_call0(c, e->code, e->adj);
-    func_ov006_02104c60(c);
+    _ZN12dScMgPanel_c19func_ov006_02104c60Ev(c);
 }
 #endif  /* HOSTGEN2: func_ov006_021057f0 retired to src */
