@@ -52,10 +52,8 @@ extern unsigned char data_020a0de8[];   // touch records, 4 bytes each (probe on
 extern int data_020a0e58[];             // pad mirror (probe only)
 extern unsigned char data_020a0e40;     // the stick slot Player::St_Wait_Main reads (probe only)
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
-const void *port_level_framebuffer(void);
-const void *port_level_framebuffer_none(void) { return 0; }   // the smoke targets have no level loop: the alternatename below resolves to this there
+const void *port_level_fb_ptr = 0;   // set by tests/walk_window.cpp's level loop; the proof pictures (SM64DS_COOPSPAWN_SHOT) read it
 }
-#pragma comment(linker, "/alternatename:_port_level_framebuffer=_port_level_framebuffer_none")
 namespace ntr { struct Framebuffer; bool ppu_write_bmp(const char *path, const Framebuffer &fb); }
 
 namespace port {
@@ -842,7 +840,7 @@ void spawn_frame() {
             else if (kind == 'l') { base = 1; ok = true; }
             if (ok && S9.frame == base + (unsigned)n) {
                 char nm[64]; std::snprintf(nm, sizeof nm, "spawn9_%c%ld.bmp", kind, n);
-                const void *lfb = ::port_level_framebuffer();
+                const void *lfb = ::port_level_fb_ptr;
                 const bool w = lfb && ::ntr::ppu_write_bmp(nm, *(const ::ntr::Framebuffer *)lfb);
                 LOG("SPAWN picture %s %s at (%d,%d,%d)", nm, w ? "written" : "FAILED", me[0] >> 12, me[1] >> 12, me[2] >> 12);
             }
