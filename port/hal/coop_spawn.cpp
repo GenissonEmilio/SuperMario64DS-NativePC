@@ -744,6 +744,7 @@ void apply_spawn(int seat, const SpSpawnWire &w, unsigned now) {
     if (w.cls == 229 && !g_toff.keyview) {
         ack_add(w.origin, w.counter, now);
         ++g_st.drop_class;
+        g_kp_until = g_frames + 3000u;       // proof: the pprobe lines (my Player's state) run on a watcher too
         if (g_log) std::fprintf(stderr, "[coopspawn] key view: seat %d's rabbit key (id %d/%d) not built here, I watch the catcher's ghost frame=%u wall=%lld\n",
                                 seat, (int)w.origin, (int)w.counter, g_frames, wall_ms());
         return;
