@@ -554,9 +554,11 @@ void seat_leave(int s, const char *why) {
 void fifo_push(int kind, const unsigned char *p, int len, int seat,
                unsigned now) {
     // MOVERS9: a mover batch (coop world, sub-type 0x10) has its own queue and its own depth
-    const bool mover = kind == kHubCoopWorld && len > 6 && p[6] == kMoverSubtype;
+    static int split = -1;             // SM64DS_HUB_SPLIT=0 is the MUST-FAIL control: one shared 32-deep world queue (the r3 behaviour)
+    if (split < 0) { const char *e = std::getenv("SM64DS_HUB_SPLIT"); split = (e && *e == '0') ? 0 : 1; }
+    const bool mover = split && kind == kHubCoopWorld && len > 6 && p[6] == kMoverSubtype;
     Fifo &f = mover ? g_mfifo : g_fifo[kind];
-    const int depth = mover ? (int)kMoverFifoDepth : kFifoDepth[kind];
+    const int depth = mover ? (int)kMoverFifoDepth : (kind == kHubCoopWorld && !split ? 32 : kFifoDepth[kind]);
     if (f.count == depth) {            // newest wins: drop the oldest
         f.head = (f.head + 1) % depth;
         --f.count;
@@ -1303,6 +1305,17 @@ bool hub_on_kind(HubKind kind, HubKindFn fn, void *user) {
 // The game thread's drain: handlers run here, with no lock held.
 int comms_hub_pump() {
     int delivered = 0;
+    {   // proof knob SM64DS_HUB_STALL=<start_ms>:<len_ms> (ms after the first pump): the game thread does not drain for a while, as in a level load
+        static int st = -1; static unsigned t0 = 0, from = 0, len = 0;
+        if (st < 0) {
+            st = 0;
+            if (const char *e = std::getenv("SM64DS_HUB_STALL")) { unsigned a = 0, b = 0; if (std::sscanf(e, "%u:%u", &a, &b) == 2) { from = a; len = b; st = 1; t0 = comms_hub_now_ms(); } }
+        }
+        if (st == 1) {
+            const unsigned dt = comms_hub_now_ms() - t0;
+            if (dt >= from && dt < from + len) return 0;
+        }
+    }
     unsigned char buf[kHubMaxDatagram];
     for (int kind = kHubPresence; kind < kHubKinds; ++kind) {
         HubKindFn fn;
@@ -1410,7 +1423,7 @@ int comms_hub_recv_t(HubKind kind, void *buf, int cap, int *seat,
     // MOVERS9: the coop world kind drains its one-shot events first (in order), then the mover batches
     for (int pass = 0; pass < (kind == kHubCoopWorld ? 2 : 1); ++pass) {
         Fifo &f = pass == 0 ? g_fifo[kind] : g_mfifo;
-        const int depth = pass == 0 ? kFifoDepth[kind] : (int)kMoverFifoDepth;
+        const int depth = pass == 0 ? kFifoDepth[kind] : (int)kMoverFifoDepth;   // (the SPLIT=0 control only ever fills 32 of the 128 slots)
         while (f.count > 0) {
             Msg &m = f.slot[f.head];
             f.head = (f.head + 1) % depth;
