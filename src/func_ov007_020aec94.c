@@ -1,6 +1,10 @@
 extern void func_ov007_020bd9e4(int);
 extern int* data_ov007_0210342c;
 void func_ov007_020aec94(int r4){
+#ifdef _MSC_VER
+  /* port: choice 6 is the VS button and multiplayer is not in this build; the press is ignored (the main menu stays, the plank is greyed) */
+  if (r4 == 6) return;
+#endif
   int* g = data_ov007_0210342c;
   int* r2 = (int*)(g[0xa]);
   int r5 = (*(unsigned char*)((char*)r2+0x37) == 1);
