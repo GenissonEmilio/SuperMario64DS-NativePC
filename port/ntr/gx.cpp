@@ -32,6 +32,9 @@
 #include <windows.h>
 #endif
 
+extern "C" int port_fog_probe(unsigned char *o8);
+extern "C" int port_fog_probe_dflt(unsigned char *o8) { (void)o8; return -1; }
+#pragma comment(linker, "/alternatename:_port_fog_probe=_port_fog_probe_dflt")
 namespace ntr {
 namespace {
 
@@ -6234,12 +6237,10 @@ void gx_render(Framebuffer &fb) {
             bool ch = false;
             for (int i = 0; i < 6; ++i) if (cur[i] != last[i]) ch = true;
             if ((fr % 300) == 1) {
-                extern unsigned char data_0209f258[4];
-                extern int data_0209f31c[4];
-                const unsigned char *fp = reinterpret_cast<const unsigned char *>((uintptr_t)data_0209f31c[0]);
-                std::fprintf(stderr, "[rprobe] level fog records %d, first %02x %02x %02x %02x %02x %02x %02x %02x\n",
-                             (int)data_0209f258[0], fp ? fp[0] : 0, fp ? fp[1] : 0, fp ? fp[2] : 0, fp ? fp[3] : 0,
-                             fp ? fp[4] : 0, fp ? fp[5] : 0, fp ? fp[6] : 0, fp ? fp[7] : 0);
+                unsigned char fb8[8] = {0};
+                const int nrec = port_fog_probe(fb8);
+                std::fprintf(stderr, "[rprobe] level fog records %d, first %02x %02x %02x %02x %02x %02x %02x %02x\n", nrec,
+                             fb8[0], fb8[1], fb8[2], fb8[3], fb8[4], fb8[5], fb8[6], fb8[7]);
             }
             if ((ch || (fr % 300) == 1) && lines < 200) {
                 ++lines;
