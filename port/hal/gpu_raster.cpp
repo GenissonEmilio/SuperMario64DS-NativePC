@@ -4857,22 +4857,29 @@ extern "C" void port_gpu_twod_rects(const unsigned *inst, int n)
     g_tw_ms += ms_between(t0, qpc());
 }
 
+/* THE CORNER MAP IS NEVER TAKEN BY ENGINE A'S PARTIAL DIM (run hunt8, lane
+   FIX092B). The panel is engine B's picture, the DS lower screen, and a message
+   box or a pause dim is engine A's brightness through a mask; it never reaches
+   engine B. So the panel rectangle is written as "no layer, nothing written":
+   code 0, which the composite reads as not taken in every mode. A plain fade
+   to black has no mask (the frame is not built with one) and still covers the
+   map. */
 extern "C" void port_gpu_twod_bm_rect(int x0, int y0, int x1, int y1)
 {
-    if (!g_tw_live) return;
+    if (!g_tw_live || !g_bm_tex) return;
     if (x0 < 0) x0 = 0;
     if (y0 < 0) y0 = 0;
     if (x1 > g_cp_w) x1 = g_cp_w;
     if (y1 > g_cp_h) y1 = g_cp_h;
     if (x1 <= x0 || y1 <= y0) return;
-    if (!tw_cb(x0, y0, x1, y1)) return;
-    tw_state(1, g_bm_rtv, 0, g_cp_w, g_cp_h, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    g_ctx->VSSetShader(g_tw_vs_box, 0, 0);
-    g_ctx->PSSetShader(g_tw_ps_inset, 0, 0);
-    ID3D11ShaderResourceView *srv[3] = { 0, g_tw_wm_srv, 0 };
-    g_ctx->PSSetShaderResources(4, 3, srv);
-    g_ctx->Draw(4, 0);
-    tw_unbind();
+    static std::vector<unsigned char> zero;
+    const size_t need = (size_t)(x1 - x0) * (size_t)(y1 - y0);
+    if (zero.size() < need) zero.assign(need, 0);
+    D3D11_BOX bx;
+    bx.left = (UINT)x0; bx.right = (UINT)x1;
+    bx.top = (UINT)y0; bx.bottom = (UINT)y1;
+    bx.front = 0; bx.back = 1;
+    g_ctx->UpdateSubresource(g_bm_tex, 0, &bx, zero.data(), (UINT)(x1 - x0), 0);
 }
 
 /* what = 0 the overlay and the mask at the end of engine A's compositor, 1 the

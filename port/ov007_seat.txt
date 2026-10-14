@@ -4088,3 +4088,7 @@ TWO READING RULES THIS LANE PAID FOR, both about false negatives:
 
 Full campaign record, evidence and BMPs: runs/mg16/status/TITLE.md and
 runs/mg16/out/TITLE/.
+
+0.9.2 RESPIN: func_01ffaa34 is _ll_sdiv (signed 64-bit divide, src/_ll_sdiv.c) and is no
+longer a trap. It has a host body in port/hal/scene_boot.cpp (truncating divide, zero divisor
+returns the numerator). One fewer L2_UNMATCHED body; the other arm9 ones are unchanged.

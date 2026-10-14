@@ -2619,9 +2619,11 @@ extern "C" const unsigned char *port_engine_a_bright_mask(void)
    a host layout and not a DS layer, so the per-pixel rule above has nothing to
    say about it: judged by the engine-A layer that happens to lie under it, a
    partial-target blend (the course-info and pause screens' BLDCNT 00e1)
-   punched that layer's shape into the map. The panel keeps the whole-panel
-   behaviour it always had: every pixel of it takes the blend, whenever a mask
-   is live. Inert when no mask was built (then the whole panel is blended
+   punched that layer's shape into the map. The panel gets one verdict too,
+   and it is NOT TAKEN (run hunt8, lane FIX092B): the map is engine B's picture
+   and a partial-target dim, a message box or the pause, is engine A's and never
+   reaches it (it used to darken the map under every message box). A mask-free
+   fade, a plain fade to black, still covers the whole panel. Inert when no mask was built (then the whole panel is blended
    anyway). Clipped to the live picture. */
 extern "C" void port_engine_a_bright_mask_rect(int x0, int y0, int x1, int y1)
 {
@@ -2639,13 +2641,13 @@ extern "C" void port_engine_a_bright_mask_rect(int x0, int y0, int x1, int y1)
         port_gpu_twod_bm_rect(x0, y0, x1, y1);
         if (!twod_check_env()) return;
     }
+    /* FIX092B: the verdict is "not taken". The map is engine B's picture, and
+       a partial-target dim (a message box, the pause) is engine A's. */
     if (!g_bm_live || !g_bm) return;
     for (int y = y0; y < y1; ++y)
         for (int x = x0; x < x1; ++x) {
             unsigned char &m = g_bm[(size_t)y * ntr::SCREEN_W + x];
-            /* a frame held on the card keeps the other bits: this pixel is now
-               a 2D pixel in front of the 3D layer that the fade takes */
-            m = g_bm_card ? (unsigned char)((m & 3u) | 4u | 8u) : 1;
+            m = 0;
         }
     if (port_gpu_twod_live() && twod_check_env())
         port_gpu_twod_check(reinterpret_cast<const unsigned *>(g_bm), ntr::SCREEN_W, g_bm,
