@@ -340,9 +340,12 @@ enum : int { kModeNone = 0, kModeRelay = 1, kModeMesh = 2 };
 // ghost, ident, chat, voice; then the arena's state, object, ref, claim (the
 // claim queue is never filled: claims only go up)
 // then presence, party star, party hit, coop world, coop control
+// MOVERS9: the coop world kind (index 11) holds ONE-SHOT events (deaths, spawns, stars, switches), so it is 128 deep;
+// the mover batches (SYNW sub-type 0x10, 10 Hz state that the next batch replaces) go to their own 48-deep queue, so a
+// load or a star select can no longer evict a one-shot event with a burst of poses.
 const int kFifoDepth[kHubKinds] = { 64, 32, 32, 32, 64, 64, 32, 1,
-                                    16, 16, 16, 32, 32 };
-enum : int { kFifoMaxDepth = 64 };
+                                    16, 16, 16, 128, 32 };
+enum : int { kFifoMaxDepth = 128, kMoverFifoDepth = 48, kMoverSubtype = 0x10 };
 
 struct Msg {
     unsigned t;        // arrival ms
@@ -391,6 +394,8 @@ unsigned g_last_ack = 0;
 unsigned g_roster_version = 0;
 int g_ping_rr = 0;          // the seat the last ping asked to answer
 Fifo g_fifo[kHubKinds];
+Fifo g_mfifo;                                 // MOVERS9: coop mover batches
+unsigned long long g_qdrop[kHubKinds + 1];    // MOVERS9: queue evictions per kind; the last slot = the mover queue
 Seat g_seats[kHubMaxSeats];
 CommsHubStats g_st = {};
 unsigned long long g_drop_stale = 0;
@@ -548,12 +553,15 @@ void seat_leave(int s, const char *why) {
 
 void fifo_push(int kind, const unsigned char *p, int len, int seat,
                unsigned now) {
-    Fifo &f = g_fifo[kind];
-    const int depth = kFifoDepth[kind];
+    // MOVERS9: a mover batch (coop world, sub-type 0x10) has its own queue and its own depth
+    const bool mover = kind == kHubCoopWorld && len > 6 && p[6] == kMoverSubtype;
+    Fifo &f = mover ? g_mfifo : g_fifo[kind];
+    const int depth = mover ? (int)kMoverFifoDepth : kFifoDepth[kind];
     if (f.count == depth) {            // newest wins: drop the oldest
         f.head = (f.head + 1) % depth;
         --f.count;
         ++g_st.drop_queue;
+        ++g_qdrop[mover ? kHubKinds : kind];
     }
     Msg &m = f.slot[(f.head + f.count) % depth];
     m.t = now;
@@ -1399,19 +1407,27 @@ int comms_hub_recv_t(HubKind kind, void *buf, int cap, int *seat,
                      unsigned *t_ms) {
     if (kind < 0 || kind >= kHubKinds || !buf) return 0;
     Lock l;
-    Fifo &f = g_fifo[kind];
-    const int depth = kFifoDepth[kind];
-    while (f.count > 0) {
-        Msg &m = f.slot[f.head];
-        f.head = (f.head + 1) % depth;
-        --f.count;
-        if (m.len > cap) { ++g_st.drop_cap; continue; }
-        std::memcpy(buf, m.b, (size_t)m.len);
-        if (seat) *seat = m.seat;
-        if (t_ms) *t_ms = m.t;
-        return m.len;
+    // MOVERS9: the coop world kind drains its one-shot events first (in order), then the mover batches
+    for (int pass = 0; pass < (kind == kHubCoopWorld ? 2 : 1); ++pass) {
+        Fifo &f = pass == 0 ? g_fifo[kind] : g_mfifo;
+        const int depth = pass == 0 ? kFifoDepth[kind] : (int)kMoverFifoDepth;
+        while (f.count > 0) {
+            Msg &m = f.slot[f.head];
+            f.head = (f.head + 1) % depth;
+            --f.count;
+            if (m.len > cap) { ++g_st.drop_cap; continue; }
+            std::memcpy(buf, m.b, (size_t)m.len);
+            if (seat) *seat = m.seat;
+            if (t_ms) *t_ms = m.t;
+            return m.len;
+        }
     }
     return 0;
+}
+
+unsigned long long comms_hub_queue_drops(int kind) {
+    Lock l;
+    return (kind >= 0 && kind <= kHubKinds) ? g_qdrop[kind] : 0;
 }
 
 int comms_hub_latest(HubKind kind, int seat, void *buf, int cap,

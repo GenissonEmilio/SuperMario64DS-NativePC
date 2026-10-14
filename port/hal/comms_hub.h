@@ -398,6 +398,8 @@ struct CommsHubStats {
     unsigned long long dispatched;        // delivered to a hub_on_kind handler
 };
 CommsHubStats comms_hub_stats();
+// MOVERS9: queue evictions of one kind; index kHubKinds = the coop mover-batch queue.
+unsigned long long comms_hub_queue_drops(int kind);
 void comms_hub_report(const char *tag);   // one "[hub] ..." line to stderr
 
 }  // namespace port

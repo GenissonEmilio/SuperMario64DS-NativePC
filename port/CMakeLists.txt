@@ -11623,6 +11623,8 @@ list(APPEND SLICE_COMMS_SOURCES hal/coop_tp.cpp)
 # Run mp1 lane COOPMOVE1: coop phase 2, live enemies and movers kept in step. INERT
 # unless SM64DS_COOP is set in a coop room; see hal/coop_actors.h.
 list(APPEND SLICE_COMMS_SOURCES hal/coop_actors.cpp)
+# Run mp1 lane MOVERS9: always-on [coopstat] sync numbers (per class, per queue, per lane). INERT outside a coop room.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_stats_log.cpp)
 # Run mp1 wave 56 lane PSTAR1: party shared stars. INERT unless SM64DS_PARTY=1.
 list(APPEND SLICE_COMMS_SOURCES hal/party_stars.cpp)
 # Run mp1 lane PLAYINT1: party / coop player interactions (punch, stomp, eat, shove). INERT outside

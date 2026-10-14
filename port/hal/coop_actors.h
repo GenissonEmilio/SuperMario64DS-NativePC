@@ -103,6 +103,16 @@ struct CoopMoveStats {
 };
 CoopMoveStats coop_move_stats();
 
+// MOVERS9: per-class sync numbers, one row per class that was seen. pin_* = how far (world units) the slave pin had to move the
+// local copy at each pin: the per-class desync number (0 = the local Behavior agrees with the owner). Written to the log by
+// coop_stats_log.cpp.
+struct CoopClassStat {
+    unsigned id; const char *name;
+    unsigned ents_max, pub, applied, slaved, owner_ch, pin_n, pin_big;
+    double pin_avg, pin_max;
+};
+int coop_move_class_stats(CoopClassStat *out, int max);
+
 // Validators (payload = after the 12-byte head). Exposed for the forged-input rows.
 bool coop_mover_batch_validate(const void *payload, int len);
 bool coop_mover_req_validate(const void *payload, int len);
