@@ -106,14 +106,26 @@ struct dBgW_Kc : dBgW {
     u8 pad_4e[2];
 
     /* --- vtable, in ROM order. Do not reorder. --- */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dBgW_Kc();   /* no slot */
+#else
     virtual ~dBgW_Kc();                              /* slots 0/1 */
+#endif
     virtual void Virtual08();                             /* slot 2 */
     virtual void GetSurfaceInfo(s16 triID, SurfaceInfo &res); /* slot 3 - ITCM */
     virtual void GetNormal(s16 triID, Vector3 &res);      /* slot 4 - ITCM */
     virtual void GetTriangleOrigin(s16 triID, Vector3 &res); /* slot 5 - ITCM */
+    #ifdef _MSC_VER
+    virtual int DetectClsn(dBgCh_SphCrr &sphere);           /* slot 8 - ITCM */
+    virtual int DetectClsn(dBgCh_Lin &ray);             /* slot 7 - ITCM */
+    virtual int DetectClsn(dBgCh_Gnd &ray);           /* slot 6 - ITCM */
+#else
     virtual int DetectClsn(dBgCh_Gnd &ray);           /* slot 6 - ITCM */
     virtual int DetectClsn(dBgCh_Lin &ray);             /* slot 7 - ITCM */
     virtual int DetectClsn(dBgCh_SphCrr &sphere);           /* slot 8 - ITCM */
+#endif
 
     /* C1 and the C2 base-subobject variant are defined in
        src/engine/collision/dBgW_Kc.cpp (notes/ctor-migration.md section 2). */
