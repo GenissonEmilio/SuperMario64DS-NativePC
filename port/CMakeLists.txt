@@ -22114,6 +22114,8 @@ set(PORT_DSSTATE_FI_SOURCES
 # PORTSYNC3: the flat names of constructed TU-owned data now resolve to the TU's
 # own object (hal/portsync3_flat_aliases.cpp), so those TUs join the span.
 list(APPEND PORT_DSSTATE_FI_SOURCES
+    src/actors/daObjBk_Lift_c.cpp)  # PORTSYNC3: defines the Bk Lift file handles now
+list(APPEND PORT_DSSTATE_FI_SOURCES
     src/actors/dMg3DHeyhoObjAdapter_c.cpp src/game/actors/daPiano_c/d_a_piano.cpp
     src/minigames/d_s_mg_bsc.cpp src/actors/daDoor_c.cpp src/actors/daFRing_c.cpp
     src/actors/daHanachan_c.cpp src/actors/daMip_c.cpp src/actors/daObj1UpLogo_c.cpp
