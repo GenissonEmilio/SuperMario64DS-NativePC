@@ -1228,8 +1228,7 @@ void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
         bool started = false;
         const int targ = ghost_tongue::select(pp.tongue, a, d.anim, is_yoshi && pup_tongue_fix(), &started);
         if (started && (pup_log() || pup_sfx_log()))
-            std::fprintf(stderr, "[puppet] f%u seat %d tongue %d (anim %u)
-", g.frame, seat,
+            std::fprintf(stderr, "[puppet] f%u seat %d tongue %d (anim %u)\n", g.frame, seat,
                          targ, (unsigned)d.anim);
     }
     // LAB: SM64DS_PUPPET_PUTON_PROBE=1, for 90 frames after a put-on cap spawn a line every 6
@@ -1309,8 +1308,7 @@ void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
         if (hf >= 0) {
             if (tp < 0) tp = env_on("SM64DS_PUPPET_TONGUE_PROBE") ? 1 : 0;
             if (tp)
-                std::fprintf(stderr, "[pup-tongue] f%u seat=%d arg=%d body_anim=%u body_frame=%d/%d head_frame=%d/%d
-",
+                std::fprintf(stderr, "[pup-tongue] f%u seat=%d arg=%d body_anim=%u body_frame=%d/%d head_frame=%d/%d\n",
                              g.frame, seat, pp.tongue.arg, (unsigned)d.anim, want_f % frames, frames,
                              hf, hframes);
         }
