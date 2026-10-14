@@ -1707,8 +1707,7 @@ int sd_seq_seek_to(const SdSeqPos *in)
             pl.startOff != in[p].startOff || in[p].tickAge <= pl.tickAge)
             continue;
         g_seekPending[p] = in[p].tickAge - pl.tickAge;
-        fprintf(stderr, "[sseq] seek player %d to tick %u (now %u)
-", p,
+        fprintf(stderr, "[sseq] seek player %d to tick %u (now %u)\n", p,
                 (unsigned)in[p].tickAge, (unsigned)pl.tickAge);
         n++;
     }

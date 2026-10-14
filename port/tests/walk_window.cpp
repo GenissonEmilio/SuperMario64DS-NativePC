@@ -5135,8 +5135,7 @@ static void ss_character_resync(void)
     if (!pl) return;
     const int ch = *(int *)((char *)pl + 8) & 3;   /* Player+8: the live character */
     fprintf(stderr, "[chr] restore: the snapshot's Player is %s (pick was %s, "
-            "save byte %s)
-", CHAR_NAME[ch], CHAR_NAME[g_character_pending & 3],
+            "save byte %s)\n", CHAR_NAME[ch], CHAR_NAME[g_character_pending & 3],
             CHAR_NAME[((unsigned char *)data_0209caa0)[0x41] & 3]);
     character_set_pending(ch);
     g_character = ch;
