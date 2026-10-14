@@ -1210,6 +1210,7 @@ list(APPEND PORT_HOSTGEN_TU
     src/game/actors/d_a_obj_fl_maruta.cpp
     # PORTSYNC3: TUs with folded bodies the port line never compiled (hostgen PARK_SYMBOL).
     src/cstd6.cpp
+    src/engine/sound/Sound.cpp
     src/ApproachAngle.cpp
     src/actors/daKpa_c.cpp
     src/actors/daFRing_c.cpp

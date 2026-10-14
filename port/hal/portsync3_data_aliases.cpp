@@ -3,7 +3,7 @@
  * PORTSYNC3. The second pass of hal/portsync2_data_aliases.cpp: the names the
  * first link of the 2026-10-14 main merge left unresolved, bound the same way
  * (see port/tools/dataalias.py for the rule and for what it leaves out).
- * 115 rows. GENERATED, then checked in. Includes nothing.
+ * 118 rows. GENERATED, then checked in. Includes nothing.
  */
 
 #pragma comment(linker, "/alternatename:?NUM_PATHS@@3HA=_data_020a0d8c")
@@ -121,3 +121,6 @@
 #pragma comment(linker, "/alternatename:?gTouchHeld@@3PAY03EA=_gTouchHeld")
 #pragma comment(linker, "/alternatename:?gTouchX@@3PAY03EA=_gTouchX")
 #pragma comment(linker, "/alternatename:?gTouchY@@3PAY03EA=_gTouchY")
+#pragma comment(linker, "/alternatename:?sBankAxis@daOnms_c@@2QBCB=__ZN8daOnms_c9sBankAxisE")
+#pragma comment(linker, "/alternatename:?sLaunchHorzSpeed@daOnms_c@@2QBHB=__ZN8daOnms_c16sLaunchHorzSpeedE")
+#pragma comment(linker, "/alternatename:?sLaunchVertSpeed@daOnms_c@@2QBHB=__ZN8daOnms_c16sLaunchVertSpeedE")

@@ -717,7 +717,7 @@ extern "C" void hal_fill_bowser_vtable(void)
     vt[6]  = (void *)bowser_behavior;
     vt[9]  = (void *)bowser_render;
     vt[12] = (void *)bowser_pdes;   /* after the shared fill, which writes 12 */
-    vt[16] = (void *)PORT_D16(hal_cppd1_Bowser);
+    vt[16] = (void *)PORT_D16(hal_cppd1_daKpa_c);
     vt[17] = (void *)bowser_d0;
 }
 
@@ -742,7 +742,7 @@ extern "C" void hal_fill_bowser_tail_vtable(void)
     vt[3]  = (void *)btail_clean;
     vt[6]  = (void *)btail_behavior;
     vt[9]  = (void *)btail_render;
-    vt[16] = (void *)PORT_D16(hal_cppd1_BowserTail);
+    vt[16] = (void *)PORT_D16(hal_cppd1_daKpaTail_c);
     vt[17] = (void *)btail_d0;
 }
 

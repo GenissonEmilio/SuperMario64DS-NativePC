@@ -463,16 +463,16 @@ DSSTATE_END
 }
 /* the RTTI base spelling; the D1/D0 restore the table by this name */
 #pragma comment(linker, "/alternatename:__ZTV11daTBasket_c=__ZTV7BooCage")
-struct BooCage { int InitResources(); int Behavior(); int Render(); };
+struct daTBasket_c { int InitResources(); int Behavior(); int Render(); };
 static int __fastcall bc_init(void *s, void *)
-{ return ((BooCage *)s)->BooCage::InitResources(); }
+{ return ((daTBasket_c *)s)->daTBasket_c::InitResources(); }
 static int __fastcall bc_clean(void *s, void *)
 { return _ZN11daTBasket_c16CleanupResourcesEv(); }
 static int __fastcall bc_behavior(void *s, void *)
-{ return ((BooCage *)s)->BooCage::Behavior(); }
+{ return ((daTBasket_c *)s)->daTBasket_c::Behavior(); }
 static int __fastcall bc_render(void *s, void *)
 { port_actor_render_probe("BOO_CAGE", (char *)s + 0x300);
-  return ((BooCage *)s)->BooCage::Render(); }
+  return ((daTBasket_c *)s)->daTBasket_c::Render(); }
 static int __fastcall bc_d1(void *s, void *)
 { return (int)(size_t)_ZN11daTBasket_cD1Ev(s); }
 static int __fastcall bc_d0(void *s, void *)

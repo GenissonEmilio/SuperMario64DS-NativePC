@@ -82,7 +82,7 @@
 //
 // All three tables are the 18-slot Scene shape and agree with _ZTV8dScene_c (arm9
 // 0x02092680) slot for slot everywhere they do not override. Slots 1/2/4/5/
-// 7/8/10/11 are Scene's own halves, 13/14/15 ActorBase's; 0/3/6/9/12/16/17 are
+// 7/8/10/11 are Scene's own halves, 13/14/15 fBase_c's; 0/3/6/9/12/16/17 are
 // the class's own. The tables are left OUT of port/ov003_syms.txt (the
 // ov079/ov080/ov081 convention), because the mounted bytes would be DS code
 // addresses and nothing rebases a code word; the one the port dispatches
@@ -108,9 +108,9 @@
 //  10  BeforeRender            Scene::                0x0202e3a4
 //  11  AfterRender             Scene::                0x0202e398
 //  12  OnPendingDestroy        _ZN12dScStarSel_c16OnPendingDestroyEv    ov003
-//  13  Virtual34               ActorBase::            0x0204357c
-//  14  Virtual38               ActorBase::            0x0204349c
-//  15  OnHeapCreated           ActorBase::            0x02043494
+//  13  Virtual34               fBase_c::            0x0204357c
+//  14  Virtual38               fBase_c::            0x0204349c
+//  15  OnHeapCreated           fBase_c::            0x02043494
 //  16  D2                      _ZN12dScStarSel_cD1Ev    ov003
 //  17  D0                      _ZN12dScStarSel_cD0Ev    ov003
 //
@@ -266,7 +266,7 @@
 //   _ZN11dScMiniGm_cD1Ev (D2)   ldr r1,[pc,#0x24] -> 0x020c2490 ; _ZTV11dScMiniGm_c
 //                              ldr r2,[pc,#0x20] -> 0x02092680 ; _ZTV8dScene_c
 //                              ldr r1,[pc,#0x1c] -> 0x0208e4b8 ; _ZTV7dBase_c
-//                              then bl 0x02043d48, ActorBase::~ActorBase
+//                              then bl 0x02043d48, fBase_c::~fBase_c
 //
 // ONE of the three needs a face. _ZTV8dScene_c is already aliased onto
 // _ZTV8dScene_c one line above -- and the note there names ov005 as one of the
@@ -363,8 +363,8 @@ void port_scene_after_init(void *self, unsigned a);
 void port_scene_after_behavior(void *self, unsigned a);
 void port_scene_after_render(void *self, unsigned a);
 int  port_scene_on_heap_created(void *self);
-int  port_scene_base_init(void *self);            /* ActorBase:: slot 0 */
-int  port_scene_base_cleanup(void *self);         /* ActorBase:: slot 3 */
+int  port_scene_base_init(void *self);            /* fBase_c:: slot 0 */
+int  port_scene_base_cleanup(void *self);         /* fBase_c:: slot 3 */
 
 /* dScStarSel_c's own seven */
 void _ZN12dScStarSel_c13InitResourcesEv(void *self);            /* slot 0  InitResources */
@@ -1992,7 +1992,7 @@ static void __cdecl l2_eb2c_s08(void *s)
    body reads `frames` (0x1e) as its receiver, fails the check, returns 0 and
    cleans nothing. Eight bytes stay on ProcessKuppaScript's frame and its
    epilogue reads them back as edi/ebx, which func_02043288's behaviour
-   dispatch (ActorBase, slots 7/6/8) later reads through EBX at +0x4f and
+   dispatch (fBase_c, slots 7/6/8) later reads through EBX at +0x4f and
    faults, quarantining the Stage and parking the player. Run link100, card
    card_fader8.md.
 
@@ -3216,19 +3216,19 @@ extern "C" void _ZN8SaveData18SetDefaultValuesMgEP16MinigameSaveData(void *blk)
 #pragma comment(linker, "/alternatename:?data_ov007_02104bd8@@3PAXA=_data_ov007_02104bd8")
 #pragma comment(linker, "/alternatename:?data_0209caa0@@3HA=_data_0209caa0")
 
-/* The matched ActorBase methods for slots 13 and 14, and the reason this is a
-   LOCAL declaration rather than include/ActorBase.h.
+/* The matched fBase_c methods for slots 13 and 14, and the reason this is a
+   LOCAL declaration rather than include/fBase_c.h.
    MSVC encodes virtualness in the mangled name, and the TUs do not agree on
    it: src/_ZN7fBase_c9Virtual34Ejj.cpp and its Virtual38 sibling declare
    their method NON-virtual in a local struct (so the definitions are
    ?Virtual34@fBase_c@@QAEHII@Z, which is what hal/lk4_solidheap_seat.cpp
    already links against), while src/_ZN7fBase_c13OnHeapCreatedEv.cpp
-   includes ActorBase.h and defines the VIRTUAL ?OnHeapCreated@fBase_c@@UAE_NXZ
+   includes fBase_c.h and defines the VIRTUAL ?OnHeapCreated@fBase_c@@UAE_NXZ
    that hal/actor_vtables.cpp already links against. Only
    the two Virtual3x are the ones this file needs, so this file declares them
    non-virtual and hal/scene_actor_faces.cpp -- which includes the real header
    -- carries everything that has to be a virtual method. */
-struct ActorBase {
+struct fBase_c {
     int Virtual34(unsigned a, unsigned b);           /* slot 13 body */
     int Virtual38(unsigned a, unsigned b);           /* slot 14 body */
 };
@@ -3270,7 +3270,7 @@ static void __fastcall sc_aclean(void *s, void *, unsigned a)
 { _ZN8dScene_c21AfterCleanupResourcesEj(s, a); }
 /* SM64DS_TITLE_TRACE=1: SAY WHY THE SCENE'S TICK GATE CLOSED, on every edge.
  *
- * ActorBase::Process calls slot 7 before slot 6 and slot 10 before slot 9, so a
+ * fBase_c::Process calls slot 7 before slot 6 and slot 10 before slot 9, so a
  * scene that is on the behaviour list and nevertheless stops running stops in
  * one of these two returns and nowhere else. Every branch that returns 0 is a
  * read of a field or a global this frame can print, so the honest report is the
@@ -3419,7 +3419,7 @@ static int  __fastcall sc_bbeh(void *s, void *)
     sc_gate_report("beh", s, r);
     return r;
 }
-/* AfterBehavior, slot 8, and the INDEPENDENT witness that ActorBase::Process
+/* AfterBehavior, slot 8, and the INDEPENDENT witness that fBase_c::Process
    was entered at all. Process calls slot 7, sometimes slot 6, and ALWAYS slot
    8, so this count is "how many times was this object processed" with no gate
    in front of it. Without it, "BeforeBehavior asked 510" on a run whose list
@@ -3432,9 +3432,9 @@ static int  __fastcall sc_bren(void *s, void *)
 static void __fastcall sc_aren(void *s, void *, unsigned a)
 { port_scene_after_render(s, a); }
 static int  __fastcall sc_v34(void *s, void *, unsigned a, unsigned b)
-{ return ((ActorBase *)s)->ActorBase::Virtual34(a, b); }
+{ return ((fBase_c *)s)->fBase_c::Virtual34(a, b); }
 static int  __fastcall sc_v38(void *s, void *, unsigned a, unsigned b)
-{ return ((ActorBase *)s)->ActorBase::Virtual38(a, b); }
+{ return ((fBase_c *)s)->fBase_c::Virtual38(a, b); }
 static int  __fastcall sc_heap(void *s, void *)
 { return port_scene_on_heap_created(s); }
 /* slots 0 and 3, which only a minigame table holds unoverridden. Not veneers. */
@@ -3521,9 +3521,9 @@ static const SceneRomFace kSceneRomFaces[] = {
     {0x0202e3c8u, (void *)sc_abeh},    /* Scene::AfterBehavior       VENEER */
     {0x0202e3a4u, (void *)sc_bren},    /* Scene::BeforeRender            */
     {0x0202e398u, (void *)sc_aren},    /* Scene::AfterRender         VENEER */
-    {0x0204357cu, (void *)sc_v34},     /* ActorBase::Virtual34           */
-    {0x0204349cu, (void *)sc_v38},     /* ActorBase::Virtual38           */
-    {0x02043494u, (void *)sc_heap},    /* ActorBase::OnHeapCreated       */
+    {0x0204357cu, (void *)sc_v34},     /* fBase_c::Virtual34           */
+    {0x0204349cu, (void *)sc_v38},     /* fBase_c::Virtual38           */
+    {0x02043494u, (void *)sc_heap},    /* fBase_c::OnHeapCreated       */
     /* the two the minigame classes are the first to need: dScMgBase_c does
        not override slot 0 or slot 3, and ov003's and ov007's classes both
        override both, so no earlier fill ever saw these words. */
@@ -4210,7 +4210,7 @@ extern "C" int port_graph_block_beat(void)
  * Word 0's forwarder _ZN11dScMgBase_c15graphCallback_c14GraphCallback0Ev returns 1 unconditionally -- unlike
  * word 2's, which returns the scene's own answer and gates func_02019144's
  * tail -- so seating this cannot change what runs after it for anybody. And
- * byte +0x5c of all THIRTY-TWO ov006 ActorBase-signature tables, read from
+ * byte +0x5c of all THIRTY-TWO ov006 fBase_c-signature tables, read from
  * extracted/overlays/overlay_0006.bin at base 0x020bfec0:
  *
  *     29 tables INHERIT _ZN11dScMgBase_c11OnAttacked2Ev, whose entire body is `return 1;`
@@ -7463,9 +7463,9 @@ extern "C" int port_scene_begin(void *hwnd, int zoom)
        this really the scene", not the port's. func_0203b438's no-parent branch
        writes the first SceneNode it is handed into data_020a4b6c[0], and on a
        scene run the scene actor is the first thing spawned, so the tree head
-       must come back as the scene's own node -- ActorBase::sceneNode, pinned
+       must come back as the scene's own node -- fBase_c::sceneNode, pinned
        at +0x14 by the ROM's own `str r4, [r5, #0x10]` owner back-pointer (see
-       include/ActorBase.h). A level run prints the same line with the Stage in
+       include/fBase_c.h). A level run prints the same line with the Stage in
        that slot, which is the point: on the DS the Stage IS scene 3, and here
        something else is. */
     {

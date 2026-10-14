@@ -295,7 +295,8 @@ __ZN16daObjRc_Tikuwa_c16OnPendingDestroyEv                                     ?
 #__ZN10DonutBlock8BehaviorEv                                              ?Behavior@DonutBlock@@UAEHXZ                                     0x02111a64 F
 __ZN16daObjRc_Tikuwa_cD1Ev                                                     ??1daObjRc_Tikuwa_c@@UAE@XZ                                            0x0211193c R
 
-__ZN8daDoor_c13InitResourcesEv                                               ?InitResources@daDoor_c@@UAEHXZ                                      0x021455a0 F
+# PORTSYNC3: flipped F -> R. No flat host copy exists for this member; main's TU defines the member (hostgen row un-parked) and this face defines the flat name callers spell.
+__ZN8daDoor_c13InitResourcesEv                                               ?InitResources@daDoor_c@@UAEHXZ                                      0x021455a0 R
 __ZN8daDoor_c16CleanupResourcesEv                                            ?CleanupResources@daDoor_c@@UAEHXZ                                   0x0214542c R
 __ZN8daDoor_c16OnPendingDestroyEv                                            ?OnPendingDestroy@daDoor_c@@UAEXXZ                                   0x021454c4 R
 __ZN8daDoor_c6RenderEv                                                       ?Render@daDoor_c@@UAEHXZ                                             0x021454c8 R
@@ -4301,7 +4302,7 @@ __ZN14dScMgD3DBase_c9Virtual84Ev                                         ?Virtua
 #    the host copy the forward face reached is retired. The face now defines
 #    the flat name and calls the member (the WallSign flip lane SMALLS2 made).
 __ZN11daKinopio_c8BehaviorEv                                                     ?Behavior@daKinopio_c@@UAEHXZ                                           0x02129878 R
-__ZN8daTree_c8BehaviorEv                                                 ?Behavior@daTree_c@@UAEHXZ                                       0x020ec1d8 F
+__ZN8daTree_c8BehaviorEv                                                 ?Behavior@daTree_c@@UAEHXZ                                       0x020ec1d8 R
 
 # ---- BATCH 9 (lane FACES4, wave 9c): the rows lane HALROWS settled by ADDRESS
 # ---- and could not take, because facegen.py was frozen under review that wave.

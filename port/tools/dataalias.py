@@ -56,6 +56,10 @@ def main():
         dec = m.group(1) if m else (line if line.startswith("?") else None)
         if not dec:
             continue
+        ms = re.match(r"\?(\w+)@(\w+)@@2", dec)
+        if ms and ("_ZN%d%s%d%sE" % (len(ms.group(2)), ms.group(2), len(ms.group(1)), ms.group(1))) and                 ("__ZN%d%s%d%sE" % (len(ms.group(2)), ms.group(2), len(ms.group(1)), ms.group(1))) in defs:
+            rows.append((dec, "__ZN%d%s%d%sE" % (len(ms.group(2)), ms.group(2), len(ms.group(1)), ms.group(1))))
+            continue
         mm = re.match(r"\?((?:data|g)_\w+|\w+)@@3(.*)$", dec)
         if not mm:
             continue

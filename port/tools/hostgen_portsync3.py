@@ -42,3 +42,12 @@ ROWS[("PARK_SYMBOL", "Sound")] = ["func_020133bc"]
 # their ov000 data is bound by linkalias.py's same-address rule.
 ROWS[("PARK_SYMBOL", "daFRing_c")] = ["_ZN9daFRing_c13InitResourcesEv"]
 ROWS[("PARK_SYMBOL", "daObjFl_UkiKi_c")] = ["_ZN15daObjFl_UkiKi_c13InitResourcesEv"]
+
+# daDoor_c::InitResources and daTree_c::Behavior: PORTSYNC2 parked main's bodies
+# on the premise of a flat host copy that does not exist in the tree (only
+# daTor_c's, port/unmatched/Tornado_HostSites.cpp, does). The hostgen repairs the
+# old per-function stems carried are keyed on the TU stem now, so main's member
+# IS the repaired body: it is un-parked, and the two ledger rows are R faces
+# (flat name -> member) instead of F faces (member -> flat).
+ROWS[("PARK_SYMBOL", "daDoor_c")] = None
+ROWS[("PARK_SYMBOL", "d_a_tree")] = None

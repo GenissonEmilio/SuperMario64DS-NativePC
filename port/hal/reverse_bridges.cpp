@@ -8,6 +8,7 @@
 // port grows real ones with the audio/fader gates.
 
 #include <cstdio>
+#include "dBgCh_Actr.h"
 
 struct Vector3 { int x, y, z; };
 struct Actor;
@@ -145,13 +146,9 @@ int ClsnResultIntFace::GetClsnID() const
 { return (int)((const ClsnResult *)this)->ClsnResult::GetClsnID(); }
 #pragma comment(linker, "/alternatename:?GetClsnID@dBgPi@@QBEHXZ=?GetClsnID@ClsnResultIntFace@@QBEHXZ")
 
-struct dBgCh_Actr {
-    int IsOnGround() const;
-    int GetWallResult() const;
-    int GetFloorResult() const;
-};
-int dBgCh_Actr::IsOnGround() const
-{ return _ZNK10dBgCh_Actr10IsOnGroundEv(this); }
+/* PORTSYNC3: main's src/engine/collision/dBgCh_Actr.cpp defines these members; the
+   shadow struct and the IsOnGround face that stood here are retired (a duplicate
+   definition) and the real header is used for the two flat faces below. */
 
 struct dCc_c;
 struct ShadowModel;

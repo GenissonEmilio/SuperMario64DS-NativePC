@@ -9,13 +9,13 @@
 //     Stage + 0x91c  MeshCollider     -- the level collision
 //
 // The port stood in for it twice over: a bare 0x60-byte MeshCollider in
-// walk_window (mc_storage) and a 0x50-byte ActorBase-shaped block seated as
+// walk_window (mc_storage) and a 0x50-byte fBase_c-shaped block seated as
 // the scene root (hal_scene_root, hal/level_boot.cpp). This is the real object
 // taking both seats.
 //
 // Nothing here is behaviour. Stage::Stage is the matched src file
 // (src/d_s_stage.cpp, arm9 0x0202e088) and this is the seam it needs: the
-// vtable array its last vptr store names, the spawn context the ActorBase
+// vtable array its last vptr store names, the spawn context the fBase_c
 // constructor reads, and one honest stub for the particle constructor.
 #include "port_d16.h"
 
@@ -33,7 +33,7 @@ void *dScStage_c_classInit(void);
    extracted image by port/tools/romdata.py (Nintendo's bytes never enter the
    repo). Layout, the same record shape hal/actor_registry.cpp documents:
        +0  factory   0x0202e088, Stage::Stage itself
-       +4  u16       the actor id, which the ActorBase ctor also reads back as
+       +4  u16       the actor id, which the fBase_c ctor also reads back as
                      the BEHAVIOUR-list priority  -- 3 for the Stage
        +6  u16       the RENDER-list priority                  -- 6
    Cross-checked against g_profile_CAMERA, whose +4 is 0x14c and matches the
@@ -60,9 +60,9 @@ extern void *data_0209f314;           /* the level AREA table (Stage+0x8bc) */
        0  0x0202cc0c Stage::InitResources        10 0x0202e3a4 Scene::BeforeRender
        1  0x0202ddc8 Stage::BeforeInitResources  11 0x0202e398 Scene::AfterRender
        2  0x0202e62c Scene::AfterInitResources   12 0x0202b8a0 Stage::OnPendingDestroy
-       3  0x0202c9a8 Stage::CleanupResources     13 0x0204357c ActorBase
-       4  0x0202e5f0 Scene::BeforeCleanupRes.    14 0x0204349c ActorBase
-       5  0x0202e5d0 Scene::AfterCleanupRes.     15 0x02043494 ActorBase::OnHeapCreated
+       3  0x0202c9a8 Stage::CleanupResources     13 0x0204357c fBase_c
+       4  0x0202e5f0 Scene::BeforeCleanupRes.    14 0x0204349c fBase_c
+       5  0x0202e5d0 Scene::AfterCleanupRes.     15 0x02043494 fBase_c::OnHeapCreated
        6  0x0202bbbc Stage::Behavior             16 0x02023688 ~Stage (D1)
        7  0x0202e3d4 Scene::BeforeBehavior       17 0x020236f0 ~Stage (D0)
        8  0x0202e3c8 Scene::AfterBehavior
@@ -80,7 +80,7 @@ extern void *data_0209f314;           /* the level AREA table (Stage+0x8bc) */
    The names follow config/arm9/symbols.txt, which puts _ZTV5Stage at
    0x020921c0 and _ZTV8dScene_c at 0x02092680. That is the ROM's layout: the
    0x02092680 table carries the Scene destructors in slots 16/17 and the
-   ActorBase default in slot 0, while 0x020921c0 is the one the constructor
+   fBase_c default in slot 0, while 0x020921c0 is the one the constructor
    installs last. Config had the two swapped until 87a55cfab, so a checkout
    older than that calls 0x02092680 _ZTV5Stage and will not link this file. */
 void *_ZTV10dScStage_c[20];      /* the table the ctor installs last; trap-filled */
@@ -232,7 +232,7 @@ extern "C" void hal_fill_stage_vtable(void)
 // It was trapped on the same "nothing destroys the Stage" argument as 16 and
 // 17, and this seat is what falsified that argument -- review caught it, not
 // this file. Slot 7 now runs Scene::BeforeBehavior on the Stage every frame,
-// and that function carries two ActorBase::MarkForDestruction(self) edges.
+// and that function carries two fBase_c::MarkForDestruction(self) edges.
 // MarkForDestruction is not deferred bookkeeping: src/
 // _ZN7fBase_c18MarkForDestructionEv.cpp sets shouldBeKilled and then calls
 // OnPendingDestroy() straight through the vptr, so either edge landed on
@@ -325,8 +325,8 @@ void *_ZN10dScStage_cD0Ev(void *thiz);
    makes, and for the same reason: src/_ZN7fBase_c9Virtual34Ejj.cpp and its
    sibling declare the method non-virtual in their own struct, so the
    definitions are ?Virtual34@fBase_c@@QAEHII@Z. include/Stage.h does not
-   pull in ActorBase.h, so there is nothing here for this to collide with. */
-struct ActorBase {
+   pull in fBase_c.h, so there is nothing here for this to collide with. */
+struct fBase_c {
     int Virtual34(unsigned a, unsigned b);
     int Virtual38(unsigned a, unsigned b);
 };
@@ -368,7 +368,7 @@ static int __fastcall st_init(void *self, void *)
     }
     /* 1 is the ROM's own "initialisation finished" return. The init Process
        turns it into vfSuccess 2, which is the only code
-       ActorBase::AfterInitResources promotes on; 0 becomes 1, which is
+       fBase_c::AfterInitResources promotes on; 0 becomes 1, which is
        dBase_c::AfterInitResources' MarkForDestruction. */
     return 1;
 }
@@ -564,9 +564,9 @@ static int  __fastcall st_bren(void *s, void *)
 static void __fastcall st_aren(void *s, void *, unsigned a)
 { port_scene_after_render(s, a); }
 static int  __fastcall st_v34(void *s, void *, unsigned a, unsigned b)
-{ return ((ActorBase *)s)->ActorBase::Virtual34(a, b); }
+{ return ((fBase_c *)s)->fBase_c::Virtual34(a, b); }
 static int  __fastcall st_v38(void *s, void *, unsigned a, unsigned b)
-{ return ((ActorBase *)s)->ActorBase::Virtual38(a, b); }
+{ return ((fBase_c *)s)->fBase_c::Virtual38(a, b); }
 static int  __fastcall st_heap(void *s, void *)
 { return port_scene_on_heap_created(s); }
 static void __fastcall st_pdes(void *s, void *)
@@ -575,7 +575,7 @@ static void __fastcall st_pdes(void *s, void *)
 /* ---- SLOTS 3, 16 AND 17: THE LAST THREE TRAPS (run link100, lane STAGE) ----
  *
  * Every index below is read out of the ROM rather than inferred from the
- * ActorBase slot order, though that order agrees with all three:
+ * fBase_c slot order, though that order agrees with all three:
  *
  *     from:0x020921cc kind:load to:0x0202c9a8 module:main   slot  3
  *     from:0x02092200 kind:load to:0x02023688 module:main   slot 16
@@ -1115,10 +1115,10 @@ typedef int(__fastcall *StageSlot0)(void *self, void *dummy);
 // ---- construction ----------------------------------------------------------
 //
 // Stage::Stage is a FACTORY, not a placement constructor: it allocates its own
-// 0x9c8 through ActorBase::operator new and returns the object, the same shape
+// 0x9c8 through fBase_c::operator new and returns the object, the same shape
 // as the Player's and the Camera's factories in the registry.
 //
-// The one thing it needs staged is the spawn context. ActorBase::ActorBase
+// The one thing it needs staged is the spawn context. fBase_c::fBase_c
 // reads data_020a4bb8[data_020a4b54] and drops the record's two halfwords into
 // the processing-list nodes it just built, so the pending id has to be the
 // Stage's and the table has to have the Stage's record under it. Both are put
@@ -1253,7 +1253,7 @@ extern "C" void *port_stage_create(void)
 
        That is not a detail the port can ignore, because the phase-1 pass
        (func_02043880) propagates a parent's bits 0|1 into every CHILD's bit 1,
-       and ActorBase::BeforeBehavior returns 0 on bit 1. The moment the Stage
+       and fBase_c::BeforeBehavior returns 0 on bit 1. The moment the Stage
        became the scene root every actor under it -- the Player included --
        stopped ticking and sat at its spawn point.
 
@@ -1281,7 +1281,7 @@ extern "C" void *port_stage_create(void)
        only once func_020431c4 says every child of the Stage's SceneNode has
        finished initialising, so on a level entry the bits survive one pass of
        phase 1, which propagates them into every child's bit 1, and
-       ActorBase::BeforeBehavior skips a child whose bit 1 is set. Actors are
+       fBase_c::BeforeBehavior skips a child whose bit 1 is set. Actors are
        therefore one frame later to their first Behavior than they were under
        the hand-clear. That is what the ROM does; the battery is what says
        whether the port can tell.
@@ -1337,14 +1337,14 @@ extern "C" void *port_stage_create(void)
 //
 // THE FLAG LAW, read back rather than assumed. Stage::Stage sets its own
 // +0x13 bits 0 and 2, and the phase-1 pass (func_02043880) propagates a
-// parent's bits 0|1 into every CHILD's bit 1 -- which ActorBase::BeforeBehavior
+// parent's bits 0|1 into every CHILD's bit 1 -- which fBase_c::BeforeBehavior
 // reads as "skip this actor's behaviour entirely". So whether the Stage is
 // merely the spawn parent (data_0209f5c0) or the actual SCENE-TREE parent
 // (SceneNode+0x0) is the difference between a level that runs and one frozen
 // at its spawn point.
 //
 // The two are NOT the same seat. func_0203b438 links a node under the parent
-// node it is HANDED, which the ActorBase constructor takes from data_020a4b64,
+// node it is HANDED, which the fBase_c constructor takes from data_020a4b64,
 // not from data_0209f5c0.
 extern "C" {
 int func_02043810(void *actor);
@@ -1380,7 +1380,7 @@ extern "C" void port_stage_render_model(void *self)
 /* _ZTV5Stage slot 12. The ROM's Stage overrides OnPendingDestroy with an empty
    body (src/_ZN5Stage16OnPendingDestroyEv.cpp, 0x0202b8a0), so the face costs
    a call and nothing else; what it buys is that the two
-   ActorBase::MarkForDestruction edges in Scene::BeforeBehavior land on the
+   fBase_c::MarkForDestruction edges in Scene::BeforeBehavior land on the
    ROM's body instead of on the slot trap. */
 extern "C" void port_stage_on_pending_destroy(void *self)
 { ((dScStage_c *)self)->dScStage_c::OnPendingDestroy(); }
@@ -1556,7 +1556,7 @@ extern "C" void port_stage_render_skybox(void *self)
  * FIRST ENTRY: the Stage's aliveState (+0x0e) is 0, so func_020433b8 -- the
  * exact call func_02043098 makes for every other class -- runs the init
  * Process over slots 1/0/2 and then does its own list bookkeeping.
- * ActorBase::AfterInitResources(2) puts node +0x28 on data_020a4b78 and node
+ * fBase_c::AfterInitResources(2) puts node +0x28 on data_020a4b78 and node
  * +0x38 on data_020a4b98, which is how the Stage reaches the behaviour and
  * render passes it has never been on.
  *
@@ -1564,7 +1564,7 @@ extern "C" void port_stage_render_skybox(void *self)
  * that was traced rather than feared. On the ROM a level change tears the
  * Stage down and builds a new one; the port keeps ONE Stage alive across every
  * warp (hal/level_change.cpp). So on a second entry the Stage is already on
- * the behaviour and render lists, and ActorBase::AfterInitResources(2) opens
+ * the behaviour and render lists, and fBase_c::AfterInitResources(2) opens
  * with
  *     func_0203b27c(data_020a4b88, this + 0x28);
  * -- unlink node +0x28 from the INIT list. func_0203b27c splices by the node's
