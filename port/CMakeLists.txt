@@ -1195,7 +1195,16 @@ list(APPEND PORT_HOSTGEN_TU
     # PARK_SYMBOL "daTor_c" / "daDoor_c" (hostgen_portsync2.py): main's member
     # bodies collide with port/faces_sync.txt's forward faces onto the host copies.
     src/actors/daTor_c.cpp
-    src/actors/daDoor_c.cpp)
+    src/actors/daDoor_c.cpp
+    # PORTSYNC3: TUs that store a vtable at table+8 (the ARM Itanium address
+    # point). hostgen's VPTR_ADDRESS_POINT rewrite drops the bias; vptr_addend_guard
+    # refuses the build without it.
+    src/actors/dEntObj_c.cpp
+    src/actors/dMg3DEspAnimSet_c.cpp
+    src/actors/dScMgAmida_c.cpp
+    src/game/actors/d_a_obj_wl_polelift.cpp
+    src/game/actors/daObjPathLift_c.cpp
+    src/game/actors/daPiano_c/d_a_piano.cpp)
 list(REMOVE_DUPLICATES PORT_HOSTGEN_TU)
 
 # Whole-TU host copies that REPLACE a src TU (see each copy's header). The
@@ -3149,7 +3158,9 @@ set_source_files_properties(
     # and that file's header carries the ruling and the sed line that
     # reproduces it.
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgAmida_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dScMgAmida_c.cpp"  # PORTSYNC3: on PORT_HOSTGEN_TU
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgAmida_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dScMgAmida_c.cpp"  # PORTSYNC3: on PORT_HOSTGEN_TU
     # run mg11 lane PKR: the ONE .c in dScMgCard_c's 38-TU slice that is really
     # C++ -- a //cpp marker, a top-level `extern "C" {` block and a two-virtual
     # dummy struct it dispatches ELEMENT vtable slot 1 through, ten times a
@@ -3410,6 +3421,7 @@ set_source_files_properties(
 # edit, and each LHS is undefined everywhere so the alias cannot be defeated.
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/daObjPathLift_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/daObjPathLift_c.cpp"  # PORTSYNC3: on PORT_HOSTGEN_TU
     PROPERTIES COMPILE_DEFINITIONS
     "G0=port_pathlift_file0;G1=port_pathlift_file1;G2=port_pathlift_file2")
 
@@ -6080,7 +6092,9 @@ set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daHanachan_c.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daHanachan_c.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/daPiano_c/d_a_piano.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/daPiano_c/d_a_piano.cpp"  # PORTSYNC3: on PORT_HOSTGEN_TU
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/daPiano_c/d_a_piano.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/daPiano_c/d_a_piano.cpp"  # PORTSYNC3: on PORT_HOSTGEN_TU
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCasket_c.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCasket_c.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_kinopio.cpp"
@@ -9802,6 +9816,7 @@ endif()
 # dispatches slot 36 three times through the same dummy 37-virtual struct.
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgAmida_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dScMgAmida_c.cpp"  # PORTSYNC3: on PORT_HOSTGEN_TU
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_ov006_020d27dc.c"
     PROPERTIES LANGUAGE CXX)
 
@@ -10160,6 +10175,7 @@ endforeach()
 # block above uses for src/_ZN20cMgSmartball_dokan_c12SaveSnapshotEv.c.
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dMg3DEspAnimSet_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dMg3DEspAnimSet_c.cpp"  # PORTSYNC3: on PORT_HOSTGEN_TU
     PROPERTIES LANGUAGE CXX)
 
 # NO PER-SOURCE -D ROW FOR THIS CLASS, AND THE REASON IS REUSABLE.
@@ -11092,6 +11108,7 @@ set_source_files_properties(
 # points the one .data record that dispatches it (0x0211c618) at the rename.
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dEntObj_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dEntObj_c.cpp"  # PORTSYNC3: on PORT_HOSTGEN_TU
     PROPERTIES COMPILE_DEFINITIONS
     "_ZN15UnknownVsPlayer19func_ov075_0211478cEv=port_vs_body_0211478c")
 # Snufit's SharedFilePtrs and BowserPuzzleManager's record keep their
@@ -13264,6 +13281,7 @@ endforeach()
 # those aliases cannot be defeated.
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_wl_polelift.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_obj_wl_polelift.cpp"  # PORTSYNC3: on PORT_HOSTGEN_TU
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV17daObjWlPolelift_c;G0=data_020a0eac")
 set_source_files_properties(
@@ -13346,6 +13364,7 @@ set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daWater_Suikomi_c
 set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daWater_Suikomi_c.cpp"
     APPEND PROPERTY COMPILE_DEFINITIONS "data_ov036_02113f58=data_ov026_02113f58")
 set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_wl_polelift.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_obj_wl_polelift.cpp"
     APPEND PROPERTY COMPILE_DEFINITIONS "data_ov032_02113a9c=port_ov026_polelift_clsn;func_ov053_021112a4=func_ov026_021112a4")
 
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_gate207.txt" SLICE207_LINES)
