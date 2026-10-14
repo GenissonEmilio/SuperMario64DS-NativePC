@@ -256,6 +256,11 @@ void sd_seq_set_track_pitch(int player, unsigned trackMask, int pitch);
 // TRACK_PARAM 0x19 (modulation speed) and 0x1a (modulation depth).
 void sd_seq_set_track_mod(int player, unsigned trackMask, int param, int value);
 void sd_seq_frame(void);                          // one 192Hz sequencer frame
+// Save-state music position (lane TRANS093): see the definitions in sseq.cpp.
+enum { SD_SEQ_PLAYERS = 16 };
+struct SdSeqPos { int active; sd_u32 sig; sd_u32 startOff; sd_u32 tickAge; };  // sig: hash of the song's first bytes
+void sd_seq_snapshot(SdSeqPos *out);           // SD_SEQ_PLAYERS entries
+int  sd_seq_seek_to(const SdSeqPos *in);       // players asked to catch up
 void sd_seq_reset(void);
 int  sd_seq_active(int player);
 

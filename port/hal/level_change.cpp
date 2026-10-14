@@ -2219,8 +2219,10 @@ static int g_hold_tail;            /* the last frames of a white hold that are B
    state restore, a warp, a scene change) ends the hold here, read once per
    frame by the level loop, so the frozen black can never outlive its change. */
 
+static void port_tp_warp_hook(void);
 extern "C" int port_level_hold_live(void)
 {
+    port_tp_warp_hook();
     if (data_02092110 < 0) {
         g_hold_left = -1;
         g_hold_live = 0;
@@ -2332,6 +2334,113 @@ static int port_level_hold_due(void)
     if (white)
         return port_level_hold_frames_white(data_02092110, &g_hold_tail);
     return port_level_hold_frames(data_02092110);
+}
+
+/* SM64DS_TP_WARP=<frame>[,<id>]: stands in for the player stepping on an in-stage
+   warp spot (daWarpkun_c::Behavior calls WarpPlayer(player, id) when the player
+   stands in its volume and Player::CanWarp). The call is the ROM's own; this
+   only fires it at a chosen frame so a headless run can watch the teleport. */
+
+extern "C" {
+extern void *data_0209f394[];
+extern int data_ov002_02110154[];
+void WarpPlayer(int i, int val);
+void StartMinigameMenu(unsigned char a);
+void ExitLevel(void);
+void _ZN8dScene_c9SetFadersEP15FaderBrightness(void *);
+void func_0202ec9c(void *, int);
+extern int data_0209f61c[];
+void _ZN8dScene_c14StartSceneFadeEjjt(unsigned, unsigned, unsigned short);
+void _ZN6Player11ChangeStateERNS_5StateE(void *, void *);
+void _ZN3G2x18SetBlendBrightnessEPVtts(volatile unsigned short *p, unsigned short val, short amt);
+}
+static void port_tp_warp_hook(void)
+{
+    static int frame, at = -2, id = 1;
+    if (at == -2) {
+        const char *e = std::getenv("SM64DS_TP_WARP");
+        at = e ? std::atoi(e) : -1;
+        if (e && std::strchr(e, ',')) id = std::atoi(std::strchr(e, ',') + 1);
+    }
+    /* SM64DS_TP_FADE=<frame>: what St_Teleport_Main's last statement does every
+       frame (SetBlendBrightness on engine A's BLDCNT with the state's fade
+       counter, up 0..16 then back down), written here for 34 frames from a
+       chosen one, so the compositor's answer to that register write can be
+       watched without a Player standing on a warp. */
+    {
+        static int fat = -2, ff;
+        if (fat == -2) {
+            const char *e = std::getenv("SM64DS_TP_FADE");
+            fat = e ? std::atoi(e) : -1;
+        }
+        if (fat >= 0 && ff >= fat && ff < fat + 34) {
+            const int k = ff - fat;
+            _ZN3G2x18SetBlendBrightnessEPVtts((volatile unsigned short *)0x4000050, 0x3f,
+                                              (short)(k <= 16 ? k : 33 - k));
+        }
+        if (fat >= 0) ff++;
+    }
+    {
+        /* SM64DS_TP_ALPHA=<0..31>: the Player's own opacity byte (+0x6f5, what
+           Player::Render hands ApplyOpacity), held from the first call, to see
+           how the pictures treat a translucent Player without a teleport. */
+        static int al = -2;
+        if (al == -2) {
+            const char *e = std::getenv("SM64DS_TP_ALPHA");
+            al = e ? std::atoi(e) : -1;
+        }
+        char *pl = (char *)data_0209f394[0];
+        if (al >= 0 && pl)
+            *(unsigned char *)(pl + 0x6f5) = (unsigned char)al;
+    }
+    {
+        /* SM64DS_TP_RR=<frame>[,<unlock>]: what talking to the castle's Rec Room
+           cupboard does (RecRoomCupboard::Behavior -> StartMinigameMenu(1), the
+           ROM's own function), fired at a chosen frame so a headless run can
+           take the dresser route into the Rec Room and back out of a minigame.
+           ,1 also sets the save's minigame unlock word first (the stand-in for
+           having unlocked them). */
+        static int rr = -2, rrf, unl;
+        if (rr == -2) {
+            const char *e = std::getenv("SM64DS_TP_RR");
+            rr = e ? std::atoi(e) : -1;
+            unl = e && std::strchr(e, ',') ? std::atoi(std::strchr(e, ',') + 1) : 0;
+        }
+        if (rr >= 0 && rrf++ == rr) {
+            extern int data_0209caa0[];
+            if (unl) *(unsigned *)((char *)data_0209caa0 + 0x48) = 0xffffffffu;
+            std::fprintf(stderr, "[tprr] f%d StartMinigameMenu(1)\n", rr);
+            StartMinigameMenu(1);
+        }
+    }
+    {
+        /* SM64DS_TP_EXIT=<n>[,<level>]: the pause menu's Exit Course (ExitLevel(), the ROM's own
+           function), fired at the n-th call of this hook while that level (any if omitted) is up. */
+        static int ex = -2, exf, exl = -1;
+        if (ex == -2) {
+            const char *e = std::getenv("SM64DS_TP_EXIT");
+            ex = e ? std::atoi(e) : -1;
+            if (e && std::strchr(e, ',')) exl = std::atoi(std::strchr(e, ',') + 1);
+        }
+        if (ex >= 0 && data_0209f394[0] && (exl < 0 || (int)data_0209f2f8 == exl) && exf++ == ex) {
+            std::fprintf(stderr, "[tpexit] ExitLevel() at hook call %d (level %d)\n", ex, (int)data_0209f2f8);
+            ExitLevel();
+        }
+    }
+    if (at >= 0 && frame >= at && frame <= at + 3) {
+        char *pl = (char *)data_0209f394[0];
+        if (pl && frame == at) {
+            /* stand the Player in ST_WAIT, the state a warp spot takes a
+               request in (Player::CanWarp) */
+            std::fprintf(stderr, "[tpwarp] f%d ChangeState(ST_WAIT)\n", at);
+            _ZN6Player11ChangeStateERNS_5StateE(pl, data_ov002_02110154);
+        }
+        if (pl && frame == at + 3) {
+            std::fprintf(stderr, "[tpwarp] f%d WarpPlayer(0, %d)\n", frame, id);
+            WarpPlayer(0, id);
+        }
+    }
+    if (at >= 0) frame++;
 }
 
 extern "C" int port_level_change_poll(void)
@@ -2636,6 +2745,23 @@ static int port_level_scene_crossing(void)
             layout_for = data_02092664;
             if (port_crossing_scene_layout_hook)
                 port_crossing_scene_layout_hook((int)layout_for);
+        }
+        {
+            /* SM64DS_TP_QUIT=<crossing frame>: what a minigame's own quit does
+               (func_ov004_020b72d4 and its siblings: SetFaders, the fade
+               start, StartSceneFade(5, 0, 0)), fired at a chosen crossing
+               frame in place of pausing and touching QUIT. */
+            static int qa = -2;
+            if (qa == -2) {
+                const char *e = std::getenv("SM64DS_TP_QUIT");
+                qa = e ? std::atoi(e) : -1;
+            }
+            if (qa >= 0 && f == qa) {
+                std::fprintf(stderr, "[tpquit] crossing f%d: the minigame quits (StartSceneFade(5,0,0))\n", f);
+                _ZN8dScene_c9SetFadersEP15FaderBrightness(data_0209f61c);
+                func_0202ec9c(data_0209f61c, 2);
+                _ZN8dScene_c14StartSceneFadeEjjt(5, 0, 0);
+            }
         }
         if (port_interlude_frame_hook) {
             if (port_interlude_frame_hook(f)) {

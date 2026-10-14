@@ -114,6 +114,8 @@
 
 typedef unsigned int u32;
 
+#include "sdat/sdat.h"   /* SdSeqPos: the music position F8 records */
+
 // hal/sdat: silence the live audio path on restore. These are C++-linkage free
 // functions (see hal/sdat/sdat.h), so they are declared OUTSIDE the extern "C"
 // block below or the linker looks for a C-mangled symbol that does not exist.
@@ -286,6 +288,11 @@ struct Slot {
 };
 
 Slot g_slot;
+// The music's position at the save (hal/sdat/sseq.cpp), host-side: it names
+// sequence bytes in THIS process, so a disk state read by a later process
+// leaves it invalid and its songs restart from the top as before.
+SdSeqPos g_slot_music[SD_SEQ_PLAYERS];
+int g_slot_music_valid;
 
 } // namespace
 
@@ -333,6 +340,8 @@ int lk6_savestate_save(void)
         return 0;
     }
 
+    sd_seq_snapshot(g_slot_music);
+    g_slot_music_valid = 1;
     memcpy(na, base, asz);
     port_timer0_state_save();
     memcpy(ng, dsstate_base(), gsz);
@@ -437,6 +446,9 @@ int lk6_savestate_load(void)
     // stayed off after every F9 until another song began. Start the song the
     // snapshot was playing now that the sound path is whole again.
     port_course_music_after_restore();
+    // ...and run it on to where the snapshot had got to.
+    if (g_slot_music_valid)
+        sd_seq_seek_to(g_slot_music);
 
     fprintf(stderr, "[savestate] restored: arena %zu bytes, dsstate %zu bytes, "
                     "hw %zu bytes, audio reset\n", g_slot.arena_size,

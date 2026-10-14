@@ -63,7 +63,7 @@ const Box kBoxes[24] = {
 };
 
 enum { CH_NONE = 0, CH_INTRO = 1, CH_RETURN = 2 };
-enum { CH_LOGO_POP = 22, CH_BOUNCE_LEN = 40, CH_FACE_FADE = 24, CH_LOGO_OUT = 10, CH_LOGO_IN = 14, CH_PLANK_DUR = 28, CH_PLANK_GAP = 6,
+enum { CH_LOGO_POP = 22, CH_BOUNCE_LEN = 40, CH_FACE_FADE = 24, CH_LOGO_OUT = 24, CH_LOGO_IN = 30, CH_PLANK_DUR = 28, CH_PLANK_GAP = 6,
        CH_PLANK_START = 4, CH_FLY = 14, CH_SWAP_END = CH_PLANK_START + 2 * CH_PLANK_GAP + CH_PLANK_DUR, CH_VEIL = 10 };
 struct Chore {
     int mode;            /* CH_* */
@@ -544,7 +544,7 @@ void build_main(MenuLayout *L, bool intro)
        follows at once instead of 33 frames later.
      - the PC logo pops in 22 frames after the iris appears (about two thirds open) with the DS logo's own bounce.
      - the swap starts when the logo has bounced and the ROM is at rest (top-state 0, the face is where it is on the 4:3 screen): the face fades in over
-       24 frames (it is never drawn before: no walk in from off screen), the big logo fades out over 10, the small logo fades in at the top left over 14,
+       24 frames (it is never drawn before: no walk in from off screen), the big logo fades out over 24, the small logo fades in at the top left over 30 (B2 (d), TRANS093: slower than the 10 and 14 it had),
        and the planks come up from the bottom edge with an overshoot, 6 frames apart, 28 frames each. Input is live as soon as the ROM is at rest.
        A confirm press during the swap finishes it at once and still goes to the ROM (it shows the cursor on ADVENTURE).
      - a return from a file page (the ROM walks the head in again) skips the iris and the big logo: the small logo is there, the page fades in from
