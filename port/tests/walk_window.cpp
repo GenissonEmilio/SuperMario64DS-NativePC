@@ -16711,6 +16711,11 @@ int main(void)
                         fprintf(stderr, "[metalwatch] f%d timer %u 6f9 %u 6fa %u 702 %u 700 %u 701 %u bodyid %u opacity %u\n", frame,
                                 (unsigned)*(const unsigned short *)(pl + 0x6ae), pl[0x6f9], pl[0x6fa], pl[0x702], pl[0x700], pl[0x701],
                                 (unsigned)pl[0x6dd], pl[0x6f5]);
+                    if (pl && getenv("SM64DS_METAL_WATCH")[0] == '2')
+                        fprintf(stderr, "[metalmodels] f%d body %08x %08x %08x %08x %08x hat %08x %08x %08x %08x %08x %08x %08x %08x chr %u\n", frame,
+                                *(const unsigned *)(pl + 0xdc), *(const unsigned *)(pl + 0xe0), *(const unsigned *)(pl + 0xe4), *(const unsigned *)(pl + 0xe8), *(const unsigned *)(pl + 0xec),
+                                *(const unsigned *)(pl + 0x154), *(const unsigned *)(pl + 0x158), *(const unsigned *)(pl + 0x15c), *(const unsigned *)(pl + 0x160),
+                                *(const unsigned *)(pl + 0x164), *(const unsigned *)(pl + 0x168), *(const unsigned *)(pl + 0x16c), *(const unsigned *)(pl + 0x170), (unsigned)pl[0x6db]);
                 }
             }
 
