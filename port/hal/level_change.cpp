@@ -2345,6 +2345,7 @@ extern "C" {
 extern void *data_0209f394[];
 extern int data_ov002_021102a4[];
 void _ZN6Player11ChangeStateERNS_5StateE(void *, void *);
+void _ZN3G2x18SetBlendBrightnessEPVtts(volatile unsigned short *p, unsigned short val, short amt);
 }
 static void port_tp_warp_hook(void)
 {
@@ -2353,6 +2354,24 @@ static void port_tp_warp_hook(void)
         const char *e = std::getenv("SM64DS_TP_WARP");
         at = e ? std::atoi(e) : -1;
         if (e && std::strchr(e, ',')) id = std::atoi(std::strchr(e, ',') + 1);
+    }
+    /* SM64DS_TP_FADE=<frame>: what St_Teleport_Main's last statement does every
+       frame (SetBlendBrightness on engine A's BLDCNT with the state's fade
+       counter, up 0..16 then back down), written here for 34 frames from a
+       chosen one, so the compositor's answer to that register write can be
+       watched without a Player standing on a warp. */
+    {
+        static int fat = -2, ff;
+        if (fat == -2) {
+            const char *e = std::getenv("SM64DS_TP_FADE");
+            fat = e ? std::atoi(e) : -1;
+        }
+        if (fat >= 0 && ff >= fat && ff < fat + 34) {
+            const int k = ff - fat;
+            _ZN3G2x18SetBlendBrightnessEPVtts((volatile unsigned short *)0x4000050, 0x3f,
+                                              (short)(k <= 16 ? k : 33 - k));
+        }
+        if (fat >= 0) ff++;
     }
     if (at >= 0 && frame++ == at) {
         std::fprintf(stderr, "[tpwarp] f%d WarpPlayer(0, %d)\n", at, id);
