@@ -36,6 +36,7 @@
 #include <cstdlib>
 #include <cstring>
 #include "daRedBombhei_c.h"
+#include "daKrb_c.h"
 
 extern "C" {
 
@@ -154,13 +155,21 @@ void func_ov084_0212a774(void *self);
 void func_ov084_0212a6f8(void *self);
 }
 
-static const struct { PortBuddyPmf *slot; unsigned rom; PortBuddyFn host; }
+/* PORTSYNC3: main's daKrb_c::Behavior calls these through a real pointer to member
+   (`(this->*table[state])()`), so the host word is entered with `this` in ecx and
+   nothing on the stack. Four of the five targets are free functions that read
+   `this` off the stack (the ROM's cdecl-shaped stubs), so each cell holds a
+   fastcall adapter that re-pushes it; the fifth is a member whose own address is
+   used. */
+template <void (*F)(void *)> static void __fastcall port_krb_adapt(void *self, void *)
+{ F(self); }
+static struct { PortBuddyPmf *slot; unsigned rom; PortBuddyFn host; }
 g_goomba_states[] = {
-    {krbStateDesc_Walk, 0x0212b2dc, func_ov084_0212b2dc},
-    {krbStateDesc_HopStart, 0x0212ab48, func_ov084_0212ab48},
-    {data_ov084_021308c4, 0x0212aab0, _ZN7daKrb_c19func_ov084_0212aab0Ev},
-    {krbStateDesc_Tumble, 0x0212a774, func_ov084_0212a774},
-    {krbStateDesc_Pause, 0x0212a6f8, func_ov084_0212a6f8},
+    {krbStateDesc_Walk, 0x0212b2dc, (PortBuddyFn)port_krb_adapt<func_ov084_0212b2dc>},
+    {krbStateDesc_HopStart, 0x0212ab48, (PortBuddyFn)port_krb_adapt<func_ov084_0212ab48>},
+    {data_ov084_021308c4, 0x0212aab0, 0},
+    {krbStateDesc_Tumble, 0x0212a774, (PortBuddyFn)port_krb_adapt<func_ov084_0212a774>},
+    {krbStateDesc_Pause, 0x0212a6f8, (PortBuddyFn)port_krb_adapt<func_ov084_0212a6f8>},
 };
 
 extern "C" void port_goomba_states_seat(void)
@@ -169,6 +178,7 @@ extern "C" void port_goomba_states_seat(void)
     if (done)
         return;
     done = 1;
+    g_goomba_states[2].host = port_member_addr(&daKrb_c::func_ov084_0212aab0);
     for (unsigned i = 0; i < 5; ++i) {
         port_buddy_seat_one(g_goomba_states[i].slot, g_goomba_states[i].rom,
                             g_goomba_states[i].host, "goomba static", i);
