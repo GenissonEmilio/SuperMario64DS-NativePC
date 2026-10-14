@@ -1575,8 +1575,7 @@ bool title_scene_cb(float xf[4])
     {
         static int last_v = -1;
         if (hal_menu_trace_on() && (v != last_v || getenv("SM64DS_TITLE_SCENETRACE")))
-            fprintf(stderr, "[scene92] f%d variant %d top %d elem %d T K %.3f Tx %.2f Ty %.2f canvas %.1f x %.1f xf %.3f %.3f %.3f %.3f
-", fr, v, top, elem,
+            fprintf(stderr, "[scene92] f%d variant %d top %d elem %d T K %.3f Tx %.2f Ty %.2f canvas %.1f x %.1f xf %.3f %.3f %.3f %.3f\n", fr, v, top, elem,
                     T.K, T.Tx, T.Ty, cw, ch, xf[0], xf[1], xf[2], xf[3]);
         last_v = v;
     }
@@ -1597,8 +1596,7 @@ void scene_sprite_xf(char *o)
     const float sx = (cw - 256.f) * 0.5f, sy = (ch - 192.f) * 0.5f;       /* the canvas margins beside / above the DS box */
     const int id = *(unsigned char *)(o + 0x4e), x = ((const int *)o)[1] >> 12, y = ((const int *)o)[2] >> 12;
     if (hal_menu_trace_on() && getenv("SM64DS_TITLE_SCENETRACE") && (data_ov007_0210342c[0] % 30) == 0)
-        fprintf(stderr, "[scene92] f%d sprite id=%02x x=%d y=%d variant %d
-", data_ov007_0210342c[0], id, x, y, v);
+        fprintf(stderr, "[scene92] f%d sprite id=%02x x=%d y=%d variant %d\n", data_ov007_0210342c[0], id, x, y, v);
     if (v == V_MAIN || v == V_INTRO || v == V_TOY) {
         if (id == 0x1b && y < 100) {
             float up = 0.f;
