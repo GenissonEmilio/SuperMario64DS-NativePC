@@ -51,3 +51,27 @@ ROWS[("PARK_SYMBOL", "Sound")] = ["func_020133bc", "func_020134c8"]
 # (flat name -> member) instead of F faces (member -> flat).
 ROWS[("PARK_SYMBOL", "daDoor_c")] = None
 ROWS[("PARK_SYMBOL", "d_a_tree")] = None
+
+# G3i.cpp (main's fold of the G3i matrix writers). LookAt_ binds a local
+# `mtx` to the MTX_MULT_3x3 port and writes the view matrix through it; the
+# fold put PerspectiveW_ in the same TU, whose `int *mtx` OUTPUT parameter is
+# tested (`if (mtx)`) and indexed. hostgen's pointer rewrite works on names
+# per TU text and gives up on a name with any non-deref use, so the whole
+# `mtx` family was left plain: the title's LookAt_ latched into mapped memory
+# and the geometry engine never got the view matrix (title bottom screen drew
+# 8.0 units off, the buttons and wrench fell out of the picture). The row
+# gives the register-bound local a name of its own.
+ROWS[("MWCC_SPELLING", "G3i")] = [
+    ("    volatile int *mtx;\n",
+     "    volatile int *lookat_port;\n"),
+    ("        mtx = (volatile int *)0x400045c;\n"
+     "        *mtx = right.x;\n        *mtx = up2.x;\n        *mtx = forward.x;\n"
+     "        *mtx = right.y;\n        *mtx = up2.y;\n        *mtx = forward.y;\n"
+     "        *mtx = right.z;\n        *mtx = up2.z;\n        *mtx = forward.z;\n",
+     "        lookat_port = (volatile int *)0x400045c;\n"
+     "        *lookat_port = right.x;\n        *lookat_port = up2.x;\n        *lookat_port = forward.x;\n"
+     "        *lookat_port = right.y;\n        *lookat_port = up2.y;\n        *lookat_port = forward.y;\n"
+     "        *lookat_port = right.z;\n        *lookat_port = up2.z;\n        *lookat_port = forward.z;\n"),
+    ("        *mtx = tx;\n        *mtx = ty;\n        *mtx = tz;\n",
+     "        *lookat_port = tx;\n        *lookat_port = ty;\n        *lookat_port = tz;\n"),
+]
