@@ -32,6 +32,8 @@ int select(State &st, char *body, unsigned anim, bool is_yoshi, bool *started);
 // After the body frame is set: put the head on the same frame (wrapped by its
 // own length). Returns the head frame, -1 when nothing was posed.
 int follow(State &st, char *body, int want_f, int *head_frames);
+// The pull-out body anim id (the tongue ROM table entry, 0x6c); for the proof lab.
+unsigned retract_anim();
 // The body is not a Yoshi head any more / was rebuilt: forget the state
 // without touching the model.
 void forget(State &st);

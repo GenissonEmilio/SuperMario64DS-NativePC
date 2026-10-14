@@ -3412,6 +3412,17 @@ void gw_follow() {
            first, then SetAnim lands the wire's frame. */
         int want_f = sm.cursor >> 12;
         if (want_f < 0) want_f = 0;
+        /* LAB (POSE9 pictures): SM64DS_GHOST_TONGUE_FREEZE=<frame> holds the first ghost
+           that has driven a tongue on the pull-out pose at that body frame, so a picture
+           taken whenever shows the tongue out. Never set outside a proof. */
+        {
+            static int frz = -2, frz_body = -1;
+            if (frz == -2) { const char *e = std::getenv("SM64DS_GHOST_TONGUE_FREEZE"); frz = e && *e ? std::atoi(e) : -1; }
+            if (frz >= 0) {
+                if (frz_body < 0 && g_gtongue[i].frames > 0) frz_body = i;
+                if (frz_body == i) { sm.anim = ghost_tongue::retract_anim(); want_f = frz; sm.cursor = frz << 12; }
+            }
+        }
         {
             int *cur = player::anim_frame_ptr(a);
             if (player::anim_id(a) == sm.anim && cur && (*cur >> 12) != want_f) {
@@ -3537,7 +3548,15 @@ void gw_follow() {
            frames; nothing counts a ghost's timer down, so this is the count. */
         if (!no_blink) {
             bool started = false;
-            const unsigned v = ghost_tongue::blink_step(g_gblink[i], sm.anim, &started);
+            unsigned v = ghost_tongue::blink_step(g_gblink[i], sm.anim, &started);
+            /* LAB (POSE9 pictures): SM64DS_GHOST_BLINK_PIN=1 / 2 holds a ghost that has
+               started a blink on the hidden (1) or the drawn (2) frame for good. */
+            {
+                static int pin = -2;
+                if (pin == -2) { const char *e = std::getenv("SM64DS_GHOST_BLINK_PIN"); pin = e && *e ? std::atoi(e) : 0; }
+                static bool pinned[kCommsMaxPlayers];
+                if (pin > 0 && (started || pinned[i])) { pinned[i] = true; v = (unsigned)(pin & 3); g_gblink[i].left = 1; }
+            }
             *(unsigned short *)((char *)a + player::kInvincibleTimer) = (unsigned short)v;
             if (started)
                 std::fprintf(stderr, "[ghost-blink] f=%u seat=%d body=%d hurt anim %u: 36-frame blink\n",

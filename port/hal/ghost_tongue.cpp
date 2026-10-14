@@ -80,6 +80,8 @@ int follow(State &st, char *body, int want_f, int *head_frames) {
     return *(int *)(hm + 0x58) >> 12;
 }
 
+unsigned retract_anim() { return kRetractAnim; }
+
 void forget(State &st) { st.arg = -1; }
 
 bool is_hurt_anim(unsigned anim) {
