@@ -33,6 +33,7 @@ extern unsigned char data_0209f250;
 extern unsigned char data_0209f21c;
 extern unsigned char data_0209f30c[];
 extern unsigned char data_0209f30d[];
+extern short data_0209f358[];
 void func_ov002_020b16c4(void *coin, void *player);       // the ROM's own red coin pickup
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 char *_ZN8dActor_c10FindWithIDEj(unsigned id);
@@ -45,6 +46,7 @@ void func_ov102_02149da8(void *self, int state);
 signed char NumRedCoins(void);
 void _ZN10StarMarker27SpawnRedCoinStarIfNecessaryEv(void *self);
 unsigned DeathTable_GetBit(int id);
+void _ZN5Event6SetBitEj(unsigned b);
 extern int data_ov089_02132894[];      // Key kinds 0..6: pointers to the kind's SharedFilePtr (src/_ZN3Key13InitResourcesEv.cpp)
 extern char data_ov002_0211094c;       // kind 7's model
 }
@@ -73,6 +75,8 @@ enum : int { kNetMax = 24, kLnkMax = 8, kInMax = 48, kBlkOutMax = 16, kAckMax = 
 // ---------------------------------------------------------------------------
 bool g_env = false, g_log = false, g_census_log = false;
 struct Off { bool block, red, spawn, gone, snap; } g_off = {};
+// TOTALS9 must-fail switches (SM64DS_TOTALS_OFF=redlocal,guard,coinstar): the same build with the r3 behaviour back.
+struct TOff { bool redlocal, guard, coinstar; } g_toff = {};
 CoopSpawnStats g_st = {};
 bool g_registered = false;
 int g_my = -1;
@@ -81,6 +85,9 @@ bool     g_have_key = false;
 int      g_lvl = -1, g_act = 0;
 unsigned g_gen = 0;
 unsigned g_frames = 0;
+unsigned g_near_frame = 0; bool g_near_done = true;     // SM64DS_TOTALS_NEAR=<frame>: put my player on the nearest rabbit key (proof knob)
+unsigned g_kp_until = 0;                                // TOTALS9 probe: log my Player's state until this frame (set while a rabbit key is out)
+unsigned g_tc_frame = 0; int g_tc_val = -1;       // SM64DS_TOTALS_COINS=<frame>:<count>: proof knob, set my coin counter once
 bool     g_armed = false;
 bool     g_census_on = false;
 unsigned g_wm = 0;                 // uid watermark: actors with a larger uid are new
@@ -155,6 +162,19 @@ void read_env() {
     g_log = l && *l && *l != '0';
     const char *c = std::getenv("SM64DS_SPAWN_CENSUS");
     g_census_log = c && *c && *c != '0';
+    if (const char *o = std::getenv("SM64DS_TOTALS_NEAR")) {
+        unsigned f = 0;
+        if (std::sscanf(o, "%u", &f) == 1) { g_near_frame = f; g_near_done = false; }
+    }
+    if (const char *o = std::getenv("SM64DS_TOTALS_COINS")) {
+        unsigned f = 0; int v = 0;
+        if (std::sscanf(o, "%u:%i", &f, &v) == 2) { g_tc_frame = f; g_tc_val = v; }
+    }
+    if (const char *o = std::getenv("SM64DS_TOTALS_OFF")) {
+        g_toff.redlocal = std::strstr(o, "redlocal") != nullptr;
+        g_toff.guard = std::strstr(o, "guard") != nullptr;
+        g_toff.coinstar = std::strstr(o, "coinstar") != nullptr;
+    }
     if (const char *o = std::getenv("SM64DS_SPAWN_OFF")) {
         g_off.block = std::strstr(o, "block") != nullptr;
         g_off.red = std::strstr(o, "red") != nullptr;
@@ -267,8 +287,26 @@ bool ack_has(int origin, int counter) {
 // ---------------------------------------------------------------------------
 // Quiet removal and spawn.
 // ---------------------------------------------------------------------------
+// TOTALS9 (field item 18): an actor a Player is attached to must never be deleted under it. A Player that waits on a deleted actor never
+// leaves its pose (the rabbit key's caught cutscene puts the Player in the no-control state and the key releases it): arms up, no input,
+// no ground friction. Held, grabbed, in the mouth, ridden, attached: any of the five Player links.
+bool player_attached_to(const char *a) {
+    for (int i = 0; i < 16; ++i) {
+        const char *p = (const char *)data_0209f394[i];
+        if (!p) continue;
+        for (int off = 0x354; off <= 0x364; off += 4) if (*(const char *const *)(p + off) == a) return true;
+    }
+    return false;
+}
+bool g_guard_logged = false;
 void kill_quiet(char *a) {
     const unsigned cls = a_cls(a);
+    // The rabbit key (229) runs a cutscene on the Player closest to it and ends itself (func_ov085_0212e480): a copy is never removed from
+    // outside, whatever stage of that cutscene it is in; its own end releases the Player.
+    if (!g_toff.guard && (cls == 229 || player_attached_to(a))) {
+        if (g_log && !g_guard_logged) { g_guard_logged = true; std::fprintf(stderr, "[coopspawn] guard: cls=%u not removed from outside (key cutscene / a Player is attached) wall=%lld\n", cls, wall_ms()); }
+        return;
+    }
     if (cls == 179) {
         char *m = _ZN8dActor_c10FindWithIDEj(*(unsigned *)(a + 0x434));
         if (m) { LinkSilverStarAndStarMarker(m, nullptr); _ZN7fBase_c18MarkForDestructionEv(m); }
@@ -415,9 +453,11 @@ int red_sum() {
     for (int i = 0; i < red_slots(); ++i) s += (signed char)red_cell(i);
     return s;
 }
-// a body slot that is not mine, inside the summed range
+// the body slot a friend's red coin is credited to. TOTALS9 (field item 12): MY slot, the one the HUD draws, so every screen in the stage
+// shows the group's red coins; the ROM's sum (NumRedCoins) is the same either way.
 int red_remote_slot() {
     const int me = (int)data_0209f250, n = red_slots();
+    if (!g_toff.redlocal && me >= 0 && me < n) return me;
     for (int i = 0; i < n; ++i) if (i != me) return i;
     return (me >= 0 && me < n) ? me : -1;      // a one-body count: the sum is all that matters
 }
@@ -514,6 +554,14 @@ void scan(unsigned now) {
             const bool taken_now = !dead && ((is_star_cls(cls) && *(const unsigned *)(a + 0x440) == 5u &&
                                               is_player_ptr(*(void *const *)(a + 0x438))) ||
                                              (cls == 282 && *(const int *)(a + 0x448) == 3 && is_player_ptr(*(void *const *)(a + 0x110))));
+            if (cls == 229 && !dead) g_kp_until = g_frames + 3000u;
+            if (cls == 229 && g_log && !dead && (g_frames % 20u) == 0) {      // TOTALS9 probe: the key's state machine against my Player's state
+                const char *pl = my_player();
+                std::fprintf(stderr, "[coopspawn] key probe state=%08x t2c8=%d mine: pstate=%08x ptimer=%d d6e3=%d held=%08x dist=%d frame=%u wall=%lld\n",
+                             *(const unsigned *)(a + 0x188), *(const int *)(a + 0x2c8), pl ? *(const unsigned *)(pl + 0x370) : 0u,
+                             pl ? (int)*(const unsigned short *)(pl + 0x6a4) : -1, pl ? (int)pl[0x6e3] : -1, pl ? *(const unsigned *)(pl + 0x358) : 0u,
+                             pl ? (int)(((long long)*(const int *)(pl + 0x5c) - *(const int *)(a + 0x5c)) >> 12) : -1, g_frames, wall_ms());
+            }
             for (Net &n : g_net)
                 if (n.used && !n.gone && n.a == a && n.uid == uid) { n.seen = !dead && !taken_now; }
             for (Lnk &l : g_lnk)
@@ -609,6 +657,16 @@ void scan(unsigned now) {
         g_red_prev = red_sum();
     }
     if (g_census_on && maxuid > g_wm) g_wm = maxuid;
+    if (g_log && g_frames < g_kp_until && (g_frames % 20u) == 0) {
+        const char *pl = my_player();
+        int keys = 0;
+        for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) if (a_cls(a) == 229 && !a_dead(a)) ++keys;
+        std::fprintf(stderr, "[coopspawn] pprobe pstate=%08x ptimer=%d d6e3=%d keys=%d frame=%u wall=%lld\n", pl ? *(const unsigned *)(pl + 0x370) : 0u,
+                     pl ? (int)*(const unsigned short *)(pl + 0x6a4) : -1, pl ? (int)pl[0x6e3] : -1, keys, g_frames, wall_ms());
+    }
+    if (g_log && (g_frames % 60u) == 0)         // TOTALS9 proof: what the HUD draws on this console
+        std::fprintf(stderr, "[coopspawn] hud coins=%d redcell=%d redsum=%d frame=%u wall=%lld\n", (int)data_0209f358[(int)data_0209f250 & 3],
+                     (int)(signed char)red_cell((int)data_0209f250 < red_slots() ? (int)data_0209f250 : 0), red_sum(), g_frames, wall_ms());
 }
 
 // ---------------------------------------------------------------------------
@@ -711,6 +769,12 @@ void apply_spawn(int seat, const SpSpawnWire &w, unsigned now) {
     n->param = w.param; n->pos[0] = w.pos[0]; n->pos[1] = w.pos[1]; n->pos[2] = w.pos[2]; n->area = w.area;
     n->a = a; n->uid = a_uid(a); n->seen = true; n->sends = 3;
     if (a_uid(a) > g_wm) g_wm = a_uid(a);
+    // TOTALS9 (field item 11): a friend's 100-coin star (the ROM spawns it with param 0x20 when a counter reaches 100). Mark the ROM's own
+    // "100 coin star is out" event bit, so this console's counter, shared with theirs, does not spawn a second one at its next pickup.
+    if (!g_toff.coinstar && w.cls == 178 && (w.param & 0xff) == 0x20) {
+        _ZN5Event6SetBitEj(0x1f);
+        if (g_log) std::fprintf(stderr, "[coopspawn] 100-coin star from seat %d: event bit 0x1f set here wall=%lld\n", seat, wall_ms());
+    }
     if (adopt) ++g_st.spawn_adopted; else ++g_st.spawn_applied;
     if (g_log)
         std::fprintf(stderr, "[coopspawn] spawn %s cls=%d from seat %d id=%d/%d pos=%d,%d,%d uid=%u frame=%u wall=%lld\n", adopt ? "adopted" : "applied",
@@ -1108,6 +1172,22 @@ void on_frame(unsigned now) {
     drain_in(now);
 
     // proof knobs
+    if (!g_near_done && g_armed && g_frames >= g_near_frame) {
+        char *pl = my_player();
+        for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); pl && a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
+            if (a_cls(a) != 229 || a_dead(a)) continue;
+            std::memcpy(pl + 0x5c, a + 0x5c, 12);
+            g_near_done = true;
+            std::fprintf(stderr, "[coopspawn-knob] near: my player put on the rabbit key at %d,%d,%d wall=%lld\n", ((const int *)(a + 0x5c))[0] >> 12,
+                         ((const int *)(a + 0x5c))[1] >> 12, ((const int *)(a + 0x5c))[2] >> 12, wall_ms());
+            break;
+        }
+    }
+    if (g_tc_val >= 0 && g_armed && g_frames >= g_tc_frame) {
+        data_0209f358[(int)data_0209f250 & 3] = (short)g_tc_val;
+        std::fprintf(stderr, "[coopspawn-knob] coin counter set to %d wall=%lld\n", g_tc_val, wall_ms());
+        g_tc_val = -1;
+    }
     for (int i = 0; i < g_nkb; ++i)
         if (!g_kb[i].done && g_armed && g_frames >= g_kb[i].frame) { g_kb[i].done = true; knob_block(g_kb[i]); }
     for (int i = 0; i < g_nkr; ++i)

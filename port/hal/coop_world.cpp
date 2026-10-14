@@ -33,11 +33,13 @@
 extern "C" {
 extern void *data_0209f394[];
 extern unsigned char data_0209f250;
+extern short data_0209f358[];
 extern signed char data_0209f2f8;
 extern int data_0209f220[];
 extern int data_0209f4f8[];
 signed char GetLevelPart(int idx);
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
+void GiveCoins(int idx, int amount);
 void LoadLevelNoReturn(unsigned level, unsigned entrance, unsigned star, unsigned unk);
 void _ZN8dActor_c24KillAndTrackInDeathTableEv(void *self);
 void *_ZN8dActor_c10FindWithIDEj(unsigned id);
@@ -289,11 +291,45 @@ void serve_snapshot(int seat, const Job &j) {
 // ---------------------------------------------------------------------------
 // Applying remote bits.
 // ---------------------------------------------------------------------------
+// TOTALS9 (field item 11): one shared coin count for the players of a stage. A placed coin that a friend collected is credited to MY
+// counter (the slot the HUD draws) at the moment its death bit arrives, while the actor is still standing. Value by the ROM's own coin
+// type (+0x3a0: 1 red = 2, 2 blue = 5, else yellow = 1; func_ov002_020b16c4 / 020b1674 / 020b1884). Quiet: no sound, no heal, and no
+// call of the 100-coin star check (func_ov002_020b18f0): the console whose OWN pickup crosses 100 spawns that star and announces it
+// (coop_spawn.cpp), everyone else gets the announced copy. Coins that fall out of enemies have slot -1 and are never in a death bit.
+// SM64DS_COOP_COINS=0 turns it off (must-fail control).
+bool coins_off() { static const bool off = [] { const char *e = std::getenv("SM64DS_COOP_COINS"); return e && *e == '0'; }(); return off; }
+// SM64DS_COOP_COINS=native: the must-fail for the 100-coin rule, credits through the ROM's GiveCoins (which spawns the star at 100 on THIS
+// console as well as on the one whose pickup crossed it).
+bool coins_native() { static const bool n = [] { const char *e = std::getenv("SM64DS_COOP_COINS"); return e && !std::strcmp(e, "native"); }(); return n; }
+unsigned long long g_coin_credits = 0, g_coin_total = 0;
+void credit_remote_coins(int w, unsigned fresh) {
+    if (coins_off() || !g_sync) return;
+    const int me = (int)data_0209f250;
+    if (me < 0 || me > 3) return;
+    for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
+        const unsigned cls = *(const unsigned short *)(a + 0x0c);
+        if (cls < 288 || cls > 290) continue;
+        const short slot = *(const short *)(a + 0xce);
+        if (slot < 0 || slot >= kCoopSlots || (slot >> 5) != w || !((fresh >> (slot & 31)) & 1u)) continue;
+        if (*(const unsigned char *)(a + 0x0f) || *(const unsigned char *)(a + 0x0e) == 2) continue;      // already going
+        const int ty = *(const int *)(a + 0x3a0);
+        const int v = ty == 1 ? 2 : ty == 2 ? 5 : 1;
+        int n = (int)data_0209f358[me] + v;
+        if (n > 0xff) n = 0xff;
+        if (coins_native()) { GiveCoins(me, v); n = (int)data_0209f358[me]; }
+        else data_0209f358[me] = (short)n;
+        ++g_coin_credits; g_coin_total += (unsigned)v;
+        if (g_log)
+            std::fprintf(stderr, "[coop] coin credit cls=%u slot=%d type=%d +%d count=%d wall=%lld\n", cls, (int)slot, ty, v, n, wall_ms());
+    }
+}
+
 void merge_remote_word(int w, unsigned bits) {
     unsigned *t = tbl(g_part);
     const unsigned fresh = bits & ~t[w];
     if (!fresh) return;
     t[w] |= fresh;
+    credit_remote_coins(w, fresh);
     g_prev[w] |= fresh;          // not mine: never announced back
     g_remote[w] |= fresh;
     g_st.bits_applied += (unsigned)popcnt(fresh);

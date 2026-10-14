@@ -227,6 +227,9 @@ const unsigned short kTalkerClasses[] = {
     265,  // LAKITU            Lakitu::Behavior
     267, 268,  // UKIKI_THIEF / UKIKI_STAR  daMky_c.cpp:435,864,883 ClosestPlayer -> StartTalk
     272, 273, 274, 275,  // SNOWMAN, HEAD, BODY, BREATH  daBgSnmBdy_c.cpp:279, SnowmanHead State0/3, SnowmanBreath
+    229,  // RABBIT_KEY (TOTALS9, field item 18)  func_ov085_0212d9b8 / 0212dbdc / 0212dd10: ClosestPlayer EVERY frame of the caught cutscene, pose
+          // (func_ov002_020c3ea0) at one step and release (020c3f18) at a later one: a friend closer to the key at the release step leaves
+          // the first body in the pose for ever. The cutscene runs on MY body on every console.
     282, 283,  // KEY, LAST_STAR   func_ov089_0213162c camera set
 };
 
