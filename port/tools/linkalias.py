@@ -41,6 +41,11 @@ Three rules, tried in order, for every unresolved name of the form `_name`
      and main's TUs and the port's mounts do not always pick the same one. A
      name the link lacks, whose address-and-kind another definition in the link
      already carries under exactly one other module spelling, is aliased onto it.
+  6b. ONE ADDRESS, TWO CONFIG NAMES. config/**/symbols.txt sometimes carries two
+     names for one address (`data_ov022_02114618` and
+     `FloatingFloorLllBig_ClsnFile`); the TU asks for one and the mount defines
+     the other. Any other name the config gives that address, if the link defines
+     it, is the target.
   7. VIRTUAL VERSUS NON-VIRTUAL SPELLING OF ONE MEMBER. A port shadow class
      declares `int InitResources();` (public non-virtual, `QAE`) where main's
      real class has `virtual int InitResources()` (`UAE`); the shadow means
@@ -165,6 +170,13 @@ def main():
         mm = re.match(r"\?(_Z\w+?)@@YA", d)
         if mm:
             cxx_flat[mm.group(1)].append(d)
+    names_at = collections.defaultdict(list)
+    for f in glob.glob(os.path.join(repo, "config", "arm9", "**", "symbols.txt"), recursive=True):
+        lab = os.path.basename(os.path.dirname(f))
+        for l in open(f, encoding="utf-8", errors="ignore"):
+            mm = re.match(r"(\S+)\s+kind:(\w+)(?:\(([^)]*)\))?\s+(?:.*?)addr:0x([0-9a-fA-F]+)", l)
+            if mm:
+                names_at[(lab, int(mm.group(4), 16))].append(mm.group(1))
     rows = []
     left = []
     for line in open(a.unresolved, encoding="utf-8", errors="replace"):
@@ -257,6 +269,12 @@ def main():
                     break
         if tgt is None and len(dec.get(n, [])) == 1:
             tgt, why = dec[n][0], "defined with C++ linkage"
+        if tgt is None:
+            for key in newinv.get(n, []):
+                alts = [x for x in names_at.get(key, []) if x != n and ("_" + x) in defs]
+                if len(alts) == 1:
+                    tgt, why = "_" + alts[0], "second config name at the same address"
+                    break
         if tgt is None:
             ms = re.match(r"_(data|func)_(?:ov\d+_)?([0-9a-f]{8})$", s)
             if ms:

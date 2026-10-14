@@ -208,5 +208,3 @@ data_ov022_02114684
 #   data_ov022_021145a0                        now defined by src/actors/daObjFl_Seesaw_c.cpp
 #   data_ov022_021145a8                        now defined by src/actors/daObjFl_Seesaw_c.cpp
 #   data_ov022_02114690                        now defined by src/game/actors/d_a_obj_fl_maruta.cpp
-# PORTSYNC3: objects main's TUs read that no mount carried (found by the first MSVC link).
-FloatingFloorLllBig_ModelFile:0x8 FloatingFloorLllBig_ClsnFile:0x8

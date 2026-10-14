@@ -32,7 +32,7 @@ ROWS[("MWCC_SPELLING", "ApproachAngle")] = [
     ("        angle = angle + step;\n    }\n}\n#endif\n",
      "        angle = angle + step;\n    }\n}\n"),
 ]
-ROWS[("PARK_SYMBOL", "cstd4")] = ["func_0206dac4", "func_0206dbf8", "func_0206de14", "func_0206dc4c", "func_0206df14"]
+ROWS[("PARK_SYMBOL", "cstd4")] = ["func_0206dac4", "func_0206dbf8", "func_0206de14", "func_0206dc4c", "func_0206df14", "func_0206e06c"]
 ROWS[("PARK_SYMBOL", "cstd6")] = ["func_0207037c"]
 ROWS[("PARK_SYMBOL", "SoundEngine")] = ["func_020506fc", "func_020503a4", "func_020500a4",
                                         "func_0204f194", "func_020507e0"]
