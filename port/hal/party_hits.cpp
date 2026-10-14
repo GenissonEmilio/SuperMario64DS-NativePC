@@ -570,8 +570,9 @@ void carry_v_tick(char *me) {
     Seen s;
     see(g.cv.holder, &s);
     const Place mp = my_place();
-    const bool holder_ok = hb && s.have_presence && s.in_level && s.presence_age_ms <= (unsigned)kPresenceMaxAgeMs &&
-                           s.at.level == mp.level && s.at.area == mp.area && s.have_ghost && s.ghost_age_ms <= (unsigned)kGhostMaxAgeMs;
+    bool holder_ok = hb && s.have_presence && s.in_level && s.presence_age_ms <= (unsigned)kPresenceMaxAgeMs &&
+                     s.at.level == mp.level && s.at.area == mp.area && s.have_ghost && s.ghost_age_ms <= (unsigned)kGhostMaxAgeMs;
+    if (!g.judge.rules.check_level) holder_ok = hb != nullptr;         // LAB: the rig's host stalls for seconds
     if (!holder_ok) {
         std::fprintf(stderr, "[phit] GRAB: the holder is gone, out of the hold\n");
         if (ptrf(me, kGrabbedBy)) func_ov002_020db54c((unsigned char *)me, 0x10000, 0x10000, *(short *)(me + kYawAngle));
@@ -647,7 +648,7 @@ void carry_h_tick(char *me) {
     if (!vb) { g.ch = CarryH(); return; }
     Seen s;
     see(g.ch.victim, &s);
-    if (!s.have_presence || s.presence_age_ms > (unsigned)kPresenceMaxAgeMs || !s.have_ghost || s.ghost_age_ms > (unsigned)kGhostMaxAgeMs) {
+    if (g.judge.rules.check_level && (!s.have_presence || s.presence_age_ms > (unsigned)kPresenceMaxAgeMs || !s.have_ghost || s.ghost_age_ms > (unsigned)kGhostMaxAgeMs)) {
         carry_h_end("the victim is gone", true);
         return;
     }
