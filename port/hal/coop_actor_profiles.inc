@@ -108,7 +108,7 @@ ROW(218, "CHIEF_CHILLY",        100, 16, 250, 6, 0)
 ROW(248, "WIGGLER",             100, 16, 250, 6, 0)
 ROW(279, "BOWSER",              100, 16, 250, 6, 0)
 // ---- MOVERS9: the movers and enemies the census listed without a row (COOPSCOUT9A item 10). Pose rows: nf 0, no state fields
-// (state fields wait for the always-on [coopstat] numbers to show a divergence). Enemies {100, 16, 250}, rooted / slow things {100, 8, 150}.
+// (state fields wait for the always-on [syncstat] numbers to show a divergence). Enemies {100, 16, 250}, rooted / slow things {100, 8, 150}.
 ROW(262, "MR_I",                100, 16, 250, 2, 0)
 ROW(250, "PIRANHA_PLANT",       100, 16, 250, 2, 0)
 ROW(251, "FIRE_PIRANHA_PLANT_BIG", 100, 16, 250, 2, 0)
