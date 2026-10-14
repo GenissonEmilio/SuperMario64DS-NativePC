@@ -45,13 +45,16 @@ extern unsigned char data_0209f21c;
 extern int data_0209f2f8;
 int port_adventure_hub_opening_held(void);
 int port_adventure_ghost_drawpos(int slot, int out[3]);
+int port_adventure_ghost_seat(int slot);
 short Vec3_HorzAngle(const void *a, const void *b);
 extern unsigned char data_0209f498[];   // Stage's per-player stick record, 0x18 bytes each (probe only)
 extern unsigned char data_020a0de8[];   // touch records, 4 bytes each (probe only)
 extern int data_020a0e58[];             // pad mirror (probe only)
 extern unsigned char data_020a0e40;     // the stick slot Player::St_Wait_Main reads (probe only)
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
+const void *port_scene_framebuffer(void);
 }
+namespace ntr { struct Framebuffer; bool ppu_write_bmp(const char *path, const Framebuffer &fb); }
 
 namespace port {
 namespace {
@@ -649,7 +652,7 @@ struct SpawnState {
     bool have_spawn = false;
     int spawn[3] = {0, 0, 0};
     short spawn_ang = 0;
-    unsigned pin_from = 0, pinned = 0;
+    unsigned pin_from = 0, pinned = 0, bit_frame = 0;
     double max_drift = 0.0;
 } S9;
 
@@ -726,10 +729,20 @@ void spawn_log_lakitu(const char *b) {
     }
 }
 
+// the follower's drawn pose of the body that stands for hub seat `seat` (the ghost API is indexed by BODY slot, which is not the seat)
+bool seat_drawpos(int seat, int dp[3]) {
+    const int nb = (int)data_0209f21c < 16 ? (int)data_0209f21c : 16;
+    for (int i = 0; i < nb; ++i) {
+        if (i == (int)data_0209f250 || !data_0209f394[i]) continue;
+        if (port_adventure_ghost_seat(i) == seat) return port_adventure_ghost_drawpos(i, dp) != 0;
+    }
+    return false;
+}
+
 bool host_in_my_level(int dp[3]) {
     HubPresence p;
     return C.host_seat >= 0 && hub_presence_get(C.host_seat, &p) && p.in_level() && p.level == (int)data_0209f2f8 &&
-           port_adventure_ghost_drawpos(C.host_seat, dp) != 0;
+           seat_drawpos(C.host_seat, dp);
 }
 
 void spawn_frame() {
@@ -768,7 +781,7 @@ void spawn_frame() {
         for (int s = 0; s < 4; ++s) {
             int dp[3];
             if (s == my_seat()) { dp[0] = me[0]; dp[1] = me[1]; dp[2] = me[2]; }
-            else if (!port_adventure_ghost_drawpos(s, dp)) continue;
+            else if (!seat_drawpos(s, dp)) continue;
             w += std::snprintf(v + w, sizeof v - (size_t)w, " s%d%s=(%d,%d,%d)", s, s == my_seat() ? "*" : "", dp[0] >> 12, dp[1] >> 12, dp[2] >> 12);
         }
         LOG("SPAWN view f=%u level=%d%s", S9.frame, (int)data_0209f2f8, v);
@@ -802,6 +815,7 @@ void spawn_frame() {
     }
     if (C.intro_seen && S9.phase == 0 && bit && !S9.bit_prev) {
         S9.phase = 3;
+        S9.bit_frame = S9.frame;
         LOG("SPAWN opening seen bit set on this console at (%d,%d,%d); pinned %u frames, largest drift in one frame %.0f units", me[0] >> 12,
             me[1] >> 12, me[2] >> 12, S9.pinned, S9.max_drift);
         if (S9.have_spawn) {
@@ -811,6 +825,27 @@ void spawn_frame() {
         }
     }
     S9.bit_prev = bit;
+
+    // ---- proof pictures: SM64DS_COOPSPAWN_SHOT="t300,b60,..." writes spawn9_<mark>.bmp (the top screen) that many ticks after the
+    // spawn capture (t) or after the seen bit (b); late joiners count from their first tick (l)
+    if (const char *sh = std::getenv("SM64DS_COOPSPAWN_SHOT")) {
+        for (const char *q = sh; *q;) {
+            const char kind = *q;
+            char *end = nullptr;
+            const long n = std::strtol(q + 1, &end, 10);
+            if (end == q + 1) break;
+            unsigned base = 0; bool ok = false;
+            if (kind == 't' && S9.have_spawn) { base = S9.pin_from; ok = true; }
+            else if (kind == 'b' && S9.phase == 3 && S9.bit_frame) { base = S9.bit_frame; ok = true; }
+            else if (kind == 'l') { base = 1; ok = true; }
+            if (ok && S9.frame == base + (unsigned)n) {
+                char nm[64]; std::snprintf(nm, sizeof nm, "spawn9_%c%ld.bmp", kind, n);
+                const bool w = ::ntr::ppu_write_bmp(nm, *(const ::ntr::Framebuffer *)::port_scene_framebuffer());
+                LOG("SPAWN picture %s %s at (%d,%d,%d)", nm, w ? "written" : "FAILED", me[0] >> 12, me[1] >> 12, me[2] >> 12);
+            }
+            q = end; while (*q == ',' || *q == ' ') ++q;
+        }
+    }
 
     // ---- a late joiner
     if (S9.late && !S9.late_done) {
