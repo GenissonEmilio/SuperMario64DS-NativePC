@@ -1131,11 +1131,11 @@ void build_main_pc(MenuLayout *L, bool intro)
         ir.ir16 = (int)(Rpx * 16.f);
         if (c.iris_covered || (Rpx > 0.f && menu_iris_covers(w, h, (float)ir.icx, (float)ir.icy, Rpx))) { c.iris_covered = 1; g_iris_cov_req = 1; }
         else menu_add_piece(L, ir);
-    } else if (c.mode == CH_RETURN && c.fam_t <= CH_VEIL) {
+    } else if (c.mode == CH_RETURN && c.fam_t < 14) {
         MenuPiece ir = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         ir.bg = 1; ir.iris = 1; ir.lden = 1; ir.lnum = 1; ir.fx = 0; ir.fy = 0; ir.fw = (short)w; ir.fh = (short)h;
         ir.ir16 = 0;
-        ir.alpha = (uint8_t)(255 * c.fam_t / (CH_VEIL + 1));
+        ir.alpha = (uint8_t)(255 * (14 - c.fam_t) / 14);      /* TITLE092 (3b): the page fades IN from the black of the ROM's closing iris (the veil used to grow darker and drop away: the dark flash) */
         if (ir.alpha == 0) ir.alpha = 1;
         menu_add_piece(L, ir);
     }
