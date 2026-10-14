@@ -163,13 +163,13 @@ void func_ov084_0212a6f8(void *self);
    used. */
 template <void (*F)(void *)> static void __fastcall port_krb_adapt(void *self, void *)
 { F(self); }
-static struct { PortBuddyPmf *slot; unsigned rom; PortBuddyFn host; }
+static struct { PortBuddyPmf *slot; unsigned rom; PortBuddyFn host; PortBuddyFn raw; }
 g_goomba_states[] = {
-    {krbStateDesc_Walk, 0x0212b2dc, (PortBuddyFn)port_krb_adapt<func_ov084_0212b2dc>},
-    {krbStateDesc_HopStart, 0x0212ab48, (PortBuddyFn)port_krb_adapt<func_ov084_0212ab48>},
-    {data_ov084_021308c4, 0x0212aab0, 0},
-    {krbStateDesc_Tumble, 0x0212a774, (PortBuddyFn)port_krb_adapt<func_ov084_0212a774>},
-    {krbStateDesc_Pause, 0x0212a6f8, (PortBuddyFn)port_krb_adapt<func_ov084_0212a6f8>},
+    {krbStateDesc_Walk, 0x0212b2dc, (PortBuddyFn)port_krb_adapt<func_ov084_0212b2dc>, func_ov084_0212b2dc},
+    {krbStateDesc_HopStart, 0x0212ab48, (PortBuddyFn)port_krb_adapt<func_ov084_0212ab48>, func_ov084_0212ab48},
+    {data_ov084_021308c4, 0x0212aab0, 0, 0},
+    {krbStateDesc_Tumble, 0x0212a774, (PortBuddyFn)port_krb_adapt<func_ov084_0212a774>, func_ov084_0212a774},
+    {krbStateDesc_Pause, 0x0212a6f8, (PortBuddyFn)port_krb_adapt<func_ov084_0212a6f8>, func_ov084_0212a6f8},
 };
 
 extern "C" void port_goomba_states_seat(void)
@@ -184,5 +184,13 @@ extern "C" void port_goomba_states_seat(void)
                             g_goomba_states[i].host, "goomba static", i);
         port_buddy_seat_one(&data_ov084_02130d74[i], g_goomba_states[i].rom,
                             g_goomba_states[i].host, "goomba table", i);
+        /* PORTSYNC3: the class TU's own initialiser has already filled the table with
+           the free functions' HOST addresses (a union pun of `void (*)(daKrb_c *)` as a
+           pointer to member), which the seat above leaves alone because they are not DS
+           addresses. Put the thiscall adapter over each one. */
+        if (g_goomba_states[i].raw && data_ov084_02130d74[i].fn == (unsigned)(size_t)g_goomba_states[i].raw)
+            data_ov084_02130d74[i].fn = (unsigned)(size_t)g_goomba_states[i].host;
+        if (g_goomba_states[i].raw && g_goomba_states[i].slot->fn == (unsigned)(size_t)g_goomba_states[i].raw)
+            g_goomba_states[i].slot->fn = (unsigned)(size_t)g_goomba_states[i].host;
     }
 }
