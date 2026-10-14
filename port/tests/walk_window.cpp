@@ -631,6 +631,7 @@ void port_hub_presence_frame(void);
 void port_party_stars_frame(void);
 /* PLAYINT1: party / coop player interactions (hal/party_hits.cpp). Inert outside party / coop rooms. */
 void port_party_hits_frame(void);
+void port_party_hits_prewalk(void);   /* INTERACT9: re-asserts the mouth / hands links right before the actor walk */
 void port_coop_save_frame(void);
 void port_coop_save_boot(void);
 void port_coop_boot_begin(void);
@@ -18226,6 +18227,7 @@ int main(void)
                it is (it has to follow the scene pass; hal/player_bridges.cpp).
                No-op unless adventure-ghost mode is on. */
             port_adventure_ghost_hold();
+            port_party_hits_prewalk();   /* INTERACT9: the eater / holder links a ghost body loses between the hook and the walk */
             /* run mp1 lane ARENACORE1: the arena's puppet hold (A1) hangs
                here, before the walk ticks the bodies. No-op outside arena. */
             port::vs_arena_before_walk(frame);

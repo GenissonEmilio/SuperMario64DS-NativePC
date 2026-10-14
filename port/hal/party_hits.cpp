@@ -458,7 +458,10 @@ void grab_begin(char *me, const Claim &c) {
     *(unsigned short *)(me + player::kInvincibleTimer) = 0;
     *(unsigned char *)(me + 0x708) = 0;
     const int ok = func_ov002_020db5f4(me, hb);
+    char *gb0 = ptrf(me, kGrabbedBy);
+    ptrf(me, kGrabbedBy) = hb;       // the state change clears the link on this port (as it does the mouth link): set it again
     *(unsigned short *)(me + player::kInvincibleTimer) = inv;
+    std::fprintf(stderr, "[phit] GRAB enter: db5f4 %d, holder link after the call %p (holder %p)\n", ok, (void *)gb0, (void *)hb);
     if (!ok) {
         ptrf(hb, kHeldObj) = nullptr;
         u32(me, kFlags) &= ~(kFlagHeldOut | kFlagCarried);
@@ -844,4 +847,30 @@ extern "C" void port_party_hits_frame(void) {
     carry_h_tick(me);
     lab_gather(me);
     if (!g.hold.active() && !g.cv.active) attacker_scan(me);
+}
+
+// Right before the actor walk. A ghost body is held and re-posed by the follower after the frame hook, and the
+// ROM's mouth / hand states read their link to it during the walk: put the links back where the hook left them.
+extern "C" void port_party_hits_prewalk(void) {
+    using namespace port;
+    using namespace port::party_hits;
+    if (!g.on) return;
+    char *me = my_body();
+    if (!me) return;
+    if (g.hold.active() && g.rom_mouth) {
+        if (char *ep = body_of_seat(g.hold.eater())) {
+            if (state_is(me, data_ov002_02110064)) {
+                ptrf(me, kInMouth) = ep;
+                ptrf(ep, kMouthObj) = me;
+                *(unsigned char *)(ep + 0x708) = 0; *(unsigned char *)(ep + 0x709) = 0;
+            }
+        }
+    }
+    if (g.cv.active && state_is(me, data_ov002_0211016c)) {
+        if (char *hb = body_of_seat(g.cv.holder)) {
+            ptrf(hb, kHeldObj) = me;
+            ptrf(me, kGrabbedBy) = hb;
+            u32(me, kFlags) |= kFlagCarried | kFlagHeldOut;
+        }
+    }
 }
