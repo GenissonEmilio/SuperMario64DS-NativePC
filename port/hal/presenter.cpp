@@ -900,6 +900,13 @@ extern "C" void presenter_end(void)
     stat_flush();
 }
 
+extern "C" void presenter_exit_stop(void)
+{
+    if (!g_running || !g_thread) return;
+    _InterlockedExchange(&g_stop, 1);
+    WaitForSingleObject(g_thread, 1000);
+}
+
 /* The game thread takes the texture it will draw the next picture into: its
    keyed mutex is acquired (immediately in practice: the mailbox only hands it
    a slot the presenter is done with, or one that holds a picture nobody will

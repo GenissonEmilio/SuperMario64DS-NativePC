@@ -1038,7 +1038,11 @@ void at_exit()
         fprintf(stderr, "[present] %d picture(s) went through the graphics "
                 "card this run\n", g_presents);
     address_rows("exit  ");
-    release_all();
+    /* THE EXIT RULE (hal/gpu_device.h): stop the presenter thread and leave
+       every Direct3D object to the system. Releasing them here crashed the
+       AMD and Intel drivers at quit. */
+    if (port_gpu_exit_release()) release_all();
+    else presenter_exit_stop();
 }
 
 /* ---- the one-time start-up ----------------------------------------------- */

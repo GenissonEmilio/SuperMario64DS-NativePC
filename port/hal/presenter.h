@@ -67,6 +67,10 @@ void presenter_set_grid_hz(double grid_hz);
 /* Stop the thread and release its textures. Safe to call any time, any
    number of times, from the game thread only. */
 void presenter_end(void);
+/* Process exit: stop the thread (waits up to a second for it) and touch
+   nothing else. No texture, device or swap chain is released: see the exit
+   rule in hal/gpu_device.h. Game thread only. */
+void presenter_exit_stop(void);
 int presenter_running(void);
 /* QPC of the presenter's latest turn (about one per refresh), 0 when not running. */
 long long presenter_phase_qpc(void);

@@ -58,6 +58,15 @@ double port_gpu_device_create_ms(void);      /* what creation cost, once */
 /* 1 once an acquire has been tried and failed, so a caller can stop asking. */
 int port_gpu_device_failed(void);
 
+/* THE EXIT RULE (run hunt8, lane CRASHDRV093). At process exit the Direct3D
+ * objects are NOT released one by one: the process is about to end and the
+ * system frees them, and releasing them from an atexit handler crashed the
+ * AMD and Intel user-mode drivers (their worker thread entered a critical
+ * section the driver had just freed: a c0000005 inside the driver thread at
+ * the moment the player quit, 36 reports from 17 installs). Returns 1 only
+ * when SM64DS_GPU_EXIT_RELEASE=1 asks for the old release-everything exit. */
+int port_gpu_exit_release(void);
+
 /* ---- WHAT THE CARD ITSELF SPENT ----------------------------------------
  *
  * The F3 overlay shows a cpu percentage and, until now, nothing about the

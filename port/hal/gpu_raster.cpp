@@ -1176,6 +1176,9 @@ void at_exit()
                 "processor's own host loops: %lld differed (%lld overlay and %lld "
                 "mask pixel(s)).\n", g_tw_checks, g_tw_bad, g_tw_bad_px_ov, g_tw_bad_px_bm);
     aa_at_exit();
+    /* THE EXIT RULE (hal/gpu_device.h): nothing below is released at process
+       exit, the system frees it. */
+    if (!port_gpu_exit_release()) return;
     release_textures();
     release_targets();
     if (g_tw_ps_hide) { g_tw_ps_hide->Release(); g_tw_ps_hide = 0; }
@@ -1815,6 +1818,7 @@ void aa_at_exit()
         fprintf(stderr, "[renderer] %lld frame(s) smoothed on the card, %.3f ms "
                 "per frame for the whole round trip.\n", g_aa_frames,
                 g_aa_ms / (double)g_aa_frames);
+    if (!port_gpu_exit_release()) return;    /* the exit rule, hal/gpu_device.h */
     release_aa();
     if (g_aa_vs) { g_aa_vs->Release(); g_aa_vs = 0; }
     if (g_aa_ps) { g_aa_ps->Release(); g_aa_ps = 0; }

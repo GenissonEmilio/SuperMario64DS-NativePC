@@ -1052,6 +1052,64 @@ static void __stdcall port_exit_hook(LONG code)
     TerminateProcess(GetCurrentProcess(), (UINT)code);   /* belt and braces */
 }
 
+/* THE CONSOLE CLOSE IS A QUIT, NOT A CRASH (run hunt8, lane CRASHDRV093). The
+   game is a console-subsystem exe, so the system gives it a console window,
+   and a player who ends the game by closing that window (or Ctrl+C) makes
+   Windows run the default handler, which ends the process with exit code
+   c000013a. The exit probe above then filed that as a crash: 39 reports from
+   17 installs on 0.9.0 and 0.9.1, none of them a fault.
+
+   This handler takes those events (Ctrl+C, Ctrl+Break, console close, logoff,
+   shutdown), asks the game window to close the way its X button does so the
+   normal quit runs (settings flushed, the usual exit), waits up to four seconds
+   for the process to go, and then ends it with exit code 0. The window is found
+   by process id through user32, which is resolved here at call time (the kit's
+   import table stays kernel32 only). The handler runs on a thread the system
+   makes for the event. */
+typedef BOOL (WINAPI *port_enum_t)(WNDENUMPROC, LPARAM);
+typedef DWORD (WINAPI *port_tid_t)(HWND, LPDWORD);
+typedef BOOL (WINAPI *port_post_t)(HWND, UINT, WPARAM, LPARAM);
+static port_tid_t port_ctrl_tid;
+static port_post_t port_ctrl_post;
+
+static BOOL CALLBACK port_ctrl_close_cb(HWND h, LPARAM l)
+{
+    DWORD pid = 0;
+    (void)l;
+    port_ctrl_tid(h, &pid);
+    if (pid == GetCurrentProcessId())
+        port_ctrl_post(h, 0x0010 /* WM_CLOSE */, 0, 0);
+    return TRUE;
+}
+
+static BOOL WINAPI port_console_ctrl(DWORD ev)
+{
+    switch (ev) {
+    case CTRL_C_EVENT:
+    case CTRL_BREAK_EVENT:
+    case CTRL_CLOSE_EVENT:
+    case CTRL_LOGOFF_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+    {
+        static const char m[] = "[exit] the console was closed or interrupted: quitting as the player asked\r\n";
+        DWORD w;
+        HMODULE u = LoadLibraryA("user32.dll");
+        port_enum_t en = u ? (port_enum_t)GetProcAddress(u, "EnumWindows") : 0;
+        WriteFile(GetStdHandle(STD_ERROR_HANDLE), m, sizeof m - 1, &w, 0);
+        port_ctrl_tid = u ? (port_tid_t)GetProcAddress(u, "GetWindowThreadProcessId") : 0;
+        port_ctrl_post = u ? (port_post_t)GetProcAddress(u, "PostMessageA") : 0;
+        if (en && port_ctrl_tid && port_ctrl_post) {
+            en(port_ctrl_close_cb, 0);
+            Sleep(4000);
+        }
+        ExitProcess(0);
+    }
+    default:
+        break;
+    }
+    return FALSE;
+}
+
 static void port_install_exit_probe(void)
 {
     HMODULE nt = GetModuleHandleA("ntdll.dll");
@@ -1079,6 +1137,7 @@ static void port_install_exit_probe(void)
         AddVectoredExceptionHandler(1, port_crash_veh); \
         SetUnhandledExceptionFilter(port_fault_probe_with_file); \
         port_install_exit_probe(); \
+        SetConsoleCtrlHandler(port_console_ctrl, TRUE); \
     } while (0)
 
 /* Hang watchdog (PORT_WATCHDOG=<seconds>): a helper thread suspends the

@@ -284,6 +284,7 @@ bool timer_open_picture()
 
 void release_device()
 {
+    if (!port_gpu_exit_release()) return;   /* see hal/gpu_device.h: the exit rule */
     timer_release();
     if (g_ctx) { g_ctx->ClearState(); g_ctx->Flush(); g_ctx->Release(); g_ctx = 0; }
     if (g_dev) { g_dev->Release(); g_dev = 0; }
@@ -354,6 +355,12 @@ extern "C" int port_gpu_device_is_warp(void) { return g_is_warp; }
 extern "C" unsigned port_gpu_device_feature_level(void) { return (unsigned)g_level; }
 extern "C" double port_gpu_device_create_ms(void) { return g_create_ms; }
 extern "C" int port_gpu_device_failed(void) { return g_failed; }
+extern "C" int port_gpu_exit_release(void)
+{
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_GPU_EXIT_RELEASE"); v = (e && e[0] == '1') ? 1 : 0; }
+    return v;
+}
 
 extern "C" void port_gpu_timer_span_begin(int span)
 {
@@ -464,6 +471,7 @@ int port_gpu_device_is_warp(void) { return 0; }
 unsigned port_gpu_device_feature_level(void) { return 0; }
 double port_gpu_device_create_ms(void) { return 0.0; }
 int port_gpu_device_failed(void) { return 1; }
+int port_gpu_exit_release(void) { return 1; }
 void port_gpu_timer_span_begin(int) {}
 void port_gpu_timer_span_end(int) {}
 void port_gpu_timer_frame_end(void) {}
