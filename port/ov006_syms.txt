@@ -538,7 +538,7 @@ data_ov006_02141fdc data_ov006_02141fe4 data_ov006_02141ff0 data_ov006_02141ff8 
 data_ov006_02142048 data_ov006_0214204c data_ov006_02142050:0x2 data_ov006_02142052:0x1 data_ov006_02142053:0x1 data_ov006_02142054
 data_ov006_02142184 data_ov006_02142188 data_ov006_02142190 data_ov006_02142198@0x02142198 data_ov006_021421a4@0x021421a4 data_ov006_021421b0
 data_ov006_021421b4 data_ov006_021421b8 data_ov006_021421bc data_ov006_021421c0 data_ov006_021421c4 data_ov006_021421cc
-data_ov006_021421d4@0x021421d4 data_ov006_021421e0@0x021421e0 data_ov006_021421ec data_ov006_02142204 data_ov006_0214221c data_ov006_02142234
+data_ov006_021421d4@0x021421d4 data_ov006_021421e0@0x021421e0 data_ov006_021421ec data_ov006_02142204 data_ov006_0214221c
 data_ov006_02142254 data_ov006_02142304 data_ov006_02142334
 data_ov006_021423a8
 data_ov006_021424ec data_ov006_021424f0 data_ov006_021424f4 data_ov006_021424f8 data_ov006_021424fc
@@ -677,3 +677,5 @@ data_ov006_02143014 data_ov006_02143020 data_ov006_02143070
 #   data_ov006_02142f80                        now defined by src/minigames/d_s_mg_trampoline2.cpp
 #   data_ov006_02143038                        now defined by src/actors/dScMgSnowball_c.cpp
 #   data_ov006_02143050                        now defined by src/actors/dScMgSnowball_c.cpp
+
+# PORTSYNC3 RETIRED (main's dScMgLuigi_c.cpp now defines these objects itself): data_ov006_02142234

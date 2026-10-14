@@ -37,8 +37,8 @@ data_ov102_0214e390:0x8 data_ov102_0214e398:0x8 data_ov102_0214e3a0:0x8
 _ZTI18daObjHatenaBlock_c:0xc _ZTS18daObjHatenaBlock_c:0x18 g_profile_VS_ITEM_BLOCK:0x1c
 g_profile_HATENA_BLOCK:0x1c g_profile_ITEM_BLOCK:0x1c g_profile_CAP_BLOCK_M:0x1c
 g_profile_CAP_BLOCK_L:0x1c g_profile_CAP_BLOCK_W:0x1c _ZTS7daBmb_c:0xc
-_ZTI7daBmb_c:0xc data_ov102_0214e514:0x10 data_ov102_0214e524:0x10
-g_profile_BOMBHEI:0x1c data_ov102_0214e5d4@0x0214e5d4:0x8 data_ov102_0214e5dc@0x0214e5dc:0x8 data_ov102_0214e5e4@0x0214e5e4:0x8
+_ZTI7daBmb_c:0xc
+data_ov102_0214e5d4@0x0214e5d4:0x8 data_ov102_0214e5dc@0x0214e5dc:0x8 data_ov102_0214e5e4@0x0214e5e4:0x8
 data_ov102_0214e5ec@0x0214e5ec:0x8 data_ov102_0214e5f4@0x0214e5f4:0x8 data_ov102_0214e5fc@0x0214e5fc:0x8
 data_ov102_0214e604@0x0214e604:0x8 data_ov102_0214e60c@0x0214e60c:0x8 _ZTS7daShl_c:0xc
 _ZTI7daShl_c:0xc g_profile_SHELL:0x1c data_ov102_0214e6e0:0x8
@@ -73,3 +73,5 @@ data_ov102_0214ea30:0xc data_ov102_0214ea3c:0xc
 #   data_ov102_0214ea58                        now defined by src/game/actors/d_a_shl.cpp
 #   data_ov102_0214ea68                        now defined by src/game/actors/d_a_shl.cpp
 #   data_ov102_0214ea78                        now defined by src/game/actors/d_a_shl.cpp
+
+# PORTSYNC3 RETIRED (main's daBmb_c.cpp now defines these objects itself): data_ov102_0214e514 data_ov102_0214e524 g_profile_BOMBHEI

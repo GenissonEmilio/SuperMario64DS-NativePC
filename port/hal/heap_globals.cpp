@@ -188,11 +188,11 @@ extern "C" MemoryNode::Target *_ZN10MemoryNode6TargetC1EPS_(
 // primitives (swp, dcd, the soft-float compare stubs) that no host compiler
 // accepts -- so the slice can no longer compile the src/ definition. The body
 // is the one src/cstd4.cpp carries.
+// PORTSYNC3: src/cstd4.cpp compiles again (hostgen ASM_PARK drops its hand-asm
+// bodies), so the host copy that stood here is retired and only the declaration
+// stays; cstd::abs is cstd4.cpp's own.
 namespace cstd {
-int abs(int x)
-{
-    return x < 0 ? -x : x;
-}
+int abs(int x);
 }
 
 extern "C" int _ZN4cstd3absEi(int value) { return cstd::abs(value); }

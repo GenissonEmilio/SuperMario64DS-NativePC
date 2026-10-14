@@ -13,3 +13,20 @@ ROWS[("MWCC_SPELLING", "func_02009e70")] = [
     ("    Vector3 sp70 = line.GetClsnPos();\n",
      "    { Vector3 sp70 = line.GetClsnPos(); (void)sp70; }\n"),
 ]
+
+# ---- PARK_SYMBOL: folded bodies the port line never compiled ---------------
+# Main's folds pulled these functions into TUs the port compiles wholesale.
+# The 0.9.2 line (port/h8-rel092b) compiled none of them from src/ (checked
+# against its own slice enumeration, tools/inferred_stub_guard.build_tu_set),
+# and each one reaches DS-only runtime that the host never defines (OS mutex
+# and interrupt helpers, the DS sound driver's hardware tables, ROM data in
+# overlays the port does not mount). Parking restores exactly what ran before.
+ROWS[("PARK_SYMBOL", "cstd4")] = ["func_0206dac4", "func_0206dbf8", "func_0206de14"]
+ROWS[("PARK_SYMBOL", "cstd6")] = ["func_0207037c"]
+ROWS[("PARK_SYMBOL", "SoundEngine")] = ["func_020506fc", "func_020503a4", "func_020500a4",
+                                        "func_0204fed0", "func_0204f194"]
+ROWS[("PARK_SYMBOL", "Sound")] = ["func_020133bc"]
+ROWS[("PARK_SYMBOL", "dExtShadowModel_c")] = ["_ZN17dExtShadowModel_c10InitCuboidEv",
+                                              "_ZN17dExtShadowModel_c12InitCylinderEv"]
+ROWS[("PARK_SYMBOL", "daFRing_c")] = ["_ZN9daFRing_c13InitResourcesEv"]
+ROWS[("PARK_SYMBOL", "daObjFl_UkiKi_c")] = ["_ZN15daObjFl_UkiKi_c13InitResourcesEv"]

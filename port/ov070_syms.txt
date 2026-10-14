@@ -150,13 +150,10 @@ data_ov070_021234c4 data_ov070_021234dc
 
 # ---- .bss: FlyGuy's SharedFilePtrs (model 0x411, anims 0x412..0x417),
 # their chain nodes, and the six state PMF pair arrays ----------------------
-data_ov070_02123500 data_ov070_02123508 data_ov070_02123510
-data_ov070_02123518 data_ov070_02123520 data_ov070_02123528
-data_ov070_02123530 data_ov070_02123538@0x02123538 data_ov070_02123544@0x02123544
+data_ov070_02123538@0x02123538 data_ov070_02123544@0x02123544
 data_ov070_02123550@0x02123550 data_ov070_0212355c@0x0212355c data_ov070_02123568@0x02123568
 data_ov070_02123574@0x02123574 data_ov070_02123580@0x02123580
-data_ov070_0212358c data_ov070_0212359c data_ov070_021235ac
-data_ov070_021235bc data_ov070_021235cc data_ov070_021235dc
+data_ov070_021235bc data_ov070_021235cc
 
 # ---- .bss: Amp's (models 0x2b1/0x2b3, anim 0x2b2/0x2b5, texseq 0x2b4,
 # the {0,-0x28000,0} vector and its chain node), then FlameChomp's (model
@@ -190,3 +187,5 @@ data_ov070_021236a0@0x021236a0
 #   data_ov070_02123698                        now defined by src/game/actors/d_a_krpa.cpp
 #   data_ov070_021236ac                        now defined by src/game/actors/d_a_krpa.cpp
 #   data_ov070_021236ec                        now defined by src/game/actors/d_a_kp_fr.cpp
+
+# PORTSYNC3 RETIRED (main's d_a_propeller_heyho.cpp now defines these objects itself): data_ov070_02123500 data_ov070_02123508 data_ov070_02123510 data_ov070_02123518 data_ov070_02123520 data_ov070_02123528 data_ov070_02123530 data_ov070_0212358c data_ov070_0212359c data_ov070_021235ac data_ov070_021235dc

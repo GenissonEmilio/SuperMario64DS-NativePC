@@ -206,12 +206,9 @@ Vector3 dActor_c::OnAimedAtWithEggReturnVec()
     return out;
 }
 
-Vector3 dBgCh_Lin::GetClsnPos()
-{
-    Vector3 out;
-    _ZN9dBgCh_Lin10GetClsnPosEv(&out, this);
-    return out;
-}
+// PORTSYNC3: dBgCh_Lin::GetClsnPos is a real member of src/engine/collision/
+// dBgCh_Lin.cpp now (it returns lineEnd), so the reverse face that stood here
+// would define it a second time. Retired.
 
 // =========================================================================
 // TWO RENAMED DESTRUCTOR SPELLINGS, the same shape as FACES4's twenty-three

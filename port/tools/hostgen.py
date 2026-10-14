@@ -3739,7 +3739,7 @@ PARK_SYMBOL = {
     # src/actors/Player.cpp: the port line kept a host arm INSIDE these bodies; main's
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.
-    "Player": ["_ZN6Player19func_ov002_020bd8c0Ej", "_ZN6Player19func_ov002_020bd928Ej", "_ZN6Player19func_ov002_020bd984Ej", "_ZN6Player19func_ov002_020bd9ecEj", "_ZN6Player19func_ov002_020bdb50Ei", "_ZN6Player12St_Swim_MainEv"],
+    "Player": ["func_ov002_020d869c", "func_ov002_020d3b9c", "_ZN6Player19func_ov002_020bd8c0Ej", "_ZN6Player19func_ov002_020bd928Ej", "_ZN6Player19func_ov002_020bd984Ej", "_ZN6Player19func_ov002_020bd9ecEj", "_ZN6Player19func_ov002_020bdb50Ei", "_ZN6Player12St_Swim_MainEv"],
     # src/actors/dScMgRoulette_c.cpp: the port line kept a host arm INSIDE these bodies; main's
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.
@@ -3842,6 +3842,16 @@ def park_symbol_patch(text, sym):
         d = _skip_ws_comments(text, k)
         b = text.find("{", d)
         semi = text.find(";", d)
+        if (b < 0 or 0 <= semi < b) and not name.startswith("_ZN"):
+            # PORTSYNC3: the marker can sit above the TU's extern declarations
+            # for the body (cstd4's OS helpers); find the definition by its own
+            # name instead: `<type> name(<params>) {` after the marker.
+            dm = re.compile(r"^[ \t]*[A-Za-z_][^\n;{}#]*\b%s[ \t]*\([^;{}]*\)[ \t\r\n]*\{"
+                            % re.escape(name), re.M).search(text, k)
+            if dm:
+                d = dm.start()
+                b = dm.end() - 1
+                semi = -1
         if b < 0 or 0 <= semi < b:
             sys.exit("hostgen: %s: PARK_SYMBOL: no body after the %s marker" % (sym, name))
         e = _match_brace(text, b)

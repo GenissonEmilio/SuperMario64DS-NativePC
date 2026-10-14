@@ -1329,6 +1329,13 @@ def parse_param(text):
     m = re.match(r"^(const )?(.+) &$", t)
     if m and m.group(2).strip() in SCALARS:
         return ("ref", m.group(2).strip(), bool(m.group(1)))
+    # A POINTER TO A SCALAR (char *, unsigned char *, int *) is a pointer at the
+    # ABI, like a reference to one. PORTSYNC3: main's folded Player/daDemo TUs
+    # take `unsigned char *` and `char *` in their state helpers; the flat caller
+    # pushes the address and the face passes it through as the same pointer type.
+    m = re.match(r"^(const )?(.+) \*$", t)
+    if m and m.group(2).strip() in SCALARS:
+        return ("ptr", m.group(2).strip(), bool(m.group(1)))
     return None
 
 

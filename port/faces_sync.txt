@@ -1144,7 +1144,7 @@ __ZN8dActor_c13ClosestPlayerEv                                           ?Closes
 __ZN8dActor_c13DistToCPlayerEv                                           ?DistToCPlayer@dActor_c@@QAEHXZ                                  0x020109e4 R
 # PORTSYNC2: R -> F. src/actors/dActor_c.cpp now defines the flat name (extern "C")
 # and its callers spell the member, so the face runs the other way.
-__ZN8dActor_c13LandingDustAtER7Vector3b                                  ?LandingDustAt@dActor_c@@QAEXAAUVector3@@_N@Z                    0x0200fac4 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN8dActor_c13LandingDustAtER7Vector3b                                  ?LandingDustAt@dActor_c@@QAEXAAUVector3@@_N@Z                    0x0200fac4 F
 __ZN8dActor_c13OnTurnIntoEggER6Player                                    ?OnTurnIntoEgg@dActor_c@@UAEXAAUPlayer@@@Z                       0x02010154 R
 __ZN8dActor_c13OnYoshiTryEatEv                                           ?OnYoshiTryEat@dActor_c@@UAEHXZ                                  0x02010160 R
 __ZN8dActor_c13SmallPoofDustEv                                           ?SmallPoofDust@dActor_c@@QAEXXZ                                  0x0200fd40 R
@@ -1174,7 +1174,7 @@ __ZN8dActor_c16TriplePoofDustAtERK7Vector3                               ?Triple
 __ZN8dActor_c17DetectRaycastClsnER7Vector3S1_b                           ?DetectRaycastClsn@dActor_c@@QAE_NAAUVector3@@0_N@Z              0x0200f658 R
 # PORTSYNC2: R -> F. src/actors/dActor_c.cpp now defines the flat name (extern "C")
 # and its callers spell the member, so the face runs the other way.
-__ZN8dActor_c17HugeLandingDustAtER7Vector3b                              ?HugeLandingDustAt@dActor_c@@QAEXAAUVector3@@_N@Z                0x0200fb84 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN8dActor_c17HugeLandingDustAtER7Vector3b                              ?HugeLandingDustAt@dActor_c@@QAEXAAUVector3@@_N@Z                0x0200fb84 F
 __ZN8dActor_c18ClosestWithActorIDEj                                      ?ClosestWithActorID@dActor_c@@QAEPAU1@I@Z                        0x020108c4 R
 __ZN8dActor_c18FindExplosionActorER5dCc_c                                ?FindExplosionActor@dActor_c@@QAEPAU1@AAUdCc_c@@@Z               0x02010374 R
 # FLIPPED F -> R at run link100 wave 15, lane SEAT15B (LINK15 BATCH 1). The
@@ -4595,7 +4595,7 @@ __ZN6Eyerok19func_ov066_0211944cEv                                       ?func_o
 __ZNK7PathPtr13GetPullFactorEv                                           ?GetPullFactor@PathPtr@@QBEIXZ                                   0x0203ad44 R
 __ZNK7PathPtr9GetUnk004Ev                                                ?GetUnk004@PathPtr@@QBEIXZ                                       0x0203ad54 R
 
-__ZN6Player4HurtERK7Vector3j5Fix12IiEjjj                                 ?Hurt@Player@@QAEXABUVector3@@IHIII@Z                            0x020d8e70 R
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player4HurtERK7Vector3j5Fix12IiEjjj                                 ?Hurt@Player@@QAEXABUVector3@@IHIII@Z                            0x020d8e70 R
 
 __ZN10Scuttlebug19func_ov071_0211f694Ev                                  ?func_ov071_0211f694@Scuttlebug@@QAEHXZ                          0x0211f694 R
 __ZN10Scuttlebug19func_ov071_0211f6f8Ev                                  ?func_ov071_0211f6f8@Scuttlebug@@QAEHXZ                          0x0211f6f8 R
@@ -5589,23 +5589,23 @@ __ZN8daYegg_c19func_ov002_020ed5b0Ev                                     ?func_o
 __ZN11fLiNdBaPr_cD1Ev                                                    ??1fLiNdBaPr_c@@QAE@XZ                                           0x020440e8 R
 
 # ---- forward (F): the member callers spell -> the flat body the port keeps
-__ZN6Player12GetHurtStateEv                                              ?GetHurtState@Player@@QAEHXZ                                     0x020d9c44 F
-__ZN6Player13InitFireYoshiEv                                             ?InitFireYoshi@Player@@QAEXXZ                                    0x020d8228 F
-__ZN6Player14IsFrontSlidingEv                                            ?IsFrontSliding@Player@@QAEHXZ                                   0x020dd2b0 F
-__ZN6Player14St_Owl_CleanupEv                                            ?St_Owl_Cleanup@Player@@QAEHXZ                                   0x020df3c8 F
-__ZN6Player16CleanupResourcesEv                                          ?CleanupResources@Player@@UAEHXZ                                 0x020e32d4 F
-__ZN6Player16InitBalloonMarioEv                                          ?InitBalloonMario@Player@@QAEXXZ                                 0x020dea00 F
-__ZN6Player16InitWingFeathersEb                                          ?InitWingFeathers@Player@@QAEX_N@Z                               0x020e03b8 F
-__ZN6Player16IsInsideOfCannonEv                                          ?IsInsideOfCannon@Player@@QAEHXZ                                 0x020df288 F
-__ZN6Player16OnPendingDestroyEv                                          ?OnPendingDestroy@Player@@UAEXXZ                                 0x020e3a04 F
-__ZN6Player17LostGrabbedObjectEv                                         ?LostGrabbedObject@Player@@QAEHXZ                                0x020dd26c F
-__ZN6Player17St_PunchKick_InitEv                                         ?St_PunchKick_Init@Player@@QAEHXZ                                0x020dd79c F
-__ZN6Player20RegisterEggCoinCountEjbb                                    ?RegisterEggCoinCount@Player@@QAEXI_N0@Z                         0x020d6708 F
-__ZN6Player22IsBeingShotOutOfCannonEv                                    ?IsBeingShotOutOfCannon@Player@@QAEHXZ                           0x020df2c4 F
-__ZN6Player4BurnEv                                                       ?Burn@Player@@QAEHXZ                                             0x020d57d8 F
-__ZN6Player5ShockEj                                                      ?Shock@Player@@QAEHI@Z                                           0x020d5a1c F
-__ZN6Player8BlowAwayEs                                                   ?BlowAway@Player@@QAEXF@Z                                        0x020d4fe4 F
-__ZN6Player9DropActorEv                                                  ?DropActor@Player@@QAEHXZ                                        0x020da7f4 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player12GetHurtStateEv                                              ?GetHurtState@Player@@QAEHXZ                                     0x020d9c44 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player13InitFireYoshiEv                                             ?InitFireYoshi@Player@@QAEXXZ                                    0x020d8228 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player14IsFrontSlidingEv                                            ?IsFrontSliding@Player@@QAEHXZ                                   0x020dd2b0 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player14St_Owl_CleanupEv                                            ?St_Owl_Cleanup@Player@@QAEHXZ                                   0x020df3c8 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player16CleanupResourcesEv                                          ?CleanupResources@Player@@UAEHXZ                                 0x020e32d4 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player16InitBalloonMarioEv                                          ?InitBalloonMario@Player@@QAEXXZ                                 0x020dea00 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player16InitWingFeathersEb                                          ?InitWingFeathers@Player@@QAEX_N@Z                               0x020e03b8 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player16IsInsideOfCannonEv                                          ?IsInsideOfCannon@Player@@QAEHXZ                                 0x020df288 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player16OnPendingDestroyEv                                          ?OnPendingDestroy@Player@@UAEXXZ                                 0x020e3a04 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player17LostGrabbedObjectEv                                         ?LostGrabbedObject@Player@@QAEHXZ                                0x020dd26c F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player17St_PunchKick_InitEv                                         ?St_PunchKick_Init@Player@@QAEHXZ                                0x020dd79c F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player20RegisterEggCoinCountEjbb                                    ?RegisterEggCoinCount@Player@@QAEXI_N0@Z                         0x020d6708 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player22IsBeingShotOutOfCannonEv                                    ?IsBeingShotOutOfCannon@Player@@QAEHXZ                           0x020df2c4 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player4BurnEv                                                       ?Burn@Player@@QAEHXZ                                             0x020d57d8 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player5ShockEj                                                      ?Shock@Player@@QAEHI@Z                                           0x020d5a1c F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player8BlowAwayEs                                                   ?BlowAway@Player@@QAEXF@Z                                        0x020d4fe4 F
+# PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player9DropActorEv                                                  ?DropActor@Player@@QAEHXZ                                        0x020da7f4 F
 
 __ZN10dFdColor_c11AdvanceFadeEv                                          ?AdvanceFade@dFdColor_c@@UAEXXZ                                  0x020174e0 F
 
@@ -5615,3 +5615,174 @@ __ZN10daKpa3Bg_c19func_ov060_02117db8Ev                                  ?func_o
 __ZN10daKpa3Bg_c19func_ov060_021181b4Ev                                  ?func_ov060_021181b4@daKpa3Bg_c@@QAEXXZ                          0x021181b4 F
 
 __ZN11daPicGate_c19func_ov080_021261f4Ev                                 ?func_ov080_021261f4@daPicGate_c@@QAEXXZ                         0x021261f4 F
+# ---- PORTSYNC3 derived (facegen.py --derive over the first MSVC link of the 2026-10-14 sync) ----
+__ZN6Player13St_Climb_MainEv                                             ?St_Climb_Main@Player@@QAEHXZ                                    0x020cb5bc R
+__ZN6Player19func_ov002_020bd8c0Ej                                       ?func_ov002_020bd8c0@Player@@QAEXI@Z                             0x020bd8c0 R
+__ZN6Player19func_ov002_020bd928Ej                                       ?func_ov002_020bd928@Player@@QAEXI@Z                             0x020bd928 R
+__ZN6Player19func_ov002_020bd984Ej                                       ?func_ov002_020bd984@Player@@QAEXI@Z                             0x020bd984 R
+__ZN6Player19func_ov002_020bd9ecEj                                       ?func_ov002_020bd9ec@Player@@QAEXI@Z                             0x020bd9ec R
+__ZN6Player19func_ov002_020bda48Ev                                       ?func_ov002_020bda48@Player@@QAEXXZ                              0x020bda48 R
+__ZN6Player19func_ov002_020bdc18Ev                                       ?func_ov002_020bdc18@Player@@QAEXXZ                              0x020bdc18 R
+__ZN6Player19func_ov002_020be3b0Ev                                       ?func_ov002_020be3b0@Player@@QAEXXZ                              0x020be3b0 R
+__ZN6Player19func_ov002_020bea7cEv                                       ?func_ov002_020bea7c@Player@@QAEHXZ                              0x020bea7c R
+__ZN6Player19func_ov002_020becf4Eii                                      ?func_ov002_020becf4@Player@@QAEHHH@Z                            0x020becf4 R
+__ZN6Player19func_ov002_020bf88cEv                                       ?func_ov002_020bf88c@Player@@QAEXXZ                              0x020bf88c R
+__ZN6Player19func_ov002_020c031cEv                                       ?func_ov002_020c031c@Player@@QAEHXZ                              0x020c031c R
+__ZN6Player19func_ov002_020c0434Ev                                       ?func_ov002_020c0434@Player@@QAEHXZ                              0x020c0434 R
+__ZN6Player19func_ov002_020c04e0Ev                                       ?func_ov002_020c04e0@Player@@QAEHXZ                              0x020c04e0 R
+__ZN6Player19func_ov002_020c0cbcEv                                       ?func_ov002_020c0cbc@Player@@QAEHXZ                              0x020c0cbc R
+__ZN6Player19func_ov002_020c43c4Ej                                       ?func_ov002_020c43c4@Player@@QAEXI@Z                             0x020c43c4 R
+__ZN6Player19func_ov002_020c5decEi                                       ?func_ov002_020c5dec@Player@@QAEHH@Z                             0x020c5dec R
+__ZN6Player19func_ov002_020c6fe4Ev                                       ?func_ov002_020c6fe4@Player@@QAEXXZ                              0x020c6fe4 R
+__ZN6Player19func_ov002_020c70acEv                                       ?func_ov002_020c70ac@Player@@QAEXXZ                              0x020c70ac R
+__ZN6Player19func_ov002_020c7194Ev                                       ?func_ov002_020c7194@Player@@QAEXXZ                              0x020c7194 R
+__ZN6Player19func_ov002_020c71e0Ev                                       ?func_ov002_020c71e0@Player@@QAEXXZ                              0x020c71e0 R
+__ZN6Player19func_ov002_020c7350Ev                                       ?func_ov002_020c7350@Player@@QAEXXZ                              0x020c7350 R
+__ZN6Player19func_ov002_020c75f0Ev                                       ?func_ov002_020c75f0@Player@@QAEXXZ                              0x020c75f0 R
+__ZN6Player19func_ov002_020c97e0Ev                                       ?func_ov002_020c97e0@Player@@QAEXXZ                              0x020c97e0 R
+__ZN6Player19func_ov002_020c97f8Ev                                       ?func_ov002_020c97f8@Player@@QAEXXZ                              0x020c97f8 R
+__ZN6Player19func_ov002_020c9840Ev                                       ?func_ov002_020c9840@Player@@QAEXXZ                              0x020c9840 R
+__ZN6Player19func_ov002_020c98a4Ev                                       ?func_ov002_020c98a4@Player@@QAEXXZ                              0x020c98a4 R
+__ZN6Player19func_ov002_020c9a04Ev                                       ?func_ov002_020c9a04@Player@@QAEXXZ                              0x020c9a04 R
+__ZN6Player19func_ov002_020c9ac0Ev                                       ?func_ov002_020c9ac0@Player@@QAEXXZ                              0x020c9ac0 R
+__ZN6Player19func_ov002_020c9b10Ev                                       ?func_ov002_020c9b10@Player@@QAEHXZ                              0x020c9b10 R
+__ZN6Player19func_ov002_020c9b5cEv                                       ?func_ov002_020c9b5c@Player@@QAEXXZ                              0x020c9b5c R
+__ZN6Player19func_ov002_020c9c00Ev                                       ?func_ov002_020c9c00@Player@@QAEHXZ                              0x020c9c00 R
+__ZN6Player19func_ov002_020c9c4cEv                                       ?func_ov002_020c9c4c@Player@@QAEXXZ                              0x020c9c4c R
+__ZN6Player19func_ov002_020c9cc0Ev                                       ?func_ov002_020c9cc0@Player@@QAEXXZ                              0x020c9cc0 R
+__ZN6Player19func_ov002_020c9d1cEv                                       ?func_ov002_020c9d1c@Player@@QAEHXZ                              0x020c9d1c R
+__ZN6Player19func_ov002_020c9d68Ev                                       ?func_ov002_020c9d68@Player@@QAEXXZ                              0x020c9d68 R
+__ZN6Player19func_ov002_020d94ccEv                                       ?func_ov002_020d94cc@Player@@QAEHXZ                              0x020d94cc R
+__ZN6Player19func_ov002_020daa74Ev                                       ?func_ov002_020daa74@Player@@QAEHXZ                              0x020daa74 R
+__ZN15UnknownVsPlayer19func_ov075_02114010Ev                             ?func_ov075_02114010@UnknownVsPlayer@@QAEXXZ                     0x02114010 R
+__ZN15UnknownVsPlayer19func_ov075_021140e4Ev                             ?func_ov075_021140e4@UnknownVsPlayer@@QAEXXZ                     0x021140e4 R
+__ZN15UnknownVsPlayer19func_ov075_021141b8Ev                             ?func_ov075_021141b8@UnknownVsPlayer@@QAEHXZ                     0x021141b8 R
+__ZN15UnknownVsPlayer19func_ov075_02114218Ev                             ?func_ov075_02114218@UnknownVsPlayer@@QAEHXZ                     0x02114218 R
+__ZN15UnknownVsPlayer19func_ov075_0211427cEv                             ?func_ov075_0211427c@UnknownVsPlayer@@QAEHXZ                     0x0211427c R
+__ZN15UnknownVsPlayer19func_ov075_021142fcEv                             ?func_ov075_021142fc@UnknownVsPlayer@@QAEXXZ                     0x021142fc R
+__ZN15UnknownVsPlayer19func_ov075_02114300Ev                             ?func_ov075_02114300@UnknownVsPlayer@@QAEXXZ                     0x02114300 R
+__ZN15UnknownVsPlayer19func_ov075_02114390Ev                             ?func_ov075_02114390@UnknownVsPlayer@@QAEXXZ                     0x02114390 R
+__ZN15UnknownVsPlayer19func_ov075_021143e4Ev                             ?func_ov075_021143e4@UnknownVsPlayer@@QAEXXZ                     0x021143e4 R
+__ZN15UnknownVsPlayer19func_ov075_02114560Ev                             ?func_ov075_02114560@UnknownVsPlayer@@QAEXXZ                     0x02114560 R
+__ZN15UnknownVsPlayer19func_ov075_0211473cEv                             ?func_ov075_0211473c@UnknownVsPlayer@@QAEXXZ                     0x0211473c R
+__ZN15UnknownVsPlayer19func_ov075_021147d4Ev                             ?func_ov075_021147d4@UnknownVsPlayer@@QAEXXZ                     0x021147d4 R
+__ZN15UnknownVsPlayer19func_ov075_02114890Ev                             ?func_ov075_02114890@UnknownVsPlayer@@QAEXXZ                     0x02114890 R
+__ZN8dActor_c13LandingDustAtER7Vector3b                                  ?LandingDustAt@dActor_c@@QAEXAAUVector3@@_N@Z                    0x0200fac4 R
+__ZN8dActor_c17HugeLandingDustAtER7Vector3b                              ?HugeLandingDustAt@dActor_c@@QAEXAAUVector3@@_N@Z                0x0200fb84 R
+__ZN12dEnemyBase_cD1Ev                                                   ??1dEnemyBase_c@@QAE@XZ                                          0x020aed74 R
+__ZN12dScMgAmida_c10StepWalkerEii                                        ?StepWalker@dScMgAmida_c@@QAEHHH@Z                               0x020d25fc R
+__ZN11dScMgCoin_c19func_ov006_020dbf7cEi                                 ?func_ov006_020dbf7c@dScMgCoin_c@@QAEXH@Z                        0x020dbf7c R
+__ZN11dScMgCoin_c19func_ov006_020dc154Ei                                 ?func_ov006_020dc154@dScMgCoin_c@@QAEXH@Z                        0x020dc154 R
+__ZN11dScMgCoin_c19func_ov006_020dc1c4Ei                                 ?func_ov006_020dc1c4@dScMgCoin_c@@QAEXH@Z                        0x020dc1c4 R
+__ZN11dScMgCoin_c19func_ov006_020dc294Ev                                 ?func_ov006_020dc294@dScMgCoin_c@@QAEXXZ                         0x020dc294 R
+__ZN11dScMgCoin_c19func_ov006_020dc414Ei                                 ?func_ov006_020dc414@dScMgCoin_c@@QAEXH@Z                        0x020dc414 R
+__ZN11dScMgCoin_c19func_ov006_020dc4b0Ei                                 ?func_ov006_020dc4b0@dScMgCoin_c@@QAEXH@Z                        0x020dc4b0 R
+__ZN11dScMgCoin_c19func_ov006_020dc4c8Ei                                 ?func_ov006_020dc4c8@dScMgCoin_c@@QAEXH@Z                        0x020dc4c8 R
+__ZN11dScMgCoin_c19func_ov006_020dc5c4Ei                                 ?func_ov006_020dc5c4@dScMgCoin_c@@QAEXH@Z                        0x020dc5c4 R
+__ZN11dScMgCoin_c19func_ov006_020dc6d0Ei                                 ?func_ov006_020dc6d0@dScMgCoin_c@@QAEXH@Z                        0x020dc6d0 R
+__ZN11dScMgCoin_c19func_ov006_020dcffcEv                                 ?func_ov006_020dcffc@dScMgCoin_c@@QAEXXZ                         0x020dcffc R
+__ZN11dScMgCoin_c19func_ov006_020dd000Ei                                 ?func_ov006_020dd000@dScMgCoin_c@@QAEXH@Z                        0x020dd000 R
+__ZN11dScMgJump_c19func_ov006_020ee658Ev                                 ?func_ov006_020ee658@dScMgJump_c@@QAEXXZ                         0x020ee658 R
+__ZN12dScMgPanel_c19func_ov006_02104920Ei                                ?func_ov006_02104920@dScMgPanel_c@@QAEXH@Z                       0x02104920 R
+__ZN12dScMgPanel_c19func_ov006_02104a10Ei                                ?func_ov006_02104a10@dScMgPanel_c@@QAEXH@Z                       0x02104a10 R
+__ZN12dScMgPanel_c19func_ov006_02104ac0Ei                                ?func_ov006_02104ac0@dScMgPanel_c@@QAEXH@Z                       0x02104ac0 R
+__ZN12dScMgPanel_c19func_ov006_02104bacEv                                ?func_ov006_02104bac@dScMgPanel_c@@QAEXXZ                        0x02104bac R
+__ZN12dScMgPanel_c19func_ov006_02104bb0Ev                                ?func_ov006_02104bb0@dScMgPanel_c@@QAEXXZ                        0x02104bb0 R
+__ZN12dScMgPanel_c19func_ov006_02104c08Ev                                ?func_ov006_02104c08@dScMgPanel_c@@QAEXXZ                        0x02104c08 R
+__ZN12dScMgPanel_c19func_ov006_02104ec8Ev                                ?func_ov006_02104ec8@dScMgPanel_c@@QAEXXZ                        0x02104ec8 R
+__ZN12dScMgPanel_c19func_ov006_02104eccEv                                ?func_ov006_02104ecc@dScMgPanel_c@@QAEXXZ                        0x02104ecc R
+__ZN12dScMgPanel_c19func_ov006_02104fb4Ev                                ?func_ov006_02104fb4@dScMgPanel_c@@QAEXXZ                        0x02104fb4 R
+__ZN12dScMgPanel_c19func_ov006_0210500cEv                                ?func_ov006_0210500c@dScMgPanel_c@@QAEXXZ                        0x0210500c R
+__ZN12dScMgPanel_c19func_ov006_0210508cEv                                ?func_ov006_0210508c@dScMgPanel_c@@QAEXXZ                        0x0210508c R
+__ZN12dScMgPanel_c19func_ov006_021051dcEv                                ?func_ov006_021051dc@dScMgPanel_c@@QAEXXZ                        0x021051dc R
+__ZN12dScMgPanel_c19func_ov006_02105670Ev                                ?func_ov006_02105670@dScMgPanel_c@@QAEXXZ                        0x02105670 R
+__ZN12dScMgPanel_c19func_ov006_02105730Ev                                ?func_ov006_02105730@dScMgPanel_c@@QAEXXZ                        0x02105730 R
+__ZN12dScMgPanel_c19func_ov006_02106910Ei                                ?func_ov006_02106910@dScMgPanel_c@@QAEXH@Z                       0x02106910 R
+__ZN12dScMgPanel_c19func_ov006_02106a08Ei                                ?func_ov006_02106a08@dScMgPanel_c@@QAEXH@Z                       0x02106a08 R
+__ZN12dScMgPanel_c19func_ov006_02106aa8Ei                                ?func_ov006_02106aa8@dScMgPanel_c@@QAEXH@Z                       0x02106aa8 R
+__ZN12dScMgPanel_c19func_ov006_02106bacEi                                ?func_ov006_02106bac@dScMgPanel_c@@QAEXH@Z                       0x02106bac R
+__ZN12dScMgPanel_c19func_ov006_02106bc0Ev                                ?func_ov006_02106bc0@dScMgPanel_c@@QAEXXZ                        0x02106bc0 R
+__ZN12dScMgPanel_c19func_ov006_02106ca4Ev                                ?func_ov006_02106ca4@dScMgPanel_c@@QAEXXZ                        0x02106ca4 R
+__ZN12dScMgPanel_c19func_ov006_02106eb8Ev                                ?func_ov006_02106eb8@dScMgPanel_c@@QAEXXZ                        0x02106eb8 R
+__ZN12dScMgPanel_c19func_ov006_02106f44Ev                                ?func_ov006_02106f44@dScMgPanel_c@@QAEXXZ                        0x02106f44 R
+__ZN12dScMgPanel_c19func_ov006_02106fdcEv                                ?func_ov006_02106fdc@dScMgPanel_c@@QAEXXZ                        0x02106fdc R
+__ZN12dScMgPanel_c19func_ov006_0210709cEv                                ?func_ov006_0210709c@dScMgPanel_c@@QAEXXZ                        0x0210709c R
+__ZN12dScMgPanel_c19func_ov006_0210713cEv                                ?func_ov006_0210713c@dScMgPanel_c@@QAEXXZ                        0x0210713c R
+__ZN12dScMgPanel_c19func_ov006_021071d4Ev                                ?func_ov006_021071d4@dScMgPanel_c@@QAEXXZ                        0x021071d4 R
+__ZN7da1up_c19func_ov002_020af724Ev                                      ?func_ov002_020af724@da1up_c@@QAEXXZ                             0x020af724 R
+__ZN7da1up_c19func_ov002_020af7ccEv                                      ?func_ov002_020af7cc@da1up_c@@QAEXXZ                             0x020af7cc R
+__ZN7da1up_c19func_ov002_020af838Ev                                      ?func_ov002_020af838@da1up_c@@QAEXXZ                             0x020af838 R
+__ZN7da1up_c19func_ov002_020af908Ev                                      ?func_ov002_020af908@da1up_c@@QAEXXZ                             0x020af908 R
+__ZN7da1up_c19func_ov002_020af924Ev                                      ?func_ov002_020af924@da1up_c@@QAEXXZ                             0x020af924 R
+__ZN7da1up_c19func_ov002_020af950Ev                                      ?func_ov002_020af950@da1up_c@@QAEXXZ                             0x020af950 R
+__ZN7da1up_c19func_ov002_020afa50Ev                                      ?func_ov002_020afa50@da1up_c@@QAEXXZ                             0x020afa50 R
+__ZN7da1up_c19func_ov002_020afa6cEv                                      ?func_ov002_020afa6c@da1up_c@@QAEXXZ                             0x020afa6c R
+__ZN7da1up_c19func_ov002_020afa98Ev                                      ?func_ov002_020afa98@da1up_c@@QAEXXZ                             0x020afa98 R
+__ZN7da1up_c19func_ov002_020afbb4Ev                                      ?func_ov002_020afbb4@da1up_c@@QAEXXZ                             0x020afbb4 R
+__ZN7da1up_c19func_ov002_020afc44Ev                                      ?func_ov002_020afc44@da1up_c@@QAEHXZ                             0x020afc44 R
+__ZN7da1up_c19func_ov002_020afd10Ev                                      ?func_ov002_020afd10@da1up_c@@QAEXXZ                             0x020afd10 R
+__ZN7da1up_c19func_ov002_020afe4cEv                                      ?func_ov002_020afe4c@da1up_c@@QAEXXZ                             0x020afe4c R
+__ZN7da1up_c19func_ov002_020aff10Ev                                      ?func_ov002_020aff10@da1up_c@@QAEXXZ                             0x020aff10 R
+__ZN8daDoor_c19func_ov100_021452e4EP6Player                              ?func_ov100_021452e4@daDoor_c@@QAEHPAUPlayer@@@Z                 0x021452e4 R
+__ZN7daKrb_c13OnTurnIntoEggER6Player                                     ?OnTurnIntoEgg@daKrb_c@@UAEXAAUPlayer@@@Z                        0x0212b344 R
+__ZN7daMky_c19func_ov030_02111734Ev                                      ?func_ov030_02111734@daMky_c@@QAEXXZ                             0x02111734 R
+__ZN7daMky_c19func_ov030_02112094Ev                                      ?func_ov030_02112094@daMky_c@@QAEXXZ                             0x02112094 R
+__ZN7daMky_c19func_ov030_021122b0Ev                                      ?func_ov030_021122b0@daMky_c@@QAEHXZ                             0x021122b0 R
+__ZN7daMky_c19func_ov030_02112400Ev                                      ?func_ov030_02112400@daMky_c@@QAEHXZ                             0x02112400 R
+__ZN7daMky_c19func_ov030_02112578Ev                                      ?func_ov030_02112578@daMky_c@@QAEHXZ                             0x02112578 R
+__ZN7daMky_c19func_ov030_02112a84Ev                                      ?func_ov030_02112a84@daMky_c@@QAEHXZ                             0x02112a84 R
+__ZN7daMky_c19func_ov030_02112da0Ev                                      ?func_ov030_02112da0@daMky_c@@QAEHXZ                             0x02112da0 R
+__ZN7daMky_c19func_ov030_02113094Ev                                      ?func_ov030_02113094@daMky_c@@QAEHXZ                             0x02113094 R
+__ZN7daMky_c19func_ov030_02113324Ev                                      ?func_ov030_02113324@daMky_c@@QAEHXZ                             0x02113324 R
+__ZN7daMky_c19func_ov030_021136b0Ev                                      ?func_ov030_021136b0@daMky_c@@QAEHXZ                             0x021136b0 R
+__ZN7daMky_c19func_ov030_02113b38Ev                                      ?func_ov030_02113b38@daMky_c@@QAEHXZ                             0x02113b38 R
+__ZN7daMky_c19func_ov030_02113d20Ev                                      ?func_ov030_02113d20@daMky_c@@QAEHXZ                             0x02113d20 R
+__ZN7daMky_c19func_ov030_02113ff0Ev                                      ?func_ov030_02113ff0@daMky_c@@QAEHXZ                             0x02113ff0 R
+__ZN7daMky_c19func_ov030_02114134Ev                                      ?func_ov030_02114134@daMky_c@@QAEXXZ                             0x02114134 R
+__ZN7daMky_c19func_ov030_021141a8Ei                                      ?func_ov030_021141a8@daMky_c@@QAEXH@Z                            0x021141a8 R
+__ZN10daObjKey_c19func_ov089_0213115cEi                                  ?func_ov089_0213115c@daObjKey_c@@QAEXH@Z                         0x0213115c R
+__ZN19daPropeller_Heyho_c19func_ov070_0211f48cEv                         ?func_ov070_0211f48c@daPropeller_Heyho_c@@QAEHXZ                 0x0211f48c R
+__ZN19daPropeller_Heyho_c19func_ov070_0211f62cEv                         ?func_ov070_0211f62c@daPropeller_Heyho_c@@QAEHXZ                 0x0211f62c R
+__ZN19daPropeller_Heyho_c19func_ov070_0211f6e0Ev                         ?func_ov070_0211f6e0@daPropeller_Heyho_c@@QAEHXZ                 0x0211f6e0 R
+__ZN8daStar_c19func_ov002_020e7090Ei                                     ?func_ov002_020e7090@daStar_c@@QAEXH@Z                           0x020e7090 R
+__ZN15daYurei_Mucho_c19func_ov065_021162c0Ev                             ?func_ov065_021162c0@daYurei_Mucho_c@@QAEHXZ                     0x021162c0 R
+__ZN15daYurei_Mucho_c19func_ov065_02116328Ev                             ?func_ov065_02116328@daYurei_Mucho_c@@QAEHXZ                     0x02116328 R
+__ZN15daYurei_Mucho_c19func_ov065_02116364Ev                             ?func_ov065_02116364@daYurei_Mucho_c@@QAEHXZ                     0x02116364 R
+__ZN15daYurei_Mucho_c19func_ov065_02116588Ev                             ?func_ov065_02116588@daYurei_Mucho_c@@QAEFXZ                     0x02116588 R
+__ZN15daYurei_Mucho_c19func_ov065_021165d8Ev                             ?func_ov065_021165d8@daYurei_Mucho_c@@QAEHXZ                     0x021165d8 R
+__ZN15daYurei_Mucho_c19func_ov065_0211672cEv                             ?func_ov065_0211672c@daYurei_Mucho_c@@QAEHXZ                     0x0211672c R
+__ZN15daYurei_Mucho_c19func_ov065_02116744Ev                             ?func_ov065_02116744@daYurei_Mucho_c@@QAEHXZ                     0x02116744 R
+__ZN15daYurei_Mucho_c19func_ov065_021168a8Ev                             ?func_ov065_021168a8@daYurei_Mucho_c@@QAEHXZ                     0x021168a8 R
+# ---- PORTSYNC3 derived, pass 2 (scalar-pointer parameters now derivable) ----
+__ZN6Player19func_ov002_020bccfcEPhii                                    ?func_ov002_020bccfc@Player@@QAEHPAEHH@Z                         0x020bccfc R
+__ZN6Player19func_ov002_020bcd18EPhii                                    ?func_ov002_020bcd18@Player@@QAEHPAEHH@Z                         0x020bcd18 R
+__ZN6Player19func_ov002_020bcd38EPhii                                    ?func_ov002_020bcd38@Player@@QAEHPAEHH@Z                         0x020bcd38 R
+__ZN6Player19func_ov002_020bd20cEPhii                                    ?func_ov002_020bd20c@Player@@QAEHPAEHH@Z                         0x020bd20c R
+__ZN6Player19func_ov002_020bd250EPhii                                    ?func_ov002_020bd250@Player@@QAEHPAEHH@Z                         0x020bd250 R
+__ZN6Player19func_ov002_020bd354EPhii                                    ?func_ov002_020bd354@Player@@QAEHPAEHH@Z                         0x020bd354 R
+__ZN6Player19func_ov002_020bd3a0EPhii                                    ?func_ov002_020bd3a0@Player@@QAEHPAEHH@Z                         0x020bd3a0 R
+__ZN6Player19func_ov002_020bd438EPhii                                    ?func_ov002_020bd438@Player@@QAEHPAEHH@Z                         0x020bd438 R
+__ZN6Player19func_ov002_020bd45cEPhii                                    ?func_ov002_020bd45c@Player@@QAEHPAEHH@Z                         0x020bd45c R
+__ZN6Player19func_ov002_020bd480EPhii                                    ?func_ov002_020bd480@Player@@QAEHPAEHH@Z                         0x020bd480 R
+__ZN6Player19func_ov002_020bd4acEPhii                                    ?func_ov002_020bd4ac@Player@@QAEHPAEHH@Z                         0x020bd4ac R
+__ZN6Player19func_ov002_020bd4c8EPhii                                    ?func_ov002_020bd4c8@Player@@QAEHPAEHH@Z                         0x020bd4c8 R
+__ZN6Player19func_ov002_020bd4e0EPhii                                    ?func_ov002_020bd4e0@Player@@QAEHPAEHH@Z                         0x020bd4e0 R
+__ZN6Player19func_ov002_020bd600EPhii                                    ?func_ov002_020bd600@Player@@QAEHPAEHH@Z                         0x020bd600 R
+__ZN6Player19func_ov002_020bd664EPhii                                    ?func_ov002_020bd664@Player@@QAEHPAEHH@Z                         0x020bd664 R
+__ZN8daDemo_c19func_ov002_020f26c4EPh                                    ?func_ov002_020f26c4@daDemo_c@@QAEHPAE@Z                         0x020f26c4 R
+__ZN8daDemo_c19func_ov002_020f63f8EPh                                    ?func_ov002_020f63f8@daDemo_c@@QAEHPAE@Z                         0x020f63f8 R
+__ZN8daDemo_c19func_ov002_020f6448EPh                                    ?func_ov002_020f6448@daDemo_c@@QAEHPAE@Z                         0x020f6448 R
+__ZN8daDemo_c19func_ov002_020f6ab8EPh                                    ?func_ov002_020f6ab8@daDemo_c@@QAEHPAE@Z                         0x020f6ab8 R
+__ZN8daDemo_c19func_ov002_020f6ae4EPh                                    ?func_ov002_020f6ae4@daDemo_c@@QAEHPAE@Z                         0x020f6ae4 R
+__ZN8daDemo_c19func_ov002_020f6b28EPh                                    ?func_ov002_020f6b28@daDemo_c@@QAEHPAE@Z                         0x020f6b28 R
+__ZN8daDemo_c19func_ov002_020f6b4cEPh                                    ?func_ov002_020f6b4c@daDemo_c@@QAEHPAE@Z                         0x020f6b4c R
+__ZN8daDemo_c19func_ov002_020f6bc0EPh                                    ?func_ov002_020f6bc0@daDemo_c@@QAEHPAE@Z                         0x020f6bc0 R
+__ZN8daDemo_c19func_ov002_020f6c24EPh                                    ?func_ov002_020f6c24@daDemo_c@@QAEHPAE@Z                         0x020f6c24 R
+__ZN8daDemo_c19func_ov002_020f6c34EPh                                    ?func_ov002_020f6c34@daDemo_c@@QAEHPAE@Z                         0x020f6c34 R
+__ZN8daDemo_c19func_ov002_020f6e48EPh                                    ?func_ov002_020f6e48@daDemo_c@@QAEHPAE@Z                         0x020f6e48 R
+__ZN8daDemo_c19func_ov002_020f7384EPhi                                   ?func_ov002_020f7384@daDemo_c@@QAEHPAEH@Z                        0x020f7384 R
+__ZN8daDemo_c19func_ov002_020f7410EPhi                                   ?func_ov002_020f7410@daDemo_c@@QAEHPAEH@Z                        0x020f7410 R
+__ZN8daDemo_c19func_ov002_020f7538EPhi                                   ?func_ov002_020f7538@daDemo_c@@QAEHPAEH@Z                        0x020f7538 R
+__ZN8daDemo_c19func_ov002_020f7bb8EPht                                   ?func_ov002_020f7bb8@daDemo_c@@QAEHPAEG@Z                        0x020f7bb8 R
+__ZN12daStarBase_c27LinkSilverStarAndStarMarkerEPc                       ?LinkSilverStarAndStarMarker@daStarBase_c@@QAEXPAD@Z             0x020e71d4 R
+__ZN8daStar_c19func_ov002_020e7218EPci                                   ?func_ov002_020e7218@daStar_c@@QAEXPADH@Z                        0x020e7218 R

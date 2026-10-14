@@ -87,9 +87,9 @@ data_ov029_02113f00
 # load window); it is reserved under its own ov029 name here and the collision
 # is bound in the slice/fill, never left to resolve against a real function.
 data_ov029_02114220 data_ov029_02114228 data_ov029_02114230@0x02114230 data_ov029_0211423c@0x0211423c
-data_ov029_02114248 data_ov029_02114250 data_ov029_02114258@0x02114258 data_ov029_02114264@0x02114264
+data_ov029_02114258@0x02114258 data_ov029_02114264@0x02114264
 data_ov029_02114278@0x02114278
-data_ov029_02114284 data_ov029_0211428c data_ov029_02114294@0x02114294 data_ov029_021142a0@0x021142a0
+data_ov029_02114294@0x02114294 data_ov029_021142a0@0x021142a0
 data_ov029_021142ac data_ov029_021142b4 data_ov029_021142bc@0x021142bc data_ov029_021142c8@0x021142c8
 data_ov029_021142d4 data_ov029_021142dc data_ov029_021142e4@0x021142e4 data_ov029_021142f0@0x021142f0
 data_ov029_021142fc@0x021142fc data_ov029_02114304@0x02114304 data_ov029_0211430c@0x0211430c data_ov029_02114318@0x02114318
@@ -106,3 +106,5 @@ data_ov029_02114340@0x02114340 data_ov029_02114350
 #   data_ov029_02114270                        now defined by src/game/actors/d_a_obj_wc_obj03.cpp
 #   data_ov029_02114324                        now defined by src/game/actors/d_a_obj_wc_obj04.cpp
 #   data_ov029_0211432c                        now defined by src/game/actors/d_a_obj_wc_obj04.cpp
+
+# PORTSYNC3 RETIRED (main's d_a_obj_wc_obj02.cpp/d_a_obj_wc_obj05.cpp now defines these objects itself): data_ov029_02114248 data_ov029_02114250 data_ov029_02114284 data_ov029_0211428c
