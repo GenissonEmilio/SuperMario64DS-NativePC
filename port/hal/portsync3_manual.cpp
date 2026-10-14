@@ -43,9 +43,12 @@ void dExtAnmModel_c::Virtual18(u32, const Vector3 *) { port_unmatched_hit("dExtA
 /* ---- dBgCh_Lin::GetClsnPos, the flat spelling ------------------------------
  * func_02008cb4.c calls the ROM's struct-return convention (return slot first,
  * receiver second); main's member returns by value. */
-extern "C" void _ZN9dBgCh_Lin10GetClsnPosEv(Vector3 *ret, void *self)
+/* Returns the result slot in EAX, as every MSVC struct-returning function does: the caller
+   (a C TU compiled as C++) declares `Vector3 f(...)` and reads the slot back through EAX. */
+extern "C" Vector3 *_ZN9dBgCh_Lin10GetClsnPosEv(Vector3 *ret, void *self)
 {
     *ret = ((dBgCh_Lin *)self)->GetClsnPos();
+    return ret;
 }
 
 /* ---- port_vs_body_0211478c -------------------------------------------------
