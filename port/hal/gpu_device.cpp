@@ -102,9 +102,50 @@ bool make_device(D3D_DRIVER_TYPE type)
         D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0,
     };
     D3D_FEATURE_LEVEL got = (D3D_FEATURE_LEVEL)0;
-    const HRESULT hr = p_create(0, type, 0, 0, levels,
+    /* SM64DS_GPU_ADAPTER=<text> (test knob, off unless set): the hardware
+       device is made on the first adapter whose name contains <text>
+       (case-insensitive), instead of the system's first one. It lets a box
+       with an integrated and a discrete card run a lane on the card a player
+       report names (run hunt8, lane CRASHDRV093). */
+    IDXGIAdapter *pick = 0;
+    if (type == D3D_DRIVER_TYPE_HARDWARE) {
+        const char *want = getenv("SM64DS_GPU_ADAPTER");
+        HMODULE dx = (want && want[0]) ? LoadLibraryA("dxgi.dll") : 0;
+        typedef HRESULT (WINAPI *CreateFactory1_t)(REFIID, void **);
+        CreateFactory1_t cf = dx ? (CreateFactory1_t)GetProcAddress(dx, "CreateDXGIFactory1") : 0;
+        IDXGIFactory1 *fac = 0;
+        if (cf && SUCCEEDED(cf(__uuidof(IDXGIFactory1), (void **)&fac)) && fac) {
+            IDXGIAdapter *a = 0;
+            for (UINT i = 0; !pick && fac->EnumAdapters(i, &a) == S_OK; ++i) {
+                DXGI_ADAPTER_DESC d;
+                char nm[130];
+                unsigned k = 0;
+                memset(&d, 0, sizeof d);
+                if (SUCCEEDED(a->GetDesc(&d))) {
+                    for (; k < 128 && d.Description[k]; ++k) {
+                        char c = (char)(d.Description[k] < 128 ? d.Description[k] : '?');
+                        nm[k] = (char)((c >= 'A' && c <= 'Z') ? c + 32 : c);
+                    }
+                    nm[k] = 0;
+                    char w[130];
+                    unsigned j = 0;
+                    for (; j < 128 && want[j]; ++j)
+                        w[j] = (char)((want[j] >= 'A' && want[j] <= 'Z') ? want[j] + 32 : want[j]);
+                    w[j] = 0;
+                    if (strstr(nm, w)) { pick = a; a = 0; }
+                }
+                if (a) a->Release();
+                a = 0;
+            }
+            fac->Release();
+        }
+        if (want && want[0])
+            fprintf(stderr, "[gpu] SM64DS_GPU_ADAPTER=%s: %s\n", want ? want : "(unset)", pick ? "adapter found" : "not found or unset, the system's first adapter");
+    }
+    const HRESULT hr = p_create(pick, pick ? D3D_DRIVER_TYPE_UNKNOWN : type, 0, 0, levels,
                                 (UINT)(sizeof levels / sizeof levels[0]),
                                 D3D11_SDK_VERSION, &g_dev, &got, &g_ctx);
+    if (pick) pick->Release();
     if (FAILED(hr) || !g_dev) {
         g_dev = 0;
         g_ctx = 0;
@@ -243,6 +284,7 @@ bool timer_open_picture()
 
 void release_device()
 {
+    if (!port_gpu_exit_release()) return;   /* see hal/gpu_device.h: the exit rule */
     timer_release();
     if (g_ctx) { g_ctx->ClearState(); g_ctx->Flush(); g_ctx->Release(); g_ctx = 0; }
     if (g_dev) { g_dev->Release(); g_dev = 0; }
@@ -313,6 +355,12 @@ extern "C" int port_gpu_device_is_warp(void) { return g_is_warp; }
 extern "C" unsigned port_gpu_device_feature_level(void) { return (unsigned)g_level; }
 extern "C" double port_gpu_device_create_ms(void) { return g_create_ms; }
 extern "C" int port_gpu_device_failed(void) { return g_failed; }
+extern "C" int port_gpu_exit_release(void)
+{
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_GPU_EXIT_RELEASE"); v = (e && e[0] == '1') ? 1 : 0; }
+    return v;
+}
 
 extern "C" void port_gpu_timer_span_begin(int span)
 {
@@ -423,6 +471,7 @@ int port_gpu_device_is_warp(void) { return 0; }
 unsigned port_gpu_device_feature_level(void) { return 0; }
 double port_gpu_device_create_ms(void) { return 0.0; }
 int port_gpu_device_failed(void) { return 1; }
+int port_gpu_exit_release(void) { return 1; }
 void port_gpu_timer_span_begin(int) {}
 void port_gpu_timer_span_end(int) {}
 void port_gpu_timer_frame_end(void) {}
