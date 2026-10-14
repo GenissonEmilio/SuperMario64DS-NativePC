@@ -18,7 +18,6 @@
  * function src/actors/ActorBase.cpp already defines.
  *
  * Destructor1 / Destructor0: classes whose header keeps the `_MSC_VER`
- * Destructor1()/Destructor0() virtual pair and whose TU does not define it. The
  * port seats ROM-slot destructors through hand tables, so these are reached only
  * if a compiler vtable is ever dispatched; they destroy the object and, for D0,
  * do NOT free it (the host never frees through a compiler vtable).
@@ -64,9 +63,22 @@ dExtSimpleModel_c::~dExtSimpleModel_c() {}
 dExtAnmModel_c::~dExtAnmModel_c() {}
 daObjYajirusi_c::~daObjYajirusi_c() {}
 
-void daObjFallBlock_c::Destructor1() { this->daObjFallBlock_c::~daObjFallBlock_c(); }
+/* Slot 16 has a calling convention (see hal/actorport_dtor_bridge.cpp section 0): the one
+   dispatcher in the image, fBase_c::AfterCleanupResources, calls it as MSVC's scalar deleting
+   destructor, __thiscall with one callee-popped flag argument, and a bare-`ret` body leaves four
+   bytes on the stack. A native object of one of these classes (main's classInit builds it with the
+   compiler's own vtable) reaches this slot, so Destructor1 forwards to the destructor and pops the
+   flag. Nothing else calls Destructor1 by name. */
+#define PS3_D16(Class) \
+    static void __fastcall ps3_d16_body_##Class(Class *s, void *) \
+    { s->Class::~Class(); } \
+    __declspec(naked) void Class::Destructor1() \
+    { __asm { xor edx, edx } \
+      __asm { call ps3_d16_body_##Class } \
+      __asm { ret 4 } }
+PS3_D16(daObjFallBlock_c)
+PS3_D16(daObjFl_Fall_Block_c)
+PS3_D16(daObjKaitendai_c)
 void daObjFallBlock_c::Destructor0() { this->daObjFallBlock_c::~daObjFallBlock_c(); }
-void daObjFl_Fall_Block_c::Destructor1() { this->daObjFl_Fall_Block_c::~daObjFl_Fall_Block_c(); }
 void daObjFl_Fall_Block_c::Destructor0() { this->daObjFl_Fall_Block_c::~daObjFl_Fall_Block_c(); }
-void daObjKaitendai_c::Destructor1() { this->daObjKaitendai_c::~daObjKaitendai_c(); }
 void daObjKaitendai_c::Destructor0() { this->daObjKaitendai_c::~daObjKaitendai_c(); }
