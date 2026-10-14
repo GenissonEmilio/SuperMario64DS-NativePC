@@ -7758,6 +7758,15 @@ bool ip_blink_pair() {
     return on != 0;
 }
 
+bool ip_newborn_recam() {
+    static int on = -1;
+    if (on < 0) {
+        const char *e = getenv("SM64DS_PARTICLE_RECAM");
+        on = (e && e[0] == '0') ? 0 : 1;
+    }
+    return on != 0;
+}
+
 void ip_rec_begin() {
     IpRec &r = g_ipr[g_ip_w];
     r.ev.clear();
