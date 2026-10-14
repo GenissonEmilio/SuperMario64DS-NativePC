@@ -575,7 +575,7 @@ void carry_v_tick(char *me) {
     if (!g.judge.rules.check_level) holder_ok = hb != nullptr;         // LAB: the rig's host stalls for seconds
     if (!holder_ok) {
         std::fprintf(stderr, "[phit] GRAB: the holder is gone, out of the hold\n");
-        if (ptrf(me, kGrabbedBy)) func_ov002_020db54c((unsigned char *)me, 0x10000, 0x10000, *(short *)(me + kYawAngle));
+        if (ptrf(me, kGrabbedBy)) { pose_ghost_at_draw(hb); func_ov002_020db54c((unsigned char *)me, 0x10000, 0x10000, *(short *)(me + kYawAngle)); }
         carry_v_clear(me, true);
         return;
     }
@@ -618,6 +618,7 @@ void grab_launch(char *me, int holder, bool swing, int yaw, int speed) {
         *(int *)(me + kVertSpeed) = vert;
     } else {
     if (!swing && speed >= 0x30000) u32(me, kFlags) |= kFlagThrown;
+    pose_ghost_at_draw(hb);      // func_ov002_020db54c launches me from the holder's body position (a Player holder: +100 up): not from where its ghost is parked
     func_ov002_020db54c((unsigned char *)me, speed, vert, (short)yaw);
     }
     if (hb && ptrf(hb, kHeldObj) == me) ptrf(hb, kHeldObj) = nullptr;
