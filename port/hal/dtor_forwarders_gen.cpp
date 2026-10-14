@@ -34,19 +34,17 @@
 
 
 #include "types.h"
-#include "daDossy_c.h"
-#include "daObjC1Hikari_c.h"
 #include "PathLift.h"
-#include "daObjKm2_Ami_Bou_c.h"
-#include "daDpLift_c.h"
-#include "daObjTatefuda_c.h"
 #include "dScGameOver_c.h"
 #include "dScMgBSC_c.h"
 #include "dScMgCard_c.h"
+#include "dScMgJump2_c.h"
 #include "dScMgMCarlo2_c.h"
 #include "dScMgMCarlo_c.h"
 #include "dScMgRoulette_c.h"
 #include "dScMgSound_c.h"
+#include "dScMgTrampoline2_c.h"
+#include "dScMgTrampoline_c.h"
 #include "daBar_c.h"
 #include "daBmb_c.h"
 #include "daBrq_c.h"
@@ -56,6 +54,7 @@
 #include "daDgr_c.h"
 #include "daDkk_c.h"
 #include "daDossyCap_c.h"
+#include "daDossy_c.h"
 #include "daEyBm_c.h"
 #include "daIDonketu_c.h"
 #include "daKpFr_c.h"
@@ -67,9 +66,11 @@
 #include "daObjBkBillboard_c.h"
 #include "daObjBk_Dossunbar_c.h"
 #include "daObjBk_Fall_Block_c.h"
+#include "daObjBk_Lift_c.h"
 #include "daObjBk_Rotebar_c.h"
 #include "daObjBk_Ukisima_c.h"
 #include "daObjC0_Switch_c.h"
+#include "daObjC1Hikari_c.h"
 #include "daObjC1_Trap_c.h"
 #include "daObjCannonShutter_c.h"
 #include "daObjClockHuriko_c.h"
@@ -91,6 +92,7 @@
 #include "daObjKinokoTag_c.h"
 #include "daObjKm1_Dorifu_c.h"
 #include "daObjKm1_Ukishima_c.h"
+#include "daObjKm2_Ami_Bou_c.h"
 #include "daObjKm2_Fall_Block_c.h"
 #include "daObjKm2_Gura_c.h"
 #include "daObjKm3_Dorifu_c.h"
@@ -111,6 +113,7 @@
 #include "daObjRc_Guruguru_c.h"
 #include "daObjRc_Hane_c.h"
 #include "daObjRc_Kaitendai_c.h"
+#include "daObjTatefuda_c.h"
 #include "daObjTdFuta_c.h"
 #include "daObjTdWater_c.h"
 #include "daObjWakame_c.h"
@@ -178,10 +181,6 @@ extern "C" void _ZN10daPgMthr_cD0Ev(void *self)
 extern "C" void _ZN10daSldMng_cD0Ev(void *self)
 { ((daSldMng_c *)self)->daSldMng_c::~daSldMng_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
 
-/* ROM 0x021120e4 _ZN11PyramidLiftD1Ev -- batch 1, the inline ~PyramidLift() */
-extern "C" void _ZN10daDpLift_cD1Ev(void *self)
-{ ((daDpLift_c *)self)->daDpLift_c::~daDpLift_c(); }
-
 /* ROM 0x020d9638 _ZN11dScMgCard_cD0Ev -- batch 1, the inline ~dScMgCard_c() plus _ZN6Memory10DeallocateEPvP4Heap */
 extern "C" void _ZN11dScMgCard_cD0Ev(void *self)
 { ((dScMgCard_c *)self)->dScMgCard_c::~dScMgCard_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
@@ -217,6 +216,14 @@ extern "C" void _ZN11daWarpkun_cD0Ev(void *self)
 /* ROM 0x020ec388 _ZN11daWarpkun_cD1Ev -- batch 1, the inline ~daWarpkun_c() */
 extern "C" void _ZN11daWarpkun_cD1Ev(void *self)
 { ((daWarpkun_c *)self)->daWarpkun_c::~daWarpkun_c(); }
+
+/* ROM 0x020eec9c _ZN12dScMgJump2_cD0Ev -- batch 1, the inline ~dScMgJump2_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+extern "C" void _ZN12dScMgJump2_cD0Ev(void *self)
+{ ((dScMgJump2_c *)self)->dScMgJump2_c::~dScMgJump2_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+
+/* ROM 0x020eebe8 _ZN12dScMgJump2_cD1Ev -- batch 1, the inline ~dScMgJump2_c() */
+extern "C" void _ZN12dScMgJump2_cD1Ev(void *self)
+{ ((dScMgJump2_c *)self)->dScMgJump2_c::~dScMgJump2_c(); }
 
 /* ROM 0x02119958 _ZN12dScMgSound_cD0Ev -- batch 1, the inline ~dScMgSound_c() plus _ZN6Memory10DeallocateEPvP4Heap */
 extern "C" void _ZN12dScMgSound_cD0Ev(void *self)
@@ -317,6 +324,10 @@ extern "C" void _ZN14daObjBSwdoor_cD0Ev(void *self)
 /* ROM 0x021111a0 _ZN14daObjBSwdoor_cD1Ev -- batch 1, the inline ~daObjBSwdoor_c() */
 extern "C" void _ZN14daObjBSwdoor_cD1Ev(void *self)
 { ((daObjBSwdoor_c *)self)->daObjBSwdoor_c::~daObjBSwdoor_c(); }
+
+/* ROM 0x02112290 _ZN14daObjBk_Lift_cD1Ev -- batch 1, the inline ~daObjBk_Lift_c() */
+extern "C" void _ZN14daObjBk_Lift_cD1Ev(void *self)
+{ ((daObjBk_Lift_c *)self)->daObjBk_Lift_c::~daObjBk_Lift_c(); }
 
 /* ROM 0x021111ec _ZN14daObjC1_Trap_cD0Ev -- batch 1, the inline ~daObjC1_Trap_c() plus _ZN6Memory10DeallocateEPvP4Heap */
 extern "C" void _ZN14daObjC1_Trap_cD0Ev(void *self)
@@ -550,6 +561,14 @@ extern "C" void _ZN16daObjRc_Dorifu_cD1Ev(void *self)
 extern "C" void _ZN16daObjWaterfall_cD0Ev(void *self)
 { ((daObjWaterfall_c *)self)->daObjWaterfall_c::~daObjWaterfall_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
 
+/* ROM 0x02120880 _ZN17dScMgTrampoline_cD0Ev -- batch 2, the inline ~dScMgTrampoline_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+extern "C" void _ZN17dScMgTrampoline_cD0Ev(void *self)
+{ ((dScMgTrampoline_c *)self)->dScMgTrampoline_c::~dScMgTrampoline_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+
+/* ROM 0x021207dc _ZN17dScMgTrampoline_cD1Ev -- batch 2, the inline ~dScMgTrampoline_c() */
+extern "C" void _ZN17dScMgTrampoline_cD1Ev(void *self)
+{ ((dScMgTrampoline_c *)self)->dScMgTrampoline_c::~dScMgTrampoline_c(); }
+
 /* ROM 0x02112988 _ZN17daObjBk_Rotebar_cD0Ev -- batch 2, the inline ~daObjBk_Rotebar_c() plus _ZN6Memory10DeallocateEPvP4Heap */
 extern "C" void _ZN17daObjBk_Rotebar_cD0Ev(void *self)
 { ((daObjBk_Rotebar_c *)self)->daObjBk_Rotebar_c::~daObjBk_Rotebar_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
@@ -601,6 +620,26 @@ extern "C" void _ZN18daObjClockHuriko_cD1Ev(void *self)
 /* ROM 0x021111d0 _ZN18daObjHsBillboard_cD0Ev -- batch 2, the inline ~daObjHsBillboard_c() plus _ZN6Memory10DeallocateEPvP4Heap */
 extern "C" void _ZN18daObjHsBillboard_cD0Ev(void *self)
 { ((daObjHsBillboard_c *)self)->daObjHsBillboard_c::~daObjHsBillboard_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+
+/* ROM 0x02111a08 _ZN15daObjC1Hikari_cD0Ev -- batch 3, the inline ~daObjC1Hikari_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+extern "C" void _ZN15daObjC1Hikari_cD0Ev(void *self)
+{ ((daObjC1Hikari_c *)self)->daObjC1Hikari_c::~daObjC1Hikari_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+
+/* ROM 0x020badd0 _ZN15daObjTatefuda_cD1Ev -- batch 3, the inline ~daObjTatefuda_c() */
+extern "C" void _ZN15daObjTatefuda_cD1Ev(void *self)
+{ ((daObjTatefuda_c *)self)->daObjTatefuda_c::~daObjTatefuda_c(); }
+
+/* ROM 0x021226b0 _ZN18dScMgTrampoline2_cD0Ev -- batch 3, the inline ~dScMgTrampoline2_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+extern "C" void _ZN18dScMgTrampoline2_cD0Ev(void *self)
+{ ((dScMgTrampoline2_c *)self)->dScMgTrampoline2_c::~dScMgTrampoline2_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+
+/* ROM 0x021225ac _ZN18dScMgTrampoline2_cD1Ev -- batch 3, the inline ~dScMgTrampoline2_c() */
+extern "C" void _ZN18dScMgTrampoline2_cD1Ev(void *self)
+{ ((dScMgTrampoline2_c *)self)->dScMgTrampoline2_c::~dScMgTrampoline2_c(); }
+
+/* ROM 0x0211150c _ZN18daObjKm2_Ami_Bou_cD1Ev -- batch 3, the inline ~daObjKm2_Ami_Bou_c() */
+extern "C" void _ZN18daObjKm2_Ami_Bou_cD1Ev(void *self)
+{ ((daObjKm2_Ami_Bou_c *)self)->daObjKm2_Ami_Bou_c::~daObjKm2_Ami_Bou_c(); }
 
 /* ROM 0x02111e08 _ZN18daObjMc_Metalnet_cD0Ev -- batch 3, the inline ~daObjMc_Metalnet_c() plus _ZN6Memory10DeallocateEPvP4Heap */
 extern "C" void _ZN18daObjMc_Metalnet_cD0Ev(void *self)
@@ -714,10 +753,6 @@ extern "C" void _ZN21daObjKm3_Kurumajiku_cD0Ev(void *self)
 extern "C" void _ZN21daObjKm3_Kurumajiku_cD1Ev(void *self)
 { ((daObjKm3_Kurumajiku_c *)self)->daObjKm3_Kurumajiku_c::~daObjKm3_Kurumajiku_c(); }
 
-/* ROM 0x02117f40 _ZN6DorrieD1Ev -- batch 3, the inline ~Dorrie() */
-extern "C" void _ZN9daDossy_cD1Ev(void *self)
-{ ((daDossy_c *)self)->daDossy_c::~daDossy_c(); }
-
 /* ROM 0x020b0600 _ZN7daBar_cD0Ev -- batch 3, the inline ~daBar_c() plus _ZN6Memory10DeallocateEPvP4Heap */
 extern "C" void _ZN7daBar_cD0Ev(void *self)
 { ((daBar_c *)self)->daBar_c::~daBar_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
@@ -754,14 +789,6 @@ extern "C" void _ZN7daDkk_cD0Ev(void *self)
 extern "C" void _ZN7daDkk_cD1Ev(void *self)
 { ((daDkk_c *)self)->daDkk_c::~daDkk_c(); }
 
-/* ROM 0x0211150c _ZN8PoleLiftD1Ev -- batch 3, the inline ~PoleLift() */
-extern "C" void _ZN18daObjKm2_Ami_Bou_cD1Ev(void *self)
-{ ((daObjKm2_Ami_Bou_c *)self)->daObjKm2_Ami_Bou_c::~daObjKm2_Ami_Bou_c(); }
-
-/* ROM 0x020badd0 _ZN8SignPostD1Ev -- batch 3, the inline ~SignPost() */
-extern "C" void _ZN15daObjTatefuda_cD1Ev(void *self)
-{ ((daObjTatefuda_c *)self)->daObjTatefuda_c::~daObjTatefuda_c(); }
-
 /* ROM 0x02121aac _ZN8daEyBm_cD0Ev -- batch 3, the inline ~daEyBm_c() plus _ZN6Memory10DeallocateEPvP4Heap */
 extern "C" void _ZN8daEyBm_cD0Ev(void *self)
 { ((daEyBm_c *)self)->daEyBm_c::~daEyBm_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
@@ -790,9 +817,9 @@ extern "C" void _ZN8daTree_cD0Ev(void *self)
 extern "C" void _ZN8daTree_cD1Ev(void *self)
 { ((daTree_c *)self)->daTree_c::~daTree_c(); }
 
-/* ROM 0x02111a08 _ZN9LightBeamD0Ev -- batch 3, the inline ~LightBeam() plus _ZN6Memory10DeallocateEPvP4Heap */
-extern "C" void _ZN15daObjC1Hikari_cD0Ev(void *self)
-{ ((daObjC1Hikari_c *)self)->daObjC1Hikari_c::~daObjC1Hikari_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+/* ROM 0x02117f40 _ZN9daDossy_cD1Ev -- batch 3, the inline ~daDossy_c() */
+extern "C" void _ZN9daDossy_cD1Ev(void *self)
+{ ((daDossy_c *)self)->daDossy_c::~daDossy_c(); }
 
 /* ROM 0x020f03f4 _ZN9daSCoin_cD0Ev -- batch 3, the inline ~daSCoin_c() plus _ZN6Memory10DeallocateEPvP4Heap */
 extern "C" void _ZN9daSCoin_cD0Ev(void *self)

@@ -186,6 +186,7 @@ import sys
 BATCHES = {}
 
 BATCHES[1] = """
+_ZN14daObjBk_Lift_cD1Ev
 _ZN10dScMgBSC_cD0Ev
 _ZN10dScMgBSC_cD1Ev
 _ZN10daCamTag_cD0Ev
@@ -195,7 +196,6 @@ _ZN10daPgDfdr_cD0Ev
 _ZN10daPgDfdr_cD1Ev
 _ZN10daPgMthr_cD0Ev
 _ZN10daSldMng_cD0Ev
-_ZN11PyramidLiftD1Ev
 _ZN11daChScene_cD0Ev
 _ZN11daObjFire_cD0Ev
 _ZN11daObjKumo_cD0Ev
@@ -341,7 +341,7 @@ _ZN21daObjKm2_Fall_Block_cD0Ev
 _ZN21daObjKm2_Fall_Block_cD1Ev
 _ZN21daObjKm3_Kurumajiku_cD0Ev
 _ZN21daObjKm3_Kurumajiku_cD1Ev
-_ZN6DorrieD1Ev
+_ZN9daDossy_cD1Ev
 _ZN7daBar_cD0Ev
 _ZN7daBar_cD1Ev
 _ZN7daBmb_cD0Ev
@@ -351,14 +351,14 @@ _ZN7daDgr_cD0Ev
 _ZN7daDgr_cD1Ev
 _ZN7daDkk_cD0Ev
 _ZN7daDkk_cD1Ev
-_ZN8PoleLiftD1Ev
-_ZN8SignPostD1Ev
+_ZN18daObjKm2_Ami_Bou_cD1Ev
+_ZN15daObjTatefuda_cD1Ev
 _ZN8daEyBm_cD0Ev
 _ZN8daKpFr_cD0Ev
 _ZN8daKrpa_cD0Ev
 _ZN8daSCre_cD0Ev
 _ZN8daSCre_cD1Ev
-_ZN9LightBeamD0Ev
+_ZN15daObjC1Hikari_cD0Ev
 _ZN9daSCoin_cD0Ev
 _ZN9daSCoin_cD1Ev
 _ZN9daSetSE_cD0Ev
@@ -484,12 +484,12 @@ _ZN7daPkn_cD1Ev
 # is an LNK2005 -- out/SEATS2/seat_table.md's stated reason nobody seated these.
 
 BATCHES[5] = """
+_ZN10daDpLift_cD1Ev
 _ZN11dCapEnemy_cD1Ev
 _ZN15TextureSequenceD1Ev
 _ZN18TextureTransformerD1Ev
 _ZN9ModelAnimD1Ev
-_ZN14KnockDownPlankD1Ev
-_ZN9TowerStepD1Ev
+_ZN17daObjBk_Botaosi_cD1Ev
 """
 
 # Which premise each batch stands on.  "inline" is DTORS-A's: the header spells
@@ -772,6 +772,24 @@ def defining_tu(root, cls, name):
     """
     live = live_slice_rows(root)
     tried = []
+    # PORTSYNC3: main folded the per-function structor files into production
+    # TUs, so ask srcpath which TU now owns the structor.
+    try:
+        sys.path.insert(0, os.path.join(root, "tools"))
+        import srcpath as _SP
+        rootn = str(root).replace(chr(92), "/").rstrip("/") + "/"
+        for k in ("1", "2"):
+            sym = "_ZN%d%sD%sEv" % (len(cls), cls, k)
+            owner = _SP.path_for(sym)
+            if owner:
+                owner = str(owner).replace(chr(92), "/")
+                if owner.startswith(rootn):
+                    owner = owner[len(rootn):]
+                if owner in live:
+                    return owner, None
+                tried.append(owner)
+    except Exception:
+        pass
     for k in ("1", "2"):
         rel = "src/_ZN%d%sD%sEv.cpp" % (len(cls), cls, k)
         tried.append(rel)

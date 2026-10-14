@@ -223,7 +223,7 @@ int *daDsn_c_classInit(void);
 }
 /* The class D1/D0 spell the base table by the recovered wildcard name; point it
    at the mounted daDsnBase_c table. */
-#pragma comment(linker, "/alternatename:__ZTV7daDsn_c=__ZTV11daDsnBase_c")
+/* PORTSYNC3: the old alias (the recovered wildcard _ZTV7daDsn_c onto the base table) is gone: main named this very table _ZTV7daDsn_c (it was _ZTV6Thwomp), so the pair would join two addresses. The D1/D0 bodies are real C++ now and store the base table by its own name. */
 
 /* daDsn_c_classInit leaves the vptr on VT1; reseat it onto the host table. */
 extern "C" void *port_factory_thwomp(void)
