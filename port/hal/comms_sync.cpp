@@ -68,6 +68,7 @@
                              // voice_talking() (VOICE1 exports it)
 #include "player_fields.h"
 #include "ghost_door.h"      // GHOSTDOOR1: door / area / hidden look of a hub ghost
+#include "ghost_tongue.h"    // POSE9: a Yoshi ghost's tongue, the hurt blink
 #include "party.h"           // PBODY1: solid party bodies (membership by seat)
 #include "party_hits.h"      // PLAYINT1: the squash after a stomp
 #include "host_settings.h"   // port::adventure_ghost_mode(): adventure runs this
@@ -3264,8 +3265,14 @@ void gw_park_body(void *a) {
     ++g_gws.parked;
 }
 
+/* POSE9: per ghost body, the Yoshi tongue (head animation) and the hurt blink. */
+ghost_tongue::State g_gtongue[kCommsMaxPlayers];
+ghost_tongue::Blink g_gblink[kCommsMaxPlayers];
+
 void gw_follow() {
-    static int no_repose = -1, no_swap = -1;
+    static int no_repose = -1, no_swap = -1, no_tongue = -1, no_blink = -1;
+    if (no_tongue < 0) { const char *e = std::getenv("SM64DS_GHOST_TONGUE"); no_tongue = (e && e[0] == '0' && !e[1]) ? 1 : 0; }
+    if (no_blink < 0) { const char *e = std::getenv("SM64DS_GHOST_BLINK"); no_blink = (e && e[0] == '0' && !e[1]) ? 1 : 0; }
     if (no_repose < 0) no_repose = std::getenv("SM64DS_GHOST_NO_REPOSE") ? 1 : 0;
     if (no_swap < 0) no_swap = std::getenv("SM64DS_GHOST_NO_CHARSWAP") ? 1 : 0;
     /* GHOSTSMOOTH1: THE RING AT THIS INSTANT. sync_tick drained the hub at the
@@ -3377,6 +3384,7 @@ void gw_follow() {
                 (unsigned)(now - z.char_try_ms) >= 250u) {
                 z.char_try_ms = now;
                 port_player_set_character(a, sm.character);
+                ghost_tongue::forget(g_gtongue[i]);     // POSE9: the model was rebuilt
                 ++g_gws.charswaps;
                 ++z.sm_swaps;
                 std::fprintf(stderr, "[ghost] seat %d body %d character -> %u\n",
@@ -3432,6 +3440,19 @@ void gw_follow() {
             }
         }
         if (frames <= 0) { gw_park_body(a); continue; }
+        /* POSE9 THE TONGUE. Yoshi's tongue is the head model's own animation
+           (ghost_tongue.h): when the wire's body anim is a tongue anim make the
+           ROM's call once, then put the head on the body's frame. */
+        if (!no_tongue) {
+            bool started = false;
+            const int targ = ghost_tongue::select(g_gtongue[i], (char *)a, sm.anim,
+                                                  gw_char(a) == 3u, &started);
+            if (started)
+                std::fprintf(stderr, "[ghost-tongue] f=%u seat=%d body=%d tongue %d (anim %u)
+",
+                             g_gw_frame, s, i, targ, (unsigned)sm.anim);
+            if (targ >= 0) ghost_tongue::follow(g_gtongue[i], (char *)a, want_f, nullptr);
+        }
         /* PLACE, THEN POSE, in Player::Behavior's own order: the body matrix
            and the shadow node from the position (func_ov002_020e444c), then
            the bones (func_ov002_020e4768), which read that matrix. A ghost
@@ -3510,6 +3531,22 @@ void gw_follow() {
                 *(int *)((char *)a + 0x84) = 0x1000;
                 squashed[i] = false;
             }
+        }
+        /* POSE9 THE BLINK (item 20): after party::follow, which clears the timer
+           for a solid party body. The ROM's Render hides a body on odd timer
+           frames; nothing counts a ghost's timer down, so this is the count. */
+        if (!no_blink) {
+            bool started = false;
+            const unsigned v = ghost_tongue::blink_step(g_gblink[i], sm.anim, &started);
+            *(unsigned short *)((char *)a + player::kInvincibleTimer) = (unsigned short)v;
+            if (started)
+                std::fprintf(stderr, "[ghost-blink] f=%u seat=%d body=%d hurt anim %u: 36-frame blink
+",
+                             g_gw_frame, s, i, (unsigned)sm.anim);
+            if (v && gw_err_log())
+                std::fprintf(stderr, "[ghost-blink] f=%u seat=%d timer=%u hidden=%d
+",
+                             g_gw_frame, s, v, (v & 1) ? 1 : 0);
         }
         if (gw_err_log())
             std::fprintf(stderr, "[gwshown] t=%u f=%u seat=%d body=%d bc=%u "
