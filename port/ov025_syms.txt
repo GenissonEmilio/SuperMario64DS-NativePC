@@ -233,3 +233,5 @@ data_ov025_02113ae8@0x02113ae8 data_ov025_02113af4@0x02113af4
 #   data_ov025_02113ae0                        now defined by src/actors/daDpLift_c.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov025_02113a88! data_ov025_02113a90!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov025_02113a68! data_ov025_02113a60! data_ov025_02113ab8! data_ov025_02113ab0! data_ov025_02113ae0! data_ov025_02113ad8!

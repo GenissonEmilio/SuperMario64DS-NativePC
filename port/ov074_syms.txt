@@ -261,3 +261,5 @@ data_ov074_021230d4@0x021230d4 data_ov074_021230e0@0x021230e0 data_ov074_021230e
 #   data_ov074_02122e04                        now defined by src/actors/daKuriKing_c.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov074_02122fe0! data_ov074_02122fe8! data_ov074_02122ff0! data_ov074_02122ff8! data_ov074_02123000! data_ov074_02123008! data_ov074_02123010! data_ov074_02123018! data_ov074_02123020! data_ov074_02123028! data_ov074_02123030! data_ov074_02123038! data_ov074_02123040! data_ov074_02123048! data_ov074_021230f8!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov074_02122e04! data_ov074_02122dfc!

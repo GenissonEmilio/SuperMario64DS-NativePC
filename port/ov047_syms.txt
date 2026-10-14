@@ -279,3 +279,5 @@ data_ov047_02112714@0x02112714
 #   data_ov047_02112638                        now defined by src/game/actors/d_a_obj_km3_kuruma.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov047_02112658! data_ov047_02112660! data_ov047_02112668! data_ov047_02112670! data_ov047_02112678! data_ov047_02112680! data_ov047_02112688! data_ov047_02112690! data_ov047_02112698! data_ov047_021126a0!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov047_02112258! data_ov047_021125e0! data_ov047_021125e8! data_ov047_02112334! data_ov047_02112608! data_ov047_02112610! data_ov047_02112408! data_ov047_02112638! data_ov047_02112630!

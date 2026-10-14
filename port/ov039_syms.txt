@@ -56,3 +56,5 @@ data_ov039_021118ec@0x021118ec:0x14
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
 #   data_ov039_021118e4                        now defined by src/game/actors/d_a_obj_kumo.cpp
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov039_021118e0! data_ov039_021118e4!

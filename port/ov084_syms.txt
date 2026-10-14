@@ -71,3 +71,5 @@ data_ov084_02130e74:0xc data_ov084_02130e80:0x60
 #   g_profile_KURIBO                           now defined by src/actors/daKrb_c.cpp
 #   g_profile_KURIBO_L                         now defined by src/actors/daKrb_c.cpp
 #   g_profile_KURIBO_S                         now defined by src/actors/daKrb_c.cpp
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov084_02130cf8! data_ov084_02130cc8! data_ov084_02130cf0! data_ov084_02130ce8! data_ov084_02130cc0! data_ov084_02130cd0! data_ov084_02130d00! data_ov084_02130ce0! data_ov084_02130cd8! data_ov084_02130d74!

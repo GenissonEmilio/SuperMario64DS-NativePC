@@ -152,3 +152,5 @@ data_ov013_021122a4@0x021122a4:0xc data_ov013_021122b0@0x021122b0:0x10
 #   data_ov013_02112280                        now defined by src/game/actors/d_a_obj_clock_huriko.cpp
 #   data_ov013_02112294                        now defined by src/actors/daObjClock_c.cpp
 #   data_ov013_0211229c                        now defined by src/actors/daObjClock_c.cpp
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov013_0211229c! data_ov013_02112294! data_ov013_02112280!

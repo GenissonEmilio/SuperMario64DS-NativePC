@@ -144,3 +144,5 @@ data_ov072_02121ffc data_ov072_02122004 data_ov072_02122720 data_ov072_02122728 
 #   data_ov072_02122c48                        now defined by src/actors/daBgSnwmn_c.cpp
 #   data_ov072_02122c50                        now defined by src/actors/daBgSnwmn_c.cpp
 #   data_ov072_02122c70                        now defined by src/actors/daBgSnwmn_c.cpp
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov072_02122c48! data_ov072_02122c40! data_ov072_02122c50! data_ov072_02122c70!

@@ -224,3 +224,5 @@ data_ov092_02132550@0x02132550 data_ov092_0213255c@0x0213255c
 #   data_ov092_02132540                        now defined by src/actors/daOnms_c.cpp
 #   data_ov092_02132548                        now defined by src/actors/daOnms_c.cpp
 #   data_ov092_02132568                        now defined by src/actors/daOnms_c.cpp
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov092_02132540! data_ov092_02132548! data_ov092_02132568!

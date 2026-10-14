@@ -177,3 +177,5 @@ data_ov073_02123488@0x02123488 data_ov073_02123494@0x02123494
 #   data_ov073_021234a0                        now defined by src/actors/daObjEwbIce_c.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov073_02123280! data_ov073_02123288! data_ov073_02123290! data_ov073_02123298! data_ov073_021232a0! data_ov073_021232a8! data_ov073_021232b0! data_ov073_021232b8! data_ov073_02123428! data_ov073_02123430! data_ov073_02123438! data_ov073_02123440! data_ov073_02123448! data_ov073_02123450! data_ov073_021234b0! data_ov073_021234c0! data_ov073_021234d0!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov073_021234a0!

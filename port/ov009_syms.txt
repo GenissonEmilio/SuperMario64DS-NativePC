@@ -289,3 +289,5 @@ data_ov009_02113ec0@0x02113ec0 data_ov009_02113ecc@0x02113ecc
 #   data_ov009_02113e90                        now defined by src/game/actors/d_a_obj_mc_metalnet.cpp
 #   data_ov009_02113eb0                        now defined by src/game/actors/d_a_mc_flag.cpp
 #   data_ov009_02113eb8                        now defined by src/game/actors/d_a_mc_flag.cpp
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov009_021138fc! data_ov009_02113c20! data_ov009_02113c48! data_ov009_02113c28! data_ov009_02113e90! data_ov009_02113e88! data_ov009_02113eb8! data_ov009_02113eb0!

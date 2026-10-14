@@ -210,3 +210,5 @@ data_ov022_02114684
 #   data_ov022_02114690                        now defined by src/game/actors/d_a_obj_fl_maruta.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov022_02114528! data_ov022_02114530! data_ov022_021145c8! data_ov022_021145d0! data_ov022_021145d8! data_ov022_021145e0! data_ov022_02114640! data_ov022_02114648!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov022_02114500! data_ov022_02114508! data_ov022_02114550! data_ov022_02114558! data_ov022_02114580! data_ov022_02114578! data_ov022_02114690! data_ov022_021145a8! data_ov022_021145a0!

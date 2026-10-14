@@ -172,3 +172,5 @@ data_ov018_02113c7c@0x02113c7c data_ov018_02113c84@0x02113c84 data_ov018_02113c8
 #   data_ov018_02113c4c                        now defined by src/game/actors/d_a_pg_mthr.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov018_02113bc0! data_ov018_02113bc8!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov018_02113bf8! data_ov018_02113c00! data_ov018_02113be8! data_ov018_02113bf0! data_ov018_02113c08! data_ov018_02113c4c!

@@ -95,3 +95,5 @@ data_ov044_02111688@0x02111688:0x18
 # regenerated from this list on every configure.
 #   g_profile_KB1_BILLBOARD                    now defined by d_a_obj_kb1_billboard.cpp.obj
 #   data_ov044_02111680                        now defined by d_a_obj_kb1_billboard.cpp.obj
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov044_02111680!

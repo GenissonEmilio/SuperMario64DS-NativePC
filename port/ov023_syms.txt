@@ -116,3 +116,5 @@ data_ov023_02112090@0x02112090 data_ov023_0211209c@0x0211209c:0xc
 #   g_profile_FM_BATTAN                        now defined by d_a_obj_fm_battan.cpp.obj
 #   data_ov023_02112080                        now defined by d_a_obj_fm_battan.cpp.obj
 #   data_ov023_02112088                        now defined by d_a_obj_fm_battan.cpp.obj
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov023_02112088! data_ov023_02112080!

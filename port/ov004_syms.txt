@@ -188,3 +188,5 @@ data_ov004_020bfeac data_ov004_020bfeb0 data_ov004_020bfeb4
 #   data_ov004_020bf560                        now defined by src/actors/unit020b2c84.cpp
 #   data_ov004_020bf5d4                        now defined by src/actors/unit020b2c84.cpp
 #   data_ov004_020bf648                        now defined by src/actors/unit020b2c84.cpp
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov004_020beba8! data_ov004_020bebe8! data_ov004_020beb74! data_ov004_020beb88! data_ov004_020beb98! data_ov004_020bf560! data_ov004_020bf648! data_ov004_020bf428! data_ov004_020bf490! data_ov004_020bf4f8! data_ov004_020bf5d4!

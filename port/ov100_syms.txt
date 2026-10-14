@@ -106,3 +106,5 @@ data_ov100_02148a10@0x02148a10:0xc
 #   data_ov100_02148a1c                        now defined by src/game/actors/d_a_fish.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov100_021486a4! data_ov100_021486ac! data_ov100_021486b4! data_ov100_021486bc! data_ov100_02148724! data_ov100_0214872c! data_ov100_02148734! data_ov100_0214873c! data_ov100_02148744! data_ov100_0214874c! data_ov100_02148754! data_ov100_0214875c! data_ov100_02148764! data_ov100_0214876c! data_ov100_02148774! data_ov100_0214877c! data_ov100_021488a4! data_ov100_021488b4! data_ov100_021488c4! data_ov100_021488d4! data_ov100_021488e4! data_ov100_021488f4! data_ov100_02148904! data_ov100_02148914! data_ov100_02148924! data_ov100_02148a54! data_ov100_02148a5c!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov100_02148600! data_ov100_02148608! data_ov100_02148628! data_ov100_021489ac! data_ov100_021489bc! data_ov100_021489cc! data_ov100_021489c4! data_ov100_021489a4! data_ov100_021489b4! data_ov100_02148a1c! data_ov100_02148948! data_ov100_02148390! data_ov100_02148934! data_ov100_021486f4!

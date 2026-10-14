@@ -291,3 +291,5 @@ data_ov032_02113b04@0x02113b04 data_ov032_02113b10@0x02113b10
 #   data_ov032_02113ad4                        now defined by src/game/actors/d_a_obj_td_futa.cpp
 #   data_ov032_02113af4                        now defined by src/game/actors/d_a_obj_td_water.cpp
 #   data_ov032_02113afc                        now defined by src/game/actors/d_a_obj_td_water.cpp
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov032_021137cc! data_ov032_021137d8! data_ov032_02113a40! data_ov032_02113a48! data_ov032_02113a50! data_ov032_02113a8c! data_ov032_02113a9c! data_ov032_02113aac! data_ov032_02113a7c! data_ov032_02113abc! data_ov032_02113acc! data_ov032_02113ad4! data_ov032_02113afc! data_ov032_02113af4!

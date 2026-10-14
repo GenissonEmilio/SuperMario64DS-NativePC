@@ -191,3 +191,5 @@ data_ov070_021236a0@0x021236a0
 # PORTSYNC3 RETIRED (main's d_a_propeller_heyho.cpp now defines these objects itself): data_ov070_02123500 data_ov070_02123508 data_ov070_02123510 data_ov070_02123518 data_ov070_02123520 data_ov070_02123528 data_ov070_02123530 data_ov070_0212358c data_ov070_0212359c data_ov070_021235ac data_ov070_021235dc
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov070_021235bc! data_ov070_021235cc!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov070_02123698! data_ov070_021236ac! data_ov070_021236ec! data_ov070_02123528! data_ov070_02123520! data_ov070_02123530! data_ov070_02123518! data_ov070_02123500! data_ov070_02123508! data_ov070_02123510! data_ov070_0212359c! data_ov070_021235ac! data_ov070_021235dc! data_ov070_0212358c!

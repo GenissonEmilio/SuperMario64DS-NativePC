@@ -358,3 +358,5 @@ data_ov090_021345c0@0x021345c0
 #   data_ov090_0213452c                        now defined by src/actors/daManta_c.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov090_0213455c! data_ov090_02134564! data_ov090_02134584! data_ov090_02134594! data_ov090_021345a4! data_ov090_021345ac! data_ov090_021345cc!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov090_02134488! data_ov090_02134498! data_ov090_021344a0! data_ov090_02134490! data_ov090_02134480! data_ov090_021344e4! data_ov090_021344f4! data_ov090_02134504! data_ov090_02134514! data_ov090_0213452c! data_ov090_02134524!

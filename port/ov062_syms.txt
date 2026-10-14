@@ -80,3 +80,5 @@ data_ov062_0211e17c:0x10
 #   data_ov062_0211e03c                        now defined by src/actors/daRNk_c.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov062_0211df28! data_ov062_0211df30! data_ov062_0211df38! data_ov062_0211df40! data_ov062_0211df48! data_ov062_0211df50! data_ov062_0211df58! data_ov062_0211df60! data_ov062_0211df68! data_ov062_0211df70! data_ov062_0211df78! data_ov062_0211e0d4! data_ov062_0211e0dc! data_ov062_0211e0fc! data_ov062_0211e104! data_ov062_0211e10c! data_ov062_0211e114! data_ov062_0211e18c!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov062_0211e03c! data_ov062_0211e034! data_ov062_0211e014! data_ov062_0211e024! data_ov062_0211e00c! data_ov062_0211e02c! data_ov062_0211e004! data_ov062_0211e01c!

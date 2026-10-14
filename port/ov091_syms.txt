@@ -102,3 +102,5 @@ data_ov091_021356a4@0x021356a4:0xc
 #   data_ov091_021356d0                        now defined by src/game/actors/d_a_hyuhyu.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov091_02135440! data_ov091_02135448! data_ov091_02135450! data_ov091_02135458! data_ov091_02135490! data_ov091_02135498! data_ov091_021354a0! data_ov091_021354a8! data_ov091_02135674! data_ov091_0213567c! data_ov091_02135684!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov091_02135550! data_ov091_02135528! data_ov091_02135548! data_ov091_021354f8! data_ov091_02135538! data_ov091_02135520! data_ov091_02135560! data_ov091_02135540! data_ov091_02135510! data_ov091_02135508! data_ov091_02135558! data_ov091_02135500! data_ov091_02135530! data_ov091_02135518! data_ov091_021356b0! data_ov091_021356c0! data_ov091_021356d0! data_ov091_021354e0! data_ov091_02135610! data_ov091_02135618! data_ov091_02135620! data_ov091_0213564c! data_ov091_02135654!

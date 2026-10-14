@@ -180,3 +180,5 @@ data_ov045_02113230@0x02113230 data_ov045_0211323c@0x0211323c
 #   g_profile_KM2_AMI_BOU                      now defined by src/game/actors/d_a_obj_km2_ami_bou.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov045_02113248! data_ov045_02113250!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov045_02113188! data_ov045_02113180! data_ov045_021131b0! data_ov045_021131a8! data_ov045_021131f8! data_ov045_02113200! data_ov045_02112fdc! data_ov045_02113228! data_ov045_02113220!

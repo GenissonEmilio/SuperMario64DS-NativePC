@@ -133,3 +133,5 @@ data_ov024_02113970@0x02113970 data_ov024_0211397c@0x0211397c:0xc
 # (hal/dsstate_all.h says why).
 #   data_ov024_02113960                        now defined by src/actors/daObjDlPyramid_c.cpp
 #   data_ov024_02113968                        now defined by src/actors/daObjDlPyramid_c.cpp
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov024_02113968! data_ov024_02113960!

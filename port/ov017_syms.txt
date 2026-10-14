@@ -142,3 +142,5 @@ data_ov017_02111c90@0x02111c90 data_ov017_02111c9c@0x02111c9c:0xc
 # (hal/dsstate_all.h says why).
 #   data_ov017_02111c80                        now defined by src/game/actors/d_a_obj_ks_water.cpp
 #   data_ov017_02111c88                        now defined by src/game/actors/d_a_obj_ks_water.cpp
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov017_02111c80! data_ov017_02111c88!

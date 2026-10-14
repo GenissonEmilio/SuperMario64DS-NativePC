@@ -73,3 +73,5 @@ data_ov020_02114828
 #   data_ov020_02114ab8                        now defined by src/actors/daBook_c.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov020_02114af0!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov020_02114aa8! data_ov020_02114ab8! data_ov020_02114ab0! data_ov020_02114aa0!

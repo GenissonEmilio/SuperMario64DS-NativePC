@@ -102,3 +102,5 @@ data_ov015_02114ae4@0x02114ae4 data_ov015_02114af0@0x02114af0
 #   data_ov015_02114a8c                        now defined by src/game/actors/d_a_obj_bk_rotebar.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov015_02114aac! data_ov015_02114ab4! data_ov015_02114ad4! data_ov015_02114adc!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov015_02114960! data_ov015_0211497c! data_ov015_02114974! data_ov015_02114a8c! data_ov015_02114a84!

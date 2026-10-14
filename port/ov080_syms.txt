@@ -83,3 +83,5 @@ data_ov080_02128688 data_ov080_0212869c data_ov080_02128858
 #   data_ov080_0212847c                        now defined by src/actors/daBttBk_c.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov080_021283c0! data_ov080_021283c8! data_ov080_021283d0! data_ov080_021283d8! data_ov080_021283e0! data_ov080_021283e8! data_ov080_021284ac! data_ov080_021284b4! data_ov080_021284bc! data_ov080_021284c4! data_ov080_021284cc! data_ov080_021284d4! data_ov080_021284dc! data_ov080_021284e4! data_ov080_021284ec! data_ov080_021284f4! data_ov080_021284fc! data_ov080_02128504! data_ov080_0212850c! data_ov080_02128514! data_ov080_0212851c! data_ov080_02128524! data_ov080_0212852c! data_ov080_02128534! data_ov080_0212853c!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov080_02128468! data_ov080_0212847c!

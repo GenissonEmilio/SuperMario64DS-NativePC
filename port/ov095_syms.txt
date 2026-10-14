@@ -177,3 +177,5 @@ g_profile_KM2_YOKOSEESAW:0x1c g_profile_RC_RIFT02:0x1c
 #   data_ov095_02137910                        now defined by src/actors/daUdlift_c.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov095_02137780! data_ov095_02137788! data_ov095_02137790! data_ov095_02137798! data_ov095_021377a0! data_ov095_021377a8! data_ov095_021377b0! data_ov095_021377b8! data_ov095_021377c0! data_ov095_021377c8! data_ov095_021377d0! data_ov095_021377d8! data_ov095_021377e0! data_ov095_021377e8! data_ov095_02137898! data_ov095_021378a0! data_ov095_021378a8! data_ov095_021378b0! data_ov095_021378b8! data_ov095_021378c0!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov095_02137910!

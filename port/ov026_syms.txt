@@ -417,3 +417,5 @@ data_ov026_02113f78@0x02113f78
 #   data_ov026_02113f0c                        now defined by src/actors/daWater_Tatumaki_c.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov026_02113f58!
+# PORTSYNC3 name-only rows (extern C definitions in a class TU):
+data_ov026_02113f0c! data_ov026_02113f04! data_ov026_02113ea0!
