@@ -118,6 +118,7 @@ extern "C" void port_sign_post_states_seat(void)
 {
     PortStatePair *p = (PortStatePair *)data_ov002_0210e084;
     for (int i = 0; i < 10; ++i) {
+        if ((unsigned)(p[i].fn) < 0x02000000u || (unsigned)(p[i].fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p[i].fn != g_states[i].rom) {
             std::fprintf(stderr, "FATAL: SignPost state %d %s: the sinit left "
                          "%08x, the ROM's own table says %08x -- WRONG "

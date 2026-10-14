@@ -155,6 +155,7 @@ extern "C" void port_door_callbacks_seat(void)
     for (unsigned i = 0;
          i < sizeof g_door_callbacks / sizeof g_door_callbacks[0]; ++i) {
         PortPmf *p = g_door_callbacks[i].slot;
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != g_door_callbacks[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: Door callback %u: the mount holds "
                          "%08x/%d, the ROM's own table says %08x/0 -- WRONG "

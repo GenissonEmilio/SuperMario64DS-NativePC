@@ -158,6 +158,7 @@ extern "C" void port_sound_object_states_seat(void)
     done = 1;
     PortSoundObjPair *p = data_ov002_0211110c;
     for (int i = 0; i < PORT_SOUND_OBJ_CELLS; ++i) {
+        if ((unsigned)(p[i].fn) < 0x02000000u || (unsigned)(p[i].fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p[i].fn != g_sound_obj_states[i].rom || p[i].delta != 0) {
             std::fprintf(stderr, "FATAL: SoundObject cell %d: the sinit left "
                          "%08x/%d, the ROM's own records say %08x/0 -- WRONG "

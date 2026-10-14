@@ -57,6 +57,7 @@ extern "C" void port_water_bomb_states_seat(void)
     for (unsigned i = 0; i < sizeof g_water_bomb_states /
                              sizeof g_water_bomb_states[0]; ++i) {
         PortPmf *p = g_water_bomb_states[i].slot;
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != g_water_bomb_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: WaterBomb state %u: the mount holds "
                          "%08x/%d, the ROM's own table says %08x/0 -- WRONG "

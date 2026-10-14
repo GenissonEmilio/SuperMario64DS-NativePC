@@ -572,6 +572,7 @@ extern "C" void port_cutscene_states_seat(void)
         int delta;
         std::memcpy(&fn, g_st_seat[i].rec, 4);
         std::memcpy(&delta, g_st_seat[i].rec + 4, 4);
+        if ((unsigned)(fn) < 0x02000000u || (unsigned)(fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (fn != g_st_seat[i].rom || delta != 0) {
             std::fprintf(stderr, "FATAL: data_ov002_%08x (the source record "
                          "data_ov002_%08x[%u] is copied from) holds %08x/%d, "

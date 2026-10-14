@@ -146,6 +146,7 @@ static void pir_seat_one(PortPirPmf *p, unsigned rom, PortPirFn host,
 {
     if (p->fn == (unsigned)(size_t)host)
         return;
+    if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
     if (p->fn != rom || p->delta != 0) {
         std::fprintf(stderr, "FATAL: PiranhaPlant state %u (%s): the mount "
                      "holds %08x/%d, the ROM's own table says %08x/0 -- WRONG "

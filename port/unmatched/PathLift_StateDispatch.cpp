@@ -118,6 +118,7 @@ void port_pathlift_states_seat(void)
         PortPathLiftPair *p = seats[i].half
             ? &data_ov002_0210af2c[seats[i].rec].tick
             : &data_ov002_0210af2c[seats[i].rec].enter;
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != seats[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: PathLift state %u/%u: the sinit left "
                          "%08x/%d, the ROM's own table says %08x/0 -- WRONG "

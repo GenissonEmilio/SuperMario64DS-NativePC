@@ -157,6 +157,7 @@ extern "C" void port_bowser_puzzle_manager_states_seat(void)
     for (unsigned i = 0; i < sizeof g_manager_states /
                              sizeof g_manager_states[0]; ++i) {
         PortPmf *p = g_manager_states[i].slot;
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != g_manager_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: BowserPuzzleManager source %u: the mount "
                          "holds %08x/%d, the ROM's own table says %08x/0 -- WRONG "
@@ -190,6 +191,7 @@ extern "C" void port_bowser_puzzle_piece_states_seat(void)
     for (unsigned i = 0; i < sizeof g_piece_states /
                              sizeof g_piece_states[0]; ++i) {
         PortPmf *p = g_piece_states[i].slot;
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != g_piece_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: BowserPuzzlePiece source %u: the mount "
                          "holds %08x/%d, the ROM's own table says %08x/0 -- WRONG "

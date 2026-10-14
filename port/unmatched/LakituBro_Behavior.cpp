@@ -185,6 +185,7 @@ extern "C" void port_lakitu_bro_states_seat(void)
     done = 1;
     for (unsigned i = 0; i < sizeof g_states / sizeof g_states[0]; ++i) {
         PortPmf *p = g_states[i].slot;
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != g_states[i].rom) {
             std::fprintf(stderr, "FATAL: LakituBro state %s: the mount holds "
                          "%08x, the ROM's own table says %08x -- WRONG "

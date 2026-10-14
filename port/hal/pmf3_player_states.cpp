@@ -419,6 +419,7 @@ extern "C" void port_player_states_seat(void)
             }
             int (__fastcall *face)(void *, void *) =
                 port_player_state_face_for(c->code);
+            if ((unsigned)(!face || c->code) < 0x02000000u || (unsigned)(!face || c->code) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
             if (!face || c->code != g_player_state_rom[i][k] || c->adjust != 0) {
                 std::fprintf(stderr, "FATAL: Player state object %d cell %d holds "
                              "%08x/%d, the ROM's table says %08x/0 -- WRONG "

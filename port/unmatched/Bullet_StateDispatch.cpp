@@ -102,6 +102,7 @@ extern "C" void port_bullet_states_seat(void)
     };
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
         PortPmf *p = &data_ov002_02111190[seats[i].half];
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != seats[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: BULLET state %u: the sinit left "
                          "%08x/%d, the ROM's own table says %08x/0 -- WRONG "

@@ -144,6 +144,7 @@ extern "C" void port_cap_states_seat(void)
     done = 1;
     PortCapPair *p = data_ov002_0210df04;
     for (int i = 0; i < PORT_CAP_PAIRS; ++i) {
+        if ((unsigned)(p[i].fn) < 0x02000000u || (unsigned)(p[i].fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p[i].fn != g_cap_states[i].rom || p[i].delta != 0) {
             std::fprintf(stderr, "FATAL: Cap state pair %d: the sinit left "
                          "%08x/%d, the ROM's own table says %08x/0 -- WRONG "

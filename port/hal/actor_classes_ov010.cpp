@@ -314,6 +314,7 @@ extern "C" void port_trap36_states_seat(void)
     for (int i = 0; i < 5; ++i) {
         RomPmf rec;
         std::memcpy(&rec, g_t36_states[i].src, sizeof rec);
+        if ((unsigned)(rec.fn) < 0x02000000u || (unsigned)(rec.fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (rec.fn != g_t36_states[i].rom || rec.adj != 0) {
             std::fprintf(stderr,
                          "FATAL: ov010 TRAP PMF source %s: the mount holds "

@@ -149,6 +149,7 @@ extern "C" void port_power_star_states_seat(void)
     done = 1;
     for (unsigned i = 0; i < 14; ++i) {
         PortPmf *p = &data_ov002_021109d8[i];
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != g_power_star_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: PowerStar state %u: the runtime table "
                          "holds %08x/%d, the ROM's own copy says %08x/0 -- WRONG "

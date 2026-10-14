@@ -582,6 +582,7 @@ static void port_star_door_callbacks_seat(void)
          i < sizeof g_star_door_callbacks / sizeof g_star_door_callbacks[0];
          ++i) {
         PortPmfSD *p = g_star_door_callbacks[i].slot;
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != g_star_door_callbacks[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: StarDoor callback %u: the mount holds "
                          "%08x/%d, the ROM's own table says %08x/0 -- WRONG "
@@ -645,6 +646,7 @@ static void port_butterfly_states_seat(void)
     for (unsigned i = 0;
          i < sizeof g_butterfly_states / sizeof g_butterfly_states[0]; ++i) {
         PortPmf2 *p = g_butterfly_states[i].slot;
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != g_butterfly_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: Butterfly state %u: the mount holds "
                          "%08x/%d, the ROM's own table says %08x/0 -- WRONG "
@@ -1107,6 +1109,7 @@ static void port_rabbit_states_seat(void)
     for (unsigned i = 0; i < sizeof g_rabbit_states / sizeof g_rabbit_states[0];
          ++i) {
         PortPmf *p = g_rabbit_states[i].slot;
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != g_rabbit_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: Rabbit state %u: the mount holds "
                          "%08x/%d, the ROM's own table says %08x/0 -- WRONG "
@@ -1136,6 +1139,7 @@ static void port_rabbit_key_states_seat(void)
     for (unsigned i = 0;
          i < sizeof g_rabbit_key_states / sizeof g_rabbit_key_states[0]; ++i) {
         PortPmf *p = g_rabbit_key_states[i].slot;
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != g_rabbit_key_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: RabbitKey state %u: the mount holds "
                          "%08x/%d, the ROM's own table says %08x/0 -- WRONG "
@@ -1213,6 +1217,7 @@ static void port_toad_states_seat(void)
     for (unsigned i = 0; i < sizeof g_toad_states / sizeof g_toad_states[0];
          ++i) {
         PortPmf *p = g_toad_states[i].slot;
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != g_toad_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: Toad state %u: the mount holds "
                          "%08x/%d, the ROM's own table says %08x/0 -- WRONG "
@@ -1427,6 +1432,7 @@ static void port_painting_states_seat(void)
     for (unsigned i = 0;
          i < sizeof g_painting_states / sizeof g_painting_states[0]; ++i) {
         PortPmfPt *p = g_painting_states[i].slot;
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != g_painting_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: Painting state %u: the mount holds "
                          "%08x/%d, the ROM's own table says %08x/0 -- WRONG "

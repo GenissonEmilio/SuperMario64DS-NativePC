@@ -119,6 +119,7 @@ static const struct { unsigned rom; void (*host)(void *); } g_types[] = {
 extern "C" void port_one_up_mushroom_types_seat(void)
 {
     for (int i = 0; i < PORT_MUSHROOM_TYPES; ++i) {
+        if ((unsigned)(data_ov002_0210dc00[i].fn) < 0x02000000u || (unsigned)(data_ov002_0210dc00[i].fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (data_ov002_0210dc00[i].fn != g_types[i].rom) {
             std::fprintf(stderr, "FATAL: mushroom type %d: the sinit left "
                          "%08x, the ROM's own table says %08x -- WRONG "

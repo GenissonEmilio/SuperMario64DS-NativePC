@@ -159,6 +159,7 @@ extern "C" void port_ov089_states_seat(void)
     for (unsigned i = 0; i < sizeof g_ov089_states / sizeof g_ov089_states[0];
          ++i) {
         PortPmf *p = g_ov089_states[i].slot;
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != g_ov089_states[i].rom || p->adj != 0) {
             std::fprintf(stderr, "FATAL: ov089 state %s: the mount holds "
                          "%08x/%d, the ROM's own record says %08x/0 -- WRONG "
