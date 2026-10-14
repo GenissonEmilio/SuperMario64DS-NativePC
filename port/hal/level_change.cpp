@@ -2341,6 +2341,11 @@ static int port_level_hold_due(void)
    stands in its volume and Player::CanWarp). The call is the ROM's own; this
    only fires it at a chosen frame so a headless run can watch the teleport. */
 
+extern "C" {
+extern void *data_0209f394[];
+extern int data_ov002_021102a4[];
+void _ZN6Player11ChangeStateERNS_5StateE(void *, void *);
+}
 static void port_tp_warp_hook(void)
 {
     static int frame, at = -2, id = 1;
@@ -2351,14 +2356,14 @@ static void port_tp_warp_hook(void)
     }
     if (at >= 0 && frame++ == at) {
         std::fprintf(stderr, "[tpwarp] f%d WarpPlayer(0, %d)\n", at, id);
-        /* WarpPlayer(0, id) alone is cleared again before the Player reads it
-           from outside the frame, so this writes what func_ov002_020c2e78 writes
-           when it takes the request: the teleport id and flag bit 8. */
-        extern void *data_0209f394[];
+        /* The state change func_ov002_020c6adc makes when the warp request's
+           bit is set (the request itself only lasts a frame and is read by
+           St_Wait_Main): the teleport id, then ChangeState into the teleport
+           state, so the ROM's own St_Teleport_Init / Main run from here. */
         char *pl = (char *)data_0209f394[0];
         if (pl) {
             *(unsigned char *)(pl + 0x6e8) = (unsigned char)id;
-            *(unsigned short *)(pl + 0x6ce) |= 8;
+            _ZN6Player11ChangeStateERNS_5StateE(pl, data_ov002_021102a4);
         }
     }
 }
