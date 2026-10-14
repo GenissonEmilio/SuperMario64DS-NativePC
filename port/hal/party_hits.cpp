@@ -77,7 +77,7 @@ enum : unsigned {
     kRingFrames = 16,
     kAttachLife = 150,                          // an attach nobody refreshed or cleared dies after this
     kGrabAckWait = 20,
-    kAttachBeat = 20,                           // the victim repeats its attach this often
+    kAttachBeat = 30,                           // the victim repeats its attach this often
 };
 enum : unsigned {
     kFlagCarried = 0x100, kFlagHeldOut = 0x4000, kFlagGrabbable = 0x80, kFlagThrown = 0x400,
@@ -425,7 +425,13 @@ void grab_begin(char *me, const Claim &c) {
         f |= kFlagCarried | kFlagHeldOut;
     }
     port::vs_grab_export_overlay(hb, me);
+    // the ROM's gate in St_Grabbed's entry (func_ov002_020d82f0) refuses a body that is still in its knock (the
+    // blink timer, the damage byte); the hold takes a STUNNED player, so those are down for the one call
+    const unsigned short inv = *(unsigned short *)(me + player::kInvincibleTimer);
+    *(unsigned short *)(me + player::kInvincibleTimer) = 0;
+    *(unsigned char *)(me + 0x708) = 0;
     const int ok = func_ov002_020db5f4(me, hb);
+    *(unsigned short *)(me + player::kInvincibleTimer) = inv;
     if (!ok) {
         ptrf(hb, kHeldObj) = nullptr;
         u32(me, kFlags) &= ~(kFlagHeldOut | kFlagCarried);
@@ -649,7 +655,12 @@ void attacker_scan(char *me) {
         const unsigned stamp = stamp_for(si);
         int kind = ik;
         if (lab) {
-            // LAB: forge a claim from `units` away from the friend, whatever the real positions are
+            // LAB: forge a claim from `units` away from the friend, whatever the real positions are. A forged
+            // grab still needs the ROM's own TryGrab to take (my punch state), so it retries each frame.
+            if (ik == kGrabCatch) {
+                char *vb = body_of_seat(seat);
+                if (!vb || !holder_try_grab(me, vb, seat)) return;
+            }
             send_wire(seat, (unsigned)ik, yaw, s.x + g.forge_units, s.y, s.z, stamp);
             g.forged = true; g.send_frame[seat] = g.frame ? g.frame : 1;
             std::fprintf(stderr, "[phit] LAB forged ik=%d claim %d units from seat %d\n", ik, g.forge_units, seat);

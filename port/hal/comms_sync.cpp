@@ -3391,8 +3391,8 @@ void gw_follow() {
                     sm.teleport = false;
                     static unsigned alog;
                     if (alog++ % 30 == 0)
-                        std::fprintf(stderr, "[attach] f=%u seat=%d kind=%d held by seat %d at (%d,%d,%d)\n",
-                                     g_gw_frame, s, akind, holder, sm.x >> 12, sm.y >> 12, sm.z >> 12);
+                        std::fprintf(stderr, "[attach] f=%u seat=%d kind=%d held by seat %d at (%d,%d,%d) holder (%d,%d,%d)\n",
+                                     g_gw_frame, s, akind, holder, sm.x >> 12, sm.y >> 12, sm.z >> 12, hx >> 12, hy >> 12, hz >> 12);
                 }
             }
         }
