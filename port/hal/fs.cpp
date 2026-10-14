@@ -303,6 +303,24 @@ void DecompressLZ16(void *src_, void *dst_)
     u8 *d = (u8 *)dst_;
     u32 size = (s[0] | s[1] << 8 | s[2] << 16 | (u32)s[3] << 24) >> 8;
     u32 out = 0;
+    /* A header that is not LZ77 (type byte 0x10) is a file that did not load
+       as the game expects: a short read, a damaged extraction, a stale buffer.
+       The cartridge would decode whatever it was given, and on the DS the
+       worst case was a garbled picture; here a bogus length (0x307a81 bytes in
+       three 0.9.1 reports, the Wario star select picture) walks off the end
+       of the mapped video memory and kills the process (crash C4, exe
+       +00328246, write at 06900000). Refuse the decode, say so once, leave the
+       destination as it was. Every real file in the game has a 0x10 header, so
+       this changes nothing for an intact extraction. */
+    if ((s[0] & 0xF0) != 0x10 || size > 0x400000u) {
+        static int said;
+        if (said++ < 4)
+            fprintf(stderr, "[lz] refused: header %02x%02x%02x%02x is not an LZ77 stream "
+                    "(size %u); the file did not load intact, destination left as it was
+",
+                    s[3], s[2], s[1], s[0], size);
+        return;
+    }
     s += 4;
     while (out < size) {
         u8 flags = *s++;

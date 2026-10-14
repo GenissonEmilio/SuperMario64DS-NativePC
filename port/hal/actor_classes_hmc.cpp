@@ -104,17 +104,8 @@ static void hmc_trap_report(void *self, int slot)
 #define HMC_TRAP(n) \
     static int __fastcall hmc_trap##n(void *s, void *) \
     { hmc_trap_report(s, n); return 0; }
-HMC_TRAP(13) HMC_TRAP(14) HMC_TRAP(20) HMC_TRAP(22)
-HMC_TRAP(25) HMC_TRAP(26) HMC_TRAP(27) HMC_TRAP(28) HMC_TRAP(29)
+HMC_TRAP(13) HMC_TRAP(14) HMC_TRAP(29)
 #undef HMC_TRAP
-/* Slots 23/24 take the three-parameter shape so they emit `ret 4`: their one
-   dispatch site each is now thiscall (Actor_OnAttacked2Dispatch.cpp /
-   Actor_OnKickedDispatch.cpp), which pushes one argument the callee must pop.
-   Body identical to the HMC_TRAP shape; only the pop contract widens. */
-static int __fastcall hmc_trap23(void *s, void *, void *)
-{ hmc_trap_report(s, 23); return 0; }
-static int __fastcall hmc_trap24(void *s, void *, void *)
-{ hmc_trap_report(s, 24); return 0; }
 
 // ---- the shared half -------------------------------------------------------
 static int __fastcall hmc_binit(void *s, void *)
@@ -164,6 +155,43 @@ static int __fastcall crate_egg(void *s, void *, void *o)
 extern "C" int _ZN8dActor_c16OnAimedAtWithEggEv(void *self);
 static int __fastcall crate_aimed(void *s, void *)
 { return _ZN8dActor_c16OnAimedAtWithEggEv(s); }
+/* Slots 20 and 22..28: _ZTV5Crate holds the arm9 Actor bodies at every one of
+   them (ov098 0x0213c534 + 20*4 .. 28*4 = 0x0201014c, 0x02010144, 0x02010140,
+   0x0201013c, 0x02010138, 0x02010134, 0x02010130, 0x0201012c; slot 21 is the
+   Crate's own). They were trapped, so the first thing that reached one froze
+   the crate. Mega Mario (giant Mario) reaches slot 27, OnHitByMegaChar, on
+   everything he touches, and a crate on the castle grounds took the port down
+   to a quarantine of the PLAYER: the trap is dispatched from inside the
+   player's phase callback, so the freeze landed on Mario (crash C5, 4 reports,
+   exe +00513c9d). The bodies are the Actor ones Star Camera's table already
+   uses, and the shapes follow the dispatch sites: slot 20 takes only `this`,
+   22..28 take one argument the callee pops, hence the third parameter. */
+extern "C" {
+int  _ZN8dActor_c9Virtual50Ev(void *self);
+void _ZN8dActor_c11OnAttacked1ERS_(void *self, void *o);
+void _ZN8dActor_c11OnAttacked2ERS_(void *self, void *o);
+void _ZN8dActor_c8OnKickedERS_(void *self, void *o);
+void _ZN8dActor_c8OnPushedERS_(void *self, void *o);
+void _ZN8dActor_c24OnHitByCannonBlastedCharERS_(void *self, void *o);
+void _ZN8dActor_c15OnHitByMegaCharER6Player(void *self, void *p);
+void _ZN8dActor_c19OnHitFromUnderneathERS_(void *self, void *o);
+}
+static int __fastcall crate_v50(void *s, void *)
+{ return _ZN8dActor_c9Virtual50Ev(s); }
+static int __fastcall crate_atk1(void *s, void *, void *o)
+{ _ZN8dActor_c11OnAttacked1ERS_(s, o); return 0; }
+static int __fastcall crate_atk2(void *s, void *, void *o)
+{ _ZN8dActor_c11OnAttacked2ERS_(s, o); return 0; }
+static int __fastcall crate_kicked(void *s, void *, void *o)
+{ _ZN8dActor_c8OnKickedERS_(s, o); return 0; }
+static int __fastcall crate_pushed(void *s, void *, void *o)
+{ _ZN8dActor_c8OnPushedERS_(s, o); return 0; }
+static int __fastcall crate_cannon(void *s, void *, void *o)
+{ _ZN8dActor_c24OnHitByCannonBlastedCharERS_(s, o); return 0; }
+static int __fastcall crate_mega(void *s, void *, void *p)
+{ _ZN8dActor_c15OnHitByMegaCharER6Player(s, p); return 0; }
+static int __fastcall crate_under(void *s, void *, void *o)
+{ _ZN8dActor_c19OnHitFromUnderneathERS_(s, o); return 0; }
 /* Slot 21 is OnGroundPounded(Actor &other), and its argument arrives the way
    slot 19's does: on the stack. The ov098 body reads only r0 and ignores the
    pounder, but the HOST caller still pushes it, because the slot's
@@ -201,16 +229,16 @@ extern "C" void hal_fill_crate_vtable(void)
     vt[17] = (void *)crate_d0;
     vt[18] = (void *)crate_yoshi;
     vt[19] = (void *)crate_egg;
-    /* the Platform tail (20..31): trapped per slot except the two Crate owns */
-    vt[20] = (void *)hmc_trap20;
+    /* the Platform tail (20..31): Actor's bodies, except the two Crate owns */
+    vt[20] = (void *)crate_v50;
     vt[21] = (void *)crate_pounded;
-    vt[22] = (void *)hmc_trap22;
-    vt[23] = (void *)hmc_trap23;
-    vt[24] = (void *)hmc_trap24;
-    vt[25] = (void *)hmc_trap25;
-    vt[26] = (void *)hmc_trap26;
-    vt[27] = (void *)hmc_trap27;
-    vt[28] = (void *)hmc_trap28;
+    vt[22] = (void *)crate_atk1;
+    vt[23] = (void *)crate_atk2;
+    vt[24] = (void *)crate_kicked;
+    vt[25] = (void *)crate_pushed;
+    vt[26] = (void *)crate_cannon;
+    vt[27] = (void *)crate_mega;
+    vt[28] = (void *)crate_under;
     vt[29] = (void *)crate_aimed;   /* Actor::OnAimedAtWithEgg, the ROM's word */
     vt[30] = (void *)port_actor_s30_base;
     vt[31] = (void *)crate_kill;
