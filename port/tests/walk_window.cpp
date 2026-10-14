@@ -16705,6 +16705,13 @@ int main(void)
                     }
                     fprintf(stderr, "[metalpoke] f%d player=%p ticks=%d\n", frame, (void *)pl, mp_ticks);
                 }
+                if (mp_frame >= 0 && frame > mp_frame && getenv("SM64DS_METAL_WATCH")) {
+                    const unsigned char *pl = (const unsigned char *)data_0209f394[(int)data_0209f250];
+                    if (pl)
+                        fprintf(stderr, "[metalwatch] f%d timer %u 6f9 %u 6fa %u 702 %u 700 %u 701 %u bodyid %u opacity %u\n", frame,
+                                (unsigned)*(const unsigned short *)(pl + 0x6ae), pl[0x6f9], pl[0x6fa], pl[0x702], pl[0x700], pl[0x701],
+                                (unsigned)pl[0x6dd], pl[0x6f5]);
+                }
             }
 
             /* ---- SM64DS_COIN_WATCH / SM64DS_COIN_POKE -------------------

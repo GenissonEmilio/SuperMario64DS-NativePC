@@ -7616,8 +7616,6 @@ struct IpGroup {
                          // carries, in that command's own space: a signature
                          // that tells two instances of one model apart
     int match;           // group index in the previous record, or -1
-    int match2;          // else the group two records back that it blinked from, or -1
-    int load_ev;         // event index of the absolute LOAD that gave it a world position
     uint32_t ev0, ev1;   // event range [ev0, ev1)
     int part;            // a particle (MTX_IDENTITY then one MULT_4x3)
     double ps;           // its billboard scale, in the view matrix's units
@@ -7630,8 +7628,6 @@ struct IpRec {
     std::vector<IpGroup> groups;
     std::vector<int> mtx;        // event index of every matrix-parameter command
     std::vector<int> ev_group;   // group of every event (-1 before the first)
-    std::vector<int> anchor;     // per event: the event of the paired sibling a blinking group rides on, -1 none
-    std::vector<int> blend2;     // per event: the event two ticks back it blends with (a group that blinks), -1 none
     std::vector<int> blend;      // per event: previous record's event, -1 none,
                                  // -2 unpaired absolute LOAD (camera-corrected)
     State start;
@@ -7647,8 +7643,8 @@ struct IpRec {
     int32_t view[12] = {};
 };
 
-IpRec g_ipr[4];
-int g_ip_w = 0, g_ip_c = -1, g_ip_p = -1, g_ip_p2 = -1;   // writing, current (N), previous (N-1), N-2
+IpRec g_ipr[3];
+int g_ip_w = 0, g_ip_c = -1, g_ip_p = -1;   // writing, current (N), previous (N-1)
 double g_ip_prev_step = 0, g_ip_prev_turn = 0;   // the camera's previous tick
 double g_ip_prev_disp[3] = {0, 0, 0};
 
@@ -7741,20 +7737,6 @@ bool ip_particle_pair() {
     static int on = -1;
     if (on < 0) {
         const char *e = getenv("SM64DS_PARTICLE_PAIR");
-        on = (e && e[0] == '0') ? 0 : 1;
-    }
-    return on != 0;
-}
-
-/* SM64DS_BLINK_PAIR=0 turns off the blink pairing (ip_match, last pass): a
-   group that was drawn two ticks ago, not last tick, and is drawn again now
-   (the metal cap's closing flicker, an invincibility blink) blends from its
-   own N-2 matrix instead of standing at tick N's place in the picture while
-   the rest of the model glides. */
-bool ip_blink_pair() {
-    static int on = -1;
-    if (on < 0) {
-        const char *e = getenv("SM64DS_BLINK_PAIR");
         on = (e && e[0] == '0') ? 0 : 1;
     }
     return on != 0;
@@ -7857,8 +7839,6 @@ void ip_build_groups(IpRec &r) {
             G.has_pos = 0; G.px = G.py = G.pz = 0;
             G.has_rel = 0; G.rx = G.ry = G.rz = 0;
             G.match = -1;
-            G.match2 = -1;
-            G.load_ev = -1;
             G.part = 0; G.ps = 0;
             G.ev0 = i; G.ev1 = i;
             r.groups.push_back(G);
@@ -7882,7 +7862,6 @@ void ip_build_groups(IpRec &r) {
                 double w[3];
                 ip_world(&r.par[e.off], e.np, r.view, w);
                 G.has_pos = 1;
-                G.load_ev = (int)i;
                 G.px = w[0]; G.py = w[1]; G.pz = w[2];
             }
             /* the placement: the first MULT / TRANS translation, which is
@@ -7962,7 +7941,7 @@ bool ip_cand_less(const IpCand &x, const IpCand &y) {
 }
 
 /* Pair C's groups with P's, then fill C.blend. Returns counts through st. */
-void ip_match(IpRec &C, const IpRec &P, const IpRec *P2, GxInterpStats *st) {
+void ip_match(IpRec &C, const IpRec &P, GxInterpStats *st) {
     std::map<uint64_t, std::vector<int>> kc, kp;
     for (size_t i = 0; i < C.groups.size(); ++i) kc[C.groups[i].key].push_back((int)i);
     for (size_t i = 0; i < P.groups.size(); ++i) kp[P.groups[i].key].push_back((int)i);
@@ -8027,71 +8006,13 @@ void ip_match(IpRec &C, const IpRec &P, const IpRec *P2, GxInterpStats *st) {
             }
         }
     }
-    /* LAST PASS: a group that blinks. Drawn two ticks ago, absent last tick,
-       drawn again now: pair it with the N-2 group of its key (closest first),
-       so it follows the model it is part of instead of standing at tick N's
-       place while the model glides. */
-    if (P2 && P2->valid && !P.snap && ip_blink_pair()) {
-        std::vector<char> pused(P2->groups.size(), 0);
-        std::map<uint64_t, std::vector<int>> k2;
-        for (size_t j = 0; j < P2->groups.size(); ++j) k2[P2->groups[j].key].push_back((int)j);
-        const double lim2 = 4.0 * tele2;
-        std::vector<IpCand> cand;
-        for (size_t i = 0; i < C.groups.size(); ++i) {
-            const IpGroup &gc = C.groups[i];
-            if (gc.match >= 0 || gc.part || !gc.has_pos) continue;
-            if (kp.find(gc.key) != kp.end() && !kp[gc.key].empty()) {
-                /* the key was drawn last tick too: this one is an extra
-                   instance (a spawn), not a blink */
-                size_t nc = kc[gc.key].size(), np = kp[gc.key].size();
-                if (np >= nc) continue;
-            }
-            auto it = k2.find(gc.key);
-            if (it == k2.end()) continue;
-            for (int j : it->second) {
-                const IpGroup &g2 = P2->groups[j];
-                if (g2.part || !g2.has_pos || g2.nmtx != gc.nmtx || g2.shape != gc.shape) continue;
-                const double d = ip_dist2(gc, g2);
-                if (d > lim2) continue;
-                IpCand c; c.d = d; c.i = (int)i; c.j = j;
-                cand.push_back(c);
-            }
-        }
-        std::sort(cand.begin(), cand.end(), ip_cand_less);
-        for (const IpCand &c : cand) {
-            if (C.groups[c.i].match2 >= 0 || pused[c.j]) continue;
-            C.groups[c.i].match2 = c.j;
-            pused[c.j] = 1;
-        }
-    }
     C.blend.assign(C.sealed, -1);
-    C.blend2.assign(C.sealed, -1);
-    C.anchor.assign(C.sealed, -1);
     for (size_t gi = 0; gi < C.groups.size(); ++gi) {
         const IpGroup &gc = C.groups[gi];
         if (gc.match >= 0) {
             const IpGroup &gp = P.groups[gc.match];
             for (int k = 0; k < gc.nmtx; ++k)
                 C.blend[C.mtx[gc.mtx0 + k]] = P.mtx[gp.mtx0 + k];
-        } else if (gc.match2 >= 0 && P2) {
-            const IpGroup &g2 = P2->groups[gc.match2];
-            for (int k = 0; k < gc.nmtx; ++k)
-                C.blend2[C.mtx[gc.mtx0 + k]] = P2->mtx[g2.mtx0 + k];
-            /* the group is part of a model that did draw last tick: ride
-               the nearest paired part of it (a rigid attachment), which keeps
-               the offset between them the tick's own at every picture */
-            if (gc.load_ev >= 0 && (C.ev[gc.load_ev].np == 12 || C.ev[gc.load_ev].np == 16)) {
-                int best = -1;
-                /* the part drawn just before it: a model draws its parts in
-                   one run, and the blinking ones follow the part they sit on */
-                for (int hi = (int)gi - 1; hi >= 0 && hi >= (int)gi - 4; --hi) {
-                    const IpGroup &gh = C.groups[hi];
-                    if (gh.match < 0 || gh.part || !gh.has_pos || gh.load_ev < 0) continue;
-                    if (C.ev[gh.load_ev].np != C.ev[gc.load_ev].np) continue;
-                    if (ip_dist2(gc, gh) < 36.0) { best = hi; break; }
-                }
-                if (best >= 0) C.anchor[gc.load_ev] = C.groups[best].load_ev;
-            }
         } else {
             for (int k = 0; k < gc.nmtx; ++k) {
                 const int ei = C.mtx[gc.mtx0 + k];
@@ -8205,64 +8126,6 @@ void ip_recamera_trans(const uint32_t *p, uint32_t *out) {
     }
 }
 
-/* G(alpha) = G_N . inv(H_N) . H_alpha for two 4x3 matrices (row vectors,
-   x' = x R + t): the blinking part G keeps its tick-N offset from its
-   sibling H, whatever H does between the ticks. */
-void ip_attach(const uint32_t *g, const uint32_t *hn, const uint32_t *hp, int np, double alpha, uint32_t *out) {
-    const int S = (np == 16) ? 4 : 3, T = (np == 16) ? 12 : 9;
-    double Rg[3][3], tg[3], Rn[3][3], tn[3], Ra[3][3], ta[3];
-    for (int r = 0; r < 3; ++r)
-        for (int k = 0; k < 3; ++k) {
-            Rg[r][k] = (int32_t)g[r * S + k] / 4096.0;
-            Rn[r][k] = (int32_t)hn[r * S + k] / 4096.0;
-            const double hpv = (int32_t)hp[r * S + k] / 4096.0;
-            Ra[r][k] = hpv * (1.0 - alpha) + Rn[r][k] * alpha;
-        }
-    for (int k = 0; k < 3; ++k) {
-        tg[k] = (int32_t)g[T + k] / 4096.0;
-        tn[k] = (int32_t)hn[T + k] / 4096.0;
-        const double hpv = (int32_t)hp[T + k] / 4096.0;
-        ta[k] = hpv * (1.0 - alpha) + tn[k] * alpha;
-    }
-    /* inverse of Rn by cofactors */
-    double det = Rn[0][0] * (Rn[1][1] * Rn[2][2] - Rn[1][2] * Rn[2][1]) -
-                 Rn[0][1] * (Rn[1][0] * Rn[2][2] - Rn[1][2] * Rn[2][0]) +
-                 Rn[0][2] * (Rn[1][0] * Rn[2][1] - Rn[1][1] * Rn[2][0]);
-    for (int i = 0; i < np; ++i) { out[i] = g[i]; g_ip_ex[i] = (double)(int32_t)g[i]; }
-    if (det > -1e-9 && det < 1e-9) return;
-    double I[3][3];
-    I[0][0] = (Rn[1][1] * Rn[2][2] - Rn[1][2] * Rn[2][1]) / det;
-    I[0][1] = (Rn[0][2] * Rn[2][1] - Rn[0][1] * Rn[2][2]) / det;
-    I[0][2] = (Rn[0][1] * Rn[1][2] - Rn[0][2] * Rn[1][1]) / det;
-    I[1][0] = (Rn[1][2] * Rn[2][0] - Rn[1][0] * Rn[2][2]) / det;
-    I[1][1] = (Rn[0][0] * Rn[2][2] - Rn[0][2] * Rn[2][0]) / det;
-    I[1][2] = (Rn[0][2] * Rn[1][0] - Rn[0][0] * Rn[1][2]) / det;
-    I[2][0] = (Rn[1][0] * Rn[2][1] - Rn[1][1] * Rn[2][0]) / det;
-    I[2][1] = (Rn[0][1] * Rn[2][0] - Rn[0][0] * Rn[2][1]) / det;
-    I[2][2] = (Rn[0][0] * Rn[1][1] - Rn[0][1] * Rn[1][0]) / det;
-    double R1[3][3], t1[3], d[3];
-    for (int r = 0; r < 3; ++r)
-        for (int k = 0; k < 3; ++k)
-            R1[r][k] = Rg[r][0] * I[0][k] + Rg[r][1] * I[1][k] + Rg[r][2] * I[2][k];
-    for (int k = 0; k < 3; ++k) d[k] = tg[k] - tn[k];
-    for (int k = 0; k < 3; ++k) t1[k] = d[0] * I[0][k] + d[1] * I[1][k] + d[2] * I[2][k];
-    auto fx = [](double v) {
-        const double sv = v * 4096.0;
-        return (uint32_t)(int32_t)(sv < 0 ? sv - 0.5 : sv + 0.5);
-    };
-    for (int r = 0; r < 3; ++r)
-        for (int k = 0; k < 3; ++k) {
-            const double v = R1[r][0] * Ra[0][k] + R1[r][1] * Ra[1][k] + R1[r][2] * Ra[2][k];
-            out[r * S + k] = fx(v);
-            g_ip_ex[r * S + k] = v * 4096.0;
-        }
-    for (int k = 0; k < 3; ++k) {
-        const double v = t1[0] * Ra[0][k] + t1[1] * Ra[1][k] + t1[2] * Ra[2][k] + ta[k];
-        out[T + k] = fx(v);
-        g_ip_ex[T + k] = v * 4096.0;
-    }
-}
-
 bool ip_proj_perspective() {
     return g.proj.m[3] != 0.0f || g.proj.m[7] != 0.0f || g.proj.m[11] != 0.0f;
 }
@@ -8273,7 +8136,7 @@ void gx_interp_arm(int on) {
     g_ip_armed = on ? 1 : 0;
     if (!g_ip_armed) {
         g_ip_rec = 0;
-        g_ip_c = g_ip_p = g_ip_p2 = -1;
+        g_ip_c = g_ip_p = -1;
     }
 }
 
@@ -8284,7 +8147,6 @@ void gx_dma_source(uint32_t src) { g_ip_dma_src = src; }
 void gx_interp_invalidate() {
     if (g_ip_c >= 0) g_ipr[g_ip_c].valid = 0;
     if (g_ip_p >= 0) g_ipr[g_ip_p].valid = 0;
-    if (g_ip_p2 >= 0) g_ipr[g_ip_p2].valid = 0;
 }
 
 int gx_interp_commit(const int32_t view[12], int snap, GxInterpStats *st) {
@@ -8351,16 +8213,14 @@ int gx_interp_commit(const int32_t view[12], int snap, GxInterpStats *st) {
         g_ip_prev_disp[0] = g_ip_prev_disp[1] = g_ip_prev_disp[2] = 0.0;
     }
     r.snap = why;
-    const IpRec *P2 = (g_ip_p >= 0 && g_ipr[g_ip_p].valid) ? &g_ipr[g_ip_p] : 0;
-    if (P && !why) ip_match(r, *P, P2, st);
+    if (P && !why) ip_match(r, *P, st);
     if (st) st->snap = why;
     /* rotate: N becomes N-1, the record just sealed becomes N, and the old
        N-1 (or whichever of the three is free) is written next */
-    g_ip_p2 = g_ip_p;
     g_ip_p = g_ip_c;
     g_ip_c = g_ip_w;
-    for (int i = 0; i < 4; ++i)
-        if (i != g_ip_c && i != g_ip_p && i != g_ip_p2) { g_ip_w = i; break; }
+    for (int i = 0; i < 3; ++i)
+        if (i != g_ip_c && i != g_ip_p) { g_ip_w = i; break; }
     g_ipr[g_ip_w].is_sealed = 0;
     return why ? 0 : 1;
 }
@@ -8460,28 +8320,7 @@ int gx_interp_begin(float alpha) {
             int ex_on = 0;
             if (ip_is_mtx(e.cmd) && e.np <= 32) {
                 const int b = C.blend.empty() ? -1 : C.blend[i];
-                const int b2 = C.blend2.empty() ? -1 : C.blend2[i];
-                const int an = C.anchor.empty() ? -1 : C.anchor[i];
-                if (an >= 0 && (e.np == 12 || e.np == 16) && e.np == C.ev[an].np && e.mode != MTX_TEX && C.blend[an] >= 0) {
-                    ip_attach(pp, &C.par[C.ev[an].off], &P.par[P.ev[C.blend[an]].off], e.np, alpha, tmp);
-                    pp = tmp;
-                    ex_on = 1;
-                } else if (b2 >= 0 && e.mode != MTX_TEX && g_ip_p2 >= 0) {
-                    /* a blinking group: from its N-2 matrix to tick N's, at
-                       the fraction of that run that this picture is at */
-                    const IpRec &P2r = g_ipr[g_ip_p2];
-                    const IpEv &pe = P2r.ev[b2];
-                    const double t2 = (1.0 + alpha) * 0.5;
-                    const int n = e.np < pe.np ? e.np : pe.np;
-                    for (int k = 0; k < e.np; ++k) {
-                        tmp[k] = k < n ? (uint32_t)ip_lerp(P2r.par[pe.off + k], pp[k], t2) : pp[k];
-                        g_ip_ex[k] = k < n ? (double)(int32_t)P2r.par[pe.off + k] * (1.0 - t2) +
-                                             (double)(int32_t)pp[k] * t2
-                                           : (double)(int32_t)pp[k];
-                    }
-                    pp = tmp;
-                    ex_on = 1;
-                } else if (b >= 0 && e.mode != MTX_TEX) {
+                if (b >= 0 && e.mode != MTX_TEX) {
                     const IpEv &pe = P.ev[b];
                     const int n = e.np < pe.np ? e.np : pe.np;
                     for (int k = 0; k < e.np; ++k) {
@@ -8620,7 +8459,7 @@ static void grid_pool_clear_hook() {
 int gx_interp_group_flags(int gi) {
     if (g_ip_c < 0 || gi < 0 || gi >= (int)g_ipr[g_ip_c].groups.size()) return -1;
     const IpGroup &G = g_ipr[g_ip_c].groups[gi];
-    return (G.part ? 1 : 0) | (G.match >= 0 ? 2 : 0) | (G.match2 >= 0 ? 4 : 0);
+    return (G.part ? 1 : 0) | (G.match >= 0 ? 2 : 0);
 }
 
 int gx_interp_group_count() {
@@ -8642,8 +8481,8 @@ void gx_interp_dump_groups(void *fp, int frame) {
             if (G.has_pos && Q.has_pos) d = std::sqrt(ip_dist2(G, Q));
         }
         const IpEv &e0 = C.ev[C.mtx[G.mtx0]];
-        std::fprintf(f, "[interpg] f%d g%zu key %010llx nmtx %d match %d b2 %d pos %.1f %.1f %.1f moved %.2f first %02x/m%d rel %d %.2f %.2f %.2f\n",
-                     frame, i, (unsigned long long)G.key, G.nmtx, G.match, G.match2,
+        std::fprintf(f, "[interpg] f%d g%zu key %010llx nmtx %d match %d pos %.1f %.1f %.1f moved %.2f first %02x/m%d rel %d %.2f %.2f %.2f\n",
+                     frame, i, (unsigned long long)G.key, G.nmtx, G.match,
                      G.px, G.py, G.pz, d, e0.cmd, e0.mode, G.has_rel, G.rx,
                      G.ry, G.rz);
     }
