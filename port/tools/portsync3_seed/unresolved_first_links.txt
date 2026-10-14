@@ -999,3 +999,9 @@ _func_020503a4  <- SoundEngine.cpp.obj
 "int __fastcall hal_cppd1_Bowser(void *,void *)" (?hal_cppd1_Bowser@@YIHPAX0@Z)  <- actor_classes_ov060.cpp.obj
 "public: int __thiscall daObjCtKaitendai_c::Behavior(void)" (?Behavior@daObjCtKaitendai_c@@QAEHXZ)  <- actor_classes_ov065.cpp.obj
 "public: int __thiscall daObjCtMecha09_c::Behavior(void)" (?Behavior@daObjCtMecha09_c@@QAEHXZ)  <- actor_classes_ov065.cpp.obj
+"public: int __thiscall fBase_c::Virtual34(unsigned int,unsigned int)" (?Virtual34@fBase_c@@QAEHII@Z)  <- lk4_solidheap_seat.cpp.obj
+"public: int __thiscall fBase_c::Virtual38(unsigned int,unsigned int)" (?Virtual38@fBase_c@@QAEHII@Z)  <- lk4_solidheap_seat.cpp.obj
+"public: int __thiscall daTBasket_c::InitResources(void)" (?InitResources@daTBasket_c@@QAEHXZ)  <- actor_classes_ov063.cpp.obj
+"public: int __thiscall daTBasket_c::Behavior(void)" (?Behavior@daTBasket_c@@QAEHXZ)  <- actor_classes_ov063.cpp.obj
+"public: int __thiscall daTBasket_c::Render(void)" (?Render@daTBasket_c@@QAEHXZ)  <- actor_classes_ov063.cpp.obj
+_func_020133bc  <- Sound.cpp.obj

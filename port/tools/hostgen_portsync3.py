@@ -36,7 +36,7 @@ ROWS[("PARK_SYMBOL", "cstd4")] = ["func_0206dac4", "func_0206dbf8", "func_0206de
 ROWS[("PARK_SYMBOL", "cstd6")] = ["func_0207037c"]
 ROWS[("PARK_SYMBOL", "SoundEngine")] = ["func_020506fc", "func_020503a4", "func_020500a4",
                                         "func_0204f194", "func_020507e0"]
-ROWS[("PARK_SYMBOL", "Sound")] = ["func_020133bc"]
+ROWS[("PARK_SYMBOL", "Sound")] = ["func_020133bc", "func_020134c8"]
 # dExtShadowModel_c::InitCuboid / InitCylinder are NOT parked: the old
 # per-function files (src/_ZN11ShadowModel10InitCuboidEv.cpp) were compiled, and
 # their ov000 data is bound by linkalias.py's same-address rule.

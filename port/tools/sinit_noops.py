@@ -75,6 +75,29 @@ def defined_in_src():
     return defs
 
 
+def defined_in_port():
+    """sinit names a port file already DEFINES by hand (hal/link21_rows.cpp keeps
+    two); a no-op for them would be a second definition."""
+    out = set()
+    pat = re.compile(r"\b(__sinit_ov\d{3}_[0-9a-f]{8})\s*\([^)]*\)\s*\{")
+    for root in ("port/hal", "port/unmatched", "port/tests", "port/ntr"):
+        for dp, _dn, fn in os.walk(os.path.join(REPO, root)):
+            for f in fn:
+                if not f.endswith((".cpp", ".c", ".inc")):
+                    continue
+                p = os.path.join(dp, f)
+                if os.path.normpath(p) == os.path.normpath(OUT):
+                    continue
+                try:
+                    text = open(p, encoding="utf-8", errors="replace").read()
+                except OSError:
+                    continue
+                text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+                text = re.sub(r"//[^\n]*", "", text)
+                out.update(pat.findall(text))
+    return out
+
+
 def config_names():
     out = {}
     for ov in range(0, 128):
@@ -91,7 +114,7 @@ def config_names():
 
 def rows():
     refs = referenced()
-    have = defined_in_src()
+    have = defined_in_src() | defined_in_port()
     cfg = config_names()
     res = []
     for name in sorted(refs):

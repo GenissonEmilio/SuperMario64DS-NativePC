@@ -3,13 +3,14 @@
  * PORTSYNC3. The second pass of hal/portsync2_data_aliases.cpp: the names the
  * first link of the 2026-10-14 main merge left unresolved, bound the same way
  * (see port/tools/dataalias.py for the rule and for what it leaves out).
- * 118 rows. GENERATED, then checked in. Includes nothing.
+ * 126 rows. GENERATED, then checked in. Includes nothing.
  */
 
 #pragma comment(linker, "/alternatename:?NUM_PATHS@@3HA=_data_020a0d8c")
 #pragma comment(linker, "/alternatename:?PATH_DEFS@@3PAUPathDef@@A=_data_020a0d84")
 #pragma comment(linker, "/alternatename:?PATH_NODES@@3PADA=_data_020a0d88")
 #pragma comment(linker, "/alternatename:?_ZTV11daPicGate_c@@3PAHA=__ZTV11daPicGate_c")
+#pragma comment(linker, "/alternatename:?_ZTV12dScMgAmida_c@@3PAHA=_data_ov006_0213b918")
 #pragma comment(linker, "/alternatename:?_ZTV15dScMgSnowball_c@@3PAPAXA=__ZTV15dScMgSnowball_c")
 #pragma comment(linker, "/alternatename:?_ZTV16dScMgSmartball_c@@3PAHA=__ZTV16dScMgSmartball_c")
 #pragma comment(linker, "/alternatename:?_ZTV17daObjWlPolelift_c@@3PAHA=__ZTV17daObjWlPolelift_c")
@@ -26,6 +27,10 @@
 #pragma comment(linker, "/alternatename:?_ZTV24cMgSmartball_propeller_c@@3PAHA=__ZTV24cMgSmartball_propeller_c")
 #pragma comment(linker, "/alternatename:?_ZTV25cMgSmartball_pushswitch_c@@3PAHA=__ZTV25cMgSmartball_pushswitch_c")
 #pragma comment(linker, "/alternatename:?_ZTV9daPiano_c@@3PAHA=__ZTV9daPiano_c")
+#pragma comment(linker, "/alternatename:?data_02086314@@3PAGA=_data_02086314")
+#pragma comment(linker, "/alternatename:?data_02086324@@3PAGA=_data_02086324")
+#pragma comment(linker, "/alternatename:?data_02086326@@3PAGA=_data_02086326")
+#pragma comment(linker, "/alternatename:?data_02086328@@3PAGA=_data_02086328")
 #pragma comment(linker, "/alternatename:?data_02086b58@@3UW2@@A=_data_02086b58")
 #pragma comment(linker, "/alternatename:?data_02086f20@@3UVector3@@A=_data_02086f20")
 #pragma comment(linker, "/alternatename:?data_02086f2c@@3UVector3@@A=_data_02086f2c")
@@ -41,6 +46,8 @@
 #pragma comment(linker, "/alternatename:?data_0209f5e8@@3UdFdColor_c@@A=_data_0209f5e8")
 #pragma comment(linker, "/alternatename:?data_0209f61c@@3UdWipe_c@@A=_data_0209f61c")
 #pragma comment(linker, "/alternatename:?data_020a0e68@@3UdaMky_M4x3@@A=_data_020a0e68")
+#pragma comment(linker, "/alternatename:?data_020a60b4@@3IA=_data_020a60b4")
+#pragma comment(linker, "/alternatename:?data_020a60b8@@3IA=_data_020a60b8")
 #pragma comment(linker, "/alternatename:?data_ov002_0210d9b8@@3USharedFilePtr@@A=_data_ov002_0210d9b8")
 #pragma comment(linker, "/alternatename:?data_ov002_0210d9c8@@3USharedFilePtr@@A=_data_ov002_0210d9c8")
 #pragma comment(linker, "/alternatename:?data_ov002_0210d9f8@@3USharedFilePtr@@A=_data_ov002_0210d9f8")
@@ -72,6 +79,7 @@
 #pragma comment(linker, "/alternatename:?data_ov006_0213ded0@@3PAPAEA=_data_ov006_0213ded0")
 #pragma comment(linker, "/alternatename:?data_ov006_0213def0@@3PAHA=_data_ov006_0213def0")
 #pragma comment(linker, "/alternatename:?data_ov006_0213e070@@3PAPAEA=_data_ov006_0213e070")
+#pragma comment(linker, "/alternatename:?data_ov006_02141730@@3PAP8dScMgBomroom_c@@AEXH@ZA=_data_ov006_02141730")
 #pragma comment(linker, "/alternatename:?data_ov021_021149a0@@3UNewsLiftFile@@A=_data_ov021_021149a0")
 #pragma comment(linker, "/alternatename:?data_ov021_021149a8@@3UNewsLiftFile@@A=_data_ov021_021149a8")
 #pragma comment(linker, "/alternatename:?data_ov021_021149b0@@3UNewsLiftFile@@A=_data_ov021_021149b0")

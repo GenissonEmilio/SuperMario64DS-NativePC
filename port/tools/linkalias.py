@@ -222,6 +222,21 @@ def main():
                 if alt and alt in defs and d1 not in defs:
                     rows.append((d1, alt, "static member versus namespace function"))
                     continue
+                mz = re.match(r"\?(_ZN\w+)@@YA", d1)
+                if mz and d1 not in defs:
+                    iname = mz.group(1)
+                    k2, parts = 3, []
+                    while k2 < len(iname) and iname[k2].isdigit():
+                        k3 = k2
+                        while iname[k3].isdigit():
+                            k3 += 1
+                        ln = int(iname[k2:k3])
+                        parts.append(iname[k3:k3 + ln])
+                        k2 = k3 + ln
+                    if len(parts) == 2 and len(statics.get((parts[0], parts[1]), [])) == 1:
+                        rows.append((d1, statics[(parts[0], parts[1])][0],
+                                     "Itanium name declared with C++ linkage, defined as a static member"))
+                        continue
                 mf = re.match(r"\?(_Z\w+)@@YA", d1)
                 if mf and ("_" + mf.group(1)) in defs and d1 not in defs:
                     rows.append((d1, "_" + mf.group(1), "flat Itanium name declared with C++ linkage"))

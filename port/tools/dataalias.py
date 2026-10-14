@@ -64,15 +64,29 @@ def main():
         if not mm:
             continue
         name, ty = mm.group(1), mm.group(2)
-        if "P8" in ty or "Q8" in ty or "::*" in line:
+        if ("P8" in ty or "Q8" in ty or "::*" in line) and not ty.startswith("PAP8"):
             skipped.append((dec, "pointer to member"))
             continue
+        # PAP8...: an ARRAY of member pointers declared `PMF tbl[]`. The ROM's own
+        # sinit fills the mount's .bss with 8-byte {code, adjust} pairs and the port
+        # seats them (hal/scene_mg_bomroom.cpp and the class's state seat), so the
+        # decorated reference binds to the mount like the TU's extern "C" tables.
         flat = "_" + name
         if flat not in defs and new_inv is not None:
             for key in new_inv.get(name, []):
                 o = old_names.get(key)
                 if o and o != name and ("_" + o) in defs:
                     flat = "_" + o
+                    break
+        if flat not in defs and new_inv is not None:
+            # the dsd-style name the mount/hal host the object under
+            # (data_ov006_0213b918 for _ZTV12dScMgAmida_c)
+            for lab, addr in new_inv.get(name, []):
+                for alt in (("_data_%s_%08x" % (lab, addr)), ("_data_%08x" % addr)):
+                    if alt in defs:
+                        flat = alt
+                        break
+                if flat in defs:
                     break
         if flat not in defs:
             skipped.append((dec, "no C definition %s in the link" % flat))
