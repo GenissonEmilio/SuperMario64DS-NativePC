@@ -44,6 +44,11 @@ dFdBrightness_c::~dFdBrightness_c() {}
 dFdColor_c::~dFdColor_c() {}
 dFdDummy_c::~dFdDummy_c() {}
 dFdWipe_c::~dFdWipe_c() {}
+// Fade members the host build leaves out (src/engine/fader/dFader_c.cpp keeps them
+// behind #ifndef _MSC_VER because they write the 2D engine). The host-side fade is
+// hal/fader_wipes.cpp; these only fill compiler vtables, like hal/shims.cpp does.
+void dFdBrightness_c::AdvanceFade() { AdvanceInterp(); }
+void dFdWipe_c::AdvanceFade() {}
 dExtSimpleModel_c::~dExtSimpleModel_c() {}
 dExtAnmModel_c::~dExtAnmModel_c() {}
 daObjYajirusi_c::~daObjYajirusi_c() {}

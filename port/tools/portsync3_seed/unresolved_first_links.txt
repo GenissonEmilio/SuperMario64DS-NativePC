@@ -986,3 +986,16 @@ _func_020506fc  <- Sound.cpp.obj
 _func_0204fed0  <- SoundEngine.cpp.obj
 _func_020503a4  <- SoundEngine.cpp.obj
 "public: virtual int __thiscall daFRing_c::InitResources(void)" (?InitResources@daFRing_c@@UAEHXZ)  <- actor_classes_runtime_spawns.cpp.obj,daFRing_c.cpp.obj
+@actorport_d16t_daKpa_c@8  <- actorport_dtor_bridge.cpp.obj
+@actorport_d16t_daKpaTail_c@8  <- actorport_dtor_bridge.cpp.obj
+@actorport_d16t_daStar_c@8  <- actorport_dtor_bridge.cpp.obj
+"public: virtual void __thiscall dFdWipe_c::AdvanceFade(void)" (?AdvanceFade@dFdWipe_c@@UAEXXZ)  <- portsync3_dtors.cpp.obj
+"public: virtual __thiscall dExtModel_c::~dExtModel_c(void)" (??1dExtModel_c@@UAE@XZ)  <- portsync3_dtors.cpp.obj
+"public: int __thiscall dMeter_c::InitResources(void)" (?InitResources@dMeter_c@@QAEHXZ)  <- sub_actors.cpp.obj
+"public: int __thiscall dMeter_c::Behavior(void)" (?Behavior@dMeter_c@@QAEHXZ)  <- sub_actors.cpp.obj
+"public: static void __cdecl dMeter_c::RenderCameraButtons(void)" (?RenderCameraButtons@dMeter_c@@SAXXZ)  <- sub_actors.cpp.obj
+"public: int __thiscall dMap_c::Render(void)" (?Render@dMap_c@@QAEHXZ)  <- sub_actors.cpp.obj
+"int __fastcall hal_cppd1_BowserTail(void *,void *)" (?hal_cppd1_BowserTail@@YIHPAX0@Z)  <- actor_classes_ov060.cpp.obj
+"int __fastcall hal_cppd1_Bowser(void *,void *)" (?hal_cppd1_Bowser@@YIHPAX0@Z)  <- actor_classes_ov060.cpp.obj
+"public: int __thiscall daObjCtKaitendai_c::Behavior(void)" (?Behavior@daObjCtKaitendai_c@@QAEHXZ)  <- actor_classes_ov065.cpp.obj
+"public: int __thiscall daObjCtMecha09_c::Behavior(void)" (?Behavior@daObjCtMecha09_c@@QAEHXZ)  <- actor_classes_ov065.cpp.obj

@@ -36,7 +36,12 @@ Three rules, tried in order, for every unresolved name of the form `_name`
      defined one. A decorated namespace/static function whose Itanium flat
      spelling (`__ZN4CP1527FlushAndInvalidateDataCacheEjj`) the port defines is
      aliased onto that flat definition. Both only when the match is unique.
-  6. THE FIXED TABLE below: linker-script symbols dsd generated for the DS
+  6. THE SAME ADDRESS UNDER ANOTHER dsd SPELLING. dsd names an address by the
+     module it picked (`data_ov000_020ad524`, `data_020ad524`, `data_ov062_...`)
+     and main's TUs and the port's mounts do not always pick the same one. A
+     name the link lacks, whose address-and-kind another definition in the link
+     already carries under exactly one other module spelling, is aliased onto it.
+  7. THE FIXED TABLE below: linker-script symbols dsd generated for the DS
      image (OVERLAY_<n>_ID, OV075_BSS_END, OV100_TEXT_START), bound to the hosts
      the port already defines under their pre-sync spellings.
 """
@@ -82,6 +87,12 @@ def main():
     faces = []
     txt = open(a.map, encoding="utf-8", errors="replace").read()
     defs = set(re.findall(r"\s(_[\w$@?]+|\?[\w$@?]+)\s+[0-9a-f]{8}\s", txt))
+    # The map of a link that already carried the previous output lists every alias
+    # as a public. A name this tool aliased is not a REAL definition, so it must
+    # not count as a candidate target (that made the second run find two).
+    if os.path.isfile(a.out):
+        prev = open(a.out, encoding="utf-8", errors="replace").read()
+        defs -= set(re.findall(r"/alternatename:([^=\s\"]+)=", prev))
     dec = collections.defaultdict(list)
     for d in defs:
         m = re.match(r"\?(\w+)@@(Y|3)", d)
@@ -115,6 +126,11 @@ def main():
                     break
             if len(parts) == 2:
                 flatit[(parts[0], parts[1])].append(d)
+    samead = collections.defaultdict(list)
+    for d in defs:
+        ms = re.match(r"_(data|func)_(?:ov\d+_)?([0-9a-f]{8})$", d)
+        if ms:
+            samead[(ms.group(1), ms.group(2))].append(d)
     rows = []
     left = []
     for line in open(a.unresolved, encoding="utf-8", errors="replace"):
@@ -123,7 +139,7 @@ def main():
             dsym = re.search(r"\((\?[\w$@?]+)\)$", s)
             dsym = dsym.group(1) if dsym else s
             m = re.match(r"\?(\w+)@(\w+)@@(YA|SA)(.*)$", dsym)
-            if m and dsym not in defs:
+            if m:
                 key = (m.group(2), m.group(1))
                 others = [d for d in freefn.get(key, []) if d != dsym]
                 if len(others) == 1 and dsym.endswith("XZ") and others[0].endswith("XZ"):
@@ -163,6 +179,12 @@ def main():
                     break
         if tgt is None and len(dec.get(n, [])) == 1:
             tgt, why = dec[n][0], "defined with C++ linkage"
+        if tgt is None:
+            ms = re.match(r"_(data|func)_(?:ov\d+_)?([0-9a-f]{8})$", s)
+            if ms:
+                cands = [d for d in samead.get((ms.group(1), ms.group(2)), []) if d != s]
+                if len(cands) == 1:
+                    tgt, why = cands[0], "same address, another module spelling"
         if tgt is None and s in FIXED and FIXED[s] in defs:
             tgt, why = FIXED[s], "linker-script symbol, hosted"
         if tgt is None:

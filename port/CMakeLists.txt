@@ -1210,6 +1210,7 @@ list(APPEND PORT_HOSTGEN_TU
     src/game/actors/d_a_obj_fl_maruta.cpp
     # PORTSYNC3: TUs with folded bodies the port line never compiled (hostgen PARK_SYMBOL).
     src/cstd6.cpp
+    src/actors/daKpa_c.cpp
     src/actors/daFRing_c.cpp
     src/actors/daObjFl_UkiKi_c.cpp)
 list(REMOVE_DUPLICATES PORT_HOSTGEN_TU)
@@ -15334,9 +15335,11 @@ set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_nknk.cpp
 #     table.
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daKpa_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daKpa_c.cpp"  # PORTSYNC3: on PORT_HOSTGEN_TU
     PROPERTIES COMPILE_DEFINITIONS
     "data_ov066_0211ac20=data_ov060_0211ac20;data_ov066_0211ac68=data_ov060_0211ac68")
 set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daKpa_c.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/daKpa_c.cpp"
     APPEND PROPERTY COMPILE_DEFINITIONS "data_ov066_0211acd0=data_ov060_0211acd0")
 
 # ---- lane cast-ov066: THREE MIS-SPELLED NAMES IN ONE OWN TU -----------------
