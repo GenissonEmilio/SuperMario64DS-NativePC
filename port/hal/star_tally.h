@@ -40,6 +40,8 @@ enum : int { kStarTallySub = 0x22, kStarTallyMax = 8, kStarTallyPayloadMax = 4 +
 // The value for the SYNG `stars` field: my own tally in a coop room, `total`
 // (the save's NumStars) everywhere else. Also runs the star watch once per call.
 int star_tally_wire_value(int total);
+// Once per frame from coop_save.cpp: the star watch (the SYNG sender is silent during the star-get cutscene).
+void star_tally_frame();
 
 // coop_save.cpp: the sub-type 0x22 payload to send now (returns its length, 0 =
 // nothing to send). `host` = this console is the room host.

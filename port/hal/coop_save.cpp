@@ -499,6 +499,7 @@ extern "C" void port_coop_save_frame(void) {
     ++g_frame;
     /* the ROM puts "ds mario" back at boot; a coop room keeps its own tag */
     if (std::memcmp(data_020a4b40, kCoopTag, 8) != 0) std::memcpy(data_020a4b40, kCoopTag, 8);
+    star_tally_frame();
     run_probe();
     run_forge();
     const ULONGLONG now = GetTickCount64();

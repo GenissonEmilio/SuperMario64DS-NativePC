@@ -164,8 +164,16 @@ int Minimap::Render()
                     if ((u16)(y + 0x10) < 0xe0) {
                         int x = g_mm_iconX[i];
                         if ((u16)(x + 0x10) < 0x120 && data_ov002_02111148 == g_mm_mapID[i]) {
-                            _ZN3OAM9RenderSubEP7OamAttriiii(
-                                _ZN3OAM20MM_VS_PLAYER_ICONS_SE[mm_icon_slot(i) * 4 + (data_0209f394[i]->unk8 & 3)],
+                            /* the adventure icon table, the one the local blip uses: the VS
+                               small-icon sprites are not loaded in an adventure level */
+                            Player *gp2 = data_0209f394[i];
+                            int gicon;
+                            if (gp2->HasNoCap() != 0)
+                                gicon = gp2->unk6D9 * 4 + 3;
+                            else
+                                gicon = gp2->unk8 + gp2->unk6D9 * 4;
+                            if (gicon < 0 || gicon > 15) gicon = 0;
+                            _ZN3OAM9RenderSubEP7OamAttriiii(_ZN3OAM15MM_PLAYER_ICONSE[gicon],
                                 x, y, -1, 2);
                         }
                     }

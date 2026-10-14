@@ -26,7 +26,7 @@ struct Entry { uint32_t key; uint16_t count; };
 
 struct State {
     bool inited, enabled, log;
-    unsigned calls;
+    unsigned calls, last_log;
     int mine;                     // my own count this session
     uint32_t key;                 // hash of my name, 0 = none
     void *seen[16]; int nseen;
@@ -63,7 +63,8 @@ void init_once() {
             if (*p == ';') ++p;
         }
     }
-    std::fprintf(stderr, "[startally] on: enabled=%d key=%08x\n", (int)g.enabled, g.key);
+    std::fprintf(stderr, "[startally] on: enabled=%d key=%08x
+", (int)g.enabled, g.key);
 }
 
 bool coop_now() {
@@ -89,7 +90,8 @@ int table_get(const Entry *t, int n, uint32_t key) {
 void add_mine(int n, const char *why) {
     g.mine += n;
     g.dirty = true;
-    std::fprintf(stderr, "[startally] +%d (%s): my own count now %d, level %d act %d\n", n, why,
+    std::fprintf(stderr, "[startally] +%d (%s): my own count now %d, level %d act %d
+", n, why,
                  g.mine, (int)data_0209f2f8, data_0209f220[0]);
 }
 
@@ -106,7 +108,11 @@ void scan() {
         for (int i = 0; i < g.nseen; ++i) seen = seen || g.seen[i] == a;
         if (nkeep < 16) keep[nkeep++] = a;
         if (seen) continue;
-        if (func_ov002_020e73ac(a) != 0) continue;       // key / special / silver: not a counted star
+        const int r4 = func_ov002_020e73ac(a);
+        if (r4 != 0) {                                  // key / special / silver / already collected: not a counted star
+            std::fprintf(stderr, "[startally] star take not counted: classifier %d, star idx %u\n", r4, (unsigned)*(const unsigned char *)(a + 0x49d));
+            continue;
+        }
         add_mine(1, "star taken by my body");
     }
     // forget stars no longer in the take state, so a new star at the same address counts again
@@ -119,9 +125,12 @@ void scan() {
 int star_tally_mine() { return g.mine; }
 void star_tally_poke() { g.dirty = true; g.last_ms = 0; }
 
-int star_tally_wire_value(int total) {
+// Once per frame (hal/coop_save.cpp's frame hook): the star watch, the proof knobs, the restore.
+// The SYNG sender is not called while a cutscene runs, and the star-get IS one, so the watch
+// cannot ride on the sender.
+void star_tally_frame() {
     init_once();
-    if (!coop_now()) return total;
+    if (!coop_now()) return;
     ++g.calls;
     for (State::Fake &f : g.fake)
         if (f.used && !f.done && g.calls >= f.frame) { f.done = true; add_mine(f.n, "fake"); }
@@ -134,8 +143,15 @@ int star_tally_wire_value(int total) {
             g.mine = t;
         }
     }
-    if (g.log && (g.calls % 600u) == 0)
+}
+
+int star_tally_wire_value(int total) {
+    init_once();
+    if (!coop_now()) return total;
+    if (g.log && (g.calls % 600u) == 0 && g.calls != g.last_log) {
+        g.last_log = g.calls;
         std::fprintf(stderr, "[startally] mine=%d total=%d\n", g.mine, total);
+    }
     return g.mine > 65535 ? 65535 : g.mine;
 }
 
@@ -188,7 +204,8 @@ bool star_tally_on_payload(bool host, int seat, const uint8_t *pl, int len) {
             table_set(g.tbl, &g.ntbl, k, c, true);
             if (before < (int)c) {
                 g.dirty = true;
-                if (g.log) std::fprintf(stderr, "[startally] host table: seat %d key %08x -> %d\n", seat, k, (int)c);
+                if (g.log) std::fprintf(stderr, "[startally] host table: seat %d key %08x -> %d
+", seat, k, (int)c);
             }
         }
     } else {
