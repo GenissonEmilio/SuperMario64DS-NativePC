@@ -45,6 +45,7 @@ int func_ov002_020d5f34(char *c, void *eater);   // victim: into the mouth (stat
 int func_ov002_020d5ed0(char *c);                // victim: mouth step 1
 int _ZN6Player7SetAnimEji5Fix12IiEj(void *c, unsigned anim, int a, int b, unsigned d);
 int func_ov002_020d5cec(char *c);                // victim: the ROM's own spit
+int func_ov002_020beb38(char *c);                // the ROM's mash count (buttons pressed this frame, stick whirl +8)
 int func_ov002_020db5f4(char *victim, char *holder);              // victim: St_Grabbed
 void func_ov002_020db54c(unsigned char *victim, int speed, int vert, short yaw);   // victim: thrown
 void _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(unsigned id, int x, int y, int z);
@@ -472,6 +473,11 @@ void eat_tick(char *me) {
             return;
         }
         if (g.frame - g.beat >= (unsigned)kAttachBeat) { g.beat = g.frame; broadcast_attach(eater, 1); }
+        if (g.log > 0 && ep && (g.frame % 20) == 0)
+            std::fprintf(stderr, "[phit] mash f=%u count=%d phase=%d eater timer=%u step=%d state_is_mouth=%d
+", g.frame,
+                         func_ov002_020beb38(me), (int)*(unsigned char *)(me + 0x6f5), (unsigned)*(unsigned short *)(ep + kHoldTimer),
+                         (int)*(unsigned char *)(me + 0x6e3), state_is(me, data_ov002_02110064) ? 1 : 0);
     }
     const EatStep step = g.hold.tick(g.frame, in);
     if (step == kEatHolding) {
@@ -597,6 +603,10 @@ void carry_v_tick(char *me) {
     }
     if (ptrf(hb, kHeldObj) != me) ptrf(hb, kHeldObj) = me;
     u32(me, kFlags) |= kFlagCarried | kFlagHeldOut;
+    if (g.log > 0 && (g.frame % 20) == 0)
+        std::fprintf(stderr, "[phit] mash f=%u count=%d step=%d state_is_grabbed=%d
+", g.frame, func_ov002_020beb38(me),
+                     (int)*(unsigned char *)(me + 0x6e3), state_is(me, data_ov002_0211016c) ? 1 : 0);
     if (!ptrf(me, kGrabbedBy) || !state_is(me, data_ov002_0211016c)) {
         // my own St_Grabbed_Main broke free (the mash count ran out: it dropped the holder and threw me off)
         std::fprintf(stderr, "[phit] GRAB: broke free after %u frames\n", g.frame - g.cv.f0);
