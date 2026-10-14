@@ -12,7 +12,7 @@
 # This is the per-symbol mount (the gate-83/gate-50 ov095/ov080 shape):
 # SCUTTLEBUG reaches its SpawnInfo, the two SharedFilePtr statics its
 # InitResources loads and CleanupResources releases (data_ov071_02122f80 model,
-# data_ov071_02122f88 anim, plus their aux blocks f90/f9c the sinit wires), the
+#  anim, plus their aux blocks f90/f9c the sinit wires), the
 # eighteen state-record SOURCE PMFs the sinit copies, and the bss state array
 # that copy lands in, all BY NAME. --pack keeps the bss run (f80..fa8) at the
 # ROM's own spacing so the SharedFilePtr handles and the state array stay one
@@ -27,7 +27,7 @@
 # stride, ADD r1,r2,r1,LSL#4) into this+0x380; two dispatchers read that stored
 # pointer as an mwcc {fn, delta} PMF -- func_ov071_021202b4 reads record+0 (the
 # state's ENTER half), func_ov071_02120278 reads record+8 (the state's MAIN
-# half, called by Behavior every frame). The bss array data_ov071_02122fa8 (0x90
+# half, called by Behavior every frame). The bss array  (0x90
 # = 9 records of 16 bytes, an {enter, main} pair each) is FILLED by
 # __sinit_ov071_021226ac, which copies the eighteen 8-byte SOURCE PMFs at
 # data_ov071_02122b60..02122be8 into it. Those SOURCE words hold DS CODE
@@ -35,7 +35,7 @@
 # with its host body BEFORE the sinit copies it -- the MontyMole/Crate treatment,
 # ROM-checked. The source PMFs and the bss destination are both in this mount.
 #
-# data_ov071_02122f80 / _02122f88 are the model and anim SharedFilePtr handles;
+#  / _02122f88 are the model and anim SharedFilePtr handles;
 # _02122f90 / _02122f9c are the aux blocks the sinit passes to their
 # constructors (0x020731dc). All bss; --pack keeps the delta-sized run contiguous.
 #
@@ -52,8 +52,8 @@ data_ov071_02122bc0 data_ov071_02122bc8 data_ov071_02122bd0 data_ov071_02122bd8
 data_ov071_02122be0 data_ov071_02122be8
 # the model/anim SharedFilePtr handles and their aux blocks (bss), and the live
 # state array the sinit fills and the seat rewrites in place
-data_ov071_02122f80 data_ov071_02122f88 data_ov071_02122f90@0x02122f90 data_ov071_02122f9c@0x02122f9c
-data_ov071_02122fa8:0x90
+  data_ov071_02122f90@0x02122f90 data_ov071_02122f9c@0x02122f9c
+
 # Two bss words __sinit_ov071_021228c8 writes that the first cut of this mount
 # missed (the link named them): the sinit's own registration pair.
 data_ov071_02123050 data_ov071_02123058
@@ -69,7 +69,7 @@ data_ov071_02122e74 data_ov071_02122e7c data_ov071_02122e84 data_ov071_02122e8c
 
 data_ov071_02123038 data_ov071_02123040 data_ov071_02123048
 data_ov071_02123064 data_ov071_02123070 data_ov071_0212307c data_ov071_02123088
-data_ov071_021230b8 data_ov071_021230c4@0x021230c4
+ data_ov071_021230c4@0x021230c4
 data_ov071_021230e0@0x021230e0 data_ov071_021230ec@0x021230ec:0x14
 # run linkw wave 5 (lane w5-A): COFFIN (64) joins. Its record is config-named
 # and `ambiguous` (the shared ov070/071/073/074 window); settled by the raw

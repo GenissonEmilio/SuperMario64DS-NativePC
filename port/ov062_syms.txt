@@ -43,10 +43,10 @@ data_ov062_0211de90:0x10 data_ov062_0211dea0:0x10 data_ov062_0211deb0:0x10
 data_ov062_0211dec0:0x10 data_ov062_0211ded0:0x10 data_ov062_0211dee0:0x10
 data_ov062_0211def0:0x10 data_ov062_0211df00:0x10 data_ov062_0211df10:0x4
 data_ov062_0211df14:0x4 data_ov062_0211df18:0x4 data_ov062_0211df1c:0xc
-data_ov062_0211df28:0x8 data_ov062_0211df30:0x8 data_ov062_0211df38:0x8
-data_ov062_0211df40:0x8 data_ov062_0211df48:0x8 data_ov062_0211df50:0x8
-data_ov062_0211df58:0x8 data_ov062_0211df60:0x8 data_ov062_0211df68:0x8
-data_ov062_0211df70:0x8 data_ov062_0211df78:0x8 data_ov062_0211df80@0x0211df80:0xc
+  
+  
+  
+  data_ov062_0211df80@0x0211df80:0xc
 data_ov062_0211df8c@0x0211df8c:0xc data_ov062_0211df98@0x0211df98:0xc data_ov062_0211dfa4@0x0211dfa4:0xc
 data_ov062_0211dfb0@0x0211dfb0:0xc data_ov062_0211dfbc@0x0211dfbc:0xc data_ov062_0211dfc8@0x0211dfc8:0xc
 data_ov062_0211dfd4@0x0211dfd4:0xc data_ov062_0211dfe0@0x0211dfe0:0xc data_ov062_0211dfec@0x0211dfec:0xc
@@ -56,12 +56,12 @@ data_ov062_0211dff8@0x0211dff8:0xc
 data_ov062_0211e044@0x0211e044:0xc data_ov062_0211e050@0x0211e050:0xc data_ov062_0211e05c@0x0211e05c:0xc
 data_ov062_0211e068@0x0211e068:0xc data_ov062_0211e074@0x0211e074:0xc data_ov062_0211e080@0x0211e080:0xc
 data_ov062_0211e08c@0x0211e08c:0xc data_ov062_0211e098@0x0211e098:0xc data_ov062_0211e0a4:0x30
-data_ov062_0211e0d4:0x8 data_ov062_0211e0dc:0x8 data_ov062_0211e0e4@0x0211e0e4:0xc
-data_ov062_0211e0f0@0x0211e0f0:0xc data_ov062_0211e0fc:0x8 data_ov062_0211e104:0x8
-data_ov062_0211e10c:0x8 data_ov062_0211e114:0x8 data_ov062_0211e11c@0x0211e11c:0xc
+  data_ov062_0211e0e4@0x0211e0e4:0xc
+data_ov062_0211e0f0@0x0211e0f0:0xc  
+  data_ov062_0211e11c@0x0211e11c:0xc
 data_ov062_0211e128@0x0211e128:0xc data_ov062_0211e134@0x0211e134:0xc data_ov062_0211e140@0x0211e140:0xc
 data_ov062_0211e14c:0x10 data_ov062_0211e15c:0x10 data_ov062_0211e16c:0x10
-data_ov062_0211e17c:0x10 data_ov062_0211e18c:0x14
+data_ov062_0211e17c:0x10 
 
 # RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
 # hosted here as a ROM data blob AND is now defined by a translation unit the

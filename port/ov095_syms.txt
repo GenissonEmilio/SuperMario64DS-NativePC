@@ -43,15 +43,15 @@ g_profile_BOMB_SEESAW:0x1c
 data_ov095_021374a0 data_ov095_021374a4 data_ov095_021374a8
 data_ov095_0213757c data_ov095_02137584 data_ov095_0213758c data_ov095_02137594
 data_ov095_0213759c
-data_ov095_02137780 data_ov095_02137788 data_ov095_02137790 data_ov095_02137798
-data_ov095_021377a0 data_ov095_021377a8 data_ov095_021377b0 data_ov095_021377b8
-data_ov095_021377c0 data_ov095_021377c8 data_ov095_021377d0 data_ov095_021377d8
-data_ov095_021377e0 data_ov095_021377e8 data_ov095_021377f0@0x021377f0 data_ov095_021377fc@0x021377fc
+   
+   
+   
+  data_ov095_021377f0@0x021377f0 data_ov095_021377fc@0x021377fc
 data_ov095_02137808@0x02137808 data_ov095_02137814@0x02137814 data_ov095_02137820@0x02137820 data_ov095_0213782c@0x0213782c
 data_ov095_02137838@0x02137838 data_ov095_02137844@0x02137844 data_ov095_02137850@0x02137850 data_ov095_0213785c@0x0213785c
 data_ov095_02137868@0x02137868 data_ov095_02137874@0x02137874 data_ov095_02137880@0x02137880 data_ov095_0213788c@0x0213788c
-data_ov095_02137898 data_ov095_021378a0 data_ov095_021378a8 data_ov095_021378b0
-data_ov095_021378b8 data_ov095_021378c0 data_ov095_021378c8@0x021378c8 data_ov095_021378d4@0x021378d4
+   
+  data_ov095_021378c8@0x021378c8 data_ov095_021378d4@0x021378d4
 data_ov095_021378e0@0x021378e0 data_ov095_021378ec@0x021378ec data_ov095_021378f8@0x021378f8 data_ov095_02137904@0x02137904
 
 # gate 173: UP_DOWN_LIFT_HMC (33). The id-33 factory record, pinned 0x1c (the
@@ -98,7 +98,7 @@ g_profile_UDLIFT_TERESA:0x1c
 # before the next table's RTTI word. Adjacency checked both ways: 0x021376cc +
 # 0x1c = 0x021376e8, clear of the vtable, and clear of the UpDownLift section
 # above (which ends at 0x02137604 + 0x1c) and of the mounted
-# data_ov095_02137780 run below.
+#  run below.
 #
 # The vtable itself stays OUT, the rule this file's header already states: it
 # is the host array hal/actor_classes_flamethrower.cpp defines and the registry

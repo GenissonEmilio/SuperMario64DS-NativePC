@@ -19,7 +19,7 @@
 # contiguous at its ROM offset, so a read past +12 still lands on ROM bytes.
 # The +4 id halfword the registry cross-checks reads 326 either way.
 #
-# data_ov020_02114af0 is HauntedChair's model SharedFilePtr, in BSS past the
+#  is HauntedChair's model SharedFilePtr, in BSS past the
 # image (the overlay image ends at 0x02114aa0); __sinit_ov020_0211372c
 # Constructs it with handle 0x2d0 at boot (port_actor_overlays_sinits), and
 # data_ov020_02114af8 is the anim-release node that sinit pairs with it. The
@@ -27,7 +27,7 @@
 # sinit, are NOT mounted: BOOK_SHOT / BOOKEND / BOOK_SHOT_SPAWNER stay skipped
 # (BookShot's state-9 behaviour calls an undecompiled ov063 function).
 g_profile_CHAIR data_ov020_021149fc
-data_ov020_02114af0 data_ov020_02114af8@0x02114af8
+ data_ov020_02114af8@0x02114af8
 
 # run linkw wave 5 (lane w5-A): the BOOK CAST joins -- Bookend (327),
 # BookShotSpawner (328), BookShot (325) and the unnamed BookSwitch record

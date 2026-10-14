@@ -35,7 +35,7 @@ _ZTS7daWbm_c:0xc _ZTI7daWbm_c:0xc g_profile_WATERBOMB:0x1c
 data_ov098_0213c78c:0x74 data_ov098_0213c800:0x8 data_ov098_0213c808:0x8
 data_ov098_0213c810:0x8 data_ov098_0213c818:0x8 data_ov098_0213c820:0xc
 data_ov098_0213c82c:0xc data_ov098_0213c838:0xc data_ov098_0213c844:0xc
-data_ov098_0213c850:0x8 data_ov098_0213c858:0x8 data_ov098_0213c860@0x0213c860:0xc
-data_ov098_0213c86c@0x0213c86c:0xc data_ov098_0213c878:0x70 data_ov098_0213c8e8:0x8
-data_ov098_0213c8f0@0x0213c8f0:0xc data_ov098_0213c8fc:0x20 data_ov098_0213c91c:0x8
-data_ov098_0213c924@0x0213c924:0xc data_ov098_0213c930:0x30
+  data_ov098_0213c860@0x0213c860:0xc
+data_ov098_0213c86c@0x0213c86c:0xc  
+data_ov098_0213c8f0@0x0213c8f0:0xc  
+data_ov098_0213c924@0x0213c924:0xc 

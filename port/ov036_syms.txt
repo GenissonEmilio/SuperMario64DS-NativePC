@@ -244,7 +244,7 @@
 # rather than two the emitter happens to place adjacently, and the four
 # interiors are dropped. Nothing in ov036's relocs and nothing in src/ names
 # any of the four:
-#   data_ov036_021140b4:0x8   drops data_ov036_021140b8   8-byte SharedFilePtr
+#      drops data_ov036_021140b8   8-byte SharedFilePtr
 #   data_ov036_021140f4:0x8   drops data_ov036_021140f8   8-byte SharedFilePtr
 #   data_ov036_02114104:0x8   drops data_ov036_02114108   8-byte SharedFilePtr
 #   data_ov036_02114178:0xc   drops data_ov036_0211417c   12-byte chain node
@@ -303,11 +303,11 @@ _ZTI16daObjRc_Dorifu_c _ZTS16daObjRc_Dorifu_c
 _ZTI15daObjRcCarpet_c
 _ZTS15daObjRcCarpet_c
 data_ov036_02114030@0x02114030
-data_ov036_0211403c@0x0211403c data_ov036_02114048 data_ov036_02114050
-data_ov036_02114058@0x02114058 data_ov036_02114064@0x02114064 data_ov036_02114070
+data_ov036_0211403c@0x0211403c  
+data_ov036_02114058@0x02114058 data_ov036_02114064@0x02114064 
 data_ov036_02114078@0x02114078
-data_ov036_02114094@0x02114094 data_ov036_021140a0@0x021140a0 data_ov036_021140ac
-data_ov036_021140b4:0x8 data_ov036_021140bc@0x021140bc data_ov036_021140c8@0x021140c8
+data_ov036_02114094@0x02114094 data_ov036_021140a0@0x021140a0 
+ data_ov036_021140bc@0x021140bc data_ov036_021140c8@0x021140c8
 
 
 

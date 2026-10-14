@@ -47,7 +47,7 @@ _ZTI10daObjKey_c:0xc _ZTS10daObjKey_c:0x10 g_profile_OBJ_KEY:0x1c g_profile_LAST
 data_ov089_02132c80@0x02132c80:0xc
 data_ov089_02132c8c@0x02132c8c:0xc data_ov089_02132c98@0x02132c98:0xc
 data_ov089_02132cb0@0x02132cb0:0xc data_ov089_02132cbc@0x02132cbc:0xc data_ov089_02132cc8@0x02132cc8:0xc
-data_ov089_02132cd4@0x02132cd4:0xc data_ov089_02132ce0@0x02132ce0:0xc data_ov089_02132cec:0x54
+data_ov089_02132cd4@0x02132cd4:0xc data_ov089_02132ce0@0x02132ce0:0xc 
 
 # RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
 # hosted here as a ROM data blob AND is now defined by a translation unit the

@@ -288,7 +288,7 @@
 #                                 514, 54c, 584 594, 5cc). Each sinit writes
 #                                 exactly TWO 8-byte records into its cell, so
 #                                 0x10 is exactly right for seven of them
-#   data_ov090_021345cc           0x14 inferred (last .bss symbol, so the
+#              0x14 inferred (last .bss symbol, so the
 #                                 fallback is the section end 0x021345e0) where
 #                                 only 0x10 is written. OVERSIZED, HARMLESS --
 #                                 the ov077 data_ov077_02127d18 shape. Left
@@ -333,10 +333,10 @@ g_profile_SHARK
 data_ov090_021344a8@0x021344a8 data_ov090_021344b4@0x021344b4 data_ov090_021344c0@0x021344c0
 data_ov090_021344cc@0x021344cc data_ov090_021344d8@0x021344d8
 
-data_ov090_02134534@0x02134534 data_ov090_02134540@0x02134540 data_ov090_0213454c data_ov090_0213455c
-data_ov090_02134564 data_ov090_0213456c@0x0213456c data_ov090_02134578@0x02134578 data_ov090_02134584
-data_ov090_02134594 data_ov090_021345a4 data_ov090_021345ac data_ov090_021345b4@0x021345b4
-data_ov090_021345c0@0x021345c0 data_ov090_021345cc
+data_ov090_02134534@0x02134534 data_ov090_02134540@0x02134540 data_ov090_0213454c 
+ data_ov090_0213456c@0x0213456c data_ov090_02134578@0x02134578 
+   data_ov090_021345b4@0x021345b4
+data_ov090_021345c0@0x021345c0 
 
 # RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
 # hosted here as a ROM data blob AND is now defined by a translation unit the

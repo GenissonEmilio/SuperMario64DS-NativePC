@@ -107,21 +107,21 @@ g_profile_PIANO
 # (built by the four matched sinits), the furniture file table, and
 # MadPiano's three gPiano* objects (data_ov063_0211ef80/ef88/ef90 under
 # include/MadPianoResources.h's role names).
-data_ov063_0211edc4 data_ov063_0211edcc
-data_ov063_0211edd4 data_ov063_0211eddc data_ov063_0211ede4
-data_ov063_0211edec data_ov063_0211edf4
+ 
+  
+ 
 data_ov063_0211ee14@0x0211ee14
 data_ov063_0211ee2c@0x0211ee2c data_ov063_0211ee38@0x0211ee38 data_ov063_0211ee44@0x0211ee44
 data_ov063_0211ee50@0x0211ee50 data_ov063_0211ee5c@0x0211ee5c data_ov063_0211ee68@0x0211ee68
 
-data_ov063_0211ee98 data_ov063_0211eea0 data_ov063_0211eea8
-data_ov063_0211eeb0 data_ov063_0211eeb8 data_ov063_0211eec0
-data_ov063_0211eec8 data_ov063_0211eed0 data_ov063_0211eed8@0x0211eed8
+  
+  
+  data_ov063_0211eed8@0x0211eed8
 data_ov063_0211eee4@0x0211eee4 data_ov063_0211eef0@0x0211eef0 data_ov063_0211eefc@0x0211eefc
 data_ov063_0211ef08@0x0211ef08 data_ov063_0211ef14@0x0211ef14 data_ov063_0211ef20@0x0211ef20
-data_ov063_0211ef2c@0x0211ef2c data_ov063_0211ef38 data_ov063_0211ef58
-data_ov063_0211ef60 data_ov063_0211ef68@0x0211ef68 data_ov063_0211ef74@0x0211ef74
-data_ov063_0211ef80 data_ov063_0211ef88 data_ov063_0211ef90
+data_ov063_0211ef2c@0x0211ef2c data_ov063_0211ef38 
+ data_ov063_0211ef68@0x0211ef68 data_ov063_0211ef74@0x0211ef74
+  
 data_ov063_0211ef98@0x0211ef98 data_ov063_0211efa4@0x0211efa4 data_ov063_0211efb0@0x0211efb0
 data_ov063_0211efbc:0x24
 

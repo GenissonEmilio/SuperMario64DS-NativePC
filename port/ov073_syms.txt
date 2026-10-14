@@ -145,9 +145,9 @@ data_ov073_021231bc data_ov073_021231c0 data_ov073_021231c4
 # 0x354..0x35b) and their eight destructor-chain nodes (0x021232c0..0x02123314),
 # then his sixteen two-record state tables (0x02123320..0x02123420) -- the
 # pointers ChiefChilly::Behavior compares its current state against by name.
-data_ov073_02123280 data_ov073_02123288 data_ov073_02123290
-data_ov073_02123298 data_ov073_021232a0 data_ov073_021232a8
-data_ov073_021232b0 data_ov073_021232b8 data_ov073_021232c0@0x021232c0
+  
+  
+  data_ov073_021232c0@0x021232c0
 data_ov073_021232cc@0x021232cc data_ov073_021232d8@0x021232d8 data_ov073_021232e4@0x021232e4
 data_ov073_021232f0@0x021232f0 data_ov073_021232fc@0x021232fc data_ov073_02123308@0x02123308
 data_ov073_02123314@0x02123314 data_ov073_02123320 data_ov073_02123330
@@ -160,12 +160,12 @@ data_ov073_021233f0 data_ov073_02123400 data_ov073_02123410
 # CccArena::InitResources post-increments for ids 172 and 171; then CccArena's
 # six SharedFilePtrs (files 0x5e7..0x5ec), their six chain nodes, and the four
 # two-record state tables __sinit_ov073_02122d48 fills.
-data_ov073_02123420 data_ov073_02123424 data_ov073_02123428
-data_ov073_02123430 data_ov073_02123438 data_ov073_02123440
-data_ov073_02123448 data_ov073_02123450 data_ov073_02123458@0x02123458
+data_ov073_02123420 data_ov073_02123424 
+  
+  data_ov073_02123458@0x02123458
 data_ov073_02123464@0x02123464 data_ov073_02123470@0x02123470 data_ov073_0212347c@0x0212347c
 data_ov073_02123488@0x02123488 data_ov073_02123494@0x02123494
-data_ov073_021234b0 data_ov073_021234c0 data_ov073_021234d0
+  
 
 # RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
 # hosted here as a ROM data blob AND is now defined by a translation unit the

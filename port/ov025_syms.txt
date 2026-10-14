@@ -211,7 +211,7 @@ data_ov025_02113814
 #   from:0x021113c4 kind:load to:0x02113a60 module:overlay(25)
 #     src/actors/daDgr_c.cpp spells _ZTS16daObjRcBuranko_c
 data_ov025_02113a70@0x02113a70
-data_ov025_02113a7c@0x02113a7c data_ov025_02113a88 data_ov025_02113a90
+data_ov025_02113a7c@0x02113a7c  
 data_ov025_02113a98@0x02113a98 data_ov025_02113aa4@0x02113aa4
 
 data_ov025_02113ac0@0x02113ac0 data_ov025_02113acc@0x02113acc

@@ -59,9 +59,9 @@ g_profile_PENGUIN_MOTHER:0x1c
 #
 # ---- SkiLift's bss window (the sinit-built SharedFilePtrs + the CLPS block) -
 # __sinit_ov018_02112c14 is SELF-CONTAINED (only ov018 symbols; verified by
-# reading its body) and constructs two SharedFilePtrs -- data_ov018_02113bc8
+# reading its body) and constructs two SharedFilePtrs -- 
 # (Model, InitResources' _ZN5Model8LoadFileER13SharedFilePtr arg) and
-# data_ov018_02113bc0 (Clsn/KCL, InitResources' _ZN7dBgW_Kc8LoadFileER13SharedFilePtr
+#  (Clsn/KCL, InitResources' _ZN7dBgW_Kc8LoadFileER13SharedFilePtr
 # arg) -- plus their two destruct-node cells at 02113bdc/02113bd0 (void*[3],
 # the func_020731dc shape, 12 bytes each by next-symbol delta). data_ov018_02112f48
 # is the CLPS_Block MovingMeshCollider::SetFile consumes. It holds TWO rows
@@ -71,8 +71,8 @@ g_profile_PENGUIN_MOTHER:0x1c
 # names 0x02112f58 (row 1) as an ambiguous symbol that nothing in ov018
 # references; the pack then padded row 1 with a zeroed gap and the ski lift's
 # row-1 triangles read an all-zero surface in place of the ROM's.
-data_ov018_02113bc8 data_ov018_02113bdc@0x02113bdc
-data_ov018_02113bc0 data_ov018_02113bd0@0x02113bd0
+ data_ov018_02113bdc@0x02113bdc
+ data_ov018_02113bd0@0x02113bd0
 data_ov018_02112f48:0x20
 #
 # ---- MotherPenguin's OWN vtable, _ZTV7SkiLift == _ZTV10daPgMthr_c at

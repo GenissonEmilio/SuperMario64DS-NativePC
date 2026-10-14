@@ -15,7 +15,7 @@
 # g_profile_SLIDER_MANAGER is pinned to the record's real 0x1c so the +4 id
 # halfword the registry cross-checks reads out of the right bytes (356 = 0x164).
 #
-# data_ov019_021135d8 and data_ov019_021135cc are the two bss statics
+#  and data_ov019_021135cc are the two bss statics
 # __sinit_ov019_02112b14 (this class's own sinit, matched src) writes and
 # IceSlideManager::InitResources reads back; emitted zeroed here, seeded by the
 # sinit at boot (hal/actor_overlays.cpp). The OTHER sinit,
@@ -23,7 +23,7 @@
 # is deliberately not run -- it constructs a dozen SharedFilePtrs that class needs
 # and this one does not.
 g_profile_SLIDER_MANAGER:0x1c
-data_ov019_021135d8 data_ov019_021135cc@0x021135cc
+ data_ov019_021135cc@0x021135cc
 # run rel0215 wave 3 (lane w3-e): RACING PENGUIN's mount. Gate 142's three
 # symbols above are IceSlideManager's; these are 259's, and they are what its
 # static initialiser builds and its bodies read BY NAME. Additive only.

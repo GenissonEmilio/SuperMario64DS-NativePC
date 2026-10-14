@@ -163,7 +163,7 @@
 #     ov070's) cite addresses inside it. Mounted unpinned, the sinit's own
 #     writes run 0x44 bytes past the host object, over whatever the linker put
 #     next, and the last four states would dispatch through it.
-#     FIX: data_ov074_021230f8:0x90, and all three left out. Leaving them in
+#     FIX:  and all three left out. Leaving them in
 #     is not merely redundant: ovdata.py --pack REFUSES the layout ("overlaps
 #     the symbol ending at"), which is the loud failure this pin is meant to
 #     produce if anyone re-adds them.
@@ -241,14 +241,14 @@ data_ov074_02122ddc@0x02122ddc data_ov074_02122de4@0x02122de4 data_ov074_02122de
 data_ov074_02122e0c data_ov074_02122e14@0x02122e14
 data_ov074_02122e1c@0x02122e1c data_ov074_02122e24 _ZTI12daKuriKing_c _ZTS12daKuriKing_c
 data_ov074_02122e4c data_ov074_02122e5c g_profile_KURIKING g_profile_KURIKING_VANISH
-data_ov074_02122f34 data_ov074_02122f38 data_ov074_02122f3c data_ov074_02122fe0
-data_ov074_02122fe8 data_ov074_02122ff0 data_ov074_02122ff8 data_ov074_02123000
-data_ov074_02123008 data_ov074_02123010 data_ov074_02123018 data_ov074_02123020
-data_ov074_02123028 data_ov074_02123030 data_ov074_02123038 data_ov074_02123040
-data_ov074_02123048 data_ov074_02123050@0x02123050 data_ov074_0212305c@0x0212305c data_ov074_02123068@0x02123068:0xc
+data_ov074_02122f34 data_ov074_02122f38 data_ov074_02122f3c 
+   
+   
+   
+ data_ov074_02123050@0x02123050 data_ov074_0212305c@0x0212305c data_ov074_02123068@0x02123068:0xc
 data_ov074_02123074@0x02123074 data_ov074_02123080@0x02123080 data_ov074_0212308c@0x0212308c data_ov074_02123098@0x02123098
 data_ov074_021230a4@0x021230a4 data_ov074_021230b0@0x021230b0 data_ov074_021230bc@0x021230bc data_ov074_021230c8@0x021230c8
-data_ov074_021230d4@0x021230d4 data_ov074_021230e0@0x021230e0 data_ov074_021230ec@0x021230ec data_ov074_021230f8:0x90
+data_ov074_021230d4@0x021230d4 data_ov074_021230e0@0x021230e0 data_ov074_021230ec@0x021230ec 
 
 # RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
 # hosted here as a ROM data blob AND is now defined by a translation unit the

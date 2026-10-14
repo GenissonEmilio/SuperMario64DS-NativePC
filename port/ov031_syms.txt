@@ -83,8 +83,8 @@
 # bytes under its own name. It is LINKED instead, from src/, and run out of the
 # fill's bring-up beside the ov013/ov045 blocks; it builds the four
 # SharedFilePtrs the InitResources switch reads:
-#   data_ov031_02111a08 <- file 1565      data_ov031_02111a00 <- file 1566
-#   data_ov031_02111a10 <- file 1569      data_ov031_02111a18 <- file 1564
+#    <- file 1565       <- file 1566
+#    <- file 1569       <- file 1564
 # and registers each on the destructor chain through a 12-byte node. dsd's
 # ".p__sinit_ov031_02111434" .ctor entry is left out as well (not a C
 # identifier).
@@ -113,6 +113,6 @@ g_profile_HS_Y_STAR:0x1c g_profile_HS_B_STAR:0x1c
 # ---- .bss 0x02111a00..0x02111a60 ------------------------------------------
 # Four SharedFilePtrs (8 bytes each, sized by the delta rule) and their four
 # destructor-chain nodes (12 bytes each; the last one pinned, see above).
-data_ov031_02111a00 data_ov031_02111a08 data_ov031_02111a10
-data_ov031_02111a18 data_ov031_02111a20@0x02111a20 data_ov031_02111a2c@0x02111a2c
+  
+ data_ov031_02111a20@0x02111a20 data_ov031_02111a2c@0x02111a2c
 data_ov031_02111a38@0x02111a38 data_ov031_02111a44@0x02111a44:0xc

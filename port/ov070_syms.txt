@@ -153,7 +153,7 @@ data_ov070_021234c4 data_ov070_021234dc
 data_ov070_02123538@0x02123538 data_ov070_02123544@0x02123544
 data_ov070_02123550@0x02123550 data_ov070_0212355c@0x0212355c data_ov070_02123568@0x02123568
 data_ov070_02123574@0x02123574 data_ov070_02123580@0x02123580
-data_ov070_021235bc data_ov070_021235cc
+ 
 
 # ---- .bss: Amp's (models 0x2b1/0x2b3, anim 0x2b2/0x2b5, texseq 0x2b4,
 # the {0,-0x28000,0} vector and its chain node), then FlameChomp's (model

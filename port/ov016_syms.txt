@@ -106,20 +106,20 @@ data_ov016_02113bec:0x20
 # __sinit_ov016_021136ec -> UNAGI: four anim SharedFilePtrs (d20/d28/d30/d38)
 # with their four destruct-node cells (d40/d58/d64/d70), plus the five PMF
 # dispatch cells (d7c/d8c/d9c/dac/dbc) and the spare d4c.
-data_ov016_02114d20 data_ov016_02114d28 data_ov016_02114d30 data_ov016_02114d38
+   
 data_ov016_02114d40@0x02114d40 data_ov016_02114d58@0x02114d58 data_ov016_02114d64@0x02114d64
 data_ov016_02114d70@0x02114d70 data_ov016_02114d7c data_ov016_02114d8c data_ov016_02114d9c
 data_ov016_02114dac data_ov016_02114dbc
 # __sinit_ov016_021138bc -> SHIP_UP: four SharedFilePtrs (dcc/dd4/ddc/de4) and
 # their four destruct-node cells (dec/df8/e04/e10).
-data_ov016_02114dcc data_ov016_02114dd4 data_ov016_02114ddc data_ov016_02114de4
+   
 data_ov016_02114dec@0x02114dec data_ov016_02114df8@0x02114df8 data_ov016_02114e04@0x02114e04 data_ov016_02114e10@0x02114e10
 # __sinit_ov016_02113978 -> ROCK_PILLAR: two SharedFilePtrs (e1c/e24) + two
 # destruct-node cells (e2c/e38).
 data_ov016_02114e1c@0x02114e1c data_ov016_02114e24@0x02114e24 data_ov016_02114e2c@0x02114e2c data_ov016_02114e38@0x02114e38
 # __sinit_ov016_021139e4 -> SHIP_DOWN: two SharedFilePtrs (e44/e4c) + two
 # destruct-node cells (e54/e60).
-data_ov016_02114e44 data_ov016_02114e4c data_ov016_02114e54@0x02114e54 data_ov016_02114e60@0x02114e60
+  data_ov016_02114e54@0x02114e54 data_ov016_02114e60@0x02114e60
 # __sinit_ov016_02113a50 -> FLOAT_ON_WATER_PLATFORM_JRB / SLIDING_BOX: two
 # SharedFilePtrs (e6c model, e74 collision) + two destruct-node cells (e7c/e88).
 data_ov016_02114e7c@0x02114e7c data_ov016_02114e88@0x02114e88

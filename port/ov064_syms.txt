@@ -52,18 +52,18 @@ data_ov064_0211adbc data_ov064_0211bdac
 # __sinit_ov064_0211ae00 -> BULLY: five SharedFilePtrs (0x0211c660/68/70/78/80)
 # and their five destruct-node cells (0x0211c688/94/a0/ac/b8). Sized by the ROM
 # next-symbol deltas; all bss, so the mount is the ROM's own zeroed storage.
-data_ov064_0211c660 data_ov064_0211c668 data_ov064_0211c670 data_ov064_0211c678
-data_ov064_0211c680 data_ov064_0211c688@0x0211c688 data_ov064_0211c694@0x0211c694 data_ov064_0211c6a0@0x0211c6a0
+   
+ data_ov064_0211c688@0x0211c688 data_ov064_0211c694@0x0211c694 data_ov064_0211c6a0@0x0211c6a0
 data_ov064_0211c6ac@0x0211c6ac data_ov064_0211c6b8@0x0211c6b8
 # __sinit_ov064_0211aee0 -> BIG_BULLY: five SharedFilePtrs (0x0211c6c4/cc/d4/dc/e4)
 # and their five destruct-node cells (0x0211c6ec/f8/704/710/71c).
-data_ov064_0211c6c4 data_ov064_0211c6cc data_ov064_0211c6d4 data_ov064_0211c6dc
-data_ov064_0211c6e4 data_ov064_0211c6ec@0x0211c6ec data_ov064_0211c6f8@0x0211c6f8 data_ov064_0211c704@0x0211c704
+   
+ data_ov064_0211c6ec@0x0211c6ec data_ov064_0211c6f8@0x0211c6f8 data_ov064_0211c704@0x0211c704
 data_ov064_0211c710@0x0211c710 data_ov064_0211c71c@0x0211c71c
 # __sinit_ov064_0211b0e4 -> ROTATING_FIREBAR: the model SharedFilePtr (0x0211c790)
 # and the collider one (0x0211c798), plus their two destruct-node cells
 # (0x0211c7a0, 0x0211c7ac).
-data_ov064_0211c790 data_ov064_0211c798 data_ov064_0211c7a0@0x0211c7a0 data_ov064_0211c7ac@0x0211c7ac
+  data_ov064_0211c7a0@0x0211c7a0 data_ov064_0211c7ac@0x0211c7ac
 #
 # NOT RUN, so their statics stay OUT: the other eight ov064 sinits
 # (0211ae00's neighbours 0211afc0/b078/b150/b1d4/b4dc/b518/b59c/b698) construct
@@ -93,7 +93,7 @@ data_ov064_0211baac
 _ZTV14daObjFl_Coin_c
 data_ov064_0211bf68 data_ov064_0211bf70 data_ov064_0211bf78 data_ov064_0211bf80 data_ov064_0211bf88 data_ov064_0211bf90
 data_ov064_0211c2dc data_ov064_0211c2e4
-data_ov064_0211c7d8 data_ov064_0211c7e0 data_ov064_0211c7e8 data_ov064_0211c7f0 data_ov064_0211c7f8 data_ov064_0211c808 data_ov064_0211c810 data_ov064_0211c818 data_ov064_0211c820 data_ov064_0211c828 data_ov064_0211c830 data_ov064_0211c838 data_ov064_0211c840 data_ov064_0211c848 data_ov064_0211c850@0x0211c850 data_ov064_0211c85c@0x0211c85c data_ov064_0211c868@0x0211c868 data_ov064_0211c874@0x0211c874 data_ov064_0211c880@0x0211c880 data_ov064_0211c88c@0x0211c88c data_ov064_0211c898@0x0211c898 data_ov064_0211c8a4@0x0211c8a4 data_ov064_0211c8b0@0x0211c8b0 data_ov064_0211c8bc@0x0211c8bc data_ov064_0211c8c8@0x0211c8c8 data_ov064_0211c8d4@0x0211c8d4 data_ov064_0211c8e0@0x0211c8e0 data_ov064_0211c8ec@0x0211c8ec data_ov064_0211c8f8@0x0211c8f8 data_ov064_0211c934
+              data_ov064_0211c850@0x0211c850 data_ov064_0211c85c@0x0211c85c data_ov064_0211c868@0x0211c868 data_ov064_0211c874@0x0211c874 data_ov064_0211c880@0x0211c880 data_ov064_0211c88c@0x0211c88c data_ov064_0211c898@0x0211c898 data_ov064_0211c8a4@0x0211c8a4 data_ov064_0211c8b0@0x0211c8b0 data_ov064_0211c8bc@0x0211c8bc data_ov064_0211c8c8@0x0211c8c8 data_ov064_0211c8d4@0x0211c8d4 data_ov064_0211c8e0@0x0211c8e0 data_ov064_0211c8ec@0x0211c8ec data_ov064_0211c8f8@0x0211c8f8 
 # run linkw wave 8 (lane w8-packs): the five ov064 CLPS BLOCKS ov022's Lethal
 # Lava Land cast passes to MovingMeshCollider::SetFile. Additive only -- no
 # existing line is touched. Each is reached from an ov022 InitResources (or,
@@ -167,7 +167,7 @@ data_ov064_0211bb8c
 # 0x0211c778 (natural delta 0xc) shows. 0xc runs to 0x0211c790, which is where
 # the next mounted symbol (ROTATING_FIREBAR's model SFP) starts, so the pin
 # abuts rather than overlaps. The ov045 data_ov045_02113264 treatment.
-data_ov064_0211c768 data_ov064_0211c770 data_ov064_0211c778@0x0211c778
+  data_ov064_0211c778@0x0211c778
 data_ov064_0211c784@0x0211c784:0xc
 
 # ==== RUN LINKW WAVE 12 (lane w12): CLAM (315) ==============================

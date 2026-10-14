@@ -53,7 +53,7 @@
 #
 # ==== THE ELEVEN-STATE POINTER-TO-MEMBER TABLE, AND ITS T3 PIN ============
 #
-# data_ov034_02114538 is an ELEVEN-ENTRY table of TWENTY-byte records:
+#  is an ELEVEN-ENTRY table of TWENTY-byte records:
 #   +0x00  the ENTER pmf, an 8-byte mwcc {function, delta} pair
 #   +0x08  the TICK pmf,  the same shape
 #   +0x10  a pointer to the state's own NAME STRING
@@ -106,7 +106,7 @@
 #     vtable's own offset-to-top and typeinfo words at 0x021144b4/0x021144b8.
 #     A record is 0x1c (the ov032/ov033 measurement), and pinning it leaves
 #     those two words to --pack's padding where they belong.
-#   data_ov034_02114538:0xdc  THE STATE TABLE, eleven entries of twenty bytes.
+#     THE STATE TABLE, eleven entries of twenty bytes.
 #     Natural 0x14 -- dsd named 0x0211454c, 0x02114568, 0x02114598 and
 #     0x021145e4 inside it, so the landing reads ONE ENTRY OF ELEVEN. Unpinned,
 #     every state past DEMOWAIT would be dispatched out of whatever the host
@@ -116,7 +116,7 @@
 # .bss -- eight destructor chain nodes and one SharedFilePtr dsd sized short.
 # func_020731dc writes THREE words through its node argument
 # (src/func_020731dc.c), so every node is 0xc; a SharedFilePtr is 8.
-#   data_ov034_02114628:0x8   natural 0x4  (SharedFilePtr)
+#      natural 0x4  (SharedFilePtr)
 #   data_ov034_021147bc:0xc   natural 0x8  (chain node)
 #   data_ov034_0211481c:0xc   natural 0x8
 #   data_ov034_02114858:0xc   natural 0x8
@@ -179,7 +179,7 @@
 #
 #   src/__sinit_ov022_021130bc.c  (OV022 0x021130bc, size 0x3c, body
 #     [0x021130bc, 0x021130f8). In NO slice today.) It spells
-#     data_ov034_0211442c and data_ov034_02114690 for OV022's own objects at
+#     data_ov034_0211442c and  for OV022's own objects at
 #     those shared-window addresses. Inside the sinit's own body there is ONE
 #     site each -- the loads at 0x021130ec and 0x021130f4 -- and ov022's relocs
 #     resolve both to module:overlay(22). 0x02114690 has a SECOND site at
@@ -245,21 +245,21 @@ _ZTI12daHanachan_c _ZTS12daHanachan_c data_ov034_02114488
 g_profile_HANACHAN:0x1c
 
 # ---- .data: the eleven-entry state table ---------------------------------
-data_ov034_02114538:0xdc
+
 
 # ---- .bss: thirty-five SharedFilePtrs ------------------------------------
-data_ov034_02114620 data_ov034_02114628:0x8 data_ov034_02114630
-data_ov034_02114638 data_ov034_02114640 data_ov034_02114648
-data_ov034_02114650 data_ov034_02114658 data_ov034_02114660
-data_ov034_02114668 data_ov034_02114670 data_ov034_02114678
-data_ov034_02114680 data_ov034_02114688 data_ov034_02114690
-data_ov034_02114698 data_ov034_021146a0 data_ov034_021146a8
-data_ov034_021146b0 data_ov034_021146b8 data_ov034_021146c0
-data_ov034_021146c8 data_ov034_021146d0 data_ov034_021146d8
-data_ov034_021146e0 data_ov034_021146e8 data_ov034_021146f0
-data_ov034_021146f8 data_ov034_02114700 data_ov034_02114708
-data_ov034_02114710 data_ov034_02114718 data_ov034_02114720
-data_ov034_02114728 data_ov034_02114730
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+ 
 
 # ---- .bss: thirty-five destructor chain nodes ----------------------------
 data_ov034_02114738@0x02114738 data_ov034_02114744@0x02114744 data_ov034_02114750@0x02114750

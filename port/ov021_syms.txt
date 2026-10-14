@@ -97,7 +97,7 @@ data_ov021_021149c0 data_ov021_021149cc data_ov021_021149d8 data_ov021_021149e4
 data_ov021_021149f0 data_ov021_021149fc data_ov021_02114a08 data_ov021_02114a14
 data_ov021_02114a20 data_ov021_02114a2c data_ov021_02114a38 data_ov021_02114a44
 data_ov021_02114a58@0x02114a58
-data_ov021_02114a64 data_ov021_02114a6c data_ov021_02114a74@0x02114a74
+  data_ov021_02114a74@0x02114a74
 data_ov021_02114a80@0x02114a80:0xc
 
 # RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was

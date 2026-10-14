@@ -212,7 +212,7 @@
 #       as data[i] for i = 0..2, so the READ runs 8 bytes off a 4-byte host
 #       object. The ov035 lane pinned its own 0x02112ca4 to 0xc for the same
 #       reason at the same shared-window address.
-#   data_ov027_02113c10:0x8   gap 0x4   drops data_ov027_02113c14
+#      gap 0x4   drops data_ov027_02113c14
 #       An 8-byte SharedFilePtr, built by __sinit_ov027_02112d1c with asset
 #       0x2e4. SharedFilePtr::Construct WRITES 8 bytes.
 #   data_ov027_02113ccc:0xc   gap 0x8   drops data_ov027_02113cd4
@@ -282,10 +282,10 @@ data_ov027_021139dc _ZTI10daPgDfdr_c _ZTS10daPgDfdr_c
 data_ov027_021139f4 g_profile_PENGUIN_DEFENDER data_ov027_02113a1c
 data_ov027_02113a20 data_ov027_02113a24:0x2 data_ov027_02113a26
 data_ov027_02113a50 data_ov027_02113a74 _ZTI10daSnmBth_c
-_ZTS10daSnmBth_c g_profile_SNOWMAN_BREATH data_ov027_02113be0
-data_ov027_02113be8 data_ov027_02113bf0@0x02113bf0 data_ov027_02113bfc@0x02113bfc
-data_ov027_02113c08 data_ov027_02113c10:0x8 data_ov027_02113c18
-data_ov027_02113c20 data_ov027_02113c28 data_ov027_02113c30@0x02113c30
+_ZTS10daSnmBth_c g_profile_SNOWMAN_BREATH 
+ data_ov027_02113bf0@0x02113bf0 data_ov027_02113bfc@0x02113bfc
+  
+  data_ov027_02113c30@0x02113c30
 data_ov027_02113c3c@0x02113c3c data_ov027_02113c48@0x02113c48 data_ov027_02113c54@0x02113c54
 data_ov027_02113c60@0x02113c60
 

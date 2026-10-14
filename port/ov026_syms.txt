@@ -183,7 +183,7 @@ data_ov026_02113ebc@0x02113ebc data_ov026_02113ec4@0x02113ec4 data_ov026_02113ed
 data_ov026_02113edc@0x02113edc data_ov026_02113ee4@0x02113ee4 data_ov026_02113eec@0x02113eec
 data_ov026_02113ef8@0x02113ef8
 data_ov026_02113f14@0x02113f14 data_ov026_02113f20@0x02113f20 data_ov026_02113f2c
-data_ov026_02113f3c data_ov026_02113f4c data_ov026_02113f58:0x20
+data_ov026_02113f3c data_ov026_02113f4c 
 data_ov026_02113f78@0x02113f78
 
 # ============================================================================
@@ -358,7 +358,7 @@ data_ov026_02113f78@0x02113f78
 # later mount), and each target is ov026's own symbol at the same address:
 #
 #   src/func_ov026_021122b0.c      __sinit_ov045_02112280 -> func_ov026_02112280
-#   src/__sinit_ov026_02112d68.c   data_ov036_02113f58    -> data_ov026_02113f58
+#   src/__sinit_ov026_02112d68.c   data_ov036_02113f58    -> 
 #   src/_ZN17daObjWlPolelift_c13InitResourcesEv.cpp    data_ov032_02113a9c    -> ov026's own
 #   src/_ZN17daObjWlPolelift_c13InitResourcesEv.cpp    func_ov053_021112a4    -> func_ov026_021112a4
 #

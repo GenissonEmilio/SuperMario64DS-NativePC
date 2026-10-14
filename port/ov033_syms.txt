@@ -109,9 +109,9 @@
 # nodes, two of each per class. func_020731dc writes THREE words through its
 # node argument (src/func_020731dc.c), so every node is 0xc; a SharedFilePtr is
 # 8. dsd named a word inside SIX of the eight:
-#   data_ov033_021124c0  natural 0x4  -> pin 0x8   (SharedFilePtr, clsn 1734)
+#     natural 0x4  -> pin 0x8   (SharedFilePtr, clsn 1734)
 #   data_ov033_021124d0  natural 0x4  -> pin 0xc   (chain node)
-#   data_ov033_021124e8  natural 0x4  -> pin 0x8   (SharedFilePtr, clsn 1736)
+#     natural 0x4  -> pin 0x8   (SharedFilePtr, clsn 1736)
 #   data_ov033_021124f8  natural 0x4  -> pin 0xc   (chain node)
 #   data_ov033_02112504  natural 0x1c -> pin 0xc   (chain node; it is the last
 #                        symbol in .bss so the landing runs to the section end)
@@ -161,7 +161,7 @@ data_ov033_02111bc8:0x18
 data_ov033_02111bfc:0x20 data_ov033_02111c1c:0x20
 
 # ---- .bss: four SharedFilePtrs and four chain nodes ------------------------
-data_ov033_021124c0:0x8 data_ov033_021124c8
+ 
 data_ov033_021124d0@0x021124d0:0xc data_ov033_021124dc@0x021124dc
-data_ov033_021124e8:0x8 data_ov033_021124f0
+ 
 data_ov033_021124f8@0x021124f8:0xc data_ov033_02112504@0x02112504:0xc
