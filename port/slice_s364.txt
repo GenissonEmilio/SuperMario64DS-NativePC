@@ -526,5 +526,5 @@ src/actors/dScMgSlots.cpp
 # FOLDED into src/actors/dScMgSlots.cpp (row 506): src/_ZN12dScMgSlot1_c13OnYoshiTryEatEi.cpp
 # FOLDED into src/actors/dScMgSlots.cpp (row 506): src/_ZN12dScMgSlot1_c6RenderEv.cpp
 src/func_ov006_0210c9e0.cpp
-src/minigames/d_s_mg_slot1.cpp
+# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/minigames/d_s_mg_slot1.cpp
 # FOLDED into src/minigames/d_s_mg_slot1.cpp (row 529): src/d_s_mg_slot1.cpp

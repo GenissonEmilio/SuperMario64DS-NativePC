@@ -16993,7 +16993,7 @@ endforeach()
 #     writing "the six ov004 window words" as well, so this rename is the
 #     family's and not this class's.
 set_source_files_properties(
-    "${CMAKE_BINARY_DIR}/host-src/src/minigames/d_s_mg_slot1.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/actors/dScMgSlots.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "func_020bc860=data_ov004_020bc860;func_020bc878=data_ov004_020bc878;func_020bc88c=data_ov004_020bc88c;func_020bc890=data_ov004_020bc890;func_020bc8b4=data_ov004_020bc8b4;func_020bc8b8=data_ov004_020bc8b8")
 
@@ -17028,7 +17028,7 @@ set_source_files_properties(
 foreach(s364_thicon_tu
         "${PORT_REPO_ROOT_ABS}/src/actors/dScMgSlots.cpp"
         "${PORT_REPO_ROOT_ABS}/src/actors/dScMgSlots.cpp"
-        "${PORT_REPO_ROOT_ABS}/src/minigames/d_s_mg_slot1.cpp")
+        "${PORT_REPO_ROOT_ABS}/src/actors/dScMgSlots.cpp")
     set_source_files_properties("${s364_thicon_tu}"
         PROPERTIES COMPILE_DEFINITIONS
         "func_020ad494=data_ov001_020ad494")

@@ -40,7 +40,7 @@
 # are ledger rows in port/faces_sync.txt, which reaches all three targets. A
 # walk_window-only block would leave the other two asking for a decorated name
 # the ledger's own face calls.
-src/_ZN12dScMgSlot1_c8BehaviorEv.cpp
+src/actors/dScMgSlots.cpp
 src/actors/dScMgJump_c.cpp
 
 # ---- TWO SEATS NOBODY MADE -------------------------------------------------

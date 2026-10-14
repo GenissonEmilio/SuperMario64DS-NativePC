@@ -106,7 +106,7 @@ src/unnamed/arm9/0201/func_0201b100.c
 # FOLDED into src/Message.cpp (row 72): src/func_0201d418.c
 # FOLDED into src/Message.cpp (row 72): src/func_0201d850.c
 # FOLDED into src/Message.cpp (row 72): src/func_0201e220.cpp
-src/unnamed/arm9/0202/func_02029408.c
+src/unnamed/arm9/0202/func_02029408.cpp
 src/unnamed/arm9/0203/func_02031428.c
 # FOLDED into src/Message3.cpp (row 91): src/func_020321fc.c
 # FOLDED into src/Message3.cpp (row 91): src/func_020326ac.c
