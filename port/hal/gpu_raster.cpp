@@ -318,8 +318,9 @@ int                      g_lb_x0, g_lb_y0, g_lb_x1, g_lb_y1;
 /* THE TOON TABLE the pixel shader reads for a mode-2 polygon (the
    ToonTable constant buffer, 32 float4, rgb 0..255): ntr/gx.cpp's frame table,
    uploaded only on a frame that has one and only when it changed */
+const int             kToonCbFloats = (32 + 2 + 9) * 4;   /* toon, fog params, fog colour, 34 densities */
 ID3D11Buffer         *g_toon_cb;
-float                 g_toon_seen[32 * 3];
+float                 g_toon_seen[kToonCbFloats];
 bool                  g_toon_valid;
 
 /* [filter][addressU][addressV]; address 0 clamp, 1 wrap, 2 mirror */
@@ -526,7 +527,7 @@ bool make_pipeline()
     {
         D3D11_BUFFER_DESC cb;
         memset(&cb, 0, sizeof cb);
-        cb.ByteWidth = 32 * 4 * sizeof(float);
+        cb.ByteWidth = kToonCbFloats * sizeof(float);
         cb.Usage = D3D11_USAGE_DYNAMIC;
         cb.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
         cb.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -1966,6 +1967,40 @@ void copy_ab_planes(const ntr::GxGpuFrame *f, int bx0, int by0, int bx1, int by1
     }
 }
 
+/* THE FRAME'S CONSTANTS: the toon table (only on a frame that has one) and the
+   fog (run hunt8, RENDER093), one constant buffer, one shadow copy, mapped
+   only when something changed. The toon part keeps its last values on a frame
+   without a toon polygon, as the old upload did. */
+bool upload_frame_consts(const ntr::GxGpuFrame *f)
+{
+    static float shadow[kToonCbFloats];
+    if (f->toon_shade && f->toon_rgb) {
+        for (int i = 0; i < 32; ++i) {
+            shadow[i * 4 + 0] = f->toon_rgb[i * 3 + 0];
+            shadow[i * 4 + 1] = f->toon_rgb[i * 3 + 1];
+            shadow[i * 4 + 2] = f->toon_rgb[i * 3 + 2];
+            shadow[i * 4 + 3] = 0.0f;
+        }
+    }
+    float *p = shadow + 32 * 4;
+    p[0] = f->fog_on ? 1.0f : 0.0f;
+    p[1] = (float)f->fog_shift;
+    p[2] = (float)f->fog_offset;
+    p[3] = f->fog_wscale;
+    p[4] = f->fog_rgb[0]; p[5] = f->fog_rgb[1]; p[6] = f->fog_rgb[2]; p[7] = 0.0f;
+    for (int i = 0; i < 36; ++i) p[8 + i] = i < 34 ? (float)f->fog_tab[i] : 0.0f;
+    if (g_toon_valid && memcmp(g_toon_seen, shadow, sizeof shadow) == 0) return true;
+    D3D11_MAPPED_SUBRESOURCE tm;
+    memset(&tm, 0, sizeof tm);
+    HRESULT thr = g_ctx->Map(g_toon_cb, 0, D3D11_MAP_WRITE_DISCARD, 0, &tm);
+    if (FAILED(thr)) { fall_back("the toon table would not open", thr); return false; }
+    memcpy(tm.pData, shadow, sizeof shadow);
+    g_ctx->Unmap(g_toon_cb, 0);
+    memcpy(g_toon_seen, shadow, sizeof shadow);
+    g_toon_valid = true;
+    return true;
+}
+
 /* one triangle's three vertices, the same arithmetic the opaque loop uses */
 /* THE EQUAL DEPTH TEST (POLYGON_ATTR bit 14, run hunt8 lane BOWSERWAVE1; the
    CPU raster's w_depth_fail is the reference). A polygon that asks for it
@@ -2000,7 +2035,7 @@ void push_tri(const ntr::GxTriangle &t, const ntr::GxGpuFrame *f, bool textured,
     const float iw = textured ? 1.0f / (float)t.tw : 0.0f;
     const float ih = textured ? 1.0f / (float)t.th : 0.0f;
     const float pa = (float)((t.alpha >= 31 || t.alpha == 0) ? 31u : t.alpha);
-    const float pid = (float)(t.polyid +
+    const float pid = (float)(t.polyid + (t.fog ? 256 : 0) +
         ((t.mode == 2 && f->toon_shade) ? 64 * f->toon_shade : 0));
     for (int k = 0; k < 3; ++k) {
         const ntr::GxVertex &v = t.v[k];
@@ -2460,7 +2495,7 @@ int draw_full(const ntr::GxGpuFrame *f)
         }
         I.st[0] = gr.widen;
         I.st[1] = (float)((t.alpha >= 31 || t.alpha == 0) ? 31u : t.alpha);
-        I.st[2] = (float)(t.polyid + ((t.mode == 2 && f->toon_shade) ? 64 * f->toon_shade : 0));
+        I.st[2] = (float)(t.polyid + (t.fog ? 256 : 0) + ((t.mode == 2 && f->toon_shade) ? 64 * f->toon_shade : 0));
         I.tx[0] = (float)(t.tex_scale ? t.tex_scale : 1);
         I.tx[1] = textured ? 1.0f / (float)t.tw : 0.0f;
         I.tx[2] = textured ? 1.0f / (float)t.th : 0.0f;
@@ -2692,24 +2727,7 @@ int draw_full(const ntr::GxGpuFrame *f)
         g_ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         const UINT stride = (UINT)sizeof(GVert), offset = 0;
         g_ctx->IASetVertexBuffers(0, 1, &g_vb, &stride, &offset);
-        if (f->toon_shade && f->toon_rgb &&
-            (!g_toon_valid ||
-             memcmp(g_toon_seen, f->toon_rgb, sizeof g_toon_seen) != 0)) {
-            D3D11_MAPPED_SUBRESOURCE tm;
-            memset(&tm, 0, sizeof tm);
-            HRESULT thr = g_ctx->Map(g_toon_cb, 0, D3D11_MAP_WRITE_DISCARD, 0, &tm);
-            if (FAILED(thr)) { fall_back("the toon table would not open", thr); return 0; }
-            float *dst = (float *)tm.pData;
-            for (int i = 0; i < 32; ++i) {
-                dst[i * 4 + 0] = f->toon_rgb[i * 3 + 0];
-                dst[i * 4 + 1] = f->toon_rgb[i * 3 + 1];
-                dst[i * 4 + 2] = f->toon_rgb[i * 3 + 2];
-                dst[i * 4 + 3] = 0.0f;
-            }
-            g_ctx->Unmap(g_toon_cb, 0);
-            memcpy(g_toon_seen, f->toon_rgb, sizeof g_toon_seen);
-            g_toon_valid = true;
-        }
+        if (!upload_frame_consts(f)) return 0;
         g_ctx->PSSetConstantBuffers(0, 1, &g_toon_cb);
 
         const float bf[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -4228,7 +4246,7 @@ int draw_frame(const ntr::GxGpuFrame *f)
         const float pa = (float)((t.alpha >= 31 || t.alpha == 0) ? 31u : t.alpha);
         /* the polygon ID, and above it the toon mode for a mode-2 polygon
            (1 toon, 2 highlight; the shader's attr.y is id + 64 * mode) */
-        const float pid = (float)(t.polyid +
+        const float pid = (float)(t.polyid + (t.fog ? 256 : 0) +
             ((t.mode == 2 && f->toon_shade) ? 64 * f->toon_shade : 0));
 
         for (int k = 0; k < 3; ++k) {
@@ -4333,24 +4351,7 @@ int draw_frame(const ntr::GxGpuFrame *f)
            sampler; filter 0 binds exactly what it always did */
         const bool filt_arm = f->tex_filter >= 1;
         g_ctx->PSSetShader(filt_arm ? g_ps_filt : g_ps, 0, 0);
-        if (f->toon_shade && f->toon_rgb &&
-            (!g_toon_valid ||
-             memcmp(g_toon_seen, f->toon_rgb, sizeof g_toon_seen) != 0)) {
-            D3D11_MAPPED_SUBRESOURCE tm;
-            memset(&tm, 0, sizeof tm);
-            HRESULT thr = g_ctx->Map(g_toon_cb, 0, D3D11_MAP_WRITE_DISCARD, 0, &tm);
-            if (FAILED(thr)) { fall_back("the toon table would not open", thr); return 0; }
-            float *dst = (float *)tm.pData;
-            for (int i = 0; i < 32; ++i) {
-                dst[i * 4 + 0] = f->toon_rgb[i * 3 + 0];
-                dst[i * 4 + 1] = f->toon_rgb[i * 3 + 1];
-                dst[i * 4 + 2] = f->toon_rgb[i * 3 + 2];
-                dst[i * 4 + 3] = 0.0f;
-            }
-            g_ctx->Unmap(g_toon_cb, 0);
-            memcpy(g_toon_seen, f->toon_rgb, sizeof g_toon_seen);
-            g_toon_valid = true;
-        }
+        if (!upload_frame_consts(f)) return 0;
         g_ctx->PSSetConstantBuffers(0, 1, &g_toon_cb);
 
         for (size_t bi = 0; bi < g_batch.size(); ++bi) {

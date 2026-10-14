@@ -72,7 +72,42 @@ SamplerState smp0 : register(s0);
 cbuffer ToonTable : register(b0)
 {
     float4 toon[32];
+    // the frame's fog (run hunt8, RENDER093; ntr/gx.cpp's fog_latch and
+    // fog_density are the reference): x on, y shift, z FOG_OFFSET << 8,
+    // w the W-to-depth scale (0 when the frame is Z-buffered); rgb the fog colour 0..255; then the 34
+    // density entries, four to a float4
+    float4 fogp;
+    float4 fogc;
+    float4 fogt[9];
 };
+
+// SV_Position.w arrives as the clip w itself here (115 for Mario at the default
+// camera), not its reciprocal: measured with a colour readout of the shader.
+// the polygon's fog bit rides in attr.y as 256 (bit 15 of POLYGON_ATTR); the
+// mode-2 toon state stays 64 * mode below it
+float3 fog_apply(float3 c, VSOut i)
+{
+    uint a = (uint)(i.attr.y + 0.5);
+    if (fogp.x < 0.5 || ((a >> 8) & 1u) == 0u) return c;
+    float dep = (fogp.w > 0.5) ? (fogp.w * i.pos.w) : (i.pos.z * 2.0 * 16777215.0);
+    uint z = (uint)min(max(dep, 0.0), 16777215.0);
+    uint off = (uint)fogp.z;
+    uint id = 0u, frac = 0u;
+    if (z >= off) {
+        z -= off;
+        z = (z >> 2u) << (uint)fogp.y;
+        id = z >> 17u;
+        if (id >= 32u) { id = 32u; frac = 0u; }
+        else frac = z & 0x1FFFFu;
+    }
+    float t0 = fogt[id >> 2u][id & 3u];
+    float t1 = fogt[(id + 1u) >> 2u][(id + 1u) & 3u];
+    float d = floor((t0 * (float)(131072u - frac) + t1 * (float)frac) / 131072.0);
+    if (d >= 127.0) d = 128.0;
+    float3 c8 = floor(c * 255.0 + 0.5);
+    c8 = floor((c8 * (128.0 - d) + fogc.rgb * d) / 128.0);
+    return c8 * (1.0 / 255.0);
+}
 
 struct PSOut {
     float4 col : SV_TARGET0;
@@ -84,7 +119,7 @@ PSOut shade(VSOut i, float4 t, float ta)
     PSOut o;
     float sa = floor((i.attr.x * ta + 127.0) / 255.0);
     uint a = (uint)(i.attr.y + 0.5);
-    uint m = a >> 6;
+    uint m = (a >> 6) & 3u;
     float3 v = i.col;
     float3 e = float3(0.0, 0.0, 0.0);
     if (m != 0u) {
@@ -95,7 +130,7 @@ PSOut shade(VSOut i, float4 t, float ta)
     }
     float3 f = floor(v * t.rgb + 0.5);
     if (m == 2u) f += e;
-    float3 c = clamp(f, 0.0, 255.0) * (1.0 / 255.0);
+    float3 c = fog_apply(clamp(f, 0.0, 255.0) * (1.0 / 255.0), i);
     o.col = float4(c, min(sa, 31.0) * (1.0 / 31.0));
     o.id = 0x80u | (a & 63u);
     return o;
@@ -313,7 +348,7 @@ void shade_full(VSOut i, bool filtered, out float3 c, out float sa, out float ta
     }
     sa = floor((i.attr.x * ta + 127.0) / 255.0);
     uint a = (uint)(i.attr.y + 0.5);
-    uint m = a >> 6;
+    uint m = (a >> 6) & 3u;
     float3 v = i.col;
     float3 e = float3(0.0, 0.0, 0.0);
     if (m != 0u) {
@@ -337,6 +372,7 @@ float4 tl_body(VSOut i, bool filtered)
     shade_full(i, filtered, c, sa, ta);
     clip(ta - 0.5);
     clip(30.5 - sa);
+    c = fog_apply(c, i);
     return float4(c, max(sa * (1.0 / 31.0), kMinW));
 }
 
@@ -348,6 +384,7 @@ PSOut tlop_body(VSOut i, bool filtered)
     shade_full(i, filtered, c, sa, ta);
     clip(ta - 0.5);
     clip(sa - 30.5);
+    c = fog_apply(c, i);
     o.col = float4(c, 1.0);
     o.id = 0x80u | ((uint)(i.attr.y + 0.5) & 63u);
     return o;

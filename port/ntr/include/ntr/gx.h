@@ -100,6 +100,8 @@ struct GxTriangle {
     // POLYGON_ATTR bit 14: this polygon's depth test is EQUAL (within the
     // hardware's tolerance) instead of LESS. See w_depth_fail in gx.cpp.
     uint8_t depth_eq;
+    // POLYGON_ATTR bit 15: the polygon takes the frame's fog (DISP3DCNT bit 7).
+    uint8_t fog;
     uint32_t dbg_tex;      // TEXIMAGE_PARAM that was bound (diagnostics only)
 };
 
@@ -299,6 +301,16 @@ struct GxGpuFrame {
     // per entry, in the units the vertex colour travels in.
     int toon_shade;
     const float *toon_rgb;
+    // THE FRAME'S FOG (run hunt8, RENDER093): fog_on 0 = none; fog_shift and
+    // fog_offset are DISP3DCNT bits 8-11 and FOG_OFFSET << 8; fog_rgb the
+    // colour as 0..255; fog_tab the 34 density entries of the melonDS table
+    // (gx.cpp's fog_latch), 0..128.
+    int fog_on;
+    float fog_wscale;
+    int fog_shift;
+    uint32_t fog_offset;
+    float fog_rgb[3];
+    int fog_tab[34];
 
     // ---- THE WHOLE FRAME ON THE CARD (run cardfull, lane CARDFULL1) ---------
     // Everything below is for a backend that draws the translucent and shadow
