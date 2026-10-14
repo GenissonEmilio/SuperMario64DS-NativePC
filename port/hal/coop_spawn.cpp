@@ -85,6 +85,8 @@ bool     g_have_key = false;
 int      g_lvl = -1, g_act = 0;
 unsigned g_gen = 0;
 unsigned g_frames = 0;
+unsigned g_near_frame = 0; bool g_near_done = true;     // SM64DS_TOTALS_NEAR=<frame>: put my player on the nearest rabbit key (proof knob)
+unsigned g_kp_until = 0;                                // TOTALS9 probe: log my Player's state until this frame (set while a rabbit key is out)
 unsigned g_tc_frame = 0; int g_tc_val = -1;       // SM64DS_TOTALS_COINS=<frame>:<count>: proof knob, set my coin counter once
 bool     g_armed = false;
 bool     g_census_on = false;
@@ -160,6 +162,10 @@ void read_env() {
     g_log = l && *l && *l != '0';
     const char *c = std::getenv("SM64DS_SPAWN_CENSUS");
     g_census_log = c && *c && *c != '0';
+    if (const char *o = std::getenv("SM64DS_TOTALS_NEAR")) {
+        unsigned f = 0;
+        if (std::sscanf(o, "%u", &f) == 1) { g_near_frame = f; g_near_done = false; }
+    }
     if (const char *o = std::getenv("SM64DS_TOTALS_COINS")) {
         unsigned f = 0; int v = 0;
         if (std::sscanf(o, "%u:%i", &f, &v) == 2) { g_tc_frame = f; g_tc_val = v; }
@@ -548,6 +554,7 @@ void scan(unsigned now) {
             const bool taken_now = !dead && ((is_star_cls(cls) && *(const unsigned *)(a + 0x440) == 5u &&
                                               is_player_ptr(*(void *const *)(a + 0x438))) ||
                                              (cls == 282 && *(const int *)(a + 0x448) == 3 && is_player_ptr(*(void *const *)(a + 0x110))));
+            if (cls == 229 && !dead) g_kp_until = g_frames + 3000u;
             if (cls == 229 && g_log && !dead && (g_frames % 20u) == 0) {      // TOTALS9 probe: the key's state machine against my Player's state
                 const char *pl = my_player();
                 std::fprintf(stderr, "[coopspawn] key probe state=%08x t2c8=%d mine: pstate=%08x ptimer=%d d6e3=%d held=%08x dist=%d frame=%u wall=%lld\n",
@@ -650,6 +657,13 @@ void scan(unsigned now) {
         g_red_prev = red_sum();
     }
     if (g_census_on && maxuid > g_wm) g_wm = maxuid;
+    if (g_log && g_frames < g_kp_until && (g_frames % 20u) == 0) {
+        const char *pl = my_player();
+        int keys = 0;
+        for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) if (a_cls(a) == 229 && !a_dead(a)) ++keys;
+        std::fprintf(stderr, "[coopspawn] pprobe pstate=%08x ptimer=%d d6e3=%d keys=%d frame=%u wall=%lld\n", pl ? *(const unsigned *)(pl + 0x370) : 0u,
+                     pl ? (int)*(const unsigned short *)(pl + 0x6a4) : -1, pl ? (int)pl[0x6e3] : -1, keys, g_frames, wall_ms());
+    }
     if (g_log && (g_frames % 60u) == 0)         // TOTALS9 proof: what the HUD draws on this console
         std::fprintf(stderr, "[coopspawn] hud coins=%d redcell=%d redsum=%d frame=%u wall=%lld\n", (int)data_0209f358[(int)data_0209f250 & 3],
                      (int)(signed char)red_cell((int)data_0209f250 < red_slots() ? (int)data_0209f250 : 0), red_sum(), g_frames, wall_ms());
@@ -1158,6 +1172,17 @@ void on_frame(unsigned now) {
     drain_in(now);
 
     // proof knobs
+    if (!g_near_done && g_armed && g_frames >= g_near_frame) {
+        char *pl = my_player();
+        for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); pl && a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
+            if (a_cls(a) != 229 || a_dead(a)) continue;
+            std::memcpy(pl + 0x5c, a + 0x5c, 12);
+            g_near_done = true;
+            std::fprintf(stderr, "[coopspawn-knob] near: my player put on the rabbit key at %d,%d,%d wall=%lld\n", ((const int *)(a + 0x5c))[0] >> 12,
+                         ((const int *)(a + 0x5c))[1] >> 12, ((const int *)(a + 0x5c))[2] >> 12, wall_ms());
+            break;
+        }
+    }
     if (g_tc_val >= 0 && g_armed && g_frames >= g_tc_frame) {
         data_0209f358[(int)data_0209f250 & 3] = (short)g_tc_val;
         std::fprintf(stderr, "[coopspawn-knob] coin counter set to %d wall=%lld\n", g_tc_val, wall_ms());
