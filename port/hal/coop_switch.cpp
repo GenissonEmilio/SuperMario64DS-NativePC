@@ -29,6 +29,19 @@ extern unsigned char data_0209f2c0[];
 extern unsigned char data_0209caa0[];
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 void _ZN10StarSwitch15OnGroundPoundedER8dActor_c(char *self);
+// PUZZLES9. Flat C faces of the ROM's own entries (receiver first, cdecl), as the matched src calls them.
+int _ZN13TreasureChest10InitState0Ev(void *c);       // Entry[0].enter: the model frame back to 0
+int _ZN13TreasureChest10InitState1Ev(void *c);       // Entry[1].enter: the opening
+void func_ov091_021334b8(char *c, int flag);         // Stump: one pound (flag 0) or the whole post (flag 1)
+extern signed char data_ov100_02148204[];            // door table, 16 bytes a variant: +8 stars, +9 key id, +0xa save bit
+extern signed char data_ov100_02148390[];            // star gate table, 6 bytes a variant: +0 stars, +1 save bit
+extern char data_ov100_021488d4[];                   // Door node: the star-door unlock (func_ov100_02144bf4)
+extern char data_ov100_021488e4[];                   // Door node: the key-door unlock (func_ov100_021449c8)
+extern char _ZN12daStarGate_c12ST_UNLOCKINGE[];      // star gate state: the unlock cutscene
+int _ZN6Player13TryTalkToDoorEh(void *player, unsigned char a);
+int _ZN6Player16TryTalkToKeyDoorEv(void *player);
+void _ZN6Player11OpenBigDoorEv(void *player);
+int func_ov100_021453d8(void *door, void *node, int arg);   // set a Door's node and run its enter half
 }
 
 namespace port {
@@ -244,6 +257,84 @@ bool ap_water(char *a, int, int value) {
     *(int *)(a + 0x334) = value;                  // the water moves toward it on its own
     return true;
 }
+// ---- PUZZLES9 ---------------------------------------------------------------------------------------------------
+// TREASURE_CHEST (13): mState +0x16c (0 closed, 1 opening, 2 open), mOrder +0x172, mIsLastChest +0x173. Every chest
+// counts the OTHER chests whose mState is 1 or 2 (State0), so the opened set must be equal on every console. Shared as
+// a field: value = (state != 0) | last << 1; the replay is the ROM's own enter half of state 1 (InitState1), or of
+// state 0 for the reset the wrong chest does to the others. The last chest then runs State2 natively and spawns the
+// star from its tracked marker (the linked-star path of coop_spawn).
+int r_chest(const char *a) {
+    if (rd_i32(a, 0x16c) == 0) return 0;
+    return 1 | (rd_u8(a, 0x173) ? 2 : 0);
+}
+bool ap_chest(char *a, int, int value) {
+    const int st = rd_i32(a, 0x16c);
+    if (value & 1) {
+        if (st != 0) return false;                    // already opening or open
+        *(unsigned char *)(a + 0x173) = (unsigned char)((value >> 1) & 1);
+        *(int *)(a + 0x16c) = 1;
+        _ZN13TreasureChest10InitState1Ev(a);
+        return true;
+    }
+    if (st == 0) return false;
+    *(int *)(a + 0x16c) = 0;                          // SetState(0): the wrong-chest reset
+    _ZN13TreasureChest10InitState0Ev(a);
+    return true;
+}
+// STUMP (27, the ground-pound post of BOB's Chain Chomp): the pound counter +0x31e counts 3 -> 0. One pound is
+// func_ov091_021334b8(post, 0): the post sinks 0x3c000 and the counter drops; the pound that empties it spawns the
+// coins, marks the post in the death table and releases the chomp (func_ov091_02133498 sets the chomp's flag).
+int r_stump(const char *a) { return rd_u8(a, 0x31e); }
+bool ap_stump(char *a, int, int value) {
+    if (rd_u8(a, 0x31e) <= value) return false;
+    for (int guard = 0; guard < 8 && rd_u8(a, 0x31e) > value && rd_u8(a, 0x31e) != 0; ++guard)
+        func_ov091_021334b8(a, 0);
+    return true;
+}
+// DOOR (353) and STAR_DOOR (354): the START of an unlock. The ROM writes the save bit when the cutscene ENDS; the
+// kick fires when the unlock state begins and puts the same bit in the other consoles' record at once. Nothing here
+// hands a Player to a door state.
+unsigned *save_flags() { return (unsigned *)(data_0209caa0 + 4); }
+bool door_bit(const char *a, int state, unsigned *bit) {
+    const int idx = rd_i32(a, 8);
+    if (idx < 0 || idx >= 64) return false;
+    const signed char *e = data_ov100_02148204 + idx * 16;
+    const int sh = e[0xa];
+    if (state == 1) { if (e[8] < 0 || sh < 0 || sh > 8) return false; *bit = 0x8000u << sh; return true; }
+    if (state == 2) { if (e[8] >= 0 || e[9] < 0 || sh < 0 || sh > 15) return false; *bit = 0x100u << sh; return true; }
+    return false;
+}
+int r_door(const char *a) {
+    const int idx = rd_i32(a, 8);
+    if (idx < 0 || idx >= 64) return 0;
+    const signed char *e = data_ov100_02148204 + idx * 16;
+    const void *node = *(void *const *)(a + 0x140);
+    if (e[8] >= 0) return node == (const void *)data_ov100_021488d4 ? 1 : 0;
+    if (e[9] >= 0) return node == (const void *)data_ov100_021488e4 ? 2 : 0;
+    return 0;
+}
+bool ap_door(char *a, int state, int) {
+    unsigned bit = 0;
+    if (!door_bit(a, state, &bit)) return false;
+    if (*save_flags() & bit) return false;
+    *save_flags() |= bit;
+    return true;
+}
+bool gate_bit(const char *a, unsigned *bit) {
+    const int idx = rd_i32(a, 8);
+    if (idx < 0 || idx > 3) return false;
+    const int sh = data_ov100_02148390[idx * 6 + 1];
+    if (sh < 0 || sh > 8) return false;
+    *bit = 0x8000u << sh;
+    return true;
+}
+int r_gate(const char *a) { return *(void *const *)(a + 0x110) == (const void *)_ZN12daStarGate_c12ST_UNLOCKINGE ? 1 : 0; }
+bool ap_gate(char *a, int, int) {
+    unsigned bit = 0;
+    if (!gate_bit(a, &bit) || (*save_flags() & bit)) return false;
+    *save_flags() |= bit;
+    return true;
+}
 const Watch kWatch[] = {
     {10,  kSwKindPress, "BC_SWITCH",    r_bcsw,   ap_bcsw},
     {11,  kSwKindPress, "EXCL_SWITCH",  r_starsw, ap_starsw},
@@ -255,6 +346,10 @@ const Watch kWatch[] = {
     {66,  kSwKindKick,  "FALL_BLOCK_BBH", r_fall, ap_fall},
     {83,  kSwKindKick,  "FALL_BLOCK_LLL", r_fall, ap_fall},
     {101, kSwKindField, "WDW_WATER",    r_water,  ap_water},
+    {13,  kSwKindField, "TREASURE_CHEST", r_chest, ap_chest},
+    {27,  kSwKindField, "STUMP",        r_stump,  ap_stump},
+    {353, kSwKindKick,  "DOOR",         r_door,   ap_door},
+    {354, kSwKindKick,  "STAR_DOOR",    r_gate,   ap_gate},
 };
 const Watch *find_watch(int cls) {
     for (const Watch &w : kWatch) if (w.cls == cls) return &w;
@@ -463,7 +558,17 @@ void scan_objects(unsigned now) {
         if (!w || a_dead(a) || is_player_ptr(a)) continue;
         const int cur = w->read(a);
         Trk &t = g_trk[slot];
-        if (!t.valid || t.actor != a || t.cls != cls) { t.actor = a; t.cls = cls; t.last = cur; t.valid = true; continue; }
+        if (!t.valid || t.actor != a || t.cls != cls) {
+            t.actor = a; t.cls = cls; t.last = cur; t.valid = true;
+            if (g_log && (cls == 13 || cls == 27 || cls == 353 || cls == 354)) {
+                const int *p = (const int *)(a + 0x5c);
+                std::fprintf(stderr, "[coopsw] track %s slot=%d cls=%d param=%d pos=%d,%d,%d read=%d node=%p unlocking=%p wall=%lld\n", w->name,
+                             (int)slot, (int)cls, rd_i32(a, 8), p[0] >> 12, p[1] >> 12, p[2] >> 12, cur,
+                             cls == 354 ? *(void *const *)(a + 0x110) : cls == 353 ? *(void *const *)(a + 0x140) : nullptr,
+                             (void *)_ZN12daStarGate_c12ST_UNLOCKINGE, wall_ms());
+            }
+            continue;
+        }
         if (cur == t.last) continue;
         const int prev = t.last;
         t.last = cur;
@@ -724,7 +829,82 @@ void knob_forge(const char *name, unsigned now) {
     (void)now;
 }
 
+// ---- PUZZLES9 proof knobs: what the player's touch does, without a player -----------------------------------------
+// chest (13): State0's own rule. The chest opens only when the chests already open number mOrder - 1; the last chest
+// is the one whose mOrder equals the chest count. A wrong chest resets every other chest (the ROM also shocks the
+// player; no player here). Returns true when the chest opened.
+bool knob_chest(char *a) {
+    int count = 0, sb = 0;
+    for (char *c = (char *)_ZN8dActor_c4NextEPKS_(0); c; c = (char *)_ZN8dActor_c4NextEPKS_(c)) {
+        if (a_cls(c) != 13 || a_dead(c) || is_player_ptr(c)) continue;
+        ++count;
+        if (c != a && (rd_i32(c, 0x16c) == 1 || rd_i32(c, 0x16c) == 2)) ++sb;
+    }
+    const int order = rd_u8(a, 0x172);
+    if (sb + 1 == order) {
+        if (count == order) *(unsigned char *)(a + 0x173) = 1;
+        *(int *)(a + 0x16c) = 1;
+        _ZN13TreasureChest10InitState1Ev(a);
+        return true;
+    }
+    for (char *c = (char *)_ZN8dActor_c4NextEPKS_(0); c; c = (char *)_ZN8dActor_c4NextEPKS_(c)) {
+        if (a_cls(c) != 13 || a_dead(c) || is_player_ptr(c) || c == a || rd_i32(c, 0x16c) == 0) continue;
+        *(int *)(c + 0x16c) = 0;
+        _ZN13TreasureChest10InitState0Ev(c);
+    }
+    return false;
+}
+// door / gate unlock START with the real player: the ROM's own TryTalkToDoor / TryTalkToKeyDoor (the player takes the
+// talk state and runs the unlock cutscene, the ROM writes the save bit at its end), then the node the ROM sets.
+// state arg: 1 star door (353), 2 key door (353), 3 star gate (354). Returns true when the player took the state.
+bool knob_unlock(char *a, int cls) {
+    void *me = nullptr;
+    const int mi = (int)data_0209f250;
+    if (mi >= 0 && mi < 16) me = data_0209f394[mi];
+    if (!me) return false;
+    if (cls == 353) {
+        const int idx = rd_i32(a, 8);
+        if (idx < 0 || idx >= 64) return false;
+        const signed char *e = data_ov100_02148204 + idx * 16;
+        if (e[8] >= 0) {
+            if (!_ZN6Player13TryTalkToDoorEh(me, 0)) return false;
+            func_ov100_021453d8(a, data_ov100_021488d4, (int)(intptr_t)me);
+            return true;
+        }
+        if (e[9] >= 0) {
+            if (!_ZN6Player16TryTalkToKeyDoorEv(me)) return false;
+            func_ov100_021453d8(a, data_ov100_021488e4, (int)(intptr_t)me);
+            return true;
+        }
+        return false;
+    }
+    if (!_ZN6Player13TryTalkToDoorEh(me, 1)) return false;
+    *(void **)(a + 0x110) = (void *)_ZN12daStarGate_c12ST_UNLOCKINGE;      // ChangeState(&ST_UNLOCKING)
+    _ZN6Player11OpenBigDoorEv(me);                                           // its init half
+    return true;
+}
+
 void knob_press(PressKnob &k) {
+    if (k.cls == 13 || k.cls == 27 || k.cls == 353 || k.cls == 354) {
+        char *c[64]; int n = 0;
+        for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a && n < 64; a = (char *)_ZN8dActor_c4NextEPKS_(a))
+            if (a_cls(a) == k.cls && a_slot(a) >= 0 && !a_dead(a) && !is_player_ptr(a)) c[n++] = a;
+        std::sort(c, c + n, [](char *x, char *y) { return a_slot(x) < a_slot(y); });
+        if (n == 0) { std::fprintf(stderr, "[coopsw-knob] press cls=%d: no live actor\n", k.cls); return; }
+        char *a = c[k.nth % n];
+        if (k.cls == 13 && k.nth >= 100) {              // nth = 100 + the chest's order (mOrder): the order the player must take them in
+            a = nullptr;
+            for (int i = 0; i < n; ++i) if (rd_u8(c[i], 0x172) == k.nth - 100) a = c[i];
+            if (!a) { std::fprintf(stderr, "[coopsw-knob] press cls=13: no chest of order %d\n", k.nth - 100); return; }
+        }
+        bool did = false;
+        if (k.cls == 13) did = knob_chest(a);
+        else if (k.cls == 27) { did = rd_u8(a, 0x31e) != 0; if (did) func_ov091_021334b8(a, 0); }
+        else did = knob_unlock(a, k.cls);
+        std::fprintf(stderr, "[coopsw-knob] press cls=%d slot=%d (candidate %d of %d) param=%d order=%d did=%d wall=%lld\n", k.cls, (int)a_slot(a), k.nth % n, n,
+                     rd_i32(a, 8), k.cls == 13 ? rd_u8(a, 0x172) : 0, (int)did, wall_ms());
+        return;
+    }
     const Watch *w = find_watch(k.cls);
     char *c[64]; int n = 0;
     for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a && n < 64; a = (char *)_ZN8dActor_c4NextEPKS_(a))

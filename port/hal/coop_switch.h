@@ -18,8 +18,14 @@
 //
 // Door answer (recorded in the lane status): doors poll the SAVE record every
 // frame near the player (func_ov100_02144cf8 reads data_0209caa0), so an
-// unlocked door follows the coop save sync with no code here; the open
-// animation stays per console.
+// unlocked door follows the coop save sync. PUZZLES9 adds the START of an
+// unlock: the ROM sets the save bit only when the unlock cutscene ENDS, so a
+// friend standing at the same door could start a second unlock meanwhile. A
+// plain door (353) entering its star-unlock / key-unlock node, and a star gate
+// (354) entering ST_UNLOCKING, is announced as a kick; the others OR the
+// door's own save bit into their record at once (a flags write: no Player is
+// ever handed to a door state here). The open animation of a walker is
+// ghost_door.cpp's.
 //
 // INERT unless SM64DS_COOP is set in a coop room (the callbacks are only
 // invoked by coop_world). Wire layouts below; sub-type ranges are fixed by the
@@ -122,8 +128,9 @@ static_assert(sizeof(SwStatesHead) == 12, "states head");
 
 // Classes a message may name. A forged datagram naming anything else is dropped.
 inline bool sw_press_class_ok(int c) { return c == 10 || c == 11 || c == 12; }
-inline bool sw_kick_class_ok(int c) { return c == 14 || c == 26 || c == 45 || c == 66 || c == 83 || c == 126; }
-inline bool sw_field_class_ok(int c) { return c == 101; }
+inline bool sw_kick_class_ok(int c) { return c == 14 || c == 26 || c == 45 || c == 66 || c == 83 || c == 126 || c == 353 || c == 354; }
+// PUZZLES9: 13 TreasureChest (value = open | last << 1), 27 Stump (value = the pound counter).
+inline bool sw_field_class_ok(int c) { return c == 101 || c == 13 || c == 27; }
 inline bool sw_class_ok(int kind, int c) {
     return kind == kSwKindPress ? sw_press_class_ok(c) :
            kind == kSwKindKick ? sw_kick_class_ok(c) :
@@ -131,6 +138,11 @@ inline bool sw_class_ok(int kind, int c) {
 }
 // Plausible range of the one field we move (WDW water target height, Fix12 world units).
 inline bool sw_field_value_ok(int32_t v) { return v > -(1 << 28) && v < (1 << 28); }
+inline bool sw_field_value_ok_cls(int c, int32_t v) {
+    if (c == 13) return v >= 0 && v <= 3;     // 0 closed, 1 open, 3 open and it is the last chest
+    if (c == 27) return v >= 0 && v <= 8;     // the post's pound counter (3 on a fresh post)
+    return sw_field_value_ok(v);
+}
 
 inline bool sw_stamp_ok(uint16_t s) { return s == 0 || (s & 15) < kCoopMaxSeats; }
 
@@ -161,7 +173,7 @@ inline bool sw_obj_validate(int kind, const void *p, int len) {
     if (!sw_class_ok(kind, w.cls)) return false;
     if (kind == kSwKindPress) return w.state == 1 && w.value == 0;
     if (kind == kSwKindKick) return w.state >= 1 && w.state <= 3 && w.value == 0;
-    return w.state == 0 && sw_field_value_ok(w.value);
+    return w.state == 0 && sw_field_value_ok_cls(w.cls, w.value);
 }
 inline bool sw_globals_validate(const void *p, int len) {
     if (!p || len != (int)sizeof(SwGlobalsWire)) return false;
@@ -183,7 +195,7 @@ inline bool sw_states_validate(const void *p, int len) {
         SwStateEntry e; std::memcpy(&e, s + i * sizeof e, sizeof e);
         if (e.slot >= kSwSlots || e.kind < kSwKindPress || e.kind > kSwKindField) return false;
         if (!sw_class_ok(e.kind, e.cls)) return false;
-        if (e.kind == kSwKindField ? (e.state != 0 || !sw_field_value_ok(e.value))
+        if (e.kind == kSwKindField ? (e.state != 0 || !sw_field_value_ok_cls(e.cls, e.value))
                                    : (e.state < 1 || e.state > 3 || e.value != 0)) return false;
     }
     return true;
