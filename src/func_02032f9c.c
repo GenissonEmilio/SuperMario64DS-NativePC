@@ -33,8 +33,15 @@ void func_02031cd4(void *arg);
 void func_02031e00(void);
 void func_020319fc(u8 a);
 
+#ifdef _MSC_VER
+extern void port_vs_text_seat(void);   /* hal/fs.cpp: empty VS text blob when none is loaded */
+#endif
+
 void func_02032f9c(int a)
 {
+#ifdef _MSC_VER
+    port_vs_text_seat();
+#endif
     volatile int li;
     volatile unsigned short ls;
     int idx;

@@ -30,8 +30,15 @@ extern void SetBg3Offset(int a, int b);
 extern void func_020326ac(void);
 extern void _ZN3G2x18SetBlendBrightnessEPVtts(volatile u16 *p, int a, int b);
 
+#ifdef _MSC_VER
+extern void port_vs_text_seat(void);   /* hal/fs.cpp: empty VS text blob when none is loaded */
+#endif
+
 void func_020345b0(int arg0)
 {
+#ifdef _MSC_VER
+    port_vs_text_seat();
+#endif
     void *scr;
     s32 i;
     s32 cols;

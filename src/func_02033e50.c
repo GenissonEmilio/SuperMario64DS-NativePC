@@ -17,9 +17,15 @@ extern void MultiStore_Int(int val, int *dst, int len);
 extern int _ZN3G2S12GetBG0ScrPtrEv(void);
 extern void func_02031e00(void);
 extern void func_020319fc(int n);
+#ifdef _MSC_VER
+extern void port_vs_text_seat(void);   /* hal/fs.cpp: empty VS text blob when none is loaded */
+#endif
 
 void func_02033e50(int p0, int p1)
 {
+#ifdef _MSC_VER
+    port_vs_text_seat();
+#endif
     int i;
     int idx = data_0209fce8;
     char *base = (char*)data_0209fd08;

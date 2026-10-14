@@ -8,6 +8,7 @@
 // between them; the link-sweep loop that grows this file emits new symbols
 // inside the bracket, so anything it adds is captured with no further work. See
 // hal/dsstate_seg.h.
+#include <cstdio>
 #include "dsstate_seg.h"
 // run vs16: the one place the port's player width is written down.
 #include "vs_width.h"
@@ -673,6 +674,34 @@ unsigned char data_0209f250[4];   /* local player index */
 signed char   data_0209f2f8[4];   /* level / sublevel id */
 }
 DSSTATE_END
+
+/* The VS text blob (data_0209fd14, split into data_0209fd04 / fcf8 / fcfc / fd08
+   by Message::SetTextGlobalsVS) is loaded by LoadFont3D -> Message::LoadTextVS,
+   which only the VS menu scene runs. Debug course select can still boot the two
+   VS arenas (levels 42 and 51) in a plain session, and pausing there takes the
+   VS pause screen, Message::DisplayPauseTextVS, whose text plot reads those
+   pointers. On the cartridge a never-loaded pointer is zero and the read lands
+   in low memory (a blank line of text); on the PC build it is an access
+   violation, which froze the Stage actor (crash C7, quarantine of actor id 3 at
+   func_020341a8 / func_02033e50 on levels 42 and 51). Seat an all-zero blob
+   when nothing was loaded, through the same four stores SetTextGlobalsVS makes,
+   so the VS text readers walk empty strings. A real blob loaded later replaces
+   it, since LoadTextVS rewrites all four pointers. */
+static int g_vs_text_zero_blob[0x1000];
+extern "C" void port_vs_text_seat(void)
+{
+    int ip;
+    if (data_0209fd08[0] != 0)
+        return;
+    ip = (int)(size_t)g_vs_text_zero_blob;
+    data_0209fd14[0] = ip;
+    data_0209fd04[0] = ip;
+    data_0209fcf8[0] = ip + 0x20;
+    data_0209fcfc[0] = ip + 0x20 + *(int *)(ip + 0x24);
+    data_0209fd08[0] = ip + 0x30;
+    fprintf(stderr, "[vstext] no VS text blob is loaded; seated an empty one so the VS pause and "
+            "exit text readers have something to read\n");
+}
 
 /* gate 50: ov080's PAINTING (daPicGate_c, 307) bss is NOT here -- it is
    mounted with the rest of the overlay in ov080_syms.txt so the DATA table
