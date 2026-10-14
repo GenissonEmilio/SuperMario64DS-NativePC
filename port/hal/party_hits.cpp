@@ -402,8 +402,12 @@ void eat_tick(char *me) {
     EatInput in;
     in.toggle_on = g.judge.tog.interact;
     const Place mp = my_place();
-    in.eater_present = s.have_presence && s.in_level && s.presence_age_ms <= (unsigned)kPresenceMaxAgeMs &&
-                       s.at.level == mp.level && s.at.area == mp.area && s.have_ghost && s.ghost_age_ms <= (unsigned)kGhostMaxAgeMs;
+    const bool lv = !g.judge.rules.check_level || (s.in_level && s.at.level == mp.level && s.at.area == mp.area);
+    in.eater_present = s.have_presence && lv && s.presence_age_ms <= (unsigned)kPresenceMaxAgeMs &&
+                       s.have_ghost && s.ghost_age_ms <= (unsigned)kGhostMaxAgeMs;
+    if (!in.eater_present && g.log > 0)
+        std::fprintf(stderr, "[phit] eater gone? presence %d in_level %d lvl %d/%d area %d/%d age %u ghost %d ghost_age %u\n",
+                     s.have_presence ? 1 : 0, s.in_level ? 1 : 0, s.at.level, mp.level, s.at.area, mp.area, s.presence_age_ms, s.have_ghost ? 1 : 0, s.ghost_age_ms);
     in.me_dead_or_menu = data_0209f2d8[0] == 2;
     if (g.rom_mouth) {
         char *ep = body_of_seat(eater);
@@ -471,11 +475,12 @@ void grab_begin(char *me, const Claim &c) {
     const unsigned short inv = *(unsigned short *)(me + player::kInvincibleTimer);
     *(unsigned short *)(me + player::kInvincibleTimer) = 0;
     *(unsigned char *)(me + 0x708) = 0;
+    void *st_before = *(void **)(me + 0x370);
     const int ok = func_ov002_020db5f4(me, hb);
     char *gb0 = ptrf(me, kGrabbedBy);
     ptrf(me, kGrabbedBy) = hb;       // the state change clears the link on this port (as it does the mouth link): set it again
     *(unsigned short *)(me + player::kInvincibleTimer) = inv;
-    std::fprintf(stderr, "[phit] GRAB enter: db5f4 %d, holder link after the call %p (holder %p)\n", ok, (void *)gb0, (void *)hb);
+    std::fprintf(stderr, "[phit] GRAB enter: db5f4 %d, holder link after the call %p (holder %p), state %p -> %p (St_Grabbed is %p)\n", ok, (void *)gb0, (void *)hb, st_before, *(void **)(me + 0x370), (void *)data_ov002_0211016c);
     if (!ok) {
         ptrf(hb, kHeldObj) = nullptr;
         u32(me, kFlags) &= ~(kFlagHeldOut | kFlagCarried);
