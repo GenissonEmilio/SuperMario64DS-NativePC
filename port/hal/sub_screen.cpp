@@ -4309,6 +4309,195 @@ static void client_to_src(int cx, int cy, int *x, int *y, int *sw, int *sh);
 static void layout_log(const char *why);
 static void layout_selftest(void);
 
+/* ---- WIDEBG1: the classic two-screen menus, wide window ---------------------------------------------------------------
+   With OneScreenMenus off a menu scene is presented at the DS's own 4:3 rectangle in the middle of a wide image (a
+   16:9 / 21:9 window), and the margins either side held only the 3D clear colour or black. This fills them, per physical
+   screen, AFTER the compose and touching only margin pixels that still hold the backdrop:
+     1. an optional drawn side piece from wide_backdrops/<key>.png (docs: ART_KEYS.md), else
+     2. a soft continuation of the screen's own edge columns: the edge colour of each row, blurred down the picture and
+        eased a little darker the farther it runs from the picture.
+   Buttons, text, sprites and the 4:3 picture are never read back out of the margin and never moved: only pixels equal to
+   that row's outermost pixel (the clear colour, faded or not) are replaced, so 3D that overhangs the picture stays.
+   SM64DS_WIDE_BACKDROP=0 turns it off. SM64DS_WIDE_ART_DIR=<folder> reads art from there (proof rows). */
+extern "C" int port_title_page_state(int *top, int *elem, int *req);
+
+namespace {
+
+struct WideArt { char key[48]; int w, h; unsigned *px; };
+WideArt g_wide_art[24];
+
+int wide_on(void)
+{
+    static int on = -1;
+    if (on < 0) { const char *e = std::getenv("SM64DS_WIDE_BACKDROP"); on = (e && *e == '0') ? 0 : 1; }
+    return on;
+}
+
+/* the stable screen key (ART_KEYS.md); 0 = a scene this does not touch */
+const char *wide_scene_name(void)
+{
+    const int sc = port_scene_live_id();
+    if (sc == 1) {
+        int top = -1, elem = -1, req = -1;
+        if (!port_title_page_state(&top, &elem, &req)) return "title_attract";
+        if (top == 11 && elem == 0) return "title_attract";
+        if (top == 10) return "title_intro";
+        if (elem == 0) return top == 8 ? "title_options" : "title_main";
+        if (elem >= 1 && elem <= 4) return "title_drawing";
+        if (top == 2 || top == 4) return "title_scores";
+        return "title_files";
+    }
+    if (sc == 4) return "star_select";
+    if (sc == 5) return "rec_room";
+    if (sc == 8) return "game_over";
+    if (sc == 0) return "title_attract";
+    if (sc >= 0 && sc < 100) {                          /* any other two-screen scene below the minigames (ids 300 and up) */
+        static char nm[24];
+        std::snprintf(nm, sizeof nm, "scene_%d", sc);
+        return nm;
+    }
+    return 0;
+}
+
+WideArt *wide_art_for(const char *key)
+{
+    for (int i = 0; i < 24; ++i)
+        if (g_wide_art[i].key[0] && !std::strcmp(g_wide_art[i].key, key)) return g_wide_art[i].px ? &g_wide_art[i] : 0;
+    int slot = -1;
+    for (int i = 0; i < 24; ++i) if (!g_wide_art[i].key[0]) { slot = i; break; }
+    if (slot < 0) return 0;
+    WideArt &A = g_wide_art[slot];
+    std::snprintf(A.key, sizeof A.key, "%s", key);
+    char path[1300];
+    unsigned char *p = 0;
+    int w = 0, h = 0, comp = 0;
+    const char *dirs[4] = { std::getenv("SM64DS_WIDE_ART_DIR"), 0, 0, 0 };
+    char exedir[1100] = "";
+#ifdef _WIN32
+    {
+        char exe[MAX_PATH];
+        const DWORD n = GetModuleFileNameA(NULL, exe, MAX_PATH);
+        if (n > 0 && n < MAX_PATH) {
+            char *sl = std::strrchr(exe, '\\');
+            if (sl) { *sl = 0; std::snprintf(exedir, sizeof exedir, "%s/wide_backdrops", exe); dirs[1] = exedir; }
+        }
+    }
+#endif
+    char rootdir[1100] = "";
+    if (const char *r = std::getenv("SM64DS_ASSET_ROOT")) {
+        if (*r) { std::snprintf(rootdir, sizeof rootdir, "%s/wide_backdrops", r); dirs[2] = rootdir; }
+    }
+    dirs[3] = "wide_backdrops";
+    for (int d = 0; d < 4 && !p; ++d) {
+        if (!dirs[d] || !*dirs[d]) continue;
+        std::snprintf(path, sizeof path, "%s/%s.png", dirs[d], key);
+        p = stbi_load(path, &w, &h, &comp, 4);
+    }
+    if (!p) return 0;
+    if (w < 16 || h < 16 || w > 16384 || h > 8192) { stbi_image_free(p); return 0; }
+    A.px = (unsigned *)std::malloc((size_t)w * (size_t)h * 4u);
+    if (!A.px) { stbi_image_free(p); return 0; }
+    for (int i = 0; i < w * h; ++i)
+        A.px[i] = ((unsigned)p[i * 4 + 3] << 24) | ((unsigned)p[i * 4] << 16) | ((unsigned)p[i * 4 + 1] << 8) | (unsigned)p[i * 4 + 2];
+    stbi_image_free(p);
+    A.w = w; A.h = h;
+    std::fprintf(stderr, "  [wide] art %s.png %dx%d from %s\n", key, w, h, path);
+    return &A;
+}
+
+unsigned wide_mix(unsigned c, int f256)     /* darken */
+{
+    const unsigned r = ((c >> 16) & 255) * f256 >> 8, g = ((c >> 8) & 255) * f256 >> 8, b = (c & 255) * f256 >> 8;
+    return 0xFF000000u | (r << 16) | (g << 8) | b;
+}
+
+/* one physical screen: rows [y0, y0 + rows) of the image, the picture at columns [cx0, cx1) */
+void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1, const char *key)
+{
+    if (rows <= 0 || (cx0 <= 0 && cx1 >= iw)) return;
+    static unsigned *buf;
+    static int bufrows;
+    if (bufrows < rows) {
+        std::free(buf);
+        buf = (unsigned *)std::malloc((size_t)rows * 12u);
+        bufrows = buf ? rows : 0;
+        if (!bufrows) return;
+    }
+    unsigned *E[2] = { buf, buf + rows };
+    unsigned *tmp = buf + 2 * (size_t)rows;
+    /* per row, per side: the edge colour (mean of the 3 outermost picture columns), then blurred down the picture */
+    for (int side = 0; side < 2; ++side) {
+        unsigned *e = E[side];
+        for (int r = 0; r < rows; ++r) {
+            const unsigned *row = img + (size_t)(y0 + r) * iw;
+            unsigned sr = 0, sg = 0, sb = 0;
+            for (int k = 0; k < 3; ++k) {
+                const int x = side == 0 ? cx0 + k : cx1 - 1 - k;
+                const unsigned c = row[x];
+                sr += (c >> 16) & 255; sg += (c >> 8) & 255; sb += c & 255;
+            }
+            e[r] = 0xFF000000u | ((sr / 3) << 16) | ((sg / 3) << 8) | (sb / 3);
+        }
+        const int R = rows / 20 > 1 ? rows / 20 : 1;
+        for (int pass = 0; pass < 2; ++pass) {
+            unsigned *src = pass == 0 ? e : tmp, *dst = pass == 0 ? tmp : e;
+            for (int r = 0; r < rows; ++r) {
+                unsigned sr = 0, sg = 0, sb = 0, n = 0;
+                for (int k = -R; k <= R; ++k) {
+                    int q = r + k; q = q < 0 ? 0 : q >= rows ? rows - 1 : q;
+                    const unsigned c = src[q];
+                    sr += (c >> 16) & 255; sg += (c >> 8) & 255; sb += c & 255; ++n;
+                }
+                dst[r] = 0xFF000000u | ((sr / n) << 16) | ((sg / n) << 8) | (sb / n);
+            }
+        }
+    }
+    WideArt *art = wide_art_for(key);
+    const int mL = cx0 > 0 ? cx0 : 0, mR = iw - cx1 > 0 ? iw - cx1 : 0;
+    for (int r = 0; r < rows; ++r) {
+        unsigned *row = img + (size_t)(y0 + r) * iw;
+        const unsigned kl = (cx0 >= 3 ? row[cx0 - 3] : row[0]) & 0xFFFFFFu, kr = (cx1 + 3 <= iw ? row[cx1 + 2] : row[iw - 1]) & 0xFFFFFFu;
+        for (int x = 0; x < iw; ++x) {
+            const bool left = x < cx0, right = x >= cx1;
+            if (!left && !right) continue;
+            if ((row[x] & 0xFFFFFFu) != (left ? kl : kr)) continue;      /* not backdrop any more: 3D that overhangs the picture */
+            const int d = left ? cx0 - 1 - x : x - cx1;
+            const int m = left ? mL : mR;
+            unsigned c = 0;
+            int have = 0;
+            if (art) {
+                /* the art's height is the screen's height; its middle sits on the picture's middle */
+                const double sc = (double)art->h / (double)rows;
+                const double ax = (double)art->w * 0.5 + ((double)x + 0.5 - (double)(cx0 + cx1) * 0.5) * sc;
+                int axi = (int)ax; axi = axi < 0 ? 0 : axi >= art->w ? art->w - 1 : axi;
+                int ayi = (int)((r + 0.5) * sc); ayi = ayi >= art->h ? art->h - 1 : ayi;
+                const unsigned a = art->px[(size_t)ayi * art->w + axi];
+                if ((a >> 24) >= 128) { c = 0xFF000000u | (a & 0xFFFFFFu); have = 1; }
+            }
+            if (!have) {
+                const int f = 224 - (m > 0 ? 72 * d / m : 0);         /* 0.875 at the seam, 0.59 at the window edge */
+                c = wide_mix(E[left ? 0 : 1][r], f);
+            }
+            row[x] = c;
+        }
+    }
+}
+
+void wide_backdrop_apply(unsigned *img, const ntr::StackLayout &lay)
+{
+    if (!wide_on() || lay.pan_x0 <= 0) return;
+    const char *key = wide_scene_name();
+    if (!key) return;
+    char k[64];
+    std::snprintf(k, sizeof k, "%s_top", key);
+    wide_fill_screen(img, lay.w, lay.top_y, lay.top_h, lay.pan_x0, lay.pan_x0 + lay.pan_w, k);
+    std::snprintf(k, sizeof k, "%s_bottom", key);
+    wide_fill_screen(img, lay.w, lay.bottom_y, lay.pan_h, lay.pan_x0, lay.pan_x0 + lay.pan_w, k);
+}
+
+} // namespace
+
+
 /* Build the stacked image and hand back a pointer to it. `top` is the FINISHED
  * framebuffer -- faded, overlaid, everything -- and the return is
  * ntr::STACK_W x ntr::STACK_H, or null when the mode is off or the bottom
@@ -4405,6 +4594,7 @@ unsigned int *hal_sub_screen_stacked_image(const unsigned int *top)
     int evy = 0, to_white = 0;
     if (!port_fader_blend_state_sub(&evy, &to_white)) evy = 0;
     ntr::ppu_compose_stacked(top, g_sub, px, lay.w, lay.h, evy, to_white, lay);
+    wide_backdrop_apply(px, lay);   /* WIDEBG1 */
     return px;
 }
 
