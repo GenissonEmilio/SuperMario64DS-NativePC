@@ -1294,12 +1294,14 @@ int sd_seq_start(int p, const sd_u8 *seqBase, sd_u32 startOff,
     // to 64 and lose it, which inverted the ROM's steal order (see
     // sdat_seq_priority).
     pl.cpr = sdat_seq_priority(seqBase, startOff);
-    if (g_wantLeft > 0 && g_want[p].active && g_want[p].sig == pl.sig &&
-        g_want[p].startOff == startOff) {
-        g_seekPending[p] = g_want[p].tickAge;
-        g_want[p].active = 0;
+    for (int w = 0; w < SD_PLAYERS && g_wantLeft > 0; w++) {
+        if (!g_want[w].active || g_want[w].sig != pl.sig || g_want[w].startOff != startOff)
+            continue;
+        g_seekPending[p] = g_want[w].tickAge;
+        g_want[w].active = 0;
         fprintf(stderr, "[sseq] seek player %d to tick %u (at its start)\n", p,
                 (unsigned)g_seekPending[p]);
+        break;
     }
     {
         /* A mod may have replaced this music track with a recording. The
@@ -1718,7 +1720,9 @@ void sd_seq_snapshot(SdSeqPos *out)
 {
     for (int p = 0; p < SD_SEQ_PLAYERS; p++) {
         const Player &pl = g_pl[p];
-        out[p].active = (pl.active && sd_seq_active(p)) ? 1 : 0;
+        // Under two seconds in, a restart is not audible and a short sound
+        // effect that happens to share the sequence would be cut short.
+        out[p].active = (pl.active && sd_seq_active(p) && pl.tickAge >= 192) ? 1 : 0;
         out[p].sig = pl.sig;
         out[p].startOff = pl.startOff;
         out[p].tickAge = pl.tickAge;
@@ -1727,19 +1731,26 @@ void sd_seq_snapshot(SdSeqPos *out)
 
 int sd_seq_seek_to(const SdSeqPos *in)
 {
-    int n = 0;
+    // The game hands out player numbers in the order it asks for sounds, so the
+    // song comes back on a different player than it had at the save: it is
+    // found by its identity, and waits for its start if it has not begun yet.
     memcpy(g_want, in, sizeof g_want);
     g_wantLeft = 192 * 4;
-    for (int p = 0; p < SD_SEQ_PLAYERS; p++) {
-        const Player &pl = g_pl[p];
-        if (!in[p].active || !pl.active || pl.sig != in[p].sig ||
-            pl.startOff != in[p].startOff || in[p].tickAge <= pl.tickAge)
-            continue;
-        g_seekPending[p] = in[p].tickAge - pl.tickAge;
-        g_want[p].active = 0;
-        fprintf(stderr, "[sseq] seek player %d to tick %u (now %u)\n", p,
-                (unsigned)in[p].tickAge, (unsigned)pl.tickAge);
-        n++;
+    int n = 0;
+    for (int w = 0; w < SD_SEQ_PLAYERS; w++) {
+        if (!g_want[w].active) continue;
+        for (int p = 0; p < SD_SEQ_PLAYERS; p++) {
+            const Player &pl = g_pl[p];
+            if (!pl.active || pl.sig != g_want[w].sig || pl.startOff != g_want[w].startOff ||
+                g_want[w].tickAge <= pl.tickAge || g_seekPending[p])
+                continue;
+            g_seekPending[p] = g_want[w].tickAge - pl.tickAge;
+            g_want[w].active = 0;
+            fprintf(stderr, "[sseq] seek player %d to tick %u (now %u)\n", p,
+                    (unsigned)g_want[w].tickAge, (unsigned)pl.tickAge);
+            n++;
+            break;
+        }
     }
     return n;
 }
