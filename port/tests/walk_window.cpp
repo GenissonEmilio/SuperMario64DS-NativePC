@@ -11694,6 +11694,7 @@ static HDC  g_entry_hdc;
  * Returns 1 when the window asked to close (WM_QUIT), 0 otherwise. The caller
  * decides what closing means; the interlude stops, and scene_window_run breaks
  * its loop exactly as it did when this code was inline. */
+static int stick_script_apply(int frame, int *pad_live, XPad *pad);
 static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
                                   int *focus_was)
 {
@@ -11730,6 +11731,7 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
     int pad_live = port_pad_poll(pad);
     pad_focus_gate(&pad_live, pad);
     pad_test_apply(frame, &pad_live, pad);
+    stick_script_apply(frame, &pad_live, pad);    /* STARSEL093: the scripted stick (inert unless SM64DS_STICK_SCRIPT is set) on the scene path too */
     setlive_test_apply(frame, &pad_live, pad);
     controls_refresh();
     rebind_capture_frame(&pad_live, pad);
@@ -11790,6 +11792,13 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
                 if (pad->buttons & 0x0004) btn |= 0x20;   /* d-pad left  */
                 if (pad->buttons & 0x0001) btn |= 0x40;   /* d-pad up    */
                 if (pad->buttons & 0x0002) btn |= 0x80;   /* d-pad down  */
+                /* STARSEL093 (D7): the left stick moves the star select's cursor (the dominant axis, as the stick's d-pad bits in
+                   the level loop); the hold repeats through the ROM's own d-pad repeat. Nothing else on the scene path reads it. */
+                if (hal_menu_starsel_up()) {
+                    const int ax = pad->lx < 0 ? -pad->lx : pad->lx, ay = pad->ly < 0 ? -pad->ly : pad->ly;
+                    if (ax > 16000 && ax >= ay) btn |= (pad->lx > 0) ? 0x10 : 0x20;
+                    else if (ay > 16000) btn |= (pad->ly > 0) ? 0x40 : 0x80;
+                }
                 if (pad_act(pad, HOST_PAD_START))  btn |= 0x08; /* START */
                 if (pad_act(pad, HOST_PAD_SELECT)) btn |= 0x04; /* none
                                                  by default; see header */
