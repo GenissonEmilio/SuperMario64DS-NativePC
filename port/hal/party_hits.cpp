@@ -40,6 +40,7 @@ extern unsigned char data_ov002_02110064[];   // St_InYoshiMouth
 extern unsigned char data_ov002_0211016c[];   // St_Grabbed
 int func_ov002_020d5f34(char *c, void *eater);   // victim: into the mouth (state, +0xd0, anim 0x3f)
 int func_ov002_020d5ed0(char *c);                // victim: mouth step 1
+int _ZN6Player7SetAnimEji5Fix12IiEj(void *c, unsigned anim, int a, int b, unsigned d);
 int func_ov002_020d5cec(char *c);                // victim: the ROM's own spit
 int func_ov002_020db5f4(char *victim, char *holder);              // victim: St_Grabbed
 void func_ov002_020db54c(unsigned char *victim, int speed, int vert, short yaw);   // victim: thrown
@@ -186,8 +187,10 @@ Place my_place() {
 // referee's _hit use, plus a level in transition). `grab`: a Wario hold takes a STUNNED player, so the hurt
 // states and the knock's invincibility do not count against it.
 const char *g_busy_why = "";
+int g_busy_state = 0xFF;
 bool me_busy(const char *me, bool grab = false) {
     const int st = port::vs_arena_state_index(me);
+    g_busy_state = st;
     g_busy_why = "state";
     if (st != 0xFF && state_blocks_hit(st) && !(grab && (st == 7 || st == 36))) return true;
     g_busy_why = "invincible";
@@ -299,9 +302,9 @@ void log_verdict(const Claim &c, Verdict v) {
     ++g.st.claims_recv;
     if (v != kOk) { ++g.st.refused; ++g.st.refused_by[v & 15]; }
     if (g.log > 0 || v == kOk)
-        std::fprintf(stderr, "[phit] %s ik=%u from seat %d (claimed %d,%d,%d) stamp=%u -> %s%s%s\n", v == kOk ? "APPLY" : "REFUSE", c.ikind,
+        std::fprintf(stderr, "[phit] t=%u f=%u %s ik=%u from seat %d (claimed %d,%d,%d) stamp=%u -> %s%s%s st=%d\n", wall_ms(), g.frame, v == kOk ? "APPLY" : "REFUSE", c.ikind,
                      c.attacker, c.x, c.y, c.z, c.stamp, verdict_name(v),
-                     v == kVictimBusy ? " why=" : "", v == kVictimBusy ? g_busy_why : "");
+                     v == kVictimBusy ? " why=" : "", v == kVictimBusy ? g_busy_why : "", g_busy_state);
 }
 
 // Apply a believed shove / stomp to my own body: the ROM's own hurt entry with zero damage, then the
@@ -328,19 +331,25 @@ void eat_begin(char *me, const Claim &c) {
     if (g.rom_eat && ep) {
         // the ROM's own entry into a mouth (what the arena's EATEN event does): the eater's body is the
         // mEatingPlayer, its +0x360 names me, my state is St_InYoshiMouth and my anim the curled one (0x3f)
+        // func_ov002_020d5f34 step by step (it sets the eater link, the curled anim, step 0, the state), because the
+        // eater link did not survive the call on this port: each stage's value is logged, and the link is set again
+        // after the state change (the mouth state's Main reads it every frame)
         s32(me, kInMouth) = 0;
         ptrf(ep, kMouthObj) = me;
-        if (func_ov002_020d5f34(me, ep)) {
-            *(unsigned short *)(ep + kHoldTimer) = g.eat_hold ? (unsigned short)(g.eat_hold + 60) : 0x3c;      // mashing shortens it; our spit comes first
-            *(unsigned char *)(ep + 0x708) = 0; *(unsigned char *)(ep + 0x709) = 0;
-            const int e0 = state_is(me, data_ov002_02110064) ? 1 : 0;
-            const int r5 = func_ov002_020d5ed0(me);
-            g.rom_mouth = r5 != 0 && state_is(me, data_ov002_02110064) && ptrf(me, kInMouth) == ep;
-            std::fprintf(stderr, "[phit] EAT enter: in mouth state %d, d5ed0 %d, now %d, eater link %p (eater %p)\n", e0, r5, g.rom_mouth ? 1 : 0, (void *)ptrf(me, kInMouth), (void *)ep);
-        } else {
-            ptrf(ep, kMouthObj) = nullptr;
-            std::fprintf(stderr, "[phit] EAT: the ROM refused to put me in the mouth, synthetic hold\n");
-        }
+        ptrf(me, kInMouth) = ep;
+        char *l0 = ptrf(me, kInMouth);
+        _ZN6Player7SetAnimEji5Fix12IiEj(me, 0x3f, 0, 0x3000, 0);
+        char *l1 = ptrf(me, kInMouth);
+        *(unsigned char *)(me + 0x6e3) = 0;
+        _ZN6Player11ChangeStateERNS_5StateE(me, data_ov002_02110064);
+        char *l2 = ptrf(me, kInMouth);
+        ptrf(me, kInMouth) = ep;
+        *(unsigned short *)(ep + kHoldTimer) = g.eat_hold ? (unsigned short)(g.eat_hold + 60) : 0x3c;      // mashing shortens it; our spit comes first
+        *(unsigned char *)(ep + 0x708) = 0; *(unsigned char *)(ep + 0x709) = 0;
+        const int r5 = func_ov002_020d5ed0(me);
+        g.rom_mouth = r5 != 0 && state_is(me, data_ov002_02110064) && ptrf(me, kInMouth) == ep;
+        std::fprintf(stderr, "[phit] EAT enter: eater link after set/anim/state %p %p %p, d5ed0 %d, now %d (eater %p)\n", (void *)l0, (void *)l1, (void *)l2, r5, g.rom_mouth ? 1 : 0, (void *)ep);
+        if (!g.rom_mouth) ptrf(ep, kMouthObj) = nullptr;
     }
     if (!g.rom_mouth) *(unsigned char *)(me + kNoControl) = 1;           // TUNE: the flag my_body_may_act reads
     send_wire(c.attacker, kEatAck, 0, 0, 0, 0);
