@@ -7002,6 +7002,24 @@ static unsigned pad_script_mask(const char *spec, int frame)
     return mask;
 }
 
+/* ENDING093 (D10): THE ROM'S OWN "THE PLAYER MAY NOT STEER" ANSWER, read where the
+   host stick write needs it. Stage::CheckInput (src/_ZN5Stage10CheckInputEv.cpp)
+   blanks all four Ctrl records and returns early unless the game is in a mode
+   that takes input: VS (data_0209f2d8 == 1), or not battle-bros (!= 2) with the
+   play bit data_0209caa0[2] & 0x80 set AND either a message box up
+   (data_0209d660) or no Kuppa cutscene script running (data_0209fc48 == 0).
+   The credits montage and the star-get pose are exactly the frames that fail
+   that test. The analog write further down stores the stick straight into the
+   Ctrl record AFTER CheckInput, so it used to walk a locked player anyway (and
+   left jump / punch dead, because the button word stayed blank). Same
+   predicate, same order of tests as the ROM body. */
+static int rom_ctrl_open(void)
+{
+    if (data_0209f2d8 == 1) return 1;
+    if (data_0209f2d8 == 2) return 0;
+    if (!(data_0209caa0[2] & 0x80)) return 0;
+    return data_0209d660 != 0 || data_0209fc48 == 0;
+}
 static int g_setlive_mag = -2;       /* the last analog-injected magnitude, -2 none, -1 inside the dead zone */
 
 /* SM64DS_HOST_PAD: SM64DS_PAD_TEST's grammar, and the ONE difference is that a
@@ -12371,6 +12389,7 @@ extern "C" void port_frame_ctrl_publish(void)
                 force_analog = getenv("SM64DS_FORCE_ANALOG") ? 1 : 0;
             const int analog_mode = force_analog || run_mode() == RUN_ANALOG;
             if ((!selftest || stick_script_on()) && analog_mode && pad_live && !menu_on &&
+                rom_ctrl_open() &&
                 !(port::comms_transport() && comms_fanout_on())) {
                 const int DEAD = host_setting_stick_deadzone_raw();   /* 7849 by default: XInput's left-stick floor */
                 const int FULL = 32767;
