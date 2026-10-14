@@ -107,14 +107,20 @@ int title_cursor_on_wrench()
    word, so the ROM, which builds its key record from the held word on the title, sees no confirm) */
 extern "C" int settings_page_hook_pad(uint16_t *pressed)
 {
-    if (*pressed & (0x0001 | 0x0002 | 0x0008)) {      /* MENUS093: a confirm on the title's MP button does nothing */
-        if (title_main_page() && title_cursor_on_vs()) {
-            const uint16_t bits = 0x0001 | 0x0002 | 0x0008;
-            *pressed = (uint16_t)(*pressed & ~bits);
-            unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
-            *held = (unsigned short)(*held & ~bits);
-            port_host_keys_clear(bits);
-            return 1;
+    {
+        /* MENUS093: a confirm on the title's MP button does nothing. MENUS093B: it is the HELD word the ROM's key record is built from
+           (current & ~previous), so a press that lasts more than one frame must be taken out of the held word on every frame it is down, not
+           only on the frame of its edge: the guard used to read the pressed word alone, the held word came back on the second frame and the
+           ROM saw a fresh edge (a keyboard or pad press is never one frame long). */
+        const uint16_t bits = 0x0001 | 0x0002 | 0x0008;
+        unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+        if ((*pressed | *held) & bits) {
+            if (title_main_page() && title_cursor_on_vs()) {
+                *pressed = (uint16_t)(*pressed & ~bits);
+                *held = (unsigned short)(*held & ~bits);
+                port_host_keys_clear(bits);
+                return 1;
+            }
         }
     }
     const int tgt = armed_target();
