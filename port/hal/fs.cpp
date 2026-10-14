@@ -316,8 +316,7 @@ void DecompressLZ16(void *src_, void *dst_)
         static int said;
         if (said++ < 4)
             fprintf(stderr, "[lz] refused: header %02x%02x%02x%02x is not an LZ77 stream "
-                    "(size %u); the file did not load intact, destination left as it was
-",
+                    "(size %u); the file did not load intact, destination left as it was\n",
                     s[3], s[2], s[1], s[0], size);
         return;
     }
