@@ -3375,9 +3375,9 @@ void gw_follow() {
         if (z.show_n + 1 != g_gw_follow_n) z.show_ms = now;
         z.show_n = g_gw_follow_n;
         if (sm.teleport) ++g_gws.teleports;
-        {   /* INTERACT9 attach (see gw_attach_target) */
-            int akind = 0;
-            const int holder = port::party_hits::attached_holder(s, &akind);
+        int akind = 0;       /* INTERACT9 attach (see gw_attach_target) */
+        const int holder = port::party_hits::attached_holder(s, &akind);
+        {
             if (holder >= 0) {
                 int hx, hy, hz, hyaw;
                 if (gw_attach_target(holder, tnow, &hx, &hy, &hz, &hyaw)) {
@@ -3572,8 +3572,9 @@ void gw_follow() {
         ++z.driven;
         shown_any = true;
         /* PBODY1: a party friend in my level and area, fully shown, is a solid body */
+        /* INTERACT9: a body in somebody's mouth or hands is not solid (its cylinder would shove the holder) */
         if (pseat && !z.leaving && !sm.door_kind && gw_fade_out(s) >= 256 &&
-            party::gate(s) == party::kGateOk)
+            party::gate(s) == party::kGateOk && holder < 0)
             party::follow(a, i, s);
         if (pseat) {
             /* PLAYINT1 hook 4: the squash after a stomp I landed (+0x84 is the Y scale).

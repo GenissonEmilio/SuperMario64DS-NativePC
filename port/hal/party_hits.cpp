@@ -112,12 +112,17 @@ struct G {
     CarryV cv;      // I am carried
     CarryH ch;      // I carry
     // knobs
-    bool rom_eat = true, grab_on = true, feedback = true, defer = false;
-    bool pend = false; Claim pend_claim; Effect pend_fx;      // SM64DS_PHIT_DEFER=1: the old next-frame apply (A/B control)
+    bool rom_eat = true, grab_on = true, feedback = true;
+    bool pend = false; Claim pend_claim; Effect pend_fx;      // a believed claim waits here for the frame hook
+    unsigned pend_ms = 0;
+    // body-touching replies wait for the frame hook too (the pump runs inside the tick, around the actor walk)
+    struct Later { int what = 0; int seat = 0; bool swing = false; int yaw = 0, speed = 0; };
+    Later later[6]; int later_n = 0;
     int eat_ahead = 28, eat_up = 30, carry_ahead = 8, carry_up = 85;
     // lab
     char forge_kind = 0; int forge_units = 0; bool forged = false;
     unsigned probe_frame = 0;
+    int gather_dx = 0, gather_dz = 0; bool gather = false;     // LAB: stand next to the host every frame (pictures independent of frame skew)
     unsigned forge_at = 0, eat_hold = 0;      // LAB: forge from this frame on; a longer eat hold for pictures
     Stats st = {};
 } g;
@@ -137,9 +142,9 @@ void read_env() {
     g.rom_eat = env_flag(std::getenv("SM64DS_ROOM_EATVIS"), true);      // INTERACT9: 0 = the old synthetic hold
     g.grab_on = env_flag(std::getenv("SM64DS_ROOM_GRAB"), true);
     g.feedback = env_flag(std::getenv("SM64DS_PHIT_FEEDBACK"), true);
-    g.defer = env_flag(std::getenv("SM64DS_PHIT_DEFER"), false);
     if (const char *e = std::getenv("SM64DS_ATTACH_EAT")) std::sscanf(e, "%d,%d", &g.eat_ahead, &g.eat_up);
     if (const char *e = std::getenv("SM64DS_ATTACH_CARRY")) std::sscanf(e, "%d,%d", &g.carry_ahead, &g.carry_up);
+    if (const char *e = std::getenv("SM64DS_PHIT_LAB_GATHER")) { g.gather = true; g.gather_dx = 150; g.gather_dz = 0; std::sscanf(e, "%d,%d", &g.gather_dx, &g.gather_dz); }
     if (const char *e = std::getenv("SM64DS_PHIT_LAB_AT")) g.forge_at = (unsigned)std::atoi(e);
     if (const char *e = std::getenv("SM64DS_PHIT_EATHOLD")) g.eat_hold = (unsigned)std::atoi(e);
     if (const char *e = std::getenv("SM64DS_PHIT_LAB")) {
@@ -168,6 +173,9 @@ unsigned wall_ms() {
 int &s32(char *b, int off) { return *(int *)(b + off); }
 unsigned &u32(char *b, int off) { return *(unsigned *)(b + off); }
 char *&ptrf(char *b, int off) { return *(char **)(b + off); }
+// Player::IsState without the call: mState (+0x370) is the state the body is in (a bool-returning ROM method
+// declared int elsewhere can hand back garbage in the upper bits of eax)
+bool state_is(const char *b, const void *st) { return *(void *const *)(b + 0x370) == st; }
 
 Place my_place() {
     Place p; p.level = (int)(unsigned char)data_0209f2f8; p.area = (int)data_02092120; p.act = data_0209f220[0] & 0xff;
@@ -325,8 +333,10 @@ void eat_begin(char *me, const Claim &c) {
         if (func_ov002_020d5f34(me, ep)) {
             *(unsigned short *)(ep + kHoldTimer) = g.eat_hold ? (unsigned short)(g.eat_hold + 60) : 0x3c;      // mashing shortens it; our spit comes first
             *(unsigned char *)(ep + 0x708) = 0; *(unsigned char *)(ep + 0x709) = 0;
-            func_ov002_020d5ed0(me);
-            g.rom_mouth = true;
+            const int e0 = state_is(me, data_ov002_02110064) ? 1 : 0;
+            const int r5 = func_ov002_020d5ed0(me);
+            g.rom_mouth = r5 != 0 && state_is(me, data_ov002_02110064) && ptrf(me, kInMouth) == ep;
+            std::fprintf(stderr, "[phit] EAT enter: in mouth state %d, d5ed0 %d, now %d, eater link %p (eater %p)\n", e0, r5, g.rom_mouth ? 1 : 0, (void *)ptrf(me, kInMouth), (void *)ep);
         } else {
             ptrf(ep, kMouthObj) = nullptr;
             std::fprintf(stderr, "[phit] EAT: the ROM refused to put me in the mouth, synthetic hold\n");
@@ -344,11 +354,11 @@ void eat_end(char *me, bool spit, bool escaped = false) {
     char *ep = body_of_seat(eater);
     *(unsigned char *)(me + kNoControl) = 0;
     if (g.rom_mouth) {
-        if (spit && _ZN6Player7IsStateERNS_5StateE(me, data_ov002_02110064) && ptrf(me, kInMouth)) {
+        if (spit && state_is(me, data_ov002_02110064) && ptrf(me, kInMouth)) {
             func_ov002_020d5cec(me);                            // the ROM's own spit
             ++g.st.eats_spat;
         } else {
-            if (_ZN6Player7IsStateERNS_5StateE(me, data_ov002_02110064)) _ZN6Player11ChangeStateERNS_5StateE(me, data_ov002_0211013c);
+            if (state_is(me, data_ov002_02110064)) _ZN6Player11ChangeStateERNS_5StateE(me, data_ov002_0211013c);
             s32(me, kInMouth) = 0;
             ++g.st.eats_aborted;
         }
@@ -384,7 +394,7 @@ void eat_tick(char *me) {
     in.me_dead_or_menu = data_0209f2d8[0] == 2;
     if (g.rom_mouth) {
         char *ep = body_of_seat(eater);
-        const bool in_state = _ZN6Player7IsStateERNS_5StateE(me, data_ov002_02110064) && ptrf(me, kInMouth);
+        const bool in_state = state_is(me, data_ov002_02110064) && ptrf(me, kInMouth);
         if (!ep) in.eater_present = false;
         else if (in_state) {                                      // keep the eater's side of the link the state reads
             ptrf(ep, kMouthObj) = me;
@@ -470,7 +480,7 @@ void carry_v_tick(char *me) {
     }
     if (ptrf(hb, kHeldObj) != me) ptrf(hb, kHeldObj) = me;
     u32(me, kFlags) |= kFlagCarried | kFlagHeldOut;
-    if (!ptrf(me, kGrabbedBy) || !_ZN6Player7IsStateERNS_5StateE(me, data_ov002_0211016c)) {
+    if (!ptrf(me, kGrabbedBy) || !state_is(me, data_ov002_0211016c)) {
         // my own St_Grabbed_Main broke free (the mash count ran out: it dropped the holder and threw me off)
         std::fprintf(stderr, "[phit] GRAB: broke free after %u frames\n", g.frame - g.cv.f0);
         if (ptrf(hb, kHeldObj) == me) ptrf(hb, kHeldObj) = nullptr;
@@ -559,11 +569,35 @@ void handle_claim(int attacker, unsigned ikind, unsigned counter, unsigned stamp
     const Verdict v = g.judge.judge(c, s, m, g.frame, &fx);
     log_verdict(c, v);
     if (v != kOk) return;
-    if (g.defer) { if (!g.pend) { g.pend = true; g.pend_claim = c; g.pend_fx = fx; } return; }
-    // INTERACT9: applied in the same pump (the pump runs outside the actor walk, like the frame hook)
-    if (fx.eat) eat_begin(me, c);
-    else if (fx.grab) grab_begin(me, c);
-    else apply_effect(me, c, fx);
+    // A believed claim waits for the frame hook. The pump runs inside the frame's tick, BEFORE and around the
+    // actor walk, so changing my body's state from here is unsafe (measured: the ROM's mouth state found its
+    // eater pointer cleared and faulted; a hold dropped after one frame). The hook is later in the SAME frame, after
+    // the walk, so the wait is under a frame; the lag compensation is in the pose history, not in skipping it.
+    if (g.pend) { std::fprintf(stderr, "[phit] claim dropped: one is already waiting for the frame hook\n"); return; }
+    g.pend = true; g.pend_claim = c; g.pend_fx = fx;
+}
+
+enum : int { kLaterHurtSelf = 1, kLaterBreak = 2, kLaterLaunch = 3 };
+void later_push(int what, int seat, bool swing = false, int yaw = 0, int speed = 0) {
+    if (g.later_n >= 6) return;
+    G::Later &l = g.later[g.later_n++];
+    l.what = what; l.seat = seat; l.swing = swing; l.yaw = yaw; l.speed = speed;
+}
+void hurt_self_from_front(char *me) {            // the ROM hurts the eater when its mouthful breaks free
+    int v[3] = { *player::pos_x(me), *player::pos_y(me), *player::pos_z(me) };
+    const double a = (double)(*(short *)(me + kYawAngle) & 0xFFFF) * 3.14159265358979323846 / 32768.0;
+    v[0] += (int)std::lround(std::sin(a) * 100) * 0x1000; v[2] += (int)std::lround(std::cos(a) * 100) * 0x1000;
+    if (_ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(me, v, 0, 0x8000, 0, 0, 0))
+        *(unsigned short *)(me + player::kInvincibleTimer) = kBlinkFrames;
+}
+void later_run(char *me) {
+    for (int i = 0; i < g.later_n; ++i) {
+        const G::Later l = g.later[i];
+        if (l.what == kLaterHurtSelf) hurt_self_from_front(me);
+        else if (l.what == kLaterBreak) { if (g.ch.active && g.ch.victim == l.seat) carry_h_end("it broke free", true); }
+        else if (l.what == kLaterLaunch) grab_launch(me, l.seat, l.swing, l.yaw, l.speed);
+    }
+    g.later_n = 0;
 }
 
 void handle_reply(int seat, unsigned ik, int yaw, int x, int y, int z) {
@@ -575,15 +609,7 @@ void handle_reply(int seat, unsigned ik, int yaw, int x, int y, int z) {
     case kEatRelease:
         if (g.book.on_release(seat)) {
             std::fprintf(stderr, "[phit] EAT release from seat %d%s\n", seat, u(x) == 1 ? " (it broke free)" : "");
-            if (u(x) == 1) {                          // the ROM hurts the eater when its mouthful breaks free
-                if (char *me = my_body()) {
-                    int v[3] = { *player::pos_x(me), *player::pos_y(me), *player::pos_z(me) };
-                    const double a = (double)(*(short *)(me + kYawAngle) & 0xFFFF) * 3.14159265358979323846 / 32768.0;
-                    v[0] += (int)std::lround(std::sin(a) * 100) * 0x1000; v[2] += (int)std::lround(std::cos(a) * 100) * 0x1000;
-                    if (_ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(me, v, 0, 0x8000, 0, 0, 0))
-                        *(unsigned short *)(me + player::kInvincibleTimer) = kBlinkFrames;
-                }
-            }
+            if (u(x) == 1) later_push(kLaterHurtSelf, seat);
         }
         att_set(seat, -1, 0);
         break;
@@ -595,10 +621,10 @@ void handle_reply(int seat, unsigned ik, int yaw, int x, int y, int z) {
         }
         break;
     case kGrabBreak:
-        if (g.ch.active && g.ch.victim == seat) carry_h_end("it broke free", true);
+        later_push(kLaterBreak, seat);
         break;
     case kGrabThrow: case kGrabSwing:
-        if (char *me = my_body()) grab_launch(me, seat, ik == kGrabSwing, yaw, u(x) << 8);
+        later_push(kLaterLaunch, seat, ik == kGrabSwing, yaw, u(x) << 8);
         break;
     case kAttach: {
         const int st = u(x);
@@ -641,6 +667,22 @@ bool holder_try_grab(char *me, char *vb, int seat) {
     port::vs_grab_export_link(me, vb, false);
     g.ch.active = true; g.ch.victim = seat; g.ch.f0 = g.frame; g.ch.phase = 0;
     return true;
+}
+
+// LAB (SM64DS_PHIT_LAB_GATHER=dx,dz): every console but the host's puts its body next to the host's, seat * (dx, dz)
+// away, every frame. The consoles run at different frame rates, so a picture at a fixed frame needs the bodies to
+// be together at ANY frame. Never set outside a proof.
+void lab_gather(char *me) {
+    const int seat = comms_hub_my_seat();
+    if (!g.gather || seat <= 0 || g.hold.active() || g.cv.active || g.ch.active) return;
+    Seen s;
+    if (!see(0, &s) || !s.have_ghost || !s.in_level) return;
+    const Place mp = my_place();
+    if (s.at.level != mp.level || s.at.area != mp.area) return;
+    *player::pos_x(me) = (s.x + g.gather_dx * seat) << 12;
+    *player::pos_y(me) = s.y << 12;
+    *player::pos_z(me) = (s.z + g.gather_dz * seat) << 12;
+    *(int *)(me + kHorzSpeed) = 0; *(int *)(me + kVertSpeed) = 0;
 }
 
 void attacker_scan(char *me) {
@@ -780,6 +822,7 @@ extern "C" void port_party_hits_frame(void) {
         r.x = u(*player::pos_x(me)); r.y = u(*player::pos_y(me)); r.z = u(*player::pos_z(me));
     }
     g.book.tick(g.frame);
+    later_run(me);
     if (g.pend) {
         g.pend = false;
         if (g.pend_fx.eat) eat_begin(me, g.pend_claim);
@@ -790,5 +833,6 @@ extern "C" void port_party_hits_frame(void) {
     eat_tick(me);
     carry_v_tick(me);
     carry_h_tick(me);
+    lab_gather(me);
     if (!g.hold.active() && !g.cv.active) attacker_scan(me);
 }
