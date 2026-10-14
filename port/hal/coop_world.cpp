@@ -39,6 +39,7 @@ extern int data_0209f220[];
 extern int data_0209f4f8[];
 signed char GetLevelPart(int idx);
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
+void GiveCoins(int idx, int amount);
 void LoadLevelNoReturn(unsigned level, unsigned entrance, unsigned star, unsigned unk);
 void _ZN8dActor_c24KillAndTrackInDeathTableEv(void *self);
 void *_ZN8dActor_c10FindWithIDEj(unsigned id);
@@ -297,6 +298,9 @@ void serve_snapshot(int seat, const Job &j) {
 // (coop_spawn.cpp), everyone else gets the announced copy. Coins that fall out of enemies have slot -1 and are never in a death bit.
 // SM64DS_COOP_COINS=0 turns it off (must-fail control).
 bool coins_off() { static const bool off = [] { const char *e = std::getenv("SM64DS_COOP_COINS"); return e && *e == '0'; }(); return off; }
+// SM64DS_COOP_COINS=native: the must-fail for the 100-coin rule, credits through the ROM's GiveCoins (which spawns the star at 100 on THIS
+// console as well as on the one whose pickup crossed it).
+bool coins_native() { static const bool n = [] { const char *e = std::getenv("SM64DS_COOP_COINS"); return e && !std::strcmp(e, "native"); }(); return n; }
 unsigned long long g_coin_credits = 0, g_coin_total = 0;
 void credit_remote_coins(int w, unsigned fresh) {
     if (coins_off() || !g_sync) return;
@@ -312,7 +316,8 @@ void credit_remote_coins(int w, unsigned fresh) {
         const int v = ty == 1 ? 2 : ty == 2 ? 5 : 1;
         int n = (int)data_0209f358[me] + v;
         if (n > 0xff) n = 0xff;
-        data_0209f358[me] = (short)n;
+        if (coins_native()) { GiveCoins(me, v); n = (int)data_0209f358[me]; }
+        else data_0209f358[me] = (short)n;
         ++g_coin_credits; g_coin_total += (unsigned)v;
         if (g_log)
             std::fprintf(stderr, "[coop] coin credit cls=%u slot=%d type=%d +%d count=%d wall=%lld\n", cls, (int)slot, ty, v, n, wall_ms());
