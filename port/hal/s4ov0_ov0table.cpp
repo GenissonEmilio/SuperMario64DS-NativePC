@@ -52,8 +52,14 @@ double port_ov0_table_clock_ms(void)
    long it took. SM64DS_OV0_TABLE_DUMP=<path> also writes the whole table, one
    "handle<TAB>file id" row per entry, for a comparison against the catalog
    (build/assets/handles.tsv) that the host face used to answer from. */
+void port_ov_sinit_late(void);   /* hal/ov_sinit_noops.cpp */
+
 void port_ov0_table_report(double ms)
 {
+    /* The overlay TUs' own initialisers that no port file calls ran before main
+       until the handle lookups in them were measured against a null table; they
+       run here, once, with the table built (port/tools/sinit_noops.py). */
+    { static bool once; if (!once) { once = true; port_ov_sinit_late(); } }
     int nonzero = 0;
     const unsigned short *t = data_0209d3b8;
     for (int i = 0; t && i < data_0209d3b0; ++i)

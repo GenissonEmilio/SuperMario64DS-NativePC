@@ -122,6 +122,13 @@ def rows():
     have = defined_in_src() | defined_in_port()
     cfg = config_names()
     res = []
+    # every overlay initialiser the config knows, not only the ones a port file
+    # calls: the unreferenced ones are run once, late (port_ov_sinit_late)
+    for (ov, addr), cname in sorted(cfg.items()):
+        if cname.startswith("__sinit_") and cname.endswith(".cpp"):
+            nm = "__sinit_ov%03d_%08x" % (ov, addr)
+            if nm not in refs and nm not in have:
+                refs[nm] = set()
     for name in sorted(refs):
         if name in have:
             continue
@@ -209,7 +216,7 @@ def render(res):
     out.append('extern "C" {')
     for name, ov, addr, cfgname, callers, tu in rows:
         note = "ov%03d 0x%08x: %s; called from %s" % (
-            ov, addr, cfgname or "(no config symbol)", ", ".join(callers))
+            ov, addr, cfgname or "(no config symbol)", ", ".join(callers) or "nobody (run late)")
         if tu:
             v = re.sub(r"[^A-Za-z0-9_]", "_", seg_name(tu))
             out.append("void %s(void) { port_sinit_run(&%s_b, &%s_e); }  /* %s; runs %s */" % (

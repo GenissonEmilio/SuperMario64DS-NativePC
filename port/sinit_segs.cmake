@@ -135,6 +135,7 @@ set(PORT_SINIT_SEG_ROWS
     src/game/actors/d_a_obj_km1_dorifu.cpp|sinit_d_a_obj_km1_dorifu.h
     src/game/actors/d_a_obj_km2_agaru.cpp|sinit_d_a_obj_km2_agaru.h
     src/game/actors/d_a_obj_km2_ami_bou.cpp|sinit_d_a_obj_km2_ami_bou.h
+    src/actors/daObjKm2_Nobiru_c.cpp|sinit_daObjKm2_Nobiru_c.h
     src/game/actors/d_a_obj_km2_ukishima.cpp|sinit_d_a_obj_km2_ukishima.h
     src/game/actors/d_a_obj_km2_gura.cpp|sinit_d_a_obj_km2_gura.h
     src/game/actors/d_a_obj_km2_fall_block.cpp|sinit_d_a_obj_km2_fall_block.h
