@@ -47,3 +47,28 @@ extern "C" void *port_pmf_tc(const void *flat)
     ++g_n;
     return p;
 }
+
+/* port_pmf_tc_cells -- put the thiscall adapter over the function word of each listed
+   {fn, delta} pointer-to-member cell whose word is a FLAT function. For the tables main
+   builds natively out of `union { void (*fn)(T *); void (T::*pmf)(); }` descriptors (the
+   mwcc-only free-function-as-member pun): the host initialiser stores the free function's
+   own address, which the native dispatch then enters with `this` in ECX. Call it after the
+   class TU's initialiser has run. A cell already holding a stub, or null, is left alone. */
+extern "C" void port_pmf_tc_cells(void *base, const int *idx, int n)
+{
+    unsigned *c = (unsigned *)base;
+    for (int k = 0; k < n; ++k) {
+        unsigned *cell = c + idx[k] * 2;
+        const unsigned fn = cell[0];
+        if (!fn || cell[1] != 0)
+            continue;
+        if (g_page && fn >= (unsigned)(size_t)g_page && fn < (unsigned)(size_t)g_page + kPage)
+            continue;
+        bool is_stub = false;
+        for (int i = 0; i < g_n; ++i)
+            if ((unsigned)(size_t)g_ent[i].stub == fn) { is_stub = true; break; }
+        if (is_stub)
+            continue;
+        cell[0] = (unsigned)(size_t)port_pmf_tc((const void *)(size_t)fn);
+    }
+}

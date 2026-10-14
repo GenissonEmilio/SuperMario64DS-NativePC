@@ -19,6 +19,7 @@
 extern "C" {
 #endif
 void *port_pmf_tc(const void *flat);
+void port_pmf_tc_cells(void *base, const int *idx, int n);   /* listed {fn,delta} cells holding flat functions */
 #ifdef __cplusplus
 }
 #endif

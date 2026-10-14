@@ -13,6 +13,9 @@
 #include <cstdio>
 #include "dsstate_seg.h"
 #include <cstdlib>
+#include "hal/pmf_tc.h"
+extern "C" char port_tab_shark[];   /* alias of main's decorated SharkStateTable, below */
+#pragma comment(linker, "/alternatename:_port_tab_shark=?data_ov090_021345cc@@3USharkStateTable@@A")
 
 extern "C" {
 
@@ -2157,6 +2160,11 @@ extern "C" void port_actor_overlays_sinits(void)
     __sinit_ov090_02133ea8();   /* MANTA_RAY: 2 SharedFilePtrs + 1 state cell */
     __sinit_ov090_02133f4c();   /* CHEEP_CHEEP: 2 SharedFilePtrs + 2 cells */
     __sinit_ov090_02134020();   /* SHARK: 2 SharedFilePtrs + 1 state cell */
+    /* PORTSYNC3: main's daShark_c.cpp copies two `union { void (*)(T *); PMF }` free-function
+       descriptors into this table, so the cells hold the flat functions' own addresses; its
+       dispatch is a native member call (ECX = this). Put the thiscall adapters over them. */
+    { static const int shark_idx[2] = { 0, 1 };
+      port_pmf_tc_cells((void *)port_tab_shark, shark_idx, 2); }
     /* run rel0215 wave 2 (lane cast-ov066): ov066's ONE sinit. The overlay has
        one class and this lane registers it, so nothing is left unrun. It builds
        twenty-two SharedFilePtrs (three func_02017acc, eleven
