@@ -7761,6 +7761,15 @@ double ip_leftover_units() {
     return v;
 }
 
+bool ip_newborn_recam() {
+    static int on = -1;
+    if (on < 0) {
+        const char *e = getenv("SM64DS_PARTICLE_RECAM");
+        on = (e && e[0] == '0') ? 0 : 1;
+    }
+    return on != 0;
+}
+
 void ip_rec_begin() {
     IpRec &r = g_ipr[g_ip_w];
     r.ev.clear();
@@ -8167,15 +8176,6 @@ void ip_recamera_trans(const uint32_t *p, uint32_t *out) {
     }
 }
 
-bool ip_newborn_recam() {
-    static int on = -1;
-    if (on < 0) {
-        const char *e = getenv("SM64DS_PARTICLE_RECAM");
-        on = (e && e[0] == '0') ? 0 : 1;
-    }
-    return on != 0;
-}
-
 bool ip_proj_perspective() {
     return g.proj.m[3] != 0.0f || g.proj.m[7] != 0.0f || g.proj.m[11] != 0.0f;
 }
@@ -8502,6 +8502,14 @@ static void grid_pool_clear_hook() {
         grids_materialize_w(7);
         std::swap(g, g_ip_saved.g);
     }
+}
+
+/* Probe: how the current tick's group gi was paired. Bit 0 a particle, bit 1
+   paired with the previous tick's group. -1 outside a record. */
+int gx_interp_group_flags(int gi) {
+    if (g_ip_c < 0 || gi < 0 || gi >= (int)g_ipr[g_ip_c].groups.size()) return -1;
+    const IpGroup &G = g_ipr[g_ip_c].groups[gi];
+    return (G.part ? 1 : 0) | (G.match >= 0 ? 2 : 0);
 }
 
 int gx_interp_group_count() {

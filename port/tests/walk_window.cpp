@@ -9619,6 +9619,15 @@ static void ip_probe(int frame, int rom_frame)
         }
         const int nt = ntr::gx_interp_group_box(g_use, box);
         const int np = g_last >= 0 ? ntr::gx_interp_group_box(g_last, pbox) : 0;
+        /* SMOOTH093: where each unpaired (newborn) particle group sits in this picture */
+        for (int gi = 0; gi < ntr::gx_interp_group_count(); ++gi) {
+            const int fl = ntr::gx_interp_group_flags(gi);
+            if (fl < 0 || !(fl & 1) || (fl & 2)) continue;
+            float b4[4];
+            if (ntr::gx_interp_group_box(gi, b4) > 0)
+                fprintf(stderr, "[interp] nb f%d j%d/%d g%d center %.3f %.3f\n", rom_frame, j, k, gi,
+                        (b4[0] + b4[2]) * 0.5f, (b4[1] + b4[3]) * 0.5f);
+        }
         size_t tn = 0;
         ntr::gx_polygons(tn);
         ntr::gx_interp_end();
@@ -16686,8 +16695,7 @@ int main(void)
                         _ZN6Player14InitMetalWarioEv(pl);
                         *(unsigned short *)(pl + 0x6ae) = (unsigned short)mp_ticks;
                     }
-                    fprintf(stderr, "[metalpoke] f%d player=%p ticks=%d
-", frame, (void *)pl, mp_ticks);
+                    fprintf(stderr, "[metalpoke] f%d player=%p ticks=%d\n", frame, (void *)pl, mp_ticks);
                 }
             }
 
