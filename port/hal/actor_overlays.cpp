@@ -630,7 +630,6 @@ static void port_ov089_keymodels_fixup(void)
         unsigned *w = (unsigned *)(g_ov089_keymodels[i].tbl +
                                    g_ov089_keymodels[i].off);
         if ((unsigned)(*w) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
-        if ((unsigned)(*w) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (*w != g_ov089_keymodels[i].rom) {
             std::fprintf(stderr, "FATAL: ov089 key model %u: the mount holds "
                          "%08x, the ROM's own table says %08x -- WRONG BYTES\n",
@@ -673,7 +672,6 @@ static void port_iron_ball_states_seat(void)
     for (unsigned i = 0;
          i < sizeof g_iron_ball_states / sizeof g_iron_ball_states[0]; ++i) {
         PortPmf2 *p = g_iron_ball_states[i].slot;
-        if ((unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if ((unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (p->fn != g_iron_ball_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: RollingIronBall state %u: the mount "
@@ -799,7 +797,6 @@ static void port_koopa_quick_states_seat(void)
          i < sizeof g_koopa_quick_states / sizeof g_koopa_quick_states[0];
          ++i) {
         PortPmf3 *p = g_koopa_quick_states[i].slot;
-        if ((unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if ((unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (p->fn != g_koopa_quick_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: KoopaTheQuick state %u: the mount "
@@ -1094,7 +1091,6 @@ static void port_king_bob_omb_states_seat(void)
          ++i) {
         PortPmf4 *p = g_king_states[i].slot;
         if ((unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
-        if ((unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (p->fn != g_king_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: KingBobOmb state half %u: the mount "
                          "holds %08x/%d, the ROM's own table says %08x/0 -- "
@@ -1314,7 +1310,6 @@ static void port_princess_peach_states_seat(void)
          i < sizeof g_princess_peach_states / sizeof g_princess_peach_states[0];
          ++i) {
         PortPmf *p = g_princess_peach_states[i].slot;
-        if ((unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if ((unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (p->fn != g_princess_peach_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: PrincessPeach state %u: the mount "

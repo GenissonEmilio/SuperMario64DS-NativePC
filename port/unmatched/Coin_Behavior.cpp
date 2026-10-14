@@ -120,7 +120,6 @@ extern "C" void port_coin_states_seat(void)
     done = 1;
     for (int i = 0; i < PORT_COIN_STATES; ++i) {
         if ((unsigned)(data_ov002_0210dc70[i].fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
-        if ((unsigned)(data_ov002_0210dc70[i].fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (data_ov002_0210dc70[i].fn != g_states[i].rom) {
             std::fprintf(stderr, "FATAL: coin state %d: the sinit left %08x, "
                          "the ROM's own table says %08x -- WRONG BYTES\n", i,

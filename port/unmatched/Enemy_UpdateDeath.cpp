@@ -182,8 +182,7 @@ static void port_enemy_death_seat_one(PortEnemyPmf *p, unsigned rom,
 {
     if (p->fn == (unsigned)(size_t)host)
         return;
-    if ((unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
-    if ((unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+    if ((unsigned)(p->fn) >= 0x02400000u) return;  /* PORTSYNC3: already built by the TU's own initialiser */
     if (p->fn != rom || p->delta != 0) {
         std::fprintf(stderr, "FATAL: Enemy death state %u (%s): the mount holds "
                      "%08x/%d, the ROM's own table says %08x/0 -- WRONG BYTES\n",

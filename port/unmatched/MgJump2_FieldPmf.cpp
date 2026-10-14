@@ -230,7 +230,6 @@ extern "C" void port_mg_jump2_field_seat(void)
     for (unsigned i = 0; i < sizeof g_jump2_seats / sizeof g_jump2_seats[0]; ++i) {
         MgPmf *p = g_jump2_seats[i].rec;
         if ((unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
-        if ((unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (p->code != g_jump2_seats[i].rom || p->adj != 0) {
             std::fprintf(stderr, "FATAL: dScMgJump2_c pair %s: the mount holds "
                          "%08x/%d, the cartridge's own record says %08x/0 -- "

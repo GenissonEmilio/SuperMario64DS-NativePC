@@ -134,7 +134,6 @@ extern "C" void port_ov009_sinits(void)
     __sinit_ov009_02112ac8();
     for (int i = 0; i < 4; ++i) {
         if ((unsigned)(data_ov009_02113c48[i].fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
-        if ((unsigned)(data_ov009_02113c48[i].fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (data_ov009_02113c48[i].fn != g_bird[i].rom) {
             std::fprintf(stderr, "FATAL: daSBird_c state %d: the sinit left %08x, "
                          "the ROM's own table says %08x -- WRONG BYTES\n", i,

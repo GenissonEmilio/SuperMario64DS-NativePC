@@ -412,7 +412,6 @@ extern "C" void port_mg_memory2_model_seat(void)
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
         if ((unsigned)(seats[i].cell->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
-        if ((unsigned)(seats[i].cell->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (seats[i].cell->code != seats[i].rom || seats[i].cell->adj != 0) {
             std::fprintf(stderr, "FATAL: dScMgCard_c model sub-object pair "
                          "data_ov006_%s: the mount holds %08x/%d, the ROM's own "
@@ -565,7 +564,6 @@ static void mem2_record_seat(void)
         { &data_ov004_020bc820, "020bc820", 0x020b5288u, (void *)m2r_020b5288 },
     };
     for (unsigned i = 0; i < sizeof rec / sizeof rec[0]; ++i) {
-        if ((unsigned)(rec[i].cell->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if ((unsigned)(rec[i].cell->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (rec[i].cell->code != rec[i].rom || rec[i].cell->adj != 0) {
             std::fprintf(stderr, "FATAL: dScMgMemory2_c record pair "

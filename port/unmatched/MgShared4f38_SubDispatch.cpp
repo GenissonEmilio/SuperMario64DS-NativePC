@@ -397,7 +397,6 @@ extern "C" void port_mg_sub4f38_seat(void)
     for (unsigned i = 0; i < sizeof recs / sizeof recs[0]; ++i) {
         unsigned *p = recs[i];
         if ((unsigned)(p[0]) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
-        if ((unsigned)(p[0]) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (p[0] != g_sub4f38_seats[i].rom || p[1] != 0) {
             std::fprintf(stderr, "FATAL: +0x4f38 sub-object pair %s: the mount "
                          "holds %08x/%08x, the cartridge's own record says "

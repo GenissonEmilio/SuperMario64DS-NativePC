@@ -354,7 +354,6 @@ extern "C" void port_ttc_level_data_seat(int level_id)
            port_ov089_keymodels_fixup use, widened by one accepted value
            because this seat now writes in both directions. */
         if ((unsigned)(have) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
-        if ((unsigned)(have) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (have != s.rom && have != host) {
             std::fprintf(stderr,
                          "FATAL: Ttc level-data seat: %s+%#x holds %08x on level "

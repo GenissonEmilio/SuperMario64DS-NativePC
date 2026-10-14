@@ -588,7 +588,6 @@ extern "C" void port_mg_esp3d_states_seat(void)
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
         MgPmf *p = &seats[i].table[seats[i].slot];
         if ((unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
-        if ((unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (p->code != seats[i].rom || p->adj != 0) {
             std::fprintf(stderr, "FATAL: dScMg3DEsp_c state table %s slot %u: "
                          "the sinit left %08x/%d, the ROM's own pairs say "
@@ -620,7 +619,6 @@ extern "C" void port_mg_esp3d_states_seat(void)
     };
     for (unsigned i = 0; i < sizeof seats_cdecl / sizeof seats_cdecl[0]; ++i) {
         MgPmf *p = &seats_cdecl[i].table[seats_cdecl[i].slot];
-        if ((unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if ((unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (p->code != seats_cdecl[i].rom || p->adj != 0) {
             std::fprintf(stderr, "FATAL: dScMg3DEsp_c state table %s slot %u: "

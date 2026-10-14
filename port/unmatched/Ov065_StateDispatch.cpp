@@ -228,7 +228,6 @@ extern "C" void port_ov065_states_seat(void)
          ++i) {
         unsigned *r = g_ov065_states[i].rec;
         if ((unsigned)(r[0]) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
-        if ((unsigned)(r[0]) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (r[0] != g_ov065_states[i].rom || r[1] != 0) {
             std::fprintf(stderr, "FATAL: ov065 state %u: the mount holds "
                          "%08x/%08x, the ROM's own record says %08x/0 -- "

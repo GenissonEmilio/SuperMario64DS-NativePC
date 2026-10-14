@@ -877,7 +877,6 @@ static void s4_install(const char *cls, const S4Seat *s, unsigned n)
     for (unsigned i = 0; i < n; ++i) {
         MgPmf *p = &s[i].table[s[i].slot];
         if ((unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
-        if ((unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (p->code != s[i].rom || p->adj != 0) {
             std::fprintf(stderr, "FATAL: %s state table %s slot %u: the sinit "
                          "left %08x/%d, the ROM's own pairs say %08x/0 -- "

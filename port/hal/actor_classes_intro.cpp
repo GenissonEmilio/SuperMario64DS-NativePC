@@ -570,7 +570,6 @@ static void co_seat_model_vtable(void)
        loud rather than silently reinterpreted. */
     for (unsigned i = 0; i < 6; ++i) {
         if ((unsigned)(data_ov002_0210bae4[i]) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
-        if ((unsigned)(data_ov002_0210bae4[i]) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (data_ov002_0210bae4[i] != g_co_vt[i].rom) {
             std::fprintf(stderr, "FATAL: CUTSCENE_OBJECT Model vtable slot %s: "
                          "the mount holds %08x, the ROM's own reloc says %08x "
@@ -580,7 +579,6 @@ static void co_seat_model_vtable(void)
         }
     }
     for (unsigned i = 0; i < 7; ++i) {
-        if ((unsigned)(data_ov002_0210bcc4[i]) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if ((unsigned)(data_ov002_0210bcc4[i]) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (data_ov002_0210bcc4[i] != g_co_vt2[i].rom) {
             std::fprintf(stderr, "FATAL: CUTSCENE_OBJECT ModelAnim vtable slot "

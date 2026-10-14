@@ -63,7 +63,6 @@ extern "C" void port_question_block_states_seat(void)
          i < sizeof g_qblock_states / sizeof g_qblock_states[0]; ++i) {
         PortPmf *p = g_qblock_states[i].slot;
         if ((unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
-        if ((unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (p->fn != g_qblock_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: QuestionBlock state %u: the mount "
                          "holds %08x/%d, the ROM's own table says %08x/0 -- "
