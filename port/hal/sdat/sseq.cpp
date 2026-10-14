@@ -179,6 +179,7 @@ struct Player {
     // forward silently to the recorded tick.
     sd_u32 tickAge;
     sd_u32 startOff;
+    sd_u32 sig;             // hash of the 32 bytes at the entry: names the song across loads
 };
 
 Player g_pl[SD_PLAYERS];
@@ -186,6 +187,12 @@ Player g_pl[SD_PLAYERS];
 // code runs exactly as it did the first time and only the voices are skipped.
 int g_seeking;
 sd_u32 g_seekPending[SD_PLAYERS];
+// Positions F9 is waiting to apply: the restore asks the game for the song and
+// the player that plays it can start a tick or two later (the command ring is
+// drained on the next sound tick), so the request waits here for a matching
+// start and goes stale after a few seconds.
+SdSeqPos g_want[SD_PLAYERS];
+int g_wantLeft;
 
 /* TrackInit's defaults for a track opened by 0x93 on a sequence that did not
    pre-allocate it (and the same values sd_seq_start gives track 0 and the
@@ -1167,6 +1174,8 @@ int run_track(Player &pl, int pi, int ti)
 void sd_seq_reset(void)
 {
     memset(g_seekPending, 0, sizeof g_seekPending);
+    memset(g_want, 0, sizeof g_want);
+    g_wantLeft = 0;
     g_seeking = 0;
     // Latched here for sd_mix_reset's reason: this runs before any sound can,
     // and the flag has to be readable from the first note-on.
@@ -1236,6 +1245,15 @@ void sd_pd_end(int ch, int prio, const char *why)
     SD_PD("end f=%d ch=%d prio=%d why=%s\n", g_frame, ch, prio, why);
 }
 
+// A song's identity that survives a reload: the sequence is read from the file
+// into a fresh heap block each time it starts, so its address is not it.
+static sd_u32 seq_sig(const sd_u8 *seq, sd_u32 off)
+{
+    sd_u32 h = 2166136261u;
+    for (int i = 0; i < 32; i++) h = (h ^ seq[off + i]) * 16777619u;
+    return h;
+}
+
 int sd_seq_start(int p, const sd_u8 *seqBase, sd_u32 startOff,
                  const sd_u8 *sbnk)
 {
@@ -1264,6 +1282,7 @@ int sd_seq_start(int p, const sd_u8 *seqBase, sd_u32 startOff,
     memset(&pl, 0, sizeof pl);
     pl.active = 1;
     pl.startOff = startOff;
+    pl.sig = seq_sig(seqBase, startOff);
     pl.seq = seqBase;
     pl.sbnk = sbnk;
     pl.tempo = 120;
@@ -1275,6 +1294,13 @@ int sd_seq_start(int p, const sd_u8 *seqBase, sd_u32 startOff,
     // to 64 and lose it, which inverted the ROM's steal order (see
     // sdat_seq_priority).
     pl.cpr = sdat_seq_priority(seqBase, startOff);
+    if (g_wantLeft > 0 && g_want[p].active && g_want[p].sig == pl.sig &&
+        g_want[p].startOff == startOff) {
+        g_seekPending[p] = g_want[p].tickAge;
+        g_want[p].active = 0;
+        fprintf(stderr, "[sseq] seek player %d to tick %u (at its start)\n", p,
+                (unsigned)g_seekPending[p]);
+    }
     {
         /* A mod may have replaced this music track with a recording. The
            sequence still starts and runs (silently), so every status the ROM
@@ -1602,6 +1628,7 @@ void sd_seq_frame(void)
     // mixer finished it.
     reap_finished_channels();
     g_frame++;
+    if (g_wantLeft > 0) g_wantLeft--;
 
     for (int p = 0; p < SD_PLAYERS; p++) {
         Player &pl = g_pl[p];
@@ -1692,7 +1719,7 @@ void sd_seq_snapshot(SdSeqPos *out)
     for (int p = 0; p < SD_SEQ_PLAYERS; p++) {
         const Player &pl = g_pl[p];
         out[p].active = (pl.active && sd_seq_active(p)) ? 1 : 0;
-        out[p].seq = pl.seq;
+        out[p].sig = pl.sig;
         out[p].startOff = pl.startOff;
         out[p].tickAge = pl.tickAge;
     }
@@ -1701,12 +1728,15 @@ void sd_seq_snapshot(SdSeqPos *out)
 int sd_seq_seek_to(const SdSeqPos *in)
 {
     int n = 0;
+    memcpy(g_want, in, sizeof g_want);
+    g_wantLeft = 192 * 4;
     for (int p = 0; p < SD_SEQ_PLAYERS; p++) {
         const Player &pl = g_pl[p];
-        if (!in[p].active || !pl.active || pl.seq != in[p].seq ||
+        if (!in[p].active || !pl.active || pl.sig != in[p].sig ||
             pl.startOff != in[p].startOff || in[p].tickAge <= pl.tickAge)
             continue;
         g_seekPending[p] = in[p].tickAge - pl.tickAge;
+        g_want[p].active = 0;
         fprintf(stderr, "[sseq] seek player %d to tick %u (now %u)\n", p,
                 (unsigned)in[p].tickAge, (unsigned)pl.tickAge);
         n++;
