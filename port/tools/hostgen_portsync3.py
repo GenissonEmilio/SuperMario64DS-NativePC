@@ -75,3 +75,34 @@ ROWS[("MWCC_SPELLING", "G3i")] = [
     ("        *mtx = tx;\n        *mtx = ty;\n        *mtx = tz;\n",
      "        *lookat_port = tx;\n        *lookat_port = ty;\n        *lookat_port = tz;\n"),
 ]
+
+# cstd.cpp (main's fold of the division / square-root unit routines). Three
+# functions bind the SQRT unit's registers through locals of the SAME names
+# (`sqrtcnt`, `sqrtParam`), once each per function and several times per TU.
+# hostgen's pointer rewrite needs a name bound exactly once in the text it
+# sees, so the whole family was left plain: the stores that start the unit
+# latched in mapped memory and only the result read was routed. Each
+# function's two names get a suffix of their own so every one is bound once.
+def _cstd_sqrt_rows():
+    import pathlib
+    import re
+    p = pathlib.Path(__file__).resolve().parents[2] / "src" / "cstd.cpp"
+    if not p.is_file():
+        return []
+    text = p.read_text(encoding="utf-8", errors="replace").replace("\r\n", "\n")
+    rows = []
+    for fn in ("func_02053274", "func_020531a4", "func_02053008"):
+        m = re.search(r"(?:int|void) " + fn + r"\([^)]*\)\n\{.*?\n\}\n", text, re.S)
+        if not m:
+            continue
+        blk = m.group(0)
+        new = re.sub(r"\bsqrtcnt\b", "sqrtcnt_" + fn[-4:], blk)
+        new = re.sub(r"\bsqrtParam\b", "sqrtParam_" + fn[-4:], new)
+        if new != blk:
+            rows.append((blk, new))
+    return rows
+
+
+_cstd_rows = _cstd_sqrt_rows()
+if _cstd_rows:
+    ROWS[("MWCC_SPELLING", "cstd")] = _cstd_rows
