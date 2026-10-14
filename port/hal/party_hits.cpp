@@ -308,8 +308,7 @@ void apply_effect(char *me, const Claim &c, const Effect &fx) {
     *(int *)(me + kVertSpeed) = fx.hop;
     *(unsigned short *)(me + player::kInvincibleTimer) = kBlinkFrames;
     ++g.st.applied;
-    std::fprintf(stderr, "[phit] t=%u f=%u HURT applied ik=%u, blink timer 0x%x
-", wall_ms(), g.frame, c.ikind, (unsigned)*(unsigned short *)(me + player::kInvincibleTimer));
+    std::fprintf(stderr, "[phit] t=%u f=%u HURT applied ik=%u, blink timer 0x%x\n", wall_ms(), g.frame, c.ikind, (unsigned)*(unsigned short *)(me + player::kInvincibleTimer));
 }
 
 void eat_begin(char *me, const Claim &c) {
