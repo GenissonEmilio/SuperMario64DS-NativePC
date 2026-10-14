@@ -371,7 +371,7 @@ void eat_begin(char *me, const Claim &c) {
     send_wire(c.attacker, kEatAck, 0, 0, 0, 0);
     broadcast_attach(c.attacker, 1);
     g.beat = g.frame;
-    g.diag_left = 6;
+    g.diag_left = 40;
     std::fprintf(stderr, "[phit] EAT hold begins, eater seat %d%s\n", c.attacker, g.rom_mouth ? " (ROM mouth state)" : "");
 }
 
@@ -477,10 +477,12 @@ void diag_links(const char *where, char *me) {
     if (g.diag_left <= 0) return;
     --g.diag_left;
     char *ep = g.hold.active() ? body_of_seat(g.hold.eater()) : (g.cv.active ? body_of_seat(g.cv.holder) : nullptr);
-    std::fprintf(stderr, "[phit] diag %s f=%u state=%p mouthState=%d grabbedState=%d d0=%p 35c=%p other.360=%p other.358=%p other=%p\n",
-                 where, g.frame, *(void **)(me + 0x370), state_is(me, data_ov002_02110064) ? 1 : 0, state_is(me, data_ov002_0211016c) ? 1 : 0,
+    std::fprintf(stderr, "[phit] diag %s f=%u me=%p state=%p mouthState=%d grabbedState=%d step=%d spd=%x pos=%d,%d,%d d0=%p 35c=%p other.360=%p other.358=%p other=%p other.pos=%d,%d,%d\n",
+                 where, g.frame, (void *)me, *(void **)(me + 0x370), state_is(me, data_ov002_02110064) ? 1 : 0, state_is(me, data_ov002_0211016c) ? 1 : 0,
+                 (int)*(unsigned char *)(me + 0x6e3), *(unsigned *)(me + kHorzSpeed), u(*player::pos_x(me)), u(*player::pos_y(me)), u(*player::pos_z(me)),
                  (void *)ptrf(me, kInMouth), (void *)ptrf(me, kGrabbedBy), ep ? (void *)ptrf(ep, kMouthObj) : nullptr,
-                 ep ? (void *)ptrf(ep, kHeldObj) : nullptr, (void *)ep);
+                 ep ? (void *)ptrf(ep, kHeldObj) : nullptr, (void *)ep,
+                 ep ? u(*player::pos_x(ep)) : 0, ep ? u(*player::pos_y(ep)) : 0, ep ? u(*player::pos_z(ep)) : 0);
 }
 
 // ---- the Wario hold: victim side -----------------------------------------------------------------
@@ -538,7 +540,7 @@ void grab_begin(char *me, const Claim &c) {
     g.beat = g.frame;
     send_wire(c.attacker, kGrabAck, 0, 0, 0, 0);
     broadcast_attach(c.attacker, 2);
-    g.diag_left = 6;
+    g.diag_left = 40;
     std::fprintf(stderr, "[phit] GRAB: held by seat %d (St_Grabbed entered)\n", c.attacker);
 }
 
