@@ -6233,6 +6233,14 @@ void gx_render(Framebuffer &fb) {
                 g_swap_param};
             bool ch = false;
             for (int i = 0; i < 6; ++i) if (cur[i] != last[i]) ch = true;
+            if ((fr % 300) == 1) {
+                extern unsigned char data_0209f258[4];
+                extern int data_0209f31c[4];
+                const unsigned char *fp = reinterpret_cast<const unsigned char *>((uintptr_t)data_0209f31c[0]);
+                std::fprintf(stderr, "[rprobe] level fog records %d, first %02x %02x %02x %02x %02x %02x %02x %02x\n",
+                             (int)data_0209f258[0], fp ? fp[0] : 0, fp ? fp[1] : 0, fp ? fp[2] : 0, fp ? fp[3] : 0,
+                             fp ? fp[4] : 0, fp ? fp[5] : 0, fp ? fp[6] : 0, fp ? fp[7] : 0);
+            }
             if ((ch || (fr % 300) == 1) && lines < 200) {
                 ++lines;
                 for (int i = 0; i < 6; ++i) last[i] = cur[i];
