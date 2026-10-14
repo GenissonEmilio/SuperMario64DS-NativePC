@@ -78,3 +78,12 @@ extern "C" int _ZNK10dBgCh_Actr13GetWallResultEv(const void *self)
 { return (int)(size_t)((const dBgCh_Actr *)self)->GetWallResult(); }
 extern "C" int _ZNK10dBgCh_Actr14GetFloorResultEv(const void *self)
 { return (int)(size_t)((const dBgCh_Actr *)self)->GetFloorResult(); }
+
+/* ---- daDonketu_c::CleanupResources / Render --------------------------------
+ * include/daDonketu_c.h re-declares both so the class names them, but the ROM
+ * gives daDonketu_c no body of its own: its vtable slots 3 and 9 point at
+ * daOts_c's (the header comment records the addresses). MSVC needs a definition
+ * for the declared override, and the faithful one is the inherited call. */
+#include "daDonketu_c.h"
+int daDonketu_c::CleanupResources() { return daOts_c::CleanupResources(); }
+int daDonketu_c::Render() { return daOts_c::Render(); }

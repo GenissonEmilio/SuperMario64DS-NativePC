@@ -40,8 +40,8 @@ ROWS[("PARK_SYMBOL", "Sound")] = ["func_020133bc", "func_020134c8"]
 # dExtShadowModel_c::InitCuboid / InitCylinder are NOT parked: the old
 # per-function files (src/_ZN11ShadowModel10InitCuboidEv.cpp) were compiled, and
 # their ov000 data is bound by linkalias.py's same-address rule.
-ROWS[("PARK_SYMBOL", "daFRing_c")] = ["_ZN9daFRing_c13InitResourcesEv"]
-ROWS[("PARK_SYMBOL", "daObjFl_UkiKi_c")] = ["_ZN15daObjFl_UkiKi_c13InitResourcesEv"]
+# daFRing_c / daObjFl_UkiKi_c InitResources were parked on the premise that the old
+# build did not compile them; it did (as BowserShockwaves / LavaPlank), so they run.
 
 # daDoor_c::InitResources and daTree_c::Behavior: PORTSYNC2 parked main's bodies
 # on the premise of a flat host copy that does not exist in the tree (only
