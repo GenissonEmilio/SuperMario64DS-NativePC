@@ -1206,7 +1206,8 @@ list(APPEND PORT_HOSTGEN_TU
     src/game/actors/daObjPathLift_c.cpp
     src/game/actors/daPiano_c/d_a_piano.cpp
     # PORTSYNC3: bare `return;` in int bodies (hostgen VALUELESS_RETURN).
-    src/actors/daStar_c.cpp)
+    src/actors/daStar_c.cpp
+    src/game/actors/d_a_obj_fl_maruta.cpp)
 list(REMOVE_DUPLICATES PORT_HOSTGEN_TU)
 
 # Whole-TU host copies that REPLACE a src TU (see each copy's header). The
@@ -16330,6 +16331,7 @@ list(APPEND W3E_SOURCES hal/actor_classes_ov022_w3e.cpp ${SLICE_W3E_OV022_SOURCE
 #   data_ov022_02114690 correctly in its own text.
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_obj_fl_maruta.cpp"  # PORTSYNC3: on PORT_HOSTGEN_TU
     PROPERTIES COMPILE_DEFINITIONS
     "data_ov034_0211442c=data_ov022_0211442c;data_ov034_02114690=data_ov022_02114690")
 #   src/_ZN13RollingLogLll8BehaviorEv.cpp   (70's slot 6)
@@ -16337,6 +16339,7 @@ set_source_files_properties(
 #   port/ov035_syms.txt:294 defines data_ov035_02112c98 (wave 1's ov035 mount);
 #   ov022_syms.txt:132 already has data_ov022_02112c98.
 set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_obj_fl_maruta.cpp"
     APPEND PROPERTY COMPILE_DEFINITIONS "data_ov035_02112c98=data_ov022_02112c98")
 #
 # W2, A THIRD ONE THIS LANE FOUND, and it is the worse shape of the two -- a
@@ -16419,6 +16422,7 @@ set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjFl_Koma_D_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS "VT1=_ZTV16daObjFl_Koma_D_c")
 set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_obj_fl_maruta.cpp"
     APPEND PROPERTY COMPILE_DEFINITIONS "VT1=_ZTV15daObjFlMaruta_c")
 #
 # W5b, ONE arm9-STYLE PLACEHOLDER NAME, off the first link's own unresolved
@@ -16435,6 +16439,7 @@ set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_m
 # 1601, `extern int f(void*, void*)`), so the rewrite is a duplicate
 # declaration and not the C2371 the W4 block records.
 set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_obj_fl_maruta.cpp"
     APPEND PROPERTY COMPILE_DEFINITIONS "func_021270dc=func_ov080_021270dc")
 #
 # W6, THE TWO POINTER-TO-MEMBER DISPATCHERS, the R9 wave-18 ruling applied to
@@ -16449,7 +16454,9 @@ set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_m
 # the source's own arithmetic pins sizeof(PMF) at 8, the KingBobOmb proof.
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_obj_fl_maruta.cpp"  # PORTSYNC3: on PORT_HOSTGEN_TU
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_obj_fl_maruta.cpp"  # PORTSYNC3: on PORT_HOSTGEN_TU
     PROPERTIES COMPILE_OPTIONS "/vmg;/vmm")
 # ---- w3-e / ov025, level 17 (SSL, the pyramid interior) -------------------
 #
@@ -25305,6 +25312,7 @@ set_source_files_properties(
 # PORTSYNC3: d_a_obj_fl_maruta declares func_ov022_02112654 with C++ linkage and
 # defines it extern "C" (C2733 to MSVC); see unmatched/FlMaruta_HostAbi.h.
 set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_obj_fl_maruta.cpp"
     APPEND PROPERTY COMPILE_OPTIONS
     "/FI${CMAKE_CURRENT_SOURCE_DIR}/unmatched/FlMaruta_HostAbi.h")
 
