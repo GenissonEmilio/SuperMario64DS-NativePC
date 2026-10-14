@@ -76,7 +76,7 @@ enum : int { kNetMax = 24, kLnkMax = 8, kInMax = 48, kBlkOutMax = 16, kAckMax = 
 bool g_env = false, g_log = false, g_census_log = false;
 struct Off { bool block, red, spawn, gone, snap; } g_off = {};
 // TOTALS9 must-fail switches (SM64DS_TOTALS_OFF=redlocal,guard,coinstar): the same build with the r3 behaviour back.
-struct TOff { bool redlocal, guard, coinstar; } g_toff = {};
+struct TOff { bool redlocal, guard, coinstar, keyview; } g_toff = {};
 CoopSpawnStats g_st = {};
 bool g_registered = false;
 int g_my = -1;
@@ -174,6 +174,7 @@ void read_env() {
         g_toff.redlocal = std::strstr(o, "redlocal") != nullptr;
         g_toff.guard = std::strstr(o, "guard") != nullptr;
         g_toff.coinstar = std::strstr(o, "coinstar") != nullptr;
+        g_toff.keyview = std::strstr(o, "keyview") != nullptr;      // SMALLS9B control: the old behaviour (a watcher builds the key copy)
     }
     if (const char *o = std::getenv("SM64DS_SPAWN_OFF")) {
         g_off.block = std::strstr(o, "block") != nullptr;
@@ -732,6 +733,18 @@ bool key_ok(int lvl, unsigned param) {
 }
 
 void apply_spawn(int seat, const SpSpawnWire &w, unsigned now) {
+    // SMALLS9B (Tango: "everyone sees the animation of the person when they get the key"): the rabbit key (229) runs its caught cutscene
+    // (pose, "You retrieved a key" box) on the Player nearest to it. A copy built here ran that on THIS console's body. The catcher's own
+    // console plays it; a watcher sees the catcher's ghost play the key-get animation (the ghost's animation rides SYNG), and the key bit
+    // counts for everyone through the shared save (the Mip rabbit flags are monotonic bits of the record). So no copy is built here; the id is
+    // acked so a late repeat of the spawn is dropped and the catcher's later "gone" finds nothing to remove.
+    if (w.cls == 229 && !g_toff.keyview) {
+        ack_add(w.origin, w.counter, now);
+        ++g_st.drop_class;
+        if (g_log) std::fprintf(stderr, "[coopspawn] key view: seat %d's rabbit key (id %d/%d) not built here, I watch the catcher's ghost frame=%u wall=%lld\n",
+                                seat, (int)w.origin, (int)w.counter, g_frames, wall_ms());
+        return;
+    }
     if (w.cls == 282 && !key_ok(g_lvl, w.param)) { ++g_st.drop_class; return; }
     if (w.cls == 282 && !key_model_ready(w.param)) {
         ++g_st.drop_class;
