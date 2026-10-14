@@ -3436,10 +3436,8 @@ set_source_files_properties(
 # The spawner's deleting destructor stores its OWN table, which in this port is
 # the host array hal/actor_classes_ov063.cpp declares. HEAP is left alone: its
 # binding to the game heap pointer 0x020a0eac is what this body means.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daBook_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "VT=port_bookshotspawner_vt")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daBook_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "VT=port_bookshotspawner_vt")
 # Lane DTOR-PAIRS-C: the brick-block tag's deleting destructor is the same
 # shape -- `t[0] = (int)VT;` then Actor's D2 then Deallocate(HEAP) -- and its
 # ROM store relocates to its OWN table (ov002 from:0x020b41b0 -> 0x02108c18,
@@ -3455,11 +3453,9 @@ set_source_files_properties(
 # shape; its store relocates to its own table (ov002 from:0x020f1fc4 ->
 # 0x0210bd60, _ZTV14CutsceneObject, the host array hal/actor_classes_intro.cpp
 # fills; decl_common.h already declares it `extern int []`).
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daDemo_c.cpp"
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daDemo_c.cpp"
     "${CMAKE_BINARY_DIR}/host-src/src/actors/daDemo_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
-    PROPERTIES COMPILE_DEFINITIONS
-    "VT=_ZTV8daDemo_c")
+    APPEND PROPERTY COMPILE_DEFINITIONS "VT=_ZTV8daDemo_c")
 # Lane DTOR-PAIRS-C: the four bully destructors spell VT1 for their second vptr
 # store, and the ROM relocates all four stores to ov064 0x0211b768 -- the
 # bullies' base table, data_ov064_0211b768, hosted in hal/actor_classes_ov027.cpp
@@ -11351,10 +11347,9 @@ set_source_files_properties(
 # The real table is data_ov006_0213b2e0 -- the ROM's own `str r1,[r4]` at
 # 0x020ca7a0 loads it from the pool at 0x020ca7b4 -- and its five words are
 # filled with host thunks by hal/scene_mg_trampoline2.cpp.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dMgTrmpln2Mario_c.cpp"
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dMgTrmpln2Mario_c.cpp"
     "${CMAKE_BINARY_DIR}/host-src/src/actors/dMgTrmpln2Mario_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
-    PROPERTIES COMPILE_DEFINITIONS "VT0=data_ov006_0213b2e0")
+    APPEND PROPERTY COMPILE_DEFINITIONS "VT0=data_ov006_0213b2e0")
 
 
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_fdr.txt" SLICE_FDR_LINES)
@@ -13279,14 +13274,10 @@ set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjWlSubmarine_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV18daObjWlSubmarine_c;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjWlKoopaShutter_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "G0=port_ov026_shutter_bmd;G1=port_ov026_shutter_kcl")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjWlSubmarine_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "G0=port_ov026_submarine_bmd;G1=port_ov026_submarine_kcl")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjWlKoopaShutter_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "G0=port_ov026_shutter_bmd;G1=port_ov026_shutter_kcl")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjWlSubmarine_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "G0=port_ov026_submarine_bmd;G1=port_ov026_submarine_kcl")
 #
 # B. THE SECOND SPELLING OF A HOST-ARRAY VTABLE. Three of the five tables are
 # reached under two names by ov026's own sources, and only one host array can
@@ -13309,14 +13300,10 @@ set_source_files_properties(
 #     the majority spelling.
 # include/decl_common.h declares every one of these as `extern int NAME[];`, so
 # each rename produces a duplicate IDENTICAL declaration, which is legal.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjWlKoopaShutter_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "_ZTV21daObjWlKoopaShutter_c=_ZTV21daObjWlKoopaShutter_c")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjWlSubmarine_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "_ZTV18daObjWlSubmarine_c=_ZTV18daObjWlSubmarine_c")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjWlKoopaShutter_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "_ZTV21daObjWlKoopaShutter_c=_ZTV21daObjWlKoopaShutter_c")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjWlSubmarine_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "_ZTV18daObjWlSubmarine_c=_ZTV18daObjWlSubmarine_c")
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daWater_Tatumaki_c.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daWater_Tatumaki_c.cpp"
@@ -13354,18 +13341,12 @@ set_source_files_properties(
 #   data_ov026_02113a9c declaration would collide; the second is renamed
 #   directly -- decl_common.h:1566 declares func_ov053_021112a4 and does not
 #   declare func_ov026_021112a4, so there is nothing to conflict with.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daWater_Suikomi_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "__sinit_ov045_02112280=func_ov026_02112280")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daWater_Suikomi_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "data_ov036_02113f58=data_ov026_02113f58")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_wl_polelift.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "data_ov032_02113a9c=port_ov026_polelift_clsn;func_ov053_021112a4=func_ov026_021112a4")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daWater_Suikomi_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "__sinit_ov045_02112280=func_ov026_02112280")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daWater_Suikomi_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "data_ov036_02113f58=data_ov026_02113f58")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_wl_polelift.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "data_ov032_02113a9c=port_ov026_polelift_clsn;func_ov053_021112a4=func_ov026_021112a4")
 
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_gate207.txt" SLICE207_LINES)
 set(SLICE207_SOURCES "")
@@ -14871,14 +14852,10 @@ set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjHmMaruta_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "_ZTV15daObjHmMaruta_c=_ZTV13daObjMaruta_c;VT1=_ZTV15daObjHmMaruta_c")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjHmMaruta_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "_ZTV10dBgActor_c=_ZTV13daObjMaruta_c;VT2=_ZTV10dBgActor_c")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjHmMaruta_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "_ZTV10dBgActor_c=_ZTV13daObjMaruta_c;VT2=_ZTV10dBgActor_c;G0=data_020a0eac")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjHmMaruta_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "_ZTV10dBgActor_c=_ZTV13daObjMaruta_c;VT2=_ZTV10dBgActor_c")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjHmMaruta_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "_ZTV10dBgActor_c=_ZTV13daObjMaruta_c;VT2=_ZTV10dBgActor_c;G0=data_020a0eac")
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_hm_bskt.cpp"
     PROPERTIES COMPILE_DEFINITIONS
@@ -14922,10 +14899,8 @@ set_source_files_properties(
 # port/ov030_syms.txt. A comment-stripped sweep of all 67 slice TUs for
 # G0/G1/G2/VT/VT0/VT1/VT2/HEAP/R0/R1/R2 finds placeholders in exactly five
 # files, and all five are bound per source by the rows above and this one.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_hm_bskt.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "G0=data_ov030_02115c88;G1=data_ov030_02115c80")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_hm_bskt.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "G0=data_ov030_02115c88;G1=data_ov030_02115c80")
 
 
 
@@ -14998,19 +14973,16 @@ set_source_files_properties(
 # C2040 redeclaration, the ov100 path-lift trap. hal/actor_classes_ov035.cpp
 # binds each private name onto the mounted object, and both LHS are undefined
 # everywhere so neither alias can be defeated.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCtMecha11_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "G0=port_ov035_sp_file0;G1=port_ov035_sp_file1")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCtMecha11_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "G0=port_ov035_sp_file0;G1=port_ov035_sp_file1")
 # G0 in the two deleting destructors is the GAME HEAP, 0x020a0eac -- the same
 # name meaning something else in a different TU, which is why every one of
 # these is per-source. Read off the ROM bodies' own literal pools
 # (0x02111238 and 0x02111794).
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCtMecha10_c.cpp"
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCtMecha10_c.cpp"
     "${CMAKE_BINARY_DIR}/host-src/src/actors/daObjCtMecha10_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjCtMecha11_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "G0=data_020a0eac")
+    APPEND PROPERTY COMPILE_DEFINITIONS "G0=data_020a0eac")
 list(APPEND SWEEP1_SOURCES hal/actor_classes_ov035.cpp ${SLICE_SWEEP1_OV035_SOURCES})
 
 # ---- 2/6: ov024, level 16 (Shifting Sand Land) -----------------------------
@@ -15074,19 +15046,16 @@ set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjTtWater_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "_ZTV10dBgActor_c=port_ov033_tw_vt_own;VT1=port_ov033_vt_base")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjTtWater_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "_ZTV10dBgActor_c=port_ov033_tw_vt_own;VT1=port_ov033_vt_base;G0=data_020a0eac")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjTtWater_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "_ZTV10dBgActor_c=port_ov033_tw_vt_own;VT1=port_ov033_vt_base;G0=data_020a0eac")
 # THE ALIAS RACE (T6). id 104's InitResources hands the collider a CLPS block
 # it spells data_ov035_02111bfc -- OV035's name for the same shared-window
 # address -- and ov035's 0x02111bfc IS MOUNTED (port/ov035_syms.txt, wave 18's
 # seeds), so the name resolves and the collider would take level 27's data.
 # decl_common.h declares the ov035 spelling and not the ov033 one, so this
 # rename is direct and needs no private name.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjTtFuta_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "data_ov035_02111bfc=data_ov033_02111bfc")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjTtFuta_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "data_ov035_02111bfc=data_ov033_02111bfc")
 list(APPEND SWEEP1_SOURCES hal/actor_classes_ov033.cpp ${SLICE_SWEEP1_OV033_SOURCES})
 
 # ---- 4/6: ov023, level 15 (Lethal Lava Land's volcano) ---------------------
@@ -15329,11 +15298,9 @@ set_source_files_properties(
 # (2) src/func_ov062_02117acc.c (slice_gate182) -- a Chuckya/Koopa body whose
 #     callees dsd named under ov066 because it saw that overlay first. Both
 #     targets are ov062's own and both are sliced by gate 182.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_nknk.cpp"
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_nknk.cpp"
     "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_nknk.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
-    PROPERTIES COMPILE_DEFINITIONS
-    "_ZN6Eyerok19func_ov066_02118cdcEv=_ZN8daNknk_c19func_ov062_02118cdcEv;_ZN6Eyerok19func_ov066_02118a50Ev=_ZN8daNknk_c19func_ov062_02118a50Ev")
+    APPEND PROPERTY COMPILE_DEFINITIONS "_ZN6Eyerok19func_ov066_02118cdcEv=_ZN8daNknk_c19func_ov062_02118cdcEv;_ZN6Eyerok19func_ov066_02118a50Ev=_ZN8daNknk_c19func_ov062_02118a50Ev")
 # (3) src/func_ov060_02111c68.c (slice_w5e) and (4) src/func_ov060_02112350.c
 #     (slice_w5e) -- three of ov060's OWN bss cells at addresses ov066's mount
 #     now names as Eyerok PMF source pairs (port/ov060_syms.txt lines 128/131/
@@ -15343,10 +15310,8 @@ set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daKpa_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "data_ov066_0211ac20=data_ov060_0211ac20;data_ov066_0211ac68=data_ov060_0211ac68")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daKpa_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "data_ov066_0211acd0=data_ov060_0211acd0")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daKpa_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "data_ov066_0211acd0=data_ov060_0211acd0")
 
 # ---- lane cast-ov066: THREE MIS-SPELLED NAMES IN ONE OWN TU -----------------
 # src/func_ov066_021166c8.cpp (InitResources' resource half) spells three
@@ -15391,14 +15356,12 @@ set_source_files_properties(
 # when Eyerok runs. The four .c TUs declare them with C linkage and the one
 # .cpp declares them inside its extern "C" block, so all five come out
 # undecorated and the rename lands directly on the mount's C name.
-set_source_files_properties(
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/Eyerok.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/Eyerok.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/Eyerok.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/Eyerok.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/Eyerok.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/Eyerok.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "func_02112c08=data_ov025_02112c08;func_02112ca8=data_ov025_02112ca8;func_02112d48=data_ov025_02112d48")
+    APPEND PROPERTY COMPILE_DEFINITIONS "func_02112c08=data_ov025_02112c08;func_02112ca8=data_ov025_02112ca8;func_02112d48=data_ov025_02112d48")
 
 # ---- lane cast-ov036: SIX PER-SOURCE PLACEHOLDER AND CROSS-NAME BINDINGS ----
 # Every one is settled from the TU's OWN literal pool in
@@ -15634,10 +15597,9 @@ set_source_files_properties(
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daShark_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS "_ZN11daObjPile_c6RenderEv=func_ov090_02133710")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgBomroom_c.cpp"
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dScMgBomroom_c.cpp"
     "${CMAKE_BINARY_DIR}/host-src/src/actors/dScMgBomroom_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
-    PROPERTIES COMPILE_DEFINITIONS "_ZTS9daShark_c=data_ov006_021343b0")
+    APPEND PROPERTY COMPILE_DEFINITIONS "_ZTS9daShark_c=data_ov006_021343b0")
 
 # run rel0215 wave 3 (lane w3-f2): ov091's THREE DECLINED IDS --
 # ARROW_PATH_LIFT (157) and SQUARE_METAL_NET_LIFT (144), which SHARE ONE CLASS
@@ -15818,20 +15780,16 @@ set_source_files_properties(
 #     daSnmBth_c_classInit's own pool holds the same two words and spells them
 #     correctly (_ZTV13SnowmanBreath and _ZN21SnowmanBreathParticleD1Ev), which is the
 #     third read that settles both.
-set_source_files_properties(
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daSnmBth_c.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daSnmBth_c.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daSnmBth_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "g_profile_RC_KAITEN=_ZTV10daSnmBth_c;data_ov056_02112158=_ZN21SnowmanBreathParticleD1Ev")
+    APPEND PROPERTY COMPILE_DEFINITIONS "g_profile_RC_KAITEN=_ZTV10daSnmBth_c;data_ov056_02112158=_ZN21SnowmanBreathParticleD1Ev")
 # (6) src/_ZN21SnowmanBreathParticle8BehaviorEv.cpp -- two calls, two wrong overlays, both really
 #     ov027's own bodies. Neither name is defined in the link today, so this
 #     pair fails loudly rather than silently; routed anyway, by address:
 #       from:0x021124a0 kind:arm_call to:0x021123b0 module:overlay(27)
 #       from:0x021124a8 kind:arm_call to:0x0211233c module:overlay(27)
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daSnmBth_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "_ZTI13daObjTtFuta_c=_ZN21SnowmanBreathParticle12CheckSnowmanEv;data_ov053_021123b0=_ZN21SnowmanBreathParticle14UpdatePositionEv")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daSnmBth_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "_ZTI13daObjTtFuta_c=_ZN21SnowmanBreathParticle12CheckSnowmanEv;data_ov053_021123b0=_ZN21SnowmanBreathParticle14UpdatePositionEv")
 # ---- the placeholder half: VT0/VT1 and the host-only _ZTV spellings ---------
 # VT0/VT1 are the dangerous ones: both are DEFINED in this link
 # (hal/actor_classes.cpp, `int VT0[20]` and its sibling), so an unrenamed store
@@ -15853,11 +15811,9 @@ set_source_files_properties(
 #       D1  0x021111dc -> 0x02113824      0x021111e0 -> 0x0210ae38
 #       D0  0x02111230 -> 0x02113824      0x02111234 -> 0x0210ae38
 #                                         0x02111238 -> 0x020a0eac (G0, left)
-set_source_files_properties(
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjSlIceBlock_c.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjSlIceBlock_c.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjSlIceBlock_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "_ZTV17daObjSlIceBlock_c=_ZTV17daObjSlIceBlock_c")
+    APPEND PROPERTY COMPILE_DEFINITIONS "_ZTV17daObjSlIceBlock_c=_ZTV17daObjSlIceBlock_c")
 # (8) CHILL_BULLY's D1: _ZTV12daIDonketu_c is its OWN table and VT1 is ov064's
 #     Bully base. Pool in store order, disassembled at 0x021115c8:
 #       ldr r2 <- @02111610 -> 0x02113930   (own table)
@@ -15918,10 +15874,8 @@ set_source_files_properties(
 # (12) DA_PG_DFDR's D0: the same two stores as its D1 twin, same order, plus
 #      the heap. 0x02111988 -> 0x02113a90, 0x0211198c -> 0x0210ae38,
 #      0x02111990 -> 0x020a0eac (G0, left).
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daPgDfdr_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "VT0=_ZTV10daPgDfdr_c;VT1=_ZTV10dBgActor_c")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daPgDfdr_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "VT0=_ZTV10daPgDfdr_c;VT1=_ZTV10dBgActor_c")
 
 
 # run rel0215 wave 2 (lane w2-ov074): GOOMBOSS (198) + EXPLOSION_GOOMBA (199),
@@ -16361,9 +16315,8 @@ set_source_files_properties(
 #     from:0x0211258c kind:load to:0x02112c98 module:overlay(22)
 #   port/ov035_syms.txt:294 defines data_ov035_02112c98 (wave 1's ov035 mount);
 #   ov022_syms.txt:132 already has data_ov022_02112c98.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "data_ov035_02112c98=data_ov022_02112c98")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "data_ov035_02112c98=data_ov022_02112c98")
 #
 # W2, A THIRD ONE THIS LANE FOUND, and it is the worse shape of the two -- a
 # CALL through a data name. src/func_ov022_021126ac.c (243's first PMF state)
@@ -16374,9 +16327,8 @@ set_source_files_properties(
 # data_ov025_02112654, so today the reference is simply undefined and the TU
 # could not be seated; left unrenamed with an ov025 mount that did define it,
 # this would have been the ov006 "seating one CALLS INTO A DATA ARRAY" shape.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "data_ov025_02112654=func_ov022_02112654")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "data_ov025_02112654=func_ov022_02112654")
 #
 # W3, THE TWO CleanupResources BODIES THAT SPELL THEIR SharedFilePtrs G0/G1.
 # hal/cxx_aliases.cpp binds _G0 to the game heap pointer and _G1 to SignPost's
@@ -16443,9 +16395,8 @@ set_source_files_properties(
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjFl_Koma_D_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS "VT1=_ZTV16daObjFl_Koma_D_c")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "VT1=_ZTV15daObjFlMaruta_c")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "VT1=_ZTV15daObjFlMaruta_c")
 #
 # W5b, ONE arm9-STYLE PLACEHOLDER NAME, off the first link's own unresolved
 # list. src/_ZN13RollingLogLll16CleanupResourcesEv.cpp (70's slot 3) calls
@@ -16460,9 +16411,8 @@ set_source_files_properties(
 # declared in include/decl_common.h with the IDENTICAL type (lines 1381 and
 # 1601, `extern int f(void*, void*)`), so the rewrite is a duplicate
 # declaration and not the C2371 the W4 block records.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
-    PROPERTIES COMPILE_DEFINITIONS "func_021270dc=func_ov080_021270dc")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "func_021270dc=func_ov080_021270dc")
 #
 # W6, THE TWO POINTER-TO-MEMBER DISPATCHERS, the R9 wave-18 ruling applied to
 # VOLCANO_FIRE. Both take a pointer-to-member of an INCOMPLETE class and apply
@@ -16550,11 +16500,9 @@ set_source_files_properties(
 #   from:0x02111ea4 kind:load to:0x02113ab0 module:overlay(25)   collision file
 # Both are already in port/ov025_syms.txt (0x02113ab8 pinned to 8 there).
 # hal/actor_classes_ov025.cpp's slot-3 fill now calls the method.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjDpBrock_c.cpp"
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjDpBrock_c.cpp"
     "${CMAKE_BINARY_DIR}/host-src/src/actors/daObjDpBrock_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
-    PROPERTIES COMPILE_DEFINITIONS
-    "G0=data_ov025_02113ab8;G1=data_ov025_02113ab0")
+    APPEND PROPERTY COMPILE_DEFINITIONS "G0=data_ov025_02113ab8;G1=data_ov025_02113ab0")
 # ---- w3-e / ov019, level 11 (Cool Cool Mountain's slide) ------------------
 #
 # RACING_PENGUIN (259), the one class gate 142/143 left in level 11's own
@@ -16643,10 +16591,9 @@ set_source_files_properties(
 # here so the two agree on the representation -- a TU that keeps MSVC's default
 # 4-byte form while its sibling uses the ROM's 8-byte one is the drift R9's
 # "PER-SOURCE, NEVER GLOBAL" paragraph warns about.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_pg_rcer.cpp"
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_pg_rcer.cpp"
     "${CMAKE_BINARY_DIR}/host-src/src/game/actors/d_a_pg_rcer.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
-    PROPERTIES COMPILE_OPTIONS "/vmg;/vmm")
+    APPEND PROPERTY COMPILE_OPTIONS "/vmg;/vmm")
 #
 # W13, AN ALIAS THIS LANE DEFEATS, RE-ROUTED. hal/bob_enemy_bridges.cpp carried
 # /alternatename:_func_ov019_02111f54=_func_ov014_02111f54, because ChainChomp's
@@ -17606,10 +17553,8 @@ set_source_files_properties(
 # real ov030 FUNCTION this link may define. Bind it to ov029's own bss cell at
 # 0x02114278, the W10/RacingPenguin remedy. The reloc says the address:
 #   from:0x02112c34 kind:load to:0x02114278 module:overlay(29)
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_wc_obj03.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "_ZN7daMky_c8BehaviorEv=data_ov029_02114278")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_wc_obj03.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "_ZN7daMky_c8BehaviorEv=data_ov029_02114278")
 
 # Two ov029 bodies are //cpp-marked .c files (a top-level `extern "C" {` block,
 # invalid C): compile them as C++.
@@ -19531,14 +19476,10 @@ set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_clock_huriko.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV18daObjClockHuriko_c;G0=data_020a0eac")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjSm_Lift_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "VT0=_ZTV14daObjSm_Lift_c;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjKi_Hasira_c.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-    "VT0=_ZTV16daObjKi_Hasira_c;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjSm_Lift_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "VT0=_ZTV14daObjSm_Lift_c;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjKi_Hasira_c.cpp"
+    APPEND PROPERTY COMPILE_DEFINITIONS "VT0=_ZTV16daObjKi_Hasira_c;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_ki_ita.cpp"
     PROPERTIES COMPILE_DEFINITIONS
@@ -20151,10 +20092,9 @@ endforeach()
 # this one (the property is set, not appended), so this row never reached
 # the compiler for that TU. Removed from this row only; the other sources
 # in the row keep it, and the surviving row for dScMgSound_c.cpp is unchanged.
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dPathLiftActor_c.cpp"
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/dPathLiftActor_c.cpp"
     "${CMAKE_BINARY_DIR}/host-src/src/actors/dPathLiftActor_c.cpp"  # PORTSYNC2: on PORT_HOSTGEN_TU, so the generated copy is what compiles
-    PROPERTIES COMPILE_OPTIONS "/Zp4")
+    APPEND PROPERTY COMPILE_OPTIONS "/Zp4")
 # dScMgSound_c.cpp also carries a fall-off-the-end body (dScMgSound_c::Virtual50),
 # so it takes /wd4716 as well -- in THIS row, because COMPILE_OPTIONS is one
 # property and a second set_source_files_properties would drop the /Zp4 above.
