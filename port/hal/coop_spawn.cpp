@@ -51,6 +51,9 @@ extern int data_ov089_02132894[];      // Key kinds 0..6: pointers to the kind's
 extern char data_ov002_0211094c;       // kind 7's model
 }
 
+extern "C" const void *port_level_fb_ptr;               // coop_boot.cpp: the level loop's top-screen framebuffer (proof pictures)
+namespace ntr { struct Framebuffer; bool ppu_write_bmp(const char *path, const Framebuffer &fb); }
+
 namespace port {
 namespace {
 
@@ -1155,6 +1158,24 @@ void on_frame(unsigned now) {
     }
     if (!my_player()) return;
     ++g_frames;
+
+    // SMALLS9B proof pictures: SM64DS_SMALLS9B_SHOT="f1,f2" writes smalls9b_f<N>.bmp (the top screen) when this module's frame count reaches N.
+    if (const char *sh = std::getenv("SM64DS_SMALLS9B_SHOT")) {
+        for (const char *q = sh; *q;) {
+            char *end = nullptr;
+            const long n = std::strtol(q, &end, 10);
+            if (end == q) break;
+            if (g_frames == (unsigned)n) {
+                char nm[64]; std::snprintf(nm, sizeof nm, "smalls9b_f%ld.bmp", n);
+                const void *lfb = ::port_level_fb_ptr;
+                const bool w = lfb && ::ntr::ppu_write_bmp(nm, *(const ::ntr::Framebuffer *)lfb);
+                if (g_log) std::fprintf(stderr, "[coopspawn] SMALLS9B picture %s %s pstate=%08x wall=%lld
+", nm, w ? "written" : "FAILED",
+                                        my_player() ? *(const unsigned *)(my_player() + 0x370) : 0u, wall_ms());
+            }
+            q = end; while (*q == ',' || *q == ' ') ++q;
+        }
+    }
 
     // the owner's red-coin sum, from a sender that was not yet a member
     if (g_early.on && is_member(g_early.seat)) {
