@@ -23,6 +23,14 @@ struct player_;
 #include "Model.h"
 #include "dBgW_KcMbg.h"
 
+#ifdef _MSC_VER
+/* HOST: mwccarm lays a derived class's first member inside the base's tail padding (the base's dsize,
+   0x31e); MSVC starts it at sizeof(base). Packing the class to 2 gives it sizeof 0x31e, so every derived
+   class puts its members where the ROM reads them (about forty headers claim the two bytes: see the
+   ROM_BASE_TAIL_PAD note in include/types.h). Every member here is already pinned at a 4-aligned ROM
+   offset, so the pack moves nothing inside the class. */
+#pragma pack(push, 2)
+#endif
 struct dBgActor_c : dActor_c {
     u8  pad_0d0[0x4];
     Model mModel;                           /* 0x0d4 */
@@ -75,6 +83,9 @@ struct dBgActor_c : dActor_c {
        include/dActor_c.h and notes/platform-provenance.md. */
     int UpdateKillByMegaChar(s16 a, s16 b, s16 c, Fix12<int> d);
 };
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
 
 #ifndef SM64DS_PLATFORM_PC
 /* ROM layout under mwccarm; host ABI divergence is tracked separately. */
