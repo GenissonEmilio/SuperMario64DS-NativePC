@@ -760,7 +760,7 @@ void spawn_frame() {
     const bool bit = seen_bit();
     int me[3] = {rd_i32(b, 0x5c), rd_i32(b, 0x60), rd_i32(b, 0x64)};
     if (S9.log && C.intro_seen && !bit && (S9.frame % 20) == 0) spawn_log_lakitu(b);
-    if (S9.log && C.intro_seen && !bit && (S9.frame % 10) == 0) {
+    if (S9.log && C.intro_seen && (!bit || (S9.bit_frame && S9.frame - S9.bit_frame < 1200)) && (S9.frame % 10) == 0) {
         short ang; std::memcpy(&ang, b + 0x8e, 2);
         const int mi = (int)data_0209f250 & 3;
         const unsigned char *ct = data_0209f498 + mi * 0x18;
