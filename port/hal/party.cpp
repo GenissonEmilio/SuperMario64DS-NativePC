@@ -238,7 +238,20 @@ bool follow(void *a, int body, int seat) {
     ++g_pass;
     cyl_assist(a);
     unstick(a, seat);
-    const bool reg = cyl_register(a, seat);
+    // SHOVE9: in a coop room the LOWER seat wins a push. A friend of a higher seat than mine has no cylinder on this
+    // console: his console moves him off my ghost, mine does not move off his. Without this, two bodies that start on one
+    // spot (every group entrance and the opening's spawn) are pushed the same way by the pair pass and each sees the
+    // other's delayed ghost behind it, so both keep pushing west (measured: 12 units a frame, 2700 units, to the wall).
+    static const bool prio_off = std::getenv("SM64DS_SHOVE_PRIO") && std::getenv("SM64DS_SHOVE_PRIO")[0] == '0';   // proof control
+    bool reg;
+    if (g_coop && !prio_off && seat > comms_hub_my_seat()) {
+        cyl_withhold(a);
+        reg = false;
+        static unsigned skips;
+        if (g_log > 0 && (skips++ % 600u) == 0) std::fprintf(stderr, "[party] shove: no cylinder for seat %d (mine is %d), lower seat wins the push\n", seat, comms_hub_my_seat());
+    } else {
+        reg = cyl_register(a, seat);
+    }
     if (g_sep > 0) {
         const int me = (int)data_0209f250;
         void *mb = (me >= 0 && me < kMaxBodies) ? data_0209f394[me] : nullptr;

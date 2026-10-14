@@ -96,6 +96,8 @@ void set_extra_vuln(unsigned bits);
 // Put body `a`'s cylinder in the collision list for this frame's pair pass.
 // Returns false when the audit withheld it.
 bool cyl_register(void *a, int seat);
+// SHOVE9: take body `a`'s cylinders out of the collision list for this frame (no push on my body from this friend).
+void cyl_withhold(void *a);
 // The other half of the push (my body takes what the friend's body would have), before the
 // node is registered again.
 void cyl_assist(void *a);
