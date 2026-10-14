@@ -44,7 +44,6 @@
  */
 #include <cstdio>
 #include <cstdlib>
-#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -165,7 +164,7 @@ extern "C" void port_knock_down_plank_states_seat(void)
                          g_knock_down_plank_states[i].rom);
             std::abort();
         }
-        p->fn = PORT_PMF_TC(g_knock_down_plank_states[i].host);
+        p->fn = (unsigned)(size_t)g_knock_down_plank_states[i].host;
     }
 }
 

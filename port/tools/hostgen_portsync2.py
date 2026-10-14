@@ -790,14 +790,7 @@ ROWS_04[("DATA_C_LINKAGE", "daObjBk_Lift_c")] = None
 # port's per-symbol ov015 mount (port/ov015_syms.txt) already defines, so the
 # link would see the storage twice. The port line's TU only declared them;
 # the storage stays the mount's, and the bracket holds the two definitions.
-ROWS_04[("HOST_COPY_PARK", "daObjBk_Lift_c")] = [
-    ("BkLiftModelFilePtr data_ov015_02114a64(1433);\n"
-     "BkLiftCollisionFilePtr data_ov015_02114a5c(1434);\n",
-     "#if 0  /* hostgen HOST_COPY_PARK: the ov015 mount defines this storage */\n"
-     "BkLiftModelFilePtr data_ov015_02114a64(1433);\n"
-     "BkLiftCollisionFilePtr data_ov015_02114a5c(1434);\n"
-     "#endif  /* hostgen HOST_COPY_PARK: data_ov015_02114a64 / _02114a5c */\n"),
-]
+ROWS_04[("HOST_COPY_PARK", "daObjBk_Lift_c")] = None   # PORTSYNC3: the TU defines and constructs the handles now (the mount rows are name-only)
 
 # ---- daObjYajirusi_c -------------------------------------------------------
 # VIRTUAL_CALL (new; the call-spelling table -- these three are non-virtual,
