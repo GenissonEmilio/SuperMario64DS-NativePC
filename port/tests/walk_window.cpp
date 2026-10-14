@@ -9628,6 +9628,14 @@ static void ip_probe(int frame, int rom_frame)
                 fprintf(stderr, "[interp] nb f%d j%d/%d g%d center %.3f %.3f\n", rom_frame, j, k, gi,
                         (b4[0] + b4[2]) * 0.5f, (b4[1] + b4[3]) * 0.5f);
         }
+        if (getenv("SM64DS_INTERP_PROBE_BOXES")) {
+            for (int gi = 0; gi < ntr::gx_interp_group_count(); ++gi) {
+                float b4[4];
+                if (ntr::gx_interp_group_box(gi, b4) > 0)
+                    fprintf(stderr, "[interp] gb f%d j%d/%d g%d fl%d center %.3f %.3f\n", rom_frame, j, k, gi,
+                            ntr::gx_interp_group_flags(gi), (b4[0] + b4[2]) * 0.5f, (b4[1] + b4[3]) * 0.5f);
+            }
+        }
         size_t tn = 0;
         ntr::gx_polygons(tn);
         ntr::gx_interp_end();

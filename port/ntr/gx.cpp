@@ -8537,7 +8537,7 @@ static void grid_pool_clear_hook() {
 int gx_interp_group_flags(int gi) {
     if (g_ip_c < 0 || gi < 0 || gi >= (int)g_ipr[g_ip_c].groups.size()) return -1;
     const IpGroup &G = g_ipr[g_ip_c].groups[gi];
-    return (G.part ? 1 : 0) | (G.match >= 0 ? 2 : 0);
+    return (G.part ? 1 : 0) | (G.match >= 0 ? 2 : 0) | (G.match2 >= 0 ? 4 : 0);
 }
 
 int gx_interp_group_count() {
