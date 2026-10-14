@@ -58,6 +58,7 @@
 #include <cstdlib>
 
 #include "ModelAnim.h"
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -248,7 +249,7 @@ extern "C" void port_chuckya_states_seat(void)
                          g_chuckya_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_chuckya_states[i].host;
+        p->fn = PORT_PMF_TC(g_chuckya_states[i].host);
     }
 }
 

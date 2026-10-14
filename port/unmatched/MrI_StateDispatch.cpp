@@ -71,6 +71,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -141,6 +142,6 @@ extern "C" void port_mri_states_seat(void)
                          "BYTES\n", i, p->fn, p->delta, g_mri_sources[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_mri_sources[i].host;
+        p->fn = PORT_PMF_TC(g_mri_sources[i].host);
     }
 }

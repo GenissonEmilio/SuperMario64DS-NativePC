@@ -263,6 +263,7 @@ extern "C" char port_ov015_kdp_clsn_files[];
    faced: it is the host copy in port/unmatched/Wiggler_Render.cpp, which
    exports the Itanium name directly. */
 #include "daHanachan_c.h"
+#include "hal/pmf_tc.h"
 extern "C" {
 int _ZN12daHanachan_c13InitResourcesEv(void *self)
 { return ((daHanachan_c *)self)->daHanachan_c::InitResources(); }
@@ -410,8 +411,8 @@ extern "C" void port_wiggler_states_seat(void)
                          g_wiggler_states[i].tick_rom);
             std::abort();
         }
-        e.enter_fn = (unsigned)(size_t)g_wiggler_states[i].enter_host;
-        e.tick_fn = (unsigned)(size_t)g_wiggler_states[i].tick_host;
+        e.enter_fn = PORT_PMF_TC(g_wiggler_states[i].enter_host);
+        e.tick_fn = PORT_PMF_TC(g_wiggler_states[i].tick_host);
     }
 }
 

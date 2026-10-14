@@ -1099,6 +1099,10 @@ extern "C" void hal_fill_crazed_crate_vtable(void)
         };
         int i;
         for (i = 0; i < 6; ++i) {
+            /* PORTSYNC3: main's daBttBk_c.cpp builds data_ov080_0212847c natively (real member
+               pointers); only a word still holding a DS code address is the ROM's. */
+            { const unsigned w = *(const unsigned volatile *)(data_ov080_0212847c + i * 8);
+              if (w < 0x02000000u || w >= 0x02400000u) continue; }
             *(void *volatile *)(data_ov080_0212847c + i * 8) = seat[i];
             *(int volatile *)(data_ov080_0212847c + i * 8 + 4) = 0;
         }
