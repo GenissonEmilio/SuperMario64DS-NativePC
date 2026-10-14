@@ -877,6 +877,22 @@ ROWS_04[("VIRTUAL_CALL", "StartExitFaderWipe")] = [
      "    virtual ~dFdWipe_c();\n    virtual void HostRomD0SlotPad() {}\n    virtual int Advance();"),
 ]
 
+# ---- daDemo_c ----------------------------------------------------------------
+# VIRTUAL_CALL (PORTSYNC3). CleanupResources ends in `delete mModel; delete mModelAnim;`. The two
+# objects are built the ROM's way (flat allocation, vptr stored from the mounted ROM tables the
+# port seats), so slot 1 of their table is the ROM's DELETING destructor, a thiscall body that
+# takes nothing on the stack. MSVC's `delete p` is a call through slot 0 that pushes the
+# deleting-flag word and expects the callee to pop it: the seated body does not, which left ESP
+# four bytes off and returned over the caller's saved registers (measured: the opening and the
+# ending both lost fBase_c::Process's `this` the first time a cutscene object was cleaned up).
+# The ROM's own call is spelled instead: slot 1, no flag.
+ROWS_04[("VIRTUAL_CALL", "daDemo_c")] = [
+    ("  if (mModel) delete mModel;\n  if (mModelAnim) delete mModelAnim;\n",
+     "  /* hostgen VIRTUAL_CALL: the ROM's deleting destructor, slot 1 */\n"
+     "  if (mModel) ((void (__thiscall *)(void *))(*(void ***)mModel)[1])(mModel);\n"
+     "  if (mModelAnim) ((void (__thiscall *)(void *))(*(void ***)mModelAnim)[1])(mModelAnim);\n"),
+]
+
 # ---- daOnms_c --------------------------------------------------------------
 # EXTERN_C_DATA (new). Main's TU writes the arm9 sin/cos table as
 # `s16 data_02082214[];` with no `extern`, inside its `extern "C" {` block.
