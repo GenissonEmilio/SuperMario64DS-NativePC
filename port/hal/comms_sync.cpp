@@ -67,6 +67,7 @@
 #include "voice_chat.h"      // run mp1 fold: the SYNG talking bit mirrors
                              // voice_talking() (VOICE1 exports it)
 #include "player_fields.h"
+#include "star_tally.h"      // SMALLS9: per-player star count in a coop room
 #include "ghost_door.h"      // GHOSTDOOR1: door / area / hidden look of a hub ghost
 #include "party.h"           // PBODY1: solid party bodies (membership by seat)
 #include "party_hits.h"      // PLAYINT1: the squash after a stomp
@@ -2194,7 +2195,9 @@ void gw_send(unsigned now) {
     f.yaw = *player::facing(a);
     f.anim_id = player::anim_id(a);
     f.anim_frame = player::anim_frame(a);
-    f.stars = (unsigned short)NumStars();
+    /* SMALLS9: in a coop room the player's OWN star count this session (hal/star_tally.h);
+       everywhere else the save total, as before */
+    f.stars = (unsigned short)star_tally_wire_value((int)NumStars());
     f.area = 0;
     if (fc) {
         f.flags |= (unsigned char)kGwFrameClock;

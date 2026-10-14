@@ -4248,10 +4248,45 @@ void hal_render_player_world(void *player);
  * loop finds it and returns before drawing. */
 static int __fastcall ps_render(void *self, void *)
 {
+    static int arrlog = -1;
+    if (arrlog < 0) { const char *l = getenv("SM64DS_CAST_LOG"); arrlog = (l && atoi(l) > 0) ? 1 : 0; }
+    if (arrlog) {
+        static unsigned af = 0;
+        const char *q = (const char *)self;
+        if ((af++ % 30u) == 0)
+            fprintf(stderr, "[castall] %p no=%u pos=(%d,%d,%d) op=%u inarray=%d\n", self,
+                    (unsigned)*(const unsigned char *)(q + 0x6d8), *(const int *)(q + 0x5c) >> 12,
+                    *(const int *)(q + 0x60) >> 12, *(const int *)(q + 0x64) >> 12,
+                    (unsigned)*(const unsigned char *)(q + 0x6f5), data_0209f394[0] == self);
+    }
     const int count = (int)data_0209f21c;
     for (int i = 0; i < count; ++i)
         if (data_0209f394[i] == self)
             return 1;               /* array player: the harness draws it */
+    /* SMALLS9 (item 23): the cast waits un-animated (bind pose = a T pose) at its
+       start mark until its cue; the DS 4:3 view never saw that mark, a 16:9 view
+       does. Apply the gates the ROM's own Player::Render applies before it draws
+       a body (src/_ZN6Player6RenderEv.cpp: mOpacity == 0, mFlags & 0x10): a cast
+       body the script has not shown is not drawn. SM64DS_CAST_GATE=0 is the
+       control; SM64DS_CAST_LOG=<stride> prints what each cast body is doing. */
+    static int gate = -1, logstride = -1;
+    static unsigned frames = 0;
+    if (gate < 0) {
+        const char *e = getenv("SM64DS_CAST_GATE");
+        gate = (e && e[0] == '0' && e[1] == 0) ? 0 : 1;
+        const char *l = getenv("SM64DS_CAST_LOG");
+        logstride = l ? atoi(l) : 0;
+    }
+    const char *c = (const char *)self;
+    const unsigned op = *(const unsigned char *)(c + 0x6f5);
+    const unsigned fl = *(const unsigned *)(c + 0xb0);
+    const bool hide = gate && (op == 0 || (fl & 0x10));
+    if (logstride > 0 && (frames++ % (unsigned)logstride) == 0)
+        fprintf(stderr, "[cast] %p no=%u ch=%u pos=(%d,%d,%d) op=%u flags=%08x van=%u anim=%d hide=%d\n",
+                self, (unsigned)*(const unsigned char *)(c + 0x6d8), *(const unsigned *)(c + 8) & 0xffu,
+                *(const int *)(c + 0x5c) >> 12, *(const int *)(c + 0x60) >> 12, *(const int *)(c + 0x64) >> 12,
+                op, fl, (unsigned)*(const unsigned char *)(c + 0x6fb), 0, (int)hide);
+    if (hide) return 1;
     hal_render_player_world(self);  /* cutscene cast: draw its body here */
     return 1;
 }

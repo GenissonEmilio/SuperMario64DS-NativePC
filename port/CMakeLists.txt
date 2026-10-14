@@ -11631,6 +11631,9 @@ list(APPEND SLICE_COMMS_SOURCES hal/party_hits.cpp)
 # Run mp1 lane STARPOP1: star / key popup and the shared exit (party + coop). INERT
 # outside party / coop rooms; see hal/star_popup.h.
 list(APPEND SLICE_COMMS_SOURCES hal/star_popup.cpp)
+# Run mp1 lane SMALLS9: the other players on the minimap (coop_minimap) and each player's own star
+# tally over their head (star_tally). INERT outside party / coop / world rooms.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_minimap.cpp hal/star_tally.cpp)
 # Run mp1 lane COOPCASTLE1: castle Boos and MIPS (profile rows in coop_actor_profiles.inc) + proof knobs. INERT
 # unless SM64DS_COOP is set in a coop room; see hal/coop_castle.h.
 list(APPEND SLICE_COMMS_SOURCES hal/coop_castle.cpp)

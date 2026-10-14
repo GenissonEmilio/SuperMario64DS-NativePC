@@ -15,6 +15,9 @@
 //   0x20 SAVE_REQ  guest -> everyone, host answers. payload 4 bytes, all 0
 //                  (non-zero = dropped). Resent at 4 Hz until a host record
 //                  arrives.
+//   0x22 TALLY     (lane SMALLS9, hal/star_tally.h) each player's own star
+//                  count this session: a guest's entry to the host, the host's
+//                  table to everyone. Not part of the save record.
 //   0x21 SAVE_REC  a file record. payload 72 bytes:
 //                     u8  from_host   1 = the host's merged record (guests
 //                                      take it), 0 = a guest's record (only
@@ -45,6 +48,7 @@ namespace port {
 enum : int {
     kCoopSaveSubReq = 0x20,
     kCoopSaveSubRec = 0x21,
+    kCoopSaveSubTally = 0x22,   // SMALLS9: per-player star tally, see star_tally.h
     kCoopSaveSubLo  = 0x20,
     kCoopSaveSubHi  = 0x2f,
 };
