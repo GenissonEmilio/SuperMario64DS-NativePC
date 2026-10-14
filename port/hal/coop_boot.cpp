@@ -32,14 +32,29 @@
 
 #include <windows.h>
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
 extern "C" {
 extern unsigned char data_0209caa0[];
+extern void *data_0209f394[];
+extern unsigned char data_0209f250;
+extern unsigned char data_0209f21c;
+extern int data_0209f2f8;
 int port_adventure_hub_opening_held(void);
+int port_adventure_ghost_drawpos(int slot, int out[3]);
+int port_adventure_ghost_seat(int slot);
+short Vec3_HorzAngle(const void *a, const void *b);
+extern unsigned char data_0209f498[];   // Stage's per-player stick record, 0x18 bytes each (probe only)
+extern unsigned char data_020a0de8[];   // touch records, 4 bytes each (probe only)
+extern int data_020a0e58[];             // pad mirror (probe only)
+extern unsigned char data_020a0e40;     // the stick slot Player::St_Wait_Main reads (probe only)
+void *_ZN8dActor_c4NextEPKS_(const void *prev);
+const void *port_level_fb_ptr = 0;   // set by tests/walk_window.cpp's level loop; the proof pictures (SM64DS_COOPSPAWN_SHOT) read it
 }
+namespace ntr { struct Framebuffer; bool ppu_write_bmp(const char *path, const Framebuffer &fb); }
 
 namespace port {
 namespace {
@@ -53,6 +68,7 @@ struct Ctl {
     bool host = false;
     bool released = false;
     bool at_first_frame = false;   // this console reached the file's first level frame
+    bool late_at_first = false;    // ...and the GO had already been given then (COOPSPAWN9: a late joiner)
     bool holding = false;
     bool exiting = false;
     // host
@@ -597,12 +613,264 @@ extern "C" int port_coop_boot_scene_frame(void) {
     return 0;
 }
 
+
+namespace port {
+namespace {
+// ---------------------------------------------------------------------------
+// COOPSPAWN9 (run mp1, items 3 and 4 of the 10-13 field report): WHERE EVERYONE STANDS AFTER THE OPENING.
+//
+// The opening is a one-player cutscene on every console. Its hand-over (LakituBro puts the player to sleep on the spawn,
+// talks, wakes him; the opening-seen bit is set as the player wakes) asks the ROM's ClosestPlayer for the body it works
+// with, and coop replaces that answer with a group-wide pick. Measured with four consoles (out COOPSPAWN9, base_open and
+// the b3/b4/b5 probe rows): the LakituBro pick itself already answered each console's OWN body, but from the first tick after
+// the opening's closing load some consoles' bodies slid off the spawn by themselves (100 to 300 units, and in about half the
+// runs a runaway of up to 2000 units west to the hedge maze, pad words all zero), at random, on the shipped build too, so
+// the talk happened with Yoshi somewhere else and the group ended up scattered.
+//  1. The group-wide ClosestPlayer stays OFF from the opening's start until its seen bit (port_coop_boot_opening_hold, read by
+//     coop_target.cpp): the hand-over works on the local body exactly as it does for one player.
+//  2. PIN: from the closing load until the bit the body is written back onto the spawn point the load gave it (record 0, the
+//     same point on every console) before every tick, with the spawn's facing.
+//  3. At the bit every console puts its own body on its place of the 96-unit ring around that spawn (the table of
+//     port_vs_extra_start in hal/level_boot.cpp, copied here because that function is file-local): the host takes the centre,
+//     guests rank 1..3 by hub seat. Wire-free: the spawn is level data, so every console computes the same places.
+//
+// A LATE JOINER (the GO was already given when it reached the file's first frame) has no opening: it waits for the host's
+// body to show in its own level (hub presence + the follower's drawn pose, at most 4 s) and lands on the same ring around
+// it. No host in the level, or no pose: it stays where the level put it.
+// ---------------------------------------------------------------------------
+struct SpawnState {
+    bool inited = false;
+    bool bit_prev = false;
+    bool late = false;
+    bool late_done = false;
+    ULONGLONG late_since = 0;
+    bool log = false;
+    unsigned frame = 0;
+    unsigned placed = 0;
+    // after the opening
+    int phase = 0;                 // 0 before the bit, 3 done
+    bool have_spawn = false;
+    int spawn[3] = {0, 0, 0};
+    short spawn_ang = 0;
+    unsigned pin_from = 0, pinned = 0, bit_frame = 0;
+    double max_drift = 0.0;
+} S9;
+
+bool seen_bit() { return (data_0209caa0[8] & 0x80) != 0; }
+
+char *spawn_body() {
+    const int me = (int)data_0209f250;
+    return (me >= 0 && me < 16 && me < (int)data_0209f21c) ? (char *)data_0209f394[me] : nullptr;
+}
+
+int rd_i32(const char *a, int off) { int v; std::memcpy(&v, a + off, 4); return v; }
+void wr_i32(char *a, int off, int v) { std::memcpy(a + off, &v, 4); }
+
+double hdist(const int *a, const int *b) {
+    const double dx = ((double)a[0] - b[0]) / 4096.0, dz = ((double)a[2] - b[2]) / 4096.0;
+    return std::sqrt(dx * dx + dz * dz);
+}
+
+// my place among the guests: hub seats other than the host's, counted from 1 (the host itself stays on the centre, rank 0)
+int my_rank() {
+    const int seat = my_seat();
+    if (seat < 0 || seat > 3) return -1;
+    if (C.host) return 0;
+    int r = 1;
+    for (int t = 0; t < seat; ++t) if (t != C.host_seat) ++r;
+    return r;
+}
+
+// the ring of port_vs_extra_start for slots 1..3 (radius 96, bearings 0, 72, 144 degrees), 20.12 offsets
+void ring_offset(int slot, int out[2]) {
+    static const short kCos[5] = {4096, 1266, -3313, -3313, 1266};
+    static const short kSin[5] = {0, 3895, 2408, -2408, -3895};
+    out[0] = out[1] = 0;
+    if (slot < 1 || slot > 5) return;
+    out[0] = 96 * (int)kCos[slot - 1];
+    out[1] = 96 * (int)kSin[slot - 1];
+}
+
+// Move my own body to cx,cz (+ the ring for my rank), keeping the centre's height; 20.12.
+void spawn_move(const char *why, int cx, int cy, int cz) {
+    char *b = spawn_body();
+    const int rank = my_rank();
+    if (!b || rank < 0) return;
+    static const bool place_off = std::getenv("SM64DS_COOPSPAWN_PLACE") && std::getenv("SM64DS_COOPSPAWN_PLACE")[0] == '0';   // proof control
+    if (place_off) { LOG("SPAWN %s: placement switched off (SM64DS_COOPSPAWN_PLACE=0)", why); return; }
+    int off[2];
+    ring_offset(rank, off);
+    const int tx = cx + off[0], tz = cz + off[1];
+    const int ox = rd_i32(b, 0x5c), oy = rd_i32(b, 0x60), oz = rd_i32(b, 0x64);
+    wr_i32(b, 0x5c, tx);
+    wr_i32(b, 0x60, cy);
+    wr_i32(b, 0x64, tz);
+    wr_i32(b, 0x68, tx);       // last frame's position too, so no sweep from the old spot
+    wr_i32(b, 0x6c, cy);
+    wr_i32(b, 0x70, tz);
+    wr_i32(b, 0x98, 0);        // no horizontal speed carried over
+    ++S9.placed;
+    LOG("SPAWN %s: seat %d (rank %d) placed (%d,%d,%d) -> (%d,%d,%d) around centre (%d,%d,%d)", why, my_seat(), rank, ox >> 12,
+        oy >> 12, oz >> 12, tx >> 12, cy >> 12, tz >> 12, cx >> 12, cy >> 12, cz >> 12);
+}
+
+// item 4 evidence: where LakituBro stands and which way he faces compared with the way to my body (SM64DS_COOPSPAWN_LOG)
+void spawn_log_lakitu(const char *b) {
+    for (const char *a = (const char *)_ZN8dActor_c4NextEPKS_(nullptr); a; a = (const char *)_ZN8dActor_c4NextEPKS_(a)) {
+        unsigned short cls; std::memcpy(&cls, a + 0x0c, 2);
+        if (cls != 235) continue;
+        short yaw; std::memcpy(&yaw, a + 0x8e, 2);
+        const short to_me = Vec3_HorzAngle(a + 0x5c, b + 0x5c);
+        const int d = (int)(short)(yaw - to_me);
+        LOG("SPAWN lakitu f=%u pos=(%d,%d,%d) yaw=%d toMe=%d diff=%d me=(%d,%d,%d)", S9.frame, rd_i32(a, 0x5c) >> 12,
+            rd_i32(a, 0x60) >> 12, rd_i32(a, 0x64) >> 12, (int)yaw, (int)to_me, d < 0 ? -d : d, rd_i32(b, 0x5c) >> 12,
+            rd_i32(b, 0x60) >> 12, rd_i32(b, 0x64) >> 12);
+        return;
+    }
+}
+
+// the follower's drawn pose of the body that stands for hub seat `seat` (the ghost API is indexed by BODY slot, which is not the seat)
+bool seat_drawpos(int seat, int dp[3]) {
+    const int nb = (int)data_0209f21c < 16 ? (int)data_0209f21c : 16;
+    for (int i = 0; i < nb; ++i) {
+        if (i == (int)data_0209f250 || !data_0209f394[i]) continue;
+        if (port_adventure_ghost_seat(i) == seat) return port_adventure_ghost_drawpos(i, dp) != 0;
+    }
+    return false;
+}
+
+bool host_in_my_level(int dp[3]) {
+    HubPresence p;
+    return C.host_seat >= 0 && hub_presence_get(C.host_seat, &p) && p.in_level() && p.level == (int)data_0209f2f8 &&
+           seat_drawpos(C.host_seat, dp);
+}
+
+void spawn_frame() {
+    if (!S9.inited) {
+        S9.inited = true;
+        S9.log = env_on("SM64DS_COOPSPAWN_LOG");
+        S9.bit_prev = seen_bit();
+        S9.late = !C.host && C.late_at_first && S9.bit_prev && !C.intro_seen;
+        S9.late_since = tick();
+        if (S9.late) LOG("SPAWN late joiner: waits for the host's body to place itself on the ring");
+    }
+    ++S9.frame;
+    char *b = spawn_body();
+    if (!b) return;
+    const bool bit = seen_bit();
+    int me[3] = {rd_i32(b, 0x5c), rd_i32(b, 0x60), rd_i32(b, 0x64)};
+    if (S9.log && C.intro_seen && !bit && (S9.frame % 20) == 0) spawn_log_lakitu(b);
+    if (S9.log && C.intro_seen && (!bit || (S9.bit_frame && S9.frame - S9.bit_frame < 1200)) && (S9.frame % 10) == 0) {
+        short ang; std::memcpy(&ang, b + 0x8e, 2);
+        const int mi = (int)data_0209f250 & 3;
+        const unsigned char *ct = data_0209f498 + mi * 0x18;
+        short cmag, cang; unsigned short cheld; std::memcpy(&cmag, ct + 8, 2); std::memcpy(&cang, ct + 14, 2); std::memcpy(&cheld, ct + 4, 2);
+        LOG("SPAWN body f=%u pos=(%d,%d,%d) spd=%d ang=%d st=%08x pause=%02x stick mag=%d ang=%d held=%04x touch=%d/%d pad=%08x mode=%d", S9.frame,
+            me[0] >> 12, me[1] >> 12, me[2] >> 12, rd_i32(b, 0x98), (int)ang, (unsigned)rd_i32(b, 0x370), (unsigned)(unsigned char)b[0x13],
+            (int)cmag, (int)cang, (unsigned)cheld, (int)data_020a0de8[mi * 4], (int)data_020a0de8[mi * 4 + 1], (unsigned)data_020a0e58[mi], (int)ct[0x16]);
+        {
+            const int si = (int)data_020a0e40 & 3;
+            short smag; std::memcpy(&smag, data_0209f498 + si * 0x18 + 8, 2);
+            LOG("SPAWN slot f=%u e40=%d me=%d ctrl[e40].mag=%d ctrl[0..3].mag=%d,%d,%d,%d", S9.frame, (int)data_020a0e40, (int)data_0209f250, (int)smag,
+                (int)*(short *)(data_0209f498 + 8), (int)*(short *)(data_0209f498 + 0x18 + 8), (int)*(short *)(data_0209f498 + 0x30 + 8), (int)*(short *)(data_0209f498 + 0x48 + 8));
+        }
+    }
+    if (S9.log && (bit || !C.intro_seen) && (S9.frame % 120) == 0) {
+        // this console's view of every seat: my own body exactly, a friend at the pose the follower drew him at
+        char v[256]; int w = 0;
+        for (int s = 0; s < 4; ++s) {
+            int dp[3];
+            if (s == my_seat()) { dp[0] = me[0]; dp[1] = me[1]; dp[2] = me[2]; }
+            else if (!seat_drawpos(s, dp)) continue;
+            w += std::snprintf(v + w, sizeof v - (size_t)w, " s%d%s=(%d,%d,%d)", s, s == my_seat() ? "*" : "", dp[0] >> 12, dp[1] >> 12, dp[2] >> 12);
+        }
+        LOG("SPAWN view f=%u level=%d%s", S9.frame, (int)data_0209f2f8, v);
+    }
+
+    // ---- after the opening. From the closing load until the seen bit the body stays on the spawn the load gave it (record 0 of
+    // the level, the same point on every console): the ROM's hand-over leaves it standing there when one player plays, but in
+    // a room some consoles' bodies got shoved off it (measured: runaway slides of 2000 units west, or 100 to 300 either way),
+    // so the talk with LakituBro happened with Yoshi somewhere else. The pin writes it back before every tick.
+    // At the bit every console puts its own body on its place of the ring around that spawn (rank by hub seat; the host
+    // takes the centre) and gives it the spawn's facing: the group stands together on the main spawn, wire-free.
+    static const bool pin_off = std::getenv("SM64DS_COOPSPAWN_PIN") && std::getenv("SM64DS_COOPSPAWN_PIN")[0] == '0';   // proof control
+    if (C.intro_seen && C.arrived && S9.phase == 0 && !bit && !S9.have_spawn) {
+        S9.have_spawn = true;
+        std::memcpy(S9.spawn, me, sizeof me);
+        std::memcpy(&S9.spawn_ang, b + 0x8e, 2);
+        S9.pin_from = S9.frame;
+        LOG("SPAWN spawn point (%d,%d,%d) facing %d%s", me[0] >> 12, me[1] >> 12, me[2] >> 12, (int)S9.spawn_ang, pin_off ? " (pin off)" : "");
+    } else if (S9.have_spawn && S9.phase == 0 && !bit && !pin_off) {
+        const double drift = hdist(me, S9.spawn);
+        if (drift > S9.max_drift) S9.max_drift = drift;
+        if (drift > 0.0) {
+            wr_i32(b, 0x5c, S9.spawn[0]);
+            wr_i32(b, 0x64, S9.spawn[2]);
+            wr_i32(b, 0x68, S9.spawn[0]);
+            wr_i32(b, 0x70, S9.spawn[2]);
+            std::memcpy(b + 0x8e, &S9.spawn_ang, 2);
+            std::memcpy(b + 0x94, &S9.spawn_ang, 2);
+            ++S9.pinned;
+        }
+    }
+    if (C.intro_seen && S9.phase == 0 && bit && !S9.bit_prev) {
+        S9.phase = 3;
+        S9.bit_frame = S9.frame;
+        LOG("SPAWN opening seen bit set on this console at (%d,%d,%d); pinned %u frames, largest drift in one frame %.0f units", me[0] >> 12,
+            me[1] >> 12, me[2] >> 12, S9.pinned, S9.max_drift);
+        if (S9.have_spawn) {
+            spawn_move("after the opening", S9.spawn[0], S9.spawn[1], S9.spawn[2]);
+            std::memcpy(b + 0x8e, &S9.spawn_ang, 2);
+            std::memcpy(b + 0x94, &S9.spawn_ang, 2);
+        }
+    }
+    S9.bit_prev = bit;
+
+    // ---- proof pictures: SM64DS_COOPSPAWN_SHOT="t300,b60,..." writes spawn9_<mark>.bmp (the top screen) that many ticks after the
+    // spawn capture (t) or after the seen bit (b); late joiners count from their first tick (l)
+    if (const char *sh = std::getenv("SM64DS_COOPSPAWN_SHOT")) {
+        for (const char *q = sh; *q;) {
+            const char kind = *q;
+            char *end = nullptr;
+            const long n = std::strtol(q + 1, &end, 10);
+            if (end == q + 1) break;
+            unsigned base = 0; bool ok = false;
+            if (kind == 't' && S9.have_spawn) { base = S9.pin_from; ok = true; }
+            else if (kind == 'b' && S9.phase == 3 && S9.bit_frame) { base = S9.bit_frame; ok = true; }
+            else if (kind == 'l') { base = 1; ok = true; }
+            if (ok && S9.frame == base + (unsigned)n) {
+                char nm[64]; std::snprintf(nm, sizeof nm, "spawn9_%c%ld.bmp", kind, n);
+                const void *lfb = ::port_level_fb_ptr;
+                const bool w = lfb && ::ntr::ppu_write_bmp(nm, *(const ::ntr::Framebuffer *)lfb);
+                LOG("SPAWN picture %s %s at (%d,%d,%d)", nm, w ? "written" : "FAILED", me[0] >> 12, me[1] >> 12, me[2] >> 12);
+            }
+            q = end; while (*q == ',' || *q == ' ') ++q;
+        }
+    }
+
+    // ---- a late joiner
+    if (S9.late && !S9.late_done) {
+        const bool give_up = tick() - S9.late_since > 4000ULL;
+        int dp[3];
+        if (host_in_my_level(dp)) {
+            S9.late_done = true;
+            spawn_move("late joiner", dp[0], dp[1], dp[2]);
+        } else if (give_up) {
+            S9.late_done = true;
+            LOG("SPAWN late joiner: no host body in this level within 4 s, staying where the level put me");
+        }
+    }
+}
+}  // namespace
+}  // namespace port
+
 // The level loop's hold. 1 = skip this frame's game tick.
 extern "C" int port_coop_boot_frame(void) {
     using namespace port;
     if (!C.on) return 0;
     if (!C.at_first_frame) {
         C.at_first_frame = true;
+        C.late_at_first = C.released;
         C.host_ready_ms = tick();
         C.last_ready = 0;
         LOG("%s at the file's first frame: %s", C.host ? "host" : "guest",
@@ -685,5 +953,17 @@ extern "C" int port_coop_boot_frame(void) {
         if (ticked == 1 || ticked == 120 || ticked == 600)
             LOG("ticked frame %d since the release", ticked);
     }
+    if (!hold) spawn_frame();
     return hold ? 1 : 0;
+}
+
+// COOPSPAWN9: 1 while this console is in a new file's opening (its start until the opening-seen bit), when
+// hal/coop_target.cpp leaves the ROM's own ClosestPlayer in place so the hand-over runs on the local body.
+extern "C" int port_coop_boot_opening_hold(void) {
+    using namespace port;
+    if (!C.on) return 0;
+    static const bool off = std::getenv("SM64DS_COOPSPAWN_HOLD") && std::getenv("SM64DS_COOPSPAWN_HOLD")[0] == '0';   // proof control
+    if (off) return 0;
+    if (port_adventure_hub_opening_held() != 0) return 1;
+    return (C.intro_seen && !(data_0209caa0[8] & 0x80)) ? 1 : 0;
 }

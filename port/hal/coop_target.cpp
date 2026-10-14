@@ -35,6 +35,7 @@ int Vec3_HorzDist(const void *a, const void *b);
 short Vec3_HorzAngle(const void *a, const void *b);
 int _ZN8dActor_c14GetSubtractionEss(void *self, short a, short b);
 void func_ov079_02123f34(char *self);
+int port_coop_boot_opening_hold(void);
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 int port_adventure_ghost_seat(int slot);
 int port_adventure_ghost_drawpos(int slot, int out[3]);
@@ -51,6 +52,7 @@ enum : int {
 
 CoopTargetStats g_st = {};
 bool g_env = false, g_on = true, g_log = false;
+bool g_logall = false;   // SM64DS_COOP_TARGET_CLS=all: log every class (COOPSPAWN9 proof)
 unsigned g_hold_ms = 1000;
 unsigned g_logcls[16]; int g_nlogcls = 0;
 struct ForgeKnob { unsigned tick; char name[12]; bool done; };
@@ -94,6 +96,7 @@ void read_env() {
     if (const char *sm = std::getenv("SM64DS_COOP_TARGET_SAMPLE")) g_sample_cls = std::atoi(sm);
     const char *c = std::getenv("SM64DS_COOP_TARGET_CLS");
     if (!c || !*c) c = "165,189,200";
+    if (!std::strcmp(c, "all")) { g_logall = true; c = ""; }
     for (const char *p = c; *p && g_nlogcls < 16;) {
         char *end = nullptr; unsigned long v = std::strtoul(p, &end, 0);
         if (end == p) break;
@@ -113,6 +116,7 @@ void read_env() {
 }
 
 bool logged_cls(unsigned c) {
+    if (g_logall) return true;
     for (int i = 0; i < g_nlogcls; ++i) if (g_logcls[i] == c) return true;
     return false;
 }
@@ -263,7 +267,9 @@ void *cp_impl(void *self, bool nonvanish) {
     if (!data_0209b458) {
         data_0208e380 = 0x7fffffff;
         data_0208e37c = (int)0x80000000;
-        const bool lv = live();
+        // COOPSPAWN9: from a new file's opening start until its seen bit the ROM's own pick runs (the hand-over and the cast
+        // work on the local body, as for one player); coop_boot.cpp owns the flag.
+        const bool lv = live() && !port_coop_boot_opening_hold();
         void *want = nullptr; int wseat = -1;
         if (lv) {
             place_friends();

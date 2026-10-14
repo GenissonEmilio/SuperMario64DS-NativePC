@@ -991,6 +991,7 @@ void port_scene_tick(int frame, int tick_game);
 int port_scene_finish(int frames_run);
 int port_scene_frames_wanted(void);
 const void *port_scene_framebuffer(void);
+extern "C" const void *port_level_fb_ptr;   /* COOPSPAWN9: defined in hal/coop_boot.cpp */
 /* hal/level_change.cpp's star-select interlude asks for its frame through this
    pointer; main fills it in with port_interlude_frame below. A pointer and not
    a direct call because level_change.cpp is on the smoke targets and this file
@@ -14812,6 +14813,7 @@ int main(void)
     }
 
     static ntr::Framebuffer fb;
+    port_level_fb_ptr = &fb;   /* COOPSPAWN9: hal/coop_boot.cpp's proof pictures (SM64DS_COOPSPAWN_SHOT) write the level loop's top screen */
     /* THE PRESENT PATH IS ARMED HERE and not a line earlier: present() draws
        whatever these point at, and until the frame loop has rasterised once
        the framebuffer is a blank static. Arming it after the boot printing
