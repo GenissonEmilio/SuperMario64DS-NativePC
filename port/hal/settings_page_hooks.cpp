@@ -33,6 +33,7 @@ extern int data_020a0e58[];            /* PadData[i]: {u16 held, u16 pressed} */
 int port_scene_live_id(void);
 int port_title_elem_boxes(int *slot, int *id, int *x0, int *y0, int *x1, int *y1, int max);
 int port_title_page_state(int *top, int *elem, int *req);
+void port_host_keys_clear(unsigned short mask);   /* hal/scene_boot.cpp */
 }
 
 namespace {
@@ -66,6 +67,33 @@ int wrench_box(int *x0, int *y0, int *x1, int *y1)
     return 1;
 }
 
+/* MENUS093 (D5): the title's MP / VS button (element 1) takes no press: multiplayer is not in this build and the ROM's answer (a
+   page change to a heap the host does not mount) restarted the title in the middle of the main menu. The press is taken away before the
+   ROM sees it, in either menu mode: a stylus on the button's box, or a confirm while the ROM's cursor is on it. */
+int title_main_page()
+{
+    if (port_scene_live_id() != 1) return 0;
+    int top, elem, req;
+    return port_title_page_state(&top, &elem, &req) && top == 0 && elem == 0 && req == -1;
+}
+
+int vs_box(int *x0, int *y0, int *x1, int *y1)
+{
+    int slot[24], ids[24], bx0[24], by0[24], bx1[24], by1[24];
+    const int n = port_title_elem_boxes(slot, ids, bx0, by0, bx1, by1, 24);
+    for (int k = 0; k < n; ++k)
+        if (ids[k] == 1) { *x0 = bx0[k]; *y0 = by0[k]; *x1 = bx1[k]; *y1 = by1[k]; return 1; }
+    *x0 = 2; *y0 = 148; *x1 = 66; *y1 = 188;
+    return 1;
+}
+
+int title_cursor_on_vs()
+{
+    if (!data_ov007_02103360) return 0;
+    const short *p0 = *(const short **)data_ov007_02103360;
+    return p0 && p0[0] == 1;
+}
+
 int title_cursor_on_wrench()
 {
     if (!data_ov007_02103360) return 0;
@@ -79,6 +107,16 @@ int title_cursor_on_wrench()
    word, so the ROM, which builds its key record from the held word on the title, sees no confirm) */
 extern "C" int settings_page_hook_pad(uint16_t *pressed)
 {
+    if (*pressed & (0x0001 | 0x0002 | 0x0008)) {      /* MENUS093: a confirm on the title's MP button does nothing */
+        if (title_main_page() && title_cursor_on_vs()) {
+            const uint16_t bits = 0x0001 | 0x0002 | 0x0008;
+            *pressed = (uint16_t)(*pressed & ~bits);
+            unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+            *held = (unsigned short)(*held & ~bits);
+            port_host_keys_clear(bits);
+            return 1;
+        }
+    }
     const int tgt = armed_target();
     if (!tgt) return 0;
     const uint16_t confirm = 0x0002 | 0x0008;           /* the port's jump (pad A, Space) and Start (Enter) */
@@ -91,6 +129,7 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
     *pressed = (uint16_t)(*pressed & ~confirm);
     unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
     *held = (unsigned short)(*held & ~confirm);
+    if (tgt == TGT_TITLE) port_host_keys_clear(confirm);   /* MENUS093: the title reads the host key word too */
     settings_page_request();
     return 1;
 }
@@ -100,6 +139,11 @@ extern "C" int settings_page_hook_touch(unsigned char down, unsigned char sx, un
 {
     if (settings_page_swallow_touch(down)) return 1;
     if (!down) return 0;
+    if (title_main_page()) {                           /* MENUS093: a stylus / click on the title's MP button does nothing */
+        int vx0, vy0, vx1, vy1;
+        vs_box(&vx0, &vy0, &vx1, &vy1);
+        if (sx >= vx0 && sx < vx1 && sy >= vy0 && sy < vy1) return 1;
+    }
     const int tgt = armed_target();
     if (!tgt) return 0;
     if (tgt == TGT_PAUSE) {

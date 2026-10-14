@@ -6294,6 +6294,12 @@ void gx_render(Framebuffer &fb) {
         f.py0 = present_y();
         f.pw = present_w();
         f.ph = present_h();
+        if (g_menu_scene_cb && menu_wide()) {
+            /* MENUS093 (D6): the title's full-canvas scene is drawn over the whole wide frame, so the whole frame is its present rectangle
+               for the card's composite: pixels outside the 4:3 box were replaced by the old clear colour, which cut the drawing page's pinned
+               Mario button to a one-pixel sliver (the processor path drew it whole) */
+            f.px0 = 0; f.py0 = 0; f.pw = cw; f.ph = ch;
+        }
         {
             /* the software raster's clip: the present rectangle narrowed to
                the game's viewport (the ending's letterbox); the card scissors

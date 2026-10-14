@@ -3749,6 +3749,7 @@ extern "C" void hal_menu_pad_seam(void)
         unsigned short *sp = (unsigned short *)((char *)data_020a0e5a + s0 * 4);
         uint16_t k0 = *pr, k1 = k0;
         menu_pause_rom_pad(&k1);
+        settings_page_hook_pad(&k1);      /* MENUS093: with the one-screen menus off only the title's MP button guard applies (armed_target is off) */
         if (k1 != k0) { *pr = k1; *sp = k1; }
         return;
     }

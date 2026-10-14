@@ -6243,6 +6243,14 @@ extern "C" void port_host_keys_set(unsigned short raw)
     g_host_key_bits = raw;
 }
 
+/* MENUS093 (B5): the title's key word is the host key word OR PadData's held word (port_scene_comms_publish), so a press the pad seam takes
+   away from PadData must be taken out of the host word too, or the ROM still reads it (the wrench's confirm arrived as the DS B key and
+   opened the face drawing page under the settings page). */
+extern "C" void port_host_keys_clear(unsigned short mask)
+{
+    g_host_key_bits = (unsigned short)(g_host_key_bits & ~mask);
+}
+
 static void port_scene_comms_publish(void)
 {
     static int off = -1;
