@@ -124,6 +124,7 @@ struct G {
     // lab
     char forge_kind = 0; int forge_units = 0; bool forged = false;
     unsigned probe_frame = 0;
+    bool lab_done = false;      // the gather stops for good once an eat / hold has begun on this console (the spit and the throw fly free)
     int gather_dx = 0, gather_dz = 0; bool gather = false;     // LAB: stand next to the host every frame (pictures independent of frame skew)
     unsigned forge_at = 0, eat_hold = 0;      // LAB: forge from this frame on; a longer eat hold for pictures
     Stats st = {};
@@ -324,6 +325,7 @@ void apply_effect(char *me, const Claim &c, const Effect &fx) {
 }
 
 void eat_begin(char *me, const Claim &c) {
+    g.lab_done = true;
     g.hold.begin(c.attacker, c.yaw, g.frame);
     if (g.eat_hold) g.hold.set_frames(g.eat_hold, g.eat_hold + 45);
     ++g.st.eats_began;
@@ -509,6 +511,7 @@ void grab_begin(char *me, const Claim &c) {
         ++g.st.refused;
         return;
     }
+    g.lab_done = true;
     g.cv.active = true; g.cv.holder = c.attacker; g.cv.f0 = g.frame;
     // the ROM's St_Grabbed did not take (the state change landed elsewhere on this port): hold the body by hand,
     // pinned to the holder's hands with no control, and let the holder's throw launch it
@@ -757,7 +760,7 @@ bool holder_try_grab(char *me, char *vb, int seat) {
 // be together at ANY frame. Never set outside a proof.
 void lab_gather(char *me) {
     const int seat = comms_hub_my_seat();
-    if (!g.gather || seat <= 0 || g.hold.active() || g.cv.active || g.ch.active) return;
+    if (!g.gather || g.lab_done || seat <= 0 || g.hold.active() || g.cv.active || g.ch.active) return;
     Seen s;
     if (!see(0, &s) || !s.have_ghost || !s.in_level) return;
     const Place mp = my_place();
