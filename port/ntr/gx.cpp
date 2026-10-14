@@ -32,9 +32,7 @@
 #include <windows.h>
 #endif
 
-extern "C" int port_fog_probe(unsigned char *o8);
-extern "C" int port_fog_probe_dflt(unsigned char *o8) { (void)o8; return -1; }
-#pragma comment(linker, "/alternatename:_port_fog_probe=_port_fog_probe_dflt")
+extern "C" int (*port_fog_probe_hook)(unsigned char *o8) = 0;
 namespace ntr {
 namespace {
 
@@ -789,6 +787,70 @@ GxVertex clip_lerp(const GxVertex &a, const GxVertex &b, float t) {
 static bool g_frame_ortho;
 static bool g_wdepth;
 
+/* THE FRAME'S FOG (run hunt8, RENDER093, D12). Stage::RenderFog writes
+   DISP3DCNT bit 7 (and the shift in bits 8-11), FOG_COLOR, FOG_OFFSET and the
+   32 FOG_TABLE bytes every frame; nothing here ever read them, so every fog
+   level drew clear. This is melonDS' CalculateFogDensity, one frame latch and
+   one per-pixel lookup, applied to the polygons whose POLYGON_ATTR bit 15 is
+   set: the density 0..128 comes from the pixel's 24-bit depth (W is 12 bit
+   fraction, so w * 4096; Z is the 0..1 key * 0xFFFFFF) and blends the colour
+   toward the fog colour. DISP3DCNT bit 6 (alpha only) leaves the colour alone,
+   so it counts as no fog here. */
+struct FogState {
+    int on = 0;
+    int shift = 0;
+    uint32_t offset = 0;
+    float rgb[3] = {0, 0, 0};
+    int tab[34] = {0};
+    float wscale = 256.0f;   /* depth24 = w * wscale in a W frame, see fog_latch */
+};
+static FogState g_fog;
+
+static void fog_latch() {
+    g_fog.on = 0;
+    if (!io_ready()) return;
+    static const int off = std::getenv("SM64DS_FOG") && *std::getenv("SM64DS_FOG") == '0';
+    const uint32_t cnt = *reinterpret_cast<const volatile uint16_t *>(0x04000060u);
+    if (off || !(cnt & 0x80u) || (cnt & 0x40u)) return;
+    g_fog.on = 1;
+    g_fog.shift = (int)((cnt >> 8) & 0xF);
+    g_fog.offset = ((uint32_t)(*reinterpret_cast<const volatile uint16_t *>(0x0400035Cu)) & 0x7FFFu) * 0x200u;
+    /* The depth a W frame fogs by is the 24-bit W, 4096 a unit, in melonDS and
+       on paper; fed straight in, every pixel the game draws lands past the
+       table's end and the whole picture is fog colour. The table the ROM
+       builds only spreads over the scene at a sixteenth of that, so the W
+       key is taken at 256 a unit. Calibrated by eye, not read off a cartridge
+       capture; SM64DS_FOG_WSCALE=4096 gives the literal figure. */
+    static const float ws = std::getenv("SM64DS_FOG_WSCALE") ? (float)std::atof(std::getenv("SM64DS_FOG_WSCALE")) : 256.0f;
+    g_fog.wscale = ws;
+    const uint32_t col = *reinterpret_cast<const volatile uint32_t *>(0x04000358u);
+    for (int k = 0; k < 3; ++k) {
+        const uint32_t c5 = (col >> (5 * k)) & 31u;
+        g_fog.rgb[2 - k] = (float)((c5 << 3) | (c5 >> 2));   /* BGR555 to R, G, B */
+    }
+    for (int i = 0; i < 32; ++i) {
+        const int v = *reinterpret_cast<const volatile uint8_t *>(0x04000360u + i) & 0x7F;
+        g_fog.tab[i + 1] = v;
+    }
+    g_fog.tab[0] = g_fog.tab[1];
+    g_fog.tab[33] = g_fog.tab[32];   /* the table's tail is flat, as the hardware's is */
+}
+
+static inline uint32_t fog_density(float depth24) {
+    uint32_t z = depth24 >= 16777215.0f ? 0xFFFFFFu : (depth24 <= 0.0f ? 0u : (uint32_t)depth24);
+    uint32_t id, frac;
+    if (z < g_fog.offset) { id = 0; frac = 0; }
+    else {
+        z -= g_fog.offset;
+        z = (z >> 2) << g_fog.shift;
+        id = z >> 17;
+        if (id >= 32) { id = 32; frac = 0; }
+        else frac = z & 0x1FFFFu;
+    }
+    const uint32_t d = (uint32_t)(((uint64_t)g_fog.tab[id] * (0x20000u - frac) + (uint64_t)g_fog.tab[id + 1] * frac) >> 17);
+    return d >= 127u ? 128u : d;
+}
+
 /* THE W-BUFFER'S TIE RULE (run hunt7, lane POLES1). The depth key above is
    exact to a float ulp, and the cartridge's is not: its geometry engine cuts
    every polygon's vertex W to 16 significant bits before it interpolates
@@ -854,6 +916,7 @@ static inline void fill_tri_state(GxTriangle &t) {
     t.mode = static_cast<uint8_t>((g.poly_attr >> 4) & 3);
     t.polyid = static_cast<uint8_t>((g.poly_attr >> 24) & 63);
     t.depth_eq = static_cast<uint8_t>((g.poly_attr >> 14) & 1);
+    t.fog = static_cast<uint8_t>((g.poly_attr >> 15) & 1);
     t.wrap = g.tex_wrap;
     /* TEXIMAGE_PARAM bits 26-28 are the format; 1 (A3I5) and 6 (A5I3)
        are the two translucent-texture formats. Attr alpha 0 is wire and
@@ -5714,6 +5777,8 @@ void raster_ref(const RefArgs &ra, int tid, int nt) {
                    modulates the vertex red on all three channels and adds the
                    entry after, saturating (GBATEK DS 3D Polygon Attributes;
                    melonDS RenderPixel, the same order). */
+                const uint32_t fd = (g_fog.on && t.fog)
+                    ? fog_density(wdepth ? -g_fog.wscale / z : z * 16777215.0f) : 0u;
                 const float *te = nullptr;
                 if (toon)
                     te = &g_toon8[toon_index(l0 * acol[0] + l1 * bcol[0] +
@@ -5726,7 +5791,9 @@ void raster_ref(const RefArgs &ra, int tid, int nt) {
                     const float m = inv255.v[(texel >> sh) & 0xFF];
                     int i = static_cast<int>(v * m + 0.5f);
                     if (toon == 2) i += static_cast<int>(te[k]);
-                    return static_cast<uint32_t>(i < 0 ? 0 : (i > 255 ? 255 : i));
+                    i = i < 0 ? 0 : (i > 255 ? 255 : i);
+                    if (fd) i = (int)(((uint32_t)i * (128u - fd) + (uint32_t)g_fog.rgb[k] * fd) >> 7);
+                    return static_cast<uint32_t>(i);
                 };
                 /* effective alpha = poly attr alpha combined with the
                    TEXEL alpha (A3I5/A5I3 gradients -- the grass-fade
@@ -6238,7 +6305,7 @@ void gx_render(Framebuffer &fb) {
             for (int i = 0; i < 6; ++i) if (cur[i] != last[i]) ch = true;
             if ((fr % 300) == 1) {
                 unsigned char fb8[8] = {0};
-                const int nrec = port_fog_probe(fb8);
+                const int nrec = port_fog_probe_hook ? port_fog_probe_hook(fb8) : -1;
                 std::fprintf(stderr, "[rprobe] level fog records %d, first %02x %02x %02x %02x %02x %02x %02x %02x\n", nrec,
                              fb8[0], fb8[1], fb8[2], fb8[3], fb8[4], fb8[5], fb8[6], fb8[7]);
             }
@@ -6252,6 +6319,7 @@ void gx_render(Framebuffer &fb) {
             }
         }
     }
+    fog_latch();
     g_toon_shade = 0;
     {
         size_t n2 = g.grid_mode2;
@@ -6357,6 +6425,12 @@ void gx_render(Framebuffer &fb) {
                        : (cw > 0 && ch > 0) ? fb.px[f.py0][f.px0] : 0xFF000000u;
         f.toon_shade = g_toon_shade;
         f.toon_rgb = g_toon8;
+        f.fog_on = g_fog.on;
+        f.fog_wscale = frame_wdepth() ? g_fog.wscale : 0.0f;
+        f.fog_shift = g_fog.shift;
+        f.fog_offset = g_fog.offset;
+        for (int fi = 0; fi < 3; ++fi) f.fog_rgb[fi] = g_fog.rgb[fi];
+        for (int fi = 0; fi < 34; ++fi) f.fog_tab[fi] = g_fog.tab[fi];
         f.full_ok = 2;
         f.out = &gpu_out;
         f.keep = g_cp_pending;
@@ -6814,6 +6888,8 @@ void gx_render(Framebuffer &fb) {
                    modulates the vertex red on all three channels and adds the
                    entry after, saturating (GBATEK DS 3D Polygon Attributes;
                    melonDS RenderPixel, the same order). */
+                const uint32_t fd = (g_fog.on && t.fog)
+                    ? fog_density(wdepth ? -g_fog.wscale / z : z * 16777215.0f) : 0u;
                 const float *te = nullptr;
                 if (toon)
                     te = &g_toon8[toon_index(l0 * acol[0] + l1 * bcol[0] +
@@ -6826,7 +6902,9 @@ void gx_render(Framebuffer &fb) {
                     const float m = inv255.v[(texel >> sh) & 0xFF];
                     int i = static_cast<int>(v * m + 0.5f);
                     if (toon == 2) i += static_cast<int>(te[k]);
-                    return static_cast<uint32_t>(i < 0 ? 0 : (i > 255 ? 255 : i));
+                    i = i < 0 ? 0 : (i > 255 ? 255 : i);
+                    if (fd) i = (int)(((uint32_t)i * (128u - fd) + (uint32_t)g_fog.rgb[k] * fd) >> 7);
+                    return static_cast<uint32_t>(i);
                 };
                 /* effective alpha = poly attr alpha combined with the
                    TEXEL alpha (A3I5/A5I3 gradients -- the grass-fade
@@ -7084,6 +7162,12 @@ void gx_render(Framebuffer &fb) {
         /* the frame's toon table, for its mode-2 polygons (0 = none) */
         f.toon_shade = g_toon_shade;
         f.toon_rgb = g_toon8;
+        f.fog_on = g_fog.on;
+        f.fog_wscale = frame_wdepth() ? g_fog.wscale : 0.0f;
+        f.fog_shift = g_fog.shift;
+        f.fog_offset = g_fog.offset;
+        for (int fi = 0; fi < 3; ++fi) f.fog_rgb[fi] = g_fog.rgb[fi];
+        for (int fi = 0; fi < 34; ++fi) f.fog_tab[fi] = g_fog.tab[fi];
         /* THE WHOLE-FRAME HAND-OVER (run cardfull). A backend that can draw the
            second pass says so by returning 2; one that cannot returns 1 or 0
            and nothing below changes. The smoothing is offered to it only
