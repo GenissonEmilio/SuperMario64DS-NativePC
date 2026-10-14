@@ -7742,6 +7742,25 @@ bool ip_particle_pair() {
     return on != 0;
 }
 
+/* SM64DS_LEFTOVER_PAIR=0 turns off the second pairing pass (ip_match): a group
+   whose display list changed between two ticks (the metal cap's closing
+   flicker swaps the player's body model every tick) is paired with a leftover
+   group of the previous tick that has the same matrix shape and stands in the
+   same place, instead of being drawn at tick N's place in every picture. */
+bool ip_leftover_pair() {
+    static int on = -1;
+    if (on < 0) {
+        const char *e = getenv("SM64DS_LEFTOVER_PAIR");
+        on = (e && e[0] == '0') ? 0 : 1;
+    }
+    return on != 0;
+}
+double ip_leftover_units() {
+    static double v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_LEFTOVER_UNITS"); v = e ? atof(e) : 24.0; }
+    return v;
+}
+
 void ip_rec_begin() {
     IpRec &r = g_ipr[g_ip_w];
     r.ev.clear();
@@ -7995,6 +8014,37 @@ void ip_match(IpRec &C, const IpRec &P, GxInterpStats *st) {
                 const double d = std::sqrt(ip_dist2(gc, gp));
                 if (d > max_moved) max_moved = d;
             }
+        }
+    }
+    /* SECOND PASS. A key that exists on one side only is a model that
+       changed (the metal cap's flicker swaps the player's body model every
+       tick). Pair what is left over by matrix shape and world position, closest
+       first, so it glides with the world instead of standing at tick N's place. */
+    if (ip_leftover_pair()) {
+        std::vector<char> pused(P.groups.size(), 0);
+        for (const IpGroup &gc : C.groups)
+            if (gc.match >= 0) pused[gc.match] = 1;
+        const double lim2 = ip_leftover_units() * ip_leftover_units();
+        std::vector<IpCand> cand;
+        for (size_t i = 0; i < C.groups.size(); ++i) {
+            const IpGroup &gc = C.groups[i];
+            if (gc.match >= 0 || gc.part || !gc.has_pos || gc.nmtx < 1) continue;
+            for (size_t j = 0; j < P.groups.size(); ++j) {
+                const IpGroup &gp = P.groups[j];
+                if (pused[j] || gp.part || !gp.has_pos) continue;
+                if (gc.nmtx != gp.nmtx || gc.shape != gp.shape) continue;
+                const double d = ip_dist2(gc, gp);
+                if (d > lim2) continue;
+                IpCand c; c.d = d; c.i = (int)i; c.j = (int)j;
+                cand.push_back(c);
+            }
+        }
+        std::sort(cand.begin(), cand.end(), ip_cand_less);
+        for (const IpCand &c : cand) {
+            if (C.groups[c.i].match >= 0 || pused[c.j]) continue;
+            C.groups[c.i].match = c.j;
+            pused[c.j] = 1;
+            ++matched;
         }
     }
     C.blend.assign(C.sealed, -1);

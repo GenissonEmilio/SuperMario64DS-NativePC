@@ -882,6 +882,7 @@ extern int data_0209b008[], data_0209b078[], data_0209b0f8[];
 extern void *data_0209f318;          /* the Camera singleton */
 extern signed char data_02092120;    /* currently shown area, -1 = none */
 extern unsigned char data_0209f250;  /* local player index */
+extern "C" void _ZN6Player14InitMetalWarioEv(void *);   /* SM64DS_METAL_POKE */
 extern void *data_0209f394[];        /* per-player Actor* */
 extern unsigned char data_0209f1f8;  /* view-object count */
 extern signed char data_0209f2f8;    /* level/sublevel id (weather select) */
@@ -16661,6 +16662,32 @@ int main(void)
                                     *(int *)(star + 0x440), sd_hold);
                     }
                     sd_fired = 1;
+                }
+            }
+
+            /* ---- SM64DS_METAL_POKE=<frame>[,<ticks>] ---------------------
+               Test-only: on that frame hand the local Wario the metal cap
+               through the ROM's own Player::InitMetalWario, then set the cap
+               timer (Player+0x6ae) to <ticks> (default 600) so a short run
+               reaches the cap's closing flicker. Inert unless set. */
+            {
+                static int mp_read, mp_frame = -1, mp_ticks = 600;
+                if (!mp_read) {
+                    const char *e = getenv("SM64DS_METAL_POKE");
+                    mp_read = 1;
+                    if (e) {
+                        int a = -1, b = 600;
+                        if (sscanf(e, "%d,%d", &a, &b) >= 1) { mp_frame = a; mp_ticks = b; }
+                    }
+                }
+                if (mp_frame >= 0 && frame == mp_frame) {
+                    char *pl = (char *)data_0209f394[(int)data_0209f250];
+                    if (pl) {
+                        _ZN6Player14InitMetalWarioEv(pl);
+                        *(unsigned short *)(pl + 0x6ae) = (unsigned short)mp_ticks;
+                    }
+                    fprintf(stderr, "[metalpoke] f%d player=%p ticks=%d
+", frame, (void *)pl, mp_ticks);
                 }
             }
 
