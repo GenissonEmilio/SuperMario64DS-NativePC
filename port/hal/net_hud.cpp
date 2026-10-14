@@ -196,9 +196,9 @@ bool build_room(NetHudView *v) {
     put_ping(v->line[0], "ping", ping);
     // SMALLS9B (field item 21): the mean hides the far friend. With two or more
     // friends measured, the slowest one's median is shown next to it, and only
-    // when it is not the same number ("ping 111 ms (worst 157)", 23 characters).
+    // when it is not the same number ("ping 111 ms worst 157"; the ROM font has no parentheses).
     if (ping >= 0 && n >= 2 && worst > ping && worst < 10000 && !std::getenv("SM64DS_NET_HUD_NOWORST"))
-        std::snprintf(v->line[0], kNetHudLineMax, "ping %d ms (worst %d)", ping, worst);
+        std::snprintf(v->line[0], kNetHudLineMax, "ping %d ms worst %d", ping, worst);
     if (st.seat_mask) {
         put_loss(v->line[1], loss_pct(now, ping));
         v->n = 2;
