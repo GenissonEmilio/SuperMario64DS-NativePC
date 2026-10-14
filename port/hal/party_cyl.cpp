@@ -205,6 +205,16 @@ void cyl_assist(void *a) {
     ++stats_rw().assists;
 }
 
+// SHOVE9: this friend has no cylinder on this console this frame (a higher seat in a coop room, see party.cpp follow()):
+// out of the collision list, so nothing pairs with it and nothing pushes my body.
+void cyl_withhold(void *a) {
+    char *c = (char *)a;
+    for (int i = 0; i < 16; ++i)
+        if (data_0209f394[i] == a) { g_reg_last[i] = false; break; }
+    unlink_node(c + kBodyClsn);
+    unlink_node(c + kAttackClsn);
+}
+
 bool cyl_register(void *a, int seat) {
     read_rules();
     Stats &st = stats_rw();
