@@ -72,7 +72,7 @@ static void port_buddy_seat_one(PortBuddyPmf *p, unsigned rom, PortBuddyFn host,
 {
     if (p->fn == (unsigned)(size_t)host)
         return;
-    if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
+    if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) return;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
     if (p->fn != rom || p->delta != 0) {
         std::fprintf(stderr, "FATAL: ov084 state half %u (%s): the mount "
                      "holds %08x/%d, the ROM's own table says %08x/0 -- WRONG "
