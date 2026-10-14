@@ -596,6 +596,11 @@ NAMED = [
     "data_0209214c",   # per-mode button remap pointer table (CheckInput)
     # tier-2 state wave: fader/level/message tables
     "data_02086f20",
+    # PORTSYNC3: GX.cpp (main's folded GX TU) reads these four ROM tables.
+    "data_02086314",
+    "data_02086324",
+    "data_02086326",
+    "data_02086328",
     "data_0208e420",
     "data_0208eeec",
     "data_0208eeee",

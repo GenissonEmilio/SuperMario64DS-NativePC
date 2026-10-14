@@ -39,6 +39,8 @@ extern "C" fBase_c *_ZN7fBase_cD2Ev(fBase_c *self);
 
 fBase_c::~fBase_c() { _ZN7fBase_cD2Ev(this); }
 
+dFdWipe_c::dFdWipe_c() {}
+dFdDummy_c::dFdDummy_c() {}
 dFader_c::~dFader_c() {}
 dFdBrightness_c::~dFdBrightness_c() {}
 dFdColor_c::~dFdColor_c() {}

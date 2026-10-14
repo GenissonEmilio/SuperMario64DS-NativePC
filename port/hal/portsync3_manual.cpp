@@ -47,3 +47,24 @@ extern "C" void _ZN9dBgCh_Lin10GetClsnPosEv(Vector3 *ret, void *self)
 {
     *ret = ((dBgCh_Lin *)self)->GetClsnPos();
 }
+
+/* ---- port_vs_body_0211478c -------------------------------------------------
+ * hal/vs_data_patch.inc points the VS lobby's .data record at this name. The
+ * old build compiled ov075's own body under it with a -D rename (the window
+ * address 0x0211478c is also a WorkElevator vtable word in another overlay).
+ * Main names the body UnknownVsPlayer::func_ov075_0211478c, so the rename is
+ * unnecessary: the flat face the ledger now carries (faces_sync.txt, R row) is
+ * the entry, and this name aliases it. */
+#pragma comment(linker, "/alternatename:_port_vs_body_0211478c=__ZN15UnknownVsPlayer19func_ov075_0211478cEv")
+
+/* ---- fBase_c::Process, the flat spelling ----------------------------------
+ * func_0204322c.cpp calls it by its Itanium name with the three member
+ * pointers as eight-byte pairs on the stack (the port compiles /vmg /vmm so an
+ * MSVC pointer to member is the same eight bytes). facegen refuses a
+ * pointer-to-member parameter; the face is written by hand. */
+extern "C" int _ZN7fBase_c7ProcessEMS_FivEMS_FbvEMS_FvjE(fBase_c *self,
+    fBase_c::ProcessFunction action, fBase_c::BeforeProcessFunction before,
+    fBase_c::AfterProcessFunction after)
+{
+    return self->Process(action, before, after);
+}

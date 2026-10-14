@@ -136,3 +136,5 @@ data_ov071_021226a4:0x8
 #   data_ov071_02122ecc                        now defined by src/actors/daObjCasket_c.cpp
 #   data_ov071_021230d0                        now defined by src/actors/daObjCasket_c.cpp
 #   data_ov071_021230d8                        now defined by src/actors/daObjCasket_c.cpp
+# PORTSYNC3: objects main's TUs read that no mount carried (found by the first MSVC link).
+data_ov071_02122e64:0x8 data_ov071_02122e6c:0x8

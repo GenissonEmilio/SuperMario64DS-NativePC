@@ -5786,3 +5786,7 @@ __ZN8daDemo_c19func_ov002_020f7538EPhi                                   ?func_o
 __ZN8daDemo_c19func_ov002_020f7bb8EPht                                   ?func_ov002_020f7bb8@daDemo_c@@QAEHPAEG@Z                        0x020f7bb8 R
 __ZN12daStarBase_c27LinkSilverStarAndStarMarkerEPc                       ?LinkSilverStarAndStarMarker@daStarBase_c@@QAEXPAD@Z             0x020e71d4 R
 __ZN8daStar_c19func_ov002_020e7218EPci                                   ?func_ov002_020e7218@daStar_c@@QAEXPADH@Z                        0x020e7218 R
+# PORTSYNC3: the VS player body the -D rename to port_vs_body_0211478c used to separate; main named it a member of UnknownVsPlayer.
+__ZN15UnknownVsPlayer19func_ov075_0211478cEv                             ?func_ov075_0211478c@UnknownVsPlayer@@QAEXXZ                     0x0211478c R
+# ---- PORTSYNC3 derived, pass 3 ----
+__ZN10dFdDummy_cC1Ev                                                     ??0dFdDummy_c@@QAE@XZ                                            0x02017278 R

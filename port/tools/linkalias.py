@@ -54,7 +54,11 @@ Three rules, tried in order, for every unresolved name of the form `_name`
   9. STATIC MEMBER VERSUS NAMESPACE FUNCTION (`SA` <-> `YA`) AND FLAT NAMES SPELLED
      WITH C++ LINKAGE (`?_ZN3OAM11GetObjWidthEii@@YAEHH@Z` is the flat Itanium
      name declared without extern "C"); both are cdecl and the same function.
-  10. THE FIXED TABLE below: linker-script symbols dsd generated for the DS
+  10. A FLAT ITANIUM NAME THE TU DEFINED WITH C++ LINKAGE. Bodies in a
+     `#pragma cplusplus off` region are C functions to mwccarm; under MSVC the
+     whole file is C++ and the function is `?_ZN17dExtShadowModel_c9InitModel...@@YA..`.
+     The flat reference is aliased onto that definition when it is unique.
+  11. THE FIXED TABLE below: linker-script symbols dsd generated for the DS
      image (OVERLAY_<n>_ID, OV075_BSS_END, OV100_TEXT_START), bound to the hosts
      the port already defines under their pre-sync spellings.
 """
@@ -156,6 +160,11 @@ def main():
         ms = re.match(r"_(data|func)_(?:ov\d+_)?([0-9a-f]{8})$", d)
         if ms:
             samead[(ms.group(1), ms.group(2))].append(d)
+    cxx_flat = collections.defaultdict(list)
+    for d in defs:
+        mm = re.match(r"\?(_Z\w+?)@@YA", d)
+        if mm:
+            cxx_flat[mm.group(1)].append(d)
     rows = []
     left = []
     for line in open(a.unresolved, encoding="utf-8", errors="replace"):
@@ -213,6 +222,9 @@ def main():
                 elif len(flatit.get(key, [])) == 1:
                     rows.append((dsym, flatit[key][0], "flat host definition of the same function"))
             continue
+        if s.startswith("__Z") and len(cxx_flat.get(s[1:], [])) == 1:
+            rows.append((s, cxx_flat[s[1:]][0], "flat Itanium name defined with C++ linkage"))
+            continue
         if s.startswith("__ZN"):
             i, parts = 4, []
             while i < len(s) and s[i].isdigit():
@@ -226,7 +238,7 @@ def main():
                 rows.append((s, statics[(parts[0], parts[1])][0],
                              "static member / namespace function (cdecl)"))
             continue
-        if not s.startswith("_") or s.startswith("__Z") or s.startswith("___sinit") or s.startswith('"'):
+        if not s.startswith("_") or (s.startswith("__Z") and not s.startswith(("__ZTV", "__ZTI")))                 or s.startswith("___sinit") or s.startswith('"'):
             continue
         n = s[1:]
         tgt = None

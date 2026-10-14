@@ -22,6 +22,9 @@ int VT1[8];
    allocation pointer and two neighbours) and two wireless-status bytes.
    Generous [8] is the file's own convention; the ROM spans are 4 each. */
 int data_0209b2e4[8];
+/* PORTSYNC3: GX.cpp texture / palette bank selectors (BeginLoadTex / BeginLoadTexPltt). */
+int data_020a60b4[8];
+int data_020a60b8[8];
 int data_0209b2e8[8];
 /* data_0209b2ec MOVED to hal/scene_vs_menu.cpp (run rel0215 lane prop15), for
    the reason data_0209f310 moved out of hal/actor_vtables.cpp: dsd splits the

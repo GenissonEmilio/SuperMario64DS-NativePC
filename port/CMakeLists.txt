@@ -1242,7 +1242,7 @@ foreach(_hgt_rel IN LISTS PORT_HOSTGEN_TU)
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${_hgt_flags} ${_hgt_rel}
         DEPENDS "${PORT_HOSTGEN_TU_ROOT}/${_hgt_rel}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${_hgt_rel}")
     file(RELATIVE_PATH _hgt_row "${PORT_HOSTGEN_TU_ROOT}" "${_hgt_out}")
     set("PORT_HOSTGEN_TU_ROW_${_hgt_rel}" "${_hgt_row}")
@@ -1901,7 +1901,7 @@ foreach(sym IN LISTS GATE4A_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE4A_GEN "${sym_out}")
 endforeach()
@@ -1954,7 +1954,7 @@ foreach(sym IN LISTS GATE4B_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE4B_GEN "${sym_out}")
 endforeach()
@@ -2129,7 +2129,7 @@ foreach(sym IN LISTS GATE8_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE8_GEN "${sym_out}")
 endforeach()
@@ -2191,7 +2191,7 @@ if(NOT sym_tu)
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
         DEPENDS "${sym_src}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${ANIM_ADVANCE_SYM}")
 endif()
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_gate7.txt" SLICE7_LINES)
@@ -2259,7 +2259,7 @@ foreach(sym IN LISTS GATE6_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE6_GEN "${sym_out}")
 endforeach()
@@ -2372,7 +2372,7 @@ foreach(sym IN LISTS GATE9_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" --extern-data ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE9_GEN "${sym_out}")
 endforeach()
@@ -3608,7 +3608,7 @@ foreach(sym IN LISTS GATE10_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE10_GEN "${sym_out}")
 endforeach()
@@ -5157,7 +5157,7 @@ if(NOT "${SCN3D_HOSTGEN_SKIP}" IN_LIST PORT_HOSTGEN_TU)
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${SCN3D_HOSTGEN_SKIP}
         DEPENDS "${PORT_REPO_ROOT_ABS}/src/actors/dScene_c.cpp"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${SCN3D_HOSTGEN_SKIP}")
 endif()
 
@@ -5223,7 +5223,7 @@ foreach(sym IN LISTS SQRTUNIT_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND SQRTUNIT_GEN "${sym_out}")
 endforeach()
@@ -5246,7 +5246,7 @@ foreach(sym IN LISTS OV70GEN_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND OV70GEN "${sym_out}")
 endforeach()
@@ -5348,7 +5348,7 @@ foreach(sym IN LISTS SLICE_W3A_HOSTGEN_SYMS)
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
         DEPENDS "${sym_src}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND SLICE_W3A_HOSTGEN_GEN "${sym_out}")
 endforeach()
@@ -5575,7 +5575,7 @@ foreach(line IN LISTS SLICE_W6D_LINES)
                 COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                         --out "${CMAKE_BINARY_DIR}/host-src" src/actors/dPathLiftActor_c.cpp
                 DEPENDS "${PORT_REPO_ROOT_ABS}/src/actors/dPathLiftActor_c.cpp"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
                 COMMENT "hostgen src/actors/dPathLiftActor_c.cpp")
         endif()
         list(APPEND SLICE_W6D_SOURCES "${_pathdiv_out}")
@@ -6224,7 +6224,7 @@ foreach(sym IN LISTS GATE27_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" --extern-data ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE27_GEN "${sym_out}")
 endforeach()
@@ -6287,7 +6287,7 @@ foreach(line IN LISTS SLICE29_LINES)
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                     --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
             DEPENDS "${sym_src}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
             COMMENT "hostgen ${sym_arg}")
     endif()
     list(APPEND GATE29_GEN "${sym_out}")
@@ -6958,7 +6958,7 @@ foreach(sym IN LISTS T2_DIV_SYMS)
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
         DEPENDS "${sym_dep}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND T2_DIV_GEN "${sym_out}")
 endforeach()
@@ -7077,7 +7077,7 @@ foreach(sym IN LISTS TI2_MOD_SYMS)
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
         DEPENDS "${sym_dep}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND TI2_MOD_GEN "${sym_out}")
 endforeach()
@@ -7247,7 +7247,7 @@ foreach(sym IN LISTS SQ_DIST_SYMS)
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
         DEPENDS "${sym_dep}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND SQ_DIST_GEN "${sym_out}")
 endforeach()
@@ -7394,7 +7394,7 @@ if(NOT TITEX_GX_PLAIN)
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                     --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
             DEPENDS "${sym_in}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
             COMMENT "hostgen ${sym}")
         list(APPEND TITEX_GX_GEN "${sym_out}")
     endforeach()
@@ -7521,7 +7521,7 @@ if(NOT TIDEP_RESET_PLAIN)
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                     --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
             DEPENDS "${sym_in}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
             COMMENT "hostgen ${sym}")
         list(APPEND TIDEP_RESET_GEN "${sym_out}")
     endforeach()
@@ -7610,7 +7610,7 @@ if(NOT R3B_SWAP_PLAIN)
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                     --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
             DEPENDS "${sym_in}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
             COMMENT "hostgen ${sym}")
         list(APPEND R3B_SWAP_GEN "${sym_out}")
     endforeach()
@@ -8303,7 +8303,7 @@ foreach(sym IN LISTS SCENE_MG_HOSTGEN_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND SCENE_MG_SOURCES "${sym_out}")
 endforeach()
@@ -9271,7 +9271,7 @@ foreach(rel IN LISTS FLW_HOSTGEN_SRCS)
         add_custom_command(OUTPUT "${sym_out}"
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                     --out "${CMAKE_BINARY_DIR}/host-src" ${rel}
-            DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+            DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
             COMMENT "hostgen ${rel}")
     endif()
     list(APPEND FLW_HOSTGEN_GEN "${sym_out}")
@@ -10359,7 +10359,7 @@ foreach(sym IN LISTS BNP_HOSTGEN_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND BNP_HOSTGEN_GEN "${sym_out}")
 endforeach()
@@ -10537,7 +10537,7 @@ foreach(rel IN LISTS BNT_HOSTGEN_SRCS)
         add_custom_command(OUTPUT "${sym_out}"
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                     --out "${CMAKE_BINARY_DIR}/host-src" ${rel}
-            DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+            DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
             COMMENT "hostgen ${rel}")
     endif()
     list(APPEND BNT_HOSTGEN_GEN "${sym_out}")
@@ -10839,7 +10839,7 @@ foreach(sym IN LISTS TT_SHARED_HOSTGEN_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND TT_SHARED_HOSTGEN_GEN "${sym_out}")
 endforeach()
@@ -10869,7 +10869,7 @@ foreach(sym IN LISTS TTI_HOSTGEN_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND TTI_HOSTGEN_GEN "${sym_out}")
 endforeach()
@@ -11197,7 +11197,7 @@ foreach(rel IN LISTS TTE_HOSTGEN_SRCS)
         add_custom_command(OUTPUT "${sym_out}"
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                     --out "${CMAKE_BINARY_DIR}/host-src" ${rel}
-            DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+            DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
             COMMENT "hostgen ${rel}")
     endif()
     list(APPEND TTE_HOSTGEN_GEN "${sym_out}")
@@ -11603,7 +11603,7 @@ foreach(sym IN LISTS GATE35_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE35_GEN "${sym_out}")
 endforeach()
@@ -11675,7 +11675,7 @@ foreach(sym IN LISTS GATE32_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE32_GEN "${sym_out}")
 endforeach()
@@ -12204,7 +12204,7 @@ foreach(sym IN LISTS GATE13_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE13_GEN "${sym_out}")
 endforeach()
@@ -12237,7 +12237,7 @@ foreach(sym IN LISTS GATE14_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE14_GEN "${sym_out}")
 endforeach()
@@ -12475,7 +12475,7 @@ foreach(sym IN LISTS GATE_L7_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE_L7_GEN "${sym_out}")
 endforeach()
@@ -12822,7 +12822,7 @@ foreach(sym IN LISTS GATE_W7B_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE_W7B_GEN "${sym_out}")
 endforeach()
@@ -13726,7 +13726,7 @@ if(NOT R3F_GREG_PLAIN)
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                     --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
             DEPENDS "${sym_in}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
             COMMENT "hostgen ${sym}")
         list(APPEND R3F_GREG_GEN "${sym_out}")
     endforeach()
@@ -13845,7 +13845,7 @@ else()
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                     --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
             DEPENDS "${sym_in}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
             COMMENT "hostgen ${sym}")
         list(APPEND SEAT1_GREG_GEN "${sym_out}")
     endforeach()
@@ -13905,7 +13905,7 @@ foreach(sym IN LISTS GATE2IPC_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE2IPC_GEN "${sym_out}")
 endforeach()
@@ -14583,7 +14583,7 @@ foreach(sym IN LISTS W3BGEN_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND W3BGEN "${sym_out}")
 endforeach()
@@ -16579,7 +16579,7 @@ foreach(sym IN LISTS OV19GEN_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND OV19GEN "${sym_out}")
 endforeach()
@@ -16717,7 +16717,7 @@ foreach(sym IN LISTS GATE64_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE64_GEN "${sym_out}")
 endforeach()
@@ -16743,7 +16743,7 @@ foreach(sym IN LISTS GATE15_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" --extern-data ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE15_GEN "${sym_out}")
 endforeach()
@@ -16790,7 +16790,7 @@ foreach(sym IN LISTS HOSTABI_RETIRE_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" --extern-data ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND HOSTABI_RETIRE_GEN "${sym_out}")
 endforeach()
@@ -16834,7 +16834,7 @@ foreach(sym IN LISTS GATE16_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND GATE16_GEN "${sym_out}")
 endforeach()
@@ -16928,7 +16928,7 @@ foreach(sym IN LISTS S364_HOSTGEN_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND S364_HOSTGEN_GEN "${sym_out}")
 endforeach()
@@ -17662,7 +17662,7 @@ add_executable(smoke_player EXCLUDE_FROM_ALL tests/smoke_player.cpp "${OV002DATA
     # sitting in slice_gate16.txt line 178 all along, dropped by /OPT:REF for
     # want of a reference edge. Removing the stub from here is what makes the
     # matched body reachable; leaving it would be a duplicate definition.
-    "${PORT_FACES_SYNC_GEN}" "${PORT_STRUCTOR_FACES_GEN}" hal/portsync2_data_aliases.cpp hal/ov_sinit_noops.cpp hal/portsync3_data_aliases.cpp hal/pmf_host_values.cpp hal/portsync3_link_aliases.cpp hal/portsync3_runtime.cpp hal/portsync3_dtors.cpp hal/portsync3_manual.cpp hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
+    "${PORT_FACES_SYNC_GEN}" "${PORT_STRUCTOR_FACES_GEN}" hal/portsync2_data_aliases.cpp hal/ov_sinit_noops.cpp hal/portsync3_data_aliases.cpp hal/pmf_host_values.cpp hal/portsync3_link_aliases.cpp hal/portsync3_runtime.cpp hal/portsync3_dtors.cpp hal/portsync3_manual.cpp ../src/unnamed/ov009/func_ov009_0211145c.cpp hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
     # run link60 lane L2: hal/w8a_stage_storage.cpp is pure zero arm9 BSS and it
     # owns data_0209d4a8, which dScDSMT_c's InitResources and CleanupResources
     # both touch. walk_window already had it; smoke_player and walk_window_hires
@@ -17988,7 +17988,7 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     # sitting in slice_gate16.txt line 178 all along, dropped by /OPT:REF for
     # want of a reference edge. Removing the stub from here is what makes the
     # matched body reachable; leaving it would be a duplicate definition.
-    "${PORT_FACES_SYNC_GEN}" "${PORT_STRUCTOR_FACES_GEN}" hal/portsync2_data_aliases.cpp hal/ov_sinit_noops.cpp hal/portsync3_data_aliases.cpp hal/pmf_host_values.cpp hal/portsync3_link_aliases.cpp hal/portsync3_runtime.cpp hal/portsync3_dtors.cpp hal/portsync3_manual.cpp hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
+    "${PORT_FACES_SYNC_GEN}" "${PORT_STRUCTOR_FACES_GEN}" hal/portsync2_data_aliases.cpp hal/ov_sinit_noops.cpp hal/portsync3_data_aliases.cpp hal/pmf_host_values.cpp hal/portsync3_link_aliases.cpp hal/portsync3_runtime.cpp hal/portsync3_dtors.cpp hal/portsync3_manual.cpp ../src/unnamed/ov009/func_ov009_0211145c.cpp hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
     # run link60 lane L2: hal/w8a_stage_storage.cpp is pure zero arm9 BSS and it
     # owns data_0209d4a8, which dScDSMT_c's InitResources and CleanupResources
     # both touch. walk_window already had it; smoke_player and walk_window_hires
@@ -18452,7 +18452,7 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     # sitting in slice_gate16.txt line 178 all along, dropped by /OPT:REF for
     # want of a reference edge. Removing the stub from here is what makes the
     # matched body reachable; leaving it would be a duplicate definition.
-    "${PORT_FACES_SYNC_GEN}" "${PORT_STRUCTOR_FACES_GEN}" hal/portsync2_data_aliases.cpp hal/ov_sinit_noops.cpp hal/portsync3_data_aliases.cpp hal/pmf_host_values.cpp hal/portsync3_link_aliases.cpp hal/portsync3_runtime.cpp hal/portsync3_dtors.cpp hal/portsync3_manual.cpp hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
+    "${PORT_FACES_SYNC_GEN}" "${PORT_STRUCTOR_FACES_GEN}" hal/portsync2_data_aliases.cpp hal/ov_sinit_noops.cpp hal/portsync3_data_aliases.cpp hal/pmf_host_values.cpp hal/portsync3_link_aliases.cpp hal/portsync3_runtime.cpp hal/portsync3_dtors.cpp hal/portsync3_manual.cpp ../src/unnamed/ov009/func_ov009_0211145c.cpp hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
     # run link60 lane L2: hal/w8a_stage_storage.cpp is pure zero arm9 BSS and it
     # owns data_0209d4a8, which dScDSMT_c's InitResources and CleanupResources
     # both touch. walk_window already had it; smoke_player and walk_window_hires
@@ -21168,7 +21168,7 @@ foreach(sym IN LISTS FOLD2_HOSTGEN_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND FOLD2_HOSTGEN_GEN "${sym_out}")
 endforeach()
@@ -21237,7 +21237,7 @@ foreach(sym IN LISTS EXCEPT_HOSTGEN_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND EXCEPT_HOSTGEN_GEN "${sym_out}")
 endforeach()
@@ -21355,7 +21355,7 @@ foreach(sym IN LISTS R2D_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND R2D_GEN "${sym_out}")
 endforeach()
@@ -21663,7 +21663,7 @@ foreach(sym IN LISTS SEAT6_GEN_SYMS)
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${sym_src}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${sym}")
     list(APPEND SEAT6_GEN "${sym_out}")
     if(sym STREQUAL "_ZN15ModelComponents6RenderEP9Matrix4x3P7Vector3")
@@ -22232,7 +22232,7 @@ if(NOT TITLEQUAD_GX_PLAIN)
     add_custom_command(OUTPUT "${_tq_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                 --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
-        DEPENDS "${_tq_in}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+        DEPENDS "${_tq_in}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
         COMMENT "hostgen ${TITLEQUAD_SYM}")
     list(APPEND TITLEQUAD_GEN "${_tq_out}")
     set(_tq_keep "")
@@ -23382,7 +23382,7 @@ foreach(line IN LISTS SLICEW235_LINES)
                 COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                         --out "${CMAKE_BINARY_DIR}/host-src" ${line}
                 DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
                 COMMENT "hostgen ${line}")
         endif()
         list(APPEND SLICEW235_SOURCES "${_w235_out}")
@@ -23594,7 +23594,7 @@ foreach(line IN LISTS SLICEW25MG_LINES)
                 COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                         --out "${CMAKE_BINARY_DIR}/host-src" ${line}
                 DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
                 COMMENT "hostgen ${line}")
         endif()
         list(APPEND SLICEW25MG_SOURCES "${_w25mg_out}")
@@ -23732,7 +23732,7 @@ foreach(line IN LISTS SLICE_W27_PMF2_LINES)
                 COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                         --out "${CMAKE_BINARY_DIR}/host-src" ${_w27pmf2_src}
                 DEPENDS "${PORT_REPO_ROOT_ABS}/${_w27pmf2_src}"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
                 COMMENT "hostgen ${_w27pmf2_src}")
         endif()
         list(APPEND SLICE_W27_PMF2_SOURCES "${_w27pmf2_out}")
@@ -23904,7 +23904,7 @@ foreach(line IN LISTS SLICE_W27S_LINES)
                 COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                         --out "${CMAKE_BINARY_DIR}/host-src" ${line}
                 DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
                 COMMENT "hostgen ${line}")
         endif()
     else()
@@ -24025,7 +24025,7 @@ foreach(line IN LISTS SLICE_W28C_LINES)
                 COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                         --out "${CMAKE_BINARY_DIR}/host-src" ${sym_arg}
                 DEPENDS "${sym_src}"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
                 COMMENT "hostgen ${sym_arg}")
         endif()
     else()
@@ -24093,7 +24093,7 @@ foreach(line IN LISTS SLICE_W28_DPAD1_LINES)
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                     --out "${CMAKE_BINARY_DIR}/host-src" ${line}
             DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
             COMMENT "hostgen ${line}")
     endif()
     list(APPEND SLICE_W28_DPAD1_SOURCES "${_dpad1_out}")
@@ -24300,7 +24300,7 @@ foreach(line IN LISTS SLICE_W31_SMALLS2_HG_LINES)
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                     --out "${CMAKE_BINARY_DIR}/host-src" ${line}
             DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
             COMMENT "hostgen ${line}")
     endif()
     list(APPEND SLICE_W31_SMALLS2_HG_SOURCES "${_s2_out}")
@@ -24595,7 +24595,7 @@ foreach(line IN LISTS SLICE_W31_PMF3_LINES)
                 COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                         --out "${CMAKE_BINARY_DIR}/host-src" ${_w31pmf3_src}
                 DEPENDS "${PORT_REPO_ROOT_ABS}/${_w31pmf3_src}"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
                 COMMENT "hostgen ${_w31pmf3_src}")
         endif()
         list(APPEND SLICE_W31_PMF3_SOURCES "${_w31pmf3_out}")
@@ -24743,7 +24743,7 @@ foreach(line IN LISTS SLICE_W31_RS5B_HG_LINES)
             COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                     --out "${CMAKE_BINARY_DIR}/host-src" ${line}
             DEPENDS "${PORT_REPO_ROOT_ABS}/${line}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
             COMMENT "hostgen ${line}")
     endif()
     # The body makes a REAL virtual call, GetSurfaceInfo(triID, data_020a0cec),
@@ -24843,7 +24843,7 @@ foreach(line IN LISTS SLICE_W31B_RESET2_LINES)
                 COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
                         --out "${CMAKE_BINARY_DIR}/host-src" ${_w31breset2_src}
                 DEPENDS "${PORT_REPO_ROOT_ABS}/${_w31breset2_src}"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync2.py" "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen_portsync3.py"
                 COMMENT "hostgen ${_w31breset2_src}")
         endif()
         list(APPEND SLICE_W31B_RESET2_SOURCES "${_w31breset2_out}")
@@ -25335,7 +25335,7 @@ set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_m
 # PORTSYNC3: the smoke harnesses now compile some TUs through hostgen (main's
 # folds put those functions into TUs the shared-TU substitution routes there),
 # and every generated copy includes ntr/mmio.h.
-foreach(_ps3_t smoke_roots smoke_model smoke_frames smoke_soak smoke_clsn
+foreach(_ps3_t smoke smoke_roots smoke_model smoke_frames smoke_soak smoke_clsn
         smoke_modelanim smoke_oam smoke_soak_anim smoke_anim smoke_fs
         smoke_heap smoke_actor smoke_gx smoke_player smoke_persist
         smoke_savestate)
