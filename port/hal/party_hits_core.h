@@ -272,14 +272,16 @@ public:
     unsigned since() const { return since_; }
     int spit_yaw() const { return yaw_; }
     void begin(int eater, int yaw, unsigned now) { step_ = kEatHolding; eater_ = eater; yaw_ = yaw; since_ = now ? now : 1; }
+    // LAB (pictures): a longer hold. Production keeps kEatHoldFrames / kEatMaxFrames.
+    void set_frames(unsigned hold, unsigned max) { hold_ = hold; max_ = max; }
     // Called once a frame while active. kEatSpit = hold time is up (launch yaw()), kEatAbort = let go
     // with no launch (eater gone, level changed, menu), kEatHolding = keep holding.
     EatStep tick(unsigned now, const EatInput &in) {
         if (step_ != kEatHolding) return step_;
-        if (!in.toggle_on || !in.eater_present || in.me_dead_or_menu || now - since_ >= (unsigned)kEatMaxFrames) {
+        if (!in.toggle_on || !in.eater_present || in.me_dead_or_menu || now - since_ >= max_) {
             step_ = kEatIdle; return kEatAbort;
         }
-        if (now - since_ >= (unsigned)kEatHoldFrames) { step_ = kEatIdle; return kEatSpit; }
+        if (now - since_ >= hold_) { step_ = kEatIdle; return kEatSpit; }
         return kEatHolding;
     }
     void force_end() { step_ = kEatIdle; }
@@ -294,6 +296,7 @@ private:
     EatStep step_ = kEatIdle;
     int eater_ = -1, yaw_ = 0;
     unsigned since_ = 0;
+    unsigned hold_ = (unsigned)kEatHoldFrames, max_ = (unsigned)kEatMaxFrames;
 };
 
 // ---- the eater side: remember a claim until the ack (or its time-out) -----------------------------

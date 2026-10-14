@@ -116,6 +116,7 @@ struct G {
     // lab
     char forge_kind = 0; int forge_units = 0; bool forged = false;
     unsigned probe_frame = 0;
+    unsigned forge_at = 0, eat_hold = 0;      // LAB: forge from this frame on; a longer eat hold for pictures
     Stats st = {};
 } g;
 
@@ -136,6 +137,8 @@ void read_env() {
     g.feedback = env_flag(std::getenv("SM64DS_PHIT_FEEDBACK"), true);
     if (const char *e = std::getenv("SM64DS_ATTACH_EAT")) std::sscanf(e, "%d,%d", &g.eat_ahead, &g.eat_up);
     if (const char *e = std::getenv("SM64DS_ATTACH_CARRY")) std::sscanf(e, "%d,%d", &g.carry_ahead, &g.carry_up);
+    if (const char *e = std::getenv("SM64DS_PHIT_LAB_AT")) g.forge_at = (unsigned)std::atoi(e);
+    if (const char *e = std::getenv("SM64DS_PHIT_EATHOLD")) g.eat_hold = (unsigned)std::atoi(e);
     if (const char *e = std::getenv("SM64DS_PHIT_LAB")) {
         char kind[16] = {0}; int units = 0;
         if (std::sscanf(e, "forge:%15[a-z]:%d", kind, &units) == 2) {
@@ -302,6 +305,7 @@ void apply_effect(char *me, const Claim &c, const Effect &fx) {
 
 void eat_begin(char *me, const Claim &c) {
     g.hold.begin(c.attacker, c.yaw, g.frame);
+    if (g.eat_hold) g.hold.set_frames(g.eat_hold, g.eat_hold + 45);
     ++g.st.eats_began;
     char *ep = body_of_seat(c.attacker);
     g.rom_mouth = false;
@@ -311,7 +315,7 @@ void eat_begin(char *me, const Claim &c) {
         s32(me, kInMouth) = 0;
         ptrf(ep, kMouthObj) = me;
         if (func_ov002_020d5f34(me, ep)) {
-            *(unsigned short *)(ep + kHoldTimer) = 0x3c;      // mashing shortens it; our spit comes first
+            *(unsigned short *)(ep + kHoldTimer) = g.eat_hold ? (unsigned short)(g.eat_hold + 60) : 0x3c;      // mashing shortens it; our spit comes first
             *(unsigned char *)(ep + 0x708) = 0; *(unsigned char *)(ep + 0x709) = 0;
             func_ov002_020d5ed0(me);
             g.rom_mouth = true;
@@ -631,7 +635,7 @@ void attacker_scan(char *me) {
     int ik = attack_for_pose(p);
     const int mx = u(*player::pos_x(me)), my = u(*player::pos_y(me)), mz = u(*player::pos_z(me));
     const int yaw = *(const short *)(me + kYawAngle) & 0xFFFF;
-    const bool lab = g.forge_kind && !g.forged;
+    const bool lab = g.forge_kind && !g.forged && g.frame >= g.forge_at;
     if (lab) ik = g.forge_kind == 'm' ? kMelee : g.forge_kind == 'p' ? kPound : g.forge_kind == 's' ? kStomp :
                   g.forge_kind == 'g' ? kGrabCatch : kEatClaim;
     if (ik < 0 || (ik == kEatClaim && g.book.open())) return;
