@@ -71,7 +71,7 @@ int g_nprof = 0;
 struct CStat { unsigned ents_max, pub, applied, slaved, owner_ch, pin_n, pin_big, held_pins; double pin_sum, pin_max; };
 CStat g_cs[256];
 bool g_hold_mips = true;      // SM64DS_MOVERS_MIPSHOLD=0 is the MUST-FAIL control: MIPS (187) is not on the carrier list
-bool g_new_rows = true;       // SM64DS_MOVERS_NEWROWS=0 is the MUST-FAIL control: the 13 MOVERS9 classes are only SAMPLED (free-running, as with no row)
+bool g_new_rows = true;       // SM64DS_MOVERS_NEWROWS=0 is the MUST-FAIL control: the 12 MOVERS9 classes are only SAMPLED (free-running, as with no row)
 bool g_boss_own = true;       // SM64DS_MOVERS_BOSSOWN=0 is the MUST-FAIL control: boss poses keep the proximity owner
 short g_prof_of[1024];      // class id -> index into g_prof, -1 none
 char  g_prof_name[256][40]; // names of rows added from the profile file
@@ -123,7 +123,7 @@ void prof_index() {
         g_prof_of[p.id] = (short)i;
     }
     if (!g_new_rows) {
-        static const uint16_t kNew[] = { 262, 250, 251, 236, 240, 238, 315, 234, 18, 194, 193, 96, 72 };
+        static const uint16_t kNew[] = { 262, 250, 251, 236, 240, 238, 315, 234, 18, 194, 96, 72 };
         for (uint16_t id : kNew) if (g_prof_of[id] >= 0) g_prof[g_prof_of[id]].flags |= kFSampleOnly;
     }
     // classes a player can pick up: their pose is the carrier's, not the Behavior's

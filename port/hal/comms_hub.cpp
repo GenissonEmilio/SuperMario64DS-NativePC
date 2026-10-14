@@ -1313,7 +1313,14 @@ int comms_hub_pump() {
         }
         if (st == 1) {
             const unsigned dt = comms_hub_now_ms() - t0;
-            if (dt >= from && dt < from + len) return 0;
+            static int phase = 0;
+            if (dt >= from && dt < from + len) {
+                if (phase == 0) { phase = 1; std::fprintf(stderr, "[hub-knob] stall begins t=%u wall=%llu
+", dt, (unsigned long long)GetTickCount64()); }
+                return 0;
+            }
+            if (phase == 1 && dt >= from + len) { phase = 2; std::fprintf(stderr, "[hub-knob] stall ends t=%u wall=%llu
+", dt, (unsigned long long)GetTickCount64()); }
         }
     }
     unsigned char buf[kHubMaxDatagram];
