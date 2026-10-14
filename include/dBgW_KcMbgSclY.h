@@ -34,24 +34,12 @@ struct dBgW_KcMbgSclY : dBgW_KcMbg {
     Fix12i invScaleY;          /* 0x1cc - func_02053200(scaleY) */
 
     /* --- vtable, in ROM order. Do not reorder. --- */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~dBgW_KcMbgSclY();   /* no slot */
-#else
     virtual ~dBgW_KcMbgSclY();                     /* slots 0/1 */
-#endif
     virtual void Virtual08();                             /* slot 2 */
     virtual void GetNormal(s16 triID, Vector3 &res);      /* slot 4 */
-    #ifdef _MSC_VER
-    virtual int DetectClsn(dBgCh_SphCrr &sphere);         /* slot 8 */
-    virtual int DetectClsn(dBgCh_Lin &ray);               /* slot 7 */
-    virtual int DetectClsn(dBgCh_Gnd &ray);               /* slot 6 */
-#else
     virtual int DetectClsn(dBgCh_Gnd &ray);               /* slot 6 */
     virtual int DetectClsn(dBgCh_Lin &ray);               /* slot 7 */
     virtual int DetectClsn(dBgCh_SphCrr &sphere);         /* slot 8 */
-#endif
 
     /* Defined in src/engine/collision/dBgW_KcMbgSclY.cpp, which owns C1;
        the C2 variant has no ROM counterpart because nothing derives
