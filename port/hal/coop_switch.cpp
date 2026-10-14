@@ -360,9 +360,18 @@ const Watch *find_watch(int cls) {
     return nullptr;
 }
 
+// The slot a watched actor goes by on the wire. A placed object: its own slot. The Chain Chomp's stake (a class 27 post the chomp
+// spawns itself in its InitResources, so slot -1, the same two spawns on every console) goes by a position code in 504..511.
+int wire_slot(const char *a, int cls) {
+    const int s = a_slot(a);
+    if (s >= 0 || cls != 27) return s;
+    const int *q = (const int *)(a + 0x5c);
+    return 504 + ((((q[0] >> 12) * 7) + ((q[2] >> 12) * 13)) & 7);
+}
+
 char *find_actor(int slot, int cls) {
     for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a))
-        if (a_cls(a) == cls && a_slot(a) == slot && !a_dead(a) && !is_player_ptr(a)) return a;
+        if (a_cls(a) == cls && wire_slot(a, cls) == slot && !a_dead(a) && !is_player_ptr(a)) return a;
     return nullptr;
 }
 
@@ -566,7 +575,7 @@ void scan_objects(unsigned now) {
         const unsigned short cls = a_cls(a);
         const Watch *w = find_watch(cls);
         if (!w || a_dead(a) || is_player_ptr(a)) continue;
-        short slot = a_slot(a);
+        short slot = (short)wire_slot(a, cls);
         if (is_door_cls(cls)) {          // slot -1: track by position (a tracker slot above the placed range), send by table index
             const int *q = (const int *)(a + 0x5c);
             slot = (short)(256 + ((((q[0] >> 12) * 7) + ((q[1] >> 12) * 3) + ((q[2] >> 12) * 13) + rd_i32(a, 8) * 5) & 255));
@@ -578,8 +587,8 @@ void scan_objects(unsigned now) {
             t.actor = a; t.cls = cls; t.last = cur; t.valid = true;
             if (g_log && (cls == 13 || cls == 27 || cls == 353 || cls == 354)) {
                 const int *p = (const int *)(a + 0x5c);
-                std::fprintf(stderr, "[coopsw] track %s slot=%d cls=%d param=%d pos=%d,%d,%d read=%d node=%p unlocking=%p wall=%lld\n", w->name,
-                             (int)slot, (int)cls, rd_i32(a, 8), p[0] >> 12, p[1] >> 12, p[2] >> 12, cur,
+                std::fprintf(stderr, "[coopsw] track %s slot=%d aslot=%d uid=%u cls=%d param=%d pos=%d,%d,%d read=%d node=%p unlocking=%p wall=%lld\n", w->name,
+                             (int)slot, (int)a_slot(a), (unsigned)rd_i32(a, 4), (int)cls, rd_i32(a, 8), p[0] >> 12, p[1] >> 12, p[2] >> 12, cur,
                              cls == 354 ? *(void *const *)(a + 0x110) : cls == 353 ? *(void *const *)(a + 0x140) : nullptr,
                              (void *)_ZN12daStarGate_c12ST_UNLOCKINGE, wall_ms());
                 if (cls == 353 && door_idx_ok(353, rd_i32(a, 8))) {
@@ -908,7 +917,7 @@ void knob_press(PressKnob &k) {
     if (k.cls == 13 || k.cls == 27 || k.cls == 353 || k.cls == 354) {
         char *c[64]; int n = 0;
         for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a && n < 64; a = (char *)_ZN8dActor_c4NextEPKS_(a))
-            if (a_cls(a) == k.cls && (a_slot(a) >= 0 || is_door_cls(k.cls)) && !a_dead(a) && !is_player_ptr(a)) c[n++] = a;
+            if (a_cls(a) == k.cls && (a_slot(a) >= 0 || is_door_cls(k.cls) || (k.cls == 27 && k.nth >= 100)) && !a_dead(a) && !is_player_ptr(a)) c[n++] = a;
         std::sort(c, c + n, [](char *x, char *y) {
             if (a_slot(x) != a_slot(y)) return a_slot(x) < a_slot(y);
             const int *p = (const int *)(x + 0x5c), *q = (const int *)(y + 0x5c);
@@ -916,6 +925,11 @@ void knob_press(PressKnob &k) {
         });
         if (n == 0) { std::fprintf(stderr, "[coopsw-knob] press cls=%d: no live actor\n", k.cls); return; }
         char *a = c[k.nth % n];
+        if (k.cls == 27 && k.nth >= 100) {                // nth = 100 + k: the chomp's stake (slot -1), the k-th such post
+            a = nullptr; int kk = 0;
+            for (int i = 0; i < n; ++i) if (a_slot(c[i]) < 0 && kk++ == k.nth - 100) { a = c[i]; break; }
+            if (!a) { std::fprintf(stderr, "[coopsw-knob] press cls=27: no runtime post\n"); return; }
+        }
         if (k.cls == 353 && k.nth >= 100) {              // nth = 100 + the door's table index (param1)
             a = nullptr;
             for (int i = 0; i < n; ++i) if (rd_i32(c[i], 8) == k.nth - 100) { a = c[i]; break; }
