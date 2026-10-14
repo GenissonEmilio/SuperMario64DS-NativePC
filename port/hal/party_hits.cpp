@@ -474,8 +474,7 @@ void eat_tick(char *me) {
         }
         if (g.frame - g.beat >= (unsigned)kAttachBeat) { g.beat = g.frame; broadcast_attach(eater, 1); }
         if (g.log > 0 && ep && (g.frame % 20) == 0)
-            std::fprintf(stderr, "[phit] mash f=%u count=%d phase=%d eater timer=%u step=%d state_is_mouth=%d
-", g.frame,
+            std::fprintf(stderr, "[phit] mash f=%u count=%d phase=%d eater timer=%u step=%d state_is_mouth=%d\n", g.frame,
                          func_ov002_020beb38(me), (int)*(unsigned char *)(me + 0x6f5), (unsigned)*(unsigned short *)(ep + kHoldTimer),
                          (int)*(unsigned char *)(me + 0x6e3), state_is(me, data_ov002_02110064) ? 1 : 0);
     }
@@ -604,8 +603,7 @@ void carry_v_tick(char *me) {
     if (ptrf(hb, kHeldObj) != me) ptrf(hb, kHeldObj) = me;
     u32(me, kFlags) |= kFlagCarried | kFlagHeldOut;
     if (g.log > 0 && (g.frame % 20) == 0)
-        std::fprintf(stderr, "[phit] mash f=%u count=%d step=%d state_is_grabbed=%d
-", g.frame, func_ov002_020beb38(me),
+        std::fprintf(stderr, "[phit] mash f=%u count=%d step=%d state_is_grabbed=%d\n", g.frame, func_ov002_020beb38(me),
                      (int)*(unsigned char *)(me + 0x6e3), state_is(me, data_ov002_0211016c) ? 1 : 0);
     if (!ptrf(me, kGrabbedBy) || !state_is(me, data_ov002_0211016c)) {
         // my own St_Grabbed_Main broke free (the mash count ran out: it dropped the holder and threw me off)
