@@ -78,6 +78,39 @@ services:
       # can reach the container directly -- with no proxy in front there is no
       # trustworthy entry and the header becomes a limiter bypass.
       TRUST_XFF: "1"
+      # Lobby 1.0 (contract v5). RELAY_V is the relay protocol the plans name:
+      # 2 once relay v2 is deployed; 1 turns the world pool off.
+      RELAY_V: "2"
+      # THE GAME BUILDS THIS SERVER SERVES, comma-separated launcher `game`
+      # ids (version.json: "<game version>-<first 8 hex of the git tip>",
+      # e.g. "1.0.0-0123abcd"). THE RELEASE STEP WRITES THIS LINE: every
+      # create/join/world naming another build is refused "unknown_game"
+      # (the launcher says check for an update). Left EMPTY, code rooms take
+      # any build and the world pool stays OFF, so a deploy that forgot this
+      # line cannot reopen the world-pool flood (review REVLOBBY5, S2).
+      GAME_IDS: ""
+      # The world pool: worlds in the pool (every build together), members a
+      # world, a member unheard this long is not counted (the launcher pings
+      # every 10 s), a world with no live member is dropped after this, and
+      # live members one client address may hold (a household behind one
+      # connection; a fifth ask retires that address's oldest).
+      MAX_WORLDS: "64"
+      WORLD_SEATS: "16"
+      WORLD_MEMBER_S: "30"
+      WORLD_EMPTY_S: "30"
+      WORLD_ADDR_TOKENS: "4"
+      # An adventure code room closes after this long with nobody in it.
+      ADV_EMPTY_S: "600"
+      # ARENA MODE (run mp1 A4): the builds that play VS in arena mode (own
+      # Yoshi with no input delay, a referee on the relay), comma-separated
+      # like GAME_IDS. EMPTY = arena off: every VS match plays lockstep, as
+      # before. Written at the relay redeploy that brings the referee;
+      # emptying it again is the rollback. Never "*" here (dev boxes only).
+      ARENA_GAME_IDS: ""
+      # The largest arena match (phase A: 4); bigger matches play lockstep.
+      ARENA_MAX_PLAYERS: "4"
+      # A new room's netmode pick; the host can switch it to lockstep.
+      NETMODE_DEFAULT: "arena"
     read_only: true
     tmpfs:
       - /tmp:size=8m

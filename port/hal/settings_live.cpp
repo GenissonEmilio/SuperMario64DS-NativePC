@@ -39,6 +39,8 @@ static const SlInfo INFO[] = {
     { "KeyCamDown",  SL_KIND_KEY, 0, 255, 0x46, 0, 1 },
     { "KeyCamZoomIn",  SL_KIND_KEY, 0, 255, 0, 0, 1 },
     { "KeyCamZoomOut", SL_KIND_KEY, 0, 255, 0, 0, 1 },
+    { "KeyPartyInvite", SL_KIND_KEY, 0, 255, 0x42, 0, 1 },
+    { "KeyPartyLeave",  SL_KIND_KEY, 0, 255, 0x4e, 0, 1 },
     /* pads, in HOST_PAD_ order */
     { "PadJump",     SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x1000, 0, 1 },
     { "PadAttack",   SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x2000, 0, 1 },
@@ -66,6 +68,8 @@ static const SlInfo INFO[] = {
     { "MouseCamZoomOut", SL_KIND_MOUSE, 0, 6, 0, 0, 1 },
     { "MouseCamMode",    SL_KIND_MOUSE, 0, 6, 0, 0, 1 },
     { "MouseLook",       SL_KIND_MOUSE, 0, 6, 0, 0, 1 },
+    { "PadPartyInvite", SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x0001, 0, 1 },
+    { "PadPartyLeave",  SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x0002, 0, 1 },
     /* the rest */
     { "RunMode",                SL_KIND_ENUM,    0, 2, 1, RUN_NAMES, 1 },
     { "StickDeadzone",          SL_KIND_PERCENT, 0, 50, 24, 0, 1 },
@@ -86,6 +90,7 @@ static const SlInfo INFO[] = {
     { "DrawDistance",           SL_KIND_PERCENT, 100, 10000, 100, 0, 1 },
     { "FrameRate",              SL_KIND_PERCENT, 0, 240, 0, 0, 1 },     /* values 1..59 are sanitised to 0 by the engine */
     { "DebugMenu",              SL_KIND_BOOL,    0, 1, 0, 0, 1 },
+    { "ChatScale",              SL_KIND_PERCENT, 75, 200, 100, 0, 1 },  /* values between the five stops snap to the nearest */
 };
 
 /* INFO[] is positional: row i describes id i. If a host key or pad is added (HOST_KEY_COUNT / HOST_PAD_COUNT move, for example
@@ -134,6 +139,7 @@ int sl_get(int id)
     case SL_DRAW_DISTANCE:      return host_setting_draw_distance_pct();
     case SL_FRAME_RATE:         return host_setting_frame_rate();
     case SL_DEBUG_MENU:         return host_setting_debug_menu();
+    case SL_CHAT_SCALE:         return host_setting_chat_scale();
     case SL_GAP_COLOR: {
         const unsigned c = host_setting_gap_color() & 0xffffffu;
         for (int i = 0; i < 6; ++i) if (GAP_COLORS[i] == c) return i;
@@ -169,6 +175,9 @@ int sl_set(int id, int v)
     case SL_DRAW_DISTANCE:      return host_setting_set_draw_distance(v);
     case SL_FRAME_RATE:         host_setting_save_frame_rate(v); return 1;     /* FPSLIVE1 saves the key itself */
     case SL_DEBUG_MENU:         return host_setting_set_debug_menu(v);
+    case SL_CHAT_SCALE:
+        if (v < 75 || v > 200) return 0;
+        return host_setting_set_chat_scale(v);
     case SL_GAP_COLOR:
         if (v < 0 || v > 5) return 0;
         return host_setting_set_gap_color(GAP_COLORS[v]);
@@ -286,6 +295,8 @@ static int pad_reserved(int action, unsigned bit, const char **why)
     unsigned blocked = 0x30afu;
     if (action == HOST_PAD_CAM_MODE) blocked &= ~0x80u;   /* CAMPACK1: the right stick's click is the camera-mode button's own default */
     if (action != HOST_PAD_START && action != HOST_PAD_SELECT) blocked &= ~0x3000u;
+    /* WPARTY2: the party rows default to the d-pad (UP / DOWN), so they may hold d-pad bits; still not BACK or the stick click. */
+    if (action == HOST_PAD_PARTY_INVITE || action == HOST_PAD_PARTY_LEAVE) blocked &= ~0x000fu;
     if (bit & blocked) { *why = "that button drives the menus"; return 1; }
     for (int i = 0; i < HOST_PAD_COUNT; ++i)
         if (i != action && (host_setting_pad(i) & (int)bit) && !(is_cam_pad(action) && is_cam_pad(i))) {

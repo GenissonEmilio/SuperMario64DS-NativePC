@@ -1,8 +1,9 @@
 /* Proximity voice chat for online VS matches. Lane VOICE.
  *
- * WHAT IT IS. An open microphone -- no push to talk -- whose volume on every
- * other player's machine falls off with the distance between the two bodies
- * in the arena. The player next to you is loud, the player across the map is
+ * WHAT IT IS. A voice-activated microphone -- no push to talk; a level gate
+ * sends audio only while the player is making sound (run mp1 lane VOICE1,
+ * see g_gate_thr in the .cpp) -- whose volume on every other player's machine
+ * falls off with the distance between the two bodies in the arena. The player next to you is loud, the player across the map is
  * not there at all, and nothing in between is a menu decision.
  *
  * WHAT IT IS NOT, and this is the load-bearing half: it is not part of the
@@ -76,8 +77,32 @@
  *   SM64DS_VOICE_DEVICES=1     dump the machine's recording devices, one per
  *                              line, at first use.
  *   SM64DS_VOICE_REPORT=1      one line per second: frames captured, sent,
- *                              received, dropped, and the per-slot distance
- *                              and gain the mix is using.
+ *                              received, dropped, the gate's state, the count
+ *                              received from each sender slot, and the
+ *                              per-slot distance and gain the mix is using.
+ *   SM64DS_VOICE_GATE=<rms>    the mic gate threshold, an RMS amplitude on the
+ *                              s16 scale (default 256, about -42 dBFS); 0 is
+ *                              no gate, the old open mic.
+ *   SM64DS_VOICE_TEST_TONE_AMP=<n>, SM64DS_VOICE_TEST_TONE_DUTY=<on>,<off>,
+ *   SM64DS_VOICE_TEST_NOISE=<n>
+ *                              shape the test tone like a talker: amplitude,
+ *                              milliseconds on then off repeating, and a quiet
+ *                              deterministic hiss under it. Tone hook only.
+ *   SM64DS_VOICE_TEST_GHOST=1  adventure proofs only: send a minimal 'SYNG'
+ *                              of this console's body so the proximity rule
+ *                              has positions on a build without the ghost
+ *                              layer's sender. Never with the real sender.
+ *
+ * ADVENTURE ONLINE. With hal/comms_hub.cpp installed (no DS session, every
+ * console its own world, the others drawn as ghosts) the same datagram rides
+ * the hub's 'SYNV' kind, the sender is the relay-stamped seat, the distance is
+ * my body against the sender's newest ghost frame (another level is silent),
+ * and nothing is sent at all while no present seat is in my level inside
+ * VoiceFarRadius.
+ *
+ * THE ROOM'S SETTING. SM64DS_VOICE_ALLOWED=0 (from the lobby's go plan: the
+ * VS host switched voice off) is VoiceEnabled false for the whole process,
+ * whatever settings.json says. Absent means allowed.
  *
  * The mixed result reaches the existing SM64DS_WAV_DUMP file, because voice is
  * rendered into the same stereo block hal/sdat/mixer.cpp hands that dump. No
@@ -98,6 +123,14 @@ void voice_tick();
 // The report line SM64DS_VOICE_REPORT asks for, on demand. Called by the same
 // places that call sync_report.
 void voice_report(const char *tag);
+
+// 1 while this console's mic gate is open and voice is on: the player is
+// talking and voice datagrams are going out (or would, if a peer were in
+// range). The 'talking' bit of the adventure ghost frame (SYNG flags bit 4,
+// NETARCH1 design 6.1) mirrors it, so other players can see who is speaking.
+// 0 whenever VoiceEnabled is off, the room forbids voice
+// (SM64DS_VOICE_ALLOWED=0), or the gate is closed. A variable read.
+int voice_talking();
 
 // ---- THE CAPTURE BACKEND, hal/voice_capture_win.cpp --------------------
 // Split out so the winmm half is one small file with no opinions about the

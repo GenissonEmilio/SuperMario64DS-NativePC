@@ -18,6 +18,13 @@
  * rendering, presenting, pacing or input: the per-frame cost is a handful of
  * adds, and once every five seconds one buffered line.
  *
+ * THE STAR SELECT IS LEFT OUT. A course entered from the castle runs the star
+ * select inside one level frame; its time is taken off that frame, the rate
+ * windows it straddled are skipped, and the bucket that held it carries an
+ * extra "starselMs" key saying how many milliseconds were taken out. A
+ * negative tick rate (the ROM frame counter rebasing at the opening) is
+ * skipped too. See hal/perf_log.cpp, THE STAR SELECT IS NOT A SLOW FRAME.
+ *
  * NO NAMES, NO PATHS. Hardware model strings are the point of the file and
  * are written as the machine reports them; nothing else about the machine is.
  * No user name, no computer name, no directory, no serial, no address. The

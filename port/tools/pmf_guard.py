@@ -707,6 +707,14 @@ DERIVED_BASELINE = [
 ]
 
 DERIVED_OK = [
+    (r"^_data_020894f0$", r".*",
+     "ROM DATA, not a record the host fills.  The cell at +0xd8 (DS 020895c8) holds "
+     "the ROM word 0x0071081b (bytes 1b 08 71 00 in a run of script tuples, "
+     "read from arm9_dec.bin at 0x855c8).  "
+     "That number is only an address of the host image once .text has grown past "
+     "0x00710000 (it fell inside sub_screen.cpp cam_button_veto+0x3b after "
+     "ghost_door.cpp joined); the guard reads the number as a body.  The same "
+     "false positive as romdata data_02088c2c on the GHOSTWIRE1 branch"),
     (r"^_vs_data_patch$", r".*",
      "ov075's patch table is GENERATED and carries the ROM's own words.  The "
      "three of them that are pointer-to-member records are overwritten at boot "

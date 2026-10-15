@@ -79,6 +79,7 @@
 #include "dBgW_Kc.h"
 #include "dsstate_seg.h"
 #include "hal/comms_seam.h"   /* run mg16 lane MP3: port::vs_player_count() */
+#include "hal/vs_arena.h"     /* run mp1 lane ARENACORE1: my seat is my body */
 #include "fBase_c.h"   /* SYNC4: moved up out of an extern "C" block */
 #include "dActor_c.h"  /* SYNC4: same, and it reaches math/Fix12.h now */
 #include "SharedFilePtr.h"   /* the twelve shared preloads' Release */
@@ -2173,9 +2174,13 @@ extern void InitControllerMode(int idx, unsigned char val);
 extern unsigned char data_0209f2d8;      /* game mode: 0 single file, 1 VS, 2 script */
 extern unsigned short data_ov002_0210cbf4[];
 extern void *data_0209f394[];
+extern void *data_0209f318;              /* the Camera LoadEntranceObjects spawns */
 }
 
 extern "C" void port_vs_spawn_extra_players(void *tbl, unsigned p3);
+/* run mp1 lane OPENCOUNT1: the hub's spare bodies, held the moment the
+   new-file opening's closing load spawns them (hal/comms_sync.cpp). */
+extern "C" void port_adventure_hub_spawned();
 
 /* THE PORT NO LONGER HOLDS A CHARACTER CHOICE. What stood here was a
    four-slot table defaulting to slot-index order (0 Mario, 1 Luigi, 2 Wario,
@@ -2233,30 +2238,39 @@ static void port_load1(void *t, int a, unsigned b)
                      "f1=%d,%d\n",
                      (int)data_0209f21c, b, data_0209fc5c[0], data_0209fc5c[1],
                      (int)data_02092128[0], (int)data_02092128[1]);
-    /* THE LOCAL SLOT IS HELD AT 0 ACROSS THE ENTRANCE LOAD, and restored the
-       moment every slot has a body. Run mg16 lane MP3, field failure.
+    /* THE LOCAL SLOT, ACROSS THE ENTRANCE LOAD (run mg16 lane MP3 held it at 0
+       for every joiner; run mp1 lane VSFIELD1 narrowed the hold to the one case
+       that needs it and re-points the camera after it).
 
-       Camera::InitResources runs INSIDE the loop below and reads
-       data_0209f394[data_0209f250] -- the local player's actor. On the child
-       that index is 1, and slot 1 has no body yet: the ROM's loop takes its
-       player starts from consecutive entrance records and this level has only
-       one, which is why port_vs_spawn_extra_players exists at all. So the
-       camera dereferenced a null and the child died at
-       Camera::InitResources+0x98 reading 0x000000cc, every boot.
+       LoadEntranceObjects spawns one Player per slot, then the Camera
+       (actor 0x14c) with the LOCAL slot's entrance id, and
+       Camera::InitResources binds its target ONCE:
+       `+0x110 = data_0209f394[data_0209f250]`. It never reads the index again
+       (Camera::Behavior and the follow states read +0x110). So whatever body
+       the index names at that moment is the body the camera films for the
+       whole match.
 
-       The fill-in cannot simply move earlier: the loop ASSIGNS
-       data_0209f394[i] for every slot it visits, so anything pre-spawned is
-       overwritten a moment later.
+       MP3's hold existed because a joiner's slot once had no body at that
+       moment (one entrance record, so the loop could seat only slot 0) and the
+       camera dereferenced a null at Camera::InitResources+0x98. Its comment
+       said the camera reads the index per frame; it does not, so every joiner
+       filmed SLOT 0's body for the whole match -- the field report of 09-30
+       (mptest2, one friend: "the other players ... was watching MY
+       perspective"), and the reason the joiner's stick steered relative to
+       the host's view: the camera heading in a joiner's input record came from
+       a camera standing behind the host.
 
-       Holding the index at 0 for the duration is the small, honest answer.
-       Slot 0 always has a body -- it is the one start every level does have --
-       so the camera initialises against a real actor exactly as it does in
-       single player, and the true slot is restored before any frame runs. The
-       camera reads the index per frame, so it follows the right player from
-       the first tick; nothing downstream sees the temporary value. */
+       Now: the index is held at 0 only when the ROM's loop will NOT give the
+       local slot a body (its slot is past the records the loop is allowed to
+       seat below, or the slot is not live). On the four VS arenas every slot
+       0..3 has its own player start, so a 2..4 player joiner runs the ROM's
+       own order untouched: its body exists when the camera spawns, the camera
+       takes its own entrance id and binds its own body, as on a DS. A held
+       slot (5..16 players: port_vs_spawn_extra_players seats slots 4..15
+       after the loop) gets the camera's target re-pointed at its own body the
+       moment that body exists, before any frame runs. */
     const unsigned char saved_local = data_0209f250;
     const unsigned char saved_count = data_0209f21c;
-    data_0209f250 = 0;
     /* THE COUNT HOLD IS RETIRED (it pinned data_0209f21c at 1 across the
        load, run mg16 lane MP3, field failure 3 -- the orphan-shadow fix).
 
@@ -2326,15 +2340,39 @@ static void port_load1(void *t, int a, unsigned b)
         if (want_players > fit)
             data_0209f21c = (unsigned char)fit;
     }
+    /* The hold (see the banner above): only for a slot the loop will not
+       seat. Slot 0 is never held (holding it at 0 is the identity), so a
+       single-player boot is untouched. */
+    const bool hold = saved_local != 0 &&
+                      (saved_local >= data_0209f21c ||
+                       data_0209fc5c[saved_local] == 0);
+    if (hold)
+        data_0209f250 = 0;
     _Z19LoadEntranceObjectsRN11LVL_Overlay11ObjSubTableEij(t, a, b);
     data_0209f21c = saved_count;
     port_vs_spawn_extra_players(t, b);
+    port_adventure_hub_spawned();
     data_0209f250 = saved_local;
-    if (saved_local != 0 && std::getenv("SM64DS_VS_PROBE"))
+    char *const cam = (char *)data_0209f318;
+    if (hold && cam && data_0209f394[saved_local])
+        *(void **)(cam + 0x110) = data_0209f394[saved_local];
+    if (saved_count > 1 && cam) {
+        /* One line per VS boot: which body the camera films, read back off
+           the camera itself, so a log shows the answer rather than the
+           intent. */
+        int films = -1;
+        for (int i = 0; i < kPortMaxPlayers; ++i)
+            if (data_0209f394[i] &&
+                *(void **)(cam + 0x110) == data_0209f394[i]) {
+                films = i;
+                break;
+            }
         std::fprintf(stderr,
-                     "[vs] local slot restored to %d after the entrance load "
-                     "(held at 0 so Camera::InitResources had a body to "
-                     "follow)\n", (int)saved_local);
+                     "[vs] camera follows slot %d; this console is slot %d "
+                     "(%s)\n", films, (int)saved_local,
+                     hold ? "its body came after the camera: target re-pointed"
+                          : "bound by Camera::InitResources");
+    }
 }
 extern "C" { extern int data_0209f31c[4]; extern unsigned char data_0209f258[4]; }
 extern "C" int port_fog_probe(unsigned char *o8)
@@ -2688,13 +2726,18 @@ extern "C" void port_message_archive_seat(void);
    Four QPC-bracketed spans, accumulated across one entry and printed as ONE
    stderr line (so it lands in the playlog) by port_lvlperf_emit:
 
-       [lvl-perf] teardown=Xms boot=Yms census=Zms print=Wms
+       [lvl-perf] teardown=Xms boot=Yms census=Zms print=Wms starsel=Vms
 
    teardown is the level-change pre-boot span (level_change.cpp, zero on a
    direct boot), boot is port_stage_a_boot below, census is port_actor_census,
    and print is the boot-dump probe block (port_level_probe +
    port_stage_a_probe) -- timed apart from the boot proper so time spent
-   INSIDE printf is its own number. That split is the point: the entry stall
+   INSIDE printf is its own number. A fifth figure, starsel, is the time the
+   player spent in the star select (level_change.cpp's scene interlude); it is
+   taken OUT of teardown and printed on its own, because the star select is a
+   person choosing, not the game working, and until run mp1 lane PROBES1 it
+   was counted as 1.5 to 5.9 s of teardown on every course entry. That split
+   is the point: the entry stall
    this line was built to watch was stdout itself (an unbuffered console
    costs 2-6ms PER LINE and a level entry prints ~248 of them; the setvbuf
    note in walk_window.cpp has the measurements). A handful of QPC reads per
@@ -2705,7 +2748,8 @@ QueryPerformanceCounter(long long *);
 extern "C" __declspec(dllimport) int __stdcall
 QueryPerformanceFrequency(long long *);
 
-static double g_lvlperf_ms[4];   /* teardown, boot, census, print */
+static double g_lvlperf_ms[5];   /* teardown, boot, census, print, starsel */
+static double g_lvlperf_starsel_pending;   /* see port_lvlperf_starsel_take */
 
 extern "C" double port_lvlperf_now(void)
 {
@@ -2719,16 +2763,31 @@ extern "C" double port_lvlperf_now(void)
 
 extern "C" void port_lvlperf_note(int span, double ms)
 {
-    if (span >= 0 && span < 4)
+    if (span >= 0 && span < 5)
         g_lvlperf_ms[span] += ms;
+    if (span == 4)
+        g_lvlperf_starsel_pending += ms;
+}
+
+/* The star-select time not yet handed to the performance report
+   (hal/perf_log.cpp), returned once and cleared. The report subtracts it from
+   the frame that held the interlude and ignores the rate windows that
+   straddled it, so a course entry no longer reads as a 1.5 s hitch. */
+extern "C" double port_lvlperf_starsel_take(void)
+{
+    const double v = g_lvlperf_starsel_pending;
+    g_lvlperf_starsel_pending = 0;
+    return v;
 }
 
 extern "C" void port_lvlperf_emit(void)
 {
     std::fprintf(stderr,
                  "[lvl-perf] teardown=%.1fms boot=%.1fms census=%.1fms "
-                 "print=%.1fms\n", g_lvlperf_ms[0], g_lvlperf_ms[1],
-                 g_lvlperf_ms[2], g_lvlperf_ms[3]);
+                 "print=%.1fms starsel=%.1fms\n", g_lvlperf_ms[0],
+                 g_lvlperf_ms[1], g_lvlperf_ms[2], g_lvlperf_ms[3],
+                 g_lvlperf_ms[4]);
+    g_lvlperf_ms[4] = 0;
     g_lvlperf_ms[0] = g_lvlperf_ms[1] = g_lvlperf_ms[2] = g_lvlperf_ms[3] = 0;
 }
 
@@ -4204,6 +4263,17 @@ void hal_render_player_world(void *player);
 extern "C" int hal_actor_off_native_view(void *actor);   /* hal/camera_bridges.cpp */
 static int __fastcall ps_render(void *self, void *)
 {
+    static int arrlog = -1;
+    if (arrlog < 0) { const char *l = getenv("SM64DS_CAST_LOG"); arrlog = (l && atoi(l) > 0) ? 1 : 0; }
+    if (arrlog) {
+        static unsigned af = 0;
+        const char *q = (const char *)self;
+        if ((af++ % 30u) == 0)
+            fprintf(stderr, "[castall] %p no=%u pos=(%d,%d,%d) op=%u inarray=%d\n", self,
+                    (unsigned)*(const unsigned char *)(q + 0x6d8), *(const int *)(q + 0x5c) >> 12,
+                    *(const int *)(q + 0x60) >> 12, *(const int *)(q + 0x64) >> 12,
+                    (unsigned)*(const unsigned char *)(q + 0x6f5), data_0209f394[0] == self);
+    }
     const int count = (int)data_0209f21c;
     for (int i = 0; i < count; ++i)
         if (data_0209f394[i] == self)
@@ -4221,6 +4291,30 @@ static int __fastcall ps_render(void *self, void *)
     if (native && (*(const unsigned *)((const char *)self + 0xb0) & 2) &&
         hal_actor_off_native_view(self))
         return 1;
+    /* SMALLS9 (item 23): the cast waits un-animated (bind pose = a T pose) at its
+       start mark until its cue; the DS 4:3 view never saw that mark, a 16:9 view
+       does. Apply the gates the ROM's own Player::Render applies before it draws
+       a body (src/_ZN6Player6RenderEv.cpp: mOpacity == 0, mFlags & 0x10): a cast
+       body the script has not shown is not drawn. SM64DS_CAST_GATE=0 is the
+       control; SM64DS_CAST_LOG=<stride> prints what each cast body is doing. */
+    static int gate = -1, logstride = -1;
+    static unsigned frames = 0;
+    if (gate < 0) {
+        const char *e = getenv("SM64DS_CAST_GATE");
+        gate = (e && e[0] == '0' && e[1] == 0) ? 0 : 1;
+        const char *l = getenv("SM64DS_CAST_LOG");
+        logstride = l ? atoi(l) : 0;
+    }
+    const char *c = (const char *)self;
+    const unsigned op = *(const unsigned char *)(c + 0x6f5);
+    const unsigned fl = *(const unsigned *)(c + 0xb0);
+    const bool hide = gate && (op == 0 || (fl & 0x10));
+    if (logstride > 0 && (frames++ % (unsigned)logstride) == 0)
+        fprintf(stderr, "[cast] %p no=%u ch=%u pos=(%d,%d,%d) op=%u flags=%08x van=%u anim=%d hide=%d\n",
+                self, (unsigned)*(const unsigned char *)(c + 0x6d8), *(const unsigned *)(c + 8) & 0xffu,
+                *(const int *)(c + 0x5c) >> 12, *(const int *)(c + 0x60) >> 12, *(const int *)(c + 0x64) >> 12,
+                op, fl, (unsigned)*(const unsigned char *)(c + 0x6fb), 0, (int)hide);
+    if (hide) return 1;
     hal_render_player_world(self);  /* cutscene cast: draw its body here */
     return 1;
 }
@@ -4824,7 +4918,7 @@ extern "C" void port_vs_spawn_extra_players(void *tbl, unsigned p3)
            between f1 at bits 3..5 and the sublevel at bit 8. The DESTINATION is
            an unsigned char and holds 0..255 perfectly well, and every ROM
            reader that indexes by a player -- GiveVsStars, the drop test at
-           func_ov002_020d94cc, Player::Behavior's VS gate -- reads that byte,
+           _ZN6Player19func_ov002_020d94ccEv, Player::Behavior's VS gate -- reads that byte,
            not the flag word. So slot 5 cannot be EXPRESSED in a spawn, but it
            can be stored and indexed by, and the port's job is exactly the two
            lines that turn one into the other.
@@ -5478,6 +5572,13 @@ static void port_a2_seat_body(int make_stage)
        host's character. On the DS the menu joins before anything loads a
        level; this is that ordering, restored. No-op with no transport. */
     port::comms_wait_for_session(600);
+    /* run mp1 lane ARENACORE1: ARENA MODE HAS NO SESSION TO WAIT FOR, but it
+       has a seat: the relay names it, and it must be in the ROM's "my comms
+       slot" byte (data_020a0f10) before func_0203da9c is read below and by
+       Stage::InitResources, so body <seat> is mine. The body count is the
+       room's capacity (SM64DS_VS_PLAYERS, which vs_player_count reads first).
+       No-op outside arena. */
+    port::vs_arena_seat_world();
 
     const int vs_players = port::vs_player_count();
     /* ---- THE PER-PLAYER INPUT GATE (run mg16, lane MP3) -------------------

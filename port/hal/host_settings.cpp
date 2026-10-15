@@ -568,6 +568,8 @@ const BindKey KEY_BIND[HOST_KEY_COUNT] = {
     { "KeyCamDown",  0x46 },      /* F: tilt down */
     { "KeyCamZoomIn",  0 },       /* CAMPACK1: unbound by default */
     { "KeyCamZoomOut", 0 },
+    { "KeyPartyInvite", 0x42 },   /* B: world party invite / accept */
+    { "KeyPartyLeave",  0x4e },   /* N: world party leave (press twice) */
 };
 const BindKey PAD_BIND[HOST_PAD_COUNT] = {
     { "PadJump",   0x1000 },      /* A */
@@ -585,6 +587,8 @@ const BindKey PAD_BIND[HOST_PAD_COUNT] = {
     { "PadCamDown",  0 },
     { "PadCamZoomIn",  0 },
     { "PadCamZoomOut", 0 },
+    { "PadPartyInvite", 0x0001 }, /* d-pad UP: world party invite / accept */
+    { "PadPartyLeave",  0x0002 }, /* d-pad DOWN: world party leave (press twice) */
 };
 /* CAMPACK1: mouse buttons, Win32 VK codes (0 none, 2 right, 4 middle, 5 X1, 6 X2) */
 const BindKey MOUSE_BIND[HOST_MOUSE_COUNT] = {
@@ -835,6 +839,21 @@ int draw_dist_clamp(int v) { return v < 100 ? 100 : v > 10000 ? 10000 : v; }
    rather than a mod. */
 int g_name_tags = 1;
 
+/* ChatScale (run mp1, lane CHATSCALE1): the text chat's size in percent of
+   today's look. One of 75 / 100 / 125 / 150 / 200, default 100 (= the look the
+   chat has always had). Reloads live: the overlay asks per frame. Anything the
+   file says that is not one of the five lands on the nearest of them. */
+int g_chat_scale = 100;
+int chat_scale_sanitise(int n)
+{
+    if (n <= 0) return 100;
+    if (n < 88) return 75;
+    if (n < 113) return 100;
+    if (n < 138) return 125;
+    if (n < 175) return 150;
+    return 200;
+}
+
 /* AdventureGhosts: 1 when the player asked to play the single-player adventure
    together, seeing other players as see-through ghosts. Default 0, and 0 is
    the ROM's own solo game. Unlike NameTags the default is OFF -- see the
@@ -873,7 +892,8 @@ double g_aspect = 0.0;
    normal VS match. See the header: this key is the launcher's channel to the
    game-side Luigi Infection module, which arms off SM64DS_VS_LUIGI_INFECTION;
    load_once bridges the file to that variable when the mode is on and the
-   player has not set it. */
+   player has not set it, in a solo run only: online the lobby's match plan
+   is the one source of the mode and its seed (hal/luigi_infection.cpp). */
 int g_vs_luigi_infection = 0;
 int g_vs_luigi_seconds = 0;
 
@@ -1504,6 +1524,7 @@ void load_once(void)
     g_mouse_capture = 0;
     g_custom_palette = 0;
     g_name_tags = 1;
+    g_chat_scale = 100;
     g_adventure_ghosts = 0;
     g_debug_menu = 0;
     g_aspect = 0.0;
@@ -1699,6 +1720,7 @@ void load_once(void)
            written before this key existed reads as a file that left it on,
            which is what a player who never opened the dialog expects. */
         g_name_tags = json_bool(text, "NameTags", 1);
+        g_chat_scale = chat_scale_sanitise(json_int(text, "ChatScale", 100));
         /* the adventure-ghost mode, read against its own default of OFF beside
            the keys above: a file written before this key existed reads as one
            that left it off, which is the ROM's solo game. */
@@ -1734,8 +1756,23 @@ void load_once(void)
            the mode on and the player has NOT already exported the variable,
            publish it, so the launcher's settings.json is one channel to the same
            flag the environment toggles. Env-wins, the Aspect contract: an
-           environment value already set (a proof run) is left untouched. */
-        if (g_vs_luigi_infection && !getenv("SM64DS_VS_LUIGI_INFECTION")) {
+           environment value already set (a proof run) is left untouched.
+
+           SOLO ONLY (1.0). In an online session (SM64DS_COMMS_ROLE names a
+           role, even one the carrier then refuses) the mode and its seed are
+           the room's: the launcher exports both from the lobby's go plan and
+           nothing else may arm the mode, so this per-machine key is ignored
+           there, the test clock with it. Otherwise one player's old checkbox
+           turns Luigi Infection on for one console of a normal room and the
+           match desyncs at the pick; ignored, that console's session digest
+           reads the plan's answer and the carrier's join check sorts it out. */
+        const char *li_role = getenv("SM64DS_COMMS_ROLE");
+        const int li_online = li_role && *li_role;
+        if (g_vs_luigi_infection && li_online)
+            fprintf(stderr, "[settings] VsLuigiInfection on but this is an "
+                    "online session: ignored, the match plan decides\n");
+        if (g_vs_luigi_infection && !li_online
+                && !getenv("SM64DS_VS_LUIGI_INFECTION")) {
             port_setenv("SM64DS_VS_LUIGI_INFECTION", "1");
             if (g_vs_luigi_seconds > 0 && !getenv("SM64DS_VS_LUIGI_TIME")) {
                 char secbuf[16];
@@ -2284,6 +2321,8 @@ int reload_live(const char *text)
        no-collision paths read it per frame, so the launcher's dialog can turn
        the mode on and off with the game already running. */
     const int adv = json_bool(text, "AdventureGhosts", g_adventure_ghosts);
+    /* ChatScale (CHATSCALE1): live; the overlay reads it every frame. */
+    const int chat = chat_scale_sanitise(json_int(text, "ChatScale", g_chat_scale));
     int fill = g_gap_fill;
     unsigned color = g_gap_color;
     int vol = g_volume;
@@ -2348,7 +2387,8 @@ int reload_live(const char *text)
     }
     if (gap != g_gap_on || peek != g_gap_peek || fill != g_gap_fill ||
         color != g_gap_color || vol != g_volume || mcap != g_mouse_capture ||
-        tags != g_name_tags || adv != g_adventure_ghosts) {
+        tags != g_name_tags || adv != g_adventure_ghosts ||
+        chat != g_chat_scale) {
         g_gap_on = gap;
         g_gap_peek = peek;
         g_gap_fill = fill;
@@ -2357,17 +2397,18 @@ int reload_live(const char *text)
         g_mouse_capture = mcap;
         g_name_tags = tags;
         g_adventure_ghosts = adv;
+        g_chat_scale = chat;
         changed = 1;
         fprintf(stderr, "[settings] live re-read: MinigameGap %s, fill %s "
                 "#%06x, peek %s, volume %d, mouse capture %s, "
-                "name tags %s, adventure ghosts %s\n",
+                "name tags %s, adventure ghosts %s, chat scale %d\n",
                 g_gap_on ? "on" : "OFF",
                 g_gap_fill == 0   ? "solid"
                 : g_gap_fill == 2 ? "custom"
                                   : "ambient",
                 g_gap_color & 0xffffffu, g_gap_peek ? "ON" : "off", g_volume,
                 g_mouse_capture ? "ON" : "off", g_name_tags ? "on" : "OFF",
-                g_adventure_ghosts ? "ON" : "off");
+                g_adventure_ghosts ? "ON" : "off", g_chat_scale);
     }
     return changed;
 }
@@ -2620,6 +2661,21 @@ extern "C" int host_setting_debug_menu(void)
     if (env >= 0) return env;
     load_once();
     return g_debug_menu;
+}
+
+/* ChatScale: percent, one of 75 / 100 / 125 / 150 / 200. SM64DS_CHAT_SCALE
+   forces a value for a proof run (through the same sanitiser); unset is the
+   file's answer, live re-read included. */
+extern "C" int host_setting_chat_scale(void)
+{
+    static int env = -2;
+    if (env == -2) {
+        const char *e = getenv("SM64DS_CHAT_SCALE");
+        env = (e && *e) ? chat_scale_sanitise(atoi(e)) : -1;
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_chat_scale;
 }
 
 /* AdventureGhosts, plus the debug env override every host toggle in this file
@@ -3217,6 +3273,17 @@ extern "C" int host_setting_set_debug_menu(int on)
     g_debug_menu = on;
     g_poll_flag = 1;
     queue_bool("DebugMenu", on);
+    return 1;
+}
+
+extern "C" int host_setting_set_chat_scale(int pct)
+{
+    load_once();
+    if (pct <= 0) return 0;
+    pct = chat_scale_sanitise(pct);
+    g_chat_scale = pct;
+    g_poll_flag = 1;
+    queue_int("ChatScale", pct);
     return 1;
 }
 

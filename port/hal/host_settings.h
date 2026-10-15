@@ -164,6 +164,7 @@ enum {
     HOST_KEY_START, HOST_KEY_SELECT, HOST_KEY_LOOK,
     HOST_KEY_CAM_CENTER, HOST_KEY_CAM_LEFT, HOST_KEY_CAM_RIGHT, HOST_KEY_CAM_MODE,
     HOST_KEY_CAM_UP, HOST_KEY_CAM_DOWN, HOST_KEY_CAM_ZOOM_IN, HOST_KEY_CAM_ZOOM_OUT,
+    HOST_KEY_PARTY_INVITE, HOST_KEY_PARTY_LEAVE,     /* WPARTY2: in-world party invite / accept, leave (hal/world_party.h) */
     HOST_KEY_COUNT
 };
 enum {
@@ -171,6 +172,7 @@ enum {
     HOST_PAD_START, HOST_PAD_SELECT, HOST_PAD_LOOK,
     HOST_PAD_CAM_CENTER, HOST_PAD_CAM_LEFT, HOST_PAD_CAM_RIGHT, HOST_PAD_CAM_MODE,
     HOST_PAD_CAM_UP, HOST_PAD_CAM_DOWN, HOST_PAD_CAM_ZOOM_IN, HOST_PAD_CAM_ZOOM_OUT,
+    HOST_PAD_PARTY_INVITE, HOST_PAD_PARTY_LEAVE,     /* default d-pad UP / DOWN; the only rows allowed to hold a d-pad bit */
     HOST_PAD_COUNT
 };
 /* The two trigger pseudo-buttons a pad binding may name (see the PAD block
@@ -415,6 +417,15 @@ int host_setting_set_draw_distance(int pct);
    it off for a proof run and any other value forces it on; unset is the
    file's answer. */
 int host_setting_name_tags(void);
+
+/* ---- ChatScale: HOW BIG THE TEXT CHAT IS (run mp1, lane CHATSCALE1) -----
+   Percent of the chat's look today: 75, 100, 125, 150 or 200, default 100
+   (which draws exactly what the chat always drew). It scales the chat lines
+   and the typing box; a message wider than half the screen wraps, so a bigger
+   size wraps sooner. Any other number lands on the nearest of the five.
+   Reloads live. SM64DS_CHAT_SCALE overrides it for a proof run. */
+int host_setting_chat_scale(void);
+int host_setting_set_chat_scale(int pct);
 
 /* ---- AdventureGhosts: PLAY THE SINGLE-PLAYER ADVENTURE TOGETHER ----------
    Default 0, and 0 is the ROM: an ordinary solo game with nobody else in it.

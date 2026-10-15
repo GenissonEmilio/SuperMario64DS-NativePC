@@ -72,6 +72,7 @@ struct Minimap {
 };
 
 extern "C" void _ZN3OAM9RenderSubEP7OamAttriiii(void *oam, int x, int y, int a, int pal);
+extern "C" void port_coop_minimap_trace(int slot, int gk, int x, int y, int mapid, int cur);
 extern "C" void _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi(int on, void *oam, int x, int y, int a, int pal, int scale, int ang);
 extern "C" void _ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2(int on, void *oam, int x, int y, int a, int pal, void *mtx);
 
@@ -151,6 +152,36 @@ int Minimap::Render()
                 }
             }
         } else {
+            /* SMALLS9: the other players of a party / coop / world room, as the
+               VS loop above draws them (the same small coloured icons). Hub
+               ghosts only: g_mm_ghost_pos is installed by hal/coop_minimap.cpp
+               and answers 1 for a ghost drawn this frame. NULL (solo) = nothing
+               here, byte-identical to the matched body. */
+            if (g_mm_ghost_pos) {
+                for (i = 0; i < kMinimapWidePlayers; i++) {
+                    int gp[3];
+                    const int gk = (i == idx) ? 0 : g_mm_ghost_pos(i, gp);
+                    if (gk) port_coop_minimap_trace(i, gk, g_mm_iconX[i], g_mm_iconY[i], g_mm_mapID[i], data_ov002_02111148);
+                    if (gk != 1) continue;
+                    int y = g_mm_iconY[i];
+                    if ((u16)(y + 0x10) < 0xe0) {
+                        int x = g_mm_iconX[i];
+                        if ((u16)(x + 0x10) < 0x120 && data_ov002_02111148 == g_mm_mapID[i]) {
+                            /* the adventure icon table, the one the local blip uses: the VS
+                               small-icon sprites are not loaded in an adventure level */
+                            Player *gp2 = data_0209f394[i];
+                            int gicon;
+                            if (gp2->HasNoCap() != 0)
+                                gicon = gp2->unk6D9 * 4 + 3;
+                            else
+                                gicon = gp2->unk8 + gp2->unk6D9 * 4;
+                            if (gicon < 0 || gicon > 15) gicon = 0;
+                            _ZN3OAM9RenderSubEP7OamAttriiii(_ZN3OAM15MM_PLAYER_ICONSE[gicon],
+                                x, y, -1, 2);
+                        }
+                    }
+                }
+            }
             u16 t = pl->unk6C8;
             if (t == 0 || ((t / 10) & 1) == 0) {
                 if (this->unk255 == 0) {
@@ -277,4 +308,12 @@ int Minimap::Render()
     }
 
     return 1;
+}
+
+/* MPSYNC1: the minimap object's vtable is the dMap_c class TU's (src/actors/dMap_c.cpp), whose Behavior / Render
+   index the four-wide per-player tables. hal/sub_actors.cpp seats this host copy (sixteen wide, coop ghost icons)
+   into slot 9 of that vtable; the Behavior twin is _ZN6dMap_c8BehaviorEv above. */
+extern "C" int port_minimap_wide_render(void *self)
+{
+    return ((Minimap *)self)->Render();
 }

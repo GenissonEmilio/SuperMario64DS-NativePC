@@ -99,9 +99,17 @@ def status_of(reply):
 
 
 def quick_post(c, verb, obj, xff):
-    """One POST with a chosen X-Forwarded-For, returning (status, parsed)."""
-    status, text = c.raw("POST", "/port/lobby/" + verb, json.dumps(obj).encode(),
-                         extra=(("X-Forwarded-For", xff),))
+    """One POST with a chosen X-Forwarded-For, returning (status, parsed).
+
+    A refusal closes the connection at once (see _reject), and on Windows the
+    client can see that close as WinError 10053 before it reads the answer.
+    That is a refused request, so it comes back as status 0, never a crash."""
+    try:
+        status, text = c.raw("POST", "/port/lobby/" + verb,
+                             json.dumps(obj).encode(),
+                             extra=(("X-Forwarded-For", xff),))
+    except ConnectionError:
+        return 0, {}
     try:
         return status, json.loads(text)
     except ValueError:
@@ -132,7 +140,8 @@ def blocker1():
         burned = "10.9.9.1"
         last = None
         for _ in range(12):
-            last = quick_post(c, "create", {"v": 1, "nick": "x"}, burned)
+            last = quick_post(c, "create",
+                              {"v": 5, "nick": "x", "game": "t-1.0"}, burned)
         check("an address can be pushed to 429 ignored",
               last is not None and last[0] == 429
               and last[1].get("error") == "ignored", last)
@@ -183,7 +192,7 @@ def blocker1():
                 hs.close()
             except OSError:
                 pass
-        st, body = c.post("create", {"v": 1, "nick": "after"})
+        st, body = c.post("create", {"v": 5, "nick": "after", "game": "t-1.0"})
         check("after the held connections time out the server serves normally",
               st == 200, (st, body))
     finally:
@@ -191,6 +200,11 @@ def blocker1():
 
 
 # ---------------------------------------------------------- BLOCKER 2
+
+
+# A join to a room nobody holds: well formed at contract v5, so it reaches the
+# join limiter and then the room lookup (404) when the limiter lets it through.
+JOIN_BODY = {"v": 5, "room": "ZZZZZZ", "nick": "n", "game": "t-1.0"}
 
 
 def blocker2():
@@ -210,7 +224,7 @@ def blocker2():
         codes = {}
         for i in range(30):
             forged = "%d.%d.%d.%d" % (i + 1, i + 2, i + 3, i + 4)
-            st, _ = quick_post(c, "join", {"v": 1, "room": "ZZZZZZ", "nick": "n"},
+            st, _ = quick_post(c, "join", JOIN_BODY,
                                "%s, %s" % (forged, REAL))
             codes[st] = codes.get(st, 0) + 1
         check("forged FIRST entries do not bypass the join cap when the real "
@@ -227,8 +241,7 @@ def blocker2():
         time.sleep(1)
         honest = {}
         for _ in range(30):
-            st, _ = quick_post(c, "join", {"v": 1, "room": "ZZZZZZ", "nick": "n"},
-                               "198.51.100.7")
+            st, _ = quick_post(c, "join", JOIN_BODY, "198.51.100.7")
             honest[st] = honest.get(st, 0) + 1
         check("an honest single address is still rate-limited",
               honest.get(429, 0) > 0, honest)
@@ -243,7 +256,7 @@ def blocker2():
         direct = {}
         for i in range(30):
             forged = "%d.%d.%d.%d" % (100 + i, i, i, i)
-            st, _ = quick_post(c, "join", {"v": 1, "room": "ZZZZZZ", "nick": "n"},
+            st, _ = quick_post(c, "join", JOIN_BODY,
                                forged)   # single entry, no appended peer
             direct[st] = direct.get(st, 0) + 1
         print("info  direct-exposure control (no proxy appending a real peer): "
@@ -253,9 +266,632 @@ def blocker2():
         sp.stop()
 
 
+# ------------------------------------------------------ v5 WORLD POOL
+
+
+def compose_env():
+    """The environment docker-compose.yml ships, read from the file itself so
+    these rows run at the SHIPPED settings and cannot drift from them (review
+    REVLOBBY5: the first version of this section narrowed the pool and the
+    join budget, which hid the flood)."""
+    import os
+    import re
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "docker-compose.yml")
+    env, inside = {}, False
+    for line in open(path, encoding="utf-8"):
+        if re.match(r"^\s+environment:\s*$", line):
+            inside = True
+            continue
+        if inside:
+            m = re.match(r'^\s+([A-Z_][A-Z0-9_]*):\s*"([^"]*)"\s*$', line)
+            if m:
+                env[m.group(1)] = m.group(2)
+            elif re.match(r"^\s+#", line) or not line.strip():
+                continue
+            else:
+                break
+    env.pop("LISTEN_PORT", None)
+    return env
+
+
+REAL = "1.0.0-0123abcd"     # the build id the release step would list
+
+
+def world_pool():
+    """Review REVLOBBY5 S2, at the SHIPPED compose settings: the world pool
+    cannot be filled or padded from one or two home connections, a household
+    of four behind one connection plays, and unknown builds are refused.
+
+    Each row gets a fresh server (the compose env plus the release step's
+    GAME_IDS line), and what the attacker holds is read from /health
+    (`worlds`, `world_members` = live members over the whole pool) rather than
+    from the attacker's own pings, which the bad-sender rule is by then
+    refusing."""
+    print("\n== v5 WORLD POOL at the shipped docker-compose settings ==")
+    shipped = compose_env()
+    print("info  compose env: %s" % ", ".join(
+        "%s=%s" % kv for kv in sorted(shipped.items())
+        if kv[0] in ("GAME_IDS", "RELAY_V", "MAX_WORLDS", "WORLD_SEATS",
+                     "WORLD_MEMBER_S", "WORLD_EMPTY_S", "WORLD_ADDR_TOKENS",
+                     "RATE_JOIN_PER_MIN", "RATE_REQ_PER_S", "BAD_LIMIT",
+                     "TRUST_XFF")))
+    released = dict(shipped)
+    released["GAME_IDS"] = REAL
+
+    def fresh(env):
+        sp = Spawned(pick_port(), env)
+        return sp, sp.wait_ready()
+
+    def world(c, who, game=REAL, skip=None, nick="x"):
+        body = {"v": 5, "nick": nick, "game": game}
+        if skip:
+            body["skip"] = skip
+        return quick_post(c, "world", body, who)
+
+    # (0) The compose file AS SHIPPED (GAME_IDS empty until the release step
+    #     writes it): the world pool is off, code rooms work.
+    sp, c = fresh(shipped)
+    try:
+        st, h = c.get("health")
+        st1, w = world(c, "198.51.100.1")
+        st2, r = quick_post(c, "create", {"v": 5, "nick": "a", "game": REAL},
+                            "198.51.100.1")
+        check("compose as shipped (GAME_IDS empty): world pool off (503 "
+              "world_off), code rooms work",
+              h.get("world_open") is False and st1 == 503
+              and w.get("error") == "world_off" and st2 == 200,
+              (h.get("world_open"), st1, w, st2))
+    finally:
+        sp.stop()
+
+    # (1) THE REVIEWER'S FLOOD: one address, 64 world calls with made-up
+    #     build ids.
+    sp, c = fresh(released)
+    try:
+        st, h = c.get("health")
+        check("with GAME_IDS set the pool is open at the shipped knobs",
+              h.get("world_open") is True and h.get("world_addr_tokens") == 4
+              and h.get("worlds") == 0, h)
+        codes = {}
+        for i in range(64):
+            st, _ = world(c, "203.0.113.66", game="fake-%d" % i)
+            codes[st] = codes.get(st, 0) + 1
+            time.sleep(0.25)
+        st, h = c.get("health")
+        st2, real = world(c, "198.51.100.200", nick="real")
+        print("info  (1) status counts %s, worlds %s, real player %s world %s"
+              % (codes, h.get("worlds"), st2, real.get("world_no")))
+        check("one address, 64 made-up builds: not one world opens (409 "
+              "unknown_game, then the bad-sender rule), a real player gets "
+              "world 1",
+              codes.get(200, 0) == 0 and h.get("worlds") == 0
+              and st2 == 200 and real.get("world_no") == 1,
+              (codes, h, st2, real))
+        st, out = quick_post(c, "create", {"v": 5, "nick": "x",
+                                           "game": "fake-99"}, "198.51.100.77")
+        check("an unknown build on create is 409 unknown_game",
+              st == 409 and out.get("error") == "unknown_game", (st, out))
+    finally:
+        sp.stop()
+
+    # (2) THE REAL BUILD FROM ONE ADDRESS (review H9b): 64 calls, skip
+    #     alternating to spread over worlds.
+    sp, c = fresh(released)
+    try:
+        codes, last = {}, None
+        for i in range(64):
+            st, out = world(c, "203.0.113.77", skip=last)
+            codes[st] = codes.get(st, 0) + 1
+            if st == 200:
+                last = out["code"]
+            time.sleep(0.25)
+        st, h = c.get("health")
+        st2, real = world(c, "198.51.100.201", nick="real")
+        print("info  (2) status counts %s, pool worlds %s live members %s, "
+              "real player %s world %s members %s"
+              % (codes, h.get("worlds"), h.get("world_members"), st2,
+                 real.get("world_no"), real.get("members")))
+        check("one address, real build, 64 calls with skip: the whole pool "
+              "holds at most 4 live members and 2 worlds, a real player gets "
+              "world 1 with room",
+              h.get("world_members", 99) <= 4 and h.get("worlds", 99) <= 2
+              and st2 == 200 and real.get("world_no") == 1
+              and real.get("members", 99) <= 5, (codes, h, st2, real))
+    finally:
+        sp.stop()
+
+    # (3) TWO ADDRESSES AT ONCE, one with the real build and skip, one with
+    #     made-up builds.
+    sp, c = fresh(released)
+    try:
+        codes, last = {}, None
+        for i in range(64):
+            st, out = world(c, "203.0.113.88", skip=last)
+            codes[st] = codes.get(st, 0) + 1
+            if st == 200:
+                last = out["code"]
+            st, _ = world(c, "203.0.113.99", game="fake-%d" % i)
+            codes[st] = codes.get(st, 0) + 1
+            time.sleep(0.25)
+        st, h = c.get("health")
+        st2, real = world(c, "198.51.100.202", nick="real")
+        print("info  (3) status counts %s, pool worlds %s live members %s, "
+              "real player %s world %s"
+              % (codes, h.get("worlds"), h.get("world_members"), st2,
+                 real.get("world_no")))
+        check("two addresses flooding at once: at most 4 live members and 2 "
+              "worlds in the pool, a real player gets world 1",
+              h.get("world_members", 99) <= 4 and h.get("worlds", 99) <= 2
+              and st2 == 200 and real.get("world_no") == 1,
+              (codes, h, st2, real))
+        # and a second pair of addresses, both on the real build (the row
+        # above's members are still live, so this reads the growth)
+        before = h.get("world_members", 0) + 1     # + the real player
+        for i in range(64):
+            for who in ("203.0.113.101", "203.0.113.102"):
+                world(c, who)
+            time.sleep(0.25)
+        st, h = c.get("health")
+        print("info  (3b) two real-build addresses: pool worlds %s live "
+              "members %s (was %d)" % (h.get("worlds"),
+                                       h.get("world_members"), before))
+        check("two real-build addresses, 64 calls each: they add at most 8 "
+              "live members to the pool (4 each)",
+              h.get("world_members", 99) - before <= 8
+              and h.get("worlds", 99) <= 2, (before, h))
+    finally:
+        sp.stop()
+
+    # (4) FAKE-MEMBER PADDING: an observer (a real player) sits in world 1;
+    #     one address asks 16 times with no skip to fill that world.
+    sp, c = fresh(released)
+    try:
+        st, obs = world(c, "198.51.100.30", nick="observer")
+        for i in range(16):
+            world(c, "203.0.113.111")
+            time.sleep(0.1)
+        st, pong = quick_post(c, "world_ping", {"v": 5, "code": obs["code"],
+                                                "token": obs["token"]},
+                              "198.51.100.30")
+        print("info  (4) world 1 after 16 padding asks: %s members"
+              % pong.get("members"))
+        check("padding world 1 from one address: it holds the observer + 4, "
+              "not 17", st == 200 and pong.get("members") == 5, (st, pong))
+    finally:
+        sp.stop()
+
+    # (5) A HOUSEHOLD OF 4 behind one connection, playing normally.
+    sp, c = fresh(released)
+    try:
+        home = "198.51.100.150"
+        fam = [world(c, home, nick="fam%d" % i) for i in range(4)]
+        ok = all(st == 200 for st, _ in fam)
+        lives = []
+        for _round in range(3):
+            time.sleep(1.0)
+            n = 0
+            for st, o in fam:
+                if st == 200:
+                    st2, _ = quick_post(c, "world_ping", {
+                        "v": 5, "code": o["code"], "token": o["token"]}, home)
+                    n += st2 == 200
+            lives.append(n)
+        st, h = c.get("health")
+        print("info  (5) household: %s, pings live per round %s, pool live "
+              "members %s" % ([st for st, _ in fam], lives,
+                              h.get("world_members")))
+        check("a household of 4 on one address: all 4 get world 1 and all 4 "
+              "keep pinging (3 rounds)",
+              ok and lives == [4, 4, 4] and h.get("world_members") == 4
+              and all(o.get("world_no") == 1 for _, o in fam),
+              (fam, lives, h))
+
+        # (6) Hostile fields and guessed pings still make nothing.
+        for body, want in (
+                ({"v": 5, "nick": "n" * 17, "game": REAL}, "too_long"),
+                ({"v": 5, "nick": "n", "game": "g" * 25}, "too_long"),
+                ({"v": 5, "nick": "n", "game": "../../etc"}, "bad_game"),
+                ({"v": 5, "nick": "n", "game": REAL, "skip": "A" * 400},
+                 "too_long"),
+                ({"v": 5, "nick": "n", "game": REAL, "admin": True},
+                 "bad_field")):
+            st, out = quick_post(c, "world", body, "198.51.102.1")
+            check("world %s -> 400 %s" % (sorted(body), want),
+                  st == 400 and out.get("error") == want, (st, out))
+        st, h0 = c.get("health")
+        st1, _ = quick_post(c, "world_ping", {"v": 5, "code": "ZZZZZZZZ",
+                                              "token": "0" * 32},
+                            "198.51.102.2")
+        st2, _ = quick_post(c, "world_ping", {"v": 5,
+                                              "code": fam[0][1].get("code"),
+                                              "token": "0" * 32},
+                            "198.51.102.2")
+        st, h1 = c.get("health")
+        check("guessed world_pings are 404 / 403 and open nothing",
+              st1 == 404 and st2 == 403
+              and h1.get("worlds") == h0.get("worlds"),
+              (st1, st2, h0.get("worlds"), h1.get("worlds")))
+    finally:
+        sp.stop()
+
+
+def waiting_seats():
+    """run mp1 L-J1, at the SHIPPED compose settings (plus the release step's
+    GAME_IDS line): a VS room whose match is on now takes joiners as WAITING
+    seats instead of 409 in_match. A waiting seat must not be able to touch
+    the running match, and a flood of waiting joins must hit the caps a lobby
+    join always had (the join budget, the request bucket, MAX_SEATS)."""
+    print("\n== L-J1 WAITING SEATS at the shipped docker-compose settings ==")
+    env = dict(compose_env())
+    env["GAME_IDS"] = REAL
+    seats = int(env.get("MAX_SEATS", "16"))
+
+    def running_room(c, tag):
+        """A 2P room of our own, taken to `go` (both launchers ready)."""
+        st, h = quick_post(c, "create", {"v": 5, "nick": "h", "game": REAL,
+                                         "pre_ok": True}, "198.51.100.%d" % tag)
+        code = h["room"]
+        st, g = quick_post(c, "join", {"v": 5, "room": code, "nick": "g",
+                                       "game": REAL, "pre_ok": True},
+                           "198.51.100.%d" % (tag + 1))
+        st, a = quick_post(c, "start", {"v": 5, "room": code,
+                                        "token": h["token"]},
+                           "198.51.100.%d" % tag)
+        for tok, ip in ((h["token"], tag), (g["token"], tag + 1)):
+            quick_post(c, "ready", {"v": 5, "room": code, "token": tok,
+                                    "match": a["match"]}, "198.51.100.%d" % ip)
+        return code, h, g, a["match"]
+
+    def view(c, code, tok, ip):
+        st, out = quick_post(c, "poll", {"v": 5, "room": code, "token": tok,
+                                         "cursor": 1, "wait": 0}, ip)
+        return st, out
+
+    sp = Spawned(pick_port(), env)
+    c = sp.wait_ready()
+    try:
+        # (1) One address floods joins into a running room.
+        code, h, g, match = running_room(c, 10)
+        st, hv = view(c, code, h["token"], "198.51.100.10")
+        comms = [e["plan"]["code"] for e in hv.get("events", [])
+                 if e.get("kind") == "go" and e.get("plan", {}).get("code")]
+        counts = {}
+        for i in range(80):
+            st, out = quick_post(c, "join", {"v": 5, "room": code,
+                                             "nick": "f%d" % i, "game": REAL},
+                                 "203.0.113.50")
+            key = "%s %s" % (st, out.get("error", "")) if st != 200 else "200"
+            counts[key] = counts.get(key, 0) + 1
+        st, hv = view(c, code, h["token"], "198.51.100.10")
+        members = hv.get("view", {}).get("members", [])
+        print("info  (1) one-address flood of 80 joins: %s; room %d members, "
+              "%d playing, state %s"
+              % (counts, len(members), sum(1 for m in members if m["playing"]),
+                 hv.get("view", {}).get("state")))
+        check("one address, 80 joins into a running room: at most MAX_SEATS "
+              "(%d) seats, every other answer room_full or 429" % seats,
+              len(members) <= seats
+              and counts.get("200", 0) == len(members) - 2
+              and all(k == "200" or k.startswith("409 room_full")
+                      or k.startswith("429") for k in counts),
+              (counts, len(members)))
+        check("and every waiting seat is out of the match: 2 playing, still "
+              "running", sum(1 for m in members if m["playing"]) == 2
+              and hv["view"]["state"] in ("go", "in_match")
+              and hv["view"]["match"] == match, hv.get("view"))
+
+        # (2) Many addresses flood a second running room.
+        code2, h2, g2, match2 = running_room(c, 20)
+        ok, full = 0, 0
+        for i in range(40):
+            st, out = quick_post(c, "join", {"v": 5, "room": code2,
+                                             "nick": "m%d" % i, "game": REAL},
+                                 "203.0.114.%d" % (i + 1))
+            ok += st == 200
+            full += st == 409 and out.get("error") == "room_full"
+        print("info  (2) 40 addresses: %d seated, %d room_full" % (ok, full))
+        check("40 addresses into a running room: %d waiting seats, the rest "
+              "room_full" % (seats - 2), ok == seats - 2 and full == 40 - ok,
+              (ok, full))
+
+        # (3) A waiting seat against the running match, over HTTP.
+        code3, h3, g3, match3 = running_room(c, 30)
+        time.sleep(6)       # past GO_GRACE_S: the room is in_match
+        st, w = quick_post(c, "join", {"v": 5, "room": code3, "nick": "w",
+                                       "game": REAL}, "203.0.115.1")
+        tok, ip = w.get("token"), "203.0.115.1"
+        answers = {}
+        for verb, body in (
+                ("ready", {"match": match3}),
+                ("failed", {"match": match3, "reason": "no_pairing"}),
+                ("result", {"match": match3, "win": "star-target",
+                            "scores": [0, 9, 0, 0]}),
+                ("start", {}),
+                ("params", {"map": 1, "win_mode": "time"}),
+                ("kick", {"seat": 1})):
+            b = {"v": 5, "room": code3, "token": tok}
+            b.update(body)
+            st, out = quick_post(c, verb, b, ip)
+            answers[verb] = (st, out.get("error"))
+        print("info  (3) waiting seat: %s" % answers)
+        check("a waiting seat's ready/failed/result are 403 not_playing, its "
+              "start/params/kick 403 not_host",
+              st == 403 and all(answers[v] == (403, "not_playing")
+                                for v in ("ready", "failed", "result"))
+              and all(answers[v] == (403, "not_host")
+                      for v in ("start", "params", "kick")), answers)
+        picks = {}
+        for key, val in (("slot", 0), ("want_seat", 0), ("role", "parent"),
+                         ("playing", True)):
+            st, out = quick_post(c, "join", {"v": 5, "room": code3, "nick": "p",
+                                             "game": REAL, key: val},
+                                 "203.0.115.%d" % (10 + len(picks)))
+            picks[key] = (st, out.get("error"))
+        check("no join field picks a slot, a seat or a role: 400 bad_field",
+              all(v == (400, "bad_field") for v in picks.values()), picks)
+        st, wv = view(c, code3, tok, ip)
+        st2, hv3 = view(c, code3, h3["token"], "198.51.100.30")
+        host_codes = [e["plan"]["code"] for e in hv3.get("events", [])
+                      if e.get("kind") == "go" and "code" in e.get("plan", {})]
+        check("the room is still in its match; the waiting seat's answers "
+              "never carry the match's relay code",
+              hv3["view"]["state"] == "in_match"
+              and hv3["view"]["match"] == match3 and host_codes
+              and host_codes[0] not in json.dumps(w)
+              and host_codes[0] not in json.dumps(wv)
+              and wv.get("plan", {"playing": False}) == {"playing": False},
+              (hv3.get("view", {}).get("state"), wv.get("plan")))
+    finally:
+        sp.stop()
+
+
+def arena_mode():
+    """run mp1 A4, at the SHIPPED compose settings: (1) the compose file as
+    shipped plays every match lockstep (ARENA_GAME_IDS empty: arena is off
+    until the deploy names a build); (2) with the release step's
+    ARENA_GAME_IDS line, a hostile `netmode` is refused at the field, a
+    waiting seat cannot pick the netmode or end an arena match, and the
+    arena no-host rule (the host leaving does not end the match) never hands
+    the host role to a seat that is not playing the match."""
+    print("\n== ARENA MODE at the shipped docker-compose settings ==")
+    env = dict(compose_env())
+    env["GAME_IDS"] = REAL
+    check("the shipped compose file lists no arena build",
+          env.get("ARENA_GAME_IDS", "") == "", env.get("ARENA_GAME_IDS"))
+
+    def running_room(c, tag, n=2):
+        st, h = quick_post(c, "create", {"v": 5, "nick": "h", "game": REAL,
+                                         "pre_ok": True}, "198.51.100.%d" % tag)
+        code = h["room"]
+        toks = [(h["token"], "198.51.100.%d" % tag)]
+        for k in range(1, n):
+            ip = "198.51.100.%d" % (tag + k)
+            st, g = quick_post(c, "join", {"v": 5, "room": code,
+                                           "nick": "g%d" % k, "game": REAL,
+                                           "pre_ok": True}, ip)
+            toks.append((g["token"], ip))
+        st, a = quick_post(c, "start", {"v": 5, "room": code,
+                                        "token": h["token"]}, toks[0][1])
+        for tok, ip in toks:
+            quick_post(c, "ready", {"v": 5, "room": code, "token": tok,
+                                    "match": a["match"]}, ip)
+        return code, toks, a["match"]
+
+    def view(c, code, tok, ip):
+        st, out = quick_post(c, "poll", {"v": 5, "room": code, "token": tok,
+                                         "cursor": 1, "wait": 0}, ip)
+        return out
+
+    # (1) As shipped: lockstep.
+    sp = Spawned(pick_port(), env)
+    c = sp.wait_ready()
+    try:
+        code, toks, match = running_room(c, 40)
+        hv = view(c, code, toks[0][0], toks[0][1])
+        nm = [e["plan"].get("netmode") for e in hv.get("events", [])
+              if e.get("kind") == "go" and "plan" in e]
+        check("(1) as shipped, a match of a listed build plays lockstep and "
+              "the view says arena_ok false",
+              nm == ["lockstep"] and hv["view"].get("arena_ok") is False
+              and hv["view"].get("match_netmode") == "lockstep",
+              (nm, hv.get("view")))
+    finally:
+        sp.stop()
+
+    # (2) With the release step's ARENA_GAME_IDS line.
+    env["ARENA_GAME_IDS"] = REAL
+    sp = Spawned(pick_port(), env)
+    c = sp.wait_ready()
+    try:
+        st, h = quick_post(c, "create", {"v": 5, "nick": "h", "game": REAL},
+                           "198.51.100.60")
+        code, tok = h["room"], h["token"]
+        answers = {}
+        for val in ("x" * 4000, "arena\u0000", "árena", "lockstep ",
+                    {"a": 1}, [1] * 200, -1, 1e308, False):
+            st, out = quick_post(c, "params", {"v": 5, "room": code,
+                                               "token": tok, "map": 0,
+                                               "win_mode": "time",
+                                               "netmode": val},
+                                 "198.51.100.60")
+            answers[repr(val)[:16]] = (st, out.get("error"))
+        hv = view(c, code, tok, "198.51.100.60")
+        print("info  (2a) hostile netmode values: %s" % answers)
+        check("(2a) every hostile netmode is refused (400 bad_netmode, or "
+              "the body cap) and the room keeps its pick",
+              all(st in (400, 413) for st, _ in answers.values())
+              and all(e == "bad_netmode" for st, e in answers.values()
+                      if st == 400)
+              and hv["view"].get("netmode") == "arena", (answers,
+                                                         hv.get("view")))
+        quick_post(c, "leave", {"v": 5, "room": code, "token": tok},
+                   "198.51.100.60")
+
+        code, toks, match = running_room(c, 70, n=3)
+        time.sleep(6)       # past GO_GRACE_S: the room is in_match
+        st, w = quick_post(c, "join", {"v": 5, "room": code, "nick": "w",
+                                       "game": REAL}, "203.0.116.1")
+        wtok, wip = w.get("token"), "203.0.116.1"
+        got = {}
+        for verb, body in (
+                ("params", {"map": 0, "win_mode": "time",
+                            "netmode": "lockstep"}),
+                ("failed", {"match": match, "reason": "no_pairing"}),
+                ("result", {"match": match, "win": "star-target",
+                            "scores": [0, 0, 0, 9]})):
+            b = {"v": 5, "room": code, "token": wtok}
+            b.update(body)
+            st, out = quick_post(c, verb, b, wip)
+            got[verb] = (st, out.get("error"))
+        print("info  (2b) waiting seat in an arena match: %s" % got)
+        check("(2b) a waiting seat cannot pick the netmode (403 not_host) or "
+              "fail / end the arena match (403 not_playing)",
+              got["params"] == (403, "not_host")
+              and got["failed"] == (403, "not_playing")
+              and got["result"] == (403, "not_playing"), got)
+        quick_post(c, "leave", {"v": 5, "room": code, "token": toks[0][0]},
+                   toks[0][1])
+        gv = view(c, code, toks[1][0], toks[1][1])
+        kinds = [e.get("kind") for e in gv.get("events", [])]
+        check("(2c) the host leaving an arena match: the match runs on and "
+              "the host role goes to a seat PLAYING it, never the waiting "
+              "seat", gv["view"]["state"] == "in_match"
+              and gv["view"]["match"] == match
+              and gv["view"]["host"] == 2 and "failed" not in kinds,
+              (gv.get("view"), kinds[-4:]))
+        st, out = quick_post(c, "params", {"v": 5, "room": code,
+                                           "token": wtok, "map": 0,
+                                           "win_mode": "time"}, wip)
+        check("(2c) and the waiting seat is still not host",
+              (st, out.get("error")) == (403, "not_host"), (st, out))
+    finally:
+        sp.stop()
+
+
+def party_coop_rooms():
+    """Run mp1 FIELD5 (lane ROOMS1): contract v6 party and coop rooms, over raw
+    sockets with forged proxy addresses. A forged message must not start a
+    room, end one, carry a path, grant a seat, or crash the service."""
+    print("\n-- party and coop rooms (contract v6)")
+    env = dict(compose_env())
+    env["GAME_IDS"] = REAL + "," + REAL + "x"
+    sp = Spawned(pick_port(), env)
+    c = sp.wait_ready()
+    try:
+        ip = "198.51.100.90"
+        st, h = quick_post(c, "create", {"v": 6, "nick": "h", "game": REAL,
+                                         "session_type": "coop",
+                                         "save_name": "Sec file"}, ip)
+        code, tok = h["room"], h["token"]
+        check("(Pa) a v6 coop create works", st == 200 and "plan" in h, (st, h))
+
+        # A guest cannot start the room or end it; an outsider cannot join
+        # without the game string; a v5 caller cannot join at all.
+        st, g = quick_post(c, "join", {"v": 6, "room": code, "nick": "g",
+                                       "game": REAL}, "203.0.113.31")
+        gtok = g.get("token")
+        st, out = quick_post(c, "start", {"v": 6, "room": code, "token": gtok},
+                             "203.0.113.31")
+        check("(Pb) a guest's start is 403 not_host",
+              (st, out.get("error")) == (403, "not_host"), (st, out))
+        st, out = quick_post(c, "join", {"v": 5, "room": code, "nick": "old",
+                                         "game": REAL}, "203.0.113.32")
+        check("(Pc) a v5 join into a coop room is 400 bad_session_type",
+              (st, out.get("error")) == (400, "bad_session_type"), (st, out))
+        st, out = quick_post(c, "join", {"v": 6, "room": code, "nick": "x",
+                                         "game": REAL + "x"}, "203.0.113.33")
+        check("(Pd) another game build is 409 game_mismatch",
+              (st, out.get("error")) == (409, "game_mismatch"), (st, out))
+
+        # Hostile save names, over the wire, from forged addresses so the
+        # create budget of one address is not what refuses them.
+        answers = {}
+        for n, val in enumerate(("C:\\Users\\x\\a.coopsav", "..\\..\\x",
+                                 "/etc/passwd", "a" * 4000, "x\u0000y",
+                                 "\u00e9", {"a": 1}, [1, 2], -1, 1e308,
+                                 True, None, "")):
+            st, out = quick_post(c, "create", {"v": 6, "nick": "h",
+                                               "game": REAL,
+                                               "session_type": "coop",
+                                               "save_name": val},
+                                 "198.51.100.%d" % (100 + n))
+            answers[repr(val)[:14]] = (st, out.get("error"))
+        print("info  (Pe) hostile save_name values: %s" % answers)
+        check("(Pe) every hostile save_name is refused (400 / 413) and none "
+              "made a room",
+              all(st in (400, 413) for st, _ in answers.values())
+              and all(e in ("bad_save_name", "too_long", None)
+                      for st, e in answers.values()), answers)
+        st, out = quick_post(c, "create", {"v": 6, "nick": "h", "game": REAL,
+                                           "session_type": "coop",
+                                           "save_name": "ok",
+                                           "save_path": "C:\\x\\y.coopsav"},
+                             "198.51.100.150")
+        check("(Pf) a save PATH field is 400 bad_field and no room",
+              (st, out.get("error")) == (400, "bad_field"), (st, out))
+
+        # A forged result / failed / ready in a party or coop room changes
+        # nothing (there is no match to end).
+        got = {}
+        for verb, body in (("result", {"match": "0" * 16, "win": "draw",
+                                       "scores": [9, 0, 0, 0]}),
+                           ("failed", {"match": "0" * 16,
+                                       "reason": "user_cancelled"}),
+                           ("ready", {"match": "0" * 16})):
+            b = {"v": 6, "room": code, "token": gtok}
+            b.update(body)
+            st, out = quick_post(c, verb, b, "203.0.113.31")
+            got[verb] = (st, out.get("error"))
+        check("(Pg) a guest's forged result / failed / ready are 409 "
+              "stale_match", all(v == (409, "stale_match")
+                                 for v in got.values()), got)
+        st, v = quick_post(c, "poll", {"v": 6, "room": code, "token": tok,
+                                       "cursor": 0, "wait": 0}, ip)
+        kinds = [e.get("kind") for e in v.get("events", [])]
+        check("(Ph) the room is unmoved by all of it: lobby, not started, no "
+              "result or failed event",
+              v["view"]["state"] == "lobby" and v["view"]["started"] is False
+              and "result" not in kinds and "failed" not in kinds,
+              (v.get("view"), kinds))
+
+        # The host's launch is the only thing that moves `started`.
+        st, out = quick_post(c, "start", {"v": 6, "room": code, "token": tok},
+                             ip)
+        check("(Pi) the host's start works once and answers launch 1",
+              (st, out.get("launch")) == (200, 1), (st, out))
+        # The wire check: the plan/view never carry a path-looking value.
+        text = json.dumps([v, out])
+        check("(Pj) no answer carries a path", "coopsav" not in text
+              and "\\\\" not in text.replace("\\\\u", ""), text[:200])
+        # Oversize and lying bodies on the new type go through the same
+        # transport as every verb.
+        big = json.dumps({"v": 6, "nick": "h", "game": REAL,
+                          "session_type": "coop",
+                          "save_name": "z" * 6000}).encode()
+        stt, _ = c.raw("POST", "/port/lobby/create", big,
+                       extra=(("X-Forwarded-For", "198.51.100.200"),))
+        check("(Pk) a 6 KB coop create is refused before parsing (413)",
+              stt == 413, stt)
+        s = raw_head(sp.port, "create", 50, xff="198.51.100.201")
+        reply = read_reply(s, 12)
+        s.close()
+        check("(Pl) a coop create that announces 50 bytes and sends none is "
+              "dropped by the read deadline, the service stays up",
+              status_of(reply) in (0, 400, 408), reply[:40])
+        stt, hh = c.get("health")
+        check("(Pm) and the service still answers /health", stt == 200, stt)
+    finally:
+        sp.stop()
+
+
 def main():
     blocker1()
     blocker2()
+    world_pool()
+    waiting_seats()
+    arena_mode()
+    party_coop_rooms()
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:
         print("  FAILED: %s" % name)

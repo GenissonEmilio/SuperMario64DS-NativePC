@@ -1870,12 +1870,14 @@ endforeach()
 # crashed). Resolved at configure time via `git rev-parse`; a re-configure on a
 # new commit refreshes it. Emitted as a tiny .c so any target that wants the tip
 # just links it. Falls back to "unknown" outside a git checkout, which matches
-# fault_probe.h's weak default.
+# fault_probe.h's weak default. The length is fixed at 10 so two clones of one
+# commit bake the same tip, and so the same online build id (comms_loopback's
+# session check hashes this string).
 find_program(GIT_EXECUTABLE git)
 set(PORT_GIT_TIP "unknown")
 if(GIT_EXECUTABLE)
     execute_process(
-        COMMAND "${GIT_EXECUTABLE}" -C "${PORT_REPO_ROOT_ABS}" rev-parse --short HEAD
+        COMMAND "${GIT_EXECUTABLE}" -C "${PORT_REPO_ROOT_ABS}" rev-parse --short=10 HEAD
         OUTPUT_VARIABLE PORT_GIT_TIP_OUT
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET RESULT_VARIABLE PORT_GIT_RC)
@@ -11941,6 +11943,84 @@ list(APPEND SLICE_COMMS_SOURCES hal/comms_conductor.cpp)
 # only -- nothing in src/ knows it exists -- and OFF unless SM64DS_SYNC=1,
 # so linking it changes no behaviour. See runs/mg16/status/MP4-DESIGN.md.
 list(APPEND SLICE_COMMS_SOURCES hal/comms_sync.cpp)
+# Run mp1 lane GHOSTDOOR1: the door / area / hidden look of a hub ghost.
+list(APPEND SLICE_COMMS_SOURCES hal/ghost_door.cpp)
+list(APPEND SLICE_COMMS_SOURCES hal/ghost_tongue.cpp)
+# Run mp1 wave 3 lane PBODY1: solid party bodies (membership by seat, the collision
+# cylinder and its audit). INERT unless SM64DS_PARTY is set; see hal/party.h.
+list(APPEND SLICE_COMMS_SOURCES hal/party.cpp hal/party_cyl.cpp)
+# Run mp1 lane HUB1: the adventure hub carrier. Port-side only and INERT
+# unless SM64DS_ADVENTURE is on AND a relay or SM64DS_HUB_PORT is named, so
+# linking it changes no behaviour; see hal/comms_hub.h.
+list(APPEND SLICE_COMMS_SOURCES hal/comms_hub.cpp)
+# Run mp1 wave 56 lane WIRE1: party / coop presence ('SYNL') and the hub_on_kind
+# pump. INERT unless a hub is live in a non-arena session; see hal/hub_presence.h.
+list(APPEND SLICE_COMMS_SOURCES hal/hub_presence.cpp)
+# Run mp1 wave 56 lane COOPSAVE1: the coop save (host file, guest temp image, join
+# fetch, merge). INERT unless SM64DS_COOP=1; see hal/coop_save.h.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_save.cpp)
+# Run mp1 wave 56 lane COOPBOOT1: coop boot barriers (start together, the opening for
+# everyone, host left) and the SYNB dispatcher. INERT unless SM64DS_COOP=1; see
+# hal/coop_boot.h.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_boot.cpp)
+# Run mp1 lane COOPWORLD1: coop level groups and the death-table sync. INERT
+# unless SM64DS_COOP is set in a coop room; see hal/coop_world.h.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_groups.cpp hal/coop_world.cpp)
+# Run mp1 coop phase 2 lane COOPSW1: switches, WDW water, kicks. INERT unless
+# SM64DS_COOP is set in a coop room; see hal/coop_switch.h.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_switch.cpp)
+# Run mp1 coop phase 2 lane COOPSPAWN1: ? / ! block hits, red-coin counter, announced
+# runtime stars and prizes. INERT unless SM64DS_COOP is set in a coop room; see hal/coop_spawn.h.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_spawn.cpp)
+# Run mp1 lane COOPTP1: TP to friends by clicking a player-list row, coop rooms only; see hal/coop_tp.h.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_tp.cpp)
+# Run mp1 lane COOPMOVE1: coop phase 2, live enemies and movers kept in step. INERT
+# unless SM64DS_COOP is set in a coop room; see hal/coop_actors.h.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_actors.cpp)
+# Run mp1 lane MOVERS9: always-on [syncstat] sync numbers (per class, per queue, per lane). INERT outside a coop room.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_stats_log.cpp)
+# Run mp1 wave 56 lane PSTAR1: party shared stars. INERT unless SM64DS_PARTY=1.
+list(APPEND SLICE_COMMS_SOURCES hal/party_stars.cpp)
+# Run mp1 lane PLAYINT1: party / coop player interactions (punch, stomp, eat, shove). INERT outside
+# party / coop rooms; see hal/party_hits.h.
+list(APPEND SLICE_COMMS_SOURCES hal/party_hits.cpp)
+# Run mp1 lane STARPOP1: star / key popup and the shared exit (party + coop). INERT
+# outside party / coop rooms; see hal/star_popup.h.
+list(APPEND SLICE_COMMS_SOURCES hal/star_popup.cpp)
+# Run mp1 lane SMALLS9: the other players on the minimap (coop_minimap) and each player's own star
+# tally over their head (star_tally). INERT outside party / coop / world rooms.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_minimap.cpp hal/star_tally.cpp)
+# Run mp1 lane COOPCASTLE1: castle Boos and MIPS (profile rows in coop_actor_profiles.inc) + proof knobs. INERT
+# unless SM64DS_COOP is set in a coop room; see hal/coop_castle.h.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_castle.cpp)
+# Coop shared targeting and bosses (run mp1, lane BOSSCORE1; see hal/coop_target.h, hal/coop_boss.h).
+list(APPEND SLICE_COMMS_SOURCES hal/coop_target.cpp hal/coop_boss.cpp)
+# Run mp1 lane ARENACORE1: arena-mode VS (no rounds; the referee is the relay).
+# INERT unless SM64DS_VS_NETMODE=arena with a VS map; see hal/vs_arena.h.
+list(APPEND SLICE_COMMS_SOURCES hal/vs_arena.cpp)
+# Run mp1 lane STARREF1: the arena referee client (stars, hits, the clock and the
+# winner come from the referee in the relay). INERT unless arena mode is installed
+# in its relay shape; see hal/vs_arena_ref.h.
+list(APPEND SLICE_COMMS_SOURCES hal/vs_arena_ref.cpp)
+# Run mp1 lane EAT1: arena eating (the Yoshi tongue and a player in a mouth). INERT unless
+# arena mode is installed; see hal/vs_arena_eat.h.
+list(APPEND SLICE_COMMS_SOURCES hal/vs_arena_eat.cpp)
+# Run mp1 lane GRAB1: the Wario hold (catch, carry, swing, throw a stunned player). INERT unless
+# arena mode is installed with a referee; see hal/vs_arena_grab.h.
+list(APPEND SLICE_COMMS_SOURCES hal/vs_arena_grab.cpp)
+# Run mp1 lane CHATUI1: in-game text chat over the VS carrier's aux kinds and
+# the hub. Port-side only and INERT unless one of those carriers is installed,
+# so linking it changes no behaviour solo; see hal/adv_chat.h.
+list(APPEND SLICE_COMMS_SOURCES hal/adv_chat.cpp)
+# Run mp1 lane PINGHUD1: the online ping readout's view (the painter is in
+# hal/net_hud.h, drawn by tests/walk_window.cpp). Reads carrier stats only and
+# shows nothing solo; see hal/net_hud.h.
+list(APPEND SLICE_COMMS_SOURCES hal/net_hud.cpp)
+# Run mp1 wave 56 lane PLIST1: the party / coop player list (names, heads, stage codes,
+# the click API). Shows nothing outside party and coop rooms; see hal/player_list.h.
+list(APPEND SLICE_COMMS_SOURCES hal/player_list.cpp hal/head_icons.cpp)
+# PINVITE1: parties made and left inside the world (d-pad UP invite / accept, DOWN leave); see hal/world_party.h.
+list(APPEND SLICE_COMMS_SOURCES hal/world_party.cpp)
 # Lane VOICE: proximity voice chat. Port-side only -- nothing in src/ knows it
 # exists -- and INERT unless settings.json turns VoiceEnabled on, which is off
 # by default, so linking it opens no device and changes no behaviour. It rides

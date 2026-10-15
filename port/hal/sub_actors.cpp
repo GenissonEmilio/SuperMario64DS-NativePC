@@ -1005,8 +1005,14 @@ static int port_adv_hud_render_stars_lives_on_top(dMeter_c *self)
 
 // ---- HUD -------------------------------------------------------------------
 int __fastcall hud_init(void *s, void *) { return ((dMeter_c *)s)->dMeter_c::InitResources(); }
-int __fastcall hud_clean(void *s, void *) { return ((dMeter_c *)s)->dMeter_c::CleanupResources(); }
-int __fastcall hud_behavior(void *s, void *) { return ((dMeter_c *)s)->dMeter_c::Behavior(); }
+/* run mp1 lane STARREF1: the live HUD, for the arena referee client (the HUD is
+   an fBase actor, not in dActor_c's list, so FindWithActorID(0x14e) never finds
+   it; the match clock units are at HUD+0x60). Set on every Behavior, cleared on
+   cleanup. Read only by hal/vs_arena_ref.cpp. */
+extern "C" void *port_hud_self;
+void *port_hud_self;
+int __fastcall hud_clean(void *s, void *) { port_hud_self = nullptr; return ((dMeter_c *)s)->dMeter_c::CleanupResources(); }
+int __fastcall hud_behavior(void *s, void *) { port_hud_self = s; return ((dMeter_c *)s)->dMeter_c::Behavior(); }
 int __fastcall hud_render(void *s, void *)
 {
     /* SM64DS_HUD_TRACE=1: the two globals every HUD render leaf dereferences
@@ -1055,6 +1061,7 @@ void *__fastcall hud_d1(void *s, void *) { return _ZN8dMeter_cD1Ev(s); }
 void *__fastcall hud_d0(void *s, void *) { return _ZN8dMeter_cD0Ev(s); }
 
 // ---- Minimap ---------------------------------------------------------------
+extern "C" int port_minimap_wide_render(void *self);
 int __fastcall map_init(void *s, void *) { return ((dMap_c *)s)->dMap_c::InitResources(); }
 int __fastcall map_clean(void *s, void *) { return ((dMap_c *)s)->dMap_c::CleanupResources(); }
 int __fastcall map_behavior(void *s, void *) { return _ZN6dMap_c8BehaviorEv(s); }
@@ -1081,7 +1088,7 @@ int __fastcall map_render(void *s, void *)
         }
         ++n;
     }
-    return ((dMap_c *)s)->dMap_c::Render();
+    return port_minimap_wide_render(s);   /* MPSYNC1: the sixteen-wide host copy (unmatched/Minimap_Render.cpp) */
 }
 void __fastcall map_pdes(void *s, void *) { ((dMap_c *)s)->dMap_c::OnPendingDestroy(); }
 void *__fastcall map_d1(void *s, void *) { return _ZN6dMap_cD1Ev(s); }
@@ -1127,8 +1134,35 @@ extern "C" void hal_fill_hud_vtable(void)
 // aliasing copy inside port_ov002_gap_0210c168, and forty-odd more between the
 // actor overlays. The harnesses call it next to port_ov002_patch().
 
+/* MPSYNC1: the minimap object's real vtable is the dMap_c class TU's (src/actors/dMap_c.cpp), whose Behavior and Render
+   index four-entry per-player tables (a console on slot 8..15 walks off them) and know nothing of the coop / party
+   ghost icons. Slots 6 and 9 of that table are pointed at the port's sixteen-wide host copies (map_behavior /
+   map_render above), once, the first time the minimap is filled. The vtable lives in read-only data, so the page is
+   opened for the pointer write. A later seat that looks for the class TU's Render in the table (char_hud.cpp
+   seat_minimap) finds it gone and says so; the host Render copy calls port_char_hud_apply itself. */
+extern "C" void *wide_dmap_vtable[];
+extern "C" __declspec(dllimport) int __stdcall VirtualProtect(void *, size_t, unsigned long, unsigned long *);
+#pragma comment(linker, "/alternatename:_wide_dmap_vtable=??_7dMap_c@@6B@")
+static void seat_minimap_wide(void)
+{
+    static bool done = false;
+    if (done) return;
+    done = true;
+#if defined(_WIN32) && defined(_MSC_VER) && defined(_M_IX86)
+    void *pairs[2][2] = { { (void *)6, (void *)map_behavior }, { (void *)9, (void *)map_render } };
+    for (int k = 0; k < 2; ++k) {
+        void **cell = &wide_dmap_vtable[(int)(size_t)pairs[k][0]];
+        unsigned long old = 0;
+        if (!VirtualProtect(cell, sizeof(void *), 0x04 /* PAGE_READWRITE */, &old)) continue;
+        *cell = pairs[k][1];
+        VirtualProtect(cell, sizeof(void *), old, &old);
+    }
+#endif
+}
+
 extern "C" void hal_fill_minimap_vtable(void)
 {
+    seat_minimap_wide();
     void **vt = _ZTV6dMap_c;
     sa_fill_shared(vt);
     vt[0] = (void *)map_init;

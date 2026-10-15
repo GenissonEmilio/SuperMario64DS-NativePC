@@ -1,0 +1,185 @@
+// See coop_groups.h. Pure logic; no game, no wire.
+
+#include "coop_groups.h"
+
+#include <cstring>
+
+namespace port {
+
+void CoopGroups::reset(int my_seat) {
+    me_ = my_seat;
+    key_ = CoopKey();
+    est_ = false;
+    owner_ = -1;
+    announce_ = false;
+    own_ms_ = 0;
+    std::memset(s_, 0, sizeof s_);
+    for (int i = 0; i < kSeats; ++i) s_[i].claim = -1;
+}
+
+void CoopGroups::enter(const CoopKey &k, unsigned) {
+    key_ = k;
+    est_ = false;
+    owner_ = -1;
+    announce_ = false;
+    // Any hello on record was for the group I came from.
+    for (int i = 0; i < kSeats; ++i) {
+        s_[i].hello = false;
+        s_[i].est = false;
+        s_[i].claim = -1;
+        s_[i].pinned = false;
+    }
+}
+
+void CoopGroups::leave() {
+    enter(CoopKey(), 0);
+}
+
+void CoopGroups::establish(unsigned now, int owner_hint) {
+    if (!key_.valid()) return;
+    est_ = true;
+    owner_ = -1;
+    if (owner_hint >= 0 && owner_hint < kSeats && owner_hint != me_ &&
+        is_member(owner_hint)) {
+        owner_ = owner_hint;
+        s_[owner_hint].hello = true;
+        s_[owner_hint].est = true;
+        s_[owner_hint].claim = owner_hint;
+        s_[owner_hint].claim_ms = now;
+        s_[owner_hint].pinned = true;
+        s_[owner_hint].hello_ms = now;
+    }
+    // owner_ stays -1 without a hint: update() picks me when I am alone.
+}
+
+void CoopGroups::note_presence(int seat, bool present, const CoopKey &theirs,
+                               unsigned) {
+    if (seat < 0 || seat >= kSeats || seat == me_) return;
+    Seat &s = s_[seat];
+    s.present = present;
+    s.theirs = present ? theirs : CoopKey();
+    if (!present || s.theirs != key_) {
+        s.hello = false;
+        s.est = false;
+        s.claim = -1;
+        s.pinned = false;
+    }
+}
+
+void CoopGroups::note_hello(int seat, const CoopKey &k, bool est,
+                            int owner_claim, unsigned now) {
+    if (seat < 0 || seat >= kSeats || seat == me_ || k != key_) return;
+    Seat &s = s_[seat];
+    s.hello = true;
+    s.est = est;
+    const int was = s.claim;
+    s.claim = (est && owner_claim == seat) ? seat : -1;   // only a seat's claim about itself counts
+    if (s.claim == seat && was != seat) s.claim_ms = now;
+    if (s.claim != seat) s.pinned = false;
+    s.hello_ms = now;
+}
+
+void CoopGroups::note_owner_change(int seat, const CoopKey &k, unsigned now) {
+    if (seat < 0 || seat >= kSeats || seat == me_ || k != key_) return;
+    Seat &s = s_[seat];
+    s.hello = true;
+    if (s.claim != seat) s.claim_ms = now;
+    s.est = true;
+    s.claim = seat;
+    s.hello_ms = now;
+}
+
+bool CoopGroups::is_member(int seat) const {
+    if (seat < 0 || seat >= kSeats || seat == me_ || !key_.valid()) return false;
+    return s_[seat].present && s_[seat].theirs == key_;
+}
+
+bool CoopGroups::is_established(int seat) const {
+    return is_member(seat) && s_[seat].hello && s_[seat].est;
+}
+
+bool CoopGroups::owner_claimed_by(int seat) const {
+    if (!est_ || seat < 0 || seat >= kSeats || seat == me_) return false;
+    return seat == owner_ && is_member(seat);   // a claim only counts once update() has made it the owner
+}
+
+unsigned CoopGroups::member_mask() const {
+    unsigned m = 0;
+    for (int i = 0; i < kSeats; ++i)
+        if (is_member(i)) m |= 1u << i;
+    return m;
+}
+
+int CoopGroups::others() const {
+    int n = 0;
+    for (int i = 0; i < kSeats; ++i) n += is_member(i) ? 1 : 0;
+    return n;
+}
+
+int CoopGroups::established_count() const {
+    int n = 0;
+    for (int i = 0; i < kSeats; ++i) n += is_established(i) ? 1 : 0;
+    return n;
+}
+
+void CoopGroups::update(unsigned now) {
+    if (!key_.valid()) return;
+    // Hello evidence goes stale: an established member that stopped saying so.
+    for (int i = 0; i < kSeats; ++i) {
+        Seat &s = s_[i];
+        if (s.hello && (unsigned)(now - s.hello_ms) > (unsigned)kEvidenceMs) {
+            s.hello = false;
+            s.est = false;
+            s.claim = -1;
+            s.pinned = false;
+        }
+    }
+    if (!est_) { owner_ = -1; return; }
+
+    // The owner I believe in, still a candidate?
+    const bool owner_ok = (owner_ == me_) ||
+                          (owner_ >= 0 && is_established(owner_));
+    if (owner_ok) {
+        // Two claimants that showed up together: the lower seat keeps it. A
+        // claimant that turns up later than that never displaces a standing owner.
+        if (owner_ != me_ && s_[owner_].pinned) return;
+        const unsigned inc = (owner_ == me_) ? own_ms_ : s_[owner_].claim_ms;
+        for (int i = 0; i < owner_; ++i) {
+            if (!is_established(i) || s_[i].claim != i) continue;
+            if ((int)(s_[i].claim_ms - inc) > (int)kTieMs) continue;
+            // An owner that already has an established member besides the challenger is not in a tie any more:
+            // two consoles that entered together are each alone until they see each other's claim.
+            if (owner_ == me_) {
+                bool served = false;
+                for (int j = 0; j < kSeats; ++j) if (j != i && is_established(j)) served = true;
+                if (served) continue;
+            }
+            owner_ = i;
+            break;
+        }
+        return;
+    }
+
+    // Nobody, or a gone owner: a standing claim first, else the lowest
+    // established seat, counting myself.
+    int pick = -1;
+    for (int i = 0; i < kSeats; ++i)
+        if (is_established(i) && s_[i].claim == i) { pick = i; break; }
+    if (pick < 0) {
+        pick = me_;
+        for (int i = 0; i < me_; ++i)
+            if (is_established(i)) { pick = i; break; }
+    }
+    const int was = owner_;
+    owner_ = pick;
+    if (owner_ == me_ && was != me_) own_ms_ = now;
+    if (owner_ == me_ && was != me_ && others() > 0) announce_ = true;
+}
+
+bool CoopGroups::take_owner_announce() {
+    const bool a = announce_;
+    announce_ = false;
+    return a;
+}
+
+}  // namespace port

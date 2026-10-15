@@ -83,6 +83,10 @@ int   func_02049018(int *v);          /* listener-relative distance */
 extern int data_02099fac;             /* the 3D distance limit, romdata */
 
 int g_snd_reqlog = -1;
+/* run mp1 lane PUPPET1: hal/vs_arena.cpp. A sound my own Player body asks for
+   goes out in my next arena state frame so the other consoles' puppets play it;
+   inert unless arena mode is installed. */
+void port_vs_arena_sound(unsigned kind, unsigned id, const void *v);
 extern signed char data_0208e428;        /* the bank every kind-3 sound rides */
 extern unsigned char data_0209b47c;      /* the loaded sound group */
 extern unsigned char data_0209b480;      /* master "sound effects on" */
@@ -130,6 +134,7 @@ void _ZN5Sound4PlayEjjRK7Vector3(unsigned kind, unsigned id, struct Vector3 *v)
         return;
     }
     snd_req(kind, id, s[5], v, "sent to the ROM body");
+    port_vs_arena_sound(kind, id, v);   // run mp1 lane PUPPET1: arena mode only
     Sound::Play(kind, id, *v);
 }
 

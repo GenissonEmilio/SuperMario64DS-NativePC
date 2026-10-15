@@ -99,12 +99,14 @@ static const int KEY_DFLT[HOST_KEY_COUNT] = {
     0x20, 0x58, 0x11, 0x10, 0x0d, 0x08, 0x5a,
     0x43, 0x51, 0x45, 0x70,         /* camera: centre C, left Q, right E, mode F1 */
     0x52, 0x46, 0, 0,               /* camera: tilt up R, down F, zoom in / out unbound */
+    0x42, 0x4e,                     /* world party: invite B, leave N */
 };
 static const int PAD_DFLT[HOST_PAD_COUNT] = {
     0x1000, 0x2000, 0x20000, 0x4000, 0x0010, 0,   /* crouch = RT pseudo-mask */
     0x8000,                                       /* look = Y, the DS X */
     0x10000, 0x0100, 0x0200, 0x0080,              /* camera: centre LT, LB, RB, stick click */
     0, 0, 0, 0,                                   /* camera: tilt up / down, zoom in / out unbound */
+    0x0001, 0x0002,                               /* world party: d-pad UP invite, DOWN leave */
 };
 
 static void check_defaults_except(const int *skip_key, int nskip_key,
@@ -147,6 +149,7 @@ static int child(const char *which)
                  "PadRun agrees with RunButtonPad");
         check_eq(host_setting_camera_mode(), 2, "CameraMode ds");
         check_eq(host_setting_run_mode(), 1, "RunMode analog");
+        check_eq(host_setting_chat_scale(), 100, "ChatScale defaults to 100");
         check_eq(host_setting_key(-1), 0, "out of range key is unbound");
         check_eq(host_setting_pad(99), 0, "out of range pad is unbound");
     } else if (!strcmp(which, "remap")) {
@@ -504,6 +507,16 @@ static int child(const char *which)
            and the default here is ON */
         check_eq(host_setting_save_menu_on_top(), 1,
                  "SaveMenuOnTop junk is the default, which is on");
+    } else if (!strcmp(which, "chatscale_exact")) {
+        check_eq(host_setting_chat_scale(), 150, "ChatScale 150 is 150");
+        check_eq(host_setting_volume(), 44, "Volume beside it survived");
+    } else if (!strcmp(which, "chatscale_snap")) {
+        /* between stops lands on the nearest stop; out of range clamps */
+        check_eq(host_setting_chat_scale(), 125, "ChatScale 130 snaps to 125");
+    } else if (!strcmp(which, "chatscale_big")) {
+        check_eq(host_setting_chat_scale(), 200, "ChatScale 900 clamps to 200");
+    } else if (!strcmp(which, "chatscale_junk")) {
+        check_eq(host_setting_chat_scale(), 100, "ChatScale junk is 100");
     } else if (!strcmp(which, "padtranslate")) {
         check(port_pad_selftest(), "pad_backend translation selftest");
     } else {
@@ -756,6 +769,11 @@ int main(int argc, char **argv)
         "{ \"SaveMenuOnTop\": true }");
     bad |= run_case(exe, dir, "savemenutop_junk",
         "{ \"SaveMenuOnTop\": \"maybe\" }");
+    bad |= run_case(exe, dir, "chatscale_exact",
+        "{ \"ChatScale\": 150, \"Volume\": 44 }");
+    bad |= run_case(exe, dir, "chatscale_snap", "{ \"ChatScale\": 130 }");
+    bad |= run_case(exe, dir, "chatscale_big", "{ \"ChatScale\": 900 }");
+    bad |= run_case(exe, dir, "chatscale_junk", "{ \"ChatScale\": \"big\" }");
     bad |= run_case(exe, dir, "padtranslate", 0);
     _rmdir(dir);
     if (bad) {
@@ -764,6 +782,6 @@ int main(int argc, char **argv)
     }
     /* the count is the run_case calls above, counted rather than remembered:
        it was one out of date before run hd1 added five cases to it */
-    printf("smoke_settings: ok, 35 cases\n");
+    printf("smoke_settings: ok, 39 cases\n");
     return 0;
 }

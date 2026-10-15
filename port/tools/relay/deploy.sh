@@ -87,7 +87,7 @@ if [ "$(id -u)" -ne 0 ] && [ "$DRY_RUN" != "yes" ]; then
 fi
 info "running as uid $(id -u)"
 
-for f in relay.py sm64ds-relay.service; do
+for f in relay.py referee.py sm64ds-relay.service; do
     [ -f "${SRC_DIR}/${f}" ] || die "missing ${f} next to this script"
     info "found ${SRC_DIR}/${f}"
 done
@@ -103,13 +103,16 @@ info "python3: ${PY_BIN} (${PY_VER})"
     || die "python 3.7 or newer required (found ${PY_VER})"
 
 # Parse it rather than py_compile it, so nothing is written next to the kit
-# and this still works from a read-only copy.
-"$PY_BIN" -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' \
-    "${SRC_DIR}/relay.py" \
-    || die "relay.py does not parse with this python"
-info "relay.py parses clean"
+# and this still works from a read-only copy. referee.py is the arena
+# referee relay.py loads from its own directory (run mp1, REFEREE1).
+for f in relay.py referee.py; do
+    "$PY_BIN" -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' \
+        "${SRC_DIR}/${f}" \
+        || die "${f} does not parse with this python"
+    info "${f} parses clean"
+done
 
-for f in relay.py sm64ds-relay.service; do
+for f in relay.py referee.py sm64ds-relay.service; do
     if grep -q $'\r' "${SRC_DIR}/${f}"; then
         die "${f} has CRLF line endings; re-copy the kit with LF endings"
     fi
@@ -138,17 +141,19 @@ info "install directory: ${APP_DIR}"
 
 # ------------------------------------------------------------------ payload
 
-step "Installing relay.py"
-if [ -f "${APP_DIR}/relay.py" ] \
-   && cmp -s "${SRC_DIR}/relay.py" "${APP_DIR}/relay.py"; then
-    info "relay.py is already identical, nothing to copy"
-    RELAY_CHANGED="no"
-else
-    info "relay.py differs or is new, copying"
-    run install -o "$SVC_USER" -g "$SVC_USER" -m 0644 \
-        "${SRC_DIR}/relay.py" "${APP_DIR}/relay.py"
-    RELAY_CHANGED="yes"
-fi
+step "Installing relay.py and referee.py"
+RELAY_CHANGED="no"
+for f in relay.py referee.py; do
+    if [ -f "${APP_DIR}/${f}" ] \
+       && cmp -s "${SRC_DIR}/${f}" "${APP_DIR}/${f}"; then
+        info "${f} is already identical, nothing to copy"
+    else
+        info "${f} differs or is new, copying"
+        run install -o "$SVC_USER" -g "$SVC_USER" -m 0644 \
+            "${SRC_DIR}/${f}" "${APP_DIR}/${f}"
+        RELAY_CHANGED="yes"
+    fi
+done
 
 for extra in README.md test_client.py; do
     if [ -f "${SRC_DIR}/${extra}" ]; then

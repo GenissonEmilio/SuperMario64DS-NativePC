@@ -1434,6 +1434,29 @@ extern "C" void port_install_host_frame_pump(int (*pump)(unsigned))
     g_host_frame_pump = pump;
 }
 
+// DOES THE HOST FRAME PUMP PACE THIS HALT? (run mp1, lane VSFIELD1.) Step 1b
+// above calls the frame pump on every halt once it is installed, and the frame
+// pump sleeps each halt out to the next VBlank deadline (tests/walk_window.cpp
+// frame_pace, one VBlank per turn under the ROM's loop) unless the run is an
+// unpaced selftest or a re-simulated frame. hal/comms_conductor.cpp's connected
+// pump also spends a VBlank of wall time on a silent turn, which was right
+// before the frame pump existed (lane VS7: a ROM wait turn must cost a VBlank)
+// and double-counts the VBlank now: measured on a lobby-shaped 2-player match
+// through the relay, every console ran 20 frames a second where solo runs 30.
+// This answers, for the pump that runs first in the same halt, whether the
+// frame pump will spend the VBlank itself. The frame pump's owner registers the
+// question; no registration (other executables, the host loop) answers 0, which
+// keeps every caller exactly as it was.
+static int (*g_frame_pump_paces)(void);
+extern "C" void port_install_frame_pump_paces(int (*paces)(void))
+{
+    g_frame_pump_paces = paces;
+}
+extern "C" int port_halt_paced_by_frame_pump(void)
+{
+    return g_host_frame_pump && g_frame_pump_paces && g_frame_pump_paces();
+}
+
 extern "C" void port_thread_repair_current(void)
 {
     if (!g_running) return;

@@ -161,6 +161,10 @@ int   port_tree_link_refusals(void);
 void port_actor_scene_pass(void);
 void *port_stage_object(void);
 void *port_stage_a_boot(void *mc, int spawn);
+/* run mp1 lane OPENCOUNT1: the adventure hub's bodies, seated again by the
+   level load that ends the new-file opening (hal/comms_sync.cpp). A no-op
+   unless the hub's opening hold is on. */
+void port_adventure_hub_level_seat(void);
 void port_level_reset_host(void);        /* hal/level_boot.cpp (also captures the
                                             outgoing level's orphaned KCL image --
                                             the ~108KB re-entry leak -- for
@@ -183,8 +187,9 @@ int  port_course_loop_live(void);
 const char *port_actor_class_name(unsigned id);   /* hal/star_flow.cpp: live loop handles */
 void port_level_stage_reseat(void *stage);
 /* hal/level_boot.cpp: the [lvl-perf] level-entry spans. This file owns span
-   0 (teardown, everything between the change firing and the boot call) and
-   the emit on the warp path; the direct boot emits from walk_window. */
+   0 (teardown, everything between the change firing and the boot call,
+   less the star select) and span 4 (the star select itself) and the emit on
+   the warp path; the direct boot emits from walk_window. */
 double port_lvlperf_now(void);
 void port_lvlperf_note(int span, double ms);
 void port_lvlperf_emit(void);
@@ -1205,6 +1210,7 @@ static void port_level_sublevel_clear(void)
    nothing else; every course sublevel falls through the switch, leaves the
    key slot at its -1 and returns 0. */
 extern "C" void port_music_note_prev_level(int level);   /* hal/star_flow.cpp */
+extern "C" void port_coop_world_level_latched(void);     /* hal/coop_world.cpp */
 static void port_level_latch(void)
 {
     /* :188-218 first, because the two words below are its inputs. */
@@ -1224,6 +1230,7 @@ static void port_level_latch(void)
     data_0209f264[0] = data_0209f268;
     data_0209f220[0] = data_0209f1f0;
     data_02092110 = -1;
+    port_coop_world_level_latched();   /* hook: COOPWORLD1, inert unless SM64DS_COOP */
 }
 
 /* THE SAME LATCH, FOR A BOOT RATHER THAN A CHANGE (run lvled, title entry).
@@ -1370,7 +1377,7 @@ extern "C" int port_level_entry_latch(void)
    not a cutscene at all, and its body is ChangeState(&data_ov002_0211013c) --
    one of the four states ChangeState's own gate lets a no-control player leave
    to. ChangeState is what clears the state: mIsControlDisabled directly, and
-   mIsNoControl through func_ov002_020c9e18. Nothing here writes either.
+   mIsNoControl through _ZN6Player19func_ov002_020c9e18Ev. Nothing here writes either.
 
    POSITION is undone only where the exit MOVED him, and the exit's own two
    words say whether it did. +0x98 is the pull counter: non-zero means this
@@ -2020,7 +2027,12 @@ extern "C" int port_level_change_apply(void)
        between them and not before or after: the ROM's own decision is
        written from inside the teardown, and the latch below consumes the
        level request the star select has to read. */
+    /* [lvl-perf] span 4: the star select, a person choosing. Timed here and
+       taken out of the teardown span below. */
+    const double lvlperf_il0 = port_lvlperf_now();
     port_level_scene_interlude();
+    const double lvlperf_il_ms = port_lvlperf_now() - lvlperf_il0;
+    port_lvlperf_note(4, lvlperf_il_ms);
     port_level_latch();
     /* Point the boot at the level the latch just made current. Without this the
        boot's mount resolved to the env-cached level and the warp re-booted the
@@ -2048,7 +2060,11 @@ extern "C" int port_level_change_apply(void)
     }
     port_level_stage_reseat(stage);
     /* [lvl-perf] span 0: everything between the change firing and the boot */
-    port_lvlperf_note(0, port_lvlperf_now() - lvlperf_t0);
+    port_lvlperf_note(0, port_lvlperf_now() - lvlperf_t0 - lvlperf_il_ms);
+    /* run mp1 lane OPENCOUNT1: the hub's new-file opening played on the
+       one-player seat (tests/walk_window.cpp's title fall-through); its closing
+       level load is this one, and it spawns the hub's four bodies. */
+    port_adventure_hub_level_seat();
     port_stage_a_boot((char *)stage + 0x91c, 1);
 
     g_crossed_scenes = 0;

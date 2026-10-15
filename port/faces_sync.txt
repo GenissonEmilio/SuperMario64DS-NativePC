@@ -5790,3 +5790,22 @@ __ZN8daStar_c19func_ov002_020e7218EPci                                   ?func_o
 __ZN15UnknownVsPlayer19func_ov075_0211478cEv                             ?func_ov075_0211478c@UnknownVsPlayer@@QAEXXZ                     0x0211478c R
 # ---- PORTSYNC3 derived, pass 3 ----
 __ZN10dFdDummy_cC1Ev                                                     ??0dFdDummy_c@@QAE@XZ                                            0x02017278 R
+
+# MPSYNC1: flat ROM names the multiplayer code (hal/coop_*, party_hits, vs_arena*, ghost_*) reaches, now class members.
+__ZN6Eyerok19func_ov066_02119454EPv                                      ?func_ov066_02119454@Eyerok@@QAEHPAX@Z                           0x02119454 R
+__ZN6Player19func_ov002_020beb38Ev                                       ?func_ov002_020beb38@Player@@QAEHXZ                              0x020beb38 R
+__ZN6Player19func_ov002_020c9e18Ev                                       ?func_ov002_020c9e18@Player@@QAEXXZ                              0x020c9e18 R
+__ZN6Player19func_ov002_020d5ed0Ev                                       ?func_ov002_020d5ed0@Player@@QAEHXZ                              0x020d5ed0 R
+__ZN6Player19func_ov002_020d718cEv                                       ?func_ov002_020d718c@Player@@QAEXXZ                              0x020d718c R
+__ZN6Player19func_ov002_020d71a0Ev                                       ?func_ov002_020d71a0@Player@@QAEXXZ                              0x020d71a0 R
+__ZN7daBtn_c19func_ov079_02123f34Ev                                      ?func_ov079_02123f34@daBtn_c@@QAEXXZ                             0x02123f34 R
+__ZN8daCoin_c19func_ov002_020b16c4EP6Player                              ?func_ov002_020b16c4@daCoin_c@@QAEXPAUPlayer@@@Z                 0x020b16c4 R
+__ZN8daDoor_c19func_ov100_021451c4EPvP6Player                            ?func_ov100_021451c4@daDoor_c@@QAEHPAXPAUPlayer@@@Z              0x021451c4 R
+__ZN8daDoor_c19func_ov100_021453d8EPvi                                   ?func_ov100_021453d8@daDoor_c@@QAEHPAXH@Z                        0x021453d8 R
+__ZN12daHanachan_c8SetStateEi                                            ?SetState@daHanachan_c@@QAEXH@Z                                  0x021125b8 R
+__ZN12daKuriKing_c19func_ov074_021203e4Ei                                ?func_ov074_021203e4@daKuriKing_c@@QAEHH@Z                       0x021203e4 R
+__ZN18daObjHatenaBlock_c19func_ov102_02149da8Ei                          ?func_ov102_02149da8@daObjHatenaBlock_c@@QAEXH@Z                 0x02149da8 R
+__ZN11daObjPile_c19func_ov091_021334b8Ei                                 ?func_ov091_021334b8@daObjPile_c@@QAEXH@Z                        0x021334b8 R
+__ZN8daStar_c19func_ov002_020e73acEv                                     ?func_ov002_020e73ac@daStar_c@@QAEHXZ                            0x020e73ac R
+__ZN8daStar_c19func_ov002_020e930cEv                                     ?func_ov002_020e930c@daStar_c@@QAEXXZ                            0x020e930c R
+__ZN8daStar_c19func_ov002_020e9448Ev                                     ?func_ov002_020e9448@daStar_c@@QAEXXZ                            0x020e9448 R

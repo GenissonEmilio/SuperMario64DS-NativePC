@@ -164,6 +164,13 @@ static int child(const char *which)
         check_eq(sl_set(SL_MOUSE_CAPTURE, 1), 1, "mouse capture");
         check_eq(sl_set(SL_VOLUME, 33), 1, "volume");
         check_eq(sl_set(SL_MINIMAP_SCALE, 150), 1, "minimap");
+        check_eq(sl_get(SL_CHAT_SCALE), 100, "chat size starts at 100");
+        check_eq(sl_set(SL_CHAT_SCALE, 150), 1, "chat size");
+        check_eq(sl_set(SL_CHAT_SCALE, 130), 1, "chat size between stops snaps");
+        check_eq(sl_get(SL_CHAT_SCALE), 125, "130 snapped to 125");
+        check_eq(sl_set(SL_CHAT_SCALE, 150), 1, "chat size again");
+        check_eq(sl_set(SL_CHAT_SCALE, 50), 0, "chat size under 75 refused");
+        check_eq(sl_set(SL_CHAT_SCALE, 300), 0, "chat size over 200 refused");
         /* refusals */
         check_eq(sl_set(SL_STICK_DEADZONE, 51), 0, "dead zone out of range");
         check_eq(sl_set(SL_RUN_THRESHOLD, 10), 0, "run threshold out of range");
@@ -200,6 +207,7 @@ static int child(const char *which)
         check_has(t, "\"MouseCapture\": true");
         check_has(t, "\"Volume\": 33");
         check_has(t, "\"MinimapScale\": 1.5");
+        check_has(t, "\"ChatScale\": 150");
         check_has(t, "\"LauncherOnlyKey\": \"keep me\"");
         check_has(t, "\"MinigameGap\": true");
         /* the typed-value rules the launcher's parser has: nothing numeric
@@ -226,6 +234,7 @@ static int child(const char *which)
         check_eq(sl_get(SL_MOUSE_CAPTURE), 1, "mouse capture");
         check_eq(sl_get(SL_VOLUME), 33, "volume");
         check_eq(sl_get(SL_MINIMAP_SCALE), 150, "minimap");
+        check_eq(sl_get(SL_CHAT_SCALE), 150, "chat size");
         return fails;
     }
     if (!strcmp(which, "debounce")) {
@@ -247,7 +256,8 @@ static int child(const char *which)
         write_file("settings.json",
             "{\n  \"CameraSensitivity\": 220,\n  \"InvertCameraY\": true,\n"
             "  \"CameraMode\": \"analog\",\n  \"KeyJump\": 70,\n"
-            "  \"StickDeadzone\": 30,\n  \"Volume\": 12,\n  \"RunMode\": \"button\"\n}\n");
+            "  \"StickDeadzone\": 30,\n  \"Volume\": 12,\n  \"RunMode\": \"button\",\n"
+            "  \"ChatScale\": 200\n}\n");
         int moved = 0;
         for (int i = 0; i < 40; ++i) moved |= host_settings_poll();
         check(moved, "poll saw the launcher's edit");
@@ -259,6 +269,7 @@ static int child(const char *which)
         check_eq(sl_get(SL_STICK_DEADZONE), 30, "dead zone live");
         check_eq(sl_get(SL_RUN_MODE), 0, "run mode live");
         check_eq(sl_get(SL_VOLUME), 12, "volume live");
+        check_eq(sl_get(SL_CHAT_SCALE), 200, "chat size live");
         check_eq(host_settings_cam_gen() > 1, 1, "cam gen moved");
         /* and the game's own write is not seen as a change back */
         const int g1 = host_settings_ctl_gen();
