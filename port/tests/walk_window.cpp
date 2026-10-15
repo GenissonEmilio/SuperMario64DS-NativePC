@@ -12669,6 +12669,25 @@ static int rstick_script_apply(int frame, int *pad_live, XPad *pad)
 /* PADMENUS1: THE PAD POINTER'S FRAME (hal/pad_pointer.h). Reads the stick / D-pad / confirm the pad poll just filled (scripted pads included), lets
    the pointer decide, and takes the buttons it owns out of the pad before the game's own reads: while the pointer is on, the confirm button (the
    jump binding) is the pen and, in a minigame, the D-pad is the pointer's. Nothing happens with no controller. */
+/* PADMENUS1: the file machine's sub pages (scores / copy / erase) take the pad's B as a back-arrow tap and never as a key (hal/menu_recipe_title.cpp): the
+   attack binding is read here, before the game's key words are built, so nothing of it reaches the ROM there. */
+extern "C" int menu_title_file_subpage(void);
+extern "C" void menu_title_file_subpage_back(void);
+static void file_subpage_pad_back(int pad_live, XPad *pad)
+{
+    static int was;
+    if (!pad_live || !menu_title_file_subpage()) { was = 0; return; }
+    const int now = pad_act(pad, HOST_PAD_ATTACK);
+    if (now && !was) menu_title_file_subpage_back();
+    was = now;
+    if (now) {
+        const int m = g_pad[HOST_PAD_ATTACK];
+        pad->buttons = (unsigned short)(pad->buttons & ~(unsigned)(m & 0xffff));
+        if (m & HOST_PAD_LT) pad->lt = 0;
+        if (m & HOST_PAD_RT) pad->rt = 0;
+    }
+}
+
 static void padptr_frame(int frame, int pad_live, XPad *pad)
 {
     PadPtrIn in;
@@ -12684,6 +12703,7 @@ static void padptr_frame(int frame, int pad_live, XPad *pad)
         in.confirm = pad_act(pad, HOST_PAD_JUMP);
     }
     hal_padptr_frame(&in, &out);
+    file_subpage_pad_back(pad_live, pad);
     if (!pad_live) return;
     if (out.eat_confirm) {
         const int m = g_pad[HOST_PAD_JUMP];

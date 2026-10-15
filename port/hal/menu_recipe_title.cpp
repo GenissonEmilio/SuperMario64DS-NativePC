@@ -44,6 +44,7 @@
 extern "C" {
 int port_title_elem_boxes(int *slot, int *id, int *x0, int *y0, int *x1, int *y1, int max);
 int port_title_page_state(int *top, int *elem, int *req);
+int port_scene_live_id(void);
 }
 
 namespace {
@@ -1912,7 +1913,6 @@ static void title_pad_keys(uint16_t *pressed, int host_back, int inject)
        word moves 0x0002 -> 0x0001 too, and a host back is a one-frame B in it. */
     unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
     unsigned short h = *held;
-    if (hal_menu_trace_on() && ((*pressed | h) & 0x0003)) fprintf(stderr, "[menu] pad keys in: variant %d page %d/%d pressed %04x held %04x back %d\n", g_last, g_top, g_elem, (unsigned)*pressed, (unsigned)h, host_back);
     /* ASSET6: PAD B (the port's punch binding, DS A bit 0x0001 natively; pad A arrives as 0x0002) is the back arrow on every page that has one
        (file select, file options, scores, copy / erase, doodle): the ROM has only a touch back, so it is the same host back Backspace gives.
        On the main page and the attract 0x0001 stays a confirm. */
@@ -1922,13 +1922,6 @@ static void title_pad_keys(uint16_t *pressed, int host_back, int inject)
         h = (unsigned short)(h & ~0x0001u);
     }
     /* FACE3: the free-draw page has no pad handling in the ROM (touch only): the back key (Backspace, pad B) taps its Yoshi button, the ROM's own box 6, which leaves for the main menu */
-    /* PADMENUS1: the file machine's sub pages (scores 3/5 and the table 2/5, copy 7/5, erase 9/5) have no pad back in the ROM either: B taps the back arrow, which sits where
-       the file select's own back arrow does (hotspot box (180,140,72,36), the lower right) */
-    if (host_back && g_elem == 5 && (g_top == 3 || g_top == 2 || g_top == 7 || g_top == 9)) {
-        const int q = hal_menu_touch_queue_press(180 + 36, 140 + 18);
-        host_back = 0;          /* the tap is the back: the ROM must not also see a B key on a page it reads by touch */
-        if (hal_menu_trace_on()) fprintf(stderr, "[menu] file sub page %d/%d: pad back taps the back arrow (queued %d)\n", g_top, g_elem, q);
-    }
     if (host_back && g_last == V_DOODLE && g_elem == 3) {
         Box b;
         if (box_of_live(6, &b)) hal_menu_touch_queue_press((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2);
@@ -1957,4 +1950,19 @@ extern "C" void menu_title_pad_map_rom(uint16_t *pressed, int host_back)
     }
     g_last = variant_for(top, elem);
     title_pad_keys(pressed, host_back, 0);
+}
+
+/* PADMENUS1: the file machine's sub pages (scores 3/5 and the table 2/5, copy 7/5, erase 9/5) read their back arrow by touch only, and the ROM takes the DS A key
+   (the pad's B) there as a confirm on the file under the cursor. So the pad's B must never reach the game on those pages: the window loop asks this first, taps the back
+   arrow itself (which sits where the file select's own back arrow does, hotspot box (180,140,72,36), the lower right) and takes the button out of the pad before the
+   game's key words are built. Only while the title scene is up. */
+extern "C" int menu_title_file_subpage(void)
+{
+    if (port_scene_live_id() != 1) return 0;
+    return g_elem == 5 && (g_top == 3 || g_top == 2 || g_top == 7 || g_top == 9);
+}
+extern "C" void menu_title_file_subpage_back(void)
+{
+    const int q = hal_menu_touch_queue_press(180 + 36, 140 + 18);
+    if (hal_menu_trace_on()) fprintf(stderr, "[menu] file sub page %d/%d: pad back taps the back arrow (queued %d)\n", g_top, g_elem, q);
 }
