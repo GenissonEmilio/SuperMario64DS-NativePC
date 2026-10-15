@@ -156,8 +156,14 @@ extern "C" int port_ov_load(int ov)
                 ++k;
             diff += k - s + 1;
             if (logging() && runs < 60) {
-                std::fprintf(stderr, "[ovreset]   ov%03d %s +%zx..+%zx (%p) changed\n", ov,
+                std::fprintf(stderr, "[ovreset]   ov%03d %s +%zx..+%zx (%p) changed, now", ov,
                              i ? "dsstate" : "data", s, k, (const void *)(cur + s));
+                for (size_t q = s; q <= k && q < s + 16; ++q)
+                    std::fprintf(stderr, " %02x", cur[q]);
+                std::fprintf(stderr, ", start-up");
+                for (size_t q = s; q <= k && q < s + 16; ++q)
+                    std::fprintf(stderr, " %02x", r.snap[q]);
+                std::fprintf(stderr, "\n");
                 ++runs;
             }
         }
