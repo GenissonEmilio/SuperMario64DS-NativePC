@@ -413,6 +413,7 @@ static bool winapi_load(void)
 #include "fault_probe.h"
 #include "overlay_font.h"
 #include "hal/host_settings.h"   /* settings.json, the launcher's file */
+extern "C" void host_menu_cursor_sound_flush(void);   /* hal/menu_compose.cpp: one ROM cursor sound a frame at most */
 #include "hal/pcore.h"            /* PCORE1: P-core / throttling opt-out */
 #include "hal/settings_live.h"   /* run menu1 SETLIVE1: live, saved settings */
 #include "hal/settings_page.h"   /* run menu1 SETMENU1: the in-game settings page */
@@ -9965,6 +9966,20 @@ static void fullscreen_toggle(HWND h)
     present();
 }
 
+/* settings.json StartFullscreen: the first frame of a run puts the window in
+   the same borderless fullscreen F12 toggles. Once per process; absent or
+   false does nothing. */
+static void fullscreen_boot(HWND h)
+{
+    static int done;
+    if (done) return;
+    done = 1;
+    if (host_setting_start_fullscreen() && !g_fullscreen) {
+        fprintf(stderr, "[settings] StartFullscreen: borderless fullscreen\n");
+        fullscreen_toggle(h);
+    }
+}
+
 /* ---- MOUSE (port mod) -------------------------------------------------
    DRAG TO LOOK, on the right button, and not an F2 capture toggle. Both were
    on the table; this is the one that fits what the window is. A capture mode
@@ -11733,6 +11748,8 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
     g_host_key_frame = frame;
     {
         static int fs_edge;
+        fullscreen_boot(hwnd);
+        host_menu_cursor_sound_flush();
         const int now = key_live(VK_F12) || key_live(VK_F11);
         if (now && !fs_edge) fullscreen_toggle(hwnd);
         fs_edge = now;
@@ -14402,6 +14419,8 @@ int main(void)
            lane does not touch game input. */
         {
             static int fs_edge;
+            fullscreen_boot(hwnd);
+            host_menu_cursor_sound_flush();
             const int now = key_live(VK_F12) || key_live(VK_F11);
             if (now && !fs_edge) fullscreen_toggle(hwnd);
             fs_edge = now;

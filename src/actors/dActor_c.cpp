@@ -155,12 +155,49 @@ extern u8 data_0209f20c;
 extern u8 data_0209f294;
 extern u32 data_0209b464; /* flag mask that forces thinking; 0 means "any" */
 }
+#ifdef _MSC_VER
+/* HOST ONLY (settings.json DrawDistance, default 100 = the ROM). Widens what is
+   DRAWN and never what is updated: the ROM's own decision below (flag 0x08 and
+   the behaviour skip) is computed exactly as before, and the host byte set here
+   (pad_0c5[0], a free pad byte; the word at +0xc8 is a different field) only
+   lets BeforeRender draw an actor the ROM would cull for being past its clip
+   distance or past the camera's far plane. */
+extern "C" int host_setting_draw_distance_pct(void);
+static void HostWidenDraw(dActor_c *a, int r, int thresh, Vector3 *camPos, int radius)
+{
+    const int pct = host_setting_draw_distance_pct();
+    if (pct <= 100)
+        return;
+    long long t2 = (long long)thresh * pct / 100;
+    if (t2 > 0x3fffffff)
+        t2 = 0x3fffffff;
+    if (r == 0x7fffffff) {
+        /* outside the frustum, or past the far plane: the side planes decide,
+           with the far plane scaled by the same factor. hint 0 leaves the
+           clipper's cached plane alone. */
+        struct ClipFar { int pad[0x54 / 4]; int farZ; };
+        ClipFar *c = (ClipFar *)&data_0209f43c;
+        const int saved = c->farZ;
+        long long f2 = (long long)saved * pct / 100;
+        if (f2 > 0x3fffffff)
+            f2 = 0x3fffffff;
+        c->farZ = (int)f2;
+        r = _ZN8dClipper13Func_020150E8ER7Vector35Fix12IiEPh(&data_0209f43c, camPos, radius, (u8 *)0);
+        c->farZ = saved;
+    }
+    if (r != 0x7fffffff && r <= t2)
+        a->pad_0c5[0] = 1;
+}
+#endif
 int dActor_c::BeforeBehavior()
 {
     if (!fBase_c::BeforeBehavior())
         return 0;
 
     data_0209b458 = 0;
+#ifdef _MSC_VER
+    pad_0c5[0] = 0;
+#endif
 
     signed char c = mAreaId;
     if (c >= 0 && !IsAreaShowing(c)) {
@@ -189,6 +226,9 @@ int dActor_c::BeforeBehavior()
                 thresh <<= 1;
             if (r > thresh) {
                 mFlags |= 0x18;
+#ifdef _MSC_VER
+                HostWidenDraw(this, r, thresh, (Vector3 *)&mCamSpacePosX, mClipRadius);
+#endif
                 if (mFlags & 0x10000)
                     return 0;
             } else {
@@ -245,6 +285,10 @@ int dActor_c::BeforeRender()
         goto ret1;
     if (!(flags & 2))
         goto ret1;
+#ifdef _MSC_VER
+    if (pad_0c5[0])
+        goto ret1;
+#endif
 ret0:
     return 0;
 ret1:

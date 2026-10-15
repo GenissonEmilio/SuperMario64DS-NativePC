@@ -127,7 +127,7 @@ void starsel_keys(uint16_t *pressed, int)
                     o[0x115] = (unsigned char)i;
                     o[0x133] = 0;
                     o[0x117] = (unsigned char)(data_0208ee44 * 3);
-                    func_02012790(0x12e);
+                    host_menu_cursor_sound();
                     Message::DisplayStarNameForStarSelect((unsigned int)i);
                     break;
                 }
@@ -329,7 +329,7 @@ int rom_cursor_gameover(int dir, int *sel_out)
         g_go_shown = 1;      /* the plates show no highlight until something paints one: the first press always does */
         s[0x91] = (unsigned char)want;
         _ZN13dScGameOver_c19func_ov003_020b0730Ei(o, 0);
-        func_02012790(0x12e);
+        host_menu_cursor_sound();
         moved = 1;
     }
     if (sel_out) *sel_out = s[0x91];

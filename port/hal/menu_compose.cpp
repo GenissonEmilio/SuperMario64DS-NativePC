@@ -23,6 +23,7 @@
 #include <chrono>
 #include <vector>
 #include <mutex>
+#include <atomic>
 
 namespace ntr { int gx_anti_aliasing(); }
 
@@ -2205,10 +2206,26 @@ void hal_menu_touch_inverse(int bx, int by, int *dsx, int *dsy, int *in)
 void hal_menu_touch_end(void) { g_drag_piece = -1; }
 
 static unsigned g_hover_stamp;     /* ASSET3: counts the mouse moves that landed on a hotspot */
+static std::atomic<int> g_cursor_snd_req{0};
+static int g_hover_over = -1;      /* EXTRAS093: the hotspot the mouse is over now, -1 when it is over none */
+extern "C" void func_02012790(int id);
+void host_menu_cursor_sound(void) { g_cursor_snd_req.store(1); }
+void host_menu_cursor_sound_flush(void)
+{
+    if (!g_cursor_snd_req.exchange(0)) return;
+    static int log = -1;
+    if (log < 0) log = getenv("SM64DS_MENU_SOUND_LOG") ? 1 : 0;
+    if (log) fprintf(stderr, "[menu] cursor sound (func_02012790 0x12e)\n");
+    func_02012790(0x12e);
+}
+
 int hal_menu_hover(int bx, int by)
 {
     if (!g_live) return 0;
-    if (!menu_focus_hover(&g_cur, bx, by)) return 0;
+    if (!menu_focus_hover(&g_cur, bx, by)) { g_hover_over = -1; return 0; }
+    /* the mouse arrived on a button it was not on: the ROM's cursor sound, once */
+    if (g_cur.focus != g_hover_over) host_menu_cursor_sound();
+    g_hover_over = g_cur.focus;
     g_focus_shown = 1;
     ++g_hover_stamp;
     return 1;
@@ -2297,7 +2314,9 @@ void hal_menu_pad(uint16_t *pressed, int host_back)
             g_focus_shown = 1;
             if (g_cur.focus < 0 && g_cur.nh > 0) g_cur.focus = 0;
         } else {
+            const int before = g_cur.focus;
             menu_focus_move(&g_cur, dir);
+            if (g_cur.focus != before) host_menu_cursor_sound();    /* a pad / key move on a host-driven page: the ROM never saw it */
         }
     }
     if ((k & MENU_PAD_CONFIRM) && owns) {

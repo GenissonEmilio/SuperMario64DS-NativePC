@@ -63,6 +63,7 @@ static const SlInfo INFO[] = {
     { "MinigameGap",            SL_KIND_BOOL,    0, 1, 1, 0, 1 },
     { "GapLook",                SL_KIND_ENUM,    0, 2, 1, GAPLOOK_NAMES, 1 },
     { "GapColor",               SL_KIND_ENUM,    0, 5, 0, GAPCOLOR_NAMES, 1 },
+    { "DrawDistance",           SL_KIND_PERCENT, 100, 10000, 100, 0, 1 },
     { "FrameRate",              SL_KIND_PERCENT, 0, 240, 0, 0, 1 },     /* values 1..59 are sanitised to 0 by the engine */
 };
 
@@ -107,6 +108,7 @@ int sl_get(int id)
     case SL_IMPROVED_MINIMAP:   return host_setting_improved_minimap();
     case SL_MINIGAME_GAP:       return host_setting_minigame_gap();
     case SL_GAP_LOOK:           return host_setting_gap_look();
+    case SL_DRAW_DISTANCE:      return host_setting_draw_distance_pct();
     case SL_FRAME_RATE:         return host_setting_frame_rate();
     case SL_GAP_COLOR: {
         const unsigned c = host_setting_gap_color() & 0xffffffu;
@@ -138,6 +140,7 @@ int sl_set(int id, int v)
     case SL_IMPROVED_MINIMAP:   return 0;   /* latched with the minimap geometry */
     case SL_MINIGAME_GAP:       return host_setting_set_minigame_gap(v);
     case SL_GAP_LOOK:           return host_setting_set_gap_look(v);
+    case SL_DRAW_DISTANCE:      return host_setting_set_draw_distance(v);
     case SL_FRAME_RATE:         host_setting_save_frame_rate(v); return 1;     /* FPSLIVE1 saves the key itself */
     case SL_GAP_COLOR:
         if (v < 0 || v > 5) return 0;

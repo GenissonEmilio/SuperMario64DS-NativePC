@@ -729,7 +729,7 @@ int pause_cursor(int dir, int *owns)
     else if (dir == MENU_DIR_DOWN && slot < nslots_of(v) - 1) ++ns;
     if (ns != slot || slot < 0) {
         set_chosen(slot_rom_table(v)[ns]);
-        func_02012790(0x12e);
+        host_menu_cursor_sound();
     }
     return 1;
 }
@@ -839,7 +839,7 @@ extern "C" void menu_pause_rom_pad(uint16_t *pressed)
         const int ns = dir == MENU_DIR_UP ? (cur > 0 ? cur - 1 : cur) : (cur < last ? cur + 1 : cur);
         if (ns != cur) {
             set_chosen(ns);
-            func_02012790(0x12e);
+            host_menu_cursor_sound();
         }
     }
     if (k & (MENU_PAD_CONFIRM | 0x0001)) k = (uint16_t)((k & ~(unsigned)(MENU_PAD_CONFIRM | 0x0001)) | MENU_PAD_START);

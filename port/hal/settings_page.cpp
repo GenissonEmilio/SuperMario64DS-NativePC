@@ -574,7 +574,7 @@ const char *const TAB_NAMES[T_COUNT] = { "GENERAL", "DISPLAY", "CONTROLS", "SOUN
 
 /* DISPLAY is built per call: the Frame rate row is there only when this build's settings_live has a FrameRate row (another lane makes it
    live; until then it stays a launcher setting and the note says so) */
-Row g_disp_rows[10];
+Row g_disp_rows[12];
 int g_disp_n;
 const Row *display_rows(int *n)
 {
@@ -582,6 +582,12 @@ const Row *display_rows(int *n)
     g_disp_rows[k++] = Row{ R_CHECK, "Minigame screen gap", SL_MINIGAME_GAP, -1, 0, 0, 0 };
     g_disp_rows[k++] = Row{ R_CHOICE, "Gap look", SL_GAP_LOOK, -1, 0, GAPLOOK_LABELS, 3 };
     g_disp_rows[k++] = Row{ R_CHOICE, "Gap color", SL_GAP_COLOR, -1, 0, GAPCOLOR_LABELS, 6 };
+    {
+        static const char *const DIST_LABELS[] = { "1x", "1.5x", "2x", "4x", "Max" };
+        static const int DIST_VALS[] = { 100, 150, 200, 400, 10000 };
+        const int dd = sl_find("DrawDistance");
+        if (dd >= 0) g_disp_rows[k++] = Row{ R_CHOICE, "Draw distance", dd, -1, 0, DIST_LABELS, 5, DIST_VALS };
+    }
     const int fr = sl_find("FrameRate");
     const SlInfo *fi = fr >= 0 ? sl_info(fr) : 0;
     static const char *const RATE_LABELS[] = { "Native", "60", "90", "120", "144", "165", "180", "240" };
@@ -916,6 +922,7 @@ void move_sel(int dir)
         if (s < 0 || s > n) return;                    /* n is the Reset plank */
         if (s == n || row_focusable(rows[s])) break;
     }
+    if (S.sel != s) host_menu_cursor_sound();      /* EXTRAS093: a key / pad move onto another row */
     S.sel = s;
     if (s < n && rows[s].t != R_BIND) S.col = 0;
     S.ensure_vis = 1;
@@ -1165,12 +1172,12 @@ extern "C" int settings_page_frame(const SpInput *in)
             if (moved) {
                 S.cursor_shown = 1;
                 if (over_row >= 0 && over_row < n && row_focusable(rows[over_row])) {
-                    if (S.sel != over_row) { S.sel = over_row; S.col = 0; }
+                    if (S.sel != over_row) { S.sel = over_row; S.col = 0; host_menu_cursor_sound(); }   /* EXTRAS093: the mouse arrived on another row */
                     if (rows[over_row].t == R_BIND && rows[over_row].id2 >= 0) {
                         CapPos cp[2]; caps_of(rows[over_row], cp);
                         S.col = (mx >= cp[1].x - P(12)) ? 1 : 0;
                     }
-                } else if (in_rect(mx, my, L.reset)) S.sel = n;
+                } else if (in_rect(mx, my, L.reset)) { if (S.sel != n) host_menu_cursor_sound(); S.sel = n; }
             }
             if (in->wheel) {
                 S.scroll -= in->wheel * (L.rowh * 3 / 2);

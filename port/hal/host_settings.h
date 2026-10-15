@@ -343,6 +343,13 @@ int host_setting_lovesme_character(void);
    It reloads live like the gap and the volume, so the launcher's dialog can
    turn it on and off with the game already running. */
 int host_setting_mouse_capture(void);
+/* StartFullscreen: 1 when the window opens in F12's borderless fullscreen.
+   Default 0. Boot only. */
+int host_setting_start_fullscreen(void);
+/* DrawDistance: percent (100..10000) of each actor's ROM draw distance. 100 is
+   the ROM's own and the default. Drawing only. */
+int host_setting_draw_distance_pct(void);
+int host_setting_set_draw_distance(int pct);
 
 /* ---- NameTags: WHO THAT IS, AND HOW THEY ARE DOING ----------------------
    Default 1, and the default is ON, which is the one key here that is on by
