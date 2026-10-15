@@ -41,13 +41,15 @@ int g_mode;            /* CD_NONE while closed */
 enum { MAX_DOORS = 4 };
 void *g_door_obj[MAX_DOORS];
 int g_door_armed[MAX_DOORS];
+int g_door_out[MAX_DOORS];     /* consecutive hook calls this leaf saw the player outside its doorway */
 int g_new_armed = 1;   /* what a door seen for the first time starts as (0 after a restart that put the player in a doorway) */
-int *armed_of(void *d)
+int *armed_of(void *d, int **out)
 {
     for (int i = 0; i < MAX_DOORS; ++i)
-        if (g_door_obj[i] == d) return &g_door_armed[i];
+        if (g_door_obj[i] == d) { *out = &g_door_out[i]; return &g_door_armed[i]; }
     for (int i = 0; i < MAX_DOORS; ++i)
-        if (!g_door_obj[i]) { g_door_obj[i] = d; g_door_armed[i] = g_new_armed; return &g_door_armed[i]; }
+        if (!g_door_obj[i]) { g_door_obj[i] = d; g_door_armed[i] = g_new_armed; *out = &g_door_out[i]; return &g_door_armed[i]; }
+    *out = &g_door_out[MAX_DOORS - 1];
     return &g_door_armed[MAX_DOORS - 1];
 }
 void disarm_all(void)
@@ -181,8 +183,14 @@ int door_hook(void *door, void *pl)
     /* the box comes as soon as the ROM's star is done (the player stands wherever the ROM left them); the picker only
        when the player walks into the doorway */
     if (!first) {
-        int *armed = armed_of(d);
-        if (!func_ov100_021452e4(d, p)) { *armed = 1; return 0; }   /* not in the doorway: the ROM's own watch */
+        int *out = 0;
+        int *armed = armed_of(d, &out);
+        if (!func_ov100_021452e4(d, p)) {                           /* not in the doorway: the ROM's own watch */
+            /* a real step out (half a second), not the one-frame blip a character swap makes */
+            if (++*out >= 15) *armed = 1;
+            return 0;
+        }
+        *out = 0;
         if (!*armed) return 1;                                     /* just closed: do not let it open the door under them */
     }
     /* the walking states the ROM's Player::CanEnterDoor accepts, tested without committing the player to a door state */
