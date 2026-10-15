@@ -140,20 +140,22 @@ const MenuRecipe g_menu_recipes[] = {
 };
 const int g_menu_nrecipes = (int)(sizeof g_menu_recipes / sizeof g_menu_recipes[0]);
 
-/* PADMENUS1: the game over screen with OneScreenMenus off (no recipe is live): the ROM has no pad cursor there, so the recipe's own ROM cursor driver
-   (menu_gameover_rom_cursor) is run from the pad seam, and the confirm becomes the Start the ROM confirms with: the same two things hal_menu_pad does
-   for the recipe's MENU_DRV_ROM_CURSOR rows. */
-extern "C" void menu_gameover_pad_rom(uint16_t *pressed)
+/* PADMENUS1: the ROM's own game over and level-clear (save) screens with OneScreenMenus off and no recipe live. The ROM has no pad cursor on either, so
+   the recipe's own ROM cursor driver (the same function hal_menu_pad runs for its MENU_DRV_ROM_CURSOR rows) is run from the pad seam, and the confirm
+   becomes the Start the ROM confirms with. */
+static void rom_cursor_pad(uint16_t *pressed, int (*pad_ok)(void), int (*cursor)(int, int *))
 {
-    if (!menu_gameover_pad_ok()) return;
+    if (!pad_ok()) return;
     uint16_t k = *pressed;
     int dir = -1;
     if (k & MENU_PAD_UP) dir = MENU_DIR_UP;
     else if (k & MENU_PAD_DOWN) dir = MENU_DIR_DOWN;
     else if (k & MENU_PAD_LEFT) dir = MENU_DIR_LEFT;
     else if (k & MENU_PAD_RIGHT) dir = MENU_DIR_RIGHT;
-    if (dir >= 0) { int sel = 0; menu_gameover_rom_cursor(dir, &sel); }
+    if (dir >= 0) { int sel = 0; cursor(dir, &sel); }
     k = (uint16_t)(k & ~0xf0u);
     if (k & MENU_PAD_CONFIRM) k = (uint16_t)((k & ~(unsigned)MENU_PAD_CONFIRM) | MENU_PAD_START);
     *pressed = k;
 }
+extern "C" void menu_gameover_pad_rom(uint16_t *pressed) { rom_cursor_pad(pressed, menu_gameover_pad_ok, menu_gameover_rom_cursor); }
+extern "C" void menu_lc_pad_rom(uint16_t *pressed) { rom_cursor_pad(pressed, menu_lc_pad_ok, menu_lc_rom_cursor); }
