@@ -69,7 +69,6 @@ void build_list(int cur)
         ++g_n;
     }
     for (int i = 0; i < port_char_count() && g_n < 16; ++i) {
-        if (!rom_char_unlocked(port_char_base(i) & 3)) continue;
         g_item[g_n].id = 4 + i;
         snprintf(g_item[g_n].label, sizeof g_item[g_n].label, "%s  %s", port_char_name(i), ROM_NAME[port_char_base(i) & 3]);
         ++g_n;

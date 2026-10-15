@@ -25,8 +25,8 @@
    player until they step out of its doorway (so Back leaves them standing at the door).
 
    THE LIST. Mario always, then Luigi, Wario, Yoshi when this save has them (SaveData::IsCharacterUnlocked,
-   save flags2 bit n), then every installed character mod whose base this save has. The cursor starts on
-   the character being played. */
+   save flags2 bit n), then every installed character mod (Tango: every installed one, name and base).
+   The cursor starts on the character being played. */
 #ifndef PORT_HAL_CHAR_DOOR_H
 #define PORT_HAL_CHAR_DOOR_H
 
