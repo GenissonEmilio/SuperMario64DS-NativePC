@@ -136,6 +136,7 @@ extern "C" int menu_pause_rom_fallback(void);   /* UIMOD1: hal/menu_recipe_pause
 void menu_title_pad_map_rom(uint16_t *pressed, int host_back);   /* PADMENUS1: hal/menu_recipe_title.cpp */
 extern "C" void menu_gameover_pad_rom(uint16_t *pressed);   /* PADMENUS1: hal/menu_recipes.cpp */
 extern "C" void menu_lc_pad_rom(uint16_t *pressed);
+extern "C" void menu_recroom_pad_rom(void);
 extern "C" void menu_pause_rom_pad(uint16_t *pressed);   /* hal/menu_recipe_pause.cpp: OneScreenMenus off, the ROM's own pause */   /* PAUSE3: hal/menu_recipe_pause.cpp */
 int hal_present_client_to_sub(int cx, int cy, int *dsx, int *dsy);
 /* the layout mode, defined at the bottom of this file */
@@ -3792,6 +3793,7 @@ extern "C" void hal_menu_pad_seam(void)
         const int s0 = data_020a0e40;
         unsigned short *pr = (unsigned short *)((char *)data_020a0e58 + s0 * 4 + 2);
         unsigned short *sp = (unsigned short *)((char *)data_020a0e5a + s0 * 4);
+        if (port_scene_live_id() == 5) menu_recroom_pad_rom();   /* PADMENUS1: the ROM's own Rec Room: pad B is the back arrow */
         uint16_t k0 = *pr, k1 = k0;
         if (hal_menu_trace_on()) {      /* PADMENUS1 (SM64DS_MENU_TRACE): the ROM's own pause and its plate cursor, so a pad row can read what a press did with no recipe up */
             static unsigned last = ~0u;

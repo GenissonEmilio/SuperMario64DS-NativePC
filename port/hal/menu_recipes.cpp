@@ -159,3 +159,8 @@ static void rom_cursor_pad(uint16_t *pressed, int (*pad_ok)(void), int (*cursor)
 }
 extern "C" void menu_gameover_pad_rom(uint16_t *pressed) { rom_cursor_pad(pressed, menu_gameover_pad_ok, menu_gameover_rom_cursor); }
 extern "C" void menu_lc_pad_rom(uint16_t *pressed) { rom_cursor_pad(pressed, menu_lc_pad_ok, menu_lc_rom_cursor); }
+
+/* PADMENUS1: the Rec Room with OneScreenMenus off. The scene reads no pad at all; the recipe's own pad step (menu_recroom_pad_ok) is where the pad's B
+   becomes a touch on the back arrow, and it asks the ROM first whether the scene is reading the touch screen (not flipping a page, exiting or fading).
+   Run from the pad seam before the key word is read. */
+extern "C" void menu_recroom_pad_rom(void) { (void)menu_recroom_pad_ok(); }
