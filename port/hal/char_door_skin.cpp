@@ -207,7 +207,7 @@ void decide_skin(void)
 }
 
 /* colours of the plain skin and the text colours of both */
-const uint32_t C_SHEET = 0xE9C96Au, C_EDGE = 0x7A4614u, C_CREAM = 0xFFF1C9u, C_TEXT = 0x7A4614u, C_DIM = 0xA27A3Eu, C_WOODTXT = 0xFFF3CCu;
+const uint32_t C_SHEET = 0xE9C96Au, C_EDGE = 0x7A4614u, C_CREAM = 0xFFF1C9u, C_TEXT = 0x7A4614u, C_DIM = 0x8A5C22u, C_WOODTXT = 0xFFF3CCu;
 
 /* a rounded rectangle, anti-aliased by distance, filled with a colour (or a premultiplied picture when pic is set; the picture is
    (pw x ph) and covers the rectangle from its top left) */
@@ -430,7 +430,7 @@ struct Font {
     }
     int kscale(float em) const
     {
-        const int k = (int)(em * u / 10.0f + 0.5f);
+        const int k = (int)(em * u / 8.0f + 0.5f);
         return k < 1 ? 1 : k;
     }
     /* draws with the top of a capital at y (hd: baseline = y + cap height) */
@@ -754,7 +754,7 @@ void cdskin_draw(uint32_t *px, int stride, int w, int h, const CdGeom *gp, const
             if (const Piece *p = fitted(image_id(m, I) + 200, *I, iw, ih, &ox, &oy)) blit(s, g.px + (g.pw - iw) / 2 + ox, g.py + (g.ph - ih) / 2 + oy, *p);
         }
         int y = g.dy;
-        const float em = 21.0f;
+        const float em = 20.0f;
         const std::string nm = fit(f, m.label, em, (float)g.dw);
         f.draw(s, g.dx + (g.dw - f.width(nm.c_str(), em)) / 2, (float)y, nm.c_str(), em, C_TEXT);
         y += U(26);
