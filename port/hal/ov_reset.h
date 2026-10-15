@@ -17,6 +17,8 @@ struct PortOvResetEnt {
     const unsigned *msn;
     const PortOvMRow *mw;   /* the whole-image mount's array, port_ovNNN_mrows */
     const unsigned *mwn;
+    const unsigned char *const *guards;   /* mounted guard words of function-local statics the TUs of this overlay own */
+    unsigned nguards;
 };
 
 extern "C" const PortOvResetEnt port_ovreset_tab[];

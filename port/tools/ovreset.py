@@ -85,6 +85,21 @@ def header(ov, tu):
         "#endif\n" % (os.path.basename(tu), ov, ov, t, ov, t, ov, t, ov, t, ov, t, ov, t))
 
 
+GUARD = re.compile(r"\b(data_ov(\d{3})_[0-9a-f]{8})\s*\|=\s*(?:0x[0-9a-fA-F]+|\d+)\s*;")
+
+
+def guards(rs):
+    """{overlay: [guard word symbols]}: a function-local static of an overlay's TU is constructed behind a guard
+    word the overlay's MOUNT owns (data_ovNNN_XXXXXXXX |= 1). The object is restored with the TU, the guard
+    has to go back with it or the one-time construction is skipped and the object stays at its start-up zero."""
+    out = {}
+    for ov, k in rs:
+        for m in GUARD.finditer(open(os.path.join(REPO, k), encoding="utf-8", errors="replace").read()):
+            if int(m.group(2)) == ov:
+                out.setdefault(ov, set()).add(m.group(1))
+    return {ov: sorted(v) for ov, v in out.items()}
+
+
 def render_tab(rs):
     ovs = sorted(set(r[0] for r in rs))
     o = []
@@ -121,14 +136,25 @@ def render_tab(rs):
             o.append('#pragma comment(linker, "/alternatename:" OVR_US "%s=" OVR_US "port_ovnone_mrows")' % nm)
             o.append('#pragma comment(linker, "/alternatename:" OVR_US "%s_n=" OVR_US "port_ovnone_mrows_n")' % nm)
     o.append("}")
+    gd = guards(rs)
+    o.append("")
+    o.append("/* Mounted guard words of function-local statics, restored with the overlay's TU objects. */")
+    o.append("extern \"C\" {")
+    for ov in sorted(gd):
+        for g in gd[ov]:
+            o.append("extern unsigned char %s[];" % g)
+    o.append("}")
+    for ov in sorted(gd):
+        o.append("static const unsigned char *const ovr_%03d_guards[] = { %s };" % (ov, ", ".join(gd[ov])))
     o.append("")
     o.append("extern \"C\" const PortOvResetEnt port_ovreset_tab[] = {")
     for ov in range(128):
         names = sorted(os.path.splitext(os.path.basename(r[1]))[0] for r in rs if r[0] == ov)
         sent = ("&ovr_%03d_d_a, &ovr_%03d_d_z, &ovr_%03d_s_a, &ovr_%03d_s_z" % (ov, ov, ov, ov)) if names else "0, 0, 0, 0"
-        o.append("    { %d, %s, port_ov%03d_mrows_syms, &port_ov%03d_mrows_syms_n, port_ov%03d_mrows, &port_ov%03d_mrows_n }, /* %s */" % (
-            ov, sent, ov, ov, ov, ov, ", ".join(names)))
-    o.append("    { -1, 0, 0, 0, 0, 0, 0, 0, 0 }")
+        o.append("    { %d, %s, port_ov%03d_mrows_syms, &port_ov%03d_mrows_syms_n, port_ov%03d_mrows, &port_ov%03d_mrows_n, %s }, /* %s */" % (
+            ov, sent, ov, ov, ov, ov,
+            ("ovr_%03d_guards, %d" % (ov, len(gd[ov]))) if ov in gd else "0, 0", ", ".join(names)))
+    o.append("    { -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }")
     o.append("};")
     o.append("")
     return "\n".join(o)

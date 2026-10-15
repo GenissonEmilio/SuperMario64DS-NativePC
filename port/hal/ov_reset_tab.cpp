@@ -1570,134 +1570,163 @@ extern const unsigned port_ov127_mrows_n;
 #pragma comment(linker, "/alternatename:" OVR_US "port_ov127_mrows_n=" OVR_US "port_ovnone_mrows_n")
 }
 
+/* Mounted guard words of function-local statics, restored with the overlay's TU objects. */
+extern "C" {
+extern unsigned char data_ov002_02110afc[];
+extern unsigned char data_ov002_02110b00[];
+extern unsigned char data_ov002_02110b04[];
+extern unsigned char data_ov002_02110b08[];
+extern unsigned char data_ov002_02110b0c[];
+extern unsigned char data_ov004_020beb70[];
+extern unsigned char data_ov006_02140300[];
+extern unsigned char data_ov006_0214030c[];
+extern unsigned char data_ov006_02140310[];
+extern unsigned char data_ov006_02140318[];
+extern unsigned char data_ov006_02140320[];
+extern unsigned char data_ov006_0214032c[];
+extern unsigned char data_ov006_02143004[];
+extern unsigned char data_ov063_0211edc0[];
+extern unsigned char data_ov100_0214870c[];
+extern unsigned char data_ov100_02148710[];
+extern unsigned char data_ov100_02148714[];
+extern unsigned char data_ov100_02148718[];
+extern unsigned char data_ov100_0214871c[];
+extern unsigned char data_ov100_02148720[];
+}
+static const unsigned char *const ovr_002_guards[] = { data_ov002_02110afc, data_ov002_02110b00, data_ov002_02110b04, data_ov002_02110b08, data_ov002_02110b0c };
+static const unsigned char *const ovr_004_guards[] = { data_ov004_020beb70 };
+static const unsigned char *const ovr_006_guards[] = { data_ov006_02140300, data_ov006_0214030c, data_ov006_02140310, data_ov006_02140318, data_ov006_02140320, data_ov006_0214032c, data_ov006_02143004 };
+static const unsigned char *const ovr_063_guards[] = { data_ov063_0211edc0 };
+static const unsigned char *const ovr_100_guards[] = { data_ov100_0214870c, data_ov100_02148710, data_ov100_02148714, data_ov100_02148718, data_ov100_0214871c, data_ov100_02148720 };
+
 extern "C" const PortOvResetEnt port_ovreset_tab[] = {
-    { 0, 0, 0, 0, 0, port_ov000_mrows_syms, &port_ov000_mrows_syms_n, port_ov000_mrows, &port_ov000_mrows_n }, /*  */
-    { 1, 0, 0, 0, 0, port_ov001_mrows_syms, &port_ov001_mrows_syms_n, port_ov001_mrows, &port_ov001_mrows_n }, /*  */
-    { 2, &ovr_002_d_a, &ovr_002_d_z, &ovr_002_s_a, &ovr_002_s_z, port_ov002_mrows_syms, &port_ov002_mrows_syms_n, port_ov002_mrows, &port_ov002_mrows_n }, /* dEnemyBase_c, dPathLiftActor_c, d_a_obj_bc_switch, d_a_obj_cannon_shutter, d_a_obj_hatena_switch, d_a_obj_wakame, da1up_c, daChRoom_c, daCoin_c, daDemo_c, daObj1UpLogo_c, daObjBlockItemTag_c, daObjBlockL_c, daObjFire_c, daObjHeart_c, daObjLava_c, daObjMarioCap_c, daObjPowerUpItem_c, daObjPushblock_c, daObjSwitch_c, daObjTatefuda_c, daPropeller_Heyho_Fire_c, daSCoin_c, daStar_c, daYegg_c */
-    { 3, 0, 0, 0, 0, port_ov003_mrows_syms, &port_ov003_mrows_syms_n, port_ov003_mrows, &port_ov003_mrows_n }, /*  */
-    { 4, &ovr_004_d_a, &ovr_004_d_z, &ovr_004_s_a, &ovr_004_s_z, port_ov004_mrows_syms, &port_ov004_mrows_syms_n, port_ov004_mrows, &port_ov004_mrows_n }, /* dMgPsOpt_c, dMgState_c, d_s_mg_base, unit020b2c84 */
-    { 5, 0, 0, 0, 0, port_ov005_mrows_syms, &port_ov005_mrows_syms_n, port_ov005_mrows, &port_ov005_mrows_n }, /*  */
-    { 6, &ovr_006_d_a, &ovr_006_d_z, &ovr_006_s_a, &ovr_006_s_z, port_ov006_mrows_syms, &port_ov006_mrows_syms_n, port_ov006_mrows, &port_ov006_mrows_n }, /* dMg3DEspAnimSet_c, dMg3DHeyhoObjAdapter_c, dMgJump3DMario_c, dScMgCoin_c, dScMgCup_c, dScMgCurling2_c, dScMgCurling_c, dScMgHanachan_c, dScMgJump_c, dScMgLuigi_c, dScMgMemory2_c, dScMgPachinko2_c, dScMgPachinko_c, dScMgPanel_c, dScMgSlots, dScMgSnowball_c, dScMgTeresa_c, d_s_mg_bsc, d_s_mg_card, d_s_mg_jump2, d_s_mg_m_carlo, d_s_mg_m_carlo2, d_s_mg_memory, d_s_mg_trampoline, d_s_mg_trampoline2 */
-    { 7, 0, 0, 0, 0, port_ov007_mrows_syms, &port_ov007_mrows_syms_n, port_ov007_mrows, &port_ov007_mrows_n }, /*  */
-    { 8, 0, 0, 0, 0, port_ov008_mrows_syms, &port_ov008_mrows_syms_n, port_ov008_mrows, &port_ov008_mrows_n }, /*  */
-    { 9, &ovr_009_d_a, &ovr_009_d_z, &ovr_009_s_a, &ovr_009_s_z, port_ov009_mrows_syms, &port_ov009_mrows_syms_n, port_ov009_mrows, &port_ov009_mrows_n }, /* d_a_mc_flag, d_a_obj_mc_metalnet, d_a_s_bird */
-    { 10, &ovr_010_d_a, &ovr_010_d_z, &ovr_010_s_a, &ovr_010_s_z, port_ov010_mrows_syms, &port_ov010_mrows_syms_n, port_ov010_mrows, &port_ov010_mrows_n }, /* d_a_obj_c1_hikari, d_a_obj_c1_trap, daObjC1Peach_c */
-    { 11, 0, 0, 0, 0, port_ov011_mrows_syms, &port_ov011_mrows_syms_n, port_ov011_mrows, &port_ov011_mrows_n }, /*  */
-    { 12, &ovr_012_d_a, &ovr_012_d_z, &ovr_012_s_a, &ovr_012_s_z, port_ov012_mrows_syms, &port_ov012_mrows_syms_n, port_ov012_mrows, &port_ov012_mrows_n }, /* d_a_obj_c0_switch, d_a_obj_c0_water */
-    { 13, &ovr_013_d_a, &ovr_013_d_z, &ovr_013_s_a, &ovr_013_s_z, port_ov013_mrows_syms, &port_ov013_mrows_syms_n, port_ov013_mrows, &port_ov013_mrows_n }, /* d_a_obj_clock_huriko, daObjClock_c */
-    { 14, &ovr_014_d_a, &ovr_014_d_z, &ovr_014_s_a, &ovr_014_s_z, port_ov014_mrows_syms, &port_ov014_mrows_syms_n, port_ov014_mrows, &port_ov014_mrows_n }, /* d_a_obj_b_swdoor, d_a_obj_wanwan_shutter, d_a_wanwan */
-    { 15, &ovr_015_d_a, &ovr_015_d_z, &ovr_015_s_a, &ovr_015_s_z, port_ov015_mrows_syms, &port_ov015_mrows_syms_n, port_ov015_mrows, &port_ov015_mrows_n }, /* d_a_obj_bk_billboard, d_a_obj_bk_fall_block, d_a_obj_bk_rotebar, d_a_obj_bk_ukisima, daObjBk_Botaosi_c, daObjBk_Lift_c */
-    { 16, &ovr_016_d_a, &ovr_016_d_z, &ovr_016_s_a, &ovr_016_s_z, port_ov016_mrows_syms, &port_ov016_mrows_syms_n, port_ov016_mrows, &port_ov016_mrows_n }, /* d_a_obj_ki_fune, d_a_obj_ki_ita, daMoray_c, daObjKi_Hasira_c, daSlide_Box_c */
-    { 17, &ovr_017_d_a, &ovr_017_d_z, &ovr_017_s_a, &ovr_017_s_z, port_ov017_mrows_syms, &port_ov017_mrows_syms_n, port_ov017_mrows, &port_ov017_mrows_n }, /* d_a_obj_ks_water */
-    { 18, &ovr_018_d_a, &ovr_018_d_z, &ovr_018_s_a, &ovr_018_s_z, port_ov018_mrows_syms, &port_ov018_mrows_syms_n, port_ov018_mrows, &port_ov018_mrows_n }, /* d_a_obj_ice_board, d_a_pg_mthr, daObjSm_Lift_c */
-    { 19, &ovr_019_d_a, &ovr_019_d_z, &ovr_019_s_a, &ovr_019_s_z, port_ov019_mrows_syms, &port_ov019_mrows_syms_n, port_ov019_mrows, &port_ov019_mrows_n }, /* d_a_sld_mng */
-    { 20, &ovr_020_d_a, &ovr_020_d_z, &ovr_020_s_a, &ovr_020_s_z, port_ov020_mrows_syms, &port_ov020_mrows_syms_n, port_ov020_mrows, &port_ov020_mrows_n }, /* daBook_c, daChair_c */
-    { 21, &ovr_021_d_a, &ovr_021_d_z, &ovr_021_s_a, &ovr_021_s_z, port_ov021_mrows_syms, &port_ov021_mrows_syms_n, port_ov021_mrows, &port_ov021_mrows_n }, /* d_a_obj_cv_shutter, daGrock_c */
-    { 22, &ovr_022_d_a, &ovr_022_d_z, &ovr_022_s_a, &ovr_022_s_z, port_ov022_mrows_syms, &port_ov022_mrows_syms_n, port_ov022_mrows, &port_ov022_mrows_n }, /* d_a_obj_fl_maruta, daObjFl_Block_c, daObjFl_Fall_Block_c, daObjFl_Koma_D_c, daObjFl_London_c, daObjFl_Ring_c, daObjFl_Seesaw_c, daObjFl_Ukiyuka_c */
-    { 23, &ovr_023_d_a, &ovr_023_d_z, &ovr_023_s_a, &ovr_023_s_z, port_ov023_mrows_syms, &port_ov023_mrows_syms_n, port_ov023_mrows, &port_ov023_mrows_n }, /* d_a_obj_fm_battan */
-    { 24, &ovr_024_d_a, &ovr_024_d_z, &ovr_024_s_a, &ovr_024_s_z, port_ov024_mrows_syms, &port_ov024_mrows_syms_n, port_ov024_mrows, &port_ov024_mrows_n }, /* daObjDlPyramid_c */
-    { 25, &ovr_025_d_a, &ovr_025_d_z, &ovr_025_s_a, &ovr_025_s_z, port_ov025_mrows_syms, &port_ov025_mrows_syms_n, port_ov025_mrows, &port_ov025_mrows_n }, /* daDgr_c, daDkk_c, daDpLift_c, daObjDpBrock_c */
-    { 26, &ovr_026_d_a, &ovr_026_d_z, &ovr_026_s_a, &ovr_026_s_z, port_ov026_mrows_syms, &port_ov026_mrows_syms_n, port_ov026_mrows, &port_ov026_mrows_n }, /* d_a_obj_wl_polelift, daObjWlKoopaShutter_c, daObjWlSubmarine_c, daWater_Suikomi_c, daWater_Tatumaki_c */
-    { 27, &ovr_027_d_a, &ovr_027_d_z, &ovr_027_s_a, &ovr_027_s_z, port_ov027_mrows_syms, &port_ov027_mrows_syms_n, port_ov027_mrows, &port_ov027_mrows_n }, /* d_a_i_donketu, daObjSlIceBlock_c, daPgDfdr_c */
-    { 28, 0, 0, 0, 0, port_ov028_mrows_syms, &port_ov028_mrows_syms_n, port_ov028_mrows, &port_ov028_mrows_n }, /*  */
-    { 29, &ovr_029_d_a, &ovr_029_d_z, &ovr_029_s_a, &ovr_029_s_z, port_ov029_mrows_syms, &port_ov029_mrows_syms_n, port_ov029_mrows, &port_ov029_mrows_n }, /* d_a_obj_wc_mizu, d_a_obj_wc_obj01, d_a_obj_wc_obj02, d_a_obj_wc_obj03, d_a_obj_wc_obj04, d_a_obj_wc_obj05, d_a_obj_wc_obj06, d_a_obj_wc_obj07 */
-    { 30, &ovr_030_d_a, &ovr_030_d_z, &ovr_030_s_a, &ovr_030_s_z, port_ov030_mrows_syms, &port_ov030_mrows_syms_n, port_ov030_mrows, &port_ov030_mrows_n }, /* d_a_obj_hm_bskt, daObjHmMaruta_c */
-    { 31, &ovr_031_d_a, &ovr_031_d_z, &ovr_031_s_a, &ovr_031_s_z, port_ov031_mrows_syms, &port_ov031_mrows_syms_n, port_ov031_mrows, &port_ov031_mrows_n }, /* d_a_obj_hs_billboard */
-    { 32, &ovr_032_d_a, &ovr_032_d_z, &ovr_032_s_a, &ovr_032_s_z, port_ov032_mrows_syms, &port_ov032_mrows_syms_n, port_ov032_mrows, &port_ov032_mrows_n }, /* d_a_obj_td_futa, d_a_obj_td_water, daBakubaku_c */
-    { 33, &ovr_033_d_a, &ovr_033_d_z, &ovr_033_s_a, &ovr_033_s_z, port_ov033_mrows_syms, &port_ov033_mrows_syms_n, port_ov033_mrows, &port_ov033_mrows_n }, /* daObjTtFuta_c, daObjTtWater_c */
-    { 34, &ovr_034_d_a, &ovr_034_d_z, &ovr_034_s_a, &ovr_034_s_z, port_ov034_mrows_syms, &port_ov034_mrows_syms_n, port_ov034_mrows, &port_ov034_mrows_n }, /* daHanachan_c */
-    { 35, &ovr_035_d_a, &ovr_035_d_z, &ovr_035_s_a, &ovr_035_s_z, port_ov035_mrows_syms, &port_ov035_mrows_syms_n, port_ov035_mrows, &port_ov035_mrows_n }, /* daObjCtMecha10_c, daObjCtMecha11_c */
-    { 36, &ovr_036_d_a, &ovr_036_d_z, &ovr_036_s_a, &ovr_036_s_z, port_ov036_mrows_syms, &port_ov036_mrows_syms_n, port_ov036_mrows, &port_ov036_mrows_n }, /* d_a_obj_rc_buranko, d_a_obj_rc_carpet, d_a_obj_rc_dorifu, d_a_obj_rc_guruguru, d_a_obj_rc_hane, d_a_obj_rc_kaitendai, daObjRc_Tikuwa_c */
-    { 37, 0, 0, 0, 0, port_ov037_mrows_syms, &port_ov037_mrows_syms_n, port_ov037_mrows, &port_ov037_mrows_n }, /*  */
-    { 38, 0, 0, 0, 0, port_ov038_mrows_syms, &port_ov038_mrows_syms_n, port_ov038_mrows, &port_ov038_mrows_n }, /*  */
-    { 39, &ovr_039_d_a, &ovr_039_d_z, &ovr_039_s_a, &ovr_039_s_z, port_ov039_mrows_syms, &port_ov039_mrows_syms_n, port_ov039_mrows, &port_ov039_mrows_n }, /* d_a_obj_kumo */
-    { 40, 0, 0, 0, 0, port_ov040_mrows_syms, &port_ov040_mrows_syms_n, port_ov040_mrows, &port_ov040_mrows_n }, /*  */
-    { 41, 0, 0, 0, 0, port_ov041_mrows_syms, &port_ov041_mrows_syms_n, port_ov041_mrows, &port_ov041_mrows_n }, /*  */
-    { 42, 0, 0, 0, 0, port_ov042_mrows_syms, &port_ov042_mrows_syms_n, port_ov042_mrows, &port_ov042_mrows_n }, /*  */
-    { 43, &ovr_043_d_a, &ovr_043_d_z, &ovr_043_s_a, &ovr_043_s_z, port_ov043_mrows_syms, &port_ov043_mrows_syms_n, port_ov043_mrows, &port_ov043_mrows_n }, /* d_a_obj_km1_dorifu, d_a_obj_km1_kuruma, d_a_obj_km1_kurumajiku, d_a_obj_km1_ukishima */
-    { 44, &ovr_044_d_a, &ovr_044_d_z, &ovr_044_s_a, &ovr_044_s_z, port_ov044_mrows_syms, &port_ov044_mrows_syms_n, port_ov044_mrows, &port_ov044_mrows_n }, /* d_a_obj_kb1_billboard */
-    { 45, &ovr_045_d_a, &ovr_045_d_z, &ovr_045_s_a, &ovr_045_s_z, port_ov045_mrows_syms, &port_ov045_mrows_syms_n, port_ov045_mrows, &port_ov045_mrows_n }, /* d_a_obj_km2_agaru, d_a_obj_km2_ami_bou, d_a_obj_km2_fall_block, d_a_obj_km2_gura, d_a_obj_km2_ukishima, daObjKm2_Nobiru_c */
-    { 46, 0, 0, 0, 0, port_ov046_mrows_syms, &port_ov046_mrows_syms_n, port_ov046_mrows, &port_ov046_mrows_n }, /*  */
-    { 47, &ovr_047_d_a, &ovr_047_d_z, &ovr_047_s_a, &ovr_047_s_z, port_ov047_mrows_syms, &port_ov047_mrows_syms_n, port_ov047_mrows, &port_ov047_mrows_n }, /* d_a_obj_km3_dorifu, d_a_obj_km3_kaitendai, d_a_obj_km3_kuruma, d_a_obj_km3_kurumajiku */
-    { 48, 0, 0, 0, 0, port_ov048_mrows_syms, &port_ov048_mrows_syms_n, port_ov048_mrows, &port_ov048_mrows_n }, /*  */
-    { 49, 0, 0, 0, 0, port_ov049_mrows_syms, &port_ov049_mrows_syms_n, port_ov049_mrows, &port_ov049_mrows_n }, /*  */
-    { 50, 0, 0, 0, 0, port_ov050_mrows_syms, &port_ov050_mrows_syms_n, port_ov050_mrows, &port_ov050_mrows_n }, /*  */
-    { 51, 0, 0, 0, 0, port_ov051_mrows_syms, &port_ov051_mrows_syms_n, port_ov051_mrows, &port_ov051_mrows_n }, /*  */
-    { 52, &ovr_052_d_a, &ovr_052_d_z, &ovr_052_s_a, &ovr_052_s_z, port_ov052_mrows_syms, &port_ov052_mrows_syms_n, port_ov052_mrows, &port_ov052_mrows_n }, /* d_a_obj_emm_log, daObjEmmYuka_c */
-    { 53, 0, 0, 0, 0, port_ov053_mrows_syms, &port_ov053_mrows_syms_n, port_ov053_mrows, &port_ov053_mrows_n }, /*  */
-    { 54, 0, 0, 0, 0, port_ov054_mrows_syms, &port_ov054_mrows_syms_n, port_ov054_mrows, &port_ov054_mrows_n }, /*  */
-    { 55, &ovr_055_d_a, &ovr_055_d_z, &ovr_055_s_a, &ovr_055_s_z, port_ov055_mrows_syms, &port_ov055_mrows_syms_n, port_ov055_mrows, &port_ov055_mrows_n }, /* daLuigi_c */
-    { 56, &ovr_056_d_a, &ovr_056_d_z, &ovr_056_s_a, &ovr_056_s_z, port_ov056_mrows_syms, &port_ov056_mrows_syms_n, port_ov056_mrows, &port_ov056_mrows_n }, /* daObjEwmIceBlock_c */
-    { 57, 0, 0, 0, 0, port_ov057_mrows_syms, &port_ov057_mrows_syms_n, port_ov057_mrows, &port_ov057_mrows_n }, /*  */
-    { 58, 0, 0, 0, 0, port_ov058_mrows_syms, &port_ov058_mrows_syms_n, port_ov058_mrows, &port_ov058_mrows_n }, /*  */
-    { 59, 0, 0, 0, 0, port_ov059_mrows_syms, &port_ov059_mrows_syms_n, port_ov059_mrows, &port_ov059_mrows_n }, /*  */
-    { 60, &ovr_060_d_a, &ovr_060_d_z, &ovr_060_s_a, &ovr_060_s_z, port_ov060_mrows_syms, &port_ov060_mrows_syms_n, port_ov060_mrows, &port_ov060_mrows_n }, /* daFRing_c, daKirai_c, daKpa2Bg_c, daKpa3Bg_c, daKpaFire_c, daKpa_c */
-    { 61, 0, 0, 0, 0, port_ov061_mrows_syms, &port_ov061_mrows_syms_n, port_ov061_mrows, &port_ov061_mrows_n }, /*  */
-    { 62, &ovr_062_d_a, &ovr_062_d_z, &ovr_062_s_a, &ovr_062_s_z, port_ov062_mrows_syms, &port_ov062_mrows_syms_n, port_ov062_mrows, &port_ov062_mrows_n }, /* d_a_nknk, daJango_c, daRFlag_c, daRNk_c */
-    { 63, &ovr_063_d_a, &ovr_063_d_z, &ovr_063_s_a, &ovr_063_s_z, port_ov063_mrows_syms, &port_ov063_mrows_syms_n, port_ov063_mrows, &port_ov063_mrows_n }, /* d_a_obj_th_fall_block, d_a_piano, d_a_trs_trap, daTrs_c */
-    { 64, &ovr_064_d_a, &ovr_064_d_z, &ovr_064_s_a, &ovr_064_s_z, port_ov064_mrows_syms, &port_ov064_mrows_syms_n, port_ov064_mrows, &port_ov064_mrows_n }, /* d_a_obj_fl_gura, daBDonketu_c, daBbl_c, daDonketu_c, daObjFl_Amilift_c, daObjFl_Coin_c, daObjFl_KomaU_c, daObjShell_c, daObjTbox_c, daWater_Hakidasi_c, daWater_Ring_c */
-    { 65, &ovr_065_d_a, &ovr_065_d_z, &ovr_065_s_a, &ovr_065_s_z, port_ov065_mrows_syms, &port_ov065_mrows_syms_n, port_ov065_mrows, &port_ov065_mrows_n }, /* daBasabasa_c, daDossy_c, daObjCtKaitendai_c, daObjCtMecha03_c, daObjCtMecha04_c, daObjCtMecha05_c, daObjCtMecha08_c, daObjCtMecha09_c, daObjCtRotateBlock_c */
-    { 66, &ovr_066_d_a, &ovr_066_d_z, &ovr_066_s_a, &ovr_066_s_z, port_ov066_mrows_syms, &port_ov066_mrows_syms_n, port_ov066_mrows, &port_ov066_mrows_n }, /* Eyerok */
-    { 67, 0, 0, 0, 0, port_ov067_mrows_syms, &port_ov067_mrows_syms_n, port_ov067_mrows, &port_ov067_mrows_n }, /*  */
-    { 68, 0, 0, 0, 0, port_ov068_mrows_syms, &port_ov068_mrows_syms_n, port_ov068_mrows, &port_ov068_mrows_n }, /*  */
-    { 69, 0, 0, 0, 0, port_ov069_mrows_syms, &port_ov069_mrows_syms_n, port_ov069_mrows, &port_ov069_mrows_n }, /*  */
-    { 70, &ovr_070_d_a, &ovr_070_d_z, &ovr_070_s_a, &ovr_070_s_z, port_ov070_mrows_syms, &port_ov070_mrows_syms_n, port_ov070_mrows, &port_ov070_mrows_n }, /* d_a_kp_fr, d_a_krpa, d_a_propeller_heyho, daBrq_c */
-    { 71, &ovr_071_d_a, &ovr_071_d_z, &ovr_071_s_a, &ovr_071_s_z, port_ov071_mrows_syms, &port_ov071_mrows_syms_n, port_ov071_mrows, &port_ov071_mrows_n }, /* Scuttlebug, d_a_ey_bm, daObjCasket_c */
-    { 72, &ovr_072_d_a, &ovr_072_d_z, &ovr_072_s_a, &ovr_072_s_z, port_ov072_mrows_syms, &port_ov072_mrows_syms_n, port_ov072_mrows, &port_ov072_mrows_n }, /* daBgSnmBdy_c, daBgSnwmn_c */
-    { 73, &ovr_073_d_a, &ovr_073_d_z, &ovr_073_s_a, &ovr_073_s_z, port_ov073_mrows_syms, &port_ov073_mrows_syms_n, port_ov073_mrows, &port_ov073_mrows_n }, /* daKing_Donketu_c, daObjEwbIce_c */
-    { 74, &ovr_074_d_a, &ovr_074_d_z, &ovr_074_s_a, &ovr_074_s_z, port_ov074_mrows_syms, &port_ov074_mrows_syms_n, port_ov074_mrows, &port_ov074_mrows_n }, /* daKuriKing_c */
-    { 75, &ovr_075_d_a, &ovr_075_d_z, &ovr_075_s_a, &ovr_075_s_z, port_ov075_mrows_syms, &port_ov075_mrows_syms_n, port_ov075_mrows, &port_ov075_mrows_n }, /* dEntObj_c */
-    { 76, 0, 0, 0, 0, port_ov076_mrows_syms, &port_ov076_mrows_syms_n, port_ov076_mrows, &port_ov076_mrows_n }, /*  */
-    { 77, &ovr_077_d_a, &ovr_077_d_z, &ovr_077_s_a, &ovr_077_s_z, port_ov077_mrows_syms, &port_ov077_mrows_syms_n, port_ov077_mrows, &port_ov077_mrows_n }, /* d_a_jgm, daPopoi_c */
-    { 78, &ovr_078_d_a, &ovr_078_d_z, &ovr_078_s_a, &ovr_078_s_z, port_ov078_mrows_syms, &port_ov078_mrows_syms_n, port_ov078_mrows, &port_ov078_mrows_n }, /* daBombking_c */
-    { 79, &ovr_079_d_a, &ovr_079_d_z, &ovr_079_s_a, &ovr_079_s_z, port_ov079_mrows_syms, &port_ov079_mrows_syms_n, port_ov079_mrows, &port_ov079_mrows_n }, /* d_a_btn, d_a_klr, daObjBk_Kabe_c */
-    { 80, &ovr_080_d_a, &ovr_080_d_z, &ovr_080_s_a, &ovr_080_s_z, port_ov080_mrows_syms, &port_ov080_mrows_syms_n, port_ov080_mrows, &port_ov080_mrows_n }, /* daBttBk_c, daChoropu_c, daPicGate_c */
-    { 81, &ovr_081_d_a, &ovr_081_d_z, &ovr_081_s_a, &ovr_081_s_z, port_ov081_mrows_syms, &port_ov081_mrows_syms_n, port_ov081_mrows, &port_ov081_mrows_n }, /* d_a_obj_ice_block, daGmch_c, daHuwa_c, daSnowball_c, daSnowman_c */
-    { 82, 0, 0, 0, 0, port_ov082_mrows_syms, &port_ov082_mrows_syms_n, port_ov082_mrows, &port_ov082_mrows_n }, /*  */
-    { 83, 0, 0, 0, 0, port_ov083_mrows_syms, &port_ov083_mrows_syms_n, port_ov083_mrows, &port_ov083_mrows_n }, /*  */
-    { 84, &ovr_084_d_a, &ovr_084_d_z, &ovr_084_s_a, &ovr_084_s_z, port_ov084_mrows_syms, &port_ov084_mrows_syms_n, port_ov084_mrows, &port_ov084_mrows_n }, /* daKrb_c */
-    { 85, &ovr_085_d_a, &ovr_085_d_z, &ovr_085_s_a, &ovr_085_s_z, port_ov085_mrows_syms, &port_ov085_mrows_syms_n, port_ov085_mrows, &port_ov085_mrows_n }, /* daC_Jugem_c, daMip_c, daObjKanban_c, daObj_Mip_Key_c */
-    { 86, 0, 0, 0, 0, port_ov086_mrows_syms, &port_ov086_mrows_syms_n, port_ov086_mrows, &port_ov086_mrows_n }, /*  */
-    { 87, 0, 0, 0, 0, port_ov087_mrows_syms, &port_ov087_mrows_syms_n, port_ov087_mrows, &port_ov087_mrows_n }, /*  */
-    { 88, 0, 0, 0, 0, port_ov088_mrows_syms, &port_ov088_mrows_syms_n, port_ov088_mrows, &port_ov088_mrows_n }, /*  */
-    { 89, &ovr_089_d_a, &ovr_089_d_z, &ovr_089_s_a, &ovr_089_s_z, port_ov089_mrows_syms, &port_ov089_mrows_syms_n, port_ov089_mrows, &port_ov089_mrows_n }, /* daObjKey_c */
-    { 90, &ovr_090_d_a, &ovr_090_d_z, &ovr_090_s_a, &ovr_090_s_z, port_ov090_mrows_syms, &port_ov090_mrows_syms_n, port_ov090_mrows, &port_ov090_mrows_n }, /* daManta_c, daMenbo_c, daPukupuku_c, daShark_c */
-    { 91, &ovr_091_d_a, &ovr_091_d_z, &ovr_091_s_a, &ovr_091_s_z, port_ov091_mrows_syms, &port_ov091_mrows_syms_n, port_ov091_mrows, &port_ov091_mrows_n }, /* d_a_hyuhyu, d_a_linelift2, daDsn_c, daObjPile_c, daObjRotateUpdownLift_c, daObjSimpleLift_c */
-    { 92, &ovr_092_d_a, &ovr_092_d_z, &ovr_092_s_a, &ovr_092_s_z, port_ov092_mrows_syms, &port_ov092_mrows_syms_n, port_ov092_mrows, &port_ov092_mrows_n }, /* daOnms_c */
-    { 93, 0, 0, 0, 0, port_ov093_mrows_syms, &port_ov093_mrows_syms_n, port_ov093_mrows, &port_ov093_mrows_n }, /*  */
-    { 94, &ovr_094_d_a, &ovr_094_d_z, &ovr_094_s_a, &ovr_094_s_z, port_ov094_mrows_syms, &port_ov094_mrows_syms_n, port_ov094_mrows, &port_ov094_mrows_n }, /* daOwl_c */
-    { 95, &ovr_095_d_a, &ovr_095_d_z, &ovr_095_s_a, &ovr_095_s_z, port_ov095_mrows_syms, &port_ov095_mrows_syms_n, port_ov095_mrows, &port_ov095_mrows_n }, /* daObjSeesaw_c, daUdlift_c */
-    { 96, &ovr_096_d_a, &ovr_096_d_z, &ovr_096_s_a, &ovr_096_s_z, port_ov096_mrows_syms, &port_ov096_mrows_syms_n, port_ov096_mrows, &port_ov096_mrows_n }, /* daSanbo_c, daTor_c */
-    { 97, 0, 0, 0, 0, port_ov097_mrows_syms, &port_ov097_mrows_syms_n, port_ov097_mrows, &port_ov097_mrows_n }, /*  */
-    { 98, &ovr_098_d_a, &ovr_098_d_z, &ovr_098_s_a, &ovr_098_s_z, port_ov098_mrows_syms, &port_ov098_mrows_syms_n, port_ov098_mrows, &port_ov098_mrows_n }, /* d_a_cnn, daObjBlockS_c, daWbm_c */
-    { 99, 0, 0, 0, 0, port_ov099_mrows_syms, &port_ov099_mrows_syms_n, port_ov099_mrows, &port_ov099_mrows_n }, /*  */
-    { 100, &ovr_100_d_a, &ovr_100_d_z, &ovr_100_s_a, &ovr_100_s_z, port_ov100_mrows_syms, &port_ov100_mrows_syms_n, port_ov100_mrows, &port_ov100_mrows_n }, /* d_a_fish, d_a_star_gate, daBtfly_c, daDoor_c, daObjPathLift_c, daWanwan2_c */
-    { 101, 0, 0, 0, 0, port_ov101_mrows_syms, &port_ov101_mrows_syms_n, port_ov101_mrows, &port_ov101_mrows_n }, /*  */
-    { 102, &ovr_102_d_a, &ovr_102_d_z, &ovr_102_s_a, &ovr_102_s_z, port_ov102_mrows_syms, &port_ov102_mrows_syms_n, port_ov102_mrows, &port_ov102_mrows_n }, /* d_a_shl, daBmb_c, daObjHatenaBlock_c, daObjSimpleBg_c */
-    { 103, 0, 0, 0, 0, port_ov103_mrows_syms, &port_ov103_mrows_syms_n, port_ov103_mrows, &port_ov103_mrows_n }, /*  */
-    { 104, 0, 0, 0, 0, port_ov104_mrows_syms, &port_ov104_mrows_syms_n, port_ov104_mrows, &port_ov104_mrows_n }, /*  */
-    { 105, 0, 0, 0, 0, port_ov105_mrows_syms, &port_ov105_mrows_syms_n, port_ov105_mrows, &port_ov105_mrows_n }, /*  */
-    { 106, 0, 0, 0, 0, port_ov106_mrows_syms, &port_ov106_mrows_syms_n, port_ov106_mrows, &port_ov106_mrows_n }, /*  */
-    { 107, 0, 0, 0, 0, port_ov107_mrows_syms, &port_ov107_mrows_syms_n, port_ov107_mrows, &port_ov107_mrows_n }, /*  */
-    { 108, 0, 0, 0, 0, port_ov108_mrows_syms, &port_ov108_mrows_syms_n, port_ov108_mrows, &port_ov108_mrows_n }, /*  */
-    { 109, 0, 0, 0, 0, port_ov109_mrows_syms, &port_ov109_mrows_syms_n, port_ov109_mrows, &port_ov109_mrows_n }, /*  */
-    { 110, 0, 0, 0, 0, port_ov110_mrows_syms, &port_ov110_mrows_syms_n, port_ov110_mrows, &port_ov110_mrows_n }, /*  */
-    { 111, 0, 0, 0, 0, port_ov111_mrows_syms, &port_ov111_mrows_syms_n, port_ov111_mrows, &port_ov111_mrows_n }, /*  */
-    { 112, 0, 0, 0, 0, port_ov112_mrows_syms, &port_ov112_mrows_syms_n, port_ov112_mrows, &port_ov112_mrows_n }, /*  */
-    { 113, 0, 0, 0, 0, port_ov113_mrows_syms, &port_ov113_mrows_syms_n, port_ov113_mrows, &port_ov113_mrows_n }, /*  */
-    { 114, 0, 0, 0, 0, port_ov114_mrows_syms, &port_ov114_mrows_syms_n, port_ov114_mrows, &port_ov114_mrows_n }, /*  */
-    { 115, 0, 0, 0, 0, port_ov115_mrows_syms, &port_ov115_mrows_syms_n, port_ov115_mrows, &port_ov115_mrows_n }, /*  */
-    { 116, 0, 0, 0, 0, port_ov116_mrows_syms, &port_ov116_mrows_syms_n, port_ov116_mrows, &port_ov116_mrows_n }, /*  */
-    { 117, 0, 0, 0, 0, port_ov117_mrows_syms, &port_ov117_mrows_syms_n, port_ov117_mrows, &port_ov117_mrows_n }, /*  */
-    { 118, 0, 0, 0, 0, port_ov118_mrows_syms, &port_ov118_mrows_syms_n, port_ov118_mrows, &port_ov118_mrows_n }, /*  */
-    { 119, 0, 0, 0, 0, port_ov119_mrows_syms, &port_ov119_mrows_syms_n, port_ov119_mrows, &port_ov119_mrows_n }, /*  */
-    { 120, 0, 0, 0, 0, port_ov120_mrows_syms, &port_ov120_mrows_syms_n, port_ov120_mrows, &port_ov120_mrows_n }, /*  */
-    { 121, 0, 0, 0, 0, port_ov121_mrows_syms, &port_ov121_mrows_syms_n, port_ov121_mrows, &port_ov121_mrows_n }, /*  */
-    { 122, 0, 0, 0, 0, port_ov122_mrows_syms, &port_ov122_mrows_syms_n, port_ov122_mrows, &port_ov122_mrows_n }, /*  */
-    { 123, 0, 0, 0, 0, port_ov123_mrows_syms, &port_ov123_mrows_syms_n, port_ov123_mrows, &port_ov123_mrows_n }, /*  */
-    { 124, 0, 0, 0, 0, port_ov124_mrows_syms, &port_ov124_mrows_syms_n, port_ov124_mrows, &port_ov124_mrows_n }, /*  */
-    { 125, 0, 0, 0, 0, port_ov125_mrows_syms, &port_ov125_mrows_syms_n, port_ov125_mrows, &port_ov125_mrows_n }, /*  */
-    { 126, 0, 0, 0, 0, port_ov126_mrows_syms, &port_ov126_mrows_syms_n, port_ov126_mrows, &port_ov126_mrows_n }, /*  */
-    { 127, 0, 0, 0, 0, port_ov127_mrows_syms, &port_ov127_mrows_syms_n, port_ov127_mrows, &port_ov127_mrows_n }, /*  */
-    { -1, 0, 0, 0, 0, 0, 0, 0, 0 }
+    { 0, 0, 0, 0, 0, port_ov000_mrows_syms, &port_ov000_mrows_syms_n, port_ov000_mrows, &port_ov000_mrows_n, 0, 0 }, /*  */
+    { 1, 0, 0, 0, 0, port_ov001_mrows_syms, &port_ov001_mrows_syms_n, port_ov001_mrows, &port_ov001_mrows_n, 0, 0 }, /*  */
+    { 2, &ovr_002_d_a, &ovr_002_d_z, &ovr_002_s_a, &ovr_002_s_z, port_ov002_mrows_syms, &port_ov002_mrows_syms_n, port_ov002_mrows, &port_ov002_mrows_n, ovr_002_guards, 5 }, /* dEnemyBase_c, dPathLiftActor_c, d_a_obj_bc_switch, d_a_obj_cannon_shutter, d_a_obj_hatena_switch, d_a_obj_wakame, da1up_c, daChRoom_c, daCoin_c, daDemo_c, daObj1UpLogo_c, daObjBlockItemTag_c, daObjBlockL_c, daObjFire_c, daObjHeart_c, daObjLava_c, daObjMarioCap_c, daObjPowerUpItem_c, daObjPushblock_c, daObjSwitch_c, daObjTatefuda_c, daPropeller_Heyho_Fire_c, daSCoin_c, daStar_c, daYegg_c */
+    { 3, 0, 0, 0, 0, port_ov003_mrows_syms, &port_ov003_mrows_syms_n, port_ov003_mrows, &port_ov003_mrows_n, 0, 0 }, /*  */
+    { 4, &ovr_004_d_a, &ovr_004_d_z, &ovr_004_s_a, &ovr_004_s_z, port_ov004_mrows_syms, &port_ov004_mrows_syms_n, port_ov004_mrows, &port_ov004_mrows_n, ovr_004_guards, 1 }, /* dMgPsOpt_c, dMgState_c, d_s_mg_base, unit020b2c84 */
+    { 5, 0, 0, 0, 0, port_ov005_mrows_syms, &port_ov005_mrows_syms_n, port_ov005_mrows, &port_ov005_mrows_n, 0, 0 }, /*  */
+    { 6, &ovr_006_d_a, &ovr_006_d_z, &ovr_006_s_a, &ovr_006_s_z, port_ov006_mrows_syms, &port_ov006_mrows_syms_n, port_ov006_mrows, &port_ov006_mrows_n, ovr_006_guards, 7 }, /* dMg3DEspAnimSet_c, dMg3DHeyhoObjAdapter_c, dMgJump3DMario_c, dScMgCoin_c, dScMgCup_c, dScMgCurling2_c, dScMgCurling_c, dScMgHanachan_c, dScMgJump_c, dScMgLuigi_c, dScMgMemory2_c, dScMgPachinko2_c, dScMgPachinko_c, dScMgPanel_c, dScMgSlots, dScMgSnowball_c, dScMgTeresa_c, d_s_mg_bsc, d_s_mg_card, d_s_mg_jump2, d_s_mg_m_carlo, d_s_mg_m_carlo2, d_s_mg_memory, d_s_mg_trampoline, d_s_mg_trampoline2 */
+    { 7, 0, 0, 0, 0, port_ov007_mrows_syms, &port_ov007_mrows_syms_n, port_ov007_mrows, &port_ov007_mrows_n, 0, 0 }, /*  */
+    { 8, 0, 0, 0, 0, port_ov008_mrows_syms, &port_ov008_mrows_syms_n, port_ov008_mrows, &port_ov008_mrows_n, 0, 0 }, /*  */
+    { 9, &ovr_009_d_a, &ovr_009_d_z, &ovr_009_s_a, &ovr_009_s_z, port_ov009_mrows_syms, &port_ov009_mrows_syms_n, port_ov009_mrows, &port_ov009_mrows_n, 0, 0 }, /* d_a_mc_flag, d_a_obj_mc_metalnet, d_a_s_bird */
+    { 10, &ovr_010_d_a, &ovr_010_d_z, &ovr_010_s_a, &ovr_010_s_z, port_ov010_mrows_syms, &port_ov010_mrows_syms_n, port_ov010_mrows, &port_ov010_mrows_n, 0, 0 }, /* d_a_obj_c1_hikari, d_a_obj_c1_trap, daObjC1Peach_c */
+    { 11, 0, 0, 0, 0, port_ov011_mrows_syms, &port_ov011_mrows_syms_n, port_ov011_mrows, &port_ov011_mrows_n, 0, 0 }, /*  */
+    { 12, &ovr_012_d_a, &ovr_012_d_z, &ovr_012_s_a, &ovr_012_s_z, port_ov012_mrows_syms, &port_ov012_mrows_syms_n, port_ov012_mrows, &port_ov012_mrows_n, 0, 0 }, /* d_a_obj_c0_switch, d_a_obj_c0_water */
+    { 13, &ovr_013_d_a, &ovr_013_d_z, &ovr_013_s_a, &ovr_013_s_z, port_ov013_mrows_syms, &port_ov013_mrows_syms_n, port_ov013_mrows, &port_ov013_mrows_n, 0, 0 }, /* d_a_obj_clock_huriko, daObjClock_c */
+    { 14, &ovr_014_d_a, &ovr_014_d_z, &ovr_014_s_a, &ovr_014_s_z, port_ov014_mrows_syms, &port_ov014_mrows_syms_n, port_ov014_mrows, &port_ov014_mrows_n, 0, 0 }, /* d_a_obj_b_swdoor, d_a_obj_wanwan_shutter, d_a_wanwan */
+    { 15, &ovr_015_d_a, &ovr_015_d_z, &ovr_015_s_a, &ovr_015_s_z, port_ov015_mrows_syms, &port_ov015_mrows_syms_n, port_ov015_mrows, &port_ov015_mrows_n, 0, 0 }, /* d_a_obj_bk_billboard, d_a_obj_bk_fall_block, d_a_obj_bk_rotebar, d_a_obj_bk_ukisima, daObjBk_Botaosi_c, daObjBk_Lift_c */
+    { 16, &ovr_016_d_a, &ovr_016_d_z, &ovr_016_s_a, &ovr_016_s_z, port_ov016_mrows_syms, &port_ov016_mrows_syms_n, port_ov016_mrows, &port_ov016_mrows_n, 0, 0 }, /* d_a_obj_ki_fune, d_a_obj_ki_ita, daMoray_c, daObjKi_Hasira_c, daSlide_Box_c */
+    { 17, &ovr_017_d_a, &ovr_017_d_z, &ovr_017_s_a, &ovr_017_s_z, port_ov017_mrows_syms, &port_ov017_mrows_syms_n, port_ov017_mrows, &port_ov017_mrows_n, 0, 0 }, /* d_a_obj_ks_water */
+    { 18, &ovr_018_d_a, &ovr_018_d_z, &ovr_018_s_a, &ovr_018_s_z, port_ov018_mrows_syms, &port_ov018_mrows_syms_n, port_ov018_mrows, &port_ov018_mrows_n, 0, 0 }, /* d_a_obj_ice_board, d_a_pg_mthr, daObjSm_Lift_c */
+    { 19, &ovr_019_d_a, &ovr_019_d_z, &ovr_019_s_a, &ovr_019_s_z, port_ov019_mrows_syms, &port_ov019_mrows_syms_n, port_ov019_mrows, &port_ov019_mrows_n, 0, 0 }, /* d_a_sld_mng */
+    { 20, &ovr_020_d_a, &ovr_020_d_z, &ovr_020_s_a, &ovr_020_s_z, port_ov020_mrows_syms, &port_ov020_mrows_syms_n, port_ov020_mrows, &port_ov020_mrows_n, 0, 0 }, /* daBook_c, daChair_c */
+    { 21, &ovr_021_d_a, &ovr_021_d_z, &ovr_021_s_a, &ovr_021_s_z, port_ov021_mrows_syms, &port_ov021_mrows_syms_n, port_ov021_mrows, &port_ov021_mrows_n, 0, 0 }, /* d_a_obj_cv_shutter, daGrock_c */
+    { 22, &ovr_022_d_a, &ovr_022_d_z, &ovr_022_s_a, &ovr_022_s_z, port_ov022_mrows_syms, &port_ov022_mrows_syms_n, port_ov022_mrows, &port_ov022_mrows_n, 0, 0 }, /* d_a_obj_fl_maruta, daObjFl_Block_c, daObjFl_Fall_Block_c, daObjFl_Koma_D_c, daObjFl_London_c, daObjFl_Ring_c, daObjFl_Seesaw_c, daObjFl_Ukiyuka_c */
+    { 23, &ovr_023_d_a, &ovr_023_d_z, &ovr_023_s_a, &ovr_023_s_z, port_ov023_mrows_syms, &port_ov023_mrows_syms_n, port_ov023_mrows, &port_ov023_mrows_n, 0, 0 }, /* d_a_obj_fm_battan */
+    { 24, &ovr_024_d_a, &ovr_024_d_z, &ovr_024_s_a, &ovr_024_s_z, port_ov024_mrows_syms, &port_ov024_mrows_syms_n, port_ov024_mrows, &port_ov024_mrows_n, 0, 0 }, /* daObjDlPyramid_c */
+    { 25, &ovr_025_d_a, &ovr_025_d_z, &ovr_025_s_a, &ovr_025_s_z, port_ov025_mrows_syms, &port_ov025_mrows_syms_n, port_ov025_mrows, &port_ov025_mrows_n, 0, 0 }, /* daDgr_c, daDkk_c, daDpLift_c, daObjDpBrock_c */
+    { 26, &ovr_026_d_a, &ovr_026_d_z, &ovr_026_s_a, &ovr_026_s_z, port_ov026_mrows_syms, &port_ov026_mrows_syms_n, port_ov026_mrows, &port_ov026_mrows_n, 0, 0 }, /* d_a_obj_wl_polelift, daObjWlKoopaShutter_c, daObjWlSubmarine_c, daWater_Suikomi_c, daWater_Tatumaki_c */
+    { 27, &ovr_027_d_a, &ovr_027_d_z, &ovr_027_s_a, &ovr_027_s_z, port_ov027_mrows_syms, &port_ov027_mrows_syms_n, port_ov027_mrows, &port_ov027_mrows_n, 0, 0 }, /* d_a_i_donketu, daObjSlIceBlock_c, daPgDfdr_c */
+    { 28, 0, 0, 0, 0, port_ov028_mrows_syms, &port_ov028_mrows_syms_n, port_ov028_mrows, &port_ov028_mrows_n, 0, 0 }, /*  */
+    { 29, &ovr_029_d_a, &ovr_029_d_z, &ovr_029_s_a, &ovr_029_s_z, port_ov029_mrows_syms, &port_ov029_mrows_syms_n, port_ov029_mrows, &port_ov029_mrows_n, 0, 0 }, /* d_a_obj_wc_mizu, d_a_obj_wc_obj01, d_a_obj_wc_obj02, d_a_obj_wc_obj03, d_a_obj_wc_obj04, d_a_obj_wc_obj05, d_a_obj_wc_obj06, d_a_obj_wc_obj07 */
+    { 30, &ovr_030_d_a, &ovr_030_d_z, &ovr_030_s_a, &ovr_030_s_z, port_ov030_mrows_syms, &port_ov030_mrows_syms_n, port_ov030_mrows, &port_ov030_mrows_n, 0, 0 }, /* d_a_obj_hm_bskt, daObjHmMaruta_c */
+    { 31, &ovr_031_d_a, &ovr_031_d_z, &ovr_031_s_a, &ovr_031_s_z, port_ov031_mrows_syms, &port_ov031_mrows_syms_n, port_ov031_mrows, &port_ov031_mrows_n, 0, 0 }, /* d_a_obj_hs_billboard */
+    { 32, &ovr_032_d_a, &ovr_032_d_z, &ovr_032_s_a, &ovr_032_s_z, port_ov032_mrows_syms, &port_ov032_mrows_syms_n, port_ov032_mrows, &port_ov032_mrows_n, 0, 0 }, /* d_a_obj_td_futa, d_a_obj_td_water, daBakubaku_c */
+    { 33, &ovr_033_d_a, &ovr_033_d_z, &ovr_033_s_a, &ovr_033_s_z, port_ov033_mrows_syms, &port_ov033_mrows_syms_n, port_ov033_mrows, &port_ov033_mrows_n, 0, 0 }, /* daObjTtFuta_c, daObjTtWater_c */
+    { 34, &ovr_034_d_a, &ovr_034_d_z, &ovr_034_s_a, &ovr_034_s_z, port_ov034_mrows_syms, &port_ov034_mrows_syms_n, port_ov034_mrows, &port_ov034_mrows_n, 0, 0 }, /* daHanachan_c */
+    { 35, &ovr_035_d_a, &ovr_035_d_z, &ovr_035_s_a, &ovr_035_s_z, port_ov035_mrows_syms, &port_ov035_mrows_syms_n, port_ov035_mrows, &port_ov035_mrows_n, 0, 0 }, /* daObjCtMecha10_c, daObjCtMecha11_c */
+    { 36, &ovr_036_d_a, &ovr_036_d_z, &ovr_036_s_a, &ovr_036_s_z, port_ov036_mrows_syms, &port_ov036_mrows_syms_n, port_ov036_mrows, &port_ov036_mrows_n, 0, 0 }, /* d_a_obj_rc_buranko, d_a_obj_rc_carpet, d_a_obj_rc_dorifu, d_a_obj_rc_guruguru, d_a_obj_rc_hane, d_a_obj_rc_kaitendai, daObjRc_Tikuwa_c */
+    { 37, 0, 0, 0, 0, port_ov037_mrows_syms, &port_ov037_mrows_syms_n, port_ov037_mrows, &port_ov037_mrows_n, 0, 0 }, /*  */
+    { 38, 0, 0, 0, 0, port_ov038_mrows_syms, &port_ov038_mrows_syms_n, port_ov038_mrows, &port_ov038_mrows_n, 0, 0 }, /*  */
+    { 39, &ovr_039_d_a, &ovr_039_d_z, &ovr_039_s_a, &ovr_039_s_z, port_ov039_mrows_syms, &port_ov039_mrows_syms_n, port_ov039_mrows, &port_ov039_mrows_n, 0, 0 }, /* d_a_obj_kumo */
+    { 40, 0, 0, 0, 0, port_ov040_mrows_syms, &port_ov040_mrows_syms_n, port_ov040_mrows, &port_ov040_mrows_n, 0, 0 }, /*  */
+    { 41, 0, 0, 0, 0, port_ov041_mrows_syms, &port_ov041_mrows_syms_n, port_ov041_mrows, &port_ov041_mrows_n, 0, 0 }, /*  */
+    { 42, 0, 0, 0, 0, port_ov042_mrows_syms, &port_ov042_mrows_syms_n, port_ov042_mrows, &port_ov042_mrows_n, 0, 0 }, /*  */
+    { 43, &ovr_043_d_a, &ovr_043_d_z, &ovr_043_s_a, &ovr_043_s_z, port_ov043_mrows_syms, &port_ov043_mrows_syms_n, port_ov043_mrows, &port_ov043_mrows_n, 0, 0 }, /* d_a_obj_km1_dorifu, d_a_obj_km1_kuruma, d_a_obj_km1_kurumajiku, d_a_obj_km1_ukishima */
+    { 44, &ovr_044_d_a, &ovr_044_d_z, &ovr_044_s_a, &ovr_044_s_z, port_ov044_mrows_syms, &port_ov044_mrows_syms_n, port_ov044_mrows, &port_ov044_mrows_n, 0, 0 }, /* d_a_obj_kb1_billboard */
+    { 45, &ovr_045_d_a, &ovr_045_d_z, &ovr_045_s_a, &ovr_045_s_z, port_ov045_mrows_syms, &port_ov045_mrows_syms_n, port_ov045_mrows, &port_ov045_mrows_n, 0, 0 }, /* d_a_obj_km2_agaru, d_a_obj_km2_ami_bou, d_a_obj_km2_fall_block, d_a_obj_km2_gura, d_a_obj_km2_ukishima, daObjKm2_Nobiru_c */
+    { 46, 0, 0, 0, 0, port_ov046_mrows_syms, &port_ov046_mrows_syms_n, port_ov046_mrows, &port_ov046_mrows_n, 0, 0 }, /*  */
+    { 47, &ovr_047_d_a, &ovr_047_d_z, &ovr_047_s_a, &ovr_047_s_z, port_ov047_mrows_syms, &port_ov047_mrows_syms_n, port_ov047_mrows, &port_ov047_mrows_n, 0, 0 }, /* d_a_obj_km3_dorifu, d_a_obj_km3_kaitendai, d_a_obj_km3_kuruma, d_a_obj_km3_kurumajiku */
+    { 48, 0, 0, 0, 0, port_ov048_mrows_syms, &port_ov048_mrows_syms_n, port_ov048_mrows, &port_ov048_mrows_n, 0, 0 }, /*  */
+    { 49, 0, 0, 0, 0, port_ov049_mrows_syms, &port_ov049_mrows_syms_n, port_ov049_mrows, &port_ov049_mrows_n, 0, 0 }, /*  */
+    { 50, 0, 0, 0, 0, port_ov050_mrows_syms, &port_ov050_mrows_syms_n, port_ov050_mrows, &port_ov050_mrows_n, 0, 0 }, /*  */
+    { 51, 0, 0, 0, 0, port_ov051_mrows_syms, &port_ov051_mrows_syms_n, port_ov051_mrows, &port_ov051_mrows_n, 0, 0 }, /*  */
+    { 52, &ovr_052_d_a, &ovr_052_d_z, &ovr_052_s_a, &ovr_052_s_z, port_ov052_mrows_syms, &port_ov052_mrows_syms_n, port_ov052_mrows, &port_ov052_mrows_n, 0, 0 }, /* d_a_obj_emm_log, daObjEmmYuka_c */
+    { 53, 0, 0, 0, 0, port_ov053_mrows_syms, &port_ov053_mrows_syms_n, port_ov053_mrows, &port_ov053_mrows_n, 0, 0 }, /*  */
+    { 54, 0, 0, 0, 0, port_ov054_mrows_syms, &port_ov054_mrows_syms_n, port_ov054_mrows, &port_ov054_mrows_n, 0, 0 }, /*  */
+    { 55, &ovr_055_d_a, &ovr_055_d_z, &ovr_055_s_a, &ovr_055_s_z, port_ov055_mrows_syms, &port_ov055_mrows_syms_n, port_ov055_mrows, &port_ov055_mrows_n, 0, 0 }, /* daLuigi_c */
+    { 56, &ovr_056_d_a, &ovr_056_d_z, &ovr_056_s_a, &ovr_056_s_z, port_ov056_mrows_syms, &port_ov056_mrows_syms_n, port_ov056_mrows, &port_ov056_mrows_n, 0, 0 }, /* daObjEwmIceBlock_c */
+    { 57, 0, 0, 0, 0, port_ov057_mrows_syms, &port_ov057_mrows_syms_n, port_ov057_mrows, &port_ov057_mrows_n, 0, 0 }, /*  */
+    { 58, 0, 0, 0, 0, port_ov058_mrows_syms, &port_ov058_mrows_syms_n, port_ov058_mrows, &port_ov058_mrows_n, 0, 0 }, /*  */
+    { 59, 0, 0, 0, 0, port_ov059_mrows_syms, &port_ov059_mrows_syms_n, port_ov059_mrows, &port_ov059_mrows_n, 0, 0 }, /*  */
+    { 60, &ovr_060_d_a, &ovr_060_d_z, &ovr_060_s_a, &ovr_060_s_z, port_ov060_mrows_syms, &port_ov060_mrows_syms_n, port_ov060_mrows, &port_ov060_mrows_n, 0, 0 }, /* daFRing_c, daKirai_c, daKpa2Bg_c, daKpa3Bg_c, daKpaFire_c, daKpa_c */
+    { 61, 0, 0, 0, 0, port_ov061_mrows_syms, &port_ov061_mrows_syms_n, port_ov061_mrows, &port_ov061_mrows_n, 0, 0 }, /*  */
+    { 62, &ovr_062_d_a, &ovr_062_d_z, &ovr_062_s_a, &ovr_062_s_z, port_ov062_mrows_syms, &port_ov062_mrows_syms_n, port_ov062_mrows, &port_ov062_mrows_n, 0, 0 }, /* d_a_nknk, daJango_c, daRFlag_c, daRNk_c */
+    { 63, &ovr_063_d_a, &ovr_063_d_z, &ovr_063_s_a, &ovr_063_s_z, port_ov063_mrows_syms, &port_ov063_mrows_syms_n, port_ov063_mrows, &port_ov063_mrows_n, ovr_063_guards, 1 }, /* d_a_obj_th_fall_block, d_a_piano, d_a_trs_trap, daTrs_c */
+    { 64, &ovr_064_d_a, &ovr_064_d_z, &ovr_064_s_a, &ovr_064_s_z, port_ov064_mrows_syms, &port_ov064_mrows_syms_n, port_ov064_mrows, &port_ov064_mrows_n, 0, 0 }, /* d_a_obj_fl_gura, daBDonketu_c, daBbl_c, daDonketu_c, daObjFl_Amilift_c, daObjFl_Coin_c, daObjFl_KomaU_c, daObjShell_c, daObjTbox_c, daWater_Hakidasi_c, daWater_Ring_c */
+    { 65, &ovr_065_d_a, &ovr_065_d_z, &ovr_065_s_a, &ovr_065_s_z, port_ov065_mrows_syms, &port_ov065_mrows_syms_n, port_ov065_mrows, &port_ov065_mrows_n, 0, 0 }, /* daBasabasa_c, daDossy_c, daObjCtKaitendai_c, daObjCtMecha03_c, daObjCtMecha04_c, daObjCtMecha05_c, daObjCtMecha08_c, daObjCtMecha09_c, daObjCtRotateBlock_c */
+    { 66, &ovr_066_d_a, &ovr_066_d_z, &ovr_066_s_a, &ovr_066_s_z, port_ov066_mrows_syms, &port_ov066_mrows_syms_n, port_ov066_mrows, &port_ov066_mrows_n, 0, 0 }, /* Eyerok */
+    { 67, 0, 0, 0, 0, port_ov067_mrows_syms, &port_ov067_mrows_syms_n, port_ov067_mrows, &port_ov067_mrows_n, 0, 0 }, /*  */
+    { 68, 0, 0, 0, 0, port_ov068_mrows_syms, &port_ov068_mrows_syms_n, port_ov068_mrows, &port_ov068_mrows_n, 0, 0 }, /*  */
+    { 69, 0, 0, 0, 0, port_ov069_mrows_syms, &port_ov069_mrows_syms_n, port_ov069_mrows, &port_ov069_mrows_n, 0, 0 }, /*  */
+    { 70, &ovr_070_d_a, &ovr_070_d_z, &ovr_070_s_a, &ovr_070_s_z, port_ov070_mrows_syms, &port_ov070_mrows_syms_n, port_ov070_mrows, &port_ov070_mrows_n, 0, 0 }, /* d_a_kp_fr, d_a_krpa, d_a_propeller_heyho, daBrq_c */
+    { 71, &ovr_071_d_a, &ovr_071_d_z, &ovr_071_s_a, &ovr_071_s_z, port_ov071_mrows_syms, &port_ov071_mrows_syms_n, port_ov071_mrows, &port_ov071_mrows_n, 0, 0 }, /* Scuttlebug, d_a_ey_bm, daObjCasket_c */
+    { 72, &ovr_072_d_a, &ovr_072_d_z, &ovr_072_s_a, &ovr_072_s_z, port_ov072_mrows_syms, &port_ov072_mrows_syms_n, port_ov072_mrows, &port_ov072_mrows_n, 0, 0 }, /* daBgSnmBdy_c, daBgSnwmn_c */
+    { 73, &ovr_073_d_a, &ovr_073_d_z, &ovr_073_s_a, &ovr_073_s_z, port_ov073_mrows_syms, &port_ov073_mrows_syms_n, port_ov073_mrows, &port_ov073_mrows_n, 0, 0 }, /* daKing_Donketu_c, daObjEwbIce_c */
+    { 74, &ovr_074_d_a, &ovr_074_d_z, &ovr_074_s_a, &ovr_074_s_z, port_ov074_mrows_syms, &port_ov074_mrows_syms_n, port_ov074_mrows, &port_ov074_mrows_n, 0, 0 }, /* daKuriKing_c */
+    { 75, &ovr_075_d_a, &ovr_075_d_z, &ovr_075_s_a, &ovr_075_s_z, port_ov075_mrows_syms, &port_ov075_mrows_syms_n, port_ov075_mrows, &port_ov075_mrows_n, 0, 0 }, /* dEntObj_c */
+    { 76, 0, 0, 0, 0, port_ov076_mrows_syms, &port_ov076_mrows_syms_n, port_ov076_mrows, &port_ov076_mrows_n, 0, 0 }, /*  */
+    { 77, &ovr_077_d_a, &ovr_077_d_z, &ovr_077_s_a, &ovr_077_s_z, port_ov077_mrows_syms, &port_ov077_mrows_syms_n, port_ov077_mrows, &port_ov077_mrows_n, 0, 0 }, /* d_a_jgm, daPopoi_c */
+    { 78, &ovr_078_d_a, &ovr_078_d_z, &ovr_078_s_a, &ovr_078_s_z, port_ov078_mrows_syms, &port_ov078_mrows_syms_n, port_ov078_mrows, &port_ov078_mrows_n, 0, 0 }, /* daBombking_c */
+    { 79, &ovr_079_d_a, &ovr_079_d_z, &ovr_079_s_a, &ovr_079_s_z, port_ov079_mrows_syms, &port_ov079_mrows_syms_n, port_ov079_mrows, &port_ov079_mrows_n, 0, 0 }, /* d_a_btn, d_a_klr, daObjBk_Kabe_c */
+    { 80, &ovr_080_d_a, &ovr_080_d_z, &ovr_080_s_a, &ovr_080_s_z, port_ov080_mrows_syms, &port_ov080_mrows_syms_n, port_ov080_mrows, &port_ov080_mrows_n, 0, 0 }, /* daBttBk_c, daChoropu_c, daPicGate_c */
+    { 81, &ovr_081_d_a, &ovr_081_d_z, &ovr_081_s_a, &ovr_081_s_z, port_ov081_mrows_syms, &port_ov081_mrows_syms_n, port_ov081_mrows, &port_ov081_mrows_n, 0, 0 }, /* d_a_obj_ice_block, daGmch_c, daHuwa_c, daSnowball_c, daSnowman_c */
+    { 82, 0, 0, 0, 0, port_ov082_mrows_syms, &port_ov082_mrows_syms_n, port_ov082_mrows, &port_ov082_mrows_n, 0, 0 }, /*  */
+    { 83, 0, 0, 0, 0, port_ov083_mrows_syms, &port_ov083_mrows_syms_n, port_ov083_mrows, &port_ov083_mrows_n, 0, 0 }, /*  */
+    { 84, &ovr_084_d_a, &ovr_084_d_z, &ovr_084_s_a, &ovr_084_s_z, port_ov084_mrows_syms, &port_ov084_mrows_syms_n, port_ov084_mrows, &port_ov084_mrows_n, 0, 0 }, /* daKrb_c */
+    { 85, &ovr_085_d_a, &ovr_085_d_z, &ovr_085_s_a, &ovr_085_s_z, port_ov085_mrows_syms, &port_ov085_mrows_syms_n, port_ov085_mrows, &port_ov085_mrows_n, 0, 0 }, /* daC_Jugem_c, daMip_c, daObjKanban_c, daObj_Mip_Key_c */
+    { 86, 0, 0, 0, 0, port_ov086_mrows_syms, &port_ov086_mrows_syms_n, port_ov086_mrows, &port_ov086_mrows_n, 0, 0 }, /*  */
+    { 87, 0, 0, 0, 0, port_ov087_mrows_syms, &port_ov087_mrows_syms_n, port_ov087_mrows, &port_ov087_mrows_n, 0, 0 }, /*  */
+    { 88, 0, 0, 0, 0, port_ov088_mrows_syms, &port_ov088_mrows_syms_n, port_ov088_mrows, &port_ov088_mrows_n, 0, 0 }, /*  */
+    { 89, &ovr_089_d_a, &ovr_089_d_z, &ovr_089_s_a, &ovr_089_s_z, port_ov089_mrows_syms, &port_ov089_mrows_syms_n, port_ov089_mrows, &port_ov089_mrows_n, 0, 0 }, /* daObjKey_c */
+    { 90, &ovr_090_d_a, &ovr_090_d_z, &ovr_090_s_a, &ovr_090_s_z, port_ov090_mrows_syms, &port_ov090_mrows_syms_n, port_ov090_mrows, &port_ov090_mrows_n, 0, 0 }, /* daManta_c, daMenbo_c, daPukupuku_c, daShark_c */
+    { 91, &ovr_091_d_a, &ovr_091_d_z, &ovr_091_s_a, &ovr_091_s_z, port_ov091_mrows_syms, &port_ov091_mrows_syms_n, port_ov091_mrows, &port_ov091_mrows_n, 0, 0 }, /* d_a_hyuhyu, d_a_linelift2, daDsn_c, daObjPile_c, daObjRotateUpdownLift_c, daObjSimpleLift_c */
+    { 92, &ovr_092_d_a, &ovr_092_d_z, &ovr_092_s_a, &ovr_092_s_z, port_ov092_mrows_syms, &port_ov092_mrows_syms_n, port_ov092_mrows, &port_ov092_mrows_n, 0, 0 }, /* daOnms_c */
+    { 93, 0, 0, 0, 0, port_ov093_mrows_syms, &port_ov093_mrows_syms_n, port_ov093_mrows, &port_ov093_mrows_n, 0, 0 }, /*  */
+    { 94, &ovr_094_d_a, &ovr_094_d_z, &ovr_094_s_a, &ovr_094_s_z, port_ov094_mrows_syms, &port_ov094_mrows_syms_n, port_ov094_mrows, &port_ov094_mrows_n, 0, 0 }, /* daOwl_c */
+    { 95, &ovr_095_d_a, &ovr_095_d_z, &ovr_095_s_a, &ovr_095_s_z, port_ov095_mrows_syms, &port_ov095_mrows_syms_n, port_ov095_mrows, &port_ov095_mrows_n, 0, 0 }, /* daObjSeesaw_c, daUdlift_c */
+    { 96, &ovr_096_d_a, &ovr_096_d_z, &ovr_096_s_a, &ovr_096_s_z, port_ov096_mrows_syms, &port_ov096_mrows_syms_n, port_ov096_mrows, &port_ov096_mrows_n, 0, 0 }, /* daSanbo_c, daTor_c */
+    { 97, 0, 0, 0, 0, port_ov097_mrows_syms, &port_ov097_mrows_syms_n, port_ov097_mrows, &port_ov097_mrows_n, 0, 0 }, /*  */
+    { 98, &ovr_098_d_a, &ovr_098_d_z, &ovr_098_s_a, &ovr_098_s_z, port_ov098_mrows_syms, &port_ov098_mrows_syms_n, port_ov098_mrows, &port_ov098_mrows_n, 0, 0 }, /* d_a_cnn, daObjBlockS_c, daWbm_c */
+    { 99, 0, 0, 0, 0, port_ov099_mrows_syms, &port_ov099_mrows_syms_n, port_ov099_mrows, &port_ov099_mrows_n, 0, 0 }, /*  */
+    { 100, &ovr_100_d_a, &ovr_100_d_z, &ovr_100_s_a, &ovr_100_s_z, port_ov100_mrows_syms, &port_ov100_mrows_syms_n, port_ov100_mrows, &port_ov100_mrows_n, ovr_100_guards, 6 }, /* d_a_fish, d_a_star_gate, daBtfly_c, daDoor_c, daObjPathLift_c, daWanwan2_c */
+    { 101, 0, 0, 0, 0, port_ov101_mrows_syms, &port_ov101_mrows_syms_n, port_ov101_mrows, &port_ov101_mrows_n, 0, 0 }, /*  */
+    { 102, &ovr_102_d_a, &ovr_102_d_z, &ovr_102_s_a, &ovr_102_s_z, port_ov102_mrows_syms, &port_ov102_mrows_syms_n, port_ov102_mrows, &port_ov102_mrows_n, 0, 0 }, /* d_a_shl, daBmb_c, daObjHatenaBlock_c, daObjSimpleBg_c */
+    { 103, 0, 0, 0, 0, port_ov103_mrows_syms, &port_ov103_mrows_syms_n, port_ov103_mrows, &port_ov103_mrows_n, 0, 0 }, /*  */
+    { 104, 0, 0, 0, 0, port_ov104_mrows_syms, &port_ov104_mrows_syms_n, port_ov104_mrows, &port_ov104_mrows_n, 0, 0 }, /*  */
+    { 105, 0, 0, 0, 0, port_ov105_mrows_syms, &port_ov105_mrows_syms_n, port_ov105_mrows, &port_ov105_mrows_n, 0, 0 }, /*  */
+    { 106, 0, 0, 0, 0, port_ov106_mrows_syms, &port_ov106_mrows_syms_n, port_ov106_mrows, &port_ov106_mrows_n, 0, 0 }, /*  */
+    { 107, 0, 0, 0, 0, port_ov107_mrows_syms, &port_ov107_mrows_syms_n, port_ov107_mrows, &port_ov107_mrows_n, 0, 0 }, /*  */
+    { 108, 0, 0, 0, 0, port_ov108_mrows_syms, &port_ov108_mrows_syms_n, port_ov108_mrows, &port_ov108_mrows_n, 0, 0 }, /*  */
+    { 109, 0, 0, 0, 0, port_ov109_mrows_syms, &port_ov109_mrows_syms_n, port_ov109_mrows, &port_ov109_mrows_n, 0, 0 }, /*  */
+    { 110, 0, 0, 0, 0, port_ov110_mrows_syms, &port_ov110_mrows_syms_n, port_ov110_mrows, &port_ov110_mrows_n, 0, 0 }, /*  */
+    { 111, 0, 0, 0, 0, port_ov111_mrows_syms, &port_ov111_mrows_syms_n, port_ov111_mrows, &port_ov111_mrows_n, 0, 0 }, /*  */
+    { 112, 0, 0, 0, 0, port_ov112_mrows_syms, &port_ov112_mrows_syms_n, port_ov112_mrows, &port_ov112_mrows_n, 0, 0 }, /*  */
+    { 113, 0, 0, 0, 0, port_ov113_mrows_syms, &port_ov113_mrows_syms_n, port_ov113_mrows, &port_ov113_mrows_n, 0, 0 }, /*  */
+    { 114, 0, 0, 0, 0, port_ov114_mrows_syms, &port_ov114_mrows_syms_n, port_ov114_mrows, &port_ov114_mrows_n, 0, 0 }, /*  */
+    { 115, 0, 0, 0, 0, port_ov115_mrows_syms, &port_ov115_mrows_syms_n, port_ov115_mrows, &port_ov115_mrows_n, 0, 0 }, /*  */
+    { 116, 0, 0, 0, 0, port_ov116_mrows_syms, &port_ov116_mrows_syms_n, port_ov116_mrows, &port_ov116_mrows_n, 0, 0 }, /*  */
+    { 117, 0, 0, 0, 0, port_ov117_mrows_syms, &port_ov117_mrows_syms_n, port_ov117_mrows, &port_ov117_mrows_n, 0, 0 }, /*  */
+    { 118, 0, 0, 0, 0, port_ov118_mrows_syms, &port_ov118_mrows_syms_n, port_ov118_mrows, &port_ov118_mrows_n, 0, 0 }, /*  */
+    { 119, 0, 0, 0, 0, port_ov119_mrows_syms, &port_ov119_mrows_syms_n, port_ov119_mrows, &port_ov119_mrows_n, 0, 0 }, /*  */
+    { 120, 0, 0, 0, 0, port_ov120_mrows_syms, &port_ov120_mrows_syms_n, port_ov120_mrows, &port_ov120_mrows_n, 0, 0 }, /*  */
+    { 121, 0, 0, 0, 0, port_ov121_mrows_syms, &port_ov121_mrows_syms_n, port_ov121_mrows, &port_ov121_mrows_n, 0, 0 }, /*  */
+    { 122, 0, 0, 0, 0, port_ov122_mrows_syms, &port_ov122_mrows_syms_n, port_ov122_mrows, &port_ov122_mrows_n, 0, 0 }, /*  */
+    { 123, 0, 0, 0, 0, port_ov123_mrows_syms, &port_ov123_mrows_syms_n, port_ov123_mrows, &port_ov123_mrows_n, 0, 0 }, /*  */
+    { 124, 0, 0, 0, 0, port_ov124_mrows_syms, &port_ov124_mrows_syms_n, port_ov124_mrows, &port_ov124_mrows_n, 0, 0 }, /*  */
+    { 125, 0, 0, 0, 0, port_ov125_mrows_syms, &port_ov125_mrows_syms_n, port_ov125_mrows, &port_ov125_mrows_n, 0, 0 }, /*  */
+    { 126, 0, 0, 0, 0, port_ov126_mrows_syms, &port_ov126_mrows_syms_n, port_ov126_mrows, &port_ov126_mrows_n, 0, 0 }, /*  */
+    { 127, 0, 0, 0, 0, port_ov127_mrows_syms, &port_ov127_mrows_syms_n, port_ov127_mrows, &port_ov127_mrows_n, 0, 0 }, /*  */
+    { -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 };

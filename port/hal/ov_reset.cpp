@@ -84,25 +84,6 @@ int logging(void)
     return on;
 }
 
-/* Debug: SM64DS_OVL_RESET_NOMOUNT=all|<ov>,<ov>,... leaves those overlays' mounted arrays alone (bisect aid). */
-bool skip_mount(int ov)
-{
-    const char *e = std::getenv("SM64DS_OVL_RESET_NOMOUNT");
-    if (!e || !*e)
-        return false;
-    if (!std::strcmp(e, "all"))
-        return true;
-    for (const char *p = e; *p;) {
-        if (std::atoi(p) == ov)
-            return true;
-        while (*p && *p != ',')
-            ++p;
-        if (*p == ',')
-            ++p;
-    }
-    return false;
-}
-
 const PortOvResetEnt *find(int ov)
 {
     for (const PortOvResetEnt *e = port_ovreset_tab; e->ov >= 0; ++e)
@@ -158,28 +139,35 @@ extern "C" int port_ov_load(int ov)
                     std::memcpy(o.r[i].snap, o.r[i].b, o.r[i].n);
             }
         }
-        /* The mounted data (the overlay's .data/.bss as the port holds it): the same rule, array by array. */
+        /* The mounted guard words (see the header comment): the arrays of the overlay's mount that a
+           function-local static of one of the TUs above is guarded by. */
         const PortOvMRow *tabs[2] = {e->ms, e->mw};
         const unsigned cnt[2] = {e->msn ? *e->msn : 0u, e->mwn ? *e->mwn : 0u};
-        o.nm = cnt[0] + cnt[1];
-        if (o.nm)
-            o.m = (Range *)std::calloc(o.nm, sizeof(Range));
-        if (!o.m)
-            o.nm = 0;
-        unsigned k = 0;
-        for (int t = 0; t < 2 && o.m; ++t)
-            for (unsigned i = 0; i < cnt[t]; ++i, ++k) {
-                o.m[k].b = tabs[t][i].p;
-                o.m[k].n = tabs[t][i].n;
-                if (o.m[k].b && o.m[k].n) {
-                    o.m[k].snap = (unsigned char *)std::malloc(o.m[k].n);
-                    if (o.m[k].snap)
-                        std::memcpy(o.m[k].snap, o.m[k].b, o.m[k].n);
-                    tot += o.m[k].n;
-                }
-            }
+        if (e->nguards)
+            o.m = (Range *)std::calloc(e->nguards, sizeof(Range));
+        for (unsigned g = 0; g < e->nguards && o.m; ++g) {
+            bool found = false;
+            for (int t = 0; t < 2 && !found; ++t)
+                for (unsigned i = 0; i < cnt[t]; ++i)
+                    if (tabs[t][i].p == e->guards[g]) {
+                        Range &m = o.m[o.nm];
+                        m.b = tabs[t][i].p;
+                        m.n = tabs[t][i].n;
+                        m.snap = (unsigned char *)std::malloc(m.n);
+                        if (m.snap) {
+                            std::memcpy(m.snap, m.b, m.n);
+                            ++o.nm;
+                            tot += m.n;
+                        }
+                        found = true;
+                        break;
+                    }
+            if (!found && logging())
+                std::fprintf(stderr, "[ovreset] ov%03d guard %p is not the start of a mounted array, left alone\n",
+                             ov, (const void *)e->guards[g]);
+        }
         if (logging())
-            std::fprintf(stderr, "[ovreset] ov%03d load #1: start-up image taken, %zu bytes (%u mounted arrays)\n", ov, tot, o.nm);
+            std::fprintf(stderr, "[ovreset] ov%03d load #1: start-up image taken, %zu bytes (%u mounted guard words)\n", ov, tot, o.nm);
         return 0;
     }
     size_t diff = 0, tot = 0;
@@ -199,7 +187,7 @@ extern "C" int port_ov_load(int ov)
             diff += k - s + 1;
             if (logging() && runs < 60) {
                 std::fprintf(stderr, "[ovreset]   ov%03d %s +%zx..+%zx (%p) changed, now", ov,
-                             i == 0 ? "data" : i == 1 ? "dsstate" : "mount", s, k, (const void *)(cur + s));
+                             i == 0 ? "data" : i == 1 ? "dsstate" : "guard", s, k, (const void *)(cur + s));
                 for (size_t q = s; q <= k && q < s + 16; ++q)
                     std::fprintf(stderr, " %02x", cur[q]);
                 std::fprintf(stderr, ", start-up");
@@ -209,7 +197,7 @@ extern "C" int port_ov_load(int ov)
                 ++runs;
             }
         }
-        if (mode() == 1 && !(i >= 2 && skip_mount(ov)))
+        if (mode() == 1)
             std::memcpy((void *)r.b, r.snap, r.n);
     }
     std::fprintf(stderr, "[ovreset] ov%03d load #%u: %s %zu bytes, %zu differed from the start-up image\n",
