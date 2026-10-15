@@ -136,7 +136,14 @@ struct daYegg_c : dEnemyBase_c {
     u8  mParamHigh;                             /* 0x428 */
     u8  pad_429[0x3];
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daYegg_c();   /* no slot */
+    #else
     virtual ~daYegg_c();
+    #endif
 
     /* methods */
     int func_ov002_020ec610();

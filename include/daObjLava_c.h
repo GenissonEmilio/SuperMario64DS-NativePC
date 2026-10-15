@@ -20,7 +20,14 @@ struct daObjLava_c : dActor_c {
 
     /* Inline and first: out-of-line mwccarm emits D0 before D1; retail
        has D1 at 0x020b6d28 below D0 at 0x020b6d4c. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjLava_c() {}   /* no slot */
+    #else
     virtual ~daObjLava_c() {}
+    #endif
     virtual s32 InitResources(); /* slot 0 */
     virtual s32 Behavior();      /* slot 6 */
 

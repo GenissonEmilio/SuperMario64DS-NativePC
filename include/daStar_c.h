@@ -189,7 +189,14 @@ struct daStar_c : dEnemyBase_c {
     u32  mParticle[4];            /* 0x4b4 -- Particle::System handles: [0] shared by effects 0x113, 0x115 and 0x2f, [1] 0x116, [2] 0x114, [3] 0x10e (silver star) */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daStar_c();   /* no slot */
+    #else
     virtual ~daStar_c();
+    #endif
 
     virtual s32   OnYoshiTryEat();         /* slot 18 */
     virtual void  OnTurnIntoEgg(Player &player); /* slot 19 */

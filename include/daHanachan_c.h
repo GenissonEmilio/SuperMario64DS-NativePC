@@ -80,7 +80,14 @@ struct daHanachan_c : dEnemyBase_c {
     u8  mStarTrackID;                                /* 0x8e3 -- TrackStar result */
     void *mParticle;                                 /* 0x8e4 -- Particle::System handle */
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daHanachan_c();   /* no slot */
+    #else
     virtual ~daHanachan_c();
+    #endif
 
     /* Overrides fBase_c::Behavior, slot 6 of _ZTV12daHanachan_c. */
     int Behavior();

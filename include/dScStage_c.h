@@ -59,7 +59,14 @@ struct dScStage_c : dScene_c {
     Model *mSkyboxModel;    /* 0x9bc */
 
     /* Declared first, deliberately: makes ~dScStage_c the key function. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScStage_c();   /* no slot */
+    #else
     virtual ~dScStage_c();
+    #endif
 
     /* --- overrides, in _ZTV10dScStage_c order --- */
     virtual s32  InitResources();                      /* slot  0 */

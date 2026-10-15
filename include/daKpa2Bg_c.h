@@ -80,7 +80,14 @@ struct daKpa2Bg_c : dBgActor_c {
        D1 (0x02117980) then D0 (0x021179d4). Do not also write an in-class
        body. The homeless D2 is deadstripped. This declaration is the key
        function, so the TU emits _ZTV10daKpa2Bg_c. */
-    virtual ~daKpa2Bg_c();    /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daKpa2Bg_c();   /* no slot */
+    #else
+    virtual ~daKpa2Bg_c();
+    #endif    /* slots 16 (D1), 17 (D0) */
 
     /* --- overrides of inherited fBase_c slots; each takes its base's index,
            so the order here adds nothing to the table. --- */

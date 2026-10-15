@@ -138,7 +138,14 @@ struct daDoor_c : dActor_c {
     /* --- vtable. The out-of-line destructor is the key function:
        src/actors/daDoor_c.cpp defines it, so that TU emits D1, D0, the vtable
        and the RTTI. --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daDoor_c();   /* no slot */
+    #else
     virtual ~daDoor_c();
+    #endif
 
     /* --- overrides of inherited fBase_c slots dActor_c left untouched (see
        include/dActor_c.h: "Slots 0, 3, 6, 9, 12 ... still point at the

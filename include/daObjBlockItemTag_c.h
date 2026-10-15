@@ -26,7 +26,14 @@ struct daObjBlockItemTag_c : dActor_c {
     /* Declared first so the single out-of-line definition in
      * src/actors/daObjBlockItemTag_c.cpp stays the key function and the TU
      * emits the same verified data passengers. */
-    virtual ~daObjBlockItemTag_c();                         /* slots 16, 17 */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjBlockItemTag_c();   /* no slot */
+    #else
+    virtual ~daObjBlockItemTag_c();
+    #endif                         /* slots 16, 17 */
 
     virtual int InitResources();                   /* slot  0 */
     virtual int CleanupResources();                /* slot  3 */

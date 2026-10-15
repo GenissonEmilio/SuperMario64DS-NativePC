@@ -73,7 +73,14 @@ struct daSnowball_c : dEnemyBase_c {
     s32                          mReachedSpawnY;        /* 0x388 */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daSnowball_c();   /* no slot */
+    #else
     virtual ~daSnowball_c();
+    #endif
 
     int Behavior();
     int InitResources();

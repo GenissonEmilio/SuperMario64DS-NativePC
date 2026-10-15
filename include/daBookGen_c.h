@@ -17,7 +17,14 @@ struct daBookGen_c : dActor_c {
     u16 mSpawnTimer;        /* 0x0d4 */
     u8  pad_0d6[0x2];
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daBookGen_c();   /* no slot */
+    #else
     virtual ~daBookGen_c();
+    #endif
 
     virtual int InitResources();
     virtual int CleanupResources();

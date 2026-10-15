@@ -1,5 +1,7 @@
 /* menu_recipe_pause.cpp -- the one-screen PAUSE menu recipe (run menu1, lanes PAUSE1, PAUSE2, PAUSE3).
  *
+ * PAUSEFULL1: with no HD UI Textures mod the planks below are the ROM's own plates (see pause_art_present); everything else is the same.
+ *
  * WHAT THE PLAYER GETS (PAUSE3, Tango's "mock up is fine", 10-11). One pause screen in the launcher's look: parchment and wooden planks, the
  * DS lettering font at window resolution, no DS art. WIDE (16:9 and up): the STAR TRACKER at the left (course name, the seven star names with
  * got / not got, the 100 coin star, stars, coins and the coin record, red coins, the course arrows < > in the castle) and the PLANKS at the
@@ -24,6 +26,7 @@
  */
 #include "menu_compose.h"
 #include "menu_hostimg.h"
+#include "ui_art.h"
 #include "menu_pause_art_ids.h"
 #include "menu_pause_geo.h"
 #include "settings_page.h"
@@ -65,7 +68,7 @@ extern int data_0209d708[];
 extern int data_0209d70c[];
 int GetOwnerLanguage(void);
 int SublevelToLevel(int i);
-int IsStarCollected(int courseID, int starID);   /* the ROM's own takes s32: a narrower spelling lets the host push only the low byte of the register (EXTRAS093: pause START crashed on the mgsync1 base) */
+int IsStarCollected(int courseID, int starID);
 unsigned char CountStarsCollectedInLevelToDisplay(int courseID);
 void _ZN10dScStage_c17UpdateMenuButtonsEb(int b);
 void func_02012790(int id);
@@ -81,6 +84,7 @@ enum { V_CASTLE = PAUSE_V_CASTLE, V_COURSE = PAUSE_V_COURSE, V_CTL, V_CTL_SEL, V
 /* ---- the variant, with hysteresis over the leaving states ---------------- */
 
 int g_last_variant;
+int pause_art_present();      /* below: 1 when an enabled mod carries the new pause's planks */
 
 int pause_variant(void)
 {
@@ -491,6 +495,7 @@ void pause_facts(MenuFacts *mf)
     } else if (v == V_CASTLE || v == V_COURSE || v == V_SAVE) {
         f->sel_slot = slot_of_rom(v, data_0209f2e0);
     } else f->sel_slot = -1;
+    f->rom_art = !pause_art_present();     /* PAUSEFULL1: no mod planks, the ROM's own plates */
     f->arrows_live = f->paging && (wide || f->slide_t1000 >= 1000) && !f->settings_open && is_main_page(v);
     publish_embed(f, wide);
     mf->spare[0] = data_0209f2e0;
@@ -537,6 +542,26 @@ int add_plank(MenuLayout *L, int img, const PauseRect &r, int bx, int by, int bw
     return menu_add_hotspot(L, ip, bx, by, bw, bh, rom);       /* the hotspot index */
 }
 
+/* PAUSEFULL1: the ROM's own plate as one element: the engine-B rows of its box (the plate is BG1 tiles, Stage::UpdateMenuButtons recolours
+   them with the palette bank of the chosen plate, so the lit look is the ROM's own), keyed on the backdrop, stretched over the slot rect. The
+   click maps back into the ROM's own box. */
+int add_rom_piece(MenuLayout *L, const PauseRect &r, int bx, int by, int bw, int bh)
+{
+    MenuPiece p = menu_piece_make(SRC_SUB, bx, by, bw, bh, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+    p.layers = MENU_L_BG0 | MENU_L_BG1 | MENU_L_OBJ;
+    p.key_backdrop = 1;
+    p.touch = 1;
+    p.fixdest = 1; p.fx = (short)r.x; p.fy = (short)r.y; p.fw = (short)r.w; p.fh = (short)r.h;
+    return menu_add_piece(L, p);
+}
+
+int add_rom_plate(MenuLayout *L, const PauseRect &r, int bx, int by, int bw, int bh, int rom)
+{
+    const int ip = add_rom_piece(L, r, bx, by, bw, bh);
+    if (ip < 0) return -1;
+    return menu_add_hotspot(L, ip, bx, by, bw, bh, rom);
+}
+
 /* a touch-only piece (draws nothing) over a host rect: a click maps into the ROM box (bx, by, bw, bh) */
 int add_touch_zone(MenuLayout *L, const PauseRect &r, int bx, int by, int bw, int bh)
 {
@@ -576,7 +601,8 @@ void build_new(MenuLayout *L, int variant)
         if (!f->settings_open && (g.wide || f->slide_t1000 < 1000)) {
             for (int i = 0; i < 3; ++i) {
                 const PauseRect r = pause_plank_rect(g, f, 3, i);
-                const int h = add_plank(L, img[i], r, 8, box_y[i], 240, 32, kRomMain[i], i == sel, prs);
+                const int h = f->rom_art ? add_rom_plate(L, r, 8, box_y[i], 240, 32, kRomMain[i])
+                                         : add_plank(L, img[i], r, 8, box_y[i], 240, 32, kRomMain[i], i == sel, prs);
                 if (i == 0 && rest && h >= 0) L->back = (int8_t)h;
             }
         }
@@ -585,12 +611,22 @@ void build_new(MenuLayout *L, int variant)
         const int img[3] = { MENU_IMG_P_PK_SAVEQUIT, MENU_IMG_P_PK_QUITNOSAVE, MENU_IMG_P_PK_RESUME };
         for (int i = 0; i < 3; ++i) {
             const PauseRect r = pause_dialog_plank(g, f, V_SAVE, 3, i);
-            const int h = add_plank(L, img[i], r, 8, box_y[i], 240, 32, kRomSave[i], i == sel, prs);
+            const int h = f->rom_art ? add_rom_plate(L, r, 8, box_y[i], 240, 32, kRomSave[i])
+                                     : add_plank(L, img[i], r, 8, box_y[i], 240, 32, kRomSave[i], i == sel, prs);
             if (i == 2 && h >= 0) L->back = (int8_t)h;
         }
     } else if (variant == V_NOSAVE) {
         /* touch only (PS_Update.cpp :1370-1451): NO first (hotspot 0, the default focus and the back key), then YES; the stack reads YES over NO */
         const PauseRect ry = pause_dialog_plank(g, f, V_NOSAVE, 2, 0), rn = pause_dialog_plank(g, f, V_NOSAVE, 2, 1);
+        if (f->rom_art) {
+            /* the ROM's own YES and NO plates (80 x 32 at 0x28 / 0x88, y 0x98), moved onto the sheet; the lit one is the pad / hover cursor */
+            const int in = add_rom_piece(L, rn, 0x88, 0x98, 0x50, 0x20), iy = add_rom_piece(L, ry, 0x28, 0x98, 0x50, 0x20);
+            const int hn = menu_add_hotspot(L, in, 0x88, 0x98, 0x50, 0x20, -1);
+            menu_add_hotspot(L, iy, 0x28, 0x98, 0x50, 0x20, -1);
+            L->back = (int8_t)hn;
+            finish_new(L);
+            return;
+        }
         MenuPiece py = menu_piece_make(SRC_HOSTIMG, 0x28, 0x98, 0x50, 0x20, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         py.hostimg = MENU_IMG_P_PK_YESQUIT; py.fixdest = 1; py.fx = (short)ry.x; py.fy = (short)ry.y; py.fw = (short)ry.w; py.fh = (short)ry.h; py.touch = 1;
         py.hl = (uint8_t)(sel == 0 ? (1 | (prs ? 2 : 0)) : 0);
@@ -693,6 +729,27 @@ void pause_build(int variant, MenuLayout *L)
 }
 
 /* ---- the up() test and the ROM-cursor driver --------------------------------------------------------------------------- */
+
+/* run hunt8, lanes UIMOD1 and PAUSEFULL1: the new pause is drawn from the planks of the "HD UI Textures" mod (hd_ui/menu/pause3/pk_*.png). When no
+   enabled mod carries all seven, the same one-screen pause stands (same layout slots, same input) with the ROM's own plank plates: each plate is
+   its own element, the engine-B rows of its touch box (the plates are BG1 tiles and Stage::UpdateMenuButtons gives the chosen one its lit palette),
+   moved onto the slot at the mod plank's width (add_rom_plate). The tracker and the dialogs keep the plain code-drawn skin. Asked once per run: the
+   mod list is latched at boot. */
+int pause_art_present()
+{
+    static int v = -1;
+    if (v < 0) {
+        static const char *const kPk[] = { "pk_resume", "pk_settings", "pk_exit", "pk_savequit", "pk_quitnosave", "pk_yesquit", "pk_nokeep" };
+        char rel[96], path[1400];
+        v = 1;
+        for (const char *n : kPk) {
+            snprintf(rel, sizeof rel, "menu/pause3/%s.png", n);
+            if (!ui_art_path(rel, path, sizeof path)) v = 0;
+        }
+        fprintf(stderr, "[menu] pause art: %s\n", v ? "HD UI Textures planks found, one-screen pause" : "no mod planks, one-screen pause with the ROM's own plates");
+    }
+    return v;
+}
 
 int pause_up(int scene_id)
 {
@@ -865,6 +922,9 @@ extern "C" void menu_pause_rom_pad(uint16_t *pressed)
     k = (uint16_t)(k & ~(unsigned)(MENU_PAD_UP | MENU_PAD_DOWN));
     *pressed = k;
 }
+
+/* UIMOD1: 1 while the ROM's own pause is up because no mod carries the new pause's planks: the caller then gives it the same pad / key driver as OneScreenMenus off */
+extern "C" int menu_pause_rom_fallback(void) { return 0; }      /* PAUSEFULL1: with no mod the recipe is up too (the ROM's own plates), so its own driver runs */
 
 extern "C" int menu_pause_active(void) { return g_last_variant != 0; }
 /* 1 while a 4:3 pause slide is in flight: the host stylus / click and the Backspace back key are eaten by their seam (hal/sub_screen.cpp) */

@@ -110,7 +110,14 @@ struct daRNk_c : dEnemyBase_c {
     /* --- vtable --- */
     /* The inline destructor and factory emit D1 then D0 under 2004/b56.
        The complete emitted object is checked by the TU manifest. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daRNk_c() {}   /* no slot */
+    #else
     virtual ~daRNk_c() {}
+    #endif
 
     int Behavior();
     int CleanupResources();

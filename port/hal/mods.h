@@ -40,6 +40,9 @@ const char *port_mods_kind(int i);
    absent); only code mods need them. */
 const char *port_mods_game(int i);
 int port_mods_api(int i);
+/* mod.json's optional "minGameVersion": the oldest game release the plugin works on
+   ("" when absent). Code mods only. */
+const char *port_mods_min_game(int i);
 /* 1 when this run is multiplayer: the launcher's lobby / VS match environment
    (any of SM64DS_COMMS_ROLE/RELAY/HOST/CODE/SLOT, SM64DS_VS_MAP/MODE/PLAYERS
    non-empty, SM64DS_PARTY nonzero) or the Adventure hub (settings.json
@@ -48,6 +51,9 @@ int port_mods_api(int i);
 int port_mods_multiplayer(void);
 /* The bundle folder mods/ sits in (the folder settings.json was found in). */
 const char *port_mods_bundle(void);
+/* HD UI art by name: the full path of <mod>/hd_ui/<rel> from the last enabled mod that has it (returns 1), or 0 when none does (draw the port's
+   own art). <rel> is a plain relative path with no "..". Documented at the definition in mods.cpp. */
+int port_mods_ui_file(const char *rel, char *out, unsigned cap);
 
 #ifdef __cplusplus
 }

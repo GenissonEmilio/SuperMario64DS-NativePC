@@ -10,12 +10,86 @@
 
 namespace {
 
+/* run hunt8, lane UIMOD1: the tracker's own small pictures when no enabled mod provides them (hd_ui/menu/pause3/): a code-drawn skin of flat shapes.
+   Same footprint as the picture would have. light / shade nudge the colours the way blit_hi does. */
+uint32_t plain_tint(uint32_t c, int light, int shade)
+{
+    int r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255;
+    if (shade) { r = r * (255 - shade) / 255; g = g * (255 - shade) / 255; b = b * (255 - shade) / 255; }
+    if (light) { r += light; g += light; b += light; if (r > 255) r = 255; if (g > 255) g = 255; if (b > 255) b = 255; }
+    return (uint32_t)(r << 16 | g << 8 | b);
+}
+
+/* a five point star centred in the box: supersampled point-in-polygon coverage, r0 the outer radius in pixels */
+void plain_star(const Surf &sf, float cx, float cy, float r0, uint32_t rgb, int alpha)
+{
+    const float r1 = r0 * 0.42f, kPi = 3.14159265f;
+    float vx[10], vy[10];
+    for (int i = 0; i < 10; ++i) {
+        const float a = -kPi * 0.5f + i * kPi / 5.f, rr = (i & 1) ? r1 : r0;
+        vx[i] = cx + cosf(a) * rr; vy[i] = cy + sinf(a) * rr;
+    }
+    const int R = (rgb >> 16) & 255, G = (rgb >> 8) & 255, B = rgb & 255;
+    for (int y = (int)floorf(cy - r0) - 1; y <= (int)ceilf(cy + r0) + 1; ++y) {
+        if (y < 0 || y >= sf.h) continue;
+        for (int x = (int)floorf(cx - r0) - 1; x <= (int)ceilf(cx + r0) + 1; ++x) {
+            if (x < 0 || x >= sf.w) continue;
+            int hit = 0;
+            for (int sy = 0; sy < 3; ++sy)
+                for (int sx = 0; sx < 3; ++sx) {
+                    const float px = x + (sx + 0.5f) / 3.f, py = y + (sy + 0.5f) / 3.f;
+                    int in = 0;
+                    for (int i = 0, j = 9; i < 10; j = i++)
+                        if (((vy[i] > py) != (vy[j] > py)) && (px < (vx[j] - vx[i]) * (py - vy[i]) / (vy[j] - vy[i]) + vx[i])) in = !in;
+                    hit += in;
+                }
+            const int c = hit * 255 / 9 * alpha / 255;
+            if (!c) continue;
+            uint32_t &o = sf.px[(size_t)y * sf.stride + x];
+            o = over(o, R * c / 255, G * c / 255, B * c / 255, c);
+        }
+    }
+}
+
+void plain_hi(const Surf &sf, int id, int dx, int dy, int dw, int dh, int alpha, int light, int shade)
+{
+    const float x = (float)dx, y = (float)dy, w = (float)dw, h = (float)dh;
+    switch (id) {
+    case MENU_IMG_P_STAR_GOT: case MENU_IMG_P_STAR_OFF: {
+        const bool got = id == MENU_IMG_P_STAR_GOT;
+        plain_star(sf, x + w * 0.5f, y + h * 0.54f, w * 0.52f, plain_tint(0x8A5A10, light, shade), got ? alpha : alpha / 2);
+        plain_star(sf, x + w * 0.5f, y + h * 0.54f, w * 0.42f, plain_tint(got ? 0xF7C81C : 0xE0CFA6, light, shade), got ? alpha : alpha / 2);
+        break;
+    }
+    case MENU_IMG_P_COIN_GOLD: case MENU_IMG_P_COIN_RED: {
+        const bool red = id == MENU_IMG_P_COIN_RED;
+        fill_circle(sf, x + w * 0.5f, y + h * 0.5f, w * 0.5f, plain_tint(red ? 0x7A1010 : 0x8A5A10, light, shade), alpha, 0);
+        fill_circle(sf, x + w * 0.5f, y + h * 0.5f, w * 0.43f, plain_tint(red ? 0xD83A2E : 0xF7C81C, light, shade), alpha, 0);
+        fill_rrect(sf, x + w * 0.44f, y + h * 0.28f, w * 0.12f, h * 0.44f, w * 0.05f, plain_tint(red ? 0xFFF1E0 : 0x8A5A10, light, shade), alpha, 0);
+        break;
+    }
+    case MENU_IMG_P_TITLE_BLANK:
+        fill_rrect(sf, x, y, w, h, h * 0.28f, plain_tint(0x8A5A10, light, shade), alpha, 0);
+        fill_rrect(sf, x + h * 0.07f, y + h * 0.07f, w - h * 0.14f, h * 0.86f, h * 0.22f, plain_tint(0xFFF3CD, light, shade), alpha, 0);
+        break;
+    case MENU_IMG_P_TAB_L: case MENU_IMG_P_TAB_R: {
+        fill_rrect(sf, x, y, w, h, w * 0.18f, plain_tint(0x8A5A10, light, shade), alpha, 0);
+        fill_rrect(sf, x + w * 0.06f, y + w * 0.06f, w * 0.88f, h - w * 0.12f, w * 0.14f, plain_tint(0xF0B850, light, shade), alpha, 0);
+        const char *t = id == MENU_IMG_P_TAB_L ? "LB" : "RB";
+        const float em = w * 0.34f, tw = ui_text_width(t, em);
+        ui_text_draw(&sf, x + (w - tw) * 0.5f, y + h * 0.88f, t, em, plain_tint(0x7A3A0C, light, shade), alpha, 0);
+        break;
+    }
+    default: break;
+    }
+}
+
 /* a premultiplied host picture scaled to dw x dh blitted at (dx, dy); alpha 0..255 scales it, light adds white under its own alpha, shade darkens */
 void blit_hi(const Surf &sf, int id, int dx, int dy, int dw, int dh, int alpha = 255, int light = 0, int shade = 0)
 {
     if (dw < 1 || dh < 1) return;
     const uint32_t *src = menu_hostimg_scaled(id, dw, dh);
-    if (!src) return;
+    if (!src) { plain_hi(sf, id, dx, dy, dw, dh, alpha, light, shade); return; }      /* no mod picture: the plain skin */
     for (int y = 0; y < dh; ++y) {
         const int yy = dy + y;
         if (yy < 0 || yy >= sf.h) continue;

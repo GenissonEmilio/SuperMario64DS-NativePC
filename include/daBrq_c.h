@@ -53,7 +53,14 @@ struct daBrq_c : dActor_c {
     u8                        mStateTimer;                   /* 0x430 */
     u8                        pad_431[0x3];
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daBrq_c() {}   /* no slot */
+    #else
     virtual ~daBrq_c() {}
+    #endif
 
     virtual s32 InitResources();
     virtual s32 CleanupResources();

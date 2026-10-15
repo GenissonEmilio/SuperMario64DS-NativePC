@@ -102,7 +102,14 @@ struct daObjFloatBoard_c : dBgActor_c {
     /* --- vtable --- */
     /* INLINE ON PURPOSE -- see include/dBgActor_c.h. The out-of-line pair is
        at ov002 0x020b5a18/0x020b5a70, still under its own delinks entries. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjFloatBoard_c() {}   /* no slot */
+    #else
     virtual ~daObjFloatBoard_c() {}
+    #endif
 
     int CleanupResources();             /* slot 3, ov002 0x020b5be0 */
     int Behavior();                     /* slot 6, ov002 0x020b5c4c */

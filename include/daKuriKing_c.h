@@ -108,7 +108,14 @@ struct daKuriKing_c : dEnemyBase_c {
        building one actor is a spawn-info variant, not a second class. */
     u8  pad_60d[0x3];                         /* 0x60d, to the ROM's 0x610 */
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daKuriKing_c();   /* no slot */
+    #else
     virtual ~daKuriKing_c();
+    #endif
 
     virtual s32 Behavior();
     virtual s32 CleanupResources();

@@ -16,7 +16,14 @@ struct daObjC1Peach_c : dActor_c {
 
     /* Inline so InitResources can own the vtable and emit retail's D1 then
      * D0 pair without an extra D2. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjC1Peach_c() {}   /* no slot */
+    #else
     virtual ~daObjC1Peach_c() {}
+    #endif
 
     virtual int InitResources();
     virtual int CleanupResources();

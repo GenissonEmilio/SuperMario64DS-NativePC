@@ -144,7 +144,14 @@ struct daIbl_c : dEnemyBase_c {
     PathPtr                      mPathPtr;              /* 0x3f4 */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daIbl_c();   /* no slot */
+    #else
     virtual ~daIbl_c();
+    #endif
 
     virtual s32   OnAimedAtWithEgg();      /* slot 29 */
 

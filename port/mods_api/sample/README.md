@@ -7,13 +7,17 @@ is read, and when an actor is spawned.
 
 ## Rules
 
-* The DLL must be built for the exact game release it targets. A plugin finds
-  game code by address, so it is only valid for one build. `mod.json` says which
-  (`"game": "0.5.6"`); a mod built for another release is skipped, with the reason
-  in the log.
+* The plugin API version is the pin. `mod.json` says which API the plugin was
+  built against (`"api": 1`); the game loads it on any release that offers that
+  version, not only the release it was made on. A plugin that names a newer API
+  than the game offers is skipped, with the reason in the log. `"game"` is only
+  a note of the release it was built on. Optionally `"minGameVersion": "0.9.1"` names
+  the oldest release it works on.
+* `symbol()` looks a name up in the running build. The API version does not
+  promise that a name exists or keeps its signature in every release: check for
+  NULL, and set `minGameVersion` when you rely on a name that is new.
 * 32-bit (x86), `__cdecl`. Use the MSVC x86 tools. The interface is plain C.
 * One DLL per mod, in `plugin/`.
-* The plugin API version in `mod.json` (`"api": 1`) must match the game's.
 * Plugins are not loaded in multiplayer (a lobby or VS match).
 * A plugin's own state is not part of a save state. F8/F9 restore the game and
   not your variables, so keep your state derivable from the game.

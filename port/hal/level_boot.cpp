@@ -3099,6 +3099,7 @@ extern "C" void port_painting_texcache_overlay_load(int id);
 /* hal/actor_classes_ov073.cpp: the same bss clear for ov073's ice-block instance
    counters (Chief Chilly Challenge). */
 extern "C" void port_ov073_overlay_load(int id);
+extern "C" void port_ov_level_load(int level);        /* hal/ov_reset.cpp */
 
 /* The actor death table and the two per-level words the sublevel clear owns
    (Stage::InitResources:188-196). Read here by the watch and the seed below;
@@ -3370,6 +3371,10 @@ extern "C" void *port_stage_boot_body(void *mc, int spawn)
        hal/actor_classes_painting.cpp has the whole reading. */
     port_painting_texcache_overlay_load(80);
     port_ov073_overlay_load(73);
+    /* OVLRESET1: the same call, for every overlay the level loads. The level's
+       own overlay, then the object overlays the ROM's walk names, each put back
+       to its start-up image from the second visit on (hal/ov_reset.cpp). */
+    port_ov_level_load(port_level_id());
 
     /* STAGE B: THE TABLES ARE BACK ON. Stage A1 zeroed the Entrance, Door and
        Exit counts in the host copy of the overlay and dropped the sub-table
@@ -4196,12 +4201,26 @@ void hal_render_player_world(void *player);
  * seated body matrix, so it positions each one itself). Normal play, VS and
  * co-op are byte-unaffected: every player they run is in the array, so this
  * loop finds it and returns before drawing. */
+extern "C" int hal_actor_off_native_view(void *actor);   /* hal/camera_bridges.cpp */
 static int __fastcall ps_render(void *self, void *)
 {
     const int count = (int)data_0209f21c;
     for (int i = 0; i < count; ++i)
         if (data_0209f394[i] == self)
             return 1;               /* array player: the harness draws it */
+    /* INTROCAST092: the 16:9 object-cull widen (hal_camera_widen_frustum) lets
+       the cast through while it waits in its bind pose (a T pose) at the start
+       marks, seen from the moat arch during the opening fly-by. The ROM culls a
+       cast body against the 4:3 planes (flags 0x2 = cull off screen) and the DS
+       never showed it, so ask that same test. SM64DS_CAST_NATIVE=0 = control. */
+    static int native = -1;
+    if (native < 0) {
+        const char *e = getenv("SM64DS_CAST_NATIVE");
+        native = (e && e[0] == '0' && e[1] == 0) ? 0 : 1;
+    }
+    if (native && (*(const unsigned *)((const char *)self + 0xb0) & 2) &&
+        hal_actor_off_native_view(self))
+        return 1;
     hal_render_player_world(self);  /* cutscene cast: draw its body here */
     return 1;
 }

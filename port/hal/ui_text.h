@@ -1,11 +1,10 @@
 /* ui_text.h -- the one-screen menus' text at WINDOW resolution (run menu1, lane SETMENU1).
 
-   The DS lettering font (sm64ds_original.otf, the launcher's own) is drawn at any size: tools/prepare_settings_art.py bakes the
-   printable ASCII glyphs once into an 8-bit coverage atlas at 96 px per em (res/menu/settings/font.png, embedded like the logo,
-   decoded with stb_image) and this file area-averages a glyph down to the size asked for, keeps the result in a small cache keyed by
+   The font is an 8-bit coverage atlas at about 96 px per em plus a glyph table (printable ASCII): the "HD UI Textures" mod's DS lettering
+   atlas (hd_ui/menu/settings/font.png + font_metrics.tsv, hal/ui_art.h) when an enabled mod carries it, else the port's own plain pixel font
+   (hal/ui_font_plain.cpp). This file area-averages a glyph down to the size asked for, keeps the result in a small cache keyed by
    (character, whole pixel size), and blends it into a 32 bit picture. A shrink is a box average of the atlas, so a size from 12 to
    about 200 px stays crisp and nothing is drawn per frame but the cached coverage (one multiply and blend per covered pixel).
-   (stb_truetype is not used: the single header was not available to add; the baked atlas gives the same result for a fixed font.)
 
    Sizes are the em in pixels; the cap height is 0.75 em and the lower case x height 0.5 em. Pure host code: no ROM, no window. */
 #ifndef UI_TEXT_H

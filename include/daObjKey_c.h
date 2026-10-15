@@ -52,7 +52,14 @@ struct daObjKey_c : dEnemyBase_c {
     u32         mParticleID[3];     /* 0x464 coined: Particle::System::New handles */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjKey_c();   /* no slot */
+    #else
     virtual ~daObjKey_c();
+    #endif
 
     virtual s32   OnYoshiTryEat();         /* slot 18 */
     virtual void  OnTurnIntoEgg(Player &player); /* slot 19 */

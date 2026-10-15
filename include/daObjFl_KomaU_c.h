@@ -37,7 +37,14 @@ struct daObjFl_KomaU_c : dBgActor_c {
 
     /* Out of line in daObjFl_KomaU_c.cpp: the key function, so that TU emits
      * _ZTV/_ZTI/_ZTS15daObjFl_KomaU_c. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjFl_KomaU_c();   /* no slot */
+    #else
     virtual ~daObjFl_KomaU_c();
+    #endif
 
     /* Overrides of fBase_c's slots 0, 3, 6 and 9. */
     virtual s32 InitResources();

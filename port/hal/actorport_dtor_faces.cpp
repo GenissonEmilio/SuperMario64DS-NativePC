@@ -29,6 +29,7 @@
 #include "daBgSnmBdy_c.h"
 #include "daBgSnwmn_c.h"
 #include "daChRoom_c.h"
+#include "daLuigi_c.h"
 #include "daObjFl_Gura_c.h"
 #include "daObjKi_Ita_c.h"
 #include "daObjKm1_Kuruma_c.h"
@@ -48,6 +49,7 @@ ACTORPORT_D1_FACE(daBakubaku_c)
 ACTORPORT_D1_FACE(daBgSnmBdy_c)
 ACTORPORT_D1_FACE(daBgSnwmn_c)
 ACTORPORT_D1_FACE(daChRoom_c)
+ACTORPORT_D1_FACE(daLuigi_c)
 ACTORPORT_D1_FACE(daObjFl_Gura_c)
 ACTORPORT_D1_FACE(daObjKi_Ita_c)
 ACTORPORT_D1_FACE(daObjKm1_Kuruma_c)

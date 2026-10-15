@@ -35,7 +35,14 @@ struct daObjCvNewsLift_c : dBgActor_c {
     /* Inline on purpose: the out-of-line form emits D0 ahead of D1, the
        reverse of the cartridge, and a homeless D2. InitResources is then the
        key function, so the vtable is emitted with the class's TU. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjCvNewsLift_c() {}   /* no slot */
+    #else
     virtual ~daObjCvNewsLift_c() {}
+    #endif
     virtual s32 InitResources();
     virtual s32 CleanupResources();
     virtual s32 Behavior();

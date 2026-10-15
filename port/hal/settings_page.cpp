@@ -1,5 +1,6 @@
 /* settings_page.cpp -- see settings_page.h (run menu1, lane SETMENU1). Pure host code: no ROM, no window, no device. */
 #include "settings_page.h"
+#include "ui_art.h"
 #include "settings_live.h"
 #include "host_settings.h"
 #include "ui_text.h"
@@ -24,10 +25,6 @@
 #include <string.h>
 #include <vector>
 
-extern "C" const unsigned char g_setart_png_parchment[], g_setart_png_title[], g_setart_png_back[], g_setart_png_key[], g_setart_png_plank[],
-    g_setart_png_dd_top[], g_setart_png_dd_mid[], g_setart_png_dd_bot[], g_setart_png_dd_arrow[];
-extern "C" const unsigned int g_setart_png_parchment_len, g_setart_png_title_len, g_setart_png_back_len, g_setart_png_key_len, g_setart_png_plank_len,
-    g_setart_png_dd_top_len, g_setart_png_dd_mid_len, g_setart_png_dd_bot_len, g_setart_png_dd_arrow_len;
 
 namespace {
 
@@ -50,6 +47,29 @@ enum { IM_PARCH, IM_TITLE, IM_BACK, IM_KEY, IM_PLANK, IM_DDTOP, IM_DDMID, IM_DDB
 struct Img { int tried = 0, w = 0, h = 0; std::vector<uint32_t> px; };     /* premultiplied 0xAARRGGBB */
 Img g_im[IM_COUNT];
 
+/* The page's pictures are files of the "HD UI Textures" mod (hd_ui/menu/settings/<name>.png, hal/ui_art.h); the port carries none. A picture no
+   enabled mod provides stays empty and the page draws its plain skin (flat rounded plates, a code-drawn chevron, text for the two lettered
+   plates), so the settings page works with no mod. Decoded and premultiplied; fills t, leaves it empty on any failure. */
+void decode_setart(int id, Img &t)
+{
+    static const char *const kName[IM_COUNT] = { "parchment", "title", "back", "key", "plank", "dd_top", "dd_mid", "dd_bot", "dd_arrow" };
+    char rel[96], path[1400];
+    snprintf(rel, sizeof rel, "menu/settings/%s.png", kName[id]);
+    if (!ui_art_path(rel, path, sizeof path)) return;
+    int w = 0, h = 0, comp = 0;
+    unsigned char *p = stbi_load(path, &w, &h, &comp, 4);
+    if (!p) return;
+    if (w < 1 || h < 1 || w > 8192 || h > 8192) { stbi_image_free(p); return; }
+    try {
+        t.w = w; t.h = h; t.px.resize((size_t)w * h);
+        for (int i = 0; i < w * h; ++i) {
+            const unsigned r = p[i * 4], g = p[i * 4 + 1], b = p[i * 4 + 2], a = p[i * 4 + 3];
+            t.px[i] = (a << 24) | (((r * a + 127) / 255) << 16) | (((g * a + 127) / 255) << 8) | ((b * a + 127) / 255);
+        }
+    } catch (...) { stbi_image_free(p); t = Img(); throw; }
+    stbi_image_free(p);
+}
+
 void load_im(int id)
 {
     Img &I = g_im[id];
@@ -58,19 +78,9 @@ void load_im(int id)
         if (I.tried) return;
         I.tried = 1;
     }
-    const unsigned char *const emb[IM_COUNT] = { g_setart_png_parchment, g_setart_png_title, g_setart_png_back, g_setart_png_key, g_setart_png_plank,
-                                                 g_setart_png_dd_top, g_setart_png_dd_mid, g_setart_png_dd_bot, g_setart_png_dd_arrow };
-    const unsigned len[IM_COUNT] = { g_setart_png_parchment_len, g_setart_png_title_len, g_setart_png_back_len, g_setart_png_key_len,
-                                     g_setart_png_plank_len, g_setart_png_dd_top_len, g_setart_png_dd_mid_len, g_setart_png_dd_bot_len, g_setart_png_dd_arrow_len };
-    int w = 0, h = 0, comp = 0;
-    unsigned char *p = stbi_load_from_memory(emb[id], (int)len[id], &w, &h, &comp, 4);
-    if (!p) return;
-    I.w = w; I.h = h; I.px.resize((size_t)w * h);
-    for (int i = 0; i < w * h; ++i) {
-        const unsigned r = p[i * 4], g = p[i * 4 + 1], b = p[i * 4 + 2], a = p[i * 4 + 3];
-        I.px[i] = (a << 24) | (((r * a + 127) / 255) << 16) | (((g * a + 127) / 255) << 8) | ((b * a + 127) / 255);
-    }
-    stbi_image_free(p);
+    Img t;
+    try { decode_setart(id, t); } catch (...) { t = Img(); }
+    I.w = t.w; I.h = t.h; I.px = std::move(t.px);
 }
 
 /* area / bilinear resample of a sub-rectangle of a premultiplied image (the same triangle filter as hal/menu_hostimg.cpp, whose
@@ -278,6 +288,9 @@ void blit_piece(const Surf &s, const Piece *cp, int dx, int dy)
     }
 }
 
+const Piece *plain_im_piece(int id, int w, int h);                 /* the plain skin, below */
+void plain_plate(Piece *p, uint32_t rim, uint32_t fill, float rad, float rimpx);
+
 /* a whole picture scaled to dw x dh (cached) */
 const Piece *scaled_im(int id, int dw, int dh)
 {
@@ -294,6 +307,7 @@ const Piece *scaled_im(int id, int dw, int dh)
 void draw_im(const Surf &s, int id, int x, int y, int w, int h, int alpha, int light, int shade, const int *clipv)
 {
     const Piece *p = scaled_im(id, w, h);
+    if (!p && (id == IM_TITLE || id == IM_BACK || id == IM_DDARROW)) p = plain_im_piece(id, w, h);      /* no mod art: the plain skin */
     if (p) blit(s, p->px, p->w, p->h, x, y, alpha, light, shade, clipv);
 }
 
@@ -432,7 +446,11 @@ const Piece *slice3_piece(int kind, int imgid, int w, int h, double end_frac)
     load_im(imgid);
     const Img &I = g_im[imgid];
     p = new_piece(kind, w, h, 0, w, h);
-    if (I.px.empty()) return p;
+    if (I.px.empty()) {                                           /* no mod art: a flat cream keycap / orange plank */
+        if (kind == 3) plain_plate(p, 0x8A5A10, 0xFFF3CD, h * 0.24f, h * 0.07f + 1.f);
+        else plain_plate(p, 0x8A5A10, 0xF0B850, h * 0.24f, h * 0.07f + 1.f);
+        return p;
+    }
     const int aw = (int)(I.w * (double)h / I.h + 0.5);        /* the art at this height */
     std::vector<uint32_t> full;
     scale_rect(I, 0, 0, I.w, I.h, aw, h, &full);
@@ -459,7 +477,7 @@ const Piece *purple_piece(int w, int h)
     load_im(IM_DDTOP); load_im(IM_DDMID); load_im(IM_DDBOT);
     p = new_piece(5, w, h, 0, w, h);
     const Img &T = g_im[IM_DDTOP], &M = g_im[IM_DDMID], &Bm = g_im[IM_DDBOT];
-    if (M.px.empty() || T.px.empty() || Bm.px.empty()) return p;
+    if (M.px.empty() || T.px.empty() || Bm.px.empty()) { plain_plate(p, 0xC9A6EE, 0x8458B8, h * 0.16f, 2.f); return p; }       /* no mod art: a flat purple box */
     const double st = h / 180.0 < 0.25 ? 0.25 : (h / 180.0 > 1.0 ? 1.0 : h / 180.0);
     const double across = (double)w / M.w;
     int th = (int)(T.h * across * 3 * st + 0.5); if (th < 2) th = 2;
@@ -492,6 +510,59 @@ const Piece *purple_piece(int w, int h)
     return p;
 }
 
+/* ============================== the plain skin: what the page draws when no mod provides a picture (run hunt8, lane UIMOD1) ============ */
+
+/* a rounded plate into a piece: a rim of rimpx, then the fill; rim and fill are 0xRRGGBB, opaque */
+void plain_plate(Piece *p, uint32_t rim, uint32_t fill, float rad, float rimpx)
+{
+    const int w = p->w, h = p->h;
+    if (rad > h * 0.5f) rad = h * 0.5f;
+    if (rad > w * 0.5f) rad = w * 0.5f;
+    for (int y = 0; y < h; ++y)
+        for (int x = 0; x < w; ++x) {
+            const float sd = rr_sd(x + 0.5f, y + 0.5f, (float)w, (float)h, rad);
+            const int cv = cov_of(sd);
+            if (!cv) continue;
+            const uint32_t c = sd > -rimpx ? rim : fill;
+            p->px[(size_t)y * w + x] = ((uint32_t)cv << 24) | ((((c >> 16) & 255) * cv / 255) << 16) | ((((c >> 8) & 255) * cv / 255) << 8) | ((c & 255) * cv / 255);
+        }
+}
+
+/* the Settings title plate, the Back plate (both carry their word in the mod's art) and the drop-down's chevron, drawn by code */
+const Piece *plain_im_piece(int id, int w, int h)
+{
+    if (w < 2 || h < 2) return 0;
+    Piece *p = find_piece(8, id, w, h);
+    if (p) return p;
+    p = new_piece(8, id, w, h, w, h);
+    if (id == IM_DDARROW) {                                      /* a white chevron: two thick strokes */
+        const float ax = w * 0.14f, ay = h * 0.22f, bx = w * 0.5f, by = h * 0.80f, cx = w * 0.86f, cy = ay, th = h * 0.20f;
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x) {
+                float best = 1e9f;
+                for (int sgm = 0; sgm < 2; ++sgm) {
+                    const float x0 = sgm ? bx : ax, y0 = sgm ? by : ay, x1 = sgm ? cx : bx, y1 = sgm ? cy : by;
+                    const float dx = x1 - x0, dy = y1 - y0, px = x + 0.5f - x0, py = y + 0.5f - y0;
+                    float t = (px * dx + py * dy) / (dx * dx + dy * dy);
+                    t = t < 0 ? 0 : (t > 1 ? 1 : t);
+                    const float ex = px - t * dx, ey = py - t * dy, d = sqrtf(ex * ex + ey * ey);
+                    if (d < best) best = d;
+                }
+                const int cv = cov_of(best - th * 0.5f);
+                if (cv) p->px[(size_t)y * w + x] = ((uint32_t)cv << 24) | ((uint32_t)cv << 16) | ((uint32_t)cv << 8) | (uint32_t)cv;
+            }
+        return p;
+    }
+    plain_plate(p, 0x8A5A10, id == IM_TITLE ? 0xFFF3CD : 0xFFF3CD, h * 0.22f, h * 0.07f + 1.f);
+    const char *label = id == IM_TITLE ? "SETTINGS" : "BACK";
+    float em = h * 0.52f;
+    const float maxw = w * 0.86f, tw = ui_text_width(label, em);
+    if (tw > maxw) em *= maxw / tw;
+    UiSurface us = { p->px.data(), w, w, h };
+    ui_text_draw(&us, (w - ui_text_width(label, em)) * 0.5f, h * 0.5f + ui_text_cap_height(em) * 0.5f, label, em, 0x8C4200, 255, 0);
+    return p;
+}
+
 /* the title's arrow pointing right (the ROM's own selection arrow, turned a quarter), w x h */
 const Piece *arrow_right_piece(int w, int h)
 {
@@ -499,7 +570,16 @@ const Piece *arrow_right_piece(int w, int h)
     if (p) return p;
     p = new_piece(6, w, h, 0, w, h);
     const uint32_t *src = menu_hostimg_scaled(MENU_IMG_ARROW_DOWN, h, w);   /* turned: its width is our height */
-    if (!src) return p;
+    if (!src) {                                                  /* no picture: a code-drawn right-pointing triangle */
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x) {
+                const float fx = (x + 0.5f) / w, fy = fabsf((y + 0.5f) / h - 0.5f) * 2.f;      /* 0..1, 0..1 from the middle */
+                const float d = (fy - (1.f - fx)) * h * 0.5f;                                   /* inside when fy < 1 - fx */
+                const int cv = cov_of(d);
+                if (cv) p->px[(size_t)y * w + x] = ((uint32_t)cv << 24) | ((uint32_t)(0x2A * cv / 255) << 16) | ((uint32_t)(0x5A * cv / 255) << 8) | (uint32_t)(0xE0 * cv / 255);
+            }
+        return p;
+    }
     for (int y = 0; y < h; ++y)
         for (int x = 0; x < w; ++x) p->px[(size_t)y * w + x] = src[(size_t)x * h + (h - 1 - y)];   /* dest(x, y) = src(h - 1 - y, x) */
     return p;
@@ -509,7 +589,7 @@ const Piece *arrow_right_piece(int w, int h)
 
 enum Tab { T_GENERAL = 0, T_DISPLAY, T_CONTROLS, T_SOUND, T_COUNT };
 enum RType { R_CHOICE, R_SLIDER, R_CHECK, R_BIND, R_HEAD, R_NOTE };
-struct Row { RType t; const char *label; int id, id2, step; const char *const *names; int nn; const int *vals; };   /* vals: the value of each choice when it is not min + index (the frame rate stops) */
+struct Row { RType t; const char *label; int id, id2, step; const char *const *names; int nn; const int *vals; int id3p1 = 0; };   /* vals: the value of each choice when it is not min + index (the frame rate stops) */
 
 int ch_val(const Row &R, int i)
 {
@@ -537,6 +617,7 @@ const char *const GAPCOLOR_LABELS[] = { "Black", "White", "Gray", "Blue", "Red",
 const Row ROWS_GENERAL[] = {
     { R_SLIDER, "Minimap size", SL_MINIMAP_SCALE, -1, 5, 0, 0 },
     { R_NOTE, "The minimap is the small map in the corner.", -1, -1, 0, 0, 0 },
+    { R_CHECK, "Debug menu", SL_DEBUG_MENU, -1, 0, 0, 0 },
 };
 /* PAUSE3: CONTROLS is the old CONTROLS and CAMERA tabs together (the camera rows first, then the run rows, then the bindings) */
 const Row ROWS_CONTROLS[] = {
@@ -547,6 +628,7 @@ const Row ROWS_CONTROLS[] = {
     { R_CHECK, "Invert camera left/right", SL_SWAP_CAMERA_TURN, -1, 0, 0, 0 },
     { R_CHECK, "Invert camera up/down", SL_INVERT_CAMERA_Y, -1, 0, 0, 0 },
     { R_CHECK, "Lock mouse", SL_MOUSE_CAPTURE, -1, 0, 0, 0 },
+    { R_CHECK, "Right stick zooms", SL_CAMERA_STICK_ZOOM, -1, 0, 0, 0 },
     { R_SLIDER, "Stick deadzone", SL_STICK_DEADZONE, -1, 1, 0, 0 },
     { R_SLIDER, "Run point", SL_RUN_THRESHOLD, -1, 1, 0, 0 },
     { R_HEAD, "Keys and buttons", -1, -1, 0, 0, 0 },
@@ -560,10 +642,16 @@ const Row ROWS_CONTROLS[] = {
     { R_BIND, "Run", SL_KEY_BASE + HOST_KEY_RUN, SL_PAD_BASE + HOST_PAD_RUN, 0, 0, 0 },
     { R_BIND, "Start", SL_KEY_BASE + HOST_KEY_START, SL_PAD_BASE + HOST_PAD_START, 0, 0, 0 },
     { R_BIND, "Select", SL_KEY_BASE + HOST_KEY_SELECT, SL_PAD_BASE + HOST_PAD_SELECT, 0, 0, 0 },
-    { R_BIND, "Look", SL_KEY_BASE + HOST_KEY_LOOK, SL_PAD_BASE + HOST_PAD_LOOK, 0, 0, 0 },
-    { R_BIND, "Center camera", SL_KEY_BASE + HOST_KEY_CAM_CENTER, SL_PAD_BASE + HOST_PAD_CAM_CENTER, 0, 0, 0 },
-    { R_BIND, "Rotate camera left", SL_KEY_BASE + HOST_KEY_CAM_LEFT, SL_PAD_BASE + HOST_PAD_CAM_LEFT, 0, 0, 0 },
-    { R_BIND, "Rotate camera right", SL_KEY_BASE + HOST_KEY_CAM_RIGHT, SL_PAD_BASE + HOST_PAD_CAM_RIGHT, 0, 0, 0 },
+    { R_BIND, "Look", SL_KEY_BASE + HOST_KEY_LOOK, SL_PAD_BASE + HOST_PAD_LOOK, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_LOOK + 1 },
+    { R_BIND, "Center camera", SL_KEY_BASE + HOST_KEY_CAM_CENTER, SL_PAD_BASE + HOST_PAD_CAM_CENTER, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_CENTER + 1 },
+    { R_BIND, "Rotate camera left", SL_KEY_BASE + HOST_KEY_CAM_LEFT, SL_PAD_BASE + HOST_PAD_CAM_LEFT, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_LEFT + 1 },
+    { R_BIND, "Rotate camera right", SL_KEY_BASE + HOST_KEY_CAM_RIGHT, SL_PAD_BASE + HOST_PAD_CAM_RIGHT, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_RIGHT + 1 },
+    { R_BIND, "Tilt camera up", SL_KEY_BASE + HOST_KEY_CAM_UP, SL_PAD_BASE + HOST_PAD_CAM_UP, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_UP + 1 },
+    { R_BIND, "Tilt camera down", SL_KEY_BASE + HOST_KEY_CAM_DOWN, SL_PAD_BASE + HOST_PAD_CAM_DOWN, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_DOWN + 1 },
+    { R_BIND, "Zoom camera in", SL_KEY_BASE + HOST_KEY_CAM_ZOOM_IN, SL_PAD_BASE + HOST_PAD_CAM_ZOOM_IN, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_ZOOM_IN + 1 },
+    { R_BIND, "Zoom camera out", SL_KEY_BASE + HOST_KEY_CAM_ZOOM_OUT, SL_PAD_BASE + HOST_PAD_CAM_ZOOM_OUT, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_ZOOM_OUT + 1 },
+    { R_BIND, "Camera mode", SL_KEY_BASE + HOST_KEY_CAM_MODE, SL_PAD_BASE + HOST_PAD_CAM_MODE, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_MODE + 1 },
+    { R_BIND, "Mouse look button", SL_MOUSE_BASE + HOST_MOUSE_CAM_HOLD, -1, 0, 0, 0 },
     { R_NOTE, "Two actions can share a button.", -1, -1, 0, 0, 0 },
 };
 const Row ROWS_SOUND[] = {
@@ -700,6 +788,16 @@ namespace {
 const char *id_name(int id, char *buf, int cap)
 {
     if (id < SL_PAD_BASE) return settings_page_key_name(sl_get(id), buf, cap);
+    if (id >= SL_MOUSE_BASE) {
+        switch (sl_get(id)) {      /* CAMPACK1: the mouse buttons, by the Win32 VK the file stores */
+        case 0: return "NONE";
+        case 2: return "RIGHT";
+        case 4: return "MIDDLE";
+        case 5: return "BACK";
+        case 6: return "FORWARD";
+        default: snprintf(buf, cap, "MOUSE %d", sl_get(id)); return buf;
+        }
+    }
     return settings_page_pad_name(sl_get(id), buf, cap);
 }
 
@@ -820,15 +918,28 @@ int cap_w_for(const char *txt)
 }
 
 struct CapPos { int x, w; };
-void caps_of(const Row &R, CapPos *cp /* [2] */)
+/* CAMPACK1: a binding row has up to three caps: key, pad, mouse (id3p1 = mouse id + 1). The third exists only beside the second. */
+int bind_cols(const Row &R) { return R.id2 < 0 ? 1 : (R.id3p1 > 0 ? 3 : 2); }
+int bind_id(const Row &R, int c) { return c == 0 ? R.id : (c == 1 ? R.id2 : R.id3p1 - 1); }
+void caps_of(const Row &R, CapPos *cp /* [3] */)
 {
-    char b1[24], b2[24];
+    char b1[24], b2[24], b3[24];
     const char *t1 = id_name(R.id, b1, sizeof b1);
     const char *t2 = R.id2 >= 0 ? id_name(R.id2, b2, sizeof b2) : "";
+    const char *t3 = bind_cols(R) == 3 ? id_name(R.id3p1 - 1, b3, sizeof b3) : "";
     cp[0].w = cap_w_for(t1);
     cp[1].w = R.id2 >= 0 ? cap_w_for(t2) : 0;
+    cp[2].w = bind_cols(R) == 3 ? cap_w_for(t3) : 0;
     cp[0].x = L.ctl_x;
     cp[1].x = L.ctl_x + cp[0].w + P(24);
+    cp[2].x = cp[1].x + cp[1].w + P(24);
+}
+/* which cap a pointer x is nearest: the last one whose left edge is within P(12) of it */
+int cap_col_at(const Row &R, const CapPos *cp, int mx)
+{
+    int col = 0;
+    for (int c = 1; c < bind_cols(R); ++c) if (mx >= cp[c].x - P(12)) col = c;
+    return col;
 }
 
 /* ============================================================ row logic =============================================== */
@@ -879,9 +990,9 @@ void reset_tab()
             if (R.t == R_HEAD || R.t == R_NOTE) continue;
             const SlInfo *a = sl_info(R.id);
             if (a && sl_get(R.id) != a->def) sl_set(R.id, a->def);
-            if (R.t == R_BIND && R.id2 >= 0) {
-                const SlInfo *b = sl_info(R.id2);
-                if (b && sl_get(R.id2) != b->def) sl_set(R.id2, b->def);
+            for (int c = 1; R.t == R_BIND && c < bind_cols(R); ++c) {
+                const SlInfo *b = sl_info(bind_id(R, c));
+                if (b && sl_get(bind_id(R, c)) != b->def) sl_set(bind_id(R, c), b->def);
             }
         }
     sl_flush();
@@ -979,7 +1090,7 @@ void activate(const Row &R, int col)
     switch (R.t) {
     case R_CHOICE: S.dd_open = 1; S.dd_hi = ch_idx(R, sl_get(R.id)); S.dd_first = 0; break;
     case R_CHECK: adjust(R, 1, 0); break;
-    case R_BIND: start_capture(col ? R.id2 : R.id); break;
+    case R_BIND: start_capture(bind_id(R, col)); break;
     default: break;
     }
 }
@@ -1084,11 +1195,17 @@ extern "C" int settings_page_frame(const SpInput *in)
             S.cap_active = 0; S.settle = 1; S.settle_n = 0; note("");
             /* PAUSE3: the camera controls may share a button with each other; say so when this one does */
             const int id = S.cap_id;
-            const int pad = id >= SL_PAD_BASE;
-            const int lo = pad ? SL_PAD_BASE + HOST_PAD_CAM_CENTER : SL_KEY_BASE + HOST_KEY_CAM_CENTER;
-            const int hi = pad ? SL_PAD_BASE + HOST_PAD_CAM_MODE : SL_KEY_BASE + HOST_KEY_CAM_MODE;
+            const int mouse = id >= SL_MOUSE_BASE;
+            const int pad = !mouse && id >= SL_PAD_BASE;
+            const int lo = mouse ? SL_MOUSE_BASE + HOST_MOUSE_CAM_CENTER : pad ? SL_PAD_BASE + HOST_PAD_CAM_CENTER : SL_KEY_BASE + HOST_KEY_CAM_CENTER;
+            const int hi = mouse ? SL_MOUSE_BASE + HOST_MOUSE_CAM_MODE : pad ? SL_PAD_BASE + HOST_PAD_CAM_ZOOM_OUT : SL_KEY_BASE + HOST_KEY_CAM_ZOOM_OUT;
             if (id >= lo && id <= hi) {
-                static const char *const cam_names[4] = { "Center camera", "Rotate camera left", "Rotate camera right", "Camera mode" };
+                /* host order: center, left, right, mode (key / pad), up, down, zoom in, zoom out; mouse: center, left, right, up, down, zoom in, zoom out, mode */
+                static const char *const cam_names_kp[8] = { "Center camera", "Rotate camera left", "Rotate camera right", "Camera mode",
+                                                             "Tilt camera up", "Tilt camera down", "Zoom camera in", "Zoom camera out" };
+                static const char *const cam_names_m[8] = { "Center camera", "Rotate camera left", "Rotate camera right",
+                                                            "Tilt camera up", "Tilt camera down", "Zoom camera in", "Zoom camera out", "Camera mode" };
+                const char *const *cam_names = mouse ? cam_names_m : cam_names_kp;
                 for (int o = lo; o <= hi; ++o)
                     if (o != id && sl_get(o) == sl_get(id) && sl_get(id)) {
                         char b[160];
@@ -1102,7 +1219,8 @@ extern "C" int settings_page_frame(const SpInput *in)
         else if (!sl_capture_active()) { S.cap_active = 0; S.settle = 1; S.settle_n = 0; }
         else {
             if (why && *why) note(why);
-            if (((held & SPK_CAP_CANCEL) && edge_only(9, held)) || l_edge || r_edge || S.cap_frames > 900) {
+            const int mrow = sl_capture_wants_mouse();      /* CAMPACK1: a mouse row takes the right / middle / side buttons as its answer, only the left click backs out */
+            if (((held & SPK_CAP_CANCEL) && edge_only(9, held)) || l_edge || (r_edge && !mrow) || S.cap_frames > 900) {
                 sl_capture_cancel();
                 S.cap_active = 0;
                 S.settle = 1; S.settle_n = 0;
@@ -1151,7 +1269,7 @@ extern "C" int settings_page_frame(const SpInput *in)
             const int dir = rt ? 1 : -1;
             if (S.sel < n) {
                 const Row &R = rows[S.sel];
-                if (R.t == R_BIND) { if (R.id2 >= 0) S.col = dir > 0 ? 1 : 0; }
+                if (R.t == R_BIND) { int c = S.col + dir; if (c < 0) c = 0; if (c > bind_cols(R) - 1) c = bind_cols(R) - 1; S.col = c; }
                 else if (R.t == R_SLIDER || R.t == R_CHOICE) adjust(R, dir, 0);
                 else if (R.t == R_CHECK && ((dir > 0) != (sl_get(R.id) != 0))) adjust(R, dir, 0);
             }
@@ -1163,7 +1281,7 @@ extern "C" int settings_page_frame(const SpInput *in)
         }
         if (edge_only(8, held) && S.sel < n && rows[S.sel].t == R_BIND) {
             const Row &R = rows[S.sel];
-            set_value(S.col && R.id2 >= 0 ? R.id2 : R.id, 0);
+            set_value(bind_id(R, S.col < bind_cols(R) ? S.col : 0), 0);
         }
 
         /* ---- the mouse ---- */
@@ -1174,8 +1292,8 @@ extern "C" int settings_page_frame(const SpInput *in)
                 if (over_row >= 0 && over_row < n && row_focusable(rows[over_row])) {
                     if (S.sel != over_row) { S.sel = over_row; S.col = 0; host_menu_cursor_sound(); }   /* EXTRAS093: the mouse arrived on another row */
                     if (rows[over_row].t == R_BIND && rows[over_row].id2 >= 0) {
-                        CapPos cp[2]; caps_of(rows[over_row], cp);
-                        S.col = (mx >= cp[1].x - P(12)) ? 1 : 0;
+                        CapPos cp[3]; caps_of(rows[over_row], cp);
+                        S.col = cap_col_at(rows[over_row], cp, mx);
                     }
                 } else if (in_rect(mx, my, L.reset)) { if (S.sel != n) host_menu_cursor_sound(); S.sel = n; }
             }
@@ -1203,20 +1321,19 @@ extern "C" int settings_page_frame(const SpInput *in)
                         } else if (R.t == R_CHOICE) {
                             if (mx >= L.ctl_x && mx < L.ctl_x + L.ctl_w) activate(R, 0);
                         } else if (R.t == R_BIND) {
-                            CapPos cp[2]; caps_of(R, cp);
+                            CapPos cp[3]; caps_of(R, cp);
                             const int kh = cap_h(), ky = L.r[over_row].y + (L.rowh - kh) / 2;
-                            if (my >= ky && my < ky + kh) {
-                                if (mx >= cp[0].x && mx < cp[0].x + cp[0].w) { S.col = 0; activate(R, 0); }
-                                else if (R.id2 >= 0 && mx >= cp[1].x && mx < cp[1].x + cp[1].w) { S.col = 1; activate(R, 1); }
-                            }
+                            if (my >= ky && my < ky + kh)
+                                for (int c = 0; c < bind_cols(R); ++c)
+                                    if (mx >= cp[c].x && mx < cp[c].x + cp[c].w) { S.col = c; activate(R, c); break; }
                         }
                     }
                 }
             }
             if (r_edge && over_row >= 0 && over_row < n && rows[over_row].t == R_BIND) {
-                CapPos cp[2]; caps_of(rows[over_row], cp);
-                const int col = (rows[over_row].id2 >= 0 && mx >= cp[1].x - P(12)) ? 1 : 0;
-                set_value(col ? rows[over_row].id2 : rows[over_row].id, 0);
+                CapPos cp[3]; caps_of(rows[over_row], cp);
+                const int col = cap_col_at(rows[over_row], cp, mx);
+                set_value(bind_id(rows[over_row], col), 0);
             }
             if (S.drag >= 0 && in->mouse_l && S.drag < n) drag_slider(rows[S.drag], mx);
             if (S.pressed_plank && !in->mouse_l) {
@@ -1325,10 +1442,6 @@ WDec *g_wd;
 
 void wdec_main(WDec *W)
 {
-    const unsigned char *const emb[IM_COUNT] = { g_setart_png_parchment, g_setart_png_title, g_setart_png_back, g_setart_png_key, g_setart_png_plank,
-                                                 g_setart_png_dd_top, g_setart_png_dd_mid, g_setart_png_dd_bot, g_setart_png_dd_arrow };
-    const unsigned len[IM_COUNT] = { g_setart_png_parchment_len, g_setart_png_title_len, g_setart_png_back_len, g_setart_png_key_len,
-                                     g_setart_png_plank_len, g_setart_png_dd_top_len, g_setart_png_dd_mid_len, g_setart_png_dd_bot_len, g_setart_png_dd_arrow_len };
     for (;;) {
         int id;
         {
@@ -1350,20 +1463,8 @@ void wdec_main(WDec *W)
         }
         Img t;
         bool failed = false;
-        try {
-            int w = 0, h = 0, comp = 0;
-            unsigned char *p = stbi_load_from_memory(emb[id], (int)len[id], &w, &h, &comp, 4);
-            if (p) {
-                try {
-                    t.w = w; t.h = h; t.px.resize((size_t)w * h);
-                    for (int i = 0; i < w * h; ++i) {
-                        const unsigned r = p[i * 4], g = p[i * 4 + 1], b = p[i * 4 + 2], a = p[i * 4 + 3];
-                        t.px[i] = (a << 24) | (((r * a + 127) / 255) << 16) | (((g * a + 127) / 255) << 8) | ((b * a + 127) / 255);
-                    }
-                } catch (...) { stbi_image_free(p); throw; }
-                stbi_image_free(p);
-            }
-        } catch (...) { failed = true; t = Img(); }                /* WARMFIX1 F3: a failed result, not a terminate */
+        try { decode_setart(id, t); }
+        catch (...) { failed = true; t = Img(); }                /* WARMFIX1 F3: a failed result, not a terminate */
         std::lock_guard<std::mutex> lk(W->m);
         W->img = std::move(t);
         W->req = -1;
@@ -1549,11 +1650,11 @@ extern "C" int settings_page_warm_step(int w, int h)
             }
         } else if (st == ST_TITLE) {
             if (!wscale_ready(IM_TITLE, L.title[2], L.title[3])) return 0;
-            scaled_im(IM_TITLE, L.title[2], L.title[3]);
+            if (!scaled_im(IM_TITLE, L.title[2], L.title[3])) plain_im_piece(IM_TITLE, L.title[2], L.title[3]);
             ++g_ws_stage;
         } else if (st == ST_BACK) {
             if (!wscale_ready(IM_BACK, L.back[2], L.back[3])) return 0;
-            scaled_im(IM_BACK, L.back[2], L.back[3]);
+            if (!scaled_im(IM_BACK, L.back[2], L.back[3])) plain_im_piece(IM_BACK, L.back[2], L.back[3]);
             ++g_ws_stage;
         } else if (st == ST_PLANK) {
             slice3_piece(4, IM_PLANK, L.reset[2], L.reset[3], 0.12);
@@ -1682,11 +1783,11 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
             break;
         }
         case R_BIND: {
-            CapPos cp[2];
+            CapPos cp[3];
             caps_of(R, cp);
             const int kh = cap_h(), ky = cy - kh / 2;
-            for (int c = 0; c < (R.id2 >= 0 ? 2 : 1); ++c) {
-                const int id = c ? R.id2 : R.id;
+            for (int c = 0; c < bind_cols(R); ++c) {
+                const int id = bind_id(R, c);
                 const int waiting = S.cap_active && S.cap_id == id;
                 char nb[24];
                 draw_cap(s, cp[c].x, ky, cp[c].w, kh, id_name(id, nb, sizeof nb), sel && S.col == c, waiting, clip);
@@ -1715,7 +1816,7 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         const int camrow = S.cursor_shown && S.sel < n && rows[S.sel].t == R_BIND &&
                            (!strncmp(rows[S.sel].label, "Rotate camera", 13) || !strcmp(rows[S.sel].label, "Center camera"));
         const char *msg = S.note[0] ? S.note
-                          : (S.cap_active ? (S.cap_id < SL_PAD_BASE ? "Press a key. Esc keeps the old one." : "Press a button. BACK keeps the old one.")
+                          : (S.cap_active ? (S.cap_id < SL_PAD_BASE ? "Press a key. Esc keeps the old one." : S.cap_id >= SL_MOUSE_BASE ? "Press a mouse button. Left click keeps the old one." : "Press a button. BACK keeps the old one.")
                              : (camrow ? "In the pause, LB / RB and Q / E always slide the screens." : ""));
         const int fy = L.reset[1] + L.reset[3] / 2;
         if (msg[0]) {

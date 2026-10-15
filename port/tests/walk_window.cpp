@@ -414,6 +414,7 @@ static bool winapi_load(void)
 #include "overlay_font.h"
 #include "hal/host_settings.h"   /* settings.json, the launcher's file */
 extern "C" void host_menu_cursor_sound_flush(void);   /* hal/menu_compose.cpp: one ROM cursor sound a frame at most */
+#include "hal/char_registry.h"    /* CHARSLOT1: custom characters (costumes on the four) */
 #include "hal/pcore.h"            /* PCORE1: P-core / throttling opt-out */
 #include "hal/settings_live.h"   /* run menu1 SETLIVE1: live, saved settings */
 #include "hal/settings_page.h"   /* run menu1 SETMENU1: the in-game settings page */
@@ -4339,6 +4340,24 @@ static int cam93_ds_owned(const void *cam)
     return i == 9 || i == 11 || i == 12 || i == 13 || i == 15 || i == 16 || i == 17 || i == 18;
 }
 static int cam93_ds_owned_off(void) { return getenv("SM64DS_CAM93_RIG_ALWAYS") ? 1 : 0; }
+/* CAMPACK1: the DS camera's speed slider. Set in the input phase (walk_window main, the DS rotate block) to the signed binangs
+   to add to (or take off) this tick's stepped turn, applied to the eye here, before the camera's tick reads it back: the ROM
+   takes the heading from the eye (func_02009e70 recomputes +0x17c from the pivot +0x80 and eye +0x8c) and then steps +-0x400. */
+static int g_ds_extra_turn;
+static void *g_ds_cam;
+static void ds_apply_extra_turn(void *cam)
+{
+    const int d = g_ds_extra_turn;
+    g_ds_extra_turn = 0;
+    if (!d || !cam) return;
+    int *pv = (int *)((char *)cam + 0x80), *eye = (int *)((char *)cam + 0x8c);
+    const double dx = (double)eye[0] - pv[0], dz = (double)eye[2] - pv[2];
+    const double r = sqrt(dx * dx + dz * dz);
+    if (r < 1.0) return;
+    const double a0 = atan2(dx, dz) + d * (3.14159265358979323846 * 2.0 / 65536.0);
+    eye[0] = pv[0] + (int)floor(r * sin(a0) + 0.5);
+    eye[2] = pv[2] + (int)floor(r * cos(a0) + 0.5);
+}
 static int g_cam93_mouse_owned;            /* the mouse is steering the camera: no auto-recenter until the stick or keys take it back */
 static int g_cam93_scale = 4096;           /* eased fraction of the eye distance the collision allows */
 static int g_cam93_hit;                    /* trace: the ray hit this frame */
@@ -4777,6 +4796,14 @@ static int pad_act(const XPad *pad, int action)
 {
     bindings_load();
     return pad_mask_down(pad, g_pad[action]);
+}
+
+/* CAMPACK1: a mouse-button binding (settings.json MouseCam*; values are the Win32 VK of the button). */
+static int mouse_act(int action)
+{
+    bindings_load();
+    const int vk = host_setting_mouse(action);
+    return vk && key_live(vk);     /* GetAsyncKeyState reads the mouse buttons by VK; SM64DS_HOST_KEY=<vk hex>@f0-f1 scripts one for a row */
 }
 
 /* THE PAD'S HALF OF THE SAME GATE, and it was missing for as long as the
@@ -5233,6 +5260,26 @@ static void padlearn_frame(int *pad_live)
 static const char *const CHAR_NAME[4] = { "Mario", "Luigi", "Wario", "Yoshi" };
 static int g_character;                     /* what the boot actually spawned */
 static int g_character_pending;             /* what the next boot will spawn */
+
+/* ---- THE DEBUG MENU'S CHARACTER ROW: THE FOUR, THEN THE INSTALLED COSTUMES --
+   (CHARSLOT1, hal/char_registry.h). The row cycles 0..3 (mario, luigi, wario,
+   yoshi) and then every registered custom character. A custom one is a costume
+   on its BASE: the ROM sees only the base id, and g_character_pending, the save
+   byte and the Player swap all keep carrying 0..3. What a costume adds is the
+   SKIN, which the file layer applies at process start (SM64DS_CHAR_SKIN), so a
+   change of skin, either way, relaunches the current level. A pick that keeps
+   the skin that is already active is the plain instant swap it always was. */
+static int g_menu_chr = -1;                 /* the row's cursor; -1 follows the game's state */
+static int chr_total(void) { return 4 + port_char_count(); }
+static int chr_sel(void)
+{
+    if (g_menu_chr >= 0 && g_menu_chr < chr_total()) return g_menu_chr;
+    const int a = port_char_active();
+    return a >= 0 ? 4 + a : (g_character_pending & 3);
+}
+static const char *chr_label(int s) { return s < 4 ? CHAR_NAME[s & 3] : port_char_name(s - 4); }
+static int chr_base(int s) { return s < 4 ? (s & 3) : port_char_base(s - 4); }
+static int chr_skin(int s) { return s < 4 ? -1 : s - 4; }
 
 /* data_0209caa0 is declared int[] above (word 2 carries flag bits the boot
    sets); LoadEntranceObjects reads the character as a BYTE at 0x41, which is
@@ -6241,14 +6288,19 @@ static void menu_draw(const OvlSurface &fb)
        row says which of the two it will do. The byte is the stateless proof
        that it was staged: the course's own boot rewrites g_character from the
        Player it spawns, and the row is back to the plain text. */
-    if (!menu_live_player() &&
+    if (chr_skin(chr_sel()) != port_char_active())
+        snprintf(ln[MENU_CHARACTER], sizeof ln[0], "character         %s%s",
+                 chr_label(chr_sel()),
+                 menu_live_player() ? "   enter restarts the level"
+                                    : "   needs a level");
+    else if (!menu_live_player() &&
         (((unsigned char *)data_0209caa0)[0x41] & 3) == (g_character_pending & 3))
         snprintf(ln[MENU_CHARACTER], sizeof ln[0], "character         %s%s",
-                 CHAR_NAME[g_character_pending & 3],
+                 chr_label(chr_sel()),
                  "   starts with the course");
     else
         snprintf(ln[MENU_CHARACTER], sizeof ln[0], "character         %s%s",
-                 CHAR_NAME[g_character_pending & 3],
+                 chr_label(chr_sel()),
                  g_character_pending == g_character
                      ? ""
                      : (menu_live_player() ? "   enter to switch"
@@ -6336,7 +6388,7 @@ static void menu_draw(const OvlSurface &fb)
        -- the lines above are already close to the 72-column buffer and a
        suffix would truncate the sentence instead of adding to it. The minigame
        row is deliberately NOT in this set: it works from a scene. */
-    if (!g_menu_host.player) {
+    if (!menu_live_player()) {
         snprintf(ln[MENU_WARP], sizeof ln[0],
                  "warp to entrance  (level only)");
         snprintf(ln[MENU_EXIT], sizeof ln[0],
@@ -6639,6 +6691,21 @@ static void menu_input(int pad_live, const XPad *pad)
             edge &= ~(1u << 0);
         }
     }
+    /* ---- AND IT DOES NOT OPEN UNLESS THE DEBUG MENU SETTING IS ON (CHARSLOT1,
+     * Tango 10-15) ------------------------------------------------------------
+     *
+     * Settings.json DebugMenu, off by default, the in-game GENERAL tab's "Debug
+     * menu" check box and the launcher's page write the same key. F5, Escape
+     * and the pad's BACK are one bit (bit 0), so this one test is all three. It
+     * is the same shape as the multiplayer refusal above and for the same reason
+     * the close is NOT refused: a menu that is somehow open (SM64DS_MENU boots
+     * with it open, and the setting can be turned off with the menu up) must
+     * always be closable. SM64DS_DEBUG_MENU=1 forces it on for a proof run.
+     * The setting is read live, so turning it on takes effect with no restart. */
+    if ((edge & (1u << 0)) && !menu_on && !host_setting_debug_menu()) {
+        fprintf(stderr, "[menu] REFUSED: the Debug menu setting is off\n");
+        edge &= ~(1u << 0);
+    }
     if (edge & (1u << 0)) {
         menu_on = !menu_on;
         fprintf(stderr, "[menu] %s\n", menu_on ? "open" : "closed");
@@ -6706,7 +6773,7 @@ static void menu_input(int pad_live, const XPad *pad)
                Player, and the enter branch for this row splits on the same
                g_menu_host.player: stage the handoff in a level, relaunch from
                a scene. */
-            if ((dec || inc) && !g_menu_host.player &&
+            if ((dec || inc) && !menu_live_player() &&
                 (menu_sel == MENU_WARP ||
                  menu_sel == MENU_EXIT || menu_sel == MENU_CHARACTER)) {
                 ss_note("that row needs a level (this is a scene)");
@@ -6752,7 +6819,7 @@ static void menu_input(int pad_live, const XPad *pad)
                 /* left/right move the cursor exactly as
                    _ZN10dScTitle_c8BehaviorEv does (+/-1, modulo the row
                    count); enter runs its else-branch. */
-                if ((edge & (1u << 5)) && !g_menu_host.player) {
+                if ((edge & (1u << 5)) && !menu_live_player()) {
                     /* FROM A SCENE: RELAUNCH (run link60, lane TCH2). There is
                        no level loop in this process to hand a staged change
                        to, and port_title_select's ROM branch writes level
@@ -6926,7 +6993,46 @@ static void menu_input(int pad_live, const XPad *pad)
             case MENU_CHARACTER:
                 /* left and right pick, enter changes -- the same shape
                    as the warp row above */
-                if (edge & (1u << 5)) {
+                if ((edge & (1u << 5)) && chr_skin(chr_sel()) != port_char_active()) {
+                    /* A SKIN CHANGE (CHARSLOT1): the file layer is boot-latched,
+                       so the costume is applied by starting the program again on
+                       the current level with SM64DS_CHAR_SKIN set (or cleared for
+                       a plain character) and SM64DS_CHARACTER the base. Same
+                       one-way door as the level row: refused BEFORE the parent
+                       commits when the level is not mounted. SM64DS_CHAR_RELAUNCH
+                       _DRY=1 prints the environment instead (proof runs). */
+                    const int sk = chr_skin(chr_sel());
+                    const int lv = (int)data_0209f2f8;
+                    char bs[8];
+                    if (!menu_live_player()) {
+                        ss_note("that row needs a level (this is a scene)");
+                        fprintf(stderr, "[menu] character skin change needs a level -- refused\n");
+                    } else if (!port_level_is_mounted(lv)) {
+                        ss_note("this level cannot restart here");
+                        fprintf(stderr, "[menu] character skin change: level %d is not mounted -- refused\n", lv);
+                    } else {
+                        snprintf(bs, sizeof bs, "%d", chr_base(chr_sel()));
+                        fprintf(stderr, "[menu] character %s: level %d restarts with SM64DS_CHARACTER=%s SM64DS_CHAR_SKIN=%s\n",
+                                chr_label(chr_sel()), lv, bs, sk >= 0 ? port_char_key(sk) : "(none)");
+                        if (getenv("SM64DS_CHAR_RELAUNCH_DRY")) {
+                            fprintf(stderr, "[menu] SM64DS_CHAR_RELAUNCH_DRY: not relaunching\n");
+                        } else {
+                            /* a scripted key list (SM64DS_HOST_KEY) is not cleared by the
+                               relaunch table; inherited, the child would press this row again */
+                            SetEnvironmentVariableA("SM64DS_HOST_KEY", 0);
+                            SetEnvironmentVariableA("SM64DS_CHARACTER", bs);
+                            SetEnvironmentVariableA("SM64DS_CHAR_SKIN", sk >= 0 ? port_char_key(sk) : 0);
+                            if (port_menu_relaunch(-1, lv)) {
+                                W.PostQuitMessage_(0);
+                            } else {
+                                ss_note("could not restart the level");
+                                fprintf(stderr, "[menu] character: could not start the level run (win32 %lu)\n",
+                                        (unsigned long)GetLastError());
+                            }
+                        }
+                    }
+                } else if (edge & (1u << 5)) {
+                    g_character_pending = chr_base(chr_sel());
                     if (menu_live_player()) {
                         fprintf(stderr, "[menu] becoming %s\n",
                                 CHAR_NAME[g_character_pending & 3]);
@@ -6965,9 +7071,11 @@ static void menu_input(int pad_live, const XPad *pad)
                         data_02092128[0] = (unsigned char)g_character_pending;
                     }
                 } else {
-                    g_character_pending =
-                        (dec ? g_character_pending + 3
-                             : g_character_pending + 1) & 3;
+                    const int tot = chr_total();
+                    g_menu_chr = dec ? (chr_sel() + tot - 1) % tot
+                                     : (chr_sel() + 1) % tot;
+                    g_character_pending = chr_base(g_menu_chr);
+                    fprintf(stderr, "[menu] character row: %s (base %s)\n", chr_label(g_menu_chr), CHAR_NAME[g_character_pending & 3]);
                 }
                 break;
             case MENU_SNAP:
@@ -7705,7 +7813,7 @@ static unsigned short host_ds_buttons(int pad_live, const XPad *pad)
     if (key_act(HOST_KEY_CROUCH)) btn |= 0x400;
     if (key_act(HOST_KEY_ATTACK)) btn |= 1;
     /* DS X, settings.json KeyLook: Z by default, beside the attack key */
-    if (key_act(HOST_KEY_LOOK)) btn |= 0x8000;
+    if (key_act(HOST_KEY_LOOK) || mouse_act(HOST_MOUSE_LOOK)) btn |= 0x8000;     /* CAMPACK1: MouseLook too */
     if (pad_live) {
         if (pad_act(pad, HOST_PAD_JUMP)) btn |= 2;       /* A by default  */
         /* X by default; the rebind row moves it (0 = unbound) */
@@ -10434,16 +10542,25 @@ static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l)
         port_pad_device_changed();
         break;
     case WM_RBUTTONDOWN:
-        if (W.GetCursorPos_ && W.GetCursorPos_(&mo_anchor)) {
+    case WM_MBUTTONDOWN:
+    case WM_XBUTTONDOWN: {
+        /* CAMPACK1: the button that is HELD to steer is settings.json MouseCamHold (VK; right by default, 0 = none) */
+        const int vk = m == WM_RBUTTONDOWN ? 2 : m == WM_MBUTTONDOWN ? 4 : (HIWORD(w) == 1 ? 5 : 6);
+        if (vk == host_setting_mouse(HOST_MOUSE_CAM_HOLD) && W.GetCursorPos_ && W.GetCursorPos_(&mo_anchor)) {
             mo_look = 1;
             mo_dx = mo_dy = 0;
             if (W.SetCapture_) W.SetCapture_(h);
             if (W.ShowCursor_) while (W.ShowCursor_(FALSE) >= 0) {}
         }
-        return 0;
+        return m == WM_XBUTTONDOWN ? TRUE : 0;
+    }
     case WM_RBUTTONUP:
-        mo_release();
-        return 0;
+    case WM_MBUTTONUP:
+    case WM_XBUTTONUP: {
+        const int vk = m == WM_RBUTTONUP ? 2 : m == WM_MBUTTONUP ? 4 : (HIWORD(w) == 1 ? 5 : 6);
+        if (vk == host_setting_mouse(HOST_MOUSE_CAM_HOLD)) mo_release();
+        return m == WM_XBUTTONUP ? TRUE : 0;
+    }
     case WM_KILLFOCUS:
         /* AHEAD OF THE FRAME TEST AND NOT INSTEAD OF IT. mo_capture_want has
            hal_window_focused() in it, so the next frame would drop the capture
@@ -11571,7 +11688,28 @@ static void rebind_capture_frame(int *pad_live, const XPad *pad)
         bind_pad_prev = now;
         const int id = sl_capture_id();
         const char *refused = "";
-        if (g_rebind_key) {
+        /* CAMPACK1: a mouse row waits for a mouse button (right, middle, back, forward) */
+        static unsigned mouse_prev = ~0u;
+        unsigned mouse_fresh = 0;
+        if (sl_capture_wants_mouse() && W.GetAsyncKeyState_ && hal_window_focused()) {
+            static const int MVK[4] = { 2, 4, 5, 6 };
+            unsigned mnow = 0;
+            for (int i = 0; i < 4; ++i) if (W.GetAsyncKeyState_(MVK[i]) < 0) mnow |= 1u << i;
+            if (mouse_prev == ~0u) mouse_prev = mnow;
+            mouse_fresh = mnow & ~mouse_prev;
+            mouse_prev = mnow;
+        } else mouse_prev = ~0u;
+        if (mouse_fresh) {
+            int i = 0;
+            while (!(mouse_fresh & (1u << i))) ++i;
+            static const int MVK2[4] = { 2, 4, 5, 6 };
+            if (sl_capture_offer_mouse(MVK2[i])) {
+                done = 1;
+                char msg[96];
+                snprintf(msg, sizeof msg, "%s is now mouse button %d", sl_info(id)->key, MVK2[i]);
+                ss_note(msg);
+            }
+        } else if (g_rebind_key) {
             const int vk = g_rebind_key;
             g_rebind_key = 0;
             if (sl_capture_offer_key(vk)) {
@@ -12426,6 +12564,7 @@ extern "C" void port_frame_ctrl_publish(void)
         g_fc_cam_rot_prev = g_fc_cam_rot;
         *(unsigned short *)(r + 4) |= held;
         *(unsigned short *)(r + 6) |= pressed;
+        ds_apply_extra_turn(g_ds_cam);   /* CAMPACK1: the DS camera speed slider, right before the camera's own tick */
     }
 
             /* the matched TU writes its own data_0209f498 block; older
@@ -14983,6 +15122,19 @@ int main(void)
                 stick_rx = 32767 * pct / 100;
             }
         }
+        /* CAMPACK1: every camera action as key OR mouse button OR pad button, read once a frame. Left / right are split into the
+           key+mouse half and the pad half because the pad's pair means different things per camera (the DS camera rotates with
+           it; the analog and free cameras zoom with it). */
+        const int cb_l_km = key_act(HOST_KEY_CAM_LEFT) || mouse_act(HOST_MOUSE_CAM_LEFT);
+        const int cb_r_km = key_act(HOST_KEY_CAM_RIGHT) || mouse_act(HOST_MOUSE_CAM_RIGHT);
+        const int cb_l_pad = pad_live && pad_act(&pad, HOST_PAD_CAM_LEFT);
+        const int cb_r_pad = pad_live && pad_act(&pad, HOST_PAD_CAM_RIGHT);
+        const int cb_up = key_act(HOST_KEY_CAM_UP) || mouse_act(HOST_MOUSE_CAM_UP) || (pad_live && pad_act(&pad, HOST_PAD_CAM_UP));
+        const int cb_dn = key_act(HOST_KEY_CAM_DOWN) || mouse_act(HOST_MOUSE_CAM_DOWN) || (pad_live && pad_act(&pad, HOST_PAD_CAM_DOWN));
+        const int cb_c = key_act(HOST_KEY_CAM_CENTER) || mouse_act(HOST_MOUSE_CAM_CENTER) || (pad_live && pad_act(&pad, HOST_PAD_CAM_CENTER));
+        const int cb_zi = key_act(HOST_KEY_CAM_ZOOM_IN) || mouse_act(HOST_MOUSE_CAM_ZOOM_IN) || (pad_live && pad_act(&pad, HOST_PAD_CAM_ZOOM_IN));
+        const int cb_zo = key_act(HOST_KEY_CAM_ZOOM_OUT) || mouse_act(HOST_MOUSE_CAM_ZOOM_OUT) || (pad_live && pad_act(&pad, HOST_PAD_CAM_ZOOM_OUT));
+        const int stick_zoom = host_setting_camera_stick_zoom();   /* right stick up / down zooms instead of tilting */
         /* ---- the freecam toggle (port mod, see the block above the window
            procedure). F1 or a click of the right stick; SM64DS_FREECAM=1
            starts in it, and SM64DS_SELFTEST_FREECAM=1 turns it on at frame
@@ -15017,7 +15169,7 @@ int main(void)
             }
             /* CAMERA MODE, settings.json KeyCamMode / PadCamMode: F1 and the
                right stick's click by default, the two it always was */
-            int now = key_act(HOST_KEY_CAM_MODE) ||
+            int now = key_act(HOST_KEY_CAM_MODE) || mouse_act(HOST_MOUSE_CAM_MODE) ||
                       (pad_live && pad_act(&pad, HOST_PAD_CAM_MODE));
             if (selftest && getenv("SM64DS_SELFTEST_FREECAM")) {
                 /* the probe wants the mod ON at 20 and OFF three quarters
@@ -15055,9 +15207,8 @@ int main(void)
             int rig_touched = 0;
             /* CAMERA093: the stick, Q/E, R/F or the centre key take the camera back from the mouse */
             if (g_cam93_mouse_owned && !mouse_dyaw && !mouse_dpitch && !mo_captured && !mo_look &&
-                (fc_stick_rate(stick_rx, 1000) || fc_stick_rate(stick_ry, 1000) || key_act(HOST_KEY_CAM_LEFT) ||
-                 key_act(HOST_KEY_CAM_RIGHT) || key_live('R') || key_live('F') || key_act(HOST_KEY_CAM_CENTER) ||
-                 (pad_live && pad_act(&pad, HOST_PAD_CAM_CENTER))))
+                (fc_stick_rate(stick_rx, 1000) || fc_stick_rate(stick_ry, 1000) || cb_l_km ||
+                 cb_r_km || cb_up || cb_dn || cb_c))
                 g_cam93_mouse_owned = 0;
             /* the distance the game's camera converged to on the frame just
                gone -- see the block above fc_seed. Ahead of the zoom keys so
@@ -15074,15 +15225,15 @@ int main(void)
             {
                 const int cs = host_setting_camera_sensitivity();
                 const int inv = host_setting_invert_camera_y() ? -1 : 1;
-                int t = fc_pitch - inv * fc_stick_rate(stick_ry, (CAM_STEP / 2) * cs / 100)
+                int t = fc_pitch - (stick_zoom ? 0 : inv * fc_stick_rate(stick_ry, (CAM_STEP / 2) * cs / 100))
                         + inv * mouse_dpitch;
                 if (mouse_dpitch) rig_touched = 1;
-                if (key_live('R')) t += 0x80;
-                if (key_live('F')) t -= 0x80;
+                if (cb_up) t += 0x80;       /* CamUp / CamDown: R and F unless rebound */
+                if (cb_dn) t -= 0x80;
                 /* CAMERA093: the eye is under the floor (the pitch the game's camera had when the rig was
                    seeded can be below the horizon): lift it, unless the player is steering the pitch. */
                 if (g_cam93_floorhit && !mouse_dpitch && !fc_stick_rate(stick_ry, 1000) &&
-                    !key_live('R') && !key_live('F') && t < 0x0c00)
+                    !cb_up && !cb_dn && t < 0x0c00)
                     t += 0x100;
                 if (t > 0x3a00) t = 0x3a00;      /* just short of overhead */
                 if (t < -0x1000) t = -0x1000;    /* a little from below */
@@ -15092,15 +15243,26 @@ int main(void)
                 /* Q pushes left, E pushes right, off the same sign as the
                    stick so the keyboard and the pad cannot disagree */
                 const int qe = ((CAM_STEP / 2) * host_setting_camera_sensitivity() / 100) * cam_turn;
-                if (key_act(HOST_KEY_CAM_LEFT)) { fc_yaw = (short)(fc_yaw - qe); rig_touched = 1; }
-                if (key_act(HOST_KEY_CAM_RIGHT)) { fc_yaw = (short)(fc_yaw + qe); rig_touched = 1; }
+                if (cb_l_km) { fc_yaw = (short)(fc_yaw - qe); rig_touched = 1; }
+                if (cb_r_km) { fc_yaw = (short)(fc_yaw + qe); rig_touched = 1; }
             }
             {
                 int zoom = 0;
                 /* PadCamLeft / PadCamRight: LB pulls the eye in, RB pushes out */
-                if (pad_live && pad_act(&pad, HOST_PAD_CAM_LEFT)) zoom -= 1;
-                if (pad_live && pad_act(&pad, HOST_PAD_CAM_RIGHT)) zoom += 1;
+                if (cb_l_pad) zoom -= 1;
+                if (cb_r_pad) zoom += 1;
+                if (cb_zi) zoom -= 1;      /* CamZoomIn / CamZoomOut, any device */
+                if (cb_zo) zoom += 1;
                 zoom -= mouse_wheel;   /* wheel forward pulls the eye in */
+                if (stick_zoom) {          /* CameraStickZoom: up pulls the eye in; the rate follows the stick (an eighth step at the stop is 1/32 of the distance) */
+                    const int sz = fc_stick_rate(stick_ry, 32);
+                    if (sz) {
+                        fc_dist_owned = 1;
+                        fc_dist -= sz * (fc_dist >> 8);
+                        if (fc_dist < 0x30000) fc_dist = 0x30000;
+                        if (fc_dist > 0x2000000) fc_dist = 0x2000000;
+                    }
+                }
                 if (zoom) {
                     /* the player has taken the distance off the game; the
                        tracking above stands down until the next fc_seed */
@@ -15111,8 +15273,7 @@ int main(void)
                 }
             }
             /* CENTRE CAMERA: KeyCamCenter (C) / PadCamCenter (LT) */
-            if (key_act(HOST_KEY_CAM_CENTER) ||
-                (pad_live && pad_act(&pad, HOST_PAD_CAM_CENTER))) {
+            if (cb_c) {
                 fc_yaw = (short)(*(short *)(c + 0x8e) + 0x8000);
                 rig_touched = 1;
             }
@@ -15154,14 +15315,18 @@ int main(void)
             if (tr < 0) tr = getenv("SM64DS_CAM93_TRACE") ? 1 : 0;
             if (tr && cam && c)
                 fprintf(stderr, "[cam93] f%d st=%d ds=%d mode=%d yaw=%04x pitch=%04x dist=%d scale=%d hit=%d midle=%d want=%d "
-                        "pl=%d,%d,%d pyaw=%04x pst=%p eye=%d,%d,%d hitrel=%d,%d,%d\n",
+                        "pl=%d,%d,%d pyaw=%04x pst=%p eye=%d,%d,%d hitrel=%d,%d,%d hd=%04x fc48=%x pstep=%u pkind=%u cyaw=%04x ceye=%d,%d,%d\n",
                         frame, cam93_state_idx(cam), cam93_ds_owned(cam), cam_mode, (unsigned short)fc_yaw,
                         (unsigned short)fc_pitch, fc_dist >> 12, g_cam93_scale, g_cam93_hit | (g_cam93_floorhit << 1),
                         g_cam93_mouse_owned, g_cam93_wouldscale,
                         *(int *)(c + 0x5c) >> 12, *(int *)(c + 0x60) >> 12, *(int *)(c + 0x64) >> 12,
                         (unsigned)(unsigned short)*(short *)(c + 0x8e), *(void **)(c + 0x370),
                         g_cam93_eye[0] >> 12, g_cam93_eye[1] >> 12, g_cam93_eye[2] >> 12,
-                        g_cam93_hitrel[0], g_cam93_hitrel[1], g_cam93_hitrel[2]);
+                        g_cam93_hitrel[0], g_cam93_hitrel[1], g_cam93_hitrel[2],
+                        (unsigned)(unsigned short)*(short *)((char *)data_020a1164), (unsigned)data_0209fc48,
+                        (unsigned)*(unsigned char *)(c + 0x6e3), (unsigned)*(unsigned char *)(c + 0x70a),
+                        (unsigned)(unsigned short)*(short *)((char *)cam + 0x17c), *(int *)((char *)cam + 0x8c) >> 12,
+                        *(int *)((char *)cam + 0x90) >> 12, *(int *)((char *)cam + 0x94) >> 12);
         }
         if (pad_live && c && *(void **)(c + 0x370) == (void *)data_ov002_021102d4 && !cam93_ds_owned_off()) {
             /* CAMERA093: in the cannon (the Player's own aim state) the DS camera is the picture (camera
@@ -15513,6 +15678,7 @@ int main(void)
                it rather than leave the last value latched -- see the
                g_fc_cam_rot assignment below. */
             unsigned short cam_rot = 0;
+            g_ds_extra_turn = 0;
             if (real_camera && cam_mode == CAM_DS) {
                 /* The two bits func_02009e70 reads, picked by the same
                    cam_turn the rig steps its heading with, so DS mode and
@@ -15536,18 +15702,49 @@ int main(void)
                    Stage::CheckCameraInput merges the cartridge's own arrows. */
                 const unsigned cam_bit_right = (cam_turn > 0) ? 0x100u : 0x200u;
                 const unsigned cam_bit_left  = (cam_turn > 0) ? 0x200u : 0x100u;
-                if (key_act(HOST_KEY_CAM_LEFT)) cam_rot |= cam_bit_left;
-                if (key_act(HOST_KEY_CAM_RIGHT)) cam_rot |= cam_bit_right;
+                if (cb_l_km) cam_rot |= cam_bit_left;
+                if (cb_r_km) cam_rot |= cam_bit_right;
                 /* centre camera: the DS L button's bit (raw 0x0200 -> Ctrl
-                   0x4000), KeyCamCenter / PadCamCenter */
-                if (key_act(HOST_KEY_CAM_CENTER)) btn |= 0x4000;
-                if (pad_live && pad_act(&pad, HOST_PAD_CAM_CENTER))
-                    btn |= 0x4000;
+                   0x4000), KeyCamCenter / PadCamCenter / MouseCamCenter */
+                if (cb_c) btn |= 0x4000;
                 if (stick_rx < -10000) cam_rot |= cam_bit_left;
                 if (stick_rx > 10000) cam_rot |= cam_bit_right;
-                if (pad_live) {
-                    if (pad_act(&pad, HOST_PAD_CAM_LEFT)) cam_rot |= cam_bit_left;
-                    if (pad_act(&pad, HOST_PAD_CAM_RIGHT)) cam_rot |= cam_bit_right;
+                if (cb_l_pad) cam_rot |= cam_bit_left;
+                if (cb_r_pad) cam_rot |= cam_bit_right;
+                /* CAMPACK1: ZOOM in the DS camera is the ROM's own Look camera, which has levels: each press of the
+                   Look button (Ctrl 0x8000) goes normal -> a raised far view -> the close-up (camera state 9) -> normal,
+                   measured (out CAMPACK1 look_levels). Zoom in presses Look until the close-up is reached; zoom out
+                   presses it until the camera is back to normal (one press from the close-up, two from the raised
+                   view). The right stick's up / down does the same once per push (CameraStickZoom). One press per
+                   edge, so a held key does not step every frame. `phase` follows the presses from any source (the
+                   Look key, pad button, mouse button or these) and is corrected by the camera state. */
+                {
+                    static int zi_prev, zo_prev, look_prev, phase, second;
+                    const int inz = cam && cam93_state_idx(cam) == 9;
+                    if (inz) phase = 2; else if (phase == 2) phase = 0;
+                    const int zi = cb_zi || (stick_zoom && pad_live && stick_ry > 16000);
+                    const int zo = cb_zo || (stick_zoom && pad_live && stick_ry < -16000);
+                    int press = 0;
+                    if (zi && !zi_prev && phase < 2) press = 1;
+                    if (zo && !zo_prev) {
+                        if (phase == 2) press = 1;
+                        else if (phase == 1) { press = 1; second = 6; }
+                    }
+                    if (second && --second == 0) press = 1;
+                    if (press) btn |= 0x8000;
+                    const int lk = (btn & 0x8000) != 0;
+                    if (lk && !look_prev) phase = (phase + 1) % 3;
+                    look_prev = lk;
+                    zi_prev = zi; zo_prev = zo;
+                }
+                /* CAMPACK1: the camera speed slider for the stepped turn. The ROM turns a fixed 0x400 a tick while a
+                   rotate bit is held; the extra (or the part to take away) is rotated onto the eye before that tick. */
+                {
+                    const int cs = host_setting_camera_sensitivity();
+                    const int dir = (cam_rot & cam_bit_right) ? (cam_bit_right == 0x100 ? 1 : -1)
+                                  : (cam_rot & cam_bit_left) ? (cam_bit_left == 0x100 ? 1 : -1) : 0;
+                    if (cs != 100 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000))
+                        { g_ds_extra_turn = dir * (0x400 * (cs - 100) / 100); g_ds_cam = cam; }
                 }
                 /* orbit probe: hold one of func_02009e70's own rotate bits
                    from frame 20 -- the camera's heading and the angle it
@@ -15560,6 +15757,7 @@ int main(void)
             }
             if (menu_on) btn = 0;   /* enter/A belong to the menu, not to him */
             g_fc_cam_rot = menu_on ? 0 : cam_rot;
+            if (menu_on) g_ds_extra_turn = 0;
             /* TEMPORARY: fold the scripted probe's A/B into the button word so
                StartTalk's b==0 gate (data_0209f49e & 3) sees the press, and the
                camera-rotate readers do not (mask to bits 0-1). SM64DS_PROBE_INPUT. */
@@ -16837,6 +17035,31 @@ int main(void)
                         }
                     }
                 }
+            }
+
+            /* ---- SM64DS_HEALTH_POKE=<wedges>@<frame>[,<wedges>@<frame>...] ------
+               Test-only (HDMETER1): on each listed frame set the local player's health to that many wedges (0..8), the word
+               UpdateHealthMeter reads ((data_02092144[p] >> 8) & 0xff). The ROM's own meter then does what a hit or a heal does:
+               appears at y 0x39, holds, rises to 0x19, ticks its displayed count to the new health, and slides away again
+               once the health is full. Inert unless set. */
+            {
+                static int hp_read, hp_n, hp_w[8], hp_f[8];
+                if (!hp_read) {
+                    hp_read = 1;
+                    const char *e = getenv("SM64DS_HEALTH_POKE");
+                    while (e && *e && hp_n < 8) {
+                        int w = 0, f = 0, used = 0;
+                        if (sscanf(e, "%d@%d%n", &w, &f, &used) < 2) break;
+                        hp_w[hp_n] = w; hp_f[hp_n] = f; ++hp_n;
+                        e += used;
+                        if (*e == ',') ++e;
+                    }
+                }
+                for (int i = 0; i < hp_n; ++i)
+                    if (frame == hp_f[i]) {
+                        data_02092144[(int)data_0209f250] = (short)(hp_w[i] << 8);
+                        fprintf(stderr, "[healthpoke] f%d health -> %d wedges\n", frame, hp_w[i]);
+                    }
             }
 
             /* The pause menu's own words, for the third exit. PS_Update

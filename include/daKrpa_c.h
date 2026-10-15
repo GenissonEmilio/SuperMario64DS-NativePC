@@ -88,7 +88,14 @@ struct daKrpa_c : dActor_c {
     /* Inline plus vtable instantiation is load-bearing: mwcc emits retail's
        D1 then D0 pair, with no homeless D2. InitResources is the first
        out-of-line virtual and anchors this TU's vtable/RTTI group. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daKrpa_c() {}   /* no slot */
+    #else
     virtual ~daKrpa_c() {}
+    #endif
 
     virtual s32  InitResources();       /* slot 0 */
     virtual s32  CleanupResources();    /* slot 3 */

@@ -137,7 +137,14 @@ struct daDemo_c : dActor_c {
 
     /* Keep the destructor first: it is the class's key function and remains
        the translation-unit owner selected by the ROM's lifecycle symbols. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daDemo_c();   /* no slot */
+    #else
     virtual ~daDemo_c();
+    #endif
     virtual int InitResources();
     virtual int CleanupResources();
     virtual int Behavior();

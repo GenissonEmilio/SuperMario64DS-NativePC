@@ -96,7 +96,14 @@ struct daStarBase_c : dActor_c {
         u8  mFlags;            /* 0x1db */
         FlagBits mBits;
     };
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daStarBase_c() {}   /* no slot */
+    #else
     virtual ~daStarBase_c() {}
+    #endif
     virtual s32 InitResources();
     virtual s32 CleanupResources();
     virtual s32 Behavior();

@@ -156,7 +156,14 @@ struct daJango_c : dEnemyBase_c {
     s32                          mSpawnPosZ;            /* 0x48c */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daJango_c() {}   /* no slot */
+    #else
     virtual ~daJango_c() {}
+    #endif
 
     virtual s32   OnAimedAtWithEgg();      /* slot 29 */
 

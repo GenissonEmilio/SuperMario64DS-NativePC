@@ -39,7 +39,14 @@ struct daBgSnmHed_c : dActor_c {
     u8 unk_336;                         /* 0x336 */
     u8 mPad337;                         /* 0x337 */
 
-    virtual ~daBgSnmHed_c();             /* slots 16, 17 */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daBgSnmHed_c();   /* no slot */
+    #else
+    virtual ~daBgSnmHed_c();
+    #endif             /* slots 16, 17 */
 
     virtual int InitResources();        /* slot  0 */
     virtual int CleanupResources();     /* slot  3 */

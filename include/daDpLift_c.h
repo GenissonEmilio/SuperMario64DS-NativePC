@@ -43,7 +43,14 @@ struct daDpLift_c : dBgActor_c {
     /* OUT OF LINE, DECLARED FIRST. The TU defines it first under
        `#pragma defer_codegen off`, which emits D1 then D0 -- the cartridge's
        order -- then a D2 the cartridge has no home for. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daDpLift_c();   /* no slot */
+    #else
     virtual ~daDpLift_c();
+    #endif
 
     virtual s32 InitResources();       /* slot  0 */
     virtual s32 CleanupResources();    /* slot  3 */

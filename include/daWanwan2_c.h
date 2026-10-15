@@ -102,7 +102,14 @@ struct daWanwan2_c : dEnemyBase_c {
        InitResources does not set them, so the first step clamps against 0. */
     s32                 mLinkMinY[6];                         /* 0x78c */
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daWanwan2_c();   /* no slot */
+    #else
     virtual ~daWanwan2_c();
+    #endif
 
     virtual s32   OnAimedAtWithEgg();      /* slot 29 */
 

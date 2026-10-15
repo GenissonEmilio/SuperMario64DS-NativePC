@@ -60,7 +60,14 @@ struct daCnn_c : dActor_c {
        and this TU emits the vtable and RTTI. Written out of line, mwccarm emits D0 ahead
        of D1 (the cartridge has D1 first). Keep the brace on this line:
        tools/check_header_offsets.py needs it. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daCnn_c() {}   /* no slot */
+    #else
     virtual ~daCnn_c() {}
+    #endif
 
     virtual int InitResources();
     virtual int CleanupResources();

@@ -50,7 +50,14 @@ struct daWater_Hakidasi_c : dEnemyBase_c {
     s32 unk_318;                      /* 0x318 */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daWater_Hakidasi_c();   /* no slot */
+    #else
     virtual ~daWater_Hakidasi_c();
+    #endif
 
     virtual s32 Behavior();
     virtual s32 CleanupResources();

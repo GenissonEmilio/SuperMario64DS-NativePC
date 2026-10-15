@@ -32,7 +32,14 @@ struct daObjFlamethrower_c : dActor_c {
     u16 mTimer;                    /* 0x466 */
     u32 mSoundHandle;              /* 0x468 */
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjFlamethrower_c() {}   /* no slot */
+    #else
     virtual ~daObjFlamethrower_c() {}
+    #endif
     virtual int InitResources();
     virtual int Behavior();
 };

@@ -2348,6 +2348,7 @@ extern int data_ov002_02110154[];
 void WarpPlayer(int i, int val);
 void StartMinigameMenu(unsigned char a);
 void ExitLevel(void);
+void LoadLevelNoReturn(int level, unsigned entrance, unsigned star, unsigned reason);
 void port_scene_set_faders(void *);   /* below: dScene_c::SetFaders, the synced static method */
 void func_0202ec9c(void *, int);
 extern int data_0209f61c[];
@@ -2426,6 +2427,39 @@ static void port_tp_warp_hook(void)
         if (ex >= 0 && data_0209f394[0] && (exl < 0 || (int)data_0209f2f8 == exl) && exf++ == ex) {
             std::fprintf(stderr, "[tpexit] ExitLevel() at hook call %d (level %d)\n", ex, (int)data_0209f2f8);
             ExitLevel();
+        }
+    }
+    {
+        /* SM64DS_TP_LEVEL=<call>:<level>[:<entrance>][,<call>:<level>...]: at the
+           <call>-th call of this hook (one per frame) hands the ROM's own
+           LoadLevelNoReturn(level, entrance, 1, 0) the level, so a headless run can
+           walk a chain of level entries (the same level twice, to see a second
+           visit of an overlay). The change itself is the port's normal one. */
+        static int tl = -2, tlc;
+        static int tl_call[16], tl_lvl[16], tl_ent[16], tl_n;
+        if (tl == -2) {
+            tl = -1;
+            const char *e = std::getenv("SM64DS_TP_LEVEL");
+            while (e && *e && tl_n < 16) {
+                char *end = 0;
+                int c = (int)std::strtol(e, &end, 10);
+                if (!end || *end != ':') break;
+                int l = (int)std::strtol(end + 1, &end, 10);
+                int en = 0;
+                if (end && *end == ':') en = (int)std::strtol(end + 1, &end, 10);
+                tl_call[tl_n] = c; tl_lvl[tl_n] = l; tl_ent[tl_n] = en; ++tl_n;
+                if (!end || *end != ',') break;
+                e = end + 1;
+            }
+            if (tl_n) tl = 0;
+        }
+        if (tl >= 0) {
+            for (int i = 0; i < tl_n; ++i)
+                if (tl_call[i] == tlc) {
+                    std::fprintf(stderr, "[tplevel] call %d: LoadLevelNoReturn(%d, %d, 1, 0)\n", tlc, tl_lvl[i], tl_ent[i]);
+                    LoadLevelNoReturn(tl_lvl[i], (unsigned)tl_ent[i], 1, 0);
+                }
+            ++tlc;
         }
     }
     if (at >= 0 && frame >= at && frame <= at + 3) {

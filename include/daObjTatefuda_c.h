@@ -138,7 +138,14 @@ struct daObjTatefuda_c : dBgActor_c {
        and 0x020bae2c are still C translation units defining extern "C" free
        functions under the mangled names, exactly as include/dActor_c.h describes;
        neither defines daObjTatefuda_c::~daObjTatefuda_c. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjTatefuda_c() {}   /* no slot */
+    #else
     virtual ~daObjTatefuda_c() {}
+    #endif
 
     /* Slot 31, dBgActor_c's own new virtual (include/dBgActor_c.h). This class
        overrides it: _ZTV15daObjTatefuda_c (ov002 0x02109af8) carries 0x020bb3b8 at

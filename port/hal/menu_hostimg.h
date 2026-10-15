@@ -5,11 +5,10 @@
  * exact destination size, cached per size. Pixels are PREMULTIPLIED 0xAARRGGBB so a draw is dst = src + dst * (255 - a) / 255
  * and the colour of a transparent texel can never bleed into an edge.
  *
- * WHERE THE FILE COMES FROM, first hit wins:
+ * WHERE THE FILE COMES FROM, first hit wins (run hunt8, lane UIMOD1: the port carries no picture bytes):
  *   SM64DS_MENU_LOGO=<path>        outright; a path that cannot be read means "no logo" (the DS logo is then drawn)
- *   <asset root>/menu/<name>.png         the kit file beside the exe (logo_sm64_pc.png, btn_mp.png, btn_adventure.png, btn_rec.png,
- *                                 arrow_up.png, arrow_down.png)
- *   the copy embedded in the exe (hal/menu_logo_data.cpp, generated from res/menu/logo_sm64_pc.png)
+ *   SM64DS_MENU_ART_DIR=<folder>   a dev folder with the same names
+ *   hd_ui/menu/<name>.png          the "HD UI Textures" mod (ui_art.h, any enabled mod; later wins)
  * Nothing here can fail loudly: no picture = menu_hostimg_ready() is 0 and the recipe keeps the DS logo layer. */
 #ifndef MENU_HOSTIMG_H
 #define MENU_HOSTIMG_H
@@ -26,7 +25,7 @@ enum { MENU_IMG_LOGO = 1, MENU_IMG_BTN_MP = 2, MENU_IMG_BTN_ADV = 3, MENU_IMG_BT
 #ifdef __cplusplus
 extern "C" {
 #endif
-int menu_ext_art_src(int id, const char **file, const unsigned char **emb, unsigned *len);   /* 1 when id is an extension picture */
+int menu_ext_art_src(int id, const char **file);   /* 1 when id is an extension picture; file = its name under menu/ in the mod ("pause3/pk_resume.png") */
 int menu_ext_art_is_plank(int id);
 int menu_hostimg_is_plank(int id);
 int menu_hostimg_ready(int id);                                   /* 1 once the picture decoded */

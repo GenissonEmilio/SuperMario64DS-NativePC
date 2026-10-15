@@ -114,7 +114,14 @@ struct daBmb_c : dEnemyBase_c {
        virtual this class declares -- the key function -- so the vtable and the
        RTTI group land in the translation unit that defines it,
        src/actors/daBmb_c.cpp. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daBmb_c() {}   /* no slot */
+    #else
     virtual ~daBmb_c() {}
+    #endif
 
     virtual s32   OnYoshiTryEat();         /* slot 18 -- key function */
     virtual void  OnTurnIntoEgg(Player &player); /* slot 19 */

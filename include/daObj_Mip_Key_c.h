@@ -31,7 +31,14 @@ struct daObj_Mip_Key_c : dEnemyBase_c {
     s32 unk_19c;                          /* 0x19c */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObj_Mip_Key_c();   /* no slot */
+    #else
     virtual ~daObj_Mip_Key_c();
+    #endif
 
     int Behavior();
     int CleanupResources();

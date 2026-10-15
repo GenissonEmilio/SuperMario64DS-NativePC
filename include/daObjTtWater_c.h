@@ -32,7 +32,14 @@ struct daObjTtWater_c : dBgActor_c {
     u16 mSoundTimer;              /* 0x33c */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjTtWater_c();   /* no slot */
+    #else
     virtual ~daObjTtWater_c();
+    #endif
 
     int Behavior();
     int CleanupResources();

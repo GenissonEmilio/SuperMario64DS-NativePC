@@ -22,7 +22,14 @@ struct daRFlag_c : dActor_c {
        the flag. Koopa reads it to decide who won. */
     u8 mHasTouchedFlag;     /* 0x16e */
     u8 pad_16f[0x5];        /* nothing in this class reads these */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daRFlag_c();   /* no slot */
+    #else
     virtual ~daRFlag_c();
+    #endif
 
     virtual int InitResources();
     virtual int CleanupResources();

@@ -80,7 +80,14 @@ struct daPkn_c : dEnemyBase_c {
        ov084 delinks no .data, so text-only isolation discards all three and
        the ROM copies stand -- see compiler_only_output in
        config/tu_manifest.d/ov084/daPkn_c.json. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daPkn_c() {}   /* no slot */
+    #else
     virtual ~daPkn_c() {}
+    #endif
 
     virtual s32   OnAimedAtWithEgg();      /* slot 29 -- key function */
 

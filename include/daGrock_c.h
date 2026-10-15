@@ -54,7 +54,14 @@ struct daGrock_c : dEnemyBase_c {
     u8  pad_3c3[0x5];
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daGrock_c();   /* no slot */
+    #else
     virtual ~daGrock_c();
+    #endif
 
     virtual s32   OnAimedAtWithEgg();      /* slot 29 */
 

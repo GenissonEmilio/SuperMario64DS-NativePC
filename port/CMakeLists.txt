@@ -17674,7 +17674,7 @@ add_executable(smoke_player EXCLUDE_FROM_ALL tests/smoke_player.cpp "${OV002DATA
     # sitting in slice_gate16.txt line 178 all along, dropped by /OPT:REF for
     # want of a reference edge. Removing the stub from here is what makes the
     # matched body reachable; leaving it would be a duplicate definition.
-    "${PORT_FACES_SYNC_GEN}" "${PORT_STRUCTOR_FACES_GEN}" hal/portsync2_data_aliases.cpp hal/ov_sinit_noops.cpp hal/portsync3_data_aliases.cpp hal/pmf_host_values.cpp hal/portsync3_link_aliases.cpp hal/portsync3_flat_aliases.cpp hal/portsync3_runtime.cpp hal/portsync3_dtors.cpp hal/portsync3_manual.cpp hal/pmf_tc.cpp ../src/unnamed/ov009/func_ov009_0211145c.cpp hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
+    "${PORT_FACES_SYNC_GEN}" "${PORT_STRUCTOR_FACES_GEN}" hal/portsync2_data_aliases.cpp hal/ov_sinit_noops.cpp hal/ov_reset.cpp hal/ov_reset_tab.cpp hal/portsync3_data_aliases.cpp hal/pmf_host_values.cpp hal/portsync3_link_aliases.cpp hal/portsync3_flat_aliases.cpp hal/portsync3_runtime.cpp hal/portsync3_dtors.cpp hal/portsync3_manual.cpp hal/pmf_tc.cpp ../src/unnamed/ov009/func_ov009_0211145c.cpp hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
     # run link60 lane L2: hal/w8a_stage_storage.cpp is pure zero arm9 BSS and it
     # owns data_0209d4a8, which dScDSMT_c's InitResources and CleanupResources
     # both touch. walk_window already had it; smoke_player and walk_window_hires
@@ -17978,6 +17978,8 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     # run mods1: the mods list (settings.json EnabledMods) and the files/ layer,
     # chained after stage_geom from .CRT$XCW. Same two targets, nowhere else.
     hal/mods.cpp
+    # CHARSLOT1: custom characters registry (character block of mod.json), used by hal/mods.cpp
+    hal/char_registry.cpp
     # sound/ layer of the mods (run mods1, MODSOUND1): hands hal/mods.cpp to the SDAT loader.
     hal/sdat_mods.cpp
     # run mods1: the plugin loader (code mods, API v1, mods_api/sm64ds_mod.h)
@@ -18000,7 +18002,7 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     # sitting in slice_gate16.txt line 178 all along, dropped by /OPT:REF for
     # want of a reference edge. Removing the stub from here is what makes the
     # matched body reachable; leaving it would be a duplicate definition.
-    "${PORT_FACES_SYNC_GEN}" "${PORT_STRUCTOR_FACES_GEN}" hal/portsync2_data_aliases.cpp hal/ov_sinit_noops.cpp hal/portsync3_data_aliases.cpp hal/pmf_host_values.cpp hal/portsync3_link_aliases.cpp hal/portsync3_flat_aliases.cpp hal/portsync3_runtime.cpp hal/portsync3_dtors.cpp hal/portsync3_manual.cpp hal/pmf_tc.cpp ../src/unnamed/ov009/func_ov009_0211145c.cpp hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
+    "${PORT_FACES_SYNC_GEN}" "${PORT_STRUCTOR_FACES_GEN}" hal/portsync2_data_aliases.cpp hal/ov_sinit_noops.cpp hal/ov_reset.cpp hal/ov_reset_tab.cpp hal/portsync3_data_aliases.cpp hal/pmf_host_values.cpp hal/portsync3_link_aliases.cpp hal/portsync3_flat_aliases.cpp hal/portsync3_runtime.cpp hal/portsync3_dtors.cpp hal/portsync3_manual.cpp hal/pmf_tc.cpp ../src/unnamed/ov009/func_ov009_0211145c.cpp hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
     # run link60 lane L2: hal/w8a_stage_storage.cpp is pure zero arm9 BSS and it
     # owns data_0209d4a8, which dScDSMT_c's InitResources and CleanupResources
     # both touch. walk_window already had it; smoke_player and walk_window_hires
@@ -18442,6 +18444,8 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     # run mods1: the mods list (settings.json EnabledMods) and the files/ layer,
     # chained after stage_geom from .CRT$XCW. Same two targets, nowhere else.
     hal/mods.cpp
+    # CHARSLOT1: custom characters registry (character block of mod.json), used by hal/mods.cpp
+    hal/char_registry.cpp
     # sound/ layer of the mods (run mods1, MODSOUND1): hands hal/mods.cpp to the SDAT loader.
     hal/sdat_mods.cpp
     # run mods1: the plugin loader (code mods, API v1, mods_api/sm64ds_mod.h)
@@ -18464,7 +18468,7 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     # sitting in slice_gate16.txt line 178 all along, dropped by /OPT:REF for
     # want of a reference edge. Removing the stub from here is what makes the
     # matched body reachable; leaving it would be a duplicate definition.
-    "${PORT_FACES_SYNC_GEN}" "${PORT_STRUCTOR_FACES_GEN}" hal/portsync2_data_aliases.cpp hal/ov_sinit_noops.cpp hal/portsync3_data_aliases.cpp hal/pmf_host_values.cpp hal/portsync3_link_aliases.cpp hal/portsync3_flat_aliases.cpp hal/portsync3_runtime.cpp hal/portsync3_dtors.cpp hal/portsync3_manual.cpp hal/pmf_tc.cpp ../src/unnamed/ov009/func_ov009_0211145c.cpp hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
+    "${PORT_FACES_SYNC_GEN}" "${PORT_STRUCTOR_FACES_GEN}" hal/portsync2_data_aliases.cpp hal/ov_sinit_noops.cpp hal/ov_reset.cpp hal/ov_reset_tab.cpp hal/portsync3_data_aliases.cpp hal/pmf_host_values.cpp hal/portsync3_link_aliases.cpp hal/portsync3_flat_aliases.cpp hal/portsync3_runtime.cpp hal/portsync3_dtors.cpp hal/portsync3_manual.cpp hal/pmf_tc.cpp ../src/unnamed/ov009/func_ov009_0211145c.cpp hal/cxxname_bridge.cpp hal/player_bridges.cpp hal/luigi_infection.cpp hal/cxx_aliases.cpp hal/auto_bss.cpp hal/reverse_bridges.cpp hal/method_faces.cpp hal/door_ring_faces.cpp hal/fader_wipes.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/engine/fader/dFader_c.cpp" hal/level_boot.cpp hal/stage_mods.cpp hal/scene_boot.cpp hal/title_vtable_seat14d.cpp ${SLICE_TITLE_SOURCES} hal/title_doodle_probe.cpp hal/scene_actor_faces.cpp ${SLICE_SCENE1_SOURCES} ${SLICE_CARDFS_SOURCES} ${SLICE_OV007_SOURCES} ${SC1_INTERIM_SOURCES} ${SLICE_MG1_SOURCES} ${SCENE_MG_SOURCES} ${SLICE_LUI_SOURCES} ${SLICE_PCH_SOURCES} ${SLICE_SMB_SOURCES} ${SCENE_SMB_SOURCES} ${SLICE_CCN_SOURCES} ${SLICE_PPP_SOURCES} ${SLICE_FLW_SOURCES} ${SCENE_MG_FLOWER_SOURCES} ${SLICE_MEM_SOURCES} ${SLICE_S381_SOURCES} ${SLICE_MMT_SOURCES} ${SLICE_LKT_SOURCES} ${SLICE_SOS_SOURCES} ${SLICE_S75_SOURCES} ${SCENE_MG_CURLING2_SOURCES} ${SLICE_PSY_SOURCES} ${SLICE_LKY_SOURCES} ${SLICE_SNW_SOURCES} ${SLICE_TTE_SOURCES} ${SLICE_BOO_SOURCES} ${SLICE_WIG_SOURCES} ${SLICE_S371_SOURCES} ${SLICE_BOX_SOURCES} ${SLICE_S364_SOURCES} ${SCENE_MG_SLOT1_SOURCES} ${SLICE_CUP_SOURCES} ${SLICE_MUG_SOURCES} ${SLICE_BNP_SOURCES} ${SLICE_BNT_SOURCES} ${SLICE_PKR_SOURCES} ${SLICE_PGO_SOURCES} ${SLICE_RLT_SOURCES} ${SLICE_TTI_SOURCES} ${SLICE_MGM_SOURCES} ${SLICE_VS_SOURCES} ${FDR_FADER_SOURCES} ${NFS_NAMES_SOURCES}
     # run link60 lane L2: hal/w8a_stage_storage.cpp is pure zero arm9 BSS and it
     # owns data_0209d4a8, which dScDSMT_c's InitResources and CleanupResources
     # both touch. walk_window already had it; smoke_player and walk_window_hires
@@ -22503,6 +22507,41 @@ if(MSVC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/sinit_segs.cmake")
     endforeach()
 endif()
 
+# OVLRESET1: every overlay TU the delink config gives .data or .bss routes its
+# objects into one linker group per overlay (hal/ov_reset_tab.cpp holds the
+# sentinels), so hal/ov_reset.cpp can put them back to their start-up image at
+# each load of the overlay, as the DS does. Rows and one-line headers come from
+# port/tools/ovreset.py. The header must follow dsstate_all.h (it tests for it).
+if(MSVC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ovreset_segs.cmake")
+    include("${CMAKE_CURRENT_SOURCE_DIR}/ovreset_segs.cmake")
+    port_configure_input("${CMAKE_CURRENT_SOURCE_DIR}/ovreset_segs.cmake")
+    foreach(_or_row IN LISTS PORT_OVRESET_ROWS)
+        string(REPLACE "|" ";" _or_parts "${_or_row}")
+        list(GET _or_parts 0 _or_rel)
+        list(GET _or_parts 1 _or_hdr)
+        if(NOT EXISTS "${PORT_REPO_ROOT_ABS}/${_or_rel}")
+            message(FATAL_ERROR "ovreset_segs row names a source that does not exist: ${_or_rel}")
+        endif()
+        set(_or_paths "${PORT_REPO_ROOT_ABS}/${_or_rel}")
+        if(DEFINED PORT_HOSTGEN_TU_ROW_${_or_rel})
+            list(APPEND _or_paths "${PORT_REPO_ROOT_ABS}/${PORT_HOSTGEN_TU_ROW_${_or_rel}}")
+        endif()
+        string(REGEX REPLACE "[.](c|cpp)$" ".cpp" _or_gen "${_or_rel}")
+        list(APPEND _or_paths "${CMAKE_BINARY_DIR}/host-src/${_or_gen}")
+        if(DEFINED PORT_TU_REPLACED_${_or_rel})
+            set(_or_rep "${PORT_TU_REPLACED_${_or_rel}}")
+            list(APPEND _or_paths "${PORT_REPO_ROOT_ABS}/${_or_rep}")
+            string(REGEX REPLACE "[.](c|cpp)$" ".cpp" _or_repgen "${_or_rep}")
+            list(APPEND _or_paths "${CMAKE_BINARY_DIR}/host-src/${_or_repgen}")
+        endif()
+        list(REMOVE_DUPLICATES _or_paths)
+        foreach(_or_one IN LISTS _or_paths)
+            set_property(SOURCE "${_or_one}" APPEND PROPERTY COMPILE_OPTIONS
+                "/FI${CMAKE_CURRENT_SOURCE_DIR}/hal/ovreset_seg/${_or_hdr}")
+        endforeach()
+    endforeach()
+endif()
+
 
 # ====================================================================endforeach()
 
@@ -25517,7 +25556,7 @@ endforeach()
 foreach(_tasset2 walk_window walk_window_hires smoke_player)
     target_sources(${_tasset2} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_hostimg.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_logo_data.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/ui_art.cpp")
 endforeach()
 
 # MENU1 / RECROOM1 (run menu1): the Rec Room select one-screen recipe (own file, own block).
@@ -25545,13 +25584,13 @@ if(MSVC)
 endif()
 
 # MENU1 / SETMENU1 (run menu1): the in-game settings page (hal/settings_page.h), drawn at window resolution in the launcher's look, with its
-# font renderer (hal/ui_text.h) and art (res/menu/settings, embedded by tools/embed_settings_art.py). Own block.
+# font renderer (hal/ui_text.h). Run hunt8 UIMOD1: its pictures are the HD UI Textures mod's (hal/ui_art.h), none are embedded. Own block.
 foreach(_tsetmenu1 walk_window walk_window_hires)
     target_sources(${_tsetmenu1} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_page.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_page_hooks.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/ui_text.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_art_data.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/ui_font_plain.cpp")
 endforeach()
 # smoke_player (EXCLUDE_FROM_ALL) links hal/sub_screen.cpp, which calls the page seams: no-op stubs keep it linking without the page.
 target_sources(smoke_player PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_page_stubs.cpp")
@@ -25566,12 +25605,11 @@ foreach(_tstarhook1 walk_window walk_window_hires smoke_player)
     target_sources(${_tstarhook1} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_starsel_api.cpp")
 endforeach()
-# MENU1 / PAUSE2 (run menu1): the pause menu's host-resolution art (res/menu/pause3, embedded by tools/embed_pause3_art.py) and its
+# MENU1 / PAUSE2 (run menu1): the pause menu's host-resolution art names (the pictures are the HD UI Textures mod's, run hunt8 UIMOD1) and its
 # registry behind hostimg's extension ids. Own block.
 foreach(_tpause2 walk_window walk_window_hires)
     target_sources(${_tpause2} PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_pause_art.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_pause_art_data.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_pause_art.cpp")
 endforeach()
 
 # run hunt8, lane PCORE1: keep the hot threads on performance cores (hal/pcore.h). Own block.
@@ -25709,5 +25747,13 @@ foreach(_ps3_t smoke smoke_roots smoke_model smoke_frames smoke_soak smoke_clsn
     if(TARGET ${_ps3_t})
         target_include_directories(${_ps3_t} PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/ntr/include")
+    endif()
+endforeach()
+
+# run hunt8, lane HDMETER1: the HD power meter art out of the enabled mods (hal/hd_meter.h). The compositor reaches it through a hook, so
+# the smoke targets (which do not link hal/mods.cpp) draw the DS meter. Own block.
+foreach(_thdmeter1 walk_window walk_window_hires)
+    if(TARGET ${_thdmeter1})
+        target_sources(${_thdmeter1} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/hd_meter.cpp")
     endif()
 endforeach()

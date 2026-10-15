@@ -60,7 +60,14 @@ struct daBasabasa_c : dEnemyBase_c {
     u8  mIsFlying;                    /* 0x43c -- 1 draws and animates mModelAnim1 */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daBasabasa_c();   /* no slot */
+    #else
     virtual ~daBasabasa_c();
+    #endif
 
     virtual s32   OnYoshiTryEat();         /* slot 18 */
     virtual void  OnTurnIntoEgg(Player &player); /* slot 19 */
