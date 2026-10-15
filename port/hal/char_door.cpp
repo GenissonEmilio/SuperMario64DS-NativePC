@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "char_door.h"
+#include "char_door_skin.h"
 #include "char_registry.h"
 #include "char_save.h"
 #include "mods.h"
@@ -29,11 +30,6 @@ const char *const ROM_NAME[4] = { "Mario", "Luigi", "Wario", "Yoshi" };
 
 enum { CD_NONE = 0, CD_BOX = 1, CD_PICK = 2 };
 
-struct Item {
-    int id;           /* 0..3 plain, 4 + n custom n */
-    char label[96];
-};
-
 int g_want;            /* a request: CD_BOX or CD_PICK, honoured by the frame loop */
 int g_mode;            /* CD_NONE while closed */
 /* After a picker or box closes (or a restart put the player in the doorway) the door stays shut until the player has walked
@@ -50,7 +46,7 @@ void disarm_all(void)
     g_anchored = 0;
 }
 int g_pick = -1;
-Item g_item[16];
+CdItem g_item[16];
 int g_n;
 int g_sel;
 int g_top;             /* first visible row */
@@ -59,6 +55,7 @@ unsigned g_prev_keys;
 int g_prev_mouse_l;
 int g_prev_mouse_r;
 int g_prev_mx = -1, g_prev_my = -1;
+int g_hot_back, g_hot_ok;   /* the pointer is on the Back plank / the box's OK plank */
 int g_hold_key;
 int g_hold_frames;
 int g_input_ready;     /* every device was released once since it opened: the press that brought the player here is not an answer */
@@ -67,7 +64,7 @@ int g_frames;
 int g_saw_closed;      /* this session saw the door still shut (the ROM's own first pass is ahead of us, or under way) */
 int g_star0;           /* the star count while it was shut: the ROM's star has been given once the count is above it */
 
-enum { MAX_ROWS = 8 };
+enum { MAX_ROWS = 6 };   /* visible list rows (the layout shows six) */
 
 int rom_char_unlocked(int c)
 {
@@ -78,14 +75,27 @@ void build_list(int cur)
 {
     g_n = 0;
     for (int c = 0; c < 4; ++c) {
-        if (!rom_char_unlocked(c)) continue;
-        g_item[g_n].id = c;
-        snprintf(g_item[g_n].label, sizeof g_item[g_n].label, "%s", ROM_NAME[c]);
+        if (!rom_char_unlocked(c)) continue;      /* the ROM's own screens show only the characters this save has; a locked one is not listed */
+        CdItem &m = g_item[g_n];
+        memset(&m, 0, sizeof m);
+        m.id = c;
+        m.base = c;
+        m.current = c == cur;
+        snprintf(m.label, sizeof m.label, "%s", ROM_NAME[c]);
         ++g_n;
     }
     for (int i = 0; i < port_char_count() && g_n < 16; ++i) {
-        g_item[g_n].id = 4 + i;
-        snprintf(g_item[g_n].label, sizeof g_item[g_n].label, "%s  %s", port_char_name(i), ROM_NAME[port_char_base(i) & 3]);
+        CdItem &m = g_item[g_n];
+        memset(&m, 0, sizeof m);
+        m.id = 4 + i;
+        m.base = port_char_base(i) & 3;
+        m.custom = 1;
+        m.current = 4 + i == cur;
+        snprintf(m.label, sizeof m.label, "%s", port_char_name(i));
+        snprintf(m.plays, sizeof m.plays, "Plays as %s", ROM_NAME[m.base]);
+        snprintf(m.credits, sizeof m.credits, "%s", port_char_credits(i));
+        m.preview = port_char_preview(i);
+        m.icon = port_char_icon(i);
         ++g_n;
     }
     g_sel = 0;
@@ -95,46 +105,16 @@ void build_list(int cur)
     if (g_sel >= MAX_ROWS) g_top = g_sel - MAX_ROWS + 1;
 }
 
-/* the panel: where it sits and how big, from the metrics. rows = visible list rows */
-struct Panel {
-    int x, y, w, h;
-    int x_text;
-    int rows;
-    int title_y;
-    int row_y0;
-};
-
-int text_w(const char *s) { return (int)strlen(s) * g_adv; }
-
 const char *box_text(void) { return "Custom character select unlocked"; }
-const char *title_text(void) { return "Character"; }
 
-Panel layout(void)
+CdGeom geom(void)
 {
-    Panel p;
-    int wmax = 0;
-    if (g_mode == CD_BOX) {
-        wmax = text_w(box_text());
-        p.rows = 1;
-    } else {
-        wmax = text_w(title_text());
-        for (int i = 0; i < g_n; ++i)
-            if (text_w(g_item[i].label) > wmax) wmax = text_w(g_item[i].label);
-        wmax += 2 * g_adv;
-        p.rows = g_n < MAX_ROWS ? g_n : MAX_ROWS;
-    }
-    p.w = wmax + 4 * g_adv;
-    const int lines = (g_mode == CD_BOX ? 1 : 1) + 1 + p.rows;   /* title or message, a gap line, the rows */
-    p.h = lines * g_line + g_line;
-    p.x = (g_pw - p.w) / 2;
-    if (p.x < 2) p.x = 2;
-    p.y = (g_ph - p.h) / 2;
-    if (p.y < 2) p.y = 2;
-    p.x_text = p.x + 2 * g_adv;
-    p.title_y = p.y + g_line / 2;
-    p.row_y0 = p.title_y + 2 * g_line;
-    return p;
+    CdGeom g;
+    cdskin_geom(g_pw, g_ph, g_n, g_mode == CD_BOX ? CDS_BOX : CDS_PICK, &g);
+    return g;
 }
+
+bool inside(int x, int y, int rx, int ry, int rw, int rh) { return x >= rx && x < rx + rw && y >= ry && y < ry + rh; }
 
 void close_now(const char *why)
 {
@@ -200,6 +180,36 @@ int door_hook(void *door, void *pl)
     return 1;
 }
 
+/* SM64DS_CHARMENU_MOUSE="x,y@f0-f1;...": the pointer stands at picture pixel (x, y) from picker frame f0 to f1 + 2 and the left button is down on
+   frames f0 + 1 .. f1 (picker frames count from 1 when it opens). Proof rows only: a scripted run has no focused window to read a pointer from.
+   SM64DS_CHARMENU_MOUSE_R="f0-f1": the right button is down on those frames. */
+#ifndef PORT_ROM_CLEAN
+void scripted_pointer(SpInput *si, int frame)
+{
+    static const char *env = (const char *)1;
+    static const char *envr = (const char *)1;
+    if (env == (const char *)1) { env = getenv("SM64DS_CHARMENU_MOUSE"); envr = getenv("SM64DS_CHARMENU_MOUSE_R"); }
+    if (env) {
+        const char *s = env;
+        while (*s) {
+            int x = 0, y = 0, f0 = 0, f1 = 0, got = 0;
+            if (sscanf(s, "%d,%d@%d-%d%n", &x, &y, &f0, &f1, &got) >= 4) {
+                if (frame >= f0 && frame <= f1 + 2) { si->mouse_valid = 1; si->mouse_x = x; si->mouse_y = y; si->mouse_l = frame >= f0 + 1 && frame <= f1; }
+                s += got;
+            }
+            while (*s && *s != ';') ++s;
+            if (*s == ';') ++s;
+        }
+    }
+    if (envr) {
+        int f0 = 0, f1 = 0;
+        if (sscanf(envr, "%d-%d", &f0, &f1) >= 2 && frame >= f0 && frame <= f1) si->mouse_r = 1;
+    }
+}
+#else
+void scripted_pointer(SpInput *, int) {}
+#endif
+
 int seat(void)
 {
     port_char_door_idle_hook = door_hook;
@@ -238,6 +248,8 @@ void port_char_door_open_now(int cur)
     g_hold_frames = 0;
     g_frames = 0;
     g_prev_mx = g_prev_my = -1;
+    g_hot_back = g_hot_ok = 0;
+    cdskin_begin();
     if (g_mode == CD_PICK) build_list(cur);
     fprintf(stderr, "[chardoor] %s open, %d rows, cursor %d\n", g_mode == CD_BOX ? "box" : "picker", g_mode == CD_BOX ? 1 : g_n, g_sel);
     if (g_mode == CD_PICK)
@@ -263,10 +275,13 @@ int port_char_door_take_pick(void)
 int port_char_door_rows(void) { return g_mode == CD_BOX ? 1 : g_n; }
 int port_char_door_cursor(void) { return g_sel; }
 
-int port_char_door_frame(const struct SpInput *in)
+int port_char_door_frame(const struct SpInput *in0)
 {
     if (g_mode == CD_NONE) return 0;
     ++g_frames;
+    SpInput sin = *in0;
+    scripted_pointer(&sin, g_frames);
+    const SpInput *in = &sin;
     const unsigned k = in->keys & (SPK_UP | SPK_DOWN | SPK_LEFT | SPK_RIGHT | SPK_ACCEPT | SPK_BACK);
     const unsigned edge = k & ~g_prev_keys;
     int mclick = 0;
@@ -294,10 +309,17 @@ int port_char_door_frame(const struct SpInput *in)
         }
     }
     int accept = 0, back = 0;
+    const CdGeom gm = geom();
+    if (in->mouse_valid) {
+        const int mx = in->mouse_x, my = in->mouse_y;
+        g_hot_back = g_mode == CD_PICK && inside(mx, my, gm.bx, gm.by, gm.bw, gm.bh);
+        g_hot_ok = g_mode == CD_BOX && inside(mx, my, gm.ox, gm.oy, gm.ow, gm.oh);
+    } else {
+        g_hot_back = g_hot_ok = 0;
+    }
     if (g_mode == CD_BOX) {
         if ((act & (SPK_ACCEPT | SPK_BACK)) || mclick) accept = 1;
     } else {
-        const Panel p = layout();
         if (act & SPK_UP) cursor_step(-1);
         if (act & SPK_DOWN) cursor_step(1);
         if (act & SPK_ACCEPT) accept = 1;
@@ -308,13 +330,14 @@ int port_char_door_frame(const struct SpInput *in)
         if (in->mouse_valid) {
             const int mx = in->mouse_x, my = in->mouse_y;
             int row = -1;
-            if (mx >= p.x && mx < p.x + p.w && my >= p.row_y0 && my < p.row_y0 + p.rows * g_line)
-                row = g_top + (my - p.row_y0) / g_line;
+            if (mx >= gm.lx && mx < gm.lx + gm.lw && my >= gm.ly && my < gm.ly + gm.rows * gm.rowh)
+                row = g_top + (my - gm.ly) / gm.rowh;
             if (row >= 0 && row < g_n && (mx != g_prev_mx || my != g_prev_my) && row != g_sel) {
                 g_sel = row;
                 fprintf(stderr, "[chardoor] cursor %d: %s (mouse)\n", g_sel, g_item[g_sel].label);
             }
             if (mclick && row >= 0 && row < g_n) { g_sel = row; accept = 1; }
+            if (mclick && g_hot_back) back = 1;
             g_prev_mx = mx; g_prev_my = my;
         }
     }
@@ -338,28 +361,13 @@ int port_char_door_frame(const struct SpInput *in)
     return 1;
 }
 
-void port_char_door_draw(const struct CharDoorPaint *pt)
+void port_char_door_draw(uint32_t *px, int stride, int w, int h)
 {
-    if (g_mode == CD_NONE || !pt) return;
-    const Panel p = layout();
-    pt->shade(pt->ctx, p.x, p.y, p.w, p.h);
-    pt->shade(pt->ctx, p.x, p.y, p.w, p.h);
-    if (g_mode == CD_BOX) {
-        pt->text(pt->ctx, p.x_text, p.title_y, box_text(), 0xFFFFFFFFu);
-        pt->text(pt->ctx, p.x_text, p.row_y0, "> OK", 0xFFFFE060u);
-        return;
-    }
-    pt->text(pt->ctx, p.x_text, p.title_y, title_text(), 0xFF80C0FFu);
-    for (int i = 0; i < p.rows; ++i) {
-        const int ix = g_top + i;
-        if (ix >= g_n) break;
-        const int y = p.row_y0 + i * g_line;
-        const int sel = ix == g_sel;
-        if (sel) pt->text(pt->ctx, p.x_text, y, ">", 0xFFFFE060u);
-        pt->text(pt->ctx, p.x_text + 2 * g_adv, y, g_item[ix].label, sel ? 0xFFFFE060u : 0xFFB0B0B0u);
-    }
-    if (g_top > 0) pt->text(pt->ctx, p.x + p.w - 3 * g_adv, p.row_y0, "^", 0xFFB0B0B0u);
-    if (g_top + p.rows < g_n) pt->text(pt->ctx, p.x + p.w - 3 * g_adv, p.row_y0 + (p.rows - 1) * g_line, "v", 0xFFB0B0B0u);
+    if (g_mode == CD_NONE || !px) return;
+    g_pw = w;
+    g_ph = h;
+    const CdGeom gm = geom();
+    cdskin_draw(px, stride, w, h, &gm, g_item, g_n, g_sel, g_top, g_mode == CD_BOX ? CDS_BOX : CDS_PICK, box_text(), g_hot_back, g_hot_ok || g_mode == CD_BOX);
 }
 
 }

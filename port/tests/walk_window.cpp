@@ -6262,14 +6262,9 @@ static void menu_draw(const OvlSurface &fb)
         return;
     }
     if (port_char_door_open()) {            /* CHARDOOR1: the white door's picker or box */
-        static OvlSurface cd_fb;
-        cd_fb = fb;
-        CharDoorPaint pt;
-        pt.ctx = &cd_fb;
-        pt.shade = [](void *c, int x, int y, int w, int h) { ovl_shade(*(const OvlSurface *)c, x, y, w, h); };
-        pt.text = [](void *c, int x, int y, const char *t, unsigned argb) { ovl_text(*(const OvlSurface *)c, x, y, t, argb); };
+        ntr::gx_card_settle_because("the character picker");
         cd_metrics();
-        port_char_door_draw(&pt);
+        port_char_door_draw(fb.px, fb.stride, ntr::active_w, ntr::active_h);
         return;
     }
     /* 96, not 72: the level-select row now carries a name as well as the row,
@@ -6632,6 +6627,7 @@ static int sp_frame(int pad_live, const XPad *pad)
    behind the gates every other reader uses. The door asks (hal/char_door.cpp's hook on the door's idle callback); the request is honoured on the
    next frame. A pick is applied after the picker closes: the in-place swap, or the level restart with the player put back where they stood
    (char_apply_pick(.., 1)). Escape, Backspace and pad B are Back, so F5 / Escape do not also toggle the debug menu while it is up. */
+extern "C" int port_touch_inject_peek(int *cx, int *cy);   /* hal/sub_screen.cpp */
 static void cd_metrics(void)
 {
     port_char_door_set_metrics(ntr::active_w, ntr::active_h, OVL_ADVANCE * OVL_SCALE, OVL_LINE);
@@ -6655,6 +6651,13 @@ static int cd_frame(int pad_live, const XPad *pad)
     memset(&in, 0, sizeof in);
     sp_read_devices(in, pad_live, pad);
     g_sp_wheel = 0;
+    {   /* CHARMENU1: a DS stylus tap (SM64DS_CLICK_TEST / SM64DS_HOST_CLICK, the same path a pen on a touch screen takes into poll_touch) on the picker
+           reads as a press at that spot of the picture; a real mouse or finger is the mouse above (Windows gives a finger a pointer too) */
+        int cx = 0, cy = 0, fx = 0, fy = 0;
+        if (port_touch_inject_peek(&cx, &cy) && hal_present_client_to_fb(cx, cy, &fx, &fy)) {
+            in.mouse_valid = 1; in.mouse_x = fx; in.mouse_y = fy; in.mouse_l = 1;
+        }
+    }
     if (!port_char_door_frame(&in)) {
         menu_on = 0;
         /* the Escape / Backspace / B that closed it is still down: not a fresh F5 for the debug menu, not a fresh Select for the ROM */

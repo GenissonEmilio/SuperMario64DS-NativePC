@@ -30,6 +30,7 @@
 #ifndef PORT_HAL_CHAR_DOOR_H
 #define PORT_HAL_CHAR_DOOR_H
 
+#include <stdint.h>
 #include "settings_page.h"   /* SpInput, SPK_* : the same device description the settings page takes */
 
 #ifdef __cplusplus
@@ -45,19 +46,17 @@ void port_char_door_clear_request(void);
 void port_char_door_open_now(int cur);
 /* the box or picker is no longer wanted (the pause was taken away) */
 void port_char_door_cancel(void);
-/* the text metrics of the surface it will be drawn on: picture width / height, one glyph's advance, one line's height (pixels) */
+/* the surface it will be drawn on: picture width / height (pixels); the advance and line height are unused since CHARMENU1 (the layout is in
+   units of the picture height) and stay for the seat's call */
 void port_char_door_set_metrics(int w, int h, int adv, int line);
 /* one logic frame with this frame's device state; 1 while still up, 0 on the frame it closed */
 int  port_char_door_frame(const struct SpInput *in);
 /* after it closed: -1 nothing chosen, else the id the choice names (0..3 plain, 4 + n custom n); read once */
 int  port_char_door_take_pick(void);
 
-struct CharDoorPaint {
-    void *ctx;
-    void (*shade)(void *ctx, int x, int y, int w, int h);
-    void (*text)(void *ctx, int x, int y, const char *s, unsigned argb);
-};
-void port_char_door_draw(const struct CharDoorPaint *p);
+/* CHARMENU1: the picker or the box drawn onto the finished picture (0x00RRGGBB / 0xFFRRGGBB pixels, w x h, stride pixels a row). The look is
+   hal/char_door_skin.cpp's: the HD UI Textures skin with the mod on, the plain skin without it. */
+void port_char_door_draw(uint32_t *px, int stride, int w, int h);
 
 /* the player was put back in the doorway by the restart a costume change made: no picker until they step out and in again */
 void port_char_door_disarm(void);
