@@ -7730,7 +7730,7 @@ static unsigned short host_ds_buttons(int pad_live, const XPad *pad)
     if (key_act(HOST_KEY_CROUCH)) btn |= 0x400;
     if (key_act(HOST_KEY_ATTACK)) btn |= 1;
     /* DS X, settings.json KeyLook: Z by default, beside the attack key */
-    if (key_act(HOST_KEY_LOOK)) btn |= 0x8000;
+    if (key_act(HOST_KEY_LOOK) || mouse_act(HOST_MOUSE_LOOK)) btn |= 0x8000;     /* CAMPACK1: MouseLook too */
     if (pad_live) {
         if (pad_act(pad, HOST_PAD_JUMP)) btn |= 2;       /* A by default  */
         /* X by default; the rebind row moves it (0 = unbound) */
@@ -15597,16 +15597,30 @@ int main(void)
                 if (stick_rx > 10000) cam_rot |= cam_bit_right;
                 if (cb_l_pad) cam_rot |= cam_bit_left;
                 if (cb_r_pad) cam_rot |= cam_bit_right;
-                /* CAMPACK1: ZOOM in the DS camera is the ROM's own close-up camera, camera state 9, which the Look
-                   button (Ctrl 0x8000) enters and leaves. Zoom in presses Look when the camera is not in it, zoom out
-                   presses Look when it is; the right stick's up / down does the same once per push (CameraStickZoom).
-                   One press per edge, so a held key does not toggle it every frame. */
+                /* CAMPACK1: ZOOM in the DS camera is the ROM's own Look camera, which has levels: each press of the
+                   Look button (Ctrl 0x8000) goes normal -> a raised far view -> the close-up (camera state 9) -> normal,
+                   measured (out CAMPACK1 look_levels). Zoom in presses Look until the close-up is reached; zoom out
+                   presses it until the camera is back to normal (one press from the close-up, two from the raised
+                   view). The right stick's up / down does the same once per push (CameraStickZoom). One press per
+                   edge, so a held key does not step every frame. `phase` follows the presses from any source (the
+                   Look key, pad button, mouse button or these) and is corrected by the camera state. */
                 {
-                    static int zi_prev, zo_prev;
+                    static int zi_prev, zo_prev, look_prev, phase, second;
                     const int inz = cam && cam93_state_idx(cam) == 9;
+                    if (inz) phase = 2; else if (phase == 2) phase = 0;
                     const int zi = cb_zi || (stick_zoom && pad_live && stick_ry > 16000);
                     const int zo = cb_zo || (stick_zoom && pad_live && stick_ry < -16000);
-                    if ((zi && !zi_prev && !inz) || (zo && !zo_prev && inz)) btn |= 0x8000;
+                    int press = 0;
+                    if (zi && !zi_prev && phase < 2) press = 1;
+                    if (zo && !zo_prev) {
+                        if (phase == 2) press = 1;
+                        else if (phase == 1) { press = 1; second = 6; }
+                    }
+                    if (second && --second == 0) press = 1;
+                    if (press) btn |= 0x8000;
+                    const int lk = (btn & 0x8000) != 0;
+                    if (lk && !look_prev) phase = (phase + 1) % 3;
+                    look_prev = lk;
                     zi_prev = zi; zo_prev = zo;
                 }
                 /* CAMPACK1: the camera speed slider for the stepped turn. The ROM turns a fixed 0x400 a tick while a
