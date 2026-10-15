@@ -396,10 +396,8 @@ void do_lists(int what, const void *const *lists, const int *engines, const int 
             const char *p = pic_path(what, ci, w);
             if (!p) continue;
             load_png(p, &S.pic[w]);
-            if (!S.pic[w].ok()) fprintf(stderr, "[charhud] %s: %s is not a usable picture; the base art is used
-", tag, p);
-            else fprintf(stderr, "[charhud] %s: repainting from %s (%dx%d)
-", tag, p, S.pic[w].w, S.pic[w].h);
+            if (!S.pic[w].ok()) fprintf(stderr, "[charhud] %s: %s is not a usable picture; the base art is used\n", tag, p);
+            else fprintf(stderr, "[charhud] %s: repainting from %s (%dx%d)\n", tag, p, S.pic[w].w, S.pic[w].h);
         }
     }
     for (int l = 0; l < nl; ++l) {
