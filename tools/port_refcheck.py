@@ -256,6 +256,82 @@ def _cmake_helper_writes(commands):
     return helpers
 
 
+def _data_only_include(args, variables):
+    """Variables written by an include() of a checked-in, set()-only .cmake file.
+
+    A generated row list (sinit_segs.cmake, ovreset_segs.cmake, src_folds.cmake)
+    holds nothing but set(NAME ...) commands, so including it cannot rewrite
+    target sources and writes only the variables it names. Anything else
+    (other commands, a computed name, a file outside port/ or one that is not
+    checked in, such as the generated tierscan file) returns None and stays
+    unproven.
+    """
+    words = [v.value for v in _cmake_values(args[:1], variables)]
+    if len(args) != 1 or len(words) != 1:
+        return None
+    # the two source-dir variables are never reassigned, so they resolve even once the walk has dropped its variable table
+    word = words[0].replace('${CMAKE_CURRENT_SOURCE_DIR}', str(PORT)).replace('${CMAKE_SOURCE_DIR}', str(PORT))
+    if '$' in word or not word.endswith('.cmake'):
+        return None
+    path = pathlib.Path(word).resolve()
+    try:
+        path.relative_to(PORT.resolve())
+        text = path.read_text(encoding='utf-8')
+    except (ValueError, OSError):
+        return None
+    names = set()
+    for command, inner in _cmake_commands(text):
+        if command != 'set' or not inner or not re.fullmatch(r'\w+', inner[0].value):
+            return None
+        if any(t.value in ('CACHE', 'PARENT_SCOPE') for t in inner[1:]):
+            return None
+        names.add(inner[0].value)
+    return names
+
+
+FOREIGN_TARGETS = ('SDL3-static',)   # vendored libraries the host executables only link; never a source owner of src/ or port/ code
+_FOREIGN_INCLUDE_OK = {'set', 'unset', 'list', 'foreach', 'endforeach', 'if', 'elseif', 'else', 'endif', 'message',
+                       'add_subdirectory', 'get_target_property', 'set_property', 'target_sources',
+                       'target_compile_definitions', 'target_compile_options', 'target_include_directories',
+                       'target_link_libraries', 'set_target_properties'}
+
+
+def _foreign_target_include(args, variables):
+    """True for an include() of a checked-in .cmake file that only configures a vendored library target.
+
+    sdl_build.cmake rewrites SDL3-static's SOURCES (a source filter plus stubs). That is a SOURCES rewrite, but of
+    a target that owns no src/ or port/ file, so it cannot move the ownership this check reads. Every command in the
+    file must be on a short list, and every command that names a target must name one of FOREIGN_TARGETS literally.
+    """
+    word = ''.join(v.value for v in _cmake_values(args[:1], variables)) if len(args) == 1 else ''
+    word = word.replace('${CMAKE_CURRENT_SOURCE_DIR}', str(PORT)).replace('${CMAKE_SOURCE_DIR}', str(PORT))
+    if not word or '$' in word or not word.endswith('.cmake'):
+        return False
+    try:
+        path = pathlib.Path(word).resolve()
+        path.relative_to(PORT.resolve())
+        text = path.read_text(encoding='utf-8')
+    except (ValueError, OSError):
+        return False
+    for command, inner in _cmake_commands(text):
+        if command not in _FOREIGN_INCLUDE_OK:
+            return False
+        first = [a.value for a in inner[:2]]
+        if command in ('set_property', 'get_target_property', 'set_target_properties') and command != 'get_target_property':
+            names = first[1:2] if command == 'set_property' and first[:1] == ['TARGET'] else first[:1]
+            if command == 'set_property' and first[:1] != ['TARGET']:
+                return False
+            if not names or names[0] not in FOREIGN_TARGETS:
+                return False
+        elif command == 'get_target_property':
+            if len(first) < 2 or first[1] not in FOREIGN_TARGETS:
+                return False
+        elif command.startswith('target_'):
+            if not first or first[0] not in FOREIGN_TARGETS:
+                return False
+    return True
+
+
 def _cmake_write_targets(name, args, variables, helpers, active=()):
     """Return possible variable writes, or None when their identity is unknown.
 
@@ -343,6 +419,8 @@ def _cmake_write_targets(name, args, variables, helpers, active=()):
         outputs = [words[i + 1] for i, word in enumerate(words[:-1])
                    if word in ('RESULT_VARIABLE', 'RESULTS_VARIABLE',
                                'OUTPUT_VARIABLE', 'ERROR_VARIABLE')]
+    elif name == 'include' and _data_only_include(args, variables) is not None:
+        outputs = sorted(_data_only_include(args, variables))
     elif name in ('include', 'find_package', 'cmake_language'):
         return None  # arbitrary included/evaluated code can write any variable
     elif name not in {
@@ -359,9 +437,17 @@ def _cmake_write_targets(name, args, variables, helpers, active=()):
             'link_directories', 'link_libraries', 'set_property',
             'set_target_properties', 'set_source_files_properties'}:
         raise ValueError('unsupported CMake command cannot prove source selection: ' + name)
-    if any(not re.fullmatch(r'\w+', key) for key in outputs):
-        return None
-    return set(outputs)
+    named = set()
+    for key in outputs:
+        if re.fullmatch(r'\w+', key):
+            named.add(key)
+        else:
+            # PORT_HOSTGEN_TU_HITS_${tu}: the literal head names every variable this write can touch.
+            head = re.match(r'(\w+)\$', key)
+            if not head:
+                return None
+            named.add(head.group(1) + '*')
+    return named
 
 
 def _invalidate_cmake_writes(name, args, variables, helpers):
@@ -370,8 +456,17 @@ def _invalidate_cmake_writes(name, args, variables, helpers):
         variables.clear()
     else:
         for key in outputs:
-            variables.pop(key, None)
+            _forget_variable(variables, key)
     return outputs
+
+
+def _forget_variable(variables, key):
+    """Drop key from the table; a key ending in * is a head (NAME_*) that stands for every name starting with it."""
+    if key.endswith('*'):
+        for name in [n for n in variables if n.startswith(key[:-1])]:
+            variables.pop(name, None)
+    else:
+        variables.pop(key, None)
 
 
 def _cmake_symbol_lists(text):
@@ -382,6 +477,12 @@ def _cmake_symbol_lists(text):
     skip_until = 0
     for index, (command, args) in enumerate(commands):
         if index < skip_until:
+            continue
+        if _is_hostgen_reroute_start(command, args):
+            skip_until = _verified_hostgen_reroute(commands, index, len(commands))
+            for key in list(variables):
+                if key.startswith('_ps2'):
+                    variables.pop(key, None)
             continue
         if command == 'set' and args and args[0].value == 'PORT_SHARE_TARGETS':
             skip_until = _verified_tier_sharing(commands, index, len(commands))
@@ -514,6 +615,13 @@ def check_cmake_symbols():
         sym = tok.value
         checked += 1
         lineno = _line_at(text, tok.pos)
+        # A row that spells a checked-in host source under port/ (PORTSYNC2 carries a few bodies as port/unmatched/hostarm/*.cpp)
+        # names a file, not a src/ symbol; the file has to exist.
+        if sym.startswith('port/') and sym.endswith(('.cpp', '.c')):
+            if (REPO / sym).is_file():
+                continue
+            failures.append(Failure(rel, lineno, f"host source '{sym}' ({list_name}) not found (renamed?)"))
+            continue
         resolved = SP.path_for(sym)
         if resolved is None or not resolved.is_file():
             failures.append(Failure(
@@ -546,6 +654,51 @@ def _verified_tier_sharing(commands, first, last):
     return after
 
 
+HOSTGEN_REROUTE_COMMANDS = '77e218179ff755282b40df80d18dcb59d4b8a90833f0a04869a1cefa63ef42f8'
+
+
+def _verified_hostgen_reroute(commands, first, last):
+    """End index of the PORTSYNC2 last-of-all source rewrite that starts at commands[first].
+
+    The block (get_property of the directory's targets, then a foreach over every target that swaps a raw
+    PORT_HOSTGEN_TU source for its generated copy and drops duplicates, then the same for the sources
+    port_slice_shared already compiles) rewrites every target's SOURCES, which this reader otherwise refuses.
+    It never adds, removes or renames the src/ or port/ file a row points at beyond that generated-copy swap
+    (the generated copy is built FROM the raw source, so the raw reference stays the one to check), so, as with the
+    tier-sharing pass, the established source graph is kept. The command list is pinned by digest: any edit to the
+    block needs review here.
+    """
+    depth, end = 0, None
+    opens = {'if': 'endif', 'foreach': 'endforeach', 'while': 'endwhile',
+             'function': 'endfunction', 'macro': 'endmacro', 'block': 'endblock'}
+    j = first + 1
+    seen_shared = False
+    while j < last:
+        name, args = commands[j]
+        if name in opens:
+            if depth == 0 and name == 'if' and [a.value for a in args[:2]] == ['TARGET', 'port_slice_shared']:
+                seen_shared = True
+            depth += 1
+        elif name in opens.values():
+            depth -= 1
+            if depth == 0 and seen_shared:
+                end = j + 1
+                break
+        j += 1
+    if end is None:
+        raise ValueError('unsupported/incomplete PORTSYNC2 host source reroute')
+    payload = [(name, [(arg.value, arg.literal, arg.punctuation) for arg in args])
+               for name, args in commands[first:end]]
+    digest = hashlib.sha256(json.dumps(payload, separators=(',', ':')).encode()).hexdigest()
+    if digest != HOSTGEN_REROUTE_COMMANDS:
+        raise ValueError('PORTSYNC2 host source reroute changed; source preservation needs review')
+    return end
+
+
+def _is_hostgen_reroute_start(name, args):
+    return name == 'get_property' and [a.value for a in args[:2]] == ['_ps2_targets', 'DIRECTORY']
+
+
 def _reject_source_rewrite(name, args, variables, helpers, active=(), targets_exist=False,
                            allow_loop_control=False, allow_return=False):
     if (name == 'return' and not allow_return) or (name in ('break', 'continue') and not allow_loop_control):
@@ -564,7 +717,9 @@ def _reject_source_rewrite(name, args, variables, helpers, active=(), targets_ex
                                    targets_exist, allow_loop_control or kind == 'function',
                                    allow_return or kind == 'function')
         return
-    if targets_exist and name in ('include', 'find_package', 'cmake_language'):
+    if (targets_exist and name in ('include', 'find_package', 'cmake_language')
+            and not (name == 'include' and (_data_only_include(args, variables) is not None
+                                            or _foreign_target_include(args, variables)))):
         raise ValueError('unevaluated CMake code can rewrite existing target sources: ' + name)
     words = [arg.value for arg in _cmake_values(args, variables)]
     if name == 'set_property' and words[:1] == ['TARGET'] and 'PROPERTY' in words:
@@ -577,6 +732,61 @@ def _reject_source_rewrite(name, args, variables, helpers, active=(), targets_ex
             raise ValueError('unsupported target SOURCES rewrite; cannot retain selected owners')
 
 
+def _first_loop_exit(commands, first, last, block_end):
+    """Index of the first top-level command in commands[first:last] that can leave the loop body early.
+
+    That is a direct break/continue, or an if-block (or other non-loop block) holding one. A nested foreach or
+    while keeps its own break/continue. Returns last when the body always runs to its end.
+    """
+    i = first
+    while i < last:
+        name, _ = commands[i]
+        if name in ('break', 'continue'):
+            return i
+        if name in ('if', 'function', 'macro', 'block', 'foreach', 'while'):
+            after = block_end(i, last)
+            if name not in ('foreach', 'while', 'function', 'macro'):
+                if any(c in ('break', 'continue') for c, _ in _outer_loop_commands(commands, i + 1, after - 1)):
+                    return i
+            i = after
+            continue
+        i += 1
+    return last
+
+
+def _outer_loop_commands(commands, first, last):
+    """The commands of commands[first:last] that are not inside a nested foreach/while body."""
+    depth = 0
+    for name, args in commands[first:last]:
+        if name in ('foreach', 'while'):
+            depth += 1
+        elif name in ('endforeach', 'endwhile'):
+            depth = max(0, depth - 1)
+        elif depth == 0:
+            yield name, args
+
+
+class _BuiltinEnv(dict):
+    """A CMake variable table whose three directory variables survive an "unknown write" clear.
+
+    The walk drops every value it knows when a command writes a variable it cannot name (a computed set(), a
+    port_read_lines() helper). The source, current-source and binary directories are fixed for the whole
+    configure, so losing them only turned later per-iteration paths into unresolved text and hid real owners.
+    """
+    def __init__(self, builtins):
+        super().__init__(builtins)
+        self._builtins = dict(builtins)
+
+    def clear(self):
+        super().clear()
+        self.update(self._builtins)
+
+    def pop(self, key, *default):
+        if key in self._builtins:
+            return self[key]
+        return super().pop(key, *default)
+
+
 def _cmake_build_inputs(text, symbol_expansions=None):
     """Read the literal part of the host build graph without executing CMake.
 
@@ -587,9 +797,9 @@ def _cmake_build_inputs(text, symbol_expansions=None):
     """
     commands = list(_cmake_commands(text))
     helpers = _cmake_helper_writes(commands)
-    env = {"CMAKE_CURRENT_SOURCE_DIR": [Token(str(PORT), 0)],
-           "CMAKE_SOURCE_DIR": [Token(str(PORT), 0)],
-           "CMAKE_BINARY_DIR": [Token(str(REPO / "build" / "port"), 0)]}
+    env = _BuiltinEnv({"CMAKE_CURRENT_SOURCE_DIR": [Token(str(PORT), 0)],
+                       "CMAKE_SOURCE_DIR": [Token(str(PORT), 0)],
+                       "CMAKE_BINARY_DIR": [Token(str(REPO / "build" / "port"), 0)]})
     targets, additions, generators = {}, [], []
     starts = {"if": "endif", "foreach": "endforeach", "while": "endwhile",
               "function": "endfunction", "macro": "endmacro", "block": "endblock"}
@@ -609,11 +819,19 @@ def _cmake_build_inputs(text, symbol_expansions=None):
         return j
 
     def invalidate(first, last, discard_loop=False):
+        depth = 0   # foreach/while loops opened inside this range
         for name, args in commands[first:last]:
             # An unknown loop grants no input claims, so its local break or
             # continue cannot hide a selected body. Return still escapes it.
+            # A break/continue that sits inside a loop opened within this very
+            # range (an if-block wrapping a foreach that uses continue) only
+            # leaves that inner loop, never the range, so it is local too.
+            if name in ('foreach', 'while'):
+                depth += 1
+            elif name in ('endforeach', 'endwhile'):
+                depth = max(0, depth - 1)
             _reject_source_rewrite(name, args, env, helpers, targets_exist=bool(targets),
-                                   allow_loop_control=discard_loop)
+                                   allow_loop_control=discard_loop or depth > 0)
             _invalidate_cmake_writes(name, args, env, helpers)
 
     def walk(first, last):
@@ -629,6 +847,12 @@ def _cmake_build_inputs(text, symbol_expansions=None):
                                                       'PORT_TIER_PERTGT', 'PORT_DIVERGENT_DEFINES'):
                         env.pop(key, None)
                 i = after
+                continue
+            if _is_hostgen_reroute_start(name, args):
+                i = _verified_hostgen_reroute(commands, i, last)
+                for key in list(env):
+                    if key.startswith('_ps2'):
+                        env.pop(key, None)
                 continue
             _reject_source_rewrite(name, args, env, helpers, targets_exist=bool(targets))
             if name in starts:
@@ -647,21 +871,23 @@ def _cmake_build_inputs(text, symbol_expansions=None):
                         rows = values[1:]
                     else:
                         rows = None
-                    if any(command in ('break', 'continue')
-                           for command, _ in commands[i + 1:after - 1]):
-                        # No branch evaluator is provided. Discard every
-                        # input claim and variable write from this loop rather
-                        # than executing declarations its control flow may skip.
-                        rows = None
+                    # No branch evaluator is provided. Commands before the first
+                    # break/continue (direct or inside an if-block, not counting
+                    # a nested loop's own) always run for every row, so they keep
+                    # supplying inputs; everything from that command on may be
+                    # skipped, so it is invalidated rather than executed.
+                    body_end = _first_loop_exit(commands, i + 1, after - 1, block_end)
                     if rows is not None and all("$" not in v.value for v in rows):
                         previous = env.get(words[0])
                         for row in rows:
                             env[words[0]] = [row]
-                            walk(i + 1, after - 1)
+                            walk(i + 1, body_end)
                         if previous is None:
                             env.pop(words[0], None)
                         else:
                             env[words[0]] = previous
+                        if body_end < after - 1:
+                            invalidate(body_end, after - 1, discard_loop=True)
                     else:
                         invalidate(i + 1, after - 1, discard_loop=True)
                 elif name not in ("function", "macro"):
@@ -684,7 +910,10 @@ def _cmake_build_inputs(text, symbol_expansions=None):
             if name == "set" and args:
                 keys = _cmake_values(args[:1], env)
                 key = keys[0].value if len(keys) == 1 else ''
-                if not re.fullmatch(r'\w+', key):
+                head = re.match(r'(\w+)\$', key)
+                if head:
+                    _forget_variable(env, head.group(1) + '*')
+                elif not re.fullmatch(r'\w+', key):
                     env.clear()
                 elif any(v.value in ("CACHE", "PARENT_SCOPE") for v in args[1:]):
                     env.pop(key, None)
@@ -866,8 +1095,19 @@ def _generated_data_owners(requests):
                 for entry in line.split():
                     if entry == "--pack":
                         continue
+                    # ovdata.py's row grammar: name[@0xADDR][:size][!]. "!" mounts the name only (a class
+                    # TU defines the storage); "@0xADDR" pins the address of an object the config no longer
+                    # names, so such a row needs no config symbol, only a C identifier.
+                    entry = entry[:-1] if entry.endswith("!") else entry
                     name, _, size = entry.partition(":")
-                    if name not in symbols or not valid_size(size):
+                    pinned = False
+                    if "@0x" in name:
+                        name, _, pin = name.partition("@")
+                        if not re.fullmatch(r"0x[0-9a-fA-F]+", pin):
+                            valid = False
+                            break
+                        pinned = True
+                    if not valid_size(size) or (not pinned and name not in symbols) or not re.fullmatch(r"[A-Za-z_]\w*", name):
                         valid = False
                         break
                     provided.add(name)
