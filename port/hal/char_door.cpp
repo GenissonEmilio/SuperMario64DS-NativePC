@@ -188,7 +188,12 @@ void scripted_pointer(SpInput *si, int frame)
 {
     static const char *env = (const char *)1;
     static const char *envr = (const char *)1;
-    if (env == (const char *)1) { env = getenv("SM64DS_CHARMENU_MOUSE"); envr = getenv("SM64DS_CHARMENU_MOUSE_R"); }
+    if (env == (const char *)1) {
+        env = getenv("SM64DS_CHARMENU_MOUSE");
+        envr = getenv("SM64DS_CHARMENU_MOUSE_R");
+        if (env || envr) fprintf(stderr, "[chardoor] scripted pointer: SM64DS_CHARMENU_MOUSE=%s SM64DS_CHARMENU_MOUSE_R=%s
+", env ? env : "-", envr ? envr : "-");
+    }
     if (env) {
         const char *s = env;
         while (*s) {

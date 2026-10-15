@@ -576,7 +576,7 @@ void cdskin_geom(int w, int h, int n, int mode, CdGeom *g)
     }
     /* the sheet sits high: the minimap's inset takes the bottom right corner of a 4:3 picture and the sheet must not run under it */
     g->sw = U(SHEET_W); g->sh = U(236);
-    g->sx = (w - g->sw) / 2; g->sy = U(46);
+    g->sx = (w - g->sw) / 2; g->sy = U(44);
     g->tw = U(200); g->th = U(52);
     g->tx = g->sx + (g->sw - g->tw) / 2; g->ty = g->sy - U(24);
     g->bw = U(72); g->bh = U(41);
@@ -584,9 +584,9 @@ void cdskin_geom(int w, int h, int n, int mode, CdGeom *g)
     g->rowh = U(36);
     g->rows = n < 5 ? (n < 1 ? 1 : n) : 5;
     g->lx = g->sx + U(20); g->ly = g->sy + U(38); g->lw = U(210);
-    g->pw = U(100); g->ph = U(100);
-    g->px = g->sx + U(246) + (U(178) - g->pw) / 2; g->py = g->sy + U(36);
-    g->dx = g->sx + U(240); g->dy = g->py + g->ph + U(20); g->dw = U(190);
+    g->pw = U(84); g->ph = U(84);
+    g->px = g->sx + U(246) + (U(178) - g->pw) / 2; g->py = g->sy + U(34);
+    g->dx = g->sx + U(240); g->dy = g->py + g->ph + U(16); g->dw = U(190);
 }
 
 int cdskin_hd(void)
@@ -757,7 +757,7 @@ void cdskin_draw(uint32_t *px, int stride, int w, int h, const CdGeom *gp, const
         const float em = 21.0f;
         const std::string nm = fit(f, m.label, em, (float)g.dw);
         f.draw(s, g.dx + (g.dw - f.width(nm.c_str(), em)) / 2, (float)y, nm.c_str(), em, C_TEXT);
-        y += U(28);
+        y += U(26);
         if (m.plays[0]) {
             const std::string pl = fit(f, m.plays, 16.0f, (float)g.dw);
             f.draw(s, g.dx + (g.dw - f.width(pl.c_str(), 16.0f)) / 2, (float)y, pl.c_str(), 16.0f, C_DIM);
