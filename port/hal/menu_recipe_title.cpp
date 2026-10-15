@@ -1942,7 +1942,10 @@ extern "C" void menu_title_pad_map_rom(uint16_t *pressed, int host_back)
 {
     int top, elem, req;
     if (!port_title_page_state(&top, &elem, &req)) return;
-    if (top != g_top || elem != g_elem) { g_top = top; g_elem = elem; }
+    if (top != g_top || elem != g_elem) {
+        g_top = top; g_elem = elem;
+        if (hal_menu_trace_on()) fprintf(stderr, "[menu] title page top=%d elem=%d req=%d (rom two-screen)\n", top, elem, req);
+    }
     g_last = variant_for(top, elem);
     title_pad_keys(pressed, host_back, 0);
 }
