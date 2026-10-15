@@ -578,6 +578,12 @@ extern "C" void port_coop_save_frame(void) {
     if (std::memcmp(data_020a4b40, kCoopTag, 8) != 0) std::memcpy(data_020a4b40, kCoopTag, 8);
     star_tally_frame();
     note_visits((uint32_t)GetTickCount64());
+    if ((g_frame % 600) == 0)       // MPSAFE1: the drop counters, so a hostile peer shows up in the log as numbers
+        std::fprintf(stderr, "[coopsave] stat f=%u role=%s rec_guest=%u rec_host=%u merged=%u drop_bad=%u drop_role=%u "
+                     "drop_sub=%u drop_grant=%u live_stars=%d
+", g_frame, host() ? "host" : "guest", g_st.rec_recv_guest,
+                     g_st.rec_recv_host, g_st.merged_bits, g_st.dropped_bad, g_st.dropped_role, g_st.dropped_subtype,
+                     g_st.dropped_grant, live_valid() ? coop_record_stars(data_0209caa0 + 0) : -1);
     run_probe();
     run_forge();
     const ULONGLONG now = GetTickCount64();
