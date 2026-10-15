@@ -1143,6 +1143,38 @@ extern "C" void hal_fill_hud_vtable(void)
 extern "C" void *wide_dmap_vtable[];
 extern "C" __declspec(dllimport) int __stdcall VirtualProtect(void *, size_t, unsigned long, unsigned long *);
 #pragma comment(linker, "/alternatename:_wide_dmap_vtable=??_7dMap_c@@6B@")
+/* MPSYNC1: the same for the HUD. Its real vtable is the dMeter_c class TU's, so hud_behavior / hud_clean above (which keep
+   port_hud_self, the live HUD hal/vs_arena_ref.cpp reads the match clock units from) are never called. Slots 3 (Cleanup) and
+   6 (Behavior) of that table are wrapped: the wrapper keeps port_hud_self and runs what the table held. */
+extern "C" void *wide_dmeter_vtable[];
+#pragma comment(linker, "/alternatename:_wide_dmeter_vtable=??_7dMeter_c@@6B@")
+static int (__fastcall *g_dmeter_clean_orig)(void *, void *) = 0;
+static int (__fastcall *g_dmeter_behavior_orig)(void *, void *) = 0;
+static int __fastcall dmeter_clean_wrap(void *s, void *e)
+{ port_hud_self = nullptr; return g_dmeter_clean_orig(s, e); }
+static int __fastcall dmeter_behavior_wrap(void *s, void *e)
+{ port_hud_self = s; return g_dmeter_behavior_orig(s, e); }
+static void seat_hud_wrap(void)
+{
+#if defined(_WIN32) && defined(_MSC_VER) && defined(_M_IX86)
+    static bool done = false;
+    if (done) return;
+    done = true;
+    struct Slot { int idx; void *wrap; void **orig; } rows[2] = {
+        { 3, (void *)dmeter_clean_wrap, (void **)&g_dmeter_clean_orig },
+        { 6, (void *)dmeter_behavior_wrap, (void **)&g_dmeter_behavior_orig } };
+    for (int k = 0; k < 2; ++k) {
+        void **cell = &wide_dmeter_vtable[rows[k].idx];
+        unsigned long old = 0;
+        if (!VirtualProtect(cell, sizeof(void *), 0x04, &old)) continue;
+        *rows[k].orig = *cell;
+        *cell = rows[k].wrap;
+        VirtualProtect(cell, sizeof(void *), old, &old);
+        std::fprintf(stderr, "[mpsync] hud vtable slot %d wrapped\n", rows[k].idx);
+    }
+#endif
+}
+
 static void seat_minimap_wide(void)
 {
     static bool done = false;
@@ -1156,6 +1188,7 @@ static void seat_minimap_wide(void)
         if (!VirtualProtect(cell, sizeof(void *), 0x04 /* PAGE_READWRITE */, &old)) continue;
         *cell = pairs[k][1];
         VirtualProtect(cell, sizeof(void *), old, &old);
+        std::fprintf(stderr, "[mpsync] minimap vtable slot %d -> host copy\n", (int)(size_t)pairs[k][0]);
     }
 #endif
 }
@@ -1163,6 +1196,7 @@ static void seat_minimap_wide(void)
 extern "C" void hal_fill_minimap_vtable(void)
 {
     seat_minimap_wide();
+    seat_hud_wrap();
     void **vt = _ZTV6dMap_c;
     sa_fill_shared(vt);
     vt[0] = (void *)map_init;

@@ -555,11 +555,21 @@ void on_event(const RefEvent *ev, int my_seat, bool directed) {
 // by touch, through the referee's GRAB claim. Nothing changes outside arena
 // mode: the original answer is called.
 unsigned g_star_orig = 0;
+unsigned g_star_orig2 = 0;       // MPSYNC1: the same slot of the daStar_c class TU's own vtable
 bool g_star_wrapped = false;
 int __fastcall star_eat_face(void *self, void *edx) {
     if (vs_arena_active()) return 0;
     return ((int (__fastcall *)(void *, void *))(size_t)g_star_orig)(self, edx);
 }
+int __fastcall star_eat_face2(void *self, void *edx) {
+    if (vs_arena_active()) return 0;
+    return ((int (__fastcall *)(void *, void *))(size_t)g_star_orig2)(self, edx);
+}
+// MPSYNC1: stars are built by main's daStar_c class TU, so the object's vptr is that TU's table (??_7daStar_c@@6B@),
+// not the port's _ZTV8daStar_c host table; both slots are wrapped, whichever a star carries answers 0 in an arena.
+extern "C" void *wide_dstar_vtable[];
+#pragma comment(linker, "/alternatename:_wide_dstar_vtable=??_7daStar_c@@6B@")
+extern "C" __declspec(dllimport) int __stdcall VirtualProtect(void *, size_t, unsigned long, unsigned long *);
 void wrap_star_once() {
     if (g_star_wrapped) return;
     static const bool off = std::getenv("SM64DS_EAT_STAR") && *std::getenv("SM64DS_EAT_STAR") == '0';
@@ -568,7 +578,17 @@ void wrap_star_once() {
     if (!g_star_orig) return;        // the slot is not seated yet
     _ZTV8daStar_c[kSlotOnYoshiTryEat] = (void *)&star_eat_face;
     g_star_wrapped = true;
-    std::fprintf(stderr, "[eat] arena eating: PowerStar::OnYoshiTryEat wrapped (the tongue never eats a star)\n");
+    {
+        void **cell = &wide_dstar_vtable[kSlotOnYoshiTryEat];
+        unsigned long old = 0;
+        if (VirtualProtect(cell, sizeof(void *), 0x04, &old)) {
+            g_star_orig2 = (unsigned)(size_t)*cell;
+            if (g_star_orig2) *cell = (void *)&star_eat_face2;
+            VirtualProtect(cell, sizeof(void *), old, &old);
+        }
+    }
+    std::fprintf(stderr, "[eat] arena eating: PowerStar::OnYoshiTryEat wrapped (the tongue never eats a star)%s\n",
+                 g_star_orig2 ? " in both vtables" : "");
 }
 
 // ---------------------------------------------------------------------------
