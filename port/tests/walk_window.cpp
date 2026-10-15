@@ -413,6 +413,7 @@ static bool winapi_load(void)
 #include "fault_probe.h"
 #include "overlay_font.h"
 #include "hal/host_settings.h"   /* settings.json, the launcher's file */
+#include "hal/char_registry.h"    /* CHARSLOT1: custom characters (costumes on the four) */
 #include "hal/pcore.h"            /* PCORE1: P-core / throttling opt-out */
 #include "hal/settings_live.h"   /* run menu1 SETLIVE1: live, saved settings */
 #include "hal/settings_page.h"   /* run menu1 SETMENU1: the in-game settings page */
@@ -5233,6 +5234,26 @@ static const char *const CHAR_NAME[4] = { "Mario", "Luigi", "Wario", "Yoshi" };
 static int g_character;                     /* what the boot actually spawned */
 static int g_character_pending;             /* what the next boot will spawn */
 
+/* ---- THE DEBUG MENU'S CHARACTER ROW: THE FOUR, THEN THE INSTALLED COSTUMES --
+   (CHARSLOT1, hal/char_registry.h). The row cycles 0..3 (mario, luigi, wario,
+   yoshi) and then every registered custom character. A custom one is a costume
+   on its BASE: the ROM sees only the base id, and g_character_pending, the save
+   byte and the Player swap all keep carrying 0..3. What a costume adds is the
+   SKIN, which the file layer applies at process start (SM64DS_CHAR_SKIN), so a
+   change of skin, either way, relaunches the current level. A pick that keeps
+   the skin that is already active is the plain instant swap it always was. */
+static int g_menu_chr = -1;                 /* the row's cursor; -1 follows the game's state */
+static int chr_total(void) { return 4 + port_char_count(); }
+static int chr_sel(void)
+{
+    if (g_menu_chr >= 0 && g_menu_chr < chr_total()) return g_menu_chr;
+    const int a = port_char_active();
+    return a >= 0 ? 4 + a : (g_character_pending & 3);
+}
+static const char *chr_label(int s) { return s < 4 ? CHAR_NAME[s & 3] : port_char_name(s - 4); }
+static int chr_base(int s) { return s < 4 ? (s & 3) : port_char_base(s - 4); }
+static int chr_skin(int s) { return s < 4 ? -1 : s - 4; }
+
 /* data_0209caa0 is declared int[] above (word 2 carries flag bits the boot
    sets); LoadEntranceObjects reads the character as a BYTE at 0x41, which is
    why this casts rather than indexing the int view. */
@@ -6240,14 +6261,19 @@ static void menu_draw(const OvlSurface &fb)
        row says which of the two it will do. The byte is the stateless proof
        that it was staged: the course's own boot rewrites g_character from the
        Player it spawns, and the row is back to the plain text. */
-    if (!menu_live_player() &&
+    if (chr_skin(chr_sel()) != port_char_active())
+        snprintf(ln[MENU_CHARACTER], sizeof ln[0], "character         %s%s",
+                 chr_label(chr_sel()),
+                 menu_live_player() ? "   enter restarts the level"
+                                    : "   needs a level");
+    else if (!menu_live_player() &&
         (((unsigned char *)data_0209caa0)[0x41] & 3) == (g_character_pending & 3))
         snprintf(ln[MENU_CHARACTER], sizeof ln[0], "character         %s%s",
-                 CHAR_NAME[g_character_pending & 3],
+                 chr_label(chr_sel()),
                  "   starts with the course");
     else
         snprintf(ln[MENU_CHARACTER], sizeof ln[0], "character         %s%s",
-                 CHAR_NAME[g_character_pending & 3],
+                 chr_label(chr_sel()),
                  g_character_pending == g_character
                      ? ""
                      : (menu_live_player() ? "   enter to switch"
@@ -6638,6 +6664,21 @@ static void menu_input(int pad_live, const XPad *pad)
             edge &= ~(1u << 0);
         }
     }
+    /* ---- AND IT DOES NOT OPEN UNLESS THE DEBUG MENU SETTING IS ON (CHARSLOT1,
+     * Tango 10-15) ------------------------------------------------------------
+     *
+     * Settings.json DebugMenu, off by default, the in-game GENERAL tab's "Debug
+     * menu" check box and the launcher's page write the same key. F5, Escape
+     * and the pad's BACK are one bit (bit 0), so this one test is all three. It
+     * is the same shape as the multiplayer refusal above and for the same reason
+     * the close is NOT refused: a menu that is somehow open (SM64DS_MENU boots
+     * with it open, and the setting can be turned off with the menu up) must
+     * always be closable. SM64DS_DEBUG_MENU=1 forces it on for a proof run.
+     * The setting is read live, so turning it on takes effect with no restart. */
+    if ((edge & (1u << 0)) && !menu_on && !host_setting_debug_menu()) {
+        fprintf(stderr, "[menu] REFUSED: the Debug menu setting is off\n");
+        edge &= ~(1u << 0);
+    }
     if (edge & (1u << 0)) {
         menu_on = !menu_on;
         fprintf(stderr, "[menu] %s\n", menu_on ? "open" : "closed");
@@ -6925,7 +6966,43 @@ static void menu_input(int pad_live, const XPad *pad)
             case MENU_CHARACTER:
                 /* left and right pick, enter changes -- the same shape
                    as the warp row above */
-                if (edge & (1u << 5)) {
+                if ((edge & (1u << 5)) && chr_skin(chr_sel()) != port_char_active()) {
+                    /* A SKIN CHANGE (CHARSLOT1): the file layer is boot-latched,
+                       so the costume is applied by starting the program again on
+                       the current level with SM64DS_CHAR_SKIN set (or cleared for
+                       a plain character) and SM64DS_CHARACTER the base. Same
+                       one-way door as the level row: refused BEFORE the parent
+                       commits when the level is not mounted. SM64DS_CHAR_RELAUNCH
+                       _DRY=1 prints the environment instead (proof runs). */
+                    const int sk = chr_skin(chr_sel());
+                    const int lv = (int)data_0209f2f8;
+                    char bs[8];
+                    if (!menu_live_player()) {
+                        ss_note("that row needs a level (this is a scene)");
+                        fprintf(stderr, "[menu] character skin change needs a level -- refused\n");
+                    } else if (!port_level_is_mounted(lv)) {
+                        ss_note("this level cannot restart here");
+                        fprintf(stderr, "[menu] character skin change: level %d is not mounted -- refused\n", lv);
+                    } else {
+                        snprintf(bs, sizeof bs, "%d", chr_base(chr_sel()));
+                        fprintf(stderr, "[menu] character %s: level %d restarts with SM64DS_CHARACTER=%s SM64DS_CHAR_SKIN=%s\n",
+                                chr_label(chr_sel()), lv, bs, sk >= 0 ? port_char_key(sk) : "(none)");
+                        if (getenv("SM64DS_CHAR_RELAUNCH_DRY")) {
+                            fprintf(stderr, "[menu] SM64DS_CHAR_RELAUNCH_DRY: not relaunching\n");
+                        } else {
+                            SetEnvironmentVariableA("SM64DS_CHARACTER", bs);
+                            SetEnvironmentVariableA("SM64DS_CHAR_SKIN", sk >= 0 ? port_char_key(sk) : 0);
+                            if (port_menu_relaunch(-1, lv)) {
+                                W.PostQuitMessage_(0);
+                            } else {
+                                ss_note("could not restart the level");
+                                fprintf(stderr, "[menu] character: could not start the level run (win32 %lu)\n",
+                                        (unsigned long)GetLastError());
+                            }
+                        }
+                    }
+                } else if (edge & (1u << 5)) {
+                    g_character_pending = chr_base(chr_sel());
                     if (menu_live_player()) {
                         fprintf(stderr, "[menu] becoming %s\n",
                                 CHAR_NAME[g_character_pending & 3]);
@@ -6964,9 +7041,10 @@ static void menu_input(int pad_live, const XPad *pad)
                         data_02092128[0] = (unsigned char)g_character_pending;
                     }
                 } else {
-                    g_character_pending =
-                        (dec ? g_character_pending + 3
-                             : g_character_pending + 1) & 3;
+                    const int tot = chr_total();
+                    g_menu_chr = dec ? (chr_sel() + tot - 1) % tot
+                                     : (chr_sel() + 1) % tot;
+                    g_character_pending = chr_base(g_menu_chr);
                 }
                 break;
             case MENU_SNAP:

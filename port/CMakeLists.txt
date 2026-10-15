@@ -17579,6 +17579,8 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     # run mods1: the mods list (settings.json EnabledMods) and the files/ layer,
     # chained after stage_geom from .CRT$XCW. Same two targets, nowhere else.
     hal/mods.cpp
+    # CHARSLOT1: custom characters registry (character block of mod.json), used by hal/mods.cpp
+    hal/char_registry.cpp
     # sound/ layer of the mods (run mods1, MODSOUND1): hands hal/mods.cpp to the SDAT loader.
     hal/sdat_mods.cpp
     # run mods1: the plugin loader (code mods, API v1, mods_api/sm64ds_mod.h)
@@ -18043,6 +18045,8 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     # run mods1: the mods list (settings.json EnabledMods) and the files/ layer,
     # chained after stage_geom from .CRT$XCW. Same two targets, nowhere else.
     hal/mods.cpp
+    # CHARSLOT1: custom characters registry (character block of mod.json), used by hal/mods.cpp
+    hal/char_registry.cpp
     # sound/ layer of the mods (run mods1, MODSOUND1): hands hal/mods.cpp to the SDAT loader.
     hal/sdat_mods.cpp
     # run mods1: the plugin loader (code mods, API v1, mods_api/sm64ds_mod.h)
