@@ -29,6 +29,20 @@
    scene overlay is loaded again (func_0201a694 skips a scene whose overlay is
    already resident), so a retry that stays in the overlay is not reset.
 
+   WHY ONLY THE TU OBJECTS AND THE GUARD WORDS, NOT THE WHOLE MOUNT. The overlay's
+   per-symbol and whole-image mounts (tools/ovdata.py, build/port/host-src/ovNNN_*.c)
+   are the rest of its .data/.bss. Restoring them as well was tried and rejected:
+   the level overlays bring their mount up lazily (rebasing patch passes, sinits,
+   seats run after the first load), so a first-load copy of a mount holds the
+   un-rebased ROM words, and putting those back after the first visit crashed the
+   ending row (ov009). One mounted word is a different case: the guard of a
+   function-local static of a TU (data_ovNNN_XXXXXXXX |= 1). The object is
+   restored with the TU, so its guard has to go back with it or the one-time
+   construction is skipped and the object stays at its start-up zero (daDoor_c's
+   75-unit offset, ov100). Guards are plain bss flags no bring-up writes, so the
+   generator lists them (ovreset.py guards()) and they are restored from their
+   first-load copy like the rest.
+
    SM64DS_OVL_RESET=0 turns this off (the once-per-process behaviour);
    =2 only reports what a restore would have changed; SM64DS_OVL_RESET_LOG=1
    lists the changed address runs of every restore. */
@@ -170,7 +184,7 @@ extern "C" int port_ov_load(int ov)
             std::fprintf(stderr, "[ovreset] ov%03d load #1: start-up image taken, %zu bytes (%u mounted guard words)\n", ov, tot, o.nm);
         return 0;
     }
-    size_t diff = 0, tot = 0;
+    size_t diff = 0, tot = 0, after = 0;
     for (int i = 0; i < 2 + (int)o.nm; ++i) {
         Range &r = i < 2 ? o.r[i] : o.m[i - 2];
         if (!r.n || !r.snap)
@@ -199,9 +213,14 @@ extern "C" int port_ov_load(int ov)
         }
         if (mode() == 1)
             std::memcpy((void *)r.b, r.snap, r.n);
+        if (logging())
+            for (size_t k = 0; k < r.n; ++k)
+                after += cur[k] != r.snap[k];
     }
-    std::fprintf(stderr, "[ovreset] ov%03d load #%u: %s %zu bytes, %zu differed from the start-up image\n",
-                 ov, o.loads, mode() == 1 ? "restored" : "would restore", tot, diff);
+    std::fprintf(stderr, "[ovreset] ov%03d load #%u: %s %zu bytes, %zu differed from the start-up image%s",
+                 ov, o.loads, mode() == 1 ? "restored" : "would restore", tot, diff, logging() ? "" : "\n");
+    if (logging())
+        std::fprintf(stderr, ", %zu differ after this load\n", after);
     return mode() == 1;
 }
 
