@@ -15147,9 +15147,14 @@ int main(void)
                 if (cb_zi) zoom -= 1;      /* CamZoomIn / CamZoomOut, any device */
                 if (cb_zo) zoom += 1;
                 zoom -= mouse_wheel;   /* wheel forward pulls the eye in */
-                if (stick_zoom) {          /* CameraStickZoom: up pulls the eye in, a few steps a frame at the stop */
-                    const int sz = fc_stick_rate(stick_ry, 4);
-                    if (sz) zoom -= sz;
+                if (stick_zoom) {          /* CameraStickZoom: up pulls the eye in; the rate follows the stick (an eighth step at the stop is 1/32 of the distance) */
+                    const int sz = fc_stick_rate(stick_ry, 32);
+                    if (sz) {
+                        fc_dist_owned = 1;
+                        fc_dist -= sz * (fc_dist >> 8);
+                        if (fc_dist < 0x30000) fc_dist = 0x30000;
+                        if (fc_dist > 0x2000000) fc_dist = 0x2000000;
+                    }
                 }
                 if (zoom) {
                     /* the player has taken the distance off the game; the
