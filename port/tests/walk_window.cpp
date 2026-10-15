@@ -417,6 +417,7 @@ extern "C" void host_menu_cursor_sound_flush(void);   /* hal/menu_compose.cpp: o
 #include "hal/char_registry.h"    /* CHARSLOT1: custom characters (costumes on the four) */
 #include "hal/char_save.h"        /* CHARSAVE1: the pick survives quitting (save/characters.json) */
 #include "hal/char_door.h"        /* CHARDOOR1: the Rec Room white star door picks the character */
+#include "hal/char_strip.h"       /* PRECOURSE1: the character strip on the star select */
 #include "hal/pcore.h"            /* PCORE1: P-core / throttling opt-out */
 #include "hal/settings_live.h"   /* run menu1 SETLIVE1: live, saved settings */
 #include "hal/settings_page.h"   /* run menu1 SETMENU1: the in-game settings page */
@@ -5779,6 +5780,10 @@ static const char *const PORT_RELAUNCH_CLEAR[] = {
  * is left to its own default -- a level is inset unless somebody says
  * otherwise, and a forced SM64DS_DUAL_SCREEN carried over from the minigame
  * that launched this process would be exactly that somebody. */
+/* PRECOURSE1: the star select's restart at the act hands the child the entrance and the act the course is entered with (the debug level row's own
+   knobs, SM64DS_ENTRANCE and SM64DS_STAR_FILTER); SM64DS_STARSEL_RESUME marks the child so that its own later restarts clear them again */
+static const char *g_relaunch_entrance;
+static const char *g_relaunch_act;
 static int port_menu_relaunch(int scene_id, int level_id)
 {
     char exe[MAX_PATH];
@@ -5801,6 +5806,15 @@ static int port_menu_relaunch(int scene_id, int level_id)
        back into VS, set only by the VS rows' own launcher below */
     SetEnvironmentVariableA("SM64DS_VS_MAP", 0);
     SetEnvironmentVariableA("SM64DS_VS_MODE", 0);
+    if (g_relaunch_entrance) {
+        SetEnvironmentVariableA("SM64DS_ENTRANCE", g_relaunch_entrance);
+        SetEnvironmentVariableA("SM64DS_STAR_FILTER", g_relaunch_act);
+        SetEnvironmentVariableA("SM64DS_STARSEL_RESUME", "1");
+    } else if (getenv("SM64DS_STARSEL_RESUME")) {
+        SetEnvironmentVariableA("SM64DS_ENTRANCE", 0);
+        SetEnvironmentVariableA("SM64DS_STAR_FILTER", 0);
+        SetEnvironmentVariableA("SM64DS_STARSEL_RESUME", 0);
+    }
     if (scene_id >= 0) {
         snprintf(sid, sizeof sid, "%d", scene_id);
         SetEnvironmentVariableA("SM64DS_SCENE", sid);
@@ -6699,6 +6713,92 @@ static int cd_frame(int pad_live, const XPad *pad)
     return 1;
 }
 
+/* ---- THE STAR SELECT'S CHARACTER STRIP (run hunt8, lane PRECOURSE1) ----------------------------------------------------------
+   hal/char_strip.cpp is the strip (the list, the pages, the cursor, the pointer); this is its seat in the two frame loops. It does not hold the
+   game still: the star select goes on running under it. It reads the devices behind the same gates the picker does and answers which DS key bits
+   the ROM must not see this frame (g_cs_hide, applied where PadData is written, so a press of the strip never also moves a star or starts the act).
+   A pick is applied here: the ROM character with no costume active is the in-place change the debug menu's row makes between two courses (the save
+   byte and data_02092128, the pair StartFile writes); a change of SKIN is remembered and the course is started again in a new process at the act
+   (starsel_finish_hook, called by hal/level_change.cpp when the star select is finished). */
+static unsigned g_cs_hide;
+static void cs_apply_pick(int sel)
+{
+    const int sk = chr_skin(sel);
+    g_character_pending = chr_base(sel);
+    character_set_pending(g_character_pending);
+    data_02092128[0] = (unsigned char)g_character_pending;
+    port_char_save_record(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "", g_character_pending);
+    if (sk != port_char_active()) {
+        port_char_strip_set_pending(sel);
+        fprintf(stderr, "[strip] %s: the base %s is set; its skin (%s) is a restart at the act
+", chr_label(sel), CHAR_NAME[g_character_pending & 3], sk >= 0 ? port_char_key(sk) : "plain");
+    } else {
+        port_char_strip_set_pending(-1);
+        fprintf(stderr, "[strip] %s: set in place for the course that starts next (save byte and data_02092128 = %d)
+", chr_label(sel), g_character_pending & 3);
+    }
+}
+
+/* hal/level_change.cpp calls this when the star select is finished (the act is chosen and its fade is done). A pick whose SKIN differs from the one this
+   process runs cannot be applied here (the file layer is boot-latched), so the course is started again in a new process: the same course, entrance
+   and act, the pick's base character and skin (the white door's restart, at the star select). Returns 0 when there is nothing to do; on a restart the
+   child is up and this process ends here. */
+extern "C" int (*port_starsel_finish_hook)(int level, int entrance, int act);
+static int starsel_finish_hook(int level, int entrance, int act)
+{
+    const int sel = port_char_strip_skin_pending();
+    if (sel < 0 || chr_skin(sel) == port_char_active()) return 0;
+    const int sk = chr_skin(sel);
+    char bs[8], en[16], ac[16];
+    snprintf(bs, sizeof bs, "%d", chr_base(sel));
+    snprintf(en, sizeof en, "%d", entrance);
+    snprintf(ac, sizeof ac, "%d", act);
+    fprintf(stderr, "[strip] the act is chosen: course %d (entrance %d, act %d) restarts as %s (SM64DS_CHARACTER=%s SM64DS_CHAR_SKIN=%s)
+", level, entrance, act, chr_label(sel), bs, sk >= 0 ? port_char_key(sk) : "(none)");
+    if (getenv("SM64DS_CHAR_RELAUNCH_DRY")) { fprintf(stderr, "[strip] SM64DS_CHAR_RELAUNCH_DRY: not relaunching
+"); return 0; }
+    SetEnvironmentVariableA("SM64DS_HOST_KEY", 0);
+    SetEnvironmentVariableA("SM64DS_CHARACTER", bs);
+    port_char_save_record(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "", chr_base(sel));
+    port_char_save_child_env(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "");
+    fprintf(stderr, "[strip] saved the open file before the restart: %d
+", _ZN8SaveData15SaveCurrentFileEv());
+    g_relaunch_entrance = en;
+    g_relaunch_act = ac;
+    const int ok = port_menu_relaunch(-1, level);
+    g_relaunch_entrance = g_relaunch_act = 0;
+    if (!ok) { fprintf(stderr, "[strip] could not start the course again (win32 %lu); it starts here
+", (unsigned long)GetLastError()); return 0; }
+    fflush(stderr);
+    ExitProcess(0);
+    return 1;
+}
+static const int starsel_finish_seated = (port_starsel_finish_hook = starsel_finish_hook, 1);
+
+static void cs_frame(int pad_live, const XPad *pad)
+{
+    g_cs_hide = 0;
+    if (menu_on) return;
+    if (!hal_menu_starsel_up()) { port_char_strip_idle(); return; }        /* nothing but a scene-id compare outside the star select */
+    SpInput in;
+    memset(&in, 0, sizeof in);
+    sp_read_devices(in, pad_live, pad);
+    in.wheel = 0;
+    {   /* a DS stylus tap (SM64DS_CLICK_TEST / SM64DS_HOST_CLICK, the path a pen on a touch screen takes into poll_touch) reads as a press at that spot of the picture, as the picker takes it */
+        int cx = 0, cy = 0, fx = 0, fy = 0;
+        if (port_touch_inject_peek(&cx, &cy) && hal_present_client_to_fb(cx, cy, &fx, &fy)) {
+            in.mouse_valid = 1; in.mouse_x = fx; in.mouse_y = fy; in.mouse_l = 1;
+        }
+    }
+    g_cs_hide = port_char_strip_frame(&in);
+    const int pick = port_char_strip_take_pick();
+    if (pick >= 0) {
+        fprintf(stderr, "[strip] applying %s
+", chr_label(pick));
+        cs_apply_pick(pick);
+    }
+}
+
 /* PAUSE3: the new pause's own controls (hal/menu_recipe_pause.cpp menu_pause_input): LB / RB / Q / E slide the planks and the star tracker (4:3) or page
    the courses (wide), the wooden edge tabs are clicked here. Reads the raw devices behind the same gates the page's frame uses, and only while the pause
    recipe is up; with OneScreenMenus off the recipe is never up, so nothing here runs a read. */
@@ -6742,6 +6842,7 @@ static void menu_input(int pad_live, const XPad *pad)
     pause3_input(pad_live, pad);
     if (sp_frame(pad_live, pad)) return;
     if (cd_frame(pad_live, pad)) return;
+    cs_frame(pad_live, pad);
     if (g_selftest) return;
     static unsigned menu_prev;
     unsigned held = 0;
@@ -12092,6 +12193,7 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
            (0xf0, 0x08, 0x04) and pass straight through. Named (run
            link100, lane INPUTRAW) because the pad-mirror store below
            wants this SAME value. */
+        if (g_cs_hide) btn = (unsigned short)(btn & ~g_cs_hide);      /* PRECOURSE1: what the star select's strip took */
         const unsigned short scene_raw_all =
             (unsigned short)(host_btn_to_raw_keys(btn) | (btn & 0x00fc));
         port_host_keys_set(scene_raw_all);
@@ -12186,6 +12288,8 @@ static void scene_host_present_frame(HWND hwnd, int stacked,
         ovl_draw(surf, os);
     }
     if (menu_on) menu_draw(surf);
+    else if (!stacked && !rb_skip_render())
+        port_char_strip_draw(surf.px, surf.stride, ntr::active_w, ntr::active_h);      /* PRECOURSE1: the star select's character strip */
     if (!rb_skip_render())
         toast_draw(surf);
 

@@ -1587,6 +1587,11 @@ extern int data_020a0e58[];
    that ends in PadData, the scene tick, the present and the pace. */
 extern "C" int (*port_interlude_frame_hook)(int frame) = 0;
 
+/* PRECOURSE1: asked once when the star select is finished (its act is chosen, its fade is done), with the course, the entrance and the act the course
+   is entered with. The window seats it (tests/walk_window.cpp starsel_finish_hook): a character pick whose costume differs from the one this process
+   started with is a new process for the same course. 0 = carry on in this process (every other case, and the default with nobody to answer). */
+extern "C" int (*port_starsel_finish_hook)(int level, int entrance, int act) = 0;
+
 /* Read by the three ROM Stage slots (hal/stage_frame.cpp's
    port_stage_rom_behavior and port_stage_rom_render, hal/stage_bridges.cpp's
    st_bbeh). While this answers 1 the port has no Stage, which is what the
@@ -1803,6 +1808,8 @@ static void port_level_scene_interlude(void)
                          "The boot half runs now.\n",
                          f, f - asked, (unsigned)port_scene_killed(),
                          (unsigned)data_02092660);
+            if (port_starsel_finish_hook)
+                port_starsel_finish_hook((int)data_02092110, (int)data_0209f268, (int)data_0209f1f0);
             break;
         }
     }
