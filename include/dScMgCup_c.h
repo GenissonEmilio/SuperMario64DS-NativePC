@@ -63,7 +63,18 @@ typedef char CupPos_size_must_be_0x8[sizeof(CupPos) == 0x8 ? 1 : -1];
 #endif
 
 struct dScMgCup_c : dScMgSingle3DBase_c {
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScMgCup_c();   /* no slot */
+#else
     virtual ~dScMgCup_c();
+#endif
 
     /* Eight states, dispatched by Behavior through data_ov006_02141870.
        The spellings are not in the ROM. */

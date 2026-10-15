@@ -42,7 +42,18 @@ struct dScGameOver_c : dScene_c {
        vtable and, through slots 16/17, this destructor pair. The empty body
        still reproduces all 0x8c bytes: three inlined vptr stores plus
        fBase_c::~fBase_c, and D0's inherited operator delete. */
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScGameOver_c() {}   /* no slot */
+#else
     virtual ~dScGameOver_c() {}                          /* slots 16 (D1), 17 (D0) */
+#endif
 
     /* --- overrides, in _ZTV8dScene_c/_ZTV7fBase_c order. --- */
     virtual s32  InitResources();                        /* slot  0 */

@@ -111,7 +111,18 @@ struct dScMgFlower_c : dScMgSingle3DBase_c {
        after them in the emitted body (the own-vtable store, mSysTracker's
        destruction and the chain to ~dScMgBase_c) is the compiler's own inlining
        of dScMgSingle3DBase_c's already-inline destructor. */
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScMgFlower_c();   /* no slot */
+#else
     virtual ~dScMgFlower_c();
+#endif
 
     /* Defined inline at the end of src/actors/dScMgFlower_c.cpp, where the
        factory's `new` expands it: mArray through __cxa_vec_ctor, then the

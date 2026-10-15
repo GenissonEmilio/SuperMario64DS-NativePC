@@ -46,7 +46,18 @@
 extern "C" int func_ov006_020c21e4(char *t); /* decl_common.h's own signature */
 
 struct dScMgSlot3_c : dScMgSingle3DBase_c {
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScMgSlot3_c();   /* no slot */
+#else
     virtual ~dScMgSlot3_c();
+#endif
 
     /* This class's own overrides, read off the ROM's vtable: the slots where the
        table differs from dScMgSingle3DBase_c's. The ones recovered off this

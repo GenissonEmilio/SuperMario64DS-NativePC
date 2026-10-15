@@ -55,7 +55,18 @@ extern "C" void NullDestructor_0203d47c(void);
 extern "C" void func_ov006_0210d894(void);
 
 struct dScMgSmartball_c : dScMgBase_c {
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScMgSmartball_c();   /* no slot */
+#else
     virtual ~dScMgSmartball_c();
+#endif
 
     /* This class's own overrides, read off the ROM's vtable: the slots where the
        table differs from dScMgBase_c's. Spelled WITHOUT the `virtual` keyword, the

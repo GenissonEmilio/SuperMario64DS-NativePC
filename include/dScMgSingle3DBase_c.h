@@ -21,7 +21,18 @@ struct dScMgSingle3DBase_c : dScMgBase_c {
        an undefined external (measured on dScMgMemory_c). Being inline, it is
        not the key function; AfterInitResources is, which places the vtable
        and typeinfo in src/minigames/d_s_mg_single3_d_base.cpp. */
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScMgSingle3DBase_c() {}   /* no slot */
+#else
     virtual ~dScMgSingle3DBase_c() {}
+#endif
 
     /* Overrides of dScMgBase_c virtuals, in vtable order; dScMgBase_c has
        its own bodies at all six slots, 26 and 33 included. This class adds

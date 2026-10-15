@@ -77,7 +77,18 @@ struct dScMgCurling_c : dScMgBase_c {
     /* Declared, not defined inline -- a leaf, so nothing needs to inline
        it; real body in src/actors/dScMgCurling_c.cpp, which is the whole
        class. */
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScMgCurling_c();   /* no slot */
+#else
     virtual ~dScMgCurling_c();
+#endif
 
     virtual s32 InitResources();  /* slot 0 */
     virtual s32 Behavior();       /* slot 6 */

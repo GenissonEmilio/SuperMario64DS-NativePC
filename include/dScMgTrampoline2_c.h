@@ -28,7 +28,18 @@ extern "C" void func_ov006_02120938(void);
 struct dScMgTrampoline2_c : dScMgD3DBase_c {
     typedef void (dScMgTrampoline2_c::*State)();
 
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScMgTrampoline2_c() {   /* no slot */
+#else
     virtual ~dScMgTrampoline2_c() {
+#endif
         __cxa_vec_cleanup(mArray6, 5, 0x24, (void *)func_ov006_02120938);
         __cxa_vec_cleanup(mArray5, 0x14, 0x78, (void *)func_ov006_02122c68);
         __cxa_vec_cleanup(mArray4, 0xa, 0x24, (void *)func_ov006_020eed64);

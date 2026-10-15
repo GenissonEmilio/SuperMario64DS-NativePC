@@ -79,7 +79,18 @@ typedef char dScMgPanel_Particle_size_must_be_0x18[sizeof(dScMgPanel_Particle) =
 #endif
 
 struct dScMgPanel_c : dScMgBase_c {
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScMgPanel_c();   /* no slot */
+#else
     virtual ~dScMgPanel_c();
+#endif
     virtual s32 InitResources();         /* slot 0 */
     virtual s32 Behavior();              /* slot 6 */
     virtual s32 Render();                /* slot 9 */

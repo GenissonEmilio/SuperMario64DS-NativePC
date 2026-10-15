@@ -49,7 +49,18 @@ struct dScMgTrampoline_c : dScMgD3DBase_c {
     /* In the class body so D1 is emitted before D0 and no D2 is emitted.
        A virtual destructor is still reached through the vtable, not inlined
        into callers. */
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScMgTrampoline_c() {   /* no slot */
+#else
     virtual ~dScMgTrampoline_c() {
+#endif
         __cxa_vec_cleanup(mArray3, 5, 0x24, (void *)func_ov006_02120938);
         __cxa_vec_cleanup(mArray2, 3, 0x32c, (void *)func_ov006_020d1008);
         __cxa_vec_cleanup(mArray1, 4, 0xd0, (void *)func_ov006_020ccfc8);

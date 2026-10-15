@@ -91,7 +91,18 @@ typedef char dMgMemory2Cursor_c_size_must_be_0x10[sizeof(dMgMemory2Cursor_c) == 
 #endif
 
 struct dScMgMemory2_c : dScMgSingle3DBase_c {
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScMgMemory2_c();   /* no slot */
+#else
     virtual ~dScMgMemory2_c();
+#endif
 
     /* The out-of-line destructor is the key function, so this TU emits
        _ZTV/_ZTI/_ZTS14dScMgMemory2_c as compiler-only output; the manifest

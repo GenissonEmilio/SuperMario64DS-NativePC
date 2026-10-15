@@ -27,7 +27,18 @@ struct dScMiniGm_c : dScene_c {
 
     /* Inline is load-bearing: out-of-line emits D0 before D1 plus a
        homeless D2. Empty because this class adds only scalars. */
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScMiniGm_c() {}   /* no slot */
+#else
     virtual ~dScMiniGm_c() {}                            /* slots 16 (D1), 17 (D0) */
+#endif
 
     virtual s32  InitResources();                        /* slot  0 */
     virtual s32  CleanupResources();                     /* slot  3 */
