@@ -4181,6 +4181,24 @@ extern "C" void port_r3g_gc_enter(unsigned slot, void *self)
    vt[1]. Answers 1 -- "carry on with the rest of the beat" -- for a block this
    port has not seated and for no block at all, which is the ROM's own null
    test in every one of the four. */
+/* MGSYNC1: A BLOCK OBJECT WHOSE VPTR IS THE COMPILER'S OWN TABLE.
+   Main's __sinit_d_s_mg_base constructs dScMgBase_c::graphCallback_c with a real
+   constructor, which stores MSVC's compiled vtable for the class into the block
+   (data_ov004_020beb74) instead of the ROM table data_ov004_020bc03c this port
+   seats the four host faces into. graph_block_word then sees a vptr that is not
+   in g_gc_seated and answers "nothing to dispatch", so slot 2 (the scene's
+   OnKicked, the D3D family's screen selector and the Snowball's scroll updater)
+   never ran on 372 373 377 384 385. The pin names the block object and the
+   seated table the constructor should have stored; the beat puts it back before
+   it looks. Only an object the pin names is touched. */
+static void *g_gc_pin_obj;
+static void *g_gc_pin_vt;
+extern "C" void port_graph_block_pin(void *obj, void *vt)
+{
+    g_gc_pin_obj = obj;
+    g_gc_pin_vt = vt;
+}
+
 static int graph_block_word(unsigned word)
 {
     static int off = -1;
@@ -4191,6 +4209,8 @@ static int graph_block_word(unsigned word)
        declaration is at file scope above; see its note. */
     void *p = *(void **)data_0209d4a8;
     if (!p) return 1;
+    if (p == g_gc_pin_obj && *(void **)p != g_gc_pin_vt)
+        *(void **)p = g_gc_pin_vt;
     void **vt = *(void ***)p;
     for (unsigned i = 0; i < g_gc_seated_n; ++i) {
         if (g_gc_seated[i] != (void *)vt) continue;

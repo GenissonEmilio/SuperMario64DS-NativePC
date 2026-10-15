@@ -936,6 +936,8 @@ static unsigned mg_raw_left(void **vt, unsigned n)
  */
 extern "C" void port_graph_block_register(void *vt);
 extern "C" unsigned char data_ov004_020bc03c[];
+extern "C" unsigned char data_ov004_020beb74[];
+extern "C" void port_graph_block_pin(void *obj, void *vt);
 extern "C" int _ZN11dScMgBase_c15graphCallback_c14GraphCallback0Ev(char *c);
 extern "C" int _ZN11dScMgBase_c15graphCallback_c14GraphCallback1Ev(char *c);
 extern "C" int _ZN11dScMgBase_c15graphCallback_c14GraphCallback2Ev(char *c);
@@ -984,6 +986,7 @@ static void port_scene_mg_gc_seat(void)
     vt[2] = (void *)mg_gc2;
     vt[3] = (void *)mg_gc3;
     port_graph_block_register(vt);
+    port_graph_block_pin((void *)data_ov004_020beb74, (void *)vt);   /* MGSYNC1, see scene_boot.cpp */
     std::fflush(stderr);
 }
 
