@@ -257,7 +257,7 @@ DSSTATE_END
 HUD_FACE(_ZN3HUD15RenderCoinCountEv, RenderCoinCount)
 /* CHARHUD1: a costume's own life icon, repainted into the sprite tiles before the ROM draws them (here, and in port_adv_life_count_top) */
 extern "C" void port_char_hud_apply(int what);
-extern "C" void _ZN3HUD15RenderLifeCountEv(void *s) { port_char_hud_apply(0); ((HUD *)s)->HUD::RenderLifeCount(); }
+extern "C" void _ZN3HUD15RenderLifeCountEv(void *s) { port_char_hud_apply(4); ((HUD *)s)->HUD::RenderLifeCount(); }
 HUD_FACE(_ZN3HUD15RenderTimeTimerEv, RenderTimeTimer)
 HUD_FACE(_ZN3HUD17RenderHealthMeterEv, RenderHealthMeter)
 HUD_FACE(_ZN3HUD17UpdateHealthMeterEv, UpdateHealthMeter)

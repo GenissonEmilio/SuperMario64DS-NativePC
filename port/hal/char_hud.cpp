@@ -14,6 +14,7 @@
 extern "C" {
 extern void *_ZN3OAM10LIFE_ICONSE[];
 extern void *_ZN3OAM15MM_PLAYER_ICONSE[];
+extern unsigned char data_ov002_02111178;     /* HUD::RenderLifeCount: states 3..5 draw on engine A, else B */
 extern unsigned char data_ov001_020abb34[];   /* the four star select portrait lists, 0x20 bytes apart, base 0 1 2 3 */
 }
 
@@ -139,67 +140,64 @@ bool sample(const Pic &P, int W, int H, int px, int py, uint16_t *col555)
     return true;
 }
 
-/* Everything one list needs written to repaint it with P on engine eng (0 A, 1 B). */
-void build_plan(int eng, const void *list, const Pic &P, Plan *pl, const char *tag)
+/* Everything one ELEMENT needs written: nl sprite lists (list l drawn on engine eng[l] from picture pic[l]). Lists of one element often
+   share tiles and palette banks (the minimap marker is a face sprite shared by three looks plus a cap sprite per look), so the palettes
+   are built per (engine, colour depth, bank) over every list that uses the bank, and one colour always gets one index. */
+void build_element(int nl, const int *eng, const void *const *lists, const Pic *const *pic, Plan *pl, const char *tag)
 {
     pl->wr.clear();
     pl->ok = false;
-    Ent e[8];
-    const int n = parse_list(list, e);
-    if (n == 0 || !P.ok()) return;
-    const uint32_t dispcnt = rd32(eng ? 0x04001000u : 0x04000000u);
-    pl->dispcnt = dispcnt;
-    const uint32_t boundary = 32u << ((dispcnt >> 20) & 3);
-    const bool map1d = (dispcnt >> 4) & 1;
-    const uint32_t vram = eng ? 0x06600000u : 0x06400000u;
-    const uint32_t pltt = eng ? 0x05000600u : 0x05000200u;
-    const uint32_t objext = (eng && ((dispcnt >> 31) & 1)) ? 0x068A0000u : 0;
-    int x0 = 9999, y0 = 9999, x1 = -9999, y1 = -9999;
-    for (int i = 0; i < n; ++i) {
-        if (e[i].x < x0) x0 = e[i].x;
-        if (e[i].y < y0) y0 = e[i].y;
-        if (e[i].x + e[i].w > x1) x1 = e[i].x + e[i].w;
-        if (e[i].y + e[i].h > y1) y1 = e[i].y + e[i].h;
-    }
-    const int W = x1 - x0, H = y1 - y0;
-    if (W < 1 || H < 1 || W > 256 || H > 256) return;
-    /* the cut-out of the whole box, once */
-    std::vector<int> boxcol((size_t)W * H, -1);
-    for (int y = 0; y < H; ++y)
-        for (int x = 0; x < W; ++x) {
-            uint16_t c;
-            if (sample(P, W, H, x, y, &c)) boxcol[(size_t)y * W + x] = c;
-        }
-    /* sprites sharing a palette bank (and colour depth) share one palette: group them */
-    struct Grp { bool c256; unsigned pal; std::vector<std::pair<uint16_t, int> > cols; std::vector<uint16_t> pal_out; std::vector<std::pair<uint16_t, int> > map; };
+    pl->dc[0] = rd32(0x04000000u);
+    pl->dc[1] = rd32(0x04001000u);
+    struct LB { Ent e[8]; int n, x0, y0, W, H; std::vector<int> col; };
+    std::vector<LB> lb((size_t)nl);
+    struct Grp { int eng; bool c256; unsigned pal; std::vector<std::pair<uint16_t, int> > cols; std::vector<uint16_t> pal_out; std::vector<std::pair<uint16_t, int> > map; };
     std::vector<Grp> grp;
-    std::vector<int> gi((size_t)n, 0);
-    for (int i = 0; i < n; ++i) {
-        const bool c256 = (e[i].a0 & 0x2000) != 0;
-        const unsigned pal = (e[i].a2 >> 12) & 0xF;
-        int g = -1;
-        for (size_t k = 0; k < grp.size(); ++k) if (grp[k].c256 == c256 && grp[k].pal == pal) g = (int)k;
-        if (g < 0) { Grp ng; ng.c256 = c256; ng.pal = pal; grp.push_back(ng); g = (int)grp.size() - 1; }
-        gi[(size_t)i] = g;
-    }
-    for (int i = 0; i < n; ++i) {
-        Grp &G = grp[(size_t)gi[(size_t)i]];
-        for (int sy = 0; sy < e[i].h; ++sy)
-            for (int sx = 0; sx < e[i].w; ++sx) {
-                const int bx = e[i].x - x0 + sx, by = e[i].y - y0 + sy;
-                const int c = boxcol[(size_t)by * W + bx];
-                if (c < 0) continue;
-                bool found = false;
-                for (size_t k = 0; k < G.cols.size(); ++k) if (G.cols[k].first == c) { ++G.cols[k].second; found = true; break; }
-                if (!found) G.cols.push_back(std::make_pair((uint16_t)c, 1));
+    for (int l = 0; l < nl; ++l) {
+        LB &B = lb[(size_t)l];
+        B.n = parse_list(lists[l], B.e);
+        if (B.n == 0 || !pic[l] || !pic[l]->ok()) { B.n = 0; continue; }
+        int x1 = -9999, y1 = -9999;
+        B.x0 = 9999; B.y0 = 9999;
+        for (int i = 0; i < B.n; ++i) {
+            if (B.e[i].x < B.x0) B.x0 = B.e[i].x;
+            if (B.e[i].y < B.y0) B.y0 = B.e[i].y;
+            if (B.e[i].x + B.e[i].w > x1) x1 = B.e[i].x + B.e[i].w;
+            if (B.e[i].y + B.e[i].h > y1) y1 = B.e[i].y + B.e[i].h;
+        }
+        B.W = x1 - B.x0; B.H = y1 - B.y0;
+        if (B.W < 1 || B.H < 1 || B.W > 256 || B.H > 256) { B.n = 0; continue; }
+        B.col.assign((size_t)B.W * B.H, -1);
+        for (int y = 0; y < B.H; ++y)
+            for (int x = 0; x < B.W; ++x) {
+                uint16_t c;
+                if (sample(*pic[l], B.W, B.H, x, y, &c)) B.col[(size_t)y * B.W + x] = c;
             }
+        for (int i = 0; i < B.n; ++i) {
+            const Ent &s = B.e[i];
+            const bool c256 = (s.a0 & 0x2000) != 0;
+            const unsigned pal = (s.a2 >> 12) & 0xF;
+            int g = -1;
+            for (size_t k = 0; k < grp.size(); ++k) if (grp[k].eng == eng[l] && grp[k].c256 == c256 && grp[k].pal == pal) g = (int)k;
+            if (g < 0) { Grp ng; ng.eng = eng[l]; ng.c256 = c256; ng.pal = pal; grp.push_back(ng); g = (int)grp.size() - 1; }
+            Grp &G = grp[(size_t)g];
+            for (int sy = 0; sy < s.h; ++sy)
+                for (int sx = 0; sx < s.w; ++sx) {
+                    const int c = B.col[(size_t)(s.y - B.y0 + sy) * B.W + (s.x - B.x0 + sx)];
+                    if (c < 0) continue;
+                    bool found = false;
+                    for (size_t k = 0; k < G.cols.size(); ++k) if (G.cols[k].first == c) { ++G.cols[k].second; found = true; break; }
+                    if (!found) G.cols.push_back(std::make_pair((uint16_t)c, 1));
+                }
+        }
     }
     for (size_t g = 0; g < grp.size(); ++g) {
         Grp &G = grp[g];
-        /* palette room: a 16 colour bank has entries 1..15; a 256 colour sprite on the extended palette 1..255; a 256 colour sprite on the
-           shared flat palette is mapped onto the colours already there (writing it would recolour every other 256 colour sprite) */
-        const bool flat256 = G.c256 && !objext;
-        if (flat256) {
+        const uint32_t pltt = G.eng ? 0x05000600u : 0x05000200u;
+        const uint32_t objext = (G.eng && ((pl->dc[1] >> 31) & 1)) ? 0x068A0000u : 0;
+        /* a 16 colour bank has entries 1..15; a 256 colour sprite on the extended palette 1..255; a 256 colour sprite on the shared flat
+           palette is mapped onto the colours already there (writing it would recolour every other 256 colour sprite) */
+        if (G.c256 && !objext) {
             std::vector<uint16_t> have;
             for (int k = 1; k < 256; ++k) have.push_back(rd16(pltt + (uint32_t)k * 2u) & 0x7FFF);
             for (size_t c = 0; c < G.cols.size(); ++c) {
@@ -213,7 +211,6 @@ void build_plan(int eng, const void *list, const Pic &P, Plan *pl, const char *t
                 }
                 G.map.push_back(std::make_pair(col, best));
             }
-            G.pal_out.clear();
         } else {
             quantise(G.cols, G.c256 ? 255 : 15, &G.pal_out, &G.map);
             for (size_t k = 0; k < G.pal_out.size(); ++k) {
@@ -224,51 +221,60 @@ void build_plan(int eng, const void *list, const Pic &P, Plan *pl, const char *t
         }
     }
     /* tiles: each sprite's stored pixels, 16 colour tiles two to a byte */
-    for (int i = 0; i < n; ++i) {
-        const Ent &s = e[i];
-        const Grp &G = grp[(size_t)gi[(size_t)i]];
-        const bool c256 = G.c256, hflip = (s.a1 & 0x1000) != 0, vflip = (s.a1 & 0x2000) != 0;
-        const uint32_t tile = s.a2 & 0x3FF;
-        std::vector<uint8_t> idxv((size_t)s.w * s.h, 0);
-        for (int sy = 0; sy < s.h; ++sy)
-            for (int sx = 0; sx < s.w; ++sx) {
-                const int bx = s.x - x0 + sx, by = s.y - y0 + sy;
-                const int c = boxcol[(size_t)by * W + bx];
-                uint8_t idx = 0;
-                if (c >= 0)
-                    for (size_t k = 0; k < G.map.size(); ++k) if (G.map[k].first == c) { idx = (uint8_t)(G.map[k].second + 1); break; }
-                idxv[(size_t)sy * s.w + sx] = idx;
-            }
-        std::vector<std::pair<uint32_t, uint8_t> > bytes;   /* address -> byte, nibbles merged */
-        for (int ty = 0; ty < s.h; ++ty)
-            for (int tx = 0; tx < s.w; ++tx) {
-                const int sx = hflip ? s.w - 1 - tx : tx, sy = vflip ? s.h - 1 - ty : ty;
-                const uint8_t idx = idxv[(size_t)sy * s.w + sx];
-                const int tcol = tx >> 3, trow = ty >> 3, fx = tx & 7, fy = ty & 7;
-                const uint32_t slot = map1d ? (uint32_t)(trow * (s.w / 8) + tcol) * (c256 ? 2u : 1u) : (uint32_t)(trow * 32 + (c256 ? tcol * 2 : tcol));
-                const uint32_t cell = vram + tile * boundary + slot * 32u;
-                if (c256) {
-                    Wr w = { cell + (uint32_t)fy * 8u + (uint32_t)fx, idx, 0 };
-                    pl->wr.push_back(w);
-                } else {
-                    const uint32_t a = cell + (uint32_t)fy * 4u + (uint32_t)fx / 2u;
-                    uint8_t b = 0;
-                    size_t at = pl->wr.size();
-                    for (size_t k = pl->wr.size(); k > 0; --k) if (!pl->wr[k - 1].half && pl->wr[k - 1].addr == a) { at = k - 1; break; }
-                    if (at != pl->wr.size()) b = (uint8_t)pl->wr[at].v;
-                    b = (fx & 1) ? (uint8_t)((b & 0x0F) | (idx << 4)) : (uint8_t)((b & 0xF0) | idx);
-                    if (at != pl->wr.size()) pl->wr[at].v = b;
-                    else { Wr w = { a, b, 0 }; pl->wr.push_back(w); }
+    for (int l = 0; l < nl; ++l) {
+        const LB &B = lb[(size_t)l];
+        const uint32_t dispcnt = pl->dc[eng[l]];
+        const uint32_t boundary = 32u << ((dispcnt >> 20) & 3);
+        const bool map1d = (dispcnt >> 4) & 1;
+        const uint32_t vram = eng[l] ? 0x06600000u : 0x06400000u;
+        for (int i = 0; i < B.n; ++i) {
+            const Ent &s = B.e[i];
+            const bool c256 = (s.a0 & 0x2000) != 0, hflip = (s.a1 & 0x1000) != 0, vflip = (s.a1 & 0x2000) != 0;
+            const unsigned pal = (s.a2 >> 12) & 0xF;
+            const Grp *G = 0;
+            for (size_t k = 0; k < grp.size(); ++k) if (grp[k].eng == eng[l] && grp[k].c256 == c256 && grp[k].pal == pal) G = &grp[k];
+            if (!G) continue;
+            const uint32_t tile = s.a2 & 0x3FF;
+            std::vector<uint8_t> idxv((size_t)s.w * s.h, 0);
+            for (int sy = 0; sy < s.h; ++sy)
+                for (int sx = 0; sx < s.w; ++sx) {
+                    const int c = B.col[(size_t)(s.y - B.y0 + sy) * B.W + (s.x - B.x0 + sx)];
+                    uint8_t idx = 0;
+                    if (c >= 0)
+                        for (size_t k = 0; k < G->map.size(); ++k) if (G->map[k].first == c) { idx = (uint8_t)(G->map[k].second + 1); break; }
+                    idxv[(size_t)sy * s.w + sx] = idx;
                 }
-            }
+            for (int ty = 0; ty < s.h; ++ty)
+                for (int tx = 0; tx < s.w; ++tx) {
+                    const int sx = hflip ? s.w - 1 - tx : tx, sy = vflip ? s.h - 1 - ty : ty;
+                    const uint8_t idx = idxv[(size_t)sy * s.w + sx];
+                    const int tcol = tx >> 3, trow = ty >> 3, fx = tx & 7, fy = ty & 7;
+                    const uint32_t slot = map1d ? (uint32_t)(trow * (s.w / 8) + tcol) * (c256 ? 2u : 1u) : (uint32_t)(trow * 32 + (c256 ? tcol * 2 : tcol));
+                    const uint32_t cell = vram + tile * boundary + slot * 32u;
+                    if (c256) {
+                        Wr w = { cell + (uint32_t)fy * 8u + (uint32_t)fx, idx, 0 };
+                        pl->wr.push_back(w);
+                    } else {
+                        const uint32_t a = cell + (uint32_t)fy * 4u + (uint32_t)fx / 2u;
+                        size_t at = pl->wr.size();
+                        for (size_t k = pl->wr.size(); k > 0; --k) if (!pl->wr[k - 1].half && pl->wr[k - 1].addr == a) { at = k - 1; break; }
+                        uint8_t b = at != pl->wr.size() ? (uint8_t)pl->wr[at].v : 0;
+                        b = (fx & 1) ? (uint8_t)((b & 0x0F) | (idx << 4)) : (uint8_t)((b & 0xF0) | idx);
+                        if (at != pl->wr.size()) pl->wr[at].v = b;
+                        else { Wr w = { a, b, 0 }; pl->wr.push_back(w); }
+                    }
+                }
+        }
     }
     pl->ok = !pl->wr.empty();
     if (logging()) {
-        fprintf(stderr, "[charhud] %s engine %c: %d sprite(s), box %dx%d, picture %dx%d, %u write(s), dispcnt %08x\n", tag, eng ? 'B' : 'A', n, W, H, P.w, P.h,
-                (unsigned)pl->wr.size(), (unsigned)dispcnt);
-        for (int i = 0; i < n; ++i)
-            fprintf(stderr, "[charhud]   sprite %d: %dx%d at %d,%d tile %u %s pal %u\n", i, e[i].w, e[i].h, e[i].x, e[i].y, e[i].a2 & 0x3FF,
-                    (e[i].a0 & 0x2000) ? "256col" : "16col", (e[i].a2 >> 12) & 0xF);
+        fprintf(stderr, "[charhud] %s: %d list(s), %u write(s), dispcnt %08x %08x\n", tag, nl, (unsigned)pl->wr.size(), (unsigned)pl->dc[0], (unsigned)pl->dc[1]);
+        for (int l = 0; l < nl; ++l)
+            for (int i = 0; i < lb[(size_t)l].n; ++i) {
+                const Ent &e = lb[(size_t)l].e[i];
+                fprintf(stderr, "[charhud]   list %d engine %c sprite %d: %dx%d at %d,%d tile %u %s pal %u\n", l, eng[l] ? 'B' : 'A', i, e.w, e.h, e.x, e.y,
+                        e.a2 & 0x3FF, (e.a0 & 0x2000) ? "256col" : "16col", (e.a2 >> 12) & 0xF);
+            }
     }
 }
 
@@ -348,7 +354,7 @@ void dump_list(int eng, const void *list, const char *name)
 void dump_all(int what)
 {
     static const char *const dir = getenv("SM64DS_CHARHUD_DUMP");
-    if (!dir || !*dir) return;
+    if (!dir || !*dir || what > 3) return;
     static unsigned done;
     if (done & (1u << what)) return;
     done |= 1u << what;
@@ -367,12 +373,11 @@ void dump_all(int what)
     }
 }
 
-/* One element: its pictures (a second one only for the minimap's no-cap marker), and a plan per list (the list = the sprite set of one
-   variant), rebuilt when the display mode changes. */
+/* One element: its pictures (a second one only for the minimap's no-cap marker) and its one plan, rebuilt when a display mode changes. */
 struct Slot {
     Pic pic[2];
     bool tried = false;
-    std::vector<Plan> plans;       /* per list index */
+    Plan plan;
 };
 
 Slot g_slot[4];
@@ -380,7 +385,7 @@ Slot g_slot[4];
 const char *pic_path(int what, int ci, int which)
 {
     if (what == PCH_MINIMAP) return which ? port_char_map_icon_nocap(ci) : port_char_map_icon(ci);
-    return what == PCH_LIFE || what == PCH_STARSEL_LIFE ? port_char_hud_icon(ci) : port_char_face(ci);
+    return what == PCH_LIFE || what == PCH_LIFE_ROM || what == PCH_STARSEL_LIFE ? port_char_hud_icon(ci) : port_char_face(ci);
 }
 
 /* lists[l] drawn on engines[l] from picture which[l] (0 the main picture, 1 the no-cap one, which falls back to the main one) */
@@ -388,10 +393,9 @@ void do_lists(int what, const void *const *lists, const int *engines, const int 
 {
     const int ci = port_char_active();
     if (ci < 0) return;
-    Slot &S = g_slot[what];
+    Slot &S = g_slot[what == PCH_LIFE_ROM ? PCH_LIFE : what];
     if (!S.tried) {
         S.tried = true;
-        S.plans.assign((size_t)nl, Plan());
         for (int w = 0; w < 2; ++w) {
             const char *p = pic_path(what, ci, w);
             if (!p) continue;
@@ -400,17 +404,16 @@ void do_lists(int what, const void *const *lists, const int *engines, const int 
             else fprintf(stderr, "[charhud] %s: repainting from %s (%dx%d)\n", tag, p, S.pic[w].w, S.pic[w].h);
         }
     }
-    for (int l = 0; l < nl; ++l) {
+    const Pic *pp[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+    bool any = false;
+    for (int l = 0; l < nl && l < 8; ++l) {
         const Pic *P = &S.pic[which[l]];
-        if (!P->ok()) P = &S.pic[0];
-        if (!P->ok()) continue;
-        if ((size_t)l >= S.plans.size()) S.plans.push_back(Plan());
-        Plan &PL = S.plans[(size_t)l];
-        const int eng = engines[l];
-        const uint32_t dc = rd32(eng ? 0x04001000u : 0x04000000u);
-        if (!PL.ok || PL.dispcnt != dc) build_plan(eng, lists[l], *P, &PL, tag);
-        if (PL.ok) apply_plan(PL);
+        pp[l] = P->ok() ? P : S.pic[0].ok() ? &S.pic[0] : 0;
+        if (pp[l]) any = true;
     }
+    if (!any) return;
+    if (!S.plan.ok || S.plan.dc[0] != rd32(0x04000000u) || S.plan.dc[1] != rd32(0x04001000u)) build_element(nl, engines, lists, pp, &S.plan, tag);
+    if (S.plan.ok) apply_plan(S.plan);
 }
 
 }  // namespace
