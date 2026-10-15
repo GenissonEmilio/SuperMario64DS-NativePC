@@ -2926,7 +2926,7 @@ extern "C" int func_01ffaa34(long long num, long long den) {
     return (int)(num / den);
 }
 L2_UNMATCHED(func_0211d9c0)
-L2_UNMATCHED(func_02140d80)
+extern "C" int func_02140d80(void) { l2_trap("func_02140d80"); return 0; }  /* spelled out: port_refcheck cannot see through the macro, and portsync3_link_aliases.cpp aliases _OV100_TEXT_START onto it */
 #undef L2_UNMATCHED
 
 // ---- 4. NAME-SPELLING FACES, AND NOT ONE OF THEM IS A BODY -----------------

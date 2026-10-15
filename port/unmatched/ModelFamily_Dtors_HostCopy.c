@@ -111,7 +111,7 @@ struct ShadowMdl {
     struct ShadowMdl *next;  /* 0x24 */
 };
 
-extern void *data_0208e87c[];                 /* ModelBase's own table */
+extern void *_ZTV9ModelBase[];                 /* ModelBase's own table */
 extern void *_ZTV5Model[];
 extern void *_ZTV10ModelAnim2[];
 extern void *_ZTV17dExtCommonModel_c[];
@@ -144,7 +144,7 @@ struct MdlBase *_ZN9ModelBaseD2Ev(struct MdlBase *thiz);
 
 struct MdlBase *_ZN9ModelBaseD1Ev(struct MdlBase *thiz)
 {
-    thiz->vtable = (void *)data_0208e87c;
+    thiz->vtable = (void *)_ZTV9ModelBase;
     if (thiz->res != 0) {
         Deallocate(thiz->res);
     }
