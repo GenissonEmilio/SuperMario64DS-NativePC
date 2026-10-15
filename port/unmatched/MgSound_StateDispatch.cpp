@@ -469,6 +469,37 @@ static void snd1_state1_0211bc8c(char *c, int i)
     _ZN12dScMgSound_c19func_ov006_0211bc8cEi(c, i);
 }
 
+/* PORTSYNC3 left this table's level-1 cells holding flat cdecl faces. Main's
+   dScMgSound_c::func_ov006_0211b954 and func_ov006_0211b5e0 now dispatch them as
+   native pointers to member, (this->*cell)(i): the receiver in ECX, the index on
+   the stack, callee cleanup. A cdecl face entered that way reads the index as its
+   receiver. These adapters are that entry: __fastcall (this, dead edx, i). MGSYNC1 */
+#define SND1_FACE(sym)                                                            static void __fastcall snd1f_##sym(void *self, void *dead_edx, int i)         {                                                                                 (void)dead_edx;                                                               (void)sym((char *)self, i);                                               }
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211bf44Ei)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211bc68Ei)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211bbe0Ei)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211ba88Ei)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211b590Ei)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211b398Ei)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211b17cEi)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211af60Ei)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211ad44Ei)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211abdcEi)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211aa44Ei)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211a7acEi)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211a648Ei)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211a4b0Ei)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211a2c4Ei)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211a0d8Ei)
+SND1_FACE(_ZN12dScMgSound_c19func_ov006_02119eecEi)
+static void __fastcall snd1f_state1_0211bc8c(void *self, void *dead_edx, int i)
+{
+    (void)dead_edx;
+    snd1_state1_0211bc8c((char *)self, i);
+}
+#undef SND1_FACE
+
+
 /* ---- THE BOOT INSTALLER, lanes PMFB2 (level 1) and PMFB3 (level 2) -------
    WHAT THIS REPLACES. Until lane PMFB2 the two LEVEL-1 tables were reached only
    through a call-time address switch: the host copies of func_ov006_0211b954
@@ -531,33 +562,33 @@ extern "C" void port_mg_sound_states_seat(void)
         const char *name;
         unsigned slot;
         unsigned rom;
-        void (*host)(char *, int);
+        void *host;
     } seats[] = {
         /* data_ov006_02142df8, 5 slots, read by func_ov006_0211b954 */
-        {data_ov006_02142df8, "02142df8",  0, 0x0211bf44u, _ZN12dScMgSound_c19func_ov006_0211bf44Ei},
-        {data_ov006_02142df8, "02142df8",  1, 0x0211bc8cu, snd1_state1_0211bc8c},
-        {data_ov006_02142df8, "02142df8",  2, 0x0211bc68u, _ZN12dScMgSound_c19func_ov006_0211bc68Ei},
-        {data_ov006_02142df8, "02142df8",  3, 0x0211bbe0u, _ZN12dScMgSound_c19func_ov006_0211bbe0Ei},
+        {data_ov006_02142df8, "02142df8",  0, 0x0211bf44u, (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211bf44Ei},
+        {data_ov006_02142df8, "02142df8",  1, 0x0211bc8cu, (void *)snd1f_state1_0211bc8c},
+        {data_ov006_02142df8, "02142df8",  2, 0x0211bc68u, (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211bc68Ei},
+        {data_ov006_02142df8, "02142df8",  3, 0x0211bbe0u, (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211bbe0Ei},
         /* the one state that returns a value; cdecl leaves eax to the caller,
            and the ROM's own dispatch ignores it exactly as this cast does. */
         {data_ov006_02142df8, "02142df8",  4, 0x0211ba88u,
-                                    (void (*)(char *, int))_ZN12dScMgSound_c19func_ov006_0211ba88Ei},
+                                    (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211ba88Ei},
         /* data_ov006_02142e20, 13 slots, read by func_ov006_0211b5e0. Every
            one of the thirteen is itself a sub-dispatcher, still host-copied
            below, still reading a level-2 table full of DS words. */
-        {data_ov006_02142e20, "02142e20",  0, 0x0211b590u, _ZN12dScMgSound_c19func_ov006_0211b590Ei},
-        {data_ov006_02142e20, "02142e20",  1, 0x0211b398u, _ZN12dScMgSound_c19func_ov006_0211b398Ei},
-        {data_ov006_02142e20, "02142e20",  2, 0x0211b17cu, _ZN12dScMgSound_c19func_ov006_0211b17cEi},
-        {data_ov006_02142e20, "02142e20",  3, 0x0211af60u, _ZN12dScMgSound_c19func_ov006_0211af60Ei},
-        {data_ov006_02142e20, "02142e20",  4, 0x0211ad44u, _ZN12dScMgSound_c19func_ov006_0211ad44Ei},
-        {data_ov006_02142e20, "02142e20",  5, 0x0211abdcu, _ZN12dScMgSound_c19func_ov006_0211abdcEi},
-        {data_ov006_02142e20, "02142e20",  6, 0x0211aa44u, _ZN12dScMgSound_c19func_ov006_0211aa44Ei},
-        {data_ov006_02142e20, "02142e20",  7, 0x0211a7acu, _ZN12dScMgSound_c19func_ov006_0211a7acEi},
-        {data_ov006_02142e20, "02142e20",  8, 0x0211a648u, _ZN12dScMgSound_c19func_ov006_0211a648Ei},
-        {data_ov006_02142e20, "02142e20",  9, 0x0211a4b0u, _ZN12dScMgSound_c19func_ov006_0211a4b0Ei},
-        {data_ov006_02142e20, "02142e20", 10, 0x0211a2c4u, _ZN12dScMgSound_c19func_ov006_0211a2c4Ei},
-        {data_ov006_02142e20, "02142e20", 11, 0x0211a0d8u, _ZN12dScMgSound_c19func_ov006_0211a0d8Ei},
-        {data_ov006_02142e20, "02142e20", 12, 0x02119eecu, _ZN12dScMgSound_c19func_ov006_02119eecEi},
+        {data_ov006_02142e20, "02142e20",  0, 0x0211b590u, (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211b590Ei},
+        {data_ov006_02142e20, "02142e20",  1, 0x0211b398u, (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211b398Ei},
+        {data_ov006_02142e20, "02142e20",  2, 0x0211b17cu, (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211b17cEi},
+        {data_ov006_02142e20, "02142e20",  3, 0x0211af60u, (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211af60Ei},
+        {data_ov006_02142e20, "02142e20",  4, 0x0211ad44u, (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211ad44Ei},
+        {data_ov006_02142e20, "02142e20",  5, 0x0211abdcu, (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211abdcEi},
+        {data_ov006_02142e20, "02142e20",  6, 0x0211aa44u, (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211aa44Ei},
+        {data_ov006_02142e20, "02142e20",  7, 0x0211a7acu, (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211a7acEi},
+        {data_ov006_02142e20, "02142e20",  8, 0x0211a648u, (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211a648Ei},
+        {data_ov006_02142e20, "02142e20",  9, 0x0211a4b0u, (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211a4b0Ei},
+        {data_ov006_02142e20, "02142e20", 10, 0x0211a2c4u, (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211a2c4Ei},
+        {data_ov006_02142e20, "02142e20", 11, 0x0211a0d8u, (void *)snd1f__ZN12dScMgSound_c19func_ov006_0211a0d8Ei},
+        {data_ov006_02142e20, "02142e20", 12, 0x02119eecu, (void *)snd1f__ZN12dScMgSound_c19func_ov006_02119eecEi},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
