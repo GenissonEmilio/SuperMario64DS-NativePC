@@ -299,7 +299,7 @@ int port_char_door_frame(const struct SpInput *in0)
     }
     if (!g_input_ready) {
         /* wait for every device to be seen up once */
-        if (k == 0 && !in->mouse_l) g_input_ready = 1;
+        if (k == 0 && !in->mouse_l) { g_input_ready = 1; fprintf(stderr, "[chardoor] devices up, input ready on picker frame %d\n", g_frames); }
         g_prev_keys = k;
         g_prev_mouse_l = in->mouse_l ? 1 : 0;
         g_prev_mouse_r = in->mouse_r ? 1 : 0;
