@@ -50,8 +50,14 @@ struct PauseFacts {
     char title[40];           /* the course title, upper case, as the ROM's text */
     char sub[20];             /* "Course 3" / "Peach's Castle" */
     char names[7][38];        /* the seven star names of the course, title case */
+    /* EXTRAS093: the castle's secret stars as a list. Place i is the ROM's course 15 + i (message ids 0x1a5 + i, the course titles the ROM
+       shows for them), 15 places; secret_got[i] is how many stars of that place are collected (its save bits), secret_name[i] the place in
+       title case ("" when the message bank gave none). The ROM does not say how many stars each place holds, so only the collected count is
+       shown, never a total per place. */
+    uint8_t secret_got[15];
+    char secret_name[15][28];
 };
-static_assert(sizeof(PauseFacts) <= 512, "PauseFacts must fit MenuFacts.blob");
+static_assert(sizeof(PauseFacts) <= 1024, "PauseFacts must fit MenuFacts.blob");
 
 struct PauseRect { int x, y, w, h; };
 
@@ -76,7 +82,7 @@ inline int pause_round(double v) { return (int)(v + 0.5); }
 /* rows / stats of the tracker page for these facts */
 inline void pause_tracker_shape(const PauseFacts *f, int *rows, int *stats)
 {
-    if (f->course >= 15) { *rows = 4; *stats = 2; return; }                 /* the secret stars: a grid of 30 stars, two totals */
+    if (f->course >= 15) { *rows = 9; *stats = 2; return; }                 /* the secret stars: 15 short rows (the height of nine ordinary ones), two totals */
     *rows = 8;                                                              /* seven named stars and the 100 coin star */
     *stats = 2 + (f->in_course ? (f->show_red ? 1 : 0) : 0);                /* stars, coins (or the record), red coins */
 }

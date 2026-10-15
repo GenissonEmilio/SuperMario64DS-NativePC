@@ -819,6 +819,16 @@ int g_net_mode = 1;   /* NetMode: 0 lockstep, 1 rollback (port/rollback); rollba
    about the window and not about this file. */
 int g_mouse_capture;
 
+/* StartFullscreen: 1 when the window opens in the same borderless fullscreen
+   F12 toggles. Default 0 (today). Read at boot only. */
+int g_start_fullscreen;
+
+/* DrawDistance: percent of the ROM's own per-actor draw distance an actor may
+   be drawn out to (100 = the ROM exactly, the default; 10000 = Max). Drawing
+   only: dActor_c::BeforeBehavior keeps the ROM's update decision untouched. */
+int g_draw_dist = 100;
+int draw_dist_clamp(int v) { return v < 100 ? 100 : v > 10000 ? 10000 : v; }
+
 /* NameTags: 1 when the VS name-and-star tag over a remote player's head is
    drawn. Default 1, and unlike the Mods keys the default is ON -- see the
    header for why a host overlay that reads no game state is a preference
@@ -1821,6 +1831,8 @@ void load_once(void)
            reason they are: a settings.json written before this key existed
            reads exactly as one that turned it off, which is the old program */
         g_mouse_capture = json_bool(text, "MouseCapture", 0);
+        g_start_fullscreen = json_bool(text, "StartFullscreen", 0);
+        g_draw_dist = draw_dist_clamp(json_int(text, "DrawDistance", 100));
         /* the learned controller maps; absent is none, like every key */
         padlayouts_parse(text);
         /* lane VOICE: the same reader the live re-read uses, so the boot
@@ -2316,6 +2328,8 @@ int reload_live(const char *text)
             fprintf(stderr, "[settings] live re-read: FrameRate %d\n", n);
         }
     }
+    /* DrawDistance: presentation only, so it follows the file at once */
+    g_draw_dist = draw_dist_clamp(json_int(text, "DrawDistance", g_draw_dist));
     {
         const int dbg = json_bool(text, "DebugMenu", g_debug_menu);
         if (dbg != g_debug_menu) {
@@ -2555,6 +2569,25 @@ extern "C" int host_setting_mouse_capture(void)
 {
     load_once();
     return g_mouse_capture;
+}
+
+/* DrawDistance, percent. SM64DS_DRAW_DISTANCE=<100..10000> pins it for a proof
+   run without touching a player's file. Read per actor per frame, so cheap. */
+extern "C" int host_setting_draw_distance_pct(void)
+{
+    static int env = -2;
+    load_once();
+    if (env == -2) {
+        const char *e = getenv("SM64DS_DRAW_DISTANCE");
+        env = e ? draw_dist_clamp(atoi(e)) : -1;
+    }
+    return env >= 0 ? env : g_draw_dist;
+}
+
+extern "C" int host_setting_start_fullscreen(void)
+{
+    load_once();
+    return g_start_fullscreen;
 }
 
 /* NameTags, plus the debug env override every host overlay in this port has.
@@ -3154,6 +3187,15 @@ extern "C" int host_setting_set_mouse_capture(int on)
     g_mouse_capture = on;
     g_poll_flag = 1;
     queue_bool("MouseCapture", on);
+    return 1;
+}
+
+extern "C" int host_setting_set_draw_distance(int pct)
+{
+    load_once();
+    if (pct < 100 || pct > 10000) return 0;
+    g_draw_dist = pct;
+    queue_int("DrawDistance", pct);
     return 1;
 }
 

@@ -51,6 +51,7 @@ enum SlId {
     SL_MINIGAME_GAP,            /* bool: the DS hinge shown between the screens in a minigame (PAUSE3) */
     SL_GAP_LOOK,                /* enum: solid, blur, peek */
     SL_GAP_COLOR,               /* enum: a few preset colours for the solid look */
+    SL_DRAW_DISTANCE,           /* percent of the ROM's draw distance: 100 (default), 150, 200, 400, 10000 (max); the page shows stops */
     SL_FRAME_RATE,              /* int: 0 native, 60..240; live (FPSLIVE1): the in-game page shows it as a drop-down of stops */
     SL_DEBUG_MENU,              /* bool: the F5 debug menu may open (CHARSLOT1); off by default */
     SL_COUNT

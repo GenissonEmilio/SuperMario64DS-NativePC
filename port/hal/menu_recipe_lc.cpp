@@ -240,7 +240,7 @@ int rom_cursor_lc(int dir, int *sel_out)
     if (moved) {
         data_0209f2e0 = (unsigned char)sel;
         _ZN10dScStage_c17UpdateMenuButtonsEb(0);
-        func_02012790(0x12e);
+        host_menu_cursor_sound();
     }
     if (sel_out) *sel_out = sel;
     return moved;
@@ -329,7 +329,7 @@ int rom_cursor_lc2(int dir, int *sel_out)
     if (moved) {
         data_0209f2e0 = (unsigned char)sel;
         _ZN10dScStage_c17UpdateMenuButtonsEb(0);
-        func_02012790(0x12e);
+        host_menu_cursor_sound();
     }
     if (sel_out) *sel_out = sel;
     return moved;

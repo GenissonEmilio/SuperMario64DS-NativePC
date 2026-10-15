@@ -170,7 +170,7 @@ struct MenuFacts {
   uint8_t starsel_x[8];     /* star select: +0x11a.., the icon x bytes */
   uint8_t starsel_head_y;   /* star select: +0x12b, the Mario head's centre row (it bobs) */
   int32_t spare[8];         /* recipes added later */
-  uint8_t blob[512];        /* INT2: a recipe's own plain-data facts (the title and the Rec Room keep a struct here); zero = nothing read */
+  uint8_t blob[1024];        /* INT2: a recipe's own plain-data facts (the title and the Rec Room keep a struct here); zero = nothing read */
 };
 
 struct MenuLayout { int w, h, unum, uden, canvas_w; /* unit = h/192 reduced; canvas_w = w*192/h */
@@ -431,6 +431,13 @@ long long hal_menu_layer_conflicts(void);       /* SAVEOVL1: pixels the layer co
 int  hal_menu_layer_ok(void);                   /* SAVEOVL1: the bound recipe may be drawn into a menu layer */
 void hal_menu_note_lift_drawn(void);            /* the draw honoured the lift promise (LIFT WITHOUT DRAW net) */
 int  hal_menu_lc_selftest(void);                /* menu_recipe_lc.cpp: COMPOSED LAYOUT SELFTEST, 0 = PASS */
+/* EXTRAS093 (menu cursor sound): every menu surface asks for the ROM's own cursor sound here (the one the star select and the pause
+   already played on a pad move, NCS_SE_SYS id 0x12e through func_02012790). Many asks inside one frame make ONE sound, played by
+   the flush the two frame loops call once a frame on the logic thread, so a hover and a pad move, or a recipe's own call and the
+   generic one, can never double. A surface whose ROM code already plays its own cursor sound (the title, which the ROM drives
+   itself) does not call this. */
+void host_menu_cursor_sound(void);
+void host_menu_cursor_sound_flush(void);
 #ifdef __cplusplus
 }
 #endif
