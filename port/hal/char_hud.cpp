@@ -356,9 +356,9 @@ void dump_all(int what)
     done |= 1u << what;
     char nm[64];
     for (int b = 0; b < 4; ++b) {
-        if (what == PCH_LIFE) {
-            snprintf(nm, sizeof nm, "life_b%d", b);
-            dump_list((data_ov002_02111178 >= 3 && data_ov002_02111178 < 6) ? 0 : 1, _ZN3OAM10LIFE_ICONSE[b], nm);
+        if (what == PCH_LIFE || what == PCH_STARSEL_LIFE) {
+            snprintf(nm, sizeof nm, "%s_b%d", what == PCH_LIFE ? "life" : "sslife", b);
+            dump_list(what == PCH_STARSEL_LIFE ? 0 : (data_ov002_02111178 >= 3 && data_ov002_02111178 < 6) ? 0 : 1, _ZN3OAM10LIFE_ICONSE[b], nm);
         } else if (what == PCH_MINIMAP) {
             for (int k = 0; k < 4; ++k) { snprintf(nm, sizeof nm, "map_b%d_k%d", b, k); dump_list(1, _ZN3OAM15MM_PLAYER_ICONSE[b * 4 + k], nm); }
         } else {
@@ -376,12 +376,12 @@ struct Slot {
     std::vector<int> engine;
 };
 
-Slot g_slot[3];
+Slot g_slot[4];
 int g_active_seen = -3;
 
 const char *pic_path(int what, int ci)
 {
-    return what == PCH_LIFE ? port_char_hud_icon(ci) : what == PCH_MINIMAP ? port_char_map_icon(ci) : port_char_face(ci);
+    return what == PCH_LIFE || what == PCH_STARSEL_LIFE ? port_char_hud_icon(ci) : what == PCH_MINIMAP ? port_char_map_icon(ci) : port_char_face(ci);
 }
 
 void do_lists(int what, const void *const *lists, const int *engines, int nl, const char *tag)
@@ -426,6 +426,10 @@ extern "C" void port_char_hud_apply(int what)
         const int eng[4] = { 1, 1, 1, 1 };
         for (int k = 0; k < 4; ++k) l[k] = _ZN3OAM15MM_PLAYER_ICONSE[base * 4 + k];
         do_lists(what, l, eng, 4, "minimap icon");
+    } else if (what == PCH_STARSEL_LIFE) {
+        const void *l[1] = { _ZN3OAM10LIFE_ICONSE[base] };
+        const int eng[1] = { 0 };
+        do_lists(what, l, eng, 1, "star select life icon");
     } else if (what == PCH_STARSEL) {
         const void *l[1] = { data_ov001_020abb34 + 0x20 * base };
         const int eng[1] = { 1 };

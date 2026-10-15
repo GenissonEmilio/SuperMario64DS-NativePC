@@ -3582,7 +3582,7 @@ static int  __fastcall ss_clean(void *, void *)
 static int  __fastcall ss_beh(void *s, void *)
 { ++g_ss_hits[6];  return _ZN12dScStarSel_c8BehaviorEv(s); }
 static int  __fastcall ss_render(void *s, void *)
-{ ++g_ss_hits[9];  port_char_hud_apply(2);  /* CHARHUD1 */ return _ZN12dScStarSel_c6RenderEv(s); }
+{ ++g_ss_hits[9];  port_char_hud_apply(2); port_char_hud_apply(3);  /* CHARHUD1 */ return _ZN12dScStarSel_c6RenderEv(s); }
 static int  __fastcall ss_pdes(void *, void *)
 { ++g_ss_hits[12]; _ZN12dScStarSel_c16OnPendingDestroyEv(); return 0; }
 /* the SM64DS_SCENE_SLOT9=0 stand-in. Counted separately so a run can never
