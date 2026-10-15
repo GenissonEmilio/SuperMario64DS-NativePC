@@ -25712,3 +25712,10 @@ foreach(_thdmeter1 walk_window walk_window_hires)
         target_sources(${_thdmeter1} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/hd_meter.cpp")
     endif()
 endforeach()
+
+# run hunt8, lane PADMENUS1: the pad pointer, a controller driven virtual stylus for the touch only screens (hal/pad_pointer.h). Own block.
+foreach(_tpadptr walk_window walk_window_hires smoke_player)
+    if(TARGET ${_tpadptr})
+        target_sources(${_tpadptr} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/pad_pointer.cpp")
+    endif()
+endforeach()

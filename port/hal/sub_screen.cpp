@@ -95,6 +95,7 @@
 #include "hal/comms_seam.h"   /* run mg16 lane MP3: touch_ring_index/advance */
 
 #include "hal/screen_gap.h"
+#include "hal/pad_pointer.h"   /* PADMENUS1: the pad pointer (a virtual stylus) */
 #include "hal/host_settings.h"   /* the improved map's two keys */
 
 /* The PNG reader, vendored public-domain and already the one this port uses
@@ -2466,6 +2467,7 @@ void poll_touch(void)
             /* the arming edge, and the only one there is */
             if (on_surface) drag_own = 1;
             if (inj && on_surface) ++g_inj_on_surface;
+            if (on_surface && !inj) hal_padptr_mouse_down();    /* PADMENUS1: a real pen on the touch screen: a pad pointer steps aside */
             if (on_surface || drag_own) {
                 /* THE NEAREST POINT ON THE BOTTOM SCREEN. On the surface both
                    of these are no-ops, which is why a drag that stays on the
@@ -2490,6 +2492,22 @@ void poll_touch(void)
             down = 1;
             sx = data_020a0de8[2];
             sy = data_020a0de8[3];
+        }
+    }
+    /* PADMENUS1: THE PAD POINTER'S PEN (hal/pad_pointer.h). A controller-driven stylus, entered here beside the real pen so the rest of the
+       chain (the probe, the edge byte, the ring) sees one more hand and nothing else. Stacked it is already in DS pixels; under a one-screen
+       recipe it is a picture pixel and goes through the same inverse the mouse takes. Off (and one atomic load) with no controller. */
+    if (!inj) {
+        int pm = 0, ppx = 0, ppy = 0;
+        if (hal_padptr_poll(&pm, &ppx, &ppy)) {
+            int pfx = -1, pfy = -1, pok = 0;
+            if (pm == 1 && hal_sub_screen_stacked()) { pfx = ppx; pfy = ppy; pok = 1; }
+            else if (pm == 2 && hal_menu_live()) { int pin = 0; hal_menu_touch_inverse(ppx, ppy, &pfx, &pfy, &pin); pok = pin; }
+            if (pok && pfx >= 0 && pfx < ntr::SUB_W && pfy >= 0 && pfy < ntr::SUB_H) {
+                down = 1;
+                sx = (unsigned char)pfx;
+                sy = (unsigned char)pfy;
+            }
         }
     }
     if (g_tp_n < 0) touch_probe_parse();

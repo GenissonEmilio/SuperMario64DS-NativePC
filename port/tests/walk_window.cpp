@@ -434,6 +434,7 @@ extern "C" void host_menu_cursor_sound_flush(void);   /* hal/menu_compose.cpp: o
 #include "hal/gpu_present.h"      /* run hd2 lane GPU1: the optional D3D11 present */
 #include "hal/presenter.h"        /* run hunt8 lane PRESENTER1: the presenter thread's clock */
 #include "hal/screen_gap.h"       /* run hunt8 lane SCENEINTERP1: the stacked layout, read live */
+#include "hal/pad_pointer.h"      /* run hunt8 lane PADMENUS1: the pad pointer (a controller driven stylus) */
 #include "hal/gpu_raster.h"       /* run hd2 lane GPU2: the optional D3D11 renderer */
 #include "hal/gpu_device.h"       /* the shared device, and the card's own clock */
 
@@ -11970,6 +11971,8 @@ static HDC  g_entry_hdc;
  * decides what closing means; the interlude stops, and scene_window_run breaks
  * its loop exactly as it did when this code was inline. */
 static int stick_script_apply(int frame, int *pad_live, XPad *pad);
+static int rstick_script_apply(int frame, int *pad_live, XPad *pad);
+static void padptr_frame(int frame, int pad_live, XPad *pad);
 static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
                                   int *focus_was)
 {
@@ -12009,9 +12012,11 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
     pad_focus_gate(&pad_live, pad);
     pad_test_apply(frame, &pad_live, pad);
     stick_script_apply(frame, &pad_live, pad);    /* STARSEL093: the scripted stick (inert unless SM64DS_STICK_SCRIPT is set) on the scene path too */
+    rstick_script_apply(frame, &pad_live, pad);   /* PADMENUS1: the scripted right stick (inert unless SM64DS_RSTICK_SCRIPT is set) */
     setlive_test_apply(frame, &pad_live, pad);
     controls_refresh();
     rebind_capture_frame(&pad_live, pad);
+    padptr_frame(frame, pad_live, pad);           /* PADMENUS1: the pad pointer (a virtual stylus) takes the pen button / the minigame D-pad it owns */
     /* the pad layout learn flow, the same call the level loop makes;
        inert unless the menu's row armed it */
     padlearn_frame(&pad_live);
@@ -12170,7 +12175,7 @@ static void scene_host_present_frame(HWND hwnd, int stacked,
         stacked ? ovl_surface_stacked(stack_img, fb) : ovl_surface(fb);
     /* run hunt8, lane SCENEINTERP1: the image as it is before the host's UI
        goes on, kept while there is UI to put back over a blended picture */
-    const int host_ui = (g_overlay_on || menu_on || ss_toast_left > 0) ? 1 : 0;
+    const int host_ui = (g_overlay_on || menu_on || ss_toast_left > 0 || hal_padptr_on()) ? 1 : 0;   /* PADMENUS1: the pad pointer's arrow is host UI too */
     ip_scene_stack_pre(stacked, stack_img, host_ui);
 
     /* THE STATS OVERLAY ON THE SCENE PATH (run link100, lane FPSSTATS1). It
@@ -12188,6 +12193,19 @@ static void scene_host_present_frame(HWND hwnd, int stacked,
     if (menu_on) menu_draw(surf);
     if (!rb_skip_render())
         toast_draw(surf);
+    /* PADMENUS1: THE PAD POINTER'S ARROW (hal/pad_pointer.h), on top of everything else the host paints. Stacked it goes into the stacked image's
+       bottom panel (where the pen is); under a one-screen recipe into the picture, which a card-held frame has to give up first (the same
+       settle the settings page and the character picker take). Nothing while the pointer is off. */
+    if (hal_padptr_on() && !rb_skip_render()) {
+        if (stacked && stack_img) {
+            int iw = 0, ih = 0;
+            hal_sub_screen_stacked_size(&iw, &ih);
+            hal_padptr_draw_stacked(stack_img, iw, ih);
+        } else if (!stacked) {
+            ntr::gx_card_settle_because("the pad pointer");
+            hal_padptr_draw_menu(&fb.px[0][0], ntr::active_w, ntr::active_h, ntr::SCREEN_W);
+        }
+    }
 
     if (stacked && !rb_skip_render())
         stack_present_arm(stack_img, hwnd);
@@ -12589,6 +12607,68 @@ static int stick_script_apply(int frame, int *pad_live, XPad *pad)
     pad->ly = (short)ly;
     return 1;
 }
+/* PADMENUS1: the RIGHT stick script, SM64DS_RSTICK_SCRIPT=<f0>[-<f1>]:<x>:<y>,... (same grammar as SM64DS_STICK_SCRIPT, values +-32767, Y up):
+   the proof arm that drives the pad pointer through the real pad path. Inert unless set, and not in a shipped (PORT_ROM_CLEAN) build. */
+static int rstick_script_apply(int frame, int *pad_live, XPad *pad)
+{
+#ifndef PORT_ROM_CLEAN
+    static const char *env = (const char *)1;
+    if (env == (const char *)1) env = getenv("SM64DS_RSTICK_SCRIPT");
+    if (!env) return 0;
+    int hit = 0, rx = 0, ry = 0;
+    const char *p = env;
+    while (*p) {
+        char *q;
+        const long f0 = strtol(p, &q, 10);
+        long f1 = f0;
+        p = q;
+        if (*p == '-') { f1 = strtol(p + 1, &q, 10); p = q; }
+        long x = 0, y = 0;
+        if (*p == ':') { x = strtol(p + 1, &q, 10); p = q; }
+        if (*p == ':') { y = strtol(p + 1, &q, 10); p = q; }
+        if (frame >= f0 && frame <= f1) { hit = 1; rx = (int)x; ry = (int)y; }
+        while (*p && *p != ',') ++p;
+        if (*p == ',') ++p;
+    }
+    if (!hit) return 0;
+    if (!*pad_live) { memset(pad, 0, sizeof *pad); *pad_live = 1; }
+    pad->rx = (short)rx;
+    pad->ry = (short)ry;
+    return 1;
+#else
+    (void)frame; (void)pad_live; (void)pad;
+    return 0;
+#endif
+}
+
+/* PADMENUS1: THE PAD POINTER'S FRAME (hal/pad_pointer.h). Reads the stick / D-pad / confirm the pad poll just filled (scripted pads included), lets
+   the pointer decide, and takes the buttons it owns out of the pad before the game's own reads: while the pointer is on, the confirm button (the
+   jump binding) is the pen and, in a minigame, the D-pad is the pointer's. Nothing happens with no controller. */
+static void padptr_frame(int frame, int pad_live, XPad *pad)
+{
+    PadPtrIn in;
+    memset(&in, 0, sizeof in);
+    PadPtrOut out;
+    memset(&out, 0, sizeof out);
+    in.frame = frame;
+    in.pad_live = pad_live;
+    if (pad_live) {
+        in.rx = pad->rx; in.ry = pad->ry; in.lx = pad->lx; in.ly = pad->ly;
+        in.dpad = ((pad->buttons & 0x0001) ? 1 : 0) | ((pad->buttons & 0x0002) ? 2 : 0) | ((pad->buttons & 0x0004) ? 4 : 0) |
+                  ((pad->buttons & 0x0008) ? 8 : 0);
+        in.confirm = pad_act(pad, HOST_PAD_JUMP);
+    }
+    hal_padptr_frame(&in, &out);
+    if (!pad_live) return;
+    if (out.eat_confirm) {
+        const int m = g_pad[HOST_PAD_JUMP];
+        pad->buttons = (unsigned short)(pad->buttons & ~(unsigned)(m & 0xffff));
+        if (m & HOST_PAD_LT) pad->lt = 0;
+        if (m & HOST_PAD_RT) pad->rt = 0;
+    }
+    if (out.eat_dpad) pad->buttons = (unsigned short)(pad->buttons & ~0x000fu);
+}
+
 static int stick_script_on(void)
 {
     static int on = -1;
