@@ -6335,7 +6335,7 @@ static void menu_draw(const OvlSurface &fb)
        -- the lines above are already close to the 72-column buffer and a
        suffix would truncate the sentence instead of adding to it. The minigame
        row is deliberately NOT in this set: it works from a scene. */
-    if (!g_menu_host.player) {
+    if (!menu_live_player()) {
         snprintf(ln[MENU_WARP], sizeof ln[0],
                  "warp to entrance  (level only)");
         snprintf(ln[MENU_EXIT], sizeof ln[0],
@@ -6705,7 +6705,7 @@ static void menu_input(int pad_live, const XPad *pad)
                Player, and the enter branch for this row splits on the same
                g_menu_host.player: stage the handoff in a level, relaunch from
                a scene. */
-            if ((dec || inc) && !g_menu_host.player &&
+            if ((dec || inc) && !menu_live_player() &&
                 (menu_sel == MENU_WARP ||
                  menu_sel == MENU_EXIT || menu_sel == MENU_CHARACTER)) {
                 ss_note("that row needs a level (this is a scene)");
@@ -6751,7 +6751,7 @@ static void menu_input(int pad_live, const XPad *pad)
                 /* left/right move the cursor exactly as
                    _ZN10dScTitle_c8BehaviorEv does (+/-1, modulo the row
                    count); enter runs its else-branch. */
-                if ((edge & (1u << 5)) && !g_menu_host.player) {
+                if ((edge & (1u << 5)) && !menu_live_player()) {
                     /* FROM A SCENE: RELAUNCH (run link60, lane TCH2). There is
                        no level loop in this process to hand a staged change
                        to, and port_title_select's ROM branch writes level
