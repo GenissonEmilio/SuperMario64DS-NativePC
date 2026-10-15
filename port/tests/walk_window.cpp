@@ -4796,17 +4796,12 @@ static int pad_act(const XPad *pad, int action)
     return pad_mask_down(pad, g_pad[action]);
 }
 
-/* CAMPACK1: a mouse-button binding (settings.json MouseCam*; values are the Win32 VK of the button). The test seam
-   SM64DS_HOST_MOUSEBTN="<hexmask>@f0-f1,...", mask bit = the VK number (bit 4 = middle), stands in for a real press so a
-   headless row never touches the real mouse; it is OR-ed by pad_test_apply each frame. */
-static unsigned g_mbtn_test;
+/* CAMPACK1: a mouse-button binding (settings.json MouseCam*; values are the Win32 VK of the button). */
 static int mouse_act(int action)
 {
     bindings_load();
     const int vk = host_setting_mouse(action);
-    if (!vk) return 0;
-    if ((g_mbtn_test >> vk) & 1u) return 1;
-    return key_live(vk);
+    return vk && key_live(vk);     /* GetAsyncKeyState reads the mouse buttons by VK; SM64DS_HOST_KEY=<vk hex>@f0-f1 scripts one for a row */
 }
 
 /* THE PAD'S HALF OF THE SAME GATE, and it was missing for as long as the
@@ -7224,11 +7219,6 @@ static void pad_test_apply(int frame, int *pad_live, XPad *pad)
                     "on\n", hp_env);
             fflush(stderr);
         }
-    }
-    {   /* CAMPACK1: the scripted mouse buttons (test only; not reachable from a selftest) */
-        static const char *mb_env = (const char *)1;
-        if (mb_env == (const char *)1) mb_env = getenv("SM64DS_HOST_MOUSEBTN");
-        g_mbtn_test = mb_env ? pad_script_mask(mb_env, frame) : 0;
     }
     if (!pt_env && !hp_env)
         return;
