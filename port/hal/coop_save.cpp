@@ -21,6 +21,7 @@
 
 #include "coop_save.h"
 #include "coop_save_wire.h"
+#include "coop_grant_guard.h"
 #include "comms_hub.h"
 #include "hub_presence.h"
 #include "star_tally.h"
@@ -34,6 +35,7 @@
 #include <ctime>
 
 extern "C" {
+extern signed char SUBLEVEL_LEVEL_TABLE[];   // MPSAFE1: level -> course (the same table party_stars uses)
 extern unsigned char data_0209caa0[];
 extern unsigned char data_020a4b40[8];     // the record tag (ntr/backup.cpp section 6)
 int  _ZN8SaveData8SaveFileEjP12FileSaveData(unsigned fileID, void *data);
@@ -78,6 +80,52 @@ constexpr unsigned kRetryMs = 2000;       // and at least every 2 s tick
 
 bool coop() { if (g_coop < 0) g_coop = env_on("SM64DS_COOP") ? 1 : 0; return g_coop == 1; }
 bool host() { if (g_host < 0) g_host = env_on("SM64DS_COOP_HOST") ? 1 : 0; return g_host == 1; }
+
+// ---- MPSAFE1: the grant guard (coop_grant_guard.h) and the visit memory it needs ----
+CoopGrantGuard g_guard;
+uint32_t g_visit_t[4][kGgCourses];
+bool     g_visit_seen[4][kGgCourses];
+unsigned g_epoch[4];  bool g_epoch_have[4];
+bool     g_course_known[kGgCourses];  bool g_course_init = false;
+
+int course_of_level(int level) {
+    if (level < 0 || level >= 52) return -1;
+    const int c = SUBLEVEL_LEVEL_TABLE[level];
+    return (c >= 0 && c < kGgCourses) ? c : -1;
+}
+
+// What each room seat has been doing lately, from its SYNL presence: which course it was in.
+void note_visits(uint32_t now) {
+    if (!g_course_init) {
+        g_course_init = true;
+        for (int l = 0; l < 52; ++l) { const int c = course_of_level(l); if (c >= 0) g_course_known[c] = true; }
+    }
+    for (int s = 0; s < 4; ++s) {
+        HubSeatInfo si;
+        if (comms_hub_seat_info(s, &si) && si.present) {
+            if (!g_epoch_have[s] || g_epoch[s] != si.join_epoch) {   // a seat that left and came back starts fresh
+                std::memset(g_visit_t[s], 0, sizeof g_visit_t[s]);
+                std::memset(g_visit_seen[s], 0, sizeof g_visit_seen[s]);
+                g_guard.reset_seat(s);
+                g_epoch[s] = si.join_epoch; g_epoch_have[s] = true;
+            }
+        }
+        HubPresence p;
+        if (hub_presence_get(s, &p, nullptr) && p.in_level()) {
+            const int c = course_of_level(p.level);
+            if (c >= 0) { g_visit_t[s][c] = now; g_visit_seen[s][c] = true; }
+        }
+    }
+}
+
+// Courses this seat was seen in within kGgVisitMs. A course no level maps to is never tested (fail open).
+void visited_of(int seat, uint32_t now, uint8_t *out /* kGgCourses */) {
+    for (int c = 0; c < kGgCourses; ++c) {
+        out[c] = !g_course_known[c] ||
+                 (seat >= 0 && seat < 4 && g_visit_seen[seat][c] &&
+                  (uint32_t)(now - g_visit_t[seat][c]) <= (uint32_t)kGgVisitMs);
+    }
+}
 
 bool live_valid() {
     return std::memcmp(data_0209caa0, kMagic, 4) == 0 && data_0209caa0[0x328] == 0;
@@ -434,12 +482,41 @@ bool coop_save_handle(int seat, const unsigned char *d, int len) {
         if (r == 0) {
             ++g_st.rec_recv_guest;
             if (!g_pending_have) std::memset(g_pending, 0, sizeof g_pending);
+            {   // MPSAFE1: believe only what the sender could have earned (coop_grant_guard.h)
+                uint8_t base[kCoopRecBytes], vis[kGgCourses];
+                if (live_valid()) std::memcpy(base, data_0209caa0, sizeof base); else std::memset(base, 0, sizeof base);
+                const uint8_t *mk = coop_mono_mask();
+                for (int i = 0; i < kCoopRecBytes; ++i) base[i] |= (uint8_t)(g_pending[i] & mk[i]);
+                const uint32_t now = (uint32_t)GetTickCount64();
+                note_visits(now);
+                visited_of(seat, now, vis);
+                const GgVerdict gv = g_guard.admit(seat, base, rec, now, vis);
+                if (gv != kGgOk) {
+                    static char why[64];
+                    std::snprintf(why, sizeof why, "SAVE_REC grants more than earned (%s)", gg_name(gv));
+                    return drop(&g_st.dropped_grant, seat, why);
+                }
+            }
             int n = coop_merge_record(g_pending, rec);
             g_pending_have = true;
             std::fprintf(stderr, "[coopsave] host heard seat %d record, %d new bits "
                          "queued (stars in it %d)\n", seat, n, coop_record_stars(rec));
         } else {
             ++g_st.rec_recv_host;
+            if (g_host_have && !blank) {   // MPSAFE1: after the first record, a "host" record is held to the allowance
+                uint8_t base[kCoopRecBytes];
+                std::memcpy(base, g_hostrec, sizeof base);
+                if (live_valid()) {
+                    const uint8_t *mk = coop_mono_mask();
+                    for (int i = 0; i < kCoopRecBytes; ++i) base[i] |= (uint8_t)(data_0209caa0[i] & mk[i]);
+                }
+                const GgVerdict gv = g_guard.admit(seat, base, rec, (uint32_t)GetTickCount64(), nullptr);
+                if (gv != kGgOk) {
+                    static char why[64];
+                    std::snprintf(why, sizeof why, "host SAVE_REC grants more than allowed (%s)", gg_name(gv));
+                    return drop(&g_st.dropped_grant, seat, why);
+                }
+            }
             g_host_blank = blank;
             if (!g_host_have) std::memset(g_hostrec, 0, sizeof g_hostrec);
             if (!blank) coop_merge_record(g_hostrec, rec);   // only grows
@@ -500,6 +577,7 @@ extern "C" void port_coop_save_frame(void) {
     /* the ROM puts "ds mario" back at boot; a coop room keeps its own tag */
     if (std::memcmp(data_020a4b40, kCoopTag, 8) != 0) std::memcpy(data_020a4b40, kCoopTag, 8);
     star_tally_frame();
+    note_visits((uint32_t)GetTickCount64());
     run_probe();
     run_forge();
     const ULONGLONG now = GetTickCount64();

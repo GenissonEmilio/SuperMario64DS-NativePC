@@ -61,6 +61,7 @@ struct CoopSaveStats {
     unsigned dropped_role;       // a record for the other role
     unsigned dropped_subtype;    // 0x20-0x2f but not 0x20 / 0x21
     unsigned fetch_ok, fetch_timeout;
+    unsigned dropped_grant;      // MPSAFE1: a record that granted more than the sender could have earned
 };
 CoopSaveStats coop_save_stats();
 

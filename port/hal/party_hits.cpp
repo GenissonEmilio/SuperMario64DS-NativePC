@@ -774,7 +774,12 @@ void handle_reply(int seat, unsigned ik, int yaw, int x, int y, int z) {
         later_push(kLaterBreak, seat);
         break;
     case kGrabThrow: case kGrabSwing:
-        later_push(kLaterLaunch, seat, ik == kGrabSwing, yaw, u(x) << 8);
+        {   // MPSAFE1: the holder names the launch speed. Real throws are 0x30000, a spin at most ~0x40000: clamp the rest
+            int sp = u(x);
+            if (sp < 0) sp = 0;
+            if (sp > (0x80000 >> 8)) sp = 0x80000 >> 8;
+            later_push(kLaterLaunch, seat, ik == kGrabSwing, yaw, sp << 8);
+        }
         break;
     case kAttach: {
         const int st = u(x);

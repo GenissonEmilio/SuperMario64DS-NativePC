@@ -1181,6 +1181,7 @@ void gw_on_ghost(const unsigned char *buf, int n, int seat, unsigned t_arr) {
                      (unsigned)ghostdoor::kFlagHidden)) || f.character > 3 ||
         ((f.flags & ghostdoor::kFlagHidden) && !(f.flags & kGwFrameClock)) ||
         f.anim_id >= kPlayerAnimCount || f.level_id > 0xff ||
+        f.anim_frame < 0 || f.anim_frame > (2000 << 12) ||    /* MPSAFE1: a cursor past any real animation */
         (!(f.flags & kGwFrameClock) &&
          (f.reserved[0] || f.reserved[1] || f.reserved[2])) ||
         f.x > kGwPosLimit || f.x < -kGwPosLimit ||
