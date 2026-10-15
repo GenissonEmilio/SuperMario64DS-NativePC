@@ -938,7 +938,6 @@ extern int data_0209d4b0[];
 extern int data_0209b454[];
 extern int data_0209ee90[];
 extern int data_020a4b60[];
-extern int g_walk_dbg[16];     /* collision-walk telemetry (port/unmatched) */
 /* the overlay's "unhosted" counter: hal/player_bridges.cpp bumps this every
    time the state dispatcher falls off the end of its switch */
 extern unsigned g_port_unhosted_hits;
@@ -18579,11 +18578,11 @@ int main(void)
                    entries -- 000?0fc? / 000000ff for castle grounds. */
                 const int *fr = (const int *)(c + 0x380 + 0x20 + 0x74);
                 fprintf(stderr, "       surf path=%x t=%d %d %d %d %d "
-                        "lastTri=%d attr=%x clps=%08x/%08x tri=%u slot=%u\n",
+                        "clps=%08x/%08x tri=%u slot=%u\n",
                         *(unsigned *)(c + 0x670), *(int *)(c + 0x66c),
                         *(int *)(c + 0x660), *(int *)(c + 0x65c),
                         *(int *)(c + 0x664), *(int *)(c + 0x658),
-                        g_walk_dbg[13], g_walk_dbg[14], fr[1], fr[2],
+                        fr[1], fr[2],
                         *(const unsigned short *)((const char *)fr + 0x18),
                         *(const unsigned short *)((const char *)fr + 0x1a));
             }
