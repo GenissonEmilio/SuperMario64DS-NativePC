@@ -65,7 +65,7 @@ extern int data_0209d708[];
 extern int data_0209d70c[];
 int GetOwnerLanguage(void);
 int SublevelToLevel(int i);
-int IsStarCollected(signed char courseID, int starID);
+int IsStarCollected(int courseID, int starID);   /* the ROM's own takes s32: a narrower spelling lets the host push only the low byte of the register (EXTRAS093: pause START crashed on the mgsync1 base) */
 unsigned char CountStarsCollectedInLevelToDisplay(int courseID);
 void _ZN10dScStage_c17UpdateMenuButtonsEb(int b);
 void func_02012790(int id);
@@ -448,7 +448,7 @@ void pause_facts(MenuFacts *mf)
     memcpy(f->sub, g_text.sub, sizeof f->sub);
     memcpy(f->names, g_text.names, sizeof f->names);
     int mask = 0;
-    if (lv < 15) for (int k = 0; k < 8; ++k) if (IsStarCollected((signed char)lv, k)) mask |= 1 << k;
+    if (lv < 15) for (int k = 0; k < 8; ++k) if (IsStarCollected(lv, k)) mask |= 1 << k;
     f->got_mask = mask;
     f->stars_got = CountStarsCollectedInLevelToDisplay(lv);
     f->secret_n = CountStarsCollectedInLevelToDisplay(15);

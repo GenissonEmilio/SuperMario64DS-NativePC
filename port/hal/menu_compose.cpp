@@ -2269,6 +2269,7 @@ int hal_menu_last_size(int *w, int *h)
 
 void hal_menu_pad(uint16_t *pressed, int host_back)
 {
+    host_menu_cursor_sound_flush();       /* EXTRAS093: once per logic frame a menu is up (the scene runner has no window loop) */
     if (!g_live || !pressed || !g_cur.recipe) return;
     const MenuRecipe *R = g_cur.recipe;
     if (R->pad_ok && !R->pad_ok()) return;      /* the ROM is not reading the menu this frame */

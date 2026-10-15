@@ -163,6 +163,8 @@ extern u32 data_0209b464; /* flag mask that forces thinking; 0 means "any" */
    lets BeforeRender draw an actor the ROM would cull for being past its clip
    distance or past the camera's far plane. */
 extern "C" int host_setting_draw_distance_pct(void);
+#include <stdio.h>
+#include <stdlib.h>
 static void HostWidenDraw(dActor_c *a, int r, int thresh, Vector3 *camPos, int radius)
 {
     const int pct = host_setting_draw_distance_pct();
@@ -185,8 +187,15 @@ static void HostWidenDraw(dActor_c *a, int r, int thresh, Vector3 *camPos, int r
         r = _ZN8dClipper13Func_020150E8ER7Vector35Fix12IiEPh(&data_0209f43c, camPos, radius, (u8 *)0);
         c->farZ = saved;
     }
-    if (r != 0x7fffffff && r <= t2)
+    if (r != 0x7fffffff && r <= t2) {
         a->pad_0c5[0] = 1;
+        static int cnt, logon = -1;
+        if (logon < 0)
+            logon = getenv("SM64DS_DRAW_DIST_LOG") ? 1 : 0;
+        if (logon && (cnt++ % 1500) == 0)
+            fprintf(stderr, "[drawdist] pct %d: actor id %d drawn past the ROM cull (depth %d, ROM limit %d, widened limit %lld)\n",
+                    pct, (int)*(unsigned short *)((char *)a + 0xc), r, thresh, t2);
+    }
 }
 #endif
 int dActor_c::BeforeBehavior()

@@ -9977,6 +9977,12 @@ static void fullscreen_boot(HWND h)
     if (host_setting_start_fullscreen() && !g_fullscreen) {
         fprintf(stderr, "[settings] StartFullscreen: borderless fullscreen\n");
         fullscreen_toggle(h);
+        if (W.GetClientRect_ && W.GetWindowLongA_) {
+            RECT rc = {0, 0, 0, 0};
+            W.GetClientRect_(h, &rc);
+            fprintf(stderr, "[settings] StartFullscreen: now fullscreen=%d style=0x%08lx client %dx%d\n", g_fullscreen,
+                    (unsigned long)W.GetWindowLongA_(h, GWL_STYLE), (int)(rc.right - rc.left), (int)(rc.bottom - rc.top));
+        }
     }
 }
 
@@ -16620,6 +16626,32 @@ int main(void)
                             (unsigned)*(unsigned char *)(c + 0x6e3));
             }
 
+            /* SM64DS_ACTOR_HASH=<every N frames>: a fingerprint of every actor's GAME state (id, position, angles, speed, mFlags), never the
+               host byte the draw-distance option adds. Two runs that differ only in DrawDistance must print the same lines: that is the
+               proof the option touches drawing and not gameplay. */
+            {
+                static int ah_read, ah_every;
+                if (!ah_read) {
+                    ah_read = 1;
+                    const char *e = getenv("SM64DS_ACTOR_HASH");
+                    ah_every = e ? atoi(e) : 0;
+                }
+                if (ah_every > 0 && frame % ah_every == 0) {
+                    unsigned long long h = 14695981039346656037ull;
+                    int n = 0;
+                    for (int *node = (int *)(size_t)data_020a4b78[0]; node; node = (int *)(size_t)node[1]) {
+                        const char *o = (const char *)(size_t)node[2];
+                        if (!o) continue;
+                        const unsigned words[12] = { (unsigned)*(const unsigned short *)(o + 0xc), *(const unsigned *)(o + 0x5c),
+                            *(const unsigned *)(o + 0x60), *(const unsigned *)(o + 0x64), *(const unsigned *)(o + 0x8c),
+                            *(const unsigned *)(o + 0x90), *(const unsigned *)(o + 0x98), *(const unsigned *)(o + 0xa8),
+                            *(const unsigned *)(o + 0xb0), *(const unsigned *)(o + 0xb4), *(const unsigned *)(o + 0xcc), 0u };
+                        for (int k = 0; k < 11; ++k) { h ^= words[k]; h *= 1099511628211ull; }
+                        ++n;
+                    }
+                    fprintf(stderr, "[actorhash] f%d actors %d hash %08x\n", frame, n, (unsigned)(h ^ (h >> 32)));
+                }
+            }
             {
                 static int sp_read, sp_on, sp_dumped, sd_fired;
                 static int sd_idx = -1, sd_frame = 60, sd_hold = 60;
