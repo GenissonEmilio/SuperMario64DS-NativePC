@@ -2,7 +2,7 @@
 
    DECISIONS (each with the reason):
    - The pen is the JUMP binding (A by default), the same button every menu already takes as confirm (MENU_PAD_CONFIRM), so a rebound confirm
-     moves the pen with it. Held = pen down, released = pen up, and a short tap is stretched to three frames because the ROM's touch gates
+     moves the pen with it. Held = pen down, released = pen up, and a short tap is stretched to at least three frames because the ROM's touch gates
      want the touched byte and its edge byte together (memory sm64ds-minigames-headless-provable: a one frame press never registers).
    - Speed is a quadratic curve over the stick after a 25 percent dead zone: a small push is a fine, slow move (a Shuffle Shell grab box is
      20 DS pixels, a Coincentration card is bigger), a full push is 4 DS pixels a frame (the screen in about a second). The D-pad is 2 DS
@@ -285,13 +285,12 @@ extern "C" void hal_padptr_frame(const PadPtrIn *in, PadPtrOut *out)
     /* ---- the pen ---- */
     if (!in->confirm) S.armed = 1;
     const int was_down = S.down;
-    if (in->confirm && S.armed) {
-        if (!was_down) S.hold = 3;
+    const int press = in->confirm && S.armed;
+    if (press && !was_down) S.hold = 3;                 /* a short tap is owed three frames of pen (see the banner) */
+    if (press || S.hold > 0) {
         S.down = 1;
-        S.hint = 0;
-    } else if (S.hold > 0) {
-        --S.hold;
-        S.down = 1;
+        if (S.hold > 0) --S.hold;
+        if (press) S.hint = 0;
     } else {
         S.down = 0;
     }
