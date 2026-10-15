@@ -3834,8 +3834,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                         if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y;
                     } else ++outside;
                 }
-            if (dbg) std::fprintf(stderr, "[hdmeter] y=%d health=%d n64=%d X0=%d Y0=%d cells in footprint %d (bbox %d..%d x %d..%d) outside %d k=%d
-",
+            if (dbg) std::fprintf(stderr, "[hdmeter] y=%d health=%d n64=%d X0=%d Y0=%d cells in footprint %d (bbox %d..%d x %d..%d) outside %d k=%d\n",
                                   hdm_y, hdm_health, (int)hdm_n64, X0, Y0, n, bx0, bx1, by0, by1, outside, art->k);
             if (n > 0 && (!honour3d || !layer_behind_3d(kOwnerObj, prio, p3d))) {
                 for (int y = Y0 < 0 ? 0 : Y0; y < Y0 + 40 && y < 192; ++y)

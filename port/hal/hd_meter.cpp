@@ -38,13 +38,11 @@ const HdMeterArt *get(int health, int k)
     /* the content is 40 x 40 DS pixels; a file that cannot hold it is refused (the DS sprites stay) */
     if (w < 40 * k || h < 40 * k) {
         stbi_image_free(p);
-        std::fprintf(stderr, "[hdmeter] %s from %s: %dx%d is too small for 40x40 DS pixels at %dx, ignored
-", name, from, w, h, k);
+        std::fprintf(stderr, "[hdmeter] %s from %s: %dx%d is too small for 40x40 DS pixels at %dx, ignored\n", name, from, w, h, k);
         return 0;
     }
     g_art[idx].k = k; g_art[idx].w = w; g_art[idx].h = h; g_art[idx].rgba = p;
-    std::fprintf(stderr, "[hdmeter] %s %dx%d from %s
-", name, w, h, from);
+    std::fprintf(stderr, "[hdmeter] %s %dx%d from %s\n", name, w, h, from);
     return &g_art[idx];
 }
 

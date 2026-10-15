@@ -16809,8 +16809,7 @@ int main(void)
                 for (int i = 0; i < hp_n; ++i)
                     if (frame == hp_f[i]) {
                         data_02092144[(int)data_0209f250] = (short)(hp_w[i] << 8);
-                        fprintf(stderr, "[healthpoke] f%d health -> %d wedges
-", frame, hp_w[i]);
+                        fprintf(stderr, "[healthpoke] f%d health -> %d wedges\n", frame, hp_w[i]);
                     }
             }
 
