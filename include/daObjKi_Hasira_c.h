@@ -53,7 +53,14 @@ struct daObjKi_Hasira_c : dBgActor_c {
        the ov022 dBgActor_c leaves daObjFl_Ring_c and daObjFl_Block_c. The
        brace stays on the signature line -- tools/check_header_offsets.py
        recognises an inline body only when the signature line carries it. */
-    virtual ~daObjKi_Hasira_c() {}   /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjKi_Hasira_c() {}   /* no slot */
+    #else
+    virtual ~daObjKi_Hasira_c() {}
+    #endif   /* slots 16 (D1), 17 (D0) */
 
     virtual s32 InitResources();     /* slot  0 */
     virtual s32 CleanupResources();  /* slot  3 */

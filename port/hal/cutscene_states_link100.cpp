@@ -112,9 +112,9 @@
  * (bare, next-symbol-delta sized -- both are 4-entry unsigned short tables,
  * 8 bytes each) and seated the two cells as ordinary ST_FACE1 rows below.
  *
- * data_ov002_02110eec[8] names func_ov002_020f3de4, which still has NO src
- * file: it does not byte-match yet (the banked near-miss sits at 44
- * divergences on an ordering floor). It used to get an ABORTING face that
+ * data_ov002_02110eec[8] names func_ov002_020f3de4, which is now main's real
+ * body in src/actors/daDemo_c.cpp (PORTDROP1 retired the host transcription
+ * that stood in for it). Before that it had NO src file and used to get an ABORTING face that
  * named itself, and the ending reached it: with any unlocked character (one
  * is enough; SM64DS_EVENT_SEED=2:1, 2:3, 2:7 and 2:f all enter it) the cast
  * screen's last icon state is entered right after Peach's cake line, so a
@@ -178,7 +178,7 @@ void func_ov002_020f3ae8(void *, int);         /* src/func_ov002_020f3ae8.c */
 void func_ov002_020f3ba0(void *, int);         /* src/func_ov002_020f3ba0.c */
 void func_ov002_020f3d38(void *, int);         /* src/func_ov002_020f3d38.c */
 void func_ov002_020f3d98(void *, int);         /* src/func_ov002_020f3d98.cpp */
-void func_ov002_020f3de4(void *, int);         /* port/unmatched/func_ov002_020f3de4.c */
+void func_ov002_020f3de4(void *, int);         /* src/actors/daDemo_c.cpp */
 void func_ov002_020f40fc(void *, int);         /* src/func_ov002_020f40fc.c */
 void func_ov002_020f43cc(void *, int);         /* src/func_ov002_020f43cc.c */
 void func_ov002_020f4710(void *, int);         /* src/func_ov002_020f4710.c */

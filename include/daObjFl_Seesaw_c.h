@@ -12,7 +12,14 @@ struct daObjFl_Seesaw_c : dBgActor_c {
     u8  mSwingCooldown;      /* 0x320 */
     u8  pad_321[0x3];
 
-    virtual ~daObjFl_Seesaw_c();            /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjFl_Seesaw_c();   /* no slot */
+    #else
+    virtual ~daObjFl_Seesaw_c();
+    #endif            /* slots 16 (D1), 17 (D0) */
 
     virtual s32   InitResources();         /* slot  0 */
     virtual s32   CleanupResources();      /* slot  3 */

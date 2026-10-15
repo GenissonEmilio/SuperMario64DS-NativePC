@@ -44,7 +44,14 @@ struct daObjPile_c : dBgActor_c {
        daObjPile_c::func_ov091_02133498 reads it back. */
     dActor_c *mLinkedTag;    /* 0x32c */
 
-    virtual ~daObjPile_c();                     /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjPile_c();   /* no slot */
+    #else
+    virtual ~daObjPile_c();
+    #endif                     /* slots 16 (D1), 17 (D0) */
 
     virtual s32 CleanupResources();             /* slot  3 */
     virtual s32 Render();                       /* slot  9 */

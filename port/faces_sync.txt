@@ -5438,6 +5438,7 @@ __ZN11daPicGate_c19func_ov080_02125f00Ev                                 ?func_o
 __ZN11daPicGate_c19func_ov080_02125fd0Ev                                 ?func_ov080_02125fd0@daPicGate_c@@QAEXXZ                         0x02125fd0 R
 __ZN11daPicGate_c19func_ov080_02126120Ev                                 ?func_ov080_02126120@daPicGate_c@@QAEXXZ                         0x02126120 R
 __ZN11daPicGate_c19func_ov080_02126124Ev                                 ?func_ov080_02126124@daPicGate_c@@QAEXXZ                         0x02126124 R
+__ZN11daPicGate_c19func_ov080_021261f4Ev                                 ?func_ov080_021261f4@daPicGate_c@@QAEXXZ                         0x021261f4 R
 __ZN11daPicGate_c19func_ov080_021264ecEv                                 ?func_ov080_021264ec@daPicGate_c@@QAEXXZ                         0x021264ec R
 __ZN11daPicGate_c19func_ov080_021265ecEv                                 ?func_ov080_021265ec@daPicGate_c@@QAEXXZ                         0x021265ec R
 __ZN11daPicGate_c19func_ov080_0212677cEv                                 ?func_ov080_0212677c@daPicGate_c@@QAEXXZ                         0x0212677c R
@@ -5613,7 +5614,7 @@ __ZN11fLiNdBaPr_cD1Ev                                                    ??1fLiN
 __ZN10daKpa3Bg_c19func_ov060_02117db8Ev                                  ?func_ov060_02117db8@daKpa3Bg_c@@QAEXXZ                          0x02117db8 F
 __ZN10daKpa3Bg_c19func_ov060_021181b4Ev                                  ?func_ov060_021181b4@daKpa3Bg_c@@QAEXXZ                          0x021181b4 F
 
-__ZN11daPicGate_c19func_ov080_021261f4Ev                                 ?func_ov080_021261f4@daPicGate_c@@QAEXXZ                         0x021261f4 F
+# PORTDROP1 retired (src/_ZN11daPicGate_c19func_ov080_021261f4Ev.cpp now defines this member itself): __ZN11daPicGate_c19func_ov080_021261f4Ev                                 ?func_ov080_021261f4@daPicGate_c@@QAEXXZ                         0x021261f4 F
 # ---- PORTSYNC3 derived (facegen.py --derive over the first MSVC link of the 2026-10-14 sync) ----
 __ZN6Player13St_Climb_MainEv                                             ?St_Climb_Main@Player@@QAEHXZ                                    0x020cb5bc R
 __ZN6Player19func_ov002_020bd8c0Ej                                       ?func_ov002_020bd8c0@Player@@QAEXI@Z                             0x020bd8c0 R

@@ -28,7 +28,14 @@ struct daObjKi_Fune_c : dBgActor_c {
        src/game/actors/d_a_obj_ki_fune.cpp, which owns the whole
        0x0211260c..0x02112a00 linker run, including the two
        daObjKi_Fune_c_classInit_KI_FUNE(_UP) registry factories. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjKi_Fune_c() {}   /* no slot */
+    #else
     virtual ~daObjKi_Fune_c() {}
+    #endif
     virtual int InitResources();
     virtual int CleanupResources();
     virtual int Behavior();

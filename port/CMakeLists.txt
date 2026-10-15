@@ -1103,6 +1103,7 @@ set(SAMECLASS_GX_TU
     src/game/actors/d_a_pic_gate.cpp
     src/game/actors/d_a_pic_gate.cpp
     src/actors/daPicGate_c.cpp
+    src/_ZN11daPicGate_c19func_ov080_021261f4Ev.cpp
     src/actors/dScMiniGm_c.cpp)
 set(SAMECLASS_BOOT_TU
     src/Initialise3dGraphics.cpp
@@ -6330,7 +6331,6 @@ foreach(line IN LISTS SLICE33_LINES)
     list(APPEND SLICE33_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
 list(APPEND SLICE33_SOURCES
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/WaterfallMist_Behavior_HostSites.cpp"
      "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Coin_Behavior.cpp")
 # unmatched/Coin_CollectDispatch.cpp and unmatched/StarMarker_SpawnDispatch.cpp
 # RETIRED (run linkfull, lane RS4PORT): main #3106 passes the found player and
@@ -6408,8 +6408,6 @@ list(APPEND SLICEINTRO_SOURCES
 # void* arithmetic: func_ov002_020f7780 (cutscene-object command slot 2) adds
 # 0x8e to a void*, which mwcc takes as the GNU extension and MSVC C refuses with
 # C2036. One cast, same address; src line commented out in slice_intro.txt.
-list(APPEND SLICEINTRO_SOURCES
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Ov002_CutsceneCmd_020f7780.c")
 # The opening's 55 script ARGUMENT RECORDS, hosted with real host pointers the
 # way ptr_tables.cpp table 2 hosts the 39 camera-script records. They are NOT in
 # romdata.py's byte-copy list on purpose: each carries a relocated word at +4,
@@ -7678,8 +7676,6 @@ if(EXISTS "${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020c9688.c"
 else()
     message(STATUS "SC1: func_ov007_020c9688 still unmatched, scene 1 running "
                    "on the host transcription interim")
-    list(APPEND SC1_INTERIM_SOURCES
-        "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Ov007_OamCellBank_020c9688.cpp")
 endif()
 
 # run mg15 lane TITLETEX: THE SECOND SCENE 1 INTERIM, ON SC1's OWN TERMS.
@@ -7706,8 +7702,6 @@ if(EXISTS "${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020c4684.c"
 else()
     message(STATUS "TITEX: func_ov007_020c4684 still unmatched, the title "
                    "screen draws through the host transcription interim")
-    list(APPEND SC1_INTERIM_SOURCES
-        "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Ov007_CellQuad_020c4684.cpp")
 endif()
 
 # run push0829 lane TITLE-DOODLE: THE DOODLE CANVAS INTERIM, ON SC1's OWN TERMS.
@@ -7739,8 +7733,6 @@ if(EXISTS "${PORT_REPO_ROOT_ABS}/src/unnamed/ov007/func_ov007_020b8fd4.c"
 else()
     message(STATUS "DOODLE: func_ov007_020b8fd4 still unmatched, the title "
                    "doodle canvas draws through the host transcription interim")
-    list(APPEND SC1_INTERIM_SOURCES
-        "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Ov007_DoodleCanvas_020b8fd4.cpp")
 endif()
 
 # run link60 lane PC2: SCENE 1'S NEXT BLOCKER, AND THE PREDICATE THAT NAMES IT.
@@ -8184,8 +8176,6 @@ set(SCENE_MG_SOURCES
     # port_mg_curling_collide_020e1dc8 and _020e20bc by name from the faces
     # the matched physics TUs link against, so a target that compiles the
     # faces and not these fails the link on both symbols.
-    unmatched/MgCurling_Collide_020e1dc8.cpp
-    unmatched/MgCurling_Collide_020e20bc.cpp
     # Run mg5, lane PCH: dScMgPachinko_c (id 0x170, scene 368). Same three
     # targets and the same reason as every file above -- hal/scene_boot.cpp's
     # port_scene_classes[] now carries the 368 row, so every target that
@@ -8216,7 +8206,6 @@ set(SCENE_MG_SOURCES
     # REPLACES its src TU -- src/func_ov006_020fb7e0.c is out of slice_pch.txt
     # -- so it is not optional on any target that takes the slice, exactly like
     # the state dispatch above.
-    unmatched/MgPachinko_Award.cpp
     # unmatched/MgHud_HighScore.cpp RETIRED (run linkfull, lane RS4PORT): main
     # #3107 passes the HIGH SCORE drawer the full 32-bit word (lane HSDISP's
     # 999999 fix, now in the matched source), so src/func_ov006_020fba48.c is
@@ -8228,7 +8217,6 @@ set(SCENE_MG_SOURCES
     # hal/scene_mg_faces.cpp now call port_mg_hud_scaled_number_020b2220 by
     # name, so a target that compiles the faces and not this file fails the
     # link on that symbol. Replaces no src TU, because there is none.
-    unmatched/MgHud_ScaledNumber.cpp
     # Run mg6, lane LKT: dScMgPachinko2_c (id 0x171, scene 369). Same three
     # targets and the same reason as every file above -- hal/scene_boot.cpp's
     # port_scene_classes[] now carries the 369 row, so every target that
@@ -8467,7 +8455,6 @@ endforeach()
 # DATA words that include/decl_common.h spells with func_ names.
 set(SCENE_SMB_SOURCES
     unmatched/MgSmartball_Traps.cpp
-    unmatched/MgSmartball_Slot18.cpp
     unmatched/MgSmartball_Faces.cpp)
 
 # Run mg5 lane SMBSEAT: TWO SOURCE PROPERTIES THE SUB-OBJECT SEAT NEEDS.
@@ -10926,7 +10913,6 @@ set(SLICE_TTI_SOURCES hal/scene_mg_trampoline.cpp
                       # trampoline slices now); only 020cf2fc is still trapped
                       # here, and both lanes' counter APIs are unchanged -- the
                       # two retired slots report a fixed 0.
-                      unmatched/MgTrampolineTime_Floors.cpp
                       # The trampoline RECORD READOUT that replaced the retired
                       # hit-test want count as the stroke evidence. Listed ONCE,
                       # here, and read by BOTH scenes' censuses -- every target
@@ -11627,7 +11613,6 @@ set(GATE32_HOST_SOURCES
     hal/bob_enemy_shadow_faces.cpp
     hal/bob_enemy_header_faces.cpp
     # the ModelAnim slot-5 collision, for the fourth gate running
-    unmatched/BobEnemy_Renders.cpp
     # the mwcc pointer-to-member dispatch for the eighth time, and the first
     # one that belongs to a BASE class: Enemy's own death-type table
     unmatched/Enemy_UpdateDeath.cpp
@@ -11640,7 +11625,6 @@ set(GATE32_HOST_SOURCES
     # ...and for the eleventh, the widest one yet: KING_BOB_OMB keeps the
     # ADDRESS of a two-PMF record rather than an index, so both his setter and
     # his Behavior do pointer arithmetic on a type MSVC doubles
-    unmatched/KingBobOmb_States.cpp
     # ...and for KOOPA_SHELL (gate 209): its four {init, main} states, seated
     # over the mounted DS addresses on both sides of __sinit_ov102_0214dfac
     unmatched/KoopaShell_States.cpp
@@ -12097,7 +12081,6 @@ set(LEVELBOOT_HOST_SOURCES
     # shadow-A): the init and behaviour Process wrappers come from hostgen's
     # VIRTUAL_CALL table now (GATE35_SYMS), the three static {slot, 1} records
     # resolved to the vtable slots they name at the caller.
-    unmatched/func_0204322c_hostcopy.cpp
     unmatched/func_02043fdc_hostcopy.cpp
     # unmatched/LoadEntranceObjects.cpp RETIRED (run linkfull, lane RS4PORT):
     # the per-function src passes StartEntranceFaderWipe the wipe type (main
@@ -12138,7 +12121,6 @@ set(LEVELBOOT_HOST_SOURCES
     # gate 19: unmatched/Cannon_Render.cpp RETIRED (run link100, lane FOLD2)
     # -- "the same slot problem one slot lower, on Model" was the destructor
     # fold, and _ZTV5Model[5] is Model::Render again. Its Behavior stays.
-    unmatched/Cannon_Behavior.cpp
     # gate 21: the pointer-to-member dispatch for the fifth time
     unmatched/Fish_Behavior.cpp
     unmatched/UnchainedChomp_Behavior.cpp
@@ -12152,8 +12134,7 @@ set(LEVELBOOT_HOST_SOURCES
     # (cxxname_bridge.cpp:521-522). src/_ZN4Door6RenderEv.cpp is on
     # port/slice_facef.txt; it defines the C name itself and needs no face.
     # gate 23: the seventh, and the last on this level
-    unmatched/QuestionBlock_States.cpp
-    unmatched/QuestionBlock_BounceDispatch.cpp)
+    )
 # unmatched/Painting_Dispatch.cpp RETIRED (run link100, lane UNMATCH). The
 # widened-PMF half of its reason is dead under /vmg /vmm -- MSVC strides the
 # ROM's own 0x18 and reads the ROM's own {code, adjust} pairs -- and the half
@@ -15279,7 +15260,6 @@ foreach(line IN LISTS SLICE_OV066_LINES)
 endforeach()
 list(APPEND SLICE_OV066_SOURCES
      "${CMAKE_CURRENT_SOURCE_DIR}/hal/actor_classes_ov066.cpp"
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Eyerok_Behavior.cpp"
      "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Eyerok_ClosestPlayerRead.cpp")
 # unmatched/Eyerok_Render.cpp RETIRED (run link100, lane FOLD2): its only
 # divergence was the BlendModelAnim slot-5 shadow the destructor fold created,
@@ -15564,11 +15544,7 @@ foreach(line IN LISTS SLICE_OV090_LINES)
     list(APPEND SLICE_OV090_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
 list(APPEND SLICE_OV090_SOURCES
-     "${CMAKE_CURRENT_SOURCE_DIR}/hal/actor_classes_ov090.cpp"
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Skeeter_HostSites.cpp"
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/MantaRay_HostSites.cpp"
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/CheepCheep_HostSites.cpp"
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Shark_HostSites.cpp")
+     "${CMAKE_CURRENT_SOURCE_DIR}/hal/actor_classes_ov090.cpp")
 
 # ---- lane cast-ov090: THREE CROSS-OVERLAY NAME BINDINGS, ALL BY ADDRESS ----
 # Every one is settled from the crossing TU's OWN relocation in
@@ -15689,8 +15665,7 @@ foreach(line IN LISTS SLICE_W3F2_LINES)
     list(APPEND SLICE_W3F2_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
 list(APPEND SLICE_W3F2_SOURCES
-     "${CMAKE_CURRENT_SOURCE_DIR}/hal/actor_classes_ov091.cpp"
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Ov091_HostSites.cpp")
+     "${CMAKE_CURRENT_SOURCE_DIR}/hal/actor_classes_ov091.cpp")
 # ONE OF THIS SLICE'S TWENTY .c FILES IS REALLY C++ -- a //cpp marker and
 # top-level `extern "C"` declarations, which as C is a syntax error on line 3.
 # Found by the comment-stripped token sweep over all twenty (//cpp, extern "C",
@@ -15943,8 +15918,7 @@ endforeach()
 # slice as matched TUs, so the file is deleted and its row comes out here.
 list(APPEND SLICE_OV074_SOURCES
      "${CMAKE_CURRENT_SOURCE_DIR}/hal/actor_classes_ov074.cpp"
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Goomboss_HostSites.cpp"
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Goomboss_InitResources.cpp")
+     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Goomboss_HostSites.cpp")
 
 # lane w2-ov074: THE TWO .c FILES IN THIS SLICE THAT ARE REALLY C++.
 # The comment-stripped token sweep (`extern "C"`, virtual, class, namespace,
@@ -16084,7 +16058,7 @@ set_source_files_properties(
     PROPERTIES COMPILE_DEFINITIONS
     "_ZN21daObjKm3_Kurumajiku_c16CleanupResourcesEv=_ZN12daBakubaku_c19func_ov032_02111254Ev")
 list(APPEND SWEEP2_SOURCES hal/actor_classes_ov032.cpp ${SLICE_SWEEP2_OV032_SOURCES}
-    unmatched/Bubba_Behavior.cpp unmatched/Bubba_ChaseGate.cpp)
+    unmatched/Bubba_ChaseGate.cpp)
 # unmatched/Bubba_Render.cpp RETIRED (run link100, lane FOLD2): the ModelAnim
 # slot-5 shadow, dead with the destructor unfold. src/game/actors/d_a_bakubaku.cpp
 # carries it on port/slice_fold2.txt and needs no face -- it is an
@@ -16291,7 +16265,7 @@ foreach(line IN LISTS SLICE_SWEEP2_OV055_LINES)
     list(APPEND SLICE_SWEEP2_OV055_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
 list(APPEND SWEEP2_SOURCES hal/actor_classes_ov055.cpp ${SLICE_SWEEP2_OV055_SOURCES}
-    unmatched/MirrorLuigi_StateEnter.cpp unmatched/MirrorLuigi_Behavior.cpp)
+    unmatched/MirrorLuigi_Behavior.cpp)
 # ---- end lane cast-sweep2 --------------------------------------------------
 
 # ---- run rel0215 wave 3, lane w3-e ----------------------------------------
@@ -16865,8 +16839,6 @@ endforeach()
 # One host copy carries both wrappers; it is added here (both gates ship on the
 # same three targets, so add it once). Src lines commented out in slice_gate16.txt
 # and slice_gate89.txt.
-list(APPEND SLICE16_SOURCES
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Actor_ClosestPlayerWrappers.cpp")
 
 # BigBrickBlock::OnAttacked2 (slot 23, the bro PUNCH) USED TO BE A HOST COPY
 # appended here. Its src reaches Kill (slot 31) through a C++ virtual now, so
@@ -17680,7 +17652,7 @@ add_executable(smoke_player EXCLUDE_FROM_ALL tests/smoke_player.cpp "${OV002DATA
     # both touch. walk_window already had it; smoke_player and walk_window_hires
     # did not, so it joins all three rather than the symbol being defined a
     # second time next to the one that already exists.
-    hal/w8a_stage_storage.cpp hal/cannon_probe.cpp hal/message_boot.cpp hal/message_gen_text.cpp hal/message_compositor.cpp hal/actor_registry.cpp hal/actor_classes.cpp hal/actor_slot30_seat.cpp hal/actor_classes_bob_world.cpp hal/actor_faces_bob.cpp hal/actor_class_faces.cpp hal/mmc_vtable.cpp hal/ov009_boot.cpp hal/actor_overlays.cpp hal/sub_screen.cpp ${SLICE_2D1_SOURCES} hal/sub_actors.cpp hal/stage_bridges.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10dScStage_c16OnPendingDestroyEv.cpp" hal/level_change.cpp hal/title_entry.cpp hal/star_flow.cpp hal/oam_lists.cpp hal/blend_vtable.cpp hal/particle_vtable.cpp hal/particle_bridges.cpp unmatched/Particle_RideThroughs.cpp
+    hal/w8a_stage_storage.cpp hal/cannon_probe.cpp hal/message_boot.cpp hal/message_gen_text.cpp hal/message_compositor.cpp hal/actor_registry.cpp hal/actor_classes.cpp hal/actor_slot30_seat.cpp hal/actor_classes_bob_world.cpp hal/actor_faces_bob.cpp hal/actor_class_faces.cpp hal/mmc_vtable.cpp hal/ov009_boot.cpp hal/actor_overlays.cpp hal/sub_screen.cpp ${SLICE_2D1_SOURCES} hal/sub_actors.cpp hal/stage_bridges.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10dScStage_c16OnPendingDestroyEv.cpp" hal/level_change.cpp hal/title_entry.cpp hal/star_flow.cpp hal/oam_lists.cpp hal/blend_vtable.cpp hal/particle_vtable.cpp hal/particle_bridges.cpp
     # Run link100 wave 17, lane PAINT5. The PAINTING's twelfth state body,
     # ov080 0x021261f4, which has no src TU and no near-miss draft and was a
     # named trap in hal/actor_overlays.cpp's g_painting_states until now. It
@@ -17688,7 +17660,6 @@ add_executable(smoke_player EXCLUDE_FROM_ALL tests/smoke_player.cpp "${OV002DATA
     # on none of them: that file's pt_f_021261f4 face calls
     # func_ov080_021261f4 by name, so a target that takes the seat and not
     # this file fails the link on that symbol.
-    unmatched/Painting_StateRender_021261f4.cpp
     ${CAMERA_HOST_SOURCES} ${LEVELBOOT_HOST_SOURCES} ${SOUND_HOST_SOURCES}
     ${MODELFAMILY_HOST_SOURCES}
     ${SLICE_W23_MODELDTOR_SOURCES}
@@ -17748,9 +17719,9 @@ add_executable(smoke_player EXCLUDE_FROM_ALL tests/smoke_player.cpp "${OV002DATA
     ${SLICE40_SOURCES} ${SLICE41_SOURCES} ${SLICE42_SOURCES}
     hal/actor_classes_painting.cpp ${SLICE50_SOURCES} hal/actor_classes_wf.cpp
     unmatched/Cap_StateDispatch.cpp unmatched/ExclamationSwitch_StateDispatch.cpp ${SLICE51_SOURCES} ${SLICE59_SOURCES} ${SLICE78_SOURCES} ${SLICE79_SOURCES} ${SLICE82_SOURCES} ${SLICE83_SOURCES} ${SLICE64_SOURCES} ${GATE64_GEN} ${SLICE89_SOURCES} ${SLICE102_SOURCES} ${SLICE103_SOURCES} ${SLICE128_SOURCES} ${SLICE121_SOURCES} ${SLICE122_SOURCES} ${SLICE123_SOURCES} ${SLICE209_SOURCES} hal/actor_classes_runtime_spawns.cpp ${SLICE210_SOURCES} unmatched/YoshiEgg_StateDispatch.cpp
-    hal/actor_classes_ccm.cpp ${SLICE142_SOURCES} ${SLICE190_SOURCES} ${SLICE191_SOURCES} ${SLICE_MPG_SOURCES} ${SLICE_MPG2_SOURCES} unmatched/SoundObject_Behavior.cpp unmatched/MotherPenguin_AfterClsnSeat.cpp unmatched/MotherPenguin_ChaseGate.cpp ${SLICE_SMALLS_SOURCES} ${SLICE_SEAT1_SOURCES} unmatched/MotherPenguin_Behavior.cpp hal/actor_classes_ov081.cpp ${SLICE192_SOURCES} unmatched/MrBlizzard_Behavior.cpp ${SLICE_W3B_SOURCES} ${W3BGEN} hal/actor_classes_ov072.cpp ${SLICE193_SOURCES} unmatched/Snowman_InitResources.cpp ${SLICE_SHADOWS_SOURCES} ${SLICE_SHADOWS3_SOURCES} hal/actor_classes_ov094.cpp ${SLICE194_SOURCES} unmatched/HootTheOwl_StateDispatch.cpp hal/actor_classes_ov012.cpp ${SLICE199_SOURCES} hal/actor_classes_ov002g200.cpp ${SLICE200_SOURCES} unmatched/PushBlock_StateDispatch.cpp hal/actor_classes_ov013.cpp ${SLICE202_SOURCES} hal/actor_classes_ov077.cpp ${SLICE_OV077_SOURCES} unmatched/Lakitu_HostSites.cpp unmatched/Spiny_HostSites.cpp unmatched/HeaveHo_HostSites.cpp unmatched/Lakitu_ShadowFaces.cpp ${SLICE_OV030CAST_SOURCES} hal/actor_classes_ov092.cpp ${SLICE_OV092_SOURCES} unmatched/ToxBox_HostSites.cpp unmatched/ToxBox_ShadowFaces.cpp hal/actor_classes_ov096.cpp ${SLICE_OV096_SOURCES} unmatched/Pokey_HostSites.cpp unmatched/Tornado_HostSites.cpp unmatched/Ov072_MethodFaces.cpp ${SLICE_VSPOPUP_SOURCES} ${SLICE_CAP_SOURCES} ${SLICEBULLET_SOURCES} unmatched/Bullet_StateDispatch.cpp hal/actor_classes_bullet.cpp
+    hal/actor_classes_ccm.cpp ${SLICE142_SOURCES} ${SLICE190_SOURCES} ${SLICE191_SOURCES} ${SLICE_MPG_SOURCES} ${SLICE_MPG2_SOURCES} unmatched/SoundObject_Behavior.cpp unmatched/MotherPenguin_AfterClsnSeat.cpp unmatched/MotherPenguin_ChaseGate.cpp ${SLICE_SMALLS_SOURCES} ${SLICE_SEAT1_SOURCES} unmatched/MotherPenguin_Behavior.cpp hal/actor_classes_ov081.cpp ${SLICE192_SOURCES} ${SLICE_W3B_SOURCES} ${W3BGEN} hal/actor_classes_ov072.cpp ${SLICE193_SOURCES} unmatched/Snowman_InitResources.cpp ${SLICE_SHADOWS_SOURCES} ${SLICE_SHADOWS3_SOURCES} hal/actor_classes_ov094.cpp ${SLICE194_SOURCES} unmatched/HootTheOwl_StateDispatch.cpp hal/actor_classes_ov012.cpp ${SLICE199_SOURCES} hal/actor_classes_ov002g200.cpp ${SLICE200_SOURCES} unmatched/PushBlock_StateDispatch.cpp hal/actor_classes_ov013.cpp ${SLICE202_SOURCES} hal/actor_classes_ov077.cpp ${SLICE_OV077_SOURCES} unmatched/Lakitu_HostSites.cpp unmatched/Lakitu_ShadowFaces.cpp ${SLICE_OV030CAST_SOURCES} hal/actor_classes_ov092.cpp ${SLICE_OV092_SOURCES} unmatched/ToxBox_ShadowFaces.cpp hal/actor_classes_ov096.cpp ${SLICE_OV096_SOURCES} unmatched/Pokey_HostSites.cpp unmatched/Tornado_HostSites.cpp unmatched/Ov072_MethodFaces.cpp ${SLICE_VSPOPUP_SOURCES} ${SLICE_CAP_SOURCES} ${SLICEBULLET_SOURCES} unmatched/Bullet_StateDispatch.cpp hal/actor_classes_bullet.cpp
     # run rel0215 wave 1 (lane cast-ov026): ov026's whole cast, level 18.
-    hal/actor_classes_ov026.cpp ${SLICE_OV026_SOURCES} unmatched/Whirlpool_Behavior.cpp unmatched/WaterSuction_Behavior.cpp
+    hal/actor_classes_ov026.cpp ${SLICE_OV026_SOURCES}
     hal/actor_classes_ov036.cpp ${SLICE_OV036CAST_SOURCES}
     # run rel0215 wave 2 (lane cast-ov090): ov090's whole four-class water cast.
     ${SLICE_OV090_SOURCES}
@@ -17776,11 +17747,11 @@ add_executable(smoke_player EXCLUDE_FROM_ALL tests/smoke_player.cpp "${OV002DATA
     hal/actor_classes_bbh.cpp ${SLICE149_SOURCES}
     hal/actor_classes_hmc.cpp ${SLICE172_SOURCES} unmatched/Crate_StateDispatch.cpp
     hal/actor_classes_updownlift.cpp ${SLICE173_SOURCES} unmatched/UpDownLiftBbh_Behavior.cpp
-    hal/actor_classes_montymole.cpp ${SLICE174_SOURCES} unmatched/MontyMole_StateDispatch.cpp unmatched/MontyMole_1Up.cpp
+    hal/actor_classes_montymole.cpp ${SLICE174_SOURCES} unmatched/MontyMole_StateDispatch.cpp
     hal/actor_classes_flame.cpp ${SLICE175_SOURCES}
     hal/actor_classes_flamethrower.cpp ${SLICE_W6F_SOURCES}
     ${SLICE_W8FACES_SOURCES}
-    hal/actor_classes_scuttlebug.cpp ${SLICE176_SOURCES} unmatched/Scuttlebug_StateDispatch.cpp
+    hal/actor_classes_scuttlebug.cpp ${SLICE176_SOURCES}
     hal/actor_classes_ov071.cpp ${SLICE_W7B_SOURCES} ${GATE_W7B_GEN} unmatched/MrI_StateDispatch.cpp
     # unmatched/MrI_Render.cpp RETIRED (run link100, lane EXCEPT): its own
     # header said "If _ZTV9ModelAnim ever gains a ROM-order view, this
@@ -17805,7 +17776,6 @@ add_executable(smoke_player EXCLUDE_FROM_ALL tests/smoke_player.cpp "${OV002DATA
     hal/actor_classes_koopa_chuckya.cpp hal/koopa_chuckya_faces.cpp ${SLICE182_SOURCES} unmatched/KoopaChuckya_StateDispatch.cpp ${SLICEKLEPTO_SOURCES} unmatched/Klepto_StateDispatch.cpp unmatched/Klepto_PathPtrFaces.cpp
     ${SLICE180_SOURCES} ${SLICE203_SOURCES} ${SLICE204_SOURCES}
     hal/actor_classes_ov085.cpp ${SLICE205_SOURCES}
-    unmatched/Ov085_Behaviors.cpp
     # unmatched/Ov085_Toad_StateSeat.cpp RETIRED (run link100, lane PMFB1):
     # it held only Toad's two state dispatchers and their static helper, and
     # src/_ZN4Toad8SetStateEi.cpp and src/_ZN4Toad8RunStateEv.cpp carry both on
@@ -17817,7 +17787,6 @@ add_executable(smoke_player EXCLUDE_FROM_ALL tests/smoke_player.cpp "${OV002DATA
     # link100, lane FOLD2) because the slot-6 body's whole reason was the
     # ModelAnim slot-3 numbering, and _ZTV9ModelAnim[3] is UpdateVerts again.
     ${SLICEW3F_SOURCES}
-    unmatched/Ov085_PrincessPeach_Declshapes.cpp
     hal/actor_classes_montymolerock.cpp ${SLICE208_SOURCES}
     hal/actor_classes_ov043.cpp ${SLICE206_SOURCES} ${SLICE207_SOURCES} ${SLICEBDW_SOURCES}
     # gate 215 (run link100, lane SAVE): the save system's own medium path,
@@ -17830,7 +17799,6 @@ add_executable(smoke_player EXCLUDE_FROM_ALL tests/smoke_player.cpp "${OV002DATA
     hal/actor_classes_enemy_spawner.cpp ${SLICE211_SOURCES} hal/actor_classes_question_switch.cpp ${SLICE212_SOURCES} ${SLICE213_SOURCES}
     # ---- link100 SCENE ---- the two arm9-resident scene classes, gate 218
     hal/actor_classes_l7.cpp ${SLICE_L7_SOURCES} ${GATE_L7_GEN} unmatched/PiranhaPlant_States.cpp
-    unmatched/WaterBomb_StateDispatch.cpp
     unmatched/KnockDownPlank_Behavior.cpp
     # unmatched/FallBlockWf_InitVeneer.cpp RETIRED (run link100 wave 15, lane
     # SEAT15A): it held ONE body, func_ov098_0213a794, under a PORT_HOST_ABI tag
@@ -18008,7 +17976,7 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     # both touch. walk_window already had it; smoke_player and walk_window_hires
     # did not, so it joins all three rather than the symbol being defined a
     # second time next to the one that already exists.
-    hal/w8a_stage_storage.cpp hal/cannon_probe.cpp hal/message_boot.cpp hal/actor_registry.cpp hal/actor_classes.cpp hal/actor_slot30_seat.cpp hal/actor_classes_bob_world.cpp hal/actor_faces_bob.cpp hal/actor_class_faces.cpp hal/mmc_vtable.cpp hal/ov009_boot.cpp hal/actor_overlays.cpp hal/sub_actors.cpp hal/sub_screen.cpp ${SLICE_2D1_SOURCES} hal/stage_bridges.cpp hal/level_change.cpp hal/title_entry.cpp hal/star_flow.cpp hal/oam_lists.cpp hal/blend_vtable.cpp hal/particle_vtable.cpp hal/particle_bridges.cpp unmatched/Particle_RideThroughs.cpp
+    hal/w8a_stage_storage.cpp hal/cannon_probe.cpp hal/message_boot.cpp hal/actor_registry.cpp hal/actor_classes.cpp hal/actor_slot30_seat.cpp hal/actor_classes_bob_world.cpp hal/actor_faces_bob.cpp hal/actor_class_faces.cpp hal/mmc_vtable.cpp hal/ov009_boot.cpp hal/actor_overlays.cpp hal/sub_actors.cpp hal/sub_screen.cpp ${SLICE_2D1_SOURCES} hal/stage_bridges.cpp hal/level_change.cpp hal/title_entry.cpp hal/star_flow.cpp hal/oam_lists.cpp hal/blend_vtable.cpp hal/particle_vtable.cpp hal/particle_bridges.cpp
     # Run link100 wave 17, lane PAINT5. The PAINTING's twelfth state body,
     # ov080 0x021261f4, which has no src TU and no near-miss draft and was a
     # named trap in hal/actor_overlays.cpp's g_painting_states until now. It
@@ -18016,7 +17984,6 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     # on none of them: that file's pt_f_021261f4 face calls
     # func_ov080_021261f4 by name, so a target that takes the seat and not
     # this file fails the link on that symbol.
-    unmatched/Painting_StateRender_021261f4.cpp
     ${CAMERA_HOST_SOURCES} ${LEVELBOOT_HOST_SOURCES} ${SOUND_HOST_SOURCES}
     ${MODELFAMILY_HOST_SOURCES}
     ${SLICE_W23_MODELDTOR_SOURCES}
@@ -18097,9 +18064,9 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     ${SLICE40_SOURCES} ${SLICE41_SOURCES} ${SLICE42_SOURCES}
     hal/actor_classes_painting.cpp ${SLICE50_SOURCES} hal/actor_classes_wf.cpp
     unmatched/Cap_StateDispatch.cpp unmatched/ExclamationSwitch_StateDispatch.cpp ${SLICE51_SOURCES} ${SLICE59_SOURCES} ${SLICE78_SOURCES} ${SLICE79_SOURCES} ${SLICE82_SOURCES} ${SLICE83_SOURCES} ${SLICE64_SOURCES} ${GATE64_GEN} ${SLICE89_SOURCES} ${SLICE102_SOURCES} ${SLICE103_SOURCES} ${SLICE128_SOURCES} ${SLICE121_SOURCES} ${SLICE122_SOURCES} ${SLICE123_SOURCES} ${SLICE209_SOURCES} hal/actor_classes_runtime_spawns.cpp ${SLICE210_SOURCES} unmatched/YoshiEgg_StateDispatch.cpp
-    hal/actor_classes_ccm.cpp ${SLICE142_SOURCES} ${SLICE190_SOURCES} ${SLICE191_SOURCES} ${SLICE_MPG_SOURCES} ${SLICE_MPG2_SOURCES} unmatched/SoundObject_Behavior.cpp unmatched/MotherPenguin_AfterClsnSeat.cpp unmatched/MotherPenguin_ChaseGate.cpp ${SLICE_SMALLS_SOURCES} ${SLICE_SEAT1_SOURCES} unmatched/MotherPenguin_Behavior.cpp hal/actor_classes_ov081.cpp ${SLICE192_SOURCES} unmatched/MrBlizzard_Behavior.cpp ${SLICE_W3B_SOURCES} ${W3BGEN} hal/actor_classes_ov072.cpp ${SLICE193_SOURCES} unmatched/Snowman_InitResources.cpp ${SLICE_SHADOWS_SOURCES} ${SLICE_SHADOWS3_SOURCES} hal/actor_classes_ov094.cpp ${SLICE194_SOURCES} unmatched/HootTheOwl_StateDispatch.cpp hal/actor_classes_ov012.cpp ${SLICE199_SOURCES} hal/actor_classes_ov002g200.cpp ${SLICE200_SOURCES} unmatched/PushBlock_StateDispatch.cpp hal/actor_classes_ov013.cpp ${SLICE202_SOURCES} hal/actor_classes_ov077.cpp ${SLICE_OV077_SOURCES} unmatched/Lakitu_HostSites.cpp unmatched/Spiny_HostSites.cpp unmatched/HeaveHo_HostSites.cpp unmatched/Lakitu_ShadowFaces.cpp ${SLICE_OV030CAST_SOURCES} hal/actor_classes_ov092.cpp ${SLICE_OV092_SOURCES} unmatched/ToxBox_HostSites.cpp unmatched/ToxBox_ShadowFaces.cpp hal/actor_classes_ov096.cpp ${SLICE_OV096_SOURCES} unmatched/Pokey_HostSites.cpp unmatched/Tornado_HostSites.cpp unmatched/Ov072_MethodFaces.cpp ${SLICE_VSPOPUP_SOURCES} ${SLICE_CAP_SOURCES} ${SLICEBULLET_SOURCES} unmatched/Bullet_StateDispatch.cpp hal/actor_classes_bullet.cpp
+    hal/actor_classes_ccm.cpp ${SLICE142_SOURCES} ${SLICE190_SOURCES} ${SLICE191_SOURCES} ${SLICE_MPG_SOURCES} ${SLICE_MPG2_SOURCES} unmatched/SoundObject_Behavior.cpp unmatched/MotherPenguin_AfterClsnSeat.cpp unmatched/MotherPenguin_ChaseGate.cpp ${SLICE_SMALLS_SOURCES} ${SLICE_SEAT1_SOURCES} unmatched/MotherPenguin_Behavior.cpp hal/actor_classes_ov081.cpp ${SLICE192_SOURCES} ${SLICE_W3B_SOURCES} ${W3BGEN} hal/actor_classes_ov072.cpp ${SLICE193_SOURCES} unmatched/Snowman_InitResources.cpp ${SLICE_SHADOWS_SOURCES} ${SLICE_SHADOWS3_SOURCES} hal/actor_classes_ov094.cpp ${SLICE194_SOURCES} unmatched/HootTheOwl_StateDispatch.cpp hal/actor_classes_ov012.cpp ${SLICE199_SOURCES} hal/actor_classes_ov002g200.cpp ${SLICE200_SOURCES} unmatched/PushBlock_StateDispatch.cpp hal/actor_classes_ov013.cpp ${SLICE202_SOURCES} hal/actor_classes_ov077.cpp ${SLICE_OV077_SOURCES} unmatched/Lakitu_HostSites.cpp unmatched/Lakitu_ShadowFaces.cpp ${SLICE_OV030CAST_SOURCES} hal/actor_classes_ov092.cpp ${SLICE_OV092_SOURCES} unmatched/ToxBox_ShadowFaces.cpp hal/actor_classes_ov096.cpp ${SLICE_OV096_SOURCES} unmatched/Pokey_HostSites.cpp unmatched/Tornado_HostSites.cpp unmatched/Ov072_MethodFaces.cpp ${SLICE_VSPOPUP_SOURCES} ${SLICE_CAP_SOURCES} ${SLICEBULLET_SOURCES} unmatched/Bullet_StateDispatch.cpp hal/actor_classes_bullet.cpp
     # run rel0215 wave 1 (lane cast-ov026): ov026's whole cast, level 18.
-    hal/actor_classes_ov026.cpp ${SLICE_OV026_SOURCES} unmatched/Whirlpool_Behavior.cpp unmatched/WaterSuction_Behavior.cpp
+    hal/actor_classes_ov026.cpp ${SLICE_OV026_SOURCES}
     hal/actor_classes_ov036.cpp ${SLICE_OV036CAST_SOURCES}
     # run rel0215 wave 2 (lane cast-ov090): ov090's whole four-class water cast.
     ${SLICE_OV090_SOURCES}
@@ -18125,11 +18092,11 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     hal/actor_classes_bbh.cpp ${SLICE149_SOURCES}
     hal/actor_classes_hmc.cpp ${SLICE172_SOURCES} unmatched/Crate_StateDispatch.cpp
     hal/actor_classes_updownlift.cpp ${SLICE173_SOURCES} unmatched/UpDownLiftBbh_Behavior.cpp
-    hal/actor_classes_montymole.cpp ${SLICE174_SOURCES} unmatched/MontyMole_StateDispatch.cpp unmatched/MontyMole_1Up.cpp
+    hal/actor_classes_montymole.cpp ${SLICE174_SOURCES} unmatched/MontyMole_StateDispatch.cpp
     hal/actor_classes_flame.cpp ${SLICE175_SOURCES}
     hal/actor_classes_flamethrower.cpp ${SLICE_W6F_SOURCES}
     ${SLICE_W8FACES_SOURCES}
-    hal/actor_classes_scuttlebug.cpp ${SLICE176_SOURCES} unmatched/Scuttlebug_StateDispatch.cpp
+    hal/actor_classes_scuttlebug.cpp ${SLICE176_SOURCES}
     hal/actor_classes_ov071.cpp ${SLICE_W7B_SOURCES} ${GATE_W7B_GEN} unmatched/MrI_StateDispatch.cpp
     # unmatched/MrI_Render.cpp RETIRED (run link100, lane EXCEPT): its own
     # header said "If _ZTV9ModelAnim ever gains a ROM-order view, this
@@ -18154,7 +18121,6 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     hal/actor_classes_koopa_chuckya.cpp hal/koopa_chuckya_faces.cpp ${SLICE182_SOURCES} unmatched/KoopaChuckya_StateDispatch.cpp ${SLICEKLEPTO_SOURCES} unmatched/Klepto_StateDispatch.cpp unmatched/Klepto_PathPtrFaces.cpp
     ${SLICE180_SOURCES} ${SLICE203_SOURCES} ${SLICE204_SOURCES}
     hal/actor_classes_ov085.cpp ${SLICE205_SOURCES}
-    unmatched/Ov085_Behaviors.cpp
     # unmatched/Ov085_Toad_StateSeat.cpp RETIRED (run link100, lane PMFB1):
     # it held only Toad's two state dispatchers and their static helper, and
     # src/_ZN4Toad8SetStateEi.cpp and src/_ZN4Toad8RunStateEv.cpp carry both on
@@ -18166,7 +18132,6 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     # link100, lane FOLD2) because the slot-6 body's whole reason was the
     # ModelAnim slot-3 numbering, and _ZTV9ModelAnim[3] is UpdateVerts again.
     ${SLICEW3F_SOURCES}
-    unmatched/Ov085_PrincessPeach_Declshapes.cpp
     hal/actor_classes_montymolerock.cpp ${SLICE208_SOURCES}
     hal/actor_classes_ov043.cpp ${SLICE206_SOURCES} ${SLICE207_SOURCES} ${SLICEBDW_SOURCES}
     # gate 215 (run link100, lane SAVE): the save system's own medium path,
@@ -18179,7 +18144,6 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     hal/scene_link100_base_faces.cpp hal/scene_link100_boot.cpp
     hal/scene_link100_mb.cpp ${SLICE218_SOURCES}
     hal/actor_classes_l7.cpp ${SLICE_L7_SOURCES} ${GATE_L7_GEN} unmatched/PiranhaPlant_States.cpp
-    unmatched/WaterBomb_StateDispatch.cpp
     unmatched/KnockDownPlank_Behavior.cpp
     # unmatched/FallBlockWf_InitVeneer.cpp RETIRED (run link100 wave 15, lane
     # SEAT15A): it held ONE body, func_ov098_0213a794, under a PORT_HOST_ABI tag
@@ -18474,7 +18438,7 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     # both touch. walk_window already had it; smoke_player and walk_window_hires
     # did not, so it joins all three rather than the symbol being defined a
     # second time next to the one that already exists.
-    hal/w8a_stage_storage.cpp hal/cannon_probe.cpp hal/message_boot.cpp hal/actor_registry.cpp hal/actor_classes.cpp hal/actor_slot30_seat.cpp hal/actor_classes_bob_world.cpp hal/actor_faces_bob.cpp hal/actor_class_faces.cpp hal/mmc_vtable.cpp hal/ov009_boot.cpp hal/actor_overlays.cpp hal/sub_actors.cpp hal/sub_screen.cpp ${SLICE_2D1_SOURCES} hal/stage_bridges.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10dScStage_c16OnPendingDestroyEv.cpp" hal/level_change.cpp hal/title_entry.cpp hal/star_flow.cpp hal/oam_lists.cpp hal/blend_vtable.cpp hal/particle_vtable.cpp hal/particle_bridges.cpp unmatched/Particle_RideThroughs.cpp
+    hal/w8a_stage_storage.cpp hal/cannon_probe.cpp hal/message_boot.cpp hal/actor_registry.cpp hal/actor_classes.cpp hal/actor_slot30_seat.cpp hal/actor_classes_bob_world.cpp hal/actor_faces_bob.cpp hal/actor_class_faces.cpp hal/mmc_vtable.cpp hal/ov009_boot.cpp hal/actor_overlays.cpp hal/sub_actors.cpp hal/sub_screen.cpp ${SLICE_2D1_SOURCES} hal/stage_bridges.cpp "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10dScStage_c16OnPendingDestroyEv.cpp" hal/level_change.cpp hal/title_entry.cpp hal/star_flow.cpp hal/oam_lists.cpp hal/blend_vtable.cpp hal/particle_vtable.cpp hal/particle_bridges.cpp
     # Run link100 wave 17, lane PAINT5. The PAINTING's twelfth state body,
     # ov080 0x021261f4, which has no src TU and no near-miss draft and was a
     # named trap in hal/actor_overlays.cpp's g_painting_states until now. It
@@ -18482,7 +18446,6 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     # on none of them: that file's pt_f_021261f4 face calls
     # func_ov080_021261f4 by name, so a target that takes the seat and not
     # this file fails the link on that symbol.
-    unmatched/Painting_StateRender_021261f4.cpp
     ${CAMERA_HOST_SOURCES} ${LEVELBOOT_HOST_SOURCES} ${SOUND_HOST_SOURCES}
     ${MODELFAMILY_HOST_SOURCES}
     ${SLICE_W23_MODELDTOR_SOURCES}
@@ -18573,9 +18536,9 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     ${SLICE40_SOURCES} ${SLICE41_SOURCES} ${SLICE42_SOURCES}
     hal/actor_classes_painting.cpp ${SLICE50_SOURCES} hal/actor_classes_wf.cpp
     unmatched/Cap_StateDispatch.cpp unmatched/ExclamationSwitch_StateDispatch.cpp ${SLICE51_SOURCES} ${SLICE59_SOURCES} ${SLICE78_SOURCES} ${SLICE79_SOURCES} ${SLICE82_SOURCES} ${SLICE83_SOURCES} ${SLICE64_SOURCES} ${GATE64_GEN} ${SLICE89_SOURCES} ${SLICE102_SOURCES} ${SLICE103_SOURCES} ${SLICE128_SOURCES} ${SLICE121_SOURCES} ${SLICE122_SOURCES} ${SLICE123_SOURCES} ${SLICE209_SOURCES} hal/actor_classes_runtime_spawns.cpp ${SLICE210_SOURCES} unmatched/YoshiEgg_StateDispatch.cpp
-    hal/actor_classes_ccm.cpp ${SLICE142_SOURCES} ${SLICE190_SOURCES} ${SLICE191_SOURCES} ${SLICE_MPG_SOURCES} ${SLICE_MPG2_SOURCES} unmatched/SoundObject_Behavior.cpp unmatched/MotherPenguin_AfterClsnSeat.cpp unmatched/MotherPenguin_ChaseGate.cpp ${SLICE_SMALLS_SOURCES} ${SLICE_SEAT1_SOURCES} unmatched/MotherPenguin_Behavior.cpp hal/actor_classes_ov081.cpp ${SLICE192_SOURCES} unmatched/MrBlizzard_Behavior.cpp ${SLICE_W3B_SOURCES} ${W3BGEN} hal/actor_classes_ov072.cpp ${SLICE193_SOURCES} unmatched/Snowman_InitResources.cpp ${SLICE_SHADOWS_SOURCES} ${SLICE_SHADOWS3_SOURCES} hal/actor_classes_ov094.cpp ${SLICE194_SOURCES} unmatched/HootTheOwl_StateDispatch.cpp hal/actor_classes_ov012.cpp ${SLICE199_SOURCES} hal/actor_classes_ov002g200.cpp ${SLICE200_SOURCES} unmatched/PushBlock_StateDispatch.cpp hal/actor_classes_ov013.cpp ${SLICE202_SOURCES} hal/actor_classes_ov077.cpp ${SLICE_OV077_SOURCES} unmatched/Lakitu_HostSites.cpp unmatched/Spiny_HostSites.cpp unmatched/HeaveHo_HostSites.cpp unmatched/Lakitu_ShadowFaces.cpp ${SLICE_OV030CAST_SOURCES} hal/actor_classes_ov092.cpp ${SLICE_OV092_SOURCES} unmatched/ToxBox_HostSites.cpp unmatched/ToxBox_ShadowFaces.cpp hal/actor_classes_ov096.cpp ${SLICE_OV096_SOURCES} unmatched/Pokey_HostSites.cpp unmatched/Tornado_HostSites.cpp unmatched/Ov072_MethodFaces.cpp ${SLICE_VSPOPUP_SOURCES} ${SLICE_CAP_SOURCES} ${SLICEBULLET_SOURCES} unmatched/Bullet_StateDispatch.cpp hal/actor_classes_bullet.cpp
+    hal/actor_classes_ccm.cpp ${SLICE142_SOURCES} ${SLICE190_SOURCES} ${SLICE191_SOURCES} ${SLICE_MPG_SOURCES} ${SLICE_MPG2_SOURCES} unmatched/SoundObject_Behavior.cpp unmatched/MotherPenguin_AfterClsnSeat.cpp unmatched/MotherPenguin_ChaseGate.cpp ${SLICE_SMALLS_SOURCES} ${SLICE_SEAT1_SOURCES} unmatched/MotherPenguin_Behavior.cpp hal/actor_classes_ov081.cpp ${SLICE192_SOURCES} ${SLICE_W3B_SOURCES} ${W3BGEN} hal/actor_classes_ov072.cpp ${SLICE193_SOURCES} unmatched/Snowman_InitResources.cpp ${SLICE_SHADOWS_SOURCES} ${SLICE_SHADOWS3_SOURCES} hal/actor_classes_ov094.cpp ${SLICE194_SOURCES} unmatched/HootTheOwl_StateDispatch.cpp hal/actor_classes_ov012.cpp ${SLICE199_SOURCES} hal/actor_classes_ov002g200.cpp ${SLICE200_SOURCES} unmatched/PushBlock_StateDispatch.cpp hal/actor_classes_ov013.cpp ${SLICE202_SOURCES} hal/actor_classes_ov077.cpp ${SLICE_OV077_SOURCES} unmatched/Lakitu_HostSites.cpp unmatched/Lakitu_ShadowFaces.cpp ${SLICE_OV030CAST_SOURCES} hal/actor_classes_ov092.cpp ${SLICE_OV092_SOURCES} unmatched/ToxBox_ShadowFaces.cpp hal/actor_classes_ov096.cpp ${SLICE_OV096_SOURCES} unmatched/Pokey_HostSites.cpp unmatched/Tornado_HostSites.cpp unmatched/Ov072_MethodFaces.cpp ${SLICE_VSPOPUP_SOURCES} ${SLICE_CAP_SOURCES} ${SLICEBULLET_SOURCES} unmatched/Bullet_StateDispatch.cpp hal/actor_classes_bullet.cpp
     # run rel0215 wave 1 (lane cast-ov026): ov026's whole cast, level 18.
-    hal/actor_classes_ov026.cpp ${SLICE_OV026_SOURCES} unmatched/Whirlpool_Behavior.cpp unmatched/WaterSuction_Behavior.cpp
+    hal/actor_classes_ov026.cpp ${SLICE_OV026_SOURCES}
     hal/actor_classes_ov036.cpp ${SLICE_OV036CAST_SOURCES}
     # run rel0215 wave 2 (lane cast-ov090): ov090's whole four-class water cast.
     ${SLICE_OV090_SOURCES}
@@ -18601,11 +18564,11 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     hal/actor_classes_bbh.cpp ${SLICE149_SOURCES}
     hal/actor_classes_hmc.cpp ${SLICE172_SOURCES} unmatched/Crate_StateDispatch.cpp
     hal/actor_classes_updownlift.cpp ${SLICE173_SOURCES} unmatched/UpDownLiftBbh_Behavior.cpp
-    hal/actor_classes_montymole.cpp ${SLICE174_SOURCES} unmatched/MontyMole_StateDispatch.cpp unmatched/MontyMole_1Up.cpp
+    hal/actor_classes_montymole.cpp ${SLICE174_SOURCES} unmatched/MontyMole_StateDispatch.cpp
     hal/actor_classes_flame.cpp ${SLICE175_SOURCES}
     hal/actor_classes_flamethrower.cpp ${SLICE_W6F_SOURCES}
     ${SLICE_W8FACES_SOURCES}
-    hal/actor_classes_scuttlebug.cpp ${SLICE176_SOURCES} unmatched/Scuttlebug_StateDispatch.cpp
+    hal/actor_classes_scuttlebug.cpp ${SLICE176_SOURCES}
     hal/actor_classes_ov071.cpp ${SLICE_W7B_SOURCES} ${GATE_W7B_GEN} unmatched/MrI_StateDispatch.cpp
     # unmatched/MrI_Render.cpp RETIRED (run link100, lane EXCEPT): its own
     # header said "If _ZTV9ModelAnim ever gains a ROM-order view, this
@@ -18630,7 +18593,6 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     hal/actor_classes_koopa_chuckya.cpp hal/koopa_chuckya_faces.cpp ${SLICE182_SOURCES} unmatched/KoopaChuckya_StateDispatch.cpp ${SLICEKLEPTO_SOURCES} unmatched/Klepto_StateDispatch.cpp unmatched/Klepto_PathPtrFaces.cpp
     ${SLICE180_SOURCES} ${SLICE203_SOURCES} ${SLICE204_SOURCES}
     hal/actor_classes_ov085.cpp ${SLICE205_SOURCES}
-    unmatched/Ov085_Behaviors.cpp
     # unmatched/Ov085_Toad_StateSeat.cpp RETIRED (run link100, lane PMFB1):
     # it held only Toad's two state dispatchers and their static helper, and
     # src/_ZN4Toad8SetStateEi.cpp and src/_ZN4Toad8RunStateEv.cpp carry both on
@@ -18642,7 +18604,6 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     # link100, lane FOLD2) because the slot-6 body's whole reason was the
     # ModelAnim slot-3 numbering, and _ZTV9ModelAnim[3] is UpdateVerts again.
     ${SLICEW3F_SOURCES}
-    unmatched/Ov085_PrincessPeach_Declshapes.cpp
     hal/actor_classes_montymolerock.cpp ${SLICE208_SOURCES}
     hal/actor_classes_ov043.cpp ${SLICE206_SOURCES} ${SLICE207_SOURCES} ${SLICEBDW_SOURCES}
     # gate 215 (run link100, lane SAVE): the save system's own medium path,
@@ -18655,7 +18616,6 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     hal/scene_link100_base_faces.cpp hal/scene_link100_boot.cpp
     hal/scene_link100_mb.cpp ${SLICE218_SOURCES}
     hal/actor_classes_l7.cpp ${SLICE_L7_SOURCES} ${GATE_L7_GEN} unmatched/PiranhaPlant_States.cpp
-    unmatched/WaterBomb_StateDispatch.cpp
     unmatched/KnockDownPlank_Behavior.cpp
     # unmatched/FallBlockWf_InitVeneer.cpp RETIRED (run link100 wave 15, lane
     # SEAT15A): it held ONE body, func_ov098_0213a794, under a PORT_HOST_ABI tag
@@ -25425,10 +25385,6 @@ add_custom_command(OUTPUT "${OVCROSS_C}" APPEND
 # data_ov002_021000c0, which port/ov002_syms.txt now mounts. All three hosting
 # targets, the SLICE OV2T shape: the face that calls it is compiled into
 # port_slice_shared, so the reference is on every one of the three link lines.
-foreach(_tbbill1 walk_window walk_window_hires smoke_player)
-    target_sources(${_tbbill1} PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/func_ov002_020f3de4.c")
-endforeach()
 
 # XREL1 (run linkfull): EVERY OVERLAY MOUNT DEPENDS ON THE CONFIG IT READS.
 #

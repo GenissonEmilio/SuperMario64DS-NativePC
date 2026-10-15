@@ -52,7 +52,14 @@ struct daUdlift_c : dBgActor_c {
        emits the vtable and RTTI. Written out of line, mwccarm emits D0 ahead
        of D1 (the cartridge has D1 first) plus a D2 with no ROM home. Keep
        the brace on this line: tools/check_header_offsets.py needs it. */
-    virtual ~daUdlift_c() {}        /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daUdlift_c() {}   /* no slot */
+    #else
+    virtual ~daUdlift_c() {}
+    #endif        /* slots 16 (D1), 17 (D0) */
     virtual int InitResources();
     virtual int CleanupResources();
     virtual int Behavior();

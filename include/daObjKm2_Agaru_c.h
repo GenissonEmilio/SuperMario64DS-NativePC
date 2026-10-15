@@ -22,7 +22,14 @@ struct daObjKm2_Agaru_c : dBgActor_c {
     u8  mState;       /* 0x327 -- 0 idle, 1 rising, 2 sinking */
 
     /* Inline is load-bearing: out-of-line emits D0 before D1. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjKm2_Agaru_c() {}   /* no slot */
+    #else
     virtual ~daObjKm2_Agaru_c() {}
+    #endif
 
     virtual s32 InitResources();
     virtual s32 CleanupResources();

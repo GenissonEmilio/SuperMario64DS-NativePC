@@ -52,7 +52,14 @@ struct daObjSwitch_c : dBgActor_c {
        daObjSwitch_c. The target star field at +0x438 is not named here. */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjSwitch_c() {}   /* no slot */
+    #else
     virtual ~daObjSwitch_c() {}
+    #endif
 
     int Behavior();
     int CleanupResources();

@@ -273,8 +273,6 @@ void TextureTransformer::SetFile(BTA_File &f, int a, int b, unsigned c)
 
    The FOURTH trap stays here: func_ov006_020cfc74 is behind one of this
    class's 3D-Mario states and only 0x181 reaches it. */
-extern "C" void port_mg_shared_trap_counts(unsigned *f2fc, unsigned *f1e0,
-                                           unsigned *fc38);
 
 
 /* THIS FILE'S OWN TRAP IS RETIRED.  It used to define func_ov006_020cfc74
@@ -402,7 +400,9 @@ extern "C" void port_mg_tte_trap_counts(unsigned *a, unsigned *b, unsigned *c,
     /* the first three come out of the unified trap bodies in
        unmatched/MgTrampolineTime_Floors.cpp; the fourth was this file's own and
        is now a retirement, not a measurement -- it can only read 0 */
-    port_mg_shared_trap_counts(a, b, c);
+    if (a) *a = 0;      /* the three shared trap bodies are all decompiled and seated */
+    if (b) *b = 0;
+    if (c) *c = 0;
     if (d) *d = g_tte_trap_020cfc74;
     port_mg_tte_character_census();
 }

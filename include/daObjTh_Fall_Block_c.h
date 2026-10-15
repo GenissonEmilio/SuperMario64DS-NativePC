@@ -17,7 +17,14 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
  */
 struct daObjTh_Fall_Block_c : daObjFallBlock_c {
     /* Inline empty dtor: mwccarm emits D1 then D0, no D2. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjTh_Fall_Block_c() {}   /* no slot */
+    #else
     virtual ~daObjTh_Fall_Block_c() {}
+    #endif
     virtual s32 CleanupResources(); /* slot 3 */
     virtual s32 InitResources();    /* slot 0 */
 

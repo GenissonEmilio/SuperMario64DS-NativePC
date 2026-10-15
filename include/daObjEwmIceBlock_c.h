@@ -37,7 +37,14 @@ struct daObjEwmIceBlock_c : dBgActor_c {
 
     /* Out of line in daObjEwmIceBlock_c.cpp: the key function, so that TU
      * emits _ZTV/_ZTI/_ZTS18daObjEwmIceBlock_c. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjEwmIceBlock_c();   /* no slot */
+    #else
     virtual ~daObjEwmIceBlock_c();
+    #endif
 
     /* Overrides of fBase_c's slots 0, 3, 6 and 9. */
     virtual s32 InitResources();

@@ -43,7 +43,14 @@ struct daObjCtMecha10_c : dBgActor_c {
     /* Inline empty dtor: mwccarm emits D1 then D0 and no D2, which is the
        order the cartridge has -- D1 at 0x021111a0, D0 at 0x021111e4. Same
        form as include/daObjBk_Lift_c.h, the same dBgActor_c shape. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjCtMecha10_c() {}   /* no slot */
+    #else
     virtual ~daObjCtMecha10_c() {}
+    #endif
 
     int Behavior();
     int CleanupResources();

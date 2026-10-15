@@ -25,7 +25,14 @@
 struct daObjSimpleBg_c : dBgActor_c {
     u8 mVariant; /* 0x31e */
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjSimpleBg_c();   /* no slot */
+    #else
     virtual ~daObjSimpleBg_c();
+    #endif
 
     int Behavior();
     int CleanupResources();

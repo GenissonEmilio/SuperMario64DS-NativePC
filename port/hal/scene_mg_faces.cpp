@@ -554,13 +554,6 @@ PanelEndReg g_panel_end_reg;
 
 extern "C" {
 
-/* Lane CUR2's two seated bodies, in port/unmatched/. */
-void port_mg_curling_collide_020e1dc8(char *self, int idx);
-void port_mg_curling_collide_020e20bc(char *self, int idx);
-
-/* Run mg5 lane WTIMER's seated body, in port/unmatched/MgHud_ScaledNumber.cpp. */
-void port_mg_hud_scaled_number_020b2220(int x, int y, int num, int a3, int a4,
-                                        int scale, int angle);
 
 /* ---- SEATED, run mg12 lane PANEL ---------------------------------------
  *
@@ -728,10 +721,6 @@ void func_ov004_020b2220(int x, int y, int num, int a3, int a4,
  * -- so the forwarder below and port_mg_curling_collide_020e20bc stay exactly
  * as they are, and so does port_mg_curling_collide_020e1dc8's own file: this
  * lane owns the face, not the transcription beneath it. */
-void _ZN14dScMgCurling_c19func_ov006_020e20bcEi(char *self, int idx)
-{
-    port_mg_curling_collide_020e20bc(self, idx);
-}
 
 /* ---- SEATED: GX::DisableAllBanks ------------------------------------------
  *

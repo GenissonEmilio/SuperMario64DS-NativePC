@@ -2,7 +2,6 @@
 # through the octree walk. The walk itself is the port's first substantial
 # port/unmatched adoption (see the file header); everything else is matched.
 
-port/unmatched/MeshCollider_DetectClsn_RaycastLine.cpp
 # The sphere pass (ROM vtable slot 8) and the five result/AABB writers it is
 # the only caller of. Everything else it needs was already here for the line
 # walk; the three shared with later gates (func_02039794, func_02037e58,

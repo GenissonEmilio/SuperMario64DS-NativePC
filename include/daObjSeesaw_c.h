@@ -40,7 +40,14 @@ struct daObjSeesaw_c : dBgActor_c {
     virtual int CleanupResources();                    /* slot  3 */
     virtual int Behavior();                            /* slot  6 */
     virtual int Render();                              /* slot  9 */
-    virtual ~daObjSeesaw_c();                          /* slots 16, 17 */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjSeesaw_c();   /* no slot */
+    #else
+    virtual ~daObjSeesaw_c();
+    #endif                          /* slots 16, 17 */
     virtual void OnGroundPounded(dActor_c &other);     /* slot 21 */
 };
 

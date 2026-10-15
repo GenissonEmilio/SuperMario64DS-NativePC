@@ -25,7 +25,14 @@
 struct dView_c : dBase_c {
     Matrix4x3 viewMat; /* 0x50 */
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dView_c() {}   /* no slot */
+    #else
     virtual ~dView_c() {}
+    #endif
     virtual s32 Render();
 };
 

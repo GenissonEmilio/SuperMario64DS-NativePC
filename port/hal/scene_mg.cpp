@@ -476,13 +476,6 @@ void port_mg_base_setter_counts(unsigned *calls, unsigned *dispatched,
                                 unsigned *closure);
 unsigned port_mg_base_setter_index_hits(unsigned *out, unsigned n);
 
-/* Lane CUR2's two seated collision bodies. They are counted for the same
-   reason the dispatch above is: "the shells collide now" has to be a
-   measurement, and until this lane both addresses were faces whose only
-   witness was a refusal line. A run that ticks a moving shell and reports
-   zero entries here has a physics tick that is not reaching them. */
-unsigned port_mg_curling_collide_020e1dc8_entries(void);
-unsigned port_mg_curling_collide_020e20bc_entries(void);
 
 }  /* extern "C" */
 
@@ -1725,11 +1718,6 @@ extern "C" void port_scene_mg_hits(void)
         }
     }
     port_mg_curling_shell_census();
-    std::printf("[scene] curling collision: shot separation 0x020e1dc8 "
-                "entered %u time(s), shell-vs-shell 0x020e20bc entered %u "
-                "time(s)\n",
-                port_mg_curling_collide_020e1dc8_entries(),
-                port_mg_curling_collide_020e20bc_entries());
     if (port_mg_trap_hits())
         std::printf("[scene] unmatched ov004/ov006 traps entered: %u\n",
                     port_mg_trap_hits());

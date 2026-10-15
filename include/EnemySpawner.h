@@ -20,7 +20,14 @@ struct daECreate_c : dActor_c {
     u8  mEventBit;          /* 0x0dc */
     u8  pad_0dd[0x3];
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daECreate_c() {}   /* no slot */
+    #else
     virtual ~daECreate_c() {}
+    #endif
 
     virtual int InitResources();
     virtual int CleanupResources();

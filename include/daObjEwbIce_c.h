@@ -51,7 +51,14 @@ struct daObjEwbIce_c : dBgActor_c {
     s32 unk_338;            /* 0x338 -- InitResources clears it; no reader in this TU */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjEwbIce_c();   /* no slot */
+    #else
     virtual ~daObjEwbIce_c();
+    #endif
 
     /* Slot 31, dBgActor_c's own new virtual (include/dBgActor_c.h).
        Attributed by the vtable: _ZTV13daObjEwbIce_c + 4*31 = 0x021231e8 + 0x7c =

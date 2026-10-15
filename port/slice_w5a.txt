@@ -135,7 +135,6 @@ src/game/actors/daPiano_c/d_a_piano.cpp
 # unresolved (the flat name) and +1 LNK2005 (the decorated one) in the same
 # build. Retiring it needs the face retired in the same change, which is lane
 # FACES3's ledger and not this row.
-port/unmatched/Boo_InitResources.c
 # FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTrs_c/_ZN7daTrs_c16CleanupResourcesEv.cpp
 # FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTrs_c/_ZN7daTrs_c16OnPendingDestroyEv.cpp
 # _ZN7daTrs_c6RenderEv.cpp OUT: dispatches the mModelAnim (+0x380) draw through a
@@ -247,7 +246,6 @@ src/engine/sound/Sound2.cpp
 # registry's face calls is published by the generated reverse face its
 # port/faces_sync.txt row now asks for (the row was a FORWARD row while the
 # host copy owned the flat name; it is an R row now).
-port/unmatched/Bbh_PmfDispatch.c
 port/unmatched/Bbh_MethodFaces.cpp
 
 # ---- the lane's own fills and faces ----------------------------------------
@@ -301,7 +299,6 @@ src/actors/daBook_c.cpp
 # FOLDED into src/actors/daBook_c.cpp (row 267): src/func_ov020_02112080.cpp
 # FOLDED into src/actors/daBook_c.cpp (row 267): src/func_ov020_02112110.cpp
 # FOLDED into src/actors/daBook_c.cpp (row 267): src/func_ov020_0211216c.cpp
-port/unmatched/Book_WindowAndReceiverFixes.cpp
 # ...and the last three book-closure edges: the bump-from-underneath body,
 # cstd::atan2 (the 021112b0 aim math), and two role-name aliases below.
 # FOLDED into src/actors/dActor_c.cpp (row 202): src/_ZN8dActor_c24BumpedUnderneathByPlayerER6Player.cpp

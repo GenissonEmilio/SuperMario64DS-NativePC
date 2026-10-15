@@ -118,7 +118,14 @@ struct daObjYajirusi_c : dBgActor_c {
        emits the retail D1-then-D0 pair in ROM order plus _ZTV/_ZTI/_ZTS
        homed in the instantiating TU, and no leaf D2. Out-of-line emits
        D0 before D1, which the production isolate refuses. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjYajirusi_c() {}   /* no slot */
+    #else
     virtual ~daObjYajirusi_c() {}
+    #endif
 
     int Behavior();
     int CleanupResources();

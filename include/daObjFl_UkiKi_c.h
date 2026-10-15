@@ -49,7 +49,14 @@ struct daObjFl_UkiKi_c : dBgActor_c {
        isolation refuses, and it also emits a D2 this class has no home for.
        The brace stays on the signature line -- tools/check_header_offsets.py
        recognises an inline body only when the signature line carries it. */
-    virtual ~daObjFl_UkiKi_c() {}    /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjFl_UkiKi_c() {}   /* no slot */
+    #else
+    virtual ~daObjFl_UkiKi_c() {}
+    #endif    /* slots 16 (D1), 17 (D0) */
 
     virtual s32 InitResources();     /* slot  0 */
     virtual s32 CleanupResources();  /* slot  3 */

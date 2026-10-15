@@ -40,7 +40,14 @@ struct daLinelift2_c : dBgActor_c {
     u8  pad_357;
 
     /* Inline is load-bearing: out-of-line emits D0 before D1. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daLinelift2_c() {}   /* no slot */
+    #else
     virtual ~daLinelift2_c() {}
+    #endif
 
     virtual int InitResources();
     virtual int CleanupResources();
