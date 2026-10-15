@@ -3793,9 +3793,9 @@ extern "C" void hal_menu_pad_seam(void)
         unsigned short *sp = (unsigned short *)((char *)data_020a0e5a + s0 * 4);
         uint16_t k0 = *pr, k1 = k0;
         menu_pause_rom_pad(&k1);
-        if (port_scene_live_id() == 8 && !g_headless) menu_gameover_pad_rom(&k1);   /* PADMENUS1: the game over screen: the pad moves its cursor, confirm presses it */
-        if (!g_headless) menu_lc_pad_rom(&k1);   /* PADMENUS1: the ROM's own level-clear / save screen (state 3 only: it asks itself) */
-        if (port_scene_live_id() == 1 && !g_headless) menu_title_pad_map_rom(&k1, back);   /* PADMENUS1: the ROM's own title: pad A confirms, pad B is the back arrow */
+        if (port_scene_live_id() == 8) menu_gameover_pad_rom(&k1);   /* PADMENUS1: the game over screen: the pad moves its cursor, confirm presses it */
+        menu_lc_pad_rom(&k1);   /* PADMENUS1: the ROM's own level-clear / save screen (state 3 only: it asks itself) */
+        if (port_scene_live_id() == 1) menu_title_pad_map_rom(&k1, back);   /* PADMENUS1: the ROM's own title: pad A confirms, pad B is the back arrow */
         settings_page_hook_pad(&k1);      /* MENUS093: with the one-screen menus off only the title's MP button guard applies (armed_target is off) */
         if (k1 != k0) { *pr = k1; *sp = k1; }
         return;
