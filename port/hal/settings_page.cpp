@@ -509,7 +509,7 @@ const Piece *arrow_right_piece(int w, int h)
 
 enum Tab { T_GENERAL = 0, T_DISPLAY, T_CONTROLS, T_SOUND, T_COUNT };
 enum RType { R_CHOICE, R_SLIDER, R_CHECK, R_BIND, R_HEAD, R_NOTE };
-struct Row { RType t; const char *label; int id, id2, step; const char *const *names; int nn; const int *vals; };   /* vals: the value of each choice when it is not min + index (the frame rate stops) */
+struct Row { RType t; const char *label; int id, id2, step; const char *const *names; int nn; const int *vals; int id3p1 = 0; };   /* vals: the value of each choice when it is not min + index (the frame rate stops) */
 
 int ch_val(const Row &R, int i)
 {
@@ -547,6 +547,7 @@ const Row ROWS_CONTROLS[] = {
     { R_CHECK, "Invert camera left/right", SL_SWAP_CAMERA_TURN, -1, 0, 0, 0 },
     { R_CHECK, "Invert camera up/down", SL_INVERT_CAMERA_Y, -1, 0, 0, 0 },
     { R_CHECK, "Lock mouse", SL_MOUSE_CAPTURE, -1, 0, 0, 0 },
+    { R_CHECK, "Right stick zooms", SL_CAMERA_STICK_ZOOM, -1, 0, 0, 0 },
     { R_SLIDER, "Stick deadzone", SL_STICK_DEADZONE, -1, 1, 0, 0 },
     { R_SLIDER, "Run point", SL_RUN_THRESHOLD, -1, 1, 0, 0 },
     { R_HEAD, "Keys and buttons", -1, -1, 0, 0, 0 },
@@ -560,10 +561,16 @@ const Row ROWS_CONTROLS[] = {
     { R_BIND, "Run", SL_KEY_BASE + HOST_KEY_RUN, SL_PAD_BASE + HOST_PAD_RUN, 0, 0, 0 },
     { R_BIND, "Start", SL_KEY_BASE + HOST_KEY_START, SL_PAD_BASE + HOST_PAD_START, 0, 0, 0 },
     { R_BIND, "Select", SL_KEY_BASE + HOST_KEY_SELECT, SL_PAD_BASE + HOST_PAD_SELECT, 0, 0, 0 },
-    { R_BIND, "Look", SL_KEY_BASE + HOST_KEY_LOOK, SL_PAD_BASE + HOST_PAD_LOOK, 0, 0, 0 },
-    { R_BIND, "Center camera", SL_KEY_BASE + HOST_KEY_CAM_CENTER, SL_PAD_BASE + HOST_PAD_CAM_CENTER, 0, 0, 0 },
-    { R_BIND, "Rotate camera left", SL_KEY_BASE + HOST_KEY_CAM_LEFT, SL_PAD_BASE + HOST_PAD_CAM_LEFT, 0, 0, 0 },
-    { R_BIND, "Rotate camera right", SL_KEY_BASE + HOST_KEY_CAM_RIGHT, SL_PAD_BASE + HOST_PAD_CAM_RIGHT, 0, 0, 0 },
+    { R_BIND, "Look", SL_KEY_BASE + HOST_KEY_LOOK, SL_PAD_BASE + HOST_PAD_LOOK, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_LOOK + 1 },
+    { R_BIND, "Center camera", SL_KEY_BASE + HOST_KEY_CAM_CENTER, SL_PAD_BASE + HOST_PAD_CAM_CENTER, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_CENTER + 1 },
+    { R_BIND, "Rotate camera left", SL_KEY_BASE + HOST_KEY_CAM_LEFT, SL_PAD_BASE + HOST_PAD_CAM_LEFT, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_LEFT + 1 },
+    { R_BIND, "Rotate camera right", SL_KEY_BASE + HOST_KEY_CAM_RIGHT, SL_PAD_BASE + HOST_PAD_CAM_RIGHT, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_RIGHT + 1 },
+    { R_BIND, "Tilt camera up", SL_KEY_BASE + HOST_KEY_CAM_UP, SL_PAD_BASE + HOST_PAD_CAM_UP, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_UP + 1 },
+    { R_BIND, "Tilt camera down", SL_KEY_BASE + HOST_KEY_CAM_DOWN, SL_PAD_BASE + HOST_PAD_CAM_DOWN, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_DOWN + 1 },
+    { R_BIND, "Zoom camera in", SL_KEY_BASE + HOST_KEY_CAM_ZOOM_IN, SL_PAD_BASE + HOST_PAD_CAM_ZOOM_IN, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_ZOOM_IN + 1 },
+    { R_BIND, "Zoom camera out", SL_KEY_BASE + HOST_KEY_CAM_ZOOM_OUT, SL_PAD_BASE + HOST_PAD_CAM_ZOOM_OUT, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_ZOOM_OUT + 1 },
+    { R_BIND, "Camera mode", SL_KEY_BASE + HOST_KEY_CAM_MODE, SL_PAD_BASE + HOST_PAD_CAM_MODE, 0, 0, 0, 0, SL_MOUSE_BASE + HOST_MOUSE_CAM_MODE + 1 },
+    { R_BIND, "Mouse look button", SL_MOUSE_BASE + HOST_MOUSE_CAM_HOLD, -1, 0, 0, 0 },
     { R_NOTE, "Two actions can share a button.", -1, -1, 0, 0, 0 },
 };
 const Row ROWS_SOUND[] = {
@@ -694,6 +701,16 @@ namespace {
 const char *id_name(int id, char *buf, int cap)
 {
     if (id < SL_PAD_BASE) return settings_page_key_name(sl_get(id), buf, cap);
+    if (id >= SL_MOUSE_BASE) {
+        switch (sl_get(id)) {      /* CAMPACK1: the mouse buttons, by the Win32 VK the file stores */
+        case 0: return "NONE";
+        case 2: return "RIGHT";
+        case 4: return "MIDDLE";
+        case 5: return "BACK";
+        case 6: return "FORWARD";
+        default: snprintf(buf, cap, "MOUSE %d", sl_get(id)); return buf;
+        }
+    }
     return settings_page_pad_name(sl_get(id), buf, cap);
 }
 
@@ -814,15 +831,28 @@ int cap_w_for(const char *txt)
 }
 
 struct CapPos { int x, w; };
-void caps_of(const Row &R, CapPos *cp /* [2] */)
+/* CAMPACK1: a binding row has up to three caps: key, pad, mouse (id3p1 = mouse id + 1). The third exists only beside the second. */
+int bind_cols(const Row &R) { return R.id2 < 0 ? 1 : (R.id3p1 > 0 ? 3 : 2); }
+int bind_id(const Row &R, int c) { return c == 0 ? R.id : (c == 1 ? R.id2 : R.id3p1 - 1); }
+void caps_of(const Row &R, CapPos *cp /* [3] */)
 {
-    char b1[24], b2[24];
+    char b1[24], b2[24], b3[24];
     const char *t1 = id_name(R.id, b1, sizeof b1);
     const char *t2 = R.id2 >= 0 ? id_name(R.id2, b2, sizeof b2) : "";
+    const char *t3 = bind_cols(R) == 3 ? id_name(R.id3p1 - 1, b3, sizeof b3) : "";
     cp[0].w = cap_w_for(t1);
     cp[1].w = R.id2 >= 0 ? cap_w_for(t2) : 0;
+    cp[2].w = bind_cols(R) == 3 ? cap_w_for(t3) : 0;
     cp[0].x = L.ctl_x;
     cp[1].x = L.ctl_x + cp[0].w + P(24);
+    cp[2].x = cp[1].x + cp[1].w + P(24);
+}
+/* which cap a pointer x is nearest: the last one whose left edge is within P(12) of it */
+int cap_col_at(const Row &R, const CapPos *cp, int mx)
+{
+    int col = 0;
+    for (int c = 1; c < bind_cols(R); ++c) if (mx >= cp[c].x - P(12)) col = c;
+    return col;
 }
 
 /* ============================================================ row logic =============================================== */
@@ -873,9 +903,9 @@ void reset_tab()
             if (R.t == R_HEAD || R.t == R_NOTE) continue;
             const SlInfo *a = sl_info(R.id);
             if (a && sl_get(R.id) != a->def) sl_set(R.id, a->def);
-            if (R.t == R_BIND && R.id2 >= 0) {
-                const SlInfo *b = sl_info(R.id2);
-                if (b && sl_get(R.id2) != b->def) sl_set(R.id2, b->def);
+            for (int c = 1; R.t == R_BIND && c < bind_cols(R); ++c) {
+                const SlInfo *b = sl_info(bind_id(R, c));
+                if (b && sl_get(bind_id(R, c)) != b->def) sl_set(bind_id(R, c), b->def);
             }
         }
     sl_flush();
@@ -972,7 +1002,7 @@ void activate(const Row &R, int col)
     switch (R.t) {
     case R_CHOICE: S.dd_open = 1; S.dd_hi = ch_idx(R, sl_get(R.id)); S.dd_first = 0; break;
     case R_CHECK: adjust(R, 1, 0); break;
-    case R_BIND: start_capture(col ? R.id2 : R.id); break;
+    case R_BIND: start_capture(bind_id(R, col)); break;
     default: break;
     }
 }
@@ -1077,11 +1107,17 @@ extern "C" int settings_page_frame(const SpInput *in)
             S.cap_active = 0; S.settle = 1; S.settle_n = 0; note("");
             /* PAUSE3: the camera controls may share a button with each other; say so when this one does */
             const int id = S.cap_id;
-            const int pad = id >= SL_PAD_BASE;
-            const int lo = pad ? SL_PAD_BASE + HOST_PAD_CAM_CENTER : SL_KEY_BASE + HOST_KEY_CAM_CENTER;
-            const int hi = pad ? SL_PAD_BASE + HOST_PAD_CAM_MODE : SL_KEY_BASE + HOST_KEY_CAM_MODE;
+            const int mouse = id >= SL_MOUSE_BASE;
+            const int pad = !mouse && id >= SL_PAD_BASE;
+            const int lo = mouse ? SL_MOUSE_BASE + HOST_MOUSE_CAM_CENTER : pad ? SL_PAD_BASE + HOST_PAD_CAM_CENTER : SL_KEY_BASE + HOST_KEY_CAM_CENTER;
+            const int hi = mouse ? SL_MOUSE_BASE + HOST_MOUSE_CAM_MODE : pad ? SL_PAD_BASE + HOST_PAD_CAM_ZOOM_OUT : SL_KEY_BASE + HOST_KEY_CAM_ZOOM_OUT;
             if (id >= lo && id <= hi) {
-                static const char *const cam_names[4] = { "Center camera", "Rotate camera left", "Rotate camera right", "Camera mode" };
+                /* host order: center, left, right, mode (key / pad), up, down, zoom in, zoom out; mouse: center, left, right, up, down, zoom in, zoom out, mode */
+                static const char *const cam_names_kp[8] = { "Center camera", "Rotate camera left", "Rotate camera right", "Camera mode",
+                                                             "Tilt camera up", "Tilt camera down", "Zoom camera in", "Zoom camera out" };
+                static const char *const cam_names_m[8] = { "Center camera", "Rotate camera left", "Rotate camera right",
+                                                            "Tilt camera up", "Tilt camera down", "Zoom camera in", "Zoom camera out", "Camera mode" };
+                const char *const *cam_names = mouse ? cam_names_m : cam_names_kp;
                 for (int o = lo; o <= hi; ++o)
                     if (o != id && sl_get(o) == sl_get(id) && sl_get(id)) {
                         char b[160];
@@ -1095,7 +1131,8 @@ extern "C" int settings_page_frame(const SpInput *in)
         else if (!sl_capture_active()) { S.cap_active = 0; S.settle = 1; S.settle_n = 0; }
         else {
             if (why && *why) note(why);
-            if (((held & SPK_CAP_CANCEL) && edge_only(9, held)) || l_edge || r_edge || S.cap_frames > 900) {
+            const int mrow = sl_capture_wants_mouse();      /* CAMPACK1: a mouse row takes the right / middle / side buttons as its answer, only the left click backs out */
+            if (((held & SPK_CAP_CANCEL) && edge_only(9, held)) || l_edge || (r_edge && !mrow) || S.cap_frames > 900) {
                 sl_capture_cancel();
                 S.cap_active = 0;
                 S.settle = 1; S.settle_n = 0;
@@ -1144,7 +1181,7 @@ extern "C" int settings_page_frame(const SpInput *in)
             const int dir = rt ? 1 : -1;
             if (S.sel < n) {
                 const Row &R = rows[S.sel];
-                if (R.t == R_BIND) { if (R.id2 >= 0) S.col = dir > 0 ? 1 : 0; }
+                if (R.t == R_BIND) { int c = S.col + dir; if (c < 0) c = 0; if (c > bind_cols(R) - 1) c = bind_cols(R) - 1; S.col = c; }
                 else if (R.t == R_SLIDER || R.t == R_CHOICE) adjust(R, dir, 0);
                 else if (R.t == R_CHECK && ((dir > 0) != (sl_get(R.id) != 0))) adjust(R, dir, 0);
             }
@@ -1156,7 +1193,7 @@ extern "C" int settings_page_frame(const SpInput *in)
         }
         if (edge_only(8, held) && S.sel < n && rows[S.sel].t == R_BIND) {
             const Row &R = rows[S.sel];
-            set_value(S.col && R.id2 >= 0 ? R.id2 : R.id, 0);
+            set_value(bind_id(R, S.col < bind_cols(R) ? S.col : 0), 0);
         }
 
         /* ---- the mouse ---- */
@@ -1167,8 +1204,8 @@ extern "C" int settings_page_frame(const SpInput *in)
                 if (over_row >= 0 && over_row < n && row_focusable(rows[over_row])) {
                     if (S.sel != over_row) { S.sel = over_row; S.col = 0; }
                     if (rows[over_row].t == R_BIND && rows[over_row].id2 >= 0) {
-                        CapPos cp[2]; caps_of(rows[over_row], cp);
-                        S.col = (mx >= cp[1].x - P(12)) ? 1 : 0;
+                        CapPos cp[3]; caps_of(rows[over_row], cp);
+                        S.col = cap_col_at(rows[over_row], cp, mx);
                     }
                 } else if (in_rect(mx, my, L.reset)) S.sel = n;
             }
@@ -1196,20 +1233,19 @@ extern "C" int settings_page_frame(const SpInput *in)
                         } else if (R.t == R_CHOICE) {
                             if (mx >= L.ctl_x && mx < L.ctl_x + L.ctl_w) activate(R, 0);
                         } else if (R.t == R_BIND) {
-                            CapPos cp[2]; caps_of(R, cp);
+                            CapPos cp[3]; caps_of(R, cp);
                             const int kh = cap_h(), ky = L.r[over_row].y + (L.rowh - kh) / 2;
-                            if (my >= ky && my < ky + kh) {
-                                if (mx >= cp[0].x && mx < cp[0].x + cp[0].w) { S.col = 0; activate(R, 0); }
-                                else if (R.id2 >= 0 && mx >= cp[1].x && mx < cp[1].x + cp[1].w) { S.col = 1; activate(R, 1); }
-                            }
+                            if (my >= ky && my < ky + kh)
+                                for (int c = 0; c < bind_cols(R); ++c)
+                                    if (mx >= cp[c].x && mx < cp[c].x + cp[c].w) { S.col = c; activate(R, c); break; }
                         }
                     }
                 }
             }
             if (r_edge && over_row >= 0 && over_row < n && rows[over_row].t == R_BIND) {
-                CapPos cp[2]; caps_of(rows[over_row], cp);
-                const int col = (rows[over_row].id2 >= 0 && mx >= cp[1].x - P(12)) ? 1 : 0;
-                set_value(col ? rows[over_row].id2 : rows[over_row].id, 0);
+                CapPos cp[3]; caps_of(rows[over_row], cp);
+                const int col = cap_col_at(rows[over_row], cp, mx);
+                set_value(bind_id(rows[over_row], col), 0);
             }
             if (S.drag >= 0 && in->mouse_l && S.drag < n) drag_slider(rows[S.drag], mx);
             if (S.pressed_plank && !in->mouse_l) {
@@ -1675,11 +1711,11 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
             break;
         }
         case R_BIND: {
-            CapPos cp[2];
+            CapPos cp[3];
             caps_of(R, cp);
             const int kh = cap_h(), ky = cy - kh / 2;
-            for (int c = 0; c < (R.id2 >= 0 ? 2 : 1); ++c) {
-                const int id = c ? R.id2 : R.id;
+            for (int c = 0; c < bind_cols(R); ++c) {
+                const int id = bind_id(R, c);
                 const int waiting = S.cap_active && S.cap_id == id;
                 char nb[24];
                 draw_cap(s, cp[c].x, ky, cp[c].w, kh, id_name(id, nb, sizeof nb), sel && S.col == c, waiting, clip);
@@ -1708,7 +1744,7 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         const int camrow = S.cursor_shown && S.sel < n && rows[S.sel].t == R_BIND &&
                            (!strncmp(rows[S.sel].label, "Rotate camera", 13) || !strcmp(rows[S.sel].label, "Center camera"));
         const char *msg = S.note[0] ? S.note
-                          : (S.cap_active ? (S.cap_id < SL_PAD_BASE ? "Press a key. Esc keeps the old one." : "Press a button. BACK keeps the old one.")
+                          : (S.cap_active ? (S.cap_id < SL_PAD_BASE ? "Press a key. Esc keeps the old one." : S.cap_id >= SL_MOUSE_BASE ? "Press a mouse button. Left click keeps the old one." : "Press a button. BACK keeps the old one.")
                              : (camrow ? "In the pause, LB / RB and Q / E always slide the screens." : ""));
         const int fy = L.reset[1] + L.reset[3] / 2;
         if (msg[0]) {

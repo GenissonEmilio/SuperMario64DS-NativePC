@@ -35,6 +35,10 @@ static const SlInfo INFO[] = {
     { "KeyCamLeft",  SL_KIND_KEY, 0, 255, 0x51, 0, 1 },
     { "KeyCamRight", SL_KIND_KEY, 0, 255, 0x45, 0, 1 },
     { "KeyCamMode",  SL_KIND_KEY, 0, 255, 0x70, 0, 1 },
+    { "KeyCamUp",    SL_KIND_KEY, 0, 255, 0x52, 0, 1 },
+    { "KeyCamDown",  SL_KIND_KEY, 0, 255, 0x46, 0, 1 },
+    { "KeyCamZoomIn",  SL_KIND_KEY, 0, 255, 0, 0, 1 },
+    { "KeyCamZoomOut", SL_KIND_KEY, 0, 255, 0, 0, 1 },
     /* pads, in HOST_PAD_ order */
     { "PadJump",     SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x1000, 0, 1 },
     { "PadAttack",   SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x2000, 0, 1 },
@@ -47,6 +51,21 @@ static const SlInfo INFO[] = {
     { "PadCamLeft",  SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x0100, 0, 1 },
     { "PadCamRight", SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x0200, 0, 1 },
     { "PadCamMode",  SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x0080, 0, 1 },
+    { "PadCamUp",    SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0, 0, 1 },
+    { "PadCamDown",  SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0, 0, 1 },
+    { "PadCamZoomIn",  SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0, 0, 1 },
+    { "PadCamZoomOut", SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0, 0, 1 },
+    /* mouse buttons, in HOST_MOUSE_ order (CAMPACK1): VK 0 none, 2 right, 4 middle, 5 X1, 6 X2 */
+    { "MouseCamHold",    SL_KIND_MOUSE, 0, 6, 2, 0, 1 },
+    { "MouseCamCenter",  SL_KIND_MOUSE, 0, 6, 0, 0, 1 },
+    { "MouseCamLeft",    SL_KIND_MOUSE, 0, 6, 0, 0, 1 },
+    { "MouseCamRight",   SL_KIND_MOUSE, 0, 6, 0, 0, 1 },
+    { "MouseCamUp",      SL_KIND_MOUSE, 0, 6, 0, 0, 1 },
+    { "MouseCamDown",    SL_KIND_MOUSE, 0, 6, 0, 0, 1 },
+    { "MouseCamZoomIn",  SL_KIND_MOUSE, 0, 6, 0, 0, 1 },
+    { "MouseCamZoomOut", SL_KIND_MOUSE, 0, 6, 0, 0, 1 },
+    { "MouseCamMode",    SL_KIND_MOUSE, 0, 6, 0, 0, 1 },
+    { "MouseLook",       SL_KIND_MOUSE, 0, 6, 0, 0, 1 },
     /* the rest */
     { "RunMode",                SL_KIND_ENUM,    0, 2, 1, RUN_NAMES, 1 },
     { "StickDeadzone",          SL_KIND_PERCENT, 0, 50, 24, 0, 1 },
@@ -57,6 +76,7 @@ static const SlInfo INFO[] = {
     { "CameraSensitivity",      SL_KIND_PERCENT, 10, 400, 100, 0, 1 },
     { "MouseSensitivity",       SL_KIND_PERCENT, 10, 400, 100, 0, 1 },
     { "MouseCapture",           SL_KIND_BOOL,    0, 1, 0, 0, 1 },
+    { "CameraStickZoom",        SL_KIND_BOOL,    0, 1, 0, 0, 1 },
     { "Volume",                 SL_KIND_PERCENT, 0, 100, 50, 0, 1 },
     { "MinimapScale",           SL_KIND_PERCENT, 25, 400, 100, 0, 1 },
     { "ImprovedMinimap",        SL_KIND_BOOL,    0, 1, 1, 0, 0 },
@@ -88,7 +108,8 @@ int sl_find(const char *key)
 int sl_get(int id)
 {
     if (id >= SL_KEY_BASE && id < SL_PAD_BASE) return host_setting_key(id - SL_KEY_BASE);
-    if (id >= SL_PAD_BASE && id < SL_RUN_MODE) return host_setting_pad(id - SL_PAD_BASE);
+    if (id >= SL_PAD_BASE && id < SL_MOUSE_BASE) return host_setting_pad(id - SL_PAD_BASE);
+    if (id >= SL_MOUSE_BASE && id < SL_RUN_MODE) return host_setting_mouse(id - SL_MOUSE_BASE);
     switch (id) {
     case SL_RUN_MODE:           return host_setting_run_mode();
     case SL_STICK_DEADZONE:     return host_setting_stick_deadzone_pct();
@@ -99,6 +120,7 @@ int sl_get(int id)
     case SL_CAMERA_SENSITIVITY: return host_setting_camera_sensitivity();
     case SL_MOUSE_SENSITIVITY:  return host_setting_mouse_sensitivity();
     case SL_MOUSE_CAPTURE:      return host_setting_mouse_capture();
+    case SL_CAMERA_STICK_ZOOM:  return host_setting_camera_stick_zoom();
     case SL_VOLUME: {
         const int v = host_setting_volume();
         return v < 0 ? INFO[SL_VOLUME].def : v;
@@ -120,7 +142,8 @@ int sl_get(int id)
 int sl_set(int id, int v)
 {
     if (id >= SL_KEY_BASE && id < SL_PAD_BASE) return host_setting_set_key(id - SL_KEY_BASE, v);
-    if (id >= SL_PAD_BASE && id < SL_RUN_MODE) return host_setting_set_pad(id - SL_PAD_BASE, v);
+    if (id >= SL_PAD_BASE && id < SL_MOUSE_BASE) return host_setting_set_pad(id - SL_PAD_BASE, v);
+    if (id >= SL_MOUSE_BASE && id < SL_RUN_MODE) return host_setting_set_mouse(id - SL_MOUSE_BASE, v);
     switch (id) {
     case SL_RUN_MODE:           return host_setting_set_run_mode(v);
     case SL_STICK_DEADZONE:     return host_setting_set_stick_deadzone(v);
@@ -131,6 +154,7 @@ int sl_set(int id, int v)
     case SL_CAMERA_SENSITIVITY: return host_setting_set_camera_sensitivity(v);
     case SL_MOUSE_SENSITIVITY:  return host_setting_set_mouse_sensitivity(v);
     case SL_MOUSE_CAPTURE:      return host_setting_set_mouse_capture(v);
+    case SL_CAMERA_STICK_ZOOM:  return host_setting_set_camera_stick_zoom(v);
     case SL_VOLUME:             return host_setting_set_volume(v);
     case SL_MINIMAP_SCALE:
         if (v < 25 || v > 400) return 0;
@@ -149,7 +173,8 @@ int sl_set(int id, int v)
 int sl_applicable(int id)
 {
     switch (id) {
-    case SL_CAMERA_SENSITIVITY:
+    case SL_CAMERA_SENSITIVITY:     /* CAMPACK1: the DS camera's stepped turn is scaled too, so this applies in every mode */
+        return 1;
     case SL_INVERT_CAMERA_Y:
     case SL_MOUSE_SENSITIVITY:
         return host_setting_camera_mode() != 2;
@@ -225,12 +250,12 @@ int sl_capture_take_cancel(void)
 
 /* PAUSE3: the camera controls may share a button with one another (Center on LB while Rotate left holds LB is legal: the file allows two
    actions on one button, and the page says so after the bind). A camera action never takes a button a gameplay action holds. */
-static int is_cam_key(int a) { return a >= HOST_KEY_CAM_CENTER && a <= HOST_KEY_CAM_MODE; }
-static int is_cam_pad(int a) { return a >= HOST_PAD_CAM_CENTER && a <= HOST_PAD_CAM_MODE; }
+static int is_cam_key(int a) { return a >= HOST_KEY_CAM_CENTER && a <= HOST_KEY_CAM_ZOOM_OUT; }
+static int is_cam_pad(int a) { return a >= HOST_PAD_CAM_CENTER && a <= HOST_PAD_CAM_ZOOM_OUT; }
 
 static int key_reserved(int action, int vk, const char **why)
 {
-    if (vk >= 0x70 && vk <= 0x7b) { *why = "the F keys belong to the window"; return 1; }
+    if (vk >= 0x70 && vk <= 0x7b && !(action == HOST_KEY_CAM_MODE && vk == 0x70)) { *why = "the F keys belong to the window"; return 1; }
     if (vk == 0x1b || vk == 0x09) { *why = "that key belongs to the window"; return 1; }
     if (vk == 0x0d && action != HOST_KEY_START) { *why = "enter drives the menus"; return 1; }
     if (vk >= 0x25 && vk <= 0x28 &&
@@ -253,6 +278,7 @@ static int pad_reserved(int action, unsigned bit, const char **why)
        to the gameplay actions, so a player can bind A back to Jump; they stay
        out of the menu slots (Start, Select). */
     unsigned blocked = 0x30afu;
+    if (action == HOST_PAD_CAM_MODE) blocked &= ~0x80u;   /* CAMPACK1: the right stick's click is the camera-mode button's own default */
     if (action != HOST_PAD_START && action != HOST_PAD_SELECT) blocked &= ~0x3000u;
     if (bit & blocked) { *why = "that button drives the menus"; return 1; }
     for (int i = 0; i < HOST_PAD_COUNT; ++i)
@@ -266,7 +292,7 @@ static int pad_reserved(int action, unsigned bit, const char **why)
 int sl_capture_offer_key(int vk)
 {
     if (g_cap_state != SL_CAP_WAITING) return 0;
-    if (g_cap_id >= SL_PAD_BASE && !g_cap_either) return 0;   /* a pad row waits for a pad */
+    if (g_cap_id >= SL_PAD_BASE && !g_cap_either) return 0;   /* a pad or mouse row waits for its own device */
     if (vk == 0x1b) {
         g_cap_state = SL_CAP_CANCELLED;
         return 1;
@@ -283,10 +309,26 @@ int sl_capture_offer_key(int vk)
     return 1;
 }
 
+int sl_capture_wants_mouse(void)
+{
+    return g_cap_state == SL_CAP_WAITING && g_cap_id >= SL_MOUSE_BASE && !g_cap_either;
+}
+
+int sl_capture_offer_mouse(int vk)
+{
+    if (!sl_capture_wants_mouse()) return 0;
+    if (!(vk == 2 || (vk >= 4 && vk <= 6))) return 0;
+    host_setting_set_mouse(g_cap_id - SL_MOUSE_BASE, vk);
+    g_cap_refused[0] = 0;
+    g_cap_state = SL_CAP_BOUND;
+    return 1;
+}
+
 int sl_capture_offer_pad(unsigned bit)
 {
     if (g_cap_state != SL_CAP_WAITING || !bit) return 0;
     if (g_cap_id < SL_PAD_BASE && !g_cap_either) return 0;    /* a key row waits for a key */
+    if (g_cap_id >= SL_MOUSE_BASE && !g_cap_either) return 0; /* a mouse row waits for a mouse button */
     const int action = g_cap_either ? HOST_PAD_RUN : g_cap_id - SL_PAD_BASE;
     const char *why = "";
     if (pad_reserved(action, bit, &why)) {

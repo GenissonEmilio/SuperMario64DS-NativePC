@@ -163,17 +163,55 @@ enum {
     HOST_KEY_JUMP, HOST_KEY_ATTACK, HOST_KEY_CROUCH, HOST_KEY_RUN,
     HOST_KEY_START, HOST_KEY_SELECT, HOST_KEY_LOOK,
     HOST_KEY_CAM_CENTER, HOST_KEY_CAM_LEFT, HOST_KEY_CAM_RIGHT, HOST_KEY_CAM_MODE,
+    HOST_KEY_CAM_UP, HOST_KEY_CAM_DOWN, HOST_KEY_CAM_ZOOM_IN, HOST_KEY_CAM_ZOOM_OUT,
     HOST_KEY_COUNT
 };
 enum {
     HOST_PAD_JUMP = 0, HOST_PAD_ATTACK, HOST_PAD_CROUCH, HOST_PAD_RUN,
     HOST_PAD_START, HOST_PAD_SELECT, HOST_PAD_LOOK,
     HOST_PAD_CAM_CENTER, HOST_PAD_CAM_LEFT, HOST_PAD_CAM_RIGHT, HOST_PAD_CAM_MODE,
+    HOST_PAD_CAM_UP, HOST_PAD_CAM_DOWN, HOST_PAD_CAM_ZOOM_IN, HOST_PAD_CAM_ZOOM_OUT,
     HOST_PAD_COUNT
 };
 /* The two trigger pseudo-buttons a pad binding may name (see the PAD block
    above), and the widest value a pad binding may hold. */
 enum { HOST_PAD_LT = 0x10000, HOST_PAD_RT = 0x20000, HOST_PAD_MASK_MAX = 0x3ffff };
+/* CAMPACK1: THE CAMERA'S REMAINING ACTIONS, AND THE MOUSE BUTTONS.
+   Four more camera actions, key and pad (and mouse below):
+     KeyCamUp   0x52 R   PadCamUp   0 -- tilt the view up   (analog / free camera)
+     KeyCamDown 0x46 F   PadCamDown 0 -- tilt the view down (analog / free camera)
+     KeyCamZoomIn / KeyCamZoomOut, PadCamZoomIn / PadCamZoomOut: default unbound.
+   R and F are what the window has always read for the tilt, so they stay the
+   defaults and nobody's camera changes; the pad tilts with the right stick, which
+   is not a binding. Zoom has no key today (the pad bumpers and the wheel zoom the
+   analog and free cameras); the new actions are unbound until the player binds them.
+   In the analog and free cameras they move the eye in / out like the bumpers and
+   the wheel. In the DS-exact camera there is no tilt; zoom in presses the DS
+   close-up (Look) camera, zoom out leaves it, the ROM's own zoom (camera state 9).
+
+   MOUSE BUTTONS. Each action may also sit on a mouse button. The value is the Win32
+   virtual-key code of the button (GetAsyncKeyState takes it): 0 none, 2 right,
+   4 middle, 5 X1 (back), 6 X2 (forward). The left button is the touch stylus and
+   cannot be bound. A value outside that set reads as the default.
+     MouseCamHold   2 (right)  the button that is HELD to steer the camera with mouse
+                    movement, today's right-button look. 0 turns the hold off (use
+                    MouseCapture for look with no button).
+     MouseCamCenter / MouseCamLeft / MouseCamRight / MouseCamUp / MouseCamDown /
+     MouseCamZoomIn / MouseCamZoomOut / MouseCamMode / MouseLook: all default 0. */
+enum {
+    HOST_MOUSE_CAM_HOLD = 0, HOST_MOUSE_CAM_CENTER, HOST_MOUSE_CAM_LEFT, HOST_MOUSE_CAM_RIGHT,
+    HOST_MOUSE_CAM_UP, HOST_MOUSE_CAM_DOWN, HOST_MOUSE_CAM_ZOOM_IN, HOST_MOUSE_CAM_ZOOM_OUT,
+    HOST_MOUSE_CAM_MODE, HOST_MOUSE_LOOK,
+    HOST_MOUSE_COUNT
+};
+int host_setting_mouse(int action);                     /* VK of the bound button or 0 */
+const char *host_setting_mouse_name(int action);
+int host_setting_set_mouse(int action, int vk);         /* 1 ok, 0 refused (not 0/2/4/5/6) */
+/* CameraStickZoom: right stick up / down zooms the camera instead of tilting it.
+   Default 0 (off) = today. DS camera: a push is one press of the ROM's close-up. */
+int host_setting_camera_stick_zoom(void);
+int host_setting_set_camera_stick_zoom(int on);
+
 /* The bound code for one action, or 0 for unbound; an index outside the enum
    is 0 too. host_setting_key_name / host_setting_pad_name give the
    settings.json spelling of an action ("KeyJump", "PadJump"), for logs. */

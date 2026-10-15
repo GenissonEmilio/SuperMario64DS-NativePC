@@ -34,7 +34,8 @@ enum SlId {
        host key or pad shifts every id after it together with the INFO[] table, whose row count settings_live.cpp checks. */
     SL_KEY_BASE = 0,
     SL_PAD_BASE = HOST_KEY_COUNT,
-    SL_RUN_MODE = HOST_KEY_COUNT + HOST_PAD_COUNT, /* enum: button, analog, auto */
+    SL_MOUSE_BASE = HOST_KEY_COUNT + HOST_PAD_COUNT,   /* CAMPACK1: HOST_MOUSE_* (mouse buttons) */
+    SL_RUN_MODE = HOST_KEY_COUNT + HOST_PAD_COUNT + HOST_MOUSE_COUNT, /* enum: button, analog, auto */
     SL_STICK_DEADZONE,          /* percent 0..50, default 24 */
     SL_RUN_THRESHOLD,           /* percent 30..100, default 89 */
     SL_CAMERA_MODE,             /* enum: analog, freecam, ds */
@@ -43,6 +44,7 @@ enum SlId {
     SL_CAMERA_SENSITIVITY,      /* percent 10..400, default 100 */
     SL_MOUSE_SENSITIVITY,       /* percent 10..400, default 100 */
     SL_MOUSE_CAPTURE,           /* bool */
+    SL_CAMERA_STICK_ZOOM,       /* bool: right stick up / down zooms (CAMPACK1) */
     SL_VOLUME,                  /* percent 0..100 */
     SL_MINIMAP_SCALE,           /* percent of 1.0x */
     SL_IMPROVED_MINIMAP,        /* bool, read only: latched with the geometry */
@@ -53,7 +55,7 @@ enum SlId {
     SL_COUNT
 };
 
-enum SlKind { SL_KIND_KEY, SL_KIND_PAD, SL_KIND_ENUM, SL_KIND_BOOL, SL_KIND_PERCENT };
+enum SlKind { SL_KIND_KEY, SL_KIND_PAD, SL_KIND_ENUM, SL_KIND_BOOL, SL_KIND_PERCENT, SL_KIND_MOUSE };
 
 struct SlInfo {
     const char *key;            /* the settings.json key */
@@ -111,6 +113,8 @@ int sl_capture_take_arm(void);    /* 1 once after a start: arm g_rebind_capture 
 int sl_capture_take_cancel(void); /* 1 once after a cancel: disarm it */
 int sl_capture_offer_key(int vk); /* a key was pressed; 1 = capture finished */
 int sl_capture_offer_pad(unsigned bit);
+int sl_capture_offer_mouse(int vk);   /* CAMPACK1: a mouse button (VK 2 / 4 / 5 / 6) was pressed during a mouse-row capture; 1 = capture finished */
+int sl_capture_wants_mouse(void);     /* 1 while a MOUSE row waits (the page must not treat a click as 'cancel') */
 int sl_capture_active(void);
 
 #endif
