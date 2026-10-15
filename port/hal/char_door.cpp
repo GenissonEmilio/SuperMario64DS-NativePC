@@ -19,6 +19,7 @@ int _ZN6Player7IsStateERNS_5StateE(void *self, void *state);
 extern int data_ov002_0211013c[];
 extern int data_ov002_02110154[];
 extern int data_ov002_0211043c[];
+unsigned char NumStars(void);
 int func_ov100_021452e4(char *door, char *player);   /* the door's own "player is in front of me" test */
 }
 
@@ -51,6 +52,8 @@ int g_hold_frames;
 int g_input_ready;     /* every device was released once since it opened: the press that brought the player here is not an answer */
 int g_cur = 0;
 int g_frames;
+int g_saw_closed;      /* this session saw the door still shut (the ROM's own first pass is ahead of us, or under way) */
+int g_star0;           /* the star count while it was shut: the ROM's star has been given once the count is above it */
 
 enum { MAX_ROWS = 8 };
 
@@ -145,23 +148,38 @@ int door_hook(void *door, void *pl)
     if (port_mods_multiplayer()) return 0;                         /* the ROM door, in every multiplayer path */
     if (!p || *(int *)(d + 8) != 0xd) return 0;
     const unsigned flags1 = *(unsigned *)(data_0209caa0 + 4);
-    if (!(flags1 & (0x100u << 6))) return 0;                       /* the ROM has not opened it yet: its key, its star */
+    if (!(flags1 & (0x100u << 6))) {                               /* the ROM has not opened it yet: its key, its star */
+        g_saw_closed = 1;
+        g_star0 = NumStars();
+        return 0;
+    }
+    /* the "opened" flag rises with the key, BEFORE the ROM walks the player through and gives the star: stay out of
+       its way until the star count has gone up. A save whose door was opened before this session owes no star. */
+    if (g_saw_closed && NumStars() <= g_star0) return 0;
+    g_saw_closed = 0;
     if (g_mode != CD_NONE || g_want != 0) return 1;                /* one is up or on its way */
-    if (!func_ov100_021452e4(d, p)) { g_armed = 1; return 0; }     /* not in the doorway: the ROM's own watch */
-    if (!g_armed) return 1;                                        /* just closed: do not let it open the door under them */
+    const int slot = port_char_save_slot();
+    const int first = !port_char_save_unlocked(slot);
+    /* the box comes as soon as the ROM's star is done (the player stands wherever the ROM left them); the picker only
+       when the player walks into the doorway */
+    if (!first) {
+        if (!func_ov100_021452e4(d, p)) { g_armed = 1; return 0; }  /* not in the doorway: the ROM's own watch */
+        if (!g_armed) return 1;                                     /* just closed: do not let it open the door under them */
+    }
     /* the walking states the ROM's Player::CanEnterDoor accepts, tested without committing the player to a door state */
     const int walking = _ZN6Player7IsStateERNS_5StateE(p, data_ov002_0211013c) ||
                         _ZN6Player7IsStateERNS_5StateE(p, data_ov002_02110154) ||
                         _ZN6Player7IsStateERNS_5StateE(p, data_ov002_0211043c);
-    if (!walking || *(int *)(p + 0x360) != 0) return 1;            /* not ready yet: wait with the door shut */
-    const int slot = port_char_save_slot();
-    if (!port_char_save_unlocked(slot)) {
+    if (!walking || *(int *)(p + 0x360) != 0) return first ? 0 : 1; /* not ready yet */
+    if (first) {
         g_want = CD_BOX;
-        fprintf(stderr, "[chardoor] the white door was opened (star given by the ROM): unlocking custom character select on slot %c\n", 'A' + slot);
+        fprintf(stderr, "[chardoor] the white door was opened (star given by the ROM): unlocking custom character select on slot %c
+", 'A' + slot);
         port_char_save_set_unlocked(slot, 1);
     } else {
         g_want = CD_PICK;
-        fprintf(stderr, "[chardoor] the white door asks for the picker\n");
+        fprintf(stderr, "[chardoor] the white door asks for the picker
+");
     }
     return 1;
 }
