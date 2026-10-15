@@ -1311,8 +1311,6 @@ int menu_title_up(int scene_id)
 {
     if (scene_id != 1) { g_up_stamp = -1; return 0; }   /* FILEFIX1: out of the title scene no stale stamp can match the title counter (file_wide_cb runs on every frame's first 3D command) */
     int top, elem, req;
-    if (!port_title_page_state(&top, &elem, &req)) return g_last;   /* not built yet: the attract */
-    title_timeline(top, elem, req);
     {   /* INTROCARD092 (SM64DS_TITLE_TL=2): the wall-clock gap between title ticks, printed when it is over 45 ms, with the page and the ROM's own counter */
         static int on = -1;
         if (on < 0) { const char *e = getenv("SM64DS_TITLE_TL"); on = (e && *e == '2') ? 1 : 0; }
@@ -1325,6 +1323,8 @@ int menu_title_up(int scene_id)
             const int fr = data_ov007_0210342c ? data_ov007_0210342c[0] : -1;
             if (ms > 45.0 || (n++ % 30) == 0) fprintf(stderr, "[tl2] f%d top=%d elem=%d dt=%.0fms%s\n", fr, top, elem, ms, ms > 45.0 ? " HITCH" : ""); fflush(stderr);
         }
+    if (!port_title_page_state(&top, &elem, &req)) return g_last;   /* not built yet: the attract */
+    title_timeline(top, elem, req);
     }
     if (top != g_top || elem != g_elem) {
         g_top = top; g_elem = elem;
