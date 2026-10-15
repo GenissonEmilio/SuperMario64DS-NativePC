@@ -430,7 +430,7 @@ struct Font {
     }
     int kscale(float em) const
     {
-        const int k = (int)(em * u / 8.0f + 0.5f);
+        const int k = (int)(em * u / 8.4f + 0.5f);
         return k < 1 ? 1 : k;
     }
     /* draws with the top of a capital at y (hd: baseline = y + cap height) */
@@ -754,7 +754,7 @@ void cdskin_draw(uint32_t *px, int stride, int w, int h, const CdGeom *gp, const
             if (const Piece *p = fitted(image_id(m, I) + 200, *I, iw, ih, &ox, &oy)) blit(s, g.px + (g.pw - iw) / 2 + ox, g.py + (g.ph - ih) / 2 + oy, *p);
         }
         int y = g.dy;
-        const float em = 20.0f;
+        const float em = hd ? 21.0f : 19.0f;
         const std::string nm = fit(f, m.label, em, (float)g.dw);
         f.draw(s, g.dx + (g.dw - f.width(nm.c_str(), em)) / 2, (float)y, nm.c_str(), em, C_TEXT);
         y += U(26);
