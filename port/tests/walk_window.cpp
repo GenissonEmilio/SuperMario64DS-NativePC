@@ -15129,14 +15129,16 @@ int main(void)
             if (tr < 0) tr = getenv("SM64DS_CAM93_TRACE") ? 1 : 0;
             if (tr && cam && c)
                 fprintf(stderr, "[cam93] f%d st=%d ds=%d mode=%d yaw=%04x pitch=%04x dist=%d scale=%d hit=%d midle=%d want=%d "
-                        "pl=%d,%d,%d pyaw=%04x pst=%p eye=%d,%d,%d hitrel=%d,%d,%d\n",
+                        "pl=%d,%d,%d pyaw=%04x pst=%p eye=%d,%d,%d hitrel=%d,%d,%d hd=%04x fc48=%x pstep=%u pkind=%u\n",
                         frame, cam93_state_idx(cam), cam93_ds_owned(cam), cam_mode, (unsigned short)fc_yaw,
                         (unsigned short)fc_pitch, fc_dist >> 12, g_cam93_scale, g_cam93_hit | (g_cam93_floorhit << 1),
                         g_cam93_mouse_owned, g_cam93_wouldscale,
                         *(int *)(c + 0x5c) >> 12, *(int *)(c + 0x60) >> 12, *(int *)(c + 0x64) >> 12,
                         (unsigned)(unsigned short)*(short *)(c + 0x8e), *(void **)(c + 0x370),
                         g_cam93_eye[0] >> 12, g_cam93_eye[1] >> 12, g_cam93_eye[2] >> 12,
-                        g_cam93_hitrel[0], g_cam93_hitrel[1], g_cam93_hitrel[2]);
+                        g_cam93_hitrel[0], g_cam93_hitrel[1], g_cam93_hitrel[2],
+                        (unsigned)(unsigned short)*(short *)((char *)data_020a1164), (unsigned)data_0209fc48,
+                        (unsigned)*(unsigned char *)(c + 0x6e3), (unsigned)*(unsigned char *)(c + 0x70a));
         }
         if (pad_live && c && *(void **)(c + 0x370) == (void *)data_ov002_021102d4 && !cam93_ds_owned_off()) {
             /* CAMERA093: in the cannon (the Player's own aim state) the DS camera is the picture (camera
