@@ -1,7 +1,8 @@
 /* sm64ds_mod.h -- the plugin API for SM64DS PC port code mods. API version 1.
 
    A code mod is a folder mods/<id>/ next to the game with a mod.json that says
-   "kind": "code", "game": "<release>", "api": 1, and ONE DLL in plugin/. The
+   "kind": "code", "api": 1 (and, for the record, "game": "<release it was built
+   on>"; optionally "minGameVersion": "<oldest release it works on>"), and ONE DLL in plugin/. The
    game loads the DLL at start-up, finds the exported function
 
        int __cdecl sm64ds_mod_main(const SM64DSModApi *api);
@@ -11,10 +12,25 @@
 
    THE RULES (they are enforced, not suggestions)
 
-   * EXACT GAME RELEASE. A plugin calls into the game by address (symbol()), so
-     it is only valid for the build it was made against. mod.json's "game" must
-     equal api->game_release of the running game, and "api" must be 1; if not,
-     the plugin is not loaded and the boot summary line says why.
+   * THE API VERSION IS THE PIN. mod.json's "api" is the API version the
+     plugin was built against. The game loads it when that number is between
+     SM64DS_MOD_API_MIN_VERSION and SM64DS_MOD_API_VERSION of the running game,
+     on any release; a plugin that names a newer API than the game offers (or
+     one older than the game still supports) is not loaded, and the boot
+     summary line says why. The API version covers this struct (the fields,
+     their order and meaning), the callback signatures and when they run, and
+     the rules in this comment. A change that only ADDS (a new field at the
+     end, a new callback) raises SM64DS_MOD_API_VERSION; a change that moves
+     or re-means something existing raises SM64DS_MOD_API_MIN_VERSION too, and
+     plugins built for the old number stop loading.
+   * OPTIONAL "minGameVersion". mod.json may name the oldest game release the plugin
+     works on (for example when it relies on a game symbol that first appears
+     there). The game refuses the plugin on an older release.
+   * symbol() IS BY NAME, NOT BY ADDRESS. The game resolves a name against its
+     own symbol table, so a plugin that uses it follows the build it runs on.
+     The API version does NOT promise that a given name exists or keeps its
+     signature in every release: check for NULL, and set "minGameVersion" when you
+     need a name that is not in older releases.
    * 32-BIT, WINDOWS, __cdecl. The game is a 32-bit x86 program. Build the DLL
      as 32-bit (MSVC "x86" tools) with the default __cdecl convention. The
      interface below is plain C: no C++ types cross it.
@@ -60,7 +76,9 @@
 extern "C" {
 #endif
 
+/* The newest API this header describes, and the oldest the game still loads. */
 #define SM64DS_MOD_API_VERSION 1
+#define SM64DS_MOD_API_MIN_VERSION 1
 
 typedef struct SM64DSModApi SM64DSModApi;
 

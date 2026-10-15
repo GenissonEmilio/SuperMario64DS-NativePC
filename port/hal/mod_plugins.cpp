@@ -9,9 +9,10 @@
    and nothing has read a ROM file or registered an actor yet, so a plugin's
    on_file and replace_actor registrations are in place before they matter.
 
-   WHO IS LOADED. A mod with kind "code", mod.json "api" == 1 and "game" equal
-   to this build's release string (PORT_GAME_VERSION, the resource file's
-   ProductVersion), with exactly one DLL in mods/<id>/plugin/. Anything else is
+   WHO IS LOADED. A mod with kind "code", mod.json "api" within the range this
+   game offers (SM64DS_MOD_API_MIN_VERSION to SM64DS_MOD_API_VERSION) and, when
+   mod.json has "minGameVersion", a release (PORT_GAME_VERSION, the resource file's
+   ProductVersion) at least that new, with exactly one DLL in mods/<id>/plugin/. Anything else is
    skipped and the boot summary line says why. SM64DS_MOD_PLUGINS=0 turns the
    plugins off alone (SM64DS_MODS=0 turns every mod off). A multiplayer session
    (the launcher's lobby / VS match env, see port_mods_multiplayer() in hal/mods.cpp, which empties the whole mod list) loads none: a
@@ -631,19 +632,74 @@ HMODULE load_plugin_dll(const std::string &dll)
     return h;
 }
 
+/* Dotted release numbers ("0.9.1", "0.10", "0.9.2-beta"): compared number by
+   number, a missing part counts as 0, a suffix after the numbers is ignored.
+   Returns -1, 0, 1, or -2 when `b` (the plugin's minGameVersion) is not a release
+   number (the plugin is then refused: a bound we cannot read is not met). An
+   unreadable game release is treated as older than everything. */
+bool parse_release(const std::string &s, std::vector<int> *out)
+{
+    size_t i = 0;
+    if (i < s.size() && (s[i] == 'v' || s[i] == 'V')) ++i;
+    if (i >= s.size() || !isdigit((unsigned char)s[i])) return false;
+    for (;;) {
+        long v = 0;
+        int nd = 0;
+        while (i < s.size() && isdigit((unsigned char)s[i])) {
+            if (++nd > 6) return false;
+            v = v * 10 + (s[i++] - '0');
+        }
+        out->push_back((int)v);
+        if (i < s.size() && s[i] == '.' && i + 1 < s.size() && isdigit((unsigned char)s[i + 1])) { ++i; continue; }
+        return true;
+    }
+}
+
+int compare_release(const std::string &game, const std::string &min_game)
+{
+    std::vector<int> g, m;
+    if (!parse_release(min_game, &m)) return -2;
+    if (!parse_release(game, &g)) return -1;
+    for (size_t k = 0; k < g.size() || k < m.size(); ++k) {
+        const int a = k < g.size() ? g[k] : 0, b = k < m.size() ? m[k] : 0;
+        if (a != b) return a < b ? -1 : 1;
+    }
+    return 0;
+}
+
 void load_one(int i, const std::string &release)
 {
     const std::string id = port_mods_id(i);
     const std::string folder = port_mods_folder(i);
-    if (port_mods_api(i) != SM64DS_MOD_API_VERSION) {
-        char b[64];
-        sprintf(b, "plugin api %d, this game speaks %d", port_mods_api(i), SM64DS_MOD_API_VERSION);
+    /* THE RULE (design: out/MODPIN1/DESIGN.md). A plugin built for plugin API
+       version M loads on any game that offers M: SM64DS_MOD_API_MIN_VERSION <= M
+       <= SM64DS_MOD_API_VERSION. The release string in "game" is only a note of
+       what the plugin was built on; it is not compared. "minGameVersion", when the
+       plugin names one, is the oldest release it works on. */
+    const int api = port_mods_api(i);
+    if (api < SM64DS_MOD_API_MIN_VERSION || api > SM64DS_MOD_API_VERSION) {
+        char b[96];
+        if (api > SM64DS_MOD_API_VERSION)
+            sprintf(b, "plugin api %d is newer than this game offers (%d)", api, SM64DS_MOD_API_VERSION);
+        else if (api <= 0)
+            sprintf(b, "mod.json names no plugin api");
+        else
+            sprintf(b, "plugin api %d is older than this game still supports (%d to %d)", api,
+                    SM64DS_MOD_API_MIN_VERSION, SM64DS_MOD_API_VERSION);
         say_skip(id, b);
         return;
     }
-    if (release != port_mods_game(i)) {
-        say_skip(id, std::string("built for game \"") + port_mods_game(i) + "\", this is \"" + release + "\"");
-        return;
+    const std::string min_game = port_mods_min_game(i) ? port_mods_min_game(i) : "";
+    if (!min_game.empty()) {
+        const int c = compare_release(release, min_game);
+        if (c == -2) {
+            say_skip(id, std::string("minGameVersion \"") + min_game + "\" is not a release number");
+            return;
+        }
+        if (c < 0) {
+            say_skip(id, std::string("needs game ") + min_game + " or newer, this is \"" + release + "\"");
+            return;
+        }
     }
     std::string why;
     const std::string dll = find_dll(folder, &why);
