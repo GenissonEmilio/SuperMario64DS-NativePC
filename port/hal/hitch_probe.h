@@ -32,10 +32,12 @@ enum HitchKind {
     HK_GPUCOPY,      // gpu_raster: the CPU copying the planes out
     HK_FLUSH,        // the frame's fflush(stdout)
     HK_SWAP,         // the ROM frame step + geometry swap at the frame boundary
+    HK_MSGBM,        // message_compositor bm_fill_default (the brightness mask's default pass)
+    HK_MSGRESOLVE,   // message_compositor hudelem::resolve (the widescreen element labelling), when it ran
     HK_COUNT
 };
 
-inline const char *const kHitchKindName[HK_COUNT] = {"tex", "cardfile", "sfpload", "tongue", "chat", "nethook", "hubpump", "ghostfollow", "gpubuild", "gpudraw", "gpuwait", "gpucopy", "flush", "swap"};
+inline const char *const kHitchKindName[HK_COUNT] = {"tex", "cardfile", "sfpload", "tongue", "chat", "nethook", "hubpump", "ghostfollow", "gpubuild", "gpudraw", "gpuwait", "gpucopy", "flush", "swap", "msgbm", "msgresolve"};
 
 struct HitchCell { double ms; unsigned n; };
 inline HitchCell g_hitch_cell[HK_COUNT];
