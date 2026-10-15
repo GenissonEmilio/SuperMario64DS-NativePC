@@ -58,7 +58,14 @@ struct daHuwa_c : dEnemyBase_c {
     u8                           pad_39b[0x1];
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daHuwa_c();   /* no slot */
+    #else
     virtual ~daHuwa_c();
+    #endif
 
     virtual s32   OnYoshiTryEat();         /* slot 18 */
     virtual void  OnTurnIntoEgg(Player &player); /* slot 19 */

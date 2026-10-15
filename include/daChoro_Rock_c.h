@@ -34,7 +34,14 @@ struct daChoro_Rock_c : dEnemyBase_c {
     u8 mIsSmall;                       /* 0x350 -- param1 & 1; a big rock (0) breaks into two small ones (1) on landing */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daChoro_Rock_c();   /* no slot */
+    #else
     virtual ~daChoro_Rock_c();
+    #endif
 
     virtual s32 Behavior();
     virtual s32 CleanupResources();

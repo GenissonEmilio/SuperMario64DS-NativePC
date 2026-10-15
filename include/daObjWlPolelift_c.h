@@ -81,7 +81,14 @@ struct daObjWlPolelift_c : dActor_c {
        virtual, InitResources. Body is empty: destroying the dExtShadowModel_c,
        dCcAcPos_c and Model subobjects and running dActor_c's own destructor
        all follow from the declarations above. */
-    virtual ~daObjWlPolelift_c() {}                      /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjWlPolelift_c() {}   /* no slot */
+    #else
+    virtual ~daObjWlPolelift_c() {}
+    #endif                      /* slots 16 (D1), 17 (D0) */
 
     /* --- overrides, in _ZTV8dActor_c/_ZTV7fBase_c order. --- */
     virtual s32 InitResources();                         /* slot  0 */

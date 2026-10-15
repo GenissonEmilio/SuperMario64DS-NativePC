@@ -47,7 +47,14 @@ struct daObjTbox_c : dActor_c {
      * compiler-generated: the vptr store, then dCcAc_c at 0x138 and ModelAnim
      * at 0x0d4 in reverse construction order, then the dActor_c base; D0 also
      * returns the object to the actor heap. */
-    virtual ~daObjTbox_c() {}          /* slots 16, 17 */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjTbox_c() {}   /* no slot */
+    #else
+    virtual ~daObjTbox_c() {}
+    #endif          /* slots 16, 17 */
 
     virtual int InitResources();         /* slot  0 */
     virtual int CleanupResources();      /* slot  3 */

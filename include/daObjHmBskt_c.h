@@ -36,7 +36,14 @@ struct daObjHmBskt_c : dBgActor_c {
     /* MEASURED -- INLINE ON PURPOSE. Out of line, mwccarm emits the
        synthesized D0 ahead of the written D1 and a homeless D2; the cartridge
        has D1 at 0x021111a0 and D0 at 0x021111ec and no D2. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjHmBskt_c() {}   /* no slot */
+    #else
     virtual ~daObjHmBskt_c() {}
+    #endif
 
     virtual s32 InitResources();     /* slot 0 */
     virtual s32 CleanupResources();  /* slot 3 */

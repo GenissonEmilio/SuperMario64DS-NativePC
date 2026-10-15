@@ -59,7 +59,14 @@ struct daFPknBall_c : dEnemyBase_c {
     void *                       mSparkEffect;          /* 0x374 -- last result of Particle::System::New, passed back in each frame */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daFPknBall_c();   /* no slot */
+    #else
     virtual ~daFPknBall_c();
+    #endif
 
     virtual s32   OnYoshiTryEat();         /* slot 18 */
 

@@ -42,7 +42,14 @@ struct daObjDpBrock_c : dBgActor_c {
        mwccarm 2004/b56 emit D1 then D0 and no D2, the cartridge's order
        (0x02111d40 then 0x02111d8c). It also moves this class's key function
        to Behavior, so the TU defining Behavior emits _ZTV14daObjDpBrock_c. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjDpBrock_c() {}   /* no slot */
+    #else
     virtual ~daObjDpBrock_c() {}
+    #endif
 
     int Behavior();
     int CleanupResources();

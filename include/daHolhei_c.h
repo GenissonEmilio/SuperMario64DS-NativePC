@@ -73,7 +73,14 @@ struct daHolhei_c : dEnemyBase_c {
     /* INLINE IS LOAD-BEARING. Out-of-line, mwccarm emits D0 before D1 plus
        a homeless D2; the cartridge has D1 at 0x02115ee0 then D0 at 0x02115f28
        and no D2. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daHolhei_c() {}   /* no slot */
+    #else
     virtual ~daHolhei_c() {}
+    #endif
 
     virtual s32 OnAimedAtWithEgg(); /* slot 29 */
 

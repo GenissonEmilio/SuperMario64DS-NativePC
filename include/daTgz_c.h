@@ -59,7 +59,14 @@ struct daTgz_c : dActor_c {
     u8 mDespawnTimer;                    /* 0x3e9 */
     u8 pad_3ea[2];                       /* 0x3ea */
 
-    virtual ~daTgz_c();                  /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daTgz_c();   /* no slot */
+    #else
+    virtual ~daTgz_c();
+    #endif                  /* slots 16 (D1), 17 (D0) */
 
     virtual int   OnYoshiTryEat();               /* slot 18 */
     virtual void  OnTurnIntoEgg(Player &player); /* slot 19 */

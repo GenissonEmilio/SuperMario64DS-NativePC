@@ -69,7 +69,14 @@ struct daC_Jugem_c : dEnemyBase_c {
     u32                          mSfxHandle;            /* 0x2e4 */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daC_Jugem_c();   /* no slot */
+    #else
     virtual ~daC_Jugem_c();
+    #endif
 
     int Behavior();
     int CleanupResources();

@@ -44,7 +44,14 @@ struct daSCoin_c : dActor_c {
        ROM home. Empty body: mdCcAc_c teardown, the vptr store and
        dActor_c's teardown are synthesised. Key function is InitResources,
        the first declared non-inline virtual. */
-    virtual ~daSCoin_c() {}          /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daSCoin_c() {}   /* no slot */
+    #else
+    virtual ~daSCoin_c() {}
+    #endif          /* slots 16 (D1), 17 (D0) */
 
     virtual s32  InitResources();    /* slot  0 */
     virtual s32  CleanupResources(); /* slot  3 */

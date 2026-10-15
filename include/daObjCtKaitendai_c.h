@@ -39,7 +39,14 @@ struct daObjCtKaitendai_c : dBgActor_c {
 
     /* Declared last and inline so class instantiation emits the retail D1/D0
      * pair in cartridge order without a separate leaf D2 body. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjCtKaitendai_c() {}   /* no slot */
+    #else
     virtual ~daObjCtKaitendai_c() {}
+    #endif
 };
 
 #ifndef SM64DS_PLATFORM_PC

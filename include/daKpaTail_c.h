@@ -62,7 +62,14 @@ struct daKpaTail_c : dActor_c {
     u16 mHoldCountdown;                                 /* 0x116 */
 
     /* --- vtable, in ROM order. Do not reorder. --- */
-    virtual ~daKpaTail_c();              /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daKpaTail_c();   /* no slot */
+    #else
+    virtual ~daKpaTail_c();
+    #endif              /* slots 16 (D1), 17 (D0) */
 
     /* --- non-virtual --- */
     int CleanupResources();

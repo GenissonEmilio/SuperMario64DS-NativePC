@@ -103,7 +103,14 @@ struct daObjBlockS_c : dBgActor_c {
     u8  mBreakTimer;            /* 0x606 */
     u8  mCoinsPaid;             /* 0x607 -- read/written by OnTurnIntoEgg (slot 19) */
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjBlockS_c();   /* no slot */
+    #else
     virtual ~daObjBlockS_c();
+    #endif
 
     int Behavior();
     int CleanupResources();

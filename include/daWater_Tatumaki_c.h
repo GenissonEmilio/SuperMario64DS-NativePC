@@ -68,7 +68,14 @@ struct daWater_Tatumaki_c : dEnemyBase_c {
     u32                          mParticleID;           /* 0x1b8 -- Particle::System::New handle, effect 0x139 */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daWater_Tatumaki_c();   /* no slot */
+    #else
     virtual ~daWater_Tatumaki_c();
+    #endif
 
     /* Address-named state methods. The two records point at these. */
     int func_ov026_02111b24();

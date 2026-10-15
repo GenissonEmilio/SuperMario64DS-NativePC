@@ -44,7 +44,14 @@ struct daPiano_c : dBgActor_c {
     u8 pad_6e1[3];
     /* Inline and empty: mwccarm emits D1 then D0 -- the cartridge's order at
      * 0x0211d4b8 and 0x0211d54c -- and no homeless D2. Slots 16 (D1) and 17 (D0). */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daPiano_c() {}   /* no slot */
+    #else
     virtual ~daPiano_c() {}
+    #endif
 
     virtual int InitResources();
     virtual int CleanupResources();

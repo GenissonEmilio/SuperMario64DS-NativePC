@@ -46,7 +46,14 @@ struct daSBird_c : dActor_c {
        the free function func_ov009_0211145c, does not. Empty body: mShadowModel
        then mModelAnim teardown, the vptr store and dActor_c's teardown are
        synthesised. */
-    virtual ~daSBird_c();                      /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daSBird_c();   /* no slot */
+    #else
+    virtual ~daSBird_c();
+    #endif                      /* slots 16 (D1), 17 (D0) */
 
     virtual s32 InitResources();               /* slot  0 */
     virtual s32 CleanupResources();            /* slot  3 */

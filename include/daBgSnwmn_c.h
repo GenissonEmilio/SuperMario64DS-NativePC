@@ -66,7 +66,14 @@ struct daBgSnwmn_c : dActor_c {
 
     /* Declared last and inline so class instantiation emits the retail D1/D0
        pair in that order, with no separate D2 body. */
-    virtual ~daBgSnwmn_c() {}                            /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daBgSnwmn_c() {}   /* no slot */
+    #else
+    virtual ~daBgSnwmn_c() {}
+    #endif                            /* slots 16 (D1), 17 (D0) */
 };
 
 #ifndef SM64DS_PLATFORM_PC

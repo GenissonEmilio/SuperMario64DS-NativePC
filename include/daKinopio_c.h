@@ -80,7 +80,14 @@ struct daKinopio_c : dActor_c {
      * definition here is instead materialized only when the vtable is, which in
      * a merged translation unit is at the END -- measured, that costs nothing in
      * bytes but emits both variants below the factory. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daKinopio_c();   /* no slot */
+    #else
     virtual ~daKinopio_c();
+    #endif
 
     virtual int InitResources();
     virtual int CleanupResources();

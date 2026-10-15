@@ -57,7 +57,14 @@ struct daYurei_Mucho_c : dEnemyBase_c {
 
     /* --- vtable --- */
     /* The inline form emits the retail D1/D0 pair under the pinned compiler. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daYurei_Mucho_c() {}   /* no slot */
+    #else
     virtual ~daYurei_Mucho_c() {}
+    #endif
 
     virtual s32   OnYoshiTryEat();         /* slot 18 */
     virtual void  OnTurnIntoEgg(Player &player); /* slot 19 */

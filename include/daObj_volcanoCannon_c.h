@@ -39,7 +39,14 @@ struct daObj_volcanoCannon_c : dActor_c {
      * TU's ROM-ascending order. (An inline body leaves the variants'
      * emission positions to the compiler, which parks them after the last
      * defined function -- past func_ov022_02112654.) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObj_volcanoCannon_c();   /* no slot */
+    #else
     virtual ~daObj_volcanoCannon_c();
+    #endif
 
     virtual int InitResources();       /* slot 0 */
     virtual int CleanupResources();    /* slot 3 */

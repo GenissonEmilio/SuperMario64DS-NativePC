@@ -60,7 +60,14 @@ struct daBakubaku_c : dEnemyBase_c {
        `return new daBakubaku_c()`. */
 
     /* Inline empty dtor: mwccarm emits D1 then D0, no D2. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daBakubaku_c() {}   /* no slot */
+    #else
     virtual ~daBakubaku_c() {}
+    #endif
 
     int func_ov032_02111ff4(void *state);
 

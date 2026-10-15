@@ -24,7 +24,14 @@ struct daObjDlPyramidDummy_c : dActor_c {
     dCcAc_c  mCylinder;       /* 0x0d4 -- the tag's collision cylinder */
     u32      mPyramidTopID;   /* 0x0108 -- daObjDlPyramid_c unique ID */
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjDlPyramidDummy_c();   /* no slot */
+    #else
     virtual ~daObjDlPyramidDummy_c();
+    #endif
     virtual s32 InitResources();  /* slot 0 */
     virtual s32 Behavior();       /* slot 6 */
 

@@ -53,7 +53,14 @@ struct daHyuhyu_c : dEnemyBase_c {
     s32 mVariant;                     /* 0x374 -- 0 cloud, 1 gust */
 
     /* Inline is load-bearing: out-of-line emits D0 before D1. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daHyuhyu_c() {}   /* no slot */
+    #else
     virtual ~daHyuhyu_c() {}
+    #endif
 
     virtual int InitResources();
     virtual int CleanupResources();

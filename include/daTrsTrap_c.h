@@ -67,7 +67,14 @@ struct daTrsTrap_c : dActor_c {
      * order here; the destructor stays first-declared because it is the ABI key
      * function. It is defined out of line at the top of d_a_trs_trap.cpp, so
      * that TU is the one whose object carries the vtable. */
-    virtual ~daTrsTrap_c();          /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daTrsTrap_c();   /* no slot */
+    #else
+    virtual ~daTrsTrap_c();
+    #endif          /* slots 16 (D1), 17 (D0) */
     virtual s32 InitResources();     /* slot  0 -- ov063:0x0211cf00 */
     virtual s32 CleanupResources();  /* slot  3 -- ov063:0x0211cdec */
     virtual s32 Behavior();          /* slot  6 -- ov063:0x0211ce74 */

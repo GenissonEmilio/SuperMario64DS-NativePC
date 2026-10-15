@@ -122,7 +122,14 @@ struct daTor_c : dActor_c {
                                      0x370, so this is the last word. */
     /* Out of line in daTor_c.cpp: the key function, so that TU emits
      * _ZTV/_ZTI/_ZTS7daTor_c. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daTor_c();   /* no slot */
+    #else
     virtual ~daTor_c();
+    #endif
 
     virtual int InitResources();       /* slot  0 */
     virtual int CleanupResources();    /* slot  3 */

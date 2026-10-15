@@ -14,7 +14,14 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
 struct daSCre_c : dActor_c {
     u8 pad_0d0[0x4];       /* 0x0d0 unused */
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daSCre_c() {}   /* no slot */
+    #else
     virtual ~daSCre_c() {}
+    #endif
     virtual s32 Behavior();
 
     static void *operator new(size_t size) {

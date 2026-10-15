@@ -78,7 +78,14 @@ struct daFPkn_c : dEnemyBase_c {
     s32                          mParticleHandle2;      /* 0x228 */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daFPkn_c();   /* no slot */
+    #else
     virtual ~daFPkn_c();
+    #endif
 
     virtual s32   OnYoshiTryEat();         /* slot 18 */
     virtual void  OnTurnIntoEgg(Player &player); /* slot 19 */

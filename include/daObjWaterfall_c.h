@@ -25,7 +25,14 @@ struct daObjWaterfall_c : dActor_c {
     u32 mParticleHandle; /* 0x0d8 */
 
     /* Inline empty dtor: mwccarm emits D1 then D0, no D2. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjWaterfall_c() {}   /* no slot */
+    #else
     virtual ~daObjWaterfall_c() {}
+    #endif
     virtual s32 InitResources(); /* slot 0 */
     virtual s32 Behavior();      /* slot 6 */
 

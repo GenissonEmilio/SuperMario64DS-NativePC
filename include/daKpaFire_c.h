@@ -100,7 +100,14 @@ struct daKpaFire_c : dEnemyBase_c {
     s32 mSoundID;                   /* 0x388 */
 
     /* --- vtable, in ROM order. Do not reorder. --- */
-    virtual ~daKpaFire_c();              /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daKpaFire_c();   /* no slot */
+    #else
+    virtual ~daKpaFire_c();
+    #endif              /* slots 16 (D1), 17 (D0) */
 
     /* --- non-virtual --- */
     int InitResources();

@@ -33,7 +33,14 @@ struct daSoundObj_c : dActor_c {
        ROM's 0x020f934c/0x020f9370 pair) plus a homeless D2, and objisolate
        refuses the TU. Safe because this class is a leaf: _ZTI12daSoundObj_c
        occurs exactly once in the image, in its own vtable header. */
-    virtual ~daSoundObj_c() {}          /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daSoundObj_c() {}   /* no slot */
+    #else
+    virtual ~daSoundObj_c() {}
+    #endif          /* slots 16 (D1), 17 (D0) */
 
     virtual int InitResources();        /* slot 0 */
     virtual int Behavior();             /* slot 6 */

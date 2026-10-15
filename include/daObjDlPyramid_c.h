@@ -40,7 +40,14 @@ struct daObjDlPyramid_c : dBgActor_c {
     u8 mState;                       /* 0x3b7 */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjDlPyramid_c();   /* no slot */
+    #else
     virtual ~daObjDlPyramid_c();
+    #endif
 
     int Behavior();
     int CleanupResources();

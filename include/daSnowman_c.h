@@ -85,7 +85,14 @@ struct daSnowman_c : dEnemyBase_c {
     u8  pad_46a[0x2];
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daSnowman_c();   /* no slot */
+    #else
     virtual ~daSnowman_c();
+    #endif
 
     virtual s32   OnAimedAtWithEgg();      /* slot 29 */
 

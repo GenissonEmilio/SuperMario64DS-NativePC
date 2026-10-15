@@ -34,7 +34,14 @@ struct daObjKanban_c : dBgActor_c {
     dCcAcPos_c mdCcAcPos_c;/* 0x320 */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjKanban_c();   /* no slot */
+    #else
     virtual ~daObjKanban_c();
+    #endif
 
     int CleanupResources();
     int InitResources();

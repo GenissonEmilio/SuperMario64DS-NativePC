@@ -43,7 +43,14 @@ struct daChair_c : dActor_c {
        emits for an in-class destructor. InitResources is then the first
        out-of-line virtual -- the key function -- so this TU emits the
        vtable. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daChair_c() {}   /* no slot */
+    #else
     virtual ~daChair_c() {}
+    #endif
 
     virtual s32 InitResources();        /* slot  0 -- key function */
     virtual s32 CleanupResources();     /* slot  3 */

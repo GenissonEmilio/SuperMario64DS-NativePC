@@ -75,7 +75,14 @@ struct daMoray_c : dEnemyBase_c {
     /* trailing extent the ROM's `new daMoray_c` literal proves; see tools/opnew_sizes.py */
     u8 pad_4a0[0x10];
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daMoray_c();   /* no slot */
+    #else
     virtual ~daMoray_c();
+    #endif
 
     virtual s32 InitResources();
     virtual s32 CleanupResources();

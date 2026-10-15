@@ -65,7 +65,14 @@ struct daBttBk_c : dActor_c {
     s32 mState;             /* 0x370 -- index stored by each state's enter function */
     dActor_c *mCarrier;     /* 0x374 -- the actor this crate rides, or null */
 
-    virtual ~daBttBk_c();            /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daBttBk_c();   /* no slot */
+    #else
+    virtual ~daBttBk_c();
+    #endif            /* slots 16 (D1), 17 (D0) */
 
     virtual s32  InitResources();         /* slot  0 */
     virtual s32  CleanupResources();      /* slot  3 */

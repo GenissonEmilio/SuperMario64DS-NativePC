@@ -84,7 +84,14 @@ struct daDossy_c : dActor_c {
 
     /* Inline is load-bearing: src/actors/daDossy_c.cpp defines the key
      * function InitResources, so it emits D1 then D0 with no homeless D2. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daDossy_c() {}   /* no slot */
+    #else
     virtual ~daDossy_c() {}
+    #endif
 
     virtual int InitResources();
     virtual int CleanupResources();
