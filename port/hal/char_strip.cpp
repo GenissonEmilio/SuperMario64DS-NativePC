@@ -139,8 +139,7 @@ int wanted(void)
     else if (!(o = (const unsigned char *)port_scene_live_object())) w = 5;
     else if (SublevelToLevel(data_02092110) > 0xe) w = 6;        /* Bowser and the secret courses: the ROM's star-less screen */
     else if (ob(o, 0x133) == 1) w = 7;                           /* the multiplayer character row (VS) */
-    if (w != why && w != 1) { why = w; fprintf(stderr, "[strip] wanted=%d (0 yes, 2 one-screen menus off, 3 no recipe live, 4 multiplayer, 5 no scene, 6 course has no star row, 7 VS row)
-", w); }
+    if (w != why && w != 1) { why = w; fprintf(stderr, "[strip] wanted=%d (0 yes, 2 one-screen menus off, 3 no recipe live, 4 multiplayer, 5 no scene, 6 course has no star row, 7 VS row)\n", w); }
     return w == 0;
 }
 
