@@ -9,7 +9,6 @@ port/unmatched/hostarm/Player.cpp
 # FOLDED into src/actors/Player.cpp (row 7): src/_ZN6Player12St_Wait_MainEv.cpp
 # FOLDED into src/actors/Player.cpp (row 7): src/_ZN6Player12St_Walk_InitEv.cpp
 # FOLDED into src/actors/Player.cpp (row 7): src/_ZN6Player12St_Walk_MainEv.cpp
-port/unmatched/Player_ChangeState.cpp
 src/engine/model/TextureSequence.cpp
 src/engine/model/MaterialChanger.cpp
 src/_ZN10dCcAcPos_cC1Ev.cpp
@@ -505,7 +504,6 @@ src/unnamed/ov002/func_ov002_020f035c.c
 # FOLDED into src/actors/dActor_c.cpp (row 127): src/func_02010844.c
 src/Vec3_HorzLen.c
 src/_ZN4cstd5atan2E5Fix12IiES1_.c
-port/unmatched/Player_Behavior.cpp
 src/DecIfAbove0_Short.c
 src/GetAngleToCamera.c
 # FOLDED into src/engine/collision/dCc_c.cpp (row 118): src/_ZN5dCc_c5ClearEv.cpp
