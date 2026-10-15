@@ -98,11 +98,13 @@ static const int KEY_DFLT[HOST_KEY_COUNT] = {
     0x57, 0x53, 0x41, 0x44, 0x26, 0x28, 0x25, 0x27,
     0x20, 0x58, 0x11, 0x10, 0x0d, 0x08, 0x5a,
     0x43, 0x51, 0x45, 0x70,         /* camera: centre C, left Q, right E, mode F1 */
+    0x52, 0x46, 0, 0,               /* camera: tilt up R, down F, zoom in / out unbound */
 };
 static const int PAD_DFLT[HOST_PAD_COUNT] = {
     0x1000, 0x2000, 0x20000, 0x4000, 0x0010, 0,   /* crouch = RT pseudo-mask */
     0x8000,                                       /* look = Y, the DS X */
     0x10000, 0x0100, 0x0200, 0x0080,              /* camera: centre LT, LB, RB, stick click */
+    0, 0, 0, 0,                                   /* camera: tilt up / down, zoom in / out unbound */
 };
 
 static void check_defaults_except(const int *skip_key, int nskip_key,
@@ -210,6 +212,22 @@ static int child(const char *which)
         check_eq(host_setting_pad(HOST_PAD_CAM_LEFT), 0x0100, "PadCamLeft LB kept");
         check_eq(host_setting_pad(HOST_PAD_CAM_RIGHT), 0x0200, "PadCamRight RB");
         check_eq(host_setting_key(HOST_KEY_CAM_LEFT), 0x51, "KeyCamLeft Q");
+    } else if (!strcmp(which, "mouse_default")) {
+        /* CAMPACK1: no mouse keys in the file: right button holds the look, everything else unbound, stick zoom off */
+        check_defaults_except(0, 0, 0, 0);
+        check_eq(host_setting_mouse(HOST_MOUSE_CAM_HOLD), 2, "MouseCamHold right");
+        for (int i = HOST_MOUSE_CAM_CENTER; i < HOST_MOUSE_COUNT; ++i)
+            check_eq(host_setting_mouse(i), 0, host_setting_mouse_name(i));
+        check_eq(host_setting_camera_stick_zoom(), 0, "CameraStickZoom off");
+    } else if (!strcmp(which, "mouse_named")) {
+        check_eq(host_setting_mouse(HOST_MOUSE_CAM_HOLD), 4, "MouseCamHold middle");
+        check_eq(host_setting_mouse(HOST_MOUSE_CAM_CENTER), 5, "MouseCamCenter X1");
+        check_eq(host_setting_mouse(HOST_MOUSE_CAM_LEFT), 0, "MouseCamLeft: the left button is the stylus, a typo reads as default");
+        check_eq(host_setting_mouse(HOST_MOUSE_CAM_ZOOM_IN), 6, "MouseCamZoomIn X2");
+        check_eq(host_setting_mouse(HOST_MOUSE_LOOK), 0, "MouseLook 3 is not a button we take");
+        check_eq(host_setting_key(HOST_KEY_CAM_ZOOM_IN), 0x49, "KeyCamZoomIn I");
+        check_eq(host_setting_key(HOST_KEY_CAM_UP), 0x52, "KeyCamUp default");
+        check_eq(host_setting_camera_stick_zoom(), 1, "CameraStickZoom on");
     } else if (!strcmp(which, "cam_named")) {
         /* named in the file: obeyed as written, onto LB and on to V, and a
            rotate rebound to the right stick click */
@@ -625,6 +643,10 @@ int main(int argc, char **argv)
         "}\n");
     bad |= run_case(exe, dir, "cam_taken",
         "{ \"KeyJump\": 67, \"PadCrouch\": 65536, \"PadAttack\": 256 }");
+    bad |= run_case(exe, dir, "mouse_default", "{ \"KeyJump\": 32 }");
+    bad |= run_case(exe, dir, "mouse_named",
+        "{ \"MouseCamHold\": 4, \"MouseCamCenter\": 5, \"MouseCamLeft\": 1, \"MouseCamZoomIn\": 6,\n"
+        "  \"MouseLook\": 3, \"KeyCamZoomIn\": 73, \"CameraStickZoom\": true }");
     bad |= run_case(exe, dir, "cam_named",
         "{ \"KeyCamCenter\": 86, \"PadCamCenter\": 256, \"PadCamRight\": 1,\n"
         "  \"KeyCamMode\": 0 }");

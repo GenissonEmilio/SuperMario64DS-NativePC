@@ -4339,6 +4339,24 @@ static int cam93_ds_owned(const void *cam)
     return i == 9 || i == 11 || i == 12 || i == 13 || i == 15 || i == 16 || i == 17 || i == 18;
 }
 static int cam93_ds_owned_off(void) { return getenv("SM64DS_CAM93_RIG_ALWAYS") ? 1 : 0; }
+/* CAMPACK1: the DS camera's speed slider. Set in the input phase (walk_window main, the DS rotate block) to the signed binangs
+   to add to (or take off) this tick's stepped turn, applied to the eye here, before the camera's tick reads it back: the ROM
+   takes the heading from the eye (func_02009e70 recomputes +0x17c from the pivot +0x80 and eye +0x8c) and then steps +-0x400. */
+static int g_ds_extra_turn;
+static void *g_ds_cam;
+static void ds_apply_extra_turn(void *cam)
+{
+    const int d = g_ds_extra_turn;
+    g_ds_extra_turn = 0;
+    if (!d || !cam) return;
+    int *pv = (int *)((char *)cam + 0x80), *eye = (int *)((char *)cam + 0x8c);
+    const double dx = (double)eye[0] - pv[0], dz = (double)eye[2] - pv[2];
+    const double r = sqrt(dx * dx + dz * dz);
+    if (r < 1.0) return;
+    const double a0 = atan2(dx, dz) + d * (3.14159265358979323846 * 2.0 / 65536.0);
+    eye[0] = pv[0] + (int)floor(r * sin(a0) + 0.5);
+    eye[2] = pv[2] + (int)floor(r * cos(a0) + 0.5);
+}
 static int g_cam93_mouse_owned;            /* the mouse is steering the camera: no auto-recenter until the stick or keys take it back */
 static int g_cam93_scale = 4096;           /* eased fraction of the eye distance the collision allows */
 static int g_cam93_hit;                    /* trace: the ray hit this frame */
@@ -4777,6 +4795,14 @@ static int pad_act(const XPad *pad, int action)
 {
     bindings_load();
     return pad_mask_down(pad, g_pad[action]);
+}
+
+/* CAMPACK1: a mouse-button binding (settings.json MouseCam*; values are the Win32 VK of the button). */
+static int mouse_act(int action)
+{
+    bindings_load();
+    const int vk = host_setting_mouse(action);
+    return vk && key_live(vk);     /* GetAsyncKeyState reads the mouse buttons by VK; SM64DS_HOST_KEY=<vk hex>@f0-f1 scripts one for a row */
 }
 
 /* THE PAD'S HALF OF THE SAME GATE, and it was missing for as long as the
@@ -7786,7 +7812,7 @@ static unsigned short host_ds_buttons(int pad_live, const XPad *pad)
     if (key_act(HOST_KEY_CROUCH)) btn |= 0x400;
     if (key_act(HOST_KEY_ATTACK)) btn |= 1;
     /* DS X, settings.json KeyLook: Z by default, beside the attack key */
-    if (key_act(HOST_KEY_LOOK)) btn |= 0x8000;
+    if (key_act(HOST_KEY_LOOK) || mouse_act(HOST_MOUSE_LOOK)) btn |= 0x8000;     /* CAMPACK1: MouseLook too */
     if (pad_live) {
         if (pad_act(pad, HOST_PAD_JUMP)) btn |= 2;       /* A by default  */
         /* X by default; the rebind row moves it (0 = unbound) */
@@ -10495,16 +10521,25 @@ static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l)
         port_pad_device_changed();
         break;
     case WM_RBUTTONDOWN:
-        if (W.GetCursorPos_ && W.GetCursorPos_(&mo_anchor)) {
+    case WM_MBUTTONDOWN:
+    case WM_XBUTTONDOWN: {
+        /* CAMPACK1: the button that is HELD to steer is settings.json MouseCamHold (VK; right by default, 0 = none) */
+        const int vk = m == WM_RBUTTONDOWN ? 2 : m == WM_MBUTTONDOWN ? 4 : (HIWORD(w) == 1 ? 5 : 6);
+        if (vk == host_setting_mouse(HOST_MOUSE_CAM_HOLD) && W.GetCursorPos_ && W.GetCursorPos_(&mo_anchor)) {
             mo_look = 1;
             mo_dx = mo_dy = 0;
             if (W.SetCapture_) W.SetCapture_(h);
             if (W.ShowCursor_) while (W.ShowCursor_(FALSE) >= 0) {}
         }
-        return 0;
+        return m == WM_XBUTTONDOWN ? TRUE : 0;
+    }
     case WM_RBUTTONUP:
-        mo_release();
-        return 0;
+    case WM_MBUTTONUP:
+    case WM_XBUTTONUP: {
+        const int vk = m == WM_RBUTTONUP ? 2 : m == WM_MBUTTONUP ? 4 : (HIWORD(w) == 1 ? 5 : 6);
+        if (vk == host_setting_mouse(HOST_MOUSE_CAM_HOLD)) mo_release();
+        return m == WM_XBUTTONUP ? TRUE : 0;
+    }
     case WM_KILLFOCUS:
         /* AHEAD OF THE FRAME TEST AND NOT INSTEAD OF IT. mo_capture_want has
            hal_window_focused() in it, so the next frame would drop the capture
@@ -11632,7 +11667,28 @@ static void rebind_capture_frame(int *pad_live, const XPad *pad)
         bind_pad_prev = now;
         const int id = sl_capture_id();
         const char *refused = "";
-        if (g_rebind_key) {
+        /* CAMPACK1: a mouse row waits for a mouse button (right, middle, back, forward) */
+        static unsigned mouse_prev = ~0u;
+        unsigned mouse_fresh = 0;
+        if (sl_capture_wants_mouse() && W.GetAsyncKeyState_ && hal_window_focused()) {
+            static const int MVK[4] = { 2, 4, 5, 6 };
+            unsigned mnow = 0;
+            for (int i = 0; i < 4; ++i) if (W.GetAsyncKeyState_(MVK[i]) < 0) mnow |= 1u << i;
+            if (mouse_prev == ~0u) mouse_prev = mnow;
+            mouse_fresh = mnow & ~mouse_prev;
+            mouse_prev = mnow;
+        } else mouse_prev = ~0u;
+        if (mouse_fresh) {
+            int i = 0;
+            while (!(mouse_fresh & (1u << i))) ++i;
+            static const int MVK2[4] = { 2, 4, 5, 6 };
+            if (sl_capture_offer_mouse(MVK2[i])) {
+                done = 1;
+                char msg[96];
+                snprintf(msg, sizeof msg, "%s is now mouse button %d", sl_info(id)->key, MVK2[i]);
+                ss_note(msg);
+            }
+        } else if (g_rebind_key) {
             const int vk = g_rebind_key;
             g_rebind_key = 0;
             if (sl_capture_offer_key(vk)) {
@@ -12485,6 +12541,7 @@ extern "C" void port_frame_ctrl_publish(void)
         g_fc_cam_rot_prev = g_fc_cam_rot;
         *(unsigned short *)(r + 4) |= held;
         *(unsigned short *)(r + 6) |= pressed;
+        ds_apply_extra_turn(g_ds_cam);   /* CAMPACK1: the DS camera speed slider, right before the camera's own tick */
     }
 
             /* the matched TU writes its own data_0209f498 block; older
@@ -15040,6 +15097,19 @@ int main(void)
                 stick_rx = 32767 * pct / 100;
             }
         }
+        /* CAMPACK1: every camera action as key OR mouse button OR pad button, read once a frame. Left / right are split into the
+           key+mouse half and the pad half because the pad's pair means different things per camera (the DS camera rotates with
+           it; the analog and free cameras zoom with it). */
+        const int cb_l_km = key_act(HOST_KEY_CAM_LEFT) || mouse_act(HOST_MOUSE_CAM_LEFT);
+        const int cb_r_km = key_act(HOST_KEY_CAM_RIGHT) || mouse_act(HOST_MOUSE_CAM_RIGHT);
+        const int cb_l_pad = pad_live && pad_act(&pad, HOST_PAD_CAM_LEFT);
+        const int cb_r_pad = pad_live && pad_act(&pad, HOST_PAD_CAM_RIGHT);
+        const int cb_up = key_act(HOST_KEY_CAM_UP) || mouse_act(HOST_MOUSE_CAM_UP) || (pad_live && pad_act(&pad, HOST_PAD_CAM_UP));
+        const int cb_dn = key_act(HOST_KEY_CAM_DOWN) || mouse_act(HOST_MOUSE_CAM_DOWN) || (pad_live && pad_act(&pad, HOST_PAD_CAM_DOWN));
+        const int cb_c = key_act(HOST_KEY_CAM_CENTER) || mouse_act(HOST_MOUSE_CAM_CENTER) || (pad_live && pad_act(&pad, HOST_PAD_CAM_CENTER));
+        const int cb_zi = key_act(HOST_KEY_CAM_ZOOM_IN) || mouse_act(HOST_MOUSE_CAM_ZOOM_IN) || (pad_live && pad_act(&pad, HOST_PAD_CAM_ZOOM_IN));
+        const int cb_zo = key_act(HOST_KEY_CAM_ZOOM_OUT) || mouse_act(HOST_MOUSE_CAM_ZOOM_OUT) || (pad_live && pad_act(&pad, HOST_PAD_CAM_ZOOM_OUT));
+        const int stick_zoom = host_setting_camera_stick_zoom();   /* right stick up / down zooms instead of tilting */
         /* ---- the freecam toggle (port mod, see the block above the window
            procedure). F1 or a click of the right stick; SM64DS_FREECAM=1
            starts in it, and SM64DS_SELFTEST_FREECAM=1 turns it on at frame
@@ -15074,7 +15144,7 @@ int main(void)
             }
             /* CAMERA MODE, settings.json KeyCamMode / PadCamMode: F1 and the
                right stick's click by default, the two it always was */
-            int now = key_act(HOST_KEY_CAM_MODE) ||
+            int now = key_act(HOST_KEY_CAM_MODE) || mouse_act(HOST_MOUSE_CAM_MODE) ||
                       (pad_live && pad_act(&pad, HOST_PAD_CAM_MODE));
             if (selftest && getenv("SM64DS_SELFTEST_FREECAM")) {
                 /* the probe wants the mod ON at 20 and OFF three quarters
@@ -15112,9 +15182,8 @@ int main(void)
             int rig_touched = 0;
             /* CAMERA093: the stick, Q/E, R/F or the centre key take the camera back from the mouse */
             if (g_cam93_mouse_owned && !mouse_dyaw && !mouse_dpitch && !mo_captured && !mo_look &&
-                (fc_stick_rate(stick_rx, 1000) || fc_stick_rate(stick_ry, 1000) || key_act(HOST_KEY_CAM_LEFT) ||
-                 key_act(HOST_KEY_CAM_RIGHT) || key_live('R') || key_live('F') || key_act(HOST_KEY_CAM_CENTER) ||
-                 (pad_live && pad_act(&pad, HOST_PAD_CAM_CENTER))))
+                (fc_stick_rate(stick_rx, 1000) || fc_stick_rate(stick_ry, 1000) || cb_l_km ||
+                 cb_r_km || cb_up || cb_dn || cb_c))
                 g_cam93_mouse_owned = 0;
             /* the distance the game's camera converged to on the frame just
                gone -- see the block above fc_seed. Ahead of the zoom keys so
@@ -15131,15 +15200,15 @@ int main(void)
             {
                 const int cs = host_setting_camera_sensitivity();
                 const int inv = host_setting_invert_camera_y() ? -1 : 1;
-                int t = fc_pitch - inv * fc_stick_rate(stick_ry, (CAM_STEP / 2) * cs / 100)
+                int t = fc_pitch - (stick_zoom ? 0 : inv * fc_stick_rate(stick_ry, (CAM_STEP / 2) * cs / 100))
                         + inv * mouse_dpitch;
                 if (mouse_dpitch) rig_touched = 1;
-                if (key_live('R')) t += 0x80;
-                if (key_live('F')) t -= 0x80;
+                if (cb_up) t += 0x80;       /* CamUp / CamDown: R and F unless rebound */
+                if (cb_dn) t -= 0x80;
                 /* CAMERA093: the eye is under the floor (the pitch the game's camera had when the rig was
                    seeded can be below the horizon): lift it, unless the player is steering the pitch. */
                 if (g_cam93_floorhit && !mouse_dpitch && !fc_stick_rate(stick_ry, 1000) &&
-                    !key_live('R') && !key_live('F') && t < 0x0c00)
+                    !cb_up && !cb_dn && t < 0x0c00)
                     t += 0x100;
                 if (t > 0x3a00) t = 0x3a00;      /* just short of overhead */
                 if (t < -0x1000) t = -0x1000;    /* a little from below */
@@ -15149,15 +15218,26 @@ int main(void)
                 /* Q pushes left, E pushes right, off the same sign as the
                    stick so the keyboard and the pad cannot disagree */
                 const int qe = ((CAM_STEP / 2) * host_setting_camera_sensitivity() / 100) * cam_turn;
-                if (key_act(HOST_KEY_CAM_LEFT)) { fc_yaw = (short)(fc_yaw - qe); rig_touched = 1; }
-                if (key_act(HOST_KEY_CAM_RIGHT)) { fc_yaw = (short)(fc_yaw + qe); rig_touched = 1; }
+                if (cb_l_km) { fc_yaw = (short)(fc_yaw - qe); rig_touched = 1; }
+                if (cb_r_km) { fc_yaw = (short)(fc_yaw + qe); rig_touched = 1; }
             }
             {
                 int zoom = 0;
                 /* PadCamLeft / PadCamRight: LB pulls the eye in, RB pushes out */
-                if (pad_live && pad_act(&pad, HOST_PAD_CAM_LEFT)) zoom -= 1;
-                if (pad_live && pad_act(&pad, HOST_PAD_CAM_RIGHT)) zoom += 1;
+                if (cb_l_pad) zoom -= 1;
+                if (cb_r_pad) zoom += 1;
+                if (cb_zi) zoom -= 1;      /* CamZoomIn / CamZoomOut, any device */
+                if (cb_zo) zoom += 1;
                 zoom -= mouse_wheel;   /* wheel forward pulls the eye in */
+                if (stick_zoom) {          /* CameraStickZoom: up pulls the eye in; the rate follows the stick (an eighth step at the stop is 1/32 of the distance) */
+                    const int sz = fc_stick_rate(stick_ry, 32);
+                    if (sz) {
+                        fc_dist_owned = 1;
+                        fc_dist -= sz * (fc_dist >> 8);
+                        if (fc_dist < 0x30000) fc_dist = 0x30000;
+                        if (fc_dist > 0x2000000) fc_dist = 0x2000000;
+                    }
+                }
                 if (zoom) {
                     /* the player has taken the distance off the game; the
                        tracking above stands down until the next fc_seed */
@@ -15168,8 +15248,7 @@ int main(void)
                 }
             }
             /* CENTRE CAMERA: KeyCamCenter (C) / PadCamCenter (LT) */
-            if (key_act(HOST_KEY_CAM_CENTER) ||
-                (pad_live && pad_act(&pad, HOST_PAD_CAM_CENTER))) {
+            if (cb_c) {
                 fc_yaw = (short)(*(short *)(c + 0x8e) + 0x8000);
                 rig_touched = 1;
             }
@@ -15211,7 +15290,7 @@ int main(void)
             if (tr < 0) tr = getenv("SM64DS_CAM93_TRACE") ? 1 : 0;
             if (tr && cam && c)
                 fprintf(stderr, "[cam93] f%d st=%d ds=%d mode=%d yaw=%04x pitch=%04x dist=%d scale=%d hit=%d midle=%d want=%d "
-                        "pl=%d,%d,%d pyaw=%04x pst=%p eye=%d,%d,%d hitrel=%d,%d,%d hd=%04x fc48=%x pstep=%u pkind=%u\n",
+                        "pl=%d,%d,%d pyaw=%04x pst=%p eye=%d,%d,%d hitrel=%d,%d,%d hd=%04x fc48=%x pstep=%u pkind=%u cyaw=%04x ceye=%d,%d,%d\n",
                         frame, cam93_state_idx(cam), cam93_ds_owned(cam), cam_mode, (unsigned short)fc_yaw,
                         (unsigned short)fc_pitch, fc_dist >> 12, g_cam93_scale, g_cam93_hit | (g_cam93_floorhit << 1),
                         g_cam93_mouse_owned, g_cam93_wouldscale,
@@ -15220,7 +15299,9 @@ int main(void)
                         g_cam93_eye[0] >> 12, g_cam93_eye[1] >> 12, g_cam93_eye[2] >> 12,
                         g_cam93_hitrel[0], g_cam93_hitrel[1], g_cam93_hitrel[2],
                         (unsigned)(unsigned short)*(short *)((char *)data_020a1164), (unsigned)data_0209fc48,
-                        (unsigned)*(unsigned char *)(c + 0x6e3), (unsigned)*(unsigned char *)(c + 0x70a));
+                        (unsigned)*(unsigned char *)(c + 0x6e3), (unsigned)*(unsigned char *)(c + 0x70a),
+                        (unsigned)(unsigned short)*(short *)((char *)cam + 0x17c), *(int *)((char *)cam + 0x8c) >> 12,
+                        *(int *)((char *)cam + 0x90) >> 12, *(int *)((char *)cam + 0x94) >> 12);
         }
         if (pad_live && c && *(void **)(c + 0x370) == (void *)data_ov002_021102d4 && !cam93_ds_owned_off()) {
             /* CAMERA093: in the cannon (the Player's own aim state) the DS camera is the picture (camera
@@ -15572,6 +15653,7 @@ int main(void)
                it rather than leave the last value latched -- see the
                g_fc_cam_rot assignment below. */
             unsigned short cam_rot = 0;
+            g_ds_extra_turn = 0;
             if (real_camera && cam_mode == CAM_DS) {
                 /* The two bits func_02009e70 reads, picked by the same
                    cam_turn the rig steps its heading with, so DS mode and
@@ -15595,18 +15677,49 @@ int main(void)
                    Stage::CheckCameraInput merges the cartridge's own arrows. */
                 const unsigned cam_bit_right = (cam_turn > 0) ? 0x100u : 0x200u;
                 const unsigned cam_bit_left  = (cam_turn > 0) ? 0x200u : 0x100u;
-                if (key_act(HOST_KEY_CAM_LEFT)) cam_rot |= cam_bit_left;
-                if (key_act(HOST_KEY_CAM_RIGHT)) cam_rot |= cam_bit_right;
+                if (cb_l_km) cam_rot |= cam_bit_left;
+                if (cb_r_km) cam_rot |= cam_bit_right;
                 /* centre camera: the DS L button's bit (raw 0x0200 -> Ctrl
-                   0x4000), KeyCamCenter / PadCamCenter */
-                if (key_act(HOST_KEY_CAM_CENTER)) btn |= 0x4000;
-                if (pad_live && pad_act(&pad, HOST_PAD_CAM_CENTER))
-                    btn |= 0x4000;
+                   0x4000), KeyCamCenter / PadCamCenter / MouseCamCenter */
+                if (cb_c) btn |= 0x4000;
                 if (stick_rx < -10000) cam_rot |= cam_bit_left;
                 if (stick_rx > 10000) cam_rot |= cam_bit_right;
-                if (pad_live) {
-                    if (pad_act(&pad, HOST_PAD_CAM_LEFT)) cam_rot |= cam_bit_left;
-                    if (pad_act(&pad, HOST_PAD_CAM_RIGHT)) cam_rot |= cam_bit_right;
+                if (cb_l_pad) cam_rot |= cam_bit_left;
+                if (cb_r_pad) cam_rot |= cam_bit_right;
+                /* CAMPACK1: ZOOM in the DS camera is the ROM's own Look camera, which has levels: each press of the
+                   Look button (Ctrl 0x8000) goes normal -> a raised far view -> the close-up (camera state 9) -> normal,
+                   measured (out CAMPACK1 look_levels). Zoom in presses Look until the close-up is reached; zoom out
+                   presses it until the camera is back to normal (one press from the close-up, two from the raised
+                   view). The right stick's up / down does the same once per push (CameraStickZoom). One press per
+                   edge, so a held key does not step every frame. `phase` follows the presses from any source (the
+                   Look key, pad button, mouse button or these) and is corrected by the camera state. */
+                {
+                    static int zi_prev, zo_prev, look_prev, phase, second;
+                    const int inz = cam && cam93_state_idx(cam) == 9;
+                    if (inz) phase = 2; else if (phase == 2) phase = 0;
+                    const int zi = cb_zi || (stick_zoom && pad_live && stick_ry > 16000);
+                    const int zo = cb_zo || (stick_zoom && pad_live && stick_ry < -16000);
+                    int press = 0;
+                    if (zi && !zi_prev && phase < 2) press = 1;
+                    if (zo && !zo_prev) {
+                        if (phase == 2) press = 1;
+                        else if (phase == 1) { press = 1; second = 6; }
+                    }
+                    if (second && --second == 0) press = 1;
+                    if (press) btn |= 0x8000;
+                    const int lk = (btn & 0x8000) != 0;
+                    if (lk && !look_prev) phase = (phase + 1) % 3;
+                    look_prev = lk;
+                    zi_prev = zi; zo_prev = zo;
+                }
+                /* CAMPACK1: the camera speed slider for the stepped turn. The ROM turns a fixed 0x400 a tick while a
+                   rotate bit is held; the extra (or the part to take away) is rotated onto the eye before that tick. */
+                {
+                    const int cs = host_setting_camera_sensitivity();
+                    const int dir = (cam_rot & cam_bit_right) ? (cam_bit_right == 0x100 ? 1 : -1)
+                                  : (cam_rot & cam_bit_left) ? (cam_bit_left == 0x100 ? 1 : -1) : 0;
+                    if (cs != 100 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000))
+                        { g_ds_extra_turn = dir * (0x400 * (cs - 100) / 100); g_ds_cam = cam; }
                 }
                 /* orbit probe: hold one of func_02009e70's own rotate bits
                    from frame 20 -- the camera's heading and the angle it
@@ -15619,6 +15732,7 @@ int main(void)
             }
             if (menu_on) btn = 0;   /* enter/A belong to the menu, not to him */
             g_fc_cam_rot = menu_on ? 0 : cam_rot;
+            if (menu_on) g_ds_extra_turn = 0;
             /* TEMPORARY: fold the scripted probe's A/B into the button word so
                StartTalk's b==0 gate (data_0209f49e & 3) sees the press, and the
                camera-rotate readers do not (mask to bits 0-1). SM64DS_PROBE_INPUT. */

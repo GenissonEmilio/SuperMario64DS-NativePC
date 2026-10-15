@@ -564,6 +564,10 @@ const BindKey KEY_BIND[HOST_KEY_COUNT] = {
     { "KeyCamLeft",  0x51 },      /* Q: rotate camera left */
     { "KeyCamRight", 0x45 },      /* E: rotate camera right */
     { "KeyCamMode",  0x70 },      /* F1: cycle the camera mode */
+    { "KeyCamUp",    0x52 },      /* R: tilt up (analog / free camera) */
+    { "KeyCamDown",  0x46 },      /* F: tilt down */
+    { "KeyCamZoomIn",  0 },       /* CAMPACK1: unbound by default */
+    { "KeyCamZoomOut", 0 },
 };
 const BindKey PAD_BIND[HOST_PAD_COUNT] = {
     { "PadJump",   0x1000 },      /* A */
@@ -577,7 +581,27 @@ const BindKey PAD_BIND[HOST_PAD_COUNT] = {
     { "PadCamLeft",  0x0100 },    /* LB: rotate camera left */
     { "PadCamRight", 0x0200 },    /* RB: rotate camera right */
     { "PadCamMode",  0x0080 },    /* right stick click: cycle the camera mode */
+    { "PadCamUp",    0 },         /* CAMPACK1: the right stick tilts; these are extra buttons */
+    { "PadCamDown",  0 },
+    { "PadCamZoomIn",  0 },
+    { "PadCamZoomOut", 0 },
 };
+/* CAMPACK1: mouse buttons, Win32 VK codes (0 none, 2 right, 4 middle, 5 X1, 6 X2) */
+const BindKey MOUSE_BIND[HOST_MOUSE_COUNT] = {
+    { "MouseCamHold",    2 },     /* right button held: mouse look, as it always was */
+    { "MouseCamCenter",  0 },
+    { "MouseCamLeft",    0 },
+    { "MouseCamRight",   0 },
+    { "MouseCamUp",      0 },
+    { "MouseCamDown",    0 },
+    { "MouseCamZoomIn",  0 },
+    { "MouseCamZoomOut", 0 },
+    { "MouseCamMode",    0 },
+    { "MouseLook",       0 },
+};
+int g_mouse[HOST_MOUSE_COUNT];
+int g_camera_stick_zoom;
+inline int mouse_vk_ok(int v) { return v == 0 || v == 2 || (v >= 4 && v <= 6); }
 int g_key[HOST_KEY_COUNT];
 int g_pad[HOST_PAD_COUNT];
 /* Which action already held the Look default's key / pad button in a file
@@ -1454,6 +1478,8 @@ void load_once(void)
     g_mouse_sens = 100;
     for (int i = 0; i < HOST_KEY_COUNT; ++i) g_key[i] = KEY_BIND[i].dflt;
     for (int i = 0; i < HOST_PAD_COUNT; ++i) g_pad[i] = PAD_BIND[i].dflt;
+    for (int i = 0; i < HOST_MOUSE_COUNT; ++i) g_mouse[i] = MOUSE_BIND[i].dflt;
+    g_camera_stick_zoom = 0;
     g_look_key_taken = 0;
     g_look_pad_taken = 0;
     g_cc_key_taken = 0;
@@ -1593,6 +1619,11 @@ void load_once(void)
                 if (i == 3 && json_value(text, PAD_BIND[i].name)) padrun_ok = 1;
             }
         }
+        for (int i = 0; i < HOST_MOUSE_COUNT; ++i) {
+            const int m = json_int(text, MOUSE_BIND[i].name, MOUSE_BIND[i].dflt);
+            if (mouse_vk_ok(m)) g_mouse[i] = m;
+        }
+        g_camera_stick_zoom = json_bool(text, "CameraStickZoom", 0);
         /* THE ALIAS: KeyRun / PadRun win when the file names them WITH A VALUE
            THAT PARSED; when it does not, the old RunButtonKey / RunButtonPad
            answer stands, which is what the two reads above already left in
@@ -1924,6 +1955,12 @@ void load_once(void)
         fprintf(stderr, "[settings] PadLayouts: learned layout for %04x:%04x "
                         "%s (%s)\n", (unsigned)g_padlayouts[i].vid,
                 (unsigned)g_padlayouts[i].pid, g_padlayouts[i].name, path);
+    for (int i = 0; i < HOST_MOUSE_COUNT; ++i)
+        if (g_mouse[i] != MOUSE_BIND[i].dflt)
+            fprintf(stderr, "[settings] %s %d (default %d) (%s)\n",
+                    MOUSE_BIND[i].name, g_mouse[i], MOUSE_BIND[i].dflt, path);
+    if (g_camera_stick_zoom)
+        fprintf(stderr, "[settings] CameraStickZoom on: right stick up/down zooms the camera (%s)\n", path);
     /* one line per binding the player moved, so a support log answers "what
        was jump bound to" without anyone opening the file */
     for (int i = 0; i < HOST_KEY_COUNT; ++i)
@@ -2196,6 +2233,11 @@ int reload_controls(const char *text)
             k = json_int(text, "RunButtonPad", g_pad[i]);
         if (k >= 0 && k <= HOST_PAD_MASK_MAX) CTL_SET(g_pad[i], k);
     }
+    for (int i = 0; i < HOST_MOUSE_COUNT; ++i) {
+        const int m = json_int(text, MOUSE_BIND[i].name, g_mouse[i]);
+        if (mouse_vk_ok(m)) CTL_SET(g_mouse[i], m);
+    }
+    CTL_SET(g_camera_stick_zoom, json_bool(text, "CameraStickZoom", g_camera_stick_zoom));
 #undef CTL_SET
     g_run_key = g_key[HOST_KEY_RUN];
     g_run_pad = g_pad[HOST_PAD_RUN];
@@ -2373,6 +2415,23 @@ extern "C" int host_setting_pad(int action)
     load_once();
     if (action < 0 || action >= HOST_PAD_COUNT) return 0;
     return g_pad[action];
+}
+
+extern "C" int host_setting_mouse(int action)
+{
+    load_once();
+    if (action < 0 || action >= HOST_MOUSE_COUNT) return 0;
+    return g_mouse[action];
+}
+extern "C" const char *host_setting_mouse_name(int action)
+{
+    if (action < 0 || action >= HOST_MOUSE_COUNT) return "";
+    return MOUSE_BIND[action].name;
+}
+extern "C" int host_setting_camera_stick_zoom(void)
+{
+    load_once();
+    return g_camera_stick_zoom;
 }
 
 extern "C" const char *host_setting_key_name(int action)
@@ -2966,6 +3025,27 @@ extern "C" int host_setting_set_key(int action, int vk)
     }
     queue_int(KEY_BIND[action].name, vk);
     ++g_ctl_gen;
+    return 1;
+}
+
+extern "C" int host_setting_set_mouse(int action, int vk)
+{
+    load_once();
+    g_refusal[0] = 0;
+    if (action < 0 || action >= HOST_MOUSE_COUNT || !mouse_vk_ok(vk)) return 0;
+    if (g_mouse[action] == vk) return 1;
+    g_mouse[action] = vk;
+    queue_int(MOUSE_BIND[action].name, vk);
+    ++g_ctl_gen;
+    return 1;
+}
+
+extern "C" int host_setting_set_camera_stick_zoom(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    if (g_camera_stick_zoom != on) { g_camera_stick_zoom = on; ++g_ctl_gen; }
+    queue_bool("CameraStickZoom", on);
     return 1;
 }
 
