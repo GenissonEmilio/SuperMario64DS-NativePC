@@ -12121,7 +12121,6 @@ set(LEVELBOOT_HOST_SOURCES
     # gate 19: unmatched/Cannon_Render.cpp RETIRED (run link100, lane FOLD2)
     # -- "the same slot problem one slot lower, on Model" was the destructor
     # fold, and _ZTV5Model[5] is Model::Render again. Its Behavior stays.
-    unmatched/Cannon_Behavior.cpp
     # gate 21: the pointer-to-member dispatch for the fifth time
     unmatched/Fish_Behavior.cpp
     unmatched/UnchainedChomp_Behavior.cpp
@@ -12135,8 +12134,7 @@ set(LEVELBOOT_HOST_SOURCES
     # (cxxname_bridge.cpp:521-522). src/_ZN4Door6RenderEv.cpp is on
     # port/slice_facef.txt; it defines the C name itself and needs no face.
     # gate 23: the seventh, and the last on this level
-    unmatched/QuestionBlock_States.cpp
-    unmatched/QuestionBlock_BounceDispatch.cpp)
+    )
 # unmatched/Painting_Dispatch.cpp RETIRED (run link100, lane UNMATCH). The
 # widened-PMF half of its reason is dead under /vmg /vmm -- MSVC strides the
 # ROM's own 0x18 and reads the ROM's own {code, adjust} pairs -- and the half
@@ -17753,7 +17751,7 @@ add_executable(smoke_player EXCLUDE_FROM_ALL tests/smoke_player.cpp "${OV002DATA
     hal/actor_classes_flame.cpp ${SLICE175_SOURCES}
     hal/actor_classes_flamethrower.cpp ${SLICE_W6F_SOURCES}
     ${SLICE_W8FACES_SOURCES}
-    hal/actor_classes_scuttlebug.cpp ${SLICE176_SOURCES} unmatched/Scuttlebug_StateDispatch.cpp
+    hal/actor_classes_scuttlebug.cpp ${SLICE176_SOURCES}
     hal/actor_classes_ov071.cpp ${SLICE_W7B_SOURCES} ${GATE_W7B_GEN} unmatched/MrI_StateDispatch.cpp
     # unmatched/MrI_Render.cpp RETIRED (run link100, lane EXCEPT): its own
     # header said "If _ZTV9ModelAnim ever gains a ROM-order view, this
@@ -17801,7 +17799,6 @@ add_executable(smoke_player EXCLUDE_FROM_ALL tests/smoke_player.cpp "${OV002DATA
     hal/actor_classes_enemy_spawner.cpp ${SLICE211_SOURCES} hal/actor_classes_question_switch.cpp ${SLICE212_SOURCES} ${SLICE213_SOURCES}
     # ---- link100 SCENE ---- the two arm9-resident scene classes, gate 218
     hal/actor_classes_l7.cpp ${SLICE_L7_SOURCES} ${GATE_L7_GEN} unmatched/PiranhaPlant_States.cpp
-    unmatched/WaterBomb_StateDispatch.cpp
     unmatched/KnockDownPlank_Behavior.cpp
     # unmatched/FallBlockWf_InitVeneer.cpp RETIRED (run link100 wave 15, lane
     # SEAT15A): it held ONE body, func_ov098_0213a794, under a PORT_HOST_ABI tag
@@ -18097,7 +18094,7 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     hal/actor_classes_flame.cpp ${SLICE175_SOURCES}
     hal/actor_classes_flamethrower.cpp ${SLICE_W6F_SOURCES}
     ${SLICE_W8FACES_SOURCES}
-    hal/actor_classes_scuttlebug.cpp ${SLICE176_SOURCES} unmatched/Scuttlebug_StateDispatch.cpp
+    hal/actor_classes_scuttlebug.cpp ${SLICE176_SOURCES}
     hal/actor_classes_ov071.cpp ${SLICE_W7B_SOURCES} ${GATE_W7B_GEN} unmatched/MrI_StateDispatch.cpp
     # unmatched/MrI_Render.cpp RETIRED (run link100, lane EXCEPT): its own
     # header said "If _ZTV9ModelAnim ever gains a ROM-order view, this
@@ -18145,7 +18142,6 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     hal/scene_link100_base_faces.cpp hal/scene_link100_boot.cpp
     hal/scene_link100_mb.cpp ${SLICE218_SOURCES}
     hal/actor_classes_l7.cpp ${SLICE_L7_SOURCES} ${GATE_L7_GEN} unmatched/PiranhaPlant_States.cpp
-    unmatched/WaterBomb_StateDispatch.cpp
     unmatched/KnockDownPlank_Behavior.cpp
     # unmatched/FallBlockWf_InitVeneer.cpp RETIRED (run link100 wave 15, lane
     # SEAT15A): it held ONE body, func_ov098_0213a794, under a PORT_HOST_ABI tag
@@ -18568,7 +18564,7 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     hal/actor_classes_flame.cpp ${SLICE175_SOURCES}
     hal/actor_classes_flamethrower.cpp ${SLICE_W6F_SOURCES}
     ${SLICE_W8FACES_SOURCES}
-    hal/actor_classes_scuttlebug.cpp ${SLICE176_SOURCES} unmatched/Scuttlebug_StateDispatch.cpp
+    hal/actor_classes_scuttlebug.cpp ${SLICE176_SOURCES}
     hal/actor_classes_ov071.cpp ${SLICE_W7B_SOURCES} ${GATE_W7B_GEN} unmatched/MrI_StateDispatch.cpp
     # unmatched/MrI_Render.cpp RETIRED (run link100, lane EXCEPT): its own
     # header said "If _ZTV9ModelAnim ever gains a ROM-order view, this
@@ -18616,7 +18612,6 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     hal/scene_link100_base_faces.cpp hal/scene_link100_boot.cpp
     hal/scene_link100_mb.cpp ${SLICE218_SOURCES}
     hal/actor_classes_l7.cpp ${SLICE_L7_SOURCES} ${GATE_L7_GEN} unmatched/PiranhaPlant_States.cpp
-    unmatched/WaterBomb_StateDispatch.cpp
     unmatched/KnockDownPlank_Behavior.cpp
     # unmatched/FallBlockWf_InitVeneer.cpp RETIRED (run link100 wave 15, lane
     # SEAT15A): it held ONE body, func_ov098_0213a794, under a PORT_HOST_ABI tag

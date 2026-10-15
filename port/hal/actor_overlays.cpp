@@ -110,14 +110,6 @@ void __sinit_ov098_0213c058(void);
 void __sinit_ov098_0213c214(void);
 void __sinit_ov098_0213c2b4(void);
 
-/* the cannon's four {function, delta} statics, seated the same way as the
-   Lakitu's -- port/unmatched/Cannon_Behavior.cpp */
-void port_cannon_states_seat(void);
-
-/* gate 55: the WATER_BOMB's three {function, delta} statics that
-   __sinit_ov098_0213c2b4 copies into data_ov098_0213c930, seated over the
-   SOURCE side before the copy -- port/unmatched/WaterBomb_StateDispatch.cpp */
-void port_water_bomb_states_seat(void);
 
 /* gate 172: the CRATE's fourteen {function, delta} statics that
    __sinit_ov098_0213c058 copies into data_ov098_0213c878, seated over the
@@ -430,13 +422,6 @@ void port_unchained_chomp_states_seat(void);
    seats a node and word 8 every frame -- port/unmatched/Door_Behavior.cpp */
 void port_door_callbacks_seat(void);
 
-/* the question block's six, likewise -- three states of two halves each, all
-   matched src now. port/unmatched/QuestionBlock_States.cpp */
-void port_question_block_states_seat(void);
-/* the 36 statics feeding state 1's two pointer-to-member CONTENT tables
-   (gate 180). port/unmatched/QuestionBlock_BounceDispatch.cpp; must run
-   before __sinit_ov102_0214d908 copies them into the BSS tables. */
-void port_question_block_content_seat(void);
 
 /* ---- the BUTTERFLY's eight states ----------------------------------------
    __sinit_ov100_021473bc copies eight {function, delta} statics from ov100
@@ -1474,7 +1459,6 @@ void __sinit_ov071_021226ac(void);
 void __sinit_ov071_021228c8(void);
 void __sinit_ov071_02122a1c(void);
 void __sinit_ov071_02122a64(void);
-void port_scuttlebug_states_seat(void);
 void port_mri_states_seat(void);   /* wave 7 lane w7b, unmatched/MrI_StateDispatch.cpp */
 }
 
@@ -1790,8 +1774,6 @@ extern "C" void port_actor_overlays_sinits(void)
 
     port_ov098_pack_check();
     port_ov098_syms_patch();
-    port_cannon_states_seat();
-    port_water_bomb_states_seat();
     port_crate_states_seat();
     __sinit_ov098_0213bf9c();
     __sinit_ov098_0213c058();
@@ -1883,8 +1865,6 @@ extern "C" void port_actor_overlays_sinits(void)
 
     port_ov102_pack_check();
     port_ov102_syms_patch();
-    port_question_block_states_seat();
-    port_question_block_content_seat();
     __sinit_ov102_0214d714();
     __sinit_ov102_0214d908();
     __sinit_ov102_0214de70();
@@ -1947,7 +1927,6 @@ extern "C" void port_actor_overlays_sinits(void)
        copies them into the bss record array. */
     port_ov071_pack_check();
     port_ov071_syms_patch();
-    port_scuttlebug_states_seat();
     /* run linkw wave 7, lane w7b: the same order one class over. MrI's SIX
        state SOURCE PMFs (data_ov071_02122ca8/cb0/cb8/cc0/cc8/cd0) must be
        seated over their host bodies BEFORE __sinit_ov071_021228c8 copies them
