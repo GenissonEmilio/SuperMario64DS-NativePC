@@ -7316,6 +7316,30 @@ static void menu_b_swallow_spend(int pad_live, XPad *pad)
    always done, so every existing fixture parses to the same mask it did. The
    range form is new and is here because a menu that has to be WAITED for needs
    a press held across an unknown number of frames rather than four. */
+/* PADMENUS1: a proof script variable that starts with '@' names a file holding the script (a pen gesture of a whole minigame is longer than an
+   environment block likes). The text is read once per name and kept. Not in a shipped (PORT_ROM_CLEAN) build. */
+static const char *env_script_text(const char *name)
+{
+    const char *v = getenv(name);
+#ifndef PORT_ROM_CLEAN
+    if (v && v[0] == '@') {
+        FILE *f = fopen(v + 1, "rb");
+        if (!f) { fprintf(stderr, "[script] %s: cannot read %s\n", name, v + 1); return 0; }
+        fseek(f, 0, SEEK_END);
+        const long n = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        char *buf = (char *)malloc((size_t)n + 1);
+        if (!buf) { fclose(f); return 0; }
+        const size_t got = fread(buf, 1, (size_t)n, f);
+        buf[got] = 0;
+        fclose(f);
+        for (size_t i = 0; i < got; ++i) if (buf[i] == '\r' || buf[i] == '\n') buf[i] = ',';
+        return buf;
+    }
+#endif
+    return v;
+}
+
 static unsigned pad_script_mask(const char *spec, int frame)
 {
     enum { PAD_TEST_HOLD = 4 };
@@ -7389,7 +7413,7 @@ static void pad_test_apply(int frame, int *pad_live, XPad *pad)
         pt_env = g_selftest ? 0 : getenv("SM64DS_PAD_TEST");
     static const char *hp_env = (const char *)1;
     if (hp_env == (const char *)1) {
-        hp_env = getenv("SM64DS_HOST_PAD");
+        hp_env = env_script_text("SM64DS_HOST_PAD");
         if (hp_env) {
             fprintf(stderr, "[hostpad] SM64DS_HOST_PAD=%s -- scripted XInput "
                     "buttons enter at port_pad_poll's own seam, so a press "
@@ -12204,6 +12228,7 @@ static void scene_host_present_frame(HWND hwnd, int stacked,
         } else if (!stacked) {
             ntr::gx_card_settle_because("the pad pointer");
             hal_padptr_draw_menu(&fb.px[0][0], ntr::active_w, ntr::active_h, ntr::SCREEN_W);
+            hal_padptr_draw_inset(&fb.px[0][0], ntr::active_w, ntr::active_h, ntr::SCREEN_W);
         }
     }
 
@@ -12613,7 +12638,7 @@ static int rstick_script_apply(int frame, int *pad_live, XPad *pad)
 {
 #ifndef PORT_ROM_CLEAN
     static const char *env = (const char *)1;
-    if (env == (const char *)1) env = getenv("SM64DS_RSTICK_SCRIPT");
+    if (env == (const char *)1) env = env_script_text("SM64DS_RSTICK_SCRIPT");
     if (!env) return 0;
     int hit = 0, rx = 0, ry = 0;
     const char *p = env;

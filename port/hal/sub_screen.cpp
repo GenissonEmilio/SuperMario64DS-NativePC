@@ -2502,6 +2502,7 @@ void poll_touch(void)
         if (hal_padptr_poll(&pm, &ppx, &ppy)) {
             int pfx = -1, pfy = -1, pok = 0;
             if (pm == 1 && hal_sub_screen_stacked()) { pfx = ppx; pfy = ppy; pok = 1; }
+            else if (pm == 3 && !hal_sub_screen_stacked() && !hal_menu_live()) { pfx = ppx; pfy = ppy; pok = 1; }
             else if (pm == 2 && hal_menu_live()) { int pin = 0; hal_menu_touch_inverse(ppx, ppy, &pfx, &pfy, &pin); pok = pin; }
             if (pok && pfx >= 0 && pfx < ntr::SUB_W && pfy >= 0 && pfy < ntr::SUB_H) {
                 down = 1;
@@ -3844,6 +3845,16 @@ extern "C" void hal_menu_pad_seam(void)
    inset (stacked layout, panel off, the level-clear compose). */
 static int g_inset_rect[4];
 static int g_inset_live;
+/* PADMENUS1: the corner panel the last present drew (picture pixels), for the pad pointer's arrow. 0 when this frame drew no inset. */
+extern "C" int hal_sub_inset_rect(int *x, int *y, int *w, int *h)
+{
+    if (!g_inset_live || g_inset_rect[2] < 1 || g_inset_rect[3] < 1) return 0;
+    if (x) *x = g_inset_rect[0];
+    if (y) *y = g_inset_rect[1];
+    if (w) *w = g_inset_rect[2];
+    if (h) *h = g_inset_rect[3];
+    return 1;
+}
 
 static void sub_screen_present_body(unsigned int *dst, int w, int h)
 {

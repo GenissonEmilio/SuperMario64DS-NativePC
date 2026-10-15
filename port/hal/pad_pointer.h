@@ -10,6 +10,7 @@
               pixels, so the touch it makes is exact and independent of window size.
      MENU     a one-screen menu recipe is live (OneScreenMenus on): the touch pieces are cut from the sub screen and re-placed, so the pointer
               lives in picture pixels and the touch goes through the same inverse the mouse uses (hal_menu_touch_inverse).
+   INSET    a scene that shows the bottom screen as a corner panel (the Rec Room with OneScreenMenus off): DS pixels, the arrow drawn inside the panel.
    Anywhere else (a course, no picture to point at) it does nothing.
 
    When it is on: in a minigame as soon as a controller is answering; everywhere else only once the right stick has been pushed, and it hands
@@ -39,13 +40,14 @@ typedef struct PadPtrOut {
 void hal_padptr_frame(const PadPtrIn *in, PadPtrOut *out);
 
 /* poll_touch's question: is the pen down this poll, and where. STACKED: DS bottom-screen pixels. MENU: picture pixels (the caller runs
-   hal_menu_touch_inverse). Returns 0 when it is not down, and then x / y are untouched. *mode = 1 stacked, 2 menu. */
+   hal_menu_touch_inverse). INSET: DS pixels. Returns 0 when it is not down, and then x / y are untouched. *mode = 1 stacked, 2 menu, 3 inset. */
 int  hal_padptr_poll(int *mode, int *x, int *y);
 
 /* the arrow (and the first-use hint), drawn into the finished picture. Stacked: the stacked image (stride = layout width). Menu: the
    one-screen picture (w x h, stride in pixels). No-ops while the pointer is off. */
 void hal_padptr_draw_stacked(unsigned int *img, int w, int h);
 void hal_padptr_draw_menu(unsigned int *dst, int w, int h, int stride);
+void hal_padptr_draw_inset(unsigned int *dst, int w, int h, int stride);   /* the corner panel of a non-stacked scene (the ROM's own Rec Room with OneScreenMenus off) */
 
 /* poll_touch saw the real pen (a mouse press) on the touch screen: the pointer steps aside until the pad is used again */
 void hal_padptr_mouse_down(void);

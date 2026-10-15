@@ -26,10 +26,11 @@ extern "C" int hal_sub_screen_stacked(void);
 extern "C" int port_scene_live_id(void);
 extern "C" int settings_page_swallow_back(void);
 extern "C" int menu_bigmap_up(void);
+extern "C" int hal_sub_inset_rect(int *x, int *y, int *w, int *h);   /* hal/sub_screen.cpp: the corner panel the last present drew, picture pixels */
 
 namespace {
 
-enum { MODE_NONE = 0, MODE_STACKED = 1, MODE_MENU = 2 };
+enum { MODE_NONE = 0, MODE_STACKED = 1, MODE_MENU = 2, MODE_INSET = 3 };
 
 struct State {
     int on;                    /* the pointer is live */
@@ -57,7 +58,7 @@ int is_minigame(int scene) { return scene >= 0x169 && scene <= 0x186; }
 int trace_on(void)
 {
     static int v = -1;
-    if (v < 0) v = getenv("SM64DS_PADPTR_TRACE") ? 1 : 0;
+    if (v < 0) { const char *e = getenv("SM64DS_PADPTR_TRACE"); v = e ? ((*e == '2') ? 2 : 1) : 0; }
     return v;
 }
 
@@ -78,7 +79,7 @@ int stick_speed(int v, int max256)
 
 void reset_pos(int mode, int *x256, int *y256)
 {
-    if (mode == MODE_STACKED) {
+    if (mode == MODE_STACKED || mode == MODE_INSET) {
         *x256 = (ntr::SUB_W / 2) * 256;
         *y256 = (ntr::SUB_H / 2) * 256;
     } else {
@@ -146,11 +147,14 @@ void draw_arrow(unsigned int *img, int stride, int w, int h, int tx, int ty, int
         }
 }
 
-/* the hint on a dark plate, centred on cx, its top at ty; s = pixels per font pixel */
-void draw_hint(unsigned int *img, int stride, int w, int h, int cx, int ty, int s, int minigame)
+/* the hint on a dark plate, centred on cx, its top at ty; the font pixel is as big as fits in maxw (1..3) */
+void draw_hint(unsigned int *img, int stride, int w, int h, int cx, int ty, int maxw, int minigame)
 {
     const char *t = minigame ? "STICK OR D-PAD MOVES THE POINTER, A TAPS" : "RIGHT STICK MOVES THE POINTER, A TAPS";
     const int n = (int)strlen(t);
+    int s = (maxw - 24) / (n * 6);
+    if (s < 1) s = 1;
+    if (s > 3) s = 3;
     const int tw = n * 6 * s - s, th = 7 * s, pad = 3 * s;
     const int x0 = cx - tw / 2 - pad, y0 = ty - pad, x1 = cx + tw / 2 + pad, y1 = ty + th + pad;
     for (int y = y0; y < y1; ++y)
@@ -187,6 +191,7 @@ extern "C" void hal_padptr_frame(const PadPtrIn *in, PadPtrOut *out)
     int mode = MODE_NONE;
     if (hal_sub_screen_stacked()) mode = MODE_STACKED;
     else if (hal_menu_live() && !menu_bigmap_up()) mode = MODE_MENU;
+    else { int ix, iy, iw, ih; if (hal_sub_inset_rect(&ix, &iy, &iw, &ih)) mode = MODE_INSET; }
     /* the settings page owns the controller (its own cursor, tabs on the bumpers) */
     if (mode == MODE_MENU && settings_page_swallow_back()) mode = MODE_NONE;
     const int mg = is_minigame(scene);
@@ -265,7 +270,7 @@ extern "C" void hal_padptr_frame(const PadPtrIn *in, PadPtrOut *out)
 
     /* ---- clamp to the touch screen / the picture ---- */
     int maxx, maxy;
-    if (S.mode == MODE_STACKED) {
+    if (S.mode == MODE_STACKED || S.mode == MODE_INSET) {
         maxx = ntr::SUB_W - 1; maxy = ntr::SUB_H - 1;
     } else {
         int w = 512, h = 384;
@@ -301,7 +306,7 @@ extern "C" void hal_padptr_frame(const PadPtrIn *in, PadPtrOut *out)
 
     out->eat_confirm = 1;
     out->eat_dpad = mg ? 1 : 0;
-    if (trace_on() && (S.down != was_down || (in->frame % 30) == 0))
+    if (trace_on() && (S.down != was_down || (in->frame % 30) == 0 || trace_on() == 2))
         fprintf(stderr, "[padptr] f%d pos=%d,%d down=%d\n", in->frame, S.x256 / 256, S.y256 / 256, S.down);
     publish();
 }
@@ -328,7 +333,7 @@ extern "C" void hal_padptr_draw_stacked(unsigned int *img, int w, int h)
     const int unit = lay.pan_h / ntr::SUB_H;                   /* image pixels per DS pixel */
     const int s = unit >= 4 ? unit / 2 : 1;
     draw_arrow(img, lay.w, w, h, tx, ty, s, g_down.load());
-    if (g_hint.load() > 0) draw_hint(img, lay.w, w, h, lay.pan_x0 + lay.pan_w / 2, lay.bottom_y + lay.pan_h - 12 * unit, s, g_mg.load());
+    if (g_hint.load() > 0) draw_hint(img, lay.w, w, h, lay.pan_x0 + lay.pan_w / 2, lay.bottom_y + lay.pan_h - 11 * unit, lay.pan_w, g_mg.load());
 }
 
 extern "C" void hal_padptr_draw_menu(unsigned int *dst, int w, int h, int stride)
@@ -339,8 +344,23 @@ extern "C" void hal_padptr_draw_menu(unsigned int *dst, int w, int h, int stride
     const int s = unit >= 4 ? unit / 2 : 1;
     draw_arrow(dst, stride, w, h, px, py, s, g_down.load());
     if (g_hint.load() > 0)
-        draw_hint(dst, stride, w, h, w / 2, h - 12 * (unit >= 1 ? unit : 1), s, g_mg.load());
+        draw_hint(dst, stride, w, h, w / 2, h - 11 * (unit >= 1 ? unit : 1), w, g_mg.load());
 }
 
 /* poll_touch saw the REAL pen (a mouse press) land on the touch screen: a pointer left over from the pad steps aside */
 extern "C" void hal_padptr_mouse_down(void) { g_mouse.store(1); }
+
+/* the arrow inside the corner panel (INSET): the pointer is in DS pixels, the panel is where the last present put the bottom screen */
+extern "C" void hal_padptr_draw_inset(unsigned int *dst, int w, int h, int stride)
+{
+    if (!g_on.load() || g_mode.load() != MODE_INSET || !dst) return;
+    int rx, ry, rw, rh;
+    if (!hal_sub_inset_rect(&rx, &ry, &rw, &rh) || rw < 1 || rh < 1) return;
+    const int dx = g_x.load() / 256, dy = g_y.load() / 256;
+    const int tx = rx + (int)(((long long)dx * rw) / ntr::SUB_W);
+    const int ty = ry + (int)(((long long)dy * rh) / ntr::SUB_H);
+    const int unit = h / ntr::SUB_H;
+    const int sc = unit >= 4 ? unit / 2 : 1;
+    draw_arrow(dst, stride, w, h, tx, ty, sc, g_down.load());
+    if (g_hint.load() > 0) draw_hint(dst, stride, w, h, w / 2, h - 11 * (unit >= 1 ? unit : 1), w, g_mg.load());
+}
