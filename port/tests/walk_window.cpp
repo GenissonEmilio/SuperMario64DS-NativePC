@@ -6752,8 +6752,7 @@ static int starsel_finish_hook(int level, int entrance, int act)
     snprintf(en, sizeof en, "%d", entrance);
     snprintf(ac, sizeof ac, "%d", act);
     fprintf(stderr, "[strip] the act is chosen: course %d (entrance %d, act %d) restarts as %s (SM64DS_CHARACTER=%s SM64DS_CHAR_SKIN=%s)\n", level, entrance, act, chr_label(sel), bs, sk >= 0 ? port_char_key(sk) : "(none)");
-    if (getenv("SM64DS_CHAR_RELAUNCH_DRY")) { fprintf(stderr, "[strip] SM64DS_CHAR_RELAUNCH_DRY: not relaunching
-"); return 0; }
+    if (getenv("SM64DS_CHAR_RELAUNCH_DRY")) { fprintf(stderr, "[strip] SM64DS_CHAR_RELAUNCH_DRY: not relaunching\n"); return 0; }
     SetEnvironmentVariableA("SM64DS_HOST_KEY", 0);
     SetEnvironmentVariableA("SM64DS_CHARACTER", bs);
     port_char_save_record(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "", chr_base(sel));
