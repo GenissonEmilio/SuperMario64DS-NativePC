@@ -26,10 +26,16 @@ enum HitchKind {
     HK_NETHOOK,      // the per-frame MP hooks (ghost hold, hub presence, coop world, party stars / hits, star popup)
     HK_HUBPUMP,      // comms_hub_pump: the datagram handlers run from the game thread
     HK_GHOSTFOLLOW,  // comms_sync gw_follow: the adventure ghosts' pose follower
+    HK_GPUBUILD,     // gpu_raster: CPU side of a picture (vertex build, state, texture lookups) before the draw
+    HK_GPUDRAW,      // gpu_raster: the draw calls submitted
+    HK_GPUWAIT,      // gpu_raster: the CPU waiting on the card (Map of the staging planes)
+    HK_GPUCOPY,      // gpu_raster: the CPU copying the planes out
+    HK_FLUSH,        // the frame's fflush(stdout)
+    HK_SWAP,         // the ROM frame step + geometry swap at the frame boundary
     HK_COUNT
 };
 
-inline const char *const kHitchKindName[HK_COUNT] = {"tex", "cardfile", "sfpload", "tongue", "chat", "nethook", "hubpump", "ghostfollow"};
+inline const char *const kHitchKindName[HK_COUNT] = {"tex", "cardfile", "sfpload", "tongue", "chat", "nethook", "hubpump", "ghostfollow", "gpubuild", "gpudraw", "gpuwait", "gpucopy", "flush", "swap"};
 
 struct HitchCell { double ms; unsigned n; };
 inline HitchCell g_hitch_cell[HK_COUNT];
@@ -37,6 +43,12 @@ inline HitchCell g_hitch_cell[HK_COUNT];
 inline double hitch_now_ms() {
     using clk = std::chrono::steady_clock;   // QueryPerformanceCounter underneath
     return std::chrono::duration<double, std::milli>(clk::now().time_since_epoch()).count();
+}
+
+inline void hitch_add(int kind, double ms) {
+    HitchCell &c = g_hitch_cell[kind];
+    c.ms += ms;
+    ++c.n;
 }
 
 struct HitchScope {

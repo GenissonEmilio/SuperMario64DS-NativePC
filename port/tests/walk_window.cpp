@@ -20804,6 +20804,7 @@ int main(void)
            the ROM's loop runs it. The second statement's blink half stays in
            hal/fader_wipes.cpp at its own point under its own tick gate; this
            file does not move it. Under R3d this call is func_020197b8's line. */
+        { HITCH_SCOPE(HK_SWAP);   /* HITCH9C */
         port_rom_frame_phase6();
         /* THE ROM'S OWN SWAP, at the ROM's own point: func_020197b8.c runs
            phase 6's two statements, then IRQ::DisableIRQs(1), then
@@ -20818,6 +20819,7 @@ int main(void)
            EXECUTED' (lane R3CFIX2, status/R3CFIX2.md 18:22). */
         func_020190b8();
         ntr::gx_swap_apply();
+        }
         /* func_020197b8.c:53 -- the flag goes up here, between the swap and
            the wait. The ROM raises it inside IRQ::DisableIRQs(1)/EnableIRQs
            (:51 and :54); this host has no interrupt to race with at this
@@ -20839,7 +20841,7 @@ int main(void)
            two counters agreed on all of it. */
         port_last_frame = port_rom_frame_checked(frame, "fault-context");
         /* the frame's stdout, one write; the setvbuf note above is why */
-        fflush(stdout);
+        { HITCH_SCOPE(HK_FLUSH); fflush(stdout); }   /* HITCH9C */
         /* SM64DS_COMMS_STOP_ROUND=R (run rel0215 lane LAGDELAY): under a
            selftest, end the run once this window has COMPLETED R lockstep
            rounds, whichever comes first with the frame budget. A wide session

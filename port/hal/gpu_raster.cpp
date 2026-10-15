@@ -3122,6 +3122,8 @@ int draw_full(const ntr::GxGpuFrame *f)
             f->out->aa_changed = 0;
             f->out->kept = 1;
         }
+        port::hitch_add(port::HK_GPUBUILD, ms_between(t0, t1));   /* HITCH9C: the held path has no readback */
+        port::hitch_add(port::HK_GPUDRAW, ms_between(t1, t2));
         if (g_perf) {
             /* the same per-30-pictures line the readback path prints, with a
                readback that is not there */
@@ -3287,6 +3289,10 @@ int draw_full(const ntr::GxGpuFrame *f)
     g_ms_build += ms_between(t0, t1);
     g_ms_draw += ms_between(t1, t2);
     g_ms_read += ms_between(t2, t3);
+    port::hitch_add(port::HK_GPUBUILD, ms_between(t0, t1));   /* HITCH9C */
+    port::hitch_add(port::HK_GPUDRAW, ms_between(t1, t2));
+    port::hitch_add(port::HK_GPUWAIT, wait_ms);
+    port::hitch_add(port::HK_GPUCOPY, ms_between(t2, t3) - wait_ms);
     if (smoothed) {
         ++g_aa_frames;
         g_aa_ms += ms_between(t1, t3);
@@ -4620,6 +4626,10 @@ int draw_frame(const ntr::GxGpuFrame *f)
     g_ms_build += ms_between(t0, t1);
     g_ms_draw += ms_between(t1, t2);
     g_ms_read += ms_between(t2, t3);
+    port::hitch_add(port::HK_GPUBUILD, ms_between(t0, t1));   /* HITCH9C */
+    port::hitch_add(port::HK_GPUDRAW, ms_between(t1, t2));
+    port::hitch_add(port::HK_GPUWAIT, wait_ms);
+    port::hitch_add(port::HK_GPUCOPY, ms_between(t2, t3) - wait_ms);
 
     if (g_perf) {
         g_perf_build += ms_between(t0, t1);
