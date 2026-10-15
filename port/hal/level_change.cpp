@@ -2456,8 +2456,7 @@ static void port_tp_warp_hook(void)
         if (tl >= 0) {
             for (int i = 0; i < tl_n; ++i)
                 if (tl_call[i] == tlc) {
-                    std::fprintf(stderr, "[tplevel] call %d: LoadLevelNoReturn(%d, %d, 1, 0)
-", tlc, tl_lvl[i], tl_ent[i]);
+                    std::fprintf(stderr, "[tplevel] call %d: LoadLevelNoReturn(%d, %d, 1, 0)\n", tlc, tl_lvl[i], tl_ent[i]);
                     LoadLevelNoReturn(tl_lvl[i], (unsigned)tl_ent[i], 1, 0);
                 }
             ++tlc;
