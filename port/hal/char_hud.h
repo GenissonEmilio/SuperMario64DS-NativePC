@@ -19,7 +19,7 @@
 extern "C" {
 #endif
 
-enum { PCH_LIFE = 0, PCH_MINIMAP = 1, PCH_STARSEL = 2, PCH_STARSEL_LIFE = 3 };   /* the last: the star select's own lives counter, drawn from the hud_icon picture */
+enum { PCH_LIFE = 0, PCH_MINIMAP = 1, PCH_STARSEL = 2, PCH_STARSEL_LIFE = 3, PCH_LIFE_ROM = 4 };   /* PCH_LIFE: the port's top-screen life copy (engine A); PCH_LIFE_ROM: the ROM's own leaf (engine by its state); PCH_STARSEL_LIFE: the star select's own counter */
 
 /* Called by the host seat of the thing that draws the sprites, every frame, before it draws: repaints that element's tiles when the
    active skin ships a picture for it. A no-op (a few instructions) when there is no skin or no picture. */
