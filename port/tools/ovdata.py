@@ -1124,6 +1124,11 @@ def whole_mode(root, ov, ovid, base, data, out_path):
         "#pragma bss_seg()",
         f"const unsigned {tag}_ds_base = {base:#010x}u;",
         f"const unsigned {tag}_ds_end = {base + total:#010x}u;",
+        # OVLRESET1: the row hal/ov_reset.cpp copies at this overlay's first
+        # load and puts back at every later one (the DS reloads the image).
+        f"const struct {{ u8 *p; unsigned n; }} {tag}_mrows[1] = "
+        f"{{ {{ {tag}_image, {total}u }} }};",
+        f"const unsigned {tag}_mrows_n = 1u;",
         "",
         "/* (word offset, target offset) for every reloc that points inside"
         " this overlay */",
@@ -1942,6 +1947,20 @@ def main():
     if not pack:
         lines.append('#pragma data_seg()')
         lines.append('#pragma bss_seg()')
+    # OVLRESET1: every array this mount defines, for the overlay start-up
+    # image hal/ov_reset.cpp restores at each load after the first (the DS
+    # loads the overlay's .data afresh, so a flag or a cached value one visit
+    # wrote must not survive into the next; a guard word left here while the
+    # object it guards is restored would skip that object's one-time setup).
+    lines.append("const struct { u8 *p; unsigned n; } port_%s_mrows_syms[%d] = {"
+                 % (ov, max(1, len(emitted))))
+    for _n, _a, _sz, _b in emitted:
+        lines.append("    { %s, %du }," % (_n, _sz))
+    if not emitted:
+        lines.append("    { 0, 0u },")
+    lines.append("};")
+    lines.append("const unsigned port_%s_mrows_syms_n = %du;" % (ov, len(emitted)))
+    lines.append("")
     lines.append("")
     lines.append("void port_%s_%spatch(void)\n{"
                  % (ov, "syms_" if pack else ""))

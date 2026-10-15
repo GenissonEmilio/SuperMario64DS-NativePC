@@ -3,10 +3,20 @@
 #ifndef PORT_HAL_OV_RESET_H
 #define PORT_HAL_OV_RESET_H
 
+/* One array of an overlay's mounted data (tools/ovdata.py writes the rows). */
+struct PortOvMRow {
+    unsigned char *p;
+    unsigned n;
+};
+
 struct PortOvResetEnt {
     int ov;                 /* overlay number, -1 ends the table */
-    const char *db, *de;    /* sentinels of the ovd$NNN group (outside .dsstate) */
+    const char *db, *de;    /* sentinels of the ovd$NNN group (outside .dsstate), 0 if the overlay owns no TU data */
     const char *sb, *se;    /* sentinels of the .dsstate$oNNN group */
+    const PortOvMRow *ms;   /* the per-symbol mount's arrays, port_ovNNN_mrows_syms */
+    const unsigned *msn;
+    const PortOvMRow *mw;   /* the whole-image mount's array, port_ovNNN_mrows */
+    const unsigned *mwn;
 };
 
 extern "C" const PortOvResetEnt port_ovreset_tab[];

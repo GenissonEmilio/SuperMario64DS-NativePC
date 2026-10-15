@@ -60,6 +60,8 @@ struct Ov {
     bool seen;
     unsigned loads;
     Range r[2];
+    Range *m;           /* the mounted data arrays (tools/ovdata.py rows), one Range each */
+    unsigned nm;
 };
 
 Ov g_ov[128];
@@ -121,14 +123,15 @@ extern "C" int port_ov_load(int ov)
         return 0;
     Ov &o = g_ov[ov];
     ++o.loads;
-    const unsigned char *rb[2] = {(const unsigned char *)e->db + 1, (const unsigned char *)e->sb + 1};
+    const unsigned char *rb[2] = {e->db ? (const unsigned char *)e->db + 1 : 0,
+                                  e->sb ? (const unsigned char *)e->sb + 1 : 0};
     const unsigned char *re[2] = {(const unsigned char *)e->de, (const unsigned char *)e->se};
     if (!o.seen) {
         o.seen = true;
         size_t tot = 0;
         for (int i = 0; i < 2; ++i) {
             o.r[i].b = rb[i];
-            o.r[i].n = re[i] > rb[i] ? (size_t)(re[i] - rb[i]) : 0;
+            o.r[i].n = rb[i] && re[i] > rb[i] ? (size_t)(re[i] - rb[i]) : 0;
             tot += o.r[i].n;
             if (o.r[i].n) {
                 o.r[i].snap = (unsigned char *)std::malloc(o.r[i].n);
@@ -136,13 +139,33 @@ extern "C" int port_ov_load(int ov)
                     std::memcpy(o.r[i].snap, o.r[i].b, o.r[i].n);
             }
         }
+        /* The mounted data (the overlay's .data/.bss as the port holds it): the same rule, array by array. */
+        const PortOvMRow *tabs[2] = {e->ms, e->mw};
+        const unsigned cnt[2] = {e->msn ? *e->msn : 0u, e->mwn ? *e->mwn : 0u};
+        o.nm = cnt[0] + cnt[1];
+        if (o.nm)
+            o.m = (Range *)std::calloc(o.nm, sizeof(Range));
+        if (!o.m)
+            o.nm = 0;
+        unsigned k = 0;
+        for (int t = 0; t < 2 && o.m; ++t)
+            for (unsigned i = 0; i < cnt[t]; ++i, ++k) {
+                o.m[k].b = tabs[t][i].p;
+                o.m[k].n = tabs[t][i].n;
+                if (o.m[k].b && o.m[k].n) {
+                    o.m[k].snap = (unsigned char *)std::malloc(o.m[k].n);
+                    if (o.m[k].snap)
+                        std::memcpy(o.m[k].snap, o.m[k].b, o.m[k].n);
+                    tot += o.m[k].n;
+                }
+            }
         if (logging())
-            std::fprintf(stderr, "[ovreset] ov%03d load #1: start-up image taken, %zu bytes\n", ov, tot);
+            std::fprintf(stderr, "[ovreset] ov%03d load #1: start-up image taken, %zu bytes (%u mounted arrays)\n", ov, tot, o.nm);
         return 0;
     }
     size_t diff = 0, tot = 0;
-    for (int i = 0; i < 2; ++i) {
-        Range &r = o.r[i];
+    for (int i = 0; i < 2 + (int)o.nm; ++i) {
+        Range &r = i < 2 ? o.r[i] : o.m[i - 2];
         if (!r.n || !r.snap)
             continue;
         tot += r.n;
@@ -157,7 +180,7 @@ extern "C" int port_ov_load(int ov)
             diff += k - s + 1;
             if (logging() && runs < 60) {
                 std::fprintf(stderr, "[ovreset]   ov%03d %s +%zx..+%zx (%p) changed, now", ov,
-                             i ? "dsstate" : "data", s, k, (const void *)(cur + s));
+                             i == 0 ? "data" : i == 1 ? "dsstate" : "mount", s, k, (const void *)(cur + s));
                 for (size_t q = s; q <= k && q < s + 16; ++q)
                     std::fprintf(stderr, " %02x", cur[q]);
                 std::fprintf(stderr, ", start-up");
