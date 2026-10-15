@@ -25,7 +25,14 @@ struct dScBoot_c : dScene_c {
     /* Declared first, deliberately: that makes ~dScBoot_c the key function,
        and it is defined out of line in src/d_s_boot.cpp, which therefore emits
        the vtable/typeinfo group. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScBoot_c();   /* no slot */
+    #else
     virtual ~dScBoot_c();
+    #endif
 
     virtual s32 InitResources();          /* slot 0 */
     virtual s32 Behavior();               /* slot 6 */

@@ -41,7 +41,14 @@ struct daObjHmMaruta_c : daObjMaruta_c {
        Behavior and the vtable's slots 16 and 17 emit D1 then D0, which is the
        ROM order (D1 0x0211155c, D0 0x021115ac). The three vptr stores are
        daObjMaruta_c's inline destructor and dBgActor_c's, not a body here. */
-    virtual ~daObjHmMaruta_c() {}    /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjHmMaruta_c() {}   /* no slot */
+    #else
+    virtual ~daObjHmMaruta_c() {}
+    #endif    /* slots 16 (D1), 17 (D0) */
 
     int Behavior();                    /* slot  6 */
     int CleanupResources();            /* slot  3 */

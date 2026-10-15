@@ -99,7 +99,14 @@ struct dMap_c : dBase_c {
     u8 mStarKeyBlinkTimer;                     /* 0x256 */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dMap_c();   /* no slot */
+    #else
     virtual ~dMap_c();
+    #endif
 
     int Behavior();
     static void FixTHIPaintingRoomPos(Vector3 & v_);

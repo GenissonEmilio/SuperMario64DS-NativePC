@@ -19,7 +19,14 @@
  */
 struct daObjWlSubmarine_c : dBgActor_c {
 
-    virtual ~daObjWlSubmarine_c();            /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjWlSubmarine_c();   /* no slot */
+    #else
+    virtual ~daObjWlSubmarine_c();
+    #endif            /* slots 16 (D1), 17 (D0) */
 
     virtual s32   InitResources();         /* slot  0 */
     virtual s32   CleanupResources();      /* slot  3 */

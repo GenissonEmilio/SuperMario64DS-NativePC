@@ -27,7 +27,14 @@ struct daESwitch_c : dActor_c {
     u8  mIsReusable;            /* 0x10c */
     u8  mEventID;            /* 0x10d */
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daESwitch_c() {}   /* no slot */
+    #else
     virtual ~daESwitch_c() {}
+    #endif
 
     virtual s32 InitResources();
     virtual s32 CleanupResources();

@@ -49,7 +49,14 @@ struct daObjEmmYuka_c : dBgActor_c {
     /* OUT OF LINE, DECLARED FIRST: the key function. The TU defines it first
        under `#pragma defer_codegen off`, which emits D1 then D0 -- the
        cartridge's order -- then a D2 the cartridge has no home for. */
-    virtual ~daObjEmmYuka_c();          /* slots 16, 17 */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjEmmYuka_c();   /* no slot */
+    #else
+    virtual ~daObjEmmYuka_c();
+    #endif          /* slots 16, 17 */
 
     virtual int InitResources();        /* slot  0 */
     virtual int CleanupResources();     /* slot  3 */

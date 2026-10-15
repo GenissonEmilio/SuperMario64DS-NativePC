@@ -38,6 +38,29 @@
 #include "daObjKumo_c.h"
 #include "daStarGate_c.h"
 
+#include "EnemySpawner.h"
+#include "EnemySwitchTag.h"
+#include "Koopa.h"
+#include "dMeter_c.h"
+#include "dView_c.h"
+#include "daBDonketu_c.h"
+#include "daDonketu_c.h"
+#include "daDsn_c.h"
+#include "daLinelift2_c.h"
+#include "daObjCtMecha08_c.h"
+#include "daObjCtMecha10_c.h"
+#include "daObjFl_Block_c.h"
+#include "daObjFl_Ring_c.h"
+#include "daObjFl_UkiKi_c.h"
+#include "daObjHmMaruta_c.h"
+#include "daObjKi_Fune_c.h"
+#include "daObjKi_Hasira_c.h"
+#include "daObjKm2_Agaru_c.h"
+#include "daObjSwitch_c.h"
+#include "daObjTh_Fall_Block_c.h"
+#include "daObjYajirusi_c.h"
+#include "daUdlift_c.h"
+
 #define ACTORPORT_D1_FACE(Class)                                              \
     extern "C" void __fastcall actorport_d1_##Class(void *s, void *unused)    \
     {                                                                         \
@@ -57,3 +80,25 @@ ACTORPORT_D1_FACE(daObjKm1_Kurumajiku_c)
 ACTORPORT_D1_FACE(daObjKm2_Ukishima_c)
 ACTORPORT_D1_FACE(daObjKumo_c)
 ACTORPORT_D1_FACE(daStarGate_c)
+ACTORPORT_D1_FACE(daECreate_c)
+ACTORPORT_D1_FACE(daESwitch_c)
+ACTORPORT_D1_FACE(daNknk_c)
+ACTORPORT_D1_FACE(dMeter_c)
+ACTORPORT_D1_FACE(dView_c)
+ACTORPORT_D1_FACE(daBDonketu_c)
+ACTORPORT_D1_FACE(daDonketu_c)
+ACTORPORT_D1_FACE(daDsn_c)
+ACTORPORT_D1_FACE(daLinelift2_c)
+ACTORPORT_D1_FACE(daObjCtMecha08_c)
+ACTORPORT_D1_FACE(daObjCtMecha10_c)
+ACTORPORT_D1_FACE(daObjFl_Block_c)
+ACTORPORT_D1_FACE(daObjFl_Ring_c)
+ACTORPORT_D1_FACE(daObjFl_UkiKi_c)
+ACTORPORT_D1_FACE(daObjHmMaruta_c)
+ACTORPORT_D1_FACE(daObjKi_Fune_c)
+ACTORPORT_D1_FACE(daObjKi_Hasira_c)
+ACTORPORT_D1_FACE(daObjKm2_Agaru_c)
+ACTORPORT_D1_FACE(daObjSwitch_c)
+ACTORPORT_D1_FACE(daObjTh_Fall_Block_c)
+ACTORPORT_D1_FACE(daObjYajirusi_c)
+ACTORPORT_D1_FACE(daUdlift_c)

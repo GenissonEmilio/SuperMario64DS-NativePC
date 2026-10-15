@@ -59,7 +59,14 @@ struct dCamera_c : dView_c {
     u8  pad_17e[0x28];
     u8  unk_1a6;            /* 0x1a6 */
     dCamera_c();
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dCamera_c();   /* no slot */
+    #else
     virtual ~dCamera_c();
+    #endif
 
     /* fBase_c virtual overrides, in their inherited slots. */
     virtual s32 InitResources();

@@ -76,7 +76,14 @@ struct dMeter_c : dBase_c {
        first virtual below it that is left out of line -- and that one is defined
        in this class's own translation unit, so the vtable and the RTTI chain are
        still emitted there. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dMeter_c() {}   /* no slot */
+    #else
     virtual ~dMeter_c() {}
+    #endif
 
     /* Two overrides the cartridge proves and this header never declared -- and both
        are already decompiled and byte-matching in this tree, which is what makes

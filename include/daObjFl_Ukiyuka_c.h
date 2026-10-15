@@ -19,7 +19,14 @@
 struct daObjFl_Ukiyuka_c : daObjUkiyuka_c {
     u8  mVariant;           /* 0x32c */
     /* --- vtable --- */
-    virtual ~daObjFl_Ukiyuka_c(); /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjFl_Ukiyuka_c();   /* no slot */
+    #else
+    virtual ~daObjFl_Ukiyuka_c();
+    #endif /* slots 16 (D1), 17 (D0) */
 
     int CleanupResources();            /* slot  3 */
     int InitResources();               /* slot  0 */

@@ -71,7 +71,14 @@ struct daObjBlockL_c : dBgActor_c {
     u8  pad_32d[0x3];
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjBlockL_c();   /* no slot */
+    #else
     virtual ~daObjBlockL_c();
+    #endif
 
     /* Slot 31, dBgActor_c's own new virtual (include/dBgActor_c.h). Attributed by
        the vtable: _ZTV13daObjBlockL_c (ov002 0x02108adc) carries 0x020b38a0 at

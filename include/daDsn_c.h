@@ -105,7 +105,14 @@ struct daDsn_c : daDsnBase_c {
        which src/actors/daDsn_c.cpp defines, so that TU emits _ZTV7daDsn_c. And
        an out-of-line definition makes mwccarm emit D0 ahead of D1, the reverse
        of the cartridge (0x02132938 D1, 0x02132998 D0). */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daDsn_c() {}   /* no slot */
+    #else
     virtual ~daDsn_c() {}
+    #endif
 
     /* The two the base declares `= 0`; this class supplies both. */
     int Behavior();                    /* slot  6 */
