@@ -48,6 +48,7 @@ int port_title_page_state(int *top, int *elem, int *req);
 
 namespace {
 
+enum { kIrisLead = 5 };   /* INTROCARD092 (3a): the intro iris opens this many ticks into the star's flight (the ROM's own flight is 14 ticks; the black beat is the flight with nothing behind it) */
 enum { kMpDimAlpha = 110 };   /* MENUS093: how faint the unavailable MP plank is drawn (alpha of 255) */
 enum { V_ATTRACT = 1, V_MAIN = 2, V_FILES = 3, V_OPTIONS = 4, V_DOODLE = 5, V_TABLE = 6, V_INTRO = 7, V_TOY = 8 };   /* V_TOY: the face press (top 4, elem 0), FACE1 */
 
@@ -1116,7 +1117,7 @@ void build_main_pc(MenuLayout *L, bool intro)
         {
             /* TITLE092 (3a): the iris opens from the frame the star leaves the top, at 1.5 times the ROM's pace (8.28 DS pixels of radius a
                frame), not from the ROM's own start 5 frames later at its pace; the ROM's value still wins once it is ahead */
-            const int n = c.fly_t + (c.ct > 0 ? c.ct : 0) - 14;
+            const int n = c.fly_t + (c.ct > 0 ? c.ct : 0) - kIrisLead;
             if (n >= 0) {
                 const float syn = 8.28f * (float)ctune(10, 150) / 100.f * (float)(n + 1);
                 if (syn > Rds) Rds = syn;
@@ -1776,6 +1777,9 @@ static void menu_title_build_impl(int variant, MenuLayout *L)
        14); from then the iris takes over at once, see build_main_pc, instead of a black beat and the ROM's iris starting from a point */
     if (variant == V_INTRO && t_f && t_f->ch.mode == CH_INTRO && t_f->ch.ct < 0 && (t_f->ch.fly_t < 14 || getenv("SM64DS_CHORE_BLACK"))) {
         add_black_under(L);
+        /* INTROCARD092 (3a): from kIrisLead ticks into the flight the page is already coming up under our iris (drawn first), and the ROM's
+           scene layer and the host star go over it: no black beat while the star is still on its way */
+        if (t_f->ch.fly_t >= kIrisLead && pc_assets_ready()) build_main_sel(L, true);
         /* ASSET6: the first frames of the ROM's state 10 are the lower screen going out (the star leaves, the screen fades to black): shown
            as the ROM draws them until its iris sprite appears */
         MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
