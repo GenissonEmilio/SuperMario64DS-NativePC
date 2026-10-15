@@ -8,5 +8,5 @@
 # and hal/actor_classes.cpp seats slot 22 on it (bbb_atk1). Built by
 # port/CMakeLists.txt's BOOBRICK1 R7 block on the three targets that compile
 # hal/actor_classes.cpp.
-src/actors/daObjBlockL_c.cpp
+src/game/actors/d_a_obj_block_l.cpp
 port/unmatched/hostarm/_ZN13BigBrickBlock11OnAttacked1ER8dActor_c.cpp

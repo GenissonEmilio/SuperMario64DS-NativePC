@@ -91,7 +91,7 @@ void port_hud_objpltt(const void *p, unsigned offset, unsigned size)
 }
 
 /* The TU's shadow declaration of Player::GetHealth returns u8; the matched
-   definition (src/actors/Player.cpp) returns int, and MSVC puts the
+   definition (src/game/player/Player.cpp) returns int, and MSVC puts the
    return type in a member's decorated name. Same receiver (ECX, both
    __thiscall), no arguments, the value lands in eax either way and the body
    stores it to a u8 -- a name bridge, which is what an /alternatename is for

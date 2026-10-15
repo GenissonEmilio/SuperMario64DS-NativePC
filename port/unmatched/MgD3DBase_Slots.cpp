@@ -29,7 +29,7 @@
  *
  * ---- SLOT 2, AfterInitResources: THE ONE THAT DECIDES WHETHER THE SCENE LIVES
  *
- * src/actors/dScMgD3DBase_c.cpp calls
+ * src/minigames/d_s_mg_d3d_base.cpp calls
  * _ZN11dScMgBase_c18AfterInitResourcesEj with ONE argument because the ROM never names the second:
  *
  *     020e70c0  push {r4,lr}
@@ -64,7 +64,7 @@
  *
  * ---- SLOT 10, BeforeRender: a dropped receiver the tail-jump trick misses ---
  *
- * src/actors/dScMgD3DBase_c.cpp declares _ZN11dScMgBase_c12BeforeRenderEv
+ * src/minigames/d_s_mg_d3d_base.cpp declares _ZN11dScMgBase_c12BeforeRenderEv
  * with NO parameter and calls it with none. The ROM at 0x020e7040 never touches
  * r0 before the bl, so the receiver rides through; and the callee REALLY READS
  * IT -- 0x020b04fc is `mov r4,r0`, 0x020b0518 reads self+0x4628, 0x020b0540
@@ -72,7 +72,7 @@
  * names the disagreement:
  *
  *   DROPS  _ZN11dScMgBase_c12BeforeRenderEv
- *     declared 0 param(s) at src/actors/dScMgD3DBase_c.cpp:4
+ *     declared 0 param(s) at src/minigames/d_s_mg_d3d_base.cpp:4
  *     DEFINED  1 param(s) at src/minigames/d_s_mg_base.cpp:21
  *
  * THE TAIL-JUMP MECHANISM DOES NOT COVER THIS ONE, which is why a host body is
@@ -85,7 +85,7 @@
  * ---- SLOTS 27 AND 28: the same shape, one instruction long ------------------
  *
  * In the ROM each is `ldr ip,[pc]; bx ip` onto an ov004 body that DOES read r0
- * (_ZN11dScMgBase_c15OnHitByMegaCharEv reads self+0x4630 at 0x020af284; _ZN11dScMgBase_c19OnHitFromUnderneathEv
+ * (_ZN11dScMgBase_c8OpenMenuEv reads self+0x4630 at 0x020af284; _ZN11dScMgBase_c9CloseMenuEv
  * reads self+0xf4 at 0x020af060), and each src TU declares its target with no
  * parameter. These two ARE one-call forwarders, so the tail-jump mechanism
  * COULD carry them -- but BNP measured that port/tools/tailjump_guard.py does
@@ -109,8 +109,8 @@ extern "C" {
 /* dScMgBase_c's own four, exactly as their src TUs declare them */
 void _ZN11dScMgBase_c18AfterInitResourcesEj(void *c, unsigned int flags);
 int  _ZN11dScMgBase_c12BeforeRenderEv(void *c);
-void _ZN11dScMgBase_c15OnHitByMegaCharEv(void *c);
-void _ZN11dScMgBase_c19OnHitFromUnderneathEv(void *c);
+void _ZN11dScMgBase_c8OpenMenuEv(void *c);
+void _ZN11dScMgBase_c9CloseMenuEv(void *c);
 
 /* the two Particle entry points the two repaired bodies keep */
 int  _ZN8Particle10SysTracker10InitialiseEv(void *p);
@@ -118,7 +118,7 @@ int  _ZN8Particle9RenderAllEv(void);
 
 }  /* extern "C" */
 
-/* slot 2. src/actors/dScMgD3DBase_c.cpp verbatim with
+/* slot 2. src/minigames/d_s_mg_d3d_base.cpp verbatim with
    the flags argument named and forwarded. The SysTracker lives at +0x47e4 on
    this base, which is what the ROM's one-word pool at 0x020e70e0 holds. */
 extern "C" int port_mg_d3dbase_after_init(void *c, unsigned int flags)
@@ -127,7 +127,7 @@ extern "C" int port_mg_d3dbase_after_init(void *c, unsigned int flags)
     return _ZN8Particle10SysTracker10InitialiseEv((char *)c + 0x47e4);
 }
 
-/* slot 10. src/actors/dScMgD3DBase_c.cpp verbatim with the
+/* slot 10. src/minigames/d_s_mg_d3d_base.cpp verbatim with the
    receiver named and forwarded. Both early exits are src's. */
 extern "C" int port_mg_d3dbase_before_render(void *c)
 {
@@ -139,5 +139,5 @@ extern "C" int port_mg_d3dbase_before_render(void *c)
 
 /* slots 27 and 28. The two veneers, with the receiver the ROM rides through in
    r0 spelled as the argument it is. */
-extern "C" void port_mg_d3dbase_slot27(void *c) { _ZN11dScMgBase_c15OnHitByMegaCharEv(c); }
-extern "C" void port_mg_d3dbase_slot28(void *c) { _ZN11dScMgBase_c19OnHitFromUnderneathEv(c); }
+extern "C" void port_mg_d3dbase_slot27(void *c) { _ZN11dScMgBase_c8OpenMenuEv(c); }
+extern "C" void port_mg_d3dbase_slot28(void *c) { _ZN11dScMgBase_c9CloseMenuEv(c); }

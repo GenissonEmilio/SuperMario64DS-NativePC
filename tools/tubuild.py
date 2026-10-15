@@ -1286,6 +1286,9 @@ def cmd_compile(args):
         obj_bytes, entry)
     if not policy_reasons and compiler_only.get("deadstripped"):
         print(f"compiler-only     : exact deadstrip {compiler_only['deadstripped']}")
+    obj_bytes, audited_bytes, policy_reasons = _apply_defined_renames_for_audit(
+        obj_bytes, audited_bytes, policy_reasons, entry)
+    inv = elf_inventory(obj_bytes)
     audit_inv = elf_inventory(audited_bytes) if audited_bytes is not None else inv
     unlicensed_funcs, unlicensed_objs, unlicensed_secs = unlicensed_inventory(
         entry, audit_inv)
@@ -1353,6 +1356,9 @@ def cmd_verify(args):
     inv = elf_inventory(obj_bytes)
     audited_bytes, compiler_only, policy_reasons = apply_compiler_only_policy(
         obj_bytes, entry)
+    obj_bytes, audited_bytes, policy_reasons = _apply_defined_renames_for_audit(
+        obj_bytes, audited_bytes, policy_reasons, entry)
+    inv = elf_inventory(obj_bytes)
     audit_inv = elf_inventory(audited_bytes) if audited_bytes is not None else inv
 
     name_index = RA.build_name_index()
@@ -3002,6 +3008,25 @@ def apply_undefined_symbol_alias_policy(obj_bytes, entry, name_index=None):
                                             f"{plan.get('error')}"]
     return out, {"requested": requested, "renamed": plan.get("renamed", []),
                  "objisolate": plan}, []
+
+
+def _apply_defined_renames_for_audit(obj_bytes, audited_bytes, policy_reasons, entry):
+    """Return the object as production links it: after `defined_symbol_renames`.
+
+    Resolving a raw emitted `@NNN` through the fleet name index lands on whichever
+    module happens to pin the same number, so a slot the build links correctly reads
+    WRONG-DEST and the emitted temp reads as an unlicensed symbol.  A refused rename
+    is a policy refusal, exactly as production treats it, and the raw object is kept.
+    """
+    renamed, _report, reasons = apply_defined_symbol_rename_policy(obj_bytes, entry)
+    if reasons:
+        return obj_bytes, audited_bytes, list(policy_reasons) + reasons
+    if audited_bytes is not None:
+        audited_renamed, _report, _reasons = apply_defined_symbol_rename_policy(
+            audited_bytes, entry)
+        if audited_renamed is not None:
+            audited_bytes = audited_renamed
+    return renamed, audited_bytes, policy_reasons
 
 
 def apply_defined_symbol_rename_policy(obj_bytes, entry):

@@ -187,7 +187,7 @@ void _ZN7daTor_c6State1Ev(void *cv)
 /* ---- (5) THE WRONG-NAMED LEVEL-DATA REFERENCE -------------------------
  * src/_ZN7Tornado13InitResourcesEv.cpp hands its texture animation descriptor
  * to TextureTransformer twice, spelled `func_02112968`:
- *     TextureTransformer::Prepare(data_ov096_02137ba8[1], func_02112968);
+ *     TextureTransformer::Prepare(gSandTornadoModelFile[1], func_02112968);
  *     TextureTransformer::SetFile(this + 0x328, func_02112968, 0, 0x1000, 0);
  * and include/decl_common.h:1380 declares it `extern int func_02112968[];`.
  * THERE IS NO func_02112968 ANYWHERE IN config/ -- the name is a recovery
@@ -246,8 +246,8 @@ void _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(void *thiz, void *actor,
 void _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(
     void *thiz, void *actor, int a, int b, void *v, int e);
 void func_02016aac(void *self, unsigned value, int index);
-extern void *data_ov096_02137ba8[];
-extern void *data_ov096_02137bb0[];
+extern void *gSandTornadoModelFile[];
+extern void *gSandTornadoAnimationFile[];
 
 /* PORT_HOST_ABI: a recovery-artifact name for level-overlay data, reached
    through the whole mount's rebased image instead. */
@@ -258,15 +258,15 @@ int _ZN7daTor_c13InitResourcesEv(void *selfv)
 
     _ZN9ModelBase7SetFileEP8BMD_Fileii(
         c + 0x2c4,
-        (void *)(size_t)_ZN5Model8LoadFileER13SharedFilePtr(data_ov096_02137ba8),
+        (void *)(size_t)_ZN5Model8LoadFileER13SharedFilePtr(gSandTornadoModelFile),
         1, 0x15);
-    _ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr(data_ov096_02137bb0);
+    _ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr(gSandTornadoAnimationFile);
     func_02016aac(c + 0x2c4, 0x16, 1);
     _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0x2c4,
-                                                data_ov096_02137bb0[1],
+                                                gSandTornadoAnimationFile[1],
                                                 0, 0x1000, 0);
     _ZN18TextureTransformer7PrepareER8BMD_FileR8BTA_File(
-        data_ov096_02137ba8[1], bta);
+        gSandTornadoModelFile[1], bta);
     _ZN18TextureTransformer7SetFileER8BTA_Filei5Fix12IiEj(c + 0x328, bta,
                                                           0, 0x1000, 0);
     _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(c + 0xd4, c, 0, 0,

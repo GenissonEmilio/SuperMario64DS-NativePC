@@ -97,18 +97,18 @@
 # calls the flat name): they join lane FWD's in port/hal/fwd_forwarders.cpp.
 # MantaRay, Shark and Skeeter define the flat extern "C" name themselves.
 # ===========================================================================
-src/actors/daMenbo_c.cpp
-src/actors/daPukupuku_c.cpp
-src/actors/daManta_c.cpp
-src/actors/daShark_c.cpp
-src/actors/daWater_Hakidasi_c.cpp
-src/actors/daBbl_c.cpp
-src/actors/daWater_Ring_c.cpp
-src/actors/daYurei_Mucho_c.cpp
-src/actors/daBasabasa_c.cpp
-src/actors/daWater_Suikomi_c.cpp
-src/actors/daWater_Tatumaki_c.cpp
-src/actors/daPropeller_Heyho_Fire_c.cpp
+src/game/actors/d_a_menbo.cpp
+src/game/actors/d_a_pukupuku.cpp
+src/game/actors/d_a_manta.cpp
+src/game/actors/d_a_shark.cpp
+src/game/actors/d_a_water_hakidasi.cpp
+src/game/actors/d_a_bbl.cpp
+src/game/actors/d_a_water_ring.cpp
+src/game/actors/d_a_yurei_mucho.cpp
+src/game/actors/d_a_basabasa.cpp
+src/game/actors/d_a_water_suikomi.cpp
+src/game/actors/d_a_water_tatumaki.cpp
+src/game/actors/d_a_propeller_heyho_fire.cpp
 
 # ---- gate 2: THE REMAINING NINE OBJECT-FIELD ROWS, ONE PER OVERLAY --------
 #
@@ -172,13 +172,13 @@ src/game/actors/d_a_holhei.cpp
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
-#src/actors/Eyerok.cpp
-src/actors/daKing_Donketu_c.cpp
-src/actors/daPopoi_c.cpp
-src/actors/daBombking_c.cpp
-src/actors/daC_Jugem_c.cpp
+#src/game/actors/d_a_iwante.cpp
+src/game/actors/d_a_king_donketu.cpp
+src/game/actors/d_a_popoi.cpp
+src/game/actors/d_a_bombking.cpp
+src/game/actors/d_a_c_jugem.cpp
 src/game/actors/d_a_hyuhyu.cpp
-src/actors/daWanwan2_c.cpp
+src/game/actors/d_a_wanwan2.cpp
 
 # ---- gate 3: THE FOUR ov006 FIELD-HELD ROWS -------------------------------
 #
@@ -230,7 +230,7 @@ src/actors/daWanwan2_c.cpp
 # symbol; taking it instead would put the defect back. The generated copy is in
 # this slice's target set, so the bodies still arrive.
 #src/minigames/d_s_mg_jump2.cpp
-src/actors/dScMgJump_c.cpp
+src/minigames/d_s_mg_jump_methods.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): this row is the raw
 # consolidated TU. slice_tte.txt's TTE_HOSTGEN_SRCS substitutes a hostgen'd copy of
 # the WHOLE TU so its geometry register writes reach the geometry engine instead of
@@ -238,4 +238,4 @@ src/actors/dScMgJump_c.cpp
 # symbol; taking it instead would put the defect back. The generated copy is in
 # this slice's target set, so the bodies still arrive.
 #src/minigames/d_s_mg_trampoline2.cpp
-src/actors/dMg3DEspAnimSet_c.cpp
+src/minigames/d_mg3d_esp_anim_set.cpp

@@ -8,13 +8,13 @@
  * for the five-instruction Itanium encoding over dScMgTrampoline2_c's OWN forty
  * bodies and finds exactly ONE site, vtable slot 6.  That measurement is right
  * and this file does not contradict it: THIS body is not one of the class's.
- * func_ov006_020c8f20 belongs to the element class the factory constructs five
+ * Trmp2Mario_Update belongs to the element class the factory constructs five
  * of at this+0x500c, and the ROM names that class itself -- the type_info at
  * 0x0213b238 points at 0x0213b25c, which reads "17dScMgTrmpln2Mario_c", and its
  * sibling at 0x0213b270 reads "18dScMgTrmpln3DMario_c".  The Marios on the
  * trampoline are their own class with their own state machine.
  *
- * AND IT IS INVISIBLE TO BOTH PRESCRIBED DETECTORS.  src/func_ov006_020c8f20.cpp
+ * AND IT IS INVISIBLE TO BOTH PRESCRIBED DETECTORS.  src/Trmp2Mario_Update.cpp
  * spells the decode in PLAIN INTS --
  *
  *     typedef void (*PMF)(void*);
@@ -31,8 +31,8 @@
  * third boot of scene 385 faulted with
  *
  *     FAULT code c0000005 at +0x01cca310 accessing 020ca310
- *       func_ov006_020c8f20
- *       func_ov006_020cac30
+ *       Trmp2Mario_Update
+ *       Trmp2Mario_UpdateAll
  *       func_ov006_02123cb4      <- this class's PLAY state
  *       _ZN18dScMgTrampoline2_c8BehaviorEv      <- vtable slot 6
  *       tte_beh
@@ -46,12 +46,12 @@
  * read off the .data rather than guessed.  Every writer this lane found copies
  * a named mwcc pair or an already-loaded pair:
  *
- *     src/func_ov006_020ca374.c   *(S2*)(o+0x70)   = data_ov006_0213b124
- *     src/func_ov006_020ca2ec.c   *(S8*)(o+0x70)   = data_ov006_0213b134
- *     src/func_ov006_020c9e7c.c   *(Vec2i*)(o+0x70)= data_ov006_0213b16c
- *     src/func_ov006_020c9098.cpp   from data_ov006_0213b114
- *     src/func_ov006_020c9c8c.cpp   from data_ov006_0213b194
- *     src/func_ov006_020c94e0.cpp from data_ov006_0213b1ec
+ *     src/Trmp2Mario_EnterState6.c   *(S2*)(o+0x70)   = pmf_Trmp2Mario_State6
+ *     src/Trmp2Mario_EnterState5.c   *(S8*)(o+0x70)   = pmf_Trmp2Mario_State5
+ *     src/Trmp2Mario_EnterState3.c   *(Vec2i*)(o+0x70)= pmf_Trmp2Mario_State3_2
+ *     src/Trmp2Mario_EnterByKind.cpp   from pmf_Trmp2Mario_State0
+ *     src/Trmp2Mario_EnterState1.cpp   from pmf_Trmp2Mario_State1
+ *     src/Trmp2Mario_BounceOffLineA.cpp from pmf_Trmp2Mario_State1_2
  *
  * and every one of those symbols sits inside ONE CONTIGUOUS RUN of {code, 0}
  * pairs in ov006's .data, 0x0213b0f4 .. 0x0213b228, read out of
@@ -75,7 +75,7 @@
  *
  * ---- 3. THE STORED PAIR IS NOT REWRITTEN ---------------------------------
  *
- * The seat routes at the DISPATCH SITE.  src/func_ov006_020c94e0.cpp compares
+ * The seat routes at the DISPATCH SITE.  src/Trmp2Mario_BounceOffLineA.cpp compares
  * the stored words by VALUE (`if (s[0] != q[0] || (s[1] != q[1] && ...))`), so
  * writing host addresses over the .data pairs -- the ov085/ov100 treatment --
  * would leave that comparison permanently false while the dispatch itself
@@ -88,7 +88,7 @@
  * (`System* System::New(...);` and `void Animation::Advance();` repeated after
  * the structs that already declare them) are dropped, and the five-line decode
  * is replaced by the routed call.  Every other statement, offset and constant
- * is src's, in src's order.  src/func_ov006_020c8f20.cpp is OUT of
+ * is src's, in src's order.  src/Trmp2Mario_Update.cpp is OUT of
  * port/slice_tte.txt: listing it would be an LNK2005 against this definition.
  * A hostgen MEMBER_REDECL entry
  * for that file would have been the alternative and was tried first; the host
@@ -106,37 +106,37 @@ extern "C" {
 void port_mg_call0(void *self, unsigned code, int adj);
 
 /* the twenty distinct code words in 0x0213b0f4..0x0213b228 */
-void func_ov006_020c905c(void *o);
-void func_ov006_020c91ac(void *o);
-void func_ov006_020c97bc(void *o);
-void func_ov006_020c9d7c(void *o);
-void func_ov006_020c9efc(void *o);
-void func_ov006_020ca070(void *o);
-void func_ov006_020ca310(void *o);
-void func_ov006_020ca39c(void *o);
-void func_ov006_020cb16c(void *o);
-void func_ov006_020cb2b4(void *o);
-void func_ov006_020cb5c4(void *o);
-void func_ov006_020cb72c(void *o);
-void func_ov006_020cbd7c(void *o);
-void func_ov006_020cc2ac(void *o);
-void func_ov006_020cc408(void *o);
-void func_ov006_020cc63c(void *o);
-void func_ov006_020cc724(void *o);
-void func_ov006_020cc9b8(void *o);
-void func_ov006_020ccae0(void *o);
-void func_ov006_020ccd64(void *o);
+void Trmp2Mario_State0(void *o);
+void Trmp2Mario_State1(void *o);
+void Trmp2Mario_State2(void *o);
+void Trmp2Mario_State3(void *o);
+void Trmp2Mario_State4(void *o);
+void Trmp2Mario_State5(void *o);
+void Trmp2Mario_State6(void *o);
+void Trmp2Mario_State7(void *o);
+void Trmp3DMario_State0(void *o);
+void Trmp3DMario_State1(void *o);
+void Trmp3DMario_State2(void *o);
+void Trmp3DMario_State3(void *o);
+void Trmp3DMario_State5(void *o);
+void Trmp3DMario_State6(void *o);
+void Trmp3DMario_State7(void *o);
+void Trmp3DMario_State8(void *o);
+void Trmp3DMario_State9(void *o);
+void Trmp3DMario_State10(void *o);
+void Trmp3DMario_State11(void *o);
+void Trmp3DMario_State12(void *o);
 
-/* src/func_ov006_020c8f20.cpp's own callees, spelled as that file spells them */
-void func_ov006_020c9024(char *o);
-void func_ov006_020c8ecc(char *o);
+/* src/Trmp2Mario_Update.cpp's own callees, spelled as that file spells them */
+void Trmp2Mario_ApplyGravity(char *o);
+void Trmp2Mario_UpdateMatrix(char *o);
 extern int data_ov006_0214059c;
 
-void func_ov006_020c8f20(char *o);
+void Trmp2Mario_Update(char *o);
 
 }  /* extern "C" */
 
-/* The two names src/func_ov006_020c8f20.cpp reaches through local structs.  The
+/* The two names src/Trmp2Mario_Update.cpp reaches through local structs.  The
    Faces file carries the /alternatename rows that make both reachable; here
    they are declared with the same local shapes that file uses so the emitted
    call surface is identical. */
@@ -156,26 +156,26 @@ static unsigned g_tte_sub_calls, g_tte_sub_routed;
 static int tte_sub_try(void *self, unsigned code)
 {
     switch (code) {
-    case 0x020c905cu: func_ov006_020c905c(self); return 1;
-    case 0x020c91acu: func_ov006_020c91ac(self); return 1;
-    case 0x020c97bcu: func_ov006_020c97bc(self); return 1;
-    case 0x020c9d7cu: func_ov006_020c9d7c(self); return 1;
-    case 0x020c9efcu: func_ov006_020c9efc(self); return 1;
-    case 0x020ca070u: func_ov006_020ca070(self); return 1;
-    case 0x020ca310u: func_ov006_020ca310(self); return 1;
-    case 0x020ca39cu: func_ov006_020ca39c(self); return 1;
-    case 0x020cb16cu: func_ov006_020cb16c(self); return 1;
-    case 0x020cb2b4u: func_ov006_020cb2b4(self); return 1;
-    case 0x020cb5c4u: func_ov006_020cb5c4(self); return 1;
-    case 0x020cb72cu: func_ov006_020cb72c(self); return 1;
-    case 0x020cbd7cu: func_ov006_020cbd7c(self); return 1;
-    case 0x020cc2acu: func_ov006_020cc2ac(self); return 1;
-    case 0x020cc408u: func_ov006_020cc408(self); return 1;
-    case 0x020cc63cu: func_ov006_020cc63c(self); return 1;
-    case 0x020cc724u: func_ov006_020cc724(self); return 1;
-    case 0x020cc9b8u: func_ov006_020cc9b8(self); return 1;
-    case 0x020ccae0u: func_ov006_020ccae0(self); return 1;
-    case 0x020ccd64u: func_ov006_020ccd64(self); return 1;
+    case 0x020c905cu: Trmp2Mario_State0(self); return 1;
+    case 0x020c91acu: Trmp2Mario_State1(self); return 1;
+    case 0x020c97bcu: Trmp2Mario_State2(self); return 1;
+    case 0x020c9d7cu: Trmp2Mario_State3(self); return 1;
+    case 0x020c9efcu: Trmp2Mario_State4(self); return 1;
+    case 0x020ca070u: Trmp2Mario_State5(self); return 1;
+    case 0x020ca310u: Trmp2Mario_State6(self); return 1;
+    case 0x020ca39cu: Trmp2Mario_State7(self); return 1;
+    case 0x020cb16cu: Trmp3DMario_State0(self); return 1;
+    case 0x020cb2b4u: Trmp3DMario_State1(self); return 1;
+    case 0x020cb5c4u: Trmp3DMario_State2(self); return 1;
+    case 0x020cb72cu: Trmp3DMario_State3(self); return 1;
+    case 0x020cbd7cu: Trmp3DMario_State5(self); return 1;
+    case 0x020cc2acu: Trmp3DMario_State6(self); return 1;
+    case 0x020cc408u: Trmp3DMario_State7(self); return 1;
+    case 0x020cc63cu: Trmp3DMario_State8(self); return 1;
+    case 0x020cc724u: Trmp3DMario_State9(self); return 1;
+    case 0x020cc9b8u: Trmp3DMario_State10(self); return 1;
+    case 0x020ccae0u: Trmp3DMario_State11(self); return 1;
+    case 0x020ccd64u: Trmp3DMario_State12(self); return 1;
     default:                                     return 0;
     }
 }
@@ -207,7 +207,7 @@ extern "C" void port_mg_tte_sub_counts(unsigned *calls, unsigned *routed)
 
 // ---- the host copy -- RETIRED, run linkfull lane PMFMG1 ----------------------
 //
-// src/func_ov006_020c8f20.cpp runs from src (through hostgen's MEMBER_REDECL row
+// src/Trmp2Mario_Update.cpp runs from src (through hostgen's MEMBER_REDECL row
 // for its two C2761 redeclarations). Its pair universe, 0x0213b0f4..0x0213b224,
 // is the one dMgTrmpln3DMario_c's dispatcher reads too, and it is seated with
 // __cdecl wrappers, one per code word, in
@@ -215,5 +215,5 @@ extern "C" void port_mg_tte_sub_counts(unsigned *calls, unsigned *routed)
 // the ROM evidence. Section 3's "the stored pair is not rewritten" is answered
 // there the same way lane FWD gate 3 answered it one record class over: every
 // pair holding a code word gets that code word's one host word, so the
-// by-value comparison in src/func_ov006_020c94e0.cpp still answers what the
+// by-value comparison in src/Trmp2Mario_BounceOffLineA.cpp still answers what the
 // cartridge answers.

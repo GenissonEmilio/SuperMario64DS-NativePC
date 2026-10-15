@@ -43,9 +43,9 @@ src/game/actors/d_a_cnn.cpp
 
 # ---- the overlay's own static initialisers --------------------------------
 src/unnamed/ov098/__sinit_ov098_0213bf9c.c
-src/actors/daObjBlockS_c.cpp
+src/game/actors/d_a_obj_block_s.cpp
 # FOLDED into src/game/actors/d_a_cnn.cpp (row 20): src/__sinit_ov098_0213c214.c
-src/actors/daWbm_c.cpp
+src/game/actors/d_a_wbm.cpp
 
 # ---- the two helpers the cannon's own Behavior closes over -----------------
 # 0213a984 is the save read that keeps the lid shut; 0213b15c is the aim/lid
@@ -59,13 +59,13 @@ src/actors/daWbm_c.cpp
 # FOLDED into src/game/actors/d_a_cnn.cpp (row 20): src/func_ov098_0213b0a4.cpp
 
 # --- linkloop round 1 ---
-src/actors/dActor_c.cpp
+src/runtime/actor/d_actor.cpp
 port/unmatched/hostarm/_ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE.cpp
-src/actors/Player.cpp
-# FOLDED into src/actors/Player.cpp (row 63): src/func_ov002_020df34c.cpp
-src/actors/daBmb_c.cpp
+src/game/player/Player.cpp
+# FOLDED into src/game/player/Player.cpp (row 63): src/func_ov002_020df34c.cpp
+src/game/actors/d_a_bmb.cpp
 
 # --- linkloop round 2 ---
-src/engine/view/dCamera_c.cpp
-# FOLDED into src/engine/view/dCamera_c.cpp (row 68): src/func_0200d474.c
-src/actors/dBgActor_c.cpp
+src/engine/view/d_camera.cpp
+# FOLDED into src/engine/view/d_camera.cpp (row 68): src/func_0200d474.c
+src/runtime/actor/d_bg_actor.cpp

@@ -23,6 +23,12 @@
  *   text-only so the definition here is a deadstripped duplicate.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_km2_ukishima_AssetId {
+    ASSET_KM2_UKISHIMA_BMD = 0x066b,
+    ASSET_KM2_UKISHIMA_KCL = 0x066c
+};
+
 #include "daObjKm2_Ukishima_c.h"
 #include "SharedFilePtr.h"
 
@@ -58,8 +64,8 @@ int func_ov002_020b6584(daObjUkiyuka_c *self, ResourceDescriptor *descriptor,
                         Fix12i bobAmplitude);
 int func_ov002_020b6424(daObjUkiyuka_c *self, ResourceDescriptor *descriptor);
 extern ResourceDescriptor data_ov045_02112f08;
-extern UkishimaModelFilePtr data_ov045_02113200;     /* BMD, file 1643 */
-extern UkishimaCollisionFilePtr data_ov045_021131f8; /* KCL, file 1644 */
+extern UkishimaModelFilePtr gKm2UkishimaModelFile;     /* BMD, file 1643 */
+extern UkishimaCollisionFilePtr gKm2UkishimaCollisionFile; /* KCL, file 1644 */
 }
 
 struct UkishimaSpawnInfo {
@@ -108,5 +114,5 @@ s32 daObjKm2_Ukishima_c::CleanupResources()
     return func_ov002_020b6424(this, &data_ov045_02112f08);
 }
 
-UkishimaModelFilePtr data_ov045_02113200(1643);
-UkishimaCollisionFilePtr data_ov045_021131f8(1644);
+UkishimaModelFilePtr gKm2UkishimaModelFile(ASSET_KM2_UKISHIMA_BMD);
+UkishimaCollisionFilePtr gKm2UkishimaCollisionFile(ASSET_KM2_UKISHIMA_KCL);

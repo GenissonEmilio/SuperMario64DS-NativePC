@@ -48,7 +48,7 @@ struct dExtShadowModel_c;
    Heap*, but two incompatible extern "C" declarations of one name in a single TU
    are rejected as "illegal function overloading" -- that cost 105 files their
    eligibility when it was tried. Fix it in decl_common.h or not at all. */
-extern "C" void _ZN6Memory10DeallocateEPvP4Heap(void *, void *);
+extern "C" void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *, void *);
 extern "C" void *data_020a0eac;
 
 struct dActor_c : dBase_c {
@@ -297,7 +297,7 @@ struct dActor_c : dBase_c {
        and inlines it only when it is found in the class itself or its IMMEDIATE
        base. Without this every dActor_c-derived D0 calls the global _ZdlPv,
        which exists nowhere in this image, and comes out short. */
-    void operator delete(void *ptr) { _ZN6Memory10DeallocateEPvP4Heap(ptr, data_020a0eac); }
+    void operator delete(void *ptr) { _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(ptr, data_020a0eac); }
 };
 
 #else

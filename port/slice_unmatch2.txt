@@ -11,7 +11,7 @@
 # runs/link100/out/UNMATCH/.
 #
 # ---- 1. DA_PG_DFDR (ov027), +2 --------------------------------------------
-# src/actors/daPgDfdr_c.cpp and src/actors/daPgDfdr_c.cpp both TAIL JUMP
+# src/game/actors/d_a_pg_dfdr.cpp and src/game/actors/d_a_pg_dfdr.cpp both TAIL JUMP
 # through the ROM's own record:
 #
 #     mov  eax, DWORD PTR _c$[ebp]
@@ -39,7 +39,7 @@
 # daPgDfdr_c's Behavior reaches func_ov027_02111cfc; both are called by C name
 # from the rest of the ov027 cast, which is why the two symbols never left the
 # link -- only their bodies did.
-src/actors/daPgDfdr_c.cpp
+src/game/actors/d_a_pg_dfdr.cpp
 
 # ---- 2. YOSHI_EGG (ov002), +2 ---------------------------------------------
 # src/func_ov002_020ed63c.cpp (the state setter) and src/func_ov002_020ed684.cpp
@@ -68,8 +68,8 @@ src/actors/daPgDfdr_c.cpp
 # through a one-line face that prints it and calls the body, so the line, the
 # fields and the SM64DS_EGG_TRACE knob are unchanged. The four ENTER-half
 # records take the body directly.
-src/actors/daYegg_c.cpp
-# FOLDED into src/actors/daYegg_c.cpp (row 71): src/func_ov002_020ed684.cpp
+src/game/actors/d_a_yegg.cpp
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 71): src/func_ov002_020ed684.cpp
 
 # ---- 3. THE PAINTING (ov080), +3 ------------------------------------------
 # daPicGate_c's three per-mode dispatchers. The old host copy's header said
@@ -99,6 +99,6 @@ src/actors/daYegg_c.cpp
 # REFERRER: _ZTV11Painting slots 0/6/9 (InitResources, Behavior, Render) --
 # the three rows SEAT3's census records as PMF EXCEPTION for ov080
 # (_ZTV8Painting slots 0, 6 and 9).
-src/actors/daPicGate_c.cpp
-# FOLDED into src/actors/daPicGate_c.cpp (row 102): src/_ZN8Painting8BehaviorEv.cpp
-# FOLDED into src/actors/daPicGate_c.cpp (row 102): src/_ZN8Painting6RenderEv.cpp
+src/game/actors/d_a_pic_gate_methods.cpp
+# FOLDED into src/game/actors/d_a_pic_gate_methods.cpp (row 102): src/_ZN8Painting8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_pic_gate_methods.cpp (row 102): src/_ZN8Painting6RenderEv.cpp

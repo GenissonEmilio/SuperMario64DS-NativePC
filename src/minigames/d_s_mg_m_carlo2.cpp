@@ -64,15 +64,15 @@ void DecompressLZ16(int src, int dst);
 void Vec2_Sub(int* out, int* a, int* b);
 unsigned int func_02012790(unsigned int id);
 int  func_0203d5dc(void* a, void* b);
-void func_ov004_020ad90c(void* t);
-void func_ov004_020adb1c(int score);
-void func_ov006_0210a534(void* c);
-void func_ov006_020c0aa8(void* c);
-void func_ov006_020c1604(char* t, int unused, short a2, void* a3);
-int  func_ov006_020c1718(void* t);
-void func_ov006_020c1804(void* t);
-void func_ov006_020c19d0(void* t);
-int  func_ov006_020c1a88(void* t);
+void Mg_CommitRecords(void* t);
+void Mg_SubmitScore(int score);
+void LoadCard2SubBg3(void* c);
+void Camera_InitDealerView(void* c);
+void Dealer_StartDeal(char* t, int unused, short a2, void* a3);
+int  Dealer_IsIdle(void* t);
+void Dealer_Draw(void* t);
+void Dealer_Update(void* t);
+int  Dealer_Load(void* t);
 
 void *_ZN11dScMgBase_cC2Ev(void*);
 void _ZN8Particle10SysTrackerC1Ev(void*);
@@ -105,7 +105,7 @@ extern "C" void* dScMgMCarlo2_c_classInit()
         *(int*)p = (int)&_ZTV19dScMgSingle3DBase_c;
         _ZN8Particle10SysTrackerC1Ev(p + 0x471c);
         *(int*)p = (int)&_ZTV14dScMgMCarlo2_c[2];
-        func_ov006_020c1d80(p + 0x4f38);
+        Dealer_Construct(p + 0x4f38);
         __cxa_vec_ctor(p + 0x51a8, 0x28, 0x30,
                      (void*)_ZN19dMgMCarlo2CardObj_cC1Ev,
                      (void*)_ZN19dMgMCarlo2CardObj_cD1Ev);
@@ -121,8 +121,8 @@ s32 dScMgMCarlo2_c::InitResources()
     char *raw = (char *)this;
     int lang;
     int tiles, palette;
-    func_ov004_020b04d0(0x20);
-    func_ov006_0210a534(raw);
+    Mg_SetTopScreenYOffset(0x20);
+    LoadCard2SubBg3(raw);
     lang = GetGameLanguage();
     tiles = LoadFile(data_ov006_0213d744[lang]);
     palette = LoadFile(0xbb);
@@ -136,20 +136,20 @@ s32 dScMgMCarlo2_c::InitResources()
     data_0209d454 = 0x18;
     *(volatile unsigned short *)0x4000008 = (*(volatile unsigned short *)0x4000008 & ~3) | 1;
     *(volatile unsigned short *)0x400100a = *(volatile unsigned short *)0x400100a & ~3;
-    func_ov006_020c0aa8((void *)(raw + 0x4660));
-    if (func_ov006_020c1a88((void *)(raw + 0x4f38)) == 0) return 0;
-    func_ov004_020b682c();
-    OnYoshiTryEat(-1);
+    Camera_InitDealerView((void *)(raw + 0x4660));
+    if (Dealer_Load((void *)(raw + 0x4f38)) == 0) return 0;
+    Mg_PlaceBannersOnTopScreen();
+    StartRound(-1);
     this->unk_592a = 0;
-    this->unk_0a8 = 0xa;
-    this->unk_0ac = this->unk_0a8;
+    this->mCredits = 0xa;
+    this->mCreditsShown = this->mCredits;
     return 1;
 }
 
-// @symbol _ZN14dScMgMCarlo2_c13OnYoshiTryEatEi
+// @symbol _ZN14dScMgMCarlo2_c10StartRoundEi
 /* Resets the whole board: rebuild the 40 pieces, clear the match latch,
  * re-arm the shared table, then hand the score display a zero. */
-void dScMgMCarlo2_c::OnYoshiTryEat(int /* arg */)
+void dScMgMCarlo2_c::StartRound(int /* arg */)
 {
     char *raw = (char *)this;
 
@@ -157,22 +157,22 @@ void dScMgMCarlo2_c::OnYoshiTryEat(int /* arg */)
     data_ov006_0213d6fc = 0;
     unk_592e = 0;
     mShared.unk_1e6 = 1;
-    func_ov006_020c1604(raw + 0x4f38, 4, 4, raw + 0x592e);
+    Dealer_StartDeal(raw + 0x4f38, 4, 4, raw + 0x592e);
     mShared.unk_01a = 1;
     unk_592a = 0;
-    func_ov004_020adb1c(0);
+    Mg_SubmitScore(0);
     unk_5928 = 1;
 }
 
-// @symbol _ZN14dScMgMCarlo2_c13OnTurnIntoEggEi
-int dScMgMCarlo2_c::OnTurnIntoEgg(int /* mode */)
+// @symbol _ZN14dScMgMCarlo2_c11CanEndStateEi
+int dScMgMCarlo2_c::CanEndState(int /* mode */)
 {
     char *raw = (char *)this;
 
     short state = unk_5928;
     switch (state) {
     case 4:
-        if (func_ov006_020c1718((int *)(raw + 0x4f38)) != 0) {
+        if (Dealer_IsIdle((int *)(raw + 0x4f38)) != 0) {
             short *p = &unk_5928;
             *p += 1;
         }
@@ -244,10 +244,10 @@ s32 dScMgMCarlo2_c::Behavior()
                 data_ov006_0213d6fc = 0;
             dealt = data_ov006_0213d700 >> 12;
             if (data_ov006_0213d6f4 != 0 && dealt > 10 && dealt <= 18
-                && func_ov006_020c1718(raw + 0x4f38) != 0) {
+                && Dealer_IsIdle(raw + 0x4f38) != 0) {
                 unk_592e = 0;
                 mShared.unk_1e6 = 0;
-                func_ov006_020c1164(raw + 0x4f38, 2, &unk_592e);
+                Dealer_StartReveal(raw + 0x4f38, 2, &unk_592e);
                 if (data_ov006_0213d6f4 == 2)
                     mShared.unk_01a = 0;
             } else {
@@ -266,9 +266,9 @@ s32 dScMgMCarlo2_c::Behavior()
                     if (data_ov006_0213d6f8 != 0) {
                         if (mShared.unk_01a == 1) {
                             mShared.unk_01a = 0;
-                        } else if (func_ov006_020c16b4(raw + 0x4f38) != 0) {
-                            func_ov006_020c0d68(raw + 0x4f38);
-                            func_ov004_020b0a54(0x12);
+                        } else if (Dealer_IsIdleAtRest(raw + 0x4f38) != 0) {
+                            Dealer_PlayLose(raw + 0x4f38);
+                            Mg_SetSharedState(MG_STATE_GAME_OVER);
                             mPromptEnabled = 0;
                             {
                                 s16 *p = &unk_5928;
@@ -283,7 +283,7 @@ s32 dScMgMCarlo2_c::Behavior()
         break;
     }
 
-    func_ov006_020c19d0(raw + 0x4f38);
+    Dealer_Update(raw + 0x4f38);
     dScMgMCarlo2_c::UpdateBoard();
     return 1;
 }
@@ -300,17 +300,17 @@ s32 dScMgMCarlo2_c::Render()
     int j;
     dMgMCarlo2CardObj_c *flat;
 
-    func_ov006_020c0aa8(raw + 0x4660);
+    Camera_InitDealerView(raw + 0x4660);
 
     score = data_ov006_02142564;
     if (score > 0x270f)
         score = 0x270f;
-    func_ov004_020b1ea4(0xe8, 0x28, score, 1, -1, 0, 0);
+    Mg_DrawNumber(0xe8, 0x28, score, 1, -1, 0, 0);
 
     RenderOamMainScreen(data_ov006_02133f18, 0xe8, 0x18, -1, -1);
 
     if (this->unk_5928 == 5)
-        func_ov004_020b0d8c(raw, 0xe0, 0xa0);
+        Mg_DrawBlinkSprite(raw, 0xe0, 0xa0);
 
     lifted = data_ov006_02142578;
     for (i = 0; i < 0x14; i++) {
@@ -330,16 +330,16 @@ s32 dScMgMCarlo2_c::Render()
         flat = flat->mPrev;
     }
 
-    func_ov006_020c1804(raw + 0x4f38);
+    Dealer_Draw(raw + 0x4f38);
     return 1;
 }
 
 // @symbol _ZN14dScMgMCarlo2_c16CleanupResourcesEv
-/* Slot 3. Sibling scenes call func_ov004_020ad90c with no argument; `this`
+/* Slot 3. Sibling scenes call Mg_CommitRecords with no argument; `this`
  * is already in r0 here, so either spelling compiles the same. */
 s32 dScMgMCarlo2_c::CleanupResources()
 {
-    func_ov004_020ad90c(this);
+    Mg_CommitRecords(this);
     return 1;
 }
 
@@ -755,7 +755,7 @@ void dScMgMCarlo2_c::UpdateBoard()
             data_ov006_02142570 = 0;
             ApproachLinear2(data_ov006_02142564, 0x270f, 2);
             ApproachLinear2(data_ov006_0213d6f8, 0, 2);
-            func_ov004_020adb1c(data_ov006_02142564);
+            Mg_SubmitScore(data_ov006_02142564);
 
             if (data_ov006_0213d6f8 <= 0x14) {
                 {

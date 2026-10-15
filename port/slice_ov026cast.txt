@@ -51,14 +51,14 @@ src/game/actors/d_a_obj_wl_polelift.cpp
 # Behavior 021117d0, InitResources 021117d8, Spawn 02111888.
 # Slot 31 is Platform::Kill (0x020ee55c) unchanged. Render is the same plain
 # Model shadow as the polelift's.
-src/actors/daObjWlKoopaShutter_c.cpp
+src/game/actors/d_a_obj_wl_koopa_shutter.cpp
 # RETIRED at SLICE1: body now in src/_ZN13BowserShutterD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN13BowserShutterD0Ev.cpp
-# FOLDED into src/actors/daObjWlKoopaShutter_c.cpp (row 54): src/_ZN13BowserShutter16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjWlKoopaShutter_c.cpp (row 54): src/_ZN13BowserShutter6RenderEv.cpp
-# FOLDED into src/actors/daObjWlKoopaShutter_c.cpp (row 54): src/_ZN13BowserShutter8BehaviorEv.cpp
-# FOLDED into src/actors/daObjWlKoopaShutter_c.cpp (row 54): src/_ZN13BowserShutter13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjWlKoopaShutter_c.cpp (row 54): src/d_a_obj_wl_koopa_shutter.c
+# FOLDED into src/game/actors/d_a_obj_wl_koopa_shutter.cpp (row 54): src/_ZN13BowserShutter16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_wl_koopa_shutter.cpp (row 54): src/_ZN13BowserShutter6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_wl_koopa_shutter.cpp (row 54): src/_ZN13BowserShutter8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_wl_koopa_shutter.cpp (row 54): src/_ZN13BowserShutter13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_wl_koopa_shutter.cpp (row 54): src/d_a_obj_wl_koopa_shutter.c
 #
 # ---- id 90, daObjWlSubmarine_c / Submarine (32 slots, Platform) ------------
 # D1 021118b8, D0 021118fc, Cleanup 02111954, Render 02111998,
@@ -68,13 +68,13 @@ src/actors/daObjWlKoopaShutter_c.cpp
 # own -- their four targets (02111d4c/02111cb4/02111b24/02111ed8) all land
 # inside the WHIRLPOOL's body range, so that table is the whirlpool's file-
 # scope static emitted ahead of the whirlpool's own typeinfo/vtable group.
-src/actors/daWater_Tatumaki_c.cpp
+src/game/actors/d_a_water_tatumaki.cpp
 # RETIRED at SLICE1: body now in src/_ZN9WhirlpoolD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN9WhirlpoolD0Ev.cpp
-# FOLDED into src/actors/daWater_Tatumaki_c.cpp (row 71): src/_ZN9Whirlpool16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daWater_Tatumaki_c.cpp (row 71): src/_ZN9Whirlpool6RenderEv.cpp
-# FOLDED into src/actors/daWater_Tatumaki_c.cpp (row 71): src/_ZN9Whirlpool13InitResourcesEv.cpp
-src/actors/daObjWlSubmarine_c.cpp
+# FOLDED into src/game/actors/d_a_water_tatumaki.cpp (row 71): src/_ZN9Whirlpool16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_water_tatumaki.cpp (row 71): src/_ZN9Whirlpool6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_water_tatumaki.cpp (row 71): src/_ZN9Whirlpool13InitResourcesEv.cpp
+src/game/actors/d_a_obj_wl_submarine.cpp
 #
 # ---- id 246, daWater_Tatumaki_c / Whirlpool (31 slots, Enemy) --------------
 # D1 02111aa0, D0 02111ad8, Cleanup 02111fa4, OnPendingDestroy 02111fd4 (own,
@@ -85,13 +85,13 @@ src/actors/daObjWlSubmarine_c.cpp
 # 02111ed8, tick 02111d4c) and data_ov026_02113f3c (state 1: enter 02111cb4,
 # tick 02111b24). The four handler bodies stay in the slice; only the two
 # dispatch sites are host-copied.
-# FOLDED into src/actors/daWater_Tatumaki_c.cpp (row 71): src/func_ov026_02111b24.c
-# FOLDED into src/actors/daWater_Tatumaki_c.cpp (row 71): src/func_ov026_02111cb4.c
-# FOLDED into src/actors/daWater_Tatumaki_c.cpp (row 71): src/func_ov026_02111d4c.cpp
-# FOLDED into src/actors/daWater_Tatumaki_c.cpp (row 71): src/func_ov026_02111ed8.c
-# FOLDED into src/actors/daWater_Tatumaki_c.cpp (row 71): src/func_ov026_02111f30.c
-# FOLDED into src/actors/daWater_Tatumaki_c.cpp (row 71): src/_ZN9Whirlpool16OnPendingDestroyEv.cpp
-# FOLDED into src/actors/daWater_Tatumaki_c.cpp (row 71): src/d_a_water_tatumaki.c
+# FOLDED into src/game/actors/d_a_water_tatumaki.cpp (row 71): src/func_ov026_02111b24.c
+# FOLDED into src/game/actors/d_a_water_tatumaki.cpp (row 71): src/func_ov026_02111cb4.c
+# FOLDED into src/game/actors/d_a_water_tatumaki.cpp (row 71): src/func_ov026_02111d4c.cpp
+# FOLDED into src/game/actors/d_a_water_tatumaki.cpp (row 71): src/func_ov026_02111ed8.c
+# FOLDED into src/game/actors/d_a_water_tatumaki.cpp (row 71): src/func_ov026_02111f30.c
+# FOLDED into src/game/actors/d_a_water_tatumaki.cpp (row 71): src/_ZN9Whirlpool16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_water_tatumaki.cpp (row 71): src/d_a_water_tatumaki.c
 #
 # ---- id 247, daWater_Suikomi_c / WaterSuction (31 slots, Enemy) ------------
 # D1 021121fc, D0 02112234, Cleanup 02112328, OnPendingDestroy 02112330,
@@ -103,18 +103,18 @@ src/actors/daObjWlSubmarine_c.cpp
 # registered anyway because its sinit and its mount ride the same overlay and
 # leaving one class of five unregistered is the thing that makes a later lane
 # re-derive all of it.
-src/actors/daWater_Suikomi_c.cpp
+src/game/actors/d_a_water_suikomi.cpp
 # RETIRED at SLICE1: body now in src/_ZN12WaterSuctionD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN12WaterSuctionD0Ev.cpp
-# FOLDED into src/actors/daWater_Suikomi_c.cpp (row 106): src/func_ov026_02112280.c
-# FOLDED into src/actors/daWater_Suikomi_c.cpp (row 106): src/func_ov026_021122b0.c
-# FOLDED into src/actors/daWater_Suikomi_c.cpp (row 106): src/func_ov026_021122cc.c
-# FOLDED into src/actors/daWater_Suikomi_c.cpp (row 106): src/func_ov026_02112324.c
-# FOLDED into src/actors/daWater_Suikomi_c.cpp (row 106): src/_ZN12WaterSuction16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daWater_Suikomi_c.cpp (row 106): src/_ZN12WaterSuction16OnPendingDestroyEv.cpp
-# FOLDED into src/actors/daWater_Suikomi_c.cpp (row 106): src/_ZN12WaterSuction6RenderEv.cpp
-# FOLDED into src/actors/daWater_Suikomi_c.cpp (row 106): src/_ZN12WaterSuction13InitResourcesEv.cpp
-# FOLDED into src/actors/daWater_Suikomi_c.cpp (row 106): src/d_a_water_suikomi.c
+# FOLDED into src/game/actors/d_a_water_suikomi.cpp (row 106): src/func_ov026_02112280.c
+# FOLDED into src/game/actors/d_a_water_suikomi.cpp (row 106): src/func_ov026_021122b0.c
+# FOLDED into src/game/actors/d_a_water_suikomi.cpp (row 106): src/func_ov026_021122cc.c
+# FOLDED into src/game/actors/d_a_water_suikomi.cpp (row 106): src/func_ov026_02112324.c
+# FOLDED into src/game/actors/d_a_water_suikomi.cpp (row 106): src/_ZN12WaterSuction16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_water_suikomi.cpp (row 106): src/_ZN12WaterSuction16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_water_suikomi.cpp (row 106): src/_ZN12WaterSuction6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_water_suikomi.cpp (row 106): src/_ZN12WaterSuction13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_water_suikomi.cpp (row 106): src/d_a_water_suikomi.c
 #
 # ---- the five sinits, all five classes registered, ROM .ctor order ---------
 # .ctor 0x02112da4..0x02112db8 lists them 02112b7c, 02112bbc, 02112c28,
@@ -125,10 +125,10 @@ src/actors/daWater_Suikomi_c.cpp
 #   02112c94  whirlpool's model 0x4a9 + anim 0x4a8, then the four PMF copies
 #   02112d68  watersuction's two PMF copies
 # FOLDED into src/game/actors/d_a_obj_wl_polelift.cpp (row 38): src/__sinit_ov026_02112b7c.c
-# FOLDED into src/actors/daObjWlKoopaShutter_c.cpp (row 54): src/__sinit_ov026_02112bbc.c
-# FOLDED into src/actors/daObjWlSubmarine_c.cpp (row 77): src/__sinit_ov026_02112c28.c
-# FOLDED into src/actors/daWater_Tatumaki_c.cpp (row 71): src/__sinit_ov026_02112c94.c
-# FOLDED into src/actors/daWater_Suikomi_c.cpp (row 106): src/__sinit_ov026_02112d68.c
+# FOLDED into src/game/actors/d_a_obj_wl_koopa_shutter.cpp (row 54): src/__sinit_ov026_02112bbc.c
+# FOLDED into src/game/actors/d_a_obj_wl_submarine.cpp (row 77): src/__sinit_ov026_02112c28.c
+# FOLDED into src/game/actors/d_a_water_tatumaki.cpp (row 71): src/__sinit_ov026_02112c94.c
+# FOLDED into src/game/actors/d_a_water_suikomi.cpp (row 106): src/__sinit_ov026_02112d68.c
 #
 # ============================================================================
 # NOT IN THIS SLICE -- five host copies. Each matched TU stays byte-locked in

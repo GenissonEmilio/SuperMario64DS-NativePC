@@ -767,3 +767,85 @@ void cdskin_draw(uint32_t *px, int stride, int w, int h, const CdGeom *gp, const
         }
     }
 }
+
+/* ================================================================ the star select strip =================================================== */
+
+void cdskin_strip_geom(int w, int h, int n, CsGeom *g)
+{
+    memset(g, 0, sizeof *g);
+    g->k = h / 192.0f;
+    const float k = g->k;
+    g->n = n;
+    g->sw = (int)(23 * k + 0.5f);
+    g->sh = (int)(19 * k + 0.5f);
+    g->pitch = (int)(26 * k + 0.5f);
+    const int total = n > 0 ? (n - 1) * g->pitch + g->sw : 0;
+    g->x0 = (w - total) / 2;
+    g->y0 = h - g->sh - (int)(1 * k + 0.5f);
+}
+
+void cdskin_strip_draw(uint32_t *px, int stride, int w, int h, const CsGeom *gp, const CdItem *it, int n, int focus, int hover)
+{
+    decide_skin();
+    const CsGeom &g = *gp;
+    const Surf s = { px, stride, w, h };
+    const bool hd = g_hd != 0;
+    Font f;
+    f.hd = hd;
+    f.u = g.k * 0.5f;       /* the skin's unit is a 384th of the height */
+    const float k = g.k;
+    auto K = [&](float v) { return (int)(v * k + 0.5f); };
+    const int lit = focus >= 0 ? focus : hover;
+    for (int i = 0; i < n && i < g.n; ++i) {
+        const CdItem &m = it[i];
+        const bool on = i == lit;
+        const int x = g.x0 + i * g.pitch;
+        const int y = g.y0 - (on ? K(2) : 0);
+        const bool cream = m.current && m.id >= 0;
+        /* a soft shadow under the slot */
+        rrect(s, x + K(1), y + K(2), g.sw, g.sh, g.sh * 0.32f, 0x000000u, 70);
+        draw_plank(s, f, hd, x, y, g.sw, g.sh, (cream || (on && m.id < 0)) ? 1 : 0, 1.0f);
+        if (on) {   /* the lit edge of the slot the cursor or the pointer is on */
+            const int e = k < 1 ? 1 : (int)k;
+            rrect(s, x + e, y + e, g.sw - 2 * e, g.sh - 2 * e, g.sh * 0.3f, 0xFFFFFFu, 55);
+        }
+        if (m.id < 0) {
+            /* the arrow: a solid triangle pointing right, centred on its own plank */
+            const float cx = x + g.sw * 0.5f + 0.5f * k, cy = y + g.sh * 0.5f, hh = 5.5f * k, ww = 8.0f * k;
+            const uint32_t col = (hd && !on) ? 0xFFF3CCu : C_TEXT;
+            const int x0 = (int)floorf(cx - ww * 0.5f), x1 = (int)ceilf(cx + ww * 0.5f);
+            for (int xx = x0; xx <= x1; ++xx) {
+                const float t = ((xx + 0.5f) - (cx - ww * 0.5f)) / ww;     /* 0 at the base, 1 at the tip */
+                if (t < 0 || t > 1) continue;
+                const float half = hh * (1.0f - t);
+                const int y0 = (int)floorf(cy - half), y1 = (int)ceilf(cy + half);
+                for (int yy = y0; yy <= y1; ++yy) {
+                    const float cov = (yy + 0.5f >= cy - half && yy + 0.5f <= cy + half) ? 1.0f : 0.5f;
+                    if (xx < 0 || yy < 0 || xx >= s.w || yy >= s.h) continue;
+                    const int a = (int)(cov * 255);
+                    s.px[(size_t)yy * s.stride + xx] = over(s.px[(size_t)yy * s.stride + xx], ((col >> 16) & 255) * a / 255, ((col >> 8) & 255) * a / 255, (col & 255) * a / 255, a);
+                }
+            }
+            continue;
+        }
+        const int isz = g.sh - K(5);
+        if (const Img *I = icon_for(m)) {
+            int ox = 0, oy = 0;
+            if (const Piece *p = fitted(image_id(m, I) + 400, *I, isz, isz, &ox, &oy)) blit(s, x + (g.sw - isz) / 2 + ox, y + (g.sh - isz) / 2 + oy, *p);
+        }
+        if (m.current) star(s, (float)(x + g.sw - K(3)), (float)(y + K(3)), 4.2f * k, 0xFFD23Cu, 0x8A4B08u);
+    }
+    /* the name of the slot the cursor or the pointer is on, on a cream plaque above it (the arrow has none) */
+    if (lit >= 0 && lit < n && it[lit].id >= 0) {
+        const CdItem &m = it[lit];
+        const float em = 15.0f;
+        const float tw = f.width(m.label, em);
+        const int pw = (int)tw + K(12), ph = K(15);
+        int px0 = g.x0 + lit * g.pitch + g.sw / 2 - pw / 2;
+        if (px0 < K(2)) px0 = K(2);
+        if (px0 + pw > w - K(2)) px0 = w - K(2) - pw;
+        const int py0 = g.y0 - K(2) - ph - K(3);
+        draw_plank(s, f, hd, px0, py0, pw, ph, 1, 1.0f);
+        f.draw(s, (float)(px0 + (pw - tw) / 2), py0 + (ph - f.cap(em)) / 2, m.label, em, C_TEXT);
+    }
+}

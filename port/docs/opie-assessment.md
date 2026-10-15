@@ -124,7 +124,7 @@ an earlier "~670" was a regex artifact, see the appendix).
 - **3 files** — `func_0204af3c.c`, `func_ov007_020c1448.c`, `func_ov007_020ca86c.c` —
   define *any* named `G3_`/`GX_`/`G2_` inline. Not "overwhelmingly." Three.
 - The norm is a bare store, sometimes not even volatile:
-  `*(volatile int *)0x4000440 = 2;` (func_ov006_020d09e0 in `src/actors/unit020cd744.cpp`),
+  `*(volatile int *)0x4000440 = 2;` (TrmpLine_DrawAll in `src/minigames/unit020cd744.cpp`),
   `src/game/actors/d_a_pic_gate.cpp:541`.
 
 So "the decomp has incidentally done most of the API-recovery a port needs" was the

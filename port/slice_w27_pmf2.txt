@@ -8,7 +8,7 @@
 # own commands). Its twenty-four records hold __fastcall faces from
 # port_kuppa_cmd_seat on (hal/intro_kuppa_dispatch.cpp), and that file no
 # longer defines the symbol. Its line in slice_gate10.txt stays commented out.
-src/actors/daDemo_c.cpp
+src/game/actors/d_a_demo.cpp
 #
 # The render and cleanup ActorBase::Process wrappers (arm9), resolved at the
 # caller by port/tools/hostgen.py's VIRTUAL_CALL rows like their init and
@@ -20,4 +20,4 @@ src/unnamed/arm9/0204/func_020432e4.c hostgen
 # state cell at +0x3f8, `(this->**(pp + 1))()`. The twenty cell words are
 # __fastcall faces now (hal/actor_classes_ov081.cpp's seat), and
 # unmatched/MrBlizzard_Behavior.cpp defines nothing.
-src/actors/daSnowman_c.cpp
+src/game/actors/d_a_snowman.cpp

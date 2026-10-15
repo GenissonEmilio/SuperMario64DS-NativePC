@@ -30,8 +30,8 @@
 # definitions: port/slice_dtors2.txt's own CMake block is
 # target_sources(walk_window ...), so on the other two hosting targets these
 # objects would carry a class vftable nothing references and close nothing.
-src/actors/daObjBk_Botaosi_c.cpp
-src/actors/daObjBk_Lift_c.cpp
+src/game/actors/d_a_obj_bk_botaosi.cpp
+src/game/actors/d_a_obj_bk_lift.cpp
 
 # ---- THE COST OF THE KNOCKDOWNPLANK SEAT, AND ITS ANSWER --------------------
 #
@@ -60,9 +60,9 @@ src/actors/daObjBk_Lift_c.cpp
 # of _ZTV13PoleBillboard, which this does not do and does not need: nothing here
 # changes a vtable fill or what any live object dispatches. It only gives two
 # already-referenced decorated names the bodies the cartridge has for them.
-# FOLDED into src/actors/daObjBk_Botaosi_c.cpp (row 33): src/_ZN14KnockDownPlank8OnKickedER8dActor_c.cpp
-# FOLDED into src/actors/daObjBk_Botaosi_c.cpp (row 33): src/_ZN14KnockDownPlank11OnAttacked2ER8dActor_c.cpp
-# FOLDED into src/actors/daObjBk_Botaosi_c.cpp (row 33): src/func_ov015_02111414.c
+# FOLDED into src/game/actors/d_a_obj_bk_botaosi.cpp (row 33): src/_ZN14KnockDownPlank8OnKickedER8dActor_c.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_botaosi.cpp (row 33): src/_ZN14KnockDownPlank11OnAttacked2ER8dActor_c.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_botaosi.cpp (row 33): src/func_ov015_02111414.c
 
 # ---- THE MODEL FAMILY'S TWELVE Destructor1 / Destructor0 ROWS --------------
 #

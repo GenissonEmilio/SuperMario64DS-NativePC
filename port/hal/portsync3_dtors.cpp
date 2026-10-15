@@ -2,8 +2,8 @@
  *
  * PORTSYNC3 (the 2026-10-14 main merge). Main's class headers stopped defining
  * the destructors inline for MSVC, and the TUs that own them keep the definition
- * behind `#ifndef _MSC_VER` (src/engine/fader/dFader_c.cpp, src/actors/daKpa_c.cpp
- * and daStar_c.cpp are the cases here; src/actors/daDemo_c.cpp's two Ext model
+ * behind `#ifndef _MSC_VER` (src/runtime/graphics/fader/d_fader.cpp, src/game/actors/d_a_kpa.cpp
+ * and daStar_c.cpp are the cases here; src/game/actors/d_a_demo.cpp's two Ext model
  * classes and daObjYajirusi_c have no definition in src/ at all). The host
  * still needs each one: port/unmatched/hostarm/*D0Ev.cpp and the flat D0 files
  * call `this->X::~X()` qualified, and the hal tables take its address.
@@ -15,7 +15,7 @@
  *
  * fBase_c::~fBase_c is the non-virtual base arm: it is the ROM's D2, which
  * stores fBase_c's vtable and unlinks the two list nodes, spelled by the flat
- * function src/actors/ActorBase.cpp already defines.
+ * function src/runtime/actor/ActorBase.cpp already defines.
  *
  * Destructor1 / Destructor0: classes whose header keeps the `_MSC_VER`
  * port seats ROM-slot destructors through hand tables, so these are reached only
@@ -34,9 +34,36 @@
 #include "daObjFl_Fall_Block_c.h"
 #include "daObjKaitendai_c.h"
 
-extern "C" fBase_c *_ZN7fBase_cD2Ev(fBase_c *self);
-
-fBase_c::~fBase_c() { _ZN7fBase_cD2Ev(this); }
+/* PORTDROP2: main's src/runtime/actor/ActorBase.cpp defines fBase_c::fBase_c,
+   ~fBase_c and InitResources as real members now (the flat D2 / D1 / D0 and the
+   flat InitResources the port used to forward to are gone), so the member
+   definition that stood here would be a second one. What the port still needs
+   is the ROM's FLAT spellings its hand tables and cdecl callers name, written
+   in terms of the real members. */
+extern "C" {
+fBase_c *_ZN7fBase_cD2Ev(fBase_c *self)
+{
+    self->fBase_c::~fBase_c();                    /* the D2 body: vptr + unlink the two nodes */
+    return self;
+}
+fBase_c *_ZN7fBase_cD1Ev(fBase_c *self)
+{
+    self->fBase_c::~fBase_c();                    /* D1: the complete-object destructor */
+    return self;
+}
+extern void *data_020a0eac;                       /* the actor heap */
+void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *ptr, void *heap);
+fBase_c *_ZN7fBase_cD0Ev(fBase_c *self)
+{
+    self->fBase_c::~fBase_c();                    /* D0: D1, then give the object back */
+    _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, data_020a0eac);
+    return self;
+}
+int _ZN7fBase_c13InitResourcesEv(void)            /* slot 0 default: callers pass a receiver, cdecl ignores it */
+{
+    return 1;
+}
+}
 
 dFdWipe_c::dFdWipe_c() {}
 extern "C" void *_ZTV10dFdDummy_c[12];   /* hal/scene_boot.cpp: the ROM-shaped table with the dual cdecl/thiscall slots */
@@ -52,12 +79,12 @@ dFdBrightness_c::~dFdBrightness_c() {}
 dFdColor_c::~dFdColor_c() {}
 dFdDummy_c::~dFdDummy_c() {}
 dFdWipe_c::~dFdWipe_c() {}
-// Fade members the host build leaves out (src/engine/fader/dFader_c.cpp keeps them
+// Fade members the host build leaves out (src/runtime/graphics/fader/d_fader.cpp keeps them
 // behind #ifndef _MSC_VER because they write the 2D engine). The host-side fade is
 // hal/fader_wipes.cpp; these only fill compiler vtables, like hal/shims.cpp does.
 void dFdBrightness_c::AdvanceFade() { AdvanceInterp(); }
 void dFdWipe_c::AdvanceFade() {}
-/* The ROM's dFdColor_c::AdvanceFade (src/engine/fader/dFader_c.cpp keeps it behind #ifndef _MSC_VER
+/* The ROM's dFdColor_c::AdvanceFade (src/runtime/graphics/fader/d_fader.cpp keeps it behind #ifndef _MSC_VER
    because it writes the 2D engine), statement for statement. The host's 2D blend registers are
    plain mapped memory, and the level-change black hold (hal/level_change.cpp) and the picture's
    fade both read the sub engine's BLDCNT / BLDY from here: a stub that only stepped the

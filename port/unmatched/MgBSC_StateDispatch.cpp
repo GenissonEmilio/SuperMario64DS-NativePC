@@ -125,16 +125,16 @@
 // Handing them a resolved vtable and a wall priced at zero would be worse than
 // handing them nothing, so the four sites are named here:
 //
-//   0x02129dc0  func_ov006_02129d94   dispatches data_ov006_02143070
-//   0x02129df8  func_ov006_02129d94   AND data_ov006_02143020 -- one TU, two
+//   0x02129dc0  Bit_RunKindA   dispatches data_ov006_02143070
+//   0x02129df8  Bit_RunKindA   AND data_ov006_02143020 -- one TU, two
 //                                     tables, two decode sites
-//   0x0212a248  func_ov006_0212a224   dispatches data_ov006_02143050
-//   0x0212a324  func_ov006_0212a2e0   dispatches data_ov006_02143038
+//   0x0212a248  Bit_RunKindB   dispatches data_ov006_02143050
+//   0x0212a324  Bit_UpdateAll   dispatches data_ov006_02143038
 //
 // Four decode sites across THREE TUs, covering FOUR tables (14 slots in total,
 // all arity 1, built by src/__sinit_ov006_021333e0.c).  Its vtable slot 6,
 // _ZN15dScMgSnowball_c8BehaviorEv, is NOT one of them: it reaches the machine by CALLING
-// func_ov006_0212a2e0 rather than decoding a pair itself, so a lane that only
+// Bit_UpdateAll rather than decoding a pair itself, so a lane that only
 // read slot 6 would price that class's wall at zero as well.  0x179's state
 // machine is also TWO LEVELS DEEP -- _0212a224 and _02129d94 are themselves
 // slots 1 and 2 of data_ov006_02143038 -- which is the section 14 depth
@@ -154,12 +154,12 @@
 //     ldr  r1,[r3,#4] / add r0,r4,r1,asr #1 / ands r1,r1,#1
 //     ldrne r2,[r0] / ldrne r1,[r3] / ldrne r1,[r2,r1] / ldreq r1,[r3]
 //     blx  r1                                     this = the class base
-//     bl   0x020b65e4                             func_ov004_020b65e4
+//     bl   0x020b65e4                             MgCoins_Update
 //     ldr  r0,[pc,#0x14] (= 0x00004f38) / add r0,r4,r0 / bl 0x020c19d0
 //     mov  r0,#1 / pop / bx lr
 //
 // 21 instructions plus a two-word pool = 23 words = 0x5c.  That tail --
-// func_ov004_020b65e4() then func_ov006_020c19d0(c + 0x4f38) then return 1 --
+// MgCoins_Update() then Dealer_Update(c + 0x4f38) then return 1 --
 // is dScMgMemory2_c's slot 6 verbatim; only the index offset and the table
 // differ.  Both callees are already in the port, the second as a host copy in
 // unmatched/MgMemory2_FieldPmf.cpp.
@@ -228,10 +228,10 @@ extern MgPmf data_ov006_02142f94[];
 void port_mg_bsc_states_seat(void);
 
 /* the ordinary callees the host copy below keeps, each spelled as its own src
-   TU spells it.  func_ov006_020c19d0 is itself a host copy, in
+   TU spells it.  Dealer_Update is itself a host copy, in
    unmatched/MgMemory2_FieldPmf.cpp. */
-void func_ov004_020b65e4(void);
-void func_ov006_020c19d0(void *c);
+void MgCoins_Update(void);
+void Dealer_Update(void *c);
 
 }  /* extern "C" */
 
@@ -330,7 +330,7 @@ extern "C" void port_mg_bsc_index_range(int *lo, int *hi)
 // records: the TU spells `extern "C" Entry data_ov006_02142f94[];`, so the
 // reference comes in as the plain _data_ov006_02142f94 the ov006 mount already
 // defines. The dumpbin UNDEF sweep of the object before the link confirms it --
-// _data_ov006_02142f94, _func_ov004_020b65e4, _func_ov006_020c19d0 and nothing
+// _data_ov006_02142f94, _MgCoins_Update, _Dealer_Update and nothing
 // decorated. What that silence used to hide is the stride, and the stride is
 // now measured on both sides above rather than argued about.
 //

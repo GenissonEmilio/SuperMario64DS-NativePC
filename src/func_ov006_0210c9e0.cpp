@@ -121,16 +121,16 @@ extern void func_02012790(int a);
 extern void _ZN5Scene9SetFadersEP15FaderBrightness(void *f);
 extern void func_0202ec9c(void *f, int a);
 extern void _ZN5Scene14StartSceneFadeEjjt(u32 a, u32 b, u16 t);
-extern void func_ov004_020ad79c(int a, int b);
-extern void func_ov004_020adb1c(int a);
-extern void func_ov004_020ae274(int a);
-extern void func_ov006_0210c180(char *c);
-extern void func_ov006_0210c1a8(int *o);
-extern void func_ov006_0210c218(u8 *p, s16 a, s16 b);
-extern void func_ov006_0210c278(u8 *o);
-extern void func_ov006_0210c2c0(int *p, int v);
-extern void func_ov006_0210c2d4(char *c);
-extern int  func_ov006_0210c500(void *p);
+extern void Mg_SaveRecordPair(int a, int b);
+extern void Mg_SubmitScore(int a);
+extern void Mg_PlayJingle(int a);
+extern void SlotLamp_Start(char *c);
+extern void SlotLamp_Tick(int *o);
+extern void SlotBlink_Start(u8 *p, s16 a, s16 b);
+extern void SlotBlink_Tick(u8 *o);
+extern void SlotReel_SetSpeed(int *p, int v);
+extern void SlotBet_OnTouch(char *c);
+extern int  SlotReels_CheckStopped(void *p);
 
 extern int  data_ov006_0213e600[];
 extern u8   data_ov006_0213e4d8[];
@@ -154,7 +154,7 @@ extern int  data_0209f61c;
    worse than a byte difference: port/hal/scene_mg_slot1.cpp's thunks are
    __fastcall with the dummy second parameter that makes them __thiscall-
    compatible, so a __cdecl indirect call hands them `this` on the stack and
-   they read whatever is in ecx. That crashed inside func_ov006_0210c354 with
+   they read whatever is in ecx. That crashed inside SlotBet_Reset with
    `this` reading self+0x470c -- caught by a scripted-touch run, not by any
    compile-time check. A shadow struct with virtuals is the shape
    src/func_ov006_0210d1fc.cpp already uses over this same object, and
@@ -196,7 +196,7 @@ struct BetIcon {
  *   +0x46ff + r     u8    reel r's stop index into that strip
  *   +0x4702 + r     u8    reel r is still spinning
  *   +0x4705         u8    how many reels have been stopped this round
- *   +0x4708         u8    the speed step, 0..2, raised by func_ov006_0210c500
+ *   +0x4708         u8    the speed step, 0..2, raised by SlotReels_CheckStopped
  *   +0x4709         u8    the winning symbol; indexes the {15,10,10,5,5,20}
  *                         payout table data_ov006_0213e4d8
  *   +0x470a         u8    this round was a win
@@ -210,7 +210,7 @@ struct BetIcon {
  *      wrap its stop index mod 21 on underflow, keep sound 0x161 alive, and
  *      -- message 565's touch-to-stop rule -- test the touch point against
  *      each reel's 0x40 x 0x40 box around data_ov006_0213e63c[r]. When all
- *      three have stopped and coasted to zero, func_ov006_0210c500 scores the
+ *      three have stopped and coasted to zero, SlotReels_CheckStopped scores the
  *      line, the payout table and the wild bonus are added, the coin counter
  *      is paid, state = 4, timer 60.
  *   4  wait, then fire the win effects and branch: paid -> state 5 timer 100,
@@ -243,7 +243,7 @@ extern "C" int func_ov006_0210c9e0(char *c)
         *(u8 *)(c + 0x470a) = 0;
         *(u8 *)(c + 0x470b) = 0;
         *(int *)(c + 0x46b4) = 1;
-        func_ov006_0210c2d4(c + 0x4660);
+        SlotBet_OnTouch(c + 0x4660);
         if (*(u8 *)(c + 0xc4) == 0) {
             *(u8 *)(c + 0xc3) = 1;
             *(u8 *)(c + 0xc4) = 1;
@@ -312,7 +312,7 @@ extern "C" int func_ov006_0210c9e0(char *c)
                             *r = *r + 1;
                             if (*(u8 *)(c + 0x4671) != 0) {
                                 *(u8 *)(c + 0x4671) = 0;
-                                func_ov004_020ad79c(*(int *)(c + 0xa8),
+                                Mg_SaveRecordPair(*(int *)(c + 0xa8),
                                                     *(int *)(c + 0xb4));
                             }
                             func_02012718(0x162,
@@ -330,7 +330,7 @@ extern "C" int func_ov006_0210c9e0(char *c)
                 }
             }
             if (all == 1) {
-                *(u8 *)(c + 0x470a) = (u8)func_ov006_0210c500(c);
+                *(u8 *)(c + 0x470a) = (u8)SlotReels_CheckStopped(c);
                 *(int *)(c + 0x46b8) = 0;
                 if (*(u8 *)(c + 0x470a) != 0) {
                     int *w = (int *)L(c + 0x46b8);
@@ -343,7 +343,7 @@ extern "C" int func_ov006_0210c9e0(char *c)
                         *w = *w + n * 2;
                     }
                 }
-                func_ov004_020ad79c(*(int *)(c + 0x46b8) *
+                Mg_SaveRecordPair(*(int *)(c + 0x46b8) *
                                         *(int *)(c + 0x467c) +
                                         *(int *)(c + 0xa8),
                                     *(int *)(c + 0xb4));
@@ -358,20 +358,20 @@ extern "C" int func_ov006_0210c9e0(char *c)
         if (DecIfAbove0_Byte((u8 *)(c + 0x470c)) == 0) {
             if (*(u8 *)(c + 0x470a) != 0) {
                 int s = *(u8 *)(c + 0x4709);
-                func_ov006_0210c218((u8 *)(c + 0x4684),
+                SlotBlink_Start((u8 *)(c + 0x4684),
                                     data_ov006_0213e654[s * 2],
                                     data_ov006_0213e656[s * 2]);
             }
             n = *(u8 *)(c + 0x470b);
             if (n != 0 && n < 3) {
-                func_ov006_0210c218((u8 *)(c + 0x4690),
+                SlotBlink_Start((u8 *)(c + 0x4690),
                                     data_ov006_0213e4f8[(n - 1) * 2],
                                     data_ov006_0213e4fa[(n - 1) * 2]);
             }
             if (*(int *)(c + 0x46b8) != 0) {
                 *(int *)(c + 0x46b4) = 5;
                 *(u8 *)(c + 0x470c) = 0x64;
-                func_ov006_0210c180(c + 0x469c);
+                SlotLamp_Start(c + 0x469c);
                 func_02012790(0x26);
             } else {
                 *(int *)(c + 0x46b4) = 7;
@@ -384,7 +384,7 @@ extern "C" int func_ov006_0210c9e0(char *c)
 
     case 5:
         if (DecIfAbove0_Byte((u8 *)(c + 0x470c)) == 0) {
-            func_ov006_0210c2c0((int *)(c + 0x4660), *(int *)(c + 0x46b8));
+            SlotReel_SetSpeed((int *)(c + 0x4660), *(int *)(c + 0x46b8));
             *(u8 *)(c + 0x470c) = 0x3c;
             *(int *)(c + 0x46b4) = 6;
         }
@@ -393,7 +393,7 @@ extern "C" int func_ov006_0210c9e0(char *c)
     case 6: {
         int idle = !*(int *)(c + 0x4680);
         if (idle != 0) {
-            func_ov004_020adb1c(*(int *)(c + 0xa8));
+            Mg_SubmitScore(*(int *)(c + 0xa8));
             if (DecIfAbove0_Byte((u8 *)(c + 0x470c)) == 0) {
                 ((Obj *)(void *)c)->m48(4);
             }
@@ -438,7 +438,7 @@ extern "C" int func_ov006_0210c9e0(char *c)
             func_02012718(0x164,
                           data_ov006_0213e63c[(state - 9) >> 1].x << 12);
             if (((state - 9) >> 1) == 0) {
-                func_ov004_020ae274(2);
+                Mg_PlayJingle(2);
             }
         }
         break;
@@ -473,8 +473,8 @@ extern "C" int func_ov006_0210c9e0(char *c)
     }
 
     ((BetIcon *)(void *)(c + 0x4660))->Update();
-    func_ov006_0210c278((u8 *)(c + 0x4684));
-    func_ov006_0210c278((u8 *)(c + 0x4690));
-    func_ov006_0210c1a8((int *)(c + 0x469c));
+    SlotBlink_Tick((u8 *)(c + 0x4684));
+    SlotBlink_Tick((u8 *)(c + 0x4690));
+    SlotLamp_Tick((int *)(c + 0x469c));
     return 1;
 }

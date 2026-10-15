@@ -47,7 +47,7 @@
 # teardown WithMeshClsn's D0 calls (D1 0x02035504, D0 0x020354e0, table
 # _ZTV5dBgCh) and the subobject RaycastLine's D0 tears down at this+0x64
 # (D1 0x0203ac50 already linked, D0 0x0203ac2c, table _ZTV8dM3dGSph).
-src/engine/collision/dBgCh.cpp
+src/engine/collision/d_bg_ch.cpp
 # RETIRED at SLICE1: body now in src/_ZN5dBgChD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN5dBgChD0Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN8dM3dGSphD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
@@ -394,17 +394,17 @@ port/unmatched/hostarm/_ZN8PoleLiftD0Ev.cpp
 # FOLDED into src/game/actors/d_a_obj_km2_agaru.cpp (row 386): src/func_ov045_021114a8.cpp
 # FOLDED into src/game/actors/d_a_obj_km2_agaru.cpp (row 386): src/func_ov045_021114c8.c
 # FOLDED into src/game/actors/d_a_obj_km2_ami_bou.cpp (row 387): src/d_a_obj_km2_ami_bou.c
-src/actors/daObjKm2_Nobiru_c.cpp
+src/game/actors/d_a_obj_km2_nobiru.cpp
 # RETIRED at SLICE1: body now in src/_ZN17ExtendingPlatformD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN17ExtendingPlatformD0Ev.cpp
-# FOLDED into src/actors/daObjKm2_Nobiru_c.cpp (row 396): src/_ZN17ExtendingPlatform16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjKm2_Nobiru_c.cpp (row 396): src/_ZN17ExtendingPlatform6RenderEv.cpp
-# FOLDED into src/actors/daObjKm2_Nobiru_c.cpp (row 396): src/_ZN17ExtendingPlatform8BehaviorEv.cpp
-# FOLDED into src/actors/daObjKm2_Nobiru_c.cpp (row 396): src/_ZN17ExtendingPlatform13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjKm2_Nobiru_c.cpp (row 396): src/d_a_obj_km2_nobiru.c
-# FOLDED into src/actors/daObjKm2_Nobiru_c.cpp (row 396): src/_ZN17ExtendingPlatform16OnPendingDestroyEv.cpp
-# FOLDED into src/actors/daObjKm2_Nobiru_c.cpp (row 396): src/_ZN17ExtendingPlatform23UpdateColliderTransformEv.cpp
-# FOLDED into src/actors/daObjKm2_Nobiru_c.cpp (row 396): src/_ZN17ExtendingPlatform20UpdateModelTransformEv.cpp
+# FOLDED into src/game/actors/d_a_obj_km2_nobiru.cpp (row 396): src/_ZN17ExtendingPlatform16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_km2_nobiru.cpp (row 396): src/_ZN17ExtendingPlatform6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_km2_nobiru.cpp (row 396): src/_ZN17ExtendingPlatform8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_km2_nobiru.cpp (row 396): src/_ZN17ExtendingPlatform13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_km2_nobiru.cpp (row 396): src/d_a_obj_km2_nobiru.c
+# FOLDED into src/game/actors/d_a_obj_km2_nobiru.cpp (row 396): src/_ZN17ExtendingPlatform16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_obj_km2_nobiru.cpp (row 396): src/_ZN17ExtendingPlatform23UpdateColliderTransformEv.cpp
+# FOLDED into src/game/actors/d_a_obj_km2_nobiru.cpp (row 396): src/_ZN17ExtendingPlatform20UpdateModelTransformEv.cpp
 src/game/actors/d_a_obj_km2_ukishima.cpp
 src/game/actors/d_a_obj_km2_fall_block.cpp
 
@@ -431,10 +431,10 @@ src/game/actors/d_a_obj_km2_gura.cpp
 # (nothing would have named it; /OPT:REF drops an unreferenced object and the
 # line would sit there looking seated, which the header forbids). The wave-5
 # section (G) below carries it now, named by 141's fill.
-src/actors/daObjUkiyuka_c.cpp
-# FOLDED into src/actors/daObjUkiyuka_c.cpp (row 433): src/_ZN14daObjUkiyuka_c6RenderEv.cpp
-# FOLDED into src/actors/daObjUkiyuka_c.cpp (row 433): src/func_ov002_020b6584.c
-# FOLDED into src/actors/daObjUkiyuka_c.cpp (row 433): src/func_ov002_020b6424.c
+src/game/actors/d_a_obj_ukiyuka.cpp
+# FOLDED into src/game/actors/d_a_obj_ukiyuka.cpp (row 433): src/_ZN14daObjUkiyuka_c6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_ukiyuka.cpp (row 433): src/func_ov002_020b6584.c
+# FOLDED into src/game/actors/d_a_obj_ukiyuka.cpp (row 433): src/func_ov002_020b6424.c
 
 # ---- (G) TILTING_PLATFORM_BFS (141): HELD IN WAVE 4, RESTORED IN WAVE 5 ---
 # Wave 4 measured the class complete but held it back on one port-wide gap:
@@ -471,13 +471,13 @@ src/game/actors/d_a_obj_km2_gura.cpp
 # callback the base Init installs, and the two quaternion feeders that
 # callback runs. _ZN15daObjGuragura_c6RenderEv is here at last -- the 145 block above
 # recorded why it had to wait for exactly this section.
-src/actors/daObjGuragura_c.cpp
-# FOLDED into src/actors/daObjGuragura_c.cpp (row 473): src/_ZN15daObjGuragura_c6RenderEv.cpp
-# FOLDED into src/actors/daObjGuragura_c.cpp (row 473): src/func_ov002_020b6244.c
-# FOLDED into src/actors/daObjGuragura_c.cpp (row 473): src/func_ov002_020b60fc.c
-# FOLDED into src/actors/daObjGuragura_c.cpp (row 473): src/func_ov002_020b6374.c
-# FOLDED into src/actors/daObjGuragura_c.cpp (row 473): src/func_ov002_020b62cc.c
-# FOLDED into src/actors/daObjGuragura_c.cpp (row 473): src/func_ov002_020b6074.cpp
+src/game/actors/d_a_obj_guragura.cpp
+# FOLDED into src/game/actors/d_a_obj_guragura.cpp (row 473): src/_ZN15daObjGuragura_c6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_guragura.cpp (row 473): src/func_ov002_020b6244.c
+# FOLDED into src/game/actors/d_a_obj_guragura.cpp (row 473): src/func_ov002_020b60fc.c
+# FOLDED into src/game/actors/d_a_obj_guragura.cpp (row 473): src/func_ov002_020b6374.c
+# FOLDED into src/game/actors/d_a_obj_guragura.cpp (row 473): src/func_ov002_020b62cc.c
+# FOLDED into src/game/actors/d_a_obj_guragura.cpp (row 473): src/func_ov002_020b6074.cpp
 
 # ---- the quaternion/Fix12 closure (6 TUs) ---------------------------------
 # Quaternion_Normalize is the sqrt unit's caller; Quaternion_FromVector3
@@ -510,26 +510,26 @@ src/unnamed/arm9/0203/func_0203cebc.c
 # _ZN10dBgW_KcMbgC2Ev the base constructor C1 calls, func_020396c0 the enable-mode
 # setter id 148's InitResources uses, func_0203aad0 the scale reader its
 # Behavior and Render both dispatch on.
-src/engine/collision/dBgW_KcMbgSclY.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbgSclY.cpp (row 512): src/_ZN14dBgW_KcMbgSclYD1Ev.cpp
+src/engine/collision/d_bg_w_kc_mbg_scl_y.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg_scl_y.cpp (row 512): src/_ZN14dBgW_KcMbgSclYD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN14dBgW_KcMbgSclYD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN14dBgW_KcMbgSclYD0Ev.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbgSclY.cpp (row 512): src/_ZN14dBgW_KcMbgSclY9Virtual08Ev.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbgSclY.cpp (row 512): src/_ZN14dBgW_KcMbgSclY9GetNormalEsR7Vector3.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbgSclY.cpp (row 512): src/_ZN14dBgW_KcMbgSclY10DetectClsnER9dBgCh_Gnd.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbgSclY.cpp (row 512): src/_ZN14dBgW_KcMbgSclY10DetectClsnER9dBgCh_Lin.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbgSclY.cpp (row 512): src/_ZN14dBgW_KcMbgSclY10DetectClsnER12dBgCh_SphCrr.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbgSclY.cpp (row 512): src/_ZN14dBgW_KcMbgSclY7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block.c
-# FOLDED into src/engine/collision/dBgW_KcMbgSclY.cpp (row 512): src/_ZN14dBgW_KcMbgSclY9SetScaleYE5Fix12IiE.c
-# FOLDED into src/engine/collision/dBgW_KcMbgSclY.cpp (row 512): src/func_0203aa74.c
-# FOLDED into src/engine/collision/dBgW_KcMbgSclY.cpp (row 512): src/func_0203aa10.c
-src/engine/collision/dM3dGSph.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbgSclY.cpp (row 512): src/func_0203aad0.c
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg_scl_y.cpp (row 512): src/_ZN14dBgW_KcMbgSclY9Virtual08Ev.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg_scl_y.cpp (row 512): src/_ZN14dBgW_KcMbgSclY9GetNormalEsR7Vector3.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg_scl_y.cpp (row 512): src/_ZN14dBgW_KcMbgSclY10DetectClsnER9dBgCh_Gnd.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg_scl_y.cpp (row 512): src/_ZN14dBgW_KcMbgSclY10DetectClsnER9dBgCh_Lin.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg_scl_y.cpp (row 512): src/_ZN14dBgW_KcMbgSclY10DetectClsnER12dBgCh_SphCrr.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg_scl_y.cpp (row 512): src/_ZN14dBgW_KcMbgSclY7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block.c
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg_scl_y.cpp (row 512): src/_ZN14dBgW_KcMbgSclY9SetScaleYE5Fix12IiE.c
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg_scl_y.cpp (row 512): src/func_0203aa74.c
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg_scl_y.cpp (row 512): src/func_0203aa10.c
+src/engine/collision/d_m3d_g_sph.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg_scl_y.cpp (row 512): src/func_0203aad0.c
 # RETIRED at SLICE1: body now in src/_ZN10dBgW_KcMbgD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN10dBgW_KcMbgD2Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN10dBgW_KcMbgC1Ev.cpp. MSVC folds the ROM constructor variants into one symbol, so only one of a class two per-function constructor TUs can be compiled.
 #src/_ZN10dBgW_KcMbgC2Ev.cpp
-src/engine/collision/dBgW.cpp
+src/engine/collision/d_bg_w.cpp
 
 # ---- the two host files, carried as slice lines ----------------------------
 # The wave-2 self-registration pattern (port/hal/w2_dtor_heads.cpp in

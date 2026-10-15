@@ -132,14 +132,14 @@ data_ov063_0211efbc:0x24
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov063_0211edc0                        now defined by src/actors/daTrs_c.cpp
-#   data_ov063_0211edfc                        now defined by src/actors/daTrs_c.cpp
-#   data_ov063_0211ee08                        now defined by src/actors/daTrs_c.cpp
-#   data_ov063_0211ee20                        now defined by src/actors/daTrs_c.cpp
-#   data_ov063_0211ee74                        now defined by src/actors/daTrs_c.cpp
-#   data_ov063_0211ee80                        now defined by src/actors/daTrs_c.cpp
-#   data_ov063_0211ee8c                        now defined by src/actors/daTrs_c.cpp
+#   data_ov063_0211edc0                        now defined by src/game/actors/d_a_trs.cpp
+#   data_ov063_0211edfc                        now defined by src/game/actors/d_a_trs.cpp
+#   data_ov063_0211ee08                        now defined by src/game/actors/d_a_trs.cpp
+#   data_ov063_0211ee20                        now defined by src/game/actors/d_a_trs.cpp
+#   data_ov063_0211ee74                        now defined by src/game/actors/d_a_trs.cpp
+#   data_ov063_0211ee80                        now defined by src/game/actors/d_a_trs.cpp
+#   data_ov063_0211ee8c                        now defined by src/game/actors/d_a_trs.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov063_0211edc4! data_ov063_0211edcc! data_ov063_0211edd4! data_ov063_0211eddc! data_ov063_0211ede4! data_ov063_0211edec! data_ov063_0211edf4! data_ov063_0211ee98! data_ov063_0211eea0! data_ov063_0211eea8! data_ov063_0211eeb0! data_ov063_0211eeb8! data_ov063_0211eec0! data_ov063_0211eec8! data_ov063_0211eed0! data_ov063_0211ef58! data_ov063_0211ef60! data_ov063_0211ef80! data_ov063_0211ef88! data_ov063_0211ef90!
+data_ov063_0211edc4! data_ov063_0211edcc! data_ov063_0211edd4! data_ov063_0211eddc! data_ov063_0211ede4! data_ov063_0211edec! data_ov063_0211edf4! gThMeryGoModelFile! gThKaidanCollisionFile! gThTrapModelFile! gThKaidanModelFile! gThHondanaModelFile! gThHondanaCollisionFile! gThMeryGoCollisionFile! gThTrapCollisionFile! gThDownBCollisionFile! gThDownBModelFile! data_ov063_0211ef80! data_ov063_0211ef88! data_ov063_0211ef90!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
 data_ov063_0211edc0! data_ov063_0211ee74! data_ov063_0211ee80! data_ov063_0211ee8c! data_ov063_0211ee20! data_ov063_0211edfc! data_ov063_0211ee08!

@@ -13,10 +13,10 @@
 # FIVE MATCHED ov065 TUs ARE DELIBERATELY ABSENT, each with a host copy
 # instead (the gate-173 PMF ruling, measured -- see
 # port/unmatched/Ov065_StateDispatch.cpp's banner):
-#   src/actors/daYurei_Mucho_c.cpp     incomplete-class PMF read at table+8
+#   src/game/actors/d_a_yurei_mucho.cpp     incomplete-class PMF read at table+8
 #   src/_ZN5Swoop8BehaviorEv.cpp      same
 #   src/_ZN6Dorrie8BehaviorEv.cpp     16-byte PMF stride over 8-byte records
-#   src/actors/daYurei_Mucho_c.cpp       16-byte PMF over the whole table
+#   src/game/actors/d_a_yurei_mucho.cpp       16-byte PMF over the whole table
 #   src/func_ov065_02117944.cpp       same
 # ONE MORE WAS ABSENT BECAUSE src/ NEVER BANKED IT: func_ov065_02118838
 # (Dorrie's neck chain, 0x414 bytes) -- hosted in
@@ -33,116 +33,116 @@
 # the measured gate-6 mistake.
 
 # ---- SNUFIT (236): factory, methods, states ---------------------------------
-src/actors/daYurei_Mucho_c.cpp
+src/game/actors/d_a_yurei_mucho.cpp
 
 # ---- SWOOP (237) ------------------------------------------------------------
-src/actors/daBasabasa_c.cpp
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/_ZN5SwoopD1Ev.cpp
+src/game/actors/d_a_basabasa.cpp
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/_ZN5SwoopD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN5SwoopD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN5SwoopD0Ev.cpp
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/_ZN5Swoop16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/_ZN5Swoop16OnPendingDestroyEv.cpp
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/_ZN5Swoop6RenderEv.cpp
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/_ZN5Swoop13InitResourcesEv.cpp
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/func_ov065_0211704c.c
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/func_ov065_02117404.cpp
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/func_ov065_021175b0.c
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/func_ov065_02117624.c
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/func_ov065_021176fc.cpp
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/func_ov065_02117780.c
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/func_ov065_021177e4.cpp
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/func_ov065_02117888.c
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/func_ov065_021178fc.c
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/func_ov065_02117994.c
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/_ZN5Swoop16OnAimedAtWithEggEv.cpp
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/_ZN5Swoop13OnTurnIntoEggER6Player.cpp
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/_ZN5Swoop13OnYoshiTryEatEv.cpp
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/_ZN5Swoop16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/_ZN5Swoop16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/_ZN5Swoop6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/_ZN5Swoop13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/func_ov065_0211704c.c
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/func_ov065_02117404.cpp
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/func_ov065_021175b0.c
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/func_ov065_02117624.c
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/func_ov065_021176fc.cpp
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/func_ov065_02117780.c
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/func_ov065_021177e4.cpp
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/func_ov065_02117888.c
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/func_ov065_021178fc.c
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/func_ov065_02117994.c
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/_ZN5Swoop16OnAimedAtWithEggEv.cpp
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/_ZN5Swoop13OnTurnIntoEggER6Player.cpp
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/_ZN5Swoop13OnYoshiTryEatEv.cpp
 
 # ---- DORRIE (168) + DORRIE_CAP (169) ---------------------------------------
-src/actors/daDossy_c.cpp
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/d_a_dossy_cap.c
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/_ZN6DorrieD1Ev.cpp
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/_ZN6DorrieD0Ev.cpp
+src/game/actors/d_a_dossy.cpp
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/d_a_dossy_cap.c
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/_ZN6DorrieD1Ev.cpp
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/_ZN6DorrieD0Ev.cpp
 port/unmatched/hostarm/_ZN6DorrieD0Ev.cpp
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/_ZN12daDossyCap_cD1Ev.cpp
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/_ZN12daDossyCap_cD0Ev.cpp
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/_ZN12daDossyCap_cD1Ev.cpp
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/_ZN12daDossyCap_cD0Ev.cpp
 port/unmatched/hostarm/_ZN12daDossyCap_cD0Ev.cpp
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/_ZN6Dorrie16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/_ZN6Dorrie6RenderEv.cpp
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/_ZN12daDossyCap_c6RenderEv.cpp
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/_ZN12daDossyCap_c8BehaviorEv.cpp
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/_ZN6Dorrie13InitResourcesEv.cpp
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/_ZN12daDossyCap_c13InitResourcesEv.cpp
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/_ZN14DorriePlatformD1Ev.cpp
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/func_ov065_021180d4.c
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/func_ov065_02118248.cpp
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/func_ov065_021182e4.cpp
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/func_ov065_021183c8.c
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/func_ov065_02118634.c
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/func_ov065_02118c4c.c
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/func_ov065_02118cc4.c
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/func_ov065_02119210.c
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/func_ov065_0211956c.c
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/func_ov065_02119594.c
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/func_ov065_021195bc.c
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/func_ov065_021195d0.c
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/_ZN12daDossyCap_c13OnYoshiTryEatEv.cpp
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/_ZN14DorriePlatformC1Ev.cpp
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/_ZN6Dorrie16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/_ZN6Dorrie6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/_ZN12daDossyCap_c6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/_ZN12daDossyCap_c8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/_ZN6Dorrie13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/_ZN12daDossyCap_c13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/_ZN14DorriePlatformD1Ev.cpp
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/func_ov065_021180d4.c
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/func_ov065_02118248.cpp
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/func_ov065_021182e4.cpp
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/func_ov065_021183c8.c
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/func_ov065_02118634.c
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/func_ov065_02118c4c.c
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/func_ov065_02118cc4.c
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/func_ov065_02119210.c
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/func_ov065_0211956c.c
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/func_ov065_02119594.c
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/func_ov065_021195bc.c
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/func_ov065_021195d0.c
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/_ZN12daDossyCap_c13OnYoshiTryEatEv.cpp
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/_ZN14DorriePlatformC1Ev.cpp
 
 # ---- ov065's three HMC sinits (edge: ov65_bringup) --------------------------
 src/unnamed/ov065/__sinit_ov065_0211c110.c
-# FOLDED into src/actors/daBasabasa_c.cpp (row 39): src/__sinit_ov065_0211c2a8.c
-# FOLDED into src/actors/daDossy_c.cpp (row 62): src/__sinit_ov065_0211c440.c
+# FOLDED into src/game/actors/d_a_basabasa.cpp (row 39): src/__sinit_ov065_0211c2a8.c
+# FOLDED into src/game/actors/d_a_dossy.cpp (row 62): src/__sinit_ov065_0211c440.c
 
 # ---- WORK_ELEVATOR (68) -----------------------------------------------------
-src/actors/daObjCvNewsLift_c.cpp
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/_ZN12WorkElevatorD1Ev.cpp
+src/game/actors/d_a_obj_cv_news_lift.cpp
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/_ZN12WorkElevatorD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN12WorkElevatorD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN12WorkElevatorD0Ev.cpp
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/_ZN12WorkElevator16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/_ZN12WorkElevator6RenderEv.cpp
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/_ZN12WorkElevator8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/_ZN12WorkElevator16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/_ZN12WorkElevator6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/_ZN12WorkElevator8BehaviorEv.cpp
 port/unmatched/hostarm/_ZN12WorkElevator8BehaviorEv.cpp
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/_ZN12WorkElevator13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/func_ov021_0211129c.c
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/_ZN12WorkElevator13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/func_ov021_0211129c.c
 # The render-side matrix pass, main's daObjCvNewsLift_c::UpdateModelTransforms
 # back-ported into its per-function file (run linkfull, lane ASMCPORT): the
 # ending is main's blink test, so the mwcc asm veneer is gone and the host copy
 # that stood in port/unmatched/WorkElevator_Mtx.cpp is retired.
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/func_ov021_02111434.c
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/func_ov021_02111ec4.c
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/func_ov021_02111edc.cpp
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/func_ov021_02111f1c.c
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/func_ov021_02111f34.cpp
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/func_ov021_02111f74.c
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/func_ov021_02111f8c.cpp
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/func_ov021_02111fcc.c
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/func_ov021_02111fe4.c
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/func_ov021_02112024.cpp
-# FOLDED into src/actors/daObjCvNewsLift_c.cpp (row 96): src/func_ov021_02112128.c
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/func_ov021_02111434.c
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/func_ov021_02111ec4.c
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/func_ov021_02111edc.cpp
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/func_ov021_02111f1c.c
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/func_ov021_02111f34.cpp
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/func_ov021_02111f74.c
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/func_ov021_02111f8c.cpp
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/func_ov021_02111fcc.c
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/func_ov021_02111fe4.c
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/func_ov021_02112024.cpp
+# FOLDED into src/game/actors/d_a_obj_cv_news_lift.cpp (row 96): src/func_ov021_02112128.c
 
 # ---- ROLLING_ROCK (221) -----------------------------------------------------
-src/actors/daGrock_c.cpp
-# FOLDED into src/actors/daGrock_c.cpp (row 122): src/_ZN11RollingRockD1Ev.cpp
+src/game/actors/d_a_grock.cpp
+# FOLDED into src/game/actors/d_a_grock.cpp (row 122): src/_ZN11RollingRockD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN11RollingRockD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN11RollingRockD0Ev.cpp
-# FOLDED into src/actors/daGrock_c.cpp (row 122): src/_ZN11RollingRock16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daGrock_c.cpp (row 122): src/_ZN11RollingRock6RenderEv.cpp
-# FOLDED into src/actors/daGrock_c.cpp (row 122): src/_ZN11RollingRock8BehaviorEv.cpp
-# FOLDED into src/actors/daGrock_c.cpp (row 122): src/_ZN11RollingRock13InitResourcesEv.cpp
-# FOLDED into src/actors/daGrock_c.cpp (row 122): src/_ZN11RollingRock16OnAimedAtWithEggEv.cpp
-# FOLDED into src/actors/daGrock_c.cpp (row 122): src/func_ov021_02112294.c
-# FOLDED into src/actors/daGrock_c.cpp (row 122): src/func_ov021_021122fc.cpp
-# FOLDED into src/actors/daGrock_c.cpp (row 122): src/func_ov021_021123b0.c
-# FOLDED into src/actors/daGrock_c.cpp (row 122): src/func_ov021_02112544.cpp
-# FOLDED into src/actors/daGrock_c.cpp (row 122): src/func_ov021_021127b4.c
+# FOLDED into src/game/actors/d_a_grock.cpp (row 122): src/_ZN11RollingRock16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_grock.cpp (row 122): src/_ZN11RollingRock6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_grock.cpp (row 122): src/_ZN11RollingRock8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_grock.cpp (row 122): src/_ZN11RollingRock13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_grock.cpp (row 122): src/_ZN11RollingRock16OnAimedAtWithEggEv.cpp
+# FOLDED into src/game/actors/d_a_grock.cpp (row 122): src/func_ov021_02112294.c
+# FOLDED into src/game/actors/d_a_grock.cpp (row 122): src/func_ov021_021122fc.cpp
+# FOLDED into src/game/actors/d_a_grock.cpp (row 122): src/func_ov021_021123b0.c
+# FOLDED into src/game/actors/d_a_grock.cpp (row 122): src/func_ov021_02112544.cpp
+# FOLDED into src/game/actors/d_a_grock.cpp (row 122): src/func_ov021_021127b4.c
 
 # ---- SHUTTER_HMC (67): no Render TU -- slot 9 is ov002's shared body --------
 src/game/actors/d_a_obj_cv_shutter.cpp
 
 # ---- ov021's three sinits (edge: ov65_bringup) ------------------------------
 src/unnamed/ov021/__sinit_ov021_02113500.c
-# FOLDED into src/actors/daGrock_c.cpp (row 122): src/__sinit_ov021_02113688.c
+# FOLDED into src/game/actors/d_a_grock.cpp (row 122): src/__sinit_ov021_02113688.c
 # FOLDED into src/game/actors/d_a_obj_cv_shutter.cpp (row 138): src/__sinit_ov021_021136c8.c
 
 # ---- the sqrt closure (edge: WE's rider-push callback + the hostgen four) --
@@ -161,7 +161,7 @@ src/unnamed/arm9/0203/func_0203cebc.c
 # (call target 0x02010518 re-derived from the reloc runs; the probe's other
 # class-b suggestion, _ZN6EyerokD0Ev, was a shared-window NAME RACE and is
 # aliased by address in hal/actor_classes_ov065.cpp instead of sliced)
-src/actors/dActor_c.cpp
+src/runtime/actor/d_actor.cpp
 
 # ---- the lane's host files (the slice reader takes any repo path) -----------
 port/hal/actor_classes_ov065.cpp

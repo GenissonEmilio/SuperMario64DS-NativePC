@@ -31,7 +31,7 @@
 # byte-locked in src/ as the proof. Listing both copies would be an LNK2005;
 # listing neither would drop the body silently.
 #
-# (1) src/actors/Eyerok.cpp  ->  unmatched/Eyerok_Behavior.cpp
+# (1) src/game/actors/d_a_iwante.cpp  ->  unmatched/Eyerok_Behavior.cpp
 #     The TICK half of the state machine, dispatched INLINE inside Behavior:
 #         struct C; typedef int (C::*PMF)();
 #         struct State { char pad[8]; PMF fn; };
@@ -42,7 +42,7 @@
 #     an incomplete class is the "unknown inheritance" form and does not
 #     reproduce it. The Ukiki/BabyPenguin shape (unmatched/Ukiki_StateTick.cpp).
 #
-# (2) src/actors/Eyerok.cpp  ->  unmatched/Eyerok_StateEnter.cpp
+# (2) src/game/actors/d_a_iwante.cpp  ->  unmatched/Eyerok_StateEnter.cpp
 #     The ENTER half, and the state INSTALLER in the same three statements:
 #         extern "C" int func_ov066_02119454(C *c, PMF *p)
 #         { c->pp = p; PMF *q = c->pp; if (*q == 0) return 1; return (c->**q)(); }
@@ -50,7 +50,7 @@
 #     installing a state IS entering it -- the Ukiki func_ov030_021141a8
 #     relationship, here fused into one body.
 #
-# (3) src/actors/Eyerok.cpp  ->  unmatched/Eyerok_Render.cpp
+# (3) src/game/actors/d_a_iwante.cpp  ->  unmatched/Eyerok_Render.cpp
 #     THE BlendModelAnim SLOT-5 COLLISION, which hal/blend_vtable.cpp predicted
 #     in writing: "if a shadow-class TU ever dispatches BlendModelAnim::Render
 #     it will land on blend_virtual18 and read its scale off the stack". This
@@ -63,7 +63,7 @@
 #     argument). Hosted whole rather than half, with both dispatches spelled
 #     as the qualified methods the ROM means.
 #
-# (4) src/actors/Eyerok.cpp  ->  unmatched/Eyerok_ClosestPlayerRead.cpp
+# (4) src/game/actors/d_a_iwante.cpp  ->  unmatched/Eyerok_ClosestPlayerRead.cpp
 #     A RECEIVER-DROPPING READER: `_ZN8dActor_c13ClosestPlayerEv()` with empty
 #     parentheses. ClosestPlayer is a thiscall and a zero-argument call leaves
 #     the receiver register holding whatever was there. This TU is already
@@ -86,7 +86,7 @@
 # All six rows are in port/CMakeLists.txt beside this slice's reader block.
 #
 #   #  alias removed from                     foreign caller TU (in a slice)
-#   1  hal/actor_classes_ov065.cpp:151        src/actors/daYurei_Mucho_c.cpp
+#   1  hal/actor_classes_ov065.cpp:151        src/game/actors/d_a_yurei_mucho.cpp
 #      __ZN6EyerokD0Ev=_func_ov065_02115f84
 #      -> -D_ZN6EyerokD0Ev=func_ov065_02115f84
 #      ov065's Snufit state body calls 0x02115f84, which the reloc
@@ -181,44 +181,44 @@
 # func_02011d2c's veneer target func_02048ef4 (a one-line forwarder to
 # func_02048fd4, which slice_gate10.txt already carries). Three arm9 lines
 # total, none of them predicted.
-src/engine/collision/dBgW_KcMbg.cpp
+src/engine/collision/d_bg_w_kc_mbg.cpp
 src/engine/sound/Sound.cpp
 src/engine/sound/Sound2.cpp
-src/actors/Eyerok.cpp
+src/game/actors/d_a_iwante.cpp
 # RETIRED at SLICE1: body now in src/_ZN6EyerokD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN6EyerokD0Ev.cpp
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_0211603c.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021162e8.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_0211632c.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02116390.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021164ec.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021165cc.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021166c8.cpp
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021168b0.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021168ec.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02116a68.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02116ac4.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02116b78.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02116c6c.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02116d14.cpp
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02116db0.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02117190.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021171b0.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021175bc.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_021175e8.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02117bd0.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02117bf0.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02118168.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_02118188.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_0211603c.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_021162e8.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_0211632c.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_02116390.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_021164ec.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_021165cc.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_021166c8.cpp
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_021168b0.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_021168ec.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_02116a68.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_02116ac4.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_02116b78.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_02116c6c.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_02116d14.cpp
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_02116db0.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_02117190.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_021171b0.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_021175bc.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_021175e8.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_02117bd0.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_02117bf0.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_02118168.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_02118188.c
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (the slice_ov066 host copies).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
-#src/actors/Eyerok.cpp
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/_ZN6Eyerok13InitResourcesEv.cpp
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/_ZN6Eyerok16OnAimedAtWithEggEv.cpp
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_0211a2e4.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/func_ov066_0211a35c.c
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/d_a_iwante.cpp
-# FOLDED into src/actors/Eyerok.cpp (row 187): src/__sinit_ov066_0211a418.c
+#src/game/actors/d_a_iwante.cpp
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/_ZN6Eyerok13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/_ZN6Eyerok16OnAimedAtWithEggEv.cpp
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_0211a2e4.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/func_ov066_0211a35c.c
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/d_a_iwante.cpp
+# FOLDED into src/game/actors/d_a_iwante.cpp (row 187): src/__sinit_ov066_0211a418.c

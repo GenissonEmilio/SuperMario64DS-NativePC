@@ -94,6 +94,6 @@ data_ov044_02111688@0x02111688:0x18
 # is the place to fix that: build/port/host-src/ov044_syms.c is its output and is
 # regenerated from this list on every configure.
 #   g_profile_KB1_BILLBOARD                    now defined by d_a_obj_kb1_billboard.cpp.obj
-#   data_ov044_02111680                        now defined by d_a_obj_kb1_billboard.cpp.obj
+#   gKb1BallModelFile                        now defined by d_a_obj_kb1_billboard.cpp.obj
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov044_02111680!
+gKb1BallModelFile!

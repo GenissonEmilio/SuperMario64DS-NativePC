@@ -21,6 +21,12 @@
  *   the table stays an extern. g_profile_SWITCHDOOR is the same.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_b_swdoor_AssetId {
+    ASSET_B_ANA_SHUTTER_BMD = 0x05a3,
+    ASSET_B_ANA_SHUTTER_KCL = 0x05a4
+};
+
 #include "daObjBSwdoor_c.h"
 #include "SharedFilePtr.h"
 
@@ -119,5 +125,5 @@ s32 daObjBSwdoor_c::CleanupResources()
 
 /* Source order is construction order: model file 1443, then the collision
  * file 1444. The compiler registers each destructor beside the object. */
-BSwdoorModelFilePtr data_ov014_02114948(1443);
-BSwdoorClsnFilePtr data_ov014_02114940(1444);
+BSwdoorModelFilePtr gBAnaShutterModelFile(ASSET_B_ANA_SHUTTER_BMD);
+BSwdoorClsnFilePtr gBAnaShutterCollisionFile(ASSET_B_ANA_SHUTTER_KCL);

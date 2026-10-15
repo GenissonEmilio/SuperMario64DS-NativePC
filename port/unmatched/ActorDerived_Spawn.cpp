@@ -1,4 +1,4 @@
-/* HOST COPIES of src/actors/ActorDerived.cpp and
+/* HOST COPIES of src/runtime/actor/ActorDerived.cpp and
  * src/func_02042ffc.c -- the actor-spawn entry pair with its arguments
  * spelled out.
  *
@@ -24,7 +24,7 @@
  * TOO NOW, at the bottom of this file. Until today only the Itanium spelling
  * lived here, which is what the port's C-spelled callers reach. Commit
  * 5116945a1 folded the deleted src/_ZN7dBase_c5SpawnEjP7fBase_cii.cpp into
- * src/actors/ActorDerived.cpp, a real C++ TU, so the two-argument decomp body
+ * src/runtime/actor/ActorDerived.cpp, a real C++ TU, so the two-argument decomp body
  * started carrying ?Spawn@dBase_c@@SAPAUfBase_c@@IPAU2@HH@Z and every C++
  * caller bound to that instead of to this file. The gate-14 filter in
  * port/CMakeLists.txt still names the file that no longer exists, so nothing

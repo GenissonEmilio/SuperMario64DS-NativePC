@@ -6,7 +6,7 @@ extern u8 data_020a0de9[];
 extern u8 data_020a0dea[];
 extern u8 data_020a0deb[];
 
-extern int func_ov004_020ae5c4(void *a, int b, int c, int d, int e, int f, int g);
+extern int Mg_DrawLine(void *a, int b, int c, int d, int e, int f, int g);
 extern int func_020126e8(int a);
 extern int func_02012468(int a, int b, int c, int d, int e, int f, int g, int h);
 
@@ -38,7 +38,7 @@ void func_ov006_02123938(char *c)
         return;
 
     if (data_020a0de8[data_020a0e40 * 4] != 0) {
-        func_ov004_020ae5c4(c, *(short *)(c + 0x7b9c), *(short *)(c + 0x7b9e),
+        Mg_DrawLine(c, *(short *)(c + 0x7b9c), *(short *)(c + 0x7b9e),
                             data_020a0dea[data_020a0e40 * 4],
                             data_020a0deb[data_020a0e40 * 4], 2, 4);
         *(short *)(c + 0x7b9c) = data_020a0dea[data_020a0e40 * 4];

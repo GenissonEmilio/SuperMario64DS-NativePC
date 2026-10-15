@@ -84,6 +84,6 @@ data_ov081_021280d8 _ZTS8daHuwa_c _ZTI8daHuwa_c g_profile_HUWAHUWA data_ov081_02
 #   data_ov081_02128fd0                        now defined by src/game/actors/d_a_obj_ice_block.cpp
 #   data_ov081_02128fd8                        now defined by src/game/actors/d_a_obj_ice_block.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov081_02128d60! data_ov081_02128d68! data_ov081_02128d88! data_ov081_02128d98! data_ov081_02128da0! data_ov081_02128da8! data_ov081_02128db0! data_ov081_02128db8! data_ov081_02128ec4! data_ov081_02128ecc! data_ov081_02128ed4! data_ov081_02128edc! data_ov081_02128ee4! data_ov081_02128ef8!
+gHuwahuwaModelModelFile! gHuwahuwaMoveAnimationFile! gSnowmanJumpStAnimationFile! gSnowmanWaitAnimationFile! gSnowmanJumpEdAnimationFile! data_ov081_02128da8! data_ov081_02128db0! data_ov081_02128db8! gGamaguchiJumpEndAnimationFile! gGamaguchiJumpAnimationFile! data_ov081_02128ed4! data_ov081_02128edc! gGamaguchiWalkEndAnimationFile! data_ov081_02128ef8!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
 data_ov081_02128fd0! data_ov081_02128fd8!

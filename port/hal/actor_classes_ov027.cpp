@@ -155,7 +155,7 @@
 // ============================================================================
 // THREE TUs ARE NOT COMPILED.
 // ============================================================================
-// src/actors/daPgDfdr_c.cpp and src/actors/daPgDfdr_c.cpp both spell
+// src/game/actors/d_a_pg_dfdr.cpp and src/game/actors/d_a_pg_dfdr.cpp both spell
 // `(c->**p)()` over an mwcc eight-byte member pointer. MSVC's is four bytes and
 // cannot deliver `this` in ecx onto the plain cdecl state bodies, so both are
 // host-copied in port/unmatched/DaPgDfdr_StateDispatch.cpp and dropped from the
@@ -165,7 +165,7 @@
 // pair as `struct S2 { int w[2]; }`, one array field, and stategen's parser
 // keys on two scalar fields -- a refusal, correctly, rather than a guess).
 //
-// THE THIRD is src/actors/daPgDfdr_c.cpp, DA_PG_DFDR's Render, and it is the
+// THE THIRD is src/game/actors/d_a_pg_dfdr.cpp, DA_PG_DFDR's Render, and it is the
 // T1 Model/ModelAnim exception biting. It dispatches ROM slot 5 of the
 // ModelAnim at +0x320 through a six-virtual local shadow, and the host
 // _ZTV9ModelAnim is MSVC-numbered with Virtual18 genuinely in that slot -- the
@@ -184,14 +184,14 @@
 // THREE BODIES IN THIS CAST TAKE NO RECEIVER, AND THE DECLARATIONS SAY SO.
 // ============================================================================
 // Read off each TU's own definition, not assumed from the slot:
-//   src/actors/daPgDfdr_c.cpp                     void (void)   empty body
+//   src/game/actors/d_a_pg_dfdr.cpp                     void (void)   empty body
 //   src/_ZN13SnowmanBreath16CleanupResourcesEv.cpp  int  (void)   releases three
 //       ov002 SharedFilePtrs (0x0210da40 / 0x0210d9a0 / 0x0210d9c0) and touches
 //       no member, so it genuinely needs no `this`
 //   src/_ZN13SnowmanBreath16OnPendingDestroyEv.cpp  void (void)   empty body
 // and one more that returns void where the slot's neighbours return int:
-//   src/actors/daOts_c.cpp                   void (char *)
-// plus src/actors/daOts_c.cpp, void (void), the other receiver-less one.
+//   src/game/actors/d_a_ots.cpp                   void (char *)
+// plus src/game/actors/d_a_ots.cpp, void (void), the other receiver-less one.
 // Their thunks call them with the arity they have. Passing an ignored argument
 // would have linked and run -- cdecl, the caller cleans -- but a declaration
 // that disagrees with its definition is exactly what aritycheck and abicheck
@@ -347,7 +347,7 @@ int _ZTV10daSnmBth_c[31];    /* vtspan: _ZTV13SnowmanBreath, SNOWMAN_BREATH */
 }
 
 // ---- one __thiscall face onto an @@QAE body --------------------------------
-// src/actors/daOts_c.cpp (ov064's, LINKED via
+// src/game/actors/d_a_ots.cpp (ov064's, LINKED via
 // port/slice_gate177.txt) is a real C++ method, so the link carries only
 // ?CleanupResources@Bully@@QAEHXZ and there is no _ZN7daOts_c16CleanupResourcesEv
 // C name for slot 3 to take. include/Bully.h declares the class, so the call

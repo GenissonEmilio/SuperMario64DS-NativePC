@@ -8,11 +8,16 @@
  *
  * leftovers:
  *   - the func_ov004 and func_ov006 helpers and most data_ globals are
- *     unnamed in symbols.txt; unk_0a8 and unk_0b8 are unnamed in the
+ *     unnamed in symbols.txt; mCredits and mBestHudScore are unnamed in the
  *     header.
  *   - the factory builds the object by hand because the class has no
  *     constructor declared yet.
  */
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_s_mg_bsc_AssetId {
+    ASSET_D_2D_MG_BIG_SMALL_NCL_BIN = 0x00b3
+};
+
 #pragma opt_strength_reduction off
 
 #include "dScMgBSC_c.h"
@@ -27,57 +32,57 @@ typedef void (dScMgBSC_c::*StateHandler)();
 extern StateHandler data_ov006_02142f94[];
 /* The ROM PMF constants the state table copies from (unlicensed .data),
  * in retail copy order. */
-extern StateHandler data_ov006_0213fd7c;
-extern StateHandler data_ov006_0213fd5c;
-extern StateHandler data_ov006_0213fd4c;
-extern StateHandler data_ov006_0213fd24;
-extern StateHandler data_ov006_0213fd3c;
-extern StateHandler data_ov006_0213fd34;
-extern StateHandler data_ov006_0213fd64;
-extern StateHandler data_ov006_0213fd54;
-extern StateHandler data_ov006_0213fd84;
-extern StateHandler data_ov006_0213fd14;
-extern StateHandler data_ov006_0213fd0c;
-extern StateHandler data_ov006_0213fd74;
-extern StateHandler data_ov006_0213fd1c;
-extern StateHandler data_ov006_0213fd2c;
+extern StateHandler pmf_dScMgBSC_c_StateDealCards;
+extern StateHandler pmf_dScMgBSC_c_StateWaitDeal;
+extern StateHandler pmf_dScMgBSC_c_StateChooseCard;
+extern StateHandler pmf_dScMgBSC_c_StateMoveCards;
+extern StateHandler pmf_dScMgBSC_c_StateWaitMove;
+extern StateHandler pmf_dScMgBSC_c_StateRevealCards;
+extern StateHandler pmf_dScMgBSC_c_StateJudgeCards;
+extern StateHandler pmf_dScMgBSC_c_StateTableReaction;
+extern StateHandler pmf_dScMgBSC_c_StateTableReaction_2;
+extern StateHandler pmf_dScMgBSC_c_StateWaitTable_2;
+extern StateHandler pmf_dScMgBSC_c_StateWaitTable;
+extern StateHandler pmf_dScMgBSC_c_StateReturnCards;
+extern StateHandler pmf_dScMgBSC_c_StateDone;
+extern StateHandler pmf_dScMgBSC_c_StateDone_2;
 
 extern "C" {
-extern short data_ov004_020bf9e4;
+extern short gMgCoinsStatus;
 extern int Math_Function_0203b14c(int *ptr, int target, int rate, int limit, int step);
-extern void func_ov004_020b0a38(void);
-extern int func_ov006_020c1718(int* r0);
-extern void func_ov004_020b56c8(int x);
-extern void func_ov004_020b5ed0(void);
-extern int data_ov004_020bfa18;
-extern void func_ov006_020c0c80(void* c);
+extern void Mg_ResumeSharedState(void);
+extern int Dealer_IsIdle(int* r0);
+extern void MgCoins_StartPayout(int x);
+extern void MgCoins_StartLose(void);
+extern int gMgCoinsInPlay;
+extern void Dealer_PlayWin(void* c);
 /* decl_common.h already declares this with a void pointer, so the
  * definition's char pointer cannot be repeated here. */
-extern void func_ov006_020c0d68(void* c);
-extern void func_ov004_020adb1c(int self);
-extern void func_ov004_020b0a54(int v);
-extern void func_ov004_020ad79c(int a, int b);
+extern void Dealer_PlayLose(void* c);
+extern void Mg_SubmitScore(int self);
+extern void Mg_SetSharedState(int v);
+extern void Mg_SaveRecordPair(int a, int b);
 extern int data_ov006_0213fd44[];
-extern int data_ov004_020bf9ec;
+extern int sMgCoinsBetPlaced;
 extern int RandomIntInternal(int* seed);
-extern void func_ov006_020c1604(char* c, int unused, short a2, int a3);
+extern void Dealer_StartDeal(char* c, int unused, short a2, int a3);
 extern int data_0209e650;
 extern "C" void FreeGfxSlotsById(int arg);
-extern "C" void func_ov004_020b66d4(void);
-void func_ov006_020c0aa8(void *camera);
+extern "C" void MgCoins_Reset(void);
+void Camera_InitDealerView(void *camera);
 void Hud_RenderSprite(void *sprite, int x, int y, int a3, int a4);
-void func_ov004_020b1bc8(void *scene, int a1, int a2, int a3);
-void func_ov004_020b1e34(void *scene, int a1, int a2, int a3);
-void func_ov006_020c1804(void *table);
-void func_ov004_020b65e4(void);
-void func_ov006_020c19d0(char *c);
+void Mg_DrawCredits(void *scene, int a1, int a2, int a3);
+void Mg_DrawScoreTally(void *scene, int a1, int a2, int a3);
+void Dealer_Draw(void *table);
+void MgCoins_Update(void);
+void Dealer_Update(char *c);
 extern unsigned char data_0209d45c[];
 extern int data_0208ee44[];
-extern void func_ov006_0210a534(void);
+extern void LoadCard2SubBg3(void);
 extern s32 GetGameLanguage(void);
 extern u32 LoadCompressedFileAt(int fileID, void *target);
 extern int LoadFile(int handle);
-extern int func_ov006_020c1a88(char *c);
+extern int Dealer_Load(char *c);
 void *_ZN11dScMgBase_cC2Ev(void*);
 void _ZN8Particle10SysTrackerC1Ev(void*);
 void __cxa_vec_ctor(void*, int, int, void*, void*);
@@ -108,7 +113,7 @@ extern "C" void* dScMgBSC_c_classInit()
         *(int*)scene = (int)&_ZTV19dScMgSingle3DBase_c;
         _ZN8Particle10SysTrackerC1Ev(scene + 0x471c);
         *(int*)scene = (int)&_ZTV10dScMgBSC_c[2];
-        func_ov006_020c1d80(scene + 0x4f38);
+        Dealer_Construct(scene + 0x4f38);
         __cxa_vec_ctor(scene + 0x51a8, 2, 8,
                      (void*)func_0203d738,
                      (void*)NullDestructor_0203d47c);
@@ -126,20 +131,20 @@ s32 dScMgBSC_c::InitResources()
 {
     int fh;
     data_0209d45c[0] = 0x11;
-    func_ov006_0210a534();
+    LoadCard2SubBg3();
     LoadCompressedFileAt(data_ov006_0213fe78[GetGameLanguage()], (void *)0x6600000);
-    fh = LoadFile(0xb3);
+    fh = LoadFile(ASSET_D_2D_MG_BIG_SMALL_NCL_BIN);
     GXS::LoadOBJPltt((void *)fh, 0, 0x100);
     Deallocate((void *)fh);
-    func_ov006_020c0aa8(pad_4660);
-    if (func_ov006_020c1a88((char *)&mShared) == 0)
+    Camera_InitDealerView(pad_4660);
+    if (Dealer_Load((char *)&mShared) == 0)
         return 0;
-    func_ov004_020b04d0(0x20);
-    func_ov004_020b682c();
+    Mg_SetTopScreenYOffset(0x20);
+    Mg_PlaceBannersOnTopScreen();
     data_0208ee44[0] = 1;
-    unk_0a8 = func_ov004_020ad8b8();
-    unk_0ac = unk_0a8;
-    this->OnYoshiTryEat(3);
+    mCredits = Mg_GetSavedRecord0();
+    mCreditsShown = mCredits;
+    this->StartRound(3);
     return 1;
 }
 
@@ -148,8 +153,8 @@ s32 dScMgBSC_c::InitResources()
 s32 dScMgBSC_c::Behavior()
 {
     (this->*data_ov006_02142f94[mState])();
-    func_ov004_020b65e4();
-    func_ov006_020c19d0((char *)&mShared);
+    MgCoins_Update();
+    Dealer_Update((char *)&mShared);
     return 1;
 }
 
@@ -160,7 +165,7 @@ s32 dScMgBSC_c::Render()
 {
     int i;
 
-    func_ov006_020c0aa8(pad_4660);
+    Camera_InitDealerView(pad_4660);
     if (mState >= 1) {
         for (i = 0; i < 2; i++) {
             if (mCardFrame[i] < 3) {
@@ -175,39 +180,39 @@ s32 dScMgBSC_c::Render()
             }
         }
     }
-    func_ov004_020b6430();
-    func_ov004_020b1bc8(this, 0xc, 0xc, 0);
-    func_ov004_020b1e34(this, 0xe0, 0x14, 1);
-    func_ov006_020c1804(&mShared);
+    MgCoins_Draw();
+    Mg_DrawCredits(this, 0xc, 0xc, 0);
+    Mg_DrawScoreTally(this, 0xe0, 0x14, 1);
+    Dealer_Draw(&mShared);
     return 1;
 }
 
-// @symbol _ZN10dScMgBSC_c13OnYoshiTryEatEi
+// @symbol _ZN10dScMgBSC_c10StartRoundEi
 /* Slot 18. Mode 3 reads the meter score into mHudScore and posts it; every
    mode then restarts the state machine. The redundant `!= 4 && != 5`
    compares are in the ROM and must stay. */
-void dScMgBSC_c::OnYoshiTryEat(int mode)
+void dScMgBSC_c::StartRound(int mode)
 {
     if (mode != 4 && mode != 5 && mode == 3) {
-        mHudScore = func_ov004_020ad878();
-        func_ov004_020adb1c(mHudScore);
+        mHudScore = Mg_GetSavedRecord1();
+        Mg_SubmitScore(mHudScore);
     }
-    func_ov004_020b66d4();
-    data_ov004_020bc7d4 = 1;
+    MgCoins_Reset();
+    gMgCoinsShowDelta = 1;
     mState = 0;
 }
 
-// @symbol _ZN10dScMgBSC_c13OnTurnIntoEggEi
+// @symbol _ZN10dScMgBSC_c11CanEndStateEi
 /* Slot 19. In state 13, once the table's reaction has finished, mode 4
    moves to state 9 and mode 5 to state 10. When the round has settled
-   (state 12, with data_ov004_020bf9e4 set) the final scores go to the
+   (state 12, with gMgCoinsStatus set) the final scores go to the
    meter. */
-s32 dScMgBSC_c::OnTurnIntoEgg(int mode)
+s32 dScMgBSC_c::CanEndState(int mode)
 {
     int state;
     short gate;
     if (mState == 0xd) {
-        if (func_ov006_020c1718((int *)&mShared) != 0) {
+        if (Dealer_IsIdle((int *)&mShared) != 0) {
             if (mode == 4) {
                 FreeGfxSlotsById(0x1d);
                 mState = 9;
@@ -221,28 +226,28 @@ s32 dScMgBSC_c::OnTurnIntoEgg(int mode)
     }
     state = mState;
     if (state >= 0xc) {
-        gate = data_ov004_020bf9e4;
+        gate = gMgCoinsStatus;
         if (gate == 1) goto settle;
     }
     return 0;
 settle:
     if (state == 0xc && gate == 1) {
-        func_ov004_020ad79c(unk_0a8, mHudScore);
+        Mg_SaveRecordPair(mCredits, mHudScore);
     }
     return 1;
 }
 
-// @symbol _ZN10dScMgBSC_c15OnGroundPoundedEv
+// @symbol _ZN10dScMgBSC_c10OnDealDoneEv
 /* Slot 21: picks one of four reactions from the score, mHudScore / 5
    capped at 3. */
-void dScMgBSC_c::OnGroundPounded()
+void dScMgBSC_c::OnDealDone()
 {
     int score = mHudScore;
     int tier = score / 5;
     if ((unsigned int)tier > 3) {
         tier = 3;
     }
-    func_ov004_020b6324(tier + 1);
+    MgCoins_RaiseBet(tier + 1);
 }
 
 // @symbol _ZN10dScMgBSC_c14StateDealCardsEv
@@ -280,7 +285,7 @@ void dScMgBSC_c::StateDealCards()
     mOtherCard = 0;
     mChosenCard = 1;
     mDealCount = 0;
-    func_ov006_020c1604((char *)&mShared, 3, 2, (int)&mDealCount);
+    Dealer_StartDeal((char *)&mShared, 3, 2, (int)&mDealCount);
 
     if (mPromptBlinkCount == 0) {
         mPromptEnabled = 1;
@@ -361,7 +366,7 @@ void dScMgBSC_c::StateChooseCard()
         mOtherCard = lane ^ 1;
         mRevealStep = 0;
         mState += 1;
-        data_ov004_020bf9ec = 1;
+        sMgCoinsBetPlaced = 1;
         Sound::PlayBank2_2D(0x153);
     }
 }
@@ -395,7 +400,7 @@ void dScMgBSC_c::StateWaitMove()
 // @symbol _ZN10dScMgBSC_c16StateRevealCardsEv
 /* State 5: flips both cards, one frame every four ticks, until the other
  * card is face up. Then settles the stakes: the higher card wins, which
- * adds twice data_ov004_020bfa18 to unk_0a8 and one to the score; a loss
+ * adds twice gMgCoinsInPlay to mCredits and one to the score; a loss
  * takes one away. */
 void dScMgBSC_c::StateRevealCards()
 {
@@ -414,15 +419,15 @@ void dScMgBSC_c::StateRevealCards()
     {
         u8 chosen = mCardValue[mChosenCard];
         u8 other = mCardValue[mOtherCard];
-        int base = unk_0a8;
+        int base = mCredits;
         int score = mHudScore;
         if (chosen > other) {
-            base += data_ov004_020bfa18 * 2;
+            base += gMgCoinsInPlay * 2;
             score = score + 1;
         } else {
             score = score - 1;
         }
-        func_ov004_020ad79c(base, score);
+        Mg_SaveRecordPair(base, score);
     }
 }
 
@@ -446,11 +451,11 @@ void dScMgBSC_c::StateJudgeCards()
             score = &mHudScore;
             *score = *score + 1;
         }
-        if (mHudScore > unk_0b8)
-            unk_0b8 = mHudScore;
-        func_ov004_020adb1c(mHudScore);
-        func_ov004_020b0a54(4);
-        func_ov006_020c0c80(&mShared);
+        if (mHudScore > mBestHudScore)
+            mBestHudScore = mHudScore;
+        Mg_SubmitScore(mHudScore);
+        Mg_SetSharedState(MG_STATE_WIN);
+        Dealer_PlayWin(&mShared);
         mState = 0xd;
     }
     else
@@ -460,8 +465,8 @@ void dScMgBSC_c::StateJudgeCards()
             score = &mHudScore;
             *score = *score - 1;
         }
-        func_ov004_020b0a54(5);
-        func_ov006_020c0d68(&mShared);
+        Mg_SetSharedState(MG_STATE_LOSE);
+        Dealer_PlayLose(&mShared);
         mState = 0xd;
     }
 }
@@ -472,10 +477,10 @@ void dScMgBSC_c::StateJudgeCards()
 void dScMgBSC_c::StateTableReaction()
 {
     if (mState == 7) {
-        func_ov006_020c0c80(&mShared);
+        Dealer_PlayWin(&mShared);
         mState = 9;
     } else {
-        func_ov006_020c0d68(&mShared);
+        Dealer_PlayLose(&mShared);
         mState = 0xa;
     }
 }
@@ -485,19 +490,19 @@ void dScMgBSC_c::StateTableReaction()
  * a win (state 12) or play the loss sting and gather the cards (state 11). */
 void dScMgBSC_c::StateWaitTable()
 {
-    if (func_ov006_020c1718((int *)&mShared) == 0)
+    if (Dealer_IsIdle((int *)&mShared) == 0)
         return;
     if (mState == 9) {
-        func_ov004_020b56c8(data_ov004_020bfa18 << 1);
+        MgCoins_StartPayout(gMgCoinsInPlay << 1);
         mState = 0xc;
     } else {
-        func_ov004_020b5ed0();
+        MgCoins_StartLose();
         mState = 0xb;
     }
 }
 
 // @symbol _ZN10dScMgBSC_c16StateReturnCardsEv
-/* State 11, while data_ov004_020bf9e4 is set: if the base score is spent,
+/* State 11, while gMgCoinsStatus is set: if the base score is spent,
  * first walks both cards back to the deck (mDealCount re-read every pass,
  * as in StateWaitDeal). Then refreshes the meter and settles in state 12. */
 void dScMgBSC_c::StateReturnCards()
@@ -506,11 +511,11 @@ void dScMgBSC_c::StateReturnCards()
     int i;
     CardPos *pos;
 
-    if (data_ov004_020bf9e4 != 1)
+    if (gMgCoinsStatus != 1)
     {
         return;
     }
-    if (unk_0a8 <= 0)
+    if (mCredits <= 0)
     {
         done = 0;
         i = 0;
@@ -532,7 +537,7 @@ void dScMgBSC_c::StateReturnCards()
             return;
         }
     }
-    func_ov004_020b0a38();
+    Mg_ResumeSharedState();
     mState = 0xc;
 }
 
@@ -549,18 +554,18 @@ void dScMgBSC_c::StateDone()
  * The state table plain-copied from the ROM PMF constants, in retail
  * copy order. */
 StateHandler data_ov006_02142f94[14] = {
-    data_ov006_0213fd7c,
-    data_ov006_0213fd5c,
-    data_ov006_0213fd4c,
-    data_ov006_0213fd24,
-    data_ov006_0213fd3c,
-    data_ov006_0213fd34,
-    data_ov006_0213fd64,
-    data_ov006_0213fd54,
-    data_ov006_0213fd84,
-    data_ov006_0213fd14,
-    data_ov006_0213fd0c,
-    data_ov006_0213fd74,
-    data_ov006_0213fd1c,
-    data_ov006_0213fd2c,
+    pmf_dScMgBSC_c_StateDealCards,
+    pmf_dScMgBSC_c_StateWaitDeal,
+    pmf_dScMgBSC_c_StateChooseCard,
+    pmf_dScMgBSC_c_StateMoveCards,
+    pmf_dScMgBSC_c_StateWaitMove,
+    pmf_dScMgBSC_c_StateRevealCards,
+    pmf_dScMgBSC_c_StateJudgeCards,
+    pmf_dScMgBSC_c_StateTableReaction,
+    pmf_dScMgBSC_c_StateTableReaction_2,
+    pmf_dScMgBSC_c_StateWaitTable_2,
+    pmf_dScMgBSC_c_StateWaitTable,
+    pmf_dScMgBSC_c_StateReturnCards,
+    pmf_dScMgBSC_c_StateDone,
+    pmf_dScMgBSC_c_StateDone_2,
 };

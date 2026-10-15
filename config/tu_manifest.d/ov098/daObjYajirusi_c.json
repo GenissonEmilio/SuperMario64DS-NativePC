@@ -1,8 +1,8 @@
 {
   "id": "ov098/daObjYajirusi_c",
   "module": "ov098",
-  "source": "src/actors/daObjYajirusi_c.cpp",
-  "promoted_source": "src/actors/daObjYajirusi_c.cpp",
+  "source": "src/game/actors/d_a_obj_yajirusi.cpp",
+  "promoted_source": "src/game/actors/d_a_obj_yajirusi.cpp",
   "status": "promoted",
   "boundary_confidence": "high",
   "boundary_evidence": [

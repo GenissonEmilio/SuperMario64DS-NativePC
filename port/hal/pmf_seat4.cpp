@@ -78,23 +78,23 @@ extern MgPmf data_ov006_02143070[];
 
 /* the state bodies, each with the parameter list ITS OWN src TU defines --
    taken from that class's host switch, which is where it was settled */
-void _ZN11dScMgCoin_c19func_ov006_020dc294Ev(void);
-void _ZN11dScMgCoin_c19func_ov006_020dc1c4Ei(void *thiz, int idx);
-void _ZN11dScMgCoin_c19func_ov006_020dc154Ei(char *base, int idx);
-void _ZN11dScMgCoin_c19func_ov006_020dbf7cEi(void *sb, int i);
-void _ZN11dScMgCoin_c19func_ov006_020dc6d0Ei(int o, int idx);
-void _ZN11dScMgCoin_c19func_ov006_020dc5c4Ei(char *c, int i);
-void _ZN11dScMgCoin_c19func_ov006_020dc4c8Ei(char *c, int i);
-void _ZN11dScMgCoin_c19func_ov006_020dc4b0Ei(char *c, int i);
-void _ZN11dScMgCoin_c19func_ov006_020dc414Ei(char *base, int idx);
-void _ZN14dScMgBomroom_c19func_ov006_020d7a84Ei(char *c, int i);
-void _ZN14dScMgBomroom_c19func_ov006_020d795cEi(char *o, int i);
-void _ZN14dScMgBomroom_c19func_ov006_020d7958Ev(void);
-void _ZN14dScMgBomroom_c19func_ov006_020d777cEi(char *self, int idx);
-void _ZN14dScMgBomroom_c19func_ov006_020d7778Ev(void);
-void _ZN14dScMgCurling_c19func_ov006_020e1264Ei(char *c, int idx);
-void _ZN14dScMgCurling_c19func_ov006_020e1214Ei(char *base, int idx);
-void _ZN14dScMgCurling_c19func_ov006_020e0d84Ei(char *c, int i);
+void _ZN11dScMgCoin_c10Bag_State0Ev(void);
+void _ZN11dScMgCoin_c10Bag_State1Ei(void *thiz, int idx);
+void _ZN11dScMgCoin_c10Bag_State2Ei(char *base, int idx);
+void _ZN11dScMgCoin_c10Bag_State3Ei(void *sb, int i);
+void _ZN11dScMgCoin_c14Caption_State0Ei(int o, int idx);
+void _ZN11dScMgCoin_c14Caption_State1Ei(char *c, int i);
+void _ZN11dScMgCoin_c14Caption_State2Ei(char *c, int i);
+void _ZN11dScMgCoin_c14Caption_State3Ei(char *c, int i);
+void _ZN11dScMgCoin_c14Caption_State4Ei(char *base, int idx);
+void _ZN14dScMgBomroom_c10Bomb_Roam0Ei(char *c, int i);
+void _ZN14dScMgBomroom_c10Bomb_Roam1Ei(char *o, int i);
+void _ZN14dScMgBomroom_c10Bomb_Roam2Ev(void);
+void _ZN14dScMgBomroom_c10Bomb_Roam3Ei(char *self, int idx);
+void _ZN14dScMgBomroom_c10Bomb_Roam4Ev(void);
+void _ZN14dScMgCurling_c12Bit_PickKindEi(char *c, int idx);
+void _ZN14dScMgCurling_c12Bit_RunKindBEi(char *base, int idx);
+void _ZN14dScMgCurling_c12Bit_RunKindAEi(char *c, int i);
 void _ZN15dScMgCurling2_c12StepYRestartEi(char *c, int i);
 void _ZN15dScMgCurling2_c11StepYRampUpEi(char *c, int i);
 void _ZN15dScMgCurling2_c13StepYRampDownEi(char *c, int i);
@@ -147,17 +147,17 @@ void _ZN14dScMgMemory2_c14RoundHideCardsEv(char *o);
 void _ZN14dScMgMemory2_c15RoundReadyCardsEv(char *c);
 void *_ZN14dScMgMemory2_c13RoundWaitDealEv(char *c);
 void _ZN14dScMgMemory2_c11RoundRevealEv(char *c);
-void _ZN15dScMgSnowball_c19func_ov006_02129894Ei(char *c, int i);
-void _ZN15dScMgSnowball_c19func_ov006_021297c0Ei(unsigned char *base, int idx);
-void _ZN15dScMgSnowball_c19func_ov006_0212972cEi(char *c, int idx);
-void _ZN15dScMgSnowball_c19func_ov006_0212a110Ei(char *c, int idx);
-void _ZN15dScMgSnowball_c19func_ov006_0212a000Ei(char *base, int index);
-void _ZN15dScMgSnowball_c19func_ov006_02129eecEi(char *c, int idx);
-void _ZN15dScMgSnowball_c19func_ov006_02129e28Ei(char *c, int i);
-void _ZN15dScMgSnowball_c19func_ov006_02129cb0Ei(char *o, int i);
-void _ZN15dScMgSnowball_c19func_ov006_02129b74Ei(char *base, int index);
-void _ZN15dScMgSnowball_c19func_ov006_02129a34Ei(char *base, int i);
-void _ZN15dScMgSnowball_c19func_ov006_0212992cEi(char *self, int idx);
+void _ZN15dScMgSnowball_c10Bit_State0Ei(char *c, int i);
+void _ZN15dScMgSnowball_c10Bit_State1Ei(unsigned char *base, int idx);
+void _ZN15dScMgSnowball_c10Bit_State2Ei(char *c, int idx);
+void _ZN15dScMgSnowball_c11BitB_State0Ei(char *c, int idx);
+void _ZN15dScMgSnowball_c11BitB_State1Ei(char *base, int index);
+void _ZN15dScMgSnowball_c11BitB_State2Ei(char *c, int idx);
+void _ZN15dScMgSnowball_c11BitB_State3Ei(char *c, int i);
+void _ZN15dScMgSnowball_c11BitA_State0Ei(char *o, int i);
+void _ZN15dScMgSnowball_c11BitA_State1Ei(char *base, int index);
+void _ZN15dScMgSnowball_c11BitA_State2Ei(char *base, int i);
+void _ZN15dScMgSnowball_c11BitA_State3Ei(char *self, int idx);
 
 /* called from the per-class installers in port/unmatched/Mg*_StateDispatch.cpp */
 void port_pmf_seat4_coin(void);
@@ -205,28 +205,28 @@ static void __fastcall s4_021417c8_0(void *self, void *dead_edx, int arg)
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_021417c8[0];
-    _ZN11dScMgCoin_c19func_ov006_020dc294Ev();
+    _ZN11dScMgCoin_c10Bag_State0Ev();
 }
 static void __fastcall s4_021417c8_1(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_021417c8[1];
-    _ZN11dScMgCoin_c19func_ov006_020dc1c4Ei(self_c, arg);
+    _ZN11dScMgCoin_c10Bag_State1Ei(self_c, arg);
 }
 static void __fastcall s4_021417c8_2(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_021417c8[2];
-    _ZN11dScMgCoin_c19func_ov006_020dc154Ei(self_c, arg);
+    _ZN11dScMgCoin_c10Bag_State2Ei(self_c, arg);
 }
 static void __fastcall s4_021417c8_3(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_021417c8[3];
-    _ZN11dScMgCoin_c19func_ov006_020dbf7cEi(self_c, arg);
+    _ZN11dScMgCoin_c10Bag_State3Ei(self_c, arg);
 }
 
 /* data_ov006_021417e8, 5 cell(s), arity one */
@@ -235,35 +235,35 @@ static void __fastcall s4_021417e8_0(void *self, void *dead_edx, int arg)
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_021417e8[0];
-    _ZN11dScMgCoin_c19func_ov006_020dc6d0Ei((int)(size_t)self_c, arg);
+    _ZN11dScMgCoin_c14Caption_State0Ei((int)(size_t)self_c, arg);
 }
 static void __fastcall s4_021417e8_1(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_021417e8[1];
-    _ZN11dScMgCoin_c19func_ov006_020dc5c4Ei(self_c, arg);
+    _ZN11dScMgCoin_c14Caption_State1Ei(self_c, arg);
 }
 static void __fastcall s4_021417e8_2(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_021417e8[2];
-    _ZN11dScMgCoin_c19func_ov006_020dc4c8Ei(self_c, arg);
+    _ZN11dScMgCoin_c14Caption_State2Ei(self_c, arg);
 }
 static void __fastcall s4_021417e8_3(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_021417e8[3];
-    _ZN11dScMgCoin_c19func_ov006_020dc4b0Ei(self_c, arg);
+    _ZN11dScMgCoin_c14Caption_State3Ei(self_c, arg);
 }
 static void __fastcall s4_021417e8_4(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_021417e8[4];
-    _ZN11dScMgCoin_c19func_ov006_020dc414Ei(self_c, arg);
+    _ZN11dScMgCoin_c14Caption_State4Ei(self_c, arg);
 }
 
 // ---- dScMgBomroom_c ----------------------------------------------
@@ -273,35 +273,35 @@ static void __fastcall s4_02141708_0(void *self, void *dead_edx, int arg)
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02141708[0];
-    _ZN14dScMgBomroom_c19func_ov006_020d7a84Ei(self_c, arg);
+    _ZN14dScMgBomroom_c10Bomb_Roam0Ei(self_c, arg);
 }
 static void __fastcall s4_02141708_1(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02141708[1];
-    _ZN14dScMgBomroom_c19func_ov006_020d795cEi(self_c, arg);
+    _ZN14dScMgBomroom_c10Bomb_Roam1Ei(self_c, arg);
 }
 static void __fastcall s4_02141708_2(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02141708[2];
-    _ZN14dScMgBomroom_c19func_ov006_020d7958Ev();
+    _ZN14dScMgBomroom_c10Bomb_Roam2Ev();
 }
 static void __fastcall s4_02141708_3(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02141708[3];
-    _ZN14dScMgBomroom_c19func_ov006_020d777cEi(self_c, arg);
+    _ZN14dScMgBomroom_c10Bomb_Roam3Ei(self_c, arg);
 }
 static void __fastcall s4_02141708_4(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02141708[4];
-    _ZN14dScMgBomroom_c19func_ov006_020d7778Ev();
+    _ZN14dScMgBomroom_c10Bomb_Roam4Ev();
 }
 
 // ---- dScMgCurling_c ----------------------------------------------
@@ -311,21 +311,21 @@ static void __fastcall s4_021418c0_0(void *self, void *dead_edx, int arg)
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_021418c0[0];
-    _ZN14dScMgCurling_c19func_ov006_020e1264Ei(self_c, arg);
+    _ZN14dScMgCurling_c12Bit_PickKindEi(self_c, arg);
 }
 static void __fastcall s4_021418c0_1(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_021418c0[1];
-    _ZN14dScMgCurling_c19func_ov006_020e1214Ei(self_c, arg);
+    _ZN14dScMgCurling_c12Bit_RunKindBEi(self_c, arg);
 }
 static void __fastcall s4_021418c0_2(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_021418c0[2];
-    _ZN14dScMgCurling_c19func_ov006_020e0d84Ei(self_c, arg);
+    _ZN14dScMgCurling_c12Bit_RunKindAEi(self_c, arg);
 }
 
 // ---- dScMgCurling2_c ---------------------------------------------
@@ -723,21 +723,21 @@ static void __fastcall s4_02143020_0(void *self, void *dead_edx, int arg)
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02143020[0];
-    _ZN15dScMgSnowball_c19func_ov006_02129894Ei(self_c, arg);
+    _ZN15dScMgSnowball_c10Bit_State0Ei(self_c, arg);
 }
 static void __fastcall s4_02143020_1(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02143020[1];
-    _ZN15dScMgSnowball_c19func_ov006_021297c0Ei((unsigned char *)self_c, arg);
+    _ZN15dScMgSnowball_c10Bit_State1Ei((unsigned char *)self_c, arg);
 }
 static void __fastcall s4_02143020_2(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02143020[2];
-    _ZN15dScMgSnowball_c19func_ov006_0212972cEi(self_c, arg);
+    _ZN15dScMgSnowball_c10Bit_State2Ei(self_c, arg);
 }
 
 /* data_ov006_02143050, 4 cell(s), arity one */
@@ -746,28 +746,28 @@ static void __fastcall s4_02143050_0(void *self, void *dead_edx, int arg)
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02143050[0];
-    _ZN15dScMgSnowball_c19func_ov006_0212a110Ei(self_c, arg);
+    _ZN15dScMgSnowball_c11BitB_State0Ei(self_c, arg);
 }
 static void __fastcall s4_02143050_1(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02143050[1];
-    _ZN15dScMgSnowball_c19func_ov006_0212a000Ei(self_c, arg);
+    _ZN15dScMgSnowball_c11BitB_State1Ei(self_c, arg);
 }
 static void __fastcall s4_02143050_2(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02143050[2];
-    _ZN15dScMgSnowball_c19func_ov006_02129eecEi(self_c, arg);
+    _ZN15dScMgSnowball_c11BitB_State2Ei(self_c, arg);
 }
 static void __fastcall s4_02143050_3(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02143050[3];
-    _ZN15dScMgSnowball_c19func_ov006_02129e28Ei(self_c, arg);
+    _ZN15dScMgSnowball_c11BitB_State3Ei(self_c, arg);
 }
 
 /* data_ov006_02143070, 4 cell(s), arity one */
@@ -776,28 +776,28 @@ static void __fastcall s4_02143070_0(void *self, void *dead_edx, int arg)
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02143070[0];
-    _ZN15dScMgSnowball_c19func_ov006_02129cb0Ei(self_c, arg);
+    _ZN15dScMgSnowball_c11BitA_State0Ei(self_c, arg);
 }
 static void __fastcall s4_02143070_1(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02143070[1];
-    _ZN15dScMgSnowball_c19func_ov006_02129b74Ei(self_c, arg);
+    _ZN15dScMgSnowball_c11BitA_State1Ei(self_c, arg);
 }
 static void __fastcall s4_02143070_2(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02143070[2];
-    _ZN15dScMgSnowball_c19func_ov006_02129a34Ei(self_c, arg);
+    _ZN15dScMgSnowball_c11BitA_State2Ei(self_c, arg);
 }
 static void __fastcall s4_02143070_3(void *self, void *dead_edx, int arg)
 {
     (void)dead_edx; (void)arg;
     char *self_c = (char *)self; (void)self_c;
     ++g_h_02143070[3];
-    _ZN15dScMgSnowball_c19func_ov006_0212992cEi(self_c, arg);
+    _ZN15dScMgSnowball_c11BitA_State3Ei(self_c, arg);
 }
 
 // ---- the counted run ------------------------------------------------------
@@ -1067,8 +1067,8 @@ extern "C" void port_pmf_seat4_snowball(void)
 // off that TU's own /FAsc EXTRN list before the link, and NOTHING IN THE TREE
 // DEFINES ANY OF THEM (checked against walk_window.map), so none can be
 // silently defeated the way port/tools/alternatename_guard.py exists to catch.
-// ?func_020beb68@@3PAXA is the third spelling of ov004's data_ov004_020beb68 --
-// src/func_ov006_020de440.cpp declares it `extern void *` at namespace scope,
+// ?func_020beb68@@3PAXA is the third spelling of ov004's gMgScene --
+// src/Phase_State2.cpp declares it `extern void *` at namespace scope,
 // where MgCoin_Faces.cpp has the plain C name and MgCoin_StateDispatch.cpp the
 // `char *` decoration; all three point at the same storage.
 #pragma comment(linker, "/alternatename:?data_ov006_021418c0@@3PAP8C@@AEXH@ZA=_data_ov006_021418c0")
@@ -1080,4 +1080,4 @@ extern "C" void port_pmf_seat4_snowball(void)
 #pragma comment(linker, "/alternatename:?data_ov006_02143020@@3PAUEntry@@A=_data_ov006_02143020")
 #pragma comment(linker, "/alternatename:?data_ov006_02143070@@3PAUEntry@@A=_data_ov006_02143070")
 #pragma comment(linker, "/alternatename:?data_ov006_02141840@@3PAP8C@@AEXH@ZA=_data_ov006_02141840")
-#pragma comment(linker, "/alternatename:?func_020beb68@@3PAXA=_data_ov004_020beb68")
+#pragma comment(linker, "/alternatename:?func_020beb68@@3PAXA=_gMgScene")

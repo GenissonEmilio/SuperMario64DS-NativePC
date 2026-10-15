@@ -274,8 +274,8 @@ bool ppu_write_bmp_sub(const char *path, const SubFramebuffer &fb);
 // A output, at every one of the four sizes, into any block and offset. NOT
 // source B (the display FIFO / VRAM read path) and NOT the A+B blend: nothing
 // in this game programs either -- the only three writers in the link are
-// Scene::ResetHardwareRegisters (0x80000000), func_ov006_020e759c (0x80330010)
-// and func_ov006_020e7508 (0x80360010), and all three select source A. A
+// Scene::ResetHardwareRegisters (0x80000000), D3D_CaptureToMain (0x80330010)
+// and D3D_CaptureToSub (0x80360010), and all three select source A. A
 // request for source B is reported once and then ignored rather than guessed
 // at, because inventing a second source would be inventing a picture.
 //
@@ -829,7 +829,7 @@ int ppu_seam_snow_owns(uint16_t a2);
 // GaplessMinigames on there is no band -- G is zero in the game as well as in
 // the layout -- and the hole does not go away, it shrinks to the seam itself.
 //
-// The ROM's OAM router (src/func_ov004_020aff38.cpp) picks ONE engine by a
+// The ROM's OAM router (src/Mg_RenderSpriteBothScaled.cpp) picks ONE engine by a
 // band test on world y and returns. At G = 0 its two tests are y in [-256, -1]
 // for the top engine and y in [-64, 191] for the bottom, so a sprite is
 // submitted to exactly one of them and each engine's own raster then clips it
@@ -847,7 +847,7 @@ int ppu_seam_snow_owns(uint16_t a2);
 // palette, same size, same flip, same engine's VRAM, at that entry's own
 // position. NOTHING IS INVENTED here either: an object neither half has draws
 // nothing, and an object BOTH halves have is left alone -- which is what a
-// 32x32 double-size bob-omb through func_ov004_020b023c already is, because
+// 32x32 double-size bob-omb through Mg_RenderSpriteBothPalMtx already is, because
 // that router submits to both OAM buffers and lets each engine clip its own
 // side.
 //

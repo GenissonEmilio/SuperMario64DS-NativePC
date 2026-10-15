@@ -80,7 +80,7 @@
 //
 // src/game/actors/d_a_obj_kb1_billboard.cpp reaches the class's
 // SharedFilePtr as `data_ov059_02111680` while its sibling
-// CleanupResources and the sinit both spell the SAME cell `data_ov044_02111680`
+// CleanupResources and the sinit both spell the SAME cell `gKb1BallModelFile`
 // -- dsd's shared-window naming race (0x02111680 is inside twenty overlays'
 // windows; ov059 is not mounted anywhere in this build). One storage, sibling
 // name aliased onto it, the ov060 data_ov066_* recipe. Getting this wrong is
@@ -167,7 +167,7 @@ DSSTATE_END
 /* The InitResources spelling of the class's own SharedFilePtr, onto the one
    storage the sinit and CleanupResources use (the cross-overlay block above).
    Data aliases are exact -- there is no `this` to lose. */
-#pragma comment(linker, "/alternatename:_data_ov059_02111680=_data_ov044_02111680")
+#pragma comment(linker, "/alternatename:_data_ov059_02111680=_gKb1BallModelFile")
 
 // ---- the trap --------------------------------------------------------------
 static void obb_trap_report(void *self, int slot)

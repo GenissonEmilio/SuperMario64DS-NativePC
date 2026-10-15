@@ -86,6 +86,14 @@ def main():
     arm9_syms = None
     ov_syms = {}
 
+    port_txts = {}
+
+    def port_txt(tag):
+        if tag not in port_txts:
+            p = root / "port" / (tag + ".txt")
+            port_txts[tag] = p.read_text(errors="replace") if p.exists() else ""
+        return port_txts[tag]
+
     def addr_of(tag, name, ovid):
         nonlocal arm9_syms
         if ovid is None:
@@ -99,15 +107,14 @@ def main():
             table = ov_syms[ovid]
         if name in table:
             return table[name]
-        # a name the port itself pins (port/<tag>.txt "name@0xADDR"), for a symbol config renamed or dropped
-        side = root / "port" / f"{tag}.txt"
-        if side.exists():
-            mm = re.search(r"(?m)^" + re.escape(name) + r"@0x([0-9a-fA-F]+)", side.read_text())
-            if mm:
-                return int(mm.group(1), 16)
         m = NAME_HEX_RE.search(name)
         if m:
             return int(m.group(1), 16)
+        # A name coined by a port/<tag>.txt mount list (name@0xADDR), for symbols
+        # config renamed away from symbols.txt (BookSwitch_SpawnInfo).
+        mt = re.search(r"(?:^|\s)" + re.escape(name) + r"@0x([0-9a-fA-F]{8})(?:\s|$)", port_txt(tag))
+        if mt:
+            return int(mt.group(1), 16)
         sys.exit(f"romblob_recipe: cannot resolve {name} ({tag}) to an address")
 
     rows = []           # (blob_off, size, src, src_off, sha)

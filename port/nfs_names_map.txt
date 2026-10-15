@@ -32,7 +32,7 @@ would say so before anything else went wrong.
 SECOND, THE CONTRACT. The chain is not "open a file", it is convert-then-load,
 and the two halves are separate ROM entry points:
 
-    func_ov004_020adc74(path)
+    Ov004_LoadFileByPath(path)
       func_020182bc(path)
         func_02018e3c(&fid, path)          convert path -> FSFileID or die
           func_0205d644(&fid, path)        FS_InitFile + open, command 4
@@ -190,7 +190,7 @@ that hal/ptr_tables.cpp names for func_0205c410 and func_0205c448.
 
 THREE MORE RIDE-THROUGHS ARE ON THE SAME CHAIN AND ARE NOT FIXED HERE, because
 they are on the RETURN path and they currently work. func_020182bc,
-func_ov004_020adc74 and func_020182ec's callers all let a result ride out of a
+Ov004_LoadFileByPath and func_020182ec's callers all let a result ride out of a
 tail call in a function the decomp types `void`. MSVC does not clobber EAX in
 those epilogues, so the pointer arrives; it is undefined behaviour that happens
 to hold, exactly like the two command-table slots hal/ptr_tables.cpp types

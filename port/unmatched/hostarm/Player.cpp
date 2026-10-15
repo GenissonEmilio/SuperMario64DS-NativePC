@@ -1,5 +1,5 @@
 /* HOST ARM recovered by PORTSYNC2.
- * Old path: src/actors/Player.cpp (port line). Its _MSC_VER arms lived inside six
+ * Old path: src/game/player/Player.cpp (port line). Its _MSC_VER arms lived inside six
  * function bodies; the 2026-10 main merge (749f5799a) took main's src/, which
  * rewrote those functions as Player members and dropped the arms. Main's
  * spellings still mis-call under MSVC (one-argument EndMusic, cdecl raw vtable

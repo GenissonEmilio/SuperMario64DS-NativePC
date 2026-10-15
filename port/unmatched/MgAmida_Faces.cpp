@@ -3,7 +3,7 @@
  * ov004, found by the link.
  * Run mg9, lane S371.
  *
- * THE PRECEDENT IS func_ov006_020e1854, dScMgCurling_c's twenty-fifth state:
+ * THE PRECEDENT IS Aim_Swing, dScMgCurling_c's twenty-fifth state:
  * an address the ROM reaches, no delink block, no src TU in either extension,
  * and therefore no body this tree may write. What goes in its place is a trap
  * that SAYS WHICH ADDRESS WAS ENTERED and does nothing else. A plausible body
@@ -30,7 +30,7 @@
  *       vtable slot 6, the Behavior.
  *
  *   func_ov006_020d36a4   0x4fc. Same shape -- named, `end:0x020d36a4` is where
- *       src/func_ov006_020d3668.cpp's block stops, and no block resumes until
+ *       src/Amida_SaveBgChars.cpp's block stops, and no block resumes until
  *       past it. TWO callers: `from:0x020d3da0` (inside func_ov006_020d3ba0,
  *       which vtable slot 0 and vtable slot 18 both call as their last act) and
  *       `from:0x020d4bd4` (inside slot 6). So this one is reached on the INIT
@@ -101,7 +101,7 @@ extern "C" {
  * other two are the left-then-right pair a walker still in step state 0 or 1
  * tries after moving down a row. Six of the eight directions snap a walker that
  * has run one pixel past a rail back onto 0x20, 0x60, 0xa0 or 0xe0 -- the four
- * rails src/func_ov004_020ae5c4 draws and the four columns
+ * rails src/Mg_DrawLine draws and the four columns
  * src/func_ov006_020d36a4 starts the walkers on.
  *
  * ITS THREE SLOT-36 DISPATCHES ARE STILL THE MODE BRANCH (0x020D2924,
@@ -117,7 +117,7 @@ extern "C" {
 /* ---- SEATED, run mg10 lane F371 -----------------------------------------
  *
  * func_ov006_020d36a4 IS NOT A TRAP ANY MORE and its counter is gone with it,
- * which is run mg7 lane L369's treatment of func_ov006_0210076c rather than an
+ * which is run mg7 lane L369's treatment of Paddle_CheckBallHits rather than an
  * empty shell: a trap standing beside a real definition is a duplicate symbol,
  * not a safety net.
  *
@@ -139,7 +139,7 @@ extern "C" {
  *
  * THE TRAP FOR THIS BODY IS NOT HERE. It is hal/scene_mg_faces.cpp's, because
  * the body is the FAMILY's and not this class's: seven ov006 TUs across the
- * family call func_ov004_020ae5c4, so a per-lane copy becomes a duplicate
+ * family call Mg_DrawLine, so a per-lane copy becomes a duplicate
  * symbol the day a second seat reaches one of them -- which is exactly what
  * happened when run mg9 merged this lane and lane BOO together, and is why
  * this definition is gone and that one stands. Both lanes derived the same
@@ -150,7 +150,7 @@ extern "C" {
  * family file and it is the stronger half of the finding: it is what says
  * nothing in the tree can dispatch slot 34 at all.
  *
- * func_ov004_020ae5c4, 0x294. Found by the LINK rather than by the delinks
+ * Mg_DrawLine, 0x294. Found by the LINK rather than by the delinks
  * walk over this class's own block, because it is one overlay over:
  * config/arm9/overlays/ov004/symbols.txt names it, delinks.txt stops at
  * `end:0x020ae5c4` and no block resumes over it, and no src file defines it in
@@ -159,7 +159,7 @@ extern "C" {
  * THREE OF THIS CLASS's TUs CALL IT -- src/func_ov006_020d1ba0.cpp (seven sites),
  * _020d2580.c and _020d3ba0.c -- and all three declare it identically:
  *
- *     int func_ov004_020ae5c4(void *a, int b, int c, int d, int e, int f, int g);
+ *     int Mg_DrawLine(void *a, int b, int c, int d, int e, int f, int g);
  *
  * SEVEN PARAMETERS, AND THE ROM AGREES. Its prologue pushes nine registers and
  * subtracts 0x14, then reads [sp, #0x3c] at 0x020ae5d8 -- 0x38 past the new sp
@@ -173,14 +173,14 @@ extern "C" {
  * returns ten offset matches, and EIGHT of them are inside this body, each with
  * one word pushed before a `blx` -- five arguments to slot 34 -- while
  * hal/scene_mg.cpp's shared mb_v34 thunk is declared (void *, void *) and calls
- * the five-parameter src/_ZN11dScMgBase_c9Virtual88Eiiii.cpp with one argument.
+ * the five-parameter src/_ZN11dScMgBase_c11PaintSquareEiiii.cpp with one argument.
  *
  * THE OTHER TWO MATCHES ARE NOT DISPATCHES, and an earlier version of this
  * comment treated them as a second dispatcher. 0x020ce2a4 and 0x020ce318, in
- * func_ov006_020ce108, are `ldr r2,[sl,#0x88]` whose loaded word is handed
+ * TrmpItem_ReflectOffLine, are `ldr r2,[sl,#0x88]` whose loaded word is handed
  * straight to `bl 0x0203d290` as its third argument and is never branched to --
  * an object FIELD read, the same false positive port/slice_s371.txt records for
- * func_ov006_020c1f4c's +0x8c / +0x90 / +0x94. The Rn filter drops pc and sp; it
+ * Mascot_UpdateMatrix's +0x8c / +0x90 / +0x94. The Rn filter drops pc and sp; it
  * cannot tell a field from a slot, and the tell is whether the word is branched
  * to.
  *

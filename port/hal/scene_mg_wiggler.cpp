@@ -102,7 +102,7 @@
 // SLOT 3 IS THE NEW ONE. No seated minigame class before this overrides
 // CleanupResources; the six seated at six or seven overrides all sit on
 // 0, 6, 9, 16, 17, 18. dScMgHanachan_c adds slot 3, whose base word is arm9's
-// 0x02043bf0, and the body is three statements: func_ov004_020ad90c(this) then
+// 0x02043bf0, and the body is three statements: Mg_CommitRecords(this) then
 // return 1. The face below takes the shape hal/scene_boot.cpp's sc_base_clean
 // takes for the same slot -- (void *, void *), no ride-through -- because that
 // is the shape every existing caller of slot 3 in this port already uses.
@@ -129,7 +129,7 @@
 // correction.
 //
 // FIVE DISPATCHERS, AND THE FIFTH IS INVISIBLE TO BOTH PRESCRIBED DETECTORS.
-// func_ov006_020eb610 open-codes the ARM Itanium sequence in plain ints inside
+// Wiggler_Move open-codes the ARM Itanium sequence in plain ints inside
 // extern "C", so it emits no unresolvable symbol and spells no member-pointer
 // operator. It was found by a third detector this lane wrote: decode every word
 // of ov006's text and look for `add Rd,Rn,Rm,asr #1` immediately followed by
@@ -152,17 +152,17 @@
 //
 // ---- 8. THE TWO FLOORS, BOTH CLOSED (run mg10, lane F386) ------------------
 //
-//   func_ov006_020ea914  0x324  ON THE RENDER PATH. Slot 9 calls it
+//   Wiggler_DrawPassA  0x324  ON THE RENDER PATH. Slot 9 calls it
 //       unconditionally and is its only caller in all of ov006.
-//       -> src/func_ov006_020ea914.c, NONMATCHING (165 of 201 words identical,
+//       -> src/Wiggler_DrawPassA.c, NONMATCHING (165 of 201 words identical,
 //       one register-allocation cause, written up in the file). It draws the
 //       QUESTION PICTURE: one wiggler at a fixed pose, five body segments
 //       through OAM::Render and the face sprite on segment 0. Run mg9 left it
 //       trapped, and the trap's 1200-of-1200 was the whole picture missing.
-//   func_ov006_020ec4dc  0x20c  wiggler set-up variant 3 of 4, selected by
-//       data_ov006_02141fd8 in src/actors/dScMgHanachan_c.cpp's switch. Variants
+//   Wiggler_StartPathA  0x20c  wiggler set-up variant 3 of 4, selected by
+//       data_ov006_02141fd8 in src/minigames/d_s_mg_hanachan_methods.cpp's switch. Variants
 //       0, 1 and 2 are matched.
-//       -> src/func_ov006_020ec4dc.c, MATCHED at mwccarm 2004/b56 with strict
+//       -> src/Wiggler_StartPathA.c, MATCHED at mwccarm 2004/b56 with strict
 //       relocs, delink block added. It is the fifteen-wiggler grid the ladder
 //       in section 7's tables reaches at clear count 8.
 //
@@ -185,11 +185,11 @@
 // evidence rather than the assertion.
 //
 // THE ONLY OBJECT THIS FACTORY CONSTRUCTS is the array of FIFTEEN 0x98-byte
-// wigglers at this+0x4678, built by __cxa_vec_ctor with func_ov006_020ede80 as
-// the element constructor and func_ov006_020ea324 as the element destructor.
+// wigglers at this+0x4678, built by __cxa_vec_ctor with Wiggler_Construct as
+// the element constructor and Wiggler_Destroy as the element destructor.
 // InitResources constructs nothing; it loads files and pokes registers.
 //
-// func_ov006_020ede80, 0x40 = 64 bytes = 16 words, 14 instructions plus a
+// Wiggler_Construct, 0x40 = 64 bytes = 16 words, 14 instructions plus a
 // two-word pool holding 0x0203D47C and 0x0203D738, disassembled out of
 // extracted/overlays/overlay_0006.bin at base 0x020bfec0:
 //
@@ -201,9 +201,9 @@
 //     bl 0x020733a8 / mov r0,r4 / epilogue
 //
 // THERE IS NO `str` TO [r4] ANYWHERE IN IT. The element's word 0 is left as the
-// allocator found it, and what later writes it is func_ov006_020eb8f0 and
-// func_ov006_020ecdb8, writing a {code, adj} MEMBER-POINTER PAIR -- the +0x00
-// field func_ov006_020eb610 dispatches. That is a routed pair, not a virtual
+// allocator found it, and what later writes it is Wiggler_OnTouched and
+// Hana_SpawnWigglers, writing a {code, adj} MEMBER-POINTER PAIR -- the +0x00
+// field Wiggler_Move dispatches. That is a routed pair, not a virtual
 // call, and it needs no fill and no face.
 //
 // THE NESTED ARRAY IS CLEAN TOO, because the check has to follow the helpers.
@@ -221,7 +221,7 @@
 // ---- 10. SLOT 34 IS NOT DISPATCHED BY THIS CLASS -------------------------
 //
 // Run mg9 lane S371 reported that hal/scene_mg.cpp's shared thunk mb_v34 is
-// declared (void *, void *) while the real body _ZN11dScMgBase_c9Virtual88Eiiii takes five
+// declared (void *, void *) while the real body _ZN11dScMgBase_c11PaintSquareEiiii takes five
 // parameters at every ROM dispatch site in both overlay images, and the
 // coordinator's rule is that the repair belongs to whichever lane can WITNESS a
 // slot-34 dispatch. This class cannot. scene_mg.cpp's own framework census on
@@ -236,7 +236,7 @@
 //
 // NEITHER DOES SLOT 19, WHICH SETTLES lane BOO's CHECK TOO. Scene 387 is the
 // first seated scene whose framework state machine runs, and it exposed a
-// pre-existing crash: src/func_ov004_020b6b40.c and _020b6c9c.c reach vtable
+// pre-existing crash: src/State19_Update.c and _020b6c9c.c reach vtable
 // slot 19 through a shadow array typed as a plain C pointer, so the caller
 // cleans eight bytes while __fastcall mb_v19 has already cleaned four. BOTH OF
 // THOSE TUs ARE IN THIS CLASS'S ov004 CLOSURE and both are already wired by
@@ -252,7 +252,7 @@
 // This lane therefore does NOT replicate BOO's host copy; the fix is BOO's and
 // this is the negative that says so.
 //
-// AND THE SHARED ov004 FLOOR IS NOT THIS CLASS'S EITHER. func_ov004_020ae5c4,
+// AND THE SHARED ov004 FLOOR IS NOT THIS CLASS'S EITHER. Mg_DrawLine,
 // which lanes S371 and BOO have both trapped, is NOT in this class's
 // relocation closure at all -- zero hits over the 160 ov004 functions it
 // reaches -- so there is no third trap to avoid adding and no dependency to
@@ -277,7 +277,7 @@
 // LANE S364'S AMBIGUOUS-ADDRESS HAZARD WAS SWEPT AND COMES BACK CLEAN. Of the
 // 161 relocation targets this class's code block reaches, exactly ONE lands on
 // an address more than one overlay claims: 0x020beb68, module overlays(0,4),
-// which ov000 names data_ov000_020beb68 and ov004 names data_ov004_020beb68.
+// which ov000 names data_ov000_020beb68 and ov004 names gMgScene.
 // The port hosts it from ov004_syms.c.obj -- ov004's own mount -- and ov004's
 // is the reading this class needs, since it is dScMgBase_c's scene tracker,
 // written by the base constructor _ZN11dScMgBase_cC2Ev and read by slot 18 here.
@@ -319,7 +319,7 @@ void port_mg_dispatch_counts(unsigned *calls, unsigned *unknown);
 extern unsigned char data_ov004_020bc0c0[];   /* dScMgBase_c,       36 slots */
 extern unsigned char data_ov006_0213cab8[];   /* dScMgHanachan_c,   36 slots */
 
-/* the wiggler-kind selector src/actors/dScMgHanachan_c.cpp switches on */
+/* the wiggler-kind selector src/minigames/d_s_mg_hanachan_methods.cpp switches on */
 extern short data_ov006_02141fd8;
 /* the wiggler count slot 6 and slot 9 both loop on */
 extern int   data_ov006_0213c958;
@@ -333,7 +333,7 @@ int   _ZN15dScMgHanachan_c8BehaviorEv(char *self);          /* slot 6  Behavior,
 int   _ZN15dScMgHanachan_c6RenderEv(void *self);          /* slot 9  Render */
 void *_ZN15dScMgHanachan_cD1Ev(char *self);          /* slot 16 D2 */
 void *_ZN15dScMgHanachan_cD0Ev(void *self);          /* slot 17 D0 */
-void  _ZN15dScMgHanachan_c13OnYoshiTryEatEi(char *self, int st);  /* slot 18 state reset */
+void  _ZN15dScMgHanachan_c10StartRoundEi(char *self, int st);  /* slot 18 state reset */
 
 /* the factory */
 void *dScMgHanachan_c_classInit(void);
@@ -462,21 +462,21 @@ static void *__fastcall wig_d0(void *s, void *)
    an arm at random.
 
    SLOT 19 IS NOT THIS CLASS'S. dScMgHanachan_c does not override it; the
-   framework keeps _ZN11dScMgBase_c13OnTurnIntoEggEi there and hal/scene_mg.cpp's mb_v19
+   framework keeps _ZN11dScMgBase_c11CanEndStateEi there and hal/scene_mg.cpp's mb_v19
    already declares the ride-through. */
 /* SM64DS_WIG_LEVEL=<n>: seed the clear count at +0xbc before slot 18's ROM body
    deals the round. A DIAGNOSTIC, off unless the variable is set, and it seeds
    the ROM'S OWN INPUT rather than an outcome, which is the shape run mg8 lane
    MMD used for Memory Master's board ladder.
 
-   WHAT IT DRIVES, disassembled rather than guessed. src/actors/dScMgHanachan_c.cpp
+   WHAT IT DRIVES, disassembled rather than guessed. src/minigames/d_s_mg_hanachan_methods.cpp
    is the round dealer, called from the tail of slot 18, and it reads exactly
    one int -- +0xbc, the clear count slot 18 itself increments on a win and
    zeroes on a reset:
 
      +0xbc < 10  kind      = data_ov006_0212e80c[+0xbc]  (s16 table)
                  wigglers  = data_ov006_0212e820[+0xbc]  (s32 table)
-     otherwise   kind      = func_ov006_020ebe6c(), a uniform 0..3
+     otherwise   kind      = Hana_PickMoveKind(), a uniform 0..3
                  wigglers  = 15 when the kind is 3, else 3 + a 0..2 random
 
    and the two tables, read out of extracted/overlays/overlay_0006.bin at base
@@ -487,14 +487,14 @@ static void *__fastcall wig_d0(void *s, void *)
      wigglers      3  4  5  4  6  3  4  5  15  15
 
    SO THE SECOND FLOOR IS REACHABLE IN PLAY AND THE LADDER SAYS WHEN. Kind 3 is
-   func_ov006_020ec4dc, the set-up variant with no src file, and the ROM picks it
+   Wiggler_StartPathA, the set-up variant with no src file, and the ROM picks it
    at clear count EIGHT. A port with no save medium restarts at zero every
    launch (port/mg_fanout_costs.txt section 17's deliberate divergence), so an
    unattended boot never gets there and the trap's zero says only that. This
    variable is how the zero stops being the whole story.
 
    IT SEEDS AND THEN REPORTS WHAT THE ROM MADE OF IT rather than pinning:
-   _ZN15dScMgHanachan_c13OnYoshiTryEatEi's own arms move +0xbc before the dealer reads it (state 1
+   _ZN15dScMgHanachan_c10StartRoundEi's own arms move +0xbc before the dealer reads it (state 1
    increments, state 0x12 zeroes, anything else leaves it), so the seat prints
    the st argument it was called with and the kind and count that came out. */
 static int g_wig_level = -2;
@@ -518,7 +518,7 @@ static int __fastcall wig_reset(void *s, void *, int st)
     if (g_wig_level >= 0)
         *(int *)((char *)s + 0xbc) = g_wig_level;
     g_wig_reset_st = st;
-    _ZN15dScMgHanachan_c13OnYoshiTryEatEi((char *)s, st);
+    _ZN15dScMgHanachan_c10StartRoundEi((char *)s, st);
     g_wig_dealt_kind  = (int)data_ov006_02141fd8;
     g_wig_dealt_count = data_ov006_0213c958;
     return 1;
@@ -645,15 +645,15 @@ extern "C" void port_scene_fill_wiggler(void)
 
    THE FACTORY NEEDS NO DISPLACEMENT RULING, which is worth recording because
    0x169's did. src/minigames/d_s_mg_hanachan.cpp calls _ZN11dScMgBase_cC2Ev(o) WITH
-   its argument, where src/actors/dScMgCup_c.cpp calls the same base
+   its argument, where src/minigames/d_s_mg_cup.cpp calls the same base
    constructor with none and rides r0 through. That callee dereferences on its
    first statement and then writes three vtable words through the pointer, so
    the difference is a wild write versus a correct one. This factory is on the
    correct side of it and is a plain slice line. Verified against the ROM at
    0x020ede18 (0x68 bytes) during this lane's adjudication pass: allocation size
    0x4f68 = 20328 matching src, and the fifteen 0x98-byte sub-objects at
-   this+0x4678 built through __cxa_vec_ctor with func_ov006_020ede80 as the
-   element constructor and func_ov006_020ea324 as the destructor. */
+   this+0x4678 built through __cxa_vec_ctor with Wiggler_Construct as the
+   element constructor and Wiggler_Destroy as the destructor. */
 static char *g_wig_self;
 
 extern "C" void *port_mg_wiggler_spawn(void)
@@ -689,14 +689,14 @@ extern "C" void port_scene_wiggler_hits(void)
                     "own +0x4660 states, the rest the fifteen wigglers'), %u "
                     "framework call(s), %u UNHANDLED address(es)\n",
                     mine, hits, scene, calls, unknown);
-        /* THE THING ONLY A RUN CAN SAY. func_ov006_020eb610 open-codes the ARM
+        /* THE THING ONLY A RUN CAN SAY. Wiggler_Move open-codes the ARM
            Itanium sequence in plain ints: no unresolvable symbol, no
            member-pointer spelling, so neither the link nor a source sweep can
            see it and only this count convicts it. Printed whether or not it
            fired, because a zero here means no wiggler ever had its second pair
            installed and NOT that the shape is absent. */
         std::printf("[scene] dScMgHanachan_c open-coded dispatcher "
-                    "(func_ov006_020eb610, the wiggler sub-object's +0x00 "
+                    "(Wiggler_Move, the wiggler sub-object's +0x00 "
                     "pair): %u dispatch(es) through the host decode\n",
                     opencoded);
     }
@@ -728,8 +728,8 @@ extern "C" void port_scene_wiggler_hits(void)
         std::printf("\n");
     }
     /* THE TWO FORMER FLOORS, run mg10 lane F386, and NEITHER IS A TRAP COUNT
-       ANY MORE. Both bodies are seated -- src/func_ov006_020ea914.c and
-       src/func_ov006_020ec4dc.c -- so a self-counting stub would be reporting
+       ANY MORE. Both bodies are seated -- src/Wiggler_DrawPassA.c and
+       src/Wiggler_StartPathA.c -- so a self-counting stub would be reporting
        on itself instead of on the ROM. What is printed instead is what a run
        already measures and what each fact actually rests on:
 
@@ -738,16 +738,16 @@ extern "C" void port_scene_wiggler_hits(void)
          its call count exactly, not an estimate.
 
          020ec4dc runs when and only when the selector data_ov006_02141fd8
-         reads 3, which src/actors/dScMgHanachan_c.cpp's four-way switch decides and
+         reads 3, which src/minigames/d_s_mg_hanachan_methods.cpp's four-way switch decides and
          which the round line below already prints as the dealt kind. */
     std::printf("[scene] dScMgHanachan_c former floors, both now seated: "
-                "func_ov006_020ea914 (0x324, the question picture) ran %u "
+                "Wiggler_DrawPassA (0x324, the question picture) ran %u "
                 "time(s) -- Render is its only caller, so this is slot 9's own "
-                "count; func_ov006_020ec4dc (0x20c, the fifteen-wiggler board) "
+                "count; Wiggler_StartPathA (0x20c, the fifteen-wiggler board) "
                 "ran on this round if the dealt kind is 3, and the selector "
                 "data_ov006_02141fd8 reads %d\n",
                 g_wig_hits[9], (int)data_ov006_02141fd8);
-    /* THE ROUND THE ROM DEALT, and its one input. func_ov006_020ed8a4 reads the
+    /* THE ROUND THE ROM DEALT, and its one input. Phase_SetupRound reads the
        clear count at +0xbc and nothing else; the two tables it indexes are in
        wig_reset's block above. */
     std::printf("[scene] dScMgHanachan_c round: slot 18 called with st=%d, "

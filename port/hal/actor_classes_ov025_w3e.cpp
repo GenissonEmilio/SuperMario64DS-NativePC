@@ -156,7 +156,7 @@ DSSTATE_END
    live store is the per-source -DVT1. */
 
 /* THREE C++-MANGLED DATA SPELLINGS, the four wave 15 already bridges for
-   PyramidLift's InitResources. src/actors/daDgr_c.cpp declares its two
+   PyramidLift's InitResources. src/game/actors/d_a_dgr.cpp declares its two
    SharedFilePtrs and its CLPS_Block with their struct types at file scope, so
    MSVC decorates all three while the mount emits one C-named array each. Data
    has no calling convention, so the alias onto the one object is exact. All

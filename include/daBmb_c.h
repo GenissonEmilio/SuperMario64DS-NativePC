@@ -113,7 +113,7 @@ struct daBmb_c : dEnemyBase_c {
        With the destructor inline, OnYoshiTryEat becomes the first out-of-line
        virtual this class declares -- the key function -- so the vtable and the
        RTTI group land in the translation unit that defines it,
-       src/actors/daBmb_c.cpp. */
+       src/game/actors/d_a_bmb.cpp. */
     #ifdef _MSC_VER
     /* host two-arm destructor spelling; ruling in include/ModelBase.h */
     virtual void Destructor1();   /* D1 */

@@ -32,7 +32,7 @@
 # hal/cxx_aliases.cpp:464-483's "host card seam does not refcount" reason
 # does not hold for these four: each is called DIRECTLY (never only through
 # the data_020aa3f0 MSL dtor-chain head) from the already-linked class
-# destructor family func_ov006_020c09f8 / 020c1c64 / 020c21e4 / 020c3288 /
+# destructor family MascotWalker_Destruct / 020c1c64 / 020c21e4 / 020c3288 /
 # 020c3e70 (dScMgBSC_c / dScMgMemory_c; confirmed linked because
 # ninja_objs.json's build graph compiles them from their own real src/ path,
 # not a hal/ substitute, and they are absent from LINK15's 922-row unlinked

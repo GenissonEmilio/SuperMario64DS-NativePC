@@ -471,7 +471,7 @@ void *_ZN13SharedFilePtr9ConstructEj(void *self, unsigned id);
    card seam does not refcount" reason (this comment's old text) is stale for
    this row. src/func_02017ab4.c is `func_02017e34(x); return x;` and is
    directly called (not through the data_020aa3f0 MSL dtor-chain head) from
-   the already-linked class destructor family func_ov006_020c09f8 /
+   the already-linked class destructor family MascotWalker_Destruct /
    020c1c64 / 020c21e4 / 020c3e70 (dScMgBSC_c / dScMgMemory_c, ninja_objs.json
    confirms these compile from their real src/ paths, not a hal/ substitute),
    which runs whenever an instance of that class is torn down in normal play.
@@ -505,14 +505,14 @@ int func_020178b4(int x) { return x; }   /* fileptr dtor callback: host no-op */
    return c;`, writing the same "last fileID touched" breadcrumb
    port/hal/fs.cpp:171/590 already keeps for the load side; this is the
    release side. Called directly from func_02017ab4 and from the
-   already-linked func_ov006_020c09f8/020c1c64/020c21e4/020c3288/020c3e70
+   already-linked MascotWalker_Destruct/020c1c64/020c21e4/020c3288/020c3e70
    destructor family (see the func_02017ab4 retirement note above) -- 104
    src/ files call this chain in all. See port/slice_w23_stale3.txt. */
 /* RETIRED, run linkfull wave 23 lane BANNER3, LINK15 batch W23-3: same
    stale reason and same honest edge as func_02017e34/func_02017ab4 above:
    src/SharedFilePtr_Destruct_TexSeq.c and src/SharedFilePtr_Destruct_Anim.c
    are each `func_02017e34(x); return x;`, directly called from the
-   already-linked func_ov006_020c09f8/020c1c64/020c21e4/020c3288/020c3e70
+   already-linked MascotWalker_Destruct/020c1c64/020c21e4/020c3288/020c3e70
    destructor family (dScMgBSC_c / dScMgMemory_c). See
    port/slice_w23_stale3.txt. */
 DSSTATE_BEGIN
@@ -832,11 +832,11 @@ SeqEntry *Sound::InfoSequenceEntry::GetWithID(unsigned id)
 /* Heap::_Deallocate, the DS tail-call veneer to Deallocate that operator
    delete dispatches as a method, was defined here as a host stand-in: RETIRED
    at run linkfull wave 27 (lane P1). Its ruling was that the matched
-   src/_ZN4Heap11_DeallocateEPv.cpp was a zero-argument veneer whose this and
+   src/engine/heap/Heap.cpp was a zero-argument veneer whose this and
    ptr rode in on r0/r1. It is now the member
    `void Heap::_Deallocate(void *ptr) { Deallocate(ptr); }`, which passes both
    (the receiver in ECX, the pointer on the stack) to the decorated
-   ?Deallocate@Heap@@QAEXPAX@Z the link already carries, so the matched TU is
+   ?Deallocate@Heap_t@mHeap@@QAEXPAX@Z the link already carries, so the matched TU is
    linked instead (port/slice_w28_p1.txt). The flat name keeps its reverse face
    in port/faces_sync.txt. hal/blend_vtable.cpp's copy of this definition
    stays off on every target that links this file (PORT_CXX_ALIASES_LINKED). */
@@ -1262,7 +1262,7 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
 #pragma comment(linker, "/alternatename:__ZN19cMgSmartball_slot_c14RestoreInitialEv=_data_ov002_02110154")
 
 /* THE ROOT-HEAP BOOT SPINE (lane w8-shadows). Seating
-   src/_ZN4Heap18InitializeRootHeapEv.cpp -- the ROM's own entry into root-heap
+   src/engine/heap/Heap.cpp -- the ROM's own entry into root-heap
    setup, which tests/walk_window.cpp used to skip by calling the inner
    SetupRootHeap directly -- needs three names bound, and all three are
    alias-legal because every function involved is __cdecl: the matched TU
@@ -1276,10 +1276,10 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
    EAX and this caller discards it. The boot guard that used to read that
    return now reads data_020a0ea0, which SetupRootHeap writes on the success
    path and leaves alone on failure; see the call site. */
-/* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines __ZN4Heap13SetupRootHeapEv, and nothing references ?SetupRootHeap@Heap@@SAXXZ, so the row can never fire and nothing wants it to. */
-// #pragma comment(linker, "/alternatename:?SetupRootHeap@Heap@@SAXXZ=__ZN4Heap13SetupRootHeapEv")
+/* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines __ZN5mHeap6Heap_t13SetupRootHeapEv, and nothing references ?SetupRootHeap@Heap_t@mHeap@@SAXXZ, so the row can never fire and nothing wants it to. */
+// #pragma comment(linker, "/alternatename:?SetupRootHeap@Heap_t@mHeap@@SAXXZ=__ZN5mHeap6Heap_t13SetupRootHeapEv")
 /* Memory::rootParamOffset is the matched TU's name for 0x020a0ea4. The name is
-   wrong and the address is right: src/_ZN4Heap13SetupRootHeapEv.cpp passes that
+   wrong and the address is right: src/engine/heap/Heap.cpp passes that
    word as the FIRST argument to every arena accessor (func_02058ea0,
    func_02058eb4, func_02059040, func_02058d58, func_02058cd0), so it is the OS
    globals POINTER and InitializeRootHeap NULLs it to mean "use the default".
@@ -1287,7 +1287,7 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
 #pragma comment(linker, "/alternatename:?rootParamOffset@Memory@@3IA=_data_020a0ea4")
 /* and the ROM's C name onto the matched static member, so the boot site can
    spell it the way every other seated entry in walk_window.cpp is spelled */
-#pragma comment(linker, "/alternatename:__ZN4Heap18InitializeRootHeapEv=?InitializeRootHeap@Heap@@SAXXZ")
+#pragma comment(linker, "/alternatename:__ZN5mHeap6Heap_t18InitializeRootHeapEv=?InitializeRootHeap@Heap_t@mHeap@@SAXXZ")
 
 /* PORT_HOST_ABI: shared-load-window NAME COLLISION -- this symbol is ov013 BSS here and an ov045 FUNCTION in src/; they are different objects at one address.
    Moved here from hal/actor_classes_ov013.cpp with its ruling. ov013 and ov045
@@ -1361,7 +1361,7 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
    link60 lane MG2 seats dScMgCurling_c, so ov006 IS an overlay the port runs
    now, and the real ov006 body at 0x020e3078 is in the link -- as
    port/unmatched/MgCurling_StateDispatch.cpp's host copy of
-   src/func_ov006_020e3078.cpp, which the pointer-to-member wall forced. With a
+   src/Scene_Play.cpp, which the pointer-to-member wall forced. With a
    real definition present the /alternatename went inert and
    port/tools/alternatename_guard.py failed the build on it by name, which is
    exactly the R1/R2 arrival shape that guard exists to catch. Deleting the
@@ -1369,7 +1369,7 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
    because every ov006 caller now wants the ov006 body and every ov002 caller
    spells the ov002 name. port/ov006_player_map.txt section 4 recorded this
    alias as "the shared-window artifact again in a third form" and noted that
-   src/func_ov006_020e3078.cpp was not linked -- that note is now history.
+   src/Scene_Play.cpp was not linked -- that note is now history.
 
    THE ov007 SIBLING STAYS, but now for the two PLAYER TUs ONLY. Those
    (St_HurtWater_Main, St_WaitQuicksand_Main) spell the ov007 name for what is
@@ -1389,14 +1389,14 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
    relocs) after ov052/ov021 symbols at the shared address:
      * data_ov052_02111e84 (ov052's CLPS collision table) is really
        _ZN13PeachPainting20UpdateModelTransformEv, the InitResources matrix/scale helper.
-     * daGrock_c_classInit (ov021 0x02112d64) is really data_ov010_02112d64, the
+     * daGrock_c_classInit (ov021 0x02112d64) is really gC1PeachModelFile, the
        8-byte BSS SharedFilePtr the ov010 sinits build; CleanupResources names
        it directly. Its address is used as a SharedFilePtr, so the data symbol
        is the right target. Both decls are C-linkage in decl_common's extern "C"
        block, so the references are plain cdecl.
        Since wave 5 the REAL daGrock_c_classInit (ov021, id 221's factory) links
        too, and a defined LHS defeats /alternatename silently -- so this route
-       is a per-source -DRollingRock_Spawn=data_ov010_02112d64 on the
+       is a per-source -DRollingRock_Spawn=gC1PeachModelFile on the
        PeachPainting TU in port/CMakeLists.txt (w5b_review.md R1), not a
        pragma here.
    PORT_HOST_ABI: dsd shared-base misname -- the ov021 name at 0x02112d64 is
@@ -1435,7 +1435,7 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
    references this LHS today -- the guard reports it absent from the map rather
    than fired -- so the change is inert in this build and exists so the two
    spellings cannot drift apart the first time something does. */
-#pragma comment(linker, "/alternatename:?_ZN14dScMgCurling_c19func_ov006_020e3078Ev@@YAHPAXPAH@Z=__ZN14dScMgCurling_c19func_ov006_020e3078Ev")
+#pragma comment(linker, "/alternatename:?_ZN14dScMgCurling_c10Scene_PlayEv@@YAHPAXPAH@Z=__ZN14dScMgCurling_c10Scene_PlayEv")
 #pragma comment(linker, "/alternatename:?data_ov002_02109db8@@3PAEA=_data_ov002_02109db8")
 #pragma comment(linker, "/alternatename:?data_ov002_0210a07c@@3PAIA=_data_ov002_0210a07c")
 #pragma comment(linker, "/alternatename:?data_ov002_0210a424@@3PAHA=_data_ov002_0210a424")
@@ -1551,7 +1551,7 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
 /* Camera::~Camera (D0) frees by C name; Memory::Deallocate's own TU declares
    Heap as a `class` (PAV) while every header spells it `struct` (PAU), so the
    alias carries the decorated name from the link log rather than a face */
-#pragma comment(linker, "/alternatename:__ZN6Memory10DeallocateEPvP4Heap=?Deallocate@Memory@@YAXPAXPAVHeap@@@Z")
+#pragma comment(linker, "/alternatename:__ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE=?Deallocate@Memory@@YAXPAXPAUHeap_t@mHeap@@@Z")
 
 /* ---- gate 14, the level boot -------------------------------------------
    Stage::LoadClsnAndObjects and the sub-loaders pick their externs out of
@@ -1679,7 +1679,7 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
    table into a minigame scene object. All three are exempted by a per-source -D
    in port/CMakeLists.txt onto their own table rather than by a change here, so
    the row above keeps serving src/_ZN12dEnemyBase_cD0Ev.cpp untouched:
-     src/actors/dScMgLuigi_c.cpp  dScMgLuigi_c    -> data_ov006_0213cf10
+     src/minigames/d_s_mg_luigi.cpp  dScMgLuigi_c    -> data_ov006_0213cf10
      src/_ZN14dScMgCurling_cD0Ev.cpp  dScMgCurling_c  -> data_ov006_0213c304
      src/_ZN11dScMgCoin_cD0Ev.cpp  dScMgCoin_c     -> data_ov006_0213bf50
    HEAP is renamed for none of them: all three pools hold 020A0EAC, which is
@@ -1698,7 +1698,7 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
    now discounts the three ways a TU can reuse a spelling without meaning the
    placeholder -- typedef, struct/union/enum tag, and #define -- and lists them
    as SHADOW rows rather than findings, so `struct VT` in
-   src/func_ov004_020b75e4.c and `#define G1` in src/func_ov007_020be0dc.c are
+   src/State10_Update.c and `#define G1` in src/func_ov007_020be0dc.c are
    no longer reported. What it still cannot see is who reaches the LINKER: it
    reports TUs that are in no target, and it can only ever discuss names it
    finds in source. Use the audit to decide whether a reader is WRONG; use the
@@ -1895,7 +1895,7 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
 #pragma comment(linker, "/alternatename:?data_ov085_021305b8@@3DA=_data_ov085_021305b8")
 #pragma comment(linker, "/alternatename:?data_ov085_021305c0@@3DA=_data_ov085_021305c0")
 #pragma comment(linker, "/alternatename:?data_ov085_021305c8@@3DA=_data_ov085_021305c8")
-#pragma comment(linker, "/alternatename:?data_ov085_021305d0@@3DA=_data_ov085_021305d0")
+#pragma comment(linker, "/alternatename:?gMipRunAnimationFile@@3DA=_gMipRunAnimationFile")
 #pragma comment(linker, "/alternatename:?data_ov085_021305d8@@3DA=_data_ov085_021305d8")
 #pragma comment(linker, "/alternatename:?data_ov085_021305e0@@3DA=_data_ov085_021305e0")
 #pragma comment(linker, "/alternatename:?data_ov085_021306cc@@3DA=_data_ov085_021306cc")
@@ -1956,8 +1956,8 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
 #pragma comment(linker, "/alternatename:?data_ov100_021473b0@@3PAPAUSharedFilePtr@@A=_data_ov100_021473b0")
 #pragma comment(linker, "/alternatename:?data_ov100_021489cc@@3USharedFilePtr@@A=_data_ov100_021489cc")
 #pragma comment(linker, "/alternatename:?data_ov002_0210d9d8@@3USFP@@A=_data_ov002_0210d9d8")
-#pragma comment(linker, "/alternatename:?data_ov100_02148600@@3USFP@@A=_data_ov100_02148600")
-#pragma comment(linker, "/alternatename:?data_ov100_02148608@@3USFP@@A=_data_ov100_02148608")
+#pragma comment(linker, "/alternatename:?gButterflyFlyAnimationFile@@3USFP@@A=_gButterflyFlyAnimationFile")
+#pragma comment(linker, "/alternatename:?gButterflyModelFile@@3USFP@@A=_gButterflyModelFile")
 #pragma comment(linker, "/alternatename:?data_ov100_02148668@@3USFP@@A=_data_ov100_02148668")
 #pragma comment(linker, "/alternatename:?data_020a0e68@@3UMtx@@A=_data_020a0e68")
 #pragma comment(linker, "/alternatename:?data_ov100_02148628@@3PAUPMF@@A=_data_ov100_02148628")
@@ -2203,11 +2203,11 @@ __declspec(naked) void hal_ov100_02146280_ridethrough(void)
    _ZN12daStarGate_c13InitResourcesEv.cpp declares its four data symbols with plain
    `extern` (C++ linkage) and as arrays, so MSVC mangles them to names the C
    mount and host globals do not carry. Each lands on the same C object every
-   other reader uses: data_ov100_02148934 / _ZN12daStarGate_c7ST_WAITE are the star
+   other reader uses: gObjStargateModelFile / _ZN12daStarGate_c7ST_WAITE are the star
    door's own ov100 records (mount), data_0209f250 the local-player index
    (level_boot), data_0209f394 the local-player array (cxxname_bridge). Same
    shape as the ov100 aliases at ~line 1048 above. */
-#pragma comment(linker, "/alternatename:?data_ov100_02148934@@3USharedFilePtr@@A=_data_ov100_02148934")
+#pragma comment(linker, "/alternatename:?gObjStargateModelFile@@3USharedFilePtr@@A=_gObjStargateModelFile")
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines _data_ov100_02148974, and nothing references ?_ZN12daStarGate_c7ST_WAITE@@3PAHA, so the row can never fire and nothing wants it to. */
 // #pragma comment(linker, "/alternatename:?_ZN12daStarGate_c7ST_WAITE@@3PAHA=_data_ov100_02148974")
 #pragma comment(linker, "/alternatename:?data_0209f250@@3PAEA=_data_0209f250")
@@ -2303,7 +2303,7 @@ __declspec(naked) void hal_ov100_02146280_ridethrough(void)
    LOCAL `struct Platform { void KillByMegaChar(Player &); };` and calls it
    through a qualified, non-virtual dispatch. Platform::KillByMegaChar is a
    real method per include/Platform.h, but its matched body
-   (src/actors/dBgActor_c.cpp, already in the build since
+   (src/runtime/actor/d_bg_actor.cpp, already in the build since
    gate 64) is plain C linkage -- the flat ROM name, not MSVC's re-mangling
    of the local declaration.
 
@@ -2379,13 +2379,13 @@ void Platform::KillByMegaChar(Player &player)
    C-linkage unsigned char arrays) is aliased under every C++-mangled
    spelling a caller's local type produces for it. Two different callers
    spell data_ov081_02128998's tag differently (Vec3 vs Vector3) and
-   data_ov081_02128d98's differently (S2 vs void*) -- both spellings alias
+   gSnowmanWaitAnimationFile's differently (S2 vs void*) -- both spellings alias
    onto the one real mount. */
 #pragma comment(linker, "/alternatename:?data_ov081_02128d90@@3PAXA=_data_ov081_02128d90")
-#pragma comment(linker, "/alternatename:?data_ov081_02128d98@@3PAXA=_data_ov081_02128d98")
-#pragma comment(linker, "/alternatename:?data_ov081_02128d98@@3US2@@A=_data_ov081_02128d98")
-#pragma comment(linker, "/alternatename:?data_ov081_02128d88@@3PAXA=_data_ov081_02128d88")
-#pragma comment(linker, "/alternatename:?data_ov081_02128da0@@3PAXA=_data_ov081_02128da0")
+#pragma comment(linker, "/alternatename:?gSnowmanWaitAnimationFile@@3PAXA=_gSnowmanWaitAnimationFile")
+#pragma comment(linker, "/alternatename:?gSnowmanWaitAnimationFile@@3US2@@A=_gSnowmanWaitAnimationFile")
+#pragma comment(linker, "/alternatename:?gSnowmanJumpStAnimationFile@@3PAXA=_gSnowmanJumpStAnimationFile")
+#pragma comment(linker, "/alternatename:?gSnowmanJumpEdAnimationFile@@3PAXA=_gSnowmanJumpEdAnimationFile")
 #pragma comment(linker, "/alternatename:?data_ov081_02128998@@3UVec3@@A=_data_ov081_02128998")
 #pragma comment(linker, "/alternatename:?data_ov081_02128998@@3UVector3@@A=_data_ov081_02128998")
 #pragma comment(linker, "/alternatename:?data_ov081_02128e54@@3PAXA=_data_ov081_02128e54")
@@ -2916,15 +2916,15 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:?data_ov006_0213cec0@@3PAEA=_data_ov006_0213cec0")
 #pragma comment(linker, "/alternatename:?data_ov006_0213cdec@@3PAGA=_data_ov006_0213cdec")
 #pragma comment(linker, "/alternatename:?data_ov006_02142254@@3PAP8C_f300c@@AEXH@ZA=_data_ov006_02142254")
-#pragma comment(linker, "/alternatename:?data_ov004_020beb68@@3PAUV@@A=_data_ov004_020beb68")
+#pragma comment(linker, "/alternatename:?gMgScene@@3PAUV@@A=_gMgScene")
 #pragma comment(linker, "/alternatename:?data_ov006_02142304@@3PAP8dScMgMemory_c@@AEXXZA=_data_ov006_02142304")
 #pragma comment(linker, "/alternatename:?data_ov006_02142334@@3PAP8dScMgMemory_c@@AEXH@ZA=_data_ov006_02142334")
 #pragma comment(linker, "/alternatename:?data_ov006_0213c85c@@3UMatrix4x3@@A=_data_ov006_0213c85c")
 #pragma comment(linker, "/alternatename:?data_ov006_02141e94@@3PAXA=_data_ov006_02141e94")
 #pragma comment(linker, "/alternatename:?data_ov006_02141e6c@@3PAXA=_data_ov006_02141e6c")
 #pragma comment(linker, "/alternatename:?data_ov006_02142f94@@3PAP8dScMgBSC_c@@AEXXZA=_data_ov006_02142f94")
-#pragma comment(linker, "/alternatename:?_ZN13dScMgTeresa_c19func_ov006_0211fb1cEv@@YAXPAD@Z=__ZN13dScMgTeresa_c19func_ov006_0211fb1cEv")
-#pragma comment(linker, "/alternatename:?func_ov004_020ae5c4@@YAHPAXHHHHHH@Z=_func_ov004_020ae5c4")
+#pragma comment(linker, "/alternatename:?_ZN13dScMgTeresa_c12ReadRubTouchEv@@YAXPAD@Z=__ZN13dScMgTeresa_c12ReadRubTouchEv")
+#pragma comment(linker, "/alternatename:?Mg_DrawLine@@YAHPAXHHHHHH@Z=_Mg_DrawLine")
 #pragma comment(linker, "/alternatename:?func_020126e8@@YAHH@Z=_func_020126e8")
 #pragma comment(linker, "/alternatename:?func_02012468@@YAHHHHHHHHF@Z=_func_02012468")
 #pragma comment(linker, "/alternatename:?_ZTV19dScMgSingle3DBase_c@@3PAPAXA=__ZTV19dScMgSingle3DBase_c")
@@ -3012,8 +3012,8 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:?data_ov077_02127b50@@3USharedFilePtr@@A=_data_ov077_02127b50")
 #pragma comment(linker, "/alternatename:?data_ov077_02127238@@3PAPAUSharedFilePtr@@A=_data_ov077_02127238")
 #pragma comment(linker, "/alternatename:?data_ov077_02127230@@3PAPAUSharedFilePtr@@A=_data_ov077_02127230")
-#pragma comment(linker, "/alternatename:?data_ov092_02132540@@3USharedFilePtr@@A=_data_ov092_02132540")
-#pragma comment(linker, "/alternatename:?data_ov092_02132548@@3USharedFilePtr@@A=_data_ov092_02132548")
+#pragma comment(linker, "/alternatename:?gOnimasuModelFile@@3USharedFilePtr@@A=_gOnimasuModelFile")
+#pragma comment(linker, "/alternatename:?gOnimasuCollisionFile@@3USharedFilePtr@@A=_gOnimasuCollisionFile")
 #pragma comment(linker, "/alternatename:?data_ov092_02132220@@3DA=_data_ov092_02132220")
 #pragma comment(linker, "/alternatename:?data_ov092_02132294@@3DA=_data_ov092_02132294")
 #pragma comment(linker, "/alternatename:?data_ov026_02113ea0@@3USharedFilePtr@@A=_data_ov026_02113ea0")
@@ -3041,7 +3041,7 @@ DSSTATE_END
 // #pragma comment(linker, "/alternatename:?operator_delete2@Memory@@YAXPAX@Z=__ZN6Memory16operator_delete2EPv")
 #pragma comment(linker, "/alternatename:?_ZTV16daObjPushblock_c@@3PAPAXA=__ZTV16daObjPushblock_c")
 #pragma comment(linker, "/alternatename:?data_ov002_0210dbc0@@3PAP8dEnemyBase_c@@AEHAAUdBgCh_Actr@@@ZA=_data_ov002_0210dbc0")
-#pragma comment(linker, "/alternatename:?data_ov004_020beb68@@3PADA=_data_ov004_020beb68")
+#pragma comment(linker, "/alternatename:?gMgScene@@3PADA=_gMgScene")
 #pragma comment(linker, "/alternatename:?data_ov060_0211af74@@3PAP8dActor_c@@AEXXZA=_data_ov060_0211af74")
 #pragma comment(linker, "/alternatename:?data_ov079_02128280@@3PAP8dActor_c@@AEHXZA=_data_ov079_02128280")
 #pragma comment(linker, "/alternatename:?data_ov098_0213c8fc@@3PAUCannonStateEntry@@A=_data_ov098_0213c8fc")
@@ -3079,35 +3079,35 @@ DSSTATE_END
  * C body that takes the receiver on the stack) are NOT here: those need a
  * real face, which is the ruling hal/dtor_faces_cpp.cpp already records.
  * ------------------------------------------------------------------- */
-#pragma comment(linker, "/alternatename:?VAllocate@ExpandingHeap@@QAEPAXIH@Z=?VAllocate@ExpandingHeap@@UAEPAXIH@Z")
-#pragma comment(linker, "/alternatename:?VReallocate@ExpandingHeap@@QAEPAXPAXI@Z=?VReallocate@ExpandingHeap@@UAEIPAXI@Z")
-#pragma comment(linker, "/alternatename:?VSizeof@ExpandingHeap@@QAEIPAX@Z=?VSizeof@ExpandingHeap@@UAEIPAX@Z")
-#pragma comment(linker, "/alternatename:?VIntact@ExpandingHeap@@QAE_NXZ=?VIntact@ExpandingHeap@@UAE_NXZ")
-#pragma comment(linker, "/alternatename:?VRescue@ExpandingHeap@@QAEXXZ=?VRescue@ExpandingHeap@@UAEXXZ")
-#pragma comment(linker, "/alternatename:?VResizeToFit@ExpandingHeap@@QAEIXZ=?VResizeToFit@ExpandingHeap@@UAEIXZ")
-#pragma comment(linker, "/alternatename:?VGetNodeID@ExpandingHeap@@QAEIXZ=?VGetNodeID@ExpandingHeap@@UAEIXZ")
-#pragma comment(linker, "/alternatename:?VSetNodeID@ExpandingHeap@@QAEXI@Z=?VSetNodeID@ExpandingHeap@@UAEII@Z")
-#pragma comment(linker, "/alternatename:?Allocate@Heap@@QAEHIH@Z=?Allocate@Heap@@QAEPAXIH@Z")
-#pragma comment(linker, "/alternatename:?VMaxAllocationUnitSize@ExpandingHeap@@QAEIXZ=?VMaxAllocationUnitSize@ExpandingHeap@@UAEIXZ")
-#pragma comment(linker, "/alternatename:?VMaxAllocatableSize@ExpandingHeap@@QAEIXZ=?VMaxAllocatableSize@ExpandingHeap@@UAEIXZ")
+#pragma comment(linker, "/alternatename:?VAllocate@ExpHeap_t@mHeap@@QAEPAXIH@Z=?VAllocate@ExpHeap_t@mHeap@@UAEPAXIH@Z")
+#pragma comment(linker, "/alternatename:?VReallocate@ExpHeap_t@mHeap@@QAEPAXPAXI@Z=?VReallocate@ExpHeap_t@mHeap@@UAEIPAXI@Z")
+#pragma comment(linker, "/alternatename:?VSizeof@ExpHeap_t@mHeap@@QAEIPAX@Z=?VSizeof@ExpHeap_t@mHeap@@UAEIPAX@Z")
+#pragma comment(linker, "/alternatename:?VIntact@ExpHeap_t@mHeap@@QAE_NXZ=?VIntact@ExpHeap_t@mHeap@@UAE_NXZ")
+#pragma comment(linker, "/alternatename:?VRescue@ExpHeap_t@mHeap@@QAEXXZ=?VRescue@ExpHeap_t@mHeap@@UAEXXZ")
+#pragma comment(linker, "/alternatename:?VResizeToFit@ExpHeap_t@mHeap@@QAEIXZ=?VResizeToFit@ExpHeap_t@mHeap@@UAEIXZ")
+#pragma comment(linker, "/alternatename:?VGetNodeID@ExpHeap_t@mHeap@@QAEIXZ=?VGetNodeID@ExpHeap_t@mHeap@@UAEIXZ")
+#pragma comment(linker, "/alternatename:?VSetNodeID@ExpHeap_t@mHeap@@QAEXI@Z=?VSetNodeID@ExpHeap_t@mHeap@@UAEII@Z")
+#pragma comment(linker, "/alternatename:?Allocate@Heap_t@mHeap@@QAEHIH@Z=?Allocate@Heap_t@mHeap@@QAEPAXIH@Z")
+#pragma comment(linker, "/alternatename:?VMaxAllocationUnitSize@ExpHeap_t@mHeap@@QAEIXZ=?VMaxAllocationUnitSize@ExpHeap_t@mHeap@@UAEIXZ")
+#pragma comment(linker, "/alternatename:?VMaxAllocatableSize@ExpHeap_t@mHeap@@QAEIXZ=?VMaxAllocatableSize@ExpHeap_t@mHeap@@UAEIXZ")
 #pragma comment(linker, "/alternatename:?Virtual34@fBase_c@@UAEHII@Z=?Virtual34@fBase_c@@QAEHII@Z")
 #pragma comment(linker, "/alternatename:?Virtual38@fBase_c@@UAEHII@Z=?Virtual38@fBase_c@@QAEHII@Z")
 #pragma comment(linker, "/alternatename:?PlayLong@Sound@@YAIIIIABUVector3@@F@Z=?PlayLong@Sound@@YAHIIIABUVector3@@F@Z")
-#pragma comment(linker, "/alternatename:?VDeallocateAll@ExpandingHeap@@QAEXXZ=?VDeallocateAll@ExpandingHeap@@UAEXXZ")
-#pragma comment(linker, "/alternatename:?VMemoryLeft@ExpandingHeap@@QAEIXZ=?VMemoryLeft@ExpandingHeap@@UAEIXZ")
-#pragma comment(linker, "/alternatename:?VAllocate@SolidHeap@@QAEPAXII@Z=?VAllocate@SolidHeap@@UAEPAXIH@Z")
-#pragma comment(linker, "/alternatename:?VDeallocate@SolidHeap@@QAEXPAX@Z=?VDeallocate@SolidHeap@@UAEXPAX@Z")
-#pragma comment(linker, "/alternatename:?VDeallocateAll@SolidHeap@@QAEXXZ=?VDeallocateAll@SolidHeap@@UAEXXZ")
-#pragma comment(linker, "/alternatename:?VIntact@SolidHeap@@QAE_NXZ=?VIntact@SolidHeap@@UAE_NXZ")
-#pragma comment(linker, "/alternatename:?VRescue@SolidHeap@@QAEXXZ=?VRescue@SolidHeap@@UAEXXZ")
-#pragma comment(linker, "/alternatename:?VReallocate@SolidHeap@@QAEPAXPAXI@Z=?VReallocate@SolidHeap@@UAEIPAXI@Z")
-#pragma comment(linker, "/alternatename:?VSizeof@SolidHeap@@QAEHPAX@Z=?VSizeof@SolidHeap@@UAEIPAX@Z")
-#pragma comment(linker, "/alternatename:?VMaxAllocationUnitSize@SolidHeap@@QAEIXZ=?VMaxAllocationUnitSize@SolidHeap@@UAEIXZ")
-#pragma comment(linker, "/alternatename:?VMaxAllocatableSize@SolidHeap@@QAEIXZ=?VMaxAllocatableSize@SolidHeap@@UAEIXZ")
-#pragma comment(linker, "/alternatename:?VMemoryLeft@SolidHeap@@QAEIXZ=?VMemoryLeft@SolidHeap@@UAEIXZ")
-#pragma comment(linker, "/alternatename:?VSetNodeID@SolidHeap@@QAEII@Z=?VSetNodeID@SolidHeap@@UAEII@Z")
-#pragma comment(linker, "/alternatename:?VGetNodeID@SolidHeap@@QAEIXZ=?VGetNodeID@SolidHeap@@UAEIXZ")
-#pragma comment(linker, "/alternatename:?SetDefault@Heap@@QAEHXZ=?SetDefault@Heap@@QAEPAU1@XZ")
+#pragma comment(linker, "/alternatename:?VDeallocateAll@ExpHeap_t@mHeap@@QAEXXZ=?VDeallocateAll@ExpHeap_t@mHeap@@UAEXXZ")
+#pragma comment(linker, "/alternatename:?VMemoryLeft@ExpHeap_t@mHeap@@QAEIXZ=?VMemoryLeft@ExpHeap_t@mHeap@@UAEIXZ")
+#pragma comment(linker, "/alternatename:?VAllocate@SolidHeap_t@mHeap@@QAEPAXII@Z=?VAllocate@SolidHeap_t@mHeap@@UAEPAXIH@Z")
+#pragma comment(linker, "/alternatename:?VDeallocate@SolidHeap_t@mHeap@@QAEXPAX@Z=?VDeallocate@SolidHeap_t@mHeap@@UAEXPAX@Z")
+#pragma comment(linker, "/alternatename:?VDeallocateAll@SolidHeap_t@mHeap@@QAEXXZ=?VDeallocateAll@SolidHeap_t@mHeap@@UAEXXZ")
+#pragma comment(linker, "/alternatename:?VIntact@SolidHeap_t@mHeap@@QAE_NXZ=?VIntact@SolidHeap_t@mHeap@@UAE_NXZ")
+#pragma comment(linker, "/alternatename:?VRescue@SolidHeap_t@mHeap@@QAEXXZ=?VRescue@SolidHeap_t@mHeap@@UAEXXZ")
+#pragma comment(linker, "/alternatename:?VReallocate@SolidHeap_t@mHeap@@QAEPAXPAXI@Z=?VReallocate@SolidHeap_t@mHeap@@UAEIPAXI@Z")
+#pragma comment(linker, "/alternatename:?VSizeof@SolidHeap_t@mHeap@@QAEHPAX@Z=?VSizeof@SolidHeap_t@mHeap@@UAEIPAX@Z")
+#pragma comment(linker, "/alternatename:?VMaxAllocationUnitSize@SolidHeap_t@mHeap@@QAEIXZ=?VMaxAllocationUnitSize@SolidHeap_t@mHeap@@UAEIXZ")
+#pragma comment(linker, "/alternatename:?VMaxAllocatableSize@SolidHeap_t@mHeap@@QAEIXZ=?VMaxAllocatableSize@SolidHeap_t@mHeap@@UAEIXZ")
+#pragma comment(linker, "/alternatename:?VMemoryLeft@SolidHeap_t@mHeap@@QAEIXZ=?VMemoryLeft@SolidHeap_t@mHeap@@UAEIXZ")
+#pragma comment(linker, "/alternatename:?VSetNodeID@SolidHeap_t@mHeap@@QAEII@Z=?VSetNodeID@SolidHeap_t@mHeap@@UAEII@Z")
+#pragma comment(linker, "/alternatename:?VGetNodeID@SolidHeap_t@mHeap@@QAEIXZ=?VGetNodeID@SolidHeap_t@mHeap@@UAEIXZ")
+#pragma comment(linker, "/alternatename:?SetDefault@Heap_t@mHeap@@QAEHXZ=?SetDefault@Heap_t@mHeap@@QAEPAU12@XZ")
 #pragma comment(linker, "/alternatename:?UpdatePosWithOnlySpeed@Actor@@QAEXPAUdCc_c@@@Z=?UpdatePosWithOnlySpeed@Actor@@QAEXPAX@Z")
 #pragma comment(linker, "/alternatename:?LoadInitialGroup@Sound@@YAXH@Z=?LoadInitialGroup@Sound@@SAXH@Z")
 #pragma comment(linker, "/alternatename:?Play2D@Sound@@YAIII@Z=?Play2D@Sound@@SAXII@Z")
@@ -3119,7 +3119,7 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:?InitResources@dMap_c@@QAEHXZ=?InitResources@dMap_c@@UAEHXZ")
 #pragma comment(linker, "/alternatename:?CleanupResources@dMap_c@@QAEHXZ=?CleanupResources@dMap_c@@UAEHXZ")
 #pragma comment(linker, "/alternatename:?OnPendingDestroy@dMap_c@@QAEXXZ=?OnPendingDestroy@dMap_c@@UAEXXZ")
-#pragma comment(linker, "/alternatename:?MaxAllocationUnitSize@Heap@@QAEHXZ=?MaxAllocationUnitSize@Heap@@QAEIXZ")
+#pragma comment(linker, "/alternatename:?MaxAllocationUnitSize@Heap_t@mHeap@@QAEHXZ=?MaxAllocationUnitSize@Heap_t@mHeap@@QAEIXZ")
 #pragma comment(linker, "/alternatename:?Disable@dBgW@@QAEXXZ=?Disable@dBgW@@QAEHXZ")
 #pragma comment(linker, "/alternatename:?Enable@dBgW@@QAEXPAUdActor_c@@@Z=?Enable@dBgW@@QAEHPAUdActor_c@@@Z")
 #pragma comment(linker, "/alternatename:?InitResources@daObjCtRotateBlock_c@@QAEHXZ=?InitResources@daObjCtRotateBlock_c@@UAEHXZ")
@@ -3366,7 +3366,7 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:__ZN8SaveData16ReadMinigameDataEP16MinigameSaveData=?ReadMinigameData@SaveData@@SAHPAUMinigameSaveData@@@Z")
 #pragma comment(linker, "/alternatename:__ZN8SaveData13SaveMinigamesEP16MinigameSaveData=?SaveMinigames@SaveData@@SAHPAUMinigameSaveData@@@Z")
 #pragma comment(linker, "/alternatename:__ZN3G2S13GetBG0CharPtrEv=?GetBG0CharPtr@G2S@@YAIXZ")
-#pragma comment(linker, "/alternatename:__ZN4Heap14CreateRootHeapEPvj=?CreateRootHeap@Heap@@SAPAU1@PAXI@Z")
+#pragma comment(linker, "/alternatename:__ZN5mHeap6Heap_t14CreateRootHeapEPvj=?CreateRootHeap@Heap_t@mHeap@@SAPAU12@PAXI@Z")
 #pragma comment(linker, "/alternatename:__ZN3G2S13GetBG3CharPtrEv=?GetBG3CharPtr@G2S@@YAIXZ")
 #pragma comment(linker, "/alternatename:__ZN3G2S13GetBG2CharPtrEv=?GetBG2CharPtr@G2S@@YAIXZ")
 #pragma comment(linker, "/alternatename:__ZN3G2S12GetBG3ScrPtrEv=?GetBG3ScrPtr@G2S@@YAIXZ")
@@ -3400,7 +3400,7 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:__ZN22ExpandingHeapAllocator8LinkNodeEP10MemoryNodeS1_S1_=?LinkNode@ExpandingHeapAllocator@@SAPAXPAUMemoryNode@@00@Z")
 #pragma comment(linker, "/alternatename:__ZN4cstd3absEi=?abs@cstd@@YAHH@Z")
 #pragma comment(linker, "/alternatename:__ZN5dBgCh21ShouldPassThroughImplEPvRK4CLPSRKS_b=_hostgen_nrwide__ZN5dBgCh21ShouldPassThroughImplEPvRK4CLPSRKS_b")
-#pragma comment(linker, "/alternatename:__ZN6Memory8AllocateEjiP4Heap=?Allocate@Memory@@YAPAXIHPAVHeap@@@Z")
+#pragma comment(linker, "/alternatename:__ZN6Memory8AllocateEjiPN5mHeap6Heap_tE=?Allocate@Memory@@YAPAXIHPAUHeap_t@mHeap@@@Z")
 #pragma comment(linker, "/alternatename:__ZN4cstd11fdiv_resultEv=?fdiv_result@cstd@@YAHXZ")
 #pragma comment(linker, "/alternatename:__ZN5Sound13PlayCharVoiceEjjRK7Vector3=?PlayCharVoice@Sound@@YAIIIABUVector3@@@Z")
 #pragma comment(linker, "/alternatename:__ZN5Sound9PlayBank0EjRK7Vector3=?PlayBank0@Sound@@YAXIABUVector3@@@Z")
@@ -3411,8 +3411,8 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:__ZN8SaveData16HasPlayerLostCapEv=?HasPlayerLostCap@SaveData@@SAHXZ")
 #pragma comment(linker, "/alternatename:__Z11LoadObjectsRN11LVL_Overlay8ObjTableEij=?LoadObjects@@YAXAAUObjTable@LVL_Overlay@@HI@Z")
 #pragma comment(linker, "/alternatename:__ZN18NestedHeapIterator10FindNestedEPv=?FindNested@NestedHeapIterator@@SAPAU1@PAX@Z")
-#pragma comment(linker, "/alternatename:__ZN4Heap28InitializeSolidHeapAsDefaultEjPS_i=?InitializeSolidHeapAsDefault@Heap@@SAPAXIPAU1@H@Z")
-#pragma comment(linker, "/alternatename:__ZN4Heap20RestoreFromTemporaryEv=?RestoreFromTemporary@Heap@@SAXXZ")
+#pragma comment(linker, "/alternatename:__ZN5mHeap6Heap_t28InitializeSolidHeapAsDefaultEjPS0_i=?InitializeSolidHeapAsDefault@Heap_t@mHeap@@SAPAXIPAU12@H@Z")
+#pragma comment(linker, "/alternatename:__ZN5mHeap6Heap_t20RestoreFromTemporaryEv=?RestoreFromTemporary@Heap_t@mHeap@@SAXXZ")
 #pragma comment(linker, "/alternatename:__ZN7Message7EndTalkEv=?EndTalk@Message@@SAXXZ")
 #pragma comment(linker, "/alternatename:__ZN7Message13DisplaySavingEt=?DisplaySaving@Message@@SAXG@Z")
 #pragma comment(linker, "/alternatename:__ZN7Message11PrepareTalkEv=?PrepareTalk@Message@@SAXXZ")
@@ -3450,7 +3450,7 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:__ZN3IRQ11Dma2HandlerEv=?Dma2Handler@IRQ@@YAXXZ")
 #pragma comment(linker, "/alternatename:__ZN3IRQ11Dma3HandlerEv=?Dma3Handler@IRQ@@YAXXZ")
 #pragma comment(linker, "/alternatename:__ZN4cstd11ldiv_resultEv=?ldiv_result@cstd@@YA_JXZ")
-#pragma comment(linker, "/alternatename:__ZN4Heap18InitializeGameHeapEjPS_=?InitializeGameHeap@Heap@@SAXIPAU1@@Z")
+#pragma comment(linker, "/alternatename:__ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_=?InitializeGameHeap@Heap_t@mHeap@@SAXIPAU12@@Z")
 #pragma comment(linker, "/alternatename:__ZN10dScStage_c10CheckInputEv=?CheckInput@dScStage_c@@SAXXZ")
 #pragma comment(linker, "/alternatename:__ZN3IRQ13VBlankHandlerEv=?VBlankHandler@IRQ@@YAXXZ")
 #pragma comment(linker, "/alternatename:__ZN4cstd8__assertEPKcS1_S1_i=?__assert@cstd@@YAXPBD00H@Z")
@@ -3477,7 +3477,7 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:__ZN7Message19DisplayDontSaveTextEt=?DisplayDontSaveText@Message@@SAXG@Z")
 #pragma comment(linker, "/alternatename:__ZN7Message25DisplayControllerModeTextEt=?DisplayControllerModeText@Message@@SAXG@Z")
 #pragma comment(linker, "/alternatename:__ZN3G3X11SetFogTableEPv=?SetFogTable@G3X@@YAXPAX@Z")
-#pragma comment(linker, "/alternatename:__ZN4Heap24CreateSolidHeapAllocatorEPvjj=?CreateSolidHeapAllocator@Heap@@SAPAUSolidHeapAllocator@@PAXII@Z")
+#pragma comment(linker, "/alternatename:__ZN5mHeap6Heap_t24CreateSolidHeapAllocatorEPvjj=?CreateSolidHeapAllocator@Heap_t@mHeap@@SAPAUSolidHeapAllocator@@PAXII@Z")
 
 /* -------------------------------------------------------------------
  * Wave 8, lane FACES2: the DATA rows the sync wall kept, and only data.
@@ -3858,15 +3858,15 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:?data_0209f394@@3PAPAUPlayer@@A=_data_0209f394")
 #pragma comment(linker, "/alternatename:?data_020a0ebc@@3PADA=_data_020a0ebc")
 #pragma comment(linker, "/alternatename:?data_ov002_0210dc00@@3PAP8C@@AEXXZA=_data_ov002_0210dc00")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b020@@3UPmfRecord@@A=_data_ov006_0213b020")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b028@@3UPmfRecord@@A=_data_ov006_0213b028")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b030@@3UPmfRecord@@A=_data_ov006_0213b030")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b038@@3UPmfRecord@@A=_data_ov006_0213b038")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b058@@3UPair@@A=_data_ov006_0213b058")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b060@@3UPmfRecord@@A=_data_ov006_0213b060")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b068@@3UPair@@A=_data_ov006_0213b068")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b070@@3UPair@@A=_data_ov006_0213b070")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b078@@3UPair@@A=_data_ov006_0213b078")
+#pragma comment(linker, "/alternatename:?pmf_dMgJump3DMario_c_StateMove@@3UPmfRecord@@A=_pmf_dMgJump3DMario_c_StateMove")
+#pragma comment(linker, "/alternatename:?pmf_dMgJump3DMario_c_StateHold@@3UPmfRecord@@A=_pmf_dMgJump3DMario_c_StateHold")
+#pragma comment(linker, "/alternatename:?pmf_dMgJump3DMario_c_StateDamp@@3UPmfRecord@@A=_pmf_dMgJump3DMario_c_StateDamp")
+#pragma comment(linker, "/alternatename:?pmf_dMgJump3DMario_c_StateRespawn@@3UPmfRecord@@A=_pmf_dMgJump3DMario_c_StateRespawn")
+#pragma comment(linker, "/alternatename:?pmf_dMgJump3DMario_c_StateIdle_3@@3UPair@@A=_pmf_dMgJump3DMario_c_StateIdle_3")
+#pragma comment(linker, "/alternatename:?pmf_dMgJump3DMario_c_StateBounce@@3UPmfRecord@@A=_pmf_dMgJump3DMario_c_StateBounce")
+#pragma comment(linker, "/alternatename:?pmf_dMgJump3DMario_c_StateWindUp_2@@3UPair@@A=_pmf_dMgJump3DMario_c_StateWindUp_2")
+#pragma comment(linker, "/alternatename:?pmf_dMgJump3DMario_c_StateWindUp_3@@3UPair@@A=_pmf_dMgJump3DMario_c_StateWindUp_3")
+#pragma comment(linker, "/alternatename:?pmf_dMgJump3DMario_c_StateBounce_2@@3UPair@@A=_pmf_dMgJump3DMario_c_StateBounce_2")
 #pragma comment(linker, "/alternatename:?data_ov015_02113594@@3UCLPS_Block@@A=_data_ov015_02113594")
 #pragma comment(linker, "/alternatename:?data_ov015_02114a5c@@3USharedFilePtr@@A=_data_ov015_02114a5c")
 #pragma comment(linker, "/alternatename:?data_ov015_02114a64@@3USharedFilePtr@@A=_data_ov015_02114a64")

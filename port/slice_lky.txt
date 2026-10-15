@@ -129,7 +129,7 @@
 # leaves blank with "no load relocation inside that factory points at any of the
 # thirty-two signature tables". THAT IS TRUE AND IT IS NOT THE WHOLE STORY:
 # src/d_s_mg_snowball.cpp does not write a vtable at all. It allocates
-# 0xc59c and tail-calls func_ov006_021295ac(p), and THAT body writes
+# 0xc59c and tail-calls dScMgSnowball_c_Construct(p), and THAT body writes
 # _ZTV19dScMgSingle3DBase_c and then _ZTV15dScMgSnowball_c -- so 0x179 is a fourth class
 # under the same middle base, and the indirection section 3 hypothesised ("its
 # factory reaches its vtable through an indirection the other twenty-nine do not
@@ -151,7 +151,7 @@
 # this lane's reading agrees with both earlier ones.
 #
 # TWO OF THE TWELVE CARRY A LIVE ARGUMENT AND THE SEAT MUST FORWARD IT.
-# Slots 18 (_ZN10dScMgBSC_c13OnYoshiTryEatEi) and 19 (_ZN10dScMgBSC_c13OnTurnIntoEggEi) both BRANCH on
+# Slots 18 (_ZN10dScMgBSC_c10StartRoundEi) and 19 (_ZN10dScMgBSC_c11CanEndStateEi) both BRANCH on
 # their second argument -- 0x02125364 compares it against 4, 5 and 3, and
 # 0x0212527c against 4 and 5. Every seated class before this one had a slot-18
 # body that ignored the value, so its thunk existed only so __fastcall would
@@ -219,7 +219,7 @@
 #
 # ALSO EXCLUDED, both against existing host copies rather than against this
 # class:
-#     src/minigames/d_s_mg_single3_d_base.cpp   slot 2, the argument ride-through. Defined
+#     src/minigames/d_s_mg_single3d_base.cpp   slot 2, the argument ride-through. Defined
 #                                   by unmatched/MgFlower_Slot2.cpp as
 #                                   port_mg_flower_after_init; listing it would
 #                                   be an LNK2005. Same call slice_mem.txt makes.
@@ -280,8 +280,8 @@
 # link, and add exactly what LNK2019 names. It closed in THREE waves and asked
 # for FOUR symbols in total -- two ordinary /alternatename rows (both in
 # port/unmatched/MgBSC_Faces.cpp) and two slice lines
-# (src/func_ov004_020b5c18.cpp, which func_ov004_020b5ed0 calls, and
-# src/func_ov004_020b6324.c, which slot 21 tail-jumps to). That is section 14's
+# (src/MgCoins_StepLose.cpp, which MgCoins_StartLose calls, and
+# src/MgCoins_RaiseBet.c, which slot 21 tail-jumps to). That is section 14's
 # "budget ONE wave plus its own alias row", near enough.
 #
 # THE COUNT IS CHECKED AGAINST THE HEADLINE RATHER THAN TRUSTED. port/tools/
@@ -296,7 +296,7 @@
 # Eight port/slice_*.txt files are not read by port/CMakeLists.txt at all --
 # port/slice_mga361.txt among them, the 0x169 derivation that was never seated
 # -- and counting an unwired slice as coverage hides TUs a seat genuinely needs.
-# Here it hid src/minigames/d_s_mg_base.cpp and src/minigames/d_s_mg_single3_d_base.cpp; both
+# Here it hid src/minigames/d_s_mg_base.cpp and src/minigames/d_s_mg_single3d_base.cpp; both
 # turned out to be host-copy exclusions rather than slice lines (section 6), but
 # the check is what surfaced them.
 #
@@ -308,6 +308,6 @@
 
 src/minigames/d_s_mg_bsc.cpp
 src/minigames/d_s_mg_base.cpp
-src/actors/unit020b4aa4.cpp
-# FOLDED into src/actors/unit020b4aa4.cpp (row 311): src/func_ov004_020b5ed0.c
-# FOLDED into src/actors/unit020b4aa4.cpp (row 311): src/func_ov004_020b6324.c
+src/minigames/unit020b4aa4.cpp
+# FOLDED into src/actors/unit020b4aa4.cpp (row 311): src/MgCoins_StartLose.c
+# FOLDED into src/actors/unit020b4aa4.cpp (row 311): src/MgCoins_RaiseBet.c

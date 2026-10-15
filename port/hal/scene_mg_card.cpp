@@ -82,7 +82,7 @@
 // ---- 4. THE WIDTH IS 36, CHECKED FIVE WAYS, AND THE 37TH WORD BELONGS TO A
 //         CLASS THIS PORT ALREADY SHIPS ---------------------------------
 //
-//   1. SPAN.  0x0213bdb4 to the next symbol, data_ov006_0213be44, is 0x90 = 36.
+//   1. SPAN.  0x0213bdb4 to the next symbol, pmf_dScMgCoin_c_Bag_State0, is 0x90 = 36.
 //   2. TERMINAL SLOT.  Slot 35 holds 0x020ad660, dScMgBase_c's own
 //      `return (this[2] & 0xff) != 0`, which every class in the family ends on.
 //   3. WHAT THE WORD PAST THE END IS.  0x0213be44 holds 0x020dc294 and it is
@@ -137,9 +137,9 @@
 // The one member pointer anywhere near this class is the +0x4f38 sub-object's
 // FIELD-held one, and it is already host-copied family-wide in
 // port/unmatched/MgMemory2_FieldPmf.cpp.  Nothing here re-copies it, and
-// nothing here rewrites the stored pair -- src/func_ov006_020c0f0c.c, which
+// nothing here rewrites the stored pair -- src/Dealer_IsBusy.c, which
 // this class's state 1 calls, asks "is this slot idle" BY VALUE against the
-// sentinels data_ov006_0213acb0 and _0213aca8, so a seat that wrote host
+// sentinels pmf_Dealer_StateCollect_2 and _0213aca8, so a seat that wrote host
 // addresses over the pair would leave that test permanently false.
 //
 // ---- 7. WHAT THIS SEAT DOES NOT CLAIM -------------------------------------
@@ -204,8 +204,8 @@ int   _ZN19dScMgSingle3DBase_c14BeforeBehaviorEv(void *c);                     /
 int   _ZN19dScMgSingle3DBase_c12BeforeRenderEv(void *c);                     /* slot 10 */
 int   _ZN19dScMgSingle3DBase_cD1Ev(char *c);                     /* slot 16 D2 */
 int   _ZN19dScMgSingle3DBase_cD0Ev(char *c);                     /* slot 17 D0 */
-int   _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(void);                        /* slot 26 */
-void  _ZN19dScMgSingle3DBase_c9Virtual84Ev(char *c);                     /* slot 33 */
+int   _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(void);                        /* slot 26 */
+void  _ZN19dScMgSingle3DBase_c11InitEnginesEv(char *c);                     /* slot 33 */
 
 /* dScMgCard_c's own NINE.  Slot 3 is the one dScMgBSC_c does not have; run mg9
    lane WIG recorded CleanupResources as new to the family and this is the
@@ -216,9 +216,9 @@ int   _ZN11dScMgCard_c8BehaviorEv(char *c);           /* slot  6 Behavior       
 int   _ZN11dScMgCard_c6RenderEv(char *c);           /* slot  9 Render           */
 void *_ZN11dScMgCard_cD1Ev(char *c);           /* slot 16 D2               */
 void *_ZN11dScMgCard_cD0Ev(char *c);           /* slot 17 D0               */
-void  _ZN11dScMgCard_c13OnYoshiTryEatEi(char *c);           /* slot 18 state reset      */
-int   _ZN11dScMgCard_c13OnTurnIntoEggEi(char *c);           /* slot 19                  */
-int   _ZN11dScMgCard_c15OnGroundPoundedEv(void *c);           /* slot 21 difficulty band  */
+void  _ZN11dScMgCard_c10StartRoundEi(char *c);           /* slot 18 state reset      */
+int   _ZN11dScMgCard_c11CanEndStateEi(char *c);           /* slot 19                  */
+int   _ZN11dScMgCard_c10OnDealDoneEv(void *c);           /* slot 21 difficulty band  */
 
 /* the two element classes' three each */
 void  _ZN12dMgCardObj_c6RenderEv(char *c);           /* dMgCardObj_c      slot 0 */
@@ -236,20 +236,20 @@ void     port_mg_dispatch_counts(unsigned *calls, unsigned *unknown);
 /* the +0x4f38 sub-object's FIELD-held member pointer, from
    unmatched/MgMemory2_FieldPmf.cpp.  This class's state machine WAITS ON that
    machine at states 2, 5 and 7 -- every one of them is
-   `if (func_ov006_020c1718(this+0x4f38))` -- so a census that prints this
+   `if (Dealer_IsIdle(this+0x4f38))` -- so a census that prints this
    class's own state index and not this counter cannot tell a machine that is
    waiting correctly from one that is waiting on a dispatcher that never ran. */
 void     port_mg_memory2_field_counts(unsigned *calls, unsigned *hits);
 /* the idle sentinel that gate compares against, and the shared-file pair the
    sub-object parks on.  Read, never written. */
-extern unsigned char data_ov006_0213ac58[];
+extern unsigned char pmf_Dealer_StateIdle_2[];
 
 /* the persistent minigame record this class's level is READ FROM and WRITTEN
    BACK TO.  Nothing new is defined here: the storage is hal/level_boot.cpp's
-   .dsstate$savblk0004 and the index function is src/func_ov004_020adc3c.c. */
-extern void         *data_ov004_020beb68;     /* the live dScMgBase_c `this` */
+   .dsstate$savblk0004 and the index function is src/Mg_GetSaveTable.c. */
+extern void         *gMgScene;     /* the live dScMgBase_c `this` */
 extern unsigned char data_0209caf4[];         /* 36 records x 20 bytes       */
-int  func_ov004_020adc3c(void *c);            /* (self->field_8 >> 8) & 0xff */
+int  Mg_GetSaveTable(void *c);            /* (self->field_8 >> 8) & 0xff */
 
 }  /* extern "C" */
 
@@ -258,7 +258,7 @@ int  func_ov004_020adc3c(void *c);            /* (self->field_8 >> 8) & 0xff */
    expected answer on a direct scene boot is 9 -- printed rather than asserted. */
 static int port_mg_card_record_index(void)
 {
-    return data_ov004_020beb68 ? func_ov004_020adc3c(data_ov004_020beb68) : -1;
+    return gMgScene ? Mg_GetSaveTable(gMgScene) : -1;
 }
 
 // ---- the tick witness ------------------------------------------------------
@@ -302,9 +302,9 @@ static void *__fastcall s3_d2(void *s, void *)
 static void *__fastcall s3_d0(void *s, void *)
 { B3D(17); return (void *)(size_t)_ZN19dScMgSingle3DBase_cD0Ev((char *)s); }
 static int  __fastcall s3_v26(void *, void *)
-{ B3D(26); return _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(); }
+{ B3D(26); return _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(); }
 static int  __fastcall s3_v33(void *s, void *)
-{ B3D(33); _ZN19dScMgSingle3DBase_c9Virtual84Ev((char *)s); return 0; }
+{ B3D(33); _ZN19dScMgSingle3DBase_c11InitEnginesEv((char *)s); return 0; }
 
 /* ---- dScMgCard_c's own nine --------------------------------------------- */
 static int  __fastcall card_init(void *s, void *)
@@ -334,11 +334,11 @@ static void *__fastcall card_d0(void *s, void *)
    than a measurement.  Slot 19's DOES return -- 1 on the ApproachLinear2 arm
    and 0 at its other exit -- so that one is forwarded. */
 static int  __fastcall card_reset(void *s, void *, int mode)
-{ CARD(18); g_card_mode18 = mode; _ZN11dScMgCard_c13OnYoshiTryEatEi((char *)s); return 1; }
+{ CARD(18); g_card_mode18 = mode; _ZN11dScMgCard_c10StartRoundEi((char *)s); return 1; }
 static int  __fastcall card_v19(void *s, void *, int mode)
-{ CARD(19); g_card_mode19 = mode; return _ZN11dScMgCard_c13OnTurnIntoEggEi((char *)s); }
+{ CARD(19); g_card_mode19 = mode; return _ZN11dScMgCard_c11CanEndStateEi((char *)s); }
 static int  __fastcall card_v21(void *s, void *)
-{ CARD(21); return _ZN11dScMgCard_c15OnGroundPoundedEv(s); }
+{ CARD(21); return _ZN11dScMgCard_c10OnDealDoneEv(s); }
 
 /* ---- the two element classes' three each --------------------------------
    These are dispatched off the ELEMENT's own word 0, not off the scene's, and
@@ -525,7 +525,7 @@ extern "C" void port_scene_fill_card(void)
 
    THE FACTORY NEEDS NO DISPLACEMENT RULING, re-checked rather than assumed.
    port/mg_fanout_costs.txt section 12 grants one to 0x169 because
-   src/actors/dScMgCup_c.cpp calls the base constructor _ZN11dScMgBase_cC2Ev
+   src/minigames/d_s_mg_cup.cpp calls the base constructor _ZN11dScMgBase_cC2Ev
    with NO argument and rides r0 through, and that callee dereferences on its
    first statement.  src/minigames/d_s_mg_card.cpp calls _ZN11dScMgBase_cC2Ev(p)
    WITH its argument, so this class is on the correct side of it and the factory
@@ -607,8 +607,8 @@ extern "C" void port_scene_card_hits(void)
 
     /* THE SUB-OBJECT'S MACHINE, because THREE of this class's fourteen states
        do nothing but wait on it.  States 2, 5 and 7 all gate on
-       func_ov006_020c1718(this+0x4f38), which asks whether the +0x4f38 pair
-       equals the idle sentinel data_ov006_0213ac58 BY VALUE -- which is also
+       Dealer_IsIdle(this+0x4f38), which asks whether the +0x4f38 pair
+       equals the idle sentinel pmf_Dealer_StateIdle_2 BY VALUE -- which is also
        the second reader that makes rewriting the stored pair illegal.  The
        calls counter is unmatched/MgMemory2_FieldPmf.cpp's; anything it cannot
        route falls through to the framework and is reported as UNHANDLED there,
@@ -620,7 +620,7 @@ extern "C" void port_scene_card_hits(void)
                     "%u call(s), %u routed here", fcalls, fhits);
         if (g_card_self) {
             const unsigned *p = (const unsigned *)(g_card_self + 0x4f38);
-            const unsigned *g = (const unsigned *)data_ov006_0213ac58;
+            const unsigned *g = (const unsigned *)pmf_Dealer_StateIdle_2;
             std::printf("; stored pair {%08x, %08x} vs idle sentinel "
                         "{%08x, %08x} -> gate %s", p[0], p[1], g[0], g[1],
                         (p[0] == g[0] && (p[1] == g[1] || p[0] == 0))
@@ -683,17 +683,17 @@ extern "C" void port_scene_card_hits(void)
        than assumed:
 
          slot 0   (src/minigames/d_s_mg_card.cpp) seeds +0xa8 and +0xac from
-                  func_ov004_020ad8b8(), writes func_ov004_020ad878()'s answer
+                  Mg_GetSavedRecord0(), writes Mg_GetSavedRecord1()'s answer
                   into the LIVE BASE's +0xb4 (not its own), and then dispatches
                   its own vtable slot 18 with -1 through the object's vptr.
          slot 21  (src/minigames/d_s_mg_card.cpp) READS +0xb4: < 5 -> band 1,
-                  < 10 -> 2, < 15 -> 3, else 4, handed to func_ov004_020b6324.
+                  < 10 -> 2, < 15 -> 3, else 4, handed to MgCoins_RaiseBet.
                   Four bands, the same shape Lucky Stars has with a different
                   arithmetic (this one is thresholds, that one is /5 capped).
          the machine (src/minigames/d_s_mg_card.cpp) WRITES IT BACK: state 13's win
                   arm increments +0xb4 up to 0x270f and raises +0xb8 to match,
                   its lose arm decrements +0xb4 while it is > 0, and state 4
-                  calls func_ov004_020ad79c(+0xa8, +0xb4) -- score and level,
+                  calls Mg_SaveRecordPair(+0xa8, +0xb4) -- score and level,
                   the same pair Memory Master and Lucky Stars write.
 
        A fresh record is ZERO (SaveData::SetDefaultValuesMg memsets it), so the
@@ -720,7 +720,7 @@ extern "C" void port_scene_card_hits(void)
                         rec[0], rec[1], rec[2], rec[3], rec[4]);
         } else {
             std::printf("[scene] dScMgCard_c save record: NO minigame index "
-                        "(data_ov004_020beb68 = %p)\n", data_ov004_020beb68);
+                        "(gMgScene = %p)\n", gMgScene);
         }
     }
     std::fflush(stdout);

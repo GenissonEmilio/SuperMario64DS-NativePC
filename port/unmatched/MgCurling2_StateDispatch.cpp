@@ -93,10 +93,10 @@
  * ---- THE FLOOR IS GONE ----------------------------------------------------
  *
  * 0x020e4bd4, slot 1 of data_ov006_02141978, was this class's analogue of
- * curling's func_ov006_020e1854: a config symbol with no delink block and no
+ * curling's Aim_Swing: a config symbol with no delink block and no
  * src, reported here rather than called. Run mg7 lane L375 decompiled it
- * (src/actors/dScMgCurling2_c.cpp, NONMATCHING-bannered, size exact, register
- * colouring only) together with func_ov006_020e513c and func_ov006_020e5450, so
+ * (src/minigames/d_s_mg_curling2.cpp, NONMATCHING-bannered, size exact, register
+ * colouring only) together with func_ov006_020e513c and Curling2_ResolveStoneCollision, so
  * all twenty-five of this class's states now have a body and the address
  * switches below have no reported case left.
  *
@@ -351,7 +351,7 @@ static void c2_call1(void *p, const MgC2Pair &e, int i)
  * Run link100 lane PMFB5. data_ov006_02141988's three cells hold HOST addresses
  * after boot, written by port_mg_curling2_states_seat below once every cell has
  * been compared against the ROM's own code word and a zero adjustment word, so
- * src/actors/dScMgCurling2_c.cpp compiles from src and this file no longer defines
+ * src/minigames/d_s_mg_curling2.cpp compiles from src and this file no longer defines
  * it.
  *
  *   func_ov006_020e4800   data_ov006_02141988   3 slots   arity 1
@@ -383,7 +383,7 @@ static void c2_call1(void *p, const MgC2Pair &e, int i)
  * argument(s)" for this row and the listing says otherwise, which is the census
  * error lane PMFB4 recorded.
  *
- * ONE /alternatename. src/actors/dScMgCurling2_c.cpp names the member-pointer type
+ * ONE /alternatename. src/minigames/d_s_mg_curling2.cpp names the member-pointer type
  * at C++ linkage, so MSVC spells the reference
  * ?data_ov006_02141988@@3PAP8C@@AEXH@ZA -- read off the object with
  * dumpbin /symbols, not guessed -- while the ov006 mount defines the plain C
@@ -524,7 +524,7 @@ extern "C" void port_mg_curling2_states_seat(void)
 /* src/_ZN15dScMgCurling2_c9StepXAndYEi -- RETIRED by lane SEAT4, then RESTORED at
    the main->port sync (lane SYNC5).  SEAT4 retired this host copy in favour of
    the matched per-function TU on port/slice_seat4.txt, and main has since folded
-   that body into src/actors/dScMgCurling2_c.cpp (ov006 delinks, .text
+   that body into src/minigames/d_s_mg_curling2.cpp (ov006 delinks, .text
    0x020e3854..0x020e5450).  The port cannot take the consolidated TU:
    port/slice_s75.txt already compiles the per-function leftovers whose
    addresses that range covers, so taking both is a duplicate symbol.  The
@@ -532,7 +532,7 @@ extern "C" void port_mg_curling2_states_seat(void)
    retires together when s75 moves to the consolidated TU. */
 /* RETIRED, run link100 lane HOSTGEN2. The reason this copy was RESTORED at the
    sync is spelled out above: main folded the body into
-   src/actors/dScMgCurling2_c.cpp and the port could not take the consolidated
+   src/minigames/d_s_mg_curling2.cpp and the port could not take the consolidated
    TU. It can now. Every one of this class's four dispatch tables --
    data_ov006_021419f8, 021419a0 and 021419b8 (hal/pmf_seat4.cpp) and
    data_ov006_02141988 (lane PMFB5) -- is SEATED with host addresses at boot,
@@ -557,11 +557,11 @@ extern "C" void _ZN15dScMgCurling2_c9StepXAndYEi(char *c, int i)
 
 /* src/_ZN15dScMgCurling2_c9StepXOnlyEi -- RETIRED by lane SEAT4, then RESTORED at
    the main->port sync (lane SYNC5), for the reason spelled out on StepXAndY
-   directly above: main folded the matched TU into src/actors/dScMgCurling2_c.cpp
+   directly above: main folded the matched TU into src/minigames/d_s_mg_curling2.cpp
    and slice_s75's per-function leftovers cover the same range. */
 /* RETIRED, run link100 lane HOSTGEN2. The reason this copy was RESTORED at the
    sync is spelled out above: main folded the body into
-   src/actors/dScMgCurling2_c.cpp and the port could not take the consolidated
+   src/minigames/d_s_mg_curling2.cpp and the port could not take the consolidated
    TU. It can now. Every one of this class's four dispatch tables --
    data_ov006_021419f8, 021419a0 and 021419b8 (hal/pmf_seat4.cpp) and
    data_ov006_02141988 (lane PMFB5) -- is SEATED with host addresses at boot,

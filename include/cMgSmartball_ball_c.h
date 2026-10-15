@@ -68,7 +68,7 @@ struct cMgSmartball_ball_c : cMgSmartball_object_c {
     u8  unk_039;      /* 0x039 -- cleared alongside mUpperWallSolid and by
                           RestoreInitial; NOTHING IN THE TREE READS IT. No
                           evidence, so no name. */
-    u8  state3a;      /* 0x03a -- name from func_ov006_02112ad8.c's own
+    u8  state3a;      /* 0x03a -- name from SmartballBall_UpdatePhysics.c's own
                           Obj cast of this same class; gates most of that
                           function's per-frame collision work */
     u8  state3b;      /* 0x03b -- ditto; set once mZoneDwell maxes out */
@@ -82,7 +82,7 @@ struct cMgSmartball_ball_c : cMgSmartball_object_c {
                              base's mIsActive -- after which every SaveSnapshot
                              and Update returns immediately. */
 
-    /* hitX/hitZ per func_ov006_02112ad8, but nothing in this class reads
+    /* hitX/hitZ per SmartballBall_UpdatePhysics, but nothing in this class reads
        them -- unmodelled, not unread. */
     u8  pad_044[0x8]; /* 0x044-0x04b */
 
@@ -116,7 +116,7 @@ struct cMgSmartball_ball_c : cMgSmartball_object_c {
                              the ball up behind its predecessor in the
                              manager's 13-entry table at mgr+0x4688; once clear
                              it runs the live physics path
-                             func_ov006_02112ad8 instead. */
+                             SmartballBall_UpdatePhysics instead. */
     u8  pad_101[0x3]; /* 0x101-0x103 -- alignment */
     s32 mQueueGap;       /* 0x104 -- (this ball's slot index - the manager's
                              current index) * 0xf, written twice by

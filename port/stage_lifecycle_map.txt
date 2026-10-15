@@ -285,7 +285,7 @@ name; "none" means no writer exists anywhere in the port.
                                     InitResources:201 does it). It used to say
                                     "none", and that was the infinite death
                                     loop: the Player's own level-enter step
-                                    (src/actors/Player.cpp:29) restores full
+                                    (src/game/player/Player.cpp:29) restores full
                                     health when this byte is 1 or 2, and it read
                                     0 every entry, so a death respawned with the
                                     health it died with and died again. The same
@@ -1216,7 +1216,7 @@ off) and every resolved address. The short form:
      5, under SharedFilePtr::Load -> fs_hand_out -> Memory::Allocate. The cause
      is a pre-existing mis-bridged receiver of hal/method_faces.cpp's class 3,
      in hal/lk4_solidheap_seat.cpp:45:
-         (DELETED by lane LK4) /alternatename:__ZN4Heap10SetDefaultEv=?SetDefault@Heap@@QAEHXZ
+         (DELETED by lane LK4) /alternatename:__ZN5mHeap6Heap_t10SetDefaultEv=?SetDefault@Heap_t@mHeap@@QAEHXZ
      The RHS is __thiscall and takes its receiver in ECX; every C caller of the
      LHS passes it on the stack (RestoreFromTemporary:11,
      SetupSolidHeapAsDefault:18, _ZN9dScDSMT_c8BehaviorEv:49 and :53,
@@ -1381,7 +1381,7 @@ WHAT A REAL SEAT NEEDS, named precisely rather than as an area:
                               host pointer table filled at mount time. It is
                               ptr_audit's top row and this is the fix that row
                               has been waiting for.
-  hal/lk4_solidheap_seat.cpp  delete the dead __ZN4Heap10SetDefaultEv
+  hal/lk4_solidheap_seat.cpp  delete the dead __ZN5mHeap6Heap_t10SetDefaultEv
                               alternatename and write the receiver-bridging
                               face. Its own lane and its own battery: three
                               linked callers change behaviour. Sized and
@@ -1394,12 +1394,12 @@ WHAT A REAL SEAT NEEDS, named precisely rather than as an area:
 
 THE lk4 RECEIVER BUG IN FULL, AND ITS SEQUENCING RULE. Review widened the
 caller sweep and found the blast radius is larger than wall 3 reports. SIX TUs
-spell __ZN4Heap10SetDefaultEv as flat C with the receiver on the stack, against
+spell __ZN5mHeap6Heap_t10SetDefaultEv as flat C with the receiver on the stack, against
 a __thiscall definition:
 
   LINKED TODAY, so the bug is live now and not only under a seat
-    src/_ZN4Heap20RestoreFromTemporaryEv.cpp            1 site  (:11)
-    src/_ZN4Heap23SetupSolidHeapAsDefaultEjPS_i.cpp     1 site  (:18)
+    src/engine/heap/Heap.cpp            1 site  (:11)
+    src/engine/heap/Heap.cpp     1 site  (:18)
     src/_ZN9dScDSMT_c8BehaviorEv.cpp                         2 sites (:49, :53)
   NOT COMPILED TODAY, so each is a lane-shaped tripwire rather than a bug
     src/func_02034fbc.c                               4 sites (:22, :27,
@@ -1426,7 +1426,7 @@ THE FIX SHAPE, sized rather than gestured at:
   2. A C-name receiver face in the same shape as this lane's Stage::LoadFog
      face: a local `struct Heap { int SetDefault(); };` so the mangling matches
      without pulling Heap.h, and
-     `extern "C" int _ZN4Heap10SetDefaultEv(void *thiz)
+     `extern "C" int _ZN5mHeap6Heap_t10SetDefaultEv(void *thiz)
       { return ((Heap *)thiz)->Heap::SetDefault(); }`.
      A wrong signature is an LNK2019 on a name that does not exist, never a
      call to a sibling, which is why the local declaration is the safe form.
@@ -2600,7 +2600,7 @@ out with the index the host compiled. There are 501. All but twenty are
 local shadow classes with plain virtuals, which count in ROM/Itanium numbering
 and land correctly on the ROM-ordered tables. The twenty that matter:
 
-    Heap::ResizeToFit                 idx 14   src/_ZN4Heap11ResizeToFitEv.cpp
+    Heap::ResizeToFit                 idx 14   src/engine/heap/Heap.cpp
     CylinderClsn::Process             idx 1,2  (six sites)
     MeshColliderBase carry trio       idx 9,10,11
     FaderBrightness setters+predicate idx 4,5  (six sites)
@@ -2612,15 +2612,15 @@ and land correctly on the ROM-ordered tables. The twenty that matter:
 
 TWO OF THOSE WERE LIVE DEFECTS AND ARE FIXED HERE.
 
-FIRST, Heap. src/_ZN4Heap11ResizeToFitEv.cpp declares the ROM's fifteen-virtual
+FIRST, Heap. src/engine/heap/Heap.cpp declares the ROM's fifteen-virtual
 Heap with `virtual ~Heap()` at the head, and its one line of body is a virtual
 `VResizeToFit()`. MSVC compiled that to
 
-    ?ResizeToFit@Heap@@QAEIXZ
+    ?ResizeToFit@Heap_t@mHeap@@QAEIXZ
       mov eax,dword ptr [edi]
       call dword ptr [eax+38h]        <- index 14
 
-and hal/heap_vtable.cpp's _ZTV13ExpandingHeap is ROM-ordered sixteen slots:
+and hal/heap_vtable.cpp's _ZTVN5mHeap9ExpHeap_tE is ROM-ordered sixteen slots:
 index 14 is VGetNodeID and VResizeToFit is 15. So the host's ResizeToFit never
 resized anything and returned the heap's NODE ID instead, which is a plausible
 non-zero number, so the `if (!result)` rescue path never fired either. It is
@@ -2652,7 +2652,7 @@ be the SAME TWO NAMES in the three derived headers, because an override takes
 its base's slots while a fresh name would append one. All sixteen TUs that see
 the class still byte-match on 2004/b56 (the four cylinder .cpp bodies, the
 three accessors, the six destructor/constructor .c TUs, Init and Process), and
-so does _ZN4Heap11ResizeToFitEv at 0x0203c390 size 0x48. After the fix the
+so does _ZN5mHeap6Heap_t11ResizeToFitEv at 0x0203c390 size 0x48. After the fix the
 emitted host code reads `call [eax+3Ch]` for VResizeToFit and `[eax+8]` /
 `[eax+0Ch]` for GetPos / GetOwnerID: the ROM's own indices.
 
@@ -2756,7 +2756,7 @@ under a cruder filter (00454CBF, 0048128F, 005BE79B) were read by hand and are
 BOTH PUSHING FAMILIES ARE ALREADY SEATED CORRECTLY. The slot-32 site is
 func_ov002_020eff90, the PathLift collider callback abicheck's
 ACTOR_EXT_SLOT_AUTHORITY already rules at one argument. The four slot-34 sites
-are all inside func_ov004_020ae5c4, the dScMgBase_c line rasteriser, and
+are all inside Mg_DrawLine, the dScMgBase_c line rasteriser, and
 hal/scene_mg.cpp's mb_v34 takes the four and pops them. Every extension-slot
 dispatcher for the Bully family is _ZN7daOts_c19func_ov064_02116220Ev / 02116560 / 021165d8 /
 02116754 / 02116d1c and NONE of them pushes, so the twenty-one bare-`ret`

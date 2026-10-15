@@ -15,7 +15,7 @@ extern unsigned char data_0209caa0[];
 extern int (*port_char_door_idle_hook)(void *door, void *player);
 /* hal/settings_page_hooks.cpp: the stylus filter asks whether the picker is up */
 extern int (*port_char_door_touch_open)(void);
-/* ROM bodies the hook reads (all matched src, C names as src/actors/Player.cpp uses them) */
+/* ROM bodies the hook reads (all matched src, C names as src/game/player/Player.cpp uses them) */
 int _ZN6Player7IsStateERNS_5StateE(void *self, void *state);
 extern int data_ov002_0211013c[];
 extern int data_ov002_02110154[];

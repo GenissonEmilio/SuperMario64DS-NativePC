@@ -45,6 +45,12 @@
 // - daStar_c's unk_49f (written when the star is let go) lives on another
 //   class's header, which has not named it yet.
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_ice_block_AssetId {
+    ASSET_ICE_BLOCK_LL_BMD = 0x045a,
+    ASSET_ICE_BLOCK_LL_KCL = 0x045b
+};
+
 #include "daObjIceBlock_c.h"
 #include "Player.h"
 #include "daStar_c.h"
@@ -287,5 +293,5 @@ extern "C" void func_ov081_02127be0(daObjIceBlock_c *self)
  * __sinit_d_a_obj_ice_block.cpp emits both constructions and registers the
  * destructors; the registration nodes are compiler temporaries. */
 // @symbol __sinit_d_a_obj_ice_block.cpp
-IceBlockModelFilePtr data_ov081_02128fd8(1114);
-IceBlockCollisionFilePtr data_ov081_02128fd0(1115);
+IceBlockModelFilePtr data_ov081_02128fd8(ASSET_ICE_BLOCK_LL_BMD);
+IceBlockCollisionFilePtr data_ov081_02128fd0(ASSET_ICE_BLOCK_LL_KCL);

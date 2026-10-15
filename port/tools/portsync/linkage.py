@@ -13,7 +13,7 @@ and two exes, and prints:
   GAINED / LOST             TU stems linked only in the new / only in the old
                             map. A LOST stem whose symbol is still defined in
                             the new map (a TU fold: e.g. Player ordinals folded
-                            into src/actors/Player.cpp) is listed as FOLDED,
+                            into src/game/player/Player.cpp) is listed as FOLDED,
                             not LOST.
   MULTI                     stems that sit on more than one object.
   SYMBOLS REMOVED           public symbols the old map defines and the new one

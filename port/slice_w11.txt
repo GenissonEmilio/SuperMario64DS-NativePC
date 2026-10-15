@@ -154,22 +154,22 @@
 # widened sweep prints) is hosted and DELIBERATELY unregistered for a measured
 # frame-0 register-skew blocker. It is not in this slice and must not be added
 # to it.
-src/actors/daObjSimpleBg_c.cpp
-# FOLDED into src/actors/daObjSimpleBg_c.cpp (row 157): src/d_a_obj_simple_bg_mc_dodai.c
-# FOLDED into src/actors/daObjSimpleBg_c.cpp (row 157): src/d_a_obj_simple_bg_mc_hazad.c
-src/actors/daObjHatenaBlock_c.cpp
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 160): src/d_a_obj_hatena_block_cap_block_m.c
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 160): src/d_a_obj_hatena_block_cap_block_w.c
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 160): src/d_a_obj_hatena_block_cap_block_l.c
-src/actors/daObjSimpleLift_c.cpp
-# FOLDED into src/actors/daObjSimpleLift_c.cpp (row 164): src/d_a_obj_simple_lift_km2_rifut02.c
-# FOLDED into src/actors/daObjSimpleLift_c.cpp (row 164): src/d_a_obj_simple_lift_rc_rift01.c
-src/actors/daObjRotateUpdownLift_c.cpp
-src/actors/daKrb_c.cpp
+src/game/actors/d_a_obj_simple_bg.cpp
+# FOLDED into src/game/actors/d_a_obj_simple_bg.cpp (row 157): src/d_a_obj_simple_bg_mc_dodai.c
+# FOLDED into src/game/actors/d_a_obj_simple_bg.cpp (row 157): src/d_a_obj_simple_bg_mc_hazad.c
+src/game/actors/d_a_obj_hatena_block.cpp
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 160): src/d_a_obj_hatena_block_cap_block_m.c
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 160): src/d_a_obj_hatena_block_cap_block_w.c
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 160): src/d_a_obj_hatena_block_cap_block_l.c
+src/game/actors/d_a_obj_simple_lift.cpp
+# FOLDED into src/game/actors/d_a_obj_simple_lift.cpp (row 164): src/d_a_obj_simple_lift_km2_rifut02.c
+# FOLDED into src/game/actors/d_a_obj_simple_lift.cpp (row 164): src/d_a_obj_simple_lift_rc_rift01.c
+src/game/actors/d_a_obj_rotate_updown_lift.cpp
+src/game/actors/d_a_krb.cpp
 src/game/actors/d_a_nknk.cpp
-src/actors/daObjSeesaw_c.cpp
-# FOLDED into src/actors/daObjSeesaw_c.cpp (row 170): src/d_a_obj_seesaw_seesaw.c
-# FOLDED into src/actors/daObjSeesaw_c.cpp (row 170): src/d_a_obj_seesaw_rc_seesaw.c
-src/actors/daUdlift_c.cpp
-src/d_a_star_silver_star.c
-src/actors/daObjBlockItemTag_c.cpp
+src/game/actors/d_a_obj_seesaw.cpp
+# FOLDED into src/game/actors/d_a_obj_seesaw.cpp (row 170): src/d_a_obj_seesaw_seesaw.c
+# FOLDED into src/game/actors/d_a_obj_seesaw.cpp (row 170): src/d_a_obj_seesaw_rc_seesaw.c
+src/game/actors/d_a_udlift.cpp
+src/game/actors/d_a_star_silver_star.c
+src/game/actors/d_a_obj_block_item_tag.cpp

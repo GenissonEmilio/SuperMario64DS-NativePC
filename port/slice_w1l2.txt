@@ -13,13 +13,13 @@
 # names, or the face a linked caller already calls.
 
 # ---- the Heap BASE class -------------------------------------------------
-# _ZTV4Heap (data_02099d90) slots 0 and 1, seated in hal/lk4_eh_dtor_seat.cpp.
+# _ZTVN5mHeap6Heap_tE (data_02099d90) slots 0 and 1, seated in hal/lk4_eh_dtor_seat.cpp.
 # config/arm9/relocs.txt names both bodies at those two words:
-#   from:0x02099d90 to:0x0203ca44 _ZN4HeapD1Ev
-#   from:0x02099d94 to:0x0203ca20 _ZN4HeapD0Ev
-src/_ZN4HeapD1Ev.cpp
-# RETIRED at SLICE1: body now in src/_ZN4HeapD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
-#src/_ZN4HeapD0Ev.cpp
+#   from:0x02099d90 to:0x0203ca44 _ZN5mHeap6Heap_tD1Ev
+#   from:0x02099d94 to:0x0203ca20 _ZN5mHeap6Heap_tD0Ev
+src/engine/heap/Heap.cpp
+# RETIRED at SLICE1: body now in src/_ZN5mHeap6Heap_tD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
+#src/_ZN5mHeap6Heap_tD0Ev.cpp
 # Heap::Allocate(unsigned) at 0x0203c28c, the body behind the flat name gate
 # 4b's func_0203cc0c calls. The converting face is in hal/lk4_eh_dtor_seat.cpp;
 # hal/heap_vtable.cpp keeps its old host copy as an alternatename fallback for
@@ -40,7 +40,7 @@ port/hal/w2_dtor_heads.cpp
 # The D1 body writes 0x0208e6ec as the object's own vptr, which is what fixes
 # the index convention. Storage is hal/cxx_aliases.cpp and no fill in the tree
 # ever wrote a slot in it.
-src/engine/collision/dCc_c.cpp
+src/engine/collision/d_cc.cpp
 # RETIRED at SLICE1: body now in src/_ZN5dCc_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN5dCc_cD0Ev.cpp
 
@@ -56,10 +56,10 @@ src/engine/collision/dCc_c.cpp
 # its ADDRESS as a transient vptr. The sweep is written out in the seat's own
 # comment. What blocked this head in wave 2 was data_0209f1e4, the DS BSS word
 # Scene::ResetFadersAndSound clears; hal/auto_bss.cpp hosts it now.
-src/actors/dScene_c.cpp
+src/game/stages/d_scene.cpp
 # the two faces the head calls
-# FOLDED into src/actors/dScene_c.cpp (row 59): src/_ZN8dScene_c19ResetFadersAndSoundEv.cpp
-# FOLDED into src/actors/dScene_c.cpp (row 59): src/_ZN8dScene_c20Initialise3dGraphicsEv.cpp
+# FOLDED into src/game/stages/d_scene.cpp (row 59): src/_ZN8dScene_c19ResetFadersAndSoundEv.cpp
+# FOLDED into src/game/stages/d_scene.cpp (row 59): src/_ZN8dScene_c20Initialise3dGraphicsEv.cpp
 # Scene::Initialise3dGraphics' own callees. The global Initialise3dGraphics(int)
 # is listed in slice_gate36.txt, but that list is INERT: CMakeLists.txt builds
 # SLICE36_SOURCES and then never adds it to a target, so the TU was not even
@@ -101,9 +101,9 @@ src/DMASyncFillTransfer.c
 # so no face and no adapter has to be invented for them. The other six unlinked
 # slots of this table are blocked on hal/method_faces.cpp, which this lane does
 # not own -- the reasons are in the seat file's group 4.
-# FOLDED into src/actors/dScene_c.cpp (row 59): src/_ZN8dScene_c12BeforeRenderEv.cpp
-# FOLDED into src/actors/dScene_c.cpp (row 59): src/_ZN8dScene_cD1Ev.cpp
-# FOLDED into src/actors/dScene_c.cpp (row 59): src/_ZN8dScene_cD0Ev.cpp
+# FOLDED into src/game/stages/d_scene.cpp (row 59): src/_ZN8dScene_c12BeforeRenderEv.cpp
+# FOLDED into src/game/stages/d_scene.cpp (row 59): src/_ZN8dScene_cD1Ev.cpp
+# FOLDED into src/game/stages/d_scene.cpp (row 59): src/_ZN8dScene_cD0Ev.cpp
 port/unmatched/hostarm/_ZN8dScene_cD0Ev.cpp
 
 # ==== WAVE 4, LANE w4-d ====================================================
@@ -120,12 +120,12 @@ port/unmatched/hostarm/_ZN8dScene_cD0Ev.cpp
 # (`int _ZN8dScene_c14BeforeBehaviorEv(char *self)` inside extern "C"), so slot 7
 # takes the same ecx->arg adapter the other four use and needs no face of its
 # own.
-# FOLDED into src/actors/dScene_c.cpp (row 59): src/_ZN8dScene_c14BeforeBehaviorEv.cpp
+# FOLDED into src/game/stages/d_scene.cpp (row 59): src/_ZN8dScene_c14BeforeBehaviorEv.cpp
 # the pause branch: func_02023544 resets sound and the two mode bytes, and its
 # own callees func_02011c8c / GetSoundMode / SetSoundMode are already linked.
 src/unnamed/arm9/0202/func_02023544.c
-src/engine/view/dView_c.cpp
-src/engine/fader/dWipe_c.cpp
+src/engine/view/d_view.cpp
+src/runtime/graphics/fader/d_wipe.cpp
 # and func_0202ed48's two: the record writer and the IRQ-side teardown. The
 # second one stores to 0x4000208 / 0x4000000 / 0x4001000 textually, which is
 # the shape gate 4a hostgens -- but it is NOT a gate-4a symbol (CMakeLists.txt
@@ -133,8 +133,8 @@ src/engine/fader/dWipe_c.cpp
 # real committed pages in the host: port/ntr/io.cpp reserves the DS I/O region
 # at its own address, which is why hal/message_pump.cpp already writes
 # *(vu32*)0x4000000 straight. So it compiles and links from src/ unchanged.
-# FOLDED into src/engine/fader/dWipe_c.cpp (row 127): src/func_0202ed14.c
-# FOLDED into src/engine/fader/dWipe_c.cpp (row 127): src/func_0202fb30.c
+# FOLDED into src/runtime/graphics/fader/d_wipe.cpp (row 127): src/func_0202ed14.c
+# FOLDED into src/runtime/graphics/fader/d_wipe.cpp (row 127): src/func_0202fb30.c
 # the processing-list walk behind the pause-bit branch. Its two callees
 # (func_0203b358, func_0203b394) are already in the map. Linking it is what
 # retires hal/stage_bridges.cpp's stand-in for that one statement -- see the
@@ -149,7 +149,7 @@ src/unnamed/arm9/0204/func_020431c4.c
 # `smoke`, which carries no slice_w1l2 line. The three targets that DO carry
 # this file (walk_window, walk_window_hires, smoke_player) carry no gate-1
 # line, so there is no second object and no LNK2005.
-src/engine/fader/dFader_c.cpp
+src/runtime/graphics/fader/d_fader.cpp
 #
 # NOT LINES HERE, and each for a measured reason:
 #   _ZN15FaderBrightness7IsAtEndEv is already linked (slice_w1l3.txt seats it
@@ -173,15 +173,15 @@ src/engine/fader/dFader_c.cpp
 # Slot 4 is the straightforward one: the body passes its own receiver and only
 # the C-linkage name of its base call was undefined. Its other two references
 # (func_02011974 and data_0209b53c) were already resolved.
-# FOLDED into src/actors/dScene_c.cpp (row 59): src/_ZN8dScene_c22BeforeCleanupResourcesEv.cpp
+# FOLDED into src/game/stages/d_scene.cpp (row 59): src/_ZN8dScene_c22BeforeCleanupResourcesEv.cpp
 # Slots 8 and 11 are the ROM's TAIL VENEERS, and they are here because their
 # callees turned out to be empty -- `ret 4`, three bytes, no receiver read and
 # no argument read, folded onto one address by /OPT:ICF. The dropped receiver
 # the veneers' void() shape implies therefore cannot be wrong the way
 # method_faces.cpp's failure mode 2 means. The two listings and the reading are
 # beside the tagged definitions in that file.
-# FOLDED into src/actors/dScene_c.cpp (row 59): src/_ZN8dScene_c13AfterBehaviorEj.cpp
-# FOLDED into src/actors/dScene_c.cpp (row 59): src/_ZN8dScene_c11AfterRenderEj.cpp
+# FOLDED into src/game/stages/d_scene.cpp (row 59): src/_ZN8dScene_c13AfterBehaviorEj.cpp
+# FOLDED into src/game/stages/d_scene.cpp (row 59): src/_ZN8dScene_c11AfterRenderEj.cpp
 #
 # SLOT 2 IS RULED OUT, and this is the listing that rules it out rather than a
 # judgement call. Scene::AfterInitResources is the same veneer shape, but its

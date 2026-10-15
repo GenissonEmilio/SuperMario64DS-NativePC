@@ -78,29 +78,29 @@ data_ov091_021356a4@0x021356a4:0xc
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
 #   data_ov091_021354e0                        now defined by src/game/actors/d_a_linelift2.cpp
-#   data_ov091_021354f8                        now defined by src/actors/daObjSimpleLift_c.cpp
-#   data_ov091_02135500                        now defined by src/actors/daObjSimpleLift_c.cpp
-#   data_ov091_02135508                        now defined by src/actors/daObjSimpleLift_c.cpp
-#   data_ov091_02135510                        now defined by src/actors/daObjSimpleLift_c.cpp
-#   data_ov091_02135518                        now defined by src/actors/daObjSimpleLift_c.cpp
-#   data_ov091_02135520                        now defined by src/actors/daObjSimpleLift_c.cpp
-#   data_ov091_02135528                        now defined by src/actors/daObjSimpleLift_c.cpp
-#   data_ov091_02135530                        now defined by src/actors/daObjSimpleLift_c.cpp
-#   data_ov091_02135538                        now defined by src/actors/daObjSimpleLift_c.cpp
-#   data_ov091_02135540                        now defined by src/actors/daObjSimpleLift_c.cpp
-#   data_ov091_02135548                        now defined by src/actors/daObjSimpleLift_c.cpp
-#   data_ov091_02135550                        now defined by src/actors/daObjSimpleLift_c.cpp
-#   data_ov091_02135558                        now defined by src/actors/daObjSimpleLift_c.cpp
-#   data_ov091_02135560                        now defined by src/actors/daObjSimpleLift_c.cpp
-#   data_ov091_02135610                        now defined by src/actors/daDsn_c.cpp
-#   data_ov091_02135618                        now defined by src/actors/daDsn_c.cpp
-#   data_ov091_02135620                        now defined by src/actors/daDsn_c.cpp
-#   data_ov091_0213564c                        now defined by src/actors/daObjPile_c.cpp
-#   data_ov091_02135654                        now defined by src/actors/daObjPile_c.cpp
+#   gKm3Deru01CollisionFile                        now defined by src/game/actors/d_a_obj_simple_lift.cpp
+#   gKm2Rift02CollisionFile                        now defined by src/game/actors/d_a_obj_simple_lift.cpp
+#   gBkTransbarModelFile                        now defined by src/game/actors/d_a_obj_simple_lift.cpp
+#   gKm2Rift01ModelFile                        now defined by src/game/actors/d_a_obj_simple_lift.cpp
+#   gKm3Deru02CollisionFile                        now defined by src/game/actors/d_a_obj_simple_lift.cpp
+#   gKm1DeruModelFile                        now defined by src/game/actors/d_a_obj_simple_lift.cpp
+#   gKm3Deru02ModelFile                        now defined by src/game/actors/d_a_obj_simple_lift.cpp
+#   gBkTransbarCollisionFile                        now defined by src/game/actors/d_a_obj_simple_lift.cpp
+#   gKm1DeruCollisionFile                        now defined by src/game/actors/d_a_obj_simple_lift.cpp
+#   gKm2Rift01CollisionFile                        now defined by src/game/actors/d_a_obj_simple_lift.cpp
+#   gKm2Rift02ModelFile                        now defined by src/game/actors/d_a_obj_simple_lift.cpp
+#   gRcRift01CollisionFile                        now defined by src/game/actors/d_a_obj_simple_lift.cpp
+#   gRcRift01ModelFile                        now defined by src/game/actors/d_a_obj_simple_lift.cpp
+#   gKm3Deru01ModelFile                        now defined by src/game/actors/d_a_obj_simple_lift.cpp
+#   gDosuneTextureSequenceFile                        now defined by src/game/actors/d_a_dsn.cpp
+#   gDosuneCollisionFile                        now defined by src/game/actors/d_a_dsn.cpp
+#   gDosuneModelFile                        now defined by src/game/actors/d_a_dsn.cpp
+#   gPileCollisionFile                        now defined by src/game/actors/d_a_obj_pile.cpp
+#   gPileModelFile                        now defined by src/game/actors/d_a_obj_pile.cpp
 #   data_ov091_021356b0                        now defined by src/game/actors/d_a_hyuhyu.cpp
 #   data_ov091_021356c0                        now defined by src/game/actors/d_a_hyuhyu.cpp
 #   data_ov091_021356d0                        now defined by src/game/actors/d_a_hyuhyu.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov091_02135440! data_ov091_02135448! data_ov091_02135450! data_ov091_02135458! data_ov091_02135490! data_ov091_02135498! data_ov091_021354a0! data_ov091_021354a8! data_ov091_02135674! data_ov091_0213567c! data_ov091_02135684!
+gHsUpdownLiftModelFile! gObjUpdnliftModelFile! gObjUpdnliftCollisionFile! gHsUpdownLiftCollisionFile! gKm2SusumuCollisionFile! gKm3RiftModelFile! gKm3RiftCollisionFile! gKm2SusumuModelFile! data_ov091_02135674! data_ov091_0213567c! data_ov091_02135684!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov091_02135550! data_ov091_02135528! data_ov091_02135548! data_ov091_021354f8! data_ov091_02135538! data_ov091_02135520! data_ov091_02135560! data_ov091_02135540! data_ov091_02135510! data_ov091_02135508! data_ov091_02135558! data_ov091_02135500! data_ov091_02135530! data_ov091_02135518! data_ov091_021356b0! data_ov091_021356c0! data_ov091_021356d0! data_ov091_021354e0! data_ov091_02135610! data_ov091_02135618! data_ov091_02135620! data_ov091_0213564c! data_ov091_02135654!
+gRcRift01CollisionFile! gKm3Deru02ModelFile! gKm2Rift02ModelFile! gKm3Deru01CollisionFile! gKm1DeruCollisionFile! gKm1DeruModelFile! gKm3Deru01ModelFile! gKm2Rift01CollisionFile! gKm2Rift01ModelFile! gBkTransbarModelFile! gRcRift01ModelFile! gKm2Rift02CollisionFile! gBkTransbarCollisionFile! gKm3Deru02CollisionFile! data_ov091_021356b0! data_ov091_021356c0! data_ov091_021356d0! data_ov091_021354e0! gDosuneTextureSequenceFile! gDosuneCollisionFile! gDosuneModelFile! gPileCollisionFile! gPileModelFile!

@@ -108,8 +108,8 @@ Code size  ███████████████████████
 <!-- tiers:start -->
 ```
 MATCHED    ██████████████████████████████  100.0%   11,389 / 11,389 functions
-           of which 114 are byte-exact assembly (hand-written in the original, not C)
-CONVERTED  ██████████░░░░░░░░░░░░░░░░░░░░  31.7%   3,611 / 11,386 functions
+           of which 108 are byte-exact assembly (hand-written in the original, not C)
+CONVERTED  ████████████░░░░░░░░░░░░░░░░░░  38.4%   4,371 / 11,386 functions
 LINKED     ████████████████████████████░░  93.5%   10,595 / 11,328 matched TUs
 ```
 <!-- tiers:end -->
@@ -118,6 +118,8 @@ LINKED     ███████████████████████
 
 For an interactive version where you can hover any function for its name, address,
 size, and status, see the [progress treemap on GitHub Pages](https://tangosdev.github.io/sm64ds-decomp/).
+The [recovered TU treemap](https://tangosdev.github.io/sm64ds-decomp/tu-treemap.html)
+groups code by reconstructed translation unit, with links to each source file and TU manifest.
 
 The three bars measure different things:
 

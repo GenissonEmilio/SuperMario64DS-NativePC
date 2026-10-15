@@ -1,4 +1,4 @@
-/* HOST COPY of src/actors/da1up_c.cpp -- the mushroom-type
+/* HOST COPY of src/game/actors/d_a_1up.cpp -- the mushroom-type
  * dispatch read as a plain function pointer, and the table seated with host
  * addresses.
  *
@@ -73,7 +73,7 @@ extern PortPmf data_ov002_0210dc00[];
 enum { PORT_MUSHROOM_TYPES = 14 };
 
 /* ---- THE FOURTEEN FACES (run link100, lane PMFB2) ----------------------
-   src/actors/da1up_c.cpp is a real pointer-to-member dispatch
+   src/game/actors/d_a_1up.cpp is a real pointer-to-member dispatch
    and MSVC emits it as
 
        mov ecx, _data_ov002_0210dc00[eax*8+4]     the adjust word

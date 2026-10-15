@@ -46,13 +46,13 @@
 // names: those are what the cartridge's relocations
 // name and what this port already resolves.
 extern "C" {
-void _ZN6Memory10DeallocateEPvP4Heap(void *ptr, void *heap);
+void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *ptr, void *heap);
 extern void *GAME_HEAP_PTR;
 }
 
-/* ROM 0x020eec9c _ZN12dScMgJump2_cD0Ev -- batch 1, the inline ~dScMgJump2_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020eec9c _ZN12dScMgJump2_cD0Ev -- batch 1, the inline ~dScMgJump2_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN12dScMgJump2_cD0Ev(void *self)
-{ ((dScMgJump2_c *)self)->dScMgJump2_c::~dScMgJump2_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((dScMgJump2_c *)self)->dScMgJump2_c::~dScMgJump2_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020eebe8 _ZN12dScMgJump2_cD1Ev -- batch 1, the inline ~dScMgJump2_c() */
 extern "C" void _ZN12dScMgJump2_cD1Ev(void *self)

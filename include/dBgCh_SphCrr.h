@@ -78,7 +78,7 @@ struct dBgCh_SphCrr : dBgCh, dBgPi, dM3dGSph {
      * binds its vptr references to the ROM's existing tables. */
     virtual ~dBgCh_SphCrr();
 
-    /* DECLARED, defined out of line in src/engine/collision/dBgCh_SphCrr.cpp as
+    /* DECLARED, defined out of line in src/engine/collision/d_bg_ch_sph_crr.cpp as
      * real C++ -- complete-object context for every ROM caller, hence C1.
      */
     dBgCh_SphCrr();

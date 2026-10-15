@@ -23,7 +23,7 @@
 #                              Scene vptrs, |=1 and |=4 on the flag byte at
 #                              +0x13, then the class vptr 0x020c2490
 #   vtable         0x020c2490  EIGHTEEN slots (delta to the next symbol,
-#                              data_ov005_020c24d8, is 0x48 = 18 words), the
+#                              sMiniGmRows, is 0x48 = 18 words), the
 #                              _ZTV8dScene_c shape -- NOT the 36-slot
 #                              dScMgBase_c shape the ov006 minigames use.
 #                              dScMiniGm_c is a direct Scene subclass; the
@@ -54,7 +54,7 @@
 #
 #   func_ov005_020c0378  the touch SELECTOR      regalloc/path-A schedule
 #   _ZN11dScMiniGm_c6RenderEv  Render                  "missing logic (ROM does more)"
-#   func_ov005_020c16e4  the tile blitter        size 0x338 vs 0x33c
+#   MiniGm_LoadGroupIcons  the tile blitter        size 0x338 vs 0x33c
 #
 # The Render banner is the one that matters to this seat and it is reported as
 # a floor rather than smoothed over: its body is decompiled but INCOMPLETE
@@ -75,9 +75,9 @@
 #   func_02013638           src/func_02013638.c           -> this slice
 #   func_020233f4           src/func_020233f4.c           -> ALREADY in
 #                                                         port/slice_gate29.txt
-#   data_0208a170           arm9 .data, ROM value 3       -> romdata.py NAMED
-#   data_0208a174           arm9 .data, ROM value -1      -> romdata.py NAMED
-#   data_0209b304           arm9 .bss                     -> hal/auto_bss.cpp
+#   gMgGroupBase           arm9 .data, ROM value 3       -> romdata.py NAMED
+#   gMgLastSelected           arm9 .data, ROM value -1      -> romdata.py NAMED
+#   gMgMenuPage           arm9 .bss                     -> hal/auto_bss.cpp
 #   data_0209f1d8           arm9 .bss                     -> hal/auto_bss.cpp
 #
 # Nine. That is the entire gap between "the port has never touched this scene"
@@ -86,7 +86,7 @@
 #
 # ---- 4. THE THREE //cpp-MARKED .c FILES ----------------------------------
 #
-# src/func_ov005_020c0140.cpp, _020c0378.c and _020c0878.c open with the //cpp
+# src/MiniGm_UpdatePageScroll.cpp, _020c0378.c and _020c0878.c open with the //cpp
 # marker and a top-level `extern "C" {` block, which is invalid C. They get
 # LANGUAGE CXX in port/CMakeLists.txt beside this slice, the treatment gates
 # 176/177/194 already established. The three genuine .cpp TUs (020bff4c,
@@ -106,33 +106,33 @@
 # from the scan, and the independent review caught it. The five match.py
 # re-verifications in port/tools/inferred_stub_adjudicated.txt are the primary
 # evidence either way and they were always five.)
-src/actors/dScMiniGm_c.cpp
+src/minigames/d_s_mini_gm.cpp
 # RETIRED at SLICE1: body now in src/_ZN11dScMiniGm_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN11dScMiniGm_cD0Ev.cpp
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020bff4c.cpp
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020bffc8.c
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020bfff4.c
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020c0010.c
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020c0030.c
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020c007c.c
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020c00b4.c
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020c00e4.c
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020c0140.cpp
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020c0250.cpp
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020c0378.cpp
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020c06cc.c
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020c0878.cpp
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/_ZN11dScMiniGm_c16OnPendingDestroyEv.cpp
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/_ZN11dScMiniGm_c6RenderEv.cpp
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020c0f38.c
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020c1030.cpp
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020c1130.c
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/_ZN11dScMiniGm_c8BehaviorEv.cpp
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/_ZN11dScMiniGm_c16CleanupResourcesEv.cpp
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020c1688.c
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/func_ov005_020c16e4.c
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/_ZN11dScMiniGm_c13InitResourcesEv.cpp
-# FOLDED into src/actors/dScMiniGm_c.cpp (row 109): src/d_s_mini_gm.c
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_SaveIfDirty.cpp
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_SetRecord.c
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_GetRecord.c
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_GetSaveTable.c
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_ClearNew.c
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_IsNew.c
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_IsUnlocked.c
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_HasSecondPage.c
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_UpdatePageScroll.cpp
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_UpdateExitButton.cpp
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/func_ov005_020c0378.cpp
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_UpdatePageArrows.c
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_UpdateGroupTabs.cpp
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/_ZN11dScMiniGm_c16OnPendingDestroyEv.cpp
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/_ZN11dScMiniGm_c6RenderEv.cpp
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_DrawNewBadges.c
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_DrawNumber.cpp
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_DrawRecords.c
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/_ZN11dScMiniGm_c8BehaviorEv.cpp
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/_ZN11dScMiniGm_c16CleanupResourcesEv.cpp
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_LoadIconPalette.c
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/MiniGm_LoadGroupIcons.c
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/_ZN11dScMiniGm_c13InitResourcesEv.cpp
+# FOLDED into src/minigames/d_s_mini_gm.cpp (row 109): src/d_s_mini_gm.c
 src/ExitMinigameMenu.c
 src/unnamed/arm9/0201/func_02013598.c
 src/unnamed/arm9/0201/func_020135d0.c
@@ -176,12 +176,12 @@ src/unnamed/arm9/0201/func_02013638.c
 # THE DECISION NUMBERS, named from the ROM (section 5 above) BEFORE the run:
 #
 #                       no tap        tapped at DS (88,60) on f200
-#   data_0208a174        -1            3          the selected row
+#   gMgLastSelected        -1            3          the selected row
 #   data_0209b2fc[0]      0            1          the launch latch
-#   data_0209b308 u16     0            366        the picked minigame's id
+#   gMgMenuRow u16     0            366        the picked minigame's id
 #   data_02092664       391            366        THE PENDING SCENE ID
 #
-# 366 is 0x016E, and row 3 of the launch table at data_ov005_020c24d8 is
+# 366 is 0x016E, and row 3 of the launch table at sMiniGmRows is
 # id=0x016e -- "Wanted!", dScMgLuigi_c, which this port already hosts as
 # SCENE_MG_LUIGI. So the menu hit-tested a touch into the right cell, read the
 # right row out of the ROM's own table, and asked Scene::SetSceneToSpawn for

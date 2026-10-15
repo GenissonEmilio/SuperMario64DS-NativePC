@@ -1,7 +1,7 @@
 /* HOST ARM recovered by PORTSYNC2 (port/tools/hostarm_recover.py draft, reviewed).
  * The port line carried this in src/_ZN16daObjFallBlock_cD0Ev.cpp under #ifdef _MSC_VER; the
  * 2026-10 main merge (749f5799a) took main's src/, where that code
- * now lives in src/actors/daObjFallBlock_c.cpp without the arm. mwccarm never saw the arm,
+ * now lives in src/game/actors/d_a_obj_fall_block.cpp without the arm. mwccarm never saw the arm,
  * so nothing here moves a ROM byte.
  *
  * WHY IT EXISTS. The host needs the ROM's flat D0 name, and MSVC never emits

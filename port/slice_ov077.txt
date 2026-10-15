@@ -135,13 +135,13 @@
 # owes its decomp-side marker correction and retires when that line goes.
 #
 # ==== THE SLICE: 79 TUs (91 - 12 host copies) =============================
-src/actors/daPopoi_c.cpp
+src/game/actors/d_a_popoi.cpp
 src/game/actors/d_a_jgm.cpp
-src/actors/daTgz_c.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/_ZN5Spiny13InitResourcesEv.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/_ZN5Spiny16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/_ZN5Spiny16OnPendingDestroyEv.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/_ZN5Spiny8BehaviorEv.cpp
+src/game/actors/d_a_tgz.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/_ZN5Spiny13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/_ZN5Spiny16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/_ZN5Spiny16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/_ZN5Spiny8BehaviorEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN5SpinyD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN5SpinyD0Ev.cpp
 # Lakitu::InitResources is back (run linkfull, lane RS4PORT): refusal D below
@@ -155,15 +155,15 @@ src/actors/daTgz_c.cpp
 # FOLDED into src/game/actors/d_a_jgm.cpp (row 139): src/_ZN6Lakitu8BehaviorEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN6LakituD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN6LakituD0Ev.cpp
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/_ZN7HeaveHo13InitResourcesEv.cpp
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/_ZN7HeaveHo16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/_ZN7HeaveHo16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/_ZN7HeaveHo13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/_ZN7HeaveHo16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/_ZN7HeaveHo16OnPendingDestroyEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN7HeaveHoD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN7HeaveHoD0Ev.cpp
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/_ZN7HeaveHoD1Ev.cpp
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/_ZN7HeaveHoD1Ev.cpp
 # FOLDED into src/game/actors/d_a_jgm.cpp (row 139): src/__sinit_ov077_02127240.c
 src/unnamed/ov077/__sinit_ov077_0212749c.c
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/__sinit_ov077_021275fc.c
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/__sinit_ov077_021275fc.c
 # FOLDED into src/game/actors/d_a_jgm.cpp (row 139): src/_ZN6Lakitu13OnYoshiTryEatEv.cpp
 # FOLDED into src/game/actors/d_a_jgm.cpp (row 139): src/_ZN6Lakitu16OnAimedAtWithEggEv.cpp
 # FOLDED into src/game/actors/d_a_jgm.cpp (row 139): src/func_ov077_02123814.c
@@ -186,40 +186,40 @@ src/unnamed/ov077/__sinit_ov077_0212749c.c
 # FOLDED into src/game/actors/d_a_jgm.cpp (row 139): src/func_ov077_02124698.c
 # FOLDED into src/game/actors/d_a_jgm.cpp (row 139): src/func_ov077_0212478c.c
 # FOLDED into src/game/actors/d_a_jgm.cpp (row 139): src/_ZN6Lakitu13OnTurnIntoEggER6Player.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/_ZN5Spiny13OnYoshiTryEatEv.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/_ZN5Spiny16OnAimedAtWithEggEv.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02124c28.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02124ce4.c
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02124d08.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02124eb0.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_021250a8.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_021251d0.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02125290.c
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02125304.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_021253a4.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02125480.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02125550.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_021256b4.c
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02125830.c
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_021258dc.c
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02125908.c
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02125a0c.c
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02125a54.c
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02125b1c.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02125bb4.c
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02125dd4.c
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/func_ov077_02125e94.c
-# FOLDED into src/actors/daTgz_c.cpp (row 140): src/_ZN5Spiny13OnTurnIntoEggER6Player.cpp
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/func_ov077_02126300.c
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/func_ov077_02126528.cpp
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/func_ov077_02126640.cpp
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/func_ov077_02126758.cpp
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/func_ov077_0212679c.c
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/func_ov077_02126930.cpp
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/func_ov077_021269a8.cpp
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/func_ov077_02126a04.c
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/func_ov077_02126a50.c
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/func_ov077_02126a84.c
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/func_ov077_02126ad0.c
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/func_ov077_02126cd4.cpp
-# FOLDED into src/actors/daPopoi_c.cpp (row 138): src/func_ov077_02126dac.c
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/_ZN5Spiny13OnYoshiTryEatEv.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/_ZN5Spiny16OnAimedAtWithEggEv.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02124c28.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02124ce4.c
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02124d08.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02124eb0.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_021250a8.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_021251d0.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02125290.c
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02125304.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_021253a4.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02125480.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02125550.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_021256b4.c
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02125830.c
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_021258dc.c
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02125908.c
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02125a0c.c
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02125a54.c
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02125b1c.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02125bb4.c
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02125dd4.c
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/func_ov077_02125e94.c
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 140): src/_ZN5Spiny13OnTurnIntoEggER6Player.cpp
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/func_ov077_02126300.c
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/func_ov077_02126528.cpp
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/func_ov077_02126640.cpp
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/func_ov077_02126758.cpp
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/func_ov077_0212679c.c
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/func_ov077_02126930.cpp
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/func_ov077_021269a8.cpp
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/func_ov077_02126a04.c
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/func_ov077_02126a50.c
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/func_ov077_02126a84.c
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/func_ov077_02126ad0.c
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/func_ov077_02126cd4.cpp
+# FOLDED into src/game/actors/d_a_popoi.cpp (row 138): src/func_ov077_02126dac.c

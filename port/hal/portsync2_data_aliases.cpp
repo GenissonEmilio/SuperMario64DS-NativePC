@@ -1,9 +1,9 @@
 /* hal/portsync2_data_aliases.cpp -- decorated DATA names onto the hosted C data.
  *
  * PORTSYNC2 (the 2026-10 main merge). Main's class TUs declare ROM data at
- * file scope with C++ linkage (`extern int data_ov072_02122bcc[];`), where
+ * file scope with C++ linkage (`extern int gBigSnowmanSmileTextureSequenceFile[];`), where
  * the one-function files they replaced declared it inside extern "C". MSVC
- * therefore asks for the decorated name (?data_ov072_02122bcc@@3PAHA) while
+ * therefore asks for the decorated name (?gBigSnowmanSmileTextureSequenceFile@@3PAHA) while
  * the ROM mounts (build/port/host-src/ov*_syms.c, tools/ovdata.py) define the
  * C name. For DATA an /alternatename is the right bridge -- no calling
  * convention is involved (port/tools/facegen.py's ALIAS class, the ov007
@@ -19,8 +19,8 @@
  * NOTHING, for hal/actor_class_faces.cpp's reasons.
  */
 
-#pragma comment(linker, "/alternatename:?data_ov072_02122bcc@@3PAHA=_data_ov072_02122bcc")
-#pragma comment(linker, "/alternatename:?data_ov072_02122bd4@@3PAHA=_data_ov072_02122bd4")
+#pragma comment(linker, "/alternatename:?gBigSnowmanSmileTextureSequenceFile@@3PAHA=_gBigSnowmanSmileTextureSequenceFile")
+#pragma comment(linker, "/alternatename:?gBigSnowmanCryTextureSequenceFile@@3PAHA=_gBigSnowmanCryTextureSequenceFile")
 #pragma comment(linker, "/alternatename:?data_ov020_02114828@@3PAEA=_data_ov020_02114828")
 #pragma comment(linker, "/alternatename:?data_ov080_0212767c@@3PAHA=_data_ov080_0212767c")
 #pragma comment(linker, "/alternatename:?data_ov006_02133a3c@@3PAPAXA=_data_ov006_02133a3c")
@@ -100,14 +100,14 @@
 #pragma comment(linker, "/alternatename:?data_ov004_020bc558@@3PAHA=_data_ov004_020bc558")
 #pragma comment(linker, "/alternatename:?data_ov004_020bc364@@3PAHA=_data_ov004_020bc364")
 #pragma comment(linker, "/alternatename:?data_ov004_020bc56c@@3PAHA=_data_ov004_020bc56c")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc20c@@3PAHA=_data_ov004_020bc20c")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc1b4@@3PAHA=_data_ov004_020bc1b4")
-#pragma comment(linker, "/alternatename:?data_ov004_020beb6c@@3HA=_data_ov004_020beb6c")
+#pragma comment(linker, "/alternatename:?pmf_Banner_UpdateSpin@@3PAHA=_pmf_Banner_UpdateSpin")
+#pragma comment(linker, "/alternatename:?pmf_Banner_DrawSpin@@3PAHA=_pmf_Banner_DrawSpin")
+#pragma comment(linker, "/alternatename:?sMgTopScreenYOffset@@3HA=_sMgTopScreenYOffset")
 #pragma comment(linker, "/alternatename:?data_ov004_020bf3ec@@3HA=_data_ov004_020bf3ec")
 #pragma comment(linker, "/alternatename:?data_ov004_020bf3f4@@3PAHA=_data_ov004_020bf3f4")
 #pragma comment(linker, "/alternatename:?data_ov004_020bf410@@3PAPAXA=_data_ov004_020bf410")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc254@@3PAHA=_data_ov004_020bc254")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc150@@3HA=_data_ov004_020bc150")
+#pragma comment(linker, "/alternatename:?pmf_Banner_UpdatePressed_2@@3PAHA=_pmf_Banner_UpdatePressed_2")
+#pragma comment(linker, "/alternatename:?sMgBannerButtonsArmed@@3HA=_sMgBannerButtonsArmed")
 #pragma comment(linker, "/alternatename:?data_ov004_020bf3f0@@3HA=_data_ov004_020bf3f0")
 #pragma comment(linker, "/alternatename:?data_ov004_020bf3fc@@3PAHA=_data_ov004_020bf3fc")
 #pragma comment(linker, "/alternatename:?data_ov004_020bf404@@3PAPAXA=_data_ov004_020bf404")
@@ -126,7 +126,7 @@
 #pragma comment(linker, "/alternatename:?data_ov004_020bc8b4@@3HA=_data_ov004_020bc8b4")
 #pragma comment(linker, "/alternatename:?data_ov004_020bc858@@3HA=_data_ov004_020bc858")
 #pragma comment(linker, "/alternatename:?data_ov004_020bc874@@3HA=_data_ov004_020bc874")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc8a0@@3HA=_data_ov004_020bc8a0")
+#pragma comment(linker, "/alternatename:?sMgNextBanner@@3HA=_sMgNextBanner")
 #pragma comment(linker, "/alternatename:?data_ov004_020bc868@@3HA=_data_ov004_020bc868")
 #pragma comment(linker, "/alternatename:?data_ov004_020bc8b0@@3HA=_data_ov004_020bc8b0")
 #pragma comment(linker, "/alternatename:?data_ov004_020bc8ac@@3HA=_data_ov004_020bc8ac")
@@ -135,8 +135,8 @@
 #pragma comment(linker, "/alternatename:?data_ov004_020bc89c@@3HA=_data_ov004_020bc89c")
 #pragma comment(linker, "/alternatename:?data_ov004_020bc85c@@3HA=_data_ov004_020bc85c")
 #pragma comment(linker, "/alternatename:?data_ov004_020bc870@@3HA=_data_ov004_020bc870")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc7d4@@3HA=_data_ov004_020bc7d4")
-#pragma comment(linker, "/alternatename:?data_ov004_020bfa24@@3HA=_data_ov004_020bfa24")
+#pragma comment(linker, "/alternatename:?gMgCoinsShowDelta@@3HA=_gMgCoinsShowDelta")
+#pragma comment(linker, "/alternatename:?sMgCoinsDeltaShown@@3HA=_sMgCoinsDeltaShown")
 #pragma comment(linker, "/alternatename:?data_ov004_020bca44@@3PAPAEA=_data_ov004_020bca44")
 #pragma comment(linker, "/alternatename:?data_ov006_0213f730@@3PAPAXA=_data_ov006_0213f730")
 #pragma comment(linker, "/alternatename:?data_0209f1f8@@3EA=_data_0209f1f8")

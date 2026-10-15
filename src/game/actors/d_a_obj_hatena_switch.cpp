@@ -31,6 +31,14 @@
  *   are arm9 scratch/save globals.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_hatena_switch_AssetId {
+    ASSET_HATENA_SWITCH_BCA = 0x046c,
+    ASSET_HATENA_SWITCH_BMD = 0x046d,
+    ASSET_HATENA_SWITCH_END_KCL = 0x046e,
+    ASSET_HATENA_SWITCH_START_KCL = 0x046f
+};
+
 #include "daObjHatenaSwitch_c.h"
 #include "Message.h"
 #include "Player.h"
@@ -387,7 +395,7 @@ void daObjHatenaSwitch_c::OnGroundPounded(dActor_c &other)
 /* ROM ordinals 0/1 -- D1 at 0x020b4ed8 and D0 at 0x020b4f44 are emitted
  * naturally by the inline destructor and InitResources vtable instantiation. */
 
-HatenaModelFilePtr data_ov002_0210dd60(1133);
-HatenaAnimationFilePtr data_ov002_0210dd68(1132);
-HatenaCollisionFilePtr data_ov002_0210dd58(1135);
-HatenaCollisionFilePtr data_ov002_0210dd50(1134);
+HatenaModelFilePtr data_ov002_0210dd60(ASSET_HATENA_SWITCH_BMD);
+HatenaAnimationFilePtr data_ov002_0210dd68(ASSET_HATENA_SWITCH_BCA);
+HatenaCollisionFilePtr data_ov002_0210dd58(ASSET_HATENA_SWITCH_START_KCL);
+HatenaCollisionFilePtr data_ov002_0210dd50(ASSET_HATENA_SWITCH_END_KCL);

@@ -95,6 +95,7 @@
 #include "hal/comms_seam.h"   /* run mg16 lane MP3: touch_ring_index/advance */
 
 #include "hal/screen_gap.h"
+#include "hal/pad_pointer.h"   /* PADMENUS1: the pad pointer (a virtual stylus) */
 #include "hal/host_settings.h"   /* the improved map's two keys */
 
 /* The PNG reader, vendored public-domain and already the one this port uses
@@ -132,6 +133,10 @@ extern "C" int settings_page_swallow_back(void);
 extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back);
 extern "C" int menu_pause_slide_busy(void);    /* PAUSE43FIX2: a 4:3 pause slide in flight eats the click and the back key */
 extern "C" int menu_pause_rom_fallback(void);   /* UIMOD1: hal/menu_recipe_pause.cpp */
+void menu_title_pad_map_rom(uint16_t *pressed, int host_back);   /* PADMENUS1: hal/menu_recipe_title.cpp */
+extern "C" void menu_gameover_pad_rom(uint16_t *pressed);   /* PADMENUS1: hal/menu_recipes.cpp */
+extern "C" void menu_lc_pad_rom(uint16_t *pressed);
+extern "C" void menu_recroom_pad_rom(void);
 extern "C" void menu_pause_rom_pad(uint16_t *pressed);   /* hal/menu_recipe_pause.cpp: OneScreenMenus off, the ROM's own pause */   /* PAUSE3: hal/menu_recipe_pause.cpp */
 int hal_present_client_to_sub(int cx, int cy, int *dsx, int *dsy);
 /* the layout mode, defined at the bottom of this file */
@@ -227,7 +232,7 @@ extern char data_0209f49e[];     /* split: pressed       (DS: f498 + 6) */
 extern void *data_0209f318;      /* the Camera actor */
 /* THE LEVEL-CLEAR SCREEN'S OWN TWO WORDS, and the swap below reads nothing
    else. data_0209f20c is "the level-clear screen owns the game": the player's
-   own star animation raises it (src/actors/Player.cpp:6522, :6718, :6742) and
+   own star animation raises it (src/game/player/Player.cpp:6522, :6718, :6742) and
    src/_ZN5Stage8BehaviorEv.cpp:206 runs Stage::LC_Update only while it is up.
    data_0209f2d4 is that function's own state word. */
 extern unsigned char data_0209f20c;
@@ -244,6 +249,7 @@ extern char data_02092124;
 extern int SublevelToLevel(int i);
 /* and the button LC_Update's case 3 takes on Start: see hal_lc_menu_pad */
 extern unsigned char data_0209f2e0;
+extern unsigned char data_0209f248;   /* PADMENUS1: the pause state (5 = VS) for the ROM-pause trace */
 }
 
 namespace {
@@ -2054,7 +2060,7 @@ struct TouchProbeEnt {
    from sixteen cards to eighteen, and a hundred and seventy for the ten that
    take it to twenty. The array is 5KB of host bookkeeping and no run reads
    past g_tp_n. */
-TouchProbeEnt g_tp[256];
+TouchProbeEnt g_tp[2048];   /* PADMENUS1: a whole minigame gesture is more than 256 pen runs */
 int g_tp_n = -1;            /* -1 = env not read yet, 0 = probe off */
 int g_tp_frame;             /* polls since the first one */
 int g_tp_cur = -1;          /* the frame being polled, for the camera log */
@@ -2175,7 +2181,7 @@ extern "C" void port_touch_inject_census(unsigned *frames, unsigned *presses,
  * separately from poked frames. The ROM's own producer spells byte +1 as
  * `touch XOR previous` (src/func_0203bb60.c), so ONE held press is ONE edge,
  * and every gate in the game that reads "touched AND changed" -- curling's
- * func_ov006_020e1b54 is one -- can only fire on that single frame. A script
+ * Aim_WaitTouch is one -- can only fire on that single frame. A script
  * that holds one long press across a scene's warm-up timer therefore delivers
  * a press the game is structurally unable to see, and the old log gave a lane
  * no way to tell that apart from a broken bridge. */
@@ -2256,7 +2262,7 @@ unsigned char tp_rd(const unsigned char *p, int i)
  *
  * WHAT THAT COST, from a live session: "when i drag off screen it releases the
  * touch". On scene 368 that is the slingshot firing itself. The pull is
- * src/func_ov006_020fe394.cpp and its whole body is one branch on
+ * src/PachinkoBobOmb_State1.cpp and its whole body is one branch on
  * `data_020a0de8[k * 4] != 0`: the true side keeps the ball at the captured
  * offset, and the FALSE side is the shot. It writes 2 into the slot's state
  * byte at +0x4f0d and either snaps the ball home or launches it. So a hand
@@ -2466,6 +2472,7 @@ void poll_touch(void)
             /* the arming edge, and the only one there is */
             if (on_surface) drag_own = 1;
             if (inj && on_surface) ++g_inj_on_surface;
+            if (on_surface && !inj) hal_padptr_mouse_down();    /* PADMENUS1: a real pen on the touch screen: a pad pointer steps aside */
             if (on_surface || drag_own) {
                 /* THE NEAREST POINT ON THE BOTTOM SCREEN. On the surface both
                    of these are no-ops, which is why a drag that stays on the
@@ -2490,6 +2497,23 @@ void poll_touch(void)
             down = 1;
             sx = data_020a0de8[2];
             sy = data_020a0de8[3];
+        }
+    }
+    /* PADMENUS1: THE PAD POINTER'S PEN (hal/pad_pointer.h). A controller-driven stylus, entered here beside the real pen so the rest of the
+       chain (the probe, the edge byte, the ring) sees one more hand and nothing else. Stacked it is already in DS pixels; under a one-screen
+       recipe it is a picture pixel and goes through the same inverse the mouse takes. Off (and one atomic load) with no controller. */
+    if (!inj) {
+        int pm = 0, ppx = 0, ppy = 0;
+        if (hal_padptr_poll(&pm, &ppx, &ppy)) {
+            int pfx = -1, pfy = -1, pok = 0;
+            if (pm == 1 && hal_sub_screen_stacked()) { pfx = ppx; pfy = ppy; pok = 1; }
+            else if (pm == 3 && !hal_sub_screen_stacked() && !hal_menu_live()) { pfx = ppx; pfy = ppy; pok = 1; }
+            else if (pm == 2 && hal_menu_live()) { int pin = 0; hal_menu_touch_inverse(ppx, ppy, &pfx, &pfy, &pin); pok = pin; }
+            if (pok && pfx >= 0 && pfx < ntr::SUB_W && pfy >= 0 && pfy < ntr::SUB_H) {
+                down = 1;
+                sx = (unsigned char)pfx;
+                sy = (unsigned char)pfy;
+            }
         }
     }
     if (g_tp_n < 0) touch_probe_parse();
@@ -2604,7 +2628,7 @@ void poll_touch(void)
      *
      * WHAT IT COST, measured on scene 368 (Bob-omb Squad) with
      * SM64DS_TOUCH_PROBE and the shot table's own state trace. The plunger is
-     * src/func_ov006_020fe2e4.c (grab) and src/func_ov006_020fe394.cpp (pull and
+     * src/PachinkoBobOmb_State0.c (grab) and src/PachinkoBobOmb_State1.cpp (pull and
      * release). The grab arms on `data_020a0de8[k*4] && data_020a0de9[k*4]`
      * and captures ball-minus-stylus into +0x4ee8/+0x4eec; the pull then holds
      * that offset, so WHERE the stylus is on the arming frame decides where
@@ -2620,15 +2644,15 @@ void poll_touch(void)
      *                                    110 px above the cursor, never left
      *                                    the anchor, and the release measured
      *                                    dist 8 -- under 0x10, which is
-     *                                    func_ov006_020fe394's snap-back, so
+     *                                    PachinkoBobOmb_State1's snap-back, so
      *                                    the shot never fired.
      *   press, hold still, then drag     old: worked. That is the whole of
      *                                    "sometimes I can grab it".
      *
      * TWO MORE CLASSES OF READER GET THEIR BEHAVIOUR BACK WITH THIS, and they
      * are why this is a record fix rather than a pachinko fix.
-     * `de8 && de9` sites (the press edge: curling's func_ov006_020e1b54,
-     * Coincentration's func_ov006_020dd0e0, and two dozen more) fired one
+     * `de8 && de9` sites (the press edge: curling's Aim_WaitTouch,
+     * Coincentration's Coin_State0, and two dozen more) fired one
      * frame late and then EVERY frame of the hold instead of once.
      * `de8 == 0 && de9` sites (the release edge: src/func_ov006_020d1ba0.cpp:63,
      * _ZN17dScMgTrampoline_c16UpdateTouchInputEv.c:49, _ZN21cMgSmartball_spring_c12SaveSnapshotEv.c:82) were identically
@@ -3040,7 +3064,7 @@ void hal_sub_screen_init_hw(void *hwnd, int zoom)
      *                  sprite into the MAIN shadow instead.
      *
      * So on the DS the bottom screen is live from boot and only ov006's
-     * minigames ever set the flag (_ZN14dScMgD3DBase_c25OnAimedAtWithEggReturnVecEv, _ZN14dScMgD3DBase_c9Virtual84Ev),
+     * minigames ever set the flag (_ZN14dScMgD3DBase_c21RestoreScreenFromMenuEv, _ZN14dScMgD3DBase_c11InitEnginesEv),
      * clearing it again on the way out.
      *
      * WHY THE PORT NEEDS A CALL AT ALL. hal/model_host.cpp:91 hosts the global
@@ -3483,7 +3507,7 @@ void hal_screens_probe(void)
  *                    wrote during THIS frame's Render and what OAM::Load is
  *                    about to upload at the foot of this function.
  *
- * AND THE FRAMEWORK'S sel WORD, data_ov004_020beb68 + 0x4664. The slot-24 beat
+ * AND THE FRAMEWORK'S sel WORD, gMgScene + 0x4664. The slot-24 beat
  * has already flipped it by this point, so the value printed is the one the
  * raster's arm was derived from, and the shadow beside it was written under the
  * OTHER one. That is the whole measurement: on the dScMgD3DBase_c family the
@@ -3495,7 +3519,7 @@ void hal_screens_probe(void)
 extern "C" {
 extern int data_0209e664;                    /* the main shadow's counter */
 extern unsigned short data_0209e674[];       /* the main shadow itself */
-extern unsigned char data_ov004_020beb68[4]; /* the framework's scene pointer */
+extern unsigned char gMgScene[4]; /* the framework's scene pointer */
 }
 /* which frame order this binary is running; defined with the upload below */
 static int oam_load_late(void);
@@ -3511,10 +3535,10 @@ void hal_obj_parity_probe(void)
     if ((long)f >= (long)upto) return;
 
     const int bit = (*(volatile unsigned short *)0x04000304 >> 15) & 1;
-    unsigned g = (unsigned)data_ov004_020beb68[0]
-               | ((unsigned)data_ov004_020beb68[1] << 8)
-               | ((unsigned)data_ov004_020beb68[2] << 16)
-               | ((unsigned)data_ov004_020beb68[3] << 24);
+    unsigned g = (unsigned)gMgScene[0]
+               | ((unsigned)gMgScene[1] << 8)
+               | ((unsigned)gMgScene[2] << 16)
+               | ((unsigned)gMgScene[3] << 24);
     int sel = -1;
     if (g) sel = (int)*(unsigned short *)(g + 0x4664);
 
@@ -3610,7 +3634,7 @@ void hal_obj_parity_probe(void)
  *                                   uses for the TOP screen's copy.
  *
  * All three agree: a submission made while sel == 1 belongs on the top screen
- * and one made while sel == 0 belongs on the bottom. src/actors/dScMgD3DBase_c.cpp
+ * and one made while sel == 0 belongs on the bottom. src/minigames/d_s_mg_d3d_base.cpp
  * -- slot 24 -- sets POWCNT1 the other way round on the same frame (sel == 1
  * clears bit 15, which sends engine A to the LOWER screen), so on the DS a
  * submission is displayed under the arm the NEXT beat sets. That is not a
@@ -3797,8 +3821,20 @@ static void menu_pad_seam_impl(void)
         const int s0 = seam_slot;
         unsigned short *pr = (unsigned short *)((char *)data_020a0e58 + s0 * 4 + 2);
         unsigned short *sp = (unsigned short *)((char *)data_020a0e5a + s0 * 4);
+        if (port_scene_live_id() == 5) menu_recroom_pad_rom();   /* PADMENUS1: the ROM's own Rec Room: pad B is the back arrow */
         uint16_t k0 = *pr, k1 = k0;
+        if (hal_menu_trace_on()) {      /* PADMENUS1 (SM64DS_MENU_TRACE): the ROM's own pause and its plate cursor, so a pad row can read what a press did with no recipe up */
+            static unsigned last = ~0u;
+            const unsigned now = ((unsigned)data_0209f2c4 << 16) | ((unsigned)data_0209f248 << 8) | (unsigned)data_0209f2e0;
+            if (now != last) {
+                last = now;
+                fprintf(stderr, "[pause-rom] f2c4=%d f248=%d sel=%d\n", (int)data_0209f2c4, (int)data_0209f248, (int)data_0209f2e0);
+            }
+        }
         menu_pause_rom_pad(&k1);
+        if (port_scene_live_id() == 8) menu_gameover_pad_rom(&k1);   /* PADMENUS1: the game over screen: the pad moves its cursor, confirm presses it */
+        menu_lc_pad_rom(&k1);   /* PADMENUS1: the ROM's own level-clear / save screen (state 3 only: it asks itself) */
+        if (port_scene_live_id() == 1) menu_title_pad_map_rom(&k1, back);   /* PADMENUS1: the ROM's own title: pad A confirms, pad B is the back arrow */
         settings_page_hook_pad(&k1);      /* MENUS093: with the one-screen menus off only the title's MP button guard applies (armed_target is off) */
         if (k1 != k0) { *pr = k1; *sp = k1; }
         return;
@@ -3854,6 +3890,16 @@ static void menu_pad_seam_impl(void)
    inset (stacked layout, panel off, the level-clear compose). */
 static int g_inset_rect[4];
 static int g_inset_live;
+/* PADMENUS1: the corner panel the last present drew (picture pixels), for the pad pointer's arrow. 0 when this frame drew no inset. */
+extern "C" int hal_sub_inset_rect(int *x, int *y, int *w, int *h)
+{
+    if (!g_inset_live || g_inset_rect[2] < 1 || g_inset_rect[3] < 1) return 0;
+    if (x) *x = g_inset_rect[0];
+    if (y) *y = g_inset_rect[1];
+    if (w) *w = g_inset_rect[2];
+    if (h) *h = g_inset_rect[3];
+    return 1;
+}
 
 /* THE CORNER PANEL'S RECTANGLE, read-only, for a host overlay that has to stay
    clear of it (hal/net_hud.h, the online ping readout): the rectangle the last
@@ -5428,10 +5474,10 @@ void hal_touch_client_probe(void)
    targets this file is on. Leaving the stub here would be a duplicate
    definition -- the LoadFont3D precedent above. */
 
-/* The third leaf, func_ov004_020adc4c, is NOT stubbed here any more (run linkw
-   wave C, lane cat-2d). It was tagged `src reads data_ov004_020beb60, and
+/* The third leaf, Mg_GetWorkBuffer, is NOT stubbed here any more (run linkw
+   wave C, lane cat-2d). It was tagged `src reads sMgWorkBuffer, and
    ov004 is not mounted`, and that one BSS word is now hosted in
-   hal/oam2d_ov004_bss.cpp, so the matched src/func_ov004_020adc4c.c is the
+   hal/oam2d_ov004_bss.cpp, so the matched src/Mg_GetWorkBuffer.c is the
    body LoadFont reaches. Leaving the stub here would be a duplicate
    definition. The branch that calls it is still not taken: it is LoadFont's
    data_0209d698 == 2 arm, the minigame framework's font, and the window loads

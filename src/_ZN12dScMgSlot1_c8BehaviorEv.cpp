@@ -17,16 +17,16 @@ extern int Sound_PlayIfNotActive(int handle, int a, int b, int c);
 extern void func_02012718(void *a, int b);
 extern unsigned int func_02012790(unsigned int a);
 extern int func_0202ec9c(void *fader, int a);
-extern void func_ov004_020ad79c(int a, int b);
-extern void func_ov004_020adb1c(int a);
-extern void func_ov004_020ae274(void *c);
-extern void func_ov006_0210c180(void *o);
-extern void func_ov006_0210c1a8(void *o);
-extern void func_ov006_0210c218(void *o, s16 x, s16 y);
-extern void func_ov006_0210c278(void *o);
-extern void func_ov006_0210c2c0(void *o, int v);
-extern void func_ov006_0210c2d4(void *o);
-extern int func_ov006_0210c500(void *self);
+extern void Mg_SaveRecordPair(int a, int b);
+extern void Mg_SubmitScore(int a);
+extern void Mg_PlayJingle(void *c);
+extern void SlotLamp_Start(void *o);
+extern void SlotLamp_Tick(void *o);
+extern void SlotBlink_Start(void *o, s16 x, s16 y);
+extern void SlotBlink_Tick(void *o);
+extern void SlotReel_SetSpeed(void *o, int v);
+extern void SlotBet_OnTouch(void *o);
+extern int SlotReels_CheckStopped(void *self);
 extern u8 data_020a0e40;
 extern u8 data_020a0de8[];
 extern u8 data_020a0de9[];
@@ -56,7 +56,7 @@ s32 dScMgSlot1_c::Behavior()
         unk_470a = 0;
         unk_470b = 0;
         unk_46b4 = 1;
-        func_ov006_0210c2d4(&mBetIcon);
+        SlotBet_OnTouch(&mBetIcon);
         if (mPromptBlinkCount == 0) {
             mPromptEnabled = 1;
             mPromptBlinkCount = 1;
@@ -118,7 +118,7 @@ s32 dScMgSlot1_c::Behavior()
                             (*(u8 *)(c + 0x4705))++;
                             if (mBetIcon.unk_011 != 0) {
                                 mBetIcon.unk_011 = 0;
-                                func_ov004_020ad79c(unk_0a8, mHudScore);
+                                Mg_SaveRecordPair(unk_0a8, mHudScore);
                             }
                             func_02012718((void *) 0x162, data_ov006_0213e63c[i][0] << 12);
                             break;
@@ -134,7 +134,7 @@ s32 dScMgSlot1_c::Behavior()
                 }
             }
             if (stopped == 1) {
-                unk_470a = func_ov006_0210c500(this);
+                unk_470a = SlotReels_CheckStopped(this);
                 *(int *)(c + 0x46b8) = 0;
                 if (unk_470a != 0) {
                     *(int *)(c + 0x46b8) += data_ov006_0213e4d8[unk_4709];
@@ -142,7 +142,7 @@ s32 dScMgSlot1_c::Behavior()
                 if (unk_470b != 0 && unk_470b < 3) {
                     *(int *)(c + 0x46b8) += unk_470b << 1;
                 }
-                func_ov004_020ad79c(unk_0a8 + *(int *)(c + 0x46b8) * mBetIcon.unk_01c, mHudScore);
+                Mg_SaveRecordPair(unk_0a8 + *(int *)(c + 0x46b8) * mBetIcon.unk_01c, mHudScore);
                 unk_46b4 = 4;
                 *(u8 *)(c + 0x470c) = 0x3c;
             }
@@ -152,15 +152,15 @@ s32 dScMgSlot1_c::Behavior()
     case 4:
         if (DecIfAbove0_Byte((u8 *)(c + 0x470c)) == 0) {
             if (unk_470a != 0) {
-                func_ov006_0210c218(c + 0x4684, data_ov006_0213e654[unk_4709][0], data_ov006_0213e656[unk_4709][0]);
+                SlotBlink_Start(c + 0x4684, data_ov006_0213e654[unk_4709][0], data_ov006_0213e656[unk_4709][0]);
             }
             if (unk_470b != 0 && unk_470b < 3) {
-                func_ov006_0210c218(c + 0x4690, data_ov006_0213e4f8[unk_470b - 1][0], data_ov006_0213e4fa[unk_470b - 1][0]);
+                SlotBlink_Start(c + 0x4690, data_ov006_0213e4f8[unk_470b - 1][0], data_ov006_0213e4fa[unk_470b - 1][0]);
             }
             if (*(int *)(c + 0x46b8) != 0) {
                 unk_46b4 = 5;
                 *(u8 *)(c + 0x470c) = 0x64;
-                func_ov006_0210c180(c + 0x469c);
+                SlotLamp_Start(c + 0x469c);
                 func_02012790(0x26);
             } else {
                 unk_46b4 = 7;
@@ -172,7 +172,7 @@ s32 dScMgSlot1_c::Behavior()
         break;
     case 5:
         if (DecIfAbove0_Byte((u8 *)(c + 0x470c)) == 0) {
-            func_ov006_0210c2c0(&mBetIcon, *(int *)(c + 0x46b8));
+            SlotReel_SetSpeed(&mBetIcon, *(int *)(c + 0x46b8));
             *(u8 *)(c + 0x470c) = 0x3c;
             unk_46b4 = 6;
         }
@@ -180,7 +180,7 @@ s32 dScMgSlot1_c::Behavior()
     case 6: {
         int done = (mBetIcon.unk_020 == 0) ? 1 : 0;
         if (done != 0) {
-            func_ov004_020adb1c(unk_0a8);
+            Mg_SubmitScore(unk_0a8);
             if (DecIfAbove0_Byte((u8 *)(c + 0x470c)) == 0) {
                 OnYoshiTryEat(4);
             }
@@ -215,7 +215,7 @@ s32 dScMgSlot1_c::Behavior()
             unk_46b4++;
             func_02012718((void *) 0x164, data_ov006_0213e63c[idx][0] << 12);
             if (idx == 0) {
-                func_ov004_020ae274((void *) 2);
+                Mg_PlayJingle((void *) 2);
             }
         }
         break;
@@ -244,8 +244,8 @@ s32 dScMgSlot1_c::Behavior()
         break;
     }
     mBetIcon.Behavior();
-    func_ov006_0210c278(c + 0x4684);
-    func_ov006_0210c278(c + 0x4690);
-    func_ov006_0210c1a8(c + 0x469c);
+    SlotBlink_Tick(c + 0x4684);
+    SlotBlink_Tick(c + 0x4690);
+    SlotLamp_Tick(c + 0x469c);
     return 1;
 }

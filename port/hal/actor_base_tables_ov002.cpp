@@ -111,7 +111,7 @@
  * already defines that symbol under a
  * `PORT_HOST_ABI: ROM-order model slot-5 dispatch, the RotatingFirebar case`
  * tag. That is the collision class every fold of this campaign has hit: the
- * slice line for src/actors/daObjFloatBoard_c.cpp was in this gate's first draft,
+ * slice line for src/game/actors/d_a_obj_float_board.cpp was in this gate's first draft,
  * port/tools/closure.py named it as a FOREIGN-object LNK2005 candidate against
  * Jrb_Renders.cpp.obj, and it came back out. The slot below calls the host
  * body by name, so the ROM's word is honoured and the tagged stand-in is what
@@ -167,7 +167,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 
 /* GATE 226: two C++ SPELLINGS of ov002 mount symbols.
  *
- * src/game/actors/daObjPushblock_c.cpp is a C++ TU and declares the two SharedFilePtr
+ * src/game/actors/d_a_obj_pushblock.cpp is a C++ TU and declares the two SharedFilePtr
  * its slot-0 body loads as
  *
  *     extern SharedFilePtr data_ov002_0210df9c;
@@ -273,7 +273,7 @@ void *_ZTV17daObjFloatBoard_c[32];  /* vtspan: flame Platform,    ov002 0x02108f
 void *_ZTV15daObjGuragura_c[32];  /* vtspan: ov002 0x02109084 */
 void *_ZTV14daObjUkiyuka_c[32];  /* vtspan: ov002 0x0210912c */
 void *_ZTV16daObjPushblock_c[32];  /* vtspan: daObjPushblock_c,  ov002 0x021096b0 */
-/* SYNC4: src/game/actors/daObjPushblock_c.cpp reaches this table through the
+/* SYNC4: src/game/actors/d_a_obj_pushblock.cpp reaches this table through the
    VT0 placeholder, which include/decl_common.h declares `int VT0[]`. Binding
    VT0 to the array's own name now collides with main's own `void *[]`
    declaration of it, so the TU binds VT0 to the spelling below and the alias
@@ -282,7 +282,7 @@ void *_ZTV16daObjPushblock_c[32];  /* vtspan: daObjPushblock_c,  ov002 0x021096b
 void *_ZTV13daObjSwdoor_c[32];  /* vtspan: ShutterBob base,   ov002 0x021099e4 */
 DSSTATE_END
 }
-/* src/game/actors/daObjPushblock_c.cpp spells its own table by the config's RTTI name
+/* src/game/actors/d_a_obj_pushblock.cpp spells its own table by the config's RTTI name
    _ZTV16daObjPushblock_c. That is a PLACEHOLDER, not a second object: the
    -D row for that source in port/CMakeLists.txt binds the name to the array
    above, so no alias is needed and none is added -- an /alternatename whose

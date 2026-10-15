@@ -1,7 +1,7 @@
 // LANE-LK1 LINKAGE SEAT: ExpandingHeap's VMax pair, seated for the
 // walk_window family only.
 //
-// Slots 10 and 11 of _ZTV13ExpandingHeap are VMaxAllocationUnitSize (arm9
+// Slots 10 and 11 of _ZTVN5mHeap9ExpHeap_tE are VMaxAllocationUnitSize (arm9
 // 0x0203c5f8) and VMaxAllocatableSize (arm9 0x0203c5d0), both 2004/b56
 // byte-matches in src/. Each is the same one-line forwarder: it reads the
 // allocator at this+0x14 and calls the allocator's flat-C MaxAllocatableSize
@@ -28,23 +28,25 @@
 
 typedef unsigned int u32;
 
-struct ExpandingHeap {
+namespace mHeap {
+struct ExpHeap_t {
     u32 VMaxAllocationUnitSize();
     u32 VMaxAllocatableSize();
 };
+}
 
-extern "C" void *_ZTV13ExpandingHeap[16];  /* storage in hal/heap_vtable.cpp */
+extern "C" void *_ZTVN5mHeap9ExpHeap_tE[16];  /* storage in hal/heap_vtable.cpp */
 
 static u32 __fastcall slot_eh_vmaxunit(void *self, void *)
-{ return ((ExpandingHeap *)self)->VMaxAllocationUnitSize(); }
+{ return ((mHeap::ExpHeap_t *)self)->VMaxAllocationUnitSize(); }
 static u32 __fastcall slot_eh_vmaxsize(void *self, void *)
-{ return ((ExpandingHeap *)self)->VMaxAllocatableSize(); }
+{ return ((mHeap::ExpHeap_t *)self)->VMaxAllocatableSize(); }
 
 /* Called from level_boot's boot fills. Naming the two matched bodies here is
    the reference edge that pulls them, and the allocator's MaxAllocatableSize
    they forward to, into the link. */
 extern "C" void hal_seat_expandingheap_vmax(void)
 {
-    _ZTV13ExpandingHeap[10] = (void *)slot_eh_vmaxunit;
-    _ZTV13ExpandingHeap[11] = (void *)slot_eh_vmaxsize;
+    _ZTVN5mHeap9ExpHeap_tE[10] = (void *)slot_eh_vmaxunit;
+    _ZTVN5mHeap9ExpHeap_tE[11] = (void *)slot_eh_vmaxsize;
 }

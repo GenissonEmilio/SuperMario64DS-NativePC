@@ -139,7 +139,7 @@ struct daObjMarioCap_c : dEnemyBase_c {
        With the destructor inline, OnYoshiTryEat becomes the first out-of-line
        virtual this class declares -- the key function -- so the vtable and the
        RTTI group land in the translation unit that defines it,
-       src/actors/daObjMarioCap_c.cpp. */
+       src/game/actors/d_a_obj_mario_cap.cpp. */
     /* The destructor pair spelled as two plain virtuals on the host, plus
        the non-virtual destructor declaration the src/ definitions need; the
        whole ruling is in include/ModelBase.h. An override takes its base's

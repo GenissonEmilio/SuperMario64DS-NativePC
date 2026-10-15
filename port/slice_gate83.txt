@@ -29,10 +29,10 @@
 # daObjSeesaw_c_classInit_BOMB_SEESAW is the matched src: it installs _ZTV9SeesawBob (the class
 # name, not the RTTI name) with a SINGLE store, so it needs no host copy -- the
 # double-vtable-store misorder that forced ShutterBob's host copy is absent here.
-src/actors/daObjSeesaw_c.cpp
-# FOLDED into src/actors/daObjSeesaw_c.cpp (row 32): src/_ZN9SeesawBob13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjSeesaw_c.cpp (row 32): src/_ZN9SeesawBob16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjSeesaw_c.cpp (row 32): src/_ZN9SeesawBob8BehaviorEv.cpp
+src/game/actors/d_a_obj_seesaw.cpp
+# FOLDED into src/game/actors/d_a_obj_seesaw.cpp (row 32): src/_ZN9SeesawBob13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_seesaw.cpp (row 32): src/_ZN9SeesawBob16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_seesaw.cpp (row 32): src/_ZN9SeesawBob8BehaviorEv.cpp
 # _ZN9SeesawBob6RenderEv IS NOT HERE: like PowerStar/Whomp/UpDownLiftBbh it
 # dispatches ModelAnim slot 5 through a local six-virtual ROM-order shadow
 # (b->m(0) off the ModelAnim at +0xd4), which lands on the host _ZTV9ModelAnim's
@@ -44,14 +44,14 @@ src/actors/daObjSeesaw_c.cpp
 # with them, so the ONE compiled body serves every one of their dispatches; leaving
 # it in makes SeesawBob's own vtable call fault. Host copy in
 # port/unmatched/ModelAnim_Renders.cpp, dispatched by C name from the vtable fill.
-# FOLDED into src/actors/daObjSeesaw_c.cpp (row 32): src/_ZN9SeesawBobD1Ev.cpp
+# FOLDED into src/game/actors/d_a_obj_seesaw.cpp (row 32): src/_ZN9SeesawBobD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN9SeesawBobD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN9SeesawBobD0Ev.cpp
-# FOLDED into src/actors/daObjSeesaw_c.cpp (row 32): src/func_ov095_021358cc.c
-# FOLDED into src/actors/daObjSeesaw_c.cpp (row 32): src/func_ov095_0213597c.c
-# FOLDED into src/actors/daObjSeesaw_c.cpp (row 32): src/func_ov095_02135e90.c
-# FOLDED into src/actors/daObjSeesaw_c.cpp (row 32): src/func_ov095_02135cdc.c
-# FOLDED into src/actors/daObjSeesaw_c.cpp (row 32): src/func_ov095_0213579c.c
-# FOLDED into src/actors/daObjSeesaw_c.cpp (row 32): src/_ZN9SeesawBob15OnGroundPoundedER8dActor_c.cpp
-# FOLDED into src/actors/daObjSeesaw_c.cpp (row 32): src/__sinit_ov095_02136fe0.c
-src/actors/daUdlift_c.cpp
+# FOLDED into src/game/actors/d_a_obj_seesaw.cpp (row 32): src/func_ov095_021358cc.c
+# FOLDED into src/game/actors/d_a_obj_seesaw.cpp (row 32): src/func_ov095_0213597c.c
+# FOLDED into src/game/actors/d_a_obj_seesaw.cpp (row 32): src/func_ov095_02135e90.c
+# FOLDED into src/game/actors/d_a_obj_seesaw.cpp (row 32): src/func_ov095_02135cdc.c
+# FOLDED into src/game/actors/d_a_obj_seesaw.cpp (row 32): src/func_ov095_0213579c.c
+# FOLDED into src/game/actors/d_a_obj_seesaw.cpp (row 32): src/_ZN9SeesawBob15OnGroundPoundedER8dActor_c.cpp
+# FOLDED into src/game/actors/d_a_obj_seesaw.cpp (row 32): src/__sinit_ov095_02136fe0.c
+src/game/actors/d_a_udlift.cpp

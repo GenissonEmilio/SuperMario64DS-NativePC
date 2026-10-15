@@ -31,7 +31,7 @@ struct Player;
 extern "C" void *_ZN7fBase_cnwEj(unsigned size);
 
 struct daBombking_c : dEnemyBase_c {
-    /* Declared first, DEFINED OUT OF LINE at the top of src/actors/daBombking_c.cpp.
+    /* Declared first, DEFINED OUT OF LINE at the top of src/game/actors/d_a_bombking.cpp.
      * Measured on this TU under `#pragma defer_codegen off`: an out-of-line
      * definition emits D1, D0, D2 in that order, which puts D1 (0x02123740) and
      * D0 (0x02123798) at the head of .text exactly as the cartridge has them.

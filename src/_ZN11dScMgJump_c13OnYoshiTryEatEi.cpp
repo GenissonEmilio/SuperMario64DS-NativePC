@@ -1,5 +1,5 @@
 //cpp
-// @symbol _ZN11dScMgJump_c13OnYoshiTryEatEi
+// @symbol _ZN11dScMgJump_c10StartRoundEi
 /* recovered: dScMgJump_c::OnYoshiTryEat, Bounce and Pounce's Yoshi-eat handler (vtable slot 18). */
 // NONMATCHING: size differs: target 0x168 vs candidate 0x164 (the draft assembles to a different size, so no word count applies).
 // @ 0x020ee994 size 0x168. Residue class: size mismatch: the draft is 4 bytes short (Andrew's #2702 records the one-word floor).
@@ -15,8 +15,8 @@
 extern "C" int data_0209e650;
 extern "C" int data_ov006_0213cb48;
 extern "C" int RandomIntInternal(int *seed);
-extern "C" void func_ov006_020c72c8(void);
-extern "C" void func_ov006_020ee658(char *c);
+extern "C" void Jump3D_EnableInput(void);
+extern "C" void BeginIntro(char *c);
 
 void dScMgJump_c::OnYoshiTryEat(int arg)
 {
@@ -28,19 +28,19 @@ void dScMgJump_c::OnYoshiTryEat(int arg)
     } else if (arg == 0x12) {
         this->unk_0bc = 0;
         if (this->unk_0bc > 0x270e) this->unk_0bc = 0x270e;
-        if (data_ov004_020beb68 != 0)
-            *(int *)((char *)data_ov004_020beb68 + 0xb4) = 0;
-        func_ov004_020adb1c(this->mHudScore);
+        if (gMgScene != 0)
+            *(int *)((char *)gMgScene + 0xb4) = 0;
+        Mg_SubmitScore(this->mHudScore);
     } else {
         u32 t = this->unk_0bc;
-        if (data_ov004_020beb68 != 0)
-            *(int *)((char *)data_ov004_020beb68 + 0xb4) = t;
+        if (gMgScene != 0)
+            *(int *)((char *)gMgScene + 0xb4) = t;
     }
 
     if (this->unk_0bc != 0)
-        func_ov006_020c72b4();
+        Jump3D_DisableInput();
     else
-        func_ov006_020c72c8();
+        Jump3D_EnableInput();
 
     v = this->unk_0bc;
     if (v >= 0xf) {
@@ -50,7 +50,7 @@ void dScMgJump_c::OnYoshiTryEat(int arg)
         data_ov006_0213cb48 = v;
     }
 
-    func_ov006_020c719c(this->unk_0bc, v);
+    Jump3D_Arrange(this->unk_0bc, v);
 
     if (this->unk_0bc < 0xf)
         data_ov006_02140328 = 3;
@@ -61,6 +61,6 @@ void dScMgJump_c::OnYoshiTryEat(int arg)
     else
         data_ov006_02140328 = 6;
 
-    func_ov006_020c44b4(this->unk_0bc, v);
-    func_ov006_020ee658((char *)this);
+    Heyho_SpawnAll(this->unk_0bc, v);
+    BeginIntro((char *)this);
 }

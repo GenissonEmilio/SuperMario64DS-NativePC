@@ -16,6 +16,12 @@
 
 /* daObjMc_Metalnet_c.h FIRST: it pulls in dBgActor_c.h, which must reach
    common.h ahead of Model.h or the wrong Matrix4x3 spelling wins. */
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_mc_metalnet_AssetId {
+    ASSET_MC_METALNET_BMD = 0x0691,
+    ASSET_MC_METALNET_KCL = 0x0692
+};
+
 #include "daObjMc_Metalnet_c.h"
 #include "SharedFilePtr.h"
 
@@ -178,5 +184,5 @@ s32 daObjMc_Metalnet_c::CleanupResources()
    body -- then dBgActor_c's Model and dBgW_KcMbg, then dActor_c. This class
    adds no member with a destructor of its own. */
 
-McMetalnetModelFilePtr data_ov009_02113e90(0x691);
-McMetalnetClsnFileHandle data_ov009_02113e88(0x692);
+McMetalnetModelFilePtr data_ov009_02113e90(ASSET_MC_METALNET_BMD);
+McMetalnetClsnFileHandle data_ov009_02113e88(ASSET_MC_METALNET_KCL);

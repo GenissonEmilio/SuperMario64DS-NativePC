@@ -1,4 +1,4 @@
-/* HOST ABI SHADOW for src/actors/ActorDerived.cpp, and for dBase_c::Spawn
+/* HOST ABI SHADOW for src/runtime/actor/ActorDerived.cpp, and for dBase_c::Spawn
  * alone. Force-included with /FI ahead of that one TU; see the block in
  * port/CMakeLists.txt that names it.
  *
@@ -32,7 +32,7 @@
  * src/_ZN7dBase_c5SpawnEjP7fBase_cii.cpp so the four-argument host copy owns
  * the symbol. Commit 5116945a1, "Promote ActorDerived as one genuine C++ TU",
  * DELETED that one-function file and folded the function into
- * src/actors/ActorDerived.cpp. The filter now matches nothing, and because
+ * src/runtime/actor/ActorDerived.cpp. The filter now matches nothing, and because
  * ActorDerived.cpp is a real C++ TU its definition carries the MSVC-decorated
  * name ?Spawn@dBase_c@@SAPAUfBase_c@@IPAU2@HH@Z, which is what every C++
  * caller binds to. The host copy kept only the Itanium spelling, which just
@@ -50,7 +50,7 @@
  * decomp source is not this file's to change and the shadow is the record of
  * what the cartridge's own shape is.
  *
- * The two files always travel together: src/actors/ActorDerived.cpp reaches
+ * The two files always travel together: src/runtime/actor/ActorDerived.cpp reaches
  * the link through slice_gate10.txt, slice_gate13.txt and slice_scene1.txt,
  * and unmatched/ActorDerived_Spawn.cpp through LEVELBOOT_HOST_SOURCES, and the
  * three executables that take either (smoke_player, walk_window,
@@ -58,7 +58,7 @@
  *
  * RETIREMENT CONDITION: this header goes away the day dBase_c::Spawn's four
  * arguments are spelled in the decomp source, or the day the port stops
- * compiling src/actors/ActorDerived.cpp.
+ * compiling src/runtime/actor/ActorDerived.cpp.
  */
 #ifndef PORT_DBASE_C_SPAWN_HOSTABI_H
 #define PORT_DBASE_C_SPAWN_HOSTABI_H

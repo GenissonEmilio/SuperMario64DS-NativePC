@@ -11,9 +11,9 @@
 // for how the second level is reached.
 //
 //   L1  data_ov006_02142eb0  5 slots  arity 0  <- vtable slot 6, 021203ac
-//   L2  data_ov006_02142e88  5 slots  arity 1  <- func_ov006_0211dd0c
-//       data_ov006_02142ed8  8 slots  arity 1  <- func_ov006_0211f6fc
-//       data_ov006_02142f18  9 slots  arity 1  <- func_ov006_0211d5a8
+//   L2  data_ov006_02142e88  5 slots  arity 1  <- Reveal_Update
+//       data_ov006_02142ed8  8 slots  arity 1  <- UpdateBoos
+//       data_ov006_02142f18  9 slots  arity 1  <- BigBoo_Update
 //
 // On dScMgPanel_c five of the level-1 STATES are themselves dispatchers. Here
 // they are not: four of the five level-1 states CALL the three level-2
@@ -39,9 +39,9 @@
 // WHETHER IT IS CALLED OR ONLY COPIED."
 //
 //   src/_ZN13dScMgTeresa_c8BehaviorEv.cpp   struct Entry { PMF pmf; }   02142eb0  arity 0
-//   src/actors/dScMgTeresa_c.cpp   typedef void (C::*PMF)(int) 02142e88  arity 1
-//   src/func_ov006_0211f6fc.cpp   typedef void (C::*PMF)(int) 02142ed8  arity 1
-//   src/actors/dScMgTeresa_c.cpp   typedef void (C::*PMF)(int) 02142f18  arity 1
+//   src/minigames/d_s_mg_teresa.cpp   typedef void (C::*PMF)(int) 02142e88  arity 1
+//   src/UpdateBoos.cpp   typedef void (C::*PMF)(int) 02142ed8  arity 1
+//   src/minigames/d_s_mg_teresa.cpp   typedef void (C::*PMF)(int) 02142f18  arity 1
 //
 // THE FIRST IS VTABLE SLOT 6 AND IT IS THE SPELLING facegen MISSES. Section 10
 // tool finding 1: the WALL test is "P8" in the mangled name, and a struct that
@@ -57,7 +57,7 @@
 // so they mangle with the P8 in view and the LINK named all three. Between the
 // link and a `::*` sweep over all 80 src TUs in this class's closure, the four
 // are found twice over; a scan of the same 80 for section 4's THIRD SHAPE (a
-// TU carrying both a `>> 1` and an `& 1`, which is how func_ov006_020c3d18 and
+// TU carrying both a `>> 1` and an `& 1`, which is how FlowerFace_Update and
 // dScMgPanel_c's three open-code the decode in plain ints) returns EMPTY.
 // Neither detector licenses the word "none" -- section 4 is explicit that the
 // pair of them reaches twelve of thirteen and that only a run convicts the
@@ -99,7 +99,7 @@
 //
 // Run mg9 emitted this address as a REPORTING case that returned -1 and never
 // called anything, because no src file defined it. It is decompiled now:
-// src/func_ov006_0211ebdc.c byte-matches the ROM under mwccarm 2004/b56 and
+// src/Boo_State7.c byte-matches the ROM under mwccarm 2004/b56 and
 // passes tools/linkcheck.py VERIFIED with zero blind relocations. The case
 // below is an ordinary call in the data_ov006_02142ed8 group beside its
 // sibling 0x0211ee34, and THE FLOOR COUNTER IS GONE RATHER THAN LEFT READING
@@ -107,16 +107,16 @@
 // that still means something is the routed one, which absorbs this state's
 // asks (539 over 1200 frames on the mg9 proof runs).
 //
-// THE OTHER TWO FLOORS. func_ov006_0211e72c was on the RENDER path (the sixth
+// THE OTHER TWO FLOORS. DrawBoos was on the RENDER path (the sixth
 // call vtable slot 9 makes) and is ALSO retired by this lane --
-// src/func_ov006_0211e72c.c, same two gates -- so hal/scene_mg_booseek.cpp no
-// longer carries a trap either. func_ov004_020ae5c4 is ov004's, is still a
+// src/DrawBoos.c, same two gates -- so hal/scene_mg_booseek.cpp no
+// longer carries a trap either. Mg_DrawLine is ov004's, is still a
 // floor, and still gets its trap in hal/scene_mg_faces.cpp beside
-// func_ov004_020ae858; seven ov006 TUs across the family reach it, so it is
+// Mg_DrawMenu; seven ov006 TUs across the family reach it, so it is
 // not this class's to retire.
 //
 // AMENDED, run mg12 lane PANEL: both have since been retired by the lanes that
-// owned them -- func_ov004_020ae5c4 by run mg10 lane F371, func_ov004_020ae858 by
+// owned them -- Mg_DrawLine by run mg10 lane F371, Mg_DrawMenu by
 // this run. hal/scene_mg_faces.cpp carries no ov004 trap any more.
 
 /* <cstdio> was included here for the floor's one-shot report; with the floor
@@ -158,43 +158,43 @@ extern MgPmf data_ov006_02142f18[];
    whole body is a single `bx lr` at size 0x4 and whose src takes void. */
 
 /* data_ov006_02142eb0, arity 0 -- the Behavior's own five */
-void _ZN13dScMgTeresa_c19func_ov006_021200ccEv(char *c);
-void _ZN13dScMgTeresa_c19func_ov006_021200a8Ev(char *c);
-void _ZN13dScMgTeresa_c19func_ov006_02120008Ev(char *c);
-void _ZN13dScMgTeresa_c19func_ov006_0211fe78Ev(char *c);
-void _ZN13dScMgTeresa_c19func_ov006_0211fd44Ev(char *c);
+void _ZN13dScMgTeresa_c12Scene_State0Ev(char *c);
+void _ZN13dScMgTeresa_c12Scene_State1Ev(char *c);
+void _ZN13dScMgTeresa_c12Scene_State2Ev(char *c);
+void _ZN13dScMgTeresa_c12Scene_State3Ev(char *c);
+void _ZN13dScMgTeresa_c12Scene_State4Ev(char *c);
 
 /* data_ov006_02142e88, arity 1 */
-void _ZN13dScMgTeresa_c19func_ov006_0211dce0Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211db7cEi(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211dad0Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211d924Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211d86cEi(char *c, int i);
+void _ZN13dScMgTeresa_c13Reveal_State0Ei(char *c, int i);
+void _ZN13dScMgTeresa_c13Reveal_State1Ei(char *c, int i);
+void _ZN13dScMgTeresa_c13Reveal_State2Ei(char *c, int i);
+void _ZN13dScMgTeresa_c13Reveal_State3Ei(char *c, int i);
+void _ZN13dScMgTeresa_c13Reveal_State4Ei(char *c, int i);
 
 /* data_ov006_02142ed8, arity 1 */
-void _ZN13dScMgTeresa_c19func_ov006_0211f5d4Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211f554Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211f224Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211f1a4Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211f0d0Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211f040Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211ee34Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211ebdcEi(char *c, int i);   /* mg9's floor, decompiled in mg10 */
+void _ZN13dScMgTeresa_c10Boo_State0Ei(char *c, int i);
+void _ZN13dScMgTeresa_c10Boo_State1Ei(char *c, int i);
+void _ZN13dScMgTeresa_c10Boo_State2Ei(char *c, int i);
+void _ZN13dScMgTeresa_c10Boo_State3Ei(char *c, int i);
+void _ZN13dScMgTeresa_c10Boo_State4Ei(char *c, int i);
+void _ZN13dScMgTeresa_c10Boo_State5Ei(char *c, int i);
+void _ZN13dScMgTeresa_c10Boo_State6Ei(char *c, int i);
+void _ZN13dScMgTeresa_c10Boo_State7Ei(char *c, int i);   /* mg9's floor, decompiled in mg10 */
 
 /* data_ov006_02142f18, arity 1 */
-void _ZN13dScMgTeresa_c19func_ov006_0211d4e8Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211d368Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211d224Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211d0f8Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211d018Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211cef4Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211ce94Ei(char *c, int i);
-void _ZN13dScMgTeresa_c19func_ov006_0211ce90Ev(void);          /* `bx lr`, size 0x4, no argument */
-void _ZN13dScMgTeresa_c19func_ov006_0211cd24Ei(char *c, int i);
+void _ZN13dScMgTeresa_c13BigBoo_State0Ei(char *c, int i);
+void _ZN13dScMgTeresa_c13BigBoo_State1Ei(char *c, int i);
+void _ZN13dScMgTeresa_c13BigBoo_State2Ei(char *c, int i);
+void _ZN13dScMgTeresa_c13BigBoo_State3Ei(char *c, int i);
+void _ZN13dScMgTeresa_c13BigBoo_State4Ei(char *c, int i);
+void _ZN13dScMgTeresa_c13BigBoo_State5Ei(char *c, int i);
+void _ZN13dScMgTeresa_c13BigBoo_State6Ei(char *c, int i);
+void _ZN13dScMgTeresa_c13BigBoo_State7Ev(void);          /* `bx lr`, size 0x4, no argument */
+void _ZN13dScMgTeresa_c13BigBoo_State8Ei(char *c, int i);
 
 /* the one non-dispatching callee the four host copies below reach */
-void _ZN13dScMgTeresa_c19func_ov006_0211e4e0Ev(char *c);
-void _ZN13dScMgTeresa_c19func_ov006_0211f664Ei(char *c, int i);
+void _ZN13dScMgTeresa_c17Exclaim_UpdateAllEv(char *c);
+void _ZN13dScMgTeresa_c10AnimateBooEi(char *c, int i);
 
 /* Run link100 lane PMFB4 retired all four host copies. These four declarations
    named them; they name the matched TUs now, at the same C linkage and the same
@@ -202,9 +202,9 @@ void _ZN13dScMgTeresa_c19func_ov006_0211f664Ei(char *c, int i);
    hal/scene_mg_booseek.cpp's vtable thunk for slot 6 declares
    _ZN13dScMgTeresa_c8BehaviorEv the same way and the two must agree. */
 int  _ZN13dScMgTeresa_c8BehaviorEv(char *c);
-void _ZN13dScMgTeresa_c19func_ov006_0211dd0cEv(char *c);
-void _ZN13dScMgTeresa_c19func_ov006_0211f6fcEv(char *c);
-void _ZN13dScMgTeresa_c19func_ov006_0211d5a8Ev(char *c);
+void _ZN13dScMgTeresa_c13Reveal_UpdateEv(char *c);
+void _ZN13dScMgTeresa_c10UpdateBoosEv(char *c);
+void _ZN13dScMgTeresa_c13BigBoo_UpdateEv(char *c);
 
 void port_mg_teresa_counts(unsigned *hits, unsigned *unknown);
 /* the boot installer at the end of this file; hal/scene_mg.cpp calls it
@@ -234,11 +234,11 @@ static int teresa_try_0(void *self, unsigned code)
     char *c = (char *)self;
     switch (code) {
     /* data_ov006_02142eb0, the Behavior's own five */
-    case 0x021200ccu: _ZN13dScMgTeresa_c19func_ov006_021200ccEv(c); return 1;
-    case 0x021200a8u: _ZN13dScMgTeresa_c19func_ov006_021200a8Ev(c); return 1;
-    case 0x02120008u: _ZN13dScMgTeresa_c19func_ov006_02120008Ev(c); return 1;
-    case 0x0211fe78u: _ZN13dScMgTeresa_c19func_ov006_0211fe78Ev(c); return 1;
-    case 0x0211fd44u: _ZN13dScMgTeresa_c19func_ov006_0211fd44Ev(c); return 1;
+    case 0x021200ccu: _ZN13dScMgTeresa_c12Scene_State0Ev(c); return 1;
+    case 0x021200a8u: _ZN13dScMgTeresa_c12Scene_State1Ev(c); return 1;
+    case 0x02120008u: _ZN13dScMgTeresa_c12Scene_State2Ev(c); return 1;
+    case 0x0211fe78u: _ZN13dScMgTeresa_c12Scene_State3Ev(c); return 1;
+    case 0x0211fd44u: _ZN13dScMgTeresa_c12Scene_State4Ev(c); return 1;
     default:
         return 0;
     }
@@ -249,33 +249,33 @@ static int teresa_try_1(void *self, unsigned code, int a)
     char *c = (char *)self;
     switch (code) {
     /* data_ov006_02142e88 */
-    case 0x0211dce0u: _ZN13dScMgTeresa_c19func_ov006_0211dce0Ei(c, a); return 1;
-    case 0x0211db7cu: _ZN13dScMgTeresa_c19func_ov006_0211db7cEi(c, a); return 1;
-    case 0x0211dad0u: _ZN13dScMgTeresa_c19func_ov006_0211dad0Ei(c, a); return 1;
-    case 0x0211d924u: _ZN13dScMgTeresa_c19func_ov006_0211d924Ei(c, a); return 1;
-    case 0x0211d86cu: _ZN13dScMgTeresa_c19func_ov006_0211d86cEi(c, a); return 1;
+    case 0x0211dce0u: _ZN13dScMgTeresa_c13Reveal_State0Ei(c, a); return 1;
+    case 0x0211db7cu: _ZN13dScMgTeresa_c13Reveal_State1Ei(c, a); return 1;
+    case 0x0211dad0u: _ZN13dScMgTeresa_c13Reveal_State2Ei(c, a); return 1;
+    case 0x0211d924u: _ZN13dScMgTeresa_c13Reveal_State3Ei(c, a); return 1;
+    case 0x0211d86cu: _ZN13dScMgTeresa_c13Reveal_State4Ei(c, a); return 1;
     /* data_ov006_02142ed8 */
-    case 0x0211f5d4u: _ZN13dScMgTeresa_c19func_ov006_0211f5d4Ei(c, a); return 1;
-    case 0x0211f554u: _ZN13dScMgTeresa_c19func_ov006_0211f554Ei(c, a); return 1;
-    case 0x0211f224u: _ZN13dScMgTeresa_c19func_ov006_0211f224Ei(c, a); return 1;
-    case 0x0211f1a4u: _ZN13dScMgTeresa_c19func_ov006_0211f1a4Ei(c, a); return 1;
-    case 0x0211f0d0u: _ZN13dScMgTeresa_c19func_ov006_0211f0d0Ei(c, a); return 1;
-    case 0x0211f040u: _ZN13dScMgTeresa_c19func_ov006_0211f040Ei(c, a); return 1;
-    case 0x0211ee34u: _ZN13dScMgTeresa_c19func_ov006_0211ee34Ei(c, a); return 1;
+    case 0x0211f5d4u: _ZN13dScMgTeresa_c10Boo_State0Ei(c, a); return 1;
+    case 0x0211f554u: _ZN13dScMgTeresa_c10Boo_State1Ei(c, a); return 1;
+    case 0x0211f224u: _ZN13dScMgTeresa_c10Boo_State2Ei(c, a); return 1;
+    case 0x0211f1a4u: _ZN13dScMgTeresa_c10Boo_State3Ei(c, a); return 1;
+    case 0x0211f0d0u: _ZN13dScMgTeresa_c10Boo_State4Ei(c, a); return 1;
+    case 0x0211f040u: _ZN13dScMgTeresa_c10Boo_State5Ei(c, a); return 1;
+    case 0x0211ee34u: _ZN13dScMgTeresa_c10Boo_State6Ei(c, a); return 1;
     /* slot 7, run mg9's reported floor, decompiled by run mg10 lane F387.
        0x0211ee34 above is slot 6 of the same table and the two read the same
        record fields, which is the cross-check on the layout. */
-    case 0x0211ebdcu: _ZN13dScMgTeresa_c19func_ov006_0211ebdcEi(c, a); return 1;
+    case 0x0211ebdcu: _ZN13dScMgTeresa_c10Boo_State7Ei(c, a); return 1;
     /* data_ov006_02142f18 */
-    case 0x0211d4e8u: _ZN13dScMgTeresa_c19func_ov006_0211d4e8Ei(c, a); return 1;
-    case 0x0211d368u: _ZN13dScMgTeresa_c19func_ov006_0211d368Ei(c, a); return 1;
-    case 0x0211d224u: _ZN13dScMgTeresa_c19func_ov006_0211d224Ei(c, a); return 1;
-    case 0x0211d0f8u: _ZN13dScMgTeresa_c19func_ov006_0211d0f8Ei(c, a); return 1;
-    case 0x0211d018u: _ZN13dScMgTeresa_c19func_ov006_0211d018Ei(c, a); return 1;
-    case 0x0211cef4u: _ZN13dScMgTeresa_c19func_ov006_0211cef4Ei(c, a); return 1;
-    case 0x0211ce94u: _ZN13dScMgTeresa_c19func_ov006_0211ce94Ei(c, a); return 1;
-    case 0x0211ce90u: _ZN13dScMgTeresa_c19func_ov006_0211ce90Ev();     return 1;
-    case 0x0211cd24u: _ZN13dScMgTeresa_c19func_ov006_0211cd24Ei(c, a); return 1;
+    case 0x0211d4e8u: _ZN13dScMgTeresa_c13BigBoo_State0Ei(c, a); return 1;
+    case 0x0211d368u: _ZN13dScMgTeresa_c13BigBoo_State1Ei(c, a); return 1;
+    case 0x0211d224u: _ZN13dScMgTeresa_c13BigBoo_State2Ei(c, a); return 1;
+    case 0x0211d0f8u: _ZN13dScMgTeresa_c13BigBoo_State3Ei(c, a); return 1;
+    case 0x0211d018u: _ZN13dScMgTeresa_c13BigBoo_State4Ei(c, a); return 1;
+    case 0x0211cef4u: _ZN13dScMgTeresa_c13BigBoo_State5Ei(c, a); return 1;
+    case 0x0211ce94u: _ZN13dScMgTeresa_c13BigBoo_State6Ei(c, a); return 1;
+    case 0x0211ce90u: _ZN13dScMgTeresa_c13BigBoo_State7Ev();     return 1;
+    case 0x0211cd24u: _ZN13dScMgTeresa_c13BigBoo_State8Ei(c, a); return 1;
     default:
         return 0;
     }
@@ -337,9 +337,9 @@ extern "C" void port_mg_teresa_state_index(int *l1)
 // dispatch through the tables directly:
 //
 //   _ZN13dScMgTeresa_c8BehaviorEv  data_ov006_02142eb0   5 slots  arity 0  (vtable slot 6)
-//   func_ov006_0211dd0c  data_ov006_02142e88   5 slots  arity 1
-//   func_ov006_0211d5a8  data_ov006_02142f18   9 slots  arity 1
-//   func_ov006_0211f6fc  data_ov006_02142ed8   8 slots  arity 1
+//   Reveal_Update  data_ov006_02142e88   5 slots  arity 1
+//   BigBoo_Update  data_ov006_02142f18   9 slots  arity 1
+//   UpdateBoos  data_ov006_02142ed8   8 slots  arity 1
 //
 // 5+5+9+8 = 27, which is the whole census this file's header counts.
 //
@@ -444,36 +444,36 @@ extern "C" void port_mg_teresa_state_index(int *l1)
     }
 
 /* data_ov006_02142f18, arity 1 */
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211d4e8Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211d368Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211d224Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211d0f8Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211d018Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211cef4Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211ce94Ei)
-TR_FACE1_VOID(_ZN13dScMgTeresa_c19func_ov006_0211ce90Ev)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211cd24Ei)
+TR_FACE1(_ZN13dScMgTeresa_c13BigBoo_State0Ei)
+TR_FACE1(_ZN13dScMgTeresa_c13BigBoo_State1Ei)
+TR_FACE1(_ZN13dScMgTeresa_c13BigBoo_State2Ei)
+TR_FACE1(_ZN13dScMgTeresa_c13BigBoo_State3Ei)
+TR_FACE1(_ZN13dScMgTeresa_c13BigBoo_State4Ei)
+TR_FACE1(_ZN13dScMgTeresa_c13BigBoo_State5Ei)
+TR_FACE1(_ZN13dScMgTeresa_c13BigBoo_State6Ei)
+TR_FACE1_VOID(_ZN13dScMgTeresa_c13BigBoo_State7Ev)
+TR_FACE1(_ZN13dScMgTeresa_c13BigBoo_State8Ei)
 /* data_ov006_02142e88, arity 1 */
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211dce0Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211db7cEi)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211dad0Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211d924Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211d86cEi)
+TR_FACE1(_ZN13dScMgTeresa_c13Reveal_State0Ei)
+TR_FACE1(_ZN13dScMgTeresa_c13Reveal_State1Ei)
+TR_FACE1(_ZN13dScMgTeresa_c13Reveal_State2Ei)
+TR_FACE1(_ZN13dScMgTeresa_c13Reveal_State3Ei)
+TR_FACE1(_ZN13dScMgTeresa_c13Reveal_State4Ei)
 /* data_ov006_02142ed8, arity 1 */
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211f5d4Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211f554Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211f224Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211f1a4Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211f0d0Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211f040Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211ee34Ei)
-TR_FACE1(_ZN13dScMgTeresa_c19func_ov006_0211ebdcEi)
+TR_FACE1(_ZN13dScMgTeresa_c10Boo_State0Ei)
+TR_FACE1(_ZN13dScMgTeresa_c10Boo_State1Ei)
+TR_FACE1(_ZN13dScMgTeresa_c10Boo_State2Ei)
+TR_FACE1(_ZN13dScMgTeresa_c10Boo_State3Ei)
+TR_FACE1(_ZN13dScMgTeresa_c10Boo_State4Ei)
+TR_FACE1(_ZN13dScMgTeresa_c10Boo_State5Ei)
+TR_FACE1(_ZN13dScMgTeresa_c10Boo_State6Ei)
+TR_FACE1(_ZN13dScMgTeresa_c10Boo_State7Ei)
 /* data_ov006_02142eb0, arity 0 */
-TR_FACE0(_ZN13dScMgTeresa_c19func_ov006_021200ccEv)
-TR_FACE0(_ZN13dScMgTeresa_c19func_ov006_021200a8Ev)
-TR_FACE0(_ZN13dScMgTeresa_c19func_ov006_02120008Ev)
-TR_FACE0(_ZN13dScMgTeresa_c19func_ov006_0211fe78Ev)
-TR_FACE0(_ZN13dScMgTeresa_c19func_ov006_0211fd44Ev)
+TR_FACE0(_ZN13dScMgTeresa_c12Scene_State0Ev)
+TR_FACE0(_ZN13dScMgTeresa_c12Scene_State1Ev)
+TR_FACE0(_ZN13dScMgTeresa_c12Scene_State2Ev)
+TR_FACE0(_ZN13dScMgTeresa_c12Scene_State3Ev)
+TR_FACE0(_ZN13dScMgTeresa_c12Scene_State4Ev)
 
 extern "C" void port_mg_teresa_states_seat(void)
 {
@@ -489,36 +489,36 @@ extern "C" void port_mg_teresa_states_seat(void)
         unsigned rom;
         void *face;
     } seats[] = {
-        {data_ov006_02142f18, "02142f18", 0, 0x0211d4e8u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211d4e8Ei},
-        {data_ov006_02142f18, "02142f18", 1, 0x0211d368u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211d368Ei},
-        {data_ov006_02142f18, "02142f18", 2, 0x0211d224u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211d224Ei},
-        {data_ov006_02142f18, "02142f18", 3, 0x0211d0f8u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211d0f8Ei},
-        {data_ov006_02142f18, "02142f18", 4, 0x0211d018u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211d018Ei},
-        {data_ov006_02142f18, "02142f18", 5, 0x0211cef4u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211cef4Ei},
-        {data_ov006_02142f18, "02142f18", 6, 0x0211ce94u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211ce94Ei},
-        {data_ov006_02142f18, "02142f18", 7, 0x0211ce90u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211ce90Ev},
-        {data_ov006_02142f18, "02142f18", 8, 0x0211cd24u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211cd24Ei},
+        {data_ov006_02142f18, "02142f18", 0, 0x0211d4e8u, (void *)tr__ZN13dScMgTeresa_c13BigBoo_State0Ei},
+        {data_ov006_02142f18, "02142f18", 1, 0x0211d368u, (void *)tr__ZN13dScMgTeresa_c13BigBoo_State1Ei},
+        {data_ov006_02142f18, "02142f18", 2, 0x0211d224u, (void *)tr__ZN13dScMgTeresa_c13BigBoo_State2Ei},
+        {data_ov006_02142f18, "02142f18", 3, 0x0211d0f8u, (void *)tr__ZN13dScMgTeresa_c13BigBoo_State3Ei},
+        {data_ov006_02142f18, "02142f18", 4, 0x0211d018u, (void *)tr__ZN13dScMgTeresa_c13BigBoo_State4Ei},
+        {data_ov006_02142f18, "02142f18", 5, 0x0211cef4u, (void *)tr__ZN13dScMgTeresa_c13BigBoo_State5Ei},
+        {data_ov006_02142f18, "02142f18", 6, 0x0211ce94u, (void *)tr__ZN13dScMgTeresa_c13BigBoo_State6Ei},
+        {data_ov006_02142f18, "02142f18", 7, 0x0211ce90u, (void *)tr__ZN13dScMgTeresa_c13BigBoo_State7Ev},
+        {data_ov006_02142f18, "02142f18", 8, 0x0211cd24u, (void *)tr__ZN13dScMgTeresa_c13BigBoo_State8Ei},
 
-        {data_ov006_02142e88, "02142e88", 0, 0x0211dce0u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211dce0Ei},
-        {data_ov006_02142e88, "02142e88", 1, 0x0211db7cu, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211db7cEi},
-        {data_ov006_02142e88, "02142e88", 2, 0x0211dad0u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211dad0Ei},
-        {data_ov006_02142e88, "02142e88", 3, 0x0211d924u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211d924Ei},
-        {data_ov006_02142e88, "02142e88", 4, 0x0211d86cu, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211d86cEi},
+        {data_ov006_02142e88, "02142e88", 0, 0x0211dce0u, (void *)tr__ZN13dScMgTeresa_c13Reveal_State0Ei},
+        {data_ov006_02142e88, "02142e88", 1, 0x0211db7cu, (void *)tr__ZN13dScMgTeresa_c13Reveal_State1Ei},
+        {data_ov006_02142e88, "02142e88", 2, 0x0211dad0u, (void *)tr__ZN13dScMgTeresa_c13Reveal_State2Ei},
+        {data_ov006_02142e88, "02142e88", 3, 0x0211d924u, (void *)tr__ZN13dScMgTeresa_c13Reveal_State3Ei},
+        {data_ov006_02142e88, "02142e88", 4, 0x0211d86cu, (void *)tr__ZN13dScMgTeresa_c13Reveal_State4Ei},
 
-        {data_ov006_02142ed8, "02142ed8", 0, 0x0211f5d4u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211f5d4Ei},
-        {data_ov006_02142ed8, "02142ed8", 1, 0x0211f554u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211f554Ei},
-        {data_ov006_02142ed8, "02142ed8", 2, 0x0211f224u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211f224Ei},
-        {data_ov006_02142ed8, "02142ed8", 3, 0x0211f1a4u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211f1a4Ei},
-        {data_ov006_02142ed8, "02142ed8", 4, 0x0211f0d0u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211f0d0Ei},
-        {data_ov006_02142ed8, "02142ed8", 5, 0x0211f040u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211f040Ei},
-        {data_ov006_02142ed8, "02142ed8", 6, 0x0211ee34u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211ee34Ei},
-        {data_ov006_02142ed8, "02142ed8", 7, 0x0211ebdcu, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211ebdcEi},
+        {data_ov006_02142ed8, "02142ed8", 0, 0x0211f5d4u, (void *)tr__ZN13dScMgTeresa_c10Boo_State0Ei},
+        {data_ov006_02142ed8, "02142ed8", 1, 0x0211f554u, (void *)tr__ZN13dScMgTeresa_c10Boo_State1Ei},
+        {data_ov006_02142ed8, "02142ed8", 2, 0x0211f224u, (void *)tr__ZN13dScMgTeresa_c10Boo_State2Ei},
+        {data_ov006_02142ed8, "02142ed8", 3, 0x0211f1a4u, (void *)tr__ZN13dScMgTeresa_c10Boo_State3Ei},
+        {data_ov006_02142ed8, "02142ed8", 4, 0x0211f0d0u, (void *)tr__ZN13dScMgTeresa_c10Boo_State4Ei},
+        {data_ov006_02142ed8, "02142ed8", 5, 0x0211f040u, (void *)tr__ZN13dScMgTeresa_c10Boo_State5Ei},
+        {data_ov006_02142ed8, "02142ed8", 6, 0x0211ee34u, (void *)tr__ZN13dScMgTeresa_c10Boo_State6Ei},
+        {data_ov006_02142ed8, "02142ed8", 7, 0x0211ebdcu, (void *)tr__ZN13dScMgTeresa_c10Boo_State7Ei},
 
-        {data_ov006_02142eb0, "02142eb0", 0, 0x021200ccu, (void *)tr__ZN13dScMgTeresa_c19func_ov006_021200ccEv},
-        {data_ov006_02142eb0, "02142eb0", 1, 0x021200a8u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_021200a8Ev},
-        {data_ov006_02142eb0, "02142eb0", 2, 0x02120008u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_02120008Ev},
-        {data_ov006_02142eb0, "02142eb0", 3, 0x0211fe78u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211fe78Ev},
-        {data_ov006_02142eb0, "02142eb0", 4, 0x0211fd44u, (void *)tr__ZN13dScMgTeresa_c19func_ov006_0211fd44Ev},
+        {data_ov006_02142eb0, "02142eb0", 0, 0x021200ccu, (void *)tr__ZN13dScMgTeresa_c12Scene_State0Ev},
+        {data_ov006_02142eb0, "02142eb0", 1, 0x021200a8u, (void *)tr__ZN13dScMgTeresa_c12Scene_State1Ev},
+        {data_ov006_02142eb0, "02142eb0", 2, 0x02120008u, (void *)tr__ZN13dScMgTeresa_c12Scene_State2Ev},
+        {data_ov006_02142eb0, "02142eb0", 3, 0x0211fe78u, (void *)tr__ZN13dScMgTeresa_c12Scene_State3Ev},
+        {data_ov006_02142eb0, "02142eb0", 4, 0x0211fd44u, (void *)tr__ZN13dScMgTeresa_c12Scene_State4Ev},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {

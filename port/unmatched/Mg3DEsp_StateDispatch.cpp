@@ -136,7 +136,7 @@
 //   func_ov006_020e82fc   OPEN-CODED INTS          SILENT TO BOTH
 //
 // THE LAST TWO ARE THE THIRD SHAPE run mg5 lane FLW found at
-// func_ov006_020c3d18 and run mg6 lane PPP found twice more.  Neither declares
+// FlowerFace_Update and run mg6 lane PPP found twice more.  Neither declares
 // a member-pointer type and neither has a PMF global, so there is no symbol for
 // a link to fail on AND no `::*` for a source sweep to match.  src/
 // func_ov006_020e8830.c reads the pair as `int* ent = &data_ov006_02141f8c[b*2]`

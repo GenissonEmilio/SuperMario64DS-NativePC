@@ -275,7 +275,7 @@
 # GATE 3 -- THE TRAMPOLINE PAIR
 # ===========================================================================
 #
-#   func_ov006_020cf758  ov006  and  func_ov006_020cea2c  ov006
+#   TrmpLine_Update  ov006  and  TrmpItem_Update  ov006
 #     dScMgTrampoline2_c's two FIELD-HELD pointer-to-member dispatch sites (the
 #     pair sits at offset 0 of each record, not in a table). Lane MGWRITER
 #     measured the seventeen source pairs and stopped on one open question: the
@@ -284,8 +284,8 @@
 #     THE UNIVERSE IS BOUNDED NOW, with MGWRITER's own gate-2 method. The
 #     class's own code block is 020cd744..020d1008: it contains all fourteen
 #     code words the seventeen pairs hold, both dispatch sites, and both record
-#     walkers (src/func_ov006_020cedf0.c over data_ov006_0214082c at stride
-#     0x1d0, src/func_ov006_020d0ac0.c over data_ov006_02140990 at stride
+#     walkers (src/TrmpItem_UpdateAll.c over data_ov006_0214082c at stride
+#     0x1d0, src/TrmpLine_UpdateAll.c over data_ov006_02140990 at stride
 #     0x32c). Every `load` relocation in ov006 whose destination lands in that
 #     block, kept when the word reads the target and the FOLLOWING word is
 #     zero, gives exactly SEVENTEEN pairs -- and all seventeen are the known run
@@ -307,9 +307,9 @@
 #     ONE FACE PER CODE WORD, NOT PER PAIR -- the reverse of the rule lane
 #     PMFB5 wrote for tables, and the reason is measured. THREE of the
 #     seventeen are BY-VALUE COMPARISON SENTINELS:
-#       src/func_ov006_020ce674.c compares the object's stored pair against
-#         data_ov006_0213b324 and data_ov006_0213b334, word 0 and word 1;
-#       src/func_ov006_020ce108.cpp compares it against data_ov006_0213b33c.
+#       src/TrmpItem_HitTest2D.c compares the object's stored pair against
+#         pmf_TrmpItem_StateAppear and pmf_TrmpItem_GrowScale_2, word 0 and word 1;
+#       src/TrmpItem_ReflectOffLine.cpp compares it against pmf_TrmpItem_GrowScale_3.
 #     Each sentinel holds the SAME code word as a written pair -- b324 and b344
 #     both hold 020cdf3c, and b334, b33c and b32c all hold 020cd744 -- so a face
 #     per pair would make those comparisons permanently false while the dispatch
@@ -332,18 +332,18 @@
 # ===========================================================================
 port/hal/fwd_forwarders.cpp
 src/game/actors/d_a_obj_bk_dossunbar.cpp
-src/actors/daKpaFire_c.cpp
-src/actors/daWater_Hakidasi_c.cpp
-src/actors/daDossy_c.cpp
+src/game/actors/d_a_kpa_fire.cpp
+src/game/actors/d_a_water_hakidasi.cpp
+src/game/actors/d_a_dossy.cpp
 src/game/actors/d_a_btn.cpp
-src/actors/daChoropu_c.cpp
+src/game/actors/d_a_choropu.cpp
 src/game/actors/d_a_linelift2.cpp
 src/game/actors/d_a_cnn.cpp
 src/game/actors/d_a_fish.cpp
 # ---- gate 2 ----
-src/actors/daObjFl_Amilift_c.cpp
-src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp
-src/actors/dScMgSnowball_c.cpp
+src/game/actors/d_a_obj_fl_amilift.cpp
+src/game/actors/d_a_trs_trap.cpp
+src/minigames/d_s_mg_snowball.cpp
 # ---- gate 3: the trampoline pair ----
-src/actors/unit020cd744.cpp
-# FOLDED into src/actors/unit020cd744.cpp (row 348): src/func_ov006_020cea2c.cpp
+src/minigames/unit020cd744.cpp
+# FOLDED into src/minigames/unit020cd744.cpp (row 348): src/TrmpItem_Update.cpp

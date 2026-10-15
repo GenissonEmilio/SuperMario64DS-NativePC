@@ -1345,22 +1345,22 @@ int port_fader_blend_state_sub(int *evy, int *toWhite)
  *
  *   src/minigames/d_s_mg_m_carlo.cpp      & 8     Pair-a-Gone's card draw
  *   src/minigames/d_s_mg_m_carlo2.cpp      & 8     Pair-a-Gone And On's card draw
- *   src/actors/dScMgRoulette_c.cpp      & 8     Roulette's five bet markers: the bit
+ *   src/minigames/d_s_mg_roulette_methods.cpp      & 8     Roulette's five bet markers: the bit
  *                                          steps the sprite frame by one
- *   src/actors/dScMgRoulette_c.cpp      & 8     Roulette's BALL sprite, drawn only
+ *   src/minigames/d_s_mg_roulette_methods.cpp      & 8     Roulette's BALL sprite, drawn only
  *                                          while the bit is set (named off the
  *                                          Hud_RenderSprite call, not off a
  *                                          slice title -- it is not a banner)
  *   src/_ZN7Minimap6RenderEv.cpp   & 8
  *   src/_ZN3HUD15RenderStarCountEv.cpp     & 0x18   (see THE STAR COUNT below)
- *   src/func_ov004_020b6430.c      & 0x10  the minigame name plate
+ *   src/MgCoins_Draw.c      & 0x10  the minigame name plate
  *   src/_ZN5Stage20RenderBouncingArrowsEv.cpp  & 0x10 and & 8 (two sites)
  *   src/_ZN7Message6UpdateEv.cpp   & (0x10 / data_0208ee44)   the text cursor
  *                                          (four sites)
  *   src/_ZN12dScStarSel_c6RenderEv.cpp    * 0x300 fed to a Y rotation
- *   src/actors/dScMgD3DBase_c.cpp   & 1
- *   src/minigames/d_s_mg_single3_d_base.cpp    & 1     dScMgFlower_c::BeforeBehavior
- *   src/func_ov006_020cf820.c      & 1     Trampoline Terror's countdown
+ *   src/minigames/d_s_mg_d3d_base.cpp   & 1
+ *   src/minigames/d_s_mg_single3d_base.cpp    & 1     dScMgFlower_c::BeforeBehavior
+ *   src/TrmpLine_StateSettle.c      & 1     Trampoline Terror's countdown
  *
  * NOT LINKED, and listed so the next reader does not re-add them:
  * src/func_020326ac.c (four sites), src/func_ov002_020f20f4.c and
@@ -1383,7 +1383,7 @@ int port_fader_blend_state_sub(int *evy, int *toWhite)
  * change: nothing was running double and is now running half. The three are
  * two Particle::SysTracker::Update calls (Bounce and Pounce's and the Flower
  * class's BeforeBehavior) and the ApproachLinear2 countdown in
- * func_ov006_020cf820 that clears the byte at +0x328. All three were exercised
+ * TrmpLine_StateSettle that clears the byte at +0x328. All three were exercised
  * under review on their own scenes, entered rather than merely reachable, and
  * came back clean.
  *

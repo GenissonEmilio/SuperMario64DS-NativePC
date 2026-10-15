@@ -77,7 +77,7 @@ struct DispObj {
 
 /* 2. RETIRED at PORTSYNC2: the dScMgSmartball_c shadow. Main's
  * include/dScMgSmartball_c.h is now the real class (named members, the
- * recovered helpers, the overrides), and src/actors/dScMgSmartball_c.cpp is
+ * recovered helpers, the overrides), and src/minigames/d_s_mg_smartball.cpp is
  * the promoted TU that uses all of it, so a field-less redeclaration breaks
  * the TU outright (no mArray1..4, no EmitScore / Count*). Measured with
  * clang-cl against the merged header: its `sizeof == 0x629c` assert now

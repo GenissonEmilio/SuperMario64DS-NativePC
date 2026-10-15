@@ -218,9 +218,9 @@
 # listings is the plain _func_ovNNN_XXXXXXXX.
 #
 # ---- THE THIRTEEN ---------------------------------------------------------
-src/actors/daObjPowerUpItem_c.cpp
-# FOLDED into src/actors/daObjPowerUpItem_c.cpp (row 221): src/func_ov002_020b9750.cpp
-src/actors/dPathLiftActor_c.cpp
+src/game/actors/d_a_obj_power_up_item.cpp
+# FOLDED into src/game/actors/d_a_obj_power_up_item.cpp (row 221): src/func_ov002_020b9750.cpp
+src/runtime/actor/d_path_lift_actor.cpp
 # HELD AGAIN at SYNC6, and NOT for a compile family: this TU compiles on the
 # host now (main #2663/#2669), but seating it duplicates _daWanwan_c_classInit
 # against port/unmatched/ChainChomp_Spawn_hostcopy.cpp, which is a FACTORY host
@@ -234,12 +234,12 @@ src/actors/dPathLiftActor_c.cpp
 # dispatch change that no tree can capture until it links. So the TU waits; it
 # is a sixth row for that list, not a compile-family quarantine.
 #src/game/actors/d_a_wanwan.cpp
-src/actors/daHanachan_c.cpp
-# FOLDED into src/actors/daHanachan_c.cpp (row 237): src/func_ov034_02112604.cpp
-src/game/actors/daPiano_c/d_a_piano.cpp
-# FOLDED into src/game/actors/daPiano_c/d_a_piano.cpp (row 239): src/unnamed/ov063/func_ov063_0211ddf4.cpp
-src/actors/daObjCasket_c.cpp
-# FOLDED into src/actors/daObjCasket_c.cpp (row 241): src/func_ov071_02122414.cpp
+src/game/actors/d_a_hanachan.cpp
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 237): src/func_ov034_02112604.cpp
+src/game/actors/d_a_piano.cpp
+# FOLDED into src/game/actors/d_a_piano.cpp (row 239): src/unnamed/ov063/func_ov063_0211ddf4.cpp
+src/game/actors/d_a_obj_casket.cpp
+# FOLDED into src/game/actors/d_a_obj_casket.cpp (row 241): src/func_ov071_02122414.cpp
 src/game/actors/d_a_kinopio.cpp
 # FOLDED into src/game/actors/d_a_kinopio.cpp (row 243): src/_ZN4Toad8RunStateEv.cpp
 #
@@ -299,7 +299,7 @@ src/game/actors/d_a_kinopio.cpp
 #       data_ov006_02141a18 has the same call-time-switch problem anyway
 #       (unmatched/MgCurling2_StateDispatch.cpp:328).
 #
-#   func_ov006_020c3d18   the one row where "<object field>" is right: the matched
+#   FlowerFace_Update   the one row where "<object field>" is right: the matched
 #       TU reads the pair out of the OBJECT, at *(int*)c and *(int*)(c+4), not out
 #       of any table. There is no boot-time storage to install a host address
 #       into; the address would have to be written by whatever SETS that

@@ -1137,7 +1137,7 @@ extern "C" void port_probe_chomp(int frame)
  * and the sign already stand in for.
  *
  * _ZN7daMip_c10UpdateGrabEv is the rabbit's own grab check, called unconditionally
- * from Rabbit::Behavior (src/actors/daMip_c.cpp:204, reloc 0x0212c778 ->
+ * from Rabbit::Behavior (src/game/actors/d_a_mip.cpp:204, reloc 0x0212c778 ->
  * 0x0212a828). It reads the rabbit's grab-trigger fields -- +0x134 (the id of
  * the actor on its collision cylinder) and +0x130 & 0x1000 (the trigger flag) --
  * confirms that actor is the player (0xbf), runs the REAL Player::TryGrab, and
@@ -1196,7 +1196,7 @@ extern "C" void port_probe_rabbit_trigger(int frame)
     /* THE RABBIT-HUNT-IS-ON FLAG, the second half of this stand-in.
      *
      * Rabbit::Behavior returns before its own state dispatch unless
-     * data_0209caa0[2] & 0x20000 is set (src/actors/daMip_c.cpp:50-65). On
+     * data_0209caa0[2] & 0x20000 is set (src/game/actors/d_a_mip.cpp:50-65). On
      * a level other than 0x32 the rabbit sits on the +0x428 == 1 arm and only
      * leaves it once that bit is on, so with the bit clear the actor is inert:
      * measured, its Animation at +0x350 (30 frames, speed 0x1000) never advances
@@ -1262,7 +1262,7 @@ extern "C" void port_probe_rabbit_trigger(int frame)
      * go again (_ZN7daMip_c15StateCaughtMainEv's +43c==7 arm clears rabbit+0x45c in the
      * same breath as it spawns the key). Re-grabbing the rabbit is an ordinary
      * player action -- the rabbit is standing right there and Rabbit::Behavior
-     * puts it back on its catchable arm (src/actors/daMip_c.cpp:154-162) --
+     * puts it back on its catchable arm (src/game/actors/d_a_mip.cpp:154-162) --
      * and it is the only NATURAL way found so far to put the player back under
      * mIsNoControl while the key is still flying to him. That is the overlap
      * lane C could only reach by injecting a key with SM64DS_KEY_SPAWN_AT. */
@@ -1426,7 +1426,7 @@ extern "C" void port_probe_rabbit_trigger(int frame)
                      (*(int *)(rb + 0xb0) & 0x80) != 0,
                      (unsigned)*(int *)(rb + 0xb0),
                      *(int *)(rb + 0x350 + 0x08),
-                     /* THE BEHAVIOR GATE. src/actors/daMip_c.cpp:50-65
+                     /* THE BEHAVIOR GATE. src/game/actors/d_a_mip.cpp:50-65
                         returns before the state dispatch unless the level word
                         data_0209f2f8 and these fields agree. Off level 0x32 the
                         only question is rabbit+0x428; on level 0x32 it is the
@@ -1449,7 +1449,7 @@ extern "C" void port_probe_rabbit_trigger(int frame)
  *
  * Every enemy Yoshi can eat opens its Behavior by calling Enemy::UpdateYoshiEat
  * on itself; a non-zero return puts the enemy in its eat branch instead of its
- * normal AI. For the intro rabbit that branch (src/actors/daMip_c.cpp:130-
+ * normal AI. For the intro rabbit that branch (src/game/actors/d_a_mip.cpp:130-
  * 151) is what writes rabbit+0x45c -- the caught-by player that arms the talk
  * block and the key spawn. While UpdateYoshiEat was a constant-0 host stub the
  * branch was dead: an eaten enemy never entered the swallow states, the rabbit
@@ -1533,7 +1533,7 @@ extern "C" void port_probe_yoshi_swallow(int frame)
  *
  * SM64DS_SPAWN_ACTOR only fires at boot, and the whole question about this
  * actor is a TIMING one: on the ROM the key is spawned by the rabbit's own
- * caught-dialogue state (src/actors/daMip_c.cpp:235) in the same breath as
+ * caught-dialogue state (src/game/actors/d_a_mip.cpp:235) in the same breath as
  * the talk ending, so it reaches its caught state while the player may still be
  * flagged mIsNoControl. A boot spawn always lands on an idle player and can
  * never ask that question. This drops a key at a chosen frame instead.

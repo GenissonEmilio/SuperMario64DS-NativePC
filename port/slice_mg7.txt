@@ -14,7 +14,7 @@
 #
 # Measured on this tree at 8ddff3187, build/port/walk_window.map:
 #
-#   func_ov006_020ec4dc   _func_ov006_020ec4dc  <-  dScMgHanachan_c.cpp.obj
+#   Wiggler_StartPathA   _Wiggler_StartPathA  <-  dScMgHanachan_c.cpp.obj
 #   func_ov006_02106168   _func_ov006_02106168  <-  dScMgPanel_c.cpp.obj
 #   func_ov006_02106ca4   _func_ov006_02106ca4  <-  dScMgPanel_c.cpp.obj
 #   func_ov006_0211bc8c   _func_ov006_0211bc8c  <-  dScMgSound_c.cpp.obj
@@ -26,15 +26,15 @@
 # file as well is LNK2005.
 #
 #   slice_ppp.txt:291   "RETIRED at ALIAS2 (wave 8, the main -> port sync): main
-#                        folded this body into src/actors/dScMgPanel_c.cpp ...
+#                        folded this body into src/minigames/d_s_mg_panel.cpp ...
 #                        the per-function leftover here was the second
 #                        definition (LNK2005)."          #src/func_ov006_02106168.cpp
 #   slice_ppp.txt:279   the same for src/func_ov006_02106ca4.c, table 02142840
 #   slice_tte.txt:725   the same for #src/func_ov006_02123428.c
 #   slice_tte.txt:730   the same for #src/func_ov006_02123938.c
 #   slice_wig.txt:417   "HELD, run link100 lane HOSTGEN2: main's consolidated TU
-#                        above defines func_ov006_020ec4dc as well, and taking
-#                        both is a duplicate symbol."     #src/func_ov006_020ec4dc.c
+#                        above defines Wiggler_StartPathA as well, and taking
+#                        both is a duplicate symbol."     #src/Wiggler_StartPathA.c
 #   slice_s75.txt:311   the same for #src/func_ov006_020e513c.c, and that file is
 #                        additionally the port's OWN NONMATCHING decompile of the
 #                        address while the matched tree's body is the one to keep
@@ -112,7 +112,7 @@
 # The file carries no NONMATCHING banner.
 #
 # THE ROM'S OWN EDGE, READ OUT OF THE CARTRIDGE, not out of a note. The referrer
-# rows.tsv names is data_ov006_0213c2bc, and in
+# rows.tsv names is pmf_dScMgCurling_c_Aim_Swing, and in
 # extracted/overlays/overlay_0006.bin at base 0x020bfec0 that word and its
 # neighbours read:
 #
@@ -157,4 +157,4 @@
 # headless proof can exercise the dispatch. The seat is taken on the byte-for-
 # byte arm of the rule, and a click-driven play proof of Slots Shot's curling
 # scene with Tango present is OWED and named in this lane's report.
-src/actors/dScMgCurling_c.cpp
+src/minigames/d_s_mg_curling.cpp

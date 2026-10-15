@@ -28,4 +28,4 @@
 #                               MATCH, here). The body is the D0.
 #   slot 25  0x020b8d3c  0x2c   OnPushed(Actor&)
 #   slot 27  0x020b8d14  0x28   OnHitByMegaChar(Player&)
-src/game/actors/daObjPushblock_c.cpp
+src/game/actors/d_a_obj_pushblock.cpp

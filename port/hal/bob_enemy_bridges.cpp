@@ -386,19 +386,19 @@ DSSTATE_END
    was: /alternatename:_func_ov019_02111f54=_func_ov014_02111f54 */
 #pragma comment(linker, "/alternatename:?data_ov062_0211e004@@3PADA=_data_ov062_0211e004")
 #pragma comment(linker, "/alternatename:?data_ov062_0211e004@@3USharedFilePtr@@A=_data_ov062_0211e004")
-#pragma comment(linker, "/alternatename:?data_ov062_0211e00c@@3PADA=_data_ov062_0211e00c")
-#pragma comment(linker, "/alternatename:?data_ov062_0211e00c@@3USharedFilePtr@@A=_data_ov062_0211e00c")
+#pragma comment(linker, "/alternatename:?gdaRNkNokonokoModelFile@@3PADA=_gdaRNkNokonokoModelFile")
+#pragma comment(linker, "/alternatename:?gdaRNkNokonokoModelFile@@3USharedFilePtr@@A=_gdaRNkNokonokoModelFile")
 #pragma comment(linker, "/alternatename:?data_ov062_0211e014@@3PADA=_data_ov062_0211e014")
 #pragma comment(linker, "/alternatename:?data_ov062_0211e014@@3USharedFilePtr@@A=_data_ov062_0211e014")
-#pragma comment(linker, "/alternatename:?data_ov062_0211e01c@@3PADA=_data_ov062_0211e01c")
-#pragma comment(linker, "/alternatename:?data_ov062_0211e01c@@3USharedFilePtr@@A=_data_ov062_0211e01c")
+#pragma comment(linker, "/alternatename:?gdaRNkNokonokoWalkEdAnimationFile@@3PADA=_gdaRNkNokonokoWalkEdAnimationFile")
+#pragma comment(linker, "/alternatename:?gdaRNkNokonokoWalkEdAnimationFile@@3USharedFilePtr@@A=_gdaRNkNokonokoWalkEdAnimationFile")
 #pragma comment(linker, "/alternatename:?data_ov062_0211e024@@3PADA=_data_ov062_0211e024")
 #pragma comment(linker, "/alternatename:?data_ov062_0211e024@@3USharedFilePtr@@A=_data_ov062_0211e024")
 #pragma comment(linker, "/alternatename:?data_ov062_0211e02c@@3PADA=_data_ov062_0211e02c")
 #pragma comment(linker, "/alternatename:?data_ov062_0211e02c@@3USharedFilePtr@@A=_data_ov062_0211e02c")
-#pragma comment(linker, "/alternatename:?data_ov062_0211e034@@3PADA=_data_ov062_0211e034")
-#pragma comment(linker, "/alternatename:?data_ov062_0211e034@@3USharedFilePtr@@A=_data_ov062_0211e034")
-#pragma comment(linker, "/alternatename:?data_ov062_0211e03c@@3PADA=_data_ov062_0211e03c")
+#pragma comment(linker, "/alternatename:?gdaRNkNokonokoWait1AnimationFile@@3PADA=_gdaRNkNokonokoWait1AnimationFile")
+#pragma comment(linker, "/alternatename:?gdaRNkNokonokoWait1AnimationFile@@3USharedFilePtr@@A=_gdaRNkNokonokoWait1AnimationFile")
+#pragma comment(linker, "/alternatename:?gdaRNkNokonokoWait2AnimationFile@@3PADA=_gdaRNkNokonokoWait2AnimationFile")
 /* ---- KOOPA_FLAG's three ---------------------------------------------------
    Its InitResources declares Animation::LoadFile returning void* where
    BobOmb's declares it returning void and the definition returns char*; one
@@ -412,8 +412,8 @@ DSSTATE_END
 /* ---- KOOPA_THE_QUICK's own six states -------------------------------------
    Two more spellings of the same two SharedFilePtrs, and cstd::atan2 named
    without its Fix12 typedefs by the state that turns him toward the player. */
-#pragma comment(linker, "/alternatename:?data_ov062_0211e034@@3PAHA=_data_ov062_0211e034")
-#pragma comment(linker, "/alternatename:?data_ov062_0211e03c@@3PAHA=_data_ov062_0211e03c")
+#pragma comment(linker, "/alternatename:?gdaRNkNokonokoWait1AnimationFile@@3PAHA=_gdaRNkNokonokoWait1AnimationFile")
+#pragma comment(linker, "/alternatename:?gdaRNkNokonokoWait2AnimationFile@@3PAHA=_gdaRNkNokonokoWait2AnimationFile")
 #pragma comment(linker, "/alternatename:?atan2@cstd@@YAHHH@Z=__ZN4cstd5atan2E5Fix12IiES1_")
 
 /* ---- KING_BOB_OMB's own two problems --------------------------------------
@@ -457,7 +457,7 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:?data_ov078_0212703c@@3HA=_data_ov078_0212703c")
 #pragma comment(linker, "/alternatename:?data_ov078_02126f30@@3PAHA=_data_ov078_02126f30")
 #pragma comment(linker, "/alternatename:?IDENTITY_MATRIX4X3@@3UMatrix4x3@@A=_data_02082128")
-#pragma comment(linker, "/alternatename:?data_ov062_0211e03c@@3USharedFilePtr@@A=_data_ov062_0211e03c")
+#pragma comment(linker, "/alternatename:?gdaRNkNokonokoWait2AnimationFile@@3USharedFilePtr@@A=_gdaRNkNokonokoWait2AnimationFile")
 
 /* BlendModelAnim::SetAnim takes THIS FILE'S SECOND RULE, not its first.
    func_ov078_02123bc4 (the king's throw state) declares a local shadow

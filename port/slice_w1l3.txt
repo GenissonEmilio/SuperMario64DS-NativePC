@@ -14,7 +14,7 @@
 # ShadowModel's DoSetFile, the slot ModelBase::SetFile dispatches. Null since
 # gate 9, which is why the port stubs ShadowModel::InitCylinder rather than let
 # it dispatch. ROM from:0x0208e870 -> 0x02015ef4.
-src/engine/model/dExtShadowModel_c.cpp
+src/engine/model/d_ext_shadow_model.cpp
 # The three Animation-derived deleting destructors, into their folded slot 0.
 # Their tables were all zeros before this wave. ROM 0x0208e7d8 / 0x0208e7f8 /
 # 0x0208e7c8 respectively.
@@ -85,7 +85,7 @@ src/engine/heap/Heap.cpp
 # SLICE_W1L3_SOURCES, so the TU is absent from their targets and the converted
 # call dies at link with
 #   error LNK2019: unresolved external symbol
-#   __ZN4Heap18InitializeGameHeapEjPS_ referenced in function _main
+#   __ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_ referenced in function _main
 # (measured on smoke_actor, then reverted). The unblock is one line per target
 # in port/CMakeLists.txt -- either ${SLICE_W1L3_SOURCES} added to the three
 # add_executable calls at lines 559 / 579 / 604, or just this one file path --
@@ -141,7 +141,7 @@ src/engine/heap/Heap.cpp
 # CleanAll's only other listing is slice_gate36.txt, which port/CMakeLists.txt
 # reads into SLICE36_SOURCES and then never adds to a target, so it compiles
 # nothing and this line is the one that does the work.
-# FOLDED into src/engine/model/dExtShadowModel_c.cpp (row 17): src/_ZN11ShadowModel8CleanAllEv.cpp
+# FOLDED into src/engine/model/d_ext_shadow_model.cpp (row 17): src/_ZN11ShadowModel8CleanAllEv.cpp
 
 # ---- wave 3: the fader interpolator, five bodies the port was restating -----
 # hal/fader_wipes.cpp hosts the seven-wipe array as a host CLASS, because the
@@ -158,11 +158,11 @@ src/engine/heap/Heap.cpp
 # The reference edges are in hal/fader_wipes.cpp, one per body, each reached
 # QUALIFIED off a reinterpreted HalFaderWipe* -- legal because include/Fader.h
 # pins vptr 0x0 / currInterp 0x4 / speed 0x8, exactly HalFaderWipe's prefix.
-src/engine/fader/dFader_c.cpp
-# FOLDED into src/engine/fader/dFader_c.cpp (row 161): src/engine/fader/_ZN15FaderBrightness10SetToStartEv.cpp
-# FOLDED into src/engine/fader/dFader_c.cpp (row 161): src/engine/fader/_ZN15FaderBrightness8SetToEndEv.cpp
-# FOLDED into src/engine/fader/dFader_c.cpp (row 161): src/engine/fader/_ZN15FaderBrightness9IsAtStartEv.cpp
-# FOLDED into src/engine/fader/dFader_c.cpp (row 161): src/engine/fader/_ZN15FaderBrightness7IsAtEndEv.cpp
+src/runtime/graphics/fader/d_fader.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 161): src/engine/fader/_ZN15FaderBrightness10SetToStartEv.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 161): src/engine/fader/_ZN15FaderBrightness8SetToEndEv.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 161): src/engine/fader/_ZN15FaderBrightness9IsAtStartEv.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 161): src/engine/fader/_ZN15FaderBrightness7IsAtEndEv.cpp
 # Fader::AdvanceInterp drags one name with it: it calls the 20.12 approach
 # helper by the ROM spelling func_0203ae58, which only hal/shims.cpp defines and
 # walk_window does not link that file. fader_wipes.cpp supplies it as an
@@ -246,7 +246,7 @@ src/engine/fader/dFader_c.cpp
 # reads them. The 300-frame control position is unchanged by this line, which
 # is the expected result: InitModel writes the ShadowModel and the two list
 # globals, and nothing feeds back into actor behaviour.
-src/actors/dActor_c.cpp
+src/runtime/actor/d_actor.cpp
 
 # ---- mined and NOT taken (kept here so wave 2 does not re-mine them) --------
 # _ZN11ShadowModel10InitCuboidEv.cpp

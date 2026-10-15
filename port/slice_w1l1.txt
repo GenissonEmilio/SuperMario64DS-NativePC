@@ -180,7 +180,7 @@
 #         port already host-copies in port/unmatched for the mwcc
 #         pointer-to-member stride. This one is a documented host-ABI
 #         exception, not scaffolding.
-#       _ZN4Heap11_DeallocateEPv, _ZN4cstd10fdiv_asyncE5Fix12IiE5Fix12IiE,
+#       _ZN5mHeap6Heap_t11_DeallocateEPv, _ZN4cstd10fdiv_asyncE5Fix12IiE5Fix12IiE,
 #       func_02017e48, func_0201a03c, func_0203ad6c   same shape, lower value.
 #
 # WHAT WAVE 3 SHOULD TAKE FROM THIS. The remaining linkage in the stripped set
@@ -209,7 +209,7 @@
 # TouchesWater rides slice_gate16.txt, and both were in w2-a's 132. Their
 # swaps are pure reference edges in the host files. InitCuboid was in no slice
 # at all, so it needs the line.
-src/engine/model/dExtShadowModel_c.cpp
+src/engine/model/d_ext_shadow_model.cpp
 #
 # The edge: SIGN_POST calls the METHOD ?InitCuboid@ShadowModel@@QAEXXZ, and
 # hal/actor_class_faces.cpp used to define that decorated name itself over a

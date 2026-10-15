@@ -49,4 +49,18 @@ int cdskin_hd(void);
 void cdskin_draw(uint32_t *px, int stride, int w, int h, const CdGeom *g, const CdItem *it, int n, int sel, int top, int mode,
                  const char *box_msg, int back_hot, int ok_hot);
 
+
+/* PRECOURSE1: the character strip on the star select (hal/char_strip.cpp). A row of slots at the bottom of the upper picture, between the lives
+   counter and the star counter: one slot per selectable character (its head icon on a wooden plank, the current one on the cream plaque with a
+   star), and a last slot with an arrow when there are more characters than fit. The layout is a function of the picture height (one unit is a
+   192nd, the DS's own row), so the strip is the same size on a 4:3, a 16:9 and a 21:9 picture and sits centred. Slot id -1 in a CdItem is the
+   arrow. Every slot, the badge, the arrow and the name plaque are separate draws. */
+struct CsGeom {
+    float k;                        /* picture pixels per DS pixel (h / 192) */
+    int x0, y0, sw, sh, pitch, n;   /* slot 0's left, the slots' top, a slot's size, the distance between slots, the number of slots */
+};
+void cdskin_strip_geom(int w, int h, int n, CsGeom *g);
+/* focus / hover: slot index or -1; the name plaque goes over the focus slot, else the hover slot. */
+void cdskin_strip_draw(uint32_t *px, int stride, int w, int h, const CsGeom *g, const CdItem *it, int n, int focus, int hover);
+
 #endif

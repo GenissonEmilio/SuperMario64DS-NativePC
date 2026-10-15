@@ -35,8 +35,8 @@
 // useless.
 //
 // ONE SYMBOL HAS TWO C++ SPELLINGS AND BOTH ARE REAL.  data_ov006_0214042c is
-// declared `void *` by src/actors/dMgJump3DMario_c.cpp and `int` by
-// src/actors/dMgJump3DMario_c.cpp, so the link asks for ?...@@3PAXA AND ?...@@3HA.
+// declared `void *` by src/minigames/d_mg_jump3d_mario.cpp and `int` by
+// src/minigames/d_mg_jump3d_mario.cpp, so the link asks for ?...@@3PAXA AND ?...@@3HA.
 // Two rows, one right-hand side; that is the two TUs disagreeing about the
 // type of one DS word, not two objects.
 
@@ -60,8 +60,8 @@
 #pragma comment(linker, "/alternatename:?data_ov006_0214040c@@3HA=_data_ov006_0214040c")
 #pragma comment(linker, "/alternatename:?data_ov006_02140424@@3HA=_data_ov006_02140424")
 #pragma comment(linker, "/alternatename:?data_ov006_02140430@@3HA=_data_ov006_02140430")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b088@@3PAHA=_data_ov006_0213b088")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b090@@3PAHA=_data_ov006_0213b090")
+#pragma comment(linker, "/alternatename:?pmf_dMgJump3DMario_c_StateRespawn_2@@3PAHA=_pmf_dMgJump3DMario_c_StateRespawn_2")
+#pragma comment(linker, "/alternatename:?pmf_dMgJump3DMario_c_StateFallOut@@3PAHA=_pmf_dMgJump3DMario_c_StateFallOut")
 #pragma comment(linker, "/alternatename:?data_ov006_02141a44@@3PAXA=_data_ov006_02141a44")
 #pragma comment(linker, "/alternatename:?data_ov006_02141a48@@3PAXA=_data_ov006_02141a48")
 #pragma comment(linker, "/alternatename:?data_ov006_0212ddd0@@3DA=_data_ov006_0212ddd0")
@@ -77,26 +77,26 @@
 
 // ---- 2. THE ONE BARE NAME ------------------------------------------------
 //
-// src/actors/dScMgD3DBase_c.cpp declares `extern int func_020beb74[];` and reads
+// src/minigames/d_s_mg_d3d_base.cpp declares `extern int func_020beb74[];` and reads
 // it.  There is no func_020beb74 in any config: the address 0x020beb74 is
-// ov004's data_ov004_020beb74, a bss symbol.  This is the same defect class as
+// ov004's sMgGraphCallback, a bss symbol.  This is the same defect class as
 // src/_ZN14dScMgCurling_c13InitResourcesEv.cpp's bare `func_020adc74` (port/mg_fanout_costs.txt
 // section 6) and unmatched/MgCoin_Faces.cpp's `func_020beb68` -- a DATA symbol
 // spelled with the func_ prefix, which no linker can be expected to guess.
 //
-// THE RESOLUTION IS NOT A GUESS.  data_ov004_020beb68 is dScMgBase_c's "current
+// THE RESOLUTION IS NOT A GUESS.  gMgScene is dScMgBase_c's "current
 // minigame scene" pointer, and 0x020beb74 is three words past it in the same
 // ov004 bss run; the ROM instruction that reads it here is a plain `ldr` of a
 // word out of the ov004 range, and ov004 is the co-resident overlay for every
 // ov006 minigame.  The alias resolves the SPELLING, not the address.
-#pragma comment(linker, "/alternatename:_func_020beb74=_data_ov004_020beb74")
+#pragma comment(linker, "/alternatename:_func_020beb74=_sMgGraphCallback")
 
 // ---- 2b. A SECOND BARE NAME, AND IT IS A FUNCTION ------------------------
 //
-// src/actors/dMgJump3DMario_c.cpp declares and calls `func_ov006_020e6df0`, which is
+// src/minigames/d_mg_jump3d_mario.cpp declares and calls `func_ov006_020e6df0`, which is
 // the ADDRESS-SHAPED spelling of an ov006 body the config gives a real name:
 // config/arm9/overlays/ov006/symbols.txt:  Sound_PlayBank1Panned
-// kind:function(arm,size=0x4c) addr:0x020e6df0.  src/actors/dScMgD3DBase_c.cpp
+// kind:function(arm,size=0x4c) addr:0x020e6df0.  src/minigames/d_s_mg_d3d_base.cpp
 // is in port/slice_bnt.txt and defines it under the NAME, so this is a
 // spelling and not a slice line -- the same shape scene_mg_flower.cpp's
 // `_func_02012754 = __ZN5Sound12PlayBank2_2DEj` row records for the arm9 half
@@ -112,12 +112,12 @@
 // underscore is MSVC's cdecl decoration, so the right-hand sides are the
 // Itanium names with one more underscore.
 //
-//   src/func_ov006_020c6e4c.cpp calls Animation::LoadFile and ModelAnim::
+//   src/Heyho_LoadResources.cpp calls Animation::LoadFile and ModelAnim::
 //   SetAnim as METHODS.  src/_ZN9Animation8LoadFileER13SharedFilePtr.cpp and
 //   src/_ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj.c define both, and the
 //   second is already in port/slice_gate7.txt, so nothing new is linked.
 //
-//   src/actors/dScMgD3DBase_c.cpp calls the bare name
+//   src/minigames/d_s_mg_d3d_base.cpp calls the bare name
 //   `Scene_AfterRender`, which include/decl_common.h declares as
 //   `void(void*, unsigned int)` and which exists in no config.  The address is
 //   0x0202e398 -- dScMgBase_c's own slot 11 in the base table -- and
@@ -164,7 +164,7 @@
 // (0x02015bf8 and 0x02015c20) and then pops and returns, so r0 rides the
 // callee's value out -- the same reading actor_faces_bob.cpp makes for
 // ModelBase::SetFile.  src spells the definition `void` because nothing in the
-// matched tree read it; func_ov006_020c6e4c discards the result too, so the
+// matched tree read it; Heyho_LoadResources discards the result too, so the
 // declared int changes no behaviour and only keeps eax from being invented.
 
 struct BCA_File;
@@ -204,13 +204,13 @@ int ModelAnimFace::SetAnim(BCA_File *animFile, int flags, int speed,
 //
 // unmatched/MgCoin_Faces.cpp carries a named trap because one of its Render
 // callees has no src in either extension.  This class has none: the closure
-// walk found exactly ONE body with no src at all, func_ov004_020ae858, and it
+// walk found exactly ONE body with no src at all, Mg_DrawMenu, and it
 // is ALREADY TRAPPED in hal/scene_mg_faces.cpp where seven ov006 TUs across
 // this family already reach it.  port/slice_bnt.txt section 11 is the
 // accounting.
 //
 // AMENDED, run mg12 lane PANEL: that body now HAS a src file and is NOT trapped.
-// src/func_ov004_020ae858.cpp is the results panel's label renderer, seated off
+// src/Mg_DrawMenu.cpp is the results panel's label renderer, seated off
 // port/slice_mg1.txt; the closure statement above is otherwise unchanged.
 
 /* MSVC emits nothing for a TU that is only pragmas, and an empty object still

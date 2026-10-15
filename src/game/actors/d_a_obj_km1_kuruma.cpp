@@ -22,6 +22,12 @@
  *   is a deadstripped duplicate.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_km1_kuruma_AssetId {
+    ASSET_KM1_KURUMA_BMD = 0x0653,
+    ASSET_KM1_KURUMA_KCL = 0x0654
+};
+
 #include "daObjKm1_Kuruma_c.h"
 #include "SharedFilePtr.h"
 
@@ -107,5 +113,5 @@ s32 daObjKm1_Kuruma_c::CleanupResources()
 
 /* Static-init globals (was the handwritten __sinit_ov043_021118d4 shard).
  * Definition order is the retail initializer's construction order. */
-Km1KurumaModelFile data_ov043_02112638(0x653);
-Km1KurumaCollisionFilePtr data_ov043_02112630(0x654);
+Km1KurumaModelFile gKm1KurumaModelFile(ASSET_KM1_KURUMA_BMD);
+Km1KurumaCollisionFilePtr gKm1KurumaCollisionFile(ASSET_KM1_KURUMA_KCL);

@@ -141,27 +141,27 @@
 
 # ---- the class's own eight entry points ------------------------------------
 # the factory. ActorBase::operator new(0x64), the base ctor, the three vptr writes in construction order, the +0x13 flag bits, and the +0x50 graphCallback_c sub-object vptr.
-src/actors/dScDSMT_c.cpp
+src/game/stages/d_s_dsmt.cpp
 # slot 0  InitResources
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/_ZN9dScDSMT_c13InitResourcesEv.cpp
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/_ZN9dScDSMT_c13InitResourcesEv.cpp
 # slot 3  CleanupResources
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/_ZN9dScDSMT_c16CleanupResourcesEv.cpp
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/_ZN9dScDSMT_c16CleanupResourcesEv.cpp
 # slot 6  Behavior
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/_ZN9dScDSMT_c8BehaviorEv.cpp
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/_ZN9dScDSMT_c8BehaviorEv.cpp
 port/unmatched/hostarm/_ZN9dScDSMT_c8BehaviorEv.cpp
 # slot 9  Render
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/_ZN9dScDSMT_c6RenderEv.cpp
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/_ZN9dScDSMT_c6RenderEv.cpp
 # slot 12 OnPendingDestroy (bx lr, a real empty body)
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/_ZN9dScDSMT_c16OnPendingDestroyEv.cpp
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/_ZN9dScDSMT_c16OnPendingDestroyEv.cpp
 # slot 16 D2
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/_ZN9dScDSMT_cD1Ev.cpp
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/_ZN9dScDSMT_cD1Ev.cpp
 # slot 17 D0
 # RETIRED at SLICE1: body now in src/_ZN9dScDSMT_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN9dScDSMT_cD0Ev.cpp
 # graphCallback_c slot 0 (0x021032b0)
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/_ZN9dScDSMT_c15graphCallback_c14GraphCallback0Ev.cpp
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/_ZN9dScDSMT_c15graphCallback_c14GraphCallback0Ev.cpp
 # graphCallback_c slot 2 (0x021032b0)
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/_ZN9dScDSMT_c15graphCallback_c14GraphCallback2Ev.cpp
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/_ZN9dScDSMT_c15graphCallback_c14GraphCallback2Ev.cpp
 
 # ---- the rest of ov007's closure -------------------------------------------
 src/RequestScreenFade.c
@@ -726,16 +726,16 @@ src/unnamed/ov007/func_ov007_020cba78.c
 src/unnamed/ov007/func_ov007_020cbb04.cpp
 src/unnamed/ov007/func_ov007_020cbbb0.c
 src/unnamed/ov007/func_ov007_020cbf8c.c
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/func_ov007_020cc0cc.c
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/func_ov007_020cc0e4.c
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/func_ov007_020cc118.c
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/func_ov007_020cc168.c
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/func_ov007_020cc600.c
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/func_ov007_020cca68.c
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/func_ov007_020cca74.c
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/func_ov007_020cca80.c
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/func_ov007_020cca98.c
-# FOLDED into src/actors/dScDSMT_c.cpp (row 144): src/func_ov007_020ccab4.c
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/func_ov007_020cc0cc.c
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/func_ov007_020cc0e4.c
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/func_ov007_020cc118.c
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/func_ov007_020cc168.c
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/func_ov007_020cc600.c
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/func_ov007_020cca68.c
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/func_ov007_020cca74.c
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/func_ov007_020cca80.c
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/func_ov007_020cca98.c
+# FOLDED into src/game/stages/d_s_dsmt.cpp (row 144): src/func_ov007_020ccab4.c
 
 # ---- THE PER-CONTEXT ROUTE (was THE ONE EXCLUSION) -------------------------
 # src/func_ov007_020c5dec.cpp is LISTED and now links, but under a private
@@ -845,16 +845,16 @@ src/engine/gx/GXS.cpp
 src/cstd.cpp
 # FOLDED into src/cstd.cpp (row 844): src/_ZN4cstd4ldivEii.cpp
 src/engine/model/Model4.cpp
-src/engine/graph/dGraph_c_callback_c.cpp
-# FOLDED into src/engine/graph/dGraph_c_callback_c.cpp (row 847): src/_ZN8dGraph_c10callback_c14GraphCallback3Ev.cpp
+src/engine/graph/d_graph_c_callback.cpp
+# FOLDED into src/engine/graph/d_graph_c_callback.cpp (row 847): src/_ZN8dGraph_c10callback_c14GraphCallback3Ev.cpp
 src/engine/save/SaveData.cpp
 # FOLDED into src/engine/save/SaveData.cpp (row 849): src/_ZN8SaveData13EraseSaveFileEjPc.cpp
 # FOLDED into src/engine/save/SaveData.cpp (row 849): src/_ZN8SaveData13SaveMinigamesEP16MinigameSaveData.cpp
 # FOLDED into src/engine/save/SaveData.cpp (row 849): src/_ZN8SaveData16ReadMinigameDataEP16MinigameSaveData.cpp
 src/_ZN15dExtFrameCtrl_c17UpdateFileOffsetsER8BCA_File.cpp
 # FOLDED into src/engine/save/SaveData.cpp (row 849): src/func_02013c84.c
-src/engine/fader/dFader_c.cpp
-# FOLDED into src/engine/fader/dFader_c.cpp (row 855): src/func_02017278.c
+src/runtime/graphics/fader/d_fader.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 855): src/func_02017278.c
 src/unnamed/arm9/0201/func_0201a428.c
 src/unnamed/arm9/0201/func_0201a458.c
 src/unnamed/arm9/0203/func_0203dabc.c

@@ -1,6 +1,6 @@
 {
   "boundary_confidence": "high",
-  "boundary_evidence": "Contiguous single-function .text span 0x020440e8..0x02044104: fLiNdBaPr_c::D1 is its own original file (notes/mangled-fold-decisions.md, 'fLiNdBaPr_c::D1 -- its own file': the next function fLiNdBa_c::D1 does the same to the same global, and they are two classes that only touch). Below, src/actors/ActorBase.cpp ends at 0x020440e8 -- that TU's own boundary evidence names this function as its bracketing stop. Above, _ZN9fLiNdBa_cD1Ev begins at 0x02044104, another class's own file. One function, no hole, no tail (recomputed from config/arm9/symbols.txt).",
+  "boundary_evidence": "Contiguous single-function .text span 0x020440e8..0x02044104: fLiNdBaPr_c::D1 is its own original file (notes/mangled-fold-decisions.md, 'fLiNdBaPr_c::D1 -- its own file': the next function fLiNdBa_c::D1 does the same to the same global, and they are two classes that only touch). Below, src/runtime/actor/ActorBase.cpp ends at 0x020440e8 -- that TU's own boundary evidence names this function as its bracketing stop. Above, _ZN9fLiNdBa_cD1Ev begins at 0x02044104, another class's own file. One function, no hole, no tail (recomputed from config/arm9/symbols.txt).",
   "functions": [
     {
       "address": "0x020440e8",

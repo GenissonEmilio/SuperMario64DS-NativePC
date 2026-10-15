@@ -55,7 +55,7 @@ extern "C" int _ZN15dExtFrameCtrl_c8GetFlagsEv(void *self)
 void _ZN6Player4HealEi(Player *p, int amt)
 { p->Player::Heal(amt); }
 
-/* RETIRED at SYNC6: main's #2666 put src/actors/Player.cpp back in the build
+/* RETIRED at SYNC6: main's #2666 put src/game/player/Player.cpp back in the build
    and it defines ?GetBodyModelID@Player@@QBEII_N@Z itself, so this face was
    the second definition (one LNK2005 row against player_bridges.cpp.obj in
    build_s2.log). The flat body it forwarded to is unchanged.
@@ -608,8 +608,8 @@ extern "C" signed char g_party_render_ghost[16] = {
 extern "C" {
 extern void *port_first_live_actor_of_class(unsigned id);   /* hal/actor_registry.cpp */
 extern unsigned port_unique_id_of_actor(void *actor);       /* hal/actor_registry.cpp */
-/* the ROM's own cap-pickup entry point; src/actors/Player.cpp,
-   called by the cap actor at src/actors/daObjMarioCap_c.cpp:51. Used only by the
+/* the ROM's own cap-pickup entry point; src/game/player/Player.cpp,
+   called by the cap actor at src/game/actors/d_a_obj_mario_cap.cpp:51. Used only by the
    SM64DS_YOSHI_CAP repro driver below. */
 extern void _ZN6Player18SetNewHatCharacterEjjb(void *self, unsigned a, unsigned b,
                                                bool c);
@@ -695,7 +695,7 @@ extern "C" void port_adventure_probe(int frame)
 
            This is the ordinary single-player route into
            func_ov002_020bdb50's slot-19 dispatch. The cap actor's own state
-           machine (src/actors/daObjMarioCap_c.cpp:51, case 1) does exactly this
+           machine (src/game/actors/d_a_obj_mario_cap.cpp:51, case 1) does exactly this
            call and nothing else on the way in:
 
                Player::SetNewHatCharacter(cap->mCharacter & 0xff, 0, 0)
@@ -1336,7 +1336,7 @@ static void yhd_probe(char *c, const int *scene, const char *head)
    With the root, the world rotation and the world translation identical for
    both models, any scale != 1.0 moves one mesh and leaves the other where it
    was. mScaleY is written by exactly two functions, both crush states:
-   Player::St_Squish_Main (src/actors/Player.cpp, case 0 sets
+   Player::St_Squish_Main (src/game/player/Player.cpp, case 0 sets
    mScaleY = 0x100 and case 1 walks it back up in 0x100 steps) and
    Player::Unk_020c6a10 (mScaleY = 0x100, 30-frame hold), so in ordinary play
    mScale is unit and this whole difference is invisible.
@@ -2837,11 +2837,11 @@ int _ZN18NestedHeapIterator8PreviousEP13HeapAllocator(void *self, void *h)
    whatever EAX happens to hold -- the ROM body sets no result either, so the
    value is unread; see the falls-off-the-end block in port/CMakeLists.txt for
    the same question asked of the src bodies. */
-int _ZN4Heap6RescueEv(void *self)
+int _ZN5mHeap6Heap_t6RescueEv(void *self)
 { ((Heap *)self)->Heap::Rescue(); return 0; }
-int _ZN4Heap21MaxAllocationUnitSizeEv(void *self)
+int _ZN5mHeap6Heap_t21MaxAllocationUnitSizeEv(void *self)
 { return ((Heap *)self)->Heap::MaxAllocationUnitSize(); }
-int _ZN4Heap6IntactEv(void *self)
+int _ZN5mHeap6Heap_t6IntactEv(void *self)
 { return ((Heap *)self)->Heap::Intact() ? 1 : 0; }
 
 /* gate-10 BSS, second ring */
@@ -2887,7 +2887,7 @@ int data_020a4b58[4], data_020a4b68[4];
        func_02059834            |= 0x10    slice_gate10, linked and undriven
        _ZN3IRQ13VBlankHandlerEv |= 1       not compiled
        _ZN3IRQ13DmaTimHandlerEj |= mask    not compiled
-       func_ov006_020efcf8      |= 2       not compiled
+       Luigi_PrepareScanlines      |= 2       not compiled
    At 64 bytes that store landed 16,312 bytes past the object, 56 bytes into
    _hal_area_table and so INSIDE .dsstate, which means a save state would have
    captured the corruption and a restore replayed it. It was invisible only

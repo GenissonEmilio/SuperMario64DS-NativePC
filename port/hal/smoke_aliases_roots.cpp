@@ -17,8 +17,8 @@
 // where the receiver and the arguments live.  Each row below was checked, by
 // its decoration, before it was copied:
 //
-//   nine   ?V*@ExpandingHeap@@QAE...  ->  ?V*@ExpandingHeap@@UAE...
-//          and ?Allocate@Heap@@QAEHIH@Z -> ?Allocate@Heap@@QAEPAXIH@Z.
+//   nine   ?V*@ExpHeap_t@mHeap@@QAE...  ->  ?V*@ExpHeap_t@mHeap@@UAE...
+//          and ?Allocate@Heap_t@mHeap@@QAEHIH@Z -> ?Allocate@Heap_t@mHeap@@QAEPAXIH@Z.
 //          Both sides are AE, __thiscall, same class, same parameter list:
 //          receiver in ECX on both.  Q against U is the non-virtual against
 //          virtual spelling of one body and H against PAX is int against void*
@@ -42,23 +42,23 @@
 // on a window target.
 
 /* hal/cxx_aliases.cpp:2985 */
-#pragma comment(linker, "/alternatename:?Allocate@Heap@@QAEHIH@Z=?Allocate@Heap@@QAEPAXIH@Z")
+#pragma comment(linker, "/alternatename:?Allocate@Heap_t@mHeap@@QAEHIH@Z=?Allocate@Heap_t@mHeap@@QAEPAXIH@Z")
 /* hal/cxx_aliases.cpp:2977 */
-#pragma comment(linker, "/alternatename:?VAllocate@ExpandingHeap@@QAEPAXIH@Z=?VAllocate@ExpandingHeap@@UAEPAXIH@Z")
+#pragma comment(linker, "/alternatename:?VAllocate@ExpHeap_t@mHeap@@QAEPAXIH@Z=?VAllocate@ExpHeap_t@mHeap@@UAEPAXIH@Z")
 /* hal/cxx_aliases.cpp:2983 */
-#pragma comment(linker, "/alternatename:?VGetNodeID@ExpandingHeap@@QAEIXZ=?VGetNodeID@ExpandingHeap@@UAEIXZ")
+#pragma comment(linker, "/alternatename:?VGetNodeID@ExpHeap_t@mHeap@@QAEIXZ=?VGetNodeID@ExpHeap_t@mHeap@@UAEIXZ")
 /* hal/cxx_aliases.cpp:2980 */
-#pragma comment(linker, "/alternatename:?VIntact@ExpandingHeap@@QAE_NXZ=?VIntact@ExpandingHeap@@UAE_NXZ")
+#pragma comment(linker, "/alternatename:?VIntact@ExpHeap_t@mHeap@@QAE_NXZ=?VIntact@ExpHeap_t@mHeap@@UAE_NXZ")
 /* hal/cxx_aliases.cpp:2978 */
-#pragma comment(linker, "/alternatename:?VReallocate@ExpandingHeap@@QAEPAXPAXI@Z=?VReallocate@ExpandingHeap@@UAEIPAXI@Z")
+#pragma comment(linker, "/alternatename:?VReallocate@ExpHeap_t@mHeap@@QAEPAXPAXI@Z=?VReallocate@ExpHeap_t@mHeap@@UAEIPAXI@Z")
 /* hal/cxx_aliases.cpp:2981 */
-#pragma comment(linker, "/alternatename:?VRescue@ExpandingHeap@@QAEXXZ=?VRescue@ExpandingHeap@@UAEXXZ")
+#pragma comment(linker, "/alternatename:?VRescue@ExpHeap_t@mHeap@@QAEXXZ=?VRescue@ExpHeap_t@mHeap@@UAEXXZ")
 /* hal/cxx_aliases.cpp:2982 */
-#pragma comment(linker, "/alternatename:?VResizeToFit@ExpandingHeap@@QAEIXZ=?VResizeToFit@ExpandingHeap@@UAEIXZ")
+#pragma comment(linker, "/alternatename:?VResizeToFit@ExpHeap_t@mHeap@@QAEIXZ=?VResizeToFit@ExpHeap_t@mHeap@@UAEIXZ")
 /* hal/cxx_aliases.cpp:2984 */
-#pragma comment(linker, "/alternatename:?VSetNodeID@ExpandingHeap@@QAEXI@Z=?VSetNodeID@ExpandingHeap@@UAEII@Z")
+#pragma comment(linker, "/alternatename:?VSetNodeID@ExpHeap_t@mHeap@@QAEXI@Z=?VSetNodeID@ExpHeap_t@mHeap@@UAEII@Z")
 /* hal/cxx_aliases.cpp:2979 */
-#pragma comment(linker, "/alternatename:?VSizeof@ExpandingHeap@@QAEIPAX@Z=?VSizeof@ExpandingHeap@@UAEIPAX@Z")
+#pragma comment(linker, "/alternatename:?VSizeof@ExpHeap_t@mHeap@@QAEIPAX@Z=?VSizeof@ExpHeap_t@mHeap@@UAEIPAX@Z")
 /* hal/cxx_aliases.cpp:3826 */
 #pragma comment(linker, "/alternatename:?data_020a4d34@@3HA=__ZN6Memory25isRootHeapIterInitializedE")
 /* hal/cxx_aliases.cpp:3825 */
@@ -76,8 +76,8 @@
    copy.  smoke_roots's thirtieth unresolved name is the flat
    __ZN6Memory16operator_delete2EPv, referenced by Heap::operator delete
    (include/Heap.h:265, whose extern "C" declaration is at Heap.h:141) out of
-   src/_ZN4HeapC2EPvjPS_.cpp's scalar deleting destructor and out of
-   src/_ZN13ExpandingHeapC1EPvjP4HeapP22ExpandingHeapAllocator.cpp's.
+   src/engine/heap/Heap.cpp's scalar deleting destructor and out of
+   src/engine/heap/Heap.cpp's.
 
    On the window targets that name is DEFINED, by hal/cxxname_bridge.cpp:682,
    and cxx_aliases.cpp:2936 points the C++ spelling AT it:

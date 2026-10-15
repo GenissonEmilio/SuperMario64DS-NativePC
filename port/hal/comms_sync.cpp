@@ -95,7 +95,7 @@ namespace ntr { unsigned gx_texture_generation(); }
 
 extern "C" {
 // SetAnim IS DECLARED void HERE, WHICH IS ITS ACTUAL RETURN TYPE.
-// src/actors/Player.cpp:14 defines it `void`; 74 matched
+// src/game/player/Player.cpp:14 defines it `void`; 74 matched
 // sources declare it `extern int`. Those 74 are BYTE-VERIFIED ROM TUs and are
 // not mine to edit -- and their callers all discard the result, so the lie
 // costs them nothing. This declaration is the port's own, so it gets to be

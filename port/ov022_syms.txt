@@ -189,7 +189,7 @@ data_ov022_021145f4@0x021145f4 data_ov022_02114600@0x02114600 data_ov022_0211460
 data_ov022_02114618 data_ov022_02114620 data_ov022_02114628
 data_ov022_0211462c data_ov022_02114634 
  data_ov022_02114650@0x02114650 data_ov022_0211465c@0x0211465c
-data_ov022_02114668 data_ov022_02114670 data_ov022_02114678
+gFlLogModelFile gFlLogCollisionFile data_ov022_02114678
 data_ov022_02114684
 
 # RETIRED at PORTSYNC2 (the 2026-10 main merge). Each symbol below was
@@ -199,16 +199,16 @@ data_ov022_02114684
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov022_02114500                        now defined by src/actors/daObjFl_Ring_c.cpp
-#   data_ov022_02114508                        now defined by src/actors/daObjFl_Ring_c.cpp
-#   data_ov022_02114550                        now defined by src/actors/daObjFl_Block_c.cpp
-#   data_ov022_02114558                        now defined by src/actors/daObjFl_Block_c.cpp
-#   data_ov022_02114578                        now defined by src/actors/daObjFl_London_c.cpp
-#   data_ov022_02114580                        now defined by src/actors/daObjFl_London_c.cpp
-#   data_ov022_021145a0                        now defined by src/actors/daObjFl_Seesaw_c.cpp
-#   data_ov022_021145a8                        now defined by src/actors/daObjFl_Seesaw_c.cpp
+#   gFlRingModelFile                        now defined by src/game/actors/d_a_obj_fl_ring.cpp
+#   gFlRingCollisionFile                        now defined by src/game/actors/d_a_obj_fl_ring.cpp
+#   data_ov022_02114550                        now defined by src/game/actors/d_a_obj_fl_block.cpp
+#   data_ov022_02114558                        now defined by src/game/actors/d_a_obj_fl_block.cpp
+#   data_ov022_02114578                        now defined by src/game/actors/d_a_obj_fl_london.cpp
+#   data_ov022_02114580                        now defined by src/game/actors/d_a_obj_fl_london.cpp
+#   data_ov022_021145a0                        now defined by src/game/actors/d_a_obj_fl_seesaw.cpp
+#   data_ov022_021145a8                        now defined by src/game/actors/d_a_obj_fl_seesaw.cpp
 #   data_ov022_02114690                        now defined by src/game/actors/d_a_obj_fl_maruta.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov022_02114528! data_ov022_02114530! data_ov022_021145c8! data_ov022_021145d0! data_ov022_021145d8! data_ov022_021145e0! data_ov022_02114640! data_ov022_02114648!
+gFlKomaDCollisionFile! gFlKomaDModelFile! gdaObjFl_UkiyukaFlShisoCollisionFile! gFlUkiYukaCollisionFile! gdaObjFl_UkiyukaFlShisoModelFile! gFlUkiYukaModelFile! data_ov022_02114640! data_ov022_02114648!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov022_02114500! data_ov022_02114508! data_ov022_02114550! data_ov022_02114558! data_ov022_02114580! data_ov022_02114578! data_ov022_02114690! data_ov022_021145a8! data_ov022_021145a0!
+gFlRingModelFile! gFlRingCollisionFile! data_ov022_02114550! data_ov022_02114558! data_ov022_02114580! data_ov022_02114578! data_ov022_02114690! data_ov022_021145a8! data_ov022_021145a0!

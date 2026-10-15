@@ -23,7 +23,7 @@
 #       word reads the reloc target and whose FOLLOWING word is zero, and then
 #       read who references the resulting run.
 #   (b) THE SENTINEL HAZARD. A stored pair that is ALSO compared by value must
-#       move with its pair (MGWRITER's data_ov004_020bc254). The rows below
+#       move with its pair (MGWRITER's pmf_Banner_UpdatePressed_2). The rows below
 #       compare a CELL ADDRESS, never a stored pair, so a face per record is
 #       exact and one-face-per-code-word is not needed.
 #
@@ -160,7 +160,7 @@
 #   table, which is a second thing a reviewer should see measured before it
 #   lands. Written up as a hunk in runs/link100/out/SEAT5/decomp_side.md.
 # ===========================================================================
-src/actors/daLuigi_c.cpp
-src/actors/daMoray_c.cpp
-src/actors/daObjHatenaBlock_c.cpp
+src/game/actors/d_a_luigi.cpp
+src/game/actors/d_a_moray.cpp
+src/game/actors/d_a_obj_hatena_block.cpp
 port/hal/pmf_seat5.cpp

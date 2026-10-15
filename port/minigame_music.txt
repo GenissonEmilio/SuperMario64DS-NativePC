@@ -18,24 +18,24 @@ Minigame music is already dispatched on every boot, by linked code:
 
   dScMgBase_c::AfterInitResources           vtable slot 2
     = src/minigames/d_s_mg_base.cpp           (in slice_mg1.txt, linked)
-    -> func_ov004_020ae330                  (slice_mg1.txt:249, linked)
+    -> Mg_InitMusic                  (slice_mg1.txt:249, linked)
 
-func_ov004_020ae330 (src/func_ov004_020ae330.c) is the whole decision:
+Mg_InitMusic (src/Mg_InitMusic.c) is the whole decision:
 
-    if (data_ov004_020beb68 == 0) return;              scene tracker
-    if (func_ov004_020ae1cc() == 0) {                  enable at +0x2c
+    if (gMgScene == 0) return;              scene tracker
+    if (Mg_GetMusicMode() == 0) {                  enable at +0x2c
         Sound::StopLoadedMusic_Layer1(1);              <-- SILENCE
-        if (data_0209b308 != 0x16f) return;            id at +0x00
-        Sound::LoadAndSetMusic_Layer1(func_ov004_020ae1f0());
+        if (gMgMenuRow != 0x16f) return;            id at +0x00
+        Sound::LoadAndSetMusic_Layer1(Mg_GetMusicTrack());
         return;
     }
-    Sound::LoadAndSetMusic_Layer1(func_ov004_020ae1f0());
+    Sound::LoadAndSetMusic_Layer1(Mg_GetMusicTrack());
 
-func_ov004_020ae1f0 returns self->unk_0c8; slot 1
+Mg_GetMusicTrack returns self->unk_0c8; slot 1
 (src/minigames/d_s_mg_base.cpp:41, host copy in unmatched/MgBase_Slot1.cpp) fills
-unk_0c8 = *(int *)(data_0209b308 + 0x28). The base ctor
-src/_ZN11dScMgBase_cC2Ev.cpp:38 sets data_ov004_020beb68 = self, so the tracker
-gate passes on a direct scene boot; it also reads data_0209b308 + 0x30.
+unk_0c8 = *(int *)(gMgMenuRow + 0x28). The base ctor
+src/_ZN11dScMgBase_cC2Ev.cpp:38 sets gMgScene = self, so the tracker
+gate passes on a direct scene boot; it also reads gMgMenuRow + 0x30.
 
 Every input is one 0x34-byte arm9 record. Both things wrong with it were wrong
 for a direct SM64DS_SCENE boot only, which is why no earlier lane saw it.
@@ -46,22 +46,22 @@ for a direct SM64DS_SCENE boot only, which is why no earlier lane saw it.
 
 config/arm9/symbols.txt:4523-4525:
 
-    data_0209b308 kind:bss addr:0x0209b308      span 0x14
-    data_0209b31c kind:bss addr:0x0209b31c      span 0x20
+    gMgMenuRow kind:bss addr:0x0209b308      span 0x14
+    gMgMenuRowMid kind:bss addr:0x0209b31c      span 0x20
     data_0209b33c kind:bss addr:0x0209b33c      (next symbol, ends the record)
 
 0x14 + 0x20 = 0x34, and the reads index ONE base across both symbols: +0x28
 (music id), +0x2c (enable), +0x30 (base-ctor field). The port hosted it as
 
-    int data_0209b308[4] = {0,0,0,0};      hal/actor_classes_ov081.cpp:66
+    int gMgMenuRow[4] = {0,0,0,0};      hal/actor_classes_ov081.cpp:66
 
 sixteen bytes, with the comment "Zero-initialized, never read at runtime". That
 comment was wrong: the record is read on every minigame boot, and every read
 past +0x0f was out of bounds. It landed in that file only as the sibling of
-data_ov004_020beb68, which has since gone home to ov004's own .bss.
+gMgScene, which has since gone home to ov004's own .bss.
 
 The src declarations agree the object is much larger than four ints --
-src/func_ov004_020ad79c.c reads data_0209b308[5] and [6], func_ov004_020ad8b8.c
+src/Mg_SaveRecordPair.c reads gMgMenuRow[5] and [6], Mg_GetSavedRecord0.c
 reads [0x14/4] -- so the 16-byte host was contradicted by the tree's own
 sources, not only by symbols.txt.
 
@@ -69,8 +69,8 @@ RE-HOSTED in hal/scene_mg_sound.cpp at the ROM's own spacing, using the
 packed-section idiom hal/scene_boot.cpp:559-609 already uses for the l2 run
 that begins at data_0209b33c (the symbol immediately after this record):
 
-    #pragma section(".dsstate$mg0", read, write)   data_0209b308[0x14]
-    #pragma section(".dsstate$mg1", read, write)   data_0209b31c[0x20]
+    #pragma section(".dsstate$mg0", read, write)   gMgMenuRow[0x14]
+    #pragma section(".dsstate$mg1", read, write)   gMgMenuRowMid[0x20]
 
 $mg0/$mg1 sort between the .dsstate$aaa/$zzz sentinels, so both stay inside
 [dsstate_lo, dsstate_hi) and a save state captures them. port_mg_pack_check()
@@ -82,7 +82,7 @@ nothing on every run below. Both stay BSS-zero, which is their DS boot value.
 ---------------------------------------------
 
 The only writer is the Rec Room overlay ov005, src/func_ov005_020c0378.cpp:96-107:
-it copies a 0x34-byte row out of data_ov005_020c24d8 for the minigame the player
+it copies a 0x34-byte row out of sMiniGmRows for the minigame the player
 picked, and THEN launches the scene. ov005 is in no slice and no mount, so
 SM64DS_SCENE=374 bypasses it entirely: music id and enable both read zero,
 enable 0 takes the StopLoadedMusic branch, id 0 fails the != 0x16f test, and
@@ -103,10 +103,10 @@ a host invention on the path the ROM already answers. The env-override shape is
 still available in the tree for what it is good at -- SM64DS_SND_MUSIC is what
 proved the chain plays at all, see section 5.
 
-THE TABLE. data_ov005_020c24d8, from extracted/overlays/overlay_0005.bin
+THE TABLE. sMiniGmRows, from extracted/overlays/overlay_0005.bin
 (overlay base 0x020bfec0, file offset 0x2618). Bounds are the ROM's:
-config/arm9/overlays/ov005/symbols.txt has data_ov005_020c24d8 at :38 and the
-next symbol data_ov005_020c2c28 at :40, so the table is 0x750 bytes = exactly
+config/arm9/overlays/ov005/symbols.txt has sMiniGmRows at :38 and the
+next symbol sMiniGmGroupTabs at :40, so the table is 0x750 bytes = exactly
 36 rows of 0x34. Row layout is func_ov005_020c0378.c's own Entry struct: u16 id
 at +0x00, music at +0x28, enable at +0x2c.
 
@@ -129,7 +129,7 @@ music 12, enable 2.
                           id 0x0176 at +0x00, music 12 at +0x28, enable 2 at +0x2c
 
 port_scene_mg_seat_sound(scene_id) copies the row in two memcpys (0x14 into
-data_0209b308, 0x20 into data_0209b31c) and is a no-op for any non-minigame
+gMgMenuRow, 0x20 into gMgMenuRowMid) and is a no-op for any non-minigame
 scene, gated on the ROM's own IsMinigameActorID. It is called from
 port_scene_begin AFTER the sdat_host_tick that seats the SDAT root and BEFORE
 port_scene_boot spawns the scene, which is before the base ctor and slot 1 read
@@ -147,8 +147,8 @@ own gate answering correctly:
     [mg-probe] after spawn: tracker=307FB114 enable(+2c)=2 music(+28)=12
                id(+0)=374 ae1cc=2 ae1f0=12
 
-func_ov004_020ae1cc answered 2 (not zero, so the StopLoadedMusic branch is NOT
-taken) and func_ov004_020ae1f0 answered 12. The record was right and the ROM's
+Mg_GetMusicMode answered 2 (not zero, so the StopLoadedMusic branch is NOT
+taken) and Mg_GetMusicTrack answered 12. The record was right and the ROM's
 decision was right. The command still never reached the sequencer.
 
 THE CAUSE IS NOT THE RECORD. hal/scene_boot.cpp's port_scene_tick never ticked
@@ -222,10 +222,10 @@ THE MAP GREW AND THE LINKED COUNT DID NOT, which is the shape a re-hosted global
 is supposed to have. Decomposed with port/tools/mapdiff.py rather than by eye:
 
     ADDED symbols: 7    -- all scene_mg_sound.cpp.obj: 3 string literals,
-                           port_mg_sound_rows (the table), data_0209b31c,
+                           port_mg_sound_rows (the table), gMgMenuRowMid,
                            port_scene_mg_seat_sound
     REMOVED symbols: 0
-    MOVED: 2            -- data_0209b308  actor_classes_ov081.cpp.obj ->
+    MOVED: 2            -- gMgMenuRow  actor_classes_ov081.cpp.obj ->
                                           scene_mg_sound.cpp.obj  (the re-host)
                            one shared string literal, star_flow.cpp.obj ->
                                           scene_mg_sound.cpp.obj
@@ -330,7 +330,7 @@ delivered. Two checks, both against the ROM rather than inference:
         config/arm9/overlays/ov004/relocs.txt:319
         from:0x020b0914 kind:arm_call to:0x020ae330 module:overlay(4)
     0x020b0914 is inside slot 2 (_ZN11dScMgBase_c18AfterInitResourcesEj, which starts at
-    0x020b08f0). So func_ov004_020ae330 is called from ONE site, the boot slot
+    0x020b08f0). So Mg_InitMusic is called from ONE site, the boot slot
     this lane fixed. The ROM does not re-run the music decision on a round
     change or a pause; layer 1 is started once and left playing.
 

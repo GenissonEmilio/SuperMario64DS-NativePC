@@ -87,14 +87,14 @@
   "data": [],
   "bss": [
     {
-      "symbol": "data_ov036_021140ac",
+      "symbol": "gRcGuruguruModelFile",
       "address": "0x021140ac",
       "size": "0x8",
       "binding": "STB_GLOBAL",
       "evidence": "model resource handle constructed with file ID 0x6a4"
     },
     {
-      "symbol": "data_ov036_021140b4",
+      "symbol": "gRcGuruguruCollisionFile",
       "address": "0x021140b4",
       "size": "0x8",
       "binding": "STB_GLOBAL",
@@ -571,7 +571,7 @@
       "source": "0x211277c",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov036_021140ac",
+      "symbol": "gRcGuruguruModelFile",
       "addend": 0,
       "target_module": "ov036",
       "target_address": "0x021140ac"
@@ -601,7 +601,7 @@
       "source": "0x211278c",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov036_021140b4",
+      "symbol": "gRcGuruguruCollisionFile",
       "addend": 0,
       "target_module": "ov036",
       "target_address": "0x021140b4"

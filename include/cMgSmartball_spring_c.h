@@ -52,7 +52,7 @@
  * FIELD NAMES and their evidence are tabulated in
  * notes/smartball-provenance.md.
  *
- * CONSTRUCTED BY func_ov006_0211157c, left a free function per the recipe
+ * CONSTRUCTED BY cMgSmartball_spring_c_Construct, left a free function per the recipe
  * (this tree has migrated zero constructors), with only its vtable-symbol
  * reference renamed. Unlike every sibling, its only caller is
  * dScMgSmartball_c::InitResources -- dScMgSmartball_c::SpawnObjects.c never allocates a

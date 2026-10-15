@@ -112,7 +112,7 @@
 #
 # SLOT 3 IS NEW TO THIS FAMILY. No seated minigame class before this one
 # overrides CleanupResources; the six seated at six or seven overrides all sit
-# on 0, 6, 9, 16, 17, 18. The body is func_ov004_020ad90c(this) then return 1.
+# on 0, 6, 9, 16, 17, 18. The body is Mg_CommitRecords(this) then return 1.
 #
 # THE HIERARCHY IS TWO DEEP. The RTTI chain above says so, and section 13's
 # CORRECTION 1 prescribes two reads of CODE as the cheap confirmation. Both were
@@ -125,7 +125,7 @@
 #
 # THE FACTORY NEEDS NO DISPLACEMENT RULING, and it is worth saying because
 # 0x169's did. src/minigames/d_s_mg_hanachan.cpp calls _ZN11dScMgBase_cC2Ev(o) WITH
-# its argument, where src/actors/dScMgCup_c.cpp calls the same base
+# its argument, where src/minigames/d_s_mg_cup.cpp calls the same base
 # constructor with none and rides r0 through. That callee dereferences on its
 # first statement and then writes three vtable words through the pointer, so the
 # difference is a wild write versus a correct one. This factory is on the
@@ -159,7 +159,7 @@
 # pair at 0x0213c994. The first pass derived the SpawnInfo, started the pair
 # scan at the word after it, and reported 29 pairs and 14 code words, missing
 # the six below it and the fifteenth code word 0x020eb3e4 entirely. THE LINK IS
-# WHAT CAUGHT IT: src/actors/dScMgHanachan_c.cpp asks for three .data pairs by
+# WHAT CAUGHT IT: src/minigames/d_s_mg_hanachan_methods.cpp asks for three .data pairs by
 # their C++ spellings and one of the three, 0x0213c96c, is below the SpawnInfo.
 # The lesson for the next lane is to anchor a pair scan on the RELOCATION SET
 # rather than on an address the SpawnInfo happens to bound.
@@ -167,7 +167,7 @@
 # TWO OBJECTS, FOUR FIELDS. The scene object holds its state pair at +0x4660;
 # each of the FIFTEEN wiggler sub-objects at scene+0x4678 (stride 0x98, and the
 # factory's own __cxa_vec_cleanup call spells 0xf and 0x98) holds one at +0x10, a
-# SECOND at +0x00 and a THIRD at +0x08 that src/actors/dScMgHanachan_c.cpp copies
+# SECOND at +0x00 and a THIRD at +0x08 that src/minigames/d_s_mg_hanachan_methods.cpp copies
 # into +0x10. Six code words are the scene's, nine the wigglers'.
 #
 # ---- FIVE DISPATCHERS, AND A THIRD DETECTOR THIS LANE RECOMMENDS ----------
@@ -179,10 +179,10 @@
 # a FIELD -- and the source sweep finds four of the five:
 #
 #     _ZN15dScMgHanachan_c8BehaviorEv   VTABLE SLOT 6, the Behavior. scene +0x4660
-#     func_ov006_020eb018   sub-object +0x10
-#     func_ov006_020eb0c8   sub-object +0x10
-#     func_ov006_020eb31c   sub-object +0x10, and it copies the pair to +0x00
-#     func_ov006_020eb610   sub-object +0x00, OPEN-CODED IN PLAIN INTS
+#     Wiggler_Update   sub-object +0x10
+#     Wiggler_StateHold   sub-object +0x10
+#     Wiggler_StateWait   sub-object +0x10, and it copies the pair to +0x00
+#     Wiggler_Move   sub-object +0x00, OPEN-CODED IN PLAIN INTS
 #
 # THE FIFTH WAS FOUND BY A ROM SWEEP, and the method is the transferable part.
 # SWEEP WORD BY WORD, which run mg9 lane PSY independently arrived at: a linear
@@ -199,7 +199,7 @@
 # and unlike the two prescribed detectors it cannot return a false clean.
 #
 # IT ALSO SETTLES A FALSE POSITIVE. A source sweep for `>>1` beside `&1` over
-# this class's TUs flags src/actors/dScMgHanachan_c.cpp as well. That file's `>>12`
+# this class's TUs flags src/minigames/d_s_mg_hanachan_methods.cpp as well. That file's `>>12`
 # and `param & 1` are ordinary 20.12 fixed-point arithmetic, and the ROM sweep
 # finding no decode in its 0x214 bytes is what says so.
 #
@@ -211,7 +211,7 @@
 #
 # The ov085/ov100 shape -- write host addresses over the .data pairs before
 # anything reads them -- is WRONG here, for the reason section 4 gives for
-# src/func_ov006_020c3b80.c. Slot 9 Render (src/actors/dScMgHanachan_c.cpp) reads the
+# src/FlowerFace_IsIdle.c. Slot 9 Render (src/minigames/d_s_mg_hanachan_methods.cpp) reads the
 # scene object's stored pair AS TWO INTS and compares it BY VALUE against five
 # of the .data pairs, five times, to decide what to draw. A host address never
 # equals a DS address, so a seat that rewrote the pair would leave all five
@@ -231,12 +231,12 @@
 # either extension in any module. BOTH NOW HAVE ONE and both traps are gone
 # from port/unmatched/MgWiggler_Faces.cpp:
 #
-#     func_ov006_020ea914  0x324  ON THE RENDER PATH. Slot 9 calls it
+#     Wiggler_DrawPassA  0x324  ON THE RENDER PATH. Slot 9 calls it
 #                                 unconditionally at 0x020ed0c8 with the word at
 #                                 scene+0x4f60 as its only argument, and that is
 #                                 its ONLY call site: exactly one arm_call
 #                                 relocation in all of ov006 reaches it.
-#                                 -> src/func_ov006_020ea914.c, NONMATCHING,
+#                                 -> src/Wiggler_DrawPassA.c, NONMATCHING,
 #                                 165 of 201 words identical, one register-
 #                                 allocation cause fully written up in the file.
 #                                 It draws the QUESTION PICTURE: one wiggler at
@@ -244,21 +244,21 @@
 #                                 OAM::Render plus the face on segment 0. With
 #                                 the trap in, scene 386 rendered 1200 frames
 #                                 and drew it into a counter 1200 times.
-#     func_ov006_020ec4dc  0x20c  WIGGLER SET-UP VARIANT 3 OF 4.
-#                                 src/actors/dScMgHanachan_c.cpp ends in a four-way
+#     Wiggler_StartPathA  0x20c  WIGGLER SET-UP VARIANT 3 OF 4.
+#                                 src/minigames/d_s_mg_hanachan_methods.cpp ends in a four-way
 #                                 switch on data_ov006_02141fd8: case 0 ->
-#                                 func_ov006_020ecba4, case 1 -> _020ec9c0,
+#                                 Wiggler_StartPathC, case 1 -> _020ec9c0,
 #                                 case 2 -> _020ec84c, all matched; case 3 and
 #                                 default -> this. Its only call site is
 #                                 0x020eceb0, `mov r0,r6 / mov r1,r5 / bl`, so
 #                                 it takes a receiver AND one argument.
-#                                 -> src/func_ov006_020ec4dc.c, MATCHED at
+#                                 -> src/Wiggler_StartPathA.c, MATCHED at
 #                                 mwccarm 2004/b56 with strict relocs, and it
 #                                 has a delink block. It is the fifteen-wiggler
 #                                 grid the ladder reaches at clear count 8.
 #
 # AND THE FOURTEENTH ROUTED STATE NOW HAS AN INSTALLER. The pair that installs
-# 0x020ec458 is loaded by func_ov006_020ec4dc and by nothing else, so while that
+# 0x020ec458 is loaded by Wiggler_StartPathA and by nothing else, so while that
 # body was trapped one of the routed states was installed by nothing the port
 # could run. Seating the body closes that too, and it is why the per-state
 # census is the check that says so rather than the routed total.
@@ -295,13 +295,13 @@
 # THE ov004 DELTA IS ZERO, AND THAT IS A MEASUREMENT. The closure reaches
 # FIFTEEN ov004 TUs that are in no build target, and every one of the fifteen is
 # deliberately excluded because MG1/MG2/BASESET host-copied it:
-#     func_ov004_020add88  _020adf2c  _020b31b4  _020b321c  _020b3278
+#     Mg_DrawFx  _020adf2c  _020b31b4  _020b321c  _020b3278
 #     _020b8714  _020b8778                       the pointer-to-member group
-#     _ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv  _020af094              MgBase_DeclConflict
+#     _ZN11dScMgBase_c21RestoreScreenFromMenuEv  _020af094              MgBase_DeclConflict
 #     _ZN11dScMgBase_c14BeforeBehaviorEv                         MgBase_Slot7
 #     _ZN11dScMgBase_c19BeforeInitResourcesEv                         MgBase_Slot1
 #     _ZN11dScMgBase_c21AfterCleanupResourcesEj  _020b7460              BASESET
-#     func_ov004_020b2cb8                         MgBase_LangTable
+#     Mg_LoadBannerFiles                         MgBase_LangTable
 #     _ZN10dMgState_c8SetStateEi                         the framework's PMF state
 #                                                 setter
 # Adding a line for any of them would put a second definition in the link.
@@ -371,30 +371,30 @@ src/unnamed/arm9/0203/func_0203d5dc.c
 
 # ---- ov006: the class's own closure, minus the five host copies ------------
 src/minigames/d_s_mg_hanachan.cpp
-src/actors/dScMgHanachan_c.cpp
+src/minigames/d_s_mg_hanachan_methods.cpp
 # RETIRED at SLICE1: body now in src/_ZN15dScMgHanachan_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN15dScMgHanachan_cD0Ev.cpp
-# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea324.c
-# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea350.c
-# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea3d0.c
-# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea5f0.c
-# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea658.c
-# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea670.c
-# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea71c.c
-# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea81c.c
-# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea8e0.c
-# FOLDED into src/actors/dScMgHanachan_c.cpp (row 374): src/func_ov006_020ea914.c
+# FOLDED into src/minigames/d_s_mg_hanachan_methods.cpp (row 374): src/Wiggler_Destroy.c
+# FOLDED into src/minigames/d_s_mg_hanachan_methods.cpp (row 374): src/StarPopup_Draw.c
+# FOLDED into src/minigames/d_s_mg_hanachan_methods.cpp (row 374): src/StarPopup_Update.c
+# FOLDED into src/minigames/d_s_mg_hanachan_methods.cpp (row 374): src/StarPopup_Start.c
+# FOLDED into src/minigames/d_s_mg_hanachan_methods.cpp (row 374): src/StarPopup_Clear.c
+# FOLDED into src/minigames/d_s_mg_hanachan_methods.cpp (row 374): src/HanaPopup_DrawAll.c
+# FOLDED into src/minigames/d_s_mg_hanachan_methods.cpp (row 374): src/HanaPopup_UpdateAll.c
+# FOLDED into src/minigames/d_s_mg_hanachan_methods.cpp (row 374): src/HanaPopup_Spawn.c
+# FOLDED into src/minigames/d_s_mg_hanachan_methods.cpp (row 374): src/HanaPopup_ClearAll.c
+# FOLDED into src/minigames/d_s_mg_hanachan_methods.cpp (row 374): src/Wiggler_DrawPassA.c
 # UN-QUARANTINED, run link100 lane HOSTGEN2. The TU is a whole-TU hostgen
 # substitution now (port/CMakeLists.txt's PORT_HOSTGEN_TU list), and the five
 # bodies unmatched/MgWiggler_StateDispatch.cpp host-copied out of it are
 # commented out there. Four of the five are typed member-pointer dispatches of
 # a FIELD, routed to port_mg_wiggler_call0 by hostgen's PMF_SEAM table; the
-# fifth, func_ov006_020eb610, open-codes the same decode in plain ints and is
+# fifth, Wiggler_Move, open-codes the same decode in plain ints and is
 # routed by MG_PMF_CALL. The stride half of the ruling those copies rest on went
 # obsolete with /vmg /vmm; the DS code word half is what the seam answers.
-# HOST-COPIED (SCENES3, run link100 wave 10 round 4): src/actors/dScMgHanachan_c.cpp
+# HOST-COPIED (SCENES3, run link100 wave 10 round 4): src/minigames/d_s_mg_hanachan_methods.cpp
 # is REPLACED by port/unmatched/dScMgHanachan_c.cpp on the row below. Scene 386 died
-# in func_ov006_020eac38 at OAM::Render+0x1d6, a read of a different junk address on
+# in Wiggler_DrawPassB at OAM::Render+0x1d6, a read of a different junk address on
 # every run, because the matched source assigns the local t.urot inside the comma
 # expression that is ARGUMENT TWO of that call and reads t.urot as ARGUMENT EIGHT of
 # it. The cartridge stores the halfword and then writes the same register into
@@ -409,12 +409,12 @@ src/actors/dScMgHanachan_c.cpp
 # names the copy as well, and the generated copy is what compiles. Taking BOTH rows
 # would be a duplicate symbol, so the src row is deliberately absent.
 port/unmatched/dScMgHanachan_c.cpp
-# HOST-COPIED (WIG): src/actors/dScMgHanachan_c.cpp -- table-free FIELD pmf at sub-object +0x10, member-pointer typed
-# HOST-COPIED (WIG): src/actors/dScMgHanachan_c.cpp -- FIELD pmf at sub-object +0x10, member-pointer typed
-# HOST-COPIED (WIG): src/actors/dScMgHanachan_c.cpp -- FIELD pmf at sub-object +0x10, member-pointer typed; ALSO copies the pair down to +0x00
-# HOST-COPIED (WIG): src/actors/dScMgHanachan_c.cpp -- FIELD pmf at sub-object +0x00, OPEN-CODED IN INTS; neither the link nor a member-pointer source sweep can see it
+# HOST-COPIED (WIG): src/minigames/d_s_mg_hanachan_methods.cpp -- table-free FIELD pmf at sub-object +0x10, member-pointer typed
+# HOST-COPIED (WIG): src/minigames/d_s_mg_hanachan_methods.cpp -- FIELD pmf at sub-object +0x10, member-pointer typed
+# HOST-COPIED (WIG): src/minigames/d_s_mg_hanachan_methods.cpp -- FIELD pmf at sub-object +0x10, member-pointer typed; ALSO copies the pair down to +0x00
+# HOST-COPIED (WIG): src/minigames/d_s_mg_hanachan_methods.cpp -- FIELD pmf at sub-object +0x00, OPEN-CODED IN INTS; neither the link nor a member-pointer source sweep can see it
 # HELD, run link100 lane HOSTGEN2: main's consolidated TU above defines
-# func_ov006_020ec4dc as well, and taking both is a duplicate symbol.
-#src/func_ov006_020ec4dc.c
-# HOST-COPIED (WIG): src/actors/dScMgHanachan_c.cpp -- FIELD pmf at scene +0x4660, member-pointer typed; VTABLE SLOT 6, Behavior
+# Wiggler_StartPathA as well, and taking both is a duplicate symbol.
+#src/Wiggler_StartPathA.c
+# HOST-COPIED (WIG): src/minigames/d_s_mg_hanachan_methods.cpp -- FIELD pmf at scene +0x4660, member-pointer typed; VTABLE SLOT 6, Behavior
 # ALREADY WIRED (slice_ccn.txt): src/_ZN12dScMgSlot1_c9betIcon_c6RenderEv.cpp -- listed for closure completeness only; CMake dedupes identical absolute paths, so it adds no line to the build and no linkage

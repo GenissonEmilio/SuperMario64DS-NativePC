@@ -1,4 +1,4 @@
-/* HOST COPY of src/actors/Player.cpp --
+/* HOST COPY of src/game/player/Player.cpp --
  * Player::St_LevelEnter_Main, with its step table read as the eight-byte
  * records it is. That src file is the provenance: its line 22 is the
  * dispatch site this file replaces, (c->*data_ov002_0211075c[...])().
@@ -10,7 +10,7 @@
  * is no src/func_ov002_020c6f3c.cpp; it is this port's own C-linkage name
  * for the host copy below, which the earlier header cited as if it were
  * the source. The symbol that names another overlay's bytes at this
- * address is ov006's func_ov006_020c6f3c (size 0x34), a different
+ * address is ov006's Heyho_Destruct (size 0x34), a different
  * function.
  *
  * The body dispatches the entrance step through

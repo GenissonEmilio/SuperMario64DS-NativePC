@@ -8,7 +8,7 @@
  * was measured, and because a reader who sees one of these addresses come back
  * needs the measurement and not a summary of it.
  *
- * THE PRECEDENT IS func_ov006_020e1854, dScMgCurling_c's twenty-fifth state:
+ * THE PRECEDENT IS Aim_Swing, dScMgCurling_c's twenty-fifth state:
  * an address the ROM reaches, no delink block, no src TU in either extension,
  * and therefore no body this tree may write. What goes in its place is a
  * trap that SAYS WHICH ADDRESS WAS ENTERED and does nothing else. A plausible
@@ -20,7 +20,7 @@
  * delinks.txt rather than a name-shaped lookup miss:
  *
  *   _ZN16dScMgSmartball_c13InitResourcesEv   VTABLE SLOT 0, InitResources.
- *       The delink list runs `src/_ZN16dScMgSmartball_c9Virtual7CEv.cpp .text start:0x02118ae4
+ *       The delink list runs `src/_ZN16dScMgSmartball_c15InitSubScreenBgEv.cpp .text start:0x02118ae4
  *       end:0x02118b70` and then jumps to `src/_ZN16dScMgSmartball_c21AfterCleanupResourcesEj.cpp .text
  *       start:0x0211944c`. The 0x8dc bytes between are this body and nothing
  *       covers them. config/arm9/overlays/ov006/symbols.txt does not name the

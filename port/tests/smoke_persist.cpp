@@ -91,7 +91,7 @@ char data_ov098_0213c384[0x18];
 char data_ov098_0213c388[0x18];
 extern void *data_020a0eac_c;           /* Memory::gameHeapPtr */
 extern void *data_020a0ea0;             /* defaultHeapPtr */
-void _ZN4Heap18InitializeGameHeapEjPS_(unsigned size, void *root);
+void _ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_(unsigned size, void *root);
 unsigned _ZN22ExpandingHeapAllocator10MemoryLeftEv(void *alloc);
 extern void *data_0209f394[];           /* the player array */
 extern unsigned char data_0209f21c;     /* player count */
@@ -190,7 +190,7 @@ static int *boot_actor_world()
        `data_020a0eac_c = data_020a0ea0;`, the game-heap word aliased onto the
        root heap, and the retained-hand-seed comment here said the conversion
        goes with the port/CMakeLists.txt line that carries
-       src/_ZN4Heap18InitializeGameHeapEjPS_.cpp onto this target. That line is
+       src/engine/heap/Heap.cpp onto this target. That line is
        in, so this is that conversion.
        BOTH PROCESSES CONVERT TOGETHER, which is what that comment required and
        what this placement gives for free: the parent and the spawned child are
@@ -199,7 +199,7 @@ static int *boot_actor_world()
        aliases. The gittip header refuses a disk state from any other build
        anyway, so a savestate.bin written before this change is rejected rather
        than loaded against a differently-shaped arena. */
-    _ZN4Heap18InitializeGameHeapEjPS_(0x3b000, 0);
+    _ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_(0x3b000, 0);
     CHECK(data_020a0eac_c != NULL);
     if (!data_020a0eac_c) {
         fprintf(stderr, "InitializeGameHeap returned null -- no game heap\n");

@@ -228,7 +228,7 @@ int _ZTV14MrI_Projectile[31];
 
 /* NAME RACE RESOLVED BY ADDRESS (the shared-window rule, and the same disease
    the sibling fill records for data_ov073_02122f88). src/func_ov071_021209c8.cpp
-   spells its texture-sequence SharedFilePtr `data_ov074_02123038`, but the load
+   spells its texture-sequence SharedFilePtr `gKurikingAngerAnimationFile`, but the load
    site's own relocation settles it: config/arm9/overlays/ov071/relocs.txt has
        from:0x02120a1c kind:load to:0x02123038 module:overlay(71)
    -- ov071's OWN bss pointer, mounted in port/ov071_syms.txt. The ov074
@@ -237,9 +237,9 @@ int _ZTV14MrI_Projectile[31];
 
    RETIRED, run rel0215 wave 2 (lane w2-ov074), AND THE RULING ABOVE STILL
    APPLIES UNCHANGED. The directive here used to be
-     /alternatename:_data_ov074_02123038=_data_ov071_02123038
+     /alternatename:_gKurikingAngerAnimationFile=_data_ov071_02123038
    which worked only while nothing DEFINED the LHS. ov074 now has its own
-   per-symbol mount (port/ov074_syms.txt) and data_ov074_02123038 is one of
+   per-symbol mount (port/ov074_syms.txt) and gKurikingAngerAnimationFile is one of
    Goomboss's fourteen SharedFilePtrs -- its own relocations cite the address
    three times as module:overlay(74) and src/__sinit_ov074_02122978.c
    Constructs it with file id 0x38f -- so the alias became inert and

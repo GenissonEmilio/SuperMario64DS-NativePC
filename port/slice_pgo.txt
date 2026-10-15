@@ -25,7 +25,7 @@
 #      typeinfo (0x0213d704, reached from the word at 0x0213d724) names it
 #      "19dMgMCarlo2CardObj_c" at 0x0213d758. A card object.
 #   5. THE PLAYER TITLE, END TO END AND OUT OF THE ROM. The ov005 launch table
-#      (overlay_0005.bin file offset 0x2618, data_ov005_020c24d8, 36 rows of
+#      (overlay_0005.bin file offset 0x2618, sMiniGmRows, 36 rows of
 #      0x34) has EXACTLY ONE row whose id word is 0x17e -- row 25, param
 #      0x00191901, so save record 25, name-text 25, mode byte 1.
 #      dScMgBase_c's constructor turns the name-text index into a message id
@@ -90,7 +90,7 @@
 #
 # ---- THE WIDTH IS 36, CHECKED FIVE WAYS, AND THE THIRD CHECK IS FOOLED ----
 #
-#   1. SPAN. _ZTV14dScMgMCarlo2_c -> next config symbol data_ov006_0213d878.
+#   1. SPAN. _ZTV14dScMgMCarlo2_c -> next config symbol pmf_PachinkoFlyer_State0.
 #      0x90 bytes = 36 words. (An UPPER bound only, so it refuses a width and
 #      never grants one.)
 #   2. TERMINAL SLOT. Slot 35 holds 0x020ad660, which every dScMgBase_c-derived
@@ -210,7 +210,7 @@
 # the ROM instruction for instruction before it was sliced:
 #   size 0x104 = 65 words = 59 instructions + 6 pool words (0x4f38, 0x5928,
 #   0x020a0e40, 0x020a0de8, 0x020a0de9, 0x592a); case 4 calls
-#   func_ov006_020c1718(self+0x4f38) and bumps +0x5928; case 5 tests
+#   Dealer_IsIdle(self+0x4f38) and bumps +0x5928; case 5 tests
 #   data_020a0de8[idx*4] and data_020a0de9[idx*4] with idx = data_020a0e40[0],
 #   then plays 0x62, sets +0x592a = 0x1e, calls _ZN14dScMgMCarlo2_c14FlipDealtCardsEv and bumps
 #   +0x5928; the default arm calls ApproachLinear2(+0x592a, 0, 1) and returns 1
@@ -250,7 +250,7 @@
 #
 #      over EVERY body in this class's code block 0x020f8ef4..0x020fa75c:
 #      TWENTY-FOUR OF TWENTY-FIVE MATCH. The one that does not is slot 19
-#      (_ZN14dScMgMCarlo2_c13OnTurnIntoEggEi), the NONMATCHING TU this file already accounts
+#      (_ZN14dScMgMCarlo2_c11CanEndStateEi), the NONMATCHING TU this file already accounts
 #      for, and it is not in the tap loop. A matching body cannot be wrong
 #      about the ROM: the compiled bytes ARE the ROM's bytes, and strict-reloc
 #      mode proves every call and global DESTINATION on top of that. The same
@@ -338,21 +338,21 @@
 #
 # HOST-COPIED ELSEWHERE, and listing any of them here would be an LNK2005
 # against a file already on every target:
-#   src/minigames/d_s_mg_single3_d_base.cpp  slot 2 of the middle base. Drops the
+#   src/minigames/d_s_mg_single3d_base.cpp  slot 2 of the middle base. Drops the
 #     framework's second argument; the repair is port_mg_flower_after_init in
 #     port/unmatched/MgFlower_Slot2.cpp. This is the fifth lane to call it.
-#   src/minigames/d_s_mg_single3_d_base.cpp    slot 33 of the middle base. Its last two stores
+#   src/minigames/d_s_mg_single3d_base.cpp    slot 33 of the middle base. Its last two stores
 #     reach LIGHT_COLOR at 0x040004cc, so it builds from the FLW hostgen'd copy.
-#   src/func_ov006_020c1804.cpp  the local-shadow-class model draw this class's
+#   src/Dealer_Draw.cpp  the local-shadow-class model draw this class's
 #     Render reaches at this+0x4f38. Host-copied by run mg6 lane MEM as
 #     port/unmatched/MgMemory2_ModelRender_020c1804.cpp; this class meets the
 #     SAME defect through the SAME body, which is the fan-out dividend section
 #     14 predicts.
 #
 # ALREADY SLICED, so the delta below does not repeat them: the whole
-# 0x020c0xxx / 0x020c1xxx Single3D sub-object family and func_ov006_0210a534
-# come in through port/slice_mem.txt; func_ov006_020c1164 and
-# func_ov006_020c16b4 through port/slice_s381.txt; the ov004 framework, the
+# 0x020c0xxx / 0x020c1xxx Single3D sub-object family and LoadCard2SubBg3
+# come in through port/slice_mem.txt; Dealer_StartReveal and
+# Dealer_IsIdleAtRest through port/slice_s381.txt; the ov004 framework, the
 # thirty-five overlay constructors and the arm9 waves under them through
 # port/slice_mg1.txt. CMake appends every list to the same targets and dedupes
 # identical absolute paths, so nothing is compiled twice.
@@ -365,7 +365,7 @@
 # 43 external call targets leaving this code block, 38 already have a src TU in
 # a seated slice, two (__cxa_vec_cleanup 0x0207328c and __cxa_vec_ctor 0x020733a8)
 # are compiler-runtime helpers with a config symbol and no src TU in any module
-# that the host already defines, one (src/func_ov006_020c1804.cpp) is the host
+# that the host already defines, one (src/Dealer_Draw.cpp) is the host
 # copy named above, and two (src/LoadFile.c at 0x0201816c and
 # src/DecompressLZ16.c at 0x0205a754) are already satisfied by host definitions
 # in hal/level_boot.cpp and hal/fs.cpp.

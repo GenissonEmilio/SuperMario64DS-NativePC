@@ -160,7 +160,7 @@
 // down one row.
 //
 // THE RAIL SNAP IS THE OTHER HALF, and it is what ties this body to the board
-// src/func_ov004_020ae5c4 draws. Six of the eight directions carry a guard on
+// src/Mg_DrawLine draws. Six of the eight directions carry a guard on
 // the walker's column: the three with a leftward component (0, 3, 5) check for
 // 0x21, 0x61, 0xa1, 0xe1 and step LEFT; the three with a rightward component
 // (2, 4, 7) check for 0x1f, 0x5f, 0x9f, 0xdf and step RIGHT. Both land the

@@ -25,6 +25,12 @@
  *   text-only so the definition here is a deadstripped duplicate.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_km1_kurumajiku_AssetId {
+    ASSET_KM1_KURUMAJIKU_BMD = 0x0655,
+    ASSET_KM1_KURUMAJIKU_KCL = 0x0656
+};
+
 #include "daObjKm1_Kurumajiku_c.h"
 #include "SharedFilePtr.h"
 
@@ -110,5 +116,5 @@ s32 daObjKm1_Kurumajiku_c::CleanupResources()
 
 /* The axle's model and collision file handles; data_ov043_02112344.model
  * and .kcl point at them. */
-Km1KurumajikuModelFilePtr data_ov043_02112610(1621);
-Km1KurumajikuCollisionFilePtr data_ov043_02112608(1622);
+Km1KurumajikuModelFilePtr gKm1KurumajikuModelFile(ASSET_KM1_KURUMAJIKU_BMD);
+Km1KurumajikuCollisionFilePtr gKm1KurumajikuCollisionFile(ASSET_KM1_KURUMAJIKU_KCL);

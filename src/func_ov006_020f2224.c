@@ -8,7 +8,7 @@
 // head; this candidate colours `self` into sl and schedules its spills differently, which
 // nets the five-word difference. Logic verified instruction by instruction against the ROM
 // across all four arms and the tail. This is the same documented regperm/coloring floor the
-// sibling Wanted / minigame bodies (func_ov006_020f2790, func_ov006_0212a764) shipped
+// sibling Wanted / minigame bodies (func_ov006_020f2790, DealPetals) shipped
 // NONMATCHING against. Counts as decompiled, not matched.
 //
 // dScMgLuigi_c ("Wanted!" minigame) SCRIPTED round layout. The round-state driver

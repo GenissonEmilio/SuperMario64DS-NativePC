@@ -10,7 +10,7 @@
     "contiguous linker run: 0x020f8ef4..0x020fa75c, 25 functions, from config/arm9/overlays/ov006/delinks.txt and ov006/symbols.txt. Every function's end equals the next function's start (D1 0x020f8ef4+0x74 = D0 at 0x020f8f68, ... CardObj C1 0x020fa740+0x1c = 0x020fa75c), so the run has no interior gap and no unclaimed byte.",
     "THE RANGE IS NOT NEW. main already carries `src/minigames/d_s_mg_m_carlo2.cpp: complete / .text start:0x020f8ef4 end:0x020fa75c` in config/arm9/overlays/ov006/delinks.txt. This registration therefore widens no span and relinquishes no legacy entry -- the only change is the manifest entry itself, the same shape ov006/dScMgSlot1_c_classInit landed as (#2767). The queue row's blocker cited src/actors/dScMgMCarlo2_c.cpp, which does not exist in the tree; the real one-legacy-file is src/minigames/d_s_mg_m_carlo2.cpp, and the row's own reading was right: this TU needs manifest registration, not a shard merge.",
     "two classes, both the cartridge's own RTTI spelling -- nothing is coined, so the coined-name RTTI-home refusal does not apply. dScMgMCarlo2_c: _ZTI14dScMgMCarlo2_c at ov006:0x0213d714, _ZTS14dScMgMCarlo2_c at 0x0213d730, _ZTV14dScMgMCarlo2_c at 0x0213d7e8. dMgMCarlo2CardObj_c: _ZTI19dMgMCarlo2CardObj_c at 0x0213d704, _ZTS19dMgMCarlo2CardObj_c at 0x0213d758, _ZTV19dMgMCarlo2CardObj_c at 0x0213d728. The scene class also owns the TU's four .data globals (data_ov006_0213d6f4..0x0213d700: board state, dealt-card count << 12, and the pick flag), the language-indexed tile-file table data_ov006_0213d744, the sprite table data_ov006_0213d770, and g_profile_MG_MCARLO2 at 0x0213d70c, whose word 0 relocates to dScMgMCarlo2_c_classInit.",
-    "TOP BOUNDARY IS REAL. 0x020fa75c starts the enrolled, complete src/actors/dScMgPachinko_c.cpp run (dScMgPachinko_c's own members, classInit at 0x020ff3ec) -- a different class, so the run cannot legitimately extend upward.",
+    "TOP BOUNDARY IS REAL. 0x020fa75c starts the enrolled, complete src/minigames/d_s_mg_pachinko.cpp run (dScMgPachinko_c's own members, classInit at 0x020ff3ec) -- a different class, so the run cannot legitimately extend upward.",
     "BOTTOM BOUNDARY: the enrolled, complete d_s_mg_m_carlo.cpp run (dScMgMCarlo_c's TU, 0x020f7634..0x020f8ef4, ending at 0x020f8ef4) abuts with a zero-byte gap. Both cuts are the delinker's and both runs are already enrolled complete. Inside this run, the scene's classInit (dScMgMCarlo2_c_classInit at 0x020fa6ac) sits just before the final function, the card class's out-of-line C1 (0x020fa740 + 0x1c = 0x020fa75c, the run end).",
     "module sinit corroboration: ov006's .ctor table is 31 entries at 0x0213356c..0x021335e8 (read out of extracted/overlays/overlay_0006.bin, module base 0x020bfec0) and NOT ONE of them points inside 0x020f8ef4..0x020fa75c -- every entry targets the __sinit cluster 0x0212f4c4..0x021333e0, and the TU's own dScMgMCarlo2_c_classInit is invoked from that cluster rather than registered directly. The scene's D1 and D0 are compiler-emitted: ~dScMgMCarlo2_c is inline in dScMgMCarlo2_c.h, so InitResources is the key function and the vtable emitted here makes the compiler emit both out of line in cartridge order (the source file says so at its foot, and the ROM order proves it: D1/D0 open the run)."
   ],
@@ -178,14 +178,14 @@
       "ordinal": 19
     },
     {
-      "symbol": "_ZN14dScMgMCarlo2_c13OnTurnIntoEggEi",
+      "symbol": "_ZN14dScMgMCarlo2_c11CanEndStateEi",
       "address": "0x020fa3d0",
       "size": "0x00000104",
       "legacy_source": "src/minigames/d_s_mg_m_carlo2.cpp",
       "ordinal": 20
     },
     {
-      "symbol": "_ZN14dScMgMCarlo2_c13OnYoshiTryEatEi",
+      "symbol": "_ZN14dScMgMCarlo2_c10StartRoundEi",
       "address": "0x020fa4d4",
       "size": "0x00000098",
       "legacy_source": "src/minigames/d_s_mg_m_carlo2.cpp",

@@ -32,15 +32,15 @@
 // that filled one derived table would have left six of its own slots holding
 // raw DS words.  Both edges are read off code, not inferred from names:
 //
-//   src/actors/dScMgMemory2_c.cpp (the factory, 0x020f75d4) calls
+//   src/minigames/d_s_mg_memory2.cpp (the factory, 0x020f75d4) calls
 //   _ZN11dScMgBase_cC2Ev(p) -- dScMgBase_c's constructor -- then writes
 //   _ZTV19dScMgSingle3DBase_c into p[0], constructs the Particle::SysTracker at
 //   +0x471c, then writes _ZTV14dScMgMemory2_c over it.
 //
-//   src/actors/dScMgMemory2_c.cpp (slot 17, D0) unwinds them in the OPPOSITE
+//   src/minigames/d_s_mg_memory2.cpp (slot 17, D0) unwinds them in the OPPOSITE
 //   order: 0x0213d4d4 first, then 0x0213e448, then
 //   Particle::SysTracker::~SysTracker(+0x471c) and _ZN11dScMgBase_cD2Ev.
-//   src/actors/dScMgMemory2_c.cpp (slot 16, D2) does the same without the
+//   src/minigames/d_s_mg_memory2.cpp (slot 16, D2) does the same without the
 //   Deallocate.
 //
 // A hierarchy written by the constructor and unwritten by the destructor in
@@ -103,7 +103,7 @@
 // port/unmatched/MgFlower_Slot2.cpp already carries the repair as
 // port_mg_flower_after_init, and its header ends "THE NEXT LANE TO SEAT 361 OR
 // 363 SHOULD CALL THIS RATHER THAN WRITE A SECOND."  This is 363, and it calls
-// it.  src/minigames/d_s_mg_single3_d_base.cpp stays out of port/slice_mem.txt for the same
+// it.  src/minigames/d_s_mg_single3d_base.cpp stays out of port/slice_mem.txt for the same
 // reason it is out of port/slice_flw.txt: listing it would be an LNK2005
 // against that host copy.
 //
@@ -139,7 +139,7 @@
 // port/unmatched/MgMemory2_StateDispatch.cpp carries the four TABLE
 // dispatchers and the twenty-nine state addresses; port/unmatched/
 // MgMemory2_FieldPmf.cpp carries the three that dispatch a member pointer held
-// in an object FIELD, one of which -- func_ov004_020b52fc -- no previous lane
+// in an object FIELD, one of which -- Coin_Update -- no previous lane
 // had found.  Both headers are the derivation.  Nothing in this file dispatches
 // a member pointer.
 //
@@ -183,8 +183,8 @@ int   _ZN19dScMgSingle3DBase_c14BeforeBehaviorEv(void *c);                     /
 int   _ZN19dScMgSingle3DBase_c12BeforeRenderEv(void *c);                     /* slot 10 */
 int   _ZN19dScMgSingle3DBase_cD1Ev(char *c);                     /* slot 16 D2 */
 int   _ZN19dScMgSingle3DBase_cD0Ev(char *c);                     /* slot 17 D0 */
-int   _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(void);                        /* slot 26 */
-void  _ZN19dScMgSingle3DBase_c9Virtual84Ev(char *c);                     /* slot 33 */
+int   _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(void);                        /* slot 26 */
+void  _ZN19dScMgSingle3DBase_c11InitEnginesEv(char *c);                     /* slot 33 */
 
 /* dScMgMemory2_c's own eight.  _ZN14dScMgMemory2_c8BehaviorEv is the HOST COPY in
    unmatched/MgMemory2_StateDispatch.cpp, not the src TU: it is the
@@ -194,9 +194,9 @@ int   _ZN14dScMgMemory2_c8BehaviorEv(void *self);        /* slot  6 Behavior, ho
 int   _ZN14dScMgMemory2_c6RenderEv(char *c);           /* slot  9 Render */
 void *_ZN14dScMgMemory2_cD1Ev(char *c);           /* slot 16 D2 */
 void *_ZN14dScMgMemory2_cD0Ev(char *c);           /* slot 17 D0 */
-void  _ZN14dScMgMemory2_c13OnYoshiTryEatEi(char *c);           /* slot 18 state reset */
-int   _ZN14dScMgMemory2_c13OnTurnIntoEggEi(char *c);           /* slot 19 */
-int   _ZN14dScMgMemory2_c15OnGroundPoundedEv(char *p);           /* slot 21 */
+void  _ZN14dScMgMemory2_c10StartRoundEi(char *c);           /* slot 18 state reset */
+int   _ZN14dScMgMemory2_c11CanEndStateEi(char *c);           /* slot 19 */
+int   _ZN14dScMgMemory2_c10OnDealDoneEv(char *p);           /* slot 21 */
 
 /* the factory */
 int  *dScMgMemory2_c_classInit(void);
@@ -212,20 +212,20 @@ void     port_mg_dispatch_counts(unsigned *calls, unsigned *unknown);
 /* the persistent minigame record the difficulty is READ FROM, and the two
    framework bodies that address it. Nothing new is defined here: the storage
    is hal/level_boot.cpp's .dsstate$savblk0004 and the index function is
-   src/func_ov004_020adc3c.c. Named so the census can print the record the
+   src/Mg_GetSaveTable.c. Named so the census can print the record the
    board size was seeded from rather than leave it to be inferred. */
-extern void         *data_ov004_020beb68;     /* the live dScMgBase_c `this` */
+extern void         *gMgScene;     /* the live dScMgBase_c `this` */
 extern unsigned char data_0209caf4[];         /* 36 records x 20 bytes       */
-int  func_ov004_020adc3c(void *c);            /* (self->field_8 >> 8) & 0xff */
+int  Mg_GetSaveTable(void *c);            /* (self->field_8 >> 8) & 0xff */
 
 }  /* extern "C" */
 
 /* The record row this class's object is keyed to, or -1 with no live base.
-   func_ov004_020ad878 -- the ONLY writer of +0xb4 goes through it -- computes
+   Mg_GetSavedRecord1 -- the ONLY writer of +0xb4 goes through it -- computes
    the same index from the same pointer. */
 static int port_mg_record_index(void)
 {
-    return data_ov004_020beb68 ? func_ov004_020adc3c(data_ov004_020beb68) : -1;
+    return gMgScene ? Mg_GetSaveTable(gMgScene) : -1;
 }
 
 // ---- the tick witness ------------------------------------------------------
@@ -255,9 +255,9 @@ static void *__fastcall s3_d2(void *s, void *)
 static void *__fastcall s3_d0(void *s, void *)
 { M3D(17); return (void *)(size_t)_ZN19dScMgSingle3DBase_cD0Ev((char *)s); }
 static int  __fastcall s3_v26(void *, void *)
-{ M3D(26); return _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(); }
+{ M3D(26); return _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(); }
 static int  __fastcall s3_v33(void *s, void *)
-{ M3D(33); _ZN19dScMgSingle3DBase_c9Virtual84Ev((char *)s); return 0; }
+{ M3D(33); _ZN19dScMgSingle3DBase_c11InitEnginesEv((char *)s); return 0; }
 
 /* ---- dScMgMemory2_c's eight --------------------------------------------- */
 static int  __fastcall mem_init(void *s, void *)
@@ -335,11 +335,11 @@ static void *__fastcall mem_d0(void *s, void *)
    MOVES WITH THE BUILD.  The parameter exists so __fastcall cleans four bytes;
    neither ROM body reads its r1 and neither is called with it. */
 static int  __fastcall mem_reset(void *s, void *, int /*ridethrough*/)
-{ MEM(18); _ZN14dScMgMemory2_c13OnYoshiTryEatEi((char *)s); return 1; }
+{ MEM(18); _ZN14dScMgMemory2_c10StartRoundEi((char *)s); return 1; }
 static int  __fastcall mem_v19(void *s, void *, int /*ridethrough*/)
-{ MEM(19); return _ZN14dScMgMemory2_c13OnTurnIntoEggEi((char *)s); }
+{ MEM(19); return _ZN14dScMgMemory2_c11CanEndStateEi((char *)s); }
 static int  __fastcall mem_v21(void *s, void *)
-{ MEM(21); return _ZN14dScMgMemory2_c15OnGroundPoundedEv((char *)s); }
+{ MEM(21); return _ZN14dScMgMemory2_c10OnDealDoneEv((char *)s); }
 
 /* SM64DS_SCENE_SLOT0=0 and SM64DS_SCENE_SLOT9=0, the diagnostics every scene
    seat in this port carries, counted separately so a run can never read a no-op
@@ -472,8 +472,8 @@ extern "C" void port_scene_fill_memory2(void)
    without the registry table growing a second column.
 
    THE FACTORY NEEDS NO DISPLACEMENT RULING, and that is worth recording because
-   0x169's did.  src/actors/dScMgMemory2_c.cpp calls _ZN11dScMgBase_cC2Ev(p) WITH
-   its argument, where src/actors/dScMgCup_c.cpp (0x169's factory) calls the
+   0x169's did.  src/minigames/d_s_mg_memory2.cpp calls _ZN11dScMgBase_cC2Ev(p) WITH
+   its argument, where src/minigames/d_s_mg_cup.cpp (0x169's factory) calls the
    same base constructor with none and rides r0 through -- and that callee
    dereferences on its first statement and then writes three vtable words
    through the pointer, so the difference is a wild write versus a correct one.
@@ -535,11 +535,11 @@ extern "C" void port_scene_memory2_hits(void)
     /* THE FLOOR THAT USED TO BE HERE. _ZN14dScMgMemory2_c9DrawCardsEv is the sixth call
        vtable slot 9 (Render) makes, and it is the only code in this class that
        draws a card. It has a config symbol, still no delink block, and now a
-       src TU: src/actors/dScMgMemory2_c.cpp, carried by port/slice_mem.txt. The
+       src TU: src/minigames/d_s_mg_memory2.cpp, carried by port/slice_mem.txt. The
        line stays so a reader of an old log and a reader of a new one are
        looking at the same place. */
     std::printf("[scene] dScMgMemory2_c floor: the Render callee 0x020f5b98 is "
-                "DECOMPILED (src/actors/dScMgMemory2_c.cpp) and no longer trapped\n");
+                "DECOMPILED (src/minigames/d_s_mg_memory2.cpp) and no longer trapped\n");
 
     /* The two state indexes the ROM's own dispatchers read, at the offsets
        disassembled in unmatched/MgMemory2_StateDispatch.cpp section 2. +0x53d4
@@ -559,7 +559,7 @@ extern "C" void port_scene_memory2_hits(void)
        the draw shifts down by 12, +0x10 is the card identity (the row of the
        eleven-by-five halfword table at 0x0213d45c), +0x15 is the flip frame
        (its column) and +0x14 is the per-card state _ZN14dScMgMemory2_c8CardMoveEi sets to
-       1 when a dealt card reaches its slot.  src/actors/dScMgMemory2_c.cpp is what
+       1 when a dealt card reaches its slot.  src/minigames/d_s_mg_memory2.cpp is what
        populates them: 16, 18 or 20 records depending on +0x540a, each with a
        type in 1..8/9/10 twice over, x = 128.0 and y = -128.0 -- off the top of
        the screen, which is where the deal animates them in from.  So a count
@@ -642,13 +642,13 @@ extern "C" void port_scene_memory2_hits(void)
            default 0 / 8
 
        and +0xb4 is written in exactly ONE place, InitResources
-       (src/actors/dScMgMemory2_c.cpp):  *(int*)(self+0xb4) = func_ov004_020ad878()
+       (src/minigames/d_s_mg_memory2.cpp):  *(int*)(self+0xb4) = Mg_GetSavedRecord1()
        which is data_0209caf4[minigame index][1] -- the PERSISTENT per-minigame
        record. So the board size is saved progress, and a fresh record (zero,
        what SaveData::SetDefaultValuesMg leaves) is the sixteen-card board.
 
        The round end writes it back: _ZN14dScMgMemory2_c13CheckFinishedEv calls
-       func_ov004_020ad79c(score, +0xb4 +/- 1) and _ZN14dScMgMemory2_c10ResultWaitEv mirrors
+       Mg_SaveRecordPair(score, +0xb4 +/- 1) and _ZN14dScMgMemory2_c10ResultWaitEv mirrors
        the same +/-1 onto the live +0xb4. This block prints both ends so a run
        can say which of them moved. */
     if (g_mem_self) {
@@ -675,7 +675,7 @@ extern "C" void port_scene_memory2_hits(void)
                         rec[0], rec[1], rec[2], rec[3], rec[4]);
         } else {
             std::printf("[scene] dScMgMemory2_c save record: NO minigame index "
-                        "(data_ov004_020beb68 = %p)\n", data_ov004_020beb68);
+                        "(gMgScene = %p)\n", gMgScene);
         }
     }
     std::fflush(stdout);

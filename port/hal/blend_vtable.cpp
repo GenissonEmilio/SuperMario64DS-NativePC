@@ -53,9 +53,9 @@
 #include "BlendModelAnim.h"
 
 #ifndef PORT_CXX_ALIASES_LINKED
-extern "C" void _ZN4Heap10DeallocateEPv(void *self, void *ptr);
-struct Heap { void _Deallocate(void *ptr); };
-void Heap::_Deallocate(void *ptr) { _ZN4Heap10DeallocateEPv(this, ptr); }
+extern "C" void _ZN5mHeap6Heap_t10DeallocateEPv(void *self, void *ptr);
+namespace mHeap { struct Heap_t { void _Deallocate(void *ptr); }; }
+void mHeap::Heap_t::_Deallocate(void *ptr) { _ZN5mHeap6Heap_t10DeallocateEPv(this, ptr); }
 #endif
 
 static void __fastcall blend_dtor(void *, void *) {}

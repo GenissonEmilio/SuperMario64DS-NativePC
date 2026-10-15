@@ -8,21 +8,21 @@
 // ---- 1. WHY THERE WAS NO MUSIC --------------------------------------------
 //
 // dScMgBase_c::AfterInitResources (vtable slot 2, src/minigames/d_s_mg_base.cpp,
-// linked and in the slice) calls func_ov004_020ae330 on every minigame boot.
+// linked and in the slice) calls Mg_InitMusic on every minigame boot.
 // That function:
-//     if (data_ov004_020beb68 == 0) return;                 // scene tracker
-//     if (func_ov004_020ae1cc() == 0) {                     // enable at +0x2c
+//     if (gMgScene == 0) return;                 // scene tracker
+//     if (Mg_GetMusicMode() == 0) {                     // enable at +0x2c
 //         Sound::StopLoadedMusic_Layer1(1);                 // <-- NO MUSIC
-//         if (data_0209b308 != 0x16f) return;               // id at +0x00
-//         Sound::LoadAndSetMusic_Layer1(func_ov004_020ae1f0());
+//         if (gMgMenuRow != 0x16f) return;               // id at +0x00
+//         Sound::LoadAndSetMusic_Layer1(Mg_GetMusicTrack());
 //         return;
 //     }
-//     Sound::LoadAndSetMusic_Layer1(func_ov004_020ae1f0()); // enable != 0
-// func_ov004_020ae1f0 returns self->unk_0c8, which slot 1
-// (src/minigames/d_s_mg_base.cpp:41) fills from data_0209b308 + 0x28 (the music
-// id). The base ctor _ZN11dScMgBase_cC2Ev:38 sets data_ov004_020beb68 = self,
+//     Sound::LoadAndSetMusic_Layer1(Mg_GetMusicTrack()); // enable != 0
+// Mg_GetMusicTrack returns self->unk_0c8, which slot 1
+// (src/minigames/d_s_mg_base.cpp:41) fills from gMgMenuRow + 0x28 (the music
+// id). The base ctor _ZN11dScMgBase_cC2Ev:38 sets gMgScene = self,
 // so the scene-tracker gate passes on a direct scene boot, and also reads
-// data_0209b308 + 0x30.
+// gMgMenuRow + 0x30.
 //
 // So the whole music start is data-driven off ONE record, and two things about
 // that record were wrong for a direct SM64DS_SCENE boot. (A THIRD defect, not
@@ -32,12 +32,12 @@
 // gate answered enable=2 and music=12 and STILL no command reached the
 // sequencer. Both halves are needed and both are in this lane.)
 //
-//   UNDERSIZED. The record is data_0209b308 (span 0x14 to data_0209b31c) plus
-//   data_0209b31c (span 0x20 to data_0209b33c) -- 0x34 bytes read as one
+//   UNDERSIZED. The record is gMgMenuRow (span 0x14 to gMgMenuRowMid) plus
+//   gMgMenuRowMid (span 0x20 to data_0209b33c) -- 0x34 bytes read as one
 //   object (music at +0x28, enable at +0x2c, base-ctor field at +0x30). It was
-//   hosted as `int data_0209b308[4]` (16 bytes) in
+//   hosted as `int gMgMenuRow[4]` (16 bytes) in
 //   hal/actor_classes_ov081.cpp, where it landed only as the sibling of
-//   data_ov004_020beb68; every read past +0x0f was out of bounds. It is
+//   gMgScene; every read past +0x0f was out of bounds. It is
 //   re-hosted here at 0x34, using the packed-.dsstate idiom
 //   hal/scene_boot.cpp:559 already uses for the run above it (the two symbols
 //   have to be contiguous because the reads index one base across both), with
@@ -45,8 +45,8 @@
 //   and it stays BSS (zeroed) because that is its DS boot value.
 //
 //   UNSEEDED. The only writer of the record is the Rec Room overlay ov005
-//   (src/func_ov005_020c0378.cpp:96-107), which copies a 0x34-byte row out of
-//   data_ov005_020c24d8 for the minigame the player picked and THEN launches
+//   (src/UpdateGameSelect.cpp:96-107), which copies a 0x34-byte row out of
+//   sMiniGmRows for the minigame the player picked and THEN launches
 //   the minigame scene. ov005 is in no slice and no mount, so a direct
 //   SM64DS_SCENE=374 boot never runs it: music id and enable read zero, enable
 //   0 takes the StopLoadedMusic branch, id 0 fails the != 0x16f test, and no
@@ -65,9 +65,9 @@
 // (hal/star_flow.cpp:223) already prove Sound::LoadAndSetMusic_Layer1 plays,
 // so seeding the record is the whole of what was missing.
 //
-// data_ov005_020c24d8: overlay_0005.bin (base 0x020bfec0), file offset 0x2618,
-// 0x750 bytes = 36 rows of 0x34, next symbol data_ov005_020c2c28. Row layout
-// (func_ov005_020c0378.c's Entry): u16 id at +0x00, music at +0x28, enable at
+// sMiniGmRows: overlay_0005.bin (base 0x020bfec0), file offset 0x2618,
+// 0x750 bytes = 36 rows of 0x34, next symbol sMiniGmGroupTabs. Row layout
+// (UpdateGameSelect.c's Entry): u16 id at +0x00, music at +0x28, enable at
 // +0x2c. The lookup is first-match by id; that is exact for 29 of the 30
 // minigames. Only id 0x017c appears twice with different music (row 15 =
 // music 8 enable 1, row 35 = music 7 enable 2): the ROM's ov005 selects by
@@ -91,23 +91,23 @@
 //
 // Two symbols, contiguous, at the ROM's 0x14 spacing. $mg0 then $mg1 sort
 // between the .dsstate$aaa/$zzz sentinels so both land in the captured span,
-// and adjacently so data_0209b308 + 0x28 reaches into data_0209b31c the way
+// and adjacently so gMgMenuRow + 0x28 reaches into gMgMenuRowMid the way
 // the reads above do. align(4) keeps the base word-aligned for the int reads;
 // the pack check proves the spacing at run time rather than trusting it.
 #pragma section(".dsstate$mg0", read, write)
 #pragma section(".dsstate$mg1", read, write)
 extern "C" {
 __declspec(allocate(".dsstate$mg0")) __declspec(align(4))
-unsigned char data_0209b308[0x14];
+unsigned char gMgMenuRow[0x14];
 __declspec(allocate(".dsstate$mg1")) __declspec(align(4))
-unsigned char data_0209b31c[0x20];
+unsigned char gMgMenuRowMid[0x20];
 }
 
 static void port_mg_pack_check(void)
 {
-    long d = (long)(data_0209b31c - data_0209b308);
+    long d = (long)(gMgMenuRowMid - gMgMenuRow);
     if (d != 0x14)
-        std::fprintf(stderr, "  [mg-snd] PACK BROKEN: data_0209b31c at +%ld, "
+        std::fprintf(stderr, "  [mg-snd] PACK BROKEN: gMgMenuRowMid at +%ld, "
                      "ROM says +0x14\n", d);
 }
 
@@ -155,15 +155,15 @@ extern "C" int IsMinigameActorID(unsigned id);   /* src/IsMinigameActorID.c */
 
 // ---- THE ROW'S OTHER HALF: THE SPAWN PARAMETER (run mg8, lane MMD) --------
 //
-// The rows above are not only a sound table. func_ov005_020c0378 -- the Rec
+// The rows above are not only a sound table. UpdateGameSelect -- the Rec
 // Room's launch path, the same body that copies the 0x34 bytes into
-// data_0209b308 -- ends with
+// gMgMenuRow -- ends with
 //
-//     Scene::StartSceneFade(*(u16*)(data_ov005_020c24d8 + m),      the scene id
+//     Scene::StartSceneFade(*(u16*)(sMiniGmRows + m),      the scene id
 //                           *(int*)(data_ov005_020c24dc + m),      THE PARAM
 //                           0);
 //
-// and data_ov005_020c24dc is data_ov005_020c24d8 + 4, so the SECOND argument is
+// and data_ov005_020c24dc is sMiniGmRows + 4, so the SECOND argument is
 // the row's own +0x04 word. Scene::StartSceneFade hands it to
 // Scene::SetSceneToSpawn(id, param) and the spine lands it on the actor at +8.
 //
@@ -172,18 +172,18 @@ extern "C" int IsMinigameActorID(unsigned id);   /* src/IsMinigameActorID.c */
 //     *(short*)(self+0x465e) = data_ov004_020bc070[(*(u32*)(self+8) >> 0x10) & 0xff];
 //     *(int*)(self+8)        = *(u32*)(self+8) & 0xffff;
 //
-// and func_ov004_020adc3c reads (self->field_8 & 0xff00) >> 8 -- which the mask
+// and Mg_GetSaveTable reads (self->field_8 & 0xff00) >> 8 -- which the mask
 // above deliberately keeps. So ONE word carries two indices:
 //
 //     (param >> 8)  & 0xff   the row of data_0209caf4, the PERSISTENT
-//                            per-minigame save record. func_ov004_020ad878
+//                            per-minigame save record. Mg_GetSavedRecord1
 //                            reads field 1 of it and dScMgMemory2_c's
 //                            InitResources copies that into +0xb4, which is
 //                            the only input _ZN14dScMgMemory2_c12ShuffleCardsEv has for
 //                            dealing 16, 18 or 20 cards.
 //     (param >> 16) & 0xff   the row of data_ov004_020bc070, the minigame's
 //                            name-text id, read back at +0x465e by
-//                            src/_ZN11dScMgBase_c16OnAimedAtWithEggEv.cpp.
+//                            src/_ZN11dScMgBase_c17SaveScreenForMenuEv.cpp.
 //
 // hal/scene_boot.cpp used to pass 0 here, so every minigame in the port shared
 // save record 0 and every one of them asked for name text index 0. Memory
@@ -220,8 +220,8 @@ extern "C" void port_scene_mg_seat_sound(int scene_id)
         const unsigned char *row = port_mg_sound_rows + i * 0x34;
         unsigned id = (unsigned)row[0] | ((unsigned)row[1] << 8);
         if ((int)id == scene_id) {
-            std::memcpy(data_0209b308, row, 0x14);
-            std::memcpy(data_0209b31c, row + 0x14, 0x20);
+            std::memcpy(gMgMenuRow, row, 0x14);
+            std::memcpy(gMgMenuRowMid, row + 0x14, 0x20);
             int music  = (int)((unsigned)row[0x28] | ((unsigned)row[0x29] << 8)
                              | ((unsigned)row[0x2a] << 16)
                              | ((unsigned)row[0x2b] << 24));

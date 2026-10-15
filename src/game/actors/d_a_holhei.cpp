@@ -98,10 +98,10 @@ extern unsigned int RandomIntInternal(void* s);
 
 extern int data_ov062_0211ddf0[]; /* model, file id 0x327 */
 extern int data_ov062_0211dde8[]; /* animation 0x328 */
-extern void *data_ov062_0211dde0; /* animation 0x329 */
+extern void *gHoruheiLiftLoopAnimationFile; /* animation 0x329 */
 extern void *data_ov062_0211de00[]; /* animation 0x32a, grab */
 extern int *data_ov062_0211de08[]; /* animation 0x32b */
-extern void *data_ov062_0211ddf8; /* animation 0x32c, walk */
+extern void *gHoruheiWalkAnimationFile; /* animation 0x32c, walk */
 
 /* The ten state records (HolheiState, 0x10 apart). See the banner for
    why they keep these element types. */
@@ -149,10 +149,10 @@ int daHolhei_c::InitResources()
     mModel.SetFile((BMD_File *)Model::LoadFile(*(SharedFilePtr *)data_ov062_0211ddf0), 1, -1);
     mShadowModel.InitCylinder();
     dExtFrameCtrl_c::LoadFile(*(SharedFilePtr *)data_ov062_0211dde8);
-    dExtFrameCtrl_c::LoadFile(*(SharedFilePtr *)&data_ov062_0211dde0);
+    dExtFrameCtrl_c::LoadFile(*(SharedFilePtr *)&gHoruheiLiftLoopAnimationFile);
     dExtFrameCtrl_c::LoadFile(*(SharedFilePtr *)data_ov062_0211de00);
     dExtFrameCtrl_c::LoadFile(*(SharedFilePtr *)data_ov062_0211de08);
-    dExtFrameCtrl_c::LoadFile(*(SharedFilePtr *)&data_ov062_0211ddf8);
+    dExtFrameCtrl_c::LoadFile(*(SharedFilePtr *)&gHoruheiWalkAnimationFile);
     mVertAccel = -0x3000;
     mTerminalVelocity = -0x1e000;
     _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(&mdCc_c, (dActor_c*)this, 0xc8000, 0xfa000, 0x200004, 0x3010);
@@ -285,10 +285,10 @@ int daHolhei_c::CleanupResources()
 {
     ((SharedFilePtr *)data_ov062_0211ddf0)->Release();
     ((SharedFilePtr *)data_ov062_0211dde8)->Release();
-    ((SharedFilePtr *)&data_ov062_0211dde0)->Release();
+    ((SharedFilePtr *)&gHoruheiLiftLoopAnimationFile)->Release();
     ((SharedFilePtr *)data_ov062_0211de00)->Release();
     ((SharedFilePtr *)data_ov062_0211de08)->Release();
-    ((SharedFilePtr *)&data_ov062_0211ddf8)->Release();
+    ((SharedFilePtr *)&gHoruheiWalkAnimationFile)->Release();
     return 1;
 }
 
@@ -370,7 +370,7 @@ int daHolhei_c::func_ov062_02116c78(){
     mTurnWait = 0x3c;
     mChargeStep = 0;
     mModel.speed = 0x1000;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModel, ((HolheiFile *)&data_ov062_0211ddf8)->file, 0, 0x1000, 0);
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModel, ((HolheiFile *)&gHoruheiWalkAnimationFile)->file, 0, 0x1000, 0);
     mTargetAngY = Vec3_HorzAngle(&mPosX, &mHomePosX);
     return 1;
 }
@@ -393,7 +393,7 @@ extern "C" int func_ov062_02116b80(daHolhei_c *self){
     self->mTargetAngY = (short)((RandomIntInternal(data_0209e650) >> 8) << 0xc);
     self->mStateTimer = (short)(((RandomIntInternal(data_0209e650) >> 8) & 0x3f) + 0x64);
     self->mModel.speed = 0x1000;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&self->mModel, ((HolheiFile *)&data_ov062_0211ddf8)->file, 0, 0x1000, 0);
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&self->mModel, ((HolheiFile *)&gHoruheiWalkAnimationFile)->file, 0, 0x1000, 0);
     return 1;
 }
 
@@ -515,7 +515,7 @@ int daHolhei_c::func_ov062_021167c0(){
 // @symbol func_ov062_02116784
 extern "C" int func_ov062_02116784(daHolhei_c *self) {
     self->mChargeStep = 0;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&self->mModel, ((HolheiFile *)&data_ov062_0211ddf8)->file, 0, 0x1000, 0);
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&self->mModel, ((HolheiFile *)&gHoruheiWalkAnimationFile)->file, 0, 0x1000, 0);
     return 1;
 }
 
@@ -677,7 +677,7 @@ extern "C" int func_ov062_0211632c(daHolhei_c *self){
 /* Start an animation, then wait a random few frames facing a random way. */
 // @symbol func_ov062_021162b8
 extern "C" int func_ov062_021162b8(daHolhei_c *self){
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&self->mModel, ((HolheiFile *)&data_ov062_0211dde0)->file, 0, 0x1000, 0);
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&self->mModel, ((HolheiFile *)&gHoruheiLiftLoopAnimationFile)->file, 0, 0x1000, 0);
     self->mStateTimer = (short)(((RandomIntInternal(data_0209e650) >> 8) & 0x1f) + 0x14);
     self->mTargetAngY = (short)((RandomIntInternal(data_0209e650) >> 8) << 0xc);
     return 1;

@@ -19,7 +19,7 @@
 # set_source_files_properties(... LANGUAGE CXX) is needed and none is added.
 #
 # ==== THREE TUs ARE DELIBERATELY NOT HERE =================================
-# src/actors/daPgDfdr_c.cpp and src/actors/daPgDfdr_c.cpp are DA_PG_DFDR's
+# src/game/actors/d_a_pg_dfdr.cpp and src/game/actors/d_a_pg_dfdr.cpp are DA_PG_DFDR's
 # two pointer-to-member dispatch sites, `(c->**p)()` over an mwcc eight-byte
 # member pointer. MSVC's is four bytes and cannot deliver `this` in ecx onto
 # the plain cdecl state bodies, so both are host-copied in
@@ -27,7 +27,7 @@
 # byte-locked in src/ as proof. That is the recipe's rule 13 and the
 # MgCurling/PathLift precedent.
 #
-# src/actors/daPgDfdr_c.cpp is DA_PG_DFDR's Render and is also not here. It
+# src/game/actors/d_a_pg_dfdr.cpp is DA_PG_DFDR's Render and is also not here. It
 # dispatches slot 5 of the ModelAnim at +0x320 through a six-virtual ROM-order
 # shadow, and the host _ZTV9ModelAnim is MSVC-numbered with Virtual18 really in
 # that slot -- the Whomp/Fish/FlyingCarpet collision. MEASURED, not predicted:
@@ -53,41 +53,41 @@
 # _ZN7daOts_c16CleanupResourcesEv.cpp.obj via port/slice_gate177.txt, so the fill
 # calls it through include/Bully.h as the method it is rather than adding a TU.
 src/game/actors/d_a_i_donketu.cpp
-src/actors/daObjSlIceBlock_c.cpp
-# FOLDED into src/actors/daObjSlIceBlock_c.cpp (row 56): src/d_a_obj_sl_ice_block_sl_iceblock_shot.c
-src/actors/daSnmBth_c.cpp
-# FOLDED into src/actors/daObjSlIceBlock_c.cpp (row 56): src/_ZN10SlidingIce13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjSlIceBlock_c.cpp (row 56): src/_ZN10SlidingIce16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjSlIceBlock_c.cpp (row 56): src/_ZN10SlidingIce6RenderEv.cpp
-# FOLDED into src/actors/daObjSlIceBlock_c.cpp (row 56): src/_ZN10SlidingIce8BehaviorEv.cpp
+src/game/actors/d_a_obj_sl_ice_block.cpp
+# FOLDED into src/game/actors/d_a_obj_sl_ice_block.cpp (row 56): src/d_a_obj_sl_ice_block_sl_iceblock_shot.c
+src/game/actors/d_a_snm_bth.cpp
+# FOLDED into src/game/actors/d_a_obj_sl_ice_block.cpp (row 56): src/_ZN10SlidingIce13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_sl_ice_block.cpp (row 56): src/_ZN10SlidingIce16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_sl_ice_block.cpp (row 56): src/_ZN10SlidingIce6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_sl_ice_block.cpp (row 56): src/_ZN10SlidingIce8BehaviorEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN10SlidingIceD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN10SlidingIceD0Ev.cpp
-# FOLDED into src/actors/daObjSlIceBlock_c.cpp (row 56): src/_ZN10SlidingIceD1Ev.cpp
-# FOLDED into src/actors/daSnmBth_c.cpp (row 58): src/_ZN13SnowmanBreath13InitResourcesEv.cpp
-# FOLDED into src/actors/daSnmBth_c.cpp (row 58): src/_ZN13SnowmanBreath16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daSnmBth_c.cpp (row 58): src/_ZN13SnowmanBreath16OnPendingDestroyEv.cpp
-# FOLDED into src/actors/daSnmBth_c.cpp (row 58): src/_ZN13SnowmanBreath6RenderEv.cpp
-# FOLDED into src/actors/daSnmBth_c.cpp (row 58): src/_ZN13SnowmanBreath8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_sl_ice_block.cpp (row 56): src/_ZN10SlidingIceD1Ev.cpp
+# FOLDED into src/game/actors/d_a_snm_bth.cpp (row 58): src/_ZN13SnowmanBreath13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_snm_bth.cpp (row 58): src/_ZN13SnowmanBreath16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_snm_bth.cpp (row 58): src/_ZN13SnowmanBreath16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_snm_bth.cpp (row 58): src/_ZN13SnowmanBreath6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_snm_bth.cpp (row 58): src/_ZN13SnowmanBreath8BehaviorEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN13SnowmanBreathD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN13SnowmanBreathD0Ev.cpp
-# FOLDED into src/actors/daSnmBth_c.cpp (row 58): src/_ZN13SnowmanBreathD1Ev.cpp
-# FOLDED into src/actors/daObjSlIceBlock_c.cpp (row 56): src/__sinit_ov027_02112cb0.c
+# FOLDED into src/game/actors/d_a_snm_bth.cpp (row 58): src/_ZN13SnowmanBreathD1Ev.cpp
+# FOLDED into src/game/actors/d_a_obj_sl_ice_block.cpp (row 56): src/__sinit_ov027_02112cb0.c
 # FOLDED into src/game/actors/d_a_i_donketu.cpp (row 55): src/__sinit_ov027_02112d1c.c
-src/actors/daPgDfdr_c.cpp
+src/game/actors/d_a_pg_dfdr.cpp
 src/unnamed/ov027/__sinit_ov027_02112f70.c
-# FOLDED into src/actors/daObjSlIceBlock_c.cpp (row 56): src/_ZN10SlidingIce15OnHitByMegaCharER6Player.cpp
-src/actors/daPgDfdr_c.cpp
+# FOLDED into src/game/actors/d_a_obj_sl_ice_block.cpp (row 56): src/_ZN10SlidingIce15OnHitByMegaCharER6Player.cpp
+src/game/actors/d_a_pg_dfdr.cpp
 # RE-KEYED at the main->port sync (lane SYNC7, the wave-9 fold merge): main folded
-# this body into src/actors/daPgDfdr_c.cpp (ov027 delinks, .text 0x0211207c..0x021120c4, one
+# this body into src/game/actors/d_a_pg_dfdr.cpp (ov027 delinks, .text 0x0211207c..0x021120c4, one
 # absorbed range), which port/slice_ov027cast.txt's own daPgDfdr_c.cpp row, port/slice_fold2.txt:249 and port/slice_unmatch2.txt:42 already compiles, so the symbols this row seated
 # now come from there and the per-function file is gone from main's tree.
 #src/d_a_pg_dfdr.c
-# FOLDED into src/actors/daSnmBth_c.cpp (row 58): src/_ZN21SnowmanBreathParticleD1Ev.cpp
-# FOLDED into src/actors/daSnmBth_c.cpp (row 58): src/_ZN21SnowmanBreathParticle9HitPlayerEv.cpp
-# FOLDED into src/actors/daSnmBth_c.cpp (row 58): src/_ZN21SnowmanBreathParticle12CheckSnowmanEv.cpp
-# FOLDED into src/actors/daSnmBth_c.cpp (row 58): src/_ZN21SnowmanBreathParticle14UpdatePositionEv.cpp
-# FOLDED into src/actors/daSnmBth_c.cpp (row 58): src/_ZN21SnowmanBreathParticle6RenderEv.cpp
-# FOLDED into src/actors/daSnmBth_c.cpp (row 58): src/_ZN21SnowmanBreathParticle8BehaviorEv.cpp
-# FOLDED into src/actors/daSnmBth_c.cpp (row 58): src/_ZN21SnowmanBreathParticle8TrySpawnER6Player.cpp
-# FOLDED into src/actors/daSnmBth_c.cpp (row 58): src/_ZN21SnowmanBreathParticleC1Ev.cpp
-# FOLDED into src/actors/daSnmBth_c.cpp (row 58): src/_ZN13SnowmanBreath15IsPlayerInRangeEv.cpp
+# FOLDED into src/game/actors/d_a_snm_bth.cpp (row 58): src/_ZN21SnowmanBreathParticleD1Ev.cpp
+# FOLDED into src/game/actors/d_a_snm_bth.cpp (row 58): src/_ZN21SnowmanBreathParticle9HitPlayerEv.cpp
+# FOLDED into src/game/actors/d_a_snm_bth.cpp (row 58): src/_ZN21SnowmanBreathParticle12CheckSnowmanEv.cpp
+# FOLDED into src/game/actors/d_a_snm_bth.cpp (row 58): src/_ZN21SnowmanBreathParticle14UpdatePositionEv.cpp
+# FOLDED into src/game/actors/d_a_snm_bth.cpp (row 58): src/_ZN21SnowmanBreathParticle6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_snm_bth.cpp (row 58): src/_ZN21SnowmanBreathParticle8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_snm_bth.cpp (row 58): src/_ZN21SnowmanBreathParticle8TrySpawnER6Player.cpp
+# FOLDED into src/game/actors/d_a_snm_bth.cpp (row 58): src/_ZN21SnowmanBreathParticleC1Ev.cpp
+# FOLDED into src/game/actors/d_a_snm_bth.cpp (row 58): src/_ZN13SnowmanBreath15IsPlayerInRangeEv.cpp

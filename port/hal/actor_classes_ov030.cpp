@@ -118,7 +118,7 @@
 //
 //   data_ov030_02115e0c[11], .bss, 16 bytes a cell, declared by
 //   src/__sinit_ov030_02114924.c's own `S16 { S8 lo, hi; }`;
-//   src/actors/daMky_c.cpp installs `&data_ov030_02115e0c[idx]` at +0x3a4;
+//   src/game/actors/d_a_mky.cpp installs `&data_ov030_02115e0c[idx]` at +0x3a4;
 //   func_ov030_02114170 dispatches pp+0 (the enter half, the sinit's `.lo`) and
 //   func_ov030_02114134 dispatches pp+1 (the tick half, the `.hi`).
 //
@@ -128,7 +128,7 @@
 //
 // STATE 3's TICK HALF, func_ov030_021136b0 (0x3d0 bytes), was once the ONE
 // missing body in the overlay and sat behind a loud trap. It is matched now:
-// src/actors/daMky_c.cpp carries it (ROM ordinal 27) inside the complete ov030
+// src/game/actors/d_a_mky.cpp carries it (ROM ordinal 27) inside the complete ov030
 // TU 0x02111688..0x021145e0, and the cell seats that body like the other ten.
 //
 // ============================================================================
@@ -331,16 +331,16 @@ int _ZTV7daMky_c[31];           /* vtspan: data_ov030_02115bfc, config name for 
    the mount defines the plain C name. The hal/cxx_aliases.cpp recipe applied
    verbatim; each was measured off the first link's own unresolved list, with
    the mangling MSVC actually produced, never predicted from the declaration:
-     src/actors/daMky_c.cpp     extern int data_ov030_02115ce0[];
-     src/actors/daMky_c.cpp     extern int data_ov030_02115d18[];
-     src/actors/daMky_c.cpp     the same symbol again (LNK2001)
-     src/actors/daMky_c.cpp  extern char data_ov002_*;
+     src/game/actors/d_a_mky.cpp     extern int gMonkeyHoldAnimationFile[];
+     src/game/actors/d_a_mky.cpp     extern int gMonkeyRunAnimationFile[];
+     src/game/actors/d_a_mky.cpp     the same symbol again (LNK2001)
+     src/game/actors/d_a_mky.cpp  extern char data_ov002_*;
    All five are already mounted and already in the map as plain C symbols --
    the first two by port/ov030_syms.txt, the last three by port/ov002_syms.txt
    -- so this is a spelling bridge and not a new definition. Every LHS is
    deliberately undefined, which is what alternatename_guard.py checks. */
-#pragma comment(linker, "/alternatename:?data_ov030_02115ce0@@3PAHA=_data_ov030_02115ce0")
-#pragma comment(linker, "/alternatename:?data_ov030_02115d18@@3PAHA=_data_ov030_02115d18")
+#pragma comment(linker, "/alternatename:?gMonkeyHoldAnimationFile@@3PAHA=_gMonkeyHoldAnimationFile")
+#pragma comment(linker, "/alternatename:?gMonkeyRunAnimationFile@@3PAHA=_gMonkeyRunAnimationFile")
 #pragma comment(linker, "/alternatename:?data_ov002_0210da40@@3DA=_data_ov002_0210da40")
 #pragma comment(linker, "/alternatename:?data_ov002_0210d9a0@@3DA=_data_ov002_0210d9a0")
 #pragma comment(linker, "/alternatename:?data_ov002_0210d9c0@@3DA=_data_ov002_0210d9c0")
@@ -714,7 +714,7 @@ static int __fastcall mky_render(void *s, void *)
   return _ZN7daMky_c6RenderEv(s); }
 static int __fastcall mky_pdes(void *s, void *)
 { (void)s; _ZN7daMky_c16OnPendingDestroyEv(); return 0; }
-/* Slot 16, D1. src/actors/daMky_c.cpp is a real MSVC-synthesised
+/* Slot 16, D1. src/game/actors/d_a_mky.cpp is a real MSVC-synthesised
    destructor over a local shadow class, so it is kept OUT of the slice: MSVC
    would mangle it ?1RollingLogTtm@@UAE@XZ and the Itanium name the slot needs
    would never exist. Chain spelled directly, HIGH ADDRESS FIRST, from that
@@ -741,8 +741,8 @@ static int __fastcall mky_pdes(void *s, void *)
 
    DO NOT REUSE THIS AS A GENERAL RULE. A destructor that installs a DIFFERENT
    table is doing real work and its stores must be reproduced -- this overlay
-   has three such bodies two slots away: src/actors/daMky_c.cpp and
-   src/actors/daMky_c.cpp (which are RollingLogTtm's, not UkikiCage's) walk
+   has three such bodies two slots away: src/game/actors/d_a_mky.cpp and
+   src/game/actors/d_a_mky.cpp (which are RollingLogTtm's, not UkikiCage's) walk
    0x02115a48 -> _ZTV13daObjMaruta_c -> _ZTV10dBgActor_c, three tables deep, and
    src/_ZN13daObjHmBskt_cD1Ev.cpp walks two. All three stay in the slice and run
    their own stores. */
@@ -753,7 +753,7 @@ static int __fastcall mky_pdes(void *s, void *)
    after the ov030 names were settled is the rolling log's D1 at 0x0211155c
    (dBgW_KcMbg +0x124, Model +0xd4): the Ukiki's collision entry and shadow
    were never destroyed and a mesh-collision destructor ran on memory this
-   class does not have there. The body is the matched src/actors/daMky_c.cpp
+   class does not have there. The body is the matched src/game/actors/d_a_mky.cpp
    (??1daMky_c@@QAE@XZ), reached through the face hal/actorport_dtor_bridge.cpp
    aliases onto it. */
 extern "C" void __fastcall actorport_d16t_daMky_c(void *, void *);
@@ -791,7 +791,7 @@ extern "C" void hal_fill_ukiki_vtable(void)
 }
 
 // ---- method faces ----------------------------------------------------------
-// src/actors/daMky_c.cpp and _ZN7daMky_c6RenderEv
+// src/game/actors/d_a_mky.cpp and _ZN7daMky_c6RenderEv
 // .cpp are real MSVC methods against include/RollingLogTtm.h
 // (?InitResources@RollingLogTtm@@..., not __ZN13RollingLogTtm...), so the
 // Itanium names the vtable slots need are faced here -- the IceSheet /

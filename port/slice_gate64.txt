@@ -80,44 +80,44 @@ src/game/actors/d_a_klr.cpp
 # symbol); every override is a func_ov079_* free function.
 # _ZN11BillBlaster8BehaviorEv.cpp (BillBlaster::Behavior) routed through hostgen
 # (GATE64_SYMS): mwcc-tolerated out-of-line member redeclarations, C2761 to MSVC.
-src/actors/daObjBkKillerdai_c.cpp
-# FOLDED into src/actors/daObjBkKillerdai_c.cpp (row 83): src/_ZN11BillBlasterD1Ev.cpp
+src/game/actors/d_a_obj_bk_killerdai.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_killerdai.cpp (row 83): src/_ZN11BillBlasterD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN11BillBlasterD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN11BillBlasterD0Ev.cpp
-# FOLDED into src/actors/daObjBkKillerdai_c.cpp (row 83): src/_ZN11BillBlaster4KillEv.cpp
-# FOLDED into src/actors/daObjBkKillerdai_c.cpp (row 83): src/_ZN11BillBlaster15OnHitByMegaCharER6Player.cpp
-# FOLDED into src/actors/daObjBkKillerdai_c.cpp (row 83): src/_ZN11BillBlaster16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjBkKillerdai_c.cpp (row 83): src/_ZN11BillBlaster6RenderEv.cpp
-# FOLDED into src/actors/daObjBkKillerdai_c.cpp (row 83): src/_ZN11BillBlaster13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_killerdai.cpp (row 83): src/_ZN11BillBlaster4KillEv.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_killerdai.cpp (row 83): src/_ZN11BillBlaster15OnHitByMegaCharER6Player.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_killerdai.cpp (row 83): src/_ZN11BillBlaster16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_killerdai.cpp (row 83): src/_ZN11BillBlaster6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_killerdai.cpp (row 83): src/_ZN11BillBlaster13InitResourcesEv.cpp
 
 # gate 68: FORTRESS_WALL (47) and gate 69: FORTRESS_WALL_BREAKABLE (48). One
 # class (_ZTV12FortressWall), a Platform; both factories build the same object.
 # Behavior is plain (matched src), so it is here rather than host-copied.
-src/actors/daObjBk_Kabe_c.cpp
-# FOLDED into src/actors/daObjBk_Kabe_c.cpp (row 96): src/d_a_obj_bk_kabe_bk_kabe00.c
-# FOLDED into src/actors/daObjBk_Kabe_c.cpp (row 96): src/_ZN12FortressWall13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjBk_Kabe_c.cpp (row 96): src/_ZN12FortressWall6RenderEv.cpp
-# FOLDED into src/actors/daObjBk_Kabe_c.cpp (row 96): src/_ZN12FortressWall16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjBk_Kabe_c.cpp (row 96): src/_ZN12FortressWall8BehaviorEv.cpp
-# FOLDED into src/actors/daObjBk_Kabe_c.cpp (row 96): src/_ZN12FortressWallD1Ev.cpp
+src/game/actors/d_a_obj_bk_kabe.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_kabe.cpp (row 96): src/d_a_obj_bk_kabe_bk_kabe00.c
+# FOLDED into src/game/actors/d_a_obj_bk_kabe.cpp (row 96): src/_ZN12FortressWall13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_kabe.cpp (row 96): src/_ZN12FortressWall6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_kabe.cpp (row 96): src/_ZN12FortressWall16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_kabe.cpp (row 96): src/_ZN12FortressWall8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_kabe.cpp (row 96): src/_ZN12FortressWallD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN12FortressWallD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN12FortressWallD0Ev.cpp
-# FOLDED into src/actors/daObjBk_Kabe_c.cpp (row 96): src/_ZN12FortressWall4KillEv.cpp
-# FOLDED into src/actors/daObjBk_Kabe_c.cpp (row 96): src/_ZN12FortressWall24OnHitByCannonBlastedCharER8dActor_c.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_kabe.cpp (row 96): src/_ZN12FortressWall4KillEv.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_kabe.cpp (row 96): src/_ZN12FortressWall24OnHitByCannonBlastedCharER8dActor_c.cpp
 
 # the four static initialisers
 # FOLDED into src/game/actors/d_a_btn.cpp (row 26): src/__sinit_ov079_02127618.c
 # FOLDED into src/game/actors/d_a_klr.cpp (row 67): src/__sinit_ov079_021279d4.c
 src/unnamed/ov079/__sinit_ov079_02127a10.c
-# FOLDED into src/actors/daObjBk_Kabe_c.cpp (row 96): src/__sinit_ov079_02127acc.c
+# FOLDED into src/game/actors/d_a_obj_bk_kabe.cpp (row 96): src/__sinit_ov079_02127acc.c
 
 # closure dependencies not pulled by any earlier slice:
 #   _ZN10dBgActor_c14KillByMegaCharER6Player -- FortressWall/BillBlaster's mega-hit
 #   func_0200f760                          -- BulletBill::Behavior's first call
 #   func_02011d38                          -- reached from the Whomp closure
 #   func_ov002_020dd8b8                    -- reached from func_ov079_02125058
-src/actors/dBgActor_c.cpp
-src/actors/dActor_c.cpp
+src/runtime/actor/d_bg_actor.cpp
+src/runtime/actor/d_actor.cpp
 src/engine/sound/Sound.cpp
 src/engine/sound/Sound2.cpp
-src/actors/Player.cpp
+src/game/player/Player.cpp

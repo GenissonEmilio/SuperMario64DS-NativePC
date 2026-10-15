@@ -72,7 +72,7 @@
    linker for a mangled name that nothing defines:
 
      src/_ZN7HeaveHo6RenderEv.cpp        extern int data_0209f32c;
-     src/actors/daPkn_c.cpp  extern G2  data_ov084_02130df4;
+     src/game/actors/d_a_pkn.cpp  extern G2  data_ov084_02130df4;
 
    The mount defines both at C linkage (_data_0209f32c out of
    hal/cxx_aliases.cpp, _data_ov084_02130df4 out of ov084_syms.c.obj), so each

@@ -246,21 +246,21 @@
   ],
   "bss": [
     {
-      "symbol": "data_ov018_02113be8",
+      "symbol": "gPenguinWait1TextureSequenceFile",
       "address": "0x02113be8",
       "size": "0x8",
       "binding": "STB_GLOBAL",
       "evidence": "texture-sequence file handle constructed with file ID 0x407"
     },
     {
-      "symbol": "data_ov018_02113bf0",
+      "symbol": "gPenguinWait1AnimationFile",
       "address": "0x02113bf0",
       "size": "0x8",
       "binding": "STB_GLOBAL",
       "evidence": "animation file handle constructed with file ID 0x406"
     },
     {
-      "symbol": "data_ov018_02113bf8",
+      "symbol": "gPenguinAngryTextureSequenceFile",
       "address": "0x02113bf8",
       "size": "0x8",
       "binding": "STB_GLOBAL",
@@ -274,7 +274,7 @@
       "evidence": "model file handle constructed with file ID 0x3fb"
     },
     {
-      "symbol": "data_ov018_02113c08",
+      "symbol": "gPenguinWalkAnimationFile",
       "address": "0x02113c08",
       "size": "0x8",
       "binding": "STB_GLOBAL",
@@ -894,7 +894,7 @@
       "source": "0x02112dac",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov018_02113bf0",
+      "symbol": "gPenguinWait1AnimationFile",
       "addend": 0,
       "target_module": "ov018",
       "target_address": "0x02113bf0"
@@ -924,7 +924,7 @@
       "source": "0x02112dbc",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov018_02113c08",
+      "symbol": "gPenguinWalkAnimationFile",
       "addend": 0,
       "target_module": "ov018",
       "target_address": "0x02113c08"
@@ -944,7 +944,7 @@
       "source": "0x02112dc8",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov018_02113bf8",
+      "symbol": "gPenguinAngryTextureSequenceFile",
       "addend": 0,
       "target_module": "ov018",
       "target_address": "0x02113bf8"
@@ -974,7 +974,7 @@
       "source": "0x02112dd8",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov018_02113be8",
+      "symbol": "gPenguinWait1TextureSequenceFile",
       "addend": 0,
       "target_module": "ov018",
       "target_address": "0x02113be8"

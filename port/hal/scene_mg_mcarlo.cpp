@@ -87,15 +87,15 @@
 // (this, flags) where flags == 1 marks the actor for destruction. The repair is
 // port_mg_flower_after_init in port/unmatched/MgFlower_Slot2.cpp, whose header
 // asks the next lane to call it rather than write a second one; memory2 was
-// the second and this is the third. src/minigames/d_s_mg_single3_d_base.cpp stays out of
+// the second and this is the third. src/minigames/d_s_mg_single3d_base.cpp stays out of
 // port/slice_s381.txt for the same reason it is out of the other two slices.
 //
-// _ZN19dScMgSingle3DBase_c9Virtual84Ev (slot 33, the once-per-boot 3D setup) ends with two
+// _ZN19dScMgSingle3DBase_c11InitEnginesEv (slot 33, the once-per-boot 3D setup) ends with two
 // stores to LIGHT_COLOR at 0x040004cc, which a plain src build lands in the
 // memory ntr maps across the I/O window without ever telling the geometry
 // engine -- the "Yoshi is a black silhouette" defect run mg5 lane YTEX
 // measured. It builds from the hostgen'd copy port/CMakeLists.txt's
-// FLW_HOSTGEN_SYMS already emits, and src/minigames/d_s_mg_single3_d_base.cpp is out of this
+// FLW_HOSTGEN_SYMS already emits, and src/minigames/d_s_mg_single3d_base.cpp is out of this
 // slice for the same reason.
 //
 // ---- 4b. THERE IS A THIRD TABLE, AND IT IS THE CARD DRAW ------------------
@@ -214,8 +214,8 @@
 //     the class does; it cannot say the picture is right. Section 16's "the
 //     zeros that are honest and the zeros that are not" applies unchanged.
 //   - THE SAVE RECORD IS THE PORT'S USUAL GAP. Slot 0 seeds +0xb4 from
-//     func_ov004_020ad878(), which is data_0209caf4[record][1], and slot 6
-//     writes it back through func_ov004_020ad79c with the same 0x270f clamp
+//     Mg_GetSavedRecord1(), which is data_0209caf4[record][1], and slot 6
+//     writes it back through Mg_SaveRecordPair with the same 0x270f clamp
 //     section 17 disassembles for Memory Master. The port has no backup cart,
 //     so SaveData::SetDefaultValuesMg zeroes the record on every boot and this
 //     class restarts at its first board every launch. That is a save-medium
@@ -256,8 +256,8 @@ int   _ZN19dScMgSingle3DBase_c14BeforeBehaviorEv(void *c);                     /
 int   _ZN19dScMgSingle3DBase_c12BeforeRenderEv(void *c);                     /* slot 10 */
 int   _ZN19dScMgSingle3DBase_cD1Ev(char *c);                     /* slot 16 D2 */
 int   _ZN19dScMgSingle3DBase_cD0Ev(char *c);                     /* slot 17 D0 */
-int   _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(void);                        /* slot 26 */
-void  _ZN19dScMgSingle3DBase_c9Virtual84Ev(char *c);                     /* slot 33 */
+int   _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(void);                        /* slot 26 */
+void  _ZN19dScMgSingle3DBase_c11InitEnginesEv(char *c);                     /* slot 33 */
 
 /* dScMgMCarlo_c's own seven */
 int   _ZN13dScMgMCarlo_c13InitResourcesEv(char *c);           /* slot  0 InitResources */
@@ -265,8 +265,8 @@ int   _ZN13dScMgMCarlo_c8BehaviorEv(void *c);           /* slot  6 Behavior     
 int   _ZN13dScMgMCarlo_c6RenderEv(char *c);           /* slot  9 Render        */
 void *_ZN13dScMgMCarlo_cD1Ev(char *c);           /* slot 16 D2            */
 void *_ZN13dScMgMCarlo_cD0Ev(char *c);           /* slot 17 D0            */
-void  _ZN13dScMgMCarlo_c13OnYoshiTryEatEi(char *c);           /* slot 18 state reset   */
-int   _ZN13dScMgMCarlo_c13OnTurnIntoEggEi(char *c);           /* slot 19               */
+void  _ZN13dScMgMCarlo_c10StartRoundEi(char *c);           /* slot 18 state reset   */
+int   _ZN13dScMgMCarlo_c11CanEndStateEi(char *c);           /* slot 19               */
 
 /* dMgMCarloCardObj_c's two, section 4b */
 void  _ZN18dMgMCarloCardObj_c6RenderEv(char *thiz);        /* slot  0 the card draw */
@@ -307,20 +307,20 @@ void  port_mg_dispatch_counts(unsigned *calls, unsigned *unknown);
 /* The persistent minigame record this class's board progress is READ FROM and
    WRITTEN BACK TO. Nothing new is defined here: the storage is
    hal/level_boot.cpp's .dsstate$savblk0004 and the index function is
-   src/func_ov004_020adc3c.c. Named so the census can print the record rather
+   src/Mg_GetSaveTable.c. Named so the census can print the record rather
    than leave it to be inferred. */
-extern void         *data_ov004_020beb68;     /* the live dScMgBase_c `this` */
+extern void         *gMgScene;     /* the live dScMgBase_c `this` */
 extern unsigned char data_0209caf4[];         /* 36 records x 20 bytes       */
-int   func_ov004_020adc3c(void *c);           /* (self->field_8 >> 8) & 0xff */
+int   Mg_GetSaveTable(void *c);           /* (self->field_8 >> 8) & 0xff */
 
 }  /* extern "C" */
 
 /* The record row this class's object is keyed to, or -1 with no live base.
-   func_ov004_020ad878 -- which slot 0 seeds +0xb4 from -- goes through the
+   Mg_GetSavedRecord1 -- which slot 0 seeds +0xb4 from -- goes through the
    same index function on the same pointer. */
 static int port_mg_record_index(void)
 {
-    return data_ov004_020beb68 ? func_ov004_020adc3c(data_ov004_020beb68) : -1;
+    return gMgScene ? Mg_GetSaveTable(gMgScene) : -1;
 }
 
 // ---- the tick witness ------------------------------------------------------
@@ -350,9 +350,9 @@ static void *__fastcall s3_d2(void *s, void *)
 static void *__fastcall s3_d0(void *s, void *)
 { M3D(17); return (void *)(size_t)_ZN19dScMgSingle3DBase_cD0Ev((char *)s); }
 static int  __fastcall s3_v26(void *, void *)
-{ M3D(26); return _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(); }
+{ M3D(26); return _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(); }
 static int  __fastcall s3_v33(void *s, void *)
-{ M3D(33); _ZN19dScMgSingle3DBase_c9Virtual84Ev((char *)s); return 0; }
+{ M3D(33); _ZN19dScMgSingle3DBase_c11InitEnginesEv((char *)s); return 0; }
 
 /* ---- dScMgMCarlo_c's own seven ------------------------------------------ */
 static int  __fastcall mca_init(void *s, void *)
@@ -418,8 +418,8 @@ static void *__fastcall mca_d0(void *s, void *)
    lane can watch it happen rather than take it on the family's word: slot 0's
    own tail dispatches slot 18 through the object's vtable at offset 0x48 with
    `mvn r1,#0` -- one argument, value -1 -- at 0x020f8e08. Both ROM bodies then
-   ignore their r1 (_ZN13dScMgMCarlo_c13OnYoshiTryEatEi overwrites it with `mov r1,#4` on its
-   fifth instruction; _ZN13dScMgMCarlo_c13OnTurnIntoEggEi never reads it), so the parameter
+   ignore their r1 (_ZN13dScMgMCarlo_c10StartRoundEi overwrites it with `mov r1,#4` on its
+   fifth instruction; _ZN13dScMgMCarlo_c11CanEndStateEi never reads it), so the parameter
    exists so __fastcall cleans four bytes and the callee is called without it.
    A thunk declared (void*, void*) compiles to a bare ret, leaks those four
    bytes, and the caller's own `ret` then takes a garbage return address --
@@ -428,9 +428,9 @@ static void *__fastcall mca_d0(void *s, void *)
    census: 22 slot-18 sites and 14 slot-19 sites, argument count ONE at every
    one of them. */
 static int  __fastcall mca_reset(void *s, void *, int /*ridethrough*/)
-{ MCA(18); _ZN13dScMgMCarlo_c13OnYoshiTryEatEi((char *)s); return 1; }
+{ MCA(18); _ZN13dScMgMCarlo_c10StartRoundEi((char *)s); return 1; }
 static int  __fastcall mca_v19(void *s, void *, int /*ridethrough*/)
-{ MCA(19); return _ZN13dScMgMCarlo_c13OnTurnIntoEggEi((char *)s); }
+{ MCA(19); return _ZN13dScMgMCarlo_c11CanEndStateEi((char *)s); }
 
 /* ---- dMgMCarloCardObj_c's two, section 4b ------------------------------- */
 /* These are NOT __fastcall thunks over a Scene slot: the ROM dispatches them
@@ -704,8 +704,8 @@ extern "C" void port_scene_mcarlo_hits(void)
     }
 
     /* THE SAVED PROGRESS, both ends. Slot 0 seeds +0xb4 from
-       func_ov004_020ad878() = data_0209caf4[record][1]; slot 6 writes it back
-       through func_ov004_020ad79c with the 0x270f clamp its literal pool
+       Mg_GetSavedRecord1() = data_0209caf4[record][1]; slot 6 writes it back
+       through Mg_SaveRecordPair with the 0x270f clamp its literal pool
        carries. Printing both says which of them moved, which is the question
        section 17 had to disassemble a whole function to answer for Memory
        Master. */
@@ -724,7 +724,7 @@ extern "C" void port_scene_mcarlo_hits(void)
                         rec[0], rec[1], rec[2], rec[3], rec[4]);
         } else {
             std::printf("[scene] dScMgMCarlo_c save record: NO minigame index "
-                        "(data_ov004_020beb68 = %p)\n", data_ov004_020beb68);
+                        "(gMgScene = %p)\n", gMgScene);
         }
     }
     std::fflush(stdout);
@@ -771,11 +771,11 @@ extern "C" void port_scene_mcarlo_hits(void)
 #pragma comment(linker, "/alternatename:?_ZTV13dScMgMCarlo_c@@3HA=__ZTV13dScMgMCarlo_c")
 #pragma comment(linker, "/alternatename:?_ZTV13dScMgMCarlo_c@@3PAXA=__ZTV13dScMgMCarlo_c")
 #pragma comment(linker, "/alternatename:?data_ov006_02142504@@3PAUNode@@A=_data_ov006_02142504")
-/* AND ONE FROM THE ov004 TALLY CHAIN. src/func_ov004_020b58c4.cpp declares
- * `extern int data_ov004_020bfa0c;` outside its extern "C" block; the mount
+/* AND ONE FROM THE ov004 TALLY CHAIN. src/MgCoins_StepSpend.cpp declares
+ * `extern int sMgCoinsLastSpent;` outside its extern "C" block; the mount
  * defines the plain C name for the ov004 bss word at 0x020bfa0c. It is the
  * ONLY one of that TU's nine namespace-scope externs the link asked for --
  * the other eight already have alias rows in the image, which is what a
  * ninth-minigame lane inheriting eight seats' worth of alias work looks
  * like. */
-#pragma comment(linker, "/alternatename:?data_ov004_020bfa0c@@3HA=_data_ov004_020bfa0c")
+#pragma comment(linker, "/alternatename:?sMgCoinsLastSpent@@3HA=_sMgCoinsLastSpent")

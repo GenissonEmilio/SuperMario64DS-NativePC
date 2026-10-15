@@ -183,7 +183,7 @@
 # site.  Both sequences in full:
 #
 #     _ZN17dScMgTrampoline_c8BehaviorEv   add 0x0212151c   ands 0x02121520   blx 0x02121534
-#     func_ov006_020cb030   add 0x020cb068   ands 0x020cb06c   blx 0x020cb080
+#     Trmp3DMario_Update   add 0x020cb068   ands 0x020cb06c   blx 0x020cb080
 #
 # An earlier version of the element file reported ITS site at the blx while
 # this class's was reported at the add, so two numbers that look like the same
@@ -266,9 +266,9 @@
 # Run mg9 lane S381 turned this into law: check word 0 of every factory product.
 # src/minigames/d_s_mg_trampoline.cpp builds three arrays through __cxa_vec_ctor:
 #
-#   this+0x500c   4 records of 0xd0    ctor func_ov006_020cd12c   VTABLE
-#   this+0x534c   3 records of 0x32c   ctor func_ov006_020d100c   no vtable
-#   this+0x5cd0   5 records of 0x24    ctor func_ov006_021225a8   no vtable
+#   this+0x500c   4 records of 0xd0    ctor Trmp3DMario_Construct   VTABLE
+#   this+0x534c   3 records of 0x32c   ctor TrmpLine_Reset   no vtable
+#   this+0x5cd0   5 records of 0x24    ctor Trmp_Nothing2   no vtable
 #
 # The first constructor's body is a call, then `str r1,[r4]` with r1 loaded from
 # its own pool at 0x020cd154 = 0x0213b2c4.  The type_info at 0x0213b2c0 points
@@ -278,22 +278,22 @@
 # string from the record's own second WORD rather than from what that word
 # POINTS AT, which lands three words early, in the middle of the pointers, and
 # produced "17dMgTrmpln2Mario_c" -- a plausible name with a plausible length
-# prefix.  The link caught it: src/func_ov006_020cd12c.c names the vtable
+# prefix.  The link caught it: src/Trmp3DMario_Construct.c names the vtable
 # _ZTV18dMgTrmpln3DMario_c and the LNK2019 spelled it out.  The ONLY two
 # relocations naming data_ov006_0213b2c4 in the whole overlay are that element
 # constructor and the element destructor at 0x020cd0c0 (inside
-# func_ov006_020ccfc8), and 0x020cd12c itself has exactly ONE reference in the
+# Trmp3DMario_Destruct), and 0x020cd12c itself has exactly ONE reference in the
 # overlay -- from 0x02122588, inside THIS class's factory.  So the array is this
 # class's alone and no sibling lane can collide on it.
 #
 # IT IS DISPATCHED, PROVEN BY REACHABILITY RATHER THAN BY AN EYEBALL.  Four of
-# its five slot bodies -- func_ov006_020cafac, _020cafa4, _020caf44 and
+# its five slot bodies -- Trmp3DMario_GetPos, _020cafa4, _020caf44 and
 # _020caf4c -- have EXACTLY ONE reference each in all of ov006's relocations,
 # and that reference IS the vtable slot.  No arm_call anywhere reaches them.  A
 # body only the vtable names is a body only the vtable can call, so a seat that
 # filled the three scene tables and left this one would link, boot and jump to a
 # raw DS address the first time a record was asked for its position.  Slot 4
-# (func_ov006_020cd720) is the exception and is also called directly, from
+# (TrmpObjAdapter_Clear) is the exception and is also called directly, from
 # 0x020cd6e0, and appears in a second vtable at 0x0213b3d4.
 #
 # THE WIDTH IS 5 AND THE SPAN CHECK IS AN UPPER BOUND HERE.  The next config
@@ -307,10 +307,10 @@
 #
 # ALSO EXCLUDED, and repaired in port/unmatched/MgD3DBase_Slots.cpp:
 #
-#     src/actors/dScMgD3DBase_c.cpp   middle slot  2
-#     src/actors/dScMgD3DBase_c.cpp         middle slot 10
-#     src/actors/dScMgD3DBase_c.cpp                              middle slot 27
-#     src/actors/dScMgD3DBase_c.cpp                              middle slot 28
+#     src/minigames/d_s_mg_d3d_base.cpp   middle slot  2
+#     src/minigames/d_s_mg_d3d_base.cpp         middle slot 10
+#     src/minigames/d_s_mg_d3d_base.cpp                              middle slot 27
+#     src/minigames/d_s_mg_d3d_base.cpp                              middle slot 28
 #
 # Slot 2 is the flower's disease exactly: the ROM does `mov r4,r0` then
 # `bl 0x020b08f0` with r1 NEVER WRITTEN, so the framework's flags word rides
@@ -335,7 +335,7 @@
 # ALSO EXCLUDED, and repaired in port/unmatched/MgD3DBase_DeclConflict.cpp
 # (the same family file, same reason -- adopted rather than duplicated):
 #
-#     src/actors/dScMgD3DBase_c.cpp                            middle slot 24
+#     src/minigames/d_s_mg_d3d_base.cpp                            middle slot 24
 #
 # include/decl_common.h opens an extern "C" block at line 20 and declares that
 # symbol taking `void*` at line 1516, while the TU that includes it defines it
@@ -359,7 +359,7 @@
 # bodiless floor 020ae5c4, so slot 34 is UNREACHABLE on every scene".  The
 # ARITY half stands and this lane's thunk depends on it.  The REACHABILITY half
 # is now scoped to the twenty-one classes seated before this one:
-# func_ov004_020ae5c4 is not a floor any more (hal/scene_mg_faces.cpp records it
+# Mg_DrawLine is not a floor any more (hal/scene_mg_faces.cpp records it
 # as a real decompilation, a Bresenham walk that stamps slot 34 at every lattice
 # point) and THIS class calls it from src/minigames/d_s_mg_trampoline.cpp, which vtable
 # slot 6 calls on every behavior tick, and from src/minigames/d_s_mg_trampoline.cpp,
@@ -381,7 +381,7 @@
 # true there.  The ELEMENT class has a machine of its own, and it is bigger:
 #
 #   dMgTrmpln3DMario_c, one FIELD-HELD member pointer at element+0x64/+0x68,
-#   ONE decode site (the add at 0x020cb068, in func_ov006_020cb030),
+#   ONE decode site (the add at 0x020cb068, in Trmp3DMario_Update),
 #   THIRTY-EIGHT pair slots at 0x0213b0f4..0x0213b224, TWENTY-ONE distinct
 #   code words, every adjustment zero, and NO overlay constructor -- ov006's
 #   .init has no relocation into that data either.
@@ -412,9 +412,9 @@
 # see anything one level down.  Checked here body by body against
 # config/arm9/overlays/ov006/delinks.txt and src/:
 #
-#   func_ov006_020d0c38  0x3ac  the stylus hit test, called by slot 23
-#   func_ov006_020cf2fc  0x45c  called from 0x020d0a80
-#   func_ov006_020d01e0  0x800  called from 0x020d0ba8, 0x020d0c08, 0x020d0f7c
+#   TrmpLine_Create  0x3ac  the stylus hit test, called by slot 23
+#   TrmpLine_Draw  0x45c  called from 0x020d0a80
+#   TrmpLine_Build  0x800  called from 0x020d0ba8, 0x020d0c08, 0x020d0f7c
 #
 # Each has a config symbol and a size, no delink block over it and no src file.
 # port/unmatched/MgTrampolineTime_Floors.cpp traps all three count-and-return
@@ -423,8 +423,8 @@
 #
 # ---- 13. TWO CROSS-MODULE MISBINDINGS, AND THEY WERE THE BOOT BLOCKER ------
 #
-# src/func_ov006_020cd12c.c calls data_ov007_020cd72c and
-# src/func_ov006_020cb16c.c calls data_ov007_020ccd78.  Both DS addresses carry
+# src/Trmp3DMario_Construct.c calls data_ov007_020cd72c and
+# src/Trmp3DMario_State0.c calls data_ov007_020ccd78.  Both DS addresses carry
 # an ov006 FUNCTION and an ov007 DATA symbol, and both ROM relocations read
 # `kind:arm_call ... module:overlay(6)`.  On hardware the two overlays are never
 # resident together, so the address is unambiguous wherever this code can run;
@@ -445,12 +445,12 @@
 # is the same mount word the host copy reached as _ZTV18dMgTrmpln3DMario_c (one
 # address in the map; port/unmatched/MgTrampolineTime_Faces.cpp aliases the
 # class name onto it). So both TUs take their seats and the host file is gone.
-src/actors/dMgTrmpln2Mario_c.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cb16c.c
+src/minigames/d_mg_trmpln2_mario.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_State0.c
 #
 # ---- 14. ONE MORE HOST COPY: THE ELEMENT'S MODEL DRAW ---------------------
 #
-# src/func_ov006_020cafb4.cpp models the object at element+0x6c with a local
+# src/Trmp3DMario_Render.cpp models the object at element+0x6c with a local
 # six-pure-virtual shadow and calls its SIXTH virtual, which is the ROM's
 # numbering (byte +0x14 = ModelAnim::Render) and NOT MSVC's (where the sixth
 # word is Virtual18).  Same defect as the flower's and Door_Render.cpp's.
@@ -504,82 +504,82 @@ src/minigames/d_s_mg_trampoline.cpp
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
-#src/actors/dScMgD3DBase_c.cpp
+#src/minigames/d_s_mg_d3d_base.cpp
 src/engine/model/Model4.cpp
 src/engine/model/ModelAnim.cpp
 src/unnamed/arm9/0205/func_02053ea0.c
 src/unnamed/arm9/0205/func_02053eb0.c
 src/unnamed/arm9/0205/func_02054748.c
-src/actors/unit020bfec0.cpp
-# FOLDED into src/actors/unit020bfec0.cpp (row 513): src/func_ov006_020bfff8.cpp
-src/actors/unit020c8a30.cpp
-# FOLDED into src/actors/unit020c8a30.cpp (row 515): src/func_ov006_020c8a64.c
-# FOLDED into src/actors/unit020c8a30.cpp (row 515): src/func_ov006_020c8a9c.c
-# FOLDED into src/actors/unit020c8a30.cpp (row 515): src/func_ov006_020c8af4.c
-# FOLDED into src/actors/unit020c8a30.cpp (row 515): src/func_ov006_020c8ba8.cpp
-# FOLDED into src/actors/unit020c8a30.cpp (row 515): src/func_ov006_020c8c6c.c
-# FOLDED into src/actors/unit020c8a30.cpp (row 515): src/func_ov006_020c8c78.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020c905c.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020c91ac.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020c94e0.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020c97bc.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020c9aa0.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020c9c8c.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020c9d7c.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020c9e7c.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020c9efc.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020c9fe4.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020ca070.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020ca2ec.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020ca310.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020ca39c.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020ca3a8.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020caf44.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020caf4c.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cafa4.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cafac.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cafdc.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cb134.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cb1a8.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cb2b4.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cb528.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cb5c4.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cb690.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cb72c.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cb814.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cb838.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cbaec.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cbd7c.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cbfd8.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cc198.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cc2ac.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cc37c.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cc408.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cc618.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cc63c.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cc698.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cc724.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cc8c8.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cc9b8.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cc9fc.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020ccae0.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020ccc8c.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020ccd04.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020ccd64.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020ccd78.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cce0c.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020ccfc8.cpp
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cd158.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cd1e0.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cd270.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cd39c.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cd424.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cd510.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cd62c.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cd658.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cd720.c
-# FOLDED into src/actors/dMgTrmpln2Mario_c.cpp (row 448): src/func_ov006_020cd72c.c
-# src/func_ov006_020cf758.cpp is OUT at the mg11 merge. Lane TTE host-copies
+src/minigames/unit020bfec0.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 513): src/Camera_ProjectToScreen.cpp
+src/minigames/unit020c8a30.cpp
+# FOLDED into src/minigames/unit020c8a30.cpp (row 515): src/Puff_UpdateAll.c
+# FOLDED into src/minigames/unit020c8a30.cpp (row 515): src/Puff_ClearAll.c
+# FOLDED into src/minigames/unit020c8a30.cpp (row 515): src/Puff_Draw.c
+# FOLDED into src/minigames/unit020c8a30.cpp (row 515): src/Puff_Update.cpp
+# FOLDED into src/minigames/unit020c8a30.cpp (row 515): src/Puff_Clear.c
+# FOLDED into src/minigames/unit020c8a30.cpp (row 515): src/Puff_Spawn.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp2Mario_State0.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp2Mario_State1.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp2Mario_BounceOffLineA.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp2Mario_State2.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp2Mario_BounceOffLineB.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp2Mario_EnterState1.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp2Mario_State3.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp2Mario_EnterState3.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp2Mario_State4.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp2Mario_EnterState4.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp2Mario_State5.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp2Mario_EnterState5.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp2Mario_State6.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp2Mario_State7.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp2Mario_EnterState7.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_GetVelocity.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_IsInState6.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_GetPrevPos.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_GetPos.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_UpdateMatrix.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_ApplyGravity.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_EnterByKind.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_State1.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_EnterState1.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_State2.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_EnterState2.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_State3.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_EnterState3.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_State4.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_BounceOffLineA.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_State5.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_BounceOffLineB.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_PickIdleAnim.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_State6.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_EnterState6.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_State7.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_EnterState7.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_State8.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_EnterState8.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_State9.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_EnterState9.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_State10.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_EnterState10.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_State11.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_EnterState11.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_IsInState12.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_State12.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_EnterState12.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_Load.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_Destruct.cpp
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_CountFinished.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_StartAll.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_DrawAll.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_UpdateAll.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_ResetAll.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_SetTuning.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_SetSpawnHeight.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/Trmp3DMario_InitPool.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/TrmpObjAdapter_Clear.c
+# FOLDED into src/minigames/d_mg_trmpln2_mario.cpp (row 448): src/TrmpObjAdapter_Construct.c
+# src/TrmpLine_Update.cpp is OUT at the mg11 merge. Lane TTE host-copies
 # this body in unmatched/MgTrampolineTerror_MarioDispatch.cpp: its one
 # statement IS an mwcc member-pointer dispatch, (c->*(c->pmf))(), which the
 # host cannot compile -- the ROM's pair is eight bytes where MSVC strides
@@ -588,8 +588,8 @@ src/actors/unit020c8a30.cpp
 # Symmetric with slice_tte.txt's 020cb16c line, and the same root cause:
 # both lanes checked the other's FILENAMES, not its SYMBOLS.
 # The 0x800 STROKE INSTALLER, seated by run mg12 lane INST and listed in BOTH
-# trampoline slices (it is reached from src/func_ov006_020d0b78.c on 385's side
-# and from src/func_ov006_020d0c38.c on both). It replaces the trap that lived
+# trampoline slices (it is reached from src/TrmpLine_CreateStartLineT2.c on 385's side
+# and from src/TrmpLine_Create.c on both). It replaces the trap that lived
 # in unmatched/MgTrampolineTime_Floors.cpp, so that file no longer defines it
 # and its floor counter now reads a retired 0. An honest NONMATCHING seat; the
 # banner in the file states its four divergences.
@@ -605,9 +605,9 @@ src/actors/unit020c8a30.cpp
 # register-allocation luck, at measured zero cost. Emitted game code is
 # byte-identical across the conversion; the banner has the proof and the one
 # spelling that had to change to keep it so.
-src/actors/unit020cd744.cpp
+src/minigames/unit020cd744.cpp
 # THE MESH DRAW, seated by run mg13 lane TRAMP, and the last thing between a
-# drawn stroke and a trampoline the player can see. src/func_ov006_020d09e0.c
+# drawn stroke and a trampoline the player can see. src/TrmpLine_DrawAll.c
 # calls it once per record whose +0x328 gate the installer above set, so with
 # the installer seated and this one still trapped the gate went 0 -> 1 and
 # nothing was drawn. Listed in BOTH trampoline slices for the same reason
@@ -622,7 +622,7 @@ src/actors/unit020cd744.cpp
 # An honest NONMATCHING seat -- 25 divergences against 258 ROM code words, frame
 # and all six call offsets exact, both of loop two's vertex packs matching the ROM
 # instruction for instruction -- and the banner in the file states every one.
-# FOLDED into src/actors/unit020cd744.cpp (row 608): src/func_ov006_020cf2fc.c
+# FOLDED into src/minigames/unit020cd744.cpp (row 608): src/TrmpLine_Draw.c
 # THE INSTALLER'S OWN THREE CALLEES, and none of them was in ANY slice before it
 # was seated -- the trap was hiding all three, and the first link with the real
 # body failed with exactly three LNK2019s. All three are matched src TUs with
@@ -638,12 +638,12 @@ src/actors/unit020cd744.cpp
 # of the SIXTEEN WRITERS -- the bodies that copy a pair -- which is a different
 # set from the fourteen code words the pairs point AT. Nothing over there needed
 # changing and nothing over there was changed.
-# FOLDED into src/actors/unit020cd744.cpp (row 608): src/func_ov006_020cf040.c
-# FOLDED into src/actors/unit020cd744.cpp (row 608): src/func_ov006_020cfa28.c
-# FOLDED into src/actors/unit020cd744.cpp (row 608): src/func_ov006_020cfc58.c
-# FOLDED into src/actors/unit020cd744.cpp (row 608): src/func_ov006_020d09e0.c
-# FOLDED into src/actors/unit020cd744.cpp (row 608): src/func_ov006_020d0ac0.c
-# FOLDED into src/actors/unit020cd744.cpp (row 608): src/func_ov006_020d0b04.c
-# FOLDED into src/actors/unit020cd744.cpp (row 608): src/func_ov006_020d0b2c.cpp
-# FOLDED into src/actors/unit020cd744.cpp (row 608): src/func_ov006_020d0bd8.c
-# FOLDED into src/actors/unit020cd744.cpp (row 608): src/func_ov006_020d0c38.c
+# FOLDED into src/minigames/unit020cd744.cpp (row 608): src/TrmpLine_PointDistance.c
+# FOLDED into src/minigames/unit020cd744.cpp (row 608): src/TrmpLine_SetStateSettle.c
+# FOLDED into src/minigames/unit020cd744.cpp (row 608): src/TrmpLine_SetStateFlex.c
+# FOLDED into src/minigames/unit020cd744.cpp (row 608): src/TrmpLine_DrawAll.c
+# FOLDED into src/minigames/unit020cd744.cpp (row 608): src/TrmpLine_UpdateAll.c
+# FOLDED into src/minigames/unit020cd744.cpp (row 608): src/TrmpLine_ClearAll.c
+# FOLDED into src/minigames/unit020cd744.cpp (row 608): src/TrmpLine_LoadTextures.cpp
+# FOLDED into src/minigames/unit020cd744.cpp (row 608): src/TrmpLine_CreateStartLineT1.c
+# FOLDED into src/minigames/unit020cd744.cpp (row 608): src/TrmpLine_Create.c

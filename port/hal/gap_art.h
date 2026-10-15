@@ -14,7 +14,7 @@
  * <bundle> is the folder the game is launched from -- the same three candidates
  * settings.json is looked for in, in the same order, so the art sits beside the
  * settings that ask for it. <id> is the scene's own id, decimal, as the ROM
- * carries it: dScMgBase_c's `this` is data_ov004_020beb68 and its ActorBase
+ * carries it: dScMgBase_c's `this` is gMgScene and its ActorBase
  * actorID is at +0xc.
  *
  *   * 24-bit or 32-bit BMP, BI_RGB (uncompressed). No palettes, no bitfields,
@@ -49,7 +49,7 @@
 
 /* The live minigame scene object, or null when no minigame is running. This is
    the ROM's own dScMgBase_c `this`: the base constructor _ZN11dScMgBase_cC2Ev
-   ends with `data_ov004_020beb68 = self`, and every ov004 body that needs the
+   ends with `gMgScene = self`, and every ov004 body that needs the
    current scene reads it there. */
 unsigned char *hal_gap_scene(void);
 

@@ -8,8 +8,8 @@
 # slot every frame, and DRAW NOTHING. Lane VSMAP measured the whole chain
 # (status/VSMAP.md, "THE CAPS DO NOT DRAW"); this slice is the other end of it.
 #
-#   src/actors/daObjMarioCap_c.cpp:14   returns while unk_3ff == 1
-#   src/actors/daObjMarioCap_c.cpp:41 writes that 1 every frame while
+#   src/game/actors/d_a_obj_mario_cap.cpp:14   returns while unk_3ff == 1
+#   src/game/actors/d_a_obj_mario_cap.cpp:41 writes that 1 every frame while
 #                                            bit 1 of +0x3eb is clear
 #   +0x3eb is byte +0x1b of the registry node WaterfallMist::InitResources
 #   builds at this+0x3d0 through func_ov001_020ab228, which zeroes it
@@ -107,14 +107,14 @@
 # ambient handle) and func_02029600 (the minimap-area test aa6e4 gates its
 # jingle on). Neither was in the link and both are three-line matched files.
 
-src/actors/CapIconMgr.cpp
-# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aa420.c
-# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aa79c.c
-# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aa7b8.cpp
-# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aa858.cpp
-# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aa960.cpp
-# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aa6e4.cpp
-# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aaa54.cpp
-# FOLDED into src/actors/CapIconMgr.cpp (row 110): src/func_ov001_020aadac.c
+src/ui/hud/CapIconMgr.cpp
+# FOLDED into src/ui/hud/CapIconMgr.cpp (row 110): src/func_ov001_020aa420.c
+# FOLDED into src/ui/hud/CapIconMgr.cpp (row 110): src/func_ov001_020aa79c.c
+# FOLDED into src/ui/hud/CapIconMgr.cpp (row 110): src/func_ov001_020aa7b8.cpp
+# FOLDED into src/ui/hud/CapIconMgr.cpp (row 110): src/func_ov001_020aa858.cpp
+# FOLDED into src/ui/hud/CapIconMgr.cpp (row 110): src/func_ov001_020aa960.cpp
+# FOLDED into src/ui/hud/CapIconMgr.cpp (row 110): src/func_ov001_020aa6e4.cpp
+# FOLDED into src/ui/hud/CapIconMgr.cpp (row 110): src/func_ov001_020aaa54.cpp
+# FOLDED into src/ui/hud/CapIconMgr.cpp (row 110): src/func_ov001_020aadac.c
 src/unnamed/arm9/0202/func_0202a8e0.c
 src/unnamed/arm9/0202/func_02029600.c

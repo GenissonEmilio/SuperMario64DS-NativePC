@@ -194,8 +194,8 @@ void SysTracker::Initialise()
     if (mResourceFile != data_02075f14) {
         void* heap = (void*)(int)M(data_020a0ea0);
         unsigned int oldSize = (unsigned int)M(*(unsigned int*)((char*)mResourceFile + 0x18));
-        _ZN4Heap7_SizeofEPv(heap, mResourceFile);
-        _ZN4Heap10ReallocateEPvj(heap, mResourceFile, oldSize);
+        _ZN5mHeap6Heap_t7_SizeofEPv(heap, mResourceFile);
+        _ZN5mHeap6Heap_t10ReallocateEPvj(heap, mResourceFile, oldSize);
     }
 }
 

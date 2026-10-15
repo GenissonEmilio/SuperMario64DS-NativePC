@@ -325,7 +325,7 @@ CLASS_A = tuple(
              'result in r0 and c99d8 reads r0. On the host the value is in '
              'EAX and c99d8 reads the stack, and the frame pushes nothing.'},
         {'frame': 'func_ov007_020cc600', 'callee': 'func_ov007_020cc0e4',
-         'tu': 'src/actors/dScDSMT_c.cpp',
+         'tu': 'src/game/stages/d_s_dsmt.cpp',
          'note':
              'The same return-value shape. cc600 is reached from no lifecycle '
              'slot 5d could trace; its only reference is a data slot at '
@@ -402,7 +402,7 @@ CLASS_C = tuple(
          'tu': 'src/engine/heap/SolidHeapAllocator.cpp',
          'note':
              'The SolidHeap teardown leg, same shape and same consequence; '
-             'its pusher is src/_ZN9SolidHeap8VDestroyEv.cpp:23.'},
+             'its pusher is src/engine/heap/Heap.cpp:23.'},
         # CURLING'S COLLISION VENEER, added by run link60 lane CUR2 when
         # func_ov006_020e20bc stopped being a return-0 face and became a
         # transcribed body in port/unmatched/MgCurling_Collide_020e20bc.cpp.
@@ -418,9 +418,9 @@ CLASS_C = tuple(
         # dispatcher's frame. If it becomes a call, the collision body gets a
         # garbage `this` and a garbage shell index on every stopped shell,
         # every frame.
-        {'frame': '_ZN14dScMgCurling_c19func_ov006_020e285cEi',
-         'callee': '_ZN14dScMgCurling_c19func_ov006_020e20bcEi',
-         'tu': 'src/actors/dScMgCurling_c.cpp',
+        {'frame': '_ZN14dScMgCurling_c13Stone_CollideEi',
+         'callee': '_ZN14dScMgCurling_c21ResolveStoneCollisionEi',
+         'tu': 'src/minigames/d_s_mg_curling.cpp',
          'note':
              'The curling collision veneer. Its callee is the face in '
              'hal/scene_mg_faces.cpp, which forwards to the transcription; '

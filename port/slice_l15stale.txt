@@ -96,5 +96,5 @@
 #   battery cannot vouch for on its own, so this row owes the level captures
 #   listed in this lane's report.
 
-src/actors/daKpa_c.cpp
-src/actors/daObjTbox_c.cpp
+src/game/actors/d_a_kpa.cpp
+src/game/actors/d_a_obj_tbox.cpp

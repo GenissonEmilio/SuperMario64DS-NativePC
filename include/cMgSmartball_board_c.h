@@ -5,7 +5,7 @@
  * header for the family's shape (a root, three slots, no virtual destructor).
  *
  * SIZE 0x9c, from _Znwj(0x9c) in dScMgSmartball_c::SpawnObjects immediately before the
- * call to this class's constructor func_ov006_0210f9f8. Base ends at 0x34, so
+ * call to this class's constructor cMgSmartball_board_c_Construct. Base ends at 0x34, so
  * this class adds 0x68 bytes.
  *
  * FIELD EVIDENCE. RestoreInitial (ov006:0x0210f914) is exhaustive: it
@@ -52,7 +52,7 @@
  * three children read them three incompatible ways and a board cell is one of
  * the three.
  *
- * CONSTRUCTED BY func_ov006_0210f9f8, left a free function per the recipe
+ * CONSTRUCTED BY cMgSmartball_board_c_Construct, left a free function per the recipe
  * (this tree has migrated zero constructors), with only its vtable-symbol
  * reference renamed. It writes this vtable and sets the base's mRadius to
  * 0x18000 -- the per-child constant every sibling's constructor also writes,

@@ -23,7 +23,7 @@ extern "C" {
 
     extern int data_0209e650[];
     extern void* data_ov085_0213066c;
-    extern void* data_ov085_021305d0[];
+    extern void* gMipRunAnimationFile[];
     extern void* data_ov085_021305b0[];
     extern void* data_ov085_021305c0[];
     extern void* data_ov085_021305c8[];
@@ -84,7 +84,7 @@ extern "C" int func_ov085_0212b8dc(char* c)
         switch (*(int*)(c + 0x41c)) {
         case 1:
             *(int*)(c + 0x98) = 0x4000;
-            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0x300, data_ov085_021305d0[1], 0x40000000, 0x1000, 0);
+            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0x300, gMipRunAnimationFile[1], 0x40000000, 0x1000, 0);
             (*(int*)(c + 0x41c))++;
             break;
         case 2:

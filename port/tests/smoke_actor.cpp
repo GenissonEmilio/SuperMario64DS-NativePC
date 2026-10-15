@@ -14,10 +14,10 @@
 //
 // 1. THE BRING-UP ENTRY POINT. It used to be declared as a flat extern "C"
 //    Itanium name returning void* --
-//      void *_ZN4Heap13SetupRootHeapEv(void);
+//      void *_ZN5mHeap6Heap_t13SetupRootHeapEv(void);
 //    -- which is what src/ emitted before the sync. It is Heap::SetupRootHeap()
 //    now, a real static member (include/Heap.h:236,
-//    ?SetupRootHeap@Heap@@SAPAU1@XZ), so the flat spelling bought a link error.
+//    ?SetupRootHeap@Heap_t@mHeap@@SAPAU12@XZ), so the flat spelling bought a link error.
 //    This file is HOST TEST CODE, so it includes the class header and calls the
 //    member the way C++ calls it, reaching the same object it always linked.
 //    tests/smoke_roots.cpp's header block has the longer version of this.
@@ -67,7 +67,7 @@ char data_ov098_0213c384[0x18];
 char data_ov098_0213c388[0x18];
 extern void *data_020a0eac_c;           /* Memory::gameHeapPtr */
 extern void *data_020a0ea0;             /* defaultHeapPtr (gate 3a) */
-void _ZN4Heap18InitializeGameHeapEjPS_(unsigned size, void *root);
+void _ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_(unsigned size, void *root);
 unsigned _ZN22ExpandingHeapAllocator10MemoryLeftEv(void *alloc);
 extern void *data_0209f394[];           /* the player array */
 extern unsigned char data_0209f21c;     /* player count */
@@ -137,7 +137,7 @@ int main(void)
        link failure that blocked this (the TU rode slice_w1l3.txt, which this
        target did not carry); port/CMakeLists.txt now names the one file on
        this target, which is the unblock that comment asked for. */
-    _ZN4Heap18InitializeGameHeapEjPS_(0x3b000, 0);
+    _ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_(0x3b000, 0);
     CHECK(data_020a0eac_c != NULL);
     if (!data_020a0eac_c) {
         fprintf(stderr, "InitializeGameHeap returned null -- no game heap\n");

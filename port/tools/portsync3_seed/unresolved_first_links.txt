@@ -21,7 +21,7 @@ _OVERLAY_4_ID  <- func_0201a754.c.obj,func_0201a798.c.obj
 @actorport_d16t_daBmb_c@8  <- actorport_dtor_bridge.cpp.obj
 @actorport_d16t_daMky_c@8  <- actor_classes_ov030.cpp.obj,actorport_dtor_bridge.cpp.obj
 @actorport_d16t_fBase_c@8  <- actorport_dtor_bridge.cpp.obj
-__ZN6Memory10DeallocateEPvP4Heap  <- ActorBase.cpp.obj,Eyerok.cpp.obj,_ZN10BowserFireD0Ev.cpp.obj
+__ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE  <- ActorBase.cpp.obj,Eyerok.cpp.obj,_ZN10BowserFireD0Ev.cpp.obj
 "void (__thiscall daCnn_c::* data_ov098_0213c64c)(void)" (?data_ov098_0213c64c@@3P8daCnn_c@@AEXXZQ1@)  <- d_a_cnn.cpp.obj
 "void (__thiscall daCnn_c::* data_ov098_0213c65c)(void)" (?data_ov098_0213c65c@@3P8daCnn_c@@AEXXZQ1@)  <- d_a_cnn.cpp.obj
 "void (__thiscall daCnn_c::* data_ov098_0213c654)(void)" (?data_ov098_0213c654@@3P8daCnn_c@@AEXXZQ1@)  <- d_a_cnn.cpp.obj
@@ -104,43 +104,43 @@ _data_020aa3d4  <- cstd6.cpp.obj
 "public: virtual __thiscall dFdColor_c::~dFdColor_c(void)" (??1dFdColor_c@@UAE@XZ)  <- _ZN10FaderColorD0Ev.cpp.obj,dScMB_c.cpp.obj,dWipe_c.cpp.obj
 "struct dWipe_c data_0209f61c" (?data_0209f61c@@3UdWipe_c@@A)  <- dMgState_c.cpp.obj,dWipe_c.cpp.obj
 __ZN8dScene_c9SetFadersEP15dFdBrightness_c  <- MgBase_Slot1.cpp.obj,dScMiniGm_c.cpp.obj,scene_boot.cpp.obj
-__ZN11dScMgCoin_c19func_ov006_020dbf7cEi  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
-__ZN11dScMgCoin_c19func_ov006_020dc154Ei  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
-__ZN11dScMgCoin_c19func_ov006_020dc1c4Ei  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
-__ZN11dScMgCoin_c19func_ov006_020dc294Ev  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
-__ZN11dScMgCoin_c19func_ov006_020dc414Ei  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
-__ZN11dScMgCoin_c19func_ov006_020dc4b0Ei  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
-__ZN11dScMgCoin_c19func_ov006_020dc4c8Ei  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
-__ZN11dScMgCoin_c19func_ov006_020dc5c4Ei  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
-__ZN11dScMgCoin_c19func_ov006_020dc6d0Ei  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
-__ZN11dScMgCoin_c19func_ov006_020dcffcEv  <- MgCoin_StateDispatch.cpp.obj
-__ZN11dScMgCoin_c19func_ov006_020dd000Ei  <- MgCoin_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_021071d4Ev  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_0210713cEv  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02105730Ev  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02105670Ev  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_021051dcEv  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_0210508cEv  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_0210500cEv  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02104fb4Ev  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02104eccEv  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02104ec8Ev  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02104c08Ev  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02104bb0Ev  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02104bacEv  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02106bacEi  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02106aa8Ei  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02106a08Ei  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02106910Ei  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02104ac0Ei  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02104a10Ei  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02104920Ei  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02106ca4Ev  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02106bc0Ev  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02106eb8Ev  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02106f44Ev  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_02106fdcEv  <- MgPanel_StateDispatch.cpp.obj
-__ZN12dScMgPanel_c19func_ov006_0210709cEv  <- MgPanel_StateDispatch.cpp.obj
+__ZN11dScMgCoin_c10Bag_State3Ei  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
+__ZN11dScMgCoin_c10Bag_State2Ei  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
+__ZN11dScMgCoin_c10Bag_State1Ei  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
+__ZN11dScMgCoin_c10Bag_State0Ev  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
+__ZN11dScMgCoin_c14Caption_State4Ei  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
+__ZN11dScMgCoin_c14Caption_State3Ei  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
+__ZN11dScMgCoin_c14Caption_State2Ei  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
+__ZN11dScMgCoin_c14Caption_State1Ei  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
+__ZN11dScMgCoin_c14Caption_State0Ei  <- MgCoin_StateDispatch.cpp.obj,pmf_seat4.cpp.obj
+__ZN11dScMgCoin_c11Coin_State2Ev  <- MgCoin_StateDispatch.cpp.obj
+__ZN11dScMgCoin_c11Coin_State1Ei  <- MgCoin_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Scene_State0Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Scene_State1Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Input_State0Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Input_State1Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Input_State3Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c16IntroCard_State0Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c16IntroCard_State1Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c16IntroCard_State2Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c16IntroCard_State3Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c16IntroCard_State4Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c13Banner_State0Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c13Banner_State1Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c13Banner_State2Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Panel_State0Ei  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Panel_State1Ei  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Panel_State2Ei  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Panel_State3Ei  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Shake_State0Ei  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Shake_State1Ei  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Shake_State2Ei  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Scene_State6Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Scene_State7Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Scene_State5Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Scene_State4Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Scene_State3Ev  <- MgPanel_StateDispatch.cpp.obj
+__ZN12dScMgPanel_c12Scene_State2Ev  <- MgPanel_StateDispatch.cpp.obj
 "char * __cdecl G2S::GetBG2ScrPtr(void)" (?GetBG2ScrPtr@G2S@@YAPADXZ)  <- dScMgFlower_c.cpp.obj,dScMgPanel_c.cpp.obj,dScMgSnowball_c.cpp.obj
 "struct Tab * gTouchHeld" (?gTouchHeld@@3PAUTab@@A)  <- dScMgBomroom_c.cpp.obj
 "void (__thiscall dScMgBomroom_c::** data_ov006_02141730)(int)" (?data_ov006_02141730@@3PAP8dScMgBomroom_c@@AEXH@ZA)  <- dScMgBomroom_c.cpp.obj
@@ -678,10 +678,10 @@ _data_020a5684  <- SoundEngine.cpp.obj
 _data_020a5718  <- SoundEngine.cpp.obj
 __ZN10dFdDummy_cC1Ev  <- dScDSMT_c.cpp.obj
 "void __cdecl OAM::RenderSub(struct OamAttr *,int,int,int,int)" (?RenderSub@OAM@@YAXPAUOamAttr@@HHHH@Z)  <- d_s_mg_base.cpp.obj
-"struct Pair data_ov004_020bc17c" (?data_ov004_020bc17c@@3UPair@@A)  <- unit020b2c84.cpp.obj
-"struct Pair data_ov004_020bc1ec" (?data_ov004_020bc1ec@@3UPair@@A)  <- unit020b2c84.cpp.obj
-"struct Pair data_ov004_020bc224" (?data_ov004_020bc224@@3UPair@@A)  <- unit020b2c84.cpp.obj
-"struct Pair data_ov004_020bc274" (?data_ov004_020bc274@@3UPair@@A)  <- unit020b2c84.cpp.obj
+"struct Pair pmf_Banner_UpdateWave" (?pmf_Banner_UpdateWave@@3UPair@@A)  <- unit020b2c84.cpp.obj
+"struct Pair pmf_Banner_DrawWave" (?pmf_Banner_DrawWave@@3UPair@@A)  <- unit020b2c84.cpp.obj
+"struct Pair pmf_Banner_UpdatePressed" (?pmf_Banner_UpdatePressed@@3UPair@@A)  <- unit020b2c84.cpp.obj
+"struct Pair pmf_Banner_DrawPressed" (?pmf_Banner_DrawPressed@@3UPair@@A)  <- unit020b2c84.cpp.obj
 ___register_global_object__hg_n020c6ca4  <- dMg3DHeyhoObjAdapter_c.cpp.obj
 ___register_global_object__hg_n020c68f4  <- dMg3DHeyhoObjAdapter_c.cpp.obj
 ___register_global_object__hg_n020c64e4  <- dMg3DHeyhoObjAdapter_c.cpp.obj
@@ -715,52 +715,52 @@ ___register_global_object__hg_n020c64e4  <- dMg3DHeyhoObjAdapter_c.cpp.obj
 "unsigned char * data_ov006_0213de28" (?data_ov006_0213de28@@3PAEA)  <- dScMgPanel_c.cpp.obj
 "unsigned char * data_ov006_0213de44" (?data_ov006_0213de44@@3PAEA)  <- dScMgPanel_c.cpp.obj
 "unsigned char * data_ov006_0213de60" (?data_ov006_0213de60@@3PAEA)  <- dScMgPanel_c.cpp.obj
-"void (__thiscall dScMgBSC_c::* data_ov006_0213fd7c)(void)" (?data_ov006_0213fd7c@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
-"void (__thiscall dScMgBSC_c::* data_ov006_0213fd5c)(void)" (?data_ov006_0213fd5c@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
-"void (__thiscall dScMgBSC_c::* data_ov006_0213fd4c)(void)" (?data_ov006_0213fd4c@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
-"void (__thiscall dScMgBSC_c::* data_ov006_0213fd24)(void)" (?data_ov006_0213fd24@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
-"void (__thiscall dScMgBSC_c::* data_ov006_0213fd3c)(void)" (?data_ov006_0213fd3c@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
-"void (__thiscall dScMgBSC_c::* data_ov006_0213fd34)(void)" (?data_ov006_0213fd34@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
-"void (__thiscall dScMgBSC_c::* data_ov006_0213fd64)(void)" (?data_ov006_0213fd64@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
-"void (__thiscall dScMgBSC_c::* data_ov006_0213fd54)(void)" (?data_ov006_0213fd54@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
-"void (__thiscall dScMgBSC_c::* data_ov006_0213fd84)(void)" (?data_ov006_0213fd84@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
-"void (__thiscall dScMgBSC_c::* data_ov006_0213fd14)(void)" (?data_ov006_0213fd14@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
-"void (__thiscall dScMgBSC_c::* data_ov006_0213fd0c)(void)" (?data_ov006_0213fd0c@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
-"void (__thiscall dScMgBSC_c::* data_ov006_0213fd74)(void)" (?data_ov006_0213fd74@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
-"void (__thiscall dScMgBSC_c::* data_ov006_0213fd1c)(void)" (?data_ov006_0213fd1c@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
-"void (__thiscall dScMgBSC_c::* data_ov006_0213fd2c)(void)" (?data_ov006_0213fd2c@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
+"void (__thiscall dScMgBSC_c::* pmf_dScMgBSC_c_StateDealCards)(void)" (?pmf_dScMgBSC_c_StateDealCards@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
+"void (__thiscall dScMgBSC_c::* pmf_dScMgBSC_c_StateWaitDeal)(void)" (?pmf_dScMgBSC_c_StateWaitDeal@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
+"void (__thiscall dScMgBSC_c::* pmf_dScMgBSC_c_StateChooseCard)(void)" (?pmf_dScMgBSC_c_StateChooseCard@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
+"void (__thiscall dScMgBSC_c::* pmf_dScMgBSC_c_StateMoveCards)(void)" (?pmf_dScMgBSC_c_StateMoveCards@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
+"void (__thiscall dScMgBSC_c::* pmf_dScMgBSC_c_StateWaitMove)(void)" (?pmf_dScMgBSC_c_StateWaitMove@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
+"void (__thiscall dScMgBSC_c::* pmf_dScMgBSC_c_StateRevealCards)(void)" (?pmf_dScMgBSC_c_StateRevealCards@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
+"void (__thiscall dScMgBSC_c::* pmf_dScMgBSC_c_StateJudgeCards)(void)" (?pmf_dScMgBSC_c_StateJudgeCards@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
+"void (__thiscall dScMgBSC_c::* pmf_dScMgBSC_c_StateTableReaction)(void)" (?pmf_dScMgBSC_c_StateTableReaction@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
+"void (__thiscall dScMgBSC_c::* pmf_dScMgBSC_c_StateTableReaction_2)(void)" (?pmf_dScMgBSC_c_StateTableReaction_2@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
+"void (__thiscall dScMgBSC_c::* pmf_dScMgBSC_c_StateWaitTable_2)(void)" (?pmf_dScMgBSC_c_StateWaitTable_2@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
+"void (__thiscall dScMgBSC_c::* pmf_dScMgBSC_c_StateWaitTable)(void)" (?pmf_dScMgBSC_c_StateWaitTable@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
+"void (__thiscall dScMgBSC_c::* pmf_dScMgBSC_c_StateReturnCards)(void)" (?pmf_dScMgBSC_c_StateReturnCards@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
+"void (__thiscall dScMgBSC_c::* pmf_dScMgBSC_c_StateDone)(void)" (?pmf_dScMgBSC_c_StateDone@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
+"void (__thiscall dScMgBSC_c::* pmf_dScMgBSC_c_StateDone_2)(void)" (?pmf_dScMgBSC_c_StateDone_2@@3P8dScMgBSC_c@@AEXXZQ1@)  <- d_s_mg_bsc.cpp.obj
 "void * __cdecl G2S::GetBG3ScrPtr(void)" (?GetBG3ScrPtr@G2S@@YAPAXXZ)  <- dScMgAmida_c.cpp.obj,dScMgSnowball_c.cpp.obj
 "void * * _ZTV15dScMgSnowball_c" (?_ZTV15dScMgSnowball_c@@3PAPAXA)  <- dScMgSnowball_c.cpp.obj
 "struct W2 data_02086b58" (?data_02086b58@@3UW2@@A)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc8bc)(void)" (?data_ov004_020bc8bc@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc8c4)(void)" (?data_ov004_020bc8c4@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc8cc)(void)" (?data_ov004_020bc8cc@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc8d4)(void)" (?data_ov004_020bc8d4@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc8dc)(void)" (?data_ov004_020bc8dc@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc8e4)(void)" (?data_ov004_020bc8e4@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc8ec)(void)" (?data_ov004_020bc8ec@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc8f4)(void)" (?data_ov004_020bc8f4@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc8fc)(void)" (?data_ov004_020bc8fc@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc904)(void)" (?data_ov004_020bc904@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc90c)(void)" (?data_ov004_020bc90c@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc914)(void)" (?data_ov004_020bc914@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc91c)(void)" (?data_ov004_020bc91c@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc924)(void)" (?data_ov004_020bc924@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc93c)(void)" (?data_ov004_020bc93c@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc98c)(void)" (?data_ov004_020bc98c@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc994)(void)" (?data_ov004_020bc994@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc9ac)(void)" (?data_ov004_020bc9ac@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc9b4)(void)" (?data_ov004_020bc9b4@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc9c4)(void)" (?data_ov004_020bc9c4@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc9cc)(void)" (?data_ov004_020bc9cc@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc9e4)(void)" (?data_ov004_020bc9e4@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bc9fc)(void)" (?data_ov004_020bc9fc@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bca04)(void)" (?data_ov004_020bca04@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bca14)(void)" (?data_ov004_020bca14@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bca1c)(void)" (?data_ov004_020bca1c@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bca24)(void)" (?data_ov004_020bca24@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bca2c)(void)" (?data_ov004_020bca2c@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
-"void (__thiscall dMgState_c::* data_ov004_020bca34)(void)" (?data_ov004_020bca34@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_State01_Update)(void)" (?pmf_dMgState_c_State01_Update@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_State02_Update)(void)" (?pmf_dMgState_c_State02_Update@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_DrawScore)(void)" (?pmf_dMgState_c_DrawScore@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_State03_Update)(void)" (?pmf_dMgState_c_State03_Update@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_UpdateRetryFadeOut)(void)" (?pmf_dMgState_c_UpdateRetryFadeOut@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_State16_Update)(void)" (?pmf_dMgState_c_State16_Update@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_State04_Update)(void)" (?pmf_dMgState_c_State04_Update@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_State05_Update)(void)" (?pmf_dMgState_c_State05_Update@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_UpdateRetryPrompt)(void)" (?pmf_dMgState_c_UpdateRetryPrompt@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_UpdateGameOverToMenu)(void)" (?pmf_dMgState_c_UpdateGameOverToMenu@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_State06_Update)(void)" (?pmf_dMgState_c_State06_Update@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_UpdateRetryFadeOut_2)(void)" (?pmf_dMgState_c_UpdateRetryFadeOut_2@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_DrawRecordTable)(void)" (?pmf_dMgState_c_DrawRecordTable@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_State18_Update)(void)" (?pmf_dMgState_c_State18_Update@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_UpdateAfterHidden)(void)" (?pmf_dMgState_c_UpdateAfterHidden@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_UpdateGameOverToMenu_2)(void)" (?pmf_dMgState_c_UpdateGameOverToMenu_2@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_UpdateFadeThenResume)(void)" (?pmf_dMgState_c_UpdateFadeThenResume@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_UpdateWaitThenResume)(void)" (?pmf_dMgState_c_UpdateWaitThenResume@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_UpdateWaitThenResume_2)(void)" (?pmf_dMgState_c_UpdateWaitThenResume_2@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_DrawScoreDigits)(void)" (?pmf_dMgState_c_DrawScoreDigits@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_State17_Update)(void)" (?pmf_dMgState_c_State17_Update@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_State09_Update)(void)" (?pmf_dMgState_c_State09_Update@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_State10_Update)(void)" (?pmf_dMgState_c_State10_Update@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_UpdateFadeThenResume_2)(void)" (?pmf_dMgState_c_UpdateFadeThenResume_2@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_UpdateRetryFadeOut_3)(void)" (?pmf_dMgState_c_UpdateRetryFadeOut_3@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_State00_Update)(void)" (?pmf_dMgState_c_State00_Update@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_State11_Update)(void)" (?pmf_dMgState_c_State11_Update@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_DrawRecordTable_2)(void)" (?pmf_dMgState_c_DrawRecordTable_2@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
+"void (__thiscall dMgState_c::* pmf_dMgState_c_State19_Update)(void)" (?pmf_dMgState_c_State19_Update@@3P8dMgState_c@@AEXXZQ1@)  <- dMgState_c.cpp.obj
 "int * _ZTV25cMgSmartball_pushswitch_c" (?_ZTV25cMgSmartball_pushswitch_c@@3PAHA)  <- dScMgSmartball_c.cpp.obj
 "int * _ZTV20cMgSmartball_board_c" (?_ZTV20cMgSmartball_board_c@@3PAHA)  <- dScMgSmartball_c.cpp.obj
 "int * _ZTV21cMgSmartball_pakkun_c" (?_ZTV21cMgSmartball_pakkun_c@@3PAHA)  <- dScMgSmartball_c.cpp.obj
@@ -822,7 +822,7 @@ _data_020a9ec8  <- cstd4.cpp.obj
 _data_020a9ed4  <- cstd4.cpp.obj
 _data_020a9ecc  <- cstd4.cpp.obj
 _data_0209a330  <- cstd4.cpp.obj
-__ZN6Memory8AllocateEjiP4Heap  <- ActorBase.cpp.obj
+__ZN6Memory8AllocateEjiPN5mHeap6Heap_tE  <- ActorBase.cpp.obj
 __ZTV7fBase_c  <- ActorBase.cpp.obj,_ZN7fBase_cC2Ev.cpp.obj
 "int (__thiscall daMip_cSelf::* data_ov085_02130074)(void)" (?data_ov085_02130074@@3P8daMip_cSelf@@AEHXZQ1@)  <- daMip_c.cpp.obj
 "int (__thiscall daMip_cSelf::* data_ov085_02130044)(void)" (?data_ov085_02130044@@3P8daMip_cSelf@@AEHXZQ1@)  <- daMip_c.cpp.obj
@@ -902,18 +902,18 @@ __ZN7fBase_c7ProcessEMS_FivEMS_FbvEMS_FvjE  <- func_0204322c.cpp.obj,func_020432
 "struct SharedFilePtr data_ov079_021282f0" (?data_ov079_021282f0@@3USharedFilePtr@@A)  <- daObjBkKillerdai_c.cpp.obj
 "char data_0209b3ec" (?data_0209b3ec@@3DA)  <- daMky_c.cpp.obj
 "int * data_ov030_02115cf0" (?data_ov030_02115cf0@@3PAHA)  <- daMky_c.cpp.obj
-"int * data_ov030_02115cd0" (?data_ov030_02115cd0@@3PAHA)  <- daMky_c.cpp.obj
-"int * data_ov030_02115cf8" (?data_ov030_02115cf8@@3PAHA)  <- daMky_c.cpp.obj
-"int * data_ov030_02115cd8" (?data_ov030_02115cd8@@3PAHA)  <- daMky_c.cpp.obj
+"int * gMonkeyWait2AnimationFile" (?gMonkeyWait2AnimationFile@@3PAHA)  <- daMky_c.cpp.obj
+"int * gMonkeyWait3AnimationFile" (?gMonkeyWait3AnimationFile@@3PAHA)  <- daMky_c.cpp.obj
+"int * gMonkeyWait4AnimationFile" (?gMonkeyWait4AnimationFile@@3PAHA)  <- daMky_c.cpp.obj
 "void * * * data_ov030_02115bc8" (?data_ov030_02115bc8@@3PAPAPAXA)  <- daMky_c.cpp.obj
 "char * data_ov030_02115ddc" (?data_ov030_02115ddc@@3PADA)  <- daMky_c.cpp.obj
 "struct daMky_M4x3 data_020a0e68" (?data_020a0e68@@3UdaMky_M4x3@@A)  <- daMky_c.cpp.obj
 "void * * data_02099368" (?data_02099368@@3PAPAXA)  <- daMky_c.cpp.obj
-"void * * data_ov030_02115cd0" (?data_ov030_02115cd0@@3PAPAXA)  <- daMky_c.cpp.obj
-"void * * data_ov030_02115cf8" (?data_ov030_02115cf8@@3PAPAXA)  <- daMky_c.cpp.obj
-"void * * data_ov030_02115d10" (?data_ov030_02115d10@@3PAPAXA)  <- daMky_c.cpp.obj
-"void * * data_ov030_02115d18" (?data_ov030_02115d18@@3PAPAXA)  <- daMky_c.cpp.obj
-"void * data_ov030_02115d18" (?data_ov030_02115d18@@3PAXA)  <- daMky_c.cpp.obj
+"void * * gMonkeyWait2AnimationFile" (?gMonkeyWait2AnimationFile@@3PAPAXA)  <- daMky_c.cpp.obj
+"void * * gMonkeyWait3AnimationFile" (?gMonkeyWait3AnimationFile@@3PAPAXA)  <- daMky_c.cpp.obj
+"void * * gMonkeyJumpEdAnimationFile" (?gMonkeyJumpEdAnimationFile@@3PAPAXA)  <- daMky_c.cpp.obj
+"void * * gMonkeyRunAnimationFile" (?gMonkeyRunAnimationFile@@3PAPAXA)  <- daMky_c.cpp.obj
+"void * gMonkeyRunAnimationFile" (?gMonkeyRunAnimationFile@@3PAXA)  <- daMky_c.cpp.obj
 "struct daMky_Item16 * data_ov030_02115e0c" (?data_ov030_02115e0c@@3PAUdaMky_Item16@@A)  <- daMky_c.cpp.obj
 "public: static int const * const daOnms_c::sLaunchVertSpeed" (?sLaunchVertSpeed@daOnms_c@@2QBHB)  <- daOnms_c.cpp.obj
 "public: static int const * const daOnms_c::sLaunchHorzSpeed" (?sLaunchHorzSpeed@daOnms_c@@2QBHB)  <- daOnms_c.cpp.obj
@@ -944,7 +944,7 @@ __ZN8daDoor_c19func_ov100_021452e4EP6Player  <- walk_window.cpp.obj
 "public: static void __cdecl Stage::UpdateMessage_rom(void)" (?UpdateMessage_rom@Stage@@SAXXZ)  <- message_pump.cpp.obj
 __ZN6Player19func_ov002_020d94ccEv  <- input_probe.cpp.obj
 __ZN6Player19func_ov002_020c0434Ev  <- input_probe.cpp.obj
-"void __cdecl Memory::Deallocate(void *,class Heap *)" (?Deallocate@Memory@@YAXPAXPAVHeap@@@Z)  <- cxxname_bridge.cpp.obj
+"void __cdecl Memory::Deallocate(void *,class Heap *)" (?Deallocate@Memory@@YAXPAXPAUHeap_t@mHeap@@@Z)  <- cxxname_bridge.cpp.obj
 "void __cdecl OAM::Reset(void)" (?Reset@OAM@@YAXXZ)  <- scene_boot.cpp.obj,sub_screen.cpp.obj
 ___sinit_ov004_020b948c  <- scene_mg.cpp.obj
 ___sinit_ov004_020b955c  <- scene_mg.cpp.obj

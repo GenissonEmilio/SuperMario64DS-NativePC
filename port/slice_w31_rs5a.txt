@@ -5,10 +5,10 @@
 # holds at slot 23, 0x02108b38 (config/arm9/overlays/ov002/relocs.txt line 13723).
 # It rode a thiscall host copy (port/unmatched/BigBrickBlock_OnAttacked2.cpp) while
 # its src reached Kill through a cdecl `fn(c)`; the src makes a C++ virtual call
-# now (main's promoted src/actors/daObjBlockL_c.cpp spells the same body), so the
+# now (main's promoted src/game/actors/d_a_obj_block_l.cpp spells the same body), so the
 # copy is retired. The TU's _MSC_VER arm answers MSVC C2561 (valueless returns in
 # an int body) and nothing else, and hal/actor_classes.cpp seats slot 23 on it
 # (bbb_atk2). Built by port/CMakeLists.txt's RS5A block on the three targets that
 # compile hal/actor_classes.cpp.
-src/actors/daObjBlockL_c.cpp
+src/game/actors/d_a_obj_block_l.cpp
 port/unmatched/hostarm/_ZN13BigBrickBlock11OnAttacked2ER8dActor_c.cpp

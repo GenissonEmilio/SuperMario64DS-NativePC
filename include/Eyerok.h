@@ -1,7 +1,7 @@
 /* class Eyerok : dBgActor_c. Real C++ form.
  *
  * Base and size from the factory (reconstructed name daIwante_c_classInit,
- * now `new Eyerok()` at the bottom of src/actors/Eyerok.cpp):
+ * now `new Eyerok()` at the bottom of src/game/actors/d_a_iwante.cpp):
  * fBase_c::operator new(0x874), then
  * dBgActor_c::dBgActor_c(), then the _ZTV6Eyerok store. Two
  * vtable stores in the destructor -- own, then dBgActor_c's -- confirming a
@@ -53,7 +53,7 @@
 #include "dExtShadowModel_c.h"
 #include "TextureSequence.h"
 
-/* Defined in Eyerok.cpp: the enter/run pointer-to-member pair. */
+/* Defined in d_a_iwante.cpp: the enter/run pointer-to-member pair. */
 struct EyerokState;
 
 struct Eyerok : dBgActor_c {
@@ -119,7 +119,7 @@ struct Eyerok : dBgActor_c {
     u8  pad_4d6[0x2];
     /* A hand's remaining hits: InitResources sets 3 on the two hands, the hit
        check (func_ov066_0211603c) subtracts per hit and a hand with 0 or fewer
-       left is defeated. Nothing in Eyerok.cpp writes it for the main
+       left is defeated. Nothing in d_a_iwante.cpp writes it for the main
        instance. */
     s8  mHitPoints;                                         /* 0x4d8 */
     /* Picks made by patterns 5..7 since the last pattern 8 or 9 (it starts

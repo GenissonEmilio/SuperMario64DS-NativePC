@@ -14,7 +14,7 @@
 // taking both seats.
 //
 // Nothing here is behaviour. Stage::Stage is the matched src file
-// (src/d_s_stage.cpp, arm9 0x0202e088) and this is the seam it needs: the
+// (src/game/stages/d_s_stage.cpp, arm9 0x0202e088) and this is the seam it needs: the
 // vtable array its last vptr store names, the spawn context the ActorBase
 // constructor reads, and one honest stub for the particle constructor.
 #include "port_d16.h"

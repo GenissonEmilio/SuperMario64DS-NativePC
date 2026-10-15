@@ -142,7 +142,7 @@
 # Section 14 left "WHICH MODE BYTE IS WHICH TITLE" open for dScMgPanel_c. For
 # this class it closes, because the two ov005 rows and the two reel strips line
 # up one to one. 0x16c is one of the six ids section 17 names as appearing on
-# TWO ov005 rows (data_ov005_020c24d8, stride 0x34, 36 rows), read here out of
+# TWO ov005 rows (sMiniGmRows, stride 0x34, 36 rows), read here out of
 # extracted/overlays/overlay_0005.bin at base 0x020bfec0:
 #
 #   row 17  id 0x016c  param 0x00111100  record 17  text 17  low byte 0
@@ -261,7 +261,7 @@
 # 519 is 91.1%.
 #
 # THE SIX DROPPED BODIES COME BACK, which is section 9's standing credit being
-# collected. func_ov006_0210c180, _c1a8, _c218, _c278, _c2c0 and _c500 had no
+# collected. SlotLamp_Start, _c1a8, _c218, _c278, _c2c0 and _c500 had no
 # reference edge in the whole binary while their only caller was the trap, so
 # /OPT:REF discarded them; the seated Behavior calls all six and they link.
 #
@@ -286,7 +286,7 @@
 # matched and delinked. nosrc is 1, not 2.
 #
 # WHAT THE FLOOR IS, disassembled rather than guessed at (alignment confirmed
-# first on _ZN12dScMgSlot1_c13OnYoshiTryEatEi, whose disassembly reproduces its src call for
+# first on _ZN12dScMgSlot1_c10StartRoundEi, whose disassembly reproduces its src call for
 # call). The body is a JUMP-TABLE SWITCH, not a pointer-to-member table:
 #
 #     0x0210c9ec  add   r2, r4, #0x4000
@@ -295,7 +295,7 @@
 #     0x0210c9f8  addls pc, pc, r1, lsl #2
 #     0x0210c9fc  b ... x 14 arms
 #
-# FOURTEEN states, 0..0xd, and src/_ZN12dScMgSlot1_c13OnYoshiTryEatEi.cpp (slot 18, the state
+# FOURTEEN states, 0..0xd, and src/_ZN12dScMgSlot1_c10StartRoundEi.cpp (slot 18, the state
 # reset) writes self->unk_46b4 = 0, which is the same field. So this class's
 # whole state machine is inside the missing body and there is no state table,
 # no stategen output and no address switch to write:
@@ -340,8 +340,8 @@
 # WHAT THE TRAP MEANS ON SCREEN, stated so nobody reads a clean boot as a
 # working game: with slot 6 trapped the state index never leaves 0, the reels
 # never spin, the per-frame tail the body runs after every arm -- the betIcon
-# slot-0 update at 0x0210d158, two calls to func_ov006_0210c278 and one to
-# func_ov006_0210c1a8 -- never runs, and no sound or fade is ever started. The
+# slot-0 update at 0x0210d158, two calls to SlotBlink_Tick and one to
+# SlotLamp_Tick -- never runs, and no sound or fade is ever started. The
 # class boots, InitResources lays out the strips and the bet icon, Render draws
 # three static reels every frame, and nothing moves. That is a decomp gap, not
 # a port one, and retiring it is one transcription of a 0x81c body.
@@ -446,7 +446,7 @@
 #
 #   SEVENTEEN of the 23 slice TUs are in the tip map and in NEITHER case in the
 #      base map, so the slice contributes 17;
-#   SIX are in NEITHER map -- func_ov006_0210c180, _0210c1a8, _0210c218,
+#   SIX are in NEITHER map -- SlotLamp_Start, _0210c1a8, _0210c218,
 #      _0210c278, _0210c2c0 and _0210c500 -- and they are EXACTLY the six ov006
 #      bodies whose only caller in the whole binary is the trapped Behavior.
 #      Nothing references them, so the linker discards them;
@@ -503,28 +503,28 @@
 # byte-identity across three frame counts WITHIN ONE BUILD, which the section
 # move cannot touch.
 
-src/actors/dScMgSlots.cpp
+src/minigames/d_s_mg_slots.cpp
 # RETIRED at SLICE1: body now in src/_ZN12dScMgSlot1_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN12dScMgSlot1_cD0Ev.cpp
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c180.c
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c1a8.c
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c208.c
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c218.c
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c234.c
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c278.c
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c2b0.c
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c2c0.c
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c2d4.c
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c354.c
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/_ZN12dScMgSlot1_c9betIcon_c6RenderEv.cpp
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/_ZN12dScMgSlot1_c9betIcon_c8BehaviorEv.cpp
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c478.c
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/_ZN12dScMgSlot1_c19OnHitFromUnderneathEv.cpp
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/_ZN12dScMgSlot1_c15OnHitByMegaCharEv.cpp
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c500.c
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/func_ov006_0210c638.c
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/_ZN12dScMgSlot1_c13OnYoshiTryEatEi.cpp
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/_ZN12dScMgSlot1_c6RenderEv.cpp
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/SlotLamp_Start.c
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/SlotLamp_Tick.c
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/SlotLamp_Clear.c
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/SlotBlink_Start.c
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/SlotBlink_Draw.c
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/SlotBlink_Tick.c
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/SlotBlink_Clear.c
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/SlotReel_SetSpeed.c
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/SlotBet_OnTouch.c
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/SlotBet_Reset.c
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/_ZN12dScMgSlot1_c9betIcon_c6RenderEv.cpp
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/_ZN12dScMgSlot1_c9betIcon_c8BehaviorEv.cpp
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/SlotBet_Place.c
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/_ZN12dScMgSlot1_c9CloseMenuEv.cpp
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/_ZN12dScMgSlot1_c8OpenMenuEv.cpp
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/SlotReels_CheckStopped.c
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/Slot1_InitHud.c
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/_ZN12dScMgSlot1_c10StartRoundEi.cpp
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/_ZN12dScMgSlot1_c6RenderEv.cpp
 src/func_ov006_0210c9e0.cpp
-# FOLDED into src/actors/dScMgSlots.cpp (row 506): src/minigames/d_s_mg_slot1.cpp
+# FOLDED into src/minigames/d_s_mg_slots.cpp (row 506): src/minigames/d_s_mg_slot1.cpp
 # FOLDED into src/minigames/d_s_mg_slot1.cpp (row 529): src/d_s_mg_slot1.cpp

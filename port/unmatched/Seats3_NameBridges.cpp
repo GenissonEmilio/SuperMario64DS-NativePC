@@ -1,6 +1,6 @@
 /* port/unmatched/Seats3_NameBridges.cpp -- lane SEATS3, run link100 wave 9c.
  *
- * EIGHT DECORATED ROM DATA NAMES, one seat's worth. src/actors/daGmch_c.cpp
+ * EIGHT DECORATED ROM DATA NAMES, one seat's worth. src/game/actors/d_a_gmch.cpp
  * declares each of these ov081 data symbols as an ordinary C++ extern, inside
  * or below a header that carries no linkage-specification, so MSVC decorates
  * the reference while the port's mount (port/ov081_syms.txt through
@@ -20,7 +20,7 @@
  * them UNDEF in the object and links rc 0). These eight are the remainder, and
  * every right-hand side below is DEFINED in this link today.
  *
- * TWO ADDRESSES GET TWO ROWS EACH. data_ov081_02128ec4 and data_ov081_02128ee4
+ * TWO ADDRESSES GET TWO ROWS EACH. gGamaguchiJumpEndAnimationFile and gGamaguchiWalkEndAnimationFile
  * are each declared with two different types by two headers this translation
  * unit includes, and neither declaration says extern "C", so MSVC emits two
  * decorated spellings for one piece of storage. A single row would close half
@@ -30,16 +30,16 @@
  */
 
 #pragma comment(linker, "/alternatename:?data_ov081_021280d8@@3PAPAXA=_data_ov081_021280d8")
-#pragma comment(linker, "/alternatename:?data_ov081_02128ec4@@3PAPAXA=_data_ov081_02128ec4")
-#pragma comment(linker, "/alternatename:?data_ov081_02128ec4@@3UBca2@@A=_data_ov081_02128ec4")
-#pragma comment(linker, "/alternatename:?data_ov081_02128ecc@@3PAHA=_data_ov081_02128ecc")
+#pragma comment(linker, "/alternatename:?gGamaguchiJumpEndAnimationFile@@3PAPAXA=_gGamaguchiJumpEndAnimationFile")
+#pragma comment(linker, "/alternatename:?gGamaguchiJumpEndAnimationFile@@3UBca2@@A=_gGamaguchiJumpEndAnimationFile")
+#pragma comment(linker, "/alternatename:?gGamaguchiJumpAnimationFile@@3PAHA=_gGamaguchiJumpAnimationFile")
 #pragma comment(linker, "/alternatename:?data_ov081_02128ed4@@3PAXA=_data_ov081_02128ed4")
 #pragma comment(linker, "/alternatename:?data_ov081_02128edc@@3PAHA=_data_ov081_02128edc")
-#pragma comment(linker, "/alternatename:?data_ov081_02128ee4@@3UBca2@@A=_data_ov081_02128ee4")
+#pragma comment(linker, "/alternatename:?gGamaguchiWalkEndAnimationFile@@3UBca2@@A=_gGamaguchiWalkEndAnimationFile")
 #pragma comment(linker, "/alternatename:?data_ov081_02128f40@@3DA=_data_ov081_02128f40")
 
 
-/* TWENTY-FIVE MORE, src/actors/daMip_c.cpp (ov085 MIPS the rabbit), measured
+/* TWENTY-FIVE MORE, src/game/actors/d_a_mip.cpp (ov085 MIPS the rabbit), measured
  * the same way and on the same day. This translation unit is the extreme case
  * of the two-spellings shape: SIX ov085 addresses are each declared with two
  * or three different types by the members that read them, and 021305c0 alone
@@ -65,7 +65,7 @@
 #pragma comment(linker, "/alternatename:?data_ov085_021305c0@@3UdaMip_G@@A=_data_ov085_021305c0")
 #pragma comment(linker, "/alternatename:?data_ov085_021305c8@@3PAPAHA=_data_ov085_021305c8")
 #pragma comment(linker, "/alternatename:?data_ov085_021305c8@@3PAPAXA=_data_ov085_021305c8")
-#pragma comment(linker, "/alternatename:?data_ov085_021305d0@@3PAPAXA=_data_ov085_021305d0")
+#pragma comment(linker, "/alternatename:?gMipRunAnimationFile@@3PAPAXA=_gMipRunAnimationFile")
 #pragma comment(linker, "/alternatename:?data_ov085_0213066c@@3PAXA=_data_ov085_0213066c")
 #pragma comment(linker, "/alternatename:?data_ov085_0213067c@@3PAHA=_data_ov085_0213067c")
 #pragma comment(linker, "/alternatename:?data_ov085_0213068c@@3DA=_data_ov085_0213068c")

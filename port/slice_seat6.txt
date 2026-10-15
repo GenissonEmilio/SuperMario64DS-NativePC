@@ -72,7 +72,7 @@
 #             onto the cdecl body (the Klepto c0000005)
 #   retires   port/unmatched/UnchainedChomp_Behavior.cpp (InitResources body
 #             cut; its Spawn and Behavior bodies and the PMF seat all stay)
-src/actors/daWanwan2_c.cpp
+src/game/actors/d_a_wanwan2.cpp
 #
 # MantaRay::InitResources (ov090) OK -- family F, the same missing decoration
 #   referrer  _ZTV8MantaRay[0] @ 0213423c = 02132e38   (overlay_0090.bin, base 02131ec0)
@@ -83,7 +83,7 @@ src/actors/daWanwan2_c.cpp
 #   retires   port/unmatched/MantaRay_HostSites.cpp (InitResources body cut;
 #             its Render, its state setter and its Behavior stay, each with its
 #             own separate reason)
-src/actors/daManta_c.cpp
+src/game/actors/d_a_manta.cpp
 #
 # func_ov074_021222e0 (ov074) OK -- family E, and the reason is DEAD TWICE OVER
 #   referrer  config/arm9/overlays/ov074/relocs.txt
@@ -112,7 +112,7 @@ src/actors/daManta_c.cpp
 #   retires   port/unmatched/Goomboss_HostSites.cpp (its second body cut; the
 #             file's first body was already retired by lane FACEF, so the file
 #             becomes a documented empty TU)
-src/actors/daKuriKing_c.cpp
+src/game/actors/d_a_kuri_king.cpp
 #
 # =================== THE FOURTEEN GENERATED ROWS ===========================
 #
@@ -172,12 +172,12 @@ src/actors/daKuriKing_c.cpp
 #             parameter is cleaned once, by mb_v19, rather than twice
 #   retires   port/unmatched/MgBase_ShadowSlot19.cpp (both bodies)
 #
-# func_ov006_020c2924 (ov006), the +0x4f38 sub-object's fader gate
+# Presenter_ResetPose (ov006), the +0x4f38 sub-object's fader gate
 #   referrer  config/arm9/overlays/ov006/relocs.txt, TWO arm_calls, one per
 #             class that mounts the sub-object:
 #             from:0x020e0018 kind:arm_call to:0x020c2924   dScMgCup_c slot 18
 #             from:0x0211c5a4 kind:arm_call to:0x020c2924   dScMgSound_c slot 0
-#   record    func_ov006_020c2924 kind:function(arm,size=0x60) addr:0x020c2924   (overlays/ov006/symbols.txt:62)
+#   record    Presenter_ResetPose kind:function(arm,size=0x60) addr:0x020c2924   (overlays/ov006/symbols.txt:62)
 #   dispatch  020c2938  ldr r1,[r0] / ldr r1,[r1,#0x18] / blx r1
 #                       byte +0x18 = word 6, no argument, r0 the object
 #   patch     word 6 __fastcall(obj, 0) -- ecx = obj, nothing pushed, which is
@@ -328,12 +328,12 @@ src/actors/daKuriKing_c.cpp
 #
 # ============================ NOT TAKEN, one row ===========================
 #
-# func_ov006_02107db8 (ov006), the roulette WHEEL's per-frame tick.
+# RouletteBoard_Update (ov006), the roulette WHEEL's per-frame tick.
 #   referrer  config/arm9/overlays/ov006/relocs.txt
 #             from:0x0210a120 kind:arm_call to:0x02107db8 module:overlay(6)
 #             (vtable slot 6, _ZN15dScMgRoulette_c8BehaviorEv, the class's Behavior; the
 #              only arm_call in the whole overlay that reaches this body)
-#   record    func_ov006_02107db8 kind:function(arm,size=0xf0) addr:0x02107db8   (overlays/ov006/symbols.txt:1330)
+#   record    RouletteBoard_Update kind:function(arm,size=0xf0) addr:0x02107db8   (overlays/ov006/symbols.txt:1330)
 #   WHY NOT: it is not one seam but three, and the third is a LAYOUT. The
 #            matched TU declares `struct C { PMF pmf; char pad8[0x10-8]; Obj
 #            obj; }` where `PMF` is `void (C::*)()` formed while C is still

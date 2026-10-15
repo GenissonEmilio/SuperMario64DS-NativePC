@@ -6,19 +6,19 @@
  * than to a neighbour.
  *
  * SIZE 0x5044, from the factory's own `_ZN7fBase_cnwEj(0x5044)`
- * (dScMgSlot3_c_classInit in src/actors/dScMgSlots.cpp). The evidenced field span stops at 0x5043,
+ * (dScMgSlot3_c_classInit in src/minigames/d_s_mg_slots.cpp). The evidenced field span stops at 0x5043,
  * so the trailing byte is alignment, not unclaimed space.
  *
- * TABLE at 0x4f38, constructed by func_ov006_020c221c and destroyed by
- * func_ov006_020c21e4 -- the same construct/destroy pair shape five
+ * TABLE at 0x4f38, constructed by Mascot_Construct and destroyed by
+ * Mascot_Destruct -- the same construct/destroy pair shape five
  * siblings use at this same offset (see include/dScMgCard_c.h's own note).
  * Nothing reads inside the table itself, so its size is bounded only by
  * what follows it, and that bound is 0xac, not the 0xb8 the first draft of
  * this header claimed: a THREE-ELEMENT s32 array sits at 0x4fe4, indexed by
  * five of this class's methods (the legacy Render's local
  * `struct T4fe4 { char pad[0x4fe4]; int vals[3]; }` names it outright, and
- * InitResources, func_ov006_0210af64, func_ov006_0210adac and
- * func_ov006_0210ab08 all index it as
+ * InitResources, Slot3_State1, Slot3_State2 and
+ * Slot3_ReelDigits all index it as
  * `[i]` or `+ i*4`). It closes exactly on unk_4ff0. Left opaque up to
  * there rather than guessed at, as dScMgCard_c.h leaves its own.
  *
@@ -31,7 +31,7 @@
  * all four are dScMgBase_c's own and are already declared there.
  *
  * THE DESTRUCTOR IS NOT DEFINED INLINE -- a leaf, no RTTI descendants of
- * its own. Its definition in src/actors/dScMgSlots.cpp emits both
+ * its own. Its definition in src/minigames/d_s_mg_slots.cpp emits both
  * destructor variants. No separate operator delete is needed --
  * dScMgBase_c, two levels up, already provides one.
  *
@@ -43,7 +43,7 @@
 #define DSCMGSLOT3_C_H
 #include "dScMgSingle3DBase_c.h"
 
-extern "C" int func_ov006_020c21e4(char *t); /* decl_common.h's own signature */
+extern "C" int Mascot_Destruct(char *t); /* decl_common.h's own signature */
 
 struct dScMgSlot3_c : dScMgSingle3DBase_c {
     /* The destructor pair spelled as two plain virtuals on the host, plus
@@ -72,10 +72,10 @@ struct dScMgSlot3_c : dScMgSingle3DBase_c {
        class's key function; the production TU owns the compiler-emitted
        _ZTV12dScMgSlot3_c. */
     s32 InitResources();   /* slot  0 */
-    virtual void OnYoshiTryEat(int arg);               /* slot 18 */
-    virtual int  OnAimedAtWithEgg();                   /* slot 29 */
-    virtual void OnAimedAtWithEggReturnVec();          /* slot 30 */
-    virtual void Virtual80();                          /* slot 32 */
+    virtual void StartRound(int arg);               /* slot 18 */
+    virtual int  SaveScreenForMenu();                   /* slot 29 */
+    virtual void RestoreScreenFromMenu();          /* slot 30 */
+    virtual void InitMainScreenBg();                          /* slot 32 */
     s32 Behavior();        /* slot  6 */
     s32 Render();          /* slot  9 */
 

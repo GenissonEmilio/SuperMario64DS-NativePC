@@ -172,7 +172,7 @@ void SolidHeapAllocator::ResetEnd()
     p[1] = (int)mEnd;
 }
 
-// @symbol _ZN4Heap24CreateSolidHeapAllocatorEPvjj
+// @symbol _ZN5mHeap6Heap_t24CreateSolidHeapAllocatorEPvjj
 /* Fit a SolidHeapAllocator into [address, address + size), or refuse. Both ends
  * are brought to a 4-byte boundary, inwards, so the aligned span is never
  * larger than asked for. The refusal has two halves: `start > end` catches
@@ -183,7 +183,9 @@ void SolidHeapAllocator::ResetEnd()
  * The allocator is constructed AT start_u: the object lives inside the block
  * it manages. That is why the constructor takes the end as its argument and
  * needs no separate size. */
-SolidHeapAllocator* Heap::CreateSolidHeapAllocator(void* address, u32 size, u32 flags)
+namespace mHeap {
+
+SolidHeapAllocator* Heap_t::CreateSolidHeapAllocator(void* address, u32 size, u32 flags)
 {
     u32 end   = (size + (u32)address) & ~3u;
     u32 start = ((u32)address + 3u)   & ~3u;
@@ -193,6 +195,8 @@ SolidHeapAllocator* Heap::CreateSolidHeapAllocator(void* address, u32 size, u32 
 
     return _ZN18SolidHeapAllocatorC1EPvj((SolidHeapAllocator*)start, (void*)end, flags);
 }
+
+} /* namespace mHeap */
 
 // @symbol func_0204ebb8
 /* Tail-call veneer to HeapAllocator::Remove -- a three-word thunk

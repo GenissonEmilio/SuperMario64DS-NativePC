@@ -41,7 +41,7 @@
 // own SpawnInfo at 0x0213da64 in the middle of it.
 //
 // THE STATE 4 THAT PROVES THE SIBLING'S WIDTH. data_ov006_02142734 slot 4 is
-// 0x021019e0, copied from the pair at data_ov006_0213da5c -- which is the word
+// 0x021019e0, copied from the pair at pmf_dScMgPachinko2_c_Paddle_State4 -- which is the word
 // hal/scene_mg.cpp section 8 identifies as index 36 of dScMgPachinko_c's
 // vtable, the phantom slot a 37-slot fill of THAT class would have written
 // over. From this commit the corruption would no longer be latent: it would
@@ -61,7 +61,7 @@
 // the switch below, so this file no longer reports a single address. The three
 // matched ones carry delink blocks; 0x02102fe8 ships with the honest banner
 // and its per-instruction diff pasted in the source, which is what the tree
-// already does for src/func_ov006_02103ac0.c in this same class.
+// already does for src/UpdateRoundEnd.c in this same class.
 //
 // WHAT DID NOT CHANGE: no symbol is invented for anything here. The four
 // definitions are decompilations of the ROM's own bodies under their real
@@ -92,14 +92,14 @@
 // hosted only because the pair word is a DS address, all three of this
 // class's name a member-pointer type and are the wall itself:
 //
-//   func_ov006_020fff84  `struct Entry { PMF pmf; };` and
+//   Cup_DrawAll  `struct Entry { PMF pmf; };` and
 //        `extern Entry data_ov006_021426cc[];` at file scope OUTSIDE
 //        extern "C". MSVC mangles the member-pointer type into the symbol, so
 //        a link would name it -- and sizeof(Entry) is 4 where the ROM strides
 //        8, so index 1 would read half of pair 0 and half of pair 1.
-//   func_ov006_02102e8c  the same shape, same spelling, same visibility, over
+//   Ball_UpdateAll  the same shape, same spelling, same visibility, over
 //        data_ov006_021426f4.
-//   func_ov006_0210246c  `extern "C" PMF data_ov006_02142734[];` INSIDE
+//   Paddle_UpdateAll  `extern "C" PMF data_ov006_02142734[];` INSIDE
 //        extern "C", so the global mangles to the plain C name the mount
 //        already defines and THE LINK IS SATISFIED. Section 4's silent
 //        extern-"C" class, the one no link can ever surface, and the reason
@@ -113,17 +113,17 @@
 // whether a clean run is a real one, and a wrong guard offset produces a run
 // that dispatches nothing and reads green. Each is the same shape:
 //
-//   func_ov006_020fff84   i = 0..1     add r0, r6, r5, lsl #5   (stride 0x20)
+//   Cup_DrawAll   i = 0..1     add r0, r6, r5, lsl #5   (stride 0x20)
 //                                      add r0, r0, #0x5000
 //                                      ldrb r1, [r0, #0x634]    guard  +0x5634
 //                                      ldrb r0, [r0, #0x635]    index  +0x5635
-//   func_ov006_0210246c   i = 0..2     add r0, r6, r5, lsl #6   (stride 0x40)
+//   Paddle_UpdateAll   i = 0..2     add r0, r6, r5, lsl #6   (stride 0x40)
 //                                      add r0, r0, #0x5000
 //                                      ldrb r1, [r0, #0x294]    guard  +0x5294
 //                                      ldrb r0, [r0, #0x296]    index  +0x5296
 //                                      and after the dispatch,
 //                                      bl 0x210076c with (r6, r5)
-//   func_ov006_02102e8c   i = 0..0x2f  add r0, r6, r5, lsl #6   (stride 0x40)
+//   Ball_UpdateAll   i = 0..0x2f  add r0, r6, r5, lsl #6   (stride 0x40)
 //                                      add r0, r0, #0x4000
 //                                      ldrb r1, [r0, #0x698]    guard  +0x4698
 //                                      ldrb r0, [r0, #0x699]    index  +0x4699
@@ -177,39 +177,39 @@ void port_mg_call1(void *self, unsigned code, int adj, int a);
    below. All twenty-eight take (self, index) in their own src -- checked one
    by one,
    not assumed from the table's arity -- so none of them is the ARM
-   ride-through curling met at func_ov006_020e2eb8. They are declared with
+   ride-through curling met at Scene_Idle. They are declared with
    void* here rather than with each src's own struct type: these are C-linkage
    symbols, the declaration cannot change the mangling, and a host copy that
    repeated two dozen private struct definitions would be two dozen more places
    for a layout to drift. */
-void _ZN16dScMgPachinko2_c19func_ov006_020ff8c8Ei(void *c, int i);   /* mg7 lane L369 */
-void _ZN16dScMgPachinko2_c19func_ov006_020ff690Ei(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_020ffb54Ei(void *c, int i);   /* mg7 lane L369 */
-void _ZN16dScMgPachinko2_c19func_ov006_020ffde4Ei(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_020fff54Ei(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_021009b8Ei(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_02100b08Ei(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_02100bacEi(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_02100d90Ei(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_02100e3cEi(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_02100f7cEi(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_02101088Ei(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_02101224Ei(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_021012ccEi(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_021016ecEi(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_021019e0Ei(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_02101af0Ei(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_02101e88Ei(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_021020c4Ei(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_02102274Ei(void *c, int i);   /* mg7 lane L369 */
-void _ZN16dScMgPachinko2_c19func_ov006_02102f3cEi(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_02102fe8Ei(void *c, int i);   /* mg7 lane L369 */
-void _ZN16dScMgPachinko2_c19func_ov006_02103360Ei(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_02103608Ei(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_0210371cEi(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_02103870Ei(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_0210397cEi(void *c, int i);
-void _ZN16dScMgPachinko2_c19func_ov006_02103994Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c10Cup_State3Ei(void *c, int i);   /* mg7 lane L369 */
+void _ZN16dScMgPachinko2_c10Cup_State4Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c10Cup_State2Ei(void *c, int i);   /* mg7 lane L369 */
+void _ZN16dScMgPachinko2_c10Cup_State1Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c10Cup_State0Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c14Paddle_State14Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c14Paddle_State13Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c14Paddle_State12Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c14Paddle_State11Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c14Paddle_State10Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c13Paddle_State9Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c13Paddle_State8Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c13Paddle_State7Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c13Paddle_State6Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c13Paddle_State5Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c13Paddle_State4Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c13Paddle_State3Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c13Paddle_State2Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c13Paddle_State1Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c13Paddle_State0Ei(void *c, int i);   /* mg7 lane L369 */
+void _ZN16dScMgPachinko2_c11Ball_State0Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c11Ball_State1Ei(void *c, int i);   /* mg7 lane L369 */
+void _ZN16dScMgPachinko2_c11Ball_State2Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c11Ball_State3Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c11Ball_State4Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c11Ball_State5Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c11Ball_State6Ei(void *c, int i);
+void _ZN16dScMgPachinko2_c11Ball_State7Ei(void *c, int i);
 
 /* the three mount tables, re-typed to the ROM's eight-byte pair. The mount
    defines the storage; __sinit_ov006_02131cd0 fills it at scene load. */
@@ -219,10 +219,10 @@ extern MgPmf data_ov006_02142734[];
 
 /* the one ordinary callee a host copy below keeps, from its own src. Run mg7
    lane L369 decompiled it (0x24c, NONMATCHING at 2004/b56 with the diff pasted
-   in src/func_ov006_0210076c.c), so unmatched/MgPachinko2_Traps.cpp -- which
+   in src/Paddle_CheckBallHits.c), so unmatched/MgPachinko2_Traps.cpp -- which
    existed for this one symbol and nothing else -- is DELETED. A trap standing
    beside a real definition is a duplicate symbol, not a safety net. */
-void _ZN16dScMgPachinko2_c19func_ov006_0210076cEi(void *c, int i);
+void _ZN16dScMgPachinko2_c20Paddle_CheckBallHitsEi(void *c, int i);
 
 /* the boot installer at the end of this file; hal/scene_mg.cpp calls it after
    the ov006 constructors have filled the tables. */
@@ -262,46 +262,46 @@ extern "C" int port_mg_try_pachinko2_1(void *self, unsigned code, int a)
     ++g_pachinko2_state_hits;
     switch (code) {
     /* data_ov006_021426cc, the 2-entry loop at +0x5634 */
-    case 0x020fff54u: _ZN16dScMgPachinko2_c19func_ov006_020fff54Ei(self, a); lkt_census(g_lkt_cc, 5, 0); return 1;
-    case 0x020ffde4u: _ZN16dScMgPachinko2_c19func_ov006_020ffde4Ei(self, a); lkt_census(g_lkt_cc, 5, 1); return 1;
+    case 0x020fff54u: _ZN16dScMgPachinko2_c10Cup_State0Ei(self, a); lkt_census(g_lkt_cc, 5, 0); return 1;
+    case 0x020ffde4u: _ZN16dScMgPachinko2_c10Cup_State1Ei(self, a); lkt_census(g_lkt_cc, 5, 1); return 1;
     /* slots 2 and 3, the two Lakitu carriers. Run mg7 lane L369, both
        byte-matched at 1.2/sp2p3. */
-    case 0x020ffb54u: _ZN16dScMgPachinko2_c19func_ov006_020ffb54Ei(self, a); lkt_census(g_lkt_cc, 5, 2); return 1;
-    case 0x020ff8c8u: _ZN16dScMgPachinko2_c19func_ov006_020ff8c8Ei(self, a); lkt_census(g_lkt_cc, 5, 3); return 1;
-    case 0x020ff690u: _ZN16dScMgPachinko2_c19func_ov006_020ff690Ei(self, a); lkt_census(g_lkt_cc, 5, 4); return 1;
+    case 0x020ffb54u: _ZN16dScMgPachinko2_c10Cup_State2Ei(self, a); lkt_census(g_lkt_cc, 5, 2); return 1;
+    case 0x020ff8c8u: _ZN16dScMgPachinko2_c10Cup_State3Ei(self, a); lkt_census(g_lkt_cc, 5, 3); return 1;
+    case 0x020ff690u: _ZN16dScMgPachinko2_c10Cup_State4Ei(self, a); lkt_census(g_lkt_cc, 5, 4); return 1;
 
     /* data_ov006_021426f4, the 0x30-entry loop at +0x4698 */
-    case 0x02102f3cu: _ZN16dScMgPachinko2_c19func_ov006_02102f3cEi(self, a); lkt_census(g_lkt_f4, 8, 0); return 1;
+    case 0x02102f3cu: _ZN16dScMgPachinko2_c11Ball_State0Ei(self, a); lkt_census(g_lkt_f4, 8, 0); return 1;
     /* slot 1, the stylus driver. Run mg7 lane L369, NONMATCHING at 2004/b56
        (register naming only; the diff is pasted in the source). */
-    case 0x02102fe8u: _ZN16dScMgPachinko2_c19func_ov006_02102fe8Ei(self, a); lkt_census(g_lkt_f4, 8, 1); return 1;
-    case 0x02103360u: _ZN16dScMgPachinko2_c19func_ov006_02103360Ei(self, a); lkt_census(g_lkt_f4, 8, 2); return 1;
-    case 0x02103608u: _ZN16dScMgPachinko2_c19func_ov006_02103608Ei(self, a); lkt_census(g_lkt_f4, 8, 3); return 1;
-    case 0x0210371cu: _ZN16dScMgPachinko2_c19func_ov006_0210371cEi(self, a); lkt_census(g_lkt_f4, 8, 4); return 1;
-    case 0x02103870u: _ZN16dScMgPachinko2_c19func_ov006_02103870Ei(self, a); lkt_census(g_lkt_f4, 8, 5); return 1;
-    case 0x0210397cu: _ZN16dScMgPachinko2_c19func_ov006_0210397cEi(self, a); lkt_census(g_lkt_f4, 8, 6); return 1;
-    case 0x02103994u: _ZN16dScMgPachinko2_c19func_ov006_02103994Ei(self, a); lkt_census(g_lkt_f4, 8, 7); return 1;
+    case 0x02102fe8u: _ZN16dScMgPachinko2_c11Ball_State1Ei(self, a); lkt_census(g_lkt_f4, 8, 1); return 1;
+    case 0x02103360u: _ZN16dScMgPachinko2_c11Ball_State2Ei(self, a); lkt_census(g_lkt_f4, 8, 2); return 1;
+    case 0x02103608u: _ZN16dScMgPachinko2_c11Ball_State3Ei(self, a); lkt_census(g_lkt_f4, 8, 3); return 1;
+    case 0x0210371cu: _ZN16dScMgPachinko2_c11Ball_State4Ei(self, a); lkt_census(g_lkt_f4, 8, 4); return 1;
+    case 0x02103870u: _ZN16dScMgPachinko2_c11Ball_State5Ei(self, a); lkt_census(g_lkt_f4, 8, 5); return 1;
+    case 0x0210397cu: _ZN16dScMgPachinko2_c11Ball_State6Ei(self, a); lkt_census(g_lkt_f4, 8, 6); return 1;
+    case 0x02103994u: _ZN16dScMgPachinko2_c11Ball_State7Ei(self, a); lkt_census(g_lkt_f4, 8, 7); return 1;
 
     /* data_ov006_02142734, the 3-entry loop at +0x5294 */
     /* slot 0, selected on EVERY tick of every live entry: the respawn timer
        and the launch setup. Run mg7 lane L369, byte-matched at 1.2/sp2p3. */
-    case 0x02102274u: _ZN16dScMgPachinko2_c19func_ov006_02102274Ei(self, a); lkt_census(g_lkt_34, 15, 0); return 1;
-    case 0x021020c4u: _ZN16dScMgPachinko2_c19func_ov006_021020c4Ei(self, a); lkt_census(g_lkt_34, 15, 1); return 1;
-    case 0x02101e88u: _ZN16dScMgPachinko2_c19func_ov006_02101e88Ei(self, a); lkt_census(g_lkt_34, 15, 2); return 1;
-    case 0x02101af0u: _ZN16dScMgPachinko2_c19func_ov006_02101af0Ei(self, a); lkt_census(g_lkt_34, 15, 3); return 1;
+    case 0x02102274u: _ZN16dScMgPachinko2_c13Paddle_State0Ei(self, a); lkt_census(g_lkt_34, 15, 0); return 1;
+    case 0x021020c4u: _ZN16dScMgPachinko2_c13Paddle_State1Ei(self, a); lkt_census(g_lkt_34, 15, 1); return 1;
+    case 0x02101e88u: _ZN16dScMgPachinko2_c13Paddle_State2Ei(self, a); lkt_census(g_lkt_34, 15, 2); return 1;
+    case 0x02101af0u: _ZN16dScMgPachinko2_c13Paddle_State3Ei(self, a); lkt_census(g_lkt_34, 15, 3); return 1;
     /* slot 4, the word the sibling class's phantom slot 36 would have
        clobbered. See the header. */
-    case 0x021019e0u: _ZN16dScMgPachinko2_c19func_ov006_021019e0Ei(self, a); lkt_census(g_lkt_34, 15, 4); return 1;
-    case 0x021016ecu: _ZN16dScMgPachinko2_c19func_ov006_021016ecEi(self, a); lkt_census(g_lkt_34, 15, 5); return 1;
-    case 0x021012ccu: _ZN16dScMgPachinko2_c19func_ov006_021012ccEi(self, a); lkt_census(g_lkt_34, 15, 6); return 1;
-    case 0x02101224u: _ZN16dScMgPachinko2_c19func_ov006_02101224Ei(self, a); lkt_census(g_lkt_34, 15, 7); return 1;
-    case 0x02101088u: _ZN16dScMgPachinko2_c19func_ov006_02101088Ei(self, a); lkt_census(g_lkt_34, 15, 8); return 1;
-    case 0x02100f7cu: _ZN16dScMgPachinko2_c19func_ov006_02100f7cEi(self, a); lkt_census(g_lkt_34, 15, 9); return 1;
-    case 0x02100e3cu: _ZN16dScMgPachinko2_c19func_ov006_02100e3cEi(self, a); lkt_census(g_lkt_34, 15, 10); return 1;
-    case 0x02100d90u: _ZN16dScMgPachinko2_c19func_ov006_02100d90Ei(self, a); lkt_census(g_lkt_34, 15, 11); return 1;
-    case 0x02100bacu: _ZN16dScMgPachinko2_c19func_ov006_02100bacEi(self, a); lkt_census(g_lkt_34, 15, 12); return 1;
-    case 0x02100b08u: _ZN16dScMgPachinko2_c19func_ov006_02100b08Ei(self, a); lkt_census(g_lkt_34, 15, 13); return 1;
-    case 0x021009b8u: _ZN16dScMgPachinko2_c19func_ov006_021009b8Ei(self, a); lkt_census(g_lkt_34, 15, 14); return 1;
+    case 0x021019e0u: _ZN16dScMgPachinko2_c13Paddle_State4Ei(self, a); lkt_census(g_lkt_34, 15, 4); return 1;
+    case 0x021016ecu: _ZN16dScMgPachinko2_c13Paddle_State5Ei(self, a); lkt_census(g_lkt_34, 15, 5); return 1;
+    case 0x021012ccu: _ZN16dScMgPachinko2_c13Paddle_State6Ei(self, a); lkt_census(g_lkt_34, 15, 6); return 1;
+    case 0x02101224u: _ZN16dScMgPachinko2_c13Paddle_State7Ei(self, a); lkt_census(g_lkt_34, 15, 7); return 1;
+    case 0x02101088u: _ZN16dScMgPachinko2_c13Paddle_State8Ei(self, a); lkt_census(g_lkt_34, 15, 8); return 1;
+    case 0x02100f7cu: _ZN16dScMgPachinko2_c13Paddle_State9Ei(self, a); lkt_census(g_lkt_34, 15, 9); return 1;
+    case 0x02100e3cu: _ZN16dScMgPachinko2_c14Paddle_State10Ei(self, a); lkt_census(g_lkt_34, 15, 10); return 1;
+    case 0x02100d90u: _ZN16dScMgPachinko2_c14Paddle_State11Ei(self, a); lkt_census(g_lkt_34, 15, 11); return 1;
+    case 0x02100bacu: _ZN16dScMgPachinko2_c14Paddle_State12Ei(self, a); lkt_census(g_lkt_34, 15, 12); return 1;
+    case 0x02100b08u: _ZN16dScMgPachinko2_c14Paddle_State13Ei(self, a); lkt_census(g_lkt_34, 15, 13); return 1;
+    case 0x021009b8u: _ZN16dScMgPachinko2_c14Paddle_State14Ei(self, a); lkt_census(g_lkt_34, 15, 14); return 1;
 
     default: --g_pachinko2_state_hits;          return 0;
     }
@@ -360,9 +360,9 @@ extern "C" void port_mg_pachinko2_state_counts(unsigned *hits, unsigned *missing
 // every cell has been compared against the ROM's own code word and a zero
 // adjustment word, so NO HOST COPY OF A dScMgPachinko2_c DISPATCHER IS LEFT:
 //
-//   func_ov006_020fff84  data_ov006_021426cc   5 slots  arity 1
-//   func_ov006_02102e8c  data_ov006_021426f4   8 slots  arity 1
-//   func_ov006_0210246c  data_ov006_02142734  15 slots  arity 1
+//   Cup_DrawAll  data_ov006_021426cc   5 slots  arity 1
+//   Ball_UpdateAll  data_ov006_021426f4   8 slots  arity 1
+//   Paddle_UpdateAll  data_ov006_02142734  15 slots  arity 1
 //
 // 5+8+15 = 28, the whole census this file's header counts.
 //
@@ -390,7 +390,7 @@ extern "C" void port_mg_pachinko2_state_counts(unsigned *hits, unsigned *missing
 // and one pushed argument on all three (edi, edi, esi -- the loop counter).
 //
 // TWO /alternatename DIRECTIVES, read off the objects with dumpbin /symbols.
-// src/func_ov006_0210246c.cpp declares its table inside extern "C" and needs
+// src/Paddle_UpdateAll.cpp declares its table inside extern "C" and needs
 // none.
 //
 // THE PER-SLOT CENSUS MOVES INTO THE FACES. g_lkt_cc, g_lkt_f4 and g_lkt_34 are
@@ -410,36 +410,36 @@ extern "C" void port_mg_pachinko2_state_counts(unsigned *hits, unsigned *missing
     }
 
 /* data_ov006_021426cc */
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_020fff54Ei, g_lkt_cc, 5, 0)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_020ffde4Ei, g_lkt_cc, 5, 1)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_020ffb54Ei, g_lkt_cc, 5, 2)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_020ff8c8Ei, g_lkt_cc, 5, 3)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_020ff690Ei, g_lkt_cc, 5, 4)
+P2_FACE(_ZN16dScMgPachinko2_c10Cup_State0Ei, g_lkt_cc, 5, 0)
+P2_FACE(_ZN16dScMgPachinko2_c10Cup_State1Ei, g_lkt_cc, 5, 1)
+P2_FACE(_ZN16dScMgPachinko2_c10Cup_State2Ei, g_lkt_cc, 5, 2)
+P2_FACE(_ZN16dScMgPachinko2_c10Cup_State3Ei, g_lkt_cc, 5, 3)
+P2_FACE(_ZN16dScMgPachinko2_c10Cup_State4Ei, g_lkt_cc, 5, 4)
 /* data_ov006_021426f4 */
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02102f3cEi, g_lkt_f4, 8, 0)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02102fe8Ei, g_lkt_f4, 8, 1)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02103360Ei, g_lkt_f4, 8, 2)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02103608Ei, g_lkt_f4, 8, 3)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_0210371cEi, g_lkt_f4, 8, 4)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02103870Ei, g_lkt_f4, 8, 5)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_0210397cEi, g_lkt_f4, 8, 6)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02103994Ei, g_lkt_f4, 8, 7)
+P2_FACE(_ZN16dScMgPachinko2_c11Ball_State0Ei, g_lkt_f4, 8, 0)
+P2_FACE(_ZN16dScMgPachinko2_c11Ball_State1Ei, g_lkt_f4, 8, 1)
+P2_FACE(_ZN16dScMgPachinko2_c11Ball_State2Ei, g_lkt_f4, 8, 2)
+P2_FACE(_ZN16dScMgPachinko2_c11Ball_State3Ei, g_lkt_f4, 8, 3)
+P2_FACE(_ZN16dScMgPachinko2_c11Ball_State4Ei, g_lkt_f4, 8, 4)
+P2_FACE(_ZN16dScMgPachinko2_c11Ball_State5Ei, g_lkt_f4, 8, 5)
+P2_FACE(_ZN16dScMgPachinko2_c11Ball_State6Ei, g_lkt_f4, 8, 6)
+P2_FACE(_ZN16dScMgPachinko2_c11Ball_State7Ei, g_lkt_f4, 8, 7)
 /* data_ov006_02142734 */
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02102274Ei, g_lkt_34, 15, 0)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_021020c4Ei, g_lkt_34, 15, 1)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02101e88Ei, g_lkt_34, 15, 2)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02101af0Ei, g_lkt_34, 15, 3)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_021019e0Ei, g_lkt_34, 15, 4)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_021016ecEi, g_lkt_34, 15, 5)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_021012ccEi, g_lkt_34, 15, 6)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02101224Ei, g_lkt_34, 15, 7)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02101088Ei, g_lkt_34, 15, 8)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02100f7cEi, g_lkt_34, 15, 9)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02100e3cEi, g_lkt_34, 15, 10)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02100d90Ei, g_lkt_34, 15, 11)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02100bacEi, g_lkt_34, 15, 12)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_02100b08Ei, g_lkt_34, 15, 13)
-P2_FACE(_ZN16dScMgPachinko2_c19func_ov006_021009b8Ei, g_lkt_34, 15, 14)
+P2_FACE(_ZN16dScMgPachinko2_c13Paddle_State0Ei, g_lkt_34, 15, 0)
+P2_FACE(_ZN16dScMgPachinko2_c13Paddle_State1Ei, g_lkt_34, 15, 1)
+P2_FACE(_ZN16dScMgPachinko2_c13Paddle_State2Ei, g_lkt_34, 15, 2)
+P2_FACE(_ZN16dScMgPachinko2_c13Paddle_State3Ei, g_lkt_34, 15, 3)
+P2_FACE(_ZN16dScMgPachinko2_c13Paddle_State4Ei, g_lkt_34, 15, 4)
+P2_FACE(_ZN16dScMgPachinko2_c13Paddle_State5Ei, g_lkt_34, 15, 5)
+P2_FACE(_ZN16dScMgPachinko2_c13Paddle_State6Ei, g_lkt_34, 15, 6)
+P2_FACE(_ZN16dScMgPachinko2_c13Paddle_State7Ei, g_lkt_34, 15, 7)
+P2_FACE(_ZN16dScMgPachinko2_c13Paddle_State8Ei, g_lkt_34, 15, 8)
+P2_FACE(_ZN16dScMgPachinko2_c13Paddle_State9Ei, g_lkt_34, 15, 9)
+P2_FACE(_ZN16dScMgPachinko2_c14Paddle_State10Ei, g_lkt_34, 15, 10)
+P2_FACE(_ZN16dScMgPachinko2_c14Paddle_State11Ei, g_lkt_34, 15, 11)
+P2_FACE(_ZN16dScMgPachinko2_c14Paddle_State12Ei, g_lkt_34, 15, 12)
+P2_FACE(_ZN16dScMgPachinko2_c14Paddle_State13Ei, g_lkt_34, 15, 13)
+P2_FACE(_ZN16dScMgPachinko2_c14Paddle_State14Ei, g_lkt_34, 15, 14)
 
 extern "C" void port_mg_pachinko2_states_seat(void)
 {
@@ -455,36 +455,36 @@ extern "C" void port_mg_pachinko2_states_seat(void)
         unsigned rom;
         void *face;
     } seats[] = {
-        {data_ov006_021426cc, "021426cc", 0, 0x020fff54u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_020fff54Ei},
-        {data_ov006_021426cc, "021426cc", 1, 0x020ffde4u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_020ffde4Ei},
-        {data_ov006_021426cc, "021426cc", 2, 0x020ffb54u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_020ffb54Ei},
-        {data_ov006_021426cc, "021426cc", 3, 0x020ff8c8u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_020ff8c8Ei},
-        {data_ov006_021426cc, "021426cc", 4, 0x020ff690u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_020ff690Ei},
+        {data_ov006_021426cc, "021426cc", 0, 0x020fff54u, (void *)p2__ZN16dScMgPachinko2_c10Cup_State0Ei},
+        {data_ov006_021426cc, "021426cc", 1, 0x020ffde4u, (void *)p2__ZN16dScMgPachinko2_c10Cup_State1Ei},
+        {data_ov006_021426cc, "021426cc", 2, 0x020ffb54u, (void *)p2__ZN16dScMgPachinko2_c10Cup_State2Ei},
+        {data_ov006_021426cc, "021426cc", 3, 0x020ff8c8u, (void *)p2__ZN16dScMgPachinko2_c10Cup_State3Ei},
+        {data_ov006_021426cc, "021426cc", 4, 0x020ff690u, (void *)p2__ZN16dScMgPachinko2_c10Cup_State4Ei},
 
-        {data_ov006_021426f4, "021426f4", 0, 0x02102f3cu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02102f3cEi},
-        {data_ov006_021426f4, "021426f4", 1, 0x02102fe8u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02102fe8Ei},
-        {data_ov006_021426f4, "021426f4", 2, 0x02103360u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02103360Ei},
-        {data_ov006_021426f4, "021426f4", 3, 0x02103608u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02103608Ei},
-        {data_ov006_021426f4, "021426f4", 4, 0x0210371cu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_0210371cEi},
-        {data_ov006_021426f4, "021426f4", 5, 0x02103870u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02103870Ei},
-        {data_ov006_021426f4, "021426f4", 6, 0x0210397cu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_0210397cEi},
-        {data_ov006_021426f4, "021426f4", 7, 0x02103994u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02103994Ei},
+        {data_ov006_021426f4, "021426f4", 0, 0x02102f3cu, (void *)p2__ZN16dScMgPachinko2_c11Ball_State0Ei},
+        {data_ov006_021426f4, "021426f4", 1, 0x02102fe8u, (void *)p2__ZN16dScMgPachinko2_c11Ball_State1Ei},
+        {data_ov006_021426f4, "021426f4", 2, 0x02103360u, (void *)p2__ZN16dScMgPachinko2_c11Ball_State2Ei},
+        {data_ov006_021426f4, "021426f4", 3, 0x02103608u, (void *)p2__ZN16dScMgPachinko2_c11Ball_State3Ei},
+        {data_ov006_021426f4, "021426f4", 4, 0x0210371cu, (void *)p2__ZN16dScMgPachinko2_c11Ball_State4Ei},
+        {data_ov006_021426f4, "021426f4", 5, 0x02103870u, (void *)p2__ZN16dScMgPachinko2_c11Ball_State5Ei},
+        {data_ov006_021426f4, "021426f4", 6, 0x0210397cu, (void *)p2__ZN16dScMgPachinko2_c11Ball_State6Ei},
+        {data_ov006_021426f4, "021426f4", 7, 0x02103994u, (void *)p2__ZN16dScMgPachinko2_c11Ball_State7Ei},
 
-        {data_ov006_02142734, "02142734",  0, 0x02102274u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02102274Ei},
-        {data_ov006_02142734, "02142734",  1, 0x021020c4u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_021020c4Ei},
-        {data_ov006_02142734, "02142734",  2, 0x02101e88u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02101e88Ei},
-        {data_ov006_02142734, "02142734",  3, 0x02101af0u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02101af0Ei},
-        {data_ov006_02142734, "02142734",  4, 0x021019e0u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_021019e0Ei},
-        {data_ov006_02142734, "02142734",  5, 0x021016ecu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_021016ecEi},
-        {data_ov006_02142734, "02142734",  6, 0x021012ccu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_021012ccEi},
-        {data_ov006_02142734, "02142734",  7, 0x02101224u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02101224Ei},
-        {data_ov006_02142734, "02142734",  8, 0x02101088u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02101088Ei},
-        {data_ov006_02142734, "02142734",  9, 0x02100f7cu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02100f7cEi},
-        {data_ov006_02142734, "02142734", 10, 0x02100e3cu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02100e3cEi},
-        {data_ov006_02142734, "02142734", 11, 0x02100d90u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02100d90Ei},
-        {data_ov006_02142734, "02142734", 12, 0x02100bacu, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02100bacEi},
-        {data_ov006_02142734, "02142734", 13, 0x02100b08u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_02100b08Ei},
-        {data_ov006_02142734, "02142734", 14, 0x021009b8u, (void *)p2__ZN16dScMgPachinko2_c19func_ov006_021009b8Ei},
+        {data_ov006_02142734, "02142734",  0, 0x02102274u, (void *)p2__ZN16dScMgPachinko2_c13Paddle_State0Ei},
+        {data_ov006_02142734, "02142734",  1, 0x021020c4u, (void *)p2__ZN16dScMgPachinko2_c13Paddle_State1Ei},
+        {data_ov006_02142734, "02142734",  2, 0x02101e88u, (void *)p2__ZN16dScMgPachinko2_c13Paddle_State2Ei},
+        {data_ov006_02142734, "02142734",  3, 0x02101af0u, (void *)p2__ZN16dScMgPachinko2_c13Paddle_State3Ei},
+        {data_ov006_02142734, "02142734",  4, 0x021019e0u, (void *)p2__ZN16dScMgPachinko2_c13Paddle_State4Ei},
+        {data_ov006_02142734, "02142734",  5, 0x021016ecu, (void *)p2__ZN16dScMgPachinko2_c13Paddle_State5Ei},
+        {data_ov006_02142734, "02142734",  6, 0x021012ccu, (void *)p2__ZN16dScMgPachinko2_c13Paddle_State6Ei},
+        {data_ov006_02142734, "02142734",  7, 0x02101224u, (void *)p2__ZN16dScMgPachinko2_c13Paddle_State7Ei},
+        {data_ov006_02142734, "02142734",  8, 0x02101088u, (void *)p2__ZN16dScMgPachinko2_c13Paddle_State8Ei},
+        {data_ov006_02142734, "02142734",  9, 0x02100f7cu, (void *)p2__ZN16dScMgPachinko2_c13Paddle_State9Ei},
+        {data_ov006_02142734, "02142734", 10, 0x02100e3cu, (void *)p2__ZN16dScMgPachinko2_c14Paddle_State10Ei},
+        {data_ov006_02142734, "02142734", 11, 0x02100d90u, (void *)p2__ZN16dScMgPachinko2_c14Paddle_State11Ei},
+        {data_ov006_02142734, "02142734", 12, 0x02100bacu, (void *)p2__ZN16dScMgPachinko2_c14Paddle_State12Ei},
+        {data_ov006_02142734, "02142734", 13, 0x02100b08u, (void *)p2__ZN16dScMgPachinko2_c14Paddle_State13Ei},
+        {data_ov006_02142734, "02142734", 14, 0x021009b8u, (void *)p2__ZN16dScMgPachinko2_c14Paddle_State14Ei},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {

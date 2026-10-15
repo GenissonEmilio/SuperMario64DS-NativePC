@@ -36,7 +36,7 @@
 // Twenty-four have a matched src TU in port/slice_mg1.txt. The twenty-fifth is
 // the hole below.
 //
-// ---- func_ov006_020e1854 WAS A HARD FLOOR. AMENDED, run link60 lane CT1 ---
+// ---- Aim_Swing WAS A HARD FLOOR. AMENDED, run link60 lane CT1 ---
 //
 // IT IS HOSTED NOW. unmatched/MgCurling_State_020e1854.cpp transcribes the
 // state from the ROM (0x300 bytes, 186 instructions, read out of
@@ -74,8 +74,8 @@
 //
 // ---- TWO RIDE-THROUGHS, TRANSCRIBED AND NOT REPAIRED ----------------------
 //
-// func_ov006_020e2eb8 sits in a zero-argument slot and takes (void).
-// func_ov006_020e285c sits in a ONE-argument slot and also takes (void).
+// Scene_Idle sits in a zero-argument slot and takes (void).
+// Stone_Collide sits in a ONE-argument slot and also takes (void).
 // Both are the ARM ride-through the port keeps meeting: on the DS r0 and r1
 // already hold self and the index and a body that ignores them is correct.
 // Calling them with no arguments from here is the faithful host form, because
@@ -85,15 +85,15 @@
 // (void) callee stood between a caller and a body that DID want arguments.
 //
 // AMENDED, run link60 lane CUR2. THE SECOND HALF OF THAT IS NO LONGER TRUE OF
-// func_ov006_020e285c, and the reason is a change this lane made rather than
-// an error in the paragraph above. 020e285c forwards to func_ov006_020e20bc,
+// Stone_Collide, and the reason is a change this lane made rather than
+// an error in the paragraph above. 020e285c forwards to ResolveStoneCollision,
 // which WAS a return-0 face -- a body that ignores its arguments, exactly the
 // case the paragraph describes. This lane transcribed 020e20bc from the ROM
 // (port/unmatched/MgCurling_Collide_020e20bc.cpp) and it wants (self, idx), so
 // the (void) veneer became precisely the scene_actor_faces defect class named
 // in the last sentence.
 //
-// THE FIX IS THE TAIL JUMP AND NOT A HOST COPY. src/func_ov006_020e285c.c
+// THE FIX IS THE TAIL JUMP AND NOT A HOST COPY. src/Stone_Collide.c
 // stays in port/slice_mg1.txt exactly as it is -- the first attempt took it
 // out, hosted it, and cost the gate a linked TU (5831 -> 5830) for nothing.
 // The case below now declares 020e285c as (char *, int) and passes (c, a);
@@ -102,7 +102,7 @@
 // luck: port/tools/tailjump_guard.py carries a CLASS C row for the pair and
 // fails the build if the jmp ever becomes a call.
 //
-// func_ov006_020e2eb8 is UNCHANGED and still called with no arguments. Its
+// Scene_Idle is UNCHANGED and still called with no arguments. Its
 // target is not affected by anything here.
 
 #include <cstdio>
@@ -118,24 +118,24 @@ void port_mg_call0(void *self, unsigned code, int adj);
 void port_mg_call1(void *self, unsigned code, int adj, int a);
 
 /* ---- the twenty-four matched state bodies, in address order ------------- */
-void _ZN14dScMgCurling_c19func_ov006_020e071cEi(char *c, int i);
-void _ZN14dScMgCurling_c19func_ov006_020e07b0Ei(char *o, int i);
-void _ZN14dScMgCurling_c19func_ov006_020e0884Ei(char *c, int i);
-void _ZN14dScMgCurling_c19func_ov006_020e091cEi(char *base, int i);
-void _ZN14dScMgCurling_c19func_ov006_020e0a24Ei(char *base, int idx);
-void _ZN14dScMgCurling_c19func_ov006_020e0b64Ei(char *base, int index);
-void _ZN14dScMgCurling_c19func_ov006_020e0ca0Ei(char *o, int i);
-void _ZN14dScMgCurling_c19func_ov006_020e0d84Ei(char *c, int i);
-void _ZN14dScMgCurling_c19func_ov006_020e0e18Ei(char *base, int idx);
-void _ZN14dScMgCurling_c19func_ov006_020e0edcEi(char *c, int idx);
-void _ZN14dScMgCurling_c19func_ov006_020e0ff0Ei(void *base, int idx);
-void _ZN14dScMgCurling_c19func_ov006_020e1100Ei(char *c, int idx);
-void _ZN14dScMgCurling_c19func_ov006_020e1214Ei(char *base, int idx);
-void _ZN14dScMgCurling_c19func_ov006_020e1264Ei(char *c, int idx);
-void _ZN14dScMgCurling_c19func_ov006_020e1b54Ev(char *c);
+void _ZN14dScMgCurling_c10Bit_State2Ei(char *c, int i);
+void _ZN14dScMgCurling_c10Bit_State1Ei(char *o, int i);
+void _ZN14dScMgCurling_c10Bit_State0Ei(char *c, int i);
+void _ZN14dScMgCurling_c11BitA_State3Ei(char *base, int i);
+void _ZN14dScMgCurling_c11BitA_State2Ei(char *base, int idx);
+void _ZN14dScMgCurling_c11BitA_State1Ei(char *base, int index);
+void _ZN14dScMgCurling_c11BitA_State0Ei(char *o, int i);
+void _ZN14dScMgCurling_c12Bit_RunKindAEi(char *c, int i);
+void _ZN14dScMgCurling_c11BitB_State3Ei(char *base, int idx);
+void _ZN14dScMgCurling_c11BitB_State2Ei(char *c, int idx);
+void _ZN14dScMgCurling_c11BitB_State1Ei(void *base, int idx);
+void _ZN14dScMgCurling_c11BitB_State0Ei(char *c, int idx);
+void _ZN14dScMgCurling_c12Bit_RunKindBEi(char *base, int idx);
+void _ZN14dScMgCurling_c12Bit_PickKindEi(char *c, int idx);
+void _ZN14dScMgCurling_c13Aim_WaitTouchEv(char *c);
 
 /* THE TWENTY-FIFTH STATE, hosted as of run link60 lane CT1. Deliberately NOT
-   named func_ov006_020e1854: the decomp still has no body and no delink block
+   named Aim_Swing: the decomp still has no body and no delink block
    for that address, and stategen.py's reconstruct check (run by
    port/build-port.cmd before configure) fails the build if this switch calls a
    `func_*` or `_Z*` symbol for such an address. `port_` is the repo's existing
@@ -143,16 +143,16 @@ void _ZN14dScMgCurling_c19func_ov006_020e1b54Ev(char *c);
    prints for port_player_st_climb_main at 0x020cb5bc. Derivation, provenance
    and the full ROM listing are in unmatched/MgCurling_State_020e1854.cpp. */
 void port_mg_curling_st_020e1854(char *c);
-void _ZN14dScMgCurling_c19func_ov006_020e26f8Ei(void *w, int i);
-void _ZN14dScMgCurling_c19func_ov006_020e285cEi(char *c, int idx);  /* one-argument slot; riders named
+void _ZN14dScMgCurling_c10Stone_DragEi(void *w, int i);
+void _ZN14dScMgCurling_c13Stone_CollideEi(char *c, int idx);  /* one-argument slot; riders named
                                                 by lane CUR2, see the header */
-void _ZN14dScMgCurling_c19func_ov006_020e2868Ei(char *c, int idx);
-void _ZN14dScMgCurling_c19func_ov006_020e2c08Ei(char *self, int idx);
-void _ZN14dScMgCurling_c19func_ov006_020e2eb8Ev(void);              /* zero-argument slot, (void) body */
-void _ZN14dScMgCurling_c19func_ov006_020e2ebcEv(char *thiz);
-void _ZN14dScMgCurling_c19func_ov006_020e2f78Ev(char *c);
-void _ZN14dScMgCurling_c19func_ov006_020e3078Ev(char *c);
-void _ZN14dScMgCurling_c19func_ov006_020e3210Ev(char *c);
+void _ZN14dScMgCurling_c11Stone_SlideEi(char *c, int idx);
+void _ZN14dScMgCurling_c17Stone_WaitReleaseEi(char *self, int idx);
+void _ZN14dScMgCurling_c10Scene_IdleEv(void);              /* zero-argument slot, (void) body */
+void _ZN14dScMgCurling_c9Scene_EndEv(char *thiz);
+void _ZN14dScMgCurling_c11Scene_ScoreEv(char *c);
+void _ZN14dScMgCurling_c10Scene_PlayEv(char *c);
+void _ZN14dScMgCurling_c16Scene_StartRoundEv(char *c);
 
 /* the seven mount tables, re-typed to the ROM's eight-byte pair. The mount
    defines the storage; __sinit_ov006_021304ac fills it at scene load. */
@@ -166,12 +166,12 @@ extern MgPmf data_ov006_02141950[];
 
 /* the ordinary callees the host copies below keep */
 int  RandomIntInternal(int *seed);
-void _ZN14dScMgCurling_c19func_ov006_020e1680Ev(char *c);
+void _ZN14dScMgCurling_c11ScoreStonesEv(char *c);
 extern int data_0209d4b8;
 
 /* host-copied further down this file, and called by the Behavior host copy
    above its own definition */
-void _ZN14dScMgCurling_c19func_ov006_020e12d0Ev(char *o);
+void _ZN14dScMgCurling_c13Bit_UpdateAllEv(char *o);
 
 /* the boot installer at the end of this file; hal/scene_mg.cpp calls it after
    the ov006 constructors have filled the tables (run link100 lane PMFB5). */
@@ -188,13 +188,13 @@ extern "C" int port_mg_try_ov006_0(void *self, unsigned code)
     char *c = (char *)self;
     ++g_curling_state_hits;
     switch (code) {
-    case 0x020e1b54u: _ZN14dScMgCurling_c19func_ov006_020e1b54Ev(c); return 1;
+    case 0x020e1b54u: _ZN14dScMgCurling_c13Aim_WaitTouchEv(c); return 1;
     case 0x020e1854u: port_mg_curling_st_020e1854(c); return 1;
-    case 0x020e2eb8u: _ZN14dScMgCurling_c19func_ov006_020e2eb8Ev();  return 1;   /* (void) body */
-    case 0x020e2ebcu: _ZN14dScMgCurling_c19func_ov006_020e2ebcEv(c); return 1;
-    case 0x020e2f78u: _ZN14dScMgCurling_c19func_ov006_020e2f78Ev(c); return 1;
-    case 0x020e3078u: _ZN14dScMgCurling_c19func_ov006_020e3078Ev(c); return 1;
-    case 0x020e3210u: _ZN14dScMgCurling_c19func_ov006_020e3210Ev(c); return 1;
+    case 0x020e2eb8u: _ZN14dScMgCurling_c10Scene_IdleEv();  return 1;   /* (void) body */
+    case 0x020e2ebcu: _ZN14dScMgCurling_c9Scene_EndEv(c); return 1;
+    case 0x020e2f78u: _ZN14dScMgCurling_c11Scene_ScoreEv(c); return 1;
+    case 0x020e3078u: _ZN14dScMgCurling_c10Scene_PlayEv(c); return 1;
+    case 0x020e3210u: _ZN14dScMgCurling_c16Scene_StartRoundEv(c); return 1;
     default: --g_curling_state_hits;          return 0;
     }
 }
@@ -204,28 +204,28 @@ extern "C" int port_mg_try_ov006_1(void *self, unsigned code, int a)
     char *c = (char *)self;
     ++g_curling_state_hits;
     switch (code) {
-    case 0x020e071cu: _ZN14dScMgCurling_c19func_ov006_020e071cEi(c, a); return 1;
-    case 0x020e07b0u: _ZN14dScMgCurling_c19func_ov006_020e07b0Ei(c, a); return 1;
-    case 0x020e0884u: _ZN14dScMgCurling_c19func_ov006_020e0884Ei(c, a); return 1;
-    case 0x020e091cu: _ZN14dScMgCurling_c19func_ov006_020e091cEi(c, a); return 1;
-    case 0x020e0a24u: _ZN14dScMgCurling_c19func_ov006_020e0a24Ei(c, a); return 1;
-    case 0x020e0b64u: _ZN14dScMgCurling_c19func_ov006_020e0b64Ei(c, a); return 1;
-    case 0x020e0ca0u: _ZN14dScMgCurling_c19func_ov006_020e0ca0Ei(c, a); return 1;
-    case 0x020e0d84u: _ZN14dScMgCurling_c19func_ov006_020e0d84Ei(c, a); return 1;
-    case 0x020e0e18u: _ZN14dScMgCurling_c19func_ov006_020e0e18Ei(c, a); return 1;
-    case 0x020e0edcu: _ZN14dScMgCurling_c19func_ov006_020e0edcEi(c, a); return 1;
-    case 0x020e0ff0u: _ZN14dScMgCurling_c19func_ov006_020e0ff0Ei(c, a); return 1;
-    case 0x020e1100u: _ZN14dScMgCurling_c19func_ov006_020e1100Ei(c, a); return 1;
-    case 0x020e1214u: _ZN14dScMgCurling_c19func_ov006_020e1214Ei(c, a); return 1;
-    case 0x020e1264u: _ZN14dScMgCurling_c19func_ov006_020e1264Ei(c, a); return 1;
-    case 0x020e26f8u: _ZN14dScMgCurling_c19func_ov006_020e26f8Ei(c, a); return 1;
-    case 0x020e285cu: _ZN14dScMgCurling_c19func_ov006_020e285cEi(c, a); return 1;  /* riders named */
-    case 0x020e2868u: _ZN14dScMgCurling_c19func_ov006_020e2868Ei(c, a); return 1;
-    case 0x020e2c08u: _ZN14dScMgCurling_c19func_ov006_020e2c08Ei(c, a); return 1;
+    case 0x020e071cu: _ZN14dScMgCurling_c10Bit_State2Ei(c, a); return 1;
+    case 0x020e07b0u: _ZN14dScMgCurling_c10Bit_State1Ei(c, a); return 1;
+    case 0x020e0884u: _ZN14dScMgCurling_c10Bit_State0Ei(c, a); return 1;
+    case 0x020e091cu: _ZN14dScMgCurling_c11BitA_State3Ei(c, a); return 1;
+    case 0x020e0a24u: _ZN14dScMgCurling_c11BitA_State2Ei(c, a); return 1;
+    case 0x020e0b64u: _ZN14dScMgCurling_c11BitA_State1Ei(c, a); return 1;
+    case 0x020e0ca0u: _ZN14dScMgCurling_c11BitA_State0Ei(c, a); return 1;
+    case 0x020e0d84u: _ZN14dScMgCurling_c12Bit_RunKindAEi(c, a); return 1;
+    case 0x020e0e18u: _ZN14dScMgCurling_c11BitB_State3Ei(c, a); return 1;
+    case 0x020e0edcu: _ZN14dScMgCurling_c11BitB_State2Ei(c, a); return 1;
+    case 0x020e0ff0u: _ZN14dScMgCurling_c11BitB_State1Ei(c, a); return 1;
+    case 0x020e1100u: _ZN14dScMgCurling_c11BitB_State0Ei(c, a); return 1;
+    case 0x020e1214u: _ZN14dScMgCurling_c12Bit_RunKindBEi(c, a); return 1;
+    case 0x020e1264u: _ZN14dScMgCurling_c12Bit_PickKindEi(c, a); return 1;
+    case 0x020e26f8u: _ZN14dScMgCurling_c10Stone_DragEi(c, a); return 1;
+    case 0x020e285cu: _ZN14dScMgCurling_c13Stone_CollideEi(c, a); return 1;  /* riders named */
+    case 0x020e2868u: _ZN14dScMgCurling_c11Stone_SlideEi(c, a); return 1;
+    case 0x020e2c08u: _ZN14dScMgCurling_c17Stone_WaitReleaseEi(c, a); return 1;
     /* arity-0 body reached through a one-argument slot. data_ov006_021418b0 is
        an arity-0 table so this case should never fire, but the ROM body ignores
        r1 anyway, so calling it here is the same ride-through this file already
-       documents for func_ov006_020e285c. */
+       documents for Stone_Collide. */
     case 0x020e1854u: port_mg_curling_st_020e1854(c); return 1;
     default: --g_curling_state_hits;             return 0;
     }
@@ -238,12 +238,12 @@ extern "C" unsigned port_mg_curling_state_hits(void)
 
 // ---- the five host copies --------------------------------------------------
 
-/* src/func_ov006_020e12d0 -- RETIRED, run link100 lane SEAT4. Its table is
+/* src/Bit_UpdateAll -- RETIRED, run link100 lane SEAT4. Its table is
    seated in port/hal/pmf_seat4.cpp and the matched TU is on
    port/slice_seat4.txt, so the host copy that stood in for it is gone and
    the declaration above is what the faces in this file reach. */
 
-/* src/func_ov006_020e0d84.cpp and src/func_ov006_020e1214.cpp -- RETIRED, run
+/* src/Bit_RunKindA.cpp and src/Bit_RunKindB.cpp -- RETIRED, run
    linkfull lane PMFMG1. Their three tables are seated at the end of this file
    (data_ov006_02141930, _021418d8 and _021418f0, eleven cells), so both matched
    TUs dispatch through host faces themselves; see the block above the seat. */
@@ -253,13 +253,13 @@ extern "C" unsigned port_mg_curling_state_hits(void)
 // Run link100 lane PMFB5. dScMgCurling_c's two remaining dispatchers move
 // TOGETHER or not at all, and lane PMFB4 recorded why when it left them:
 //
-//   func_ov006_020e3078  READS TWO TABLES, not the one the census names.
+//   Scene_Play  READS TWO TABLES, not the one the census names.
 //        data_ov006_021418b0 at its first dispatch site and
 //        data_ov006_02141910 at its second, one call each. Seating only the
 //        table the census named would have left the second dispatch reading a
 //        cartridge code word and calling it.
 //   _ZN14dScMgCurling_c8BehaviorEv  reads data_ov006_02141950, and SLOT 1 OF THAT TABLE
-//        IS func_ov006_020e3078 ITSELF. Seating 02141950 without seating
+//        IS Scene_Play ITSELF. Seating 02141950 without seating
 //        021418b0 and 02141910 would install a face pointing at a host copy
 //        that is about to be retired; retiring 020e3078 without seating
 //        02141950 would leave 020e3528's host copy handing the switch an
@@ -268,7 +268,7 @@ extern "C" unsigned port_mg_curling_state_hits(void)
 // So all three tables are installed by ONE installer and both host copies come
 // off in the same gate.
 //
-//   func_ov006_020e3078   data_ov006_021418b0   2 slots   arity 0
+//   Scene_Play   data_ov006_021418b0   2 slots   arity 0
 //                         data_ov006_02141910   4 slots   arity 1
 //   _ZN14dScMgCurling_c8BehaviorEv   data_ov006_02141950   5 slots   arity 0
 //
@@ -313,7 +313,7 @@ extern "C" unsigned port_mg_curling_state_hits(void)
 // ONE /alternatename. src/_ZN14dScMgCurling_c8BehaviorEv.cpp wraps its member pointer in
 // `struct Entry { PMF pmf[1]; }` at C++ linkage, so MSVC spells the reference
 // ?data_ov006_02141950@@3PAUEntry@@A -- read off the object with
-// dumpbin /symbols, not guessed. src/func_ov006_020e3078.cpp declares BOTH of
+// dumpbin /symbols, not guessed. src/Scene_Play.cpp declares BOTH of
 // its tables inside its own extern "C" block and both come in as the plain C
 // names the ov006 mount defines, which the UNDEF sweep of that object confirms
 // (_data_ov006_021418b0, _data_ov006_02141910, _func_ov006_020e1680 and nothing
@@ -328,19 +328,19 @@ extern "C" unsigned port_mg_curling_state_hits(void)
 // Seating the table does not change the refusal and does not pretend to.
 //
 // SLOT 2 OF 02141910 IS THE COLLISION RIDE-THROUGH, and its face calls it
-// exactly the way the switch did: `func_ov006_020e285c(c, a)` at C linkage,
-// with the declaration this file already carries. src/func_ov006_020e285c.c
-// declares itself (void) and tail-jumps to func_ov006_020e20bc, so r0 and r1 --
+// exactly the way the switch did: `Stone_Collide(c, a)` at C linkage,
+// with the declaration this file already carries. src/Stone_Collide.c
+// declares itself (void) and tail-jumps to ResolveStoneCollision, so r0 and r1 --
 // the two words the face pushes -- ride the veneer's reused frame into the
 // transcribed collision body. port/tools/tailjump_guard.py's CLASS C row for
 // that pair is unaffected: it asserts that 020e285c's OWN frame is a jmp, which
-// is a property of src/func_ov006_020e285c.c and of nothing here. Its note says
+// is a property of src/Stone_Collide.c and of nothing here. Its note says
 // "unmatched/MgCurling_StateDispatch.cpp dispatches this address from a
 // one-argument slot and passes (c, a)", which is still true of this file --
 // through a cell rather than through a case. That file is not this lane's to
 // edit and the wording is left alone.
 //
-// SLOT 4 OF 02141950 IS THE OTHER RIDE-THROUGH. func_ov006_020e2eb8 sits in a
+// SLOT 4 OF 02141950 IS THE OTHER RIDE-THROUGH. Scene_Idle sits in a
 // ZERO-argument cell and its src takes (void), so its face calls it with
 // nothing, which is what the switch did and what the ROM does.
 //
@@ -383,33 +383,33 @@ extern "C" unsigned port_mg_curling_state_hits(void)
     }
 
 /* data_ov006_021418b0, arity 0 */
-CUR_FACE0(b0, 0, _ZN14dScMgCurling_c19func_ov006_020e1b54Ev)
+CUR_FACE0(b0, 0, _ZN14dScMgCurling_c13Aim_WaitTouchEv)
 CUR_FACE0(b0, 1, port_mg_curling_st_020e1854)
 
 /* data_ov006_02141910, arity 1 */
-CUR_FACE1(t10, 0, _ZN14dScMgCurling_c19func_ov006_020e2c08Ei)
-CUR_FACE1(t10, 1, _ZN14dScMgCurling_c19func_ov006_020e2868Ei)
-CUR_FACE1(t10, 2, _ZN14dScMgCurling_c19func_ov006_020e285cEi)
-CUR_FACE1(t10, 3, _ZN14dScMgCurling_c19func_ov006_020e26f8Ei)
+CUR_FACE1(t10, 0, _ZN14dScMgCurling_c17Stone_WaitReleaseEi)
+CUR_FACE1(t10, 1, _ZN14dScMgCurling_c11Stone_SlideEi)
+CUR_FACE1(t10, 2, _ZN14dScMgCurling_c13Stone_CollideEi)
+CUR_FACE1(t10, 3, _ZN14dScMgCurling_c10Stone_DragEi)
 
-/* data_ov006_02141950, arity 0. Slot 1 is func_ov006_020e3078, which is the
+/* data_ov006_02141950, arity 0. Slot 1 is Scene_Play, which is the
    matched src TU now and not the host copy this file used to define. */
-CUR_FACE0(t50, 0, _ZN14dScMgCurling_c19func_ov006_020e3210Ev)
-CUR_FACE0(t50, 1, _ZN14dScMgCurling_c19func_ov006_020e3078Ev)
-CUR_FACE0(t50, 2, _ZN14dScMgCurling_c19func_ov006_020e2f78Ev)
-CUR_FACE0(t50, 3, _ZN14dScMgCurling_c19func_ov006_020e2ebcEv)
-CUR_FACE0_VOID(t50, 4, _ZN14dScMgCurling_c19func_ov006_020e2eb8Ev)
+CUR_FACE0(t50, 0, _ZN14dScMgCurling_c16Scene_StartRoundEv)
+CUR_FACE0(t50, 1, _ZN14dScMgCurling_c10Scene_PlayEv)
+CUR_FACE0(t50, 2, _ZN14dScMgCurling_c11Scene_ScoreEv)
+CUR_FACE0(t50, 3, _ZN14dScMgCurling_c9Scene_EndEv)
+CUR_FACE0_VOID(t50, 4, _ZN14dScMgCurling_c10Scene_IdleEv)
 
 /* ---- THE LAST THREE TABLES, run linkfull lane PMFMG1 ---------------------
  *
- * func_ov006_020e0d84 and func_ov006_020e1214 were this file's last two host
+ * Bit_RunKindA and Bit_RunKindB were this file's last two host
  * copies. Both are STATE BODIES of data_ov006_021418c0 (seated in
  * port/hal/pmf_seat4.cpp, whose faces call them by their C names) and both are
  * DISPATCHERS of their own tables:
  *
- *   func_ov006_020e0d84   data_ov006_02141930   4 cells   arity 1
+ *   Bit_RunKindA   data_ov006_02141930   4 cells   arity 1
  *                         data_ov006_021418d8   3 cells   arity 1
- *   func_ov006_020e1214   data_ov006_021418f0   4 cells   arity 1
+ *   Bit_RunKindB   data_ov006_021418f0   4 cells   arity 1
  *
  * THE RECORDS, read out of extracted/overlays/overlay_0006.bin with the
  * overlay's own relocations (runs/linkfull/out/PMFMG1/rom_records.txt): the
@@ -421,35 +421,35 @@ CUR_FACE0_VOID(t50, 4, _ZN14dScMgCurling_c19func_ov006_020e2eb8Ev)
  * rom_source_pair_readers.txt).
  *
  * THE CALL SHAPE, off each matched TU's own listing under the port's flags
- * (runs/linkfull/out/PMFMG1/func_ov006_020e0d84.asm, func_ov006_020e1214.asm):
+ * (runs/linkfull/out/PMFMG1/Bit_RunKindA.asm, Bit_RunKindB.asm):
  * `push <index> / mov ecx, tab[eax*8+4] / mov eax, tab[eax*8] / add ecx,
  * <this> / call eax` at all three sites, no caller cleanup after any of them.
  * Receiver in ecx, one callee-popped argument: the one-argument __fastcall
  * face this file already uses for 02141910. The stride is eight on both sides.
  *
- * TWO /alternatename rows. src/func_ov006_020e0d84.cpp declares both of its
+ * TWO /alternatename rows. src/Bit_RunKindA.cpp declares both of its
  * tables at C++ linkage through its own shadow class `C`, so MSVC spells the
  * references ?data_ov006_02141930@@3PAP8C@@AEXH@ZA and
  * ?data_ov006_021418d8@@3PAP8C@@AEXH@ZA (read off the listing's EXTRN lines);
- * src/func_ov006_020e1214.cpp declares its table inside extern "C" and comes in
+ * src/Bit_RunKindB.cpp declares its table inside extern "C" and comes in
  * as the plain _data_ov006_021418f0. Nothing in the tree defines either LHS. */
 #pragma comment(linker, "/alternatename:?data_ov006_02141930@@3PAP8C@@AEXH@ZA=_data_ov006_02141930")
 #pragma comment(linker, "/alternatename:?data_ov006_021418d8@@3PAP8C@@AEXH@ZA=_data_ov006_021418d8")
 
-/* data_ov006_021418f0, arity 1, dispatched by func_ov006_020e1214 */
-CUR_FACE1(tf0, 0, _ZN14dScMgCurling_c19func_ov006_020e1100Ei)
-CUR_FACE1(tf0, 1, _ZN14dScMgCurling_c19func_ov006_020e0ff0Ei)
-CUR_FACE1(tf0, 2, _ZN14dScMgCurling_c19func_ov006_020e0edcEi)
-CUR_FACE1(tf0, 3, _ZN14dScMgCurling_c19func_ov006_020e0e18Ei)
-/* data_ov006_02141930, arity 1, dispatched by func_ov006_020e0d84 */
-CUR_FACE1(t30, 0, _ZN14dScMgCurling_c19func_ov006_020e0ca0Ei)
-CUR_FACE1(t30, 1, _ZN14dScMgCurling_c19func_ov006_020e0b64Ei)
-CUR_FACE1(t30, 2, _ZN14dScMgCurling_c19func_ov006_020e0a24Ei)
-CUR_FACE1(t30, 3, _ZN14dScMgCurling_c19func_ov006_020e091cEi)
-/* data_ov006_021418d8, arity 1, dispatched by func_ov006_020e0d84 */
-CUR_FACE1(td8, 0, _ZN14dScMgCurling_c19func_ov006_020e0884Ei)
-CUR_FACE1(td8, 1, _ZN14dScMgCurling_c19func_ov006_020e07b0Ei)
-CUR_FACE1(td8, 2, _ZN14dScMgCurling_c19func_ov006_020e071cEi)
+/* data_ov006_021418f0, arity 1, dispatched by Bit_RunKindB */
+CUR_FACE1(tf0, 0, _ZN14dScMgCurling_c11BitB_State0Ei)
+CUR_FACE1(tf0, 1, _ZN14dScMgCurling_c11BitB_State1Ei)
+CUR_FACE1(tf0, 2, _ZN14dScMgCurling_c11BitB_State2Ei)
+CUR_FACE1(tf0, 3, _ZN14dScMgCurling_c11BitB_State3Ei)
+/* data_ov006_02141930, arity 1, dispatched by Bit_RunKindA */
+CUR_FACE1(t30, 0, _ZN14dScMgCurling_c11BitA_State0Ei)
+CUR_FACE1(t30, 1, _ZN14dScMgCurling_c11BitA_State1Ei)
+CUR_FACE1(t30, 2, _ZN14dScMgCurling_c11BitA_State2Ei)
+CUR_FACE1(t30, 3, _ZN14dScMgCurling_c11BitA_State3Ei)
+/* data_ov006_021418d8, arity 1, dispatched by Bit_RunKindA */
+CUR_FACE1(td8, 0, _ZN14dScMgCurling_c10Bit_State0Ei)
+CUR_FACE1(td8, 1, _ZN14dScMgCurling_c10Bit_State1Ei)
+CUR_FACE1(td8, 2, _ZN14dScMgCurling_c10Bit_State2Ei)
 
 /* run link100 lane SEAT4: this class's remaining state tables are
    seated in port/hal/pmf_seat4.cpp, from inside this installer, so the

@@ -476,7 +476,7 @@ def winning_object(name, addr, size, mod, candidate=None, include_dirs=(), name_
             if source_path is None:
                 # The copy keeps the source's own basename: mwcc names a TU's static
                 # initializer __sinit_<file name>, and isolation asked for
-                # __sinit_dPathLiftActor_c.cpp finds nothing to keep in an object that
+                # __sinit_d_path_lift_actor.cpp finds nothing to keep in an object that
                 # calls it __sinit_tmpXXXX.cpp. It then returns the whole TU unisolated,
                 # and the destructors it emits for their legacy sources get checked with
                 # the raw +8 vtable addend and read WRONG.

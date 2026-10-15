@@ -1,9 +1,9 @@
-// PORT_HOST_ABI. HOST COPY of func_ov006_020def80, dScMgCup_c's per-cup
+// PORT_HOST_ABI. HOST COPY of Cup_UpdateAnim, dScMgCup_c's per-cup
 // animation-set picker. Run mg9, lane CUP.
 //
 // ---- A MATCHED TU THAT READS AN UNINITIALISED LOCAL ------------------------
 //
-// src/actors/dScMgCup_c.cpp is MATCHED and byte-exact and it is WRONG ON THE
+// src/minigames/d_s_mg_cup.cpp is MATCHED and byte-exact and it is WRONG ON THE
 // HOST, in the class port/mg_fanout_costs.txt section 10(a) names: a defect
 // that is invisible to the byte gate, invisible to the link, invisible to a
 // `::*` sweep, and that only a RUN convicts. It is the first frame of scene
@@ -48,7 +48,7 @@
 // First run of scene 361 with the seat wired, SM64DS_FAULTS_FATAL=1:
 //
 //     walk_window crash  code c0000005  access 00000001 at f27eae10
-//     +00087030 -> func_ov006_020def80 +0x70
+//     +00087030 -> Cup_UpdateAnim +0x70
 //     +000879df -> _ZN10dScMgCup_c10StateSetupEv +0x2f     (state 0)
 //     +0008581e -> _ZN10dScMgCup_c8BehaviorEv +0xfe     (the Behavior host copy)
 //     +00084fec -> cup_beh +0xc                  (vtable slot 6)
@@ -79,7 +79,7 @@
 // unmatched/MgMemory2_ShadowSlot_020c06dc.cpp and
 // unmatched/MgMemory2_ModelRender_020c1804.cpp made in run mg6: displacing a
 // matched TU with a host copy means port/tools/linkage.py stops counting
-// src/actors/dScMgCup_c.cpp, because this object is what the binary carries.
+// src/minigames/d_s_mg_cup.cpp, because this object is what the binary carries.
 // port/slice_cup.txt does not list the src line. It is counted in this lane's
 // linkage arithmetic rather than hidden in it, and the object name does not
 // collide with any src stem, which is what port/tools/objsrc_check.py asks.
@@ -90,22 +90,22 @@
 // If it does, this file deletes itself and the slice line comes back.
 //
 // THREE OTHER TUs CALL THIS BODY and all three are in port/slice_cup.txt:
-// src/actors/dScMgCup_c.cpp (state 0, the caller in the fault above),
-// src/actors/dScMgCup_c.cpp (state 5) and src/actors/dScMgCup_c.cpp (state 4).
+// src/minigames/d_s_mg_cup.cpp (state 0, the caller in the fault above),
+// src/minigames/d_s_mg_cup.cpp (state 5) and src/minigames/d_s_mg_cup.cpp (state 4).
 // All three declare it (receiver, int) and all three pass a real loop index,
 // so nothing else needed changing.
 
-extern "C" void func_ov006_020def80(char *c, int i);
+extern "C" void Cup_UpdateAnim(char *c, int i);
 
 // PORT_HOST_ABI: src leaves `int new_var;` uninitialised and reaches the epilogue via goto past its only assignment; mwcc allocated it to r1 which still holds `i` so the byte-matched body worked, but MSVC's allocation makes it a wild write, so the host initialises new_var = i, the value the ROM's r1 carries at the label on all three paths.
 /* RETIRED, run link100 lane HOSTGEN2. The correction this copy carries -- give
    `cup` the value mwcc's register allocation happened to leave in it -- is now
    made out of the decomp's own text by hostgen's UNINIT_LOCAL table, on the
-   whole-TU substitution of src/actors/dScMgCup_c.cpp. The matched tree is
+   whole-TU substitution of src/minigames/d_s_mg_cup.cpp. The matched tree is
    untouched and keeps its byte match; the host copy's one statement moved into
    the transform. Text kept, not deleted. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void func_ov006_020def80(char *c, int i)
+extern "C" void Cup_UpdateAnim(char *c, int i)
 {
     unsigned char t;
     char *b = c + i;
@@ -164,4 +164,4 @@ epilogue:
         *((int *) (s + 0x44c)) = 0;
     }
 }
-#endif  /* HOSTGEN2: func_ov006_020def80 retired to src */
+#endif  /* HOSTGEN2: Cup_UpdateAnim retired to src */

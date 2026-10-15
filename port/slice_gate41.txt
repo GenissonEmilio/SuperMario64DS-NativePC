@@ -24,7 +24,7 @@ src/game/actors/d_a_obj_c1_hikari.cpp
 # the two the closure reaches: an ov010 InitResources helper and the secret
 # sound Behavior plays. Everything else they touch is already linked.
 # FOLDED into src/game/actors/d_a_obj_c1_hikari.cpp (row 19): src/func_ov010_02111a54.c
-src/actors/dActor_c.cpp
+src/runtime/actor/d_actor.cpp
 
 # ---- LIGHT_BEAM: just the factory, it shares TRAP's table -----------------
 # FOLDED into src/game/actors/d_a_obj_c1_hikari.cpp (row 19): src/d_a_obj_c1_hikari.c
@@ -33,4 +33,4 @@ src/actors/dActor_c.cpp
 # SharedFilePtr construction and one five-element Vector3 copy; no state table.
 # FOLDED into src/game/actors/d_a_obj_c1_trap.cpp (row 18): src/__sinit_ov010_0211203c.c
 # FOLDED into src/game/actors/d_a_obj_c1_hikari.cpp (row 19): src/__sinit_ov010_0211211c.c
-src/actors/daObjC1Peach_c.cpp
+src/game/actors/d_a_obj_c1_peach.cpp

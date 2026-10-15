@@ -584,220 +584,220 @@ extern "C" void port_pmft_data_ov066_0211ad10(void);
 extern "C" PortPmfPair port_pmfv_data_ov066_0211ad10 = { (unsigned)&port_pmft_data_ov066_0211ad10, 0 };  /* ROM 0x02119348 _ZN6Eyerok19func_ov066_02119348Ev */
 #pragma comment(linker, "/alternatename:?data_ov066_0211ad10@@3P8Eyerok@@AEHXZQ1@=_port_pmfv_data_ov066_0211ad10")
 
-extern "C" void port_pmft_data_ov006_0213fd7c(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov006_0213fd7c=?StateDealCards@dScMgBSC_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov006_0213fd7c = { (unsigned)&port_pmft_data_ov006_0213fd7c, 0 };  /* ROM 0x021250e4 _ZN10dScMgBSC_c14StateDealCardsEv */
-#pragma comment(linker, "/alternatename:?data_ov006_0213fd7c@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_data_ov006_0213fd7c")
+extern "C" void port_pmft_pmf_dScMgBSC_c_StateDealCards(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dScMgBSC_c_StateDealCards=?StateDealCards@dScMgBSC_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dScMgBSC_c_StateDealCards = { (unsigned)&port_pmft_pmf_dScMgBSC_c_StateDealCards, 0 };  /* ROM 0x021250e4 _ZN10dScMgBSC_c14StateDealCardsEv */
+#pragma comment(linker, "/alternatename:?pmf_dScMgBSC_c_StateDealCards@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_pmf_dScMgBSC_c_StateDealCards")
 
-extern "C" void port_pmft_data_ov006_0213fd5c(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov006_0213fd5c=?StateWaitDeal@dScMgBSC_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov006_0213fd5c = { (unsigned)&port_pmft_data_ov006_0213fd5c, 0 };  /* ROM 0x02124fd8 _ZN10dScMgBSC_c13StateWaitDealEv */
-#pragma comment(linker, "/alternatename:?data_ov006_0213fd5c@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_data_ov006_0213fd5c")
+extern "C" void port_pmft_pmf_dScMgBSC_c_StateWaitDeal(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dScMgBSC_c_StateWaitDeal=?StateWaitDeal@dScMgBSC_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dScMgBSC_c_StateWaitDeal = { (unsigned)&port_pmft_pmf_dScMgBSC_c_StateWaitDeal, 0 };  /* ROM 0x02124fd8 _ZN10dScMgBSC_c13StateWaitDealEv */
+#pragma comment(linker, "/alternatename:?pmf_dScMgBSC_c_StateWaitDeal@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_pmf_dScMgBSC_c_StateWaitDeal")
 
-extern "C" void port_pmft_data_ov006_0213fd4c(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov006_0213fd4c=?StateChooseCard@dScMgBSC_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov006_0213fd4c = { (unsigned)&port_pmft_data_ov006_0213fd4c, 0 };  /* ROM 0x02124ec4 _ZN10dScMgBSC_c15StateChooseCardEv */
-#pragma comment(linker, "/alternatename:?data_ov006_0213fd4c@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_data_ov006_0213fd4c")
+extern "C" void port_pmft_pmf_dScMgBSC_c_StateChooseCard(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dScMgBSC_c_StateChooseCard=?StateChooseCard@dScMgBSC_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dScMgBSC_c_StateChooseCard = { (unsigned)&port_pmft_pmf_dScMgBSC_c_StateChooseCard, 0 };  /* ROM 0x02124ec4 _ZN10dScMgBSC_c15StateChooseCardEv */
+#pragma comment(linker, "/alternatename:?pmf_dScMgBSC_c_StateChooseCard@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_pmf_dScMgBSC_c_StateChooseCard")
 
-extern "C" void port_pmft_data_ov006_0213fd24(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov006_0213fd24=?StateMoveCards@dScMgBSC_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov006_0213fd24 = { (unsigned)&port_pmft_data_ov006_0213fd24, 0 };  /* ROM 0x02124e1c _ZN10dScMgBSC_c14StateMoveCardsEv */
-#pragma comment(linker, "/alternatename:?data_ov006_0213fd24@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_data_ov006_0213fd24")
+extern "C" void port_pmft_pmf_dScMgBSC_c_StateMoveCards(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dScMgBSC_c_StateMoveCards=?StateMoveCards@dScMgBSC_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dScMgBSC_c_StateMoveCards = { (unsigned)&port_pmft_pmf_dScMgBSC_c_StateMoveCards, 0 };  /* ROM 0x02124e1c _ZN10dScMgBSC_c14StateMoveCardsEv */
+#pragma comment(linker, "/alternatename:?pmf_dScMgBSC_c_StateMoveCards@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_pmf_dScMgBSC_c_StateMoveCards")
 
-extern "C" void port_pmft_data_ov006_0213fd3c(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov006_0213fd3c=?StateWaitMove@dScMgBSC_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov006_0213fd3c = { (unsigned)&port_pmft_data_ov006_0213fd3c, 0 };  /* ROM 0x02124dc0 _ZN10dScMgBSC_c13StateWaitMoveEv */
-#pragma comment(linker, "/alternatename:?data_ov006_0213fd3c@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_data_ov006_0213fd3c")
+extern "C" void port_pmft_pmf_dScMgBSC_c_StateWaitMove(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dScMgBSC_c_StateWaitMove=?StateWaitMove@dScMgBSC_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dScMgBSC_c_StateWaitMove = { (unsigned)&port_pmft_pmf_dScMgBSC_c_StateWaitMove, 0 };  /* ROM 0x02124dc0 _ZN10dScMgBSC_c13StateWaitMoveEv */
+#pragma comment(linker, "/alternatename:?pmf_dScMgBSC_c_StateWaitMove@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_pmf_dScMgBSC_c_StateWaitMove")
 
-extern "C" void port_pmft_data_ov006_0213fd34(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov006_0213fd34=?StateRevealCards@dScMgBSC_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov006_0213fd34 = { (unsigned)&port_pmft_data_ov006_0213fd34, 0 };  /* ROM 0x02124cb4 _ZN10dScMgBSC_c16StateRevealCardsEv */
-#pragma comment(linker, "/alternatename:?data_ov006_0213fd34@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_data_ov006_0213fd34")
+extern "C" void port_pmft_pmf_dScMgBSC_c_StateRevealCards(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dScMgBSC_c_StateRevealCards=?StateRevealCards@dScMgBSC_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dScMgBSC_c_StateRevealCards = { (unsigned)&port_pmft_pmf_dScMgBSC_c_StateRevealCards, 0 };  /* ROM 0x02124cb4 _ZN10dScMgBSC_c16StateRevealCardsEv */
+#pragma comment(linker, "/alternatename:?pmf_dScMgBSC_c_StateRevealCards@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_pmf_dScMgBSC_c_StateRevealCards")
 
-extern "C" void port_pmft_data_ov006_0213fd64(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov006_0213fd64=?StateJudgeCards@dScMgBSC_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov006_0213fd64 = { (unsigned)&port_pmft_data_ov006_0213fd64, 0 };  /* ROM 0x02124bb4 _ZN10dScMgBSC_c15StateJudgeCardsEv */
-#pragma comment(linker, "/alternatename:?data_ov006_0213fd64@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_data_ov006_0213fd64")
+extern "C" void port_pmft_pmf_dScMgBSC_c_StateJudgeCards(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dScMgBSC_c_StateJudgeCards=?StateJudgeCards@dScMgBSC_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dScMgBSC_c_StateJudgeCards = { (unsigned)&port_pmft_pmf_dScMgBSC_c_StateJudgeCards, 0 };  /* ROM 0x02124bb4 _ZN10dScMgBSC_c15StateJudgeCardsEv */
+#pragma comment(linker, "/alternatename:?pmf_dScMgBSC_c_StateJudgeCards@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_pmf_dScMgBSC_c_StateJudgeCards")
 
-extern "C" void port_pmft_data_ov006_0213fd54(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov006_0213fd54=?StateTableReaction@dScMgBSC_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov006_0213fd54 = { (unsigned)&port_pmft_data_ov006_0213fd54, 0 };  /* ROM 0x02124b58 _ZN10dScMgBSC_c18StateTableReactionEv */
-#pragma comment(linker, "/alternatename:?data_ov006_0213fd54@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_data_ov006_0213fd54")
+extern "C" void port_pmft_pmf_dScMgBSC_c_StateTableReaction(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dScMgBSC_c_StateTableReaction=?StateTableReaction@dScMgBSC_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dScMgBSC_c_StateTableReaction = { (unsigned)&port_pmft_pmf_dScMgBSC_c_StateTableReaction, 0 };  /* ROM 0x02124b58 _ZN10dScMgBSC_c18StateTableReactionEv */
+#pragma comment(linker, "/alternatename:?pmf_dScMgBSC_c_StateTableReaction@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_pmf_dScMgBSC_c_StateTableReaction")
 
-extern "C" void port_pmft_data_ov006_0213fd84(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov006_0213fd84=?StateTableReaction@dScMgBSC_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov006_0213fd84 = { (unsigned)&port_pmft_data_ov006_0213fd84, 0 };  /* ROM 0x02124b58 _ZN10dScMgBSC_c18StateTableReactionEv */
-#pragma comment(linker, "/alternatename:?data_ov006_0213fd84@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_data_ov006_0213fd84")
+extern "C" void port_pmft_pmf_dScMgBSC_c_StateTableReaction_2(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dScMgBSC_c_StateTableReaction_2=?StateTableReaction@dScMgBSC_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dScMgBSC_c_StateTableReaction_2 = { (unsigned)&port_pmft_pmf_dScMgBSC_c_StateTableReaction_2, 0 };  /* ROM 0x02124b58 _ZN10dScMgBSC_c18StateTableReactionEv */
+#pragma comment(linker, "/alternatename:?pmf_dScMgBSC_c_StateTableReaction_2@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_pmf_dScMgBSC_c_StateTableReaction_2")
 
-extern "C" void port_pmft_data_ov006_0213fd14(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov006_0213fd14=?StateWaitTable@dScMgBSC_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov006_0213fd14 = { (unsigned)&port_pmft_data_ov006_0213fd14, 0 };  /* ROM 0x02124ae4 _ZN10dScMgBSC_c14StateWaitTableEv */
-#pragma comment(linker, "/alternatename:?data_ov006_0213fd14@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_data_ov006_0213fd14")
+extern "C" void port_pmft_pmf_dScMgBSC_c_StateWaitTable_2(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dScMgBSC_c_StateWaitTable_2=?StateWaitTable@dScMgBSC_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dScMgBSC_c_StateWaitTable_2 = { (unsigned)&port_pmft_pmf_dScMgBSC_c_StateWaitTable_2, 0 };  /* ROM 0x02124ae4 _ZN10dScMgBSC_c14StateWaitTableEv */
+#pragma comment(linker, "/alternatename:?pmf_dScMgBSC_c_StateWaitTable_2@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_pmf_dScMgBSC_c_StateWaitTable_2")
 
-extern "C" void port_pmft_data_ov006_0213fd0c(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov006_0213fd0c=?StateWaitTable@dScMgBSC_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov006_0213fd0c = { (unsigned)&port_pmft_data_ov006_0213fd0c, 0 };  /* ROM 0x02124ae4 _ZN10dScMgBSC_c14StateWaitTableEv */
-#pragma comment(linker, "/alternatename:?data_ov006_0213fd0c@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_data_ov006_0213fd0c")
+extern "C" void port_pmft_pmf_dScMgBSC_c_StateWaitTable(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dScMgBSC_c_StateWaitTable=?StateWaitTable@dScMgBSC_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dScMgBSC_c_StateWaitTable = { (unsigned)&port_pmft_pmf_dScMgBSC_c_StateWaitTable, 0 };  /* ROM 0x02124ae4 _ZN10dScMgBSC_c14StateWaitTableEv */
+#pragma comment(linker, "/alternatename:?pmf_dScMgBSC_c_StateWaitTable@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_pmf_dScMgBSC_c_StateWaitTable")
 
-extern "C" void port_pmft_data_ov006_0213fd74(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov006_0213fd74=?StateReturnCards@dScMgBSC_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov006_0213fd74 = { (unsigned)&port_pmft_data_ov006_0213fd74, 0 };  /* ROM 0x02124a08 _ZN10dScMgBSC_c16StateReturnCardsEv */
-#pragma comment(linker, "/alternatename:?data_ov006_0213fd74@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_data_ov006_0213fd74")
+extern "C" void port_pmft_pmf_dScMgBSC_c_StateReturnCards(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dScMgBSC_c_StateReturnCards=?StateReturnCards@dScMgBSC_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dScMgBSC_c_StateReturnCards = { (unsigned)&port_pmft_pmf_dScMgBSC_c_StateReturnCards, 0 };  /* ROM 0x02124a08 _ZN10dScMgBSC_c16StateReturnCardsEv */
+#pragma comment(linker, "/alternatename:?pmf_dScMgBSC_c_StateReturnCards@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_pmf_dScMgBSC_c_StateReturnCards")
 
-extern "C" void port_pmft_data_ov006_0213fd1c(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov006_0213fd1c=?StateDone@dScMgBSC_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov006_0213fd1c = { (unsigned)&port_pmft_data_ov006_0213fd1c, 0 };  /* ROM 0x02124a04 _ZN10dScMgBSC_c9StateDoneEv */
-#pragma comment(linker, "/alternatename:?data_ov006_0213fd1c@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_data_ov006_0213fd1c")
+extern "C" void port_pmft_pmf_dScMgBSC_c_StateDone(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dScMgBSC_c_StateDone=?StateDone@dScMgBSC_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dScMgBSC_c_StateDone = { (unsigned)&port_pmft_pmf_dScMgBSC_c_StateDone, 0 };  /* ROM 0x02124a04 _ZN10dScMgBSC_c9StateDoneEv */
+#pragma comment(linker, "/alternatename:?pmf_dScMgBSC_c_StateDone@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_pmf_dScMgBSC_c_StateDone")
 
-extern "C" void port_pmft_data_ov006_0213fd2c(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov006_0213fd2c=?StateDone@dScMgBSC_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov006_0213fd2c = { (unsigned)&port_pmft_data_ov006_0213fd2c, 0 };  /* ROM 0x02124a04 _ZN10dScMgBSC_c9StateDoneEv */
-#pragma comment(linker, "/alternatename:?data_ov006_0213fd2c@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_data_ov006_0213fd2c")
+extern "C" void port_pmft_pmf_dScMgBSC_c_StateDone_2(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dScMgBSC_c_StateDone_2=?StateDone@dScMgBSC_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dScMgBSC_c_StateDone_2 = { (unsigned)&port_pmft_pmf_dScMgBSC_c_StateDone_2, 0 };  /* ROM 0x02124a04 _ZN10dScMgBSC_c9StateDoneEv */
+#pragma comment(linker, "/alternatename:?pmf_dScMgBSC_c_StateDone_2@@3P8dScMgBSC_c@@AEXXZQ1@=_port_pmfv_pmf_dScMgBSC_c_StateDone_2")
 
-extern "C" void port_pmft_data_ov004_020bc8bc(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc8bc=?func_ov004_020b841c@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc8bc = { (unsigned)&port_pmft_data_ov004_020bc8bc, 0 };  /* ROM 0x020b841c _ZN10dMgState_c19func_ov004_020b841cEv */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc8bc@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc8bc")
+extern "C" void port_pmft_pmf_dMgState_c_State01_Update(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_State01_Update=?State01_Update@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_State01_Update = { (unsigned)&port_pmft_pmf_dMgState_c_State01_Update, 0 };  /* ROM 0x020b841c _ZN10dMgState_c14State01_UpdateEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State01_Update@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_State01_Update")
 
-extern "C" void port_pmft_data_ov004_020bc8c4(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc8c4=?func_ov004_020b8284@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc8c4 = { (unsigned)&port_pmft_data_ov004_020bc8c4, 0 };  /* ROM 0x020b8284 _ZN10dMgState_c19func_ov004_020b8284Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc8c4@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc8c4")
+extern "C" void port_pmft_pmf_dMgState_c_State02_Update(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_State02_Update=?State02_Update@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_State02_Update = { (unsigned)&port_pmft_pmf_dMgState_c_State02_Update, 0 };  /* ROM 0x020b8284 _ZN10dMgState_c14State02_UpdateEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State02_Update@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_State02_Update")
 
-extern "C" void port_pmft_data_ov004_020bc8cc(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc8cc=?func_ov004_020b6ad8@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc8cc = { (unsigned)&port_pmft_data_ov004_020bc8cc, 0 };  /* ROM 0x020b6ad8 _ZN10dMgState_c19func_ov004_020b6ad8Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc8cc@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc8cc")
+extern "C" void port_pmft_pmf_dMgState_c_DrawScore(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_DrawScore=?DrawScore@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_DrawScore = { (unsigned)&port_pmft_pmf_dMgState_c_DrawScore, 0 };  /* ROM 0x020b6ad8 _ZN10dMgState_c9DrawScoreEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_DrawScore@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_DrawScore")
 
-extern "C" void port_pmft_data_ov004_020bc8d4(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc8d4=?func_ov004_020b8098@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc8d4 = { (unsigned)&port_pmft_data_ov004_020bc8d4, 0 };  /* ROM 0x020b8098 _ZN10dMgState_c19func_ov004_020b8098Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc8d4@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc8d4")
+extern "C" void port_pmft_pmf_dMgState_c_State03_Update(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_State03_Update=?State03_Update@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_State03_Update = { (unsigned)&port_pmft_pmf_dMgState_c_State03_Update, 0 };  /* ROM 0x020b8098 _ZN10dMgState_c14State03_UpdateEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State03_Update@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_State03_Update")
 
-extern "C" void port_pmft_data_ov004_020bc8dc(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc8dc=?func_ov004_020b7fec@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc8dc = { (unsigned)&port_pmft_data_ov004_020bc8dc, 0 };  /* ROM 0x020b7fec _ZN10dMgState_c19func_ov004_020b7fecEv */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc8dc@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc8dc")
+extern "C" void port_pmft_pmf_dMgState_c_UpdateRetryFadeOut(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_UpdateRetryFadeOut=?UpdateRetryFadeOut@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_UpdateRetryFadeOut = { (unsigned)&port_pmft_pmf_dMgState_c_UpdateRetryFadeOut, 0 };  /* ROM 0x020b7fec _ZN10dMgState_c18UpdateRetryFadeOutEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_UpdateRetryFadeOut@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_UpdateRetryFadeOut")
 
-extern "C" void port_pmft_data_ov004_020bc8e4(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc8e4=?func_ov004_020b6f88@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc8e4 = { (unsigned)&port_pmft_data_ov004_020bc8e4, 0 };  /* ROM 0x020b6f88 _ZN10dMgState_c19func_ov004_020b6f88Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc8e4@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc8e4")
+extern "C" void port_pmft_pmf_dMgState_c_State16_Update(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_State16_Update=?State16_Update@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_State16_Update = { (unsigned)&port_pmft_pmf_dMgState_c_State16_Update, 0 };  /* ROM 0x020b6f88 _ZN10dMgState_c14State16_UpdateEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State16_Update@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_State16_Update")
 
-extern "C" void port_pmft_data_ov004_020bc8ec(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc8ec=?func_ov004_020b7eac@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc8ec = { (unsigned)&port_pmft_data_ov004_020bc8ec, 0 };  /* ROM 0x020b7eac _ZN10dMgState_c19func_ov004_020b7eacEv */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc8ec@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc8ec")
+extern "C" void port_pmft_pmf_dMgState_c_State04_Update(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_State04_Update=?State04_Update@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_State04_Update = { (unsigned)&port_pmft_pmf_dMgState_c_State04_Update, 0 };  /* ROM 0x020b7eac _ZN10dMgState_c14State04_UpdateEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State04_Update@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_State04_Update")
 
-extern "C" void port_pmft_data_ov004_020bc8f4(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc8f4=?func_ov004_020b7cd0@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc8f4 = { (unsigned)&port_pmft_data_ov004_020bc8f4, 0 };  /* ROM 0x020b7cd0 _ZN10dMgState_c19func_ov004_020b7cd0Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc8f4@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc8f4")
+extern "C" void port_pmft_pmf_dMgState_c_State05_Update(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_State05_Update=?State05_Update@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_State05_Update = { (unsigned)&port_pmft_pmf_dMgState_c_State05_Update, 0 };  /* ROM 0x020b7cd0 _ZN10dMgState_c14State05_UpdateEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State05_Update@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_State05_Update")
 
-extern "C" void port_pmft_data_ov004_020bc8fc(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc8fc=?func_ov004_020b72d4@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc8fc = { (unsigned)&port_pmft_data_ov004_020bc8fc, 0 };  /* ROM 0x020b72d4 _ZN10dMgState_c19func_ov004_020b72d4Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc8fc@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc8fc")
+extern "C" void port_pmft_pmf_dMgState_c_UpdateRetryPrompt(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_UpdateRetryPrompt=?UpdateRetryPrompt@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_UpdateRetryPrompt = { (unsigned)&port_pmft_pmf_dMgState_c_UpdateRetryPrompt, 0 };  /* ROM 0x020b72d4 _ZN10dMgState_c17UpdateRetryPromptEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_UpdateRetryPrompt@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_UpdateRetryPrompt")
 
-extern "C" void port_pmft_data_ov004_020bc904(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc904=?func_ov004_020b7c04@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc904 = { (unsigned)&port_pmft_data_ov004_020bc904, 0 };  /* ROM 0x020b7c04 _ZN10dMgState_c19func_ov004_020b7c04Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc904@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc904")
+extern "C" void port_pmft_pmf_dMgState_c_UpdateGameOverToMenu(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_UpdateGameOverToMenu=?UpdateGameOverToMenu@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_UpdateGameOverToMenu = { (unsigned)&port_pmft_pmf_dMgState_c_UpdateGameOverToMenu, 0 };  /* ROM 0x020b7c04 _ZN10dMgState_c20UpdateGameOverToMenuEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_UpdateGameOverToMenu@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_UpdateGameOverToMenu")
 
-extern "C" void port_pmft_data_ov004_020bc90c(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc90c=?func_ov004_020b7b20@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc90c = { (unsigned)&port_pmft_data_ov004_020bc90c, 0 };  /* ROM 0x020b7b20 _ZN10dMgState_c19func_ov004_020b7b20Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc90c@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc90c")
+extern "C" void port_pmft_pmf_dMgState_c_State06_Update(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_State06_Update=?State06_Update@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_State06_Update = { (unsigned)&port_pmft_pmf_dMgState_c_State06_Update, 0 };  /* ROM 0x020b7b20 _ZN10dMgState_c14State06_UpdateEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State06_Update@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_State06_Update")
 
-extern "C" void port_pmft_data_ov004_020bc914(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc914=?func_ov004_020b7fec@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc914 = { (unsigned)&port_pmft_data_ov004_020bc914, 0 };  /* ROM 0x020b7fec _ZN10dMgState_c19func_ov004_020b7fecEv */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc914@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc914")
+extern "C" void port_pmft_pmf_dMgState_c_UpdateRetryFadeOut_2(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_UpdateRetryFadeOut_2=?UpdateRetryFadeOut@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_UpdateRetryFadeOut_2 = { (unsigned)&port_pmft_pmf_dMgState_c_UpdateRetryFadeOut_2, 0 };  /* ROM 0x020b7fec _ZN10dMgState_c18UpdateRetryFadeOutEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_UpdateRetryFadeOut_2@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_UpdateRetryFadeOut_2")
 
-extern "C" void port_pmft_data_ov004_020bc91c(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc91c=?func_ov004_020b68e8@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc91c = { (unsigned)&port_pmft_data_ov004_020bc91c, 0 };  /* ROM 0x020b68e8 _ZN10dMgState_c19func_ov004_020b68e8Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc91c@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc91c")
+extern "C" void port_pmft_pmf_dMgState_c_DrawRecordTable(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_DrawRecordTable=?DrawRecordTable@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_DrawRecordTable = { (unsigned)&port_pmft_pmf_dMgState_c_DrawRecordTable, 0 };  /* ROM 0x020b68e8 _ZN10dMgState_c15DrawRecordTableEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_DrawRecordTable@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_DrawRecordTable")
 
-extern "C" void port_pmft_data_ov004_020bc924(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc924=?func_ov004_020b6c9c@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc924 = { (unsigned)&port_pmft_data_ov004_020bc924, 0 };  /* ROM 0x020b6c9c _ZN10dMgState_c19func_ov004_020b6c9cEv */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc924@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc924")
+extern "C" void port_pmft_pmf_dMgState_c_State18_Update(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_State18_Update=?State18_Update@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_State18_Update = { (unsigned)&port_pmft_pmf_dMgState_c_State18_Update, 0 };  /* ROM 0x020b6c9c _ZN10dMgState_c14State18_UpdateEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State18_Update@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_State18_Update")
 
-extern "C" void port_pmft_data_ov004_020bc93c(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc93c=?func_ov004_020b7a18@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc93c = { (unsigned)&port_pmft_data_ov004_020bc93c, 0 };  /* ROM 0x020b7a18 _ZN10dMgState_c19func_ov004_020b7a18Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc93c@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc93c")
+extern "C" void port_pmft_pmf_dMgState_c_UpdateAfterHidden(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_UpdateAfterHidden=?UpdateAfterHidden@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_UpdateAfterHidden = { (unsigned)&port_pmft_pmf_dMgState_c_UpdateAfterHidden, 0 };  /* ROM 0x020b7a18 _ZN10dMgState_c17UpdateAfterHiddenEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_UpdateAfterHidden@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_UpdateAfterHidden")
 
-extern "C" void port_pmft_data_ov004_020bc98c(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc98c=?func_ov004_020b7c04@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc98c = { (unsigned)&port_pmft_data_ov004_020bc98c, 0 };  /* ROM 0x020b7c04 _ZN10dMgState_c19func_ov004_020b7c04Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc98c@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc98c")
+extern "C" void port_pmft_pmf_dMgState_c_UpdateGameOverToMenu_2(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_UpdateGameOverToMenu_2=?UpdateGameOverToMenu@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_UpdateGameOverToMenu_2 = { (unsigned)&port_pmft_pmf_dMgState_c_UpdateGameOverToMenu_2, 0 };  /* ROM 0x020b7c04 _ZN10dMgState_c20UpdateGameOverToMenuEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_UpdateGameOverToMenu_2@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_UpdateGameOverToMenu_2")
 
-extern "C" void port_pmft_data_ov004_020bc994(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc994=?func_ov004_020b7124@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc994 = { (unsigned)&port_pmft_data_ov004_020bc994, 0 };  /* ROM 0x020b7124 _ZN10dMgState_c19func_ov004_020b7124Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc994@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc994")
+extern "C" void port_pmft_pmf_dMgState_c_UpdateFadeThenResume(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_UpdateFadeThenResume=?UpdateFadeThenResume@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_UpdateFadeThenResume = { (unsigned)&port_pmft_pmf_dMgState_c_UpdateFadeThenResume, 0 };  /* ROM 0x020b7124 _ZN10dMgState_c20UpdateFadeThenResumeEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_UpdateFadeThenResume@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_UpdateFadeThenResume")
 
-extern "C" void port_pmft_data_ov004_020bc9ac(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc9ac=?func_ov004_020b78f4@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc9ac = { (unsigned)&port_pmft_data_ov004_020bc9ac, 0 };  /* ROM 0x020b78f4 _ZN10dMgState_c19func_ov004_020b78f4Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc9ac@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc9ac")
+extern "C" void port_pmft_pmf_dMgState_c_UpdateWaitThenResume(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_UpdateWaitThenResume=?UpdateWaitThenResume@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_UpdateWaitThenResume = { (unsigned)&port_pmft_pmf_dMgState_c_UpdateWaitThenResume, 0 };  /* ROM 0x020b78f4 _ZN10dMgState_c20UpdateWaitThenResumeEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_UpdateWaitThenResume@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_UpdateWaitThenResume")
 
-extern "C" void port_pmft_data_ov004_020bc9b4(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc9b4=?func_ov004_020b78f4@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc9b4 = { (unsigned)&port_pmft_data_ov004_020bc9b4, 0 };  /* ROM 0x020b78f4 _ZN10dMgState_c19func_ov004_020b78f4Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc9b4@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc9b4")
+extern "C" void port_pmft_pmf_dMgState_c_UpdateWaitThenResume_2(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_UpdateWaitThenResume_2=?UpdateWaitThenResume@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_UpdateWaitThenResume_2 = { (unsigned)&port_pmft_pmf_dMgState_c_UpdateWaitThenResume_2, 0 };  /* ROM 0x020b78f4 _ZN10dMgState_c20UpdateWaitThenResumeEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_UpdateWaitThenResume_2@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_UpdateWaitThenResume_2")
 
-extern "C" void port_pmft_data_ov004_020bc9c4(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc9c4=?func_ov004_020b6948@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc9c4 = { (unsigned)&port_pmft_data_ov004_020bc9c4, 0 };  /* ROM 0x020b6948 _ZN10dMgState_c19func_ov004_020b6948Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc9c4@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc9c4")
+extern "C" void port_pmft_pmf_dMgState_c_DrawScoreDigits(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_DrawScoreDigits=?DrawScoreDigits@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_DrawScoreDigits = { (unsigned)&port_pmft_pmf_dMgState_c_DrawScoreDigits, 0 };  /* ROM 0x020b6948 _ZN10dMgState_c15DrawScoreDigitsEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_DrawScoreDigits@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_DrawScoreDigits")
 
-extern "C" void port_pmft_data_ov004_020bc9cc(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc9cc=?func_ov004_020b6ddc@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc9cc = { (unsigned)&port_pmft_data_ov004_020bc9cc, 0 };  /* ROM 0x020b6ddc _ZN10dMgState_c19func_ov004_020b6ddcEv */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc9cc@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc9cc")
+extern "C" void port_pmft_pmf_dMgState_c_State17_Update(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_State17_Update=?State17_Update@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_State17_Update = { (unsigned)&port_pmft_pmf_dMgState_c_State17_Update, 0 };  /* ROM 0x020b6ddc _ZN10dMgState_c14State17_UpdateEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State17_Update@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_State17_Update")
 
-extern "C" void port_pmft_data_ov004_020bc9e4(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc9e4=?func_ov004_020b77b4@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc9e4 = { (unsigned)&port_pmft_data_ov004_020bc9e4, 0 };  /* ROM 0x020b77b4 _ZN10dMgState_c19func_ov004_020b77b4Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc9e4@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc9e4")
+extern "C" void port_pmft_pmf_dMgState_c_State09_Update(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_State09_Update=?State09_Update@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_State09_Update = { (unsigned)&port_pmft_pmf_dMgState_c_State09_Update, 0 };  /* ROM 0x020b77b4 _ZN10dMgState_c14State09_UpdateEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State09_Update@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_State09_Update")
 
-extern "C" void port_pmft_data_ov004_020bc9fc(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bc9fc=?func_ov004_020b75e4@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bc9fc = { (unsigned)&port_pmft_data_ov004_020bc9fc, 0 };  /* ROM 0x020b75e4 _ZN10dMgState_c19func_ov004_020b75e4Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc9fc@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bc9fc")
+extern "C" void port_pmft_pmf_dMgState_c_State10_Update(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_State10_Update=?State10_Update@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_State10_Update = { (unsigned)&port_pmft_pmf_dMgState_c_State10_Update, 0 };  /* ROM 0x020b75e4 _ZN10dMgState_c14State10_UpdateEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State10_Update@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_State10_Update")
 
-extern "C" void port_pmft_data_ov004_020bca04(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bca04=?func_ov004_020b7124@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bca04 = { (unsigned)&port_pmft_data_ov004_020bca04, 0 };  /* ROM 0x020b7124 _ZN10dMgState_c19func_ov004_020b7124Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bca04@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bca04")
+extern "C" void port_pmft_pmf_dMgState_c_UpdateFadeThenResume_2(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_UpdateFadeThenResume_2=?UpdateFadeThenResume@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_UpdateFadeThenResume_2 = { (unsigned)&port_pmft_pmf_dMgState_c_UpdateFadeThenResume_2, 0 };  /* ROM 0x020b7124 _ZN10dMgState_c20UpdateFadeThenResumeEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_UpdateFadeThenResume_2@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_UpdateFadeThenResume_2")
 
-extern "C" void port_pmft_data_ov004_020bca14(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bca14=?func_ov004_020b7fec@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bca14 = { (unsigned)&port_pmft_data_ov004_020bca14, 0 };  /* ROM 0x020b7fec _ZN10dMgState_c19func_ov004_020b7fecEv */
-#pragma comment(linker, "/alternatename:?data_ov004_020bca14@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bca14")
+extern "C" void port_pmft_pmf_dMgState_c_UpdateRetryFadeOut_3(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_UpdateRetryFadeOut_3=?UpdateRetryFadeOut@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_UpdateRetryFadeOut_3 = { (unsigned)&port_pmft_pmf_dMgState_c_UpdateRetryFadeOut_3, 0 };  /* ROM 0x020b7fec _ZN10dMgState_c18UpdateRetryFadeOutEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_UpdateRetryFadeOut_3@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_UpdateRetryFadeOut_3")
 
-extern "C" void port_pmft_data_ov004_020bca1c(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bca1c=?func_ov004_020b8560@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bca1c = { (unsigned)&port_pmft_data_ov004_020bca1c, 0 };  /* ROM 0x020b8560 _ZN10dMgState_c19func_ov004_020b8560Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bca1c@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bca1c")
+extern "C" void port_pmft_pmf_dMgState_c_State00_Update(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_State00_Update=?State00_Update@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_State00_Update = { (unsigned)&port_pmft_pmf_dMgState_c_State00_Update, 0 };  /* ROM 0x020b8560 _ZN10dMgState_c14State00_UpdateEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State00_Update@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_State00_Update")
 
-extern "C" void port_pmft_data_ov004_020bca24(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bca24=?func_ov004_020b746c@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bca24 = { (unsigned)&port_pmft_data_ov004_020bca24, 0 };  /* ROM 0x020b746c _ZN10dMgState_c19func_ov004_020b746cEv */
-#pragma comment(linker, "/alternatename:?data_ov004_020bca24@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bca24")
+extern "C" void port_pmft_pmf_dMgState_c_State11_Update(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_State11_Update=?State11_Update@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_State11_Update = { (unsigned)&port_pmft_pmf_dMgState_c_State11_Update, 0 };  /* ROM 0x020b746c _ZN10dMgState_c14State11_UpdateEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State11_Update@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_State11_Update")
 
-extern "C" void port_pmft_data_ov004_020bca2c(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bca2c=?func_ov004_020b68e8@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bca2c = { (unsigned)&port_pmft_data_ov004_020bca2c, 0 };  /* ROM 0x020b68e8 _ZN10dMgState_c19func_ov004_020b68e8Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bca2c@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bca2c")
+extern "C" void port_pmft_pmf_dMgState_c_DrawRecordTable_2(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_DrawRecordTable_2=?DrawRecordTable@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_DrawRecordTable_2 = { (unsigned)&port_pmft_pmf_dMgState_c_DrawRecordTable_2, 0 };  /* ROM 0x020b68e8 _ZN10dMgState_c15DrawRecordTableEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_DrawRecordTable_2@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_DrawRecordTable_2")
 
-extern "C" void port_pmft_data_ov004_020bca34(void);
-#pragma comment(linker, "/alternatename:_port_pmft_data_ov004_020bca34=?func_ov004_020b6b40@dMgState_c@@QAEXXZ")
-extern "C" PortPmfPair port_pmfv_data_ov004_020bca34 = { (unsigned)&port_pmft_data_ov004_020bca34, 0 };  /* ROM 0x020b6b40 _ZN10dMgState_c19func_ov004_020b6b40Ev */
-#pragma comment(linker, "/alternatename:?data_ov004_020bca34@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_data_ov004_020bca34")
+extern "C" void port_pmft_pmf_dMgState_c_State19_Update(void);
+#pragma comment(linker, "/alternatename:_port_pmft_pmf_dMgState_c_State19_Update=?State19_Update@dMgState_c@@QAEXXZ")
+extern "C" PortPmfPair port_pmfv_pmf_dMgState_c_State19_Update = { (unsigned)&port_pmft_pmf_dMgState_c_State19_Update, 0 };  /* ROM 0x020b6b40 _ZN10dMgState_c14State19_UpdateEv */
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State19_Update@@3P8dMgState_c@@AEXXZQ1@=_port_pmfv_pmf_dMgState_c_State19_Update")
 
 extern "C" void port_pmft_data_ov085_02130074(void);
 #pragma comment(linker, "/alternatename:_port_pmft_data_ov085_02130074=?StateIdleInit@daMip_c@@QAEHXZ")

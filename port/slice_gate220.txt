@@ -74,18 +74,18 @@ src/_ZN3G2S12GetBG1ScrPtrEv.cpp
 src/engine/sound/Sound.cpp
 # FOLDED into src/engine/sound/Sound.cpp (row 74): src/_ZN5Sound12PlayBank3_2DEj.cpp
 # FOLDED into src/engine/sound/Sound.cpp (row 74): src/_ZN5Sound12UnpauseMusicEv.cpp
-src/actors/dScStage_c.cpp
-# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage17PS_UpdateSaveMenuEb.cpp
-# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage17UpdateMenuButtonsEb.cpp
-# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage20PS_UpdateOptionsMenuEv.cpp
-# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage25PS_UpdateOkAndBackButtonsEb.cpp
+src/game/stages/d_s_stage_methods.cpp
+# FOLDED into src/game/stages/d_s_stage_methods.cpp (row 77): src/_ZN5Stage17PS_UpdateSaveMenuEb.cpp
+# FOLDED into src/game/stages/d_s_stage_methods.cpp (row 77): src/_ZN5Stage17UpdateMenuButtonsEb.cpp
+# FOLDED into src/game/stages/d_s_stage_methods.cpp (row 77): src/_ZN5Stage20PS_UpdateOptionsMenuEv.cpp
+# FOLDED into src/game/stages/d_s_stage_methods.cpp (row 77): src/_ZN5Stage25PS_UpdateOkAndBackButtonsEb.cpp
 src/_ZN10dScStage_c7PS_InitEv.cpp
-# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage7VE_InitEv.cpp
+# FOLDED into src/game/stages/d_s_stage_methods.cpp (row 77): src/_ZN5Stage7VE_InitEv.cpp
 src/_ZN10dScStage_c8BehaviorEv.cpp
-# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage9LC_UpdateEv.cpp
-# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage9PS_UpdateEv.cpp
-# FOLDED into src/actors/dScStage_c.cpp (row 77): src/_ZN5Stage9VE_UpdateEv.cpp
-src/actors/Player.cpp
+# FOLDED into src/game/stages/d_s_stage_methods.cpp (row 77): src/_ZN5Stage9LC_UpdateEv.cpp
+# FOLDED into src/game/stages/d_s_stage_methods.cpp (row 77): src/_ZN5Stage9PS_UpdateEv.cpp
+# FOLDED into src/game/stages/d_s_stage_methods.cpp (row 77): src/_ZN5Stage9VE_UpdateEv.cpp
+src/game/player/Player.cpp
 port/unmatched/hostarm/Player.cpp
 # FOLDED into src/Message.cpp (row 72): src/_ZN7Message11DisplayTextEt.cpp
 # FOLDED into src/Message.cpp (row 72): src/_ZN7Message16DisplayPauseTextEth.cpp

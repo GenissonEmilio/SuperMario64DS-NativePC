@@ -11,7 +11,7 @@
  *
  *      unresolved external symbol
  *      "void __cdecl Memory::Deallocate(void *,struct Heap *)"
- *      (?Deallocate@Memory@@YAXPAXPAUHeap@@@Z)
+ *      (?Deallocate@Memory@@YAXPAXPAUHeap_t@mHeap@@@Z)
  *      referenced in function _func_ov006_0210d7e0
  *
  *    facegen: "free function at NAMESPACE scope (Memory::Deallocate, the @@Y
@@ -25,7 +25,7 @@
  *    are __cdecl with the same two arguments, and a plain alias is correct".
  *    The MSVC mangle says @@YAX -- Y for a free function, A for __cdecl, X for
  *    void return -- over (PAX, PAUHeap) = (void *, Heap *). The Itanium
- *    spelling _ZN6Memory10DeallocateEPvP4Heap is the same function with the
+ *    spelling _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE is the same function with the
  *    same two pointer arguments, it is DEFINED in this binary out of
  *    src/, and eleven port/hal files already call it under that name. Nothing
  *    is being converted: an alias here changes a name and not a convention.
@@ -52,7 +52,7 @@
  *    difference is the whole ruling. These are not missing storage. They are
  *    the SAME name-spelling defect port/mg_fanout_costs.txt section 6 records
  *    as its fourth, smaller item -- "src/_ZN14dScMgCurling_c13InitResourcesEv.cpp spells ov004's
- *    func_ov004_020adc74 as bare func_020adc74, a name that exists in no
+ *    Ov004_LoadFileByPath as bare func_020adc74, a name that exists in no
  *    config" -- in its data form:
  *
  *      include/decl_common.h:1357   extern int func_020bc864;
@@ -87,7 +87,7 @@
  *    branch that ends the game -- state 1, after the 300-frame wait, when the
  *    two data_020a0de8/data_020a0de9 flags are both set and the actor's own
  *    parameter byte at self+8 is zero -- immediately before
- *    func_ov004_020b0a54(0x10) and the move to state 2. This lane does not
+ *    Mg_SetSharedState(0x10) and the move to state 2. This lane does not
  *    claim to know what they mean; it claims they are ov004's and not this
  *    TU's, which is all an alias needs.
  *
@@ -98,7 +98,7 @@
  */
 
 /* 1. */
-#pragma comment(linker, "/alternatename:?Deallocate@Memory@@YAXPAXPAUHeap@@@Z=__ZN6Memory10DeallocateEPvP4Heap")
+#pragma comment(linker, "/alternatename:?Deallocate@Memory@@YAXPAXPAUHeap_t@mHeap@@@Z=__ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE")
 
 /* 2 and 3. */
 #pragma comment(linker, "/alternatename:_func_020bc864=_data_ov004_020bc864")

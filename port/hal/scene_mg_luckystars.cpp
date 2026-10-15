@@ -100,7 +100,7 @@
 // re-derived rather than cited.
 //
 // port/unmatched/MgFlower_Slot2.cpp already carries the repair as
-// port_mg_flower_after_init and this file calls it.  src/minigames/d_s_mg_single3_d_base.cpp
+// port_mg_flower_after_init and this file calls it.  src/minigames/d_s_mg_single3d_base.cpp
 // stays out of port/slice_lky.txt for the same reason it is out of
 // port/slice_flw.txt and port/slice_mem.txt: listing it would be an LNK2005
 // against that host copy.
@@ -222,8 +222,8 @@ int   _ZN19dScMgSingle3DBase_c14BeforeBehaviorEv(void *c);                     /
 int   _ZN19dScMgSingle3DBase_c12BeforeRenderEv(void *c);                     /* slot 10 */
 int   _ZN19dScMgSingle3DBase_cD1Ev(char *c);                     /* slot 16 D2 */
 int   _ZN19dScMgSingle3DBase_cD0Ev(char *c);                     /* slot 17 D0 */
-int   _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(void);                        /* slot 26 */
-void  _ZN19dScMgSingle3DBase_c9Virtual84Ev(char *c);                     /* slot 33 */
+int   _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(void);                        /* slot 26 */
+void  _ZN19dScMgSingle3DBase_c11InitEnginesEv(char *c);                     /* slot 33 */
 
 /* dScMgBSC_c's own eight.  _ZN10dScMgBSC_c8BehaviorEv is the HOST COPY in
    unmatched/MgBSC_StateDispatch.cpp, not the src TU: it is the
@@ -241,9 +241,9 @@ int   _ZN10dScMgBSC_c8BehaviorEv(void *self);        /* slot  6 Behavior, host c
 int   _ZN10dScMgBSC_c6RenderEv(void *self);        /* slot  9 Render */
 void *_ZN10dScMgBSC_cD1Ev(char *c);           /* slot 16 D2 */
 void *_ZN10dScMgBSC_cD0Ev(char *c);           /* slot 17 D0 */
-void  _ZN10dScMgBSC_c13OnYoshiTryEatEi(char *c, int mode); /* slot 18 state reset */
-int   _ZN10dScMgBSC_c13OnTurnIntoEggEi(char *c, int mode); /* slot 19 */
-int   _ZN10dScMgBSC_c15OnGroundPoundedEv(void *self);        /* slot 21 */
+void  _ZN10dScMgBSC_c10StartRoundEi(char *c, int mode); /* slot 18 state reset */
+int   _ZN10dScMgBSC_c11CanEndStateEi(char *c, int mode); /* slot 19 */
+int   _ZN10dScMgBSC_c10OnDealDoneEv(void *self);        /* slot 21 */
 
 /* the factory */
 void *dScMgBSC_c_classInit(void);
@@ -257,18 +257,18 @@ void     port_mg_dispatch_counts(unsigned *calls, unsigned *unknown);
 
 /* the persistent minigame record this class's level is READ FROM and WRITTEN
    BACK TO.  Nothing new is defined here: the storage is hal/level_boot.cpp's
-   .dsstate$savblk0004 and the index function is src/func_ov004_020adc3c.c.
+   .dsstate$savblk0004 and the index function is src/Mg_GetSaveTable.c.
    Named so the census can print the record rather than leave it inferred. */
-extern void         *data_ov004_020beb68;     /* the live dScMgBase_c `this` */
+extern void         *gMgScene;     /* the live dScMgBase_c `this` */
 extern unsigned char data_0209caf4[];         /* 36 records x 20 bytes       */
-int  func_ov004_020adc3c(void *c);            /* (self->field_8 >> 8) & 0xff */
+int  Mg_GetSaveTable(void *c);            /* (self->field_8 >> 8) & 0xff */
 
 }  /* extern "C" */
 
 /* The record row this class's object is keyed to, or -1 with no live base. */
 static int port_mg_bsc_record_index(void)
 {
-    return data_ov004_020beb68 ? func_ov004_020adc3c(data_ov004_020beb68) : -1;
+    return gMgScene ? Mg_GetSaveTable(gMgScene) : -1;
 }
 
 // ---- the tick witness ------------------------------------------------------
@@ -303,9 +303,9 @@ static void *__fastcall s3_d2(void *s, void *)
 static void *__fastcall s3_d0(void *s, void *)
 { B3D(17); return (void *)(size_t)_ZN19dScMgSingle3DBase_cD0Ev((char *)s); }
 static int  __fastcall s3_v26(void *, void *)
-{ B3D(26); return _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(); }
+{ B3D(26); return _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(); }
 static int  __fastcall s3_v33(void *s, void *)
-{ B3D(33); _ZN19dScMgSingle3DBase_c9Virtual84Ev((char *)s); return 0; }
+{ B3D(33); _ZN19dScMgSingle3DBase_c11InitEnginesEv((char *)s); return 0; }
 
 /* ---- dScMgBSC_c's own eight --------------------------------------------- */
 static int  __fastcall bsc_init(void *s, void *)
@@ -335,11 +335,11 @@ static void *__fastcall bsc_d0(void *s, void *)
    on it -- 0x02125364 against 4, 5 and 3, 0x0212527c against 4 and 5 -- so it
    is forwarded, and the mode is recorded for the census. */
 static int  __fastcall bsc_reset(void *s, void *, int mode)
-{ BSC(18); g_bsc_mode18 = mode; _ZN10dScMgBSC_c13OnYoshiTryEatEi((char *)s, mode); return 1; }
+{ BSC(18); g_bsc_mode18 = mode; _ZN10dScMgBSC_c10StartRoundEi((char *)s, mode); return 1; }
 static int  __fastcall bsc_v19(void *s, void *, int mode)
-{ BSC(19); g_bsc_mode19 = mode; return _ZN10dScMgBSC_c13OnTurnIntoEggEi((char *)s, mode); }
+{ BSC(19); g_bsc_mode19 = mode; return _ZN10dScMgBSC_c11CanEndStateEi((char *)s, mode); }
 static int  __fastcall bsc_v21(void *s, void *)
-{ BSC(21); return _ZN10dScMgBSC_c15OnGroundPoundedEv(s); }
+{ BSC(21); return _ZN10dScMgBSC_c10OnDealDoneEv(s); }
 
 /* SM64DS_SCENE_SLOT0=0 and SM64DS_SCENE_SLOT9=0, the diagnostics every scene
    seat in this port carries, counted separately so a run can never read a no-op
@@ -482,7 +482,7 @@ extern "C" void port_scene_fill_luckystars(void)
 
    THE FACTORY NEEDS NO DISPLACEMENT RULING, re-checked rather than assumed.
    port/mg_fanout_costs.txt section 12 grants one to 0x169 because
-   src/actors/dScMgCup_c.cpp calls the base constructor _ZN11dScMgBase_cC2Ev
+   src/minigames/d_s_mg_cup.cpp calls the base constructor _ZN11dScMgBase_cC2Ev
    with NO argument and rides r0 through, and that callee dereferences on its
    first statement and then writes three vtable words through the pointer.
    src/minigames/d_s_mg_bsc.cpp calls _ZN11dScMgBase_cC2Ev(p) WITH its argument, so
@@ -591,18 +591,18 @@ extern "C" void port_scene_luckystars_hits(void)
 
          slot 18  (src/minigames/d_s_mg_bsc.cpp) SEEDS it, and only on mode 3:
                     if (mode != 4 && mode != 5 && mode == 3)
-                        self->+0xb4 = func_ov004_020ad878();
-                        func_ov004_020adb1c(self->+0xb4);
-                  -- func_ov004_020ad878 is data_0209caf4[minigame index][1],
-                  and func_ov004_020adb1c is the star badge on the top screen.
+                        self->+0xb4 = Mg_GetSavedRecord1();
+                        Mg_SubmitScore(self->+0xb4);
+                  -- Mg_GetSavedRecord1 is data_0209caf4[minigame index][1],
+                  and Mg_SubmitScore is the star badge on the top screen.
          slot 19  (src/minigames/d_s_mg_bsc.cpp) WRITES IT BACK, on state 0xc
-                  with data_ov004_020bf9e4 == 1:
-                        func_ov004_020ad79c(self->+0xa8, self->+0xb4)
+                  with gMgCoinsStatus == 1:
+                        Mg_SaveRecordPair(self->+0xa8, self->+0xb4)
                   -- score and level, the same pair Memory Master writes.
          slot 21  (src/minigames/d_s_mg_bsc.cpp) READS it: (+0xb4)/5 capped at 3,
-                  plus one, handed to func_ov004_020b6324. Four bands.
+                  plus one, handed to MgCoins_RaiseBet. Four bands.
          slot 0   (src/minigames/d_s_mg_bsc.cpp) seeds +0xa8 and +0xac from
-                  func_ov004_020ad8b8() and then dispatches slot 18 with mode 3
+                  Mg_GetSavedRecord0() and then dispatches slot 18 with mode 3
                   through the object's own vtable -- which is how the seed above
                   is reached on a direct scene boot.
 
@@ -625,7 +625,7 @@ extern "C" void port_scene_luckystars_hits(void)
                         rec[0], rec[1], rec[2], rec[3], rec[4]);
         } else {
             std::printf("[scene] dScMgBSC_c save record: NO minigame index "
-                        "(data_ov004_020beb68 = %p)\n", data_ov004_020beb68);
+                        "(gMgScene = %p)\n", gMgScene);
         }
     }
     std::fflush(stdout);

@@ -4,6 +4,8 @@
  * the rule for each is the comment on its line. Includes nothing.
  */
 
+/* PORTDROP2: flat names a port TU still calls that main turned into real members. */
+#pragma comment(linker, "/alternatename:?data_ov030_02115e0c@@3PAUStateFunctions@daMky_c@@A=_data_ov030_02115e0c")  /* block-scope extern of daMky_c's nested type: same C datum */
 #pragma comment(linker, "/alternatename:_OVERLAY_2_ID=_overlay_2")  /* linker-script overlay id, hosted as overlay_2 */
 #pragma comment(linker, "/alternatename:_OVERLAY_3_ID=_overlay_3")  /* linker-script overlay id, hosted as overlay_3 */
 #pragma comment(linker, "/alternatename:_OVERLAY_5_ID=_overlay_5")  /* linker-script overlay id, hosted as overlay_5 */
@@ -11,7 +13,7 @@
 #pragma comment(linker, "/alternatename:_OVERLAY_7_ID=_overlay_7")  /* linker-script overlay id, hosted as overlay_7 */
 #pragma comment(linker, "/alternatename:_OVERLAY_75_ID=_overlay_75")  /* linker-script overlay id, hosted as overlay_75 */
 #pragma comment(linker, "/alternatename:_OVERLAY_4_ID=_overlay_4")  /* linker-script overlay id, hosted as overlay_4 */
-#pragma comment(linker, "/alternatename:__ZN6Memory10DeallocateEPvP4Heap=?Deallocate@Memory@@YAXPAXPAUHeap@@@Z")  /* fixed table */
+#pragma comment(linker, "/alternatename:__ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE=?Deallocate@Memory@@YAXPAXPAUHeap_t@mHeap@@@Z")  /* fixed table */
 #pragma comment(linker, "/alternatename:?ApproachLinear@@YAHAAFFF@Z=?ApproachLinear@@YA_NAAFFF@Z")  /* fixed table */
 #pragma comment(linker, "/alternatename:?Virtual34@ActorBase@@QAEHII@Z=?Virtual34@fBase_c@@UAEHII@Z")  /* fixed table */
 #pragma comment(linker, "/alternatename:?Virtual38@ActorBase@@QAEHII@Z=?Virtual38@fBase_c@@UAEHII@Z")  /* fixed table */
@@ -40,7 +42,7 @@
 #pragma comment(linker, "/alternatename:?GetBG2ScrPtr@G2S@@YAPADXZ=?GetBG2ScrPtr@G2S@@YAIXZ")  /* same cdecl function, other return type */
 #pragma comment(linker, "/alternatename:_func_ov006_020d25fc=__ZN12dScMgAmida_c10StepWalkerEii")  /* renamed into member _ZN12dScMgAmida_c10StepWalkerEii */
 #pragma comment(linker, "/alternatename:_func_0202ec9c=__ZN7dWipe_c13func_0202ec9cEi")  /* renamed into member _ZN7dWipe_c13func_0202ec9cEi */
-#pragma comment(linker, "/alternatename:_func_ov006_020ee658=__ZN11dScMgJump_c19func_ov006_020ee658Ev")  /* renamed into member _ZN11dScMgJump_c19func_ov006_020ee658Ev */
+#pragma comment(linker, "/alternatename:_func_ov006_020ee658=__ZN11dScMgJump_c10BeginIntroEv")  /* renamed into member _ZN11dScMgJump_c10BeginIntroEv */
 #pragma comment(linker, "/alternatename:__ZN17dExtShadowModel_c9InitModelEP9Matrix4x35Fix12IiES3_S3_j=?_ZN17dExtShadowModel_c9InitModelEP9Matrix4x35Fix12IiES3_S3_j@@YAXPAUdExtShadowModel_c@@HHHHE@Z")  /* flat Itanium name defined with C++ linkage */
 #pragma comment(linker, "/alternatename:__ZN5Sound16LoadInitialGroupEi=?LoadInitialGroup@Sound@@YAXH@Z")  /* static member / namespace function (cdecl) */
 #pragma comment(linker, "/alternatename:?StopLoadedMusic_Layer1@Sound@@SAXI@Z=?StopLoadedMusic_Layer1@Sound@@YAXI@Z")  /* static member versus namespace function */
@@ -88,10 +90,10 @@
 #pragma comment(linker, "/alternatename:_func_0200d438=?func_0200d438@@YAXPAXE@Z")  /* defined with C++ linkage */
 #pragma comment(linker, "/alternatename:_func_0200d474=?func_0200d474@@YAXPAXE@Z")  /* defined with C++ linkage */
 #pragma comment(linker, "/alternatename:_func_0200d678=?func_0200d678@@YAXPAXE@Z")  /* defined with C++ linkage */
-#pragma comment(linker, "/alternatename:__ZN6Memory8AllocateEjiP4Heap=?Allocate@Memory@@YAPAXIHPAUHeap@@@Z")  /* fixed table */
+#pragma comment(linker, "/alternatename:__ZN6Memory8AllocateEjiPN5mHeap6Heap_tE=?Allocate@Memory@@YAPAXIHPAUHeap_t@mHeap@@@Z")  /* fixed table */
 #pragma comment(linker, "/alternatename:__ZTV7fBase_c=_data_02099edc")  /* renamed from data_02099edc at the same address */
-#pragma comment(linker, "/alternatename:?Deallocate@Memory@@YAXPAXPAVHeap@@@Z=?Deallocate@Memory@@YAXPAXPAUHeap@@@Z")  /* class key mismatch (struct versus class) */
-#pragma comment(linker, "/alternatename:?Deallocate@Memory@@YAXPAXPAVHeap@@@Z=__ZN6Memory10DeallocateEPv")  /* flat host definition of the same function */
+#pragma comment(linker, "/alternatename:?Deallocate@Memory@@YAXPAXPAUHeap_t@mHeap@@@Z=?Deallocate@Memory@@YAXPAXPAUHeap_t@mHeap@@@Z")  /* class key mismatch (struct versus class) */
+#pragma comment(linker, "/alternatename:?Deallocate@Memory@@YAXPAXPAUHeap_t@mHeap@@@Z=__ZN6Memory10DeallocateEPv")  /* flat host definition of the same function */
 #pragma comment(linker, "/alternatename:?Reset@OAM@@YAXXZ=?Reset@OAM@@SAXXZ")  /* static member versus namespace function */
 #pragma comment(linker, "/alternatename:__ZN3G3X11SetFogTableEPv=?SetFogTable@G3X@@SAXPAX@Z")  /* static member / namespace function (cdecl) */
 #pragma comment(linker, "/alternatename:?InitResources@dMeter_c@@QAEHXZ=?InitResources@dMeter_c@@UAEHXZ")  /* virtual / non-virtual spelling of one member */

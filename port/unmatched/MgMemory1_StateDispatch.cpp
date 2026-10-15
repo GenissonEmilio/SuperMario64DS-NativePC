@@ -20,7 +20,7 @@
 // The dispatchers that read a member pointer out of an OBJECT FIELD rather
 // than out of a table are NOT in this file and NOT this lane's: they are the
 // shared ov006/ov004 glue unmatched/MgMemory2_FieldPmf.cpp already host-copies
-// (func_ov006_020c07e8, func_ov006_020c19d0, func_ov004_020b52fc), and this
+// (MascotWalker_Update, Dealer_Update, Coin_Update), and this
 // class reaches the same three through the same sub-object at +0x4f38.
 //
 // ---- 1. THE TWENTY-FIVE ADDRESSES, AND WHERE THEY COME FROM ---------------
@@ -78,8 +78,8 @@
 //     add r3,r1,r0,lsl #3                         stride EIGHT
 //     ldr r1,[r3,#4] / ands r1,r1,#1 / ...        the ordinary PMF sequence
 //     add r0,r4,r1,asr #1 / blx r1                this = the class base
-//     bl func_ov004_020b65e4
-//     ldr r0,[pc,#0x14] (= 0x00004f38) / add r0,r4,r0 / bl func_ov006_020c19d0
+//     bl MgCoins_Update
+//     ldr r0,[pc,#0x14] (= 0x00004f38) / add r0,r4,r0 / bl Dealer_Update
 //     mov r0,#1
 //
 //   _ZN13dScMgMemory_c9StatePlayEv  0x4c = 19 words (18 + 1 pool).  Index at +0x5318,
@@ -228,11 +228,11 @@ extern MgPmf data_ov006_02142304[];
 extern MgPmf data_ov006_02142334[];
 
 /* the ordinary callees the host copies below keep, each spelled as its own src
-   TU spells it.  func_ov006_020c19d0 is the sub-object field dispatcher
+   TU spells it.  Dealer_Update is the sub-object field dispatcher
    unmatched/MgMemory2_FieldPmf.cpp host-copies; this class reaches the same
    sub-object at the same +0x4f38 offset. */
-void func_ov004_020b65e4(void);
-void func_ov006_020c19d0(void *c);
+void MgCoins_Update(void);
+void Dealer_Update(void *c);
 
 /* host-copied further down this file, and called from above their own
    definitions -- 020f5164 and 020f50f8 are STATE BODIES as well as dispatchers,

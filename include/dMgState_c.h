@@ -3,6 +3,36 @@
 
 #include "types.h"
 
+/* The 20 shared states Mg_SetSharedState enters (dMgState_c::SetState).
+ * Names describe each enter handler's mechanics, which are certain: which
+ * banner and jingle it shows and what runs after it. The on-screen meaning
+ * of most is unobserved (notes/minigames/names.md, "the shared banner
+ * states"; notes/minigames/runtime-checks.md). Confidence in the meaning
+ * word: [high] where the mechanics leave no doubt, [medium] from who
+ * enters it, [low] where no caller was found. */
+enum MgSharedState {
+    MG_STATE_ROUND_CLEAR = 0,          /* [medium] banner 3, jingle 4; wins in Cup, Amida, ... */
+    MG_STATE_NEXT_ROUND = 1,           /* [high, seen] silent fade, then StartRound(1); Wanted! after every 5th level */
+    MG_STATE_ROUND_BANNER5 = 2,        /* [low] banner 5, jingle 1; no caller found */
+    MG_STATE_RETRY_PROMPT = 3,         /* [high, seen] PLAY AGAIN / QUIT under the banner ("TIME IS UP" in Snowball) */
+    MG_STATE_WIN = 4,                  /* [medium] banner 9; wins in the card games */
+    MG_STATE_LOSE = 5,                 /* [high] game over at 0 credits, else StartRound(5) */
+    MG_STATE_LOSE_RESUME = 6,          /* [low] banner 0xa, then hands back to the game */
+    MG_STATE_DRAW = 7,                 /* [low] banner 0xb; Card only */
+    MG_STATE_TIE = 8,                  /* [medium] silent, StartRound(8) at once; Roulette's tie */
+    MG_STATE_ROUND_CLEAR_TOP = 9,      /* [low] state 0 on the top screen; no caller found */
+    MG_STATE_RETRY_PROMPT_B = 10,      /* [low] retry / quit with banner style 0xb */
+    MG_STATE_SCORE_THEN_ROUND = 11,    /* [low] draws the score, then StartRound(11) */
+    MG_STATE_RETRY_PROMPT_WIDE = 12,   /* [high, seen] PLAY AGAIN / QUIT side by side; Flower */
+    MG_STATE_RETRY_PROMPT_WIDE_B = 13, /* [low] as 12 */
+    MG_STATE_DIGITS_THEN_ROUND = 14,   /* [low] draws score digits, then StartRound(14) */
+    MG_STATE_BANNER_E_THEN_ROUND = 15, /* [low] banner 0xe, jingle 3 */
+    MG_STATE_RESULTS = 16,             /* [high, seen] banner 7 "HIGH SCORE" over the record table */
+    MG_STATE_RESULTS_NEW_RECORD = 17,  /* [high, seen] 16 plus OnNewRecord, banner 5, jingle 1 */
+    MG_STATE_GAME_OVER = 18,           /* [high, seen] banner 8 "GAME OVER", jingle 3, then 16 or 17 */
+    MG_STATE_FINISHED = 19             /* [medium] banner 3, then 16 or 17; Snowball */
+};
+
 /* The shared minigame state machine, embedded in dScMgBase_c at 0xcc. It
  * has no vtable and the ROM has no RTTI for it, so the class name and its
  * member names are coined. The matched methods fix the layout: SetState
@@ -30,49 +60,49 @@ struct dMgState_c {
 
     /* State handlers: pointer-to-member constants at 0x020bc8bc..0x020bca3c
        (the enter/behavior/render records) name these as targets. */
-    void func_ov004_020b68e8();
-    void func_ov004_020b6948();
-    void func_ov004_020b6ad8();
-    void func_ov004_020b6b40();
-    void func_ov004_020b6c10();
-    void func_ov004_020b6c9c();
-    void func_ov004_020b6d6c();
-    void func_ov004_020b6ddc();
-    void func_ov004_020b6f14();
-    void func_ov004_020b6f88();
-    void func_ov004_020b7020();
-    void func_ov004_020b70b4();
-    void func_ov004_020b7124();
-    void func_ov004_020b724c();
-    void func_ov004_020b72d4();
-    void func_ov004_020b743c();
-    void func_ov004_020b7460();
-    void func_ov004_020b746c();
-    void func_ov004_020b7594();
-    void func_ov004_020b75e4();
-    void func_ov004_020b7744();
-    void func_ov004_020b77b4();
-    void func_ov004_020b7854();
-    void func_ov004_020b78f4();
-    void func_ov004_020b798c();
-    void func_ov004_020b79b0();
-    void func_ov004_020b7a18();
-    void func_ov004_020b7b20();
-    void func_ov004_020b7b90();
-    void func_ov004_020b7c04();
-    void func_ov004_020b7cd0();
-    void func_ov004_020b7e38();
-    void func_ov004_020b7eac();
-    void func_ov004_020b7f5c();
-    void func_ov004_020b7fec();
-    void func_ov004_020b8098();
-    void func_ov004_020b81f8();
-    void func_ov004_020b8284();
-    void func_ov004_020b83ac();
-    void func_ov004_020b841c();
-    void func_ov004_020b853c();
-    void func_ov004_020b8560();
-    void func_ov004_020b8688();
+    void DrawRecordTable();
+    void DrawScoreDigits();
+    void DrawScore();
+    void State19_Update();
+    void State19_Enter();
+    void State18_Update();
+    void State18_Enter();
+    void State17_Update();
+    void State17_Enter();
+    void State16_Update();
+    void State16_Enter();
+    void State15_Enter();
+    void UpdateFadeThenResume();
+    void State14_Enter();
+    void UpdateRetryPrompt();
+    void State13_Enter();
+    void State12_Enter();
+    void State11_Update();
+    void State11_Enter();
+    void State10_Update();
+    void State10_Enter();
+    void State09_Update();
+    void State09_Enter();
+    void UpdateWaitThenResume();
+    void State08_Enter();
+    void State07_Enter();
+    void UpdateAfterHidden();
+    void State06_Update();
+    void State06_Enter();
+    void UpdateGameOverToMenu();
+    void State05_Update();
+    void State05_Enter();
+    void State04_Update();
+    void State04_Enter();
+    void UpdateRetryFadeOut();
+    void State03_Update();
+    void State03_Enter();
+    void State02_Update();
+    void State02_Enter();
+    void State01_Update();
+    void State01_Enter();
+    void State00_Update();
+    void State00_Enter();
 };
 #ifdef _MSC_VER
 #pragma pack(pop)

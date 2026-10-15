@@ -14,7 +14,7 @@ src/game/actors/d_a_obj_wc_obj01.cpp
 src/game/actors/d_a_obj_wc_obj07.cpp
 src/game/actors/d_a_obj_wc_obj04.cpp
 src/game/actors/d_a_obj_wc_mizu.cpp
-src/actors/dActor_c.cpp
+src/runtime/actor/d_actor.cpp
 src/game/actors/d_a_obj_wc_obj03.cpp
 # FOLDED into src/game/actors/d_a_obj_wc_obj01.cpp (row 13): src/__sinit_ov029_02112b38.c
 # FOLDED into src/game/actors/d_a_obj_wc_obj02.cpp (row 11): src/__sinit_ov029_02112ba4.c

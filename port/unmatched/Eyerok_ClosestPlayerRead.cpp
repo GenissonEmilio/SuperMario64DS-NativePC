@@ -1,4 +1,4 @@
-/* HOST COPY of src/actors/Eyerok.cpp -- EYEROK's (176, ov066) state
+/* HOST COPY of src/game/actors/d_a_iwante.cpp -- EYEROK's (176, ov066) state
  * cell 0 TICK body, and a RECEIVER-DROPPING ClosestPlayer reader.
  * Run rel0215, lane cast-ov066.
  *
@@ -10,7 +10,7 @@
  * from the receiver register, so a zero-argument call on the host leaves that
  * register holding whatever was there and dereferences a null base. This TU is
  * ALREADY NAMED in port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp's own
- * latent list ("src/actors/Eyerok.cpp (ov066, calls ClosestPlayer() no
+ * latent list ("src/game/actors/d_a_iwante.cpp (ov066, calls ClosestPlayer() no
  * arg)") and in port/tools/aritycheck_receiver_baseline.txt:137 -- it was a
  * known latent reader waiting for its overlay to be mounted, and this is that
  * mount. Slicing it raw fails port/tools/closestplayer_guard.py before cmake
@@ -62,7 +62,7 @@ extern int data_ov066_0211b0ac;
 // PORT_HOST_ABI: implicit-register-arg (ClosestPlayer's this rode r0 in from this body's own argument; the host passes c).
 /* RETIRED, run link100 lane HOSTGEN2. The ruling above is "implicit-register-arg
    (ClosestPlayer's this rode r0 in from this body's own argument)", and main's
-   text no longer has that defect: src/actors/Eyerok.cpp declares
+   text no longer has that defect: src/game/actors/d_a_iwante.cpp declares
    `extern void *_ZN8dActor_c13ClosestPlayerEv(void *self);` at line 182 and
    passes the receiver at all three call sites, lines 655, 743 and 847. The
    guard that decides this question, port/tools/closestplayer_guard.py, runs

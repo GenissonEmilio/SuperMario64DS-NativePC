@@ -65,7 +65,7 @@
  * The base is left ABSTRACT on purpose: the two destructor slots below are
  * declared and never defined, and nothing here is ever instantiated, so no
  * vtable is emitted for either class and no unresolved external appears.
- * PORTSYNC2: main folded SetFaders into src/actors/dScene_c.cpp (compiled as
+ * PORTSYNC2: main folded SetFaders into src/game/stages/d_scene.cpp (compiled as
  * its hostgen copy), renamed Fader/FaderBrightness to dFader_c/dFdBrightness_c
  * with new include guards, and that TU now declares fader objects and makes
  * qualified dFdBrightness_c:: calls -- see the two shadows below.

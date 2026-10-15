@@ -20,8 +20,8 @@ is wrong in two places. What the evidence says:
 
   log line                              defect
   ------------------------------------  ---------------------------------------
-  _ZN14dScMgCurling_c19func_ov006_020e1dc8Ei entered           collision (shot-time half)     FIXED
-  _ZN14dScMgCurling_c19func_ov006_020e20bcEi entered           collision (per-frame half)     FIXED
+  _ZN14dScMgCurling_c14SeparateStonesEi entered           collision (shot-time half)     FIXED
+  _ZN14dScMgCurling_c21ResolveStoneCollisionEi entered           collision (per-frame half)     FIXED
   snd command 0x04 param 0x0a ignored   NOT the music. 3D SFX trim.    FIXED
   snd command 0x04 param 0x0c ignored   NOT the music. 3D SFX trim.    FIXED
   func_0202e78c entered                 candidate for the tint         ROUTED
@@ -42,17 +42,17 @@ hal/scene_mg_faces.cpp. Neither has a delink block in
 config/arm9/overlays/ov006/delinks.txt and neither has a src TU, so the port
 had refused both and the shells slid through one another.
 
-  _ZN14dScMgCurling_c19func_ov006_020e1dc8Ei  size 0x2f4  the SHOT-TIME separation. Called once per
+  _ZN14dScMgCurling_c14SeparateStonesEi  size 0x2f4  the SHOT-TIME separation. Called once per
                                    shot by src/func_ov006_020e2c08.c, the
                                    matched release handler, right after it
                                    writes the shot shell's heading and speed.
                                    Un-stacks whatever the shot shell is already
                                    overlapping, one level of cascade deep.
-  _ZN14dScMgCurling_c19func_ov006_020e20bcEi  size 0x5e0  the PER-FRAME collision. Called by
+  _ZN14dScMgCurling_c21ResolveStoneCollisionEi  size 0x5e0  the PER-FRAME collision. Called by
                                    src/func_ov006_020e2868.c, the matched
                                    physics tick, every frame for every shell it
                                    ticks, and again through the veneer
-                                   _ZN14dScMgCurling_c19func_ov006_020e285cEi for shells at rest. This
+                                   _ZN14dScMgCurling_c13Stone_CollideEi for shells at rest. This
                                    is the one that carries the physics: equal-
                                    mass elastic exchange along the contact
                                    normal, new heading and speed for both
@@ -254,7 +254,7 @@ reasons, any one of which is enough:
      playing. Dropping them cannot stop one from starting.
   c. The level path and the minigame path start music through THE SAME
      FUNCTION, _ZN5Sound22LoadAndSetMusic_Layer1Ei. hal/star_flow.cpp calls it
-     for a course and src/func_ov004_020ae330.c calls it for a minigame. The
+     for a course and src/Mg_InitMusic.c calls it for a minigame. The
      brief's guess that curling uses "a different player/group start variant"
      does not survive reading either caller.
 
@@ -290,14 +290,14 @@ whatever it turns out to draw:
     that turns off all thirteen VRAM banks. The face's own comment ("an arm9
     address with no config symbol at all") is simply wrong, and
     port/mg_fanout_costs.txt:907 and port/nfs_names_map.txt:373 repeat it.
-  * So this is a NAME-SPELLING hole, not a missing body. src/func_ov004_020b2980.c
+  * So this is a NAME-SPELLING hole, not a missing body. src/Mg_DisableAllBanks.c
     is a twelve-byte ov004 veneer spelling the same address func_0202e78c
     (config/arm9/overlays/ov004/relocs.txt:526 `from:0x020b2988 kind:load
     to:0x0202e78c module:main`), the port stubbed that spelling, and the real
     body was never called. hal/scene_boot.cpp:1182 already aliases a THIRD
     spelling of the same function, the MSVC-mangled one, so the tree carries
     two working routes to it and one dead stub.
-  * WHY IT IS A PLAUSIBLE TINT. Its one caller, src/_ZN11dScMgBase_c9Virtual84Ev.cpp, is
+  * WHY IT IS A PLAUSIBLE TINT. Its one caller, src/_ZN11dScMgBase_c11InitEnginesEv.cpp, is
     the minigame's VRAM setup: set graphics mode, DISABLE ALL BANKS, then
     re-assign BG/OBJ/sub-BG/sub-OBJ and decompress tiles into 0x6404000 and
     0x6604000. Skipping the teardown leaves the previous scene's bank
@@ -342,26 +342,26 @@ wrong turn.**
   * THE MUSIC START IS ALREADY DISPATCHED, through a LINKED route, and the wall
     is not in the way of it. The chain is the fourth route below --
     _ZN11dScMgBase_c18AfterInitResourcesEj (framework slot 2, hosted and entered)
-      -> func_ov004_020ae330
+      -> Mg_InitMusic
         -> _ZN5Sound22LoadAndSetMusic_Layer1Ei
     and it runs. "Reachable only through _ZN10dMgState_c8SetStateEi" is FALSE: that is
     a claim about the first three TUs (020ae20c / 020ae2c8, called from the
     unrouted 020b7124 / _020b746c / _020b77b4), and it does not generalise to
     the music start, which reaches it by the linked slot-2 path instead.
 
-  * data_ov004_020beb68 IS NOT THE DESCRIPTOR AND ITS NULLNESS IS NOT THE GATE.
-    It is an OAM/HUD sprite pointer. The real gate in func_ov004_020ae330 is
-        if (data_0209b308 != 0x16f) return;
+  * gMgScene IS NOT THE DESCRIPTOR AND ITS NULLNESS IS NOT THE GATE.
+    It is an OAM/HUD sprite pointer. The real gate in Mg_InitMusic is
+        if (gMgMenuRow != 0x16f) return;
     -- the early return the original text below misread as the beb68 null
     check. So "the descriptor is null and the starter refuses itself" is the
     wrong mechanism for the right observation (no sound commands emitted).
 
-  * THE ACTUAL BLOCKER is data_0209b308 itself: the session record is HOSTED
+  * THE ACTUAL BLOCKER is gMgMenuRow itself: the session record is HOSTED
     UNDERSIZED (16 bytes) against a ROM span of 0x34, and it is unseeded, so
     the 0x16f gate never reads true. That is a hosted-global sizing bug, the
     undersized-global class, NOT the pointer-to-member wall.
 
-  * ROUTED TO LANE MUS1, which owns the data_0209b308 sizing-and-seeding fix.
+  * ROUTED TO LANE MUS1, which owns the gMgMenuRow sizing-and-seeding fix.
     It is NOT the _ZN10dMgState_c8SetStateEi wall lane, and it is not the same twenty
     addresses. The last paragraph of this section (the two-track-params-firing
     observation) still stands and is still worth MUS1's attention.
@@ -379,28 +379,28 @@ and the chain is short enough to write down in full.
 The minigame music start is _ZN5Sound22LoadAndSetMusic_Layer1Ei, the SAME
 function a course boot uses. Four matched TUs call it on the minigame side:
 
-    src/func_ov004_020ae20c.c   \
-    src/func_ov004_020ae2c8.cpp  }  called only from _ZN10dMgState_c19func_ov004_020b7124Ev,
-                                 }  _ZN10dMgState_c19func_ov004_020b746cEv, _ZN10dMgState_c19func_ov004_020b77b4Ev
-    src/func_ov004_020ae330.c   -- called from _ZN11dScMgBase_c18AfterInitResourcesEj
-    src/actors/dScMgSound_c.cpp   -- a different minigame
+    src/Mg_RestoreMusic.c   \
+    src/Mg_StartMusic.cpp  }  called only from _ZN10dMgState_c20UpdateFadeThenResumeEv,
+                                 }  _ZN10dMgState_c14State11_UpdateEv, _ZN10dMgState_c14State09_UpdateEv
+    src/Mg_InitMusic.c   -- called from _ZN11dScMgBase_c18AfterInitResourcesEj
+    src/minigames/d_s_mg_sound.cpp   -- a different minigame
 
 THE FIRST THREE HAVE NO CALLER IN src/ AT ALL. Nothing in the decomp reaches
-_ZN10dMgState_c19func_ov004_020b7124Ev, _020b746c or _020b77b4 by name; they are reachable only
+_ZN10dMgState_c20UpdateFadeThenResumeEv, _020b746c or _020b77b4 by name; they are reachable only
 through a member-pointer dispatch. That dispatch is dScMgBase_c's state setter,
 _ZN10dMgState_c8SetStateEi, which is THE WALL -- still a reporting trap in
 hal/scene_mg_faces.cpp, and unmatched/MgBase_StateDispatch.cpp's section 4 says
 in as many words that it "needs its twenty addresses routed ... and that is a
 lane of its own". The twenty addresses were read out of ov004 for this note
-(pairs at data_ov004_020bc92c..020bca3c, base 0x020ad660, every adjustment
+(pairs at pmf_dMgState_c_State07_Enter..020bca3c, base 0x020ad660, every adjustment
 zero) and run 0x020b6c10 through 0x020b8688: the framework's whole shell --
 intro, countdown, play, results -- is behind that one setter.
 
 THE FOURTH ROUTE IS REACHABLE AND WAS MEASURED. _ZN11dScMgBase_c18AfterInitResourcesEj is hosted
 as framework slot 2 in hal/scene_mg.cpp and a scene-374 run reports it entered
-once. It calls func_ov004_020ae330, which opens with
+once. It calls Mg_InitMusic, which opens with
 
-    if (data_ov004_020beb68 == 0) return;
+    if (gMgScene == 0) return;
 
 and a 600-frame scene-374 run with SM64DS_SND_TRACE=1 emits ZERO sound commands
 of any opcode -- not a START_SEQ, not a track param, nothing. So on the selftest
@@ -410,7 +410,7 @@ that global.
 
 SO THE MUSIC HAS TWO POSSIBLE MECHANISMS AND THIS LANE COULD NOT SEPARATE THEM:
 either the framework never reaches the states that start the music (the wall),
-or data_ov004_020beb68 is null when the one reachable starter runs. Both are
+or gMgScene is null when the one reachable starter runs. Both are
 ov004 framework problems, both are well past the "three new bodies" ceiling
 this lane was given, and neither is a curling problem. ROUTED to whoever takes
 the _ZN10dMgState_c8SetStateEi lane -- it is the same twenty addresses either way.
@@ -481,7 +481,7 @@ every map on every build and now reports
                     97 assertions over 21 map(s) ... forms OK
 
 -- 8 class-C rows where the base had 7, and the new one is
-_ZN14dScMgCurling_c19func_ov006_020e285cEi -> _ZN14dScMgCurling_c19func_ov006_020e20bcEi. That green is the statement that
+_ZN14dScMgCurling_c13Stone_CollideEi -> _ZN14dScMgCurling_c21ResolveStoneCollisionEi. That green is the statement that
 MSVC really did emit the jmp, so the two arguments really do ride the frame.
 
 

@@ -2,7 +2,7 @@
  *
  * WHAT THE GAP IS. A DS's two panels have a hinge between them, and Super Mario
  * 64 DS's minigame framework knows it. ov004 carries one word,
- * data_ov004_020beb6c, that each minigame sets at InitResources to the number of
+ * sMgTopScreenYOffset, that each minigame sets at InitResources to the number of
  * DS rows of hinge to pretend are there -- 32 for most of them, 48 for two, 16
  * for the trampoline family, 80 for the snowball -- and RenderOamBothScreens
  * submits the top engine's sprites at `a2 + 0xc0 + that word`. So the world a
@@ -56,7 +56,7 @@ const ntr::StackLayout *hal_screen_layout(void);
 unsigned hal_screen_layout_generation(void);
 
 /* The game's own G, before the MinigameGap setting is applied: the raw
- * data_ov004_020beb6c. For diagnostics -- the layout is the thing to use. */
+ * sMgTopScreenYOffset. For diagnostics -- the layout is the thing to use. */
 int hal_screen_gap_raw(void);
 
 /* ---- GaplessMinigames, THE ONE THING IN THIS FEATURE THAT IS A MOD ---------

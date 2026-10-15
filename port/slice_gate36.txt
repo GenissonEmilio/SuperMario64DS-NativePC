@@ -26,7 +26,7 @@ src/LoadTextNarcs.c
 src/LoadArchive.c
 src/Initialise3dGraphics.cpp
 src/engine/model/Model4.cpp
-src/engine/collision/dBgW.cpp
+src/engine/collision/d_bg_w.cpp
 src/ResetKuppaScript.c
 src/LoadDebugFont.c
 src/IsLevelInsideCastle.c
@@ -34,20 +34,20 @@ src/IsLevelTinyHugeIslandOutside.c
 src/unnamed/arm9/0203/func_020308a8.c
 src/unnamed/arm9/0203/func_0203da3c.c
 src/unnamed/arm9/0203/func_0203dad4.c
-src/actors/dCapIcon_c.cpp
-src/engine/fader/dFader_c.cpp
-# FOLDED into src/engine/fader/dFader_c.cpp (row 38): src/engine/fader/_ZN9FaderWipeD1Ev.cpp
-src/actors/dScene_c.cpp
+src/ui/hud/d_cap_icon.cpp
+src/runtime/graphics/fader/d_fader.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 38): src/engine/fader/_ZN9FaderWipeD1Ev.cpp
+src/game/stages/d_scene.cpp
 src/engine/heap/Heap.cpp
-# FOLDED into src/actors/dScene_c.cpp (row 40): src/_ZN2GX15DisableAllBanksEv.cpp
-# FOLDED into src/actors/dScene_c.cpp (row 40): src/_ZN5Stage12SetVramBanksEv.cpp
+# FOLDED into src/game/stages/d_scene.cpp (row 40): src/_ZN2GX15DisableAllBanksEv.cpp
+# FOLDED into src/game/stages/d_scene.cpp (row 40): src/_ZN5Stage12SetVramBanksEv.cpp
 src/_ZN2GX15SetGraphicsModeEiii.cpp
 src/_ZN3GXS15SetGraphicsModeEi.cpp
 src/_ZN2GX6DispOnEv.cpp
 src/_Z17LoadLevelOverlaysi.cpp
 src/_ZN10dScStage_c14LoadGraphics2DEbi.cpp
-# FOLDED into src/engine/fader/dFader_c.cpp (row 38): src/engine/fader/_ZN9FaderWipe14LoadAndSetFileEt.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 38): src/engine/fader/_ZN9FaderWipe14LoadAndSetFileEt.cpp
 src/engine/sound/Sound.cpp
 src/_ZN10dScStage_c7LoadFogEv.cpp
 src/_ZN10dScStage_c23LoadTextureTransformersEv.cpp
-src/engine/model/dExtShadowModel_c.cpp
+src/engine/model/d_ext_shadow_model.cpp

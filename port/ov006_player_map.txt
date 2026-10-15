@@ -28,11 +28,11 @@ describes the PRE-#1336 state. On current main:
       _ZN6Player29TryExitCharacterDoorWithIntroEv at 0x020ca78c
     ov002 carries 175 _ZN6Player*St_* symbols, including all three
       disputed addresses:
-        func_ov006_020cac30            0x020cac30  size 0x8
-        _ZN14dScMgBomroom_c19func_ov006_020d6084Ev 0x020d6084  size 0x34
-        _ZN14dScMgCurling_c19func_ov006_020e17f8Ev        0x020e17f8  size 0xb0
+        Trmp2Mario_UpdateAll            0x020cac30  size 0x8
+        _ZN14dScMgBomroom_c11SlotB2_HideEv 0x020d6084  size 0x34
+        _ZN14dScMgCurling_c13DrawAimMarkerEv        0x020e17f8  size 0xb0
     the ov006 bodies at those addresses are now
-      src/func_ov006_020cac30.cpp, src/actors/dScMgBomroom_c.cpp and
+      src/Trmp2Mario_UpdateAll.cpp, src/minigames/d_s_mg_bomroom.cpp and
       src/func_ov006_020e17f8.cpp
 
 MAIN GOT IT RIGHT AND THE PORT'S COMMENT HAS IT BACKWARDS. See section
@@ -48,16 +48,16 @@ config/arm9/overlays/ov006/symbols.txt AT THIS LANE'S BASE, complete
 list of _ZN6Player symbols (grep -c gives 6):
 
     _ZN6Player29TryExitCharacterDoorWithIntroEv  0x020ca78c  0x2c
-    func_ov006_020cac30                   0x020cac30  0x6c
-    _ZN14dScMgBomroom_c19func_ov006_020d6084Ev        0x020d6084  0x14
-    _ZN14dScMgCurling_c19func_ov006_020e17f8Ev               0x020e17f8  0x5c
+    Trmp2Mario_UpdateAll                   0x020cac30  0x6c
+    _ZN14dScMgBomroom_c11SlotB2_HideEv        0x020d6084  0x14
+    _ZN14dScMgCurling_c13DrawAimMarkerEv               0x020e17f8  0x5c
     _ZN19cMgSmartball_slot_c14RestoreInitialEv                          0x02110154  0x68
     _ZN21cMgSmartball_pakkun_c9CheckBallEPi                           0x02110244  0x27c
 
 Three of those six carry a header in their own matched source saying
 they are not Player methods at all:
 
-  src/actors/dScMgBomroom_c.cpp -- writes this+0x62ad
+  src/minigames/d_s_mg_bomroom.cpp -- writes this+0x62ad
     and this+0x62af. sizeof(Player) is 0x768. "the Player name is a
     community label applied to the wrong overlay's bytes."
   src/func_ov006_020e17f8.cpp -- reads this+0x4eb0/0x4eb4/
@@ -66,7 +66,7 @@ they are not Player methods at all:
     shape (base call, vptr store, member ctor at this+0x78), not a
     state handler.
 
-A fourth, src/func_ov006_020cac30.cpp, reads data_ov006_021405bc
+A fourth, src/Trmp2Mario_UpdateAll.cpp, reads data_ov006_021405bc
 and walks an array of 0xdc-byte records at data_ov006_02140554. That is
 ov006's own storage, not Player's.
 
@@ -119,7 +119,7 @@ ov006, holding different code in each. ov002 has an 8-byte stub there:
 
 verified by reading both raw images at (addr - base). ov002's config
 names it _ZN6Player12St_Null_InitEv size 8; ov006's config names it
-func_ov006_020cac30 size 0x6c. Different sizes, different
+Trmp2Mario_UpdateAll size 0x6c. Different sizes, different
 prologues, different code. The 0x6c body is ov006's.
 
 
@@ -202,7 +202,7 @@ func_0201a798, func_0201a754, LoadOverlay and UnloadOverlay are all
 absent.
 
 THE ASTERISK: grepping that map for func_ov006_ returns exactly one
-hit, __ZN14dScMgCurling_c19func_ov006_020e3078Ev, and it is attributed to
+hit, __ZN14dScMgCurling_c10Scene_PlayEv, and it is attributed to
 func_ov002_020e3078.c.obj. It is not an ov006 TU. It is an
 /alternatename alias, port/hal/cxx_aliases.cpp:864 and :908, pointing
 the ov006 name at the ov002 body at the same shared address. The ov006
@@ -257,8 +257,8 @@ has already broken on main:
 
   the matched sources moved too. On main the func_ov002_* stems for
   these three no longer exist; the bodies are
-  src/func_ov006_020cac30.cpp,
-  src/actors/dScMgBomroom_c.cpp and
+  src/Trmp2Mario_UpdateAll.cpp,
+  src/minigames/d_s_mg_bomroom.cpp and
   src/func_ov006_020e17f8.cpp, and the func_ov006_* stems
   now hold the ov006 bodies.
 
@@ -276,5 +276,5 @@ answer. The three cases become ordinary Player method calls like every
 other case in the .inc, which is what they should have been.
 
 The ov006 side needs the mirror treatment whenever ov006 is sliced:
-its three bodies are func_ov006_020cac30, _ZN14dScMgBomroom_c19func_ov006_020d6084Ev and
-_ZN14dScMgCurling_c19func_ov006_020e17f8Ev on main, not Player names.
+its three bodies are Trmp2Mario_UpdateAll, _ZN14dScMgBomroom_c11SlotB2_HideEv and
+_ZN14dScMgCurling_c13DrawAimMarkerEv on main, not Player names.

@@ -74,9 +74,9 @@
 # all". THE LINK CLOSED AND THE FIRST FRAME PROVED IT WRONG:
 #
 #     FAULT c0000005 at eip 020c395c accessing 020c395c
-#       flw_beh (slot 6) -> _ZN13dScMgFlower_c8BehaviorEv -> func_ov006_020c3d18+0x23
+#       flw_beh (slot 6) -> _ZN13dScMgFlower_c8BehaviorEv -> FlowerFace_Update+0x23
 #
-# eip IS the DS address. src/func_ov006_020c3d18.cpp dispatches a member
+# eip IS the DS address. src/FlowerFace_Update.cpp dispatches a member
 # pointer held in the SUB-OBJECT at self+0x51f8 -- and it does it by OPEN-CODING
 # the ARM Itanium sequence in plain ints, `*(int*)(c+4)` for the adjustment and
 # `c + (v >> 1)` for the this-adjustment, with no member-pointer type anywhere.
@@ -113,14 +113,14 @@
 #
 #   HOST-COPIED by unmatched/MgBase_StateDispatch.cpp (the pointer-to-member
 #   wall, the FRAMEWORK's rather than this class's):
-#     func_ov004_020add88  _020adf2c  _020b31b4  _020b321c  _020b3278
+#     Mg_DrawFx  _020adf2c  _020b31b4  _020b321c  _020b3278
 #     _020b8714  _020b8778
 #   HOST-COPIED by unmatched/MgBase_DeclConflict.cpp (the decl_common.h C2733
 #   redeclaration, four TUs):
 #     _ZN11dScMgBase_c14BeforeBehaviorEv  _020b0930  _020aeed8  _020af094
 #   HOST-COPIED by unmatched/MgBase_LangTable.cpp (the fabricated 29-entry
 #   initializer MG2 found by running):
-#     func_ov004_020b2cb8
+#     Mg_LoadBannerFiles
 #   TRAPPED in hal/scene_mg_faces.cpp (the state setter, the wall itself):
 #     _ZN10dMgState_c8SetStateEi
 #
@@ -144,7 +144,7 @@
 # class's live path:
 #
 #     from:0x0212b73c  inside _ZN13dScMgFlower_c13InitResourcesEv, slot 0 InitResources
-#     from:0x0212aab8  inside _ZN13dScMgFlower_c13OnYoshiTryEatEi, slot 18 the state reset
+#     from:0x0212aab8  inside _ZN13dScMgFlower_c10StartRoundEi, slot 18 the state reset
 #
 # IT GETS A NAMED TRAP in hal/scene_mg_flower.cpp, not a plausible body, for
 # the reason port/tools/inferred_stub_guard.py exists. What the trap costs is
@@ -176,33 +176,33 @@
 # a closure probe or a link wave proved the image does not already carry.
 #
 # ---- the list ---------------------------------------------------------------
-src/actors/unit020bfec0.cpp
-src/actors/dThIcon_c.cpp
+src/minigames/unit020bfec0.cpp
+src/ui/hud/d_th_icon.cpp
 # HOST-COPIED (mg5 lane FLW, under the coordinator's granted displacement
-# ruling): src/func_ov004_020ad8b8.c. It calls func_ov004_020adc3c with no
-# argument while the ROM rides the pointer loaded from data_ov004_020beb68
+# ruling): src/Mg_GetSavedRecord0.c. It calls Mg_GetSaveTable with no
+# argument while the ROM rides the pointer loaded from gMgScene
 # through r0, and the callee dereferences it on its first statement. Listing
 # the TU here alongside port/unmatched/MgFlower_InitScore.cpp would be an
 # LNK2005; the host copy is the definition. That file states the delta line by
 # line and carries the ROM disassembly it was derived from.
 src/minigames/d_s_mg_base.cpp
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3528.cpp
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c35a8.cpp
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c35e8.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3754.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3884.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c38ac.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c38b0.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3904.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3908.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c395c.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3990.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3ad8.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3adc.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3b2c.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3b80.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3bc8.c
-# HOST-COPIED (mg5 lane Y3D): src/func_ov006_020c3bf4.cpp. It draws the
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FallingPetal_UpdateMatrix.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FallingPetal_Draw.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FallingPetal_Update.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FallingPetal_Spawn.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FallingPetal_SetModel.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FlowerFace_StateReactB.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FlowerFace_PlayReactB.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FlowerFace_StateReactA.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FlowerFace_PlayReactA.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FlowerFace_StateReact.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FlowerFace_PlayPetalPulled.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FlowerFace_StateIdle.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FlowerFace_PlayIdle.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/Camera_InitFlowerView.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FlowerFace_IsIdle.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FlowerFace_Reset.c
+# HOST-COPIED (mg5 lane Y3D): src/FlowerFace_Draw.cpp. It draws the
 # class's 3D sub-object through a LOCAL SHADOW CLASS, so its `f5(0)` counts in
 # the ROM's vtable numbering (byte +0x14 = the sixth word = Render) while the
 # host's model vtables are MSVC-shaped, where that byte is Virtual18. The call
@@ -211,36 +211,36 @@ src/minigames/d_s_mg_base.cpp
 # minigame showed its 2D background and no models at all. See
 # port/unmatched/MgFlower_ModelRender_020c3bf4.cpp; it is the same defect
 # port/unmatched/Door_Render.cpp records on the same two classes.
-# HOST-COPIED (mg5 lane FLW): src/func_ov006_020c3d18.cpp. IT IS THE
+# HOST-COPIED (mg5 lane FLW): src/FlowerFace_Update.cpp. IT IS THE
 # POINTER-TO-MEMBER WALL IN A FORM NEITHER THE LINK NOR THE `::*` SWEEP CAN
 # SEE -- it open-codes the ARM Itanium dispatch sequence in plain ints, so it
 # names no member-pointer type, emits no PMF global and links clean, and then
 # jumps to a raw DS address the first time it runs (eip 020c395c). See
 # port/unmatched/MgFlower_SubDispatch.cpp, which is the address switch and the
 # four measured code words. The header block above this list is amended for it.
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3d88.cpp
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3e54.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3e70.cpp
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c3f54.cpp
-# FOLDED into src/actors/unit020bfec0.cpp (row 179): src/func_ov006_020c402c.c
-src/minigames/d_s_mg_single3_d_base.cpp
-src/actors/dScMgSlots.cpp
-src/actors/dScMgFlower_c.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FlowerFace_Load.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FallingPetal_Destruct.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FlowerFace_Destruct.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FlowerFace_Construct.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 179): src/FallingPetal_Construct.c
+src/minigames/d_s_mg_single3d_base.cpp
+src/minigames/d_s_mg_slots.cpp
+src/minigames/d_s_mg_flower.cpp
 # RETIRED at SLICE1: body now in src/_ZN13dScMgFlower_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN13dScMgFlower_cD0Ev.cpp
-# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/func_ov006_0212a650.c
-# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/func_ov006_0212a654.c
+# FOLDED into src/minigames/d_s_mg_flower.cpp (row 228): src/Petal_ElemDtor.c
+# FOLDED into src/minigames/d_s_mg_flower.cpp (row 228): src/func_ov006_0212a654.c
 # Run mg5, lane INTEG: the petal-array layout, recovered on branch
 # decomp/yoshi-petal (NONMATCHING regperm floor). It had a config symbol but no
 # delink block and no src when the comment above was written; both exist now, so
 # the trap in port/hal/scene_mg_flower.cpp is removed and the real body links.
-# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/func_ov006_0212a764.cpp
-# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/_ZN13dScMgFlower_c13OnYoshiTryEatEi.cpp
-# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/_ZN13dScMgFlower_c6RenderEv.cpp
-# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/_ZN13dScMgFlower_c8BehaviorEv.cpp
-# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/_ZN13dScMgFlower_c13InitResourcesEv.cpp
-# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/d_s_mg_flower.cpp
-# FOLDED into src/actors/dScMgFlower_c.cpp (row 228): src/func_ov006_0212b88c.c
+# FOLDED into src/minigames/d_s_mg_flower.cpp (row 228): src/func_ov006_0212a764.cpp
+# FOLDED into src/minigames/d_s_mg_flower.cpp (row 228): src/_ZN13dScMgFlower_c10StartRoundEi.cpp
+# FOLDED into src/minigames/d_s_mg_flower.cpp (row 228): src/_ZN13dScMgFlower_c6RenderEv.cpp
+# FOLDED into src/minigames/d_s_mg_flower.cpp (row 228): src/_ZN13dScMgFlower_c8BehaviorEv.cpp
+# FOLDED into src/minigames/d_s_mg_flower.cpp (row 228): src/_ZN13dScMgFlower_c13InitResourcesEv.cpp
+# FOLDED into src/minigames/d_s_mg_flower.cpp (row 228): src/d_s_mg_flower.cpp
+# FOLDED into src/minigames/d_s_mg_flower.cpp (row 228): src/Petal_ElemCtor.c
 
 # ---- the arm9 lines, and why there are only eight --------------------------
 #

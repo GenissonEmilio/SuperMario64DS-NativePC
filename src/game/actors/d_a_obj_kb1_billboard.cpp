@@ -10,12 +10,17 @@
  * inline destructor emits retail D1 then D0 with this class's RTTI and vtable.
  *
  * leftovers:
- * - data_ov044_02111680 model handle; SharedFilePtr.h has no fields
+ * - gKb1BallModelFile model handle; SharedFilePtr.h has no fields
  * - Matrix4x3_FromRotationY stays a free function (no header method)
  * - pad_0d0 unused (not live)
  * - common.h not needed (no 12-word Matrix4x3 copy)
  * - no Player.h / dCamera_c.h
  */
+
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_kb1_billboard_AssetId {
+    ASSET_KB1_BALL_BMD = 0x0622
+};
 
 #include "daObjKb1Billboard_c.h"
 #include "SharedFilePtr.h"
@@ -50,9 +55,9 @@ struct Kb1BillboardModelFilePtr : SharedFilePtr {
     ~Kb1BillboardModelFilePtr();
 };
 
-extern "C" Kb1BillboardModelFilePtr data_ov044_02111680;
+extern "C" Kb1BillboardModelFilePtr gKb1BallModelFile;
 // @symbol __sinit_d_a_obj_kb1_billboard.cpp
-Kb1BillboardModelFilePtr data_ov044_02111680(1570);
+Kb1BillboardModelFilePtr gKb1BallModelFile(ASSET_KB1_BALL_BMD);
 
 /* Every instruction the cartridge has here falls out of the one `new`.
  * The header's inline operator new keeps the allocation on fBase_c::operator
@@ -77,7 +82,7 @@ extern "C" Kb1BillboardSpawnInfo g_profile_KB1_BILLBOARD = {
 // @symbol _ZN19daObjKb1Billboard_c13InitResourcesEv
 int daObjKb1Billboard_c::InitResources()
 {
-    BMD_File *file = (BMD_File *)Model::LoadFile(data_ov044_02111680);
+    BMD_File *file = (BMD_File *)Model::LoadFile(gKb1BallModelFile);
     mModel.SetFile(file, 1, -1);
     UpdateModelTransform();
     return 1;
@@ -93,7 +98,7 @@ int daObjKb1Billboard_c::Render()
 // @symbol _ZN19daObjKb1Billboard_c16CleanupResourcesEv
 int daObjKb1Billboard_c::CleanupResources()
 {
-    data_ov044_02111680.Release();
+    gKb1BallModelFile.Release();
     return 1;
 }
 

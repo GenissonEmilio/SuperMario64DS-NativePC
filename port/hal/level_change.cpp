@@ -1001,7 +1001,7 @@ extern "C" int port_level_teardown(void)
        Left behind, they carry a level-clear screen into the next level: a
        level booted at an entrance the game never sends a player to can end
        its arrival animation in the one that sets the flag
-       (src/actors/Player.cpp:6741), and the courtyard's second boot under
+       (src/game/player/Player.cpp:6741), and the courtyard's second boot under
        that stale flag took an access violation in a Boo's model render.
 
        The DS's other clear of the same words is
@@ -1034,7 +1034,7 @@ static unsigned port_level_heap_free(void)
 {
     if (!data_020a0eac)
         return 0;
-    /* Heap's first word is its allocator (src/_ZN4HeapC2EPvjPS_.cpp). */
+    /* Heap's first word is its allocator (src/engine/heap/Heap.cpp). */
     void *alloc = *(void **)((char *)data_020a0eac + 4);
     if (!alloc)
         return 0;
@@ -1204,7 +1204,7 @@ static void port_level_sublevel_clear(void)
    exactly as on the cartridge.
 
    WHAT THIS ARMS, said plainly: a data_02092124 that tracks the previous
-   sublevel lets func_ov002_020c7cbc (src/actors/Player.cpp:7025) reach
+   sublevel lets func_ov002_020c7cbc (src/game/player/Player.cpp:7025) reach
    LoadKeyModels. Its switch takes only sublevels 0x24, 0x26, 0x2d, 0x2f and
    0x31 -- the five Bowser fights -- so it arms on a key handover and on
    nothing else; every course sublevel falls through the switch, leaves the
@@ -1594,6 +1594,11 @@ extern int data_020a0e58[];
    that ends in PadData, the scene tick, the present and the pace. */
 extern "C" int (*port_interlude_frame_hook)(int frame) = 0;
 
+/* PRECOURSE1: asked once when the star select is finished (its act is chosen, its fade is done), with the course, the entrance and the act the course
+   is entered with. The window seats it (tests/walk_window.cpp starsel_finish_hook): a character pick whose costume differs from the one this process
+   started with is a new process for the same course. 0 = carry on in this process (every other case, and the default with nobody to answer). */
+extern "C" int (*port_starsel_finish_hook)(int level, int entrance, int act) = 0;
+
 /* Read by the three ROM Stage slots (hal/stage_frame.cpp's
    port_stage_rom_behavior and port_stage_rom_render, hal/stage_bridges.cpp's
    st_bbeh). While this answers 1 the port has no Stage, which is what the
@@ -1810,6 +1815,8 @@ static void port_level_scene_interlude(void)
                          "The boot half runs now.\n",
                          f, f - asked, (unsigned)port_scene_killed(),
                          (unsigned)data_02092660);
+            if (port_starsel_finish_hook)
+                port_starsel_finish_hook((int)data_02092110, (int)data_0209f268, (int)data_0209f1f0);
             break;
         }
     }
@@ -2799,7 +2806,7 @@ static int port_level_scene_crossing(void)
         }
         {
             /* SM64DS_TP_QUIT=<crossing frame>: what a minigame's own quit does
-               (func_ov004_020b72d4 and its siblings: SetFaders, the fade
+               (UpdateRetryPrompt and its siblings: SetFaders, the fade
                start, StartSceneFade(5, 0, 0)), fired at a chosen crossing
                frame in place of pausing and touching QUIT. */
             static int qa = -2;
@@ -2926,7 +2933,7 @@ void port_fader_start_color(int frames, int toEnd, unsigned short color);
        -> (*(Fn*)data_020a4bb8[4])()   the factory for scene id 4
        -> dScStarSel_c_classInit  (ov003, 0x020b04f0)
 
-   dScStarSel_c_classInit (src/d_s_star_sel.cpp) is small and portable-shaped:
+   dScStarSel_c_classInit (src/game/stages/d_s_star_sel.cpp) is small and portable-shaped:
      - ActorBase::operator new(0x13c), ActorBase ctor
      - vptr = data_ov003_020b1704   (the dScStarSel_c vtable, IN ov003)
      - flags +0x13 |= 1|4

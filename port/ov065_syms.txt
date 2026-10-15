@@ -460,16 +460,16 @@ data_ov065_0211d9dc@0x0211d9dc data_ov065_0211d9e8@0x0211d9e8:0x18
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov065_0211d690                        now defined by src/actors/daBasabasa_c.cpp
-#   data_ov065_0211d698                        now defined by src/actors/daBasabasa_c.cpp
-#   data_ov065_0211d6a0                        now defined by src/actors/daBasabasa_c.cpp
-#   data_ov065_0211d6a8                        now defined by src/actors/daBasabasa_c.cpp
-#   data_ov065_0211d7fc                        now defined by src/actors/daDossy_c.cpp
-#   data_ov065_0211d88c                        now defined by src/actors/daObjCtMecha03_c.cpp
-#   data_ov065_0211d894                        now defined by src/actors/daObjCtMecha03_c.cpp
-#   data_ov065_0211d9cc                        now defined by src/actors/daObjCtMecha09_c.cpp
-#   data_ov065_0211d9d4                        now defined by src/actors/daObjCtMecha09_c.cpp
+#   data_ov065_0211d690                        now defined by src/game/actors/d_a_basabasa.cpp
+#   data_ov065_0211d698                        now defined by src/game/actors/d_a_basabasa.cpp
+#   data_ov065_0211d6a0                        now defined by src/game/actors/d_a_basabasa.cpp
+#   data_ov065_0211d6a8                        now defined by src/game/actors/d_a_basabasa.cpp
+#   data_ov065_0211d7fc                        now defined by src/game/actors/d_a_dossy.cpp
+#   data_ov065_0211d88c                        now defined by src/game/actors/d_a_obj_ct_mecha03.cpp
+#   data_ov065_0211d894                        now defined by src/game/actors/d_a_obj_ct_mecha03.cpp
+#   data_ov065_0211d9cc                        now defined by src/game/actors/d_a_obj_ct_mecha09.cpp
+#   data_ov065_0211d9d4                        now defined by src/game/actors/d_a_obj_ct_mecha09.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov065_0211d720! data_ov065_0211d728! data_ov065_0211d730! data_ov065_0211d738! data_ov065_0211d740! data_ov065_0211d748! data_ov065_0211d750! data_ov065_0211d758! data_ov065_0211d760! data_ov065_0211d768! data_ov065_0211d770! data_ov065_0211d814! data_ov065_0211d81c! data_ov065_0211d824! data_ov065_0211d82c! data_ov065_0211d834! data_ov065_0211d83c! data_ov065_0211d8b4! data_ov065_0211d8bc! data_ov065_0211d8c4! data_ov065_0211d8cc! data_ov065_0211d92c! data_ov065_0211d934! data_ov065_0211d93c! data_ov065_0211d944! data_ov065_0211d984! data_ov065_0211d994!
+data_ov065_0211d720! gDossyLegLCollisionFile! gDossyHeadCollisionFile! gDossyArmLCollisionFile! gDossyBodyCollisionFile! data_ov065_0211d748! gDossyArmRCollisionFile! gDossyNeckCollisionFile! gDossyLegRCollisionFile! data_ov065_0211d768! data_ov065_0211d770! gCtMechaObj01ModelFile! gCtMechaObj02aModelFile! gCtMechaObj02ModelFile! gCtMechaObj02CollisionFile! gCtMechaObj01CollisionFile! gCtMechaObj01aModelFile! gCtMechaObj04sCollisionFile! gCtMechaObj04lModelFile! gCtMechaObj04lCollisionFile! gCtMechaObj04sModelFile! gCtMechaObj07CollisionFile! gCtMechaObj07ModelFile! gCtMechaObj06CollisionFile! gCtMechaObj06ModelFile! gCtMechaObj08bModelFile! gCtMechaObj08bCollisionFile!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
 data_ov065_0211d6a8! data_ov065_0211d698! data_ov065_0211d6a0! data_ov065_0211d690! data_ov065_0211d7fc! data_ov065_0211d88c! data_ov065_0211d894! data_ov065_0211d9cc! data_ov065_0211d9d4!

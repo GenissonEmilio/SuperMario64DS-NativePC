@@ -44,6 +44,7 @@
 extern "C" {
 int port_title_elem_boxes(int *slot, int *id, int *x0, int *y0, int *x1, int *y1, int max);
 int port_title_page_state(int *top, int *elem, int *req);
+int port_scene_live_id(void);
 }
 
 namespace {
@@ -1881,6 +1882,8 @@ static void title_cursor_assist()
     if (p0[0] == 0xff) p0[1] = 0;
 }
 
+static void title_pad_keys(uint16_t *pressed, int host_back, int inject);
+
 void menu_title_pad_map(uint16_t *pressed, int host_back)
 {
     title_cursor_assist();
@@ -1898,6 +1901,13 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
             g_ch.skip = 1;
         }
     }
+    title_pad_keys(pressed, host_back, inject);
+}
+
+/* PADMENUS1: the title's key meaning, shared by the one-screen recipe (menu_title_pad_map above) and the ROM's own two-screen title (OneScreenMenus
+   off, menu_title_pad_map_rom below): pad A is the ROM's confirm, pad B the back arrow on every page that has one. */
+static void title_pad_keys(uint16_t *pressed, int host_back, int inject)
+{
     /* The ROM's key record (src/func_ov007_020b3190.c: `*(u16*)p & ~*(u16*)(p+2)`, and the repeat counters of
        func_ov007_020b2e64) is built from the HELD word, so the pressed word alone is not enough: the held
        word moves 0x0002 -> 0x0001 too, and a host back is a one-frame B in it. */
@@ -1924,4 +1934,35 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
     if (k & MENU_PAD_CONFIRM) k = (uint16_t)((k & ~(unsigned)MENU_PAD_CONFIRM) | 0x0001);
     if (host_back) k = (uint16_t)(k | 0x0002);
     *pressed = k;
+}
+
+/* PADMENUS1: the same pad meaning for the ROM's own two-screen title and file select (OneScreenMenus off), where no recipe is live: pad A confirms,
+   pad B goes back on the pages that have a back arrow. The page is read off the ROM's own state (the recipe's per-tick answer is not running). The
+   attract and choreography parts of the recipe's version are the recipe's own and stay out. */
+extern "C" void menu_title_pad_map_rom(uint16_t *pressed, int host_back)
+{
+    int top, elem, req;
+    if (!port_title_page_state(&top, &elem, &req)) return;
+    title_cursor_assist();      /* the ROM cursor starts on ADVENTURE, as under the recipe: a first D-pad press moves it instead of waking it */
+    if (top != g_top || elem != g_elem) {
+        g_top = top; g_elem = elem;
+        if (hal_menu_trace_on()) fprintf(stderr, "[menu] title page top=%d elem=%d req=%d (rom two-screen)\n", top, elem, req);
+    }
+    g_last = variant_for(top, elem);
+    title_pad_keys(pressed, host_back, 0);
+}
+
+/* PADMENUS1: the file machine's sub pages (scores 3/5 and the table 2/5, copy 7/5, erase 9/5) read their back arrow by touch only, and the ROM takes the DS A key
+   (the pad's B) there as a confirm on the file under the cursor. So the pad's B must never reach the game on those pages: the window loop asks this first, taps the back
+   arrow itself (which sits where the file select's own back arrow does, hotspot box (180,140,72,36), the lower right) and takes the button out of the pad before the
+   game's key words are built. Only while the title scene is up. */
+extern "C" int menu_title_file_subpage(void)
+{
+    if (port_scene_live_id() != 1) return 0;
+    return g_elem == 5 && (g_top == 3 || g_top == 2 || g_top == 7 || g_top == 9);
+}
+extern "C" void menu_title_file_subpage_back(void)
+{
+    const int q = hal_menu_touch_queue_press(180 + 36, 140 + 18);
+    if (hal_menu_trace_on()) fprintf(stderr, "[menu] file sub page %d/%d: pad back taps the back arrow (queued %d)\n", g_top, g_elem, q);
 }

@@ -46,13 +46,13 @@
 # func_ov052_* (already sliced by lane w12) and ov056's are _ZN17BigMoving* --
 # so both sets compile side by side with no alias and no per-source rename.
 
-src/actors/daObjEwmIceBlock_c.cpp
+src/game/actors/d_a_obj_ewm_ice_block.cpp
 port/unmatched/hostarm/_ZN17BigMovingIceBlockD1Ev.cpp
-# FOLDED into src/actors/daObjEwmIceBlock_c.cpp (row 49): src/_ZN17BigMovingIceBlockD0Ev.cpp
+# FOLDED into src/game/actors/d_a_obj_ewm_ice_block.cpp (row 49): src/_ZN17BigMovingIceBlockD0Ev.cpp
 port/unmatched/hostarm/_ZN17BigMovingIceBlockD0Ev.cpp
-# FOLDED into src/actors/daObjEwmIceBlock_c.cpp (row 49): src/_ZN17BigMovingIceBlock16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjEwmIceBlock_c.cpp (row 49): src/_ZN17BigMovingIceBlock6RenderEv.cpp
-# FOLDED into src/actors/daObjEwmIceBlock_c.cpp (row 49): src/_ZN17BigMovingIceBlock8BehaviorEv.cpp
-# FOLDED into src/actors/daObjEwmIceBlock_c.cpp (row 49): src/_ZN17BigMovingIceBlock13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjEwmIceBlock_c.cpp (row 49): src/d_a_obj_ewm_ice_block.c
-# FOLDED into src/actors/daObjEwmIceBlock_c.cpp (row 49): src/__sinit_ov056_02112b48.c
+# FOLDED into src/game/actors/d_a_obj_ewm_ice_block.cpp (row 49): src/_ZN17BigMovingIceBlock16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_ewm_ice_block.cpp (row 49): src/_ZN17BigMovingIceBlock6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_ewm_ice_block.cpp (row 49): src/_ZN17BigMovingIceBlock8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_ewm_ice_block.cpp (row 49): src/_ZN17BigMovingIceBlock13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_ewm_ice_block.cpp (row 49): src/d_a_obj_ewm_ice_block.c
+# FOLDED into src/game/actors/d_a_obj_ewm_ice_block.cpp (row 49): src/__sinit_ov056_02112b48.c

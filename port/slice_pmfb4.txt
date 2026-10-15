@@ -126,9 +126,9 @@
 # Both are the matched TU now. The declarations themselves are correct -- same C
 # linkage, same one-pointer signature, same int return -- and neither file is
 # this lane's to edit, so the prose is left alone and named here.
-src/actors/dScMgBomroom_c.cpp
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 129): src/_ZN14dScMgBomroom_c8BehaviorEv.cpp
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 129): src/func_ov006_020d836c.cpp
+src/minigames/d_s_mg_bomroom.cpp
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 129): src/_ZN14dScMgBomroom_c8BehaviorEv.cpp
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 129): src/func_ov006_020d836c.cpp
 #
 # ---- BATCH 1 CONTINUED: dScMgLuigi_c, THREE TABLES --------------------------
 #
@@ -180,7 +180,7 @@ src/actors/dScMgBomroom_c.cpp
 # 02142234 does not orphan the retired dispatcher: it is reached as a state
 # through its own seated cell and dispatches 02142254 through the seated cells
 # in turn.
-src/actors/dScMgLuigi_c.cpp
+src/minigames/d_s_mg_luigi.cpp
 #
 # ---- BATCH 2: dScMgTeresa_c, FOUR TABLES (the class closes) -----------------
 #
@@ -234,9 +234,9 @@ src/actors/dScMgLuigi_c.cpp
 # under which an incomplete class's pointer to member is the general eight-byte
 # representation, and the TU's own listing reads [eax*8] against the ROM's
 # lsl #3. The file is not this lane's to edit, so the prose is left and named.
-src/actors/dScMgTeresa_c.cpp
-src/actors/dScMgTeresa_c.cpp
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 237): src/func_ov006_0211f6fc.cpp
+src/minigames/d_s_mg_teresa.cpp
+src/minigames/d_s_mg_teresa.cpp
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 237): src/func_ov006_0211f6fc.cpp
 #
 # ---- BATCH 2 CONTINUED: dScMgCoin_c, THREE TABLES OF FIVE -------------------
 #
@@ -283,12 +283,12 @@ src/actors/dScMgTeresa_c.cpp
 # _ZN11dScMgCoin_c8BehaviorEv "the HOST COPY". The declaration beside it is correct.
 #
 # A FOURTH DIRECTIVE THE LINK FOUND AND THIS LANE DID NOT PREDICT.
-# src/func_ov006_020de26c.cpp reaches ov004's data_ov004_020beb68 under the name
+# src/func_ov006_020de26c.cpp reaches ov004's gMgScene under the name
 # `func_020beb68` -- the spelling defect MgCoin_StateDispatch.cpp's header
 # records -- declared at NAMESPACE scope as `char *`, so the reference mangles
 # ?func_020beb68@@3PADA. The host copy declared the same global inside extern "C"
 # and resolved through unmatched/MgCoin_Faces.cpp:77's
-# `/alternatename:_func_020beb68=_data_ov004_020beb68`, so retiring the copy left
+# `/alternatename:_func_020beb68=_gMgScene`, so retiring the copy left
 # the C++ spelling unresolved and the LINK NAMED IT: "unresolved external symbol
 # char * func_020beb68 referenced in function _func_ov006_020de26c". It is the
 # third spelling of one global -- the plain C name and ?func_020beb68@@3PAUV@@A
@@ -296,9 +296,9 @@ src/actors/dScMgTeresa_c.cpp
 # storage, in this lane's own seat file, read off the object with dumpbin. The
 # failed link deleted walk_window.exe and truncated the map, which is the shape
 # the house law warns about; the gate was re-built from clean after the fix.
-src/actors/dScMgCoin_c.cpp
-# FOLDED into src/actors/dScMgCoin_c.cpp (row 299): src/func_ov006_020dd2cc.cpp
-# FOLDED into src/actors/dScMgCoin_c.cpp (row 299): src/func_ov006_020de26c.cpp
+src/minigames/d_s_mg_coin.cpp
+# FOLDED into src/minigames/d_s_mg_coin.cpp (row 299): src/func_ov006_020dd2cc.cpp
+# FOLDED into src/minigames/d_s_mg_coin.cpp (row 299): src/func_ov006_020de26c.cpp
 #
 # ---- BATCH 2 CONTINUED: dScMg3DEsp_c, THREE TABLES OF SEVEN -----------------
 #
@@ -350,9 +350,9 @@ src/actors/dScMgCoin_c.cpp
 #
 # STALE COMMENT DISCLOSED, NOT EDITED: hal/scene_mg_psycheout.cpp:203-208 still
 # calls _ZN12dScMg3DEsp_c8BehaviorEv "the HOST COPY".
-src/actors/dMg3DEspAnimSet_c.cpp
-# FOLDED into src/actors/dMg3DEspAnimSet_c.cpp (row 353): src/func_ov006_020e9374.cpp
-# FOLDED into src/actors/dMg3DEspAnimSet_c.cpp (row 353): src/func_ov006_020e8d08.cpp
+src/minigames/d_mg3d_esp_anim_set.cpp
+# FOLDED into src/minigames/d_mg3d_esp_anim_set.cpp (row 353): src/func_ov006_020e9374.cpp
+# FOLDED into src/minigames/d_mg3d_esp_anim_set.cpp (row 353): src/func_ov006_020e8d08.cpp
 #
 # ---- BATCH 3: dScMgPachinko2_c, ALL THREE TABLES (the class closes) ---------
 #
@@ -387,9 +387,9 @@ src/actors/dMg3DEspAnimSet_c.cpp
 # twenty-eight per-slot counts fed from inside the switch and printed by
 # hal/scene_mg_slot3.cpp to say which state of which table ran. Each face takes
 # its own count, one per dispatch of its own cell.
-src/actors/dScMgPachinko2_c.cpp
-# FOLDED into src/actors/dScMgPachinko2_c.cpp (row 390): src/func_ov006_02102e8c.cpp
-# FOLDED into src/actors/dScMgPachinko2_c.cpp (row 390): src/func_ov006_0210246c.cpp
+src/minigames/d_s_mg_pachinko2.cpp
+# FOLDED into src/minigames/d_s_mg_pachinko2.cpp (row 390): src/func_ov006_02102e8c.cpp
+# FOLDED into src/minigames/d_s_mg_pachinko2.cpp (row 390): src/func_ov006_0210246c.cpp
 #
 # ---- BATCH 3 CONTINUED: dScMgMemory_c, TWO TABLES --------------------------
 #
@@ -446,16 +446,16 @@ src/minigames/d_s_mg_memory.cpp
 # at 0x020f6904 is in neither seated table and is untouched.
 #
 # ONE /alternatename (?data_ov006_02142408@@3PAP8C77@@AEXH@ZA) and one
-# adjudicated guess marker (src/actors/dScMgMemory2_c.cpp, REAL_DECOMP at
+# adjudicated guess marker (src/minigames/d_s_mg_memory2.cpp, REAL_DECOMP at
 # port/tools/inferred_stub_adjudicated.txt:326).
 #
 # STALE COMMENT DISCLOSED, NOT EDITED: hal/scene_mg_memory2.cpp:188-192.
-src/actors/dScMgMemory2_c.cpp
+src/minigames/d_s_mg_memory2.cpp
 #
 # ---- BATCH 3 CONTINUED: dScMgPachinko_c, TWO TABLES ------------------------
 #
-#   func_ov006_020fad34  data_ov006_02142604   4 slots  arity 1
-#   func_ov006_020fb60c  data_ov006_0214266c   5 slots  arity 1
+#   PachinkoBg_Update  data_ov006_02142604   4 slots  arity 1
+#   PachinkoFlyer_Update  data_ov006_0214266c   5 slots  arity 1
 #
 # ROM: add r3,r1,r0,lsl #3 at 020fad54 on pool 020fad8c = 02142604, and at
 # 020fb630 on pool 020fb66c = 0214266c. EMITTED [eax*8] both; /Zp4 a no-op both.
@@ -471,8 +471,8 @@ src/actors/dScMgMemory2_c.cpp
 # port_mg_pachinko_call1. Nothing on that path moves.
 #
 # ONE /alternatename (?data_ov006_0214266c@@3PAP8C@@AEXH@ZA).
-src/actors/dScMgPachinko_c.cpp
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 474): src/func_ov006_020fb60c.cpp
+src/minigames/d_s_mg_pachinko.cpp
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 474): src/PachinkoFlyer_Update.cpp
 #
 # ---- NOT TAKEN IN BATCH 3, WITH THE MEASUREMENT THAT STOPS IT --------------
 #

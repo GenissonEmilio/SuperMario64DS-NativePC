@@ -12,10 +12,10 @@
 #endif
 
 /* THE ROM'S OWN "WHICH MINIGAME IS RUNNING". dScMgBase_c's base constructor
-   (src/_ZN11dScMgBase_cC2Ev.cpp) ends with `data_ov004_020beb68 = self`, and ov004
+   (src/_ZN11dScMgBase_cC2Ev.cpp) ends with `gMgScene = self`, and ov004
    reads the live scene back out of it everywhere -- the score getters
-   func_ov004_020adbc0 and func_ov004_020adc1c, the minigame index
-   func_ov004_020adc3c, hal/scene_mg.cpp's probe. It is the word immediately
+   Mg_GetSubmittedScore and Mg_GetTopRecord, the minigame index
+   Mg_GetSaveTable, hal/scene_mg.cpp's probe. It is the word immediately
    BEFORE the gap's own G at 0x020beb6c, which is not a coincidence: both are
    the framework's per-minigame state.
 
@@ -25,7 +25,7 @@
    would be a second opinion about that storage rather than a reader of it. The
    host build is 32-bit (port/build-port.cmd calls vcvars32), so the pointer the
    ROM body stored is exactly these four bytes little endian. */
-extern "C" unsigned char data_ov004_020beb68[4];
+extern "C" unsigned char gMgScene[4];
 
 namespace {
 
@@ -220,10 +220,10 @@ uint32_t *load_bmp(FILE *f, const char *shown, int gap_ds, int scene_id,
 
 unsigned char *hal_gap_scene(void)
 {
-    unsigned p = (unsigned)data_ov004_020beb68[0] |
-                 ((unsigned)data_ov004_020beb68[1] << 8) |
-                 ((unsigned)data_ov004_020beb68[2] << 16) |
-                 ((unsigned)data_ov004_020beb68[3] << 24);
+    unsigned p = (unsigned)gMgScene[0] |
+                 ((unsigned)gMgScene[1] << 8) |
+                 ((unsigned)gMgScene[2] << 16) |
+                 ((unsigned)gMgScene[3] << 24);
     return (unsigned char *)(size_t)p;
 }
 

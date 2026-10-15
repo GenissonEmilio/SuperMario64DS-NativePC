@@ -50,20 +50,25 @@
  * still trapped 29 had to be seated at the same time -- otherwise this body
  * would simply move the freeze one slot along.
  */
+#include "dActor_c.h"
+
 extern "C" {
 
 struct PortActorVec3 { int x, y, z; };
 
-/* src/_ZN8dActor_c25OnAimedAtWithEggReturnVecEv.cpp, slice_gate50.txt.
-   The matched TU's own spelling: hidden result pointer first, then `this`. */
-void _ZN8dActor_c25OnAimedAtWithEggReturnVecEv(PortActorVec3 *ret, void *self);
+/* PORTDROP2: main defines dActor_c::OnAimedAtWithEggReturnVec as a real member
+   (src/runtime/actor/d_actor.cpp), returning the Vector3 by value, so the seat
+   calls the member instead of the old flat hidden-pointer-first function. */
 
 /* The seat every Actor-width fill installs in slot 30. Three parameters, the
    Whomp shape: self -> ecx, the unused second -> edx, the hidden result
    pointer -> the one stack slot the caller pushed and this function pops. */
 void *__fastcall port_actor_s30_base(void *self, void *, void *out)
 {
-    _ZN8dActor_c25OnAimedAtWithEggReturnVecEv((PortActorVec3 *)out, self);
+    Vector3 v = ((dActor_c *)self)->dActor_c::OnAimedAtWithEggReturnVec();
+    ((PortActorVec3 *)out)->x = v.x;
+    ((PortActorVec3 *)out)->y = v.y;
+    ((PortActorVec3 *)out)->z = v.z;
     return out;
 }
 

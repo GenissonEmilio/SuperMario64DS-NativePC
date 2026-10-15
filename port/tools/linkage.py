@@ -29,8 +29,8 @@ into three buckets, and only the first of them is work:
   FACES       a host file defines the symbol AND the matched TU of that name
               IS in the binary. Both can coexist because they are different
               symbols to the linker: the matched .cpp compiles a real C++
-              method (MSVC mangles it `?Allocate@Heap@@...`) while the host
-              file defines the ROM's Itanium C name (`_ZN4Heap8AllocateEji`)
+              method (MSVC mangles it `?Allocate@Heap_t@mHeap@@...`) while the host
+              file defines the ROM's Itanium C name (`_ZN5mHeap6Heap_t8AllocateEji`)
               that the ROM's own vtables and call sites use. hal/heap_vtable
               and hal/cxxname_bridge are full of these, and they are the
               OPPOSITE of scaffolding -- they are the bridge that lets a
@@ -58,7 +58,7 @@ THE DECORATION RULE, and the bug it replaced. This is a 32-bit MSVC link, so
 an `extern "C"` function gets exactly ONE leading underscore in the /MAP:
 `func_02049d60` appears as `_func_02049d60`. The ROM's C++ symbols are carried
 through the port as C names that ALREADY start with an underscore, so
-`_ZN4Heap8AllocateEji` appears as `__ZN4Heap8AllocateEji`. This file used to
+`_ZN5mHeap6Heap_t8AllocateEji` appears as `__ZN5mHeap6Heap_t8AllocateEji`. This file used to
 undecorate with `sym.lstrip("_")`, which strips EVERY leading underscore and
 turned that into `ZN4Heap8AllocateEji` -- a name no matched TU is called, so
 every single `_ZN*`-named host definition fell out of the queue unseen. The
@@ -290,11 +290,11 @@ def undecorate(sym):
 
     32-bit MSVC prefixes every `extern "C"` symbol with a single `_`. The ROM's
     C++ names travel through the port as C identifiers that already begin with
-    an underscore, so `_ZN4Heap8AllocateEji` is emitted `__ZN4Heap8AllocateEji`
+    an underscore, so `_ZN5mHeap6Heap_t8AllocateEji` is emitted `__ZN5mHeap6Heap_t8AllocateEji`
     and only the FIRST underscore is decoration. `lstrip("_")` eats both and
     loses the name; taking one character keeps `_ZN...` intact and still
     undecorates the plain `_func_020226d0` case correctly. Decorated C++ names
-    (`?Allocate@Heap@@...`) carry no underscore prefix and pass through.
+    (`?Allocate@Heap_t@mHeap@@...`) carry no underscore prefix and pass through.
     """
     return sym[1:] if sym.startswith("_") else sym
 

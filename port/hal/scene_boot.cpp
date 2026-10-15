@@ -283,7 +283,7 @@
 
 // ---- run link100 lane MPG2: the dScGameOver_c PLACEHOLDER SPELLINGS -------
 //
-// src/actors/dScGameOver_c.cpp (D2, slot 16) and src/actors/dScGameOver_c.cpp (D0,
+// src/game/stages/d_s_game_over.cpp (D2, slot 16) and src/game/stages/d_s_game_over.cpp (D0,
 // slot 17) are the last pair of the ov003 write-up's blocker 2, and the same
 // shape the two blocks above answer. Read out of each body's OWN literal pool
 // in extracted/overlays/overlay_0003.bin:
@@ -996,7 +996,7 @@ extern "C" { int overlay_60, overlay_98; }
    own func_0201a054 tail, hal/boot_os.cpp port_boot_rom_game_init_tail), so the
    ROM's func_0201a694 is the occupant for the whole session, reaches this
    face for overlay_6, and nothing ran the constructors: the minigame graphics
-   block (data_ov004_020beb74) kept a zero vtable word and the first frame of
+   block (sMgGraphCallback) kept a zero vtable word and the first frame of
    the picked minigame called through it (func_02019404, access 4). Reported as
    "selecting a minigame closes the game" after Save and play minigames.
    overlay_4 is not asked: func_0201a798 loads ov004 and ov006 in one go and
@@ -2297,21 +2297,21 @@ static void l2_ea6c_selftest(void)
    The slots they dispatch, whole image, arm9 and every overlay:
 
      +0x08  slot 2  func_02018efc                              (cdecl shape)
-     +0x0c  slot 3  Scene::BeforeBehavior, func_ov004_020b841c
-     +0x10  slot 4  Scene::BeforeBehavior, func_ov004_020b841c
+     +0x0c  slot 3  Scene::BeforeBehavior, State01_Update
+     +0x10  slot 4  Scene::BeforeBehavior, State01_Update
      +0x14  slot 5  Scene::BeforeBehavior, Scene::SetFaders (vt->f14),
                     Stage::Behavior, _ZN9BootScene8BehaviorEv, HUD::Behavior,
                     Minimap::Behavior, func_ov002_020f23f0,
                     _ZN10dScTitle_c8BehaviorEv, _ZN12dScStarSel_c8BehaviorEv,
                     _ZN11dScMgBase_c14BeforeBehaviorEv (spelled f05), four ov005 bodies,
-                    _ZN17dScMgTrampoline_c11OnAttacked2Ev, _ZN10dScEntry_c8BehaviorEv
+                    _ZN17dScMgTrampoline_c16OnGraphCallback0Ev, _ZN10dScEntry_c8BehaviorEv
      +0x18  slot 6  Scene::BeforeBehavior, Scene::SetFaders (vt->f18),
-                    func_ov004_020b841c, func_ov006_020c2848,
-                    func_ov006_020c2924
+                    State01_Update, Presenter_PlayIdle,
+                    Presenter_ResetPose
      +0x1c  slot 7  FUN_02029934, FUN_02029980, FUN_020299f4,
-                    func_ov004_020b7c04, func_ov004_020b841c,
-                    _ZN17dScMgTrampoline_c11OnAttacked2Ev
-     +0x20  slot 8  Minimap::Behavior, func_ov004_020b7c04
+                    UpdateGameOverToMenu, State01_Update,
+                    _ZN17dScMgTrampoline_c16OnGraphCallback0Ev
+     +0x20  slot 8  Minimap::Behavior, UpdateGameOverToMenu
 
    SLOTS 0, 1 AND 9 HAVE NO DISPATCH SITE ANYWHERE IN THE IMAGE. That is the
    whole ruling. gate 219's crash was a receiver-convention mismatch AT A CALL
@@ -2972,9 +2972,9 @@ L2_UNMATCHED(func_0211d9c0)
 //       0x02055574 G3X::SetClearColor
 #pragma comment(linker, "/alternatename:_func_02018144=_Deallocate")
 #pragma comment(linker, "/alternatename:_func_0201816c=_LoadFile")
-/* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines __ZN4Heap11_DeallocateEPv, and nothing references _func_0203c280, so the row can never fire and nothing wants it to. */
-// #pragma comment(linker, "/alternatename:_func_0203c280=__ZN4Heap11_DeallocateEPv")
-#pragma comment(linker, "/alternatename:_func_0203c28c=__ZN4Heap8AllocateEj")
+/* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines __ZN5mHeap6Heap_t11_DeallocateEPv, and nothing references _func_0203c280, so the row can never fire and nothing wants it to. */
+// #pragma comment(linker, "/alternatename:_func_0203c280=__ZN5mHeap6Heap_t11_DeallocateEPv")
+#pragma comment(linker, "/alternatename:_func_0203c28c=__ZN5mHeap6Heap_t8AllocateEj")
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines __ZN3G3X13SetClearColorEtiiib, and nothing references _func_02055574, so the row can never fire and nothing wants it to. */
 // #pragma comment(linker, "/alternatename:_func_02055574=__ZN3G3X13SetClearColorEtiiib")
 //     AND A SIXTH, ADDED BY THE DUALSCREEN LANE AND RETIRED OUT OF THE
@@ -2988,7 +2988,7 @@ L2_UNMATCHED(func_0211d9c0)
 //     `(int)`. That is a difference of one SPURIOUS cdecl argument and nothing
 //     else -- the ROM passes the mask in r0 for both, the caller pushes the
 //     extra word and pops it itself, and both call sites in the D3D family
-//     (func_ov006_020e7508 and _020e759c) ignore the return.
+//     (D3D_CaptureToSub and _020e759c) ignore the return.
 #pragma comment(linker, "/alternatename:_func_02054c80=_Vram__Map")
 //
 // (c) THE func_ov007_020c3d1c NAMING TRAP, which the 2d map warns
@@ -3301,7 +3301,7 @@ struct ActorBase {
    St_EndingFly_Init; hal/player_bridges.cpp dispatches case 0x020c3d1c to
    it). So at the game's ending the Player's state ran the ov007 trampoline on
    the Player and returned junk, and the real ending flight, the int member
-   src/actors/Player.cpp defines (phase 0 func_ov002_020c3bdc, phase 1
+   src/game/player/Player.cpp defines (phase 0 func_ov002_020c3bdc, phase 1
    func_ov002_020c3a48, phase 2 func_ov002_020c38a0), was never linked. The
    ledger row now binds that int member, and nothing is left for a face here
    to bridge. */
@@ -3821,7 +3821,7 @@ static void scene_fill_gameover(void)
 //      build to rename, and that is measured rather than assumed:
 //      src/_ZN10dScTitle_cD1Ev.cpp's body is EMPTY -- the three vptr stores
 //      come out of the compiler, not out of source text -- so unlike
-//      src/actors/dScGameOver_c.cpp, which spells VT0/VT1/VT2/G0 and needs the
+//      src/game/stages/d_s_game_over.cpp, which spells VT0/VT1/VT2/G0 and needs the
 //      per-TU renames in port/CMakeLists.txt's mpg2 block, this TU spells none
 //      of the six names. A COMPILE_DEFINITIONS row would be dead the way the
 //      one lane CDEFS deleted from that block was dead.
@@ -4203,7 +4203,7 @@ extern "C" void port_r3g_gc_enter(unsigned slot, void *self)
 /* MGSYNC1: A BLOCK OBJECT WHOSE VPTR IS THE COMPILER'S OWN TABLE.
    Main's __sinit_d_s_mg_base constructs dScMgBase_c::graphCallback_c with a real
    constructor, which stores MSVC's compiled vtable for the class into the block
-   (data_ov004_020beb74) instead of the ROM table data_ov004_020bc03c this port
+   (sMgGraphCallback) instead of the ROM table data_ov004_020bc03c this port
    seats the four host faces into. graph_block_word then sees a vptr that is not
    in g_gc_seated and answers "nothing to dispatch", so slot 2 (the scene's
    OnKicked, the D3D family's screen selector and the Snowball's scroll updater)
@@ -4281,7 +4281,7 @@ extern "C" int port_graph_block_beat(void)
  * beat missing the trampoline scenes recorded a stroke, drew the line, and then
  * nothing: measured on 384 with a scripted 31-frame drag, `slot23 0` and the
  * two stroke flags at +0x5dc4/+0x5dc5 still SET at exit, which only slot 23
- * clears. func_ov006_020d0c38 -- decompiled and seated by run mg12 lane TRM --
+ * clears. TrmpLine_Create -- decompiled and seated by run mg12 lane TRM --
  * was never called at all.
  *
  * THE BLAST RADIUS IS THREE SCENES, counted out of the ROM rather than argued.
@@ -4291,7 +4291,7 @@ extern "C" int port_graph_block_beat(void)
  * byte +0x5c of all THIRTY-TWO ov006 ActorBase-signature tables, read from
  * extracted/overlays/overlay_0006.bin at base 0x020bfec0:
  *
- *     29 tables INHERIT _ZN11dScMgBase_c11OnAttacked2Ev, whose entire body is `return 1;`
+ *     29 tables INHERIT _ZN11dScMgBase_c16OnGraphCallback0Ev, whose entire body is `return 1;`
  *      3 tables OVERRIDE
  *          0x0213fb34 -> 0x0212101c   384, dScMgTrampoline_c
  *          0x0213fc7c -> 0x02122f24   385, dScMgTrampoline2_c
@@ -4301,13 +4301,13 @@ extern "C" int port_graph_block_beat(void)
  * and the three it reaches are the three whose stylus this unblocks.
  *
  * WORD 1 IS DEAD, AND IT IS DEAD ON THE DS TOO. Byte +0x58 of the same thirty-
- * two tables is _ZN11dScMgBase_c11OnAttacked1Ev -- also `return 1;` -- in ALL THIRTY-TWO.
+ * two tables is _ZN11dScMgBase_c16OnGraphCallback1Ev -- also `return 1;` -- in ALL THIRTY-TWO.
  * Nothing overrides slot 22, so func_02019404's dispatch reaches no scene body
  * in this game. It is not seated here because there is nothing to seat.
  *
  * WORD 3 IS A REAL GAP AND IT IS NOT THIS ONE. func_02019100 dispatches it and
  * then clears data_0209d464, the latch slot 24 gates its display swap on; 25 of
- * the 32 inherit _ZN11dScMgBase_c8OnPushedEv (`return unk_4628 == 0`, whose answer
+ * the 32 inherit _ZN11dScMgBase_c16OnGraphCallback3Ev (`return unk_4628 == 0`, whose answer
  * func_02019100 discards) and SEVEN override, including the whole D3D family.
  * That is a separate census and a separate proof and it is queued, not taken.
  */
@@ -4829,7 +4829,7 @@ void port_scene_fill_jump2(void);
    THIS IS THE ONE ROW port/mg_fanout_costs.txt SECTION 3 LEFT BLANK.  Its
    vtable resolves through no load relocation in its own factory, because
    src/d_s_mg_snowball.cpp writes no vtable at all: it allocates 0xc59c
-   and calls func_ov006_021295ac, which writes _ZTV19dScMgSingle3DBase_c and then
+   and calls dScMgSnowball_c_Construct, which writes _ZTV19dScMgSingle3DBase_c and then
    _ZTV15dScMgSnowball_c.  port/slice_snw.txt is the hand derivation, including
    the five width checks, the ruling-out of the two alternative signature
    tables and the four-site pointer-to-member wall.
@@ -5075,7 +5075,7 @@ static const PortSceneClass port_scene_classes[] = {
        THIS ROW'S CLASS IS THE ONE SECTION 11's HAZARD WOULD HAVE HIT, which
        is why the ordering argument is worth restating here rather than
        cross-referencing. hal/scene_mg.cpp section 8 records that a 37-slot
-       fill of the 368 row would write a host thunk over data_ov006_0213da5c,
+       fill of the 368 row would write a host thunk over pmf_dScMgPachinko2_c_Paddle_State4,
        the code word of THIS class's state 4. That fill is called with 36. And
        the reverse is measured in that file's LKT banner: this table is 36 words
        by four independent checks, so it cannot reach into id 0x17c's state
@@ -5265,7 +5265,7 @@ static const PortSceneClass port_scene_classes[] = {
        AND THE 37th WORD IS THIS TABLE'S OWN, checked three ways before the
        count was written (port/slice_s371.txt section 3): the span from
        data_ov006_0213b918 to the next config symbol data_ov006_0213b9ac is
-       exactly 37 words; slot 35 is this class's own _ZN12dScMgAmida_c9Virtual8CEv and
+       exactly 37 words; slot 35 is this class's own _ZN12dScMgAmida_c12IsAltVariantEv and
        NOT the family terminator ov004 0x020ad660, so the terminator check does
        not refuse it; and slot 36 carries a load relocation of its own,
        from:0x0213b9a8 to:0x020d1188, which is what a live pointer has and a
@@ -5726,7 +5726,7 @@ static const PortSceneClass port_scene_classes[] = {
 
        THE WIDTH IS 36 BY FIVE CHECKS and the victim of a 37th is named and
        SHIPPING: index 36 of _ZTV18dScMgTrampoline2_c is 0x02124ae4, which is the
-       code half of data_ov006_0213fd0c -- the FIRST of dScMgBSC_c's fourteen
+       code half of pmf_dScMgBSC_c_StateWaitTable -- the FIRST of dScMgBSC_c's fourteen
        state pairs, the class the SCENE_MG_LUCKYSTARS row above seats. A 37-slot
        fill here would write a host thunk over a live state of scene 388.
        port/slice_tte.txt section 3 carries all five checks.
@@ -5930,7 +5930,7 @@ extern "C" void *port_scene_boot(int id)
 
        This call used to pass 0. On the DS nothing ever spawns a minigame scene
        with 0 unless the player picked the first row of the Rec Room: the launch
-       path is func_ov005_020c0378's
+       path is UpdateGameSelect's
 
            Scene::StartSceneFade(row->id, row->unk4, 0)
              -> Scene::SetSceneToSpawn(id, param)
@@ -5941,7 +5941,7 @@ extern "C" void *port_scene_boot(int id)
        data_ov004_020bc070, the name-text id it parks at +0x465e. With 0 all
        thirty minigames shared record 0 and asked for text 0.
 
-       THE RECORD IS NOT COSMETIC ON THIS FAMILY. func_ov004_020ad878 reads
+       THE RECORD IS NOT COSMETIC ON THIS FAMILY. Mg_GetSavedRecord1 reads
        field 1 of it, dScMgMemory2_c's InitResources copies that into +0xb4, and
        _ZN14dScMgMemory2_c15SetupDifficultyEv turns +0xb4 into the board size: 16 cards under 5,
        18 at 5, 20 at 10. Memory Master keeping its clear count in Bob-omb
@@ -6241,7 +6241,7 @@ extern "C" const void *port_scene_framebuffer(void)
    function's extern "C" -- only a declaration inside `extern "C" { }` does --
    and the mangled name would not resolve. */
 extern "C" {
-void _ZN4Heap18InitializeGameHeapEjPS_(unsigned size, void *root);
+void _ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_(unsigned size, void *root);
 void LoadFont(unsigned char arg);
 extern void *data_020a0eac_c;
 extern char *data_ov007_0210342c;
@@ -7547,7 +7547,7 @@ extern "C" int port_scene_begin(void *hwnd, int zoom)
 
     /* SEED THE MINIGAME SOUND RECORD, before the scene spawns and its base
        ctor reads it. On the DS the Rec Room overlay ov005 writes
-       data_0209b308's 0x34-byte sound row for the picked minigame and THEN
+       gMgMenuRow's 0x34-byte sound row for the picked minigame and THEN
        launches the scene; a direct SM64DS_SCENE boot never runs ov005, so the
        record reads zero and dScMgBase_c::AfterInitResources takes its
        StopLoadedMusic branch -- the curling "no music" report. This copies the

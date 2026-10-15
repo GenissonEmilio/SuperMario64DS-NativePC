@@ -150,7 +150,7 @@ static void __fastcall bw_aren(void *s, void *, unsigned a)
    nothing to do with it. Both are matched src, and so is everything under
    them, but everything under them is the SOLID HEAP ALLOCATOR: 17 SolidHeap
    files, 12 SolidHeapAllocator files and a synthetic sixteen-slot
-   _ZTV9SolidHeap. That is a subsystem next to gate 3a's ExpandingHeap, not
+   _ZTVN5mHeap11SolidHeap_tE. That is a subsystem next to gate 3a's ExpandingHeap, not
    two slots on this gate's classes. The full chain is written out in the head
    of slice_gate33.txt so the next attempt starts with the bill in hand.
    Until then the trap names the slot, the actor and the phase, which is the
@@ -993,7 +993,7 @@ static int __fastcall cap_clean(void *s, void *)
      [capb]  -- per cap actor: type, model index (0 Mario, 1 Luigi, 2 Wario),
        unk_400 (the registry priority), unk_3ff (Behavior's own hide flag) and
        byte +0x3eb, whose bit 1 is what the manager sets and what Behavior reads
-       (src/actors/daObjMarioCap_c.cpp:206-212). bit1=0 means invisible AND
+       (src/game/actors/d_a_obj_mario_cap.cpp:206-212). bit1=0 means invisible AND
        inert: Behavior returns before the state machine, so nothing can be
        picked up.
 
@@ -1059,7 +1059,7 @@ static int __fastcall cap_behavior(void *s, void *)
             }
             /* The collision half. func_ov002_020b6fcc, the state the raised cap
                runs, does nothing at all until dCcAc_c::otherOwner names an
-               actor (src/actors/daObjMarioCap_c.cpp:978): that is the field the
+               actor (src/game/actors/d_a_obj_mario_cap.cpp:978): that is the field the
                cylinder system writes when something overlaps this cap, and the
                pickup -- Player::SetNewHatCharacter -- is four lines below it.
                A cap that is raised and drawn but whose otherOwner never leaves
@@ -1105,7 +1105,7 @@ static int __fastcall cap_behavior(void *s, void *)
 }
 /* SM64DS_CAP_PROBE=1 reports, once per run, the two words the ROM's own
    WaterfallMist::Render gates on before it draws anything
-   (src/actors/daObjMarioCap_c.cpp:14):
+   (src/game/actors/d_a_obj_mario_cap.cpp:14):
 
        if (unk_3ff == 1 || mScaleX < 0x100) return 1;
 
@@ -1114,7 +1114,7 @@ static int __fastcall cap_behavior(void *s, void *)
    other half: the VS arenas place six CAPs, all six are alive on the behaviour
    list, and whether the player can SEE one is decided by these two words and
    nothing else. unk_400 is printed with them because Behavior's gate
-   (src/actors/daObjMarioCap_c.cpp:41-43) is what writes unk_3ff, and it
+   (src/game/actors/d_a_obj_mario_cap.cpp:41-43) is what writes unk_3ff, and it
    only runs when unk_400 != 0xff. */
 static int __fastcall cap_render(void *s, void *)
 {
@@ -2274,7 +2274,7 @@ int _ZN8daStar_c6RenderEv(void *s)        { return ((daStar_c *)s)->daStar_c::Re
    and only BigBully overrides it (0x0211764c). config/arm9/overlays/ov064/symbols.txt
    carries no _ZN5Bully6RenderEv at all, symbols/actor_renames.tsv:1818 records the
    rename, and include/daOts_c.h:63-66 says the same thing in prose. The body is
-   src/actors/daOts_c.cpp:153, and dumpbin over that object shows
+   src/game/actors/d_a_ots.cpp:153, and dumpbin over that object shows
    ?Render@daOts_c@@UAEHXZ defined. Bully inherits it, so this is the same call it
    always was, spelled at the class that owns it. */
 int _ZN7daOts_c6RenderEv(void *s)            { return ((daOts_c *)s)->daOts_c::Render(); }

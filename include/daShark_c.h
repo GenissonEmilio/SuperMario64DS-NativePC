@@ -117,11 +117,11 @@ struct daShark_c {
     u8  pad_101[0xf];
     /* dCcAcPos_c member, named by the class's own destructor calling
        dCcAcPos_c's D1 at +0x110 -- a relocation the ROM build
-       checks. Was a u8 marker. [_ZN9daShark_cD1Ev, now in src/actors/daShark_c.cpp] */
+       checks. Was a u8 marker. [_ZN9daShark_cD1Ev, now in src/game/actors/d_a_shark.cpp] */
     dCcAcPos_c mdCcAcPos_c;            /* 0x110 */
     /* dBgCh_Actr member, named by the class's own destructor calling
        dBgCh_Actr's D1 at +0x150 -- a relocation the ROM build
-       checks. Was a u8 marker. [_ZN9daShark_cD1Ev, now in src/actors/daShark_c.cpp] */
+       checks. Was a u8 marker. [_ZN9daShark_cD1Ev, now in src/game/actors/d_a_shark.cpp] */
     dBgCh_Actr mWithMeshClsn;            /* 0x150 */
     /* ModelAnim member, named by _ZN9ModelAnimD1Ev at +0x30c -- a relocation the ROM build checks.
        D1 and not D2, so it is this type and not an inlined base. Was a u8 marker. */

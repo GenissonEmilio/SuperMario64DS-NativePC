@@ -375,7 +375,7 @@ void dScStage_c::RenderVsModeNewStar()
  * Player::CanPause. src/func_02029408.c calls `func_020bd828(data_0209f394
  * [data_0209f250])` -- one __cdecl argument, the local player. 0x020bd828 is
  * _ZN6Player8CanPauseEv in config/arm9/overlays/ov002/symbols.txt line 435,
- * and src/actors/Player.cpp compiles it as a real C++ method against
+ * and src/game/player/Player.cpp compiles it as a real C++ method against
  * Player.h, so it publishes ?CanPause@Player@@QAEHXZ and takes its receiver in
  * ecx. The face moves the argument into the receiver, which is what the ARM
  * call did with r0.

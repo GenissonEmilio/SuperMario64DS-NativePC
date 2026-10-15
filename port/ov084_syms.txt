@@ -58,18 +58,18 @@ data_ov084_02130e74:0xc data_ov084_02130e80:0x60
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov084_02130cc0                        now defined by src/actors/daKrb_c.cpp
-#   data_ov084_02130cc8                        now defined by src/actors/daKrb_c.cpp
-#   data_ov084_02130cd0                        now defined by src/actors/daKrb_c.cpp
-#   data_ov084_02130cd8                        now defined by src/actors/daKrb_c.cpp
-#   data_ov084_02130ce0                        now defined by src/actors/daKrb_c.cpp
-#   data_ov084_02130ce8                        now defined by src/actors/daKrb_c.cpp
-#   data_ov084_02130cf0                        now defined by src/actors/daKrb_c.cpp
-#   data_ov084_02130cf8                        now defined by src/actors/daKrb_c.cpp
-#   data_ov084_02130d00                        now defined by src/actors/daKrb_c.cpp
-#   data_ov084_02130d74                        now defined by src/actors/daKrb_c.cpp
-#   g_profile_KURIBO                           now defined by src/actors/daKrb_c.cpp
-#   g_profile_KURIBO_L                         now defined by src/actors/daKrb_c.cpp
-#   g_profile_KURIBO_S                         now defined by src/actors/daKrb_c.cpp
+#   data_ov084_02130cc0                        now defined by src/game/actors/d_a_krb.cpp
+#   data_ov084_02130cc8                        now defined by src/game/actors/d_a_krb.cpp
+#   data_ov084_02130cd0                        now defined by src/game/actors/d_a_krb.cpp
+#   gKuriboRecoverAnimationFile                        now defined by src/game/actors/d_a_krb.cpp
+#   data_ov084_02130ce0                        now defined by src/game/actors/d_a_krb.cpp
+#   data_ov084_02130ce8                        now defined by src/game/actors/d_a_krb.cpp
+#   data_ov084_02130cf0                        now defined by src/game/actors/d_a_krb.cpp
+#   data_ov084_02130cf8                        now defined by src/game/actors/d_a_krb.cpp
+#   gKuriboLowModelModelFile                        now defined by src/game/actors/d_a_krb.cpp
+#   data_ov084_02130d74                        now defined by src/game/actors/d_a_krb.cpp
+#   g_profile_KURIBO                           now defined by src/game/actors/d_a_krb.cpp
+#   g_profile_KURIBO_L                         now defined by src/game/actors/d_a_krb.cpp
+#   g_profile_KURIBO_S                         now defined by src/game/actors/d_a_krb.cpp
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov084_02130cf8! data_ov084_02130cc8! data_ov084_02130cf0! data_ov084_02130ce8! data_ov084_02130cc0! data_ov084_02130cd0! data_ov084_02130d00! data_ov084_02130ce0! data_ov084_02130cd8! data_ov084_02130d74!
+data_ov084_02130cf8! data_ov084_02130cc8! data_ov084_02130cf0! data_ov084_02130ce8! data_ov084_02130cc0! data_ov084_02130cd0! gKuriboLowModelModelFile! data_ov084_02130ce0! gKuriboRecoverAnimationFile! data_ov084_02130d74!

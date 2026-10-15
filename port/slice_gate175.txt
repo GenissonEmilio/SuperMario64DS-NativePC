@@ -15,5 +15,5 @@
 # player into (data_ov002_021100dc, __sinit_ov002_021019d0) was already
 # constructed and its St_BurnFire bodies already linked -- the face in the
 # fill bridges the C spelling.
-src/actors/daObjFire_c.cpp
-src/actors/Player.cpp
+src/game/actors/d_a_obj_fire.cpp
+src/game/player/Player.cpp

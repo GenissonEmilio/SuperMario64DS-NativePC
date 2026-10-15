@@ -1,5 +1,5 @@
 /* HOST ARM recovered by PORTSYNC2.
- * Old path: src/engine/fader/StartEntranceFaderWipe.cpp (port line). The arm
+ * Old path: src/runtime/graphics/fader/StartEntranceFaderWipe.cpp (port line). The arm
  * gave the file's local fader classes two destructor slots so their virtuals
  * sit at the ROM table's offsets; the 2026-10 main merge (749f5799a) took
  * main's src/, which keeps the file (classes renamed Fader -> dFader_c,

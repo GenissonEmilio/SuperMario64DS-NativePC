@@ -12,11 +12,11 @@
 #include <cstring>
 
 /* THE GAME'S OWN WORD, and it is read through the mount rather than hosted a
-   second time. build/port/host-src/ov004_syms.c defines data_ov004_020beb6c as
+   second time. build/port/host-src/ov004_syms.c defines sMgTopScreenYOffset as
    four bytes of real packed ov004 storage at DS 0x020beb6c, with a PACK BROKEN
    check on its offset, and every ROM body that touches the gap -- the setter
-   func_ov004_020b04d0, the reader func_ov004_020b04c0, RenderOamBothScreens,
-   _ZN11dScMgBase_c9Virtual88Eiiii -- reaches it there. Hosting a second copy here would put
+   Mg_SetTopScreenYOffset, the reader Mg_GetTopScreenYOffset, RenderOamBothScreens,
+   _ZN11dScMgBase_c11PaintSquareEiiii -- reaches it there. Hosting a second copy here would put
    this file's idea of G beside the game's and let them drift apart silently,
    which is the exact defect hal/scene_mg_flower.cpp's note records for the two
    words either side of it.
@@ -26,7 +26,7 @@
    makes that link, but the declaration would be a second opinion about the
    storage rather than a reader of it. Four bytes, little endian, assembled
    here. */
-extern "C" unsigned char data_ov004_020beb6c[4];
+extern "C" unsigned char sMgTopScreenYOffset[4];
 
 /* the dual-OAM flag and the compositor's seam hook; see the layout below */
 extern "C" unsigned char data_0209e660;
@@ -61,10 +61,10 @@ extern int g_gapless_tall;   /* defined beside the mode table below */
 
 int read_raw(void)
 {
-    return (int)((unsigned)data_ov004_020beb6c[0] |
-                 ((unsigned)data_ov004_020beb6c[1] << 8) |
-                 ((unsigned)data_ov004_020beb6c[2] << 16) |
-                 ((unsigned)data_ov004_020beb6c[3] << 24));
+    return (int)((unsigned)sMgTopScreenYOffset[0] |
+                 ((unsigned)sMgTopScreenYOffset[1] << 8) |
+                 ((unsigned)sMgTopScreenYOffset[2] << 16) |
+                 ((unsigned)sMgTopScreenYOffset[3] << 24));
 }
 
 /* THE HEADROOM THE LAYOUT SHOULD CARRY RIGHT NOW, in DS rows.
@@ -219,8 +219,8 @@ int headroom_ds(void)
  * WHAT WOULD BE RIGHT, stated precisely because it is buildable and this is
  * not. The shift has to be per entry, applied to the submissions the
  * framework's G-adding routers made and to no others. Those are
- * func_ov004_020aff38, func_ov004_020b023c, func_ov004_020b0380,
- * func_ov004_020afdd0 and RenderOamBothScreens, all of which reach
+ * Mg_RenderSpriteBothScaled, Mg_RenderSpriteBothPalMtx, Mg_RenderSpriteBothMtx,
+ * Mg_RenderSpriteBoth and RenderOamBothScreens, all of which reach
  * OAM::Render with `a2 + 0xc0 + G` while every other submitter passes a plain
  * engine row. Nothing in the finished OAM distinguishes the two, so the port
  * cannot tell them apart at the raster: the routed set has to be recorded AT
@@ -414,7 +414,7 @@ const ntr::StackLayout *hal_screen_layout(void)
        0 sends display A to the LOWER screen, 1 to the upper one.
 
        PER FRAME AND NOT PER SCENE. The dScMgD3DBase_c family's slot 24
-       (_ZN14dScMgD3DBase_c8OnKickedEv) TOGGLES this bit every frame -- one camera view
+       (_ZN14dScMgD3DBase_c16OnGraphCallback2Ev) TOGGLES this bit every frame -- one camera view
        rendered live on the screen the bit names, the other showing the display
        capture unit's copy of the previous frame -- so a value cached at the
        G-latch would be one frame's answer serving a whole minigame. Scene 377
@@ -603,33 +603,33 @@ unsigned hal_screen_layout_generation(void)
  *
  *   PER FRAME, so they adapt the instant the word changes and cannot go stale:
  *     RenderOamBothScreens 0x020b0104   both engines, y + 0xc0 + G on the top
- *     func_ov004_020afdd0  0x020afdd0   top engine + RenderSub
- *     func_ov004_020aff38  0x020aff38   THE ROUTER. Picks ONE engine by a band
+ *     Mg_RenderSpriteBoth  0x020afdd0   top engine + RenderSub
+ *     Mg_RenderSpriteBothScaled  0x020aff38   THE ROUTER. Picks ONE engine by a band
  *                                       test on world y and returns; this is
  *                                       the body that makes a crossing object
  *                                       disappear, and the one this mode is
  *                                       really aimed at. Bob-omb Squad's balls
  *                                       go through it.
- *     func_ov004_020b023c  0x020b023c   top engine, matrix form. The falling
+ *     Mg_RenderSpriteBothPalMtx  0x020b023c   top engine, matrix form. The falling
  *                                       bob-ombs go through it.
- *     func_ov004_020b0380  0x020b0380   top engine, matrix form
- *     _ZN11dScMgBase_c9Virtual88Eiiii  0x020ae3b4   the BG pixel plotter, dScMgBase_c slot
+ *     Mg_RenderSpriteBothMtx  0x020b0380   top engine, matrix form
+ *     _ZN11dScMgBase_c11PaintSquareEiiii  0x020ae3b4   the BG pixel plotter, dScMgBase_c slot
  *                                       34: picks a char base by the same band
  *                                       test and adds G + 0xc0 for the top
- *     func_ov004_020b04c0  0x020b04c0   the getter itself
+ *     Mg_GetTopScreenYOffset  0x020b04c0   the getter itself
  *
  *   WRITERS:
- *     func_ov004_020b04d0  0x020b04d0   the setter, called once per minigame
+ *     Mg_SetTopScreenYOffset  0x020b04d0   the setter, called once per minigame
  *                                       from its InitResources
- *     _ZN11dScMgBase_c9Virtual84Ev  0x020b265c   slot 33, stores 0 during scene setup,
+ *     _ZN11dScMgBase_c11InitEnginesEv  0x020b265c   slot 33, stores 0 during scene setup,
  *                                       which is why G already reads 0 on
  *                                       entry to any InitResources
  *
  *   READ ONCE AND CACHED -- the stale-G class, and the reason the write is
  *   placed where it is:
- *     func_ov004_020b7854  0x020b7854   passes data_ov004_020bc8ac - (G + 0xc0)
- *     func_ov004_020b6ddc  0x020b6ddc   passes data_ov004_020bc864 - G
- *       both through func_ov004_020b0cac -> func_ov004_020b3278, which STORES
+ *     State09_Enter  0x020b7854   passes data_ov004_020bc8ac - (G + 0xc0)
+ *     State17_Update  0x020b6ddc   passes data_ov004_020bc864 - G
+ *       both through Mg_ShowBanner -> Banner_Init, which STORES
  *       the y into the banner element at +0x12 and draws from the stored copy
  *       every frame afterwards. Both are dScMgBase_c state bodies that run
  *       DURING a minigame, long after InitResources, so with the write placed
@@ -638,11 +638,11 @@ unsigned hal_screen_layout_generation(void)
  *       write moved later.
  *
  * AND THE ONES THE ROM HAS THAT THIS PROGRAM DOES NOT. The score and
- * name-entry HUD parks -- func_ov004_020b3888 (which is the worst of them:
+ * name-entry HUD parks -- Banner_SetupDrop (which is the worst of them:
  * *(short *)(r0 + 0x12) = -(G + 0x60), a cached park), _020b4e78, _020b53f0,
  * _020b556c, _020b5f6c, _020b612c, _020b682c -- and ov006's own G readers,
- * including the player clamp func_ov006_020eee3c at -(184 + G) << 12 and the
- * BG2 scroller _ZN17dScMgTrampoline_c8OnKickedEv, are in src/ but appear in no
+ * including the player clamp Spawn at -(184 + G) << 12 and the
+ * BG2 scroller _ZN17dScMgTrampoline_c16OnGraphCallback2Ev, are in src/ but appear in no
  * port/slice_*.txt, so nothing compiles them and nothing can run them. They
  * are named here so a later lane that seats one of them knows this audit has
  * to be re-run rather than inherited.
@@ -850,10 +850,10 @@ void hal_gapless_minigames_latch(void)
     }
     if (row->mode == GL_ZERO_G || row->mode == GL_ZERO_G_TALL) {
         g_gapless_tall = row->mode == GL_ZERO_G_TALL;
-        data_ov004_020beb6c[0] = 0;
-        data_ov004_020beb6c[1] = 0;
-        data_ov004_020beb6c[2] = 0;
-        data_ov004_020beb6c[3] = 0;
+        sMgTopScreenYOffset[0] = 0;
+        sMgTopScreenYOffset[1] = 0;
+        sMgTopScreenYOffset[2] = 0;
+        sMgTopScreenYOffset[3] = 0;
         g_gapless_on = 1;
         std::fprintf(stderr, "[gapless] scene %d: ENGAGED for %s -- G %d -> 0,"
                      " no band, no strip, no correction. Objects cross the "
@@ -922,17 +922,17 @@ struct SpliceArray {
 };
 
 const SpliceArray kSplice[] = {
-    /* func_ov006_020fc8c0 renders these 30; live flag abs +0x468d is checked
+    /* PachinkoBall_DrawAll renders these 30; live flag abs +0x468d is checked
        there, spawn sets +0x468c -- both must be up before a slot is real */
     {368, 0x4660, 0x38, 30, 0x2c, 0x2d, "Bob-omb Squad parachute drops"},
-    /* func_ov006_020fe1d0 renders these 48; hal/gap_continuity.cpp already
+    /* PachinkoBobOmb_DrawAll renders these 48; hal/gap_continuity.cpp already
        documents the base, the stride and the +0x4f0e visible flag */
     {368, 0x4ed8, 0x38, 48, 0x36, -1, "Bob-omb Squad slingshot balls"},
-    /* func_ov006_020e1c68 renders these 5, gated on both bytes */
+    /* DrawStonesLeft renders these 5, gated on both bytes */
     {374, 0x4660, 0x2c, 5, 0x29, 0x2a, "Shuffle Shell shells"},
-    /* func_ov006_02102de4 renders these 48 */
+    /* Ball_DrawAll renders these 48 */
     {376, 0x4660, 0x40, 48, 0x3a, -1, "Slots Shot balls"},
-    /* func_ov006_020dd594 renders these 40 */
+    /* DrawBlocks renders these 40 */
     {378, 0x4660, 0x1c, 40, 0x16, -1, "Coincentration coin stacks"},
 };
 
@@ -1076,7 +1076,7 @@ const unsigned short *hal_gapless_ghost_attrs(int *count)
  *                                              screen space, with no G term
  *
  * so "inside a router" is not enough, and the engine argument is not enough
- * either -- func_ov004_020aff38's two-player branch passes 0 on both. What IS
+ * either -- Mg_RenderSpriteBothScaled's two-player branch passes 0 on both. What IS
  * enough is a2 itself: the wrapper has it, it is the third argument of all five
  * bodies, and 0xc0 + G is never zero, so `py == a2 + 0xc0 + G` picks the
  * G-carrying call and can pick nothing else. No band test is duplicated here
@@ -1129,7 +1129,7 @@ void *_ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii(int, void *, int, int, int,
                                                   int, int, int, int, int);
 
 /* THE MAIN OAM SHADOW, reached AS BYTES for the reason the block over
-   data_ov004_020beb6c gives: the mount owns this storage and a second
+   sMgTopScreenYOffset gives: the mount owns this storage and a second
    declaration of it as a struct array would be an opinion about the layout
    rather than a use of it. Only its address is taken, to turn the pointer
    OAM::Render returns into a slot index. data_0209e660 is the dual-OAM flag,
@@ -1272,7 +1272,7 @@ void routed_split(int py, int adj, int fell_back)
  *                             hal/reverse_bridges.cpp that calls the C++ member
  *                             and returns 0 unconditionally. So `if (r)` was
  *                             NEVER taken, the second call ALWAYS ran, and every
- *                             routed submission through func_ov004_020afdd0 was
+ *                             routed submission through Mg_RenderSpriteBoth was
  *                             rendered TWICE -- once at the ROM's row and once
  *                             at the mod's row, 32 rows apart, with no mark on
  *                             either. That is the doubled sprite the player
@@ -1388,26 +1388,26 @@ void *port_oam_render_routed_10(int draw, void *obj, int px, int py, int pal,
    branch of the router's repeated here, and with the mode off the whole of this
    is a push and a pop. */
 
-int func_ov004_020aff38(void *a0, int a1, int a2, int a3, int a4, int a5,
+int Mg_RenderSpriteBothScaled(void *a0, int a1, int a2, int a3, int a4, int a5,
                         int a6)
 {
     RoutedCall rc(a2);
     return func_ov004_020aff38__rom(a0, a1, a2, a3, a4, a5, a6);
 }
 
-void func_ov004_020afdd0(void *a0, int a1, int a2, int a3, int a4)
+void Mg_RenderSpriteBoth(void *a0, int a1, int a2, int a3, int a4)
 {
     RoutedCall rc(a2);
     func_ov004_020afdd0__rom(a0, a1, a2, a3, a4);
 }
 
-void func_ov004_020b023c(void *a0, int a1, int a2, int a3, void *a4)
+void Mg_RenderSpriteBothPalMtx(void *a0, int a1, int a2, int a3, void *a4)
 {
     RoutedCall rc(a2);
     func_ov004_020b023c__rom(a0, a1, a2, a3, a4);
 }
 
-void func_ov004_020b0380(void *a0, int a1, int a2, void *a3)
+void Mg_RenderSpriteBothMtx(void *a0, int a1, int a2, void *a3)
 {
     RoutedCall rc(a2);
     func_ov004_020b0380__rom(a0, a1, a2, a3);

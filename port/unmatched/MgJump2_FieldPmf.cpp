@@ -35,8 +35,8 @@
 // THERE IS NO NULL GUARD AND NO IDLE-SENTINEL COMPARE.  dScMg3DEsp_c's field
 // dispatcher tests the pair against a sentinel and returns early; this one
 // dispatches unconditionally, so the field MUST be seeded before the first
-// behavior tick.  It is: vtable slot 18 (_ZN12dScMgJump2_c13OnYoshiTryEatEi) ends with
-// func_ov006_020ef7f8(this), which is the writer of data_ov006_0213cc94, and
+// behavior tick.  It is: vtable slot 18 (_ZN12dScMgJump2_c10StartRoundEi) ends with
+// BeginIntro(this), which is the writer of pmf_dScMgJump2_c_State_Intro, and
 // slot 0 (_ZN12dScMgJump2_c13InitResourcesEv) dispatches slot 18 through the object's own
 // vtable with r1 = -1 at 0x020efa2c..0x020efa38.  So the seed arrives on the
 // InitResources path, before Behavior ever runs.  port_mg_call0's own
@@ -60,11 +60,11 @@
 //
 //   record      pair              loaded by            reloc (relocs.txt)
 //   ----------  ----------------  -------------------  --------------------
-//   0213cc74    {0x020ef47c, 0}   func_ov006_020ef480  from:0x020ef4e8
-//   0213cc84    {0x020ef5ac, 0}   func_ov006_020ef768  from:0x020ef790
-//   0213cc8c    {0x020ef480, 0}   func_ov006_020ef4ec  from:0x020ef57c
-//   0213cc94    {0x020ef794, 0}   func_ov006_020ef7f8  from:0x020ef830
-//   0213cc9c    {0x020ef4ec, 0}   func_ov006_020ef580  from:0x020ef5a8
+//   0213cc74    {0x020ef47c, 0}   State_Result  from:0x020ef4e8
+//   0213cc84    {0x020ef5ac, 0}   BeginPlay  from:0x020ef790
+//   0213cc8c    {0x020ef480, 0}   State_End  from:0x020ef57c
+//   0213cc94    {0x020ef794, 0}   BeginIntro  from:0x020ef830
+//   0213cc9c    {0x020ef4ec, 0}   BeginEnd  from:0x020ef5a8
 //
 // FOUR DISTINCT WRITER TUs PLUS ONE, five distinct code words, EVERY
 // ADJUSTMENT ZERO, and no .init relocation anywhere among them.  All five code
@@ -83,7 +83,7 @@
 // 0x0213cc74 is the word IMMEDIATELY PAST the end of 0x174's vtable
 // (0x0213cbe4 + 36*4 = 0x0213cc74) and the word IMMEDIATELY BEFORE this
 // class's own SpawnInfo.  An attribution by address adjacency gives it to
-// MgBounceAndPounce.  The relocation gives it to func_ov006_020ef4ec, which is
+// MgBounceAndPounce.  The relocation gives it to State_End, which is
 // one of THIS class's states, and the relocation is the one that cannot be
 // wrong.  0x174's own seven records (0x0213cb4c, 0x0213cb54, 0x0213cb5c,
 // 0x0213cb6c, 0x0213cb74, 0x0213cb7c, 0x0213cb84) are loaded only from
@@ -101,21 +101,21 @@ extern "C" {
 void port_mg_call0(void *self, unsigned code, int adj);
 
 /* the five routed states, each with the parameter list its own src TU defines.
-   func_ov006_020ef47c is FOUR BYTES -- a bare `bx lr` -- and is this class's
+   State_Idle is FOUR BYTES -- a bare `bx lr` -- and is this class's
    idle body; there is nothing for an ignored receiver to be wrong about, which
    is the MgCoin_StateDispatch.cpp ruling for the same shape. */
-void _ZN12dScMgJump2_c19func_ov006_020ef47cEv(void);
-void _ZN12dScMgJump2_c19func_ov006_020ef480Ev(char *c);
-void _ZN12dScMgJump2_c19func_ov006_020ef4ecEv(char *c);
-void _ZN12dScMgJump2_c19func_ov006_020ef5acEv(char *self);
-void _ZN12dScMgJump2_c19func_ov006_020ef794Ev(char *self);
+void _ZN12dScMgJump2_c10State_IdleEv(void);
+void _ZN12dScMgJump2_c12State_ResultEv(char *c);
+void _ZN12dScMgJump2_c9State_EndEv(char *c);
+void _ZN12dScMgJump2_c10State_PlayEv(char *self);
+void _ZN12dScMgJump2_c11State_IntroEv(char *self);
 
 /* the ordinary callees slot 6 keeps, spelled as src/minigames/d_s_mg_jump2.cpp
    spells them */
 unsigned int _ZN8Particle6System17NewUnkCallback818Ejj5Fix12IiES2_S2_PK11Vector3_16f(
         unsigned int a, unsigned int b, int c, int d, int e, const void *f);
 void *_ZN8Particle6System12FromUniqueIDEj(unsigned int id);
-void  func_ov006_020eef90(void);
+void  Jump2Popup_UpdateAll(void);
 
 }  /* extern "C" */
 
@@ -163,7 +163,7 @@ extern "C" unsigned port_mg_jump2_field_capacity(void) { return FIELD_SEEN_MAX; 
  * span whose word reads the target and whose FOLLOWING word is zero gives
  * exactly FIVE pairs -- 0x0213cc74, cc84, cc8c, cc94, cc9c, five distinct code
  * words. EVERY reference into that run comes from INSIDE the block and each is
- * one writer's literal pool (0x020ef4e8 in func_ov006_020ef480, 0x020ef57c in
+ * one writer's literal pool (0x020ef4e8 in State_Result, 0x020ef57c in
  * _020ef4ec, 0x020ef5a8 in _020ef580, 0x020ef790 in _020ef768, 0x020ef830 in
  * _020ef7f8), so nothing outside this class can hand the field an address and
  * no reader compares a stored pair by value.
@@ -199,25 +199,25 @@ extern "C" unsigned port_mg_jump2_field_capacity(void) { return FIELD_SEEN_MAX; 
         call;                                                             \
     }
 
-JUMP2_FACE(020ef47c, _ZN12dScMgJump2_c19func_ov006_020ef47cEv())
-JUMP2_FACE(020ef480, _ZN12dScMgJump2_c19func_ov006_020ef480Ev((char *)self))
-JUMP2_FACE(020ef4ec, _ZN12dScMgJump2_c19func_ov006_020ef4ecEv((char *)self))
-JUMP2_FACE(020ef5ac, _ZN12dScMgJump2_c19func_ov006_020ef5acEv((char *)self))
-JUMP2_FACE(020ef794, _ZN12dScMgJump2_c19func_ov006_020ef794Ev((char *)self))
+JUMP2_FACE(020ef47c, _ZN12dScMgJump2_c10State_IdleEv())
+JUMP2_FACE(020ef480, _ZN12dScMgJump2_c12State_ResultEv((char *)self))
+JUMP2_FACE(020ef4ec, _ZN12dScMgJump2_c9State_EndEv((char *)self))
+JUMP2_FACE(020ef5ac, _ZN12dScMgJump2_c10State_PlayEv((char *)self))
+JUMP2_FACE(020ef794, _ZN12dScMgJump2_c11State_IntroEv((char *)self))
 
 extern "C" {
-extern MgPmf data_ov006_0213cc74, data_ov006_0213cc84, data_ov006_0213cc8c,
-    data_ov006_0213cc94, data_ov006_0213cc9c;
+extern MgPmf pmf_dScMgJump2_c_State_Idle, pmf_dScMgJump2_c_State_Play, pmf_dScMgJump2_c_State_Result,
+    pmf_dScMgJump2_c_State_Intro, pmf_dScMgJump2_c_State_End;
 }
 
 namespace {
 struct Jump2Seat { MgPmf *rec; unsigned rom; void *face; const char *what; };
 const Jump2Seat g_jump2_seats[] = {
-    {&data_ov006_0213cc74, 0x020ef47cu, (void *)jump2_f020ef47c, "0213cc74"},
-    {&data_ov006_0213cc84, 0x020ef5acu, (void *)jump2_f020ef5ac, "0213cc84"},
-    {&data_ov006_0213cc8c, 0x020ef480u, (void *)jump2_f020ef480, "0213cc8c"},
-    {&data_ov006_0213cc94, 0x020ef794u, (void *)jump2_f020ef794, "0213cc94"},
-    {&data_ov006_0213cc9c, 0x020ef4ecu, (void *)jump2_f020ef4ec, "0213cc9c"},
+    {&pmf_dScMgJump2_c_State_Idle, 0x020ef47cu, (void *)jump2_f020ef47c, "0213cc74"},
+    {&pmf_dScMgJump2_c_State_Play, 0x020ef5acu, (void *)jump2_f020ef5ac, "0213cc84"},
+    {&pmf_dScMgJump2_c_State_Result, 0x020ef480u, (void *)jump2_f020ef480, "0213cc8c"},
+    {&pmf_dScMgJump2_c_State_Intro, 0x020ef794u, (void *)jump2_f020ef794, "0213cc94"},
+    {&pmf_dScMgJump2_c_State_End, 0x020ef4ecu, (void *)jump2_f020ef4ec, "0213cc9c"},
 };
 }  /* namespace */
 
@@ -289,7 +289,7 @@ extern "C" unsigned port_mg_jump2_field_row(unsigned i, unsigned *code)
 
 /* src/minigames/d_s_mg_jump2.cpp verbatim except that the member-pointer type is
    gone and the dispatch site is a routed call.  The Particle::System calls
-   above it and the func_ov006_020eef90 below it are src's, unchanged, and
+   above it and the Jump2Popup_UpdateAll below it are src's, unchanged, and
    every one is confirmed against the disassembly in section 2.  The field the
    ROM reads is at +0x5004 and the unique id it feeds Particle::System is at
    +0x5a6c -- `add r0,r4,#0x5000 / ldr r0,[r0,#0xa6c]` at 0x020ef400. */

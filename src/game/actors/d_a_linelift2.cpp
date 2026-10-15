@@ -41,6 +41,14 @@
 // - Behavior lowers mPosY by the sink offset and restores it before the
 //   model update, which the cartridge does too; the dead store is its own.
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_linelift2_AssetId {
+    ASSET_KM2_SUSUMU_BMD = 0x0669,
+    ASSET_KM2_SUSUMU_KCL = 0x066a,
+    ASSET_KM3_RIFT_BMD = 0x0683,
+    ASSET_KM3_RIFT_KCL = 0x0684
+};
+
 #include "daLinelift2_c.h"
 #include "SharedFilePtr.h"
 #include "dBgW.h"
@@ -361,10 +369,10 @@ extern StateFunc data_ov091_02134e4c;
  * emits the constructions, registers the destructors -- the registration
  * nodes are compiler temporaries -- and copies the records. */
 // @symbol __sinit_d_a_linelift2.cpp
-Linelift2ModelFilePtr     data_ov091_02135498(0x683);
-Linelift2ModelFilePtr     data_ov091_021354a8(0x669);
-Linelift2CollisionFilePtr data_ov091_021354a0(0x684);
-Linelift2CollisionFilePtr data_ov091_02135490(0x66a);
+Linelift2ModelFilePtr     gKm3RiftModelFile(ASSET_KM3_RIFT_BMD);
+Linelift2ModelFilePtr     gKm2SusumuModelFile(ASSET_KM2_SUSUMU_BMD);
+Linelift2CollisionFilePtr gKm3RiftCollisionFile(ASSET_KM3_RIFT_KCL);
+Linelift2CollisionFilePtr gKm2SusumuCollisionFile(ASSET_KM2_SUSUMU_KCL);
 
 StateFunc data_ov091_021354e0[3] = {
     data_ov091_02134e54,

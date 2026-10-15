@@ -93,7 +93,7 @@ void _ZN10dBgW_KcMbgD1Ev(void *self);
 void _ZN5ModelD1Ev(void *self);
 void *_ZN8dActor_cD2Ev(void *self);
 void _ZN18TextureTransformerD1Ev(void *self);
-void _ZN6Memory10DeallocateEPvP4Heap(void *, void *);
+void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *, void *);
 extern void *data_020a0eac;   /* the game heap, already hosted (== G0 the
                                   matched src's own D0 bodies extern) */
 }

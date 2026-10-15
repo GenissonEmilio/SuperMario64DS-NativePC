@@ -80,8 +80,8 @@
 //   field_8 at +8 after a leading PMF, which is only true at eight bytes, so
 //   the object is laid out wrong before any dispatch happens.
 //   the NAME. MSVC encodes the member-pointer TYPE into the symbol, so the
-//   twenty globals come out as ?data_ov004_020bc97c@@3P8C@@AEXXZQ1@ and the
-//   mount's C symbol _data_ov004_020bc97c can never satisfy them. Twenty-one
+//   twenty globals come out as ?pmf_dMgState_c_State09_Enter@@3P8C@@AEXXZQ1@ and the
+//   mount's C symbol _pmf_dMgState_c_State09_Enter can never satisfy them. Twenty-one
 //   of the first minigame link's ninety-five unresolved externals were this
 //   one TU.
 //   the DISPATCH. The five-instruction ARM Itanium sequence above has no MSVC
@@ -101,26 +101,26 @@
 // dispatch this seat can reach is the DIRECT case.
 //
 //   slot  .data global            code word   config/arm9/overlays/ov004/relocs
-//    0    data_ov004_020bc974     020b8688    line 2091
-//    1    data_ov004_020bc96c     020b853c    line 2090
-//    2    data_ov004_020bc964     020b83ac    line 2089
-//    3    data_ov004_020bc95c     020b81f8    line 2088
-//    4    data_ov004_020bc954     020b7f5c    line 2087
-//    5    data_ov004_020bc94c     020b7e38    line 2086
-//    6    data_ov004_020bc944     020b7b90    line 2085
-//    7    data_ov004_020bc92c     020b79b0    line 2082
-//    8    data_ov004_020bc934     020b798c    line 2083
-//    9    data_ov004_020bc97c     020b7854    line 2092
-//   10    data_ov004_020bc984     020b7744    line 2093
-//   11    data_ov004_020bc99c     020b7594    line 2096
-//   12    data_ov004_020bc9a4     020b7460    line 2097   THE VENEER, section 6
-//   13    data_ov004_020bca3c     020b743c    line 2116
-//   14    data_ov004_020bc9bc     020b724c    line 2100
-//   15    data_ov004_020bc9d4     020b70b4    line 2103
-//   16    data_ov004_020bc9dc     020b7020    line 2104
-//   17    data_ov004_020bc9ec     020b6f14    line 2106
-//   18    data_ov004_020bc9f4     020b6d6c    line 2107
-//   19    data_ov004_020bca0c     020b6c10    line 2110
+//    0    pmf_dMgState_c_State00_Enter     020b8688    line 2091
+//    1    pmf_dMgState_c_State01_Enter     020b853c    line 2090
+//    2    pmf_dMgState_c_State02_Enter     020b83ac    line 2089
+//    3    pmf_dMgState_c_State03_Enter     020b81f8    line 2088
+//    4    pmf_dMgState_c_State04_Enter     020b7f5c    line 2087
+//    5    pmf_dMgState_c_State05_Enter     020b7e38    line 2086
+//    6    pmf_dMgState_c_State06_Enter     020b7b90    line 2085
+//    7    pmf_dMgState_c_State07_Enter     020b79b0    line 2082
+//    8    pmf_dMgState_c_State08_Enter     020b798c    line 2083
+//    9    pmf_dMgState_c_State09_Enter     020b7854    line 2092
+//   10    pmf_dMgState_c_State10_Enter     020b7744    line 2093
+//   11    pmf_dMgState_c_State11_Enter     020b7594    line 2096
+//   12    pmf_dMgState_c_State12_Enter     020b7460    line 2097   THE VENEER, section 6
+//   13    pmf_dMgState_c_State13_Enter     020b743c    line 2116
+//   14    pmf_dMgState_c_State14_Enter     020b724c    line 2100
+//   15    pmf_dMgState_c_State15_Enter     020b70b4    line 2103
+//   16    pmf_dMgState_c_State16_Enter     020b7020    line 2104
+//   17    pmf_dMgState_c_State17_Enter     020b6f14    line 2106
+//   18    pmf_dMgState_c_State18_Enter     020b6d6c    line 2107
+//   19    pmf_dMgState_c_State19_Enter     020b6c10    line 2110
 //
 // ALL TWENTY HAVE A MATCHED src TU, A DELINK BLOCK AND A LINE ALREADY IN
 // port/slice_mg1.txt. Nothing here is a decomp gap and no case in the switch
@@ -138,9 +138,9 @@
 // ---- 5. THE OBJECT, AND THE HALF OF THE SEAT THE COST FILE DOES NOT NAME ---
 //
 // The setter's `self` is the framework's MESSAGE object, at scene + 0xcc. Its
-// only caller is src/func_ov004_020b0a54.cpp:
+// only caller is src/Mg_SetSharedState.cpp:
 //
-//     _ZN10dMgState_c8SetStateEi((char *)data_ov004_020beb68 + 0xcc, c);
+//     _ZN10dMgState_c8SetStateEi((char *)gMgScene + 0xcc, c);
 //
 // and the layout the disassembly above forces, offset by offset, is
 //
@@ -177,29 +177,29 @@
 // image and out of the relocation rows, and every adjustment word is zero:
 //
 //   installed by  pair global            code word   slot it lands in
-//    020b853c     data_ov004_020bc8bc    020b841c    +0x08
-//    020b83ac     data_ov004_020bc8c4    020b8284    +0x08
-//    020b7594     data_ov004_020bc8cc    020b6ad8    +0x10
-//    020b81f8     data_ov004_020bc8d4    020b8098    +0x08
-//    020b7020     data_ov004_020bc8e4    020b6f88    +0x08
-//    020b7f5c     data_ov004_020bc8ec    020b7eac    +0x08
-//    020b7e38     data_ov004_020bc8f4    020b7cd0    +0x08
-//    020b743c     data_ov004_020bc8fc    020b72d4    +0x08
-//    020b7b90     data_ov004_020bc90c    020b7b20    +0x08
-//    020b7020     data_ov004_020bc91c    020b68e8    +0x10
-//    020b6d6c     data_ov004_020bc924    020b6c9c    +0x08
-//    020b724c     data_ov004_020bc994    020b7124    +0x08
-//    020b79b0     data_ov004_020bc9ac    020b78f4    +0x08
-//    020b724c     data_ov004_020bc9c4    020b6948    +0x10
-//    020b6f14     data_ov004_020bc9cc    020b6ddc    +0x08
-//    020b7854     data_ov004_020bc9e4    020b77b4    +0x08
-//    020b7744     data_ov004_020bc9fc    020b75e4    +0x08
-//    020b70b4     data_ov004_020bca04    020b7124    +0x08   (shared with bc994)
-//    020b8688     data_ov004_020bca1c    020b8560    +0x08
-//    020b7594     data_ov004_020bca24    020b746c    +0x08
-//    020b6f14     data_ov004_020bca2c    020b68e8    +0x10   (shared with bc91c)
-//    020b798c     data_ov004_020bc9b4    020b78f4    +0x08   (shared with bc9ac)
-//    020b6c10     data_ov004_020bca34    020b6b40    +0x08
+//    020b853c     pmf_dMgState_c_State01_Update    020b841c    +0x08
+//    020b83ac     pmf_dMgState_c_State02_Update    020b8284    +0x08
+//    020b7594     pmf_dMgState_c_DrawScore    020b6ad8    +0x10
+//    020b81f8     pmf_dMgState_c_State03_Update    020b8098    +0x08
+//    020b7020     pmf_dMgState_c_State16_Update    020b6f88    +0x08
+//    020b7f5c     pmf_dMgState_c_State04_Update    020b7eac    +0x08
+//    020b7e38     pmf_dMgState_c_State05_Update    020b7cd0    +0x08
+//    020b743c     pmf_dMgState_c_UpdateRetryPrompt    020b72d4    +0x08
+//    020b7b90     pmf_dMgState_c_State06_Update    020b7b20    +0x08
+//    020b7020     pmf_dMgState_c_DrawRecordTable    020b68e8    +0x10
+//    020b6d6c     pmf_dMgState_c_State18_Update    020b6c9c    +0x08
+//    020b724c     pmf_dMgState_c_UpdateFadeThenResume    020b7124    +0x08
+//    020b79b0     pmf_dMgState_c_UpdateWaitThenResume    020b78f4    +0x08
+//    020b724c     pmf_dMgState_c_DrawScoreDigits    020b6948    +0x10
+//    020b6f14     pmf_dMgState_c_State17_Update    020b6ddc    +0x08
+//    020b7854     pmf_dMgState_c_State09_Update    020b77b4    +0x08
+//    020b7744     pmf_dMgState_c_State10_Update    020b75e4    +0x08
+//    020b70b4     pmf_dMgState_c_UpdateFadeThenResume_2    020b7124    +0x08   (shared with bc994)
+//    020b8688     pmf_dMgState_c_State00_Update    020b8560    +0x08
+//    020b7594     pmf_dMgState_c_State11_Update    020b746c    +0x08
+//    020b6f14     pmf_dMgState_c_DrawRecordTable_2    020b68e8    +0x10   (shared with bc91c)
+//    020b798c     pmf_dMgState_c_UpdateWaitThenResume_2    020b78f4    +0x08   (shared with bc9ac)
+//    020b6c10     pmf_dMgState_c_State19_Update    020b6b40    +0x08
 //
 // Twenty-three pairs, twenty distinct addresses, and all twenty have a matched
 // src TU, a delink block and a line already in port/slice_mg1.txt. Not one of
@@ -216,11 +216,11 @@
 //
 // which preserves every register, so r0 arrives at 0x020b743c untouched. Its
 // target writes through that pointer on its first instruction pair
-// (`mov r2,#0xa; str r2,[r0,#0x1c]`). src/func_ov004_020b7460.c spelled the
+// (`mov r2,#0xa; str r2,[r0,#0x1c]`). src/State12_Enter.c spelled the
 // veneer as
 //
-//     extern void func_ov004_020b743c(void);
-//     void func_ov004_020b7460(void) { func_ov004_020b743c(); }
+//     extern void State13_Enter(void);
+//     void State12_Enter(void) { State13_Enter(); }
 //
 // with no parameter on either side, which is correct on ARM and is a dropped
 // pointer on the host: MSVC's __cdecl pushes nothing and 0x020b743c reads
@@ -228,16 +228,16 @@
 // not a wrong value.
 //
 // IT IS REACHED THREE WAYS AND ALL THREE ARE OPENED BY THIS SEAT. Slot 12 of the
-// table above is one. The other two are src/func_ov004_020b6ddc.c:39 and
-// src/func_ov004_020b6f88.c:24, which are tick bodies of states 17 and 16, so
+// table above is one. The other two are src/State17_Update.c:39 and
+// src/State16_Update.c:24, which are tick bodies of states 17 and 16, so
 // they only ever run once +0x18 is written. BOTH CALLERS ALREADY PASS THE
-// POINTER: each declares `extern void func_ov004_020b7460(void *c);` locally.
+// POINTER: each declares `extern void State12_Enter(void *c);` locally.
 // Only the definition drops it, which is why nothing in the tree diagnoses it
 // and why the byte gate is right to be silent (the ROM bytes and the src agree).
 //
 // FIXED AT THE SOURCE (main #3166; run linkfull, lane ASMCPORT). The src TU now
 // spells the veneer with the pointer both callers pass,
-// `void func_ov004_020b7460(void *c) { func_ov004_020b743c(c); }`, still
+// `void State12_Enter(void *c) { State13_Enter(c); }`, still
 // byte-identical to the ROM, so it is back on port/slice_mg1.txt and the host
 // copy that stood in this file (the same one parameter, forwarded) is retired.
 // Slot 12's face below and the two tick bodies call the ROM's own veneer.
@@ -291,7 +291,7 @@
 // address that MOVED WITH THE BUILD. It is a stack imbalance in the port's own
 // vtable thunks and nothing to do with the sixteen bodies:
 //
-//   src/func_ov004_020b29a0.cpp is `void func_ov004_020b29a0(Base *c, void *arg)
+//   src/Mg_CallStartRound.cpp is `void Mg_CallStartRound(Base *c, void *arg)
 //   { c->v18(arg); }` and the ROM agrees word for word at 0x020b29a0
 //   (`ldr r2,[r0]; ldr r2,[r2,#0x48]; blx r2`). MSVC compiles that as a
 //   __thiscall call WITH ONE PUSHED ARGUMENT, so the CALLEE owes four bytes:
@@ -304,7 +304,7 @@
 //   `static int __fastcall mc_reset(void *s, void *)`, so both parameters sat
 //   in ecx and edx and MSVC emitted a bare `ret`, popping nothing.
 //
-// FOUR BYTES LEAKED ON EVERY SLOT-18 DISPATCH, func_ov004_020b29a0 ran
+// FOUR BYTES LEAKED ON EVERY SLOT-18 DISPATCH, Mg_CallStartRound ran
 // `pop ebp; ret` on a shifted stack, and a few frames later a `ret` took a
 // garbage return address. Slot 19 had the same shape through mb_v19.
 //
@@ -313,7 +313,7 @@
 // runs/mg5/out/baseset/slot18_19_scan.txt is the listing and it REPRODUCES the
 // twenty-two site slot-18 census that file's dScMgLuigi_c block already
 // recorded. Offset 0x48: 22 sites, 21 set r1 first, and the one that does not
-// is func_ov004_020b29a0, whose own src forwards its second parameter so the
+// is Mg_CallStartRound, whose own src forwards its second parameter so the
 // host pushes one there too. Offset 0x4c: 14 sites, all fourteen set r1, every
 // one of them `ldr r1,[rX,#0x18]`. So the argument count is ONE at every site
 // of both slots and there is no caller for which a popping thunk is wrong.
@@ -346,26 +346,26 @@ extern "C" {
    its ROM offset, so these are the mount's own bytes at C linkage. Declared one
    by one rather than as an array because the ROM names them one by one and they
    are NOT contiguous in slot order (slot 13 is 0x020bca3c, above slot 19). */
-extern MgPmf data_ov004_020bc974;
-extern MgPmf data_ov004_020bc96c;
-extern MgPmf data_ov004_020bc964;
-extern MgPmf data_ov004_020bc95c;
-extern MgPmf data_ov004_020bc954;
-extern MgPmf data_ov004_020bc94c;
-extern MgPmf data_ov004_020bc944;
-extern MgPmf data_ov004_020bc92c;
-extern MgPmf data_ov004_020bc934;
-extern MgPmf data_ov004_020bc97c;
-extern MgPmf data_ov004_020bc984;
-extern MgPmf data_ov004_020bc99c;
-extern MgPmf data_ov004_020bc9a4;
-extern MgPmf data_ov004_020bca3c;
-extern MgPmf data_ov004_020bc9bc;
-extern MgPmf data_ov004_020bc9d4;
-extern MgPmf data_ov004_020bc9dc;
-extern MgPmf data_ov004_020bc9ec;
-extern MgPmf data_ov004_020bc9f4;
-extern MgPmf data_ov004_020bca0c;
+extern MgPmf pmf_dMgState_c_State00_Enter;
+extern MgPmf pmf_dMgState_c_State01_Enter;
+extern MgPmf pmf_dMgState_c_State02_Enter;
+extern MgPmf pmf_dMgState_c_State03_Enter;
+extern MgPmf pmf_dMgState_c_State04_Enter;
+extern MgPmf pmf_dMgState_c_State05_Enter;
+extern MgPmf pmf_dMgState_c_State06_Enter;
+extern MgPmf pmf_dMgState_c_State07_Enter;
+extern MgPmf pmf_dMgState_c_State08_Enter;
+extern MgPmf pmf_dMgState_c_State09_Enter;
+extern MgPmf pmf_dMgState_c_State10_Enter;
+extern MgPmf pmf_dMgState_c_State11_Enter;
+extern MgPmf pmf_dMgState_c_State12_Enter;
+extern MgPmf pmf_dMgState_c_State13_Enter;
+extern MgPmf pmf_dMgState_c_State14_Enter;
+extern MgPmf pmf_dMgState_c_State15_Enter;
+extern MgPmf pmf_dMgState_c_State16_Enter;
+extern MgPmf pmf_dMgState_c_State17_Enter;
+extern MgPmf pmf_dMgState_c_State18_Enter;
+extern MgPmf pmf_dMgState_c_State19_Enter;
 
 /* arm9 .data, the null pair. build/port/host-src/romdata.c defines it. */
 extern MgPmf data_02086b58;
@@ -376,47 +376,47 @@ extern MgPmf data_02086b58;
    rewrites: the twenty-three the state bodies install as the per-frame tick at
    the object's +0x08 and +0x10, the six more the tick bodies install one level
    further down, and the seven that belong to the OTHER dScMgBase_c object --
-   the one func_ov004_020b3278 fills and func_ov004_020b31b4 and _020b321c
+   the one Banner_Init fills and Banner_Draw and _020b321c
    dispatch. Every one was read out of extracted/overlays/overlay_0004.bin at
    its own address with the overlay's own `load` relocation row confirming the
    code word and the second word reading zero
    (runs/link100/out/MGWRITER/rom_gate1.txt). */
-extern MgPmf data_ov004_020bc17c;
-extern MgPmf data_ov004_020bc1b4;
-extern MgPmf data_ov004_020bc1ec;
-extern MgPmf data_ov004_020bc20c;
-extern MgPmf data_ov004_020bc224;
-extern MgPmf data_ov004_020bc254;
-extern MgPmf data_ov004_020bc274;
-extern MgPmf data_ov004_020bc8bc;
-extern MgPmf data_ov004_020bc8c4;
-extern MgPmf data_ov004_020bc8cc;
-extern MgPmf data_ov004_020bc8d4;
-extern MgPmf data_ov004_020bc8dc;
-extern MgPmf data_ov004_020bc8e4;
-extern MgPmf data_ov004_020bc8ec;
-extern MgPmf data_ov004_020bc8f4;
-extern MgPmf data_ov004_020bc8fc;
-extern MgPmf data_ov004_020bc904;
-extern MgPmf data_ov004_020bc90c;
-extern MgPmf data_ov004_020bc914;
-extern MgPmf data_ov004_020bc91c;
-extern MgPmf data_ov004_020bc924;
-extern MgPmf data_ov004_020bc93c;
-extern MgPmf data_ov004_020bc98c;
-extern MgPmf data_ov004_020bc994;
-extern MgPmf data_ov004_020bc9ac;
-extern MgPmf data_ov004_020bc9b4;
-extern MgPmf data_ov004_020bc9c4;
-extern MgPmf data_ov004_020bc9cc;
-extern MgPmf data_ov004_020bc9e4;
-extern MgPmf data_ov004_020bc9fc;
-extern MgPmf data_ov004_020bca04;
-extern MgPmf data_ov004_020bca14;
-extern MgPmf data_ov004_020bca1c;
-extern MgPmf data_ov004_020bca24;
-extern MgPmf data_ov004_020bca2c;
-extern MgPmf data_ov004_020bca34;
+extern MgPmf pmf_Banner_UpdateWave;
+extern MgPmf pmf_Banner_DrawSpin;
+extern MgPmf pmf_Banner_DrawWave;
+extern MgPmf pmf_Banner_UpdateSpin;
+extern MgPmf pmf_Banner_UpdatePressed;
+extern MgPmf pmf_Banner_UpdatePressed_2;
+extern MgPmf pmf_Banner_DrawPressed;
+extern MgPmf pmf_dMgState_c_State01_Update;
+extern MgPmf pmf_dMgState_c_State02_Update;
+extern MgPmf pmf_dMgState_c_DrawScore;
+extern MgPmf pmf_dMgState_c_State03_Update;
+extern MgPmf pmf_dMgState_c_UpdateRetryFadeOut;
+extern MgPmf pmf_dMgState_c_State16_Update;
+extern MgPmf pmf_dMgState_c_State04_Update;
+extern MgPmf pmf_dMgState_c_State05_Update;
+extern MgPmf pmf_dMgState_c_UpdateRetryPrompt;
+extern MgPmf pmf_dMgState_c_UpdateGameOverToMenu;
+extern MgPmf pmf_dMgState_c_State06_Update;
+extern MgPmf pmf_dMgState_c_UpdateRetryFadeOut_2;
+extern MgPmf pmf_dMgState_c_DrawRecordTable;
+extern MgPmf pmf_dMgState_c_State18_Update;
+extern MgPmf pmf_dMgState_c_UpdateAfterHidden;
+extern MgPmf pmf_dMgState_c_UpdateGameOverToMenu_2;
+extern MgPmf pmf_dMgState_c_UpdateFadeThenResume;
+extern MgPmf pmf_dMgState_c_UpdateWaitThenResume;
+extern MgPmf pmf_dMgState_c_UpdateWaitThenResume_2;
+extern MgPmf pmf_dMgState_c_DrawScoreDigits;
+extern MgPmf pmf_dMgState_c_State17_Update;
+extern MgPmf pmf_dMgState_c_State09_Update;
+extern MgPmf pmf_dMgState_c_State10_Update;
+extern MgPmf pmf_dMgState_c_UpdateFadeThenResume_2;
+extern MgPmf pmf_dMgState_c_UpdateRetryFadeOut_3;
+extern MgPmf pmf_dMgState_c_State00_Update;
+extern MgPmf pmf_dMgState_c_State11_Update;
+extern MgPmf pmf_dMgState_c_DrawRecordTable_2;
+extern MgPmf pmf_dMgState_c_State19_Update;
 
 /* ---- the twenty state bodies the table holds --------------------------- */
 /* Every one of them is reached ONLY through the switch below, so before this
@@ -426,34 +426,34 @@ extern MgPmf data_ov004_020bca34;
    extern "C" declarations that stood here are retired. */
 
 /* ---- the twenty per-frame tick bodies the state bodies install ---------- */
-/* func_ov004_020b6948 and func_ov004_020b6ad8 REALLY DO TAKE NO ARGUMENT: both
+/* DrawScoreDigits and DrawScore REALLY DO TAKE NO ARGUMENT: both
    src bodies read only globals and the ROM slots that hold them are the same
    zero-argument slots as the rest, so calling them (void) is exact rather than
    a dropped pointer. This is the benign ARM ride-through
-   unmatched/MgCurling_StateDispatch.cpp documents for func_ov006_020e2eb8, not
+   unmatched/MgCurling_StateDispatch.cpp documents for Scene_Idle, not
    the scene_actor_faces defect class: there is no callee behind them that
    wanted a pointer. Checked body by body against the disassembly, not assumed
    from the declaration. */
-void _ZN10dMgState_c19func_ov004_020b68e8Ev(int *c);
-void _ZN10dMgState_c19func_ov004_020b6948Ev(void);
-void _ZN10dMgState_c19func_ov004_020b6ad8Ev(void);
-void _ZN10dMgState_c19func_ov004_020b6b40Ev(void *c);
-void _ZN10dMgState_c19func_ov004_020b6c9cEv(void *c);
-void _ZN10dMgState_c19func_ov004_020b6ddcEv(char *c);
-void _ZN10dMgState_c19func_ov004_020b6f88Ev(char *c);
-void _ZN10dMgState_c19func_ov004_020b7124Ev(char *c);
-void _ZN10dMgState_c19func_ov004_020b72d4Ev(char *c);
-void _ZN10dMgState_c19func_ov004_020b746cEv(char *c);
-void _ZN10dMgState_c19func_ov004_020b75e4Ev(char *c);
-void _ZN10dMgState_c19func_ov004_020b77b4Ev(char *c);
-void _ZN10dMgState_c19func_ov004_020b78f4Ev(char *c);
-void _ZN10dMgState_c19func_ov004_020b7b20Ev(char *c);
-void _ZN10dMgState_c19func_ov004_020b7cd0Ev(char *c);
-void _ZN10dMgState_c19func_ov004_020b7eacEv(char *c);
-void _ZN10dMgState_c19func_ov004_020b8098Ev(char *c);
-void _ZN10dMgState_c19func_ov004_020b8284Ev(char *c);
-void _ZN10dMgState_c19func_ov004_020b841cEv(char *c);
-void _ZN10dMgState_c19func_ov004_020b8560Ev(char *c);
+void _ZN10dMgState_c15DrawRecordTableEv(int *c);
+void _ZN10dMgState_c15DrawScoreDigitsEv(void);
+void _ZN10dMgState_c9DrawScoreEv(void);
+void _ZN10dMgState_c14State19_UpdateEv(void *c);
+void _ZN10dMgState_c14State18_UpdateEv(void *c);
+void _ZN10dMgState_c14State17_UpdateEv(char *c);
+void _ZN10dMgState_c14State16_UpdateEv(char *c);
+void _ZN10dMgState_c20UpdateFadeThenResumeEv(char *c);
+void _ZN10dMgState_c17UpdateRetryPromptEv(char *c);
+void _ZN10dMgState_c14State11_UpdateEv(char *c);
+void _ZN10dMgState_c14State10_UpdateEv(char *c);
+void _ZN10dMgState_c14State09_UpdateEv(char *c);
+void _ZN10dMgState_c20UpdateWaitThenResumeEv(char *c);
+void _ZN10dMgState_c14State06_UpdateEv(char *c);
+void _ZN10dMgState_c14State05_UpdateEv(char *c);
+void _ZN10dMgState_c14State04_UpdateEv(char *c);
+void _ZN10dMgState_c14State03_UpdateEv(char *c);
+void _ZN10dMgState_c14State02_UpdateEv(char *c);
+void _ZN10dMgState_c14State01_UpdateEv(char *c);
+void _ZN10dMgState_c14State00_UpdateEv(char *c);
 
 /* ---- group C: the rest of the ov004 member-pointer universe -------------- */
 /* THE CLOSURE, AND HOW IT WAS BOUNDED RATHER THAN GUESSED AT. Routing the forty
@@ -464,22 +464,22 @@ void _ZN10dMgState_c19func_ov004_020b8560Ev(char *c);
    Section 8 of the header is the derivation, the bound and the artifact. These
    sixteen are the remainder of the sixty. Each takes one pointer, its src TU's
    own spelling, and none needed a host copy. */
-void func_ov004_020b369c(char *c);
-void func_ov004_020b37c4(char *c);
-void func_ov004_020b38ac(char *c);
-void func_ov004_020b3978(char *c);
-void func_ov004_020b410c(char *c);
-void func_ov004_020b4214(char *c);
-void func_ov004_020b4aa4(char *c);
-void func_ov004_020b4c30(char *c);
-void func_ov004_020b4d50(char *c);
-void func_ov004_020b4dfc(char *c);
-void func_ov004_020b4f44(char *c);
-void func_ov004_020b4ff0(char *c);
-void func_ov004_020b5288(char *c);
-void _ZN10dMgState_c19func_ov004_020b7a18Ev(char *c);
-void _ZN10dMgState_c19func_ov004_020b7c04Ev(char *c);
-void _ZN10dMgState_c19func_ov004_020b7fecEv(char *c);
+void Banner_DrawSpin(char *c);
+void Banner_UpdateSpin(char *c);
+void Banner_DrawWave(char *c);
+void Banner_UpdateWave(char *c);
+void Banner_DrawPressed(char *c);
+void Banner_UpdatePressed(char *c);
+void Coin_FlyToCounter(char *c);
+void Coin_MoveThenRefund(char *c);
+void Coin_RiseSpent(char *c);
+void Coin_MoveThenRiseSpent(char *c);
+void Coin_Rise(char *c);
+void Coin_MoveThenRise(char *c);
+void Coin_Move(char *c);
+void _ZN10dMgState_c17UpdateAfterHiddenEv(char *c);
+void _ZN10dMgState_c20UpdateGameOverToMenuEv(char *c);
+void _ZN10dMgState_c18UpdateRetryFadeOutEv(char *c);
 
 /* the boot installer that puts host bodies in the three .bss framework tables,
    called by the seat at the bottom of this file so there is one entry point for
@@ -536,13 +536,13 @@ static void setter_bad_index(int idx)
    nothing in between.
 
    GROUP C, the sixteen of the closure. NINE of them reach an object field this
-   lane seats: six through func_ov004_020b39a4, _020b37f0 and _020b422c into
+   lane seats: six through Banner_StartWaveBurst, _020b37f0 and _020b422c into
    the 020b3278 object at +0x00 and +0x08, and three (0x020b7a18, 0x020b7c04,
-   0x020b7fec) through func_ov004_020b7b20, _020b7a18, _020b7cd0, _020b72d4,
+   0x020b7fec) through State06_Update, _020b7a18, _020b7cd0, _020b72d4,
    _020b75e4 and _020b8098 into the setter's own object at +0x08. The other
    SEVEN (0x020b4aa4, _020b4c30, _020b4d50, _020b4dfc, _020b4f44, _020b4ff0,
    _020b5288) belong to dScMgMemory2_c, whose pairs live in the
-   data_ov004_020bc7d4 block and reach func_ov004_020b52fc, and
+   gMgCoinsShowDelta block and reach Coin_Update, and
    port/unmatched/MgMemory2_FieldPmf.cpp's own mem2_field_try switch has routed
    all seven since it was written -- it tries them BEFORE handing anything on to
    the framework, so this arm never saw them. That class is the next gate's
@@ -646,35 +646,35 @@ extern "C" unsigned port_mg_base_setter_index_hits(unsigned *out, unsigned n)
    the adjustment and NOTHING pushed. Group A does not get a wrapper at all: the
    setter dispatches those itself, three lines above, with a plain cdecl call
    that pushes the receiver, and counts there. */
-static void bw_020b369c(void *c) { ++g_base_closure_hits; func_ov004_020b369c((char *)c); }
-static void bw_020b37c4(void *c) { ++g_base_closure_hits; func_ov004_020b37c4((char *)c); }
-static void bw_020b38ac(void *c) { ++g_base_closure_hits; func_ov004_020b38ac((char *)c); }
-static void bw_020b3978(void *c) { ++g_base_closure_hits; func_ov004_020b3978((char *)c); }
-static void bw_020b410c(void *c) { ++g_base_closure_hits; func_ov004_020b410c((char *)c); }
-static void bw_020b4214(void *c) { ++g_base_closure_hits; func_ov004_020b4214((char *)c); }
-static void __fastcall bwf_020b68e8(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b68e8Ev((int *)c); }
-static void __fastcall bwf_020b6948(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b6948Ev(); }
-static void __fastcall bwf_020b6ad8(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b6ad8Ev(); }
-static void __fastcall bwf_020b6b40(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b6b40Ev(c); }
-static void __fastcall bwf_020b6c9c(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b6c9cEv(c); }
-static void __fastcall bwf_020b6ddc(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b6ddcEv((char *)c); }
-static void __fastcall bwf_020b6f88(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b6f88Ev((char *)c); }
-static void __fastcall bwf_020b7124(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b7124Ev((char *)c); }
-static void __fastcall bwf_020b72d4(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b72d4Ev((char *)c); }
-static void __fastcall bwf_020b746c(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b746cEv((char *)c); }
-static void __fastcall bwf_020b75e4(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b75e4Ev((char *)c); }
-static void __fastcall bwf_020b77b4(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b77b4Ev((char *)c); }
-static void __fastcall bwf_020b78f4(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b78f4Ev((char *)c); }
-static void __fastcall bwf_020b7a18(void *c, void *) { ++g_base_closure_hits; _ZN10dMgState_c19func_ov004_020b7a18Ev((char *)c); }
-static void __fastcall bwf_020b7b20(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b7b20Ev((char *)c); }
-static void __fastcall bwf_020b7c04(void *c, void *) { ++g_base_closure_hits; _ZN10dMgState_c19func_ov004_020b7c04Ev((char *)c); }
-static void __fastcall bwf_020b7cd0(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b7cd0Ev((char *)c); }
-static void __fastcall bwf_020b7eac(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b7eacEv((char *)c); }
-static void __fastcall bwf_020b7fec(void *c, void *) { ++g_base_closure_hits; _ZN10dMgState_c19func_ov004_020b7fecEv((char *)c); }
-static void __fastcall bwf_020b8098(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b8098Ev((char *)c); }
-static void __fastcall bwf_020b8284(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b8284Ev((char *)c); }
-static void __fastcall bwf_020b841c(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b841cEv((char *)c); }
-static void __fastcall bwf_020b8560(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c19func_ov004_020b8560Ev((char *)c); }
+static void bw_020b369c(void *c) { ++g_base_closure_hits; Banner_DrawSpin((char *)c); }
+static void bw_020b37c4(void *c) { ++g_base_closure_hits; Banner_UpdateSpin((char *)c); }
+static void bw_020b38ac(void *c) { ++g_base_closure_hits; Banner_DrawWave((char *)c); }
+static void bw_020b3978(void *c) { ++g_base_closure_hits; Banner_UpdateWave((char *)c); }
+static void bw_020b410c(void *c) { ++g_base_closure_hits; Banner_DrawPressed((char *)c); }
+static void bw_020b4214(void *c) { ++g_base_closure_hits; Banner_UpdatePressed((char *)c); }
+static void __fastcall bwf_020b68e8(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c15DrawRecordTableEv((int *)c); }
+static void __fastcall bwf_020b6948(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c15DrawScoreDigitsEv(); }
+static void __fastcall bwf_020b6ad8(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c9DrawScoreEv(); }
+static void __fastcall bwf_020b6b40(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State19_UpdateEv(c); }
+static void __fastcall bwf_020b6c9c(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State18_UpdateEv(c); }
+static void __fastcall bwf_020b6ddc(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State17_UpdateEv((char *)c); }
+static void __fastcall bwf_020b6f88(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State16_UpdateEv((char *)c); }
+static void __fastcall bwf_020b7124(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c20UpdateFadeThenResumeEv((char *)c); }
+static void __fastcall bwf_020b72d4(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c17UpdateRetryPromptEv((char *)c); }
+static void __fastcall bwf_020b746c(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State11_UpdateEv((char *)c); }
+static void __fastcall bwf_020b75e4(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State10_UpdateEv((char *)c); }
+static void __fastcall bwf_020b77b4(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State09_UpdateEv((char *)c); }
+static void __fastcall bwf_020b78f4(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c20UpdateWaitThenResumeEv((char *)c); }
+static void __fastcall bwf_020b7a18(void *c, void *) { ++g_base_closure_hits; _ZN10dMgState_c17UpdateAfterHiddenEv((char *)c); }
+static void __fastcall bwf_020b7b20(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State06_UpdateEv((char *)c); }
+static void __fastcall bwf_020b7c04(void *c, void *) { ++g_base_closure_hits; _ZN10dMgState_c20UpdateGameOverToMenuEv((char *)c); }
+static void __fastcall bwf_020b7cd0(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State05_UpdateEv((char *)c); }
+static void __fastcall bwf_020b7eac(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State04_UpdateEv((char *)c); }
+static void __fastcall bwf_020b7fec(void *c, void *) { ++g_base_closure_hits; _ZN10dMgState_c18UpdateRetryFadeOutEv((char *)c); }
+static void __fastcall bwf_020b8098(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State03_UpdateEv((char *)c); }
+static void __fastcall bwf_020b8284(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State02_UpdateEv((char *)c); }
+static void __fastcall bwf_020b841c(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State01_UpdateEv((char *)c); }
+static void __fastcall bwf_020b8560(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State00_UpdateEv((char *)c); }
 
 typedef void (*SeatFn)(void *);
 
@@ -696,12 +696,12 @@ typedef void (*SeatFn)(void *);
    dScMgMemory2_c and are the next gate's.
 
    ONE OF THE FIFTY-SIX IS NOT AN INSTALL, and it is the one that would have
-   broken quietly. data_ov004_020bc254 is never copied into an object at all:
-   src/func_ov004_020b40c0.c COMPARES the object's own pair against it
+   broken quietly. pmf_Banner_UpdatePressed_2 is never copied into an object at all:
+   src/Banner_IsPressFinished.c COMPARES the object's own pair against it
    (`o[0] == d[0] && (o[1] == d[1] || o[0] == 0)`), which is an identity test on
    the code word. Seating the field without seating the sentinel would make that
    test answer false forever, silently, with no crash and no report. It holds
-   the same word as data_ov004_020bc224, which func_ov004_020b422c installs into
+   the same word as pmf_Banner_UpdatePressed, which Banner_Press installs into
    the same field, so both sides move together and the test answers what the
    cartridge answers. */
 /* One writer for both halves of the seat below. The row shape is the same in
@@ -734,8 +734,31 @@ static void mgbase_seat_rows(const SeatRow *rows, unsigned n)
    (runs/linkfull/out/PMFMG1/_ZN10dMgState_c8SetStateEi.asm), so each holds a
    zero-argument __fastcall face; the index in each face's name is the slot
    the ROM's table puts that pair in (section 4), and the face counts what the
-   retired host copy counted for it. data_ov004_020bc9a4 is section 6's veneer,
-   the ROM's own body again (src/func_ov004_020b7460.c takes the pointer). */
+   retired host copy counted for it. pmf_dMgState_c_State12_Enter is section 6's veneer,
+   the ROM's own body again (src/State12_Enter.c takes the pointer). */
+/* PORTDROP2: main renamed these (symbols.txt, by address); the macro below pastes the
+   old address-spelled name, so each is aliased to its new name here. */
+#define func_ov004_020b8688 State00_Enter
+#define func_ov004_020b853c State01_Enter
+#define func_ov004_020b83ac State02_Enter
+#define func_ov004_020b81f8 State03_Enter
+#define func_ov004_020b7f5c State04_Enter
+#define func_ov004_020b7e38 State05_Enter
+#define func_ov004_020b7b90 State06_Enter
+#define func_ov004_020b79b0 State07_Enter
+#define func_ov004_020b798c State08_Enter
+#define func_ov004_020b7854 State09_Enter
+#define func_ov004_020b7744 State10_Enter
+#define func_ov004_020b7594 State11_Enter
+#define func_ov004_020b7460 State12_Enter
+#define func_ov004_020b743c State13_Enter
+#define func_ov004_020b724c State14_Enter
+#define func_ov004_020b70b4 State15_Enter
+#define func_ov004_020b7020 State16_Enter
+#define func_ov004_020b6f14 State17_Enter
+#define func_ov004_020b6d6c State18_Enter
+#define func_ov004_020b6c10 State19_Enter
+
 #define SA_FACE(i, code)                                                           static void __fastcall sa_##i(void *c, void *)                                 {                                                                                  ++g_setter_calls;                                                              ++g_setter_idx[i];                                                             ++g_setter_dispatched;                                                         ++g_base_state_hits;                                                           ((dMgState_c *)c)->dMgState_c::func_ov004_##code();                                              }
 SA_FACE(0, 020b8688)
 SA_FACE(1, 020b853c)
@@ -764,26 +787,26 @@ SA_FACE(19, 020b6c10)
    EXTRN lines) while the ov004 mount and build/port/host-src/romdata.c define
    the plain C names. Nothing in the tree defines any of these LHS, so none can
    be silently defeated. */
-#pragma comment(linker, "/alternatename:?data_ov004_020bc974@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc974")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc96c@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc96c")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc964@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc964")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc95c@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc95c")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc954@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc954")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc94c@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc94c")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc944@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc944")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc92c@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc92c")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc934@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc934")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc97c@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc97c")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc984@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc984")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc99c@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc99c")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc9a4@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc9a4")
-#pragma comment(linker, "/alternatename:?data_ov004_020bca3c@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bca3c")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc9bc@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc9bc")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc9d4@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc9d4")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc9dc@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc9dc")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc9ec@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc9ec")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc9f4@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bc9f4")
-#pragma comment(linker, "/alternatename:?data_ov004_020bca0c@@3P8dMgState_c@@AEXXZQ1@=_data_ov004_020bca0c")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State00_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State00_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State01_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State01_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State02_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State02_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State03_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State03_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State04_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State04_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State05_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State05_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State06_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State06_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State07_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State07_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State08_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State08_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State09_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State09_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State10_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State10_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State11_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State11_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State12_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State12_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State13_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State13_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State14_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State14_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State15_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State15_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State16_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State16_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State17_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State17_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State18_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State18_Enter")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_State19_Enter@@3P8dMgState_c@@AEXXZQ1@=_pmf_dMgState_c_State19_Enter")
 #pragma comment(linker, "/alternatename:?data_02086b58@@3P8dMgState_c@@AEXXZQ1@=_data_02086b58")
 
 extern "C" void port_mg_base_writer_seat(void)
@@ -848,87 +871,87 @@ extern "C" void port_mg_base_writer_seat(void)
        dMgState_c has three members in the whole image, SetState, which writes
        +0x00, Behavior, which reads +0x08, and Render, which reads +0x10. The
        other seven land in the 020b3278 object (the header's group C:
-       func_ov004_020b37f0, _020b39a4 and _020b422c write them at +0x00 and
-       +0x08, and data_ov004_020bc254 is the sentinel func_ov004_020b40c0
+       Banner_StartSpin, _020b39a4 and _020b422c write them at +0x00 and
+       +0x08, and pmf_Banner_UpdatePressed_2 is the sentinel Banner_IsPressFinished
        compares against). That object's two readers are FLAT C dispatchers whose
        first stack argument IS the receiver, and both tail jump, so [esp+4]
        really does hold it:
 
-           _func_ov004_020b321c  +0x3  mov eax, [ebp+8] / +0xc  mov edx, [eax]
+           _Banner_Update  +0x3  mov eax, [ebp+8] / +0xc  mov edx, [eax]
                                  +0x12 mov ecx, [eax+4] / add ecx, eax
                                  +0x17 pop ebp / +0x18 jmp edx
-           _func_ov004_020b31b4  +0x3  mov eax, [ebp+8] / +0xc  mov edx, [eax+8]
+           _Banner_Draw  +0x3  mov eax, [ebp+8] / +0xc  mov edx, [eax+8]
                                  +0x13 mov ecx, [eax+0xc] / add ecx, eax
                                  +0x18 pop ebp / +0x19 jmp edx
 
        and ?BeforeBehavior@dScMgBase_c@@UAEHXZ+0xb6 reaches the second as
-       push edi; call _func_ov004_020b321c; add esp, 4. This is the BabyPenguin
+       push edi; call _Banner_Update; add esp, 4. This is the BabyPenguin
        case 00732a5ab left alone on purpose. */
     static const SeatRow seats_ecx[] = {
-    { &data_ov004_020bc8bc, "020bc8bc", 0x020b841cu, (SeatFn)bwf_020b841c },
-    { &data_ov004_020bc8c4, "020bc8c4", 0x020b8284u, (SeatFn)bwf_020b8284 },
-    { &data_ov004_020bc8cc, "020bc8cc", 0x020b6ad8u, (SeatFn)bwf_020b6ad8 },
-    { &data_ov004_020bc8d4, "020bc8d4", 0x020b8098u, (SeatFn)bwf_020b8098 },
-    { &data_ov004_020bc8dc, "020bc8dc", 0x020b7fecu, (SeatFn)bwf_020b7fec },
-    { &data_ov004_020bc8e4, "020bc8e4", 0x020b6f88u, (SeatFn)bwf_020b6f88 },
-    { &data_ov004_020bc8ec, "020bc8ec", 0x020b7eacu, (SeatFn)bwf_020b7eac },
-    { &data_ov004_020bc8f4, "020bc8f4", 0x020b7cd0u, (SeatFn)bwf_020b7cd0 },
-    { &data_ov004_020bc8fc, "020bc8fc", 0x020b72d4u, (SeatFn)bwf_020b72d4 },
-    { &data_ov004_020bc904, "020bc904", 0x020b7c04u, (SeatFn)bwf_020b7c04 },
-    { &data_ov004_020bc90c, "020bc90c", 0x020b7b20u, (SeatFn)bwf_020b7b20 },
-    { &data_ov004_020bc914, "020bc914", 0x020b7fecu, (SeatFn)bwf_020b7fec },
-    { &data_ov004_020bc91c, "020bc91c", 0x020b68e8u, (SeatFn)bwf_020b68e8 },
-    { &data_ov004_020bc924, "020bc924", 0x020b6c9cu, (SeatFn)bwf_020b6c9c },
-    { &data_ov004_020bc93c, "020bc93c", 0x020b7a18u, (SeatFn)bwf_020b7a18 },
-    { &data_ov004_020bc98c, "020bc98c", 0x020b7c04u, (SeatFn)bwf_020b7c04 },
-    { &data_ov004_020bc994, "020bc994", 0x020b7124u, (SeatFn)bwf_020b7124 },
-    { &data_ov004_020bc9ac, "020bc9ac", 0x020b78f4u, (SeatFn)bwf_020b78f4 },
-    { &data_ov004_020bc9b4, "020bc9b4", 0x020b78f4u, (SeatFn)bwf_020b78f4 },
-    { &data_ov004_020bc9c4, "020bc9c4", 0x020b6948u, (SeatFn)bwf_020b6948 },
-    { &data_ov004_020bc9cc, "020bc9cc", 0x020b6ddcu, (SeatFn)bwf_020b6ddc },
-    { &data_ov004_020bc9e4, "020bc9e4", 0x020b77b4u, (SeatFn)bwf_020b77b4 },
-    { &data_ov004_020bc9fc, "020bc9fc", 0x020b75e4u, (SeatFn)bwf_020b75e4 },
-    { &data_ov004_020bca04, "020bca04", 0x020b7124u, (SeatFn)bwf_020b7124 },
-    { &data_ov004_020bca14, "020bca14", 0x020b7fecu, (SeatFn)bwf_020b7fec },
-    { &data_ov004_020bca1c, "020bca1c", 0x020b8560u, (SeatFn)bwf_020b8560 },
-    { &data_ov004_020bca24, "020bca24", 0x020b746cu, (SeatFn)bwf_020b746c },
-    { &data_ov004_020bca2c, "020bca2c", 0x020b68e8u, (SeatFn)bwf_020b68e8 },
-    { &data_ov004_020bca34, "020bca34", 0x020b6b40u, (SeatFn)bwf_020b6b40 },
+    { &pmf_dMgState_c_State01_Update, "020bc8bc", 0x020b841cu, (SeatFn)bwf_020b841c },
+    { &pmf_dMgState_c_State02_Update, "020bc8c4", 0x020b8284u, (SeatFn)bwf_020b8284 },
+    { &pmf_dMgState_c_DrawScore, "020bc8cc", 0x020b6ad8u, (SeatFn)bwf_020b6ad8 },
+    { &pmf_dMgState_c_State03_Update, "020bc8d4", 0x020b8098u, (SeatFn)bwf_020b8098 },
+    { &pmf_dMgState_c_UpdateRetryFadeOut, "020bc8dc", 0x020b7fecu, (SeatFn)bwf_020b7fec },
+    { &pmf_dMgState_c_State16_Update, "020bc8e4", 0x020b6f88u, (SeatFn)bwf_020b6f88 },
+    { &pmf_dMgState_c_State04_Update, "020bc8ec", 0x020b7eacu, (SeatFn)bwf_020b7eac },
+    { &pmf_dMgState_c_State05_Update, "020bc8f4", 0x020b7cd0u, (SeatFn)bwf_020b7cd0 },
+    { &pmf_dMgState_c_UpdateRetryPrompt, "020bc8fc", 0x020b72d4u, (SeatFn)bwf_020b72d4 },
+    { &pmf_dMgState_c_UpdateGameOverToMenu, "020bc904", 0x020b7c04u, (SeatFn)bwf_020b7c04 },
+    { &pmf_dMgState_c_State06_Update, "020bc90c", 0x020b7b20u, (SeatFn)bwf_020b7b20 },
+    { &pmf_dMgState_c_UpdateRetryFadeOut_2, "020bc914", 0x020b7fecu, (SeatFn)bwf_020b7fec },
+    { &pmf_dMgState_c_DrawRecordTable, "020bc91c", 0x020b68e8u, (SeatFn)bwf_020b68e8 },
+    { &pmf_dMgState_c_State18_Update, "020bc924", 0x020b6c9cu, (SeatFn)bwf_020b6c9c },
+    { &pmf_dMgState_c_UpdateAfterHidden, "020bc93c", 0x020b7a18u, (SeatFn)bwf_020b7a18 },
+    { &pmf_dMgState_c_UpdateGameOverToMenu_2, "020bc98c", 0x020b7c04u, (SeatFn)bwf_020b7c04 },
+    { &pmf_dMgState_c_UpdateFadeThenResume, "020bc994", 0x020b7124u, (SeatFn)bwf_020b7124 },
+    { &pmf_dMgState_c_UpdateWaitThenResume, "020bc9ac", 0x020b78f4u, (SeatFn)bwf_020b78f4 },
+    { &pmf_dMgState_c_UpdateWaitThenResume_2, "020bc9b4", 0x020b78f4u, (SeatFn)bwf_020b78f4 },
+    { &pmf_dMgState_c_DrawScoreDigits, "020bc9c4", 0x020b6948u, (SeatFn)bwf_020b6948 },
+    { &pmf_dMgState_c_State17_Update, "020bc9cc", 0x020b6ddcu, (SeatFn)bwf_020b6ddc },
+    { &pmf_dMgState_c_State09_Update, "020bc9e4", 0x020b77b4u, (SeatFn)bwf_020b77b4 },
+    { &pmf_dMgState_c_State10_Update, "020bc9fc", 0x020b75e4u, (SeatFn)bwf_020b75e4 },
+    { &pmf_dMgState_c_UpdateFadeThenResume_2, "020bca04", 0x020b7124u, (SeatFn)bwf_020b7124 },
+    { &pmf_dMgState_c_UpdateRetryFadeOut_3, "020bca14", 0x020b7fecu, (SeatFn)bwf_020b7fec },
+    { &pmf_dMgState_c_State00_Update, "020bca1c", 0x020b8560u, (SeatFn)bwf_020b8560 },
+    { &pmf_dMgState_c_State11_Update, "020bca24", 0x020b746cu, (SeatFn)bwf_020b746c },
+    { &pmf_dMgState_c_DrawRecordTable_2, "020bca2c", 0x020b68e8u, (SeatFn)bwf_020b68e8 },
+    { &pmf_dMgState_c_State19_Update, "020bca34", 0x020b6b40u, (SeatFn)bwf_020b6b40 },
     };
 
     /* run linkfull lane PMFMG1: GROUP A, the matched setter's twenty, now
        __fastcall faces (the block above this function). */
     static const SeatRow seats_ecx_a[] = {
-    { &data_ov004_020bc974, "020bc974", 0x020b8688u, (SeatFn)sa_0 },
-    { &data_ov004_020bc96c, "020bc96c", 0x020b853cu, (SeatFn)sa_1 },
-    { &data_ov004_020bc964, "020bc964", 0x020b83acu, (SeatFn)sa_2 },
-    { &data_ov004_020bc95c, "020bc95c", 0x020b81f8u, (SeatFn)sa_3 },
-    { &data_ov004_020bc954, "020bc954", 0x020b7f5cu, (SeatFn)sa_4 },
-    { &data_ov004_020bc94c, "020bc94c", 0x020b7e38u, (SeatFn)sa_5 },
-    { &data_ov004_020bc944, "020bc944", 0x020b7b90u, (SeatFn)sa_6 },
-    { &data_ov004_020bc92c, "020bc92c", 0x020b79b0u, (SeatFn)sa_7 },
-    { &data_ov004_020bc934, "020bc934", 0x020b798cu, (SeatFn)sa_8 },
-    { &data_ov004_020bc97c, "020bc97c", 0x020b7854u, (SeatFn)sa_9 },
-    { &data_ov004_020bc984, "020bc984", 0x020b7744u, (SeatFn)sa_10 },
-    { &data_ov004_020bc99c, "020bc99c", 0x020b7594u, (SeatFn)sa_11 },
-    { &data_ov004_020bc9a4, "020bc9a4", 0x020b7460u, (SeatFn)sa_12 },
-    { &data_ov004_020bca3c, "020bca3c", 0x020b743cu, (SeatFn)sa_13 },
-    { &data_ov004_020bc9bc, "020bc9bc", 0x020b724cu, (SeatFn)sa_14 },
-    { &data_ov004_020bc9d4, "020bc9d4", 0x020b70b4u, (SeatFn)sa_15 },
-    { &data_ov004_020bc9dc, "020bc9dc", 0x020b7020u, (SeatFn)sa_16 },
-    { &data_ov004_020bc9ec, "020bc9ec", 0x020b6f14u, (SeatFn)sa_17 },
-    { &data_ov004_020bc9f4, "020bc9f4", 0x020b6d6cu, (SeatFn)sa_18 },
-    { &data_ov004_020bca0c, "020bca0c", 0x020b6c10u, (SeatFn)sa_19 },
+    { &pmf_dMgState_c_State00_Enter, "020bc974", 0x020b8688u, (SeatFn)sa_0 },
+    { &pmf_dMgState_c_State01_Enter, "020bc96c", 0x020b853cu, (SeatFn)sa_1 },
+    { &pmf_dMgState_c_State02_Enter, "020bc964", 0x020b83acu, (SeatFn)sa_2 },
+    { &pmf_dMgState_c_State03_Enter, "020bc95c", 0x020b81f8u, (SeatFn)sa_3 },
+    { &pmf_dMgState_c_State04_Enter, "020bc954", 0x020b7f5cu, (SeatFn)sa_4 },
+    { &pmf_dMgState_c_State05_Enter, "020bc94c", 0x020b7e38u, (SeatFn)sa_5 },
+    { &pmf_dMgState_c_State06_Enter, "020bc944", 0x020b7b90u, (SeatFn)sa_6 },
+    { &pmf_dMgState_c_State07_Enter, "020bc92c", 0x020b79b0u, (SeatFn)sa_7 },
+    { &pmf_dMgState_c_State08_Enter, "020bc934", 0x020b798cu, (SeatFn)sa_8 },
+    { &pmf_dMgState_c_State09_Enter, "020bc97c", 0x020b7854u, (SeatFn)sa_9 },
+    { &pmf_dMgState_c_State10_Enter, "020bc984", 0x020b7744u, (SeatFn)sa_10 },
+    { &pmf_dMgState_c_State11_Enter, "020bc99c", 0x020b7594u, (SeatFn)sa_11 },
+    { &pmf_dMgState_c_State12_Enter, "020bc9a4", 0x020b7460u, (SeatFn)sa_12 },
+    { &pmf_dMgState_c_State13_Enter, "020bca3c", 0x020b743cu, (SeatFn)sa_13 },
+    { &pmf_dMgState_c_State14_Enter, "020bc9bc", 0x020b724cu, (SeatFn)sa_14 },
+    { &pmf_dMgState_c_State15_Enter, "020bc9d4", 0x020b70b4u, (SeatFn)sa_15 },
+    { &pmf_dMgState_c_State16_Enter, "020bc9dc", 0x020b7020u, (SeatFn)sa_16 },
+    { &pmf_dMgState_c_State17_Enter, "020bc9ec", 0x020b6f14u, (SeatFn)sa_17 },
+    { &pmf_dMgState_c_State18_Enter, "020bc9f4", 0x020b6d6cu, (SeatFn)sa_18 },
+    { &pmf_dMgState_c_State19_Enter, "020bca0c", 0x020b6c10u, (SeatFn)sa_19 },
     };
 
     static const SeatRow seats_cdecl[] = {
-    { &data_ov004_020bc17c, "020bc17c", 0x020b3978u, (SeatFn)bw_020b3978 },
-    { &data_ov004_020bc1b4, "020bc1b4", 0x020b369cu, (SeatFn)bw_020b369c },
-    { &data_ov004_020bc1ec, "020bc1ec", 0x020b38acu, (SeatFn)bw_020b38ac },
-    { &data_ov004_020bc20c, "020bc20c", 0x020b37c4u, (SeatFn)bw_020b37c4 },
-    { &data_ov004_020bc224, "020bc224", 0x020b4214u, (SeatFn)bw_020b4214 },
-    { &data_ov004_020bc254, "020bc254", 0x020b4214u, (SeatFn)bw_020b4214 },
-    { &data_ov004_020bc274, "020bc274", 0x020b410cu, (SeatFn)bw_020b410c },
+    { &pmf_Banner_UpdateWave, "020bc17c", 0x020b3978u, (SeatFn)bw_020b3978 },
+    { &pmf_Banner_DrawSpin, "020bc1b4", 0x020b369cu, (SeatFn)bw_020b369c },
+    { &pmf_Banner_DrawWave, "020bc1ec", 0x020b38acu, (SeatFn)bw_020b38ac },
+    { &pmf_Banner_UpdateSpin, "020bc20c", 0x020b37c4u, (SeatFn)bw_020b37c4 },
+    { &pmf_Banner_UpdatePressed, "020bc224", 0x020b4214u, (SeatFn)bw_020b4214 },
+    { &pmf_Banner_UpdatePressed_2, "020bc254", 0x020b4214u, (SeatFn)bw_020b4214 },
+    { &pmf_Banner_DrawPressed, "020bc274", 0x020b410cu, (SeatFn)bw_020b410c },
     };
 
     mgbase_seat_rows(seats_ecx, sizeof seats_ecx / sizeof seats_ecx[0]);

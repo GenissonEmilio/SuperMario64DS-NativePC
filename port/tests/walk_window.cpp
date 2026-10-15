@@ -417,6 +417,7 @@ extern "C" void host_menu_cursor_sound_flush(void);   /* hal/menu_compose.cpp: o
 #include "hal/char_registry.h"    /* CHARSLOT1: custom characters (costumes on the four) */
 #include "hal/char_save.h"        /* CHARSAVE1: the pick survives quitting (save/characters.json) */
 #include "hal/char_door.h"        /* CHARDOOR1: the Rec Room white star door picks the character */
+#include "hal/char_strip.h"       /* PRECOURSE1: the character strip on the star select */
 #include "hal/pcore.h"            /* PCORE1: P-core / throttling opt-out */
 #include "hal/settings_live.h"   /* run menu1 SETLIVE1: live, saved settings */
 #include "hal/settings_page.h"   /* run menu1 SETMENU1: the in-game settings page */
@@ -437,6 +438,7 @@ extern "C" void host_menu_cursor_sound_flush(void);   /* hal/menu_compose.cpp: o
 #include "hal/gpu_present.h"      /* run hd2 lane GPU1: the optional D3D11 present */
 #include "hal/presenter.h"        /* run hunt8 lane PRESENTER1: the presenter thread's clock */
 #include "hal/screen_gap.h"       /* run hunt8 lane SCENEINTERP1: the stacked layout, read live */
+#include "hal/pad_pointer.h"      /* run hunt8 lane PADMENUS1: the pad pointer (a controller driven stylus) */
 #include "hal/gpu_raster.h"       /* run hd2 lane GPU2: the optional D3D11 renderer */
 #include "hal/gpu_device.h"       /* the shared device, and the card's own clock */
 
@@ -544,19 +546,19 @@ extern "C" {
 extern char dsstate_lo, dsstate_hi;
 void *_ZN6PlayerC1Ev(void *self);
 /* Player::InitResources' own character-propagation helper: +0x6d9 forward
-   into the swap pair at +0x6dc/+0x6dd (src/actors/Player.cpp) */
+   into the swap pair at +0x6dc/+0x6dd (src/game/player/Player.cpp) */
 void _ZN6Player19func_ov002_020beabcEv(void *p);
-void *_ZN4Heap13SetupRootHeapEv(void);
+void *_ZN5mHeap6Heap_t13SetupRootHeapEv(void);
 /* the ROM's entry into the above: clears the OS globals word, tail-calls it.
-   Seated from src/_ZN4Heap18InitializeRootHeapEv.cpp; the C name reaches the
+   Seated from src/engine/heap/Heap.cpp; the C name reaches the
    matched TU's static member through an /alternatename in hal/cxx_aliases.cpp,
    which is ABI-legal here because a static member is __cdecl like this
    declaration. See the call site for why the boot guard moved to
    data_020a0ea0. */
-void _ZN4Heap18InitializeRootHeapEv(void);
+void _ZN5mHeap6Heap_t18InitializeRootHeapEv(void);
 /* the ROM's own game-heap factory, off the main.c boot spine -- see the call
    site below for the two arguments and where they come from */
-void _ZN4Heap18InitializeGameHeapEjPS_(unsigned size, void *root);
+void _ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_(unsigned size, void *root);
 /* run link100 lane BOOT: the rest of the ROM's boot chain around those two
    heap lines. This main() is the port's stand-in for the ROM's Entry and
    main(), and the two heap calls above were the only two steps of that chain
@@ -784,7 +786,7 @@ int _ZN6Player11ChangeStateERNS_5StateE(void *self, void *st);
    own crush entry point, Player::Unk_020c6a10 (ov002 0x020c6a10), the exact
    function the crushers call -- ov073 0x02120284 with 1, ov074 0x02120d74 with
    2, ov078 0x021240a0 with 1 (src/func_ov073_021200e0.c:73,
-   src/actors/Goomboss.cpp:73 and src/actors/daBombking_c.cpp:107). It runs the
+   src/actors/Goomboss.cpp:73 and src/game/actors/d_a_bombking.cpp:107). It runs the
    ROM's own three gates (mClsnFlags & 1, i.e. on the ground; not already in
    ST_SQUISH; func_ov002_020d82f0), then sets mScaleY = 0x100 and holds
    ST_SQUISH for 30 frames. A refusal returns 0 and is logged, so "the probe
@@ -6329,6 +6331,10 @@ static const char *const PORT_RELAUNCH_CLEAR[] = {
  * is left to its own default -- a level is inset unless somebody says
  * otherwise, and a forced SM64DS_DUAL_SCREEN carried over from the minigame
  * that launched this process would be exactly that somebody. */
+/* PRECOURSE1: the star select's restart at the act hands the child the entrance and the act the course is entered with (the debug level row's own
+   knobs, SM64DS_ENTRANCE and SM64DS_STAR_FILTER); SM64DS_STARSEL_RESUME marks the child so that its own later restarts clear them again */
+static const char *g_relaunch_entrance;
+static const char *g_relaunch_act;
 static int port_menu_relaunch(int scene_id, int level_id)
 {
     char exe[MAX_PATH];
@@ -6351,6 +6357,15 @@ static int port_menu_relaunch(int scene_id, int level_id)
        back into VS, set only by the VS rows' own launcher below */
     SetEnvironmentVariableA("SM64DS_VS_MAP", 0);
     SetEnvironmentVariableA("SM64DS_VS_MODE", 0);
+    if (g_relaunch_entrance) {
+        SetEnvironmentVariableA("SM64DS_ENTRANCE", g_relaunch_entrance);
+        SetEnvironmentVariableA("SM64DS_STAR_FILTER", g_relaunch_act);
+        SetEnvironmentVariableA("SM64DS_STARSEL_RESUME", "1");
+    } else if (getenv("SM64DS_STARSEL_RESUME")) {
+        SetEnvironmentVariableA("SM64DS_ENTRANCE", 0);
+        SetEnvironmentVariableA("SM64DS_STAR_FILTER", 0);
+        SetEnvironmentVariableA("SM64DS_STARSEL_RESUME", 0);
+    }
     if (scene_id >= 0) {
         snprintf(sid, sizeof sid, "%d", scene_id);
         SetEnvironmentVariableA("SM64DS_SCENE", sid);
@@ -7256,6 +7271,85 @@ static int cd_frame(int pad_live, const XPad *pad)
     return 1;
 }
 
+/* ---- THE STAR SELECT'S CHARACTER STRIP (run hunt8, lane PRECOURSE1) ----------------------------------------------------------
+   hal/char_strip.cpp is the strip (the list, the pages, the cursor, the pointer); this is its seat in the two frame loops. It does not hold the
+   game still: the star select goes on running under it. It reads the devices behind the same gates the picker does and answers which DS key bits
+   the ROM must not see this frame (g_cs_hide, applied where PadData is written, so a press of the strip never also moves a star or starts the act).
+   A pick is applied here: the ROM character with no costume active is the in-place change the debug menu's row makes between two courses (the save
+   byte and data_02092128, the pair StartFile writes); a change of SKIN is remembered and the course is started again in a new process at the act
+   (starsel_finish_hook, called by hal/level_change.cpp when the star select is finished). */
+static unsigned g_cs_hide;
+static void cs_apply_pick(int sel)
+{
+    const int sk = chr_skin(sel);
+    g_character_pending = chr_base(sel);
+    character_set_pending(g_character_pending);
+    data_02092128[0] = (unsigned char)g_character_pending;
+    port_char_save_record(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "", g_character_pending);
+    if (sk != port_char_active()) {
+        port_char_strip_set_pending(sel);
+        fprintf(stderr, "[strip] %s: the base %s is set; its skin (%s) is a restart at the act\n", chr_label(sel), CHAR_NAME[g_character_pending & 3], sk >= 0 ? port_char_key(sk) : "plain");
+    } else {
+        port_char_strip_set_pending(-1);
+        fprintf(stderr, "[strip] %s: set in place for the course that starts next (save byte and data_02092128 = %d)\n", chr_label(sel), g_character_pending & 3);
+    }
+}
+
+/* hal/level_change.cpp calls this when the star select is finished (the act is chosen and its fade is done). A pick whose SKIN differs from the one this
+   process runs cannot be applied here (the file layer is boot-latched), so the course is started again in a new process: the same course, entrance
+   and act, the pick's base character and skin (the white door's restart, at the star select). Returns 0 when there is nothing to do; on a restart the
+   child is up and this process ends here. */
+extern "C" int (*port_starsel_finish_hook)(int level, int entrance, int act);
+static int starsel_finish_hook(int level, int entrance, int act)
+{
+    const int sel = port_char_strip_skin_pending();
+    if (sel < 0 || chr_skin(sel) == port_char_active()) return 0;
+    const int sk = chr_skin(sel);
+    char bs[8], en[16], ac[16];
+    snprintf(bs, sizeof bs, "%d", chr_base(sel));
+    snprintf(en, sizeof en, "%d", entrance);
+    snprintf(ac, sizeof ac, "%d", act);
+    fprintf(stderr, "[strip] the act is chosen: course %d (entrance %d, act %d) restarts as %s (SM64DS_CHARACTER=%s SM64DS_CHAR_SKIN=%s)\n", level, entrance, act, chr_label(sel), bs, sk >= 0 ? port_char_key(sk) : "(none)");
+    if (getenv("SM64DS_CHAR_RELAUNCH_DRY")) { fprintf(stderr, "[strip] SM64DS_CHAR_RELAUNCH_DRY: not relaunching\n"); return 0; }
+    SetEnvironmentVariableA("SM64DS_HOST_KEY", 0);
+    SetEnvironmentVariableA("SM64DS_CHARACTER", bs);
+    port_char_save_record(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "", chr_base(sel));
+    port_char_save_child_env(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "");
+    fprintf(stderr, "[strip] saved the open file before the restart: %d\n", _ZN8SaveData15SaveCurrentFileEv());
+    g_relaunch_entrance = en;
+    g_relaunch_act = ac;
+    const int ok = port_menu_relaunch(-1, level);
+    g_relaunch_entrance = g_relaunch_act = 0;
+    if (!ok) { fprintf(stderr, "[strip] could not start the course again (win32 %lu); it starts here\n", (unsigned long)GetLastError()); return 0; }
+    fflush(stderr);
+    ExitProcess(0);
+    return 1;
+}
+static const int starsel_finish_seated = (port_starsel_finish_hook = starsel_finish_hook, 1);
+
+static void cs_frame(int pad_live, const XPad *pad)
+{
+    g_cs_hide = 0;
+    if (menu_on) return;
+    if (!hal_menu_starsel_up()) { port_char_strip_idle(); return; }        /* nothing but a scene-id compare outside the star select */
+    SpInput in;
+    memset(&in, 0, sizeof in);
+    sp_read_devices(in, pad_live, pad);
+    in.wheel = 0;
+    {   /* a DS stylus tap (SM64DS_CLICK_TEST / SM64DS_HOST_CLICK, the path a pen on a touch screen takes into poll_touch) reads as a press at that spot of the picture, as the picker takes it */
+        int cx = 0, cy = 0, fx = 0, fy = 0;
+        if (port_touch_inject_peek(&cx, &cy) && hal_present_client_to_fb(cx, cy, &fx, &fy)) {
+            in.mouse_valid = 1; in.mouse_x = fx; in.mouse_y = fy; in.mouse_l = 1;
+        }
+    }
+    g_cs_hide = port_char_strip_frame(&in);
+    const int pick = port_char_strip_take_pick();
+    if (pick >= 0) {
+        fprintf(stderr, "[strip] applying %s\n", chr_label(pick));
+        cs_apply_pick(pick);
+    }
+}
+
 /* PAUSE3: the new pause's own controls (hal/menu_recipe_pause.cpp menu_pause_input): LB / RB / Q / E slide the planks and the star tracker (4:3) or page
    the courses (wide), the wooden edge tabs are clicked here. Reads the raw devices behind the same gates the page's frame uses, and only while the pause
    recipe is up; with OneScreenMenus off the recipe is never up, so nothing here runs a read. */
@@ -7299,6 +7393,7 @@ static void menu_input(int pad_live, const XPad *pad)
     pause3_input(pad_live, pad);
     if (sp_frame(pad_live, pad)) return;
     if (cd_frame(pad_live, pad)) return;
+    cs_frame(pad_live, pad);
     if (g_selftest) return;
     static unsigned menu_prev;
     unsigned held = 0;
@@ -7872,6 +7967,30 @@ static void menu_b_swallow_spend(int pad_live, XPad *pad)
    always done, so every existing fixture parses to the same mask it did. The
    range form is new and is here because a menu that has to be WAITED for needs
    a press held across an unknown number of frames rather than four. */
+/* PADMENUS1: a proof script variable that starts with '@' names a file holding the script (a pen gesture of a whole minigame is longer than an
+   environment block likes). The text is read once per name and kept. Not in a shipped (PORT_ROM_CLEAN) build. */
+static const char *env_script_text(const char *name)
+{
+    const char *v = getenv(name);
+#ifndef PORT_ROM_CLEAN
+    if (v && v[0] == '@') {
+        FILE *f = fopen(v + 1, "rb");
+        if (!f) { fprintf(stderr, "[script] %s: cannot read %s\n", name, v + 1); return 0; }
+        fseek(f, 0, SEEK_END);
+        const long n = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        char *buf = (char *)malloc((size_t)n + 1);
+        if (!buf) { fclose(f); return 0; }
+        const size_t got = fread(buf, 1, (size_t)n, f);
+        buf[got] = 0;
+        fclose(f);
+        for (size_t i = 0; i < got; ++i) if (buf[i] == '\r' || buf[i] == '\n') buf[i] = ',';
+        return buf;
+    }
+#endif
+    return v;
+}
+
 static unsigned pad_script_mask(const char *spec, int frame)
 {
     enum { PAD_TEST_HOLD = 4 };
@@ -7945,7 +8064,7 @@ static void pad_test_apply(int frame, int *pad_live, XPad *pad)
         pt_env = g_selftest ? 0 : getenv("SM64DS_PAD_TEST");
     static const char *hp_env = (const char *)1;
     if (hp_env == (const char *)1) {
-        hp_env = getenv("SM64DS_HOST_PAD");
+        hp_env = env_script_text("SM64DS_HOST_PAD");
         if (hp_env) {
             fprintf(stderr, "[hostpad] SM64DS_HOST_PAD=%s -- scripted XInput "
                     "buttons enter at port_pad_poll's own seam, so a press "
@@ -12648,6 +12767,8 @@ static HDC  g_entry_hdc;
  * decides what closing means; the interlude stops, and scene_window_run breaks
  * its loop exactly as it did when this code was inline. */
 static int stick_script_apply(int frame, int *pad_live, XPad *pad);
+static int rstick_script_apply(int frame, int *pad_live, XPad *pad);
+static void padptr_frame(int frame, int pad_live, XPad *pad);
 static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
                                   int *focus_was)
 {
@@ -12688,9 +12809,11 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
     chat_pad_gate(&pad_live, pad);        /* the chat box, run mp1 CHATUI1 */
     pad_test_apply(frame, &pad_live, pad);
     stick_script_apply(frame, &pad_live, pad);    /* STARSEL093: the scripted stick (inert unless SM64DS_STICK_SCRIPT is set) on the scene path too */
+    rstick_script_apply(frame, &pad_live, pad);   /* PADMENUS1: the scripted right stick (inert unless SM64DS_RSTICK_SCRIPT is set) */
     setlive_test_apply(frame, &pad_live, pad);
     controls_refresh();
     rebind_capture_frame(&pad_live, pad);
+    padptr_frame(frame, pad_live, pad);           /* PADMENUS1: the pad pointer (a virtual stylus) takes the pen button / the minigame D-pad it owns */
     /* the pad layout learn flow, the same call the level loop makes;
        inert unless the menu's row armed it */
     padlearn_frame(&pad_live);
@@ -12771,6 +12894,7 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
            (0xf0, 0x08, 0x04) and pass straight through. Named (run
            link100, lane INPUTRAW) because the pad-mirror store below
            wants this SAME value. */
+        if (g_cs_hide) btn = (unsigned short)(btn & ~g_cs_hide);      /* PRECOURSE1: what the star select's strip took */
         const unsigned short scene_raw_all =
             (unsigned short)(host_btn_to_raw_keys(btn) | (btn & 0x00fc));
         port_host_keys_set(scene_raw_all);
@@ -12852,7 +12976,7 @@ static void scene_host_present_frame(HWND hwnd, int stacked,
         stacked ? ovl_surface_stacked(stack_img, fb) : ovl_surface(fb);
     /* run hunt8, lane SCENEINTERP1: the image as it is before the host's UI
        goes on, kept while there is UI to put back over a blended picture */
-    const int host_ui = (g_overlay_on || menu_on || ss_toast_left > 0) ? 1 : 0;
+    const int host_ui = (g_overlay_on || menu_on || ss_toast_left > 0 || hal_padptr_on()) ? 1 : 0;   /* PADMENUS1: the pad pointer's arrow is host UI too */
     ip_scene_stack_pre(stacked, stack_img, host_ui);
 
     /* THE STATS OVERLAY ON THE SCENE PATH (run link100, lane FPSSTATS1). It
@@ -12871,8 +12995,24 @@ static void scene_host_present_frame(HWND hwnd, int stacked,
        adventure room's lines are seen before a course is entered. */
     chat_host_frame(surf, -1);
     if (menu_on) menu_draw(surf);
+    else if (!stacked && !rb_skip_render())
+        port_char_strip_draw(surf.px, surf.stride, ntr::active_w, ntr::active_h);      /* PRECOURSE1: the star select's character strip */
     if (!rb_skip_render())
         toast_draw(surf);
+    /* PADMENUS1: THE PAD POINTER'S ARROW (hal/pad_pointer.h), on top of everything else the host paints. Stacked it goes into the stacked image's
+       bottom panel (where the pen is); under a one-screen recipe into the picture, which a card-held frame has to give up first (the same
+       settle the settings page and the character picker take). Nothing while the pointer is off. */
+    if (hal_padptr_on() && !rb_skip_render()) {
+        if (stacked && stack_img) {
+            int iw = 0, ih = 0;
+            hal_sub_screen_stacked_size(&iw, &ih);
+            hal_padptr_draw_stacked(stack_img, iw, ih);
+        } else if (!stacked) {
+            ntr::gx_card_settle_because("the pad pointer");
+            hal_padptr_draw_menu(&fb.px[0][0], ntr::active_w, ntr::active_h, ntr::SCREEN_W);
+            hal_padptr_draw_inset(&fb.px[0][0], ntr::active_w, ntr::active_h, ntr::SCREEN_W);
+        }
+    }
 
     if (stacked && !rb_skip_render())
         stack_present_arm(stack_img, hwnd);
@@ -13277,6 +13417,88 @@ static int stick_script_apply(int frame, int *pad_live, XPad *pad)
     pad->ly = (short)ly;
     return 1;
 }
+/* PADMENUS1: the RIGHT stick script, SM64DS_RSTICK_SCRIPT=<f0>[-<f1>]:<x>:<y>,... (same grammar as SM64DS_STICK_SCRIPT, values +-32767, Y up):
+   the proof arm that drives the pad pointer through the real pad path. Inert unless set, and not in a shipped (PORT_ROM_CLEAN) build. */
+static int rstick_script_apply(int frame, int *pad_live, XPad *pad)
+{
+#ifndef PORT_ROM_CLEAN
+    static const char *env = (const char *)1;
+    if (env == (const char *)1) env = env_script_text("SM64DS_RSTICK_SCRIPT");
+    if (!env) return 0;
+    int hit = 0, rx = 0, ry = 0;
+    const char *p = env;
+    while (*p) {
+        char *q;
+        const long f0 = strtol(p, &q, 10);
+        long f1 = f0;
+        p = q;
+        if (*p == '-') { f1 = strtol(p + 1, &q, 10); p = q; }
+        long x = 0, y = 0;
+        if (*p == ':') { x = strtol(p + 1, &q, 10); p = q; }
+        if (*p == ':') { y = strtol(p + 1, &q, 10); p = q; }
+        if (frame >= f0 && frame <= f1) { hit = 1; rx = (int)x; ry = (int)y; }
+        while (*p && *p != ',') ++p;
+        if (*p == ',') ++p;
+    }
+    if (!hit) return 0;
+    if (!*pad_live) { memset(pad, 0, sizeof *pad); *pad_live = 1; }
+    pad->rx = (short)rx;
+    pad->ry = (short)ry;
+    return 1;
+#else
+    (void)frame; (void)pad_live; (void)pad;
+    return 0;
+#endif
+}
+
+/* PADMENUS1: THE PAD POINTER'S FRAME (hal/pad_pointer.h). Reads the stick / D-pad / confirm the pad poll just filled (scripted pads included), lets
+   the pointer decide, and takes the buttons it owns out of the pad before the game's own reads: while the pointer is on, the confirm button (the
+   jump binding) is the pen and, in a minigame, the D-pad is the pointer's. Nothing happens with no controller. */
+/* PADMENUS1: the file machine's sub pages (scores / copy / erase) take the pad's B as a back-arrow tap and never as a key (hal/menu_recipe_title.cpp): the
+   attack binding is read here, before the game's key words are built, so nothing of it reaches the ROM there. */
+extern "C" int menu_title_file_subpage(void);
+extern "C" void menu_title_file_subpage_back(void);
+static void file_subpage_pad_back(int pad_live, XPad *pad)
+{
+    static int was;
+    if (!pad_live || !menu_title_file_subpage()) { was = 0; return; }
+    const int now = pad_act(pad, HOST_PAD_ATTACK);
+    if (now && !was) menu_title_file_subpage_back();
+    was = now;
+    if (now) {
+        const int m = g_pad[HOST_PAD_ATTACK];
+        pad->buttons = (unsigned short)(pad->buttons & ~(unsigned)(m & 0xffff));
+        if (m & HOST_PAD_LT) pad->lt = 0;
+        if (m & HOST_PAD_RT) pad->rt = 0;
+    }
+}
+
+static void padptr_frame(int frame, int pad_live, XPad *pad)
+{
+    PadPtrIn in;
+    memset(&in, 0, sizeof in);
+    PadPtrOut out;
+    memset(&out, 0, sizeof out);
+    in.frame = frame;
+    in.pad_live = pad_live;
+    if (pad_live) {
+        in.rx = pad->rx; in.ry = pad->ry; in.lx = pad->lx; in.ly = pad->ly;
+        in.dpad = ((pad->buttons & 0x0001) ? 1 : 0) | ((pad->buttons & 0x0002) ? 2 : 0) | ((pad->buttons & 0x0004) ? 4 : 0) |
+                  ((pad->buttons & 0x0008) ? 8 : 0);
+        in.confirm = pad_act(pad, HOST_PAD_JUMP);
+    }
+    hal_padptr_frame(&in, &out);
+    file_subpage_pad_back(pad_live, pad);
+    if (!pad_live) return;
+    if (out.eat_confirm) {
+        const int m = g_pad[HOST_PAD_JUMP];
+        pad->buttons = (unsigned short)(pad->buttons & ~(unsigned)(m & 0xffff));
+        if (m & HOST_PAD_LT) pad->lt = 0;
+        if (m & HOST_PAD_RT) pad->rt = 0;
+    }
+    if (out.eat_dpad) pad->buttons = (unsigned short)(pad->buttons & ~0x000fu);
+}
+
 static int stick_script_on(void)
 {
     static int on = -1;
@@ -13854,7 +14076,7 @@ int main(void)
         return 0;
     }
     /* THE ROM'S OWN ENTRY, not one level in. This was
-       `if (!_ZN4Heap13SetupRootHeapEv()) return 2;` -- correct, and calling the
+       `if (!_ZN5mHeap6Heap_t13SetupRootHeapEv()) return 2;` -- correct, and calling the
        inner half. func_0201a054's chain reaches the root heap through
        Heap::InitializeRootHeap (arm9 0x0203cae8, 0x1c), which clears the OS
        globals word at 0x020a0ea4 and then TAIL-CALLS SetupRootHeap:
@@ -13867,10 +14089,10 @@ int main(void)
 
        THE GUARD MOVES RATHER THAN GOES. Because that last instruction is a
        tail call, the ROM hands SetupRootHeap's HeapS* straight back to this
-       caller -- but src/_ZN4Heap18InitializeRootHeapEv.cpp declares the
+       caller -- but src/engine/heap/Heap.cpp declares the
        function `void`, so the return value cannot come through the seated TU.
        Testing data_020a0ea0 instead is the same test, not a weaker one:
-       src/_ZN4Heap13SetupRootHeapEv.cpp writes the new heap into data_020a0e9c
+       src/engine/heap/Heap.cpp writes the new heap into data_020a0e9c
        and data_020a0ea0 only on the success path and returns 0 without
        touching either on failure. Weakening the boot guard to seat a TU would
        be exactly the kind of non-ROM-faithful fix the port exists to refuse.
@@ -13883,7 +14105,7 @@ int main(void)
        arms, then func_0201a490, then this line. hal/boot_os.cpp carries that
        span and names the four PXI arms it cannot run. */
     port_boot_rom_pre_main();
-    _ZN4Heap18InitializeRootHeapEv();
+    _ZN5mHeap6Heap_t18InitializeRootHeapEv();
     pt_milestone("rom pre-main + root heap");
     if (!data_020a0ea0) return 2;
     /* and main()'s own first three calls, which the ROM makes after Entry has
@@ -14230,7 +14452,7 @@ int main(void)
        record and the debug name. hal/boot_os.cpp lists the arms it skips. */
     pt_milestone("level boot begins");
     port_boot_rom_game_init_head();
-    _ZN4Heap18InitializeGameHeapEjPS_(0x3b000, 0);
+    _ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_(0x3b000, 0);
     if (!data_020a0eac_c) {
         /* Heap::Allocate Crash()es on a failed carve when the parent's flag
            word has 0x4000 set, which Heap::Heap sets, so a null here means
@@ -14504,7 +14726,7 @@ int main(void)
 
     /* Player+0x71e is the pending one-time message (the course-entry text and
        the first-power-up hints), and nothing here touches it: the ROM's own
-       func_ov002_020c4188 runs it (src/actors/Player.cpp). This used to zero it
+       func_ov002_020c4188 runs it (src/game/player/Player.cpp). This used to zero it
        as "not hosted", from before the message bank loaded
        (hal/level_boot.cpp, port_message_archive_seat); since
        func_ov002_020c43c4 records the save's seen bit before it sets the id,
@@ -18490,7 +18712,7 @@ int main(void)
                        St_DeadHit_Main -> KillPlayer -> SetNextLevel(2) carries
                        it, the harness's normal level-change poll boots the
                        destination, and the game is left to restore the player
-                       from its own level-enter step (src/actors/Player.cpp
+                       from its own level-enter step (src/game/player/Player.cpp
                        :29, gated on the latched entry reason). It never sets
                        cp_done, so it keeps reporting across the re-entry and a
                        loop shows up as repeated changes rather than silence. */
@@ -21482,7 +21704,7 @@ int main(void)
            func_020190b8(), then the phase-7 wait. The IRQ bracket is rung
            B1's, not this one's; the call is this one's. Nothing on the level
            path reads data_0209d464 (the only readers in the tree are the
-           ov006 minigame body _ZN14dScMgD3DBase_c8OnKickedEv and its D3D twin), so what
+           ov006 minigame body _ZN14dScMgD3DBase_c16OnGraphCallback2Ev and its D3D twin), so what
            this adds to a level frame is exactly one geometry command that
            the engine now sees -- and before this rung did not: src/
            func_020190b8.c built PLAIN put its store in the mapped I/O window

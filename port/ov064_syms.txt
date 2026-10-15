@@ -112,7 +112,7 @@ data_ov064_0211bb0c data_ov064_0211bbac
 # run rel0215 wave 3 (lane w3-e): THREE MORE of the same kind, for the three
 # ov022 classes wave 8 did not seat. Additive only -- no existing line is
 # touched, and no byte leaves the mount (see the size note below):
-#   0x0211bb2c  LAVA_BRIDGE 73            from src/actors/daObjFl_London_c.cpp
+#   0x0211bb2c  LAVA_BRIDGE 73            from src/game/actors/d_a_obj_fl_london.cpp
 #   0x0211bb4c  ROTATING_PLATFORM_LLL 80  via the table data_ov022_02113da4
 #   0x0211bbcc  ROLLING_LOG_LLL 70        via the table data_ov022_02112c9c
 # All three read `module:overlay(64)` outright in ov022's own relocs.txt:
@@ -334,22 +334,22 @@ data_ov064_0211c974@0x0211c974 data_ov064_0211c980@0x0211c980
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov064_0211c728                        now defined by src/actors/daObjFl_Amilift_c.cpp
-#   data_ov064_0211c730                        now defined by src/actors/daObjFl_Amilift_c.cpp
-#   data_ov064_0211c750                        now defined by src/actors/daObjFl_Amilift_c.cpp
-#   data_ov064_0211c7b8                        now defined by src/actors/daBbl_c.cpp
-#   data_ov064_0211c7c8                        now defined by src/actors/daBbl_c.cpp
-#   data_ov064_0211c800                        now defined by src/actors/daObjFl_Coin_c.cpp
-#   data_ov064_0211c904                        now defined by src/actors/daObjFl_Coin_c.cpp
-#   data_ov064_0211c944                        now defined by src/actors/daWater_Ring_c.cpp
-#   data_ov064_0211c954                        now defined by src/actors/daWater_Ring_c.cpp
-#   data_ov064_0211c964                        now defined by src/actors/daObjTbox_c.cpp
-#   data_ov064_0211c96c                        now defined by src/actors/daObjTbox_c.cpp
-#   data_ov064_0211c98c                        now defined by src/actors/daObjTbox_c.cpp
-#   data_ov064_0211c9bc                        now defined by src/actors/daObjShell_c.cpp
-#   data_ov064_0211c9c4                        now defined by src/actors/daObjShell_c.cpp
-#   data_ov064_0211c9cc                        now defined by src/actors/daObjShell_c.cpp
+#   data_ov064_0211c728                        now defined by src/game/actors/d_a_obj_fl_amilift.cpp
+#   data_ov064_0211c730                        now defined by src/game/actors/d_a_obj_fl_amilift.cpp
+#   data_ov064_0211c750                        now defined by src/game/actors/d_a_obj_fl_amilift.cpp
+#   data_ov064_0211c7b8                        now defined by src/game/actors/d_a_bbl.cpp
+#   data_ov064_0211c7c8                        now defined by src/game/actors/d_a_bbl.cpp
+#   data_ov064_0211c800                        now defined by src/game/actors/d_a_obj_fl_coin.cpp
+#   data_ov064_0211c904                        now defined by src/game/actors/d_a_obj_fl_coin.cpp
+#   data_ov064_0211c944                        now defined by src/game/actors/d_a_water_ring.cpp
+#   data_ov064_0211c954                        now defined by src/game/actors/d_a_water_ring.cpp
+#   data_ov064_0211c964                        now defined by src/game/actors/d_a_obj_tbox.cpp
+#   data_ov064_0211c96c                        now defined by src/game/actors/d_a_obj_tbox.cpp
+#   data_ov064_0211c98c                        now defined by src/game/actors/d_a_obj_tbox.cpp
+#   data_ov064_0211c9bc                        now defined by src/game/actors/d_a_obj_shell.cpp
+#   data_ov064_0211c9c4                        now defined by src/game/actors/d_a_obj_shell.cpp
+#   data_ov064_0211c9cc                        now defined by src/game/actors/d_a_obj_shell.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov064_0211c660! data_ov064_0211c668! data_ov064_0211c670! data_ov064_0211c678! data_ov064_0211c680! data_ov064_0211c6c4! data_ov064_0211c6cc! data_ov064_0211c6d4! data_ov064_0211c6dc! data_ov064_0211c6e4! data_ov064_0211c768! data_ov064_0211c770! data_ov064_0211c790! data_ov064_0211c798! data_ov064_0211c7d8! data_ov064_0211c7e0! data_ov064_0211c7e8! data_ov064_0211c7f0! data_ov064_0211c7f8! data_ov064_0211c808! data_ov064_0211c810! data_ov064_0211c818! data_ov064_0211c820! data_ov064_0211c828! data_ov064_0211c830! data_ov064_0211c838! data_ov064_0211c840! data_ov064_0211c848! data_ov064_0211c934!
+gDonketuHitAnimationFile! gDonketuModelFile! gDonketuDeadAnimationFile! gDonketuTurnAnimationFile! gDonketuWalkAnimationFile! gdaBDonketuDonketuHitAnimationFile! gBossDonketuModelFile! gdaBDonketuDonketuDeadAnimationFile! gdaBDonketuDonketuTurnAnimationFile! gdaBDonketuDonketuWalkAnimationFile! gFlGuraModelFile! gFlGuraCollisionFile! gFlKomaUModelFile! gFlKomaUCollisionFile! gFl1408ModelFile! gFl1406ModelFile! gFl1402ModelFile! gFl1409ModelFile! gFl1411ModelFile! gFl1407ModelFile! gFl1400ModelFile! gFl1401ModelFile! gFl1404ModelFile! gFl1410ModelFile! gFl1405ModelFile! gFl1412ModelFile! gFl1403ModelFile! gFl1413ModelFile! data_ov064_0211c934!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
 data_ov064_0211c96c! data_ov064_0211c964! data_ov064_0211c98c! data_ov064_0211c9cc! data_ov064_0211c9bc! data_ov064_0211c9c4! data_ov064_0211c7b8! data_ov064_0211c7c8! data_ov064_0211c944! data_ov064_0211c954! data_ov064_0211c730! data_ov064_0211c728! data_ov064_0211c750! data_ov064_0211c800! data_ov064_0211c904!

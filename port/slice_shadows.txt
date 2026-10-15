@@ -64,7 +64,7 @@
 # so retiring them would be a change with no measurement behind it.
 #
 src/game/actors/d_a_pg_bby.cpp
-src/actors/daBttBk_c.cpp
+src/game/actors/d_a_btt_bk.cpp
 
 # ---------------------------------------------------------------------------
 # RUNG 2: THE LAKITU BRO'S InitResources, AND THE THIRD ARGUMENT THAT IS THE
@@ -110,7 +110,7 @@ src/actors/daBttBk_c.cpp
 # port/unmatched/Ov085_LakituBro_IntroEnd.cpp -- so the watch still reports on
 # the opening; this one line of it does not.
 #
-src/actors/daC_Jugem_c.cpp
+src/game/actors/d_a_c_jugem.cpp
 
 # ---------------------------------------------------------------------------
 # RUNG 3: THE SHADOW WHOSE SEAM IS A RETURN TYPE

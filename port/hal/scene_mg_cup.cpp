@@ -15,7 +15,7 @@
 //     -> (param >> 16) & 0xff = 11, the name-text index
 //     -> data_ov004_020bc070[11] = 559, the BMG message id. Cross-checked
 //        against the LIVE object: this file's census prints +0x465e, which
-//        src/_ZN11dScMgBase_c16OnAimedAtWithEggEv.cpp reads, and it also reads 559.
+//        src/_ZN11dScMgBase_c17SaveScreenForMenuEv.cpp reads, and it also reads 559.
 //     -> data/message/msg_data_eng.bin, LZ77 type 0x10, 91712 bytes,
 //        MESGbmg1 / INF1 (711 messages; the header field at +0x0a reads
 //        0x0040, which is 64 BITS -- an EIGHT-byte entry stride, not a
@@ -93,9 +93,9 @@
 // each other. Every edge above is a relocation, and a relocation cannot be a
 // per-TU placeholder spelling.
 //
-// The factory and the destructors agree: src/actors/dScMgCup_c.cpp writes
+// The factory and the destructors agree: src/minigames/d_s_mg_cup.cpp writes
 // 0x0213e448 into the object's first word and then 0x0213c154 over it, and
-// src/actors/dScMgCup_c.cpp (slot 17, D0) unwinds them in the opposite
+// src/minigames/d_s_mg_cup.cpp (slot 17, D0) unwinds them in the opposite
 // order. Both edges are code, not names.
 //
 // ---- 3. THE FILL IS ADDRESS-KEYED, SO THREE TABLES ARE CHEAP --------------
@@ -162,7 +162,7 @@
 // MgSnowballSlalom (0x179) -- the one id of the thirty whose vtable
 // port/mg_fanout_costs.txt section 3 could not resolve at all -- sits under
 // this same middle base: its table is 0x0214000c and its factory tail-calls
-// func_ov006_021295ac, which writes 0x0213e448 and then 0x0214000c. So the
+// dScMgSnowball_c_Construct, which writes 0x0213e448 and then 0x0214000c. So the
 // promotion is no longer hypothetical, and whoever seats 0x179 is the lane
 // these two paragraphs are addressed to.
 //
@@ -180,7 +180,7 @@
 // port_mg_flower_after_init, and its header ends "THE NEXT LANE TO SEAT 361 OR
 // 363 SHOULD CALL THIS RATHER THAN WRITE A SECOND". 363 called it in run mg6.
 // THIS IS 361, the other id that header names, and it calls it too.
-// src/minigames/d_s_mg_single3_d_base.cpp stays out of port/slice_cup.txt for the same
+// src/minigames/d_s_mg_single3d_base.cpp stays out of port/slice_cup.txt for the same
 // reason it is out of port/slice_flw.txt and port/slice_mem.txt: listing it
 // would be an LNK2005 against that host copy.
 //
@@ -203,7 +203,7 @@
 // THE THIRD CHECK IS NOT A FORMALITY ON THIS CLASS. 0x0213c1e4 is copied by
 // src/__sinit_ov006_021304ac.c line 75:
 //
-//     data_ov006_02141930.p2 = data_ov006_0213c1e4;
+//     data_ov006_02141930.p2 = pmf_dScMgCurling_c_BitA_State2;
 //
 // -- CURLING's own overlay constructor, filling curling's state table
 // 0x02141930 slot 2, whose address port/unmatched/MgCurling_StateDispatch.cpp
@@ -245,12 +245,12 @@
 //
 // port/unmatched/MgCup_StateDispatch.cpp carries the Behavior and the eight
 // state addresses of data_ov006_02141870.
-// port/unmatched/MgShared4f38_SubDispatch.cpp carries func_ov006_020c2b8c,
+// port/unmatched/MgShared4f38_SubDispatch.cpp carries Presenter_Update,
 // which dispatches a member pointer held in a
 // FIELD of the sub-object at +0x4f38 and which section 12 and
 // port/slice_mga361.txt both missed -- section 12's adjudication row for
 // 0x020e0204 calls it "the class ONLY pointer-to-member dispatch site" and
-// slice_mga361 lists src/func_ov006_020c2b8c.cpp as an ordinary slice line.
+// slice_mga361 lists src/Presenter_Update.cpp as an ordinary slice line.
 // Both headers are the derivation. Nothing in THIS file dispatches a member
 // pointer.
 //
@@ -261,7 +261,7 @@
 // its OWN two-slot vtable in word 0, which nothing in the ovr/mark/nosrc
 // columns can see. This factory builds two arrays through __cxa_vec_ctor --
 // 0x20 elements of 0x18 at +0x50e8 and 3 of 8 at +0x53e8 -- and BOTH element
-// constructors are four-byte `bx lr` bodies in the ROM (func_ov006_020e0634 at
+// constructors are four-byte `bx lr` bodies in the ROM (Cup_Nothing at
 // 0x020e0634 = e12fff1e, and the arm9 func_0203d738, both size 0x4 in
 // config), so no element gets a vtable word. The +0x4f38 sub-object's word 0
 // is not a vtable either: it is the mwcc {code, adjustment} pair
@@ -269,7 +269,7 @@
 //
 // LOCAL SHADOW CLASSES: FOUR IN THIS CLOSURE, ONE WRONG AND FIXED. Section
 // 13's test is which kind of table the shadowed object carries.
-//   func_ov006_020c29dc  WRONG -- Model and BlendModelAnim carry HOST tables
+//   Presenter_Draw  WRONG -- Model and BlendModelAnim carry HOST tables
 //       in MSVC order. Host-copied,
 //       unmatched/MgShared4f38_ModelRender_020c29dc.cpp.
 //   _ZN10dScMgCup_c13InitResourcesEv  CORRECT -- it shadows `this`, whose vptr is the
@@ -279,14 +279,14 @@
 //   _ZN10dScMgCup_c11StateFinishEv  CORRECT, same shape, `((Obj *)c)->v18(-1)`. NOT
 //       exercised: it is state slot 6 and no unattended boot reaches it.
 //       Reported rather than claimed.
-//   func_ov006_020c2848  CORRECT -- it shadows the arm9 object at
+//   Presenter_PlayIdle  CORRECT -- it shadows the arm9 object at
 //       data_0209f5bc, whose table is hal/fdr_arm9_fader_seat.cpp's ROM-shaped
-//       fill. Exercised through func_ov006_020c2924 on the slot-18 path and
+//       fill. Exercised through Presenter_ResetPose on the slot-18 path and
 //       clean.
 //
 // SLOT 34 IS NOT DISPATCHED BY THIS CLASS. Run mg9 lane S371 reported that
 // hal/scene_mg.cpp's shared mb_v34 thunk is declared (void *, void *) while
-// _ZN11dScMgBase_c9Virtual88Eiiii takes five parameters at every ROM dispatch site, and
+// _ZN11dScMgBase_c11PaintSquareEiiii takes five parameters at every ROM dispatch site, and
 // asked whichever lane witnesses a slot-34 dispatch to take the repair. This
 // class does not: every run's framework census reads `framework slots entered:
 // 1(x1) 31(x1) 32(x1)`, this class's own slots are 0, 6, 9 and 18, and the
@@ -346,8 +346,8 @@ int   _ZN19dScMgSingle3DBase_c14BeforeBehaviorEv(void *c);                     /
 int   _ZN19dScMgSingle3DBase_c12BeforeRenderEv(void *c);                     /* slot 10 */
 int   _ZN19dScMgSingle3DBase_cD1Ev(char *c);                     /* slot 16 D2 */
 int   _ZN19dScMgSingle3DBase_cD0Ev(char *c);                     /* slot 17 D0 */
-int   _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(void);                        /* slot 26 */
-void  _ZN19dScMgSingle3DBase_c9Virtual84Ev(char *c);                     /* slot 33 */
+int   _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(void);                        /* slot 26 */
+void  _ZN19dScMgSingle3DBase_c11InitEnginesEv(char *c);                     /* slot 33 */
 
 /* dScMgCup_c's own seven. _ZN10dScMgCup_c8BehaviorEv is the HOST COPY in
    unmatched/MgCup_StateDispatch.cpp, not the src TU: it is the
@@ -357,8 +357,8 @@ int   _ZN10dScMgCup_c8BehaviorEv(char *o);       /* slot  6 Behavior, host copy 
 int   _ZN10dScMgCup_c6RenderEv(char *c);       /* slot  9 Render */
 void *_ZN10dScMgCup_cD1Ev(char *c);       /* slot 16 D2 */
 void *_ZN10dScMgCup_cD0Ev(char *c);       /* slot 17 D0 */
-void  _ZN10dScMgCup_c13OnYoshiTryEatEi(char *c, int msg); /* slot 18 state reset */
-void  _ZN10dScMgCup_c9Virtual50Ev(char *p);       /* slot 20 */
+void  _ZN10dScMgCup_c10StartRoundEi(char *c, int msg); /* slot 18 state reset */
+void  _ZN10dScMgCup_c11OnNewRecordEv(char *p);       /* slot 20 */
 
 /* the factory, host-copied for the dropped base-constructor argument; the
    ruling is in port/unmatched/MgCup_Factory.cpp's header */
@@ -377,20 +377,20 @@ void     port_mg_dispatch_counts(unsigned *calls, unsigned *unknown);
 
 /* the persistent minigame record, and the framework body that indexes it.
    Nothing new is defined here: the storage is hal/level_boot.cpp's
-   .dsstate$savblk0004 and the index function is src/func_ov004_020adc3c.c.
+   .dsstate$savblk0004 and the index function is src/Mg_GetSaveTable.c.
    Named so the census can print the record this class is keyed to rather than
    leave it to be inferred -- run mg8 lane MMD's finding is that the record
    index is a real, per-minigame thing and that the port used to give every
    minigame record 0. */
-extern void         *data_ov004_020beb68;     /* the live dScMgBase_c `this` */
+extern void         *gMgScene;     /* the live dScMgBase_c `this` */
 extern unsigned char data_0209caf4[];         /* 36 records x 20 bytes       */
-int  func_ov004_020adc3c(void *c);            /* (self->field_8 >> 8) & 0xff */
+int  Mg_GetSaveTable(void *c);            /* (self->field_8 >> 8) & 0xff */
 
 }  /* extern "C" */
 
 static int port_mg_cup_record_index(void)
 {
-    return data_ov004_020beb68 ? func_ov004_020adc3c(data_ov004_020beb68) : -1;
+    return gMgScene ? Mg_GetSaveTable(gMgScene) : -1;
 }
 
 // ---- the tick witness ------------------------------------------------------
@@ -420,9 +420,9 @@ static void *__fastcall s3_d2(void *s, void *)
 static void *__fastcall s3_d0(void *s, void *)
 { C3D(17); return (void *)(size_t)_ZN19dScMgSingle3DBase_cD0Ev((char *)s); }
 static int  __fastcall s3_v26(void *, void *)
-{ C3D(26); return _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(); }
+{ C3D(26); return _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(); }
 static int  __fastcall s3_v33(void *s, void *)
-{ C3D(33); _ZN19dScMgSingle3DBase_c9Virtual84Ev((char *)s); return 0; }
+{ C3D(33); _ZN19dScMgSingle3DBase_c11InitEnginesEv((char *)s); return 0; }
 
 /* ---- dScMgCup_c's own seven --------------------------------------------- */
 static int  __fastcall cup_init(void *s, void *)
@@ -447,7 +447,7 @@ static void *__fastcall cup_d0(void *s, void *)
    two overlay images word by word: 22 sites, argument count ONE at every one.
    Six seated classes declared the parameter only so __fastcall would clean the
    caller's four bytes, because their bodies ignore r1. THIS ONE DOES NOT:
-   src/actors/dScMgCup_c.cpp is `void (char *c, int msg)` and its whole top
+   src/minigames/d_s_mg_cup.cpp is `void (char *c, int msg)` and its whole top
    half is `if (msg == 3 || msg == 0x12) ... else if (msg == 0) ...`, three
    different resets. Declaring the parameter and dropping it on the floor would
    have compiled, linked, cleaned the stack correctly and silently taken the
@@ -463,13 +463,13 @@ static void *__fastcall cup_d0(void *s, void *)
 
    r1 is compared twice before anything else happens.
 
-   AND IT IS WITNESSED RATHER THAN ASSERTED. src/actors/dScMgCup_c.cpp
+   AND IT IS WITNESSED RATHER THAN ASSERTED. src/minigames/d_s_mg_cup.cpp
    (InitResources, slot 0) ends with `((VtObj *)c)->m18(3)` -- ROM slot 18 with
    mode 3 -- and every run of this scene reports state-reset 1, one dispatch,
    on the init path. The observable consequence is in the census: with mode 3
    the reset writes set = 3 into +0x5434+i*4 for each cup whose +0x5462+i flag
    is nonzero and 0 for the others, and the run reports flags f1/f0/f0 and
-   cups 4/1/1 after func_ov006_020def80's own branches ran on top -- which is
+   cups 4/1/1 after Cup_UpdateAnim's own branches ran on top -- which is
    the pairing those two bodies produce only for that flag pattern.
 
    SLOT 19 IS NOT THIS CLASS'S. dScMgCup_c holds dScMgBase_c's own 0x020b2994
@@ -477,11 +477,11 @@ static void *__fastcall cup_d0(void *s, void *)
    ride-through. Run mg9 lane LKY's slot-18/19 warning applies to slot 18 here
    and to nothing else. */
 static int  __fastcall cup_reset(void *s, void *, int msg)
-{ CUP(18); _ZN10dScMgCup_c13OnYoshiTryEatEi((char *)s, msg); return 1; }
+{ CUP(18); _ZN10dScMgCup_c10StartRoundEi((char *)s, msg); return 1; }
 /* Slot 20 takes the receiver and nothing else, the same shape as the base's
    own mb_v20 in hal/scene_mg.cpp. */
 static int  __fastcall cup_v20(void *s, void *)
-{ CUP(20); _ZN10dScMgCup_c9Virtual50Ev((char *)s); return 0; }
+{ CUP(20); _ZN10dScMgCup_c11OnNewRecordEv((char *)s); return 0; }
 
 /* SM64DS_SCENE_SLOT0=0 and SM64DS_SCENE_SLOT9=0, the diagnostics every scene
    seat in this port carries, counted separately so a run can never read a
@@ -620,7 +620,7 @@ extern "C" void port_scene_fill_cup(void)
    other side: "THE FACTORY NEEDS NO DISPLACEMENT RULING, and that is worth
    recording because 0x169's did." This is 0x169. dScMgCup_c_classInit is
    compiled from port/unmatched/MgCup_Factory.cpp, whose header is the ruling
-   being spent; src/actors/dScMgCup_c.cpp is out of port/slice_cup.txt. */
+   being spent; src/minigames/d_s_mg_cup.cpp is out of port/slice_cup.txt. */
 static char *g_cup_self;
 
 extern "C" void *port_mg_cup_spawn(void)
@@ -692,18 +692,18 @@ extern "C" void port_scene_cup_hits(void)
     }
 
     /* THE SUB-OBJECT DISPATCH, the half section 12 says this class does not
-       have. calls counts every entry into func_ov006_020c2b8c, idle counts the
+       have. calls counts every entry into Presenter_Update, idle counts the
        entries the ROM's own null-pmf guard skipped, routed counts the ones
        that ran a measured animation state, and unknown must stay ZERO. */
     std::printf("[scene] dScMgCup_c sub-object dispatch (+0x4f38, "
-                "func_ov006_020c2b8c): %u call(s), %u routed, %u idle "
+                "Presenter_Update): %u call(s), %u routed, %u idle "
                 "(null pmf), %u UNHANDLED address(es)\n",
                 port_mg_sub4f38_calls(), port_mg_sub4f38_routed(),
                 port_mg_sub4f38_idle(), port_mg_sub4f38_unknown());
 
     /* The state index the ROM's own dispatcher reads, at the offset
        disassembled in unmatched/MgCup_StateDispatch.cpp: +0x5418, which
-       vtable slot 18 (src/actors/dScMgCup_c.cpp) zeroes at the same offset,
+       vtable slot 18 (src/minigames/d_s_mg_cup.cpp) zeroes at the same offset,
        spelled there as c + 0x5000 + 0x418. Two independent readers of one
        field is what makes the offset a measurement. */
     if (g_cup_self)
@@ -713,7 +713,7 @@ extern "C" void port_scene_cup_hits(void)
                     *(int *)(g_cup_self + 0x5418),
                     *(int *)(g_cup_self + 0x541c));
 
-    /* THE THREE ANIMATED CUPS. src/actors/dScMgCup_c.cpp's own loop runs
+    /* THE THREE ANIMATED CUPS. src/minigames/d_s_mg_cup.cpp's own loop runs
        i = 0..2 over three parallel triples: +0x5434 is the animation-set index
        (the row of the seven-pointer table data_ov006_0213c0d8), +0x5440 is the
        frame within that set and +0x544c is the countdown to the next frame.
@@ -754,7 +754,7 @@ extern "C" void port_scene_cup_hits(void)
                         rec[0], rec[1], rec[2], rec[3], rec[4]);
         } else {
             std::printf("[scene] dScMgCup_c save record: NO minigame index "
-                        "(data_ov004_020beb68 = %p)\n", data_ov004_020beb68);
+                        "(gMgScene = %p)\n", gMgScene);
         }
         std::printf("[scene] dScMgCup_c score fields: +0xa8 = %d, +0xac = %d, "
                     "+0xb4 = %d, +0xbc = %u\n",

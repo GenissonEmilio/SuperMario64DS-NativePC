@@ -16,33 +16,33 @@
 #
 # port/faces_sync.txt carries each retired D row with a RETIRED note naming
 # the lane, the date and this file.
-src/engine/collision/dBgCh_Actr.cpp
+src/engine/collision/d_bg_ch_actr.cpp
 port/unmatched/hostarm/_ZN10dBgCh_ActrD0Ev.cpp
-src/engine/collision/dBgW_KcMbg.cpp
+src/engine/collision/d_bg_w_kc_mbg.cpp
 port/unmatched/hostarm/_ZN10dBgW_KcMbgD0Ev.cpp
-src/engine/collision/dBgCh_SphCrr.cpp
+src/engine/collision/d_bg_ch_sph_crr.cpp
 port/unmatched/hostarm/_ZN12dBgCh_SphCrrD0Ev.cpp
-src/engine/collision/dBgW_KcMbgSclY.cpp
+src/engine/collision/d_bg_w_kc_mbg_scl_y.cpp
 port/unmatched/hostarm/_ZN14dBgW_KcMbgSclYD0Ev.cpp
-src/engine/collision/dBgW.cpp
+src/engine/collision/d_bg_w.cpp
 port/unmatched/hostarm/_ZN4dBgWD0Ev.cpp
-src/engine/collision/dBgCh.cpp
+src/engine/collision/d_bg_ch.cpp
 port/unmatched/hostarm/_ZN5dBgChD0Ev.cpp
-src/engine/collision/dBgCh_SphCrr_query.cpp
+src/engine/collision/d_bg_ch_sph_crr_query.cpp
 port/unmatched/hostarm/_ZN5dBgPiD0Ev.cpp
-src/engine/collision/dBgW_Kc.cpp
+src/engine/collision/d_bg_w_kc.cpp
 port/unmatched/hostarm/_ZN7dBgW_KcD0Ev.cpp
-src/engine/collision/dM3dGSph.cpp
+src/engine/collision/d_m3d_g_sph.cpp
 port/unmatched/hostarm/_ZN8dM3dGSphD0Ev.cpp
-src/engine/collision/dBgCh_Gnd.cpp
+src/engine/collision/d_bg_ch_gnd.cpp
 port/unmatched/hostarm/_ZN9dBgCh_GndD0Ev.cpp
-src/engine/collision/dBgCh_Lin.cpp
+src/engine/collision/d_bg_ch_lin.cpp
 port/unmatched/hostarm/_ZN9dBgCh_LinD0Ev.cpp
-src/_ZN13ExpandingHeapD0Ev.cpp
-src/_ZN4HeapD0Ev.cpp
-src/_ZN9SolidHeapD0Ev.cpp
+src/engine/heap/Heap.cpp
+src/engine/heap/Heap.cpp
+src/engine/heap/Heap.cpp
 src/_ZN15dExtFrameCtrl_cD0Ev.cpp
-src/engine/collision/dClipper.cpp
+src/engine/collision/d_clipper.cpp
 port/unmatched/hostarm/_ZN7ClipperD0Ev.cpp
 src/engine/model/MaterialChanger.cpp
 port/unmatched/hostarm/_ZN15MaterialChangerD0Ev.cpp
@@ -51,21 +51,21 @@ port/unmatched/hostarm/_ZN12FallBlockBbhD0Ev.cpp
 src/_ZN9dCamera_cD0Ev.cpp
 src/game/actors/d_a_obj_ki_fune.cpp
 port/unmatched/hostarm/_ZN6ShipUpD0Ev.cpp
-src/actors/daObjHatenaBlock_c.cpp
+src/game/actors/d_a_obj_hatena_block.cpp
 port/unmatched/hostarm/_ZN13QuestionBlockD0Ev.cpp
-src/actors/daDemo_c.cpp
+src/game/actors/d_a_demo.cpp
 port/unmatched/hostarm/_ZN8daDemo_c13simpleModel_cD0Ev.cpp
-# FOLDED into src/actors/daDemo_c.cpp (row 40): src/_ZN8daDemo_c10anmModel_cD0Ev.cpp
+# FOLDED into src/game/actors/d_a_demo.cpp (row 40): src/_ZN8daDemo_c10anmModel_cD0Ev.cpp
 port/unmatched/hostarm/_ZN8daDemo_c10anmModel_cD0Ev.cpp
-src/engine/fader/dFader_c.cpp
+src/runtime/graphics/fader/d_fader.cpp
 port/unmatched/hostarm/_ZN10FaderColorD0Ev.cpp
-# FOLDED into src/engine/fader/dFader_c.cpp (row 42): src/_ZN10dFdDummy_cD0Ev.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 42): src/_ZN10dFdDummy_cD0Ev.cpp
 port/unmatched/hostarm/_ZN10dFdDummy_cD0Ev.cpp
-# FOLDED into src/engine/fader/dFader_c.cpp (row 42): src/engine/fader/_ZN15FaderBrightnessD0Ev.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 42): src/engine/fader/_ZN15FaderBrightnessD0Ev.cpp
 port/unmatched/hostarm/_ZN15FaderBrightnessD0Ev.cpp
-# FOLDED into src/engine/fader/dFader_c.cpp (row 42): src/engine/fader/_ZN5FaderD0Ev.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 42): src/engine/fader/_ZN5FaderD0Ev.cpp
 port/unmatched/hostarm/_ZN5FaderD0Ev.cpp
-src/engine/fader/dWipe_c.cpp
+src/runtime/graphics/fader/d_wipe.cpp
 port/unmatched/hostarm/_ZN7dWipe_cD0Ev.cpp
-# FOLDED into src/engine/fader/dFader_c.cpp (row 42): src/engine/fader/_ZN9FaderWipeD0Ev.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 42): src/engine/fader/_ZN9FaderWipeD0Ev.cpp
 port/unmatched/hostarm/_ZN9FaderWipeD0Ev.cpp

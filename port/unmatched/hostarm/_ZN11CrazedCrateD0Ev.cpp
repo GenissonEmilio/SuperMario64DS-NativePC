@@ -1,7 +1,7 @@
 /* HOST ARM recovered by port/tools/hostarm_recover.py.
  * The port line carried this in src/_ZN11CrazedCrateD0Ev.cpp under #ifdef _MSC_VER; the
  * 2026-10 main merge (749f5799a) took main's src/, where that code
- * now lives in src/actors/daBttBk_c.cpp without the arm. mwccarm never saw the arm,
+ * now lives in src/game/actors/d_a_btt_bk.cpp without the arm. mwccarm never saw the arm,
  * so nothing here moves a ROM byte. */
 #include "daBttBk_c.h"
 

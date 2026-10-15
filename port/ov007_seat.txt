@@ -499,14 +499,14 @@ synthetic rig, by seeding a decoy heap into data_0209d524 at InitResources
 entry so the branch takes:
 
     SC1PROBE seeded data_0209d524=009125F8 (decoy heap)
-    SC1PROBE _ZN4Heap7DestroyEv receiver=009125F8
+    SC1PROBE _ZN5mHeap6Heap_t7DestroyEv receiver=009125F8
     SC1PROBE VDestroy slot 2 ran, self=009125F8
 
 The receiver survives _ZN9dScDSMT_c13InitResourcesEv -> func_0201a428 -> the flat C face
 -> Heap::Destroy -> the slot 2 dispatch, one value, unchanged at every hop.
 
 THE VENEER IS NOT IN THAT CHAIN and an earlier draft of this paragraph said it
-was. src/func_0201a428.c calls _ZN4Heap7DestroyEv, the flat C FACE, directly;
+was. src/func_0201a428.c calls _ZN5mHeap6Heap_t7DestroyEv, the flat C FACE, directly;
 0x0203c74c's veneer sits on the OTHER caller, the role-named Heap_Destroy in
 hal/actor_vtables.cpp that the actor teardown uses (Heap_Destroy -> veneer ->
 face -> method). Two callers, two entry points, one shared tail, and only the

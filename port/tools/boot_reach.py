@@ -84,7 +84,7 @@ SPINE = [
     ("M1 OS_InitTick",             "func_02059788"),
     ("M2 alarms",                  "func_02059bc0"),
     ("M3 main-thread record",      "func_02059578"),
-    ("M4 Heap::SetNodeID",         "_ZN4Heap9SetNodeIDEj"),
+    ("M4 Heap::SetNodeID",         "_ZN5mHeap6Heap_t9SetNodeIDEj"),
     ("M5 game init",               "func_0201a054"),
     ("M6 main loop",               "func_020197b8"),
 ]

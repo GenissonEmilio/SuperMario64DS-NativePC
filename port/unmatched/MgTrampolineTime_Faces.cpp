@@ -16,7 +16,7 @@
  *
  * ---- 1. THE THIRTEEN SharedFilePtr ROWS ----------------------------------
  *
- * src/func_ov006_020ccfc8.cpp is the ELEMENT DESTRUCTOR of the four
+ * src/Trmp3DMario_Destruct.cpp is the ELEMENT DESTRUCTOR of the four
  * dMgTrmpln3DMario_c records at this+0x500c (port/slice_tti.txt section 8).
  * It is a //cpp TU that declares thirteen of ov006's SharedFilePtr .bss
  * objects as `extern SharedFilePtr data_ov006_...;`, so each mangles as
@@ -62,7 +62,7 @@
  * with a different name.  Each was resolved from the literal pool rather than
  * from the spelling.
  *
- *   _ZTV18dMgTrmpln3DMario_c   src/func_ov006_020cd12c.c's element constructor
+ *   _ZTV18dMgTrmpln3DMario_c   src/Trmp3DMario_Construct.c's element constructor
  *       writes it into word 0 of each record.  The pool word at 0x020cd154
  *       reads 0x0213b2c4 (config: `from:0x020cd154 kind:load to:0x0213b2c4`),
  *       so the vtable IS data_ov006_0213b2c4 and the name is the class's, taken
@@ -70,14 +70,14 @@
  *       = "18dMgTrmpln3DMario_c", whose base 0x0213b19c names
  *       "19dMgTrmpObjAdapter_c".
  *
- *   func_020beb74   src/actors/dScMgD3DBase_c.cpp uses it as `extern int
+ *   func_020beb74   src/minigames/d_s_mg_d3d_base.cpp uses it as `extern int
  *       func_020beb74[]` and writes func_020beb74[1] and data_0209d4a8.  It is
  *       not a function: config/arm9/overlays/ov004/symbols.txt has
- *       `data_ov004_020beb74 kind:bss addr:0x020beb74`.  The src's `func_`
+ *       `sMgGraphCallback kind:bss addr:0x020beb74`.  The src's `func_`
  *       prefix is a decompiler default applied to an address it could not
  *       classify, and the alias points it at the mount's bss object.
  *
- *   Scene_AfterRender   src/actors/dScMgD3DBase_c.cpp tail-
+ *   Scene_AfterRender   src/minigames/d_s_mg_d3d_base.cpp tail-
  *       calls it.  The ROM body 0x020e700c is `ldr ip,[pc,#4] / bx ip` and its
  *       one pool word at 0x020e703c reads 0x0202e398 (config:
  *       `from:0x020e703c kind:load to:0x0202e398 module:main`), which
@@ -179,21 +179,21 @@
 
 /* ---- 2b. the SECOND wave's rows, same shapes -----------------------------
    Two more ints and three `struct G2` objects, all from the element-object
-   machinery the first wave pulled in (func_ov006_020cafb4, _020cb030,
+   machinery the first wave pulled in (Trmp3DMario_Render, _020cb030,
    _020ccd78, _020cf758).  data_ov006_02140564 appears TWICE in this file, once
    as ?...@@3HA and once as ?...@@3UG2@@A: two TUs declare the same mount word
    with two different C++ types, so each mangling needs its own row and neither
    is redundant. */
 #pragma comment(linker, "/alternatename:?data_ov006_0214058c@@3HA=_data_ov006_0214058c")
 #pragma comment(linker, "/alternatename:?data_ov006_021405c8@@3HA=_data_ov006_021405c8")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b12c@@3UG2@@A=_data_ov006_0213b12c")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b184@@3UG2@@A=_data_ov006_0213b184")
+#pragma comment(linker, "/alternatename:?pmf_Trmp3DMario_State10@@3UG2@@A=_pmf_Trmp3DMario_State10")
+#pragma comment(linker, "/alternatename:?pmf_Trmp3DMario_State11@@3UG2@@A=_pmf_Trmp3DMario_State11")
 #pragma comment(linker, "/alternatename:?data_ov006_02140564@@3UG2@@A=_data_ov006_02140564")
 
 /* ---- 2d. the FOURTH wave, all the same shape ------------------------- */
-#pragma comment(linker, "/alternatename:?data_ov006_0213b1d4@@3PAHA=_data_ov006_0213b1d4")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b1dc@@3PAHA=_data_ov006_0213b1dc")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b1ec@@3PAHA=_data_ov006_0213b1ec")
+#pragma comment(linker, "/alternatename:?pmf_Trmp2Mario_State6_2@@3PAHA=_pmf_Trmp2Mario_State6_2")
+#pragma comment(linker, "/alternatename:?pmf_Trmp3DMario_State5_2@@3PAHA=_pmf_Trmp3DMario_State5_2")
+#pragma comment(linker, "/alternatename:?pmf_Trmp2Mario_State1_2@@3PAHA=_pmf_Trmp2Mario_State1_2")
 #pragma comment(linker, "/alternatename:?data_ov006_02140544@@3HA=_data_ov006_02140544")
 #pragma comment(linker, "/alternatename:?data_ov006_02140558@@3HA=_data_ov006_02140558")
 #pragma comment(linker, "/alternatename:?data_ov006_02140578@@3HA=_data_ov006_02140578")
@@ -210,15 +210,15 @@
 #pragma comment(linker, "/alternatename:?data_ov006_02140598@@3HA=_data_ov006_02140598")
 #pragma comment(linker, "/alternatename:?data_ov006_021405a8@@3HA=_data_ov006_021405a8")
 #pragma comment(linker, "/alternatename:?data_ov006_021405b4@@3HA=_data_ov006_021405b4")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b14c@@3US8@@A=_data_ov006_0213b14c")
+#pragma comment(linker, "/alternatename:?pmf_Trmp2Mario_State2@@3US8@@A=_pmf_Trmp2Mario_State2")
 #pragma comment(linker, "/alternatename:?data_ov006_0213b22c@@3PAPAXA=_data_ov006_0213b22c")
 #pragma comment(linker, "/alternatename:?data_ov006_02141a40@@3PAXA=_data_ov006_02141a40")
 
 /* ---- 3. the three bare names, resolved from their literal pools ---------- */
 #pragma comment(linker, "/alternatename:__ZTV18dMgTrmpln3DMario_c=_data_ov006_0213b2c4")
-#pragma comment(linker, "/alternatename:_func_020beb74=_data_ov004_020beb74")
+#pragma comment(linker, "/alternatename:_func_020beb74=_sMgGraphCallback")
 #pragma comment(linker, "/alternatename:_Scene_AfterRender=__ZN8dScene_c11AfterRenderEj")
-/* src/func_ov006_020d0b2c.cpp spells Model::LoadTextureToVram as a free
+/* src/TrmpLine_LoadTextures.cpp spells Model::LoadTextureToVram as a free
    function in a Model namespace, so MSVC mangles the CALL as
    ?LoadTextureToVram@Model@@YAHPADI@Z while the body the port already links
    (src/_ZN5Model17LoadTextureToVramEPcj.cpp, wired by port/slice_gate4b.txt)
@@ -238,7 +238,7 @@
 
 /* ---- 5. TWO C++ SPELLINGS THAT NEED A SHIM RATHER THAN AN ALIAS -------
 
-   ModelAnim::SetAnim.  src/func_ov006_020cb528.cpp and _020cb690.cpp call it
+   ModelAnim::SetAnim.  src/Trmp3DMario_EnterState1.cpp and _020cb690.cpp call it
    as a METHOD on a shadow class of their own, so MSVC wants
    ?SetAnim@ModelAnim@@QAEXPAXHHI@Z -- __thiscall, receiver in ecx.  The
    definition the port links is
@@ -253,7 +253,7 @@
    no clash.
 
    Model::LoadTextureToVram is the opposite case and DOES take an alias.
-   src/func_ov006_020d0b2c.cpp spells it as a free function at namespace
+   src/TrmpLine_LoadTextures.cpp spells it as a free function at namespace
    scope (?LoadTextureToVram@Model@@YAHPADI@Z, __cdecl) while
    include/Model.h declares it a STATIC member and
    src/_ZN5Model17LoadTextureToVramEPcj.cpp defines it
@@ -269,7 +269,7 @@ void ModelAnim::SetAnim(void *f, int flags, int speed, unsigned start)
 
 #pragma comment(linker, "/alternatename:?LoadTextureToVram@Model@@YAHPADI@Z=?LoadTextureToVram@Model@@SAIPADI@Z")
 
-/* src/actors/dMgJump3DMario_c.cpp calls func_ov006_020e6df0, which is not a
+/* src/minigames/d_mg_jump3d_mario.cpp calls func_ov006_020e6df0, which is not a
    symbol: config/arm9/overlays/ov006/symbols.txt names 0x020e6df0
    Sound_PlayBank1Panned, and delinks.txt gives it its own .text block
    0x020e6df0..0x020e6e3c.  Same bare-name shape as section 3. */

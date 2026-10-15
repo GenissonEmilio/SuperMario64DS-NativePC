@@ -31,7 +31,7 @@
 # UAEXAAUSystem@Particle@@@Z, which Particle::SysTracker's constructor and
 # three derived callbacks all reference. Duplicates nothing, references
 # nothing new.
-src/engine/particle/dPa_c.cpp
+src/engine/particle/d_pa.cpp
 
 # TTC_MovingBeam::Behavior. The TU declares the member itself, non-virtual,
 # so it compiles to ?Behavior@TTC_MovingBeam@@QAEHXZ while the reference the
@@ -41,7 +41,7 @@ src/engine/particle/dPa_c.cpp
 # bridge in port/unmatched/Seats2_NameBridges.cpp, and the pair closes the
 # row. Duplicates nothing: the flat ROM name stays with the hand face in
 # port/hal/actor_classes_ov065.cpp, which now has a real body under it.
-src/actors/daObjCtMecha09_c.cpp
+src/game/actors/d_a_obj_ct_mecha09.cpp
 
 # ---- the name bridges the class seats need --------------------------------
 # Sixteen decorated ROM data names, each a C++ declaration of a hosted symbol
