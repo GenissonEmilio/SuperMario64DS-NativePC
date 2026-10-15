@@ -198,7 +198,7 @@ struct MenuLayout { int w, h, unum, uden, canvas_w; /* unit = h/192 reduced; can
 
 enum { MENU_DRV_NATIVE = 0, MENU_DRV_ROM_CURSOR = 1, MENU_DRV_TOUCH = 2, MENU_DRV_MIXED = 3 };
 enum { MENU_KEY_NONE = 0, MENU_KEY_SAVE_MENU_ON_TOP = 1, MENU_KEY_ONE_SCREEN_MENUS = 2 };
-enum { MENU_RF_FALLBACK = 1, MENU_RF_START_CONFIRM = 2 };   /* START_CONFIRM: the Start key (Enter) confirms like the jump binding does (POLISH1A: the Rec Room) */
+enum { MENU_RF_FALLBACK = 1, MENU_RF_START_CONFIRM = 2, MENU_RF_PAD_B_BACK = 4 };   /* START_CONFIRM: the Start key (Enter) confirms like the jump binding does (POLISH1A: the Rec Room); PAD_B_BACK: the pad's B (the DS A key bit 0x0001, free on this page) is the host back (PADMENUS1) */
 
 struct MenuRecipe {
   const char *name;

@@ -2274,6 +2274,10 @@ void hal_menu_pad(uint16_t *pressed, int host_back)
     const MenuRecipe *R = g_cur.recipe;
     if (R->pad_ok && !R->pad_ok()) return;      /* the ROM is not reading the menu this frame */
     if (R->pad_map) { R->pad_map(pressed, host_back); return; }   /* TITLE1: a native recipe with its own key meaning */
+    if ((R->flags & MENU_RF_PAD_B_BACK) && (*pressed & 0x0001)) {   /* PADMENUS1: pad B / the attack key is Back on a page whose ROM has no use for it */
+        host_back = 1;
+        *pressed = (uint16_t)(*pressed & ~0x0001u);
+    }
     if ((R->flags & MENU_RF_START_CONFIRM) && (*pressed & MENU_PAD_START))   /* POLISH1A: Enter is the Start key; here it confirms like Space and pad A */
         *pressed = (uint16_t)((*pressed & ~(unsigned)MENU_PAD_START) | MENU_PAD_CONFIRM);
     int drv = R->driver;
