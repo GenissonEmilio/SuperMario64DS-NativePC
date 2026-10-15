@@ -9,6 +9,9 @@
  * takes mEnter from a 20-entry table and calls it, Behavior counts mTimer
  * toward 0 and calls mBehavior, Render calls mRender, and mState -1 (the
  * constructor's value) makes Behavior and Render do nothing. */
+#ifdef _MSC_VER
+#pragma pack(push, 4) /* host only: MSVC aligns the pointer-to-member fields to 8, mwccarm to 4 (ROM size 0x28 at 4-byte alignment) */
+#endif
 struct dMgState_c {
     typedef void (dMgState_c::*Callback)();
 
@@ -71,6 +74,9 @@ struct dMgState_c {
     void func_ov004_020b8560();
     void func_ov004_020b8688();
 };
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
 
 #ifndef SM64DS_PLATFORM_PC
 /* ROM layout under mwccarm; host ABI divergence is tracked separately. */

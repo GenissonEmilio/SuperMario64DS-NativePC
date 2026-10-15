@@ -4,6 +4,9 @@
 #include "ModelAnim.h"
 #include "TextureSequence.h"
 #include "dMg3DEspAnimSet_c.h"
+#ifdef _MSC_VER
+#pragma pack(push, 4) /* host only: MSVC aligns pointer-to-member fields to 8, mwccarm to 4 */
+#endif
 
 /* The source spelling and ordinary method names are inferred from its sole
  * owner, dScMg3DEsp_c, and each method's role. The 0x21c-byte extent and
@@ -51,4 +54,7 @@ typedef char dMg3DEspModel_c_size_must_be_0x21c[
     sizeof(dMg3DEspModel_c) == 0x21c ? 1 : -1];
 #endif
 
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
 #endif

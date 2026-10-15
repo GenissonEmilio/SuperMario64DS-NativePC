@@ -44,6 +44,9 @@
 #include "dScMgD3DBase_c.h"
 #include "dMgJump3DMario_c.h"
 #include "Model.h"
+#ifdef _MSC_VER
+#pragma pack(push, 4) /* host only: MSVC aligns pointer-to-member fields to 8, mwccarm to 4 */
+#endif
 
 /* The array runtime passes each element address and ignores callback results.
  * The casts below adapt the existing lifecycle entries at that ABI boundary. */
@@ -121,4 +124,7 @@ struct dScMgJump_c : dScMgD3DBase_c {
 typedef char dScMgJump_c_size_must_be_0x5834[sizeof(dScMgJump_c) == 0x5834 ? 1 : -1];
 #endif
 
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
 #endif

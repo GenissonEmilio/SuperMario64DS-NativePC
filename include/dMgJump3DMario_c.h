@@ -2,6 +2,9 @@
 #define DMGJUMP3DMARIO_C_H
 
 #include "ModelAnim.h"
+#ifdef _MSC_VER
+#pragma pack(push, 4) /* host only: MSVC aligns pointer-to-member fields to 8, mwccarm to 4 */
+#endif
 
 /* dMgJump3DMario_c -- one of the three Marios in Bounce and Pounce (MG_JUMP)
  * and its sequel (MG_JUMP2), ov006.
@@ -135,4 +138,7 @@ typedef char dMgJump3DMario_c_size_must_be_0xb8[
     sizeof(dMgJump3DMario_c) == 0xb8 ? 1 : -1];
 #endif
 
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
 #endif
