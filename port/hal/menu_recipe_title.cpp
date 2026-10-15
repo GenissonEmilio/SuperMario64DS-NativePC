@@ -1921,6 +1921,10 @@ static void title_pad_keys(uint16_t *pressed, int host_back, int inject)
         h = (unsigned short)(h & ~0x0001u);
     }
     /* FACE3: the free-draw page has no pad handling in the ROM (touch only): the back key (Backspace, pad B) taps its Yoshi button, the ROM's own box 6, which leaves for the main menu */
+    /* PADMENUS1: the file machine's sub pages (scores 3/5 and the table 2/5, copy 7/5, erase 9/5) have no pad back in the ROM either: B taps the back arrow, which sits where
+       the file select's own back arrow does (hotspot box (180,140,72,36), the lower right) */
+    if (host_back && g_elem == 5 && (g_top == 3 || g_top == 2 || g_top == 7 || g_top == 9))
+        hal_menu_touch_queue_press(180 + 36, 140 + 18);
     if (host_back && g_last == V_DOODLE && g_elem == 3) {
         Box b;
         if (box_of_live(6, &b)) hal_menu_touch_queue_press((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2);
