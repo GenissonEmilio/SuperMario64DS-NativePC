@@ -690,8 +690,7 @@ int pause_art_present()
             snprintf(rel, sizeof rel, "menu/pause3/%s.png", n);
             if (!ui_art_path(rel, path, sizeof path)) v = 0;
         }
-        fprintf(stderr, "[menu] pause art: %s
-", v ? "HD UI Textures planks found, one-screen pause" : "no mod planks, the ROM's own pause");
+        fprintf(stderr, "[menu] pause art: %s\n", v ? "HD UI Textures planks found, one-screen pause" : "no mod planks, the ROM's own pause");
     }
     return v;
 }

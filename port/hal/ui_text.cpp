@@ -64,8 +64,7 @@ void load()
         g_em = 96;
     }
     g_ok = 1;
-    fprintf(stderr, "[ui-text] font: %s (%dx%d atlas, %d px per em)
-", g_font_from, g_aw, g_ah, g_em);
+    fprintf(stderr, "[ui-text] font: %s (%dx%d atlas, %d px per em)\n", g_font_from, g_aw, g_ah, g_em);
 }
 
 const UiGlyphSrc *src_of(int ch)

@@ -91,20 +91,17 @@ void load_into(int id, Img &I)
     const char *fname = ext ? efile : kSrc[id];     /* ext: "pause3/<name>" */
     if (over && *over) {
         p = stbi_load(over, &w, &h, &comp, 4);
-        fprintf(stderr, "[menu] art %d: SM64DS_MENU_LOGO=%s -> %s
-", id, over, p ? "loaded" : "unreadable, DS art kept");
+        fprintf(stderr, "[menu] art %d: SM64DS_MENU_LOGO=%s -> %s\n", id, over, p ? "loaded" : "unreadable, DS art kept");
     } else if (dir && *dir && strlen(dir) + 60 < sizeof path) {
         snprintf(path, sizeof path, "%s/%s", dir, fname);
         p = stbi_load(path, &w, &h, &comp, 4);
-        fprintf(stderr, "[menu] art %d: %s -> %s
-", id, path, p ? "loaded" : "unreadable, DS art kept");
+        fprintf(stderr, "[menu] art %d: %s -> %s\n", id, path, p ? "loaded" : "unreadable, DS art kept");
     } else {
         char rel[160];
         snprintf(rel, sizeof rel, "menu/%s", fname);
         if (ui_art_path(rel, path, sizeof path)) {
             p = stbi_load(path, &w, &h, &comp, 4);
-            if (p) fprintf(stderr, "[menu] art %d: mod file %s (%dx%d)
-", id, path, w, h);
+            if (p) fprintf(stderr, "[menu] art %d: mod file %s (%dx%d)\n", id, path, w, h);
         }
     }
     if (p) {
