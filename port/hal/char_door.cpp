@@ -36,7 +36,25 @@ struct Item {
 
 int g_want;            /* a request: CD_BOX or CD_PICK, honoured by the frame loop */
 int g_mode;            /* CD_NONE while closed */
-int g_armed = 1;       /* the door may open the picker again (the player has left its doorway since) */
+/* Per door (the white door is two objects, one per leaf, and the player is in front of only one of them): armed = the
+   player has left this door's doorway since the picker last closed, so it may open it again */
+enum { MAX_DOORS = 4 };
+void *g_door_obj[MAX_DOORS];
+int g_door_armed[MAX_DOORS];
+int g_new_armed = 1;   /* what a door seen for the first time starts as (0 after a restart that put the player in a doorway) */
+int *armed_of(void *d)
+{
+    for (int i = 0; i < MAX_DOORS; ++i)
+        if (g_door_obj[i] == d) return &g_door_armed[i];
+    for (int i = 0; i < MAX_DOORS; ++i)
+        if (!g_door_obj[i]) { g_door_obj[i] = d; g_door_armed[i] = g_new_armed; return &g_door_armed[i]; }
+    return &g_door_armed[MAX_DOORS - 1];
+}
+void disarm_all(void)
+{
+    g_new_armed = 0;
+    for (int i = 0; i < MAX_DOORS; ++i) g_door_armed[i] = 0;
+}
 int g_pick = -1;
 Item g_item[16];
 int g_n;
@@ -128,7 +146,7 @@ void close_now(const char *why)
 {
     fprintf(stderr, "[chardoor] %s closed (%s)\n", g_mode == CD_BOX ? "box" : "picker", why);
     g_mode = CD_NONE;
-    g_armed = 0;           /* stay shut until the player leaves the doorway */
+    disarm_all();          /* stay shut until the player leaves the doorway */
 }
 
 void cursor_step(int d)
@@ -163,8 +181,9 @@ int door_hook(void *door, void *pl)
     /* the box comes as soon as the ROM's star is done (the player stands wherever the ROM left them); the picker only
        when the player walks into the doorway */
     if (!first) {
-        if (!func_ov100_021452e4(d, p)) { g_armed = 1; return 0; }  /* not in the doorway: the ROM's own watch */
-        if (!g_armed) return 1;                                     /* just closed: do not let it open the door under them */
+        int *armed = armed_of(d);
+        if (!func_ov100_021452e4(d, p)) { *armed = 1; return 0; }   /* not in the doorway: the ROM's own watch */
+        if (!*armed) return 1;                                     /* just closed: do not let it open the door under them */
     }
     /* the walking states the ROM's Player::CanEnterDoor accepts, tested without committing the player to a door state */
     const int walking = _ZN6Player7IsStateERNS_5StateE(p, data_ov002_0211013c) ||
@@ -227,7 +246,7 @@ void port_char_door_open_now(int cur)
             fprintf(stderr, "[chardoor] row %d: %s%s\n", i, g_item[i].label, i == g_sel ? "  <" : "");
 }
 
-void port_char_door_disarm(void) { g_armed = 0; }
+void port_char_door_disarm(void) { disarm_all(); }
 
 void port_char_door_cancel(void)
 {
