@@ -117,6 +117,8 @@
 #include "hal/gpu_raster.h"
 #include "menu_compose.h"   /* run menu1 lane HOOK1: the lift plan (H1) */
 #include <chrono>
+#include <vector>
+#include "hal/hitch_probe.h"   /* HITCH9C */
 /* SAVEOVL1: may the menu layer be used at all (SM64DS_MENU_LAYER, default on)? The card's own readiness is asked per tick. */
 static inline bool port_gpu_layer_ready_env()
 {
@@ -1172,6 +1174,17 @@ static Cell g_hud_cells[192][256];    /* the moved coin counter's cells, a plane
 static bool g_hud_row_live;
 static bool g_hud_erase;   /* PROOF ARM (env SM64DS_HUD_ERASE_PROOF, off by default): the pre-fix behaviour, kept only to photograph the cause */
 
+/* HITCH9C: SM64DS_MSG_FAST=0 puts the per-pixel originals (this file's bm_fill_default_ref and the uncached resolve) back on this same binary (the control half of the
+   before / after); unset or anything else, the table form is used. Both leave the same bytes in g_bm. */
+inline bool msg_fast() {
+    static int v = -1;
+    if (v < 0) {
+        const char *e = std::getenv("SM64DS_MSG_FAST");
+        v = (e && *e == '0') ? 0 : 1;
+    }
+    return v != 0;
+}
+
 namespace hudelem {
 
 // The dilation radii, in DS pixels. See the bridge discussion above.
@@ -1220,16 +1233,34 @@ void resolve(int band_l, int band_r, int margin)
     // right-to-left sweep completes it, so the whole radius costs two adds per
     // pixel rather than a kBridgeX-wide window scan at each one.
     static uint8_t dil[192][256];
+    /* HITCH9C: THE ELEMENT PASS IS A FUNCTION OF THE "ON" MASK AND THE THREE NUMBERS, NOTHING ELSE, and the mask is
+       the same picture after picture for as long as a HUD or a message box stands still (the passes below were the
+       biggest single cost of a dialogue frame: 3-4 ms of labelling an unchanged mask sixty times a second). The mask is
+       built once here; if it and band_l / band_r / margin match the last call's, g_lbl and g_off are still what that
+       call left (nothing else writes them) and the passes are skipped. SM64DS_MSG_FAST=0 never skips. */
+    static uint8_t on_mask[192][256];
+    static uint8_t last_mask[192][256];
+    static int last_bl, last_br, last_mg;
+    static bool last_ok;
+    for (int y = 0; y < 192; ++y)
+        for (int x = 0; x < 256; ++x)
+            on_mask[y][x] = (g_a[y][x].hit && !msg_layer_px(y, x) && !(g_hud_erase && g_hud_row_live && g_hud_row[y][x])) ? 1 : 0;
+    if (msg_fast() && last_ok && band_l == last_bl && band_r == last_br && margin == last_mg &&
+        std::memcmp(on_mask, last_mask, sizeof on_mask) == 0)
+        return;
+    std::memcpy(last_mask, on_mask, sizeof on_mask);
+    last_bl = band_l; last_br = band_r; last_mg = margin; last_ok = true;
+    HITCH_SCOPE(HK_MSGRESOLVE);
     for (int y = 0; y < 192; ++y) {
         int run = kBridgeX + 1;
         for (int x = 0; x < 256; ++x) {
-            const bool on = g_a[y][x].hit && !msg_layer_px(y, x) && !(g_hud_erase && g_hud_row_live && g_hud_row[y][x]);
+            const bool on = on_mask[y][x] != 0;
             run = on ? 0 : (run + 1);
             dil[y][x] = (run <= kBridgeX) ? 1 : 0;
         }
         run = kBridgeX + 1;
         for (int x = 255; x >= 0; --x) {
-            const bool on = g_a[y][x].hit && !msg_layer_px(y, x) && !(g_hud_erase && g_hud_row_live && g_hud_row[y][x]);
+            const bool on = on_mask[y][x] != 0;
             run = on ? 0 : (run + 1);
             if (run <= kBridgeX) dil[y][x] = 1;
         }
@@ -2325,7 +2356,7 @@ inline unsigned char bm_verdict(unsigned layer, unsigned wmask) {
 // at 4:3; centred at the uniform scale in 16:9), so the box's window lines up
 // with the box's text; a host column outside the DS panel is outside every
 // window and takes WINOUT.
-void bm_fill_default(uint32_t dispcnt, const Windows &w) {
+void bm_fill_default_ref(uint32_t dispcnt, const Windows &w) {
     if (!g_bm) {
         g_bm = static_cast<unsigned char *>(
             std::malloc((size_t)ntr::SCREEN_W * ntr::SCREEN_H));
@@ -2366,6 +2397,74 @@ void bm_fill_default(uint32_t dispcnt, const Windows &w) {
             const bool is3d = shown3d
                 && (clear_opaque || cover[(size_t)hy * ntr::SCREEN_W + hx]);
             row[hx] = bm_verdict(is3d ? 0u : 5u, wm);
+        }
+    }
+    g_bm_live = true;
+}
+
+/* HITCH9C: the same pass with its per-pixel arithmetic hoisted. The original ran, for every host pixel (1.3 M of them at
+   a 4x scale in 16:9), a function call and two integer divisions to find the DS column, a window_mask() call, and a
+   register read inside bm_verdict. None of that depends on anything but the column, the DS row and the frame's
+   registers, so: the column map is built once per call, the window mask of a DS row once per DS row (256 calls, not
+   one per host pixel), and the register once per call. A message box that darkens the 3D picture used to spend about
+   4 ms of every picture here (measured, hal/hitch_probe.h's msgbm cell). Byte-identical to bm_fill_default_ref. */
+void bm_fill_default(uint32_t dispcnt, const Windows &w) {
+    if (!msg_fast()) { bm_fill_default_ref(dispcnt, w); return; }
+    HITCH_SCOPE(HK_MSGBM);
+    if (!g_bm) {
+        g_bm = static_cast<unsigned char *>(
+            std::malloc((size_t)ntr::SCREEN_W * ntr::SCREEN_H));
+        if (!g_bm) return;
+    }
+    const int sx = ntr::active_w / 256;
+    const int margin = ntr::active_w - ds_col_x0(256);
+    const bool shown3d = bg0_3d_shown(dispcnt);
+    const bool card = ntr::gx_card_overlay_active() != 0;
+    const uint8_t *cover = (shown3d && !card) ? ntr::gx_coverage() : nullptr;
+    const bool clear_opaque =
+        shown3d && ((rd32(0x04000350) >> 16) & 0x1F) != 0;
+    g_bm_card = card;
+    g_bm_shown3d = shown3d;
+    g_bm_clear_opaque = clear_opaque;
+    const unsigned out_mask = w.any ? w.out : 0x3F;
+    const unsigned first = rd16(kRegBase + 0x50) & 0x3F;        // bm_verdict's register, read once
+    const int aw = ntr::active_w, ah = ntr::active_h;
+    // host column -> DS column, -1 left of the DS panel (the original's x)
+    static std::vector<int> xmap;
+    xmap.resize((size_t)aw);
+    const int ph = ntr::present_h();
+    for (int hx = 0; hx < aw; ++hx) {
+        if (ntr::widescreen) {
+            const int d = hx - margin / 2;
+            xmap[(size_t)hx] = d < 0 ? -1 : d * 192 / ph;       // ds_col_of(d)
+        } else {
+            xmap[(size_t)hx] = hx / sx;
+        }
+    }
+    // verdict bits for a window mask: bm_verdict(layer, wm) = ((wm & 0x20) && (first & (1 << layer))) ? 1 : 0
+    const unsigned char v0 = ((first & 1u) != 0) ? 1 : 0;       // layer 0 (the 3D layer) when the mask bit is set
+    const unsigned char v5 = ((first & (1u << 5)) != 0) ? 1 : 0; // layer 5 (the backdrop)
+    unsigned char wmrow[256];
+    int wm_y = -1;
+    for (int hy = 0; hy < ah; ++hy) {
+        const int y = hy * 192 / ph;                            // ds_row_of(hy)
+        unsigned char *row = g_bm + (size_t)hy * ntr::SCREEN_W;
+        if (y != wm_y) {
+            wm_y = y;
+            if (y < 192)
+                for (int x = 0; x < 256; ++x) wmrow[x] = (unsigned char)(window_mask(w, x, y) & 0xFF);
+        }
+        const uint8_t *crow = cover ? cover + (size_t)hy * ntr::SCREEN_W : nullptr;
+        for (int hx = 0; hx < aw; ++hx) {
+            const int x = xmap[(size_t)hx];
+            const unsigned wm = (x >= 0 && x < 256 && y < 192) ? (unsigned)wmrow[x] : out_mask;
+            const unsigned char hit = (wm & 0x20) ? 1 : 0;      // bm_verdict's window half
+            if (card) {
+                row[hx] = (unsigned char)((hit & v0) | ((hit & v5) << 1));
+                continue;
+            }
+            const bool is3d = shown3d && (clear_opaque || crow[hx]);
+            row[hx] = is3d ? (unsigned char)(hit & v0) : (unsigned char)(hit & v5);
         }
     }
     g_bm_live = true;

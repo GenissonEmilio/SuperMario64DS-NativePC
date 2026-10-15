@@ -18332,12 +18332,14 @@ int main(void)
            the same-level filter and the spawn/despawn transitions. Inert unless
            SM64DS_ADVENTURE_PRESENCE is set. */
         port_adventure_presence_probe(frame);
-        port_hub_presence_frame();
-        port_coop_save_frame();
-        port_coop_world_frame();   /* hook: COOPWORLD1, inert unless SM64DS_COOP */
-        port_party_stars_frame();
-        port_party_hits_frame();   /* hook: PLAYINT1, inert outside party / coop rooms */
-        port_star_popup_frame();   /* hook: STARPOP1, inert outside party / coop rooms */
+        { HITCH_SCOPE(HK_NETHOOK);   /* HITCH9C: the MP hooks, timed together */
+            port_hub_presence_frame();
+            port_coop_save_frame();
+            port_coop_world_frame();   /* hook: COOPWORLD1, inert unless SM64DS_COOP */
+            port_party_stars_frame();
+            port_party_hits_frame();   /* hook: PLAYINT1, inert outside party / coop rooms */
+            port_star_popup_frame();   /* hook: STARPOP1, inert outside party / coop rooms */
+        }
         /* PARTY: the render boundary (a party body solid+colliding vs a
            non-party ghost translucent+pass-through) and party-body liveness.
            Reads the render pass's own per-slot record (set just below in the
@@ -20407,7 +20409,7 @@ int main(void)
         /* THE CHAT (run mp1, lane CHATUI1): over everything the game draws,
            under the menu. Pumped every presented frame whether or not this
            one renders. */
-        chat_host_frame(surf, frame);
+        { HITCH_SCOPE(HK_CHAT); chat_host_frame(surf, frame); }   /* HITCH9C: timed by name */
         if (!rb_skip_render()) {
         if (menu_on) menu_draw(surf);
         }
@@ -20802,6 +20804,7 @@ int main(void)
            the ROM's loop runs it. The second statement's blink half stays in
            hal/fader_wipes.cpp at its own point under its own tick gate; this
            file does not move it. Under R3d this call is func_020197b8's line. */
+        { HITCH_SCOPE(HK_SWAP);   /* HITCH9C */
         port_rom_frame_phase6();
         /* THE ROM'S OWN SWAP, at the ROM's own point: func_020197b8.c runs
            phase 6's two statements, then IRQ::DisableIRQs(1), then
@@ -20816,6 +20819,7 @@ int main(void)
            EXECUTED' (lane R3CFIX2, status/R3CFIX2.md 18:22). */
         func_020190b8();
         ntr::gx_swap_apply();
+        }
         /* func_020197b8.c:53 -- the flag goes up here, between the swap and
            the wait. The ROM raises it inside IRQ::DisableIRQs(1)/EnableIRQs
            (:51 and :54); this host has no interrupt to race with at this
@@ -20837,7 +20841,7 @@ int main(void)
            two counters agreed on all of it. */
         port_last_frame = port_rom_frame_checked(frame, "fault-context");
         /* the frame's stdout, one write; the setvbuf note above is why */
-        fflush(stdout);
+        { HITCH_SCOPE(HK_FLUSH); fflush(stdout); }   /* HITCH9C */
         /* SM64DS_COMMS_STOP_ROUND=R (run rel0215 lane LAGDELAY): under a
            selftest, end the run once this window has COMPLETED R lockstep
            rounds, whichever comes first with the frame budget. A wide session

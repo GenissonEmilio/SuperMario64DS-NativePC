@@ -2,6 +2,7 @@
 // unchanged so the adventure ghost follower (comms_sync.cpp gw_follow) can run
 // the same calls.
 #include "ghost_tongue.h"
+#include "hitch_probe.h"
 
 #include <cstdio>
 
@@ -56,10 +57,12 @@ int select(State &st, char *body, unsigned anim, bool is_yoshi, bool *started) {
     if (is_yoshi && ready()) targ = arg_for(anim);
     if (targ != st.arg) {
         if (targ >= 0) {
+            HITCH_SCOPE(HK_TONGUE);   // HITCH9C
             func_ov002_020d71ec(body, targ);
             ++st.starts;
             if (started) *started = true;
         } else if (st.arg >= 0) {
+            HITCH_SCOPE(HK_TONGUE);
             func_ov002_020d71a0(body);
             ++st.stops;
         }

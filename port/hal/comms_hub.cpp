@@ -45,6 +45,7 @@
 // so neither file can change the other's load order.
 
 #include "comms_hub.h"
+#include "hitch_probe.h"   // HITCH9C: named costs for the hitch log
 
 #include "host_settings.h"   // adventure_ghost_mode(), host_setting_voice_enabled
 
@@ -1304,6 +1305,7 @@ bool hub_on_kind(HubKind kind, HubKindFn fn, void *user) {
 
 // The game thread's drain: handlers run here, with no lock held.
 int comms_hub_pump() {
+    HITCH_SCOPE(HK_HUBPUMP);
     int delivered = 0;
     {   // proof knob SM64DS_HUB_STALL=<start_ms>:<len_ms> (ms after the first pump): the game thread does not drain for a while, as in a level load
         static int st = -1; static unsigned t0 = 0, from = 0, len = 0;

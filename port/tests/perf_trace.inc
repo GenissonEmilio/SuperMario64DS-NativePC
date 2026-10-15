@@ -33,6 +33,7 @@
  * image's static size (the image must end below 0x02000000). kernel32 only.
  */
 #include <tlhelp32.h>
+#include "hal/hitch_probe.h"   /* HITCH9C */
 
 enum PerfStage {
     PS_BOOT = 0,      /* before the first frame, and between loops */
@@ -64,6 +65,7 @@ static const char *const k_ps_name[PS_COUNT] = {
     "pace", "present_x", "smooth", "scene_in", "scene_tick", "scene_present"
 };
 
+static double g_hl_thr = 28.0;     /* HITCH9C: the hitch log's threshold, ms of work */
 static int g_pt_on = -1;          /* -1 unread, 0 off, 1 timers, 2 +sampler */
 static volatile int g_pt_stage = PS_BOOT;
 static long long g_pt_last;       /* QPC of the previous mark */
@@ -111,8 +113,16 @@ static int pt_on(void)
 {
     if (g_pt_on < 0) {
         const char *e = getenv("SM64DS_PERF_TRACE");
-        g_pt_on = e ? atoi(e) : 0;
+        /* HITCH9C: with the variable unset the instrument runs in mode 3, the HITCH LOG: the stage
+           timers only (no frame table, no sampler, no file), and a "[hitch]" line on stderr for a
+           frame whose work ran past SM64DS_HITCH_MS (default 28). SM64DS_HITCH_MS=0 turns it off. */
+        g_pt_on = e ? atoi(e) : 3;
         if (g_pt_on < 0) g_pt_on = 0;
+        if (g_pt_on == 3) {
+            const char *h = getenv("SM64DS_HITCH_MS");
+            g_hl_thr = h && *h ? atof(h) : 28.0;
+            if (g_hl_thr <= 0.0) g_pt_on = 0;
+        }
     }
     return g_pt_on;
 }
@@ -191,7 +201,7 @@ static double pt_ft_s(const FILETIME &f)
 
 static void pt_milestone(const char *name)
 {
-    if (pt_on() <= 0) return;
+    if (pt_on() <= 0 || g_pt_on == 3) return;
     double ws, pv, pk;
     pt_mem(&ws, &pv, &pk);
     FILETIME c, e, k, u;
@@ -316,9 +326,53 @@ static DWORD WINAPI pt_sampler_main(void *)
     return 0;
 }
 
+/* HITCH9C: the hitch log. Called with the frame's stage times just closed; prints one line when the
+   frame's work (everything but the pacer's wait) ran past the threshold, naming the stages and the
+   named costs (hal/hitch_probe.h) that account for it. Always clears the named costs for the next frame. */
+static void hl_close(long long now)
+{
+    static unsigned printed, frames;
+    static double t_first_ms = -1.0;
+    ++frames;
+    /* the tick's own work: everything but the pacer's wait and the repeated pictures the pacer builds and
+       presents inside it (FrameRate above the tick rate); those two are judged on their own below */
+    double work = 0.0;
+    for (int s = 0; s < PS_COUNT; ++s)
+        if (s != PS_PACE && s != PS_PRESENT_X && s != PS_SMOOTH) work += g_pt_cur[s];
+    const double repeats = g_pt_cur[PS_PRESENT_X] + g_pt_cur[PS_SMOOTH];
+    if (work > g_hl_thr || repeats > g_hl_thr) {
+        const double wall = (now - g_pt_frame_t0) * g_pt_qpf_ms;
+        const int load = g_pt_cur[PS_HOST_IN] > 150.0 || g_pt_cur[PS_SCENE_IN] > 150.0;
+        if (load || printed < 400) {
+            char b[512];
+            int n = _snprintf(b, sizeof b, "[hitch] t=%.1fs frame=%u lvl=%d work=%.1f wall=%.1f%s |",
+                              pt_since_create_ms() / 1000.0, frames, g_pt_level, work, wall, load ? " LOAD" : "");
+            for (int s = 0; s < PS_COUNT && n > 0 && n < 400; ++s)
+                if (s != PS_PACE && g_pt_cur[s] >= 1.5)
+                    n += _snprintf(b + n, sizeof b - n, " %s=%.1f", k_ps_name[s], g_pt_cur[s]);
+            if (n > 0 && n < 400) n += _snprintf(b + n, sizeof b - n, " |");
+            for (int k = 0; k < port::HK_COUNT && n > 0 && n < 440; ++k)
+                if (port::g_hitch_cell[k].n && port::g_hitch_cell[k].ms >= 0.3)
+                    n += _snprintf(b + n, sizeof b - n, " %s=%ux/%.1fms", port::kHitchKindName[k],
+                                   port::g_hitch_cell[k].n, port::g_hitch_cell[k].ms);
+            fprintf(stderr, "%s\n", b);
+            if (!load) ++printed;
+            (void)t_first_ms;
+        }
+    }
+    for (int k = 0; k < port::HK_COUNT; ++k) port::g_hitch_cell[k].ms = 0.0, port::g_hitch_cell[k].n = 0;
+}
+
 static void pt_close_frame(long long now)
 {
-    if (g_pt_kind < 0 || !g_pt_frames) return;
+    if (g_pt_kind < 0) return;
+    if (g_pt_on == 3) {
+        g_pt_cur[g_pt_stage] += (now - g_pt_last) * g_pt_qpf_ms;
+        g_pt_last = now;
+        hl_close(now);
+        return;
+    }
+    if (!g_pt_frames) return;
     g_pt_cur[g_pt_stage] += (now - g_pt_last) * g_pt_qpf_ms;
     g_pt_last = now;
     if (g_pt_nframes < PT_MAX_FRAMES) {
@@ -428,6 +482,7 @@ static void pt_arm(void)
     QueryPerformanceFrequency(&q);
     g_pt_qpf_ms = 1000.0 / (double)q.QuadPart;
     g_pt_last = pt_qpc();
+    if (g_pt_on == 3) return;           /* the hitch log needs nothing else */
     g_pt_frames = (PtFrame *)VirtualAlloc(0, sizeof(PtFrame) * PT_MAX_FRAMES,
                                           MEM_COMMIT | MEM_RESERVE,
                                           PAGE_READWRITE);
@@ -440,7 +495,7 @@ static void pt_arm(void)
         g_pt_exe_hi = g_pt_exe_lo + nt->OptionalHeader.SizeOfCode;
     }
     atexit(pt_dump);
-    if (g_pt_on >= 2) {
+    if (g_pt_on == 2) {
         g_pt_samp = (PtSample *)VirtualAlloc(0, sizeof(PtSample) * PT_MAX_SAMPLES,
                                              MEM_COMMIT | MEM_RESERVE,
                                              PAGE_READWRITE);
@@ -450,7 +505,7 @@ static void pt_arm(void)
         }
     }
     fprintf(stderr, "[perf] SM64DS_PERF_TRACE=%d armed (%s)\n", g_pt_on,
-            g_pt_on >= 2 ? "stage timers + 1 ms sampler" : "stage timers");
+            g_pt_on == 2 ? "stage timers + 1 ms sampler" : "stage timers");
     pt_milestone("main entry");
 }
 
