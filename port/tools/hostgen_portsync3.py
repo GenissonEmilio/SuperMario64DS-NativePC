@@ -106,3 +106,27 @@ def _cstd_sqrt_rows():
 _cstd_rows = _cstd_sqrt_rows()
 if _cstd_rows:
     ROWS[("MWCC_SPELLING", "cstd")] = _cstd_rows
+
+# ---- lane MGSYNC1 (hunt8) ----------------------------------------------------
+
+# dMg3DHeyhoObjAdapter_c: the shy-guy hit tests (func_ov006_020c49d8 and
+# func_ov006_020c47d4) read the three Mario objects' vtable words through plain
+# C function-pointer types, (*(VT*)O)[0..2](O). On the ARM that is the ROM's
+# call: the object in r0. Main's dMgJump3DMario_c now has a real constructor,
+# so the objects carry MSVC's compiled vtable whose three slots are thiscall
+# members (this in ECX). A cdecl call through them hands the member whatever ECX
+# held: in the first dispatch of each hit test the compiler happened to load the
+# object into ECX for its own reasons, in the other two ECX held the function
+# pointer itself, so mVel was read from the code address and every shy guy
+# counted as hit (scenes 372 and 373 cleared with no input). Spelling the
+# pointer types thiscall passes the receiver the way the members expect it.
+ROWS[("MWCC_SPELLING", "dMg3DHeyhoObjAdapter_c")] = [
+    ("typedef int (**VT)(void*);\n",
+     "typedef int (__thiscall **VT)(void*);  /* MGSYNC1: the slots are thiscall members */\n"),
+    ("    Vec3 *(*f0)(Obj *);\n"
+     "    Vec3 *(*f1)(Obj *);\n"
+     "    int   (*f2)(Obj *);\n",
+     "    Vec3 *(__thiscall *f0)(Obj *);   /* MGSYNC1: thiscall members */\n"
+     "    Vec3 *(__thiscall *f1)(Obj *);\n"
+     "    int   (__thiscall *f2)(Obj *);\n"),
+]
