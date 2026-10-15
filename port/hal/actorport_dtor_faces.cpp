@@ -52,7 +52,6 @@
 #include "daObjFl_Block_c.h"
 #include "daObjFl_Ring_c.h"
 #include "daObjFl_UkiKi_c.h"
-#include "daObjHmMaruta_c.h"
 #include "daObjKi_Fune_c.h"
 #include "daObjKi_Hasira_c.h"
 #include "daObjKm2_Agaru_c.h"
@@ -94,7 +93,6 @@ ACTORPORT_D1_FACE(daObjCtMecha10_c)
 ACTORPORT_D1_FACE(daObjFl_Block_c)
 ACTORPORT_D1_FACE(daObjFl_Ring_c)
 ACTORPORT_D1_FACE(daObjFl_UkiKi_c)
-ACTORPORT_D1_FACE(daObjHmMaruta_c)
 ACTORPORT_D1_FACE(daObjKi_Fune_c)
 ACTORPORT_D1_FACE(daObjKi_Hasira_c)
 ACTORPORT_D1_FACE(daObjKm2_Agaru_c)

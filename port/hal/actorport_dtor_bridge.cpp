@@ -1513,7 +1513,7 @@ extern "C" void __fastcall actorport_d16t_daDsnBase_c(void *s, void *)
 #pragma comment(linker, "/alternatename:?Destructor1@fBase_c@@UAEXXZ=@actorport_d16_fBase_c@12")
 #pragma comment(linker, "/alternatename:?Destructor0@fBase_c@@UAEXXZ=@actorport_dtor_slot_trap@8")
 
-/* ---- PORTDROP1: the remaining pair-family classes (45). Same rows as the section above, for the classes whose
+/* ---- PORTDROP1: the remaining pair-family classes (44). Same rows as the section above, for the classes whose
    headers kept a plain `virtual ~X` after the main sync (slot 16 of their compiler vtable was the base thunk). ---- */
 ACTORPORT_D16(daECreate_c)
 #pragma comment(linker, "/alternatename:??1daECreate_c@@UAE@XZ=@actorport_d1_daECreate_c@8")
@@ -1655,11 +1655,6 @@ ACTORPORT_D16(daObjFl_Ukiyuka_c)
 #pragma comment(linker, "/alternatename:@actorport_d16t_daObjFl_Ukiyuka_c@8=??1daObjFl_Ukiyuka_c@@QAE@XZ")
 #pragma comment(linker, "/alternatename:?Destructor1@daObjFl_Ukiyuka_c@@UAEXXZ=@actorport_d16_daObjFl_Ukiyuka_c@12")
 #pragma comment(linker, "/alternatename:?Destructor0@daObjFl_Ukiyuka_c@@UAEXXZ=@actorport_dtor_slot_trap@8")
-ACTORPORT_D16(daObjHmMaruta_c)
-#pragma comment(linker, "/alternatename:??1daObjHmMaruta_c@@UAE@XZ=@actorport_d1_daObjHmMaruta_c@8")
-#pragma comment(linker, "/alternatename:@actorport_d16t_daObjHmMaruta_c@8=@actorport_d1_daObjHmMaruta_c@8")
-#pragma comment(linker, "/alternatename:?Destructor1@daObjHmMaruta_c@@UAEXXZ=@actorport_d16_daObjHmMaruta_c@12")
-#pragma comment(linker, "/alternatename:?Destructor0@daObjHmMaruta_c@@UAEXXZ=@actorport_dtor_slot_trap@8")
 ACTORPORT_D16(daObjKi_Fune_c)
 #pragma comment(linker, "/alternatename:??1daObjKi_Fune_c@@UAE@XZ=@actorport_d1_daObjKi_Fune_c@8")
 #pragma comment(linker, "/alternatename:@actorport_d16t_daObjKi_Fune_c@8=@actorport_d1_daObjKi_Fune_c@8")
