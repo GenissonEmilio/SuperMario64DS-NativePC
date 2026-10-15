@@ -383,7 +383,7 @@ unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave
     for (int s = 0; s < kHubMaxSeats; ++s) {
         if (s == my_seat || !info[s].present || !info[s].word.ok) continue;
         if (info[s].word.inv_to != my_seat || info[s].word.party_id == 0) continue;
-        if (g.my_id != 0) continue;                         // already in a party
+        if (g.my_id != 0 && info[s].word.party_id == g.my_id) continue;   // already my party
         if (s == g.dismissed_seat && info[s].word.nonce == g.dismissed_nonce) continue;
         cand = s;
         break;
@@ -420,6 +420,10 @@ unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave
             if (size >= kWparMaxMembers) {
                 say("That party is full", nullptr, now);
             } else {
+                if (g.my_id) {   /* switching parties: the old one is left without a word about each member */
+                    bool none[kHubMaxSeats] = {};
+                    push_members(none, now);
+                }
                 g.my_id = g.in_id;
                 g.inv_to = -1;
                 g.accept_ms = now ? now : 1;
@@ -442,7 +446,6 @@ unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave
             int mx, my, mz;
             int best = -1;
             long long best_d2 = 0;
-            bool near_other_party = false;
             if (my_pos(&mx, &my, &mz)) {
                 const long long lim = (long long)kWparRange * 4096;
                 const long long limy = (long long)kWparRangeY * 4096;
@@ -458,16 +461,11 @@ unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave
                     const long long d2 = dx * dx + dz * dz;
                     if (d2 > lim * lim) continue;
                     if (g.member[s]) continue;               // already with me
-                    if (info[s].word.ok && info[s].word.party_id != 0) {
-                        near_other_party = true;             // in a party: not invitable
-                        continue;
-                    }
                     if (best < 0 || d2 < best_d2) { best = s; best_d2 = d2; }
                 }
             }
             if (best < 0) {
-                say(near_other_party ? "They are already in a party"
-                                     : "Walk up to someone first", nullptr, now);
+                say("Walk up to someone first", nullptr, now);
             } else {
                 if (!g.my_id) {
                     /* founder seat (high nibble) + a nonce 1..15 (low nibble): two parties
@@ -488,7 +486,15 @@ unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave
 
     // ---- DOWN: ask, then confirm
     if (dn_edge) {
-        if (!g.my_id && g.inv_to < 0) {
+        if (g.in_seat >= 0 && g.my_id) {
+            /* a request to switch parties: DOWN says no, and I stay where I am */
+            g.dismissed_seat = g.in_seat;
+            g.dismissed_nonce = g.in_nonce;
+            g.in_seat = -1;
+            g.confirm_until = 0;
+            say("Declined", nullptr, now);
+            if (logging()) std::fprintf(stderr, "[wparty] t=%u DECLINE request\n", now);
+        } else if (!g.my_id && g.inv_to < 0) {
             say("You are not in a party", nullptr, now);
         } else if (g.confirm_until) {
             g.confirm_until = 0;
@@ -516,7 +522,8 @@ void world_party_view(WparView *out) {
     else if (g.in_seat >= 0) {
         Info inf;
         read_seat(g.in_seat, &inf);
-        std::snprintf(out->prompt, sizeof out->prompt, "%s invites you: UP to join",
+        std::snprintf(out->prompt, sizeof out->prompt, g.my_id ? "%s asks you to join their party: UP"
+                                                               : "%s invites you: UP to join",
                       inf.name);
     }
     if (g.toast[0] && (int)(g.toast_until - now) > 0)
