@@ -1925,6 +1925,7 @@ static void title_pad_keys(uint16_t *pressed, int host_back, int inject)
        the file select's own back arrow does (hotspot box (180,140,72,36), the lower right) */
     if (host_back && g_elem == 5 && (g_top == 3 || g_top == 2 || g_top == 7 || g_top == 9)) {
         const int q = hal_menu_touch_queue_press(180 + 36, 140 + 18);
+        host_back = 0;          /* the tap is the back: the ROM must not also see a B key on a page it reads by touch */
         if (hal_menu_trace_on()) fprintf(stderr, "[menu] file sub page %d/%d: pad back taps the back arrow (queued %d)\n", g_top, g_elem, q);
     }
     if (host_back && g_last == V_DOODLE && g_elem == 3) {
