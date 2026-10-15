@@ -139,3 +139,21 @@ const MenuRecipe g_menu_recipes[] = {
     { "test",     up_test,  build_test, 0, MENU_KEY_NONE,              MENU_DRV_TOUCH,      0, 2 },
 };
 const int g_menu_nrecipes = (int)(sizeof g_menu_recipes / sizeof g_menu_recipes[0]);
+
+/* PADMENUS1: the game over screen with OneScreenMenus off (no recipe is live): the ROM has no pad cursor there, so the recipe's own ROM cursor driver
+   (menu_gameover_rom_cursor) is run from the pad seam, and the confirm becomes the Start the ROM confirms with: the same two things hal_menu_pad does
+   for the recipe's MENU_DRV_ROM_CURSOR rows. */
+extern "C" void menu_gameover_pad_rom(uint16_t *pressed)
+{
+    if (!menu_gameover_pad_ok()) return;
+    uint16_t k = *pressed;
+    int dir = -1;
+    if (k & MENU_PAD_UP) dir = MENU_DIR_UP;
+    else if (k & MENU_PAD_DOWN) dir = MENU_DIR_DOWN;
+    else if (k & MENU_PAD_LEFT) dir = MENU_DIR_LEFT;
+    else if (k & MENU_PAD_RIGHT) dir = MENU_DIR_RIGHT;
+    if (dir >= 0) { int sel = 0; menu_gameover_rom_cursor(dir, &sel); }
+    k = (uint16_t)(k & ~0xf0u);
+    if (k & MENU_PAD_CONFIRM) k = (uint16_t)((k & ~(unsigned)MENU_PAD_CONFIRM) | MENU_PAD_START);
+    *pressed = k;
+}

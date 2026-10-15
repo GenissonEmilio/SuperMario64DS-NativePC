@@ -46,6 +46,7 @@ struct State {
     int hint_done;             /* the hint was shown for this scene already */
     int last_hx, last_hy;      /* menu mode: where the hover was last pushed */
     int stick_was;             /* the right stick was past the dead zone last frame */
+    int idle;                  /* frames with no stick push and no pen (outside a minigame the pointer goes away after about four seconds of that) */
 };
 State S;
 
@@ -240,6 +241,16 @@ extern "C" void hal_padptr_frame(const PadPtrIn *in, PadPtrOut *out)
         if (trace_on()) fprintf(stderr, "[padptr] f%d off (buttons handed back)\n", in->frame);
     }
     S.stick_was = rs_on;
+    if (S.on) {
+        if (rs_on || in->confirm || S.down) S.idle = 0; else ++S.idle;
+        if (!mg && S.idle > 240) {                      /* the pointer was left alone: give the buttons back */
+            S.on = 0; S.down = 0; S.hold = 0; S.hint = 0; S.idle = 0;
+            if (S.mode == MODE_MENU) hal_menu_touch_end();
+            if (trace_on()) fprintf(stderr, "[padptr] f%d off (idle)\n", in->frame);
+        }
+    } else {
+        S.idle = 0;
+    }
 
     if (!S.on) { S.down = 0; publish(); return; }
 
