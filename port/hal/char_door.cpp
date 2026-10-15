@@ -191,15 +191,19 @@ void scripted_pointer(SpInput *si, int frame)
     if (env == (const char *)1) {
         env = getenv("SM64DS_CHARMENU_MOUSE");
         envr = getenv("SM64DS_CHARMENU_MOUSE_R");
-        if (env || envr) fprintf(stderr, "[chardoor] scripted pointer: SM64DS_CHARMENU_MOUSE=%s SM64DS_CHARMENU_MOUSE_R=%s
-", env ? env : "-", envr ? envr : "-");
+        if (env || envr) fprintf(stderr, "[chardoor] scripted pointer: SM64DS_CHARMENU_MOUSE=%s SM64DS_CHARMENU_MOUSE_R=%s\n", env ? env : "-", envr ? envr : "-");
     }
     if (env) {
         const char *s = env;
         while (*s) {
             int x = 0, y = 0, f0 = 0, f1 = 0, got = 0;
             if (sscanf(s, "%d,%d@%d-%d%n", &x, &y, &f0, &f1, &got) >= 4) {
-                if (frame >= f0 && frame <= f1 + 2) { si->mouse_valid = 1; si->mouse_x = x; si->mouse_y = y; si->mouse_l = frame >= f0 + 1 && frame <= f1; }
+                if (frame >= f0 && frame <= f1 + 2) {
+                    si->mouse_valid = 1; si->mouse_x = x; si->mouse_y = y; si->mouse_l = frame >= f0 + 1 && frame <= f1;
+                    static int last = -1;
+                    const int st = si->mouse_l ? 2 : 1;
+                    if (st != last) { last = st; fprintf(stderr, "[chardoor] scripted pointer at (%d,%d) on picker frame %d, button %s\n", x, y, frame, st == 2 ? "down" : "up"); }
+                }
                 s += got;
             }
             while (*s && *s != ';') ++s;
