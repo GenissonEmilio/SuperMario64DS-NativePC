@@ -289,6 +289,7 @@ void forget(void)
 extern "C" {
 
 int port_char_strip_up(void) { return g_up; }
+int port_char_strip_focus(void) { return g_up && g_focus; }
 int port_char_strip_slots(void) { return g_nslots; }
 int port_char_strip_page(void) { return g_page; }
 int port_char_strip_current(void) { return current_id(); }

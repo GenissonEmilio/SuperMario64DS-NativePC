@@ -38,6 +38,8 @@ extern "C" {
 
 /* 1 while the strip is part of the screen: the star select is up, the one-screen menus are on, nothing multiplayer, and there is a choice to make */
 int  port_char_strip_up(void);
+/* 1 while the strip is up and the cursor is on it (the pad pointer stays off then: A picks) */
+int  port_char_strip_focus(void);
 /* one logic frame with this frame's device state. Returns the DS key bits (the host's btn word: 0x10 right, 0x20 left, 0x40 up, 0x80 down, 0x08
    start, 0x04 select, and the low shared bits) to take away from the ROM this frame; 0 when the strip is not up. */
 unsigned port_char_strip_frame(const struct SpInput *in);

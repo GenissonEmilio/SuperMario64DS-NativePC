@@ -918,7 +918,12 @@ extern "C" void menu_pause_rom_pad(uint16_t *pressed)
             host_menu_cursor_sound();
         }
     }
-    if (k & (MENU_PAD_CONFIRM | 0x0001)) k = (uint16_t)((k & ~(unsigned)(MENU_PAD_CONFIRM | 0x0001)) | MENU_PAD_START);
+    if (k & 0x0001) {                 /* PADMENUS1: pad B / the attack key is Back: the Continue plate (the first one) is pressed, whatever the cursor was on */
+        set_chosen(0);
+        k = (uint16_t)((k & ~(unsigned)(MENU_PAD_CONFIRM | 0x0001)) | MENU_PAD_START);
+    } else if (k & MENU_PAD_CONFIRM) {
+        k = (uint16_t)((k & ~(unsigned)MENU_PAD_CONFIRM) | MENU_PAD_START);
+    }
     k = (uint16_t)(k & ~(unsigned)(MENU_PAD_UP | MENU_PAD_DOWN));
     *pressed = k;
 }

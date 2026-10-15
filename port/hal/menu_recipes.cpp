@@ -123,7 +123,7 @@ const MenuRecipe g_menu_recipes[] = {
       menu_lc_pad_ok, menu_lc2_facts },
     { "lc",       menu_lc_up, menu_lc_build, menu_lc_rom_cursor, MENU_KEY_SAVE_MENU_ON_TOP, MENU_DRV_ROM_CURSOR, 0, 4,
       menu_lc_pad_ok },
-    { "pause",    menu_pause_up, menu_pause_build, menu_pause_cursor, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_MIXED, 0, 8,
+    { "pause",    menu_pause_up, menu_pause_build, menu_pause_cursor, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_MIXED, MENU_RF_PAD_B_BACK, 8,
       menu_pause_pad_ok, menu_pause_facts },
     { "title",    menu_title_up, menu_title_build, 0, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_NATIVE, 0, MENU_TITLE_NVARIANTS,
       0, menu_title_facts, menu_title_pad_map },
@@ -139,3 +139,28 @@ const MenuRecipe g_menu_recipes[] = {
     { "test",     up_test,  build_test, 0, MENU_KEY_NONE,              MENU_DRV_TOUCH,      0, 2 },
 };
 const int g_menu_nrecipes = (int)(sizeof g_menu_recipes / sizeof g_menu_recipes[0]);
+
+/* PADMENUS1: the ROM's own game over and level-clear (save) screens with OneScreenMenus off and no recipe live. The ROM has no pad cursor on either, so
+   the recipe's own ROM cursor driver (the same function hal_menu_pad runs for its MENU_DRV_ROM_CURSOR rows) is run from the pad seam, and the confirm
+   becomes the Start the ROM confirms with. */
+static void rom_cursor_pad(uint16_t *pressed, int (*pad_ok)(void), int (*cursor)(int, int *))
+{
+    if (!pad_ok()) return;
+    uint16_t k = *pressed;
+    int dir = -1;
+    if (k & MENU_PAD_UP) dir = MENU_DIR_UP;
+    else if (k & MENU_PAD_DOWN) dir = MENU_DIR_DOWN;
+    else if (k & MENU_PAD_LEFT) dir = MENU_DIR_LEFT;
+    else if (k & MENU_PAD_RIGHT) dir = MENU_DIR_RIGHT;
+    if (dir >= 0) { int sel = 0; cursor(dir, &sel); }
+    k = (uint16_t)(k & ~0xf0u);
+    if (k & MENU_PAD_CONFIRM) k = (uint16_t)((k & ~(unsigned)MENU_PAD_CONFIRM) | MENU_PAD_START);
+    *pressed = k;
+}
+extern "C" void menu_gameover_pad_rom(uint16_t *pressed) { rom_cursor_pad(pressed, menu_gameover_pad_ok, menu_gameover_rom_cursor); }
+extern "C" void menu_lc_pad_rom(uint16_t *pressed) { rom_cursor_pad(pressed, menu_lc_pad_ok, menu_lc_rom_cursor); }
+
+/* PADMENUS1: the Rec Room with OneScreenMenus off. The scene reads no pad at all; the recipe's own pad step (menu_recroom_pad_ok) is where the pad's B
+   becomes a touch on the back arrow, and it asks the ROM first whether the scene is reading the touch screen (not flipping a page, exiting or fading).
+   Run from the pad seam before the key word is read. */
+extern "C" void menu_recroom_pad_rom(void) { (void)menu_recroom_pad_ok(); }

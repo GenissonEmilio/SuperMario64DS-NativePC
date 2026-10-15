@@ -95,6 +95,7 @@
 #include "hal/comms_seam.h"   /* run mg16 lane MP3: touch_ring_index/advance */
 
 #include "hal/screen_gap.h"
+#include "hal/pad_pointer.h"   /* PADMENUS1: the pad pointer (a virtual stylus) */
 #include "hal/host_settings.h"   /* the improved map's two keys */
 
 /* The PNG reader, vendored public-domain and already the one this port uses
@@ -132,6 +133,10 @@ extern "C" int settings_page_swallow_back(void);
 extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back);
 extern "C" int menu_pause_slide_busy(void);    /* PAUSE43FIX2: a 4:3 pause slide in flight eats the click and the back key */
 extern "C" int menu_pause_rom_fallback(void);   /* UIMOD1: hal/menu_recipe_pause.cpp */
+void menu_title_pad_map_rom(uint16_t *pressed, int host_back);   /* PADMENUS1: hal/menu_recipe_title.cpp */
+extern "C" void menu_gameover_pad_rom(uint16_t *pressed);   /* PADMENUS1: hal/menu_recipes.cpp */
+extern "C" void menu_lc_pad_rom(uint16_t *pressed);
+extern "C" void menu_recroom_pad_rom(void);
 extern "C" void menu_pause_rom_pad(uint16_t *pressed);   /* hal/menu_recipe_pause.cpp: OneScreenMenus off, the ROM's own pause */   /* PAUSE3: hal/menu_recipe_pause.cpp */
 int hal_present_client_to_sub(int cx, int cy, int *dsx, int *dsy);
 /* the layout mode, defined at the bottom of this file */
@@ -244,6 +249,7 @@ extern char data_02092124;
 extern int SublevelToLevel(int i);
 /* and the button LC_Update's case 3 takes on Start: see hal_lc_menu_pad */
 extern unsigned char data_0209f2e0;
+extern unsigned char data_0209f248;   /* PADMENUS1: the pause state (5 = VS) for the ROM-pause trace */
 }
 
 namespace {
@@ -2054,7 +2060,7 @@ struct TouchProbeEnt {
    from sixteen cards to eighteen, and a hundred and seventy for the ten that
    take it to twenty. The array is 5KB of host bookkeeping and no run reads
    past g_tp_n. */
-TouchProbeEnt g_tp[256];
+TouchProbeEnt g_tp[2048];   /* PADMENUS1: a whole minigame gesture is more than 256 pen runs */
 int g_tp_n = -1;            /* -1 = env not read yet, 0 = probe off */
 int g_tp_frame;             /* polls since the first one */
 int g_tp_cur = -1;          /* the frame being polled, for the camera log */
@@ -2466,6 +2472,7 @@ void poll_touch(void)
             /* the arming edge, and the only one there is */
             if (on_surface) drag_own = 1;
             if (inj && on_surface) ++g_inj_on_surface;
+            if (on_surface && !inj) hal_padptr_mouse_down();    /* PADMENUS1: a real pen on the touch screen: a pad pointer steps aside */
             if (on_surface || drag_own) {
                 /* THE NEAREST POINT ON THE BOTTOM SCREEN. On the surface both
                    of these are no-ops, which is why a drag that stays on the
@@ -2490,6 +2497,23 @@ void poll_touch(void)
             down = 1;
             sx = data_020a0de8[2];
             sy = data_020a0de8[3];
+        }
+    }
+    /* PADMENUS1: THE PAD POINTER'S PEN (hal/pad_pointer.h). A controller-driven stylus, entered here beside the real pen so the rest of the
+       chain (the probe, the edge byte, the ring) sees one more hand and nothing else. Stacked it is already in DS pixels; under a one-screen
+       recipe it is a picture pixel and goes through the same inverse the mouse takes. Off (and one atomic load) with no controller. */
+    if (!inj) {
+        int pm = 0, ppx = 0, ppy = 0;
+        if (hal_padptr_poll(&pm, &ppx, &ppy)) {
+            int pfx = -1, pfy = -1, pok = 0;
+            if (pm == 1 && hal_sub_screen_stacked()) { pfx = ppx; pfy = ppy; pok = 1; }
+            else if (pm == 3 && !hal_sub_screen_stacked() && !hal_menu_live()) { pfx = ppx; pfy = ppy; pok = 1; }
+            else if (pm == 2 && hal_menu_live()) { int pin = 0; hal_menu_touch_inverse(ppx, ppy, &pfx, &pfy, &pin); pok = pin; }
+            if (pok && pfx >= 0 && pfx < ntr::SUB_W && pfy >= 0 && pfy < ntr::SUB_H) {
+                down = 1;
+                sx = (unsigned char)pfx;
+                sy = (unsigned char)pfy;
+            }
         }
     }
     if (g_tp_n < 0) touch_probe_parse();
@@ -3769,8 +3793,20 @@ extern "C" void hal_menu_pad_seam(void)
         const int s0 = data_020a0e40;
         unsigned short *pr = (unsigned short *)((char *)data_020a0e58 + s0 * 4 + 2);
         unsigned short *sp = (unsigned short *)((char *)data_020a0e5a + s0 * 4);
+        if (port_scene_live_id() == 5) menu_recroom_pad_rom();   /* PADMENUS1: the ROM's own Rec Room: pad B is the back arrow */
         uint16_t k0 = *pr, k1 = k0;
+        if (hal_menu_trace_on()) {      /* PADMENUS1 (SM64DS_MENU_TRACE): the ROM's own pause and its plate cursor, so a pad row can read what a press did with no recipe up */
+            static unsigned last = ~0u;
+            const unsigned now = ((unsigned)data_0209f2c4 << 16) | ((unsigned)data_0209f248 << 8) | (unsigned)data_0209f2e0;
+            if (now != last) {
+                last = now;
+                fprintf(stderr, "[pause-rom] f2c4=%d f248=%d sel=%d\n", (int)data_0209f2c4, (int)data_0209f248, (int)data_0209f2e0);
+            }
+        }
         menu_pause_rom_pad(&k1);
+        if (port_scene_live_id() == 8) menu_gameover_pad_rom(&k1);   /* PADMENUS1: the game over screen: the pad moves its cursor, confirm presses it */
+        menu_lc_pad_rom(&k1);   /* PADMENUS1: the ROM's own level-clear / save screen (state 3 only: it asks itself) */
+        if (port_scene_live_id() == 1) menu_title_pad_map_rom(&k1, back);   /* PADMENUS1: the ROM's own title: pad A confirms, pad B is the back arrow */
         settings_page_hook_pad(&k1);      /* MENUS093: with the one-screen menus off only the title's MP button guard applies (armed_target is off) */
         if (k1 != k0) { *pr = k1; *sp = k1; }
         return;
@@ -3826,6 +3862,16 @@ extern "C" void hal_menu_pad_seam(void)
    inset (stacked layout, panel off, the level-clear compose). */
 static int g_inset_rect[4];
 static int g_inset_live;
+/* PADMENUS1: the corner panel the last present drew (picture pixels), for the pad pointer's arrow. 0 when this frame drew no inset. */
+extern "C" int hal_sub_inset_rect(int *x, int *y, int *w, int *h)
+{
+    if (!g_inset_live || g_inset_rect[2] < 1 || g_inset_rect[3] < 1) return 0;
+    if (x) *x = g_inset_rect[0];
+    if (y) *y = g_inset_rect[1];
+    if (w) *w = g_inset_rect[2];
+    if (h) *h = g_inset_rect[3];
+    return 1;
+}
 
 static void sub_screen_present_body(unsigned int *dst, int w, int h)
 {
