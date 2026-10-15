@@ -60,9 +60,9 @@ static void wpar_rect(const OvlSurface &fb, int x0, int y0, int w, int h, uint32
 /* one arm of the cross: a square plate with an arrow pointing out. dir 0 up, 1 down, 2 left, 3 right */
 static void wpar_arm(const OvlSurface &fb, int x0, int y0, int a, int dir, bool lit)
 {
-    wpar_rect(fb, x0, y0, a, a, lit ? 0xF4F4F4u : 0x181818u, lit ? 235 : 170);
+    wpar_rect(fb, x0, y0, a, a, lit ? 0xFFF8D0u : 0x202020u, 255);
     const int ah = a / 2 + 1, hb = a / 3 + 1, q0 = (a - ah) / 2;
-    const uint32_t col = lit ? 0x202020u : 0x585858u;
+    const uint32_t col = lit ? 0x302008u : 0x606060u;
     for (int v = 0; v < a; ++v)
         for (int u = 0; u < a; ++u) {
             int p, q;
@@ -88,10 +88,10 @@ static void world_party_dpad_draw(const OvlSurface &fb)
     if (!h.shown) return;
     const int rom = chat_font_build();
     const int scale = OVL_SCALE;
-    const int a = 6 * scale;
+    const int a = 8 * scale;
     const int row_h = rom ? (NT_GH + 2) * scale : OVL_LINE;
     int cx = ntr::active_w - 6 * scale - 3 * a;      /* the cross's left edge */
-    int cy = ntr::active_h * 42 / 100 - (3 * a) / 2; /* its top edge */
+    int cy = ntr::active_h * 46 / 100 - (3 * a) / 2; /* its top edge */
     int lw = 0;
     const char *lab[2] = {h.up, h.down};
     for (int k = 0; k < 2; ++k)
@@ -107,13 +107,15 @@ static void world_party_dpad_draw(const OvlSurface &fb)
             cy = panel[1] - 3 * a - 2 * scale;
         if (cy < 0) cy = 0;
     }
-    /* the plate behind the whole thing, so it reads over any sky */
-    wpar_rect(fb, cx - scale, cy - scale, 3 * a + 2 * scale, 3 * a + 2 * scale, 0x000000u, 90);
+    /* a light rim round the cross, so its shape reads over any sky or wall */
+    const int sq[5][2] = {{1, 0}, {1, 2}, {0, 1}, {2, 1}, {1, 1}};
+    for (int k = 0; k < 5; ++k)
+        wpar_rect(fb, cx + sq[k][0] * a - scale, cy + sq[k][1] * a - scale, a + 2 * scale, a + 2 * scale, 0xC8C8C8u, 235);
     wpar_arm(fb, cx + a, cy, a, 0, h.up[0] != 0);
     wpar_arm(fb, cx + a, cy + 2 * a, a, 1, h.down[0] != 0);
     wpar_arm(fb, cx, cy + a, a, 2, false);
     wpar_arm(fb, cx + 2 * a, cy + a, a, 3, false);
-    wpar_rect(fb, cx + a, cy + a, a, a, 0x101010u, 200);
+    wpar_rect(fb, cx + a, cy + a, a, a, 0x101010u, 255);
     /* the words, to the left, level with their arm */
     const int ys[2] = {cy + a / 2 - row_h / 2, cy + 2 * a + a / 2 - row_h / 2};
     for (int k = 0; k < 2; ++k) {
