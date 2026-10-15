@@ -64,7 +64,7 @@ int g_frames;
 int g_saw_closed;      /* this session saw the door still shut (the ROM's own first pass is ahead of us, or under way) */
 int g_star0;           /* the star count while it was shut: the ROM's star has been given once the count is above it */
 
-enum { MAX_ROWS = 6 };   /* visible list rows (the layout shows six) */
+enum { MAX_ROWS = 5 };   /* visible list rows (the layout shows five) */
 
 int rom_char_unlocked(int c)
 {

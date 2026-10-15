@@ -574,18 +574,19 @@ void cdskin_geom(int w, int h, int n, int mode, CdGeom *g)
         g->dx = g->sx + U(16); g->dy = g->sy + U(26); g->dw = g->sw - U(32);
         return;
     }
-    g->sw = U(SHEET_W); g->sh = U(296);
-    g->sx = (w - g->sw) / 2; g->sy = (h - g->sh) / 2 + U(6);
+    /* the sheet sits high: the minimap's inset takes the bottom right corner of a 4:3 picture and the sheet must not run under it */
+    g->sw = U(SHEET_W); g->sh = U(236);
+    g->sx = (w - g->sw) / 2; g->sy = U(46);
     g->tw = U(200); g->th = U(52);
     g->tx = g->sx + (g->sw - g->tw) / 2; g->ty = g->sy - U(24);
     g->bw = U(72); g->bh = U(41);
     g->bx = g->sx - U(6); g->by = g->sy - U(26);
     g->rowh = U(36);
-    g->rows = n < 6 ? (n < 1 ? 1 : n) : 6;
-    g->lx = g->sx + U(22); g->ly = g->sy + U(40); g->lw = U(198);
-    g->pw = U(120); g->ph = U(120);
-    g->px = g->sx + U(246) + (U(178) - g->pw) / 2; g->py = g->sy + U(38);
-    g->dx = g->sx + U(240); g->dy = g->py + g->ph + U(12); g->dw = U(190);
+    g->rows = n < 5 ? (n < 1 ? 1 : n) : 5;
+    g->lx = g->sx + U(20); g->ly = g->sy + U(38); g->lw = U(210);
+    g->pw = U(100); g->ph = U(100);
+    g->px = g->sx + U(246) + (U(178) - g->pw) / 2; g->py = g->sy + U(36);
+    g->dx = g->sx + U(240); g->dy = g->py + g->ph + U(20); g->dw = U(190);
 }
 
 int cdskin_hd(void)
@@ -718,7 +719,7 @@ void cdskin_draw(uint32_t *px, int stride, int w, int h, const CdGeom *gp, const
             tx = g.lx + U(10) + isz + U(8);
         }
         const float em = 19.0f;
-        const float room = (float)(g.lx + g.lw - U(12) - (m.current ? U(20) : 0) - tx);
+        const float room = (float)(g.lx + g.lw - U(10) - (m.current ? U(22) : 0) - tx);
         const std::string name = fit(f, m.label, em, room);
         if (hd && !on) f.draw(s, (float)tx + 1, y + (rh - f.cap(em)) / 2 + 1, name.c_str(), em, 0x7A4614u, 110);   /* a soft shadow on the wood */
         f.draw(s, (float)tx, y + (rh - f.cap(em)) / 2, name.c_str(), em, tc);
@@ -764,7 +765,7 @@ void cdskin_draw(uint32_t *px, int stride, int w, int h, const CdGeom *gp, const
         }
         if (m.credits[0]) {
             std::vector<std::string> ln;
-            wrap(f, m.credits, 14.0f, (float)g.dw, 3, &ln);
+            wrap(f, m.credits, 14.0f, (float)g.dw, 2, &ln);
             for (size_t i = 0; i < ln.size(); ++i) {
                 f.draw(s, g.dx + (g.dw - f.width(ln[i].c_str(), 14.0f)) / 2, (float)y, ln[i].c_str(), 14.0f, C_DIM);
                 y += U(18);
