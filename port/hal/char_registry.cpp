@@ -13,6 +13,7 @@
 
 #include "char_registry.h"
 #include "mods.h"
+#include "char_save.h"
 
 extern "C" {
 int host_json_string(const char *text, const char *key, char *out, size_t cap);
