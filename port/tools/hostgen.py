@@ -4842,7 +4842,7 @@ def _fold_stem_keys():
         for old, new in STEM_FOLDS.items():
             if old not in t:
                 continue
-            row = t.pop(old)
+            row = t[old] if old in STEM_KEEP else t.pop(old)
             if table == "HEADER_SHADOW" and not isinstance(row, tuple):
                 # A bare header name meant "shadow the stem's own name"; the
                 # stem is the TU's now, so spell the old function name out.
@@ -4863,6 +4863,13 @@ def _fold_stem_keys():
 # stem of the renamed TU (git rename detection, 100% or near, plus the one
 # unmatched pair dMgState_c); the rows of both this file and
 # hostgen_portsync2/3.py are moved onto the new key at import.
+# STEM_KEEP: two old stems are ALSO the stems of port-owned host copies
+# (port/unmatched/dScMgHanachan_c.cpp, port/unmatched/hostarm/dScMgRoulette_c.cpp)
+# that some of the rows were written for, so their rows stay on the old key AND
+# are copied onto the renamed TU's key; every patch keeps its hard error, so a
+# row whose anchor is in only one of the two files fails loudly and is split.
+STEM_KEEP = {"dScMgHanachan_c", "dScMgRoulette_c"}
+
 STEM_RENAMES = {
     "dActor_c": "d_actor",
     "dBgActor_c": "d_bg_actor",
@@ -4958,7 +4965,15 @@ def _load_rederived():
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         for (table, key), row in getattr(mod, "ROWS", {}).items():
-            key = STEM_RENAMES.get(key, key)
+            if key in STEM_KEEP:
+                # the rederived row serves the port-owned copy under the old key
+                # AND the renamed TU under the new one
+                if row is None:
+                    g[table].pop(STEM_RENAMES[key], None)
+                else:
+                    g[table][STEM_RENAMES[key]] = row
+            else:
+                key = STEM_RENAMES.get(key, key)
             if table not in g or not isinstance(g[table], dict):
                 sys.exit("hostgen: %s: unknown table %s" % (f.name, table))
             if row is None:
