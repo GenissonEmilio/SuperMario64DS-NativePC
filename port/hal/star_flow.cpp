@@ -2804,7 +2804,7 @@ extern "C" int port_vs_match_end_poll(int frame)
     {
         int t = 0;
         const int b = vs_end_best(np_marker, &t);
-        if (!t) win_slot = b;
+        if (!t && g_end_by_luigi == 0) win_slot = b;   /* a Luigi Infection end is a TEAM's: no star scorer is named the winner */
     }
     /* THE MARKER'S SCORE FIELD CARRIES EVERY PLAYER, always, whatever the
        banner chose to draw -- it is the machine-readable record the launcher

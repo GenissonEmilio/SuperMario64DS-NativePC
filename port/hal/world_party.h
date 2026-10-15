@@ -140,6 +140,24 @@ int  world_party_vk_leave();
 // The picture. Cheap; once per presented frame.
 void world_party_view(WparView *out);
 
+// THE D-PAD ICON (run mp1, lane MPEXTRAS1; Tango 10-13: "a little dpad ui icon that
+// shows what's available to do"). What UP and DOWN would do right now, in one short
+// word each, "" when that direction does nothing. shown is false whenever the D-pad is
+// not the party's (world_party_dpad_reserved(): not a world room, or a menu / message /
+// pause / typing is up), so the icon follows the same condition as the reserve.
+//   UP    Accept (an invite or request is waiting) | Cancel (leave prompt open) |
+//         Invite (someone close, no party of theirs) | Join (someone close, in a party)
+//   DOWN  Decline (a request to switch parties is waiting) | Confirm (leave prompt
+//         open) | Leave (in a party, or an invite out)
+// Left and right do nothing and are never labelled. Same rules the press itself uses
+// (the nearest-player search is shared), so the icon never offers what UP would refuse.
+struct WparHint {
+    bool shown;
+    char up[12];
+    char down[12];
+};
+void world_party_hint(WparHint *out);
+
 // The word hub_presence.cpp puts in my SYNL (0 outside a world room).
 uint32_t world_party_word();
 

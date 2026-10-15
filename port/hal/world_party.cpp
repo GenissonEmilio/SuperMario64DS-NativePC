@@ -216,6 +216,47 @@ bool world_room() {
            comms_hub_room_kind() == kHubRoomWorld;
 }
 
+// The nearest player I could invite: present, with a fresh ghost, in my level and
+// area, within range, not already with me. -1 when nobody. Shared by the UP press
+// and by the D-pad icon's hint so the icon never promises what UP will refuse.
+int nearest_target(const Info info[kHubMaxSeats], int my_seat) {
+    int mx, my, mz;
+    int best = -1;
+    long long best_d2 = 0;
+    if (my_pos(&mx, &my, &mz)) {
+        const long long lim = (long long)kWparRange * 4096;
+        const long long limy = (long long)kWparRangeY * 4096;
+        for (int s = 0; s < kHubMaxSeats; ++s) {
+            if (s == my_seat || !info[s].present || !info[s].have_ghost) continue;
+            if (info[s].ghost_age > 1500u) continue;
+            if (info[s].level != (int)(unsigned char)data_0209f2f8 ||
+                info[s].area != (int)data_02092120)
+                continue;
+            const long long dx = info[s].x - mx, dz = info[s].z - mz;
+            const long long dy = info[s].y - my;
+            if (dy > limy || -dy > limy) continue;
+            const long long d2 = dx * dx + dz * dz;
+            if (d2 > lim * lim) continue;
+            if (g.member[s]) continue;               // already with me
+            if (best < 0 || d2 < best_d2) { best = s; best_d2 = d2; }
+        }
+    }
+    return best;
+}
+
+// TEST ONLY: aim the invite at a chosen seat (the row driver cannot place players).
+// A PORT_ROM_CLEAN build has no such seam and returns the search's answer as is.
+int test_target(const Info info[kHubMaxSeats], int my_seat, int best) {
+#ifndef PORT_ROM_CLEAN
+    const char *t = std::getenv("SM64DS_WPARTY_TEST_TARGET");
+    const int ts = (t && *t) ? std::atoi(t) : -1;
+    if (ts >= 0 && ts < kHubMaxSeats && ts != my_seat && info[ts].present && !g.member[ts]) best = ts;
+#else
+    (void)info; (void)my_seat;
+#endif
+    return best;
+}
+
 int party_size() {
     int n = g.my_id ? 1 : 0;
     for (int s = 0; s < kHubMaxSeats; ++s) n += g.member[s] ? 1 : 0;
@@ -483,34 +524,8 @@ unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave
         } else if ((int)(now - g.cooldown_until) < 0) {
             say("Wait a moment", nullptr, now);
         } else {
-            int mx, my, mz;
-            int best = -1;
-            long long best_d2 = 0;
-            if (my_pos(&mx, &my, &mz)) {
-                const long long lim = (long long)kWparRange * 4096;
-                const long long limy = (long long)kWparRangeY * 4096;
-                for (int s = 0; s < kHubMaxSeats; ++s) {
-                    if (s == my_seat || !info[s].present || !info[s].have_ghost) continue;
-                    if (info[s].ghost_age > 1500u) continue;
-                    if (info[s].level != (int)(unsigned char)data_0209f2f8 ||
-                        info[s].area != (int)data_02092120)
-                        continue;
-                    const long long dx = info[s].x - mx, dz = info[s].z - mz;
-                    const long long dy = info[s].y - my;
-                    if (dy > limy || -dy > limy) continue;
-                    const long long d2 = dx * dx + dz * dz;
-                    if (d2 > lim * lim) continue;
-                    if (g.member[s]) continue;               // already with me
-                    if (best < 0 || d2 < best_d2) { best = s; best_d2 = d2; }
-                }
-            }
-#ifndef PORT_ROM_CLEAN
-            {   /* TEST ONLY: aim the invite at a chosen seat (the row driver cannot place players) */
-                const char *t = std::getenv("SM64DS_WPARTY_TEST_TARGET");
-                const int ts = (t && *t) ? std::atoi(t) : -1;
-                if (ts >= 0 && ts < kHubMaxSeats && ts != my_seat && info[ts].present && !g.member[ts]) best = ts;
-            }
-#endif
+            int best = nearest_target(info, my_seat);
+            best = test_target(info, my_seat, best);
             if (best < 0) {
                 say("Walk up to someone first", nullptr, now);
             } else if (info[best].word.ok && info[best].word.party_id != 0) {
@@ -639,6 +654,48 @@ void world_party_view(WparView *out) {
                        inf.area == (int)data_02092120;
     }
     out->n = n;
+}
+
+void world_party_hint(WparHint *out) {
+    std::memset(out, 0, sizeof *out);
+    if (!world_party_dpad_reserved()) return;
+    const int my_seat = comms_hub_my_seat();
+    if (my_seat < 0 || my_seat >= kHubMaxSeats) return;
+    out->shown = true;
+    const unsigned now = comms_hub_now_ms();
+    const bool confirming = g.confirm_until && (int)(g.confirm_until - now) > 0;
+    const bool incoming = g.in_seat >= 0 && (int)(g.in_until - now) > 0;
+
+    // UP
+    if (confirming) {
+        std::strcpy(out->up, "Cancel");
+    } else if (incoming) {
+        if (g.my_id == 0 || party_size() < kWparMaxMembers) std::strcpy(out->up, "Accept");
+    } else if (g.inv_to < 0 && (int)(now - g.cooldown_until) >= 0) {
+        Info info[kHubMaxSeats];
+        for (int s = 0; s < kHubMaxSeats; ++s) {
+            if (s == my_seat) continue;
+            read_seat(s, &info[s]);
+        }
+        const int best = test_target(info, my_seat, nearest_target(info, my_seat));
+        if (best >= 0) {
+            if (info[best].word.ok && info[best].word.party_id != 0) {
+                int size = 1;
+                for (int s = 0; s < kHubMaxSeats; ++s)
+                    if (s != my_seat && s != best && info[s].present && info[s].word.ok &&
+                        info[s].word.party_id == info[best].word.party_id) ++size;
+                if (size < kWparMaxMembers) std::strcpy(out->up, "Join");
+            } else if (party_size() < kWparMaxMembers) {
+                std::strcpy(out->up, "Invite");
+            }
+        }
+    }
+
+    // DOWN
+    if (incoming && g.my_id) std::strcpy(out->down, "Decline");
+    else if (!g.my_id && g.inv_to < 0) { /* nothing to leave */ }
+    else if (confirming) std::strcpy(out->down, "Confirm");
+    else std::strcpy(out->down, "Leave");
 }
 
 void world_party_test_reset() { g = State(); }
