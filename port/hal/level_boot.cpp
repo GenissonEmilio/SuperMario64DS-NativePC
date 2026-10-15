@@ -3660,8 +3660,7 @@ extern "C" void *port_stage_boot_body(void *mc, int spawn)
         const char *cs = std::getenv("SM64DS_CAPS_SEED");
         if (cs && !caps_seeded) {
             *(unsigned *)(data_0209caa0 + 8) |= (unsigned)std::strtoul(cs, 0, 0);
-            std::fprintf(stderr, "[caps-seed] flags2 now %08x
-", *(unsigned *)(data_0209caa0 + 8));
+            std::fprintf(stderr, "[caps-seed] flags2 now %08x\n", *(unsigned *)(data_0209caa0 + 8));
             std::fflush(stderr);
         }
         caps_seeded = true;
