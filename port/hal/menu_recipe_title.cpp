@@ -1229,7 +1229,7 @@ void build_doodle(MenuLayout *L)
         MenuPiece sc = scene_layer(L);
         if (e < DD_XF) { const int a = 255 * e / DD_XF; sc.alpha = (uint8_t)(a < 1 ? 1 : a); }      /* 3b: the page's own parts fade in with the paper, they do not pop */
         menu_add_piece(L, sc);
-        const int th = e3 > 0 ? 146 : 130;           /* the canvas reaches down to the button rows (box tops at 148) only in the free-draw state */
+        const int th = 192;           /* INTROCARD092: the whole DS stylus surface (the buttons are added after it and win the hit); it ended at row 130 / 146, so a drag stopped at about half the window */
         menu_add_piece(L, scene_twin(L, T, 0, 0, 256, th));
         MenuPiece yo = menu_piece_make(SRC_TOP_PIC, kYo.x, kYo.y, kYo.w, kYo.h, MENU_AX_L, MENU_AY_B, 0, 0, 1, 1);
         yo.touch = 1; yo.nodraw = 1;
@@ -1262,7 +1262,7 @@ void build_doodle(MenuLayout *L)
     MenuPiece tc = st;                           /* the touch twin: the same transform inverts a click on the strokes' area to the ROM's canvas */
     tc.keycover = 0; tc.has_ex = 0; tc.has_ex2 = 0; tc.bg = 0; tc.touch = 1; tc.nodraw = 1;
     tc.has_ex3 = 0;
-    const int th = e3 > 0 ? 146 : 130;           /* FACE3: the free-draw canvas reaches down to the button rows (box tops at 148) */
+    const int th = 192;           /* INTROCARD092: the whole stylus surface; the buttons' pieces come after and win the hit (the canvas ended at row 130 / 146: a drag stopped at about half the window) */
     tc.s.h = (short)th; tc.fh = (short)((fh * th + 96) / 192);     /* ends above the button rows so it never meets the buttons' own touch boxes */
     menu_add_piece(L, tc);
     MenuPiece yo = menu_piece_make(SRC_TOP_PIC, kYo.x, kYo.y, kYo.w, kYo.h, MENU_AX_L, MENU_AY_B, 0, 0, 1, 1);
