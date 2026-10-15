@@ -6990,6 +6990,9 @@ static void menu_input(int pad_live, const XPad *pad)
                         if (getenv("SM64DS_CHAR_RELAUNCH_DRY")) {
                             fprintf(stderr, "[menu] SM64DS_CHAR_RELAUNCH_DRY: not relaunching\n");
                         } else {
+                            /* a scripted key list (SM64DS_HOST_KEY) is not cleared by the
+                               relaunch table; inherited, the child would press this row again */
+                            SetEnvironmentVariableA("SM64DS_HOST_KEY", 0);
                             SetEnvironmentVariableA("SM64DS_CHARACTER", bs);
                             SetEnvironmentVariableA("SM64DS_CHAR_SKIN", sk >= 0 ? port_char_key(sk) : 0);
                             if (port_menu_relaunch(-1, lv)) {
@@ -7045,6 +7048,7 @@ static void menu_input(int pad_live, const XPad *pad)
                     g_menu_chr = dec ? (chr_sel() + tot - 1) % tot
                                      : (chr_sel() + 1) % tot;
                     g_character_pending = chr_base(g_menu_chr);
+                    fprintf(stderr, "[menu] character row: %s (base %s)\n", chr_label(g_menu_chr), CHAR_NAME[g_character_pending & 3]);
                 }
                 break;
             case MENU_SNAP:
