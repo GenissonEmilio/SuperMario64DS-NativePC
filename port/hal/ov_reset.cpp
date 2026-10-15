@@ -84,6 +84,25 @@ int logging(void)
     return on;
 }
 
+/* Debug: SM64DS_OVL_RESET_NOMOUNT=all|<ov>,<ov>,... leaves those overlays' mounted arrays alone (bisect aid). */
+bool skip_mount(int ov)
+{
+    const char *e = std::getenv("SM64DS_OVL_RESET_NOMOUNT");
+    if (!e || !*e)
+        return false;
+    if (!std::strcmp(e, "all"))
+        return true;
+    for (const char *p = e; *p;) {
+        if (std::atoi(p) == ov)
+            return true;
+        while (*p && *p != ',')
+            ++p;
+        if (*p == ',')
+            ++p;
+    }
+    return false;
+}
+
 const PortOvResetEnt *find(int ov)
 {
     for (const PortOvResetEnt *e = port_ovreset_tab; e->ov >= 0; ++e)
@@ -190,7 +209,7 @@ extern "C" int port_ov_load(int ov)
                 ++runs;
             }
         }
-        if (mode() == 1)
+        if (mode() == 1 && !(i >= 2 && skip_mount(ov)))
             std::memcpy((void *)r.b, r.snap, r.n);
     }
     std::fprintf(stderr, "[ovreset] ov%03d load #%u: %s %zu bytes, %zu differed from the start-up image\n",
