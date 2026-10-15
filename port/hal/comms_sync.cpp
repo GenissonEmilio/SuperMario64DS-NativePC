@@ -3241,6 +3241,8 @@ static void gw_exit_summary() {
                      "given back %llu, no door near %llu, local door left "
                      "alone %llu\n", g_gws.door_snaps, d.applied, d.released,
                      d.no_door, d.yielded);
+        std::fprintf(stderr, "[ghost:exit] doors put back: %llu given back to "
+                     "their own state, %llu by the idle sweep\n", d.restored, d.swept);
         std::fprintf(stderr, "[ghost:exit] look: hidden by his own state %llu "
                      "frames, faded out in place (door / painting / room) "
                      "%llu, held back for the wrong character %llu, hub "
@@ -3654,6 +3656,7 @@ void gw_follow() {
                          player::anim_frame(a) >> 12, gw_pose_hash(a),
                          (unsigned)sm.anim, sm.cursor >> 12, sm.y >> 12);
     }
+    ghostdoor::watcher_end_pass();      // DOORS9C: a seat that was not driven lately gives its door back
     if (shown_any) ++g_gws.shown_frames;
     if (in_cut) {
         ++g_gws.cut_frames;

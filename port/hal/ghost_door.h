@@ -64,9 +64,11 @@ void sender_probe(const void *body, unsigned frame, unsigned char kind);
 void watcher_apply(int seat, unsigned char kind, unsigned char frame,
                    const int pos[3]);
 void watcher_release(int seat);
+// DOORS9C: once per follow pass, after the last seat; gives back the door of any seat not driven lately.
+void watcher_end_pass();
 // Counters for the [ghost:exit] line.
 struct Stats {
-    unsigned long long applied, released, no_door, yielded;
+    unsigned long long applied, released, no_door, yielded, restored, swept;
 };
 const Stats &stats();
 
