@@ -50,6 +50,7 @@ enum SlId {
     SL_GAP_LOOK,                /* enum: solid, blur, peek */
     SL_GAP_COLOR,               /* enum: a few preset colours for the solid look */
     SL_FRAME_RATE,              /* int: 0 native, 60..240; live (FPSLIVE1): the in-game page shows it as a drop-down of stops */
+    SL_DEBUG_MENU,              /* bool: the F5 debug menu may open (CHARSLOT1); off by default */
     SL_COUNT
 };
 

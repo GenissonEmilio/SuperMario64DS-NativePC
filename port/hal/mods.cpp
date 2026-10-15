@@ -63,6 +63,7 @@
 #include <windows.h>
 
 #include "mods.h"
+#include "char_registry.h"
 #include "ntr/hdtex.h"
 
 typedef unsigned char u8;
@@ -286,7 +287,7 @@ void add_parts(const Mod &parent, std::vector<Mod> &list, std::string &summary)
    zip that was unpacked with its contents inside one extra folder. */
 bool has_content(const std::string &folder)
 {
-    static const char *const D[] = { "/files", "/sound", "/textures_hd", "/palettes", 0 };
+    static const char *const D[] = { "/files", "/sound", "/textures_hd", "/palettes", "/character", 0 };
     for (int i = 0; D[i]; ++i)
         if (dir_exists(folder + D[i])) return true;
     return false;
@@ -374,6 +375,7 @@ void latch(void)
         host_json_string(text, "kind", kind, sizeof kind);
         host_json_string(text, "game", game, sizeof game);
         host_json_string(text, "api", api, sizeof api);
+        const std::string json_copy(text);
         free(text);
         if (!jid[0]) { skip(id, "mod.json has no id"); continue; }
         if (id != jid) { skip(id, "mod.json id is not the folder name"); continue; }
@@ -389,6 +391,7 @@ void latch(void)
         if (!g_summary_loaded.empty()) g_summary_loaded += ", ";
         g_mods.push_back(m);
         g_summary_loaded += id + " (" + kind + ")";
+        port_char_offer(id.c_str(), folder.c_str(), json_copy.c_str());   /* CHARSLOT1: a "character" block registers dormant */
         const size_t before = g_mods.size();
         add_parts(m, g_mods, g_summary_loaded);
         if (!strcmp(kind, "files")) {
@@ -495,6 +498,20 @@ void build_overrides(void)
                     total_members, port_fs_member_claim_cap(), g_mods[m].id.c_str());
             warned = 1;
         }
+    }
+    /* CHARSLOT1: the active character skin (SM64DS_CHAR_SKIN, hal/char_registry.h)
+       replaces the base character's body and heads, ON TOP of every files/ entry:
+       choosing a character is a deliberate act. Not counted against the member cap. */
+    for (int k = 0;; ++k) {
+        const char *rom = 0, *disk = 0;
+        if (!port_char_skin_file(k, &rom, &disk)) break;
+        unsigned id = 0;
+        std::unordered_map<std::string, unsigned>::const_iterator it = loose.find(lower(rom));
+        if (it != loose.end()) id = it->second;
+        else id = port_fs_interior_id_nocase(rom);
+        if (!id) { fprintf(stderr, "[chars] %s is not a ROM file in this dump; skin file skipped\n", rom); continue; }
+        g_override[id] = disk;
+        fprintf(stderr, "[chars] skin file %s serves ROM file id %u (%s)\n", disk, id, rom);
     }
     fprintf(stderr, "[mods] files layer: %u ROM file id(s) overridden in all\n", (unsigned)g_override.size());
     fflush(stderr);

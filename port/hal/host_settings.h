@@ -392,6 +392,17 @@ int host_setting_name_tags(void);
    the file's answer). */
 int host_setting_adventure_ghosts(void);
 
+/* ---- DebugMenu: THE F5 MENU IS OFF UNTIL YOU TURN IT ON -------------------
+   Default 0 (OFF). With it off, F5, Escape and the pad's BACK open nothing
+   (the menu's close arm stays live, so a menu that is somehow open can always
+   be shut). With it on, F5 works as it always has, plus the custom character
+   row (hal/char_registry.h). It is a live setting like NameTags: the launcher
+   and the in-game GENERAL tab write the same key, and the game picks a change
+   up without a restart. SM64DS_DEBUG_MENU=0/1 overrides the file for a proof
+   run. A multiplayer session refuses the menu whatever this says. */
+int host_setting_debug_menu(void);
+int host_setting_set_debug_menu(int on);
+
 /* Aspect: the presentation ratio, WIDTH DIVIDED BY HEIGHT. 0 (the default) is
    the explicit native sentinel -- the 4:3 window the port has always opened;
    1.7777778 is 16:9. A NUMBER rather than a Widescreen boolean because a

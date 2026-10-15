@@ -808,6 +808,11 @@ int g_name_tags = 1;
    on. Read live like the gap keys; the accessor also honours SM64DS_ADVENTURE. */
 int g_adventure_ghosts = 0;
 
+/* DebugMenu: 1 when the F5 debug menu may be opened. Default 0 (OFF): a player's
+   build has no debug menu until they turn it on in the settings. Read live like
+   the gap keys; the accessor also honours SM64DS_DEBUG_MENU. See the header. */
+int g_debug_menu = 0;
+
 /* Aspect: the presentation ratio, WIDTH DIVIDED BY HEIGHT. 0 (the default) is
    the explicit native sentinel -- the DS's own 4:3 at the 512x384 window the
    port has always opened. 1.7777778 is 16:9. It is a NUMBER and not a
@@ -1464,6 +1469,7 @@ void load_once(void)
     g_custom_palette = 0;
     g_name_tags = 1;
     g_adventure_ghosts = 0;
+    g_debug_menu = 0;
     g_aspect = 0.0;
     g_vs_luigi_infection = 0;
     g_vs_luigi_seconds = 0;
@@ -1656,6 +1662,7 @@ void load_once(void)
            the keys above: a file written before this key existed reads as one
            that left it off, which is the ROM's solo game. */
         g_adventure_ghosts = json_bool(text, "AdventureGhosts", 0);
+        g_debug_menu = json_bool(text, "DebugMenu", 0);
         /* the presentation aspect, read against its own default of 0 (native)
            so a file written before this key existed reads as the 4:3 window.
            Sanitised HERE rather than at the accessor, so the stored value is
@@ -2267,6 +2274,14 @@ int reload_live(const char *text)
             fprintf(stderr, "[settings] live re-read: FrameRate %d\n", n);
         }
     }
+    {
+        const int dbg = json_bool(text, "DebugMenu", g_debug_menu);
+        if (dbg != g_debug_menu) {
+            g_debug_menu = dbg;
+            changed = 1;
+            fprintf(stderr, "[settings] live re-read: DebugMenu %s\n", dbg ? "ON" : "off");
+        }
+    }
     const int voice_changed = read_voice_keys(text);
     if (voice_changed) {
         changed = 1;
@@ -2498,6 +2513,21 @@ extern "C" int host_setting_name_tags(void)
     if (env >= 0) return env;
     load_once();
     return g_name_tags;
+}
+
+/* DebugMenu, plus SM64DS_DEBUG_MENU (0 forces it off, any other value on) so a
+   proof run pins the answer without editing a player's file. Unset is the
+   file's answer, live re-read included. */
+extern "C" int host_setting_debug_menu(void)
+{
+    static int env = -2;
+    if (env == -2) {
+        const char *e = getenv("SM64DS_DEBUG_MENU");
+        env = e ? ((e[0] == '0' && e[1] == 0) ? 0 : 1) : -1;
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_debug_menu;
 }
 
 /* AdventureGhosts, plus the debug env override every host toggle in this file
@@ -3055,6 +3085,16 @@ extern "C" int host_setting_set_volume(int pct)
     g_volume = pct;
     g_poll_flag = 1;
     queue_int("Volume", pct);
+    return 1;
+}
+
+extern "C" int host_setting_set_debug_menu(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    g_debug_menu = on;
+    g_poll_flag = 1;
+    queue_bool("DebugMenu", on);
     return 1;
 }
 
