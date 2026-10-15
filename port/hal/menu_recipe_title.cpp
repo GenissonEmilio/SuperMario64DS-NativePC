@@ -30,6 +30,7 @@
  * scene global is not built (the layout selftest). Which ids a page shows is read off the pictures
  * (out/TITLE1/shots), not guessed from positions.
  */
+#include <chrono>
 #include "menu_compose.h"
 #include "menu_hostimg.h"
 #include "ntr/gx.h"
@@ -1312,6 +1313,20 @@ int menu_title_up(int scene_id)
     int top, elem, req;
     if (!port_title_page_state(&top, &elem, &req)) return g_last;   /* not built yet: the attract */
     title_timeline(top, elem, req);
+    {   /* INTROCARD092 (SM64DS_TITLE_TL=2): the wall-clock gap between title ticks, printed when it is over 45 ms, with the page and the ROM's own counter */
+        static int on = -1;
+        if (on < 0) { const char *e = getenv("SM64DS_TITLE_TL"); on = (e && *e == '2') ? 1 : 0; }
+        if (on) {
+            static std::chrono::steady_clock::time_point last;
+            static int have = 0, n = 0;
+            const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+            const double ms = have ? std::chrono::duration<double, std::milli>(now - last).count() : 0.0;
+            last = now; have = 1;
+            const int fr = data_ov007_0210342c ? data_ov007_0210342c[0] : -1;
+            if (ms > 45.0 || (n++ % 30) == 0) fprintf(stderr, "[tl2] f%d top=%d elem=%d dt=%.0fms%s
+", fr, top, elem, ms, ms > 45.0 ? " HITCH" : "");
+        }
+    }
     if (top != g_top || elem != g_elem) {
         g_top = top; g_elem = elem;
         if (hal_menu_trace_on()) fprintf(stderr, "[menu] title page top=%d elem=%d req=%d\n", top, elem, req);
