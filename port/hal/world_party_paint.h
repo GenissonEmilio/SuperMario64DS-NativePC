@@ -6,7 +6,7 @@
 // WHERE IT SITS (512 x 384 units times OVL_SCALE, like the player list):
 //   the list    x = 4, y = 48: one row per party member (head, name, stage
 //               code), only while in a party of two or more.
-//   the prompt  top-centre, twice the chat size: "<name> invites you: UP to
+//   the prompt  top-centre, chat size: "<name> invites you: UP to
 //               join" or "Leave party? DOWN again". Plain text, no buttons.
 //   the toast   one line under the prompt position, a few seconds.
 // Draw-only: it writes overlay pixels after the game has finished the frame.
@@ -89,7 +89,7 @@ static void world_party_draw(const OvlSurface &fb)
         }
     }
 
-    const int big = scale * 2;
+    const int big = scale;   /* chat size: the toasts and prompts were twice that (Tango 10-15: too big) */
     const int bigrow = rom ? (NT_GH + 2) * big : OVL_LINE * 2;
     int y = 10 * scale;
     const char *lines[2] = {v.prompt, v.toast};

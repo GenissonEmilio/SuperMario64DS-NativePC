@@ -815,6 +815,7 @@ static void nt_draw(const OvlSurface &fb)
             char who[32];
             const char *nick = gseat >= 0 ? port_adventure_ghost_name(i)
                                           : port_vs_slot_name(i);
+            if (gseat >= 0 && !(nick && nick[0])) continue;   /* a ghost with no name yet: no tag */
             if (nick && nick[0])
                 snprintf(who, sizeof who, "%s", nick);
             else

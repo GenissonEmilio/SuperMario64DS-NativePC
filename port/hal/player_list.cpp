@@ -326,7 +326,7 @@ void player_list_view(PlayerListView *out) {
                          ((unsigned)h.body_rgb[1] << 8) | h.body_rgb[2];
             if (h.character <= 3) r.character = h.character;
         }
-        if (!nm[0]) std::snprintf(nm, sizeof nm, "PLAYER %d", seat + 1);
+        if (!nm[0]) continue;   /* connected but still on the menu: no name sent yet, not listed */
         std::strcpy(r.name, nm);
         Place pl = {false, 0, -1, 0};
         HubPresence hp;

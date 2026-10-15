@@ -49,6 +49,7 @@ struct State {
     int  inv_to = -1;
     int  nonce = 0;
     unsigned inv_until = 0;
+    bool req_out = false;         // my outgoing inv_to is a REQUEST to join their party (they are in one)
     unsigned cooldown_until = 0;
     // leave confirm
     unsigned confirm_until = 0;
@@ -184,7 +185,7 @@ void read_seat(int seat, Info *o) {
                  h.body_rgb[2];
         if (h.character <= 3) o->character = h.character;
     }
-    if (!o->name[0]) std::snprintf(o->name, sizeof o->name, "PLAYER %d", seat + 1);
+    if (!o->name[0]) { *o = Info(); return; }   // still on the menu: no name sent yet, not a player
     HubPresence hp;
     if (hub_presence_get(seat, &hp, nullptr)) {
         o->word = wpar_decode(hp.level_clock);
@@ -237,7 +238,7 @@ void push_members(const bool want[kHubMaxSeats], unsigned now) {
 void drop_all(unsigned now) {
     bool none[kHubMaxSeats] = {};
     push_members(none, now);
-    g.my_id = 0; g.inv_to = -1; g.inv_until = 0; g.confirm_until = 0;
+    g.my_id = 0; g.inv_to = -1; g.inv_until = 0; g.confirm_until = 0; g.req_out = false;
     g.in_seat = -1;
 }
 
@@ -350,7 +351,7 @@ unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave
         if (s == my_seat) continue;
         if (want[s] && !g.member[s]) {
             ++g.st.joined;
-            if (g.inv_to == s) { g.inv_to = -1; g.inv_until = 0; g.cooldown_until = now; }
+            if (g.inv_to == s) { g.inv_to = -1; g.inv_until = 0; g.cooldown_until = now; g.req_out = false; }
             std::memcpy(g.name_of[s], info[s].name, sizeof g.name_of[s]);
             /* the people already in the party I just joined are not news */
             if ((int)(now - g.accept_ms) > 2500 || !g.accept_ms)
@@ -370,6 +371,7 @@ unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave
             std::fprintf(stderr, "[wparty] t=%u invite to seat %d ended (no answer)\n",
                          now, g.inv_to);
         g.inv_to = -1;
+        g.req_out = false;
         g.cooldown_until = now + kWparCooldownMs;
     }
     if (g.my_id && g.inv_to < 0 && party_size() <= 1) {
@@ -378,12 +380,34 @@ unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave
     }
     if (g.confirm_until && (int)(now - g.confirm_until) >= 0) g.confirm_until = 0;
 
-    // ---- an invite for me
+    // ---- my request was accepted: they answer it with an invite to me carrying their party id
+    if (g.req_out && g.inv_to >= 0 && g.inv_to != my_seat && g.inv_to < kHubMaxSeats) {
+        const int b = g.inv_to;
+        if (info[b].present && info[b].word.ok && info[b].word.inv_to == my_seat &&
+            info[b].word.party_id != 0) {
+            if (g.my_id && g.my_id != info[b].word.party_id) {
+                bool none[kHubMaxSeats] = {};
+                push_members(none, now);
+            }
+            g.my_id = info[b].word.party_id;
+            g.inv_to = -1; g.inv_until = 0; g.req_out = false;
+            g.accept_ms = now ? now : 1;
+            g.cooldown_until = now;
+            ++g.st.accepts;
+            say("You joined %s's party", info[b].name, now);
+            if (logging())
+                std::fprintf(stderr, "[wparty] t=%u REQUEST ACCEPTED by seat %d id=%d\n", now, b, g.my_id);
+        }
+    }
+
+    // ---- an invite for me (or, when I am in a party, a request to join mine)
     int cand = -1;
     for (int s = 0; s < kHubMaxSeats; ++s) {
         if (s == my_seat || !info[s].present || !info[s].word.ok) continue;
-        if (info[s].word.inv_to != my_seat || info[s].word.party_id == 0) continue;
+        if (info[s].word.inv_to != my_seat) continue;
+        if (info[s].word.party_id == 0 && g.my_id == 0) continue;   // an invite needs their party
         if (g.my_id != 0 && info[s].word.party_id == g.my_id) continue;   // already my party
+        if (g.req_out && g.inv_to == s) continue;                  // that is the answer to my own request
         if (s == g.dismissed_seat && info[s].word.nonce == g.dismissed_nonce) continue;
         cand = s;
         break;
@@ -412,7 +436,25 @@ unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave
     // ---- UP: accept, else invite
     if (up_edge) {
         g.confirm_until = 0;
-        if (g.in_seat >= 0) {
+        if (g.in_seat >= 0 && g.my_id != 0) {
+            /* a REQUEST to join my party: UP lets them in. I answer it with an invite carrying
+               my party id; their console sees it and moves them over. */
+            if (party_size() >= kWparMaxMembers) {
+                say("That party is full", nullptr, now);
+            } else {
+                g.inv_to = g.in_seat;
+                g.req_out = false;
+                g.nonce = (g.nonce + 1) & 15;
+                g.inv_until = now + kWparInviteMs;
+                g.cooldown_until = now;
+                ++g.st.accepts;
+                if (logging())
+                    std::fprintf(stderr, "[wparty] t=%u LET IN seat %d id=%d\n", now, g.in_seat, g.my_id);
+            }
+            g.dismissed_seat = g.in_seat;
+            g.dismissed_nonce = g.in_nonce;
+            g.in_seat = -1;
+        } else if (g.in_seat >= 0) {
             int size = 0;
             for (int s = 0; s < kHubMaxSeats; ++s)
                 if (s != my_seat && info[s].present && info[s].word.ok &&
@@ -440,8 +482,6 @@ unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave
             say("Invite already sent", nullptr, now);
         } else if ((int)(now - g.cooldown_until) < 0) {
             say("Wait a moment", nullptr, now);
-        } else if (party_size() >= kWparMaxMembers) {
-            say("The party is full", nullptr, now);
         } else {
             int mx, my, mz;
             int best = -1;
@@ -464,8 +504,36 @@ unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave
                     if (best < 0 || d2 < best_d2) { best = s; best_d2 = d2; }
                 }
             }
+#ifndef PORT_ROM_CLEAN
+            {   /* TEST ONLY: aim the invite at a chosen seat (the row driver cannot place players) */
+                const char *t = std::getenv("SM64DS_WPARTY_TEST_TARGET");
+                const int ts = (t && *t) ? std::atoi(t) : -1;
+                if (ts >= 0 && ts < kHubMaxSeats && ts != my_seat && info[ts].present && !g.member[ts]) best = ts;
+            }
+#endif
             if (best < 0) {
                 say("Walk up to someone first", nullptr, now);
+            } else if (info[best].word.ok && info[best].word.party_id != 0) {
+                /* they are in a party: this is a REQUEST from me to join theirs */
+                int size = 1;
+                for (int s = 0; s < kHubMaxSeats; ++s)
+                    if (s != my_seat && s != best && info[s].present && info[s].word.ok &&
+                        info[s].word.party_id == info[best].word.party_id) ++size;
+                if (size >= kWparMaxMembers) {
+                    say("That party is full", nullptr, now);
+                } else {
+                    g.inv_to = best;
+                    g.req_out = true;
+                    g.nonce = (g.nonce + 1) & 15;
+                    g.inv_until = now + kWparInviteMs;
+                    ++g.st.invites;
+                    say("Request sent to %s", info[best].name, now);
+                    if (logging())
+                        std::fprintf(stderr, "[wparty] t=%u REQUEST seat %d (%s) their id=%d\n",
+                                     now, best, info[best].name, info[best].word.party_id);
+                }
+            } else if (party_size() >= kWparMaxMembers) {
+                say("The party is full", nullptr, now);
             } else {
                 if (!g.my_id) {
                     /* founder seat (high nibble) + a nonce 1..15 (low nibble): two parties
@@ -522,7 +590,7 @@ void world_party_view(WparView *out) {
     else if (g.in_seat >= 0) {
         Info inf;
         read_seat(g.in_seat, &inf);
-        std::snprintf(out->prompt, sizeof out->prompt, g.my_id ? "%s asks you to join their party: UP"
+        std::snprintf(out->prompt, sizeof out->prompt, g.my_id ? "%s requests to join: UP"
                                                                : "%s invites you: UP to join",
                       inf.name);
     }
