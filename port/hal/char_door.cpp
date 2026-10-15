@@ -173,13 +173,11 @@ int door_hook(void *door, void *pl)
     if (!walking || *(int *)(p + 0x360) != 0) return first ? 0 : 1; /* not ready yet */
     if (first) {
         g_want = CD_BOX;
-        fprintf(stderr, "[chardoor] the white door was opened (star given by the ROM): unlocking custom character select on slot %c
-", 'A' + slot);
+        fprintf(stderr, "[chardoor] the white door was opened (star given by the ROM): unlocking custom character select on slot %c\n", 'A' + slot);
         port_char_save_set_unlocked(slot, 1);
     } else {
         g_want = CD_PICK;
-        fprintf(stderr, "[chardoor] the white door asks for the picker
-");
+        fprintf(stderr, "[chardoor] the white door asks for the picker\n");
     }
     return 1;
 }
