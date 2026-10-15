@@ -114,7 +114,7 @@ void starsel_keys(uint16_t *pressed, int)
         /* PLAY093: with the character row (Yoshi, another character unlocked) the ROM's first confirm on the stars only moves its cursor to the
            lower-screen head (0x133 = 2, BEHAVIOR :87-90) and the second starts the act. The reset above takes that cursor away again each frame,
            so the second press never came: a confirm here is the second press, one press starts the act (as it did before the strip). */
-        static const bool yfix = !std::getenv("SM64DS_STARSEL_YOSHI_FIX") || std::getenv("SM64DS_STARSEL_YOSHI_FIX")[0] != '0';   /* 0 = the old behaviour, for the before row */
+        static const bool yfix = !getenv("SM64DS_STARSEL_YOSHI_FIX") || getenv("SM64DS_STARSEL_YOSHI_FIX")[0] != '0';   /* 0 = the old behaviour, for the before row */
         if (yfix && charrow && o[0x135] == 2 && o[0x133] == 0 && (k & 0x000fu)) o[0x133] = 2;
     }
     *pressed = k;
