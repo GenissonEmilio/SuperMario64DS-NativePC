@@ -317,15 +317,16 @@ void read_rom_icon(int c, Img *out)
     int n = 0;
     for (int i = 0; i < 8; ++i) {
         const unsigned a0 = a[i * 4], a1 = a[i * 4 + 1], a2 = a[i * 4 + 2], a3 = a[i * 4 + 3];
-        if (a3 == 0xffff) break;
+        const bool last = a3 == 0xffff;     /* attr3 0xffff marks the LAST entry of the list (that entry is drawn too) */
         const int shape = (a0 >> 14) & 3, size = (a1 >> 14) & 3;
-        if (shape == 3) continue;
+        if (shape == 3) { if (last) break; continue; }
         int x = a1 & 0x1FF, y = a0 & 0xFF;
         if (x >= 256) x -= 512;
         if (y >= 128) y -= 256;
         e[n].x = x; e[n].y = y; e[n].w = kSizes[shape][size][0]; e[n].h = kSizes[shape][size][1];
         e[n].a0 = a0; e[n].a1 = a1; e[n].a2 = a2;
         ++n;
+        if (last) break;
     }
     if (n == 0) return;
     int x0 = 9999, y0 = 9999, x1 = -9999, y1 = -9999;
