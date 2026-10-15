@@ -4408,6 +4408,27 @@ int bgbmp_clear_wanted()
             g_bmpc.px[y * 256 + x] = out;
         }
     g_bmpc.valid = 1;
+    if (const char *tr = std::getenv("SM64DS_BGBMP_TRACE")) {       /* proof tooling: what the held frame is, and a picture of it every 8th frame it is up */
+        static int n = 0;
+        int opq = 0; unsigned long long sr = 0, sg = 0, sb = 0;
+        for (int i = 0; i < 256 * 192; ++i) {
+            const uint16_t v = *reinterpret_cast<const volatile uint16_t *>(base + (uint32_t)i * 2);
+            opq += (v >> 15) & 1; sr += (g_bmpc.px[i] >> 16) & 255; sg += (g_bmpc.px[i] >> 8) & 255; sb += g_bmpc.px[i] & 255;
+        }
+        std::fprintf(stderr, "[bgbmp] frame %d base %08x %dx%d opaque %d of 49152 mean %llu %llu %llu pa %d pd %d rx %d ry %d wrap %d\n", n, base, bw, bh, opq,
+                     sr / 49152, sg / 49152, sb / 49152, pa, pd, (int)rx, (int)ry, (int)wrap);
+        if ((n++ & 7) == 0 && *tr == '2') {
+            char name[260]; std::snprintf(name, sizeof name, "bgbmp_%03d.bmp", n);
+            if (FILE *f = std::fopen(name, "wb")) {
+                unsigned char hd[54] = { 'B', 'M' }; const unsigned sz = 54 + 256 * 192 * 3;
+                std::memcpy(hd + 2, &sz, 4); hd[10] = 54; hd[14] = 40; const int w = 256, h = -192; std::memcpy(hd + 18, &w, 4); std::memcpy(hd + 22, &h, 4);
+                hd[26] = 1; hd[28] = 24;
+                std::fwrite(hd, 1, 54, f);
+                for (int i = 0; i < 256 * 192; ++i) { const unsigned char px[3] = { (unsigned char)g_bmpc.px[i], (unsigned char)(g_bmpc.px[i] >> 8), (unsigned char)(g_bmpc.px[i] >> 16) }; std::fwrite(px, 1, 3, f); }
+                std::fclose(f);
+            }
+        }
+    }
     return 1;
 }
 }  // namespace
@@ -6149,6 +6170,7 @@ static bool aa_scratch_alloc() {
    draws the CPU passes itself first and hands the card the cleared buffers. */
 static bool gpu_full_probe() {
     if (!g_gpu_opaque || ab_mode()) return false;
+    if (g_bmpc.valid) return false;      /* MENUS093C (D23): a held bitmap frame is under the 3D page: the translucent pass runs here, onto that fill */
     GxGpuFrame f;
     std::memset(&f, 0, sizeof f);
     f.probe = 1;
