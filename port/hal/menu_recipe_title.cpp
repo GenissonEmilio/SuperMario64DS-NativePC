@@ -1323,8 +1323,7 @@ int menu_title_up(int scene_id)
             const double ms = have ? std::chrono::duration<double, std::milli>(now - last).count() : 0.0;
             last = now; have = 1;
             const int fr = data_ov007_0210342c ? data_ov007_0210342c[0] : -1;
-            if (ms > 45.0 || (n++ % 30) == 0) fprintf(stderr, "[tl2] f%d top=%d elem=%d dt=%.0fms%s
-", fr, top, elem, ms, ms > 45.0 ? " HITCH" : "");
+            if (ms > 45.0 || (n++ % 30) == 0) fprintf(stderr, "[tl2] f%d top=%d elem=%d dt=%.0fms%s\n", fr, top, elem, ms, ms > 45.0 ? " HITCH" : "");
         }
     }
     if (top != g_top || elem != g_elem) {
