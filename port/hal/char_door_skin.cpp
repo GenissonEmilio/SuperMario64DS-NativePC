@@ -567,11 +567,11 @@ void cdskin_geom(int w, int h, int n, int mode, CdGeom *g)
     g->u = u;
     auto U = [&](float v) { return (int)(v * u + 0.5f); };
     if (mode == CDS_BOX) {
-        g->sw = U(360); g->sh = U(112);
+        g->sw = U(380); g->sh = U(132);
         g->sx = (w - g->sw) / 2; g->sy = (h - g->sh) / 2;
         g->ow = U(84); g->oh = U(34);
-        g->ox = g->sx + (g->sw - g->ow) / 2; g->oy = g->sy + g->sh - g->oh - U(14);
-        g->dx = g->sx + U(16); g->dy = g->sy + U(26); g->dw = g->sw - U(32);
+        g->ox = g->sx + (g->sw - g->ow) / 2; g->oy = g->sy + g->sh - g->oh - U(12);
+        g->dx = g->sx + U(16); g->dy = g->sy + U(20); g->dw = g->sw - U(32);
         return;
     }
     /* the sheet sits high: the minimap's inset takes the bottom right corner of a 4:3 picture and the sheet must not run under it */
@@ -661,7 +661,7 @@ void cdskin_draw(uint32_t *px, int stride, int w, int h, const CdGeom *gp, const
     draw_sheet(s, g, hd);
 
     if (mode == CDS_BOX) {
-        const float em = 20.0f;
+        const float em = 19.0f;
         std::vector<std::string> ln;
         wrap(f, box_msg, em, (float)g.dw, 2, &ln);
         for (size_t i = 0; i < ln.size(); ++i) {
