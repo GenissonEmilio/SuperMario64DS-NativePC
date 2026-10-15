@@ -380,8 +380,7 @@ unsigned port_char_strip_frame(const struct SpInput *in0)
 
 void port_char_strip_idle(void)
 {
-    if (g_up || g_built) { fprintf(stderr, "[strip] gone
-"); forget(); }
+    if (g_up || g_built) { fprintf(stderr, "[strip] gone\n"); forget(); }
 }
 
 void port_char_strip_draw(uint32_t *px, int stride, int w, int h)

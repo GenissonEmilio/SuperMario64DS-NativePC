@@ -6730,12 +6730,10 @@ static void cs_apply_pick(int sel)
     port_char_save_record(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "", g_character_pending);
     if (sk != port_char_active()) {
         port_char_strip_set_pending(sel);
-        fprintf(stderr, "[strip] %s: the base %s is set; its skin (%s) is a restart at the act
-", chr_label(sel), CHAR_NAME[g_character_pending & 3], sk >= 0 ? port_char_key(sk) : "plain");
+        fprintf(stderr, "[strip] %s: the base %s is set; its skin (%s) is a restart at the act\n", chr_label(sel), CHAR_NAME[g_character_pending & 3], sk >= 0 ? port_char_key(sk) : "plain");
     } else {
         port_char_strip_set_pending(-1);
-        fprintf(stderr, "[strip] %s: set in place for the course that starts next (save byte and data_02092128 = %d)
-", chr_label(sel), g_character_pending & 3);
+        fprintf(stderr, "[strip] %s: set in place for the course that starts next (save byte and data_02092128 = %d)\n", chr_label(sel), g_character_pending & 3);
     }
 }
 
@@ -6753,22 +6751,19 @@ static int starsel_finish_hook(int level, int entrance, int act)
     snprintf(bs, sizeof bs, "%d", chr_base(sel));
     snprintf(en, sizeof en, "%d", entrance);
     snprintf(ac, sizeof ac, "%d", act);
-    fprintf(stderr, "[strip] the act is chosen: course %d (entrance %d, act %d) restarts as %s (SM64DS_CHARACTER=%s SM64DS_CHAR_SKIN=%s)
-", level, entrance, act, chr_label(sel), bs, sk >= 0 ? port_char_key(sk) : "(none)");
+    fprintf(stderr, "[strip] the act is chosen: course %d (entrance %d, act %d) restarts as %s (SM64DS_CHARACTER=%s SM64DS_CHAR_SKIN=%s)\n", level, entrance, act, chr_label(sel), bs, sk >= 0 ? port_char_key(sk) : "(none)");
     if (getenv("SM64DS_CHAR_RELAUNCH_DRY")) { fprintf(stderr, "[strip] SM64DS_CHAR_RELAUNCH_DRY: not relaunching
 "); return 0; }
     SetEnvironmentVariableA("SM64DS_HOST_KEY", 0);
     SetEnvironmentVariableA("SM64DS_CHARACTER", bs);
     port_char_save_record(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "", chr_base(sel));
     port_char_save_child_env(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "");
-    fprintf(stderr, "[strip] saved the open file before the restart: %d
-", _ZN8SaveData15SaveCurrentFileEv());
+    fprintf(stderr, "[strip] saved the open file before the restart: %d\n", _ZN8SaveData15SaveCurrentFileEv());
     g_relaunch_entrance = en;
     g_relaunch_act = ac;
     const int ok = port_menu_relaunch(-1, level);
     g_relaunch_entrance = g_relaunch_act = 0;
-    if (!ok) { fprintf(stderr, "[strip] could not start the course again (win32 %lu); it starts here
-", (unsigned long)GetLastError()); return 0; }
+    if (!ok) { fprintf(stderr, "[strip] could not start the course again (win32 %lu); it starts here\n", (unsigned long)GetLastError()); return 0; }
     fflush(stderr);
     ExitProcess(0);
     return 1;
@@ -6793,8 +6788,7 @@ static void cs_frame(int pad_live, const XPad *pad)
     g_cs_hide = port_char_strip_frame(&in);
     const int pick = port_char_strip_take_pick();
     if (pick >= 0) {
-        fprintf(stderr, "[strip] applying %s
-", chr_label(pick));
+        fprintf(stderr, "[strip] applying %s\n", chr_label(pick));
         cs_apply_pick(pick);
     }
 }
