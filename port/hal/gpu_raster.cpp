@@ -173,6 +173,7 @@
 #include <windows.h>
 #include <d3d11.h>
 #include <emmintrin.h>
+#include "hitch_probe.h"   // HITCH9C
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -985,6 +986,7 @@ const GTex *upload_texture(uint32_t id, const uint32_t *px, int w, int h,
     std::map<uint32_t, GTex>::iterator it = g_tex.find(id);
     if (it != g_tex.end()) return &it->second;
     if (!px || w <= 0 || h <= 0) return 0;
+    HITCH_SCOPE(HK_TEX);   // HITCH9C: a texture's first use costs a conversion, an upload and a mip build
 
     GTex t;
     memset(&t, 0, sizeof t);

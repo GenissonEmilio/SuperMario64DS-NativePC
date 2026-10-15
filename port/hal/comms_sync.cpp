@@ -62,6 +62,7 @@
 // makes a netcode feel like rubber. rung SY2 asserts it.
 
 #include "comms_seam.h"
+#include "hitch_probe.h"     // HITCH9C
 #include "comms_hub.h"       // run mp1 lane GHOSTWIRE1: the adventure hub carries
                              // 'SYNG' / 'SYNI' when it is installed
 #include "voice_chat.h"      // run mp1 fold: the SYNG talking bit mirrors
@@ -3298,6 +3299,7 @@ bool gw_attach_target(int holder_seat, unsigned tnow, int *x, int *y, int *z, in
 }
 
 void gw_follow() {
+    HITCH_SCOPE(HK_GHOSTFOLLOW);
     static int no_repose = -1, no_swap = -1, no_tongue = -1, no_blink = -1;
     if (no_tongue < 0) { const char *e = std::getenv("SM64DS_GHOST_TONGUE"); no_tongue = (e && e[0] == '0' && !e[1]) ? 1 : 0; }
     if (no_blink < 0) { const char *e = std::getenv("SM64DS_GHOST_BLINK"); no_blink = (e && e[0] == '0' && !e[1]) ? 1 : 0; }

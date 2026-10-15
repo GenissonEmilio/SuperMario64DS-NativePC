@@ -18332,12 +18332,14 @@ int main(void)
            the same-level filter and the spawn/despawn transitions. Inert unless
            SM64DS_ADVENTURE_PRESENCE is set. */
         port_adventure_presence_probe(frame);
-        port_hub_presence_frame();
-        port_coop_save_frame();
-        port_coop_world_frame();   /* hook: COOPWORLD1, inert unless SM64DS_COOP */
-        port_party_stars_frame();
-        port_party_hits_frame();   /* hook: PLAYINT1, inert outside party / coop rooms */
-        port_star_popup_frame();   /* hook: STARPOP1, inert outside party / coop rooms */
+        { HITCH_SCOPE(HK_NETHOOK);   /* HITCH9C: the MP hooks, timed together */
+            port_hub_presence_frame();
+            port_coop_save_frame();
+            port_coop_world_frame();   /* hook: COOPWORLD1, inert unless SM64DS_COOP */
+            port_party_stars_frame();
+            port_party_hits_frame();   /* hook: PLAYINT1, inert outside party / coop rooms */
+            port_star_popup_frame();   /* hook: STARPOP1, inert outside party / coop rooms */
+        }
         /* PARTY: the render boundary (a party body solid+colliding vs a
            non-party ghost translucent+pass-through) and party-body liveness.
            Reads the render pass's own per-slot record (set just below in the
@@ -20407,7 +20409,7 @@ int main(void)
         /* THE CHAT (run mp1, lane CHATUI1): over everything the game draws,
            under the menu. Pumped every presented frame whether or not this
            one renders. */
-        chat_host_frame(surf, frame);
+        { HITCH_SCOPE(HK_CHAT); chat_host_frame(surf, frame); }   /* HITCH9C: timed by name */
         if (!rb_skip_render()) {
         if (menu_on) menu_draw(surf);
         }

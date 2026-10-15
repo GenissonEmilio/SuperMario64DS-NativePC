@@ -137,6 +137,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "dsstate_seg.h"
+#include "hitch_probe.h"   /* HITCH9C */
 
 typedef unsigned int u32;
 typedef unsigned short u16;
@@ -465,6 +466,8 @@ const u8 *img_file(const ImgFile *f, const char *rel)
     u32 want;
     if (buf)
         return buf;
+    HITCH_SCOPE(HK_CARDFILE);   /* HITCH9C: a file's first touch is a disk read */
+    const double hitch_t0 = port::hitch_now_ms();
     want = f->stop - f->start;
     snprintf(path, sizeof path, "%s/extracted/dsd/files/%s", asset_root(), rel);
     fp = fopen(path, "rb");
@@ -477,6 +480,8 @@ const u8 *img_file(const ImgFile *f, const char *rel)
         exit(2);
     }
     fclose(fp);
+    if (port::hitch_now_ms() - hitch_t0 > 3.0)
+        fprintf(stderr, "[hitch] slow file read id=%u %s %u bytes %.1f ms\n", f->id, rel, want, port::hitch_now_ms() - hitch_t0);
     g_img_bytes[f->id] = buf;
     return buf;
 }
