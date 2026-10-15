@@ -22483,6 +22483,18 @@ if(MSVC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/sinit_segs.cmake")
         endif()
         string(REGEX REPLACE "[.](c|cpp)$" ".cpp" _ss_gen "${_ss_rel}")
         list(APPEND _ss_paths "${CMAKE_BINARY_DIR}/host-src/${_ss_gen}")
+        # MGSYNC1: a TU the port compiles from a host copy under port/unmatched
+        # (PORT_TU_REPLACED_<src row>) needs the same held-back initialisers, on
+        # the copy itself and on its generated path. Without it the copy's
+        # dynamic initialisers run from the CRT before main, copying ROM-mount
+        # words before the overlay's pointer patch has rebased them (scene 386's
+        # OAM attribute table held DS addresses and drew nothing).
+        if(DEFINED PORT_TU_REPLACED_${_ss_rel})
+            set(_ss_rep "${PORT_TU_REPLACED_${_ss_rel}}")
+            list(APPEND _ss_paths "${PORT_REPO_ROOT_ABS}/${_ss_rep}")
+            string(REGEX REPLACE "[.](c|cpp)$" ".cpp" _ss_repgen "${_ss_rep}")
+            list(APPEND _ss_paths "${CMAKE_BINARY_DIR}/host-src/${_ss_repgen}")
+        endif()
         list(REMOVE_DUPLICATES _ss_paths)
         foreach(_ss_one IN LISTS _ss_paths)
             set_property(SOURCE "${_ss_one}" APPEND PROPERTY COMPILE_OPTIONS
