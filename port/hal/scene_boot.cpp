@@ -1003,11 +1003,29 @@ extern "C" { int overlay_60, overlay_98; }
    port_scene_mg_overlay_load runs both overlays' constructors in that order,
    so asking on ov006 alone is the DS's own sequence, once. */
 extern "C" void port_scene_mg_overlay_load(void);     /* hal/scene_mg.cpp */
+extern "C" void port_scene_mg_overlay_rearm(void);    /* hal/scene_mg.cpp */
 extern "C" int overlay_6;                             /* hal/boot_globals.cpp */
+extern "C" int port_ov_id_to_num(int id);             /* hal/ov_reset.cpp */
+extern "C" int port_ov_load(int ov);                  /* hal/ov_reset.cpp */
+/* OVLRESET1. The DS loads the overlay here, so this is where its objects go back
+   to their start-up image (hal/ov_reset.cpp). The minigame overlays keep a
+   one-time bring-up of the port's own (port_scene_mg_overlay_load: the
+   constructors and the seats after them); a restore wipes what that built, so
+   it is re-armed, and it then runs again below, as the DS runs the overlay's
+   static initialisers on every load. ov004 loads first, as func_0201a798 does. */
 extern "C" void LoadOverlay(int id)
 {
-    if (id == (int)(size_t)&overlay_6)
+    static int mg_restored;
+    const int num = port_ov_id_to_num(id);
+    const int restored = num >= 0 ? port_ov_load(num) : 0;
+    if (num == 4)
+        mg_restored = restored;
+    if (id == (int)(size_t)&overlay_6) {
+        if (restored || mg_restored)
+            port_scene_mg_overlay_rearm();
+        mg_restored = 0;
         port_scene_mg_overlay_load();
+    }
 }
 /* func_02017e94's face MOVED (run link100, lane LOADOV) and did not retire: it
    is hal/nitrofs_face.cpp's now, on smoke_player alone, and the two window
