@@ -422,8 +422,22 @@ struct WidenProbeReport {
 WidenProbeReport g_widen_probe_report;
 }  // namespace
 
+/* INTROCAST092: the object Clipper as the ROM seeded it THIS frame, kept before
+   the widen scales it. The opening's cast bodies ask the ROM to cull them
+   (flags 0x2) and wait un-animated (a bind pose, a T pose) at their start
+   marks until the script's cue; the DS tests them against the 4:3 planes and
+   never draws them, the widened planes pass them, so a 16:9 view saw them
+   through the moat arch. hal_actor_off_native_view answers the 4:3 test. */
+static int g_clip_native[0x5c / 4];
+static int g_clip_native_ok;
+extern "C" unsigned char data_0209f274;   /* doubles the far-away threshold */
+int _ZN7Clipper13Func_020150E8ER7Vector35Fix12IiEPh(char *thisp, void *v,
+                                                    int radius, unsigned char *out);
+
 void hal_camera_widen_frustum(void)
 {
+    std::memcpy(g_clip_native, data_0209f43c, sizeof g_clip_native);
+    g_clip_native_ok = 1;
     ++g_widen_calls;
     if (widen_probe_on() && (g_widen_calls == 1 || g_widen_calls % 64 == 0))
         std::fprintf(stderr, "[widen] call %lu m4c %d\n", g_widen_calls,
@@ -432,6 +446,28 @@ void hal_camera_widen_frustum(void)
     data_0209f43c[0x4c / 4] =
         (int)((m4c * (ntr::active_w * 3)) / (ntr::active_h * 4));
     _ZN7Clipper13Func_0201559CEv(&data_0209f43c);
+}
+
+/* 1 when the actor (a dActor_c: camera-space position at +0x74, clip radius
+   +0xb8, clip distance +0xbc) is off screen by the clipper's 4:3 answer, the
+   widen undone for the duration of the call. 0 when no widen ran this frame
+   (4:3 targets: nothing to undo) or the actor has no clip volume. */
+int hal_actor_off_native_view(void *actor)
+{
+    if (!g_clip_native_ok) return 0;
+    char *c = (char *)actor;
+    const int radius = *(int *)(c + 0xb8);
+    if (radius == 0) return 0;
+    int widened[0x5c / 4];
+    std::memcpy(widened, data_0209f43c, sizeof widened);
+    std::memcpy(data_0209f43c, g_clip_native, sizeof widened);
+    unsigned char out = 0;
+    const int r = _ZN7Clipper13Func_020150E8ER7Vector35Fix12IiEPh(
+        (char *)&data_0209f43c, c + 0x74, radius, &out);
+    std::memcpy(data_0209f43c, widened, sizeof widened);
+    int thresh = *(int *)(c + 0xbc);
+    if (data_0209f274) thresh <<= 1;
+    return r > thresh;
 }
 
 /* SM64DS_WIDEN_PROBE, PHASE 2: THE SCENE PATH'S OWN LINE. Same variable, same

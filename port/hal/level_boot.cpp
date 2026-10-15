@@ -4196,12 +4196,26 @@ void hal_render_player_world(void *player);
  * seated body matrix, so it positions each one itself). Normal play, VS and
  * co-op are byte-unaffected: every player they run is in the array, so this
  * loop finds it and returns before drawing. */
+extern "C" int hal_actor_off_native_view(void *actor);   /* hal/camera_bridges.cpp */
 static int __fastcall ps_render(void *self, void *)
 {
     const int count = (int)data_0209f21c;
     for (int i = 0; i < count; ++i)
         if (data_0209f394[i] == self)
             return 1;               /* array player: the harness draws it */
+    /* INTROCAST092: the 16:9 object-cull widen (hal_camera_widen_frustum) lets
+       the cast through while it waits in its bind pose (a T pose) at the start
+       marks, seen from the moat arch during the opening fly-by. The ROM culls a
+       cast body against the 4:3 planes (flags 0x2 = cull off screen) and the DS
+       never showed it, so ask that same test. SM64DS_CAST_NATIVE=0 = control. */
+    static int native = -1;
+    if (native < 0) {
+        const char *e = getenv("SM64DS_CAST_NATIVE");
+        native = (e && e[0] == '0' && e[1] == 0) ? 0 : 1;
+    }
+    if (native && (*(const unsigned *)((const char *)self + 0xb0) & 2) &&
+        hal_actor_off_native_view(self))
+        return 1;
     hal_render_player_world(self);  /* cutscene cast: draw its body here */
     return 1;
 }
