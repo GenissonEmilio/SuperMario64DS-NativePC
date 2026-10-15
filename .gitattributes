@@ -47,3 +47,6 @@ config/converted-backslide-exceptions.jsonl merge=union
 # while 60 were written directly by tu_manifest.save (LF). Every committed blob was LF;
 # only the working copy diverged. Pin the endings so the two writers agree.
 config/tu_manifest.d/**/*.json text eol=lf
+
+tools/portable_kit/launch.sh text eol=lf
+tools/portable_kit/extract_assets.py text eol=lf

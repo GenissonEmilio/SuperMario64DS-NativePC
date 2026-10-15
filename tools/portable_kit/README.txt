@@ -138,6 +138,60 @@ This is a port in progress rather than a finished game. Some things are
 missing or rough, and some levels are further along than others.
 
 
+LINUX AND STEAM DECK (Proton)
+-----------------------------
+
+This is a Windows program. It is not built for Linux, and it is not supported
+there. One player has reported it running well under Steam's Proton
+Experimental (Arch, KDE, Wayland, NVIDIA). That is the only setup anyone has
+confirmed. Other Proton builds (GE, dwproton) and plain Wine have not been
+confirmed to work, and a Steam Deck has not been tested. If you try it, please
+tell us how it went.
+
+What is different from Windows: the launcher unpacks your dump with Windows
+PowerShell, and a Proton prefix does not have one. So the unpacking is done
+once, outside Proton, with Python 3 (extract_assets.py, included; SteamOS and
+most distros already have python3). It makes exactly the same files.
+
+Easiest way, on a desktop with Steam installed:
+
+1. Install "Proton Experimental" in Steam (Library, set the filter to Tools).
+2. Copy your .nds file into the folder named PLACE YOUR ROM HERE.
+3. Open a terminal in this folder and run:   bash launch.sh
+   The first run unpacks the game data (about a minute), then opens the
+   launcher inside Proton. Press Play there.
+
+On a Steam Deck (or to start it from Steam):
+
+1. Switch to Desktop Mode, unzip the kit, put your .nds in PLACE YOUR ROM HERE.
+2. Open a terminal in the kit folder and run  python3 extract_assets.py  once,
+   so the game data is unpacked (about a minute).
+3. In Steam choose Add a Non-Steam Game, browse to SM64DSLauncher.exe in the
+   kit folder and add it.
+4. Open the new entry's Properties, then Compatibility, tick "Force the use of
+   a specific Steam Play compatibility tool" and pick Proton Experimental.
+5. Run it from Steam, in Desktop Mode or Gaming Mode.
+
+If the picture is black, wrong, or the game closes at start: run  bash
+launch.sh --safe  (or set the launch option  SM64DS_RENDERER=0
+SM64DS_PRESENT_BACKEND=0 SM64DS_PRESENTER=0 %command%  on the Steam entry). That
+draws with the processor and the plain Windows present path, which does not
+need Direct3D 11. Without --safe the game is meant to fall back to that by
+itself when it cannot get a Direct3D 11 device.
+
+Things to know:
+- Updates: the launcher restarts itself after an update with a Windows
+  PowerShell helper that Proton does not have. If it just closes, start it
+  again (the update is applied on that start).
+- Wayland: the one player who got it running did not say whether
+  PROTON_ENABLE_WAYLAND mattered. Leave it unset unless X11 gives you trouble.
+- Controllers, a Deck's built-in controls, multiplayer and voice chat have
+  not been tried under Proton.
+- To report a problem, run  bash launch.sh --log  and send the steam-*.log
+  file from your home folder, plus what happened. Crash reports sent by the
+  launcher are marked as coming from Wine, so we can tell them apart.
+
+
 IF SOMETHING GOES WRONG
 -----------------------
 
@@ -168,6 +222,8 @@ WHAT IS IN THIS FOLDER
     walk_window.exe        the game itself (the launcher starts this)
     PLACE YOUR ROM HERE\   where your .nds dump goes
     README.txt             this file
+    launch.sh              Linux and Steam Deck only: starts it under Proton (see above)
+    extract_assets.py      Linux and Steam Deck only: unpacks the game data with Python
 
 Once you have run it, two more folders appear, both made from your own dump:
 
