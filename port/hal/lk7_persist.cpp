@@ -685,6 +685,7 @@ int lk7_persist_write(void)
         remove(tmp);
         return 0;
     }
+    skin_sidecar_write(path);
     fprintf(stderr, "[savestate] wrote disk state: %zu arena + %zu dsstate + "
                     "%zu hw bytes -> %s\n", asz, dsz, hsz, path);
     return 1;
@@ -700,6 +701,43 @@ int lk7_persist_write(void)
 // block, and LEAVES THE FILE ALONE -- the caller boots fresh, which is the whole
 // point: a state that cannot be trusted costs a player their save slot, not
 // their launch.
+/* CHARSAVE1 (hal/char_save.cpp seats it): the active character skin key, "" for the
+   plain character. A disk state is stamped with it in savestate.bin.skin and
+   refused on another skin (the model data inside the state is that skin's). */
+extern "C" const char *(*port_lk7_skin_key_hook)(void) = 0;
+
+static void skin_sidecar_path(const char *path, char *out, size_t cap)
+{
+    snprintf(out, cap, "%s.skin", path);
+}
+
+static void skin_sidecar_write(const char *path)
+{
+    if (!port_lk7_skin_key_hook) return;
+    char sp[560];
+    skin_sidecar_path(path, sp, sizeof sp);
+    FILE *f = fopen(sp, "wb");
+    if (!f) return;
+    fputs(port_lk7_skin_key_hook(), f);
+    fclose(f);
+}
+
+/* 1 when the state on disk was taken with the skin this run has. */
+static int skin_sidecar_matches(const char *path)
+{
+    if (!port_lk7_skin_key_hook) return 1;
+    char sp[560], got[128] = "";
+    skin_sidecar_path(path, sp, sizeof sp);
+    FILE *f = fopen(sp, "rb");
+    if (f) { size_t n = fread(got, 1, sizeof got - 1, f); got[n] = 0; fclose(f); }
+    const char *now = port_lk7_skin_key_hook();
+    if (!strcmp(got, now)) return 1;
+    refuse("save state refused: other character skin",
+           "disk state refused: it was taken with the character skin '%s' and this run has '%s'; "
+           "left untouched, booting fresh", got[0] ? got : "(plain)", now[0] ? now : "(plain)");
+    return 0;
+}
+
 int lk7_persist_read(void)
 {
     g_refuse_short[0] = 0;
@@ -762,6 +800,11 @@ int lk7_persist_read(void)
            line: the one fact the reader needed, inverted. */
         g_refuse_short[0] = 0;
         overridden = 1;
+    }
+    if (!overridden && !skin_sidecar_matches(path)) {
+        verdict_savestate_refused();
+        fclose(f);
+        return 0;
     }
     /* ...and memory safety after it, unconditionally: the copies below are
        sized by the DISK header, so a longer file would run off the end of the

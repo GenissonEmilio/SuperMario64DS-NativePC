@@ -414,6 +414,7 @@ static bool winapi_load(void)
 #include "overlay_font.h"
 #include "hal/host_settings.h"   /* settings.json, the launcher's file */
 #include "hal/char_registry.h"    /* CHARSLOT1: custom characters (costumes on the four) */
+#include "hal/char_save.h"        /* CHARSAVE1: the pick survives quitting (save/characters.json) */
 #include "hal/pcore.h"            /* PCORE1: P-core / throttling opt-out */
 #include "hal/settings_live.h"   /* run menu1 SETLIVE1: live, saved settings */
 #include "hal/settings_page.h"   /* run menu1 SETMENU1: the in-game settings page */
@@ -6994,7 +6995,10 @@ static void menu_input(int pad_live, const XPad *pad)
                                relaunch table; inherited, the child would press this row again */
                             SetEnvironmentVariableA("SM64DS_HOST_KEY", 0);
                             SetEnvironmentVariableA("SM64DS_CHARACTER", bs);
-                            SetEnvironmentVariableA("SM64DS_CHAR_SKIN", sk >= 0 ? port_char_key(sk) : 0);
+                            /* CHARSAVE1: remember the pick for this file, and tell the child which
+                               file it is playing (it boots with no title to say so) */
+                            port_char_save_record(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "", chr_base(chr_sel()));
+                            port_char_save_child_env(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "");
                             if (port_menu_relaunch(-1, lv)) {
                                 W.PostQuitMessage_(0);
                             } else {
@@ -7006,6 +7010,7 @@ static void menu_input(int pad_live, const XPad *pad)
                     }
                 } else if (edge & (1u << 5)) {
                     g_character_pending = chr_base(chr_sel());
+                    port_char_save_record(port_char_save_slot(), chr_skin(chr_sel()) >= 0 ? port_char_key(chr_skin(chr_sel())) : "", g_character_pending);
                     if (menu_live_player()) {
                         fprintf(stderr, "[menu] becoming %s\n",
                                 CHAR_NAME[g_character_pending & 3]);

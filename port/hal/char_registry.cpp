@@ -108,17 +108,27 @@ void resolve_active(void)
 {
     if (g_active != -2) return;
     g_active = -1;
+    /* CHARSAVE1: SM64DS_CHAR_SKIN wins ("-" = the plain character on purpose);
+       without it the pick saved in save/characters.json is the skin. */
+    char saved[96] = "";
     const char *e = getenv("SM64DS_CHAR_SKIN");
-    if (!e || !*e) return;
+    const bool from_env = e && *e;
+    if (from_env) {
+        if (!strcmp(e, "-")) return;
+    } else {
+        if (!port_char_save_boot_pick(saved, sizeof saved) || !saved[0]) return;
+        e = saved;
+    }
     if (port_mods_multiplayer()) {
-        fprintf(stderr, "[chars] multiplayer session: the base character is forced, SM64DS_CHAR_SKIN ignored\n");
+        fprintf(stderr, "[chars] multiplayer session: the base character is forced, the %s skin is ignored\n",
+                from_env ? "SM64DS_CHAR_SKIN" : "saved");
         return;
     }
     int hit = -1, n = 0;
     for (size_t i = 0; i < g_chr.size(); ++i)
         if (g_chr[i].full == e || g_chr[i].key == e) { hit = (int)i; ++n; }
     if (n != 1) {
-        fprintf(stderr, "[chars] SM64DS_CHAR_SKIN=%s: %s; the plain character is used\n", e,
+        fprintf(stderr, "[chars] %s=%s: %s; the plain character is used\n", from_env ? "SM64DS_CHAR_SKIN" : "saved character", e,
                 n ? "that key is ambiguous, use modid:key" : "no such character is installed and on");
         return;
     }
