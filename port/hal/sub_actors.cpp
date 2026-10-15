@@ -255,7 +255,7 @@ DSSTATE_END
    the two shapes a leaf has is not a pattern to guess at: it is whichever the
    decomp recovered, and the linker names the ones that disagree. */
 HUD_FACE(_ZN3HUD15RenderCoinCountEv, RenderCoinCount)
-/* CHARHUD1: a costume's own life icon, repainted into the sprite tiles before the ROM draws them */
+/* CHARHUD1: a costume's own life icon, repainted into the sprite tiles before the ROM draws them (here, and in port_adv_life_count_top) */
 extern "C" void port_char_hud_apply(int what);
 extern "C" void _ZN3HUD15RenderLifeCountEv(void *s) { port_char_hud_apply(0); ((HUD *)s)->HUD::RenderLifeCount(); }
 HUD_FACE(_ZN3HUD15RenderTimeTimerEv, RenderTimeTimer)
@@ -727,6 +727,7 @@ static void port_adv_star_count_top(HUD *self, int dy)
    HUD+0x74. */
 static void port_adv_life_count_top(HUD *self, int dy)
 {
+    port_char_hud_apply(0);   /* CHARHUD1: a costume's own life icon */
     unsigned char idx = data_0209f250;
     const unsigned char *info = (const unsigned char *)data_0209f394[idx];
     int face = info[0x6d9];

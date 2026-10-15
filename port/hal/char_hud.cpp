@@ -15,7 +15,6 @@ extern "C" {
 extern void *_ZN3OAM10LIFE_ICONSE[];
 extern void *_ZN3OAM15MM_PLAYER_ICONSE[];
 extern unsigned char data_ov001_020abb34[];   /* the four star select portrait lists, 0x20 bytes apart, base 0 1 2 3 */
-extern unsigned char data_ov002_02111178;     /* HUD::RenderLifeCount's engine choice: 3..5 main (engine A), else sub (engine B) */
 }
 
 namespace {
@@ -357,7 +356,8 @@ void dump_all(int what)
     for (int b = 0; b < 4; ++b) {
         if (what == PCH_LIFE || what == PCH_STARSEL_LIFE) {
             snprintf(nm, sizeof nm, "%s_b%d", what == PCH_LIFE ? "life" : "sslife", b);
-            dump_list(what == PCH_STARSEL_LIFE ? 0 : (data_ov002_02111178 >= 3 && data_ov002_02111178 < 6) ? 0 : 1, _ZN3OAM10LIFE_ICONSE[b], nm);
+            dump_list(0, _ZN3OAM10LIFE_ICONSE[b], nm);
+            if (what == PCH_LIFE) dump_list(1, _ZN3OAM10LIFE_ICONSE[b], nm);
         } else if (what == PCH_MINIMAP) {
             for (int k = 0; k < 4; ++k) { snprintf(nm, sizeof nm, "map_b%d_k%d", b, k); dump_list(1, _ZN3OAM15MM_PLAYER_ICONSE[b * 4 + k], nm); }
         } else {
@@ -417,9 +417,11 @@ extern "C" void port_char_hud_apply(int what)
     const int base = port_char_base(ci);
     if (base < 0 || base > 3) return;
     if (what == PCH_LIFE) {
-        const void *l[1] = { _ZN3OAM10LIFE_ICONSE[base] };
-        const int eng[1] = { (data_ov002_02111178 >= 3 && data_ov002_02111178 < 6) ? 0 : 1 };
-        do_lists(what, l, eng, 1, "life icon");
+        /* HUD::InitResources puts the same tile file at the start of both engines' OBJ VRAM (and the palette in both), and the ROM draws the
+           counter on either screen depending on the state, so both copies are repainted */
+        const void *l[2] = { _ZN3OAM10LIFE_ICONSE[base], _ZN3OAM10LIFE_ICONSE[base] };
+        const int eng[2] = { 0, 1 };
+        do_lists(what, l, eng, 2, "life icon");
     } else if (what == PCH_MINIMAP) {
         const void *l[4];
         const int eng[4] = { 1, 1, 1, 1 };
