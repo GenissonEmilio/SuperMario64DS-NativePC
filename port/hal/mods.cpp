@@ -677,3 +677,10 @@ extern "C" int port_mods_ui_file(const char *rel, char *out, unsigned cap)
     }
     return 0;
 }
+
+/* run hunt8, lane UIMOD1: hal/ui_art.cpp's lookup answers through this file when it is linked (the game targets); the smoke targets leave
+   the hook null. Called from the menu art worker thread too: the list is boot-latched and the probe is a read-only attribute query. */
+extern "C" int (*port_ui_file_hook)(const char *rel, char *out, unsigned cap);
+namespace {
+struct UiFileHookSet { UiFileHookSet() { port_ui_file_hook = port_mods_ui_file; } } g_ui_file_hook_set;
+}

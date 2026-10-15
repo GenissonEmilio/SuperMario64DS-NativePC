@@ -1,5 +1,6 @@
 /* settings_page.cpp -- see settings_page.h (run menu1, lane SETMENU1). Pure host code: no ROM, no window, no device. */
 #include "settings_page.h"
+#include "ui_art.h"
 #include "settings_live.h"
 #include "host_settings.h"
 #include "ui_text.h"
@@ -24,10 +25,6 @@
 #include <string.h>
 #include <vector>
 
-extern "C" const unsigned char g_setart_png_parchment[], g_setart_png_title[], g_setart_png_back[], g_setart_png_key[], g_setart_png_plank[],
-    g_setart_png_dd_top[], g_setart_png_dd_mid[], g_setart_png_dd_bot[], g_setart_png_dd_arrow[];
-extern "C" const unsigned int g_setart_png_parchment_len, g_setart_png_title_len, g_setart_png_back_len, g_setart_png_key_len, g_setart_png_plank_len,
-    g_setart_png_dd_top_len, g_setart_png_dd_mid_len, g_setart_png_dd_bot_len, g_setart_png_dd_arrow_len;
 
 namespace {
 
@@ -50,6 +47,29 @@ enum { IM_PARCH, IM_TITLE, IM_BACK, IM_KEY, IM_PLANK, IM_DDTOP, IM_DDMID, IM_DDB
 struct Img { int tried = 0, w = 0, h = 0; std::vector<uint32_t> px; };     /* premultiplied 0xAARRGGBB */
 Img g_im[IM_COUNT];
 
+/* The page's pictures are files of the "HD UI Textures" mod (hd_ui/menu/settings/<name>.png, hal/ui_art.h); the port carries none. A picture no
+   enabled mod provides stays empty and the page draws its plain skin (flat rounded plates, a code-drawn chevron, text for the two lettered
+   plates), so the settings page works with no mod. Decoded and premultiplied; fills t, leaves it empty on any failure. */
+void decode_setart(int id, Img &t)
+{
+    static const char *const kName[IM_COUNT] = { "parchment", "title", "back", "key", "plank", "dd_top", "dd_mid", "dd_bot", "dd_arrow" };
+    char rel[96], path[1400];
+    snprintf(rel, sizeof rel, "menu/settings/%s.png", kName[id]);
+    if (!ui_art_path(rel, path, sizeof path)) return;
+    int w = 0, h = 0, comp = 0;
+    unsigned char *p = stbi_load(path, &w, &h, &comp, 4);
+    if (!p) return;
+    if (w < 1 || h < 1 || w > 8192 || h > 8192) { stbi_image_free(p); return; }
+    try {
+        t.w = w; t.h = h; t.px.resize((size_t)w * h);
+        for (int i = 0; i < w * h; ++i) {
+            const unsigned r = p[i * 4], g = p[i * 4 + 1], b = p[i * 4 + 2], a = p[i * 4 + 3];
+            t.px[i] = (a << 24) | (((r * a + 127) / 255) << 16) | (((g * a + 127) / 255) << 8) | ((b * a + 127) / 255);
+        }
+    } catch (...) { stbi_image_free(p); t = Img(); throw; }
+    stbi_image_free(p);
+}
+
 void load_im(int id)
 {
     Img &I = g_im[id];
@@ -58,19 +78,9 @@ void load_im(int id)
         if (I.tried) return;
         I.tried = 1;
     }
-    const unsigned char *const emb[IM_COUNT] = { g_setart_png_parchment, g_setart_png_title, g_setart_png_back, g_setart_png_key, g_setart_png_plank,
-                                                 g_setart_png_dd_top, g_setart_png_dd_mid, g_setart_png_dd_bot, g_setart_png_dd_arrow };
-    const unsigned len[IM_COUNT] = { g_setart_png_parchment_len, g_setart_png_title_len, g_setart_png_back_len, g_setart_png_key_len,
-                                     g_setart_png_plank_len, g_setart_png_dd_top_len, g_setart_png_dd_mid_len, g_setart_png_dd_bot_len, g_setart_png_dd_arrow_len };
-    int w = 0, h = 0, comp = 0;
-    unsigned char *p = stbi_load_from_memory(emb[id], (int)len[id], &w, &h, &comp, 4);
-    if (!p) return;
-    I.w = w; I.h = h; I.px.resize((size_t)w * h);
-    for (int i = 0; i < w * h; ++i) {
-        const unsigned r = p[i * 4], g = p[i * 4 + 1], b = p[i * 4 + 2], a = p[i * 4 + 3];
-        I.px[i] = (a << 24) | (((r * a + 127) / 255) << 16) | (((g * a + 127) / 255) << 8) | ((b * a + 127) / 255);
-    }
-    stbi_image_free(p);
+    Img t;
+    try { decode_setart(id, t); } catch (...) { t = Img(); }
+    I.w = t.w; I.h = t.h; I.px = std::move(t.px);
 }
 
 /* area / bilinear resample of a sub-rectangle of a premultiplied image (the same triangle filter as hal/menu_hostimg.cpp, whose
@@ -278,6 +288,9 @@ void blit_piece(const Surf &s, const Piece *cp, int dx, int dy)
     }
 }
 
+const Piece *plain_im_piece(int id, int w, int h);                 /* the plain skin, below */
+void plain_plate(Piece *p, uint32_t rim, uint32_t fill, float rad, float rimpx);
+
 /* a whole picture scaled to dw x dh (cached) */
 const Piece *scaled_im(int id, int dw, int dh)
 {
@@ -294,6 +307,7 @@ const Piece *scaled_im(int id, int dw, int dh)
 void draw_im(const Surf &s, int id, int x, int y, int w, int h, int alpha, int light, int shade, const int *clipv)
 {
     const Piece *p = scaled_im(id, w, h);
+    if (!p && (id == IM_TITLE || id == IM_BACK || id == IM_DDARROW)) p = plain_im_piece(id, w, h);      /* no mod art: the plain skin */
     if (p) blit(s, p->px, p->w, p->h, x, y, alpha, light, shade, clipv);
 }
 
@@ -432,7 +446,11 @@ const Piece *slice3_piece(int kind, int imgid, int w, int h, double end_frac)
     load_im(imgid);
     const Img &I = g_im[imgid];
     p = new_piece(kind, w, h, 0, w, h);
-    if (I.px.empty()) return p;
+    if (I.px.empty()) {                                           /* no mod art: a flat cream keycap / orange plank */
+        if (kind == 3) plain_plate(p, 0x8A5A10, 0xFFF3CD, h * 0.24f, h * 0.07f + 1.f);
+        else plain_plate(p, 0x8A5A10, 0xF0B850, h * 0.24f, h * 0.07f + 1.f);
+        return p;
+    }
     const int aw = (int)(I.w * (double)h / I.h + 0.5);        /* the art at this height */
     std::vector<uint32_t> full;
     scale_rect(I, 0, 0, I.w, I.h, aw, h, &full);
@@ -459,7 +477,7 @@ const Piece *purple_piece(int w, int h)
     load_im(IM_DDTOP); load_im(IM_DDMID); load_im(IM_DDBOT);
     p = new_piece(5, w, h, 0, w, h);
     const Img &T = g_im[IM_DDTOP], &M = g_im[IM_DDMID], &Bm = g_im[IM_DDBOT];
-    if (M.px.empty() || T.px.empty() || Bm.px.empty()) return p;
+    if (M.px.empty() || T.px.empty() || Bm.px.empty()) { plain_plate(p, 0xC9A6EE, 0x8458B8, h * 0.16f, 2.f); return p; }       /* no mod art: a flat purple box */
     const double st = h / 180.0 < 0.25 ? 0.25 : (h / 180.0 > 1.0 ? 1.0 : h / 180.0);
     const double across = (double)w / M.w;
     int th = (int)(T.h * across * 3 * st + 0.5); if (th < 2) th = 2;
@@ -492,6 +510,59 @@ const Piece *purple_piece(int w, int h)
     return p;
 }
 
+/* ============================== the plain skin: what the page draws when no mod provides a picture (run hunt8, lane UIMOD1) ============ */
+
+/* a rounded plate into a piece: a rim of rimpx, then the fill; rim and fill are 0xRRGGBB, opaque */
+void plain_plate(Piece *p, uint32_t rim, uint32_t fill, float rad, float rimpx)
+{
+    const int w = p->w, h = p->h;
+    if (rad > h * 0.5f) rad = h * 0.5f;
+    if (rad > w * 0.5f) rad = w * 0.5f;
+    for (int y = 0; y < h; ++y)
+        for (int x = 0; x < w; ++x) {
+            const float sd = rr_sd(x + 0.5f, y + 0.5f, (float)w, (float)h, rad);
+            const int cv = cov_of(sd);
+            if (!cv) continue;
+            const uint32_t c = sd > -rimpx ? rim : fill;
+            p->px[(size_t)y * w + x] = ((uint32_t)cv << 24) | ((((c >> 16) & 255) * cv / 255) << 16) | ((((c >> 8) & 255) * cv / 255) << 8) | ((c & 255) * cv / 255);
+        }
+}
+
+/* the Settings title plate, the Back plate (both carry their word in the mod's art) and the drop-down's chevron, drawn by code */
+const Piece *plain_im_piece(int id, int w, int h)
+{
+    if (w < 2 || h < 2) return 0;
+    Piece *p = find_piece(8, id, w, h);
+    if (p) return p;
+    p = new_piece(8, id, w, h, w, h);
+    if (id == IM_DDARROW) {                                      /* a white chevron: two thick strokes */
+        const float ax = w * 0.14f, ay = h * 0.22f, bx = w * 0.5f, by = h * 0.80f, cx = w * 0.86f, cy = ay, th = h * 0.20f;
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x) {
+                float best = 1e9f;
+                for (int sgm = 0; sgm < 2; ++sgm) {
+                    const float x0 = sgm ? bx : ax, y0 = sgm ? by : ay, x1 = sgm ? cx : bx, y1 = sgm ? cy : by;
+                    const float dx = x1 - x0, dy = y1 - y0, px = x + 0.5f - x0, py = y + 0.5f - y0;
+                    float t = (px * dx + py * dy) / (dx * dx + dy * dy);
+                    t = t < 0 ? 0 : (t > 1 ? 1 : t);
+                    const float ex = px - t * dx, ey = py - t * dy, d = sqrtf(ex * ex + ey * ey);
+                    if (d < best) best = d;
+                }
+                const int cv = cov_of(best - th * 0.5f);
+                if (cv) p->px[(size_t)y * w + x] = ((uint32_t)cv << 24) | ((uint32_t)cv << 16) | ((uint32_t)cv << 8) | (uint32_t)cv;
+            }
+        return p;
+    }
+    plain_plate(p, 0x8A5A10, id == IM_TITLE ? 0xFFF3CD : 0xFFF3CD, h * 0.22f, h * 0.07f + 1.f);
+    const char *label = id == IM_TITLE ? "SETTINGS" : "BACK";
+    float em = h * 0.52f;
+    const float maxw = w * 0.86f, tw = ui_text_width(label, em);
+    if (tw > maxw) em *= maxw / tw;
+    UiSurface us = { p->px.data(), w, w, h };
+    ui_text_draw(&us, (w - ui_text_width(label, em)) * 0.5f, h * 0.5f + ui_text_cap_height(em) * 0.5f, label, em, 0x8C4200, 255, 0);
+    return p;
+}
+
 /* the title's arrow pointing right (the ROM's own selection arrow, turned a quarter), w x h */
 const Piece *arrow_right_piece(int w, int h)
 {
@@ -499,7 +570,16 @@ const Piece *arrow_right_piece(int w, int h)
     if (p) return p;
     p = new_piece(6, w, h, 0, w, h);
     const uint32_t *src = menu_hostimg_scaled(MENU_IMG_ARROW_DOWN, h, w);   /* turned: its width is our height */
-    if (!src) return p;
+    if (!src) {                                                  /* no picture: a code-drawn right-pointing triangle */
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x) {
+                const float fx = (x + 0.5f) / w, fy = fabsf((y + 0.5f) / h - 0.5f) * 2.f;      /* 0..1, 0..1 from the middle */
+                const float d = (fy - (1.f - fx)) * h * 0.5f;                                   /* inside when fy < 1 - fx */
+                const int cv = cov_of(d);
+                if (cv) p->px[(size_t)y * w + x] = ((uint32_t)cv << 24) | ((uint32_t)(0x2A * cv / 255) << 16) | ((uint32_t)(0x5A * cv / 255) << 8) | (uint32_t)(0xE0 * cv / 255);
+            }
+        return p;
+    }
     for (int y = 0; y < h; ++y)
         for (int x = 0; x < w; ++x) p->px[(size_t)y * w + x] = src[(size_t)x * h + (h - 1 - y)];   /* dest(x, y) = src(h - 1 - y, x) */
     return p;
@@ -1318,10 +1398,6 @@ WDec *g_wd;
 
 void wdec_main(WDec *W)
 {
-    const unsigned char *const emb[IM_COUNT] = { g_setart_png_parchment, g_setart_png_title, g_setart_png_back, g_setart_png_key, g_setart_png_plank,
-                                                 g_setart_png_dd_top, g_setart_png_dd_mid, g_setart_png_dd_bot, g_setart_png_dd_arrow };
-    const unsigned len[IM_COUNT] = { g_setart_png_parchment_len, g_setart_png_title_len, g_setart_png_back_len, g_setart_png_key_len,
-                                     g_setart_png_plank_len, g_setart_png_dd_top_len, g_setart_png_dd_mid_len, g_setart_png_dd_bot_len, g_setart_png_dd_arrow_len };
     for (;;) {
         int id;
         {
@@ -1343,20 +1419,8 @@ void wdec_main(WDec *W)
         }
         Img t;
         bool failed = false;
-        try {
-            int w = 0, h = 0, comp = 0;
-            unsigned char *p = stbi_load_from_memory(emb[id], (int)len[id], &w, &h, &comp, 4);
-            if (p) {
-                try {
-                    t.w = w; t.h = h; t.px.resize((size_t)w * h);
-                    for (int i = 0; i < w * h; ++i) {
-                        const unsigned r = p[i * 4], g = p[i * 4 + 1], b = p[i * 4 + 2], a = p[i * 4 + 3];
-                        t.px[i] = (a << 24) | (((r * a + 127) / 255) << 16) | (((g * a + 127) / 255) << 8) | ((b * a + 127) / 255);
-                    }
-                } catch (...) { stbi_image_free(p); throw; }
-                stbi_image_free(p);
-            }
-        } catch (...) { failed = true; t = Img(); }                /* WARMFIX1 F3: a failed result, not a terminate */
+        try { decode_setart(id, t); }
+        catch (...) { failed = true; t = Img(); }                /* WARMFIX1 F3: a failed result, not a terminate */
         std::lock_guard<std::mutex> lk(W->m);
         W->img = std::move(t);
         W->req = -1;
@@ -1542,11 +1606,11 @@ extern "C" int settings_page_warm_step(int w, int h)
             }
         } else if (st == ST_TITLE) {
             if (!wscale_ready(IM_TITLE, L.title[2], L.title[3])) return 0;
-            scaled_im(IM_TITLE, L.title[2], L.title[3]);
+            if (!scaled_im(IM_TITLE, L.title[2], L.title[3])) plain_im_piece(IM_TITLE, L.title[2], L.title[3]);
             ++g_ws_stage;
         } else if (st == ST_BACK) {
             if (!wscale_ready(IM_BACK, L.back[2], L.back[3])) return 0;
-            scaled_im(IM_BACK, L.back[2], L.back[3]);
+            if (!scaled_im(IM_BACK, L.back[2], L.back[3])) plain_im_piece(IM_BACK, L.back[2], L.back[3]);
             ++g_ws_stage;
         } else if (st == ST_PLANK) {
             slice3_piece(4, IM_PLANK, L.reset[2], L.reset[3], 0.12);

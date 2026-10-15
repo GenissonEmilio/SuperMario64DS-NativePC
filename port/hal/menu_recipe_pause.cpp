@@ -24,6 +24,7 @@
  */
 #include "menu_compose.h"
 #include "menu_hostimg.h"
+#include "ui_art.h"
 #include "menu_pause_art_ids.h"
 #include "menu_pause_geo.h"
 #include "settings_page.h"
@@ -675,12 +676,33 @@ void pause_build(int variant, MenuLayout *L)
 
 /* ---- the up() test and the ROM-cursor driver --------------------------------------------------------------------------- */
 
+/* run hunt8, lane UIMOD1: the new pause is drawn from the planks of the "HD UI Textures" mod (hd_ui/menu/pause3/pk_*.png). When no enabled mod
+   carries all seven, the recipe is not up and the player sees the ROM's own pause, exactly as with OneScreenMenus off (the ROM's plates and its
+   Controller Modes plate, which still opens the settings page). Asked once per run: the mod list is latched at boot. */
+int pause_art_present()
+{
+    static int v = -1;
+    if (v < 0) {
+        static const char *const kPk[] = { "pk_resume", "pk_settings", "pk_exit", "pk_savequit", "pk_quitnosave", "pk_yesquit", "pk_nokeep" };
+        char rel[96], path[1400];
+        v = 1;
+        for (const char *n : kPk) {
+            snprintf(rel, sizeof rel, "menu/pause3/%s.png", n);
+            if (!ui_art_path(rel, path, sizeof path)) v = 0;
+        }
+        fprintf(stderr, "[menu] pause art: %s
+", v ? "HD UI Textures planks found, one-screen pause" : "no mod planks, the ROM's own pause");
+    }
+    return v;
+}
+
 int pause_up(int scene_id)
 {
     int v = 0;
     /* the Stage is scene 3; a level boot that never runs the scene thunk answers -1 (hal_menu_hook_h1), and
        the stacked layout is MENU_SCENE_GATED: no recipe */
     if (scene_id == 3 || scene_id == -1) v = pause_variant();
+    if (v && !pause_art_present()) v = 0;      /* UIMOD1: no mod art, the ROM's own pause */
     if (v && GetOwnerLanguage() > 1) v = 0;    /* every language but English: the recipe draws nothing, the player sees the ROM's own pause as with OneScreenMenus off */
     if (v != g_last_variant) {
         /* settings must reach the file on every way out of the pause (REVSETLIVE1 G1: the queue waits half a second and has no flush on quit) */
@@ -846,6 +868,9 @@ extern "C" void menu_pause_rom_pad(uint16_t *pressed)
     k = (uint16_t)(k & ~(unsigned)(MENU_PAD_UP | MENU_PAD_DOWN));
     *pressed = k;
 }
+
+/* UIMOD1: 1 while the ROM's own pause is up because no mod carries the new pause's planks: the caller then gives it the same pad / key driver as OneScreenMenus off */
+extern "C" int menu_pause_rom_fallback(void) { return !pause_art_present() && pause_variant() != 0; }
 
 extern "C" int menu_pause_active(void) { return g_last_variant != 0; }
 /* 1 while a 4:3 pause slide is in flight: the host stylus / click and the Backspace back key are eaten by their seam (hal/sub_screen.cpp) */

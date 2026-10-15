@@ -242,7 +242,7 @@ bool pc_assets_ready()
 {
     return menu_hostimg_ready(MENU_IMG_LOGO) && menu_hostimg_ready(MENU_IMG_BTN_MP) && menu_hostimg_ready(MENU_IMG_BTN_ADV) &&
            menu_hostimg_ready(MENU_IMG_BTN_REC) && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) &&
-           menu_hostimg_ready(MENU_IMG_PATTERN);
+           menu_hostimg_ready(MENU_IMG_PATTERN) && menu_hostimg_ready(MENU_IMG_STAR);   /* UIMOD1: the flying star too: all or the ROM's own title */
 }
 
 /* FACE2: the drawing page's two paper sprite objects (ids 0x18 and 0x17) are not submitted on the one-screen drawing page: our own paper is
@@ -293,7 +293,7 @@ int title_skip(char *o)
     }
     if ((*(unsigned char *)(o + 0x4e) == 0x18 || *(unsigned char *)(o + 0x4e) == 0x17) && doodle_skip_active()) return 1;
     /* ASSET3: the ROM's own cursor arrow (object id 0x21, drawn only while the cursor is shown) is replaced by the host's own pixel
-       arrow (art cut from this very object: tools/extract_title_arrow.py), so it is not in the picture on the one-screen main menu */
+       arrow (the ROM art, cut from this very object), so it is not in the picture on the one-screen main menu */
     if (*(unsigned char *)(o + 0x4e) == 0x21 && wall_skip_active() && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) &&
         menu_hostimg_ready(MENU_IMG_BTN_MP) && menu_hostimg_ready(MENU_IMG_BTN_ADV) && menu_hostimg_ready(MENU_IMG_BTN_REC)) return 1;   /* only when our arrows will be drawn */
     /* ASSET4: the three plate sprites (object id 0x1b at y >= 100; the wrench is the same id at y 20) are also left out of the
@@ -1141,7 +1141,7 @@ void build_main_sel(MenuLayout *L, bool intro)
 {
     if (menu_hostimg_ready(MENU_IMG_LOGO) && menu_hostimg_ready(MENU_IMG_BTN_MP) && menu_hostimg_ready(MENU_IMG_BTN_ADV) &&
         menu_hostimg_ready(MENU_IMG_BTN_REC) && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) &&
-        menu_hostimg_ready(MENU_IMG_PATTERN))
+        menu_hostimg_ready(MENU_IMG_PATTERN) && menu_hostimg_ready(MENU_IMG_STAR))
         build_main_pc(L, intro);
     else
         build_main(L, intro);
@@ -1775,7 +1775,7 @@ static void menu_title_build_impl(int variant, MenuLayout *L)
         menu_add_piece(L, p);
         L->backdrop = MENU_BACKDROP_TOP_AS_IS;
         L->stage = MENU_STAGE_POST_FADE;
-        /* the star: the ROM takes its own off the picture on the press frame, so ours (cut from the ROM's render, res/menu/title_star.png)
+        /* the star: the ROM takes its own off the picture on the press frame, so ours (cut from the ROM's render, hd_ui/menu/title_star.png of the HD UI Textures mod)
            takes its place and flies up off the top edge, accelerating (the ROM's flight measured 16 frames from the middle of the screen
            to off the top) */
         if (menu_hostimg_ready(MENU_IMG_STAR) && t_f->ch.fly_t >= 0) {
