@@ -1938,7 +1938,7 @@ static void title_pad_keys(uint16_t *pressed, int host_back, int inject)
 /* PADMENUS1: the same pad meaning for the ROM's own two-screen title and file select (OneScreenMenus off), where no recipe is live: pad A confirms,
    pad B goes back on the pages that have a back arrow. The page is read off the ROM's own state (the recipe's per-tick answer is not running). The
    attract and choreography parts of the recipe's version are the recipe's own and stay out. */
-void menu_title_pad_map_rom(uint16_t *pressed, int host_back)
+extern "C" void menu_title_pad_map_rom(uint16_t *pressed, int host_back)
 {
     int top, elem, req;
     if (!port_title_page_state(&top, &elem, &req)) return;
