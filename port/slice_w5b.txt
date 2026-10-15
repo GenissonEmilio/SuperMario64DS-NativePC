@@ -166,5 +166,3 @@ src/actors/dActor_c.cpp
 # ---- the lane's host files (the slice reader takes any repo path) -----------
 port/hal/actor_classes_ov065.cpp
 port/unmatched/Ov065_StateDispatch.cpp
-port/unmatched/Snufit_Behavior.cpp
-port/unmatched/Swoop_Behavior.cpp

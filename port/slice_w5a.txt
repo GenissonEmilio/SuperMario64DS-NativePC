@@ -246,7 +246,6 @@ src/engine/sound/Sound2.cpp
 # registry's face calls is published by the generated reverse face its
 # port/faces_sync.txt row now asks for (the row was a FORWARD row while the
 # host copy owned the flat name; it is an R row now).
-port/unmatched/Bbh_PmfDispatch.c
 port/unmatched/Bbh_MethodFaces.cpp
 
 # ---- the lane's own fills and faces ----------------------------------------

@@ -6331,7 +6331,6 @@ foreach(line IN LISTS SLICE33_LINES)
     list(APPEND SLICE33_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
 list(APPEND SLICE33_SOURCES
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/WaterfallMist_Behavior_HostSites.cpp"
      "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Coin_Behavior.cpp")
 # unmatched/Coin_CollectDispatch.cpp and unmatched/StarMarker_SpawnDispatch.cpp
 # RETIRED (run linkfull, lane RS4PORT): main #3106 passes the found player and
@@ -11626,7 +11625,6 @@ set(GATE32_HOST_SOURCES
     # ...and for the eleventh, the widest one yet: KING_BOB_OMB keeps the
     # ADDRESS of a two-PMF record rather than an index, so both his setter and
     # his Behavior do pointer arithmetic on a type MSVC doubles
-    unmatched/KingBobOmb_States.cpp
     # ...and for KOOPA_SHELL (gate 209): its four {init, main} states, seated
     # over the mounted DS addresses on both sides of __sinit_ov102_0214dfac
     unmatched/KoopaShell_States.cpp
@@ -15264,7 +15262,6 @@ foreach(line IN LISTS SLICE_OV066_LINES)
 endforeach()
 list(APPEND SLICE_OV066_SOURCES
      "${CMAKE_CURRENT_SOURCE_DIR}/hal/actor_classes_ov066.cpp"
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Eyerok_Behavior.cpp"
      "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Eyerok_ClosestPlayerRead.cpp")
 # unmatched/Eyerok_Render.cpp RETIRED (run link100, lane FOLD2): its only
 # divergence was the BlendModelAnim slot-5 shadow the destructor fold created,
@@ -15549,11 +15546,7 @@ foreach(line IN LISTS SLICE_OV090_LINES)
     list(APPEND SLICE_OV090_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
 list(APPEND SLICE_OV090_SOURCES
-     "${CMAKE_CURRENT_SOURCE_DIR}/hal/actor_classes_ov090.cpp"
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Skeeter_HostSites.cpp"
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/MantaRay_HostSites.cpp"
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/CheepCheep_HostSites.cpp"
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Shark_HostSites.cpp")
+     "${CMAKE_CURRENT_SOURCE_DIR}/hal/actor_classes_ov090.cpp")
 
 # ---- lane cast-ov090: THREE CROSS-OVERLAY NAME BINDINGS, ALL BY ADDRESS ----
 # Every one is settled from the crossing TU's OWN relocation in
@@ -15674,8 +15667,7 @@ foreach(line IN LISTS SLICE_W3F2_LINES)
     list(APPEND SLICE_W3F2_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
 list(APPEND SLICE_W3F2_SOURCES
-     "${CMAKE_CURRENT_SOURCE_DIR}/hal/actor_classes_ov091.cpp"
-     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/Ov091_HostSites.cpp")
+     "${CMAKE_CURRENT_SOURCE_DIR}/hal/actor_classes_ov091.cpp")
 # ONE OF THIS SLICE'S TWENTY .c FILES IS REALLY C++ -- a //cpp marker and
 # top-level `extern "C"` declarations, which as C is a syntax error on line 3.
 # Found by the comment-stripped token sweep over all twenty (//cpp, extern "C",
@@ -16068,7 +16060,7 @@ set_source_files_properties(
     PROPERTIES COMPILE_DEFINITIONS
     "_ZN21daObjKm3_Kurumajiku_c16CleanupResourcesEv=_ZN12daBakubaku_c19func_ov032_02111254Ev")
 list(APPEND SWEEP2_SOURCES hal/actor_classes_ov032.cpp ${SLICE_SWEEP2_OV032_SOURCES}
-    unmatched/Bubba_Behavior.cpp unmatched/Bubba_ChaseGate.cpp)
+    unmatched/Bubba_ChaseGate.cpp)
 # unmatched/Bubba_Render.cpp RETIRED (run link100, lane FOLD2): the ModelAnim
 # slot-5 shadow, dead with the destructor unfold. src/game/actors/d_a_bakubaku.cpp
 # carries it on port/slice_fold2.txt and needs no face -- it is an
@@ -16275,7 +16267,7 @@ foreach(line IN LISTS SLICE_SWEEP2_OV055_LINES)
     list(APPEND SLICE_SWEEP2_OV055_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
 list(APPEND SWEEP2_SOURCES hal/actor_classes_ov055.cpp ${SLICE_SWEEP2_OV055_SOURCES}
-    unmatched/MirrorLuigi_StateEnter.cpp unmatched/MirrorLuigi_Behavior.cpp)
+    unmatched/MirrorLuigi_Behavior.cpp)
 # ---- end lane cast-sweep2 --------------------------------------------------
 
 # ---- run rel0215 wave 3, lane w3-e ----------------------------------------
@@ -17729,9 +17721,9 @@ add_executable(smoke_player EXCLUDE_FROM_ALL tests/smoke_player.cpp "${OV002DATA
     ${SLICE40_SOURCES} ${SLICE41_SOURCES} ${SLICE42_SOURCES}
     hal/actor_classes_painting.cpp ${SLICE50_SOURCES} hal/actor_classes_wf.cpp
     unmatched/Cap_StateDispatch.cpp unmatched/ExclamationSwitch_StateDispatch.cpp ${SLICE51_SOURCES} ${SLICE59_SOURCES} ${SLICE78_SOURCES} ${SLICE79_SOURCES} ${SLICE82_SOURCES} ${SLICE83_SOURCES} ${SLICE64_SOURCES} ${GATE64_GEN} ${SLICE89_SOURCES} ${SLICE102_SOURCES} ${SLICE103_SOURCES} ${SLICE128_SOURCES} ${SLICE121_SOURCES} ${SLICE122_SOURCES} ${SLICE123_SOURCES} ${SLICE209_SOURCES} hal/actor_classes_runtime_spawns.cpp ${SLICE210_SOURCES} unmatched/YoshiEgg_StateDispatch.cpp
-    hal/actor_classes_ccm.cpp ${SLICE142_SOURCES} ${SLICE190_SOURCES} ${SLICE191_SOURCES} ${SLICE_MPG_SOURCES} ${SLICE_MPG2_SOURCES} unmatched/SoundObject_Behavior.cpp unmatched/MotherPenguin_AfterClsnSeat.cpp unmatched/MotherPenguin_ChaseGate.cpp ${SLICE_SMALLS_SOURCES} ${SLICE_SEAT1_SOURCES} unmatched/MotherPenguin_Behavior.cpp hal/actor_classes_ov081.cpp ${SLICE192_SOURCES} ${SLICE_W3B_SOURCES} ${W3BGEN} hal/actor_classes_ov072.cpp ${SLICE193_SOURCES} unmatched/Snowman_InitResources.cpp ${SLICE_SHADOWS_SOURCES} ${SLICE_SHADOWS3_SOURCES} hal/actor_classes_ov094.cpp ${SLICE194_SOURCES} unmatched/HootTheOwl_StateDispatch.cpp hal/actor_classes_ov012.cpp ${SLICE199_SOURCES} hal/actor_classes_ov002g200.cpp ${SLICE200_SOURCES} unmatched/PushBlock_StateDispatch.cpp hal/actor_classes_ov013.cpp ${SLICE202_SOURCES} hal/actor_classes_ov077.cpp ${SLICE_OV077_SOURCES} unmatched/Lakitu_HostSites.cpp unmatched/Spiny_HostSites.cpp unmatched/HeaveHo_HostSites.cpp unmatched/Lakitu_ShadowFaces.cpp ${SLICE_OV030CAST_SOURCES} hal/actor_classes_ov092.cpp ${SLICE_OV092_SOURCES} unmatched/ToxBox_ShadowFaces.cpp hal/actor_classes_ov096.cpp ${SLICE_OV096_SOURCES} unmatched/Pokey_HostSites.cpp unmatched/Tornado_HostSites.cpp unmatched/Ov072_MethodFaces.cpp ${SLICE_VSPOPUP_SOURCES} ${SLICE_CAP_SOURCES} ${SLICEBULLET_SOURCES} unmatched/Bullet_StateDispatch.cpp hal/actor_classes_bullet.cpp
+    hal/actor_classes_ccm.cpp ${SLICE142_SOURCES} ${SLICE190_SOURCES} ${SLICE191_SOURCES} ${SLICE_MPG_SOURCES} ${SLICE_MPG2_SOURCES} unmatched/SoundObject_Behavior.cpp unmatched/MotherPenguin_AfterClsnSeat.cpp unmatched/MotherPenguin_ChaseGate.cpp ${SLICE_SMALLS_SOURCES} ${SLICE_SEAT1_SOURCES} unmatched/MotherPenguin_Behavior.cpp hal/actor_classes_ov081.cpp ${SLICE192_SOURCES} ${SLICE_W3B_SOURCES} ${W3BGEN} hal/actor_classes_ov072.cpp ${SLICE193_SOURCES} unmatched/Snowman_InitResources.cpp ${SLICE_SHADOWS_SOURCES} ${SLICE_SHADOWS3_SOURCES} hal/actor_classes_ov094.cpp ${SLICE194_SOURCES} unmatched/HootTheOwl_StateDispatch.cpp hal/actor_classes_ov012.cpp ${SLICE199_SOURCES} hal/actor_classes_ov002g200.cpp ${SLICE200_SOURCES} unmatched/PushBlock_StateDispatch.cpp hal/actor_classes_ov013.cpp ${SLICE202_SOURCES} hal/actor_classes_ov077.cpp ${SLICE_OV077_SOURCES} unmatched/Lakitu_HostSites.cpp unmatched/Lakitu_ShadowFaces.cpp ${SLICE_OV030CAST_SOURCES} hal/actor_classes_ov092.cpp ${SLICE_OV092_SOURCES} unmatched/ToxBox_ShadowFaces.cpp hal/actor_classes_ov096.cpp ${SLICE_OV096_SOURCES} unmatched/Pokey_HostSites.cpp unmatched/Tornado_HostSites.cpp unmatched/Ov072_MethodFaces.cpp ${SLICE_VSPOPUP_SOURCES} ${SLICE_CAP_SOURCES} ${SLICEBULLET_SOURCES} unmatched/Bullet_StateDispatch.cpp hal/actor_classes_bullet.cpp
     # run rel0215 wave 1 (lane cast-ov026): ov026's whole cast, level 18.
-    hal/actor_classes_ov026.cpp ${SLICE_OV026_SOURCES} unmatched/Whirlpool_Behavior.cpp unmatched/WaterSuction_Behavior.cpp
+    hal/actor_classes_ov026.cpp ${SLICE_OV026_SOURCES}
     hal/actor_classes_ov036.cpp ${SLICE_OV036CAST_SOURCES}
     # run rel0215 wave 2 (lane cast-ov090): ov090's whole four-class water cast.
     ${SLICE_OV090_SOURCES}
@@ -18073,9 +18065,9 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     ${SLICE40_SOURCES} ${SLICE41_SOURCES} ${SLICE42_SOURCES}
     hal/actor_classes_painting.cpp ${SLICE50_SOURCES} hal/actor_classes_wf.cpp
     unmatched/Cap_StateDispatch.cpp unmatched/ExclamationSwitch_StateDispatch.cpp ${SLICE51_SOURCES} ${SLICE59_SOURCES} ${SLICE78_SOURCES} ${SLICE79_SOURCES} ${SLICE82_SOURCES} ${SLICE83_SOURCES} ${SLICE64_SOURCES} ${GATE64_GEN} ${SLICE89_SOURCES} ${SLICE102_SOURCES} ${SLICE103_SOURCES} ${SLICE128_SOURCES} ${SLICE121_SOURCES} ${SLICE122_SOURCES} ${SLICE123_SOURCES} ${SLICE209_SOURCES} hal/actor_classes_runtime_spawns.cpp ${SLICE210_SOURCES} unmatched/YoshiEgg_StateDispatch.cpp
-    hal/actor_classes_ccm.cpp ${SLICE142_SOURCES} ${SLICE190_SOURCES} ${SLICE191_SOURCES} ${SLICE_MPG_SOURCES} ${SLICE_MPG2_SOURCES} unmatched/SoundObject_Behavior.cpp unmatched/MotherPenguin_AfterClsnSeat.cpp unmatched/MotherPenguin_ChaseGate.cpp ${SLICE_SMALLS_SOURCES} ${SLICE_SEAT1_SOURCES} unmatched/MotherPenguin_Behavior.cpp hal/actor_classes_ov081.cpp ${SLICE192_SOURCES} ${SLICE_W3B_SOURCES} ${W3BGEN} hal/actor_classes_ov072.cpp ${SLICE193_SOURCES} unmatched/Snowman_InitResources.cpp ${SLICE_SHADOWS_SOURCES} ${SLICE_SHADOWS3_SOURCES} hal/actor_classes_ov094.cpp ${SLICE194_SOURCES} unmatched/HootTheOwl_StateDispatch.cpp hal/actor_classes_ov012.cpp ${SLICE199_SOURCES} hal/actor_classes_ov002g200.cpp ${SLICE200_SOURCES} unmatched/PushBlock_StateDispatch.cpp hal/actor_classes_ov013.cpp ${SLICE202_SOURCES} hal/actor_classes_ov077.cpp ${SLICE_OV077_SOURCES} unmatched/Lakitu_HostSites.cpp unmatched/Spiny_HostSites.cpp unmatched/HeaveHo_HostSites.cpp unmatched/Lakitu_ShadowFaces.cpp ${SLICE_OV030CAST_SOURCES} hal/actor_classes_ov092.cpp ${SLICE_OV092_SOURCES} unmatched/ToxBox_ShadowFaces.cpp hal/actor_classes_ov096.cpp ${SLICE_OV096_SOURCES} unmatched/Pokey_HostSites.cpp unmatched/Tornado_HostSites.cpp unmatched/Ov072_MethodFaces.cpp ${SLICE_VSPOPUP_SOURCES} ${SLICE_CAP_SOURCES} ${SLICEBULLET_SOURCES} unmatched/Bullet_StateDispatch.cpp hal/actor_classes_bullet.cpp
+    hal/actor_classes_ccm.cpp ${SLICE142_SOURCES} ${SLICE190_SOURCES} ${SLICE191_SOURCES} ${SLICE_MPG_SOURCES} ${SLICE_MPG2_SOURCES} unmatched/SoundObject_Behavior.cpp unmatched/MotherPenguin_AfterClsnSeat.cpp unmatched/MotherPenguin_ChaseGate.cpp ${SLICE_SMALLS_SOURCES} ${SLICE_SEAT1_SOURCES} unmatched/MotherPenguin_Behavior.cpp hal/actor_classes_ov081.cpp ${SLICE192_SOURCES} ${SLICE_W3B_SOURCES} ${W3BGEN} hal/actor_classes_ov072.cpp ${SLICE193_SOURCES} unmatched/Snowman_InitResources.cpp ${SLICE_SHADOWS_SOURCES} ${SLICE_SHADOWS3_SOURCES} hal/actor_classes_ov094.cpp ${SLICE194_SOURCES} unmatched/HootTheOwl_StateDispatch.cpp hal/actor_classes_ov012.cpp ${SLICE199_SOURCES} hal/actor_classes_ov002g200.cpp ${SLICE200_SOURCES} unmatched/PushBlock_StateDispatch.cpp hal/actor_classes_ov013.cpp ${SLICE202_SOURCES} hal/actor_classes_ov077.cpp ${SLICE_OV077_SOURCES} unmatched/Lakitu_HostSites.cpp unmatched/Lakitu_ShadowFaces.cpp ${SLICE_OV030CAST_SOURCES} hal/actor_classes_ov092.cpp ${SLICE_OV092_SOURCES} unmatched/ToxBox_ShadowFaces.cpp hal/actor_classes_ov096.cpp ${SLICE_OV096_SOURCES} unmatched/Pokey_HostSites.cpp unmatched/Tornado_HostSites.cpp unmatched/Ov072_MethodFaces.cpp ${SLICE_VSPOPUP_SOURCES} ${SLICE_CAP_SOURCES} ${SLICEBULLET_SOURCES} unmatched/Bullet_StateDispatch.cpp hal/actor_classes_bullet.cpp
     # run rel0215 wave 1 (lane cast-ov026): ov026's whole cast, level 18.
-    hal/actor_classes_ov026.cpp ${SLICE_OV026_SOURCES} unmatched/Whirlpool_Behavior.cpp unmatched/WaterSuction_Behavior.cpp
+    hal/actor_classes_ov026.cpp ${SLICE_OV026_SOURCES}
     hal/actor_classes_ov036.cpp ${SLICE_OV036CAST_SOURCES}
     # run rel0215 wave 2 (lane cast-ov090): ov090's whole four-class water cast.
     ${SLICE_OV090_SOURCES}
@@ -18544,9 +18536,9 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     ${SLICE40_SOURCES} ${SLICE41_SOURCES} ${SLICE42_SOURCES}
     hal/actor_classes_painting.cpp ${SLICE50_SOURCES} hal/actor_classes_wf.cpp
     unmatched/Cap_StateDispatch.cpp unmatched/ExclamationSwitch_StateDispatch.cpp ${SLICE51_SOURCES} ${SLICE59_SOURCES} ${SLICE78_SOURCES} ${SLICE79_SOURCES} ${SLICE82_SOURCES} ${SLICE83_SOURCES} ${SLICE64_SOURCES} ${GATE64_GEN} ${SLICE89_SOURCES} ${SLICE102_SOURCES} ${SLICE103_SOURCES} ${SLICE128_SOURCES} ${SLICE121_SOURCES} ${SLICE122_SOURCES} ${SLICE123_SOURCES} ${SLICE209_SOURCES} hal/actor_classes_runtime_spawns.cpp ${SLICE210_SOURCES} unmatched/YoshiEgg_StateDispatch.cpp
-    hal/actor_classes_ccm.cpp ${SLICE142_SOURCES} ${SLICE190_SOURCES} ${SLICE191_SOURCES} ${SLICE_MPG_SOURCES} ${SLICE_MPG2_SOURCES} unmatched/SoundObject_Behavior.cpp unmatched/MotherPenguin_AfterClsnSeat.cpp unmatched/MotherPenguin_ChaseGate.cpp ${SLICE_SMALLS_SOURCES} ${SLICE_SEAT1_SOURCES} unmatched/MotherPenguin_Behavior.cpp hal/actor_classes_ov081.cpp ${SLICE192_SOURCES} ${SLICE_W3B_SOURCES} ${W3BGEN} hal/actor_classes_ov072.cpp ${SLICE193_SOURCES} unmatched/Snowman_InitResources.cpp ${SLICE_SHADOWS_SOURCES} ${SLICE_SHADOWS3_SOURCES} hal/actor_classes_ov094.cpp ${SLICE194_SOURCES} unmatched/HootTheOwl_StateDispatch.cpp hal/actor_classes_ov012.cpp ${SLICE199_SOURCES} hal/actor_classes_ov002g200.cpp ${SLICE200_SOURCES} unmatched/PushBlock_StateDispatch.cpp hal/actor_classes_ov013.cpp ${SLICE202_SOURCES} hal/actor_classes_ov077.cpp ${SLICE_OV077_SOURCES} unmatched/Lakitu_HostSites.cpp unmatched/Spiny_HostSites.cpp unmatched/HeaveHo_HostSites.cpp unmatched/Lakitu_ShadowFaces.cpp ${SLICE_OV030CAST_SOURCES} hal/actor_classes_ov092.cpp ${SLICE_OV092_SOURCES} unmatched/ToxBox_ShadowFaces.cpp hal/actor_classes_ov096.cpp ${SLICE_OV096_SOURCES} unmatched/Pokey_HostSites.cpp unmatched/Tornado_HostSites.cpp unmatched/Ov072_MethodFaces.cpp ${SLICE_VSPOPUP_SOURCES} ${SLICE_CAP_SOURCES} ${SLICEBULLET_SOURCES} unmatched/Bullet_StateDispatch.cpp hal/actor_classes_bullet.cpp
+    hal/actor_classes_ccm.cpp ${SLICE142_SOURCES} ${SLICE190_SOURCES} ${SLICE191_SOURCES} ${SLICE_MPG_SOURCES} ${SLICE_MPG2_SOURCES} unmatched/SoundObject_Behavior.cpp unmatched/MotherPenguin_AfterClsnSeat.cpp unmatched/MotherPenguin_ChaseGate.cpp ${SLICE_SMALLS_SOURCES} ${SLICE_SEAT1_SOURCES} unmatched/MotherPenguin_Behavior.cpp hal/actor_classes_ov081.cpp ${SLICE192_SOURCES} ${SLICE_W3B_SOURCES} ${W3BGEN} hal/actor_classes_ov072.cpp ${SLICE193_SOURCES} unmatched/Snowman_InitResources.cpp ${SLICE_SHADOWS_SOURCES} ${SLICE_SHADOWS3_SOURCES} hal/actor_classes_ov094.cpp ${SLICE194_SOURCES} unmatched/HootTheOwl_StateDispatch.cpp hal/actor_classes_ov012.cpp ${SLICE199_SOURCES} hal/actor_classes_ov002g200.cpp ${SLICE200_SOURCES} unmatched/PushBlock_StateDispatch.cpp hal/actor_classes_ov013.cpp ${SLICE202_SOURCES} hal/actor_classes_ov077.cpp ${SLICE_OV077_SOURCES} unmatched/Lakitu_HostSites.cpp unmatched/Lakitu_ShadowFaces.cpp ${SLICE_OV030CAST_SOURCES} hal/actor_classes_ov092.cpp ${SLICE_OV092_SOURCES} unmatched/ToxBox_ShadowFaces.cpp hal/actor_classes_ov096.cpp ${SLICE_OV096_SOURCES} unmatched/Pokey_HostSites.cpp unmatched/Tornado_HostSites.cpp unmatched/Ov072_MethodFaces.cpp ${SLICE_VSPOPUP_SOURCES} ${SLICE_CAP_SOURCES} ${SLICEBULLET_SOURCES} unmatched/Bullet_StateDispatch.cpp hal/actor_classes_bullet.cpp
     # run rel0215 wave 1 (lane cast-ov026): ov026's whole cast, level 18.
-    hal/actor_classes_ov026.cpp ${SLICE_OV026_SOURCES} unmatched/Whirlpool_Behavior.cpp unmatched/WaterSuction_Behavior.cpp
+    hal/actor_classes_ov026.cpp ${SLICE_OV026_SOURCES}
     hal/actor_classes_ov036.cpp ${SLICE_OV036CAST_SOURCES}
     # run rel0215 wave 2 (lane cast-ov090): ov090's whole four-class water cast.
     ${SLICE_OV090_SOURCES}
