@@ -1,4 +1,4 @@
-/* pad_pointer.h -- the PAD POINTER (run hunt8, lane PADMENUS1): a virtual stylus driven by the controller.
+/* pad_pointer.h: the PAD POINTER (run hunt8, lane PADMENUS1), a virtual stylus driven by the controller.
 
    The DS's bottom screen is touch only: every minigame, the drawing pages and the ROM's own two-screen menus read the stylus and nothing else.
    This gives a controller player the same input as an INPUT MAPPING on top of the game, never new game logic: the right stick (and, in a

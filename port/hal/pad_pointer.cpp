@@ -1,15 +1,15 @@
-/* pad_pointer.cpp -- the PAD POINTER (run hunt8, lane PADMENUS1). Read hal/pad_pointer.h for what it is and where it works.
+/* pad_pointer.cpp: the PAD POINTER (run hunt8, lane PADMENUS1). Read hal/pad_pointer.h for what it is and where it works.
 
    DECISIONS (each with the reason):
-   - The pen is the JUMP binding (A by default), the same button every menu already takes as confirm (MENU_PAD_CONFIRM), so a rebound confirm
+   1. The pen is the JUMP binding (A by default), the same button every menu already takes as confirm (MENU_PAD_CONFIRM), so a rebound confirm
      moves the pen with it. Held = pen down, released = pen up, and a short tap is stretched to at least three frames because the ROM's touch gates
      want the touched byte and its edge byte together (memory sm64ds-minigames-headless-provable: a one frame press never registers).
-   - Speed is a quadratic curve over the stick after a 25 percent dead zone: a small push is a fine, slow move (a Shuffle Shell grab box is
+   2. Speed is a quadratic curve over the stick after a 25 percent dead zone: a small push is a fine, slow move (a Shuffle Shell grab box is
      20 DS pixels, a Coincentration card is bigger), a full push is 4 DS pixels a frame (the screen in about a second). The D-pad is 2 DS
      pixels a frame, 3.5 after half a second held. All of it integer arithmetic in 1/256 DS pixels, so a scripted row replays exactly.
-   - A confirm that was already down when the pointer came on does not press the pen until it has been released once, so the A that started a
+   3. A confirm that was already down when the pointer came on does not press the pen until it has been released once, so the A that started a
      minigame or closed a page is not a tap on the first frame of the next screen.
-   - Nothing is drawn or consumed unless the pointer is on, and it is never on without a controller answering, so a keyboard / mouse player and
+   4. Nothing is drawn or consumed unless the pointer is on, and it is never on without a controller answering, so a keyboard / mouse player and
      every identity gate (no pad input) see no change at all. */
 #include "hal/pad_pointer.h"
 
@@ -92,7 +92,7 @@ void reset_pos(int mode, int *x256, int *y256)
     }
 }
 
-/* ---- the arrow and the hint --------------------------------------------------------------------------------------------------- */
+/* the arrow and the hint */
 
 const char *const kArrow[17] = {
     "X          ", "XX         ", "XoX        ", "XooX       ", "XoooX      ", "XooooX     ", "XoooooX    ", "XooooooX   ",
@@ -218,9 +218,10 @@ extern "C" void hal_padptr_frame(const PadPtrIn *in, PadPtrOut *out)
 
     const int rs = iabs(in->rx) > iabs(in->ry) ? iabs(in->rx) : iabs(in->ry);
     const int ls = iabs(in->lx) > iabs(in->ly) ? iabs(in->lx) : iabs(in->ly);
-    const int rs_on = rs > 8192;
+    const int rs_on = rs > 8192;                        /* the stick is past the dead zone: it moves the pointer, and counts as use */
+    const int rs_push = rs > 16000;                     /* a deliberate push (about half way): what switches the pointer on, so a drifting stick never does */
     const int dpad = in->dpad & 15;
-    const int act = rs_on || (mg && (dpad || ls > 8192)) || (mg && in->confirm && S.armed);   /* the pad is being used */
+    const int act = rs_push || (mg && (dpad || ls > 16000)) || (mg && in->confirm && S.armed);   /* the pad is being used */
     if (act) g_mouse.store(0);
 
     if (!S.on) {
@@ -254,7 +255,7 @@ extern "C" void hal_padptr_frame(const PadPtrIn *in, PadPtrOut *out)
 
     if (!S.on) { S.down = 0; publish(); return; }
 
-    /* ---- move ---- */
+    /* move */
     int unit_num = 256;       /* 1/256 of a position unit per DS pixel of speed: stacked moves in DS pixels directly */
     if (S.mode == MODE_MENU) {
         int w = 512, h = 384;
@@ -281,7 +282,7 @@ extern "C" void hal_padptr_frame(const PadPtrIn *in, PadPtrOut *out)
     S.x256 += (int)(((long long)vx * unit_num) / 256);
     S.y256 += (int)(((long long)vy * unit_num) / 256);
 
-    /* ---- clamp to the touch screen / the picture ---- */
+    /* clamp to the touch screen / the picture */
     int maxx, maxy;
     if (S.mode == MODE_STACKED || S.mode == MODE_INSET) {
         maxx = ntr::SUB_W - 1; maxy = ntr::SUB_H - 1;
@@ -295,7 +296,7 @@ extern "C" void hal_padptr_frame(const PadPtrIn *in, PadPtrOut *out)
     if (S.x256 > maxx * 256) S.x256 = maxx * 256;
     if (S.y256 > maxy * 256) S.y256 = maxy * 256;
 
-    /* ---- the pen ---- */
+    /* the pen */
     if (!in->confirm) S.armed = 1;
     const int was_down = S.down;
     const int press = in->confirm && S.armed;
