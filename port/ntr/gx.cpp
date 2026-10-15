@@ -4350,6 +4350,68 @@ void gx_card_retire2(const Framebuffer *fb)
 }
 int gx_card_overlay_active() { return g_cp_active; }
 
+/* MENUS093C (D23): THE HELD FRAME UNDER A TRANSLUCENT 3D PAGE. The title's face page hands over to the drawing page with
+   BG mode 3 and BG3 a direct-colour bitmap (BG3CNT bits 7 and 2: the capture of the face frame), BG0 the 3D layer at the same
+   priority (so BG0 is in front) and a clear alpha of 0. The page's paper polygon ramps its alpha from 1, and the DS blends it onto
+   BG3, so the face fades into the paper. The raster blends a translucent polygon onto the fill it was given and the fill was the
+   navy 0xFF101820, so the picture went white, navy, then grey. This fills the frame with the bitmap instead, so the same blend lands
+   on the held frame. Only this exact register state asks for it; SM64DS_BGBMP_CLEAR_OFF=1 puts the old fill back. */
+namespace {
+struct BmpClear {
+    uint32_t px[256 * 192];       /* the bitmap as the screen shows it, 0 = transparent (the backdrop) */
+    int valid;
+};
+BmpClear g_bmpc;
+
+int bgbmp_clear_off_env()
+{
+    static const int v = std::getenv("SM64DS_BGBMP_CLEAR_OFF") ? 1 : 0;
+    return v;
+}
+
+/* 1 and the 256 x 192 picture in g_bmpc when the registers say a held frame sits under the 3D layer */
+int bgbmp_clear_wanted()
+{
+    g_bmpc.valid = 0;
+    if (bgbmp_clear_off_env() || !io_ready()) return 0;
+    const uint32_t dc = *reinterpret_cast<const volatile uint32_t *>(0x04000000u);
+    const uint32_t cc = *reinterpret_cast<const volatile uint32_t *>(0x04000350u);
+    if ((dc & 7u) != 3u || !(dc & 8u) || !((dc >> 8) & 1u) || !((dc >> 11) & 1u)) return 0;
+    if (((cc >> 16) & 0x1Fu) != 0) return 0;                  /* an opaque clear colour is the picture's own */
+    const uint16_t c0 = *reinterpret_cast<const volatile uint16_t *>(0x04000008u);
+    const uint16_t c3 = *reinterpret_cast<const volatile uint16_t *>(0x0400000Eu);
+    if (!(c3 & 0x80u) || !(c3 & 4u)) return 0;                /* not a direct-colour bitmap */
+    if ((c3 & 3u) < (c0 & 3u)) return 0;                      /* BG3 would be in front of the 3D layer */
+    static const int wh[4][2] = { { 128, 128 }, { 256, 256 }, { 512, 256 }, { 512, 512 } };
+    const int bw = wh[(c3 >> 14) & 3][0], bh = wh[(c3 >> 14) & 3][1];
+    const uint32_t base = 0x06000000u + (((dc >> 27) & 7u) << 16) + (((uint32_t)(c3 >> 8) & 0x1Fu) << 14);
+    const volatile int16_t *m = reinterpret_cast<const volatile int16_t *>(0x04000030u);
+    const int pa = m[0], pb = m[1], pc = m[2], pd = m[3];
+    int32_t rx = *reinterpret_cast<const volatile int32_t *>(0x04000038u);
+    int32_t ry = *reinterpret_cast<const volatile int32_t *>(0x0400003Cu);
+    rx = (rx << 4) >> 4; ry = (ry << 4) >> 4;                 /* 28 bit signed */
+    const bool wrap = (c3 >> 13) & 1;
+    const uint16_t bd = *reinterpret_cast<const volatile uint16_t *>(0x05000000u);
+    const uint32_t bdc = bgr555_to_argb((uint16_t)(bd & 0x7FFFu));
+    for (int y = 0; y < 192; ++y)
+        for (int x = 0; x < 256; ++x) {
+            int tx = (int)((rx + (int64_t)pa * x + (int64_t)pb * y) >> 8);
+            int ty = (int)((ry + (int64_t)pc * x + (int64_t)pd * y) >> 8);
+            uint32_t out = bdc;
+            bool in = true;
+            if (wrap) { tx &= bw - 1; ty &= bh - 1; }
+            else if (tx < 0 || ty < 0 || tx >= bw || ty >= bh) in = false;
+            if (in) {
+                const uint16_t v = *reinterpret_cast<const volatile uint16_t *>(base + ((uint32_t)ty * bw + tx) * 2);
+                if (v & 0x8000u) out = bgr555_to_argb((uint16_t)(v & 0x7FFFu));
+            }
+            g_bmpc.px[y * 256 + x] = out;
+        }
+    g_bmpc.valid = 1;
+    return 1;
+}
+}  // namespace
+
 static void clear_fill_classic(Framebuffer &fb);
 
 static void clear_fill_impl(Framebuffer &fb, bool wipe);
@@ -4381,7 +4443,8 @@ static void clear_fill_impl(Framebuffer &fb, bool wipe)
     g_cp_fb = &fb;
     const int allow = g_cp_allow;
     g_cp_allow = 0;
-    if (allow && g_gpu_opaque && !ab_mode()) {
+    const int held_under = bgbmp_clear_wanted();       /* MENUS093C (D23): the held frame under the 3D page is filled by the CPU clear below */
+    if (allow && g_gpu_opaque && !ab_mode() && !held_under) {
         /* would the card keep a frame offered like this? Asked without
            touching anything; 3 is yes. */
         GxGpuFrame f;
@@ -4412,6 +4475,15 @@ static void clear_fill_classic(Framebuffer &fb)
     const bool mw = menu_wide();          /* MENU WIDE 3D: the clear colour covers the whole wide frame */
     const int x0 = mw ? 0 : present_x(), y0 = mw ? 0 : present_y();
     const int x1 = mw ? active_w : x0 + present_w(), y1 = mw ? active_h : y0 + present_h();
+    if (g_bmpc.valid && !mw && x1 > x0 && y1 > y0) {       /* MENUS093C (D23): the held bitmap frame, nearest-sampled to the present rectangle */
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x) {
+                if (x < x0 || x >= x1 || y < y0 || y >= y1) { fb.px[y][x] = kOldClear; continue; }
+                const int sx = (int)((long long)(x - x0) * 256 / (x1 - x0)), sy = (int)((long long)(y - y0) * 192 / (y1 - y0));
+                fb.px[y][x] = g_bmpc.px[sy * 256 + sx];
+            }
+        return;
+    }
     /* row 0 carries the present rectangle's columns if row 0 is inside it;
        the rest are copies of one of two template rows, built once */
     for (int x = 0; x < w; ++x)

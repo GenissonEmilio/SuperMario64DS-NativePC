@@ -930,6 +930,20 @@ void build_main_pc(MenuLayout *L, bool intro)
         wl.wink = (uint8_t)ctune(8, 107);
         menu_add_piece(L, wl);
     }
+    {
+        /* MENUS093C (D23): on the face press page the DS lower screen's wallpaper fades to the drawing paper's cream while the head jumps
+           (measured on the cartridge: still blue 8 ticks after the touch, lavender at 20, beige at 32, cream by 44). Ours stayed blue
+           until the hand-over and then crossfaded in 18 ticks. SM64DS_PRESS_PAPER=0 keeps the blue page. */
+        static const int pp_on = [] { const char *e = getenv("SM64DS_PRESS_PAPER"); return !(e && *e == '0'); }();
+        const int tvp = t_f ? t_f->toy_v - 1 : -1;
+        if (pp_on && tvp >= 8 && !intro) {
+            int a = tvp >= 42 ? 255 : 255 * (tvp - 8) / 34;
+            MenuPiece pp = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            pp.bg = 1; pp.paper = 1; pp.lden = 1; pp.lnum = 1; pp.fx = 0; pp.fy = 0; pp.fw = (short)w; pp.fh = (short)h;
+            pp.alpha = (uint8_t)(a >= 255 ? 0 : (a < 1 ? 1 : a));
+            menu_add_piece(L, pp);
+        }
+    }
     int iw = 1, ih = 1;
     menu_hostimg_size(MENU_IMG_LOGO, &iw, &ih);
     /* the logos: big (centred, as the main menu used to have it) and small (top left) */
@@ -1158,6 +1172,8 @@ void build_main_sel(MenuLayout *L, bool intro)
      the Yoshi button and the pencil, cut from the same layer by their own boxes and anchored to the left and right edges at their DS rows
        (4:3: exactly where the DS puts them; wide: the same offsets from the edges), each its own touch piece in the ROM's own box. */
 enum { DD_XF = 18 };       /* the crossfade, in DS ticks: 0.3 s */
+enum { DD_HF = 120 };      /* MENUS093C (D23): the held face frame fades out into the paper over this many ticks while the strokes are drawn over it (the DS fades the 3D head
+                              out over about 2 s: measured on the cartridge, the head is still half there 100 ticks after the drawing page is live) */
 
 /* FACE3: the free-draw page's paper: 0 = the drawing page's cream paper stays, 1 = the page's own green paper fades in (SM64DS_PAPER3=0/1) */
 int paper3_mode()
@@ -1180,8 +1196,8 @@ void build_doodle(MenuLayout *L)
        and buttons then appeared at once. */
     const int e = (t_f && t_f->dd_e > 0) ? (live ? (t_f->dd_live > 0 ? t_f->dd_live : 1) : 0) : 1000;
     const bool closing = t_f && t_f->vis && (t_f->e3 > 0 || t_f->yh);    /* FACE3: the Yoshi press: the ROM closes its star iris (polygons in the 3D layer, drawn only in the 4:3 area) */
-    if (live && e >= DD_XF && !closing && !(t_f && t_f->yh)) L->snap_save = 1;      /* the held frame of the way out (and of the iris: the last frame before the ROM's iris shows) */
-    if (e < DD_XF) {
+    if (live && e >= DD_HF && !closing && !(t_f && t_f->yh)) L->snap_save = 1;      /* the held frame of the way out (and of the iris: the last frame before the ROM's iris shows) */
+    if (e < DD_HF) {
         MenuPiece sn = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         sn.bg = 1; sn.snap = 1; sn.lden = 1; sn.lnum = 1; sn.fx = 0; sn.fy = 0; sn.fw = (short)w; sn.fh = (short)h;
         menu_add_piece(L, sn);
@@ -1189,7 +1205,7 @@ void build_doodle(MenuLayout *L)
     if (e > 0) {
         MenuPiece pp = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         pp.bg = 1; pp.paper = 1; pp.lden = 1; pp.lnum = 1; pp.fx = 0; pp.fy = 0; pp.fw = (short)w; pp.fh = (short)h;
-        const int a = e >= DD_XF ? 255 : 255 * e / DD_XF;
+        const int a = e >= DD_HF ? 255 : 255 * e / DD_HF;
         pp.alpha = (uint8_t)(a >= 255 ? 0 : (a < 1 ? 1 : a));
         menu_add_piece(L, pp);
     }
