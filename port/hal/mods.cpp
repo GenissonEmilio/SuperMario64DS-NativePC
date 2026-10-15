@@ -452,7 +452,10 @@ void build_overrides(void)
     if (g_override_built) return;
     g_override_built = 1;
     latch();
-    if (g_mods.empty()) return;
+    if (g_mods.empty()) {
+        port_char_active();   /* CHARSAVE1: resolves a saved character pick, so a missing mod is said once in the log */
+        return;
+    }
 
     std::unordered_map<std::string, unsigned> loose;
     for (unsigned id = 0; id < 4096; ++id) {

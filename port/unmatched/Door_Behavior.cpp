@@ -124,7 +124,17 @@ DOOR_FACE(_ZN8daDoor_c19func_ov100_02144950EP6Playeri)
 DOOR_FACE(_ZN8daDoor_c19func_ov100_021446f8EP6Player)
 DOOR_FACE(_ZN8daDoor_c19func_ov100_02144528EP6Player)
 DOOR_FACE(_ZN8daDoor_c19func_ov100_021444e8Ei)
-DOOR_FACE(_ZN8daDoor_c19func_ov100_02144cf8EP6Player)
+/* CHARDOOR1: the door's IDLE callback (the one that asks "locked / key / open") gives the white star door (variant 0xd)
+   to hal/char_door.cpp first. The hook is null on every target that does not seat it, and answers 1 only for variant 0xd
+   in the cases hal/char_door.h lists; the ROM body is untouched. */
+extern "C" int (*port_char_door_idle_hook)(void *door, void *player) = 0;
+static int __fastcall door_f__ZN8daDoor_c19func_ov100_02144cf8EP6Player(void *self, void *dead_edx, void *arg)
+{
+    (void)dead_edx;
+    if (port_char_door_idle_hook && port_char_door_idle_hook(self, arg))
+        return 1;
+    return _ZN8daDoor_c19func_ov100_02144cf8EP6Player(self, arg);
+}
 DOOR_FACE(_ZN8daDoor_c19func_ov100_0214491cEv)
 
 static const struct { PortPmf *slot; unsigned rom; PortDoorFn host; }

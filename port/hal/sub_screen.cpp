@@ -2137,6 +2137,16 @@ extern "C" void port_touch_inject_release(void)
     g_inj_armed = 0;
 }
 
+/* CHARMENU1: the scripted stylus is also a tap for the white door's character picker (which sits over the top picture, where poll_touch's own
+   bottom screen mapping does not reach): 1 and the client point while a press is latched. */
+extern "C" int port_touch_inject_peek(int *cx, int *cy)
+{
+    if (!g_inj_armed) return 0;
+    if (cx) *cx = g_inj_cx;
+    if (cy) *cy = g_inj_cy;
+    return 1;
+}
+
 /* frames, presses, surface hits. Used by the driver's own census line. */
 extern "C" void port_touch_inject_census(unsigned *frames, unsigned *presses,
                                          unsigned *on_surface)

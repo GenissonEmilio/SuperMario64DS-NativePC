@@ -415,6 +415,8 @@ static bool winapi_load(void)
 #include "hal/host_settings.h"   /* settings.json, the launcher's file */
 extern "C" void host_menu_cursor_sound_flush(void);   /* hal/menu_compose.cpp: one ROM cursor sound a frame at most */
 #include "hal/char_registry.h"    /* CHARSLOT1: custom characters (costumes on the four) */
+#include "hal/char_save.h"        /* CHARSAVE1: the pick survives quitting (save/characters.json) */
+#include "hal/char_door.h"        /* CHARDOOR1: the Rec Room white star door picks the character */
 #include "hal/pcore.h"            /* PCORE1: P-core / throttling opt-out */
 #include "hal/settings_live.h"   /* run menu1 SETLIVE1: live, saved settings */
 #include "hal/settings_page.h"   /* run menu1 SETMENU1: the in-game settings page */
@@ -6173,11 +6175,122 @@ static char *menu_live_player()
     return p;
 }
 
+/* THE CHARACTER PICK, applied (CHARSLOT1's debug menu row, and CHARDOOR1's white star door picker). sel is a
+   chr_ id: 0..3 plain, 4 + n the custom character n. A change of skin relaunches the current level (the file layer
+   is boot-latched); keep_place also hands the child the player's position and facing (SM64DS_DOOR_RETURN) so the
+   door picker leaves them standing where they were. A pick that keeps the active skin is the in-place swap. */
+extern "C" int _ZN8SaveData15SaveCurrentFileEv(void);
+extern "C" int _ZN8SaveData12ReadFileDataEjP12FileSaveData(unsigned slot, void *dest);   /* the ROM's own slot read (hal/cxx_aliases.cpp seats the name) */   /* the ROM's own file save (hal/cxx_aliases.cpp seats the name) */
+static void char_apply_pick(int sel, int keep_place)
+{
+    if (chr_skin(sel) != port_char_active()) {
+        /* A SKIN CHANGE (CHARSLOT1): the file layer is boot-latched,
+           so the costume is applied by starting the program again on
+           the current level with SM64DS_CHAR_SKIN set (or cleared for
+           a plain character) and SM64DS_CHARACTER the base. Same
+           one-way door as the level row: refused BEFORE the parent
+           commits when the level is not mounted. SM64DS_CHAR_RELAUNCH
+           _DRY=1 prints the environment instead (proof runs). */
+        const int sk = chr_skin(sel);
+        const int lv = (int)data_0209f2f8;
+        char bs[8];
+        if (!menu_live_player()) {
+            ss_note("that row needs a level (this is a scene)");
+            fprintf(stderr, "[menu] character skin change needs a level -- refused\n");
+        } else if (!port_level_is_mounted(lv)) {
+            ss_note("this level cannot restart here");
+            fprintf(stderr, "[menu] character skin change: level %d is not mounted -- refused\n", lv);
+        } else {
+            snprintf(bs, sizeof bs, "%d", chr_base(sel));
+            fprintf(stderr, "[menu] character %s: level %d restarts with SM64DS_CHARACTER=%s SM64DS_CHAR_SKIN=%s\n",
+                    chr_label(sel), lv, bs, sk >= 0 ? port_char_key(sk) : "(none)");
+            if (getenv("SM64DS_CHAR_RELAUNCH_DRY")) {
+                fprintf(stderr, "[menu] SM64DS_CHAR_RELAUNCH_DRY: not relaunching\n");
+            } else {
+                /* a scripted key list (SM64DS_HOST_KEY) is not cleared by the
+                   relaunch table; inherited, the child would press this row again */
+                SetEnvironmentVariableA("SM64DS_HOST_KEY", 0);
+                SetEnvironmentVariableA("SM64DS_CHARACTER", bs);
+                /* CHARSAVE1: remember the pick for this file, and tell the child which
+                   file it is playing (it boots with no title to say so) */
+                port_char_save_record(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "", chr_base(sel));
+                port_char_save_child_env(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "");
+                if (keep_place) {
+                    /* CHARDOOR1: the child puts the player back where they stood (read once, never inherited on) */
+                    char dr[96];
+                    snprintf(dr, sizeof dr, "%d,%d,%d,%d", *(int *)(g_menu_host.player + 0x5c) >> 12,
+                             *(int *)(g_menu_host.player + 0x60) >> 12, *(int *)(g_menu_host.player + 0x64) >> 12,
+                             (int)(unsigned short)*(short *)(g_menu_host.player + 0x8e));
+                    SetEnvironmentVariableA("SM64DS_DOOR_RETURN", dr);
+                    fprintf(stderr, "[menu] SM64DS_DOOR_RETURN=%s\n", dr);
+                    /* the restart reads the save file: write what the player has earned (the key, the star, the open door)
+                       first, as the ROM's own save does, so the door is still theirs on the other side */
+                    fprintf(stderr, "[menu] saved the open file before the restart: %d\n", _ZN8SaveData15SaveCurrentFileEv());
+                }
+                if (port_menu_relaunch(-1, lv)) {
+                    W.PostQuitMessage_(0);
+                } else {
+                    ss_note("could not restart the level");
+                    fprintf(stderr, "[menu] character: could not start the level run (win32 %lu)\n",
+                            (unsigned long)GetLastError());
+                }
+            }
+        }
+    } else {
+        g_character_pending = chr_base(sel);
+        port_char_save_record(port_char_save_slot(), chr_skin(sel) >= 0 ? port_char_key(chr_skin(sel)) : "", g_character_pending);
+        if (menu_live_player()) {
+            fprintf(stderr, "[menu] becoming %s\n",
+                    CHAR_NAME[g_character_pending & 3]);
+            port_player_set_character(g_menu_host.player,
+                                      g_character_pending);
+            g_character = g_character_pending;
+            an_pivot_live = 0;   /* do not ease across it */
+        } else {
+            /* NO PLAYER IN THIS PROCESS RIGHT NOW: the star select
+               (or a crossing) between two courses. The cartridge
+               has no Player to swap here either; the character is
+               the save byte data_0209caa0[0x41], read once by
+               LoadEntranceObjects when the course spawns, so set
+               that and the course that starts next spawns this
+               character. Nothing is written through the old
+               Player, which is gone.
+
+               THE SAVE BYTE ALONE IS NOT ENOUGH, found by running
+               it: the spawn packs f2 = save byte (the Player's
+               mCharacter) and f1 = data_02092128[slot], and
+               Player::InitResources makes f1 the character the
+               body and the map icon show. The star select's own
+               InitResources copied the OLD save byte into
+               data_02092128 when it opened, so a course that
+               started after a bare save-byte write had a Luigi
+               lives icon and a Mario body. StartFile does the pair
+               (src/StartFile.c: data_02092128[0] =
+               data_0209caa0[0x41]) for the same reason, so write
+               both. data_02092114 stays as the ROM left it (-1,
+               no cap swap pending). */
+            fprintf(stderr, "[menu] no Player right now (star "
+                    "select / between courses): %s is set for the "
+                    "course that starts next\n",
+                    CHAR_NAME[g_character_pending & 3]);
+            character_set_pending(g_character_pending);
+            data_02092128[0] = (unsigned char)g_character_pending;
+        }
+    }
+}
+
+static void cd_metrics(void);
 static void menu_draw(const OvlSurface &fb)
 {
     /* SETMENU1: the in-game settings page holds the pause (menu_on) and is what this overlay draws then */
     if (settings_page_open()) {
         settings_page_draw(fb.px, fb.stride, ntr::active_w, ntr::active_h);
+        return;
+    }
+    if (port_char_door_open()) {            /* CHARDOOR1: the white door's picker or box */
+        ntr::gx_card_settle_because("the character picker");
+        cd_metrics();
+        port_char_door_draw(fb.px, fb.stride, ntr::active_w, ntr::active_h);
         return;
     }
     /* 96, not 72: the level-select row now carries a name as well as the row,
@@ -6477,6 +6590,29 @@ static int g_sp_idle;            /* frames before it was ever open (SM64DS_SETPA
 static int g_sp_env_done;
 extern int g_mouse_left_down;
 
+static void sp_read_devices(SpInput &in, int pad_live, const XPad *pad)
+{
+    unsigned k = 0;
+    const int pl = pad_live != 0;
+    if (key_live(VK_UP) || key_act(HOST_KEY_UP) || (pl && ((pad->buttons & 0x0001) || pad->ly > 16000))) k |= SPK_UP;
+    if (key_live(VK_DOWN) || key_act(HOST_KEY_DOWN) || (pl && ((pad->buttons & 0x0002) || pad->ly < -16000))) k |= SPK_DOWN;
+    if (key_live(VK_LEFT) || key_act(HOST_KEY_LEFT) || (pl && ((pad->buttons & 0x0004) || pad->lx < -16000))) k |= SPK_LEFT;
+    if (key_live(VK_RIGHT) || key_act(HOST_KEY_RIGHT) || (pl && ((pad->buttons & 0x0008) || pad->lx > 16000))) k |= SPK_RIGHT;
+    if (key_live(VK_RETURN) || key_live(VK_SPACE) || (pl && (pad->buttons & 0x1000))) k |= SPK_ACCEPT;
+    if (key_live(VK_ESCAPE) || key_live(VK_BACK) || (pl && (pad->buttons & 0x2000))) k |= SPK_BACK;
+    const int shift = key_live(VK_SHIFT);
+    if ((pl && (pad->buttons & 0x0100)) || key_live(VK_PRIOR) || (key_live(VK_TAB) && shift)) k |= SPK_TABL;
+    if ((pl && (pad->buttons & 0x0200)) || key_live(VK_NEXT) || (key_live(VK_TAB) && !shift)) k |= SPK_TABR;
+    if (key_live(VK_DELETE) || (pl && (pad->buttons & 0x8000))) k |= SPK_CLEAR;
+    if (sl_capture_active() && (pad->buttons & 0x0020)) k |= SPK_CAP_CANCEL;     /* pad BACK gives up a rebind: A and B are bindable */
+    in.keys = k;
+    int fx = 0, fy = 0;
+    if (hal_window_cursor_fb(&fx, &fy)) { in.mouse_valid = 1; in.mouse_x = fx; in.mouse_y = fy; }
+    in.mouse_l = g_mouse_left_down ? 1 : 0;
+    in.mouse_r = (hal_window_focused() && W.GetAsyncKeyState_(VK_RBUTTON) < 0) ? 1 : 0;
+    in.wheel = g_sp_wheel;
+}
+
 static int sp_frame(int pad_live, const XPad *pad)
 {
     if (settings_page_open() && !menu_on) settings_page_close();       /* something else took the pause away */
@@ -6496,27 +6632,8 @@ static int sp_frame(int pad_live, const XPad *pad)
     }
     SpInput in;
     memset(&in, 0, sizeof in);
-    if (!settings_page_scripted(&in, ++g_sp_pf)) {
-        unsigned k = 0;
-        const int pl = pad_live != 0;
-        if (key_live(VK_UP) || key_act(HOST_KEY_UP) || (pl && ((pad->buttons & 0x0001) || pad->ly > 16000))) k |= SPK_UP;
-        if (key_live(VK_DOWN) || key_act(HOST_KEY_DOWN) || (pl && ((pad->buttons & 0x0002) || pad->ly < -16000))) k |= SPK_DOWN;
-        if (key_live(VK_LEFT) || key_act(HOST_KEY_LEFT) || (pl && ((pad->buttons & 0x0004) || pad->lx < -16000))) k |= SPK_LEFT;
-        if (key_live(VK_RIGHT) || key_act(HOST_KEY_RIGHT) || (pl && ((pad->buttons & 0x0008) || pad->lx > 16000))) k |= SPK_RIGHT;
-        if (key_live(VK_RETURN) || key_live(VK_SPACE) || (pl && (pad->buttons & 0x1000))) k |= SPK_ACCEPT;
-        if (key_live(VK_ESCAPE) || key_live(VK_BACK) || (pl && (pad->buttons & 0x2000))) k |= SPK_BACK;
-        const int shift = key_live(VK_SHIFT);
-        if ((pl && (pad->buttons & 0x0100)) || key_live(VK_PRIOR) || (key_live(VK_TAB) && shift)) k |= SPK_TABL;
-        if ((pl && (pad->buttons & 0x0200)) || key_live(VK_NEXT) || (key_live(VK_TAB) && !shift)) k |= SPK_TABR;
-        if (key_live(VK_DELETE) || (pl && (pad->buttons & 0x8000))) k |= SPK_CLEAR;
-        if (sl_capture_active() && (pad->buttons & 0x0020)) k |= SPK_CAP_CANCEL;     /* pad BACK gives up a rebind: A and B are bindable */
-        in.keys = k;
-        int fx = 0, fy = 0;
-        if (hal_window_cursor_fb(&fx, &fy)) { in.mouse_valid = 1; in.mouse_x = fx; in.mouse_y = fy; }
-        in.mouse_l = g_mouse_left_down ? 1 : 0;
-        in.mouse_r = (hal_window_focused() && W.GetAsyncKeyState_(VK_RBUTTON) < 0) ? 1 : 0;
-        in.wheel = g_sp_wheel;
-    }
+    if (!settings_page_scripted(&in, ++g_sp_pf))
+        sp_read_devices(in, pad_live, pad);
     g_sp_wheel = 0;
     if (in.inject_key && g_rebind_capture) g_rebind_key = in.inject_key;   /* SETPAGE_SCRIPT key:<vk>: what the window procedure would have seen */
     if (!settings_page_frame(&in)) {
@@ -6526,6 +6643,58 @@ static int sp_frame(int pad_live, const XPad *pad)
         if (g_key[HOST_KEY_SELECT] > 0 && g_key[HOST_KEY_SELECT] < 256) key_stale[g_key[HOST_KEY_SELECT]] = 1;
         if ((in.keys & SPK_BACK) && pad_live && (pad->buttons & 0x2000)) menu_b_swallow = 1;   /* the B that closed it is not a punch */
         fprintf(stderr, "[settings] page closed\n");
+    }
+    return 1;
+}
+
+/* ---- THE WHITE STAR DOOR'S PICKER AND BOX (run hunt8, lane CHARDOOR1) ---------------------------------------------------------
+   hal/char_door.cpp is the state, the list and the input rules; this is its seat in the frame loops, the same shape as the settings page's
+   (sp_frame above): it borrows the debug menu's pause, so opening sets menu_on and the game stands still, and the devices are read here
+   behind the gates every other reader uses. The door asks (hal/char_door.cpp's hook on the door's idle callback); the request is honoured on the
+   next frame. A pick is applied after the picker closes: the in-place swap, or the level restart with the player put back where they stood
+   (char_apply_pick(.., 1)). Escape, Backspace and pad B are Back, so F5 / Escape do not also toggle the debug menu while it is up. */
+extern "C" int port_touch_inject_peek(int *cx, int *cy);   /* hal/sub_screen.cpp */
+static void cd_metrics(void)
+{
+    port_char_door_set_metrics(ntr::active_w, ntr::active_h, OVL_ADVANCE * OVL_SCALE, OVL_LINE);
+}
+
+static int cd_frame(int pad_live, const XPad *pad)
+{
+    cd_metrics();
+    if (port_char_door_open() && !menu_on) port_char_door_cancel();       /* something else took the pause away */
+    if (!port_char_door_open()) {
+        if (!port_char_door_pending()) return 0;
+        if (menu_on) { port_char_door_clear_request(); return 0; }         /* the debug menu or the settings page is up: not now */
+        char *pl = menu_live_player();
+        const int a = port_char_active();
+        const int cur = a >= 0 ? 4 + a : (pl ? (int)(*(unsigned *)(pl + 8) & 3) : (g_character_pending & 3));
+        port_char_door_open_now(cur);
+        menu_on = 1;
+        g_sp_wheel = 0;
+    }
+    SpInput in;
+    memset(&in, 0, sizeof in);
+    sp_read_devices(in, pad_live, pad);
+    g_sp_wheel = 0;
+    {   /* CHARMENU1: a DS stylus tap (SM64DS_CLICK_TEST / SM64DS_HOST_CLICK, the same path a pen on a touch screen takes into poll_touch) on the picker
+           reads as a press at that spot of the picture; a real mouse or finger is the mouse above (Windows gives a finger a pointer too) */
+        int cx = 0, cy = 0, fx = 0, fy = 0;
+        if (port_touch_inject_peek(&cx, &cy) && hal_present_client_to_fb(cx, cy, &fx, &fy)) {
+            in.mouse_valid = 1; in.mouse_x = fx; in.mouse_y = fy; in.mouse_l = 1;
+        }
+    }
+    if (!port_char_door_frame(&in)) {
+        menu_on = 0;
+        /* the Escape / Backspace / B that closed it is still down: not a fresh F5 for the debug menu, not a fresh Select for the ROM */
+        key_stale[VK_ESCAPE] = 1; key_stale[VK_F5] = 1; key_stale[VK_BACK] = 1;
+        if (g_key[HOST_KEY_SELECT] > 0 && g_key[HOST_KEY_SELECT] < 256) key_stale[g_key[HOST_KEY_SELECT]] = 1;
+        if (pad_live && (pad->buttons & 0x3000)) menu_b_swallow = 1;       /* the B / A that closed it is not a punch or a jump */
+        const int pick = port_char_door_take_pick();
+        if (pick >= 0) {
+            fprintf(stderr, "[chardoor] applying %s\n", chr_label(pick));
+            char_apply_pick(pick, 1);
+        }
     }
     return 1;
 }
@@ -6572,6 +6741,7 @@ static void menu_input(int pad_live, const XPad *pad)
 {
     pause3_input(pad_live, pad);
     if (sp_frame(pad_live, pad)) return;
+    if (cd_frame(pad_live, pad)) return;
     if (g_selftest) return;
     static unsigned menu_prev;
     unsigned held = 0;
@@ -6992,83 +7162,8 @@ static void menu_input(int pad_live, const XPad *pad)
             case MENU_CHARACTER:
                 /* left and right pick, enter changes -- the same shape
                    as the warp row above */
-                if ((edge & (1u << 5)) && chr_skin(chr_sel()) != port_char_active()) {
-                    /* A SKIN CHANGE (CHARSLOT1): the file layer is boot-latched,
-                       so the costume is applied by starting the program again on
-                       the current level with SM64DS_CHAR_SKIN set (or cleared for
-                       a plain character) and SM64DS_CHARACTER the base. Same
-                       one-way door as the level row: refused BEFORE the parent
-                       commits when the level is not mounted. SM64DS_CHAR_RELAUNCH
-                       _DRY=1 prints the environment instead (proof runs). */
-                    const int sk = chr_skin(chr_sel());
-                    const int lv = (int)data_0209f2f8;
-                    char bs[8];
-                    if (!menu_live_player()) {
-                        ss_note("that row needs a level (this is a scene)");
-                        fprintf(stderr, "[menu] character skin change needs a level -- refused\n");
-                    } else if (!port_level_is_mounted(lv)) {
-                        ss_note("this level cannot restart here");
-                        fprintf(stderr, "[menu] character skin change: level %d is not mounted -- refused\n", lv);
-                    } else {
-                        snprintf(bs, sizeof bs, "%d", chr_base(chr_sel()));
-                        fprintf(stderr, "[menu] character %s: level %d restarts with SM64DS_CHARACTER=%s SM64DS_CHAR_SKIN=%s\n",
-                                chr_label(chr_sel()), lv, bs, sk >= 0 ? port_char_key(sk) : "(none)");
-                        if (getenv("SM64DS_CHAR_RELAUNCH_DRY")) {
-                            fprintf(stderr, "[menu] SM64DS_CHAR_RELAUNCH_DRY: not relaunching\n");
-                        } else {
-                            /* a scripted key list (SM64DS_HOST_KEY) is not cleared by the
-                               relaunch table; inherited, the child would press this row again */
-                            SetEnvironmentVariableA("SM64DS_HOST_KEY", 0);
-                            SetEnvironmentVariableA("SM64DS_CHARACTER", bs);
-                            SetEnvironmentVariableA("SM64DS_CHAR_SKIN", sk >= 0 ? port_char_key(sk) : 0);
-                            if (port_menu_relaunch(-1, lv)) {
-                                W.PostQuitMessage_(0);
-                            } else {
-                                ss_note("could not restart the level");
-                                fprintf(stderr, "[menu] character: could not start the level run (win32 %lu)\n",
-                                        (unsigned long)GetLastError());
-                            }
-                        }
-                    }
-                } else if (edge & (1u << 5)) {
-                    g_character_pending = chr_base(chr_sel());
-                    if (menu_live_player()) {
-                        fprintf(stderr, "[menu] becoming %s\n",
-                                CHAR_NAME[g_character_pending & 3]);
-                        port_player_set_character(g_menu_host.player,
-                                                  g_character_pending);
-                        g_character = g_character_pending;
-                        an_pivot_live = 0;   /* do not ease across it */
-                    } else {
-                        /* NO PLAYER IN THIS PROCESS RIGHT NOW: the star select
-                           (or a crossing) between two courses. The cartridge
-                           has no Player to swap here either; the character is
-                           the save byte data_0209caa0[0x41], read once by
-                           LoadEntranceObjects when the course spawns, so set
-                           that and the course that starts next spawns this
-                           character. Nothing is written through the old
-                           Player, which is gone.
-
-                           THE SAVE BYTE ALONE IS NOT ENOUGH, found by running
-                           it: the spawn packs f2 = save byte (the Player's
-                           mCharacter) and f1 = data_02092128[slot], and
-                           Player::InitResources makes f1 the character the
-                           body and the map icon show. The star select's own
-                           InitResources copied the OLD save byte into
-                           data_02092128 when it opened, so a course that
-                           started after a bare save-byte write had a Luigi
-                           lives icon and a Mario body. StartFile does the pair
-                           (src/StartFile.c: data_02092128[0] =
-                           data_0209caa0[0x41]) for the same reason, so write
-                           both. data_02092114 stays as the ROM left it (-1,
-                           no cap swap pending). */
-                        fprintf(stderr, "[menu] no Player right now (star "
-                                "select / between courses): %s is set for the "
-                                "course that starts next\n",
-                                CHAR_NAME[g_character_pending & 3]);
-                        character_set_pending(g_character_pending);
-                        data_02092128[0] = (unsigned char)g_character_pending;
-                    }
+                if (edge & (1u << 5)) {
+                    char_apply_pick(chr_sel(), 0);
                 } else {
                     const int tot = chr_total();
                     g_menu_chr = dec ? (chr_sel() + tot - 1) % tot
@@ -13570,6 +13665,19 @@ int main(void)
            build the Player's spawn param and Player::InitResources loads that
            character's models and no others. Setting it after the spawn gets a
            Player whose model slot is null. */
+        /* CHARDOOR1: the restart a costume change at the white door starts is a level boot, and a level boot has the
+           default open file, not the player's (no key, no star, no door, no unlocked characters). The door picker's
+           parent saved the file just before it ended, so read that slot back into the open file here (the ROM's own
+           ReadFileData), before anything spawns. The character byte stays what SM64DS_CHARACTER says. */
+        if (getenv("SM64DS_DOOR_RETURN")) {
+            const int fslot = port_char_save_slot();
+            unsigned char blk[0x44];
+            if (fslot >= 0 && fslot <= 2 && _ZN8SaveData12ReadFileDataEjP12FileSaveData((unsigned)fslot, blk)) {
+                memcpy(data_0209caa0, blk, sizeof blk);
+                ((unsigned char *)data_0209caa0)[0x328] = (unsigned char)fslot;
+                fprintf(stderr, "[chardoor] open file is slot %c from the card (flags %08x, %d bytes)\n", 'A' + fslot, (unsigned)data_0209caa0[1], (int)sizeof blk);
+            }
+        }
         if (const char *cs = getenv("SM64DS_CHARACTER")) {
             character_set_pending(atoi(cs));
             fprintf(stderr, "[char] spawning %s\n",
@@ -13726,10 +13834,28 @@ int main(void)
     {
         const char *sp = getenv("SM64DS_SPAWN");
         if (sp) sscanf(sp, "%d,%d,%d", &spawn_x, &spawn_y, &spawn_z);
+        /* CHARDOOR1: SM64DS_DOOR_RETURN="x,y,z,yaw" is the white door's picker handing the player's place to the restart it
+           starts for a costume change. Read once and removed from the environment, so it never rides along into the next child. */
+        int door_ret_yaw = -1;
+        {
+            const char *dr = getenv("SM64DS_DOOR_RETURN");
+            if (dr) {
+                int dx_ = 0, dy_ = 0, dz_ = 0, dyaw_ = 0;
+                if (sscanf(dr, "%d,%d,%d,%d", &dx_, &dy_, &dz_, &dyaw_) == 4) {
+                    spawn_x = dx_; spawn_y = dy_; spawn_z = dz_;
+                    door_ret_yaw = dyaw_ & 0xffff;
+                    sp = dr;
+                    fprintf(stderr, "[chardoor] back at the door: %d,%d,%d yaw %04x\n", dx_, dy_, dz_, door_ret_yaw);
+                    port_char_door_disarm();
+                }
+                SetEnvironmentVariableA("SM64DS_DOOR_RETURN", 0);
+            }
+        }
         if (sp || !boot_spawns) {
             *(int *)(c + 0x5c) = spawn_x << 12;
             *(int *)(c + 0x60) = spawn_y << 12;
             *(int *)(c + 0x64) = spawn_z << 12;
+            if (door_ret_yaw >= 0) *(short *)(c + 0x8e) = (short)door_ret_yaw;
         } else {
             spawn_x = *(int *)(c + 0x5c) >> 12;
             spawn_y = *(int *)(c + 0x60) >> 12;

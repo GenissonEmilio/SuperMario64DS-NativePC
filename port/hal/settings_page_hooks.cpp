@@ -141,8 +141,16 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
 }
 
 /* poll_touch's stylus: 1 when the page takes it (the press that opens it, then everything while it is up and until the finger is lifted) */
+/* CHARDOOR1: the white door's picker (hal/char_door.cpp seats this) takes the stylus too: everything while it is up, and until the finger
+   is lifted that closed it, so a click on a row is not also a press on the ROM's bottom screen */
+extern "C" int (*port_char_door_touch_open)(void) = 0;
 extern "C" int settings_page_hook_touch(unsigned char down, unsigned char sx, unsigned char sy)
 {
+    {
+        static int cd_hold;
+        if (port_char_door_touch_open && port_char_door_touch_open()) { cd_hold = 1; return 1; }
+        if (cd_hold) { if (!down) cd_hold = 0; return 1; }
+    }
     if (settings_page_swallow_touch(down)) return 1;
     if (!down) return 0;
     if (title_main_page()) {                           /* MENUS093: a stylus / click on the title's MP button does nothing */

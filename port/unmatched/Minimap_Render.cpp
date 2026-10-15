@@ -103,8 +103,11 @@ extern "C" u32 data_020a0db0;
 extern "C" void *_ZN3OAM12MM_STAR_KEYSE[];
 extern "C" char _ZN3OAM13MM_SPIKE_BOMBE[];
 
+extern "C" void port_char_hud_apply(int what);   /* CHARHUD1: a costume's own minimap marker */
+
 int Minimap::Render()
 {
+    port_char_hud_apply(1);
     u8 a = data_0209f20c;
     u8 b = data_0209f2c4;
     u8 d = data_0209f294;

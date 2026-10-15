@@ -13,6 +13,7 @@
 
 #include "char_registry.h"
 #include "mods.h"
+#include "char_save.h"
 
 extern "C" {
 int host_json_string(const char *text, const char *key, char *out, size_t cap);
@@ -24,6 +25,8 @@ struct Chr {
     std::string mod, key, full, name;
     int base;
     std::string disk[4];   /* body, head with cap, head without cap, metal */
+    std::string preview, icon, credits;
+    std::string hud_icon, map_icon, map_icon_nocap, face;   /* CHARHUD1: sprite pictures for the HUD life icon, the minimap marker and the star select portrait */   /* CHARMENU1: picker art (png files inside the mod, "" = none) and the credits line */
 };
 
 std::vector<Chr> g_chr;
@@ -104,21 +107,74 @@ std::string character_block(const char *json)
     return std::string();
 }
 
+/* CHARMENU1: the strings of a top level array of mod.json ("credits", "authors"), joined with "; ". ASCII only (the picker's fonts have no
+   more): any other byte reads as '?'. A backslash escape keeps the escaped byte (a newline or tab reads as a space). */
+std::string json_string_list(const char *json, const char *key)
+{
+    std::string out;
+    const std::string pat = std::string("\"") + key + "\"";
+    const char *p = strstr(json, pat.c_str());
+    while (p) {
+        const char *q = p + pat.size();
+        while (*q == ' ' || *q == '\t' || *q == '\r' || *q == '\n') ++q;
+        if (*q == ':') {
+            ++q;
+            while (*q == ' ' || *q == '\t' || *q == '\r' || *q == '\n') ++q;
+            if (*q != '[') return out;
+            ++q;
+            while (*q && *q != ']') {
+                if (*q == '"') {
+                    std::string one;
+                    ++q;
+                    while (*q && *q != '"') {
+                        unsigned char c = (unsigned char)*q;
+                        if (c == '\\' && q[1]) {
+                            ++q;
+                            c = (unsigned char)*q;
+                            if (c == 'n' || c == 't') c = ' ';
+                        }
+                        one += (c >= 0x20 && c < 0x7f) ? (char)c : '?';
+                        ++q;
+                    }
+                    if (*q == '"') ++q;
+                    while (!one.empty() && one[one.size() - 1] == ' ') one.erase(one.size() - 1);
+                    if (!one.empty()) { if (!out.empty()) out += "; "; out += one; }
+                } else {
+                    ++q;
+                }
+            }
+            return out;
+        }
+        p = strstr(p + 1, pat.c_str());
+    }
+    return out;
+}
+
 void resolve_active(void)
 {
     if (g_active != -2) return;
     g_active = -1;
+    /* CHARSAVE1: SM64DS_CHAR_SKIN wins ("-" = the plain character on purpose);
+       without it the pick saved in save/characters.json is the skin. */
+    char saved[96] = "";
     const char *e = getenv("SM64DS_CHAR_SKIN");
-    if (!e || !*e) return;
+    const bool from_env = e && *e;
+    if (from_env) {
+        if (!strcmp(e, "-")) return;
+    } else {
+        if (!port_char_save_boot_pick(saved, sizeof saved) || !saved[0]) return;
+        e = saved;
+    }
     if (port_mods_multiplayer()) {
-        fprintf(stderr, "[chars] multiplayer session: the base character is forced, SM64DS_CHAR_SKIN ignored\n");
+        fprintf(stderr, "[chars] multiplayer session: the base character is forced, the %s skin is ignored\n",
+                from_env ? "SM64DS_CHAR_SKIN" : "saved");
         return;
     }
     int hit = -1, n = 0;
     for (size_t i = 0; i < g_chr.size(); ++i)
         if (g_chr[i].full == e || g_chr[i].key == e) { hit = (int)i; ++n; }
     if (n != 1) {
-        fprintf(stderr, "[chars] SM64DS_CHAR_SKIN=%s: %s; the plain character is used\n", e,
+        fprintf(stderr, "[chars] %s=%s: %s; the plain character is used\n", from_env ? "SM64DS_CHAR_SKIN" : "saved character", e,
                 n ? "that key is ambiguous, use modid:key" : "no such character is installed and on");
         return;
     }
@@ -171,6 +227,25 @@ void port_char_offer(const char *mod_id, const char *folder, const char *mod_jso
         if (!file_ok(disk)) { fprintf(stderr, "[chars] %s: %s is missing or not a usable file; ignored\n", c.full.c_str(), rel); return; }
         c.disk[k] = disk;
     }
+    /* CHARMENU1: the picker's art and credits, all optional. A bad path costs only that picture. */
+    {
+        const char *const what[6] = { "preview", "icon", "hud_icon", "map_icon", "face", "map_icon_nocap" };
+        std::string *const dst[6] = { &c.preview, &c.icon, &c.hud_icon, &c.map_icon, &c.face, &c.map_icon_nocap };
+        for (int k = 0; k < 6; ++k) {
+            char rel[160] = "";
+            if (host_json_string(blk.c_str(), what[k], rel, sizeof rel) && rel[0]) {
+                const std::string disk = std::string(folder) + "/" + rel;
+                if (rel_ok(rel) && file_ok(disk)) *dst[k] = disk;
+                else fprintf(stderr, "[chars] %s: character.%s is not a usable file; ignored\n", c.full.c_str(), what[k]);
+            }
+        }
+        if (c.preview.empty()) {
+            const std::string disk = std::string(folder) + "/preview.png";
+            if (file_ok(disk)) c.preview = disk;
+        }
+        c.credits = json_string_list(mod_json, "credits");
+        if (c.credits.empty()) c.credits = json_string_list(mod_json, "authors");
+    }
     g_chr.push_back(c);
     fprintf(stderr, "[chars] registered %s (%s) base %s, dormant\n", c.full.c_str(), c.name.c_str(), BASE_NAME[c.base]);
 }
@@ -179,6 +254,13 @@ int port_char_count(void) { return (int)g_chr.size(); }
 const char *port_char_key(int i) { return i >= 0 && i < (int)g_chr.size() ? g_chr[(size_t)i].full.c_str() : 0; }
 const char *port_char_name(int i) { return i >= 0 && i < (int)g_chr.size() ? g_chr[(size_t)i].name.c_str() : 0; }
 int port_char_base(int i) { return i >= 0 && i < (int)g_chr.size() ? g_chr[(size_t)i].base : -1; }
+const char *port_char_preview(int i) { return i >= 0 && i < (int)g_chr.size() && !g_chr[(size_t)i].preview.empty() ? g_chr[(size_t)i].preview.c_str() : 0; }
+const char *port_char_icon(int i) { return i >= 0 && i < (int)g_chr.size() && !g_chr[(size_t)i].icon.empty() ? g_chr[(size_t)i].icon.c_str() : 0; }
+const char *port_char_hud_icon(int i) { return i >= 0 && i < (int)g_chr.size() && !g_chr[(size_t)i].hud_icon.empty() ? g_chr[(size_t)i].hud_icon.c_str() : 0; }
+const char *port_char_map_icon(int i) { return i >= 0 && i < (int)g_chr.size() && !g_chr[(size_t)i].map_icon.empty() ? g_chr[(size_t)i].map_icon.c_str() : 0; }
+const char *port_char_map_icon_nocap(int i) { return i >= 0 && i < (int)g_chr.size() && !g_chr[(size_t)i].map_icon_nocap.empty() ? g_chr[(size_t)i].map_icon_nocap.c_str() : 0; }
+const char *port_char_face(int i) { return i >= 0 && i < (int)g_chr.size() && !g_chr[(size_t)i].face.empty() ? g_chr[(size_t)i].face.c_str() : 0; }
+const char *port_char_credits(int i) { return i >= 0 && i < (int)g_chr.size() ? g_chr[(size_t)i].credits.c_str() : ""; }
 
 int port_char_active(void)
 {

@@ -409,6 +409,14 @@ void func_ov007_020b6134(int slot);    /* src/func_ov007_020b6134.cpp */
 
 static const char BOOT_FILE_ENV[] = "SM64DS_BOOT_FILE";
 
+/* CHARSAVE1 (hal/char_save.cpp seats it): the player picked file `slot`. The hook
+   notes it as the last file played and, when that file's saved character skin is not
+   the one this process started with, starts the front door again with the right
+   one and returns 1 (this process must then end). Null on every smoke target. */
+extern "C" {
+int (*port_title_file_start_hook)(int slot) = 0;
+}
+
 static int port_title_front_door_poll(void)
 {
     static int fired;
@@ -909,6 +917,11 @@ extern "C" int port_title_entry_commit(void)
         }
         std::fflush(stdout);
         return 0;
+    }
+
+    if (!starsel && port_title_file_start_hook && port_title_file_start_hook(slot)) {
+        std::fflush(stdout);
+        return 0;             /* a new process has the game; this one ends */
     }
 
     /* The request is being served by the level boot, not by a scene spawn, so
