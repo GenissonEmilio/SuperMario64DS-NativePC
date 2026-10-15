@@ -6153,7 +6153,8 @@ static char *menu_live_player()
    chr_ id: 0..3 plain, 4 + n the custom character n. A change of skin relaunches the current level (the file layer
    is boot-latched); keep_place also hands the child the player's position and facing (SM64DS_DOOR_RETURN) so the
    door picker leaves them standing where they were. A pick that keeps the active skin is the in-place swap. */
-extern "C" int _ZN8SaveData15SaveCurrentFileEv(void);   /* the ROM's own file save (hal/cxx_aliases.cpp seats the name) */
+extern "C" int _ZN8SaveData15SaveCurrentFileEv(void);
+extern "C" int _ZN8SaveData12ReadFileDataEjP12FileSaveData(unsigned slot, void *dest);   /* the ROM's own slot read (hal/cxx_aliases.cpp seats the name) */   /* the ROM's own file save (hal/cxx_aliases.cpp seats the name) */
 static void char_apply_pick(int sel, int keep_place)
 {
     if (chr_skin(sel) != port_char_active()) {
@@ -13578,6 +13579,19 @@ int main(void)
            build the Player's spawn param and Player::InitResources loads that
            character's models and no others. Setting it after the spawn gets a
            Player whose model slot is null. */
+        /* CHARDOOR1: the restart a costume change at the white door starts is a level boot, and a level boot has the
+           default open file, not the player's (no key, no star, no door, no unlocked characters). The door picker's
+           parent saved the file just before it ended, so read that slot back into the open file here (the ROM's own
+           ReadFileData), before anything spawns. The character byte stays what SM64DS_CHARACTER says. */
+        if (getenv("SM64DS_DOOR_RETURN")) {
+            const int fslot = port_char_save_slot();
+            unsigned char blk[0x44];
+            if (fslot >= 0 && fslot <= 2 && _ZN8SaveData12ReadFileDataEjP12FileSaveData((unsigned)fslot, blk)) {
+                memcpy(data_0209caa0, blk, sizeof blk);
+                ((unsigned char *)data_0209caa0)[0x328] = (unsigned char)fslot;
+                fprintf(stderr, "[chardoor] open file is slot %c from the card (flags %08x, %d bytes)"\n", 'A' + fslot, (unsigned)data_0209caa0[1], (int)sizeof blk);
+            }
+        }
         if (const char *cs = getenv("SM64DS_CHARACTER")) {
             character_set_pending(atoi(cs));
             fprintf(stderr, "[char] spawning %s\n",
