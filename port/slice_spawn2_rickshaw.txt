@@ -43,7 +43,7 @@
 #
 # THE FILE CONSTRUCTOR COMES ON WITH THIS GATE. __sinit_ov043_02111868 builds
 # exactly the pair InitResources consumes -- Model file 1621 into
-# data_ov043_02112610 and collision file 1622 into data_ov043_02112608, which
+# gKm1KurumajikuModelFile and collision file 1622 into gKm1KurumajikuCollisionFile, which
 # are words 0 and 1 of the 3-word Arg record data_ov043_02112344 the mount
 # rebases (build/port/host-src/ov043_syms.c). It was left out of slice_bdw.txt
 # on the "a sinit for an unhosted class stays off" rule; 137 is hosted now.

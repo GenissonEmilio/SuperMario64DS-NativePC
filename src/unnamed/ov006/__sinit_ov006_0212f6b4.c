@@ -1,3 +1,8 @@
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum sinit_ov006_0212f6b4_AssetId {
+    ASSET_MARIO_MODEL_MG_BMD = 0x0216
+};
+
 extern void func_02017a24(void*, int);
 extern void func_020731dc(void*, void*, void*);
 extern void _ZN13SharedFilePtr9ConstructEj(void*, int);
@@ -90,7 +95,7 @@ extern int data_ov006_02140700[];
 
 void __sinit_ov006_0212f6b4(void)
 {
-    func_02017a24(data_ov006_021405f8, 0x216);
+    func_02017a24(data_ov006_021405f8, ASSET_MARIO_MODEL_MG_BMD);
     func_020731dc(data_ov006_021405f8, (void*)&func_02017a0c, data_ov006_021406ac);
     _ZN13SharedFilePtr9ConstructEj(data_ov006_02140608, 0x8078);
     func_020731dc(data_ov006_02140608, (void*)&SharedFilePtr_Destruct_Anim, data_ov006_021406c4);

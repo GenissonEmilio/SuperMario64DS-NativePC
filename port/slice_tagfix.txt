@@ -93,8 +93,8 @@
 # Every line below byte-matches at 2004/b56 with --strict-relocs against
 # extracted/overlays/overlay_0002.bin based at 0x020ad660.
 #
-src/actors/daObjBlockItemTag_c.cpp
-# FOLDED into src/actors/daObjBlockItemTag_c.cpp (row 96): src/_ZN10BrickBlock15SpawnKoopaShellEv.cpp
-# FOLDED into src/actors/daObjBlockItemTag_c.cpp (row 96): src/_ZN10BrickBlock17SpawnMegaMushroomEv.cpp
-# FOLDED into src/actors/daObjBlockItemTag_c.cpp (row 96): src/_ZN10BrickBlock18SpawnOneUpMushroomEv.cpp
-# FOLDED into src/actors/daObjBlockItemTag_c.cpp (row 96): src/_ZN10BrickBlock15SpawnSilverStarEv.cpp
+src/game/actors/d_a_obj_block_item_tag.cpp
+# FOLDED into src/game/actors/d_a_obj_block_item_tag.cpp (row 96): src/_ZN10BrickBlock15SpawnKoopaShellEv.cpp
+# FOLDED into src/game/actors/d_a_obj_block_item_tag.cpp (row 96): src/_ZN10BrickBlock17SpawnMegaMushroomEv.cpp
+# FOLDED into src/game/actors/d_a_obj_block_item_tag.cpp (row 96): src/_ZN10BrickBlock18SpawnOneUpMushroomEv.cpp
+# FOLDED into src/game/actors/d_a_obj_block_item_tag.cpp (row 96): src/_ZN10BrickBlock15SpawnSilverStarEv.cpp

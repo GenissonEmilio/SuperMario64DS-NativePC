@@ -1,6 +1,6 @@
 # slice_hostgen4 -- run link100, lane HOSTGEN4.
 #
-# ONE TRANSLATION UNIT: src/actors/daMky_c.cpp, the Monkey (daMky_c, the thief
+# ONE TRANSLATION UNIT: src/game/actors/d_a_mky.cpp, the Monkey (daMky_c, the thief
 # and the star carrier). It answers FOURTEEN flat ROM names on walk_window's
 # unresolved wall and it has never been on a slice, because MSVC refused it.
 #
@@ -23,7 +23,7 @@
 # nothing noticed), deletes the stray `struct dActor_c;` that was shadowing the
 # real class, and moves the four function-local types to file scope while
 # LEAVING EACH DATUM'S DECLARATION where it stands -- five members spell
-# data_ov030_02115d18 five different ways and one file-scope declaration makes
+# gMonkeyRunAnimationFile five different ways and one file-scope declaration makes
 # four of them a C2040. Seven of those spellings still reach the linker
 # decorated, and hostgen's ALTNAME table bridges each to the C name ov030_syms.c
 # and romdata.c emit, which is hal/actor_classes.cpp:870's own shape.
@@ -81,7 +81,7 @@
 # them is a COMDAT already present in dozens of objects: the four RTTI records
 # of dActor_c, dBase_c and fBase_c, Vector3's inline destructor, and the four
 # __empty_global_delete stubs. No LNK2005 row.
-src/actors/daMky_c.cpp
+src/game/actors/d_a_mky.cpp
 
 # ---------------------------------------------------------------------------
 # SIX PER-FUNCTION TRANSLATION UNITS THAT WERE SIMPLY NEVER SLICED
@@ -136,15 +136,15 @@ src/actors/daMky_c.cpp
 # opinions about. Left for a lane that wants that whole region.
 port/unmatched/__sinit_ov023_02111aa8.c
 src/unnamed/arm9/0205/func_0205fc44.c
-src/actors/Player.cpp
+src/game/player/Player.cpp
 
 # ---------------------------------------------------------------------------
 # dScMgD3DBase_c, THE MINIGAME 3D BASE CLASS
 # ---------------------------------------------------------------------------
 #
 # Nineteen rows: five flat ROM names (_Sound_PlayBank1Panned,
-# _func_ov006_020e6db4, _func_ov006_020e6e3c, _func_ov006_020e7508,
-# _func_ov006_020e759c) and fourteen decorated members that nothing in this link
+# _D3D_PlaySePannedLoop, _D3D_PlaySeAtX, _D3D_CaptureToSub,
+# _D3D_CaptureToMain) and fourteen decorated members that nothing in this link
 # defines -- the Before/After hooks, the five On* handlers, OnHitByMegaChar,
 # OnHitFromUnderneath, Virtual7C and Virtual84.
 #
@@ -158,11 +158,11 @@ src/actors/Player.cpp
 # It goes through the substitution for two reasons and the first is the bigger
 # one: TWENTY-FOUR MMIO writes. Compiled raw those latch in the mapped I/O
 # window and never reach the PPU, which is the defect hostgen's MMIO rewrite
-# exists for and the reason src/actors/dScMgPanel_c.cpp is on the same list.
+# exists for and the reason src/minigames/d_s_mg_panel.cpp is on the same list.
 #
 # The second is OnKicked, ROM ov006:0x020e6e78, vtable slot 24.
 # port/faces_sync.txt already carries it as a REVERSE face -- a definition of
-# ?OnKicked@dScMgD3DBase_c@@UAEHXZ forwarding to the flat ROM name, whose body
+# ?OnGraphCallback2@dScMgD3DBase_c@@UAEHXZ forwarding to the flat ROM name, whose body
 # is MgD3DBase_DeclConflict.cpp -- so the class TU's own copy would be a
 # duplicate symbol. hostgen's LEDGER_PARK brackets that ONE member in the
 # generated copy. Nothing changes at run time: the face goes on serving slot 24
@@ -174,7 +174,7 @@ src/actors/Player.cpp
 # unmatched/MgD3DBase_DeclConflict.cpp in the same change. Its stated reason is
 # a C2733 between include/decl_common.h:1516 and this TU, and that reason is
 # OBSOLETE -- the TU compiles clean today, rc 0, with a real object.
-src/actors/dScMgD3DBase_c.cpp
+src/minigames/d_s_mg_d3d_base.cpp
 
 # ---------------------------------------------------------------------------
 # daSanbo_c AND daPkn_c, TWO CLASS TUs THE LEDGER WAS HOLDING
@@ -212,8 +212,8 @@ src/actors/dScMgD3DBase_c.cpp
 # copies together would be a duplicate symbol. MEASURED AGAINST THE WHOLE LINK
 # that is true of exactly one symbol, func_ov096_02135e2c, and that one is
 # parked. The Tornado rows that block also names are untouched.
-src/actors/daSanbo_c.cpp
-src/actors/daPkn_c.cpp
+src/game/actors/d_a_sanbo.cpp
+src/game/actors/d_a_pkn.cpp
 
 # ---------------------------------------------------------------------------
 # d_a_wanwan, THE CHAIN CHOMP

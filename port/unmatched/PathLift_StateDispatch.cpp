@@ -156,7 +156,7 @@ void port_pathlift_states_seat(void)
    src/_ZN16dPathLiftActor_c12BaseBehaviorEv.cpp, which defines the Itanium C name
    itself -- so it needs no face for its own symbol, and the
    PathLift::BaseBehavior forwarder below is unchanged and is still the only
-   bridge src/game/actors/daObjPathLift_c.cpp's mangle needs.
+   bridge src/game/actors/d_a_obj_path_lift.cpp's mangle needs.
 
    WHAT MADE IT POSSIBLE, measured for that lane rather than argued:
      RECORD STRIDE. The ROM strides 20 (`mov r0,#0x14 / mla r0,r1,r0,r2` at
@@ -176,7 +176,7 @@ void port_pathlift_states_seat(void)
    port_pathlift_states_seat above STAYS, still asserting {the ROM's own
    address, 0} on all six words before it writes a host one. */
 
-/* THE FACE. src/game/actors/daObjPathLift_c.cpp calls the tick half as a real C++
+/* THE FACE. src/game/actors/d_a_obj_path_lift.cpp calls the tick half as a real C++
    method on its own local `struct PathLift { void BaseBehavior(); };`, so
    MSVC wants ?BaseBehavior@dPathLiftActor_c@@QAEXXZ. A @@QAE target can never be an
    /alternatename (the receiver would never have been a `this`), so this is a

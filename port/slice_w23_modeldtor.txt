@@ -26,6 +26,6 @@ port/unmatched/hostarm/_ZN5ModelD0Ev.cpp
 port/unmatched/hostarm/_ZN5ModelD2Ev.cpp
 src/_ZN9ModelBaseD0Ev.cpp
 src/_ZN10ModelAnim2D0Ev.cpp
-src/engine/model/dExtCommonModel_c.cpp
+src/engine/model/d_ext_common_model.cpp
 port/unmatched/hostarm/_ZN11CommonModelD0Ev.cpp
 src/_ZN14BlendModelAnimD0Ev.cpp

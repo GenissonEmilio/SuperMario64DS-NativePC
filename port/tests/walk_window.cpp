@@ -541,19 +541,19 @@ extern "C" {
 extern char dsstate_lo, dsstate_hi;
 void *_ZN6PlayerC1Ev(void *self);
 /* Player::InitResources' own character-propagation helper: +0x6d9 forward
-   into the swap pair at +0x6dc/+0x6dd (src/actors/Player.cpp) */
+   into the swap pair at +0x6dc/+0x6dd (src/game/player/Player.cpp) */
 void _ZN6Player19func_ov002_020beabcEv(void *p);
-void *_ZN4Heap13SetupRootHeapEv(void);
+void *_ZN5mHeap6Heap_t13SetupRootHeapEv(void);
 /* the ROM's entry into the above: clears the OS globals word, tail-calls it.
-   Seated from src/_ZN4Heap18InitializeRootHeapEv.cpp; the C name reaches the
+   Seated from src/engine/heap/Heap.cpp; the C name reaches the
    matched TU's static member through an /alternatename in hal/cxx_aliases.cpp,
    which is ABI-legal here because a static member is __cdecl like this
    declaration. See the call site for why the boot guard moved to
    data_020a0ea0. */
-void _ZN4Heap18InitializeRootHeapEv(void);
+void _ZN5mHeap6Heap_t18InitializeRootHeapEv(void);
 /* the ROM's own game-heap factory, off the main.c boot spine -- see the call
    site below for the two arguments and where they come from */
-void _ZN4Heap18InitializeGameHeapEjPS_(unsigned size, void *root);
+void _ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_(unsigned size, void *root);
 /* run link100 lane BOOT: the rest of the ROM's boot chain around those two
    heap lines. This main() is the port's stand-in for the ROM's Entry and
    main(), and the two heap calls above were the only two steps of that chain
@@ -759,7 +759,7 @@ int _ZN6Player11ChangeStateERNS_5StateE(void *self, void *st);
    own crush entry point, Player::Unk_020c6a10 (ov002 0x020c6a10), the exact
    function the crushers call -- ov073 0x02120284 with 1, ov074 0x02120d74 with
    2, ov078 0x021240a0 with 1 (src/func_ov073_021200e0.c:73,
-   src/actors/Goomboss.cpp:73 and src/actors/daBombking_c.cpp:107). It runs the
+   src/actors/Goomboss.cpp:73 and src/game/actors/d_a_bombking.cpp:107). It runs the
    ROM's own three gates (mClsnFlags & 1, i.e. on the ground; not already in
    ST_SQUISH; func_ov002_020d82f0), then sets mScaleY = 0x100 and holds
    ST_SQUISH for 30 frames. A refusal returns 0 and is logged, so "the probe
@@ -13151,7 +13151,7 @@ int main(void)
         return 0;
     }
     /* THE ROM'S OWN ENTRY, not one level in. This was
-       `if (!_ZN4Heap13SetupRootHeapEv()) return 2;` -- correct, and calling the
+       `if (!_ZN5mHeap6Heap_t13SetupRootHeapEv()) return 2;` -- correct, and calling the
        inner half. func_0201a054's chain reaches the root heap through
        Heap::InitializeRootHeap (arm9 0x0203cae8, 0x1c), which clears the OS
        globals word at 0x020a0ea4 and then TAIL-CALLS SetupRootHeap:
@@ -13164,10 +13164,10 @@ int main(void)
 
        THE GUARD MOVES RATHER THAN GOES. Because that last instruction is a
        tail call, the ROM hands SetupRootHeap's HeapS* straight back to this
-       caller -- but src/_ZN4Heap18InitializeRootHeapEv.cpp declares the
+       caller -- but src/engine/heap/Heap.cpp declares the
        function `void`, so the return value cannot come through the seated TU.
        Testing data_020a0ea0 instead is the same test, not a weaker one:
-       src/_ZN4Heap13SetupRootHeapEv.cpp writes the new heap into data_020a0e9c
+       src/engine/heap/Heap.cpp writes the new heap into data_020a0e9c
        and data_020a0ea0 only on the success path and returns 0 without
        touching either on failure. Weakening the boot guard to seat a TU would
        be exactly the kind of non-ROM-faithful fix the port exists to refuse.
@@ -13180,7 +13180,7 @@ int main(void)
        arms, then func_0201a490, then this line. hal/boot_os.cpp carries that
        span and names the four PXI arms it cannot run. */
     port_boot_rom_pre_main();
-    _ZN4Heap18InitializeRootHeapEv();
+    _ZN5mHeap6Heap_t18InitializeRootHeapEv();
     pt_milestone("rom pre-main + root heap");
     if (!data_020a0ea0) return 2;
     /* and main()'s own first three calls, which the ROM makes after Entry has
@@ -13514,7 +13514,7 @@ int main(void)
        record and the debug name. hal/boot_os.cpp lists the arms it skips. */
     pt_milestone("level boot begins");
     port_boot_rom_game_init_head();
-    _ZN4Heap18InitializeGameHeapEjPS_(0x3b000, 0);
+    _ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_(0x3b000, 0);
     if (!data_020a0eac_c) {
         /* Heap::Allocate Crash()es on a failed carve when the parent's flag
            word has 0x4000 set, which Heap::Heap sets, so a null here means
@@ -13788,7 +13788,7 @@ int main(void)
 
     /* Player+0x71e is the pending one-time message (the course-entry text and
        the first-power-up hints), and nothing here touches it: the ROM's own
-       func_ov002_020c4188 runs it (src/actors/Player.cpp). This used to zero it
+       func_ov002_020c4188 runs it (src/game/player/Player.cpp). This used to zero it
        as "not hosted", from before the message bank loaded
        (hal/level_boot.cpp, port_message_archive_seat); since
        func_ov002_020c43c4 records the save's seen bit before it sets the id,
@@ -17742,7 +17742,7 @@ int main(void)
                        St_DeadHit_Main -> KillPlayer -> SetNextLevel(2) carries
                        it, the harness's normal level-change poll boots the
                        destination, and the game is left to restore the player
-                       from its own level-enter step (src/actors/Player.cpp
+                       from its own level-enter step (src/game/player/Player.cpp
                        :29, gated on the latched entry reason). It never sets
                        cp_done, so it keeps reporting across the re-entry and a
                        loop shows up as repeated changes rather than silence. */
@@ -20679,7 +20679,7 @@ int main(void)
            func_020190b8(), then the phase-7 wait. The IRQ bracket is rung
            B1's, not this one's; the call is this one's. Nothing on the level
            path reads data_0209d464 (the only readers in the tree are the
-           ov006 minigame body _ZN14dScMgD3DBase_c8OnKickedEv and its D3D twin), so what
+           ov006 minigame body _ZN14dScMgD3DBase_c16OnGraphCallback2Ev and its D3D twin), so what
            this adds to a level frame is exactly one geometry command that
            the engine now sees -- and before this rung did not: src/
            func_020190b8.c built PLAIN put its store in the mapped I/O window

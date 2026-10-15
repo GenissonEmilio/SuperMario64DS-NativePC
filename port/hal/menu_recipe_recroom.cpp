@@ -19,7 +19,7 @@
  *     the ROM's motion exactly and the block edges are the DS screen's.
  *
  * INPUT. The Rec Room is touch only in the ROM. Hotspots are the ROM's own boxes, cited per line below; they follow the
- * live page: the card cells that the ROM would accept (func_ov005_020c00b4: the first two of a group are free, the rest
+ * live page: the card cells that the ROM would accept (MiniGm_IsUnlocked: the first two of a group are free, the rest
  * need an unlock bit), the page arrow only where the ROM draws and accepts it (not while a page flip is running). Driver
  * TOUCH: the pad / keys move a focus over the hotspots (automatic spatial navigation), A synthesises the touch at
  * the focused box's centre, B / Backspace presses the back arrow (MenuLayout.back). Mouse clicks map through the touch
@@ -34,25 +34,25 @@
 extern "C" {
 void *port_scene_live_object(void);
 int  port_scene_live_id(void);
-int  func_ov005_020c00b4(void *self, int n);
-int  func_ov005_020c00e4(void *self);
+int  MiniGm_IsUnlocked(void *self, int n);
+int  MiniGm_HasSecondPage(void *self);
 extern unsigned char data_020a0e40;     /* the local player's slot */
 extern int data_020a0e58[];             /* PadData[i]: {u16 held, u16 pressed} */
-extern unsigned char data_0209b304[];   /* the page mode: 0 = the 2 x 3 page, else the single row of three */
-extern int data_0208a170;               /* the highlighted group's base index (0..3 = Yoshi / Mario / Luigi / Wario) */
+extern unsigned char gMgMenuPage[];   /* the page mode: 0 = the 2 x 3 page, else the single row of three */
+extern int gMgGroupBase;               /* the highlighted group's base index (0..3 = Yoshi / Mario / Luigi / Wario) */
 }
 
 namespace {
 
 const int kScene = 5;
 int g_foc_have, g_foc_x, g_foc_y;      /* the focused hotspot's box origin, read once a frame by menu_recroom_pad_ok (the core resets the focus while it solves the layout, so build cannot ask for it) */
-const int kBackX = 0xd8, kBackY = 0x90, kBackW = 0x21, kBackH = 0x21;   /* src/func_ov005_020c0250.cpp:25-31 */
+const int kBackX = 0xd8, kBackY = 0x90, kBackW = 0x21, kBackH = 0x21;   /* src/MiniGm_UpdateExitButton.cpp:25-31 */
 
 /* INT2 (the decide / draw split): what build() needs of the live scene, read once per tick by menu_recroom_facts on the logic thread
    (MenuLayout.facts.blob); build() reads this and no ROM address. */
 struct RecFacts {
     int have;            /* the live scene object answered */
-    int mode;            /* data_0209b304[0] */
+    int mode;            /* gMgMenuPage[0] */
     int cells;           /* bit i: the ROM accepts the cell (mode 0: row * 3 + col; else col) */
     int arrow;           /* the page arrow is drawn and accepted */
     int foc_have, foc_x, foc_y;
@@ -79,18 +79,18 @@ void menu_recroom_facts(MenuFacts *f)
     memset(&r, 0, sizeof r);
     const void *o = port_scene_live_id() == kScene ? port_scene_live_object() : 0;
     r.have = o != 0;
-    r.mode = o ? data_0209b304[0] : 0;
-    const int base = o ? data_0208a170 : 0;
+    r.mode = o ? gMgMenuPage[0] : 0;
+    const int base = o ? gMgGroupBase : 0;
     if (o) {
         if (r.mode == 0) {
             for (int row = 0; row < 2; ++row)
                 for (int col = 0; col < 3; ++col)
-                    if (func_ov005_020c00b4((void *)o, base + row * 0xc + col * 4)) r.cells |= 1 << (row * 3 + col);
+                    if (MiniGm_IsUnlocked((void *)o, base + row * 0xc + col * 4)) r.cells |= 1 << (row * 3 + col);
         } else {
             for (int col = 0; col < 3; ++col)
-                if (func_ov005_020c00b4((void *)o, base + 0x18 + col * 4)) r.cells |= 1 << col;
+                if (MiniGm_IsUnlocked((void *)o, base + 0x18 + col * 4)) r.cells |= 1 << col;
         }
-        r.arrow = ob(o, 0x54) == 0 && (r.mode != 0 || func_ov005_020c00e4((void *)o) != 0);
+        r.arrow = ob(o, 0x54) == 0 && (r.mode != 0 || MiniGm_HasSecondPage((void *)o) != 0);
     }
     r.foc_have = g_foc_have; r.foc_x = g_foc_x; r.foc_y = g_foc_y;
     r.calls = ++calls;
@@ -137,14 +137,14 @@ void menu_recroom_build(int, MenuLayout *L)
     const int pm = menu_add_piece(L, m);
 
     /* the ROM's boxes (inclusive byte compares in the cited source, so a box is one wider than the span) */
-    /* category tabs: x <= 0x30, tab i y 2 + 0x30 i .. 0x2e + 0x30 i (src/func_ov005_020c0878.cpp:60-71) */
+    /* category tabs: x <= 0x30, tab i y 2 + 0x30 i .. 0x2e + 0x30 i (src/MiniGm_UpdateGroupTabs.cpp:60-71) */
     for (int i = 0; i < 4; ++i) menu_add_hotspot(L, pm, 0, 2 + 0x30 * i, 0x31, 0x2d, -1);
-    /* back arrow: x 0xd8..0xf8, y 0x90..0xb0 (src/func_ov005_020c0250.cpp:25-31) */
+    /* back arrow: x 0xd8..0xf8, y 0x90..0xb0 (src/MiniGm_UpdateExitButton.cpp:25-31) */
     L->back = (int8_t)menu_add_hotspot(L, pm, kBackX, kBackY, kBackW, kBackH, -1);
 
     /* no live object (the layout selftest): the 2 x 3 page with every card and the next-page arrow */
     const int mode = R.mode;
-    /* game cells (src/func_ov005_020c0378.cpp:77-90): the ROM accepts a cell whose game is unlocked (c00b4) */
+    /* game cells (src/UpdateGameSelect.cpp:77-90): the ROM accepts a cell whose game is unlocked (c00b4) */
     if (mode == 0) {
         for (int row = 0; row < 2; ++row)
             for (int col = 0; col < 3; ++col) {
@@ -158,7 +158,7 @@ void menu_recroom_build(int, MenuLayout *L)
         }
     }
     /* page arrow: drawn only while no flip is running and, on the first page, only if some page two exists
-       (src/_ZN11dScMiniGm_c6RenderEv.cpp:84-110); boxes src/func_ov005_020c06cc.c:30-45 */
+       (src/_ZN11dScMiniGm_c6RenderEv.cpp:84-110); boxes src/MiniGm_UpdatePageArrows.c:30-45 */
     const bool arrow = !o || R.arrow;
     if (arrow) {
         if (mode == 0) menu_add_hotspot(L, pm, 0xd8, 0x40, 0x21, 0x41, -1);
@@ -194,7 +194,7 @@ void menu_recroom_build(int, MenuLayout *L)
 }
 
 /* The ROM reads the touch only while it is not flipping a page, exiting or fading out its choice
-   (the guards at the head of func_ov005_020c0250 / 0378 / 06cc / 0878); the pad is not read at all.
+   (the guards at the head of MiniGm_UpdateExitButton / 0378 / 06cc / 0878); the pad is not read at all.
    Called once a frame by hal_menu_pad while this recipe is live. It is also where the pad's B goes: the port's
    B button is the DS A key (0x0001, "the punch"), which this scene never reads, so a press of it is taken
    here as the back arrow (a synthesised touch at the back box's centre) and stripped. Backspace takes the

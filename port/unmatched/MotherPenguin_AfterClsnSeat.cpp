@@ -131,9 +131,9 @@
  *  3. src/game/actors/d_a_pg_mthr.cpp names its animation file record
  *     data_ov027_02113bf0. The literal at 0x02112230 is 0x02113bf0, it
  *     carries NO relocation row (a module-internal reference), and ov018's
- *     own bss has data_ov018_02113bf0 there -- the Animation SharedFilePtr
+ *     own bss has gPenguinWait1AnimationFile there -- the Animation SharedFilePtr
  *     __sinit_ov018_02112c80 constructs with file id 0x406 and that
- *     func_ov018_021122ec already reads as data_ov018_02113bf0[1]. The port
+ *     func_ov018_021122ec already reads as gPenguinWait1AnimationFile[1]. The port
  *     defines data_ov027_02113bf0 too, in ov027's own mount, so the link
  *     would have SUCCEEDED against the wrong storage. The CMake gate block
  *     renames it; the same #1308-#1310 family main fixed for InitResources
@@ -143,7 +143,7 @@
  * name comment, itself carrying the SAME dsd-era class-identity mislabel as
  * the eight _ZN7SkiLift* files -- it is MotherPenguin's own body) is carried
  * byte-identical from main HEAD, and its own data_ov027/ov030 spellings were
- * fixed there to data_ov018_02113be8/02113bf0 -- the exact cells this gate's
+ * fixed there to gPenguinWait1TextureSequenceFile/02113bf0 -- the exact cells this gate's
  * mount already provides.
  */
 #include <cstdio>
@@ -153,9 +153,9 @@
 /* ---- defect 4, the C++-LINKAGE SPELLING of two mounted records -----------
    src/game/actors/d_a_pg_mthr.cpp declares its two file records OUTSIDE its own
    `extern "C"` block:
-       extern void *data_ov018_02113c08[];
-       extern void *data_ov018_02113bf8[];
-   so MSVC emits them mangled (?data_ov018_02113c08@@3PAPAXA) while
+       extern void *gPenguinWalkAnimationFile[];
+       extern void *gPenguinAngryTextureSequenceFile[];
+   so MSVC emits them mangled (?gPenguinWalkAnimationFile@@3PAPAXA) while
    port/ov018_syms.txt publishes them at C linkage. dumpbin /symbols on the
    TU before the link lists exactly those two as WOULD NOT RESOLVE. Both are
    routed with the standard directive, the same
@@ -164,8 +164,8 @@
    actor_classes_ov064.cpp:175, ...). The LHS has no definition anywhere, so
    the alias FIRES and alternatename_guard sees the healthy same-address
    shape. The matched src is not touched. */
-#pragma comment(linker, "/alternatename:?data_ov018_02113c08@@3PAPAXA=_data_ov018_02113c08")
-#pragma comment(linker, "/alternatename:?data_ov018_02113bf8@@3PAPAXA=_data_ov018_02113bf8")
+#pragma comment(linker, "/alternatename:?gPenguinWalkAnimationFile@@3PAPAXA=_gPenguinWalkAnimationFile")
+#pragma comment(linker, "/alternatename:?gPenguinAngryTextureSequenceFile@@3PAPAXA=_gPenguinAngryTextureSequenceFile")
 
 extern "C" {
 struct PortCodePair { unsigned fn; int delta; };

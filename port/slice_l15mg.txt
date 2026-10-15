@@ -19,7 +19,7 @@
 #       data_ov006_0212e1xx arrays the host copy still spells as bare
 #       definitions, and deleted the u64 launder masks. Nothing else differs.
 #
-#   src/func_ov006_020fa7b8.cpp   dScMgPachinko_c (Slots Shot, scene 368),
+#   src/PachinkoDeco_DrawAll.cpp   dScMgPachinko_c (Slots Shot, scene 368),
 #       the tenth and last call of vtable slot 9, so a boot that renders
 #       reaches it. unmatched/MgPachinko_OamRender.cpp said src:6 read
 #       `void* data_ov006_0213ac24;` and collided with the ov006 mount, which
@@ -27,14 +27,14 @@
 #       `extern void* data_ov006_0213ac24;`. Every other character already
 #       matched the host copy, loop bound, stride, four offsets, ten arguments.
 #
-#   src/func_ov004_020ad8b8.c     ov004's minigame-framework helper that
+#   src/Mg_GetSavedRecord0.c     ov004's minigame-framework helper that
 #       dScMgFlower_c::InitResources ("Loves Me...?", scene 390) calls on its
 #       first statement, and that dScMgRoulette_c slot 0 seeds +0xa8 from.
 #       unmatched/MgFlower_InitScore.cpp said the src declared
-#       `func_ov004_020adc3c(void)` and called it with nothing, so on the host
+#       `Mg_GetSaveTable(void)` and called it with nothing, so on the host
 #       the callee read an unwritten stack slot: the measured cost was
-#       FAULT c0000005 at func_ov004_020adc3c+0x6. src:3 now declares
-#       `extern int func_ov004_020adc3c(int* c);` and src:24 passes `c`, and
+#       FAULT c0000005 at Mg_GetSaveTable+0x6. src:3 now declares
+#       `extern int Mg_GetSaveTable(int* c);` and src:24 passes `c`, and
 #       the TU's own header says so in the past tense ("THE ARGUMENT IS THE
 #       FRAMEWORK OBJECT AND IT USED TO BE DROPPED HERE").
 #
@@ -64,7 +64,7 @@
 #       have collided with this TU (LNK2005). port/unmatched/Mg3DEsp_Cleanup.cpp
 #       is retired the way SEAT15D retired its three.
 #
-src/actors/dScMgAmida_c.cpp
-src/actors/dScMgPachinko_c.cpp
+src/minigames/d_s_mg_amida.cpp
+src/minigames/d_s_mg_pachinko.cpp
 src/minigames/d_s_mg_base.cpp
-src/actors/dMg3DEspAnimSet_c.cpp
+src/minigames/d_mg3d_esp_anim_set.cpp

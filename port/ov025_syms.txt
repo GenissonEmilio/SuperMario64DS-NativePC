@@ -209,7 +209,7 @@ data_ov025_02113814
 #   from:0x02112a30 kind:load to:0x02113a98 module:overlay(25)
 #     src/__sinit_ov025_021129dc.c spells _ZTV16daObjRcBuranko_c
 #   from:0x021113c4 kind:load to:0x02113a60 module:overlay(25)
-#     src/actors/daDgr_c.cpp spells _ZTS16daObjRcBuranko_c
+#     src/game/actors/d_a_dgr.cpp spells _ZTS16daObjRcBuranko_c
 data_ov025_02113a70@0x02113a70
 data_ov025_02113a7c@0x02113a7c  
 data_ov025_02113a98@0x02113a98 data_ov025_02113aa4@0x02113aa4
@@ -225,13 +225,13 @@ data_ov025_02113ae8@0x02113ae8 data_ov025_02113af4@0x02113af4
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov025_02113a60                        now defined by src/actors/daDgr_c.cpp
-#   data_ov025_02113a68                        now defined by src/actors/daDgr_c.cpp
-#   data_ov025_02113ab0                        now defined by src/actors/daObjDpBrock_c.cpp
-#   data_ov025_02113ab8                        now defined by src/actors/daObjDpBrock_c.cpp
-#   data_ov025_02113ad8                        now defined by src/actors/daDpLift_c.cpp
-#   data_ov025_02113ae0                        now defined by src/actors/daDpLift_c.cpp
+#   data_ov025_02113a60                        now defined by src/game/actors/d_a_dgr.cpp
+#   data_ov025_02113a68                        now defined by src/game/actors/d_a_dgr.cpp
+#   data_ov025_02113ab0                        now defined by src/game/actors/d_a_obj_dp_brock.cpp
+#   data_ov025_02113ab8                        now defined by src/game/actors/d_a_obj_dp_brock.cpp
+#   data_ov025_02113ad8                        now defined by src/game/actors/d_a_dp_lift.cpp
+#   data_ov025_02113ae0                        now defined by src/game/actors/d_a_dp_lift.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov025_02113a88! data_ov025_02113a90!
+gDonkakuModelFile! gDonkakuCollisionFile!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
 data_ov025_02113a68! data_ov025_02113a60! data_ov025_02113ab8! data_ov025_02113ab0! data_ov025_02113ae0! data_ov025_02113ad8!

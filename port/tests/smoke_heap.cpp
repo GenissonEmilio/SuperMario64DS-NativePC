@@ -10,7 +10,7 @@
 // THE THREE ENTRY POINTS MOVED, and this harness follows them (lane
 // SMOKELINK2, run link100 wave 10 round 2). It used to declare them as flat
 // extern "C" Itanium names with the receiver as a first stack argument --
-//   ExpandingHeapAllocator *_ZN4Heap28CreateExpandingHeapAllocatorEPvjj(...)
+//   ExpandingHeapAllocator *_ZN5mHeap6Heap_t28CreateExpandingHeapAllocatorEPvjj(...)
 //   void *_ZN22ExpandingHeapAllocator8AllocateEji(self, size, align)
 //   int _ZN22ExpandingHeapAllocator10DeallocateEPv(self, ptr)
 // -- which is what the ROM's own callers spell and what the src/ TUs emitted
@@ -19,7 +19,7 @@
 // (?Allocate@ExpandingHeapAllocator@@QAEPAXIH@Z,
 // ?Deallocate@ExpandingHeapAllocator@@QAEHPAX@Z) and
 // Heap::CreateExpandingHeapAllocator is a static
-// (?CreateExpandingHeapAllocator@Heap@@SAPAUExpandingHeapAllocator@@PAXII@Z,
+// (?CreateExpandingHeapAllocator@Heap_t@mHeap@@SAPAUExpandingHeapAllocator@@PAXII@Z,
 // include/Heap.h:252). Spelling the flat names here bought a link error; more
 // to the point, an extern "C" declaration of a __thiscall member is the
 // receiver-in-the-wrong-place bug the port keeps finding, and a test harness

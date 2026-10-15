@@ -8,16 +8,16 @@
 // SMOKELINK3, run link100 wave 10 round 2, continuing SMOKELINK2's rule for
 // port/tests/smoke_heap.cpp). It used to declare the entry as a flat extern
 // "C" Itanium name over a forward-declared `struct HeapS' --
-//   HeapS *_ZN4Heap13SetupRootHeapEv(void);
+//   HeapS *_ZN5mHeap6Heap_t13SetupRootHeapEv(void);
 // -- which is what the ROM's own callers spell and what src/ emitted before
 // the 09-14 sync. It is now Heap::SetupRootHeap(), a real static member
-// (include/Heap.h:236, ?SetupRootHeap@Heap@@SAPAU1@XZ), so the flat spelling
+// (include/Heap.h:236, ?SetupRootHeap@Heap_t@mHeap@@SAPAU12@XZ), so the flat spelling
 // bought a link error.
 //
 // This file is HOST TEST CODE, not ROM code, so it may include the class
 // header and call the member the way C++ calls it -- which is also what the
 // synced src/ TUs now do. It reaches the same object it always linked,
-// src/_ZN4Heap13SetupRootHeapEv.cpp; only the spelling changed, and the
+// src/engine/heap/Heap.cpp; only the spelling changed, and the
 // harness now gets the real Heap type instead of an opaque one.
 //
 // SetupRootHeap is a STATIC, so this particular row would also have linked

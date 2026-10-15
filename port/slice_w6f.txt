@@ -12,9 +12,9 @@
 # HOST COPY, port/unmatched/Flamethrower_Behavior.c, transcribed per
 # instruction from the ROM listing; when the decomp lands a byte match, that TU
 # replaces the host copy on this line and the file is deleted.
-src/actors/daObjFlamethrower_c.cpp
-# FOLDED into src/actors/daObjFlamethrower_c.cpp (row 15): src/_ZN12Flamethrower13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjFlamethrower_c.cpp (row 15): src/_ZN12FlamethrowerD1Ev.cpp
+src/game/actors/d_a_obj_flamethrower.cpp
+# FOLDED into src/game/actors/d_a_obj_flamethrower.cpp (row 15): src/_ZN12Flamethrower13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_flamethrower.cpp (row 15): src/_ZN12FlamethrowerD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN12FlamethrowerD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN12FlamethrowerD0Ev.cpp
 
@@ -30,7 +30,7 @@ src/actors/daObjFlamethrower_c.cpp
 # face), _ZN5dCc_c5ClearEv, _ZN5dCc_c6UpdateEv,
 # _ZN8dCcPos_c4InitERK7Vector35Fix12IiES4_jj,
 # _ZN8dCcPos_cC1Ev/D1Ev, _ZN7fBase_cnwEj, _ZN8dActor_cC2Ev,
-# _ZN8dActor_cD2Ev, _ZN6Memory10DeallocateEPvP4Heap, __cxa_vec_ctor,
+# _ZN8dActor_cD2Ev, _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE, __cxa_vec_ctor,
 # __cxa_vec_cleanup, _ZN7Vector3D1Ev, func_0203d384.
 #
 # The four particle emitters the Behavior fires -- one pair per variant --

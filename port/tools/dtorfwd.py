@@ -31,7 +31,7 @@ corruption, which is why facegen's D0 rule reads it too:
 
     extern "C" void _ZN10daCamTag_cD0Ev(void *self)
     { ((daCamTag_c *)self)->daCamTag_c::~daCamTag_c();
-      _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+      _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 NOTHING IS DERIVED FROM A NAME.  Per row, before anything is emitted:
   * the flat name must have ONE ROM address with a size (facegen._span_of);
@@ -101,7 +101,7 @@ import sys
 # which calls this class's flat D1 (still a row here, so the D1 stays under
 # tools/dtor_store_guard.py) and then the class's own operator delete:
 # the same two steps the retired forwarder made (the D1 chain, then
-# _ZN6Memory10DeallocateEPvP4Heap with GAME_HEAP_PTR, the word at
+# _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE with GAME_HEAP_PTR, the word at
 # 0x020a0eac). The rows came out of their batches rather than being
 # skipped, so the generated files carry each name exactly once:
 #   _ZN11PyramidLiftD0Ev
@@ -119,7 +119,7 @@ import sys
 # defined by its own src D0 file now, in that file's #ifdef _MSC_VER arm:
 # the qualified destructor call, which MSVC expands in place exactly as it
 # did here, then the class's own operator delete, which is
-# _ZN6Memory10DeallocateEPvP4Heap with the word at 0x020a0eac
+# _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE with the word at 0x020a0eac
 # (GAME_HEAP_PTR). The arm's object makes the same calls, in the same
 # order, as the forwarder it replaces. These classes had no D1 row here,
 # so with this retirement they leave tools/dtor_store_guard.py's scope;
@@ -637,7 +637,7 @@ ODRUSE = [
 # and operator_delete2 is defined under its flat name in hal/cxxname_bridge.cpp,
 # so the flat spellings are the ones that link.
 DEALLOCATORS = {
-    "_ZN6Memory10DeallocateEPvP4Heap": {"heap": True},
+    "_ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE": {"heap": True},
     "_ZN6Memory16operator_delete2EPv": {"heap": False},
 }
 
@@ -1231,7 +1231,7 @@ def selftest():
     # the emitted shape, on a fixture row rather than the tree
     row = [{"batch": 1, "name": "_ZN10daCamTag_cD0Ev", "cls": "daCamTag_c",
             "kind": "0", "hdr": "daCamTag_c.h", "addr": 0x020b076c,
-            "dealloc": "_ZN6Memory10DeallocateEPvP4Heap",
+            "dealloc": "_ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE",
             "heap": "GAME_HEAP_PTR"}]
     import tempfile
     fd, p = tempfile.mkstemp(suffix=".cpp")
@@ -1240,7 +1240,7 @@ def selftest():
     os.unlink(p)
     want = ('extern "C" void _ZN10daCamTag_cD0Ev(void *self)\n'
             '{ ((daCamTag_c *)self)->daCamTag_c::~daCamTag_c();'
-            ' _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }')
+            ' _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }')
     if want not in text:
         fails.append("emitted D0 body is not the expected shape")
     if '#include "daCamTag_c.h"' not in text:

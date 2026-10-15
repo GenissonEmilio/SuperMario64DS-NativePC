@@ -61,7 +61,7 @@
 // load at 0x0213cd8c -- so it is reached as a state and by nothing else.
 // stategen.py reports it under REFUSALS.
 //
-// Lane CT1 transcribed curling's equivalent (func_ov006_020e1854) from the ROM
+// Lane CT1 transcribed curling's equivalent (Aim_Swing) from the ROM
 // and this lane deliberately does NOT do the same. Transcribing is a real
 // piece of work with its own verification, and a lane that does it silently
 // while seating a class turns "the class boots" into a claim about a body
@@ -70,7 +70,7 @@
 //
 // ---- _ZN12dScMgLuigi_c16PlaceNextPictureEv IS A SECOND FLOOR, AND A NAME TRAP ---------------
 //
-// 0x528 bytes, called eight times in a loop by src/actors/dScMgLuigi_c.cpp,
+// 0x528 bytes, called eight times in a loop by src/minigames/d_s_mg_luigi.cpp,
 // which is state slot 1 of data_ov006_02142234 and IS sliced. No delink block
 // and no src file. config/arm9/overlays/ov006/symbols.txt DOES name it, which
 // is exactly the shape port/mg_fanout_costs.txt section 3 records as having
@@ -141,17 +141,17 @@ void _ZN12dScMgLuigi_c10StateSetupEv(char *o);
    TUs spell them so the faces they already have keep their references */
 void _ZN12dScMgLuigi_c15UpdatePenaltiesEv(void *q);
 void _ZN12dScMgLuigi_c12UpdateRewardEv(void *s);
-void func_ov004_020b0a54(int c);
+void Mg_SetSharedState(int c);
 
 }  /* extern "C" */
 
 // ---- the two floors --------------------------------------------------------
 
 /* Run mg5, lane INTEG: _ZN12dScMgLuigi_c16PlaceNextPictureEv (the "Wanted!" round-setup driver)
-   was recovered on branch decomp/mg-luigi-state as src/actors/dScMgLuigi_c.cpp
+   was recovered on branch decomp/mg-luigi-state as src/minigames/d_s_mg_luigi.cpp
    (void(char*)) together with the scripted-layout routine _ZN12dScMgLuigi_c16PlaceBoardLayoutEv it
    calls (branch decomp/wanted-layout), both now in port/slice_lui.txt, so the
-   trap that src/actors/dScMgLuigi_c.cpp linked against is gone and the real body
+   trap that src/minigames/d_s_mg_luigi.cpp linked against is gone and the real body
    runs. src/func_ov002_020f2790.c is a different function in a non-co-resident
    overlay and is not in this build. The counter is kept because
    port_mg_luigi_counts reports it; it now stays 0. */
@@ -164,7 +164,7 @@ static unsigned g_luigi_state_floor;
 
 /* The two dispatchers that are also states. _ZN12dScMgLuigi_c13CurtainUpdateEi is still the
    host copy defined below; run link100 lane PMFB4 retired _ZN12dScMgLuigi_c10StateCatchEv,
-   so this declaration now names src/actors/dScMgLuigi_c.cpp, at the same C
+   so this declaration now names src/minigames/d_s_mg_luigi.cpp, at the same C
    linkage and the same one-pointer signature. */
 extern "C" void _ZN12dScMgLuigi_c13CurtainUpdateEi(void *c, int i);
 extern "C" void _ZN12dScMgLuigi_c10StateCatchEv(char *o);
@@ -285,10 +285,10 @@ extern "C" void port_mg_luigi_counts(unsigned *hits, unsigned *floor,
 // dispatchers that read them compile from their own matched TUs
 // (port/slice_pmfb4.txt) and the host copies of them are gone:
 //
-//   _ZN12dScMgLuigi_c12CurtainsDoneEv  data_ov006_02142204   src/actors/dScMgLuigi_c.cpp
-//   _ZN12dScMgLuigi_c8BehaviorEv  data_ov006_02142234   src/actors/dScMgLuigi_c.cpp
-//   _ZN12dScMgLuigi_c14UpdatePicturesEv  data_ov006_02142254   src/actors/dScMgLuigi_c.cpp
-//   _ZN12dScMgLuigi_c10StateCatchEv  data_ov006_02142254   src/actors/dScMgLuigi_c.cpp
+//   _ZN12dScMgLuigi_c12CurtainsDoneEv  data_ov006_02142204   src/minigames/d_s_mg_luigi.cpp
+//   _ZN12dScMgLuigi_c8BehaviorEv  data_ov006_02142234   src/minigames/d_s_mg_luigi.cpp
+//   _ZN12dScMgLuigi_c14UpdatePicturesEv  data_ov006_02142254   src/minigames/d_s_mg_luigi.cpp
+//   _ZN12dScMgLuigi_c10StateCatchEv  data_ov006_02142254   src/minigames/d_s_mg_luigi.cpp
 //
 // TWO TABLES ARE NOT SEATED, so their two dispatchers keep their host copies
 // above: data_ov006_021421ec (_ZN12dScMgLuigi_c10UpdateIrisEv) and data_ov006_0214221c
@@ -351,12 +351,12 @@ extern "C" void port_mg_luigi_counts(unsigned *hits, unsigned *floor,
 //   arity 1: data_ov006_02142204, data_ov006_02142254
 //   arity 0: data_ov006_02142234
 //
-// THREE /alternatename DIRECTIVES. src/actors/dScMgLuigi_c.cpp,
-// src/actors/dScMgLuigi_c.cpp and src/actors/dScMgLuigi_c.cpp declare their
+// THREE /alternatename DIRECTIVES. src/minigames/d_s_mg_luigi.cpp,
+// src/minigames/d_s_mg_luigi.cpp and src/minigames/d_s_mg_luigi.cpp declare their
 // tables at namespace scope, so MSVC spells the references
 // ?data_ov006_02142204@@3PAUEntry@@A, ?data_ov006_02142234@@3PAUEntry@@A and
 // ?data_ov006_02142254@@3PAUEntry@@A -- all three read off the objects with
-// dumpbin /symbols. src/actors/dScMgLuigi_c.cpp declares the SAME table
+// dumpbin /symbols. src/minigames/d_s_mg_luigi.cpp declares the SAME table
 // data_ov006_02142254 inside its own extern "C" block and comes in as the plain
 // _data_ov006_02142254, which is the pair its own header calls "the silent one":
 // the two spellings of one table, one aliased and one not, both resolving to the

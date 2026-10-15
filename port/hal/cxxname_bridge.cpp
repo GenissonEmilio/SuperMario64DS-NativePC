@@ -289,7 +289,7 @@ extern "C" void _ZN7dBgW_Kc7SetFileEP8KCL_FileR10CLPS_Block(
 extern "C" {
 void *data_020a0eac_c;
 }
-#pragma comment(linker, "/alternatename:?data_020a0eac@@3PAUHeap@@A=_data_020a0eac_c")
+#pragma comment(linker, "/alternatename:?data_020a0eac@@3PAUHeap_t@mHeap@@A=_data_020a0eac_c")
 #pragma comment(linker, "/alternatename:_data_020a0eac=_data_020a0eac_c")
 /* func_0206e2f8 (MSL memset) RETIRED at run link100 wave 15, lane SEAT15F.
    This file used to carry a host fill loop for it, because the src veneer was
@@ -378,15 +378,15 @@ DSSTATE_END
    the game heap; the port lost the argument at this line.
 
    THE CALL IS BY C++ NAME, not by the Itanium spelling: the C-linkage
-   __ZN6Memory10DeallocateEPvP4Heap only exists where hal/cxx_aliases.cpp is
+   __ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE only exists where hal/cxx_aliases.cpp is
    linked, and this TU rides three smokes that do not carry it. The matched TU
-   is C++ (it defines ?Deallocate@Memory@@YAXPAXPAVHeap@@@Z), and slice_gate3a
+   is C++ (it defines ?Deallocate@Memory@@YAXPAXPAUHeap_t@mHeap@@@Z), and slice_gate3a
    is in every target that compiles this file, so naming the method resolves
    everywhere with no new alias. */
-class Heap;
-namespace Memory { void Deallocate(void *ptr, Heap *heap); }
+namespace mHeap { struct Heap_t; }
+namespace Memory { void Deallocate(void *ptr, mHeap::Heap_t *heap); }
 extern "C" void Memory_Deallocate(void *p, void *heap)
-{ Memory::Deallocate(p, (Heap *)heap); }
+{ Memory::Deallocate(p, (mHeap::Heap_t *)heap); }
 extern "C" int hal_f0204424c(char *c);
 int func_0204424c(int c) { return hal_f0204424c((char *)c); }
 

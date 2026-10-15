@@ -45,7 +45,7 @@ import sys
 # (they resolve through the mapped latch window, which is correct for reads).
 # THE TYPEDEF SPELLINGS AND THE INTEGER SUFFIX ARE BOTH PART OF THE PATTERN.
 # types.h carries vu8/vu16/vu32/vu64 (and the signed row) for exactly these
-# registers, and the decomp uses them: src/minigames/d_s_mg_single3_d_base.cpp reaches
+# registers, and the decomp uses them: src/minigames/d_s_mg_single3d_base.cpp reaches
 # LIGHT_COLOR as `*(vu32 *)0x40004ccu = 0x7fff;`. That line missed the old
 # pattern TWICE over -- `vu32` was not in the type list, and the `u` suffix on
 # the literal killed the `\b` after seven hex digits -- so the store latched
@@ -467,7 +467,7 @@ def asm_park_patch(text, sym):
 #    host compiles the whole TU as C++. The row passes the already-cast
 #    pointer the body holds, the same address.
 MWCC_SPELLING = {
-    # src/actors/dScMgSmartball_c.cpp, cMgSmartball_ball_c::HitWing.
+    # src/minigames/d_s_mg_smartball.cpp, cMgSmartball_ball_c::HitWing.
     "dScMgSmartball_c": [
         ("  struct V2 v;\n  v.x = src[0];", "  V2 v;\n  v.x = src[0];"),
     ],
@@ -570,13 +570,13 @@ HEADER_SHADOW = {
     # found). The old text is in git at d9ea8dda4.
     # "func_ov002_020e444c": ("decl_common.h", ("func_ov002_020e3f90",)),
     # lane LINKMG, dScMgBase_c slots 30 and 29: decl_common.h:2352-2353 declare
-    # both `(void*)` inside its extern "C" block while src/_ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv.cpp
-    # defines `(char*)` and src/_ZN11dScMgBase_c16OnAimedAtWithEggEv.cpp defines `(Obj*)`. One
+    # both `(void*)` inside its extern "C" block while src/_ZN11dScMgBase_c21RestoreScreenFromMenuEv.cpp
+    # defines `(char*)` and src/_ZN11dScMgBase_c17SaveScreenForMenuEv.cpp defines `(Obj*)`. One
     # register on the ROM, C2733 to MSVC -- the func_ov102_0214b248 case
     # exactly. unmatched/MgBase_DeclConflict.cpp used to carry both bodies with
     # the parameter retyped; this entry retires that file.
-    "_ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv": "decl_common.h",
-    "_ZN11dScMgBase_c16OnAimedAtWithEggEv": "decl_common.h",
+    "_ZN11dScMgBase_c21RestoreScreenFromMenuEv": "decl_common.h",
+    "_ZN11dScMgBase_c17SaveScreenForMenuEv": "decl_common.h",
     # run rel0215 wave 3, lane w3-a2, TTC_ROTATING_CUBE/PRISM (108/109):
     # decl_common.h:2777-2778 declare _ZN15TtcRotatingCube10UpdateClsnEv and
     # _ZN15TtcRotatingCube11UpdateModelEv `(char*)` inside its extern "C" block, while
@@ -628,7 +628,7 @@ HEADER_SHADOW = {
 # strings, hard-errored by apply_patches if the source moves.
 MEMBER_REDECL = {
     # THE C2733 A HEADER SHADOW CANNOT REACH, 2026-09-13 (lane SYNC3).
-    # src/actors/Player.cpp defines func_ov002_020cfbdc `(char *self)` inside an
+    # src/game/player/Player.cpp defines func_ov002_020cfbdc `(char *self)` inside an
     # extern "C" block and then, at block scope inside that same body, declares
     # `extern int func_ov002_020cfbdc(void*);` -- two extern "C" spellings of one
     # name in one TU, which MSVC refuses outright. While the body was its own
@@ -663,12 +663,12 @@ MEMBER_REDECL = {
     # scope, which MSVC refuses as C2761 twice per file (measured on this tree
     # under the port's flags). Deleting the two namespace-scope copies is the
     # whole patch: the in-struct declarations are the ones every call uses.
-    "func_ov006_020c8f20": [
+    "Trmp2Mario_Update": [
         ("System* System::New(unsigned, unsigned, Fix12, Fix12, Fix12, "
          "const Vector3_16f*, Callback*);\n", ""),
         ("void Animation::Advance();\n", ""),
     ],
-    "func_ov006_020cb030": [
+    "Trmp3DMario_Update": [
         ("System* System::New(unsigned, unsigned, Fix12, Fix12, Fix12, "
          "const Vector3_16f*, Callback*);\n", ""),
         ("void Animation::Advance();\n", ""),
@@ -682,7 +682,7 @@ MEMBER_REDECL = {
 # and the pret idiom that DECLARATION ORDER controls mwccarm's register
 # allocation means every member re-declares the externs it calls AT BLOCK
 # SCOPE, in its own spelling, exactly where it recovered them.
-# src/actors/daMky_c.cpp states that rule in its own header at lines 148-154.
+# src/game/actors/d_a_mky.cpp states that rule in its own header at lines 148-154.
 # main's consolidation then added ONE file-scope extern "C" block with a single
 # spelling per name, and the two now sit in one translation unit. mwccarm never
 # saw the pair; MSVC refuses it outright:
@@ -713,7 +713,7 @@ MEMBER_REDECL = {
 #
 # ONLY THE TYPES MOVE, and that was measured rather than assumed. Hoisting the
 # DATA declarations with them was tried first and produced five new C2040s,
-# because the members do not agree on the type of data_ov030_02115d18:
+# because the members do not agree on the type of gMonkeyRunAnimationFile:
 # EnterState10 calls it `struct S { int w[2]; }`, EnterState8
 # `struct G { void *a; void *b; }`, and three more members declare it `int []`,
 # `void *[]` and `void *` at their own block scope. Those spellings do not fight
@@ -729,7 +729,7 @@ REDECL_CONFLICT_DECL = {
 /* hostgen REDECL_CONFLICT: the file-scope half of the repair below. ONLY THE
    TYPES move. Each datum keeps its own block-scope declaration, in the member
    that recovered it, because the members do not agree on its type: five
-   spellings of data_ov030_02115d18 live in this one file and a single
+   spellings of gMonkeyRunAnimationFile live in this one file and a single
    file-scope declaration would make four of them a C2040. */
 struct daMky_M4x3 { int w[12]; };
 struct daMky_S { int w[2]; };
@@ -762,7 +762,7 @@ struct VObj {
 }
 
 REDECL_CONFLICT = {
-    # PORTSYNC2. src/actors/daCoin_c.cpp: main folded the coin's per-function
+    # PORTSYNC2. src/game/actors/d_a_coin.cpp: main folded the coin's per-function
     # files into one TU and each member kept its own block-scope spelling of
     # the same ROM data, in three disagreeing types (char vs void* for the red
     # coin's file view 0x0210d9a8, char *[] vs a member-local FileEntry *[] for
@@ -825,11 +825,11 @@ REDECL_CONFLICT = {
         ("    typedef struct M4x3 { int w[12]; } M4x3;\n",
          "    typedef daMky_M4x3 M4x3;\n"),
         ("    struct S { int w[2]; };\n"
-         "    extern struct S data_ov030_02115d18;\n",
-         "    extern daMky_S data_ov030_02115d18;\n"),
+         "    extern struct S gMonkeyRunAnimationFile;\n",
+         "    extern daMky_S gMonkeyRunAnimationFile;\n"),
         ("    struct G { void *a; void *b; };\n"
-         "    extern struct G data_ov030_02115d18;\n",
-         "    extern daMky_G data_ov030_02115d18;\n"),
+         "    extern struct G gMonkeyRunAnimationFile;\n",
+         "    extern daMky_G gMonkeyRunAnimationFile;\n"),
         ("    typedef struct { int a, b, c, d; } Item16;\n",
          "    typedef daMky_Item16 Item16;\n"),
     ],
@@ -910,7 +910,7 @@ EXTERN_C_DATA = {
          "extern SharedFilePtr data_ov070_02123500;\n"
          "extern daPropeller_Heyho_c::State data_ov070_0212359c;\n"),
     ],
-    # PORTSYNC2. src/actors/unit020b2c84.cpp (main's ov004 2D-minigame unit)
+    # PORTSYNC2. src/minigames/unit020b2c84.cpp (main's ov004 2D-minigame unit)
     # declares five of its tables at file scope with C++ linkage and then
     # DEFINES the same five further down inside its own `extern "C" {` (the
     # style tables at 0x020bf428 / 0x020bf490 / 0x020bf4f8, 0x020bf560 and
@@ -919,17 +919,17 @@ EXTERN_C_DATA = {
     # row gives the five declarations the C linkage their definitions have;
     # the run's other externs are untouched.
     "unit020b2c84": [
-        ("extern PairW data_ov004_020bf428[];\n"
-         "extern PairW data_ov004_020bf490[];\n"
-         "extern PairW data_ov004_020bf4f8[];\n"
-         "extern int data_ov004_020bf560[];\n"
-         "extern int data_ov004_020bf5d4[];\n",
+        ("extern PairW sBannerUpdateTable[];\n"
+         "extern PairW sBannerSetupTable[];\n"
+         "extern PairW sBannerDrawTable[];\n"
+         "extern int sMgBannerFiles[];\n"
+         "extern int sMgBannerSprites[];\n",
          'extern "C" {  /* hostgen EXTERN_C_DATA: defined below in extern "C" */\n'
-         "extern PairW data_ov004_020bf428[];\n"
-         "extern PairW data_ov004_020bf490[];\n"
-         "extern PairW data_ov004_020bf4f8[];\n"
-         "extern int data_ov004_020bf560[];\n"
-         "extern int data_ov004_020bf5d4[];\n"
+         "extern PairW sBannerUpdateTable[];\n"
+         "extern PairW sBannerSetupTable[];\n"
+         "extern PairW sBannerDrawTable[];\n"
+         "extern int sMgBannerFiles[];\n"
+         "extern int sMgBannerSprites[];\n"
          "}\n"),
     ],
 }
@@ -1169,8 +1169,8 @@ def mmio_extern_patch(text, sym):
 #     Neither path computes a result.
 #   * ALL THREE CALLERS DISCARD IT. The ov081 relocs name exactly three call
 #     sites -- 0x021270f8, 0x021272e8, 0x02127478 -- and their matched sources
-#     (src/actors/daGmch_c.cpp:46, src/actors/daGmch_c.cpp:31,
-#     src/actors/daGmch_c.cpp:16) each call it as a bare statement.
+#     (src/game/actors/d_a_gmch.cpp:46, src/game/actors/d_a_gmch.cpp:31,
+#     src/game/actors/d_a_gmch.cpp:16) each call it as a bare statement.
 # So 0 is as faithful as any other value, and the `int` in the TU's own
 # signature is the recovery's placeholder rather than something the ROM
 # produces. A later lane that owns port/slice_ov096.txt should give the twin
@@ -1574,7 +1574,7 @@ def unify_extern_ret(text, sym):
 # host arm spells AND the destructor itself, so the generated copy keeps both
 # arms (the #else body is the ROM's own, and for the stems listed it is `{ }`
 # apart from member teardown the compiler generates).
-MSC_ARMS_BOTH = {"daKpa_c", "daStar_c"}
+MSC_ARMS_BOTH = {"d_a_kpa", "d_a_star"}
 
 
 def msc_arms_both(text, sym):
@@ -1756,7 +1756,7 @@ VIRTUAL_CALL = {
     # `*(volatile int*)0x040004c8` and `*(int*)0x040004cc`.
     # Retires port/unmatched/MgSnowball_ModelRender.cpp.
     # Run link100, lane HOSTGEN2. dScMgRoulette_c's wheel update,
-    # func_ov006_02107db8, calls ROM vtable slot 3 through a FOUR-VIRTUAL local
+    # RouletteBoard_Update, calls ROM vtable slot 3 through a FOUR-VIRTUAL local
     # shadow (`struct ObjV`) on the Model at the wheel object's +0x10. MSVC
     # numbers that shadow's own table 0..3 with no destructor slot, so slot 3 of
     # the shadow is not slot 3 of the host Model, and the reading that settles it
@@ -1876,7 +1876,7 @@ VIRTUAL_CALL = {
     # both conventions and why this site had to move rather than the seats.
     # Retires port/unmatched/Player_HeadBonk.cpp.
     # RE-KEYED 2026-09-13 (main -> port sync, lane SYNC5). main folded this
-    # dispatcher into src/actors/Player.cpp, which is already a whole-TU
+    # dispatcher into src/game/player/Player.cpp, which is already a whole-TU
     # substitution (PORT_HOSTGEN_TU), so the key is that TU's stem and the
     # separate per-symbol generation is gone -- it would have compiled the
     # same body twice. ONE patch now, not two: main's TU spells
@@ -1913,7 +1913,7 @@ VIRTUAL_CALL = {
     # word out of the live scene object on scene 387. The two src TUs are
     # byte-identical apart from their names, so the two patches are the same
     # text. Retires port/unmatched/MgBase_ShadowSlot19.cpp.
-    "_ZN10dMgState_c19func_ov004_020b6b40Ev": [
+    "_ZN10dMgState_c14State19_UpdateEv": [
         ("        int (*fn)(void *, int) = "
          "(int (*)(void *, int)) (*(void ***)g)[0x13];\n"
          "        if (fn(g, c->f18) == 0)",
@@ -1925,7 +1925,7 @@ VIRTUAL_CALL = {
          "(*(void ***)g)[0x13];\n"
          "        if (fn(g, 0, c->f18) == 0)"),
     ],
-    "_ZN10dMgState_c19func_ov004_020b6c9cEv": [
+    "_ZN10dMgState_c14State18_UpdateEv": [
         ("        int (*fn)(void *, int) = "
          "(int (*)(void *, int)) (*(void ***)g)[0x13];\n"
          "        if (fn(g, c->f18) == 0)",
@@ -1946,7 +1946,7 @@ VIRTUAL_CALL = {
     # ECX held. The stack balances either way, which is why nothing faulted
     # and nothing saw it. Retires
     # port/unmatched/MgShared4f38_ShadowFader_020c2924.cpp.
-    "func_ov006_020c2924": [
+    "Presenter_ResetPose": [
         ("  int (**vt)(void*)=*(int(***)(void*))obj;\n"
          "  if(vt[6](obj)==0) return;",
          "  /* hostgen VIRTUAL_CALL: byte +0x18 is word 6 of the fader vptr --\n"
@@ -1994,7 +1994,7 @@ VIRTUAL_CALL = {
     # through the host table's numbering at all. The local VObj shadow stays;
     # only the call changes.
     # RE-ANCHORED 2026-09-14 at the fold (lane INT3). HOSTGEN4 derived the
-    # from-text against the pre-merge src/actors/daObjMarioCap_c.cpp, which
+    # from-text against the pre-merge src/game/actors/d_a_obj_mario_cap.cpp, which
     # reached the cap's ModelAnim through a local four-virtual `struct VObj`
     # shadow and called slot 3 by byte offset. Today's main rewrote that body
     # (286 lines in, 306 out in the sync merge): the VObj shadow is gone and
@@ -2048,26 +2048,26 @@ extern "C" void port_mg_wiggler_call0(void *, unsigned, int);
 """
 MG_PMF_CALL = {
     # dScMgPachinko_c, tables 02142624 / 02142644 / 02142694, arity 1
-    "func_ov006_020fc7d0": [
+    "PachinkoPipe_UpdateAll": [
         ("      ((void(*)(void*,int))fn)(obj,i);",
          "      port_mg_pachinko_call1(obj, (unsigned)e->a, adj, i);"),
     ],
-    "func_ov006_020fe248": [
+    "PachinkoBobOmb_UpdateAll": [
         ("      ((void(*)(void*,int))fn)(obj,i);",
          "      port_mg_pachinko_call1(obj, (unsigned)e->a, adj, i);"),
     ],
-    "func_ov006_020fda7c": [
+    "PachinkoBall_UpdateAll": [
         ("      ((void(*)(void*,int))fn)(obj,i);",
          "      port_mg_pachinko_call1(obj, (unsigned)e->a, adj, i);"),
     ],
     # dScMgBomroom_c, table 021416a0, arity 0 -- the counting entry, so
     # hal/scene_mg_bomroom.cpp's census still says how often this shape ran
-    "_ZN14dScMgBomroom_c19func_ov006_020d8f98Ev": [
+    "_ZN14dScMgBomroom_c12Round_State3Ev": [
         ("  f(obj);",
          "  port_mg_bomroom_opencoded_call0(obj, (unsigned)e[0], off);"),
     ],
     # dScMgPanel_c, RE-KEYED AND RE-DERIVED 2026-09-13 (main -> port sync, lane
-    # SYNC3). main folded every ov006 panel body into src/actors/dScMgPanel_c.cpp,
+    # SYNC3). main folded every ov006 panel body into src/minigames/d_s_mg_panel.cpp,
     # so the two entries that used to be keyed on their own file names are keyed
     # on the TU's stem and live in one list. There are now THREE dispatch sites
     # rather than two, because the TU also carries func_ov006_02106bc0, a body
@@ -2131,8 +2131,8 @@ MG_PMF_CALL = {
     # call sequence does in r0. Retires port/unmatched/func_02008550_hostcopy.cpp,
     # which was the same body with the 39 assignments spelled as a loop.
     # dScMgHanachan_c's THIRD SHAPE, run link100 lane HOSTGEN2.
-    # func_ov006_020eb610 open-codes the ARM Itanium sequence in plain ints over
-    # the pair at the sub-object's +0x00, which its sibling func_ov006_020eb31c
+    # Wiggler_Move open-codes the ARM Itanium sequence in plain ints over
+    # the pair at the sub-object's +0x00, which its sibling Wiggler_StateWait
     # copies down from +0x10. There is no member-pointer type anywhere in it, so
     # neither the link nor a `::*` source sweep can see it; only a run convicts
     # it, and the first symptom is eip on a raw DS address. The whole decode goes,
@@ -2217,7 +2217,7 @@ CALL_STATE_FN = {
          "        hal_call_state_fn(p, (unsigned)row[0]);\n      }"),
     ],
     # RE-KEYED 2026-09-13 (lane SYNC3): main folded St_NoControl_Init into
-    # src/actors/Player.cpp. St_Jump_Main and St_WallJump_Main still have files
+    # src/game/player/Player.cpp. St_Jump_Main and St_WallJump_Main still have files
     # of their own and keep their own keys above. The patch string is unchanged
     # and matches exactly once in the TU.
     "Player": [
@@ -2340,10 +2340,10 @@ PMF_SEAM = {
          "        PORT_PMF_CALL1(port_mg_panel_call1, c,\n"
          "                       data_ov006_02142840[idx], i);"),
     ],
-    # dScMgHanachan_c. FOUR sites over THREE strings (func_ov006_020eb018 and
-    # func_ov006_020eb31c spell the same two lines and take the same rewrite),
+    # dScMgHanachan_c. FOUR sites over THREE strings (Wiggler_Update and
+    # Wiggler_StateWait spell the same two lines and take the same rewrite),
     # closing four of the five rows against unmatched/MgWiggler_StateDispatch.cpp;
-    # the fifth, func_ov006_020eb610, open-codes its decode and is routed by
+    # the fifth, Wiggler_Move, open-codes its decode and is routed by
     # MG_PMF_CALL above.
     #
     # NO TABLE HERE: every one of this class's pairs is a FIELD -- at +0x10 of
@@ -2351,9 +2351,9 @@ PMF_SEAM = {
     # Behavior -- filled from the ROM's own .data. Nothing seats them, so the
     # code word is a DS address at every site and all four route.
     #
-    #   func_ov006_020eb018        field +0x10          arity 0
-    #   func_ov006_020eb0c8        field +0x10 (`cb`)   arity 0
-    #   func_ov006_020eb31c        field +0x10          arity 0
+    #   Wiggler_Update        field +0x10          arity 0
+    #   Wiggler_StateHold        field +0x10 (`cb`)   arity 0
+    #   Wiggler_StateWait        field +0x10          arity 0
     #   dScMgHanachan_c::Behavior  field +0x4660        arity 0, vtable slot 6
     "dScMgHanachan_c": [
         ("    (o->*(o->pmf))();",
@@ -2366,7 +2366,7 @@ PMF_SEAM = {
          "                   *(PMF *)(c + 0x4660));"),
     ],
     # dScMgRoulette_c. ONE site: the wheel object's pair at offset 0, dispatched
-    # by func_ov006_02107db8 every frame, with a universe of exactly two code
+    # by RouletteBoard_Update every frame, with a universe of exactly two code
     # words -- both in unmatched/MgRoulette_WheelDispatch.cpp's switch. The same
     # body's OTHER defect, a shadow-class call of ROM vtable slot 3 on a host
     # Model, is a VIRTUAL_CALL row and not a seam row.
@@ -2394,7 +2394,7 @@ PMF_SEAM_ALLOW = {
 
 # ---- AN UNINITIALISED LOCAL THAT mwcc'S REGISTER ALLOCATION MADE HARMLESS --
 #
-# Run link100, lane HOSTGEN2. src/actors/dScMgCup_c.cpp's func_ov006_020def80
+# Run link100, lane HOSTGEN2. src/minigames/d_s_mg_cup.cpp's Cup_UpdateAnim
 # declares `int cup;`, never assigns it on two of its paths, and reaches the
 # epilogue through a goto that uses it. On ARM mwcc allocated it to r1, which
 # still held the function's own `i`, so the byte-matched body works and the TU's
@@ -3101,7 +3101,7 @@ NARROW_RETURN = {
         ("flat", "CountStarsCollectedInLevelToDisplay", "u8")],
     "_ZN8dActor_c12ReflectAngleE5Fix12IiES1_s": [
         ("flat", "_ZN8dActor_c12ReflectAngleE5Fix12IiES1_s", "s16")],
-    # src/actors/Player.cpp defines it inside an extern "C" block; the TU's own
+    # src/game/player/Player.cpp defines it inside an extern "C" block; the TU's own
     # St_NoControl caller declares it `extern int` and tests `!= 0`.
     "Player": [("flat", "_ZN6Player19func_ov002_020c84b0Ev", "u8")],
     # static members: stem -> [("static", "Cls::Meth", kind, flat ROM name)]
@@ -3320,7 +3320,7 @@ ZTV_C_LINKAGE = {
     # daGmch_c (MONEYBAG, ov081), added with its seat (run link100, lane
     # SEATS3). The same defect as daBmb_c above, and NOT the one the three
     # dropped rows have: this factory still stores its table by name.
-    # src/actors/daGmch_c.cpp line 1111 is
+    # src/game/actors/d_a_gmch.cpp line 1111 is
     #     p[0] = (int)&_ZTV8daGmch_c[2];
     # and the declaration it reaches is include/daGmch_c.h:180, a plain C++
     # `extern int _ZTV8daGmch_c[];`, so MSVC asks the linker for
@@ -3337,7 +3337,7 @@ ZTV_C_LINKAGE = {
     "daGmch_c": [("int", "_ZTV8daGmch_c")],
     # daMip_c (MIPS the rabbit, ov085), added with its seat (run link100, lane
     # SEATS3). Identical defect to daGmch_c above, one line down:
-    # src/actors/daMip_c.cpp line 1883 is
+    # src/game/actors/d_a_mip.cpp line 1883 is
     #     p[0] = (int)(_ZTV7daMip_c + 2);
     # under a plain C++ `extern` the file's own note at line 1867 explains, so
     # MSVC asks for ?_ZTV7daMip_c@@3PAHA while the live alias in
@@ -3398,8 +3398,8 @@ def ztv_c_linkage(text, sym):
 # adjudication, and so retiring the park is one line.
 LEDGER_PARK = {
     # dScMgD3DBase_c::OnKicked, ROM ov006:0x020e6e78, vtable slot 24.
-    # faces_sync_gen.cpp defines ?OnKicked@dScMgD3DBase_c@@UAEHXZ and forwards
-    # it to _ZN14dScMgD3DBase_c8OnKickedEv, whose body is
+    # faces_sync_gen.cpp defines ?OnGraphCallback2@dScMgD3DBase_c@@UAEHXZ and forwards
+    # it to _ZN14dScMgD3DBase_c16OnGraphCallback2Ev, whose body is
     # unmatched/MgD3DBase_DeclConflict.cpp. That host copy's stated reason is a
     # C2733 between include/decl_common.h:1516 and this TU's definition, and
     # THAT REASON IS OBSOLETE: the TU compiles clean today. So the retirement
@@ -3417,13 +3417,13 @@ LEDGER_PARK = {
         ("    return 1;\n}\n\n"
          "/* ---------------------------------------------------------------"
          "----------- */\n"
-         "/* ROM ordinal 11 -- _ZN14dScMgD3DBase_c8OnPushedEv, 0x020e6e54, "
+         "/* ROM ordinal 11 -- _ZN14dScMgD3DBase_c16OnGraphCallback3Ev, 0x020e6e54, "
          "size 0x24 */\n",
          "    return 1;\n}\n"
          "#endif  /* hostgen LEDGER_PARK: dScMgD3DBase_c::OnKicked */\n\n"
          "/* ---------------------------------------------------------------"
          "----------- */\n"
-         "/* ROM ordinal 11 -- _ZN14dScMgD3DBase_c8OnPushedEv, 0x020e6e54, "
+         "/* ROM ordinal 11 -- _ZN14dScMgD3DBase_c16OnGraphCallback3Ev, 0x020e6e54, "
          "size 0x24 */\n"),
     ],
     # daSanbo_c (Pokey). Five members port/faces_sync.txt already defines as
@@ -3500,28 +3500,6 @@ LEDGER_PARK = {
     # classInit is the exception to the exception: it lives INSIDE an
     # `extern "C" {` block, so its bracket closes on its own last line
     # instead, or the block's closing brace would end up inside the #if 0.
-    # d_s_mg_roulette (MG_ROULETTE, scene 383), run link100 lane SEATS3. This
-    # is the LEDGER_PARK bracket used for a reason that is not a ledger row:
-    # the TU holds exactly two bodies, func_ov006_0210a4ac (an empty ROM stub,
-    # the one row the seat closes) and dScMgRoulette_c_classInit, which
-    # port/unmatched/MgRoulette_Factory.cpp already host-copies. That host copy
-    # is a PORT_HOST_ABI repair, not a convenience: the matched factory calls
-    # _ZN11dScMgBase_cC2Ev() with NO argument, relying on r0 still holding the
-    # object, one of exactly two such calls in the ROM. port/CMakeLists.txt
-    # refuses this TU on slice_rlt.txt by name for that duplicate. The bracket
-    # removes the duplicate instead of the slice row, so the host copy and its
-    # repair are untouched, the refusal's premise is gone, and the assertion
-    # itself is left in place and still guards slice_rlt.txt.
-    "d_s_mg_roulette": [
-        ('extern "C" void* dScMgRoulette_c_classInit(void){\n',
-         "#if 0  /* hostgen LEDGER_PARK: dScMgRoulette_c_classInit -- "
-         "port/unmatched/MgRoulette_Factory.cpp hosts this factory for the\n"
-         "          dropped-receiver _ZN11dScMgBase_cC2Ev call */\n"
-         'extern "C" void* dScMgRoulette_c_classInit(void){\n'),
-        ("    _ZN5ModelC1Ev(m + 0x60);\n  }\n  return c;\n}\n",
-         "    _ZN5ModelC1Ev(m + 0x60);\n  }\n  return c;\n}\n"
-         "#endif  /* hostgen LEDGER_PARK: dScMgRoulette_c_classInit */\n"),
-    ],
     "d_a_wanwan": [
         ("void* daWanwan_c_classInit(void){\n",
          "#if 0  /* hostgen LEDGER_PARK: daWanwan_c_classInit */\n"
@@ -3586,7 +3564,7 @@ def ledger_park(text, sym):
 # inside the #if 0.
 HOST_COPY_PARK = {
     # fBase_c::AfterCleanupResources, arm9 0x02043b2c. PORTSYNC2: main folded
-    # it into src/actors/ActorBase.cpp; port/CMakeLists.txt's GATE9 row keeps
+    # it into src/runtime/actor/ActorBase.cpp; port/CMakeLists.txt's GATE9 row keeps
     # compiling the port line's per-function copy
     # (port/unmatched/hostarm/_ZN7fBase_c21AfterCleanupResourcesEj.cpp) under the
     # fBase_c shadow force-include the slot-16 dispatch ruling needs, which
@@ -3600,9 +3578,9 @@ HOST_COPY_PARK = {
          "#if 0  /* hostgen HOST_COPY_PARK: fBase_c::AfterCleanupResources */\n"
          "void fBase_c::AfterCleanupResources(u32 vfSuccess)\n{\n"),
         ("    this->~fBase_c();   /* vtable+0x40 = slot 16 = D1 */\n"
-         "    _ZN6Memory10DeallocateEPvP4Heap(this, data_020a0eac);\n}\n",
+         "    _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(this, data_020a0eac);\n}\n",
          "    this->~fBase_c();   /* vtable+0x40 = slot 16 = D1 */\n"
-         "    _ZN6Memory10DeallocateEPvP4Heap(this, data_020a0eac);\n}\n"
+         "    _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(this, data_020a0eac);\n}\n"
          "#endif  /* hostgen HOST_COPY_PARK: fBase_c::AfterCleanupResources */\n"),
     ],
     # func_ov006_0211ba88, ov006 0x0211ba88, host-copied by
@@ -3612,17 +3590,17 @@ HOST_COPY_PARK = {
     # store where the ROM stores a byte, and the n == 0 test nested inside the
     # idx >= limit arm).
     "dScMgSound_c": [
-        ("void _ZN12dScMgSound_c19func_ov006_0211ba88Ei(char *base, int idx)\n{\n",
+        ("void _ZN12dScMgSound_c16Note_StateScrollEi(char *base, int idx)\n{\n",
          "/* hostgen HOST_COPY_PARK: port/unmatched/MgSound_ShadowSlot35.cpp\n"
          "   defines this ROM name under a standing PORT_HOST_ABI ruling, so a\n"
          "   second definition here is a duplicate symbol. Parked, not deleted;\n"
          "   the host copy goes on defining the name and nothing dispatches\n"
          "   differently. See the HOST_COPY_PARK table in tools/hostgen.py. */\n"
-         "#if 0  /* hostgen HOST_COPY_PARK: _ZN12dScMgSound_c19func_ov006_0211ba88Ei */\n"
-         "void _ZN12dScMgSound_c19func_ov006_0211ba88Ei(char *base, int idx)\n{\n"),
+         "#if 0  /* hostgen HOST_COPY_PARK: _ZN12dScMgSound_c16Note_StateScrollEi */\n"
+         "void _ZN12dScMgSound_c16Note_StateScrollEi(char *base, int idx)\n{\n"),
         ("    ctx->ent[idx].b0d = 0;\n    ctx->ent[idx].b0e = 0;\n}\n",
          "    ctx->ent[idx].b0d = 0;\n    ctx->ent[idx].b0e = 0;\n}\n"
-         "#endif  /* hostgen HOST_COPY_PARK: _ZN12dScMgSound_c19func_ov006_0211ba88Ei */\n"),
+         "#endif  /* hostgen HOST_COPY_PARK: _ZN12dScMgSound_c16Note_StateScrollEi */\n"),
     ],
     # func_ov078_02123f1c, ov078 0x02123f1c, host-copied by
     # port/unmatched/KingBobOmb_HeldHealthCheck.cpp. The ruling is an implicit
@@ -3663,60 +3641,6 @@ HOST_COPY_PARK = {
          "{\n    return new daObjBSwdoor_c();\n}\n"
          "#endif  /* hostgen HOST_COPY_PARK: daObjBSwdoor_c_classInit */\n"),
     ],
-    # dScMgTrampoline2_c_classInit, ov006 0x0212471c, host-copied by
-    # port/unmatched/MgTrampolineTerror_Factory.cpp, which is the bluntest of
-    # the set: that file is this translation unit with SIX ARGUMENT PAIRS put
-    # back in the ROM's order and nothing else changed, and it pastes the fault
-    # the wrong order shipped, a call through a null pointer in
-    # ModelBase::SetFile before frame 0 of scene 385. The profile table at the
-    # top of this file still names the factory, and that reference binds to the
-    # host copy's definition through the declaration above it.
-    "d_s_mg_trampoline2": [
-        ('extern "C" void *dScMgTrampoline2_c_classInit(void)\n{\n',
-         "/* hostgen HOST_COPY_PARK: port/unmatched/MgTrampolineTerror_Factory.cpp\n"
-         "   defines this factory with six argument pairs put back in the ROM's\n"
-         "   order, so a second definition here is both a duplicate symbol and\n"
-         "   the wrong body. Parked, not deleted. See the HOST_COPY_PARK table\n"
-         "   in tools/hostgen.py. */\n"
-         "#if 0  /* hostgen HOST_COPY_PARK: dScMgTrampoline2_c_classInit */\n"
-         'extern "C" void *dScMgTrampoline2_c_classInit(void)\n{\n'),
-        ("        __cxa_vec_ctor(scene + 0x7ad0, 5, 0x24,\n"
-         "                      (void *)func_ov006_021225a8,\n"
-         "                      (void *)func_ov006_02120938);\n"
-         "    }\n    return scene;\n}\n",
-         "        __cxa_vec_ctor(scene + 0x7ad0, 5, 0x24,\n"
-         "                      (void *)func_ov006_021225a8,\n"
-         "                      (void *)func_ov006_02120938);\n"
-         "    }\n    return scene;\n}\n"
-         "#endif  /* hostgen HOST_COPY_PARK: dScMgTrampoline2_c_classInit */\n"),
-    ],
-    # dScMgCup_c_classInit, ov006 0x020e0574, host-copied by
-    # port/unmatched/MgCup_Factory.cpp. The ruling is the base constructor call
-    # spelled _ZN11dScMgBase_cC2Ev() with no argument, one of exactly two such
-    # calls in the ROM, relying on r0 already holding the object; the host copy
-    # passes the object explicitly so the callee does not store three vtable
-    # words through an uninitialised stack slot. This translation unit is
-    # already substituted for its UNINIT_LOCAL row, so the park is the only
-    # thing added for it here.
-    "dScMgCup_c": [
-        ('extern "C" void *dScMgCup_c_classInit()\n{\n',
-         "/* hostgen HOST_COPY_PARK: port/unmatched/MgCup_Factory.cpp defines\n"
-         "   this factory under a standing PORT_HOST_ABI ruling (the base\n"
-         "   constructor call with no argument), so a second definition here is\n"
-         "   a duplicate symbol. Parked, not deleted. See the HOST_COPY_PARK\n"
-         "   table in tools/hostgen.py. */\n"
-         "#if 0  /* hostgen HOST_COPY_PARK: dScMgCup_c_classInit */\n"
-         'extern "C" void *dScMgCup_c_classInit()\n{\n'),
-        ("        __cxa_vec_ctor(scene + 0x53e8, 3, 8,\n"
-         "                      (void *)func_0203d738,\n"
-         "                      (void *)NullDestructor_0203d47c);\n"
-         "    }\n    return scene;\n}\n",
-         "        __cxa_vec_ctor(scene + 0x53e8, 3, 8,\n"
-         "                      (void *)func_0203d738,\n"
-         "                      (void *)NullDestructor_0203d47c);\n"
-         "    }\n    return scene;\n}\n"
-         "#endif  /* hostgen HOST_COPY_PARK: dScMgCup_c_classInit */\n"),
-    ],
 }
 
 
@@ -3743,11 +3667,11 @@ PARK_SYMBOL = {
     # port line, so the folded body is parked.
     "daWanwan2_c": ["daWanwan2_c_classInit"],
     "ActorBase": ["_ZN7fBase_cC2Ev"],
-    # src/actors/daObjCvNewsLift_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # src/game/actors/d_a_obj_cv_news_lift.cpp: the port line kept a host arm INSIDE these bodies; main's
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.
     "daObjCvNewsLift_c": ["_ZN17daObjCvNewsLift_c8BehaviorEv"],
-    # src/actors/daObjBlockL_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # src/game/actors/d_a_obj_block_l.cpp: the port line kept a host arm INSIDE these bodies; main's
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.
     "daObjBlockL_c": ["_ZN13daObjBlockL_c11OnAttacked1ER8dActor_c", "_ZN13daObjBlockL_c11OnAttacked2ER8dActor_c"],
@@ -3755,11 +3679,11 @@ PARK_SYMBOL = {
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.
     "_ZN10dScStage_c16CleanupResourcesEv": ["_ZN10dScStage_c16CleanupResourcesEv"],
-    # src/actors/daObjPile_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # src/game/actors/d_a_obj_pile.cpp: the port line kept a host arm INSIDE these bodies; main's
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.
     "daObjPile_c": ["_ZN11daObjPile_c8BehaviorEv"],
-    # src/engine/view/dCamera_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # src/engine/view/d_camera.cpp: the port line kept a host arm INSIDE these bodies; main's
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.
     "dCamera_c": ["_ZN9dCamera_c14GoBehindPlayerEj"],
@@ -3767,30 +3691,30 @@ PARK_SYMBOL = {
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.
     "SaveData": ["_ZN8SaveData8SaveFileEjP12FileSaveData"],
-    # src/actors/dActor_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # src/runtime/actor/d_actor.cpp: the port line kept a host arm INSIDE these bodies; main's
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.
     "dActor_c": ["_ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE"],
-    # src/actors/dScDSMT_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # src/game/stages/d_s_dsmt.cpp: the port line kept a host arm INSIDE these bodies; main's
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.
     "dScDSMT_c": ["_ZN9dScDSMT_c8BehaviorEv"],
-    # src/actors/Player.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # src/game/player/Player.cpp: the port line kept a host arm INSIDE these bodies; main's
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.
     "Player": ["func_ov002_020d869c", "_ZN6Player19func_ov002_020bd8c0Ej", "_ZN6Player19func_ov002_020bd928Ej", "_ZN6Player19func_ov002_020bd984Ej", "_ZN6Player19func_ov002_020bd9ecEj", "_ZN6Player19func_ov002_020bdb50Ei", "_ZN6Player12St_Swim_MainEv"],
-    # src/actors/dScMgRoulette_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    # src/minigames/d_s_mg_roulette_methods.cpp: the port line kept a host arm INSIDE these bodies; main's
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.
-    "dScMgRoulette_c": ["_ZN15dScMgRoulette_c13OnTurnIntoEggEi"],
-    # src/actors/unit020cd744.cpp: the port line kept a host arm INSIDE these bodies; main's
+    "dScMgRoulette_c": ["_ZN15dScMgRoulette_c11CanEndStateEi"],
+    # src/minigames/unit020cd744.cpp: the port line kept a host arm INSIDE these bodies; main's
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.
-    "unit020cd744": ["func_ov006_020ce988"],
-    # src/actors/dScMgPachinko2_c.cpp: the port line kept a host arm INSIDE these bodies; main's
+    "unit020cd744": ["TrmpItem_UpdateMatrix"],
+    # src/minigames/d_s_mg_pachinko2.cpp: the port line kept a host arm INSIDE these bodies; main's
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.
-    "dScMgPachinko2_c": ["_ZN16dScMgPachinko2_c19func_ov006_021004c0Ev"],
+    "dScMgPachinko2_c": ["_ZN16dScMgPachinko2_c13DrawTopRecordEv"],
 }
 
 
@@ -3929,7 +3853,7 @@ def host_copy_park(text, sym):
 #
 # Run link100, lane HOSTGEN4. DATA_C_LINKAGE below is the right fix whenever one
 # file-scope declaration can govern the whole translation unit. Sometimes it
-# cannot: src/actors/daMky_c.cpp declares data_ov030_02115d18 five different
+# cannot: src/game/actors/d_a_mky.cpp declares gMonkeyRunAnimationFile five different
 # ways in five different C++ MEMBERS -- `int []`, `void *[]`, `void *` and two
 # local two-word structs -- and those spellings only coexist because each lives
 # in its own function body. One file-scope declaration makes four of them a
@@ -3957,12 +3881,12 @@ ALTNAME = {
         # defined in this link: romdata.c for 02082214, ov030_syms.c for the
         # rest.
         ("?data_02082214@@3PAFA", "_data_02082214"),
-        ("?data_ov030_02115ce0@@3PADA", "_data_ov030_02115ce0"),
-        ("?data_ov030_02115ce0@@3PAHA", "_data_ov030_02115ce0"),
-        ("?data_ov030_02115d08@@3PAPAXA", "_data_ov030_02115d08"),
-        ("?data_ov030_02115d08@@3PAXA", "_data_ov030_02115d08"),
-        ("?data_ov030_02115d18@@3UdaMky_G@@A", "_data_ov030_02115d18"),
-        ("?data_ov030_02115d18@@3UdaMky_S@@A", "_data_ov030_02115d18"),
+        ("?gMonkeyHoldAnimationFile@@3PADA", "_gMonkeyHoldAnimationFile"),
+        ("?gMonkeyHoldAnimationFile@@3PAHA", "_gMonkeyHoldAnimationFile"),
+        ("?gMonkeyJumpStAnimationFile@@3PAPAXA", "_gMonkeyJumpStAnimationFile"),
+        ("?gMonkeyJumpStAnimationFile@@3PAXA", "_gMonkeyJumpStAnimationFile"),
+        ("?gMonkeyRunAnimationFile@@3UdaMky_G@@A", "_gMonkeyRunAnimationFile"),
+        ("?gMonkeyRunAnimationFile@@3UdaMky_S@@A", "_gMonkeyRunAnimationFile"),
     ],
     # daPkn_c, added with its seat. Seven ROM data references declared
     # inside C++ members, where a linkage-specification is not allowed, so
@@ -4002,7 +3926,7 @@ def altname(text, sym):
 #
 # Main's folds of the ov004/ov006 minigame units keep each folded function in
 # its OWN namespace ("Each function keeps its namespace, because the local
-# structs and externs disagree" -- src/actors/unit020cd744.cpp's header), and
+# structs and externs disagree" -- src/minigames/unit020cd744.cpp's header), and
 # each namespace re-declares the ROM names it uses with C linkage and the
 # per-function file's own types: data_ov006_0214059c is `int` in one namespace
 # and `void *` in the next, func_0203ce80 takes `Vec3 *` here and
@@ -4039,8 +3963,8 @@ def altname(text, sym):
 # listed: a TU only gets this after it has been read and its namespaces are the
 # per-function kind. Parked bodies (`#if 0`) are not read.
 NS_C_ALIAS = {
-    "dMgTrmpln2Mario_c", "unit020bfec0", "unit020cd744", "d_s_mg_base",
-    "dMg3DHeyhoObjAdapter_c",
+    "d_mg_trmpln2_mario", "unit020bfec0", "unit020cd744", "d_s_mg_base",
+    "d_mg3d_heyho_obj_adapter",
 }
 
 # TUs whose renames end at the namespace's own closing brace instead of
@@ -4050,7 +3974,7 @@ NS_C_ALIAS = {
 # rename over those lines turns them into a conflicting global spelling of
 # that namespace's alias. Nothing in this TU uses a name qualified from
 # outside its namespace.
-NS_C_ALIAS_TIGHT = {"dMg3DHeyhoObjAdapter_c"}
+NS_C_ALIAS_TIGHT = {"d_mg3d_heyho_obj_adapter"}
 
 _NSA_KEYWORDS = {
     "extern", "static", "inline", "const", "volatile", "unsigned", "signed",
@@ -4368,9 +4292,9 @@ def ns_c_alias_patch(text, sym):
 # the port emits that datum with C linkage:
 #
 #   dMgJump3DMario_c.cpp.obj : error LNK2001: unresolved external symbol
-#       "struct PmfRecord data_ov006_0213b020" (?data_ov006_0213b020@@3UPmfRecord@@A)
+#       "struct PmfRecord pmf_dMgJump3DMario_c_StateMove" (?pmf_dMgJump3DMario_c_StateMove@@3UPmfRecord@@A)
 #
-# and ov006_syms.c defines `_data_ov006_0213b020` two feet away. mwccarm did
+# and ov006_syms.c defines `_pmf_dMgJump3DMario_c_StateMove` two feet away. mwccarm did
 # not care: the ROM carries one spelling and the decomp author's placement was
 # a matched-source detail, not a linkage decision.
 #
@@ -4423,7 +4347,7 @@ def _c_linkage_line(line, name):
 
 
 DATA_C_LINKAGE = {
-    # PORTSYNC2. src/actors/daCoin_c.cpp declares these four at block scope,
+    # PORTSYNC2. src/game/actors/d_a_coin.cpp declares these four at block scope,
     # in C++ members and (data_0209f2f8 once) inside an extern "C" function,
     # so the one TU spells the level byte with two language linkages -- a
     # hard error once the per-function files became one TU. Every mount emits
@@ -4440,15 +4364,15 @@ DATA_C_LINKAGE = {
     # The types are the TU's own two-word shadows at lines 233 and 234, so the
     # anchor is the second of them.
     "dMgJump3DMario_c": ("struct Pair { int a, b; };\n", [
-        ("extern PmfRecord data_ov006_0213b020;", "data_ov006_0213b020"),
-        ("extern PmfRecord data_ov006_0213b028;", "data_ov006_0213b028"),
-        ("extern PmfRecord data_ov006_0213b030;", "data_ov006_0213b030"),
-        ("extern PmfRecord data_ov006_0213b038;", "data_ov006_0213b038"),
-        ("extern PmfRecord data_ov006_0213b060;", "data_ov006_0213b060"),
-        ("extern Pair data_ov006_0213b058;", "data_ov006_0213b058"),
-        ("extern Pair data_ov006_0213b068;", "data_ov006_0213b068"),
-        ("extern Pair data_ov006_0213b070;", "data_ov006_0213b070"),
-        ("extern Pair data_ov006_0213b078;", "data_ov006_0213b078"),
+        ("extern PmfRecord pmf_dMgJump3DMario_c_StateMove;", "pmf_dMgJump3DMario_c_StateMove"),
+        ("extern PmfRecord pmf_dMgJump3DMario_c_StateHold;", "pmf_dMgJump3DMario_c_StateHold"),
+        ("extern PmfRecord pmf_dMgJump3DMario_c_StateDamp;", "pmf_dMgJump3DMario_c_StateDamp"),
+        ("extern PmfRecord pmf_dMgJump3DMario_c_StateRespawn;", "pmf_dMgJump3DMario_c_StateRespawn"),
+        ("extern PmfRecord pmf_dMgJump3DMario_c_StateBounce;", "pmf_dMgJump3DMario_c_StateBounce"),
+        ("extern Pair pmf_dMgJump3DMario_c_StateIdle_3;", "pmf_dMgJump3DMario_c_StateIdle_3"),
+        ("extern Pair pmf_dMgJump3DMario_c_StateWindUp_2;", "pmf_dMgJump3DMario_c_StateWindUp_2"),
+        ("extern Pair pmf_dMgJump3DMario_c_StateWindUp_3;", "pmf_dMgJump3DMario_c_StateWindUp_3"),
+        ("extern Pair pmf_dMgJump3DMario_c_StateBounce_2;", "pmf_dMgJump3DMario_c_StateBounce_2"),
     ]),
     # File scope, above this TU's own extern "C" region: the two file views the
     # step mounts and the collision-parameter block it hands dBgW_Kc.
@@ -4511,8 +4435,8 @@ DATA_C_LINKAGE = {
         ("extern void *data_ov084_02130cf8;", "data_ov084_02130cf8"),
         ("extern void *data_ov074_0212292c[];", "data_ov074_0212292c"),
         ("extern void *data_ov074_02122948[];", "data_ov074_02122948"),
-        ("extern void *data_ov074_02123040;", "data_ov074_02123040"),
-        ("extern void *data_ov074_02123000;", "data_ov074_02123000"),
+        ("extern void *gKurikingAngerTextureSequenceFile;", "gKurikingAngerTextureSequenceFile"),
+        ("extern void *gKurikingModelModelFile;", "gKurikingModelModelFile"),
         ("extern void *data_ov074_02122e4c[];", "data_ov074_02122e4c"),
         ("extern void *data_ov074_02123030;", "data_ov074_02123030"),
         ("extern void *data_ov074_02122e5c[];", "data_ov074_02122e5c"),
@@ -4603,7 +4527,7 @@ def data_c_linkage(text, sym):
 # PORT_HOST_ABI: mwcc's own vtable symbol denotes the OBJECT START and the
 # Itanium address point is two words past it, so a translation unit that EMITS
 # its class's vtable writes the vptr as `&_ZTV<X>[2]` or `_ZTV<X> + 2`.
-# src/actors/daObjLava_c.cpp states the rule in its own header: "The addend-0
+# src/game/actors/d_a_obj_lava.cpp states the rule in its own header: "The addend-0
 # spelling is correct only for a TU that IMPORTS its vtable, where the linker's
 # symbol already denotes the address point; this TU EMITS the vtable, so mwcc's
 # own symbol denotes the object start and the +8 bias to the address point has
@@ -4767,23 +4691,23 @@ STEM_FOLDS = {
         "dBgActor_c",
     "_ZN8dMeter_c13InitResourcesEv":
         "dMeter_c",
-    "_ZN10dMgState_c19func_ov004_020b6b40Ev":
+    "_ZN10dMgState_c14State19_UpdateEv":
         "dMgState_c",
-    "_ZN10dMgState_c19func_ov004_020b6c9cEv":
+    "_ZN10dMgState_c14State18_UpdateEv":
         "dMgState_c",
-    "func_ov006_020c8f20":
+    "Trmp2Mario_Update":
         "dMgTrmpln2Mario_c",
-    "func_ov006_020cb030":
+    "Trmp3DMario_Update":
         "dMgTrmpln2Mario_c",
     "_ZN16dPathLiftActor_c9StatePathEv":
         "dPathLiftActor_c",
-    "_ZN14dScMgBomroom_c19func_ov006_020d8f98Ev":
+    "_ZN14dScMgBomroom_c12Round_State3Ev":
         "dScMgBomroom_c",
-    "func_ov006_020fc7d0":
+    "PachinkoPipe_UpdateAll":
         "dScMgPachinko_c",
-    "func_ov006_020fda7c":
+    "PachinkoBall_UpdateAll":
         "dScMgPachinko_c",
-    "func_ov006_020fe248":
+    "PachinkoBobOmb_UpdateAll":
         "dScMgPachinko_c",
     "_ZN15dScMgSnowball_c6RenderEv":
         "dScMgSnowball_c",
@@ -4829,7 +4753,7 @@ STEM_FOLDS = {
         "daObj_Mip_Key_c",
     "_ZN8daOnms_c13InitResourcesEv":
         "daOnms_c",
-    "func_ov006_020c2924":
+    "Presenter_ResetPose":
         "unit020bfec0",
     "func_02053130":
         "cstd",
@@ -4873,9 +4797,9 @@ STEM_FOLDS = {
         "d_a_obj_ki_fune",
     "func_ov019_0211140c":
         "d_a_pg_rcer",
-    "_ZN11dScMgBase_c16OnAimedAtWithEggEv":
+    "_ZN11dScMgBase_c17SaveScreenForMenuEv":
         "d_s_mg_base",
-    "_ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv":
+    "_ZN11dScMgBase_c21RestoreScreenFromMenuEv":
         "d_s_mg_base",
 }
 
@@ -4889,7 +4813,8 @@ STEM_KEYED_TABLES = (
     "OVERLAY_OBJECT_AT", "OVERLAY_OBJECT_AT_DECL", "PMF_SEAM",
     "PMF_SEAM_ALLOW", "PMF_SEAM_DECL", "REDECL_CONFLICT",
     "REDECL_CONFLICT_DECL", "REG_RIDE_ARG", "REG_RIDE_ARG_DECL",
-    "UNINIT_LOCAL", "VIRTUAL_CALL", "ZTV_C_LINKAGE", "PARK_SYMBOL")
+    "UNINIT_LOCAL", "VIRTUAL_CALL", "ZTV_C_LINKAGE", "PARK_SYMBOL",
+    "MWCC_SPELLING", "VALUELESS_RETURN")
 
 
 def _fold_merge(table, key, have, add, old):
@@ -4928,6 +4853,85 @@ def _fold_stem_keys():
                 t[new] = row
 
 
+# ---- STEM_RENAMES: table keys carried across the 2026-10 file-name sweep ---
+#
+# PORTDROP2 (merge of origin/main 03a6d6aea41). Main renamed its sources onto
+# the d_* convention (src/actors/dExtFrameCtrl_c.cpp -> src/engine/animation/
+# d_ext_frame_ctrl.cpp, and so on). Every table above is keyed on the source
+# FILE STEM, so a row still keyed on the class-spelled stem names a file that
+# no longer exists and silently stops applying. This maps each old stem to the
+# stem of the renamed TU (git rename detection, 100% or near, plus the one
+# unmatched pair dMgState_c); the rows of both this file and
+# hostgen_portsync2/3.py are moved onto the new key at import.
+STEM_RENAMES = {
+    "dActor_c": "d_actor",
+    "dBgActor_c": "d_bg_actor",
+    "dBgW": "d_bg_w",
+    "dBgW_Kc_itcm": "d_bg_w_kc_itcm",
+    "dCamera_c": "d_camera",
+    "dExtFrameCtrl_c": "d_ext_frame_ctrl",
+    "dExtShadowModel_c": "d_ext_shadow_model",
+    "dMeter_c": "d_meter",
+    "dMg3DHeyhoObjAdapter_c": "d_mg3d_heyho_obj_adapter",
+    "dMgJump3DMario_c": "d_mg_jump3d_mario",
+    "dMgState_c": "d_mg_state",
+    "dMgTrmpln2Mario_c": "d_mg_trmpln2_mario",
+    "dPathLiftActor_c": "d_path_lift_actor",
+    "dScDSMT_c": "d_s_dsmt",
+    "dScMgBomroom_c": "d_s_mg_bomroom",
+    "dScMgCup_c": "d_s_mg_cup",
+    "dScMgD3DBase_c": "d_s_mg_d3d_base",
+    "dScMgHanachan_c": "d_s_mg_hanachan_methods",
+    "dScMgPachinko2_c": "d_s_mg_pachinko2",
+    "dScMgPachinko_c": "d_s_mg_pachinko",
+    "dScMgPanel_c": "d_s_mg_panel",
+    "dScMgRoulette_c": "d_s_mg_roulette_methods",
+    "dScMgSmartball_c": "d_s_mg_smartball",
+    "dScMgSnowball_c": "d_s_mg_snowball",
+    "dScMgSound_c": "d_s_mg_sound",
+    "daBmb_c": "d_a_bmb",
+    "daBombking_c": "d_a_bombking",
+    "daCoin_c": "d_a_coin",
+    "daDemo_c": "d_a_demo",
+    "daDoor_c": "d_a_door",
+    "daDpLift_c": "d_a_dp_lift",
+    "daDsnBase_c": "d_a_dsn_base",
+    "daGmch_c": "d_a_gmch",
+    "daKpa_c": "d_a_kpa",
+    "daKuriKing_c": "d_a_kuri_king",
+    "daMip_c": "d_a_mip",
+    "daMky_c": "d_a_mky",
+    "daObjBkKillerdai_c": "d_a_obj_bk_killerdai",
+    "daObjBk_Lift_c": "d_a_obj_bk_lift",
+    "daObjBlockL_c": "d_a_obj_block_l",
+    "daObjCtKaitendai_c": "d_a_obj_ct_kaitendai",
+    "daObjCtMecha10_c": "d_a_obj_ct_mecha10",
+    "daObjCtRotateBlock_c": "d_a_obj_ct_rotate_block",
+    "daObjCvNewsLift_c": "d_a_obj_cv_news_lift",
+    "daObjDpBrock_c": "d_a_obj_dp_brock",
+    "daObjEwbIce_c": "d_a_obj_ewb_ice",
+    "daObjFl_Seesaw_c": "d_a_obj_fl_seesaw",
+    "daObjFloatBoard_c": "d_a_obj_float_board",
+    "daObjKaitendai_c": "d_a_obj_kaitendai",
+    "daObjMarioCap_c": "d_a_obj_mario_cap",
+    "daObjPile_c": "d_a_obj_pile",
+    "daObjRotateUpdownLift_c": "d_a_obj_rotate_updown_lift",
+    "daObjSeesaw_c": "d_a_obj_seesaw",
+    "daObjYajirusi_c": "d_a_obj_yajirusi",
+    "daObj_Mip_Key_c": "d_a_obj_mip_key",
+    "daOnms_c": "d_a_onms",
+    "daPkn_c": "d_a_pkn",
+    "daSanbo_c": "d_a_sanbo",
+    "daStar_c": "d_a_star",
+    "daTor_c": "d_a_tor",
+    "daWanwan2_c": "d_a_wanwan2",
+}
+
+for _k, _v in list(STEM_FOLDS.items()):
+    STEM_FOLDS[_k] = STEM_RENAMES.get(_v, _v)
+for _k, _v in STEM_RENAMES.items():
+    STEM_FOLDS.setdefault(_k, _v)
+
 _fold_stem_keys()
 
 
@@ -4954,6 +4958,7 @@ def _load_rederived():
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         for (table, key), row in getattr(mod, "ROWS", {}).items():
+            key = STEM_RENAMES.get(key, key)
             if table not in g or not isinstance(g[table], dict):
                 sys.exit("hostgen: %s: unknown table %s" % (f.name, table))
             if row is None:

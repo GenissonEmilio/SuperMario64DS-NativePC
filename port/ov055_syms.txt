@@ -139,6 +139,6 @@ data_ov055_02111b68 data_ov055_02111b6c
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov055_02111b70                        now defined by src/actors/daLuigi_c.cpp
+#   data_ov055_02111b70                        now defined by src/game/actors/d_a_luigi.cpp
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
 data_ov055_02111b70!

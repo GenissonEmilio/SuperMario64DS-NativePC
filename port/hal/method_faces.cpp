@@ -299,7 +299,7 @@ extern "C" int _ZN6Player13St_Throw_InitEv(void *self);
 extern "C" int _ZN6Player14St_Thrown_InitEv(void *self);
 extern "C" int _ZN6Player19St_TornadoSpin_MainEv(void *self);                */
 /* RETIRED at SYNC6, the same reason as the ALIAS2 block below and the one
-   above it, one sync later: src/actors/Player.cpp is back on its seventeen
+   above it, one sync later: src/game/player/Player.cpp is back on its seventeen
    slice rows now that main's #2666 made it compile on the host, and it
    defines ?St_<name>@Player@@QAEHXZ for all five of these itself. Measured:
    five LNK2005 rows against method_faces.cpp.obj in build_s2.log. The flat
@@ -459,13 +459,13 @@ extern "C" void _ZN7fBase_c21AfterCleanupResourcesEj(void *self, unsigned a)
    veneer at arm9 0x0203c274 (`ldr ip, [pc]; bx ip; .word 0x0203c454`) was
    transcribed as a void() calling a void() by its Itanium name, which drops
    both of the arguments ARM rides through r0 and r1 and named a callee the
-   link did not define. src/_ZN4Heap7_SizeofEPv.cpp is now the real member
+   link did not define. src/engine/heap/Heap.cpp is now the real member
    `int Heap::_Sizeof(void *ptr) { return Sizeof(ptr); }`: the receiver and
    the pointer are spelled and passed, and the callee is the decorated
-   ?Sizeof@Heap@@QAEHPAX@Z the link already carries. The matched TU is on
+   ?Sizeof@Heap_t@mHeap@@QAEHPAX@Z the link already carries. The matched TU is on
    port/slice_w28_p1.txt and the flat name its two callers spell is a reverse
    face in port/faces_sync.txt. */
-extern "C" void _ZN4Heap10ReallocateEPvj(void *self, void *p, unsigned n)
+extern "C" void _ZN5mHeap6Heap_t10ReallocateEPvj(void *self, void *p, unsigned n)
 { ((Heap *)self)->Heap::Reallocate(p, n); }
 
 /* gate 16, THE OTHER DIRECTION: CylinderClsnWithPos::Init is defined at C

@@ -48,7 +48,7 @@
 # code words are still DS addresses and their host copies still route through
 # port_mg_sound_call1. Installing them is the same shape one level down and is
 # the next lane's work.
-src/actors/dScMgSound_c.cpp
+src/minigames/d_s_mg_sound.cpp
 #
 # ---- BATCH 2: Bird::Render and Flag::Render (lane FACEF's two proposals) ---
 #
@@ -189,17 +189,17 @@ src/game/actors/d_a_mc_flag.cpp
 #     func_ov002_020f3310, itself a dispatcher over 02110e24, and cell 3 of
 #     02110e7c is func_ov002_020f3d98 over 02110e34. Three tables, two files
 #     and a nest is a lane, not a row.
-src/actors/dPathLiftActor_c.cpp
-src/actors/da1up_c.cpp
-src/actors/daCoin_c.cpp
-src/actors/daStar_c.cpp
+src/runtime/actor/d_path_lift_actor.cpp
+src/game/actors/d_a_1up.cpp
+src/game/actors/d_a_coin.cpp
+src/game/actors/d_a_star.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
 # zero-argument _ZN8dActor_c13ClosestPlayerEv() call closestplayer_guard refuses (thiscall
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 #
 # ---- BATCH 4: the Enemy death / enter-death pair ---------------------------
 #
@@ -239,5 +239,5 @@ src/actors/daStar_c.cpp
 # src/func_ov002_020aea30.cpp is a //cpp-marked .c -- `typedef void (C::*PMF)
 # (int, int);` is not C -- and is given LANGUAGE CXX in CMake block R10a, the
 # same treatment the tree gives every other //cpp-marked .c it compiles.
-src/actors/dEnemyBase_c.cpp
-# FOLDED into src/actors/dEnemyBase_c.cpp (row 242): src/func_ov002_020aea30.cpp
+src/runtime/actor/d_enemy_base.cpp
+# FOLDED into src/runtime/actor/d_enemy_base.cpp (row 242): src/func_ov002_020aea30.cpp

@@ -17,11 +17,11 @@
 //
 //   table                n  arity  dispatched by
 //   -------------------  -  -----  ----------------------------------------
-//   data_ov006_021417b0  3    1    func_ov006_020dd2cc
-//   data_ov006_021417c8  4    1    func_ov006_020dc298
-//   data_ov006_021417e8  5    1    func_ov006_020dc754
+//   data_ov006_021417b0  3    1    Coin_UpdateAll
+//   data_ov006_021417c8  4    1    Bag_Update
+//   data_ov006_021417e8  5    1    Caption_Update
 //   data_ov006_02141810  6    0    _ZN11dScMgCoin_c8BehaviorEv  (vtable slot 6)
-//   data_ov006_02141840  6    1    func_ov006_020ddd6c, _020de26c, _020de440
+//   data_ov006_02141840  6    1    Block_UpdateAll, _020de26c, _020de440
 //
 // THE REFUSAL AT 0x020dd0e0 IS GONE, AND A src TU LANDED FOR IT.
 // The paragraph this replaces said "if the refusal ever disappears without a
@@ -29,7 +29,7 @@
 // of data_ov006_021417b0 and it is THE TOUCH STATE: with it missing the port
 // delivered every stylus tap to the DS bottom screen correctly and the minigame
 // did nothing, which is exactly what a live session measured. Lane TOUCH of run
-// mg5 matched it; src/func_ov006_020dd0e0.c and its delink block
+// mg5 matched it; src/Coin_State0.c and its delink block
 // (.text start:0x020dd0e0 end:0x020dd2cc) came across in the commit before this
 // one, and tools/match.py re-verified MATCH on 2004/b56 in THIS tree, at this
 // size (0x1ec), before the switch case below was changed. The slot is wired to
@@ -37,7 +37,7 @@
 // still kept: nothing here fabricates a definition.
 //
 // THE CALL SHAPE WAS RE-DERIVED FROM THE ROM AND NOT TAKEN ON THE MATCHING
-// LANE'S WORD, because it could not see this file. func_ov006_020dd2cc's own
+// LANE'S WORD, because it could not see this file. Coin_UpdateAll's own
 // bytes, at file offset 0x1d40c of extracted/overlays/overlay_0006.bin:
 //
 //     mov  r7, r0            r7 = the CLASS BASE, and it never changes
@@ -55,17 +55,17 @@
 //     add  r6, r6, #1 / cmp r6, #0x18 / add r5, r5, #0x18 / blt loop
 //
 // So the callee is passed (class base, i) and NOT (per-coin base, i): r5 is
-// only ever used to fetch the state byte. func_ov006_020dd0e0's own prologue
+// only ever used to fetch the state byte. Coin_State0's own prologue
 // agrees, at offset 0x1d220 of the same file -- it reads [r0 + 0x51c8] off the
 // argument, which is a class-level field 0x51c8 past the base and far outside
 // any one 0x18-byte coin record, and then does `mov r0, #0x18 / mul r4, r1, r0`
-// to recover i * 0x18 for itself. Its src signature, void func_ov006_020dd0e0-
+// to recover i * 0x18 for itself. Its src signature, void Coin_State0-
 // (char *c, int i), is that pair in the same order. The host dispatch loop
 // further down this file already passes port_mg_coin_call1(c, code, adj, i)
 // with c the class base and i the loop index, so the case below hands those two
 // straight through and no argument is invented, dropped or reordered.
 //
-// THE CLASS'S REMAINING FLOOR IS NOT A STATE. func_ov006_020dbe9c (0xe0) is
+// THE CLASS'S REMAINING FLOOR IS NOT A STATE. Bag_Draw (0xe0) is
 // the sixth callee of vtable slot 9, Render, and has no delink block and no
 // src. It is not this file's business -- nothing here calls it -- and it is
 // recorded in port/slice_ccn.txt. It is now the only one of the two left.
@@ -81,15 +81,15 @@
 //
 //   LINK-VISIBLE
 //     _ZN11dScMgCoin_c8BehaviorEv   ?data_ov006_02141810@@3PAUEntry@@A
-//     func_ov006_020dd2cc   ?data_ov006_021417b0@@3PAUEntry@@A
-//     func_ov006_020de26c   ?data_ov006_02141840@@3PAP8Obj@@AEXH@ZA
-//     func_ov006_020de440   ?data_ov006_02141840@@3PAP8C@@AEXH@ZA
+//     Coin_UpdateAll   ?data_ov006_021417b0@@3PAUEntry@@A
+//     Phase_State3   ?data_ov006_02141840@@3PAP8Obj@@AEXH@ZA
+//     Phase_State2   ?data_ov006_02141840@@3PAP8C@@AEXH@ZA
 //   SILENT -- the table is declared at C linkage, so it mangles as the plain
 //   C name the ov006 mount already defines and the linker is satisfied while
 //   the stride is wrong
-//     func_ov006_020dc298   Entry table declared inside extern "C"
-//     func_ov006_020dc754   Entry table declared inside extern "C"
-//     func_ov006_020ddd6c   extern "C" Entry data_ov006_02141840[]
+//     Bag_Update   Entry table declared inside extern "C"
+//     Caption_Update   Entry table declared inside extern "C"
+//     Block_UpdateAll   extern "C" Entry data_ov006_02141840[]
 //
 // Note the two PAU spellings above: an ARRAY of a struct that wraps a member
 // pointer, which is the form port/tools/facegen.py's WALL test misses (its
@@ -110,8 +110,8 @@
 //
 // ---- FOUR RIDE-THROUGHS, AND ALL FOUR ARE EMPTY ----------------------------
 //
-// func_ov006_020de5ac sits in the arity-0 table and takes (void).
-// func_ov006_020dcffc, _020dc294 and _020dd7bc sit in ONE-argument slots and
+// Phase_State0 sits in the arity-0 table and takes (void).
+// Coin_State2, _020dc294 and _020dd7bc sit in ONE-argument slots and
 // also take (void). Every one of the four is FOUR BYTES in the ROM -- the
 // whole function is `bx lr` -- so there is nothing for an ignored argument to
 // be wrong about, and calling them with no arguments from here is the faithful
@@ -154,28 +154,28 @@ void port_mg_call1(void *self, unsigned code, int adj, int a);
    ride-through is called the way the ROM calls it rather than the way the
    slot's arity would suggest. The four (void) ones are the empty bodies the
    header names. */
-void _ZN11dScMgCoin_c19func_ov006_020dbf7cEi(void *sb, int i);
-void _ZN11dScMgCoin_c19func_ov006_020dc154Ei(char *base, int idx);
-void _ZN11dScMgCoin_c19func_ov006_020dc1c4Ei(void *thiz, int idx);
-void _ZN11dScMgCoin_c19func_ov006_020dc294Ev(void);              /* one-argument slot, bx lr body */
-void _ZN11dScMgCoin_c19func_ov006_020dc414Ei(char *base, int idx);
-void _ZN11dScMgCoin_c19func_ov006_020dc4b0Ei(char *c, int i);
-void _ZN11dScMgCoin_c19func_ov006_020dc4c8Ei(char *c, int i);
-void _ZN11dScMgCoin_c19func_ov006_020dc5c4Ei(char *c, int i);
-void _ZN11dScMgCoin_c19func_ov006_020dc6d0Ei(int o, int idx);
-void _ZN11dScMgCoin_c19func_ov006_020dcffcEv(void);              /* one-argument slot, bx lr body */
-void _ZN11dScMgCoin_c19func_ov006_020dd000Ei(char *c, int i);
-void _ZN11dScMgCoin_c19func_ov006_020dd0e0Ei(char *c, int i);    /* THE TOUCH STATE, see header */
-void _ZN11dScMgCoin_c19func_ov006_020dd658Ei(char *self, int i);
-void _ZN11dScMgCoin_c19func_ov006_020dd7bcEv(void);              /* one-argument slot, bx lr body */
-void _ZN11dScMgCoin_c19func_ov006_020dd7c0Ei(char *thiz, int index);
-void _ZN11dScMgCoin_c19func_ov006_020dd880Ei(char *c, int i);
-void _ZN11dScMgCoin_c19func_ov006_020dda94Ei(char *self, int i);
-void _ZN11dScMgCoin_c19func_ov006_020ddca0Ei(char *c, int i);
-void _ZN11dScMgCoin_c19func_ov006_020de0e0Ev(char *self);
-void _ZN11dScMgCoin_c19func_ov006_020de1d4Ev(char *c);
-void _ZN11dScMgCoin_c19func_ov006_020de584Ev(void *a);
-void _ZN11dScMgCoin_c19func_ov006_020de5acEv(void);              /* zero-argument slot, bx lr body */
+void _ZN11dScMgCoin_c10Bag_State3Ei(void *sb, int i);
+void _ZN11dScMgCoin_c10Bag_State2Ei(char *base, int idx);
+void _ZN11dScMgCoin_c10Bag_State1Ei(void *thiz, int idx);
+void _ZN11dScMgCoin_c10Bag_State0Ev(void);              /* one-argument slot, bx lr body */
+void _ZN11dScMgCoin_c14Caption_State4Ei(char *base, int idx);
+void _ZN11dScMgCoin_c14Caption_State3Ei(char *c, int i);
+void _ZN11dScMgCoin_c14Caption_State2Ei(char *c, int i);
+void _ZN11dScMgCoin_c14Caption_State1Ei(char *c, int i);
+void _ZN11dScMgCoin_c14Caption_State0Ei(int o, int idx);
+void _ZN11dScMgCoin_c11Coin_State2Ev(void);              /* one-argument slot, bx lr body */
+void _ZN11dScMgCoin_c11Coin_State1Ei(char *c, int i);
+void _ZN11dScMgCoin_c11Coin_State0Ei(char *c, int i);    /* THE TOUCH STATE, see header */
+void _ZN11dScMgCoin_c12Block_State5Ei(char *self, int i);
+void _ZN11dScMgCoin_c12Block_State4Ev(void);              /* one-argument slot, bx lr body */
+void _ZN11dScMgCoin_c12Block_State3Ei(char *thiz, int index);
+void _ZN11dScMgCoin_c12Block_State2Ei(char *c, int i);
+void _ZN11dScMgCoin_c12Block_State1Ei(char *self, int i);
+void _ZN11dScMgCoin_c12Block_State0Ei(char *c, int i);
+void _ZN11dScMgCoin_c12Phase_State5Ev(char *self);
+void _ZN11dScMgCoin_c12Phase_State4Ev(char *c);
+void _ZN11dScMgCoin_c12Phase_State1Ev(void *a);
+void _ZN11dScMgCoin_c12Phase_State0Ev(void);              /* zero-argument slot, bx lr body */
 
 /* the five mount tables, re-typed to the ROM's eight-byte pair. The mount
    defines the storage; __sinit_ov006_0213014c fills it at scene load. */
@@ -188,17 +188,17 @@ extern MgPmf data_ov006_02141840[];
 /* the ordinary callees the host copies below keep, each spelled as its own src
    TU spells it */
 void _ZN5Sound12PlayBank2_2DEj(unsigned int);
-void _ZN11dScMgCoin_c19func_ov006_020dde28Ei(void *c, int index);
-void _ZN11dScMgCoin_c19func_ov006_020dca04Ev(void *c);
-void _ZN11dScMgCoin_c19func_ov006_020dc348Ev(void *c);
-void _ZN11dScMgCoin_c19func_ov006_020dc900Ev(void *c);
-void _ZN11dScMgCoin_c19func_ov006_020dce3cEv(void *c);
-void func_ov004_020b0cac(int c, int a1, int a2, int a3, int arg5, short arg6);
-void func_ov004_020ae274(void *c);
-void func_ov004_020adb1c(int arg);
+void _ZN11dScMgCoin_c13Block_AnimateEi(void *c, int index);
+void _ZN11dScMgCoin_c17Sparkle_UpdateAllEv(void *c);
+void _ZN11dScMgCoin_c14Caption_FinishEv(void *c);
+void _ZN11dScMgCoin_c15Popup_UpdateAllEv(void *c);
+void _ZN11dScMgCoin_c12Score_UpdateEv(void *c);
+void Mg_ShowBanner(int c, int a1, int a2, int a3, int arg5, short arg6);
+void Mg_PlayJingle(void *c);
+void Mg_SubmitScore(int arg);
 
-/* THE NAME-SPELLING VARIANT src/func_ov006_020de1d4.c and
-   src/func_ov006_020de26c.cpp use for ov004's data_ov004_020beb68 -- a name
+/* THE NAME-SPELLING VARIANT src/Phase_State4.c and
+   src/Phase_State3.cpp use for ov004's gMgScene -- a name
    that exists in no config, the same shape src/_ZN14dScMgCurling_c13InitResourcesEv.cpp's bare
    `func_020adc74` has and which port/mg_fanout_costs.txt section 6 records as
    the ordinary kind of spelling defect. Declared here exactly as the two src
@@ -212,12 +212,12 @@ extern char *func_020beb68;
    and their host copies are gone. The declarations stay, at the same C linkage
    and the same signatures, because the seat's faces name both -- 020de26c is
    slot 3 of the seated data_ov006_02141810. */
-void _ZN11dScMgCoin_c19func_ov006_020dd2ccEv(void *c);
-void _ZN11dScMgCoin_c19func_ov006_020ddd6cEv(char *thiz);
-void _ZN11dScMgCoin_c19func_ov006_020dc298Ev(void *self);
-void _ZN11dScMgCoin_c19func_ov006_020dc754Ev(void *self);
-void _ZN11dScMgCoin_c19func_ov006_020de26cEv(char *self);
-void _ZN11dScMgCoin_c19func_ov006_020de440Ev(char *c);
+void _ZN11dScMgCoin_c14Coin_UpdateAllEv(void *c);
+void _ZN11dScMgCoin_c15Block_UpdateAllEv(char *thiz);
+void _ZN11dScMgCoin_c10Bag_UpdateEv(void *self);
+void _ZN11dScMgCoin_c14Caption_UpdateEv(void *self);
+void _ZN11dScMgCoin_c12Phase_State3Ev(char *self);
+void _ZN11dScMgCoin_c12Phase_State2Ev(char *c);
 
 /* the boot installer at the end of this file; hal/scene_mg.cpp calls it after
    the ov006 constructors have filled the tables. */
@@ -243,12 +243,12 @@ static int coin_try_0(void *self, unsigned code)
 {
     char *c = (char *)self;
     switch (code) {
-    case 0x020de0e0u: _ZN11dScMgCoin_c19func_ov006_020de0e0Ev(c); return 1;
-    case 0x020de1d4u: _ZN11dScMgCoin_c19func_ov006_020de1d4Ev(c); return 1;
-    case 0x020de26cu: _ZN11dScMgCoin_c19func_ov006_020de26cEv(c); return 1;   /* host copy below */
-    case 0x020de440u: _ZN11dScMgCoin_c19func_ov006_020de440Ev(c); return 1;   /* host copy below */
-    case 0x020de584u: _ZN11dScMgCoin_c19func_ov006_020de584Ev(c); return 1;
-    case 0x020de5acu: _ZN11dScMgCoin_c19func_ov006_020de5acEv();  return 1;   /* (void) body */
+    case 0x020de0e0u: _ZN11dScMgCoin_c12Phase_State5Ev(c); return 1;
+    case 0x020de1d4u: _ZN11dScMgCoin_c12Phase_State4Ev(c); return 1;
+    case 0x020de26cu: _ZN11dScMgCoin_c12Phase_State3Ev(c); return 1;   /* host copy below */
+    case 0x020de440u: _ZN11dScMgCoin_c12Phase_State2Ev(c); return 1;   /* host copy below */
+    case 0x020de584u: _ZN11dScMgCoin_c12Phase_State1Ev(c); return 1;
+    case 0x020de5acu: _ZN11dScMgCoin_c12Phase_State0Ev();  return 1;   /* (void) body */
     default:                                  return 0;
     }
 }
@@ -258,30 +258,30 @@ static int coin_try_1(void *self, unsigned code, int a)
     char *c = (char *)self;
     switch (code) {
     /* data_ov006_021417b0 */
-    /* THE TOUCH STATE. (class base, coin index), the order func_ov006_020dd2cc
+    /* THE TOUCH STATE. (class base, coin index), the order Coin_UpdateAll
        passes them in the ROM; see the header for the disassembly. */
     case 0x020dd0e0u: ++g_coin_touch_calls;
-                      _ZN11dScMgCoin_c19func_ov006_020dd0e0Ei(c, a);  return 1;
-    case 0x020dd000u: _ZN11dScMgCoin_c19func_ov006_020dd000Ei(c, a);  return 1;
-    case 0x020dcffcu: _ZN11dScMgCoin_c19func_ov006_020dcffcEv();      return 1;  /* (void) body */
+                      _ZN11dScMgCoin_c11Coin_State0Ei(c, a);  return 1;
+    case 0x020dd000u: _ZN11dScMgCoin_c11Coin_State1Ei(c, a);  return 1;
+    case 0x020dcffcu: _ZN11dScMgCoin_c11Coin_State2Ev();      return 1;  /* (void) body */
     /* data_ov006_021417c8 */
-    case 0x020dc294u: _ZN11dScMgCoin_c19func_ov006_020dc294Ev();      return 1;  /* (void) body */
-    case 0x020dc1c4u: _ZN11dScMgCoin_c19func_ov006_020dc1c4Ei(c, a);  return 1;
-    case 0x020dc154u: _ZN11dScMgCoin_c19func_ov006_020dc154Ei(c, a);  return 1;
-    case 0x020dbf7cu: _ZN11dScMgCoin_c19func_ov006_020dbf7cEi(c, a);  return 1;
+    case 0x020dc294u: _ZN11dScMgCoin_c10Bag_State0Ev();      return 1;  /* (void) body */
+    case 0x020dc1c4u: _ZN11dScMgCoin_c10Bag_State1Ei(c, a);  return 1;
+    case 0x020dc154u: _ZN11dScMgCoin_c10Bag_State2Ei(c, a);  return 1;
+    case 0x020dbf7cu: _ZN11dScMgCoin_c10Bag_State3Ei(c, a);  return 1;
     /* data_ov006_021417e8 */
-    case 0x020dc6d0u: _ZN11dScMgCoin_c19func_ov006_020dc6d0Ei((int)(size_t)c, a); return 1;
-    case 0x020dc5c4u: _ZN11dScMgCoin_c19func_ov006_020dc5c4Ei(c, a);  return 1;
-    case 0x020dc4c8u: _ZN11dScMgCoin_c19func_ov006_020dc4c8Ei(c, a);  return 1;
-    case 0x020dc4b0u: _ZN11dScMgCoin_c19func_ov006_020dc4b0Ei(c, a);  return 1;
-    case 0x020dc414u: _ZN11dScMgCoin_c19func_ov006_020dc414Ei(c, a);  return 1;
+    case 0x020dc6d0u: _ZN11dScMgCoin_c14Caption_State0Ei((int)(size_t)c, a); return 1;
+    case 0x020dc5c4u: _ZN11dScMgCoin_c14Caption_State1Ei(c, a);  return 1;
+    case 0x020dc4c8u: _ZN11dScMgCoin_c14Caption_State2Ei(c, a);  return 1;
+    case 0x020dc4b0u: _ZN11dScMgCoin_c14Caption_State3Ei(c, a);  return 1;
+    case 0x020dc414u: _ZN11dScMgCoin_c14Caption_State4Ei(c, a);  return 1;
     /* data_ov006_02141840 */
-    case 0x020ddca0u: _ZN11dScMgCoin_c19func_ov006_020ddca0Ei(c, a);  return 1;
-    case 0x020dda94u: _ZN11dScMgCoin_c19func_ov006_020dda94Ei(c, a);  return 1;
-    case 0x020dd880u: _ZN11dScMgCoin_c19func_ov006_020dd880Ei(c, a);  return 1;
-    case 0x020dd7c0u: _ZN11dScMgCoin_c19func_ov006_020dd7c0Ei(c, a);  return 1;
-    case 0x020dd7bcu: _ZN11dScMgCoin_c19func_ov006_020dd7bcEv();      return 1;  /* (void) body */
-    case 0x020dd658u: _ZN11dScMgCoin_c19func_ov006_020dd658Ei(c, a);  return 1;
+    case 0x020ddca0u: _ZN11dScMgCoin_c12Block_State0Ei(c, a);  return 1;
+    case 0x020dda94u: _ZN11dScMgCoin_c12Block_State1Ei(c, a);  return 1;
+    case 0x020dd880u: _ZN11dScMgCoin_c12Block_State2Ei(c, a);  return 1;
+    case 0x020dd7c0u: _ZN11dScMgCoin_c12Block_State3Ei(c, a);  return 1;
+    case 0x020dd7bcu: _ZN11dScMgCoin_c12Block_State4Ev();      return 1;  /* (void) body */
+    case 0x020dd658u: _ZN11dScMgCoin_c12Block_State5Ei(c, a);  return 1;
     default:                                      return 0;
     }
 }
@@ -331,24 +331,24 @@ extern "C" unsigned port_mg_coin_touch_calls(void)
 // than a member-pointer type) and the dispatch site (port_mg_coin_callN rather
 // than `(c->*table[i].pmf)()`). Nothing else moves.
 
-/* src/func_ov006_020dc298 -- RETIRED, run link100 lane SEAT4. Its table is
+/* src/Bag_Update -- RETIRED, run link100 lane SEAT4. Its table is
    seated in port/hal/pmf_seat4.cpp and the matched TU is on
    port/slice_seat4.txt, so the host copy that stood in for it is gone and
    the declaration above is what the faces in this file reach. */
 
-/* src/func_ov006_020dc754 -- RETIRED, run link100 lane SEAT4. Its table is
+/* src/Caption_Update -- RETIRED, run link100 lane SEAT4. Its table is
    seated in port/hal/pmf_seat4.cpp and the matched TU is on
    port/slice_seat4.txt, so the host copy that stood in for it is gone and
    the declaration above is what the faces in this file reach. */
 
-/* src/func_ov006_020ddd6c.cpp -- RETIRED, run linkfull lane PMFMG1. The table
+/* src/Block_UpdateAll.cpp -- RETIRED, run linkfull lane PMFMG1. The table
    it dispatches, data_ov006_02141840, is the one lane PMFB4 seated below for
-   func_ov006_020de26c: six cells, one-argument __fastcall faces. The matched
+   Phase_State3: six cells, one-argument __fastcall faces. The matched
    TU's own `(self->*data_ov006_02141840[state].pmf)(i)` compiles under the
    port's /vmg /vmm to `push edi / mov ecx, tab[eax*8+4] / mov eax, tab[eax*8]
    / add ecx, ebx / call eax` with no caller cleanup (its listing,
-   runs/linkfull/out/PMFMG1/func_ov006_020ddd6c.asm), which is exactly how
-   func_ov006_020de26c and func_ov006_020de440 already enter those faces. The
+   runs/linkfull/out/PMFMG1/Block_UpdateAll.asm), which is exactly how
+   Phase_State3 and Phase_State2 already enter those faces. The
    table's three readers in the ROM are those three and its sinit, nothing
    else (runs/linkfull/out/PMFMG1/rom_table_readers.txt), so every reader
    spells the pair as a member pointer and one set of faces serves all three.
@@ -366,10 +366,10 @@ extern "C" unsigned port_mg_coin_touch_calls(void)
    coin) is what now runs.
 
    The bare `func_020ddd6c` forwarder that stood here for
-   src/func_ov006_020de584.c is gone with it: that TU now spells the real name,
+   src/Phase_State1.c is gone with it: that TU now spells the real name,
    and nothing in the tree references the bare one. */
 
-/* src/func_ov006_020de440 -- RETIRED, run link100 lane SEAT4. Its table is
+/* src/Phase_State2 -- RETIRED, run link100 lane SEAT4. Its table is
    seated in port/hal/pmf_seat4.cpp and the matched TU is on
    port/slice_seat4.txt, so the host copy that stood in for it is gone and
    the declaration above is what the faces in this file reach. */
@@ -382,17 +382,17 @@ extern "C" unsigned port_mg_coin_touch_calls(void)
 // word, so three of the seven host copies are gone:
 //
 //   _ZN11dScMgCoin_c8BehaviorEv  data_ov006_02141810   6 slots  arity 0  (vtable slot 6)
-//   func_ov006_020dd2cc  data_ov006_021417b0   3 slots  arity 1
-//   func_ov006_020de26c  data_ov006_02141840   6 slots  arity 1
+//   Coin_UpdateAll  data_ov006_021417b0   3 slots  arity 1
+//   Phase_State3  data_ov006_02141840   6 slots  arity 1
 //
 // THE TWO TABLES NOT SEATED are data_ov006_021417c8 and data_ov006_021417e8,
-// read by func_ov006_020dc298 and func_ov006_020dc754, which are not family-C
+// read by Bag_Update and Caption_Update, which are not family-C
 // CALL SHAPE rows on this tree's census. Their host copies stay above and both
 // switches stay live for them.
 //
 // TWO OF THE THREE RETIRED ARE ALSO STATE BODIES OF A SEATED TABLE:
-// func_ov006_020de26c is slot 3 of data_ov006_02141810 and
-// func_ov006_020de440 (still a host copy) is slot 2. The installer writes faces
+// Phase_State3 is slot 3 of data_ov006_02141810 and
+// Phase_State2 (still a host copy) is slot 2. The installer writes faces
 // for both, so 020de26c is reached as a state through its own seated cell and
 // dispatches data_ov006_02141840 through the seated cells in turn.
 //
@@ -428,7 +428,7 @@ extern "C" unsigned port_mg_coin_touch_calls(void)
 // ?data_ov006_021417b0@@3PAUEntry@@A and ?data_ov006_02141810@@3PAUEntry@@A,
 // and 02141840 through the bare pointer-to-member spelling
 // ?data_ov006_02141840@@3PAP8Obj@@AEXH@ZA -- the `Obj` there is the class name
-// src/func_ov006_020de26c.cpp gives its own shadow struct, which is part of the
+// src/Phase_State3.cpp gives its own shadow struct, which is part of the
 // decoration and not a typo. Safe under port/tools/alternatename_guard.py for
 // hal/pmfc_aliases.cpp's reason.
 #pragma comment(linker, "/alternatename:?data_ov006_021417b0@@3PAUEntry@@A=_data_ov006_021417b0")
@@ -436,12 +436,12 @@ extern "C" unsigned port_mg_coin_touch_calls(void)
 #pragma comment(linker, "/alternatename:?data_ov006_02141840@@3PAP8Obj@@AEXH@ZA=_data_ov006_02141840")
 
 /* AND ONE MORE, WHICH THE LINK FOUND AND THIS LANE DID NOT PREDICT.
-   src/func_ov006_020de26c.cpp reaches ov004's data_ov004_020beb68 under the
+   src/Phase_State3.cpp reaches ov004's gMgScene under the
    name `func_020beb68` -- the spelling defect this file's own header records --
    and it declares it at NAMESPACE scope as `char *`, so MSVC spells the
    reference ?func_020beb68@@3PADA. The host copy declared the same global
    inside extern "C" and resolved through unmatched/MgCoin_Faces.cpp's
-   `/alternatename:_func_020beb68=_data_ov004_020beb68`, so retiring the copy
+   `/alternatename:_func_020beb68=_gMgScene`, so retiring the copy
    left the C++ spelling with nothing to resolve to and the link said so by
    name. This is the THIRD spelling of one global: the plain C name and
    ?func_020beb68@@3PAUV@@A already have directives (MgCoin_Faces.cpp:77 and
@@ -449,7 +449,7 @@ extern "C" unsigned port_mg_coin_touch_calls(void)
    object with dumpbin /symbols. Safe under port/tools/alternatename_guard.py
    for the same reason as the table rows: the LHS is a C++ decoration only this
    matched TU spells and nothing in the tree defines it. */
-#pragma comment(linker, "/alternatename:?func_020beb68@@3PADA=_data_ov004_020beb68")
+#pragma comment(linker, "/alternatename:?func_020beb68@@3PADA=_gMgScene")
 
 /* EVERY FACE COUNTS, AND ONE OF THEM CARRIES THE TOUCH WITNESS.
    g_coin_state_hits keeps counting exactly the dispatches that happen.
@@ -494,29 +494,29 @@ extern "C" unsigned port_mg_coin_touch_calls(void)
 
 /* data_ov006_021417b0, arity 1. Slot 0 is the touch state and carries the
    count hal/scene_mg.cpp prints, so it is written out rather than generated. */
-static void __fastcall cn__ZN11dScMgCoin_c19func_ov006_020dd0e0Ei(void *self, void *dead_edx, int i)
+static void __fastcall cn__ZN11dScMgCoin_c11Coin_State0Ei(void *self, void *dead_edx, int i)
 {
     (void)dead_edx;
     ++g_coin_state_hits;
     ++g_coin_touch_calls;
-    _ZN11dScMgCoin_c19func_ov006_020dd0e0Ei((char *)self, i);
+    _ZN11dScMgCoin_c11Coin_State0Ei((char *)self, i);
 }
-CN_FACE1(_ZN11dScMgCoin_c19func_ov006_020dd000Ei, (char *))
-CN_FACE1_VOID(_ZN11dScMgCoin_c19func_ov006_020dcffcEv)
+CN_FACE1(_ZN11dScMgCoin_c11Coin_State1Ei, (char *))
+CN_FACE1_VOID(_ZN11dScMgCoin_c11Coin_State2Ev)
 /* data_ov006_02141810, arity 0 */
-CN_FACE0_VOID(_ZN11dScMgCoin_c19func_ov006_020de5acEv)
-CN_FACE0(_ZN11dScMgCoin_c19func_ov006_020de584Ev, (char *))
-CN_FACE0(_ZN11dScMgCoin_c19func_ov006_020de440Ev, (char *))
-CN_FACE0(_ZN11dScMgCoin_c19func_ov006_020de26cEv, (char *))
-CN_FACE0(_ZN11dScMgCoin_c19func_ov006_020de1d4Ev, (char *))
-CN_FACE0(_ZN11dScMgCoin_c19func_ov006_020de0e0Ev, (char *))
+CN_FACE0_VOID(_ZN11dScMgCoin_c12Phase_State0Ev)
+CN_FACE0(_ZN11dScMgCoin_c12Phase_State1Ev, (char *))
+CN_FACE0(_ZN11dScMgCoin_c12Phase_State2Ev, (char *))
+CN_FACE0(_ZN11dScMgCoin_c12Phase_State3Ev, (char *))
+CN_FACE0(_ZN11dScMgCoin_c12Phase_State4Ev, (char *))
+CN_FACE0(_ZN11dScMgCoin_c12Phase_State5Ev, (char *))
 /* data_ov006_02141840, arity 1 */
-CN_FACE1(_ZN11dScMgCoin_c19func_ov006_020ddca0Ei, (char *))
-CN_FACE1(_ZN11dScMgCoin_c19func_ov006_020dda94Ei, (char *))
-CN_FACE1(_ZN11dScMgCoin_c19func_ov006_020dd880Ei, (char *))
-CN_FACE1(_ZN11dScMgCoin_c19func_ov006_020dd7c0Ei, (char *))
-CN_FACE1_VOID(_ZN11dScMgCoin_c19func_ov006_020dd7bcEv)
-CN_FACE1(_ZN11dScMgCoin_c19func_ov006_020dd658Ei, (char *))
+CN_FACE1(_ZN11dScMgCoin_c12Block_State0Ei, (char *))
+CN_FACE1(_ZN11dScMgCoin_c12Block_State1Ei, (char *))
+CN_FACE1(_ZN11dScMgCoin_c12Block_State2Ei, (char *))
+CN_FACE1(_ZN11dScMgCoin_c12Block_State3Ei, (char *))
+CN_FACE1_VOID(_ZN11dScMgCoin_c12Block_State4Ev)
+CN_FACE1(_ZN11dScMgCoin_c12Block_State5Ei, (char *))
 
 /* run link100 lane SEAT4: this class's remaining state tables are
    seated in port/hal/pmf_seat4.cpp, from inside this installer, so the
@@ -540,23 +540,23 @@ extern "C" void port_mg_coin_states_seat(void)
         unsigned rom;
         void *face;
     } seats[] = {
-        {data_ov006_021417b0, "021417b0", 0, 0x020dd0e0u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dd0e0Ei},
-        {data_ov006_021417b0, "021417b0", 1, 0x020dd000u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dd000Ei},
-        {data_ov006_021417b0, "021417b0", 2, 0x020dcffcu, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dcffcEv},
+        {data_ov006_021417b0, "021417b0", 0, 0x020dd0e0u, (void *)cn__ZN11dScMgCoin_c11Coin_State0Ei},
+        {data_ov006_021417b0, "021417b0", 1, 0x020dd000u, (void *)cn__ZN11dScMgCoin_c11Coin_State1Ei},
+        {data_ov006_021417b0, "021417b0", 2, 0x020dcffcu, (void *)cn__ZN11dScMgCoin_c11Coin_State2Ev},
 
-        {data_ov006_02141810, "02141810", 0, 0x020de5acu, (void *)cn__ZN11dScMgCoin_c19func_ov006_020de5acEv},
-        {data_ov006_02141810, "02141810", 1, 0x020de584u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020de584Ev},
-        {data_ov006_02141810, "02141810", 2, 0x020de440u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020de440Ev},
-        {data_ov006_02141810, "02141810", 3, 0x020de26cu, (void *)cn__ZN11dScMgCoin_c19func_ov006_020de26cEv},
-        {data_ov006_02141810, "02141810", 4, 0x020de1d4u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020de1d4Ev},
-        {data_ov006_02141810, "02141810", 5, 0x020de0e0u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020de0e0Ev},
+        {data_ov006_02141810, "02141810", 0, 0x020de5acu, (void *)cn__ZN11dScMgCoin_c12Phase_State0Ev},
+        {data_ov006_02141810, "02141810", 1, 0x020de584u, (void *)cn__ZN11dScMgCoin_c12Phase_State1Ev},
+        {data_ov006_02141810, "02141810", 2, 0x020de440u, (void *)cn__ZN11dScMgCoin_c12Phase_State2Ev},
+        {data_ov006_02141810, "02141810", 3, 0x020de26cu, (void *)cn__ZN11dScMgCoin_c12Phase_State3Ev},
+        {data_ov006_02141810, "02141810", 4, 0x020de1d4u, (void *)cn__ZN11dScMgCoin_c12Phase_State4Ev},
+        {data_ov006_02141810, "02141810", 5, 0x020de0e0u, (void *)cn__ZN11dScMgCoin_c12Phase_State5Ev},
 
-        {data_ov006_02141840, "02141840", 0, 0x020ddca0u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020ddca0Ei},
-        {data_ov006_02141840, "02141840", 1, 0x020dda94u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dda94Ei},
-        {data_ov006_02141840, "02141840", 2, 0x020dd880u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dd880Ei},
-        {data_ov006_02141840, "02141840", 3, 0x020dd7c0u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dd7c0Ei},
-        {data_ov006_02141840, "02141840", 4, 0x020dd7bcu, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dd7bcEv},
-        {data_ov006_02141840, "02141840", 5, 0x020dd658u, (void *)cn__ZN11dScMgCoin_c19func_ov006_020dd658Ei},
+        {data_ov006_02141840, "02141840", 0, 0x020ddca0u, (void *)cn__ZN11dScMgCoin_c12Block_State0Ei},
+        {data_ov006_02141840, "02141840", 1, 0x020dda94u, (void *)cn__ZN11dScMgCoin_c12Block_State1Ei},
+        {data_ov006_02141840, "02141840", 2, 0x020dd880u, (void *)cn__ZN11dScMgCoin_c12Block_State2Ei},
+        {data_ov006_02141840, "02141840", 3, 0x020dd7c0u, (void *)cn__ZN11dScMgCoin_c12Block_State3Ei},
+        {data_ov006_02141840, "02141840", 4, 0x020dd7bcu, (void *)cn__ZN11dScMgCoin_c12Block_State4Ev},
+        {data_ov006_02141840, "02141840", 5, 0x020dd658u, (void *)cn__ZN11dScMgCoin_c12Block_State5Ei},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {

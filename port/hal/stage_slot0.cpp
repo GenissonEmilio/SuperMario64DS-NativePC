@@ -620,12 +620,12 @@ void port_slot0_check_wipes(void *before)
             mis-bridged receiver of the method_faces.cpp class 3, sitting in
             hal/lk4_solidheap_seat.cpp:45:
 
-                /alternatename:__ZN4Heap10SetDefaultEv=?SetDefault@Heap@@QAEHXZ
+                /alternatename:__ZN5mHeap6Heap_t10SetDefaultEv=?SetDefault@Heap_t@mHeap@@QAEHXZ
 
             The RHS is __thiscall and takes its receiver in ECX. EVERY C caller
             of the LHS passes it on the stack instead --
-            src/_ZN4Heap20RestoreFromTemporaryEv.cpp:11,
-            src/_ZN4Heap23SetupSolidHeapAsDefaultEjPS_i.cpp:18,
+            src/engine/heap/Heap.cpp:11,
+            src/engine/heap/Heap.cpp:18,
             src/_ZN9dScDSMT_c8BehaviorEv.cpp:49 and :53, and
             src/_ZN5Stage13InitResourcesEv.cpp:234 -- so the method runs with a
             garbage `this` and its body is `int old = G; G = (int)this;

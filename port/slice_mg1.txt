@@ -28,7 +28,7 @@
 # SIX BODIES IN THE CLOSURE ARE GENUINELY UNMATCHED and are therefore NOT here.
 # No block in config/arm9/overlays/ovNNN/delinks.txt covers any of the six and
 # no src file defines them:
-#     ov004  func_ov004_020ae858  func_ov004_020b1710  func_ov004_020b2220
+#     ov004  Mg_DrawMenu  Mg_DrawRecordRow  Mg_DrawNumberRotated
 #     ov006  func_ov006_020e1854  func_ov006_020e1dc8  func_ov006_020e20bc
 # func_ov006_020e1854 is a LIVE STATE TARGET -- it is the code word of the
 # pointer-to-member pair at 0x0213c2bc -- so this class cannot reach every one
@@ -37,7 +37,7 @@
 # AMENDED, run mg5 lane WTIMER. FOUR OF THE SIX NOW HAVE HOST COPIES, and this
 # is the running count rather than a rewrite of the paragraph above. Lane CT1
 # transcribed func_ov006_020e1854, lane CUR2 transcribed func_ov006_020e1dc8
-# and func_ov006_020e20bc, and this lane transcribed func_ov004_020b2220 into
+# and func_ov006_020e20bc, and this lane transcribed Mg_DrawNumberRotated into
 # unmatched/MgHud_ScaledNumber.cpp -- it is the minigame HUD's scaled number
 # drawer and it was why the "Wanted!" countdown never appeared on screen.
 # WHAT DID NOT CHANGE: all six are still genuinely unmatched and still belong
@@ -46,8 +46,8 @@
 # paragraph stays true.
 #
 # AMENDED AGAIN, run mg12 lane PANEL. THE SENTENCE ABOVE IS NOW WRONG ABOUT ONE
-# OF THE SIX and this is the correction rather than a rewrite. func_ov004_020ae858
-# HAS a src file defining it -- src/func_ov004_020ae858.cpp, at the bottom of this
+# OF THE SIX and this is the correction rather than a rewrite. Mg_DrawMenu
+# HAS a src file defining it -- src/Mg_DrawMenu.cpp, at the bottom of this
 # slice -- and it is a real decompilation off the ROM, honestly NONMATCHING at 10
 # of 118 words. It is still true of that body that NO DELINK BLOCK COVERS IT:
 # config/arm9/overlays/ov004/delinks.txt runs to 0x020ae5c4 and resumes at
@@ -57,10 +57,10 @@
 # func_ov006_020e1854 is still the live pointer-to-member state target.
 #
 # FOUR LINES BELOW ALSO APPEAR IN ANOTHER SLICE, and that is correct rather
-# than a mistake to clean up. src/func_ov004_020adc4c.c is in slice_2d1.txt
+# than a mistake to clean up. src/Mg_GetWorkBuffer.c is in slice_2d1.txt
 # (the LoadFont wedge, the one ov004 body the port could already reach), and
-# src/func_ov004_020adc00.c, src/func_ov004_020adc1c.c and
-# src/func_ov004_020ada40.c are in
+# src/Mg_SetTopRecord.c, src/Mg_GetTopRecord.c and
+# src/Mg_SetSessionBest.c are in
 # slice_gate192.txt, where Spindrift reaches them. CMake appends both lists to
 # the same target and dedupes identical absolute paths, so each is compiled
 # once. They are listed here anyway because this file is a statement about
@@ -79,9 +79,9 @@
 # be defeated silently. So Spindrift reaches the ov002 body today and this
 # slice does not change that either way.
 # WHAT DOES SURVIVE IS A NOTE ABOUT THE MAP'S REASONING, not about the bug.
-# Section 6 argues partly from data_ov004_020beb68 being permanently zero, and
+# Section 6 argues partly from gMgScene being permanently zero, and
 # that premise stops being true here: _ZN11dScMgBase_cC2Ev, dScMgBase_c's base
-# constructor, writes data_ov004_020beb68 = self, so once a minigame scene has
+# constructor, writes gMgScene = self, so once a minigame scene has
 # been constructed the ov004 body's opening guard passes. It cannot fire on a
 # level, where no minigame is ever constructed, so nothing about the shipped
 # behaviour changes. The map file is amended in the same commit as this one.
@@ -98,7 +98,7 @@
 # ONLY SIX OF THE TWELVE WERE NAMED BY A LINK, and the other six are silent for
 # two different reasons. TWO (func_ov006_020e1214, _020e3078) declare their PMF
 # table inside extern "C", so the global mangles as the plain C name the mount
-# already defines. FOUR (func_ov004_020b31b4, _020b321c, _020b8714, _020b8778)
+# already defines. FOUR (Banner_Draw, _020b321c, _020b8714, _020b8778)
 # have NO PMF GLOBAL AT ALL -- the member pointer is a field of the object -- so
 # no link can ever name them and their struct layouts are wrong as well as their
 # dispatch. Whoever seats the next minigame sweeps for `::*` rather than
@@ -123,7 +123,7 @@
 # word. hal/scene_mg.cpp runs them in ROM .init order now and its section 3 is
 # rewritten to say so.
 src/minigames/d_s_mg_base.cpp
-src/actors/unit020b2c84.cpp
+src/minigames/unit020b2c84.cpp
 src/unnamed/ov004/__sinit_ov004_020b9ad0.c
 src/unnamed/ov004/__sinit_ov004_020b9b24.c
 # THREE DESTRUCTOR CALLBACKS THE ov004 CONSTRUCTOR NAMES BY ADDRESS. 020b955c
@@ -131,93 +131,93 @@ src/unnamed/ov004/__sinit_ov004_020b9b24.c
 # it. That is the ROM's own reference edge, not a manufactured one: the three
 # src TUs already existed on this branch and were absent from the binary only
 # because nothing referenced them.
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b4a70.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b4a7c.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b4aa0.c
-src/actors/dMg3DHeyhoObjAdapter_c.cpp
-src/actors/dMgJump3DMario_c.cpp
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/func_ov004_020b4a70.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/func_ov004_020b4a7c.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/func_ov004_020b4aa0.c
+src/minigames/d_mg3d_heyho_obj_adapter.cpp
+src/minigames/d_mg_jump3d_mario.cpp
 src/unnamed/ov006/__sinit_ov006_0212f660.c
 src/unnamed/ov006/__sinit_ov006_0212f6b4.c
 src/unnamed/ov006/__sinit_ov006_0212fc7c.c
 src/unnamed/ov006/__sinit_ov006_0212fd48.c
 src/minigames/d_s_mg_card.cpp
-src/actors/dScMgCoin_c.cpp
-src/actors/dScMgCup_c.cpp
-src/actors/dScMgCurling_c.cpp
-src/actors/dScMgCurling2_c.cpp
+src/minigames/d_s_mg_coin.cpp
+src/minigames/d_s_mg_cup.cpp
+src/minigames/d_s_mg_curling.cpp
+src/minigames/d_s_mg_curling2.cpp
 src/unnamed/ov006/__sinit_ov006_02130a04.c
-src/actors/dMg3DEspAnimSet_c.cpp
-src/actors/dScMgHanachan_c.cpp
-src/actors/dScMgJump_c.cpp
+src/minigames/d_mg3d_esp_anim_set.cpp
+src/minigames/d_s_mg_hanachan_methods.cpp
+src/minigames/d_s_mg_jump_methods.cpp
 src/minigames/d_s_mg_jump2.cpp
-src/actors/dScMgLuigi_c.cpp
+src/minigames/d_s_mg_luigi.cpp
 src/minigames/d_s_mg_memory.cpp
-src/actors/dScMgMemory2_c.cpp
+src/minigames/d_s_mg_memory2.cpp
 src/minigames/d_s_mg_m_carlo.cpp
 src/minigames/d_s_mg_m_carlo2.cpp
-src/actors/dScMgPachinko_c.cpp
-src/actors/dScMgPachinko2_c.cpp
-src/actors/dScMgPanel_c.cpp
+src/minigames/d_s_mg_pachinko.cpp
+src/minigames/d_s_mg_pachinko2.cpp
+src/minigames/d_s_mg_panel.cpp
 src/unnamed/ov006/__sinit_ov006_021322bc.c
-src/actors/dScMgSlots.cpp
+src/minigames/d_s_mg_slots.cpp
 src/unnamed/ov006/__sinit_ov006_02132970.c
-src/actors/dScMgTeresa_c.cpp
+src/minigames/d_s_mg_teresa.cpp
 src/minigames/d_s_mg_trampoline2.cpp
 src/minigames/d_s_mg_bsc.cpp
-src/actors/dScMgSnowball_c.cpp
+src/minigames/d_s_mg_snowball.cpp
 
 # ---- ov006: dScMgCurling_c's closure, 44 TUs ------------------------------
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/d_s_mg_curling.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e17f8.cpp
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/_ZN14dScMgCurling_cD1Ev.cpp
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/d_s_mg_curling.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e17f8.cpp
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/_ZN14dScMgCurling_cD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN14dScMgCurling_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN14dScMgCurling_cD0Ev.cpp
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e0694.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e071c.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e07b0.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e0884.cpp
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e091c.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e0a24.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e0b64.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e0ca0.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e0694.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e071c.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e07b0.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e0884.cpp
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e091c.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e0a24.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e0b64.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e0ca0.c
 # HOST-COPIED (MG2): src/func_ov006_020e0d84.cpp
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e0e18.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e0edc.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e0ff0.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e1100.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e0e18.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e0edc.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e0ff0.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e1100.c
 # HOST-COPIED (MG2): src/func_ov006_020e1214.cpp
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e1264.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e1264.c
 # HOST-COPIED (MG2): src/func_ov006_020e12d0.cpp
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e13a4.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e1554.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e1608.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e1680.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e1b54.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e1c68.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e269c.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e26f8.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e285c.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e2868.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e2c08.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e2dbc.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e2eb8.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e2ebc.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e2f78.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e13a4.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e1554.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e1608.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e1680.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e1b54.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e1c68.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e269c.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e26f8.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e285c.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e2868.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e2c08.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e2dbc.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e2eb8.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e2ebc.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e2f78.c
 # HOST-COPIED (MG2): src/func_ov006_020e3078.cpp
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e3210.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e3250.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e3378.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/func_ov006_020e3388.c
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/_ZN14dScMgCurling_c13OnYoshiTryEatEi.cpp
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/_ZN14dScMgCurling_c6RenderEv.cpp
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e3210.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e3250.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e3378.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/func_ov006_020e3388.c
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/_ZN14dScMgCurling_c10StartRoundEi.cpp
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/_ZN14dScMgCurling_c6RenderEv.cpp
 # HOST-COPIED (MG2): src/_ZN14dScMgCurling_c8BehaviorEv.cpp
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 146): src/_ZN14dScMgCurling_c13InitResourcesEv.cpp
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 146): src/_ZN14dScMgCurling_c13InitResourcesEv.cpp
 
 # ---- ov004: the dScMgBase_c framework, 152 TUs ----------------------------
 # FOUR ov004 TUs ARE DELIBERATELY ABSENT from the block below -- slots 1, 7,
 # 29 and 30 -- and it is a DECLARATION CONFLICT rather than a missing body.
 # src/minigames/d_s_mg_base.cpp, _020b0620.cpp and _020aeed8.cpp define their
-# single parameter char*, and src/_ZN11dScMgBase_c16OnAimedAtWithEggEv.cpp defines its Obj*,
+# single parameter char*, and src/_ZN11dScMgBase_c17SaveScreenForMenuEv.cpp defines its Obj*,
 # while include/decl_common.h declares all four void* -- and every one of the
 # four includes that header, so MSVC refuses each with C2733 "you cannot
 # overload a function with extern C linkage". mwccarm accepts it, which is why
@@ -246,26 +246,26 @@ src/actors/dScMgSnowball_c.cpp
 # FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Ov004_Deallocate.c
 # FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/RenderOamBothScreens.cpp
 # FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/RenderOamMainScreen.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020aea30.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020ada40.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c9Virtual8CEv.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020ad6f4.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020ad6fc.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020ad90c.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020ad940.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020ada20.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020adafc.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020adb1c.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020adbc0.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020adbe0.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020adc00.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020adc1c.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020adc3c.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020adc4c.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020adc68.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020adc74.c
-# HOST-COPIED (MG2): src/func_ov004_020add88.cpp
-# HOST-COPIED (MG2): src/func_ov004_020adf2c.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_DrawSpriteList.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_SetSessionBest.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c12IsAltVariantEv.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_GetLastRecordRank.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_FindRecordRank.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_CommitRecords.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_RankSessionBest.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_ClearNewRecordFlag.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_GetSessionBest.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_SubmitScore.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_GetSubmittedScore.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_IsNewRecord.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_SetTopRecord.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_GetTopRecord.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_GetSaveTable.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_GetWorkBuffer.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Ov004_LoadFile.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Ov004_LoadFileByPath.c
+# HOST-COPIED (MG2): src/Mg_DrawFx.cpp
+# HOST-COPIED (MG2): src/Mg_UpdateFx.cpp
 # The graphics block's four forwarders, added by the DUALSCREEN lane. They
 # are data_ov004_020bc03c's words 0..3 -- dScMgBase_c::graphCallback_c's
 # vtable -- and each forwards into the scene's own table at +0x5c, +0x58,
@@ -276,29 +276,29 @@ src/actors/dScMgSnowball_c.cpp
 # FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c15graphCallback_c14GraphCallback2Ev.cpp
 # FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c15graphCallback_c14GraphCallback1Ev.cpp
 # FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c15graphCallback_c14GraphCallback0Ev.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c8OnPushedEv.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c8OnKickedEv.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c11OnAttacked1Ev.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c11OnAttacked2Ev.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020ae1cc.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020ae1f0.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020ae20c.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020ae274.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020ae2c8.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020ae330.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c9Virtual88Eiiii.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020aea78.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020aeb24.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c19OnHitFromUnderneathEv.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c15OnHitByMegaCharEv.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020af5e0.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020af868.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020af948.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020afc18.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020afdd0.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b04c0.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b04d0.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c24OnHitByCannonBlastedCharEv.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c16OnGraphCallback3Ev.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c16OnGraphCallback2Ev.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c16OnGraphCallback1Ev.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c16OnGraphCallback0Ev.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_GetMusicMode.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_GetMusicTrack.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_RestoreMusic.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_PlayJingle.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_StartMusic.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_InitMusic.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c11PaintSquareEiiii.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_DrawSpriteListEntry.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_UpdateMenu.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c9CloseMenuEv.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c8OpenMenuEv.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_CopySpriteList.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_RenderSubSpritePalMtx.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_RenderSubSpriteMtx.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_RenderMainSpritePalMtx.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_RenderSpriteBoth.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_GetTopScreenYOffset.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_SetTopScreenYOffset.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c14GetDisplayModeEv.cpp
 src/minigames/d_s_mg_base.cpp
 # Run mg5, lane BASESET. src/minigames/d_s_mg_base.cpp IS EXCLUDED, host-copied in
 # port/unmatched/MgBase_Slot5.cpp. It is dScMgBase_c slot 5,
@@ -309,64 +309,64 @@ src/minigames/d_s_mg_base.cpp
 # of the two argument ride-throughs that file named and left; slot 7 is the
 # first and is MgBase_Slot7.cpp. ONE CALL differs from src.
 # HOST-COPIED (BASESET): src/minigames/d_s_mg_base.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b0a54.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b0b1c.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b0cac.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b0d30.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b0d8c.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b0de0.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b14f0.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_SetSharedState.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_CheckBannerButton.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_ShowBanner.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_ResetOverlays.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_DrawBlinkSprite.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_DrawPrompt.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_DrawRecordTable.c
 # Lane LINKMG: the minigame HUD's HIGH SCORE drawer is BACK as the matched TU.
 # Run mg5 lane HSDISP had excluded it and host-copied it in
 # port/unmatched/MgHud_HighScore.cpp with its void * parameter retyped int,
 # but that retype changes no host code: the TU is plain C and its one
-# parameter and func_ov004_020b1ea4's third argument are 4-byte cdecl slots
+# parameter and Mg_DrawNumber's third argument are 4-byte cdecl slots
 # either way. The dropped-argument defect HSDISP fixed lives in the CALLER,
-# src/func_ov006_020fba48.c (s8 at both ends, an invented parameter), and
+# src/Pachinko_DrawTopRecord.c (s8 at both ends, an invented parameter), and
 # that caller alone stays host-copied, off slice_pch.txt, tagged PORT_HOST_ABI.
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b19f0.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b1c68.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b1cf0.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b1d60.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b1ea4.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b2444.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c9Virtual84Ev.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c9Virtual80Ev.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c9Virtual7CEv.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b290c.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b2980.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c15OnGroundPoundedEv.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c9Virtual50Ev.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c13OnTurnIntoEggEi.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c13OnYoshiTryEatEi.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b29a0.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_DrawTopLeftCounter.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_RenderSpriteOnMtx.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_RenderSpriteOn.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_RenderSpriteOnNoMtx.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_DrawNumber.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_DrawBigNumber.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c11InitEnginesEv.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c16InitMainScreenBgEv.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c15InitSubScreenBgEv.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_ResetBgOffsets.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_DisableAllBanks.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c10OnDealDoneEv.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c11OnNewRecordEv.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c11CanEndStateEi.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_c10StartRoundEi.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_CallStartRound.cpp
 # RETIRED at SLICE1: body now in src/_ZN11dScMgBase_cD0Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN11dScMgBase_cD2Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN11dScMgBase_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN11dScMgBase_cD0Ev.cpp
 # FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_cD1Ev.cpp
 # FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/_ZN11dScMgBase_cC2Ev.cpp
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b2c84.c
-# func_ov004_020b2cb8 is back (run linkfull, lane RS4PORT). MG2 host-copied it
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Mg_FreeBannerFiles.c
+# Mg_LoadBannerFiles is back (run linkfull, lane RS4PORT). MG2 host-copied it
 #   into port/unmatched/MgBase_LangTable.cpp for a fabricated 29-entry
 #   initializer; main #1557 replaced that with the ROM's template (entry 1 =
 #   {0x140, &data_ov004_020b9f54}) and the port's src is main's blob, so the
 #   host copy is retired.
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b2cb8.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b3194.c
-# HOST-COPIED (MG2): src/func_ov004_020b31b4.cpp
-# HOST-COPIED (MG2): src/func_ov004_020b321c.cpp
-# HOST-COPIED (MG2): src/func_ov004_020b3278.cpp
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Mg_LoadBannerFiles.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_Free.c
+# HOST-COPIED (MG2): src/Banner_Draw.cpp
+# HOST-COPIED (MG2): src/Banner_Update.cpp
+# HOST-COPIED (MG2): src/Banner_Init.cpp
 # THE TWO SLOT-12 FRAMEWORK STATES, run mg5 lane FWK. Both are dispatched
 # through unmatched/MgBase_StateDispatch.cpp's address switch, which had no
 # case for either until that lane added one, so a scene 366 boot reported 174
 # dispatches landing nowhere. 020b35d8 is the real body of the two (0xc0 bytes,
 # a drawing state); 020b3698 is one `bx lr`. Derivation, the relocs.txt rows
 # for both pair words and the disassembly of both call sites are in section 5
-# of that file. func_ov004_020b1aec is 020b35d8's one callee the slice did not
-# already carry: a five-line reader of data_ov004_020beb68, which the slice has.
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b1aec.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b35d8.c
+# of that file. Mg_GetLevel is 020b35d8's one callee the slice did not
+# already carry: a five-line reader of gMgScene, which the slice has.
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_GetLevel.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_DrawLevelNumber.c
 # Run mg5, lane BASESET. THE OTHER TWENTY-TWO OF __sinit_ov004_020b955c'S
 # TWENTY-FOUR. Lane FWK routed two of that constructor's distinct code words
 # (0x020b35d8 and 0x020b3698, the line above and its neighbour) and left
@@ -380,35 +380,35 @@ src/minigames/d_s_mg_base.cpp
 # here rather than anywhere else because these lines are what give them a
 # caller: the pair words are mounted DATA holding DS addresses, so /OPT:REF had
 # dropped all twenty-two.
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b3834.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b3888.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b3b38.cpp
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b3c58.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b3c9c.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b3cb8.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b3e9c.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b4080.cpp
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b40ac.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b433c.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b4360.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b45c0.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b4820.cpp
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b484c.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b49b8.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b49e4.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b49f0.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b4a1c.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b4a28.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b4a40.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b4a4c.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b4a64.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b3698.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b40c0.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b410c.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b4214.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b422c.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b42c0.c
-src/actors/dMgState_c.cpp
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_UpdateDrop.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_SetupDrop.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_DrawSqueeze.cpp
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_UpdateFall.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_SetupFall.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_DrawPopSpinA.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_DrawPopSpinB.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_UpdatePopSpin.cpp
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_SetupPopSpin.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_SetupZoom.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_DrawZoomA.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_DrawZoomB.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_UpdateZoom.cpp
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_SetupZoomBurst.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_UpdateSlideFromRight.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_SetupSlideFromRight.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_UpdateSlideFromLeft.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_SetupSlideFromLeft.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_UpdateSlideFromBottom.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_SetupSlideFromBottom.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_UpdateSlideFromTop.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_SetupSlideFromTop.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_SetupNone.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_IsPressFinished.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_DrawPressed.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_UpdatePressed.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_Press.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_DrawPlain.c
+src/minigames/d_mg_state.cpp
 # FOLDED into src/actors/dMgState_c.cpp (row 411): src/func_ov004_020b6948.c
 # FOLDED into src/actors/dMgState_c.cpp (row 411): src/func_ov004_020b6ad8.c
 # HOST-COPIED (run mg9 lane BOO): src/func_ov004_020b6b40.c and
@@ -476,18 +476,18 @@ src/actors/dMgState_c.cpp
 # HOST-COPIED (MG2): src/_ZN10dMgState_c6RenderEv.cpp
 # HOST-COPIED (MG2): src/_ZN10dMgState_c8BehaviorEv.cpp
 # FOLDED into src/actors/dMgState_c.cpp (row 411): src/_ZN10dMgState_cC1Ev.cpp
-# FOLDED into src/actors/dMgState_c.cpp (row 411): src/func_ov004_020b8a8c.c
-src/actors/dMgPsOpt_c.cpp
-# FOLDED into src/actors/dMgPsOpt_c.cpp (row 480): src/func_ov004_020b8dc0.c
-# FOLDED into src/actors/dMgPsOpt_c.cpp (row 480): src/func_ov004_020b8ee0.c
-# FOLDED into src/actors/dMgPsOpt_c.cpp (row 480): src/func_ov004_020b8f18.cpp
-# FOLDED into src/actors/dMgPsOpt_c.cpp (row 480): src/func_ov004_020b8f78.cpp
-# FOLDED into src/actors/dMgPsOpt_c.cpp (row 480): src/func_ov004_020b91fc.c
-# FOLDED into src/actors/dMgPsOpt_c.cpp (row 480): src/func_ov004_020b9220.c
-# FOLDED into src/actors/dMgPsOpt_c.cpp (row 480): src/_ZN10dMgPsOpt_c11TouchIcon_cD1Ev.cpp
-# FOLDED into src/actors/dMgPsOpt_c.cpp (row 480): src/_ZN10dMgPsOpt_cD1Ev.cpp
-# FOLDED into src/actors/dMgPsOpt_c.cpp (row 480): src/_ZN10dMgPsOpt_cC1Ev.cpp
-# FOLDED into src/actors/dMgPsOpt_c.cpp (row 480): src/_ZN10dMgPsOpt_c11TouchIcon_cC1Ev.cpp
+# FOLDED into src/actors/dMgState_c.cpp (row 411): src/Mg_ResetBannerLayout.c
+src/minigames/d_mg_ps_opt.cpp
+# FOLDED into src/minigames/d_mg_ps_opt.cpp (row 480): src/PsOpt_PlaceIcon.c
+# FOLDED into src/minigames/d_mg_ps_opt.cpp (row 480): src/_ZN10dMgPsOpt_c6IsIdleEv.c
+# FOLDED into src/minigames/d_mg_ps_opt.cpp (row 480): src/_ZN10dMgPsOpt_c4DrawEv.cpp
+# FOLDED into src/minigames/d_mg_ps_opt.cpp (row 480): src/_ZN10dMgPsOpt_c6UpdateEv.cpp
+# FOLDED into src/minigames/d_mg_ps_opt.cpp (row 480): src/_ZN10dMgPsOpt_c5CloseEv.c
+# FOLDED into src/minigames/d_mg_ps_opt.cpp (row 480): src/_ZN10dMgPsOpt_c4OpenEv.c
+# FOLDED into src/minigames/d_mg_ps_opt.cpp (row 480): src/_ZN10dMgPsOpt_c11TouchIcon_cD1Ev.cpp
+# FOLDED into src/minigames/d_mg_ps_opt.cpp (row 480): src/_ZN10dMgPsOpt_cD1Ev.cpp
+# FOLDED into src/minigames/d_mg_ps_opt.cpp (row 480): src/_ZN10dMgPsOpt_cC1Ev.cpp
+# FOLDED into src/minigames/d_mg_ps_opt.cpp (row 480): src/_ZN10dMgPsOpt_c11TouchIcon_cC1Ev.cpp
 
 # ---- SECOND WAVE: 33 TUs the first link named as unresolved --------------
 # The two-wave method the ov007 slice uses. These are matched TUs the closure
@@ -530,21 +530,21 @@ src/unnamed/arm9/0201/func_02017a0c.c
 # there; this one now is too, and hal/cxx_aliases.cpp carries the measurement.
 src/unnamed/arm9/0201/func_020182bc.c
 src/unnamed/arm9/0201/func_02019028.c
-src/engine/fader/dWipe_c.cpp
+src/runtime/graphics/fader/d_wipe.cpp
 src/unnamed/arm9/0203/func_0203b958.c
 # FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020ae104.c
 # FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b2c58.c
 # FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b2c7c.c
 # FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b2c80.c
-src/actors/unit020b4aa4.cpp
-# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/func_ov004_020b67e0.c
+src/minigames/unit020b4aa4.cpp
+# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/Coin_Destroy.c
 # FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/func_ov004_020b67e4.c
-src/actors/unit020c8a30.cpp
-# FOLDED into src/actors/unit020c8a30.cpp (row 542): src/func_ov006_020c8dcc.c
-# FOLDED into src/actors/unit020c8a30.cpp (row 542): src/func_ov006_020c8dd0.c
-src/actors/unit020cd744.cpp
-# FOLDED into src/actors/unit020cd744.cpp (row 545): src/func_ov006_020d1008.c
-# FOLDED into src/actors/unit020cd744.cpp (row 545): src/func_ov006_020d100c.c
+src/minigames/unit020c8a30.cpp
+# FOLDED into src/minigames/unit020c8a30.cpp (row 542): src/Puff_ElemDtor.c
+# FOLDED into src/minigames/unit020c8a30.cpp (row 542): src/Puff_Nothing.c
+src/minigames/unit020cd744.cpp
+# FOLDED into src/minigames/unit020cd744.cpp (row 545): src/TrmpLine_Destroy.c
+# FOLDED into src/minigames/unit020cd744.cpp (row 545): src/TrmpLine_Reset.c
 
 # ---- THIRD WAVE: 11 more the second link named -----------------------------
 # 7 arm9 and 4 ov001. The ov001 four are REAL FUNCTIONS at those addresses
@@ -573,9 +573,9 @@ src/unnamed/arm9/0201/func_020182ec.c
 # (SM64DS_NFS_PROBE=1). hal/fs_names.cpp carries the face, and it is the same
 # trade hal/fs.cpp already made for SharedFilePtr::Construct.
 src/engine/sound/SoundEngine.cpp
-src/actors/dCapIcon_c.cpp
+src/ui/hud/d_cap_icon.cpp
 src/unnamed/ov001/func_ov001_020ab41c.c
-src/actors/dThIcon_c.cpp
+src/ui/hud/d_th_icon.cpp
 
 # ---- FOURTH WAVE: 3 more, all arm9 --------------------------------------
 # Under the archive and file loader the two SharedFilePtr constructors reach.
@@ -607,7 +607,7 @@ src/unnamed/arm9/0201/func_02018d48.c
 # ---- THE STATE BODIES, which no wave could ever have named ----------------
 # Run link60 lane MG2. These four are dScMgBase_c's own state functions, the
 # targets of the eight-byte pairs __sinit_ov004_020b948c copies into
-# data_ov004_020beb88 and data_ov004_020beb98. Read out of
+# sMgFxUpdateTable and sMgFxDrawTable. Read out of
 # extracted/overlays/overlay_0004.bin at 0x020bbf4c / 0x020bbf54 / 0x020bbf5c /
 # 0x020bbf64, every pair {code, 0}.
 #
@@ -636,11 +636,11 @@ src/unnamed/arm9/0201/func_02018d48.c
 # 2d).
 #   UnloadArchive        wanted by src/func_02018770.c -- NOT TAKEN, faced
 #                        instead; see below and hal/scene_mg_faces.cpp 2e
-#   func_ov004_020b1b40  wanted by src/func_ov004_020addcc.c, a state body
+#   Mg_GainCredits  wanted by src/func_ov004_020addcc.c, a state body
 #   func_0203d630        wanted by src/func_ov004_020adeb0.c, a state body
 # The last two are the cost of reaching the states at all, and they are the
 # first evidence of what the fan-out pays for a dispatch: the state bodies are
-# not leaves. func_ov004_020b1b40 then wanted func_ov004_020b1ba0, which is the
+# not leaves. Mg_GainCredits then wanted Mg_AddCredits, which is the
 # eighth wave's whole remainder and is here too.
 #
 # UnloadArchive IS FACED RATHER THAN LINKED, and the argument is not this
@@ -653,8 +653,8 @@ src/unnamed/arm9/0201/func_02018d48.c
 # archive, because hal/fs.cpp resolves archive-interior file ids lazily, so
 # there is nothing for an unmount to undo.
 src/unnamed/arm9/0203/func_0203d630.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b1b40.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b1ba0.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_GainCredits.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_AddCredits.c
 # ---- BASESET WAVE 2 ----
 # Run mg5, lane BASESET. The linker's own answer, which is the second wave
 # port/slice_ov007.txt's two-wave method predicts and port/mg_fanout_costs.txt
@@ -663,8 +663,8 @@ src/unnamed/arm9/0203/func_0203d630.c
 # either. Nothing here was derived by a closure walk; each line is a symbol the
 # link named, checked to have a matched src TU and a delink block before it was
 # added.
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b37f0.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b39a4.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_StartSpin.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_StartWaveBurst.c
 src/unnamed/arm9/0203/func_0203d704.c
 # Run mg5, lane BASESET, WAVE 3. The rest of the ov004 member-pointer
 # universe (section 8 of port/unmatched/MgBase_StateSetter.cpp bounds it at
@@ -673,23 +673,23 @@ src/unnamed/arm9/0203/func_0203d704.c
 # with a delink block; none of them had a caller in the build before, because
 # the pair words are mounted DATA holding DS addresses and /OPT:REF drops a
 # body nothing names.
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b369c.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b37c4.cpp
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b38ac.c
-# FOLDED into src/actors/unit020b2c84.cpp (row 126): src/func_ov004_020b3978.cpp
-# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/func_ov004_020b4aa4.c
-# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/func_ov004_020b4c30.c
-# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/func_ov004_020b4d50.c
-# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/func_ov004_020b4dfc.c
-# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/func_ov004_020b4f44.c
-# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/func_ov004_020b4ff0.c
-# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/func_ov004_020b5288.cpp
-# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/func_ov004_020b5334.c
-# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/func_ov004_020b51e4.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_DrawSpin.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_UpdateSpin.cpp
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_DrawWave.c
+# FOLDED into src/minigames/unit020b2c84.cpp (row 126): src/Banner_UpdateWave.cpp
+# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/Coin_FlyToCounter.c
+# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/Coin_MoveThenRefund.c
+# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/Coin_RiseSpent.c
+# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/Coin_MoveThenRiseSpent.c
+# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/Coin_Rise.c
+# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/Coin_MoveThenRise.c
+# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/Coin_Move.cpp
+# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/Coin_Reset.c
+# FOLDED into src/actors/unit020b4aa4.cpp (row 539): src/Coin_Hide.c
 # Run mg7, lane L369, WAVE 4. THE FIFTH OF THE SIX GENUINELY-UNMATCHED BODIES
 # THIS FILE'S HEADER NAMES IS NOT UNMATCHED ANY MORE, and unlike the four host
 # copies the amendment above records, this one is a real decompilation:
-# src/func_ov004_020b1710.c byte-matches at mwccarm 1.2/base, 1.2/sp2 and
+# src/Mg_DrawRecordRow.c byte-matches at mwccarm 1.2/base, 1.2/sp2 and
 # 1.2/sp2p3 and carries its own delink block in
 # config/arm9/overlays/ov004/delinks.txt, so it is an ordinary slice line and
 # not a port_ host copy.
@@ -701,21 +701,21 @@ src/unnamed/arm9/0203/func_0203d704.c
 # is DELETED in the same commit, which is why this line is not optional on any
 # target that compiles the faces: the symbol is no longer defined anywhere
 # else. A 3000-frame boot of scene 369 alone entered that trap 5657 times.
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020b1710.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_DrawRecordRow.c
 # Run mg10, lane F371. THE SIXTH OF THE SIX GENUINELY-UNMATCHED BODIES THIS
 # FILE'S HEADER NAMES IS NOW SEATED, and it is the one that was hiding a live
 # host-ABI defect nobody could reach.
 #
-# func_ov004_020ae5c4 is the family's LINE RASTERISER: a Bresenham walk from
+# Mg_DrawLine is the family's LINE RASTERISER: a Bresenham walk from
 # (x0,y0) to (x1,y1) that stamps vtable slot 34 at every lattice point. Slot 34
-# is the BRUSH -- the base's own body, src/_ZN11dScMgBase_c9Virtual88Eiiii.cpp at line 261
+# is the BRUSH -- the base's own body, src/_ZN11dScMgBase_c11PaintSquareEiiii.cpp at line 261
 # above, writes an n-by-n block of `val` through MultiCopy_Int -- so the pair is
 # "draw a line of thickness n in colour val", and the amidakuji board is drawn
 # with it: four vertical rails at x = 0x20, 0x60, 0xa0, 0xe0 and horizontal
 # rungs (x,y) -> (x+0x40,y), from src/func_ov006_020d3ba0.c.
 #
 # THE LINE IS NOT OPTIONAL ON ANY TARGET THAT COMPILES THE FACES, for
-# func_ov004_020b1710's reason above: hal/scene_mg_faces.cpp's trap for this
+# Mg_DrawRecordRow's reason above: hal/scene_mg_faces.cpp's trap for this
 # symbol is DELETED in the same commit and the symbol is defined nowhere else.
 # Seven ov006 TUs across the family call it.
 #
@@ -729,13 +729,13 @@ src/unnamed/arm9/0203/func_0203d704.c
 # It is a .c compiled as C++ (a //cpp marker and a dummy 35-virtual struct is
 # how the slot-34 dispatch is spelled), so it carries a LANGUAGE CXX row in
 # port/CMakeLists.txt beside this slice's other C++ .c files.
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020ae5c4.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_DrawLine.cpp
 
 # Run mg12, lane PANEL. THE LAST OF THE SIX GENUINELY-UNMATCHED BODIES THIS
 # FILE'S HEADER NAMES IS SEATED, and it is the one the owner has been reporting
 # as "the play-again buttons never appear".
 #
-# func_ov004_020ae858 is the RESULTS PANEL's label renderer. It reads the three
+# Mg_DrawMenu is the RESULTS PANEL's label renderer. It reads the three
 # button labels out of three language-indexed tables (data_ov004_020bc020,
 # data_ov004_020bbfbc, data_ov004_020bbfd0, all mounted by port/ov004_syms.txt),
 # walks each label's 8-byte glyph records to the 0xffff terminator, and draws the
@@ -758,4 +758,4 @@ src/unnamed/arm9/0203/func_0203d704.c
 # 25 installed builds) on the base-materialization/addressing floor. Every reloc
 # and the whole literal pool are identical. The banner in the TU carries the
 # measurement and the ~170-candidate lever sweep behind it.
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/func_ov004_020ae858.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 125): src/Mg_DrawMenu.cpp

@@ -164,13 +164,13 @@ data_ov018_02113c7c@0x02113c7c data_ov018_02113c84@0x02113c84 data_ov018_02113c8
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov018_02113be8                        now defined by src/game/actors/d_a_pg_mthr.cpp
-#   data_ov018_02113bf0                        now defined by src/game/actors/d_a_pg_mthr.cpp
-#   data_ov018_02113bf8                        now defined by src/game/actors/d_a_pg_mthr.cpp
+#   gPenguinWait1TextureSequenceFile                        now defined by src/game/actors/d_a_pg_mthr.cpp
+#   gPenguinWait1AnimationFile                        now defined by src/game/actors/d_a_pg_mthr.cpp
+#   gPenguinAngryTextureSequenceFile                        now defined by src/game/actors/d_a_pg_mthr.cpp
 #   data_ov018_02113c00                        now defined by src/game/actors/d_a_pg_mthr.cpp
-#   data_ov018_02113c08                        now defined by src/game/actors/d_a_pg_mthr.cpp
+#   gPenguinWalkAnimationFile                        now defined by src/game/actors/d_a_pg_mthr.cpp
 #   data_ov018_02113c4c                        now defined by src/game/actors/d_a_pg_mthr.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov018_02113bc0! data_ov018_02113bc8!
+gSmLiftCollisionFile! gSmLiftModelFile!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov018_02113bf8! data_ov018_02113c00! data_ov018_02113be8! data_ov018_02113bf0! data_ov018_02113c08! data_ov018_02113c4c!
+gPenguinAngryTextureSequenceFile! data_ov018_02113c00! gPenguinWait1TextureSequenceFile! gPenguinWait1AnimationFile! gPenguinWalkAnimationFile! data_ov018_02113c4c!

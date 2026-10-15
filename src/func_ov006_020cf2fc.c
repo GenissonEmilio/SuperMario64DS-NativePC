@@ -116,7 +116,7 @@
 //
 // THE HOST BUILD REWRITES EVERY STORE BELOW. All thirty-two geometry-engine
 // writes are raw MMIO, which on the host latches into mapped memory and draws
-// nothing, so func_ov006_020cf2fc is a TT_SHARED_HOSTGEN symbol in
+// nothing, so TrmpLine_Draw is a TT_SHARED_HOSTGEN symbol in
 // port/CMakeLists.txt and both trampoline slices take the generated copy.
 // Seating it without that wiring would compile, link, run, and render an empty
 // screen -- which is exactly what the build before this seat did.
@@ -140,7 +140,7 @@ extern void MulMat4x3Mat4x3(s32 *a, s32 *b, s32 *dst);
 extern void Matrix4x3_ApplyInPlaceToScale(s32 *m, s32 x, s32 y, s32 z);
 extern void func_020553a4(s32 *m);
 
-void func_ov006_020cf2fc(char *obj)
+void TrmpLine_Draw(char *obj)
 {
     s32 i;
     s32 k;

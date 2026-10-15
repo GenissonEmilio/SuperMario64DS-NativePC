@@ -1,9 +1,9 @@
 // NONMATCHING: register allocation and instruction scheduling only (42 of 197
 // words differ). Size is exact (0x314), control flow is exact, and every one of
 // the 16 relocations resolves to the destination the ROM's own word carries:
-// four calls to RandomIntInternal (0x0203b990), one each to func_ov006_021238d0,
-// _Z14ApproachLinearRiii (0x0203ae58), func_ov006_021237c8, func_ov006_0212373c,
-// func_0203cc28 and func_ov006_020cefa4, four to func_ov006_0212382c, and the
+// four calls to RandomIntInternal (0x0203b990), one each to Trmp2_ColumnForKind,
+// _Z14ApproachLinearRiii (0x0203ae58), Trmp2_PickFaceA, Trmp2_PickFaceB,
+// func_0203cc28 and TrmpItem_Spawn, four to Trmp2_OccupancyBits, and the
 // two pool words data_0209e650 and data_ov006_0212f328. THE ROM HAS FOURTEEN
 // CALL SITES IN THIS BODY, NOT FIFTEEN -- counted by disassembling all 197 words
 // and keeping the `bl` instructions, which are all fourteen external (this body
@@ -46,23 +46,23 @@
 // WHAT IT DOES: builds one five-slot Trampoline Terror round. For each of five
 // slots it rolls a kind 0..10, re-rolls 7 and 10 on a 1-in-4 gate, re-rolls any
 // kind already used by an earlier slot (restarting the scan), maps the kind to
-// one of five columns via func_ov006_021238d0, and consults a per-column
+// one of five columns via Trmp2_ColumnForKind, and consults a per-column
 // two-bit occupancy mask: both bits set means the column is full, so it walks
 // the kind forward with ApproachLinear (wrapping 11 -> 0) and starts over; one
 // bit set picks the matching face variant; neither picks the free variant. The
-// chosen face is fed to func_ov006_020cefa4 with an up vector rotated by 0x4000
+// chosen face is fed to TrmpItem_Spawn with an up vector rotated by 0x4000
 // for the odd kinds and the two flagged faces.
 extern int RandomIntInternal(int *seed);
 extern int data_0209e650;
 extern int data_ov006_0212f328;
 
-extern int func_ov006_021238d0(int x);
-extern unsigned short func_ov006_0212382c(int sel, int b);
-extern int func_ov006_021237c8(int x);
-extern int func_ov006_0212373c(int a);
+extern int Trmp2_ColumnForKind(int x);
+extern unsigned short Trmp2_OccupancyBits(int sel, int b);
+extern int Trmp2_PickFaceA(int x);
+extern int Trmp2_PickFaceB(int a);
 extern int _Z14ApproachLinearRiii(int *v, int a, int b);
 extern void func_0203cc28(int *p, int angle);
-extern char *func_ov006_020cefa4(int a0, int *a1, int a2, int a3);
+extern char *TrmpItem_Spawn(int a0, int *a1, int a2, int a3);
 
 typedef struct {
     int x, y, z;
@@ -96,7 +96,7 @@ void func_ov006_02123428(char *c)
                     j = -1;
                 }
             }
-            slot = func_ov006_021238d0(cur);
+            slot = Trmp2_ColumnForKind(cur);
             if ((mask & (2 << (slot * 2))) != 0 && (mask & (1 << (slot * 2))) != 0) {
                 do {
                     if (_Z14ApproachLinearRiii(&cur, 11, 1) != 0)
@@ -109,23 +109,23 @@ void func_ov006_02123428(char *c)
             if ((mask & (2 << (slot * 2))) != 0) {
                 kinds[i] = cur;
                 faces[i] = 8;
-                mask |= func_ov006_0212382c(slot, 1);
+                mask |= Trmp2_OccupancyBits(slot, 1);
             } else if ((mask & (1 << (slot * 2))) != 0) {
                 kinds[i] = cur;
-                faces[i] = (short)func_ov006_021237c8(cur);
-                mask |= func_ov006_0212382c(slot, 0);
+                faces[i] = (short)Trmp2_PickFaceA(cur);
+                mask |= Trmp2_OccupancyBits(slot, 0);
             } else {
                 kinds[i] = cur;
-                faces[i] = (short)func_ov006_0212373c(cur);
+                faces[i] = (short)Trmp2_PickFaceB(cur);
                 switch (faces[i]) {
                 case 4:
                 case 5:
                 case 6:
                 case 7:
-                    mask |= func_ov006_0212382c(slot, 0);
+                    mask |= Trmp2_OccupancyBits(slot, 0);
                     break;
                 default:
-                    mask |= func_ov006_0212382c(slot, 1);
+                    mask |= Trmp2_OccupancyBits(slot, 1);
                     break;
                 }
             }
@@ -140,7 +140,7 @@ void func_ov006_02123428(char *c)
         t = 1;
         if (faces[i] == 6)
             t = 2;
-        func_ov006_020cefa4((int)&data_ov006_0212f328 + kinds[i] * 0xc, (int *)&v,
+        TrmpItem_Spawn((int)&data_ov006_0212f328 + kinds[i] * 0xc, (int *)&v,
                             t, faces[i]);
     }
 }

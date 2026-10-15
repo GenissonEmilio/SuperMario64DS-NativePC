@@ -48,7 +48,7 @@
 //   data_ov002_0210af70  last reloc 0x0210aff0 (slot 32); next dsd symbol
 //                        _ZTS9daSCoin_c = base + 0x84 = 33 words exactly
 //   data_ov100_0214857c  last reloc 0x021485fc (slot 32); next dsd symbol
-//                        data_ov100_02148600 (bss) = base + 0x84, 33 exactly
+//                        gButterflyFlyAnimationFile (bss) = base + 0x84, 33 exactly
 // The wf header's lesson ("31 because Platform WAS THE BUG") one slot further
 // out: a [32] array here would read past the end on every AfterClsn.
 //
@@ -240,7 +240,7 @@ DSSTATE_END
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines ?Enable@dBgW@@QAEHPAUActor@@@Z, and nothing references ?Enable@dBgW@@QAEXPAX@Z, so the row can never fire and nothing wants it to. */
 // #pragma comment(linker, "/alternatename:?Enable@dBgW@@QAEXPAX@Z=?Enable@dBgW@@QAEHPAUActor@@@Z")
 /* THE THREE SHARED-HEADER ROLE NAMES, the CannonHatch disease's third case.
-   src/game/actors/daObjPathLift_c.cpp releases its SharedFilePtrs as G0/G1/G2, and
+   src/game/actors/d_a_obj_path_lift.cpp releases its SharedFilePtrs as G0/G1/G2, and
    _G0/_G1 are single global names hal/cxx_aliases.cpp has already bound to
    the GAME HEAP pointer and to SignPost's KCL -- two of the three would have
    linked SILENTLY onto the wrong storage, only G2 errored. The CMake block

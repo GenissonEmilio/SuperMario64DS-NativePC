@@ -564,7 +564,7 @@ DeallocateAll and HeapAllocator::Remove (hal/lk4_eh_dtor_seat.cpp) were watched
 for across every run above; nothing in this lane's path faulted in them and
 nothing here touches that file. This lane REMOVES pressure from that area
 rather than adding it -- the aborting runs were the ones tearing the Stage
-down, and a Stage teardown is what would drive _ZTV13ExpandingHeap slot 5
+down, and a Stage teardown is what would drive _ZTVN5mHeap9ExpHeap_tE slot 5
 hardest. Left for the lane that takes the full set.
 
 

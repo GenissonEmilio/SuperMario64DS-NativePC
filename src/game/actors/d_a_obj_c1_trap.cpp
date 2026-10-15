@@ -25,6 +25,12 @@
  * - func_ov010_02111984 three-argument C ABI collider adapter
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_c1_trap_AssetId {
+    ASSET_C1_TRAP_BMD = 0x05af,
+    ASSET_C1_TRAP_KCL = 0x05b0
+};
+
 #include "daObjC1_Trap_c.h"
 #include "Player.h"
 #include "SharedFilePtr.h"
@@ -425,8 +431,8 @@ void daObjC1_Trap_c::State4()
  * InitResources-owned vtable: D1 at 0x021111a0, D0 at 0x021111ec. */
 
 /* mwcc copies these descriptors in __sinit_d_a_obj_c1_trap.cpp. */
-TrapModelFilePtr data_ov010_02112d08(0x5af);
-TrapCollisionFilePtr data_ov010_02112d00(0x5b0);
+TrapModelFilePtr data_ov010_02112d08(ASSET_C1_TRAP_BMD);
+TrapCollisionFilePtr data_ov010_02112d00(ASSET_C1_TRAP_KCL);
 TrapStateRec data_ov010_02112d28 = {
     &daObjC1_Trap_c::State0,
     &daObjC1_Trap_c::State1,

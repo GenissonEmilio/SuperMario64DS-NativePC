@@ -112,7 +112,7 @@ __ZN4dBgW11GetVelocityER7Vector3=?GetVelocity@dBgW@@UAEXAAUVector3@@@Z  # INERT:
 # DEFINED, by the face at hal/heap_vtable.cpp:96 which re-lands the receiver
 # (`u32 ExpandingHeapAllocator::MemoryLeft() { return
 # _ZN22...MemoryLeftEv(this); }`). An /alternatename whose LHS is defined is
-# ignored, so src/_ZN13ExpandingHeap11VMemoryLeftEv.cpp:26 binds to the face.
+# ignored, so src/_ZN5mHeap9ExpHeap_t11VMemoryLeftEv.cpp:26 binds to the face.
 # The tree already knows this from the other side: the same pair is row 68 of
 # alternatename_baseline.txt, in the defeated-alias allowlist.
 ?MemoryLeft@ExpandingHeapAllocator@@QAEIXZ=__ZN22ExpandingHeapAllocator10MemoryLeftEv  # INERT: alias defeated by the face at heap_vtable.cpp:96

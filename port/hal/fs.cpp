@@ -530,7 +530,7 @@ extern "C" unsigned port_fs_interior_id_nocase(const char *want)
    is Deallocate'd by func_02017c24 and re-read on the next reference. That
    is right for a DS with 4 MB of RAM and a card that streams; on a host it
    means Player::SetAnim does a blocking fopen + fread + LZ77 decode on the
-   frame the animation changes (see src/actors/Player.cpp:
+   frame the animation changes (see src/game/player/Player.cpp:
    Release(old) immediately followed by LoadFile(new)). That was the frame
    hitch on jumps.
 

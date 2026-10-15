@@ -240,6 +240,7 @@ jobs:
             tools.test_symrecords \
             tools.test_tu_manifest_resync \
             tools.test_tu_map \
+            tools.test_tu_treemap \
             tools.test_tu_production \
             tools.test_tu_promote \
             tools.test_tubuild_owned_relocs \

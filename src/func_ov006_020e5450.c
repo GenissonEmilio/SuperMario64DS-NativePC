@@ -19,7 +19,7 @@
 // starts from the closer one; this file is the one whose every instruction was
 // read off the image by hand, which is what the banner above claims.
 //
-// func_ov006_020e5450 @ 0x020e5450, size 0x560. dScMgCurling2_c ("Shell Smash",
+// Curling2_ResolveStoneCollision @ 0x020e5450, size 0x560. dScMgCurling2_c ("Shell Smash",
 // actor id 0x177, scene 375). THE ROUND-END WORKHORSE: state slot 1 of table
 // data_ov006_021419d8 (src/func_ov006_020e5b7c.c) calls it once per moving
 // shell per frame, and slot 2 reaches it through the tail-call veneer
@@ -56,7 +56,7 @@ extern int _ZN4cstd5atan2E5Fix12IiES1_(int y, int x);
 extern void func_02012718(int a, int b);
 extern void func_ov006_020e39e0(char *c, int a, int b);
 
-void func_ov006_020e5450(char *c, int idx)
+void Curling2_ResolveStoneCollision(char *c, int idx)
 {
     int m;
     int n;

@@ -30,8 +30,8 @@
 # Both are plain methods -- Render is `mModel.Render(0); return 1;` -- and
 # nothing referenced them while the faces named the Manager's bodies, so the
 # linker dropped both.
-src/actors/daObjFl_Coin_c.cpp
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/_ZN17BowserPuzzlePiece6RenderEv.cpp
+src/game/actors/d_a_obj_fl_coin.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/_ZN17BowserPuzzlePiece6RenderEv.cpp
 #
 # The D-tors STAY here. The Manager D1/D0 write VT0=_ZTV16daObjFl_Puzzle_c (aliased
 # to the host Manager array) then VT1=_ZTV10dBgActor_c (Platform's base table,
@@ -43,36 +43,36 @@ src/actors/daObjFl_Coin_c.cpp
 # Model/ModelAnim/WithMeshClsn/MovingCylinderClsn/MovingMeshCollider D1 (widely
 # linked); Memory::Deallocate and G0 (decl_common / cxx_aliases); the two ov002
 # model SharedFilePtrs the Piece loads (data_ov002_0210da10/9a8, mounted gate 14).
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/d_a_obj_fl_coin.c
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/d_a_obj_fl_puzzle.c
-src/actors/daWater_Hakidasi_c.cpp
-# FOLDED into src/actors/daWater_Hakidasi_c.cpp (row 48): src/_ZN9JetStream16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/d_a_obj_fl_coin.c
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/d_a_obj_fl_puzzle.c
+src/game/actors/d_a_water_hakidasi.cpp
+# FOLDED into src/game/actors/d_a_water_hakidasi.cpp (row 48): src/_ZN9JetStream16CleanupResourcesEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN9JetStreamD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN9JetStreamD0Ev.cpp
-# FOLDED into src/actors/daWater_Hakidasi_c.cpp (row 48): src/_ZN9JetStreamD1Ev.cpp
-# FOLDED into src/actors/daWater_Hakidasi_c.cpp (row 48): src/_ZN9JetStream16OnPendingDestroyEv.cpp
-# FOLDED into src/actors/daWater_Hakidasi_c.cpp (row 48): src/_ZN9JetStream6RenderEv.cpp
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/func_ov064_02118c48.c
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/func_ov064_02118cd4.c
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/func_ov064_02118cec.c
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/func_ov064_02118d08.c
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/func_ov064_02118d20.c
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/func_ov064_02118d3c.c
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/func_ov064_02118da0.cpp
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/func_ov064_02118e24.cpp
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/func_ov064_02118ee4.c
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/func_ov064_02118fa4.cpp
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/func_ov064_02119010.c
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/_ZN17BowserPuzzlePiece13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/func_ov064_021192bc.c
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/func_ov064_0211929c.cpp
-# FOLDED into src/actors/daWater_Hakidasi_c.cpp (row 48): src/func_ov064_0211987c.c
-# FOLDED into src/actors/daWater_Hakidasi_c.cpp (row 48): src/func_ov064_021193b4.c
-# FOLDED into src/actors/daWater_Hakidasi_c.cpp (row 48): src/func_ov064_021197fc.cpp
-src/actors/daWater_Ring_c.cpp
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/__sinit_ov064_0211b1d4.c
-# FOLDED into src/actors/daWater_Hakidasi_c.cpp (row 48): src/__sinit_ov064_0211b4dc.c
+# FOLDED into src/game/actors/d_a_water_hakidasi.cpp (row 48): src/_ZN9JetStreamD1Ev.cpp
+# FOLDED into src/game/actors/d_a_water_hakidasi.cpp (row 48): src/_ZN9JetStream16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_water_hakidasi.cpp (row 48): src/_ZN9JetStream6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/func_ov064_02118c48.c
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/func_ov064_02118cd4.c
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/func_ov064_02118cec.c
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/func_ov064_02118d08.c
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/func_ov064_02118d20.c
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/func_ov064_02118d3c.c
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/func_ov064_02118da0.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/func_ov064_02118e24.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/func_ov064_02118ee4.c
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/func_ov064_02118fa4.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/func_ov064_02119010.c
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/_ZN17BowserPuzzlePiece13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/func_ov064_021192bc.c
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/func_ov064_0211929c.cpp
+# FOLDED into src/game/actors/d_a_water_hakidasi.cpp (row 48): src/func_ov064_0211987c.c
+# FOLDED into src/game/actors/d_a_water_hakidasi.cpp (row 48): src/func_ov064_021193b4.c
+# FOLDED into src/game/actors/d_a_water_hakidasi.cpp (row 48): src/func_ov064_021197fc.cpp
+src/game/actors/d_a_water_ring.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/__sinit_ov064_0211b1d4.c
+# FOLDED into src/game/actors/d_a_water_hakidasi.cpp (row 48): src/__sinit_ov064_0211b4dc.c
 # the id-79 coordinator shell's own bodies (slot 0 was already below; slot 6
 # joins it -- D1/D0 store the mounted c1d8 / shared VT placeholders and are host
 # thunks in hal/actor_classes_bowserpuzzle.cpp)
-# FOLDED into src/actors/daObjFl_Coin_c.cpp (row 33): src/_ZN17BowserPuzzlePiece8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_coin.cpp (row 33): src/_ZN17BowserPuzzlePiece8BehaviorEv.cpp

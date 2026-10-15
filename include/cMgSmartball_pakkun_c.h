@@ -7,7 +7,7 @@
  * 0x8 past the base's 0x34 -- exactly the two ints below. Both are read and
  * written only by this child's own SaveSnapshot/Update/RestoreInitial.
  *
- * CONSTRUCTED BY func_ov006_02110874, left a free function for the same
+ * CONSTRUCTED BY cMgSmartball_pakkun_c_Construct, left a free function for the same
  * reason the base's is (this tree has migrated zero constructors). It calls
  * the base constructor, stores this vtable, and sets the base's mRadius to
  * 0x14000 -- the per-child constant every sibling's constructor also writes,

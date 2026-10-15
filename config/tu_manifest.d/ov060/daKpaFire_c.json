@@ -1,15 +1,15 @@
 {
   "id": "ov060/daKpaFire_c",
   "module": "ov060",
-  "source": "src/actors/daKpaFire_c.cpp",
-  "promoted_source": "src/actors/daKpaFire_c.cpp",
+  "source": "src/game/actors/d_a_kpa_fire.cpp",
+  "promoted_source": "src/game/actors/d_a_kpa_fire.cpp",
   "status": "promoted",
   "boundary_confidence": "medium",
   "boundary_evidence": [
     "contiguous linker run: 0x02116484..0x02117938, 26 function(s), from build/tu_map.json (tools/tu_map.py, regenerated post-rename as ov060/daKpaFire_c). All 26 carry complete delinks entries; boundaries high on both sides.",
     "HISTORY: class label: daKpaFire_c (ROM RTTI triple homed at ov060 0x0211a7b4/0x0211a7c0/0x0211a7f4; the tree's former BowserFire was coined). daKpaFire_c_classInit at 0x02117938 abuts the run and stays out, as does the KOOPAFIRE profile global.",
     "module sinit corroboration: 6 sinit(s) / 6 .ctor entries, sinit_vs_tu=ok, corroborated=True (module-wide)",
-    "CLASSINIT TAIL FOLD (2026-10-09): daKpaFire_c_classInit (0x02117938..0x02117980) abuts this TU's .text end with no gap and is now inside it, spelled `return new daKpaFire_c;` (operator new 0x38c, dEnemyBase_c base ctor, _ZTV11daKpaFire_c vptr store, dBgCh_Actr/dCcAc_c/dExtShadowModel_c member ctors -- the retired shard's hand-spelled sequence). It builds only this class, for the KOOPAFIRE profile; the unit is 0x02116484..0x02117980, bounded above by src/actors/daKpa2Bg_c.cpp, which starts exactly at 0x02117980."
+    "CLASSINIT TAIL FOLD (2026-10-09): daKpaFire_c_classInit (0x02117938..0x02117980) abuts this TU's .text end with no gap and is now inside it, spelled `return new daKpaFire_c;` (operator new 0x38c, dEnemyBase_c base ctor, _ZTV11daKpaFire_c vptr store, dBgCh_Actr/dCcAc_c/dExtShadowModel_c member ctors -- the retired shard's hand-spelled sequence). It builds only this class, for the KOOPAFIRE profile; the unit is 0x02116484..0x02117980, bounded above by src/game/actors/d_a_kpa2_bg.cpp, which starts exactly at 0x02117980."
   ],
   "sections": [
     {
@@ -559,7 +559,7 @@
   "production_mode": "intact-object",
   "init": [
     {
-      "symbol": "__sinit_daKpaFire_c.cpp",
+      "symbol": "__sinit_d_a_kpa_fire.cpp",
       "address": "0x02119df0",
       "size": "0x1a4",
       "binding": "STB_GLOBAL",
@@ -568,7 +568,7 @@
   ],
   "ctor": [
     {
-      "symbol": ".p__sinit_daKpaFire_c.cpp",
+      "symbol": ".p__sinit_d_a_kpa_fire.cpp",
       "address": "0x0211a4c0",
       "size": "0x4",
       "binding": "STB_GLOBAL",
@@ -577,13 +577,13 @@
   ],
   "symbol_binding_rewrites": [
     {
-      "symbol": "__sinit_daKpaFire_c.cpp",
+      "symbol": "__sinit_d_a_kpa_fire.cpp",
       "from": "STB_LOCAL",
       "to": "STB_GLOBAL",
       "evidence": "mwcc emits the TU initializer local; DSD requires a configured global relocation destination at the same exact address"
     },
     {
-      "symbol": ".p__sinit_daKpaFire_c.cpp",
+      "symbol": ".p__sinit_d_a_kpa_fire.cpp",
       "from": "STB_LOCAL",
       "to": "STB_GLOBAL",
       "evidence": "mwcc emits the ctor-table object local; DSD exposes owned symbols globally and cannot encode a local symbols.txt entry"
@@ -596,7 +596,7 @@
       "type": "R_ARM_ABS32",
       "kind": "load",
       "addend": 0,
-      "symbol": "__sinit_daKpaFire_c.cpp",
+      "symbol": "__sinit_d_a_kpa_fire.cpp",
       "target_module": "ov060",
       "target_address": "0x02119df0"
     },

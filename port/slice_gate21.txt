@@ -35,28 +35,28 @@
 # this-adjustment arithmetic itself, so MSVC's pointer-to-member
 # representation never comes into it -- the rabbit's case. Only the eight
 # statics need seating, and that is in hal/actor_overlays.cpp with the rest.
-src/actors/daBtfly_c.cpp
-# FOLDED into src/actors/daBtfly_c.cpp (row 38): src/_ZN9Butterfly13InitResourcesEv.cpp
+src/game/actors/d_a_btfly.cpp
+# FOLDED into src/game/actors/d_a_btfly.cpp (row 38): src/_ZN9Butterfly13InitResourcesEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN9ButterflyD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN9ButterflyD0Ev.cpp
-# FOLDED into src/actors/daBtfly_c.cpp (row 38): src/_ZN9Butterfly8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_btfly.cpp (row 38): src/_ZN9Butterfly8BehaviorEv.cpp
 # _ZN9Butterfly6RenderEv IS NOT HERE: it dispatches ModelAnim slot 5
 # through a local shadow class, which is ROM numbering, and _ZTV9ModelAnim
 # CANNOT be dual-filled the way _ZTV5Model can -- MSVC's slot 5 there is
 # Virtual18, which takes two arguments where the shadow passes one. Host
 # copy in port/unmatched/ModelAnim_Renders.cpp; measured as a c0000005 in
 # Model::Virtual10 before it was one.
-# FOLDED into src/actors/daBtfly_c.cpp (row 38): src/_ZN9Butterfly16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daBtfly_c.cpp (row 38): src/_ZN9Butterfly16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_btfly.cpp (row 38): src/_ZN9Butterfly16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_btfly.cpp (row 38): src/_ZN9Butterfly16OnPendingDestroyEv.cpp
 # the eight states, all matched -- no hole and no trap
-# FOLDED into src/actors/daBtfly_c.cpp (row 38): src/_ZN9Butterfly6State6Ev.cpp
-# FOLDED into src/actors/daBtfly_c.cpp (row 38): src/_ZN9Butterfly6State5Ev.cpp
-# FOLDED into src/actors/daBtfly_c.cpp (row 38): src/_ZN9Butterfly6State4Ev.cpp
-# FOLDED into src/actors/daBtfly_c.cpp (row 38): src/_ZN9Butterfly6State7Ev.cpp
-# FOLDED into src/actors/daBtfly_c.cpp (row 38): src/_ZN9Butterfly6State3Ev.cpp
-# FOLDED into src/actors/daBtfly_c.cpp (row 38): src/_ZN9Butterfly6State2Ev.cpp
-# FOLDED into src/actors/daBtfly_c.cpp (row 38): src/_ZN9Butterfly6State1Ev.cpp
-# FOLDED into src/actors/daBtfly_c.cpp (row 38): src/_ZN9Butterfly6State0Ev.cpp
+# FOLDED into src/game/actors/d_a_btfly.cpp (row 38): src/_ZN9Butterfly6State6Ev.cpp
+# FOLDED into src/game/actors/d_a_btfly.cpp (row 38): src/_ZN9Butterfly6State5Ev.cpp
+# FOLDED into src/game/actors/d_a_btfly.cpp (row 38): src/_ZN9Butterfly6State4Ev.cpp
+# FOLDED into src/game/actors/d_a_btfly.cpp (row 38): src/_ZN9Butterfly6State7Ev.cpp
+# FOLDED into src/game/actors/d_a_btfly.cpp (row 38): src/_ZN9Butterfly6State3Ev.cpp
+# FOLDED into src/game/actors/d_a_btfly.cpp (row 38): src/_ZN9Butterfly6State2Ev.cpp
+# FOLDED into src/game/actors/d_a_btfly.cpp (row 38): src/_ZN9Butterfly6State1Ev.cpp
+# FOLDED into src/game/actors/d_a_btfly.cpp (row 38): src/_ZN9Butterfly6State0Ev.cpp
 
 # ---- FISH (actor 344, ov100) x2 -------------------------------------------
 # The two shoals in the moat. Seven states, and the class is bound to a PARENT
@@ -91,13 +91,13 @@ src/game/actors/d_a_fish.cpp
 # ---- the overlay's own static initialisers --------------------------------
 # All seven, in ROM order. They are what constructs every SharedFilePtr the
 # overlay's classes load through, and two of them are the state tables above.
-# FOLDED into src/actors/daBtfly_c.cpp (row 38): src/__sinit_ov100_021473bc.c
+# FOLDED into src/game/actors/d_a_btfly.cpp (row 38): src/__sinit_ov100_021473bc.c
 src/unnamed/ov100/__sinit_ov100_021474e8.c
-src/actors/daWanwan2_c.cpp
-src/actors/daDoor_c.cpp
+src/game/actors/d_a_wanwan2.cpp
+src/game/actors/d_a_door.cpp
 src/game/actors/d_a_star_gate.cpp
 # FOLDED into src/game/actors/d_a_fish.cpp (row 73): src/__sinit_ov100_02147bc0.c
-src/game/actors/daObjPathLift_c.cpp
+src/game/actors/d_a_obj_path_lift.cpp
 
 # --- linkloop round 0 ---
 # The two ov100 helpers the fish's own methods close over: 02146280 is the
@@ -107,11 +107,11 @@ src/game/actors/daObjPathLift_c.cpp
 # FOLDED into src/game/actors/d_a_fish.cpp (row 73): src/func_ov100_0214629c.cpp
 # Two arm9 bodies no class the port carried before now needed: the butterfly
 # asks its own animation how long it is, and one of its states poofs.
-src/engine/animation/dExtFrameCtrl_c.cpp
-src/actors/dActor_c.cpp
+src/engine/animation/d_ext_frame_ctrl.cpp
+src/runtime/actor/d_actor.cpp
 
 # --- linkloop round 1 ---
-# FOLDED into src/actors/dActor_c.cpp (row 111): src/_ZN8dActor_c16TriplePoofDustAtERK7Vector3.cpp
+# FOLDED into src/runtime/actor/d_actor.cpp (row 111): src/_ZN8dActor_c16TriplePoofDustAtERK7Vector3.cpp
 
 # --- linkloop round 2 ---
 # The butterfly's D1 teardown chain (hal/actor_classes.cpp hosts slot 16 for
@@ -126,7 +126,7 @@ src/_ZN10dCcAcPos_cD1Ev.cpp
 # and GetPos are new files here.
 # RETIRED at SLICE1: body now in src/_ZN10dCcAcPos_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN10dCcAcPos_cD0Ev.cpp
-src/engine/collision/dCcAc_c.cpp
+src/engine/collision/d_cc_ac.cpp
 
 # ---- UNCHAINED_CHOMP (actor 337, ov100) -----------------------------------
 # The obstacle BoB star 3 (5 Silver Stars) needs; registered in
@@ -151,14 +151,14 @@ src/engine/collision/dCcAc_c.cpp
 # +0x668 Holder (typedef'd over an incomplete Actor in the matched TU), the
 # Fish/Whomp/LakituBro case. Host copy in
 # port/unmatched/UnchainedChomp_Behavior.cpp, which also carries the 2-static seat.
-# FOLDED into src/actors/daWanwan2_c.cpp (row 96): src/_ZN14UnchainedChomp16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daWanwan2_c.cpp (row 96): src/_ZN14UnchainedChomp16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_wanwan2.cpp (row 96): src/_ZN14UnchainedChomp16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_wanwan2.cpp (row 96): src/_ZN14UnchainedChomp16OnPendingDestroyEv.cpp
 # _ZN14UnchainedChomp6RenderEv IS NOT HERE: ModelAnim slot-5 shadow dispatch
 # off mModelAnim (+0x30c, not the usual +0xd4) plus a 5-iteration loop over the
 # +0x370 Model array. Host copy in port/unmatched/ModelAnim_Renders.cpp.
 # the two Behavior helpers (plain matched, no PMF/ModelAnim trickery)
-# FOLDED into src/actors/daWanwan2_c.cpp (row 96): src/func_ov100_02143370.cpp
-# FOLDED into src/actors/daWanwan2_c.cpp (row 96): src/func_ov100_02143b68.cpp
+# FOLDED into src/game/actors/d_a_wanwan2.cpp (row 96): src/func_ov100_02143370.cpp
+# FOLDED into src/game/actors/d_a_wanwan2.cpp (row 96): src/func_ov100_02143b68.cpp
 # _ZN14UnchainedChomp8BehaviorEv IS NOT HERE, and NEITHER is func_ov100_02143b18:
 # both form a pointer-to-member while its class is INCOMPLETE (Behavior's Actor
 # stand-in; 02143b18's own `struct C;` typedef), so MSVC widens the PMF to the
@@ -168,12 +168,12 @@ src/engine/collision/dCcAc_c.cpp
 # matched src; it is not.)
 # the two PMF targets the seat wires as host bodies (Fish precedent: real names
 # in the seat table). 02143aa4 (hi) is the one Behavior actually dispatches.
-# FOLDED into src/actors/daWanwan2_c.cpp (row 96): src/func_ov100_02143aa4.c
-# FOLDED into src/actors/daWanwan2_c.cpp (row 96): src/func_ov100_02143ae0.c
+# FOLDED into src/game/actors/d_a_wanwan2.cpp (row 96): src/func_ov100_02143aa4.c
+# FOLDED into src/game/actors/d_a_wanwan2.cpp (row 96): src/func_ov100_02143ae0.c
 # ...and 02143aa4's own three ov100 callees (its state-advance chain)
-# FOLDED into src/actors/daWanwan2_c.cpp (row 96): src/func_ov100_0214344c.c
-# FOLDED into src/actors/daWanwan2_c.cpp (row 96): src/func_ov100_021435e8.cpp
-# FOLDED into src/actors/daWanwan2_c.cpp (row 96): src/func_ov100_021437d4.c
+# FOLDED into src/game/actors/d_a_wanwan2.cpp (row 96): src/func_ov100_0214344c.c
+# FOLDED into src/game/actors/d_a_wanwan2.cpp (row 96): src/func_ov100_021435e8.cpp
+# FOLDED into src/game/actors/d_a_wanwan2.cpp (row 96): src/func_ov100_021437d4.c
 # the two ctor/dtor helpers Spawn and D1 pass to __cxa_vec_ctor / __cxa_vec_cleanup
 # (func_0203d384 and _ZN7Vector3D1Ev are already in slice_gate10); leaf funcs.
 src/_ZN8Vector3sD1Ev.cpp
@@ -186,4 +186,4 @@ src/unnamed/arm9/0203/func_0203d73c.c
 # base body, and that body's one job is to add slot 29's result to y: seating 30
 # over a trapped 29 would only move the freeze one slot along. Byte-matches on
 # 1.2/base, 1.2/sp2, 1.2/sp2p3 with strict relocs.
-# FOLDED into src/actors/daWanwan2_c.cpp (row 96): src/_ZN14UnchainedChomp16OnAimedAtWithEggEv.cpp
+# FOLDED into src/game/actors/d_a_wanwan2.cpp (row 96): src/_ZN14UnchainedChomp16OnAimedAtWithEggEv.cpp

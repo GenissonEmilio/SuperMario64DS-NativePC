@@ -13,7 +13,7 @@
  * raw storage until the factory and the destructor change together.
  *
  * The destructor is the key function, defined out of line in
- * src/actors/dMg3DEspAnimSet_c.cpp, which emits both D1 and D0.
+ * src/minigames/d_mg3d_esp_anim_set.cpp, which emits both D1 and D0.
  * dScMgBase_c's operator delete serves D0.
  */
 #ifndef DSCMG3DESP_C_H
@@ -33,8 +33,8 @@ struct dScMg3DEsp_c : dScMgSingle3DBase_c {
 #else
     virtual ~dScMg3DEsp_c();   /* D1 and D0 */
 #endif
-    virtual void OnYoshiTryEat(int arg);               /* slot 18 */
-    virtual void Virtual50();                          /* slot 20 */
+    virtual void StartRound(int arg);               /* slot 18 */
+    virtual void OnNewRecord();                          /* slot 20 */
 
     u8  mModel1[0x50];             /* 0x4f38, a Model */
     u8  mModel2[0x50];             /* 0x4f88, a Model */

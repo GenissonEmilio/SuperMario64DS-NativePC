@@ -199,7 +199,7 @@ port/build-port.cmd green three times, every pre- and post-link guard included
 29/29 reconstruct, stategen selftest + reconstruct, alternatename, gxband,
 tailjump). Toolchain canary EXACT:
 
-  tools/match.py func_ov006_020cb030 @0x020cb030 0x104  ->  MATCHING VERSIONS: 2004/b56
+  tools/match.py Trmp3DMario_Update @0x020cb030 0x104  ->  MATCHING VERSIONS: 2004/b56
   dsd  ds-decomp-cli 0.11.0
 
 6b. THE MECHANISM, read off the live window by an external process that finds it

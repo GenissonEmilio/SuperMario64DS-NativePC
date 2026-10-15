@@ -1,7 +1,7 @@
 /* HOST ARM recovered by PORTSYNC2 (port/tools/hostarm_recover.py draft, reviewed).
  * The port line carried this in src/_ZN8dScene_cD0Ev.cpp under #ifdef _MSC_VER; the
  * 2026-10 main merge (749f5799a) took main's src/, where that code
- * now lives in src/actors/dScene_c.cpp without the arm. mwccarm never saw the arm,
+ * now lives in src/game/stages/d_scene.cpp without the arm. mwccarm never saw the arm,
  * so nothing here moves a ROM byte. Renamed by address to main's
  * _ZN8dScene_cD0Ev / class dScene_c.
  * The flat D1 reaches ??1dScene_c@@UAE@XZ through port/faces_sync.txt's alias row. */

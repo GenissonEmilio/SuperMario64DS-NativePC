@@ -1,8 +1,8 @@
 {
   "id": "arm9/dExtFrameCtrl_c",
   "module": "arm9",
-  "source": "src/engine/animation/dExtFrameCtrl_c.cpp",
-  "promoted_source": "src/engine/animation/dExtFrameCtrl_c.cpp",
+  "source": "src/engine/animation/d_ext_frame_ctrl.cpp",
+  "promoted_source": "src/engine/animation/d_ext_frame_ctrl.cpp",
   "status": "promoted",
   "boundary_confidence": "high",
   "boundary_evidence": [

@@ -40,6 +40,16 @@
  *   helpers and data_0209e650 keep linker names.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_fish_AssetId {
+    ASSET_FISH_BMD = 0x0447,
+    ASSET_FISH_A_BMD = 0x0448,
+    ASSET_FISH_AB_SWIM_BCA = 0x0449,
+    ASSET_FISH_B_BMD = 0x044a,
+    ASSET_FISH_SWIM_BCA = 0x044b,
+    ASSET_FISH_WAIT_BCA = 0x044c
+};
+
 #include "daFish_c.h"
 #include "common.h"
 #include "Player.h"
@@ -73,11 +83,11 @@ struct FishAnimationFileHandle : SharedFilePtr {
 
 extern "C" {
 extern FishAnimationFileHandle data_ov100_021489cc;    /* the shared fish animation */
-extern FishModelFilePtr data_ov100_021489a4;
-extern FishModelFilePtr data_ov100_021489bc;
-extern FishModelFilePtr data_ov100_021489b4;
-extern FishAnimationFileHandle data_ov100_021489c4;
-extern FishAnimationFileHandle data_ov100_021489ac;
+extern FishModelFilePtr gFishModelFile;
+extern FishModelFilePtr gFishAModelFile;
+extern FishModelFilePtr gFishBModelFile;
+extern FishAnimationFileHandle gFishSwimAnimationFile;
+extern FishAnimationFileHandle gFishAbSwimAnimationFile;
 extern SharedFilePtr *data_ov100_021473a4[]; /* BMD, by mModelIndex */
 extern SharedFilePtr *data_ov100_021473b0[]; /* BCA, by mModelIndex */
 extern daFishState data_ov100_02148a1c[];    /* by mState */
@@ -471,12 +481,12 @@ void daFish_c::func_ov100_02146280()
  * three model handles (files 0x447/0x448/0x44a), the three animation
  * handles (files 0x44b/0x44c/0x449), then the seven state records copied
  * from the ROM PMF constants. */
-FishModelFilePtr data_ov100_021489a4(0x447);
-FishModelFilePtr data_ov100_021489bc(0x448);
-FishModelFilePtr data_ov100_021489b4(0x44a);
-FishAnimationFileHandle data_ov100_021489c4(0x44b);
-FishAnimationFileHandle data_ov100_021489cc(0x44c);
-FishAnimationFileHandle data_ov100_021489ac(0x449);
+FishModelFilePtr gFishModelFile(ASSET_FISH_BMD);
+FishModelFilePtr gFishAModelFile(ASSET_FISH_A_BMD);
+FishModelFilePtr gFishBModelFile(ASSET_FISH_B_BMD);
+FishAnimationFileHandle gFishSwimAnimationFile(ASSET_FISH_SWIM_BCA);
+FishAnimationFileHandle data_ov100_021489cc(ASSET_FISH_WAIT_BCA);
+FishAnimationFileHandle gFishAbSwimAnimationFile(ASSET_FISH_AB_SWIM_BCA);
 daFishState data_ov100_02148a1c[7] = {
     data_ov100_02148450,
     data_ov100_02148460,

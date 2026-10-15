@@ -19,6 +19,12 @@
  *   data_ov064_*.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_fl_gura_AssetId {
+    ASSET_FL_GURA_BMD = 0x05f3,
+    ASSET_FL_GURA_KCL = 0x05f4
+};
+
 #include "daObjFl_Gura_c.h"
 #include "SharedFilePtr.h"
 
@@ -100,5 +106,5 @@ struct FlGuraCollisionFilePtr : SharedFilePtr {
 // @symbol __sinit_d_a_obj_fl_gura.cpp
 /* The retail initializer constructs the model first, then the collision
  * file. */
-FlGuraModelFilePtr data_ov064_0211c768(1523);      /* model */
-FlGuraCollisionFilePtr data_ov064_0211c770(1524);  /* collision */
+FlGuraModelFilePtr gFlGuraModelFile(ASSET_FL_GURA_BMD);      /* model */
+FlGuraCollisionFilePtr gFlGuraCollisionFile(ASSET_FL_GURA_KCL);  /* collision */

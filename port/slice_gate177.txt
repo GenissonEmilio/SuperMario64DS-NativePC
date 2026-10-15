@@ -19,35 +19,35 @@
 # Also NOT here (already built): the Enemy base ctor/dtor func_ov002_020aed98 /
 # _ZN12dEnemyBase_cD2Ev and _ZN12dEnemyBase_cC2Ev came in with gate 16; the Player::Burn
 # RotatingFirebar::Behavior reaches came in with gate 175's flame.
-src/actors/daBDonketu_c.cpp
-src/actors/daDonketu_c.cpp
-src/actors/daObjFl_KomaU_c.cpp
-# FOLDED into src/actors/daObjFl_KomaU_c.cpp (row 24): src/_ZN15RotatingFirebar13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjFl_KomaU_c.cpp (row 24): src/_ZN15RotatingFirebar16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjFl_KomaU_c.cpp (row 24): src/_ZN15RotatingFirebar8BehaviorEv.cpp
+src/game/actors/d_a_b_donketu.cpp
+src/game/actors/d_a_donketu.cpp
+src/game/actors/d_a_obj_fl_koma_u.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_koma_u.cpp (row 24): src/_ZN15RotatingFirebar13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_koma_u.cpp (row 24): src/_ZN15RotatingFirebar16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_koma_u.cpp (row 24): src/_ZN15RotatingFirebar8BehaviorEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN15RotatingFirebarD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN15RotatingFirebarD0Ev.cpp
-# FOLDED into src/actors/daObjFl_KomaU_c.cpp (row 24): src/_ZN15RotatingFirebarD1Ev.cpp
-# FOLDED into src/actors/daDonketu_c.cpp (row 23): src/_ZN5BullyD1Ev.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_koma_u.cpp (row 24): src/_ZN15RotatingFirebarD1Ev.cpp
+# FOLDED into src/game/actors/d_a_donketu.cpp (row 23): src/_ZN5BullyD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN5BullyD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN5BullyD0Ev.cpp
-# FOLDED into src/actors/daDonketu_c.cpp (row 23): src/_ZN5Bully13InitResourcesEv.cpp
-src/actors/daOts_c.cpp
-# FOLDED into src/actors/daDonketu_c.cpp (row 23): src/_ZN5Bully8BehaviorEv.cpp
-# FOLDED into src/actors/daBDonketu_c.cpp (row 22): src/_ZN8BigBullyD1Ev.cpp
+# FOLDED into src/game/actors/d_a_donketu.cpp (row 23): src/_ZN5Bully13InitResourcesEv.cpp
+src/game/actors/d_a_ots.cpp
+# FOLDED into src/game/actors/d_a_donketu.cpp (row 23): src/_ZN5Bully8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_b_donketu.cpp (row 22): src/_ZN8BigBullyD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN8BigBullyD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN8BigBullyD0Ev.cpp
-# FOLDED into src/actors/daBDonketu_c.cpp (row 22): src/_ZN8BigBully13InitResourcesEv.cpp
-# FOLDED into src/actors/daBDonketu_c.cpp (row 22): src/_ZN8BigBully8BehaviorEv.cpp
-# FOLDED into src/actors/daOts_c.cpp (row 35): src/func_ov064_02116d1c.cpp
-# FOLDED into src/actors/daOts_c.cpp (row 35): src/func_ov064_02116ec0.cpp
-# FOLDED into src/actors/daDonketu_c.cpp (row 23): src/_ZN5Bully14PlayDeathSoundEv.cpp
-# FOLDED into src/actors/daDonketu_c.cpp (row 23): src/_ZN5Bully17PlayShellHitSoundEv.cpp
-# FOLDED into src/actors/daDonketu_c.cpp (row 23): src/_ZN5Bully12PlayHitSoundEv.cpp
-# FOLDED into src/actors/daDonketu_c.cpp (row 23): src/_ZN5Bully13PlayStepSoundEv.cpp
-# FOLDED into src/actors/daDonketu_c.cpp (row 23): src/_ZN5Bully14UpdateRunStateEv.cpp
-# FOLDED into src/actors/daBDonketu_c.cpp (row 22): src/_ZN8BigBully14UpdateRunStateEv.cpp
-# FOLDED into src/actors/daBDonketu_c.cpp (row 22): src/_ZN8BigBully16UpdateDeathStateEv.cpp
+# FOLDED into src/game/actors/d_a_b_donketu.cpp (row 22): src/_ZN8BigBully13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_b_donketu.cpp (row 22): src/_ZN8BigBully8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_ots.cpp (row 35): src/func_ov064_02116d1c.cpp
+# FOLDED into src/game/actors/d_a_ots.cpp (row 35): src/func_ov064_02116ec0.cpp
+# FOLDED into src/game/actors/d_a_donketu.cpp (row 23): src/_ZN5Bully14PlayDeathSoundEv.cpp
+# FOLDED into src/game/actors/d_a_donketu.cpp (row 23): src/_ZN5Bully17PlayShellHitSoundEv.cpp
+# FOLDED into src/game/actors/d_a_donketu.cpp (row 23): src/_ZN5Bully12PlayHitSoundEv.cpp
+# FOLDED into src/game/actors/d_a_donketu.cpp (row 23): src/_ZN5Bully13PlayStepSoundEv.cpp
+# FOLDED into src/game/actors/d_a_donketu.cpp (row 23): src/_ZN5Bully14UpdateRunStateEv.cpp
+# FOLDED into src/game/actors/d_a_b_donketu.cpp (row 22): src/_ZN8BigBully14UpdateRunStateEv.cpp
+# FOLDED into src/game/actors/d_a_b_donketu.cpp (row 22): src/_ZN8BigBully16UpdateDeathStateEv.cpp
 # The three Renders are NOT here: each is the ROM-order slot-5 dispatch
 # (the Whomp/Scuttlebug case); host copies in
 # port/unmatched/ModelAnim_Renders.cpp.
@@ -56,9 +56,9 @@ src/actors/daOts_c.cpp
 # The three sinits that construct the trio's SharedFilePtrs, the range
 # helper the census sweep missed, and NOT _ZN7daOts_cD1Ev/f28 (the
 # unreachable base-table dtor bodies the host thunks replace).
-# FOLDED into src/actors/daDonketu_c.cpp (row 23): src/__sinit_ov064_0211ae00.c
-# FOLDED into src/actors/daBDonketu_c.cpp (row 22): src/__sinit_ov064_0211aee0.c
-# FOLDED into src/actors/daObjFl_KomaU_c.cpp (row 24): src/__sinit_ov064_0211b0e4.c
+# FOLDED into src/game/actors/d_a_donketu.cpp (row 23): src/__sinit_ov064_0211ae00.c
+# FOLDED into src/game/actors/d_a_b_donketu.cpp (row 22): src/__sinit_ov064_0211aee0.c
+# FOLDED into src/game/actors/d_a_obj_fl_koma_u.cpp (row 24): src/__sinit_ov064_0211b0e4.c
 # _ZN8dActor_c15IsPlayerInRangeE5Fix12IiES1_S1_i: HOST COPY at unmatched/Actor_ClosestPlayerWrappers.cpp
 # (wired in CMakeLists). The matched C calls Actor::ClosestPlayer() with no argument
 # and relies on `this` being live in ARM r0; cdecl drops it, so ClosestPlayer measures

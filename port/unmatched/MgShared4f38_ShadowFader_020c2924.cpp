@@ -1,4 +1,4 @@
-/* HOST COPY of src/func_ov006_020c2924.cpp -- the +0x4f38 sub-object's
+/* HOST COPY of src/Presenter_ResetPose.cpp -- the +0x4f38 sub-object's
  * "re-seat the animation and clear the offsets" call, host-copied ONCE for both
  * classes that mount it.
  *
@@ -14,9 +14,9 @@
  * THE BODY IS SHARED, AND THAT IS A ROM FACT. relocs.txt carries EXACTLY TWO
  * arm_calls to 0x020c2924, one per class, and both are once-per-boot slots:
  *
- *     from:0x020e0018  inside _ZN10dScMgCup_c13OnYoshiTryEatEi   dScMgCup_c   slot 18
+ *     from:0x020e0018  inside _ZN10dScMgCup_c10StartRoundEi   dScMgCup_c   slot 18
  *                                                   (the state reset)
- *     from:0x0211c5a4  inside func_ov006_0211c478   dScMgSound_c slot 0
+ *     from:0x0211c5a4  inside ResetRound   dScMgSound_c slot 0
  *                                                   (InitResources)
  *
  * ONE DEFECT, AND IT IS A RECEIVER DROP AT A HOST C++ VIRTUAL. It is the third
@@ -27,7 +27,7 @@
  *
  * ---- WHAT src DOES AND WHAT THE ROM DOES ---------------------------------
  *
- * src/func_ov006_020c2924.cpp:
+ * src/Presenter_ResetPose.cpp:
  *
  *     void* obj = data_0209f5bc;
  *     int (**vt)(void*) = *(int(***)(void*))obj;
@@ -75,12 +75,12 @@
  *     020c2964  ldr r0,[r4,#0x198]
  *
  * ITS OWN SIBLING ONE FUNCTION UP GETS THIS RIGHT, which is where the fix
- * comes from rather than from invention. src/func_ov006_020c2848.cpp -- called
+ * comes from rather than from invention. src/Presenter_PlayIdle.cpp -- called
  * on the line above, on the same object, at the same byte (ROM 0x020c2878) --
  * declares a local `struct VObj` of SEVEN virtuals and calls
  * `((VObj*)data_0209f5bc)->v6()`. That is a real C++ virtual call: MSVC's slot
  * 6 is byte +0x18, and `this` rides ecx. This file is
- * src/func_ov006_020c2924.cpp with the raw table read replaced by exactly that
+ * src/Presenter_ResetPose.cpp with the raw table read replaced by exactly that
  * spelling and NOTHING else changed.
  *
  * THE DISPATCH STAYS VIRTUAL rather than qualified, for
@@ -99,9 +99,9 @@
  * Scene 367 has always had the repaired body (lane BOX shipped it) and boots
  * clean at 300/900/1200 frames. Scene 361 has been running the DEFECTIVE src
  * TU up to this merge, so the box merge is the first time 361 gets the correct
- * gate. The blast radius is one call per boot -- _ZN10dScMgCup_c13OnYoshiTryEatEi is vtable
+ * gate. The blast radius is one call per boot -- _ZN10dScMgCup_c10StartRoundEi is vtable
  * slot 18 and lane CUP's own census reports "state-reset 1" -- and it cannot
- * touch the dispatch counters, which come from func_ov006_020c2b8c. See
+ * touch the dispatch counters, which come from Presenter_Update. See
  * wiring.md for what the executor must re-measure and what is allowed to move.
  *
  * ---- WHAT CHANGED FROM src, so it can be checked line by line -------------
@@ -109,13 +109,13 @@
  *   1. `int (**vt)(void*) = ...; if (vt[6](obj) == 0) return;` becomes
  *      `if (((HalFaderVObj *)data_0209f5bc)->v6() == 0) return;`
  *
- * Nothing else. The func_ov006_020c2848(c) call that opens it and all seven
+ * Nothing else. The Presenter_PlayIdle(c) call that opens it and all seven
  * stores -- +0x190 = 0, +0x18c = [+0x190], +0x198 = 0, +0x194 = [+0x198],
  * +0x60 = 0, +0xd0 = 0, +0xe4 = 0, in the ROM's own order at 0x020c2950
  * onwards -- are src's, transcribed unchanged, including the read-back through
  * the just-stored word that src spells and the ROM performs.
  *
- * IT DEFINES func_ov006_020c2924, so src/func_ov006_020c2924.cpp is out of
+ * IT DEFINES Presenter_ResetPose, so src/Presenter_ResetPose.cpp is out of
  * port/slice_box.txt (already) AND out of port/slice_cup.txt (this merge).
  * Listing it in either would be an LNK2005 -- and that LNK2005 is exactly how
  * the mg9 merge found the overlap.
@@ -131,7 +131,7 @@
  * +0x18 pair. Word by word rather than by disassembling linearly, which stops
  * at the first literal pool.
  *
- * THE OTHER ONE OF THAT PAIR IS 0x020c2878, INSIDE func_ov006_020c2848, AND IT
+ * THE OTHER ONE OF THAT PAIR IS 0x020c2878, INSIDE Presenter_PlayIdle, AND IT
  * IS CORRECT -- it is the `->v6()` this file borrows. It is left alone.
  *
  * THE DECOMP-SIDE FIX IS NOT ROUTED, because there is nothing wrong with the
@@ -139,13 +139,13 @@
  * defect is the HOST's, which is what makes a port host copy the whole remedy.
  */
 extern "C" {
-extern int  func_ov006_020c2848(void *c);
+extern int  Presenter_PlayIdle(void *c);
 extern void *data_0209f5bc;
-void func_ov006_020c2924(char *c);
+void Presenter_ResetPose(char *c);
 }
 
 /* Seven virtuals so the seventh is MSVC slot 6, which is byte +0x18 -- the
-   byte the ROM loads. Identical in shape to src/func_ov006_020c2848.cpp's own
+   byte the ROM loads. Identical in shape to src/Presenter_PlayIdle.cpp's own
    local `struct VObj`, and named differently only so the two do not collide at
    C++ linkage. */
 struct HalFaderVObj {
@@ -160,12 +160,12 @@ struct HalFaderVObj {
 
 // PORT_HOST_ABI: a __cdecl-typed raw vtable read against a __thiscall host
 // virtual -- the stack balances and the receiver does not arrive.
-/* func_ov006_020c2924 RETIRED (run link100, lane SEAT6, batch B6).
+/* Presenter_ResetPose RETIRED (run link100, lane SEAT6, batch B6).
    DELTA 1 of this file -- the raw `int (**vt)(void*)` read against
    hal/fader_wipes.cpp's __thiscall HalFaderWipe::IsAtEnd -- is one line,
    and reshaping fader_wipes.cpp (lane FACEF's proposal 2) is not needed
    to fix it. The stack balanced either way; only the receiver was wrong.
-   The matched TU src/func_ov006_020c2924.cpp is seated in its place: port/tools/hostgen.py's VIRTUAL_CALL table calls word 6
+   The matched TU src/Presenter_ResetPose.cpp is seated in its place: port/tools/hostgen.py's VIRTUAL_CALL table calls word 6
    __fastcall(obj, 0), which puts obj in ecx and pushes nothing.
    Per-row ROM evidence (referrer, RTTI name, kind:function record, the
    dispatch instruction read at its own address) is in port/slice_seat6.txt. */

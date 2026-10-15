@@ -150,7 +150,7 @@ int *_ZN17daObjFl_Amilift_cD0Ev(int *self);        /* slot 17, the ROM's own D0 
 void _ZN10dBgW_KcMbgD1Ev(void *);   /* MovingMeshCollider at +0x124 */
 void _ZN5ModelD1Ev(void *);                 /* Model at +0xd4 */
 void _ZN8dActor_cD2Ev(void *);                 /* the Actor base D2 */
-void _ZN6Memory10DeallocateEPvP4Heap(void *, void *);
+void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *, void *);
 extern void *data_020a0eac;                 /* Memory::gameHeapPtr (== G0) */
 void _ZN10dBgActor_c4KillEv(void *self);       /* slot 31, Platform's own */
 

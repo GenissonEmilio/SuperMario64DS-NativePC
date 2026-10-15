@@ -56,32 +56,32 @@
 # above, by design).
 
 # ---- MR_I / BIG_MR_I (262 / 263), one class ---------------------------------
-src/actors/daEykn_c.cpp
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/d_a_eykn_eyekun_boss.c
+src/game/actors/d_a_eykn.cpp
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/d_a_eykn_eyekun_boss.c
 # RETIRED at SLICE1: body now in src/_ZN3MrID1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN3MrID0Ev.cpp
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/_ZN3MrI13InitResourcesEv.cpp
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/_ZN3MrI16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/_ZN3MrI16OnPendingDestroyEv.cpp
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/_ZN3MrI8BehaviorEv.cpp
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/func_ov071_02121634.c
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/func_ov071_0212070c.c
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/func_ov071_02120860.cpp
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/func_ov071_021209c8.cpp
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/func_ov071_02120a20.c
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/func_ov071_02120a48.cpp
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/func_ov071_02120b14.cpp
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/func_ov071_02120c90.cpp
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/func_ov071_0212110c.c
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/func_ov071_021214f4.c
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/func_ov071_0212152c.c
-# FOLDED into src/actors/daEykn_c.cpp (row 59): src/func_ov071_02121570.c
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/_ZN3MrI13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/_ZN3MrI16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/_ZN3MrI16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/_ZN3MrI8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/func_ov071_02121634.c
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/func_ov071_0212070c.c
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/func_ov071_02120860.cpp
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/func_ov071_021209c8.cpp
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/func_ov071_02120a20.c
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/func_ov071_02120a48.cpp
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/func_ov071_02120b14.cpp
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/func_ov071_02120c90.cpp
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/func_ov071_0212110c.c
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/func_ov071_021214f4.c
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/func_ov071_0212152c.c
+# FOLDED into src/game/actors/d_a_eykn.cpp (row 59): src/func_ov071_02121570.c
 # The one arm9 body the closure reaches that no earlier gate had linked:
 # func_ov071_02120b14's call at 0x02120b50 relocates to 0x02010374 =
 # Actor::FindExplosionActor(CylinderClsn&) (arm9 symbols.txt, size 0x40), and
 # nothing else in the binary named it before this lane -- /OPT:REF had always
 # stripped it. Measured as a link error, not guessed.
-src/actors/dActor_c.cpp
+src/runtime/actor/d_actor.cpp
 
 # ---- MR_I_PROJECTILE (264) --------------------------------------------------
 src/game/actors/d_a_ey_bm.cpp

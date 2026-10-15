@@ -114,22 +114,22 @@
 # ---- 6. THE TWELVE CLASS TUs ---------------------------------------------
 
 # dScMB_c: factory, then slots 0 / 3 / 6 / 9 / 16 / 17
-src/actors/dScMB_c.cpp
-# FOLDED into src/actors/dScMB_c.cpp (row 117): src/_ZN7dScMB_c13InitResourcesEv.cpp
-# FOLDED into src/actors/dScMB_c.cpp (row 117): src/_ZN7dScMB_c16CleanupResourcesEv.cpp
-# FOLDED into src/actors/dScMB_c.cpp (row 117): src/_ZN7dScMB_c8BehaviorEv.cpp
-# FOLDED into src/actors/dScMB_c.cpp (row 117): src/_ZN7dScMB_c6RenderEv.cpp
-# FOLDED into src/actors/dScMB_c.cpp (row 117): src/_ZN7dScMB_cD1Ev.cpp
+src/game/stages/d_s_mb.cpp
+# FOLDED into src/game/stages/d_s_mb.cpp (row 117): src/_ZN7dScMB_c13InitResourcesEv.cpp
+# FOLDED into src/game/stages/d_s_mb.cpp (row 117): src/_ZN7dScMB_c16CleanupResourcesEv.cpp
+# FOLDED into src/game/stages/d_s_mb.cpp (row 117): src/_ZN7dScMB_c8BehaviorEv.cpp
+# FOLDED into src/game/stages/d_s_mb.cpp (row 117): src/_ZN7dScMB_c6RenderEv.cpp
+# FOLDED into src/game/stages/d_s_mb.cpp (row 117): src/_ZN7dScMB_cD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN7dScMB_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN7dScMB_cD0Ev.cpp
 
 # dScBoot_c: factory, then slots 0 / 6 / 16 / 17. Slot 16 is _ZN9BootSceneD1Ev and
 # that is the ROM's own word, not a slip -- CodeWarrior folded the two
 # complete-object destructors and the body's first vptr store is data_02091528.
-src/d_s_boot.cpp
-src/actors/dScBoot_c.cpp
-# FOLDED into src/actors/dScBoot_c.cpp (row 130): src/_ZN9BootScene8BehaviorEv.cpp
-# FOLDED into src/d_s_boot.cpp (row 129): src/_ZN9BootSceneD1Ev.cpp
+src/game/stages/d_s_boot.cpp
+src/game/stages/d_s_boot_methods.cpp
+# FOLDED into src/game/stages/d_s_boot_methods.cpp (row 130): src/_ZN9BootScene8BehaviorEv.cpp
+# FOLDED into src/game/stages/d_s_boot.cpp (row 129): src/_ZN9BootSceneD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN9BootSceneD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN9BootSceneD0Ev.cpp
 
@@ -142,11 +142,11 @@ src/actors/dScBoot_c.cpp
 # and the graphics-engine reset both InitResources bodies open with.
 src/Message.cpp
 src/engine/save/SaveData.cpp
-# FOLDED into src/actors/dScBoot_c.cpp (row 130): src/func_02005348.c
+# FOLDED into src/game/stages/d_s_boot_methods.cpp (row 130): src/func_02005348.c
 src/unnamed/arm9/0201/func_0201cd08.cpp
-src/engine/message/func_0201fe08.c
-# FOLDED into src/actors/dScMB_c.cpp (row 117): src/func_02034b1c.c
-# FOLDED into src/actors/dScMB_c.cpp (row 117): src/func_02034fbc.c
+src/ui/messages/func_0201fe08.c
+# FOLDED into src/game/stages/d_s_mb.cpp (row 117): src/func_02034b1c.c
+# FOLDED into src/game/stages/d_s_mb.cpp (row 117): src/func_02034fbc.c
 # ALREADY LISTED ON port/slice_vs.txt, and kept here on purpose. CMake dedupes
 # the two listings, so this costs no second compile; what it records is that
 # this closure NEEDS the body. It was compiled and then DISCARDED by /OPT:REF
@@ -161,7 +161,7 @@ src/unnamed/arm9/0205/func_02053b98.c
 # FOLDED into src/Message.cpp (row 143): src/Message_DrawCenteredLine.c
 src/unnamed/arm9/0201/func_0201a3e4.c
 src/unnamed/arm9/0201/func_0201a5f8.c
-src/engine/message/func_0201cb2c.c
+src/ui/messages/func_0201cb2c.c
 # FOLDED into src/Message.cpp (row 143): src/func_0201d418.c
 
 # round 3

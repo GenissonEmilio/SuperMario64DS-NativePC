@@ -449,13 +449,13 @@ SCENE_SKIPS = {
     # stood from lane FLW, which seated the class and found that it booted and
     # ticked but could not RENDER:
     #
-    #   flw_render (slot 9) -> _ZN13dScMgFlower_c6RenderEv -> func_ov006_020c3bf4
+    #   flw_render (slot 9) -> _ZN13dScMgFlower_c6RenderEv -> FlowerFace_Draw
     #     -> ModelAnim::Virtual18 -> ModelAnim::Virtual10
     #   FAULT c0000005 accessing 00000000, eax=0
     #
     # The row named it a model/animation seam question and left NOT MEASURED
     # whether the ModelAnim at +0xd18 ever received a file. It had one; the
-    # null was never the object. src/func_ov006_020c3bf4.cpp calls that virtual
+    # null was never the object. src/FlowerFace_Draw.cpp calls that virtual
     # through a LOCAL SHADOW CLASS, so its `f5(0)` is the ROM's vtable byte
     # +0x14 -- the sixth Itanium word, which on Model and ModelAnim alike is
     # Render(scale). MSVC folds the D1/D0 pair into one slot, so on the host
@@ -510,18 +510,18 @@ SCENE_BLOCKED = {
     # the first of the three found by running instead of by reading:
     #
     #   flw_init -> _ZN13dScMgFlower_c13InitResourcesEv (slot 0) +0xa
-    #            -> func_ov004_020ad8b8 +0x10 -> func_ov004_020adc3c +0x6
+    #            -> Mg_GetSavedRecord0 +0x10 -> Mg_GetSaveTable +0x6
     #   FAULT c0000005 accessing 0x00000009
     #
-    # The ROM at 0x020ad8c4 does `ldr r0,[r0]` off data_ov004_020beb68 and then
+    # The ROM at 0x020ad8c4 does `ldr r0,[r0]` off gMgScene and then
     # `bl 0x20adc3c` without touching r0, so one register does the null test
-    # and carries the argument. src/func_ov004_020ad8b8.c declares the callee
-    # (void) and calls it with none; src/func_ov004_020adc3c.c takes void* and
+    # and carries the argument. src/Mg_GetSavedRecord0.c declares the callee
+    # (void) and calls it with none; src/Mg_GetSaveTable.c takes void* and
     # reads c+8 first statement, so on the host it read [esp+4], which held 1.
     #
     # RETIRED BY THE FIX SECTION 6 PRESCRIBES, not by a workaround and not by a
     # skip: port/unmatched/MgFlower_InitScore.cpp is a host copy of
-    # func_ov004_020ad8b8 that places the argument, src/ untouched, and it cost
+    # Mg_GetSavedRecord0 that places the argument, src/ untouched, and it cost
     # the one linked function that made it the coordinator's ruling to grant.
     # Scene 390 now runs 300 frames bare under SM64DS_FAULTS_FATAL=1 with
     # nothing switched off and its REAL slot-0 InitResources, so it is an
@@ -1273,8 +1273,8 @@ def scene_env(scene, extra=None):
     # SM64DS_MG_SCORE_TRACE JOINS THEM FOR A REASON THAT IS NOT PRINTING. Run
     # mg5 lane HISCORE added it, and most of what it does is read-only, but one
     # arm of it -- hal/scene_mg.cpp's pch_award_abi_check -- CALLS GAME CODE
-    # (func_ov006_020fb7e0 and the award routine behind it) on a scratch object
-    # during the pachinko fill. It parks data_ov004_020beb68 so it cannot reach
+    # (PachinkoFx_UpdateAll and the award routine behind it) on a scratch object
+    # during the pachinko fill. It parks gMgScene so it cannot reach
     # the live score, and it is off unless the variable is set, but an inherited
     # value would still run two ov006 bodies inside a row this step is
     # measuring. Same class as the pad and the click: not input, but not

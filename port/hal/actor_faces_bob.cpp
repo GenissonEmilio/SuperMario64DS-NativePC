@@ -175,7 +175,7 @@ struct ModelRenderFace { void Render(const Vector3 *scale); };
 extern "C" void _ZN5Model6RenderEPK7Vector3(void *self, const void *scale)
 { ((ModelRenderFace *)self)->Render((const Vector3 *)scale); }
 
-/* Player::CanWarp -- the warp's own gate. src/actors/Player.cpp defines
+/* Player::CanWarp -- the warp's own gate. src/game/player/Player.cpp defines
    it against include/Player.h, where it returns int; _ZN11daWarpkun_c8BehaviorEv
    declares it on its own shadow Player returning bool, and bool and int are
    different types in a decorated name (_N against H). Same class, same

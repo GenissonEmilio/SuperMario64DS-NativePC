@@ -26,6 +26,12 @@
  *   02112328); they are not owned here.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_km3_kaitendai_AssetId {
+    ASSET_KM3_KAITENDAI_BMD = 0x067d,
+    ASSET_KM3_KAITENDAI_KCL = 0x067e
+};
+
 #include "SharedFilePtr.h"
 
 /* 8-byte file handles. The model uses func_02017acc / func_02017ab4 and the
@@ -131,5 +137,5 @@ s32 daObjKm3_Kaitendai_c::CleanupResources()
 
 /* Source order is construction order: model file 1661, then the collision
  * file 1662. The compiler registers each destructor beside the object. */
-Km3KaitendaiModelFilePtr data_ov047_02112610(1661);
-Km3KaitendaiClsnFilePtr data_ov047_02112608(1662);
+Km3KaitendaiModelFilePtr data_ov047_02112610(ASSET_KM3_KAITENDAI_BMD);
+Km3KaitendaiClsnFilePtr data_ov047_02112608(ASSET_KM3_KAITENDAI_KCL);

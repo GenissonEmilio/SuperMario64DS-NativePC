@@ -6,8 +6,8 @@
 // spells it _ZN10dBgActor_cD1Ev, the same D1/D2 spelling note the
 // MeshColliderBase seat carries), slot 17 the deleting destructor
 // _ZN10dBgActor_cD0Ev, and slot 31 Platform::Kill, which is already linked.
-// Both destructor TUs are clean flat-C matched src (src/actors/dBgActor_c.cpp,
-// src/actors/dBgActor_c.cpp); until this seat they were in no slice, so the two
+// Both destructor TUs are clean flat-C matched src (src/runtime/actor/d_bg_actor.cpp,
+// src/runtime/actor/d_bg_actor.cpp); until this seat they were in no slice, so the two
 // bodies the ROM table names were the only part of it the port did not carry.
 //
 // STORAGE vs SEAT, the meshcolliderbase_vtable.cpp reading. The table is

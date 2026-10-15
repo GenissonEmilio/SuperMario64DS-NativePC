@@ -66,8 +66,8 @@
 # ---- ov006 ----------------------------------------------------------------
 # blocker: zero-argument veneers; the seat thunk passes the receiver INTO the veneer
 # (lane BNP's own ruling) and tailjump_guard asserts the jmp form survives.
-#src/_ZN14dScMgD3DBase_c19OnHitFromUnderneathEv.c
-#src/_ZN14dScMgD3DBase_c15OnHitByMegaCharEv.c
+#src/_ZN14dScMgD3DBase_c9CloseMenuEv.c
+#src/_ZN14dScMgD3DBase_c8OpenMenuEv.c
 # blocker: slot 17 of the mounted tables data_ov006_0213d9cc / 0213dbbc is served by
 # port/unmatched/MgPachinko_Dtor.cpp and MgPachinko2_Dtor.cpp; the VT/HEAP placeholders
 # would also need a per-TU COMPILE_DEFINITIONS rename.

@@ -1,5 +1,5 @@
 // Seat ExpandingHeap's dtor chain and its two remaining allocator forwarders,
-// closing the class: slots 0/1/2/5/12 of _ZTV13ExpandingHeap were the last
+// closing the class: slots 0/1/2/5/12 of _ZTVN5mHeap9ExpHeap_tE were the last
 // traps while src/ carried the matched bodies. The audited closure
 // (Heap::D2, HeapAllocator::Destroy/Remove, ExpandingHeapAllocator::
 // DeallocateAll/InvokeDeallocate) is enrolled alongside; every deeper callee
@@ -29,7 +29,7 @@
 // never dispatch (nothing there destroys the root heap).
 //
 // LATER (run linkw, lane l2): the same file now also closes the BASE class,
-// which is the other half of the same object. _ZTV4Heap (data_02099d90) gets
+// which is the other half of the same object. _ZTVN5mHeap6Heap_tE (data_02099d90) gets
 // its two matched destructors and the pure-virtual trap for the fourteen
 // slots the ROM leaves null, and the flat face gate 4b calls for
 // Heap::Allocate(unsigned) now forwards into that method's matched body
@@ -60,20 +60,22 @@
 /* the matched methods, dispatched qualified through a local shadow (the
    heap_vtable slot_intact mechanism; both sides are MSVC C++ on the same
    class name, so the references resolve with no alias machinery) */
-class ExpandingHeap
+namespace mHeap {
+struct ExpHeap_t
 {
-public:
+
     void VDeallocateAll();
     u32 VMemoryLeft();
 };
+}
 
 /* ---- the BASE class, closed the same way --------------------------------
  *
- * _ZTV4Heap is data_02099d90; hal/heap_vtable.cpp hosts it and its comment
+ * _ZTVN5mHeap6Heap_tE is data_02099d90; hal/heap_vtable.cpp hosts it and its comment
  * there carries the reloc evidence for the shape. Two slots, both matched:
  *
- *   [ 0] ~Heap D1  0x0203ca44  src/_ZN4HeapD1Ev.cpp  flat .c, ecx->arg adapter
- *   [ 1] ~Heap D0  0x0203ca20  src/_ZN4HeapD0Ev.cpp  flat .c, ecx->arg adapter
+ *   [ 0] ~Heap D1  0x0203ca44  src/engine/heap/Heap.cpp  flat .c, ecx->arg adapter
+ *   [ 1] ~Heap D0  0x0203ca20  src/engine/heap/Heap.cpp  flat .c, ecx->arg adapter
  *
  * and fourteen the ROM leaves null, because Heap declares the rest of the
  * list pure virtual. A null slot is nothing the host can usefully reproduce,
@@ -82,7 +84,7 @@ public:
  * loudly instead of jumping to zero.
  *
  * Nothing dispatches through this table today. Heap is abstract, and
- * Heap::C1 (src/_ZN4HeapC2EPvjPS_.cpp) installs the vptr only for the window
+ * Heap::C1 (src/engine/heap/Heap.cpp) installs the vptr only for the window
  * between the base constructor and the derived one overwriting it -- the same
  * reading hal/lk2_platform_dtor_seat.cpp records for the Platform base table,
  * and it is why the pair could sit unlinked this long. Seating it is the
@@ -91,7 +93,7 @@ public:
  * itself; D0's adds Memory::operator_delete2, already linked.
  */
 
-/* Heap::Allocate(unsigned) at 0x0203c28c, src/_ZN4Heap8AllocateEj.cpp, now the
+/* Heap::Allocate(unsigned) at 0x0203c28c, src/engine/heap/Heap.cpp, now the
  * body behind the flat name func_0203cc0c (gate 4b) calls. The matched TU is
  * an MSVC method while the caller spells a __cdecl free function with `this`
  * on the stack, so the face below is a converting forwarder, not an alias --
@@ -101,51 +103,53 @@ public:
  *
  * The one alias that IS safe here: the matched body calls Allocate(size, 4),
  * which it declares returning void*, while the matched two-argument TU
- * (src/_ZN4Heap8AllocateEji.cpp, written against include/Heap.h) defines it
+ * (src/engine/heap/Heap.cpp, written against include/Heap.h) defines it
  * returning int. Same __thiscall, same arguments, EAX either way -- the same
  * void/int return bridge hal/lk4_solidheap_seat.cpp takes for Heap::Rescue. */
-/* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEFEATED: the left hand side is a real definition in this link now (_ZN4Heap8AllocateEji.cpp.obj), so the directive is inert and alternatename_guard fails on it. */
-// #pragma comment(linker, "/alternatename:?Allocate@Heap@@QAEPAXIH@Z=?Allocate@Heap@@QAEHIH@Z")
+/* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEFEATED: the left hand side is a real definition in this link now (_ZN5mHeap6Heap_t8AllocateEji.cpp.obj), so the directive is inert and alternatename_guard fails on it. */
+// #pragma comment(linker, "/alternatename:?Allocate@Heap_t@mHeap@@QAEPAXIH@Z=?Allocate@Heap_t@mHeap@@QAEHIH@Z")
 
-class Heap
+namespace mHeap {
+struct Heap_t
 {
-public:
+
     void *Allocate(u32 size);
 };
+}
 
 extern "C" {
 
-extern void *_ZTV13ExpandingHeap[16];   /* storage in hal/heap_vtable.cpp */
-extern void *data_02099d90[16];         /* _ZTV4Heap, same storage file */
+extern void *_ZTVN5mHeap9ExpHeap_tE[16];   /* storage in hal/heap_vtable.cpp */
+extern void *data_02099d90[16];         /* _ZTVN5mHeap6Heap_tE, same storage file */
 
-void *_ZN13ExpandingHeapD1Ev(void *self);   /* slot 0 */
-void *_ZN13ExpandingHeapD0Ev(void *self);   /* slot 1 */
-void _ZN13ExpandingHeap8VDestroyEv(void *self);   /* slot 2 */
+void *_ZN5mHeap9ExpHeap_tD1Ev(void *self);   /* slot 0 */
+void *_ZN5mHeap9ExpHeap_tD0Ev(void *self);   /* slot 1 */
+void _ZN5mHeap9ExpHeap_t8VDestroyEv(void *self);   /* slot 2 */
 
-void _ZN4HeapD1Ev(void *self);              /* _ZTV4Heap slot 0 */
-void *_ZN4HeapD0Ev(void *self);             /* _ZTV4Heap slot 1 */
+void _ZN5mHeap6Heap_tD1Ev(void *self);              /* _ZTVN5mHeap6Heap_tE slot 0 */
+void *_ZN5mHeap6Heap_tD0Ev(void *self);             /* _ZTVN5mHeap6Heap_tE slot 1 */
 
 /* the flat __cdecl face gate 4b's func_0203cc0c calls */
-void *_ZN4Heap8AllocateEj(void *self, u32 size)
-{ return ((Heap *)self)->Allocate(size); }
+void *_ZN5mHeap6Heap_t8AllocateEj(void *self, u32 size)
+{ return ((mHeap::Heap_t *)self)->Allocate(size); }
 
 }
 
-static void __fastcall eh_d1(void *s, void *)      { _ZN13ExpandingHeapD1Ev(s); }
-static void __fastcall eh_d0(void *s, void *)      { _ZN13ExpandingHeapD0Ev(s); }
-static void __fastcall eh_vdestroy(void *s, void *){ _ZN13ExpandingHeap8VDestroyEv(s); }
+static void __fastcall eh_d1(void *s, void *)      { _ZN5mHeap9ExpHeap_tD1Ev(s); }
+static void __fastcall eh_d0(void *s, void *)      { _ZN5mHeap9ExpHeap_tD0Ev(s); }
+static void __fastcall eh_vdestroy(void *s, void *){ _ZN5mHeap9ExpHeap_t8VDestroyEv(s); }
 static void __fastcall eh_vdeallall(void *s, void *)
-{ ((ExpandingHeap *)s)->VDeallocateAll(); }
+{ ((mHeap::ExpHeap_t *)s)->VDeallocateAll(); }
 static u32 __fastcall eh_vmemleft(void *s, void *)
-{ return ((ExpandingHeap *)s)->VMemoryLeft(); }
+{ return ((mHeap::ExpHeap_t *)s)->VMemoryLeft(); }
 
-static void __fastcall heap_d1(void *s, void *) { _ZN4HeapD1Ev(s); }
-static void __fastcall heap_d0(void *s, void *) { _ZN4HeapD0Ev(s); }
+static void __fastcall heap_d1(void *s, void *) { _ZN5mHeap6Heap_tD1Ev(s); }
+static void __fastcall heap_d0(void *s, void *) { _ZN5mHeap6Heap_tD0Ev(s); }
 
 /* the fourteen slots the ROM leaves null: Heap's pure virtuals */
 static void __fastcall heap_pure_virtual(void *, void *)
 {
-    fprintf(stderr, "FATAL: _ZTV4Heap pure-virtual slot dispatched -- the base "
+    fprintf(stderr, "FATAL: _ZTVN5mHeap6Heap_tE pure-virtual slot dispatched -- the base "
                     "table is live and it should not be (see "
                     "hal/lk4_eh_dtor_seat.cpp)\n");
     abort();
@@ -173,7 +177,7 @@ static void __fastcall heap_pure_virtual(void *, void *)
      ?DeallocateAll@ExpandingHeapAllocator@@QAEXPAP6AXPAXPAV1@I@ZI@Z
        = __ZN22ExpandingHeapAllocator13DeallocateAllEPFvPvPS_jEj
 
-   src/_ZN13ExpandingHeap14VDeallocateAllEv.cpp:30 is
+   src/engine/heap/Heap.cpp:30 is
 
      allocator->DeallocateAll((Visitor *)&InvokeDeallocate, 0);
 
@@ -195,7 +199,7 @@ static void __fastcall heap_pure_virtual(void *, void *)
    8 bytes of the caller's ESP. The face below is a real __thiscall method, so
    MSVC emits `ret 8` for it and that leak closes with the receiver.
 
-   REACHABLE through _ZTV13ExpandingHeap slot 5 (eh_vdeallall, seated below)
+   REACHABLE through _ZTVN5mHeap9ExpHeap_tE slot 5 (eh_vdeallall, seated below)
    and NOT REACHED BY ANYTHING THE PORT CAN DRIVE TODAY, which is measured and
    not assumed. A throwaway fprintf in all four entry points of this file --
    the slot 2 thunk, the slot 5 thunk, and both faces below -- produced ZERO
@@ -228,7 +232,7 @@ static void __fastcall heap_pure_virtual(void *, void *)
    two veneers are matched TUs that declare the callee `(void)` and call it
    with nothing, MSVC compiles a one-call void forwarder as a JMP, and a jmp
    reuses the caller's own cdecl argument frame -- so the allocator that
-   src/_ZN13ExpandingHeap8VDestroyEv.cpp:23 and src/_ZN9SolidHeap8VDestroyEv.cpp:23
+   src/engine/heap/Heap.cpp:23 and src/engine/heap/Heap.cpp:23
    PUSH is still sitting where this face reads it. That is the same
    ride-through the ov007 slice rests on in about fifty places, and
    port/tools/tailjump_guard.py asserts it; these two frames are added to that
@@ -239,7 +243,7 @@ static void __fastcall heap_pure_virtual(void *, void *)
    file seats into slot 2 compiles to
 
      ?eh_vdestroy@@YIXPAX0@Z:
-       push ecx / call __ZN13ExpandingHeap8VDestroyEv / pop ecx / ret
+       push ecx / call __ZN5mHeap9ExpHeap_t8VDestroyEv / pop ecx / ret
 
    ECX arrives holding the HEAP, neither VDestroy body writes it, and nothing
    between there and Remove reloads it. So Remove ran with `this` = the Heap,
@@ -264,7 +268,7 @@ class ExpandingHeapAllocator
 {
 public:
     /* copied verbatim from the calling TU's own declaration
-       (src/_ZN13ExpandingHeap14VDeallocateAllEv.cpp), because THAT is what
+       (src/engine/heap/Heap.cpp), because THAT is what
        decorates to the name the link needs. `class` and not `struct`: the
        parameter encodes as PAV1@, and a struct would mangle PAU1@ and miss. */
     typedef void (*Visitor)(void *, ExpandingHeapAllocator *, u32);
@@ -304,11 +308,11 @@ void ExpandingHeapAllocator::DeallocateAll(Visitor *visitor, u32 param)
 
 extern "C" void hal_seat_expandingheap_dtors(void)
 {
-    _ZTV13ExpandingHeap[0]  = (void *)eh_d1;
-    _ZTV13ExpandingHeap[1]  = (void *)eh_d0;
-    _ZTV13ExpandingHeap[2]  = (void *)eh_vdestroy;
-    _ZTV13ExpandingHeap[5]  = (void *)eh_vdeallall;
-    _ZTV13ExpandingHeap[12] = (void *)eh_vmemleft;
+    _ZTVN5mHeap9ExpHeap_tE[0]  = (void *)eh_d1;
+    _ZTVN5mHeap9ExpHeap_tE[1]  = (void *)eh_d0;
+    _ZTVN5mHeap9ExpHeap_tE[2]  = (void *)eh_vdestroy;
+    _ZTVN5mHeap9ExpHeap_tE[5]  = (void *)eh_vdeallall;
+    _ZTVN5mHeap9ExpHeap_tE[12] = (void *)eh_vmemleft;
 
     data_02099d90[0] = (void *)heap_d1;
     data_02099d90[1] = (void *)heap_d0;

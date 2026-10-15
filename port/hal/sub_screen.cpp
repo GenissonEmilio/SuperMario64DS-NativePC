@@ -227,7 +227,7 @@ extern char data_0209f49e[];     /* split: pressed       (DS: f498 + 6) */
 extern void *data_0209f318;      /* the Camera actor */
 /* THE LEVEL-CLEAR SCREEN'S OWN TWO WORDS, and the swap below reads nothing
    else. data_0209f20c is "the level-clear screen owns the game": the player's
-   own star animation raises it (src/actors/Player.cpp:6522, :6718, :6742) and
+   own star animation raises it (src/game/player/Player.cpp:6522, :6718, :6742) and
    src/_ZN5Stage8BehaviorEv.cpp:206 runs Stage::LC_Update only while it is up.
    data_0209f2d4 is that function's own state word. */
 extern unsigned char data_0209f20c;
@@ -2175,7 +2175,7 @@ extern "C" void port_touch_inject_census(unsigned *frames, unsigned *presses,
  * separately from poked frames. The ROM's own producer spells byte +1 as
  * `touch XOR previous` (src/func_0203bb60.c), so ONE held press is ONE edge,
  * and every gate in the game that reads "touched AND changed" -- curling's
- * func_ov006_020e1b54 is one -- can only fire on that single frame. A script
+ * Aim_WaitTouch is one -- can only fire on that single frame. A script
  * that holds one long press across a scene's warm-up timer therefore delivers
  * a press the game is structurally unable to see, and the old log gave a lane
  * no way to tell that apart from a broken bridge. */
@@ -2256,7 +2256,7 @@ unsigned char tp_rd(const unsigned char *p, int i)
  *
  * WHAT THAT COST, from a live session: "when i drag off screen it releases the
  * touch". On scene 368 that is the slingshot firing itself. The pull is
- * src/func_ov006_020fe394.cpp and its whole body is one branch on
+ * src/PachinkoBobOmb_State1.cpp and its whole body is one branch on
  * `data_020a0de8[k * 4] != 0`: the true side keeps the ball at the captured
  * offset, and the FALSE side is the shot. It writes 2 into the slot's state
  * byte at +0x4f0d and either snaps the ball home or launches it. So a hand
@@ -2604,7 +2604,7 @@ void poll_touch(void)
      *
      * WHAT IT COST, measured on scene 368 (Bob-omb Squad) with
      * SM64DS_TOUCH_PROBE and the shot table's own state trace. The plunger is
-     * src/func_ov006_020fe2e4.c (grab) and src/func_ov006_020fe394.cpp (pull and
+     * src/PachinkoBobOmb_State0.c (grab) and src/PachinkoBobOmb_State1.cpp (pull and
      * release). The grab arms on `data_020a0de8[k*4] && data_020a0de9[k*4]`
      * and captures ball-minus-stylus into +0x4ee8/+0x4eec; the pull then holds
      * that offset, so WHERE the stylus is on the arming frame decides where
@@ -2620,15 +2620,15 @@ void poll_touch(void)
      *                                    110 px above the cursor, never left
      *                                    the anchor, and the release measured
      *                                    dist 8 -- under 0x10, which is
-     *                                    func_ov006_020fe394's snap-back, so
+     *                                    PachinkoBobOmb_State1's snap-back, so
      *                                    the shot never fired.
      *   press, hold still, then drag     old: worked. That is the whole of
      *                                    "sometimes I can grab it".
      *
      * TWO MORE CLASSES OF READER GET THEIR BEHAVIOUR BACK WITH THIS, and they
      * are why this is a record fix rather than a pachinko fix.
-     * `de8 && de9` sites (the press edge: curling's func_ov006_020e1b54,
-     * Coincentration's func_ov006_020dd0e0, and two dozen more) fired one
+     * `de8 && de9` sites (the press edge: curling's Aim_WaitTouch,
+     * Coincentration's Coin_State0, and two dozen more) fired one
      * frame late and then EVERY frame of the hold instead of once.
      * `de8 == 0 && de9` sites (the release edge: src/func_ov006_020d1ba0.cpp:63,
      * _ZN17dScMgTrampoline_c16UpdateTouchInputEv.c:49, _ZN21cMgSmartball_spring_c12SaveSnapshotEv.c:82) were identically
@@ -3040,7 +3040,7 @@ void hal_sub_screen_init_hw(void *hwnd, int zoom)
      *                  sprite into the MAIN shadow instead.
      *
      * So on the DS the bottom screen is live from boot and only ov006's
-     * minigames ever set the flag (_ZN14dScMgD3DBase_c25OnAimedAtWithEggReturnVecEv, _ZN14dScMgD3DBase_c9Virtual84Ev),
+     * minigames ever set the flag (_ZN14dScMgD3DBase_c21RestoreScreenFromMenuEv, _ZN14dScMgD3DBase_c11InitEnginesEv),
      * clearing it again on the way out.
      *
      * WHY THE PORT NEEDS A CALL AT ALL. hal/model_host.cpp:91 hosts the global
@@ -3483,7 +3483,7 @@ void hal_screens_probe(void)
  *                    wrote during THIS frame's Render and what OAM::Load is
  *                    about to upload at the foot of this function.
  *
- * AND THE FRAMEWORK'S sel WORD, data_ov004_020beb68 + 0x4664. The slot-24 beat
+ * AND THE FRAMEWORK'S sel WORD, gMgScene + 0x4664. The slot-24 beat
  * has already flipped it by this point, so the value printed is the one the
  * raster's arm was derived from, and the shadow beside it was written under the
  * OTHER one. That is the whole measurement: on the dScMgD3DBase_c family the
@@ -3495,7 +3495,7 @@ void hal_screens_probe(void)
 extern "C" {
 extern int data_0209e664;                    /* the main shadow's counter */
 extern unsigned short data_0209e674[];       /* the main shadow itself */
-extern unsigned char data_ov004_020beb68[4]; /* the framework's scene pointer */
+extern unsigned char gMgScene[4]; /* the framework's scene pointer */
 }
 /* which frame order this binary is running; defined with the upload below */
 static int oam_load_late(void);
@@ -3511,10 +3511,10 @@ void hal_obj_parity_probe(void)
     if ((long)f >= (long)upto) return;
 
     const int bit = (*(volatile unsigned short *)0x04000304 >> 15) & 1;
-    unsigned g = (unsigned)data_ov004_020beb68[0]
-               | ((unsigned)data_ov004_020beb68[1] << 8)
-               | ((unsigned)data_ov004_020beb68[2] << 16)
-               | ((unsigned)data_ov004_020beb68[3] << 24);
+    unsigned g = (unsigned)gMgScene[0]
+               | ((unsigned)gMgScene[1] << 8)
+               | ((unsigned)gMgScene[2] << 16)
+               | ((unsigned)gMgScene[3] << 24);
     int sel = -1;
     if (g) sel = (int)*(unsigned short *)(g + 0x4664);
 
@@ -3610,7 +3610,7 @@ void hal_obj_parity_probe(void)
  *                                   uses for the TOP screen's copy.
  *
  * All three agree: a submission made while sel == 1 belongs on the top screen
- * and one made while sel == 0 belongs on the bottom. src/actors/dScMgD3DBase_c.cpp
+ * and one made while sel == 0 belongs on the bottom. src/minigames/d_s_mg_d3d_base.cpp
  * -- slot 24 -- sets POWCNT1 the other way round on the same frame (sel == 1
  * clears bit 15, which sends engine A to the LOWER screen), so on the DS a
  * submission is displayed under the arm the NEXT beat sets. That is not a
@@ -5388,10 +5388,10 @@ void hal_touch_client_probe(void)
    targets this file is on. Leaving the stub here would be a duplicate
    definition -- the LoadFont3D precedent above. */
 
-/* The third leaf, func_ov004_020adc4c, is NOT stubbed here any more (run linkw
-   wave C, lane cat-2d). It was tagged `src reads data_ov004_020beb60, and
+/* The third leaf, Mg_GetWorkBuffer, is NOT stubbed here any more (run linkw
+   wave C, lane cat-2d). It was tagged `src reads sMgWorkBuffer, and
    ov004 is not mounted`, and that one BSS word is now hosted in
-   hal/oam2d_ov004_bss.cpp, so the matched src/func_ov004_020adc4c.c is the
+   hal/oam2d_ov004_bss.cpp, so the matched src/Mg_GetWorkBuffer.c is the
    body LoadFont reaches. Leaving the stub here would be a duplicate
    definition. The branch that calls it is still not taken: it is LoadFont's
    data_0209d698 == 2 arm, the minigame framework's font, and the window loads

@@ -104,11 +104,10 @@ src/unnamed/arm9/0205/func_02059624.c
 src/unnamed/arm9/0205/func_02059700.c
 src/unnamed/arm9/0205/func_02059788.c
 src/unnamed/arm9/0205/func_02059bc0.c
-# PORTSYNC2: main folded src/func_02059cb4.c into src/IRQ3.cpp with five asm CPSR
-# primitives the host answers elsewhere (ntr/runtime.cpp, hal/boot_hw.cpp); the row
-# is the one compiled body, carried in port/unmatched/ (see its banner).
-#src/IRQ3.cpp
-port/unmatched/func_02059cb4_hostcopy.c
+# PORTDROP2: main split func_02059cb4 back out of the asm IRQ3 TU (PR 3878), so the
+# ROM's own file runs here again; the port/unmatched/func_02059cb4_hostcopy.c
+# stand-in is gone.
+src/unnamed/arm9/0205/func_02059cb4.cpp
 src/unnamed/arm9/0205/func_0205c864.c
 src/unnamed/arm9/0205/func_0205caa8.c
 src/unnamed/arm9/0205/func_0205d5e8.c

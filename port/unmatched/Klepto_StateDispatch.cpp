@@ -62,7 +62,7 @@ extern PortPmf data_ov062_0211dcd0, data_ov062_0211dcd8, data_ov062_0211dce0,
 
 /* the ten matched handlers. 0x0211ba84 is still a C body (cdecl, receiver as
    the first stack argument); main folded the other nine into
-   src/actors/daJango_c.cpp as daJango_c members (include/daJango_c.h), which
+   src/game/actors/d_a_jango.cpp as daJango_c members (include/daJango_c.h), which
    the faces below call qualified. */
 int func_ov062_0211ba84(void *c);
 

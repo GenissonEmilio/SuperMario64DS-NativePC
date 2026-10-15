@@ -39,18 +39,18 @@ namespace {
  * THE SLINGSHOT BALL, and it is NOT the falling bob-ombs. The scene carries two
  * 0x38-stride arrays and only one of them can vanish:
  *
- *   scene+0x4660, 30 slots   the bob-ombs. Drawn through func_ov004_020b023c,
+ *   scene+0x4660, 30 slots   the bob-ombs. Drawn through Mg_RenderSpriteBothPalMtx,
  *                            which submits to BOTH OAM buffers unconditionally
  *                            and lets each engine's own clip decide, and their
  *                            sprite is 32x32 affine at double size -- a 64x64
  *                            box, wider than the whole band. They have no dead
  *                            zone and need nothing from this file.
  *   scene+0x4ed8, 48 slots   the balls the plunger fires. Drawn through
- *                            func_ov004_020aff38, which picks ONE engine by a
+ *                            Mg_RenderSpriteBothScaled, which picks ONE engine by a
  *                            band test on world y and RETURNS, and their sprite
  *                            is 16x16. This is the one with the hole.
  *
- * THE HOLE, from func_ov004_020aff38 (src/func_ov004_020aff38.cpp) and
+ * THE HOLE, from Mg_RenderSpriteBothScaled (src/Mg_RenderSpriteBothScaled.cpp) and
  * OAM::Render's cull, with G = 32 and py = the ball's world y in DS pixels:
  *
  *     py in [-288, -33]   the top engine, at y = py + 0xc0 + G
@@ -61,9 +61,9 @@ namespace {
  * and OAM::Render's `if (y + h < 0) return;` throws it away for every py <= -9.
  * TWENTY-FOUR WORLD ROWS of the crossing in which the ROM draws no ball at all.
  *
- * THE SPRITE, from src/func_ov006_020fe1d0.c and the OamAttr it passes. The
+ * THE SPRITE, from src/PachinkoBobOmb_DrawAll.c and the OamAttr it passes. The
  * render loop walks all 48 slots, skips any whose +0x4f0e (visible) is zero,
- * and calls func_ov004_020aff38(data_ov006_02137614, X>>12, Y>>12, -1, -1,
+ * and calls Mg_RenderSpriteBothScaled(data_ov006_02137614, X>>12, Y>>12, -1, -1,
  * 0x1000, 0). The attr block behind that pointer is data_ov006_02137618 =
  * {248,0,248,65,20,17,255,255}: attr0 0x00F8, attr1 0x41F8, attr2 0x1114, which
  * is a 16x16 square, 4bpp, tile 276, palette 1, priority 0, and NOT affine --
@@ -117,7 +117,7 @@ int pachinko_balls(unsigned char *scene, ntr::BandTrack *out, int max,
  * THE FALLING COIN STACKS, the reader the header's own note has asked for
  * since the file was written. The scene's one object array: 40 slots at
  * +0x4660, stride 0x1c, X at +0 and Y at +4 (both Fix12), the render loop's
- * visible flag at +0x4676 (func_ov006_020dd594 tests it and draws through
+ * visible flag at +0x4676 (DrawBlocks tests it and draws through
  * RenderOamBothScreens). A stack's OamAttr pieces are 8x32 verticals with a
  * -16 y offset and x offsets down to -12 (data_ov006_0213bf0c via
  * data_ov006_0212e314), so the box handed to the matcher is 24 wide and 32

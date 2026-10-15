@@ -31,6 +31,12 @@
  * - common.h first (InitResources SetFile matrix argument).
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_wc_obj02_AssetId {
+    ASSET_WC_OBJ02_BMD = 0x06ce,
+    ASSET_WC_OBJ02_KCL = 0x06cf
+};
+
 #include "common.h"
 #include "daObjWc_Obj02_c.h"
 #include "decl_common.h"
@@ -241,5 +247,5 @@ int daObjWc_Obj02_c::CleanupResources()
 
 /* The static-init globals -- mwcc emits __sinit_d_a_obj_wc_obj02.cpp
    from these: one ctor veneer plus destructor registration per handle. */
-WcObj02ModelFilePtr data_ov029_02114250(0x6ce);
-WcObj02CollisionFilePtr data_ov029_02114248(0x6cf);
+WcObj02ModelFilePtr data_ov029_02114250(ASSET_WC_OBJ02_BMD);
+WcObj02CollisionFilePtr data_ov029_02114248(ASSET_WC_OBJ02_KCL);

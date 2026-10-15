@@ -1,5 +1,5 @@
 /* PORT_HOST_ABI. QuestionBlock's own fields, put back where the ROM keeps
- * them. Force-included ahead of src/actors/daObjHatenaBlock_c.cpp (main
+ * them. Force-included ahead of src/game/actors/d_a_obj_hatena_block.cpp (main
  * folded the ten src/_ZN13QuestionBlock*.cpp translation units into it) so
  * it addresses the ROM's member offsets instead of MSVC's. Nothing in src/
  * or include/ changes. Run link100, lane CRASH8.

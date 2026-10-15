@@ -30,7 +30,7 @@
 //   word is 0x021207d8 = 0x0213fa0c. Contrast the flower's 0x0212b7f8, which
 //   writes 0x0213e448 and then 0x02140140 over it.
 //   SLOT 16 AND SLOT 17, the destructor pair, install ONE table on the way
-//   down (src/actors/dScMgTeresa_c.cpp and _0211cbf4.c both write
+//   down (src/minigames/d_s_mg_teresa.cpp and _0211cbf4.c both write
 //   data_ov006_0213fa0c and then call the ov004 base's _ZN11dScMgBase_cD2Ev).
 //
 // So this seat has ONE face array and fills TWO tables, not three. It is the
@@ -72,8 +72,8 @@
 //
 // ---- 5. THE RENDER TRAP IS RETIRED (run mg10, lane F387) ------------------
 //
-// func_ov006_0211e72c, ov006, size 0xac, the SIXTH call vtable slot 9 (Render)
-// makes: src/_ZN13dScMgTeresa_c6RenderEv.cpp runs func_ov004_020b1e34, then 0211ddcc,
+// DrawBoos, ov006, size 0xac, the SIXTH call vtable slot 9 (Render)
+// makes: src/_ZN13dScMgTeresa_c6RenderEv.cpp runs Mg_DrawScoreTally, then 0211ddcc,
 // 0211e29c, 0211e460, 0211e118, and then this one.
 //
 // Run mg9 gave it a counted trap because no src file defined it and
@@ -84,7 +84,7 @@
 // and did nothing each time, so THE CLASS HAS BEEN DRAWING EVERYTHING EXCEPT
 // THE BOOS.
 //
-// It is decompiled: src/func_ov006_0211e72c.c byte-matches the ROM under
+// It is decompiled: src/DrawBoos.c byte-matches the ROM under
 // mwccarm 2004/b56 and passes tools/linkcheck.py VERIFIED with zero blind
 // relocations. It is a plain OAM sprite loop over the sixteen 0x24-stride
 // records at this + 0x4660 -- gate byte at +0x1a, x and y at +0x00 and +0x04,
@@ -99,19 +99,19 @@
 // callees. The check that finds one is a delinks join over every callee of
 // every override, and that is the check that found this.
 //
-// THE OTHER TWO FLOORS. func_ov006_0211ebdc is a state, was reported by the
+// THE OTHER TWO FLOORS. Boo_State7 is a state, was reported by the
 // address switch in unmatched/MgTeresa_StateDispatch.cpp, and is retired by
-// this same lane -- src/func_ov006_0211ebdc.c, same two gates. It is the body
+// this same lane -- src/Boo_State7.c, same two gates. It is the body
 // that drives the byte at +0x1e the loop above picks the sprite ROW with, so
-// the two were always one piece of work. func_ov004_020ae5c4 is ov004's, is
+// the two were always one piece of work. Mg_DrawLine is ov004's, is
 // STILL A FLOOR, and its trap stays in hal/scene_mg_faces.cpp beside
-// func_ov004_020ae858, which is where this family's ov004 traps live. Seven
+// Mg_DrawMenu, which is where this family's ov004 traps live. Seven
 // ov006 TUs across the family call it, so a per-lane copy of that trap would
 // be a duplicate symbol the day a second lane reaches it.
 //
 // AMENDED, run mg12 lane PANEL: neither body is a floor any more and neither is
-// trapped. func_ov004_020ae5c4 was seated by run mg10 lane F371 and
-// func_ov004_020ae858 by this run; hal/scene_mg_faces.cpp holds no ov004 trap now.
+// trapped. Mg_DrawLine was seated by run mg10 lane F371 and
+// Mg_DrawMenu by this run; hal/scene_mg_faces.cpp holds no ov004 trap now.
 //
 // ---- 6. THE TWO ALIAS ROWS ------------------------------------------------
 //
@@ -122,7 +122,7 @@
 // exactly right and no storage is involved. hal/scene_mg_faces.cpp:245 and
 // hal/scene_mg_curling2.cpp:446 are the same row for their classes.
 //
-// ROW 2, A STATIC MEMBER FUNCTION'S MSVC NAME. src/_ZN13dScMgTeresa_c13OnYoshiTryEatEi.cpp
+// ROW 2, A STATIC MEMBER FUNCTION'S MSVC NAME. src/_ZN13dScMgTeresa_c10StartRoundEi.cpp
 // declares `struct G2S { static char* GetBG0CharPtr(); };` and calls it, which
 // mangles ?GetBG0CharPtr@G2S@@SAPADXZ. The mount defines the Itanium spelling
 // __ZN3G2S13GetBG0CharPtrEv. A STATIC member function is __cdecl with no
@@ -168,21 +168,21 @@ int   _ZN13dScMgTeresa_c8BehaviorEv(char *self);        /* slot  6  Behavior, ho
 int   _ZN13dScMgTeresa_c6RenderEv(void *self);        /* slot  9  Render */
 int   _ZN13dScMgTeresa_cD1Ev(int *self);         /* slot 16  D2 */
 int  *_ZN13dScMgTeresa_cD0Ev(int *self);         /* slot 17  D0 */
-void  _ZN13dScMgTeresa_c13OnYoshiTryEatEi(char *self, int r); /* slot 18  state reset */
-int   _ZN13dScMgTeresa_c9Virtual50Ev(void);              /* slot 20  FreeGfxSlotsById(8) */
+void  _ZN13dScMgTeresa_c10StartRoundEi(char *self, int r); /* slot 18  state reset */
+int   _ZN13dScMgTeresa_c11OnNewRecordEv(void);              /* slot 20  FreeGfxSlotsById(8) */
 /* SLOT 34 TAKES FIVE ARGUMENTS, and the declaration says so rather than
    dropping four. The ROM's prologue at 0x021200dc is
        push {r4,r5,r6,r7,r8,sb,sl,fp,lr} / sub sp,sp,#0x1c / ldr sl,[sp,#0x40]
    where 0x40 = 0x24 + 0x1c is the first word above the frame, so it reads
-   r0..r3 plus one stack word; src/_ZN13dScMgTeresa_c9Virtual88Eiiii.cpp defines it the same
-   way. The dScMgBase_c body it overrides, _ZN11dScMgBase_c9Virtual88Eiiii, has the same
+   r0..r3 plus one stack word; src/_ZN13dScMgTeresa_c11PaintSquareEiiii.cpp defines it the same
+   way. The dScMgBase_c body it overrides, _ZN11dScMgBase_c11PaintSquareEiiii, has the same
    five-argument shape (ldr fp,[sp,#0x38] after push{9}+sub#0x14).
 
    A ONE-ARGUMENT DECLARATION HERE WOULD BE THE bin-softlock DISEASE, which is
    why port/tools/aritycheck.py's plain-name ratchet refused it: on ARM the
    dropped words ride registers that are still live and the byte gate stays
    green, while on the host the callee reads stack slots nobody wrote. */
-void  _ZN13dScMgTeresa_c9Virtual88Eiiii(int self, int cx, int cy, int val, int n);
+void  _ZN13dScMgTeresa_c11PaintSquareEiiii(int self, int cx, int cy, int val, int n);
 
 /* the factory */
 void *dScMgTeresa_c_classInit(void);
@@ -235,7 +235,7 @@ static void *__fastcall boo_d0(void *s, void *)
    rather than inheriting it. Every slot-18 dispatch in both overlay images
    passes one argument -- the 22-site census in hal/scene_mg.cpp's mg_reset
    block and runs/mg5/out/baseset/slot18_19_scan.txt -- and this class's own
-   slot-18 body READS IT: src/_ZN13dScMgTeresa_c13OnYoshiTryEatEi.cpp's first statement is
+   slot-18 body READS IT: src/_ZN13dScMgTeresa_c10StartRoundEi.cpp's first statement is
    `if (reset == 0)` and the ROM's is `cmp r1,#0 / bne`. So the parameter is
    not only there to let __fastcall clean four bytes off the stack, it carries
    a value that picks between two different bodies of work, and a thunk
@@ -254,22 +254,22 @@ static void *__fastcall boo_d0(void *s, void *)
 
    SLOT 19 IS A DIFFERENT ANSWER TO THE SAME QUESTION and belongs beside it.
    This class does NOT override slot 19: it inherits dScMgBase_c's
-   _ZN11dScMgBase_c13OnTurnIntoEggEi, whose entire body is `mov r0,#1 / bx lr`, so the second
+   _ZN11dScMgBase_c11CanEndStateEi, whose entire body is `mov r0,#1 / bx lr`, so the second
    argument the ROM's dispatch sites pass is READ BY NOTHING. That one IS
    witnessed -- the 1200-frame census reports framework slot 19 entered once --
    and it is witnessed only because this lane repaired the shadow-array call
    that reaches it (port/unmatched/MgBase_ShadowSlot19.cpp). */
 static int __fastcall boo_reset(void *s, void *, int reset)
-{ BOO(18); _ZN13dScMgTeresa_c13OnYoshiTryEatEi((char *)s, reset); return 1; }
+{ BOO(18); _ZN13dScMgTeresa_c10StartRoundEi((char *)s, reset); return 1; }
 static int __fastcall boo_v20(void *, void *)
-{ BOO(20); return _ZN13dScMgTeresa_c9Virtual50Ev(); }
+{ BOO(20); return _ZN13dScMgTeresa_c11OnNewRecordEv(); }
 /* THE FOUR RIDE-THROUGH PARAMETERS ARE THE ROM'S, and the shape is
    mb_reset_base's in hal/scene_mg.cpp: `this` in ecx, the unused edx word,
    then the stack arguments. NOTHING IN THE PORT DISPATCHES THIS SLOT TODAY and
    the run reports v34 zero, which is a measurement rather than a hope: a scan
    of both overlay images for `ldr rX,[rY,#0x88]` with Rn neither pc nor sp --
    section 14's filter, 0x88 being slot 34 -- finds EIGHT sites in ov004 and
-   NONE in ov006, and all eight are inside func_ov004_020ae5c4, which is the
+   NONE in ov006, and all eight are inside Mg_DrawLine, which is the
    ov004 floor this lane traps in hal/scene_mg_faces.cpp. So the only caller of
    slot 34 in the whole family is a body the port does not have.
 
@@ -286,7 +286,7 @@ static int __fastcall boo_v20(void *, void *)
    exactly as S371 reported it and only this class's own declaration is made
    honest, which is what the plain-name ratchet asked for. */
 static int __fastcall boo_v34(void *s, void *, int cx, int cy, int val, int n)
-{ BOO(34); _ZN13dScMgTeresa_c9Virtual88Eiiii((int)(size_t)s, cx, cy, val, n); return 0; }
+{ BOO(34); _ZN13dScMgTeresa_c11PaintSquareEiiii((int)(size_t)s, cx, cy, val, n); return 0; }
 
 /* SM64DS_SCENE_SLOT0=0 and SM64DS_SCENE_SLOT9=0, the diagnostics the ov003,
    ov007 and every minigame seat carry, counted separately so a run can never
@@ -399,7 +399,7 @@ extern "C" void port_scene_fill_booseek(void)
 
    THIS FACTORY NEEDS NO DISPLACEMENT RULING, which is worth recording because
    0x169's did. src/d_s_mg_teresa.c calls _ZN11dScMgBase_cC2Ev(p) WITH
-   its argument, where src/actors/dScMgCup_c.cpp calls the same base
+   its argument, where src/minigames/d_s_mg_cup.cpp calls the same base
    constructor with none and rides r0 through. That callee dereferences on its
    first statement and then writes a vtable word through the pointer, so the
    difference is a wild write versus a correct one. This factory is on the
@@ -491,7 +491,7 @@ extern "C" void port_scene_booseek_hits(void)
                     *(unsigned char *)(c + 0x4be1),
                     *(int *)(c + 0xb4));
 
-        /* THE SIXTEEN-RECORD CENSUS. func_ov006_0211f6fc walks sixteen records
+        /* THE SIXTEEN-RECORD CENSUS. UpdateBoos walks sixteen records
            at stride 0x24 and dispatches data_ov006_02142ed8 for every one
            whose gate byte at +0x4677 is nonzero, using the index byte at
            +0x4678. Printing how many are live and what indices they hold is
@@ -514,9 +514,9 @@ extern "C" void port_scene_booseek_hits(void)
         }
 
         /* THE RENDER CENSUS, AND IT IS A SEPARATE GATE FROM THE ONE ABOVE.
-           +0x4677 is the TICK gate func_ov006_0211f6fc reads; +0x467a is the
-           RENDER gate src/func_ov006_0211e72c reads, and src/
-           func_ov006_0211ebdc.c clears BOTH in the same statement when a Boo
+           +0x4677 is the TICK gate UpdateBoos reads; +0x467a is the
+           RENDER gate src/DrawBoos reads, and src/
+           Boo_State7.c clears BOTH in the same statement when a Boo
            finishes fading. Printing the drawn set beside the ticked set is what
            makes "the sprite loop ran" a measurement rather than an inference
            from the picture: a run where these two columns disagree has a Boo

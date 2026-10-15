@@ -49,7 +49,7 @@
 #    from:0x020e7bd8 kind:arm_call to:0x020e777c (_ZN15dMg3DEspModel_c6RenderEv + 0x94).
 #    RECORD: _ZN17dMg3DEspAnimSet_c6RenderEv kind:function(arm,size=0x9c) addr:0x020e777c,
 #    body e92d41f0 e1a07000 e59f0088.
-src/actors/dMg3DEspAnimSet_c.cpp
+src/minigames/d_mg3d_esp_anim_set.cpp
 
 # 2. src/_ZN15dMg3DEspModel_c6RenderEv.cpp -- the same class's render half, on the plain
 #    ModelAnim at the sub-object's +0xc (constructor src/_ZN15dMg3DEspModel_cC1Ev.cpp
@@ -61,28 +61,28 @@ src/actors/dMg3DEspAnimSet_c.cpp
 #    (_ZN12dScMg3DEsp_c6RenderEv + 0xa0, the class's slot-9 Render).
 #    RECORD: _ZN15dMg3DEspModel_c6RenderEv kind:function(arm,size=0xa4) addr:0x020e7b44,
 #    body e92d4010 e1a04000 e59f2090.
-# FOLDED into src/actors/dMg3DEspAnimSet_c.cpp (row 52): src/_ZN15dMg3DEspModel_c6RenderEv.cpp
+# FOLDED into src/minigames/d_mg3d_esp_anim_set.cpp (row 52): src/_ZN15dMg3DEspModel_c6RenderEv.cpp
 
-# 3. src/func_ov006_020c06dc.cpp -- dScMgMemory2_c, the shadow at +0x18 whose
+# 3. src/MascotWalker_UpdateMatrix.cpp -- dScMgMemory2_c, the shadow at +0x18 whose
 #    four-virtual `m()` is ROM index 3, UpdateVerts. RETIRES port/unmatched/
 #    MgMemory2_ShadowSlot_020c06dc.cpp (whole file). This is the slot where the
 #    wrong body ALSO returned `ret 4` and unbalanced the stack, so it is the
 #    one row of the batch whose old symptom was two frames from its cause.
 #    REFERRER: from:0x020c07ac kind:arm_call to:0x020c06dc
-#    (func_ov006_020c07a0 + 0xc).
-#    RECORD: func_ov006_020c06dc kind:function(arm,size=0xc4) addr:0x020c06dc,
+#    (MascotWalker_Draw + 0xc).
+#    RECORD: MascotWalker_UpdateMatrix kind:function(arm,size=0xc4) addr:0x020c06dc,
 #    body e92d4030 e24dd004 e1a04000.
-src/actors/unit020bfec0.cpp
+src/minigames/unit020bfec0.cpp
 
-# 4. src/actors/dScMgRoulette_c.cpp -- dScMgRoulette_c's two plain Models at +0x10
+# 4. src/minigames/d_s_mg_roulette_methods.cpp -- dScMgRoulette_c's two plain Models at +0x10
 #    and +0x60, both drawn through a six-virtual shadow's `m(0)`. RETIRES
 #    port/unmatched/MgRoulette_ModelRender_02107d80.cpp (whole file).
 #    REFERRER: from:0x02109a38 kind:arm_call to:0x02107d80
 #    (_ZN15dScMgRoulette_c6RenderEv + 0x204).
-#    RECORD: func_ov006_02107d80 kind:function(arm,size=0x38) addr:0x02107d80,
+#    RECORD: RouletteBoard_Draw kind:function(arm,size=0x38) addr:0x02107d80,
 #    body e92d4010 e1a04000 e2840010.
 # UN-QUARANTINED, run link100 lane HOSTGEN2. The one host copy left inside this
-# TU was unmatched/MgRoulette_WheelDispatch.cpp's func_ov006_02107db8, and both
+# TU was unmatched/MgRoulette_WheelDispatch.cpp's RouletteBoard_Update, and both
 # of its deltas now come out of the decomp's own text: hostgen's PMF_SEAM routes
 # the wheel object's member-pointer dispatch to port_mg_roulette_call0 and
 # hostgen's VIRTUAL_CALL respells the shadow-class call of ROM slot 3 as
@@ -90,27 +90,27 @@ src/actors/unit020bfec0.cpp
 # The row stays on THIS slice, where lane FOLD2 put it, and not on slice_rlt.txt:
 # slice_rlt's own assertion still refuses it there for the factory host copy,
 # which is a separate TU and a separate ruling.
-src/actors/dScMgRoulette_c.cpp
+src/minigames/d_s_mg_roulette_methods.cpp
 port/unmatched/hostarm/dScMgRoulette_c.cpp
 
-# 5. src/func_ov006_020c1f4c.cpp -- dScMgSlot3_c's sub-object update, whose
+# 5. src/Mascot_UpdateMatrix.cpp -- dScMgSlot3_c's sub-object update, whose
 #    four-virtual shadow calls `v3()` on the BlendModelAnim at +0x10: ROM index
 #    3, UpdateVerts. RETIRES port/unmatched/MgSlot3_SubObjUpdate_020c1f4c.cpp
 #    (whole file).
 #    REFERRER: from:0x020c2128 kind:arm_call to:0x020c1f4c
-#    (func_ov006_020c201c + 0x10c).
-#    RECORD: func_ov006_020c1f4c kind:function(arm,size=0xd0) addr:0x020c1f4c,
+#    (Mascot_Draw + 0x10c).
+#    RECORD: Mascot_UpdateMatrix kind:function(arm,size=0xd0) addr:0x020c1f4c,
 #    body e92d4030 e24dd004 e1a04000.
-# FOLDED into src/actors/unit020bfec0.cpp (row 75): src/func_ov006_020c1f4c.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 75): src/Mascot_UpdateMatrix.cpp
 
-# 6. src/func_ov006_020cafb4.cpp -- dScMgTrampoline_c's 3D Mario element, one
+# 6. src/Trmp3DMario_Render.cpp -- dScMgTrampoline_c's 3D Mario element, one
 #    six-virtual shadow call at +0x6c with data_ov006_0212e038 as the scale.
 #    RETIRES port/unmatched/MgTrmpln3DMario_ModelRender.cpp (whole file).
 #    REFERRER: from:0x020cd360 kind:arm_call to:0x020cafb4
-#    (func_ov006_020cd270 + 0xf0).
-#    RECORD: func_ov006_020cafb4 kind:function(arm,size=0x28) addr:0x020cafb4,
+#    (Trmp3DMario_DrawAll + 0xf0).
+#    RECORD: Trmp3DMario_Render kind:function(arm,size=0x28) addr:0x020cafb4,
 #    body e92d4000 e24dd004 e5b0206c.
-src/actors/dMgTrmpln2Mario_c.cpp
+src/minigames/d_mg_trmpln2_mario.cpp
 
 # ---------------------------------------------------------------------------
 # THREE MORE ROWS ARE IN THIS BATCH AND ARE NOT LISTED HERE, because they do
@@ -125,7 +125,7 @@ src/actors/dMgTrmpln2Mario_c.cpp
 # block, and hostgen's rewrite is the MMIO substitution and NOTHING ELSE --
 # diffed line by line against src/ before this batch was applied.
 #
-#   src/func_ov006_020c3bf4.cpp  1 MMIO rewrite. dScMgFlower_c's ModelAnim at
+#   src/FlowerFace_Draw.cpp  1 MMIO rewrite. dScMgFlower_c's ModelAnim at
 #       +0xd18 through a six-virtual shadow's f5(0); the file's own header
 #       quotes the ROM at 020c3cb4 ldr r2,[r2,#0x14] / blx r2. RETIRES
 #       unmatched/MgFlower_ModelRender_020c3bf4.cpp.
@@ -133,7 +133,7 @@ src/actors/dMgTrmpln2Mario_c.cpp
 #       (_ZN13dScMgFlower_c6RenderEv + 0x178).
 #       RECORD: kind:function(arm,size=0x124) addr:0x020c3bf4,
 #       body e92d4070 e24dd010 e59f20f4.
-#   src/func_ov006_020c1804.cpp  2 MMIO rewrites. A BlendModelAnim at +0x1c
+#   src/Dealer_Draw.cpp  2 MMIO rewrites. A BlendModelAnim at +0x1c
 #       and a plain Model at +0x8c, both through a six-virtual shadow's f5(0).
 #       RETIRES unmatched/MgMemory2_ModelRender_020c1804.cpp.
 #       REFERRER: eight arm_calls, the nearest
@@ -143,7 +143,7 @@ src/actors/dMgTrmpln2Mario_c.cpp
 #       ov007's 0x020b77b4. A shared draw, not one scene's.
 #       RECORD: kind:function(arm,size=0x1cc) addr:0x020c1804,
 #       body e92d4010 e24dd020 e59f21a4.
-#   src/func_ov006_020c29dc.cpp  4 MMIO rewrites. The dScMgSingle3DBase_c body
+#   src/Presenter_Draw.cpp  4 MMIO rewrites. The dScMgSingle3DBase_c body
 #       shared by the cup and boombox slices: a BlendModelAnim at +0x8 and a
 #       plain Model at +0x78. RETIRES unmatched/
 #       MgShared4f38_ModelRender_020c29dc.cpp, which was listed by BOTH
@@ -213,7 +213,7 @@ src/actors/dMgTrmpln2Mario_c.cpp
 #    hal/actor_classes_bowserpuzzle.cpp:327.
 #    RECORD: kind:function(arm,size=0x28) addr:0x02119088, body e92d4000
 #    e24dd004 e5b020d4.
-src/actors/daWater_Hakidasi_c.cpp
+src/game/actors/d_a_water_hakidasi.cpp
 
 # 8. src/game/actors/d_a_bakubaku.cpp -- BUBBA's Render, the ModelAnim at +0x34c
 #    behind the 0x40000 flag gate. RETIRES port/unmatched/Bubba_Render.cpp
@@ -224,7 +224,7 @@ src/actors/daWater_Hakidasi_c.cpp
 #    data_ov032_0211382c, so the base is quoted from the ARM store order).
 #    RECORD: kind:function(arm,size=0x50) addr:0x02112164, body e92d4000
 #    e24dd004 e59010b0.
-src/actors/daBakubaku_c.cpp
+src/game/actors/d_a_bakubaku.cpp
 
 # 9. src/_ZN6Cannon6RenderEv.cpp -- the Model at +0xd4, UpdateVerts then Render,
 #    ROM indices 3 and 5 through the same six-virtual shadow. RETIRES
@@ -235,7 +235,7 @@ src/actors/daBakubaku_c.cpp
 #    e1a04000 e5940180.
 src/game/actors/d_a_cnn.cpp
 
-# 10. src/actors/daPgDfdr_c.cpp -- DA_PG_DFDR's Render, a TextureSequence
+# 10. src/game/actors/d_a_pg_dfdr.cpp -- DA_PG_DFDR's Render, a TextureSequence
 #     update then the ModelAnim at +0x320. RETIRES port/unmatched/
 #     DaPgDfdr_Render.cpp (whole file). No face: address-named C symbol.
 #     THE SOURCE CARRIES THE GUESS MARKER and is ADJUDICATED: line 1803 of
@@ -247,15 +247,15 @@ src/game/actors/d_a_cnn.cpp
 #     the same adjudication file); the fill is hal/actor_classes_ov027.cpp:667.
 #     RECORD: kind:function(arm,size=0x34) addr:0x02111e00, body e92d4010
 #     e1a04000 e2840fe1.
-src/actors/daPgDfdr_c.cpp
+src/game/actors/d_a_pg_dfdr.cpp
 
-# 11. src/actors/Eyerok.cpp -- the Model at +0x3d0 on one arm, the
+# 11. src/game/actors/d_a_iwante.cpp -- the Model at +0x3d0 on one arm, the
 #     BlendModelAnim at +0x360 on the other. RETIRES port/unmatched/
 #     Eyerok_Render.cpp (whole file). No face: this matched source defines the
 #     C++ METHOD, and hal/actor_classes_ov066.cpp:489 already calls
 #     ((Eyerok *)s)->Eyerok::Render() rather than the C name -- so the matched
 #     TU simply becomes the definition of the symbol the host copy provided.
-#     src/actors/Eyerok.cpp also LEAVES the ov066 duplicate guard in
+#     src/game/actors/d_a_iwante.cpp also LEAVES the ov066 duplicate guard in
 #     port/CMakeLists.txt, which existed to refuse it while it was host-copied.
 #     REFERRER: _ZTV6Eyerok 0x0211ad64 + 4*9 = from:0x0211ad88 kind:load
 #     to:0x021197a4 module:overlay(66).
@@ -272,7 +272,7 @@ src/actors/daPgDfdr_c.cpp
 # a member-pointer call under /vmg /vmm, and the enter half is reached through
 # func_ov066_02119454, the one-call forwarder lane PMF2 measured as a tail jump
 # (port/slice_pmf2.txt, the cdecl-seat list).
-src/actors/Eyerok.cpp
+src/game/actors/d_a_iwante.cpp
 
 # 12. src/game/actors/d_a_obj_rc_carpet.cpp -- FLYING_CARPET's Render, the ModelAnim at
 #     +0x450 behind the halfword gate at +0x428. RETIRES port/unmatched/
@@ -291,7 +291,7 @@ src/game/actors/d_a_obj_rc_carpet.cpp
 #     hal/actor_classes_koopa_chuckya.cpp:535.
 #     RECORD: kind:function(arm,size=0x2c) addr:0x0211c920, body e92d4000
 #     e24dd004 e2800fcd.
-src/actors/daJango_c.cpp
+src/game/actors/d_a_jango.cpp
 
 # 14. src/_ZN5Koopa6RenderEv.cpp -- the shell/material swap, then the ModelAnim
 #     at +0x300 with the saved scale triple. RETIRES port/unmatched/
@@ -310,7 +310,7 @@ src/game/actors/d_a_nknk.cpp
 #     hal/actor_classes_ov060.cpp:633.
 #     RECORD: kind:function(arm,size=0x50) addr:0x02115f0c, body e92d4010
 #     e1a04000 e5d4041c.
-src/actors/daKpa_c.cpp
+src/game/actors/d_a_kpa.cpp
 
 # 16. src/_ZN16BowserShockwaves6RenderEv.cpp -- the SECOND body in the same host
 #     copy: six texture/material updates then two ModelAnim draws. Together with
@@ -322,7 +322,7 @@ src/actors/daKpa_c.cpp
 #     to:0x02118e1c module:overlay(60).
 #     RECORD: kind:function(arm,size=0x9c) addr:0x02118e1c, body e92d4010
 #     e24dd010 e1a04000.
-src/actors/daFRing_c.cpp
+src/game/actors/d_a_f_ring.cpp
 
 # 17. src/_ZN13PrincessPeach8BehaviorEv.cpp -- the one BEHAVIOR row of the
 #     lane, and the one that lands on index 3 rather than 5: its four-virtual
@@ -333,7 +333,7 @@ src/actors/daFRing_c.cpp
 #     hal/actor_classes_ov085.cpp:509.
 #     RECORD: kind:function(arm,size=0x5c) addr:0x0212a52c, body e92d4010
 #     e1a04000 ebffffbd.
-src/actors/daPeach_c.cpp
+src/game/actors/d_a_peach.cpp
 
 # 18. src/_ZN3Key6RenderEv.cpp -- the ModelAnim at +0x114 on both arms and the
 #     Model at +0x178 behind the state table. RETIRES port/unmatched/
@@ -343,7 +343,7 @@ src/actors/daPeach_c.cpp
 #     hal/actor_classes_ov089.cpp:247.
 #     RECORD: kind:function(arm,size=0xa4) addr:0x021320f0, body e92d4010
 #     e1a04000 e59400b0.
-src/actors/daObjKey_c.cpp
+src/game/actors/d_a_obj_key.cpp
 
 # 19. src/_ZN13RacingPenguin6RenderEv.cpp -- a TextureSequence update then the
 #     ModelAnim at +0xd4 with the scale at +0x80. RETIRES port/unmatched/
@@ -365,7 +365,7 @@ src/game/actors/d_a_pg_rcer.cpp
 #     hal/actor_classes_ov026.cpp:579.
 #     RECORD: kind:function(arm,size=0x34) addr:0x02111fd8, body e92d4010
 #     e1a04000 e2840f5e.
-src/actors/daWater_Tatumaki_c.cpp
+src/game/actors/d_a_water_tatumaki.cpp
 
 # 21. src/_ZN7Wiggler6RenderEv.cpp -- five segments, each a TextureSequence
 #     update and a ModelAnim draw at stride 0x64. RETIRES port/unmatched/
@@ -375,7 +375,7 @@ src/actors/daWater_Tatumaki_c.cpp
 #     hal/actor_classes_ov034.cpp:514.
 #     RECORD: kind:function(arm,size=0x68) addr:0x02112af4, body e92d40f0
 #     e24dd004 e59f1054.
-src/actors/daHanachan_c.cpp
+src/game/actors/d_a_hanachan.cpp
 
 # 22. src/func_ov002_020e4768.cpp -- the Player's head-model matrix seat, whose
 #     five-virtual shadow calls index 4: ROM Virtual10, which the fold had put
@@ -385,7 +385,7 @@ src/actors/daHanachan_c.cpp
 #     (func_ov002_020e4bb8 + 0x114) -- a direct call, not a vtable slot.
 #     RECORD: kind:function(arm,size=0x204) addr:0x020e4768, body e92d4030
 #     e24dd004 e1a04000.
-src/actors/Player.cpp
+src/game/player/Player.cpp
 
 # ---------------------------------------------------------------------------
 # THE ROWS OF THE THIRTY THAT STAY, with the measured reason for each.

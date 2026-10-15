@@ -12,7 +12,7 @@ src/game/actors/d_a_propeller_heyho.cpp:
     .data start:0x02123120 end:0x021231e4
     .bss start:0x02123500 end:0x021235ec
 
-src/actors/daBrq_c.cpp:
+src/game/actors/d_a_brq.cpp:
     complete
     .text start:0x02120570 end:0x02121118
     .data start:0x0212323c end:0x021232f4

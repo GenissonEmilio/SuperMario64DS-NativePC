@@ -39,7 +39,7 @@
 //
 // ---- AND WHY THERE IS ONLY ONE ROW ---------------------------------------
 //
-// The sibling class needed a second: src/func_ov006_020fb97c.c spells
+// The sibling class needed a second: src/Pachinko_CheckTargetsLeft.c spells
 // MultiStore16 as bare func_0205a448, a name that exists nowhere. This class's
 // closure has no such row -- the link over the whole 63-line slice returned
 // exactly one unresolved external, this one -- and that is a measurement

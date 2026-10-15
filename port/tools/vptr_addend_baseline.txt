@@ -34,7 +34,7 @@
 # cdb on scene 362 read the object holding __ZTV13dScMgMemory_c + 8, so
 # fBase_c::Process entered vtable slot 2 where it meant slot 0,
 # dScMgBase_c::BeforeInitResources (slot 1, the only writer of
-# data_ov004_020beb60) never ran, and LoadFont(2) loaded the font into a null
+# sMgWorkBuffer) never ran, and LoadFont(2) loaded the font into a null
 # pointer. The commit before this one carries the whole measurement.
 #
 # Verified after the build rather than predicted: vptr_addend_guard now reads

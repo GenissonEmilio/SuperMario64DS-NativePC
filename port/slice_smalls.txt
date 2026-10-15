@@ -66,4 +66,4 @@ src/game/actors/d_a_pg_mthr.cpp
 # rows because MSVC decorates the fourteen `extern PMF` names. /Zp4 is not
 # needed (PMFB8: 0 diff lines).
 #
-src/actors/Player.cpp
+src/game/player/Player.cpp

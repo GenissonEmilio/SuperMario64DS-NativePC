@@ -45,10 +45,10 @@
 //
 // Both edges are also read off code, the way run mg6 lane MEM read 0x16b's:
 //
-//   src/actors/dScMgSound_c.cpp (0x0211cb70) calls _ZN11dScMgBase_cC2Ev(p) WITH its
+//   src/minigames/d_s_mg_sound.cpp (0x0211cb70) calls _ZN11dScMgBase_cC2Ev(p) WITH its
 //   argument, writes _ZTV19dScMgSingle3DBase_c into p[0] (ROM 0x0211cbc4), then
 //   writes _ZTV12dScMgSound_c over it (ROM 0x0211cbcc).
-//   src/actors/dScMgSound_c.cpp (slot 17, D0) unwinds them in the OPPOSITE
+//   src/minigames/d_s_mg_sound.cpp (slot 17, D0) unwinds them in the OPPOSITE
 //   order -- 0x0213f844 first, then 0x0213e448 -- and src/_ZN12dScMgSound_cD1Ev
 //   .cpp (slot 16, D2) does the same without the Deallocate.
 //
@@ -107,7 +107,7 @@
 // port/unmatched/MgFlower_Slot2.cpp already carries the repair as
 // port_mg_flower_after_init and its header ends "THE NEXT LANE TO SEAT 361 OR
 // 363 SHOULD CALL THIS RATHER THAN WRITE A SECOND". This is 367 and it calls
-// it too. src/minigames/d_s_mg_single3_d_base.cpp stays out of port/slice_box.txt for the
+// it too. src/minigames/d_s_mg_single3d_base.cpp stays out of port/slice_box.txt for the
 // same reason it is out of port/slice_flw.txt and port/slice_mem.txt: listing
 // it would be an LNK2005 against that host copy.
 //
@@ -118,14 +118,14 @@
 // twelve it corrected. All four checks were redone here from the image:
 //
 //   1. SPAN. config/arm9/overlays/ov006/symbols.txt puts the next symbol after
-//      _ZTV12dScMgSound_c at data_ov006_0213f8d4, exactly 0x90 = 36 words on,
+//      _ZTV12dScMgSound_c at pmf_dScMgTeresa_c_Boo_State5, exactly 0x90 = 36 words on,
 //      so a 37th slot cannot exist inside the table. The middle table's next
 //      symbol is data_ov006_0213e4d8, also exactly 0x90 on.
 //   2. TERMINAL SLOT. Slot 35 of both tables holds 0x020ad660, the word every
 //      dScMgBase_c-derived table holds there.
 //   3. WHAT THE WORD PAST IT IS, and this one has a named victim. Index 36 of
 //      0x0213f844 reads 0x0211f040 and index 37 reads 0x00000000 -- an mwcc
-//      {code, 0} MEMBER POINTER, not a vtable slot. It is data_ov006_0213f8d4,
+//      {code, 0} MEMBER POINTER, not a vtable slot. It is pmf_dScMgTeresa_c_Boo_State5,
 //      and __sinit_ov006_02132f68 copies it into data_ov006_02142ed8 slot 5.
 //      THAT TABLE IS dScMgTeresa_c'S (actor id 0x183, scene 387), not this
 //      class's: all twenty-seven of its code words lie in 0x0211cd24..
@@ -143,7 +143,7 @@
 // WERE DISASSEMBLED AND RULED REAL_DECOMP BY THIS LANE, with per-body evidence
 // and per-body instruction arithmetic in port/tools/inferred_stub_adjudicated
 // .txt. The two unmarked overrides are slot 16 (_ZN12dScMgSound_cD1Ev) and slot
-// 33 (_ZN19dScMgSingle3DBase_c9Virtual84Ev).
+// 33 (_ZN19dScMgSingle3DBase_c11InitEnginesEv).
 //
 // ---- 6. THE ROW GOES LAST, AND THE ORDER IS LOAD-BEARING ------------------
 //
@@ -175,19 +175,19 @@
 // Six pads, read off a run rather than off a picture: the ten-record array at
 // +0x50e8 holds SIX live records at (64,32) (128,32) (192,32) (64,112)
 // (128,112) (192,112), and all six sit in state 0 forever on an unattended
-// boot. src/actors/dScMgSound_c.cpp IS state 0, and it is a STYLUS HIT TEST --
+// boot. src/minigames/d_s_mg_sound.cpp IS state 0, and it is a STYLUS HIT TEST --
 // data_020a0dea/deb against the record's own x/y in a +-0x18 box, and on a hit
 // it writes state 1 into the record, zeroes the record's +0x50f0 and +0x50f7,
 // increments the per-round tap counter at +0x5624 and plays
 // Sound::PlayBank2_2D(0x201).
 //
-// STATE 1 IS func_ov006_0211bc8c. Run mg9 left it as this class's ONE HARD
+// STATE 1 IS Note_StateOpening. Run mg9 left it as this class's ONE HARD
 // FLOOR -- an address with a config symbol and no body anywhere -- so a tap
 // changed the record's state byte and the pad then froze: no press animation,
 // no note, no sound. RUN mg10 LANE F367 DECOMPILED IT (byte match, mwccarm
 // 2004/b56) and the switch in unmatched/MgSound_StateDispatch.cpp now routes
 // it, so a tap runs the press animation, commits the note into the play log at
-// +0x5610, spawns note entities through func_ov006_0211b654 and plays a sound.
+// +0x5610, spawns note entities through SpawnPops and plays a sound.
 //
 // THE UNATTENDED BOOT STILL READS ZERO FOR STATE 1, and that zero is honest:
 // nothing taps. SM64DS_TOUCH_PROBE="100-104:64:32,160-164:128:32" moves two
@@ -229,8 +229,8 @@ int   _ZN19dScMgSingle3DBase_c14BeforeBehaviorEv(void *c);                     /
 int   _ZN19dScMgSingle3DBase_c12BeforeRenderEv(void *c);                     /* slot 10 */
 int   _ZN19dScMgSingle3DBase_cD1Ev(char *c);                     /* slot 16 D2 */
 int   _ZN19dScMgSingle3DBase_cD0Ev(char *c);                     /* slot 17 D0 */
-int   _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(void);                        /* slot 26 */
-void  _ZN19dScMgSingle3DBase_c9Virtual84Ev(char *c);                     /* slot 33 */
+int   _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(void);                        /* slot 26 */
+void  _ZN19dScMgSingle3DBase_c11InitEnginesEv(char *c);                     /* slot 33 */
 
 /* dScMgSound_c's own seven. _ZN12dScMgSound_c8BehaviorEv is the src TU and NOT a host
    copy: slot 6 is a plain switch on the int at +0x5608 with a compiler jump
@@ -242,8 +242,8 @@ int   _ZN12dScMgSound_c8BehaviorEv(char *c);            /* slot  6 Behavior     
 int   _ZN12dScMgSound_c6RenderEv(char *c);            /* slot  9 Render        */
 void *_ZN12dScMgSound_cD1Ev(char *c);            /* slot 16 D2            */
 void *_ZN12dScMgSound_cD0Ev(char *c);            /* slot 17 D0            */
-void  _ZN12dScMgSound_c13OnYoshiTryEatEi(void *self, int r1); /* slot 18 state reset   */
-void  _ZN12dScMgSound_c9Virtual50Ev(char *c);            /* slot 20               */
+void  _ZN12dScMgSound_c10StartRoundEi(void *self, int r1); /* slot 18 state reset   */
+void  _ZN12dScMgSound_c11OnNewRecordEv(char *c);            /* slot 20               */
 
 /* the factory */
 void *dScMgSound_c_classInit(void);
@@ -258,12 +258,12 @@ void port_mg_dispatch_counts(unsigned *calls, unsigned *unknown);
 /* the persistent minigame record and the two framework bodies that address it,
    named so the census can print the record rather than leave it inferred.
    Nothing new is defined here: the storage is hal/level_boot.cpp's
-   .dsstate$savblk0004 and the index function is src/func_ov004_020adc3c.c. */
-extern void         *data_ov004_020beb68;     /* the live dScMgBase_c `this` */
+   .dsstate$savblk0004 and the index function is src/Mg_GetSaveTable.c. */
+extern void         *gMgScene;     /* the live dScMgBase_c `this` */
 extern unsigned char data_0209caf4[];         /* 36 records x 20 bytes       */
-int  func_ov004_020adc3c(void *c);            /* (self->field_8 >> 8) & 0xff */
+int  Mg_GetSaveTable(void *c);            /* (self->field_8 >> 8) & 0xff */
 
-/* THE STYLUS RECORD, the four names src/actors/dScMgSound_c.cpp reads. Four DS
+/* THE STYLUS RECORD, the four names src/minigames/d_s_mg_sound.cpp reads. Four DS
    symbols over one 16-byte block, hal/auto_bss.cpp carries the layout and its
    evidence; nothing is defined here. */
 extern unsigned char data_020a0e40;           /* which player's record       */
@@ -275,10 +275,10 @@ extern unsigned char data_020a0deb[];         /* y                           */
 }  /* extern "C" */
 
 /* The record row this class's object is keyed to, or -1 with no live base.
-   func_ov004_020ad878 -- the writer of +0xb4's seed -- goes through it. */
+   Mg_GetSavedRecord1 -- the writer of +0xb4's seed -- goes through it. */
 static int port_snd_record_index(void)
 {
-    return data_ov004_020beb68 ? func_ov004_020adc3c(data_ov004_020beb68) : -1;
+    return gMgScene ? Mg_GetSaveTable(gMgScene) : -1;
 }
 
 // ---- the tick witness ------------------------------------------------------
@@ -306,9 +306,9 @@ static void *__fastcall s3_d2(void *s, void *)
 static void *__fastcall s3_d0(void *s, void *)
 { S3D(17); return (void *)(size_t)_ZN19dScMgSingle3DBase_cD0Ev((char *)s); }
 static int  __fastcall s3_v26(void *, void *)
-{ S3D(26); return _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(); }
+{ S3D(26); return _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(); }
 static int  __fastcall s3_v33(void *s, void *)
-{ S3D(33); _ZN19dScMgSingle3DBase_c9Virtual84Ev((char *)s); return 0; }
+{ S3D(33); _ZN19dScMgSingle3DBase_c11InitEnginesEv((char *)s); return 0; }
 
 /* ---- dScMgSound_c's own seven ------------------------------------------- */
 static int  __fastcall snd_init(void *s, void *)
@@ -338,9 +338,9 @@ static void *__fastcall snd_d0(void *s, void *)
    with it. Passing it through is the whole of the difference between "one more
    round" and "start again". hal/scene_mg.cpp's mp_reset is the precedent. */
 static int  __fastcall snd_reset(void *s, void *, int flag)
-{ SND(18); _ZN12dScMgSound_c13OnYoshiTryEatEi(s, flag); return 1; }
+{ SND(18); _ZN12dScMgSound_c10StartRoundEi(s, flag); return 1; }
 static int  __fastcall snd_v20(void *s, void *)
-{ SND(20); _ZN12dScMgSound_c9Virtual50Ev((char *)s); return 0; }
+{ SND(20); _ZN12dScMgSound_c11OnNewRecordEv((char *)s); return 0; }
 
 /* SM64DS_SCENE_SLOT0=0 and SM64DS_SCENE_SLOT9=0, the diagnostics every scene
    seat in this port carries, counted separately so a run can never read a
@@ -476,7 +476,7 @@ extern "C" void port_scene_fill_boombox(void)
    port_mg_curling_spawn are, so the seat has one place to observe the object
    without the registry table growing a second column.
 
-   THE FACTORY NEEDS NO DISPLACEMENT RULING. src/actors/dScMgSound_c.cpp calls
+   THE FACTORY NEEDS NO DISPLACEMENT RULING. src/minigames/d_s_mg_sound.cpp calls
    _ZN11dScMgBase_cC2Ev(p) WITH its argument -- ROM 0x0211cb84 `bl 0x20b2adc`
    with r0 carrying the allocation from 0x0211cb78 -- where src/
    dScMgCup_c_classInit.cpp (0x169's factory) calls the same base constructor
@@ -561,13 +561,13 @@ extern "C" void port_scene_boombox_hits(void)
 
     /* THE OBJECT, AND THE FIELDS THE ROM'S OWN SLOT 6 READS. Every offset here
        is out of the disassembly of _ZN12dScMgSound_c8BehaviorEv (the Behavior's plain
-       switch) and _ZN12dScMgSound_c13OnYoshiTryEatEi (slot 18), not out of a struct:
+       switch) and _ZN12dScMgSound_c10StartRoundEi (slot 18), not out of a struct:
          +0x5608  the top-level state the switch reads (0 init, 1 intro,
                   2 result, 3 retry)
          +0x5618  the intro countdown, a u16 slot 0 and slot 18 both seed 0x20
          +0x5616  the result/retry countdown, seeded 0x20 on the retry arm
          +0x5626  the result byte: nonzero takes the finish arm, 3 also calls
-                  func_ov004_020b67f8
+                  Mg_SetPerfectBanner
          +0x5627  the index into the two spacing tables 0x0211ba88 reads
          +0xb4    the persistent level, clamped at 9999 on a win
          +0xb8    its high-water mark */
@@ -585,18 +585,18 @@ extern "C" void port_scene_boombox_hits(void)
     /* THE TWO ENTITY ARRAYS, because a run that dispatches nothing and a run
        with nothing to dispatch read the same on every other line. Both loops
        and both offsets come from the two open-coded dispatchers:
-         func_ov006_0211b954  TEN records, stride 0x14, base +0x50e8:
+         UpdateNotes  TEN records, stride 0x14, base +0x50e8:
                               +0x00 a 20.12 position it walks down by 16.0 a
                               tick, +0x0c the state index, +0x0d the in-play
                               gate it tests before dispatching at all
-         func_ov006_0211b5e0  THIRTY records, stride 0x24, base +0x51cc:
+         UpdatePops  THIRTY records, stride 0x24, base +0x51cc:
                               +0x00 the in-play gate, +0x04 the level-1 state
                               index, +0x05 the level-2 index every one of the
                               thirteen sub-dispatchers reads */
     if (g_snd_self) {
         int live10 = 0;
         /* x and y BOTH, and which word is which comes off the state-0 body
-           rather than off a guess: src/actors/dScMgSound_c.cpp compares
+           rather than off a guess: src/minigames/d_s_mg_sound.cpp compares
            data_020a0dea[player*4] against (+0xe8 >> 12) and
            data_020a0deb[player*4] against (+0xec >> 12), so +0x50e8 is the
            stylus X and +0x50ec is the stylus Y, in 20.12. A lane that wants to
@@ -656,7 +656,7 @@ extern "C" void port_scene_boombox_hits(void)
                         rec[0], rec[1], rec[2], rec[3], rec[4]);
         } else {
             std::printf("[scene] dScMgSound_c save record: NO minigame index "
-                        "(data_ov004_020beb68 = %p)\n", data_ov004_020beb68);
+                        "(gMgScene = %p)\n", gMgScene);
         }
     }
 

@@ -437,7 +437,7 @@ in src; the full set, with what each one's state in this image actually is:
     func_02059834              |= 0x10           YES, slice_gate10, unreached
     _ZN3IRQ13VBlankHandlerEv   |= 1              no
     _ZN3IRQ13DmaTimHandlerEj   |= mask           no
-    func_ov006_020efcf8        |= 2              no
+    Luigi_PrepareScanlines        |= 2              no
 
 REACHABLE AND HYPOTHETICAL ARE DIFFERENT THINGS AND THE FIX NEEDS BOTH. Only
 func_0202f2c4 runs today, 191 times a frame, and that alone settles the sizing.

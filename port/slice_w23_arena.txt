@@ -27,7 +27,7 @@
 #       SetArenaLo(id, end); return start
 #
 # REACH. The only linked ROM referrer of all three is Heap::SetupRootHeap
-# (src/_ZN4Heap13SetupRootHeapEv.cpp, arm9 0x0203cb04, linked): its relocs
+# (src/_ZN5mHeap6Heap_t13SetupRootHeapEv.cpp, arm9 0x0203cb04, linked): its relocs
 # name 0x02058eb4 twice, 0x02058d58 and 0x02058cd0, and it runs once at boot
 # on every hosting target (walk_window, walk_window_hires, smoke_player).
 # func_02058cd0 also reaches func_02058ea0 / func_02058eb4 / func_02058d58.
@@ -49,9 +49,10 @@
 # slice (a definition retired on one and not the others would leave the
 # others asking for a name nothing defines).
 src/unnamed/arm9/0205/func_02058eb4.c
-# PORTSYNC2: main folded src/func_02058d58.c and src/func_02058cd0.c into
-# src/engine/cp15/CP15.cpp with seven asm CP15 cache primitives (host: ntr/runtime.cpp);
-# the row is those two bodies, carried in port/unmatched/ (see its banner).
-#src/engine/cp15/CP15.cpp
-port/unmatched/CP15_arena_hostcopy.c
+# PORTDROP2: main split the two plain-C arena bodies back out of the asm CP15 TU
+# (PR 3878, src/unnamed/arm9/0205/), so the ROM's own files run here again and
+# the port/unmatched/CP15_arena_hostcopy.c stand-in is gone. Their fixed
+# 0x027ffda0 table is the shared block the port maps (ntr kRegions).
+src/unnamed/arm9/0205/func_02058d58.cpp
+src/unnamed/arm9/0205/func_02058cd0.cpp
 # FOLDED into src/engine/cp15/CP15.cpp (row 52): src/func_02058cd0.c

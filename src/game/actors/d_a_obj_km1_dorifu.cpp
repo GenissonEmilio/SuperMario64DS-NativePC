@@ -30,6 +30,20 @@
  *   names; the handles keep data_ov043_* names as well.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_km1_dorifu_AssetId {
+    ASSET_KM1_DORIFU0_BMD = 0x0649,
+    ASSET_KM1_DORIFU0_KCL = 0x064a,
+    ASSET_KM1_DORIFU1_BMD = 0x064b,
+    ASSET_KM1_DORIFU1_KCL = 0x064c,
+    ASSET_KM1_DORIFU2_BMD = 0x064d,
+    ASSET_KM1_DORIFU2_KCL = 0x064e,
+    ASSET_KM1_DORIFU3_BMD = 0x064f,
+    ASSET_KM1_DORIFU3_KCL = 0x0650,
+    ASSET_KM1_DORIFU4_BMD = 0x0651,
+    ASSET_KM1_DORIFU4_KCL = 0x0652
+};
+
 #include "daObjKm1_Dorifu_c.h"
 
 struct DorifuSpawnInfo {
@@ -118,13 +132,13 @@ s32 daObjKm1_Dorifu_c::CleanupResources()
 /* Order is the retail initializer: models 0x649/0x64b/0x64d/0x64f/0x651,
  * then collisions 0x64a/0x64c/0x64e/0x650/0x652. mwcc emits
  * __sinit_d_a_obj_km1_dorifu.cpp from these ten definitions. */
-DorifuModelFilePtr data_ov043_021126a0(0x649);
-DorifuModelFilePtr data_ov043_02112680(0x64b);
-DorifuModelFilePtr data_ov043_02112668(0x64d);
-DorifuModelFilePtr data_ov043_02112688(0x64f);
-DorifuModelFilePtr data_ov043_02112690(0x651);
-DorifuCollisionFilePtr data_ov043_02112678(0x64a);
-DorifuCollisionFilePtr data_ov043_02112658(0x64c);
-DorifuCollisionFilePtr data_ov043_02112670(0x64e);
-DorifuCollisionFilePtr data_ov043_02112698(0x650);
-DorifuCollisionFilePtr data_ov043_02112660(0x652);
+DorifuModelFilePtr data_ov043_021126a0(ASSET_KM1_DORIFU0_BMD);
+DorifuModelFilePtr data_ov043_02112680(ASSET_KM1_DORIFU1_BMD);
+DorifuModelFilePtr data_ov043_02112668(ASSET_KM1_DORIFU2_BMD);
+DorifuModelFilePtr data_ov043_02112688(ASSET_KM1_DORIFU3_BMD);
+DorifuModelFilePtr data_ov043_02112690(ASSET_KM1_DORIFU4_BMD);
+DorifuCollisionFilePtr data_ov043_02112678(ASSET_KM1_DORIFU0_KCL);
+DorifuCollisionFilePtr data_ov043_02112658(ASSET_KM1_DORIFU1_KCL);
+DorifuCollisionFilePtr data_ov043_02112670(ASSET_KM1_DORIFU2_KCL);
+DorifuCollisionFilePtr data_ov043_02112698(ASSET_KM1_DORIFU3_KCL);
+DorifuCollisionFilePtr data_ov043_02112660(ASSET_KM1_DORIFU4_KCL);

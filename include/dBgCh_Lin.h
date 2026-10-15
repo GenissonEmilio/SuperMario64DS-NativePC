@@ -90,14 +90,14 @@ struct dBgCh_Lin : dBgCh, dBgPi, dM3dGLin {
        padding belongs to the holder and now lives in dBgCh_Actr.h. */
 
     /* --- vtable, in ROM order. Do not reorder. --- */
-    /* Defined as real C++ in src/engine/collision/dBgCh_Lin.cpp. That TU
+    /* Defined as real C++ in src/engine/collision/d_bg_ch_lin.cpp. That TU
      * enrolls the compiler-emitted -0x10 adjustment thunks; objisolate
      * retains one ABI artifact per source and binds its vptr stores to ROM
      * data. Slots: primary D1/D0 at _ZTV9dBgCh_Lin, secondary D1/D0 at
      * VTable_dBgPi_dBgCh_LinThunk. */
     virtual ~dBgCh_Lin();
 
-    /* DECLARED, defined out of line in src/engine/collision/dBgCh_Lin.cpp as
+    /* DECLARED, defined out of line in src/engine/collision/d_bg_ch_lin.cpp as
      * real C++ -- complete-object context for every ROM caller, hence C1.
      */
     dBgCh_Lin();

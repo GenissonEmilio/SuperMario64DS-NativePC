@@ -30,7 +30,7 @@
 // invented, blind to spelling) over the element machinery 0x020caf00..
 // 0x020cd800, body by body at each body's own start and size:
 //
-//     func_ov006_020cb030   ONE site, at 0x020cb068
+//     Trmp3DMario_Update   ONE site, at 0x020cb068
 //
 // THE ADDRESS A DECODE SITE IS REPORTED AT IS THE `add`, the FIRST instruction
 // of the five-instruction sequence, in every place this lane names one.  The
@@ -39,7 +39,7 @@
 // site.  Both sequences in full:
 //
 //     _ZN17dScMgTrampoline_c8BehaviorEv   add 0x0212151c   ands 0x02121520   blx 0x02121534
-//     func_ov006_020cb030   add 0x020cb068   ands 0x020cb06c   blx 0x020cb080
+//     Trmp3DMario_Update   add 0x020cb068   ands 0x020cb06c   blx 0x020cb080
 //
 // An earlier version of the element file reported ITS site at the blx while
 // this class's was reported at the add, so two numbers that look like the same
@@ -51,7 +51,7 @@
 //
 // ---- 3. THE src IS ALREADY OPEN-CODED, AND THAT IS THE DANGEROUS PART ----
 //
-// src/func_ov006_020cb030.cpp does NOT use a member-pointer type.  It spells
+// src/Trmp3DMario_Update.cpp does NOT use a member-pointer type.  It spells
 // the pair by hand:
 //
 //     struct Closure { int off; int adj; };
@@ -73,13 +73,13 @@
 // THE PORT CANNOT COMPILE THAT src ANYWAY, which is how this file came to be
 // written before the run rather than after it:
 //
-//     src\func_ov006_020cb030.cpp(14): error C2761: 'System *System::New(...)':
+//     src\Trmp3DMario_Update.cpp(14): error C2761: 'System *System::New(...)':
 //     redeclaration of member is not allowed
-//     src\func_ov006_020cb030.cpp(15): error C2761: 'void Animation::Advance()'
+//     src\Trmp3DMario_Update.cpp(15): error C2761: 'void Animation::Advance()'
 //
 // The TU declares two class members inside the class and then RE-DECLARES them
 // at namespace scope.  mwcc accepted it; MSVC does not, and it is right.  So
-// src/func_ov006_020cb030.cpp is out of port/slice_tti.txt and the body below
+// src/Trmp3DMario_Update.cpp is out of port/slice_tti.txt and the body below
 // takes its symbol -- the unmatched/MgBSC_StateDispatch.cpp convention for "the
 // port cannot compile the src".
 //
@@ -100,8 +100,8 @@
 // A SWEEP OF THE SPAN WOULD HAVE COLLECTED THREE WORDS THAT ARE NOT PAIRS,
 // which is the curling trap for the third time in this lane:
 //
-//     0x0213b0ec  {3, 3}          two ints. Read by func_ov006_020cc2ac,
-//                                 func_ov006_020cd424, and by the OUTER class's
+//     0x0213b0ec  {3, 3}          two ints. Read by Trmp3DMario_State6,
+//                                 Trmp3DMario_ResetAll, and by the OUTER class's
 //                                 slot 9 and chain link 1.
 //     0x0213b19c  {0209a774, 0213b288}   the type_info of dMgTrmpObjAdapter_c,
 //                                 this element class's own base.
@@ -122,9 +122,9 @@
 //
 // ---- 5b. THE src CALLS THE WRONG TWIN, AND THE HOST COPY DOES NOT -------
 //
-// src/func_ov006_020cb030.cpp's second-to-last statement is
+// src/Trmp3DMario_Update.cpp's second-to-last statement is
 //
-//     func_ov006_020c9024(o);
+//     Trmp2Mario_ApplyGravity(o);
 //
 // and the ROM's is not.  config/arm9/overlays/ov006/relocs.txt has exactly one
 // arm_call out of this body into that neighbourhood --
@@ -135,9 +135,9 @@
 // rather than filing as a typo.  Both are 0x38 bytes and both are
 // ApproachLinear-then-AddVec3, and their bytes DIFFER:
 //
-//     func_ov006_020c9024   ApproachLinear(o+0x40, data_ov006_021405b4[0],
+//     Trmp2Mario_ApplyGravity   ApproachLinear(o+0x40, data_ov006_021405b4[0],
 //                           *(o+0x48));  AddVec3(o+0x24, o+0x3c, o+0x24)
-//     func_ov006_020cb134   ApproachLinear(o+0x38, data_ov006_02140548[0],
+//     Trmp3DMario_ApplyGravity   ApproachLinear(o+0x38, data_ov006_02140548[0],
 //                           *(o+0x40));  AddVec3(o+0x1c, o+0x34, o+0x1c)
 //
 // -- different offsets, different global.  The element object this dispatcher
@@ -157,9 +157,9 @@
 // data_ov006_0213b0ec and data_ov006_0213b0f0 are read by dScMgTrampoline2_c's
 // bodies too (0x02123330 and 0x02124014), so the element machinery is common to
 // the two trampoline classes even though the ELEMENT ARRAY is not -- only this
-// class's factory calls func_ov006_020cd12c, the element constructor that
+// class's factory calls Trmp3DMario_Construct, the element constructor that
 // installs data_ov006_0213b2c4.  Lane TTE must CALL this file rather than write
-// a second: a second definition of func_ov006_020cb030 is an LNK2005 and two
+// a second: a second definition of Trmp3DMario_Update is an LNK2005 and two
 // switches over the same twenty-one addresses would split the witness.
 
 #include <cstdio>
@@ -174,31 +174,31 @@ void port_mg_call0(void *self, unsigned code, int adj);
 
 /* ---- the twenty-one routed state bodies, in address order ---------------
    Each is declared with the parameter list ITS OWN src TU defines. */
-void func_ov006_020c905c(char *o);
-void func_ov006_020c91ac(char *c);
-void func_ov006_020c97bc(char *c);
-void func_ov006_020c9d7c(char *c);
-void func_ov006_020c9efc(char *c);
-void func_ov006_020ca070(char *c);
-void func_ov006_020ca310(char *c);
-void func_ov006_020ca39c(int *p);
-void func_ov006_020cb16c(int *c);
-void func_ov006_020cb2b4(void *self);
-void func_ov006_020cb5c4(char *c);
-void func_ov006_020cb72c(char *c);
-void func_ov006_020cb838(char *c);
-void func_ov006_020cbd7c(char *c);
-void func_ov006_020cc2ac(char *c);
-void func_ov006_020cc408(char *c);
-void func_ov006_020cc63c(int *c);
-void func_ov006_020cc724(char *c);
-void func_ov006_020cc9b8(int *c);
-void func_ov006_020ccae0(char *c);
-void func_ov006_020ccd64(char *p);
+void Trmp2Mario_State0(char *o);
+void Trmp2Mario_State1(char *c);
+void Trmp2Mario_State2(char *c);
+void Trmp2Mario_State3(char *c);
+void Trmp2Mario_State4(char *c);
+void Trmp2Mario_State5(char *c);
+void Trmp2Mario_State6(char *c);
+void Trmp2Mario_State7(int *p);
+void Trmp3DMario_State0(int *c);
+void Trmp3DMario_State1(void *self);
+void Trmp3DMario_State2(char *c);
+void Trmp3DMario_State3(char *c);
+void Trmp3DMario_State4(char *c);
+void Trmp3DMario_State5(char *c);
+void Trmp3DMario_State6(char *c);
+void Trmp3DMario_State7(char *c);
+void Trmp3DMario_State8(int *c);
+void Trmp3DMario_State9(char *c);
+void Trmp3DMario_State10(int *c);
+void Trmp3DMario_State11(char *c);
+void Trmp3DMario_State12(char *p);
 
 /* the ordinary callees the host copy keeps, spelled as their own src TUs do */
-void func_ov006_020cb134(char *o);
-void func_ov006_020cafdc(char *o);
+void Trmp3DMario_ApplyGravity(char *o);
+void Trmp3DMario_UpdateMatrix(char *o);
 extern int data_ov006_0214059c;
 int  _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
         int a, unsigned b, int x, int y, int z, const void *v, void *cb);
@@ -217,27 +217,27 @@ static int mario_try_0(void *self, unsigned code)
 {
     char *c = (char *)self;
     switch (code) {
-    case 0x020c905cu: func_ov006_020c905c(c);            return 1;
-    case 0x020c91acu: func_ov006_020c91ac(c);            return 1;
-    case 0x020c97bcu: func_ov006_020c97bc(c);            return 1;
-    case 0x020c9d7cu: func_ov006_020c9d7c(c);            return 1;
-    case 0x020c9efcu: func_ov006_020c9efc(c);            return 1;
-    case 0x020ca070u: func_ov006_020ca070(c);            return 1;
-    case 0x020ca310u: func_ov006_020ca310(c);            return 1;
-    case 0x020ca39cu: func_ov006_020ca39c((int *)c);     return 1;
-    case 0x020cb16cu: func_ov006_020cb16c((int *)c);     return 1;
-    case 0x020cb2b4u: func_ov006_020cb2b4(c);            return 1;
-    case 0x020cb5c4u: func_ov006_020cb5c4(c);            return 1;
-    case 0x020cb72cu: func_ov006_020cb72c(c);            return 1;
-    case 0x020cb838u: func_ov006_020cb838(c);            return 1;
-    case 0x020cbd7cu: func_ov006_020cbd7c(c);            return 1;
-    case 0x020cc2acu: func_ov006_020cc2ac(c);            return 1;
-    case 0x020cc408u: func_ov006_020cc408(c);            return 1;
-    case 0x020cc63cu: func_ov006_020cc63c((int *)c);     return 1;
-    case 0x020cc724u: func_ov006_020cc724(c);            return 1;
-    case 0x020cc9b8u: func_ov006_020cc9b8((int *)c);     return 1;
-    case 0x020ccae0u: func_ov006_020ccae0(c);            return 1;
-    case 0x020ccd64u: func_ov006_020ccd64(c);            return 1;
+    case 0x020c905cu: Trmp2Mario_State0(c);            return 1;
+    case 0x020c91acu: Trmp2Mario_State1(c);            return 1;
+    case 0x020c97bcu: Trmp2Mario_State2(c);            return 1;
+    case 0x020c9d7cu: Trmp2Mario_State3(c);            return 1;
+    case 0x020c9efcu: Trmp2Mario_State4(c);            return 1;
+    case 0x020ca070u: Trmp2Mario_State5(c);            return 1;
+    case 0x020ca310u: Trmp2Mario_State6(c);            return 1;
+    case 0x020ca39cu: Trmp2Mario_State7((int *)c);     return 1;
+    case 0x020cb16cu: Trmp3DMario_State0((int *)c);     return 1;
+    case 0x020cb2b4u: Trmp3DMario_State1(c);            return 1;
+    case 0x020cb5c4u: Trmp3DMario_State2(c);            return 1;
+    case 0x020cb72cu: Trmp3DMario_State3(c);            return 1;
+    case 0x020cb838u: Trmp3DMario_State4(c);            return 1;
+    case 0x020cbd7cu: Trmp3DMario_State5(c);            return 1;
+    case 0x020cc2acu: Trmp3DMario_State6(c);            return 1;
+    case 0x020cc408u: Trmp3DMario_State7(c);            return 1;
+    case 0x020cc63cu: Trmp3DMario_State8((int *)c);     return 1;
+    case 0x020cc724u: Trmp3DMario_State9(c);            return 1;
+    case 0x020cc9b8u: Trmp3DMario_State10((int *)c);     return 1;
+    case 0x020ccae0u: Trmp3DMario_State11(c);            return 1;
+    case 0x020ccd64u: Trmp3DMario_State12(c);            return 1;
     default:                                             return 0;
     }
 }
@@ -264,8 +264,8 @@ extern "C" void port_mg_mario_counts(unsigned *hits, unsigned *floor,
 
 // ---- THE FIELD IS SEATED AND BOTH HOST COPIES ARE GONE, run linkfull lane PMFMG1
 //
-// src/func_ov006_020cb030.cpp (this class's element dispatcher) and
-// src/func_ov006_020c8f20.cpp (dScMgTrmpln2Mario_c's, Trampoline Terror's
+// src/Trmp3DMario_Update.cpp (this class's element dispatcher) and
+// src/Trmp2Mario_Update.cpp (dScMgTrmpln2Mario_c's, Trampoline Terror's
 // element: unmatched/MgTrampolineTerror_SubDispatch.cpp) both run from src now.
 // They read ONE pair universe, which is why the seat is here and serves both,
 // as section 6 above asks.
@@ -287,7 +287,7 @@ extern "C" void port_mg_mario_counts(unsigned *hits, unsigned *floor,
 // ---- 2. ONE HOST WORD PER CODE WORD --------------------------------------
 //
 // The field is copied BY VALUE (thirty-odd writers) and compared by value
-// (src/func_ov006_020c94e0.cpp compares a stored pair with a pair of the run),
+// (src/Trmp2Mario_BounceOffLineA.cpp compares a stored pair with a pair of the run),
 // so each code word maps to ONE wrapper, written into every pair that holds
 // it. Both sides of every comparison move together and a comparison answers
 // what the cartridge answers: the MgMemory2_FieldPmf.cpp / FWD gate 3 rule.
@@ -296,7 +296,7 @@ extern "C" void port_mg_mario_counts(unsigned *hits, unsigned *floor,
 //
 // Both TUs compile (under hostgen's MEMBER_REDECL rows for their two C2761s)
 // to `push ecx / call edx / add esp, 4` (runs/linkfull/out/PMFMG1/
-// func_ov006_020cb030.asm, func_ov006_020c8f20.asm): the receiver pushed and
+// Trmp3DMario_Update.asm, Trmp2Mario_Update.asm): the receiver pushed and
 // the caller cleaning it. So the cells hold __cdecl wrappers, one per code
 // word, each counting what the two switches counted and calling the body with
 // its own src parameter list. Both src TUs keep their own null guard on the
@@ -305,10 +305,34 @@ extern "C" void port_mg_mario_counts(unsigned *hits, unsigned *floor,
 // ---- 4. THE WRONG TWIN IS FIXED IN src -----------------------------------
 //
 // Section 5b's finding (020c9024 called where the ROM calls 020cb134) is fixed
-// in src/func_ov006_020cb030.cpp itself; its comment says so and its
+// in src/Trmp3DMario_Update.cpp itself; its comment says so and its
 // relocation row 0x020cb088 -> 0x020cb134 agrees.
 
 static unsigned g_trmpln_field_hits;
+
+/* PORTDROP2: main renamed these (symbols.txt, by address); the macro below pastes the
+   old address-spelled name, so each is aliased to its new name here. */
+#define func_ov006_020c905c Trmp2Mario_State0
+#define func_ov006_020c91ac Trmp2Mario_State1
+#define func_ov006_020c97bc Trmp2Mario_State2
+#define func_ov006_020c9d7c Trmp2Mario_State3
+#define func_ov006_020c9efc Trmp2Mario_State4
+#define func_ov006_020ca070 Trmp2Mario_State5
+#define func_ov006_020ca310 Trmp2Mario_State6
+#define func_ov006_020ca39c Trmp2Mario_State7
+#define func_ov006_020cb16c Trmp3DMario_State0
+#define func_ov006_020cb2b4 Trmp3DMario_State1
+#define func_ov006_020cb5c4 Trmp3DMario_State2
+#define func_ov006_020cb72c Trmp3DMario_State3
+#define func_ov006_020cb838 Trmp3DMario_State4
+#define func_ov006_020cbd7c Trmp3DMario_State5
+#define func_ov006_020cc2ac Trmp3DMario_State6
+#define func_ov006_020cc408 Trmp3DMario_State7
+#define func_ov006_020cc63c Trmp3DMario_State8
+#define func_ov006_020cc724 Trmp3DMario_State9
+#define func_ov006_020cc9b8 Trmp3DMario_State10
+#define func_ov006_020ccae0 Trmp3DMario_State11
+#define func_ov006_020ccd64 Trmp3DMario_State12
 
 #define TRM_W(code, cast)                                                  \
     static void tw_##code(void *o)                                        \
@@ -340,85 +364,85 @@ TRM_W(020ccae0, (char *))
 TRM_W(020ccd64, (char *))
 
 extern "C" {
-extern MgPmf data_ov006_0213b0f4;
-extern MgPmf data_ov006_0213b0fc;
-extern MgPmf data_ov006_0213b104;
-extern MgPmf data_ov006_0213b10c;
-extern MgPmf data_ov006_0213b114;
-extern MgPmf data_ov006_0213b11c;
-extern MgPmf data_ov006_0213b124;
-extern MgPmf data_ov006_0213b12c;
-extern MgPmf data_ov006_0213b134;
-extern MgPmf data_ov006_0213b13c;
-extern MgPmf data_ov006_0213b144;
-extern MgPmf data_ov006_0213b14c;
-extern MgPmf data_ov006_0213b154;
-extern MgPmf data_ov006_0213b15c;
-extern MgPmf data_ov006_0213b164;
-extern MgPmf data_ov006_0213b16c;
-extern MgPmf data_ov006_0213b174;
-extern MgPmf data_ov006_0213b17c;
-extern MgPmf data_ov006_0213b184;
-extern MgPmf data_ov006_0213b18c;
-extern MgPmf data_ov006_0213b194;
-extern MgPmf data_ov006_0213b1a4;
-extern MgPmf data_ov006_0213b1ac;
-extern MgPmf data_ov006_0213b1b4;
-extern MgPmf data_ov006_0213b1bc;
-extern MgPmf data_ov006_0213b1c4;
-extern MgPmf data_ov006_0213b1cc;
-extern MgPmf data_ov006_0213b1d4;
-extern MgPmf data_ov006_0213b1dc;
-extern MgPmf data_ov006_0213b1e4;
-extern MgPmf data_ov006_0213b1ec;
-extern MgPmf data_ov006_0213b1f4;
-extern MgPmf data_ov006_0213b1fc;
-extern MgPmf data_ov006_0213b204;
-extern MgPmf data_ov006_0213b20c;
-extern MgPmf data_ov006_0213b214;
-extern MgPmf data_ov006_0213b21c;
-extern MgPmf data_ov006_0213b224;
+extern MgPmf pmf_Trmp3DMario_State6;
+extern MgPmf pmf_Trmp2Mario_State3;
+extern MgPmf pmf_Trmp2Mario_State7;
+extern MgPmf pmf_Trmp2Mario_State7_2;
+extern MgPmf pmf_Trmp2Mario_State0;
+extern MgPmf pmf_Trmp2Mario_State7_3;
+extern MgPmf pmf_Trmp2Mario_State6;
+extern MgPmf pmf_Trmp3DMario_State10;
+extern MgPmf pmf_Trmp2Mario_State5;
+extern MgPmf pmf_Trmp2Mario_State4;
+extern MgPmf pmf_Trmp2Mario_State7_4;
+extern MgPmf pmf_Trmp2Mario_State2;
+extern MgPmf pmf_Trmp2Mario_State4_2;
+extern MgPmf pmf_Trmp3DMario_State1;
+extern MgPmf pmf_Trmp3DMario_State12;
+extern MgPmf pmf_Trmp2Mario_State3_2;
+extern MgPmf pmf_Trmp3DMario_State12_2;
+extern MgPmf pmf_Trmp3DMario_State12_3;
+extern MgPmf pmf_Trmp3DMario_State11;
+extern MgPmf pmf_Trmp3DMario_State11_2;
+extern MgPmf pmf_Trmp2Mario_State1;
+extern MgPmf pmf_Trmp3DMario_State12_4;
+extern MgPmf pmf_Trmp3DMario_State4;
+extern MgPmf pmf_Trmp2Mario_State2_2;
+extern MgPmf pmf_Trmp3DMario_State5;
+extern MgPmf pmf_Trmp3DMario_State3;
+extern MgPmf pmf_Trmp3DMario_State6_2;
+extern MgPmf pmf_Trmp2Mario_State6_2;
+extern MgPmf pmf_Trmp3DMario_State5_2;
+extern MgPmf pmf_Trmp3DMario_State8;
+extern MgPmf pmf_Trmp2Mario_State1_2;
+extern MgPmf pmf_Trmp3DMario_State7;
+extern MgPmf pmf_Trmp3DMario_State1_2;
+extern MgPmf pmf_Trmp3DMario_State3_2;
+extern MgPmf pmf_Trmp3DMario_State0;
+extern MgPmf pmf_Trmp2Mario_State7_5;
+extern MgPmf pmf_Trmp3DMario_State9;
+extern MgPmf pmf_Trmp3DMario_State2;
 }
 
 static const struct { MgPmf *p; unsigned rom; void *host; } g_trmpln_seats[] = {
-    {&data_ov006_0213b0f4, 0x020cc2acu, (void *)tw_020cc2ac},
-    {&data_ov006_0213b0fc, 0x020c9d7cu, (void *)tw_020c9d7c},
-    {&data_ov006_0213b104, 0x020ca39cu, (void *)tw_020ca39c},
-    {&data_ov006_0213b10c, 0x020ca39cu, (void *)tw_020ca39c},
-    {&data_ov006_0213b114, 0x020c905cu, (void *)tw_020c905c},
-    {&data_ov006_0213b11c, 0x020ca39cu, (void *)tw_020ca39c},
-    {&data_ov006_0213b124, 0x020ca310u, (void *)tw_020ca310},
-    {&data_ov006_0213b12c, 0x020cc9b8u, (void *)tw_020cc9b8},
-    {&data_ov006_0213b134, 0x020ca070u, (void *)tw_020ca070},
-    {&data_ov006_0213b13c, 0x020c9efcu, (void *)tw_020c9efc},
-    {&data_ov006_0213b144, 0x020ca39cu, (void *)tw_020ca39c},
-    {&data_ov006_0213b14c, 0x020c97bcu, (void *)tw_020c97bc},
-    {&data_ov006_0213b154, 0x020c9efcu, (void *)tw_020c9efc},
-    {&data_ov006_0213b15c, 0x020cb2b4u, (void *)tw_020cb2b4},
-    {&data_ov006_0213b164, 0x020ccd64u, (void *)tw_020ccd64},
-    {&data_ov006_0213b16c, 0x020c9d7cu, (void *)tw_020c9d7c},
-    {&data_ov006_0213b174, 0x020ccd64u, (void *)tw_020ccd64},
-    {&data_ov006_0213b17c, 0x020ccd64u, (void *)tw_020ccd64},
-    {&data_ov006_0213b184, 0x020ccae0u, (void *)tw_020ccae0},
-    {&data_ov006_0213b18c, 0x020ccae0u, (void *)tw_020ccae0},
-    {&data_ov006_0213b194, 0x020c91acu, (void *)tw_020c91ac},
-    {&data_ov006_0213b1a4, 0x020ccd64u, (void *)tw_020ccd64},
-    {&data_ov006_0213b1ac, 0x020cb838u, (void *)tw_020cb838},
-    {&data_ov006_0213b1b4, 0x020c97bcu, (void *)tw_020c97bc},
-    {&data_ov006_0213b1bc, 0x020cbd7cu, (void *)tw_020cbd7c},
-    {&data_ov006_0213b1c4, 0x020cb72cu, (void *)tw_020cb72c},
-    {&data_ov006_0213b1cc, 0x020cc2acu, (void *)tw_020cc2ac},
-    {&data_ov006_0213b1d4, 0x020ca310u, (void *)tw_020ca310},
-    {&data_ov006_0213b1dc, 0x020cbd7cu, (void *)tw_020cbd7c},
-    {&data_ov006_0213b1e4, 0x020cc63cu, (void *)tw_020cc63c},
-    {&data_ov006_0213b1ec, 0x020c91acu, (void *)tw_020c91ac},
-    {&data_ov006_0213b1f4, 0x020cc408u, (void *)tw_020cc408},
-    {&data_ov006_0213b1fc, 0x020cb2b4u, (void *)tw_020cb2b4},
-    {&data_ov006_0213b204, 0x020cb72cu, (void *)tw_020cb72c},
-    {&data_ov006_0213b20c, 0x020cb16cu, (void *)tw_020cb16c},
-    {&data_ov006_0213b214, 0x020ca39cu, (void *)tw_020ca39c},
-    {&data_ov006_0213b21c, 0x020cc724u, (void *)tw_020cc724},
-    {&data_ov006_0213b224, 0x020cb5c4u, (void *)tw_020cb5c4},
+    {&pmf_Trmp3DMario_State6, 0x020cc2acu, (void *)tw_020cc2ac},
+    {&pmf_Trmp2Mario_State3, 0x020c9d7cu, (void *)tw_020c9d7c},
+    {&pmf_Trmp2Mario_State7, 0x020ca39cu, (void *)tw_020ca39c},
+    {&pmf_Trmp2Mario_State7_2, 0x020ca39cu, (void *)tw_020ca39c},
+    {&pmf_Trmp2Mario_State0, 0x020c905cu, (void *)tw_020c905c},
+    {&pmf_Trmp2Mario_State7_3, 0x020ca39cu, (void *)tw_020ca39c},
+    {&pmf_Trmp2Mario_State6, 0x020ca310u, (void *)tw_020ca310},
+    {&pmf_Trmp3DMario_State10, 0x020cc9b8u, (void *)tw_020cc9b8},
+    {&pmf_Trmp2Mario_State5, 0x020ca070u, (void *)tw_020ca070},
+    {&pmf_Trmp2Mario_State4, 0x020c9efcu, (void *)tw_020c9efc},
+    {&pmf_Trmp2Mario_State7_4, 0x020ca39cu, (void *)tw_020ca39c},
+    {&pmf_Trmp2Mario_State2, 0x020c97bcu, (void *)tw_020c97bc},
+    {&pmf_Trmp2Mario_State4_2, 0x020c9efcu, (void *)tw_020c9efc},
+    {&pmf_Trmp3DMario_State1, 0x020cb2b4u, (void *)tw_020cb2b4},
+    {&pmf_Trmp3DMario_State12, 0x020ccd64u, (void *)tw_020ccd64},
+    {&pmf_Trmp2Mario_State3_2, 0x020c9d7cu, (void *)tw_020c9d7c},
+    {&pmf_Trmp3DMario_State12_2, 0x020ccd64u, (void *)tw_020ccd64},
+    {&pmf_Trmp3DMario_State12_3, 0x020ccd64u, (void *)tw_020ccd64},
+    {&pmf_Trmp3DMario_State11, 0x020ccae0u, (void *)tw_020ccae0},
+    {&pmf_Trmp3DMario_State11_2, 0x020ccae0u, (void *)tw_020ccae0},
+    {&pmf_Trmp2Mario_State1, 0x020c91acu, (void *)tw_020c91ac},
+    {&pmf_Trmp3DMario_State12_4, 0x020ccd64u, (void *)tw_020ccd64},
+    {&pmf_Trmp3DMario_State4, 0x020cb838u, (void *)tw_020cb838},
+    {&pmf_Trmp2Mario_State2_2, 0x020c97bcu, (void *)tw_020c97bc},
+    {&pmf_Trmp3DMario_State5, 0x020cbd7cu, (void *)tw_020cbd7c},
+    {&pmf_Trmp3DMario_State3, 0x020cb72cu, (void *)tw_020cb72c},
+    {&pmf_Trmp3DMario_State6_2, 0x020cc2acu, (void *)tw_020cc2ac},
+    {&pmf_Trmp2Mario_State6_2, 0x020ca310u, (void *)tw_020ca310},
+    {&pmf_Trmp3DMario_State5_2, 0x020cbd7cu, (void *)tw_020cbd7c},
+    {&pmf_Trmp3DMario_State8, 0x020cc63cu, (void *)tw_020cc63c},
+    {&pmf_Trmp2Mario_State1_2, 0x020c91acu, (void *)tw_020c91ac},
+    {&pmf_Trmp3DMario_State7, 0x020cc408u, (void *)tw_020cc408},
+    {&pmf_Trmp3DMario_State1_2, 0x020cb2b4u, (void *)tw_020cb2b4},
+    {&pmf_Trmp3DMario_State3_2, 0x020cb72cu, (void *)tw_020cb72c},
+    {&pmf_Trmp3DMario_State0, 0x020cb16cu, (void *)tw_020cb16c},
+    {&pmf_Trmp2Mario_State7_5, 0x020ca39cu, (void *)tw_020ca39c},
+    {&pmf_Trmp3DMario_State9, 0x020cc724u, (void *)tw_020cc724},
+    {&pmf_Trmp3DMario_State2, 0x020cb5c4u, (void *)tw_020cb5c4},
 };
 
 /* Called from port_mg_framework_states_seat (unmatched/MgBase_StateDispatch

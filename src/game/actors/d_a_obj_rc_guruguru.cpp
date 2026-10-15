@@ -30,6 +30,12 @@
  * Leftover: g_profile_RC_GURUGURU lives outside this TU (S14).
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_rc_guruguru_AssetId {
+    ASSET_RC_GURUGURU_BMD = 0x06a4,
+    ASSET_RC_GURUGURU_KCL = 0x06a5
+};
+
 #include "daObjRc_Guruguru_c.h"
 #include "SharedFilePtr.h"
 #include "dBgW.h"
@@ -173,5 +179,5 @@ struct RcGuruguruCollisionFilePtr : SharedFilePtr {
 // @symbol __sinit_d_a_obj_rc_guruguru.cpp
 /* The retail initializer constructs the model first, then the collision
  * file. */
-RcGuruguruModelFilePtr data_ov036_021140ac(0x6a4);      /* model */
-RcGuruguruCollisionFilePtr data_ov036_021140b4(0x6a5);  /* collision */
+RcGuruguruModelFilePtr gRcGuruguruModelFile(ASSET_RC_GURUGURU_BMD);      /* model */
+RcGuruguruCollisionFilePtr gRcGuruguruCollisionFile(ASSET_RC_GURUGURU_KCL);  /* collision */

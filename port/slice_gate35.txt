@@ -25,7 +25,7 @@ src/InitControllerMode.c
 # Player::Heal into the health, and the count popup. A coin class calls this
 # and needs nothing else from the port. Its two tables (coin value by kind,
 # popup actor id by kind) are romdata entries.
-src/actors/dActor_c.cpp
+src/runtime/actor/d_actor.cpp
 
 # ---- the course's sound row.
 # GetSoundGroupID indexes the per-sublevel {group, bank, bgm} table that

@@ -12,14 +12,14 @@
 //
 // Its vtable slot 6, _ZN15dScMgSnowball_c8BehaviorEv, DECODES NOTHING.  A scan of that
 // body for the five-instruction ARM Itanium sequence returns zero sites; it
-// reaches the machine by CALLING func_ov006_0212a2e0 at 0x02128f04, and it is
+// reaches the machine by CALLING Bit_UpdateAll at 0x02128f04, and it is
 // that callee's only caller.  A lane that read slot 6 alone -- which is the
 // slot every seat wires by name -- would have priced this class's wall at
 // ZERO and shipped a scene that jumps to DS addresses on its first frame.
 //
-// The machine is then TWO LEVELS DEEP.  func_ov006_0212a2e0 decodes
+// The machine is then TWO LEVELS DEEP.  Bit_UpdateAll decodes
 // data_ov006_02143038, and slots 1 and 2 of that table are themselves the
-// dispatchers func_ov006_0212a224 and func_ov006_02129d94.  Neither has a
+// dispatchers Bit_RunKindB and Bit_RunKindA.  Neither has a
 // single arm_call anywhere in ov006: their only references in the whole
 // overlay are the .data pair words at 0x0213ffb0 and 0x0213ff78, so the ONLY
 // way either body runs is through the first-level table.  A closure walk from
@@ -30,11 +30,11 @@
 // its own start and size from config/arm9/overlays/ov006/symbols.txt, never an
 // address range picked by eye:
 //
-//   0x02129dc0  func_ov006_02129d94   decodes data_ov006_02143070
-//   0x02129df8  func_ov006_02129d94   AND    data_ov006_02143020   (one TU,
+//   0x02129dc0  Bit_RunKindA   decodes data_ov006_02143070
+//   0x02129df8  Bit_RunKindA   AND    data_ov006_02143020   (one TU,
 //                                            two tables, two sites)
-//   0x0212a248  func_ov006_0212a224   decodes data_ov006_02143050
-//   0x0212a324  func_ov006_0212a2e0   decodes data_ov006_02143038
+//   0x0212a248  Bit_RunKindB   decodes data_ov006_02143050
+//   0x0212a324  Bit_UpdateAll   decodes data_ov006_02143038
 //
 // The same scan over this class's twenty-seven own bodies returns those four
 // and nothing else, and over the six bodies it inherits from
@@ -74,20 +74,20 @@
 // Every adjustment word in the fourteen reads ZERO, checked in the image.
 //
 //   table                slot  code        body                        src
-//   data_ov006_02143038   0    0x0212a274  func_ov006_0212a274         .c
-//                         1    0x0212a224  func_ov006_0212a224  DISP   .cpp
-//                         2    0x02129d94  func_ov006_02129d94  DISP   .cpp
-//   data_ov006_02143050   0    0x0212a110  func_ov006_0212a110         .c
-//                         1    0x0212a000  func_ov006_0212a000         .c
-//                         2    0x02129eec  func_ov006_02129eec         .c
-//                         3    0x02129e28  func_ov006_02129e28         .c
-//   data_ov006_02143070   0    0x02129cb0  func_ov006_02129cb0         .c
-//                         1    0x02129b74  func_ov006_02129b74         .c
-//                         2    0x02129a34  func_ov006_02129a34         .c
-//                         3    0x0212992c  func_ov006_0212992c         .c
-//   data_ov006_02143020   0    0x02129894  func_ov006_02129894         .cpp
-//                         1    0x021297c0  func_ov006_021297c0         .c
-//                         2    0x0212972c  func_ov006_0212972c         .c
+//   data_ov006_02143038   0    0x0212a274  Bit_PickKind         .c
+//                         1    0x0212a224  Bit_RunKindB  DISP   .cpp
+//                         2    0x02129d94  Bit_RunKindA  DISP   .cpp
+//   data_ov006_02143050   0    0x0212a110  BitB_State0         .c
+//                         1    0x0212a000  BitB_State1         .c
+//                         2    0x02129eec  BitB_State2         .c
+//                         3    0x02129e28  BitB_State3         .c
+//   data_ov006_02143070   0    0x02129cb0  BitA_State0         .c
+//                         1    0x02129b74  BitA_State1         .c
+//                         2    0x02129a34  BitA_State2         .c
+//                         3    0x0212992c  BitA_State3         .c
+//   data_ov006_02143020   0    0x02129894  Bit_State0         .cpp
+//                         1    0x021297c0  Bit_State1         .c
+//                         2    0x0212972c  Bit_State2         .c
 //
 // Fourteen slots, fourteen DISTINCT bodies -- no slot is shared with another,
 // so no arity is inferred from a neighbour -- and all fourteen resolve to a
@@ -108,15 +108,15 @@
 // fatal.  All three apply here, and the three TUs split across BOTH of the
 // spelling shapes that section describes:
 //
-//   src/func_ov006_0212a2e0.cpp   declares `extern "C" PMF data_ov006_02143038[]`
-//   src/func_ov006_0212a224.cpp   declares `extern "C" PMF data_ov006_02143050[]`
+//   src/Bit_UpdateAll.cpp   declares `extern "C" PMF data_ov006_02143038[]`
+//   src/Bit_RunKindB.cpp   declares `extern "C" PMF data_ov006_02143050[]`
 //        -- the SILENT shape.  extern "C" mangles to the plain C name the
 //        ov006 mount already defines, so the link is satisfied and the
 //        compile is clean while MSVC strides an eight-byte table by four.
 //        Slot 0 would read correctly and slots 1 and 2 would each read half
 //        of one record and half of the next.
 //
-//   src/func_ov006_02129d94.cpp   declares `extern Entry data_ov006_02143070[]`
+//   src/Bit_RunKindA.cpp   declares `extern Entry data_ov006_02143070[]`
 //                                 and `extern Entry data_ov006_02143020[]`
 //        -- the LOUD shape.  C++ linkage encodes the member-pointer type into
 //        the symbol, so the link fails with LNK2019 and the defect announces
@@ -151,21 +151,21 @@ void port_mg_call1(void *self, unsigned code, int adj, int a);
 
 /* The fourteen state bodies, each declared with the parameter list ITS OWN src
    TU defines.  All fourteen are (receiver, int). */
-void _ZN15dScMgSnowball_c19func_ov006_0212a274Ei(char *self, int idx);
-void _ZN15dScMgSnowball_c19func_ov006_0212a110Ei(char *c, int idx);
-void _ZN15dScMgSnowball_c19func_ov006_0212a000Ei(char *base, int index);
-void _ZN15dScMgSnowball_c19func_ov006_02129eecEi(char *c, int idx);
-void _ZN15dScMgSnowball_c19func_ov006_02129e28Ei(char *c, int i);
-void _ZN15dScMgSnowball_c19func_ov006_02129cb0Ei(char *o, int i);
-void _ZN15dScMgSnowball_c19func_ov006_02129b74Ei(char *base, int index);
-void _ZN15dScMgSnowball_c19func_ov006_02129a34Ei(char *base, int i);
-void _ZN15dScMgSnowball_c19func_ov006_0212992cEi(char *self, int idx);
-void _ZN15dScMgSnowball_c19func_ov006_02129894Ei(char *c, int i);
-void _ZN15dScMgSnowball_c19func_ov006_021297c0Ei(unsigned char *base, int idx);
-void _ZN15dScMgSnowball_c19func_ov006_0212972cEi(char *c, int idx);
+void _ZN15dScMgSnowball_c12Bit_PickKindEi(char *self, int idx);
+void _ZN15dScMgSnowball_c11BitB_State0Ei(char *c, int idx);
+void _ZN15dScMgSnowball_c11BitB_State1Ei(char *base, int index);
+void _ZN15dScMgSnowball_c11BitB_State2Ei(char *c, int idx);
+void _ZN15dScMgSnowball_c11BitB_State3Ei(char *c, int i);
+void _ZN15dScMgSnowball_c11BitA_State0Ei(char *o, int i);
+void _ZN15dScMgSnowball_c11BitA_State1Ei(char *base, int index);
+void _ZN15dScMgSnowball_c11BitA_State2Ei(char *base, int i);
+void _ZN15dScMgSnowball_c11BitA_State3Ei(char *self, int idx);
+void _ZN15dScMgSnowball_c10Bit_State0Ei(char *c, int i);
+void _ZN15dScMgSnowball_c10Bit_State1Ei(unsigned char *base, int idx);
+void _ZN15dScMgSnowball_c10Bit_State2Ei(char *c, int idx);
 /* and the two second-level dispatchers, whose DEFINITIONS are in this file */
-void _ZN15dScMgSnowball_c19func_ov006_0212a224Ei(char *base, int idx);
-void _ZN15dScMgSnowball_c19func_ov006_02129d94Ei(char *c, int i);
+void _ZN15dScMgSnowball_c12Bit_RunKindBEi(char *base, int idx);
+void _ZN15dScMgSnowball_c12Bit_RunKindAEi(char *c, int i);
 
 /* The four tables.  The ov006 mount defines the storage;
    __sinit_ov006_021333e0 fills all fourteen slots at minigame scene load. */
@@ -174,7 +174,7 @@ extern MgPmf data_ov006_02143050[];
 extern MgPmf data_ov006_02143070[];
 extern MgPmf data_ov006_02143020[];
 
-/* src/func_ov006_0212a2e0.cpp's other two externals, spelled as its src
+/* src/Bit_UpdateAll.cpp's other two externals, spelled as its src
    spells them. */
 int RandomIntInternal(int *seed);
 extern int data_0209d4b8;
@@ -194,10 +194,10 @@ static unsigned g_snw_slot_hits[14];
 static int g_snw_sel_lo = -1, g_snw_sel_hi = -1;
 /* HOW MANY FIRST-LEVEL DISPATCHES HAVE HAPPENED, run link100 lane FWD gate 2.
    This counter used to be "how many of the fifty elements were live on the
-   last slot-6 pass", and it could be: the host copy of func_ov006_0212a2e0 WAS
+   last slot-6 pass", and it could be: the host copy of Bit_UpdateAll WAS
    the loop over the fifty elements, so it could reset a per-pass count at the
    top and publish it at the bottom. With that host copy retired, the loop is
-   inside src/func_ov006_0212a2e0.cpp and nothing outside it can see a pass
+   inside src/Bit_UpdateAll.cpp and nothing outside it can see a pass
    boundary. What the faces below CAN count exactly is the thing the census is
    actually for -- that the machine was entered, and how often -- so this is a
    running total of first-level dispatches instead of a snapshot of one pass.
@@ -211,27 +211,27 @@ static int snowball_try_1(void *self, unsigned code, int a)
 
     switch (code) {
     /* data_ov006_02143038 -- the FIRST level, three slots */
-    case 0x0212a274u: ++g_snw_slot_hits[0];  _ZN15dScMgSnowball_c19func_ov006_0212a274Ei(c, a); return 1;
-    case 0x0212a224u: ++g_snw_slot_hits[1];  _ZN15dScMgSnowball_c19func_ov006_0212a224Ei(c, a); return 1;
-    case 0x02129d94u: ++g_snw_slot_hits[2];  _ZN15dScMgSnowball_c19func_ov006_02129d94Ei(c, a); return 1;
+    case 0x0212a274u: ++g_snw_slot_hits[0];  _ZN15dScMgSnowball_c12Bit_PickKindEi(c, a); return 1;
+    case 0x0212a224u: ++g_snw_slot_hits[1];  _ZN15dScMgSnowball_c12Bit_RunKindBEi(c, a); return 1;
+    case 0x02129d94u: ++g_snw_slot_hits[2];  _ZN15dScMgSnowball_c12Bit_RunKindAEi(c, a); return 1;
 
     /* data_ov006_02143050 -- second level, reached only through slot 1 above */
-    case 0x0212a110u: ++g_snw_slot_hits[3];  _ZN15dScMgSnowball_c19func_ov006_0212a110Ei(c, a); return 1;
-    case 0x0212a000u: ++g_snw_slot_hits[4];  _ZN15dScMgSnowball_c19func_ov006_0212a000Ei(c, a); return 1;
-    case 0x02129eecu: ++g_snw_slot_hits[5];  _ZN15dScMgSnowball_c19func_ov006_02129eecEi(c, a); return 1;
-    case 0x02129e28u: ++g_snw_slot_hits[6];  _ZN15dScMgSnowball_c19func_ov006_02129e28Ei(c, a); return 1;
+    case 0x0212a110u: ++g_snw_slot_hits[3];  _ZN15dScMgSnowball_c11BitB_State0Ei(c, a); return 1;
+    case 0x0212a000u: ++g_snw_slot_hits[4];  _ZN15dScMgSnowball_c11BitB_State1Ei(c, a); return 1;
+    case 0x02129eecu: ++g_snw_slot_hits[5];  _ZN15dScMgSnowball_c11BitB_State2Ei(c, a); return 1;
+    case 0x02129e28u: ++g_snw_slot_hits[6];  _ZN15dScMgSnowball_c11BitB_State3Ei(c, a); return 1;
 
     /* data_ov006_02143070 -- second level, reached only through slot 2 above */
-    case 0x02129cb0u: ++g_snw_slot_hits[7];  _ZN15dScMgSnowball_c19func_ov006_02129cb0Ei(c, a); return 1;
-    case 0x02129b74u: ++g_snw_slot_hits[8];  _ZN15dScMgSnowball_c19func_ov006_02129b74Ei(c, a); return 1;
-    case 0x02129a34u: ++g_snw_slot_hits[9];  _ZN15dScMgSnowball_c19func_ov006_02129a34Ei(c, a); return 1;
-    case 0x0212992cu: ++g_snw_slot_hits[10]; _ZN15dScMgSnowball_c19func_ov006_0212992cEi(c, a); return 1;
+    case 0x02129cb0u: ++g_snw_slot_hits[7];  _ZN15dScMgSnowball_c11BitA_State0Ei(c, a); return 1;
+    case 0x02129b74u: ++g_snw_slot_hits[8];  _ZN15dScMgSnowball_c11BitA_State1Ei(c, a); return 1;
+    case 0x02129a34u: ++g_snw_slot_hits[9];  _ZN15dScMgSnowball_c11BitA_State2Ei(c, a); return 1;
+    case 0x0212992cu: ++g_snw_slot_hits[10]; _ZN15dScMgSnowball_c11BitA_State3Ei(c, a); return 1;
 
     /* data_ov006_02143020 -- second level, the SECOND table slot 2 decodes */
-    case 0x02129894u: ++g_snw_slot_hits[11]; _ZN15dScMgSnowball_c19func_ov006_02129894Ei(c, a); return 1;
+    case 0x02129894u: ++g_snw_slot_hits[11]; _ZN15dScMgSnowball_c10Bit_State0Ei(c, a); return 1;
     case 0x021297c0u: ++g_snw_slot_hits[12];
-                      _ZN15dScMgSnowball_c19func_ov006_021297c0Ei((unsigned char *)c, a); return 1;
-    case 0x0212972cu: ++g_snw_slot_hits[13]; _ZN15dScMgSnowball_c19func_ov006_0212972cEi(c, a); return 1;
+                      _ZN15dScMgSnowball_c10Bit_State1Ei((unsigned char *)c, a); return 1;
+    case 0x0212972cu: ++g_snw_slot_hits[13]; _ZN15dScMgSnowball_c10Bit_State2Ei(c, a); return 1;
 
     default:                                                           return 0;
     }
@@ -265,7 +265,7 @@ extern "C" void port_mg_snowball_slot_hits(const unsigned **v, unsigned *n)
 
 // ---- 4. THE TWO HOST COPIES LEFT, AND THE FIRST LEVEL'S SEAT --------------
 //
-// func_ov006_0212a2e0 -- the FIRST level, and slot 6's only route in. ITS HOST
+// Bit_UpdateAll -- the FIRST level, and slot 6's only route in. ITS HOST
 // COPY IS RETIRED (run link100 lane FWD gate 2) and the derivation below is
 // kept because it is what the seat's three cells were checked against.
 //
@@ -291,7 +291,7 @@ extern "C" void port_mg_snowball_slot_hits(const unsigned **v, unsigned *n)
    -- "the mwcc eight-byte member-pointer table MSVC's four-byte pmf cannot
    stride" -- expired when block R8's /vmg /vmm landed. Measured on this tree:
    the ROM strides `add r3, r2, r1, lsl #3` at 0212a324 on the pool word
-   0212a3b4 = 02143038, and src/func_ov006_0212a2e0.cpp emits
+   0212a3b4 = 02143038, and src/Bit_UpdateAll.cpp emits
    _data_ov006_02143038[eax*8] and [eax*8+4] against it -- eight both sides.
    ITS ARITY IS ONE, unlike gate 1's nine rows: the listing pushes the element
    index before the call and the caller does NOT clean up afterwards, because
@@ -313,9 +313,9 @@ extern "C" void port_mg_snowball_slot_hits(const unsigned **v, unsigned *n)
         sym((char *)self, a);                                             \
     }
 
-SNW_FACE(0, _ZN15dScMgSnowball_c19func_ov006_0212a274Ei)
-SNW_FACE(1, _ZN15dScMgSnowball_c19func_ov006_0212a224Ei)
-SNW_FACE(2, _ZN15dScMgSnowball_c19func_ov006_02129d94Ei)
+SNW_FACE(0, _ZN15dScMgSnowball_c12Bit_PickKindEi)
+SNW_FACE(1, _ZN15dScMgSnowball_c12Bit_RunKindBEi)
+SNW_FACE(2, _ZN15dScMgSnowball_c12Bit_RunKindAEi)
 
 /* run link100 lane SEAT4: this class's remaining state tables are
    seated in port/hal/pmf_seat4.cpp, from inside this installer, so the
@@ -352,12 +352,12 @@ extern "C" void port_mg_snowball_states_seat(void)
     }
 }
 
-/* src/func_ov006_0212a224 -- RETIRED, run link100 lane SEAT4. Its table is
+/* src/Bit_RunKindB -- RETIRED, run link100 lane SEAT4. Its table is
    seated in port/hal/pmf_seat4.cpp and the matched TU is on
    port/slice_seat4.txt, so the host copy that stood in for it is gone and
    the declaration above is what the faces in this file reach. */
 
-/* src/func_ov006_02129d94 -- RETIRED, run link100 lane SEAT4. Its table is
+/* src/Bit_RunKindA -- RETIRED, run link100 lane SEAT4. Its table is
    seated in port/hal/pmf_seat4.cpp and the matched TU is on
    port/slice_seat4.txt, so the host copy that stood in for it is gone and
    the declaration above is what the faces in this file reach. */

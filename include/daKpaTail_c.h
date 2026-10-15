@@ -3,12 +3,12 @@
  *
  * class daKpaTail_c: Bowser's tail (actor ID 278, spawned by daKpa_c::InitResources).
  * A Player who grabs it is held by it while Bowser's own hold handler runs (see
- * daKpa_c.cpp). Its resource, behavior and state-worker functions are real
- * methods defined in daKpa_c.cpp.
+ * d_a_kpa.cpp). Its resource, behavior and state-worker functions are real
+ * methods defined in d_a_kpa.cpp.
  *
  * Readability pass: the members are named from how those workers use them and
- * BowserTail_State (daKpa_c.cpp) names the three mState values. Leftover: bit
- * 0x400 of the tail's mFlags, which daKpa_c.cpp only tests, is not named.
+ * BowserTail_State (d_a_kpa.cpp) names the three mState values. Leftover: bit
+ * 0x400 of the tail's mFlags, which d_a_kpa.cpp only tests, is not named.
  *
  * One sub-object, and its offset is checked twice -- once by dCcAc_c's
  * own size assertion, once by closing exactly on the next named field:
@@ -19,7 +19,7 @@
  * The last 0x10 bytes (0x108..0x118) are Bowser's uniqueID, the Player the tail
  * is holding, a three-state dispatch index, and two halfword counters. Each is
  * named from how daKpaTail_c's own state workers (func_ov060_02115b84 and its
- * three callees, in daKpa_c.cpp) read and write it.
+ * three callees, in d_a_kpa.cpp) read and write it.
  *
  * sizeof is 0x118, which is not inferred from the fields: daKpaTail_c_classInit asks
  * fBase_c::operator new for 280 bytes.

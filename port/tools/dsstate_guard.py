@@ -152,7 +152,7 @@ BOOT_CONSTANT = {
     # the game heap pointer: Heap::InitializeGameHeap writes it once off the
     # main.c boot spine; the port seeds it once before the frame loop.
     "_data_020a0eac", "data_020a0eac", "_data_020a0eac_c", "data_020a0eac_c",
-    "?data_020a0eac@@3PAUHeap@@A",
+    "?data_020a0eac@@3PAUHeap_t@mHeap@@A",
     # THE VS STAR SPAWN ORDERS, and this one is stricter than the bar above:
     # it is not written once at boot, it is never written at all. Six 12-byte
     # rows of ROM constant at arm9 0x02075720, hosted by name as

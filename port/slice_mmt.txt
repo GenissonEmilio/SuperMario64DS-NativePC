@@ -73,7 +73,7 @@
 # from 37 to 36, so the checks are not ceremony here:
 #
 #   1. SPAN.  config/arm9/overlays/ov006/symbols.txt puts the next symbol after
-#      _ZTV13dScMgMemory_c at data_ov006_0213d248, exactly 0x90 = 36 words on,
+#      _ZTV13dScMgMemory_c at pmf_dScMgMemory2_c_ResultWait, exactly 0x90 = 36 words on,
 #      so a 37th slot cannot exist inside the table.
 #   2. TERMINAL SLOT.  Slot 35 holds 0x020ad660, the word every
 #      dScMgBase_c-derived table holds there.
@@ -257,7 +257,7 @@
 #
 #   - THE FACTORY. dScMgMemory_c_classInit is 0x60 and constructs exactly two
 #     sub-objects after the base constructor: Particle::SysTracker at +0x471c
-#     and the model at +0x4f38 (func_ov006_020c1d80). There is no third `bl`
+#     and the model at +0x4f38 (Dealer_Construct). There is no third `bl`
 #     and no loop; nothing builds a card object.
 #   - THE CLEAR. src/minigames/d_s_mg_memory.cpp zeroes all twelve records field by
 #     field and every field is a plain int, short or char -- word 0 of a record
@@ -275,7 +275,7 @@
 # element vtable one level down, in a sub-object of a sub-object. This class
 # constructs exactly two sub-objects and NEITHER IS ITS OWN: the framework's
 # Particle::SysTracker at +0x471c, and the shared model at +0x4f38, which is
-# the same func_ov006_020c1d80 the sibling constructs at the same offset and
+# the same Dealer_Construct the sibling constructs at the same offset and
 # which run mg6 lane MEM seated in full (three host copies, all shipping, scene
 # 363 green and rendering cards). And a source sweep of all forty-two of this
 # class's own TUs finds NO `virtual` anywhere, so there is no local shadow
@@ -310,7 +310,7 @@
 # inherit the ignore. DONE, and this class ignores it -- established by where
 # r1 is first TOUCHED in each body, which is the only thing that settles it:
 #
-#   _ZN13dScMgMemory_c13OnYoshiTryEatEi (slot 18).  push {r4,r5,lr} / sub sp,#4 / mov r5,r0 /
+#   _ZN13dScMgMemory_c10StartRoundEi (slot 18).  push {r4,r5,lr} / sub sp,#4 / mov r5,r0 /
 #     bl 0x020f4f94, and then `ldr r1,[pc,#0x40]` at 0x020f52d4. r1's first
 #     appearance in the body is a WRITE, so nothing IN THIS BODY can have read
 #     the incoming value.
@@ -324,7 +324,7 @@
 #     mov lr,ip / add r2,r3,#0x5000 / str lr,[r2,#0x1a8] / str lr,[r2,#0x1ac])
 #     never name r1. It is the only call before the write, so the chain is
 #     closed and the conclusion stands.
-#   _ZN13dScMgMemory_c13OnTurnIntoEggEi (slot 19).  push {r4,lr} / mov r4,r0 /
+#   _ZN13dScMgMemory_c11CanEndStateEi (slot 19).  push {r4,lr} / mov r4,r0 /
 #     add r0,r4,#0x5000, and then `ldr r1,[r0,#0x314]` at 0x020f525c. Again a
 #     WRITE, three instructions in, and this one has NO call before it, so the
 #     hole above cannot exist here.
@@ -358,7 +358,7 @@
 # here, and the measurement is the same 900-frame scene-362 boot in each case.
 #
 #   SLOT 34 (lane S371). hal/scene_mg.cpp's shared thunk is declared
-#   (void*, void*) while _ZN11dScMgBase_c9Virtual88Eiiii takes five parameters at every ROM
+#   (void*, void*) while _ZN11dScMgBase_c11PaintSquareEiiii takes five parameters at every ROM
 #   dispatch site. The run reports "framework slots entered: 1(x1) 31(x1)
 #   32(x1)" -- slot 34 is not entered at all, so this class witnesses nothing
 #   and the repair is not this lane's to make.
@@ -372,16 +372,16 @@
 #   port/mg_fanout_costs.txt section 13 records for the sibling. Nothing to
 #   replicate; BOO's fix stands alone.
 #
-#   THE SHARED ov004 FLOOR func_ov004_020ae5c4 (lanes S371 and BOO). NOT IN
+#   THE SHARED ov004 FLOOR Mg_DrawLine (lanes S371 and BOO). NOT IN
 #   THIS CLASS'S CLOSURE AT ALL -- zero hits over the 103 ov004 functions the
 #   two-root walk reaches -- so this lane owes no trap and takes no dependency
 #   on theirs. This class's ONE ov004 body without a source is
-#   func_ov004_020ae858, which hal/scene_mg_faces.cpp has trapped since run
+#   Mg_DrawMenu, which hal/scene_mg_faces.cpp has trapped since run
 #   link60, and the run reports all seven of that file's trapping sites entered
 #   zero times.
 #
 #   AMENDED, run mg12 lane PANEL: that body is no longer without a source and no
-#   longer trapped. src/func_ov004_020ae858.cpp is the results panel's label
+#   longer trapped. src/Mg_DrawMenu.cpp is the results panel's label
 #   renderer, seated off port/slice_mg1.txt, and the trap line is deleted.
 
 # ---- ov006: dScMgMemory_c's own code block, 0x020f3834..0x020f5564 -------
@@ -416,14 +416,14 @@ src/minigames/d_s_mg_memory.cpp
 #   the sibling's too.  NO src/func_ovNNN_020f3e68.* exists in any other
 #   overlay, so the module-residency trap that almost closed the sibling's
 #   floor twice cannot fire here; the check was run, not assumed.
-# NOT HERE: src/minigames/d_s_mg_single3_d_base.cpp, defined by
+# NOT HERE: src/minigames/d_s_mg_single3d_base.cpp, defined by
 #   port/unmatched/MgFlower_Slot2.cpp as port_mg_flower_after_init.
-# NOT HERE: src/func_ov006_020c0a48.c, src/func_ov006_020c1804.cpp,
-#   src/func_ov006_020c06dc.cpp, src/func_ov006_020c07e8.cpp and
-#   src/func_ov006_020c19d0.cpp -- the shared model sub-object at +0x4f38, all
+# NOT HERE: src/MascotWalker_Construct.c, src/Dealer_Draw.cpp,
+#   src/MascotWalker_UpdateMatrix.cpp, src/MascotWalker_Update.cpp and
+#   src/Dealer_Update.cpp -- the shared model sub-object at +0x4f38, all
 #   five already host-copied by run mg6 lane MEM in port/unmatched/MgMemory2_*.
 #   This class reaches the same sub-object at the same offset through the same
-#   constructor (func_ov006_020c1d80), so nothing here is re-hosted.
+#   constructor (Dealer_Construct), so nothing here is re-hosted.
 
 # ---- ov004 and arm9 -------------------------------------------------------
 # NOTHING.  The 103-function ov004 closure and the 599-function arm9 closure

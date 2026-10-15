@@ -2330,7 +2330,7 @@ extern "C" int port_vs_match_end_poll(int frame)
 
    The ROM's PER-ENTRY health restore is a different mechanism entirely and does
    not pass through here: the Player's own level-enter step heals to full when
-   the latched entry reason says fresh-or-death (src/actors/Player.cpp:29),
+   the latched entry reason says fresh-or-death (src/game/player/Player.cpp:29),
    and the boot latches that reason -- see the data_0209f2fc seat in
    hal/level_boot.cpp. TRIAGE14 read this one-shot as the cause of the infinite
    death loop; the cause was the missing latch, and this note is here so the

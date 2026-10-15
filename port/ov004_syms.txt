@@ -69,7 +69,7 @@
 #
 # THE MOUNT IS NOT A LINKAGE CLAIM. Mounted bytes are not matched TUs, so the
 # linked count does not move for them.
-data_ov004_020b944c data_ov004_020b9468 data_ov004_020b9488 data_ov004_020b9e00 data_ov004_020b9e04 data_ov004_020b9e08
+data_ov004_020b944c data_ov004_020b9468 sMgCoinRiseFrames data_ov004_020b9e00 data_ov004_020b9e04 data_ov004_020b9e08
 data_ov004_020b9e0c data_ov004_020b9e10 data_ov004_020b9e14 data_ov004_020b9e18 data_ov004_020b9e1c data_ov004_020b9e20
 data_ov004_020b9e24 data_ov004_020b9e28 data_ov004_020b9e2c data_ov004_020b9e30 data_ov004_020b9e34 data_ov004_020b9e38
 data_ov004_020b9e3c data_ov004_020b9e40 data_ov004_020b9e44 data_ov004_020b9e48 data_ov004_020b9e4c data_ov004_020b9e50
@@ -118,15 +118,15 @@ data_ov004_020bb85c data_ov004_020bb8b4 data_ov004_020bb90c data_ov004_020bb964 
 data_ov004_020bba6c data_ov004_020bbac4 data_ov004_020bbb1c data_ov004_020bbb7c data_ov004_020bbbdc data_ov004_020bbc44
 data_ov004_020bbcac data_ov004_020bbd14 data_ov004_020bbd7c data_ov004_020bbdec data_ov004_020bbe5c data_ov004_020bbecc
 data_ov004_020bbf4c@0x020bbf4c data_ov004_020bbf54@0x020bbf54 data_ov004_020bbf5c@0x020bbf5c data_ov004_020bbf64@0x020bbf64 _ZTI11dScMgBase_c _ZTIN11dScMgBase_c15graphCallback_cE
-_ZTS11dScMgBase_c data_ov004_020bbf94 data_ov004_020bbfa8 data_ov004_020bbfbc data_ov004_020bbfd0 data_ov004_020bbfe4
+_ZTS11dScMgBase_c data_ov004_020bbf94 sMgSpriteTables data_ov004_020bbfbc data_ov004_020bbfd0 data_ov004_020bbfe4
 data_ov004_020bbff8 data_ov004_020bc00c data_ov004_020bc020 data_ov004_020bc03c _ZTSN11dScMgBase_c15graphCallback_cE data_ov004_020bc070
-data_ov004_020bc0c0 data_ov004_020bc150 data_ov004_020bc154 data_ov004_020bc15c data_ov004_020bc164 data_ov004_020bc16c
-data_ov004_020bc174 data_ov004_020bc17c data_ov004_020bc184 data_ov004_020bc18c data_ov004_020bc194 data_ov004_020bc19c
-data_ov004_020bc1a4 data_ov004_020bc1ac data_ov004_020bc1b4 data_ov004_020bc1bc data_ov004_020bc1c4 data_ov004_020bc1cc
-data_ov004_020bc1d4 data_ov004_020bc1dc data_ov004_020bc1e4 data_ov004_020bc1ec data_ov004_020bc1f4 data_ov004_020bc1fc
-data_ov004_020bc204 data_ov004_020bc20c data_ov004_020bc214 data_ov004_020bc21c data_ov004_020bc224 data_ov004_020bc22c
-data_ov004_020bc234 data_ov004_020bc23c data_ov004_020bc244 data_ov004_020bc24c data_ov004_020bc254 data_ov004_020bc25c
-data_ov004_020bc264 data_ov004_020bc26c data_ov004_020bc274 data_ov004_020bc27c data_ov004_020bc288 data_ov004_020bc29c
+data_ov004_020bc0c0 sMgBannerButtonsArmed pmf_Banner_UpdateZoom pmf_Banner_SetupDrop pmf_Banner_SetupFall pmf_Banner_SetupSlideFromRight
+pmf_Banner_DrawSqueeze pmf_Banner_UpdateWave pmf_Banner_UpdateSlideFromLeft pmf_Banner_UpdateZoom_2 pmf_Banner_DrawLevelNumber pmf_Banner_UpdateSlideFromBottom
+pmf_Banner_DrawZoomB pmf_Banner_SetupPopSpin pmf_Banner_DrawSpin pmf_Banner_SetupZoomBurst pmf_Banner_SetupPopSpin_2 pmf_Banner_DrawPopSpinA
+pmf_Banner_SetupNone pmf_Banner_UpdatePopSpin pmf_Banner_UpdateFall pmf_Banner_DrawWave pmf_Banner_UpdateZoom_3 pmf_Banner_UpdatePopSpin_2
+pmf_Banner_UpdateSlideFromRight pmf_Banner_UpdateSpin pmf_Banner_UpdateDrop pmf_Banner_DrawZoomB_2 pmf_Banner_UpdatePressed pmf_Banner_UpdateSlideFromTop
+pmf_Banner_SetupSlideFromTop pmf_Banner_SetupSlideFromBottom pmf_Banner_SetupSlideFromLeft pmf_Banner_DrawPopSpinB pmf_Banner_UpdatePressed_2 pmf_Banner_SetupZoom
+pmf_Banner_SetupZoomBurst_2 pmf_Banner_DrawZoomA pmf_Banner_DrawPressed data_ov004_020bc27c data_ov004_020bc288 data_ov004_020bc29c
 data_ov004_020bc2b0 data_ov004_020bc2c4 data_ov004_020bc2d8 data_ov004_020bc2ec data_ov004_020bc300 data_ov004_020bc314
 data_ov004_020bc328 data_ov004_020bc33c data_ov004_020bc350 data_ov004_020bc364 data_ov004_020bc378 data_ov004_020bc38c
 data_ov004_020bc3a0 data_ov004_020bc3b4 data_ov004_020bc3c8 data_ov004_020bc3dc data_ov004_020bc3f0 data_ov004_020bc404
@@ -136,32 +136,32 @@ data_ov004_020bc508 data_ov004_020bc51c data_ov004_020bc530 data_ov004_020bc544 
 data_ov004_020bc580 data_ov004_020bc594 data_ov004_020bc5a8 data_ov004_020bc5bc data_ov004_020bc5d0 data_ov004_020bc5e4
 data_ov004_020bc5f8 data_ov004_020bc60c data_ov004_020bc620 data_ov004_020bc634 data_ov004_020bc648 data_ov004_020bc65c
 data_ov004_020bc670 data_ov004_020bc684 data_ov004_020bc698 data_ov004_020bc6ac data_ov004_020bc6c0 data_ov004_020bc6d4
-data_ov004_020bc6e8 data_ov004_020bc7d0 data_ov004_020bc7d4 data_ov004_020bc7d8 data_ov004_020bc7e0 data_ov004_020bc7e8
-data_ov004_020bc7f0 data_ov004_020bc7f8 data_ov004_020bc800 data_ov004_020bc808 data_ov004_020bc810 data_ov004_020bc818
-data_ov004_020bc820 data_ov004_020bc828 data_ov004_020bc83c data_ov004_020bc850 data_ov004_020bc854 data_ov004_020bc858
+data_ov004_020bc6e8 sMgCoinsBetCap gMgCoinsShowDelta pmf_Coin_MoveThenRise pmf_Coin_RiseSpent pmf_Coin_Move
+pmf_Coin_Move_2 pmf_Coin_Rise pmf_Coin_MoveThenBank pmf_Coin_FlyToCounter pmf_Coin_MoveThenRiseSpent pmf_Coin_MoveThenRefund
+pmf_Coin_Move_3 sMgCoinsButtonSprites sMgCoinsDeltaSprites data_ov004_020bc850 data_ov004_020bc854 data_ov004_020bc858
 data_ov004_020bc85c data_ov004_020bc860 data_ov004_020bc864 data_ov004_020bc868 data_ov004_020bc86c data_ov004_020bc870
 data_ov004_020bc874 data_ov004_020bc878 data_ov004_020bc87c data_ov004_020bc880 data_ov004_020bc884 data_ov004_020bc888
-data_ov004_020bc88c data_ov004_020bc890 data_ov004_020bc894 data_ov004_020bc898 data_ov004_020bc89c data_ov004_020bc8a0
+data_ov004_020bc88c data_ov004_020bc890 data_ov004_020bc894 data_ov004_020bc898 data_ov004_020bc89c sMgNextBanner
 data_ov004_020bc8a4 data_ov004_020bc8a8 data_ov004_020bc8ac data_ov004_020bc8b0 data_ov004_020bc8b4 data_ov004_020bc8b8
-data_ov004_020bc8bc data_ov004_020bc8c4 data_ov004_020bc8cc data_ov004_020bc8d4 data_ov004_020bc8dc data_ov004_020bc8e4
-data_ov004_020bc8ec data_ov004_020bc8f4 data_ov004_020bc8fc data_ov004_020bc904 data_ov004_020bc90c data_ov004_020bc914
-data_ov004_020bc91c data_ov004_020bc924 data_ov004_020bc92c data_ov004_020bc934 data_ov004_020bc93c data_ov004_020bc944
-data_ov004_020bc94c data_ov004_020bc954 data_ov004_020bc95c data_ov004_020bc964 data_ov004_020bc96c data_ov004_020bc974
-data_ov004_020bc97c data_ov004_020bc984 data_ov004_020bc98c data_ov004_020bc994 data_ov004_020bc99c data_ov004_020bc9a4
-data_ov004_020bc9ac data_ov004_020bc9b4 data_ov004_020bc9bc data_ov004_020bc9c4 data_ov004_020bc9cc data_ov004_020bc9d4
-data_ov004_020bc9dc data_ov004_020bc9e4 data_ov004_020bc9ec data_ov004_020bc9f4 data_ov004_020bc9fc data_ov004_020bca04
-data_ov004_020bca0c data_ov004_020bca14 data_ov004_020bca1c data_ov004_020bca24 data_ov004_020bca2c data_ov004_020bca34
-data_ov004_020bca3c data_ov004_020bca44 data_ov004_020bca58 data_ov004_020bca60 _ZTIN10dMgPsOpt_c11TouchIcon_cE _ZTVN10dMgPsOpt_c11TouchIcon_cE
+pmf_dMgState_c_State01_Update pmf_dMgState_c_State02_Update pmf_dMgState_c_DrawScore pmf_dMgState_c_State03_Update pmf_dMgState_c_UpdateRetryFadeOut pmf_dMgState_c_State16_Update
+pmf_dMgState_c_State04_Update pmf_dMgState_c_State05_Update pmf_dMgState_c_UpdateRetryPrompt pmf_dMgState_c_UpdateGameOverToMenu pmf_dMgState_c_State06_Update pmf_dMgState_c_UpdateRetryFadeOut_2
+pmf_dMgState_c_DrawRecordTable pmf_dMgState_c_State18_Update pmf_dMgState_c_State07_Enter pmf_dMgState_c_State08_Enter pmf_dMgState_c_UpdateAfterHidden pmf_dMgState_c_State06_Enter
+pmf_dMgState_c_State05_Enter pmf_dMgState_c_State04_Enter pmf_dMgState_c_State03_Enter pmf_dMgState_c_State02_Enter pmf_dMgState_c_State01_Enter pmf_dMgState_c_State00_Enter
+pmf_dMgState_c_State09_Enter pmf_dMgState_c_State10_Enter pmf_dMgState_c_UpdateGameOverToMenu_2 pmf_dMgState_c_UpdateFadeThenResume pmf_dMgState_c_State11_Enter pmf_dMgState_c_State12_Enter
+pmf_dMgState_c_UpdateWaitThenResume pmf_dMgState_c_UpdateWaitThenResume_2 pmf_dMgState_c_State14_Enter pmf_dMgState_c_DrawScoreDigits pmf_dMgState_c_State17_Update pmf_dMgState_c_State15_Enter
+pmf_dMgState_c_State16_Enter pmf_dMgState_c_State09_Update pmf_dMgState_c_State17_Enter pmf_dMgState_c_State18_Enter pmf_dMgState_c_State10_Update pmf_dMgState_c_UpdateFadeThenResume_2
+pmf_dMgState_c_State19_Enter pmf_dMgState_c_UpdateRetryFadeOut_3 pmf_dMgState_c_State00_Update pmf_dMgState_c_State11_Update pmf_dMgState_c_DrawRecordTable_2 pmf_dMgState_c_State19_Update
+pmf_dMgState_c_State13_Enter data_ov004_020bca44 data_ov004_020bca58 data_ov004_020bca60 _ZTIN10dMgPsOpt_c11TouchIcon_cE _ZTVN10dMgPsOpt_c11TouchIcon_cE
 _ZTSN10dMgPsOpt_c11TouchIcon_cE data_ov004_020bcaa0 data_ov004_020bd074 data_ov004_020bd698 data_ov004_020bd828 data_ov004_020bdccc
 data_ov004_020be34c data_ov004_020be9ec data_ov004_020be9f4 data_ov004_020be9fc data_ov004_020bea04 data_ov004_020bea0c
-data_ov004_020bea14 data_ov004_020bea28 data_ov004_020beac8 data_ov004_020beb60 data_ov004_020beb64 data_ov004_020beb68
-data_ov004_020beb6c data_ov004_020beb70 data_ov004_020beb7c@0x020beb7c
-data_ov004_020bf3e8 data_ov004_020bf3ec data_ov004_020bf3f0 data_ov004_020bf3f4
+data_ov004_020bea14 data_ov004_020bea28 data_ov004_020beac8 sMgWorkBuffer data_ov004_020beb64 gMgScene
+sMgTopScreenYOffset data_ov004_020beb70 data_ov004_020beb7c@0x020beb7c
+sMgBannerGfxSlotUsed data_ov004_020bf3ec data_ov004_020bf3f0 data_ov004_020bf3f4
 data_ov004_020bf3fc data_ov004_020bf404 data_ov004_020bf410 data_ov004_020bf41c@0x020bf41c
-data_ov004_020bf9e4 data_ov004_020bf9e8
-data_ov004_020bf9ec data_ov004_020bf9f0 data_ov004_020bf9f4 data_ov004_020bf9f8 data_ov004_020bf9fc data_ov004_020bfa00
-data_ov004_020bfa04 data_ov004_020bfa08 data_ov004_020bfa0c data_ov004_020bfa10 data_ov004_020bfa14 data_ov004_020bfa18
-data_ov004_020bfa1c data_ov004_020bfa20 data_ov004_020bfa24 data_ov004_020bfa28 data_ov004_020bfa34 data_ov004_020bfa56
+gMgCoinsStatus sMgCoinsDelta
+sMgCoinsBetPlaced sMgCoinsSoundPending sMgCoinsLastLostAlt sMgCoinsPayoutLeft sMgCoinsToStep sMgCoinsIndex
+sMgCoinsWait sMgCoinsLastReturned sMgCoinsLastSpent sMgCoinsLaunchPending sMgCoinsLastLost gMgCoinsInPlay
+sMgCoinsSlowLaunches sMgCoinsStep sMgCoinsDeltaShown data_ov004_020bfa28 sMgCoins sMgCoinsVisible
 data_ov004_020bfd04@0x020bfd04 data_ov004_020bfd08@0x020bfd08 data_ov004_020bfda8 data_ov004_020bfdb4 data_ov004_020bfdc0 data_ov004_020bfdcc
 data_ov004_020bfdd8 data_ov004_020bfde4 data_ov004_020bfdf0 data_ov004_020bfdfc data_ov004_020bfe08 data_ov004_020bfe14
 data_ov004_020bfe20 data_ov004_020bfe2c data_ov004_020bfe38 data_ov004_020bfe44 data_ov004_020bfe50 data_ov004_020bfe5c
@@ -177,16 +177,16 @@ data_ov004_020bfeac data_ov004_020bfeb0 data_ov004_020bfeb4
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov004_020beb74                        now defined by src/minigames/d_s_mg_base.cpp
-#   data_ov004_020beb88                        now defined by src/minigames/d_s_mg_base.cpp
-#   data_ov004_020beb98                        now defined by src/minigames/d_s_mg_base.cpp
+#   sMgGraphCallback                        now defined by src/minigames/d_s_mg_base.cpp
+#   sMgFxUpdateTable                        now defined by src/minigames/d_s_mg_base.cpp
+#   sMgFxDrawTable                        now defined by src/minigames/d_s_mg_base.cpp
 #   data_ov004_020beba8                        now defined by src/minigames/d_s_mg_base.cpp
-#   data_ov004_020bebe8                        now defined by src/minigames/d_s_mg_base.cpp
-#   data_ov004_020bf428                        now defined by src/actors/unit020b2c84.cpp
-#   data_ov004_020bf490                        now defined by src/actors/unit020b2c84.cpp
-#   data_ov004_020bf4f8                        now defined by src/actors/unit020b2c84.cpp
-#   data_ov004_020bf560                        now defined by src/actors/unit020b2c84.cpp
-#   data_ov004_020bf5d4                        now defined by src/actors/unit020b2c84.cpp
-#   data_ov004_020bf648                        now defined by src/actors/unit020b2c84.cpp
+#   sMgFxPool                        now defined by src/minigames/d_s_mg_base.cpp
+#   sBannerUpdateTable                        now defined by src/minigames/unit020b2c84.cpp
+#   sBannerSetupTable                        now defined by src/minigames/unit020b2c84.cpp
+#   sBannerDrawTable                        now defined by src/minigames/unit020b2c84.cpp
+#   sMgBannerFiles                        now defined by src/minigames/unit020b2c84.cpp
+#   sMgBannerSprites                        now defined by src/minigames/unit020b2c84.cpp
+#   gMgBanners                        now defined by src/minigames/unit020b2c84.cpp
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov004_020beba8! data_ov004_020bebe8! data_ov004_020beb74! data_ov004_020beb88! data_ov004_020beb98! data_ov004_020bf560! data_ov004_020bf648! data_ov004_020bf428! data_ov004_020bf490! data_ov004_020bf4f8! data_ov004_020bf5d4!
+data_ov004_020beba8! sMgFxPool! sMgGraphCallback! sMgFxUpdateTable! sMgFxDrawTable! sMgBannerFiles! gMgBanners! sBannerUpdateTable! sBannerSetupTable! sBannerDrawTable! sMgBannerSprites!

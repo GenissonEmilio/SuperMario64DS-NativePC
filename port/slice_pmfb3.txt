@@ -87,7 +87,7 @@
 #
 # ONE /alternatename, in that same seat file. Twelve of the thirteen matched TUs
 # declare their table INSIDE their own extern "C" block and come in as the plain
-# C name the ov006 mount defines. src/actors/dScMgSound_c.cpp declares
+# C name the ov006 mount defines. src/minigames/d_s_mg_sound.cpp declares
 # `extern PMF data_ov006_02142cc0[];` at namespace scope, so MSVC spells the
 # reference ?data_ov006_02142cc0@@3PAP8C@@AEXH@ZA -- read off that TU's own
 # /FAsc listing, not guessed -- and without the directive the slice does not
@@ -107,7 +107,7 @@
 #     hal/scene_mg_boombox.cpp went on printing it as the witness that a tap
 #     produced an execution. Same convention in and out, same two arguments,
 #     same body called.
-src/actors/dScMgSound_c.cpp
+src/minigames/d_s_mg_sound.cpp
 #
 # ---- BATCH 2: SoundObject::Behavior ---------------------------------------
 #
@@ -194,7 +194,7 @@ src/game/actors/d_a_sound_obj.cpp
 # THE ONE FACT THAT COVERS ALL NINE, and it is the opposite of batch 1's:
 # EVERY ONE OF THE NINE COMPILES ITS DISPATCH TO A TAIL JUMP. Read off each
 # TU's own /FAsc listing under the port's own flags
-# (runs/link100/out/PMFB3/listings/func_ov004_020add88.asm and its eight
+# (runs/link100/out/PMFB3/listings/Mg_DrawFx.asm and its eight
 # siblings): `jmp eax` or `jmp edx`, with pop ebp (and pop esi where there is
 # one) executed FIRST, so the stack at the jump is the forwarder's own entry
 # frame -- return address at [esp], the single argument at [esp+4]. A tail jump
@@ -207,8 +207,8 @@ src/game/actors/d_a_sound_obj.cpp
 #
 # THE THREE TAKEN.
 #
-#   func_ov004_020add88  table data_ov004_020beb98, 2 cells
-#   func_ov004_020adf2c  table data_ov004_020beb88, 2 cells
+#   Mg_DrawFx  table sMgFxDrawTable, 2 cells
+#   Mg_UpdateFx  table sMgFxUpdateTable, 2 cells
 #     ROM stride 8: `add r3, r2, r1, lsl #3` at 0x020add98 and 0x020adf3c, on
 #       the literal-pool words 0x020addc8 = 020beb98 and 0x020adf6c = 020beb88.
 #       The index is a SHORT at +0x1e (`ldrsh r1, [r0, #0x1e]`), which is what
@@ -226,7 +226,7 @@ src/game/actors/d_a_sound_obj.cpp
 #       unmatched/MgBase_StateDispatch.cpp calls "paid once for all thirty".
 #     Two /alternatename directives, in that same file: both TUs declare their
 #       table at namespace scope, so they come in as
-#       ?data_ov004_020beb88@@3PAP8C@@AEXXZA and ...beb98..., read off the
+#       ?sMgFxUpdateTable@@3PAP8C@@AEXXZA and ...beb98..., read off the
 #       listings. Neither LHS is defined anywhere in the tree.
 #
 #   func_ov006_021050bc  table data_ov006_02142860, 5 cells
@@ -259,19 +259,19 @@ src/game/actors/d_a_sound_obj.cpp
 # constructors, and after them.
 #
 # THE SIX NOT TAKEN, with the measurement that stops each:
-#   func_ov004_020b31b4  reads the pair at self+0x08
-#   func_ov004_020b321c  reads the pair at self+0x00
-#   func_ov004_020b52fc  reads the pair at self+0x00
+#   Banner_Draw  reads the pair at self+0x08
+#   Banner_Update  reads the pair at self+0x00
+#   Coin_Update  reads the pair at self+0x00
 #   _ZN10dMgState_c6RenderEv  reads the pair at self+0x10
 #   _ZN10dMgState_c8BehaviorEv  reads the pair at self+0x08
-#   func_ov006_020cf758  reads the pair at self+0x00
+#   TrmpLine_Update  reads the pair at self+0x00
 # None of the six reads a TABLE. Each reads the eight-byte pair out of an
 # OBJECT FIELD, so there is no storage a boot installer can verify and rewrite:
 # what has to change is the WRITER. The writers are host copies, and they store
 # the ROM's own DS code word today --
 # unmatched/MgBase_StateSetter.cpp's _ZN10dMgState_c8SetStateEi does
 # `self->pmf0 = g_table[self->index]` out of the twenty data_ov004_020bc9xx pair
-# globals and then hands that DS word to port_mg_call0, and func_ov004_020b3278
+# globals and then hands that DS word to port_mg_call0, and Banner_Init
 # fills self+0x08 the same way, with dScMgMemory2_c and dScMgTrampoline_c
 # filling their own +0x00 elsewhere. Turning those four writers around means
 # each one installs a host address AND stops dispatching through the switch
@@ -280,5 +280,5 @@ src/game/actors/d_a_sound_obj.cpp
 # handing a host address to a switch that only knows DS ones. Named here so the
 # next lane starts from the measurement rather than from the census.
 src/minigames/d_s_mg_base.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 282): src/func_ov004_020adf2c.cpp
-src/actors/dScMgPanel_c.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 282): src/Mg_UpdateFx.cpp
+src/minigames/d_s_mg_panel.cpp

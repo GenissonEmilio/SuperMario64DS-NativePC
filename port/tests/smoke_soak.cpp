@@ -28,11 +28,11 @@
 // port/tests/smoke_heap.cpp). It used to declare the entry as a flat extern "C"
 // Itanium name returning an opaque pointer, which is what the ROM's own callers
 // spell and what src/ emitted before the 09-14 sync. It is Heap::SetupRootHeap()
-// now, a real static member (include/Heap.h:236, ?SetupRootHeap@Heap@@SAPAU1@XZ),
+// now, a real static member (include/Heap.h:236, ?SetupRootHeap@Heap_t@mHeap@@SAPAU12@XZ),
 // so the flat spelling bought a link error. This file is HOST TEST CODE, not ROM
 // code, so it may include the class header and call the member the way C++ calls
 // it, which is also what the synced src/ TUs now do. It reaches the same object
-// it always linked, src/_ZN4Heap13SetupRootHeapEv.cpp; only the spelling changed.
+// it always linked, src/engine/heap/Heap.cpp; only the spelling changed.
 #include "types.h"
 #include "Heap.h"
 

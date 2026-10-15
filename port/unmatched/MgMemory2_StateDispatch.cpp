@@ -55,8 +55,8 @@
 //     add r3,r1,r0,lsl #3                         stride EIGHT
 //     ldr r1,[r3,#4] / ands r1,r1,#1 / ...        the ordinary PMF sequence
 //     add r0,r4,r1,asr #1 / blx                   this = the class base
-//     bl func_ov004_020b65e4
-//     ldr r0,[pc,#0x14] (= 0x00004f38) / add r0,r4,r0 / bl func_ov006_020c19d0
+//     bl MgCoins_Update
+//     ldr r0,[pc,#0x14] (= 0x00004f38) / add r0,r4,r0 / bl Dealer_Update
 //     mov r0,#1
 //
 //   _ZN14dScMgMemory2_c9StatePlayEv  index at +0x53d8, table 0x02142440, then a
@@ -102,16 +102,16 @@
 // better outcome than a switch arm that cannot be wrong because nothing calls
 // it.
 //
-//     0x020f58d0   src/actors/dScMgMemory2_c.cpp   void (char *c, int i)
-//     0x020f5744   src/actors/dScMgMemory2_c.cpp   void (char *base, int i)
-//     0x020f5740   src/actors/dScMgMemory2_c.cpp   void (void), 4 bytes, bx lr
+//     0x020f58d0   src/minigames/d_s_mg_memory2.cpp   void (char *c, int i)
+//     0x020f5744   src/minigames/d_s_mg_memory2.cpp   void (char *base, int i)
+//     0x020f5740   src/minigames/d_s_mg_memory2.cpp   void (void), 4 bytes, bx lr
 //
 // ---- 4. ONE STATE HAS A src TU AND NO DELINK BLOCK ------------------------
 //
 // 0x020f6904 is slot 5 of data_ov006_02142440.  config/arm9/overlays/ov006/
 // delinks.txt has a hole there -- the block before it ends at 0x020f6904 and
 // the next starts at 0x020f6a00 -- so port/tools/stategen.py cannot emit a case
-// for it and this file's case is hand-written.  src/actors/dScMgMemory2_c.cpp
+// for it and this file's case is hand-written.  src/minigames/d_s_mg_memory2.cpp
 // EXISTS and is bannered
 //
 //     NONMATCHING: different op / idiom (div=29). Logic verified correct vs
@@ -120,7 +120,7 @@
 // NONMATCHING TUs are routinely sliced and built by this port, so the state is
 // reachable and the cost is one slice line plus one switch arm.  It is NOT a
 // floor: port/mg_fanout_costs.txt's own correction to itself says so, and the
-// contrast is curling's func_ov006_020e1854, which has no src in either
+// contrast is curling's Aim_Swing, which has no src in either
 // extension.  THIS CLASS HAS NO HARD STATE FLOOR AT ALL -- all twenty-nine
 // addresses reach a real src body, and the count that would say otherwise is
 // reported by hal/scene_mg_memory2.cpp on every run so a regression is loud.
@@ -193,8 +193,8 @@ extern MgPmf data_ov006_02142440[];
 
 /* the ordinary callees the host copies below keep, each spelled as its own src
    TU spells it */
-void func_ov004_020b65e4(void);
-void func_ov006_020c19d0(void *c);
+void MgCoins_Update(void);
+void Dealer_Update(void *c);
 
 /* host-copied further down this file, and called from above their own
    definitions -- 020f7234 and 020f71c8 are STATE BODIES as well as dispatchers,
@@ -359,10 +359,10 @@ extern "C" unsigned port_mg_memory2_nonmatching(void)    { return g_mem2_nonmatc
 // receiver-in-ecx with callee cleanup.
 //
 // ONE /alternatename: ?data_ov006_02142408@@3PAP8C77@@AEXH@ZA, read off the
-// object with dumpbin /symbols. src/actors/dScMgMemory2_c.cpp declares its table
+// object with dumpbin /symbols. src/minigames/d_s_mg_memory2.cpp declares its table
 // inside extern "C".
 //
-// ONE GUESS MARKER, ADJUDICATED: src/actors/dScMgMemory2_c.cpp, ruled REAL_DECOMP
+// ONE GUESS MARKER, ADJUDICATED: src/minigames/d_s_mg_memory2.cpp, ruled REAL_DECOMP
 // at port/tools/inferred_stub_adjudicated.txt:326.
 //
 // STALE COMMENT DISCLOSED, NOT EDITED: hal/scene_mg_memory2.cpp:188-192 still

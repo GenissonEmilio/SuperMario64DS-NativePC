@@ -5,9 +5,9 @@
 // dScMgPachinko_c per-frame bob-omb sprite render (30 slots, rotated OAM).
 extern const short data_02082214[];
 extern void* data_ov006_02136cd4[];
-void func_ov004_020b023c(void* a0, int a1, int a2, int a3, void* a4);
+void Mg_RenderSpriteBothPalMtx(void* a0, int a1, int a2, int a3, void* a4);
 
-void func_ov006_020fc8c0(char* p)
+void PachinkoBall_DrawAll(char* p)
 {
     void** t = data_ov006_02136cd4;
     int m[4];
@@ -24,7 +24,7 @@ void func_ov006_020fc8c0(char* p)
             m[1] = ry;
             m[2] = -ry;
             m[3] = rx;
-            func_ov004_020b023c(t[*(unsigned char*)(p + 0x4693)], bx, by, -1, m);
+            Mg_RenderSpriteBothPalMtx(t[*(unsigned char*)(p + 0x4693)], bx, by, -1, m);
         }
         p += 0x38;
     }

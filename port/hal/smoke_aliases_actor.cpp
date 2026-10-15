@@ -47,23 +47,23 @@
    void* in EAX.  hal/heap_vtable.cpp's slot thunks spell the Q form and the
    src/ TUs define the U form. */
 /* hal/cxx_aliases.cpp:2977 */
-#pragma comment(linker, "/alternatename:?VAllocate@ExpandingHeap@@QAEPAXIH@Z=?VAllocate@ExpandingHeap@@UAEPAXIH@Z")
+#pragma comment(linker, "/alternatename:?VAllocate@ExpHeap_t@mHeap@@QAEPAXIH@Z=?VAllocate@ExpHeap_t@mHeap@@UAEPAXIH@Z")
 /* hal/cxx_aliases.cpp:2978 */
-#pragma comment(linker, "/alternatename:?VReallocate@ExpandingHeap@@QAEPAXPAXI@Z=?VReallocate@ExpandingHeap@@UAEIPAXI@Z")
+#pragma comment(linker, "/alternatename:?VReallocate@ExpHeap_t@mHeap@@QAEPAXPAXI@Z=?VReallocate@ExpHeap_t@mHeap@@UAEIPAXI@Z")
 /* hal/cxx_aliases.cpp:2979 */
-#pragma comment(linker, "/alternatename:?VSizeof@ExpandingHeap@@QAEIPAX@Z=?VSizeof@ExpandingHeap@@UAEIPAX@Z")
+#pragma comment(linker, "/alternatename:?VSizeof@ExpHeap_t@mHeap@@QAEIPAX@Z=?VSizeof@ExpHeap_t@mHeap@@UAEIPAX@Z")
 /* hal/cxx_aliases.cpp:2980 */
-#pragma comment(linker, "/alternatename:?VIntact@ExpandingHeap@@QAE_NXZ=?VIntact@ExpandingHeap@@UAE_NXZ")
+#pragma comment(linker, "/alternatename:?VIntact@ExpHeap_t@mHeap@@QAE_NXZ=?VIntact@ExpHeap_t@mHeap@@UAE_NXZ")
 /* hal/cxx_aliases.cpp:2981 */
-#pragma comment(linker, "/alternatename:?VRescue@ExpandingHeap@@QAEXXZ=?VRescue@ExpandingHeap@@UAEXXZ")
+#pragma comment(linker, "/alternatename:?VRescue@ExpHeap_t@mHeap@@QAEXXZ=?VRescue@ExpHeap_t@mHeap@@UAEXXZ")
 /* hal/cxx_aliases.cpp:2982 */
-#pragma comment(linker, "/alternatename:?VResizeToFit@ExpandingHeap@@QAEIXZ=?VResizeToFit@ExpandingHeap@@UAEIXZ")
+#pragma comment(linker, "/alternatename:?VResizeToFit@ExpHeap_t@mHeap@@QAEIXZ=?VResizeToFit@ExpHeap_t@mHeap@@UAEIXZ")
 /* hal/cxx_aliases.cpp:2983 */
-#pragma comment(linker, "/alternatename:?VGetNodeID@ExpandingHeap@@QAEIXZ=?VGetNodeID@ExpandingHeap@@UAEIXZ")
+#pragma comment(linker, "/alternatename:?VGetNodeID@ExpHeap_t@mHeap@@QAEIXZ=?VGetNodeID@ExpHeap_t@mHeap@@UAEIXZ")
 /* hal/cxx_aliases.cpp:2984 */
-#pragma comment(linker, "/alternatename:?VSetNodeID@ExpandingHeap@@QAEXI@Z=?VSetNodeID@ExpandingHeap@@UAEII@Z")
+#pragma comment(linker, "/alternatename:?VSetNodeID@ExpHeap_t@mHeap@@QAEXI@Z=?VSetNodeID@ExpHeap_t@mHeap@@UAEII@Z")
 /* hal/cxx_aliases.cpp:2985 */
-#pragma comment(linker, "/alternatename:?Allocate@Heap@@QAEHIH@Z=?Allocate@Heap@@QAEPAXIH@Z")
+#pragma comment(linker, "/alternatename:?Allocate@Heap_t@mHeap@@QAEHIH@Z=?Allocate@Heap_t@mHeap@@QAEPAXIH@Z")
 
 /* fBase_c's TWO VIRTUAL SPELLINGS, the same shape as the nine above and new to
    this batch.  Both sides AE, one class, the same two integer parameters: U is
@@ -103,11 +103,11 @@
    that copy), the same binding hal/cxx_aliases.cpp makes for walk_window. */
 #pragma comment(linker, "/alternatename:__ZN5dBgCh21ShouldPassThroughImplEPvRK4CLPSRKS_b=_hostgen_nrwide__ZN5dBgCh21ShouldPassThroughImplEPvRK4CLPSRKS_b")
 /* hal/cxx_aliases.cpp:3289 */
-#pragma comment(linker, "/alternatename:__ZN6Memory8AllocateEjiP4Heap=?Allocate@Memory@@YAPAXIHPAVHeap@@@Z")
+#pragma comment(linker, "/alternatename:__ZN6Memory8AllocateEjiPN5mHeap6Heap_tE=?Allocate@Memory@@YAPAXIHPAUHeap_t@mHeap@@@Z")
 /* hal/cxx_aliases.cpp:1491 */
-#pragma comment(linker, "/alternatename:__ZN6Memory10DeallocateEPvP4Heap=?Deallocate@Memory@@YAXPAXPAVHeap@@@Z")
+#pragma comment(linker, "/alternatename:__ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE=?Deallocate@Memory@@YAXPAXPAUHeap_t@mHeap@@@Z")
 /* hal/cxx_aliases.cpp:3339 */
-#pragma comment(linker, "/alternatename:__ZN4Heap18InitializeGameHeapEjPS_=?InitializeGameHeap@Heap@@SAXIPAU1@@Z")
+#pragma comment(linker, "/alternatename:__ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_=?InitializeGameHeap@Heap_t@mHeap@@SAXIPAU12@@Z")
 
 /* THE DATA ROWS.  A 3 in the decoration is plain data, and for data a name
    bridge IS the whole binding: one object, two names.  _ROOT_HEAP_ARENA_ID and

@@ -26,4 +26,4 @@
 # already the HAL's, so the file goes through hostgen --extern-data; see
 # GATE15_SYMS in CMakeLists.txt.
 src/IsAreaShowing.c
-src/engine/collision/dClipper.cpp
+src/engine/collision/d_clipper.cpp

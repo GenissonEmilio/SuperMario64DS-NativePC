@@ -183,14 +183,14 @@ DSSTATE_END
  * category-1 / cxxname_bridge.cpp:260 shape). Three matched TUs declare data
  * with a C++ type and no extern "C", so MSVC decorates the reference while the
  * plain C name is what defines it:
- *   src/actors/daSanbo_c.cpp  `extern void *data_ov096_02137b20;`
+ *   src/game/actors/d_a_sanbo.cpp  `extern void *gSanboHeadModelFile;`
  *       and the same for _02137b28 -- both DEFINED BY THIS LANE'S OWN MOUNT
  *       (port/ov096_syms.txt), the SharedFilePtrs for files 0x41b and 0x41a
- *   src/actors/daSanbo_c.cpp  `extern Block48 IDENTITY_MATRIX4X3;`
+ *   src/game/actors/d_a_sanbo.cpp  `extern Block48 IDENTITY_MATRIX4X3;`
  *       -- an arm9 romdata symbol already in walk_window.map on the base tree
  *
  * ONE CODE ROW, and an alias is correct here where it would be WRONG for an
- * ordinary method. src/actors/daSanbo_c.cpp declares a local shadow whose
+ * ordinary method. src/game/actors/d_a_sanbo.cpp declares a local shadow whose
  * Actor::Spawn is STATIC -- the decoration reads `SAX...`, S for static, so
  * MSVC emits a plain cdecl call with no ECX receiver and the alias cannot
  * misdeliver a `this` the way hal/method_faces.cpp's failure mode 3 does. The
@@ -203,8 +203,8 @@ DSSTATE_END
  * port/tools/alternatename_guard.py re-checks that against walk_window.map
  * after every link, which is why none belongs in
  * port/tools/alternatename_baseline.txt. */
-#pragma comment(linker, "/alternatename:?data_ov096_02137b20@@3PAXA=_data_ov096_02137b20")
-#pragma comment(linker, "/alternatename:?data_ov096_02137b28@@3PAXA=_data_ov096_02137b28")
+#pragma comment(linker, "/alternatename:?gSanboHeadModelFile@@3PAXA=_gSanboHeadModelFile")
+#pragma comment(linker, "/alternatename:?gSanboBodyModelFile@@3PAXA=_gSanboBodyModelFile")
 #pragma comment(linker, "/alternatename:?IDENTITY_MATRIX4X3@@3UBlock48@@A=_data_02082128")
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines __ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as, and nothing references ?Spawn@dActor_c@@SAXIIABUVector3@@PBUVector3_16@@HH@Z, so the row can never fire and nothing wants it to. */
 // #pragma comment(linker, "/alternatename:?Spawn@dActor_c@@SAXIIABUVector3@@PBUVector3_16@@HH@Z=__ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as")

@@ -70,7 +70,7 @@
 //   ?_ZN3G2S13GetBG0CharPtrEv@@YAPAHXZ
 //       Not a class member at all: a free function literally NAMED
 //       _ZN3G2S13GetBG0CharPtrEv, which is what
-//       src/_ZN11dScMgBase_c9Virtual88Eiiii.cpp:36 gets for declaring the flat
+//       src/_ZN11dScMgBase_c11PaintSquareEiiii.cpp:36 gets for declaring the flat
 //       ROM name `extern int*` instead of extern "C". The body is
 //       src/_ZN3G2S13GetBG0CharPtrEv.cpp on port/slice_gate25.txt:34, emitting
 //       ?GetBG0CharPtr@G2S@@YAIXZ. The return types differ, int* against
@@ -132,7 +132,7 @@
 //         src/_ZN7fBase_c9Virtual34Ejj.cpp and its sibling declare a
 //         NON-virtual local shadow, so the vftable's virtual spelling has no
 //         body anywhere
-//     __ZN6Memory10DeallocateEPvP4Heap   _data_020a0eac
+//     __ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE   _data_020a0eac
 //         from include/fBase_c.h:161's inline operator delete, which the
 //         deleting destructor odr-uses; the link has __ZN6Memory10DeallocateEPv
 //         and _data_020a0eac_c, and neither of those is that name
@@ -233,13 +233,13 @@ void func_020731dc(void *object, void *dtor, void *node);
 /* ov044's two objects. The first is the class TU's own SharedFilePtr (the mount
    retired it at ALIAS2 because d_a_obj_kb1_billboard.cpp defines it); the second
    is still mounted, port/ov044_syms.txt:88, 0x18 bytes. */
-extern char data_ov044_02111680[];
+extern char gKb1BallModelFile[];
 extern char data_ov044_02111688[];
 
 /* ov100's file pointer (the class TU's, mount retired at SYNC6), its chain node
    and the eight pointer-to-member source pairs, all mounted:
    port/ov100_syms.txt:48-50 and :80. */
-extern char data_ov100_02148934[];
+extern char gObjStargateModelFile[];
 extern char data_ov100_0214893c[];
 extern char data_ov100_02148334[]; extern char data_ov100_0214833c[];
 extern char data_ov100_02148344[]; extern char data_ov100_0214834c[];
@@ -263,7 +263,7 @@ extern char data_02086b58[];    /* __ptmf_null, two words */
      bl 0x020731dc
 
    Two steps and nothing else. SharedFilePtr::Construct on
-   data_ov044_02111680 with file handle 1570, which build/assets/handles.tsv
+   gKb1BallModelFile with file handle 1570, which build/assets/handles.tsv
    resolves to data/special_obj/kb1_ball/kb1_ball.bmd, and then the global
    destructor chain push that records func_02017ab4 against that object in the
    node at data_ov044_02111688.
@@ -280,14 +280,14 @@ extern char data_02086b58[];    /* __ptmf_null, two words */
    so on the host this body runs once per savestate epoch. */
 void __sinit_ov044_02111314(void)
 {
-    func_02017acc(data_ov044_02111680, 0x622u);
-    func_020731dc(data_ov044_02111680, (void *)(size_t)&func_02017ab4,
+    func_02017acc(gKb1BallModelFile, 0x622u);
+    func_020731dc(gKb1BallModelFile, (void *)(size_t)&func_02017ab4,
                   data_ov044_02111688);
 }
 
 /* ---- ov100 -------------------------------------------------------------
    0x02147a70..0x02147bc0, size 0x150. The same two steps with handle 0x4a1
-   (data/normal_obj/stargate/obj_stargate.bmd) on data_ov100_02148934 and the
+   (data/normal_obj/stargate/obj_stargate.bmd) on gObjStargateModelFile and the
    node at 0x0214893c, and then a third step the ov044 body does not have: five
    0x10-byte State objects filled from eight pointer-to-member statics and from
    __ptmf_null, in the order mwccarm emitted the stores. Read off the pooled
@@ -321,8 +321,8 @@ static void sg_state(char *dst, const char *init, const char *main_)
 
 void __sinit_ov100_02147a70(void)
 {
-    func_02017acc(data_ov100_02148934, 0x4a1u);
-    func_020731dc(data_ov100_02148934, (void *)(size_t)&func_02017ab4,
+    func_02017acc(gObjStargateModelFile, 0x4a1u);
+    func_020731dc(gObjStargateModelFile, (void *)(size_t)&func_02017ab4,
                   data_ov100_0214893c);
 
     sg_state(_ZN12daStarGate_c7ST_WAITE,              data_02086b58,        data_ov100_0214836c);
@@ -339,7 +339,7 @@ void __sinit_ov100_02147a70(void)
 // One referrer, src/func_0201a458.c, and it is a base and limit pair rather than
 // an object:
 //
-//     _ZN4Heap14CreateRootHeapEPvj(&data_ov062_0211d9c0,
+//     _ZN5mHeap6Heap_t14CreateRootHeapEPvj(&data_ov062_0211d9c0,
 //         (unsigned)(&func_02140d80 - &data_ov062_0211d9c0));
 //
 // On the cartridge that is 0x0211d9c0..0x02140d80, 0x233c0 bytes of the overlay

@@ -2592,9 +2592,9 @@ extern "C" void hal_fill_trap_vtable(void)
 //     matrix/scale helper compiled in slice_gate42.txt. ov052's 0x02111e84 is a
 //     CLPS collision table (first word "CLPS"); calling it would crash.
 //   * The `daGrock_c_classInit` handed to Model::LoadFile is a load reloc
-//     to:0x02112d64 module:overlay(10) -- data_ov010_02112d64, an 8-byte BSS
+//     to:0x02112d64 module:overlay(10) -- gC1PeachModelFile, an 8-byte BSS
 //     SharedFilePtr the ov010 sinits build, already mounted in ov010_syms.txt.
-//     CleanupResources names data_ov010_02112d64 directly, the cross-check.
+//     CleanupResources names gC1PeachModelFile directly, the cross-check.
 //
 // So there is no cross-overlay spawn and no RollingRock; ov052 is NOT mounted.
 // The two mislabeled names are closed by /alternatename below (data_ov052 ->

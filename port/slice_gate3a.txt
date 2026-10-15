@@ -2,45 +2,45 @@
 # gate 2's allocator family (the smoke links slice_gate2.txt as well).
 # The OS arena underneath is port/hal/os_arena.cpp.
 
-src/_ZN4Heap13SetupRootHeapEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap6Heap_t13SetupRootHeapEv.cpp
 src/engine/heap/Heap.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN4Heap19CreateExpandingHeapEjPS_i.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap6Heap_t19CreateExpandingHeapEjPS0_i.cpp
 src/engine/heap/ExpandingHeapAllocator.cpp
-src/_ZN4HeapC2EPvjPS_.cpp
-src/_ZN13ExpandingHeapC1EPvjP4HeapP22ExpandingHeapAllocator.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN13ExpandingHeap9VAllocateEji.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN13ExpandingHeap11VDeallocateEPv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN13ExpandingHeap7VSizeofEPv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap6Heap_tC2EPvjPS0_.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap9ExpHeap_tC1EPvjPNS_6Heap_tEP22ExpandingHeapAllocator.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap9ExpHeap_t9VAllocateEji.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap9ExpHeap_t11VDeallocateEPv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap9ExpHeap_t7VSizeofEPv.cpp
 # Gate 16 grew the heap vtable from the eight slots this gate could evidence
 # to the ROM's sixteen, so slots 8 and 9 -- VReallocate and VSizeof, the two
 # Model::LoadAndSetFile reaches through -- resolve in EVERY gate binary, not
 # just the one that calls them.
-# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN13ExpandingHeap11VReallocateEPvj.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap9ExpHeap_t11VReallocateEPvj.cpp
 # FOLDED into src/engine/heap/ExpandingHeapAllocator.cpp (row 8): src/_ZN22ExpandingHeapAllocator10ReallocateEPvj.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN13ExpandingHeap11VMemoryLeftEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap9ExpHeap_t11VMemoryLeftEv.cpp
 # FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN6Memory8AllocateEj.cpp
 # FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN6Memory8AllocateEji.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN6Memory8AllocateEjiP4Heap.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN6Memory8AllocateEjiPN5mHeap6Heap_tE.cpp
 # FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN6Memory10DeallocateEPv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN6Memory10DeallocateEPvP4Heap.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN4Heap8AllocateEji.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN4Heap10DeallocateEPv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap6Heap_t8AllocateEji.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap6Heap_t10DeallocateEPv.cpp
 # FOLDED into src/engine/heap/ExpandingHeapAllocator.cpp (row 8): src/_ZN22ExpandingHeapAllocator10MemoryLeftEv.cpp
 # LINKAGE SEAT: the three self-contained ExpandingHeap V-methods (VIntact
 # 0x0203c65c, VRescue 0x0203c630, VResizeToFit 0x0203c388, all 2004/b56
 # byte-matches). Zero callees, so they are safe in the gate every target
 # links; hal/heap_vtable.cpp seats them into slots 6/7/15 of
-# _ZTV13ExpandingHeap, and that naming is the reference edge.
-# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN13ExpandingHeap7VIntactEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN13ExpandingHeap7VRescueEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN13ExpandingHeap12VResizeToFitEv.cpp
+# _ZTVN5mHeap9ExpHeap_tE, and that naming is the reference edge.
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap9ExpHeap_t7VIntactEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap9ExpHeap_t7VRescueEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap9ExpHeap_t12VResizeToFitEv.cpp
 # LINKAGE SEAT 2: the NodeID pair (VSetNodeID 0x0203c3f8, VGetNodeID
 # 0x0203c3e0) and the allocator's own flat-C accessors they forward to
 # (SetNodeID 0x0204e0e8, GetNodeID 0x0204e0e0). heap_vtable.cpp seats the
-# V-methods into slots 13/14 of _ZTV13ExpandingHeap and bridges the C++
+# V-methods into slots 13/14 of _ZTVN5mHeap9ExpHeap_tE and bridges the C++
 # method calls to the flat definitions; no further callees, so the whole
 # chain is safe in the gate every target links.
-# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN13ExpandingHeap10VSetNodeIDEj.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN13ExpandingHeap10VGetNodeIDEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap9ExpHeap_t10VSetNodeIDEj.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 6): src/_ZN5mHeap9ExpHeap_t10VGetNodeIDEv.cpp
 # FOLDED into src/engine/heap/ExpandingHeapAllocator.cpp (row 8): src/_ZN22ExpandingHeapAllocator9SetNodeIDEj.cpp
 # FOLDED into src/engine/heap/ExpandingHeapAllocator.cpp (row 8): src/_ZN22ExpandingHeapAllocator9GetNodeIDEv.cpp

@@ -1,6 +1,6 @@
 /* HOST ARM, recovered by PORTSYNC2.
  * Old path: src/_ZN17BowserPuzzlePieceD1Ev.cpp (its #ifdef _MSC_VER arm). The
- * 2026-10 main merge folded that file into src/actors/daObjFl_Coin_c.cpp and
+ * 2026-10 main merge folded that file into src/game/actors/d_a_obj_fl_coin.cpp and
  * renamed the class BowserPuzzlePiece -> daObjFl_Puzzle_c (flat D1
  * _ZN17BowserPuzzlePieceD1Ev -> _ZN16daObjFl_Puzzle_cD1Ev, same ROM address).
  * Main's TU carries an _MSC_VER arm for the flat D0 only. mwccarm never saw

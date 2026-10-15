@@ -312,77 +312,77 @@
   "data": [],
   "bss": [
     {
-      "symbol": "data_ov062_0211df28",
+      "symbol": "gNokonokoDiveStAnimationFile",
       "address": "0x0211df28",
       "size": "0x8",
       "binding": "STB_GLOBAL",
       "evidence": "animation resource handle constructed with file ID 0x3bd; dExtFrameCtrl_c::LoadFile reaches it through the data_ov062_0211cee8 pointer table"
     },
     {
-      "symbol": "data_ov062_0211df30",
+      "symbol": "gNokonokoDiveAnimationFile",
       "address": "0x0211df30",
       "size": "0x8",
       "binding": "STB_GLOBAL",
       "evidence": "animation resource handle constructed with file ID 0x3bb; dExtFrameCtrl_c::LoadFile reaches it through the data_ov062_0211cee8 pointer table"
     },
     {
-      "symbol": "data_ov062_0211df38",
+      "symbol": "gNokonokoWalkAnimationFile",
       "address": "0x0211df38",
       "size": "0x8",
       "binding": "STB_GLOBAL",
       "evidence": "animation resource handle constructed with file ID 0x3c4; dExtFrameCtrl_c::LoadFile reaches it through the data_ov062_0211cee8 pointer table"
     },
     {
-      "symbol": "data_ov062_0211df40",
+      "symbol": "gNokonokoModelFile",
       "address": "0x0211df40",
       "size": "0x8",
       "binding": "STB_GLOBAL",
       "evidence": "model resource handle constructed with file ID 0x3ba; Model::LoadFile reaches it through the data_ov062_0211ced8 pointer table"
     },
     {
-      "symbol": "data_ov062_0211df48",
+      "symbol": "gNokonokoRedModelFile",
       "address": "0x0211df48",
       "size": "0x8",
       "binding": "STB_GLOBAL",
       "evidence": "model resource handle constructed with file ID 0x3c0; Model::LoadFile reaches it through the data_ov062_0211ced8 pointer table"
     },
     {
-      "symbol": "data_ov062_0211df50",
+      "symbol": "gNokonokoWalkEdAnimationFile",
       "address": "0x0211df50",
       "size": "0x8",
       "binding": "STB_GLOBAL",
       "evidence": "animation resource handle constructed with file ID 0x3c5; dExtFrameCtrl_c::LoadFile reaches it through the data_ov062_0211cee8 pointer table"
     },
     {
-      "symbol": "data_ov062_0211df58",
+      "symbol": "gNokonokoDiveEdAnimationFile",
       "address": "0x0211df58",
       "size": "0x8",
       "binding": "STB_GLOBAL",
       "evidence": "animation resource handle constructed with file ID 0x3bc; dExtFrameCtrl_c::LoadFile reaches it through the data_ov062_0211cee8 pointer table"
     },
     {
-      "symbol": "data_ov062_0211df60",
+      "symbol": "gNokonokoRunAnimationFile",
       "address": "0x0211df60",
       "size": "0x8",
       "binding": "STB_GLOBAL",
       "evidence": "animation resource handle constructed with file ID 0x3c1; dExtFrameCtrl_c::LoadFile reaches it through the data_ov062_0211cee8 pointer table"
     },
     {
-      "symbol": "data_ov062_0211df68",
+      "symbol": "gNokonokoWait2AnimationFile",
       "address": "0x0211df68",
       "size": "0x8",
       "binding": "STB_GLOBAL",
       "evidence": "animation resource handle constructed with file ID 0x3c3; dExtFrameCtrl_c::LoadFile reaches it through the data_ov062_0211cee8 pointer table"
     },
     {
-      "symbol": "data_ov062_0211df70",
+      "symbol": "gNokonokoWalkStAnimationFile",
       "address": "0x0211df70",
       "size": "0x8",
       "binding": "STB_GLOBAL",
       "evidence": "animation resource handle constructed with file ID 0x3c6; dExtFrameCtrl_c::LoadFile reaches it through the data_ov062_0211cee8 pointer table"
     },
     {
-      "symbol": "data_ov062_0211df78",
+      "symbol": "gNokonokoWait1AnimationFile",
       "address": "0x0211df78",
       "size": "0x8",
       "binding": "STB_GLOBAL",
@@ -1289,7 +1289,7 @@
       "source": "0x0211d420",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov062_0211df40",
+      "symbol": "gNokonokoModelFile",
       "addend": 0,
       "target_module": "ov062",
       "target_address": "0x0211df40"
@@ -1319,7 +1319,7 @@
       "source": "0x0211d430",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov062_0211df48",
+      "symbol": "gNokonokoRedModelFile",
       "addend": 0,
       "target_module": "ov062",
       "target_address": "0x0211df48"
@@ -1339,7 +1339,7 @@
       "source": "0x0211d438",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov062_0211df70",
+      "symbol": "gNokonokoWalkStAnimationFile",
       "addend": 0,
       "target_module": "ov062",
       "target_address": "0x0211df70"
@@ -1369,7 +1369,7 @@
       "source": "0x0211d448",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov062_0211df38",
+      "symbol": "gNokonokoWalkAnimationFile",
       "addend": 0,
       "target_module": "ov062",
       "target_address": "0x0211df38"
@@ -1389,7 +1389,7 @@
       "source": "0x0211d450",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov062_0211df50",
+      "symbol": "gNokonokoWalkEdAnimationFile",
       "addend": 0,
       "target_module": "ov062",
       "target_address": "0x0211df50"
@@ -1409,7 +1409,7 @@
       "source": "0x0211d45c",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov062_0211df60",
+      "symbol": "gNokonokoRunAnimationFile",
       "addend": 0,
       "target_module": "ov062",
       "target_address": "0x0211df60"
@@ -1429,7 +1429,7 @@
       "source": "0x0211d468",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov062_0211df78",
+      "symbol": "gNokonokoWait1AnimationFile",
       "addend": 0,
       "target_module": "ov062",
       "target_address": "0x0211df78"
@@ -1449,7 +1449,7 @@
       "source": "0x0211d474",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov062_0211df68",
+      "symbol": "gNokonokoWait2AnimationFile",
       "addend": 0,
       "target_module": "ov062",
       "target_address": "0x0211df68"
@@ -1469,7 +1469,7 @@
       "source": "0x0211d480",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov062_0211df28",
+      "symbol": "gNokonokoDiveStAnimationFile",
       "addend": 0,
       "target_module": "ov062",
       "target_address": "0x0211df28"
@@ -1489,7 +1489,7 @@
       "source": "0x0211d48c",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov062_0211df30",
+      "symbol": "gNokonokoDiveAnimationFile",
       "addend": 0,
       "target_module": "ov062",
       "target_address": "0x0211df30"
@@ -1509,7 +1509,7 @@
       "source": "0x0211d498",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov062_0211df58",
+      "symbol": "gNokonokoDiveEdAnimationFile",
       "addend": 0,
       "target_module": "ov062",
       "target_address": "0x0211df58"

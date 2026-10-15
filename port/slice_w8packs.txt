@@ -17,43 +17,43 @@
 # Nine TUs. 02111558 and 02111564 are the two MeshColliderBase callbacks
 # InitResources hands func_020393c4/func_020393d4; 02111564 is also the body
 # ov059's dsd export names at the shared window (the alias is in the fill).
-src/actors/daObjFl_Ring_c.cpp
+src/game/actors/d_a_obj_fl_ring.cpp
 # RETIRED at SLICE1: body now in src/_ZN11VolcanoRingD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN11VolcanoRingD0Ev.cpp
-# FOLDED into src/actors/daObjFl_Ring_c.cpp (row 20): src/_ZN11VolcanoRing16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjFl_Ring_c.cpp (row 20): src/_ZN11VolcanoRing6RenderEv.cpp
-# FOLDED into src/actors/daObjFl_Ring_c.cpp (row 20): src/_ZN11VolcanoRing8BehaviorEv.cpp
-# FOLDED into src/actors/daObjFl_Ring_c.cpp (row 20): src/_ZN11VolcanoRing13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjFl_Ring_c.cpp (row 20): src/func_ov022_02111558.c
-# FOLDED into src/actors/daObjFl_Ring_c.cpp (row 20): src/func_ov022_02111564.c
-# FOLDED into src/actors/daObjFl_Ring_c.cpp (row 20): src/d_a_obj_fl_ring.c
+# FOLDED into src/game/actors/d_a_obj_fl_ring.cpp (row 20): src/_ZN11VolcanoRing16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_ring.cpp (row 20): src/_ZN11VolcanoRing6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_ring.cpp (row 20): src/_ZN11VolcanoRing8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_ring.cpp (row 20): src/_ZN11VolcanoRing13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_ring.cpp (row 20): src/func_ov022_02111558.c
+# FOLDED into src/game/actors/d_a_obj_fl_ring.cpp (row 20): src/func_ov022_02111564.c
+# FOLDED into src/game/actors/d_a_obj_fl_ring.cpp (row 20): src/d_a_obj_fl_ring.c
 
 # ---- FLOAT_ON_LAVA_PLATFORM (74), table 0x02113eac, x1 -------------------
 # Nine TUs, spelled _ZN19RotatingPlatformLll* -- the dsd naming shift; the
 # RTTI at vtable[-1] is 15daObjFl_Block_c and the spawn table's id halfword
 # reads 74. 0211191c / 0211193c are this class's two collider callbacks.
-src/actors/daObjFl_Block_c.cpp
+src/game/actors/d_a_obj_fl_block.cpp
 # RETIRED at SLICE1: body now in src/_ZN19FloatOnLavaPlatformD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN19FloatOnLavaPlatformD0Ev.cpp
-# FOLDED into src/actors/daObjFl_Block_c.cpp (row 35): src/_ZN19FloatOnLavaPlatform16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjFl_Block_c.cpp (row 35): src/_ZN19FloatOnLavaPlatform6RenderEv.cpp
-# FOLDED into src/actors/daObjFl_Block_c.cpp (row 35): src/_ZN19FloatOnLavaPlatform8BehaviorEv.cpp
-# FOLDED into src/actors/daObjFl_Block_c.cpp (row 35): src/_ZN19FloatOnLavaPlatform13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjFl_Block_c.cpp (row 35): src/func_ov022_0211191c.cpp
-# FOLDED into src/actors/daObjFl_Block_c.cpp (row 35): src/func_ov022_0211193c.c
-# FOLDED into src/actors/daObjFl_Block_c.cpp (row 35): src/d_a_obj_fl_block.c
+# FOLDED into src/game/actors/d_a_obj_fl_block.cpp (row 35): src/_ZN19FloatOnLavaPlatform16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_block.cpp (row 35): src/_ZN19FloatOnLavaPlatform6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_block.cpp (row 35): src/_ZN19FloatOnLavaPlatform8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_block.cpp (row 35): src/_ZN19FloatOnLavaPlatform13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_block.cpp (row 35): src/func_ov022_0211191c.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_block.cpp (row 35): src/func_ov022_0211193c.c
+# FOLDED into src/game/actors/d_a_obj_fl_block.cpp (row 35): src/d_a_obj_fl_block.c
 
 # ---- FLOATING_FLOOR_LLL_SMALL (76) x3 and _BIG (75) x1 -------------------
 # One table for both ids. Small owns four bodies plus its Spawn; Big's whole
 # block is its Spawn, and slots 6/9 come from ov002 (_ZN14daObjUkiyuka_c8BehaviorEv /
 # _ZN14daObjUkiyuka_c6RenderEv, both already in the baseline map).
-src/actors/daObjFl_Ukiyuka_c.cpp
+src/game/actors/d_a_obj_fl_ukiyuka.cpp
 # RETIRED at SLICE1: body now in src/_ZN21FloatingFloorLllSmallD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN21FloatingFloorLllSmallD0Ev.cpp
-# FOLDED into src/actors/daObjFl_Ukiyuka_c.cpp (row 50): src/_ZN21FloatingFloorLllSmall16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjFl_Ukiyuka_c.cpp (row 50): src/_ZN21FloatingFloorLllSmall13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjFl_Ukiyuka_c.cpp (row 50): src/d_a_obj_fl_ukiyuka_fl_ukiyuka_l.c
-# FOLDED into src/actors/daObjFl_Ukiyuka_c.cpp (row 50): src/d_a_obj_fl_ukiyuka_fl_ukiyuka.c
+# FOLDED into src/game/actors/d_a_obj_fl_ukiyuka.cpp (row 50): src/_ZN21FloatingFloorLllSmall16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_ukiyuka.cpp (row 50): src/_ZN21FloatingFloorLllSmall13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_ukiyuka.cpp (row 50): src/d_a_obj_fl_ukiyuka_fl_ukiyuka_l.c
+# FOLDED into src/game/actors/d_a_obj_fl_ukiyuka.cpp (row 50): src/d_a_obj_fl_ukiyuka_fl_ukiyuka.c
 
 # ---- LAVA_PLANK (82), table 0x021141f0, x3 -------------------------------
 # Six TUs, spelled _ZN19FloatingFloorLllBig* -- the second shifted block; the
@@ -62,20 +62,20 @@ src/actors/daObjFl_Ukiyuka_c.cpp
 # NOT here: it spells its two SharedFilePtrs G0/G1 and hal/cxx_aliases.cpp has
 # those bound to the game heap pointer and to SignPost's live ov002 pointers.
 # The fill's lp_clean is its instruction-verified stand-in.
-src/actors/daObjFl_UkiKi_c.cpp
+src/game/actors/d_a_obj_fl_uki_ki.cpp
 # RETIRED at SLICE1: body now in src/_ZN9LavaPlankD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN9LavaPlankD0Ev.cpp
-# FOLDED into src/actors/daObjFl_UkiKi_c.cpp (row 65): src/_ZN9LavaPlank6RenderEv.cpp
-# FOLDED into src/actors/daObjFl_UkiKi_c.cpp (row 65): src/_ZN9LavaPlank8BehaviorEv.cpp
-# FOLDED into src/actors/daObjFl_UkiKi_c.cpp (row 65): src/_ZN9LavaPlank13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjFl_UkiKi_c.cpp (row 65): src/d_a_obj_fl_uki_ki.c
+# FOLDED into src/game/actors/d_a_obj_fl_uki_ki.cpp (row 65): src/_ZN9LavaPlank6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_uki_ki.cpp (row 65): src/_ZN9LavaPlank8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_uki_ki.cpp (row 65): src/_ZN9LavaPlank13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_fl_uki_ki.cpp (row 65): src/d_a_obj_fl_uki_ki.c
 
 # ---- the four static initialisers the seated classes need ----------------
 # ov022 has ten; these four build the model/collision SharedFilePtr pairs the
 # four filled classes read at InitResources time. The other six belong to the
 # five classes this lane leaves blocked and to VolcanoFire's PMF seat, and
 # stay out -- the ov019/ov065 rule, only the sinits a spawned class needs.
-# FOLDED into src/actors/daObjFl_Ring_c.cpp (row 20): src/__sinit_ov022_02112ca8.c
-# FOLDED into src/actors/daObjFl_Block_c.cpp (row 35): src/__sinit_ov022_02112d80.c
-# FOLDED into src/actors/daObjFl_Ukiyuka_c.cpp (row 50): src/__sinit_ov022_02112ec0.c
+# FOLDED into src/game/actors/d_a_obj_fl_ring.cpp (row 20): src/__sinit_ov022_02112ca8.c
+# FOLDED into src/game/actors/d_a_obj_fl_block.cpp (row 35): src/__sinit_ov022_02112d80.c
+# FOLDED into src/game/actors/d_a_obj_fl_ukiyuka.cpp (row 50): src/__sinit_ov022_02112ec0.c
 src/unnamed/ov022/__sinit_ov022_02112f78.c

@@ -41,8 +41,8 @@
 #   19496 == 0x4c28, then p[0] = _ZTV13dScMgTeresa_c.
 #
 #   SLOT 16 / SLOT 17, the destructor pair, unwind ONE table and not two.
-#   src/actors/dScMgTeresa_c.cpp writes data_ov006_0213fa0c and calls
-#   _ZN11dScMgBase_cD2Ev (the base's), and src/actors/dScMgTeresa_c.cpp does the
+#   src/minigames/d_s_mg_teresa.cpp writes data_ov006_0213fa0c and calls
+#   _ZN11dScMgBase_cD2Ev (the base's), and src/minigames/d_s_mg_teresa.cpp does the
 #   same and then Memory::Deallocate. No second vtable address appears in
 #   either body or in either literal pool (0x0211cc24 = 0213fa0c,
 #   0x0211cc28 = 020a0eac, the game heap).
@@ -102,10 +102,10 @@
 #     6   _ZN13dScMgTeresa_c8BehaviorEv   0x50     19 +  1 =  20
 #     9   _ZN13dScMgTeresa_c6RenderEv   0x64     25 +  0 =  25
 #    17   _ZN13dScMgTeresa_cD0Ev   0x38     12 +  2 =  14
-#    18   _ZN13dScMgTeresa_c13OnYoshiTryEatEi   0x100    61 +  3 =  64
-#    20   _ZN13dScMgTeresa_c9Virtual50Ev   0x10      3 +  1 =   4
+#    18   _ZN13dScMgTeresa_c10StartRoundEi   0x100    61 +  3 =  64
+#    20   _ZN13dScMgTeresa_c11OnNewRecordEv   0x10      3 +  1 =   4
 #
-# Slots 16 (_ZN13dScMgTeresa_cD1Ev, 8+1=9) and 34 (_ZN13dScMgTeresa_c9Virtual88Eiiii, 85+2=87)
+# Slots 16 (_ZN13dScMgTeresa_cD1Ev, 8+1=9) and 34 (_ZN13dScMgTeresa_c11PaintSquareEiiii, 85+2=87)
 # carry no marker and needed no ruling; both were counted anyway and both close.
 #
 # ---- THE STATE MACHINE IS TWO LEVELS DEEP ---------------------------------
@@ -158,9 +158,9 @@
 # or only copied. All four name one, so all four are copied:
 #
 #   src/_ZN13dScMgTeresa_c8BehaviorEv.cpp   Entry { PMF pmf; }   02142eb0  arity 0
-#   src/actors/dScMgTeresa_c.cpp   bare PMF             02142e88  arity 1
+#   src/minigames/d_s_mg_teresa.cpp   bare PMF             02142e88  arity 1
 #   src/func_ov006_0211f6fc.cpp   bare PMF             02142ed8  arity 1
-#   src/actors/dScMgTeresa_c.cpp   bare PMF             02142f18  arity 1
+#   src/minigames/d_s_mg_teresa.cpp   bare PMF             02142f18  arity 1
 #
 # THE FIRST IS THE DANGEROUS ONE AND IT IS VTABLE SLOT 6. Its table is declared
 # through a struct wrapper, so it mangles ?data_ov006_02142eb0@@3PAUEntry@@A --
@@ -172,7 +172,7 @@
 #
 # THE `::*` SWEEP over all 80 src TUs in this class's closure finds exactly
 # these four and NOTHING ELSE, and a scan for section 4's THIRD SHAPE -- a TU
-# holding both a `>> 1` and an `& 1`, which is how func_ov006_020c3d18 and
+# holding both a `>> 1` and an `& 1`, which is how FlowerFace_Update and
 # dScMgPanel_c's three open-code the ARM Itanium decode in plain ints --
 # returns EMPTY over the same 80. Neither detector licenses the word "none";
 # the run does, and the run is FAULTS_FATAL=1 with eip on a DS address as the
@@ -216,17 +216,17 @@
 #       +0x467a. Its sibling src/func_ov006_0211ee34.c is slot 6 of the same
 #       table and reads the same record fields, which is the cross-check that
 #       the layout is right and not merely self-consistent.
-#   func_ov004_020ae5c4  0x294  ov004, and the family's rather than this
+#   Mg_DrawLine  0x294  ov004, and the family's rather than this
 #       class's. STILL A FLOOR and not this lane's to retire. Reached from
 #       src/func_ov006_0211f9fc.c, which declares it with SEVEN arguments; the
 #       ROM agrees -- r0..r3 plus three stack words at 0x38, 0x3c and 0x40
 #       after push{9}+sub#0x14. Its trap stays in hal/scene_mg_faces.cpp beside
-#       func_ov004_020ae858 because that is where this family's ov004 traps
+#       Mg_DrawMenu because that is where this family's ov004 traps
 #       live, NOT in this lane's own hal file.
 #
 #       AMENDED, run mg12 lane PANEL: there is no trap beside it any more.
-#       func_ov004_020ae858 is seated (src/func_ov004_020ae858.cpp) and its trap
-#       is deleted, and func_ov004_020ae5c4 was itself seated earlier by run mg10
+#       Mg_DrawMenu is seated (src/Mg_DrawMenu.cpp) and its trap
+#       is deleted, and Mg_DrawLine was itself seated earlier by run mg10
 #       lane F371. hal/scene_mg_faces.cpp now holds no ov004 trap at all.
 #
 # ---- NO ELEMENT VTABLES, AND THAT IS MEASURED THREE WAYS ------------------
@@ -271,7 +271,7 @@
 # src/_ZN13dScMgTeresa_c13InitResourcesEv.cpp is vtable slot 0 (InitResources) and MSVC refuses
 # it with C2036 "'void *': unknown size" at its line 69, `f2 += 0;` on a
 # `void *f2`. That is a no-op the ROM does not contain (the two instructions
-# either side of it are the LoadFile(0x102) return and func_ov004_020af2f8),
+# either side of it are the LoadFile(0x102) return and Mg_InitBrush),
 # and it is in the src because mwcc needed it. port/tools/hostgen.py's
 # VOIDPP_ARITH rewrite does NOT cover this shape -- it retypes `*(void**)(x)+n`
 # derefs, not a `void*` compound assignment -- and widening a shared generator
@@ -291,12 +291,12 @@
 #
 #   __ZTV13dScMgTeresa_c            the vtable's Itanium spelling; an ordinary
 #                                   /alternatename row onto _data_ov006_0213fa0c
-#   ?GetBG0CharPtr@G2S@@SAPADXZ     src/_ZN13dScMgTeresa_c13OnYoshiTryEatEi.cpp declares it as
+#   ?GetBG0CharPtr@G2S@@SAPADXZ     src/_ZN13dScMgTeresa_c10StartRoundEi.cpp declares it as
 #                                   a static member; both sides are __cdecl
 #                                   with no arguments, so a plain alias onto
 #                                   __ZN3G2S13GetBG0CharPtrEv is correct and no
 #                                   argument-landing face is involved
-#   _func_ov004_020ae5c4            the ov004 floor above
+#   _Mg_DrawLine            the ov004 floor above
 #   _func_ov006_0211e72c            the render floor above
 #   _func_ov006_0211d5a8 _0211dd0c _0211f6fc   the three host-copied dispatchers
 #
@@ -420,41 +420,41 @@
 #     guessed vtable body seated
 #   post-link -- gxband_guard layout OK, tailjump_guard forms OK
 #
-src/actors/dScMgTeresa_c.cpp
-src/actors/dScMgTeresa_c.cpp
+src/minigames/d_s_mg_teresa.cpp
+src/minigames/d_s_mg_teresa.cpp
 src/func_ov006_0211e72c.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211e7d8.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211e8a8.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211ea70.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211eb90.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211ebdc.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211ee34.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f040.cpp
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f0d0.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f1a4.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f224.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f34c.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f454.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f51c.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f554.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f5d4.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f664.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f77c.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211f9fc.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211fb1c.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211fbf8.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211fd44.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_0211fe78.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_02120008.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_021200a8.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/func_ov006_021200cc.c
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/_ZN13dScMgTeresa_c9Virtual88Eiiii.cpp
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/_ZN13dScMgTeresa_c9Virtual50Ev.cpp
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/_ZN13dScMgTeresa_c13OnYoshiTryEatEi.cpp
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/_ZN13dScMgTeresa_c6RenderEv.cpp
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211e7d8.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211e8a8.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211ea70.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211eb90.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211ebdc.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211ee34.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211f040.cpp
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211f0d0.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211f1a4.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211f224.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211f34c.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211f454.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211f51c.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211f554.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211f5d4.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211f664.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211f77c.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211f9fc.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211fb1c.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211fbf8.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211fd44.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_0211fe78.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_02120008.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_021200a8.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/func_ov006_021200cc.c
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/_ZN13dScMgTeresa_c11PaintSquareEiiii.cpp
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/_ZN13dScMgTeresa_c11OnNewRecordEv.cpp
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/_ZN13dScMgTeresa_c10StartRoundEi.cpp
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/_ZN13dScMgTeresa_c6RenderEv.cpp
 # run linkfull, lane RS4PORT: vtable slot 0 is back as the matched TU. main
 # #3107 dropped the `f2 += 0;` no-op that MSVC refused with C2036 (the ROM has
 # no instruction for it), so port/unmatched/MgTeresa_InitResources.cpp is
 # retired; port/faces_sync.txt's reverse face gives hal/scene_mg_booseek.cpp's
 # flat calls the member.
-# FOLDED into src/actors/dScMgTeresa_c.cpp (row 423): src/_ZN13dScMgTeresa_c13InitResourcesEv.cpp
+# FOLDED into src/minigames/d_s_mg_teresa.cpp (row 423): src/_ZN13dScMgTeresa_c13InitResourcesEv.cpp

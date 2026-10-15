@@ -133,14 +133,14 @@
 #     0203cafc  020a0ea4
 #     0203cb00  0203cb04
 #
-# which is exactly src/_ZN4Heap18InitializeRootHeapEv.cpp: clear the word, then
+# which is exactly src/_ZN5mHeap6Heap_t18InitializeRootHeapEv.cpp: clear the word, then
 # call Heap::SetupRootHeap (0x0203cb04, already linked from its own matched TU).
 #
 # TWO CORRECTIONS THE DERIVATION FORCED, both worth carrying:
 #
 # 1. THE MATCHED TU MISNAMES 0x020a0ea4. It calls it Memory::rootParamOffset,
 #    which reads as a numeric offset. It is not: in
-#    src/_ZN4Heap13SetupRootHeapEv.cpp that address is passed as the FIRST
+#    src/_ZN5mHeap6Heap_t13SetupRootHeapEv.cpp that address is passed as the FIRST
 #    argument to every arena accessor -- func_02058ea0(g), func_02058eb4(g),
 #    func_02059040(g,...), func_02058d58(g,...), func_02058cd0(g,...) -- so it
 #    is the OS globals POINTER, and InitializeRootHeap NULLs it so the
@@ -167,4 +167,4 @@
 # zeroing the OS-globals word changes nothing here. The heap numbers are the
 # proof and they are in the report: 241592 free after boot on all 17 levels,
 # unchanged, and every per-level after-300-frames figure identical to canon.
-src/_ZN4Heap18InitializeRootHeapEv.cpp
+src/engine/heap/Heap.cpp

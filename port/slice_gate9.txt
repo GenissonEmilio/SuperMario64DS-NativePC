@@ -2,63 +2,63 @@
 # spawns through its factory, initializes, behaves and renders through
 # vtable dispatch. Sits on the full prior stack.
 
-src/actors/daObjYajirusi_c.cpp
-# FOLDED into src/actors/daObjYajirusi_c.cpp (row 5): src/_ZN14ArrowSignRight13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjYajirusi_c.cpp (row 5): src/_ZN14ArrowSignRight16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjYajirusi_c.cpp (row 5): src/_ZN14ArrowSignRight8BehaviorEv.cpp
-# FOLDED into src/actors/daObjYajirusi_c.cpp (row 5): src/_ZN14ArrowSignRight6RenderEv.cpp
-src/actors/dBgActor_c.cpp
+src/game/actors/d_a_obj_yajirusi.cpp
+# FOLDED into src/game/actors/d_a_obj_yajirusi.cpp (row 5): src/_ZN14ArrowSignRight13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_yajirusi.cpp (row 5): src/_ZN14ArrowSignRight16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_yajirusi.cpp (row 5): src/_ZN14ArrowSignRight8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_yajirusi.cpp (row 5): src/_ZN14ArrowSignRight6RenderEv.cpp
+src/runtime/actor/d_bg_actor.cpp
 # RETIRED at SLICE1: body now in src/_ZN8dActor_cC1Ev.cpp. MSVC folds the ROM constructor variants into one symbol, so only one of a class two per-function constructor TUs can be compiled.
 #src/_ZN8dActor_cC2Ev.cpp
 # ActorBase C1 is hand-asm; the HAL carries the transcription
-src/actors/ActorBase_SceneNode.cpp
-# FOLDED into src/actors/ActorBase_SceneNode.cpp (row 14): src/func_0203b438.c
-src/actors/ActorBase.cpp
-# FOLDED into src/actors/ActorBase.cpp (row 16): src/_ZN7fBase_cnwEj.cpp
-src/engine/model/dExtShadowModel_c.cpp
-src/engine/collision/dBgW_KcMbg.cpp
-src/engine/collision/dBgW.cpp
-# FOLDED into src/engine/collision/dBgW.cpp (row 20): src/_ZN4dBgW9IsEnabledEv.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbg.cpp (row 19): src/_ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block.c
-src/actors/dActor_c.cpp
+src/runtime/actor/ActorBase_SceneNode.cpp
+# FOLDED into src/runtime/actor/ActorBase_SceneNode.cpp (row 14): src/func_0203b438.c
+src/runtime/actor/ActorBase.cpp
+# FOLDED into src/runtime/actor/ActorBase.cpp (row 16): src/_ZN7fBase_cnwEj.cpp
+src/engine/model/d_ext_shadow_model.cpp
+src/engine/collision/d_bg_w_kc_mbg.cpp
+src/engine/collision/d_bg_w.cpp
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 20): src/_ZN4dBgW9IsEnabledEv.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg.cpp (row 19): src/_ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block.c
+src/runtime/actor/d_actor.cpp
 src/_ZN9ModelBase7SetFileEP8BMD_Fileii.cpp
-# FOLDED into src/engine/collision/dBgW.cpp (row 20): src/func_02039394.c
-# FOLDED into src/engine/collision/dBgW.cpp (row 20): src/func_020393a4.c
-# FOLDED into src/actors/daObjYajirusi_c.cpp (row 5): src/func_ov098_02137c8c.c
-# FOLDED into src/engine/collision/dBgW.cpp (row 20): src/func_020393f0.c
-# FOLDED into src/engine/collision/dBgW.cpp (row 20): src/func_02039404.c
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 20): src/func_02039394.c
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 20): src/func_020393a4.c
+# FOLDED into src/game/actors/d_a_obj_yajirusi.cpp (row 5): src/func_ov098_02137c8c.c
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 20): src/func_020393f0.c
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 20): src/func_02039404.c
 src/InvMat4x3.c
-# FOLDED into src/engine/collision/dBgW_KcMbg.cpp (row 19): src/func_02039e18.c
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg.cpp (row 19): src/func_02039e18.c
 src/cstd.cpp
 # RETIRED at SLICE1: body now in src/_ZN7dBgW_KcC1Ev.cpp. MSVC folds the ROM constructor variants into one symbol, so only one of a class two per-function constructor TUs can be compiled.
 #src/_ZN7dBgW_KcC2Ev.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbg.cpp (row 19): src/_ZN10dBgW_KcMbg9TransformERK9Matrix4x3s.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg.cpp (row 19): src/_ZN10dBgW_KcMbg9TransformERK9Matrix4x3s.cpp
 src/func_0203b244.c
 src/LenVec3.c
-# FOLDED into src/engine/collision/dBgW.cpp (row 20): src/func_020396d0.c
-# FOLDED into src/engine/collision/dBgW.cpp (row 20): src/_ZN4dBgW6EnableEP8dActor_c.cpp
-# FOLDED into src/actors/dActor_c.cpp (row 23): src/_ZN8dActor_c13ClosestPlayerEv.cpp
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 20): src/func_020396d0.c
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 20): src/_ZN4dBgW6EnableEP8dActor_c.cpp
+# FOLDED into src/runtime/actor/d_actor.cpp (row 23): src/_ZN8dActor_c13ClosestPlayerEv.cpp
 src/Matrix4x3_FromRotationY.c
-src/engine/collision/dBgW_Kc_itcm.cpp
-# FOLDED into src/engine/collision/dBgW_Kc_itcm.cpp (row 42): src/func_01ffb098.cpp
-# FOLDED into src/engine/collision/dBgW_Kc_itcm.cpp (row 42): src/func_01ffb0a4.cpp
-# FOLDED into src/engine/collision/dBgW_Kc_itcm.cpp (row 42): src/func_01ffb0b0.cpp
-# FOLDED into src/engine/collision/dBgW_Kc_itcm.cpp (row 42): src/func_01ffb0bc.cpp
-# FOLDED into src/engine/collision/dBgW_Kc_itcm.cpp (row 42): src/func_01ffb0c8.cpp
-# FOLDED into src/engine/collision/dBgW.cpp (row 20): src/func_020393fc.c
-# FOLDED into src/engine/collision/dBgW.cpp (row 20): src/func_020395fc.c
-# FOLDED into src/actors/ActorBase.cpp (row 16): src/_ZN7fBase_c19BeforeInitResourcesEv.cpp
-# FOLDED into src/actors/ActorBase.cpp (row 16): src/_ZN7fBase_c18AfterInitResourcesEj.cpp
-# FOLDED into src/actors/ActorBase.cpp (row 16): src/_ZN7fBase_c22BeforeCleanupResourcesEv.cpp
-# FOLDED into src/actors/ActorBase.cpp (row 16): src/_ZN7fBase_c14BeforeBehaviorEv.cpp
-# FOLDED into src/actors/ActorBase.cpp (row 16): src/_ZN7fBase_c13AfterBehaviorEj.cpp
-# FOLDED into src/actors/ActorBase.cpp (row 16): src/_ZN7fBase_c12BeforeRenderEv.cpp
-# FOLDED into src/actors/ActorBase.cpp (row 16): src/_ZN7fBase_c11AfterRenderEj.cpp
-# FOLDED into src/actors/ActorBase.cpp (row 16): src/_ZN7fBase_c16OnPendingDestroyEv.cpp
-# FOLDED into src/actors/ActorBase.cpp (row 16): src/_ZN7fBase_c13OnHeapCreatedEv.cpp
+src/engine/collision/d_bg_w_kc_itcm.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_itcm.cpp (row 42): src/func_01ffb098.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_itcm.cpp (row 42): src/func_01ffb0a4.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_itcm.cpp (row 42): src/func_01ffb0b0.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_itcm.cpp (row 42): src/func_01ffb0bc.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_itcm.cpp (row 42): src/func_01ffb0c8.cpp
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 20): src/func_020393fc.c
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 20): src/func_020395fc.c
+# FOLDED into src/runtime/actor/ActorBase.cpp (row 16): src/_ZN7fBase_c19BeforeInitResourcesEv.cpp
+# FOLDED into src/runtime/actor/ActorBase.cpp (row 16): src/_ZN7fBase_c18AfterInitResourcesEj.cpp
+# FOLDED into src/runtime/actor/ActorBase.cpp (row 16): src/_ZN7fBase_c22BeforeCleanupResourcesEv.cpp
+# FOLDED into src/runtime/actor/ActorBase.cpp (row 16): src/_ZN7fBase_c14BeforeBehaviorEv.cpp
+# FOLDED into src/runtime/actor/ActorBase.cpp (row 16): src/_ZN7fBase_c13AfterBehaviorEj.cpp
+# FOLDED into src/runtime/actor/ActorBase.cpp (row 16): src/_ZN7fBase_c12BeforeRenderEv.cpp
+# FOLDED into src/runtime/actor/ActorBase.cpp (row 16): src/_ZN7fBase_c11AfterRenderEj.cpp
+# FOLDED into src/runtime/actor/ActorBase.cpp (row 16): src/_ZN7fBase_c16OnPendingDestroyEv.cpp
+# FOLDED into src/runtime/actor/ActorBase.cpp (row 16): src/_ZN7fBase_c13OnHeapCreatedEv.cpp
 src/func_0203b27c.c
-# FOLDED into src/actors/ActorBase.cpp (row 16): src/func_0204405c.c
-# FOLDED into src/actors/ActorBase_SceneNode.cpp (row 14): src/func_0203b3c0.c
+# FOLDED into src/runtime/actor/ActorBase.cpp (row 16): src/func_0204405c.c
+# FOLDED into src/runtime/actor/ActorBase_SceneNode.cpp (row 14): src/func_0203b3c0.c
 src/func_02044334.cpp
 src/func_0204424c.c
 src/MulVec3Mat4x3.c

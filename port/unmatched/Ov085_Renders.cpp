@@ -1,4 +1,4 @@
-/* HOST COPIES of src/actors/daMip_c.cpp and
+/* HOST COPIES of src/game/actors/d_a_mip.cpp and
  * src/_ZN9LakituBro6RenderEv.cpp -- the one slot the ROM's and MSVC's vtable
  * numbering cannot both be served by one array.
  *

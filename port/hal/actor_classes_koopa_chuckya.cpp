@@ -182,8 +182,8 @@ int _ZTV8daNknk_c[31];
    are compiled with a per-source -Dfunc_ov065_02117994=func_ov062_02117994
    in port/CMakeLists.txt instead (w5b_review.md R2).
    THE TWO ov066 SPELLINGS FOLLOWED IT, run rel0215 wave 2, lane cast-ov066.
-   That lane landed ov066 and with it src/actors/Eyerok.cpp and
-   src/actors/Eyerok.cpp, so both LHS became DEFINED and both aliases were
+   That lane landed ov066 and with it src/game/actors/d_a_iwante.cpp and
+   src/game/actors/d_a_iwante.cpp, so both LHS became DEFINED and both aliases were
    defeated -- silently, and pointing at Eyerok's two state bodies instead of
    ov062's. Both are now
      -Dfunc_ov066_02118cdc=func_ov062_02118cdc

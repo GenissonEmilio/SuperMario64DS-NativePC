@@ -88,7 +88,7 @@ struct daDkk_c : daDsnBase_c {
 
        Inlining it also moves this class's ABI key function down to
        InitResources, the first declared virtual that is now neither inline nor
-       pure. That is a member src/actors/daDkk_c.cpp defines, so that TU is the
+       pure. That is a member src/game/actors/d_a_dkk.cpp defines, so that TU is the
        one that emits _ZTV7daDkk_c. */
     /* The destructor pair spelled as two plain virtuals on the host, plus
        the non-virtual destructor declaration the src/ definitions need; the

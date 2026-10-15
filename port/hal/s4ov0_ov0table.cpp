@@ -36,7 +36,7 @@ int data_0209d3b0;               /* 0x0209d3b0: its entry count, 0x80a       */
 DSSTATE_END
 
 /* The default heap the table came out of: Memory::Allocate with no heap uses
-   this word (src/_ZN6Memory8AllocateEjiP4Heap.cpp), and at the ROM's boot
+   this word (src/_ZN6Memory8AllocateEjiPN5mHeap6Heap_tE.cpp), and at the ROM's boot
    worker it is still the root heap Heap::SetupRootHeap installed. */
 extern void *data_020a0ea0;
 

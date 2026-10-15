@@ -20,7 +20,7 @@
 # gate-191 derivation) -- HOST COPY instead:
 # port/unmatched/Snowman_InitResources.cpp. Matched src stays byte-locked
 # in src/ as proof, dropped from CMakeLists' gate-193 source list.
-src/actors/daBgSnwmn_c.cpp
+src/game/actors/d_a_bg_snwmn.cpp
 #
 # ---- BABY_PENGUIN (daPgBby_c), a plain Actor, 31 slots (_ZTV11BabyPenguin
 # == _ZTV9daPgBby_c). D0 stays in the slice: stores its own table and
@@ -122,7 +122,7 @@ src/game/actors/d_a_pg_bby.cpp
 # func_ov072_02120e20.cpp through the real Player class -- MSVC mangles
 # it identically to the matched src's own definition, no alias needed).
 # Not previously mounted anywhere in the port. ----
-src/actors/Player.cpp
+src/game/player/Player.cpp
 #
 # ---- the two own-class sinits (self-contained; RUN) -------------------
 # __sinit_ov072_02122018 (SnowmanBody) and __sinit_ov072_021221f8
@@ -135,7 +135,7 @@ src/actors/Player.cpp
 # The seat function (port_baby_penguin_states_seat) also never runs -- it
 # is called only from hal_fill_baby_penguin_vtable, which the registry no
 # longer invokes.
-# FOLDED into src/actors/daBgSnwmn_c.cpp (row 23): src/__sinit_ov072_02122350.c
+# FOLDED into src/game/actors/d_a_bg_snwmn.cpp (row 23): src/__sinit_ov072_02122350.c
 src/unnamed/ov072/__sinit_ov072_02122414.c
 #
 # NOT in this slice (host copies cover them instead):
@@ -231,7 +231,7 @@ src/unnamed/ov072/__sinit_ov072_02122414.c
 # data_ov072_02122b64, seated with host addresses by
 # port_snowman_body_states_seat(); _ZN12daBgSnmBdy_c8SetStateEi is its ChangeState
 # (pp = &table + state*0x10). D1 and both dispatchers excluded (above).
-src/actors/daBgSnmBdy_c.cpp
+src/game/actors/d_a_bg_snm_bdy.cpp
 src/unnamed/ov072/__sinit_ov072_02122018.c
 #
 # ---- SNOWMAN_HEAD (daBgSnmHed_c, 273). Four PMF state cells at
@@ -248,20 +248,20 @@ src/unnamed/ov072/__sinit_ov072_02122018.c
 # row appended to port/tools/inferred_stub_adjudicated.txt with the evidence.
 # RETIRED at SLICE1: body now in src/_ZN11SnowmanHeadD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN11SnowmanHeadD0Ev.cpp
-src/actors/daBgSnmHed_c.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 251): src/_ZN11SnowmanHead6State3Ev.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 251): src/_ZN11SnowmanHead10InitState3Ev.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 251): src/_ZN11SnowmanHead6State2Ev.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 251): src/_ZN11SnowmanHead10InitState2Ev.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 251): src/_ZN11SnowmanHead6State1Ev.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 251): src/_ZN11SnowmanHead10InitState1Ev.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 251): src/_ZN11SnowmanHead6State0Ev.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 251): src/_ZN11SnowmanHead10InitState0Ev.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 251): src/_ZN11SnowmanHead8SetStateEi.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 251): src/_ZN11SnowmanHead16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 251): src/_ZN11SnowmanHead16OnPendingDestroyEv.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 251): src/_ZN11SnowmanHead6RenderEv.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 251): src/_ZN11SnowmanHead8BehaviorEv.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 251): src/_ZN11SnowmanHead13InitResourcesEv.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 251): src/d_a_bg_snm_hed.c
+src/game/actors/d_a_bg_snm_hed.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 251): src/_ZN11SnowmanHead6State3Ev.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 251): src/_ZN11SnowmanHead10InitState3Ev.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 251): src/_ZN11SnowmanHead6State2Ev.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 251): src/_ZN11SnowmanHead10InitState2Ev.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 251): src/_ZN11SnowmanHead6State1Ev.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 251): src/_ZN11SnowmanHead10InitState1Ev.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 251): src/_ZN11SnowmanHead6State0Ev.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 251): src/_ZN11SnowmanHead10InitState0Ev.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 251): src/_ZN11SnowmanHead8SetStateEi.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 251): src/_ZN11SnowmanHead16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 251): src/_ZN11SnowmanHead16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 251): src/_ZN11SnowmanHead6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 251): src/_ZN11SnowmanHead8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 251): src/_ZN11SnowmanHead13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 251): src/d_a_bg_snm_hed.c
 src/unnamed/ov072/__sinit_ov072_021221f8.c

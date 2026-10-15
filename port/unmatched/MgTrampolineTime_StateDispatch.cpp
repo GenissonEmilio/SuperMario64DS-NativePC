@@ -111,7 +111,7 @@
 // site.  Both sequences in full:
 //
 //     _ZN17dScMgTrampoline_c8BehaviorEv   add 0x0212151c   ands 0x02121520   blx 0x02121534
-//     func_ov006_020cb030   add 0x020cb068   ands 0x020cb06c   blx 0x020cb080
+//     Trmp3DMario_Update   add 0x020cb068   ands 0x020cb06c   blx 0x020cb080
 //
 // An earlier version of the element file reported ITS site at the blx while
 // this class's was reported at the add, so two numbers that look like the same
@@ -163,7 +163,7 @@
 // port_mg_call0).  That switch could not fire once the class's TU was
 // promoted: src/minigames/d_s_mg_trampoline.cpp defines the five pairs itself,
 //
-//     P2 data_ov006_0213fab0 = { (int)_ZN17dScMgTrampoline_c10StateIntroEv, 0 };
+//     P2 pmf_dScMgTrampoline_c_StateIntro = { (int)_ZN17dScMgTrampoline_c10StateIntroEv, 0 };
 //
 // and on this port that initializer is a relocation against the HOST image:
 // the word is the flat reverse face hal/faces_sync_gen.cpp defines for the
@@ -238,8 +238,8 @@ void _ZN17dScMgTrampoline_c9StateDoneEv(char *c);              /* link 4, bx lr,
 
 /* The five pairs, defined by src/minigames/d_s_mg_trampoline.cpp with C
    linkage (hostgen), in the table order of section 3. */
-extern MgPmf data_ov006_0213fab0, data_ov006_0213fac0, data_ov006_0213fac8,
-    data_ov006_0213faa0, data_ov006_0213faa8;
+extern MgPmf pmf_dScMgTrampoline_c_StateIntro, pmf_dScMgTrampoline_c_StatePlay, pmf_dScMgTrampoline_c_StateResults,
+    pmf_dScMgTrampoline_c_StateWaitExit, pmf_dScMgTrampoline_c_StateDone;
 
 }  /* extern "C" */
 
@@ -302,11 +302,11 @@ struct TtiSeat {
 }  /* namespace */
 
 static const TtiSeat g_tti_seats[5] = {
-    {&data_ov006_0213fab0, tti_f_intro,   0x02121d64u, "0213fab0"},
-    {&data_ov006_0213fac0, tti_f_play,    0x021218fcu, "0213fac0"},
-    {&data_ov006_0213fac8, tti_f_results, 0x02121848u, "0213fac8"},
-    {&data_ov006_0213faa0, tti_f_wait,    0x02121778u, "0213faa0"},
-    {&data_ov006_0213faa8, tti_f_done,    0x02121774u, "0213faa8"},
+    {&pmf_dScMgTrampoline_c_StateIntro, tti_f_intro,   0x02121d64u, "0213fab0"},
+    {&pmf_dScMgTrampoline_c_StatePlay, tti_f_play,    0x021218fcu, "0213fac0"},
+    {&pmf_dScMgTrampoline_c_StateResults, tti_f_results, 0x02121848u, "0213fac8"},
+    {&pmf_dScMgTrampoline_c_StateWaitExit, tti_f_wait,    0x02121778u, "0213faa0"},
+    {&pmf_dScMgTrampoline_c_StateDone, tti_f_done,    0x02121774u, "0213faa8"},
 };
 
 static unsigned tti_initialiser_word(unsigned i)

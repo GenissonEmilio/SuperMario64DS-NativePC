@@ -9,11 +9,11 @@
 // directly and not copied here, because each is a real C++ method whose
 // decorated name IS what the wall's decorated row names once the file
 // compiles:
-//   src/_ZN4Heap15CreateSolidHeapEjPS_i.cpp     -> ?CreateSolidHeap@Heap@@SAPAU1@IPAU1@H@Z
-//   src/_ZN4Heap11_DeallocateEPv.cpp            -> ?_Deallocate@Heap@@QAEXPAX@Z
-//   src/_ZN4Heap11ResizeToFitEv.cpp             -> ?ResizeToFit@Heap@@QAEIXZ (backs the
+//   src/engine/heap/Heap.cpp     -> ?CreateSolidHeap@Heap_t@mHeap@@SAPAU12@IPAU12@H@Z
+//   src/engine/heap/Heap.cpp            -> ?_Deallocate@Heap_t@mHeap@@QAEXPAX@Z
+//   src/engine/heap/Heap.cpp             -> ?ResizeToFit@Heap_t@mHeap@@QAEIXZ (backs the
 //                                                   flat face below; not itself on the wall)
-// (the fourth, src/_ZN4Heap21MaxAllocationUnitSizeEv.cpp, was already on this
+// (the fourth, src/engine/heap/Heap.cpp, was already on this
 // batch's PORT_SMOKE_ACTOR_SRC before this commit -- it is what the
 // MaxAllocationUnitSize alias pair below points at).
 //
@@ -21,7 +21,7 @@
 // (__cdecl with the receiver on the stack against __thiscall with the
 // receiver in ecx), copied character for character from where the window
 // build already carries the same face:
-//   _ZN4Heap11ResizeToFitEv          hal/lk4_solidheap_seat.cpp:540
+//   _ZN5mHeap6Heap_t11ResizeToFitEv          hal/lk4_solidheap_seat.cpp:540
 //   _ZN7fBase_c18MarkForDestructionEv  hal/method_faces.cpp:189-190 (src/
 //       _ZN7fBase_c18MarkForDestructionEv.cpp, already on this batch's
 //       PORT_SMOKE_ACTOR_SRC, defines the decorated fBase_c::MarkForDestruction
@@ -33,33 +33,33 @@
 // for the window targets (that file is not taken whole here: it also seats
 // eleven ExpandingHeap/SolidHeap virtuals and four Destroy-family rows this
 // batch does not ask for). Copied character for character:
-//   ?Allocate@Memory@@SAPAXIHPAUHeap@@@Z
-//       -> ?Allocate@Memory@@YAPAXIHPAVHeap@@@Z   hal/lk4_solidheap_seat.cpp:188
-//       (itself the real definition src/_ZN6Memory8AllocateEjiP4Heap.cpp
+//   ?Allocate@Memory@@SAPAXIHPAUHeap_t@mHeap@@@Z
+//       -> ?Allocate@Memory@@YAPAXIHPAUHeap_t@mHeap@@@Z   hal/lk4_solidheap_seat.cpp:188
+//       (itself the real definition src/_ZN6Memory8AllocateEjiPN5mHeap6Heap_tE.cpp
 //       emits -- that file's own private `class Heap` shadow is what makes it
 //       PAVHeap rather than PAUHeap; the src file is already on this batch's
 //       PORT_SMOKE_ACTOR_SRC)
-//   ?InitializeSolidHeapAsDefault@Heap@@SAPAU1@IPAU1@H@Z
-//       -> ?InitializeSolidHeapAsDefault@Heap@@SAPAXIPAU1@H@Z   hal/lk4_solidheap_seat.cpp:183
-//   __ZN4Heap28InitializeSolidHeapAsDefaultEjPS_i
-//       -> ?InitializeSolidHeapAsDefault@Heap@@SAPAXIPAU1@H@Z   hal/cxx_aliases.cpp:3300
+//   ?InitializeSolidHeapAsDefault@Heap_t@mHeap@@SAPAU12@IPAU12@H@Z
+//       -> ?InitializeSolidHeapAsDefault@Heap_t@mHeap@@SAPAXIPAU12@H@Z   hal/lk4_solidheap_seat.cpp:183
+//   __ZN5mHeap6Heap_t28InitializeSolidHeapAsDefaultEjPS0_i
+//       -> ?InitializeSolidHeapAsDefault@Heap_t@mHeap@@SAPAXIPAU12@H@Z   hal/cxx_aliases.cpp:3300
 //       (both point at the same decorated symbol, which
-//       src/_ZN4Heap28InitializeSolidHeapAsDefaultEjPS_i.cpp -- already on
+//       src/engine/heap/Heap.cpp -- already on
 //       this batch's PORT_SMOKE_ACTOR_SRC -- defines)
-//   ?MaxAllocationUnitSize@Heap@@QAEHXZ
-//       -> ?MaxAllocationUnitSize@Heap@@QAEIXZ   hal/cxx_aliases.cpp:3017
-//   __ZN4Heap21MaxAllocationUnitSizeEv
-//       -> ?MaxAllocationUnitSize@Heap@@QAEIXZ   NOT an existing row anywhere
+//   ?MaxAllocationUnitSize@Heap_t@mHeap@@QAEHXZ
+//       -> ?MaxAllocationUnitSize@Heap_t@mHeap@@QAEIXZ   hal/cxx_aliases.cpp:3017
+//   __ZN5mHeap6Heap_t21MaxAllocationUnitSizeEv
+//       -> ?MaxAllocationUnitSize@Heap_t@mHeap@@QAEIXZ   NOT an existing row anywhere
 //       in the tree (measured: grep for "MaxAllocationUnitSizeEv=" across
 //       port/ before writing this line found nothing). It is the same
 //       flat-plus-decorated pattern as the RestoreFromTemporary and
 //       InitializeSolidHeapAsDefault rows beside it, pointing at the same
-//       already-real decorated symbol src/_ZN4Heap21MaxAllocationUnitSizeEv.cpp
+//       already-real decorated symbol src/engine/heap/Heap.cpp
 //       (already on this batch's PORT_SMOKE_ACTOR_SRC) defines, so it extends
 //       an established mechanism rather than inventing one.
-//   __ZN4Heap20RestoreFromTemporaryEv
-//       -> ?RestoreFromTemporary@Heap@@SAXXZ   hal/cxx_aliases.cpp:3301
-//       (src/_ZN4Heap20RestoreFromTemporaryEv.cpp, already on this batch's
+//   __ZN5mHeap6Heap_t20RestoreFromTemporaryEv
+//       -> ?RestoreFromTemporary@Heap_t@mHeap@@SAXXZ   hal/cxx_aliases.cpp:3301
+//       (src/engine/heap/Heap.cpp, already on this batch's
 //       PORT_SMOKE_ACTOR_SRC, defines the decorated side)
 //   __ZN18NestedHeapIterator10FindNestedEPv
 //       -> ?FindNested@NestedHeapIterator@@SAPAU1@PAX@Z   hal/cxx_aliases.cpp:3299
@@ -77,19 +77,19 @@
 #include <new>
 
 // CreateSolidHeap's and CreateSolidHeapAllocator's own bodies (src/
-// _ZN4Heap15CreateSolidHeapEjPS_i.cpp and src/
-// _ZN4Heap24CreateSolidHeapAllocatorEPvjj.cpp, both added to this batch's
+// _ZN5mHeap6Heap_t15CreateSolidHeapEjPS0_i.cpp and src/
+// _ZN5mHeap6Heap_t24CreateSolidHeapAllocatorEPvjj.cpp, both added to this batch's
 // PORT_SMOKE_ACTOR_SRC) call these two flat names AS FREE FUNCTIONS with the
 // "this" pointer as an explicit first argument -- the shape a placement
 // constructor takes when its caller is C rather than a `new` expression.
-// src/_ZN9SolidHeapC1EPvjP4HeapP18SolidHeapAllocator.cpp and src/
+// src/engine/heap/Heap.cpp and src/
 // _ZN18SolidHeapAllocatorC1EPvj.cpp (also on this batch) define the REAL,
 // decorated C++ constructors; a plain SRC addition of those two files does
 // not, by itself, produce a symbol under the flat spelling, because a
 // constructor is never called through an ordinary function pointer -- it has
 // to be placement-new'd. These two faces are that placement, not a second
 // definition: no code runs that the two src files do not already contain.
-extern "C" SolidHeap *_ZN9SolidHeapC1EPvjP4HeapP18SolidHeapAllocator(
+extern "C" SolidHeap *_ZN5mHeap11SolidHeap_tC1EPvjPNS_6Heap_tEP18SolidHeapAllocator(
     SolidHeap *self, void *start, u32 size, Heap *root,
     SolidHeapAllocator *allocator)
 { return new (self) SolidHeap(start, size, root, allocator); }
@@ -98,23 +98,23 @@ extern "C" SolidHeapAllocator *_ZN18SolidHeapAllocatorC1EPvj(
     SolidHeapAllocator *self, void *heapEnd, u32 flags)
 { return new (self) SolidHeapAllocator(heapEnd, flags); }
 
-extern "C" unsigned int _ZN4Heap11ResizeToFitEv(void *thiz)
+extern "C" unsigned int _ZN5mHeap6Heap_t11ResizeToFitEv(void *thiz)
 { return ((Heap *)thiz)->Heap::ResizeToFit(); }
 
 extern "C" void _ZN7fBase_c18MarkForDestructionEv(void *self)
 { ((fBase_c *)self)->fBase_c::MarkForDestruction(); }
 
-#pragma comment(linker, "/alternatename:?Allocate@Memory@@SAPAXIHPAUHeap@@@Z=?Allocate@Memory@@YAPAXIHPAVHeap@@@Z")
-#pragma comment(linker, "/alternatename:?InitializeSolidHeapAsDefault@Heap@@SAPAU1@IPAU1@H@Z=?InitializeSolidHeapAsDefault@Heap@@SAPAXIPAU1@H@Z")
-#pragma comment(linker, "/alternatename:__ZN4Heap28InitializeSolidHeapAsDefaultEjPS_i=?InitializeSolidHeapAsDefault@Heap@@SAPAXIPAU1@H@Z")
-#pragma comment(linker, "/alternatename:?MaxAllocationUnitSize@Heap@@QAEHXZ=?MaxAllocationUnitSize@Heap@@QAEIXZ")
+#pragma comment(linker, "/alternatename:?Allocate@Memory@@SAPAXIHPAUHeap_t@mHeap@@@Z=?Allocate@Memory@@YAPAXIHPAUHeap_t@mHeap@@@Z")
+#pragma comment(linker, "/alternatename:?InitializeSolidHeapAsDefault@Heap_t@mHeap@@SAPAU12@IPAU12@H@Z=?InitializeSolidHeapAsDefault@Heap_t@mHeap@@SAPAXIPAU12@H@Z")
+#pragma comment(linker, "/alternatename:__ZN5mHeap6Heap_t28InitializeSolidHeapAsDefaultEjPS0_i=?InitializeSolidHeapAsDefault@Heap_t@mHeap@@SAPAXIPAU12@H@Z")
+#pragma comment(linker, "/alternatename:?MaxAllocationUnitSize@Heap_t@mHeap@@QAEHXZ=?MaxAllocationUnitSize@Heap_t@mHeap@@QAEIXZ")
 /* PORTSYNC2 (the 2026-10 main merge): aliascheck reads this pair as a receiver
    crossing now -- the flat __cdecl name on the left, main's __thiscall member
    on the right -- so it is a FACE, copied from where the window build carries
-   the same one (hal/player_bridges.cpp, _ZN4Heap21MaxAllocationUnitSizeEv). */
-extern "C" int _ZN4Heap21MaxAllocationUnitSizeEv(void *self)
+   the same one (hal/player_bridges.cpp, _ZN5mHeap6Heap_t21MaxAllocationUnitSizeEv). */
+extern "C" int _ZN5mHeap6Heap_t21MaxAllocationUnitSizeEv(void *self)
 { return ((Heap *)self)->Heap::MaxAllocationUnitSize(); }
-#pragma comment(linker, "/alternatename:__ZN4Heap20RestoreFromTemporaryEv=?RestoreFromTemporary@Heap@@SAXXZ")
+#pragma comment(linker, "/alternatename:__ZN5mHeap6Heap_t20RestoreFromTemporaryEv=?RestoreFromTemporary@Heap_t@mHeap@@SAXXZ")
 #pragma comment(linker, "/alternatename:__ZN18NestedHeapIterator10FindNestedEPv=?FindNested@NestedHeapIterator@@SAPAU1@PAX@Z")
 
 // THIRD ORDER, surfaced by CreateSolidHeap's own dependency chain

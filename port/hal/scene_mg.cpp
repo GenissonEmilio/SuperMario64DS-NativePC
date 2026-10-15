@@ -97,7 +97,7 @@
 // WHAT THE TWO ACTUALLY BUILD, now that they are readable:
 //
 //   __sinit_ov004_020b955c  is the SHARED-FILE-POINTER BUILDER shape of
-//     section 4. It fills data_ov004_020bf5d4 and a run of {a, b} pairs, and
+//     section 4. It fills sMgBannerSprites and a run of {a, b} pairs, and
 //     it registers destructors through func_020731dc / __cxa_vec_ctor naming
 //     func_ov004_020b4a70, _020b4a7c and _020b4aa0 by address. Those three
 //     TUs entered slice_mg1.txt with it; the ROM's own constructor is what
@@ -228,11 +228,11 @@
 // See port/mg_fanout_costs.txt. The blocker is the mwcc pointer-to-member
 // dispatch in section 4 and it is an ABI wall, not a missing body: every one
 // of the twenty-five state functions has a matched src TU except
-// func_ov006_020e1854, and the dispatch that would reach them cannot be
+// Aim_Swing, and the dispatch that would reach them cannot be
 // compiled by MSVC from the ROM's own source shape.
 //
 // AMENDED, run link60 lane CT1. The sentence above is still true about the
-// DECOMP -- func_ov006_020e1854 still has no src TU and no delink block, and
+// DECOMP -- Aim_Swing still has no src TU and no delink block, and
 // stategen.py still reports it under REFUSALS -- but it now reads as though the
 // class cannot run that state, and THAT part is out of date. The state is
 // transcribed from the ROM in unmatched/MgCurling_State_020e1854.cpp and the
@@ -408,7 +408,7 @@ int   _ZN14dScMgCurling_c8BehaviorEv(void *self);        /* slot  6 Behavior    
 int   _ZN14dScMgCurling_c6RenderEv(void *self);        /* slot  9 Render        */
 int   _ZN14dScMgCurling_cD1Ev(void *self);        /* slot 16 D2            */
 int   _ZN14dScMgCurling_cD0Ev(void *self);        /* slot 17 D0            */
-void  _ZN14dScMgCurling_c13OnYoshiTryEatEi(void *self);        /* slot 18 state reset   */
+void  _ZN14dScMgCurling_c10StartRoundEi(void *self);        /* slot 18 state reset   */
 
 /* dScMgBase_c's own twenty-three, in slot order */
 int   _ZN11dScMgBase_c19BeforeInitResourcesEv(char *c);
@@ -417,34 +417,34 @@ void  _ZN11dScMgBase_c21AfterCleanupResourcesEj(void *c, unsigned f);
 int   _ZN11dScMgBase_c14BeforeBehaviorEv(void *c);
 int   _ZN11dScMgBase_c12BeforeRenderEv(void *c);
 void  _ZN11dScMgBase_c16OnPendingDestroyEv(void);
-int   _ZN11dScMgBase_c13OnTurnIntoEggEi(void);
-void  _ZN11dScMgBase_c9Virtual50Ev(void);
-void  _ZN11dScMgBase_c15OnGroundPoundedEv(void);
-int   _ZN11dScMgBase_c11OnAttacked1Ev(void);
-int   _ZN11dScMgBase_c11OnAttacked2Ev(void);
-int   _ZN11dScMgBase_c8OnKickedEv(void *c);
-int   _ZN11dScMgBase_c8OnPushedEv(void *c);
-int   _ZN11dScMgBase_c24OnHitByCannonBlastedCharEv(void);
-void  _ZN11dScMgBase_c15OnHitByMegaCharEv(void *c);
-void  _ZN11dScMgBase_c19OnHitFromUnderneathEv(void *c);
-void  _ZN11dScMgBase_c16OnAimedAtWithEggEv(void *c);
-void  _ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv(void *c);
-void  _ZN11dScMgBase_c9Virtual7CEv(void);
-void  _ZN11dScMgBase_c9Virtual80Ev(void);
-void  _ZN11dScMgBase_c9Virtual84Ev(void *c);
+int   _ZN11dScMgBase_c11CanEndStateEi(void);
+void  _ZN11dScMgBase_c11OnNewRecordEv(void);
+void  _ZN11dScMgBase_c10OnDealDoneEv(void);
+int   _ZN11dScMgBase_c16OnGraphCallback1Ev(void);
+int   _ZN11dScMgBase_c16OnGraphCallback0Ev(void);
+int   _ZN11dScMgBase_c16OnGraphCallback2Ev(void *c);
+int   _ZN11dScMgBase_c16OnGraphCallback3Ev(void *c);
+int   _ZN11dScMgBase_c14GetDisplayModeEv(void);
+void  _ZN11dScMgBase_c8OpenMenuEv(void *c);
+void  _ZN11dScMgBase_c9CloseMenuEv(void *c);
+void  _ZN11dScMgBase_c17SaveScreenForMenuEv(void *c);
+void  _ZN11dScMgBase_c21RestoreScreenFromMenuEv(void *c);
+void  _ZN11dScMgBase_c15InitSubScreenBgEv(void);
+void  _ZN11dScMgBase_c16InitMainScreenBgEv(void);
+void  _ZN11dScMgBase_c11InitEnginesEv(void *c);
 /* SLOT 34 IS THE BOARD'S BRUSH AND TAKES FIVE PARAMETERS. Run mg10, lane F371.
-   This line used to read `void _ZN11dScMgBase_c9Virtual88Eiiii(void *c);` while
-   src/_ZN11dScMgBase_c9Virtual88Eiiii.cpp defines
-       void _ZN11dScMgBase_c9Virtual88Eiiii(char* obj, int cx, int cy, int val, int n)
+   This line used to read `void _ZN11dScMgBase_c11PaintSquareEiiii(void *c);` while
+   src/_ZN11dScMgBase_c11PaintSquareEiiii.cpp defines
+       void _ZN11dScMgBase_c11PaintSquareEiiii(char* obj, int cx, int cy, int val, int n)
    -- an n-by-n block of `val` written at (cx,cy) through MultiCopy_Int. See
    mb_v34 below for what the one-parameter spelling cost and why nothing could
    convict it until this run. */
-void  _ZN11dScMgBase_c9Virtual88Eiiii(void *c, int cx, int cy, int val, int n);
+void  _ZN11dScMgBase_c11PaintSquareEiiii(void *c, int cx, int cy, int val, int n);
 /* SLOT 35 IS A PREDICATE ON `this` AND WAS DECLARED AS NEITHER. Run mg6, lane
-   PPP. This line used to read `void _ZN11dScMgBase_c9Virtual8CEv(void);` while
-   src/_ZN11dScMgBase_c9Virtual8CEv.cpp defines `int _ZN11dScMgBase_c9Virtual8CEv(int *r0)
+   PPP. This line used to read `void _ZN11dScMgBase_c12IsAltVariantEv(void);` while
+   src/_ZN11dScMgBase_c12IsAltVariantEv.cpp defines `int _ZN11dScMgBase_c12IsAltVariantEv(int *r0)
    { return (r0[2] & 0xff) != 0; }`. See mb_v35 below for what that cost. */
-int   _ZN11dScMgBase_c9Virtual8CEv(int *c);
+int   _ZN11dScMgBase_c12IsAltVariantEv(int *c);
 
 /* dScMgBase_c's OWN versions of the five slots a derived class overrides.
    Added by run link60 lane MG2; see kMgBaseFaces for why they were missing. */
@@ -452,7 +452,7 @@ int   _ZN11dScMgBase_c8BehaviorEv(void);
 int   _ZN11dScMgBase_c6RenderEv(void);
 void *_ZN11dScMgBase_cD1Ev(void *c);
 void *_ZN11dScMgBase_cD0Ev(void *self);
-void  _ZN11dScMgBase_c13OnYoshiTryEatEi(void);
+void  _ZN11dScMgBase_c10StartRoundEi(void);
 
 /* the base ctor the factory calls, and the factory itself */
 void *_ZN11dScMgBase_cC2Ev(char *self);
@@ -565,7 +565,7 @@ static void *__fastcall mg_d0(void *s, void *)
  *
  *   offset 0x48, slot 18   22 sites, 21 set r1 first (mvn r1,#0 at fifteen,
  *                          mov r1,#3/#4/#5 at six). The one that does not is
- *                          func_ov004_020b29a0 at 0x020b29ac, and its own src
+ *                          Mg_CallStartRound at 0x020b29ac, and its own src
  *                          spells the virtual `v18(void*)` and forwards its
  *                          second parameter, so the host pushes one there too.
  *   offset 0x4c, slot 19   14 sites, ALL FOURTEEN set r1 first, every one of
@@ -583,7 +583,7 @@ static void *__fastcall mg_d0(void *s, void *)
  * section 9 audits twelve of.
  */
 static int  __fastcall mg_reset(void *s, void *, int /*ridethrough*/)
-{ MG_SLOT(18); _ZN14dScMgCurling_c13OnYoshiTryEatEi(s); return 1; }
+{ MG_SLOT(18); _ZN14dScMgCurling_c10StartRoundEi(s); return 1; }
 
 /* SM64DS_SCENE_SLOT9=0 and SM64DS_SCENE_SLOT0=0, the two diagnostics the ov003
    and ov007 seats already carry, counted separately so a run can never read a
@@ -601,28 +601,28 @@ static void __fastcall mb_aclean(void *s, void *, unsigned f){ MG_SLOT(5);  _ZN1
 static int  __fastcall mb_bbeh(void *s, void *)    { MG_SLOT(7);  return _ZN11dScMgBase_c14BeforeBehaviorEv(s); }
 static int  __fastcall mb_bren(void *s, void *)    { MG_SLOT(10); return _ZN11dScMgBase_c12BeforeRenderEv(s); }
 static int  __fastcall mb_pdes(void *, void *)     { MG_SLOT(12); _ZN11dScMgBase_c16OnPendingDestroyEv(); return 0; }
-static int  __fastcall mb_v19(void *, void *, int) { MG_SLOT(19); return _ZN11dScMgBase_c13OnTurnIntoEggEi(); }
-static int  __fastcall mb_v20(void *, void *)      { MG_SLOT(20); _ZN11dScMgBase_c9Virtual50Ev(); return 0; }
-static int  __fastcall mb_v21(void *, void *)      { MG_SLOT(21); _ZN11dScMgBase_c15OnGroundPoundedEv(); return 0; }
-static int  __fastcall mb_v22(void *, void *)      { MG_SLOT(22); return _ZN11dScMgBase_c11OnAttacked1Ev(); }
-static int  __fastcall mb_v23(void *, void *)      { MG_SLOT(23); return _ZN11dScMgBase_c11OnAttacked2Ev(); }
-static int  __fastcall mb_v24(void *s, void *)     { MG_SLOT(24); return _ZN11dScMgBase_c8OnKickedEv(s); }
-static int  __fastcall mb_v25(void *s, void *)     { MG_SLOT(25); return _ZN11dScMgBase_c8OnPushedEv(s); }
-static int  __fastcall mb_v26(void *, void *)      { MG_SLOT(26); return _ZN11dScMgBase_c24OnHitByCannonBlastedCharEv(); }
-static int  __fastcall mb_v27(void *s, void *)     { MG_SLOT(27); _ZN11dScMgBase_c15OnHitByMegaCharEv(s); return 0; }
-static int  __fastcall mb_v28(void *s, void *)     { MG_SLOT(28); _ZN11dScMgBase_c19OnHitFromUnderneathEv(s); return 0; }
-static int  __fastcall mb_v29(void *s, void *)     { MG_SLOT(29); _ZN11dScMgBase_c16OnAimedAtWithEggEv(s); return 0; }
-static int  __fastcall mb_v30(void *s, void *)     { MG_SLOT(30); _ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv(s); return 0; }
-static int  __fastcall mb_v31(void *, void *)      { MG_SLOT(31); _ZN11dScMgBase_c9Virtual7CEv(); return 0; }
-static int  __fastcall mb_v32(void *, void *)      { MG_SLOT(32); _ZN11dScMgBase_c9Virtual80Ev(); return 0; }
-static int  __fastcall mb_v33(void *s, void *)     { MG_SLOT(33); _ZN11dScMgBase_c9Virtual84Ev(s); return 0; }
+static int  __fastcall mb_v19(void *, void *, int) { MG_SLOT(19); return _ZN11dScMgBase_c11CanEndStateEi(); }
+static int  __fastcall mb_v20(void *, void *)      { MG_SLOT(20); _ZN11dScMgBase_c11OnNewRecordEv(); return 0; }
+static int  __fastcall mb_v21(void *, void *)      { MG_SLOT(21); _ZN11dScMgBase_c10OnDealDoneEv(); return 0; }
+static int  __fastcall mb_v22(void *, void *)      { MG_SLOT(22); return _ZN11dScMgBase_c16OnGraphCallback1Ev(); }
+static int  __fastcall mb_v23(void *, void *)      { MG_SLOT(23); return _ZN11dScMgBase_c16OnGraphCallback0Ev(); }
+static int  __fastcall mb_v24(void *s, void *)     { MG_SLOT(24); return _ZN11dScMgBase_c16OnGraphCallback2Ev(s); }
+static int  __fastcall mb_v25(void *s, void *)     { MG_SLOT(25); return _ZN11dScMgBase_c16OnGraphCallback3Ev(s); }
+static int  __fastcall mb_v26(void *, void *)      { MG_SLOT(26); return _ZN11dScMgBase_c14GetDisplayModeEv(); }
+static int  __fastcall mb_v27(void *s, void *)     { MG_SLOT(27); _ZN11dScMgBase_c8OpenMenuEv(s); return 0; }
+static int  __fastcall mb_v28(void *s, void *)     { MG_SLOT(28); _ZN11dScMgBase_c9CloseMenuEv(s); return 0; }
+static int  __fastcall mb_v29(void *s, void *)     { MG_SLOT(29); _ZN11dScMgBase_c17SaveScreenForMenuEv(s); return 0; }
+static int  __fastcall mb_v30(void *s, void *)     { MG_SLOT(30); _ZN11dScMgBase_c21RestoreScreenFromMenuEv(s); return 0; }
+static int  __fastcall mb_v31(void *, void *)      { MG_SLOT(31); _ZN11dScMgBase_c15InitSubScreenBgEv(); return 0; }
+static int  __fastcall mb_v32(void *, void *)      { MG_SLOT(32); _ZN11dScMgBase_c16InitMainScreenBgEv(); return 0; }
+static int  __fastcall mb_v33(void *s, void *)     { MG_SLOT(33); _ZN11dScMgBase_c11InitEnginesEv(s); return 0; }
 /* SLOT 34 DROPPED FOUR ARGUMENTS AND HAD NO POSSIBLE WITNESS. Run mg10, lane
  * F371, and it is mb_v35's defect one slot over with one extra twist.
  *
  * This thunk used to read
  *
  *     static int __fastcall mb_v34(void *s, void *)
- *     { MG_SLOT(34); _ZN11dScMgBase_c9Virtual88Eiiii(s); return 0; }
+ *     { MG_SLOT(34); _ZN11dScMgBase_c11PaintSquareEiiii(s); return 0; }
  *
  * against a ROM body that takes FIVE. Every slot-34 dispatch site in either
  * overlay image passes five -- r0..r3 plus one word stored at [sp] before the
@@ -630,7 +630,7 @@ static int  __fastcall mb_v33(void *s, void *)     { MG_SLOT(33); _ZN11dScMgBase
  * coordinates and cleaned the wrong number of bytes off the stack.
  *
  * WHY IT SAT THROUGH TWO RUNS UNCONVICTED, which is the part worth keeping.
- * The tree has exactly ONE body that dispatches slot 34, func_ov004_020ae5c4,
+ * The tree has exactly ONE body that dispatches slot 34, Mg_DrawLine,
  * and until run mg10 that body was TRAPPED in hal/scene_mg_faces.cpp. So slot
  * 34 was unreachable on every scene rather than merely unreached on the ones
  * anybody had booted, and run mg9 lane S371 recorded the mismatch and
@@ -643,18 +643,18 @@ static int  __fastcall mb_v33(void *s, void *)     { MG_SLOT(33); _ZN11dScMgBase
  *     str r7,[sp] / ldr Rd,[r0] / ldr r3,[sp,#0x3c] / ldr Rd,[Rd,#0x88]
  *     / mov r1,sb / mov r2,r8 / blx Rd
  * so r1 and r2 are the walked coordinates, r3 is the caller's `val` and the
- * pushed word is its `n`. src/_ZN11dScMgBase_c9Virtual88Eiiii.cpp declares the same five. */
+ * pushed word is its `n`. src/_ZN11dScMgBase_c11PaintSquareEiiii.cpp declares the same five. */
 static int  __fastcall mb_v34(void *s, void *, int cx, int cy, int val, int n)
-{ MG_SLOT(34); _ZN11dScMgBase_c9Virtual88Eiiii(s, cx, cy, val, n); return 0; }
+{ MG_SLOT(34); _ZN11dScMgBase_c11PaintSquareEiiii(s, cx, cy, val, n); return 0; }
 /* SLOT 35 DROPPED `this` AND THREW THE ANSWER AWAY. Run mg6, lane PPP.
  *
  * This thunk used to read
  *
  *     static int __fastcall mb_v35(void *, void *)
- *     { MG_SLOT(35); _ZN11dScMgBase_c9Virtual8CEv(); return 0; }
+ *     { MG_SLOT(35); _ZN11dScMgBase_c12IsAltVariantEv(); return 0; }
  *
- * against a declaration of `void _ZN11dScMgBase_c9Virtual8CEv(void);` -- while the
- * matched body is `int _ZN11dScMgBase_c9Virtual8CEv(int *r0) { return (r0[2] & 0xff)
+ * against a declaration of `void _ZN11dScMgBase_c12IsAltVariantEv(void);` -- while the
+ * matched body is `int _ZN11dScMgBase_c12IsAltVariantEv(int *r0) { return (r0[2] & 0xff)
  * != 0; }`. So the callee read whatever was on the stack in place of `this`,
  * AND the thunk returned a hardcoded 0 instead of the answer. On ARM both
  * halves ride through and are correct, because r0 already holds `this` and the
@@ -669,16 +669,16 @@ static int  __fastcall mb_v34(void *s, void *, int cx, int cy, int val, int n)
  *
  * WHAT DISPATCHES IT HERE, MEASURED RATHER THAN ASSUMED. An earlier version of
  * this block said "this class dispatches it every frame" through
- * func_ov006_021057f0. THE RUN SAYS ONCE, and says which caller. Four bodies in
+ * Input_Update. THE RUN SAYS ONCE, and says which caller. Four bodies in
  * dScMgPanel_c's closure hold a genuine `ldr rN,[rM,#0x8c]` dispatch --
- * func_ov006_021053a8 (0x02105480), _021057f0 (0x021057fc), _02106168
+ * Input_State2 (0x02105480), _021057f0 (0x021057fc), _02106168
  * (0x021061ec) and _021063a0 (0x021063b0). THREE of the four now have a
  * compiled body: run mg7 lane L380 decompiled 02106168, so only 021053a8 is
  * still bodiless, and it is never entered. Of the three that remain,
- * func_ov006_021063a0 has exactly TWO callers in the whole of ov006 (relocs
+ * ScramblePanels has exactly TWO callers in the whole of ov006 (relocs
  * from:0x0210779c inside slot 0 and from:0x02107294 inside slot 18) and
- * func_ov006_021057f0 has exactly one (from:0x02106ecc, inside
- * func_ov006_02106eb8). And func_ov006_02106eb8 has NO arm_call anywhere in
+ * Input_Update has exactly one (from:0x02106ecc, inside
+ * Scene_State5). And Scene_State5 has NO arm_call anywhere in
  * the overlay at all -- its single reference is a LOAD from 0x0213dc6c, which
  * is pair p5 of data_ov006_02142888 -- so it is reachable only as a state, and
  * a run in which no state 5 is dispatched is a run in which 021057f0 cannot
@@ -693,14 +693,14 @@ static int  __fastcall mb_v34(void *s, void *, int cx, int cy, int val, int n)
  * InitResources deals.
  *
  * THE COUNT IS NOT 1 ANY MORE, run mg7 lane L380, and the reason is the third
- * dispatch site gaining a body. func_ov006_02106168 dispatches slot 35 ONCE
+ * dispatch site gaining a body. DealPuzzle dispatches slot 35 ONCE
  * PER PANEL, inside its deal loop, and it re-deals until the board passes
  * three tests -- so the per-boot count is now (panels x deals) + 1 rather than
  * 1, and a run that re-deals reads a multiple of the panel count plus one.
  * A slot-35 census of exactly 1 on scene 380 is now the signature of a layout
  * picker that did not run. */
 static int  __fastcall mb_v35(void *s, void *)
-{ MG_SLOT(35); return _ZN11dScMgBase_c9Virtual8CEv((int *)s); }
+{ MG_SLOT(35); return _ZN11dScMgBase_c12IsAltVariantEv((int *)s); }
 
 /* dScMgBase_c's OWN five, and they are the five the first wired boot found
    missing. Run link60 lane MG2.
@@ -735,7 +735,7 @@ static void *__fastcall mb_d2_base(void *s, void *)
 static void *__fastcall mb_d0_base(void *s, void *)
 { MG_SLOT(17); return _ZN11dScMgBase_cD0Ev(s); }
 static int  __fastcall mb_reset_base(void *, void *, int /*ridethrough*/)
-{ MG_SLOT(18); _ZN11dScMgBase_c13OnYoshiTryEatEi(); return 1; }
+{ MG_SLOT(18); _ZN11dScMgBase_c10StartRoundEi(); return 1; }
 
 /* The framework's own twenty-three, keyed on the ROM word each slot holds, so
    the same list serves EVERY minigame class: a derived class that overrides
@@ -854,7 +854,7 @@ static unsigned mg_raw_left(void **vt, unsigned n)
  *
  * Until this, exactly one block was seated: the title screen's
  * (scene_boot.cpp's one port_graph_block_register call). Every minigame parks
- * dScMgBase_c::graphCallback_c -- ov004's data_ov004_020beb74 -- in
+ * dScMgBase_c::graphCallback_c -- ov004's sMgGraphCallback -- in
  * data_0209d4a8 through its slot 33, and that block's vtable is
  * data_ov004_020bc03c, four words which the generated mount left as the ROM
  * wrote them:
@@ -870,7 +870,7 @@ static unsigned mg_raw_left(void **vt, unsigned n)
  *     word 3  _ZN11dScMgBase_c15graphCallback_c14GraphCallback3Ev -> +0x64, slot 25
  *
  * WHAT SLOT 24 IS. For the dScMgD3DBase_c family (372, 373, 384, 385) it is the
- * SCREEN SELECTOR, _ZN14dScMgD3DBase_c8OnKickedEv: it toggles the live camera between the
+ * SCREEN SELECTOR, _ZN14dScMgD3DBase_c16OnGraphCallback2Ev: it toggles the live camera between the
  * two screens every frame, flips POWCNT1 bit 15 with it, arms the display
  * capture unit at alternating VRAM banks and moves those banks between LCDC and
  * engine B. That whole path is dark while this beat refuses the block.
@@ -898,7 +898,7 @@ static unsigned mg_raw_left(void **vt, unsigned n)
  * Word 24 (byte +0x60) of all THIRTY-TWO ov006 ActorBase-signature tables, read
  * straight from extracted/overlays/overlay_0006.bin at base 0x020bfec0:
  *
- *     26 tables INHERIT _ZN11dScMgBase_c8OnKickedEv, dScMgBase_c's own
+ *     26 tables INHERIT _ZN11dScMgBase_c16OnGraphCallback2Ev, dScMgBase_c's own
  *      6 tables OVERRIDE it --
  *          0x0213c62c, 0x0213cbe4, 0x0213ccfc -> 0x020e6e78  (dScMgD3DBase_c
  *              itself plus 372 and 373; the base class is one of the three and
@@ -915,7 +915,7 @@ static unsigned mg_raw_left(void **vt, unsigned n)
  * unchanged by construction". The RETURN is 1 on every path, so the tail's gate
  * is unchanged by construction and that half stands. But the body also compares
  * self+0x4628 against self+0x462c and, when they differ, dispatches slot 30 or
- * slot 29 -- _ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv and _ZN11dScMgBase_c16OnAimedAtWithEggEv, the display
+ * slot 29 -- _ZN11dScMgBase_c21RestoreScreenFromMenuEv and _ZN11dScMgBase_c17SaveScreenForMenuEv, the display
  * save/restore pair, both of which write POWCNT1 -- and then syncs the two
  * words. On the inheriting scenes that path is simply not taken.
  *
@@ -929,7 +929,7 @@ static unsigned mg_raw_left(void **vt, unsigned n)
  */
 extern "C" void port_graph_block_register(void *vt);
 extern "C" unsigned char data_ov004_020bc03c[];
-extern "C" unsigned char data_ov004_020beb74[];
+extern "C" unsigned char sMgGraphCallback[];
 extern "C" void port_graph_block_pin(void *obj, void *vt);
 extern "C" int _ZN11dScMgBase_c15graphCallback_c14GraphCallback0Ev(char *c);
 extern "C" int _ZN11dScMgBase_c15graphCallback_c14GraphCallback1Ev(char *c);
@@ -979,7 +979,7 @@ static void port_scene_mg_gc_seat(void)
     vt[2] = (void *)mg_gc2;
     vt[3] = (void *)mg_gc3;
     port_graph_block_register(vt);
-    port_graph_block_pin((void *)data_ov004_020beb74, (void *)vt);   /* MGSYNC1, see scene_boot.cpp */
+    port_graph_block_pin((void *)sMgGraphCallback, (void *)vt);   /* MGSYNC1, see scene_boot.cpp */
     std::fflush(stderr);
 }
 
@@ -1081,7 +1081,7 @@ extern "C" void port_scene_mg_overlay_load(void)
     port_mg_memory1_states_seat();
     port_mg_memory2_states_seat();
     /* run link100 lane MGWRITER. The +0x4f38 model sub-object's own eleven
-       pairs, so the ROM's own func_ov006_020c19d0 reads a host word out of the
+       pairs, so the ROM's own Dealer_Update reads a host word out of the
        field its writers fill. ov006 .data, live from the mount, so the position
        in this list is not load-bearing; it stands beside its class. */
     port_mg_memory2_model_seat();
@@ -1489,7 +1489,7 @@ extern "C" void port_scene_fill_curling(void)
        faults on something with nothing to do with faders:
 
            FAULT c0000005 at func_0205cdf4+0x22 accessing 0x00000010
-           mg_init -> _ZN14dScMgCurling_c13InitResourcesEv -> func_ov004_020adc74
+           mg_init -> _ZN14dScMgCurling_c13InitResourcesEv -> Ov004_LoadFileByPath
                    -> func_020182bc -> func_02018e3c -> func_0205d644
                    -> func_0205d714 -> func_0205cdf4
 
@@ -1623,7 +1623,7 @@ extern "C" void *port_mg_curling_spawn(void)
    functions of this array, so "the shells collided" is a statement about these
    twenty numbers and nothing else. Reading them off a frame capture is
    guesswork; reading them here is not. The field offsets are the ones the
-   matched physics TUs use (src/func_ov006_020e2868.c, src/func_ov006_020e2c08.c)
+   matched physics TUs use (src/Stone_Slide.c, src/Stone_WaitRelease.c)
    and the two transcriptions in port/unmatched/ tabulate. */
 static void port_mg_curling_shell_census(void)
 {
@@ -1634,7 +1634,7 @@ static void port_mg_curling_shell_census(void)
        fire is a statement about these and not about the shells. +0x4eb0 and
        +0x4eb4 are the cursor, +0x4ee4 the aim sub-state, +0x4ee6 the next
        shell to place and +0x4ee7 the place-one-now flag; every one of them is
-       read or written by src/func_ov006_020e2c08.c or src/func_ov006_020e2dbc.c
+       read or written by src/Stone_WaitRelease.c or src/BringOutNextStone.c
        in the matched tree. */
     std::printf("[scene] curling cursor: A %d B %d  substate %u  nextShell %u "
                 "placePending %u\n",
@@ -1779,7 +1779,7 @@ extern "C" void port_scene_mg_hits(void)
 // offset 0x48 in ov004 and ov006 was scanned out of the two overlay images
 // word by word: twenty-two sites, and every ov006 one sets r1 first (mvn r1,#0
 // at most of them, mov r1,#3/#4/#5 at five). The one ov004 site,
-// func_ov004_020b29a0, does not set r1 -- and its own src spells the virtual
+// Mg_CallStartRound, does not set r1 -- and its own src spells the virtual
 // as `v18(void*)` and forwards its second parameter, so the host side pushes
 // an argument there too. So mgl_reset below declares the stack parameter and
 // __fastcall cleans four, which is the signature repair
@@ -1808,7 +1808,7 @@ int   _ZN12dScMgLuigi_c8BehaviorEv(void *self);          /* slot  6 Behavior, HO
 int   _ZN12dScMgLuigi_c6RenderEv(void *self);          /* slot  9 Render            */
 int   _ZN12dScMgLuigi_cD1Ev(int *self);           /* slot 16 D2                */
 int  *_ZN12dScMgLuigi_cD0Ev(int *self);           /* slot 17 D0                */
-void  _ZN12dScMgLuigi_c13OnYoshiTryEatEi(char *self, int arg); /* slot 18 state reset       */
+void  _ZN12dScMgLuigi_c10StartRoundEi(char *self, int arg); /* slot 18 state reset       */
 
 int *dScMgLuigi_c_classInit(void);
 
@@ -1835,7 +1835,7 @@ static void *__fastcall mgl_d2(void *s, void *)
 static void *__fastcall mgl_d0(void *s, void *)
 { MG_SLOT(17); return (void *)_ZN12dScMgLuigi_cD0Ev((int *)s); }
 static int  __fastcall mgl_reset(void *s, void *, int a)
-{ MG_SLOT(18); _ZN12dScMgLuigi_c13OnYoshiTryEatEi((char *)s, a); return 1; }
+{ MG_SLOT(18); _ZN12dScMgLuigi_c10StartRoundEi((char *)s, a); return 1; }
 
 /* the two diagnostics, the same pair the curling fill carries */
 static int __fastcall mgl_render_noop(void *, void *)
@@ -1910,7 +1910,7 @@ extern "C" void port_scene_fill_luigi(void)
 
 /* The registry's factory column is void *(*)(void) and the matched factory
    returns int *. One typed forwarder, the shape port_mg_curling_spawn has.
-   NO ARGUMENT IS DISPLACED HERE: src/actors/dScMgLuigi_c.cpp calls
+   NO ARGUMENT IS DISPLACED HERE: src/minigames/d_s_mg_luigi.cpp calls
    _ZN11dScMgBase_cC2Ev(p) WITH the object pointer, where dScMgCup_c's factory
    calls the same base constructor with none. This lane needs no displacement
    ruling and asks for none. */
@@ -1941,8 +1941,8 @@ extern "C" void port_scene_mg_luigi_hits(void)
            through it, which is a different fact from "Render ran" and is the
            one this line exists to keep visible. */
         std::printf("[scene] dScMgLuigi_c render floor: %u entry(ies) into the "
-                    "former func_ov004_020b0e84 trap, which slot 9 reaches "
-                    "through func_ov004_020b1e34. Run mg5 lane INTEG seated the "
+                    "former Mg_DrawTally trap, which slot 9 reaches "
+                    "through Mg_DrawScoreTally. Run mg5 lane INTEG seated the "
                     "real score HUD, so the counter stays 0; run mg5 lane WTIMER "
                     "closed the veneer's dropped 0xe0/0x14/1 as PROVABLY DEAD "
                     "(port/unmatched/MgLuigi_Faces.cpp section 4)\n",
@@ -1973,12 +1973,12 @@ extern "C" void port_scene_mg_luigi_hits(void)
 // one of the twelve port/mg_fanout_costs.txt section 11 corrected from 37, so
 // all three of that section's checks were re-run here before a line of this
 // section was written. Span in config/arm9/overlays/ov006/symbols.txt is
-// exactly 36 words (data_ov006_0213d9cc -> data_ov006_0213da5c); slot 35 holds
+// exactly 36 words (data_ov006_0213d9cc -> pmf_dScMgPachinko2_c_Paddle_State4); slot 35 holds
 // 0x020ad660, the family terminator; and the word at index 36 is 0x021019e0
 // with index 37 zero, which is an mwcc {code, adjustment} pair and not a slot.
 //
 // AND THE VICTIM HAS A NAME. src/__sinit_ov006_02131cd0.c line 89 reads
-// `data_ov006_02142734.p4 = data_ov006_0213da5c;`, and that constructor is
+// `data_ov006_02142734.p4 = pmf_dScMgPachinko2_c_Paddle_State4;`, and that constructor is
 // dScMgPachinko2_c's -- id 0x171, MgLakituLaunch, the SIBLING class. So a
 // 37-slot fill here would write a host thunk over the code word of the
 // sibling's state 4. 0x171 is not seated by this lane and the corruption would
@@ -2004,7 +2004,7 @@ extern unsigned char g_profile_MG_PACHINKO[];
               the slice: it spells decl_common.h's shared VT/HEAP placeholders
               and bare VT is bound to the ov002 Enemy base table. Hosted as
               port_mg_pachinko_d0 in port/unmatched/MgPachinko_Dtor.cpp.
-     slot 18  _ZN15dScMgPachinko_c13OnYoshiTryEatEi  sliced, MARKER, ruled REAL_DECOMP
+     slot 18  _ZN15dScMgPachinko_c10StartRoundEi  sliced, MARKER, ruled REAL_DECOMP
    The three markers were disassembled out of the shipped overlay image and
    compared instruction for instruction with src before being seated; the
    rulings and their evidence are in port/tools/inferred_stub_adjudicated.txt. */
@@ -2013,7 +2013,7 @@ int   _ZN15dScMgPachinko_c8BehaviorEv(void *self);        /* slot  6 Behavior   
 int   _ZN15dScMgPachinko_c6RenderEv(void *self);        /* slot  9 Render        */
 int   _ZN15dScMgPachinko_cD1Ev(void *self);        /* slot 16 D2            */
 void *port_mg_pachinko_d0(void *self);        /* slot 17 D0, hosted    */
-void  _ZN15dScMgPachinko_c13OnYoshiTryEatEi(void *self, int n); /* slot 18 state reset   */
+void  _ZN15dScMgPachinko_c10StartRoundEi(void *self, int n); /* slot 18 state reset   */
 
 /* the factory. IT NEEDS NO DISPLACEMENT RULING, and that was checked rather
    than assumed: port/mg_fanout_costs.txt section 12 found 0x169's factory
@@ -2032,24 +2032,24 @@ unsigned port_mg_pachinko_trap_hits(void);
    ROM's own HUD path reads, named so the probe can PRINT the number rather
    than leave it to be read off a picture:
 
-     data_ov004_020beb68   the live dScMgBase_c `this`, set by the base ctor
-     func_ov004_020adc1c   returns *(u32*)(that + 0x4650)  -- the HIGH SCORE
-     func_ov004_020adbc0   returns *(u32*)(that + 0x464c)  -- the SCORE
-     func_ov004_020adc3c   (self->field_8 >> 8) & 0xff     -- minigame index
+     gMgScene   the live dScMgBase_c `this`, set by the base ctor
+     Mg_GetTopRecord   returns *(u32*)(that + 0x4650)  -- the HIGH SCORE
+     Mg_GetSubmittedScore   returns *(u32*)(that + 0x464c)  -- the SCORE
+     Mg_GetSaveTable   (self->field_8 >> 8) & 0xff     -- minigame index
      data_0209caf4         the 36-entry x 20-byte save record table, hosted
                            in hal/level_boot.cpp as .dsstate$savblk0004 */
-extern void *data_ov004_020beb68;
+extern void *gMgScene;
 extern unsigned char data_0209caf4[];
-int func_ov004_020adc1c(void);
-int func_ov004_020adbc0(void);
-int func_ov004_020adc3c(void *c);
+int Mg_GetTopRecord(void);
+int Mg_GetSubmittedScore(void);
+int Mg_GetSaveTable(void *c);
 
 }  /* extern "C" */
 
 /* ---- SM64DS_MG_SCORE_TRACE ------------------------------------------------
    Read-only. Prints the raw stored words behind the two HUD numbers so the
    999999 the owner reported can be attributed to a stored value or to
-   func_ov004_020b1ea4's `if (val >= 0xf423f) val = 0xf423f` clamp. Off unless
+   Mg_DrawNumber's `if (val >= 0xf423f) val = 0xf423f` clamp. Off unless
    the variable is set, so no battery run changes shape. */
 static bool mg_score_trace(void)
 {
@@ -2064,11 +2064,11 @@ static bool mg_score_trace(void)
 static void mg_score_dump(const char *where)
 {
     if (!mg_score_trace()) return;
-    unsigned char *g = (unsigned char *)data_ov004_020beb68;
-    std::printf("[score:%s] data_ov004_020beb68 = %p\n", where, (void *)g);
+    unsigned char *g = (unsigned char *)gMgScene;
+    std::printf("[score:%s] gMgScene = %p\n", where, (void *)g);
     if (!g) { std::fflush(stdout); return; }
     const unsigned f8   = *(unsigned *)(g + 8);
-    const int      idx  = func_ov004_020adc3c(g);
+    const int      idx  = Mg_GetSaveTable(g);
     const unsigned cur  = *(unsigned *)(g + 0x464c);
     const unsigned hi   = *(unsigned *)(g + 0x4650);
     const unsigned thd  = *(unsigned *)(g + 0x4654);
@@ -2078,9 +2078,9 @@ static void mg_score_dump(const char *where)
     std::printf("[score:%s] +0x4650 HIGH SCORE = %u (0x%08x)%s\n", where, hi, hi,
                 ((int)hi >= 0xf423f) ? "   <-- OVER THE 999999 CLAMP" : "");
     std::printf("[score:%s] +0x4654 third      = %u (0x%08x)\n", where, thd, thd);
-    std::printf("[score:%s] getters: func_ov004_020adc1c()=%d "
-                "func_ov004_020adbc0()=%d\n",
-                where, func_ov004_020adc1c(), func_ov004_020adbc0());
+    std::printf("[score:%s] getters: Mg_GetTopRecord()=%d "
+                "Mg_GetSubmittedScore()=%d\n",
+                where, Mg_GetTopRecord(), Mg_GetSubmittedScore());
     std::printf("[score:%s] data_0209caf4 = %p, record[%d][0] = %u\n",
                 where, (void *)data_0209caf4, idx,
                 (idx >= 0 && idx < 36)
@@ -2110,7 +2110,7 @@ static unsigned g_pch_hits[36];
  * ones dScMgPachinko_c's own render loop reads a moment later -- slot i at
  * scene + 0x4ed8 + i * 0x38, X then Y, both Fix12, with the visible flag at
  * +0x4f0e of the same slot. The engine column applies the ROM's OWN band test,
- * transcribed from src/func_ov004_020aff38.cpp rather than restated:
+ * transcribed from src/Mg_RenderSpriteBothScaled.cpp rather than restated:
  *
  *     world y in [-0x100 - G, -G)   the TOP engine, at y + 0xc0 + G
  *     else world y in [-0x40, 0xc0) the BOTTOM engine, at y
@@ -2155,9 +2155,9 @@ static void pch_ball_dump(void *self, unsigned frame)
            reaches world -1 and this branch cannot be taken. */
         const int culled = (engine == ENG_BOTTOM && top_row + 16 <= 0);
         /* THE SLOT'S STATE BYTE, because where a ball is only means something
-           next to what it is doing. src/func_ov006_020fe2e4.c writes 1 here on
+           next to what it is doing. src/PachinkoBobOmb_State0.c writes 1 here on
            the stylus press edge (grabbed, and the ball now tracks the stylus at
-           a captured offset) and src/func_ov006_020fe394.cpp writes 2 on the
+           a captured offset) and src/PachinkoBobOmb_State1.cpp writes 2 on the
            release (shot). A trace of positions alone cannot tell a ball that is
            being pulled from one that has just been fired at the same place,
            which is the distinction a drag that leaves the window turns on. */
@@ -2173,7 +2173,7 @@ static void pch_ball_dump(void *self, unsigned frame)
     /* THE PARACHUTING BOB-OMBS, the other half of what crosses the seam here,
        and they take a DIFFERENT route: 30 slots at scene + 0x4660, stride the
        same 0x38, live flag at +0x468c and state at +0x468f, drawn through
-       func_ov004_020b023c -- which submits to BOTH engines unconditionally and
+       Mg_RenderSpriteBothPalMtx -- which submits to BOTH engines unconditionally and
        lets each one's own clip decide, so there is no engine to pick and both
        rows are reported. They spawn at a flat -0x100000, world row -256, which
        is above the top screen at any G: this line is how far above is measured
@@ -2286,11 +2286,11 @@ static void *__fastcall pch_d2(void *s, void *)
 static void *__fastcall pch_d0(void *s, void *)
 { PCH_SLOT(17); return port_mg_pachinko_d0(s); }
 /* slot 18 takes a SECOND argument in this class where curling's takes none:
-   src/_ZN15dScMgPachinko_c13OnYoshiTryEatEi.cpp is (char *c, int n) and the ROM reads r1 (cmp r1,#9
+   src/_ZN15dScMgPachinko_c10StartRoundEi.cpp is (char *c, int n) and the ROM reads r1 (cmp r1,#9
    at 0x020fed6c). The __fastcall face lands `this` in ecx and the ROM's r1 in
    the first stack slot, which is where the third parameter of this thunk sits. */
 static int  __fastcall pch_reset(void *s, void *, int n)
-{ PCH_SLOT(18); _ZN15dScMgPachinko_c13OnYoshiTryEatEi(s, n); return 1; }
+{ PCH_SLOT(18); _ZN15dScMgPachinko_c10StartRoundEi(s, n); return 1; }
 
 /* dScMgPachinko_c's own six, the per-class half. */
 static const MgFace kPachinkoFaces[] = {
@@ -2303,9 +2303,9 @@ static const MgFace kPachinkoFaces[] = {
  *
  * WHAT IT MEASURES. dScMgPachinko_c's scoring is two functions:
  *
- *     src/func_ov006_020fb7e0.c   the per-item tick that decides an award
- *     src/func_ov006_020fbb2c.c   the award itself, which adds the points to
- *                                 the score through func_ov004_020adb1c
+ *     src/PachinkoFx_UpdateAll.c   the per-item tick that decides an award
+ *     src/PachinkoPopup_SpawnScore.c   the award itself, which adds the points to
+ *                                 the score through Mg_SubmitScore
  *
  * and the ROM hands the POINTS from the first to the second in r2, produced by
  * the same ldrh that makes the != 0 test (overlay_0006.bin at base 0x020bfec0):
@@ -2324,9 +2324,9 @@ static const MgFace kPachinkoFaces[] = {
  * off a caller stack slot nobody wrote. port/tools/aritycheck.py finds the same
  * split independently:
  *
- *     {"sym":"func_ov006_020fbb2c","def_n":3,
- *      "def_file":"src/func_ov006_020fbb2c.c","decl_n":2,
- *      "decl_file":"src/func_ov006_020fb7e0.c","kind":"DROPS"}
+ *     {"sym":"PachinkoPopup_SpawnScore","def_n":3,
+ *      "def_file":"src/PachinkoPopup_SpawnScore.c","decl_n":2,
+ *      "decl_file":"src/PachinkoFx_UpdateAll.c","kind":"DROPS"}
  *
  * HOW IT MEASURES IT WITHOUT PLAYING. The award path needs a stylus drag and a
  * live round, which no headless or scripted-stylus run reaches. So the check
@@ -2335,14 +2335,14 @@ static const MgFace kPachinkoFaces[] = {
  * back what the callee stored in +0x4cf8. If the delivery is right the two
  * numbers are equal.
  *
- * IT CANNOT TOUCH THE LIVE SCORE. func_ov004_020adb1c and func_ov004_020adbc0
- * both return immediately when data_ov004_020beb68 is null, so the check parks
+ * IT CANNOT TOUCH THE LIVE SCORE. Mg_SubmitScore and Mg_GetSubmittedScore
+ * both return immediately when gMgScene is null, so the check parks
  * that global for the duration and restores it. It runs from the fill, before
  * the scene is spawned, where the global is null anyway; the park is belt and
  * braces rather than the mechanism.  */
 #define PCH_AWARD_SENTINEL 0x1234u
 
-extern "C" void func_ov006_020fb7e0(char *thiz);
+extern "C" void PachinkoFx_UpdateAll(char *thiz);
 
 static void pch_award_abi_check(void)
 {
@@ -2361,10 +2361,10 @@ static void pch_award_abi_check(void)
     *(unsigned char  *)(o + 0x5968) = 0;
     *(unsigned short *)(o + 0x5962) = (unsigned short)PCH_AWARD_SENTINEL;
 
-    void *save = data_ov004_020beb68;
-    data_ov004_020beb68 = 0;
-    func_ov006_020fb7e0(o);
-    data_ov004_020beb68 = save;
+    void *save = gMgScene;
+    gMgScene = 0;
+    PachinkoFx_UpdateAll(o);
+    gMgScene = save;
 
     /* the award routine takes the first free slot, which on a zeroed object
        is index 0x1d, and stores the points it was handed at +0x4cf8 + n*0xc */
@@ -2504,14 +2504,14 @@ extern "C" void port_scene_mg_pachinko_report(void)
 // TWO OF THE NINE OVERRIDES HAVE NO DECOMPILED BODY, and they are the two that
 // matter most: slot 0 InitResources and slot 9 Render. Both are named,
 // self-reporting traps in port/unmatched/MgSmartball_Traps.cpp, the
-// func_ov006_020e1854 precedent. THE CONSEQUENCE IS STATED HERE RATHER THAN
+// Aim_Swing precedent. THE CONSEQUENCE IS STATED HERE RATHER THAN
 // DISCOVERED AT A FAULT ADDRESS: slot 0 is where the class builds every one of
 // its sub-objects, so with it trapped the object's count fields stay zero and
 // its sub-object pointers stay null, and slot 6's case 0 dereferences
 // self+0x4684 on its first statement without a null check. The pre-flight
 // below says so before the spawn.
 //
-// SLOT 18 IS A HOST COPY AND NOT THE MATCHED TU. src/_ZN16dScMgSmartball_c13OnYoshiTryEatEi.cpp
+// SLOT 18 IS A HOST COPY AND NOT THE MATCHED TU. src/_ZN16dScMgSmartball_c10StartRoundEi.cpp
 // declares func_ov006_02115b0c with no parameters and calls it with none,
 // while src/func_ov006_02115b0c.c:113 defines it taking the object; ARM rides
 // r0 through and the host does not. port/unmatched/MgSmartball_Slot18.cpp is
@@ -2542,9 +2542,9 @@ int   _ZN16dScMgSmartball_c8BehaviorEv(void *self);        /* slot  6 Behavior  
 int   _ZN16dScMgSmartball_c6RenderEv(void *self);        /* slot  9 Render         TRAP */
 void *_ZN16dScMgSmartball_cD1Ev(char *self);        /* slot 16 D2             */
 void *_ZN16dScMgSmartball_cD0Ev(void *self);        /* slot 17 D0             */
-void  _ZN16dScMgSmartball_c13OnYoshiTryEatEi(void *self);        /* slot 18 reset, HOST COPY */
-int   _ZN16dScMgSmartball_c8OnPushedEv(void *self);        /* slot 25                */
-void  _ZN16dScMgSmartball_c9Virtual7CEv(void);              /* slot 31, takes nothing */
+void  _ZN16dScMgSmartball_c10StartRoundEi(void *self);        /* slot 18 reset, HOST COPY */
+int   _ZN16dScMgSmartball_c16OnGraphCallback3Ev(void *self);        /* slot 25                */
+void  _ZN16dScMgSmartball_c15InitSubScreenBgEv(void);              /* slot 31, takes nothing */
 
 int  *dScMgSmartball_c_classInit(void);
 
@@ -2626,11 +2626,11 @@ static void *__fastcall smb_d2(void *s, void *)
 static void *__fastcall smb_d0(void *s, void *)
 { MG_SLOT(17); return _ZN16dScMgSmartball_cD0Ev(s); }
 static int  __fastcall smb_reset(void *s, void *, int /*ridethrough*/)
-{ MG_SLOT(18); _ZN16dScMgSmartball_c13OnYoshiTryEatEi(s); return 1; }
+{ MG_SLOT(18); _ZN16dScMgSmartball_c10StartRoundEi(s); return 1; }
 static int  __fastcall smb_v25(void *s, void *)
-{ MG_SLOT(25); return _ZN16dScMgSmartball_c8OnPushedEv(s); }
+{ MG_SLOT(25); return _ZN16dScMgSmartball_c16OnGraphCallback3Ev(s); }
 static int  __fastcall smb_v31(void *, void *)
-{ MG_SLOT(31); _ZN16dScMgSmartball_c9Virtual7CEv(); return 0; }
+{ MG_SLOT(31); _ZN16dScMgSmartball_c15InitSubScreenBgEv(); return 0; }
 
 /* dScMgSmartball_c's own nine, the per-class half. Keyed on the ROM word each
    slot holds, exactly like kCurlingFaces, so the three key sets stay disjoint
@@ -3072,10 +3072,10 @@ extern "C" void port_scene_fill_smartball(void)
    r4,r0` after the allocator returns, and r0 is never rewritten before
    `bl 0x20b2adc` -- so the object rides through here too. What differs is the
    only thing the host sees: src/minigames/d_s_mg_smartball.cpp spells the call
-   `_ZN11dScMgBase_cC2Ev(o)` and 0x169's src/actors/dScMgCup_c.cpp spells it
+   `_ZN11dScMgBase_cC2Ev(o)` and 0x169's src/minigames/d_s_mg_cup.cpp spells it
    `_ZN11dScMgBase_cC2Ev()`. port/tools/aritycheck.py finds the same split
    independently: it lists _ZN11dScMgBase_cC2Ev as DROPS from
-   src/actors/dScMgCup_c.cpp and src/minigames/d_s_mg_roulette.cpp, and not
+   src/minigames/d_s_mg_cup.cpp and src/minigames/d_s_mg_roulette.cpp, and not
    from this one. */
 extern "C" void *port_mg_smartball_spawn(void)
 {
@@ -3144,7 +3144,7 @@ int   _ZN11dScMgCoin_c8BehaviorEv(void *self);          /* slot 6  Behavior, hos
 int   _ZN11dScMgCoin_c6RenderEv(void *self);          /* slot 9  Render */
 int   _ZN11dScMgCoin_cD1Ev(int *self);           /* slot 16 D2 */
 int  *_ZN11dScMgCoin_cD0Ev(int *self);           /* slot 17 D0 */
-void  _ZN11dScMgCoin_c13OnYoshiTryEatEi(char *self);          /* slot 18 state reset */
+void  _ZN11dScMgCoin_c10StartRoundEi(char *self);          /* slot 18 state reset */
 
 void *dScMgCoin_c_classInit(void);
 
@@ -3188,7 +3188,7 @@ static void *__fastcall mc_d2(void *s, void *)
 static void *__fastcall mc_d0(void *s, void *)
 { MG_SLOT(17); return (void *)_ZN11dScMgCoin_cD0Ev((int *)s); }
 static int  __fastcall mc_reset(void *s, void *, int /*ridethrough*/)
-{ MG_SLOT(18); _ZN11dScMgCoin_c13OnYoshiTryEatEi((char *)s); return 1; }
+{ MG_SLOT(18); _ZN11dScMgCoin_c10StartRoundEi((char *)s); return 1; }
 
 /* dScMgCoin_c's own six, the per-class half. Keyed on the ROM WORD each slot
    holds, exactly like kCurlingFaces, so the array is order-independent and
@@ -3211,7 +3211,7 @@ extern "C" void *port_mg_coin_spawn(void)
 
 /* THE FACTORY NEEDS NO DISPLACEMENT RULING, and that is worth recording
    because 0x169's did. src/d_s_mg_coin.cpp calls
-   _ZN11dScMgBase_cC2Ev(o) WITH its argument, where src/actors/dScMgCup_c.cpp
+   _ZN11dScMgBase_cC2Ev(o) WITH its argument, where src/minigames/d_s_mg_cup.cpp
    (0x169's factory) calls the same base constructor with none and rides r0
    through. That callee dereferences on its first statement and then writes
    three vtable words through the pointer, so the difference is a wild write
@@ -3304,12 +3304,12 @@ extern "C" void port_scene_mg_coin_hits(void)
     /* THE FLOORS, REPORTED WHETHER OR NOT THEY FIRED. The render floor is the
        only one left and it is a decomp gap; it is silent unless rendering is
        on, so a zero here has to say WHICH zero it is. The state floor is
-       CLOSED -- src/func_ov006_020dd0e0.c is the matched body and lane WIRE
+       CLOSED -- src/Coin_State0.c is the matched body and lane WIRE
        wired the slot to it -- and the count that used to say how often the
        class wanted a state it could not reach now says how often it RAN it. */
     std::printf("[scene] dScMgCoin_c floors: render callee 0x020dbe9c entered "
                 "%u time(s); state floor 0x020dd0e0 CLOSED by "
-                "src/func_ov006_020dd0e0.c, which ran %u time(s) (bodiless "
+                "src/Coin_State0.c, which ran %u time(s) (bodiless "
                 "wants remaining: %u)\n",
                 port_mg_coin_trap_hits(), port_mg_coin_touch_calls(),
                 port_mg_coin_floor_hits());
@@ -3396,7 +3396,7 @@ extern "C" void port_scene_mg_coin_hits(void)
 //            the slice: it spells decl_common.h's shared VT/HEAP placeholders
 //            and bare VT is bound to the ov002 Enemy base table. Hosted as
 //            port_mg_pachinko2_d0 in port/unmatched/MgPachinko2_Dtor.cpp.
-//   slot 18  _ZN16dScMgPachinko2_c13OnYoshiTryEatEi  sliced, MARKER, ruled REAL_DECOMP
+//   slot 18  _ZN16dScMgPachinko2_c10StartRoundEi  sliced, MARKER, ruled REAL_DECOMP
 //
 // The four markers were disassembled out of the shipped overlay image and
 // compared instruction for instruction with src before being seated; the
@@ -3428,7 +3428,7 @@ int   _ZN16dScMgPachinko2_c8BehaviorEv(void *self);        /* slot  6 Behavior  
 int   _ZN16dScMgPachinko2_c6RenderEv(void *self);        /* slot  9 Render        */
 int   _ZN16dScMgPachinko2_cD1Ev(void *self);        /* slot 16 D2            */
 void *port_mg_pachinko2_d0(void *self);       /* slot 17 D0, hosted    */
-void  _ZN16dScMgPachinko2_c13OnYoshiTryEatEi(void *self, int n); /* slot 18 state reset   */
+void  _ZN16dScMgPachinko2_c10StartRoundEi(void *self, int n); /* slot 18 state reset   */
 
 /* the factory. IT NEEDS NO DISPLACEMENT RULING, and that was checked rather
    than assumed: port/mg_fanout_costs.txt section 12 found 0x169's factory
@@ -3468,13 +3468,13 @@ static void *__fastcall lkt_d2(void *s, void *)
 static void *__fastcall lkt_d0(void *s, void *)
 { LKT_SLOT(17); return port_mg_pachinko2_d0(s); }
 /* slot 18 takes a SECOND argument in this class, exactly as the sibling's
-   does: src/_ZN16dScMgPachinko2_c13OnYoshiTryEatEi.cpp is (char *c, int n) and the ROM reads r1
+   does: src/_ZN16dScMgPachinko2_c10StartRoundEi.cpp is (char *c, int n) and the ROM reads r1
    (cmp r1,#0x10 at 0x02103cd0). The __fastcall face lands `this` in ecx and
    the ROM's r1 in the first stack slot, which is where the third parameter of
    this thunk sits. Declaring it without the parameter is the four-byte stack
    leak run mg5 lane BASESET measured. */
 static int  __fastcall lkt_reset(void *s, void *, int n)
-{ LKT_SLOT(18); _ZN16dScMgPachinko2_c13OnYoshiTryEatEi(s, n); return 1; }
+{ LKT_SLOT(18); _ZN16dScMgPachinko2_c10StartRoundEi(s, n); return 1; }
 
 /* dScMgPachinko2_c's own six, the per-class half. Keyed on the ROM WORD each
    slot holds, exactly like kCurlingFaces and kPachinkoFaces, so the array is
@@ -3584,7 +3584,7 @@ extern "C" void port_scene_mg_pachinko2_hits(void)
         /* Run mg7 lane L369 closed all four of the addresses that used to
            land in the reporting case, so `missing` is write-never now and
            printing it is proof rather than a warning. The per-entry follow-up
-           line goes with the trap that produced it: func_ov006_0210076c is a
+           line goes with the trap that produced it: Paddle_CheckBallHits is a
            real src TU on slice_lkt.txt and has nothing of its own to say. */
         std::printf("[scene] dScMgPachinko2_c state dispatch: %u routed to one "
                     "of this class's 28 states, %u of those reached an address "
@@ -3631,11 +3631,11 @@ extern "C" void port_scene_mg_pachinko2_hits(void)
 // the arm9 spawn table at 0x02090e54 has one row for it, in id order between
 // 0x17b's and 0x17d's. So "Puzzle Panel" and "Puzzle Panic" are not two ids.
 // What the ROM does have is a two-way branch inside the class:
-// func_ov006_02106168 deals each panel's pair of faces from ONE OF TWO
+// DealPuzzle deals each panel's pair of faces from ONE OF TWO
 // face-set tables, data_ov006_0213ded0 when the gate answers nonzero and
-// data_ov006_0213e070 when it answers zero, and func_ov006_021057f0 skips its
+// data_ov006_0213e070 when it answers zero, and Input_Update skips its
 // whole state dispatch when vtable SLOT 35 answers nonzero. Slot 35 is
-// dScMgBase_c's _ZN11dScMgBase_c9Virtual8CEv, `return (this[2] & 0xff) != 0` -- a mode
+// dScMgBase_c's _ZN11dScMgBase_c12IsAltVariantEv, `return (this[2] & 0xff) != 0` -- a mode
 // byte the framework puts in the object's third word. WHICH VALUE IS WHICH
 // TITLE IS NOT DERIVED HERE and this block does not guess it; what is derived
 // is that the split is a mode flag on one class and not two classes.
@@ -3686,7 +3686,7 @@ extern "C" void port_scene_mg_pachinko2_hits(void)
 //        data_ov006_0213e2dc and not a code address
 //
 // SLOT 18 TAKES AN ARGUMENT AND THE THUNK CLEANS IT, the repair lane BASESET
-// audited twenty-two slot-18 sites for. src/actors/dScMgPanel_c.cpp declares
+// audited twenty-two slot-18 sites for. src/minigames/d_s_mg_panel.cpp declares
 // `(char *self, int flag)` and the ROM branches on r1 at 0x02107208, so the
 // argument is real here rather than a ride-through, and mp_reset declares it.
 //
@@ -3704,10 +3704,10 @@ extern "C" void port_scene_mg_pachinko2_hits(void)
 // mb_v35 above used to read
 //
 //     static int __fastcall mb_v35(void *, void *)
-//     { MG_SLOT(35); _ZN11dScMgBase_c9Virtual8CEv(); return 0; }
+//     { MG_SLOT(35); _ZN11dScMgBase_c12IsAltVariantEv(); return 0; }
 //
-// against a declaration of `void _ZN11dScMgBase_c9Virtual8CEv(void);` -- while
-// src/_ZN11dScMgBase_c9Virtual8CEv.cpp defines `int _ZN11dScMgBase_c9Virtual8CEv(int *r0)
+// against a declaration of `void _ZN11dScMgBase_c12IsAltVariantEv(void);` -- while
+// src/_ZN11dScMgBase_c12IsAltVariantEv.cpp defines `int _ZN11dScMgBase_c12IsAltVariantEv(int *r0)
 // { return (r0[2] & 0xff) != 0; }`. So the thunk dropped `this` (the callee
 // read whatever was on the stack) AND discarded the answer, returning a
 // constant 0. On ARM both halves ride through and are correct; on the host
@@ -3717,8 +3717,8 @@ extern "C" void port_scene_mg_pachinko2_hits(void)
 // NOTHING HAD EVER CALLED IT, which is why it survived: the six classes seated
 // before this one never dispatch slot 35, and the curling canary (scene 374)
 // reproduces byte for byte across the repair. dScMgPanel_c dispatches it ONCE
-// PER BOOT, from func_ov006_021063a0 on the init path -- an earlier version of
-// this paragraph said "every frame, through func_ov006_021057f0" and the run
+// PER BOOT, from ScramblePanels on the init path -- an earlier version of
+// this paragraph said "every frame, through Input_Update" and the run
 // refutes both halves; the mb_v35 block above carries the measurement and the
 // four dispatch sites. The gate decides WHICH OF TWO BOARD LAYOUTS
 // InitResources builds, so a constant 0 silently picked one, which is a worse
@@ -3736,7 +3736,7 @@ int   _ZN12dScMgPanel_c8BehaviorEv(char *self);          /* slot 6  Behavior, ho
 int   _ZN12dScMgPanel_c6RenderEv(void *self);          /* slot 9  Render */
 int   _ZN12dScMgPanel_cD1Ev(int *self);           /* slot 16 D2 */
 int  *_ZN12dScMgPanel_cD0Ev(int *self);           /* slot 17 D0 */
-void  _ZN12dScMgPanel_c13OnYoshiTryEatEi(char *self, int flag);/* slot 18 state reset */
+void  _ZN12dScMgPanel_c10StartRoundEi(char *self, int flag);/* slot 18 state reset */
 
 int  *dScMgPanel_c_classInit(void);
 
@@ -3759,7 +3759,7 @@ static void *__fastcall mp_d2(void *s, void *)
 static void *__fastcall mp_d0(void *s, void *)
 { MG_SLOT(17); return (void *)_ZN12dScMgPanel_cD0Ev((int *)s); }
 static int  __fastcall mp_reset(void *s, void *, int flag)
-{ MG_SLOT(18); _ZN12dScMgPanel_c13OnYoshiTryEatEi((char *)s, flag); return 1; }
+{ MG_SLOT(18); _ZN12dScMgPanel_c10StartRoundEi((char *)s, flag); return 1; }
 
 /* dScMgPanel_c's own six, keyed on the ROM word each slot holds. None of the
    six appears in kMgBaseFaces or in any earlier class's array -- a word is one
@@ -3879,9 +3879,9 @@ extern "C" void port_scene_mg_panel_hits(void)
                     "not entered (total bodiless asks %u)\n",
                     floor, floor);
     }
-    /* THE LAYOUT IS THE PROOF LINE. func_ov006_02106168 is the sole writer of
+    /* THE LAYOUT IS THE PROOF LINE. DealPuzzle is the sole writer of
        the two panel arrays -- the CURRENT face at +0x4f1e and the TARGET face
-       at +0x4f42 -- and func_ov006_021067a4 zeroes both just before it runs.
+       at +0x4f42 -- and ResetRound zeroes both just before it runs.
        Before it had a body they stayed zero, so the round-over test compared
        zero to zero and passed on the first frame. The first bytes of each are
        printed so a run says whether a board was actually dealt. */
@@ -3923,18 +3923,18 @@ extern "C" void port_scene_mg_panel_hits(void)
  * ONCE, on the named frame, and never again.
  *
  * WHAT IT ACTUALLY DOES, and it is the ROM's own entry point rather than a
- * poke: it dispatches dScMgBase_c SLOT 27, _ZN11dScMgBase_c15OnHitByMegaCharEv, on the live
- * scene object data_ov004_020beb68. That is the function the game itself calls
+ * poke: it dispatches dScMgBase_c SLOT 27, _ZN11dScMgBase_c8OpenMenuEv, on the live
+ * scene object gMgScene. That is the function the game itself calls
  * when a minigame ends -- it seeds the three button centres at +0x4634/+0x4638/
  * +0x463c, clears the selection at +0x4646 and sets +0x4628 to 1. Everything
- * downstream is then the ROM's: _ZN11dScMgBase_c8OnKickedEv sees +0x4628 differ from
+ * downstream is then the ROM's: _ZN11dScMgBase_c16OnGraphCallback2Ev sees +0x4628 differ from
  * +0x462c and dispatches slot 29, which for the dScMgD3DBase_c family is
- * _ZN14dScMgD3DBase_c16OnAimedAtWithEggEv (dual OAM back on, sub banks re-pointed, then
- * _ZN11dScMgBase_c16OnAimedAtWithEggEv, which SAVES POWCNT1 bit 15 and forces it SET), and slot
+ * _ZN14dScMgD3DBase_c17SaveScreenForMenuEv (dual OAM back on, sub banks re-pointed, then
+ * _ZN11dScMgBase_c17SaveScreenForMenuEv, which SAVES POWCNT1 bit 15 and forces it SET), and slot
  * 24's per-frame display swap stands down for as long as +0x4628 is nonzero.
  *
  * WHY A PROBE AT ALL. A headless scene run of 384 never reaches the panel: the
- * game's own progression is blocked at func_ov006_020d01e0, the unseated 0x800
+ * game's own progression is blocked at TrmpLine_Build, the unseated 0x800
  * installer, so no trampoline is ever built and no round is ever completed.
  * 12000 frames measured, 11999 bit-15 changes, score 0 and level 0 throughout.
  * The panel is reachable in real play and not in a capture, which is exactly
@@ -3954,16 +3954,16 @@ extern "C" void port_mg_results_probe(int frame)
         at = (e && e[0]) ? std::atoi(e) : -1;
     }
     if (at < 0 || fired || frame < at) return;
-    if (!data_ov004_020beb68) {
+    if (!gMgScene) {
         std::fprintf(stderr, "  [results] SM64DS_MG_RESULTS_PROBE=%d: no live "
                      "dScMgBase_c at frame %d; nothing dispatched\n", at, frame);
         fired = 1;
         return;
     }
     fired = 1;
-    char *g = (char *)data_ov004_020beb68;
+    char *g = (char *)gMgScene;
     std::fprintf(stderr, "  [results] f%d: dispatching slot 27 "
-                 "(_ZN11dScMgBase_c15OnHitByMegaCharEv) on %p; +0x4628 was %d, POWCNT1 %04x\n",
+                 "(_ZN11dScMgBase_c8OpenMenuEv) on %p; +0x4628 was %d, POWCNT1 %04x\n",
                  frame, (void *)g, *(int *)(g + 0x4628),
                  *(volatile unsigned short *)0x04000304);
     port_mg_d3dbase_slot27(g);
@@ -3987,12 +3987,12 @@ extern "C" void port_mg_results_probe(int frame)
  * running:
  *
  *   slot7  how many times dScMgBase_c slot 7 reached _ZN11dScMgBase_c14BeforeBehaviorEv
- *   tick   how many times slot 7 reached func_ov004_020aeb24 (the STEP), and
+ *   tick   how many times slot 7 reached Mg_UpdateMenu (the STEP), and
  *          how many of those RETURNED -- a difference means it faulted inside
  *   bb0    how many times Scene::BeforeBehavior answered 0 and stopped slot 7
  *          BEFORE the tick call
  *   gate   the +0xf4 sub-object's state byte (+0x218) and its count (+0x214),
- *          which are what func_ov004_020b8f78 returns and loops over -- a
+ *          which are what _ZN10dMgPsOpt_c6UpdateEv returns and loops over -- a
  *          nonzero state byte is the tick's OWN early return, ahead of the
  *          three ApproachLinear2 slides
  *
@@ -4010,7 +4010,7 @@ extern "C" void port_mg_results_watch(int frame)
         at = (e && e[0]) ? std::atoi(e) : -1;
     }
     if (at < 0) return;
-    char *g = (char *)data_ov004_020beb68;
+    char *g = (char *)gMgScene;
     if (!g) return;
     if (raised < 0) {
         if (*(int *)(g + 0x4628) == 0) return;

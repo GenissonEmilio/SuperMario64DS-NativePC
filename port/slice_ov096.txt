@@ -29,7 +29,7 @@
 # wrappers, eleven of which were leaf accessors, and its first boot crashed on
 # a face returning 0 where the real body returns a pointer).
 #
-#  A. THE C++-MANGLING WALL (2 TUs). src/actors/daSanbo_c.cpp and
+#  A. THE C++-MANGLING WALL (2 TUs). src/game/actors/d_a_sanbo.cpp and
 #     src/_ZN7TornadoD1Ev.cpp are REAL C++ class definitions ending
 #     `virtual ~X();` with an empty body. mwccarm mangles that Itanium and
 #     emits the name vtable slot 16 needs; MSVC emits ??1Pokey@@UAE@XZ and
@@ -56,9 +56,9 @@
 #     The two lists CROSS-CONFIRM each other: WithMeshClsn, MovingCylinderClsn
 #     and Actor D2 resolve to the same three arm9 addresses in both classes,
 #     from two independently recovered destructors.
-#       src/actors/daSanbo_c.cpp   -> port/unmatched/Pokey_HostSites.cpp
+#       src/game/actors/d_a_sanbo.cpp   -> port/unmatched/Pokey_HostSites.cpp
 #       src/_ZN7TornadoD1Ev.cpp -> port/unmatched/Tornado_HostSites.cpp
-#     BOTH D0s NEED NOTHING: src/actors/daSanbo_c.cpp and src/_ZN7TornadoD0Ev.cpp are
+#     BOTH D0s NEED NOTHING: src/game/actors/d_a_sanbo.cpp and src/_ZN7TornadoD0Ev.cpp are
 #     already plain C bodies that store their table by name and call flat
 #     member destructors, so both stay below as matched source. That asymmetry
 #     is the ROM recovery route, not a choice.
@@ -76,9 +76,9 @@
 #     the recovered sources own declarations, not inferred from a crash. The
 #     SoundObject/Cap/MrBlizzard/BabyPenguin/Unagi/HootTheOwl/ov077/ov092
 #     shape, ninth and tenth instances.
-#       src/actors/daSanbo_c.cpp -> port/unmatched/Pokey_HostSites.cpp
-#       src/actors/daSanbo_c.cpp -> port/unmatched/Pokey_HostSites.cpp
-#     src/actors/daSanbo_c.cpp is NOT refused and stays in the slice: it sets
+#       src/game/actors/d_a_sanbo.cpp -> port/unmatched/Pokey_HostSites.cpp
+#       src/game/actors/d_a_sanbo.cpp -> port/unmatched/Pokey_HostSites.cpp
+#     src/game/actors/d_a_sanbo.cpp is NOT refused and stays in the slice: it sets
 #     the cell pointer with plain integer arithmetic
 #     (`*(int *)(c + 0x384) = (int)&data_ov096_02137b48 + (a << 4)`) and forms
 #     no pointer-to-member at all. Its `a << 4` is what proves the cells are
@@ -95,7 +95,7 @@
 #       src/_ZN7Tornado6RenderEv.cpp -> port/unmatched/Tornado_HostSites.cpp
 #
 #  D. THE FALL-OFF-THE-END BODY (1 TU), FOUND BY THE FIRST BUILD, not by
-#     reading. src/actors/daSanbo_c.cpp is declared `int` and has NO return
+#     reading. src/game/actors/d_a_sanbo.cpp is declared `int` and has NO return
 #     statement. mwccarm accepts it and lets r0 carry whatever the last call
 #     left; MSVC refuses the translation unit with
 #         error C4716: 'func_ov096_02135e2c': must return a value
@@ -105,9 +105,9 @@
 #     0x02135ee4..0x02135ef8 is `add r1,sp,#0xc / add r0,r0,#4 / bl
 #     SurfaceInfo::CopyNormalTo (void) / add sp,sp,#0x1c / pop {r4-r7,lr} /
 #     bx lr` with no instruction setting r0, and the ONE caller,
-#     src/actors/daSanbo_c.cpp:12, declares it `void` and discards the result
+#     src/game/actors/d_a_sanbo.cpp:12, declares it `void` and discards the result
 #     at line 47.
-#       src/actors/daSanbo_c.cpp -> port/unmatched/Pokey_HostSites.cpp
+#       src/game/actors/d_a_sanbo.cpp -> port/unmatched/Pokey_HostSites.cpp
 #     THE CHEAPER ROUTE EXISTS AND WAS NOT TAKEN. port/tools/hostgen.py carries
 #     a FALLS_OFF_RETURN table for exactly this failure, added by lane w5-c for
 #     func_ov070_0211f0a4 (port/CMakeLists.txt:2421), and a two-line entry
@@ -201,9 +201,9 @@
 #     over the port_ovNNN_at family instead of one binding.
 #
 # ==== WHAT LOOKS LIKE A TENTH REFUSAL AND IS NOT =========================
-# src/actors/daSanbo_c.cpp RIDES FROM SRC. It is the SAME six-virtual local
+# src/game/actors/d_a_sanbo.cpp RIDES FROM SRC. It is the SAME six-virtual local
 # shadow reaching index 5 as Tornado, and it is the opposite case: it
-# dispatches on the member at +0xd4, which src/actors/daSanbo_c.cpp own member
+# dispatches on the member at +0xd4, which src/game/actors/d_a_sanbo.cpp own member
 # list names a plain **Model** (and Pokey::InitResources confirms it, calling
 # ModelBase::SetFile on this+0xd4). hal/cxxname_bridge.cpp:511 DUAL-FILLS
 # `_ZTV5Model[5] = mv_render` for exactly this shape, with the reason written
@@ -307,13 +307,13 @@ src/unnamed/arm9/0201/func_02016aac.c
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
-#src/actors/daSanbo_c.cpp
-src/actors/daTor_c.cpp
-# FOLDED into src/actors/daTor_c.cpp (row 311): src/_ZN7Tornado16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daTor_c.cpp (row 311): src/_ZN7TornadoD0Ev.cpp
+#src/game/actors/d_a_sanbo.cpp
+src/game/actors/d_a_tor.cpp
+# FOLDED into src/game/actors/d_a_tor.cpp (row 311): src/_ZN7Tornado16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_tor.cpp (row 311): src/_ZN7TornadoD0Ev.cpp
 port/unmatched/hostarm/_ZN7TornadoD0Ev.cpp
-src/actors/daSanbo_c.cpp
-# FOLDED into src/actors/daTor_c.cpp (row 311): src/__sinit_ov096_02137894.c
-# FOLDED into src/actors/daTor_c.cpp (row 311): src/_ZN7Tornado10UpdateSpinEi.cpp
-# FOLDED into src/actors/daTor_c.cpp (row 311): src/_ZN7Tornado6State2Ev.cpp
-# FOLDED into src/actors/daTor_c.cpp (row 311): src/_ZN7Tornado6State0Ev.cpp
+src/game/actors/d_a_sanbo.cpp
+# FOLDED into src/game/actors/d_a_tor.cpp (row 311): src/__sinit_ov096_02137894.c
+# FOLDED into src/game/actors/d_a_tor.cpp (row 311): src/_ZN7Tornado10UpdateSpinEi.cpp
+# FOLDED into src/game/actors/d_a_tor.cpp (row 311): src/_ZN7Tornado6State2Ev.cpp
+# FOLDED into src/game/actors/d_a_tor.cpp (row 311): src/_ZN7Tornado6State0Ev.cpp

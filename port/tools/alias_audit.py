@@ -56,7 +56,7 @@ it comes back:
       header comment explains the old G0/G1 bug at length. Comments and string
       literals are blanked before the identifier search.
   a TU already RENAMED per source. port/CMakeLists.txt compiles
-      src/game/actors/daObjPathLift_c.cpp with -DG0=port_pathlift_file0, so that TU never
+      src/game/actors/d_a_obj_path_lift.cpp with -DG0=port_pathlift_file0, so that TU never
       references the shared name. Renames are read, and the rename's own target
       is checked instead, resolved one /alternatename hop.
   the TU that DEFINES the target. KillPlayer is bound to KillPlayer's own
@@ -131,7 +131,7 @@ def source_name(decorated):
 
     `_G0` -> G0 (32-bit MSVC's single cdecl underscore), `?G0@@3PAHA` -> G0
     (the C++ mangling a TU gets when the declaration is outside extern "C"),
-    `__ZN4Heap8AllocateEji` -> _ZN4Heap8AllocateEji (the ROM's C++ name carried
+    `__ZN5mHeap6Heap_t8AllocateEji` -> _ZN5mHeap6Heap_t8AllocateEji (the ROM's C++ name carried
     as a C identifier that already begins with an underscore -- strip exactly
     one, the rule linkage.py's docstring spells out).
     """
@@ -363,7 +363,7 @@ def per_source_renames(root):
     """{TU stem: {spelled name: replacement}} from port/CMakeLists.txt.
 
     THE REMEDY FOR THIS TRAP IS A PER-SOURCE -D, so a tool that does not read
-    them reports every already-fixed TU as broken. src/game/actors/daObjPathLift_c.cpp is
+    them reports every already-fixed TU as broken. src/game/actors/d_a_obj_path_lift.cpp is
     the live example: the CMake block near "G0=port_pathlift_file0" compiles it
     with G0/G1/G2 renamed to private names, so that TU never references the
     global G0 at all and flagging it is a false positive -- exactly the kind

@@ -46,7 +46,7 @@
 #     adjudicated (inferred_stub_adjudicated.txt:2326 REAL_DECOMP), so the
 #     guard admits the seat. port/slice_unmatch.txt carries it and
 #     unmatched/ModelAnim_Renders.cpp is gone.
-#   src/actors/daYurei_Mucho_c.cpp, src/_ZN5Swoop6RenderEv.cpp,
+#   src/game/actors/d_a_yurei_mucho.cpp, src/_ZN5Swoop6RenderEv.cpp,
 #     src/_ZN6Dorrie6RenderEv.cpp, src/_ZN9MontyMole6RenderEv.cpp -- the same
 #     collision and worth four more, but their fills route to
 #     port_w19_* host names in hal/actor_classes_ov065.cpp and
@@ -54,8 +54,8 @@
 #
 # ---------------------------------------------------------------------------
 # BOB-OMB BATTLEFIELD's cast (host copies were unmatched/BobEnemy_Renders.cpp)
-src/actors/daBmb_c.cpp
-src/actors/daKrb_c.cpp
+src/game/actors/d_a_bmb.cpp
+src/game/actors/d_a_krb.cpp
 src/game/actors/d_a_red_bombhei.cpp
 # HELD AGAIN at SYNC6, and NOT for a compile family: this TU compiles on the
 # host now (main #2663/#2669), but seating it duplicates _daWanwan_c_classInit
@@ -71,35 +71,35 @@ src/game/actors/d_a_red_bombhei.cpp
 # is a sixth row for that list, not a compile-family quarantine.
 #src/game/actors/d_a_wanwan.cpp
 src/game/actors/d_a_obj_wanwan_shutter.cpp
-src/actors/daRNk_c.cpp
-src/actors/daRFlag_c.cpp
+src/game/actors/d_a_r_nk.cpp
+src/game/actors/d_a_r_flag.cpp
 # ---------------------------------------------------------------------------
 # THE REST (host copies were unmatched/ModelAnim_Renders.cpp)
 src/game/actors/d_a_btn.cpp
-src/actors/daBtfly_c.cpp
+src/game/actors/d_a_btfly.cpp
 src/game/actors/d_a_fish.cpp
-src/actors/daObjHatenaBlock_c.cpp
-src/actors/Scuttlebug.cpp
-src/actors/daStar_c.cpp
-src/actors/daOts_c.cpp
-src/actors/daBDonketu_c.cpp
-src/actors/daObjFl_KomaU_c.cpp
-src/actors/daUdlift_c.cpp
-src/actors/daObjHeart_c.cpp
-src/actors/daObjSeesaw_c.cpp
-src/actors/daWanwan2_c.cpp
+src/game/actors/d_a_obj_hatena_block.cpp
+src/game/actors/d_a_spd.cpp
+src/game/actors/d_a_star.cpp
+src/game/actors/d_a_ots.cpp
+src/game/actors/d_a_b_donketu.cpp
+src/game/actors/d_a_obj_fl_koma_u.cpp
+src/game/actors/d_a_udlift.cpp
+src/game/actors/d_a_obj_heart.cpp
+src/game/actors/d_a_obj_seesaw.cpp
+src/game/actors/d_a_wanwan2.cpp
 src/game/actors/d_a_pg_bby.cpp
-src/actors/daOwl_c.cpp
+src/game/actors/d_a_owl.cpp
 src/game/actors/d_a_obj_c0_water.cpp
-src/actors/daHuwa_c.cpp
+src/game/actors/d_a_huwa.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (the slice_w3b host copies).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
-#src/actors/daGmch_c.cpp
-src/actors/daObjPowerUpItem_c.cpp
-src/actors/daTrs_c.cpp
+#src/game/actors/d_a_gmch.cpp
+src/game/actors/d_a_obj_power_up_item.cpp
+src/game/actors/d_a_trs.cpp
 src/game/actors/d_a_propeller_heyho.cpp
-src/actors/daYegg_c.cpp
+src/game/actors/d_a_yegg.cpp
 src/game/actors/d_a_obj_hatena_switch.cpp

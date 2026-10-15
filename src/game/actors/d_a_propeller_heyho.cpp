@@ -26,6 +26,17 @@
  * fills them. daPropeller_Heyho_Fire_c is a separate TU.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_propeller_heyho_AssetId {
+    ASSET_PROPELLER_HEYHO_BMD = 0x0411,
+    ASSET_PROPELLER_HEYHO_ATTACK01_BCA = 0x0412,
+    ASSET_PROPELLER_HEYHO_ATTACK02_BCA = 0x0413,
+    ASSET_PROPELLER_HEYHO_ATTACK03_BCA = 0x0414,
+    ASSET_PROPELLER_HEYHO_ATTACK04_BCA = 0x0415,
+    ASSET_PROPELLER_HEYHO_FIRE_ATTACK_BCA = 0x0416,
+    ASSET_PROPELLER_HEYHO_WAIT_BCA = 0x0417
+};
+
 #include "daPropeller_Heyho_c.h"
 
 /* The cartridge preserves this descriptor's C-ABI symbol but not its source
@@ -1120,13 +1131,13 @@ extern "C" int func_ov070_0211f0a4(daPropeller_Heyho_c *c) {
  * model handle (file 0x411), the six animation handles (files 0x417/0x412/
  * 0x413/0x414/0x415/0x416), then the six state records copied from the ROM
  * PMF constants. */
-HeyhoModelFile data_ov070_02123530(0x411);
-HeyhoAnimationFilePtr data_ov070_02123520(0x417);
-HeyhoAnimationFilePtr data_ov070_02123518(0x412);
-HeyhoAnimationFilePtr data_ov070_02123510(0x413);
-HeyhoAnimationFilePtr data_ov070_02123528(0x414);
-HeyhoAnimationFilePtr data_ov070_02123508(0x415);
-HeyhoAnimationFilePtr data_ov070_02123500(0x416);
+HeyhoModelFile data_ov070_02123530(ASSET_PROPELLER_HEYHO_BMD);
+HeyhoAnimationFilePtr data_ov070_02123520(ASSET_PROPELLER_HEYHO_WAIT_BCA);
+HeyhoAnimationFilePtr data_ov070_02123518(ASSET_PROPELLER_HEYHO_ATTACK01_BCA);
+HeyhoAnimationFilePtr data_ov070_02123510(ASSET_PROPELLER_HEYHO_ATTACK02_BCA);
+HeyhoAnimationFilePtr data_ov070_02123528(ASSET_PROPELLER_HEYHO_ATTACK03_BCA);
+HeyhoAnimationFilePtr data_ov070_02123508(ASSET_PROPELLER_HEYHO_ATTACK04_BCA);
+HeyhoAnimationFilePtr data_ov070_02123500(ASSET_PROPELLER_HEYHO_FIRE_ATTACK_BCA);
 daPropeller_Heyho_c::State data_ov070_0212359c = {data_ov070_021230e8, data_ov070_021230c8};
 daPropeller_Heyho_c::State data_ov070_021235ac = {data_ov070_021230d8, data_ov070_021230f0};
 daPropeller_Heyho_c::State data_ov070_021235cc = {data_ov070_021230c0, data_ov070_02123118};

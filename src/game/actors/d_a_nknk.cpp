@@ -27,6 +27,21 @@
 //   MATRIX_SCRATCH_PAPER; deleting its definition shifts the same @NNN
 //   temps by three (code bytes otherwise identical).
 // Inline definitions in Koopa.h, emitted here by the two factories:
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_nknk_AssetId {
+    ASSET_NOKONOKO_BMD = 0x03ba,
+    ASSET_NOKONOKO_DIVE_BCA = 0x03bb,
+    ASSET_NOKONOKO_DIVE_ED_BCA = 0x03bc,
+    ASSET_NOKONOKO_DIVE_ST_BCA = 0x03bd,
+    ASSET_NOKONOKO_RED_BMD = 0x03c0,
+    ASSET_NOKONOKO_RUN_BCA = 0x03c1,
+    ASSET_NOKONOKO_WAIT1_BCA = 0x03c2,
+    ASSET_NOKONOKO_WAIT2_BCA = 0x03c3,
+    ASSET_NOKONOKO_WALK_BCA = 0x03c4,
+    ASSET_NOKONOKO_WALK_ED_BCA = 0x03c5,
+    ASSET_NOKONOKO_WALK_ST_BCA = 0x03c6
+};
+
 #include "Koopa.h"
 #include "common.h"
 #include "types.h"
@@ -1177,14 +1192,14 @@ void daNknk_c::func_ov062_02117570() {
 /* Two model handles (param1 & 1 selects the variant through
  * data_ov062_0211ced8) and nine animation handles (the shared noko-noko
  * clip set indexed by data_ov062_0211cee8). */
-NknkModelFilePtr data_ov062_0211df40(0x3ba);
-NknkModelFilePtr data_ov062_0211df48(0x3c0);
-NknkAnimationFileHandle data_ov062_0211df70(0x3c6);
-NknkAnimationFileHandle data_ov062_0211df38(0x3c4);
-NknkAnimationFileHandle data_ov062_0211df50(0x3c5);
-NknkAnimationFileHandle data_ov062_0211df60(0x3c1);
-NknkAnimationFileHandle data_ov062_0211df78(0x3c2);
-NknkAnimationFileHandle data_ov062_0211df68(0x3c3);
-NknkAnimationFileHandle data_ov062_0211df28(0x3bd);
-NknkAnimationFileHandle data_ov062_0211df30(0x3bb);
-NknkAnimationFileHandle data_ov062_0211df58(0x3bc);
+NknkModelFilePtr gNokonokoModelFile(ASSET_NOKONOKO_BMD);
+NknkModelFilePtr gNokonokoRedModelFile(ASSET_NOKONOKO_RED_BMD);
+NknkAnimationFileHandle gNokonokoWalkStAnimationFile(ASSET_NOKONOKO_WALK_ST_BCA);
+NknkAnimationFileHandle gNokonokoWalkAnimationFile(ASSET_NOKONOKO_WALK_BCA);
+NknkAnimationFileHandle gNokonokoWalkEdAnimationFile(ASSET_NOKONOKO_WALK_ED_BCA);
+NknkAnimationFileHandle gNokonokoRunAnimationFile(ASSET_NOKONOKO_RUN_BCA);
+NknkAnimationFileHandle gNokonokoWait1AnimationFile(ASSET_NOKONOKO_WAIT1_BCA);
+NknkAnimationFileHandle gNokonokoWait2AnimationFile(ASSET_NOKONOKO_WAIT2_BCA);
+NknkAnimationFileHandle gNokonokoDiveStAnimationFile(ASSET_NOKONOKO_DIVE_ST_BCA);
+NknkAnimationFileHandle gNokonokoDiveAnimationFile(ASSET_NOKONOKO_DIVE_BCA);
+NknkAnimationFileHandle gNokonokoDiveEdAnimationFile(ASSET_NOKONOKO_DIVE_ED_BCA);

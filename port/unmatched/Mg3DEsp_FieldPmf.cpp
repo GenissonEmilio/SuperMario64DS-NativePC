@@ -48,14 +48,14 @@
 // never equals a DS one.  On that class the second reader was one TU.  Here
 // there are SIX, and five of them are writers:
 //
-//   func_ov006_020e7d7c   *(struct G2*)(c+0x210) = data_ov006_0213c754
-//   func_ov006_020e7e74   *(struct G2*)(c+0x210) = data_ov006_0213c764
-//   _ZN15dMg3DEspModel_c5ResetEv   *(struct M2*)(c+0x210) = data_ov006_0213c774
-//   func_ov006_020e7f5c   *(double*)(c+0x210)    = data_ov006_0213c76c
-//   _ZN15dMg3DEspModel_c6RenderEv   compares c+0x210 against data_ov006_0213c744 and
+//   func_ov006_020e7d7c   *(struct G2*)(c+0x210) = pmf_dMg3DEspModel_c_Hit
+//   func_ov006_020e7e74   *(struct G2*)(c+0x210) = pmf_dMg3DEspModel_c_Intro
+//   _ZN15dMg3DEspModel_c5ResetEv   *(struct M2*)(c+0x210) = pmf_dMg3DEspModel_c_Idle_3
+//   func_ov006_020e7f5c   *(double*)(c+0x210)    = pmf_dMg3DEspModel_c_Wait
+//   _ZN15dMg3DEspModel_c6RenderEv   compares c+0x210 against pmf_dMg3DEspModel_c_Idle_2 and
 //                         returns early on a match -- the RENDER half of the
 //                         same idle test, and it does not dispatch
-//   _ZN15dMg3DEspModel_c8BehaviorEv   this file: compares against data_ov006_0213c704,
+//   _ZN15dMg3DEspModel_c8BehaviorEv   this file: compares against pmf_dMg3DEspModel_c_Idle,
 //                         then dispatches
 //
 // EVERY ONE OF THE FOUR WRITERS MOVES EIGHT BYTES.  Three spell the pair as a
@@ -126,7 +126,7 @@ void *_ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
 
 /* the idle sentinel, as two ints -- the spelling that is true on both
    machines, and the one src already uses for the comparison */
-extern int data_ov006_0213c704[2];
+extern int pmf_dMg3DEspModel_c_Idle[2];
 
 }  /* extern "C" */
 
@@ -144,7 +144,7 @@ static unsigned g_esp_field_calls, g_esp_field_routed;
  * SAME code word 0x020e7fac. Seat all three with the same face and each
  * predicate compares one host address against itself: it answers what it
  * answered before, on every path. src/_ZN15dMg3DEspModel_c6RenderEv.cpp is in the link
- * (port/slice_fold2.txt) and reads data_ov006_0213c744 by value, so this is not
+ * (port/slice_fold2.txt) and reads pmf_dMg3DEspModel_c_Idle_2 by value, so this is not
  * hypothetical.
  *
  * THE UNIVERSE, over a block derived from the class. dScMg3DEsp_c's own vtable
@@ -196,21 +196,21 @@ ESP_FACE(020e7f04, _ZN15dMg3DEspModel_c4WaitEv((char *)self))
 ESP_FACE(020e7fac, _ZN15dMg3DEspModel_c4IdleEv())
 
 extern "C" {
-extern MgPmf data_ov006_0213c744, data_ov006_0213c754, data_ov006_0213c764,
-    data_ov006_0213c76c, data_ov006_0213c774;
+extern MgPmf pmf_dMg3DEspModel_c_Idle_2, pmf_dMg3DEspModel_c_Hit, pmf_dMg3DEspModel_c_Intro,
+    pmf_dMg3DEspModel_c_Wait, pmf_dMg3DEspModel_c_Idle_3;
 }
 
 namespace {
 struct EspSeat { MgPmf *rec; unsigned rom; void *face; const char *what; };
 const EspSeat g_esp_seats[] = {
-    {(MgPmf *)data_ov006_0213c704, 0x020e7facu, (void *)esp_f020e7fac,
+    {(MgPmf *)pmf_dMg3DEspModel_c_Idle, 0x020e7facu, (void *)esp_f020e7fac,
      "0213c704 the sentinel this file reads"},
-    {&data_ov006_0213c744, 0x020e7facu, (void *)esp_f020e7fac,
+    {&pmf_dMg3DEspModel_c_Idle_2, 0x020e7facu, (void *)esp_f020e7fac,
      "0213c744 the sentinel _ZN15dMg3DEspModel_c6RenderEv reads"},
-    {&data_ov006_0213c754, 0x020e7cc0u, (void *)esp_f020e7cc0, "0213c754"},
-    {&data_ov006_0213c764, 0x020e7de8u, (void *)esp_f020e7de8, "0213c764"},
-    {&data_ov006_0213c76c, 0x020e7f04u, (void *)esp_f020e7f04, "0213c76c"},
-    {&data_ov006_0213c774, 0x020e7facu, (void *)esp_f020e7fac, "0213c774"},
+    {&pmf_dMg3DEspModel_c_Hit, 0x020e7cc0u, (void *)esp_f020e7cc0, "0213c754"},
+    {&pmf_dMg3DEspModel_c_Intro, 0x020e7de8u, (void *)esp_f020e7de8, "0213c764"},
+    {&pmf_dMg3DEspModel_c_Wait, 0x020e7f04u, (void *)esp_f020e7f04, "0213c76c"},
+    {&pmf_dMg3DEspModel_c_Idle_3, 0x020e7facu, (void *)esp_f020e7fac, "0213c774"},
 };
 }  /* namespace */
 

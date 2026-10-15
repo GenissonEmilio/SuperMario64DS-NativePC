@@ -2,7 +2,7 @@
 // DISPATCH, host-copied ONCE for both classes that mount it.
 //
 // Run mg9, adjudicated at the merge. This file is the single canonical copy of
-// func_ov006_020c2b8c. Lane CUP (dScMgCup_c, actor 0x169, scene 361) and lane
+// Presenter_Update. Lane CUP (dScMgCup_c, actor 0x169, scene 361) and lane
 // BOX (dScMgSound_c, actor 0x16f, scene 367) each host-copied this body into a
 // lane-named file without being able to see the other; the merged tree would
 // have defined the symbol twice. Both lanes' repairs are carried below and the
@@ -25,12 +25,12 @@
 // port/tools/inferred_stub_adjudicated.txt's row for _ZN10dScMgCup_c8BehaviorEv calls
 // it "the class ONLY pointer-to-member dispatch site", and
 // port/slice_mga361.txt section 4 says "exactly ONE TU dispatches it" and then
-// lists src/func_ov006_020c2b8c.cpp as an ORDINARY SLICE LINE.
+// lists src/Presenter_Update.cpp as an ORDINARY SLICE LINE.
 //
 // Both sentences are true of a class's own STATE TABLE and neither is true of
 // the class. Each Behavior's last act but one is
 //
-//     func_ov006_020c2b8c(o + 0x4f38);
+//     Presenter_Update(o + 0x4f38);
 //
 // and that function dispatches a member pointer held in a FIELD of the
 // sub-object at +0x4f38. It is section 4's second silent shape -- "FOUR HAVE
@@ -44,7 +44,7 @@
 // THE ROM, disassembled out of extracted/overlays/overlay_0006.bin at base
 // 0x020bfec0 (size 0x5c from config/arm9/overlays/ov006/symbols.txt). Read
 // first-hand at adjudication after checking the reader on a body neither lane
-// wrote (_ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv = `mov r0,#1 / bx lr`, which
+// wrote (_ZN19dScMgSingle3DBase_c14GetDisplayModeEv = `mov r0,#1 / bx lr`, which
 // port/tools/inferred_stub_adjudicated.txt already records):
 //
 //     020c2b8c  e92d4010  push  {r4, lr}
@@ -100,21 +100,21 @@
 //
 //   pair address          words                installed from   inside
 //   -------------------   ------------------   --------------   -------------------
-//   data_ov006_0213add0   020c22d8  00000000   0x020c23a4       func_ov006_020c2300
-//   data_ov006_0213adf8   020c23a8  00000000   0x020c24e0       func_ov006_020c2440
-//   data_ov006_0213adc0   020c24e4  00000000   0x020c2638       func_ov006_020c2594
-//   data_ov006_0213adf0   020c263c  00000000   0x020c26f0       func_ov006_020c2664
-//   data_ov006_0213ade0   020c26f4  00000000   0x020c27c0       func_ov006_020c271c
-//   data_ov006_0213adc8   020c27c4  00000000   0x020c2920       func_ov006_020c2848
-//   data_ov006_0213adb8   020c27c4  00000000   NOT INSTALLED ANYWHERE -- see below
+//   pmf_Presenter_StateAnim7Loop   020c22d8  00000000   0x020c23a4       Presenter_PlayAnim7Loop
+//   pmf_Presenter_StateAnim4   020c23a8  00000000   0x020c24e0       Presenter_PlayAnim4
+//   pmf_Presenter_StateAnim7   020c24e4  00000000   0x020c2638       Presenter_PlayAnim7
+//   pmf_Presenter_StateAnim1   020c263c  00000000   0x020c26f0       Presenter_PlayAnim1
+//   pmf_Presenter_StateAnim2   020c26f4  00000000   0x020c27c0       Presenter_PlayAnim2
+//   pmf_Presenter_StateIdle_2   020c27c4  00000000   0x020c2920       Presenter_PlayIdle
+//   pmf_Presenter_StateIdle   020c27c4  00000000   NOT INSTALLED ANYWHERE -- see below
 //
 // SEVEN PAIRS, SIX DISTINCT CODE WORDS: 0x020c27c4 is both 0213adc8's and the
 // sentinel's.
 //
 // 0x0213adb8 IS A READ-ONLY SENTINEL AND NOT A STATE INSTALL. Its literal-pool
-// citation 0x020c29d8 is the last word of func_ov006_020c2994 (0x020c2994,
-// ends 0x020c29dc), NOT of func_ov006_020c2924 (0x020c2924, size 0x60, ends
-// 0x020c2984 with its own pool word 0209F5BC at 0x020c2980). func_ov006_020c2994
+// citation 0x020c29d8 is the last word of Presenter_IsIdle (0x020c2994,
+// ends 0x020c29dc), NOT of Presenter_ResetPose (0x020c2924, size 0x60, ends
+// 0x020c2984 with its own pool word 0209F5BC at 0x020c2980). Presenter_IsIdle
 // disassembles to `ldr r3,[pc,#0x3c] / ldr r2,[r0] / ldr r1,[r3] / cmp / ldr
 // r1,[r0,#4] / ldr r0,[r3,#4] / cmp / ...` with ZERO stores in the body: it
 // COMPARES and never writes. Lane BOX's derivation table lists this row as an
@@ -136,25 +136,25 @@
 // That is right for CUP ALONE and wrong for the merged tree, and the ROM says
 // why. Each installer has exactly one arm_call in all of ov006:
 //
-//   func_ov006_020c2300  <- from:0x0211bf10, inside func_ov006_0211bc8c
+//   Presenter_PlayAnim7Loop  <- from:0x0211bf10, inside Note_StateOpening
 //                           (0x0211bc8c, size 0x2b8) -- dScMgSound_c's ONE
 //                           bodiless floor. Unreachable in either scene today;
 //                           reachable the moment that floor is decompiled.
-//   func_ov006_020c271c  <- from:0x0211b8b8, inside func_ov006_0211b80c
+//   Presenter_PlayAnim2  <- from:0x0211b8b8, inside CheckPair
 //                           (0x0211b80c, size 0x148), which IS on
 //                           port/slice_box.txt and IS linked. So state
 //                           0x020c26f4 is LIVE in scene 367.
 //
 // Both callers are in the 0x0211xxxx block, which is why neither can reach
 // dScMgCup_c and why lane CUP's own reading was sound. In the merged tree both
-// src TUs (src/func_ov006_020c22d8.c and src/func_ov006_020c26f4.c) are linked
+// src TUs (src/Presenter_StateAnim7Loop.c and src/Presenter_StateAnim2.c) are linked
 // through port/slice_box.txt, so routing them is a link this tree already has
 // and NOT the link error CUP's header warned an unbacked case would be. The
 // union is therefore both safe and required: with four cases, scene 367's
 // live state 0x020c26f4 would fall out of the switch.
 //
 // The four state-setters the CUP closure does reach are themselves shared --
-// func_ov006_020c2594, _020c2664 and _020c2440 each have TWO arm_calls, one at
+// Presenter_PlayAnim7, _020c2664 and _020c2440 each have TWO arm_calls, one at
 // 0x020dfxxx and one at 0x0211bxxx/0x0211cxxx -- which is the same dual-host
 // shape as the three host-copied bodies.
 //
@@ -163,18 +163,18 @@
 // The alternative to routing at the dispatch site is the ov085 / ov100
 // port_*_states_seat shape: write HOST addresses over the pairs before
 // anything copies them. IT WOULD BREAK A PREDICATE HERE, exactly as it would
-// for dScMgFlower_c. src/func_ov006_020c2994.c is
+// for dScMgFlower_c. src/Presenter_IsIdle.c is
 //
 //     struct P { int x, y; };
-//     extern struct P data_ov006_0213adb8;
-//     int func_ov006_020c2994(struct P *c) {
-//         int ip = 1;  struct P *g = &data_ov006_0213adb8;
+//     extern struct P pmf_Presenter_StateIdle;
+//     int Presenter_IsIdle(struct P *c) {
+//         int ip = 1;  struct P *g = &pmf_Presenter_StateIdle;
 //         if (c->x == g->x) { if (c->y != g->y && c->x != 0) ; else ip = 0; }
 //         return ip == 0;
 //     }
 //
 // -- an "is this sub-object in the idle state" test, BY VALUE, and
-// func_ov006_020c2be8 calls it on the very line before this dispatcher runs.
+// Presenter_TrackStylus calls it on the very line before this dispatcher runs.
 // Rewriting the stored words would make that comparison ask whether a host
 // address equals a DS address, which is false forever, and the animation
 // machine would silently never see its own idle state. Routing at the dispatch
@@ -195,7 +195,7 @@
 // fallthrough MgCup_StateDispatch.cpp:191 and MgSound_StateDispatch.cpp
 // already use.
 //
-// IT DEFINES func_ov006_020c2b8c, so src/func_ov006_020c2b8c.cpp is out of
+// IT DEFINES Presenter_Update, so src/Presenter_Update.cpp is out of
 // port/slice_cup.txt AND out of port/slice_box.txt. Listing it in either would
 // be an LNK2005.
 
@@ -212,25 +212,25 @@ void port_mg_call0(void *self, unsigned code, int adj);
    defines -- checked one by one against src/ rather than copied from either
    lane. All six are matched; four are on both slices, and 020c22d8 / 020c26f4
    are on port/slice_box.txt. */
-int  func_ov006_020c22d8(char *t);   /* src/func_ov006_020c22d8.c   int(char*)  */
-void func_ov006_020c23a8(void *c);   /* src/func_ov006_020c23a8.cpp void(void*) */
-void func_ov006_020c24e4(void *c);   /* src/func_ov006_020c24e4.cpp void(void*) */
-int  func_ov006_020c263c(char *t);   /* src/func_ov006_020c263c.c   int(char*)  */
-int  func_ov006_020c26f4(char *t);   /* src/func_ov006_020c26f4.c   int(char*)  */
-void func_ov006_020c27c4(char *c);   /* src/func_ov006_020c27c4.cpp void(char*) */
+int  Presenter_StateAnim7Loop(char *t);   /* src/Presenter_StateAnim7Loop.c   int(char*)  */
+void Presenter_StateAnim4(void *c);   /* src/Presenter_StateAnim4.cpp void(void*) */
+void Presenter_StateAnim7(void *c);   /* src/Presenter_StateAnim7.cpp void(void*) */
+int  Presenter_StateAnim1(char *t);   /* src/Presenter_StateAnim1.c   int(char*)  */
+int  Presenter_StateAnim2(char *t);   /* src/Presenter_StateAnim2.c   int(char*)  */
+void Presenter_StateIdle(char *c);   /* src/Presenter_StateIdle.cpp void(char*) */
 
 /* the rest of the dispatching TU, verbatim from src */
-void func_ov006_020c2be8(char *c);   /* src/func_ov006_020c2be8.c   void(char*) */
-void func_ov006_020c2290(char *c);   /* src/func_ov006_020c2290.c   void(char*) */
+void Presenter_TrackStylus(char *c);   /* src/Presenter_TrackStylus.c   void(char*) */
+void Presenter_UpdateMatrix(char *c);   /* src/Presenter_UpdateMatrix.c   void(char*) */
 void _ZN15dExtFrameCtrl_c7AdvanceEv(void *anim);
 void _ZN14BlendModelAnim7AdvanceEv(void *anim);
 
 /* The parameter is `char *`, which is what include/decl_common.h:2401 already
-   declares (`extern void func_ov006_020c2b8c(char*);`) and therefore what every
-   matched caller in the tree sees -- src/actors/dScMgSound_c.cpp includes that
+   declares (`extern void Presenter_Update(char*);`) and therefore what every
+   matched caller in the tree sees -- src/minigames/d_s_mg_sound.cpp includes that
    header. Both spellings link (the symbol has C linkage), but only this one
    agrees with the tree's own declaration. */
-void     func_ov006_020c2b8c(char *c);
+void     Presenter_Update(char *c);
 
 /* The witnesses. Named for the SUB-OBJECT rather than for either class,
    because the body belongs to neither. Both seats' censuses read these. */
@@ -274,17 +274,17 @@ static void sub_unhandled(const char *why, unsigned code, int adj)
 static int sub_call(void *p, unsigned code)
 {
     switch (code) {
-    case 0x020c22d8u: func_ov006_020c22d8((char *)p);    return 1;
-    case 0x020c23a8u: func_ov006_020c23a8(p);            return 1;
-    case 0x020c24e4u: func_ov006_020c24e4(p);            return 1;
-    case 0x020c263cu: func_ov006_020c263c((char *)p);    return 1;
-    case 0x020c26f4u: func_ov006_020c26f4((char *)p);    return 1;
-    case 0x020c27c4u: func_ov006_020c27c4((char *)p);    return 1;
+    case 0x020c22d8u: Presenter_StateAnim7Loop((char *)p);    return 1;
+    case 0x020c23a8u: Presenter_StateAnim4(p);            return 1;
+    case 0x020c24e4u: Presenter_StateAnim7(p);            return 1;
+    case 0x020c263cu: Presenter_StateAnim1((char *)p);    return 1;
+    case 0x020c26f4u: Presenter_StateAnim2((char *)p);    return 1;
+    case 0x020c27c4u: Presenter_StateIdle((char *)p);    return 1;
     default:          return 0;
     }
 }
 
-/* src/func_ov006_020c2b8c.cpp, verbatim except that the member-pointer read and
+/* src/Presenter_Update.cpp, verbatim except that the member-pointer read and
    the indirect call become the two-word read and sub_call. The null guard, the
    call order and the three Advance offsets are all src's and all agree with the
    ROM disassembly in the header.
@@ -300,8 +300,8 @@ static int sub_call(void *p, unsigned code)
 //
 // THE PARAGRAPH ABOVE THIS ONE IS SUPERSEDED, and the measurement that
 // supersedes it is the point. "THE STORED WORD IS DELIBERATELY NOT REWRITTEN"
-// refused a seat because src/func_ov006_020c2994.c compares an object's stored
-// pair BY VALUE against data_ov006_0213adb8, so writing host addresses over the
+// refused a seat because src/Presenter_IsIdle.c compares an object's stored
+// pair BY VALUE against pmf_Presenter_StateIdle, so writing host addresses over the
 // pairs "would make that comparison ask whether a host address equals a DS
 // address, which is false forever".
 //
@@ -324,7 +324,7 @@ static int sub_call(void *p, unsigned code)
 // from inside the same block except sixteen that point at 0x0213add8 and
 // 0x0213ade8, the two bone-name strings interleaved in it.
 //
-// THE EMITTED SIDE, off src/func_ov006_020c2b8c.cpp's own /FAsc listing under
+// THE EMITTED SIDE, off src/Presenter_Update.cpp's own /FAsc listing under
 // the port's own flags (runs/link100/out/PMFB6/emit_gate3_out.txt):
 //     mov eax,[esi] / test eax,eax / je / mov ecx,[esi+4] / add ecx,esi /
 //     call eax
@@ -338,7 +338,7 @@ static int sub_call(void *p, unsigned code)
 // leaving a counter that reads zero forever (lane PMFB3's tapped-pad trap):
 //   calls   / routed  bumped by every face, one per dispatch, still exact;
 //   idle    NO LONGER OBSERVABLE. It counted entries the ROM's own null guard
-//           skipped, and that guard is now inside src/func_ov006_020c2b8c.cpp
+//           skipped, and that guard is now inside src/Presenter_Update.cpp
 //           where nothing outside can see it. It reads 0 and the seat says so.
 //   unknown STRUCTURALLY ZERO. An unrouted code word was a field holding an
 //           address this file did not know; after the seat the field can only
@@ -357,12 +357,12 @@ static unsigned g_sub_face_calls;
         sym((cast)self);                                                  \
     }
 
-SUB_FACE(020c22d8, func_ov006_020c22d8, char *)
-SUB_FACE(020c23a8, func_ov006_020c23a8, void *)
-SUB_FACE(020c24e4, func_ov006_020c24e4, void *)
-SUB_FACE(020c263c, func_ov006_020c263c, char *)
-SUB_FACE(020c26f4, func_ov006_020c26f4, char *)
-SUB_FACE(020c27c4, func_ov006_020c27c4, char *)
+SUB_FACE(020c22d8, Presenter_StateAnim7Loop, char *)
+SUB_FACE(020c23a8, Presenter_StateAnim4, void *)
+SUB_FACE(020c24e4, Presenter_StateAnim7, void *)
+SUB_FACE(020c263c, Presenter_StateAnim1, char *)
+SUB_FACE(020c26f4, Presenter_StateAnim2, char *)
+SUB_FACE(020c27c4, Presenter_StateIdle, char *)
 
 namespace {
 struct SubSeat { unsigned *rec; unsigned rom; void *face; const char *what; };
@@ -378,9 +378,9 @@ const SubSeat g_sub4f38_seats[] = {
 }  /* namespace */
 
 extern "C" {
-extern unsigned data_ov006_0213adb8[], data_ov006_0213adc0[],
-    data_ov006_0213adc8[], data_ov006_0213add0[], data_ov006_0213ade0[],
-    data_ov006_0213adf0[], data_ov006_0213adf8[];
+extern unsigned pmf_Presenter_StateIdle[], pmf_Presenter_StateAnim7[],
+    pmf_Presenter_StateIdle_2[], pmf_Presenter_StateAnim7Loop[], pmf_Presenter_StateAnim2[],
+    pmf_Presenter_StateAnim1[], pmf_Presenter_StateAnim4[];
 }
 
 extern "C" void port_mg_sub4f38_seat(void)
@@ -390,9 +390,9 @@ extern "C" void port_mg_sub4f38_seat(void)
         return;
     done = 1;
     unsigned *recs[] = {
-        data_ov006_0213adb8, data_ov006_0213adc0, data_ov006_0213adc8,
-        data_ov006_0213add0, data_ov006_0213ade0, data_ov006_0213adf0,
-        data_ov006_0213adf8,
+        pmf_Presenter_StateIdle, pmf_Presenter_StateAnim7, pmf_Presenter_StateIdle_2,
+        pmf_Presenter_StateAnim7Loop, pmf_Presenter_StateAnim2, pmf_Presenter_StateAnim1,
+        pmf_Presenter_StateAnim4,
     };
     for (unsigned i = 0; i < sizeof recs / sizeof recs[0]; ++i) {
         unsigned *p = recs[i];
@@ -410,4 +410,4 @@ extern "C" void port_mg_sub4f38_seat(void)
 }
 
 /* HOST COPY RETIRED, run link100 lane PMFB6 gate 3.
-   src/func_ov006_020c2b8c.cpp dispatches its own field now. */
+   src/Presenter_Update.cpp dispatches its own field now. */

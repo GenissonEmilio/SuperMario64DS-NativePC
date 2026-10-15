@@ -1,15 +1,15 @@
 /* THREE ROM BODIES THAT ARE IN THE BINARY UNDER THE WRONG SPELLING.
  * Run link100, lane HOSTGEN4.
  *
- * THE SHAPE. src/func_ov006_0211ea70.c, src/func_ov006_0211f9fc.c and
+ * THE SHAPE. src/CountRubbedTiles.c, src/UpdateRubbing.c and
  * src/func_ov074_02121800.c each carry the decomp's `//cpp` marker, so
  * port/CMakeLists.txt compiles them with PROPERTIES LANGUAGE CXX -- lines 7650,
  * 13304 and their siblings -- and each is on a slice already (slice_boo.txt
  * line 426, slice_ov074.txt line 232). Compiled as C++ with no extern "C", each
  * emits the MSVC-decorated name:
  *
- *     ?func_ov006_0211ea70@@YAXPADH@Z
- *     ?func_ov006_0211f9fc@@YAXH@Z
+ *     ?CountRubbedTiles@@YAXPADH@Z
+ *     ?UpdateRubbing@@YAXH@Z
  *     ?func_ov074_02121800@@YAXPAD@Z
  *
  * while their callers are plain .c files that ask for the flat ROM name. So all
@@ -20,10 +20,10 @@
  * THE FIRST ATTEMPT WAS A SECOND SLICE ROW and it was wrong. Naming the same
  * source again compiles the same object twice and the link says so plainly:
  *
- *     func_ov006_0211ea70.c.obj : error LNK2005:
- *         "void __cdecl func_ov006_0211ea70(char *,int)"
- *         (?func_ov006_0211ea70@@YAXPADH@Z) already defined in
- *         func_ov006_0211ea70.c.obj
+ *     CountRubbedTiles.c.obj : error LNK2005:
+ *         "void __cdecl CountRubbedTiles(char *,int)"
+ *         (?CountRubbedTiles@@YAXPADH@Z) already defined in
+ *         CountRubbedTiles.c.obj
  *
  * WHY A BRIDGE IS ADMISSIBLE HERE, clause by clause, which is the rule this
  * tree applies to every /alternatename and the one the fastcall-face note says
@@ -32,11 +32,11 @@
  * caller cleans the stack on both sides. And the arity matches at every site,
  * read off the declarations rather than the mangle:
  *
- *   func_ov006_0211ea70  definition src/func_ov006_0211ea70.c:7  (char *, int)
- *                        caller     src/func_ov006_0211f1a4.c:2  (char *, int)
- *   func_ov006_0211f9fc  definition src/func_ov006_0211f9fc.c:11 (int)
- *                        callers    src/func_ov006_0211fe78.c:3  (char *)
- *                                   src/func_ov006_02120008.c:3  (char *)
+ *   CountRubbedTiles  definition src/CountRubbedTiles.c:7  (char *, int)
+ *                        caller     src/Boo_State3.c:2  (char *, int)
+ *   UpdateRubbing  definition src/UpdateRubbing.c:11 (int)
+ *                        callers    src/Scene_State3.c:3  (char *)
+ *                                   src/Scene_State2.c:3  (char *)
  *   func_ov074_02121800  definition src/func_ov074_02121800.c:7  (char *)
  *                        caller     src/_ZN8Goomboss8BehaviorEv.cpp:111 (char *)
  *
@@ -51,8 +51,8 @@
  * anything else calls it that way; a name bridge changes no code and cannot be
  * wrong about a caller it has not seen.
  */
-#pragma comment(linker, "/alternatename:__ZN13dScMgTeresa_c19func_ov006_0211ea70Ei=?_ZN13dScMgTeresa_c19func_ov006_0211ea70Ei@@YAXPADH@Z")
-#pragma comment(linker, "/alternatename:__ZN13dScMgTeresa_c19func_ov006_0211f9fcEv=?_ZN13dScMgTeresa_c19func_ov006_0211f9fcEv@@YAXH@Z")
+#pragma comment(linker, "/alternatename:__ZN13dScMgTeresa_c16CountRubbedTilesEi=?_ZN13dScMgTeresa_c16CountRubbedTilesEi@@YAXPADH@Z")
+#pragma comment(linker, "/alternatename:__ZN13dScMgTeresa_c13UpdateRubbingEv=?_ZN13dScMgTeresa_c13UpdateRubbingEv@@YAXH@Z")
 #pragma comment(linker, "/alternatename:__ZN12daKuriKing_c19func_ov074_02121800Ev=?_ZN12daKuriKing_c19func_ov074_02121800Ev@@YAXPAD@Z")
 
 /* A linker directive lives in a .drectve section, which an object only has if

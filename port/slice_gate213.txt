@@ -100,10 +100,10 @@ src/_ZN10dScStage_c16CleanupResourcesEv.cpp
 port/unmatched/hostarm/_ZN5Stage16CleanupResourcesEv.cpp
 src/engine/sound/Sound.cpp
 src/Message.cpp
-src/actors/dScStage_c.cpp
+src/game/stages/d_s_stage_methods.cpp
 # RETIRED at SLICE1: body now in src/_ZN5StageD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN5StageD0Ev.cpp
-src/engine/collision/dBgW_Kc_itcm.cpp
+src/engine/collision/d_bg_w_kc_itcm.cpp
 
 # ---- THE OVERLAY TRIO, and the ruling it settles ---------------------------
 #

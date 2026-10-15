@@ -15,7 +15,7 @@
  * TWO-argument free function --
  *
  *   _ZN15TextureSequence7PrepareER8BMD_FileR8BTP_File(
- *       (void *)data_ov072_02122c48[1], (void *)data_ov072_02122c50[1]);
+ *       (void *)gdaBgSnwmnBigSnowmanHeadModelFile[1], (void *)gdaBgSnwmnBigSnowmanSmileTextureSequenceFile[1]);
  *
  * -- decl=2/push=2, consumed=3, the SHORT-1 row. On the DS this is byte-
  * identical (the enclosing InitResources's own `this` already sits in r0
@@ -58,9 +58,9 @@ extern void _ZN9dBgCh_GndD1Ev(void *self);
 extern void _ZN11daBgSnwmn_c19func_ov072_021208d8Ev(void *c);
 
 extern int data_ov072_02122c70[];
-extern int data_ov072_02122c48[];
-extern int data_ov072_02122c50[];
-extern int data_ov072_02122c40[];
+extern int gdaBgSnwmnBigSnowmanHeadModelFile[];
+extern int gdaBgSnwmnBigSnowmanSmileTextureSequenceFile[];
+extern int gdaBgSnwmnBigSnowmanBodyModelFile[];
 
 /* PORT_HOST_ABI: TextureSequence::Prepare calling-convention seam (the
    SHORT-1 argsweep row, MotherPenguin's own shape re-applied); cdecl needs

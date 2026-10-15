@@ -21,6 +21,12 @@
  * Leftover: IsClsnInRange stays mangled (by-value Fix12<int>, wall 6az).
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_cv_shutter_AssetId {
+    ASSET_CV_SHUTTER_BMD = 0x05d9,
+    ASSET_CV_SHUTTER_KCL = 0x05da
+};
+
 #include "daObjCvShutter_c.h"
 #include "SharedFilePtr.h"
 
@@ -105,5 +111,5 @@ s32 daObjCvShutter_c::CleanupResources()
 /* Definitions stay after the last .text function so they do not insert
  * a function into the ROM-ascending run. Construction order is the model
  * handle, then the collision handle. */
-CvShutterModelFilePtr data_ov021_02114a6c(1497);
-CvShutterCollisionFilePtr data_ov021_02114a64(1498);
+CvShutterModelFilePtr gCvShutterModelFile(ASSET_CV_SHUTTER_BMD);
+CvShutterCollisionFilePtr gCvShutterCollisionFile(ASSET_CV_SHUTTER_KCL);

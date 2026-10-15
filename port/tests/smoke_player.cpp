@@ -21,11 +21,11 @@
 // the full derivation): the entry used to be declared as a flat extern "C"
 // Itanium name over a forward-declared struct, which is what src/ emitted
 // before the 09-14 sync. It is now Heap::SetupRootHeap(), a real static
-// member (include/Heap.h:236, ?SetupRootHeap@Heap@@SAPAU1@XZ), so the flat
+// member (include/Heap.h:236, ?SetupRootHeap@Heap_t@mHeap@@SAPAU12@XZ), so the flat
 // spelling bought a link error. This file is HOST TEST CODE, not ROM code,
 // so it may include the class header and call the member the way C++ calls
 // it, reaching the same object it always linked,
-// src/_ZN4Heap13SetupRootHeapEv.cpp -- only the spelling changed.
+// src/engine/heap/Heap.cpp -- only the spelling changed.
 #include "Heap.h"
 
 typedef unsigned int u32;
@@ -38,7 +38,7 @@ extern unsigned short data_020a4b54;
 extern void **data_020a4bb8;
 extern void *data_020a0eac_c;                /* Memory::gameHeapPtr */
 extern void *data_020a0ea0;                  /* defaultHeapPtr (gate 3a) */
-void _ZN4Heap18InitializeGameHeapEjPS_(unsigned size, void *root);
+void _ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_(unsigned size, void *root);
 unsigned _ZN22ExpandingHeapAllocator10MemoryLeftEv(void *alloc);
 void hal_fill_model_vtable(void);
 void hal_fill_shadow_vtable(void);
@@ -248,7 +248,7 @@ int main(void)
        heap by name -- Memory::Allocate(size, -4, data_020a0eac), a negative
        alignment, so from the tail -- which is what makes the carve exercised
        here and not merely performed. */
-    _ZN4Heap18InitializeGameHeapEjPS_(0x3b000, 0);
+    _ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_(0x3b000, 0);
     CHECK(data_020a0eac_c != NULL);
     if (!data_020a0eac_c) {
         fprintf(stderr, "InitializeGameHeap returned null -- no game heap\n");

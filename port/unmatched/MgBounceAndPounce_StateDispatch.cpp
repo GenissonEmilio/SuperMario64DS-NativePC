@@ -33,13 +33,13 @@
 //
 //   pair        code       loaded by (the body that INSTALLS that state)
 //   ----------  ---------  --------------------------------------------------
-//   0213cb4c    020ee3ec   func_ov006_020ee44c   pool word 0x020ee4dc
-//   0213cb54    020ee5b8   func_ov006_020ee658   pool word 0x020ee68c
-//   0213cb5c    020ee44c   func_ov006_020ee4e0   pool word 0x020ee504
-//   0213cb6c    020ee2c4   func_ov006_020ee3bc   pool word 0x020ee3e8
-//   0213cb74    020ee2c0   func_ov006_020ee3ec   pool word 0x020ee448
-//   0213cb7c    020ee2c0   func_ov006_020ee2c4   pool word 0x020ee3b8
-//   0213cb84    020ee508   func_ov006_020ee598   pool word 0x020ee5b4
+//   0213cb4c    020ee3ec   State_End   pool word 0x020ee4dc
+//   0213cb54    020ee5b8   BeginIntro   pool word 0x020ee68c
+//   0213cb5c    020ee44c   BeginEnd   pool word 0x020ee504
+//   0213cb6c    020ee2c4   BeginFinal   pool word 0x020ee3e8
+//   0213cb74    020ee2c0   State_Result   pool word 0x020ee448
+//   0213cb7c    020ee2c0   State_Final   pool word 0x020ee3b8
+//   0213cb84    020ee508   BeginPlay   pool word 0x020ee5b4
 //
 // SIX DISTINCT CODE WORDS across seven pairs (0x020ee2c0 is installed by two
 // different bodies), and all six are routed below.
@@ -88,7 +88,7 @@
 //
 // ---- 2. THE STORED PAIR KEEPS THE ROM'S OWN WORDS -------------------------
 //
-// The state installers -- src/func_ov006_020ee658.c and the five like it --
+// The state installers -- src/BeginIntro.c and the five like it --
 // copy the pair out of mounted .data as two plain ints, so what lands in
 // self+0x5004 is the DS code address the ROM wrote. This file decodes that
 // address; it does not rewrite the mounted pairs. Writing host addresses over
@@ -99,7 +99,7 @@
 //
 // ---- 3. WHAT IS NOT ROUTED, AND WHY THE COUNT CAN LEGITIMATELY BE ZERO ----
 //
-// dScMgJump_c's vtable slot 18 is _ZN11dScMgJump_c13OnYoshiTryEatEi, and it is this class's
+// dScMgJump_c's vtable slot 18 is _ZN11dScMgJump_c10StartRoundEi, and it is this class's
 // ONE nosrc floor: a config symbol with no delink block and no src file in
 // either extension. hal/scene_mg_jump.cpp traps it, and the trap is the reason
 // a default boot of scene 372 routes NOTHING through the switch below.
@@ -107,14 +107,14 @@
 // THE FLOOR IS THE ONLY BODY THAT STARTS THE MACHINE. src/_ZN11dScMgJump_c13InitResourcesEv
 // .cpp (slot 0, InitResources) ends with `((Base *)base)->m48(-1)` -- vtable
 // offset 0x48, which is slot 18 -- and the ROM's slot-18 body tail-calls
-// func_ov006_020ee658, whose only job is to install the pair at 0x0213cb54.
+// BeginIntro, whose only job is to install the pair at 0x0213cb54.
 // Nothing else in ov006 writes self+0x5004 before slot 6 first reads it. So
 // with the floor trapped the field stays zero, port_mg_call0's own null-pmf
 // guard fires on every tick, and the honest reading of a zero here is "the
 // state machine was never started", not "the class does not dispatch".
 //
 // ALL THREE PARAGRAPHS ABOVE ARE PAST TENSE NOW. Run mg12's lane IGN
-// decompiled _ZN11dScMgJump_c13OnYoshiTryEatEi and this seat routes the real body, so the
+// decompiled _ZN11dScMgJump_c10StartRoundEi and this seat routes the real body, so the
 // field is written on the first tick, the null-pmf guard stops firing, and an
 // unattended scene 372 routes 1153 of 1153 with zero null pairs and walks five
 // distinct states in ROM order. The section is kept because it is the
@@ -124,7 +124,7 @@
 //
 // hal/scene_mg_jump.cpp's SM64DS_BNP_START_STATE diagnostic used to be the
 // only thing that changed that: it was OFF unless the variable was set, and
-// what it did was call the ROM's OWN state installer -- func_ov006_020ee658, a
+// what it did was call the ROM's OWN state installer -- BeginIntro, a
 // decompiled, sliced, byte-matched TU -- and nothing else the floor would have
 // done. IT IS GONE, removed with the floor, because the real body ends with
 // that same call and leaving the variable wired would install the state pair a
@@ -144,12 +144,12 @@ extern "C" {
 void port_mg_call0(void *self, unsigned code, int adj);
 
 /* ---- the six state bodies, all of them `void f(char *)` in the ROM ------ */
-void _ZN11dScMgJump_c19func_ov006_020ee2c0Ev(void);          /* 4 bytes in the ROM, `bx lr` */
-void _ZN11dScMgJump_c19func_ov006_020ee2c4Ev(char *c);
-void _ZN11dScMgJump_c19func_ov006_020ee3ecEv(char *c);
-void _ZN11dScMgJump_c19func_ov006_020ee44cEv(char *c);
-void _ZN11dScMgJump_c19func_ov006_020ee508Ev(char *c);
-void _ZN11dScMgJump_c19func_ov006_020ee5b8Ev(char *c);
+void _ZN11dScMgJump_c10State_IdleEv(void);          /* 4 bytes in the ROM, `bx lr` */
+void _ZN11dScMgJump_c11State_FinalEv(char *c);
+void _ZN11dScMgJump_c12State_ResultEv(char *c);
+void _ZN11dScMgJump_c9State_EndEv(char *c);
+void _ZN11dScMgJump_c10State_PlayEv(char *c);
+void _ZN11dScMgJump_c11State_IntroEv(char *c);
 
 /* the host copy of vtable slot 6, defined below */
 int _ZN11dScMgJump_c8BehaviorEv(void *c);
@@ -240,29 +240,29 @@ static void bnp_note(unsigned code)
         call;                                                             \
     }
 
-BNP_FACE(020ee2c0, _ZN11dScMgJump_c19func_ov006_020ee2c0Ev())
-BNP_FACE(020ee2c4, _ZN11dScMgJump_c19func_ov006_020ee2c4Ev((char *)self))
-BNP_FACE(020ee3ec, _ZN11dScMgJump_c19func_ov006_020ee3ecEv((char *)self))
-BNP_FACE(020ee44c, _ZN11dScMgJump_c19func_ov006_020ee44cEv((char *)self))
-BNP_FACE(020ee508, _ZN11dScMgJump_c19func_ov006_020ee508Ev((char *)self))
-BNP_FACE(020ee5b8, _ZN11dScMgJump_c19func_ov006_020ee5b8Ev((char *)self))
+BNP_FACE(020ee2c0, _ZN11dScMgJump_c10State_IdleEv())
+BNP_FACE(020ee2c4, _ZN11dScMgJump_c11State_FinalEv((char *)self))
+BNP_FACE(020ee3ec, _ZN11dScMgJump_c12State_ResultEv((char *)self))
+BNP_FACE(020ee44c, _ZN11dScMgJump_c9State_EndEv((char *)self))
+BNP_FACE(020ee508, _ZN11dScMgJump_c10State_PlayEv((char *)self))
+BNP_FACE(020ee5b8, _ZN11dScMgJump_c11State_IntroEv((char *)self))
 
 extern "C" {
-extern MgPmf data_ov006_0213cb4c, data_ov006_0213cb54, data_ov006_0213cb5c,
-    data_ov006_0213cb6c, data_ov006_0213cb74, data_ov006_0213cb7c,
-    data_ov006_0213cb84;
+extern MgPmf pmf_dScMgJump_c_State_Result, pmf_dScMgJump_c_State_Intro, pmf_dScMgJump_c_State_End,
+    pmf_dScMgJump_c_State_Final, pmf_dScMgJump_c_State_Idle, pmf_dScMgJump_c_State_Idle_2,
+    pmf_dScMgJump_c_State_Play;
 }
 
 namespace {
 struct BnpSeat { MgPmf *rec; unsigned rom; void *face; const char *what; };
 const BnpSeat g_bnp_seats[] = {
-    {&data_ov006_0213cb4c, 0x020ee3ecu, (void *)bnp_f020ee3ec, "0213cb4c"},
-    {&data_ov006_0213cb54, 0x020ee5b8u, (void *)bnp_f020ee5b8, "0213cb54"},
-    {&data_ov006_0213cb5c, 0x020ee44cu, (void *)bnp_f020ee44c, "0213cb5c"},
-    {&data_ov006_0213cb6c, 0x020ee2c4u, (void *)bnp_f020ee2c4, "0213cb6c"},
-    {&data_ov006_0213cb74, 0x020ee2c0u, (void *)bnp_f020ee2c0, "0213cb74"},
-    {&data_ov006_0213cb7c, 0x020ee2c0u, (void *)bnp_f020ee2c0, "0213cb7c"},
-    {&data_ov006_0213cb84, 0x020ee508u, (void *)bnp_f020ee508, "0213cb84"},
+    {&pmf_dScMgJump_c_State_Result, 0x020ee3ecu, (void *)bnp_f020ee3ec, "0213cb4c"},
+    {&pmf_dScMgJump_c_State_Intro, 0x020ee5b8u, (void *)bnp_f020ee5b8, "0213cb54"},
+    {&pmf_dScMgJump_c_State_End, 0x020ee44cu, (void *)bnp_f020ee44c, "0213cb5c"},
+    {&pmf_dScMgJump_c_State_Final, 0x020ee2c4u, (void *)bnp_f020ee2c4, "0213cb6c"},
+    {&pmf_dScMgJump_c_State_Idle, 0x020ee2c0u, (void *)bnp_f020ee2c0, "0213cb74"},
+    {&pmf_dScMgJump_c_State_Idle_2, 0x020ee2c0u, (void *)bnp_f020ee2c0, "0213cb7c"},
+    {&pmf_dScMgJump_c_State_Play, 0x020ee508u, (void *)bnp_f020ee508, "0213cb84"},
 };
 }  /* namespace */
 

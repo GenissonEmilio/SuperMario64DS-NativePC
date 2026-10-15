@@ -103,7 +103,7 @@ void dExtShadowModel_c::Destructor0()    { _ZN17dExtShadowModel_cD0Ev(this); }
 //       void (void*, Vector3_16*, void*, int)                          4 args
 //   _ZN8Particle10SysTracker8Contents6Create...      src/_ZN8Particle6System3New...c:8
 //       void *(void*, unsigned, void*, const void*, void*)             5 args
-//   func_ov006_020e39e0                              src/func_ov006_020e5450.c:57
+//   func_ov006_020e39e0                              src/Curling2_ResolveStoneCollision.c:57
 //       void (char *c, int a, int b)                                   3 args
 //
 // THE SHADOW RULE APPLIES TO THE FIRST ONE and is why it binds the spelling it
@@ -195,16 +195,12 @@ extern "C" void func_ov006_020e39e0(char *c, int a, int b)
 #include "dBgCh_Lin.h"
 
 extern "C" {
-void _ZN8dActor_c25OnAimedAtWithEggReturnVecEv(Vector3 *ret, void *self);
 void _ZN9dBgCh_Lin10GetClsnPosEv(Vector3 *ret, void *self);
 }
 
-Vector3 dActor_c::OnAimedAtWithEggReturnVec()
-{
-    Vector3 out;
-    _ZN8dActor_c25OnAimedAtWithEggReturnVecEv(&out, this);
-    return out;
-}
+// PORTDROP2: dActor_c::OnAimedAtWithEggReturnVec is a real member of
+// src/runtime/actor/d_actor.cpp now (returns the Vector3 by value), so the face that
+// stood here would define it a second time. Retired.
 
 // PORTSYNC3: dBgCh_Lin::GetClsnPos is a real member of src/engine/collision/
 // dBgCh_Lin.cpp now (it returns lineEnd), so the reverse face that stood here

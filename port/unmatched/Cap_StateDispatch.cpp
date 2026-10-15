@@ -60,7 +60,7 @@ void ActorSetRangesFace::SetRanges(int a, int b, int c, int d)
    sides, so the C-decorated reference aliases onto the C++ definition. */
 #pragma comment(linker, "/alternatename:__Z11UpdateAngleRssis=?UpdateAngle@@YAXAAFFHF@Z")
 /* func_ov002_020b6fcc calls Player::InitMetalWario by its Itanium C name, but
-   src/actors/Player.cpp is a real C++ __thiscall method
+   src/game/player/Player.cpp is a real C++ __thiscall method
    (?InitMetalWario@Player@@QAEXXZ, this in ecx). The C caller passes self on
    the stack, so this is a cdecl->thiscall face: read self off the stack and
    call the real method with this in ecx. InitVanishLuigi's own TU is C-linkage,

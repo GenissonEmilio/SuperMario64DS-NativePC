@@ -196,8 +196,8 @@
 #   data_ov092_02132350  0x8c  } the three path blocks data_ov092_02132294
 #   data_ov092_021323dc  0x90  } points at; the last is clamped to .data's end
 #   data_ov092_0213246c  0xd4  } at 0x02132540, which is also .bss's start
-#   data_ov092_02132540  0x8   SharedFilePtr (model file 0x3c9), 8 bytes
-#   data_ov092_02132548  0x8   SharedFilePtr (collision file 0x3ca), 8 bytes
+#   gOnimasuModelFile  0x8   SharedFilePtr (model file 0x3c9), 8 bytes
+#   gOnimasuCollisionFile  0x8   SharedFilePtr (collision file 0x3ca), 8 bytes
 #   data_ov092_02132550  0xc   func_020731dc destructor list NODE -- the exact
 #   data_ov092_0213255c  0xc   8d1f9d13b shape, and dsd sized BOTH correctly
 #   data_ov092_02132568  0x58  inferred by clamping to .bss's end; the sinit
@@ -221,8 +221,8 @@ data_ov092_02132550@0x02132550 data_ov092_0213255c@0x0213255c
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov092_02132540                        now defined by src/actors/daOnms_c.cpp
-#   data_ov092_02132548                        now defined by src/actors/daOnms_c.cpp
-#   data_ov092_02132568                        now defined by src/actors/daOnms_c.cpp
+#   gOnimasuModelFile                        now defined by src/game/actors/d_a_onms.cpp
+#   gOnimasuCollisionFile                        now defined by src/game/actors/d_a_onms.cpp
+#   data_ov092_02132568                        now defined by src/game/actors/d_a_onms.cpp
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov092_02132540! data_ov092_02132548! data_ov092_02132568!
+gOnimasuModelFile! gOnimasuCollisionFile! data_ov092_02132568!

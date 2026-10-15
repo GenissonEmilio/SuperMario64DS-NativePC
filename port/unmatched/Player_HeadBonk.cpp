@@ -1,4 +1,4 @@
-/* HOST COPY of src/actors/Player.cpp -- the Player's head-bonk check.
+/* HOST COPY of src/game/player/Player.cpp -- the Player's head-bonk check.
  *
  * WHY THIS FILE EXISTS. Vtable slot 28, Actor::OnHitFromUnderneath(Actor&),
  * has TWO dispatch sites in this port and the two matched transcriptions
@@ -7,7 +7,7 @@
  *   src/func_ov002_020eeca8.cpp   models Actor as a C++ class, so MSVC emits
  *                                 __thiscall: this in ecx, the argument
  *                                 pushed, and the CALLEE pops it.
- *   src/actors/Player.cpp   models the vtable as a plain array of
+ *   src/game/player/Player.cpp   models the vtable as a plain array of
  *                                 function pointers taking self explicitly:
  *                                     (*(void (**)(void *, char *))
  *                                        (*(int *)a + 0x70))(a, self)
@@ -37,7 +37,7 @@
  * exclamation box in jrb ship from below" arrives here.
  *
  * PROOF (run linkw, lane l1). Both spellings compiled standalone with the port's
- * own cl, /O2 /FAsc, and read off the listing. src/actors/Player.cpp:
+ * own cl, /O2 /FAsc, and read off the listing. src/game/player/Player.cpp:
  *
  *     ; (*(void (**)(void *, char *))(*(int *)a + 0x70))(a, self);
  *       8b 01      mov  eax, DWORD PTR [ecx]

@@ -15,6 +15,12 @@
  * up by 7; otherwise it bobs down by 3. classInit is the KM2_AMI_BOU
  * factory. This TU owns g_profile_KM2_AMI_BOU.
  */
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_km2_ami_bou_AssetId {
+    ASSET_KM2_AMI_BOU_BMD = 0x065d,
+    ASSET_KM2_AMI_BOU_KCL = 0x065e
+};
+
 #include "daObjKm2_Ami_Bou_c.h"
 #include "SharedFilePtr.h"
 
@@ -140,5 +146,5 @@ s32 daObjKm2_Ami_Bou_c::CleanupResources()
 // @symbol _ZN18daObjKm2_Ami_Bou_cD0Ev
 /* The inline destructor in the header emits D1 then D0, and no D2. */
 
-AmiBouModelFilePtr data_ov045_021131b0(1629);
-AmiBouCollisionFilePtr data_ov045_021131a8(1630);
+AmiBouModelFilePtr data_ov045_021131b0(ASSET_KM2_AMI_BOU_BMD);
+AmiBouCollisionFilePtr data_ov045_021131a8(ASSET_KM2_AMI_BOU_KCL);

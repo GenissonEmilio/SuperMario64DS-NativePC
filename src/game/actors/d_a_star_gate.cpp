@@ -26,7 +26,7 @@
  * Leftover: StarGateVector3 POD for data_ov100_02148948, messagePos, tmp,
  *   vec -- Vector3's inline dtor is non-POD; a Vector3 BSS object would
  *   register in sinit.
- * Leftover: data_ov100_02148934 model handle (SharedFilePtr.h has no fields;
+ * Leftover: gObjStargateModelFile model handle (SharedFilePtr.h has no fields;
  *   StarGateModelFilePtr is the 8-byte wrapper). data_ov100_02148390 gate
  *   table.
  * Leftover: *(Vector3 *)&mPosX / mScaleX / unk_0a4 (dActor_c consecutive
@@ -34,6 +34,11 @@
  * Leftover: data_0209caa0 +0x41 character byte (SaveData.mCharacter).
  *   SaveData.h shifts this TU's @432..@446 PTMF uniquifiers in symbols.txt.
  */
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_star_gate_AssetId {
+    ASSET_OBJ_STARGATE_BMD = 0x04a1
+};
+
 #include "daStarGate_c.h"
 #include "Player.h"
 #include "SharedFilePtr.h"
@@ -78,8 +83,8 @@ struct StarGateModelFilePtr : SharedFilePtr {
     ~StarGateModelFilePtr();
 };
 
-extern "C" StarGateModelFilePtr data_ov100_02148934;
-StarGateModelFilePtr data_ov100_02148934(0x4a1);
+extern "C" StarGateModelFilePtr gObjStargateModelFile;
+StarGateModelFilePtr gObjStargateModelFile(ASSET_OBJ_STARGATE_BMD);
 
 struct StarGateVector3 {
     s32 x;
@@ -161,7 +166,7 @@ int daStarGate_c::InitResources()
 {
     param1 = (u32)param1 >> 16;
 
-    BMD_File *file = (BMD_File *)Model::LoadFile(data_ov100_02148934);
+    BMD_File *file = (BMD_File *)Model::LoadFile(gObjStargateModelFile);
     if (!mModel.SetFile(file, 1, 1))
         return 0;
 
@@ -220,7 +225,7 @@ void daStarGate_c::OnPendingDestroy()
 // @symbol _ZN12daStarGate_c16CleanupResourcesEv
 int daStarGate_c::CleanupResources()
 {
-    data_ov100_02148934.Release();
+    gObjStargateModelFile.Release();
     return 1;
 }
 

@@ -84,7 +84,7 @@ int *_ZN20daObjFl_Fall_Block_cD1Ev(int *self);      /* slot 16 D1               
    wrong, and that the wrong name was on the decomp-side correction list. main
    has since made the correction: config/arm9/overlays/ov022/symbols.txt:54
    carries _ZN20daObjFl_Fall_Block_cD0Ev at 0x021123d0, size 0x64, and
-   src/game/actors/daObjFl_Fall_Block_c.cpp carries `// @symbol
+   src/game/actors/d_a_obj_fl_fall_block.cpp carries `// @symbol
    _ZN20daObjFl_Fall_Block_cD0Ev` with no body under it, because the class
    header spells the destructor inline. So the stale name asked for a symbol
    nothing exports any more, and this slot pointed at an unresolved row.

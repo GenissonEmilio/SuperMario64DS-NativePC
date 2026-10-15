@@ -50,7 +50,7 @@ struct dBgCh_Gnd : dBgCh, dBgPi {
      * references to the ROM's existing tables. */
     virtual ~dBgCh_Gnd();
 
-    /* DECLARED, defined out of line in src/engine/collision/dBgCh_Gnd.cpp
+    /* DECLARED, defined out of line in src/engine/collision/d_bg_ch_gnd.cpp
      * as real C++ -- complete-object context for every ROM caller, hence C1.
      * The ROM kept no C2 sibling: nothing derives from dBgCh_Gnd.
      */

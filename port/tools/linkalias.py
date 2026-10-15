@@ -77,8 +77,8 @@ import sys
 FIXED = {
     # the two Heap*-taking Memory entry points: the flat spellings ActorBase.cpp's
     # destructors call. Heap.cpp defines them as namespace functions (cdecl).
-    "__ZN6Memory10DeallocateEPvP4Heap": "?Deallocate@Memory@@YAXPAXPAUHeap@@@Z",
-    "__ZN6Memory8AllocateEjiP4Heap": "?Allocate@Memory@@YAPAXIHPAUHeap@@@Z",
+    "__ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE": "?Deallocate@Memory@@YAXPAXPAUHeap_t@mHeap@@@Z",
+    "__ZN6Memory8AllocateEjiPN5mHeap6Heap_tE": "?Allocate@Memory@@YAPAXIHPAUHeap_t@mHeap@@@Z",
     # the short-angle helpers of src/ApproachAngle.cpp: callers disagree about the
     # return type (void / int / bool); every spelling is the same cdecl function
     # port shadows still spell the base class ActorBase; main's name is fBase_c and

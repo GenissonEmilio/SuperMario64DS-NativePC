@@ -15,16 +15,16 @@
 #
 # ---- THE FIVE ROWS ---------------------------------------------------------
 #
-#   func_ov004_020b31b4  pmf at self+0x08, guard *(int*)(self+0x20) == 0x1d
-#   func_ov004_020b321c  pmf at self+0x00, same guard
+#   Banner_Draw  pmf at self+0x08, guard *(int*)(self+0x20) == 0x1d
+#   Banner_Update  pmf at self+0x00, same guard
 #   _ZN10dMgState_c6RenderEv  pmf at self+0x10, guard *(int*)(self+0x18) == -1
 #   _ZN10dMgState_c8BehaviorEv  pmf at self+0x08, same guard, ApproachLinear on +0x1c
-#   func_ov004_020b3278  THE WRITER of the first two objects' fields, and the
-#                        one TABLE dispatch in the set, on data_ov004_020bf490
+#   Banner_Init  THE WRITER of the first two objects' fields, and the
+#                        one TABLE dispatch in the set, on sBannerSetupTable
 #
 # Two DIFFERENT classes, and that is read off the ROM rather than off the
 # names. The first two test a state word at +0x20 and are the object
-# func_ov004_020b3278 fills; the second two test a message index at +0x18 and
+# Banner_Init fills; the second two test a message index at +0x18 and
 # are the object _ZN10dMgState_c8SetStateEi (the state SETTER, still a host copy) fills.
 #
 # ---- THE ROM, AT EACH ROW'S OWN ADDRESS ------------------------------------
@@ -43,7 +43,7 @@
 #             add r3,r0,#0x10 | ldr r1,[r3,#4] | ldreq r1,[r3] | blx r1
 #   020b8778  ldr r1,[r4,#0x18]; cmp mvn #0 | bl 0x203ae58 on r4+0x1c
 #             ldr r0,[r4,#8]; cmp #0 | add r3,r4,#8 | ldreq r1,[r3] | blx r1
-#   020b3278  ldr r0,[r1,r2,lsl #3]  -- STRIDE EIGHT on data_ov004_020bf490
+#   020b3278  ldr r0,[r1,r2,lsl #3]  -- STRIDE EIGHT on sBannerSetupTable
 #             cmp r0,#0 | add r0,r8,r1,asr #1 | ldreq r1,[r3] | blx r1
 #
 # The null guard is a test of the CODE word alone in every one of the five, and
@@ -62,9 +62,9 @@
 #   020b321c   mov ecx,[eax+4]   add ecx,eax  pop ebp  JMP edx
 #   020b8714   mov ecx,[eax+20]  add ecx,eax  pop ebp  JMP edx
 #   020b8778   mov ecx,[esi+12]  add ecx,esi  pop esi  pop ebp  JMP eax
-#   020b3278   mov eax,?data_ov004_020bf490@@3PAP8Base@@AEXXZA[ecx*8]
+#   020b3278   mov eax,?sBannerSetupTable@@3PAP8Base@@AEXXZA[ecx*8]
 #              test eax,eax
-#              mov ecx,?data_ov004_020bf490@@3PAP8Base@@AEXXZA[ecx*8+4]
+#              mov ecx,?sBannerSetupTable@@3PAP8Base@@AEXXZA[ecx*8+4]
 #              add ecx,esi
 #              CALL eax        -- no push before it, no add esp after it
 #
@@ -75,7 +75,7 @@
 # frame fully restored, so the callee is entered on the forwarder's own cdecl
 # frame and finds the receiver at [esp+4] where its one declared argument lives:
 # a PLAIN CDECL BODY is correct in those cells and no face is written for them.
-# func_ov004_020b3278 is a __thiscall indirect with the receiver in ecx and ZERO
+# Banner_Init is a __thiscall indirect with the receiver in ecx and ZERO
 # stack arguments, so its twelve cells hold __FASTCALL FACES.
 #
 # /Zp4 IS A MEASURED NO-OP on all five: each TU was compiled both ways and the
@@ -91,13 +91,13 @@
 # a zero adjustment, then write the host body):
 #
 #   port_mg_framework_tables_seat   unmatched/MgBase_StateDispatch.cpp
-#       the THIRTY code-bearing cells of data_ov004_020bf428 (11),
-#       data_ov004_020bf4f8 (7) and data_ov004_020bf490 (12), which are ov004
+#       the THIRTY code-bearing cells of sBannerUpdateTable (11),
+#       sBannerDrawTable (7) and sBannerSetupTable (12), which are ov004
 #       .bss filled by __sinit_ov004_020b955c. The seat runs AFTER that
 #       constructor, so the DESTINATION is what is rewritten and the thirty
 #       .data sources it copies from are left alone -- seating a source ahead of
 #       a sinit would make lane PMFB3's framework seat, which checks
-#       data_ov004_020beb88 and _020beb98 against the ROM's own words at the
+#       sMgFxUpdateTable and _020beb98 against the ROM's own words at the
 #       same point in the boot, refuse.
 #
 #   port_mg_base_writer_seat        unmatched/MgBase_StateSetter.cpp
@@ -118,7 +118,7 @@
 #
 #     4   data_ov004_020bbf4c/_bf54/_bf5c/_bf64  sinit sources for the two
 #         framework tables lane PMFB3 seated at the destination
-#    30   data_ov004_020bc154.._020bc26c         sinit sources for the three
+#    30   pmf_Banner_UpdateZoom.._020bc26c         sinit sources for the three
 #         tables this lane seats at the destination
 #     7   _020bc17c _020bc1b4 _020bc1ec _020bc20c _020bc224 _020bc254 _020bc274
 #         the 020b3278 object's own fields                    SEATED HERE
@@ -131,16 +131,16 @@
 #
 # ---- THE ONE ROW THAT WOULD HAVE BROKEN QUIETLY ---------------------------
 #
-# data_ov004_020bc254 is never copied into an object at all.
-# src/func_ov004_020b40c0.c COMPARES the object's own pair against it:
+# pmf_Banner_UpdatePressed_2 is never copied into an object at all.
+# src/Banner_IsPressFinished.c COMPARES the object's own pair against it:
 #
 #     if (o[0] == d[0] && (o[1] == d[1] || o[0] == 0) && o[9] == o[10])
 #
 # an identity test on the code word. Seating the field without seating the
 # sentinel would make that test answer false forever, with no crash and no
 # report -- the failure shape a byte gate cannot see and a battery would not
-# convict. It holds the same word (0x020b4214) as data_ov004_020bc224, which
-# func_ov004_020b422c installs into the same field, so both sides move together
+# convict. It holds the same word (0x020b4214) as pmf_Banner_UpdatePressed, which
+# Banner_Press installs into the same field, so both sides move together
 # and the test answers what the cartridge answers.
 #
 # ---- WHAT THE SEAT KILLED --------------------------------------------------
@@ -171,9 +171,9 @@
 # dispatches those itself and counts there.
 #
 # ONE /alternatename, in unmatched/MgBase_StateDispatch.cpp.
-# src/func_ov004_020b3278.cpp declares `extern PMF data_ov004_020bf490[]` at
+# src/Banner_Init.cpp declares `extern PMF sBannerSetupTable[]` at
 # namespace scope, so MSVC encodes the member-pointer type into the reference
-# and spells it ?data_ov004_020bf490@@3PAP8Base@@AEXXZA -- read off that TU's
+# and spells it ?sBannerSetupTable@@3PAP8Base@@AEXXZA -- read off that TU's
 # own /FAsc listing, not guessed -- while the ov004 mount defines the plain C
 # name. Its seven other data references already have their aliases in
 # hal/scene_mg_faces_gen.cpp and hal/scene_mg_faces.cpp. Safe under
@@ -182,10 +182,10 @@
 #
 # ---- NOT TAKEN, WITH THE MEASUREMENT --------------------------------------
 #
-# func_ov004_020b52fc and func_ov006_020cf758, the other two of PMFB3's six.
+# Coin_Update and TrmpLine_Update, the other two of PMFB3's six.
 # Both read the pair at self+0x00 of dScMgMemory2_c and dScMgTrampoline_c, whose
 # writers are constructors filling their own +0x00 out of the
-# data_ov004_020bc7d4 block and the ov006 trampoline records. That is a
+# gMgCoinsShowDelta block and the ov006 trampoline records. That is a
 # different writer family and its own gate; the nine ov004 pairs it needs are
 # the nine the sweep above leaves unseated, and they are named there so the next
 # lane starts from the measurement.
@@ -201,12 +201,12 @@
 # inside code), the split by field that keeps the two code-word sets disjoint,
 # the four by-value sentinels that move with their installs, the __fastcall
 # face shape off the TU's own listing, and the two measured reasons
-# func_ov006_020c07e8 is NOT taken with it (its src TU needs /Zp4, and neither
+# MascotWalker_Update is NOT taken with it (its src TU needs /Zp4, and neither
 # the ROM nor the src guards a null pair at 0x020c07e8 so the port's added
 # guard is load-bearing).
-src/actors/unit020bfec0.cpp
-src/actors/unit020b2c84.cpp
-# FOLDED into src/actors/unit020b2c84.cpp (row 208): src/func_ov004_020b321c.cpp
-# FOLDED into src/actors/unit020b2c84.cpp (row 208): src/func_ov004_020b3278.cpp
-src/actors/dMgState_c.cpp
+src/minigames/unit020bfec0.cpp
+src/minigames/unit020b2c84.cpp
+# FOLDED into src/minigames/unit020b2c84.cpp (row 208): src/Banner_Update.cpp
+# FOLDED into src/minigames/unit020b2c84.cpp (row 208): src/Banner_Init.cpp
+src/minigames/d_mg_state.cpp
 # FOLDED into src/actors/dMgState_c.cpp (row 211): src/_ZN10dMgState_c8BehaviorEv.cpp

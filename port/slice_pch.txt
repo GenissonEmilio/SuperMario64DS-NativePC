@@ -37,7 +37,7 @@
 # checks before writing a line of seat code, and all three agree on 36:
 #
 #   1. SPAN. config/arm9/overlays/ov006/symbols.txt has data_ov006_0213d9cc
-#      followed by data_ov006_0213da5c. That is 36 words. A 37th slot cannot
+#      followed by pmf_dScMgPachinko2_c_Paddle_State4. That is 36 words. A 37th slot cannot
 #      exist inside this symbol; index 36 IS the next symbol.
 #   2. TERMINAL SLOT. Slot 35 holds 0x020ad660, the value every
 #      dScMgBase_c-derived table in the family holds at slot 35.
@@ -47,7 +47,7 @@
 # AND THE VICTIM IS NAMED, which is what makes this more than a span argument.
 # src/__sinit_ov006_02131cd0.c line 89 reads
 #
-#     data_ov006_02142734.p4 = data_ov006_0213da5c;
+#     data_ov006_02142734.p4 = pmf_dScMgPachinko2_c_Paddle_State4;
 #
 # and __sinit_ov006_02131cd0 is the overlay constructor of dScMgPachinko2_c,
 # id 0x171, MgLakituLaunch -- its copied pairs run 0x0213da5c..0x0213db44 and
@@ -64,24 +64,24 @@
 # port/unmatched/MgPachinko_StateDispatch.cpp because the mounted pair words
 # hold DS code addresses that no host symbol names:
 #
-#     src/func_ov006_020fad34.cpp   data_ov006_02142604
-#     src/func_ov006_020fc7d0.cpp   data_ov006_02142624
-#     src/func_ov006_020fe248.cpp   data_ov006_02142644
-#     src/func_ov006_020fb60c.cpp   data_ov006_0214266c
-#     src/func_ov006_020fda7c.cpp   data_ov006_02142694
+#     src/PachinkoBg_Update.cpp   data_ov006_02142604
+#     src/PachinkoPipe_UpdateAll.cpp   data_ov006_02142624
+#     src/PachinkoBobOmb_UpdateAll.cpp   data_ov006_02142644
+#     src/PachinkoFlyer_Update.cpp   data_ov006_0214266c
+#     src/PachinkoBall_UpdateAll.cpp   data_ov006_02142694
 #
 # ONLY TWO OF THE FIVE ARE THE POINTER-TO-MEMBER WALL, and the split is the one
 # section 4's rulebook corollary keys on. A `::*` sweep of the whole 623-TU
 # closure -- run because "a link is not a complete detector for this wall" --
 # returns exactly two ov006 TUs, and both are this class's:
 #
-#     func_ov006_020fad34   `typedef void (C::*PMF)(int); struct Entry{PMF pmf;};`
+#     PachinkoBg_Update   `typedef void (C::*PMF)(int); struct Entry{PMF pmf;};`
 #                           declared INSIDE extern "C", so it mangles to the
 #                           plain C name the mount already defines and the
 #                           LINKER IS SATISFIED. It is section 4's silent
 #                           extern-"C" class: sizeof(Entry) is 4 on MSVC where
 #                           the ROM strides 8.
-#     func_ov006_020fb60c   `extern PMF data_ov006_0214266c[];` at file scope
+#     PachinkoFlyer_Update   `extern PMF data_ov006_0214266c[];` at file scope
 #                           OUTSIDE extern "C", so this one does emit a mangled
 #                           member-pointer symbol and the link would name it.
 #
@@ -143,11 +143,11 @@
 # reports ZERO floors for this class. The claim "each is a named trap" above is
 # therefore historical; MgPachinko_Traps.cpp no longer defines any trap body.
 #
-# ov004 func_ov004_020ae858 is the same class of hole and is already named by
+# ov004 Mg_DrawMenu is the same class of hole and is already named by
 # port/slice_mg1.txt.
 #
 # AMENDED, run mg12 lane PANEL: it is no longer a hole of that class. It has a src
-# TU now (src/func_ov004_020ae858.cpp, NONMATCHING at 10 of 118 words). It is still
+# TU now (src/Mg_DrawMenu.cpp, NONMATCHING at 10 of 118 words). It is still
 # true that no delink block covers it.
 #
 # THREE ADDRESSES HAVE A src FILE BUT NO DELINK BLOCK, which is a join miss and
@@ -161,90 +161,90 @@
 
 # ---- ov006, dScMgPachinko_c's own closure, wave 1 -----------------------
 
-src/actors/dScMgPachinko_c.cpp
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/_ZN15dScMgPachinko_cD1Ev.cpp
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fa844.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fa924.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fa9a0.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fa9c8.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020faac8.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fab70.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fac48.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fad90.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fadfc.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fae20.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fae90.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020faeec.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020faf14.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020faf6c.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fb0fc.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fb1c4.c
+src/minigames/d_s_mg_pachinko.cpp
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/_ZN15dScMgPachinko_cD1Ev.cpp
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoDeco_UpdateAll.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoDeco_ShowAll.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoDeco_HideAll.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBg_State3.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBg_State2.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBg_State1.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBg_State0.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBg_Start.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBg_Stop.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoTarget_DrawAll.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoTarget_ShowAll.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoTarget_HideAll.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoFlyer_Draw.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoFlyer_CheckHits.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoFlyer_State4.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoFlyer_State3.c
 # Run mg5, lane PCOLL, the HIT-DETECTION CHAIN; see the wave 5 section at the
 # foot of this file for the whole chain and where each of its four bodies came
 # from. 020fb230 = state 2 of data_ov006_0214266c and a callee of
-# src/func_ov006_020fb45c.c, void(char*,int) over the 0x1c-stride array; from
+# src/PachinkoFlyer_State1.c, void(char*,int) over the 0x1c-stride array; from
 # origin/main, byte-matched there. Was a reported floor in the dispatch switch
 # AND a trap; both are gone and the switch calls it.
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fb230.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fb45c.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fb4e0.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fb670.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fb74c.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fb8fc.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fb97c.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fba28.cpp
-# func_ov006_020fba48 is back (run linkfull, lane RS4PORT): main #3107 spells
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoFlyer_State2.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoFlyer_State1.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoFlyer_State0.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoTarget_Choose.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoFx_DrawAll.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoFx_Spawn.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/Pachinko_CheckTargetsLeft.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/Pachinko_DrawScore.cpp
+# Pachinko_DrawTopRecord is back (run linkfull, lane RS4PORT): main #3107 spells
 # the stored best as the full word it is (getter int(void), drawer int(int));
-# main's body lives in its promoted src/actors/dScMgPachinko_c.cpp, so this
+# main's body lives in its promoted src/minigames/d_s_mg_pachinko.cpp, so this
 # per-function file carries the same three lines (the SYNC8C route (a)
 # back-port), byte-identical under mwccarm 2004/b56, and
 # port/unmatched/MgHud_HighScore.cpp is retired. HSDISP's record, kept:
-# Run mg5, lane HSDISP. src/func_ov006_020fba48.c WAS EXCLUDED, host-copied in
+# Run mg5, lane HSDISP. src/Pachinko_DrawTopRecord.c WAS EXCLUDED, host-copied in
 # port/unmatched/MgHud_HighScore.cpp. It is the HIGH SCORE half of this class's
-# HUD and the ROM rides the 32-bit score from func_ov004_020adc1c into
-# func_ov004_020b19f0 in r0 (0x020fba50, 0x020fba54). The src TU declares that
+# HUD and the ROM rides the 32-bit score from Mg_GetTopRecord into
+# Mg_DrawTopLeftCounter in r0 (0x020fba50, 0x020fba54). The src TU declares that
 # value as an s8 at both ends, so MSVC writes one byte of the outgoing slot
 # (mov byte ptr [ebp-4],al) and hands over all four (push dword ptr [ebp-4]).
 # The drawer received 0x81fc5c00 on a build whose stored high score and both
 # getters measured 0. Litter above the cap paints 999999, litter that lands
-# negative misses func_ov004_020b1ea4's signed clamp and indexes the glyph
+# negative misses Mg_DrawNumber's signed clamp and indexes the glyph
 # table out of bounds. See that file's banner for the disassembly.
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fba48.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fba64.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fbad4.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fbbe8.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fbcb8.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fbd38.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fc144.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fc1b4.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fc1f8.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fc2ec.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fc500.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fc844.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/Pachinko_DrawTopRecord.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoPopup_DrawAll.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoPopup_UpdateAll.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/Pachinko_ClearAimLine.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/Pachinko_PlotSubBg2Pixels.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/Pachinko_DrawAimLine.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoPipe_DrawAll.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoPipe_SetAll.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoPipe_State3.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoPipe_State2.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoPipe_State1.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoPipe_ResetAll.c
 # Run mg5, lane INTEG: dScMgPachinko_c bodies recovered on branch decomp/pach-
 # bodies (78e6499d0). 020fc8c0 = slot-9 render homing helper, void(char*);
 # its trap in MgPachinko_Traps.cpp is removed.
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fc8c0.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fc9b0.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fca1c.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBall_DrawAll.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBall_CountNearby.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBall_CheckPipes.c
 # Run mg5, lane PCOLL, wave 5. 020fcb4c = THE HIT REACTION, void(char*,int);
 # from branch decomp/pach-bodies (ba851ff71) where it is BYTE-MATCHED. Tail-
-# called from three sites -- 0x020fd2b0 in func_ov006_020fd17c, 0x020fd864 in
-# func_ov006_020fd2d8, 0x020fd9b0 in func_ov006_020fd894 -- all three of which
+# called from three sites -- 0x020fd2b0 in PachinkoBall_State3, 0x020fd864 in
+# PachinkoBall_State2, 0x020fd9b0 in PachinkoBall_State1 -- all three of which
 # are already in this slice, so before this line all three tail calls landed in
 # the do-nothing trap. Its trap is removed.
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fcb4c.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fcd8c.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fce04.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fcec4.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fd088.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fd17c.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBall_AimAtTarget.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBall_CheckFall.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBall_State6.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBall_State5.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBall_State4.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBall_State3.c
 # Run mg5, lane PCOLL, wave 5. 020fd2d8 = state 2 of data_ov006_02142694, the
 # IN-FLIGHT state, void(char*,int); from origin/main, byte-matched there. It is
 # the frame driver of the whole chain: it integrates the slot's velocity,
-# bounces it off the board edges, then calls func_ov006_020fdaf0 (the proximity
-# scan), func_ov006_020fca1c and func_ov006_020fc9b0, and tail-calls
-# func_ov006_020fcb4c. It was a reported floor in the dispatch switch, so with
+# bounces it off the board edges, then calls PachinkoBall_CheckHitByBobOmb (the proximity
+# scan), PachinkoBall_CheckPipes and PachinkoBall_CountNearby, and tail-calls
+# PachinkoBall_AimAtTarget. It was a reported floor in the dispatch switch, so with
 # it absent the other three could not run even when they were present.
 #
 # ONE HOST-SAFETY EDIT WAS MADE TO THIS COPY and it is documented in the TU's
@@ -252,39 +252,39 @@ src/actors/dScMgPachinko_c.cpp
 # `(char *)(int)` macros, which is free on the DS and TRUNCATES A 64-BIT HOST
 # POINTER here. The three sites are rewritten as char* plus integer offset. The
 # decomp-side TU on main is deliberately left alone.
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fd2d8.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fd894.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fd9cc.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBall_State2.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBall_State1.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBall_State0.c
 # Run mg5, lane PCOLL, wave 5. 020fdaf0 = THE PROXIMITY SCAN, void(char*,int);
 # from branch decomp/pach-bodies (34e6c0e8c). NONMATCHING (size 0x23c vs 0x250,
 # codegen residue only) but logic-verified against the ROM disassembly, and
 # audited host-safe by this lane: all five of its `(int)` casts are integer-on-
-# integer, none of them touches a pointer. Called by func_ov006_020fd088,
+# integer, none of them touches a pointer. Called by PachinkoBall_State4,
 # _020fd17c and _020fd2d8; its trap is removed.
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fdaf0.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBall_CheckHitByBobOmb.c
 # Run mg5, lane INTEG: 020fdd40 = slot-6 spawn body, void(char*); trap removed.
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fdd40.cpp
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fe1a8.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fe1d0.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fe2bc.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fe2e4.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/Pachinko_SpawnWave.cpp
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBobOmb_ClearAll.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBobOmb_DrawAll.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/Pachinko_CountLaunch.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBobOmb_State0.c
 # Run mg5, lane INTEG: 020fe394 = state 1 of data_ov006_02142644, void(char*,int);
 # wired into the address switch in MgPachinko_StateDispatch.cpp (was a floor).
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fe394.cpp
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fe750.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fe90c.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fea54.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020feba8.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/_ZN15dScMgPachinko_c13OnYoshiTryEatEi.cpp
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/_ZN15dScMgPachinko_c6RenderEv.cpp
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/_ZN15dScMgPachinko_c8BehaviorEv.cpp
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBobOmb_State1.cpp
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBobOmb_State2.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBobOmb_State3.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoBobOmb_State4.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/Pachinko_ResetRound.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/_ZN15dScMgPachinko_c10StartRoundEi.cpp
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/_ZN15dScMgPachinko_c6RenderEv.cpp
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/_ZN15dScMgPachinko_c8BehaviorEv.cpp
 # Run mg5, lane INTEG: dScMgPachinko_c::InitResources (vtable slot 0), the
 # copy-across black-screen fix from origin/main. Compiles as the __thiscall C++
 # member against include/dScMgPachinko_c.h; a cdecl face in MgPachinko_Faces.cpp
 # forwards to it and MgPachinko_Faces.cpp aliases _ZN15dScMgPachinko_c13InitResourcesEv onto that
 # face. Its trap in MgPachinko_Traps.cpp is removed.
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/_ZN15dScMgPachinko_c13InitResourcesEv.cpp
-src/actors/dScMgSlots.cpp
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/_ZN15dScMgPachinko_c13InitResourcesEv.cpp
+src/minigames/d_s_mg_slots.cpp
 
 # ---- WAVE 1's CORRECTION: FOUR ov004 LINES REMOVED --------------------------
 #
@@ -294,10 +294,10 @@ src/actors/dScMgSlots.cpp
 # lines this walk found are exactly that -- run link60 lane MG2 excluded them
 # and put the bodies in port/unmatched/:
 #
-#     src/_ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv.cpp   MgBase_DeclConflict.cpp
-#     src/_ZN11dScMgBase_c16OnAimedAtWithEggEv.cpp   MgBase_DeclConflict.cpp
+#     src/_ZN11dScMgBase_c21RestoreScreenFromMenuEv.cpp   MgBase_DeclConflict.cpp
+#     src/_ZN11dScMgBase_c17SaveScreenForMenuEv.cpp   MgBase_DeclConflict.cpp
 #     src/minigames/d_s_mg_base.cpp   MgBase_Slot1.cpp
-#     src/func_ov004_020b2cb8.c     MgBase_LangTable.cpp
+#     src/Mg_LoadBannerFiles.c     MgBase_LangTable.cpp
 #
 # The first three are port/mg_fanout_costs.txt section 6a's declaration
 # conflict and they announce themselves loudly: MSVC refuses each with
@@ -306,7 +306,7 @@ src/actors/dScMgSlots.cpp
 #
 # because include/decl_common.h declares them with void* while their src TUs
 # define them with char* and Obj*. The fourth is QUIETER AND WOULD HAVE BEEN
-# WORSE. src/func_ov004_020b2cb8.c is a .c file, so it compiles clean and
+# WORSE. src/Mg_LoadBannerFiles.c is a .c file, so it compiles clean and
 # collides only at link, as an LNK2005 against MgBase_LangTable.cpp's
 # definition -- and that host copy exists because the src TU's fabricated
 # 29-entry ramp initialiser faulted the first minigame boot at 0x00000065
@@ -323,11 +323,11 @@ src/actors/dScMgSlots.cpp
 # ---- ov004, the framework lines no earlier slice carried, wave 1 -------
 
 src/minigames/d_s_mg_base.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 325): src/func_ov004_020b1a5c.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 325): src/Mg_DrawTopRightCounter.c
 # Run mg5, lane INTEG: the BG-layer setup helper the seated InitResources calls;
 # the link named it. Matched .cpp with its own delink block; its callees are all
 # framework GX/G2/G2S functions already in the build.
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 325): src/func_ov004_020af2f8.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 325): src/Mg_InitBrush.cpp
 
 # ---- WAVE 2: THE THREE JOIN-MISS TUs, now that the linker has asked --------
 #
@@ -338,29 +338,29 @@ src/minigames/d_s_mg_base.cpp
 # are the linker asking for exactly the three the header predicted, which is
 # the wave method working rather than a miss.
 #
-#     func_ov006_020fb7e0   called by src/_ZN15dScMgPachinko_c8BehaviorEv.cpp (vtable slot 6)
+#     PachinkoFx_UpdateAll   called by src/_ZN15dScMgPachinko_c8BehaviorEv.cpp (vtable slot 6)
 #     func_ov006_020fea70   called by src/_ZN15dScMgPachinko_c8BehaviorEv.cpp (vtable slot 6)
-#     func_ov006_020fc718   state 0 of data_ov006_02142624, called by this
+#     PachinkoPipe_State0   state 0 of data_ov006_02142624, called by this
 #                           class's address switch
-# func_ov006_020fb7e0 IS EXCLUDED, host-copied in
+# PachinkoFx_UpdateAll IS EXCLUDED, host-copied in
 # port/unmatched/MgPachinko_Award.cpp. Run mg5, lane HISCORE: it calls
-# func_ov006_020fbb2c, the award routine, with TWO arguments where the
+# PachinkoPopup_SpawnScore, the award routine, with TWO arguments where the
 # definition takes three, because the ROM rides the points through r2 out of
 # the same ldrh that makes the != 0 test (0x020fb8c0). On the host the callee
 # read its points off a caller stack slot nobody wrote -- measured, 3104 where
 # the object held 0x1234 -- and every award pushed the score up by a number
-# like that until func_ov004_020adb1c's own clamp to data_0209b308+0x0c
-# (0x000f423f) pinned it, and func_ov004_020ada40 promoted the pinned value
+# like that until Mg_SubmitScore's own clamp to gMgMenuRow+0x0c
+# (0x000f423f) pinned it, and Mg_SetSessionBest promoted the pinned value
 # into the high score. That is the "HIGH SCORE 999999 / SCORE 0" the owner
 # reported. The host copy is src verbatim with the callee declared as it is
 # DEFINED and the ROM's own r2 value passed; see that file's header.
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fc718.c
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fea70.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoPipe_State0.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/func_ov006_020fea70.c
 
 # ---- WAVE 2: NO arm9 LINE, AND THAT IS THE POINT --------------------------
 #
 # The fifth unresolved external of wave 2 was _func_0205a448, and it is NOT a
-# missing slice line. src/func_ov006_020fb97c.c spells an arm9 callee by its
+# missing slice line. src/Pachinko_CheckTargetsLeft.c spells an arm9 callee by its
 # ADDRESS while config/arm9 names it MultiStore16; src/MultiStore16.c is
 # already in port/slice_gate10.txt and _MultiStore16 was already in the
 # baseline walk_window map. Answered with a name-spelling alias in
@@ -372,11 +372,11 @@ src/minigames/d_s_mg_base.cpp
 
 # ---- WAVE 3: ONE LINE, AND IT NAMES A BLIND SPOT IN THE CLOSURE WALK -------
 #
-# func_ov006_020fbb2c HAS a delink block (`.text start:0x020fbb2c
+# PachinkoPopup_SpawnScore HAS a delink block (`.text start:0x020fbb2c
 # end:0x020fbbe8`) and a matched src TU, so it is not a join miss and not a
 # floor. The walk missed it for a reason worth carrying forward: this walker
 # enumerates DELINK BLOCKS and attributes each relocation to the block that
-# contains it, and 0x020fbb2c is reached only from func_ov006_020fb7e0 -- one
+# contains it, and 0x020fbb2c is reached only from PachinkoFx_UpdateAll -- one
 # of wave 2's three join-miss TUs, which has NO BLOCK. A relocation out of a
 # block-less body belongs to no block, so the walk could not follow it.
 #
@@ -386,18 +386,18 @@ src/minigames/d_s_mg_base.cpp
 # the walk on this class's three of them converges at exactly this one TU, so
 # the hole here was shallow; that is a measurement of these three bodies and
 # not a general guarantee.
-# FOLDED into src/actors/dScMgPachinko_c.cpp (row 164): src/func_ov006_020fbb2c.c
+# FOLDED into src/minigames/d_s_mg_pachinko.cpp (row 164): src/PachinkoPopup_SpawnScore.c
 
 # ---- WAVE 4: ONE LINE REMOVED, A SECOND MOUNT COLLISION -------------------
 #
-# src/func_ov006_020fa7b8.cpp is EXCLUDED and host-copied in
+# src/PachinkoDeco_DrawAll.cpp is EXCLUDED and host-copied in
 # port/unmatched/MgPachinko_OamRender.cpp. Its `extern "C"` block declares the
 # OAM::Render it calls and then writes `void* data_ov006_0213ac24;`, which in
 # C++ is a DEFINITION rather than a declaration -- C++ has no tentative
 # definitions -- so it collides with the ov006 mount's own cell:
 #
 #     ov006_syms.c.obj : error LNK2005: _data_ov006_0213ac24 already defined
-#                        in func_ov006_020fa7b8.cpp.obj
+#                        in PachinkoDeco_DrawAll.cpp.obj
 #
 # The link error is the lucky outcome: the mount REBASES that cell at load
 # time to point at data_ov006_0213ac28, so a build where the src TU's zero won
@@ -412,9 +412,9 @@ src/minigames/d_s_mg_base.cpp
 # four lines and there were exactly four holes behind them:
 #
 #     [scene] dScMgPachinko_c STATE WITH NO DECOMPILED BODY: 0x020fd2d8
-#     [scene] UNMATCHED ov006 body entered: func_ov006_020fb230
-#     [scene] UNMATCHED ov006 body entered: func_ov006_020fdaf0
-#     [scene] UNMATCHED ov006 body entered: func_ov006_020fcb4c
+#     [scene] UNMATCHED ov006 body entered: PachinkoFlyer_State2
+#     [scene] UNMATCHED ov006 body entered: PachinkoBall_CheckHitByBobOmb
+#     [scene] UNMATCHED ov006 body entered: PachinkoBall_AimAtTarget
 #
 # Everything else on the chain was already seated by lanes PCH and INTEG:
 # 020fd088, 020fca1c, 020fc9b0, 020fcd8c, 020fcec4, 020fc1b4, 020fd17c and
@@ -430,18 +430,18 @@ src/minigames/d_s_mg_base.cpp
 #
 # WHAT A HIT ACTUALLY IS, in offsets, because the next lane will want them.
 # The 30-entry 0x38-stride array based at +0x4660 is dispatched by
-# func_ov006_020fda7c off data_ov006_02142694 (live byte +0x468c, state index
+# PachinkoBall_UpdateAll off data_ov006_02142694 (live byte +0x468c, state index
 # +0x468f). 020fdaf0 scans the 48-entry 0x38-stride array at +0x4ed8 for a live
 # target (+0x4f0c) in state >= 2 (+0x4f0d) within sqrt-distance 0x18, and on a
 # find it stamps the FLYING slot's own state to 5 and bumps the target's hit
 # count at +0x4f0f. 020fcb4c then re-aims the slot at a random live goal hole
 # (the four 0xc-stride records at +0x5bcc), plays sound 0x186, and stamps state
-# +0x468f = 4 with the chosen hole index at +0x4694. func_ov006_020fca1c is
+# +0x468f = 4 with the chosen hole index at +0x4694. PachinkoBall_CheckPipes is
 # what later clears +0x468c/+0x468d and retires the slot.
 #
 # NO NEW slice line was needed for any callee of the four. Every external they
 # name -- cstd::sqrt, cstd::atan2, RandomIntInternal, func_02012718,
-# func_020126e8, func_020126ac, func_02012468, func_ov006_020fb8fc,
+# func_020126e8, func_020126ac, func_02012468, PachinkoFx_Spawn,
 # data_02082214, data_ov006_0212eb94, data_ov006_0213d954, data_0209d4b8 --
 # was already resolved in this build, which is what /OPT:REF plus the arm9
 # argument in this file's header predicts and is worth recording as a

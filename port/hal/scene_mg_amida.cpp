@@ -138,7 +138,7 @@
 //
 // THE THIRD IS ov004's AND THE LINK FOUND IT, not the delinks walk: this
 // class's own block walk cannot see a hole one overlay over.
-// func_ov004_020ae5c4 (0x294) is named in ov004's symbols.txt, covered by no
+// Mg_DrawLine (0x294) is named in ov004's symbols.txt, covered by no
 // delink block and defined by no src file, and three of this class's TUs call
 // it at ten sites between them. It is also the FAMILY'S SLOT-34 DISPATCHER,
 // which is why section 5's am_v34 note can say slot 34 is unreachable on every
@@ -197,10 +197,10 @@ int   _ZN12dScMgAmida_c8BehaviorEv(char *c);           /* slot  6 Behavior      
 int   _ZN12dScMgAmida_c6RenderEv(char *c);           /* slot  9 Render            */
 void *_ZN12dScMgAmida_cD1Ev(char *c);           /* slot 16 D2                */
 void *_ZN12dScMgAmida_cD0Ev(void *c);           /* slot 17 D0                */
-void  _ZN12dScMgAmida_c13OnYoshiTryEatEi(char *c, int arg);  /* slot 18 state reset       */
-void  _ZN12dScMgAmida_c9Virtual7CEv(void);              /* slot 31 sub BG1 load      */
-void  _ZN12dScMgAmida_c9Virtual88Eiiii(void *c, int a1, int a2, int a3);  /* slot 34    */
-int   _ZN12dScMgAmida_c9Virtual8CEv(void *c);           /* slot 35 mode == 1         */
+void  _ZN12dScMgAmida_c10StartRoundEi(char *c, int arg);  /* slot 18 state reset       */
+void  _ZN12dScMgAmida_c15InitSubScreenBgEv(void);              /* slot 31 sub BG1 load      */
+void  _ZN12dScMgAmida_c11PaintSquareEiiii(void *c, int a1, int a2, int a3);  /* slot 34    */
+int   _ZN12dScMgAmida_c12IsAltVariantEv(void *c);           /* slot 35 mode == 1         */
 int   _ZN12dScMgAmida_c5Unk36Ev(void *c);           /* slot 36 mode == 2         */
 
 /* the factory */
@@ -209,7 +209,7 @@ void *dScMgAmida_c_classInit(void);
 /* THIS CLASS OWNS NO FLOORS ANY MORE, run mg10 lane WALKER, and the
    declaration that stood here is gone with the counter it read.
    unmatched/MgAmida_Faces.cpp traps nothing now: func_ov006_020d36a4 and
-   func_ov004_020ae5c4 got bodies in the previous wave and func_ov006_020d27dc,
+   Mg_DrawLine got bodies in the previous wave and func_ov006_020d27dc,
    the walker tick, has one in this one. A counter beside a real definition
    measures nothing, so all three are deleted rather than left reading zero. */
 
@@ -270,35 +270,35 @@ static void *__fastcall am_d0(void *s, void *)
    four bytes without forwarding them would take the increment arm on every
    reset. */
 static int __fastcall am_reset(void *s, void *, int flag)
-{ AM(18); _ZN12dScMgAmida_c13OnYoshiTryEatEi((char *)s, flag); return 1; }
+{ AM(18); _ZN12dScMgAmida_c10StartRoundEi((char *)s, flag); return 1; }
 /* SLOT 31'S ROM BODY GENUINELY TAKES NO ARGUMENT, which is not an assumption:
    0x020d11a0 opens `push {r4,lr} / ldr r3,[pc,#0x74] / mov r0,#0` and
    overwrites r0 before reading it. src declares it (void) and agrees. */
 static int __fastcall am_v31(void *, void *)
-{ AM(31); _ZN12dScMgAmida_c9Virtual7CEv(); return 0; }
+{ AM(31); _ZN12dScMgAmida_c15InitSubScreenBgEv(); return 0; }
 /* SLOT 34 IS DECLARED WITH ITS FULL ROM SHAPE AND IS NOT DISPATCHED AT ALL.
    Both halves are worth stating because the second explains why the first is
    free. Every slot-34 dispatch site in either overlay image passes FIVE
    arguments -- r0..r3 plus one pushed word -- and all EIGHT of them are inside
-   func_ov004_020ae5c4, each doing `str r7,[sp]` before
-   `ldr r4,[r4,#0x88]; blx r4`. src/_ZN11dScMgBase_c9Virtual88Eiiii.cpp, the BASE's own
+   Mg_DrawLine, each doing `str r7,[sp]` before
+   `ldr r4,[r4,#0x88]; blx r4`. src/_ZN11dScMgBase_c11PaintSquareEiiii.cpp, the BASE's own
    slot-34 body, declares five parameters to match. This class's override reads
    only four of them (mov r6,r0 / mov r5,r1 / mov r4,r2 / mov r8,r3, and src
    declares four), so the fifth is dropped here on purpose and the parameter
    exists so __fastcall cleans the right number of bytes.
 
    AN EARLIER VERSION OF THIS COMMENT COUNTED TWO MORE SITES IN
-   func_ov006_020ce108 AND THEY ARE NOT DISPATCHES. 0x020ce2a4 and 0x020ce318
+   TrmpItem_ReflectOffLine AND THEY ARE NOT DISPATCHES. 0x020ce2a4 and 0x020ce318
    are `ldr r2,[sl,#0x88]`, and the loaded word goes straight out as the THIRD
    ARGUMENT of `bl 0x0203d290` -- it is never branched to. That is the same
-   false positive this file's own slot-36 note records for func_ov006_020c1f4c,
+   false positive this file's own slot-36 note records for Mascot_UpdateMatrix,
    whose +0x8c / +0x90 / +0x94 are three consecutive object fields: the Rn
    filter drops pc and sp but cannot tell a field from a slot, and the tell is
    whether the loaded word is branched to.
 
    THE CORRECTION MAKES THE CONCLUSION STRONGER RATHER THAN WEAKER, which is
    why it is written out instead of quietly edited. The tree has exactly ONE
-   body that dispatches slot 34, func_ov004_020ae5c4, and it has no src file in
+   body that dispatches slot 34, Mg_DrawLine, and it has no src file in
    any overlay -- it is one of this lane's three floors and it is trapped in
    unmatched/MgAmida_Faces.cpp. So slot 34 is unreachable on every scene, not
    merely unreached on the ones anybody has run. hal/scene_mg.cpp's shared
@@ -308,12 +308,12 @@ static int __fastcall am_v31(void *, void *)
    because a repair with no dispatch to witness it is wiring without
    evidence. */
 static int __fastcall am_v34(void *s, void *, int a1, int a2, int a3, int /*a4*/)
-{ AM(34); _ZN12dScMgAmida_c9Virtual88Eiiii(s, a1, a2, a3); return 0; }
+{ AM(34); _ZN12dScMgAmida_c11PaintSquareEiiii(s, a1, a2, a3); return 0; }
 /* THE TWO MODE PREDICATES. Both return their answer, which is the repair lane
    PPP made to mb_v35 after finding it returned a constant 0 and read the stack
    in place of `this`. These take the receiver and return what the ROM returns. */
 static int __fastcall am_v35(void *s, void *)
-{ AM(35); const int r = _ZN12dScMgAmida_c9Virtual8CEv(s); if (r) ++g_am_v35_true; return r; }
+{ AM(35); const int r = _ZN12dScMgAmida_c12IsAltVariantEv(s); if (r) ++g_am_v35_true; return r; }
 static int __fastcall am_v36(void *s, void *)
 { AM(36); const int r = _ZN12dScMgAmida_c5Unk36Ev(s); if (r) ++g_am_v36_true; return r; }
 
@@ -518,7 +518,7 @@ extern "C" void port_scene_amida_hits(void)
     std::printf("[scene] dScMgAmida_c floor asks: NONE. All three are CLOSED "
                 "-- _ZN12dScMgAmida_c11StepWalkersEv (0xe48, the walker tick, one caller, "
                 "inside vtable slot 6), _ZN12dScMgAmida_c11InitWalkersEv (0x4fc, the round "
-                "setup) and func_ov004_020ae5c4 (0x294, ov004, the family's "
+                "setup) and Mg_DrawLine (0x294, ov004, the family's "
                 "line rasteriser and the tree's only slot-34 dispatcher) all "
                 "have bodies\n");
 
@@ -619,7 +619,7 @@ extern "C" void port_scene_amida_hits(void)
  * port/tools/alternatename_guard.py counts pragmas per LHS, and two spellings
  * of one symbol from two different declarations are two rows by construction.
  *
- * ROW 3 -- G2S::GetBG0CharPtr. src/func_ov006_020d3624.cpp, _020d3668.cpp and
+ * ROW 3 -- G2S::GetBG0CharPtr. src/Amida_RestoreBgChars.cpp, _020d3668.cpp and
  * the host copy of _020d3ba0 all declare it inside `namespace G2S`, so MSVC
  * emits ?GetBG0CharPtr@G2S@@YAPADXZ. The Y and the A in that mangling say
  * __cdecl FREE FUNCTION IN A NAMESPACE, not a method -- which is section 10
@@ -657,7 +657,7 @@ extern "C" void port_scene_amida_hits(void)
  *
  * ROWS 6 and 7 -- data_ov006_0213a458 and _0213a4b0, declared `extern void*
  * data_ov006_0213a458[]` and indexed by a per-slot number before being handed
- * to func_ov004_020afdd0. These ARE pointer tables, and that is why the alias
+ * to Mg_RenderSpriteBoth. These ARE pointer tables, and that is why the alias
  * is right rather than in spite of it: every word in them carries a load
  * relocation (from:0x0213a458 -> 0x0213a450, ..45c -> ..448, ..460 -> ..440
  * and so on), so tools/ovdata.py emits them with their interior pointers

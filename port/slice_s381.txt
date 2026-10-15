@@ -26,7 +26,7 @@
 #      _S/_F/_G/_I siblings; the palette it loads beside them, handle 0xbb, is
 #      MG/d_2d_mg_card_ncl.bin.
 #   6. THE PLAYER TITLE, END TO END AND OUT OF THE ROM. The ov005 launch table
-#      (overlay_0005.bin file offset 0x2618, data_ov005_020c24d8, 36 rows of
+#      (overlay_0005.bin file offset 0x2618, sMiniGmRows, 36 rows of
 #      0x34) has EXACTLY ONE row for scene 381 -- row 5, param 0x000d0500, so
 #      record 5, name-text 13, mode byte 0. dScMgBase_c's constructor turns
 #      the name-text index into a message id through data_ov004_020bc070[13] =
@@ -230,7 +230,7 @@
 # checklist beside the factory's second-vtable-store test.
 #
 # THE BOARD LADDER FALLS OUT OF THE SAME BODY. src/minigames/d_s_mg_m_carlo.cpp reads
-# data_ov004_020beb68's own object at +0xb4, the same saved clear
+# gMgScene's own object at +0xb4, the same saved clear
 # count section 17 disassembles for Memory Master, and picks
 # 6x6 / 8x7 / 10x8 on `< 5`, `< 10`, else -- 36, 56 or 80 cards, which is why
 # the record array is 0x50 long and the object is 0x60b0 bytes.
@@ -282,7 +282,7 @@
 # SLOT 34 IS NOT DISPATCHED BY THIS CLASS, and the run mg9 coordinator's
 # standing watch on it is answered here with a measurement rather than left
 # open. hal/scene_mg.cpp's shared mb_v34 thunk is declared (void*, void*)
-# while _ZN11dScMgBase_c9Virtual88Eiiii takes FIVE parameters at every ROM dispatch site,
+# while _ZN11dScMgBase_c11PaintSquareEiiii takes FIVE parameters at every ROM dispatch site,
 # so a class that dispatched slot 34 would owe the five-parameter repair the
 # way lane BASESET owed slots 18 and 19. This one does not: the framework
 # census reads `framework slots entered: 1(x1) 21(x1) 31(x1) 32(x1)` on scene
@@ -344,7 +344,7 @@
 #     framework         251 state-dispatch calls, 0 UNHANDLED
 #     traps             0 of 24 and 0 of 7 entered
 #
-# The four ov004 rows this file added for the round tally -- func_ov004_020b5e40
+# The four ov004 rows this file added for the round tally -- MgCoins_StartSpend
 # and the three under it -- are what those 251 framework calls are, so the
 # closure this slice paid for is exercised rather than merely linked.
 #
@@ -361,24 +361,24 @@
 #
 # HOST-COPIED ELSEWHERE, and listing any of them here would be an LNK2005
 # against a file already on every target:
-#   src/minigames/d_s_mg_single3_d_base.cpp  slot 2 of the middle base. It drops the
+#   src/minigames/d_s_mg_single3d_base.cpp  slot 2 of the middle base. It drops the
 #     framework's second argument (the ROM rides it through r1). The repair is
 #     port_mg_flower_after_init in port/unmatched/MgFlower_Slot2.cpp, whose
 #     header asks the next lane to call it rather than write a second; this is
 #     the third lane to do so.
-#   src/minigames/d_s_mg_single3_d_base.cpp   slot 33 of the middle base. Its last two
+#   src/minigames/d_s_mg_single3d_base.cpp   slot 33 of the middle base. Its last two
 #     stores reach LIGHT_COLOR at 0x040004cc, so it builds from the FLW
 #     hostgen'd copy. This class inherits that substitution unchanged.
-#   src/func_ov006_020c1804.cpp  the local-shadow-class model draw this
+#   src/Dealer_Draw.cpp  the local-shadow-class model draw this
 #     class's Render reaches at this+0x4f38. Host-copied by run mg6 lane MEM
 #     as port/unmatched/MgMemory2_ModelRender_020c1804.cpp. This class meets
 #     the SAME defect through the SAME body and therefore needs no copy of its
 #     own -- which is the fan-out dividend section 14 predicts.
-#   src/func_ov006_020c06dc.cpp, src/func_ov006_020c0a48.c  the other two
+#   src/MascotWalker_UpdateMatrix.cpp, src/MascotWalker_Construct.c  the other two
 #     lane MEM host copies in the same sub-object family.
 #
 # ALREADY SLICED, so the delta below does not repeat them: the whole
-# 0x020c0xxx / 0x020c1xxx Single3D sub-object family and func_ov006_0210a534
+# 0x020c0xxx / 0x020c1xxx Single3D sub-object family and LoadCard2SubBg3
 # come in through port/slice_mem.txt, and the ov004 framework, the thirty-five
 # overlay constructors and the arm9 waves under them come in through
 # port/slice_mg1.txt. CMake appends every list to the same targets and dedupes
@@ -398,24 +398,24 @@
 #                              defect -- func_0203d5dc IS the config symbol at
 #                              0x0203d5dc -- so it is an ordinary slice line
 #                              and not an alias.
-#   src/func_ov004_020b5e40.c  the ov004 ROUND-TALLY ARMER slot 19 case 5
+#   src/MgCoins_StartSpend.c  the ov004 ROUND-TALLY ARMER slot 19 case 5
 #                              calls with data_ov006_0213d570, the cards left.
 #                              It writes the tally target and installs
-#                              func_ov004_020b58c4 as data_ov004_020bfa20, the
+#                              MgCoins_StepSpend as sMgCoinsStep, the
 #                              framework's per-frame tally step.
 #
 # AND ITS OWN CLOSURE IS TWO MORE ov004 ROWS, waves 2 and 3, both of them the
 # body the row above installs and the body that one installs in turn:
 #
-#   src/func_ov004_020b58c4.cpp  the tally STEP. It walks the score down one a
+#   src/MgCoins_StepSpend.cpp  the tally STEP. It walks the score down one a
 #                                frame, plays 0x14b or 0x14c depending on
 #                                whether the player beat the target, and hands
-#                                over to func_ov004_020b586c when the tally
+#                                over to MgCoins_StepSpendHold when the tally
 #                                runs out.
-#   src/func_ov004_020b586c.cpp  the tally END, which clears
-#                                data_ov004_020bfa20 so nothing is installed.
-#   src/func_ov004_020b4e78.c    the per-digit draw the STEP calls with
-#                                &data_ov004_020bfa34[i * 0x24] -- the SAME
+#   src/MgCoins_StepSpendHold.cpp  the tally END, which clears
+#                                sMgCoinsStep so nothing is installed.
+#   src/Coin_Spend.c    the per-digit draw the STEP calls with
+#                                &sMgCoins[i * 0x24] -- the SAME
 #                                twenty-record array run mg6 lane MEM found
 #                                dScMgMemory2_c dispatching a FIELD member
 #                                pointer out of (section 13, CORRECTION 2).
@@ -430,10 +430,10 @@
 # about the FRAMEWORK; what this class reaches past it is one self-contained
 # score-tally state machine that no seated class had a caller for.
 src/unnamed/arm9/0203/func_0203d5dc.c
-src/actors/unit020b4aa4.cpp
-# FOLDED into src/actors/unit020b4aa4.cpp (row 433): src/func_ov004_020b586c.cpp
-# FOLDED into src/actors/unit020b4aa4.cpp (row 433): src/func_ov004_020b58c4.cpp
-# FOLDED into src/actors/unit020b4aa4.cpp (row 433): src/func_ov004_020b5e40.c
-src/actors/unit020bfec0.cpp
-# FOLDED into src/actors/unit020bfec0.cpp (row 437): src/func_ov006_020c16b4.c
+src/minigames/unit020b4aa4.cpp
+# FOLDED into src/actors/unit020b4aa4.cpp (row 433): src/MgCoins_StepSpendHold.cpp
+# FOLDED into src/actors/unit020b4aa4.cpp (row 433): src/MgCoins_StepSpend.cpp
+# FOLDED into src/actors/unit020b4aa4.cpp (row 433): src/MgCoins_StartSpend.c
+src/minigames/unit020bfec0.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 437): src/Dealer_IsIdleAtRest.c
 src/minigames/d_s_mg_m_carlo.cpp

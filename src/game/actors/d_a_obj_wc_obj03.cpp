@@ -49,6 +49,11 @@
 /* Class header first: Model.h pulls the structured Matrix4x3 (`.t`) that
  * UpdateModelTransform writes. daObjWc_Mizu_c.h -> dBgActor_c.h would otherwise
  * reach common.h's flat `s32 m[12]` spelling first. */
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_wc_obj03_AssetId {
+    ASSET_WC_OBJ03_BMD = 0x06d0
+};
+
 #include "daObjWc_Obj03_c.h"
 #include "daObjWc_Mizu_c.h"
 #include "SharedFilePtr.h"
@@ -242,4 +247,4 @@ void daObjWc_Obj03_c::CheckClsnWithPlayer()
  * the actor heap through dActor_c's inline operator delete.
  */
 
-WcObj03ModelFilePtr data_ov029_02114270(0x6d0);
+WcObj03ModelFilePtr data_ov029_02114270(ASSET_WC_OBJ03_BMD);

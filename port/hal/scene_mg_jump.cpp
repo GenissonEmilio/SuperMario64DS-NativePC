@@ -76,7 +76,7 @@
 //
 // ---- 3. THE TWO TABLES, AND WHY THE BASE ONE IS NOT CEREMONY ---------------
 //
-// src/d_s_mg_jump.cpp -- the ROM factory at 0x020eeafc, verified
+// src/minigames/d_s_mg_jump.cpp -- the ROM factory at 0x020eeafc, verified
 // instruction for instruction -- writes the BASE table into the object's first
 // word (0x020eeb20), builds the sub-objects, and only then writes this class's
 // own table (0x020eeb60). Both destructors run the same sequence in reverse:
@@ -126,7 +126,7 @@
 //
 // WHAT WAS TRUE WHILE IT WAS A FLOOR:
 //
-// Vtable slot 18 is _ZN11dScMgJump_c13OnYoshiTryEatEi: a config symbol with a size
+// Vtable slot 18 is _ZN11dScMgJump_c10StartRoundEi: a config symbol with a size
 // (0x168 bytes), NO delink block -- the block before it ends at 0x020ee994 and
 // the next starts at 0x020eeafc, which is the body's own size to the byte --
 // and NO src file in either extension anywhere in the tree. It is the ONLY gap
@@ -140,7 +140,7 @@
 //   THE FLOOR IS THE ONLY BODY THAT STARTS THE STATE MACHINE. Slot 0
 //   (InitResources, src/_ZN11dScMgJump_c13InitResourcesEv.cpp) ends with a dispatch through
 //   the object's own vtable at offset 0x48 -- slot 18 -- with the argument -1,
-//   and the ROM's slot-18 body tail-calls func_ov006_020ee658, whose only job
+//   and the ROM's slot-18 body tail-calls BeginIntro, whose only job
 //   is to copy the pair at 0x0213cb54 into self+0x5004. Nothing else in ov006
 //   writes that field before slot 6 first reads it. With the trap in place the
 //   field stays zero, and the address switch reports zero routed dispatches
@@ -150,20 +150,20 @@
 // decomp that retires it starts at the seat:
 //
 //   r1 == 0     ++self->+0xbc (the round counter), clamped at 0x270e
-//   r1 == 0x12  self->+0xbc = 0, then the global at data_ov004_020beb68 gets
-//               its +0xb4 zeroed and func_ov004_020adb1c(self->+0xb4) runs
+//   r1 == 0x12  self->+0xbc = 0, then the global at gMgScene gets
+//               its +0xb4 zeroed and Mg_SubmitScore(self->+0xb4) runs
 //   otherwise   that global's +0xb4 = self->+0xbc
-//   then        func_ov006_020c72b4() if +0xbc != 0 else func_ov006_020c72c8()
+//   then        Jump3D_DisableInput() if +0xbc != 0 else Jump3D_EnableInput()
 //   then        if +0xbc >= 0xf, roll func_02043b990 -> ((rand & 0x7fffffff)
 //               >> 0x13) * 10 >> 12, a 0..9 draw, REROLLED while it equals the
 //               cached last draw in data_ov006_0213cb48 (initialised 0xffffffff
 //               in the ROM image, which is why that word is a scratch int and
 //               not the adjustment half of a pair)
-//   then        func_ov006_020c719c(+0xbc, draw)
+//   then        Jump3D_Arrange(+0xbc, draw)
 //   then        data_ov006_02140328 = 3 / 4 / 5 / 6 for +0xbc < 0xf / < 0x14 /
 //               < 0x19 / else -- the difficulty ladder
-//   then        func_ov006_020c44b4(+0xbc, draw)
-//   tail        func_ov006_020ee658(self), the state-0 installer
+//   then        Heyho_SpawnAll(+0xbc, draw)
+//   tail        BeginIntro(self), the state-0 installer
 //   returns     self + 0x5000 (single exit; a nonzero pointer, so a caller
 //               testing it as a truth value sees true -- the trap returns 1,
 //               which is the same answer to that test and is not the same word)
@@ -171,13 +171,13 @@
 // SO WITH THE TRAP IN PLACE: the class boots, InitResources loads its files and
 // lays out the two camera records and the nine sub-objects, Render draws every
 // frame, and NOTHING MOVES -- no round is dealt, the difficulty global is never
-// written, the Fly Guys are never placed by func_ov006_020c719c /
-// func_ov006_020c44b4, and the state machine never leaves the null pair. That
+// written, the Fly Guys are never placed by Jump3D_Arrange /
+// Heyho_SpawnAll, and the state machine never leaves the null pair. That
 // is a decomp gap, not a port one, and it is lane S364's slot-6 shape exactly:
 // that floor was retired later by one transcription and this one can be too.
 //
 // THE RUN LAW SAYS A TRAP-SHAPED FLOOR HIDES ITS CALLEES FROM STATIC CLOSURE,
-// AND HERE IT HIDES FOUR: func_ov006_020c72b4, _020c72c8, _020c719c and
+// AND HERE IT HIDES FOUR: Jump3D_DisableInput, _020c72c8, _020c719c and
 // _020c44b4 are reached ONLY from this body in this class's closure, so they
 // are not in port/slice_bnp.txt and retiring the floor costs four slice lines
 // plus the transcription. All four have src files today.
@@ -185,7 +185,7 @@
 // ---- 5. THE DIAGNOSTIC THAT STOOD IN FOR IT, NOW REMOVED -------------------
 //
 // SM64DS_BNP_START_STATE=1 used to make the trap, after counting, ALSO call
-// func_ov006_020ee658 -- the ROM's own state-0 installer -- and nothing else
+// BeginIntro -- the ROM's own state-0 installer -- and nothing else
 // the floor would have done. It was a DIAGNOSTIC and not a repair: with it on
 // the state machine started at the countdown and walked, so the address switch
 // could be shown to route, while the round counter, the difficulty ladder, the
@@ -223,21 +223,21 @@
 //
 // FOUR FUNCTION ROWS, EACH FOR ITS OWN REASON:
 //
-//   _Scene_AfterRender -- src/actors/dScMgD3DBase_c.cpp calls
+//   _Scene_AfterRender -- src/minigames/d_s_mg_d3d_base.cpp calls
 //   it by a name the decomp's naming pass invented; no config symbol has it.
 //   The ROM says what it is: 0x020e700c's tail jump reads its target out of the
 //   pool word at 0x020e703c, which is 0x0202e398, and config/arm9/symbols.txt
 //   line 1105 names 0x0202e398 _ZN8dScene_c11AfterRenderEj.
 //
-//   _func_020beb74 -- src/actors/dScMgD3DBase_c.cpp declares `extern int
+//   _func_020beb74 -- src/minigames/d_s_mg_d3d_base.cpp declares `extern int
 //   func_020beb74[]` and INDEXES it, so it is data wearing a func_ prefix. The
-//   real symbol is data_ov004_020beb74 (kind:bss in ov004's symbols.txt), which
+//   real symbol is sMgGraphCallback (kind:bss in ov004's symbols.txt), which
 //   the ov004 mount already defines.
 //
 //   Animation::LoadFile -- the TU declares the static at C++ linkage; the
 //   matched body is in the image under its flat Itanium C name.
 //
-//   ModelAnim::SetAnim -- src/func_ov006_020c6e4c.cpp and three siblings
+//   ModelAnim::SetAnim -- src/Heyho_LoadResources.cpp and three siblings
 //   declare it returning int where the image's definition returns void, so the
 //   two manglings differ in exactly one character (QAEH vs QAEX). Binding the
 //   int spelling onto the void one is the port's standing treatment for that
@@ -252,8 +252,8 @@
 #pragma comment(linker, "/alternatename:?data_ov006_02134d1c@@3PAUOamAttr@@A=_data_ov006_02134d1c")
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines _data_ov006_0213afd8, and nothing references ?_ZTV22dMg3DHeyhoObjAdapter_c@@3HA, so the row can never fire and nothing wants it to. */
 // #pragma comment(linker, "/alternatename:?_ZTV22dMg3DHeyhoObjAdapter_c@@3HA=_data_ov006_0213afd8")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b088@@3PAHA=_data_ov006_0213b088")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b090@@3PAHA=_data_ov006_0213b090")
+#pragma comment(linker, "/alternatename:?pmf_dMgJump3DMario_c_StateRespawn_2@@3PAHA=_pmf_dMgJump3DMario_c_StateRespawn_2")
+#pragma comment(linker, "/alternatename:?pmf_dMgJump3DMario_c_StateFallOut@@3PAHA=_pmf_dMgJump3DMario_c_StateFallOut")
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines _data_ov006_0213b0cc, and nothing references ?_ZTV16dMgJump3DMario_c@@3HA, so the row can never fire and nothing wants it to. */
 // #pragma comment(linker, "/alternatename:?_ZTV16dMgJump3DMario_c@@3HA=_data_ov006_0213b0cc")
 #pragma comment(linker, "/alternatename:?data_ov006_02140330@@3USharedFilePtr@@A=_data_ov006_02140330")
@@ -277,10 +277,10 @@
 #pragma comment(linker, "/alternatename:?data_ov006_02141a48@@3PAXA=_data_ov006_02141a48")
 #pragma comment(linker, "/alternatename:_Scene_AfterRender=__ZN8dScene_c11AfterRenderEj")
 /* _func_ov006_020e6df0 -- the SAME name-spelling shape as _func_020beb74, in
-   the other direction. src/actors/dMgJump3DMario_c.cpp calls the body at 0x020e6df0
+   the other direction. src/minigames/d_mg_jump3d_mario.cpp calls the body at 0x020e6df0
    by its address-shaped name, but config/arm9/overlays/ov006/symbols.txt gives
    that address the RECOVERED name Sound_PlayBank1Panned, and
-   src/actors/dScMgD3DBase_c.cpp defines it under that name inside extern "C".
+   src/minigames/d_s_mg_d3d_base.cpp defines it under that name inside extern "C".
    One body, two spellings, and the caller has the one the config retired. */
 #pragma comment(linker, "/alternatename:?LoadFile@dExtFrameCtrl_c@@SAPAUBCA_File@@AAUSharedFilePtr@@@Z=__ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr")
 /* The int-spelled ModelAnim::SetAnim alias that used to sit here MOVED to the
@@ -344,15 +344,15 @@ int   _ZN11dScMgJump_c8BehaviorEv(void *self);          /* slot 6  Behavior, HOS
 int   _ZN11dScMgJump_c6RenderEv(void *self);          /* slot 9  Render */
 void *_ZN11dScMgJump_cD1Ev(void *self);          /* slot 16 D2 */
 void *_ZN11dScMgJump_cD0Ev(void *self);          /* slot 17 D0 */
-/* slot 18 is _ZN11dScMgJump_c13OnYoshiTryEatEi, THE IGNITION. It was this class's one floor
+/* slot 18 is _ZN11dScMgJump_c10StartRoundEi, THE IGNITION. It was this class's one floor
    and run mg12's lane IGN retired it: src/func_ov006_020ee994.c is an honest
    NONMATCHING TU (one codegen divergence, logic verified instruction for
    instruction) and this seat now routes the real body. The ROM sets no return
-   value of its own -- it falls out of the tail call to func_ov006_020ee658 --
+   value of its own -- it falls out of the tail call to BeginIntro --
    and slot 0 declares m48 void, so the thunk below reports 1 the way every
    other void face in this file does. */
-void  _ZN11dScMgJump_c13OnYoshiTryEatEi(void *self, int sel);
-int   _ZN11dScMgJump_c13OnTurnIntoEggEi(void *self, int sel); /* slot 19, READS arg2 */
+void  _ZN11dScMgJump_c10StartRoundEi(void *self, int sel);
+int   _ZN11dScMgJump_c11CanEndStateEi(void *self, int sel); /* slot 19, READS arg2 */
 
 /* ---- dScMgD3DBase_c's fifteen, shared with ids 0x175, 0x180 and 0x181 ----
  *
@@ -379,13 +379,13 @@ int   port_mg_d3dbase_after_init(void *c, unsigned f);
 int   port_mg_d3dbase_before_render(void *c);   /* slot 10, SHARED host copy */
 void  port_mg_d3dbase_slot27(void *c);          /* slot 27, SHARED host copy */
 void  port_mg_d3dbase_slot28(void *c);          /* slot 28, SHARED host copy */
-int   _ZN14dScMgD3DBase_c8OnKickedEv(void *self);          /* slot 24 */
-int   _ZN14dScMgD3DBase_c8OnPushedEv(void *self);          /* slot 25 */
-int   _ZN14dScMgD3DBase_c24OnHitByCannonBlastedCharEv(void);                /* slot 26, `mov r0,#2; bx lr` */
-void  _ZN14dScMgD3DBase_c16OnAimedAtWithEggEv(void *self);          /* slot 29 */
-void  _ZN14dScMgD3DBase_c25OnAimedAtWithEggReturnVecEv(void *self);          /* slot 30 */
-void  _ZN14dScMgD3DBase_c9Virtual7CEv(void *self);          /* slot 31 */
-void  _ZN14dScMgD3DBase_c9Virtual84Ev(void *self);          /* slot 33 */
+int   _ZN14dScMgD3DBase_c16OnGraphCallback2Ev(void *self);          /* slot 24 */
+int   _ZN14dScMgD3DBase_c16OnGraphCallback3Ev(void *self);          /* slot 25 */
+int   _ZN14dScMgD3DBase_c14GetDisplayModeEv(void);                /* slot 26, `mov r0,#2; bx lr` */
+void  _ZN14dScMgD3DBase_c17SaveScreenForMenuEv(void *self);          /* slot 29 */
+void  _ZN14dScMgD3DBase_c21RestoreScreenFromMenuEv(void *self);          /* slot 30 */
+void  _ZN14dScMgD3DBase_c15InitSubScreenBgEv(void *self);          /* slot 31 */
+void  _ZN14dScMgD3DBase_c11InitEnginesEv(void *self);          /* slot 33 */
 
 /* ---- dScMgD3DBase_c's own two destructors, in ITS table's slots 16/17 ---- */
 int   _ZN14dScMgD3DBase_cD1Ev(void *self);
@@ -402,7 +402,7 @@ extern char *data_ov006_02140420[];
 /* The ROM's own state-0 installer. This seat no longer calls it: the section-5
    diagnostic that did is gone, and the ignition at slot 18 reaches it the way
    the ROM does. Kept declared because the witness prose names it. */
-void  _ZN11dScMgJump_c19func_ov006_020ee658Ev(void *self);
+void  _ZN11dScMgJump_c10BeginIntroEv(void *self);
 
 /* the factory */
 void *dScMgJump_c_classInit(void);
@@ -490,7 +490,7 @@ static int __fastcall bnp_init(void *s, void *)
 
 /* SLOT 3 GENUINELY TAKES NO RECEIVER. The ROM body at 0x020edffc never reads
    r0: it releases the SharedFilePtr in data_ov006_02142184, nulls it and calls
-   func_ov004_020ad90c. src/_ZN11dScMgJump_c16CleanupResourcesEv.cpp declares `int f(void)` and
+   Mg_CommitRecords. src/_ZN11dScMgJump_c16CleanupResourcesEv.cpp declares `int f(void)` and
    that is right, not a dropped receiver. */
 static int __fastcall bnp_clean(void *, void *)
 { BNP(3); return _ZN11dScMgJump_c16CleanupResourcesEv(); }
@@ -536,7 +536,7 @@ static int __fastcall bnp_render(void *s, void *)
                      data_ov006_02140328, data_ov006_02140418[0],
                      (void *)data_ov006_02140420[0], data_ov006_02140324);
         /* the two globals that gate the ONE arm of state 020ee508 that reaches
-           func_ov006_020c81e0 and installs the pair {0x020c814c, 0} -- lane
+           StartRiseOut and installs the pair {0x020c814c, 0} -- lane
            BNT's dead-state finding, answered with a measurement. The arm needs
            02140428 nonzero AND 02140304 zero. */
         std::fprintf(stderr, "  [bnp] 020ee508 arm gate: 02140428=%d (needs "
@@ -555,10 +555,10 @@ static void *__fastcall bnp_d0(void *s, void *)
    inherited. Lane LKY's note makes the forwarding question per-lane; the ROM
    body at 0x020ee8dc opens `cmp r1,#0` at 0x020ee8e4 and takes a completely
    different path when it is nonzero, so this thunk FORWARDS the argument
-   rather than only popping it. src/_ZN11dScMgJump_c13OnTurnIntoEggEi.cpp declares the second
+   rather than only popping it. src/_ZN11dScMgJump_c11CanEndStateEi.cpp declares the second
    parameter and reads it. */
 static int __fastcall bnp_v19(void *s, void *, int sel)
-{ BNP(19); return _ZN11dScMgJump_c13OnTurnIntoEggEi(s, sel); }
+{ BNP(19); return _ZN11dScMgJump_c11CanEndStateEi(s, sel); }
 
 // ---- the ignition, formerly the floor --------------------------------------
 //
@@ -568,7 +568,7 @@ static int __fastcall bnp_v19(void *s, void *, int sel)
 // ignited with. Slot 0 passes -1, so a run that reports anything else is
 // reporting a second ignition from somewhere this seat has not accounted for.
 //
-// SM64DS_BNP_START_STATE IS GONE. It called func_ov006_020ee658 -- the ROM's
+// SM64DS_BNP_START_STATE IS GONE. It called BeginIntro -- the ROM's
 // state-0 installer -- BEHIND the trap, so the dispatch half could be shown to
 // route while the round counter, the difficulty ladder, the random draw and
 // the two placement calls all stayed unrun. The real body does all five, and
@@ -583,7 +583,7 @@ static int __fastcall bnp_v18(void *s, void *, int st)
     BNP(18);
     ++g_bnp_floor_calls;
     g_bnp_floor_last_arg = st;
-    _ZN11dScMgJump_c13OnYoshiTryEatEi(s, st);
+    _ZN11dScMgJump_c10StartRoundEi(s, st);
     return 1;
 }
 
@@ -637,14 +637,14 @@ static int __fastcall bnp_v11(void *s, void *, unsigned a)
 { BNP(11); ((dScMgD3DBase_c *)s)->dScMgD3DBase_c::AfterRender(a); return 1; }
 
 static int __fastcall bnp_v24(void *s, void *)
-{ BNP(24); return _ZN14dScMgD3DBase_c8OnKickedEv(s); }
+{ BNP(24); return _ZN14dScMgD3DBase_c16OnGraphCallback2Ev(s); }
 static int __fastcall bnp_v25(void *s, void *)
-{ BNP(25); return _ZN14dScMgD3DBase_c8OnPushedEv(s); }
+{ BNP(25); return _ZN14dScMgD3DBase_c16OnGraphCallback3Ev(s); }
 /* SLOT 26 IS `mov r0,#2; bx lr` IN THE ROM -- eight bytes, no receiver read. */
 static int __fastcall bnp_v26(void *, void *)
-{ BNP(26); return _ZN14dScMgD3DBase_c24OnHitByCannonBlastedCharEv(); }
+{ BNP(26); return _ZN14dScMgD3DBase_c14GetDisplayModeEv(); }
 /* SLOTS 27 AND 28 ARE TAIL-JUMP VENEERS whose targets DO read the receiver
-   (_ZN11dScMgBase_c15OnHitByMegaCharEv reads self+0x4630 at 0x020af284, _ZN11dScMgBase_c19OnHitFromUnderneathEv
+   (_ZN11dScMgBase_c8OpenMenuEv reads self+0x4630 at 0x020af284, _ZN11dScMgBase_c9CloseMenuEv
    reads self+0xf4 at 0x020af060) while their src TUs declare those targets with
    no parameter. The port's tail-jump mechanism could carry that -- but this
    lane measured that port/tools/tailjump_guard.py does NOT have these two in
@@ -657,13 +657,13 @@ static int __fastcall bnp_v27(void *s, void *)
 static int __fastcall bnp_v28(void *s, void *)
 { BNP(28); port_mg_d3dbase_slot28(s); return 0; }
 static int __fastcall bnp_v29(void *s, void *)
-{ BNP(29); _ZN14dScMgD3DBase_c16OnAimedAtWithEggEv(s); return 0; }
+{ BNP(29); _ZN14dScMgD3DBase_c17SaveScreenForMenuEv(s); return 0; }
 static int __fastcall bnp_v30(void *s, void *)
-{ BNP(30); _ZN14dScMgD3DBase_c25OnAimedAtWithEggReturnVecEv(s); return 0; }
+{ BNP(30); _ZN14dScMgD3DBase_c21RestoreScreenFromMenuEv(s); return 0; }
 static int __fastcall bnp_v31(void *s, void *)
-{ BNP(31); _ZN14dScMgD3DBase_c9Virtual7CEv(s); return 0; }
+{ BNP(31); _ZN14dScMgD3DBase_c15InitSubScreenBgEv(s); return 0; }
 static int __fastcall bnp_v33(void *s, void *)
-{ BNP(33); _ZN14dScMgD3DBase_c9Virtual84Ev(s); return 0; }
+{ BNP(33); _ZN14dScMgD3DBase_c11InitEnginesEv(s); return 0; }
 
 /* dScMgD3DBase_c's own D2 and D0, which live in slots 16 and 17 of ITS table
    only. This class overrides both, so these two run only while an object is
@@ -832,15 +832,15 @@ extern "C" void port_scene_fill_jump(void)
    place to observe the object without the registry table growing a column.
 
    THE FACTORY NEEDS NO DISPLACEMENT RULING, which is worth recording because
-   0x169's did. src/d_s_mg_jump.cpp calls _ZN11dScMgBase_cC2Ev(p)
-   WITH its argument, where src/actors/dScMgCup_c.cpp calls the same base
+   0x169's did. src/minigames/d_s_mg_jump.cpp calls _ZN11dScMgBase_cC2Ev(p)
+   WITH its argument, where src/minigames/d_s_mg_cup.cpp calls the same base
    constructor with none and rides r0 through. Verified against the ROM at
    0x020eeafc (0xec bytes) during this lane's adjudication pass: allocation size
    0x5834, the two 0xbc-byte camera records at this+0x466c walked by the
    0x020eeb3c..0x020eeb44 loop, Particle::SysTracker at +0x47e4, Model at
    +0x501c, three 0xb8-byte sub-objects at +0x506c built through __cxa_vec_ctor
    with _ZN16dMgJump3DMario_cC1Ev / _ZN16dMgJump3DMario_cD1Ev, and six 0xf0-byte
-   sub-objects at +0x5294 with func_ov006_020c6f70 / func_ov006_020c6f3c. */
+   sub-objects at +0x5294 with Heyho_Construct / Heyho_Destruct. */
 extern "C" void *port_mg_jump_spawn(void)
 {
     void *p = dScMgJump_c_classInit();
@@ -886,7 +886,7 @@ extern "C" void port_scene_jump_hits(void)
         std::printf("[scene] dScMgJump_c state dispatch: %u reached this "
                     "class's switch, %u routed, %u with a NULL pair (with the "
                     "ignition live this must be 0 -- a nonzero is a dispatch "
-                    "that beat _ZN11dScMgJump_c13OnYoshiTryEatEi), %u framework call(s), %u "
+                    "that beat _ZN11dScMgJump_c10StartRoundEi), %u framework call(s), %u "
                     "UNHANDLED address(es)\n", mine, hits, nullpmf, calls,
                     unknown);
     }
@@ -934,7 +934,7 @@ extern "C" void port_scene_jump_hits(void)
         std::printf(" 0x%08x", g_bnp_state_seen[i]);
     std::printf(" (last code slot 6 saw: 0x%08x)\n", port_mg_jump_state_last());
     /* THE IGNITION, reported with the argument it ignited with. */
-    std::printf("[scene] dScMgJump_c IGNITION _ZN11dScMgJump_c13OnYoshiTryEatEi (vtable slot "
+    std::printf("[scene] dScMgJump_c IGNITION _ZN11dScMgJump_c10StartRoundEi (vtable slot "
                 "18, 0x168 bytes): ROUTED TO THE REAL BODY, entered %u time(s), "
                 "last argument %d (slot 0 passes -1). Retired as a floor by run "
                 "mg12 lane IGN; SM64DS_BNP_START_STATE is gone with it.\n",

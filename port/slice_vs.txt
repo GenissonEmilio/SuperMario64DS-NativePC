@@ -90,12 +90,12 @@
 #          func_ov075_02117d80 is NOT here (it exists, see above)
 #          func_ov075_0211867c  0x238
 #          func_ov075_021190a4 is NOT here (it exists, see above)
-#          func_ov075_02119dc4  0x33c   src/actors/dScMgSound_c.cpp is ov006's
+#          func_ov075_02119dc4  0x33c   src/minigames/d_s_mg_sound.cpp is ov006's
 #                                       OWN body at the shared window address;
 #                                       bytes compared, DIFFERENT function
 #          func_ov075_0211a948  0xb8
 #          func_ov075_0211afb0  0x21c   same shared-window story as _02119dc4
-#                                       (src/actors/dScMgSound_c.cpp differs);
+#                                       (src/minigames/d_s_mg_sound.cpp differs);
 #                                       ALSO the 0x0211d35c pair-run target
 #        135 + 3 + 9 = 147. The nine get loud L2-pattern faces in the seat,
 #        never silent stubs (hal/scene_boot.cpp's l2_trap is the model).
@@ -314,67 +314,67 @@
 # level consumption, keeps the flag alive the way the DS does.
 #
 # ---- THE SLICE -----------------------------------------------------------
-src/actors/dEntObj_c.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/_ZN14UnknownVsEntry13InitResourcesEv.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/_ZN14UnknownVsEntry16CleanupResourcesEv.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/_ZN14UnknownVsEntry6RenderEv.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/_ZN14UnknownVsEntry8BehaviorEv.cpp
+src/game/stages/d_ent_obj.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/_ZN14UnknownVsEntry13InitResourcesEv.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/_ZN14UnknownVsEntry16CleanupResourcesEv.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/_ZN14UnknownVsEntry6RenderEv.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/_ZN14UnknownVsEntry8BehaviorEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN14UnknownVsEntryD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN14UnknownVsEntryD0Ev.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/_ZN14UnknownVsEntryD1Ev.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/__sinit_ov075_0211b5e0.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/_ZN14UnknownVsEntryD1Ev.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/__sinit_ov075_0211b5e0.c
 src/unnamed/ov075/__sinit_ov075_0211bb00.c
 src/unnamed/ov075/__sinit_ov075_0211c51c.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/_ZN15UnknownVsPlayerD1Ev.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114010.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021140e4.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021141b8.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114218.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_0211427c.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021142fc.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114300.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114390.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021143e4.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114560.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_0211473c.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_0211478c.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021147d4.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114890.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114894.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021148f0.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114904.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114988.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021149d0.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114a58.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114a6c.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114ac4.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114b60.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114be4.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114cd8.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114ddc.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02114fa8.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_0211505c.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02115098.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02115134.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021151b4.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_0211524c.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_02115290.c
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/func_ov075_021152d4.cpp
-# FOLDED into src/actors/dEntObj_c.cpp (row 317): src/_ZN15UnknownVsPlayerC1Ev.cpp
-src/actors/dScEntry_c.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/_ZN15UnknownVsPlayerD1Ev.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114010.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_021140e4.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_021141b8.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114218.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_0211427c.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_021142fc.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114300.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114390.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_021143e4.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114560.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_0211473c.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_0211478c.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_021147d4.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114890.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114894.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_021148f0.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114904.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114988.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_021149d0.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114a58.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114a6c.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114ac4.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114b60.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114be4.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114cd8.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114ddc.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02114fa8.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_0211505c.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02115098.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02115134.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_021151b4.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_0211524c.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_02115290.c
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/func_ov075_021152d4.cpp
+# FOLDED into src/game/stages/d_ent_obj.cpp (row 317): src/_ZN15UnknownVsPlayerC1Ev.cpp
+src/game/stages/d_s_entry.cpp
 # RETIRED at SLICE1: body now in src/_ZN10dScEntry_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN10dScEntry_cD0Ev.cpp
-# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/_ZN10dScEntry_c6icon_cD1Ev.cpp
-# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/_ZN12OamAnimationD1Ev.cpp
-# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/_ZN10dScEntry_c6icon_c6RenderEv.cpp
-# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/_ZN10dScEntry_c6icon_c8BehaviorEv.cpp
-# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/func_ov075_02115e8c.c
-# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/func_ov075_0211601c.c
-# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/func_ov075_02116028.c
-# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/func_ov075_02116030.c
-# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/_ZN10dScEntry_c15graphCallback_c14GraphCallback2Ev.cpp
-# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/_ZN10dScEntry_c15graphCallback_cC1Ev.cpp
-# FOLDED into src/actors/dScEntry_c.cpp (row 364): src/func_ov075_021160dc.cpp
+# FOLDED into src/game/stages/d_s_entry.cpp (row 364): src/_ZN10dScEntry_c6icon_cD1Ev.cpp
+# FOLDED into src/game/stages/d_s_entry.cpp (row 364): src/_ZN12OamAnimationD1Ev.cpp
+# FOLDED into src/game/stages/d_s_entry.cpp (row 364): src/_ZN10dScEntry_c6icon_c6RenderEv.cpp
+# FOLDED into src/game/stages/d_s_entry.cpp (row 364): src/_ZN10dScEntry_c6icon_c8BehaviorEv.cpp
+# FOLDED into src/game/stages/d_s_entry.cpp (row 364): src/func_ov075_02115e8c.c
+# FOLDED into src/game/stages/d_s_entry.cpp (row 364): src/func_ov075_0211601c.c
+# FOLDED into src/game/stages/d_s_entry.cpp (row 364): src/func_ov075_02116028.c
+# FOLDED into src/game/stages/d_s_entry.cpp (row 364): src/func_ov075_02116030.c
+# FOLDED into src/game/stages/d_s_entry.cpp (row 364): src/_ZN10dScEntry_c15graphCallback_c14GraphCallback2Ev.cpp
+# FOLDED into src/game/stages/d_s_entry.cpp (row 364): src/_ZN10dScEntry_c15graphCallback_cC1Ev.cpp
+# FOLDED into src/game/stages/d_s_entry.cpp (row 364): src/func_ov075_021160dc.cpp
 src/unnamed/ov075/func_ov075_02116128.cpp
 src/unnamed/ov075/func_ov075_0211621c.c
 src/unnamed/ov075/func_ov075_021165b0.c
@@ -438,10 +438,10 @@ src/_ZN10dScEntry_c16CleanupResourcesEv.cpp
 src/_ZN10dScEntry_c16OnPendingDestroyEv.cpp
 src/_ZN10dScEntry_c13InitResourcesEv.cpp
 src/_ZN10dScEntry_c19BeforeInitResourcesEv.cpp
-src/d_s_entry_result.cpp
+src/game/stages/d_s_entry_result.cpp
 src/_ZN12OamAnimationC1Ev.cpp
 src/_ZN10dScEntry_c6icon_cC1Ev.cpp
-src/d_s_entry_entry.cpp
+src/game/stages/d_s_entry_entry.cpp
 src/unnamed/ov075/func_ov075_0211a948.c
 src/unnamed/ov075/func_ov075_0211aa00.c
 src/unnamed/ov075/func_ov075_0211aa94.c
@@ -467,8 +467,8 @@ src/unnamed/ov075/func_ov075_0211b458.cpp
 # carries the host body, the cxx_aliases ITCM-block treatment.
 src/PrepareVsMode.c
 src/SetControllerMode.c
-src/engine/model/dExtShadowModel_c.cpp
-src/engine/graph/dGraph_c_callback_c.cpp
+src/engine/model/d_ext_shadow_model.cpp
+src/engine/graph/d_graph_c_callback.cpp
 src/Message3.cpp
 src/unnamed/arm9/0200/func_0200f0bc.c
 src/unnamed/arm9/0200/func_0200f13c.cpp

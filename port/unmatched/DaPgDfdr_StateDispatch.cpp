@@ -12,7 +12,7 @@
  * The old header said "MSVC's member pointer is four bytes". That was written
  * before the port built with /vmg /vmm, and it is no longer what this compiler
  * does. MEASURED on 2026-09-07 with the port's own flags out of build.ninja
- * (/O2 /Ob2 -std:c++17 -MT /Oy- /vmg /vmm), src/actors/daPgDfdr_c.cpp:
+ * (/O2 /Ob2 -std:c++17 -MT /Oy- /vmg /vmm), src/game/actors/d_a_pg_dfdr.cpp:
  *
  *     mov  eax, DWORD PTR _c$[ebp]
  *     mov  edx, DWORD PTR [eax+972]        ; c->pp, the ROM's +0x3cc
@@ -22,7 +22,7 @@
  *     pop  ebp
  *     jmp  eax
  *
- * and src/actors/daPgDfdr_c.cpp is the same body reading [edx+8]/[edx+12] --
+ * and src/game/actors/d_a_pg_dfdr.cpp is the same body reading [edx+8]/[edx+12] --
  * the second pair of the 16-byte element, which is what `c->pp + 1` is over an
  * EIGHT-byte member pointer. So MSVC reproduces the ROM's own record layout
  * word for word, and the dispatch is a TAIL JUMP: it pops its frame and jumps,

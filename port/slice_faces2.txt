@@ -25,7 +25,7 @@
 #    collide that way and are NOT here; they answer 464 of the 783 rows between
 #    them and each needs a host copy retired or a hostgen substitution first, so
 #    they are listed with their colliding object in
-#    runs/link100/out/FACES2/slice_held.txt. The biggest is src/actors/Player.cpp
+#    runs/link100/out/FACES2/slice_held.txt. The biggest is src/game/player/Player.cpp
 #    at 149 rows, which is the SYNC5 quarantine (MSVC refuses main's shape for
 #    it) and a decomp-side item, not a port one.
 # 4. A candidate already carried by another slice list, under any target, is held
@@ -54,7 +54,7 @@
 # of the shape "X.cpp.obj already defined in X.cpp.obj". The older row is
 # the one kept; lane FACES2 held this one for a compile family that today's
 # main has fixed, so the choice is which row seats it, not whether.
-#src/game/actors/daObjPushblock_c.cpp
+#src/game/actors/d_a_obj_pushblock.cpp
 
 # 7 unresolved: __ZN16daObjFl_London_c13InitResourcesEv, __ZN16daObjFl_London_c16CleanupResourcesEv, __ZN16daObjFl_London_c6RenderEv and 4 more
 # RETIRED at SYNC6: this TU is already named by an older slice list, and
@@ -64,7 +64,7 @@
 # of the shape "X.cpp.obj already defined in X.cpp.obj". The older row is
 # the one kept; lane FACES2 held this one for a compile family that today's
 # main has fixed, so the choice is which row seats it, not whether.
-#src/actors/daObjFl_London_c.cpp
+#src/game/actors/d_a_obj_fl_london.cpp
 
 # 6 unresolved: __ZN11daBgSnwmn_c13InitResourcesEv, __ZN11daBgSnwmn_c16CleanupResourcesEv, __ZN11daBgSnwmn_c16OnPendingDestroyEv and 3 more
 # RETIRED at SYNC6: this TU is already named by an older slice list, and
@@ -175,7 +175,7 @@
 #src/_ZN8dM3dGSphD0Ev.cpp
 
 # 2 unresolved: __ZN15TextureSequenceD1Ev, __ZN9ModelAnimD1Ev
-src/actors/daHanachan_c.cpp
+src/game/actors/d_a_hanachan.cpp
 
 # 2 unresolved: __ZN13daObjKi_Ita_c13InitResourcesEv, _daObjKi_Ita_c_classInit
 # RETIRED at SYNC6: this TU is already named by an older slice list, and
@@ -606,13 +606,13 @@ src/actors/daHanachan_c.cpp
 #src/_ZN10dCcAcPos_cD0Ev.cpp
 
 # 1 unresolved: ?AdvanceFade@dFdDummy_c@@UAEXXZ
-src/engine/fader/dFader_c.cpp
+src/runtime/graphics/fader/d_fader.cpp
 
 # 1 unresolved: ?SetForwardTime@dFdDummy_c@@UAEHI@Z
-# FOLDED into src/engine/fader/dFader_c.cpp (row 609): src/_ZN10dFdDummy_c14SetForwardTimeEj.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 609): src/_ZN10dFdDummy_c14SetForwardTimeEj.cpp
 
 # 1 unresolved: ?SetBackwardTime@dFdDummy_c@@UAEHI@Z
-# FOLDED into src/engine/fader/dFader_c.cpp (row 609): src/_ZN10dFdDummy_c15SetBackwardTimeEj.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 609): src/_ZN10dFdDummy_c15SetBackwardTimeEj.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -653,7 +653,7 @@ src/engine/fader/dFader_c.cpp
 #src/_ZN10dScEntry_cD0Ev.cpp
 
 # 1 unresolved: ?CleanupResources@daKpa2Bg_c@@UAEHXZ
-src/actors/daKpa2Bg_c.cpp
+src/game/actors/d_a_kpa2_bg.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -902,7 +902,7 @@ src/actors/daKpa2Bg_c.cpp
 # ask what the object DEFINES, not what the source says.
 #src/_ZN11dCapEnemy_cD2Ev.cpp
 
-# 1 unresolved: ?OnHitFromUnderneath@dScMgBase_c@@UAEHXZ
+# 1 unresolved: ?CloseMenu@dScMgBase_c@@UAEHXZ
 # RETIRED at SYNC6: this TU is already named by an older slice list, and
 # port/slice_faces2.txt is appended to its targets AFTER the tier-share
 # block, so its row is never deduped against port_slice_shared and the TU
@@ -910,7 +910,7 @@ src/actors/daKpa2Bg_c.cpp
 # of the shape "X.cpp.obj already defined in X.cpp.obj". The older row is
 # the one kept; lane FACES2 held this one for a compile family that today's
 # main has fixed, so the choice is which row seats it, not whether.
-#src/_ZN11dScMgBase_c19OnHitFromUnderneathEv.cpp
+#src/_ZN11dScMgBase_c9CloseMenuEv.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -1309,7 +1309,7 @@ src/actors/daKpa2Bg_c.cpp
 # own symbol in its `// @symbol` header. That is a true statement about the
 # text and a false one about what MSVC emits. A scan for this shape should
 # ask what the object DEFINES, not what the source says.
-#src/_ZN13ExpandingHeapD0Ev.cpp
+#src/_ZN5mHeap9ExpHeap_tD0Ev.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -1643,10 +1643,10 @@ src/game/actors/d_a_obj_fl_maruta.cpp
 #src/_ZN14EnemySwitchTagD0Ev.cpp
 
 # 1 unresolved: ?CleanupResources@KnockDownPlank@@UAEHXZ
-src/actors/daObjBk_Botaosi_c.cpp
+src/game/actors/d_a_obj_bk_botaosi.cpp
 
 # 1 unresolved: ?Render@KnockDownPlank@@UAEHXZ
-# FOLDED into src/actors/daObjBk_Botaosi_c.cpp (row 1646): src/_ZN14KnockDownPlank6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_botaosi.cpp (row 1646): src/_ZN14KnockDownPlank6RenderEv.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -2482,7 +2482,7 @@ src/actors/daObjBk_Botaosi_c.cpp
 # own symbol in its `// @symbol` header. That is a true statement about the
 # text and a false one about what MSVC emits. A scan for this shape should
 # ask what the object DEFINES, not what the source says.
-#src/_ZN4HeapD0Ev.cpp
+#src/_ZN5mHeap6Heap_tD0Ev.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -2922,7 +2922,7 @@ src/actors/daObjBk_Botaosi_c.cpp
 #src/_ZN6NumberD0Ev.cpp
 
 # 1 unresolved: ?Render@Player@@UAEHXZ
-src/actors/Player.cpp
+src/game/player/Player.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -3172,7 +3172,7 @@ src/actors/Player.cpp
 #src/_ZN7dScMB_cD0Ev.cpp
 
 # 1 unresolved: ?SetToEnd@dWipe_c@@UAEXXZ
-src/engine/fader/dWipe_c.cpp
+src/runtime/graphics/fader/d_wipe.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -3460,7 +3460,7 @@ src/engine/fader/dWipe_c.cpp
 #src/_ZN8YoshiEggD0Ev.cpp
 
 # 1 unresolved: ?AfterCleanupResources@dActor_c@@UAEXI@Z
-src/actors/dActor_c.cpp
+src/runtime/actor/d_actor.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -3501,7 +3501,7 @@ src/actors/dActor_c.cpp
 #src/_ZN8dCcPos_cD0Ev.cpp
 
 # 1 unresolved: ?AfterInitResources@dScene_c@@UAEXI@Z
-src/actors/dScene_c.cpp
+src/game/stages/d_scene.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -3824,7 +3824,7 @@ src/actors/dScene_c.cpp
 # own symbol in its `// @symbol` header. That is a true statement about the
 # text and a false one about what MSVC emits. A scan for this shape should
 # ask what the object DEFINES, not what the source says.
-#src/_ZN9SolidHeapD0Ev.cpp
+#src/_ZN5mHeap11SolidHeap_tD0Ev.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -3922,10 +3922,10 @@ src/actors/dScene_c.cpp
 #src/_ZN9TinyWaterD0Ev.cpp
 
 # 1 unresolved: ?CleanupResources@TowerStep@@UAEHXZ
-src/actors/daObjBk_Lift_c.cpp
+src/game/actors/d_a_obj_bk_lift.cpp
 
 # 1 unresolved: ?Render@TowerStep@@UAEHXZ
-# FOLDED into src/actors/daObjBk_Lift_c.cpp (row 3925): src/_ZN9TowerStep6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_bk_lift.cpp (row 3925): src/_ZN9TowerStep6RenderEv.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -4087,7 +4087,7 @@ src/actors/daObjBk_Lift_c.cpp
 # of the shape "X.cpp.obj already defined in X.cpp.obj". The older row is
 # the one kept; lane FACES2 held this one for a compile family that today's
 # main has fixed, so the choice is which row seats it, not whether.
-#src/actors/daBgSnmBdy_c.cpp
+#src/game/actors/d_a_bg_snm_bdy.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -4109,7 +4109,7 @@ src/actors/daObjBk_Lift_c.cpp
 #src/engine/fader/_ZN10FaderColorD0Ev.cpp
 
 # 1 unresolved: ?AdvanceFade@FaderBrightness@@UAEXXZ
-# FOLDED into src/engine/fader/dFader_c.cpp (row 609): src/engine/fader/_ZN15FaderBrightness11AdvanceFadeEv.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 609): src/engine/fader/_ZN15FaderBrightness11AdvanceFadeEv.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was
@@ -4150,7 +4150,7 @@ src/actors/daObjBk_Lift_c.cpp
 #src/engine/fader/_ZN5FaderD0Ev.cpp
 
 # 1 unresolved: ?AdvanceFade@FaderWipe@@UAEXXZ
-# FOLDED into src/engine/fader/dFader_c.cpp (row 609): src/engine/fader/_ZN9FaderWipe11AdvanceFadeEv.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 609): src/engine/fader/_ZN9FaderWipe11AdvanceFadeEv.cpp
 
 # 1 unresolved: ?DisableIRQs@IRQ@@YAII@Z
 src/unnamed/arm9/0205/func_0205f77c.cpp
@@ -4194,7 +4194,7 @@ src/unnamed/arm9/0205/func_0205f77c.cpp
 #src/game/actors/daObjTh_Fall_Block_c/_ZN12FallBlockBbhD0Ev.cpp
 
 # 1 unresolved: ?CleanupResources@MadPiano@@UAEHXZ
-src/game/actors/daPiano_c/d_a_piano.cpp
+src/game/actors/d_a_piano.cpp
 
 # HELD, and the whole family with it: A STRUCTOR TU DOES NOT DEFINE ITS OWN
 # FLAT ROM NAME UNDER MSVC, so seating one never closed the row it was

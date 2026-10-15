@@ -95,7 +95,7 @@
 //     020e70dc  bx   lr
 //
 // which is EXACTLY _ZN19dScMgSingle3DBase_c18AfterInitResourcesEj's shape one family over, at +0x47e4
-// instead of +0x471c.  src/actors/dScMgD3DBase_c.cpp
+// instead of +0x471c.  src/minigames/d_s_mg_d3d_base.cpp
 // spells the call with ONE argument, which is the only way to spell an unnamed
 // value in C, and on the host that means the framework's flags word is not
 // pushed and _ZN11dScMgBase_c18AfterInitResourcesEj reads whatever the stack holds.
@@ -106,7 +106,7 @@
 // The repair is port_mg_d3dbase_after_init, in the SHARED file
 // port/unmatched/MgD3DBase_Slots.cpp -- not a lane file, because the four ids
 // under this base inherit the same body and run mg11 seats all four at once.
-// src/actors/dScMgD3DBase_c.cpp stays OUT of
+// src/minigames/d_s_mg_d3d_base.cpp stays OUT of
 // port/slice_tte.txt for the flower's reason: the vtable face routes to the
 // repaired body, nothing dispatches the src one, and listing a body no dispatch
 // reaches would put a line in the headline that the linker drops anyway.
@@ -135,7 +135,7 @@
 // SLOT 11 LOOKS LIKE THE SAME DEFECT AND IS NOT, checked rather than assumed.
 // 0x020e700c also never reads r1 -- but it ends in `bx ip` to 0x0202e398, a
 // TAIL JUMP, so both r0 and r1 ride into Scene::AfterRender; and
-// src/actors/dScMgD3DBase_c.cpp spells that call with BOTH
+// src/minigames/d_s_mg_d3d_base.cpp spells that call with BOTH
 // arguments.  The src is already correct and the face below forwards the value.
 // Slots 1, 7, 10 and 33 read no second argument in the ROM and their srcs take
 // none, so their thunks pop nothing.
@@ -153,7 +153,7 @@
 //   0213c62c    see below               020ad660    0x6f6d6168  ("hamo", ASCII)
 //
 // AND THE WORD PAST THE END OF THIS TABLE BELONGS TO A CLASS THAT ALREADY
-// SHIPS.  data_ov006_0213fd0c is the mwcc pair {0x02124ae4, 0} -- the FIRST of
+// SHIPS.  pmf_dScMgBSC_c_StateWaitTable is the mwcc pair {0x02124ae4, 0} -- the FIRST of
 // dScMgBSC_c's fourteen state pairs, the class run mg9 lane LKY seated as
 // SCENE_MG_LUCKYSTARS and the tree boots today.  A 37-slot fill here would
 // write a host thunk over the code word of a live state of scene 388.  That is
@@ -240,7 +240,7 @@ extern unsigned char g_profile_MG_TRAMPOLINE2[];
    at 0x0213b270 reads "18dScMgTrmpln3DMario_c".
 
    Three tables, written in constructor order by the three-deep chain
-   func_ov006_020cd72c -> func_ov006_020cd6f4 -> the element ctor
+   TrmpObjAdapter_Construct -> TrmpRingObjAdapter_Construct -> the element ctor
    (src/_ZN6Player29TryExitCharacterDoorWithIntroEv.cpp, misnamed):
 
      0x0213b3c4  slot 4 = 0x020cd720, slot 11 = 0x020cd6d8   base-base
@@ -258,27 +258,27 @@ extern unsigned char g_profile_MG_TRAMPOLINE2[];
 extern unsigned char data_ov006_0213b2e0[];   /* dScMgTrmpln2Mario_c   5 */
 extern unsigned char data_ov006_0213b3e0[];   /* its base              */
 extern unsigned char data_ov006_0213b3c4[];   /* its base's base       */
-int  func_ov006_020c8e88(void *p);
-int  func_ov006_020c8e80(void *p);
-int  func_ov006_020c8dd4(void *p);
-int  func_ov006_020c8ddc(char *c);
-void func_ov006_020cd6d8(short *c);
-void func_ov006_020cd720(short *p);
+int  Trmp2Mario_GetPos(void *p);
+int  Trmp2Mario_GetPrevPos(void *p);
+int  Trmp2Mario_GetVelocity(void *p);
+int  Trmp2Mario_Reset(char *c);
+void TrmpRingObjAdapter_Clear(short *c);
+void TrmpObjAdapter_Clear(short *p);
 
 /* dScMgD3DBase_c's seventeen.  Slot 2 is NOT src's body: see section 4. */
 int   port_mg_d3dbase_after_init(void *c, unsigned f);     /* slot  2 */
 int   port_mg_d3dbase_before_render(void *c);              /* slot 10 */
 int   _ZN14dScMgD3DBase_cD1Ev(void *self);             /* slot 16 D2 */
 int   _ZN14dScMgD3DBase_cD0Ev(void *self);             /* slot 17 D0 */
-int   _ZN14dScMgD3DBase_c8OnKickedEv(char *self);                    /* slot 24 */
-int   _ZN14dScMgD3DBase_c8OnPushedEv(void *t);                       /* slot 25 */
-int   _ZN14dScMgD3DBase_c24OnHitByCannonBlastedCharEv(void);                          /* slot 26 */
+int   _ZN14dScMgD3DBase_c16OnGraphCallback2Ev(char *self);                    /* slot 24 */
+int   _ZN14dScMgD3DBase_c16OnGraphCallback3Ev(void *t);                       /* slot 25 */
+int   _ZN14dScMgD3DBase_c14GetDisplayModeEv(void);                          /* slot 26 */
 void  port_mg_d3dbase_slot27(void *c);                     /* slot 27 */
 void  port_mg_d3dbase_slot28(void *c);                    /* slot 28 */
-void  _ZN14dScMgD3DBase_c16OnAimedAtWithEggEv(char *c);                       /* slot 29 */
-void  _ZN14dScMgD3DBase_c25OnAimedAtWithEggReturnVecEv(char *c);                       /* slot 30 */
-void  _ZN14dScMgD3DBase_c9Virtual7CEv(char *c);                       /* slot 31 */
-void  _ZN14dScMgD3DBase_c9Virtual84Ev(char *obj);                     /* slot 33 */
+void  _ZN14dScMgD3DBase_c17SaveScreenForMenuEv(char *c);                       /* slot 29 */
+void  _ZN14dScMgD3DBase_c21RestoreScreenFromMenuEv(char *c);                       /* slot 30 */
+void  _ZN14dScMgD3DBase_c15InitSubScreenBgEv(char *c);                       /* slot 31 */
+void  _ZN14dScMgD3DBase_c11InitEnginesEv(char *obj);                     /* slot 33 */
 
 /* dScMgTrampoline2_c's own twelve.  _ZN18dScMgTrampoline2_c8BehaviorEv is the HOST COPY in
    unmatched/MgTrampolineTerror_StateDispatch.cpp, not the src TU: it is the
@@ -297,12 +297,12 @@ int   _ZN18dScMgTrampoline2_c8BehaviorEv(void *self);        /* slot  6 Behavior
 int   _ZN18dScMgTrampoline2_c6RenderEv(char *self);        /* slot  9 Render */
 void *_ZN18dScMgTrampoline2_cD1Ev(void *thiz);        /* slot 16 D2 */
 void *_ZN18dScMgTrampoline2_cD0Ev(char *thiz);        /* slot 17 D0 */
-void  _ZN18dScMgTrampoline2_c13OnYoshiTryEatEi(void *self);        /* slot 18 state reset */
-int   _ZN18dScMgTrampoline2_c13OnTurnIntoEggEi(void);              /* slot 19 language load */
-int   _ZN18dScMgTrampoline2_c11OnAttacked2Ev(char *self);        /* slot 23 */
-int   _ZN18dScMgTrampoline2_c8OnKickedEv(void *thiz);        /* slot 24 */
-int   _ZN18dScMgTrampoline2_c8OnPushedEv(void *t);           /* slot 25 */
-void  _ZN18dScMgTrampoline2_c9Virtual88Eiiii(void *obj, int x, int y, int val, int n); /* slot 34 */
+void  _ZN18dScMgTrampoline2_c10StartRoundEi(void *self);        /* slot 18 state reset */
+int   _ZN18dScMgTrampoline2_c11CanEndStateEi(void);              /* slot 19 language load */
+int   _ZN18dScMgTrampoline2_c16OnGraphCallback0Ev(char *self);        /* slot 23 */
+int   _ZN18dScMgTrampoline2_c16OnGraphCallback2Ev(void *thiz);        /* slot 24 */
+int   _ZN18dScMgTrampoline2_c16OnGraphCallback3Ev(void *t);           /* slot 25 */
+void  _ZN18dScMgTrampoline2_c11PaintSquareEiiii(void *obj, int x, int y, int val, int n); /* slot 34 */
 
 /* the factory */
 void *dScMgTrampoline2_c_classInit(void);
@@ -322,10 +322,10 @@ void     port_mg_dispatch_counts(unsigned *calls, unsigned *unknown);
 
 /* the persistent minigame record this class's row is keyed to.  Nothing new is
    defined here: the storage is hal/level_boot.cpp's .dsstate$savblk0004 and the
-   index function is src/func_ov004_020adc3c.c. */
-extern void         *data_ov004_020beb68;     /* the live dScMgBase_c `this` */
+   index function is src/Mg_GetSaveTable.c. */
+/* PORTDROP2: gMgScene is declared by include/dScMgBase_c.h now (the live dScMgBase_c `this`). */
 extern unsigned char data_0209caf4[];         /* 36 records x 20 bytes       */
-int  func_ov004_020adc3c(void *c);            /* (self->field_8 >> 8) & 0xff */
+int  Mg_GetSaveTable(void *c);            /* (self->field_8 >> 8) & 0xff */
 
 /* THE WORD PAST 0x180's TABLE, and it is this class's live flag.  Slot 23
    (src/minigames/d_s_mg_trampoline2.cpp) reads it and writes it on every OnAttacked2, so
@@ -338,7 +338,7 @@ extern int data_ov006_0213fbc4;
 /* The record row this class's object is keyed to, or -1 with no live base. */
 static int port_mg_tte_record_index(void)
 {
-    return data_ov004_020beb68 ? func_ov004_020adc3c(data_ov004_020beb68) : -1;
+    return gMgScene ? Mg_GetSaveTable(gMgScene) : -1;
 }
 
 // ---- the tick witness ------------------------------------------------------
@@ -399,23 +399,23 @@ static void *__fastcall d3_v16(void *s, void *)
 static void *__fastcall d3_v17(void *s, void *)
 { D3D(17); return (void *)(size_t)_ZN14dScMgD3DBase_cD0Ev(s); }
 static int  __fastcall d3_v24(void *s, void *)
-{ D3D(24); return _ZN14dScMgD3DBase_c8OnKickedEv((char *)s); }
+{ D3D(24); return _ZN14dScMgD3DBase_c16OnGraphCallback2Ev((char *)s); }
 static int  __fastcall d3_v25(void *s, void *)
-{ D3D(25); return _ZN14dScMgD3DBase_c8OnPushedEv(s); }
+{ D3D(25); return _ZN14dScMgD3DBase_c16OnGraphCallback3Ev(s); }
 static int  __fastcall d3_v26(void *, void *)
-{ D3D(26); return _ZN14dScMgD3DBase_c24OnHitByCannonBlastedCharEv(); }
+{ D3D(26); return _ZN14dScMgD3DBase_c14GetDisplayModeEv(); }
 static int  __fastcall d3_v27(void *s, void *)
 { D3D(27); port_mg_d3dbase_slot27(s); return 0; }
 static int  __fastcall d3_v28(void *s, void *)
 { D3D(28); port_mg_d3dbase_slot28(s); return 0; }
 static int  __fastcall d3_v29(void *s, void *)
-{ D3D(29); _ZN14dScMgD3DBase_c16OnAimedAtWithEggEv((char *)s); return 0; }
+{ D3D(29); _ZN14dScMgD3DBase_c17SaveScreenForMenuEv((char *)s); return 0; }
 static int  __fastcall d3_v30(void *s, void *)
-{ D3D(30); _ZN14dScMgD3DBase_c25OnAimedAtWithEggReturnVecEv((char *)s); return 0; }
+{ D3D(30); _ZN14dScMgD3DBase_c21RestoreScreenFromMenuEv((char *)s); return 0; }
 static int  __fastcall d3_v31(void *s, void *)
-{ D3D(31); _ZN14dScMgD3DBase_c9Virtual7CEv((char *)s); return 0; }
+{ D3D(31); _ZN14dScMgD3DBase_c15InitSubScreenBgEv((char *)s); return 0; }
 static int  __fastcall d3_v33(void *s, void *)
-{ D3D(33); _ZN14dScMgD3DBase_c9Virtual84Ev((char *)s); return 0; }
+{ D3D(33); _ZN14dScMgD3DBase_c11InitEnginesEv((char *)s); return 0; }
 
 /* ---- dScMgTrampoline2_c's own twelve ------------------------------------ */
 static int  __fastcall tte_init(void *s, void *)
@@ -439,7 +439,7 @@ static void *__fastcall tte_d2(void *s, void *)
 static void *__fastcall tte_d0(void *s, void *)
 { TTE(17); return _ZN18dScMgTrampoline2_cD0Ev((char *)s); }
 static int  __fastcall tte_v18(void *s, void *, int mode)
-{ TTE(18); g_tte_mode18 = mode; _ZN18dScMgTrampoline2_c13OnYoshiTryEatEi(s); return 1; }
+{ TTE(18); g_tte_mode18 = mode; _ZN18dScMgTrampoline2_c10StartRoundEi(s); return 1; }
 /* SLOT 19 TAKES A STACK PARAMETER EVEN THOUGH THIS CLASS'S BODY IGNORES IT,
    and getting that wrong cost this lane a 1600-frame crash.  0x02124298 never
    reads r1 in its 0x34 bytes -- disassembled, not assumed -- so the value is
@@ -449,7 +449,7 @@ static int  __fastcall tte_v18(void *s, void *, int mode)
    through an `int (__fastcall *)(void *, void *, int)`, which is __fastcall
    with ONE stack parameter, so the callee must clean four bytes and end
    `ret 4`.  A two-parameter thunk ends `ret 0` and leaves esp four bytes low
-   inside func_ov004_020b6c9c, whose epilogue then pops the return address into
+   inside State18_Update, whose epilogue then pops the return address into
    ebp and returns into the stack.
 
    THAT IS EXACTLY WHAT HAPPENED.  A 1800-frame boot of scene 385 faulted with
@@ -468,36 +468,36 @@ static int  __fastcall tte_v18(void *s, void *, int mode)
    first time the family convention has been tested by a lane that did not
    already know it. */
 static int  __fastcall tte_v19(void *, void *, int mode)
-{ TTE(19); g_tte_mode19 = mode; return _ZN18dScMgTrampoline2_c13OnTurnIntoEggEi(); }
+{ TTE(19); g_tte_mode19 = mode; return _ZN18dScMgTrampoline2_c11CanEndStateEi(); }
 static int  __fastcall tte_v23(void *s, void *)
-{ TTE(23); return _ZN18dScMgTrampoline2_c11OnAttacked2Ev((char *)s); }
+{ TTE(23); return _ZN18dScMgTrampoline2_c16OnGraphCallback0Ev((char *)s); }
 static int  __fastcall tte_v24(void *s, void *)
-{ TTE(24); return _ZN18dScMgTrampoline2_c8OnKickedEv(s); }
+{ TTE(24); return _ZN18dScMgTrampoline2_c16OnGraphCallback2Ev(s); }
 static int  __fastcall tte_v25(void *s, void *)
-{ TTE(25); return _ZN18dScMgTrampoline2_c8OnPushedEv(s); }
+{ TTE(25); return _ZN18dScMgTrampoline2_c16OnGraphCallback3Ev(s); }
 /* SLOT 34 TAKES FIVE AND THE TREE HAS A DISPATCHER FOR IT.  hal/scene_mg.cpp's
    mb_v34 header records that every slot-34 dispatch site passes r0..r3 plus one
-   word at [sp], and that the tree's only dispatcher, func_ov004_020ae5c4, was
+   word at [sp], and that the tree's only dispatcher, Mg_DrawLine, was
    seated by run mg10 lane F371.  THIS CLASS IS ON THAT DISPATCHER'S CALLER LIST
    -- src/minigames/d_s_mg_trampoline2.cpp, state 1, calls it -- so the five-parameter
    spelling is not symmetry here, it is a live path. */
 static int  __fastcall tte_v34(void *s, void *, int cx, int cy, int val, int n)
-{ TTE(34); _ZN18dScMgTrampoline2_c9Virtual88Eiiii(s, cx, cy, val, n); return 0; }
+{ TTE(34); _ZN18dScMgTrampoline2_c11PaintSquareEiiii(s, cx, cy, val, n); return 0; }
 
 /* ---- the Trampoline-Mario element faces --------------------------------- */
 static unsigned g_tte_elem_hits[5];
 static int  __fastcall el_v0(void *s, void *)
-{ ++g_tte_elem_hits[0]; return func_ov006_020c8e88(s); }
+{ ++g_tte_elem_hits[0]; return Trmp2Mario_GetPos(s); }
 static int  __fastcall el_v1(void *s, void *)
-{ ++g_tte_elem_hits[1]; return func_ov006_020c8e80(s); }
+{ ++g_tte_elem_hits[1]; return Trmp2Mario_GetPrevPos(s); }
 static int  __fastcall el_v2(void *s, void *)
-{ ++g_tte_elem_hits[2]; return func_ov006_020c8dd4(s); }
+{ ++g_tte_elem_hits[2]; return Trmp2Mario_GetVelocity(s); }
 static int  __fastcall el_v3(void *s, void *)
-{ ++g_tte_elem_hits[3]; return func_ov006_020c8ddc((char *)s); }
+{ ++g_tte_elem_hits[3]; return Trmp2Mario_Reset((char *)s); }
 static int  __fastcall el_v4(void *s, void *)
-{ ++g_tte_elem_hits[4]; func_ov006_020cd6d8((short *)s); return 0; }
+{ ++g_tte_elem_hits[4]; TrmpRingObjAdapter_Clear((short *)s); return 0; }
 static int  __fastcall el_b4(void *s, void *)
-{ func_ov006_020cd720((short *)s); return 0; }
+{ TrmpObjAdapter_Clear((short *)s); return 0; }
 
 /* SM64DS_SCENE_SLOT0=0 and SM64DS_SCENE_SLOT9=0, the diagnostics every scene
    seat in this port carries, counted separately so a run can never read a no-op
@@ -685,7 +685,7 @@ extern "C" void port_scene_fill_trampoline2(void)
 
    THE FACTORY NEEDS NO DISPLACEMENT RULING, re-checked rather than assumed.
    port/mg_fanout_costs.txt section 12 grants one to 0x169 because
-   src/actors/dScMgCup_c.cpp calls the base constructor _ZN11dScMgBase_cC2Ev
+   src/minigames/d_s_mg_cup.cpp calls the base constructor _ZN11dScMgBase_cC2Ev
    with NO argument and rides r0 through.  src/minigames/d_s_mg_trampoline2.cpp calls
    _ZN11dScMgBase_cC2Ev(c) WITH its argument, so this class is on the correct
    side of it and the factory is linked from the slice rather than host-copied.
@@ -778,8 +778,8 @@ extern "C" void port_scene_trampoline2_hits(void)
         unsigned t1 = 0, t2 = 0, t3 = 0, t4 = 0;
         port_mg_tte_trap_counts(&t1, &t2, &t3, &t4);
         std::printf("[scene] dScMgTrampoline2_c CLOSURE FLOORS REMAINING: "
-                    "func_ov006_020cf2fc %u, func_ov006_020d01e0 %u, "
-                    "func_ov006_020cfc74 %u. func_ov006_020d0c38 (the "
+                    "TrmpLine_Draw %u, TrmpLine_Build %u, "
+                    "TrmpLine_PushJumper %u. TrmpLine_Create (the "
                     "stroke-connected test slot 23 asks) is RETIRED -- it is "
                     "seated and its slot reads %u; the record readout below is "
                     "what says whether a stroke was judged\n", t1, t2, t4, t3);
@@ -838,8 +838,8 @@ extern "C" void port_scene_trampoline2_hits(void)
                         rec[0], rec[1], rec[2], rec[3], rec[4]);
         } else {
             std::printf("[scene] dScMgTrampoline2_c save record: NO minigame "
-                        "index (data_ov004_020beb68 = %p)\n",
-                        data_ov004_020beb68);
+                        "index (gMgScene = %p)\n",
+                        gMgScene);
         }
     }
     std::fflush(stdout);

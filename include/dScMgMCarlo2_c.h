@@ -7,11 +7,11 @@
  * SIZE 0x5930, from dScMgMCarlo2_c_classInit in the combined class TU's
  * `_ZN7fBase_cnwEj(0x5930)`.
  *
- * SHARED TABLE at 0x4f38, size 0x270 (func_ov006_020c1d80/020c1c64), same
+ * SHARED TABLE at 0x4f38, size 0x270 (Dealer_Construct/020c1c64), same
  * as five siblings -- see include/dScMgMemory_c.h's own note. TWO fields
  * fall WITHIN it and are real matched access (dScMgMCarlo2_c.cpp):
  * mShared.unk_01a and mShared.unk_1e6 are literally the ctor's own writes
- * and `*(short*)(t+0x1e6)=0` writes (func_ov006_020c1d80's own body) --
+ * and `*(short*)(t+0x1e6)=0` writes (Dealer_Construct's own body) --
  * named here instead of folded into the opaque table, everything else in
  * the table stays pad.
  *
@@ -36,7 +36,7 @@
 #define DSCMGMCARLO2_C_H
 #include "dScMgSingle3DBase_c.h"
 
-extern "C" int  func_ov006_020c1c64(char *t); /* decl_common.h's own signature */
+extern "C" int  Dealer_Destruct(char *t); /* decl_common.h's own signature */
 extern "C" void _ZN19dMgMCarlo2CardObj_cD1Ev(void *elem);
 
 /* Shared 0x270-byte minigame state block. The type name is coined; its
@@ -44,7 +44,7 @@ extern "C" void _ZN19dMgMCarlo2CardObj_cD1Ev(void *elem);
    lets C++ perform the scene's reverse-order teardown: card array, then this
    block, then the inherited scene state. */
 struct dMgMCarlo2SharedState_c {
-    ~dMgMCarlo2SharedState_c() { func_ov006_020c1c64((char *)this); }
+    ~dMgMCarlo2SharedState_c() { Dealer_Destruct((char *)this); }
 
     u8  pad_000[0x1a];
     s16 unk_01a;
@@ -126,8 +126,8 @@ struct dScMgMCarlo2_c : dScMgSingle3DBase_c {
     s32 InitResources();      /* slot 0 -- src/_ZN14dScMgMCarlo2_c13InitResourcesEv.cpp */
     s32 Behavior();           /* slot 6 -- ov006 0x020fa13c */
     s32 Render();             /* slot 9 -- src/_ZN14dScMgMCarlo2_c6RenderEv.cpp */
-    virtual void OnYoshiTryEat(int arg);               /* slot 18 */
-    virtual int  OnTurnIntoEgg(int mode);              /* slot 19 */
+    virtual void StartRound(int arg);               /* slot 18 */
+    virtual int  CanEndState(int mode);              /* slot 19 */
     s32 CleanupResources();   /* slot 3 -- ov006 0x020f9fe0 */
 
     static void UpdateBoard();

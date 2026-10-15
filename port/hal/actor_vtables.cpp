@@ -246,7 +246,7 @@ void Memory_Deallocate(void *p, void *heap);
 
 /* Heap_Destroy IS ARM9 0x0203c74c, Heap::_Destroy, AND IT IS THE THIRD
    SPELLING OF THAT ONE ADDRESS IN THIS TREE. The other two are the C symbol
-   _ZN4Heap8_DestroyEv (src/_ZN4Heap8_DestroyEv.cpp, the ROM's own tail-call
+   _ZN5mHeap6Heap_t8_DestroyEv (src/engine/heap/Heap.cpp, the ROM's own tail-call
    veneer) and the C++ method Heap::_Destroy (the receiver-bridging face at the
    bottom of hal/lk4_solidheap_seat.cpp). This one exists because the matched
    teardown TU spells the callee by role at C linkage rather than by mangled
@@ -260,8 +260,8 @@ void Memory_Deallocate(void *p, void *heap);
    a permanent answer: an actor that owns a heap and reaches vfSuccess 2 kills
    the process instead of freeing the heap, and nothing about that is a port
    decision the ROM would recognise. It could not be wired before run link60
-   lane LK5. Until that landed, _ZN4Heap8_DestroyEv was reached through an
-   /alternatename off ?_Destroy@Heap@@QAEXXZ and its host body took NO
+   lane LK5. Until that landed, _ZN5mHeap6Heap_t8_DestroyEv was reached through an
+   /alternatename off ?_Destroy@Heap_t@mHeap@@QAEXXZ and its host body took NO
    parameter, so the receiver this face holds had nowhere to go. LK5 deleted
    that directive, named the parameter in the byte-matched veneer TU (zero ARM
    cost, r0 is already in place for the tail call) and put a Heap::_Destroy
@@ -273,18 +273,18 @@ void Memory_Deallocate(void *p, void *heap);
    stack slot in and the first stack slot out. This is the same direction as
    Memory_Deallocate above (a role name onto the real body), not the ECX-versus-
    stack shape the four sibling families needed. */
-void _ZN4Heap8_DestroyEv(void *thiz);
+void _ZN5mHeap6Heap_t8_DestroyEv(void *thiz);
 void Heap_Destroy(void *h)
 {
-    _ZN4Heap8_DestroyEv(h);
+    _ZN5mHeap6Heap_t8_DestroyEv(h);
 }
 }
 
 /* THE OTHER END OF THAT CHAIN, AND IT MOVED HERE FROM LK5'S FILE FOR A LINK
    REASON THIS LANE MEASURED RATHER THAN GUESSED.
 
-   src/_ZN4Heap8_DestroyEv.cpp, the ROM's byte-matched veneer, tail-calls the
-   flat C name _ZN4Heap7DestroyEv, and the definition of that name is a face
+   src/engine/heap/Heap.cpp, the ROM's byte-matched veneer, tail-calls the
+   flat C name _ZN5mHeap6Heap_t7DestroyEv, and the definition of that name is a face
    onto the __thiscall method Heap::Destroy. LK5 wrote the face at the bottom of
    hal/lk4_solidheap_seat.cpp, next to the probe evidence that earned it, and
    that evidence is still the reference for it.
@@ -301,9 +301,9 @@ void Heap_Destroy(void *h)
 
    Heap_Destroy above is compiled wherever THIS file is, and GATE9_GEN puts its
    caller, the matched actor teardown, in all six. So wiring it while the face
-   sat in the 3-target file gave three LNK2019s on __ZN4Heap8_DestroyEv, and
+   sat in the 3-target file gave three LNK2019s on __ZN5mHeap6Heap_t8_DestroyEv, and
    parking the face in heap_vtable.cpp instead moved the failure rather than
-   fixing it: every anim and soak smoke then demanded ?Destroy@Heap@@QAEXXZ,
+   fixing it: every anim and soak smoke then demanded ?Destroy@Heap_t@mHeap@@QAEXXZ,
    which none of them has any business linking. Both readings are from this
    lane's own build output, not from reasoning about the file lists.
 
@@ -316,12 +316,14 @@ void Heap_Destroy(void *h)
    no receiver invented anywhere. The shadow has to be a CLASS and not a struct
    for the same reason hal/heap_vtable.cpp says beside its own pair, the src TUs
    declare `class Heap` and mangle PAV. */
-class Heap {
-public:
+namespace mHeap {
+struct Heap_t {
+
     void Destroy();
 };
-extern "C" void _ZN4Heap7DestroyEv(void *thiz)
-{ ((Heap *)thiz)->Heap::Destroy(); }
+}
+extern "C" void _ZN5mHeap6Heap_t7DestroyEv(void *thiz)
+{ ((mHeap::Heap_t *)thiz)->Heap_t::Destroy(); }
 
 extern "C" {
 int func_0204424c(char *c);

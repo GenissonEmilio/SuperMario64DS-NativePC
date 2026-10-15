@@ -20,7 +20,7 @@
 #                           func_ov075_0211977c and _ZN10dScEntry_c13InitResourcesEv.
 #   func_02018934           the ROM's mount body; LoadArchive's only callee.
 #   func_02018d98           func_02018934 opens the NARC through it.
-#   _ZN4Heap9_AllocateEji   the tail-call veneer at 0x0203c29c that
+#   _ZN5mHeap6Heap_t9_AllocateEji   the tail-call veneer at 0x0203c29c that
 #                           func_02018934 allocates the archive through
 #                           (ldr ip,[pc]; bx ip; .word 0x203c6cc -- a
 #                           hand-asm veneer, matched as asm).
@@ -39,7 +39,7 @@
 #   src/func_02018d98.c's own definition takes NO parameters and passes none to
 #   func_0205d518 -- the ARM original carries r0 and r1 straight through. On the
 #   host the callee therefore reads whatever the calling convention left it.
-#   src/_ZN4Heap9_AllocateEji.cpp is the same shape: it is a two-instruction
+#   src/_ZN5mHeap6Heap_t9_AllocateEji.cpp is the same shape: it is a two-instruction
 #   tail-call veneer (ldr ip,[pc]; bx ip) decompiled as a void() calling a
 #   void(), so its three arguments and its return value both ride registers the
 #   host does not promise.

@@ -243,10 +243,10 @@ _ZTS7daMky_c _ZTI7daMky_c g_profile_MONKEY_THIEF
 g_profile_MONKEY_STAR data_ov030_02115bc8:0x2c
 data_ov030_02115c90@0x02115c90 data_ov030_02115c9c@0x02115c9c
   data_ov030_02115cb8@0x02115cb8
-data_ov030_02115cc4@0x02115cc4 data_ov030_02115cd0 data_ov030_02115cd8
-data_ov030_02115ce0 data_ov030_02115ce8 data_ov030_02115cf0
-data_ov030_02115cf8 data_ov030_02115d00 data_ov030_02115d08
-data_ov030_02115d10 data_ov030_02115d18 data_ov030_02115d20
+data_ov030_02115cc4@0x02115cc4 gMonkeyWait2AnimationFile gMonkeyWait4AnimationFile
+gMonkeyHoldAnimationFile gMonkeyRunStAnimationFile data_ov030_02115cf0
+gMonkeyWait3AnimationFile data_ov030_02115d00 gMonkeyJumpStAnimationFile
+gMonkeyJumpEdAnimationFile gMonkeyRunAnimationFile gMonkeyRunEdAnimationFile
 data_ov030_02115d28 data_ov030_02115d34 data_ov030_02115d40
 data_ov030_02115d4c data_ov030_02115d58 data_ov030_02115d64
 data_ov030_02115d70 data_ov030_02115d7c data_ov030_02115d88
@@ -265,6 +265,6 @@ data_ov030_02115e00 data_ov030_02115e0c
 #   data_ov030_02115c80                        now defined by src/game/actors/d_a_obj_hm_bskt.cpp
 #   data_ov030_02115c88                        now defined by src/game/actors/d_a_obj_hm_bskt.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov030_02115ca8! data_ov030_02115cb0!
+gHmMarutaModelFile! gHmMarutaCollisionFile!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
 data_ov030_02115c80! data_ov030_02115c88!

@@ -1,4 +1,39 @@
 //cpp
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum ZN12dScStarSel_c13InitResourcesEv_AssetId {
+    ASSET_D_2D_BTM_ICON_NCG_BIN = 0x0229,
+    ASSET_D_2D_BTM_ICON_NCL_BIN = 0x022a,
+    ASSET_D_2D_PLAYER_SELECT_KOOPA_BG_NCG_BIN = 0x023f,
+    ASSET_D_2D_PLAYER_SELECT_KOOPA_BG_NCL_BIN = 0x0240,
+    ASSET_D_2D_PLAYER_SELECT_KOOPA_BG_NSC_BIN = 0x0241,
+    ASSET_D_2D_PLAYER_SELECT_LUIGI_8BIT_NCG_BIN = 0x0242,
+    ASSET_D_2D_PLAYER_SELECT_LUIGI_8BIT_NCL_BIN = 0x0243,
+    ASSET_D_2D_PLAYER_SELECT_MARIO_8BIT_NCG_BIN = 0x0244,
+    ASSET_D_2D_PLAYER_SELECT_MARIO_8BIT_NCL_BIN = 0x0245,
+    ASSET_D_2D_PLAYER_SELECT_WARIO_8BIT_NCG_BIN = 0x0246,
+    ASSET_D_2D_PLAYER_SELECT_WARIO_8BIT_NCL_BIN = 0x0247,
+    ASSET_D_2D_PLAYER_SELECT_YOSHI_8BIT_NCG_BIN = 0x0248,
+    ASSET_D_2D_PLAYER_SELECT_YOSHI_8BIT_NCL_BIN = 0x0249,
+    ASSET_D_2D_SCENARIO_PLAYER_SELECT_COURSE_NUMBER_BG_NCG_BIN = 0x024a,
+    ASSET_D_2D_SCENARIO_PLAYER_SELECT_COURSE_NUMBER_BG_NCL_BIN = 0x024b,
+    ASSET_D_2D_SCENARIO_PLAYER_SELECT_COURSE_NUMBER_BG_NSC_BIN = 0x024c,
+    ASSET_D_2D_SCENARIO_PLAYER_SELECT_NCG_BIN = 0x024d,
+    ASSET_D_2D_SCENARIO_PLAYER_SELECT_NCL_BIN = 0x024e,
+    ASSET_D_2D_SCENARIO_PLAYER_SELECT_COURSE_NUMBER_BG_F_NCG_BIN = 0x025f,
+    ASSET_D_2D_SCENARIO_PLAYER_SELECT_COURSE_NUMBER_BG_G_NCG_BIN = 0x0260,
+    ASSET_D_2D_SCENARIO_PLAYER_SELECT_COURSE_NUMBER_BG_I_NCG_BIN = 0x0261,
+    ASSET_D_2D_SCENARIO_PLAYER_SELECT_COURSE_NUMBER_BG_S_NCG_BIN = 0x0262,
+    ASSET_D_2D_SCENARIO_PLAYER_SELECT_F_NCG_BIN = 0x0263,
+    ASSET_D_2D_SCENARIO_PLAYER_SELECT_G_NCG_BIN = 0x0264,
+    ASSET_D_2D_SCENARIO_PLAYER_SELECT_I_NCG_BIN = 0x0265,
+    ASSET_D_2D_SCENARIO_PLAYER_SELECT_S_NCG_BIN = 0x0266,
+    ASSET_D_2D_CMN_ICON_E_NCG_BIN = 0x0269,
+    ASSET_D_2D_CMN_ICON_F_NCG_BIN = 0x026a,
+    ASSET_D_2D_CMN_ICON_G_NCG_BIN = 0x026c,
+    ASSET_D_2D_CMN_ICON_I_NCG_BIN = 0x026e,
+    ASSET_D_2D_CMN_ICON_S_NCG_BIN = 0x0270
+};
+
 #include "Sound.h"
 // @symbol _ZN12dScStarSel_c13InitResourcesEv
 /* recovered: real C++ method over include/dScStarSel_c.h -- vtable slot 0.
@@ -123,14 +158,14 @@ s32 dScStarSel_c::InitResources()
         REG16(0x400000C) = (REG16(0x400000C) & ~3) | 1;
         REG16(0x400000C) = (REG16(0x400000C) & 0x43) | 0x1610;
         REG16(0x400000C) &= ~0x40;
-        file = LoadFile(0x23F);
+        file = LoadFile(ASSET_D_2D_PLAYER_SELECT_KOOPA_BG_NCG_BIN);
         DecompressLZ16(file, (u32)_ZN2G213GetBG2CharPtrEv());
         Deallocate(file);
-        file = LoadFile(0x240);
+        file = LoadFile(ASSET_D_2D_PLAYER_SELECT_KOOPA_BG_NCL_BIN);
         _ZN2GX10LoadBGPlttEPKvjj(file, 0, 0x1A0);
         _ZN3GXS10LoadBGPlttEPKvjj(file, 0, 2);
         Deallocate(file);
-        file = LoadFile(0x241);
+        file = LoadFile(ASSET_D_2D_PLAYER_SELECT_KOOPA_BG_NSC_BIN);
         DecompressLZ16(file, (u32)_ZN2G212GetBG2ScrPtrEv());
         Deallocate(file);
         SetBg2Offset(0, 0);
@@ -141,22 +176,22 @@ s32 dScStarSel_c::InitResources()
         REG16(0x400000C) = (REG16(0x400000C) & 0x43) | 0x1610;
         REG16(0x400000C) &= ~0x40;
         if (GetOwnerLanguage() == 5) {
-            file = LoadFile(0x262);
+            file = LoadFile(ASSET_D_2D_SCENARIO_PLAYER_SELECT_COURSE_NUMBER_BG_S_NCG_BIN);
         } else if (GetOwnerLanguage() == 4) {
-            file = LoadFile(0x261);
+            file = LoadFile(ASSET_D_2D_SCENARIO_PLAYER_SELECT_COURSE_NUMBER_BG_I_NCG_BIN);
         } else if (GetOwnerLanguage() == 3) {
-            file = LoadFile(0x260);
+            file = LoadFile(ASSET_D_2D_SCENARIO_PLAYER_SELECT_COURSE_NUMBER_BG_G_NCG_BIN);
         } else if (GetOwnerLanguage() == 2) {
-            file = LoadFile(0x25F);
+            file = LoadFile(ASSET_D_2D_SCENARIO_PLAYER_SELECT_COURSE_NUMBER_BG_F_NCG_BIN);
         } else {
-            file = LoadFile(0x24A);
+            file = LoadFile(ASSET_D_2D_SCENARIO_PLAYER_SELECT_COURSE_NUMBER_BG_NCG_BIN);
         }
         DecompressLZ16(file, (u32)_ZN2G213GetBG2CharPtrEv());
         Deallocate(file);
-        file = LoadFile(0x24B);
+        file = LoadFile(ASSET_D_2D_SCENARIO_PLAYER_SELECT_COURSE_NUMBER_BG_NCL_BIN);
         _ZN2GX10LoadBGPlttEPKvjj(file, 0, 0x1A0);
         Deallocate(file);
-        file = LoadFile(0x24C);
+        file = LoadFile(ASSET_D_2D_SCENARIO_PLAYER_SELECT_COURSE_NUMBER_BG_NSC_BIN);
         DecompressLZ16(file, (u32)_ZN2G212GetBG2ScrPtrEv());
         Deallocate(file);
         SetBg2Offset(0, -4);
@@ -164,19 +199,19 @@ s32 dScStarSel_c::InitResources()
         _ZN3GXS10LoadBGPlttEPKvjj(&data_ov003_020b1698, 0, 2);
     }
     if (GetOwnerLanguage() == 5) {
-        file = LoadFile(0x270);
+        file = LoadFile(ASSET_D_2D_CMN_ICON_S_NCG_BIN);
     } else if (GetOwnerLanguage() == 4) {
-        file = LoadFile(0x26E);
+        file = LoadFile(ASSET_D_2D_CMN_ICON_I_NCG_BIN);
     } else if (GetOwnerLanguage() == 3) {
-        file = LoadFile(0x26C);
+        file = LoadFile(ASSET_D_2D_CMN_ICON_G_NCG_BIN);
     } else if (GetOwnerLanguage() == 2) {
-        file = LoadFile(0x26A);
+        file = LoadFile(ASSET_D_2D_CMN_ICON_F_NCG_BIN);
     } else {
-        file = LoadFile(0x269);
+        file = LoadFile(ASSET_D_2D_CMN_ICON_E_NCG_BIN);
     }
     DecompressLZ16(file, 0x06400000);
     Deallocate(file);
-    file = LoadFile(0x229);
+    file = LoadFile(ASSET_D_2D_BTM_ICON_NCG_BIN);
     {
         char *a5 = (char *)0x06400000;
         a5 += 0x2000;
@@ -196,78 +231,78 @@ s32 dScStarSel_c::InitResources()
     }
     _ZN2GX11LoadOBJPlttEPKvjj(file, 0, 0x120);
     Deallocate(file);
-    file = LoadFile(0x22A);
+    file = LoadFile(ASSET_D_2D_BTM_ICON_NCL_BIN);
     _ZN2GX11LoadOBJPlttEPKvjj(file, 0x120, 0xE0);
     Deallocate(file);
     if (GetOwnerLanguage() == 5) {
-        file = LoadFile(0x266);
+        file = LoadFile(ASSET_D_2D_SCENARIO_PLAYER_SELECT_S_NCG_BIN);
     } else if (GetOwnerLanguage() == 4) {
-        file = LoadFile(0x265);
+        file = LoadFile(ASSET_D_2D_SCENARIO_PLAYER_SELECT_I_NCG_BIN);
     } else if (GetOwnerLanguage() == 3) {
-        file = LoadFile(0x264);
+        file = LoadFile(ASSET_D_2D_SCENARIO_PLAYER_SELECT_G_NCG_BIN);
     } else if (GetOwnerLanguage() == 2) {
-        file = LoadFile(0x263);
+        file = LoadFile(ASSET_D_2D_SCENARIO_PLAYER_SELECT_F_NCG_BIN);
     } else {
-        file = LoadFile(0x24D);
+        file = LoadFile(ASSET_D_2D_SCENARIO_PLAYER_SELECT_NCG_BIN);
     }
     DecompressLZ16(file, 0x06600000);
     Deallocate(file);
-    file = LoadFile(0x24E);
+    file = LoadFile(ASSET_D_2D_SCENARIO_PLAYER_SELECT_NCL_BIN);
     _ZN3GXS11LoadOBJPlttEPKvjj(file, 0, 0x200);
     Deallocate(file);
     data_02092128 = data_0209caa0[0x41];
     switch (data_0209caa0[0x41]) {
     case 0:
-        file = LoadFile(0x244);
+        file = LoadFile(ASSET_D_2D_PLAYER_SELECT_MARIO_8BIT_NCG_BIN);
         {
             char *a6 = (char *)0x06600000;
             a6 += 0x4000;
             DecompressLZ16(file, (u32)a6);
         }
         Deallocate(file);
-        file = LoadFile(0x245);
+        file = LoadFile(ASSET_D_2D_PLAYER_SELECT_MARIO_8BIT_NCL_BIN);
         _ZN3GXS19BeginLoadOBJExtPlttEv();
         _ZN3GXS14LoadOBJExtPlttEPKvjj(file, 0, 0x200);
         _ZN3GXS17EndLoadOBJExtPlttEv();
         Deallocate(file);
         break;
     case 1:
-        file = LoadFile(0x242);
+        file = LoadFile(ASSET_D_2D_PLAYER_SELECT_LUIGI_8BIT_NCG_BIN);
         {
             char *a6 = (char *)0x06600000;
             a6 += 0x4000;
             DecompressLZ16(file, (u32)a6);
         }
         Deallocate(file);
-        file = LoadFile(0x243);
+        file = LoadFile(ASSET_D_2D_PLAYER_SELECT_LUIGI_8BIT_NCL_BIN);
         _ZN3GXS19BeginLoadOBJExtPlttEv();
         _ZN3GXS14LoadOBJExtPlttEPKvjj(file, 0, 0x200);
         _ZN3GXS17EndLoadOBJExtPlttEv();
         Deallocate(file);
         break;
     case 2:
-        file = LoadFile(0x246);
+        file = LoadFile(ASSET_D_2D_PLAYER_SELECT_WARIO_8BIT_NCG_BIN);
         {
             char *a6 = (char *)0x06600000;
             a6 += 0x4000;
             DecompressLZ16(file, (u32)a6);
         }
         Deallocate(file);
-        file = LoadFile(0x247);
+        file = LoadFile(ASSET_D_2D_PLAYER_SELECT_WARIO_8BIT_NCL_BIN);
         _ZN3GXS19BeginLoadOBJExtPlttEv();
         _ZN3GXS14LoadOBJExtPlttEPKvjj(file, 0, 0x200);
         _ZN3GXS17EndLoadOBJExtPlttEv();
         Deallocate(file);
         break;
     case 3:
-        file = LoadFile(0x248);
+        file = LoadFile(ASSET_D_2D_PLAYER_SELECT_YOSHI_8BIT_NCG_BIN);
         {
             char *a6 = (char *)0x06600000;
             a6 += 0x4000;
             DecompressLZ16(file, (u32)a6);
         }
         Deallocate(file);
-        file = LoadFile(0x249);
+        file = LoadFile(ASSET_D_2D_PLAYER_SELECT_YOSHI_8BIT_NCL_BIN);
         _ZN3GXS19BeginLoadOBJExtPlttEv();
         _ZN3GXS14LoadOBJExtPlttEPKvjj(file, 0, 0x200);
         _ZN3GXS17EndLoadOBJExtPlttEv();

@@ -81,8 +81,8 @@ void __sinit_ov043_021117fc(void);   /* id 135's own two SharedFilePtrs */
    run in the same bring-up (declared here so port_ov43_bringup can call them).
    link100 SPAWN2 adds the THIRD: 137's own __sinit_ov043_02111868 comes ON with
    this gate, because 137 is seated now. It builds exactly the pair 137's
-   InitResources consumes -- Model file 1621 into data_ov043_02112610 and
-   collision file 1622 into data_ov043_02112608, the first two words of the
+   InitResources consumes -- Model file 1621 into gKm1KurumajikuModelFile and
+   collision file 1622 into gKm1KurumajikuCollisionFile, the first two words of the
    3-word Arg record data_ov043_02112344 the mount rebases -- so the ov081 rule
    ("a sinit for an unhosted class stays off") no longer applies to it. */
 void __sinit_ov043_021118d4(void);   /* id 136 */

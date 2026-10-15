@@ -79,9 +79,9 @@ data_ov080_02128688 data_ov080_0212869c data_ov080_02128858
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov080_02128468                        now defined by src/actors/daBttBk_c.cpp
-#   data_ov080_0212847c                        now defined by src/actors/daBttBk_c.cpp
+#   gBattaBlockModelFile                        now defined by src/game/actors/d_a_btt_bk.cpp
+#   data_ov080_0212847c                        now defined by src/game/actors/d_a_btt_bk.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov080_021283c0! data_ov080_021283c8! data_ov080_021283d0! data_ov080_021283d8! data_ov080_021283e0! data_ov080_021283e8! data_ov080_021284ac! data_ov080_021284b4! data_ov080_021284bc! data_ov080_021284c4! data_ov080_021284cc! data_ov080_021284d4! data_ov080_021284dc! data_ov080_021284e4! data_ov080_021284ec! data_ov080_021284f4! data_ov080_021284fc! data_ov080_02128504! data_ov080_0212850c! data_ov080_02128514! data_ov080_0212851c! data_ov080_02128524! data_ov080_0212852c! data_ov080_02128534! data_ov080_0212853c!
+data_ov080_021283c0! data_ov080_021283c8! data_ov080_021283d0! data_ov080_021283d8! data_ov080_021283e0! data_ov080_021283e8! gForKiModelFile! gForDlModelFile! gForCtModelFile! gForVsIslandModelFile! gForFlModelFile! gForExWarioModelFile! gForHmModelFile! gForHsModelFile! gForTdTtModelFile! gForSlModelFile! gForSmModelFile! gForExMarioModelFile! gForCvEx5ModelFile! gForWlModelFile! gForBhModelFile! gForBkModelFile! gForWcModelFile! gForVsCrossModelFile! gForExLuigiModelFile!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov080_02128468! data_ov080_0212847c!
+gBattaBlockModelFile! data_ov080_0212847c!

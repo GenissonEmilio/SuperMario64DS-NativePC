@@ -14,33 +14,33 @@
 # setters fill.
 
 # ---- the boot itself
-src/stage/LevelObjects.cpp
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z11LoadObjectsRN11LVL_Overlay8ObjTableEij.cpp
+src/game/stages/LevelObjects.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z11LoadObjectsRN11LVL_Overlay8ObjTableEij.cpp
 
 # ---- the fifteen sub-loaders, in dispatch-table order (index 0..14)
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z19LoadStandardObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z19LoadStandardObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
 # LoadEntranceObjects is back (run linkfull, lane RS4PORT). Its last call used
 # to ride the wipe type through ARM r0 into StartEntranceFaderWipe, so
 # port/unmatched/LoadEntranceObjects.cpp hosted it. main #3106 (f0f946a92)
 # passes the table value it tests; this per-function file carries that one
-# hunk from main's src/stage/LevelObjects.cpp (the SYNC8C route (a) back-port),
+# hunk from main's src/game/stages/LevelObjects.cpp (the SYNC8C route (a) back-port),
 # byte-identical under mwccarm 2004/b56, and the host copy is retired.
 # port/hal/cxx_aliases.cpp gives the flat name the port's dispatch calls its
 # alias onto the C++ definition, the same row its fourteen siblings have.
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z19LoadEntranceObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z19LoadPathNodeObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z15LoadPathObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z15LoadViewObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z17LoadSimpleObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z25LoadTeleportSourceObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z23LoadTeleportDestObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z14LoadFogObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z15LoadDoorObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z15LoadExitObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z22LoadMinimapTileObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z23LoadMinimapScaleObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z23LoadUnusedType13ObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
-# FOLDED into src/stage/LevelObjects.cpp (row 17): src/_Z21LoadStarCameraObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z19LoadEntranceObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z19LoadPathNodeObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z15LoadPathObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z15LoadViewObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z17LoadSimpleObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z25LoadTeleportSourceObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z23LoadTeleportDestObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z14LoadFogObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z15LoadDoorObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z15LoadExitObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z22LoadMinimapTileObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z23LoadMinimapScaleObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z23LoadUnusedType13ObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# FOLDED into src/game/stages/LevelObjects.cpp (row 17): src/_Z21LoadStarCameraObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
 
 # ---- the pointer-store setters the sub-loaders are veneers over
 src/engine/path/PathPtr.cpp
@@ -57,8 +57,8 @@ src/unnamed/arm9/0202/func_0202a850.c
 src/_Z23LoadMinimapChangeObjecti5Fix12IiEh.c
 
 # ---- the octree extent the world-Y bounds come out of
-src/engine/collision/dBgW_Kc_itcm.cpp
-# FOLDED into src/engine/collision/dBgW_Kc_itcm.cpp (row 60): src/_ZNK7dBgW_Kc13GetUnkOctreeYEv.cpp
+src/engine/collision/d_bg_w_kc_itcm.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_itcm.cpp (row 60): src/_ZNK7dBgW_Kc13GetUnkOctreeYEv.cpp
 
 # ---- the two tails LoadClsnAndObjects ends in
 src/ContinueKuppaScriptIfNecessary.c
@@ -97,20 +97,20 @@ src/engine/sound/SoundEngine.cpp
 # The two factories the registry calls, the Actor init hooks the spawn
 # spine's Process dispatches, and the St_LevelEnter trio with the seven
 # entrance-step handlers its Main dispatches through the ov002 PMF table.
-src/d_a_ply.cpp
-src/actors/dActor_c.cpp
+src/game/player/d_a_ply.cpp
+src/runtime/actor/d_actor.cpp
 # _ZN8dActor_c18AfterInitResourcesEj is C++ inside a .c (the gate-9 case
 # again); it goes through hostgen, see GATE14_SYMS in CMakeLists.txt
-src/actors/Player.cpp
+src/game/player/Player.cpp
 port/unmatched/hostarm/Player.cpp
 # func_ov002_020c6fe4 does void-pointer arithmetic on the anim probe
 # (the NoControl case); hostgen retypes the deref -- GATE14_SYMS
 # the ring the step handlers reach: the death-table guard the init hook
 # tests, the message/star-count branches steps 2 and 3 take, and the ov089
 # animation setter step 1 calls.
-# FOLDED into src/actors/dActor_c.cpp (row 101): src/_ZN8dActor_c18GetBitInDeathTableEv.cpp
-src/actors/daObjKey_c.cpp
+# FOLDED into src/runtime/actor/d_actor.cpp (row 101): src/_ZN8dActor_c18GetBitInDeathTableEv.cpp
+src/game/actors/d_a_obj_key.cpp
 src/DeathTable_GetBit.c
 src/engine/save/SaveData.cpp
-src/actors/daDoor_c.cpp
+src/game/actors/d_a_door.cpp
 src/GetLevelPart.c

@@ -28,7 +28,7 @@
 
 # ---- the 51 probed pack bodies --------------------------------------------
 src/game/actors/d_a_propeller_heyho.cpp
-src/actors/daBrq_c.cpp
+src/game/actors/d_a_brq.cpp
 src/game/actors/d_a_krpa.cpp
 src/game/actors/d_a_kp_fr.cpp
 
@@ -43,7 +43,7 @@ src/game/actors/d_a_kp_fr.cpp
 # ...and the collider initialiser both chomp InitResources bodies call (the
 # link named it; its decorated free-function spelling is aliased in the fill
 # file).
-src/engine/collision/dCcAc_c.cpp
+src/engine/collision/d_cc_ac.cpp
 
 # ---- the probe's class-b closure ------------------------------------------
 # The two TUs whose absence the census link measured (LNK2019 with all 59
@@ -68,7 +68,7 @@ src/unnamed/ov070/__sinit_ov070_02122d80.cpp
 # Player::Shock is a real method (its face is in actor_classes_ov070.cpp);
 # the TU's own deps (func_ov002_020d82f0/020d91e0, Player::ChangeState,
 # data_ov002_021100c4) are all in today's map, checked one by one.
-src/actors/Player.cpp
+src/game/player/Player.cpp
 
 # ---- POPPING_LAVA_BUBBLES (196, ov002), the census's second bonus find ----
 # The registered spawn and the one own-slot body that is a faithful matched
@@ -77,7 +77,7 @@ src/actors/Player.cpp
 # listings quoted there, same rule as the ov070 pair. func_02022c3c, the
 # particle position tracker Behavior calls, is NOT here: gate 29 already
 # builds it (a line here was the link's one duplicate-definition finding).
-src/actors/daObjLava_c.cpp
+src/game/actors/d_a_obj_lava.cpp
 
 # ---- the two host files, carried as slice lines ---------------------------
 # The wave-2 self-registration pattern (slice lines resolve against the repo

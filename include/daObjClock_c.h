@@ -47,7 +47,7 @@ struct daObjClock_c : dActor_c {
 
        Declared FIRST, deliberately: with the destructor inline the key
        function is the first DECLARED non-inline virtual, so this ordering is
-       what makes src/actors/daObjClock_c.cpp the TU that emits the
+       what makes src/game/actors/d_a_obj_clock.cpp the TU that emits the
        _ZTV/_ZTI/_ZTS group -- exactly what the promotion needs it to be. --- */
     /* The destructor pair spelled as two plain virtuals on the host, plus
        the non-virtual destructor declaration the src/ definitions need; the

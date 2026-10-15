@@ -5,7 +5,7 @@
 //
 // ---- WHAT IT WAS ----------------------------------------------------------
 //
-// src/func_ov004_020b6b40.c and src/func_ov004_020b6c9c.c are byte-identical
+// src/State19_Update.c and src/State18_Update.c are byte-identical
 // apart from their symbol names, and each contains this:
 //
 //     int (*fn)(void *, int) = (int (*)(void *, int)) (*(void ***)g)[0x13];
@@ -52,7 +52,7 @@
 // ---- HOW IT PRESENTED, AND WHY NOTHING HAD SEEN IT BEFORE -----------------
 //
 // It is not a slow leak. The imbalance lands inside one function, so
-// func_ov004_020b6c9c's own epilogue reads one stack slot too high:
+// State18_Update's own epilogue reads one stack slot too high:
 //
 //     pop esi   takes the saved ebp
 //     pop ebp   takes the RETURN ADDRESS
@@ -71,8 +71,8 @@
 // buys no evidence. dScMgTeresa_c is the first seated class whose boot
 // actually enters _ZN10dMgState_c8SetStateEi: its scene-387 run reports 1 call into
 // the setter, message index 18 asked for once, 1 state body and 10 per-frame
-// tick entries routed. Message index 18 is func_ov004_020b6d6c, whose last act
-// is `*(P2*)(c+8) = data_ov004_020bc924` -- and that pair reads
+// tick entries routed. Message index 18 is State18_Enter, whose last act
+// is `*(P2*)(c+8) = pmf_dMgState_c_State18_Update` -- and that pair reads
 // {0x020b6c9c, 0} in overlay_0004.bin, which installs one of these two bodies
 // as the per-frame tick. So the path is: the framework state machine runs at
 // all -> message 18 -> tick 020b6c9c -> slot 19 -> four bytes -> a wild
@@ -98,19 +98,19 @@ extern "C" {
 
 struct P2 { int a; int b; };
 
-extern void *data_ov004_020beb68;
+extern void *gMgScene;
 extern unsigned char data_020a0e40[];
 extern unsigned char data_020a0de8[];
 extern unsigned char data_020a0de9[];
 extern struct P2 data_02086b58;
 
 void FreeGfxSlotsById(int arg);
-int  func_ov004_020adbe0(void);
-void _ZN10dMgState_c19func_ov004_020b6f14Ev(void *c);
-void _ZN10dMgState_c19func_ov004_020b7020Ev(char *c);
+int  Mg_IsNewRecord(void);
+void _ZN10dMgState_c13State17_EnterEv(void *c);
+void _ZN10dMgState_c13State16_EnterEv(char *c);
 
-void _ZN10dMgState_c19func_ov004_020b6b40Ev(void *c);
-void _ZN10dMgState_c19func_ov004_020b6c9cEv(void *c);
+void _ZN10dMgState_c14State19_UpdateEv(void *c);
+void _ZN10dMgState_c14State18_UpdateEv(void *c);
 
 }  /* extern "C" */
 
@@ -127,13 +127,13 @@ typedef int (__fastcall *MgSlot19)(void *thiz, void *edx, int arg);
    spelled __fastcall so mb_v19's one stack parameter is cleaned once
    instead of twice -- is one line in each of the two byte-identical
    sources, and hostgen can make it there.
-   The matched TU src/func_ov004_020b6b40.c and src/func_ov004_020b6c9c.c is seated in its place: port/tools/hostgen.py's VIRTUAL_CALL table, two rows carrying the same
+   The matched TU src/State19_Update.c and src/State18_Update.c is seated in its place: port/tools/hostgen.py's VIRTUAL_CALL table, two rows carrying the same
    patch text because the two src TUs are byte-identical apart from
    their names.
    Per-row ROM evidence (referrer, RTTI name, kind:function record, the
    dispatch instruction read at its own address) is in port/slice_seat6.txt. */
 
-/* src/func_ov004_020b6b40.c and src/func_ov004_020b6c9c.c, verbatim apart from
+/* src/State19_Update.c and src/State18_Update.c, verbatim apart from
    the call above. The ROM has two copies of this body -- 0x020b6b40 and
    0x020b6c9c disassemble instruction for instruction the same and the two src
    TUs are byte-identical apart from their symbol names -- so they are written
@@ -141,19 +141,19 @@ typedef int (__fastcall *MgSlot19)(void *thiz, void *edx, int arg);
 /* the shared shadow_tick body RETIRED (run link100, lane SEAT6, batch B6).
    Written once here because the ROM has the body twice; both instances
    come from their own matched sources now.
-   The matched TU src/func_ov004_020b6b40.c and src/func_ov004_020b6c9c.c is seated in its place: see the note above.
+   The matched TU src/State19_Update.c and src/State18_Update.c is seated in its place: see the note above.
    Per-row ROM evidence (referrer, RTTI name, kind:function record, the
    dispatch instruction read at its own address) is in port/slice_seat6.txt. */
 
 // PORT_HOST_ABI: vtable slot 19 shadow-array call respelled __fastcall so MSVC does not double-clean the one stack parameter the host thunk already cleans
-/* func_ov004_020b6b40 RETIRED (run link100, lane SEAT6, batch B6).
+/* State19_Update RETIRED (run link100, lane SEAT6, batch B6).
    Instantiation of the shared body above.
-   The matched TU src/func_ov004_020b6b40.c is seated in its place: see the note above.
+   The matched TU src/State19_Update.c is seated in its place: see the note above.
    Per-row ROM evidence (referrer, RTTI name, kind:function record, the
    dispatch instruction read at its own address) is in port/slice_seat6.txt. */
 // PORT_HOST_ABI: vtable slot 19 shadow-array call respelled __fastcall so MSVC does not double-clean the one stack parameter the host thunk already cleans
-/* func_ov004_020b6c9c RETIRED (run link100, lane SEAT6, batch B6).
+/* State18_Update RETIRED (run link100, lane SEAT6, batch B6).
    Instantiation of the shared body above.
-   The matched TU src/func_ov004_020b6c9c.c is seated in its place: see the note above.
+   The matched TU src/State18_Update.c is seated in its place: see the note above.
    Per-row ROM evidence (referrer, RTTI name, kind:function record, the
    dispatch instruction read at its own address) is in port/slice_seat6.txt. */

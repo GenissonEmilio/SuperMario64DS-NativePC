@@ -85,7 +85,7 @@ void _ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3(
 typedef void (*PortPirFn)(void *);
 
 /* ---- THE NINE FACES, AND THE ALIAS (run link100, lane PMFB2) ------------
-   src/actors/daPkn_c.cpp is a real pointer-to-member dispatch
+   src/game/actors/d_a_pkn.cpp is a real pointer-to-member dispatch
    and MSVC emits it as `mov ecx, <table>[esi*8+4] / mov eax, <table>[esi*8] /
    add ecx, <this> / call eax`.
    -- `call <reg>` with the receiver in ECX and nothing pushed. The state
@@ -173,7 +173,7 @@ extern "C" void port_piranha_plant_states_seat(void)
 
 /* _ZN7daPkn_c8BehaviorEv RETIRED (run link100, lane PMFB2). It is on
    port/slice_pmfb2.txt and compiles from
-   src/actors/daPkn_c.cpp, which recovered as a real C++ method
+   src/game/actors/d_a_pkn.cpp, which recovered as a real C++ method
    (?Behavior@daPkn_c@@QAEHXZ); the Itanium C name its fill site calls is
    one cdecl line in hal/except_faces.cpp and no fill site changes. The
    derivation, including why the retired tag's "4-byte stride" reading no

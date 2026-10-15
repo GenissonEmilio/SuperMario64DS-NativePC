@@ -103,7 +103,7 @@ void *_ZTV8daDemo_c[31];
 /* the Actor chain co_d1/co_d0 end on, and the heap every actor is allocated
    from (src/_ZN7fBase_cnwEj.cpp) */
 void _ZN8dActor_cD2Ev(void *self);
-void _ZN6Memory10DeallocateEPvP4Heap(void *p, void *heap);
+void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *p, void *heap);
 extern void *data_020a0eac;
 
 extern int data_02099f24[];          /* the frame phase the lists are in */

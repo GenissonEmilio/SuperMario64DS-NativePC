@@ -183,14 +183,14 @@
       "ordinal": 19
     },
     {
-      "symbol": "_ZN13dScMgMCarlo_c13OnTurnIntoEggEi",
+      "symbol": "_ZN13dScMgMCarlo_c11CanEndStateEi",
       "address": "0x020f8a3c",
       "size": "0x0000022c",
       "legacy_source": "src/func_ov006_020f8a3c.c",
       "ordinal": 20
     },
     {
-      "symbol": "_ZN13dScMgMCarlo_c13OnYoshiTryEatEi",
+      "symbol": "_ZN13dScMgMCarlo_c10StartRoundEi",
       "address": "0x020f8c68",
       "size": "0x000000a0",
       "legacy_source": "src/func_ov006_020f8c68.c",
@@ -245,8 +245,8 @@
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'data_ov006_02142500' differs between the legacy file that used to hold func_ov006_020f7740 and the one that held func_ov006_020f7c10; kept the first, the other is commented out for review",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'data_ov006_02142504' differs between the legacy file that used to hold func_ov006_020f7740 and the one that held func_ov006_020f8320; kept the first, the other is commented out for review",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'data_ov006_02142504' differs between the legacy file that used to hold func_ov006_020f7740 and the one that held func_ov006_020f84a8; kept the first, the other is commented out for review",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov006_020c0aa8' differs between the legacy file that used to hold _ZN13dScMgMCarlo_c6RenderEv and the one that held _ZN13dScMgMCarlo_c13InitResourcesEv; kept the first, the other is commented out for review",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'data_ov004_020beb68' differs between the legacy file that used to hold func_ov006_020f7c10 and the one that held _ZN13dScMgMCarlo_c13InitResourcesEv; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'Camera_InitDealerView' differs between the legacy file that used to hold _ZN13dScMgMCarlo_c6RenderEv and the one that held _ZN13dScMgMCarlo_c13InitResourcesEv; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'gMgScene' differs between the legacy file that used to hold func_ov006_020f7c10 and the one that held _ZN13dScMgMCarlo_c13InitResourcesEv; kept the first, the other is commented out for review",
     "tubuild create warning (RESOLVED): CONFLICT: local declaration ('struct', 'Node') differs between the legacy file that used to hold func_ov006_020f7740 and the one that held func_ov006_020f7994; kept the first, the other is commented out for review",
     "tubuild create warning (RESOLVED): CONFLICT: local declaration ('struct', 'Node') differs between the legacy file that used to hold func_ov006_020f7740 and the one that held func_ov006_020f7b90; kept the first, the other is commented out for review",
     "tubuild create warning (RESOLVED): CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_020f8154 and the one that held func_ov006_020f8224; kept the first, the other is commented out for review",

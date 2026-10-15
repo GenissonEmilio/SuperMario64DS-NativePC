@@ -22,25 +22,25 @@
 //
 // ---- 1. THE TWO NAME-SPELLING ALIASES --------------------------------------
 //
-// func_020beb68 IS ov004's data_ov004_020beb68 UNDER A NAME THAT EXISTS IN NO
+// func_020beb68 IS ov004's gMgScene UNDER A NAME THAT EXISTS IN NO
 // CONFIG, and it is the same defect class as src/_ZN14dScMgCurling_c13InitResourcesEv.cpp's bare
 // `func_020adc74`, which port/mg_fanout_costs.txt section 6 records and which
 // hal/scene_mg_faces.cpp line 232 already aliases. Three TUs in this seat
-// spell it: src/actors/dScMgCoin_c.cpp, src/func_ov006_020de1d4.c and (through
-// the host copy of src/func_ov006_020de26c.cpp) this lane's
+// spell it: src/minigames/d_s_mg_coin.cpp, src/Phase_State4.c and (through
+// the host copy of src/Phase_State3.cpp) this lane's
 // unmatched/MgCoin_StateDispatch.cpp, which keeps the src spelling on purpose
 // so the reference is not silently dropped.
 //
-// THE RESOLUTION IS NOT A GUESS. data_ov004_020beb68 is dScMgBase_c's own
+// THE RESOLUTION IS NOT A GUESS. gMgScene is dScMgBase_c's own
 // "current minigame scene" pointer -- src/_ZN11dScMgBase_cC2Ev.cpp, the base
-// constructor, writes `data_ov004_020beb68 = self` -- and every one of the
+// constructor, writes `gMgScene = self` -- and every one of the
 // three consumers uses it the same way: `g != 0 ? *(int *)(g + 0xa8) : 0`,
 // which is the scene object's +0xa8 word that slot 0 (InitResources) sets to
 // zero and slot 18 (the state reset) sets again. The reloc module for the
 // address is ov004 and ov004 is the co-resident answer.
 //
 // data_ov006_0212e3d0 and _0212e3e8 are ordinary ov006 data symbols. They are
-// unresolved only in their C++ spelling, because src/func_ov006_020dd880.cpp
+// unresolved only in their C++ spelling, because src/Block_State2.cpp
 // declares them ABOVE its `extern "C"` block and that file compiles as C++
 // (it is //cpp-marked and dispatches through a thirty-six-virtual dummy
 // struct, so port/CMakeLists.txt gives it LANGUAGE CXX). The ov006 mount
@@ -49,7 +49,7 @@
 //
 // ---- 2. THE ONE TRAP, AND IT IS A DECOMP FLOOR -----------------------------
 //
-// func_ov006_020dbe9c is the sixth of the ten calls vtable slot 9 (Render)
+// Bag_Draw is the sixth of the ten calls vtable slot 9 (Render)
 // makes. config/arm9/overlays/ov006/symbols.txt names it and sizes it 0xe0,
 // and there is NO delink block covering it in
 // config/arm9/overlays/ov006/delinks.txt and NO src file in either extension
@@ -63,9 +63,9 @@
 // ROM is a follow-up of the shape lane CT1 did for curling's 0x020e1854, and
 // it is deliberately not this lane's, because that lane's own banner is the
 // rule: the host body would have to be named port_* rather than
-// func_ov006_020dbe9c, and nothing here would then satisfy the src caller.
+// Bag_Draw, and nothing here would then satisfy the src caller.
 //
-// THIS CLASS'S SECOND FLOOR IS NOT HERE. func_ov006_020dd0e0 is a STATE with
+// THIS CLASS'S SECOND FLOOR IS NOT HERE. Coin_State0 is a STATE with
 // no body, and it is handled at the dispatch site in
 // unmatched/MgCoin_StateDispatch.cpp, where the report can say which state was
 // wanted. It has no symbol here on purpose: no host code names that address
@@ -73,15 +73,15 @@
 
 #include <cstdio>
 
-/* func_020beb68 -> data_ov004_020beb68 (bss, ov004). */
-#pragma comment(linker, "/alternatename:_func_020beb68=_data_ov004_020beb68")
+/* func_020beb68 -> gMgScene (bss, ov004). */
+#pragma comment(linker, "/alternatename:_func_020beb68=_gMgScene")
 
 /* the two C++-linkage spellings of ov006 data the mount defines as C names */
 #pragma comment(linker, "/alternatename:?data_ov006_0212e3d0@@3PAHA=_data_ov006_0212e3d0")
 #pragma comment(linker, "/alternatename:?data_ov006_0212e3e8@@3PAHA=_data_ov006_0212e3e8")
 
 /* Run mg5, lane INTEG: the sixth Render callee was recovered on branch
-   decomp/coin-render as src/func_ov006_020dbe9c.c (NONMATCHING div=7) and is
+   decomp/coin-render as src/Bag_Draw.c (NONMATCHING div=7) and is
    now sliced in port/slice_ccn.txt, so the trap that used to stand in for it is
    gone and the real body links. The counter is kept because
    hal/scene_mg.cpp's census prints port_mg_coin_trap_hits(); it now stays 0,

@@ -33,8 +33,8 @@ g_profile_RACE_FLAG:0x1c data_ov062_0211dcd0:0x8 data_ov062_0211dcd8@0x0211dcd8:
 data_ov062_0211dce0@0x0211dce0:0x8 data_ov062_0211dce8@0x0211dce8:0x8 data_ov062_0211dcf0@0x0211dcf0:0x8
 data_ov062_0211dcf8@0x0211dcf8:0x8 data_ov062_0211dd00@0x0211dd00:0x8 data_ov062_0211dd08@0x0211dd08:0x8
 data_ov062_0211dd10@0x0211dd10:0x8 data_ov062_0211dd18@0x0211dd18:0x8 _ZTS9daJango_c:0xc
-_ZTI9daJango_c:0xc g_profile_JANGO:0x1c data_ov062_0211dde0:0x8
-data_ov062_0211dde8:0x8 data_ov062_0211ddf0:0x8 data_ov062_0211ddf8:0x8
+_ZTI9daJango_c:0xc g_profile_JANGO:0x1c gHoruheiLiftLoopAnimationFile:0x8
+data_ov062_0211dde8:0x8 data_ov062_0211ddf0:0x8 gHoruheiWalkAnimationFile:0x8
 data_ov062_0211de00:0x8 data_ov062_0211de08:0x8 data_ov062_0211de10:0xc
 data_ov062_0211de1c:0xc data_ov062_0211de28:0xc data_ov062_0211de34:0xc
 data_ov062_0211de40:0xc data_ov062_0211de4c:0xc data_ov062_0211de58:0xc
@@ -70,15 +70,15 @@ data_ov062_0211e17c:0x10
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov062_0211e004                        now defined by src/actors/daRNk_c.cpp
-#   data_ov062_0211e00c                        now defined by src/actors/daRNk_c.cpp
-#   data_ov062_0211e014                        now defined by src/actors/daRNk_c.cpp
-#   data_ov062_0211e01c                        now defined by src/actors/daRNk_c.cpp
-#   data_ov062_0211e024                        now defined by src/actors/daRNk_c.cpp
-#   data_ov062_0211e02c                        now defined by src/actors/daRNk_c.cpp
-#   data_ov062_0211e034                        now defined by src/actors/daRNk_c.cpp
-#   data_ov062_0211e03c                        now defined by src/actors/daRNk_c.cpp
+#   data_ov062_0211e004                        now defined by src/game/actors/d_a_r_nk.cpp
+#   gdaRNkNokonokoModelFile                        now defined by src/game/actors/d_a_r_nk.cpp
+#   data_ov062_0211e014                        now defined by src/game/actors/d_a_r_nk.cpp
+#   gdaRNkNokonokoWalkEdAnimationFile                        now defined by src/game/actors/d_a_r_nk.cpp
+#   data_ov062_0211e024                        now defined by src/game/actors/d_a_r_nk.cpp
+#   data_ov062_0211e02c                        now defined by src/game/actors/d_a_r_nk.cpp
+#   gdaRNkNokonokoWait1AnimationFile                        now defined by src/game/actors/d_a_r_nk.cpp
+#   gdaRNkNokonokoWait2AnimationFile                        now defined by src/game/actors/d_a_r_nk.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov062_0211df28! data_ov062_0211df30! data_ov062_0211df38! data_ov062_0211df40! data_ov062_0211df48! data_ov062_0211df50! data_ov062_0211df58! data_ov062_0211df60! data_ov062_0211df68! data_ov062_0211df70! data_ov062_0211df78! data_ov062_0211e0d4! data_ov062_0211e0dc! data_ov062_0211e0fc! data_ov062_0211e104! data_ov062_0211e10c! data_ov062_0211e114! data_ov062_0211e18c!
+gNokonokoDiveStAnimationFile! gNokonokoDiveAnimationFile! gNokonokoWalkAnimationFile! gNokonokoModelFile! gNokonokoRedModelFile! gNokonokoWalkEdAnimationFile! gNokonokoDiveEdAnimationFile! gNokonokoRunAnimationFile! gNokonokoWait2AnimationFile! gNokonokoWalkStAnimationFile! gNokonokoWait1AnimationFile! data_ov062_0211e0d4! data_ov062_0211e0dc! data_ov062_0211e0fc! data_ov062_0211e104! data_ov062_0211e10c! data_ov062_0211e114! data_ov062_0211e18c!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov062_0211e03c! data_ov062_0211e034! data_ov062_0211e014! data_ov062_0211e024! data_ov062_0211e00c! data_ov062_0211e02c! data_ov062_0211e004! data_ov062_0211e01c!
+gdaRNkNokonokoWait2AnimationFile! gdaRNkNokonokoWait1AnimationFile! data_ov062_0211e014! data_ov062_0211e024! gdaRNkNokonokoModelFile! data_ov062_0211e02c! data_ov062_0211e004! gdaRNkNokonokoWalkEdAnimationFile!

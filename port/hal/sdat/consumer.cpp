@@ -98,7 +98,7 @@ void func_0205b358(void);
  * hands out at +0xc). That header IS the handle: data_0209b498.
  *
  * WHERE THE MEGABYTE COMES FROM. Memory::Allocate(size) is
- * Memory::Allocate(size, 4, 0), and src/_ZN6Memory8AllocateEjiP4Heap.c
+ * Memory::Allocate(size, 4, 0), and src/_ZN6Memory8AllocateEjiPN5mHeap6Heap_tE.c
  * substitutes the DEFAULT heap for a null heap argument. At this line the
  * default heap is the ROOT heap and not the game heap:
  * Heap::InitializeGameHeap carved 0x3b000 out of the root a few lines
@@ -1103,7 +1103,7 @@ static void snd_sys_probe(void)
  * DEMAND ----------------------------------------------------------------------
  *
  * Calls the ROM's own Sound::PlayCharVoice(char, id, pos), the call the player
- * actor makes for every voice line (src/actors/Player.cpp), at the given hosted
+ * actor makes for every voice line (src/game/player/Player.cpp), at the given hosted
  * sound frame, at the local player's camera-space position (+0x74) when there is
  * a player, else at the origin. char is the character index the player actor
  * keeps at +0x6d9. It exists so a voice that plays only deep in a level (the

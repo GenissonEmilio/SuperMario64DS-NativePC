@@ -51,7 +51,7 @@
 # ---- 2. THE WIDTH IS 36, AND ALL FIVE CHECKS AGREE -------------------------
 #
 # 1  SPAN. config/arm9/overlays/ov006/symbols.txt has _ZTV11dScMgJump_c and
-#    then data_ov006_0213cc74. 0x0213cc74 - 0x0213cbe4 = 0x90 = 36 words, so a
+#    then pmf_dScMgJump2_c_State_Idle. 0x0213cc74 - 0x0213cbe4 = 0x90 = 36 words, so a
 #    37th slot cannot exist inside the table.
 # 2  TERMINAL SLOT. Slot 35 (0x0213cc70) holds 0x020ad660, the word every
 #    minigame table in this family ends on.
@@ -178,7 +178,7 @@
 # digit for digit. Over this slice's TUs it finds THREE:
 #
 #   020ee290  _ZN11dScMgJump_c8BehaviorEv   vtable slot 6, this class's own
-#   020c4ce8  func_ov006_020c4cd8   an object adapter's tick, the pair at +0x30
+#   020c4ce8  Heyho_Update   an object adapter's tick, the pair at +0x30
 #   020c7898  func_ov006_020c7860   a second object's tick, the pair at +0x3c
 #
 # Inside this class's own code block (0x020edec0..0x020eebe8) it finds exactly
@@ -234,7 +234,7 @@
 #
 #     func_ov006_020ee508  (state, the pair at 0x0213cb84)
 #       -> func_ov006_020ee3bc   sole caller, 0x020ee580
-#         -> func_ov006_020c7418 sole caller, 0x020c7454
+#         -> Jump3D_StopGravity sole caller, 0x020c7454
 #           -> func_ov006_020c81e0
 #
 # ALL FOUR ARE ALREADY IN THE LIST BELOW and all four are in the linked map:
@@ -257,7 +257,7 @@
 #     [bnp] 020ee508 arm gate: 02140428=3 (needs !=0)  02140304=6 (needs ==0)
 #
 # so the SECOND test is what closes the arm, not the first. 02140428 is set to 3
-# by func_ov006_020c7574, which slot 0 calls; 02140304 reads 6 and nothing in
+# by Jump3D_InitPool, which slot 0 calls; 02140304 reads 6 and nothing in
 # this closure drives it to zero on an unattended or a scripted-stylus run. The
 # 25-state census accordingly reads 020c814c:0 in every banked started run,
 # touched and untouched, at 900 and at 1200 frames.
@@ -268,7 +268,7 @@
 #
 # ---- 8. THE ONE FLOOR ------------------------------------------------------
 #
-# _ZN11dScMgJump_c13OnYoshiTryEatEi, vtable slot 18, 0x168 bytes.
+# _ZN11dScMgJump_c10StartRoundEi, vtable slot 18, 0x168 bytes.
 #
 # IT IS A GENUINE ABSENCE AND NOT A DELINKS GAP OVER AN EXISTING TU, and that
 # distinction is checked here rather than assumed because lane PGO's nosrc row
@@ -278,7 +278,7 @@
 # absence:
 #
 #   1  config/arm9/overlays/ov006/symbols.txt line 857 names it
-#      _ZN11dScMgJump_c13OnYoshiTryEatEi, kind:function(arm,size=0x168) -- an address-shaped
+#      _ZN11dScMgJump_c10StartRoundEi, kind:function(arm,size=0x168) -- an address-shaped
 #      name, not a mangled one, so lane S364's _ZN12dScMgSlot1_c6RenderEv shape (a real
 #      src file hiding behind a C++ name) is not what is happening here;
 #   2  delinks.txt HAS a gap at exactly this range: the block before ends at
@@ -311,8 +311,8 @@
 # section 5 of that file now records what it meant, so an older banked log that
 # quotes it stays readable.
 #
-# THE TRAP HID FOUR CALLEES from static closure: func_ov006_020c72b4,
-# func_ov006_020c72c8, func_ov006_020c719c and func_ov006_020c44b4 are reached
+# THE TRAP HID FOUR CALLEES from static closure: Jump3D_DisableInput,
+# Jump3D_EnableInput, Jump3D_Arrange and Heyho_SpawnAll are reached
 # only from this body in this class's closure, so while slot 18 was trapped
 # they were NOT in the list below. Run mg12's lane IGN retired the floor and
 # ADDED ALL FOUR TO THAT LIST, together with src/func_ov006_020ee994.c itself:
@@ -394,15 +394,15 @@
 #           assertion set (35 frames / 22 veneer derived, unchanged from base
 #           with both TUs sliced), so nothing would notice if the form stopped
 #           holding.
-# src/actors/dScMgD3DBase_c.cpp,
-# src/actors/dScMgD3DBase_c.cpp, src/actors/dScMgD3DBase_c.cpp and
-# src/actors/dScMgD3DBase_c.cpp are all OUT of the list below. The four bodies carry
+# src/minigames/d_s_mg_d3d_base.cpp,
+# src/minigames/d_s_mg_d3d_base.cpp, src/minigames/d_s_mg_d3d_base.cpp and
+# src/minigames/d_s_mg_d3d_base.cpp are all OUT of the list below. The four bodies carry
 # port_ names and do NOT define the decomp symbols, which is
 # unmatched/MgFlower_Slot2.cpp's rule: the port's map never claims a
 # decompilation that does not exist.
 #
 # unmatched/MgD3DBase_DeclConflict.cpp -- SHARED. Replaces
-# src/actors/dScMgD3DBase_c.cpp (slot 24), OUT of the list below:
+# src/minigames/d_s_mg_d3d_base.cpp (slot 24), OUT of the list below:
 # decl_common.h:1516 declares it `(void*)` while the TU defines it `(char*)`,
 # which is one register on the ROM and C2733 to MSVC. THIS LANE'S FIRST ROUTE
 # WAS tools/hostgen.py's HEADER_SHADOW list and it is RETIRED, for two merge
@@ -413,7 +413,7 @@
 # dedupe.
 #
 # unmatched/MgD3DBase_ModelAnimRender.cpp -- SHARED. Replaces
-# src/func_ov006_020c4c54.cpp and src/actors/dMgJump3DMario_c.cpp, both OUT of the
+# src/Heyho_Draw.cpp and src/minigames/d_mg_jump3d_mario.cpp, both OUT of the
 # list below. Both spell their per-frame ModelAnim sub-object as a local
 # SIX-virtual struct and call the sixth method -- the ROM's numbering -- where
 # the host _ZTV9ModelAnim is MSVC-numbered and its slot 5 is Virtual18 rather
@@ -423,7 +423,7 @@
 # 600 and 1200 frames, 3 of 3; with it all three exit 0.
 #
 # unmatched/MgD3DBase_ObjStateDispatch.cpp -- SHARED. Replaces
-# src/func_ov006_020c4cd8.cpp and src/actors/dMgJump3DMario_c.cpp, both OUT of the
+# src/Heyho_Update.cpp and src/minigames/d_mg_jump3d_mario.cpp, both OUT of the
 # list below. Section 6 is how they were found and what they cost; that file's
 # header carries the twenty-five-state enumeration and the relocation-set method
 # that produced it.
@@ -434,29 +434,29 @@
 # defect above. The rest were each checked against the ROM and none is owed a
 # repair:
 #
-#   _ZN11dScMgBase_c19OnHitFromUnderneathEv / _ZN11dScMgBase_c15OnHitByMegaCharEv declared 0-param by
-#   src/actors/dScMgD3DBase_c.cpp and src/_ZN14dScMgD3DBase_c15OnHitByMegaCharEv.c. Both ROM bodies
+#   _ZN11dScMgBase_c9CloseMenuEv / _ZN11dScMgBase_c8OpenMenuEv declared 0-param by
+#   src/minigames/d_s_mg_d3d_base.cpp and src/_ZN14dScMgD3DBase_c8OpenMenuEv.c. Both ROM bodies
 #   ARE one-instruction tail jumps (`ldr ip,[pc]; bx ip`), so the port's
 #   tail-jump mechanism carries the receiver and tailjump_guard asserts the
 #   form. The seat's thunks pass the receiver into them.
 #
-#   func_ov006_020c4060, _020c7300, _020c7418 and _020e7110 are declared with a
+#   Heyho_AllIdle, _020c7300, _020c7418 and _020e7110 are declared with a
 #   parameter by their callers and DEFINED `(void)`. The ROM bodies genuinely
 #   never read r0 -- checked one at a time -- so the definitions are right and
 #   the extra argument is a harmless cdecl push the caller cleans.
 #
-#   func_ov004_020b1e34 is called with four arguments by
+#   Mg_DrawScoreTally is called with four arguments by
 #   src/_ZN11dScMgJump_c6RenderEv.cpp and defined with one. The ROM body is
-#   `ldr ip,[pc,#4]; ldr r1,[r0,#0xb4]; bx ip` onto func_ov004_020b0e84, whose
+#   `ldr ip,[pc,#4]; ldr r1,[r0,#0xb4]; bx ip` onto Mg_DrawTally, whose
 #   prologue reads r0 and r1 and immediately overwrites r2, so the caller's
 #   0xe0/0x14/1 are dead on the ROM as well. Ten sites in ov006 call this
 #   veneer, including a body of an already-seated class, so it is exercised and
 #   unchanged by this seat.
 #
-#   _ZN13SharedFilePtr7ReleaseEv declared `()` by src/func_ov006_020c6f3c.c is
+#   _ZN13SharedFilePtr7ReleaseEv declared `()` by src/Heyho_Destruct.c is
 #   a K&R-style declaration in a .c file, and the call DOES pass its argument.
 #
-#   The func_ov006_020c6f3c / _020c6f70 / _020c8a04 / _020c893c rows are
+#   The Heyho_Destruct / _020c6f70 / _020c8a04 / _020c893c rows are
 #   ADDRESS-TAKEN, not called: the factory hands them to __cxa_vec_ctor and the
 #   destructors to __cxa_vec_cleanup, both of which are host-defined and call the
 #   pointer as a cdecl `void (*)(void *)`. This is the mg10 invisible-defect
@@ -474,7 +474,7 @@
 # compiled-versus-linked lesson in practice:
 #
 #   129  TUs in the list below
-#  -  1  src/actors/dScMgD3DBase_c.cpp, COMPILED but DROPPED BY /OPT:REF. It is in
+#  -  1  src/minigames/d_s_mg_d3d_base.cpp, COMPILED but DROPPED BY /OPT:REF. It is in
 #        the slice because it sits inside dScMgD3DBase_c's code block, not
 #        because anything in this closure calls it: its four arm_call
 #        relocations in ov006 come from 0x020cffec, 0x020d0024, 0x020d08ec and
@@ -495,104 +495,104 @@
 # dScMgD3DBase_c half of this list too, and that dedupe is the mechanism that
 # makes it correct.
 #
-src/d_s_mg_jump.cpp
+src/minigames/d_s_mg_jump.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (the slice_bnp host copies).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
-#src/actors/dScMgD3DBase_c.cpp
+#src/minigames/d_s_mg_d3d_base.cpp
 src/unnamed/arm9/0205/func_02053ea0.c
 src/unnamed/arm9/0205/func_02053eb0.c
 src/unnamed/arm9/0205/func_02054748.c
-src/actors/unit020bfec0.cpp
-# FOLDED into src/actors/unit020bfec0.cpp (row 508): src/func_ov006_020bfff8.cpp
-src/actors/dMg3DHeyhoObjAdapter_c.cpp
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c4060.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c40e8.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c425c.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c42bc.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c44b4.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c4684.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c4710.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c47d4.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c49d8.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c4c00.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c4d1c.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c4d20.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c4d3c.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c4e8c.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c4f68.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c4fa4.cpp
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c5370.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c53f8.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c54f4.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c5530.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c561c.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c5658.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c57d4.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c5928.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c5aa4.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c5bf8.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c5cf4.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c5d28.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c5ec8.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c6088.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c6188.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c61c4.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c6248.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c627c.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c6348.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c6378.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c63dc.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c6400.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c64e4.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c66bc.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c6a9c.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c6e4c.cpp
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c6f3c.c
-# FOLDED into src/actors/dMg3DHeyhoObjAdapter_c.cpp (row 510): src/func_ov006_020c6f70.c
-src/actors/dMgJump3DMario_c.cpp
-# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 555): src/func_ov006_020c712c.c
-# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 555): src/func_ov006_020c719c.c
-# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 555): src/func_ov006_020c72b4.c
-# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 555): src/func_ov006_020c72c8.c
-# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 555): src/func_ov006_020c72dc.c
-# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 555): src/func_ov006_020c7300.c
-# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 555): src/func_ov006_020c7388.c
-# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 555): src/func_ov006_020c7418.c
-# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 555): src/func_ov006_020c7490.c
-# FOLDED into src/actors/dMgJump3DMario_c.cpp (row 555): src/func_ov006_020c7574.c
+src/minigames/unit020bfec0.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 508): src/Camera_ProjectToScreen.cpp
+src/minigames/d_mg3d_heyho_obj_adapter.cpp
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_AllIdle.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_ReactAll.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_DrawAll.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_SeparateAll.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_SpawnAll.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_InitPool.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_IsChasing.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_CheckHitA.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_CheckHitB.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_UpdateMatrix.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_StateIdle.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_SetIdle.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Settle.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Motion11.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_StartMotion11.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Motion1.cpp
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_StartMotion1.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Motion5.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_StartMotion5.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Motion2.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_StartMotion2.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Motion6.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_StartMotion6.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Motion4.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_StartMotion4.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Motion7.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_StartMotion7.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Motion9.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_StartMotion9.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Motion0.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_StartMotion0.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Motion10.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_StartMotion10.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Motion14.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_StartMotion14.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Motion12.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_StartMotion12.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Motion13.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_React.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Motion8.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Motion3.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_LoadResources.cpp
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Destruct.c
+# FOLDED into src/minigames/d_mg3d_heyho_obj_adapter.cpp (row 510): src/Heyho_Construct.c
+src/minigames/d_mg_jump3d_mario.cpp
+# FOLDED into src/minigames/d_mg_jump3d_mario.cpp (row 555): src/Jump3D_UpdateAll.c
+# FOLDED into src/minigames/d_mg_jump3d_mario.cpp (row 555): src/Jump3D_Arrange.c
+# FOLDED into src/minigames/d_mg_jump3d_mario.cpp (row 555): src/Jump3D_DisableInput.c
+# FOLDED into src/minigames/d_mg_jump3d_mario.cpp (row 555): src/Jump3D_EnableInput.c
+# FOLDED into src/minigames/d_mg_jump3d_mario.cpp (row 555): src/Jump3D_RestoreCount.c
+# FOLDED into src/minigames/d_mg_jump3d_mario.cpp (row 555): src/Jump3D_AllIdle.c
+# FOLDED into src/minigames/d_mg_jump3d_mario.cpp (row 555): src/Jump3D_SetLowGravity.c
+# FOLDED into src/minigames/d_mg_jump3d_mario.cpp (row 555): src/Jump3D_StopGravity.c
+# FOLDED into src/minigames/d_mg_jump3d_mario.cpp (row 555): src/Jump3D_StartRoundLayout.c
+# FOLDED into src/minigames/d_mg_jump3d_mario.cpp (row 555): src/Jump3D_InitPool.c
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (the slice_bnp host copies).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
-#src/actors/dMgJump3DMario_c.cpp
-src/actors/unit020c8a30.cpp
-# FOLDED into src/actors/unit020c8a30.cpp (row 572): src/func_ov006_020c8a64.c
-# FOLDED into src/actors/unit020c8a30.cpp (row 572): src/func_ov006_020c8a9c.c
-# FOLDED into src/actors/unit020c8a30.cpp (row 572): src/func_ov006_020c8af4.c
-# FOLDED into src/actors/unit020c8a30.cpp (row 572): src/func_ov006_020c8ba8.cpp
-# FOLDED into src/actors/unit020c8a30.cpp (row 572): src/func_ov006_020c8c6c.c
-# FOLDED into src/actors/unit020c8a30.cpp (row 572): src/func_ov006_020c8c78.c
-src/actors/dScMgJump_c.cpp
+#src/minigames/d_mg_jump3d_mario.cpp
+src/minigames/unit020c8a30.cpp
+# FOLDED into src/minigames/unit020c8a30.cpp (row 572): src/Puff_UpdateAll.c
+# FOLDED into src/minigames/unit020c8a30.cpp (row 572): src/Puff_ClearAll.c
+# FOLDED into src/minigames/unit020c8a30.cpp (row 572): src/Puff_Draw.c
+# FOLDED into src/minigames/unit020c8a30.cpp (row 572): src/Puff_Update.cpp
+# FOLDED into src/minigames/unit020c8a30.cpp (row 572): src/Puff_Clear.c
+# FOLDED into src/minigames/unit020c8a30.cpp (row 572): src/Puff_Spawn.c
+src/minigames/d_s_mg_jump_methods.cpp
 # RETIRED at SLICE1: body now in src/_ZN11dScMgJump_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN11dScMgJump_cD0Ev.cpp
-# FOLDED into src/actors/dScMgJump_c.cpp (row 579): src/_ZN11dScMgJump_c16CleanupResourcesEv.cpp
-# FOLDED into src/actors/dScMgJump_c.cpp (row 579): src/_ZN11dScMgJump_c6RenderEv.cpp
-# FOLDED into src/actors/dScMgJump_c.cpp (row 579): src/func_ov006_020ee2c0.c
-# FOLDED into src/actors/dScMgJump_c.cpp (row 579): src/func_ov006_020ee2c4.c
-# FOLDED into src/actors/dScMgJump_c.cpp (row 579): src/func_ov006_020ee3bc.c
-# FOLDED into src/actors/dScMgJump_c.cpp (row 579): src/func_ov006_020ee3ec.c
-# FOLDED into src/actors/dScMgJump_c.cpp (row 579): src/func_ov006_020ee44c.c
-# FOLDED into src/actors/dScMgJump_c.cpp (row 579): src/func_ov006_020ee4e0.c
-# FOLDED into src/actors/dScMgJump_c.cpp (row 579): src/func_ov006_020ee508.c
-# FOLDED into src/actors/dScMgJump_c.cpp (row 579): src/func_ov006_020ee598.c
-# FOLDED into src/actors/dScMgJump_c.cpp (row 579): src/func_ov006_020ee5b8.c
-# FOLDED into src/actors/dScMgJump_c.cpp (row 579): src/func_ov006_020ee658.c
-# FOLDED into src/actors/dScMgJump_c.cpp (row 579): src/_ZN11dScMgJump_c13InitResourcesEv.cpp
-# FOLDED into src/actors/dScMgJump_c.cpp (row 579): src/_ZN11dScMgJump_c13OnTurnIntoEggEi.cpp
+# FOLDED into src/minigames/d_s_mg_jump_methods.cpp (row 579): src/_ZN11dScMgJump_c16CleanupResourcesEv.cpp
+# FOLDED into src/minigames/d_s_mg_jump_methods.cpp (row 579): src/_ZN11dScMgJump_c6RenderEv.cpp
+# FOLDED into src/minigames/d_s_mg_jump_methods.cpp (row 579): src/func_ov006_020ee2c0.c
+# FOLDED into src/minigames/d_s_mg_jump_methods.cpp (row 579): src/func_ov006_020ee2c4.c
+# FOLDED into src/minigames/d_s_mg_jump_methods.cpp (row 579): src/func_ov006_020ee3bc.c
+# FOLDED into src/minigames/d_s_mg_jump_methods.cpp (row 579): src/func_ov006_020ee3ec.c
+# FOLDED into src/minigames/d_s_mg_jump_methods.cpp (row 579): src/func_ov006_020ee44c.c
+# FOLDED into src/minigames/d_s_mg_jump_methods.cpp (row 579): src/func_ov006_020ee4e0.c
+# FOLDED into src/minigames/d_s_mg_jump_methods.cpp (row 579): src/func_ov006_020ee508.c
+# FOLDED into src/minigames/d_s_mg_jump_methods.cpp (row 579): src/func_ov006_020ee598.c
+# FOLDED into src/minigames/d_s_mg_jump_methods.cpp (row 579): src/func_ov006_020ee5b8.c
+# FOLDED into src/minigames/d_s_mg_jump_methods.cpp (row 579): src/func_ov006_020ee658.c
+# FOLDED into src/minigames/d_s_mg_jump_methods.cpp (row 579): src/_ZN11dScMgJump_c13InitResourcesEv.cpp
+# FOLDED into src/minigames/d_s_mg_jump_methods.cpp (row 579): src/_ZN11dScMgJump_c11CanEndStateEi.cpp
 src/func_ov006_020ee994.c
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): this row is the raw
 # consolidated TU. slice_bnt.txt's BNT_HOSTGEN_SRCS substitutes a hostgen'd copy of

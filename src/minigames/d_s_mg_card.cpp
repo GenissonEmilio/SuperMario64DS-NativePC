@@ -45,8 +45,8 @@ typedef struct OamAttrTmpl {
 } OamAttrTmpl;
 
 extern "C" {
-extern int data_ov006_0213acb0[2];
-extern int data_ov006_0213aca8[2];
+extern int pmf_Dealer_StateCollect_2[2];
+extern int pmf_Dealer_StateReveal[2];
 /* The two element vtables are emitted here by their key functions. The four
    measured array-construction ABI callbacks reference the ROM address points;
    these names are already mangled, so C linkage means "use literally". */
@@ -66,39 +66,39 @@ extern const Five data_ov006_0213bcd8;
 extern int RandomIntInternal(int *seed);
 extern int data_ov006_0213bd18[];
 extern int data_0209e650;
-extern "C" void func_ov006_020c0aa8(void *c);
+extern "C" void Camera_InitDealerView(void *c);
 extern "C" void RenderOamMainScreen(int a0, int a1, int a2, int a3, int a4);
-extern "C" void func_ov004_020b1bc8(char *a0, int a1, int a2, int a3);
-extern "C" void func_ov004_020b1e34(void *a0, int a1, int a2, int a3);
-extern "C" void func_ov006_020c1804(void *c);
+extern "C" void Mg_DrawCredits(char *a0, int a1, int a2, int a3);
+extern "C" void Mg_DrawScoreTally(void *a0, int a1, int a2, int a3);
+extern "C" void Dealer_Draw(void *c);
 extern int data_ov006_02134028;
-void func_ov006_020c19d0(void *table);
-void func_ov004_020b65e4(void);
-extern int func_ov006_020c0f0c(void *p);
-extern int func_ov006_020c1718(void *p);
-extern void func_ov006_020c1420(void *c, s16 arg1, void *arg2);
-extern void func_ov006_020c0d68(void *c);
-extern void func_ov006_020c0c80(void *c);
-extern void func_ov004_020ad79c(int a0, int a1);
-extern void func_ov004_020b0cac(int a0, int a1, int a2, int a3, int a4, s16 a5);
-extern void func_ov004_020adb1c(int v);
-extern void func_ov004_020b0a54(int v);
-extern int data_ov004_020bf9ec;
+void Dealer_Update(void *table);
+void MgCoins_Update(void);
+extern int Dealer_IsBusy(void *p);
+extern int Dealer_IsIdle(void *p);
+extern void Dealer_StartCollect(void *c, s16 arg1, void *arg2);
+extern void Dealer_PlayLose(void *c);
+extern void Dealer_PlayWin(void *c);
+extern void Mg_SaveRecordPair(int a0, int a1);
+extern void Mg_ShowBanner(int a0, int a1, int a2, int a3, int a4, s16 a5);
+extern void Mg_SubmitScore(int v);
+extern void Mg_SetSharedState(int v);
+extern int sMgCoinsBetPlaced;
 extern int data_ov006_0213bc44;
-extern int data_ov004_020bfa18;
+extern int gMgCoinsInPlay;
 extern int data_ov006_0213bd48[];
 extern void FreeGfxSlotsById(int arg);
-extern void func_ov004_020b56c8(int a);
-extern s16 data_ov004_020bf9e4;
-extern "C" void func_ov006_020c1604(char *c, int unused, short a2, int a3);
-extern "C" void func_ov004_020b66d4(void);
+extern void MgCoins_StartPayout(int a);
+extern s16 gMgCoinsStatus;
+extern "C" void Dealer_StartDeal(char *c, int unused, short a2, int a3);
+extern "C" void MgCoins_Reset(void);
 extern u8 data_0209d45c;
 extern u8 data_0209d454;
-extern void func_ov006_0210a534(char *);
+extern void LoadCard2SubBg3(char *);
 extern void *LoadFile(int);
 extern int GetGameLanguage(void);
 extern void DecompressLZ16(void *, void *);
-extern int func_ov006_020c1a88(char *);
+extern int Dealer_Load(char *);
 void *_ZN11dScMgBase_cC2Ev(void*);
 void _ZN8Particle10SysTrackerC1Ev(void*);
 typedef void (*CardElementCallback)(void *);
@@ -134,7 +134,7 @@ extern "C" void* dScMgCard_c_classInit()
         *(int*)p = (int)&_ZTV19dScMgSingle3DBase_c;
         _ZN8Particle10SysTrackerC1Ev(p + 0x471c);
         *(int*)p = (int)&_ZTV11dScMgCard_c[2];
-        func_ov006_020c1d80(p + 0x4f38);
+        Dealer_Construct(p + 0x4f38);
         __cxa_vec_ctor(p + 0x51a8, 5, 0x30,
                      _ZN12dMgCardObj_cC1Ev,
                      _ZN12dMgCardObj_cD1Ev);
@@ -158,7 +158,7 @@ int  ApproachLinear2(s16 &value, s16 target, s16 step);
 /* Slot 0. Loads and decompresses the OBJ tiles and palettes for both
  * engines, sets blending, patches the OAM template list, spawns the two rows
  * of five card sprites and resets the shared counters. It ends with a
- * virtual call to OnYoshiTryEat(-1), which resets the round. */
+ * virtual call to StartRound(-1), which resets the round. */
 /* One OAM attribute-template entry: the list is a u32 attr word, then the two
  * 16-bit attrs, then an 8-byte stride. Spelled as a struct rather than as casts
  * off a u32* because the ROM addresses all three off ONE base register at
@@ -171,8 +171,8 @@ s32 dScMgCard_c::InitResources()
     void *mainTiles, *mainPalette, *subTiles, *subPalette;
     int pos[2];
 
-    func_ov004_020b04d0(0x20);
-    func_ov006_0210a534(c);
+    Mg_SetTopScreenYOffset(0x20);
+    LoadCard2SubBg3(c);
     data_0209d45c = 0x11;
     data_0209d454 = 0x18;
     mainTiles = LoadFile(0xbd);
@@ -209,8 +209,8 @@ s32 dScMgCard_c::InitResources()
 
     *(volatile u16 *)0x04000008 = (*(volatile u16 *)0x04000008 & ~3) | 1;
 
-    func_ov006_020c0aa8(pad_4660);
-    if (func_ov006_020c1a88((char *)&mShared) == 0)
+    Camera_InitDealerView(pad_4660);
+    if (Dealer_Load((char *)&mShared) == 0)
         return 0;
 
     {
@@ -228,25 +228,25 @@ s32 dScMgCard_c::InitResources()
 
     self->mState = 0;
     self->mStateTimer = 0;
-    unk_0a8 = func_ov004_020ad8b8();
-    unk_0ac = unk_0a8;
+    mCredits = Mg_GetSavedRecord0();
+    mCreditsShown = mCredits;
     {
-        int r = func_ov004_020ad878();
-        if (data_ov004_020beb68 != 0)
-            ((dScMgBase_c *)data_ov004_020beb68)->mHudScore = r;
+        int r = Mg_GetSavedRecord1();
+        if (gMgScene != 0)
+            gMgScene->mHudScore = r;
     }
     self->mScore = 0;
-    func_ov004_020b682c();
-    OnYoshiTryEat(-1);
+    Mg_PlaceBannersOnTopScreen();
+    StartRound(-1);
     return 1;
 }
 
-// @symbol _ZN11dScMgCard_c13OnYoshiTryEatEi
+// @symbol _ZN11dScMgCard_c10StartRoundEi
 /* Slot 18 resets the round: clear the selected-card counter and highlights,
  * restore the face weights, redeal both hands, and restart at state 1.
  * The inherited actor-style name is retained for the existing interface;
  * it does not establish this scene callback's original name or event. */
-void dScMgCard_c::OnYoshiTryEat(int mode)
+void dScMgCard_c::StartRound(int mode)
 {
     int i;
     char *p1, *p2;
@@ -256,7 +256,7 @@ void dScMgCard_c::OnYoshiTryEat(int mode)
     unk_5390 = 6;
     unk_5392 = 6;
     unk_5394 = 6;
-    func_ov006_020c1604((char *)&mShared, 4, 5, (int)&unk_538c);
+    Dealer_StartDeal((char *)&mShared, 4, 5, (int)&unk_538c);
 
     mShared.unk_1e6 = 1;
     mShared.unk_01a = 2;
@@ -271,9 +271,9 @@ void dScMgCard_c::OnYoshiTryEat(int mode)
         p2 += 0x30;
     }
 
-    func_ov004_020b66d4();
+    MgCoins_Reset();
 
-    data_ov004_020bc7d4 = 1;
+    gMgCoinsShowDelta = 1;
     data_ov006_0214176c = 0;
     data_ov006_02141768 = 0;
     data_ov006_02141770 = 0;
@@ -282,12 +282,12 @@ void dScMgCard_c::OnYoshiTryEat(int mode)
     mState = 1;
 }
 
-// @symbol _ZN11dScMgCard_c13OnTurnIntoEggEi
+// @symbol _ZN11dScMgCard_c11CanEndStateEi
 /* Slot 19 advances the round-end sequence: show the comparison result,
  * settle the score, fly both hands off, and wait for the final timer.
  * Returns 1 when complete. The inherited actor-style name does not imply
  * that a Picture Poker player has been swallowed. */
-int dScMgCard_c::OnTurnIntoEgg(int mode)
+int dScMgCard_c::CanEndState(int mode)
 {
     switch (mState) {
     case 0xe: {
@@ -301,24 +301,24 @@ int dScMgCard_c::OnTurnIntoEgg(int mode)
         break;
     }
     case 0xf:
-        if (func_ov006_020c1718(&mShared) != 0) {
+        if (Dealer_IsIdle(&mShared) != 0) {
             int r = dScMgCard_c::CompareHands((const dMgCardObj_c *)mArray1, (const dMgCardObj_c *)mArray2);
             if (r == -1) {
-                func_ov004_020b5ed0();
+                MgCoins_StartLose();
                 mStateTimer = 0;
             } else if (r == 1) {
                 int v = data_ov006_0213bd48[dScMgCard_c::EvaluateHand((const dMgCardObj_c *)mArray1, 0)];
-                func_ov004_020b56c8(v * data_ov004_020bfa18);
+                MgCoins_StartPayout(v * gMgCoinsInPlay);
                 mStateTimer = 0;
             } else {
-                func_ov004_020b5d74();
+                MgCoins_StartRefund();
                 mStateTimer = 0x1e;
             }
             mState += 1;
         }
         break;
     case 0x10:
-        if (data_ov004_020bf9e4 == 1) {
+        if (gMgCoinsStatus == 1) {
             int r = dScMgCard_c::CompareHands((const dMgCardObj_c *)mArray1, (const dMgCardObj_c *)mArray2);
             dScMgCard_c::EvaluateHand((const dMgCardObj_c *)mArray1, 0);
             if (r == -1) {
@@ -335,8 +335,8 @@ int dScMgCard_c::OnTurnIntoEgg(int mode)
         int i;
         char* a;
         char* b;
-        void* p = data_ov004_020beb68;
-        if ((p != 0 ? ((dScMgBase_c *)p)->unk_0a8 : 0) != 0)
+        void* p = gMgScene;
+        if ((p != 0 ? ((dScMgBase_c *)p)->mCredits : 0) != 0)
             return 1;
         a = (char *)mArray1;
         b = (char *)mArray2;
@@ -358,11 +358,11 @@ int dScMgCard_c::OnTurnIntoEgg(int mode)
     return 0;
 }
 
-// @symbol _ZN11dScMgCard_c15OnGroundPoundedEv
+// @symbol _ZN11dScMgCard_c10OnDealDoneEv
 /* Slot 21 selects a tier from 1 to 4 according to mHudScore and passes it
- * to func_ov004_020b6324. The inherited name does not establish an actor
+ * to MgCoins_RaiseBet. The inherited name does not establish an actor
  * ground-pound event or the original name of this scene callback. */
-void dScMgCard_c::OnGroundPounded() {
+void dScMgCard_c::OnDealDone() {
     int x = mHudScore;
     int v;
     if (x < 5) {
@@ -374,7 +374,7 @@ void dScMgCard_c::OnGroundPounded() {
     } else {
         v = 4;
     }
-    func_ov004_020b6324(v);
+    MgCoins_RaiseBet(v);
 }
 
 // @symbol _ZN11dScMgCard_c11UpdateStateEv
@@ -388,9 +388,9 @@ void dScMgCard_c::OnGroundPounded() {
  * win out or take the loss's chip. mState mostly just `++`s and
  * mStateTimer carries each step's countdown; the two highlight pairs
  * and the card states carry the rest. The singleton
- * data_ov004_020beb68 is the active dScMgBase_c (see its own note in
- * notes/minigame-provenance.md): unk_0a8 is the coin counter,
- * mHudScore the chip tally, unk_0b8 its high-water mark. Coined name;
+ * gMgScene is the active dScMgBase_c (see its own note in
+ * notes/minigame-provenance.md): mCredits is the coin counter,
+ * mHudScore the chip tally, mBestHudScore its high-water mark. Coined name;
  * the ROM's symbol is address-only. */
 void dScMgCard_c::UpdateState()
 {
@@ -411,7 +411,7 @@ void dScMgCard_c::UpdateState()
     int b;
     int t4;
     int t5;
-    void *g;
+    dScMgBase_c *g;
     int a0;
     int a1;
     s16 cnt;
@@ -423,11 +423,11 @@ void dScMgCard_c::UpdateState()
             mPromptBlinkCount = 1;
             mPromptBlinkTimer = 0;
         }
-        if (func_ov006_020c0f0c(&mShared) != 0)
+        if (Dealer_IsBusy(&mShared) != 0)
             mState++;
         break;
     case 2:
-        if (func_ov006_020c1718(&mShared) != 0) {
+        if (Dealer_IsIdle(&mShared) != 0) {
             mStateTimer = 0x10;
             mState++;
         } else {
@@ -470,12 +470,12 @@ void dScMgCard_c::UpdateState()
                         data_ov006_0214176c = 1;
                         data_ov006_02141768 = 1;
                         mState++;
-                        data_ov004_020bf9ec = 1;
+                        sMgCoinsBetPlaced = 1;
                         Sound::PlayBank2_2D(0x151);
-                        g = data_ov004_020beb68;
-                        a0 = g ? ((dScMgBase_c *)g)->unk_0a8 : 0;
-                        a1 = g ? ((dScMgBase_c *)g)->mHudScore : 0;
-                        func_ov004_020ad79c(a0, a1);
+                        g = gMgScene;
+                        a0 = g ? g->mCredits : 0;
+                        a1 = g ? g->mHudScore : 0;
+                        Mg_SaveRecordPair(a0, a1);
                     }
                 }
             } else {
@@ -490,12 +490,12 @@ void dScMgCard_c::UpdateState()
                         data_ov006_0214176c = 1;
                         data_ov006_02141768 = 1;
                         mState++;
-                        data_ov004_020bf9ec = 1;
+                        sMgCoinsBetPlaced = 1;
                         Sound::PlayBank2_2D(0x151);
-                        g = data_ov004_020beb68;
-                        a0 = g ? ((dScMgBase_c *)g)->unk_0a8 : 0;
-                        a1 = g ? ((dScMgBase_c *)g)->mHudScore : 0;
-                        func_ov004_020ad79c(a0, a1);
+                        g = gMgScene;
+                        a0 = g ? g->mCredits : 0;
+                        a1 = g ? g->mHudScore : 0;
+                        Mg_SaveRecordPair(a0, a1);
                         cnt3 = 0;
                         i = cnt3;
                         do {
@@ -515,14 +515,14 @@ void dScMgCard_c::UpdateState()
         break;
     case 5:
         if (data_ov006_02141768 != 0 && dScMgCard_c::AllInState((const dMgCardObj_c *)mArray1, 2) != 0
-            && func_ov006_020c1718(&mShared) != 0) {
+            && Dealer_IsIdle(&mShared) != 0) {
             mState++;
-        } else if (func_ov006_020c1718(&mShared) != 0) {
+        } else if (Dealer_IsIdle(&mShared) != 0) {
             r = dScMgCard_c::CountInState((const dMgCardObj_c *)mArray1, 6);
             if (r != 0) {
                 unk_538c = 0;
                 mShared.unk_1e6 = 0;
-                func_ov006_020c1420(&mShared, (s16)r, &unk_538c);
+                Dealer_StartCollect(&mShared, (s16)r, &unk_538c);
             }
         } else {
             r = dScMgCard_c::FindInState((const dMgCardObj_c *)mArray1, 6);
@@ -537,7 +537,7 @@ void dScMgCard_c::UpdateState()
         mState++;
         break;
     case 7:
-        if (dScMgCard_c::AllInState((const dMgCardObj_c *)mArray2, 1) != 0 && func_ov006_020c1718(&mShared) != 0) {
+        if (dScMgCard_c::AllInState((const dMgCardObj_c *)mArray2, 1) != 0 && Dealer_IsIdle(&mShared) != 0) {
             r = data_ov006_0213bc44 - 1;
             data_ov006_0213bc44 = r;
             if (r == 0) {
@@ -548,12 +548,12 @@ void dScMgCard_c::UpdateState()
                 data_ov006_02141768 = 0;
                 data_ov006_02141770 = 0;
             }
-        } else if (func_ov006_020c1718(&mShared) != 0) {
+        } else if (Dealer_IsIdle(&mShared) != 0) {
             r = dScMgCard_c::CountInState((const dMgCardObj_c *)mArray2, 6);
             if (r != 0) {
                 unk_538c = 0;
                 mShared.unk_1e6 = 0;
-                func_ov006_020c1420(&mShared, (s16)r, &unk_538c);
+                Dealer_StartCollect(&mShared, (s16)r, &unk_538c);
             }
         } else {
             r = dScMgCard_c::FindInState((const dMgCardObj_c *)mArray2, 6);
@@ -608,8 +608,8 @@ void dScMgCard_c::UpdateState()
             t5 = dScMgCard_c::EvaluateHand((const dMgCardObj_c *)mArray1, &unk_538e);
             if (data_ov006_02141768 != 0 && data_ov006_02141768 != 0) {
                 /* the hand-value fanfares sit at sound bank 22 up */
-                func_ov004_020b0cac(t4 + 22, 0x80, 0x48, 0, -1, 1);
-                func_ov004_020b0cac(t5 + 22, 0x80, 0x78, 0, -1, 2);
+                Mg_ShowBanner(t4 + 22, 0x80, 0x48, 0, -1, 1);
+                Mg_ShowBanner(t5 + 22, 0x80, 0x78, 0, -1, 2);
                 if (t4 != t5) {
                     unk_5392 = 6;
                     unk_5394 = 6;
@@ -622,23 +622,23 @@ void dScMgCard_c::UpdateState()
             }
             r = dScMgCard_c::CompareHands((const dMgCardObj_c *)mArray1, (const dMgCardObj_c *)mArray2);
             if (r == -1) {
-                g = data_ov004_020beb68;
-                a0 = g ? ((dScMgBase_c *)g)->unk_0a8 : 0;
-                a1 = g ? ((dScMgBase_c *)g)->mHudScore : 0;
-                func_ov004_020ad79c(a0, a1 - 1);
+                g = gMgScene;
+                a0 = g ? g->mCredits : 0;
+                a1 = g ? g->mHudScore : 0;
+                Mg_SaveRecordPair(a0, a1 - 1);
                 mStateTimer = 0x5a;
             } else if (r == 1) {
-                g = data_ov004_020beb68;
+                g = gMgScene;
                 {
                     int *tbl = data_ov006_0213bd48;
                     int scale;
                     int prod;
-                    a0 = g ? ((dScMgBase_c *)g)->unk_0a8 : 0;
+                    a0 = g ? g->mCredits : 0;
                     r = tbl[t5];
-                    scale = data_ov004_020bfa18;
+                    scale = gMgCoinsInPlay;
                     prod = r * scale + a0;
-                    r = g ? ((dScMgBase_c *)g)->mHudScore : 0;
-                    func_ov004_020ad79c(prod, r + 1);
+                    r = g ? g->mHudScore : 0;
+                    Mg_SaveRecordPair(prod, r + 1);
                 }
                 mStateTimer = 0x1e;
             } else {
@@ -652,30 +652,30 @@ void dScMgCard_c::UpdateState()
         if (mStateTimer == 0) {
             r = dScMgCard_c::CompareHands((const dMgCardObj_c *)mArray1, (const dMgCardObj_c *)mArray2);
             if (r == -1) {
-                func_ov006_020c0d68(&mShared);
-                g = data_ov004_020beb68;
+                Dealer_PlayLose(&mShared);
+                g = gMgScene;
                 if (g != 0) {
-                    if (((dScMgBase_c *)g)->mHudScore > 0) {
-                        ((dScMgBase_c *)g)->mHudScore = ((dScMgBase_c *)g)->mHudScore - 1;
+                    if (g->mHudScore > 0) {
+                        g->mHudScore = g->mHudScore - 1;
                     }
                 }
-                func_ov004_020b0a54(5);
+                Mg_SetSharedState(MG_STATE_LOSE);
             } else if (r == 1) {
-                func_ov006_020c0c80(&mShared);
-                g = data_ov004_020beb68;
+                Dealer_PlayWin(&mShared);
+                g = gMgScene;
                 if (g != 0) {
-                    if (((dScMgBase_c *)g)->mHudScore < 0x270f) {
-                        int *fld = &((dScMgBase_c *)g)->mHudScore;
+                    if (g->mHudScore < 0x270f) {
+                        int *fld = &g->mHudScore;
                         *fld = *fld + 1;
                     }
-                    a1 = ((dScMgBase_c *)g)->mHudScore;
-                    if (a1 > ((dScMgBase_c *)g)->unk_0b8)
-                        ((dScMgBase_c *)g)->unk_0b8 = a1;
+                    a1 = g->mHudScore;
+                    if (a1 > g->mBestHudScore)
+                        g->mBestHudScore = a1;
                 }
-                func_ov004_020adb1c(mHudScore);
-                func_ov004_020b0a54(4);
+                Mg_SubmitScore(mHudScore);
+                Mg_SetSharedState(MG_STATE_WIN);
             } else {
-                func_ov004_020b0a54(7);
+                Mg_SetSharedState(MG_STATE_DRAW);
                 Sound::PlayBank2_2D(0x140);
                 Sound::PlayBank2_2D(0x138);
             }
@@ -701,13 +701,13 @@ void dScMgCard_c::UpdateState()
 
 // @symbol _ZN11dScMgCard_c8BehaviorEv
 /* Slot 6. mShared is the 0x270-byte table this family of scenes shares;
- * func_ov006_020c19d0 steps it. */
+ * Dealer_Update steps it. */
 s32 dScMgCard_c::Behavior()
 {
     mFrameCounter += 1;
-    func_ov006_020c19d0(&mShared);
+    Dealer_Update(&mShared);
     UpdateState();
-    func_ov004_020b65e4();
+    MgCoins_Update();
     return 1;
 }
 
@@ -724,7 +724,7 @@ s32 dScMgCard_c::Render()
     int i;
     int y;
 
-    func_ov006_020c0aa8(pad_4660);
+    Camera_InitDealerView(pad_4660);
 
     state = this->mState;
     if (state > 3 && state < 0x11) {
@@ -748,14 +748,14 @@ s32 dScMgCard_c::Render()
         RenderOamMainScreen(data_ov006_02134028, 0x28, 0x38, -1, -1);
     }
 
-    func_ov004_020b1bc8(c, 0xc, 0xc, 0);
-    func_ov004_020b1e34(c, 0xe0, 0x14, 1);
+    Mg_DrawCredits(c, 0xc, 0xc, 0);
+    Mg_DrawScoreTally(c, 0xe0, 0x14, 1);
 
     if (this->mScore < this->mHudScore)
         this->mScore = this->mHudScore;
-    func_ov004_020adb1c(this->mScore);
+    Mg_SubmitScore(this->mScore);
 
-    func_ov004_020b6430();
+    MgCoins_Draw();
 
     RenderHud();
 
@@ -802,7 +802,7 @@ s32 dScMgCard_c::Render()
         }
     }
 
-    func_ov006_020c1804(&mShared);
+    Dealer_Draw(&mShared);
     return 1;
 }
 

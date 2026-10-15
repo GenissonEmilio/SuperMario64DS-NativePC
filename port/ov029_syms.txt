@@ -107,8 +107,8 @@ data_ov029_02114340@0x02114340 data_ov029_02114350
 #   data_ov029_02114324                        now defined by src/game/actors/d_a_obj_wc_obj04.cpp
 #   data_ov029_0211432c                        now defined by src/game/actors/d_a_obj_wc_obj04.cpp
 
-# PORTSYNC3 RETIRED (main's d_a_obj_wc_obj02.cpp/d_a_obj_wc_obj05.cpp now defines these objects itself): data_ov029_02114248 data_ov029_02114250 data_ov029_02114284 data_ov029_0211428c
+# PORTSYNC3 RETIRED (main's d_a_obj_wc_obj02.cpp/d_a_obj_wc_obj05.cpp now defines these objects itself): data_ov029_02114248 data_ov029_02114250 gWcObj05CollisionFile gWcObj05ModelFile
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov029_02114220! data_ov029_02114228! data_ov029_021142ac! data_ov029_021142b4! data_ov029_021142d4! data_ov029_021142dc!
+gWcObj01ModelFile! gWcObj01CollisionFile! gWcObj06ModelFile! gWcObj06CollisionFile! gWcObj07CollisionFile! gWcObj07ModelFile!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov029_02114270! data_ov029_02114248! data_ov029_02114250! data_ov029_0211428c! data_ov029_02114284! data_ov029_02114324! data_ov029_0211432c!
+data_ov029_02114270! data_ov029_02114248! data_ov029_02114250! gWcObj05ModelFile! gWcObj05CollisionFile! data_ov029_02114324! data_ov029_0211432c!

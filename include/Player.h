@@ -932,7 +932,7 @@ typedef char Player_State_size_must_be_0x18[sizeof(Player::State) == 0x18 ? 1 : 
  *     _ZN6Player16St_WallJump_InitEv had been attached to the ov006 copy (size
  *     0x5c), so that file decompiled unrelated ov006 code while claiming to be
  *     a Player method -- hence the nonsense offsets. It now names the ov002
- *     copy (size 0xb0), and the ov006 one is func_ov006_020e17f8 again.
+ *     copy (size 0xb0), and the ov006 one is DrawAimMarker again.
  *
  *     FOUR INDEPENDENT LINES OF EVIDENCE agreed, which is what made the move
  *     safe. (1) ov002/relocs.txt carries TWO `kind:load to:0x020e17f8

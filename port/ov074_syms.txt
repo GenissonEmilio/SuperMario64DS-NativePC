@@ -179,7 +179,7 @@
 # 4a and 4b for the two hunks.
 #
 #   0x02123038  ov071 bss vs ov074 bss. src/func_ov071_021209c8.cpp spells its
-#               texture-sequence SharedFilePtr `data_ov074_02123038` (a dsd
+#               texture-sequence SharedFilePtr `gKurikingAngerAnimationFile` (a dsd
 #               naming race at a shared-window address) and
 #               hal/actor_classes_ov071.cpp aliased that spelling onto
 #               data_ov071_02123038. ov074's OWN relocations cite 0x02123038
@@ -257,9 +257,9 @@ data_ov074_021230d4@0x021230d4 data_ov074_021230e0@0x021230e0 data_ov074_021230e
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov074_02122dfc                        now defined by src/actors/daKuriKing_c.cpp
-#   data_ov074_02122e04                        now defined by src/actors/daKuriKing_c.cpp
+#   data_ov074_02122dfc                        now defined by src/game/actors/d_a_kuri_king.cpp
+#   data_ov074_02122e04                        now defined by src/game/actors/d_a_kuri_king.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov074_02122fe0! data_ov074_02122fe8! data_ov074_02122ff0! data_ov074_02122ff8! data_ov074_02123000! data_ov074_02123008! data_ov074_02123010! data_ov074_02123018! data_ov074_02123020! data_ov074_02123028! data_ov074_02123030! data_ov074_02123038! data_ov074_02123040! data_ov074_02123048! data_ov074_021230f8!
+gKurikingWalkEndAnimationFile! gKurikingWalkStartAnimationFile! gKurikingDownStartAnimationFile! gKurikingSerchWaitAnimationFile! gKurikingModelModelFile! gKurikingDamageBAnimationFile! gKurikingSpawnAnimationFile! gKurikingDamageFAnimationFile! gKurikingWalkAnimationFile! gKurikingTurnAnimationFile! data_ov074_02123030! gKurikingAngerAnimationFile! gKurikingAngerTextureSequenceFile! gKurikingDownAnimationFile! data_ov074_021230f8!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
 data_ov074_02122e04! data_ov074_02122dfc!

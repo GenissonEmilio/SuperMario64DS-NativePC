@@ -111,24 +111,24 @@ LEDGER = [
      "push nothing (?BeforeBehavior@dScMgBase_c@@UAEHXZ+0x96 lea ecx,"
      "[esi+0xcc]; call), so the word at [esp+4] is the caller's saved edi"),
     ("ECX", r"^\?cells_490@\?1\?\?port_mg_framework_tables_seat@@",
-     "data_ov004_020bf490: src/func_ov004_020b3278.cpp dispatches this table "
+     "sBannerSetupTable: src/Banner_Init.cpp dispatches this table "
      "itself with a real call, ecx = this and nothing pushed (lane MGWRITER "
      "measured it off the TU's own listing and seated __fastcall faces)"),
 
     ("CDECL", r"^\?seats_cdecl@\?1\?\?port_mg_base_writer_seat@@",
      "dMgState_c: the seven cells that land in the 020b3278 object, whose "
-     "two readers are the FLAT C dispatchers _func_ov004_020b321c and "
-     "_func_ov004_020b31b4, f(self) tail jumps that leave the caller's own "
+     "two readers are the FLAT C dispatchers _Banner_Update and "
+     "_Banner_Draw, f(self) tail jumps that leave the caller's own "
      "pushed argument at [esp+4]. (Group A, the setter's own twenty, left "
      "this table in run linkfull lane PMFMG1 for seats_ecx_a above: the "
      "matched setter dispatches them with the receiver in ecx.)"),
     ("CDECL", r"^\?cells_field@\?1\?\?port_mg_framework_tables_seat@@",
-     "data_ov004_020bf428 and _020bf4f8: func_ov004_020b3278 copies these "
-     "into the 020b3278 object at +0x00 and +0x08, which _func_ov004_020b321c "
-     "and _func_ov004_020b31b4 read, and both are flat f(self) tail jumps"),
+     "sBannerUpdateTable and _020bf4f8: Banner_Init copies these "
+     "into the 020b3278 object at +0x00 and +0x08, which _Banner_Update "
+     "and _Banner_Draw read, and both are flat f(self) tail jumps"),
     ("CDECL", r"^\?seats@\?1\?\?port_mg_framework_states_seat@@",
-     "data_ov004_020beb88 and _020beb98: the readers are the matched TUs "
-     "src/func_ov004_020add88.cpp and src/func_ov004_020adf2c.cpp, each a "
+     "sMgFxUpdateTable and _020beb98: the readers are the matched TUs "
+     "src/Mg_DrawFx.cpp and src/Mg_UpdateFx.cpp, each a "
      "flat f(self) that loads the pair out of the table and tail jumps with "
      "the frame restored (lane PMFB3 measured both listings)"),
 
@@ -231,7 +231,7 @@ LEDGER = [
      "other reader (runs/linkfull/out/PMFMG1/_ZN10dMgState_c8SetStateEi.asm)"),
     ("ECX", r"^\?rec@\?1\?\?mem2_record_seat@@",
      "dScMgMemory2_c's record field: the ten ov004 pairs are copied into "
-     "data_ov004_020bfa34[i]+0 and read back by src/func_ov004_020b52fc.cpp, "
+     "sMgCoins[i]+0 and read back by src/Coin_Update.cpp, "
      "`mov ecx,[eax+4]; add ecx,eax; mov eax,[eax]; pop ebp; jmp eax` -- a "
      "tail jump with the receiver in ecx and nothing pushed"),
     ("ECX", r"^\?seats@\?1\?\?port_mg_curling_states_seat@@",
@@ -253,12 +253,12 @@ LEDGER = [
      "at both and ecx is not"),
     ("CDECL", r"^\?seats@\?1\?\?port_mg_flower_sub_seat@@",
      "dScMgFlower_c's object-head field: the five .data pairs (the sentinel "
-     "0213aee0 included) are read by src/func_ov006_020c3d18.cpp, which "
+     "0213aee0 included) are read by src/FlowerFace_Update.cpp, which "
      "open-codes the decode and calls `push ecx; call eax`, caller-cleaned"),
     ("CDECL", r"^\?g_trmpln_seats@@",
      "the trampoline Mario element field (+0x70 in dScMgTrmpln2Mario_c, +0x64 "
      "in dMgTrmpln3DMario_c): the thirty-eight .data pairs are read by the "
-     "open-coded src/func_ov006_020c8f20.cpp and src/func_ov006_020cb030.cpp, "
+     "open-coded src/Trmp2Mario_Update.cpp and src/Trmp3DMario_Update.cpp, "
      "both `push ecx; call edx; add esp,4`"),
 
     # ---- run linkfull lane PMF2: the member-pointer rows, second wave ------

@@ -65,43 +65,43 @@
 // names: those are what the cartridge's relocations
 // name and what this port already resolves.
 extern "C" {
-void _ZN6Memory10DeallocateEPvP4Heap(void *ptr, void *heap);
+void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *ptr, void *heap);
 extern void *GAME_HEAP_PTR;
 }
 
-/* ROM 0x021113bc _ZN10daWanwan_cD0Ev -- batch 4, the inline ~daWanwan_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021113bc _ZN10daWanwan_cD0Ev -- batch 4, the inline ~daWanwan_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN10daWanwan_cD0Ev(void *self)
-{ ((daWanwan_c *)self)->daWanwan_c::~daWanwan_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daWanwan_c *)self)->daWanwan_c::~daWanwan_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02111308 _ZN10daWanwan_cD1Ev -- batch 4, the inline ~daWanwan_c() */
 extern "C" void _ZN10daWanwan_cD1Ev(void *self)
 { ((daWanwan_c *)self)->daWanwan_c::~daWanwan_c(); }
 
-/* ROM 0x021121f0 _ZN14daObjWc_Mizu_cD0Ev -- batch 4, the inline ~daObjWc_Mizu_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021121f0 _ZN14daObjWc_Mizu_cD0Ev -- batch 4, the inline ~daObjWc_Mizu_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN14daObjWc_Mizu_cD0Ev(void *self)
-{ ((daObjWc_Mizu_c *)self)->daObjWc_Mizu_c::~daObjWc_Mizu_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjWc_Mizu_c *)self)->daObjWc_Mizu_c::~daObjWc_Mizu_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x02111760 _ZN15daObjWc_Obj03_cD0Ev -- batch 4, the inline ~daObjWc_Obj03_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111760 _ZN15daObjWc_Obj03_cD0Ev -- batch 4, the inline ~daObjWc_Obj03_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN15daObjWc_Obj03_cD0Ev(void *self)
-{ ((daObjWc_Obj03_c *)self)->daObjWc_Obj03_c::~daObjWc_Obj03_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjWc_Obj03_c *)self)->daObjWc_Obj03_c::~daObjWc_Obj03_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x0211267c _ZN15daObjWc_Obj04_cD0Ev -- batch 4, the inline ~daObjWc_Obj04_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x0211267c _ZN15daObjWc_Obj04_cD0Ev -- batch 4, the inline ~daObjWc_Obj04_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN15daObjWc_Obj04_cD0Ev(void *self)
-{ ((daObjWc_Obj04_c *)self)->daObjWc_Obj04_c::~daObjWc_Obj04_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjWc_Obj04_c *)self)->daObjWc_Obj04_c::~daObjWc_Obj04_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x021123d0 _ZN20daObjFl_Fall_Block_cD0Ev -- batch 4, the inline ~daObjFl_Fall_Block_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021123d0 _ZN20daObjFl_Fall_Block_cD0Ev -- batch 4, the inline ~daObjFl_Fall_Block_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN20daObjFl_Fall_Block_cD0Ev(void *self)
-{ ((daObjFl_Fall_Block_c *)self)->daObjFl_Fall_Block_c::~daObjFl_Fall_Block_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjFl_Fall_Block_c *)self)->daObjFl_Fall_Block_c::~daObjFl_Fall_Block_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x0212eb48 _ZN7daPkn_cD0Ev -- batch 4, the inline ~daPkn_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x0212eb48 _ZN7daPkn_cD0Ev -- batch 4, the inline ~daPkn_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN7daPkn_cD0Ev(void *self)
-{ ((daPkn_c *)self)->daPkn_c::~daPkn_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daPkn_c *)self)->daPkn_c::~daPkn_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x0212eaf0 _ZN7daPkn_cD1Ev -- batch 4, the inline ~daPkn_c() */
 extern "C" void _ZN7daPkn_cD1Ev(void *self)
 { ((daPkn_c *)self)->daPkn_c::~daPkn_c(); }
 
-/* ROM 0x021120e4 _ZN10daDpLift_cD1Ev -- batch 5, ~daDpLift_c(), defined out of line by src/actors/daDpLift_c.cpp */
+/* ROM 0x021120e4 _ZN10daDpLift_cD1Ev -- batch 5, ~daDpLift_c(), defined out of line by src/game/actors/d_a_dp_lift.cpp */
 extern "C" void _ZN10daDpLift_cD1Ev(void *self)
 { ((daDpLift_c *)self)->daDpLift_c::~daDpLift_c(); }
 
@@ -113,7 +113,7 @@ extern "C" void _ZN11dCapEnemy_cD1Ev(void *self)
 extern "C" void _ZN15TextureSequenceD1Ev(void *self)
 { ((TextureSequence *)self)->TextureSequence::~TextureSequence(); }
 
-/* ROM 0x02111314 _ZN17daObjBk_Botaosi_cD1Ev -- batch 5, ~daObjBk_Botaosi_c(), defined out of line by src/actors/daObjBk_Botaosi_c.cpp */
+/* ROM 0x02111314 _ZN17daObjBk_Botaosi_cD1Ev -- batch 5, ~daObjBk_Botaosi_c(), defined out of line by src/game/actors/d_a_obj_bk_botaosi.cpp */
 extern "C" void _ZN17daObjBk_Botaosi_cD1Ev(void *self)
 { ((daObjBk_Botaosi_c *)self)->daObjBk_Botaosi_c::~daObjBk_Botaosi_c(); }
 

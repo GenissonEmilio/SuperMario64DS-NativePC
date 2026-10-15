@@ -33,6 +33,12 @@
  * Leftover: inline destructor (out of line emits D0 before D1).
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_hm_bskt_AssetId {
+    ASSET_HM_BASKET_BMD = 0x0618,
+    ASSET_HM_BASKET_KCL = 0x0619
+};
+
 #include "daObjHmBskt_c.h"
 #include "SharedFilePtr.h"
 
@@ -191,5 +197,5 @@ extern "C" int func_ov030_0211124c(char *c, char *mc)
 /* The ROM's initializer constructs the model handle with file ID 1560 and
  * the collision handle with file ID 1561, registering a destructor node for
  * each. mwcc emits __sinit_d_a_obj_hm_bskt.cpp from these definitions. */
-HmBsktModelFilePtr data_ov030_02115c88(1560);
-HmBsktCollisionFilePtr data_ov030_02115c80(1561);
+HmBsktModelFilePtr data_ov030_02115c88(ASSET_HM_BASKET_BMD);
+HmBsktCollisionFilePtr data_ov030_02115c80(ASSET_HM_BASKET_KCL);

@@ -59,7 +59,7 @@ struct dBgW_KcMbg : dBgW_Kc {
     virtual s16 GetAngularVelY();                         /* slot 11 */
     virtual void GetVelocity(Vector3 &res);               /* slot 12 */
 
-    /* DECLARED, never defined as a method here -- src/engine/collision/dBgW_KcMbg.cpp
+    /* DECLARED, never defined as a method here -- src/engine/collision/d_bg_w_kc_mbg.cpp
        owns C1 and the base-subobject variant
        (notes/ctor-migration.md section 2). */
     dBgW_KcMbg();

@@ -136,56 +136,56 @@
 # off the link, not guessed.
 
 # ---- the class: factory, destructors, and the five own slots --------------
-src/actors/daHanachan_c.cpp
+src/game/actors/d_a_hanachan.cpp
 # RETIRED at SLICE1: body now in src/_ZN7WigglerD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN7WigglerD0Ev.cpp
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/_ZN7Wiggler13InitResourcesEv.cpp
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/_ZN7Wiggler16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/_ZN7Wiggler13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/_ZN7Wiggler16CleanupResourcesEv.cpp
 # slot 6, propagated from main 36e8cbcce by lane prop18. A DECLARED NONMATCHING
 # DRAFT (div 20 of 440, all of it register/scheduling routing) -- read the
 # banner block at the top of this file before quoting this row as a match.
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/_ZN7Wiggler8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/_ZN7Wiggler8BehaviorEv.cpp
 
 # ---- the eleven states, twenty-two handlers, in table order ---------------
 # 0 DEMOWAIT
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02112484.cpp
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02112348.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02112484.cpp
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02112348.c
 # 1 DEMOCALL
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02112330.cpp
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02112284.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02112330.cpp
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02112284.c
 # 2 MOVE_STOP
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02112270.c
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_021120ac.cpp
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02112270.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_021120ac.cpp
 # 3 MOVE_START
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02112020.c
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02111e68.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02112020.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02111e68.c
 # 4 MOVE
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02111e4c.c
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02111c48.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02111e4c.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02111c48.c
 # 5 DAMAGE
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02111bb0.c
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02111a64.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02111bb0.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02111a64.c
 # 6 DAMAGETALK
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02111a0c.cpp
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_021119ac.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02111a0c.cpp
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_021119ac.c
 # 7 DEAD
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02111974.c
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02111788.cpp
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02111974.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02111788.cpp
 # 8 DAMAGE_STOP
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02111720.c
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_021115cc.cpp
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02111720.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_021115cc.cpp
 # 9 DAMAGE_WAIT
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_021115c0.c
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02111588.cpp
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_021115c0.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02111588.cpp
 # 10 DAMAGE_START
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02111520.c
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_021113d4.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02111520.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_021113d4.c
 
 # ---- the three helpers the states and Behavior share ----------------------
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02112650.c
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02112688.c
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_02112874.c
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/func_ov034_021129ec.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02112650.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02112688.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_02112874.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/func_ov034_021129ec.c
 
 # ---- the static initialiser ----------------------------------------------
-# FOLDED into src/actors/daHanachan_c.cpp (row 139): src/__sinit_ov034_021138ec.c
+# FOLDED into src/game/actors/d_a_hanachan.cpp (row 139): src/__sinit_ov034_021138ec.c

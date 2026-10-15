@@ -174,16 +174,16 @@ void func_0203d384(void);
    check stays clean; it runs post-link in build-port.cmd and covers these. */
 /* the eight ChiefChilly SharedFilePtrs, spelled `struct SharedFilePtr` by
    _ZN11ChiefChilly13InitResourcesEv.cpp */
-#pragma comment(linker, "/alternatename:?data_ov073_02123280@@3USharedFilePtr@@A=_data_ov073_02123280")
-#pragma comment(linker, "/alternatename:?data_ov073_02123288@@3USharedFilePtr@@A=_data_ov073_02123288")
-#pragma comment(linker, "/alternatename:?data_ov073_02123290@@3USharedFilePtr@@A=_data_ov073_02123290")
-#pragma comment(linker, "/alternatename:?data_ov073_02123298@@3USharedFilePtr@@A=_data_ov073_02123298")
-#pragma comment(linker, "/alternatename:?data_ov073_021232a0@@3USharedFilePtr@@A=_data_ov073_021232a0")
-#pragma comment(linker, "/alternatename:?data_ov073_021232a8@@3USharedFilePtr@@A=_data_ov073_021232a8")
-#pragma comment(linker, "/alternatename:?data_ov073_021232b0@@3USharedFilePtr@@A=_data_ov073_021232b0")
-#pragma comment(linker, "/alternatename:?data_ov073_021232b8@@3USharedFilePtr@@A=_data_ov073_021232b8")
+#pragma comment(linker, "/alternatename:?gKingIceDonketuDeadAnimationFile@@3USharedFilePtr@@A=_gKingIceDonketuDeadAnimationFile")
+#pragma comment(linker, "/alternatename:?gKingIceDonketuWalkAnimationFile@@3USharedFilePtr@@A=_gKingIceDonketuWalkAnimationFile")
+#pragma comment(linker, "/alternatename:?gKingIceDonketuJumpEdAnimationFile@@3USharedFilePtr@@A=_gKingIceDonketuJumpEdAnimationFile")
+#pragma comment(linker, "/alternatename:?gKingIceDonketuModelModelFile@@3USharedFilePtr@@A=_gKingIceDonketuModelModelFile")
+#pragma comment(linker, "/alternatename:?gKingIceDonketuHitAnimationFile@@3USharedFilePtr@@A=_gKingIceDonketuHitAnimationFile")
+#pragma comment(linker, "/alternatename:?gKingIceDonketuDamageAnimationFile@@3USharedFilePtr@@A=_gKingIceDonketuDamageAnimationFile")
+#pragma comment(linker, "/alternatename:?gKingIceDonketuJumpStAnimationFile@@3USharedFilePtr@@A=_gKingIceDonketuJumpStAnimationFile")
+#pragma comment(linker, "/alternatename:?gKingIceDonketuWaitAnimationFile@@3USharedFilePtr@@A=_gKingIceDonketuWaitAnimationFile")
 /* the same 0x021232a0 again, as `void **`, from func_ov073_0211f61c */
-#pragma comment(linker, "/alternatename:?data_ov073_021232a0@@3PAPAXA=_data_ov073_021232a0")
+#pragma comment(linker, "/alternatename:?gKingIceDonketuHitAnimationFile@@3PAPAXA=_gKingIceDonketuHitAnimationFile")
 /* four of the sixteen bss state tables, spelled `struct PMF` / `char` /
    `int *` by the state bodies and by ChiefChilly::InitResources */
 #pragma comment(linker, "/alternatename:?data_ov073_02123330@@3UPMF@@A=_data_ov073_02123330")

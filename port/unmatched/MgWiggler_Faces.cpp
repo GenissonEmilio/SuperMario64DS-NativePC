@@ -17,9 +17,9 @@
 // pointer-to-member symbol, which is what section 4 predicts for a class whose
 // whole wall is the FIELD form: there is no table global for a link to fail on.
 //
-//   ?data_ov006_0213c96c@@3UPair@@A   src/actors/dScMgHanachan_c.cpp declares its
-//   ?data_ov006_0213c9bc@@3UPair@@A   three .data pairs OUTSIDE its extern "C"
-//   ?data_ov006_0213c9c4@@3UPair@@A   block, so they mangle as C++ globals and
+//   ?pmf_Wiggler_TurnTowardAim@@3UPair@@A   src/minigames/d_s_mg_hanachan_methods.cpp declares its
+//   ?pmf_Wiggler_Update@@3UPair@@A   three .data pairs OUTSIDE its extern "C"
+//   ?pmf_Wiggler_StateMoveA_2@@3UPair@@A   block, so they mangle as C++ globals and
 //                                     the ov006 mount's plain C definitions do
 //                                     not satisfy them. The link even prints
 //                                     the C names as hints.
@@ -37,7 +37,7 @@
 //     (`p->v[0] == g->v[0] && (p->v[1] == g->v[1] || p->v[0] == 0)`), and a
 //     host address never equals a DS address.
 //
-//   _func_0203adec   src/actors/dScMgHanachan_c.cpp calls arm9 0x0203adec under an
+//   _func_0203adec   src/minigames/d_s_mg_hanachan_methods.cpp calls arm9 0x0203adec under an
 //                    ADDRESS-SHAPED name that exists in no config.
 //                    config/arm9/symbols.txt names that address
 //                    _Z14ApproachLinearRsss, and src/_Z14ApproachLinearRsss.cpp
@@ -63,7 +63,7 @@
 // exactly two had a config symbol, NO delink block and no src file in either
 // extension in any module:
 //
-//   func_ov006_020ea914  0x324  ON THE RENDER PATH, the same shape section 15
+//   Wiggler_DrawPassA  0x324  ON THE RENDER PATH, the same shape section 15
 //       measured for Memory Master's card draw. Slot 9 Render calls it
 //       UNCONDITIONALLY at 0x020ed0c8 -- `add r0,r4,#0x4000 / ldr r0,[r0,
 //       #0xf60] / bl 0x020ea914`, receiver only, no second argument -- and that
@@ -71,22 +71,22 @@
 //       reaches 0x020ea914. Whatever this body draws, nothing else in the class
 //       draws it, and the trap's 1200-of-1200 said the class was drawing it
 //       into a counter on every rendered frame.
-//       NOW: src/func_ov006_020ea914.c, NONMATCHING with 165 of 201 words
+//       NOW: src/Wiggler_DrawPassA.c, NONMATCHING with 165 of 201 words
 //       identical and one register-allocation cause written up in the file. It
 //       is the question picture -- one wiggler at a fixed pose, five body
 //       segments through OAM::Render and the face sprite on segment 0.
 //
-//   func_ov006_020ec4dc  0x20c  ONE OF FOUR WIGGLER SET-UP VARIANTS.
-//       src/actors/dScMgHanachan_c.cpp ends in a four-way switch on
+//   Wiggler_StartPathA  0x20c  ONE OF FOUR WIGGLER SET-UP VARIANTS.
+//       src/minigames/d_s_mg_hanachan_methods.cpp ends in a four-way switch on
 //       data_ov006_02141fd8:
-//           case 0 -> func_ov006_020ecba4    matched
-//           case 1 -> func_ov006_020ec9c0    matched
-//           case 2 -> func_ov006_020ec84c    matched
-//           case 3/default -> func_ov006_020ec4dc   this
+//           case 0 -> Wiggler_StartPathC    matched
+//           case 1 -> Wiggler_StartPathB    matched
+//           case 2 -> Wiggler_StartBounce    matched
+//           case 3/default -> Wiggler_StartPathA   this
 //       Its only call site is 0x020eceb0, `mov r0,r6 / mov r1,r5 / bl` --
 //       receiver and ONE argument, which the trap read off the ROM rather than
 //       off the src declaration, and the seated body takes the same two.
-//       NOW: src/func_ov006_020ec4dc.c, MATCHED at mwccarm 2004/b56 with strict
+//       NOW: src/Wiggler_StartPathA.c, MATCHED at mwccarm 2004/b56 with strict
 //       relocs and carrying a delink block. It lays out the fifteen-wiggler
 //       grid the difficulty ladder reaches at clear count 8.
 //
@@ -103,9 +103,9 @@
    prints. */
 
 /* The three alias rows, section "WHAT THE FIRST LINK ASKED FOR" above. */
-#pragma comment(linker, "/alternatename:?data_ov006_0213c96c@@3UPair@@A=_data_ov006_0213c96c")
-#pragma comment(linker, "/alternatename:?data_ov006_0213c9bc@@3UPair@@A=_data_ov006_0213c9bc")
-#pragma comment(linker, "/alternatename:?data_ov006_0213c9c4@@3UPair@@A=_data_ov006_0213c9c4")
+#pragma comment(linker, "/alternatename:?pmf_Wiggler_TurnTowardAim@@3UPair@@A=_pmf_Wiggler_TurnTowardAim")
+#pragma comment(linker, "/alternatename:?pmf_Wiggler_Update@@3UPair@@A=_pmf_Wiggler_Update")
+#pragma comment(linker, "/alternatename:?pmf_Wiggler_StateMoveA_2@@3UPair@@A=_pmf_Wiggler_StateMoveA_2")
 
 /* The argument face. src/_Z14ApproachLinearRsss.cpp defines this overload as an
    ordinary C++ function; hal/method_faces.cpp already declares it the same way
@@ -115,7 +115,7 @@ extern "C++" int ApproachLinear(short &x, short target, short step);
 extern "C" {
 
 /* func_0203adec is arm9's _Z14ApproachLinearRsss under the address-shaped name
-   src/actors/dScMgHanachan_c.cpp spells. The src declares the step as an int and the
+   src/minigames/d_s_mg_hanachan_methods.cpp spells. The src declares the step as an int and the
    ROM body reads it as one register either way; the face narrows it explicitly
    rather than leaving the widths to __cdecl. */
 void func_0203adec(short *x, short target, int step)

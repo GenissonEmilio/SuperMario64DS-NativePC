@@ -45,42 +45,52 @@ set(PORT_SYM_MOVED_func_ov007_020ca86c src/unnamed/ov007/func_ov007_020ca86c.c)
 set(PORT_SYM_MOVED_func_ov007_020caeac src/unnamed/ov007/func_ov007_020caeac.c)
 
 set(PORT_SYM_FOLDED_CollectStar src/engine/save/SaveData.cpp)
-set(PORT_SYM_FOLDED__ZN10dMgState_c19func_ov004_020b6b40Ev src/actors/dMgState_c.cpp)
-set(PORT_SYM_FOLDED__ZN10dMgState_c19func_ov004_020b6c9cEv src/actors/dMgState_c.cpp)
-set(PORT_SYM_FOLDED__ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv src/minigames/d_s_mg_base.cpp)
-set(PORT_SYM_FOLDED__ZN11dScMgJump_c6RenderEv src/actors/dScMgJump_c.cpp)
-set(PORT_SYM_FOLDED__ZN12dScMgSlot1_c13InitResourcesEv src/actors/dScMgSlots.cpp)
-set(PORT_SYM_FOLDED__ZN14dScMgBomroom_c19func_ov006_020d8f98Ev src/actors/dScMgBomroom_c.cpp)
+set(PORT_SYM_FOLDED_Dealer_Draw src/minigames/unit020bfec0.cpp)
+set(PORT_SYM_FOLDED_FlowerFace_Draw src/minigames/unit020bfec0.cpp)
+set(PORT_SYM_FOLDED_PachinkoBall_UpdateAll src/minigames/d_s_mg_pachinko.cpp)
+set(PORT_SYM_FOLDED_PachinkoBobOmb_UpdateAll src/minigames/d_s_mg_pachinko.cpp)
+set(PORT_SYM_FOLDED_PachinkoPipe_UpdateAll src/minigames/d_s_mg_pachinko.cpp)
+set(PORT_SYM_FOLDED_Presenter_Draw src/minigames/unit020bfec0.cpp)
+set(PORT_SYM_FOLDED_Presenter_ResetPose src/minigames/unit020bfec0.cpp)
+set(PORT_SYM_FOLDED_Trmp3DMario_DrawAll src/minigames/d_mg_trmpln2_mario.cpp)
+set(PORT_SYM_FOLDED_TrmpLine_Draw src/minigames/unit020cd744.cpp)
+set(PORT_SYM_FOLDED_TrmpLine_DrawAll src/minigames/unit020cd744.cpp)
+set(PORT_SYM_FOLDED__ZN10dMgState_c14State18_UpdateEv src/minigames/d_mg_state.cpp)
+set(PORT_SYM_FOLDED__ZN10dMgState_c14State19_UpdateEv src/minigames/d_mg_state.cpp)
+set(PORT_SYM_FOLDED__ZN11dScMgBase_c21RestoreScreenFromMenuEv src/minigames/d_s_mg_base.cpp)
+set(PORT_SYM_FOLDED__ZN11dScMgJump_c6RenderEv src/minigames/d_s_mg_jump_methods.cpp)
+set(PORT_SYM_FOLDED__ZN12dScMgSlot1_c13InitResourcesEv src/minigames/d_s_mg_slots.cpp)
+set(PORT_SYM_FOLDED__ZN14dScMgBomroom_c12Round_State3Ev src/minigames/d_s_mg_bomroom.cpp)
 set(PORT_SYM_FOLDED__ZN15ModelComponents6RenderEP9Matrix4x3P7Vector3 src/engine/model/ModelComponents.cpp)
-set(PORT_SYM_FOLDED__ZN15dExtFrameCtrl_c7AdvanceEv src/engine/animation/dExtFrameCtrl_c.cpp)
-set(PORT_SYM_FOLDED__ZN15dScMgSnowball_c6RenderEv src/actors/dScMgSnowball_c.cpp)
-set(PORT_SYM_FOLDED__ZN15daObj_Mip_Key_c6RenderEv src/actors/daObj_Mip_Key_c.cpp)
-set(PORT_SYM_FOLDED__ZN18daObjBkKillerdai_c8BehaviorEv src/actors/daObjBkKillerdai_c.cpp)
-set(PORT_SYM_FOLDED__ZN20daObjCtRotateBlock_c13InitResourcesEv src/actors/daObjCtRotateBlock_c.cpp)
+set(PORT_SYM_FOLDED__ZN15dExtFrameCtrl_c7AdvanceEv src/engine/animation/d_ext_frame_ctrl.cpp)
+set(PORT_SYM_FOLDED__ZN15dScMgSnowball_c6RenderEv src/minigames/d_s_mg_snowball.cpp)
+set(PORT_SYM_FOLDED__ZN15daObj_Mip_Key_c6RenderEv src/game/actors/d_a_obj_mip_key.cpp)
+set(PORT_SYM_FOLDED__ZN18daObjBkKillerdai_c8BehaviorEv src/game/actors/d_a_obj_bk_killerdai.cpp)
+set(PORT_SYM_FOLDED__ZN20daObjCtRotateBlock_c13InitResourcesEv src/game/actors/d_a_obj_ct_rotate_block.cpp)
 set(PORT_SYM_FOLDED__ZN3G3i13PerspectiveW_E5Fix12IiES1_S1_S1_S1_S1_bP9Matrix4x3 src/engine/gx/G3i.cpp)
 set(PORT_SYM_FOLDED__ZN3G3i7LookAt_EPK7Vector3S2_S2_bP9Matrix4x3 src/engine/gx/G3i.cpp)
 set(PORT_SYM_FOLDED__ZN3OAM4LoadEv src/engine/oam/OAM.cpp)
-set(PORT_SYM_FOLDED__ZN4Heap11ResizeToFitEv src/engine/heap/Heap.cpp)
 set(PORT_SYM_FOLDED__ZN4cstd10fdiv_asyncE5Fix12IiE5Fix12IiE src/cstd.cpp)
 set(PORT_SYM_FOLDED__ZN4cstd11fdiv_resultEv src/cstd.cpp)
 set(PORT_SYM_FOLDED__ZN4cstd11ldiv_resultEv src/cstd.cpp)
 set(PORT_SYM_FOLDED__ZN4cstd16reciprocal_asyncE5Fix12IiE src/cstd.cpp)
 set(PORT_SYM_FOLDED__ZN4cstd3modEii src/cstd.cpp)
 set(PORT_SYM_FOLDED__ZN4cstd4ldivEii src/cstd.cpp)
-set(PORT_SYM_FOLDED__ZN6Player12St_Jump_MainEv src/actors/Player.cpp)
-set(PORT_SYM_FOLDED__ZN6Player13InitResourcesEv src/actors/Player.cpp)
-set(PORT_SYM_FOLDED__ZN6Player16CleanupResourcesEv src/actors/Player.cpp)
-set(PORT_SYM_FOLDED__ZN6Player16St_WallJump_MainEv src/actors/Player.cpp)
-set(PORT_SYM_FOLDED__ZN6Player19func_ov002_020d708cEv src/actors/Player.cpp)
+set(PORT_SYM_FOLDED__ZN5mHeap6Heap_t11ResizeToFitEv src/engine/heap/Heap.cpp)
+set(PORT_SYM_FOLDED__ZN6Player12St_Jump_MainEv src/game/player/Player.cpp)
+set(PORT_SYM_FOLDED__ZN6Player13InitResourcesEv src/game/player/Player.cpp)
+set(PORT_SYM_FOLDED__ZN6Player16CleanupResourcesEv src/game/player/Player.cpp)
+set(PORT_SYM_FOLDED__ZN6Player16St_WallJump_MainEv src/game/player/Player.cpp)
+set(PORT_SYM_FOLDED__ZN6Player19func_ov002_020d708cEv src/game/player/Player.cpp)
 set(PORT_SYM_FOLDED__ZN7daBtn_c13InitResourcesEv src/game/actors/d_a_btn.cpp)
-set(PORT_SYM_FOLDED__ZN8dActor_c14BeforeBehaviorEv src/actors/dActor_c.cpp)
-set(PORT_SYM_FOLDED__ZN8dActor_c18AfterInitResourcesEj src/actors/dActor_c.cpp)
-set(PORT_SYM_FOLDED__ZN8dActor_c22BeforeCleanupResourcesEv src/actors/dActor_c.cpp)
-set(PORT_SYM_FOLDED__ZN8dMeter_c13InitResourcesEv src/actors/dMeter_c.cpp)
-set(PORT_SYM_FOLDED__ZN8dScene_c21AfterCleanupResourcesEj src/actors/dScene_c.cpp)
-set(PORT_SYM_FOLDED__ZN9dCamera_c6RenderEv src/engine/view/dCamera_c.cpp)
-set(PORT_SYM_FOLDED_func_0200ca50 src/engine/view/dCamera_c.cpp)
-set(PORT_SYM_FOLDED_func_0200cae4 src/engine/view/dCamera_c.cpp)
+set(PORT_SYM_FOLDED__ZN8dActor_c14BeforeBehaviorEv src/runtime/actor/d_actor.cpp)
+set(PORT_SYM_FOLDED__ZN8dActor_c18AfterInitResourcesEj src/runtime/actor/d_actor.cpp)
+set(PORT_SYM_FOLDED__ZN8dActor_c22BeforeCleanupResourcesEv src/runtime/actor/d_actor.cpp)
+set(PORT_SYM_FOLDED__ZN8dMeter_c13InitResourcesEv src/ui/hud/d_meter.cpp)
+set(PORT_SYM_FOLDED__ZN8dScene_c21AfterCleanupResourcesEj src/game/stages/d_scene.cpp)
+set(PORT_SYM_FOLDED__ZN9dCamera_c6RenderEv src/engine/view/d_camera.cpp)
+set(PORT_SYM_FOLDED_func_0200ca50 src/engine/view/d_camera.cpp)
+set(PORT_SYM_FOLDED_func_0200cae4 src/engine/view/d_camera.cpp)
 set(PORT_SYM_FOLDED_func_02044534 src/engine/model/ModelComponents.cpp)
 set(PORT_SYM_FOLDED_func_0204488c src/engine/model/ModelComponents.cpp)
 set(PORT_SYM_FOLDED_func_02044b30 src/engine/model/ModelComponents.cpp)
@@ -91,72 +101,62 @@ set(PORT_SYM_FOLDED_func_020531a4 src/cstd.cpp)
 set(PORT_SYM_FOLDED_func_02053274 src/cstd.cpp)
 set(PORT_SYM_FOLDED_func_02055624 src/engine/gx/G3X.cpp)
 set(PORT_SYM_FOLDED_func_02055998 src/engine/gx/G3i.cpp)
-set(PORT_SYM_FOLDED_func_ov002_020d6c60 src/actors/Player.cpp)
-set(PORT_SYM_FOLDED_func_ov002_020dec70 src/actors/Player.cpp)
-set(PORT_SYM_FOLDED_func_ov002_020e444c src/actors/Player.cpp)
-set(PORT_SYM_FOLDED_func_ov002_020e5948 src/actors/Player.cpp)
-set(PORT_SYM_FOLDED_func_ov002_020eeeb8 src/actors/dBgActor_c.cpp)
-set(PORT_SYM_FOLDED_func_ov002_020ef070 src/actors/dBgActor_c.cpp)
-set(PORT_SYM_FOLDED_func_ov006_020c1804 src/actors/unit020bfec0.cpp)
-set(PORT_SYM_FOLDED_func_ov006_020c2924 src/actors/unit020bfec0.cpp)
-set(PORT_SYM_FOLDED_func_ov006_020c29dc src/actors/unit020bfec0.cpp)
-set(PORT_SYM_FOLDED_func_ov006_020c3bf4 src/actors/unit020bfec0.cpp)
-set(PORT_SYM_FOLDED_func_ov006_020cd270 src/actors/dMgTrmpln2Mario_c.cpp)
-set(PORT_SYM_FOLDED_func_ov006_020cf2fc src/actors/unit020cd744.cpp)
-set(PORT_SYM_FOLDED_func_ov006_020d09e0 src/actors/unit020cd744.cpp)
-set(PORT_SYM_FOLDED_func_ov006_020fc7d0 src/actors/dScMgPachinko_c.cpp)
-set(PORT_SYM_FOLDED_func_ov006_020fda7c src/actors/dScMgPachinko_c.cpp)
-set(PORT_SYM_FOLDED_func_ov006_020fe248 src/actors/dScMgPachinko_c.cpp)
+set(PORT_SYM_FOLDED_func_ov002_020d6c60 src/game/player/Player.cpp)
+set(PORT_SYM_FOLDED_func_ov002_020dec70 src/game/player/Player.cpp)
+set(PORT_SYM_FOLDED_func_ov002_020e444c src/game/player/Player.cpp)
+set(PORT_SYM_FOLDED_func_ov002_020e5948 src/game/player/Player.cpp)
+set(PORT_SYM_FOLDED_func_ov002_020eeeb8 src/runtime/actor/d_bg_actor.cpp)
+set(PORT_SYM_FOLDED_func_ov002_020ef070 src/runtime/actor/d_bg_actor.cpp)
 set(PORT_SYM_FOLDED_func_ov019_0211140c src/game/actors/d_a_pg_rcer.cpp)
-set(PORT_SYM_FOLDED_func_ov084_021298d0 src/actors/daKrb_c.cpp)
+set(PORT_SYM_FOLDED_func_ov084_021298d0 src/game/actors/d_a_krb.cpp)
 set(PORT_SYM_FOLDED_TUS
-    src/actors/Player.cpp
-    src/actors/dActor_c.cpp
-    src/actors/dBgActor_c.cpp
-    src/actors/dMeter_c.cpp
-    src/actors/dMgState_c.cpp
-    src/actors/dMgTrmpln2Mario_c.cpp
-    src/actors/dScMgBomroom_c.cpp
-    src/actors/dScMgJump_c.cpp
-    src/actors/dScMgPachinko_c.cpp
-    src/actors/dScMgSlots.cpp
-    src/actors/dScMgSnowball_c.cpp
-    src/actors/dScene_c.cpp
-    src/actors/daKrb_c.cpp
-    src/actors/daObjBkKillerdai_c.cpp
-    src/actors/daObjCtRotateBlock_c.cpp
-    src/actors/daObj_Mip_Key_c.cpp
-    src/actors/unit020bfec0.cpp
-    src/actors/unit020cd744.cpp
     src/cstd.cpp
-    src/engine/animation/dExtFrameCtrl_c.cpp
+    src/engine/animation/d_ext_frame_ctrl.cpp
     src/engine/gx/G3X.cpp
     src/engine/gx/G3i.cpp
     src/engine/heap/Heap.cpp
     src/engine/model/ModelComponents.cpp
     src/engine/oam/OAM.cpp
     src/engine/save/SaveData.cpp
-    src/engine/view/dCamera_c.cpp
+    src/engine/view/d_camera.cpp
     src/game/actors/d_a_btn.cpp
+    src/game/actors/d_a_krb.cpp
+    src/game/actors/d_a_obj_bk_killerdai.cpp
+    src/game/actors/d_a_obj_ct_rotate_block.cpp
+    src/game/actors/d_a_obj_mip_key.cpp
     src/game/actors/d_a_pg_rcer.cpp
+    src/game/player/Player.cpp
+    src/game/stages/d_scene.cpp
+    src/minigames/d_mg_state.cpp
+    src/minigames/d_mg_trmpln2_mario.cpp
     src/minigames/d_s_mg_base.cpp
+    src/minigames/d_s_mg_bomroom.cpp
+    src/minigames/d_s_mg_jump_methods.cpp
+    src/minigames/d_s_mg_pachinko.cpp
+    src/minigames/d_s_mg_slots.cpp
+    src/minigames/d_s_mg_snowball.cpp
+    src/minigames/unit020bfec0.cpp
+    src/minigames/unit020cd744.cpp
+    src/runtime/actor/d_actor.cpp
+    src/runtime/actor/d_bg_actor.cpp
+    src/ui/hud/d_meter.cpp
 )
 
 # Production TUs a path-based hostgen block substitutes; every target takes
 # the one generated copy (see port_hostgen_sym in port/CMakeLists.txt).
 set(PORT_HOSTGEN_SHARED_TUS
-    src/actors/dMgTrmpln2Mario_c.cpp
-    src/actors/daKuriKing_c.cpp
     src/cstd.cpp
     src/cstd4.cpp
-    src/engine/collision/dBgW_Kc_itcm.cpp
+    src/engine/collision/d_bg_w_kc_itcm.cpp
     src/engine/model/Model4.cpp
     src/engine/particle/Particle.cpp
     src/engine/particle/Particle_Behavior.cpp
     src/engine/particle/Particle_SysTracker_Contents.cpp
-    src/engine/particle/dPa_c.cpp
+    src/engine/particle/d_pa.cpp
+    src/game/actors/d_a_kuri_king.cpp
+    src/minigames/d_mg_trmpln2_mario.cpp
     src/minigames/d_s_mg_jump2.cpp
-    src/minigames/d_s_mg_single3_d_base.cpp
+    src/minigames/d_s_mg_single3d_base.cpp
     src/minigames/d_s_mg_trampoline2.cpp
 )
 
@@ -165,6 +165,6 @@ set(PORT_HOSTGEN_SHARED_TUS
 # --extern-data too. A TU that was already on PORT_HOSTGEN_TU (plain) before
 # the merge keeps that ruling and is left out.
 set(PORT_HOSTGEN_TU_EXTERN_DATA
-    src/actors/dMeter_c.cpp
-    src/actors/dScene_c.cpp
+    src/game/stages/d_scene.cpp
+    src/ui/hud/d_meter.cpp
 )

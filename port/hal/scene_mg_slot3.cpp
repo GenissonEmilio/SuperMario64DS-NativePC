@@ -93,14 +93,14 @@
 // it rather than write a second one; this is the NINTH lane to do so (eight
 // call sites in the base tree, one each in the eight hal files listed in
 // section 3, counted by grepping 98a4c0e8f for port_mg_flower_after_init), and
-// src/minigames/d_s_mg_single3_d_base.cpp stays out of port/slice_mug.txt for that reason.
+// src/minigames/d_s_mg_single3d_base.cpp stays out of port/slice_mug.txt for that reason.
 //
-// _ZN19dScMgSingle3DBase_c9Virtual84Ev (slot 33, the once-per-boot 3D setup) ends with two
+// _ZN19dScMgSingle3DBase_c11InitEnginesEv (slot 33, the once-per-boot 3D setup) ends with two
 // stores to LIGHT_COLOR at 0x040004cc, which a plain src build lands in the
 // memory ntr maps across the I/O window without ever telling the geometry
 // engine -- the "Yoshi is a black silhouette" defect run mg5 lane YTEX
 // measured. It builds from the hostgen'd copy port/CMakeLists.txt's
-// FLW_HOSTGEN_SYMS already emits, and src/minigames/d_s_mg_single3_d_base.cpp is out of this
+// FLW_HOSTGEN_SYMS already emits, and src/minigames/d_s_mg_single3d_base.cpp is out of this
 // slice for the same reason.
 //
 // ---- 5. SLOT 18 TAKES A REAL ARGUMENT, AND ON THIS CLASS THAT IS THE ONE
@@ -112,7 +112,7 @@
 // THIS CLASS IS THE SECOND, and it was checked from the ROM rather than
 // inherited:
 //
-//   _ZN12dScMgSlot3_c13OnYoshiTryEatEi keeps r1 (`mov r8, r1` at 0x0210b31c) and tests it --
+//   _ZN12dScMgSlot3_c10StartRoundEi keeps r1 (`mov r8, r1` at 0x0210b31c) and tests it --
 //   `cmp r8,#3` at 0x0210b324, `cmp r8,#0x12` at 0x0210b32c, and an `== 4` arm
 //   -- so the body has THREE distinct paths through it: 3 and 0x12 are the
 //   round START (score 0xc, best-score clamp at 0x270e, level 0), 4 is the
@@ -122,7 +122,7 @@
 //
 //   ALL THREE ROM DISPATCH SITES PASS A REAL VALUE, and there are THREE rather
 //   than two: 0x0210bfe8 is `mov r1,#3` inside slot 0 InitResources, and state
-//   func_ov006_0210ac3c has TWO -- 0x0210ac9c is `mov r1,#4` on the
+//   Slot3_State3and4 has TWO -- 0x0210ac9c is `mov r1,#4` on the
 //   round-cleared arm and 0x0210acd0 is `mov r1,#5` on the coins-remaining
 //   arm. So the third path is not hypothetical: 5 is the ordinary "spin again
 //   at the same level" reset and the ROM asks for it by name. There is no site
@@ -134,13 +134,13 @@
 //
 // ---- 6. SLOT 32 TAKES NO RECEIVER, AND THAT IS THE ROM's DOING ------------
 //
-// src/_ZN12dScMgSlot3_c9Virtual80Ev.cpp declares `void _ZN12dScMgSlot3_c9Virtual80Ev(void)` and
+// src/_ZN12dScMgSlot3_c16InitMainScreenBgEv.cpp declares `void _ZN12dScMgSlot3_c16InitMainScreenBgEv(void)` and
 // the disassembly agrees: the body's first use of r0 is `mov r0,#0` at
 // 0x0210aa68, feeding SetBg1Offset(0,0). It never reads the incoming r0. This
 // is the ROM ride-through and NOT the dropped-receiver defect class -- there
 // is no receiver in the body for a host thunk to lose. hal/scene_mg.cpp's own
 // base face for this slot (mb_v32) is spelled the same way, over
-// _ZN11dScMgBase_c9Virtual80Ev, which is the shape this row inherits.
+// _ZN11dScMgBase_c16InitMainScreenBgEv, which is the shape this row inherits.
 //
 // ---- 7. THE WIDTH IS 36 ON BOTH SCENE TABLES, CHECKED FIVE WAYS -----------
 //
@@ -204,7 +204,7 @@
 //
 //   - THE CLASS'S ONE FLOOR IS RETIRED (run mg12, lane MAM). State 2 of
 //     data_ov006_02142bdc is 0x0210adac, the face-evaluation step after the
-//     third reel stops; it now has a byte-matched src/func_ov006_0210adac.c and
+//     third reel stops; it now has a byte-matched src/Slot3_State2.c and
 //     the dispatcher calls it. port/unmatched/MgSlot3_StateDispatch.cpp
 //     section 3 has the derivation and what changed. The former floor counter
 //     in the census below reads 0 for a structural reason now.
@@ -254,8 +254,8 @@ int   _ZN19dScMgSingle3DBase_c14BeforeBehaviorEv(void *c);                     /
 int   _ZN19dScMgSingle3DBase_c12BeforeRenderEv(void *c);                     /* slot 10 */
 int   _ZN19dScMgSingle3DBase_cD1Ev(char *c);                     /* slot 16 D2 */
 int   _ZN19dScMgSingle3DBase_cD0Ev(char *c);                     /* slot 17 D0 */
-int   _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(void);                        /* slot 26 */
-void  _ZN19dScMgSingle3DBase_c9Virtual84Ev(char *c);                     /* slot 33 */
+int   _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(void);                        /* slot 26 */
+void  _ZN19dScMgSingle3DBase_c11InitEnginesEv(char *c);                     /* slot 33 */
 
 /* dScMgSlot3_c's own nine. Slot 6 is the HOST COPY in
    port/unmatched/MgSlot3_StateDispatch.cpp -- same symbol, so
@@ -265,10 +265,10 @@ int   _ZN12dScMgSlot3_c8BehaviorEv(char *c);           /* slot  6 Behavior, host
 int   _ZN12dScMgSlot3_c6RenderEv(char *c);           /* slot  9 Render        */
 void *_ZN12dScMgSlot3_cD1Ev(char *c);           /* slot 16 D2            */
 void *_ZN12dScMgSlot3_cD0Ev(char *c);           /* slot 17 D0            */
-void  _ZN12dScMgSlot3_c13OnYoshiTryEatEi(char *c, int mode); /* slot 18 round set-up  */
-void  _ZN12dScMgSlot3_c16OnAimedAtWithEggEv(void *c);           /* slot 29               */
-void  _ZN12dScMgSlot3_c25OnAimedAtWithEggReturnVecEv(void *c);           /* slot 30               */
-void  _ZN12dScMgSlot3_c9Virtual80Ev(void);              /* slot 32, no receiver  */
+void  _ZN12dScMgSlot3_c10StartRoundEi(char *c, int mode); /* slot 18 round set-up  */
+void  _ZN12dScMgSlot3_c17SaveScreenForMenuEv(void *c);           /* slot 29               */
+void  _ZN12dScMgSlot3_c21RestoreScreenFromMenuEv(void *c);           /* slot 30               */
+void  _ZN12dScMgSlot3_c16InitMainScreenBgEv(void);              /* slot 32, no receiver  */
 
 /* the factory */
 void *dScMgSlot3_c_classInit(void);
@@ -284,16 +284,16 @@ void  port_mg_dispatch_counts(unsigned *calls, unsigned *unknown);
 /* The persistent minigame record this class's board progress is READ FROM and
    WRITTEN BACK TO. Nothing new is defined here: the storage is
    hal/level_boot.cpp's .dsstate$savblk0004 and the index function is
-   src/func_ov004_020adc3c.c. */
-extern void         *data_ov004_020beb68;     /* the live dScMgBase_c `this` */
+   src/Mg_GetSaveTable.c. */
+extern void         *gMgScene;     /* the live dScMgBase_c `this` */
 extern unsigned char data_0209caf4[];         /* 36 records x 20 bytes       */
-int   func_ov004_020adc3c(void *c);           /* (self->field_8 >> 8) & 0xff */
+int   Mg_GetSaveTable(void *c);           /* (self->field_8 >> 8) & 0xff */
 
 }  /* extern "C" */
 
 static int port_mg_slot3_record_index(void)
 {
-    return data_ov004_020beb68 ? func_ov004_020adc3c(data_ov004_020beb68) : -1;
+    return gMgScene ? Mg_GetSaveTable(gMgScene) : -1;
 }
 
 // ---- the tick witness ------------------------------------------------------
@@ -328,9 +328,9 @@ static void *__fastcall s3b_d2(void *s, void *)
 static void *__fastcall s3b_d0(void *s, void *)
 { M3D(17); return (void *)(size_t)_ZN19dScMgSingle3DBase_cD0Ev((char *)s); }
 static int  __fastcall s3b_v26(void *, void *)
-{ M3D(26); return _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(); }
+{ M3D(26); return _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(); }
 static int  __fastcall s3b_v33(void *s, void *)
-{ M3D(33); _ZN19dScMgSingle3DBase_c9Virtual84Ev((char *)s); return 0; }
+{ M3D(33); _ZN19dScMgSingle3DBase_c11InitEnginesEv((char *)s); return 0; }
 
 /* ---- dScMgSlot3_c's own nine -------------------------------------------- */
 static int  __fastcall slot3_init(void *s, void *)
@@ -358,15 +358,15 @@ static int  __fastcall slot3_reset(void *s, void *, int mode)
   else if (mode == 4)            ++g_s3_slot18_arg4;
   else if (mode == 5)            ++g_s3_slot18_arg5;
   else                           ++g_s3_slot18_argother;
-  _ZN12dScMgSlot3_c13OnYoshiTryEatEi((char *)s, mode); return 1; }
+  _ZN12dScMgSlot3_c10StartRoundEi((char *)s, mode); return 1; }
 static int  __fastcall slot3_v29(void *s, void *)
-{ S3(29); _ZN12dScMgSlot3_c16OnAimedAtWithEggEv(s); return 0; }
+{ S3(29); _ZN12dScMgSlot3_c17SaveScreenForMenuEv(s); return 0; }
 static int  __fastcall slot3_v30(void *s, void *)
-{ S3(30); _ZN12dScMgSlot3_c25OnAimedAtWithEggReturnVecEv(s); return 0; }
+{ S3(30); _ZN12dScMgSlot3_c21RestoreScreenFromMenuEv(s); return 0; }
 /* SECTION 6: no receiver, the ROM's own shape, matching hal/scene_mg.cpp's
-   mb_v32 over _ZN11dScMgBase_c9Virtual80Ev. */
+   mb_v32 over _ZN11dScMgBase_c16InitMainScreenBgEv. */
 static int  __fastcall slot3_v32(void *, void *)
-{ S3(32); _ZN12dScMgSlot3_c9Virtual80Ev(); return 0; }
+{ S3(32); _ZN12dScMgSlot3_c16InitMainScreenBgEv(); return 0; }
 
 /* SM64DS_SCENE_SLOT0=0 and SM64DS_SCENE_SLOT9=0, the diagnostics every scene
    seat in this port carries, counted separately so a run can never read a
@@ -658,7 +658,7 @@ extern "C" void port_scene_slot3_hits(void)
                         rec[0], rec[1], rec[2], rec[3], rec[4]);
         } else {
             std::printf("[scene] dScMgSlot3_c save record: NO minigame index "
-                        "(data_ov004_020beb68 = %p)\n", data_ov004_020beb68);
+                        "(gMgScene = %p)\n", gMgScene);
         }
     }
     std::fflush(stdout);
@@ -684,7 +684,7 @@ extern "C" void port_scene_slot3_hits(void)
  * apart in the same class. The right-hand side is the ov006 mount's own
  * definition of the vtable this seat fills.
  *
- * ?GetBG1ScrPtr@G2@@SAPAXXZ. src/_ZN12dScMgSlot3_c9Virtual80Ev.cpp (slot 32) declares a
+ * ?GetBG1ScrPtr@G2@@SAPAXXZ. src/_ZN12dScMgSlot3_c16InitMainScreenBgEv.cpp (slot 32) declares a
  * local `struct G2 { static void* GetBG1ScrPtr(); };` to spell the arm9 static,
  * so MSVC mangles the call while the port defines the Itanium name at C
  * linkage. The double underscore on the right is the same shape

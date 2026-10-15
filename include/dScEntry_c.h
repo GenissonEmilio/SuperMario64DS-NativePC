@@ -32,7 +32,7 @@ struct dScEntry_c : dScene_c {
     u8  pad_286;                   /* 0x286 */
     u8  unk_287;                   /* 0x287 */
 
-    /* Out of line: the key function, defined first in src/actors/dScEntry_c.cpp. */
+    /* Out of line: the key function, defined first in src/game/stages/d_s_entry.cpp. */
     /* The destructor pair spelled as two plain virtuals on the host, plus
        the non-virtual destructor declaration the src/ definitions need; the
        whole ruling is in include/ModelBase.h. An override takes its base's

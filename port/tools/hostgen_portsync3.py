@@ -109,8 +109,8 @@ if _cstd_rows:
 
 # ---- lane MGSYNC1 (hunt8) ----------------------------------------------------
 
-# dMg3DHeyhoObjAdapter_c: the shy-guy hit tests (func_ov006_020c49d8 and
-# func_ov006_020c47d4) read the three Mario objects' vtable words through plain
+# dMg3DHeyhoObjAdapter_c: the shy-guy hit tests (Heyho_CheckHitB and
+# Heyho_CheckHitA) read the three Mario objects' vtable words through plain
 # C function-pointer types, (*(VT*)O)[0..2](O). On the ARM that is the ROM's
 # call: the object in r0. Main's dMgJump3DMario_c now has a real constructor,
 # so the objects carry MSVC's compiled vtable whose three slots are thiscall

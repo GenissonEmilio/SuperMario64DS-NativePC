@@ -39,6 +39,11 @@
 //   and the size-pulse reader in this TU).
 // - func_0201267c is the bank-3 Sound::Play wrapper behind the spit sound;
 //   no header declares it yet.
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_krpa_AssetId {
+    ASSET_KERONPA_BMD = 0x0351
+};
+
 #include "daKrpa_c.h"
 #include "dBgCh_Gnd.h"
 #include "Player.h"
@@ -120,7 +125,7 @@ struct KrpaModelFilePtr : SharedFilePtr {
     ~KrpaModelFilePtr();
 };
 extern "C" {
-extern KrpaModelFilePtr data_ov070_02123698;
+extern KrpaModelFilePtr gKeronpaModelFile;
 extern int IDENTITY_MATRIX4X3[];
 extern void _ZN10dCcAcPos_c4InitEP8dActor_cRK7Vector35Fix12IiES6_jj(
     dCcAcPos_c *clsn, dActor_c *actor, const Vector3 *offset,
@@ -133,7 +138,7 @@ extern void _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(
 int daKrpa_c::InitResources()
 {
     Vector3 offset;
-    void *bmd = Model::LoadFile(data_ov070_02123698);
+    void *bmd = Model::LoadFile(gKeronpaModelFile);
     int groundDistance;
     mModelAnim.SetFile((BMD_File *)bmd, 1, 1);
     if (!mShadowModel.InitCylinder())
@@ -192,7 +197,7 @@ void daKrpa_c::OnPendingDestroy()
 
 int daKrpa_c::CleanupResources()
 {
-    data_ov070_02123698.Release();
+    gKeronpaModelFile.Release();
     return 1;
 }
 extern "C" {
@@ -466,7 +471,7 @@ int daKrpa_c::OnYoshiTryEat()
 /* Retail initializer order is the model handle (file 0x351) with its
  * destructor registration, then the eight {init,behavior} state-method
  * records copied in ascending table slot. */
-KrpaModelFilePtr data_ov070_02123698(0x351);
+KrpaModelFilePtr gKeronpaModelFile(ASSET_KERONPA_BMD);
 daKrpaState data_ov070_021236ac[4] = {
     {(daKrpaStateMethod)&daKrpa_c::func_ov070_021217ac,
      (daKrpaStateMethod)&daKrpa_c::func_ov070_02121710},

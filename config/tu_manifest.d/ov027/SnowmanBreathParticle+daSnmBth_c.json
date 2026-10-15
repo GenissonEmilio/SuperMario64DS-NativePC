@@ -1,8 +1,8 @@
 {
   "id": "ov027/SnowmanBreathParticle+daSnmBth_c",
   "module": "ov027",
-  "source": "src/actors/daSnmBth_c.cpp",
-  "promoted_source": "src/actors/daSnmBth_c.cpp",
+  "source": "src/game/actors/d_a_snm_bth.cpp",
+  "promoted_source": "src/game/actors/d_a_snm_bth.cpp",
   "status": "promoted",
   "boundary_confidence": "medium",
   "boundary_evidence": [

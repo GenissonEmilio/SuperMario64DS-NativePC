@@ -327,7 +327,7 @@ void *daObjC1Hikari_c_classInit(void);                            /* ov010 0x021
 /* ---- gate 42: ov010's PEACH_PAINTING (38) ----
    The prior "blocked on ov052/RollingRock" reading was the shared-base illusion
    -- both mislabeled references stay inside ov010 (_ZN13PeachPainting20UpdateModelTransformEv and the
-   ov010 BSS SharedFilePtr data_ov010_02112d64), closed by /alternatename in
+   ov010 BSS SharedFilePtr gC1PeachModelFile), closed by /alternatename in
    hal/actor_classes.cpp. Its SpawnInfo is mounted (ov010_syms.txt, +4 = 38). */
 extern unsigned char g_profile_C1_PEACH[];        /* ov010 0x02112c44 */
 void *daObjC1Peach_c_classInit(void);                       /* ov010 0x02112004 */
@@ -1742,8 +1742,8 @@ void hal_fill_tox_box_vtable(void);                  /* _ZTV6ToxBox, 32 */
 /* ---- run rel0215 wave 2 (lane cast-lvl16pair, sub-job 2 of 2): ov096's cast,
    the rest of level 16's. THREE IDS, TWO CLASSES -- 240 and 241 are ONE class
    (9daSanbo_c) under two spawn entry points, so they share one fill. Proved
-   three ways rather than assumed from the name: src/actors/daSanbo_c.cpp and
-   src/actors/daSanbo_c.cpp are identical apart from their own names, both
+   three ways rather than assumed from the name: src/game/actors/d_a_sanbo.cpp and
+   src/game/actors/d_a_sanbo.cpp are identical apart from their own names, both
    factories' pools relocate to the SAME table 0x021379d8 (0x02136d5c and
    0x02136dac), and PokeySegment's own record's typeinfo word points at POKEY's
    __si_class_type_info. The ov030 UKIKI_THIEF / UKIKI_STAR shape.

@@ -193,7 +193,7 @@ void _ZN17dExtShadowModel_cD1Ev(void *self);
 void _ZN7dCcAc_cD1Ev(void *self);
 void _ZN10dBgCh_ActrD1Ev(void *self);
 extern void *data_020a0eac;
-void _ZN6Memory10DeallocateEPvP4Heap(void *, void *);
+void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *, void *);
 void port_actor_render_probe(const char *cls, void *model);
 }
 

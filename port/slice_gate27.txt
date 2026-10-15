@@ -20,28 +20,28 @@
 # port/unmatched/HUD_InitResources.cpp, the hand copy that carried both by
 # hand, is retired. See status/HUDINITRES.md.
 
-src/actors/dMeter_c.cpp
+src/ui/hud/d_meter.cpp
 # RETIRED at SLICE1: body now in src/_ZN3HUDD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN3HUDD0Ev.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUDD1Ev.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD16CleanupResourcesEv.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD16OnPendingDestroyEv.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD8BehaviorEv.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD6RenderEv.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUDD1Ev.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD16CleanupResourcesEv.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD16OnPendingDestroyEv.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD8BehaviorEv.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD6RenderEv.cpp
 
 # the render leaves
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD15CalculateDigitsEt.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD15RenderCoinCountEv.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD15RenderLifeCountEv.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD15RenderStarCountEv.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD15RenderTimeTimerEv.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD17RenderHealthMeterEv.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD17RenderSilverStarsEv.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD14RenderRedCoinsEv.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD19RenderCameraButtonsEv.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD13RenderVsTimerEv.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD13UpdateVsTimerEv.cpp
-# FOLDED into src/actors/dMeter_c.cpp (row 23): src/_ZN3HUD17UpdateHealthMeterEv.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD15CalculateDigitsEt.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD15RenderCoinCountEv.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD15RenderLifeCountEv.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD15RenderStarCountEv.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD15RenderTimeTimerEv.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD17RenderHealthMeterEv.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD17RenderSilverStarsEv.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD14RenderRedCoinsEv.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD19RenderCameraButtonsEv.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD13RenderVsTimerEv.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD13UpdateVsTimerEv.cpp
+# FOLDED into src/ui/hud/d_meter.cpp (row 23): src/_ZN3HUD17UpdateHealthMeterEv.cpp
 
 # Stage::RenderVsModeCountdown -- the VS start-of-round READY? / red 3-2-1 /
 # START draw. Not a HUD leaf, but it rides here because it emits through the
@@ -62,7 +62,7 @@ src/unnamed/arm9/0203/func_0203da4c.c
 src/engine/gx/GXS.cpp
 # FOLDED into src/engine/gx/GXS.cpp (row 62): src/_ZN3GXS11LoadOBJPlttEPKvjj.cpp
 src/Timer.cpp
-src/actors/Player.cpp
+src/game/player/Player.cpp
 src/GiveLives.c
 
 # NOT HERE: src/_ZN5Stage20RenderBouncingArrowsEv.cpp. It draws its sprite from

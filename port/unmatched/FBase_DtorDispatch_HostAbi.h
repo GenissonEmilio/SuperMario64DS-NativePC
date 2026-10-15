@@ -98,7 +98,7 @@
 
 /* Spelled exactly as include/fBase_c.h spells them, for the inline
    operator delete at the end of the class. */
-extern "C" void _ZN6Memory10DeallocateEPvP4Heap(void *, void *);
+extern "C" void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *, void *);
 extern "C" void *data_020a0eac;
 
 /* shadows include/fBase_c.h */
@@ -163,7 +163,7 @@ struct fBase_c {
     /* Identical to include/fBase_c.h's, so the COMDAT this translation unit
        emits for ??3fBase_c@@SAXPAX@Z folds onto the one every other
        translation unit emits. Do not add anything to this body. */
-    void operator delete(void *ptr) { _ZN6Memory10DeallocateEPvP4Heap(ptr, data_020a0eac); }
+    void operator delete(void *ptr) { _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(ptr, data_020a0eac); }
 };
 
 /* The one layout fact that can be asserted here rather than read out of the

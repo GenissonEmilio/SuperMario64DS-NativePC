@@ -208,7 +208,7 @@
 #   data_ov027_02112ca4:0xc   gap 0x4   drops data_ov027_02112ca8
 #       A three-word table of SharedFilePtr pointers -- its own words relocate
 #       to 0x02113c84, 0x02113c74 and 0x02113c8c, the three Anim files
-#       __sinit_ov027_02112df8 constructs. src/actors/daPgDfdr_c.cpp reads it
+#       __sinit_ov027_02112df8 constructs. src/game/actors/d_a_pg_dfdr.cpp reads it
 #       as data[i] for i = 0..2, so the READ runs 8 bytes off a 4-byte host
 #       object. The ov035 lane pinned its own 0x02112ca4 to 0xc for the same
 #       reason at the same shared-window address.
@@ -231,7 +231,7 @@
 #       emitter sized it 4 and refused the pack: "data_ov027_02113a26 at
 #       0x02113a26 overlaps the symbol ending at 0x02113a28". The four names
 #       0x02113a1c / _a20 / _a24 / _a26 are FOUR VIEWS OF ONE ARRAY, not four
-#       objects: src/actors/daPgDfdr_c.cpp indexes all four with the same
+#       objects: src/game/actors/d_a_pg_dfdr.cpp indexes all four with the same
 #       [c+0x3d9] and the record stride is 0xc (record 0 at 0x02113a1c reads
 #       {00220000, 00005000, dd30, dd30}, record 1 at 0x02113a28 reads
 #       {0016c000, 0000a000, dd30, dd30}), so the four are the record's +0,
@@ -301,14 +301,14 @@ data_ov027_02113d10
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov027_02113c6c                        now defined by src/actors/daPgDfdr_c.cpp
-#   data_ov027_02113c74                        now defined by src/actors/daPgDfdr_c.cpp
-#   data_ov027_02113c7c                        now defined by src/actors/daPgDfdr_c.cpp
-#   data_ov027_02113c84                        now defined by src/actors/daPgDfdr_c.cpp
-#   data_ov027_02113c8c                        now defined by src/actors/daPgDfdr_c.cpp
-#   data_ov027_02113c94                        now defined by src/actors/daPgDfdr_c.cpp
-#   data_ov027_02113ce4                        now defined by src/actors/daPgDfdr_c.cpp
+#   data_ov027_02113c6c                        now defined by src/game/actors/d_a_pg_dfdr.cpp
+#   data_ov027_02113c74                        now defined by src/game/actors/d_a_pg_dfdr.cpp
+#   data_ov027_02113c7c                        now defined by src/game/actors/d_a_pg_dfdr.cpp
+#   data_ov027_02113c84                        now defined by src/game/actors/d_a_pg_dfdr.cpp
+#   data_ov027_02113c8c                        now defined by src/game/actors/d_a_pg_dfdr.cpp
+#   data_ov027_02113c94                        now defined by src/game/actors/d_a_pg_dfdr.cpp
+#   data_ov027_02113ce4                        now defined by src/game/actors/d_a_pg_dfdr.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov027_02113be0! data_ov027_02113be8! data_ov027_02113c08! data_ov027_02113c10! data_ov027_02113c18! data_ov027_02113c20! data_ov027_02113c28!
+data_ov027_02113be0! data_ov027_02113be8! gIceDonketuHitAnimationFile! gIceDonketuModelFile! gIceDonketuDeadAnimationFile! gIceDonketuTurnAnimationFile! gIceDonketuWalkAnimationFile!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
 data_ov027_02113c74! data_ov027_02113c7c! data_ov027_02113c94! data_ov027_02113c6c! data_ov027_02113c8c! data_ov027_02113c84! data_ov027_02113ce4!

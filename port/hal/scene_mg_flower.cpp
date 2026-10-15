@@ -109,21 +109,21 @@
 //
 // ---- 7. ONE HARD FLOOR, AND IT IS NOT IN THE VTABLE -----------------------
 //
-// func_ov006_0212a764 (0x310 bytes) has a config symbol in
+// DealPetals (0x310 bytes) has a config symbol in
 // config/arm9/overlays/ov006/symbols.txt, NO delink block in that overlay's
 // delinks.txt -- the block before it ends exactly at 0x0212a764 and the next
 // starts at 0x0212aa74 -- and no src file anywhere defines it. Two matched TUs
 // call it, and both are on this class's live path:
 //
 //     from:0x0212b73c  inside _ZN13dScMgFlower_c13InitResourcesEv, slot 0 InitResources
-//     from:0x0212aab8  inside _ZN13dScMgFlower_c13OnYoshiTryEatEi, slot 18 the state reset
+//     from:0x0212aab8  inside _ZN13dScMgFlower_c10StartRoundEi, slot 18 the state reset
 //
-// It is this class's analogue of curling's func_ov006_020e1854 and it is a
+// It is this class's analogue of curling's Aim_Swing and it is a
 // DECOMP gap, not a port one. It gets a named trap below and deliberately not
 // a plausible body: port/tools/inferred_stub_guard.py exists to refuse exactly
 // the invention that would go here. What the trap costs is measurable rather
 // than mysterious -- disassembled at base 0x020bfec0 the body zeroes the
-// cursor at +0x5fb8..+0x5fc4, calls func_ov004_020b04d0(0x20), clears all
+// cursor at +0x5fb8..+0x5fc4, calls Mg_SetTopScreenYOffset(0x20), clears all
 // twenty-two petal records at +0x4f38 stride 0x20, then lays them out with six
 // calls to the arm9 trig helper at 0x0203b990, one ITCM divide and a
 // G2x::SetBlendAlpha -- so with the trap in place the petals stay zeroed,
@@ -166,8 +166,8 @@ int   _ZN19dScMgSingle3DBase_c14BeforeBehaviorEv(void *c);               /* slot
 int   _ZN19dScMgSingle3DBase_c12BeforeRenderEv(void *c);               /* slot 10 */
 int   _ZN19dScMgSingle3DBase_cD1Ev(char *c);               /* slot 16 D2 */
 int   _ZN19dScMgSingle3DBase_cD0Ev(char *c);               /* slot 17 D0 */
-int   _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(void);                  /* slot 26 */
-void  _ZN19dScMgSingle3DBase_c9Virtual84Ev(char *c);               /* slot 33 */
+int   _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(void);                  /* slot 26 */
+void  _ZN19dScMgSingle3DBase_c11InitEnginesEv(char *c);               /* slot 33 */
 /* slot 2 is NOT src's body: see unmatched/MgFlower_Slot2.cpp */
 int   port_mg_flower_after_init(void *c, unsigned f);
 
@@ -177,7 +177,7 @@ int   _ZN13dScMgFlower_c8BehaviorEv(char *c);               /* slot  6 Behavior 
 int   _ZN13dScMgFlower_c6RenderEv(char *c);               /* slot  9 Render        */
 void *_ZN13dScMgFlower_cD1Ev(char *c);               /* slot 16 D2            */
 void *_ZN13dScMgFlower_cD0Ev(char *c);               /* slot 17 D0            */
-void  _ZN13dScMgFlower_c13OnYoshiTryEatEi(char *c);               /* slot 18 state reset   */
+void  _ZN13dScMgFlower_c10StartRoundEi(char *c);               /* slot 18 state reset   */
 
 /* the factory */
 void *dScMgFlower_c_classInit(void);
@@ -213,15 +213,15 @@ static void *__fastcall s3_d2(void *s, void *)
 static void *__fastcall s3_d0(void *s, void *)
 { S3D(17); return (void *)(size_t)_ZN19dScMgSingle3DBase_cD0Ev((char *)s); }
 static int  __fastcall s3_v26(void *, void *)
-{ S3D(26); return _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(); }
+{ S3D(26); return _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(); }
 static int  __fastcall s3_v33(void *s, void *)
-{ S3D(33); _ZN19dScMgSingle3DBase_c9Virtual84Ev((char *)s); return 0; }
+{ S3D(33); _ZN19dScMgSingle3DBase_c11InitEnginesEv((char *)s); return 0; }
 
 /* ---- dScMgFlower_c's six ------------------------------------------------ */
 /* ---- THE BLOCKER THAT WAS HERE IS RETIRED -------------------------------
    A pre-flight check stood here and printed a named line whenever
-   data_ov004_020beb68 was non-zero, because func_ov004_020ad8b8 then called
-   func_ov004_020adc3c with no argument and the host callee read the stack.
+   gMgScene was non-zero, because Mg_GetSavedRecord0 then called
+   Mg_GetSaveTable with no argument and the host callee read the stack.
    Under the coordinator's granted displacement ruling that call now places
    its argument, in port/unmatched/MgFlower_InitScore.cpp, so the condition
    the check was keyed on is the ORDINARY case and a line keyed on it would
@@ -253,7 +253,7 @@ static void *__fastcall flw_d0(void *s, void *)
 /* THE RIDE-THROUGH IS LOAD-BEARING. Every slot-18 dispatch in both overlay
    images passes one argument (the 22-site census in hal/scene_mg.cpp's
    mg_reset block and runs/mg5/out/baseset/slot18_19_scan.txt), and
-   func_ov004_020b29a0 -- the round teardown's dispatcher -- pushes it as a
+   Mg_CallStartRound -- the round teardown's dispatcher -- pushes it as a
    __thiscall caller that cleans nothing. A thunk declared (void*, void*)
    compiles to a bare ret, leaks those four bytes, and the dispatcher's own
    `pop ebp; ret` then takes its saved frame pointer as a return address: the
@@ -263,7 +263,7 @@ static void *__fastcall flw_d0(void *s, void *)
    __fastcall cleans four bytes; the ROM body ignores its r1 and is called
    without it, same as mg_reset. */
 static int  __fastcall flw_reset(void *s, void *, int /*ridethrough*/)
-{ FLW(18); _ZN13dScMgFlower_c13OnYoshiTryEatEi((char *)s); return 1; }
+{ FLW(18); _ZN13dScMgFlower_c10StartRoundEi((char *)s); return 1; }
 
 /* SM64DS_SCENE_SLOT0=0 and SM64DS_SCENE_SLOT9=0, the diagnostics the ov003,
    ov007 and curling seats all carry, counted separately so a run can never
@@ -460,7 +460,7 @@ extern "C" void port_scene_flower_hits(void)
 
     /* ---- THE PETAL CENSUS ------------------------------------------------
      *
-     * Twenty-two records at +0x4f38, stride 0x20. func_ov006_0212a764 lays
+     * Twenty-two records at +0x4f38, stride 0x20. DealPetals lays
      * the live ones out on a ring: +0x4f54 is the angle it picks, +0x4f3c and
      * +0x4f40 are the position that angle produces through func_0203d388,
      * +0x4f38 is the live flag.
@@ -502,16 +502,16 @@ extern "C" void port_scene_flower_hits(void)
     }
 
     std::printf("[scene] sub-object state dispatch (+0x51f8, the member "
-                "pointer func_ov006_020c3d18 open-codes): %u call(s) through "
+                "pointer FlowerFace_Update open-codes): %u call(s) through "
                 "the address switch, %u UNHANDLED address(es)\n",
                 port_mg_flower_sub_calls(), port_mg_flower_sub_unknown());
 
     if (port_mg_flower_trap_hits())
-        std::printf("[scene] _ZN13dScMgFlower_c19func_ov006_0212a764Ev (undecompiled, no delink "
+        std::printf("[scene] _ZN13dScMgFlower_c10DealPetalsEv (undecompiled, no delink "
                     "block, no src) entered %u time(s) -- the petal layout did "
                     "NOT run\n", port_mg_flower_trap_hits());
     else
-        std::printf("[scene] _ZN13dScMgFlower_c19func_ov006_0212a764Ev trap entered: 0\n");
+        std::printf("[scene] _ZN13dScMgFlower_c10DealPetalsEv trap entered: 0\n");
     std::fflush(stdout);
 }
 
@@ -523,13 +523,13 @@ extern "C" void port_scene_flower_hits(void)
  * than an absence somebody has to notice.
  *
  * ITS ARITY IS THE ROM'S. include/decl_common.h:2628 declares
- * `extern void func_ov006_0212a764(void*);` and both matched callers pass the
+ * `extern void DealPetals(void*);` and both matched callers pass the
  * object, which is also what the ROM does (`mov sb,r0` on entry, then every
  * access through sb). A trap that took void would compile and would silently
  * become a different function the day somebody transcribes the body.
  */
 /* Run mg5, lane INTEG: the petal-array layout was recovered on branch
-   decomp/yoshi-petal as src/func_ov006_0212a764.cpp (NONMATCHING regperm floor)
+   decomp/yoshi-petal as src/DealPetals.cpp (NONMATCHING regperm floor)
    and is now sliced in port/slice_flw.txt, so the trap that stood in for it is
    gone and the real body lays out the petals. The counter is kept because the
    census above prints port_mg_flower_trap_hits(); it now stays 0, the honest
@@ -567,12 +567,12 @@ extern "C" unsigned port_mg_flower_trap_hits(void) { return g_flw_trap_hits; }
  * were read off the link, not derived.
  *
  * GROUP B -- A FUNCTION DECLARED AS DATA, ONE ROW.
- * src/func_ov006_020c3e70.cpp:9 declares `extern void* func_ov006_020c3e54;`
- * outside extern "C" and passes `&func_ov006_020c3e54` to __cxa_vec_cleanup as the
+ * src/FlowerFace_Destruct.cpp:9 declares `extern void* FallingPetal_Destruct;`
+ * outside extern "C" and passes `&FallingPetal_Destruct` to __cxa_vec_cleanup as the
  * element destructor. The declaration's TYPE is wrong and its ADDRESS is
  * right: taking the address of that "variable" is taking the function's entry
  * point, which is what the ROM's literal pool holds. Its sibling
- * src/func_ov006_020c3f54.cpp declares the same symbol as a function and needs
+ * src/FlowerFace_Construct.cpp declares the same symbol as a function and needs
  * no row, which is what identifies this as a spelling rather than a body.
  *
  * GROUP C -- FIVE ov004 GLOBALS SPELLED func_*, AND ONE SPELLED ov000.
@@ -584,14 +584,14 @@ extern "C" unsigned port_mg_flower_trap_hits(void) { return g_flw_trap_hits; }
  *         disassembly at 0x0212b6f8..0x0212b720 -- and all four are
  *         `data_ov004_*` in config/arm9/overlays/ov004/symbols.txt.
  *     func_020beb6c  and  data_ov000_020beb74
- *         src/minigames/d_s_mg_single3_d_base.cpp spells ov004's two bss words this way.
+ *         src/minigames/d_s_mg_single3d_base.cpp spells ov004's two bss words this way.
  *         Both are kind:bss in ov004's symbols.txt.
  *
  * LANE MGA CALLED THE LAST TWO "HOSTED WORDS" AND THAT IS THE ONE THING IN ITS
  * FRONTIER LIST THIS LANE CORRECTS. Its note reads "the probe prints them as
  * data_ov000_* / func_020beb6c; that is the probe naming an address it has no
  * mount for". There IS a mount: build/port/host-src/ov004_syms.c defines
- * data_ov004_020beb6c and data_ov004_020beb74 as real packed storage (the
+ * sMgTopScreenYOffset and sMgGraphCallback as real packed storage (the
  * latter eight bytes, with a PACK BROKEN check at +22312). Hosting them again
  * would have put a SECOND copy of two DS words beside the mount's own, and the
  * ROM code that reads them through the mount and the src TU that writes them
@@ -599,9 +599,9 @@ extern "C" unsigned port_mg_flower_trap_hits(void) { return g_flw_trap_hits; }
  * aliases.
  *
  * GROUP D -- TWO ov006/arm9 FUNCTIONS UNDER A SHORTER NAME.
- *     func_020c3adc   src/func_ov006_020c3bc8.c:1 declares
+ *     func_020c3adc   src/FlowerFace_Reset.c:1 declares
  *                     `extern void func_020c3adc(void *);` -- ov006's own
- *                     func_ov006_020c3adc, one block away in the same file's
+ *                     FlowerFace_PlayIdle, one block away in the same file's
  *                     own overlay. The same defect port/mg_fanout_costs.txt
  *                     section 6d records for src/_ZN14dScMgCurling_c13InitResourcesEv.c.
  *     func_02012754   src/_ZN13dScMgFlower_c8BehaviorEv.cpp calls it nine times.
@@ -615,12 +615,12 @@ extern "C" unsigned port_mg_flower_trap_hits(void) { return g_flw_trap_hits; }
  */
 #pragma comment(linker, "/alternatename:?_ZTV19dScMgSingle3DBase_c@@3HA=__ZTV19dScMgSingle3DBase_c")
 #pragma comment(linker, "/alternatename:?_ZTV13dScMgFlower_c@@3HA=__ZTV13dScMgFlower_c")
-#pragma comment(linker, "/alternatename:?func_ov006_020c3e54@@3PAXA=_func_ov006_020c3e54")
-#pragma comment(linker, "/alternatename:_func_020c3adc=_func_ov006_020c3adc")
+#pragma comment(linker, "/alternatename:?FallingPetal_Destruct@@3PAXA=_FallingPetal_Destruct")
+#pragma comment(linker, "/alternatename:_func_020c3adc=_FlowerFace_PlayIdle")
 #pragma comment(linker, "/alternatename:_func_02012754=__ZN5Sound12PlayBank2_2DEj")
 #pragma comment(linker, "/alternatename:_func_020bc86c=_data_ov004_020bc86c")
 #pragma comment(linker, "/alternatename:_func_020bc898=_data_ov004_020bc898")
 #pragma comment(linker, "/alternatename:_func_020bc8a4=_data_ov004_020bc8a4")
 #pragma comment(linker, "/alternatename:_func_020bc8a8=_data_ov004_020bc8a8")
-#pragma comment(linker, "/alternatename:_func_020beb6c=_data_ov004_020beb6c")
-#pragma comment(linker, "/alternatename:_data_ov000_020beb74=_data_ov004_020beb74")
+#pragma comment(linker, "/alternatename:_func_020beb6c=_sMgTopScreenYOffset")
+#pragma comment(linker, "/alternatename:_data_ov000_020beb74=_sMgGraphCallback")

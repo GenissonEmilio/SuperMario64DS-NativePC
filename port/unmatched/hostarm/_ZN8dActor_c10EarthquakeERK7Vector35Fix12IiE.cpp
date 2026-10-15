@@ -1,7 +1,7 @@
 /* HOST ARM recovered by PORTSYNC2 (port/tools/hostarm_recover.py draft, reviewed).
  * The port line carried this in src/_ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE.cpp
  * under #ifdef _MSC_VER; the 2026-10 main merge (749f5799a) took main's src/, where
- * that code now lives in src/actors/dActor_c.cpp without the arm. mwccarm never saw
+ * that code now lives in src/runtime/actor/d_actor.cpp without the arm. mwccarm never saw
  * the arm, so nothing here moves a ROM byte.
  *
  * Main's TU defines the same extern "C" flat name (two-argument form), so the

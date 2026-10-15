@@ -61,6 +61,12 @@
 // - No Player.h / dCamera_c.h here. The leaf operator new stays until the
 //   fBase_c size_t overload work lands.
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_fm_battan_AssetId {
+    ASSET_FM_BATTAN_BMD = 0x0616,
+    ASSET_FM_BATTAN_KCL = 0x0617
+};
+
 #include "daObjFm_Battan_c.h"
 #include "SharedFilePtr.h"
 #include "Sound.h"
@@ -130,8 +136,8 @@ struct BattanCollisionFilePtr : SharedFilePtr {
 extern "C" BattanModelFilePtr data_ov023_02112088;
 extern "C" BattanCollisionFilePtr data_ov023_02112080;
 
-BattanModelFilePtr data_ov023_02112088(1558);
-BattanCollisionFilePtr data_ov023_02112080(1559);
+BattanModelFilePtr data_ov023_02112088(ASSET_FM_BATTAN_BMD);
+BattanCollisionFilePtr data_ov023_02112080(ASSET_FM_BATTAN_KCL);
 
 
 // @symbol daObjFm_Battan_c_classInit

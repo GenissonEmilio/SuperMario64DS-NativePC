@@ -344,11 +344,13 @@ int ExpandingHeapAllocator::FreeNode(MemoryNode *list, MemoryNode::Target *exten
     return 1;
 }
 
-// @symbol _ZN4Heap28CreateExpandingHeapAllocatorEPvjj
+// @symbol _ZN5mHeap6Heap_t28CreateExpandingHeapAllocatorEPvjj
 /* The expanding twin of Heap::CreateSolidHeapAllocator, identical bar the
  * minimum: 0x4c against the solid allocator's 0x30, because an expanding heap
  * keeps a free-node list. */
-ExpandingHeapAllocator *Heap::CreateExpandingHeapAllocator(void *address, u32 size, u32 flags)
+namespace mHeap {
+
+ExpandingHeapAllocator *Heap_t::CreateExpandingHeapAllocator(void *address, u32 size, u32 flags)
 {
     u32 end   = (size + (u32)address) & ~3u;
     u32 start = ((u32)address + 3u)   & ~3u;
@@ -358,6 +360,8 @@ ExpandingHeapAllocator *Heap::CreateExpandingHeapAllocator(void *address, u32 si
 
     return _ZN22ExpandingHeapAllocatorC1EPvj((ExpandingHeapAllocator *)start, (void *)end, flags);
 }
+
+} /* namespace mHeap */
 
 // @symbol _ZN13HeapAllocator7DestroyEv
 /* Detach this allocator from its containing heap -- a 12-byte tail veneer to

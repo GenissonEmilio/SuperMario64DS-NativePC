@@ -13,13 +13,13 @@
 // and replaces the two traps with the real matched bodies. Virtual34/38 are
 // the per-instance heap hooks: an actor that wants a dedicated solid heap
 // creates it through them (InitializeSolidHeapAsDefault -> CreateSolidHeap
-// -> SolidHeap C1 installs _ZTV9SolidHeap), runs its v15 resource init
+// -> SolidHeap C1 installs _ZTVN5mHeap11SolidHeap_tE), runs its v15 resource init
 // inside it, then restores the default heap. Nothing on the castle grounds
 // dispatches them today; the ROM bodies replacing return-0 traps is strictly
 // more faithful when a level does.
 //
-// _ZTV9SolidHeap: SIXTEEN slots, the Heap shape (the layout heap_vtable.cpp
-// documents for _ZTV13ExpandingHeap; both classes derive Heap and override
+// _ZTVN5mHeap11SolidHeap_tE: SIXTEEN slots, the Heap shape (the layout heap_vtable.cpp
+// documents for _ZTVN5mHeap9ExpHeap_tE; both classes derive Heap and override
 // the same list, and every SolidHeap V-method TU names its slot in its
 // header comment). The storage lives HERE, not in heap_vtable.cpp, because
 // the only TU that installs it (SolidHeap C1, matched .c) rides
@@ -77,7 +77,7 @@
 // it rather than a status note nobody reads:
 //   * A DRIVE IS NOT REQUIRED to settle any of the three families. Probe and
 //     disassembly evidence is decisive on its own, and the precedent is the
-//     seven bytes of this very body: ?SetDefault@Heap@@QAEHXZ compiles to
+//     seven bytes of this very body: ?SetDefault@Heap_t@mHeap@@QAEHXZ compiles to
 //     `mov eax,[data_020a0ea0]; mov [data_020a0ea0],ecx; ret`, which reads ECX
 //     and never touches a stack slot. That settles the ABI question without
 //     reaching the code at run time, and the same reading settles the rest.
@@ -110,7 +110,7 @@
 // absolute address a function pools, so unrelated TUs spell unrelated things
 // with the same identifier and the linker hands all of them this one word.
 //
-// THE ONE THAT MEANS IT is src/_ZN4Heap10SetDefaultEv.cpp, and the ROM says so:
+// THE ONE THAT MEANS IT is src/engine/heap/Heap.cpp, and the ROM says so:
 // its pool word at 0x0203c338 carries a RELOCATION -- config/arm9/relocs.txt
 // `from:0x0203c338 kind:load to:0x020a0ea0 module:main` -- so there G really is
 // the 0x020a0ea0 word heap_vtable.cpp hosts as data_020a0ea0 /
@@ -179,20 +179,20 @@
 /* RE-POINTED at ALIAS2 (wave 8, the main -> port sync), lane ALIAS's
    derivation: the right hand side this row carried is defined nowhere in
    the link any more. same member, same convention, same 3 argument slots, types spelled differently
-   was: #pragma comment(linker, "/alternatename:?InitializeSolidHeapAsDefault@Heap@@SAPAU1@IPAU1@H@Z=__ZN4Heap28InitializeSolidHeapAsDefaultEjPS_i") */
-#pragma comment(linker, "/alternatename:?InitializeSolidHeapAsDefault@Heap@@SAPAU1@IPAU1@H@Z=?InitializeSolidHeapAsDefault@Heap@@SAPAXIPAU1@H@Z")
+   was: #pragma comment(linker, "/alternatename:?InitializeSolidHeapAsDefault@Heap_t@mHeap@@SAPAU12@IPAU12@H@Z=__ZN5mHeap6Heap_t28InitializeSolidHeapAsDefaultEjPS0_i") */
+#pragma comment(linker, "/alternatename:?InitializeSolidHeapAsDefault@Heap_t@mHeap@@SAPAU12@IPAU12@H@Z=?InitializeSolidHeapAsDefault@Heap_t@mHeap@@SAPAXIPAU12@H@Z")
 /* RE-POINTED at ALIAS2 (wave 8, the main -> port sync), lane ALIAS's
    derivation: the right hand side this row carried is defined nowhere in
    the link any more. same member, same convention, same 3 argument slots, types spelled differently
-   was: #pragma comment(linker, "/alternatename:?Allocate@Memory@@SAPAXIHPAUHeap@@@Z=__ZN6Memory8AllocateEjiP4Heap") */
-#pragma comment(linker, "/alternatename:?Allocate@Memory@@SAPAXIHPAUHeap@@@Z=?Allocate@Memory@@YAPAXIHPAVHeap@@@Z")
-/* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEFEATED: the left hand side is a real definition in this link now (_ZN4Heap20RestoreFromTemporaryEv.cpp.obj), so the directive is inert and alternatename_guard fails on it. */
-// #pragma comment(linker, "/alternatename:?RestoreFromTemporary@Heap@@SAXXZ=__ZN4Heap20RestoreFromTemporaryEv")
-// ?_Destroy@Heap@@QAEXXZ=__ZN4Heap8_DestroyEv WAS HERE AND IT HAD TO GO WITH
+   was: #pragma comment(linker, "/alternatename:?Allocate@Memory@@SAPAXIHPAUHeap_t@mHeap@@@Z=__ZN6Memory8AllocateEjiPN5mHeap6Heap_tE") */
+#pragma comment(linker, "/alternatename:?Allocate@Memory@@SAPAXIHPAUHeap_t@mHeap@@@Z=?Allocate@Memory@@YAPAXIHPAUHeap_t@mHeap@@@Z")
+/* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEFEATED: the left hand side is a real definition in this link now (_ZN5mHeap6Heap_t20RestoreFromTemporaryEv.cpp.obj), so the directive is inert and alternatename_guard fails on it. */
+// #pragma comment(linker, "/alternatename:?RestoreFromTemporary@Heap_t@mHeap@@SAXXZ=__ZN5mHeap6Heap_t20RestoreFromTemporaryEv")
+// ?_Destroy@Heap_t@mHeap@@QAEXXZ=__ZN5mHeap6Heap_t8_DestroyEv WAS HERE AND IT HAD TO GO WITH
 // THE Destroy FIX, which is the part of that pairing nobody had spotted. See
 // the _Destroy face at the bottom of this file.
-/* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEFEATED: the left hand side is a real definition in this link now (_ZN4Heap6RescueEv.cpp.obj), so the directive is inert and alternatename_guard fails on it. */
-// #pragma comment(linker, "/alternatename:?Rescue@Heap@@QAEXXZ=?Rescue@Heap@@QAEHXZ")
+/* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEFEATED: the left hand side is a real definition in this link now (_ZN5mHeap6Heap_t6RescueEv.cpp.obj), so the directive is inert and alternatename_guard fails on it. */
+// #pragma comment(linker, "/alternatename:?Rescue@Heap_t@mHeap@@QAEXXZ=?Rescue@Heap_t@mHeap@@QAEHXZ")
 // The SolidHeapAllocator pair USED TO BE THE NEXT TWO LINES AND BOTH WERE
 // WRONG, the same failure class as SetDefault above and running the other
 // way. Receiver-bridging faces near the bottom of this file replace them and
@@ -200,9 +200,10 @@
 
 /* the matched MSVC-method bodies, dispatched qualified through local
    shadows; the signatures are copied from each TU's own declaration */
-class SolidHeap
+namespace mHeap {
+struct SolidHeap_t
 {
-public:
+
     void *VAllocate(u32 size, u32 align);           /* slot 3 */
     void VDeallocate(void *p);                      /* slot 4 */
     void VDeallocateAll();                          /* slot 5 */
@@ -216,6 +217,7 @@ public:
     u32 VSetNodeID(unsigned id);                    /* slot 13 */
     u32 VGetNodeID();                               /* slot 14 */
 };
+}
 
 /* the matched Virtual34/38 are real fBase_c methods; this local decl
    produces the same ?Virtual34@fBase_c@@QAEHII@Z the TUs define */
@@ -228,14 +230,15 @@ struct fBase_c
 /* Declared locally rather than by including Heap.h, for the reason
    hal/stage_slot0.cpp gives beside its own Stage decl: a wrong signature here
    is an LNK2019 on a name that does not exist, never a quiet call to a
-   sibling. `int` return and no arguments is what src/_ZN4Heap10SetDefaultEv.cpp
-   defines and what ?SetDefault@Heap@@QAEHXZ encodes (QAE = public __thiscall,
+   sibling. `int` return and no arguments is what src/engine/heap/Heap.cpp
+   defines and what ?SetDefault@Heap_t@mHeap@@QAEHXZ encodes (QAE = public __thiscall,
    H = int, XZ = no arguments). */
-struct Heap
+namespace mHeap {
+struct Heap_t
 {
     int SetDefault();
-    /* I = unsigned int, matching ?ResizeToFit@Heap@@QAEIXZ and the
-       `unsigned int Heap::ResizeToFit()` src/_ZN4Heap11ResizeToFitEv.cpp
+    /* I = unsigned int, matching ?ResizeToFit@Heap_t@mHeap@@QAEIXZ and the
+       `unsigned int Heap::ResizeToFit()` src/engine/heap/Heap.cpp
        defines. Virtual34 spells the flat C name with a void return; same
        __thiscall, r0/EAX ignored, the ROM's own shape. */
     unsigned int ResizeToFit();
@@ -244,53 +247,54 @@ struct Heap
        a real method name here because fBase_c::Virtual38 calls it as one. */
     void _Destroy();
 };
+}
 
 extern "C" {
 
 extern void *data_0208e3a4[31];       /* _ZTV5Actor, hal/actor_vtables.cpp */
 
-void *_ZTV9SolidHeap[16];             /* installed by SolidHeap C1 */
+void *_ZTVN5mHeap11SolidHeap_tE[16];             /* installed by SolidHeap C1 */
 DSSTATE_BEGIN
 void *data_020a0ea8;                  /* Memory::tmpHeapPtr */
 DSSTATE_END
 
 /* the flat .c bodies */
-void *_ZN9SolidHeapD1Ev(void *self);              /* slot 0 */
-void *_ZN9SolidHeapD0Ev(void *self);              /* slot 1 */
-void _ZN9SolidHeap8VDestroyEv(void *self);        /* slot 2 */
-u32 _ZN9SolidHeap12VResizeToFitEv(void *self);    /* slot 15 */
+void *_ZN5mHeap11SolidHeap_tD1Ev(void *self);              /* slot 0 */
+void *_ZN5mHeap11SolidHeap_tD0Ev(void *self);              /* slot 1 */
+void _ZN5mHeap11SolidHeap_t8VDestroyEv(void *self);        /* slot 2 */
+u32 _ZN5mHeap11SolidHeap_t12VResizeToFitEv(void *self);    /* slot 15 */
 
 }
 
-static void __fastcall sh_d1(void *s, void *)       { _ZN9SolidHeapD1Ev(s); }
-static void __fastcall sh_d0(void *s, void *)       { _ZN9SolidHeapD0Ev(s); }
-static void __fastcall sh_vdestroy(void *s, void *) { _ZN9SolidHeap8VDestroyEv(s); }
+static void __fastcall sh_d1(void *s, void *)       { _ZN5mHeap11SolidHeap_tD1Ev(s); }
+static void __fastcall sh_d0(void *s, void *)       { _ZN5mHeap11SolidHeap_tD0Ev(s); }
+static void __fastcall sh_vdestroy(void *s, void *) { _ZN5mHeap11SolidHeap_t8VDestroyEv(s); }
 static void *__fastcall sh_alloc(void *s, void *, u32 size, u32 align)
-{ return ((SolidHeap *)s)->VAllocate(size, align); }
+{ return ((mHeap::SolidHeap_t *)s)->VAllocate(size, align); }
 static void __fastcall sh_dealloc(void *s, void *, void *p)
-{ ((SolidHeap *)s)->VDeallocate(p); }
+{ ((mHeap::SolidHeap_t *)s)->VDeallocate(p); }
 static void __fastcall sh_dealloc_all(void *s, void *)
-{ ((SolidHeap *)s)->VDeallocateAll(); }
+{ ((mHeap::SolidHeap_t *)s)->VDeallocateAll(); }
 static int __fastcall sh_intact(void *s, void *)
-{ return ((SolidHeap *)s)->VIntact(); }   /* int widens bool the ARM r0 way */
+{ return ((mHeap::SolidHeap_t *)s)->VIntact(); }   /* int widens bool the ARM r0 way */
 static void __fastcall sh_rescue(void *s, void *)
-{ ((SolidHeap *)s)->VRescue(); }
+{ ((mHeap::SolidHeap_t *)s)->VRescue(); }
 static void *__fastcall sh_realloc(void *s, void *, void *p, u32 size)
-{ return ((SolidHeap *)s)->VReallocate(p, size); }
+{ return ((mHeap::SolidHeap_t *)s)->VReallocate(p, size); }
 static int __fastcall sh_sizeof(void *s, void *, void *p)
-{ return ((SolidHeap *)s)->VSizeof(p); }
+{ return ((mHeap::SolidHeap_t *)s)->VSizeof(p); }
 static u32 __fastcall sh_maxunit(void *s, void *)
-{ return ((SolidHeap *)s)->VMaxAllocationUnitSize(); }
+{ return ((mHeap::SolidHeap_t *)s)->VMaxAllocationUnitSize(); }
 static u32 __fastcall sh_maxalloc(void *s, void *)
-{ return ((SolidHeap *)s)->VMaxAllocatableSize(); }
+{ return ((mHeap::SolidHeap_t *)s)->VMaxAllocatableSize(); }
 static u32 __fastcall sh_memleft(void *s, void *)
-{ return ((SolidHeap *)s)->VMemoryLeft(); }
+{ return ((mHeap::SolidHeap_t *)s)->VMemoryLeft(); }
 static void __fastcall sh_setnodeid(void *s, void *, u32 id)
-{ ((SolidHeap *)s)->VSetNodeID(id); }
+{ ((mHeap::SolidHeap_t *)s)->VSetNodeID(id); }
 static u32 __fastcall sh_getnodeid(void *s, void *)
-{ return ((SolidHeap *)s)->VGetNodeID(); }
+{ return ((mHeap::SolidHeap_t *)s)->VGetNodeID(); }
 static u32 __fastcall sh_resizetofit(void *s, void *)
-{ return _ZN9SolidHeap12VResizeToFitEv(s); }
+{ return _ZN5mHeap11SolidHeap_t12VResizeToFitEv(s); }
 
 static int __fastcall ab_v34(void *s, void *, u32 a, u32 b)
 { return ((fBase_c *)s)->fBase_c::Virtual34(a, b); }
@@ -303,7 +307,7 @@ static int __fastcall ab_v38(void *s, void *, u32 a, u32 b)
    qualified call moves it into ECX.
 
    WHY IT EXISTS, measured rather than argued. The body is one line
-   (src/_ZN4Heap10SetDefaultEv.cpp: `int old = G; G = ((int)this); return old;`)
+   (src/engine/heap/Heap.cpp: `int old = G; G = ((int)this); return old;`)
    so a dropped receiver does not fault at the call. It PUBLISHES a register
    nobody set into the default-heap pointer (G is data_020a0ea0, aliased above)
    and the boot carries on with it. Through the old directive, with a probe
@@ -322,7 +326,7 @@ static int __fastcall ab_v38(void *s, void *, u32 a, u32 b)
    :236 through this name on level 1. Before, the run faulted in Heap::Allocate
    +0xd accessing 00000005 under SharedFilePtr::Load -> fs_hand_out ->
    Memory::Allocate, and that 5 IS data_020a0ea0 read back, because
-   src/_ZN6Memory8AllocateEjiP4Heap.cpp substitutes the default-heap pointer for
+   src/_ZN6Memory8AllocateEjiPN5mHeap6Heap_tE.cpp substitutes the default-heap pointer for
    a null heap argument. After, the pair reads
 
      SetDefault(30000060): data_020a0ea0 30000000 -> 30000060
@@ -337,8 +341,8 @@ static int __fastcall ab_v38(void *s, void *, u32 a, u32 b)
 
    SIX TUs SPELL THE FLAT C NAME AND PUSH THE RECEIVER, three of them linked
    today, so this is a live bug and not one a future seat would introduce:
-     src/_ZN4Heap20RestoreFromTemporaryEv.cpp:11
-     src/_ZN4Heap23SetupSolidHeapAsDefaultEjPS_i.cpp:18
+     src/engine/heap/Heap.cpp:11
+     src/engine/heap/Heap.cpp:18
      src/_ZN9dScDSMT_c8BehaviorEv.cpp:49 and :53
      src/_ZN5Stage13InitResourcesEv.cpp:234 and :236   (linked, env-gated)
      src/func_02034fbc.c:22, :27, :31, :33             (not compiled today)
@@ -362,8 +366,8 @@ static int __fastcall ab_v38(void *s, void *, u32 a, u32 b)
    stage_lifecycle_map.txt:995 and :1084 and ov007_seat.txt:444. The other two
    pass only because their aliases still fire, so each is armed for whoever
    correctly deletes one. */
-extern "C" int _ZN4Heap10SetDefaultEv(void *thiz)
-{ return ((Heap *)thiz)->Heap::SetDefault(); }
+extern "C" int _ZN5mHeap6Heap_t10SetDefaultEv(void *thiz)
+{ return ((mHeap::Heap_t *)thiz)->Heap_t::SetDefault(); }
 
 /* THE RECEIVER-BRIDGING FACES FOR THE SolidHeapAllocator PAIR, replacing the
    two /alternatename directives this file used to carry beside the others.
@@ -480,7 +484,7 @@ void *SolidHeapAllocator::Allocate(u32 size, int align)
    says owns ROM 0x0204e964, spells it unsigned, so MSVC mangles the two apart
    and facegen read the pair as an overload and refused to bind the flat name.
    ?Reallocate@SolidHeapAllocator@@QAEIPAXI@Z is the definition and the one
-   caller, src/_ZN9SolidHeap11VReallocateEPvj.cpp, asks for it since today's
+   caller, src/engine/heap/Heap.cpp, asks for it since today's
    main merge. Measured before removal: dumpbin over all 8662 of walk_window's
    link inputs reports ZERO objects referencing
    ?Reallocate@SolidHeapAllocator@@QAEPAXPAXI@Z. The flat name is now defined
@@ -537,8 +541,8 @@ void *SolidHeapAllocator::Reallocate(void *ptr, u32 size)
    for this family and none is claimed. Virtual34 is slot 13 of _ZTV5Actor,
    which this very file seats, and the header records that nothing on the
    castle grounds dispatches it. Probe and disassembly only. */
-extern "C" unsigned int _ZN4Heap11ResizeToFitEv(void *thiz)
-{ return ((Heap *)thiz)->Heap::ResizeToFit(); }
+extern "C" unsigned int _ZN5mHeap6Heap_t11ResizeToFitEv(void *thiz)
+{ return ((mHeap::Heap_t *)thiz)->Heap_t::ResizeToFit(); }
 
 /* THE Destroy FAMILY, LAST OF THE FOUR, AND IT IS THREE EDITS IN TWO FILES
    RATHER THAN ONE. The pairing lane LK4 recorded (a Destroy face and the
@@ -549,12 +553,12 @@ extern "C" unsigned int _ZN4Heap11ResizeToFitEv(void *thiz)
      src/_ZN7fBase_c9Virtual34Ejj.cpp  spells the flat C name and PUSHES the
          heap, at :50, :78, :100, :106 and :111. Broken.
      src/_ZN7fBase_c9Virtual38Ejj.cpp  spells `h->_Destroy()`, a __thiscall
-         METHOD call on ?_Destroy@Heap@@QAEXXZ, receiver in ECX and nothing
+         METHOD call on ?_Destroy@Heap_t@mHeap@@QAEXXZ, receiver in ECX and nothing
          pushed, at :44. CORRECT TODAY, purely because the veneer is a bare
          jmp that leaves ECX alone.
 
    So giving the veneer a receiver parameter fixes Virtual34 and BREAKS
-   Virtual38, which is why the ?_Destroy@Heap@@QAEXXZ alias had to be deleted
+   Virtual38, which is why the ?_Destroy@Heap_t@mHeap@@QAEXXZ alias had to be deleted
    in the same commit and replaced by the Heap::_Destroy face below. That
    third participant is not in LK4's note; the probe found it.
 
@@ -614,13 +618,13 @@ extern "C" unsigned int _ZN4Heap11ResizeToFitEv(void *thiz)
    puts _ZN9dScDSMT_c13InitResourcesEv on a path, and a lane that unblocked it before
    this landed would have inherited the fault with none of this evidence. The
    sequencing gate the header records is now discharged. */
-extern "C" void _ZN4Heap8_DestroyEv(void *thiz);
+extern "C" void _ZN5mHeap6Heap_t8_DestroyEv(void *thiz);
 
 /* THE FLAT C FACE ONTO Heap::Destroy WAS DEFINED HERE AND IT MOVED, CODE ONLY.
    The two lines that left are
 
-       extern "C" void _ZN4Heap7DestroyEv(void *thiz)
-       { ((Heap *)thiz)->Heap::Destroy(); }
+       extern "C" void _ZN5mHeap6Heap_t7DestroyEv(void *thiz)
+       { ((Heap *)thiz)->Heap_t::Destroy(); }
 
    and they are now in hal/actor_vtables.cpp, immediately under the Heap_Destroy
    face, character for character. Signature, qualified call and receiver
@@ -650,14 +654,14 @@ extern "C" void _ZN4Heap8_DestroyEv(void *thiz);
 /* the other direction: Virtual38's method call arrives with the receiver in
    ECX, and the veneer now wants it pushed */
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync): main defines Heap::_Destroy
-   as a real member now, so src/ emits ?_Destroy@Heap@@QAEXXZ itself and this
+   as a real member now, so src/ emits ?_Destroy@Heap_t@mHeap@@QAEXXZ itself and this
    face was the second definition (LNK2005).
 void Heap::_Destroy()
-{ _ZN4Heap8_DestroyEv(this); }                                               */
+{ _ZN5mHeap6Heap_t8_DestroyEv(this); }                                               */
 
 extern "C" void hal_seat_solidheap(void)
 {
-    void **vt = _ZTV9SolidHeap;
+    void **vt = _ZTVN5mHeap11SolidHeap_tE;
     vt[0]  = (void *)sh_d1;
     vt[1]  = (void *)sh_d0;
     vt[2]  = (void *)sh_vdestroy;

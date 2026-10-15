@@ -64,7 +64,7 @@
 # for 0x17c and the arm9 spawn table at 0x02090e54 has one row for it, in id
 # order between 0x17b's and 0x17d's, so "Puzzle Panel" and "Puzzle Panic" are
 # not two ids. The class carries a MODE GATE instead: vtable slot 35 is
-# dScMgBase_c's _ZN11dScMgBase_c9Virtual8CEv, `return (this[2] & 0xff) != 0`.
+# dScMgBase_c's _ZN11dScMgBase_c12IsAltVariantEv, `return (this[2] & 0xff) != 0`.
 #
 # FOUR SITES READ IT, not two. An earlier version of this paragraph named only
 # func_ov006_021057f0 and _02106168; review found the count low and the whole
@@ -120,7 +120,7 @@
 # Coincentration and Loves-Me slices and the framework seat brought them in.
 #
 # THE TWO ov004 BLOCKS THAT ARE NOT LINKED ARE NOT SLICE LINES EITHER, because
-# the framework already owns both: src/func_ov004_020b3278.cpp is host-copied
+# the framework already owns both: src/Banner_Init.cpp is host-copied
 # in port/unmatched/MgBase_StateDispatch.cpp and src/_ZN10dMgState_c8SetStateEi.cpp in
 # port/unmatched/MgBase_StateSetter.cpp. This lane inherits both and adds
 # neither. So the ov004 delta of this class over what is already seated is
@@ -146,8 +146,8 @@
 # A LINK NAMES AT MOST EIGHT OF THE ELEVEN, and the three it cannot name are
 # the THIRD SHAPE lane FLW found -- and one of them is vtable slot 6:
 #
-#   src/actors/dScMgPanel_c.cpp   table 02142888, arity 0, VTABLE SLOT 6
-#   src/actors/dScMgPanel_c.cpp     table 02142840, arity 1
+#   src/minigames/d_s_mg_panel.cpp   table 02142888, arity 0, VTABLE SLOT 6
+#   src/minigames/d_s_mg_panel.cpp     table 02142840, arity 1
 #   src/func_ov006_02106ca4.c     table 02142840, arity 1, and slot 6 of
 #                                 data_ov006_02142888 as well -- run mg7
 #                                 lane L380, which is why this said TWO
@@ -189,7 +189,7 @@
 #       both call it DIRECTLY. 135 instructions + 7 pool = 142 = 0x238/4. It IS
 #       an ordinary slice line, because it holds no member pointer; its one
 #       indirect call is vtable slot 35 through the seated table, the same
-#       shape src/actors/dScMgPanel_c.cpp already ships.
+#       shape src/minigames/d_s_mg_panel.cpp already ships.
 #       SECTION 1 NAMED THE WRONG PAIR OF TABLES FOR THE MODE GATE and this
 #       correction is the lane's main finding. data_ov006_0213dd4c and
 #       data_ov006_0213dd58 are read UNCONDITIONALLY, both indexed by
@@ -202,7 +202,7 @@
 # TWO MORE WERE STATEGEN JOIN MISSES AND ARE NOT FLOORS, which is the
 # distinction lane MGB's amendment to the tool exists to make:
 #   func_ov006_02106aa8  slot 1 of data_ov006_02142840. Outside the delinks
-#       join, and src/actors/dScMgPanel_c.cpp EXISTS, bannered NONMATCHING
+#       join, and src/minigames/d_s_mg_panel.cpp EXISTS, bannered NONMATCHING
 #       (different op / idiom, div=35). NONMATCHING TUs are routinely sliced
 #       and built by this port, so the state is reachable: the TU is a slice
 #       line below and the address switch has its case.
@@ -235,7 +235,7 @@
 #
 # ---- 6. ONE SHARED-HEADER PLACEHOLDER MUST BE RENAMED ---------------------
 #
-# src/actors/dScMgPanel_c.cpp, the deleting destructor, spells its own vtable as
+# src/minigames/d_s_mg_panel.cpp, the deleting destructor, spells its own vtable as
 # the shared-header placeholder `VT` -- `t[0] = (int)VT;` -- and its heap
 # argument as `HEAP`. include/decl_common.h declares `extern int VT[];` and
 # hal/cxx_aliases.cpp binds bare VT to _data_ov002_021081e4, the ENEMY base
@@ -262,7 +262,7 @@
 #   from func_ov006_02106ca4   02104580, 02104870, 021068d8
 #   from func_ov006_02104580   0210446c
 #
-# Their ov004 and arm9 callees needed nothing: func_ov004_020adb1c,
+# Their ov004 and arm9 callees needed nothing: Mg_SubmitScore,
 # _020adafc, _020adc00, _020adc1c and _020b0a54 are all in slice_mg1.txt
 # already, and RandomIntInternal, SetBg2Offset and SetSubBg2Offset are matched
 # arm9 TUs the build has had all along. That is section 2's "the ov004 delta of
@@ -271,27 +271,27 @@
 # ---- 8. ov006: THE CLASS ---------------------------------------------------
 # In address order, which is the order the closure walk emits.
 # HOST-COPIED (PPP), in port/unmatched/MgPanel_StateDispatch.cpp:
-#   src/actors/dScMgPanel_c.cpp   table 021427bc, arity 1 with a literal 0
-#   src/actors/dScMgPanel_c.cpp   table 021427ec, arity 0
-#   src/actors/dScMgPanel_c.cpp   table 02142860, arity 0
-#   src/actors/dScMgPanel_c.cpp   table 02142820, arity 0, mode-gated on slot 35
-#   src/actors/dScMgPanel_c.cpp     table 02142840, arity 1, THIRD SHAPE
+#   src/minigames/d_s_mg_panel.cpp   table 021427bc, arity 1 with a literal 0
+#   src/minigames/d_s_mg_panel.cpp   table 021427ec, arity 0
+#   src/minigames/d_s_mg_panel.cpp   table 02142860, arity 0
+#   src/minigames/d_s_mg_panel.cpp   table 02142820, arity 0, mode-gated on slot 35
+#   src/minigames/d_s_mg_panel.cpp     table 02142840, arity 1, THIRD SHAPE
 #   src/func_ov006_02106ca4.c     table 02142840, arity 1, THIRD SHAPE, AND A
 #                                 STATE -- slot 6 of data_ov006_02142888
-#   src/actors/dScMgPanel_c.cpp   table 02142840, arity 1
-#   src/actors/dScMgPanel_c.cpp   table 02142840, arity 1
-#   src/actors/dScMgPanel_c.cpp     table 02142840, arity 1, and a join-miss state
-#   src/actors/dScMgPanel_c.cpp   table 02142840, arity 1
-#   src/actors/dScMgPanel_c.cpp   table 02142888, arity 0, THIRD SHAPE, SLOT 6
+#   src/minigames/d_s_mg_panel.cpp   table 02142840, arity 1
+#   src/minigames/d_s_mg_panel.cpp   table 02142840, arity 1
+#   src/minigames/d_s_mg_panel.cpp     table 02142840, arity 1, and a join-miss state
+#   src/minigames/d_s_mg_panel.cpp   table 02142840, arity 1
+#   src/minigames/d_s_mg_panel.cpp   table 02142888, arity 0, THIRD SHAPE, SLOT 6
 # NEEDS A PER-SOURCE -DVT, see section 6 at the head of this file:
-#   src/actors/dScMgPanel_c.cpp
-src/actors/dScMgPanel_c.cpp
+#   src/minigames/d_s_mg_panel.cpp
+src/minigames/d_s_mg_panel.cpp
 # RETIRED at ALIAS2 (wave 8, the main -> port sync): main folded this body
-# into src/actors/dScMgPanel_c.cpp, which the build already compiles (through
+# into src/minigames/d_s_mg_panel.cpp, which the build already compiles (through
 # hostgen), so the per-function leftover here was the second definition
 # (LNK2005).
 #src/func_ov006_02106168.cpp
 # THE JOIN MISS, section 4. Outside the delinks join and bannered NONMATCHING,
 # so the closure walk could not reach it and stategen could not emit its case;
 # both are boundaries of a tool rather than floors for the port.
-# FOLDED into src/actors/dScMgPanel_c.cpp (row 288): src/d_s_mg_panel.c
+# FOLDED into src/minigames/d_s_mg_panel.cpp (row 288): src/d_s_mg_panel.c

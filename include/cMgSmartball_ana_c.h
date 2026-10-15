@@ -7,7 +7,7 @@
  * this class adds exactly one field: a 4-byte countdown at 0x34.
  *
  * WHAT THE ONE FIELD IS. mRespawnTimer is armed with 0x3c -- one second --
- * by Swallow, which func_ov006_02112ad8 (the ball physics)
+ * by Swallow, which SmartballBall_UpdatePhysics (the ball physics)
  * calls on this hole the frame a ball falls into it; the same call raises the
  * base's unk_031, awards the drop and plays the effect. SaveSnapshot opens
  * with the base's own SaveSnapshot body written out inline (same pattern as
@@ -33,7 +33,7 @@
  * three u8s, and this class's view now agrees with the declaration. Siblings
  * that read a 16-bit angle across 0x32-0x33 still need their casts.
  *
- * CONSTRUCTED BY func_ov006_02111774, left a free function per the recipe
+ * CONSTRUCTED BY cMgSmartball_ana_c_Construct, left a free function per the recipe
  * (this tree has migrated zero constructors), with only its vtable-symbol
  * reference renamed. */
 #ifndef CMGSMARTBALL_ANA_C_H

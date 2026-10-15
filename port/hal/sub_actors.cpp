@@ -793,7 +793,7 @@ static void port_adv_coin_count_top(dMeter_c *self, int dy)
  * two. The x positions, glyphs, digit split, language test and the 99'59"99
  * cap are the ROM's; the one guard, data_ov002_02111184, is the ROM's "a timer
  * is running on this course" byte that the player's floor check sets on the
- * slide's start floor (src/actors/Player.cpp:2606-2616).
+ * slide's start floor (src/game/player/Player.cpp:2606-2616).
  *
  * SM64DS_TIMER_TRACE=1 prints the Timer's raw GetTime and the time the HUD
  * shows, once every 30 calls (one second of ticks at the course divider), so

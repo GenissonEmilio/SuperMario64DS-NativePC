@@ -168,17 +168,17 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 // Measured from the link, not predicted: these four were walk_window's entire
 // unresolved list once the slice compiled, and the linker printed both
 // spellings of the three data ones itself ("Hint on symbols that are defined
-// and could potentially match: _data_ov026_02113f0c").
+// and could potentially match: _gWaterTatumakiModelFile").
 //
 // src/_ZN9Whirlpool13InitResourcesEv.cpp declares its three mount references
 // OUTSIDE its own `extern "C"` block -- `extern struct FilePtr4
-// data_ov026_02113f0c;` and friends -- so MSVC emits C++-decorated names for
+// gWaterTatumakiModelFile;` and friends -- so MSVC emits C++-decorated names for
 // storage the mount defines with C linkage. The cxx_aliases.cpp idiom: alias
 // the decorated spelling onto the C one, one indirection, no source edit. The
 // alias cannot be defeated: nothing else in the link defines the decorated
 // name, and the C name it points at is the mount's own array.
-#pragma comment(linker, "/alternatename:?data_ov026_02113f0c@@3UFilePtr4@@A=_data_ov026_02113f0c")
-#pragma comment(linker, "/alternatename:?data_ov026_02113f04@@3UFilePtr4@@A=_data_ov026_02113f04")
+#pragma comment(linker, "/alternatename:?gWaterTatumakiModelFile@@3UFilePtr4@@A=_gWaterTatumakiModelFile")
+#pragma comment(linker, "/alternatename:?gWaterTatumakiAnimationFile@@3UFilePtr4@@A=_gWaterTatumakiAnimationFile")
 #pragma comment(linker, "/alternatename:?data_ov026_02112f40@@3UBTA_File@@A=_data_ov026_02112f40")
 //
 // src/func_ov026_02111d4c.cpp (the whirlpool's state-0 tick) declares a local

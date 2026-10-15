@@ -177,9 +177,9 @@ extern unsigned char g_profile_MG_JUMP2[];
    symbol three other lanes in this wave also define. */
 int   _ZN14dScMgD3DBase_cD1Ev(void *self);                     /* slot 16 */
 int   _ZN14dScMgD3DBase_cD0Ev(void *self);                     /* slot 17 */
-int   _ZN14dScMgD3DBase_c8OnKickedEv(void *self);                            /* slot 24 */
-int   _ZN14dScMgD3DBase_c8OnPushedEv(void *t);                               /* slot 25 */
-int   _ZN14dScMgD3DBase_c24OnHitByCannonBlastedCharEv(void);                                  /* slot 26 */
+int   _ZN14dScMgD3DBase_c16OnGraphCallback2Ev(void *self);                            /* slot 24 */
+int   _ZN14dScMgD3DBase_c16OnGraphCallback3Ev(void *t);                               /* slot 25 */
+int   _ZN14dScMgD3DBase_c14GetDisplayModeEv(void);                                  /* slot 26 */
 
 /* FOUR OF THE SEVENTEEN ARE HOST COPIES, not the src TUs: slots 2, 10, 27 and
    28 each drop an argument the ROM rides through in a register, and
@@ -187,16 +187,16 @@ int   _ZN14dScMgD3DBase_c24OnHitByCannonBlastedCharEv(void);                    
    short version is that slot 2's dropped RETURN is what put this class's actor
    on the cleanup list instead of the behaviour list on this lane's first run.
    The four src TUs stay out of port/slice_bnt.txt for the reason
-   src/minigames/d_s_mg_single3_d_base.cpp stays out of slice_flw.txt: nothing should claim
+   src/minigames/d_s_mg_single3d_base.cpp stays out of slice_flw.txt: nothing should claim
    a decompilation the build does not use. */
 int   port_mg_d3dbase_after_init(void *c, unsigned int flags);    /* slot  2 */
 int   port_mg_d3dbase_before_render(void *c);                     /* slot 10 */
 void  port_mg_d3dbase_slot27(void *c);                            /* slot 27 */
 void  port_mg_d3dbase_slot28(void *c);                            /* slot 28 */
-void  _ZN14dScMgD3DBase_c16OnAimedAtWithEggEv(char *c);                               /* slot 29 */
-void  _ZN14dScMgD3DBase_c25OnAimedAtWithEggReturnVecEv(char *c);                               /* slot 30 */
-void  _ZN14dScMgD3DBase_c9Virtual7CEv(char *c);                               /* slot 31 */
-void  _ZN14dScMgD3DBase_c9Virtual84Ev(char *obj);                             /* slot 33 */
+void  _ZN14dScMgD3DBase_c17SaveScreenForMenuEv(char *c);                               /* slot 29 */
+void  _ZN14dScMgD3DBase_c21RestoreScreenFromMenuEv(char *c);                               /* slot 30 */
+void  _ZN14dScMgD3DBase_c15InitSubScreenBgEv(char *c);                               /* slot 31 */
+void  _ZN14dScMgD3DBase_c11InitEnginesEv(char *obj);                             /* slot 33 */
 
 /* dScMgJump2_c's own eight.  _ZN12dScMgJump2_c8BehaviorEv is the HOST COPY in
    unmatched/MgJump2_FieldPmf.cpp, not the src TU: it is the pointer-to-member
@@ -215,8 +215,8 @@ int   _ZN12dScMgJump2_c8BehaviorEv(char *self);      /* slot  6 Behavior, host c
 int   _ZN12dScMgJump2_c6RenderEv(char *self);      /* slot  9 Render */
 void *_ZN12dScMgJump2_cD1Ev(char *c);         /* slot 16 D2 */
 void *_ZN12dScMgJump2_cD0Ev(char *c);         /* slot 17 D0 */
-void  _ZN12dScMgJump2_c13OnYoshiTryEatEi(char *c);         /* slot 18 state reset */
-int   _ZN12dScMgJump2_c13OnTurnIntoEggEi(void);            /* slot 19 */
+void  _ZN12dScMgJump2_c10StartRoundEi(char *c);         /* slot 18 state reset */
+int   _ZN12dScMgJump2_c11CanEndStateEi(void);            /* slot 19 */
 
 /* THE ELEMENT VTABLE, run mg9 lane S381's headline arriving in this family.
    _ZN16dMgJump3DMario_cC1Ev -- the constructor the factory runs over the THREE
@@ -257,17 +257,17 @@ void     port_mg_dispatch_counts(unsigned *calls, unsigned *unknown);
 
 /* the persistent minigame record this class's level is keyed to.  Nothing new
    is defined here: the storage is hal/level_boot.cpp's .dsstate$savblk0004 and
-   the index function is src/func_ov004_020adc3c.c. */
-extern void         *data_ov004_020beb68;     /* the live dScMgBase_c `this` */
+   the index function is src/Mg_GetSaveTable.c. */
+/* PORTDROP2: gMgScene is declared by include/dScMgBase_c.h now (the live dScMgBase_c `this`). */
 extern unsigned char data_0209caf4[];         /* 36 records x 20 bytes       */
-int  func_ov004_020adc3c(void *c);            /* (self->field_8 >> 8) & 0xff */
+int  Mg_GetSaveTable(void *c);            /* (self->field_8 >> 8) & 0xff */
 
 }  /* extern "C" */
 
 /* The record row this class's object is keyed to, or -1 with no live base. */
 static int port_mg_jump2_record_index(void)
 {
-    return data_ov004_020beb68 ? func_ov004_020adc3c(data_ov004_020beb68) : -1;
+    return gMgScene ? Mg_GetSaveTable(gMgScene) : -1;
 }
 
 // ---- the tick witness ------------------------------------------------------
@@ -309,23 +309,23 @@ static void *__fastcall d3_d2(void *s, void *)
 static void *__fastcall d3_d0(void *s, void *)
 { D3B(17); return (void *)(size_t)_ZN14dScMgD3DBase_cD0Ev(s); }
 static int  __fastcall d3_v24(void *s, void *)
-{ D3B(24); return _ZN14dScMgD3DBase_c8OnKickedEv(s); }
+{ D3B(24); return _ZN14dScMgD3DBase_c16OnGraphCallback2Ev(s); }
 static int  __fastcall d3_v25(void *s, void *)
-{ D3B(25); return _ZN14dScMgD3DBase_c8OnPushedEv(s); }
+{ D3B(25); return _ZN14dScMgD3DBase_c16OnGraphCallback3Ev(s); }
 static int  __fastcall d3_v26(void *, void *)
-{ D3B(26); return _ZN14dScMgD3DBase_c24OnHitByCannonBlastedCharEv(); }
+{ D3B(26); return _ZN14dScMgD3DBase_c14GetDisplayModeEv(); }
 static int  __fastcall d3_v27(void *s, void *)
 { D3B(27); port_mg_d3dbase_slot27(s); return 0; }
 static int  __fastcall d3_v28(void *s, void *)
 { D3B(28); port_mg_d3dbase_slot28(s); return 0; }
 static int  __fastcall d3_v29(void *s, void *)
-{ D3B(29); _ZN14dScMgD3DBase_c16OnAimedAtWithEggEv((char *)s); return 0; }
+{ D3B(29); _ZN14dScMgD3DBase_c17SaveScreenForMenuEv((char *)s); return 0; }
 static int  __fastcall d3_v30(void *s, void *)
-{ D3B(30); _ZN14dScMgD3DBase_c25OnAimedAtWithEggReturnVecEv((char *)s); return 0; }
+{ D3B(30); _ZN14dScMgD3DBase_c21RestoreScreenFromMenuEv((char *)s); return 0; }
 static int  __fastcall d3_v31(void *s, void *)
-{ D3B(31); _ZN14dScMgD3DBase_c9Virtual7CEv((char *)s); return 0; }
+{ D3B(31); _ZN14dScMgD3DBase_c15InitSubScreenBgEv((char *)s); return 0; }
 static int  __fastcall d3_v33(void *s, void *)
-{ D3B(33); _ZN14dScMgD3DBase_c9Virtual84Ev((char *)s); return 0; }
+{ D3B(33); _ZN14dScMgD3DBase_c11InitEnginesEv((char *)s); return 0; }
 
 /* ---- dScMgJump2_c's own eight ------------------------------------------- */
 static int  __fastcall j2_init(void *s, void *)
@@ -348,9 +348,9 @@ static void *__fastcall j2_d2(void *s, void *)
 static void *__fastcall j2_d0(void *s, void *)
 { J2(17); return _ZN12dScMgJump2_cD0Ev((char *)s); }
 static int  __fastcall j2_reset(void *s, void *, int mode)
-{ J2(18); g_j2_mode18 = mode; _ZN12dScMgJump2_c13OnYoshiTryEatEi((char *)s); return 1; }
+{ J2(18); g_j2_mode18 = mode; _ZN12dScMgJump2_c10StartRoundEi((char *)s); return 1; }
 static int  __fastcall j2_v19(void *, void *, int mode)
-{ J2(19); g_j2_mode19 = mode; return _ZN12dScMgJump2_c13OnTurnIntoEggEi(); }
+{ J2(19); g_j2_mode19 = mode; return _ZN12dScMgJump2_c11CanEndStateEi(); }
 
 /* SM64DS_SCENE_SLOT0=0 and SM64DS_SCENE_SLOT9=0, the diagnostics every scene
    seat in this port carries, counted separately so a run can never read a
@@ -525,7 +525,7 @@ extern "C" void port_scene_fill_jump2(void)
 
    THE FACTORY NEEDS NO DISPLACEMENT RULING, re-checked rather than assumed.
    port/mg_fanout_costs.txt section 12 grants one to 0x169 because
-   src/actors/dScMgCup_c.cpp calls the base constructor _ZN11dScMgBase_cC2Ev
+   src/minigames/d_s_mg_cup.cpp calls the base constructor _ZN11dScMgBase_cC2Ev
    with NO argument and rides r0 through.  The ROM body here does
    `movs r4,r0 / beq / bl 0x020b2adc` at 0x020efb00..0x020efb08 with r0 STILL
    holding the allocation, and src/minigames/d_s_mg_jump2.cpp spells
@@ -600,7 +600,7 @@ extern "C" void port_scene_jump2_hits(void)
                     distinct, port_mg_jump2_field_capacity(),
                     port_mg_jump2_field_dropped());
         std::printf("[scene] dScMgJump2_c state floor: NONE. All five code "
-                    "words reachable through data_ov006_0213cc74/84/8c/94/9c "
+                    "words reachable through pmf_dScMgJump2_c_State_Idle/84/8c/94/9c "
                     "have a matched src TU and none carries a NONMATCHING "
                     "banner\n");
     }
@@ -614,7 +614,7 @@ extern "C" void port_scene_jump2_hits(void)
         port_mg_jump2_sub_counts(w, &calls, &routed, &unknown, &distinct);
         std::printf("[scene] dScMgJump2_c sub-object %s (field +0x%x): %u "
                     "call(s), %u routed, %u to the framework, %u distinct:",
-                    w ? "B, _ZN16dMgJump3DMario_c19func_ov006_020c7860Ev" : "A, func_ov006_020c4cd8",
+                    w ? "B, _ZN16dMgJump3DMario_c6UpdateEv" : "A, Heyho_Update",
                     w ? 0x3c : 0x30, calls, routed, unknown, distinct);
         for (unsigned i = 0; i < distinct; ++i) {
             unsigned code = 0;
@@ -628,7 +628,7 @@ extern "C" void port_scene_jump2_hits(void)
     }
 
     /* THE SCREEN THE 3D IS ON.  The halfword at +0x4664 is this family's
-       screen selector: dScMgD3DBase_c slot 24 (_ZN14dScMgD3DBase_c8OnKickedEv) TOGGLES it
+       screen selector: dScMgD3DBase_c slot 24 (_ZN14dScMgD3DBase_c16OnGraphCallback2Ev) TOGGLES it
        and then re-points the camera at self+0x466c + it*0xbc, and this class's
        Render (src/minigames/d_s_mg_jump2.cpp) gates its whole OAM block on it being
        1.  Two independent readers of one field, so printing it says which
@@ -668,7 +668,7 @@ extern "C" void port_scene_jump2_hits(void)
                         rec[0], rec[1], rec[2], rec[3], rec[4]);
         } else {
             std::printf("[scene] dScMgJump2_c save record: NO minigame index "
-                        "(data_ov004_020beb68 = %p)\n", data_ov004_020beb68);
+                        "(gMgScene = %p)\n", gMgScene);
         }
     }
 

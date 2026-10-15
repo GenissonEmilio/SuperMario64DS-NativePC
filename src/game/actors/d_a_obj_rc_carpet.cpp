@@ -31,6 +31,13 @@
  *   at the bottom of this file.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_rc_carpet_AssetId {
+    ASSET_RC_CARPET_BMD = 0x0697,
+    ASSET_RC_CARPET_KCL = 0x0698,
+    ASSET_RC_CARPET_WAIT_BCA = 0x0699
+};
+
 #include "common.h"
 #include "daObjRcCarpet_c.h"
 #include "SharedFilePtr.h"
@@ -85,15 +92,15 @@ struct CarpetCollisionFilePtr : SharedFilePtr {
 
 extern "C" {
 extern SharedFilePtr data_ov002_0210d9f0;
-extern CarpetModelFilePtr data_ov036_021141a4;
-extern CarpetAnimationFilePtr data_ov036_0211419c;
-extern CarpetCollisionFilePtr data_ov036_021141ac;
+extern CarpetModelFilePtr gRcCarpetModelFile;
+extern CarpetAnimationFilePtr gRcCarpetWaitAnimationFile;
+extern CarpetCollisionFilePtr gRcCarpetCollisionFile;
 extern CLPS_Block data_ov036_02112b28;
 
 /* Retail resource-pointer table at ov036:0x02113f58. */
 FlyingCarpetResources data_ov036_02113f58 = {
-    &data_ov036_021141a4,
-    &data_ov036_021141ac,
+    &gRcCarpetModelFile,
+    &gRcCarpetCollisionFile,
     &data_ov036_02112b28
 };
 
@@ -160,9 +167,9 @@ int daObjRcCarpet_c::InitResources()
     Model::LoadFile(data_ov002_0210d9f0);
     void *modelFile = Model::LoadFile(*data_ov036_02113f58.model);
     mModelAnim.SetFile((BMD_File *)modelFile, 1, -1);
-    dExtFrameCtrl_c::LoadFile(data_ov036_0211419c);
+    dExtFrameCtrl_c::LoadFile(gRcCarpetWaitAnimationFile);
     _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(
-        &mModelAnim, (BCA_File *)((int *)&data_ov036_0211419c)[1],
+        &mModelAnim, (BCA_File *)((int *)&gRcCarpetWaitAnimationFile)[1],
         0, 0x1000, 0);
     func_ov036_021122c0(this);
     UpdateClsnPosAndRot();
@@ -212,7 +219,7 @@ int daObjRcCarpet_c::CleanupResources()
     data_ov002_0210d9f0.Release();
     data_ov036_02113f58.model->Release();
     data_ov036_02113f58.collision->Release();
-    data_ov036_0211419c.Release();
+    gRcCarpetWaitAnimationFile.Release();
     return 1;
 }
 
@@ -245,6 +252,6 @@ extern "C" void func_ov036_0211224c(daObjRcCarpet_c *self)
 // @symbol _ZN15daObjRcCarpet_cD1Ev
 // @symbol _ZN15daObjRcCarpet_cD0Ev
 
-CarpetModelFilePtr data_ov036_021141a4(1687);
-CarpetAnimationFilePtr data_ov036_0211419c(1689);
-CarpetCollisionFilePtr data_ov036_021141ac(1688);
+CarpetModelFilePtr gRcCarpetModelFile(ASSET_RC_CARPET_BMD);
+CarpetAnimationFilePtr gRcCarpetWaitAnimationFile(ASSET_RC_CARPET_WAIT_BCA);
+CarpetCollisionFilePtr gRcCarpetCollisionFile(ASSET_RC_CARPET_KCL);

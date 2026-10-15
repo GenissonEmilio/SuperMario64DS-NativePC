@@ -1,6 +1,6 @@
 //cpp
 /* ov080/daPicGate_c -- picture-gate helpers: the mesh machinery under the
- * promoted TU (src/actors/daPicGate_c.cpp, .text 0x021264ec..0x02126fbc).
+ * promoted TU (src/game/actors/d_a_pic_gate_methods.cpp, .text 0x021264ec..0x02126fbc).
  * .text 0x02125404..0x021261f4: the destructor pair, then the fifteen
  * func_ov080_* helpers that fill the range up to the class TU.
  *

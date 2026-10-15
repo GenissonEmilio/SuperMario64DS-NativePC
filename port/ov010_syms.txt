@@ -80,7 +80,7 @@ data_ov010_02112d6c@0x02112d6c:0x4
 # (hal/dsstate_all.h says why).
 #   data_ov010_02112d00                        now defined by src/game/actors/d_a_obj_c1_trap.cpp
 #   data_ov010_02112d08                        now defined by src/game/actors/d_a_obj_c1_trap.cpp
-#   data_ov010_02112d50                        now defined by src/game/actors/d_a_obj_c1_hikari.cpp
-#   data_ov010_02112d64                        now defined by src/actors/daObjC1Peach_c.cpp
+#   gC1HikariModelFile                        now defined by src/game/actors/d_a_obj_c1_hikari.cpp
+#   gC1PeachModelFile                        now defined by src/game/actors/d_a_obj_c1_peach.cpp
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov010_02112d64! data_ov010_02112d08! data_ov010_02112d00! data_ov010_02112d50!
+gC1PeachModelFile! data_ov010_02112d08! data_ov010_02112d00! gC1HikariModelFile!

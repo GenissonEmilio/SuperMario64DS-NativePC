@@ -852,7 +852,7 @@ int _ZN11daObjLava_cD1Ev(int *self);            /* slot 16, matched */
 unsigned func_02022c3c(unsigned tracker, unsigned effect, int x, int y,
                        int z, const void *dir);
 void *_ZN8dActor_c13ClosestPlayerEv(void *self);
-void _ZN6Memory10DeallocateEPvP4Heap(void *p, void *heap);
+void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *p, void *heap);
 void *daObjLava_c_classInit(void);
 extern void *data_020a0eac;                    /* the game heap word */
 DSSTATE_BEGIN

@@ -20,7 +20,7 @@
  *
  * and it concludes "the fan-out sweeps for `::*` in its own slice before it
  * believes an LNK1120". THIS LANE DID THAT SWEEP, IT CAME BACK CLEAN, AND THE
- * WALL WAS STILL THERE. src/func_ov006_020c3d18.cpp contains no `::*`, no
+ * WALL WAS STILL THERE. src/FlowerFace_Update.cpp contains no `::*`, no
  * member-pointer type and no PMF global; it OPEN-CODES the Itanium sequence in
  * plain ints:
  *
@@ -54,7 +54,7 @@
  *
  *     FAULT c0000005 at eip 020c395c accessing 020c395c
  *       port_scene_tick -> port_actor_tick -> func_02043288
- *         -> flw_beh (slot 6) -> _ZN13dScMgFlower_c8BehaviorEv -> func_ov006_020c3d18+0x23
+ *         -> flw_beh (slot 6) -> _ZN13dScMgFlower_c8BehaviorEv -> FlowerFace_Update+0x23
  *
  * eip IS the DS address. That is what an unrouted code word looks like when it
  * is finally called, and it is why "the link closed" is not evidence that the
@@ -69,12 +69,12 @@
  *
  *   pair address          words                  written by
  *   -------------------   --------------------   ---------------------------
- *   data_ov006_0213aec0   020c3ad8  00000000     func_ov006_020c3adc
- *   data_ov006_0213aec8   020c395c  00000000     func_ov006_020c3990
- *   data_ov006_0213aed0   020c38ac  00000000     func_ov006_020c38b0
- *   data_ov006_0213aed8   020c3904  00000000     func_ov006_020c3908
- *   data_ov006_0213aee0   020c3ad8  00000000     NOT a state: the sentinel
- *                                                func_ov006_020c3b80 tests
+ *   pmf_FlowerFace_StateIdle   020c3ad8  00000000     FlowerFace_PlayIdle
+ *   pmf_FlowerFace_StateReact   020c395c  00000000     FlowerFace_PlayPetalPulled
+ *   pmf_FlowerFace_StateReactB   020c38ac  00000000     FlowerFace_PlayReactB
+ *   pmf_FlowerFace_StateReactA   020c3904  00000000     FlowerFace_PlayReactA
+ *   pmf_FlowerFace_StateIdle_2   020c3ad8  00000000     NOT a state: the sentinel
+ *                                                FlowerFace_IsIdle tests
  *                                                the live pair against
  *
  * EVERY ADJUSTMENT IS ZERO, which is the same measurement MgBase_StateDispatch
@@ -88,7 +88,7 @@
  * them are four-byte `bx lr` stubs in the ROM (0x020c3ad8, 0x020c38ac,
  * 0x020c3904 -- the idle states of a three-state animation machine) and the
  * fourth, 0x020c395c, is the one that does work: it returns early unless
- * Animation::Finished, then re-arms through func_ov006_020c3adc.
+ * Animation::Finished, then re-arms through FlowerFace_PlayIdle.
  *
  * ---- THE STORED WORD IS DELIBERATELY NOT REWRITTEN ------------------------
  *
@@ -96,10 +96,10 @@
  * port_*_states_seat shape: write HOST addresses over the pairs before
  * anything copies them. IT WOULD BREAK A PREDICATE HERE, and that is worth
  * recording because the fan-out will meet the same choice.
- * src/func_ov006_020c3b80.c compares the object's live pair against
- * data_ov006_0213aee0 WORD FOR WORD:
+ * src/FlowerFace_IsIdle.c compares the object's live pair against
+ * pmf_FlowerFace_StateIdle_2 WORD FOR WORD:
  *
- *     int *g = data_ov006_0213aee0;
+ *     int *g = pmf_FlowerFace_StateIdle_2;
  *     if (c[0] == g[0] && (c[1] == g[1] || c[0] == 0)) ...
  *
  * -- an "is this object in the idle state" test, and src/_ZN13dScMgFlower_c8BehaviorEv.cpp
@@ -125,7 +125,7 @@
  * two other lanes' files, so this file carries its own switch AND its own
  * adjustment ruling, spelled identically, and reports its own counts.
  *
- * IT DEFINES func_ov006_020c3d18, so src/func_ov006_020c3d18.cpp is OUT of
+ * IT DEFINES FlowerFace_Update, so src/FlowerFace_Update.cpp is OUT of
  * port/slice_flw.txt. That is the second linked function this seat trades for
  * a working dispatch, and it is the same trade MG2 made five times.
  */
@@ -140,16 +140,16 @@ extern "C" {
    at r0; they are declared here with the receiver the ROM passes so that this
    file's call sites all read the same, and the extra cdecl argument the callee
    ignores is cleaned by this caller. */
-void func_ov006_020c3ad8(void *self);
-void func_ov006_020c38ac(void *self);
-void func_ov006_020c3904(void *self);
-int  func_ov006_020c395c(int *self);
+void FlowerFace_StateIdle(void *self);
+void FlowerFace_StateReactB(void *self);
+void FlowerFace_StateReactA(void *self);
+int  FlowerFace_StateReact(int *self);
 
 /* the rest of the dispatching TU, verbatim from src */
 int  _ZN15dExtFrameCtrl_c7AdvanceEv(void *);
-int  func_ov006_020c35e8(void *);
+int  FallingPetal_Update(void *);
 
-void func_ov006_020c3d18(char *c);
+void FlowerFace_Update(char *c);
 unsigned port_mg_flower_sub_calls(void);
 unsigned port_mg_flower_sub_unknown(void);
 
@@ -188,23 +188,23 @@ static void sub_call(void *p, unsigned code, int adj)
         return;
     }
     switch (code) {
-    case 0x020c3ad8u: func_ov006_020c3ad8(p);         return;
-    case 0x020c38acu: func_ov006_020c38ac(p);         return;
-    case 0x020c3904u: func_ov006_020c3904(p);         return;
-    case 0x020c395cu: func_ov006_020c395c((int *)p);  return;
+    case 0x020c3ad8u: FlowerFace_StateIdle(p);         return;
+    case 0x020c38acu: FlowerFace_StateReactB(p);         return;
+    case 0x020c3904u: FlowerFace_StateReactA(p);         return;
+    case 0x020c395cu: FlowerFace_StateReact((int *)p);  return;
     default: break;
     }
     sub_unhandled("UNHANDLED", code, adj);
 }
 
-/* src/func_ov006_020c3d18.cpp -- RETIRED, run linkfull lane PMFMG1. The five
+/* src/FlowerFace_Update.cpp -- RETIRED, run linkfull lane PMFMG1. The five
    .data pairs that can ever reach the object's head are seated below with
    host words, so the matched TU's own open-coded call reaches a host body.
 
    ---- WHY THE HEADER'S "DELIBERATELY NOT REWRITTEN" NO LONGER HOLDS ----------
    The header above is right that rewriting ONE side breaks the idle test:
-   src/func_ov006_020c3b80.c compares the object's live pair with
-   data_ov006_0213aee0 word for word. It is answered the way lanes MGWRITER
+   src/FlowerFace_IsIdle.c compares the object's live pair with
+   pmf_FlowerFace_StateIdle_2 word for word. It is answered the way lanes MGWRITER
    (MgMemory2_FieldPmf.cpp) and FWD gate 3 (MgTrampolineTerror_MarioDispatch
    .cpp) answered it: ONE HOST WORD PER CODE WORD, written into every pair that
    holds it, the sentinel included. 0213aec0 and the sentinel 0213aee0 both
@@ -221,24 +221,24 @@ static void sub_call(void *p, unsigned code, int adj)
    one reader by value is 020c3b80.
 
    __cdecl, AND THE LISTING SAYS WHY (runs/linkfull/out/PMFMG1/
-   func_ov006_020c3d18.asm): `push ecx / call eax`, then the caller's own
+   FlowerFace_Update.asm): `push ecx / call eax`, then the caller's own
    `add esp, 8` covering this push and the Animation::Advance one. The receiver
    is on the stack and the caller cleans it, so each pair holds a __cdecl
    wrapper that counts what sub_call counted and calls the body. Three of the
    four bodies take nothing (their ROM bodies are `bx lr`); a cdecl callee that
    declares nothing reads nothing, and the caller cleans the word it pushed. */
-static void fw_c3ad8(void *self) { ++g_sub_calls; func_ov006_020c3ad8(self); }
-static void fw_c395c(void *self) { ++g_sub_calls; func_ov006_020c395c((int *)self); }
-static void fw_c38ac(void *self) { ++g_sub_calls; func_ov006_020c38ac(self); }
-static void fw_c3904(void *self) { ++g_sub_calls; func_ov006_020c3904(self); }
+static void fw_c3ad8(void *self) { ++g_sub_calls; FlowerFace_StateIdle(self); }
+static void fw_c395c(void *self) { ++g_sub_calls; FlowerFace_StateReact((int *)self); }
+static void fw_c38ac(void *self) { ++g_sub_calls; FlowerFace_StateReactB(self); }
+static void fw_c3904(void *self) { ++g_sub_calls; FlowerFace_StateReactA(self); }
 
 struct MgFlwPair { unsigned code; int adj; };
 extern "C" {
-extern MgFlwPair data_ov006_0213aec0;   /* written  src/func_ov006_020c3adc.c */
-extern MgFlwPair data_ov006_0213aec8;   /* written  src/func_ov006_020c3990.c */
-extern MgFlwPair data_ov006_0213aed0;   /* written  src/func_ov006_020c38b0.c */
-extern MgFlwPair data_ov006_0213aed8;   /* written  src/func_ov006_020c3908.c */
-extern MgFlwPair data_ov006_0213aee0;   /* SENTINEL src/func_ov006_020c3b80.c */
+extern MgFlwPair pmf_FlowerFace_StateIdle;   /* written  src/FlowerFace_PlayIdle.c */
+extern MgFlwPair pmf_FlowerFace_StateReact;   /* written  src/FlowerFace_PlayPetalPulled.c */
+extern MgFlwPair pmf_FlowerFace_StateReactB;   /* written  src/FlowerFace_PlayReactB.c */
+extern MgFlwPair pmf_FlowerFace_StateReactA;   /* written  src/FlowerFace_PlayReactA.c */
+extern MgFlwPair pmf_FlowerFace_StateIdle_2;   /* SENTINEL src/FlowerFace_IsIdle.c */
 void port_mg_flower_sub_seat(void);
 }
 
@@ -256,11 +256,11 @@ extern "C" void port_mg_flower_sub_seat(void)
 
     static const struct { MgFlwPair *p; unsigned rom; void *host; const char *what; }
     seats[] = {
-        {&data_ov006_0213aec0, 0x020c3ad8u, (void *)fw_c3ad8, "0213aec0 written"},
-        {&data_ov006_0213aec8, 0x020c395cu, (void *)fw_c395c, "0213aec8 written"},
-        {&data_ov006_0213aed0, 0x020c38acu, (void *)fw_c38ac, "0213aed0 written"},
-        {&data_ov006_0213aed8, 0x020c3904u, (void *)fw_c3904, "0213aed8 written"},
-        {&data_ov006_0213aee0, 0x020c3ad8u, (void *)fw_c3ad8, "0213aee0 SENTINEL"},
+        {&pmf_FlowerFace_StateIdle, 0x020c3ad8u, (void *)fw_c3ad8, "0213aec0 written"},
+        {&pmf_FlowerFace_StateReact, 0x020c395cu, (void *)fw_c395c, "0213aec8 written"},
+        {&pmf_FlowerFace_StateReactB, 0x020c38acu, (void *)fw_c38ac, "0213aed0 written"},
+        {&pmf_FlowerFace_StateReactA, 0x020c3904u, (void *)fw_c3904, "0213aed8 written"},
+        {&pmf_FlowerFace_StateIdle_2, 0x020c3ad8u, (void *)fw_c3ad8, "0213aee0 SENTINEL"},
     };
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
         if ((unsigned)(seats[i].p->code) < 0x02000000u || (unsigned)(seats[i].p->code) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */

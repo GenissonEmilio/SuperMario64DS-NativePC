@@ -22,13 +22,13 @@ port/unmatched/hostarm/_ZN15TextureSequenceD0Ev.cpp
 src/engine/model/TextureTransformer.cpp
 port/unmatched/hostarm/_ZN18TextureTransformerD0Ev.cpp
 src/_ZN9ModelAnimD0Ev.cpp
-src/actors/dCapEnemy_c.cpp
+src/runtime/actor/d_cap_enemy.cpp
 # PORTSYNC2: main's src defines this flat D0 in its own _MSC_VER arm; no host copy.
-src/actors/dScMgSnowball_c.cpp
+src/minigames/d_s_mg_snowball.cpp
 port/unmatched/hostarm/_ZN15dScMgSnowball_cD0Ev.cpp
-src/actors/daObjBk_Botaosi_c.cpp
+src/game/actors/d_a_obj_bk_botaosi.cpp
 port/unmatched/hostarm/_ZN14KnockDownPlankD0Ev.cpp
-src/actors/daObjBk_Lift_c.cpp
+src/game/actors/d_a_obj_bk_lift.cpp
 port/unmatched/hostarm/_ZN9TowerStepD0Ev.cpp
 #
 # BATCH B4, THE BASE-OBJECT VARIANTS A HOST CALLER NAMES. Each file below is
@@ -56,5 +56,5 @@ src/minigames/d_s_mg_base.cpp
 # campaign's arm to name; this arm calls the D1 body and then the deallocation
 # the ROM's D0 ends with, Memory::Deallocate on the word at 0x020a0eac, by
 # name: the two calls the retired port/faces_sync.txt face made.
-src/actors/daObjYajirusi_c.cpp
+src/game/actors/d_a_obj_yajirusi.cpp
 port/unmatched/hostarm/_ZN14ArrowSignRightD0Ev.cpp

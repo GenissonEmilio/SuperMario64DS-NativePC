@@ -168,11 +168,11 @@ DSSTATE_END
    own collision SharedFilePtr at 0x02112c68 in the 119/121/122 class's
    CleanupResources. It could not take a direct -D either: decl_common.h
    declares BOTH spellings, `extern char data_ov056_02112c68[]` at 262 and
-   `extern int data_ov035_02112c68[]` at 1149, so renaming one onto the other
+   `extern int gCtMechaObj10CollisionFile[]` at 1149, so renaming one onto the other
    is a C2371 different-basic-types redefinition -- measured, not predicted.
    The name is declared inside decl_common.h's extern "C" block, so this LHS
    is a C name; it is defined nowhere, so the alias cannot be defeated. */
-#pragma comment(linker, "/alternatename:_port_ov035_rcs_clsn=_data_ov035_02112c68")
+#pragma comment(linker, "/alternatename:_port_ov035_rcs_clsn=_gCtMechaObj10CollisionFile")
 
 /* ---- THE MEASURED EXTERNAL GAP -------------------------------------------
    Eight unresolved externals off the FIRST link of this slice, read out of
@@ -182,9 +182,9 @@ DSSTATE_END
    decorates each with its declared type while the mount and romdata emit the
    one C name. Every LHS below is declared and never defined, so
    alternatename_guard stays clean. */
-#pragma comment(linker, "/alternatename:?data_ov035_02112c78@@3PAHA=_data_ov035_02112c78")
-#pragma comment(linker, "/alternatename:?data_ov035_02112c70@@3PAHA=_data_ov035_02112c70")
-#pragma comment(linker, "/alternatename:?data_ov035_02112c60@@3PAHA=_data_ov035_02112c60")
+#pragma comment(linker, "/alternatename:?gCtMechaObj10ModelFile@@3PAHA=_gCtMechaObj10ModelFile")
+#pragma comment(linker, "/alternatename:?gCtMechaObj12lModelFile@@3PAHA=_gCtMechaObj12lModelFile")
+#pragma comment(linker, "/alternatename:?gCtMechaObj12sModelFile@@3PAHA=_gCtMechaObj12sModelFile")
 #pragma comment(linker, "/alternatename:?data_ov035_02111ef4@@3PAY03FA=_data_ov035_02111ef4")
 #pragma comment(linker, "/alternatename:?data_ov035_02111ef0@@3PAFA=_data_ov035_02111ef0")
 /* the RNG seed, arm9. hal/cxx_aliases.cpp:1476 already binds the SCALAR

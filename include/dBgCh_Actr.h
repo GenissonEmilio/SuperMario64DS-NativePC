@@ -99,7 +99,7 @@ struct dBgCh_Actr : dBgCh {
     Fix12i mScale;              /* 0x1b8 - (?) Init sets 0x1000 */
 
     /* --- vtable, in ROM order. Do not reorder. --- */
-    /* Defined out of line in src/engine/collision/dBgCh_Actr.cpp. Nothing
+    /* Defined out of line in src/engine/collision/d_bg_ch_actr.cpp. Nothing
        derives from this class, so D1 and D0 are the only variants emitted. */
     virtual ~dBgCh_Actr();    /* slots 0 (D1), 1 (D0) */
 

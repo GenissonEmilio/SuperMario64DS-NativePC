@@ -334,7 +334,7 @@ extern PortEyerokCell data_ov066_0211b0ec;
 #pragma comment(linker, "/alternatename:?data_ov066_0211aea4@@3PAPAXA=_data_ov066_0211aea4")
 #pragma comment(linker, "/alternatename:?data_ov066_0211ae8c@@3PAPAXA=_data_ov066_0211ae8c")
 
-/* src/actors/Eyerok.cpp -- twenty-two SharedFilePtr releases,
+/* src/game/actors/d_a_iwante.cpp -- twenty-two SharedFilePtr releases,
    each spelled `extern char data_ov066_*[]`. */
 #pragma comment(linker, "/alternatename:?data_ov066_0211ae6c@@3PADA=_data_ov066_0211ae6c")
 #pragma comment(linker, "/alternatename:?data_ov066_0211ae4c@@3PADA=_data_ov066_0211ae4c")

@@ -4,9 +4,9 @@
 //
 // Until run mg12 the only instrument either trampoline scene had for "did a
 // stylus stroke get judged" was the WANT COUNT of the trap standing in for
-// func_ov006_020d0c38: the body had no decompilation, the trap returned the
+// TrmpLine_Create: the body had no decompilation, the trap returned the
 // miss arm, and counting how often it was asked was the honest measurement.
-// That body is decompiled and seated now (src/func_ov006_020d0c38.c, an honest
+// That body is decompiled and seated now (src/TrmpLine_Create.c, an honest
 // NONMATCHING seat with its divergences in its banner), so the trap is gone and
 // its counter can only read zero.  A zero that used to mean "no stroke was ever
 // judged" would now mean nothing at all, which is exactly the shape run mg11
@@ -23,9 +23,9 @@
 //     *(short *)&data_ov006_02140cae[i * 0x32c] = i;
 //
 // AND IT IS NOT THE ONLY WRITER, WHICH IS WHY THIS READOUT SPLITS THE FOUR.
-// The first version of this file said "func_ov006_020d0c38 is the only writer
+// The first version of this file said "TrmpLine_Create is the only writer
 // of that word" and the first run disproved it: record 3 came up live before a
-// stylus had touched anything.  src/func_ov006_020d0b78.c installs the scene's
+// stylus had touched anything.  src/TrmpLine_CreateStartLineT2.c installs the scene's
 // OWN starting trampoline into RECORD 3 at setup -- it writes
 // data_ov006_02141590[0x54] = 3, [0x55] = 0 and [0x51] = 3, which resolve to
 // 0x02140990 + 3*0x32c + 0x324, +0x326 and +0x31e, the same three fields --
@@ -40,13 +40,13 @@
 // The record base itself,
 // data_ov006_02140990 (stride 0x32c, four records), carries the two stroke
 // endpoints at +0x50 and +0x54, and the RENDER GATE at +0x328 which decides
-// whether func_ov006_020cf2fc and func_ov006_020cf758 ever look at the record
-// (src/func_ov006_020d09e0.c and src/func_ov006_020d0ac0.c are the two loops
+// whether TrmpLine_Draw and TrmpLine_Update ever look at the record
+// (src/TrmpLine_DrawAll.c and src/TrmpLine_UpdateAll.c are the two loops
 // that read it).
 //
 // A CORRECTION, MEASURED. What stood here said the endpoints were written by
 // the TEST, "before it called the installer". They are not: the test PASSES
-// them (func_ov006_020d01e0(g, a, b), the call at +0x344 of the seat) and the
+// them (TrmpLine_Build(g, a, b), the call at +0x344 of the seat) and the
 // installer is what stores them. Run mg12 lane OVERLAY wired slot 23's missing
 // beat and drew a scripted line on 384; record 0 came up live=1, +0x326=0,
 // index=0 -- the seat's own three-store success tail at +0x34c..+0x36c, exactly
@@ -57,11 +57,11 @@
 // the floor's.
 //
 // READ THE GATE HONESTLY.  +0x328 is NOT written by the hit test.  It is
-// written inside func_ov006_020d01e0, the 0x800 installer.
+// written inside TrmpLine_Build, the 0x800 installer.
 //
 // THAT SENTENCE USED TO END "which is still a trapped floor -- so on this build
 // the gate stays 0". IT NO LONGER DOES. Run mg12 lane INST decompiled the
-// installer and seated it (src/func_ov006_020d01e0.cpp, an honest NONMATCHING
+// installer and seated it (src/TrmpLine_Build.cpp, an honest NONMATCHING
 // seat with its divergences in its banner), and the trap in
 // unmatched/MgTrampolineTime_Floors.cpp is retired with it. So the gate is a
 // LIVE MEASUREMENT now, not a known floor: 3 means the installer accepted an
@@ -75,7 +75,7 @@
 
 extern "C" {
 
-/* the ov006 mount's own C names; src/func_ov006_020d0ac0.c reaches the record
+/* the ov006 mount's own C names; src/TrmpLine_UpdateAll.c reaches the record
    base the same way */
 extern unsigned char data_ov006_02140990[];
 extern unsigned char data_ov006_02140cae[];
@@ -93,7 +93,7 @@ void port_mg_trampoline_record_report(void)
     int i;
     int strokes = 0;            /* records 0..2 only, and only value 1 */
     int gated = 0;
-    int setup = 0;              /* record 3, written by func_ov006_020d0b78 */
+    int setup = 0;              /* record 3, written by TrmpLine_CreateStartLineT2 */
 
     for (i = 0; i < 4; i++) {
         const unsigned char *rec = &data_ov006_02140990[i * REC_STRIDE];
@@ -114,8 +114,8 @@ void port_mg_trampoline_record_report(void)
         std::printf("[scene] trampoline record %d (%s): live=%d (+0x324), "
                     "+0x326=%d, index=%d (+0x31e), stroke (%d,%d)->(%d,%d) "
                     "(+0x50/+0x54), render gate +0x328=%u\n",
-                    i, i == 3 ? "SETUP, func_ov006_020d0b78's"
-                              : "stylus, func_ov006_020d0c38's",
+                    i, i == 3 ? "SETUP, TrmpLine_CreateStartLineT2's"
+                              : "stylus, TrmpLine_Create's",
                     (int)flag, (int)f326, (int)idx,
                     (int)p0[0], (int)p0[1], (int)p1[0], (int)p1[1],
                     (unsigned)gate);
@@ -123,10 +123,10 @@ void port_mg_trampoline_record_report(void)
 
     std::printf("[scene] trampoline records: %d of 3 stylus records (0..2) "
                 "carry an ACCEPTED stroke, %d setup record (3, the scene's own "
-                "starting trampoline from func_ov006_020d0b78) is set, %d of 4 "
+                "starting trampoline from TrmpLine_CreateStartLineT2) is set, %d of 4 "
                 "render-gated. Record 3 being live is a boot fact and NOT "
                 "stylus evidence. The gate at +0x328 is written inside "
-                "func_ov006_020d01e0, which run mg12 lane INST DECOMPILED AND "
+                "TrmpLine_Build, which run mg12 lane INST DECOMPILED AND "
                 "SEATED, so the gate is a live measurement: 3 = an element was "
                 "accepted and the trampoline is built, 1 = the installer ran "
                 "and found none, 0 after a stroke = the installer was never "

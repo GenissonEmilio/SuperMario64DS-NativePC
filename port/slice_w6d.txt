@@ -38,7 +38,7 @@
 
 # ---- ov100, daObjPathLift_c's own block (9) --------------------------------
 # slot 16, D1
-src/game/actors/daObjPathLift_c.cpp
+src/game/actors/d_a_obj_path_lift.cpp
 # slot 17, D0 (the "OnYoshiTryEat" recovered
 #   NAME is wrong; the body is D1 + Deallocate
 #   and the table puts it at slot 17)
@@ -49,47 +49,47 @@ src/game/actors/daObjPathLift_c.cpp
 # slot 6, Behavior
 # slot 0, InitResources
 # the factory
-# FOLDED into src/game/actors/daObjPathLift_c.cpp (row 41): src/d_a_obj_path_lift.cpp
+# FOLDED into src/game/actors/d_a_obj_path_lift.cpp (row 41): src/d_a_obj_path_lift.cpp
 
 # ---- ov002, the PathLift BASE branch (20 of 22; 2 are host copies) ---------
 # base table slot 16
-src/actors/dPathLiftActor_c.cpp
+src/runtime/actor/d_path_lift_actor.cpp
 # base table slot 17
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/_ZN16dPathLiftActor_cD0Ev.cpp
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/_ZN16dPathLiftActor_cD0Ev.cpp
 # slot 32 -- the EXTRA virtual PathLift adds
 #   to Platform's 32-slot shape, INHERITED
 #   unchanged by daObjPathLift_c
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/_ZN16dPathLiftActor_c9AfterClsnEi.cpp
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/_ZN16dPathLiftActor_c9AfterClsnEi.cpp
 # the real base init (see the note above)
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020efaf0.cpp
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020efaf0.cpp
 # base-init helper
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020efbdc.c
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020efbdc.c
 # Render's base half
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020efc74.cpp
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020efc74.cpp
 # Behavior's base half (path node walk)
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020efcf4.c
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020efcf4.c
 # the three states' six bodies, reloc-confirmed out of the sinit's own source
 # statics (data_ov002_0210aed0/d8/e0/e8/f0/f8):
 # state 0 WAIT  enter
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020ef3f0.c
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020ef3f0.c
 # state 0 WAIT  tick   (`bx lr`, 4 bytes)
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020ef3ec.c
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020ef3ec.c
 # state 1 PATH  enter
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020efa44.c
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020efa44.c
 # state 1 PATH  tick
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020ef670.c
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020ef670.c
 # state 2 FALL  enter
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020ef57c.c
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020ef57c.c
 # state 2 FALL  tick
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020ef408.c
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020ef408.c
 # the small predicates the states and AfterClsn share:
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020efe68.c
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020efe7c.c
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020efe9c.c
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020efebc.c
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020efedc.c
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020eff04.cpp
-# FOLDED into src/actors/dPathLiftActor_c.cpp (row 56): src/func_ov002_020eff90.cpp
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020efe68.c
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020efe7c.c
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020efe9c.c
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020efebc.c
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020efedc.c
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020eff04.cpp
+# FOLDED into src/runtime/actor/d_path_lift_actor.cpp (row 56): src/func_ov002_020eff90.cpp
 
 # ---- this lane's own host files (the ov065 pattern: one reader, one owner) --
 port/hal/actor_classes_ov100pl.cpp

@@ -4,7 +4,7 @@
     .ctor       start:0x0211c5a4 end:0x0211c5b0 kind:rodata align:4
     .data       start:0x0211c5c0 end:0x0211d380 kind:data align:32
     .bss        start:0x0211d380 end:0x0211d9c0 kind:bss align:32
-src/actors/dEntObj_c.cpp:
+src/game/stages/d_ent_obj.cpp:
     complete
     .text start:0x02113ee0 end:0x02115ab8
     .init start:0x0211b5e0 end:0x0211bb00
@@ -12,7 +12,7 @@ src/actors/dEntObj_c.cpp:
     .data start:0x0211c5c0 end:0x0211c648
     .bss start:0x0211d384 end:0x0211d5bc
 
-src/actors/dScEntry_c.cpp:
+src/game/stages/d_s_entry.cpp:
     complete
     .text start:0x02115ab8 end:0x02116128
 
@@ -280,7 +280,7 @@ src/_ZN10dScEntry_c19BeforeInitResourcesEv.cpp:
     complete
     .text start:0x0211a734 end:0x0211a740
 
-src/d_s_entry_result.cpp:
+src/game/stages/d_s_entry_result.cpp:
     complete
     .text start:0x0211a740 end:0x0211a834
 
@@ -292,7 +292,7 @@ src/_ZN10dScEntry_c6icon_cC1Ev.cpp:
     complete
     .text start:0x0211a838 end:0x0211a854
 
-src/d_s_entry_entry.cpp:
+src/game/stages/d_s_entry_entry.cpp:
     complete
     .text start:0x0211a854 end:0x0211a948
 

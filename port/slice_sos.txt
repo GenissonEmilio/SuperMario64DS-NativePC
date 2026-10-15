@@ -52,7 +52,7 @@
 #
 # THE FACTORY NEEDS NO DISPLACEMENT RULING, and it is worth saying because
 # 0x169's did. src/d_s_mg_bomroom.c calls _ZN11dScMgBase_cC2Ev(p) WITH its
-# argument, where src/actors/dScMgCup_c.cpp calls the same base constructor
+# argument, where src/minigames/d_s_mg_cup.cpp calls the same base constructor
 # with none and rides r0 through. That callee dereferences on its first
 # statement and then writes three vtable words through the pointer, so the
 # difference is a wild write versus a correct one. This factory is on the
@@ -85,12 +85,12 @@
 # THE ov004 DELTA IS ZERO, AND THAT IS A MEASUREMENT. The closure reaches
 # fourteen ov004 TUs that are in no build target, and every one of the fourteen
 # is deliberately excluded because MG1/MG2/BASESET host-copied it:
-#     func_ov004_020add88  _020adf2c  _020b31b4  _020b321c  _020b3278
+#     Mg_DrawFx  _020adf2c  _020b31b4  _020b321c  _020b3278
 #     _020b8714  _020b8778   the pointer-to-member group (MG2)
-#     _ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv  _020af094                       MgBase_DeclConflict
+#     _ZN11dScMgBase_c21RestoreScreenFromMenuEv  _020af094                       MgBase_DeclConflict
 #     _ZN11dScMgBase_c19BeforeInitResourcesEv                                  MgBase_Slot1
 #     _ZN11dScMgBase_c21AfterCleanupResourcesEj  _020b7460                       BASESET
-#     func_ov004_020b2cb8                                  MgBase_LangTable
+#     Mg_LoadBannerFiles                                  MgBase_LangTable
 #     _ZN10dMgState_c8SetStateEi                                  the framework's PMF
 #                                                          state setter
 # Adding a line for any of them would put a second definition in the link.
@@ -120,7 +120,7 @@
 #
 # THE SECOND FLOOR COST A LINKED FUNCTION AS WELL AS A BODY, and closing it
 # pays that back. This list had 72 active lines against a +71 linkage delta,
-# because the one TU /OPT:REF dropped was src/actors/dScMgBomroom_c.cpp: every
+# because the one TU /OPT:REF dropped was src/minigames/d_s_mg_bomroom.cpp: every
 # relocation that reaches 0x020d66c4 anywhere in ov006 comes from inside
 # func_ov006_020d8408 (five call sites, 0x020d86e8, _8768, _8794, _8814,
 # _8884), so with that body undecompiled the TU had no caller in the build. It
@@ -156,33 +156,33 @@
 # but for the table declaration and the dispatch site.
 
 # ---- ov006: the class's own closure, minus the seven host copies -----------
-src/actors/dScMgBomroom_c.cpp
-src/actors/dScMgBomroom_c.cpp
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/_ZN14dScMgBomroom_cD1Ev.cpp
+src/minigames/d_s_mg_bomroom.cpp
+src/minigames/d_s_mg_bomroom.cpp
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/_ZN14dScMgBomroom_cD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN14dScMgBomroom_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN14dScMgBomroom_cD0Ev.cpp
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5ab0.cpp
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5b00.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5b10.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5c60.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5c88.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5d08.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5d90.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5dd4.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5dfc.cpp
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5e1c.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5e3c.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d5e5c.c
-# HOST-COPIED (SOS): src/actors/dScMgBomroom_c.cpp -- table data_ov006_02141660, arity 1 (constant 0), member-pointer typed through an Entry wrapper
-# HOST-COPIED (SOS): src/actors/dScMgBomroom_c.cpp -- table data_ov006_021416c0, arity 1, member-pointer typed
-# HOST-COPIED (SOS): src/actors/dScMgBomroom_c.cpp -- table data_ov006_02141680, arity 1, member-pointer typed
-# HOST-COPIED (SOS): src/actors/dScMgBomroom_c.cpp -- table data_ov006_02141708, arity 1, member-pointer typed through an Entry wrapper; ALSO state slot 6 of 02141730
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d7c4c.cpp
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d7e7c.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d7edc.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d7f5c.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d816c.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8324.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d5ab0.cpp
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d5b00.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d5b10.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d5c60.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d5c88.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d5d08.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d5d90.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d5dd4.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/Bomroom_DrawScore.cpp
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d5e1c.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d5e3c.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d5e5c.c
+# HOST-COPIED (SOS): src/minigames/d_s_mg_bomroom.cpp -- table data_ov006_02141660, arity 1 (constant 0), member-pointer typed through an Entry wrapper
+# HOST-COPIED (SOS): src/minigames/d_s_mg_bomroom.cpp -- table data_ov006_021416c0, arity 1, member-pointer typed
+# HOST-COPIED (SOS): src/minigames/d_s_mg_bomroom.cpp -- table data_ov006_02141680, arity 1, member-pointer typed
+# HOST-COPIED (SOS): src/minigames/d_s_mg_bomroom.cpp -- table data_ov006_02141708, arity 1, member-pointer typed through an Entry wrapper; ALSO state slot 6 of 02141730
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d7c4c.cpp
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d7e7c.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d7edc.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d7f5c.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d816c.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d8324.c
 # HOST-COPIED (SOS): src/func_ov006_020d836c.cpp -- table data_ov006_02141730, arity 1, member-pointer typed
 # func_ov006_020d8408 is back (run linkfull, lane RS4PORT). SCENES2 (run link100
 # wave 10 round 2) host-copied it into port/unmatched/MgBomroom_Slot8408.c
@@ -190,21 +190,21 @@ src/actors/dScMgBomroom_c.cpp
 # one-parameter cast, the second argument riding ARM r1 (scene 370 died at
 # func_ov006_020d66c4+0xc). main #3107 passes both; this is main's blob,
 # byte-identical under mwccarm 2004/b56, and the host copy is retired.
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8408.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8904.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d893c.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d89c4.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8af8.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8c88.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8cc4.cpp
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8d84.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8f34.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d8408.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d8904.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d893c.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d89c4.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d8af8.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d8c88.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d8cc4.cpp
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d8d84.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d8f34.c
 # HOST-COPIED (SOS): src/func_ov006_020d8f98.cpp -- table data_ov006_021416a0, arity 0, OPEN-CODED IN INTS; neither the link nor a member-pointer source sweep can see it. ALSO state slot 3 of 021416e0
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d8ff4.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d9020.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d904c.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/func_ov006_020d907c.c
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/_ZN14dScMgBomroom_c13OnYoshiTryEatEi.cpp
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/_ZN14dScMgBomroom_c6RenderEv.cpp
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d8ff4.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d9020.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d904c.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/func_ov006_020d907c.c
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/_ZN14dScMgBomroom_c10StartRoundEi.cpp
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/_ZN14dScMgBomroom_c6RenderEv.cpp
 # HOST-COPIED (SOS): src/_ZN14dScMgBomroom_c8BehaviorEv.cpp -- table data_ov006_021416e0, arity 0, member-pointer typed; VTABLE SLOT 6, Behavior
-# FOLDED into src/actors/dScMgBomroom_c.cpp (row 159): src/_ZN14dScMgBomroom_c13InitResourcesEv.cpp
+# FOLDED into src/minigames/d_s_mg_bomroom.cpp (row 159): src/_ZN14dScMgBomroom_c13InitResourcesEv.cpp

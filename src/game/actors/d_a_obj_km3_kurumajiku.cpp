@@ -25,6 +25,12 @@
  *   data_ov047_*.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_km3_kurumajiku_AssetId {
+    ASSET_KM3_KURUMAJIKU_BMD = 0x0681,
+    ASSET_KM3_KURUMAJIKU_KCL = 0x0682
+};
+
 #include "SharedFilePtr.h"
 
 /* 8-byte file handles. The model uses func_02017acc / func_02017ab4 and the
@@ -129,5 +135,5 @@ s32 daObjKm3_Kurumajiku_c::CleanupResources()
 
 /* Source order is construction order: model file 1665, then the collision
  * file 1666. The compiler registers each destructor beside the object. */
-Km3KurumajikuModelFilePtr data_ov047_021125e8(1665);
-Km3KurumajikuClsnFilePtr data_ov047_021125e0(1666);
+Km3KurumajikuModelFilePtr data_ov047_021125e8(ASSET_KM3_KURUMAJIKU_BMD);
+Km3KurumajikuClsnFilePtr data_ov047_021125e0(ASSET_KM3_KURUMAJIKU_KCL);

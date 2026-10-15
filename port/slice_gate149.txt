@@ -22,20 +22,20 @@
 # auto-generated member-dtor calls would resolve to MSVC-mangled sub-object
 # destructors the byte-matched tree has only under their Itanium names, so D1 is
 # a host thunk (the D0 chain minus the Deallocate), not that .cpp.
-src/actors/daChair_c.cpp
-# FOLDED into src/actors/daChair_c.cpp (row 25): src/_ZN12HauntedChair13InitResourcesEv.cpp
-# FOLDED into src/actors/daChair_c.cpp (row 25): src/_ZN12HauntedChair16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daChair_c.cpp (row 25): src/_ZN12HauntedChair8BehaviorEv.cpp
-# FOLDED into src/actors/daChair_c.cpp (row 25): src/_ZN12HauntedChair6RenderEv.cpp
+src/game/actors/d_a_chair.cpp
+# FOLDED into src/game/actors/d_a_chair.cpp (row 25): src/_ZN12HauntedChair13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_chair.cpp (row 25): src/_ZN12HauntedChair16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_chair.cpp (row 25): src/_ZN12HauntedChair8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_chair.cpp (row 25): src/_ZN12HauntedChair6RenderEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN12HauntedChairD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN12HauntedChairD0Ev.cpp
-# FOLDED into src/actors/daChair_c.cpp (row 25): src/_ZN12HauntedChair6State3Ev.cpp
-# FOLDED into src/actors/daChair_c.cpp (row 25): src/_ZN12HauntedChair6State2Ev.cpp
-# FOLDED into src/actors/daChair_c.cpp (row 25): src/_ZN12HauntedChair6State1Ev.cpp
-# FOLDED into src/actors/daChair_c.cpp (row 25): src/_ZN12HauntedChair6State0Ev.cpp
-# FOLDED into src/actors/daChair_c.cpp (row 25): src/_ZN12HauntedChair18ApproachStateValueEPsS0_isis.cpp
-# FOLDED into src/actors/daChair_c.cpp (row 25): src/_ZN12HauntedChair5BreakEv.cpp
-# FOLDED into src/actors/daChair_c.cpp (row 25): src/_ZN12HauntedChair11UpdateModelEv.cpp
+# FOLDED into src/game/actors/d_a_chair.cpp (row 25): src/_ZN12HauntedChair6State3Ev.cpp
+# FOLDED into src/game/actors/d_a_chair.cpp (row 25): src/_ZN12HauntedChair6State2Ev.cpp
+# FOLDED into src/game/actors/d_a_chair.cpp (row 25): src/_ZN12HauntedChair6State1Ev.cpp
+# FOLDED into src/game/actors/d_a_chair.cpp (row 25): src/_ZN12HauntedChair6State0Ev.cpp
+# FOLDED into src/game/actors/d_a_chair.cpp (row 25): src/_ZN12HauntedChair18ApproachStateValueEPsS0_isis.cpp
+# FOLDED into src/game/actors/d_a_chair.cpp (row 25): src/_ZN12HauntedChair5BreakEv.cpp
+# FOLDED into src/game/actors/d_a_chair.cpp (row 25): src/_ZN12HauntedChair11UpdateModelEv.cpp
 # The Euler-to-matrix helper _ZN12HauntedChair11UpdateModelEv/0211216c build the chair's
 # orientation through. Its own deps (Matrix4x3_FromRotationX/Y/Z, MulMat4x3Mat4x3)
 # are already in the build (gate 9); this is the one new arm9 math symbol.
@@ -46,4 +46,4 @@ src/Matrix4x3_FromRotationZXYExt.c
 # port_actor_overlays_sinits after the ov020 per-symbol mount, the gate-59 shape.
 # The other ov020 sinit (__sinit_ov020_02113674) builds the book classes' file
 # pointers and is left out with them.
-# FOLDED into src/actors/daChair_c.cpp (row 25): src/__sinit_ov020_0211372c.c
+# FOLDED into src/game/actors/d_a_chair.cpp (row 25): src/__sinit_ov020_0211372c.c

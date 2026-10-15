@@ -22,13 +22,13 @@
 //
 //   table                n  arity  dispatched by
 //   -------------------  -  -----  ----------------------------------------
-//   data_ov006_02141660  4    1    func_ov006_020d5fec   (constant 0 arg)
-//   data_ov006_02141680  4    1    func_ov006_020d65c8
-//   data_ov006_021416a0  4    0    func_ov006_020d8f98   THE OPEN-CODED ONE
-//   data_ov006_021416c0  4    1    func_ov006_020d6278
+//   data_ov006_02141660  4    1    SlotB2_Update   (constant 0 arg)
+//   data_ov006_02141680  4    1    SlotA_UpdateAll
+//   data_ov006_021416a0  4    0    Round_State3   THE OPEN-CODED ONE
+//   data_ov006_021416c0  4    1    SlotB_UpdateAll
 //   data_ov006_021416e0  5    0    _ZN14dScMgBomroom_c8BehaviorEv   (vtable slot 6)
-//   data_ov006_02141708  5    1    func_ov006_020d7c00
-//   data_ov006_02141730  7    1    func_ov006_020d836c
+//   data_ov006_02141708  5    1    Bomb_State6
+//   data_ov006_02141730  7    1    UpdateBombs
 //
 // STATEGEN REFUSED THIS CONSTRUCTOR AND THE REFUSAL WAS CORRECT. It cannot
 // derive an arity for data_ov006_021416a0, because arity comes from the
@@ -48,7 +48,7 @@
 // ---- THE STATE THAT HAD NO BODY NOW HAS ONE (run mg7, lane L370) -----------
 //
 // 0x020d7c4c, slot 5 of data_ov006_02141730, is decompiled and BYTE-MATCHED --
-// src/func_ov006_020d7c4c.cpp, 0x230, matching mwccarm 1.2/base, 1.2/sp2 and
+// src/Bomb_State5.cpp, 0x230, matching mwccarm 1.2/base, 1.2/sp2 and
 // 1.2/sp2p3 with strict relocs. The reporting case that stood here (it counted
 // how often the ROM's own state machine ASKED for a body this build did not
 // have) is retired, and the slot calls the real body.
@@ -75,19 +75,19 @@
 //   NAMED BY A LINK -- the table is declared at C++ linkage, so MSVC encodes
 //   the member-pointer type into the symbol and nothing can satisfy it
 //     _ZN14dScMgBomroom_c8BehaviorEv   PMF data_ov006_021416e0[]
-//     func_ov006_020d836c   PMF data_ov006_02141730[]
-//     func_ov006_020d65c8   PMF data_ov006_02141680[]
-//     func_ov006_020d6278   PMF data_ov006_021416c0[]
-//     func_ov006_020d7c00   Entry{PMF} data_ov006_02141708[]  (the @@3PAU
+//     UpdateBombs   PMF data_ov006_02141730[]
+//     SlotA_UpdateAll   PMF data_ov006_02141680[]
+//     SlotB_UpdateAll   PMF data_ov006_021416c0[]
+//     Bomb_State6   Entry{PMF} data_ov006_02141708[]  (the @@3PAU
 //                           spelling facegen's WALL test misses)
-//     func_ov006_020d5fec   Entry{PMF} data_ov006_02141660[]  (likewise)
+//     SlotB2_Update   Entry{PMF} data_ov006_02141660[]  (likewise)
 //
 //   FOUND ONLY BY READING THE SOURCE, and convicted only by a run
-//     func_ov006_020d8f98   `extern int data_ov006_021416a0[];` inside
+//     Round_State3   `extern int data_ov006_021416a0[];` inside
 //                           extern "C", and the ARM Itanium sequence
 //                           open-coded in plain ints
 //
-// The seventh is lane FLW's third shape (src/func_ov006_020c3d18.cpp is the
+// The seventh is lane FLW's third shape (src/FlowerFace_Update.cpp is the
 // other known instance). It declares no member-pointer type, so no symbol is
 // unresolvable; it spells no `::*`, so no sweep matches it. Its src is
 // FAITHFUL -- it is the ROM's five instructions transcribed one for one -- and
@@ -115,7 +115,7 @@
 //
 // ---- FOUR RIDE-THROUGHS, AND ALL FOUR ARE EMPTY ----------------------------
 //
-// func_ov006_020d7958, _020d7778, _020d64c4 and _020d5f28 sit in ONE-argument
+// Bomb_Roam2, _020d7778, _020d64c4 and _020d5f28 sit in ONE-argument
 // slots and take (void). Every one is FOUR BYTES in the ROM -- the whole
 // function is `bx lr` -- so there is nothing for an ignored argument to be
 // wrong about, and calling them with no arguments is the faithful host form.
@@ -154,37 +154,37 @@ void port_mg_call1(void *self, unsigned code, int adj, int a);
    header names. Two parameter names differ from src's because src spells them
    `this`, which is a keyword in the language this file compiles as; a
    declaration's parameter names are not part of its type. */
-void _ZN14dScMgBomroom_c19func_ov006_020d5eb8Ei(unsigned char *base, int idx);
-void _ZN14dScMgBomroom_c19func_ov006_020d5f28Ev(void);              /* one-argument slot, bx lr body */
-void _ZN14dScMgBomroom_c19func_ov006_020d5f2cEi(char *c, int i);
-void _ZN14dScMgBomroom_c19func_ov006_020d5fd8Ei(int c, int i);
-void _ZN14dScMgBomroom_c19func_ov006_020d6100Ei(unsigned char *base, int idx);
-void _ZN14dScMgBomroom_c19func_ov006_020d6170Ei(char *c, int idx);
-void _ZN14dScMgBomroom_c19func_ov006_020d61dcEi(char *c, int index);
-void _ZN14dScMgBomroom_c19func_ov006_020d6264Ei(int c, int i);
-void _ZN14dScMgBomroom_c19func_ov006_020d6454Ei(unsigned char *base, int idx);
-void _ZN14dScMgBomroom_c19func_ov006_020d64c4Ev(void);              /* one-argument slot, bx lr body */
-void _ZN14dScMgBomroom_c19func_ov006_020d64c8Ei(char *o, int i);
-void _ZN14dScMgBomroom_c19func_ov006_020d65b4Ei(int c, int i);
-void _ZN14dScMgBomroom_c19func_ov006_020d7778Ev(void);              /* one-argument slot, bx lr body */
-void _ZN14dScMgBomroom_c19func_ov006_020d777cEi(char *self, int idx);
-void _ZN14dScMgBomroom_c19func_ov006_020d7c4cEi(char *c, int i);    /* run mg7: was the missing state */
-void _ZN14dScMgBomroom_c19func_ov006_020d7958Ev(void);              /* one-argument slot, bx lr body */
-void _ZN14dScMgBomroom_c19func_ov006_020d795cEi(char *o, int i);
-void _ZN14dScMgBomroom_c19func_ov006_020d7a84Ei(char *c, int i);
-void _ZN14dScMgBomroom_c19func_ov006_020d7e7cEi(char *c, int i);
-void _ZN14dScMgBomroom_c19func_ov006_020d7edcEi(unsigned char *c, int idx);
-void _ZN14dScMgBomroom_c19func_ov006_020d7f5cEi(char *self, int idx);
-void _ZN14dScMgBomroom_c19func_ov006_020d816cEi(char *self, int idx);
-void _ZN14dScMgBomroom_c19func_ov006_020d8324Ei(int c, int i);
-void _ZN14dScMgBomroom_c19func_ov006_020d89c4Ev(char *self);
-void _ZN14dScMgBomroom_c19func_ov006_020d8af8Ev(char *self);
-void _ZN14dScMgBomroom_c19func_ov006_020d8cc4Ev(char *r5);
-void _ZN14dScMgBomroom_c19func_ov006_020d8d84Ev(char *self);
-void _ZN14dScMgBomroom_c19func_ov006_020d8f34Ev(char *c);
-int  _ZN14dScMgBomroom_c19func_ov006_020d8ff4Ev(void *c);
-void _ZN14dScMgBomroom_c19func_ov006_020d9020Ev(void *c);
-void _ZN14dScMgBomroom_c19func_ov006_020d904cEv(void *c);
+void _ZN14dScMgBomroom_c13SlotB2_State3Ei(unsigned char *base, int idx);
+void _ZN14dScMgBomroom_c13SlotB2_State2Ev(void);              /* one-argument slot, bx lr body */
+void _ZN14dScMgBomroom_c13SlotB2_State1Ei(char *c, int i);
+void _ZN14dScMgBomroom_c13SlotB2_State0Ei(int c, int i);
+void _ZN14dScMgBomroom_c12SlotB_State3Ei(unsigned char *base, int idx);
+void _ZN14dScMgBomroom_c12SlotB_State2Ei(char *c, int idx);
+void _ZN14dScMgBomroom_c12SlotB_State1Ei(char *c, int index);
+void _ZN14dScMgBomroom_c12SlotB_State0Ei(int c, int i);
+void _ZN14dScMgBomroom_c12SlotA_State3Ei(unsigned char *base, int idx);
+void _ZN14dScMgBomroom_c12SlotA_State2Ev(void);              /* one-argument slot, bx lr body */
+void _ZN14dScMgBomroom_c12SlotA_State1Ei(char *o, int i);
+void _ZN14dScMgBomroom_c12SlotA_State0Ei(int c, int i);
+void _ZN14dScMgBomroom_c10Bomb_Roam4Ev(void);              /* one-argument slot, bx lr body */
+void _ZN14dScMgBomroom_c10Bomb_Roam3Ei(char *self, int idx);
+void _ZN14dScMgBomroom_c11Bomb_State5Ei(char *c, int i);    /* run mg7: was the missing state */
+void _ZN14dScMgBomroom_c10Bomb_Roam2Ev(void);              /* one-argument slot, bx lr body */
+void _ZN14dScMgBomroom_c10Bomb_Roam1Ei(char *o, int i);
+void _ZN14dScMgBomroom_c10Bomb_Roam0Ei(char *c, int i);
+void _ZN14dScMgBomroom_c11Bomb_State4Ei(char *c, int i);
+void _ZN14dScMgBomroom_c11Bomb_State3Ei(unsigned char *c, int idx);
+void _ZN14dScMgBomroom_c11Bomb_State2Ei(char *self, int idx);
+void _ZN14dScMgBomroom_c11Bomb_State1Ei(char *self, int idx);
+void _ZN14dScMgBomroom_c11Bomb_State0Ei(int c, int i);
+void _ZN14dScMgBomroom_c15Round_SubState3Ev(char *self);
+void _ZN14dScMgBomroom_c15Round_SubState2Ev(char *self);
+void _ZN14dScMgBomroom_c15Round_SubState1Ev(char *r5);
+void _ZN14dScMgBomroom_c15Round_SubState0Ev(char *self);
+void _ZN14dScMgBomroom_c12Round_State4Ev(char *c);
+int  _ZN14dScMgBomroom_c12Round_State2Ev(void *c);
+void _ZN14dScMgBomroom_c12Round_State1Ev(void *c);
+void _ZN14dScMgBomroom_c12Round_State0Ev(void *c);
 
 /* the seven mount tables, re-typed to the ROM's eight-byte pair. The mount
    defines the storage; __sinit_ov006_0212fd48 fills it at scene load. */
@@ -198,11 +198,11 @@ extern MgPmf data_ov006_02141730[];
 
 /* the ordinary callees the host copies below keep, each spelled as its own src
    TU spells it */
-void _ZN14dScMgBomroom_c19func_ov006_020d5b10Ev(char *c);
-void _ZN14dScMgBomroom_c19func_ov006_020d5d08Ev(char *c);
-void _ZN14dScMgBomroom_c19func_ov006_020d69b8Ei(char *a, int i);
+void _ZN14dScMgBomroom_c13UpdateBg2LiftEv(char *c);
+void _ZN14dScMgBomroom_c16Marker_UpdateAllEv(char *c);
+void _ZN14dScMgBomroom_c12Bomb_AnimateEi(char *a, int i);
 
-/* the two arm9 globals src/func_ov006_020d836c.cpp reads, in its spelling.
+/* the two arm9 globals src/UpdateBombs.cpp reads, in its spelling.
    data_020a0e40 is read as a BYTE by the ROM (`ldrb r1,[r1]`) and indexes
    data_020a0de8 by word (`ldrb r0,[r2,r1,lsl #2]`); the host mount defines
    both under these plain C names. */
@@ -218,8 +218,8 @@ extern int data_020a0de8[];
    020d5fec, 020d6278, 020d65c8, 020d836c and 020d91b0 -- are gone with the host
    copies they named. Those five symbols are their own matched TUs now and
    nothing in this file calls them. */
-void _ZN14dScMgBomroom_c19func_ov006_020d7c00Ei(char *c, int i);
-void _ZN14dScMgBomroom_c19func_ov006_020d8f98Ev(unsigned char *c);
+void _ZN14dScMgBomroom_c11Bomb_State6Ei(char *c, int i);
+void _ZN14dScMgBomroom_c12Round_State3Ev(unsigned char *c);
 
 /* the boot installer at the end of this file; hal/scene_mg.cpp calls it after
    the ov006 constructors have filled the tables. */
@@ -237,7 +237,7 @@ static unsigned g_bomroom_state_hits;
 static unsigned g_bomroom_flight_calls;
 /* HOW OFTEN THE OPEN-CODED DISPATCHER RAN, counted separately because it is
    the one shape neither the link nor a source sweep can find. On a build that
-   still compiled src/func_ov006_020d8f98.cpp this count would be zero AND the
+   still compiled src/Round_State3.cpp this count would be zero AND the
    run would fault on a DS address; a nonzero count here with a clean run is
    the positive evidence that the seventh host copy is doing its job. */
 static unsigned g_bomroom_opencoded_calls;
@@ -247,17 +247,17 @@ static int bomroom_try_0(void *self, unsigned code)
     char *c = (char *)self;
     switch (code) {
     /* data_ov006_021416e0, the table vtable slot 6 dispatches */
-    case 0x020d904cu: _ZN14dScMgBomroom_c19func_ov006_020d904cEv(c);            return 1;
-    case 0x020d9020u: _ZN14dScMgBomroom_c19func_ov006_020d9020Ev(c);            return 1;
-    case 0x020d8ff4u: _ZN14dScMgBomroom_c19func_ov006_020d8ff4Ev(c);            return 1;
-    case 0x020d8f98u: _ZN14dScMgBomroom_c19func_ov006_020d8f98Ev((unsigned char *)c);
+    case 0x020d904cu: _ZN14dScMgBomroom_c12Round_State0Ev(c);            return 1;
+    case 0x020d9020u: _ZN14dScMgBomroom_c12Round_State1Ev(c);            return 1;
+    case 0x020d8ff4u: _ZN14dScMgBomroom_c12Round_State2Ev(c);            return 1;
+    case 0x020d8f98u: _ZN14dScMgBomroom_c12Round_State3Ev((unsigned char *)c);
                                                          return 1; /* host copy */
-    case 0x020d8f34u: _ZN14dScMgBomroom_c19func_ov006_020d8f34Ev(c);            return 1;
+    case 0x020d8f34u: _ZN14dScMgBomroom_c12Round_State4Ev(c);            return 1;
     /* data_ov006_021416a0, the open-coded dispatcher's own table */
-    case 0x020d8d84u: _ZN14dScMgBomroom_c19func_ov006_020d8d84Ev(c);            return 1;
-    case 0x020d8cc4u: _ZN14dScMgBomroom_c19func_ov006_020d8cc4Ev(c);            return 1;
-    case 0x020d8af8u: _ZN14dScMgBomroom_c19func_ov006_020d8af8Ev(c);            return 1;
-    case 0x020d89c4u: _ZN14dScMgBomroom_c19func_ov006_020d89c4Ev(c);            return 1;
+    case 0x020d8d84u: _ZN14dScMgBomroom_c15Round_SubState0Ev(c);            return 1;
+    case 0x020d8cc4u: _ZN14dScMgBomroom_c15Round_SubState1Ev(c);            return 1;
+    case 0x020d8af8u: _ZN14dScMgBomroom_c15Round_SubState2Ev(c);            return 1;
+    case 0x020d89c4u: _ZN14dScMgBomroom_c15Round_SubState3Ev(c);            return 1;
     default:                                             return 0;
     }
 }
@@ -266,38 +266,38 @@ static int bomroom_try_1(void *self, unsigned code, int a)
 {
     char *c = (char *)self;
     switch (code) {
-    /* data_ov006_02141730, seven slots, dispatched by func_ov006_020d836c */
-    case 0x020d8324u: _ZN14dScMgBomroom_c19func_ov006_020d8324Ei((int)(size_t)c, a); return 1;
-    case 0x020d816cu: _ZN14dScMgBomroom_c19func_ov006_020d816cEi(c, a);              return 1;
-    case 0x020d7f5cu: _ZN14dScMgBomroom_c19func_ov006_020d7f5cEi(c, a);              return 1;
-    case 0x020d7edcu: _ZN14dScMgBomroom_c19func_ov006_020d7edcEi((unsigned char *)c, a); return 1;
-    case 0x020d7e7cu: _ZN14dScMgBomroom_c19func_ov006_020d7e7cEi(c, a);              return 1;
+    /* data_ov006_02141730, seven slots, dispatched by UpdateBombs */
+    case 0x020d8324u: _ZN14dScMgBomroom_c11Bomb_State0Ei((int)(size_t)c, a); return 1;
+    case 0x020d816cu: _ZN14dScMgBomroom_c11Bomb_State1Ei(c, a);              return 1;
+    case 0x020d7f5cu: _ZN14dScMgBomroom_c11Bomb_State2Ei(c, a);              return 1;
+    case 0x020d7edcu: _ZN14dScMgBomroom_c11Bomb_State3Ei((unsigned char *)c, a); return 1;
+    case 0x020d7e7cu: _ZN14dScMgBomroom_c11Bomb_State4Ei(c, a);              return 1;
     /* Slot 5 of this table. Was the floor; run mg7 decompiled and byte-matched
        it, so this dispatches the real body and the count says it ran. */
     case 0x020d7c4cu: ++g_bomroom_flight_calls;
-                      _ZN14dScMgBomroom_c19func_ov006_020d7c4cEi(c, a);              return 1;
-    case 0x020d7c00u: _ZN14dScMgBomroom_c19func_ov006_020d7c00Ei(c, a);              return 1; /* host */
-    /* data_ov006_02141708, five slots, dispatched by func_ov006_020d7c00 */
-    case 0x020d7a84u: _ZN14dScMgBomroom_c19func_ov006_020d7a84Ei(c, a);              return 1;
-    case 0x020d795cu: _ZN14dScMgBomroom_c19func_ov006_020d795cEi(c, a);              return 1;
-    case 0x020d7958u: _ZN14dScMgBomroom_c19func_ov006_020d7958Ev();                  return 1; /* void */
-    case 0x020d777cu: _ZN14dScMgBomroom_c19func_ov006_020d777cEi(c, a);              return 1;
-    case 0x020d7778u: _ZN14dScMgBomroom_c19func_ov006_020d7778Ev();                  return 1; /* void */
-    /* data_ov006_02141680, four slots, dispatched by func_ov006_020d65c8 */
-    case 0x020d65b4u: _ZN14dScMgBomroom_c19func_ov006_020d65b4Ei((int)(size_t)c, a); return 1;
-    case 0x020d64c8u: _ZN14dScMgBomroom_c19func_ov006_020d64c8Ei(c, a);              return 1;
-    case 0x020d64c4u: _ZN14dScMgBomroom_c19func_ov006_020d64c4Ev();                  return 1; /* void */
-    case 0x020d6454u: _ZN14dScMgBomroom_c19func_ov006_020d6454Ei((unsigned char *)c, a); return 1;
-    /* data_ov006_021416c0, four slots, dispatched by func_ov006_020d6278 */
-    case 0x020d6264u: _ZN14dScMgBomroom_c19func_ov006_020d6264Ei((int)(size_t)c, a); return 1;
-    case 0x020d61dcu: _ZN14dScMgBomroom_c19func_ov006_020d61dcEi(c, a);              return 1;
-    case 0x020d6170u: _ZN14dScMgBomroom_c19func_ov006_020d6170Ei(c, a);              return 1;
-    case 0x020d6100u: _ZN14dScMgBomroom_c19func_ov006_020d6100Ei((unsigned char *)c, a); return 1;
-    /* data_ov006_02141660, four slots, dispatched by func_ov006_020d5fec */
-    case 0x020d5fd8u: _ZN14dScMgBomroom_c19func_ov006_020d5fd8Ei((int)(size_t)c, a); return 1;
-    case 0x020d5f2cu: _ZN14dScMgBomroom_c19func_ov006_020d5f2cEi(c, a);              return 1;
-    case 0x020d5f28u: _ZN14dScMgBomroom_c19func_ov006_020d5f28Ev();                  return 1; /* void */
-    case 0x020d5eb8u: _ZN14dScMgBomroom_c19func_ov006_020d5eb8Ei((unsigned char *)c, a); return 1;
+                      _ZN14dScMgBomroom_c11Bomb_State5Ei(c, a);              return 1;
+    case 0x020d7c00u: _ZN14dScMgBomroom_c11Bomb_State6Ei(c, a);              return 1; /* host */
+    /* data_ov006_02141708, five slots, dispatched by Bomb_State6 */
+    case 0x020d7a84u: _ZN14dScMgBomroom_c10Bomb_Roam0Ei(c, a);              return 1;
+    case 0x020d795cu: _ZN14dScMgBomroom_c10Bomb_Roam1Ei(c, a);              return 1;
+    case 0x020d7958u: _ZN14dScMgBomroom_c10Bomb_Roam2Ev();                  return 1; /* void */
+    case 0x020d777cu: _ZN14dScMgBomroom_c10Bomb_Roam3Ei(c, a);              return 1;
+    case 0x020d7778u: _ZN14dScMgBomroom_c10Bomb_Roam4Ev();                  return 1; /* void */
+    /* data_ov006_02141680, four slots, dispatched by SlotA_UpdateAll */
+    case 0x020d65b4u: _ZN14dScMgBomroom_c12SlotA_State0Ei((int)(size_t)c, a); return 1;
+    case 0x020d64c8u: _ZN14dScMgBomroom_c12SlotA_State1Ei(c, a);              return 1;
+    case 0x020d64c4u: _ZN14dScMgBomroom_c12SlotA_State2Ev();                  return 1; /* void */
+    case 0x020d6454u: _ZN14dScMgBomroom_c12SlotA_State3Ei((unsigned char *)c, a); return 1;
+    /* data_ov006_021416c0, four slots, dispatched by SlotB_UpdateAll */
+    case 0x020d6264u: _ZN14dScMgBomroom_c12SlotB_State0Ei((int)(size_t)c, a); return 1;
+    case 0x020d61dcu: _ZN14dScMgBomroom_c12SlotB_State1Ei(c, a);              return 1;
+    case 0x020d6170u: _ZN14dScMgBomroom_c12SlotB_State2Ei(c, a);              return 1;
+    case 0x020d6100u: _ZN14dScMgBomroom_c12SlotB_State3Ei((unsigned char *)c, a); return 1;
+    /* data_ov006_02141660, four slots, dispatched by SlotB2_Update */
+    case 0x020d5fd8u: _ZN14dScMgBomroom_c13SlotB2_State0Ei((int)(size_t)c, a); return 1;
+    case 0x020d5f2cu: _ZN14dScMgBomroom_c13SlotB2_State1Ei(c, a);              return 1;
+    case 0x020d5f28u: _ZN14dScMgBomroom_c13SlotB2_State2Ev();                  return 1; /* void */
+    case 0x020d5eb8u: _ZN14dScMgBomroom_c13SlotB2_State3Ei((unsigned char *)c, a); return 1;
     default:                                                  return 0;
     }
 }
@@ -334,7 +334,7 @@ extern "C" unsigned port_mg_bomroom_flight_calls(void)
     return g_bomroom_flight_calls;
 }
 
-/* Lane LINKMG: the entry func_ov006_020d8f98 reaches now that it compiles
+/* Lane LINKMG: the entry Round_State3 reaches now that it compiles
    FROM src. Its src TU decodes the pair as two plain ints, which MSVC
    compiles as it stands; only the call through the resulting DS code address
    is impossible, and tools/hostgen.py's MG_PMF_CALL table swaps that one line
@@ -358,19 +358,19 @@ extern "C" unsigned port_mg_bomroom_opencoded_calls(void)
 // dispatchers that read them now compile from their own matched TUs
 // (port/slice_pmfb4.txt) and the host copies of them are gone:
 //
-//   func_ov006_020d5fec  data_ov006_02141660   src/actors/dScMgBomroom_c.cpp
-//   func_ov006_020d65c8  data_ov006_02141680   src/actors/dScMgBomroom_c.cpp
-//   func_ov006_020d6278  data_ov006_021416c0   src/actors/dScMgBomroom_c.cpp
+//   SlotB2_Update  data_ov006_02141660   src/minigames/d_s_mg_bomroom.cpp
+//   SlotA_UpdateAll  data_ov006_02141680   src/minigames/d_s_mg_bomroom.cpp
+//   SlotB_UpdateAll  data_ov006_021416c0   src/minigames/d_s_mg_bomroom.cpp
 //   _ZN14dScMgBomroom_c8BehaviorEv  data_ov006_021416e0   src/_ZN14dScMgBomroom_c8BehaviorEv.cpp
-//   func_ov006_020d836c  data_ov006_02141730   src/func_ov006_020d836c.cpp
+//   UpdateBombs  data_ov006_02141730   src/UpdateBombs.cpp
 //
 // THE TWO THAT STAY, and why the switch above stays with them:
 //
-//   func_ov006_020d7c00  reads data_ov006_02141708, which is NOT seated. Its
+//   Bomb_State6  reads data_ov006_02141708, which is NOT seated. Its
 //     copy is below, unchanged, and it still hands a DS code word to
 //     port_mg_bomroom_call1. It is also state slot 6 of data_ov006_02141730,
 //     so the seat installs a face that calls THIS copy.
-//   func_ov006_020d8f98  reads data_ov006_021416a0, also not seated. It
+//   Round_State3  reads data_ov006_021416a0, also not seated. It
 //     compiles from src with hostgen's MG_PMF_CALL swap and is state slot 3 of
 //     data_ov006_021416e0, so the seat installs a face that calls it too.
 //
@@ -380,7 +380,7 @@ extern "C" unsigned port_mg_bomroom_opencoded_calls(void)
 // would remove the only written record of which address belongs to which table
 // and the storage they name is still real.
 
-/* src/func_ov006_020d7c00 -- RETIRED, run link100 lane SEAT4. Its table is
+/* src/Bomb_State6 -- RETIRED, run link100 lane SEAT4. Its table is
    seated in port/hal/pmf_seat4.cpp and the matched TU is on
    port/slice_seat4.txt, so the host copy that stood in for it is gone and
    the declaration above is what the faces in this file reach. */
@@ -398,15 +398,15 @@ extern "C" unsigned port_mg_bomroom_opencoded_calls(void)
 //
 //   dispatcher            table                ROM                     emitted
 //   --------------------  -------------------  ----------------------  --------
-//   func_ov006_020d5fec   data_ov006_02141660  add r3,r4,r0,lsl #3     [eax*8]
+//   SlotB2_Update   data_ov006_02141660  add r3,r4,r0,lsl #3     [eax*8]
 //                           pool 020d6048 = 02141660                   [eax*8+4]
-//   func_ov006_020d65c8   data_ov006_02141680  add r3,r4,r0,lsl #3     [eax*8]
+//   SlotA_UpdateAll   data_ov006_02141680  add r3,r4,r0,lsl #3     [eax*8]
 //                           pool 020d662c = 02141680                   [eax*8+4]
-//   func_ov006_020d6278   data_ov006_021416c0  add r3,r4,r0,lsl #3     [eax*8]
+//   SlotB_UpdateAll   data_ov006_021416c0  add r3,r4,r0,lsl #3     [eax*8]
 //                           pool 020d62dc = 021416c0                   [eax*8+4]
 //   _ZN14dScMgBomroom_c8BehaviorEv   data_ov006_021416e0  add r3,r1,r0,lsl #3     [eax*8]
 //                           pool 020d9240 = 021416e0                   [eax*8+4]
-//   func_ov006_020d836c   data_ov006_02141730  add r3,r4,r0,lsl #3     [eax*8]
+//   UpdateBombs   data_ov006_02141730  add r3,r4,r0,lsl #3     [eax*8]
 //                           pool 020d8404 = 02141730                   [eax*8+4]
 //
 // so ROM 8 == emitted 8 on all five. The `add r0,r6,r5,lsl #4` in 020d65c8 and
@@ -461,7 +461,7 @@ extern "C" unsigned port_mg_bomroom_opencoded_calls(void)
 //   arity 1 (one pushed argument): 02141660, 02141680, 021416c0, 02141730
 //   arity 0 (nothing pushed):      021416e0
 //
-// ONE /alternatename. src/func_ov006_020d836c.cpp declares its table at
+// ONE /alternatename. src/UpdateBombs.cpp declares its table at
 // namespace scope, so MSVC spells the reference
 // ?data_ov006_02141730@@3PAP8C@@AEXH@ZA -- read off the object with dumpbin
 // /symbols, not guessed -- while the ov006 mount defines the plain C name. The
@@ -511,43 +511,43 @@ extern "C" unsigned port_mg_bomroom_opencoded_calls(void)
     }
 
 /* data_ov006_02141660, arity 1 */
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d5fd8Ei, (int)(size_t))
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d5f2cEi, (char *))
-BR_FACE1_VOID(_ZN14dScMgBomroom_c19func_ov006_020d5f28Ev)
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d5eb8Ei, (unsigned char *))
+BR_FACE1(_ZN14dScMgBomroom_c13SlotB2_State0Ei, (int)(size_t))
+BR_FACE1(_ZN14dScMgBomroom_c13SlotB2_State1Ei, (char *))
+BR_FACE1_VOID(_ZN14dScMgBomroom_c13SlotB2_State2Ev)
+BR_FACE1(_ZN14dScMgBomroom_c13SlotB2_State3Ei, (unsigned char *))
 /* data_ov006_02141680, arity 1 */
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d65b4Ei, (int)(size_t))
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d64c8Ei, (char *))
-BR_FACE1_VOID(_ZN14dScMgBomroom_c19func_ov006_020d64c4Ev)
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d6454Ei, (unsigned char *))
+BR_FACE1(_ZN14dScMgBomroom_c12SlotA_State0Ei, (int)(size_t))
+BR_FACE1(_ZN14dScMgBomroom_c12SlotA_State1Ei, (char *))
+BR_FACE1_VOID(_ZN14dScMgBomroom_c12SlotA_State2Ev)
+BR_FACE1(_ZN14dScMgBomroom_c12SlotA_State3Ei, (unsigned char *))
 /* data_ov006_021416c0, arity 1 */
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d6264Ei, (int)(size_t))
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d61dcEi, (char *))
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d6170Ei, (char *))
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d6100Ei, (unsigned char *))
+BR_FACE1(_ZN14dScMgBomroom_c12SlotB_State0Ei, (int)(size_t))
+BR_FACE1(_ZN14dScMgBomroom_c12SlotB_State1Ei, (char *))
+BR_FACE1(_ZN14dScMgBomroom_c12SlotB_State2Ei, (char *))
+BR_FACE1(_ZN14dScMgBomroom_c12SlotB_State3Ei, (unsigned char *))
 /* data_ov006_021416e0, arity 0 */
-BR_FACE0(_ZN14dScMgBomroom_c19func_ov006_020d904cEv, (char *))
-BR_FACE0(_ZN14dScMgBomroom_c19func_ov006_020d9020Ev, (char *))
-BR_FACE0(_ZN14dScMgBomroom_c19func_ov006_020d8ff4Ev, (char *))
-BR_FACE0(_ZN14dScMgBomroom_c19func_ov006_020d8f98Ev, (unsigned char *))
-BR_FACE0(_ZN14dScMgBomroom_c19func_ov006_020d8f34Ev, (char *))
+BR_FACE0(_ZN14dScMgBomroom_c12Round_State0Ev, (char *))
+BR_FACE0(_ZN14dScMgBomroom_c12Round_State1Ev, (char *))
+BR_FACE0(_ZN14dScMgBomroom_c12Round_State2Ev, (char *))
+BR_FACE0(_ZN14dScMgBomroom_c12Round_State3Ev, (unsigned char *))
+BR_FACE0(_ZN14dScMgBomroom_c12Round_State4Ev, (char *))
 /* data_ov006_02141730, arity 1 */
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d8324Ei, (int)(size_t))
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d816cEi, (char *))
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d7f5cEi, (char *))
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d7edcEi, (unsigned char *))
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d7e7cEi, (char *))
-BR_FACE1(_ZN14dScMgBomroom_c19func_ov006_020d7c00Ei, (char *))
+BR_FACE1(_ZN14dScMgBomroom_c11Bomb_State0Ei, (int)(size_t))
+BR_FACE1(_ZN14dScMgBomroom_c11Bomb_State1Ei, (char *))
+BR_FACE1(_ZN14dScMgBomroom_c11Bomb_State2Ei, (char *))
+BR_FACE1(_ZN14dScMgBomroom_c11Bomb_State3Ei, (unsigned char *))
+BR_FACE1(_ZN14dScMgBomroom_c11Bomb_State4Ei, (char *))
+BR_FACE1(_ZN14dScMgBomroom_c11Bomb_State6Ei, (char *))
 
 /* Slot 5 of data_ov006_02141730, the bomb's free-flight state. Written out
    rather than macro-generated because it carries the census counter
    hal/scene_mg_bomroom.cpp prints. */
-static void __fastcall br__ZN14dScMgBomroom_c19func_ov006_020d7c4cEi(void *self, void *dead_edx, int i)
+static void __fastcall br__ZN14dScMgBomroom_c11Bomb_State5Ei(void *self, void *dead_edx, int i)
 {
     (void)dead_edx;
     ++g_bomroom_state_hits;
     ++g_bomroom_flight_calls;
-    _ZN14dScMgBomroom_c19func_ov006_020d7c4cEi((char *)self, i);
+    _ZN14dScMgBomroom_c11Bomb_State5Ei((char *)self, i);
 }
 
 /* run link100 lane SEAT4: this class's remaining state tables are
@@ -572,34 +572,34 @@ extern "C" void port_mg_bomroom_states_seat(void)
         unsigned rom;
         void *face;
     } seats[] = {
-        {data_ov006_02141660, "02141660", 0, 0x020d5fd8u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d5fd8Ei},
-        {data_ov006_02141660, "02141660", 1, 0x020d5f2cu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d5f2cEi},
-        {data_ov006_02141660, "02141660", 2, 0x020d5f28u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d5f28Ev},
-        {data_ov006_02141660, "02141660", 3, 0x020d5eb8u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d5eb8Ei},
+        {data_ov006_02141660, "02141660", 0, 0x020d5fd8u, (void *)br__ZN14dScMgBomroom_c13SlotB2_State0Ei},
+        {data_ov006_02141660, "02141660", 1, 0x020d5f2cu, (void *)br__ZN14dScMgBomroom_c13SlotB2_State1Ei},
+        {data_ov006_02141660, "02141660", 2, 0x020d5f28u, (void *)br__ZN14dScMgBomroom_c13SlotB2_State2Ev},
+        {data_ov006_02141660, "02141660", 3, 0x020d5eb8u, (void *)br__ZN14dScMgBomroom_c13SlotB2_State3Ei},
 
-        {data_ov006_02141680, "02141680", 0, 0x020d65b4u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d65b4Ei},
-        {data_ov006_02141680, "02141680", 1, 0x020d64c8u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d64c8Ei},
-        {data_ov006_02141680, "02141680", 2, 0x020d64c4u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d64c4Ev},
-        {data_ov006_02141680, "02141680", 3, 0x020d6454u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d6454Ei},
+        {data_ov006_02141680, "02141680", 0, 0x020d65b4u, (void *)br__ZN14dScMgBomroom_c12SlotA_State0Ei},
+        {data_ov006_02141680, "02141680", 1, 0x020d64c8u, (void *)br__ZN14dScMgBomroom_c12SlotA_State1Ei},
+        {data_ov006_02141680, "02141680", 2, 0x020d64c4u, (void *)br__ZN14dScMgBomroom_c12SlotA_State2Ev},
+        {data_ov006_02141680, "02141680", 3, 0x020d6454u, (void *)br__ZN14dScMgBomroom_c12SlotA_State3Ei},
 
-        {data_ov006_021416c0, "021416c0", 0, 0x020d6264u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d6264Ei},
-        {data_ov006_021416c0, "021416c0", 1, 0x020d61dcu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d61dcEi},
-        {data_ov006_021416c0, "021416c0", 2, 0x020d6170u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d6170Ei},
-        {data_ov006_021416c0, "021416c0", 3, 0x020d6100u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d6100Ei},
+        {data_ov006_021416c0, "021416c0", 0, 0x020d6264u, (void *)br__ZN14dScMgBomroom_c12SlotB_State0Ei},
+        {data_ov006_021416c0, "021416c0", 1, 0x020d61dcu, (void *)br__ZN14dScMgBomroom_c12SlotB_State1Ei},
+        {data_ov006_021416c0, "021416c0", 2, 0x020d6170u, (void *)br__ZN14dScMgBomroom_c12SlotB_State2Ei},
+        {data_ov006_021416c0, "021416c0", 3, 0x020d6100u, (void *)br__ZN14dScMgBomroom_c12SlotB_State3Ei},
 
-        {data_ov006_021416e0, "021416e0", 0, 0x020d904cu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d904cEv},
-        {data_ov006_021416e0, "021416e0", 1, 0x020d9020u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d9020Ev},
-        {data_ov006_021416e0, "021416e0", 2, 0x020d8ff4u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d8ff4Ev},
-        {data_ov006_021416e0, "021416e0", 3, 0x020d8f98u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d8f98Ev},
-        {data_ov006_021416e0, "021416e0", 4, 0x020d8f34u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d8f34Ev},
+        {data_ov006_021416e0, "021416e0", 0, 0x020d904cu, (void *)br__ZN14dScMgBomroom_c12Round_State0Ev},
+        {data_ov006_021416e0, "021416e0", 1, 0x020d9020u, (void *)br__ZN14dScMgBomroom_c12Round_State1Ev},
+        {data_ov006_021416e0, "021416e0", 2, 0x020d8ff4u, (void *)br__ZN14dScMgBomroom_c12Round_State2Ev},
+        {data_ov006_021416e0, "021416e0", 3, 0x020d8f98u, (void *)br__ZN14dScMgBomroom_c12Round_State3Ev},
+        {data_ov006_021416e0, "021416e0", 4, 0x020d8f34u, (void *)br__ZN14dScMgBomroom_c12Round_State4Ev},
 
-        {data_ov006_02141730, "02141730", 0, 0x020d8324u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d8324Ei},
-        {data_ov006_02141730, "02141730", 1, 0x020d816cu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d816cEi},
-        {data_ov006_02141730, "02141730", 2, 0x020d7f5cu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d7f5cEi},
-        {data_ov006_02141730, "02141730", 3, 0x020d7edcu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d7edcEi},
-        {data_ov006_02141730, "02141730", 4, 0x020d7e7cu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d7e7cEi},
-        {data_ov006_02141730, "02141730", 5, 0x020d7c4cu, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d7c4cEi},
-        {data_ov006_02141730, "02141730", 6, 0x020d7c00u, (void *)br__ZN14dScMgBomroom_c19func_ov006_020d7c00Ei},
+        {data_ov006_02141730, "02141730", 0, 0x020d8324u, (void *)br__ZN14dScMgBomroom_c11Bomb_State0Ei},
+        {data_ov006_02141730, "02141730", 1, 0x020d816cu, (void *)br__ZN14dScMgBomroom_c11Bomb_State1Ei},
+        {data_ov006_02141730, "02141730", 2, 0x020d7f5cu, (void *)br__ZN14dScMgBomroom_c11Bomb_State2Ei},
+        {data_ov006_02141730, "02141730", 3, 0x020d7edcu, (void *)br__ZN14dScMgBomroom_c11Bomb_State3Ei},
+        {data_ov006_02141730, "02141730", 4, 0x020d7e7cu, (void *)br__ZN14dScMgBomroom_c11Bomb_State4Ei},
+        {data_ov006_02141730, "02141730", 5, 0x020d7c4cu, (void *)br__ZN14dScMgBomroom_c11Bomb_State5Ei},
+        {data_ov006_02141730, "02141730", 6, 0x020d7c00u, (void *)br__ZN14dScMgBomroom_c11Bomb_State6Ei},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {

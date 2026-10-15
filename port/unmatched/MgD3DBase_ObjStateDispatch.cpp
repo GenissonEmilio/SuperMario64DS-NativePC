@@ -1,6 +1,6 @@
 // PORT_HOST_ABI. The two per-frame TICK BODIES of the two shared sub-object
-// families in ov006's minigame-object region -- func_ov006_020c4cd8 (member
-// pointer at +0x30) and func_ov006_020c7860 (member pointer at +0x3c) -- each
+// families in ov006's minigame-object region -- Heyho_Update (member
+// pointer at +0x30) and Update (member pointer at +0x3c) -- each
 // of which dispatches a pointer-to-member the host cannot spell. Run mg11,
 // lanes BNP (0x174, scene 372) and BNT (0x175, scene 373), UNIFIED AT THE
 // MERGE GATE.
@@ -15,7 +15,7 @@
 // first thing that objected was the linker:
 //
 //     MgJump2_SubDispatch.cpp.obj : error LNK2005:
-//       _func_ov006_020c4cd8 already defined in MgD3DBase_ObjStateDispatch.cpp.obj
+//       _Heyho_Update already defined in MgD3DBase_ObjStateDispatch.cpp.obj
 //       _func_ov006_020c7860 already defined in MgD3DBase_ObjStateDispatch.cpp.obj
 //
 // The wave's convergence review compared the three files the two lanes had
@@ -70,7 +70,7 @@
 //       walker node 307FA7F4 actor 307FA7CC id 0x174
 //       regs eax=020c4d1c ebx=020ee5b8
 //
-// -- a jump to a RAW DS ADDRESS, with ebx still holding func_ov006_020ee5b8,
+// -- a jump to a RAW DS ADDRESS, with ebx still holding State_Intro,
 // the state this class had just entered. 0x020c4d1c is a real four-byte ov006
 // function, so the fault is not a wild pointer: it is a member pointer nobody
 // routed.
@@ -82,8 +82,8 @@
 // sites, not one:
 //
 //     020ee290  _ZN11dScMgJump_c8BehaviorEv   vtable slot 6, dScMgJump_c's own
-//     020c4ce8  func_ov006_020c4cd8   the object adapter's tick, +0x30
-//     020c7898  func_ov006_020c7860   the second object's tick, +0x3c
+//     020c4ce8  Heyho_Update   the object adapter's tick, +0x30
+//     020c7898  Update   the second object's tick, +0x3c
 //
 // The lesson is the scope, not the tool: a `::*` sweep over the CLASS is not a
 // sweep over the CLOSURE, and a seat links the closure.
@@ -95,15 +95,15 @@
 // `::*` source sweep returned four hits, src/_ZN10dMgState_c8SetStateEi.cpp (the
 // framework state setter, already host-copied in
 // unmatched/MgBase_StateSetter.cpp and excluded from every minigame slice),
-// src/func_ov006_020c4cd8.cpp, src/actors/dMgJump3DMario_c.cpp and
+// src/Heyho_Update.cpp, src/minigames/d_mg_jump3d_mario.cpp and
 // src/_ZN12dScMgJump2_c8BehaviorEv.cpp. Two lanes, two closures, two detectors each,
 // and the same two shared bodies at the end of all four.
 //
 // ---- 2. THE TWO FIELDS AND THE TWENTY-FIVE STATES -------------------------
 //
-// func_ov006_020c4cd8 dispatches the pair at self+0x30 and then runs
-// Animation::Advance(self+0x88) and func_ov006_020c4c00(self).
-// func_ov006_020c7860 dispatches the pair at self+0x3c between an
+// Heyho_Update dispatches the pair at self+0x30 and then runs
+// Animation::Advance(self+0x88) and Heyho_UpdateMatrix(self).
+// Update dispatches the pair at self+0x3c between an
 // ApproachLinear/AddVec3 prologue and a four-call tail.
 //
 // Both read their pair out of MOUNTED .data, which is why nothing in the build
@@ -149,7 +149,7 @@
 // disassembled and its own store offset taken. Eight write +0x30/+0x34
 // (0x020c4060, 0x020c4148, 0x020c4710, 0x020c4c54, 0x020c4d20, 0x020c64e4,
 // 0x020c68f4, 0x020c6ca4) plus the eleven-arm switch inside
-// func_ov006_020c6a9c and func_ov006_020c4f68; the rest write +0x3c/+0x40
+// Heyho_Motion3 and Heyho_StartMotion11; the rest write +0x3c/+0x40
 // (0x020c7300, 0x020c762c, 0x020c79a8, 0x020c7ba4, 0x020c802c, 0x020c8084,
 // 0x020c8270, 0x020c81e0, 0x020c85a0, 0x020c862c, 0x020c8658, 0x020c8768).
 // EVERY adjustment word is zero and EVERY one of the twenty-five code words
@@ -170,10 +170,10 @@
 // which would put the distinct count at TWENTY rather than sixteen.
 //
 // THEY BELONG TO A DIFFERENT FAMILY AND NOT TO THIS ONE. Their five loaders
-// (func_ov006_020c38b0, _020c3908, _020c3990, _020c3adc, _020c3b80) are the
-// func_ov006_020c3d18 machine that run mg5 lane FLW already host-copies in
+// (FlowerFace_PlayReactB, _020c3908, _020c3990, _020c3adc, _020c3b80) are the
+// FlowerFace_Update machine that run mg5 lane FLW already host-copies in
 // port/unmatched/MgFlower_SubDispatch.cpp, and hal/scene_mg_flower.cpp's own
-// GROUP D note already aliases func_ov006_020c3adc. NONE of the nine
+// GROUP D note already aliases FlowerFace_PlayIdle. NONE of the nine
 // addresses appears anywhere in lane BNT's 230-body closure -- checked, not
 // assumed. That is why this block names records and this file's switch keys
 // on CODE WORDS: an address-keyed switch cannot mis-route a neighbour's state
@@ -182,9 +182,9 @@
 // THE FIRST VERSION OF BNT'S FILE CARRIED TEN OF THE TWENTY-FIVE, and the run
 // is what caught it. A scan that took only pair records whose single relocation
 // came from inside the closure-as-then-known found six and four; the writers
-// that install the rest -- func_ov006_020c4f68, _020c762c, _020c8270,
+// that install the rest -- Heyho_StartMotion11, _020c762c, _020c8270,
 // _020c81e0, _020c85a0 and _020c8768, plus the eleven-arm switch inside
-// func_ov006_020c6a9c, which is six writers and a switch and not the "other
+// Heyho_Motion3, which is six writers and a switch and not the "other
 // twelve" that sentence used to say -- were not in that closure BECAUSE they
 // are only reachable through the dispatch this file implements. The closure
 // and the switch are mutually recursive, and the fix is to walk it again with
@@ -224,9 +224,9 @@
 // run.
 //
 // ONE CASE IS UNREACHABLE ON A SCENE-373 BUILD AND SAYS SO HERE.
-// func_ov006_020c81e0 -- the sole installer of the {0x020c814c, 0} record at
+// StartRiseOut -- the sole installer of the {0x020c814c, 0} record at
 // 0x0213b080 -- is reachable ONLY from 0x174's own state machine
-// (func_ov006_020ee508 -> _020ee3bc -> _020c7418 -> _020c81e0). It has a src TU
+// (State_Play -> _020ee3bc -> _020c7418 -> _020c81e0). It has a src TU
 // and its own delink block and it is deliberately NOT in port/slice_bnt.txt, so
 // nothing a scene-373 build runs can reach it; it goes live on a scene-372
 // build, which is now the same binary. `case 0x020c814cu` is kept for both
@@ -250,32 +250,32 @@ void port_mg_call0(void *self, unsigned code, int adj);
    hal/player_bridges.cpp defines and what the /alternatename pragma in
    hal/cxx_aliases.cpp decorates (PAH). */
 void _ZN15dExtFrameCtrl_c7AdvanceEv(void *a);
-void func_ov006_020c4c00(void *c);
+void Heyho_UpdateMatrix(void *c);
 void _Z14ApproachLinearRiii(int *r, int target, int step);
 void AddVec3(void *a, void *b, void *c);
-void func_ov006_020bfec0(void *a, char *b, short *d);
-void _ZN16dMgJump3DMario_c19func_ov006_020c76e0Ev(char *c);
+void Camera_ProjectToScreen16(void *a, char *b, short *d);
+void _ZN16dMgJump3DMario_c17UpdateModelMatrixEv(char *c);
 extern int   data_ov006_0213b010;
 extern int   data_ov006_0213b018;
 extern void *data_ov006_02141a40;
 
 /* the twenty-five state bodies: field +0x30's sixteen ... */
-void func_ov006_020c4d1c(void);
-void func_ov006_020c4e8c(char *c);
-void func_ov006_020c4fa4(char *c);
-void func_ov006_020c53f8(char *c);
-void func_ov006_020c5530(char *c);
-void func_ov006_020c5658(char *c);
-void func_ov006_020c5928(char *c);
-void func_ov006_020c5bf8(char *c);
-void func_ov006_020c5d28(char *c);
-void func_ov006_020c6088(char *c);
-void func_ov006_020c61c4(int c);
-void func_ov006_020c627c(char *c);
-void func_ov006_020c6378(int c);
-void func_ov006_020c6400(char *c);
-void func_ov006_020c66bc(char *c);
-void func_ov006_020c6a9c(char *c);
+void Heyho_StateIdle(void);
+void Heyho_Motion11(char *c);
+void Heyho_Motion1(char *c);
+void Heyho_Motion5(char *c);
+void Heyho_Motion2(char *c);
+void Heyho_Motion6(char *c);
+void Heyho_Motion4(char *c);
+void Heyho_Motion7(char *c);
+void Heyho_Motion9(char *c);
+void Heyho_Motion0(char *c);
+void Heyho_Motion10(int c);
+void Heyho_Motion14(char *c);
+void Heyho_Motion12(int c);
+void Heyho_Motion13(char *c);
+void Heyho_Motion8(char *c);
+void Heyho_Motion3(char *c);
 /* ... and field +0x3c's nine */
 void _ZN16dMgJump3DMario_c9StateDampEv(char *c);
 void _ZN16dMgJump3DMario_c9StateHoldEv(char *c);
@@ -297,7 +297,7 @@ unsigned port_mg_objstate_addr(unsigned i);
 unsigned port_mg_objstate_hit(unsigned i);
 
 /* the witness lane BNT's seat reads (hal/scene_mg_jump2.cpp), per dispatch
-   site: which=0 is func_ov006_020c4cd8, which=1 is func_ov006_020c7860 */
+   site: which=0 is Heyho_Update, which=1 is Update */
 void     port_mg_jump2_sub_counts(int which, unsigned *calls, unsigned *routed,
                                   unsigned *unknown, unsigned *distinct);
 unsigned port_mg_jump2_sub_row(int which, unsigned i, unsigned *code);
@@ -333,22 +333,22 @@ static int obj_try(void *self, unsigned code)
     char *c = (char *)self;
     obj_note(code);
     switch (code) {
-    case 0x020c4d1cu: func_ov006_020c4d1c();  return 1;
-    case 0x020c4e8cu: func_ov006_020c4e8c(c); return 1;
-    case 0x020c4fa4u: func_ov006_020c4fa4(c); return 1;
-    case 0x020c53f8u: func_ov006_020c53f8(c); return 1;
-    case 0x020c5530u: func_ov006_020c5530(c); return 1;
-    case 0x020c5658u: func_ov006_020c5658(c); return 1;
-    case 0x020c5928u: func_ov006_020c5928(c); return 1;
-    case 0x020c5bf8u: func_ov006_020c5bf8(c); return 1;
-    case 0x020c5d28u: func_ov006_020c5d28(c); return 1;
-    case 0x020c6088u: func_ov006_020c6088(c); return 1;
-    case 0x020c61c4u: func_ov006_020c61c4((int)(size_t)c); return 1;
-    case 0x020c627cu: func_ov006_020c627c(c); return 1;
-    case 0x020c6378u: func_ov006_020c6378((int)(size_t)c); return 1;
-    case 0x020c6400u: func_ov006_020c6400(c); return 1;
-    case 0x020c66bcu: func_ov006_020c66bc(c); return 1;
-    case 0x020c6a9cu: func_ov006_020c6a9c(c); return 1;
+    case 0x020c4d1cu: Heyho_StateIdle();  return 1;
+    case 0x020c4e8cu: Heyho_Motion11(c); return 1;
+    case 0x020c4fa4u: Heyho_Motion1(c); return 1;
+    case 0x020c53f8u: Heyho_Motion5(c); return 1;
+    case 0x020c5530u: Heyho_Motion2(c); return 1;
+    case 0x020c5658u: Heyho_Motion6(c); return 1;
+    case 0x020c5928u: Heyho_Motion4(c); return 1;
+    case 0x020c5bf8u: Heyho_Motion7(c); return 1;
+    case 0x020c5d28u: Heyho_Motion9(c); return 1;
+    case 0x020c6088u: Heyho_Motion0(c); return 1;
+    case 0x020c61c4u: Heyho_Motion10((int)(size_t)c); return 1;
+    case 0x020c627cu: Heyho_Motion14(c); return 1;
+    case 0x020c6378u: Heyho_Motion12((int)(size_t)c); return 1;
+    case 0x020c6400u: Heyho_Motion13(c); return 1;
+    case 0x020c66bcu: Heyho_Motion8(c); return 1;
+    case 0x020c6a9cu: Heyho_Motion3(c); return 1;
     case 0x020c78ecu: _ZN16dMgJump3DMario_c9StateDampEv(c); return 1;
     case 0x020c7a30u: _ZN16dMgJump3DMario_c9StateHoldEv(c); return 1;
     case 0x020c7c68u: _ZN16dMgJump3DMario_c9StateMoveEv(c); return 1;
@@ -496,9 +496,9 @@ extern "C" unsigned port_mg_objstate_hit(unsigned i)
 //
 // THE EMITTED SIDE, off each TU's own /FAsc listing under the port's own flags
 // (runs/link100/out/PMFB6/emit_gate3_out.txt):
-//   func_ov006_020c4cd8  mov ecx,[esi+52] / mov eax,[esi+48] / add ecx,esi /
+//   Heyho_Update  mov ecx,[esi+52] / mov eax,[esi+48] / add ecx,esi /
 //                        call eax   -- +0x30 and +0x34, ARITY 0, /Zp4 diff 0
-//   func_ov006_020c7860  mov ecx,[edi+68] / mov eax,[edi+64] / ...
+//   Update  mov ecx,[edi+68] / mov eax,[edi+64] / ...
 //                        -- +0x40 and +0x44, FOUR BYTES LATE, because MSVC
 //                        aligns an eight-byte member to eight and the ROM's
 //                        field is at +0x3c. WITH /Zp4 the same listing reads
@@ -507,7 +507,7 @@ extern "C" unsigned port_mg_objstate_hit(unsigned i)
 //                        between the two listings. So /Zp4 is claimed on that
 //                        ONE source in this gate's CMake block and on nothing
 //                        else: it is the treatment lane MGWRITER named for
-//                        func_ov006_020c07e8, measured here rather than
+//                        MascotWalker_Update, measured here rather than
 //                        inherited.
 // The ROM's own offsets are read at the bodies: `add r3,r4,#0x30` at 0x020c4ce0
 // and `add r3,r4,#0x3c` at 0x020c7890, each followed by ldr [r3,#4] / ldr [r3].
@@ -559,22 +559,22 @@ static void d3d_face(int which, unsigned code)
     }
 
 /* field +0x30, site 0: sixteen code words */
-D3D_FACE0(020c4d1c, 0, func_ov006_020c4d1c)
-D3D_FACE (020c4e8c, 0, func_ov006_020c4e8c, char *)
-D3D_FACE (020c4fa4, 0, func_ov006_020c4fa4, char *)
-D3D_FACE (020c53f8, 0, func_ov006_020c53f8, char *)
-D3D_FACE (020c5530, 0, func_ov006_020c5530, char *)
-D3D_FACE (020c5658, 0, func_ov006_020c5658, char *)
-D3D_FACE (020c5928, 0, func_ov006_020c5928, char *)
-D3D_FACE (020c5bf8, 0, func_ov006_020c5bf8, char *)
-D3D_FACE (020c5d28, 0, func_ov006_020c5d28, char *)
-D3D_FACE (020c6088, 0, func_ov006_020c6088, char *)
-D3D_FACEI(020c61c4, 0, func_ov006_020c61c4)
-D3D_FACE (020c627c, 0, func_ov006_020c627c, char *)
-D3D_FACEI(020c6378, 0, func_ov006_020c6378)
-D3D_FACE (020c6400, 0, func_ov006_020c6400, char *)
-D3D_FACE (020c66bc, 0, func_ov006_020c66bc, char *)
-D3D_FACE (020c6a9c, 0, func_ov006_020c6a9c, char *)
+D3D_FACE0(020c4d1c, 0, Heyho_StateIdle)
+D3D_FACE (020c4e8c, 0, Heyho_Motion11, char *)
+D3D_FACE (020c4fa4, 0, Heyho_Motion1, char *)
+D3D_FACE (020c53f8, 0, Heyho_Motion5, char *)
+D3D_FACE (020c5530, 0, Heyho_Motion2, char *)
+D3D_FACE (020c5658, 0, Heyho_Motion6, char *)
+D3D_FACE (020c5928, 0, Heyho_Motion4, char *)
+D3D_FACE (020c5bf8, 0, Heyho_Motion7, char *)
+D3D_FACE (020c5d28, 0, Heyho_Motion9, char *)
+D3D_FACE (020c6088, 0, Heyho_Motion0, char *)
+D3D_FACEI(020c61c4, 0, Heyho_Motion10)
+D3D_FACE (020c627c, 0, Heyho_Motion14, char *)
+D3D_FACEI(020c6378, 0, Heyho_Motion12)
+D3D_FACE (020c6400, 0, Heyho_Motion13, char *)
+D3D_FACE (020c66bc, 0, Heyho_Motion8, char *)
+D3D_FACE (020c6a9c, 0, Heyho_Motion3, char *)
 /* field +0x3c, site 1: nine code words */
 D3D_FACE (020c78ec, 1, _ZN16dMgJump3DMario_c9StateDampEv, char *)
 D3D_FACE (020c7a30, 1, _ZN16dMgJump3DMario_c9StateHoldEv, char *)
@@ -587,19 +587,19 @@ D3D_FACE (020c864c, 1, _ZN16dMgJump3DMario_c9StateIdleEv, int *)
 D3D_FACE (020c8680, 1, _ZN16dMgJump3DMario_c12StateRespawnEv, char *)
 
 extern "C" {
-extern unsigned data_ov006_0213af18[], data_ov006_0213af20[],
-    data_ov006_0213af28[], data_ov006_0213af30[], data_ov006_0213af38[],
-    data_ov006_0213af40[], data_ov006_0213af48[], data_ov006_0213af50[],
-    data_ov006_0213af58[], data_ov006_0213af60[], data_ov006_0213af68[],
-    data_ov006_0213af70[], data_ov006_0213af78[], data_ov006_0213af80[],
-    data_ov006_0213af88[], data_ov006_0213af90[], data_ov006_0213af98[],
-    data_ov006_0213afa0[], data_ov006_0213afa8[], data_ov006_0213afb0[],
-    data_ov006_0213afb8[], data_ov006_0213afc0[], data_ov006_0213afc8[],
-    data_ov006_0213b020[], data_ov006_0213b028[], data_ov006_0213b030[],
-    data_ov006_0213b038[], data_ov006_0213b040[], data_ov006_0213b048[],
-    data_ov006_0213b050[], data_ov006_0213b058[], data_ov006_0213b060[],
-    data_ov006_0213b068[], data_ov006_0213b070[], data_ov006_0213b078[],
-    data_ov006_0213b080[], data_ov006_0213b088[], data_ov006_0213b090[];
+extern unsigned pmf_Heyho_Motion14[], pmf_Heyho_Motion0[],
+    pmf_Heyho_Motion1[], pmf_Heyho_Motion2[], pmf_Heyho_Motion3[],
+    pmf_Heyho_Motion4[], pmf_Heyho_Motion5[], pmf_Heyho_Motion6[],
+    pmf_Heyho_Motion7[], pmf_Heyho_Motion8[], pmf_Heyho_Motion9[],
+    pmf_Heyho_StateIdle[], pmf_Heyho_Motion10[], pmf_Heyho_Motion11[],
+    pmf_Heyho_Motion12[], pmf_Heyho_StateIdle_2[], pmf_Heyho_StateIdle_3[],
+    pmf_Heyho_Motion13[], pmf_Heyho_StateIdle_4[], pmf_Heyho_Motion1_2[],
+    pmf_Heyho_Motion13_2[], pmf_Heyho_Motion11_2[], data_ov006_0213afc8[],
+    pmf_dMgJump3DMario_c_StateMove[], pmf_dMgJump3DMario_c_StateHold[], pmf_dMgJump3DMario_c_StateDamp[],
+    pmf_dMgJump3DMario_c_StateRespawn[], pmf_dMgJump3DMario_c_StateIdle[], pmf_dMgJump3DMario_c_StateIdle_2[],
+    pmf_dMgJump3DMario_c_StateWindUp[], pmf_dMgJump3DMario_c_StateIdle_3[], pmf_dMgJump3DMario_c_StateBounce[],
+    pmf_dMgJump3DMario_c_StateWindUp_2[], pmf_dMgJump3DMario_c_StateWindUp_3[], pmf_dMgJump3DMario_c_StateBounce_2[],
+    pmf_dMgJump3DMario_c_StateRiseOut[], pmf_dMgJump3DMario_c_StateRespawn_2[], pmf_dMgJump3DMario_c_StateFallOut[];
 }
 
 namespace {
@@ -613,44 +613,44 @@ extern "C" void port_mg_objstate_seat(void)
         return;
     done = 1;
     const D3DSeat seats[] = {
-        {data_ov006_0213af18, 0x020c627cu, (void *)d3d_020c627c, 0x0213af18},
-        {data_ov006_0213af20, 0x020c6088u, (void *)d3d_020c6088, 0x0213af20},
-        {data_ov006_0213af28, 0x020c4fa4u, (void *)d3d_020c4fa4, 0x0213af28},
-        {data_ov006_0213af30, 0x020c5530u, (void *)d3d_020c5530, 0x0213af30},
-        {data_ov006_0213af38, 0x020c6a9cu, (void *)d3d_020c6a9c, 0x0213af38},
-        {data_ov006_0213af40, 0x020c5928u, (void *)d3d_020c5928, 0x0213af40},
-        {data_ov006_0213af48, 0x020c53f8u, (void *)d3d_020c53f8, 0x0213af48},
-        {data_ov006_0213af50, 0x020c5658u, (void *)d3d_020c5658, 0x0213af50},
-        {data_ov006_0213af58, 0x020c5bf8u, (void *)d3d_020c5bf8, 0x0213af58},
-        {data_ov006_0213af60, 0x020c66bcu, (void *)d3d_020c66bc, 0x0213af60},
-        {data_ov006_0213af68, 0x020c5d28u, (void *)d3d_020c5d28, 0x0213af68},
-        {data_ov006_0213af70, 0x020c4d1cu, (void *)d3d_020c4d1c, 0x0213af70},
-        {data_ov006_0213af78, 0x020c61c4u, (void *)d3d_020c61c4, 0x0213af78},
-        {data_ov006_0213af80, 0x020c4e8cu, (void *)d3d_020c4e8c, 0x0213af80},
-        {data_ov006_0213af88, 0x020c6378u, (void *)d3d_020c6378, 0x0213af88},
-        {data_ov006_0213af90, 0x020c4d1cu, (void *)d3d_020c4d1c, 0x0213af90},
-        {data_ov006_0213af98, 0x020c4d1cu, (void *)d3d_020c4d1c, 0x0213af98},
-        {data_ov006_0213afa0, 0x020c6400u, (void *)d3d_020c6400, 0x0213afa0},
-        {data_ov006_0213afa8, 0x020c4d1cu, (void *)d3d_020c4d1c, 0x0213afa8},
-        {data_ov006_0213afb0, 0x020c4fa4u, (void *)d3d_020c4fa4, 0x0213afb0},
-        {data_ov006_0213afb8, 0x020c6400u, (void *)d3d_020c6400, 0x0213afb8},
-        {data_ov006_0213afc0, 0x020c4e8cu, (void *)d3d_020c4e8c, 0x0213afc0},
+        {pmf_Heyho_Motion14, 0x020c627cu, (void *)d3d_020c627c, 0x0213af18},
+        {pmf_Heyho_Motion0, 0x020c6088u, (void *)d3d_020c6088, 0x0213af20},
+        {pmf_Heyho_Motion1, 0x020c4fa4u, (void *)d3d_020c4fa4, 0x0213af28},
+        {pmf_Heyho_Motion2, 0x020c5530u, (void *)d3d_020c5530, 0x0213af30},
+        {pmf_Heyho_Motion3, 0x020c6a9cu, (void *)d3d_020c6a9c, 0x0213af38},
+        {pmf_Heyho_Motion4, 0x020c5928u, (void *)d3d_020c5928, 0x0213af40},
+        {pmf_Heyho_Motion5, 0x020c53f8u, (void *)d3d_020c53f8, 0x0213af48},
+        {pmf_Heyho_Motion6, 0x020c5658u, (void *)d3d_020c5658, 0x0213af50},
+        {pmf_Heyho_Motion7, 0x020c5bf8u, (void *)d3d_020c5bf8, 0x0213af58},
+        {pmf_Heyho_Motion8, 0x020c66bcu, (void *)d3d_020c66bc, 0x0213af60},
+        {pmf_Heyho_Motion9, 0x020c5d28u, (void *)d3d_020c5d28, 0x0213af68},
+        {pmf_Heyho_StateIdle, 0x020c4d1cu, (void *)d3d_020c4d1c, 0x0213af70},
+        {pmf_Heyho_Motion10, 0x020c61c4u, (void *)d3d_020c61c4, 0x0213af78},
+        {pmf_Heyho_Motion11, 0x020c4e8cu, (void *)d3d_020c4e8c, 0x0213af80},
+        {pmf_Heyho_Motion12, 0x020c6378u, (void *)d3d_020c6378, 0x0213af88},
+        {pmf_Heyho_StateIdle_2, 0x020c4d1cu, (void *)d3d_020c4d1c, 0x0213af90},
+        {pmf_Heyho_StateIdle_3, 0x020c4d1cu, (void *)d3d_020c4d1c, 0x0213af98},
+        {pmf_Heyho_Motion13, 0x020c6400u, (void *)d3d_020c6400, 0x0213afa0},
+        {pmf_Heyho_StateIdle_4, 0x020c4d1cu, (void *)d3d_020c4d1c, 0x0213afa8},
+        {pmf_Heyho_Motion1_2, 0x020c4fa4u, (void *)d3d_020c4fa4, 0x0213afb0},
+        {pmf_Heyho_Motion13_2, 0x020c6400u, (void *)d3d_020c6400, 0x0213afb8},
+        {pmf_Heyho_Motion11_2, 0x020c4e8cu, (void *)d3d_020c4e8c, 0x0213afc0},
         {data_ov006_0213afc8, 0x020c4d1cu, (void *)d3d_020c4d1c, 0x0213afc8},
-        {data_ov006_0213b020, 0x020c7c68u, (void *)d3d_020c7c68, 0x0213b020},
-        {data_ov006_0213b028, 0x020c7a30u, (void *)d3d_020c7a30, 0x0213b028},
-        {data_ov006_0213b030, 0x020c78ecu, (void *)d3d_020c78ec, 0x0213b030},
-        {data_ov006_0213b038, 0x020c8680u, (void *)d3d_020c8680, 0x0213b038},
-        {data_ov006_0213b040, 0x020c864cu, (void *)d3d_020c864c, 0x0213b040},
-        {data_ov006_0213b048, 0x020c864cu, (void *)d3d_020c864c, 0x0213b048},
-        {data_ov006_0213b050, 0x020c85bcu, (void *)d3d_020c85bc, 0x0213b050},
-        {data_ov006_0213b058, 0x020c864cu, (void *)d3d_020c864c, 0x0213b058},
-        {data_ov006_0213b060, 0x020c833cu, (void *)d3d_020c833c, 0x0213b060},
-        {data_ov006_0213b068, 0x020c85bcu, (void *)d3d_020c85bc, 0x0213b068},
-        {data_ov006_0213b070, 0x020c85bcu, (void *)d3d_020c85bc, 0x0213b070},
-        {data_ov006_0213b078, 0x020c833cu, (void *)d3d_020c833c, 0x0213b078},
-        {data_ov006_0213b080, 0x020c814cu, (void *)d3d_020c814c, 0x0213b080},
-        {data_ov006_0213b088, 0x020c8680u, (void *)d3d_020c8680, 0x0213b088},
-        {data_ov006_0213b090, 0x020c8048u, (void *)d3d_020c8048, 0x0213b090},
+        {pmf_dMgJump3DMario_c_StateMove, 0x020c7c68u, (void *)d3d_020c7c68, 0x0213b020},
+        {pmf_dMgJump3DMario_c_StateHold, 0x020c7a30u, (void *)d3d_020c7a30, 0x0213b028},
+        {pmf_dMgJump3DMario_c_StateDamp, 0x020c78ecu, (void *)d3d_020c78ec, 0x0213b030},
+        {pmf_dMgJump3DMario_c_StateRespawn, 0x020c8680u, (void *)d3d_020c8680, 0x0213b038},
+        {pmf_dMgJump3DMario_c_StateIdle, 0x020c864cu, (void *)d3d_020c864c, 0x0213b040},
+        {pmf_dMgJump3DMario_c_StateIdle_2, 0x020c864cu, (void *)d3d_020c864c, 0x0213b048},
+        {pmf_dMgJump3DMario_c_StateWindUp, 0x020c85bcu, (void *)d3d_020c85bc, 0x0213b050},
+        {pmf_dMgJump3DMario_c_StateIdle_3, 0x020c864cu, (void *)d3d_020c864c, 0x0213b058},
+        {pmf_dMgJump3DMario_c_StateBounce, 0x020c833cu, (void *)d3d_020c833c, 0x0213b060},
+        {pmf_dMgJump3DMario_c_StateWindUp_2, 0x020c85bcu, (void *)d3d_020c85bc, 0x0213b068},
+        {pmf_dMgJump3DMario_c_StateWindUp_3, 0x020c85bcu, (void *)d3d_020c85bc, 0x0213b070},
+        {pmf_dMgJump3DMario_c_StateBounce_2, 0x020c833cu, (void *)d3d_020c833c, 0x0213b078},
+        {pmf_dMgJump3DMario_c_StateRiseOut, 0x020c814cu, (void *)d3d_020c814c, 0x0213b080},
+        {pmf_dMgJump3DMario_c_StateRespawn_2, 0x020c8680u, (void *)d3d_020c8680, 0x0213b088},
+        {pmf_dMgJump3DMario_c_StateFallOut, 0x020c8048u, (void *)d3d_020c8048, 0x0213b090},
     };
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
         unsigned *p = seats[i].rec;
@@ -667,6 +667,6 @@ extern "C" void port_mg_objstate_seat(void)
 }
 
 /* HOST COPIES RETIRED, run link100 lane PMFB6 gate 3.
-   src/func_ov006_020c4cd8.cpp and src/actors/dMgJump3DMario_c.cpp dispatch their
+   src/Heyho_Update.cpp and src/minigames/d_mg_jump3d_mario.cpp dispatch their
    own fields now; the second is compiled with /Zp4 for the reason above. */
 

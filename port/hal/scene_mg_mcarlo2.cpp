@@ -89,15 +89,15 @@
 // the only way to spell an unnamed value in C. The repair is
 // port_mg_flower_after_init in port/unmatched/MgFlower_Slot2.cpp, whose header
 // asks the next lane to call it rather than write a second one; this is the
-// fifth lane to do so. src/minigames/d_s_mg_single3_d_base.cpp stays out of
+// fifth lane to do so. src/minigames/d_s_mg_single3d_base.cpp stays out of
 // port/slice_pgo.txt for that reason.
 //
-// _ZN19dScMgSingle3DBase_c9Virtual84Ev (slot 33, the once-per-boot 3D setup) ends with two
+// _ZN19dScMgSingle3DBase_c11InitEnginesEv (slot 33, the once-per-boot 3D setup) ends with two
 // stores to LIGHT_COLOR at 0x040004cc, which a plain src build lands in the
 // memory ntr maps across the I/O window without ever telling the geometry
 // engine -- the "Yoshi is a black silhouette" defect run mg5 lane YTEX
 // measured. It builds from the hostgen'd copy port/CMakeLists.txt's
-// FLW_HOSTGEN_SYMS already emits, and src/minigames/d_s_mg_single3_d_base.cpp is out of this
+// FLW_HOSTGEN_SYMS already emits, and src/minigames/d_s_mg_single3d_base.cpp is out of this
 // slice for the same reason.
 //
 // THIS CLASS'S OWN SLOT 0 WRITES TWO PPU REGISTERS STRAIGHT FROM src AND THAT
@@ -156,7 +156,7 @@
 // thunk over live ROM data belonging to another class. FOR THIS CLASS THE
 // PHANTOM IS REAL AND ITS VICTIM IS NAMED, so the checks are not ceremony:
 //
-//   1. SPAN. _ZTV14dScMgMCarlo2_c -> next config symbol data_ov006_0213d878.
+//   1. SPAN. _ZTV14dScMgMCarlo2_c -> next config symbol pmf_PachinkoFlyer_State0.
 //      0x90 bytes = 36 words. (An UPPER bound only; it refuses a width and
 //      never grants one.)
 //   2. TERMINAL SLOT. Slot 35 (0x0213d874) holds 0x020ad660, which every
@@ -259,7 +259,7 @@
 // 0x48 with `mvn r1,#0` -- one argument, value -1 -- at 0x020fa664, and
 // src/minigames/d_s_mg_m_carlo2.cpp spells it `((Base *)c)->m48(-1)` over a
 // nineteen-virtual shim so MSVC emits the same slot. The ROM body
-// _ZN14dScMgMCarlo2_c13OnYoshiTryEatEi never reads its r1. A thunk declared (void*, void*)
+// _ZN14dScMgMCarlo2_c10StartRoundEi never reads its r1. A thunk declared (void*, void*)
 // compiles to a bare ret, leaks those four bytes, and the caller's own `ret`
 // then takes a garbage return address -- the fault lane BASESET repaired across
 // the family. runs/mg5/out/baseset/slot18_19_scan.txt is the census: 22 slot-18
@@ -312,8 +312,8 @@ int   _ZN19dScMgSingle3DBase_c14BeforeBehaviorEv(void *c);                     /
 int   _ZN19dScMgSingle3DBase_c12BeforeRenderEv(void *c);                     /* slot 10 */
 int   _ZN19dScMgSingle3DBase_cD1Ev(char *c);                     /* slot 16 D2 */
 int   _ZN19dScMgSingle3DBase_cD0Ev(char *c);                     /* slot 17 D0 */
-int   _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(void);                        /* slot 26 */
-void  _ZN19dScMgSingle3DBase_c9Virtual84Ev(char *c);                     /* slot 33 */
+int   _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(void);                        /* slot 26 */
+void  _ZN19dScMgSingle3DBase_c11InitEnginesEv(char *c);                     /* slot 33 */
 
 /* dScMgMCarlo2_c's own eight */
 int   _ZN14dScMgMCarlo2_c13InitResourcesEv(char *c);           /* slot  0 InitResources     */
@@ -322,8 +322,8 @@ int   _ZN14dScMgMCarlo2_c8BehaviorEv(void *c);           /* slot  6 Behavior    
 int   _ZN14dScMgMCarlo2_c6RenderEv(char *c);           /* slot  9 Render            */
 void *_ZN14dScMgMCarlo2_cD1Ev(char *c);           /* slot 16 D2                */
 void *_ZN14dScMgMCarlo2_cD0Ev(char *c);           /* slot 17 D0                */
-void  _ZN14dScMgMCarlo2_c13OnYoshiTryEatEi(char *c);           /* slot 18 state reset       */
-int   _ZN14dScMgMCarlo2_c13OnTurnIntoEggEi(char *c);           /* slot 19 states 4..6       */
+void  _ZN14dScMgMCarlo2_c10StartRoundEi(char *c);           /* slot 18 state reset       */
+int   _ZN14dScMgMCarlo2_c11CanEndStateEi(char *c);           /* slot 19 states 4..6       */
 
 /* dMgMCarlo2CardObj_c's two, section 4b */
 void  _ZN19dMgMCarlo2CardObj_c6RenderEv(char *thiz);        /* slot  0 the card draw   */
@@ -365,17 +365,17 @@ void  port_mg_dispatch_counts(unsigned *calls, unsigned *unknown);
 
 /* The persistent minigame record this class's progress is keyed to. Nothing new
    is defined here: the storage is hal/level_boot.cpp's .dsstate$savblk0004 and
-   the index function is src/func_ov004_020adc3c.c. Named so the census can
+   the index function is src/Mg_GetSaveTable.c. Named so the census can
    print the record rather than leave it to be inferred. */
-extern void         *data_ov004_020beb68;     /* the live dScMgBase_c `this` */
+extern void         *gMgScene;     /* the live dScMgBase_c `this` */
 extern unsigned char data_0209caf4[];         /* 36 records x 20 bytes       */
-int   func_ov004_020adc3c(void *c);           /* (self->field_8 >> 8) & 0xff */
+int   Mg_GetSaveTable(void *c);           /* (self->field_8 >> 8) & 0xff */
 
 }  /* extern "C" */
 
 static int port_mg2_record_index(void)
 {
-    return data_ov004_020beb68 ? func_ov004_020adc3c(data_ov004_020beb68) : -1;
+    return gMgScene ? Mg_GetSaveTable(gMgScene) : -1;
 }
 
 // ---- the tick witness ------------------------------------------------------
@@ -405,9 +405,9 @@ static void *__fastcall s3_d2(void *s, void *)
 static void *__fastcall s3_d0(void *s, void *)
 { M3D(17); return (void *)(size_t)_ZN19dScMgSingle3DBase_cD0Ev((char *)s); }
 static int  __fastcall s3_v26(void *, void *)
-{ M3D(26); return _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(); }
+{ M3D(26); return _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(); }
 static int  __fastcall s3_v33(void *s, void *)
-{ M3D(33); _ZN19dScMgSingle3DBase_c9Virtual84Ev((char *)s); return 0; }
+{ M3D(33); _ZN19dScMgSingle3DBase_c11InitEnginesEv((char *)s); return 0; }
 
 /* ---- dScMgMCarlo2_c's own eight ----------------------------------------- */
 static int  __fastcall mc2_init(void *s, void *)
@@ -479,9 +479,9 @@ static void *__fastcall mc2_d0(void *s, void *)
 { MC2(17); return _ZN14dScMgMCarlo2_cD0Ev((char *)s); }
 /* the two ride-through faces, section 9 */
 static int  __fastcall mc2_reset(void *s, void *, int /*ridethrough*/)
-{ MC2(18); _ZN14dScMgMCarlo2_c13OnYoshiTryEatEi((char *)s); return 1; }
+{ MC2(18); _ZN14dScMgMCarlo2_c10StartRoundEi((char *)s); return 1; }
 static int  __fastcall mc2_v19(void *s, void *, int /*ridethrough*/)
-{ MC2(19); return _ZN14dScMgMCarlo2_c13OnTurnIntoEggEi((char *)s); }
+{ MC2(19); return _ZN14dScMgMCarlo2_c11CanEndStateEi((char *)s); }
 
 /* ---- dMgMCarlo2CardObj_c's two, section 4b ------------------------------ */
 /* These are NOT __fastcall thunks over a Scene slot: the ROM dispatches them
@@ -773,7 +773,7 @@ extern "C" void port_scene_mcarlo2_hits(void)
                         rec[0], rec[1], rec[2], rec[3], rec[4]);
         } else {
             std::printf("[scene] dScMgMCarlo2_c save record: NO minigame index "
-                        "(data_ov004_020beb68 = %p)\n", data_ov004_020beb68);
+                        "(gMgScene = %p)\n", gMgScene);
         }
     }
     std::fflush(stdout);

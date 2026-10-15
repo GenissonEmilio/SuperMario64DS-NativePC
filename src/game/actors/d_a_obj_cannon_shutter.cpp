@@ -30,6 +30,12 @@
 
 /* daObjCannonShutter_c.h FIRST: it pulls in dBgActor_c.h, which must reach
    common.h ahead of Model.h or the wrong Matrix4x3 spelling wins. */
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_cannon_shutter_AssetId {
+    ASSET_CANNON_SHUTTER_BMD = 0x045f,
+    ASSET_CANNON_SHUTTER_KCL = 0x0460
+};
+
 #include "daObjCannonShutter_c.h"
 #include "Player.h"
 #include "SharedFilePtr.h"
@@ -255,5 +261,5 @@ void daObjCannonShutter_c::func_ov002_020bc990()
 
 /* Order is the retail initializer: model 0x45f, mesh-collision 0x460. mwcc
  * emits __sinit_d_a_obj_cannon_shutter.cpp from these two definitions. */
-CannonShutterModelFilePtr data_ov002_0210e12c(0x45f);
-CannonShutterClsnFilePtr data_ov002_0210e124(0x460);
+CannonShutterModelFilePtr data_ov002_0210e12c(ASSET_CANNON_SHUTTER_BMD);
+CannonShutterClsnFilePtr data_ov002_0210e124(ASSET_CANNON_SHUTTER_KCL);

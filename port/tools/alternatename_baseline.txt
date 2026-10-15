@@ -79,8 +79,8 @@
 # without linking os_arena.cpp the stub fires and the dump prints no install
 # block, which is correct -- such a binary has no verdict to give.
 #
-# SCOPE HOLD, run link100 lane SMOKELINK6: __ZN4Heap21MaxAllocationUnitSizeEv=
-# ?MaxAllocationUnitSize@Heap@@QAEIXZ and __ZN13HeapAllocator6RemoveEv=
+# SCOPE HOLD, run link100 lane SMOKELINK6: __ZN5mHeap6Heap_t21MaxAllocationUnitSizeEv=
+# ?MaxAllocationUnitSize@Heap_t@mHeap@@QAEIXZ and __ZN13HeapAllocator6RemoveEv=
 # ?Remove@HeapAllocator@@QAEXXZ were ADDED, and they are NOT the weak-symbol
 # idiom the rest of this list documents. Both pragmas live in
 # hal/smoke_heap_seam_actor.cpp:111,:120 (SMOKELINK5's 59bced026), which
@@ -124,8 +124,8 @@
 ?SetFile@ModelBase@@QAEHPAUBMD_File@@HH@Z=?SetFile@ModelBaseFace@@QAEHPAUBMD_File@@HH@Z
 __ZN17dExtShadowModel_cD1Ev=_hal_shadow_d1_fallback
 __ZN13HeapAllocator6RemoveEv=?Remove@HeapAllocator@@QAEXXZ
-__ZN4Heap21MaxAllocationUnitSizeEv=?MaxAllocationUnitSize@Heap@@QAEIXZ
-__ZN4Heap8AllocateEj=_hal_heap_allocate_align4
+__ZN5mHeap6Heap_t21MaxAllocationUnitSizeEv=?MaxAllocationUnitSize@Heap_t@mHeap@@QAEIXZ
+__ZN5mHeap6Heap_t8AllocateEj=_hal_heap_allocate_align4
 __ZN8dActor_c18DropShadowScaleXYZER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_S5_j=_hal_dropshadow_scalexyz_fallback
 __ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_=_port_l7_particle_newsimple_stub
 _data_0209ee74=_port_fault_no_particles

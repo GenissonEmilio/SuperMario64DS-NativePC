@@ -187,7 +187,7 @@
 #
 src/unnamed/arm9/0207/func_02072f94.c
 src/engine/sound/Sound.cpp
-src/engine/graph/dGraph_c_callback_c.cpp
+src/engine/graph/d_graph_c_callback.cpp
 src/unnamed/arm9/0207/__sinit_02074d90.c
 src/unnamed/arm9/0207/__sinit_02074da8.c
 src/unnamed/arm9/0207/__sinit_02074dbc.c
@@ -204,8 +204,8 @@ src/unnamed/arm9/0207/__sinit_020750b8.c
 src/unnamed/arm9/0207/__sinit_020750ec.c
 src/unnamed/arm9/0207/__sinit_0207511c.c
 src/unnamed/arm9/0207/__sinit_02074e84.cpp
-src/engine/collision/dClipper.cpp
-# FOLDED into src/engine/collision/dClipper.cpp (row 207): src/_ZN7ClipperD1Ev.cpp
+src/engine/collision/d_clipper.cpp
+# FOLDED into src/engine/collision/d_clipper.cpp (row 207): src/_ZN7ClipperD1Ev.cpp
 src/unnamed/arm9/0207/__sinit_02073a24.c
 src/unnamed/arm9/0207/__sinit_02074edc.c
 src/unnamed/arm9/0207/__sinit_0207501c.c

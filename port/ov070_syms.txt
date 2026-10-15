@@ -184,7 +184,7 @@ data_ov070_021236a0@0x021236a0
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov070_02123698                        now defined by src/game/actors/d_a_krpa.cpp
+#   gKeronpaModelFile                        now defined by src/game/actors/d_a_krpa.cpp
 #   data_ov070_021236ac                        now defined by src/game/actors/d_a_krpa.cpp
 #   data_ov070_021236ec                        now defined by src/game/actors/d_a_kp_fr.cpp
 
@@ -192,4 +192,4 @@ data_ov070_021236a0@0x021236a0
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov070_021235bc! data_ov070_021235cc!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov070_02123698! data_ov070_021236ac! data_ov070_021236ec! data_ov070_02123528! data_ov070_02123520! data_ov070_02123530! data_ov070_02123518! data_ov070_02123500! data_ov070_02123508! data_ov070_02123510! data_ov070_0212359c! data_ov070_021235ac! data_ov070_021235dc! data_ov070_0212358c!
+gKeronpaModelFile! data_ov070_021236ac! data_ov070_021236ec! data_ov070_02123528! data_ov070_02123520! data_ov070_02123530! data_ov070_02123518! data_ov070_02123500! data_ov070_02123508! data_ov070_02123510! data_ov070_0212359c! data_ov070_021235ac! data_ov070_021235dc! data_ov070_0212358c!

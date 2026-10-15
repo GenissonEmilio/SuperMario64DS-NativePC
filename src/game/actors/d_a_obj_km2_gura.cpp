@@ -23,6 +23,12 @@
  *   data_ov045_*.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_km2_gura_AssetId {
+    ASSET_KM2_GURA_BMD = 0x065f,
+    ASSET_KM2_GURA_KCL = 0x0660
+};
+
 #include "daObjKm2_Gura_c.h"
 #include "SharedFilePtr.h"
 
@@ -120,5 +126,5 @@ s32 daObjKm2_Gura_c::CleanupResources()
 
 /* Source order is construction order: model file 1631, then the collision
  * file 1632. The compiler registers each destructor beside the object. */
-Km2GuraModelFilePtr data_ov045_02113220(1631);
-Km2GuraClsnFilePtr data_ov045_02113228(1632);
+Km2GuraModelFilePtr data_ov045_02113220(ASSET_KM2_GURA_BMD);
+Km2GuraClsnFilePtr data_ov045_02113228(ASSET_KM2_GURA_KCL);

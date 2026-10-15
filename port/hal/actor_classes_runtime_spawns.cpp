@@ -99,7 +99,7 @@ void port_enemy_death_states_seat(void);
 /* teardown members the host thunks spell */
 void _ZN7dCcAc_cD1Ev(void *self);
 void *_ZN8dActor_cD2Ev(void *self);
-void _ZN6Memory10DeallocateEPvP4Heap(void *, void *);
+void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *, void *);
 extern void *data_020a0eac;   /* the game heap */
 }
 

@@ -103,9 +103,9 @@
 # thiscall callee. Both conventions are satisfied by the same instruction.
 
 src/game/actors/d_a_pg_bby.cpp
-src/actors/Scuttlebug.cpp
-src/actors/daEykn_c.cpp
-src/actors/daBttBk_c.cpp
+src/game/actors/d_a_spd.cpp
+src/game/actors/d_a_eykn.cpp
+src/game/actors/d_a_btt_bk.cpp
 
 # ---- run link100 lane PMF: THE TWO pp+0 HALVES OF THE SAME TWO TABLES ------
 #
@@ -122,8 +122,8 @@ src/actors/daBttBk_c.cpp
 #       sibling src/func_ov072_02121cdc.cpp (TICK, same +0x35c, same table,
 #       same seat) is four lines above this comment and has been linked and
 #       green since wave 18.
-#   src/actors/Scuttlebug.cpp   Scuttlebug ENTER, ov071 +0x380
-#       sibling src/actors/Scuttlebug.cpp (MAIN, same +0x380, same table,
+#   src/game/actors/d_a_spd.cpp   Scuttlebug ENTER, ov071 +0x380
+#       sibling src/game/actors/d_a_spd.cpp (MAIN, same +0x380, same table,
 #       same seat) likewise.
 #
 # EVERY CHECK WAVE 18 MADE FOR THE SIBLING COVERS THE ENTER HALF UNCHANGED,
@@ -132,7 +132,7 @@ src/actors/daBttBk_c.cpp
 #                18); ov072's are checked at runtime on every boot, because
 #                hal/actor_classes_ov072.cpp's seat ABORTS on a nonzero one.
 #   convention   both callers are plain .c cdecl TUs that are already linked --
-#                src/func_ov072_02121d50.c and src/actors/Scuttlebug.cpp -- each
+#                src/func_ov072_02121d50.c and src/game/actors/d_a_spd.cpp -- each
 #                storing the record pointer and then calling the dispatcher with
 #                the object pushed. So the tail jump wave 18 measured
 #                ("pop ebp / jmp eax leaves the original argument at [esp+4]")

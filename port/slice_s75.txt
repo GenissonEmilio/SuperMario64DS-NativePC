@@ -176,11 +176,11 @@
 # extracted/overlays/overlay_0006.bin and are in the list below; all three ship
 # NONMATCHING-bannered with the ROM read stated in the file header.
 #
-#   src/actors/dScMgCurling2_c.cpp   0x300  the stylus aim state; SIZE EXACT
+#   src/minigames/d_s_mg_curling2.cpp   0x300  the stylus aim state; SIZE EXACT
 #                                      192/192 words, register colouring only
 #   src/func_ov006_020e513c.c   0x314  overlap depenetration over the eleven
 #                                      0x30-stride shell records
-#   src/func_ov006_020e5450.c   0x560  the shell-vs-shell elastic collision --
+#   src/Curling2_ResolveStoneCollision.c   0x560  the shell-vs-shell elastic collision --
 #                                      the body mg6's 1200-frame run asked for
 #                                      6810 times with nothing behind it
 #
@@ -212,9 +212,9 @@
 # here as well would be a duplicate symbol.
 #     src/_ZN15dScMgCurling2_c8BehaviorEv.cpp   slot 6 Behavior, table 02141a18
 #     src/func_ov006_020e6354.cpp   tables 02141978 and 021419d8
-#     src/actors/dScMgCurling2_c.cpp   table 02141988
-#     src/actors/dScMgCurling2_c.cpp   tables 021419f8 and 021419a0
-#     src/actors/dScMgCurling2_c.cpp   table 021419b8
+#     src/minigames/d_s_mg_curling2.cpp   table 02141988
+#     src/minigames/d_s_mg_curling2.cpp   tables 021419f8 and 021419a0
+#     src/minigames/d_s_mg_curling2.cpp   table 021419b8
 #
 # WHY ALL FIVE AND NOT JUST THE ONE THE LINK NAMES. port/mg_fanout_costs.txt
 # section 4's rulebook corollary keys on the SPELLING: a pair whose consumer
@@ -232,7 +232,7 @@
 # mg6 seat referenced it, because the two things that would have were the port
 # traps and a trap calls nothing -- so the first link after the real bodies
 # landed closed to LNK1120 on exactly this one symbol, in all three targets that
-# host the slice. Its own callees (func_ov004_020adb1c, func_ov004_020adbc0) are
+# host the slice. Its own callees (Mg_SubmitScore, Mg_GetSubmittedScore) are
 # already linked through port/slice_mg1.txt, so the line costs one TU. THE
 # GENERAL POINT IS WORTH MORE THAN THE LINE: a trap-shaped floor hides its
 # callees from every static closure the port has, so retiring a floor can widen
@@ -245,10 +245,10 @@
 # moves, and it was never being drawn.
 #
 # WHAT DRAWS IT. Slot 9 Render (_ZN15dScMgCurling2_c6RenderEv) calls six bodies and the
-# last is src/actors/dScMgCurling2_c.cpp, eight lines: gate on the cue-visible byte
+# last is src/minigames/d_s_mg_curling2.cpp, eight lines: gate on the cue-visible byte
 # at +0x55b9, read the cue's x at +0x5584 and y at +0x5588 -- the two fields
 # _ZN15dScMgCurling2_c10DragUpdateEv, the stylus aim state this file's floor section named,
-# writes -- and hand ONE OamAttr template to func_ov004_020afdd0 at
+# writes -- and hand ONE OamAttr template to Mg_RenderSpriteBoth at
 # (x >> 12) - 0x20, (y >> 12) - 8. The -0x20 is half of 64, which is the first
 # thing that says the template is a 64-wide pair.
 #
@@ -292,10 +292,10 @@
 # x 96..159, which is the bar, and no other scene moves.
 #
 # THE SRC TU'S OWN SPELLING IS A DECOMP DEFECT AND IS NOT FIXED HERE.
-# src/actors/dScMgCurling2_c.cpp should name data_ov006_0213c4f0; the reloc row above
+# src/minigames/d_s_mg_curling2.cpp should name data_ov006_0213c4f0; the reloc row above
 # is the whole argument and the two names share an address so no byte moves.
 # ROUTED, because this is a port lane. A sweep of the other ov006 sources found
-# five more files carrying a non-ov006 data name -- func_ov006_020cb16c,
+# five more files carrying a non-ov006 data name -- Trmp3DMario_State0,
 # 020cd12c, 020cd6f4, 020d5e5c and 0210a708 -- none of them on a curling path,
 # none of them checked by this lane, all of them the same question.
 #
@@ -306,29 +306,29 @@
 # class's dispatch tables are seated with host addresses whose faces are
 # __fastcall with a dead edx -- the shape MSVC's own member-pointer call makes
 # under the /vmg /vmm pair -- so the matched TU's dispatch is already right.
-src/actors/dScMgCurling2_c.cpp
+src/minigames/d_s_mg_curling2.cpp
 # HELD, run link100 lane HOSTGEN2: main's consolidated TU above defines
 # func_ov006_020e513c as well, and this file is the port's own NONMATCHING
 # decompile of the same address. Taking both is a duplicate symbol, and the
 # matched tree's body is the one to keep.
 #src/func_ov006_020e513c.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e5450.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e59b0.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e5a0c.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e5b70.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e5b7c.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e5e3c.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e5ffc.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e6118.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e619c.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e61c0.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e61c4.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e628c.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e64e4.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e6528.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e667c.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/func_ov006_020e668c.c
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/_ZN15dScMgCurling2_c13OnYoshiTryEatEi.cpp
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/_ZN15dScMgCurling2_c6RenderEv.cpp
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/_ZN15dScMgCurling2_c13InitResourcesEv.cpp
-# FOLDED into src/actors/dScMgCurling2_c.cpp (row 309): src/d_s_mg_curling2.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/Curling2_ResolveStoneCollision.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/func_ov006_020e59b0.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/func_ov006_020e5a0c.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/func_ov006_020e5b70.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/func_ov006_020e5b7c.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/func_ov006_020e5e3c.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/func_ov006_020e5ffc.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/func_ov006_020e6118.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/func_ov006_020e619c.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/func_ov006_020e61c0.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/func_ov006_020e61c4.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/func_ov006_020e628c.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/func_ov006_020e64e4.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/func_ov006_020e6528.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/func_ov006_020e667c.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/func_ov006_020e668c.c
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/_ZN15dScMgCurling2_c10StartRoundEi.cpp
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/_ZN15dScMgCurling2_c6RenderEv.cpp
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/_ZN15dScMgCurling2_c13InitResourcesEv.cpp
+# FOLDED into src/minigames/d_s_mg_curling2.cpp (row 309): src/d_s_mg_curling2.c

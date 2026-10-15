@@ -102,7 +102,7 @@ DSSTATE_END
    literal pool, so the thunk is gone and pt_d0 is now a face onto the ROM's
    word. data_020a0eac is Memory::gameHeapPtr, already host-provided by
    hal/cxxname_bridge.cpp, and it is what the -D row binds HEAP to. */
-void _ZN6Memory10DeallocateEPvP4Heap(void *p, void *heap);
+void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *p, void *heap);
 extern void *data_020a0eac;
 }
 

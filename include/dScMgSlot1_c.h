@@ -4,8 +4,8 @@
  * Own vtable slots (python tools/rtti_vtables.py --own dScMgSlot1_c): 0
  * (InitResources), 6 (Behavior),
  * 9 (Render), 16
- * (D1), 17 (D0), 18 (OnYoshiTryEat), 27 (OnHitByMegaChar), and
- * 28 (OnHitFromUnderneath).
+ * (D1), 17 (D0), 18 (StartRound), 27 (OpenMenu), and
+ * 28 (CloseMenu).
  * rtti_vtables.py --own also reports slot 36 (dScMgSmartball_c_classInit);
  * that one is SPURIOUS -- address-gap math confirms it: the vtable data
  * symbol ends exactly 0x90 bytes (36 words) before the unrelated
@@ -31,7 +31,7 @@
  * data, data_ov006_0213eb40, is never compiler-emitted either -- only
  * aliased -- so the real ROM vtable word for slot 6 is untouched". That
  * stopped being true once the destructor became this class's key function:
- * _ZTV12dScMgSlot1_c IS emitted, from src/actors/dScMgSlots.cpp, and
+ * _ZTV12dScMgSlot1_c IS emitted, from src/minigames/d_s_mg_slots.cpp, and
  * tools/romdata_check.py byte-compares it against the cartridge. With
  * Behavior undeclared mwcc wrote dScMgBase_c's own body (0x020b0618) into
  * slot 6 where the cartridge holds 0x0210c9e0, and the whole table scored
@@ -58,9 +58,9 @@
  * only the codegen-sensitive construction sequence remains explicit.
  *
  * 0x4684 and 0x4690 are two more embedded objects (0xc bytes each,
- * constructed via func_ov006_0210c2b0 in the constructor, ticked via
- * func_ov006_0210c234 in Render), and 0x469c is a further one (constructed
- * via func_ov006_0210c208, size unknown). None of InitResources/Render/D1/
+ * constructed via SlotBlink_Clear in the constructor, ticked via
+ * SlotBlink_Draw in Render), and 0x469c is a further one (constructed
+ * via SlotLamp_Clear, size unknown). None of InitResources/Render/D1/
  * D0 read or write inside any of the three directly -- only pass their
  * address to a helper -- so all three stay raw padding.
  *
@@ -69,12 +69,12 @@
  * dScMgBase_c's own fields start at 0x50) -- accessed via raw offset
  * arithmetic on a char* cast, not added as a named field anywhere.
  *
- * OnYoshiTryEat still accesses the byte at 0x4706 through an offset cast.
+ * StartRound still accesses the byte at 0x4706 through an offset cast.
  * That byte remains inside pad_4705 until its role is recovered.
  *
- * slots 27/28 (OnHitByMegaChar/OnHitFromUnderneath) are real overrides.  The
+ * slots 27/28 (OpenMenu/CloseMenu) are real overrides.  The
  * names were independently recovered on dScMgBase_c's own copies at the same
- * two slots (dScMgBase_c::OnHitByMegaChar and ::OnHitFromUnderneath in
+ * two slots (dScMgBase_c::OpenMenu and ::CloseMenu in
  * src/minigames/d_s_mg_base.cpp, both of which this class's
  * overrides call into), and on many unrelated fBase_c descendants across other
  * overlays -- a shared, fixed collision-event slot pair used across both the
@@ -100,22 +100,22 @@
  * dScMgBase_c's slot 26 fixed half of it and slot 27 -- this commit -- fixed
  * the rest.  Before slot 26 these two took the compiler's 26 and 27 and wrote
  * 0x0210c4dc and 0x0210c4b8 where the cartridge holds 0x0210c674 (this class's
- * real slot-18 body) and 0x020b2994 (the base's OnTurnIntoEgg), and
+ * real slot-18 body) and 0x020b2994 (the base's CanEndState), and
  * _ZTV12dScMgSlot1_c scored DIFFERS on those two words.  It scores PARTIAL now
  * -- byte-exact for every word it emits.  That was the first DIFFERS the
  * slot-by-slot keystone campaign CLOSED rather than widened, and it was closed
  * by a change in a DIFFERENT header, which is the whole reason romdata_check
  * runs on every slot of this campaign: rombuild was green before and after.
  *
- * OnHitByMegaChar became a genuine override when the base declared slot 27,
- * and OnHitFromUnderneath becomes one here.  dScMgBase_c now declares 18
+ * OpenMenu became a genuine override when the base declared slot 27,
+ * and CloseMenu becomes one here.  dScMgBase_c now declares 18
  * through 28 without a gap, so the base fixes every index in this class and
  * mwcc numbers no virtual of it for itself any more.
  *
  * THE ARITHMETIC WAS LOAD-BEARING RIGHT UP TO THIS COMMIT, and the trap the
  * paragraph here used to warn about is the one this commit walked through.
- * OnHitFromUnderneath sat on 28 only because the base stopped at 27 and 28 was
- * the next free index.  Had the base declared `OnHitFromUnderneath()` while
+ * CloseMenu sat on 28 only because the base stopped at 27 and 28 was
+ * the next free index.  Had the base declared `CloseMenu()` while
  * this header kept `(dActor_c &)`, the two would have been different
  * functions: the base's takes 28, this one becomes a new slot at 29, and
  * _ZTV12dScMgSlot1_c goes straight back to DIFFERS -- with rombuild green
@@ -161,9 +161,9 @@ struct dScMgSlot1_c : dScMgBase_c {
        fixes every index below and declaration order no longer decides any of
        them.  It decided 27 and 28 until the base declared them; see the banner
        for what that cost and how it was closed. */
-    virtual void OnYoshiTryEat(int arg);                 /* slot 18 */
-    virtual void OnHitByMegaChar();                     /* slot 27 */
-    virtual int  OnHitFromUnderneath();                 /* slot 28 */
+    virtual void StartRound(int arg);                 /* slot 18 */
+    virtual void OpenMenu();                     /* slot 27 */
+    virtual int  CloseMenu();                 /* slot 28 */
 
     betIcon_c mBetIcon;      /* 0x4660 -- RTTI-proven nested touch icon */
     u8  pad_4684[0xc];      /* 0x4684 -- embedded object, own type unknown */
@@ -179,7 +179,7 @@ struct dScMgSlot1_c : dScMgBase_c {
     u8  unk_46ff[3];         /* 0x46ff */
     u8  unk_4702[3];         /* 0x4702 */
     u8  unk_4705;            /* 0x4705 -- reels stopped by touch this spin (Behavior) */
-    u8  pad_4706[0x2];       /* 0x4706 used by OnYoshiTryEat */
+    u8  pad_4706[0x2];       /* 0x4706 used by StartRound */
     u8  unk_4708;            /* 0x4708 -- reel speed table row (Behavior) */
     u8  unk_4709;            /* 0x4709 */
     u8  unk_470a;            /* 0x470a */
