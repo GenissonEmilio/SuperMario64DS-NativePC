@@ -94,7 +94,7 @@ int parse_list(const void *list, Ent *e)
 struct Wr { uint32_t addr; uint16_t v; uint8_t half; };
 
 struct Plan {
-    uint32_t dispcnt = 0;
+    uint32_t dc[2] = { 0, 0 };
     std::vector<Wr> wr;
     bool ok = false;
 };
