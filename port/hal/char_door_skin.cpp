@@ -776,9 +776,9 @@ void cdskin_strip_geom(int w, int h, int n, CsGeom *g)
     g->k = h / 192.0f;
     const float k = g->k;
     g->n = n;
-    g->sw = (int)(24 * k + 0.5f);
-    g->sh = (int)(21 * k + 0.5f);
-    g->pitch = (int)(27 * k + 0.5f);
+    g->sw = (int)(23 * k + 0.5f);
+    g->sh = (int)(19 * k + 0.5f);
+    g->pitch = (int)(26 * k + 0.5f);
     const int total = n > 0 ? (n - 1) * g->pitch + g->sw : 0;
     g->x0 = (w - total) / 2;
     g->y0 = h - g->sh - (int)(1 * k + 0.5f);

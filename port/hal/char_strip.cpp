@@ -191,6 +191,10 @@ int activate(int i)
         return 0;
     }
     g_pick = g_slot[i].id;
+    {   /* the star select's own life counter (its icon index, +0x116) follows the pick, as it does when the screen is entered as that character */
+        unsigned char *o = (unsigned char *)port_scene_live_object();
+        if (o) o[0x116] = (unsigned char)(g_slot[i].base & 3);
+    }
     g_cur = g_pick;
     g_cur_set = 1;
     build_page(g_page);
