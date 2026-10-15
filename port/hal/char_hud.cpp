@@ -367,42 +367,51 @@ void dump_all(int what)
     }
 }
 
-/* One element: the picture, and a plan per list (the list = the sprite set of one variant), rebuilt when the display mode changes. */
+/* One element: its pictures (a second one only for the minimap's no-cap marker), and a plan per list (the list = the sprite set of one
+   variant), rebuilt when the display mode changes. */
 struct Slot {
-    Pic pic;
+    Pic pic[2];
     bool tried = false;
     std::vector<Plan> plans;       /* per list index */
-    std::vector<int> engine;
 };
 
 Slot g_slot[4];
-int g_active_seen = -3;
 
-const char *pic_path(int what, int ci)
+const char *pic_path(int what, int ci, int which)
 {
-    return what == PCH_LIFE || what == PCH_STARSEL_LIFE ? port_char_hud_icon(ci) : what == PCH_MINIMAP ? port_char_map_icon(ci) : port_char_face(ci);
+    if (what == PCH_MINIMAP) return which ? port_char_map_icon_nocap(ci) : port_char_map_icon(ci);
+    return what == PCH_LIFE || what == PCH_STARSEL_LIFE ? port_char_hud_icon(ci) : port_char_face(ci);
 }
 
-void do_lists(int what, const void *const *lists, const int *engines, int nl, const char *tag)
+/* lists[l] drawn on engines[l] from picture which[l] (0 the main picture, 1 the no-cap one, which falls back to the main one) */
+void do_lists(int what, const void *const *lists, const int *engines, const int *which, int nl, const char *tag)
 {
     const int ci = port_char_active();
     if (ci < 0) return;
     Slot &S = g_slot[what];
     if (!S.tried) {
         S.tried = true;
-        load_png(pic_path(what, ci), &S.pic);
         S.plans.assign((size_t)nl, Plan());
-        if (!S.pic.ok()) { if (pic_path(what, ci)) fprintf(stderr, "[charhud] %s: %s is not a usable picture; the base art is used\n", tag, pic_path(what, ci)); }
-        else fprintf(stderr, "[charhud] %s: repainting from %s (%dx%d)\n", tag, pic_path(what, ci), S.pic.w, S.pic.h);
+        for (int w = 0; w < 2; ++w) {
+            const char *p = pic_path(what, ci, w);
+            if (!p) continue;
+            load_png(p, &S.pic[w]);
+            if (!S.pic[w].ok()) fprintf(stderr, "[charhud] %s: %s is not a usable picture; the base art is used
+", tag, p);
+            else fprintf(stderr, "[charhud] %s: repainting from %s (%dx%d)
+", tag, p, S.pic[w].w, S.pic[w].h);
+        }
     }
-    if (!S.pic.ok()) return;
     for (int l = 0; l < nl; ++l) {
+        const Pic *P = &S.pic[which[l]];
+        if (!P->ok()) P = &S.pic[0];
+        if (!P->ok()) continue;
         if ((size_t)l >= S.plans.size()) S.plans.push_back(Plan());
-        Plan &P = S.plans[(size_t)l];
+        Plan &PL = S.plans[(size_t)l];
         const int eng = engines[l];
         const uint32_t dc = rd32(eng ? 0x04001000u : 0x04000000u);
-        if (!P.ok || P.dispcnt != dc) build_plan(eng, lists[l], S.pic, &P, tag);
-        if (P.ok) apply_plan(P);
+        if (!PL.ok || PL.dispcnt != dc) build_plan(eng, lists[l], *P, &PL, tag);
+        if (PL.ok) apply_plan(PL);
     }
 }
 
@@ -411,29 +420,32 @@ void do_lists(int what, const void *const *lists, const int *engines, int nl, co
 extern "C" void port_char_hud_apply(int what)
 {
     dump_all(what);
-    if (port_char_active() < 0) return;
     const int ci = port_char_active();
-    if (!pic_path(what, ci)) return;
+    if (ci < 0) return;
+    if (!pic_path(what, ci, 0) && !pic_path(what, ci, 1)) return;
     const int base = port_char_base(ci);
     if (base < 0 || base > 3) return;
+    static const int z4[4] = { 0, 0, 0, 0 };
     if (what == PCH_LIFE) {
         /* HUD::InitResources puts the same tile file at the start of both engines' OBJ VRAM (and the palette in both), and the ROM draws the
            counter on either screen depending on the state, so both copies are repainted */
         const void *l[2] = { _ZN3OAM10LIFE_ICONSE[base], _ZN3OAM10LIFE_ICONSE[base] };
         const int eng[2] = { 0, 1 };
-        do_lists(what, l, eng, 2, "life icon");
+        do_lists(what, l, eng, z4, 2, "life icon");
     } else if (what == PCH_MINIMAP) {
+        /* Minimap::Render draws MM_PLAYER_ICONS[base * 4 + cap]: cap 0..2 = the Mario / Luigi / Wario cap worn, 3 = no cap */
         const void *l[4];
         const int eng[4] = { 1, 1, 1, 1 };
+        const int wh[4] = { 0, 0, 0, 1 };
         for (int k = 0; k < 4; ++k) l[k] = _ZN3OAM15MM_PLAYER_ICONSE[base * 4 + k];
-        do_lists(what, l, eng, 4, "minimap icon");
+        do_lists(what, l, eng, wh, 4, "minimap icon");
     } else if (what == PCH_STARSEL_LIFE) {
         const void *l[1] = { _ZN3OAM10LIFE_ICONSE[base] };
         const int eng[1] = { 0 };
-        do_lists(what, l, eng, 1, "star select life icon");
+        do_lists(what, l, eng, z4, 1, "star select life icon");
     } else if (what == PCH_STARSEL) {
         const void *l[1] = { data_ov001_020abb34 + 0x20 * base };
         const int eng[1] = { 1 };
-        do_lists(what, l, eng, 1, "star select face");
+        do_lists(what, l, eng, z4, 1, "star select face");
     }
 }

@@ -50,6 +50,7 @@ const char *port_char_credits(int i);
 /* CHARHUD1 (hal/char_hud.h): PNG files for the HUD life icon, the minimap marker and the star select portrait; null when the mod ships none. */
 const char *port_char_hud_icon(int i);
 const char *port_char_map_icon(int i);
+const char *port_char_map_icon_nocap(int i);   /* the minimap marker while the cap is off; null = map_icon is used */
 const char *port_char_face(int i);
 
 /* The active skin: index, or -1 for the plain four. Resolved once. */
