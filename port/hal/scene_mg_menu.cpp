@@ -302,7 +302,14 @@ extern "C" void port_scene_fill_mgm(void)
 /* The registry's factory column is void *(*)(void). The matched factory
    already returns void *, so this forwarder exists only so the row names a
    symbol this file owns; /OPT:REF follows it to the real body. */
-extern "C" void *port_mgm_spawn(void) { return dScMiniGm_c_classInit(); }
+extern "C" void *port_mgm_spawn(void)
+{
+    /* SYNC093: the factory is a real `new dScMiniGm_c` now, so +0 holds the compiled vftable and
+       the fill above never reached a live object. Stamp the table the fill writes. */
+    void *o = dScMiniGm_c_classInit();
+    if (o) *(void ***)o = (void **)data_ov005_020c2490;
+    return o;
+}
 
 /* ---- the report -----------------------------------------------------------
  *

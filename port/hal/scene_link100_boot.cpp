@@ -392,7 +392,14 @@ extern "C" void port_scene_fill_boot(void)
 /* The registry's factory column is void *(*)(void) and the matched factory
    already is one; this forwarder exists so the row names a symbol this file
    owns, and /OPT:REF follows it to src/dScBoot_c_classInit.c. */
-extern "C" void *port_boot_scene_spawn(void) { return dScBoot_c_classInit(); }
+extern "C" void *port_boot_scene_spawn(void)
+{
+    /* SYNC093: stamp the object with the host table the fill above writes (the factory is a real
+       `new dScBoot_c` now and would leave the compiled vftable in +0). */
+    void *o = dScBoot_c_classInit();
+    if (o) *(void ***)o = data_02091528;
+    return o;
+}
 
 extern "C" void port_scene_boot_report(void)
 {

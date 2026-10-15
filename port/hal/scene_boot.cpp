@@ -4943,6 +4943,24 @@ void port_scene_fill_vs(void);
    closure of each class (873 and 886 arm9 functions reachable from its factory
    and its own slots through config/arm9/relocs.txt) contains no src/ TU that
    names data_02092110. */
+/* SYNC093: main turned the scene factories into real `new Class` bodies, so the object they
+   return carries the compiled vftable and none of the host fills below ever ran (live id -1,
+   no BeforeBehavior / kill gates; the Rec Room and Game Over lost their one-screen recipes
+   and wide backgrounds). The factories the registry row names now stamp the object's +0
+   word with the table the class's fill writes, which is what the cartridge's own factory
+   stores (the ROM address of that table). */
+extern "C" void *port_gameover_spawn(void)
+{
+    void *o = dScGameOver_c_classInit();
+    if (o) *(void ***)o = data_ov003_020b179c;
+    return o;
+}
+extern "C" void *port_dbgsel_spawn(void)
+{
+    void *o = dScTitle_c_classInit();
+    if (o) *(void ***)o = data_ov003_020b1650;
+    return o;
+}
 extern unsigned char g_profile_BOOT[];    /* dScBoot_c SpawnInfo, id 0   */
 void *port_boot_scene_spawn(void);
 void port_scene_fill_boot(void);
@@ -5733,7 +5751,7 @@ static const PortSceneClass port_scene_classes[] = {
        reads_sublevel is 0 and it is measured the way the rows above are: not
        one of the twelve TUs in this class's slice names data_02092110,
        SUBLEVEL_LEVEL_TABLE or SublevelToLevel. */
-    {8, "SCENE_GAMEOVER", g_profile_GAME_OVER, dScGameOver_c_classInit,
+    {8, "SCENE_GAMEOVER", g_profile_GAME_OVER, port_gameover_spawn,
      scene_fill_gameover, 0},
     /* dScTitle_c, ov003's LAST unseated scene class, run link100 wave 14 lane
        SEAT14D. With this row all three of ov003's scene classes are hosted.
@@ -5753,7 +5771,7 @@ static const PortSceneClass port_scene_classes[] = {
        What Behavior picks is a LEVEL and an ENTRANCE, out of its own two-column
        table at data_ov003_020b1180/0x020b1181, and it hands them to
        func_02012790 -- it never reads the pending sublevel word. */
-    {2, "SCENE_DBGLVLSEL", g_profile_TITLE, dScTitle_c_classInit,
+    {2, "SCENE_DBGLVLSEL", g_profile_TITLE, port_dbgsel_spawn,
      scene_fill_dbgsel, 0},
     {0, 0, 0, 0, 0, 0},
 };
