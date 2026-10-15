@@ -299,6 +299,14 @@ struct BgConfig {
     bool bpp8;
     int tiles_w, tiles_h;
     int hofs, vofs;
+    /* MENUS093C (D23): a direct-colour BITMAP background (BG mode 3 / 4 / 5, BG3CNT bits 7 and 2): the held frame the title's
+       drawing page hands over from. bmp_base is its first pixel, the matrix is the BG3 affine group (8 bit fractions). */
+    bool bmp;
+    uint32_t bmp_base;
+    int bmp_w, bmp_h;
+    int pa, pb, pc, pd;
+    int rx, ry;
+    bool wrap;
 };
 
 // Engine A's DISPCNT bit 3 is the BG0 2D/3D SELECTION, and it is not a setting
@@ -423,6 +431,12 @@ inline void objbg_probe_pixel(int &px, int &py) {
     px = x; py = y;
 }
 
+/* SM64DS_BGBITMAP_OFF=1: BG3 reads as a tile layer again (the 0.9.2 behaviour), for the A/B */
+bool bitmap_bg_off() {
+    static const bool v = std::getenv("SM64DS_BGBITMAP_OFF") != nullptr;
+    return v;
+}
+
 BgConfig read_bg(int bg, uint32_t dispcnt) {
     BgConfig c{};
     c.enabled = (dispcnt >> (8 + bg)) & 1;
@@ -441,6 +455,18 @@ BgConfig read_bg(int bg, uint32_t dispcnt) {
     c.tiles_h = (sz & 2) ? 64 : 32;
     c.hofs = rd16(kRegBase + 0x10 + bg * 4) & 0x1FF;
     c.vofs = rd16(kRegBase + 0x12 + bg * 4) & 0x1FF;
+    if (bg == 3 && (dispcnt & 7u) >= 3u && (dispcnt & 7u) <= 5u && (cnt & 0x84u) == 0x84u && !bitmap_bg_off()) {
+        static const int wh[4][2] = { { 128, 128 }, { 256, 256 }, { 512, 256 }, { 512, 512 } };
+        c.bmp = true;
+        c.bmp_w = wh[(cnt >> 14) & 3][0];
+        c.bmp_h = wh[(cnt >> 14) & 3][1];
+        c.bmp_base = kVramBase + scr_off + (((uint32_t)(cnt >> 8) & 0x1Fu) << 14);
+        c.pa = (int16_t)rd16(kRegBase + 0x30); c.pb = (int16_t)rd16(kRegBase + 0x32);
+        c.pc = (int16_t)rd16(kRegBase + 0x34); c.pd = (int16_t)rd16(kRegBase + 0x36);
+        c.rx = ((int32_t)((uint32_t)rd16(kRegBase + 0x38) | ((uint32_t)rd16(kRegBase + 0x3A) << 16)) << 4) >> 4;
+        c.ry = ((int32_t)((uint32_t)rd16(kRegBase + 0x3C) | ((uint32_t)rd16(kRegBase + 0x3E) << 16)) << 4) >> 4;
+        c.wrap = (cnt >> 13) & 1;
+    }
     return c;
 }
 
@@ -453,6 +479,16 @@ inline uint32_t screen_entry_addr(const BgConfig &c, int tx, int ty) {
 
 // false where the BG is transparent at this pixel.
 bool sample_bg(const BgConfig &c, int x, int y, uint32_t &out) {
+    if (c.bmp) {
+        int tx = (int)((c.rx + (long long)c.pa * x + (long long)c.pb * y) >> 8);
+        int ty = (int)((c.ry + (long long)c.pc * x + (long long)c.pd * y) >> 8);
+        if (c.wrap) { tx &= c.bmp_w - 1; ty &= c.bmp_h - 1; }
+        else if (tx < 0 || ty < 0 || tx >= c.bmp_w || ty >= c.bmp_h) return false;
+        const uint16_t v = rd16(c.bmp_base + ((uint32_t)ty * c.bmp_w + tx) * 2);
+        if (!(v & 0x8000u)) return false;
+        out = bgr555(v);
+        return true;
+    }
     const int px = (x + c.hofs) & (c.tiles_w * 8 - 1);
     const int py = (y + c.vofs) & (c.tiles_h * 8 - 1);
     const uint16_t se = rd16(screen_entry_addr(c, px >> 3, py >> 3));

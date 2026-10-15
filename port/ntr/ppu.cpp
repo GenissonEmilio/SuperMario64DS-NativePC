@@ -647,6 +647,7 @@ constexpr uint32_t kBankSize = 0x20000u;     // 128 KB, banks A..D
 struct CapRegion {
     uint32_t off;    // bytes from the start of the bank
     uint32_t len;    // bytes written
+    uint32_t home0;  // where the block was visible when it was captured into (MENUS093C)
 };
 CapRegion g_cap[4];
 
@@ -672,10 +673,19 @@ inline uint32_t lcdc_addr(unsigned block) {
    for "nowhere a reader in this program looks", which covers a disabled bank,
    an ARM7 allocation and a texture slot alike -- all three are correct answers
    of the same kind: nothing here reads that. */
+/* SM64DS_BANK_A_BG_OFF=1: the captured block is left where it landed when it becomes engine A's BG memory (the 0.9.2 behaviour) */
+inline bool bank_a_bg_off() {
+    static const bool v = std::getenv("SM64DS_BANK_A_BG_OFF") != nullptr;
+    return v;
+}
+
 uint32_t bank_home(unsigned block, uint8_t cnt) {
     if (!(cnt & 0x80)) return 0;             // disabled
     const unsigned mst = cnt & 7;
     if (mst == 0) return lcdc_addr(block);   // LCDC, every bank
+    /* MENUS093C (D23): VRAM-A..D as engine A's BG memory (MST 1, OFS bits 3-4 pick the 128 KB slot). The title's drawing page maps the bank the face
+       frame was captured into as BG VRAM and reads it as a direct-colour bitmap (BG3): that is the held frame under the page's fading paper. */
+    if (mst == 1 && !bank_a_bg_off()) return 0x06000000u + (uint32_t)((cnt >> 3) & 3) * kBankSize;   // VRAM-A..D -> engine A BG
     if (block == 2 && mst == 4) return 0x06200000u;   // VRAM-C -> engine B BG
     if (block == 3 && mst == 4) return 0x06600000u;   // VRAM-D -> engine B OBJ
     /* Every other MST is a real answer of the same kind -- an ARM7 allocation,
@@ -744,8 +754,10 @@ void ppu_vram_publish(void) {
        before anything else because this is the frame the new scene's banks are
        mapped on, and ppu_display_capture clears the enable bit at the end of
        this same frame. */
-    if (*reinterpret_cast<volatile uint32_t *>(kDispCapCnt) == 0x80000000u)
+    if (*reinterpret_cast<volatile uint32_t *>(kDispCapCnt) == 0x80000000u) {
+        if (std::getenv("SM64DS_CAP_TRACE")) std::fprintf(stderr, "[captrace] scene boot forget\n");
         capture_forget();
+    }
 
     /* BANK I OWNS THE OBJ WINDOW (VRAMCNT_I = 0x82, engine B OBJ at 0x06600000):
        put its content back. Only once the menu picture has been saved. */
@@ -763,6 +775,7 @@ void ppu_vram_publish(void) {
         if (!g_cap[b].len) continue;         // never captured into
         const uint8_t cnt = *reinterpret_cast<volatile uint8_t *>(kVramCnt + b);
         const uint32_t home = bank_home(b, cnt);
+        if (std::getenv("SM64DS_CAP_TRACE")) { static uint32_t lc[4]; if (lc[b] != (uint32_t)cnt + 1 + ((uint32_t)g_home_have[b] << 8)) { lc[b] = (uint32_t)cnt + 1 + ((uint32_t)g_home_have[b] << 8); std::fprintf(stderr, "[captrace] publish block %u cnt %02x home %08x had %d recorded %08x\n", b, (unsigned)cnt, (unsigned)home, g_home_have[b], (unsigned)g_home[b]); } }
         if (!g_home_have[b]) {
             /* THE FIRST PASS ONLY RECORDS. The capture that made this block
                interesting has just landed at the LCDC address, which is where
@@ -770,6 +783,11 @@ void ppu_vram_publish(void) {
                there is nothing to carry yet. */
             g_home_have[b] = 1;
             g_home[b] = home;
+            /* MENUS093C (D23): the bank was LCDC when it was captured into and is already engine A BG memory by the first pass (the drawing page
+               maps it the frame after): the captured frame has to be in that window, as it is on the DS */
+            if (home && home != g_cap[b].home0 && (home & 0xFFF80000u) == 0x06000000u && !bank_a_bg_off())
+                std::memcpy(reinterpret_cast<void *>(home + g_cap[b].off),
+                            reinterpret_cast<const void *>(lcdc_addr(b) + g_cap[b].off), g_cap[b].len);
             continue;
         }
         if (home == g_home[b]) continue;
@@ -1023,6 +1041,17 @@ void ppu_display_capture(const uint32_t *src, int w, int h) {
     ++g_cap_performed;
     g_cap[block].off = off;
     g_cap[block].len = need;
+    g_cap[block].home0 = bank_home((unsigned)block, *reinterpret_cast<volatile uint8_t *>(kVramCnt + (unsigned)block));
+    /* MENUS093C (D23): a block that is ALREADY engine A's BG memory (VRAMCNT MST 1) when it is captured into is seen through that window on the
+       DS at once (the title's drawing page maps the bank and captures in the same frame). The first publish pass only records the home, so the
+       bytes would stay at the LCDC address; write the window too. */
+    {
+        const uint8_t cnt = *reinterpret_cast<volatile uint8_t *>(kVramCnt + (unsigned)block);
+        if (std::getenv("SM64DS_CAP_TRACE")) std::fprintf(stderr, "[captrace] capture block %u cnt %02x off %x len %x\n", (unsigned)block, (unsigned)cnt, (unsigned)off, (unsigned)need);
+        if ((cnt & 0x87u) == 0x81u && !bank_a_bg_off())
+            std::memcpy(reinterpret_cast<void *>(0x06000000u + (uint32_t)((cnt >> 3) & 3) * kBankSize + off),
+                        reinterpret_cast<const void *>(lcdc_addr((unsigned)block) + off), (size_t)need);
+    }
 }
 
 }  // namespace ntr
