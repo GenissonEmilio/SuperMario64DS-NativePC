@@ -78,7 +78,14 @@ struct daOwl_c : dEnemyBase_c {
     u32 mSoundHandle;                 /* 0x3f4 -- Sound::PlayLong's returned handle */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daOwl_c();   /* no slot */
+    #else
     virtual ~daOwl_c();
+    #endif
 
     int Behavior();
     int CleanupResources();

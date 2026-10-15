@@ -85,7 +85,14 @@ struct daObjPowerUpItem_c : dActor_c {
     /* Set to 0x1b when the pop starts; StateOpening counts it down. */
     u8  mWobbleTimer;            /* 0x3cb */
 
-    virtual ~daObjPowerUpItem_c();            /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjPowerUpItem_c();   /* no slot */
+    #else
+    virtual ~daObjPowerUpItem_c();
+    #endif            /* slots 16 (D1), 17 (D0) */
 
     virtual s32  InitResources();         /* slot  0 */
     virtual s32  CleanupResources();      /* slot  3 */

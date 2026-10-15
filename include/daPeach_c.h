@@ -52,7 +52,14 @@ struct daPeach_c : dActor_c {
 
     /* Inline is load-bearing: forcing translation units emit the genuine D1
      * and D0 without introducing a homeless D2 definition. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daPeach_c() {}   /* no slot */
+    #else
     virtual ~daPeach_c() {}
+    #endif
 
     virtual int InitResources();        /* slot  0 */
     virtual int CleanupResources();     /* slot  3 */

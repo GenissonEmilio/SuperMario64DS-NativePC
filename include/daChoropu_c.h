@@ -112,7 +112,14 @@ struct daChoropu_c : dActor_c {
        each Emerge frame 6..25 and zeroed when Emerge ends */
     u32 mEmergeSystemID;
 
-    virtual ~daChoropu_c();            /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daChoropu_c();   /* no slot */
+    #else
+    virtual ~daChoropu_c();
+    #endif            /* slots 16 (D1), 17 (D0) */
 
     virtual s32  InitResources();         /* slot  0 */
     virtual s32  CleanupResources();      /* slot  3 */

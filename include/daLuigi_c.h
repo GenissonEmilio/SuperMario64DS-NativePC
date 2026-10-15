@@ -47,7 +47,14 @@ struct daLuigi_c : dActor_c {
     /* Inline and empty: the compiler writes the member teardown, emits D1
        then D0 in the cartridge's order, and InitResources becomes the key
        function that places the vtable in src/actors/daLuigi_c.cpp. */
-    virtual ~daLuigi_c() {}                   /* slots 16, 17 */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daLuigi_c() {}   /* no slot */
+    #else
+    virtual ~daLuigi_c() {}
+    #endif                   /* slots 16, 17 */
     virtual s32 InitResources();              /* slot  0 */
     virtual s32 CleanupResources();           /* slot  3 */
     virtual s32 Behavior();                   /* slot  6 */

@@ -29,7 +29,14 @@ struct daObjKm2_Nobiru_c : dActor_c {
 
     /* Out of line in daObjKm2_Nobiru_c.cpp: the key function, so that TU
      * emits _ZTV/_ZTI/_ZTS17daObjKm2_Nobiru_c. */
-    virtual ~daObjKm2_Nobiru_c();       /* slots 16, 17 */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjKm2_Nobiru_c();   /* no slot */
+    #else
+    virtual ~daObjKm2_Nobiru_c();
+    #endif       /* slots 16, 17 */
 
     virtual int InitResources();        /* slot  0 */
     virtual int CleanupResources();     /* slot  3 */

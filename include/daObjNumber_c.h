@@ -33,7 +33,14 @@ struct daObjNumber_c : dActor_c {
        1: next fall below the floor emits particle 0xd2 and dies. */
     u8  mState;                      /* 0x14e */
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjNumber_c() {}   /* no slot */
+    #else
     virtual ~daObjNumber_c() {}
+    #endif
 
     virtual s32 InitResources();
     virtual s32 CleanupResources();

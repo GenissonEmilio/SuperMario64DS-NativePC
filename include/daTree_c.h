@@ -20,7 +20,14 @@ struct daTree_c : dActor_c {
      * factory constructs all five, InitResources loads only its own. */
     Model mModel[5]; /* 0x0d4 */
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daTree_c() {}   /* no slot */
+    #else
     virtual ~daTree_c() {}
+    #endif
     virtual s32 InitResources();     /* slot  0 -- key function */
     virtual s32 CleanupResources();  /* slot  3 */
     virtual s32 Behavior();          /* slot  6 */

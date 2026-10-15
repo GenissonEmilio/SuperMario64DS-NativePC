@@ -11,7 +11,14 @@ struct daBar_c : dActor_c {
     u8 pad_0d0[0x4];       /* 0x0d0 unused */
     dCcAc_c mClsn;         /* 0x0d4 climb cylinder */
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daBar_c() {}   /* no slot */
+    #else
     virtual ~daBar_c() {}
+    #endif
     virtual s32 InitResources();
     virtual s32 CleanupResources();
     virtual s32 Behavior();

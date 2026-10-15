@@ -60,7 +60,14 @@ struct daEykn_c : dActor_c {
     u8  mCircleTimer;          /* 0x216 -- frames left to keep circling */
     s8  mStarTrackID;          /* 0x217 -- TrackStar slot of the big one's star */
 #ifdef __cplusplus
-    virtual ~daEykn_c();                          /* slots 16/17 */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daEykn_c();   /* no slot */
+    #else
+    virtual ~daEykn_c();
+    #endif                          /* slots 16/17 */
     virtual s32 InitResources();             /* slot 0 */
     virtual s32 CleanupResources();          /* slot 3 */
     virtual s32 Behavior();                  /* slot 6 */

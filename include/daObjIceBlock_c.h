@@ -31,7 +31,14 @@ struct daObjIceBlock_c : dBgActor_c {
     dActor_c *mContainedActor;    /* 0x364 -- the actor frozen inside (actor 0xb2), or null */
 
     /* Inline is load-bearing: out-of-line emits D0 before D1. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjIceBlock_c() {}   /* no slot */
+    #else
     virtual ~daObjIceBlock_c() {}
+    #endif
 
     virtual s32 InitResources();
     virtual s32 CleanupResources();

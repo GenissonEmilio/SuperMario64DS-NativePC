@@ -68,7 +68,14 @@ struct daFeather_c : dActor_c {
        into dActor_c. With the destructor inline, InitResources becomes the
        first out-of-line virtual -- the key function -- so the vtable and
        the RTTI group land in the translation unit that defines it. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daFeather_c() {}   /* no slot */
+    #else
     virtual ~daFeather_c() {}
+    #endif
 
     virtual s32 InitResources();        /* slot  0 */
     virtual s32 CleanupResources();     /* slot  3 */

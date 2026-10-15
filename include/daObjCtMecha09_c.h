@@ -32,7 +32,14 @@ struct daObjCtMecha09_c : dBgActor_c {
     dExtShadowModel_c mShadowModel;         /* 0x334 */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjCtMecha09_c();   /* no slot */
+    #else
     virtual ~daObjCtMecha09_c();
+    #endif
 
     /* Behavior overrides fBase_c::Behavior: _ZTV16daObjCtMecha09_c slot 6 holds
        _ZN16daObjCtMecha09_c8BehaviorEv (ov065 0x0211bd8c). No `virtual` keyword,

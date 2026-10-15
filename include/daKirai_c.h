@@ -51,7 +51,14 @@ struct daKirai_c : dActor_c {
     u8  pad_1af[0x1];       /* 0x1af, closing on the ROM's 0x1b0 */
 
     /* --- vtable, in ROM order. Do not reorder. --- */
-    virtual ~daKirai_c();       /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daKirai_c();   /* no slot */
+    #else
+    virtual ~daKirai_c();
+    #endif       /* slots 16 (D1), 17 (D0) */
 
     /* --- non-virtual --- */
     int CleanupResources();

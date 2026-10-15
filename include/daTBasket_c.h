@@ -72,7 +72,14 @@ struct daTBasket_c : dEnemyBase_c {
      * ov063 code in exactly these five and inherits every other entry.
      * The destructor is declared FIRST and stays OUT OF LINE: it is this
      * class's key function, so the TU that defines it emits the vtable. */
-    virtual ~daTBasket_c();          /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daTBasket_c();   /* no slot */
+    #else
+    virtual ~daTBasket_c();
+    #endif          /* slots 16 (D1), 17 (D0) */
     virtual s32 InitResources();     /* slot  0 -- ov063:0x0211c35c */
     virtual s32 CleanupResources();  /* slot  3 -- ov063:0x0211ae1c */
     virtual s32 Behavior();          /* slot  6 -- ov063:0x0211b888 */

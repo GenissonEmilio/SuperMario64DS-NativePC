@@ -18,7 +18,14 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
  */
 struct daObjKm2_Ukishima_c : daObjUkiyuka_c {
     /* Inline empty dtor: mwccarm emits D1 then D0, no D2. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjKm2_Ukishima_c() {}   /* no slot */
+    #else
     virtual ~daObjKm2_Ukishima_c() {}
+    #endif
     virtual s32 CleanupResources(); /* slot 3 */
     virtual s32 InitResources();    /* slot 0 */
 

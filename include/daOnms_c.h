@@ -53,7 +53,14 @@ struct daOnms_c : dBgActor_c {
     Vector3 mPathNode;              /* 0x580 */
     PathPtr mPathPtr;               /* 0x58c */
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daOnms_c();   /* no slot */
+    #else
     virtual ~daOnms_c();
+    #endif
 
     virtual int InitResources();
     virtual int CleanupResources();

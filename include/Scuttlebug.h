@@ -67,7 +67,14 @@ struct Scuttlebug : dActor_c {
        it; objisolate keeps its .text and drops the homeless _ZTI/_ZTS10Scuttlebug.
        An inline body would give those vague linkage in every TU. This TU's
        licensed run is 0x0211f0a4..0x02120668. */
-    virtual ~Scuttlebug();            /* slots 16 (D1), 17 (D0) */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~Scuttlebug();   /* no slot */
+    #else
+    virtual ~Scuttlebug();
+    #endif            /* slots 16 (D1), 17 (D0) */
 
     virtual int   OnYoshiTryEat();               /* slot 18 */
     virtual void  OnTurnIntoEgg(Player &player); /* slot 19 */

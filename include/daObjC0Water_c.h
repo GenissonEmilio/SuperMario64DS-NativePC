@@ -36,7 +36,14 @@
  */
 
 struct daObjC0Water_c : dBgActor_c {
-    virtual ~daObjC0Water_c() {}                  /* slots 16, 17 */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjC0Water_c() {}   /* no slot */
+    #else
+    virtual ~daObjC0Water_c() {}
+    #endif                  /* slots 16, 17 */
 
     virtual int InitResources();                  /* slot 0 */
     virtual int CleanupResources();               /* slot 3 */

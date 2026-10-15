@@ -42,7 +42,14 @@ struct daObj1UpLogo_c : dActor_c {
     u8 mState;                        /* 0x14e */
     u8 pad_14f;
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObj1UpLogo_c();   /* no slot */
+    #else
     virtual ~daObj1UpLogo_c();
+    #endif
 
     virtual s32 InitResources();
     virtual s32 CleanupResources();

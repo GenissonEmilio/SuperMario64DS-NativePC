@@ -118,7 +118,14 @@ struct dEntObj_c : dBase_c {
     u8 mPlayerCount;                   /* 0xf43 */
     u8 mSuspended;                     /* 0xf44 */
 
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dEntObj_c();   /* no slot */
+    #else
     virtual ~dEntObj_c();
+    #endif
     virtual int InitResources();
     virtual int CleanupResources();
     virtual int Behavior();

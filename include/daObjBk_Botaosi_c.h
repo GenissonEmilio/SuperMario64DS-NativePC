@@ -48,7 +48,14 @@ struct daObjBk_Botaosi_c : dBgActor_c {
        src/actors/daObjBk_Botaosi_c.cpp, so that TU emits the vtable and RTTI.
        Under its `#pragma defer_codegen off` the out-of-line definition comes
        out D1 (0x02111314) then D0 (0x02111360), the cartridge's order. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjBk_Botaosi_c();   /* no slot */
+    #else
     virtual ~daObjBk_Botaosi_c();
+    #endif
 
     int InitResources();
     int CleanupResources();

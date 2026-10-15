@@ -18,7 +18,14 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
  */
 struct daObjKm1_Kuruma_c : daObjKuruma_c {
     /* Inline empty dtor: mwccarm emits D1 then D0, no D2. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjKm1_Kuruma_c() {}   /* no slot */
+    #else
     virtual ~daObjKm1_Kuruma_c() {}
+    #endif
     int CleanupResources();            /* slot  3 */
     int InitResources();               /* slot  0 */
 

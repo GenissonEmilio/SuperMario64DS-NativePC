@@ -111,7 +111,14 @@ struct daPropeller_Heyho_c : dEnemyBase_c {
     s16                          mTargetAngY;           /* 0x3e6 */
 
     /* --- vtable --- */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daPropeller_Heyho_c() {}   /* no slot */
+    #else
     virtual ~daPropeller_Heyho_c() {}
+    #endif
 
     virtual s32   OnYoshiTryEat();         /* slot 18 */
     virtual void  OnTurnIntoEgg(Player &player); /* slot 19 */

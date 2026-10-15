@@ -64,7 +64,14 @@ struct daFRing_c : dActor_c {
 
     /* Out of line in daFRing_c.cpp: the key function, so that TU emits
      * _ZTV/_ZTI/_ZTS9daFRing_c. vtable slots 16 (D1) and 17 (D0). */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daFRing_c();   /* no slot */
+    #else
     virtual ~daFRing_c();
+    #endif
 
     /* Overrides of fBase_c's slots 0, 3, 6 and 9. */
     virtual s32 InitResources();

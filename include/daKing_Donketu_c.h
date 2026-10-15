@@ -165,7 +165,14 @@ struct daKing_Donketu_c : dEnemyBase_c {
 
     /* OUT OF LINE, DECLARED FIRST. `#pragma defer_codegen off` in the TU
        emits D1 then D0 then homeless D2, the cartridge's order. */
+    #ifdef _MSC_VER
+    /* host two-arm destructor spelling; ruling in include/ModelBase.h */
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daKing_Donketu_c();   /* no slot */
+    #else
     virtual ~daKing_Donketu_c();
+    #endif
 
     virtual s32   OnAimedAtWithEgg();      /* slot 29 */
 
