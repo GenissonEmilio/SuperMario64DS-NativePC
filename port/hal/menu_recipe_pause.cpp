@@ -323,14 +323,15 @@ struct Text {
     int lv, bank;
     char title[40], sub[20];
     char names[7][38];
-} g_text = { -1, 0, "", "", {} };
+    char secret[15][28];      /* EXTRAS093: the secret places' names, title case */
+} g_text = { -1, 0, "", "", {}, {} };
 
 void text_for(int lv)
 {
     const int bank = data_0209d6fc[0];
     if (g_text.lv == lv && g_text.bank == bank) return;
     g_text.lv = lv; g_text.bank = bank;
-    memset(g_text.title, 0, sizeof g_text.title); memset(g_text.sub, 0, sizeof g_text.sub); memset(g_text.names, 0, sizeof g_text.names);
+    memset(g_text.title, 0, sizeof g_text.title); memset(g_text.sub, 0, sizeof g_text.sub); memset(g_text.names, 0, sizeof g_text.names); memset(g_text.secret, 0, sizeof g_text.secret);
     if (!bank) return;
     char raw[80];
     const int t = lv < 15 ? lv : 15;
@@ -343,6 +344,17 @@ void text_for(int lv)
     snprintf(g_text.title, sizeof g_text.title, "%s", p);
     if (lv < 15) snprintf(g_text.sub, sizeof g_text.sub, "Course %d", num ? num : lv + 1);
     else snprintf(g_text.sub, sizeof g_text.sub, "Peach's Castle");
+    if (lv >= 15)
+        for (int i = 0; i < 15; ++i) {
+            /* the ROM's own course titles for the secret courses: message 0x1a5 + i is course 15 + i (the castle itself, the last, is the
+               ROM's "Castle Secret Stars", which would repeat the page title: it is listed as In the Castle) */
+            char raw[40];
+            msg_text(0x1a5 + i, raw, sizeof raw);
+            const char *p = raw;
+            while (*p == ' ') ++p;
+            snprintf(g_text.secret[i], sizeof g_text.secret[i], "%s", i == 14 && *p ? "In the Castle" : p);
+            if (i != 14) title_case(g_text.secret[i]);
+        }
     if (lv < 15)
         for (int a = 0; a < 7; ++a) {
             msg_text(0x1b4 + lv * 7 + a, g_text.names[a], sizeof g_text.names[a]);
@@ -451,6 +463,13 @@ void pause_facts(MenuFacts *mf)
     if (lv < 15) for (int k = 0; k < 8; ++k) if (IsStarCollected(lv, k)) mask |= 1 << k;
     f->got_mask = mask;
     f->stars_got = CountStarsCollectedInLevelToDisplay(lv);
+    if (lv >= 15)
+        for (int i = 0; i < 15; ++i) {
+            int n = 0;
+            for (int k = 0; k < 8; ++k) if (IsStarCollected(15 + i, k)) ++n;
+            f->secret_got[i] = (uint8_t)n;
+            memcpy(f->secret_name[i], g_text.secret[i], sizeof f->secret_name[i]);
+        }
     f->secret_n = CountStarsCollectedInLevelToDisplay(15);
     {
         int total = f->secret_n;

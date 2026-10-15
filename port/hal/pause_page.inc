@@ -121,12 +121,26 @@ void pp_tracker(const Surf &sf, const PauseGeo &g, const PauseFacts *f)
     const int lx = x + (int)(70 * sc);
     char buf[40];
     if (f->course >= 15) {
-        /* the castle's secret stars: a grid of thirty stars, the first stars_got lit */
-        const int cell = (int)(70 * sc + 0.5), gic = (int)(44 * sc + 0.5);
-        const int gx = x + (w - 10 * cell) / 2;
-        for (int i = 0; i < 30; ++i)
-            blit_hi(sf, i < f->stars_got ? MENU_IMG_P_STAR_GOT : MENU_IMG_P_STAR_OFF, gx + (i % 10) * cell + (cell - gic) / 2, yy + (i / 10) * rowh + (rowh - gic) / 2, gic, gic);
-        yy += 4 * rowh;
+        /* the castle's secret stars (EXTRAS093): the places the ROM names, one list of 15 short rows, a lit star and the number of stars
+           collected there; a place with none yet is faded and says nothing. The ROM gives no per-place totals, so none is shown. The rows
+           fill the height of nine ordinary ones (15 * 32 design units = 480, nine * 54 = 486) so the panel keeps its size. */
+        const int rh = (int)(32 * sc + 0.5), sic = (int)(26 * sc + 0.5);
+        const int rx = x + w - (int)(70 * sc);
+        for (int i = 0; i < 15; ++i) {
+            if (!f->secret_name[i][0]) continue;
+            const int cy = yy + i * rh;
+            const int got = f->secret_got[i];
+            char cnt[8];
+            snprintf(cnt, sizeof cnt, "%d", got);
+            const float em = (float)(27 * sc);
+            blit_hi(sf, got ? MENU_IMG_P_STAR_GOT : MENU_IMG_P_STAR_OFF, lx, cy + (rh - sic) / 2, sic, sic);
+            ui_text_draw(&sf, (float)(lx + sic + 14 * sc), cy + rh * 0.5f + ui_text_cap_height(em) * 0.5f, f->secret_name[i], em, got ? PP_BROWN : PP_FADED, 255, 0);
+            if (got) {
+                const float cw = ui_text_width(cnt, em);
+                ui_text_draw(&sf, rx - cw, cy + rh * 0.5f + ui_text_cap_height(em) * 0.5f, cnt, em, PP_BROWN, 255, 0);
+            }
+        }
+        yy += 9 * rowh;
     } else {
         for (int i = 0; i < 7; ++i) {
             if (!f->names[i][0]) { yy += rowh; continue; }
