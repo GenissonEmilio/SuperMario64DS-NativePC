@@ -3099,6 +3099,7 @@ extern "C" void port_painting_texcache_overlay_load(int id);
 /* hal/actor_classes_ov073.cpp: the same bss clear for ov073's ice-block instance
    counters (Chief Chilly Challenge). */
 extern "C" void port_ov073_overlay_load(int id);
+extern "C" void port_ov_level_load(int level);        /* hal/ov_reset.cpp */
 
 /* The actor death table and the two per-level words the sublevel clear owns
    (Stage::InitResources:188-196). Read here by the watch and the seed below;
@@ -3370,6 +3371,10 @@ extern "C" void *port_stage_boot_body(void *mc, int spawn)
        hal/actor_classes_painting.cpp has the whole reading. */
     port_painting_texcache_overlay_load(80);
     port_ov073_overlay_load(73);
+    /* OVLRESET1: the same call, for every overlay the level loads. The level's
+       own overlay, then the object overlays the ROM's walk names, each put back
+       to its start-up image from the second visit on (hal/ov_reset.cpp). */
+    port_ov_level_load(port_level_id());
 
     /* STAGE B: THE TABLES ARE BACK ON. Stage A1 zeroed the Entrance, Door and
        Exit counts in the host copy of the overlay and dropped the sub-table
