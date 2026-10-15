@@ -46,6 +46,7 @@ struct PauseFacts {
     int32_t hover_tab;        /* the 4:3 edge tab under the pointer: -1 none, 0 left, 1 right */
     int32_t press_tab;        /* the edge tab held down: -1 none, 0, 1 */
     int32_t arrows_live;      /* the tracker's course arrows can be clicked now (the tracker is fully shown) */
+    int32_t rom_art;          /* PAUSEFULL1: no mod planks, the planks are the ROM's own plates (240 x 32 DS pixels, 15:2) moved onto the slots */
     char title[40];           /* the course title, upper case, as the ROM's text */
     char sub[20];             /* "Course 3" / "Peach's Castle" */
     char names[7][38];        /* the seven star names of the course, title case */
@@ -140,10 +141,14 @@ inline int pause_tracker_dx(const PauseGeo &g, const PauseFacts *f)
     return (int)(-(double)f->dir * (1000 - f->slide_t1000) / 1000.0 * away);
 }
 
+/* the ROM's own plate is 240 x 32 DS pixels (the touch boxes of PS_Update: 8, y, 240, 32); a rom_art page draws it at the mod plank's width */
+inline int pause_rom_plate_h(int w) { return pause_round(w * 32.0 / 240.0); }
+
 /* plank i of a stack of n: its rect with the slide applied */
 inline PauseRect pause_plank_rect(const PauseGeo &g, const PauseFacts *f, int n, int i, int pitch_scale_pct = 100)
 {
-    const int pw = g.pw * pitch_scale_pct / 100, ph = g.ph * pitch_scale_pct / 100, gap = g.pgap * pitch_scale_pct / 100;
+    const int pw = g.pw * pitch_scale_pct / 100, gap = g.pgap * pitch_scale_pct / 100;
+    const int ph = (f && f->rom_art) ? pause_rom_plate_h(pw) : g.ph * pitch_scale_pct / 100;
     const int total = n * ph + (n - 1) * gap;
     PauseRect r;
     r.w = pw; r.h = ph;
@@ -177,15 +182,25 @@ inline PauseRect pause_dialog_rect(const PauseGeo &g, const PauseFacts *f, int k
     return r;
 }
 
-/* planks inside a dialog: slot i of n, narrower than the main stack (440 u wide), starting below the text block */
+/* planks inside a dialog: slot i of n, narrower than the main stack (440 u wide), starting below the text block.
+   PAUSEFULL1 rom_art: the ROM's own plates keep their shape (15:2); the quit-without-saving page's two small ROM plates (YES, NO: 80 x 32 DS pixels,
+   5:2, side by side as the ROM lays them) stand left and right at the bottom of the sheet. */
 inline PauseRect pause_dialog_plank(const PauseGeo &g, const PauseFacts *f, int kind, int n, int i)
 {
     const PauseRect d = pause_dialog_rect(g, f, kind);
-    const int pw = pause_round(440 * g.u), ph = pause_round(440 * g.u * 129.0 / 606.0), gap = pause_round(14 * g.u);
+    const bool rom = f && f->rom_art;
     PauseRect r;
+    const int bottom = d.y + d.h - pause_round(34 * g.u);
+    if (rom && kind == PAUSE_V_NOSAVE) {
+        r.w = pause_round(220 * g.u); r.h = pause_round(r.w * 32.0 / 80.0);
+        const int gap = pause_round(30 * g.u);
+        r.x = d.x + d.w / 2 + (i == 0 ? -gap / 2 - r.w : gap / 2);
+        r.y = bottom - r.h;
+        return r;
+    }
+    const int pw = pause_round(440 * g.u), ph = rom ? pause_rom_plate_h(pw) : pause_round(440 * g.u * 129.0 / 606.0), gap = pause_round(14 * g.u);
     r.w = pw; r.h = ph;
     r.x = d.x + (d.w - pw) / 2;
-    const int bottom = d.y + d.h - pause_round(34 * g.u);
     r.y = bottom - (n - i) * ph - (n - 1 - i) * gap;
     return r;
 }

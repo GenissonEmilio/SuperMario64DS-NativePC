@@ -82,6 +82,7 @@ enum { V_CASTLE = PAUSE_V_CASTLE, V_COURSE = PAUSE_V_COURSE, V_CTL, V_CTL_SEL, V
 /* ---- the variant, with hysteresis over the leaving states ---------------- */
 
 int g_last_variant;
+int pause_art_present();      /* below: 1 when an enabled mod carries the new pause's planks */
 
 int pause_variant(void)
 {
@@ -473,6 +474,7 @@ void pause_facts(MenuFacts *mf)
     } else if (v == V_CASTLE || v == V_COURSE || v == V_SAVE) {
         f->sel_slot = slot_of_rom(v, data_0209f2e0);
     } else f->sel_slot = -1;
+    f->rom_art = !pause_art_present();     /* PAUSEFULL1: no mod planks, the ROM's own plates */
     f->arrows_live = f->paging && (wide || f->slide_t1000 >= 1000) && !f->settings_open && is_main_page(v);
     publish_embed(f, wide);
     mf->spare[0] = data_0209f2e0;
@@ -519,6 +521,26 @@ int add_plank(MenuLayout *L, int img, const PauseRect &r, int bx, int by, int bw
     return menu_add_hotspot(L, ip, bx, by, bw, bh, rom);       /* the hotspot index */
 }
 
+/* PAUSEFULL1: the ROM's own plate as one element: the engine-B rows of its box (the plate is BG1 tiles, Stage::UpdateMenuButtons recolours
+   them with the palette bank of the chosen plate, so the lit look is the ROM's own), keyed on the backdrop, stretched over the slot rect. The
+   click maps back into the ROM's own box. */
+int add_rom_piece(MenuLayout *L, const PauseRect &r, int bx, int by, int bw, int bh)
+{
+    MenuPiece p = menu_piece_make(SRC_SUB, bx, by, bw, bh, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+    p.layers = MENU_L_BG0 | MENU_L_BG1 | MENU_L_OBJ;
+    p.key_backdrop = 1;
+    p.touch = 1;
+    p.fixdest = 1; p.fx = (short)r.x; p.fy = (short)r.y; p.fw = (short)r.w; p.fh = (short)r.h;
+    return menu_add_piece(L, p);
+}
+
+int add_rom_plate(MenuLayout *L, const PauseRect &r, int bx, int by, int bw, int bh, int rom)
+{
+    const int ip = add_rom_piece(L, r, bx, by, bw, bh);
+    if (ip < 0) return -1;
+    return menu_add_hotspot(L, ip, bx, by, bw, bh, rom);
+}
+
 /* a touch-only piece (draws nothing) over a host rect: a click maps into the ROM box (bx, by, bw, bh) */
 int add_touch_zone(MenuLayout *L, const PauseRect &r, int bx, int by, int bw, int bh)
 {
@@ -558,7 +580,8 @@ void build_new(MenuLayout *L, int variant)
         if (!f->settings_open && (g.wide || f->slide_t1000 < 1000)) {
             for (int i = 0; i < 3; ++i) {
                 const PauseRect r = pause_plank_rect(g, f, 3, i);
-                const int h = add_plank(L, img[i], r, 8, box_y[i], 240, 32, kRomMain[i], i == sel, prs);
+                const int h = f->rom_art ? add_rom_plate(L, r, 8, box_y[i], 240, 32, kRomMain[i])
+                                         : add_plank(L, img[i], r, 8, box_y[i], 240, 32, kRomMain[i], i == sel, prs);
                 if (i == 0 && rest && h >= 0) L->back = (int8_t)h;
             }
         }
@@ -567,12 +590,22 @@ void build_new(MenuLayout *L, int variant)
         const int img[3] = { MENU_IMG_P_PK_SAVEQUIT, MENU_IMG_P_PK_QUITNOSAVE, MENU_IMG_P_PK_RESUME };
         for (int i = 0; i < 3; ++i) {
             const PauseRect r = pause_dialog_plank(g, f, V_SAVE, 3, i);
-            const int h = add_plank(L, img[i], r, 8, box_y[i], 240, 32, kRomSave[i], i == sel, prs);
+            const int h = f->rom_art ? add_rom_plate(L, r, 8, box_y[i], 240, 32, kRomSave[i])
+                                     : add_plank(L, img[i], r, 8, box_y[i], 240, 32, kRomSave[i], i == sel, prs);
             if (i == 2 && h >= 0) L->back = (int8_t)h;
         }
     } else if (variant == V_NOSAVE) {
         /* touch only (PS_Update.cpp :1370-1451): NO first (hotspot 0, the default focus and the back key), then YES; the stack reads YES over NO */
         const PauseRect ry = pause_dialog_plank(g, f, V_NOSAVE, 2, 0), rn = pause_dialog_plank(g, f, V_NOSAVE, 2, 1);
+        if (f->rom_art) {
+            /* the ROM's own YES and NO plates (80 x 32 at 0x28 / 0x88, y 0x98), moved onto the sheet; the lit one is the pad / hover cursor */
+            const int in = add_rom_piece(L, rn, 0x88, 0x98, 0x50, 0x20), iy = add_rom_piece(L, ry, 0x28, 0x98, 0x50, 0x20);
+            const int hn = menu_add_hotspot(L, in, 0x88, 0x98, 0x50, 0x20, -1);
+            menu_add_hotspot(L, iy, 0x28, 0x98, 0x50, 0x20, -1);
+            L->back = (int8_t)hn;
+            finish_new(L);
+            return;
+        }
         MenuPiece py = menu_piece_make(SRC_HOSTIMG, 0x28, 0x98, 0x50, 0x20, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         py.hostimg = MENU_IMG_P_PK_YESQUIT; py.fixdest = 1; py.fx = (short)ry.x; py.fy = (short)ry.y; py.fw = (short)ry.w; py.fh = (short)ry.h; py.touch = 1;
         py.hl = (uint8_t)(sel == 0 ? (1 | (prs ? 2 : 0)) : 0);
@@ -701,7 +734,6 @@ int pause_up(int scene_id)
     /* the Stage is scene 3; a level boot that never runs the scene thunk answers -1 (hal_menu_hook_h1), and
        the stacked layout is MENU_SCENE_GATED: no recipe */
     if (scene_id == 3 || scene_id == -1) v = pause_variant();
-    if (v && !pause_art_present()) v = 0;      /* UIMOD1: no mod art, the ROM's own pause */
     if (v && GetOwnerLanguage() > 1) v = 0;    /* every language but English: the recipe draws nothing, the player sees the ROM's own pause as with OneScreenMenus off */
     if (v != g_last_variant) {
         /* settings must reach the file on every way out of the pause (REVSETLIVE1 G1: the queue waits half a second and has no flush on quit) */
@@ -869,7 +901,7 @@ extern "C" void menu_pause_rom_pad(uint16_t *pressed)
 }
 
 /* UIMOD1: 1 while the ROM's own pause is up because no mod carries the new pause's planks: the caller then gives it the same pad / key driver as OneScreenMenus off */
-extern "C" int menu_pause_rom_fallback(void) { return !pause_art_present() && pause_variant() != 0; }
+extern "C" int menu_pause_rom_fallback(void) { return 0; }      /* PAUSEFULL1: with no mod the recipe is up too (the ROM's own plates), so its own driver runs */
 
 extern "C" int menu_pause_active(void) { return g_last_variant != 0; }
 /* 1 while a 4:3 pause slide is in flight: the host stylus / click and the Backspace back key are eaten by their seam (hal/sub_screen.cpp) */
