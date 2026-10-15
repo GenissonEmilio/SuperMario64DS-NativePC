@@ -227,6 +227,8 @@ void port_char_door_open_now(int cur)
             fprintf(stderr, "[chardoor] row %d: %s%s\n", i, g_item[i].label, i == g_sel ? "  <" : "");
 }
 
+void port_char_door_disarm(void) { g_armed = 0; }
+
 void port_char_door_cancel(void)
 {
     if (g_mode != CD_NONE) close_now("pause taken away");

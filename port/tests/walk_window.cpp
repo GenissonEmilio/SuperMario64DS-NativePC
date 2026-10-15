@@ -6153,6 +6153,7 @@ static char *menu_live_player()
    chr_ id: 0..3 plain, 4 + n the custom character n. A change of skin relaunches the current level (the file layer
    is boot-latched); keep_place also hands the child the player's position and facing (SM64DS_DOOR_RETURN) so the
    door picker leaves them standing where they were. A pick that keeps the active skin is the in-place swap. */
+extern "C" int _ZN8SaveData15SaveCurrentFileEv(void);   /* the ROM's own file save (hal/cxx_aliases.cpp seats the name) */
 static void char_apply_pick(int sel, int keep_place)
 {
     if (chr_skin(sel) != port_char_active()) {
@@ -6195,6 +6196,9 @@ static void char_apply_pick(int sel, int keep_place)
                              (int)(unsigned short)*(short *)(g_menu_host.player + 0x8e));
                     SetEnvironmentVariableA("SM64DS_DOOR_RETURN", dr);
                     fprintf(stderr, "[menu] SM64DS_DOOR_RETURN=%s\n", dr);
+                    /* the restart reads the save file: write what the player has earned (the key, the star, the open door)
+                       first, as the ROM's own save does, so the door is still theirs on the other side */
+                    fprintf(stderr, "[menu] saved the open file before the restart: %d\n", _ZN8SaveData15SaveCurrentFileEv());
                 }
                 if (port_menu_relaunch(-1, lv)) {
                     W.PostQuitMessage_(0);
@@ -13742,6 +13746,7 @@ int main(void)
                     door_ret_yaw = dyaw_ & 0xffff;
                     sp = dr;
                     fprintf(stderr, "[chardoor] back at the door: %d,%d,%d yaw %04x\n", dx_, dy_, dz_, door_ret_yaw);
+                    port_char_door_disarm();
                 }
                 SetEnvironmentVariableA("SM64DS_DOOR_RETURN", 0);
             }

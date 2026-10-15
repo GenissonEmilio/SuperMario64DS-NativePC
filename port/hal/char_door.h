@@ -59,6 +59,9 @@ struct CharDoorPaint {
 };
 void port_char_door_draw(const struct CharDoorPaint *p);
 
+/* the player was put back in the doorway by the restart a costume change made: no picker until they step out and in again */
+void port_char_door_disarm(void);
+
 /* test seams (the proof rows read these from the log lines the engine prints) */
 int  port_char_door_rows(void);
 int  port_char_door_cursor(void);
