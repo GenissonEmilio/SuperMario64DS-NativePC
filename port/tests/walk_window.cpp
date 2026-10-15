@@ -9955,6 +9955,10 @@ static void fullscreen_toggle(HWND h)
                         mi.rcMonitor.bottom - mi.rcMonitor.top,
                         SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
         g_fullscreen = 1;
+        fprintf(stderr, "[win] fullscreen on: monitor rect %ld,%ld %ldx%ld (window was %ldx%ld)\n", mi.rcMonitor.left, mi.rcMonitor.top,
+                mi.rcMonitor.right - mi.rcMonitor.left, mi.rcMonitor.bottom - mi.rcMonitor.top,
+                g_fs_placement.rcNormalPosition.right - g_fs_placement.rcNormalPosition.left,
+                g_fs_placement.rcNormalPosition.bottom - g_fs_placement.rcNormalPosition.top);
     } else {
         W.SetWindowLongA_(h, GWL_STYLE, g_fs_style);
         W.SetWindowPlacement_(h, &g_fs_placement);
