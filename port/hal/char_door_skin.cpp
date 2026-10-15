@@ -421,17 +421,13 @@ int image_id(const CdItem &it, const Img *I)
 struct Font {
     bool hd;
     float u;
-    /* size: an em in layout units (hd) */
+    /* size: an em in layout units (hd). The plain font is the 5x7 pixel font at a FRACTIONAL scale (about 1.2 for a row), so a name of 20
+       letters fits the list as the HD lettering does; never below 1. */
+    float sc(float em) const { const float s = em * u / 15.5f; return s < 1.0f ? 1.0f : s; }
     float width(const char *s, float em) const
     {
         if (hd) return ui_text_width(s, em * u);
-        const int k = kscale(em);
-        return (float)(strlen(s) * OVL_ADVANCE * k);
-    }
-    int kscale(float em) const
-    {
-        const int k = (int)(em * u / 8.4f + 0.5f);
-        return k < 1 ? 1 : k;
+        return (float)strlen(s) * OVL_ADVANCE * sc(em);
     }
     /* draws with the top of a capital at y (hd: baseline = y + cap height) */
     void draw(const Surf &s, float x, float y, const char *str, float em, uint32_t rgb, int alpha = 255) const
@@ -441,31 +437,35 @@ struct Font {
             ui_text_draw(&us, x, y + ui_text_cap_height(em * u), str, em * u, rgb, alpha, 0);
             return;
         }
-        const int k = kscale(em);
-        int px = (int)(x + 0.5f);
-        const int py = (int)(y + 0.5f);
+        const float k = sc(em);
+        float pen = x;
         for (const char *c = str; *c; ++c) {
             const unsigned char ch = (unsigned char)*c;
             if (ch >= 0x20 && ch <= 0x7e) {
                 const unsigned char *g = OVL_FONT[ch - 0x20];
-                for (int r = 0; r < OVL_GLYPH_H; ++r) {
-                    if (!g[r]) continue;
-                    for (int cc = 0; cc < OVL_GLYPH_W; ++cc) {
-                        if (!(g[r] & (0x80 >> cc))) continue;
-                        for (int yy = 0; yy < k; ++yy)
-                            for (int xx = 0; xx < k; ++xx) {
-                                const int fx = px + cc * k + xx, fy = py + r * k + yy;
-                                if (fx < 0 || fy < 0 || fx >= s.w || fy >= s.h) continue;
-                                uint32_t *d = &s.px[(size_t)fy * s.stride + fx];
-                                *d = alpha == 255 ? (0xFF000000u | rgb) : over(*d, (int)(((rgb >> 16) & 255) * alpha / 255), (int)(((rgb >> 8) & 255) * alpha / 255), (int)((rgb & 255) * alpha / 255), alpha);
-                            }
+                const int x0 = (int)floorf(pen), y0 = (int)floorf(y);
+                const int gw = (int)ceilf(OVL_GLYPH_W * k) + 1, gh = (int)ceilf(OVL_GLYPH_H * k) + 1;
+                for (int dy = 0; dy < gh; ++dy)
+                    for (int dx = 0; dx < gw; ++dx) {
+                        int hit = 0;
+                        for (int sub = 0; sub < 4; ++sub) {
+                            const float fx = (x0 + dx + 0.25f + (sub & 1) * 0.5f - pen) / k, fy = (y0 + dy + 0.25f + (sub >> 1) * 0.5f - y) / k;
+                            const int sx = (int)floorf(fx), sy = (int)floorf(fy);
+                            if (fx < 0 || fy < 0 || sx >= OVL_GLYPH_W || sy >= OVL_GLYPH_H) continue;
+                            if (g[sy] & (0x80 >> sx)) ++hit;
+                        }
+                        if (!hit) continue;
+                        const int px = x0 + dx, py = y0 + dy;
+                        if (px < 0 || py < 0 || px >= s.w || py >= s.h) continue;
+                        const int a = hit * alpha / 4;
+                        uint32_t *d = &s.px[(size_t)py * s.stride + px];
+                        *d = over(*d, (int)(((rgb >> 16) & 255) * a / 255), (int)(((rgb >> 8) & 255) * a / 255), (int)((rgb & 255) * a / 255), a);
                     }
-                }
             }
-            px += OVL_ADVANCE * k;
+            pen += OVL_ADVANCE * k;
         }
     }
-    float cap(float em) const { return hd ? ui_text_cap_height(em * u) : (float)(7 * kscale(em)); }
+    float cap(float em) const { return hd ? ui_text_cap_height(em * u) : 7.0f * sc(em); }
 };
 
 /* a string cut to fit w pixels (an ellipsis when it had to be shortened) */
