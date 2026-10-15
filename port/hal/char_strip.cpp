@@ -129,15 +129,19 @@ void build_lists(void)
 /* does the star select want a strip at all: an answer from the ROM's own object and the layout */
 int wanted(void)
 {
-    if (!hal_menu_starsel_up()) return 0;
-    if (!hal_menu_enabled(MENU_KEY_ONE_SCREEN)) return 0;
-    if (!hal_menu_live()) return 0;
-    if (port_mods_multiplayer()) return 0;
-    const unsigned char *o = (const unsigned char *)port_scene_live_object();
-    if (!o) return 0;
-    if (SublevelToLevel(data_02092110) > 0xe) return 0;        /* Bowser and the secret courses: the ROM's star-less screen */
-    if (ob(o, 0x133) == 1) return 0;                           /* the multiplayer character row (VS) */
-    return 1;
+    static int why = -1;
+    int w = 0;
+    const unsigned char *o = 0;
+    if (!hal_menu_starsel_up()) w = 1;
+    else if (!hal_menu_enabled(MENU_KEY_ONE_SCREEN)) w = 2;
+    else if (!hal_menu_live()) w = 3;
+    else if (port_mods_multiplayer()) w = 4;
+    else if (!(o = (const unsigned char *)port_scene_live_object())) w = 5;
+    else if (SublevelToLevel(data_02092110) > 0xe) w = 6;        /* Bowser and the secret courses: the ROM's star-less screen */
+    else if (ob(o, 0x133) == 1) w = 7;                           /* the multiplayer character row (VS) */
+    if (w != why && w != 1) { why = w; fprintf(stderr, "[strip] wanted=%d (0 yes, 2 one-screen menus off, 3 no recipe live, 4 multiplayer, 5 no scene, 6 course has no star row, 7 VS row)
+", w); }
+    return w == 0;
 }
 
 CsGeom geom(void)
