@@ -690,6 +690,11 @@ void offscreen_bmp(const unsigned char *pixels, size_t pitch, int w, int h)
 {
     const char *name = getenv("SM64DS_PRESENT_OFFSCREEN_BMP");
     if (!name || !*name) return;
+    char numbered[512];
+    if (strchr(name, '%')) {          /* INTROCARD092: a %d in the name writes every checked frame under its own number (frame-by-frame proof rows) */
+        snprintf(numbered, sizeof numbered, name, g_off_checked);
+        name = numbered;
+    }
     FILE *f = fopen(name, "wb");
     if (!f) return;
     const unsigned rowbytes = (unsigned)w * 4;

@@ -30,6 +30,7 @@
  * scene global is not built (the layout selftest). Which ids a page shows is read off the pictures
  * (out/TITLE1/shots), not guessed from positions.
  */
+#include <chrono>
 #include "menu_compose.h"
 #include "menu_hostimg.h"
 #include "ntr/gx.h"
@@ -47,6 +48,7 @@ int port_title_page_state(int *top, int *elem, int *req);
 
 namespace {
 
+enum { kIrisLead = 5 };   /* INTROCARD092 (3a): the intro iris opens this many ticks into the star's flight (the ROM's own flight is 14 ticks; the black beat is the flight with nothing behind it) */
 enum { kMpDimAlpha = 110 };   /* MENUS093: how faint the unavailable MP plank is drawn (alpha of 255) */
 enum { V_ATTRACT = 1, V_MAIN = 2, V_FILES = 3, V_OPTIONS = 4, V_DOODLE = 5, V_TABLE = 6, V_INTRO = 7, V_TOY = 8 };   /* V_TOY: the face press (top 4, elem 0), FACE1 */
 
@@ -1115,7 +1117,7 @@ void build_main_pc(MenuLayout *L, bool intro)
         {
             /* TITLE092 (3a): the iris opens from the frame the star leaves the top, at 1.5 times the ROM's pace (8.28 DS pixels of radius a
                frame), not from the ROM's own start 5 frames later at its pace; the ROM's value still wins once it is ahead */
-            const int n = c.fly_t + (c.ct > 0 ? c.ct : 0) - 14;
+            const int n = c.fly_t + (c.ct > 0 ? c.ct : 0) - kIrisLead;
             if (n >= 0) {
                 const float syn = 8.28f * (float)ctune(10, 150) / 100.f * (float)(n + 1);
                 if (syn > Rds) Rds = syn;
@@ -1229,7 +1231,7 @@ void build_doodle(MenuLayout *L)
         MenuPiece sc = scene_layer(L);
         if (e < DD_XF) { const int a = 255 * e / DD_XF; sc.alpha = (uint8_t)(a < 1 ? 1 : a); }      /* 3b: the page's own parts fade in with the paper, they do not pop */
         menu_add_piece(L, sc);
-        const int th = e3 > 0 ? 146 : 130;           /* the canvas reaches down to the button rows (box tops at 148) only in the free-draw state */
+        const int th = 192;           /* INTROCARD092: the whole DS stylus surface (the buttons are added after it and win the hit); it ended at row 130 / 146, so a drag stopped at about half the window */
         menu_add_piece(L, scene_twin(L, T, 0, 0, 256, th));
         MenuPiece yo = menu_piece_make(SRC_TOP_PIC, kYo.x, kYo.y, kYo.w, kYo.h, MENU_AX_L, MENU_AY_B, 0, 0, 1, 1);
         yo.touch = 1; yo.nodraw = 1;
@@ -1262,7 +1264,7 @@ void build_doodle(MenuLayout *L)
     MenuPiece tc = st;                           /* the touch twin: the same transform inverts a click on the strokes' area to the ROM's canvas */
     tc.keycover = 0; tc.has_ex = 0; tc.has_ex2 = 0; tc.bg = 0; tc.touch = 1; tc.nodraw = 1;
     tc.has_ex3 = 0;
-    const int th = e3 > 0 ? 146 : 130;           /* FACE3: the free-draw canvas reaches down to the button rows (box tops at 148) */
+    const int th = 192;           /* INTROCARD092: the whole stylus surface; the buttons' pieces come after and win the hit (the canvas ended at row 130 / 146: a drag stopped at about half the window) */
     tc.s.h = (short)th; tc.fh = (short)((fh * th + 96) / 192);     /* ends above the button rows so it never meets the buttons' own touch boxes */
     menu_add_piece(L, tc);
     MenuPiece yo = menu_piece_make(SRC_TOP_PIC, kYo.x, kYo.y, kYo.w, kYo.h, MENU_AX_L, MENU_AY_B, 0, 0, 1, 1);
@@ -1310,8 +1312,21 @@ int menu_title_up(int scene_id)
 {
     if (scene_id != 1) { g_up_stamp = -1; return 0; }   /* FILEFIX1: out of the title scene no stale stamp can match the title counter (file_wide_cb runs on every frame's first 3D command) */
     int top, elem, req;
+    {   /* INTROCARD092 (SM64DS_TITLE_TL=2): the wall-clock gap between title ticks, printed when it is over 45 ms, with the page and the ROM's own counter */
+        static int on = -1;
+        if (on < 0) { const char *e = getenv("SM64DS_TITLE_TL"); on = (e && *e == '2') ? 1 : 0; }
+        if (on) {
+            static std::chrono::steady_clock::time_point last;
+            static int have = 0, n = 0;
+            const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+            const double ms = have ? std::chrono::duration<double, std::milli>(now - last).count() : 0.0;
+            last = now; have = 1;
+            const int fr = data_ov007_0210342c ? data_ov007_0210342c[0] : -1;
+            if (ms > 45.0 || (n++ % 30) == 0) fprintf(stderr, "[tl2] f%d top=%d elem=%d dt=%.0fms%s\n", fr, top, elem, ms, ms > 45.0 ? " HITCH" : ""); fflush(stderr);
+        }
     if (!port_title_page_state(&top, &elem, &req)) return g_last;   /* not built yet: the attract */
     title_timeline(top, elem, req);
+    }
     if (top != g_top || elem != g_elem) {
         g_top = top; g_elem = elem;
         if (hal_menu_trace_on()) fprintf(stderr, "[menu] title page top=%d elem=%d req=%d\n", top, elem, req);
@@ -1762,6 +1777,9 @@ static void menu_title_build_impl(int variant, MenuLayout *L)
        14); from then the iris takes over at once, see build_main_pc, instead of a black beat and the ROM's iris starting from a point */
     if (variant == V_INTRO && t_f && t_f->ch.mode == CH_INTRO && t_f->ch.ct < 0 && (t_f->ch.fly_t < 14 || getenv("SM64DS_CHORE_BLACK"))) {
         add_black_under(L);
+        /* INTROCARD092 (3a): from kIrisLead ticks into the flight the page is already coming up under our iris (drawn first), and the ROM's
+           scene layer and the host star go over it: no black beat while the star is still on its way */
+        if (t_f->ch.fly_t >= kIrisLead && pc_assets_ready()) build_main_sel(L, true);
         /* ASSET6: the first frames of the ROM's state 10 are the lower screen going out (the star leaves, the screen fades to black): shown
            as the ROM draws them until its iris sprite appears */
         MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
