@@ -108,7 +108,7 @@ extern "C" int port_mods_multiplayer(void)
 namespace {
 
 struct Mod {
-    std::string id, folder, kind, game;
+    std::string id, folder, kind, game, min_game;
     int api;
     bool part;   /* a switchable sub-folder of the mod above it (see add_parts) */
 };
@@ -369,11 +369,12 @@ void latch(void)
         char *text = slurp_small(folder + "/mod.json");
         if (!text) { skip(id, "mod.json missing or unreadable"); continue; }
         if (!host_json_is_object(text)) { free(text); skip(id, "mod.json is not a JSON object"); continue; }
-        char jid[96] = "", kind[16] = "", game[48] = "", api[16] = "";
+        char jid[96] = "", kind[16] = "", game[48] = "", api[16] = "", mingame[48] = "";
         host_json_string(text, "id", jid, sizeof jid);
         host_json_string(text, "kind", kind, sizeof kind);
         host_json_string(text, "game", game, sizeof game);
         host_json_string(text, "api", api, sizeof api);
+        host_json_string(text, "minGameVersion", mingame, sizeof mingame);
         free(text);
         if (!jid[0]) { skip(id, "mod.json has no id"); continue; }
         if (id != jid) { skip(id, "mod.json id is not the folder name"); continue; }
@@ -384,6 +385,7 @@ void latch(void)
         m.folder = folder;
         m.kind = kind;
         m.game = game;
+        m.min_game = mingame;
         m.api = atoi(api);
         m.part = false;
         if (!g_summary_loaded.empty()) g_summary_loaded += ", ";
@@ -639,6 +641,7 @@ const char *port_mods_id(int i) { latch(); return i >= 0 && i < (int)g_mods.size
 const char *port_mods_folder(int i) { latch(); return i >= 0 && i < (int)g_mods.size() ? g_mods[i].folder.c_str() : 0; }
 const char *port_mods_kind(int i) { latch(); return i >= 0 && i < (int)g_mods.size() ? g_mods[i].kind.c_str() : 0; }
 const char *port_mods_game(int i) { latch(); return i >= 0 && i < (int)g_mods.size() ? g_mods[i].game.c_str() : 0; }
+const char *port_mods_min_game(int i) { latch(); return i >= 0 && i < (int)g_mods.size() ? g_mods[i].min_game.c_str() : 0; }
 int port_mods_api(int i) { latch(); return i >= 0 && i < (int)g_mods.size() ? g_mods[i].api : 0; }
 const char *port_mods_bundle(void) { latch(); return g_bundle.c_str(); }
 }

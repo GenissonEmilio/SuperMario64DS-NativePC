@@ -78,7 +78,7 @@ static void *__cdecl coin_wrapper(void)
 SM64DS_MOD_EXPORT int __cdecl sm64ds_mod_main(const SM64DSModApi *api)
 {
     const char *tint;
-    if (api->api_version != SM64DS_MOD_API_VERSION || !SM64DS_MOD_API_HAS(api, free))
+    if (api->api_version < SM64DS_MOD_API_VERSION || !SM64DS_MOD_API_HAS(api, free))
         return 1;
     g_api = api;
     api->log(api, "hello from %s, game %s, folder %s", api->mod_id, api->game_release, api->mod_folder);
