@@ -343,8 +343,7 @@ void dump_list(int eng, const void *list, const char *name)
     fwrite(hdr, 4, 2, f);
     fwrite(&px[0], 1, px.size(), f);
     fclose(f);
-    fprintf(stderr, "[charhud] dumped %s
-", path);
+    fprintf(stderr, "[charhud] dumped %s\n", path);
 }
 
 void dump_all(int what)
