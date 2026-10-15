@@ -24,6 +24,8 @@ unsigned char NumStars(void);
 int func_ov100_021452e4(char *door, char *player);   /* the door's own "player is in front of me" test */
 }
 
+extern "C" void func_02012790(int id);   /* the ROM cursor sound */
+
 namespace {
 
 const char *const ROM_NAME[4] = { "Mario", "Luigi", "Wario", "Yoshi" };
@@ -123,10 +125,21 @@ void close_now(const char *why)
     disarm_all();          /* stay shut until the player leaves the doorway */
 }
 
+/* The ROM menu cursor sound (func_02012790 0x12e), at most once per frame. EXTRAS093 adds the shared host_menu_cursor_sound();
+   when that merges this can call it instead. */
+int g_snd_frame = -1, g_frame_ctr;  // g_frames is declared further down
+void cursor_sound(void)
+{
+    if (g_snd_frame == g_frame_ctr) return;
+    g_snd_frame = g_frame_ctr;
+    func_02012790(0x12e);
+}
+
 void cursor_step(int d)
 {
     if (g_n <= 0) return;
     g_sel = (g_sel + d + g_n) % g_n;
+    cursor_sound();
     if (g_sel < g_top) g_top = g_sel;
     if (g_sel >= g_top + MAX_ROWS) g_top = g_sel - MAX_ROWS + 1;
     fprintf(stderr, "[chardoor] cursor %d: %s\n", g_sel, g_item[g_sel].label);
@@ -288,6 +301,7 @@ int port_char_door_frame(const struct SpInput *in0)
 {
     if (g_mode == CD_NONE) return 0;
     ++g_frames;
+    g_frame_ctr = g_frames;
     SpInput sin = *in0;
     scripted_pointer(&sin, g_frames);
     const SpInput *in = &sin;
@@ -343,6 +357,7 @@ int port_char_door_frame(const struct SpInput *in0)
                 row = g_top + (my - gm.ly) / gm.rowh;
             if (row >= 0 && row < g_n && (mx != g_prev_mx || my != g_prev_my) && row != g_sel) {
                 g_sel = row;
+                cursor_sound();
                 fprintf(stderr, "[chardoor] cursor %d: %s (mouse)\n", g_sel, g_item[g_sel].label);
             }
             if (mclick && row >= 0 && row < g_n) { g_sel = row; accept = 1; }
