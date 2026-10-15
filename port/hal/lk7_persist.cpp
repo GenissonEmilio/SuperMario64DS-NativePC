@@ -611,6 +611,8 @@ int lk7_persist_present(void)
 // content. Returns 1 if the file was written, 0 otherwise (disk states off, no
 // arena, path or IO failure). A failure to write the disk copy never fails the
 // in-memory save.
+static void skin_sidecar_write(const char *path);
+
 int lk7_persist_write(void)
 {
     if (!lk7_persist_available()) return 0;
