@@ -3789,7 +3789,6 @@ DSSTATE_END
    ("ROM from:0x0208e87c -> 0x02017120 is ModelBase's D1"). The one
    reference left is port/unmatched/ModelFamily_Dtors_HostCopy.c inside
    _ZN11CommonModelD0Ev, which still spells the pre-sync name. */
-#pragma comment(linker, "/alternatename:_data_0208e87c=__ZTV9ModelBase")
 
 /* port_trap36_states is the port's own five-entry pointer-to-member table
    (hal/actor_classes_ov010.cpp:185), defined at C++ LINKAGE, while the TU

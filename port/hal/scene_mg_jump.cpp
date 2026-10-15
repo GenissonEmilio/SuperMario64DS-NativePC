@@ -276,14 +276,12 @@
 #pragma comment(linker, "/alternatename:?data_ov006_02141a44@@3PAXA=_data_ov006_02141a44")
 #pragma comment(linker, "/alternatename:?data_ov006_02141a48@@3PAXA=_data_ov006_02141a48")
 #pragma comment(linker, "/alternatename:_Scene_AfterRender=__ZN8dScene_c11AfterRenderEj")
-#pragma comment(linker, "/alternatename:_func_020beb74=_data_ov004_020beb74")
 /* _func_ov006_020e6df0 -- the SAME name-spelling shape as _func_020beb74, in
    the other direction. src/actors/dMgJump3DMario_c.cpp calls the body at 0x020e6df0
    by its address-shaped name, but config/arm9/overlays/ov006/symbols.txt gives
    that address the RECOVERED name Sound_PlayBank1Panned, and
    src/actors/dScMgD3DBase_c.cpp defines it under that name inside extern "C".
    One body, two spellings, and the caller has the one the config retired. */
-#pragma comment(linker, "/alternatename:_func_ov006_020e6df0=_Sound_PlayBank1Panned")
 #pragma comment(linker, "/alternatename:?LoadFile@dExtFrameCtrl_c@@SAPAUBCA_File@@AAUSharedFilePtr@@@Z=__ZN15dExtFrameCtrl_c8LoadFileER13SharedFilePtr")
 /* The int-spelled ModelAnim::SetAnim alias that used to sit here MOVED to the
    ROM-faithful int chain at the mg11 merge (unmatched/MgJump2_Faces.cpp): the

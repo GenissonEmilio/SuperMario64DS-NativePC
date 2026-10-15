@@ -611,8 +611,6 @@ DSSTATE_END
    the alias that used to give it that name has a defined left side and is
    removed (alternatename_guard refuses exactly that shape). */
 /* The two ov002 veneer targets are spelled unprefixed in the ov045 bodies. */
-#pragma comment(linker, "/alternatename:_func_020b6584=_func_ov002_020b6584")
-#pragma comment(linker, "/alternatename:_func_020b6424=_func_ov002_020b6424")
 extern "C" void *port_factory_floating_floor_bfs(void)
 {
     void *p = daObjKm2_Ukishima_c_classInit();
@@ -696,8 +694,6 @@ DSSTATE_END
    base-table spelling _ZTV10dBgActor_c and the D0's G0 heap word are already
    defined port-wide (hal/actor_classes.cpp, hal/cxx_aliases.cpp). */
 /* The two ov002 veneer targets, spelled unprefixed in the 141 bodies. */
-#pragma comment(linker, "/alternatename:_func_020b6244=_func_ov002_020b6244")
-#pragma comment(linker, "/alternatename:_func_020b60fc=_func_ov002_020b60fc")
 /* The factory ends on `p[0] = Gura; p[0] = VT1;` -- base store then the
    zeroed placeholder, trap (F). The wrapper reseats the ROM's final value. */
 extern "C" void *port_factory_tilting_platform_bfs(void)

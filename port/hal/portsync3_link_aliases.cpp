@@ -27,7 +27,6 @@
 #pragma comment(linker, "/alternatename:_OVERLAY_100_ID=_overlay_100")  /* linker-script overlay id, hosted as overlay_100 */
 #pragma comment(linker, "/alternatename:_OVERLAY_102_ID=_overlay_102")  /* linker-script overlay id, hosted as overlay_102 */
 #pragma comment(linker, "/alternatename:_OV075_BSS_END=_data_ov062_0211d9c0")  /* fixed table */
-#pragma comment(linker, "/alternatename:_OV100_TEXT_START=_func_02140d80")  /* fixed table */
 #pragma comment(linker, "/alternatename:?GetBG3CharPtr@G2S@@YAPADXZ=?GetBG3CharPtr@G2S@@YAIXZ")  /* fixed table */
 #pragma comment(linker, "/alternatename:?GetBG3ScrPtr@G2S@@YAPADXZ=?GetBG3ScrPtr@G2S@@YAIXZ")  /* same cdecl function, other return type */
 #pragma comment(linker, "/alternatename:?GetBG2CharPtr@G2@@YAPADXZ=?GetBG2CharPtr@G2@@YAPAXXZ")  /* same cdecl function, other return type */

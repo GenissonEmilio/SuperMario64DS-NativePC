@@ -702,7 +702,6 @@ void *_ZTV11daObjPile_c[32];
 DSSTATE_END
 }
 /* daObjPile_c_classInit spells the table by the address config left unnamed. */
-#pragma comment(linker, "/alternatename:_data_ov091_021352bc=__ZTV11daObjPile_c")
 
 /* CONFIG DID NOT LEAVE 0x021352bc UNNAMED: symbols.txt:157 calls it _ZTV5Stump,
    and src/d_a_obj_pile.c:13 stamps exactly that name. Until now _ZTV5Stump was

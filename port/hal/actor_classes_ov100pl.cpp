@@ -223,7 +223,6 @@ DSSTATE_END
    it is the recovered source's own shorthand, not a window race -- so a
    C-name alias onto the ov002 body is the right bridge, and it is a free
    function (@@YA-class) so the alias is legal. */
-#pragma comment(linker, "/alternatename:_func_020efaf0=__ZN16dPathLiftActor_c17BaseInitResourcesEv")
 /* Two more decorated-data spellings, same rule: the recovered TUs declare
    mounted storage outside extern "C" and MSVC mangles the type in. Both
    addresses are ov002's own mount rows (data_ov002_0210d9f0 has been mounted

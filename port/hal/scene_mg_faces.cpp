@@ -245,7 +245,6 @@ DSSTATE_END
 
 /* ---- 2. the two name-spelling faces ------------------------------------ */
 #pragma comment(linker, "/alternatename:__ZTV14dScMgCurling_c=_data_ov006_0213c304")
-#pragma comment(linker, "/alternatename:_func_020adc74=_func_ov004_020adc74")
 
 /* ---- 2b. THE FOUR ALIAS ROWS A GENERATOR MUST NOT WRITE ------------------
  *

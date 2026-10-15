@@ -623,7 +623,7 @@ static void port_ov089_keymodels_fixup(void)
                          i, *w, g_ov089_keymodels[i].rom);
             std::abort();
         }
-        *w = PORT_PMF_TC(g_ov089_keymodels[i].host);
+        *w = (unsigned)(size_t)g_ov089_keymodels[i].host;  /* a SharedFilePtr data pointer, not a state cell: a thiscall stub here made LoadKeyModels read code bytes as a file handle (DOOR key quarantine) */
     }
 }
 
