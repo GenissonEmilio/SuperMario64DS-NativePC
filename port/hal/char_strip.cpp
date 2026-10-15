@@ -61,7 +61,17 @@ int g_ready;               /* every device was seen released once since the stri
 
 unsigned char ob(const void *o, int off) { return ((const unsigned char *)o)[off]; }
 
-int rom_unlocked(int c) { return c == 0 || (*(int *)(data_0209caa0 + 8) & (1 << c)) != 0; }
+int rom_unlocked(int c)
+{
+    if (c == 0 || (*(int *)(data_0209caa0 + 8) & (1 << c)) != 0) return 1;
+#ifndef PORT_ROM_CLEAN
+    /* SM64DS_STRIP_UNLOCK=<mask>: proof runs only, the characters (bit n) the strip lists although the save has not got them yet; the ROM's save is not touched */
+    static int extra = -1;
+    if (extra < 0) { const char *e = getenv("SM64DS_STRIP_UNLOCK"); extra = e ? (int)strtol(e, 0, 0) : 0; }
+    if (extra & (1 << c)) return 1;
+#endif
+    return 0;
+}
 
 int current_id(void)
 {
