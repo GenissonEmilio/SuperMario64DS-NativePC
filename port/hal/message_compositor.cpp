@@ -1187,7 +1187,7 @@ extern "C" unsigned char data_ov002_02111184;   /* the ROM's "a timer runs on th
    No mod, a smoke target, a non-English label, a level-clear lift or a natively presented scene: nothing here runs and the DS cells stay. */
 extern "C" int g_port_hdmeter_live, g_port_hdmeter_y, g_port_hdmeter_health;   /* hal/sub_actors.cpp */
 extern "C" const HdMeterArt *(*port_hd_meter_art_hook)(int health, int k) = nullptr;   /* set by hal/hd_meter.cpp */
-static int kHdMeterX0 = 108, kHdMeterDy = 0;   /* the DS sprite's top left against (0x80 - 20, mHealthMeterY): measured, see the proof notes */
+static int kHdMeterX0 = 108, kHdMeterDy = -24;   /* the DS sprite's top left (its 40 x 40 cells) against (0x80 - 20, mHealthMeterY): measured, cells x 108..147, y mHealthMeterY - 23 .. + 16 */
 struct HdMeterJob { bool on; int x0, y0, off, k; const HdMeterArt *art; };
 static HdMeterJob g_hdm;
 static uint8_t g_hud_row[192][256];   /* 1 = a moved coin counter pixel (read only while g_hud_row_live) */
