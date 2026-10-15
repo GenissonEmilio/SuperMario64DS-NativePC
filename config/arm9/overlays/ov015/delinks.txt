@@ -11,7 +11,7 @@ src/game/actors/d_a_obj_bk_billboard.cpp:
     .ctor start:0x02113410 end:0x02113414
     .bss start:0x02114960 end:0x02114974
 
-src/actors/daObjBk_Botaosi_c.cpp:
+src/game/actors/d_a_obj_bk_botaosi.cpp:
     complete
     .text start:0x02111314 end:0x02111ba0
     .init start:0x02112fdc end:0x02113048
@@ -22,7 +22,7 @@ src/game/actors/d_a_obj_bk_dossunbar.cpp:
     complete
     .text start:0x02111ba0 end:0x02112290
 
-src/actors/daObjBk_Lift_c.cpp:
+src/game/actors/d_a_obj_bk_lift.cpp:
     complete
     .text start:0x02112290 end:0x02112944
     .init start:0x02113264 end:0x021132d0

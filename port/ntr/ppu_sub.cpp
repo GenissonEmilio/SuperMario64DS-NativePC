@@ -723,7 +723,7 @@ void raster_obj(uint32_t dispcnt, const uint8_t *skip, ObjPixel (*obj)[256],
                            stride is the BITMAP's width, not the sprite's.
 
                            THE ROM SETTLES WHICH ARM THIS IS, in one statement.
-                           src/actors/dScMgD3DBase_c.cpp, the family's own sprite
+                           src/minigames/d_s_mg_d3d_base.cpp, the family's own sprite
                            builder (matched, and in all four family slices),
                            opens with
 
@@ -1869,7 +1869,7 @@ void ppu_compose_sub(const SubFramebuffer &sub, uint32_t *dst, int dst_w,
 //
 // WHAT THE BAND IS. The DS's two panels are not edge to edge: there is a hinge
 // between them, and the game KNOWS it. ov004's framework carries a word,
-// data_ov004_020beb6c, that every minigame sets at InitResources to the number
+// sMgTopScreenYOffset, that every minigame sets at InitResources to the number
 // of DS rows of hinge to simulate -- 32 for most, 48 for two, 16 for the
 // trampoline family, 80 for the snowball -- and RenderOamBothScreens submits
 // the top engine's sprites at a2 + 0xc0 + that word. So the game's own world is
@@ -4137,7 +4137,7 @@ int head_trace_on(void)
  *
  * See the note over ppu_band_continuity in ntr/ppu.h for what this is. In one
  * paragraph: with GaplessMinigames on the game's own G is zero, so the ROM's
- * OAM router (src/func_ov004_020aff38.cpp) submits a sprite to EXACTLY ONE
+ * OAM router (src/Mg_RenderSpriteBothScaled.cpp) submits a sprite to EXACTLY ONE
  * engine -- world y in [-256, -1] to the top, [-64, 191] to the bottom, first
  * match returns -- and that engine's raster then clips it at its own screen
  * edge. A 16x16 sprite whose box crosses world row 0 loses the rows hanging
@@ -4166,7 +4166,7 @@ int head_trace_on(void)
  * tracked object, ask which half of the composed image is actually showing it:
  *
  *   BOTH halves have it     draw nothing. The both-engine router
- *                           (func_ov004_020b023c) puts its objects in both OAM
+ *                           (Mg_RenderSpriteBothPalMtx) puts its objects in both OAM
  *                           buffers and each engine clips its own half, so
  *                           they already arrive whole; the parachuting
  *                           bob-ombs are that case. This is also the answer on

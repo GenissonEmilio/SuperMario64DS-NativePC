@@ -28,11 +28,11 @@
 //               one port/mg_fanout_costs.txt section 3's nosrc column counts
 //               for id 0x170, and standing this trap is what that column costs.
 //   0x020fc8c0  size 0xf0,  called by src/_ZN15dScMgPachinko_c6RenderEv.cpp (slot 9)
-//   0x020fcb4c  size 0x240, called by src/func_ov006_020fd17c.c and _020fd894.c
-//   0x020fdaf0  size 0x250, called by src/func_ov006_020fd088.c, _020fd17c.c
+//   0x020fcb4c  size 0x240, called by src/PachinkoBall_State3.c and _020fd894.c
+//   0x020fdaf0  size 0x250, called by src/PachinkoBall_State4.c, _020fd17c.c
 //               and _020fd894.c
 //   0x020fdd40  size 0x468, called by src/_ZN15dScMgPachinko_c8BehaviorEv.cpp (slot 6)
-//   0x020fb230  size 0x22c, called by src/func_ov006_020fb45c.c, AND state 2 of
+//   0x020fb230  size 0x22c, called by src/PachinkoFlyer_State1.c, AND state 2 of
 //               data_ov006_0214266c
 //
 //   NOT HERE, because nothing names them: 0x020fd2d8 (state 2 of
@@ -41,7 +41,7 @@
 //   resolve and a definition here would be an unreferenced invention. They are
 //   handled at the dispatch site in unmatched/MgPachinko_StateDispatch.cpp,
 //   which reports the address and calls nothing -- the treatment
-//   unmatched/MgCurling_StateDispatch.cpp gave func_ov006_020e1854 before run
+//   unmatched/MgCurling_StateDispatch.cpp gave Aim_Swing before run
 //   link60 lane CT1 transcribed it.
 //
 // ---- THE SIGNATURES ARE THE ROM'S, AND THAT IS NOT COSMETIC ---------------
@@ -85,13 +85,13 @@
 //
 //   lane PCOLL   020fcb4c  THE HIT REACTION, byte-matched on decomp/pach-
 //                          bodies. Its three tail-call sites (0x020fd2b0 in
-//                          func_ov006_020fd17c, 0x020fd864 in _020fd2d8,
+//                          PachinkoBall_State3, 0x020fd864 in _020fd2d8,
 //                          0x020fd9b0 in _020fd894) all landed here before.
 //                020fdaf0  the proximity scan, NONMATCHING but logic-verified
 //                020fb230  state 2 of data_ov006_0214266c, byte-matched on
 //                          origin/main; it was BOTH a trap here and a reported
 //                          floor in the dispatch switch, because it is reached
-//                          two ways (by name from func_ov006_020fb45c, and
+//                          two ways (by name from PachinkoFlyer_State1, and
 //                          through the mounted pair word)
 //
 // A DEFINITION HERE BESIDE A REAL ONE IS A DUPLICATE SYMBOL, which is why the

@@ -133,17 +133,17 @@
 #   likewise), so the mirror is retired for the TU itself and no face changes.
 #
 src/game/actors/d_a_hyuhyu.cpp
-src/actors/dScMgSmartball_c.cpp
-src/actors/dScMgCurling_c.cpp
-src/actors/daDossy_c.cpp
-src/actors/daMoray_c.cpp
-src/actors/daTrs_c.cpp
-src/actors/daEykn_c.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 140): src/game/actors/daTrs_c/_ZN7daTrs_c8BehaviorEv.cpp
-src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp
-src/actors/dEnemyBase_c.cpp
-src/actors/daObjFlamethrower_c.cpp
-src/actors/daObjCasket_c.cpp
+src/minigames/d_s_mg_smartball.cpp
+src/minigames/d_s_mg_curling.cpp
+src/game/actors/d_a_dossy.cpp
+src/game/actors/d_a_moray.cpp
+src/game/actors/d_a_trs.cpp
+src/game/actors/d_a_eykn.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 140): src/game/actors/daTrs_c/_ZN7daTrs_c8BehaviorEv.cpp
+src/game/actors/d_a_trs_trap.cpp
+src/runtime/actor/d_enemy_base.cpp
+src/game/actors/d_a_obj_flamethrower.cpp
+src/game/actors/d_a_obj_casket.cpp
 
 # ---- ONE ROW RE-SEATED, AND WHY (fixer COFFIN1) ----------------------------
 #

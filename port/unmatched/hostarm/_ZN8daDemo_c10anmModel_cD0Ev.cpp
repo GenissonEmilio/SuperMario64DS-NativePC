@@ -1,6 +1,6 @@
 /* HOST ARM, recovered by PORTSYNC2.
  * Old path: src/_ZN8daDemo_c10anmModel_cD0Ev.cpp (its #ifdef _MSC_VER arm). The
- * 2026-10 main merge folded that file into src/actors/daDemo_c.cpp, which
+ * 2026-10 main merge folded that file into src/game/actors/d_a_demo.cpp, which
  * carries no host arm for this D0 (only for _ZN8daDemo_cD0Ev). mwccarm never
  * saw this arm, so nothing here moves a ROM byte.
  *

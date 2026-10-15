@@ -41,7 +41,7 @@
 // per-source -D in port/CMakeLists.txt; the derivation is in the R-block there.
 //
 // The consequence of the old routing, for the record: the ov004 body's first
-// statement is a null guard on data_ov004_020beb68, Bob-omb Battlefield's own
+// statement is a null guard on gMgScene, Bob-omb Battlefield's own
 // level tracker pointer, which is the zero-initialized host global below and
 // is never written by anything in this build. Spindrift's kill-by-invincible
 // path returned doing nothing, every frame, and neither the byte gate nor the
@@ -50,19 +50,19 @@
 // THE GLOBAL BELOW IS UNREAD AND IT STAYS; ITS ov004 SIBLING HAS GONE HOME.
 // Their only reader was the ov004 KillByInvincibleChar TU, which had no other
 // referrer in this build and left the link with the misroute (with
-// func_ov004_020adc1c and func_ov004_020adc00, which only it called -- an
+// Mg_GetTopRecord and Mg_SetTopRecord, which only it called -- an
 // honest linkage cost of 3, recorded rather than papered over). The comment
 // here used to say both were kept for the day ov004 was mounted; run link60
-// lane s2-m46 mounted it, so data_ov004_020beb68 now comes out of ov004's own
+// lane s2-m46 mounted it, so gMgScene now comes out of ov004's own
 // .bss with the same four zero bytes over the same ROM span, and hosting it
 // twice is a duplicate definition.
 //
-// data_0209b308 USED TO BE HOSTED HERE TOO, at 16 bytes, with the note "never
+// gMgMenuRow USED TO BE HOSTED HERE TOO, at 16 bytes, with the note "never
 // read at runtime". That note was wrong: the record is the minigame sound row
 // the dScMgBase_c framework reads at +0x28 (music id), +0x2c (enable) and
 // +0x30, and the 16-byte host truncated every one of those reads -- one of the
 // two causes of the curling "no music" report. Run link60 lane MUS1 re-hosted
-// it at its true 0x34 span (data_0209b308 + data_0209b31c) next to the ov005
+// it at its true 0x34 span (gMgMenuRow + gMgMenuRowMid) next to the ov005
 // table that seeds it, in hal/scene_mg_sound.cpp. Nothing here defines it now,
 // so this file no longer needs the dsstate_seg bracket.
 
@@ -114,7 +114,7 @@ void _ZN10dBgW_KcMbgD1Ev(void *);         /* MovingMeshCollider at +0x124 */
 void _ZN7dCcAc_cD1Ev(void *);        /* MovingCylinderClsn (Moneybag +0x1b0) */
 void _ZN5ModelD1Ev(void *);                       /* Model at +0xd4 */
 void *_ZN8dActor_cD2Ev(void *);                      /* the Actor base D2 (returns void*) */
-void _ZN6Memory10DeallocateEPvP4Heap(void *, void *);
+void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *, void *);
 extern void *data_020a0eac;                       /* the game heap, already hosted */
 void *_ZN12dEnemyBase_cD1Ev(void *);                      /* the Enemy base D2 (returns void*) */
 }
@@ -830,11 +830,11 @@ int _ZN8daGmch_c12UpdateState8Ev(void *self);   /* state 8 tick  */
    (the measured-gap rule), and both are the montymolerock
    `?data_ov080_021283c8@@3USharedFilePtr@@A` shape:
 
-     src/actors/daGmch_c.cpp declares `extern Vector3
+     src/game/actors/d_a_gmch.cpp declares `extern Vector3
        data_ov081_02128ef8;` OUTSIDE its own extern "C" block -- the +0x2000
        Y-offset record __sinit_ov081_021284f0 initialises. Mounted by
        port/ov081_syms.txt.
-     src/actors/daGmch_c.cpp declares `extern int
+     src/game/actors/d_a_gmch.cpp declares `extern int
        data_ov002_0210d9b8[];` outside extern "C" -- the ov002 bss pair whose
        word 1 is the shared BMD file the plain Model at +0x138 is given.
        Mounted by port/ov002_syms.txt, and 8 bytes to its next config symbol

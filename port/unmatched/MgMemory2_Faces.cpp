@@ -30,10 +30,10 @@
 // states: A PAIR WHOSE CONSUMER SPELLS IT AS TWO INTS IS SAFE AS AN ALIAS; A
 // PAIR WHOSE CONSUMER NAMES A MEMBER-POINTER TYPE NEEDS A HOST COPY.
 //
-//   ?data_ov006_0213ac48@@3UP2@@A   src/func_ov006_020c1764.cpp declares
-//   ?data_ov006_0213ac50@@3UP2@@A   `struct P2 { int w[2]; };` and
-//   ?data_ov006_0213ac88@@3UP2@@A   src/func_ov006_020c0264.cpp and
-//                                   src/func_ov006_020c1420.cpp the same, and
+//   ?pmf_Dealer_StateCollect@@3UP2@@A   src/Dealer_PlayIdle.cpp declares
+//   ?pmf_Dealer_StateIdle@@3UP2@@A   `struct P2 { int w[2]; };` and
+//   ?pmf_MascotWalker_StateWalk_3@@3UP2@@A   src/MascotWalker_StatePause.cpp and
+//                                   src/Dealer_StartCollect.cpp the same, and
 //                                   copies each with `*(P2 *)c = ...`. ALL
 //                                   THREE ARE REAL mwcc PAIRS -- {0x020c14bc,
 //                                   0}, {0x020c11c0, 0} and {0x020c0364, 0} in
@@ -49,7 +49,7 @@
 //                                   0x0213ac48 ARRIVED IN WAVE 3 and is the
 //                                   correction to that file's pair-run range,
 //                                   which had been written 0x0213ac50 up.
-//   ?data_ov004_020beb68@@3PAUG@@A  src/func_ov004_020b6234.cpp declares
+//   ?gMgScene@@3PAUG@@A  src/MgCoins_AddBetCoin.cpp declares
 //                                   `struct G { int v; };` and reads `g->v`.
 //                                   A pointer to a one-int struct; the global
 //                                   is dScMgBase_c's own "current minigame
@@ -57,7 +57,7 @@
 //                                   src/_ZN11dScMgBase_cC2Ev.cpp writes.
 //   ?func_020beb68@@3PAUV@@A        THE SAME GLOBAL under a name that exists in
 //                                   no config, and at C++ linkage on top of it.
-//                                   src/func_ov006_020c14bc.cpp declares
+//                                   src/Dealer_StateDeal.cpp declares
 //                                   `extern V* func_020beb68;` where V is a
 //                                   22-virtual dummy class -- a POINTER, not a
 //                                   pair. Same defect class as
@@ -67,24 +67,24 @@
 //                                   and hal/scene_mg_faces.cpp already aliases,
 //                                   and the same one MgCoin_Faces.cpp carries
 //                                   as the plain-C spelling.
-//   ?data_020a0ebc@@3UVector3@@A    src/func_ov006_020c092c.cpp reads .x/.y/.z
+//   ?data_020a0ebc@@3UVector3@@A    src/MascotWalker_Load.cpp reads .x/.y/.z
 //   ?data_020a0edc@@3UVector3_16@@A off both and copies them into the object at
 //                                   +0xc8 and +0xe8. Three ints and three
 //                                   shorts of plain arm9 data; no pointer of
 //                                   any kind.
-//   ?data_ov004_020bfa20@@3P6AXXZA  a FUNCTION-POINTER global, which facegen
+//   ?sMgCoinsStep@@3P6AXXZA  a FUNCTION-POINTER global, which facegen
 //                                   refuses because P6AXXZA is outside its
 //                                   proven scalar subset. Ruled by reading its
 //                                   writers: ten src TUs assign it, and every
 //                                   one assigns a HOST function by name
-//                                   (`data_ov004_020bfa20 = (void*)func_ov004_
+//                                   (`sMgCoinsStep = (void*)func_ov004_
 //                                   020b5368;`) or zero. No DS address ever
-//                                   reaches it, so func_ov004_020b65e4's
+//                                   reaches it, so MgCoins_Update's
 //                                   `if (p) p();` calls a host address. The
 //                                   same global also arrives spelled @@3HA and
 //                                   @@3PAXA from two other TUs; all three
 //                                   alias onto the one mount definition.
-//   ?LoadBGPltt@GXS@@YAXPBXII@Z     src/minigames/d_s_mg_single3_d_base.cpp declares
+//   ?LoadBGPltt@GXS@@YAXPBXII@Z     src/minigames/d_s_mg_single3d_base.cpp declares
 //                                   `namespace GXS { void LoadBGPltt(const
 //                                   void*, u32, u32); }` while the matched TU
 //                                   src/_ZN3GXS10LoadBGPlttEPKvjj.cpp defines the
@@ -104,7 +104,7 @@
 //                                   through port/slice_w5d.txt and defines
 //                                   ?RenderAll@ShadowModel@@SAXXZ, because
 //                                   include/ShadowModel.h makes it a STATIC
-//                                   MEMBER. src/func_ov006_020c1804.cpp
+//                                   MEMBER. src/Dealer_Draw.cpp
 //                                   declares it as a NAMESPACE function, so the
 //                                   two mangles differ by S versus Y and
 //                                   nothing else: same __cdecl, same void(void).
@@ -117,7 +117,7 @@
 // functions, so each needs a real definition that lands `this`.
 //
 //   BlendModelAnim::SetAnim  generated by facegen and copied in verbatim.
-//     Three TUs in this slice call it as a method (func_ov006_020c0264,
+//     Three TUs in this slice call it as a method (MascotWalker_StatePause,
 //     _020c0d68, _020c1764) while src/_ZN14BlendModelAnim7SetAnimER8BCA_-
 //     Fileii5Fix12IiEt is the plain C name.
 //     THE PLAUSIBLE-SIBLING CHECK method_faces.cpp's item (a) asks for was run
@@ -128,18 +128,18 @@
 //     not collide -- the baseline map carries the H form and the wave-1 link
 //     named the X form unresolved beside it, which is the check passing rather
 //     than an argument that it would.
-//   SysTracker::~SysTracker  src/actors/dScMgMemory2_c.cpp -- vtable slot 16, D2
+//   SysTracker::~SysTracker  src/minigames/d_s_mg_memory2.cpp -- vtable slot 16, D2
 //     -- declares a LOCAL `struct SysTracker { ~SysTracker(); char pad[4]; };`
 //     and calls `((SysTracker*)(c + 0x471c))->~SysTracker()`. MSVC emits ??1
 //     and the scalar-deleting ??_G that references it. Its sibling
-//     src/actors/dScMgMemory2_c.cpp (slot 17, D0) spells the SAME call as the C
+//     src/minigames/d_s_mg_memory2.cpp (slot 17, D0) spells the SAME call as the C
 //     name _ZN8Particle10SysTrackerD1Ev, which is why only one of the two
 //     destructors produced a symbol. The face is one line and lands `this`.
 //
 // ---- 3. THE TRAP THAT USED TO BE HERE, AND WHAT REPLACED IT ----------------
 //
 // _ZN14dScMgMemory2_c9DrawCardsEv is the sixth call vtable slot 9 (Render) makes:
-// src/actors/dScMgMemory2_c.cpp line 16 calls it on `this`.
+// src/minigames/d_s_mg_memory2.cpp line 16 calls it on `this`.
 // config/arm9/overlays/ov006/symbols.txt names it and sizes it 0xa8, there is
 // NO delink block covering it -- the block before it ends exactly at
 // 0x020f5b98 and the next starts after -- and, until run mg7 lane MEMCARDS,
@@ -154,7 +154,7 @@
 // thing for a body nobody has read. Reading it out of the overlay image ended
 // that: it is the ONLY code in dScMgMemory2_c that draws a card, and with it
 // stubbed the whole minigame deals sixteen cards into an empty green table.
-// src/actors/dScMgMemory2_c.cpp is the decompilation and port/slice_mem.txt carries
+// src/minigames/d_s_mg_memory2.cpp is the decompilation and port/slice_mem.txt carries
 // it, so this file no longer defines the symbol at all.
 //
 // hal/scene_mg_memory2.cpp reports the card records themselves now, which is
@@ -181,7 +181,7 @@ void BlendModelAnim::SetAnim(BCA_File & a0, int a1, int a2, int a3, unsigned sho
 { _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt(this, &a0, a1, a2, a3, a4); }
 
 /* Hand-written, section 2. The declaration matches the one
-   src/actors/dScMgMemory2_c.cpp spells; MSVC's ??1 mangle does not encode
+   src/minigames/d_s_mg_memory2.cpp spells; MSVC's ??1 mangle does not encode
    members, so `char pad[4]` there and here need not agree for the join, and it
    is kept identical anyway so a reader sees the same shape. */
 struct SysTracker { ~SysTracker(); char pad[4]; };
@@ -194,22 +194,22 @@ SysTracker::~SysTracker() { _ZN8Particle10SysTrackerD1Ev(this); }
 // through the exact-name join and the arity gate.
 
 #pragma comment(linker, "/alternatename:?data_0209d45c@@3EA=_data_0209d45c")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc7d0@@3HA=_data_ov004_020bc7d0")
-#pragma comment(linker, "/alternatename:?data_ov004_020bf9e4@@3FA=_data_ov004_020bf9e4")
-#pragma comment(linker, "/alternatename:?data_ov004_020bf9ec@@3HA=_data_ov004_020bf9ec")
-#pragma comment(linker, "/alternatename:?data_ov004_020bf9f0@@3HA=_data_ov004_020bf9f0")
-#pragma comment(linker, "/alternatename:?data_ov004_020bf9f4@@3HA=_data_ov004_020bf9f4")
-#pragma comment(linker, "/alternatename:?data_ov004_020bf9f8@@3HA=_data_ov004_020bf9f8")
-#pragma comment(linker, "/alternatename:?data_ov004_020bf9fc@@3HA=_data_ov004_020bf9fc")
-#pragma comment(linker, "/alternatename:?data_ov004_020bfa00@@3HA=_data_ov004_020bfa00")
-#pragma comment(linker, "/alternatename:?data_ov004_020bfa04@@3HA=_data_ov004_020bfa04")
-#pragma comment(linker, "/alternatename:?data_ov004_020bfa10@@3HA=_data_ov004_020bfa10")
-#pragma comment(linker, "/alternatename:?data_ov004_020bfa18@@3HA=_data_ov004_020bfa18")
-#pragma comment(linker, "/alternatename:?data_ov004_020bfa20@@3HA=_data_ov004_020bfa20")
-#pragma comment(linker, "/alternatename:?data_ov004_020bfa20@@3PAXA=_data_ov004_020bfa20")
-#pragma comment(linker, "/alternatename:?data_ov004_020bfa34@@3DA=_data_ov004_020bfa34")
-#pragma comment(linker, "/alternatename:?data_ov004_020bfa34@@3PADA=_data_ov004_020bfa34")
-#pragma comment(linker, "/alternatename:?data_ov004_020bfa56@@3PAEA=_data_ov004_020bfa56")
+#pragma comment(linker, "/alternatename:?sMgCoinsBetCap@@3HA=_sMgCoinsBetCap")
+#pragma comment(linker, "/alternatename:?gMgCoinsStatus@@3FA=_gMgCoinsStatus")
+#pragma comment(linker, "/alternatename:?sMgCoinsBetPlaced@@3HA=_sMgCoinsBetPlaced")
+#pragma comment(linker, "/alternatename:?sMgCoinsSoundPending@@3HA=_sMgCoinsSoundPending")
+#pragma comment(linker, "/alternatename:?sMgCoinsLastLostAlt@@3HA=_sMgCoinsLastLostAlt")
+#pragma comment(linker, "/alternatename:?sMgCoinsPayoutLeft@@3HA=_sMgCoinsPayoutLeft")
+#pragma comment(linker, "/alternatename:?sMgCoinsToStep@@3HA=_sMgCoinsToStep")
+#pragma comment(linker, "/alternatename:?sMgCoinsIndex@@3HA=_sMgCoinsIndex")
+#pragma comment(linker, "/alternatename:?sMgCoinsWait@@3HA=_sMgCoinsWait")
+#pragma comment(linker, "/alternatename:?sMgCoinsLaunchPending@@3HA=_sMgCoinsLaunchPending")
+#pragma comment(linker, "/alternatename:?gMgCoinsInPlay@@3HA=_gMgCoinsInPlay")
+#pragma comment(linker, "/alternatename:?sMgCoinsStep@@3HA=_sMgCoinsStep")
+#pragma comment(linker, "/alternatename:?sMgCoinsStep@@3PAXA=_sMgCoinsStep")
+#pragma comment(linker, "/alternatename:?sMgCoins@@3DA=_sMgCoins")
+#pragma comment(linker, "/alternatename:?sMgCoins@@3PADA=_sMgCoins")
+#pragma comment(linker, "/alternatename:?sMgCoinsVisible@@3PAEA=_sMgCoinsVisible")
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines _data_ov006_0213d4d4, and nothing references ?_ZTV14dScMgMemory2_c@@3PAXA, so the row can never fire and nothing wants it to. */
 // #pragma comment(linker, "/alternatename:?_ZTV14dScMgMemory2_c@@3PAXA=_data_ov006_0213d4d4")
 /* RE-POINTED at ALIAS2 (wave 8, the main -> port sync), lane ALIAS's
@@ -220,14 +220,14 @@ SysTracker::~SysTracker() { _ZN8Particle10SysTrackerD1Ev(this); }
 
 // ---- the nine hand rulings, section 1 --------------------------------------
 
-#pragma comment(linker, "/alternatename:?data_ov006_0213ac48@@3UP2@@A=_data_ov006_0213ac48")
-#pragma comment(linker, "/alternatename:?data_ov006_0213ac50@@3UP2@@A=_data_ov006_0213ac50")
-#pragma comment(linker, "/alternatename:?data_ov006_0213ac88@@3UP2@@A=_data_ov006_0213ac88")
-#pragma comment(linker, "/alternatename:?data_ov004_020beb68@@3PAUG@@A=_data_ov004_020beb68")
-#pragma comment(linker, "/alternatename:?func_020beb68@@3PAUV@@A=_data_ov004_020beb68")
+#pragma comment(linker, "/alternatename:?pmf_Dealer_StateCollect@@3UP2@@A=_pmf_Dealer_StateCollect")
+#pragma comment(linker, "/alternatename:?pmf_Dealer_StateIdle@@3UP2@@A=_pmf_Dealer_StateIdle")
+#pragma comment(linker, "/alternatename:?pmf_MascotWalker_StateWalk_3@@3UP2@@A=_pmf_MascotWalker_StateWalk_3")
+#pragma comment(linker, "/alternatename:?gMgScene@@3PAUG@@A=_gMgScene")
+#pragma comment(linker, "/alternatename:?func_020beb68@@3PAUV@@A=_gMgScene")
 #pragma comment(linker, "/alternatename:?data_020a0ebc@@3UVector3@@A=_data_020a0ebc")
 #pragma comment(linker, "/alternatename:?data_020a0edc@@3UVector3_16@@A=_data_020a0edc")
-#pragma comment(linker, "/alternatename:?data_ov004_020bfa20@@3P6AXXZA=_data_ov004_020bfa20")
+#pragma comment(linker, "/alternatename:?sMgCoinsStep@@3P6AXXZA=_sMgCoinsStep")
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEFEATED: the left hand side is a real definition in this link now (_ZN3GXS10LoadBGPlttEPKvjj.cpp.obj), so the directive is inert and alternatename_guard fails on it. */
 // #pragma comment(linker, "/alternatename:?LoadBGPltt@GXS@@YAXPBXII@Z=__ZN3GXS10LoadBGPlttEPKvjj")
 /* RE-POINTED at ALIAS2 (wave 8, the main -> port sync), lane ALIAS's
@@ -237,16 +237,16 @@ SysTracker::~SysTracker() { _ZN8Particle10SysTrackerD1Ev(this); }
 #pragma comment(linker, "/alternatename:?PlayBank2_2D@Sound@@SAXI@Z=?PlayBank2_2D@Sound@@YAII@Z")
 #pragma comment(linker, "/alternatename:?RenderAll@dExtShadowModel_c@@YAXXZ=?RenderAll@dExtShadowModel_c@@SAXXZ")
 
-/* THE NAME-SPELLING ALIAS ONTO A DATA WORD. src/actors/dScMgMemory2_c.cpp (slot 18)
-   and src/actors/dScMgMemory2_c.cpp (slot 0) both store through a symbol they
+/* THE NAME-SPELLING ALIAS ONTO A DATA WORD. src/minigames/d_s_mg_memory2.cpp (slot 18)
+   and src/minigames/d_s_mg_memory2.cpp (slot 0) both store through a symbol they
    spell `func_020bc7d4`, a name that exists in no config; the reloc's module is
-   ov004 and data_ov004_020bc7d4 is the co-resident answer, a plain int the ov004
+   ov004 and gMgCoinsShowDelta is the co-resident answer, a plain int the ov004
    mount defines. Twelve ov004 src TUs already spell it the right way, which is
    what makes this a spelling defect rather than a convention. */
-#pragma comment(linker, "/alternatename:_func_020bc7d4=_data_ov004_020bc7d4")
+#pragma comment(linker, "/alternatename:_func_020bc7d4=_gMgCoinsShowDelta")
 
 // ---- section 3: the card draw is a real body now ---------------------------
 //
-// Nothing is defined here for 0x020f5b98 any more. src/actors/dScMgMemory2_c.cpp
+// Nothing is defined here for 0x020f5b98 any more. src/minigames/d_s_mg_memory2.cpp
 // defines it and port/slice_mem.txt compiles it, so a tree that loses that
 // slice line fails to LINK rather than quietly drawing nothing.

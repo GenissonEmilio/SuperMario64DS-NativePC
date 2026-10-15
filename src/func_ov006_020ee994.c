@@ -8,8 +8,8 @@
 // -- THE IGNITION. Slot 0 (InitResources, src/func_ov006_020ee690.cpp:112)
 // ends with `((Base *)base)->m48(-1)`, vtable offset 0x48 = slot 18, and this
 // body is the only thing in ov006 that reaches the state-0 installer
-// func_ov006_020ee658, whose only job is to copy the {code,adj} pair at
-// data_ov006_0213cb54 into self+0x5004. Nothing else in ov006 writes that
+// BeginIntro, whose only job is to copy the {code,adj} pair at
+// pmf_dScMgJump_c_State_Intro into self+0x5004. Nothing else in ov006 writes that
 // field before vtable slot 6 first reads it, so without this body the class
 // boots, ticks and renders with a NULL state pair and nothing in the minigame
 // moves. port/slice_bnp.txt section 8 and port/hal/scene_mg_jump.cpp section 4
@@ -28,11 +28,11 @@
 //
 //   arg 0     ++self->+0xbc, clamped at 0x270e
 //   arg 0x12  self->+0xbc = 0, same clamp, then the global pointer at
-//             data_ov004_020beb68 gets its +0xb4 zeroed and
-//             func_ov004_020adb1c(self->+0xb4) runs -- a DIFFERENT object's
+//             gMgScene gets its +0xb4 zeroed and
+//             Mg_SubmitScore(self->+0xb4) runs -- a DIFFERENT object's
 //             +0xb4 is zeroed than the one whose +0xb4 is read
 //   otherwise that global's +0xb4 = self->+0xbc
-//   then      func_ov006_020c72b4() if +0xbc != 0 else func_ov006_020c72c8()
+//   then      Jump3D_DisableInput() if +0xbc != 0 else Jump3D_EnableInput()
 //             (they write 0 and 1 to data_ov006_02140400[0])
 //   then      the draw: only from round 0xf on, a 0..9 value rerolled while it
 //             equals the cached last draw in data_ov006_0213cb48 (the ROM
@@ -40,17 +40,17 @@
 //             scratch int and not the adjustment half of a state pair -- see
 //             unmatched/MgBounceAndPounce_StateDispatch.cpp section 1). Below
 //             round 0xf the draw stays equal to the round number.
-//   then      func_ov006_020c719c(+0xbc, draw)
+//   then      Jump3D_Arrange(+0xbc, draw)
 //   then      data_ov006_02140328 = 3 / 4 / 5 / 6 for +0xbc < 0xf / < 0x14 /
 //             < 0x19 / else -- the difficulty ladder, i.e. how many Fly Guys
 //             this round asks for
-//   then      func_ov006_020c44b4(+0xbc, draw), which copies that ladder value
+//   then      Heyho_SpawnAll(+0xbc, draw), which copies that ladder value
 //             into data_ov006_02140304 -- the live remaining-target counter
-//             the play state func_ov006_020ee508 tests
-//   tail      func_ov006_020ee658(self), the state-0 installer
+//             the play state State_Play tests
+//   tail      BeginIntro(self), the state-0 installer
 //
 // The ROM does not set r0 before its epilogue, so the word a caller would see
-// is whatever func_ov006_020ee658 leaves behind (self+0x5000, from its own
+// is whatever BeginIntro leaves behind (self+0x5000, from its own
 // struct-copy address). No caller reads it: slot 0 declares m48 void.
 //
 // ---- THE DIVERGENCE, AND IT IS ONE THING ----------------------------------
@@ -123,13 +123,13 @@
 // backward goto, for(;;)+break, while(1)+break and store-inside-the-loop all
 // compile to a BYTE-IDENTICAL object (same md5), so mwccarm normalises the
 // shape before it decides. Also tried and byte-identical: the seed as a local
-// pointer (the spelling src/func_ov006_020c44b4.c uses), the seed as an array,
+// pointer (the spelling src/Heyho_SpawnAll.c uses), the seed as an array,
 // a signed compare and signed-v typing, `10 * x` operand order, a temporary
 // for the shifted value, dropping the inner parentheses, and `volatile` on
 // either global or both; a `long long` launder on the multiply made it worse
 // (0x180). THE STATEMENT-POSITION LEVER OF notes/mwccarm-codegen.md 6bj DOES
 // NOT REACH IT: writing the address as a local assigned as the FIRST statement
-// inside the loop body -- the move that took func_ov006_02106168 from 24 to 8
+// inside the loop body -- the move that took DealPuzzle from 24 to 8
 // -- leaves this at 0x164 for the seed, for the last-draw word, and for both,
 // because 6bj's lever chooses WHICH loop level a hoist lands at and this
 // function has only one level for it to land above. Dead-code entries do not
@@ -173,16 +173,16 @@
 
 #include "types.h"
 
-extern void func_ov004_020adb1c(int self);
-extern void func_ov006_020c719c(u32 a0, u32 a1);
-extern void func_ov006_020c44b4(void *arg0, int arg1);
-extern void func_ov006_020c72b4(void);
-extern void func_ov006_020c72c8(void);
+extern void Mg_SubmitScore(int self);
+extern void Jump3D_Arrange(u32 a0, u32 a1);
+extern void Heyho_SpawnAll(void *arg0, int arg1);
+extern void Jump3D_DisableInput(void);
+extern void Jump3D_EnableInput(void);
 extern void func_ov006_020ee658(char *c);
 extern int RandomIntInternal(int *seed);
 
 extern int data_0209e650;
-extern char *data_ov004_020beb68;
+extern char *gMgScene;
 extern int data_ov006_0213cb48;
 extern int data_ov006_02140328;
 
@@ -199,19 +199,19 @@ void func_ov006_020ee994(char *c, int a1)
         *(u32 *)(c + 0xbc) = 0;
         if (*(u32 *)(c + 0xbc) > 0x270e)
             *(u32 *)(c + 0xbc) = 0x270e;
-        if (data_ov004_020beb68 != 0)
-            *(int *)(data_ov004_020beb68 + 0xb4) = 0;
-        func_ov004_020adb1c(*(int *)(c + 0xb4));
+        if (gMgScene != 0)
+            *(int *)(gMgScene + 0xb4) = 0;
+        Mg_SubmitScore(*(int *)(c + 0xb4));
     } else {
         u32 n = *(u32 *)(c + 0xbc);
-        if (data_ov004_020beb68 != 0)
-            *(u32 *)(data_ov004_020beb68 + 0xb4) = n;
+        if (gMgScene != 0)
+            *(u32 *)(gMgScene + 0xb4) = n;
     }
 
     if (*(u32 *)(c + 0xbc) != 0)
-        func_ov006_020c72b4();
+        Jump3D_DisableInput();
     else
-        func_ov006_020c72c8();
+        Jump3D_EnableInput();
 
     v = *(u32 *)(c + 0xbc);
     if (v >= 0xf) {
@@ -220,7 +220,7 @@ void func_ov006_020ee994(char *c, int a1)
         } while (v == (u32)data_ov006_0213cb48);
         data_ov006_0213cb48 = v;
     }
-    func_ov006_020c719c(*(u32 *)(c + 0xbc), v);
+    Jump3D_Arrange(*(u32 *)(c + 0xbc), v);
 
     if (*(u32 *)(c + 0xbc) < 0xf)
         data_ov006_02140328 = 3;
@@ -231,6 +231,6 @@ void func_ov006_020ee994(char *c, int a1)
     else
         data_ov006_02140328 = 6;
 
-    func_ov006_020c44b4((void *)*(u32 *)(c + 0xbc), v);
+    Heyho_SpawnAll((void *)*(u32 *)(c + 0xbc), v);
     func_ov006_020ee658(c);
 }

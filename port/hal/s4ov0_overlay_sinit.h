@@ -2,9 +2,9 @@
  * block) into the three matched C++ TUs whose file pointers the cartridge
  * builds in an OVERLAY static initialiser: src/game/actors/d_a_obj_fm_battan.cpp
  * (ov023: data_ov023_02112088 handle 1558, data_ov023_02112080 handle 1559),
- * src/game/actors/d_a_obj_kb1_billboard.cpp (ov044: data_ov044_02111680,
+ * src/game/actors/d_a_obj_kb1_billboard.cpp (ov044: gKb1BallModelFile,
  * handle 1570) and src/game/actors/d_a_star_gate.cpp (ov100:
- * data_ov100_02148934, handle 0x4a1).
+ * gObjStargateModelFile, handle 0x4a1).
  *
  * ON THE CARTRIDGE those four constructors run when their overlay is LOADED,
  * from its __sinit, which is long after the boot worker has built the ov0

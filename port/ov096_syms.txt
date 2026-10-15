@@ -93,7 +93,7 @@
 # ==== POKEY_SEGMENT IS POKEY: ONE CLASS, TWO SPAWN ENTRY POINTS ============
 # The ov030 UKIKI_THIEF/UKIKI_STAR (267/268) shape, and it is proved three
 # ways rather than assumed from the shared name prefix:
-#   * src/actors/daSanbo_c.cpp and src/actors/daSanbo_c.cpp are IDENTICAL apart from
+#   * src/game/actors/d_a_sanbo.cpp and src/game/actors/d_a_sanbo.cpp are IDENTICAL apart from
 #     their own names -- both allocate 944 bytes, call _ZN8dActor_cC2Ev, store
 #     _ZTV5Pokey at p[0] and construct the same four members at the same four
 #     offsets (Model 0xd4, ShadowModel 0x124, MovingCylinderClsn 0x14c,
@@ -121,7 +121,7 @@
 # ov092, the other half of this lane, which IS Platform-derived and closes on
 # slot 31 = 0x020ee55c _ZN10dBgActor_c4KillEv.)
 #
-# ROUTE B LIES ON TORNADO. Its next dsd symbol is data_ov096_02137b20, the .bss
+# ROUTE B LIES ON TORNADO. Its next dsd symbol is gSanboHeadModelFile, the .bss
 # start, giving 0x90 = 36 slots. Slots 31 through 35 (0x02137b0c..0x02137b1c)
 # are ZERO in the raw image -- .data's tail padding up to .bss's align-32
 # boundary, not five null virtuals. The reloc run stops at slot 30 for this
@@ -253,4 +253,4 @@ _ZTS7daTor_c _ZTI7daTor_c g_profile_TORNADO
    data_ov096_02137bb8@0x02137bb8
 data_ov096_02137bc4@0x02137bc4
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov096_02137b20! data_ov096_02137b28! data_ov096_02137b48! data_ov096_02137ba8! data_ov096_02137bb0!
+gSanboHeadModelFile! gSanboBodyModelFile! data_ov096_02137b48! gSandTornadoModelFile! gSandTornadoAnimationFile!

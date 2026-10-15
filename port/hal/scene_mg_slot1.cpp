@@ -138,13 +138,13 @@
 // index at +0x46b4 leaves 0 on the first tick, the reels scroll by
 // data_ov006_0213e600 indexed by the speed step, a touch inside a reel's
 // 0x40 by 0x40 box around data_ov006_0213e63c stops that reel, all three
-// stopping runs func_ov006_0210c500 over the line, the payout table
+// stopping runs SlotReels_CheckStopped over the line, the payout table
 // data_ov006_0213e4d8 and the wild bonus are added and paid, and the per-frame
 // tail the ROM body runs after every arm -- the betIcon slot-0 update, two
-// func_ov006_0210c278 calls and one func_ov006_0210c1a8 -- runs every frame.
+// SlotBlink_Tick calls and one SlotLamp_Tick -- runs every frame.
 //
 // AND THE SIX DROPPED BODIES CAME BACK. Section 9 of port/slice_s364.txt left
-// a standing credit: func_ov006_0210c180, _c1a8, _c218, _c278, _c2c0 and _c500
+// a standing credit: SlotLamp_Start, _c1a8, _c218, _c278, _c2c0 and _c500
 // were in the slice, compiled, and in NO map, because their only caller in the
 // whole binary was the trap and /OPT:REF discards a body with no reference
 // edge. The seated Behavior calls all six. They cost zero extra slice lines,
@@ -197,9 +197,9 @@ int   _ZN12dScMgSlot1_c8BehaviorEv(char *c);           /* slot  6 Behavior      
 int   _ZN12dScMgSlot1_c6RenderEv(unsigned char *c);     /* slot  9 Render        */
 void *_ZN12dScMgSlot1_cD1Ev(char *c);           /* slot 16 D2            */
 void *_ZN12dScMgSlot1_cD0Ev(char *c);           /* slot 17 D0            */
-void  _ZN12dScMgSlot1_c13OnYoshiTryEatEi(char *c, int i);    /* slot 18 state reset   */
-void  _ZN12dScMgSlot1_c15OnHitByMegaCharEv(void *c);           /* slot 27               */
-void  _ZN12dScMgSlot1_c19OnHitFromUnderneathEv(void *c);           /* slot 28               */
+void  _ZN12dScMgSlot1_c10StartRoundEi(char *c, int i);    /* slot 18 state reset   */
+void  _ZN12dScMgSlot1_c8OpenMenuEv(void *c);           /* slot 27               */
+void  _ZN12dScMgSlot1_c9CloseMenuEv(void *c);           /* slot 28               */
 
 /* dScMgSlot1_c::betIcon_c's two */
 void  _ZN12dScMgSlot1_c9betIcon_c8BehaviorEv(char *c);           /* betIcon slot 0 Update */
@@ -272,19 +272,19 @@ static void *__fastcall s1_d0(void *s, void *)
    bytes, and the dispatcher's own `pop ebp; ret` then takes its saved frame
    pointer as a return address.
    THIS CLASS IS THE ONE WHERE THE ARGUMENT IS ALSO READ rather than only
-   pushed: src/_ZN12dScMgSlot1_c13OnYoshiTryEatEi.cpp branches on it (4 copies +0x4709 to
-   +0x4706, 3 calls func_ov006_0210c638), and the ROM Behavior dispatches this
+   pushed: src/_ZN12dScMgSlot1_c10StartRoundEi.cpp branches on it (4 copies +0x4709 to
+   +0x4706, 3 calls Slot1_InitHud), and the ROM Behavior dispatches this
    slot with r1 = 4 at 0x0210cf48 and r1 = 5 at 0x0210cf80. So the parameter is
    forwarded, not just absorbed. */
 static unsigned g_s1_reset_args[8];   /* 0..6 seen as themselves, 7 = higher */
 static int __fastcall s1_reset(void *s, void *, int ridethrough)
 { S1(18);
   ++g_s1_reset_args[(unsigned)ridethrough < 7u ? (unsigned)ridethrough : 7u];
-  _ZN12dScMgSlot1_c13OnYoshiTryEatEi((char *)s, ridethrough); return 1; }
+  _ZN12dScMgSlot1_c10StartRoundEi((char *)s, ridethrough); return 1; }
 static int __fastcall s1_v27(void *s, void *)
-{ S1(27); _ZN12dScMgSlot1_c15OnHitByMegaCharEv(s); return 0; }
+{ S1(27); _ZN12dScMgSlot1_c8OpenMenuEv(s); return 0; }
 static int __fastcall s1_v28(void *s, void *)
-{ S1(28); _ZN12dScMgSlot1_c19OnHitFromUnderneathEv(s); return 0; }
+{ S1(28); _ZN12dScMgSlot1_c9CloseMenuEv(s); return 0; }
 
 /* ---- the betIcon sub-object's two ---------------------------------------- */
 static void __fastcall s1_bet_update(void *s, void *)
@@ -511,7 +511,7 @@ extern "C" void port_scene_slot1_hits(void)
     /* THE SLOT-18 SECOND ARGUMENT, CENSUSED RATHER THAN ASSUMED. Run mg9 lane
        LKY found a class whose slot-18 body READS its second argument where
        every earlier seated class ignored it. This one reads it too --
-       src/_ZN12dScMgSlot1_c13OnYoshiTryEatEi.cpp branches on 4 and on 3, and the ROM Behavior
+       src/_ZN12dScMgSlot1_c10StartRoundEi.cpp branches on 4 and on 3, and the ROM Behavior
        dispatches the slot with 4 at 0x0210cf48 and with 5 at 0x0210cf80 -- so
        the thunk FORWARDS it rather than only cleaning it. Printing the
        distribution is what turns "forwarded" into a measurement: a run where

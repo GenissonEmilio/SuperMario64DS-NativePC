@@ -2,7 +2,7 @@
 // actor id 0x16f = scene 367, the "Boom Box" minigame.
 //
 // FOUR ALIASES AND NOTHING ELSE. This class stands in for no ROM body: its one
-// floor (func_ov006_0211bc8c) is a STATE and is reported by the address switch
+// floor (Note_StateOpening) is a STATE and is reported by the address switch
 // in unmatched/MgSound_StateDispatch.cpp rather than trapped by a fake symbol,
 // and its one broken state body is host-copied in
 // unmatched/MgSound_ShadowSlot35.cpp. So there is no counting stub here and
@@ -18,14 +18,14 @@
 // convention involved. Section 4's rulebook corollary about member pointers
 // does not apply: none of these four is a pair.
 //
-//   ?_ZTV12dScMgSound_c@@3HA     src/actors/dScMgSound_c.cpp
+//   ?_ZTV12dScMgSound_c@@3HA     src/minigames/d_s_mg_sound.cpp
 //                                 `extern int _ZTV12dScMgSound_c;` and takes
 //                                 its ADDRESS to store as the vptr
-//   ?_ZTV12dScMgSound_c@@3PAXA   src/actors/dScMgSound_c.cpp (slot 16, D2)
+//   ?_ZTV12dScMgSound_c@@3PAXA   src/minigames/d_s_mg_sound.cpp (slot 16, D2)
 //                                 `extern void* _ZTV12dScMgSound_c;`, the
 //                                 same symbol at a different C++ type
-//   ?data_ov006_0212ef7c@@3PAHA   src/actors/dScMgSound_c.cpp
-//   ?data_ov006_0212ef8c@@3PAHA   src/actors/dScMgSound_c.cpp
+//   ?data_ov006_0212ef7c@@3PAHA   src/minigames/d_s_mg_sound.cpp
+//   ?data_ov006_0212ef8c@@3PAHA   src/minigames/d_s_mg_sound.cpp
 //                                 the two int tables that body indexes by the
 //                                 spacing byte at +0x5627
 //
@@ -36,7 +36,7 @@
 // unmatched/MgMemory2_Faces.cpp already carry exactly this pair for the
 // intermediate base's table (?_ZTV19dScMgSingle3DBase_c@@3HA and @@3PAXA), which is
 // why 0x0213e448 did NOT appear in this class's first link wave even though
-// src/actors/dScMgSound_c.cpp declares it the same way.
+// src/minigames/d_s_mg_sound.cpp declares it the same way.
 //
 // ---- THE RIGHT-HAND SIDES ARE THE LINKER'S OWN ANSWER --------------------
 //

@@ -27,7 +27,7 @@
  * width matches the base's declared u8 and the name states exactly what the
  * ROM does. No raw cast is needed here (unlike wing_c/ana_c's 0x32).
  *
- * CONSTRUCTED BY func_ov006_0210e480, left a free function per the recipe
+ * CONSTRUCTED BY cMgSmartball_pushswitch_c_Construct, left a free function per the recipe
  * (this tree has migrated zero constructors), with only its vtable-symbol
  * reference renamed. It calls the base constructor, stores this vtable, and
  * sets the base's mRadius to 0x8000 -- the per-child constant every sibling

@@ -85,7 +85,7 @@
 // clean over it.
 //
 // SO THE CENSUS BELOW COUNTS IT SEPARATELY. port_mg_bomroom_opencoded_calls()
-// is how often func_ov006_020d8f98's host copy dispatched. On a build that
+// is how often Round_State3's host copy dispatched. On a build that
 // still compiled the src TU that count would read zero AND the run would fault
 // with eip on a DS address; a nonzero count beside a clean run is the positive
 // evidence that the seventh copy is doing its job. A zero-dispatch clean run
@@ -93,11 +93,11 @@
 //
 // ---- 7. THE TWO FLOORS ARE CLOSED (run mg7, lane L370) -------------------
 //
-//   func_ov006_020d7c4c  0x230  STATE slot 5 of data_ov006_02141730, the bomb
+//   Bomb_State5  0x230  STATE slot 5 of data_ov006_02141730, the bomb
 //                               free-flight state. BYTE-MATCHED at mwccarm
 //                               1.2/base, 1.2/sp2 and 1.2/sp2p3. Dispatched
 //                               for real; the count says it ran.
-//   func_ov006_020d8408  0x4fc  the second call of state 2 of
+//   SpawnBombs  0x4fc  the second call of state 2 of
 //                               data_ov006_021416e0, the bomb spawner and the
 //                               body that MOVES THE STATE INDEX. Decompiled
 //                               NONMATCHING (register allocation and
@@ -108,7 +108,7 @@
 //
 // Both are reported below whether or not they fire, because a silent zero and
 // an absent instrument look the same in a log. Seating the spawner also links
-// src/actors/dScMgBomroom_c.cpp for the first time -- every relocation reaching
+// src/minigames/d_s_mg_bomroom.cpp for the first time -- every relocation reaching
 // 0x020d66c4 anywhere in ov006 comes from inside that body -- so the slice's
 // linkage delta is now the full 74 rather than slice_sos.txt's original +71.
 //
@@ -134,7 +134,7 @@
 // the whole of the evidence and the first job was making the thing happen on
 // purpose. SM64DS_SOS_FILL below is that; the sequence it drives is the ROM's:
 //
-//   func_ov006_020d6784, called from top-level state 2, counts bombs that are
+//   CountSortedBombs, called from top-level state 2, counts bombs that are
 //   LIVE (+0x4698) and PARKED IN A BIN (+0x4697 == 5), split by the colour
 //   byte +0x4696. At 0x28 = FORTY of one colour it sets the top-level index
 //   +0x62d0 to 3, the sub-index +0x62d4 to 0, +0x62f5 to the colour, and bumps
@@ -153,8 +153,8 @@
 // bombs entered state 6 at substate 0 and 2876 frames later all forty were
 // still at substate 0. Nothing was ticking them.
 //
-// THE CAUSE WAS ONE DROPPED RECEIVER IN src/func_ov006_020d8cc4.cpp. That TU
-// declared `extern "C" int func_ov006_020d836c(void);` and called it with no
+// THE CAUSE WAS ONE DROPPED RECEIVER IN src/Round_SubState1.cpp. That TU
+// declared `extern "C" int UpdateBombs(void);` and called it with no
 // argument. The ROM passes `this`:
 //
 //     020d8cc4  push {r4, r5, lr}
@@ -250,10 +250,10 @@ int   _ZN14dScMgBomroom_c8BehaviorEv(char *self);          /* slot 6  Behavior, 
 int   _ZN14dScMgBomroom_c6RenderEv(void *self);          /* slot 9  Render */
 int   _ZN14dScMgBomroom_cD1Ev(int *self);           /* slot 16 D2 */
 int  *_ZN14dScMgBomroom_cD0Ev(int *self);           /* slot 17 D0 */
-void  _ZN14dScMgBomroom_c13OnYoshiTryEatEi(unsigned char *self); /* slot 18 state reset */
+void  _ZN14dScMgBomroom_c10StartRoundEi(unsigned char *self); /* slot 18 state reset */
 
 /* the ROM's own drop-inside-a-bin handler, for the bin-full probe below */
-void  _ZN14dScMgBomroom_c19func_ov006_020d6b88Ei(void *self, int idx);
+void  _ZN14dScMgBomroom_c16Bomb_CheckSortedEi(void *self, int idx);
 
 /* the factory */
 void *dScMgBomroom_c_classInit(void);
@@ -287,10 +287,10 @@ static int  __fastcall sos_init(void *s, void *)
 
    IT WAS BUILT WHEN THE CLASS COULD NOT REACH FOUR OF ITS OWN FIVE TOP-LEVEL
    STATES. Slot 0 set the index to 1, the game walked to 2 and stayed: state 2
-   (func_ov006_020d8ff4) calls func_ov006_020d8408, which then had no delink
+   (Round_State2) calls SpawnBombs, which then had no delink
    block and no src, and that body is what advances the index. Run mg7 lane
    L370 decompiled it, so the machine now advances on its own and state 3 --
-   func_ov006_020d8f98, the dispatcher that open-codes the ARM Itanium
+   Round_State3, the dispatcher that open-codes the ARM Itanium
    sequence in plain ints -- is reachable on an unaided headless run.
 
    THE PROBE IS KEPT ANYWAY and is deliberately still wired. An unaided run
@@ -313,7 +313,7 @@ static int  __fastcall sos_init(void *s, void *)
    run, and the reason they exist is section 9 below: the whole end-of-round
    sweep -- the thing the player sees as "the bins filled and the bombs went up
    to the top screen" -- is behind a counter no headless run can move.
-   func_ov006_020d6784 fires it at 0x28 = 40 bombs of ONE colour parked
+   CountSortedBombs fires it at 0x28 = 40 bombs of ONE colour parked
    in a bin, and the ROM's only way to park one is a player drag ending inside
    the bin box. Forty drags is not a thing a touch script can do: the stylus
    probe holds 32 entries total and each drag needs several.
@@ -321,8 +321,8 @@ static int  __fastcall sos_init(void *s, void *)
    SO THE PROBE SEEDS THE STATE AND SAYS SO. This is NOT an input-driven
    repro and no claim below pretends it is. What it does do is refuse to
    shortcut the game logic: every field it writes is a field
-   func_ov006_020d8408 (the ROM's own spawner) writes with the value that body
-   writes, and the DROP itself is func_ov006_020d6b88 -- the ROM's own
+   SpawnBombs (the ROM's own spawner) writes with the value that body
+   writes, and the DROP itself is Bomb_CheckSorted -- the ROM's own
    drop-inside-a-bin handler, called with the bomb positioned inside the bin
    box the way a released stylus positions it. Nothing here writes a state
    byte the ROM would not have written from the same inputs, and the trigger
@@ -339,13 +339,13 @@ static void sos_binfill(char *s, int n, int side)
         char *b = s + i * 0x40 + 0x4000;
         if (*(unsigned char *)(b + 0x698) != 0)
             continue;
-        /* func_ov006_020d8408's spawn block, verbatim, minus the difficulty
+        /* SpawnBombs's spawn block, verbatim, minus the difficulty
            ladder that only picks the angle and the release pattern. */
         *(unsigned char *)(b + 0x698) = 1;
-        /* The draw gate and its companion, from func_ov006_020d8324's expiry
+        /* The draw gate and its companion, from Bomb_State0's expiry
            write (+0x4699 = 1, +0x4694 = 1): the seed parks a bomb straight
            past the spawn-delay state that would set them, and the renderer
-           func_ov006_020d7524 skips any bomb whose +0x4699 is 0. Run mg10
+           DrawBombs skips any bomb whose +0x4699 is 0. Run mg10
            lane RGX measured the gap (engine A OBJ 2956 -> 13475 px) and
            documented the fix in port/ppu_blend.txt. */
         *(unsigned char *)(b + 0x699) = 1;
@@ -360,18 +360,18 @@ static void sos_binfill(char *s, int n, int side)
         *(int *)(b + 0x670) = 0x999;
         *(int *)(b + 0x688) = 0;
         *(unsigned short *)(b + 0x68c) = 0x2000;
-        /* inside the bin box func_ov006_020d6b88 tests for this side: the
+        /* inside the bin box Bomb_CheckSorted tests for this side: the
            right box is x in (0xc0,0x100] and the left is x in [0,0x40), both
            y in (0x40,0x80). Fixed-point 20.12, the same as the spawner's. */
         *(int *)(b + 0x660) = (side ? 0xe0 : 0x20) << 12;
         *(int *)(b + 0x664) = 0x60 << 12;
-        _ZN14dScMgBomroom_c19func_ov006_020d6b88Ei(s, i);
+        _ZN14dScMgBomroom_c16Bomb_CheckSortedEi(s, i);
         ++placed;
     }
     std::fprintf(stderr, "  [scene] SM64DS_SOS_FILL: parked %d bomb(s) of "
-                 "side %d inside the bin through _ZN14dScMgBomroom_c19func_ov006_020d6b88Ei, the "
+                 "side %d inside the bin through _ZN14dScMgBomroom_c16Bomb_CheckSortedEi, the "
                  "ROM's own drop handler. STATE-SEEDED, not input-driven: "
-                 "_ZN14dScMgBomroom_c19func_ov006_020d6784Ev wants 0x28 of them and forty stylus "
+                 "_ZN14dScMgBomroom_c16CountSortedBombsEv wants 0x28 of them and forty stylus "
                  "drags do not fit in a touch script.\n", placed, side);
     std::fflush(stderr);
 }
@@ -427,7 +427,7 @@ static int __fastcall sos_beh(void *s, void *)
         if (e) { const char *c = std::strchr(e, ':'); if (c) fill_side = std::atoi(c + 1); }
         trace = std::getenv("SM64DS_SOS_TRACE") ? 1 : 0;
     }
-    /* seeded in the spawner state, which is where func_ov006_020d6784 -- the
+    /* seeded in the spawner state, which is where CountSortedBombs -- the
        body that counts the parked bombs -- actually runs. Once. */
     if (fill_n > 0 && *(int *)((char *)s + 0x62d0) == 2) {
         sos_binfill((char *)s, fill_n, fill_side);
@@ -452,7 +452,7 @@ static void *__fastcall sos_d0(void *s, void *)
    garbage return address. The parameter exists so __fastcall cleans four
    bytes; the ROM body ignores its r1 and is called without it. */
 static int  __fastcall sos_reset(void *s, void *, int /*ridethrough*/)
-{ SOS(18); _ZN14dScMgBomroom_c13OnYoshiTryEatEi((unsigned char *)s); return 1; }
+{ SOS(18); _ZN14dScMgBomroom_c10StartRoundEi((unsigned char *)s); return 1; }
 
 /* SM64DS_SCENE_SLOT0=0 and SM64DS_SCENE_SLOT9=0, the diagnostics the ov003,
    ov007, curling and flower seats all carry, counted separately so a run can
@@ -567,7 +567,7 @@ extern "C" void port_scene_fill_bomroom(void)
 
    THE FACTORY ITSELF NEEDS NO DISPLACEMENT RULING, which is worth recording
    because 0x169's did. src/d_s_mg_bomroom.c calls
-   _ZN11dScMgBase_cC2Ev(p) WITH its argument, where src/actors/dScMgCup_c.cpp
+   _ZN11dScMgBase_cC2Ev(p) WITH its argument, where src/minigames/d_s_mg_cup.cpp
    calls the same base constructor with none and rides r0 through. That callee
    dereferences on its first statement and then writes three vtable words
    through the pointer, so the difference is a wild write versus a correct one.
@@ -607,14 +607,14 @@ extern "C" void port_scene_bomroom_hits(void)
                     "framework call(s), %u UNHANDLED address(es)\n",
                     port_mg_bomroom_state_hits(), calls, unknown);
     }
-    /* THE THING ONLY A RUN CAN SAY. func_ov006_020d8f98 is the dispatcher that
+    /* THE THING ONLY A RUN CAN SAY. Round_State3 is the dispatcher that
        open-codes the ARM Itanium sequence in plain ints: no unresolvable
        symbol, no member-pointer spelling, so neither the link nor a source
        sweep can see it and only this count convicts it. Printed whether or not
        it fired, because a zero here means the class never entered the state
        that dispatches it and NOT that the shape is absent. */
     std::printf("[scene] dScMgBomroom_c open-coded dispatcher "
-                "(_ZN14dScMgBomroom_c19func_ov006_020d8f98Ev, table data_ov006_021416a0): %u "
+                "(_ZN14dScMgBomroom_c12Round_State3Ev, table data_ov006_021416a0): %u "
                 "dispatch(es) through the host decode\n",
                 port_mg_bomroom_opencoded_calls());
     /* THE TWO FORMER FLOORS, REPORTED WHETHER OR NOT THEY FIRED. Run mg7 lane
@@ -625,7 +625,7 @@ extern "C" void port_scene_bomroom_hits(void)
     std::printf("[scene] dScMgBomroom_c former floors: state 0x020d7c4c "
                 "(slot 5 of data_ov006_02141730, byte-matched) ran %u "
                 "time(s) -- it is the free-flight state and is PLAYER-GATED, "
-                "entered only when _ZN14dScMgBomroom_c19func_ov006_020d6b88Ei sees a dropped bomb "
+                "entered only when _ZN14dScMgBomroom_c16Bomb_CheckSortedEi sees a dropped bomb "
                 "inside a bin, so zero on a no-input run is the game's answer "
                 "and not a missing body; callee 0x020d8408 (0x4fc, called by "
                 "state 2 of data_ov006_021416e0) is linked and its spawn "

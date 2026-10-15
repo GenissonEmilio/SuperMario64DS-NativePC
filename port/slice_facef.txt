@@ -85,7 +85,7 @@ src/game/actors/d_a_star_gate.cpp
 #   dispatch  02121bb0  add r1,r4,#0x80 / ldr r2,[r2,#0x14] / blx r2   ModelAnim slot 5, scale = mScaleX
 #   face      hal/except_faces.cpp, cdecl onto Goomboss::Render
 #   retires   port/unmatched/Goomboss_HostSites.cpp (body cut; func_ov074_021222e0 stays)
-src/actors/daKuriKing_c.cpp
+src/game/actors/d_a_kuri_king.cpp
 #
 # ShipUp::Render (ov016) OK -- family E leftover, held back by the return-type
 #   second reason above
@@ -98,17 +98,17 @@ src/actors/daKuriKing_c.cpp
 #   retires   port/unmatched/Jrb_Renders.cpp (body cut)
 src/game/actors/d_a_obj_ki_fune.cpp
 #
-# func_ov006_020c4c54 (ov006) OK -- family E leftover, held back only by
+# Heyho_Draw (ov006) OK -- family E leftover, held back only by
 #   "four bodies in one file, one of which is a different shape again"
 #   referrer  config/arm9/overlays/ov006/relocs.txt
 #             from:0x020c4290 kind:arm_call to:0x020c4c54 module:overlay(6)
-#   record    func_ov006_020c4c54 kind:function(arm,size=0x84) addr:0x020c4c54   (overlays/ov006/symbols.txt:106)
+#   record    Heyho_Draw kind:function(arm,size=0x84) addr:0x020c4c54   (overlays/ov006/symbols.txt:106)
 #   dispatch  020c4cb8  ldr r2,[r0] / add r1,sp,#0 / ldr r2,[r2,#0x14] / blx r2
 #                       ModelAnim at +0x38, slot 5, scratch Vector3
 #   face      none -- the matched TU defines the C name itself
 #   retires   port/unmatched/MgD3DBase_ModelAnimRender.cpp (body cut; the other
 #             three bodies keep their host copies until gate 2)
-src/actors/dMg3DHeyhoObjAdapter_c.cpp
+src/minigames/d_mg3d_heyho_obj_adapter.cpp
 #
 # ============================ GATE 2, six rows =============================
 #
@@ -127,7 +127,7 @@ src/actors/dMg3DHeyhoObjAdapter_c.cpp
 #                       blx r2 / mov r0,#1                Model at +0xd4, slot 5
 #   face      hal/except_faces.cpp, cdecl onto FloatOnWaterPlatformJrb::Render
 #   retires   port/unmatched/Jrb_Renders.cpp (with the three rows below, whole file)
-src/actors/daSlide_Box_c.cpp
+src/game/actors/d_a_slide_box.cpp
 #
 # daObjKi_Hasira_c::Render / ROCK_PILLAR (ov016) OK
 #   referrer  _ZTV10RockPillar[9] @ 02114b24 = 02112b28   (overlay_0016.bin, base 021111a0)
@@ -141,7 +141,7 @@ src/actors/daSlide_Box_c.cpp
 #   ADJUDICATED: this matched TU carries the inferred-stub marker and is
 #             listed REAL_DECOMP in port/tools/inferred_stub_adjudicated.txt
 #             (match.py 2004/b56 strict-reloc MATCH, lane STUBADJ)
-src/actors/daObjKi_Hasira_c.cpp
+src/game/actors/d_a_obj_ki_hasira.cpp
 #
 # the Platform base Render (ov002) OK -- FOUR ROM table slots reach it
 #   referrer  _ZTV17daObjFloatBoard_c[9] @ 02109000 = 020b5c24   (overlay_0002.bin, base 020ad660)
@@ -157,7 +157,7 @@ src/actors/daObjKi_Hasira_c.cpp
 #   dispatch  020b5c24  ldr r2,[r0,#0xd4]! / mov r1,#0 / ldr r2,[r2,#0x14] /
 #                       blx r2 / mov r0,#1                Model at +0xd4, slot 5
 #   face      none -- the matched TU defines the C name itself
-src/actors/daObjFloatBoard_c.cpp
+src/game/actors/d_a_obj_float_board.cpp
 #
 # func_ov006_020c7734 (ov006) OK
 #   referrer  config/arm9/overlays/ov006/relocs.txt
@@ -172,19 +172,19 @@ src/actors/daObjFloatBoard_c.cpp
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
-#src/actors/dMgJump3DMario_c.cpp
+#src/minigames/d_mg_jump3d_mario.cpp
 #
-# func_ov006_020c8e90 (ov006) OK
+# Trmp2Mario_Render (ov006) OK
 #   referrer  config/arm9/overlays/ov006/relocs.txt
 #             from:0x020cabe8 kind:arm_call to:0x020c8e90 module:overlay(6)
-#   record    func_ov006_020c8e90 kind:function(arm,size=0x3c) addr:0x020c8e90   (overlays/ov006/symbols.txt:198)
+#   record    Trmp2Mario_Render kind:function(arm,size=0x3c) addr:0x020c8e90   (overlays/ov006/symbols.txt:198)
 #   dispatch  020c8eac  ldr r2,[r0,#0x78]! / ldr r1,[pc,#0x10] /
 #                       ldr r2,[r2,#0x14] / blx r2
 #                       the object at +0x78, slot 5, scale = data_ov006_0212e02c
 #   face      none -- the matched TU defines the C name itself
-src/actors/dMgTrmpln2Mario_c.cpp
+src/minigames/d_mg_trmpln2_mario.cpp
 #
-# func_ov006_02122814 (ov006) OK -- the "different shape again" of the four,
+# Trmp2Spinner_UpdateMatrix (ov006) OK -- the "different shape again" of the four,
 #   and the difference is only the OFFSET: the shadow is over the object
 #   itself rather than a member, and the slot is the same slot
 #   referrer  config/arm9/overlays/ov006/relocs.txt
@@ -192,7 +192,7 @@ src/actors/dMgTrmpln2Mario_c.cpp
 #             (the ov073 word at 0x02123184 is ov073's own storage at a shared
 #              load-window address, module:overlay(73), not a reference to this
 #              body -- checked, not assumed)
-#   record    func_ov006_02122814 kind:function(arm,size=0x68) addr:0x02122814   (overlays/ov006/symbols.txt:1754)
+#   record    Trmp2Spinner_UpdateMatrix kind:function(arm,size=0x68) addr:0x02122814   (overlays/ov006/symbols.txt:1754)
 #   dispatch  0212285c  mov r0,r4 / add r1,r4,#0x50 / ldr r2,[r0] /
 #                       ldr r2,[r2,#0x14] / blx r2       the object itself, slot 5
 #   face      none -- the matched TU defines the C name itself
@@ -235,4 +235,4 @@ src/actors/dMgTrmpln2Mario_c.cpp
 #             is why the row still gains +1. Listing it here as well is
 #             the pattern port/CMakeLists.txt already documents as safe:
 #             CMake dedupes the identical absolute path.
-src/actors/Player.cpp
+src/game/player/Player.cpp

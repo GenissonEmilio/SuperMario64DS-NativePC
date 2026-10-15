@@ -338,8 +338,8 @@ data_ov036_021141c0@0x021141c0 data_ov036_021141cc@0x021141cc
 #   data_ov036_02113e88                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
 #   data_ov036_02114020                        now defined by src/game/actors/d_a_obj_rc_buranko.cpp
 #   data_ov036_02114028                        now defined by src/game/actors/d_a_obj_rc_buranko.cpp
-#   data_ov036_02114084                        now defined by src/actors/daObjRc_Tikuwa_c.cpp
-#   data_ov036_0211408c                        now defined by src/actors/daObjRc_Tikuwa_c.cpp
+#   gRcTikuwaCollisionFile                        now defined by src/game/actors/d_a_obj_rc_tikuwa.cpp
+#   gRcTikuwaModelFile                        now defined by src/game/actors/d_a_obj_rc_tikuwa.cpp
 #   data_ov036_021140d4                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
 #   data_ov036_021140dc                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
 #   data_ov036_021140e4                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
@@ -350,10 +350,10 @@ data_ov036_021141c0@0x021141c0 data_ov036_021141cc@0x021141cc
 #   data_ov036_0211410c                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
 #   data_ov036_02114114                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
 #   data_ov036_0211411c                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
-#   data_ov036_0211419c                        now defined by src/game/actors/d_a_obj_rc_carpet.cpp
-#   data_ov036_021141a4                        now defined by src/game/actors/d_a_obj_rc_carpet.cpp
-#   data_ov036_021141ac                        now defined by src/game/actors/d_a_obj_rc_carpet.cpp
+#   gRcCarpetWaitAnimationFile                        now defined by src/game/actors/d_a_obj_rc_carpet.cpp
+#   gRcCarpetModelFile                        now defined by src/game/actors/d_a_obj_rc_carpet.cpp
+#   gRcCarpetCollisionFile                        now defined by src/game/actors/d_a_obj_rc_carpet.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov036_02114048! data_ov036_02114050! data_ov036_02114070! data_ov036_021140ac! data_ov036_021140b4!
+gRcKaitenCollisionFile! gRcKaitenModelFile! data_ov036_02114070! gRcGuruguruModelFile! gRcGuruguruCollisionFile!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov036_02114020! data_ov036_02114028! data_ov036_02114084! data_ov036_0211408c! data_ov036_02113e88! data_ov036_0211411c! data_ov036_021140dc! data_ov036_021140f4! data_ov036_021140fc! data_ov036_021140d4! data_ov036_0211410c! data_ov036_021140e4! data_ov036_02114104! data_ov036_02114114! data_ov036_021140ec! data_ov036_02113f58! data_ov036_021141ac! data_ov036_0211419c! data_ov036_021141a4!
+data_ov036_02114020! data_ov036_02114028! gRcTikuwaCollisionFile! gRcTikuwaModelFile! data_ov036_02113e88! data_ov036_0211411c! data_ov036_021140dc! data_ov036_021140f4! data_ov036_021140fc! data_ov036_021140d4! data_ov036_0211410c! data_ov036_021140e4! data_ov036_02114104! data_ov036_02114114! data_ov036_021140ec! data_ov036_02113f58! gRcCarpetCollisionFile! gRcCarpetWaitAnimationFile! gRcCarpetModelFile!

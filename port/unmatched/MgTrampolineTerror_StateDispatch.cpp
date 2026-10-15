@@ -88,7 +88,7 @@
 // them names a member-pointer type --
 //
 //     src/minigames/d_s_mg_trampoline2.cpp    two int loads, two int stores
-//     src/minigames/d_s_mg_trampoline2.cpp  *(double*)(c + 0x5004) = data_ov006_0213fbe0
+//     src/minigames/d_s_mg_trampoline2.cpp  *(double*)(c + 0x5004) = pmf_dScMgTrampoline2_c_StateWaitExit
 //     src/minigames/d_s_mg_trampoline2.cpp    struct P2 { int a, b; } assignment
 //     src/minigames/d_s_mg_trampoline2.cpp    struct S2 { int a; int b; } assignment
 //     src/minigames/d_s_mg_trampoline2.cpp    struct P2 { int a, b; } assignment
@@ -103,7 +103,7 @@
 //
 //     slot 0  (_ZN18dScMgTrampoline2_c13InitResourcesEv) dispatches slot 18 through the object's
 //             own vtable with mode -1  (`ldr r2,[r0]; ldr r2,[r2,#0x48]; blx r2`)
-//       slot 18 (_ZN18dScMgTrampoline2_c13OnYoshiTryEatEi) tail-calls func_ov006_02124228
+//       slot 18 (_ZN18dScMgTrampoline2_c10StartRoundEi) tail-calls func_ov006_02124228
 //         -> state 0x02124088   calls func_ov006_02124040
 //              -> state 0x02123cb4   calls func_ov006_02123c78
 //                   -> state 0x02123bf4  (its own writer)
@@ -126,7 +126,7 @@
 // down to the trap note, is how run mg11 found them:
 //
 //   func_ov006_02123938  0x1e8  called by slot 6 on EVERY tick.  Its own calls
-//                        are func_ov004_020ae5c4 (the family's line rasteriser,
+//                        are Mg_DrawLine (the family's line rasteriser,
 //                        seated by run mg10 lane F371 out of slice_mg1) plus
 //                        the two sound helpers 0x020126e8 and 0x02012468.  So
 //                        what this floor costs is a DRAW: the lines this scene
@@ -163,10 +163,10 @@ void _ZN18dScMgTrampoline2_c9StatePlayEv(char *c);
 void _ZN18dScMgTrampoline2_c10StateIntroEv(char *c);
 
 /* ---- slot 6's other callees, spelled the way the ROM names them -------- */
-void  func_ov006_02120c40(void);
-void  func_ov006_020eef90(void);
-void  func_ov006_02122ab8(void);
-void  func_ov004_020adb1c(int self);
+void  TrmpFx_UpdateAll(void);
+void  Jump2Popup_UpdateAll(void);
+void  Trmp2Spinner_UpdateAll(void);
+void  Mg_SubmitScore(int self);
 void *_ZN8Particle6System17NewUnkCallback818Ejj5Fix12IiES2_S2_PK11Vector3_16f(
           unsigned uniqueID, unsigned effect, int x, int y, int z,
           const void *pos);
@@ -286,8 +286,8 @@ TTE_FACE(02123cb4, 3, _ZN18dScMgTrampoline2_c9StatePlayEv((char *)self))
 TTE_FACE(02123bf4, 4, _ZN18dScMgTrampoline2_c12StateResultsEv((char *)self))
 
 extern "C" {
-extern MgPmf data_ov006_0213fbd0, data_ov006_0213fbd8, data_ov006_0213fbe0,
-    data_ov006_0213fbe8, data_ov006_0213fbf0;
+extern MgPmf pmf_dScMgTrampoline2_c_StateDone, pmf_dScMgTrampoline2_c_StateIntro, pmf_dScMgTrampoline2_c_StateWaitExit,
+    pmf_dScMgTrampoline2_c_StatePlay, pmf_dScMgTrampoline2_c_StateResults;
 }
 
 /* ---- WHAT THE MOUNT ACTUALLY HOLDS ON THIS MACHINE ------------------------
@@ -296,7 +296,7 @@ extern MgPmf data_ov006_0213fbd0, data_ov006_0213fbd8, data_ov006_0213fbe0,
  * defines all five itself, and it defines them the way the cartridge's own
  * source does -- by NAMING the function:
  *
- *     int data_ov006_0213fbd0[] = { (int)func_ov006_02123b20, 0 };
+ *     int pmf_dScMgTrampoline2_c_StateDone[] = { (int)func_ov006_02123b20, 0 };
  *
  * On the DS that initializer IS the word 0x02123b20, because that is where the
  * linker puts the body. On this port the same initializer is a relocation
@@ -328,15 +328,15 @@ namespace {
 struct TteSeat { MgPmf *rec; unsigned rom; void *host; void *face;
                  const char *what; };
 const TteSeat g_tte_seats[] = {
-    {&data_ov006_0213fbd0, 0x02123b20u, (void *)_ZN18dScMgTrampoline2_c9StateDoneEv,
+    {&pmf_dScMgTrampoline2_c_StateDone, 0x02123b20u, (void *)_ZN18dScMgTrampoline2_c9StateDoneEv,
      (void *)tte_f02123b20, "0213fbd0"},
-    {&data_ov006_0213fbd8, 0x02124088u, (void *)_ZN18dScMgTrampoline2_c10StateIntroEv,
+    {&pmf_dScMgTrampoline2_c_StateIntro, 0x02124088u, (void *)_ZN18dScMgTrampoline2_c10StateIntroEv,
      (void *)tte_f02124088, "0213fbd8"},
-    {&data_ov006_0213fbe0, 0x02123b24u, (void *)_ZN18dScMgTrampoline2_c13StateWaitExitEv,
+    {&pmf_dScMgTrampoline2_c_StateWaitExit, 0x02123b24u, (void *)_ZN18dScMgTrampoline2_c13StateWaitExitEv,
      (void *)tte_f02123b24, "0213fbe0"},
-    {&data_ov006_0213fbe8, 0x02123cb4u, (void *)_ZN18dScMgTrampoline2_c9StatePlayEv,
+    {&pmf_dScMgTrampoline2_c_StatePlay, 0x02123cb4u, (void *)_ZN18dScMgTrampoline2_c9StatePlayEv,
      (void *)tte_f02123cb4, "0213fbe8"},
-    {&data_ov006_0213fbf0, 0x02123bf4u, (void *)_ZN18dScMgTrampoline2_c12StateResultsEv,
+    {&pmf_dScMgTrampoline2_c_StateResults, 0x02123bf4u, (void *)_ZN18dScMgTrampoline2_c12StateResultsEv,
      (void *)tte_f02123bf4, "0213fbf0"},
 };
 }  /* namespace */

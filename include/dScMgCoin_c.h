@@ -15,7 +15,7 @@ struct dScMgCoin_Coin {
     u8 visible;       /* 0x12 */
     u8 value;         /* 0x13 */
     u8 pad14;         /* 0x14 */
-    u8 collected;     /* 0x15 -- func_ov006_020de440 ends the round once every valued
+    u8 collected;     /* 0x15 -- Phase_State2 ends the round once every valued
                          coin has it; the result screen prints value only while 0 */
     u8 bounces;       /* 0x16 */
     u8 pad17;         /* 0x17 */
@@ -54,9 +54,9 @@ typedef char dScMgCoin_Sparkle_size_must_be_0x18[sizeof(dScMgCoin_Sparkle) == 0x
 #endif
 
 /* The number that pops up over a coin that has just settled. */
-/* One of the 40 blocks that hop down the stages (func_ov006_020dda94).
-   State 1 waits out delay (func_ov006_020ddca0), 2 has passed its own row,
-   4 has landed and scored (func_ov006_020dd658). */
+/* One of the 40 blocks that hop down the stages (Block_State1).
+   State 1 waits out delay (Block_State0), 2 has passed its own row,
+   4 has landed and scored (Block_State5). */
 struct dScMgCoin_Block {
     s32 x;            /* 0x00 Fix12 */
     s32 y;            /* 0x04 */
@@ -118,7 +118,7 @@ struct dScMgCoin_Bouncer {
     u16 countdown;    /* 0x12 */
     u8 active;        /* 0x14 */
     u8 shown;         /* 0x15 */
-    u8 sprite;        /* 0x16 -- into data_ov006_02134b4c (func_ov006_020dbe9c) */
+    u8 sprite;        /* 0x16 -- into data_ov006_02134b4c (Bag_Draw) */
     u8 state;         /* 0x17 */
     u8 bouncesLeft;   /* 0x18 */
     u8 stage;         /* 0x19 */
@@ -128,10 +128,10 @@ struct dScMgCoin_Bouncer {
 typedef char dScMgCoin_Bouncer_size_must_be_0x1c[sizeof(dScMgCoin_Bouncer) == 0x1c ? 1 : -1];
 #endif
 
-/* dScMgCoin_c : dScMgBase_c leaf. Slot 18 is OnYoshiTryEat; the old
+/* dScMgCoin_c : dScMgBase_c leaf. Slot 18 is StartRound; the old
    mislabel sat on D0. See dScMgBase_c.h. */
 struct dScMgCoin_c : dScMgBase_c {
-    /* Defined inline in src/actors/dScMgCoin_c.cpp, above the factory: its
+    /* Defined inline in src/minigames/d_s_mg_coin.cpp, above the factory: its
        only body is seeding mSeed with 1 through func_0203b9b4. */
     dScMgCoin_c();
     /* The destructor pair spelled as two plain virtuals on the host, plus
@@ -149,67 +149,67 @@ struct dScMgCoin_c : dScMgBase_c {
     virtual s32 InitResources();             /* slot 0 */
     virtual s32 Behavior();                  /* slot 6 */
     virtual s32 Render();                    /* slot 9 */
-    virtual void OnYoshiTryEat(int arg);     /* slot 18 */
+    virtual void StartRound(int arg);     /* slot 18 */
 
     /* The scene's helpers and the per-state handlers reached through the
        .bss PMF tables (data_ov006_021417b0 / 021417c8 / 021417e8 /
        02141810 / 02141840), in ROM order. */
-    void func_ov006_020dbe9c();
-    void func_ov006_020dbf7c(int i);
-    void func_ov006_020dc154(int index);
-    void func_ov006_020dc1c4(int index);
-    void func_ov006_020dc26c();
-    void func_ov006_020dc294();
-    void func_ov006_020dc298();
-    void func_ov006_020dc2f8();
-    void func_ov006_020dc334();
-    void func_ov006_020dc348();
-    void func_ov006_020dc370();
-    void func_ov006_020dc3bc();
-    void func_ov006_020dc414(int index);
-    void func_ov006_020dc4b0(int index);
-    void func_ov006_020dc4c8(int index);
-    void func_ov006_020dc5c4(int index);
-    void func_ov006_020dc6d0(int index);
-    void func_ov006_020dc754();
-    void func_ov006_020dc7b4();
-    void func_ov006_020dc7fc();
-    void func_ov006_020dc814();
-    void func_ov006_020dc870();
-    void func_ov006_020dc900();
-    void func_ov006_020dc960(int index);
-    void func_ov006_020dc99c();
-    void func_ov006_020dca04();
-    void func_ov006_020dcb1c(int coinIndex);
-    void func_ov006_020dcc48();
-    void func_ov006_020dccb8();
-    void func_ov006_020dcd74();
-    void func_ov006_020dce3c();
-    void func_ov006_020dcea8();
-    void func_ov006_020dcffc();
-    void func_ov006_020dd000(int index);
-    void func_ov006_020dd0e0(int idx);
-    void func_ov006_020dd2cc();
-    void func_ov006_020dd334();
-    void func_ov006_020dd4b0(int id);
-    void func_ov006_020dd594();
-    void func_ov006_020dd658(int i);
-    void func_ov006_020dd7bc();
-    void func_ov006_020dd7c0(int index);
-    void func_ov006_020dd880(int i);
-    void func_ov006_020dda94(int i);
-    void func_ov006_020ddca0(int i);
-    void func_ov006_020ddcf8(int idx);
-    void func_ov006_020ddd6c();
-    void func_ov006_020dde28(int index);
-    void func_ov006_020ddeb0();
-    void func_ov006_020ddf9c();
-    void func_ov006_020de0e0();
-    void func_ov006_020de1d4();
-    void func_ov006_020de26c();
-    void func_ov006_020de440();
-    void func_ov006_020de584();
-    void func_ov006_020de5ac();
+    void Bag_Draw();
+    void Bag_State3(int i);
+    void Bag_State2(int index);
+    void Bag_State1(int index);
+    void Bag_Release();
+    void Bag_State0();
+    void Bag_Update();
+    void Bag_Show();
+    void Bag_Hide();
+    void Caption_Finish();
+    void Caption_Trigger();
+    void Caption_Draw();
+    void Caption_State4(int index);
+    void Caption_State3(int index);
+    void Caption_State2(int index);
+    void Caption_State1(int index);
+    void Caption_State0(int index);
+    void Caption_Update();
+    void Caption_Show();
+    void Caption_Reset();
+    void DrawResultPrompt();
+    void DrawResultNumbers();
+    void Popup_UpdateAll();
+    void Popup_Spawn(int index);
+    void Sparkle_DrawAll();
+    void Sparkle_UpdateAll();
+    void Sparkle_Burst(int coinIndex);
+    void Popup_DrawAll();
+    void DrawScorePlayer();
+    void DrawScoreRival();
+    void Score_Update();
+    void DrawCoinValues();
+    void Coin_State2();
+    void Coin_State1(int index);
+    void Coin_State0(int idx);
+    void Coin_UpdateAll();
+    void LayOutCoins();
+    void KickBlockUnderCoin(int id);
+    void DrawBlocks();
+    void Block_State5(int i);
+    void Block_State4();
+    void Block_State3(int index);
+    void Block_State2(int i);
+    void Block_State1(int i);
+    void Block_State0(int i);
+    void Block_ClampToWalls(int idx);
+    void Block_UpdateAll();
+    void Block_Animate(int index);
+    void SpawnBlocks();
+    void ResetRound();
+    void Phase_State5();
+    void Phase_State4();
+    void Phase_State3();
+    void Phase_State2();
+    void Phase_State1();
+    void Phase_State0();
 
     dScMgCoin_Block mBlocks[40];             /* 0x4660 */
     dScMgCoin_Coin mCoins[24];               /* 0x4ac0 */

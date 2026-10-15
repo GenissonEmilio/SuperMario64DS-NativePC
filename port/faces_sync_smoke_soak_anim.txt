@@ -26,8 +26,8 @@
 # port/faces_sync.txt's; read that file's header before adding a row here.
 
 #RETIRED(PORTSYNC3, heap_globals.cpp defines it): __ZN10MemoryNode6TargetC1EPS_                                            ??0Target@MemoryNode@@QAE@PAU1@@Z                                0x0204e938 R
-__ZN13ExpandingHeap11VDeallocateEPv                                      ?VDeallocate@ExpandingHeap@@UAEXPAX@Z                            0x0203c50c R
-__ZN13ExpandingHeapC1EPvjP4HeapP22ExpandingHeapAllocator                 ??0ExpandingHeap@@QAE@PAXIPAUHeap@@PAUExpandingHeapAllocator@@@Z 0x0203ca80 R
+__ZN5mHeap9ExpHeap_t11VDeallocateEPv                                      ?VDeallocate@ExpHeap_t@mHeap@@UAEXPAX@Z                            0x0203c50c R
+__ZN5mHeap9ExpHeap_tC1EPvjPNS_6Heap_tEP22ExpandingHeapAllocator                 ??0ExpHeap_t@mHeap@@QAE@PAXIPAUHeap_t@1@PAUExpandingHeapAllocator@@@Z 0x0203ca80 R
 __ZN13SharedFilePtr7ReleaseEv                                            ?Release@SharedFilePtr@@QAEXXZ                                   0x02017b64 R
 __ZN13SharedFilePtr8LoadFileEv                                           ?LoadFile@SharedFilePtr@@QAEPAXXZ                                0x02017bc4 R
 __ZN15ModelComponents11UpdateBonesEP8BCA_Filei                           ?UpdateBones@ModelComponents@@QAEXPAUBCA_File@@H@Z               0x02045394 R

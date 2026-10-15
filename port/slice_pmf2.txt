@@ -31,7 +31,7 @@
 # are a TAIL JUMP -- `pop ebp` and then `jmp` through a register, no `call`.
 # The listings are archived at runs/link100/out/PMF2/listings/.
 #
-#   the pure forwarder, src/actors/daSanbo_c.cpp:
+#   the pure forwarder, src/game/actors/d_a_sanbo.cpp:
 #       push ebp / mov ebp,esp
 #       mov  eax, [ebp+8]          ; c
 #       mov  edx, [eax+900]        ; c->pp
@@ -114,24 +114,24 @@
 # referrer per symbol is runs/link100/out/PMF2/audit.txt):
 #
 #   func_ov030_02114134  <- unmatched/Ukiki_Behavior.cpp (RollingLogTtm::Behavior)
-#   func_ov030_02114170  <- src/actors/daMky_c.cpp
-#   _ZN12daBgSnmBdy_c13CallStateInitEv  <- src/actors/daBgSnmBdy_c.cpp
-#   _ZN12daBgSnmBdy_c17CallStateBehaviorEv  <- src/actors/daBgSnmBdy_c.cpp
+#   func_ov030_02114170  <- src/game/actors/d_a_mky.cpp
+#   _ZN12daBgSnmBdy_c13CallStateInitEv  <- src/game/actors/d_a_bg_snm_bdy.cpp
+#   _ZN12daBgSnmBdy_c17CallStateBehaviorEv  <- src/game/actors/d_a_bg_snm_bdy.cpp
 #   _ZN11SnowmanHead13CallStateInitEv  <- src/_ZN11SnowmanHead8SetStateEi.cpp
 #   _ZN11SnowmanHead17CallStateBehaviorEv  <- src/_ZN11SnowmanHead8BehaviorEv.cpp
 #   func_ov077_02124754  <- src/func_ov077_0212478c.c
 #   func_ov077_02124718  <- src/_ZN6Lakitu8BehaviorEv.cpp
 #   func_ov077_02125e5c  <- src/func_ov077_02125e94.c
 #   func_ov077_02125e20  <- src/_ZN5Spiny8BehaviorEv.cpp
-#   func_ov096_021368f0  <- src/actors/daSanbo_c.cpp
-#   func_ov096_021368b4  <- src/actors/daSanbo_c.cpp
+#   func_ov096_021368f0  <- src/game/actors/d_a_sanbo.cpp
+#   func_ov096_021368b4  <- src/game/actors/d_a_sanbo.cpp
 #   ChiefChilly_ChangeState <- src/_ZN11ChiefChilly13InitResourcesEv.cpp and
 #                              fifteen more ov073 state bodies
 #   func_ov073_021223a4  <- src/_ZN8CccArena13InitResourcesEv.cpp
 #   func_ov026_02111ee0  <- src/_ZN9Whirlpool13InitResourcesEv.cpp
 #   func_ov026_021122d4  <- src/_ZN12WaterSuction13InitResourcesEv.cpp
 #   func_ov032_02111ff4  <- src/game/actors/d_a_bakubaku.cpp and five more
-#   func_ov065_0211691c  <- src/actors/daYurei_Mucho_c.cpp
+#   func_ov065_0211691c  <- src/game/actors/d_a_yurei_mucho.cpp
 #   func_ov065_02117944  <- src/_ZN5Swoop13InitResourcesEv.cpp
 #   func_ov066_02119454  <- src/_ZN6Eyerok13InitResourcesEv.cpp and eighteen more
 #   func_ov077_02126d5c  <- src/_ZN7HeaveHo13InitResourcesEv.cpp
@@ -219,42 +219,42 @@
 # declared with two different return types in one TU). It is a decomp-side
 # item, not a port one: see runs/link100/out/SYNC5/decomp_side.md. The row
 # returns when main lands the fix.
-#src/actors/daMky_c.cpp
-src/actors/daBgSnmBdy_c.cpp
-src/actors/daBgSnmHed_c.cpp
-# FOLDED into src/actors/daBgSnmHed_c.cpp (row 224): src/_ZN11SnowmanHead13CallStateInitEv.cpp
+#src/game/actors/d_a_mky.cpp
+src/game/actors/d_a_bg_snm_bdy.cpp
+src/game/actors/d_a_bg_snm_hed.cpp
+# FOLDED into src/game/actors/d_a_bg_snm_hed.cpp (row 224): src/_ZN11SnowmanHead13CallStateInitEv.cpp
 src/game/actors/d_a_jgm.cpp
 # FOLDED into src/game/actors/d_a_jgm.cpp (row 226): src/func_ov077_02124754.cpp
-src/actors/daTgz_c.cpp
-# FOLDED into src/actors/daTgz_c.cpp (row 228): src/func_ov077_02125e5c.cpp
+src/game/actors/d_a_tgz.cpp
+# FOLDED into src/game/actors/d_a_tgz.cpp (row 228): src/func_ov077_02125e5c.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (the slice_ov096 host copies).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
-#src/actors/daSanbo_c.cpp
+#src/game/actors/d_a_sanbo.cpp
 # setter plus null guard
-src/actors/daKing_Donketu_c.cpp
-src/actors/daObjEwbIce_c.cpp
-src/actors/daWater_Tatumaki_c.cpp
-src/actors/daWater_Suikomi_c.cpp
-src/actors/daBakubaku_c.cpp
-src/actors/daYurei_Mucho_c.cpp
-src/actors/daBasabasa_c.cpp
+src/game/actors/d_a_king_donketu.cpp
+src/game/actors/d_a_obj_ewb_ice.cpp
+src/game/actors/d_a_water_tatumaki.cpp
+src/game/actors/d_a_water_suikomi.cpp
+src/game/actors/d_a_bakubaku.cpp
+src/game/actors/d_a_yurei_mucho.cpp
+src/game/actors/d_a_basabasa.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (the slice_ov066 host copies).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
-#src/actors/Eyerok.cpp
-src/actors/daPopoi_c.cpp
-src/actors/daSnowman_c.cpp
-src/actors/daMenbo_c.cpp
-src/actors/daManta_c.cpp
-src/actors/daPukupuku_c.cpp
-src/actors/daShark_c.cpp
+#src/game/actors/d_a_iwante.cpp
+src/game/actors/d_a_popoi.cpp
+src/game/actors/d_a_snowman.cpp
+src/game/actors/d_a_menbo.cpp
+src/game/actors/d_a_manta.cpp
+src/game/actors/d_a_pukupuku.cpp
+src/game/actors/d_a_shark.cpp
 src/game/actors/d_a_hyuhyu.cpp
-src/actors/daWanwan2_c.cpp
+src/game/actors/d_a_wanwan2.cpp
 
 # ---- BATCH 2, THE SAME GATE, EIGHT MORE ------------------------------------
 #
@@ -303,11 +303,11 @@ src/actors/daWanwan2_c.cpp
 # above passes, so they wait for either a static re-read of the overlay bytes or
 # a delta assertion added to their seat. That is the next lane's batch and it is
 # a small one.
-src/actors/daEykn_c.cpp
+src/game/actors/d_a_eykn.cpp
 src/game/actors/d_a_holhei.cpp
-src/actors/daPropeller_Heyho_Fire_c.cpp
-src/actors/daMoray_c.cpp
-src/actors/daJango_c.cpp
-src/actors/daBbl_c.cpp
-src/actors/daWater_Hakidasi_c.cpp
-src/actors/daWater_Ring_c.cpp
+src/game/actors/d_a_propeller_heyho_fire.cpp
+src/game/actors/d_a_moray.cpp
+src/game/actors/d_a_jango.cpp
+src/game/actors/d_a_bbl.cpp
+src/game/actors/d_a_water_hakidasi.cpp
+src/game/actors/d_a_water_ring.cpp

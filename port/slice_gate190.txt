@@ -52,7 +52,7 @@ src/game/actors/d_a_s_cre.cpp
 # PeachPainting D1) spells the chain directly in the fill instead of compiling
 # the shadow-class TU. src/_ZN9OneUpLogoD1Ev.cpp stays in src/ as the matched
 # proof; it is not part of the port build.
-src/actors/daObj1UpLogo_c.cpp
+src/game/actors/d_a_obj1up_logo.cpp
 # InitResources: RETIRED PLAIN to the matched TU. It calls
 # TextureSequence::Prepare through the SHORT-1 seam: the Prepare veneer is a
 # pure passthrough tail-call into func_02046d50, whose matched body reads only
@@ -63,10 +63,10 @@ src/actors/daObj1UpLogo_c.cpp
 # btp=dead -- exactly the (model, animFile) order the retired host copy passed
 # by hand, and func_02046d50 never reads the third value. The host copy
 # unmatched/OneUpLogo_InitResources.cpp is dropped from CMakeLists.
-# FOLDED into src/actors/daObj1UpLogo_c.cpp (row 55): src/_ZN9OneUpLogo13InitResourcesEv.cpp
-# FOLDED into src/actors/daObj1UpLogo_c.cpp (row 55): src/_ZN9OneUpLogo16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObj1UpLogo_c.cpp (row 55): src/_ZN9OneUpLogo8BehaviorEv.cpp
-# FOLDED into src/actors/daObj1UpLogo_c.cpp (row 55): src/_ZN9OneUpLogo6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj1up_logo.cpp (row 55): src/_ZN9OneUpLogo13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj1up_logo.cpp (row 55): src/_ZN9OneUpLogo16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj1up_logo.cpp (row 55): src/_ZN9OneUpLogo8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj1up_logo.cpp (row 55): src/_ZN9OneUpLogo6RenderEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN9OneUpLogoD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN9OneUpLogoD0Ev.cpp
 # ---- the one sinit that runs (IceSheet's own, self-contained) -------------
@@ -119,7 +119,7 @@ src/game/actors/d_a_sound_obj.cpp
 # ---- the three not-yet-compiled PMF state targets (matched src; the other
 # two, Sound::PlaySecretSound / Sound::PlaySmallSecretSound, are already in
 # slice_gate32 / slice_gate41) ----
-src/actors/dActor_c.cpp
+src/runtime/actor/d_actor.cpp
 #
 # NOT in this slice (present in src/, carried byte-identical from main, but
 # NOT compiled into this gate's build): SkiLift's cleanup fix

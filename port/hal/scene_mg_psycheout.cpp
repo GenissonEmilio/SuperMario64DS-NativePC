@@ -100,7 +100,7 @@
 // so __fastcall cleans four bytes.  Every seated class's slot-18 body ignores
 // its r1.
 //
-// THIS ONE DOES NOT.  src/_ZN12dScMg3DEsp_c13OnYoshiTryEatEi.cpp takes (char *c, int a) and the
+// THIS ONE DOES NOT.  src/_ZN12dScMg3DEsp_c10StartRoundEi.cpp takes (char *c, int a) and the
 // ROM says so at 0x020e9c2c:
 //
 //     020e9c20  push {r4,r5,lr} / sub sp,sp,#0xc
@@ -113,7 +113,7 @@
 // so the thunk must PASS the ride-through, not merely pop it.  A dropping
 // thunk hands the body stack litter, and both compares would then answer on
 // whatever was there -- with a == 0x12 zeroing the live dScMgBase_c's +0xb4,
-// which is the field func_ov004_020adb1c draws as the star badge and the field
+// which is the field Mg_SubmitScore draws as the star badge and the field
 // section 17 of port/mg_fanout_costs.txt traces to the save record.
 //
 // AND ITS OWN InitResources IS ONE OF THE 22 SITES.  src/_ZN12dScMg3DEsp_c13InitResourcesEv.
@@ -198,8 +198,8 @@ int   _ZN19dScMgSingle3DBase_c14BeforeBehaviorEv(void *c);                     /
 int   _ZN19dScMgSingle3DBase_c12BeforeRenderEv(void *c);                     /* slot 10 */
 int   _ZN19dScMgSingle3DBase_cD1Ev(char *c);                     /* slot 16 D2 */
 int   _ZN19dScMgSingle3DBase_cD0Ev(char *c);                     /* slot 17 D0 */
-int   _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(void);                        /* slot 26 */
-void  _ZN19dScMgSingle3DBase_c9Virtual84Ev(char *c);                     /* slot 33 */
+int   _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(void);                        /* slot 26 */
+void  _ZN19dScMgSingle3DBase_c11InitEnginesEv(char *c);                     /* slot 33 */
 
 /* dScMg3DEsp_c's own eight.  _ZN12dScMg3DEsp_c8BehaviorEv is the HOST COPY in
    unmatched/Mg3DEsp_StateDispatch.cpp, not the src TU: it is the
@@ -210,8 +210,8 @@ int   _ZN12dScMg3DEsp_c8BehaviorEv(void *self);        /* slot  6 Behavior, host
 int   _ZN12dScMg3DEsp_c6RenderEv(char *c);           /* slot  9 Render */
 void *_ZN12dScMg3DEsp_cD1Ev(int c);             /* slot 16 D2 */
 void *_ZN12dScMg3DEsp_cD0Ev(char *c);           /* slot 17 D0 */
-void  _ZN12dScMg3DEsp_c13OnYoshiTryEatEi(char *c, int a);    /* slot 18 state reset, TAKES a */
-int   _ZN12dScMg3DEsp_c9Virtual50Ev(void);              /* slot 20 */
+void  _ZN12dScMg3DEsp_c10StartRoundEi(char *c, int a);    /* slot 18 state reset, TAKES a */
+int   _ZN12dScMg3DEsp_c11OnNewRecordEv(void);              /* slot 20 */
 
 /* the factory */
 void *dScMg3DEsp_c_classInit(void);
@@ -230,16 +230,16 @@ void     port_mg_dispatch_counts(unsigned *calls, unsigned *unknown);
 
 /* the persistent minigame record, for the reason hal/scene_mg_memory2.cpp
    names: nothing new is defined here, the storage is hal/level_boot.cpp's
-   .dsstate$savblk0004 and the index function is src/func_ov004_020adc3c.c. */
-extern void         *data_ov004_020beb68;     /* the live dScMgBase_c `this` */
+   .dsstate$savblk0004 and the index function is src/Mg_GetSaveTable.c. */
+extern void         *gMgScene;     /* the live dScMgBase_c `this` */
 extern unsigned char data_0209caf4[];         /* 36 records x 20 bytes       */
-int  func_ov004_020adc3c(void *c);            /* (self->field_8 >> 8) & 0xff */
+int  Mg_GetSaveTable(void *c);            /* (self->field_8 >> 8) & 0xff */
 
 }  /* extern "C" */
 
 static int port_mg_record_index(void)
 {
-    return data_ov004_020beb68 ? func_ov004_020adc3c(data_ov004_020beb68) : -1;
+    return gMgScene ? Mg_GetSaveTable(gMgScene) : -1;
 }
 
 // ---- the tick witness ------------------------------------------------------
@@ -269,9 +269,9 @@ static void *__fastcall s3_d2(void *s, void *)
 static void *__fastcall s3_d0(void *s, void *)
 { P3D(17); return (void *)(size_t)_ZN19dScMgSingle3DBase_cD0Ev((char *)s); }
 static int  __fastcall s3_v26(void *, void *)
-{ P3D(26); return _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(); }
+{ P3D(26); return _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(); }
 static int  __fastcall s3_v33(void *s, void *)
-{ P3D(33); _ZN19dScMgSingle3DBase_c9Virtual84Ev((char *)s); return 0; }
+{ P3D(33); _ZN19dScMgSingle3DBase_c11InitEnginesEv((char *)s); return 0; }
 
 /* ---- dScMg3DEsp_c's own eight ------------------------------------------- */
 static int  __fastcall psy_init(void *s, void *)
@@ -294,9 +294,9 @@ static void *__fastcall psy_d0(void *s, void *)
    disassembly; the parameter is FORWARDED here where every other seated seat
    drops it, because this body branches on it. */
 static int  __fastcall psy_reset(void *s, void *, int a)
-{ PSY(18); _ZN12dScMg3DEsp_c13OnYoshiTryEatEi((char *)s, a); return 1; }
+{ PSY(18); _ZN12dScMg3DEsp_c10StartRoundEi((char *)s, a); return 1; }
 static int  __fastcall psy_v20(void *, void *)
-{ PSY(20); return _ZN12dScMg3DEsp_c9Virtual50Ev(); }
+{ PSY(20); return _ZN12dScMg3DEsp_c11OnNewRecordEv(); }
 
 /* SM64DS_SCENE_SLOT0=0 and SM64DS_SCENE_SLOT9=0, the diagnostics every scene
    seat in this port carries, counted separately so a run can never read a no-op
@@ -438,7 +438,7 @@ extern "C" void port_scene_fill_esp3d(void)
 
    THE FACTORY NEEDS NO DISPLACEMENT RULING, and it is worth recording because
    0x169's did.  src/d_s_mg3_d_esp.cpp calls _ZN11dScMgBase_cC2Ev(o) WITH its
-   argument, where src/actors/dScMgCup_c.cpp (0x169's factory) calls the same
+   argument, where src/minigames/d_s_mg_cup.cpp (0x169's factory) calls the same
    base constructor with none and rides r0 through -- and that callee
    dereferences on its first statement and then writes vtable words through the
    pointer.  This class's factory is on the correct side of it and is linked
@@ -602,7 +602,7 @@ extern "C" void port_scene_esp3d_hits(void)
                         rec[0], rec[1], rec[2], rec[3], rec[4]);
         } else {
             std::printf("[scene] dScMg3DEsp_c save record: NO minigame index "
-                        "(data_ov004_020beb68 = %p)\n", data_ov004_020beb68);
+                        "(gMgScene = %p)\n", gMgScene);
         }
     }
     std::fflush(stdout);

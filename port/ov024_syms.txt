@@ -131,7 +131,7 @@ data_ov024_02113970@0x02113970 data_ov024_0211397c@0x0211397c:0xc
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov024_02113960                        now defined by src/actors/daObjDlPyramid_c.cpp
-#   data_ov024_02113968                        now defined by src/actors/daObjDlPyramid_c.cpp
+#   gDlPyramidCollisionFile                        now defined by src/game/actors/d_a_obj_dl_pyramid.cpp
+#   gDlPyramidModelFile                        now defined by src/game/actors/d_a_obj_dl_pyramid.cpp
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov024_02113968! data_ov024_02113960!
+gDlPyramidModelFile! gDlPyramidCollisionFile!

@@ -26,6 +26,11 @@
  * Model.h would otherwise pull in first -- scalarizes the last three words,
  * because Vector3 declares a destructor and is therefore not POD. Measured:
  * 0x88 emitted against the cartridge's 0x70. */
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_wl_polelift_AssetId {
+    ASSET_WL_POLE_LIFT_BMD = 0x06db
+};
+
 #include "common.h"
 #include "daObjWlPolelift_c.h"
 #include "SharedFilePtr.h"
@@ -262,4 +267,4 @@ extern "C" void func_ov026_02111234(daObjWlPolelift_c *actor)
 
 /* Static-init global (was the handwritten __sinit_ov026_02112b7c shard):
  * the model handle (file 0x6db). */
-PoleliftModelFile data_ov026_02113ea0(0x6db);
+PoleliftModelFile data_ov026_02113ea0(ASSET_WL_POLE_LIFT_BMD);

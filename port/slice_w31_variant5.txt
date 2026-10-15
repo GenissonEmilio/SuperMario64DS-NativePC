@@ -27,7 +27,7 @@ src/game/actors/d_a_obj_maruta.cpp
 port/unmatched/hostarm/_ZN13daObjMaruta_cD1Ev.cpp
 # FOLDED into src/game/actors/d_a_obj_maruta.cpp (row 26): src/_ZN13daObjMaruta_cD0Ev.cpp
 port/unmatched/hostarm/_ZN13daObjMaruta_cD0Ev.cpp
-src/actors/daObjFallBlock_c.cpp
+src/game/actors/d_a_obj_fall_block.cpp
 port/unmatched/hostarm/_ZN16daObjFallBlock_cD1Ev.cpp
-# FOLDED into src/actors/daObjFallBlock_c.cpp (row 28): src/_ZN16daObjFallBlock_cD0Ev.cpp
+# FOLDED into src/game/actors/d_a_obj_fall_block.cpp (row 28): src/_ZN16daObjFallBlock_cD0Ev.cpp
 port/unmatched/hostarm/_ZN16daObjFallBlock_cD0Ev.cpp

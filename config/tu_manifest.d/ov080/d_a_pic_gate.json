@@ -6,7 +6,7 @@
   "status": "promoted",
   "boundary_confidence": "high",
   "boundary_evidence": [
-    "HISTORY, SUPERSEDED BY THE DESTRUCTOR FOLD (last boundary_evidence entry): contiguous linker run: 0x02125460..0x021261f4, 15 function(s), folded from the fifteen func_ov080_* shards that filled the range between the daPicGate_c destructor pair (0x02125404..0x02125460) and the promoted class TU (src/actors/daPicGate_c.cpp, 0x021264ec..0x02126fbc).",
+    "HISTORY, SUPERSEDED BY THE DESTRUCTOR FOLD (last boundary_evidence entry): contiguous linker run: 0x02125460..0x021261f4, 15 function(s), folded from the fifteen func_ov080_* shards that filled the range between the daPicGate_c destructor pair (0x02125404..0x02125460) and the promoted class TU (src/game/actors/d_a_pic_gate_methods.cpp, 0x021264ec..0x02126fbc).",
     "class label(s): daPicGate_c -- the class's own RTTI spelling (_ZTS11daPicGate_c). Every function takes the object as its first parameter and walks the daPicGate_c field space, so the members are written `daPicGate_c::func_ov080_NNNNaddr()` with the ROM address as the method name and the mangled spelling carried in symbols.txt (S33).",
     "The wave-mesh render handler _ZN11daPicGate_c19func_ov080_021261f4Ev is matched and enrolled separately at 0x021261f4..0x021264ec. This 17-function text claim still ends at 0x021261f4; no range, ownership or fold changes are introduced.",
     "func_ov080_02125d64 is a C++ free function with explicit C linkage. Initializing its plain Vec3 local inside the loop emits the retail ldm/stm copy under 2004/b56; assigning a pre-existing local emitted 16 additional bytes in the measured control. Its symbols.txt row keeps the unmangled name.",

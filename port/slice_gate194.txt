@@ -9,16 +9,16 @@
 # the slice: both store the class's own table directly (_ZTV10HootTheOwl /
 # _ZTV7daOwl_c, a one-speller D0, the MotherPenguin/daBgSnwmn_c shape), no
 # shared-placeholder overwrite.
-src/actors/daOwl_c.cpp
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/_ZN10HootTheOwlD1Ev.cpp
+src/game/actors/d_a_owl.cpp
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/_ZN10HootTheOwlD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN10HootTheOwlD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN10HootTheOwlD0Ev.cpp
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/_ZN10HootTheOwl16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/_ZN10HootTheOwl16OnPendingDestroyEv.cpp
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/_ZN10HootTheOwl13InitResourcesEv.cpp
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/func_ov094_021361d8.c
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/func_ov094_021362e0.c
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/func_ov094_021357a4.c
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/_ZN10HootTheOwl16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/_ZN10HootTheOwl16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/_ZN10HootTheOwl13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/func_ov094_021361d8.c
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/func_ov094_021362e0.c
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/func_ov094_021357a4.c
 #
 # NOT in this slice (host copies cover their slots/calls instead):
 # src/_ZN10HootTheOwl8BehaviorEv.cpp (the PMF-on-incomplete-class dispatch,
@@ -45,19 +45,19 @@ src/actors/daOwl_c.cpp
 # ALREADY a proven-working shape elsewhere in this port (src/func_ov078_
 # 02125950.cpp, the King Bob-omb family, takes the identical local-struct
 # shape and links via the existing cxx_aliases.cpp GetTalkState bridge).
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/func_ov094_02135c28.c
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/func_ov094_02135c28.c
 # func_ov094_02136024: SEATED by run link100 wave 15 lane SEAT15B (LINK15 BATCH 1).
 # The matched src passes the ClosestPlayer receiver itself (src:17, `(c)`), so the
 # host copy in port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp is retired.
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/func_ov094_02136024.cpp
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/func_ov094_02135bd4.cpp
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/func_ov094_02135e64.cpp
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/func_ov094_02136150.c
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/func_ov094_021358b4.cpp
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/func_ov094_0213598c.cpp
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/func_ov094_02135fe0.c
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/func_ov094_02135ee0.cpp
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/func_ov094_021359d8.cpp
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/func_ov094_02136024.cpp
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/func_ov094_02135bd4.cpp
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/func_ov094_02135e64.cpp
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/func_ov094_02136150.c
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/func_ov094_021358b4.cpp
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/func_ov094_0213598c.cpp
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/func_ov094_02135fe0.c
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/func_ov094_02135ee0.cpp
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/func_ov094_021359d8.cpp
 #
 # THE SEAT: __sinit_ov094_021367e8 copies TEN 8-byte SOURCE records
 # (data_ov094_021369c0..02136a08, each a {fn,delta} pair, delta always 0 per
@@ -90,13 +90,13 @@ src/actors/daOwl_c.cpp
 # (the carry-start handshake); func_ov002_020df7f4/020df7ac are
 # func_ov094_021359d8's own callees (the carry-release handshake, both
 # state-handler bodies, plain matched src, listed above).
-src/actors/Player.cpp
-# FOLDED into src/actors/Player.cpp (row 93): src/func_ov002_020df7f4.cpp
-# FOLDED into src/actors/Player.cpp (row 93): src/func_ov002_020df7ac.c
+src/game/player/Player.cpp
+# FOLDED into src/game/player/Player.cpp (row 93): src/func_ov002_020df7f4.cpp
+# FOLDED into src/game/player/Player.cpp (row 93): src/func_ov002_020df7ac.c
 #
 # ---- the one own-class sinit (self-contained; builds SharedFilePtrs AND
 # the ten-record-to-five-cell state-table copy -- confirmed by reading its
 # own body; NO code-pointer table of its own to build ahead of it, unlike
 # MrBlizzard/BabyPenguin's sinits which build their OWN cell arrays inline
 # -- HootTheOwl's cells are separately-named mount symbols instead) ----
-# FOLDED into src/actors/daOwl_c.cpp (row 12): src/__sinit_ov094_021367e8.c
+# FOLDED into src/game/actors/d_a_owl.cpp (row 12): src/__sinit_ov094_021367e8.c

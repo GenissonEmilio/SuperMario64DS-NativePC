@@ -45,7 +45,7 @@
 # Consumed by the "W23-6 HOSTGEN REFUSALS" block in port/CMakeLists.txt, on
 # walk_window, walk_window_hires and smoke_player: the three targets that
 # carried the host copies.
-src/actors/daChoropu_c.cpp
-src/actors/daWater_Ring_c.cpp
-src/actors/daDemo_c.cpp
-src/actors/daDonketu_c.cpp
+src/game/actors/d_a_choropu.cpp
+src/game/actors/d_a_water_ring.cpp
+src/game/actors/d_a_demo.cpp
+src/game/actors/d_a_donketu.cpp

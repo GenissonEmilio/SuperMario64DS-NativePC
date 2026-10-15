@@ -19,13 +19,13 @@
 # dispatch on both ModelAnim and Model, which the dual fill in
 # hal/cxxname_bridge.cpp already serves on both classes. The door's slot 4
 # problem does not come up.
-src/actors/daObjHatenaBlock_c.cpp
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 22): src/_ZN13QuestionBlock13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 22): src/_ZN13QuestionBlock8BehaviorEv.cpp
+src/game/actors/d_a_obj_hatena_block.cpp
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 22): src/_ZN13QuestionBlock13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 22): src/_ZN13QuestionBlock8BehaviorEv.cpp
 # _ZN13QuestionBlock6RenderEv IS NOT HERE: the ModelAnim slot-5 case for
 # the third time this session. Host copy in
 # port/unmatched/ModelAnim_Renders.cpp.
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 22): src/_ZN13QuestionBlock16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 22): src/_ZN13QuestionBlock16CleanupResourcesEv.cpp
 # THE DESTRUCTORS ARE NOT HERE and slots 16/17 trap by name, the gate-17
 # reading: the castle grounds' one block is never destroyed. Slot 12 is
 # ActorBase's own, which is what the ROM's table holds.
@@ -42,23 +42,23 @@ src/actors/daObjHatenaBlock_c.cpp
 # bouncing after it is hit -- and that file seats it by name. InitResources
 # enters state 0 and the castle grounds' one block is on the roof, so the trap
 # is not reached as the level runs.
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 22): src/func_ov102_02149d80.c
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 22): src/func_ov102_02149ccc.cpp
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 22): src/func_ov102_02149c78.c
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 22): src/func_ov102_021498c4.c
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 22): src/func_ov102_02149878.c
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 22): src/func_ov102_02149d80.c
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 22): src/func_ov102_02149ccc.cpp
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 22): src/func_ov102_02149c78.c
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 22): src/func_ov102_021498c4.c
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 22): src/func_ov102_02149878.c
 
 # ---- the two helpers its own Behavior closes over -------------------------
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 22): src/func_ov102_02149ea4.c
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 22): src/func_ov102_02149ff0.c
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 22): src/func_ov102_02149ea4.c
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 22): src/func_ov102_02149ff0.c
 
 # ---- the overlay's own static initialisers --------------------------------
 # All four, in ROM order.
-src/actors/daObjSimpleBg_c.cpp
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 22): src/__sinit_ov102_0214d908.c
+src/game/actors/d_a_obj_simple_bg.cpp
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 22): src/__sinit_ov102_0214d908.c
 src/unnamed/ov102/__sinit_ov102_0214de70.c
 src/game/actors/d_a_shl.cpp
 
 # --- linkloop round 0 ---
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 22): src/func_ov102_02149e38.cpp
-# FOLDED into src/actors/daObjHatenaBlock_c.cpp (row 22): src/func_ov102_02149610.cpp
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 22): src/func_ov102_02149e38.cpp
+# FOLDED into src/game/actors/d_a_obj_hatena_block.cpp (row 22): src/func_ov102_02149610.cpp

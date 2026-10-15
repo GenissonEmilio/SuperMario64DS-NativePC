@@ -34,7 +34,7 @@
 // worth keeping: the SpawnInfo was derived first, and the pair scan was then
 // started at the word AFTER it, which found 29 pairs and 14 code words and
 // missed the six below. What corrected it was a link -- the three unresolved
-// Pair symbols src/actors/dScMgHanachan_c.cpp asks for include 0x0213c96c, which
+// Pair symbols src/minigames/d_s_mg_hanachan_methods.cpp asks for include 0x0213c96c, which
 // is below the SpawnInfo -- and the fifteenth code word, 0x020eb3e4, was
 // installed by a pair no scan had looked at. Anchor a pair scan on the
 // RELOCATION SET, not on an address the SpawnInfo happens to bound.
@@ -65,7 +65,7 @@
 //   0213c9ec  020ecb80  020eb9dc
 //   0213c9f4  020ecb80  020eb9dc
 //
-//   * func_ov006_020ec4dc is one of this class's two FLOORS -- a config symbol
+//   * Wiggler_StartPathA is one of this class's two FLOORS -- a config symbol
 //     with no delink block and no src file. It is the sole loader of the pair
 //     that installs 0x020ec458, so that state is installed by nothing the port
 //     can run. The address is routed anyway, because the trap that stands for
@@ -77,7 +77,7 @@
 // FIFTEEN wiggler sub-objects at scene+0x4678 (stride 0x98, and the factory's
 // own __cxa_vec_cleanup call says 0xf and 0x98 in as many words) holds a state pair
 // at +0x10, a SECOND at +0x00 and a THIRD at +0x08 that
-// src/actors/dScMgHanachan_c.cpp copies to +0x10; the nine 020eb0xx..020ecbxx code
+// src/minigames/d_s_mg_hanachan_methods.cpp copies to +0x10; the nine 020eb0xx..020ecbxx code
 // words are theirs. 6 + 9 = 15, which is the whole set.
 //
 // ---- 2. FIVE DISPATCHERS, AND THE FIFTH IS THE THIRD SHAPE -----------------
@@ -87,11 +87,11 @@
 // class the amendment is the whole story:
 //
 //   _ZN15dScMgHanachan_c8BehaviorEv  VTABLE SLOT 6, the Behavior. scene +0x4660.
-//   func_ov006_020eb018  sub-object +0x10.
-//   func_ov006_020eb0c8  sub-object +0x10.
-//   func_ov006_020eb31c  sub-object +0x10, and it also COPIES the pair down
+//   Wiggler_Update  sub-object +0x10.
+//   Wiggler_StateHold  sub-object +0x10.
+//   Wiggler_StateWait  sub-object +0x10, and it also COPIES the pair down
 //                        from +0x10 to +0x00 as two plain ints.
-//   func_ov006_020eb610  sub-object +0x00, OPEN-CODED IN PLAIN INTS inside
+//   Wiggler_Move  sub-object +0x00, OPEN-CODED IN PLAIN INTS inside
 //                        extern "C". No member-pointer type, no PMF global.
 //                        NEITHER PRESCRIBED DETECTOR SEES IT.
 //
@@ -102,13 +102,13 @@
 // cannot be spelled away by any source-level disguise. Over all of ov006 it
 // finds 114 sites; five are in this class's block and they are exactly the five
 // above. A companion SOURCE sweep for `>>1` beside `&1` also flagged
-// src/actors/dScMgHanachan_c.cpp, which is a FALSE POSITIVE (ordinary 20.12 fixed-
+// src/minigames/d_s_mg_hanachan_methods.cpp, which is a FALSE POSITIVE (ordinary 20.12 fixed-
 // point arithmetic) -- and the ROM sweep is what says so, which is the argument
 // for preferring it.
 //
 // SLOT 6 BEING ONE OF THE FIVE IS WHY THE RULE EXISTS. Lane PPP found the same
 // shape in a vtable slot and wrote the rule as "before wiring slot 6 by name,
-// read the src". This lane read it: src/actors/dScMgHanachan_c.cpp's one dispatch
+// read the src". This lane read it: src/minigames/d_s_mg_hanachan_methods.cpp's one dispatch
 // line is `(((C *)c)->*(*(PMF *)(c + 0x4660)))();`, a member-pointer TYPE, so
 // the rulebook corollary puts it on the host-copy side and the seat wires the
 // copy below rather than the src TU.
@@ -117,12 +117,12 @@
 //
 // The ov085/ov100 shape -- write host addresses over the source pairs before
 // anything reads them -- is WRONG for this class, and it is wrong for the exact
-// reason section 4 gives for src/func_ov006_020c3b80.c. This class's slot 9
-// Render (src/actors/dScMgHanachan_c.cpp) reads the scene object's stored pair AS TWO
+// reason section 4 gives for src/FlowerFace_IsIdle.c. This class's slot 9
+// Render (src/minigames/d_s_mg_hanachan_methods.cpp) reads the scene object's stored pair AS TWO
 // INTS and compares it BY VALUE against five of the .data pairs, five times, to
 // decide what to draw:
 //
-//     Pair *p = (Pair *)(self + 0x4660);  Pair *g = &data_ov006_0213c9ac;
+//     Pair *p = (Pair *)(self + 0x4660);  Pair *g = &pmf_dScMgHanachan_c_Phase_Play;
 //     if (p->a == g->a) { if (p->b == g->b || *(int *)(self + 0x4660) == 0) ...
 //
 // A host address never equals a DS address, so a seat that rewrote the pair
@@ -156,38 +156,38 @@ extern "C" {
 void port_mg_call0(void *self, unsigned code, int adj);
 
 /* ---- the six SCENE-object states, +0x4660 ------------------------------- */
-void func_ov006_020ed270(void);          /* 4 bytes in the ROM, `bx lr` */
-void _ZN15dScMgHanachan_c19func_ov006_020ed274Ev(char *c);
-void func_ov006_020ed328(void);          /* 4 bytes in the ROM, `bx lr` */
-void _ZN15dScMgHanachan_c19func_ov006_020ed34cEv(char *p);
-void _ZN15dScMgHanachan_c19func_ov006_020ed494Ev(char *c);
-void _ZN15dScMgHanachan_c19func_ov006_020ed844Ev(char *c);
+void Hana_StateNoneA(void);          /* 4 bytes in the ROM, `bx lr` */
+void _ZN15dScMgHanachan_c15Phase_WaitTouchEv(char *c);
+void Hana_StateNoneB(void);          /* 4 bytes in the ROM, `bx lr` */
+void _ZN15dScMgHanachan_c12Phase_ResultEv(char *p);
+void _ZN15dScMgHanachan_c10Phase_PlayEv(char *c);
+void _ZN15dScMgHanachan_c15Phase_WaitIntroEv(char *c);
 
 /* ---- the nine WIGGLER sub-object states, +0x00, +0x08 and +0x10 --------- */
-void func_ov006_020eb1e0(char *c);
-void func_ov006_020eb3e4(char *c);
-void func_ov006_020ec458(void *self);
-void func_ov006_020ec6e8(char *c);
-void func_ov006_020ec93c(void *self);
-void func_ov006_020ecb80(void *a);
+void Wiggler_StateMoveA(char *c);
+void Wiggler_StateMoveB(char *c);
+void Wiggler_CheckOffLeftA(void *self);
+void Wiggler_MoveBounce(char *c);
+void Wiggler_CheckOffLeftB(void *self);
+void Wiggler_TurnTowardAim(void *a);
 /* the three that are themselves host copies in this file, declared here
    because the switch reaches them by address like any other state */
-void func_ov006_020eb018(char *c);
-void func_ov006_020eb0c8(char *self);
-void func_ov006_020eb31c(char *c);
+void Wiggler_Update(char *c);
+void Wiggler_StateHold(char *self);
+void Wiggler_StateWait(char *c);
 
 /* ---- the ordinary callees the five host copies keep --------------------- */
 void Math_Function_0203b0fc(int *p, int target, int scale, int max);
 void func_0203d388(int *p, int angle);
 int  func_02012468(int a, int b, int c, int d, int e, int f, int g, int h);
 int  _Z15ApproachLinear2Rsss(short *v, short target, short step);
-void func_ov006_020ec134(void *c);
-void func_ov006_020ebf20(char *p);
-void func_ov006_020eb9b0(char *p);
-void func_ov006_020eb558(char *q);
-void func_ov006_020ea71c(void);
-void func_ov006_020ea3d0(char *p);
-/* src/actors/dScMgHanachan_c.cpp spells this as the STATIC MEMBER Sound::
+void Wiggler_StepSegmentsB(void *c);
+void Wiggler_StepSegmentsA(char *p);
+void Wiggler_SetCruiseSpeed(char *p);
+void Wiggler_UpdateSway(char *q);
+void HanaPopup_UpdateAll(void);
+void StarPopup_Update(char *p);
+/* src/minigames/d_s_mg_hanachan_methods.cpp spells this as the STATIC MEMBER Sound::
    PlayBank2_2D, which mangles as ?PlayBank2_2D@Sound@@SAXI@Z and reaches its
    definition only through the /alternatename row unmatched/MgMemory2_Faces.cpp
    carries. The host copy calls the C-named symbol directly instead -- the same
@@ -198,11 +198,11 @@ extern unsigned short data_ov006_02141fcc;
 extern int data_ov006_0213c958;
 
 /* host-copied below and called from above their own definitions */
-void func_ov006_020eb610(char *c);
+void Wiggler_Move(char *c);
 
 }  /* extern "C" */
 
-/* src/actors/dScMgHanachan_c.cpp and src/actors/dScMgHanachan_c.cpp both reach
+/* src/minigames/d_s_mg_hanachan_methods.cpp and src/minigames/d_s_mg_hanachan_methods.cpp both reach
    ApproachLinear through its C++ spelling; src/_Z14ApproachLinearRiii.cpp
    defines that overload and is already in the build (it is a wired slice line),
    so the host copies keep the declaration their src files use rather than
@@ -213,7 +213,7 @@ extern int ApproachLinear(int &ref, int target, int step);
 
 static unsigned g_wig_calls;        /* every dispatch that reached this file */
 static unsigned g_wig_hits;         /* dispatches this file routed itself */
-static unsigned g_wig_opencoded;    /* dispatches through func_ov006_020eb610 */
+static unsigned g_wig_opencoded;    /* dispatches through Wiggler_Move */
 static unsigned g_wig_scene_hits;   /* of g_wig_hits, the scene object's own */
 
 /* A PER-ADDRESS CENSUS, and it is not decoration. A total routed count and a
@@ -244,22 +244,22 @@ static int wig_try(void *self, unsigned code)
     wig_note(code);
     switch (code) {
     /* the scene object's own six, +0x4660 */
-    case 0x020ed270u: func_ov006_020ed270();  ++g_wig_scene_hits; return 1;
-    case 0x020ed274u: _ZN15dScMgHanachan_c19func_ov006_020ed274Ev(c); ++g_wig_scene_hits; return 1;
-    case 0x020ed328u: func_ov006_020ed328();  ++g_wig_scene_hits; return 1;
-    case 0x020ed34cu: _ZN15dScMgHanachan_c19func_ov006_020ed34cEv(c); ++g_wig_scene_hits; return 1;
-    case 0x020ed494u: _ZN15dScMgHanachan_c19func_ov006_020ed494Ev(c); ++g_wig_scene_hits; return 1;
-    case 0x020ed844u: _ZN15dScMgHanachan_c19func_ov006_020ed844Ev(c); ++g_wig_scene_hits; return 1;
+    case 0x020ed270u: Hana_StateNoneA();  ++g_wig_scene_hits; return 1;
+    case 0x020ed274u: _ZN15dScMgHanachan_c15Phase_WaitTouchEv(c); ++g_wig_scene_hits; return 1;
+    case 0x020ed328u: Hana_StateNoneB();  ++g_wig_scene_hits; return 1;
+    case 0x020ed34cu: _ZN15dScMgHanachan_c12Phase_ResultEv(c); ++g_wig_scene_hits; return 1;
+    case 0x020ed494u: _ZN15dScMgHanachan_c10Phase_PlayEv(c); ++g_wig_scene_hits; return 1;
+    case 0x020ed844u: _ZN15dScMgHanachan_c15Phase_WaitIntroEv(c); ++g_wig_scene_hits; return 1;
     /* the wiggler sub-object's nine, +0x00, +0x08 and +0x10 */
-    case 0x020eb018u: func_ov006_020eb018(c); return 1;
-    case 0x020eb0c8u: func_ov006_020eb0c8(c); return 1;
-    case 0x020eb1e0u: func_ov006_020eb1e0(c); return 1;
-    case 0x020eb31cu: func_ov006_020eb31c(c); return 1;
-    case 0x020eb3e4u: func_ov006_020eb3e4(c); return 1;
-    case 0x020ec458u: func_ov006_020ec458(c); return 1;
-    case 0x020ec6e8u: func_ov006_020ec6e8(c); return 1;
-    case 0x020ec93cu: func_ov006_020ec93c(c); return 1;
-    case 0x020ecb80u: func_ov006_020ecb80(c); return 1;
+    case 0x020eb018u: Wiggler_Update(c); return 1;
+    case 0x020eb0c8u: Wiggler_StateHold(c); return 1;
+    case 0x020eb1e0u: Wiggler_StateMoveA(c); return 1;
+    case 0x020eb31cu: Wiggler_StateWait(c); return 1;
+    case 0x020eb3e4u: Wiggler_StateMoveB(c); return 1;
+    case 0x020ec458u: Wiggler_CheckOffLeftA(c); return 1;
+    case 0x020ec6e8u: Wiggler_MoveBounce(c); return 1;
+    case 0x020ec93cu: Wiggler_CheckOffLeftB(c); return 1;
+    case 0x020ecb80u: Wiggler_TurnTowardAim(c); return 1;
     default:                                  return 0;
     }
 }
@@ -300,7 +300,7 @@ extern "C" void port_mg_wiggler_counts(unsigned *calls, unsigned *hits,
 // Each is its src TU verbatim except for the member-pointer declaration and the
 // dispatch site. Where anything else moved it is stated on the line.
 
-/* src/actors/dScMgHanachan_c.cpp -- VTABLE SLOT 6, the Behavior. Its `struct C`
+/* src/minigames/d_s_mg_hanachan_methods.cpp -- VTABLE SLOT 6, the Behavior. Its `struct C`
    carried nothing but the member-pointer typedef, so replacing the dispatch
    removes the struct entirely and no layout moves. The halfword read-modify-
    write on data_ov006_02141fcc is kept at halfword width, which is both what
@@ -308,7 +308,7 @@ extern "C" void port_mg_wiggler_counts(unsigned *calls, unsigned *hits,
    include/decl_common.h declares. */
 // PORT_HOST_ABI: dScMgHanachan_c vtable slot 6 Behavior; src spells the dispatch as the member-pointer type (c->*(*(PMF*)(c+0x4660)))() that is eight bytes on the ROM and four on MSVC, so the host reads the {code, adj} pair and routes it.
 /* RETIRED, run link100 lane HOSTGEN2. The matched body compiles FROM
-   src/actors/dScMgHanachan_c.cpp through the whole-TU hostgen substitution, with
+   src/minigames/d_s_mg_hanachan_methods.cpp through the whole-TU hostgen substitution, with
    its one dispatch routed to port_mg_wiggler_call0 -- the same seam this copy
    calls, at the same site, on the same two words. The ruling above says the pair
    "is eight bytes on the ROM and four on MSVC"; that stopped being true when
@@ -331,7 +331,7 @@ extern "C" int _ZN15dScMgHanachan_c8BehaviorEv(char *c)
     if (data_ov006_0213c958 > 0) {
         char *p = c + 0x4678;
         do {
-            func_ov006_020eb610(p);
+            Wiggler_Move(p);
             i++;
             p += 0x98;
         } while (i < data_ov006_0213c958);
@@ -340,18 +340,18 @@ extern "C" int _ZN15dScMgHanachan_c8BehaviorEv(char *c)
     if (data_ov006_0213c958 > 0) {
         char *q = c + 0x4678;
         do {
-            func_ov006_020eb558(q);
+            Wiggler_UpdateSway(q);
             j++;
             q += 0x98;
         } while (j < data_ov006_0213c958);
     }
-    func_ov006_020ea71c();
-    func_ov006_020ea3d0(c + 0x4670);
+    HanaPopup_UpdateAll();
+    StarPopup_Update(c + 0x4670);
     return 1;
 }
 #endif  /* HOSTGEN2: _ZN15dScMgHanachan_c8BehaviorEv retired to src */
 
-/* src/func_ov006_020eb018.cpp. Its `struct C` is `char pad[0x10]; PMF pmf;`,
+/* src/Wiggler_Update.cpp. Its `struct C` is `char pad[0x10]; PMF pmf;`,
    so the member pointer is the LAST member and nothing in this TU reads past
    it -- every other access is a raw char* offset. The copy still spells the
    pair as two words, because the DISPATCH is wrong at four bytes whatever the
@@ -360,7 +360,7 @@ extern "C" int _ZN15dScMgHanachan_c8BehaviorEv(char *c)
    PORT_HOST_ABI: mwcc pointer-to-member wall, the field-embedded {code,adj}
    pair decoded through port_mg_wiggler_call0. Host-copied. */
 /* RETIRED, run link100 lane HOSTGEN2. The matched body compiles FROM
-   src/actors/dScMgHanachan_c.cpp through the whole-TU hostgen substitution, with
+   src/minigames/d_s_mg_hanachan_methods.cpp through the whole-TU hostgen substitution, with
    its one dispatch routed to port_mg_wiggler_call0 -- the same seam this copy
    calls, at the same site, on the same two words. The ruling above says the pair
    "is eight bytes on the ROM and four on MSVC"; that stopped being true when
@@ -372,7 +372,7 @@ extern "C" int _ZN15dScMgHanachan_c8BehaviorEv(char *c)
    Text kept, not deleted. Every declaration and every switch case in this file
    is untouched, and port_mg_wiggler_call0 now reaches the matched bodies. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void func_ov006_020eb018(char *c)
+extern "C" void Wiggler_Update(char *c)
 {
     {
         const MgPmf *p = (const MgPmf *)(c + 0x10);
@@ -392,16 +392,16 @@ extern "C" void func_ov006_020eb018(char *c)
             p++;
         } while (i < 5);
     }
-    func_ov006_020ec134(c);
+    Wiggler_StepSegmentsB(c);
 }
-#endif  /* HOSTGEN2: func_ov006_020eb018 retired to src */
+#endif  /* HOSTGEN2: Wiggler_Update retired to src */
 
-/* src/func_ov006_020eb0c8.cpp. Same `char pad10[0x10]; Pmf cb;` shape and the
+/* src/Wiggler_StateHold.cpp. Same `char pad10[0x10]; Pmf cb;` shape and the
    same reasoning; the dispatch sits in the else arm and stays there.
    PORT_HOST_ABI: mwcc pointer-to-member wall, the field-embedded {code,adj}
    pair decoded through port_mg_wiggler_call0. Host-copied. */
 /* RETIRED, run link100 lane HOSTGEN2. The matched body compiles FROM
-   src/actors/dScMgHanachan_c.cpp through the whole-TU hostgen substitution, with
+   src/minigames/d_s_mg_hanachan_methods.cpp through the whole-TU hostgen substitution, with
    its one dispatch routed to port_mg_wiggler_call0 -- the same seam this copy
    calls, at the same site, on the same two words. The ruling above says the pair
    "is eight bytes on the ROM and four on MSVC"; that stopped being true when
@@ -413,7 +413,7 @@ extern "C" void func_ov006_020eb018(char *c)
    Text kept, not deleted. Every declaration and every switch case in this file
    is untouched, and port_mg_wiggler_call0 now reaches the matched bodies. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void func_ov006_020eb0c8(char *self)
+extern "C" void Wiggler_StateHold(char *self)
 {
     if (_Z15ApproachLinear2Rsss((short *)(self + 0x90), 0, 1)) {
         *(unsigned char *)(self + 0x94) = 0;
@@ -448,12 +448,12 @@ extern "C" void func_ov006_020eb0c8(char *self)
         i++;
     } while (i < 5);
 
-    func_ov006_020ec134(self);
+    Wiggler_StepSegmentsB(self);
 }
-#endif  /* HOSTGEN2: func_ov006_020eb0c8 retired to src */
+#endif  /* HOSTGEN2: Wiggler_StateHold retired to src */
 
-/* src/func_ov006_020eb31c.cpp. THIS ONE ALSO COPIES THE PAIR, and the copy is
-   why func_ov006_020eb610 below has anything to dispatch: it moves the two
+/* src/Wiggler_StateWait.cpp. THIS ONE ALSO COPIES THE PAIR, and the copy is
+   why Wiggler_Move below has anything to dispatch: it moves the two
    words from +0x10 down to +0x00, which is the sub-object's SECOND member-
    pointer field. The src already spells that copy as two ints
    (`*(int*)c = b ? a : a; *(int*)(c+4) = b;`, mwcc's own shape for a member-
@@ -462,7 +462,7 @@ extern "C" void func_ov006_020eb0c8(char *self)
    PORT_HOST_ABI: mwcc pointer-to-member wall, the field-embedded {code,adj}
    pair decoded through port_mg_wiggler_call0. Host-copied. */
 /* RETIRED, run link100 lane HOSTGEN2. The matched body compiles FROM
-   src/actors/dScMgHanachan_c.cpp through the whole-TU hostgen substitution, with
+   src/minigames/d_s_mg_hanachan_methods.cpp through the whole-TU hostgen substitution, with
    its one dispatch routed to port_mg_wiggler_call0 -- the same seam this copy
    calls, at the same site, on the same two words. The ruling above says the pair
    "is eight bytes on the ROM and four on MSVC"; that stopped being true when
@@ -474,7 +474,7 @@ extern "C" void func_ov006_020eb0c8(char *self)
    Text kept, not deleted. Every declaration and every switch case in this file
    is untouched, and port_mg_wiggler_call0 now reaches the matched bodies. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void func_ov006_020eb31c(char *c)
+extern "C" void Wiggler_StateWait(char *c)
 {
     short *t = (short *)(((int)c + 0x90));
     short v = (short)(*t - 1);
@@ -503,9 +503,9 @@ extern "C" void func_ov006_020eb31c(char *c)
         _ZN5Sound12PlayBank2_2DEj(0x1ea);
     *(unsigned char *)(c + 0x95) = 3;
 }
-#endif  /* HOSTGEN2: func_ov006_020eb31c retired to src */
+#endif  /* HOSTGEN2: Wiggler_StateWait retired to src */
 
-/* src/actors/dScMgHanachan_c.cpp -- THE THIRD SHAPE. The src open-codes the ARM
+/* src/minigames/d_s_mg_hanachan_methods.cpp -- THE THIRD SHAPE. The src open-codes the ARM
    Itanium sequence in plain ints inside extern "C":
 
        int off = *(int *)(c + 4);  char *base = c + (off >> 1);
@@ -522,7 +522,7 @@ extern "C" void func_ov006_020eb31c(char *c)
    decode over a DS code address; the port's own address-switch answers the
    raw call. Host-copied. */
 /* RETIRED, run link100 lane HOSTGEN2. The matched body compiles FROM
-   src/actors/dScMgHanachan_c.cpp through the whole-TU hostgen substitution, with
+   src/minigames/d_s_mg_hanachan_methods.cpp through the whole-TU hostgen substitution, with
    its one dispatch routed to port_mg_wiggler_call0 -- the same seam this copy
    calls, at the same site, on the same two words. The ruling above says the pair
    "is eight bytes on the ROM and four on MSVC"; that stopped being true when
@@ -534,7 +534,7 @@ extern "C" void func_ov006_020eb31c(char *c)
    Text kept, not deleted. Every declaration and every switch case in this file
    is untouched, and port_mg_wiggler_call0 now reaches the matched bodies. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void func_ov006_020eb610(char *c)
+extern "C" void Wiggler_Move(char *c)
 {
 #define WIG_L(a) (*(int *)(((long long)(int)(a))))
 #define WIG_M(a) (*(int *)(((long long)(unsigned)(a))))
@@ -554,7 +554,7 @@ extern "C" void func_ov006_020eb610(char *c)
             *(short *)(long long)(int)(c + 0x8e) =
                 *(short *)(long long)(int)(c + 0x8e) - 1;
             if (*(short *)(c + 0x8e) == 0) {
-                func_ov006_020eb9b0(c);
+                Wiggler_SetCruiseSpeed(c);
             }
         }
     }
@@ -574,8 +574,8 @@ extern "C" void func_ov006_020eb610(char *c)
         port_mg_wiggler_call0(c, p->code, p->adj);
     }
     if (*(unsigned char *)(c + 0x92) == 0) return;
-    func_ov006_020ebf20(c);
+    Wiggler_StepSegmentsA(c);
 #undef WIG_L
 #undef WIG_M
 }
-#endif  /* HOSTGEN2: func_ov006_020eb610 retired to src */
+#endif  /* HOSTGEN2: Wiggler_Move retired to src */

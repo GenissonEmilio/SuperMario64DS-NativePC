@@ -10,7 +10,7 @@ the link succeeds, the bytes are wrong.
 Wave 5 hit this class twice (w5b_review.md R1/R2):
 
   R1  slicing src/d_a_grock.c defeated
-      /alternatename:_RollingRock_Spawn=_data_ov010_02112d64 and
+      /alternatename:_RollingRock_Spawn=_gC1PeachModelFile and
       PeachPainting::InitResources' SharedFilePtr became a code address --
       level 2 faulted (c0000005 at _RollingRock_Spawn+2).
   R2  slicing src/func_ov065_02117994.c (Swoop's helper, a genuinely
@@ -983,7 +983,7 @@ def selftest():
             print("FAIL: %s: %s" % (what, got))
             ok = False
 
-    lhs, rhs = '__ZN4Heap10SetDefaultEv', '?SetDefault@Heap@@QAEHXZ'
+    lhs, rhs = '__ZN5mHeap6Heap_t10SetDefaultEv', '?SetDefault@Heap_t@mHeap@@QAEHXZ'
     directive = '/alternatename:%s=%s' % (lhs, rhs)
     # The LK4 map shape: LHS is a real definition, RHS lives elsewhere.
     publics = {lhs: '0001:0001cdb0', rhs: '0001:00060a20',
@@ -1364,7 +1364,7 @@ def selftest():
            'an overlay-qualified name gives its address',
            rom_address('_data_ov075_0211c968'))
     expect(rom_address('__ZTV14daObjC1_Trap_c') is None
-           and rom_address('?SetDefault@Heap@@QAEHXZ') is None,
+           and rom_address('?SetDefault@Heap_t@mHeap@@QAEHXZ') is None,
            'a name with no embedded address gives None, and is never '
            'compared', rom_address('__ZTV14daObjC1_Trap_c'))
     thumb_row = [('_func_020527e9', '_func_020527e8', 'hal/method_faces.cpp',

@@ -17,8 +17,8 @@
 //
 // THE FIRST LINK OF THIS SEAT ASKED FOR EXACTLY THREE SYMBOLS AND THIS IS THE
 // ONLY ONE THAT IS A FACE. The other two were ordinary slice lines the closure
-// walk had classified as already-covered -- src/func_ov004_020b5c18.cpp, which
-// func_ov004_020b5ed0 calls, and src/func_ov004_020b6324.c, which slot 21 tail-
+// walk had classified as already-covered -- src/MgCoins_StepLose.cpp, which
+// MgCoins_StartLose calls, and src/MgCoins_RaiseBet.c, which slot 21 tail-
 // jumps to. Both are now in port/slice_lky.txt. Section 14's "budget ONE wave
 // plus its own alias row" held: one wave, one alias.
 //
@@ -40,22 +40,22 @@
 // ---- A SECOND ALIAS, AND IT IS ov004's RATHER THAN THIS CLASS'S ----------
 //
 // The wave that closed the three above asked for one more, and the shape is
-// identical: src/func_ov004_020b5c18.cpp is a //cpp TU declaring
-// `extern int data_ov004_020bfa14;`, so the reference mangles as
-// ?data_ov004_020bfa14@@3HA against the mount's plain _data_ov004_020bfa14.
+// identical: src/MgCoins_StepLose.cpp is a //cpp TU declaring
+// `extern int sMgCoinsLastLost;`, so the reference mangles as
+// ?sMgCoinsLastLost@@3HA against the mount's plain _sMgCoinsLastLost.
 // link.exe even prints the hint itself ("symbols that are defined and could
-// potentially match: _data_ov004_020bfa14").
+// potentially match: _sMgCoinsLastLost").
 //
 // IT IS HERE BECAUSE THIS SEAT IS THE FIRST TO REACH THAT BODY, not because it
-// belongs to dScMgBSC_c. func_ov004_020b5ed0 -- which this class's state slots
-// 9 and 10 (src/minigames/d_s_mg_bsc.cpp) call -- calls func_ov004_020b5c18, and
+// belongs to dScMgBSC_c. MgCoins_StartLose -- which this class's state slots
+// 9 and 10 (src/minigames/d_s_mg_bsc.cpp) call -- calls MgCoins_StepLose, and
 // neither was in any wired slice before this lane. A later lane that reaches
 // the same pair will find the alias already standing; an /alternatename with
 // the same left and right sides declared twice is deduplicated by the linker,
 // so a duplicate is harmless, and port/tools/alternatename_guard.py is the
 // check that the row is doing something rather than being shadowed by a real
 // definition.
-#pragma comment(linker, "/alternatename:?data_ov004_020bfa14@@3HA=_data_ov004_020bfa14")
+#pragma comment(linker, "/alternatename:?sMgCoinsLastLost@@3HA=_sMgCoinsLastLost")
 
 /* MSVC emits nothing for a TU that is only pragmas, and an empty object still
    carries the linker directive. This symbol exists so a reader grepping for

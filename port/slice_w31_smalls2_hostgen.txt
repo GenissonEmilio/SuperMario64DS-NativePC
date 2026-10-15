@@ -14,4 +14,4 @@
 #       is REVERSE: the flat name the ov074 slot thunk calls is the generated
 #       face into Goomboss::InitResources. Goomboss is level 45's one placed
 #       instance.
-src/actors/daKuriKing_c.cpp
+src/game/actors/d_a_kuri_king.cpp

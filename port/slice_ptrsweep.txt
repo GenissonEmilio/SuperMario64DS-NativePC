@@ -91,7 +91,7 @@ src/unnamed/arm9/0200/func_02008500.c
 src/unnamed/arm9/0200/func_02008b4c.c
 src/unnamed/arm9/0200/func_02009414.c
 src/unnamed/arm9/0200/func_020094a8.c
-src/engine/view/dCamera_c.cpp
+src/engine/view/d_camera.cpp
 src/unnamed/arm9/0200/func_0200e728.c
 src/ReadUnalignedUshort.c
 src/unnamed/ov002/func_ov002_020effb8.c

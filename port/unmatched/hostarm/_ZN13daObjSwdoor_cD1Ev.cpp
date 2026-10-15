@@ -1,6 +1,6 @@
 /* HOST ARM, recovered by PORTSYNC2.
  * Old path: src/_ZN13daObjSwdoor_cD1Ev.cpp (its #ifdef _MSC_VER arm). The
- * 2026-10 main merge folded that file into src/actors/daObjSwdoor_c.cpp, whose
+ * 2026-10 main merge folded that file into src/game/actors/d_a_obj_swdoor.cpp, whose
  * own _MSC_VER arm defines only the flat D0 (_ZN13daObjSwdoor_cD0Ev) and says
  * no flat D1 provider is supplied there. mwccarm never saw this arm, so nothing
  * here moves a ROM byte.

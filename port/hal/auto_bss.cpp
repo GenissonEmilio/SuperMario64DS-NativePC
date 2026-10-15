@@ -542,8 +542,8 @@ void *data_0209f1e4;
    config/arm9/symbols.txt, one subtraction each:
 
        data_0209f1e0 .. data_0209f1e4   4 bytes
-       data_0209b2fc .. data_0209b300   4 bytes
-       data_0209b300 .. data_0209b304   4 bytes
+       data_0209b2fc .. gMgSaveDirty   4 bytes
+       gMgSaveDirty .. gMgMenuPage   4 bytes
        data_0209f5d0 .. data_0209f5dc  12 bytes  (0xc)
        data_0209f61c .. data_0209f648  44 bytes  (0x2c)
 
@@ -566,7 +566,7 @@ unsigned char data_0209f1e0[4];
 /* the two bytes func_02023544 clears beside it. decl_common.h:1781 already
    declares data_0209b2fc as `u8`, which this serves. */
 unsigned char data_0209b2fc[4];
-unsigned char data_0209b300[4];
+unsigned char gMgSaveDirty[4];
 
 /* ---- run mg15 lane MENU: the two the minigame MENU scene reads ------------
    dScMiniGm_c (scene 5, ov005) is the first thing in the port to touch either.
@@ -574,24 +574,24 @@ unsigned char data_0209b300[4];
    value, and both are sized by the ROM delta to the next symbol -- the rule
    this file's header sets out -- rather than by the generic int[8]:
 
-       data_0209b304 .. data_0209b308   4 bytes
+       gMgMenuPage .. gMgMenuRow   4 bytes
        data_0209f1d8 .. data_0209f1dc   4 bytes
 
-   data_0209b304 is the menu's PAGE flag: _ZN11dScMiniGm_c8BehaviorEv sets it to 0 or 1
-   as the two dwell counters expire, and func_ov005_020c0378 branches its whole
+   gMgMenuPage is the menu's PAGE flag: _ZN11dScMiniGm_c8BehaviorEv sets it to 0 or 1
+   as the two dwell counters expire, and UpdateGameSelect branches its whole
    hit test on it -- 0 is the six-cell grid (3 columns x 2 rows), 1 is the
    three-cell strip. src/_ZN11dScMiniGm_c13InitResourcesEv.cpp reads it during InitResources.
-   Sits beside data_0209b300 and data_0209b2fc above because it IS the next
+   Sits beside gMgSaveDirty and data_0209b2fc above because it IS the next
    word of that run; the ROM spacing is contiguous.
 
    data_0209f1d8 is the WHOLE-GAME PAUSE-ADJACENT flag. Four arm9 TUs already
    spell it (func_02019ac4 gates its work on it, func_02030aa4 and
    func_02023498 write it), so it is not an ov005 invention -- ov005 is just
    the first spelling of it that reaches this link. _ZN11dScMiniGm_c13InitResourcesEv sets it
-   to 1 at the tail of InitResources and src/func_ov005_020bff4c.cpp clears it
+   to 1 at the tail of InitResources and src/MiniGm_SaveIfDirty.cpp clears it
    on the way out, which is the menu declaring itself open and then closed.
    Every TU in the tree spells it `unsigned char`, which this serves. */
-unsigned char data_0209b304[4];
+unsigned char gMgMenuPage[4];
 unsigned char data_0209f1d8[4];
 
 /* the record func_0202ed48 resets: 44 bytes by the rule above, and the ROM

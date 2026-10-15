@@ -67,10 +67,10 @@ data_ov020_02114828
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov020_02114aa0                        now defined by src/actors/daBook_c.cpp
-#   data_ov020_02114aa8                        now defined by src/actors/daBook_c.cpp
-#   data_ov020_02114ab0                        now defined by src/actors/daBook_c.cpp
-#   data_ov020_02114ab8                        now defined by src/actors/daBook_c.cpp
+#   data_ov020_02114aa0                        now defined by src/game/actors/d_a_book.cpp
+#   data_ov020_02114aa8                        now defined by src/game/actors/d_a_book.cpp
+#   data_ov020_02114ab0                        now defined by src/game/actors/d_a_book.cpp
+#   data_ov020_02114ab8                        now defined by src/game/actors/d_a_book.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov020_02114af0!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):

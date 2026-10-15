@@ -71,7 +71,7 @@ struct daObjKaitendai_c : dBgActor_c {
 #endif
 
     /* Slot 6, this class's own override, defined out of line in
-       src/actors/daObjKaitendai_c.cpp. LAYOUT-NEUTRAL: it re-uses the
+       src/game/actors/d_a_obj_kaitendai.cpp. LAYOUT-NEUTRAL: it re-uses the
        slot dBgActor_c already holds rather than appending one, and adds no
        field, so the 0x320 assert below is untouched.
 

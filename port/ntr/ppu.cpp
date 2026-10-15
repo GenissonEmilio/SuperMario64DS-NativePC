@@ -707,7 +707,7 @@ uint32_t bank_home(unsigned block, uint8_t cnt) {
  * Terror 385, Bounce and Pounce 373, and 372) depend on two things that a
  * single flat window cannot hold at once:
  *
- *   1. BANK I IS THE PAUSE MENU'S OWN STORAGE. src/actors/dScMgD3DBase_c.cpp
+ *   1. BANK I IS THE PAUSE MENU'S OWN STORAGE. src/minigames/d_s_mg_d3d_base.cpp
  *      Virtual7C (slot 31) maps bank I as engine B OBJ (GX::SetBankForSubOBJ
  *      (0x100) writes VRAMCNT_I = 0x82), loads the language's menu picture at
  *      0x06600000 and 0x06602000, and maps the previous owner back. Bank I

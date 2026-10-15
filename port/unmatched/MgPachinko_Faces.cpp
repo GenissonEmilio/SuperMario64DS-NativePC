@@ -31,7 +31,7 @@
 //
 // ---- 2. AN arm9 CALLEE SPELLED BY ADDRESS --------------------------------
 //
-// src/func_ov006_020fb97c.c declares and calls
+// src/Pachinko_CheckTargetsLeft.c declares and calls
 //
 //     extern void func_0205a448(unsigned short val, void* dst, int nbytes);
 //     func_0205a448(sp, (void*)r, 0x6000);
@@ -45,7 +45,7 @@
 //
 // This is port/mg_fanout_costs.txt section 6's fourth defect, the one it calls
 // "a name-spelling face, the ordinary kind" -- there recorded for
-// src/_ZN14dScMgCurling_c13InitResourcesEv.cpp spelling ov004's func_ov004_020adc74 as bare
+// src/_ZN14dScMgCurling_c13InitResourcesEv.cpp spelling ov004's Ov004_LoadFileByPath as bare
 // func_020adc74. It is a decomp-side spelling question and is ROUTED, not
 // taken: the fix in the byte-gated tree is one token in one src TU, and
 // whether that still builds byte-identically under mwccarm is that tree's

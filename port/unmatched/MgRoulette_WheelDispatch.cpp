@@ -1,4 +1,4 @@
-// PORT_HOST_ABI. HOST COPY of src/actors/dScMgRoulette_c.cpp, the roulette
+// PORT_HOST_ABI. HOST COPY of src/minigames/d_s_mg_roulette_methods.cpp, the roulette
 // WHEEL's per-frame tick -- and it carries TWO of this port's known defect
 // classes in eleven lines of source. Run mg11, lane RLT (dScMgRoulette_c,
 // actor id 0x17f, scene 383).
@@ -9,7 +9,7 @@
 // the class's own factory, not by any overlay constructor:
 // dScMgRoulette_c_classInit runs `_ZN5ModelC1Ev(m + 0x10)` and
 // `_ZN5ModelC1Ev(m + 0x60)` on it, and vtable slot 0's
-// func_ov006_021085c0 gives those two Models NitroFS files 0x21d and 0x21e
+// RouletteBoard_LoadModels gives those two Models NitroFS files 0x21d and 0x21e
 // through ModelBase::SetFile. So +0x10 and +0x60 are HOST C++ Model objects
 // with MSVC vtables, and offset 0 is an mwcc member-pointer pair. Both facts
 // are what this file is about.
@@ -20,7 +20,7 @@
 //
 // ---- 2. THE MEMBER POINTER, AND ITS UNIVERSE IS TWO -----------------------
 //
-// src/actors/dScMgRoulette_c.cpp is the ONE `::*` TU in this class's whole code
+// src/minigames/d_s_mg_roulette_methods.cpp is the ONE `::*` TU in this class's whole code
 // block (0x0210788c..0x0210a4ac, 41 symbols, all with a matched src file). It
 // spells
 //
@@ -47,24 +47,24 @@
 // class's own code, on top of the 36 vtable slots: the SpawnInfo's factory word
 // at 0x0213e2f0, and
 //
-//     data_ov006_0213e2e8  { 0x021082fc, 0 }   installed by
-//                                              func_ov006_02108508, which slot
-//                                              18's func_ov006_02108524 calls
-//     data_ov006_0213e2f8  { 0x02107ea8, 0 }   installed by
-//                                              func_ov006_021082c4, which state
+//     pmf_RouletteBoard_StateSpin  { 0x021082fc, 0 }   installed by
+//                                              RouletteBoard_SetStateSpin, which slot
+//                                              18's RouletteBoard_StartSpin calls
+//     pmf_RouletteBoard_StateSlow  { 0x02107ea8, 0 }   installed by
+//                                              RouletteBoard_StartSlowdown, which state
 //                                              0x021082fc itself calls
 //
 // Both adjustments are zero. The two writers are the ONLY relocations anywhere
 // in ov006 that name either pair (from:0x02108520, inside
-// func_ov006_02108508's literal pool, and from:0x021082f8, inside
-// func_ov006_021082c4's), so the wheel's state machine is a two-state machine:
+// RouletteBoard_SetStateSpin's literal pool, and from:0x021082f8, inside
+// RouletteBoard_StartSlowdown's), so the wheel's state machine is a two-state machine:
 // slot 18 arms it at 0x021082fc (spin up and decelerate) and that state hands
 // over to 0x02107ea8 (settle onto a pocket) exactly once per round.
 //
 // NEITHER WRITER NEEDS A HOST COPY, and that is the mg_fanout_costs section 4
 // rulebook corollary applied rather than a shortcut. Both spell the pair as two
-// plain ints -- `struct S { int w[2]; }` in func_ov006_02108508 and
-// `struct Pair { int a, b; }` in func_ov006_021082c4 -- which is eight bytes on
+// plain ints -- `struct S { int w[2]; }` in RouletteBoard_SetStateSpin and
+// `struct Pair { int a, b; }` in RouletteBoard_StartSlowdown -- which is eight bytes on
 // both machines, so the COPY is already right and only the CONSUMER was wrong.
 // Both stay in port/slice_rlt.txt.
 //
@@ -72,7 +72,7 @@
 // way section 4 prescribes: the mounted .data keeps the ROM's own words, so
 // anything that ever compares the pair by value still sees what the ROM sees.
 //
-// AND THE ROM HAS NO NULL GUARD HERE. Unlike func_ov006_020c19d0, which opens
+// AND THE ROM HAS NO NULL GUARD HERE. Unlike Dealer_Update, which opens
 // with its own `cmp r2,#0`, 0x02107db8 decodes and `blx`es unconditionally. The
 // port routes through port_mg_call0, whose first statement is the framework's
 // `if (code == 0) return;`, which is a divergence in the safe direction and a
@@ -127,7 +127,7 @@
 //
 // ---- 4. WHAT CHANGED FROM src, LINE BY LINE -------------------------------
 //
-// The body below is src/actors/dScMgRoulette_c.cpp verbatim except:
+// The body below is src/minigames/d_s_mg_roulette_methods.cpp verbatim except:
 //
 //   1. `struct C`, its `PMF` typedef and its `struct Obj` shadow are gone. The
 //      layout they described is spelled with byte offsets, which is what the
@@ -148,7 +148,7 @@
 // disassembly instruction for instruction (58 instructions plus a two-word
 // literal pool = 60 words = 0xf0, the size config gives).
 //
-// IT DEFINES func_ov006_02107db8, so src/actors/dScMgRoulette_c.cpp is OUT of
+// IT DEFINES RouletteBoard_Update, so src/minigames/d_s_mg_roulette_methods.cpp is OUT of
 // port/slice_rlt.txt -- listing both would be an LNK2005.
 //
 // WHAT THE DISPLACEMENT COSTS IS COUNTERFACTUAL AND IS MEASURED AS SUCH. This
@@ -179,10 +179,10 @@ extern int data_020a0e68;
 void port_mg_call0(void *self, unsigned code, int adj);
 
 /* the wheel's two states, section 2 */
-void func_ov006_021082fc(char *self);
-void func_ov006_02107ea8(char *self);
+void RouletteBoard_StateSpin(char *self);
+void RouletteBoard_StateSlow(char *self);
 
-void func_ov006_02107db8(void *self);
+void RouletteBoard_Update(void *self);
 
 }  /* extern "C" */
 
@@ -200,8 +200,8 @@ static int rlt_wheel_try(void *self, unsigned code)
 {
     char *c = (char *)self;
     switch (code) {
-    case 0x021082fcu: ++g_rlt_wheel_state_hits[0]; func_ov006_021082fc(c); return 1;
-    case 0x02107ea8u: ++g_rlt_wheel_state_hits[1]; func_ov006_02107ea8(c); return 1;
+    case 0x021082fcu: ++g_rlt_wheel_state_hits[0]; RouletteBoard_StateSpin(c); return 1;
+    case 0x02107ea8u: ++g_rlt_wheel_state_hits[1]; RouletteBoard_StateSlow(c); return 1;
     default:                                                               return 0;
     }
 }
@@ -234,7 +234,7 @@ extern "C" unsigned port_mg_roulette_wheel_state_addr(unsigned i)
 // PORT_HOST_ABI: mwcc member-pointer dispatch and a virtual-shadow dispatch
 // (ROM vtable numbering vs MSVC's), in one body.
 /* RETIRED, run link100 lane HOSTGEN2. Both of this body's deltas are carried by
-   the whole-TU hostgen substitution of src/actors/dScMgRoulette_c.cpp now: the
+   the whole-TU hostgen substitution of src/minigames/d_s_mg_roulette_methods.cpp now: the
    member-pointer dispatch routes to port_mg_roulette_call0 through hostgen's
    PMF_SEAM table, and the shadow-class call of ROM slot 3 on the Model at +0x10
    is respelled as ((Model *)(c + 0x10))->UpdateVerts() by hostgen's VIRTUAL_CALL
@@ -243,7 +243,7 @@ extern "C" unsigned port_mg_roulette_wheel_state_addr(unsigned i)
 
    Text kept, not deleted. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void func_ov006_02107db8(void *self)
+extern "C" void RouletteBoard_Update(void *self)
 {
     char *b = (char *)self;
 
@@ -276,4 +276,4 @@ extern "C" void func_ov006_02107db8(void *self)
                 Sound_PlayIfNotActive(*(int *)(b + 0xbc), 2, 0x157, 0);
     }
 }
-#endif  /* HOSTGEN2: func_ov006_02107db8 retired to src */
+#endif  /* HOSTGEN2: RouletteBoard_Update retired to src */

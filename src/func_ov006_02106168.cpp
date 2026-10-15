@@ -1,9 +1,9 @@
 //cpp
-// func_ov006_02106168 at 0x02106168 (ov006), 0x238 bytes.
+// DealPuzzle at 0x02106168 (ov006), 0x238 bytes.
 // dScMgPanel_c: the panel LAYOUT PICKER. Not a state -- vtable slot 0
 // (InitResources, func_ov006_021073b0, bl at 0x021077a4) and vtable slot 18
 // (state reset, func_ov006_021071fc, bl at 0x0210729c) both call it directly,
-// and func_ov006_021067a4 zeroes the two panel arrays just before it runs.
+// and ResetRound zeroes the two panel arrays just before it runs.
 //
 // It deals a board and then re-deals until the board is worth playing:
 //   * every panel's position comes from data_ov006_0213dd4c (x) and
@@ -14,12 +14,12 @@
 //     come from ONE OF TWO face-set tables chosen by vtable slot 35, the mode
 //     gate dScMgBase_c spells as `(this[2] & 0xff) != 0`: nonzero takes
 //     data_ov006_0213ded0, zero takes data_ov006_0213e070, both indexed by the
-//     face-set number func_ov006_021063a0 rolled into c+0x4cb4;
-//   * c+0x4cc0 random flip moves are applied through func_ov006_02106080 and
+//     face-set number ScramblePanels rolled into c+0x4cb4;
+//   * c+0x4cc0 random flip moves are applied through FlipAt and
 //     recorded in c+0x4fae, with c+0x4fde as the write cursor;
 //   * the deal is REJECTED and repeated unless at least one panel has current
 //     != target, all the recorded move indices are distinct, and
-//     func_ov006_02106664 agrees the move set is not one of the last five.
+//     HasDuplicateRows agrees the move set is not one of the last five.
 //
 // THREE mwcc levers were needed and each is a real property of the ROM code.
 // The panel-count reload at the tail of the first loop is what keeps that
@@ -55,12 +55,12 @@ extern u16 *data_ov006_0213dd4c[];
 extern u16 *data_ov006_0213dd58[];
 extern u8 *data_ov006_0213ded0[];
 extern u8 *data_ov006_0213e070[];
-extern void func_ov006_02106080(char *c, int x);
-extern int func_ov006_02106664(char *c);
+extern void FlipAt(char *c, int x);
+extern int HasDuplicateRows(char *c);
 
 #pragma opt_common_subs off
 #pragma opt_strength_reduction off
-void func_ov006_02106168(char *c)
+void DealPuzzle(char *c)
 {
   int v;
   int i;
@@ -103,7 +103,7 @@ void func_ov006_02106168(char *c)
     {
       p = (u8 *)(c + 0x4fde);
       v = (int)((n * RND) >> 15);
-      func_ov006_02106080(c, v);
+      FlipAt(c, v);
       *(u8 *)(c + *(u8 *)(c + 0x4fde) + 0x4fae) = (u8)v;
       *p += 1;
     }
@@ -130,7 +130,7 @@ void func_ov006_02106168(char *c)
     }
     if (dup != 0)
       bad = 0;
-  } while (func_ov006_02106664(c) == 0 || bad == 0);
+  } while (HasDuplicateRows(c) == 0 || bad == 0);
 }
 
 }

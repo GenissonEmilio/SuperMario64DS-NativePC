@@ -129,7 +129,7 @@ def fake_d0_root(td):
         ("_ZN4MoreD1Ev", 0x02001200, 0x20), ("_ZN4MoreD0Ev", 0x02001220, 0x40),
         ("_ZN5StoreD1Ev", 0x02001300, 0x20),
         ("_ZN5StoreD0Ev", 0x02001320, 0x40),
-        ("_ZN6Memory10DeallocateEPvP4Heap", 0x0203C1E8, 0x28),
+        ("_ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE", 0x0203C1E8, 0x28),
         ("_ZN6Memory16operator_delete2EPv", 0x0203CBCC, 0x0C),
         ("_ZN5Inner4KillEv", 0x02011000, 0x10),
         ("_ZN5Other4KillEv", 0x02012000, 0x10),
@@ -395,7 +395,7 @@ def run():
         root = fake_d0_root(td)
         rows, ref = facegen.derive_d0_rows(
             [("__ZN4DemoD0Ev", "_ZN4DemoD1Ev", 0x02001020, "D",
-              "_ZN6Memory10DeallocateEPvP4Heap", "data_020a0eac")],
+              "_ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE", "data_020a0eac")],
             {"__ZN4DemoD1Ev"}, root)
         check(len(rows) == 1, "derived: %s" % (dict(ref) or "yes"))
         if rows:
@@ -403,7 +403,7 @@ def run():
             check('extern "C" void _ZN4DemoD0Ev(void *self)' in text,
                   "the face DEFINES the flat D0 name")
             check("{ _ZN4DemoD1Ev(self); "
-                  "_ZN6Memory10DeallocateEPvP4Heap(self, data_020a0eac); }"
+                  "_ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, data_020a0eac); }"
                   in text,
                   "the body is the D1 and then the one deallocation")
 
@@ -436,7 +436,7 @@ def run():
         root = fake_d0_root(td)
         rows, ref = facegen.derive_d0_rows(
             [("__ZN4MoreD0Ev", "_ZN4MoreD1Ev", 0x02001220, "D",
-              "_ZN6Memory10DeallocateEPvP4Heap", "data_020a0eac")],
+              "_ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE", "data_020a0eac")],
             {"__ZN4MoreD1Ev"}, root)
         check(not rows and len(ref) == 1, "refused, not generated")
         check(ref and "not the one deallocation" in ref[0][1],
@@ -448,7 +448,7 @@ def run():
         root = fake_d0_root(td)
         rows, ref = facegen.derive_d0_rows(
             [("__ZN5StoreD0Ev", "_ZN5StoreD1Ev", 0x02001320, "D",
-              "_ZN6Memory10DeallocateEPvP4Heap", "data_020a0eac")],
+              "_ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE", "data_020a0eac")],
             {"__ZN5StoreD1Ev"}, root)
         check(not rows and len(ref) == 1, "refused, not generated")
         check(ref and "not the one heap pointer" in ref[0][1],
@@ -457,7 +457,7 @@ def run():
         # and a row whose heap column names a word the ROM does not pool
         rows2, ref2 = facegen.derive_d0_rows(
             [("__ZN4DemoD0Ev", "_ZN4DemoD1Ev", 0x02001020, "D",
-              "_ZN6Memory10DeallocateEPvP4Heap", "data_020a1000")],
+              "_ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE", "data_020a1000")],
             {"__ZN4DemoD1Ev"}, root)
         check(not rows2 and ref2 and "not the one heap pointer" in ref2[0][1],
               "a wrong heap column is refused: %s"

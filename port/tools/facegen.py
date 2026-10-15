@@ -2253,16 +2253,16 @@ def derive_forward_rows(decorated, defined, root, und=None):
 
 # The two deallocations a ROM D0 body is allowed to add to its D1, and how the
 # emitted face spells each. Memory is a NAMESPACE, so Deallocate's definition in
-# this link is the C++ one (?Deallocate@Memory@@YAXPAXPAVHeap@@@Z) and the face
+# this link is the C++ one (?Deallocate@Memory@@YAXPAXPAUHeap_t@mHeap@@@Z) and the face
 # names the method; operator_delete2 is carried under its flat C name by
 # hal/cxxname_bridge.cpp and the face declares that. Neither is guessed: the
 # ledger row names the call and d0_reloc_proof checks the ROM agrees.
 DEALLOCATORS = {
-    "_ZN6Memory10DeallocateEPvP4Heap": {
+    "_ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE": {
         "heap": True,
-        "decl": ['extern "C" void _ZN6Memory10DeallocateEPvP4Heap('
+        "decl": ['extern "C" void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE('
                  "void *ptr, void *heap);"],
-        "undefined": "__ZN6Memory10DeallocateEPvP4Heap",
+        "undefined": "__ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE",
     },
     "_ZN6Memory16operator_delete2EPv": {
         "heap": False,
@@ -2850,7 +2850,7 @@ def emit_sync(rows, out, header_note=""):
         if r.get("d0"):
             spec = DEALLOCATORS[r["dealloc"]]
             if spec["heap"]:
-                free = ("_ZN6Memory10DeallocateEPvP4Heap(self, %s);"
+                free = ("_ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, %s);"
                         % r["heap"])
             else:
                 free = "_ZN6Memory16operator_delete2EPv(self);"

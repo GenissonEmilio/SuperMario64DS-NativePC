@@ -2,260 +2,260 @@
 # from src/, recovered by port/tools/hostarm_recover.py.
 # kind  old src file  ->  file main put that code in  |  note
 
-D0     src/_ZN10BowserFireD0Ev.cpp -> src/actors/daKpaFire_c.cpp | _ZN10BowserFireD0Ev -> _ZN11daKpaFire_cD0Ev, class daKpaFire_c, header daKpaFire_c.h
-D0     src/_ZN10BrickBlockD0Ev.cpp -> src/actors/daObjBlockItemTag_c.cpp | _ZN10BrickBlockD0Ev -> _ZN19daObjBlockItemTag_cD0Ev, class daObjBlockItemTag_c, header daObjBlockItemTag_c.h
+D0     src/_ZN10BowserFireD0Ev.cpp -> src/game/actors/d_a_kpa_fire.cpp | _ZN10BowserFireD0Ev -> _ZN11daKpaFire_cD0Ev, class daKpaFire_c, header daKpaFire_c.h
+D0     src/_ZN10BrickBlockD0Ev.cpp -> src/game/actors/d_a_obj_block_item_tag.cpp | _ZN10BrickBlockD0Ev -> _ZN19daObjBlockItemTag_cD0Ev, class daObjBlockItemTag_c, header daObjBlockItemTag_c.h
 REVIEW src/_ZN10BulletBill8BehaviorEv.cpp -> src/game/actors/d_a_klr.cpp | 
 D0     src/_ZN10BulletBillD0Ev.cpp -> src/game/actors/d_a_klr.cpp | _ZN10BulletBillD0Ev -> _ZN7daKlr_cD0Ev, class daKlr_c, header daKlr_c.h
-D0     src/_ZN10CheepCheepD0Ev.cpp -> src/actors/daPukupuku_c.cpp | _ZN10CheepCheepD0Ev -> _ZN12daPukupuku_cD0Ev, class daPukupuku_c, header daPukupuku_c.h
-D0     src/_ZN10DonutBlockD0Ev.cpp -> src/actors/daObjRc_Tikuwa_c.cpp | _ZN10DonutBlockD0Ev -> _ZN16daObjRc_Tikuwa_cD0Ev, class daObjRc_Tikuwa_c, header daObjRc_Tikuwa_c.h
-D0     src/_ZN10HootTheOwlD0Ev.cpp -> src/actors/daOwl_c.cpp | _ZN10HootTheOwlD0Ev -> _ZN7daOwl_cD0Ev, class daOwl_c, header daOwl_c.h
+D0     src/_ZN10CheepCheepD0Ev.cpp -> src/game/actors/d_a_pukupuku.cpp | _ZN10CheepCheepD0Ev -> _ZN12daPukupuku_cD0Ev, class daPukupuku_c, header daPukupuku_c.h
+D0     src/_ZN10DonutBlockD0Ev.cpp -> src/game/actors/d_a_obj_rc_tikuwa.cpp | _ZN10DonutBlockD0Ev -> _ZN16daObjRc_Tikuwa_cD0Ev, class daObjRc_Tikuwa_c, header daObjRc_Tikuwa_c.h
+D0     src/_ZN10HootTheOwlD0Ev.cpp -> src/game/actors/d_a_owl.cpp | _ZN10HootTheOwlD0Ev -> _ZN7daOwl_cD0Ev, class daOwl_c, header daOwl_c.h
 D0     src/_ZN10KoopaShellD0Ev.cpp -> src/game/actors/d_a_shl.cpp | _ZN10KoopaShellD0Ev -> _ZN7daShl_cD0Ev, class daShl_c, header daShl_c.h
-D0     src/_ZN10LavaBubbleD0Ev.cpp -> src/actors/daBbl_c.cpp | _ZN10LavaBubbleD0Ev -> _ZN7daBbl_cD0Ev, class daBbl_c, header daBbl_c.h
-D0     src/_ZN10LavaSeesawD0Ev.cpp -> src/actors/daObjFl_Seesaw_c.cpp | _ZN10LavaSeesawD0Ev -> _ZN16daObjFl_Seesaw_cD0Ev, class daObjFl_Seesaw_c, header daObjFl_Seesaw_c.h
-D0     src/_ZN10MrBlizzardD0Ev.cpp -> src/actors/daSnowman_c.cpp | _ZN10MrBlizzardD0Ev -> _ZN11daSnowman_cD0Ev, class daSnowman_c, header daSnowman_c.h
-D0     src/_ZN10PyramidTagD0Ev.cpp -> src/actors/daObjDlPyramid_c.cpp | _ZN10PyramidTagD0Ev -> _ZN21daObjDlPyramidDummy_cD0Ev, class daObjDlPyramidDummy_c, header daObjDlPyramidDummy_c.h
-D0     src/_ZN10PyramidTopD0Ev.cpp -> src/actors/daObjDlPyramid_c.cpp | _ZN10PyramidTopD0Ev -> _ZN16daObjDlPyramid_cD0Ev, class daObjDlPyramid_c, header daObjDlPyramid_c.h
-D0     src/_ZN10RockPillarD0Ev.cpp -> src/actors/daObjKi_Hasira_c.cpp | _ZN10RockPillarD0Ev -> _ZN16daObjKi_Hasira_cD0Ev, class daObjKi_Hasira_c, header daObjKi_Hasira_c.h
-D0     src/_ZN10SlidingBoxD0Ev.cpp -> src/actors/daSlide_Box_c.cpp | _ZN10SlidingBoxD0Ev -> _ZN13daSlide_Box_cD0Ev, class daSlide_Box_c, header daSlide_Box_c.h
-D0     src/_ZN10SlidingIceD0Ev.cpp -> src/actors/daObjSlIceBlock_c.cpp | _ZN10SlidingIceD0Ev -> _ZN17daObjSlIceBlock_cD0Ev, class daObjSlIceBlock_c, header daObjSlIceBlock_c.h
-D0     src/_ZN10StarMarkerD0Ev.cpp -> src/actors/daStar_c.cpp | _ZN10StarMarkerD0Ev -> _ZN12daStarBase_cD0Ev, class daStarBase_c, header daStarBase_c.h
-D0     src/_ZN10StarSwitchD0Ev.cpp -> src/actors/daObjSwitch_c.cpp | _ZN10StarSwitchD0Ev -> _ZN13daObjSwitch_cD0Ev, class daObjSwitch_c, header daObjSwitch_c.h
-D0     src/_ZN10dBgCh_ActrD0Ev.cpp -> src/engine/collision/dBgCh_Actr.cpp | _ZN10dBgCh_ActrD0Ev -> _ZN10dBgCh_ActrD0Ev, class dBgCh_Actr, header dBgCh_Actr.h
-D0     src/_ZN10dBgW_KcMbgD0Ev.cpp -> src/engine/collision/dBgW_KcMbg.cpp | _ZN10dBgW_KcMbgD0Ev -> _ZN10dBgW_KcMbgD0Ev, class dBgW_KcMbg, header dBgW_KcMbg.h
-D0     src/_ZN10dFdDummy_cD0Ev.cpp -> src/engine/fader/dFader_c.cpp | _ZN10dFdDummy_cD0Ev -> _ZN10dFdDummy_cD0Ev, class dFdDummy_c, header dFdDummy_c.h
-D0     src/_ZN10dScTitle_cD0Ev.cpp -> src/actors/dScTitle_c.cpp | _ZN10dScTitle_cD0Ev -> _ZN10dScTitle_cD0Ev, class dScTitle_c, header dScTitle_c.h
-D0     src/_ZN10daKpa2Bg_cD0Ev.cpp -> src/actors/daKpa2Bg_c.cpp | _ZN10daKpa2Bg_cD0Ev -> _ZN10daKpa2Bg_cD0Ev, class daKpa2Bg_c, header daKpa2Bg_c.h
+D0     src/_ZN10LavaBubbleD0Ev.cpp -> src/game/actors/d_a_bbl.cpp | _ZN10LavaBubbleD0Ev -> _ZN7daBbl_cD0Ev, class daBbl_c, header daBbl_c.h
+D0     src/_ZN10LavaSeesawD0Ev.cpp -> src/game/actors/d_a_obj_fl_seesaw.cpp | _ZN10LavaSeesawD0Ev -> _ZN16daObjFl_Seesaw_cD0Ev, class daObjFl_Seesaw_c, header daObjFl_Seesaw_c.h
+D0     src/_ZN10MrBlizzardD0Ev.cpp -> src/game/actors/d_a_snowman.cpp | _ZN10MrBlizzardD0Ev -> _ZN11daSnowman_cD0Ev, class daSnowman_c, header daSnowman_c.h
+D0     src/_ZN10PyramidTagD0Ev.cpp -> src/game/actors/d_a_obj_dl_pyramid.cpp | _ZN10PyramidTagD0Ev -> _ZN21daObjDlPyramidDummy_cD0Ev, class daObjDlPyramidDummy_c, header daObjDlPyramidDummy_c.h
+D0     src/_ZN10PyramidTopD0Ev.cpp -> src/game/actors/d_a_obj_dl_pyramid.cpp | _ZN10PyramidTopD0Ev -> _ZN16daObjDlPyramid_cD0Ev, class daObjDlPyramid_c, header daObjDlPyramid_c.h
+D0     src/_ZN10RockPillarD0Ev.cpp -> src/game/actors/d_a_obj_ki_hasira.cpp | _ZN10RockPillarD0Ev -> _ZN16daObjKi_Hasira_cD0Ev, class daObjKi_Hasira_c, header daObjKi_Hasira_c.h
+D0     src/_ZN10SlidingBoxD0Ev.cpp -> src/game/actors/d_a_slide_box.cpp | _ZN10SlidingBoxD0Ev -> _ZN13daSlide_Box_cD0Ev, class daSlide_Box_c, header daSlide_Box_c.h
+D0     src/_ZN10SlidingIceD0Ev.cpp -> src/game/actors/d_a_obj_sl_ice_block.cpp | _ZN10SlidingIceD0Ev -> _ZN17daObjSlIceBlock_cD0Ev, class daObjSlIceBlock_c, header daObjSlIceBlock_c.h
+D0     src/_ZN10StarMarkerD0Ev.cpp -> src/game/actors/d_a_star.cpp | _ZN10StarMarkerD0Ev -> _ZN12daStarBase_cD0Ev, class daStarBase_c, header daStarBase_c.h
+D0     src/_ZN10StarSwitchD0Ev.cpp -> src/game/actors/d_a_obj_switch.cpp | _ZN10StarSwitchD0Ev -> _ZN13daObjSwitch_cD0Ev, class daObjSwitch_c, header daObjSwitch_c.h
+D0     src/_ZN10dBgCh_ActrD0Ev.cpp -> src/engine/collision/d_bg_ch_actr.cpp | _ZN10dBgCh_ActrD0Ev -> _ZN10dBgCh_ActrD0Ev, class dBgCh_Actr, header dBgCh_Actr.h
+D0     src/_ZN10dBgW_KcMbgD0Ev.cpp -> src/engine/collision/d_bg_w_kc_mbg.cpp | _ZN10dBgW_KcMbgD0Ev -> _ZN10dBgW_KcMbgD0Ev, class dBgW_KcMbg, header dBgW_KcMbg.h
+D0     src/_ZN10dFdDummy_cD0Ev.cpp -> src/runtime/graphics/fader/d_fader.cpp | _ZN10dFdDummy_cD0Ev -> _ZN10dFdDummy_cD0Ev, class dFdDummy_c, header dFdDummy_c.h
+D0     src/_ZN10dScTitle_cD0Ev.cpp -> src/game/stages/d_s_title.cpp | _ZN10dScTitle_cD0Ev -> _ZN10dScTitle_cD0Ev, class dScTitle_c, header dScTitle_c.h
+D0     src/_ZN10daKpa2Bg_cD0Ev.cpp -> src/game/actors/d_a_kpa2_bg.cpp | _ZN10daKpa2Bg_cD0Ev -> _ZN10daKpa2Bg_cD0Ev, class daKpa2Bg_c, header daKpa2Bg_c.h
 D0     src/_ZN11BabyPenguinD0Ev.cpp -> src/game/actors/d_a_pg_bby.cpp | _ZN11BabyPenguinD0Ev -> _ZN9daPgBby_cD0Ev, class daPgBby_c, header daPgBby_c.h
-D0     src/_ZN11BillBlasterD0Ev.cpp -> src/actors/daObjBkKillerdai_c.cpp | _ZN11BillBlasterD0Ev -> _ZN18daObjBkKillerdai_cD0Ev, class daObjBkKillerdai_c, header daObjBkKillerdai_c.h
+D0     src/_ZN11BillBlasterD0Ev.cpp -> src/game/actors/d_a_obj_bk_killerdai.cpp | _ZN11BillBlasterD0Ev -> _ZN18daObjBkKillerdai_cD0Ev, class daObjBkKillerdai_c, header daObjBkKillerdai_c.h
 D0     src/_ZN11BobOmbBuddyD0Ev.cpp -> src/game/actors/d_a_red_bombhei.cpp | _ZN11BobOmbBuddyD0Ev -> _ZN14daRedBombhei_cD0Ev, class daRedBombhei_c, header daRedBombhei_c.h
-D0     src/_ZN11ChiefChillyD0Ev.cpp -> src/actors/daKing_Donketu_c.cpp | _ZN11ChiefChillyD0Ev -> _ZN16daKing_Donketu_cD0Ev, class daKing_Donketu_c, header daKing_Donketu_c.h
-REVIEW src/_ZN11CommonModelD0Ev.cpp -> src/engine/model/dExtCommonModel_c.cpp | 
-D0     src/_ZN11CrazedCrateD0Ev.cpp -> src/actors/daBttBk_c.cpp | _ZN11CrazedCrateD0Ev -> _ZN9daBttBk_cD0Ev, class daBttBk_c, header daBttBk_c.h
-REVIEW src/_ZN11MirrorLuigiD1Ev.cpp -> src/actors/daLuigi_c.cpp | 
-D0     src/_ZN11PowerFlowerD0Ev.cpp -> src/actors/daObjPowerUpItem_c.cpp | _ZN11PowerFlowerD0Ev -> _ZN18daObjPowerUpItem_cD0Ev, class daObjPowerUpItem_c, header daObjPowerUpItem_c.h
-REVIEW src/_ZN11PyramidLiftD0Ev.cpp -> src/actors/daDpLift_c.cpp | 
-D0     src/_ZN11PyramidStepD0Ev.cpp -> src/actors/daObjDpBrock_c.cpp | _ZN11PyramidStepD0Ev -> _ZN14daObjDpBrock_cD0Ev, class daObjDpBrock_c, header daObjDpBrock_c.h
-D0     src/_ZN11RollingRockD0Ev.cpp -> src/actors/daGrock_c.cpp | _ZN11RollingRockD0Ev -> _ZN9daGrock_cD0Ev, class daGrock_c, header daGrock_c.h
-D0     src/_ZN11ShadowModelD0Ev.cpp -> src/engine/model/dExtShadowModel_c.cpp | _ZN11ShadowModelD0Ev -> _ZN17dExtShadowModel_cD0Ev, class dExtShadowModel_c, header dExtShadowModel_c.h
-D0     src/_ZN11SnowmanHeadD0Ev.cpp -> src/actors/daBgSnmHed_c.cpp | _ZN11SnowmanHeadD0Ev -> _ZN12daBgSnmHed_cD0Ev, class daBgSnmHed_c, header daBgSnmHed_c.h
-D0     src/_ZN11VolcanoRingD0Ev.cpp -> src/actors/daObjFl_Ring_c.cpp | _ZN11VolcanoRingD0Ev -> _ZN14daObjFl_Ring_cD0Ev, class daObjFl_Ring_c, header daObjFl_Ring_c.h
-MAIN   src/_ZN11dCapEnemy_cD0Ev.cpp -> src/actors/dCapEnemy_c.cpp | _ZN11dCapEnemy_cD0Ev -> _ZN11dCapEnemy_cD0Ev, class dCapEnemy_c, header dCapEnemy_c.h
-D0     src/_ZN11dScMgJump_cD0Ev.cpp -> src/actors/dScMgJump_c.cpp | _ZN11dScMgJump_cD0Ev -> _ZN11dScMgJump_cD0Ev, class dScMgJump_c, header dScMgJump_c.h
-REVIEW src/_ZN11dScMiniGm_c16CleanupResourcesEv.cpp -> src/actors/dScMiniGm_c.cpp | 
-D0     src/_ZN11dScMiniGm_cD0Ev.cpp -> src/actors/dScMiniGm_c.cpp | _ZN11dScMiniGm_cD0Ev -> _ZN11dScMiniGm_cD0Ev, class dScMiniGm_c, header dScMiniGm_c.h
-REVIEW src/_ZN11daDsnBase_cD1Ev.cpp -> src/actors/daDsnBase_c.cpp | 
+D0     src/_ZN11ChiefChillyD0Ev.cpp -> src/game/actors/d_a_king_donketu.cpp | _ZN11ChiefChillyD0Ev -> _ZN16daKing_Donketu_cD0Ev, class daKing_Donketu_c, header daKing_Donketu_c.h
+REVIEW src/_ZN11CommonModelD0Ev.cpp -> src/engine/model/d_ext_common_model.cpp | 
+D0     src/_ZN11CrazedCrateD0Ev.cpp -> src/game/actors/d_a_btt_bk.cpp | _ZN11CrazedCrateD0Ev -> _ZN9daBttBk_cD0Ev, class daBttBk_c, header daBttBk_c.h
+REVIEW src/_ZN11MirrorLuigiD1Ev.cpp -> src/game/actors/d_a_luigi.cpp | 
+D0     src/_ZN11PowerFlowerD0Ev.cpp -> src/game/actors/d_a_obj_power_up_item.cpp | _ZN11PowerFlowerD0Ev -> _ZN18daObjPowerUpItem_cD0Ev, class daObjPowerUpItem_c, header daObjPowerUpItem_c.h
+REVIEW src/_ZN11PyramidLiftD0Ev.cpp -> src/game/actors/d_a_dp_lift.cpp | 
+D0     src/_ZN11PyramidStepD0Ev.cpp -> src/game/actors/d_a_obj_dp_brock.cpp | _ZN11PyramidStepD0Ev -> _ZN14daObjDpBrock_cD0Ev, class daObjDpBrock_c, header daObjDpBrock_c.h
+D0     src/_ZN11RollingRockD0Ev.cpp -> src/game/actors/d_a_grock.cpp | _ZN11RollingRockD0Ev -> _ZN9daGrock_cD0Ev, class daGrock_c, header daGrock_c.h
+D0     src/_ZN11ShadowModelD0Ev.cpp -> src/engine/model/d_ext_shadow_model.cpp | _ZN11ShadowModelD0Ev -> _ZN17dExtShadowModel_cD0Ev, class dExtShadowModel_c, header dExtShadowModel_c.h
+D0     src/_ZN11SnowmanHeadD0Ev.cpp -> src/game/actors/d_a_bg_snm_hed.cpp | _ZN11SnowmanHeadD0Ev -> _ZN12daBgSnmHed_cD0Ev, class daBgSnmHed_c, header daBgSnmHed_c.h
+D0     src/_ZN11VolcanoRingD0Ev.cpp -> src/game/actors/d_a_obj_fl_ring.cpp | _ZN11VolcanoRingD0Ev -> _ZN14daObjFl_Ring_cD0Ev, class daObjFl_Ring_c, header daObjFl_Ring_c.h
+MAIN   src/_ZN11dCapEnemy_cD0Ev.cpp -> src/runtime/actor/d_cap_enemy.cpp | _ZN11dCapEnemy_cD0Ev -> _ZN11dCapEnemy_cD0Ev, class dCapEnemy_c, header dCapEnemy_c.h
+D0     src/_ZN11dScMgJump_cD0Ev.cpp -> src/minigames/d_s_mg_jump_methods.cpp | _ZN11dScMgJump_cD0Ev -> _ZN11dScMgJump_cD0Ev, class dScMgJump_c, header dScMgJump_c.h
+REVIEW src/_ZN11dScMiniGm_c16CleanupResourcesEv.cpp -> src/minigames/d_s_mini_gm.cpp | 
+D0     src/_ZN11dScMiniGm_cD0Ev.cpp -> src/minigames/d_s_mini_gm.cpp | _ZN11dScMiniGm_cD0Ev -> _ZN11dScMiniGm_cD0Ev, class dScMiniGm_c, header dScMiniGm_c.h
+REVIEW src/_ZN11daDsnBase_cD1Ev.cpp -> src/game/actors/d_a_dsn_base.cpp | 
 D0     src/_ZN12EnemySpawnerD0Ev.cpp -> src/game/actors/d_a_e_switch.cpp | _ZN12EnemySpawnerD0Ev -> _ZN11daECreate_cD0Ev, class daECreate_c, header EnemySpawner.h
-D0     src/_ZN12FlamethrowerD0Ev.cpp -> src/actors/daObjFlamethrower_c.cpp | _ZN12FlamethrowerD0Ev -> _ZN19daObjFlamethrower_cD0Ev, class daObjFlamethrower_c, header daObjFlamethrower_c.h
-D0     src/_ZN12FortressWallD0Ev.cpp -> src/actors/daObjBk_Kabe_c.cpp | _ZN12FortressWallD0Ev -> _ZN14daObjBk_Kabe_cD0Ev, class daObjBk_Kabe_c, header daObjBk_Kabe_c.h
-D0     src/_ZN12HauntedChairD0Ev.cpp -> src/actors/daChair_c.cpp | _ZN12HauntedChairD0Ev -> _ZN9daChair_cD0Ev, class daChair_c, header daChair_c.h
-D0     src/_ZN12HealingHeartD0Ev.cpp -> src/actors/daObjHeart_c.cpp | _ZN12HealingHeartD0Ev -> _ZN12daObjHeart_cD0Ev, class daObjHeart_c, header daObjHeart_c.h
-REVIEW src/_ZN12MetalNetLiftD1Ev.cpp -> src/actors/daObjFl_Amilift_c.cpp | 
-D0     src/_ZN12WaterSuctionD0Ev.cpp -> src/actors/daWater_Suikomi_c.cpp | _ZN12WaterSuctionD0Ev -> _ZN17daWater_Suikomi_cD0Ev, class daWater_Suikomi_c, header daWater_Suikomi_c.h
-REVIEW src/_ZN12WorkElevator8BehaviorEv.cpp -> src/actors/daObjCvNewsLift_c.cpp | 
-D0     src/_ZN12WorkElevatorD0Ev.cpp -> src/actors/daObjCvNewsLift_c.cpp | _ZN12WorkElevatorD0Ev -> _ZN17daObjCvNewsLift_cD0Ev, class daObjCvNewsLift_c, header daObjCvNewsLift_c.h
-D0     src/_ZN12dBgCh_SphCrrD0Ev.cpp -> src/engine/collision/dBgCh_SphCrr.cpp | _ZN12dBgCh_SphCrrD0Ev -> _ZN12dBgCh_SphCrrD0Ev, class dBgCh_SphCrr, header dBgCh_SphCrr.h
-D0     src/_ZN12dEnemyBase_cD0Ev.cpp -> src/actors/dEnemyBase_c.cpp | _ZN12dEnemyBase_cD0Ev -> _ZN12dEnemyBase_cD0Ev, class dEnemyBase_c, header dEnemyBase_c.h
-D0     src/_ZN12dScMg3DEsp_cD0Ev.cpp -> src/actors/dMg3DEspAnimSet_c.cpp | _ZN12dScMg3DEsp_cD0Ev -> _ZN12dScMg3DEsp_cD0Ev, class dScMg3DEsp_c, header dScMg3DEsp_c.h
-D0     src/_ZN12dScMgSlot1_cD0Ev.cpp -> src/actors/dScMgSlots.cpp | _ZN12dScMgSlot1_cD0Ev -> _ZN12dScMgSlot1_cD0Ev, class dScMgSlot1_c, header dScMgSlot1_c.h
-D0     src/_ZN12dScMgSlot3_cD0Ev.cpp -> src/actors/dScMgSlots.cpp | _ZN12dScMgSlot3_cD0Ev -> _ZN12dScMgSlot3_cD0Ev, class dScMgSlot3_c, header dScMgSlot3_c.h
-D0     src/_ZN12dScStarSel_cD0Ev.cpp -> src/actors/dScStarSel_c.cpp | _ZN12dScStarSel_cD0Ev -> _ZN12dScStarSel_cD0Ev, class dScStarSel_c, header dScStarSel_c.h
-REVIEW src/_ZN12daDossyCap_cD0Ev.cpp -> src/actors/daDossy_c.cpp | 
+D0     src/_ZN12FlamethrowerD0Ev.cpp -> src/game/actors/d_a_obj_flamethrower.cpp | _ZN12FlamethrowerD0Ev -> _ZN19daObjFlamethrower_cD0Ev, class daObjFlamethrower_c, header daObjFlamethrower_c.h
+D0     src/_ZN12FortressWallD0Ev.cpp -> src/game/actors/d_a_obj_bk_kabe.cpp | _ZN12FortressWallD0Ev -> _ZN14daObjBk_Kabe_cD0Ev, class daObjBk_Kabe_c, header daObjBk_Kabe_c.h
+D0     src/_ZN12HauntedChairD0Ev.cpp -> src/game/actors/d_a_chair.cpp | _ZN12HauntedChairD0Ev -> _ZN9daChair_cD0Ev, class daChair_c, header daChair_c.h
+D0     src/_ZN12HealingHeartD0Ev.cpp -> src/game/actors/d_a_obj_heart.cpp | _ZN12HealingHeartD0Ev -> _ZN12daObjHeart_cD0Ev, class daObjHeart_c, header daObjHeart_c.h
+REVIEW src/_ZN12MetalNetLiftD1Ev.cpp -> src/game/actors/d_a_obj_fl_amilift.cpp | 
+D0     src/_ZN12WaterSuctionD0Ev.cpp -> src/game/actors/d_a_water_suikomi.cpp | _ZN12WaterSuctionD0Ev -> _ZN17daWater_Suikomi_cD0Ev, class daWater_Suikomi_c, header daWater_Suikomi_c.h
+REVIEW src/_ZN12WorkElevator8BehaviorEv.cpp -> src/game/actors/d_a_obj_cv_news_lift.cpp | 
+D0     src/_ZN12WorkElevatorD0Ev.cpp -> src/game/actors/d_a_obj_cv_news_lift.cpp | _ZN12WorkElevatorD0Ev -> _ZN17daObjCvNewsLift_cD0Ev, class daObjCvNewsLift_c, header daObjCvNewsLift_c.h
+D0     src/_ZN12dBgCh_SphCrrD0Ev.cpp -> src/engine/collision/d_bg_ch_sph_crr.cpp | _ZN12dBgCh_SphCrrD0Ev -> _ZN12dBgCh_SphCrrD0Ev, class dBgCh_SphCrr, header dBgCh_SphCrr.h
+D0     src/_ZN12dEnemyBase_cD0Ev.cpp -> src/runtime/actor/d_enemy_base.cpp | _ZN12dEnemyBase_cD0Ev -> _ZN12dEnemyBase_cD0Ev, class dEnemyBase_c, header dEnemyBase_c.h
+D0     src/_ZN12dScMg3DEsp_cD0Ev.cpp -> src/minigames/d_mg3d_esp_anim_set.cpp | _ZN12dScMg3DEsp_cD0Ev -> _ZN12dScMg3DEsp_cD0Ev, class dScMg3DEsp_c, header dScMg3DEsp_c.h
+D0     src/_ZN12dScMgSlot1_cD0Ev.cpp -> src/minigames/d_s_mg_slots.cpp | _ZN12dScMgSlot1_cD0Ev -> _ZN12dScMgSlot1_cD0Ev, class dScMgSlot1_c, header dScMgSlot1_c.h
+D0     src/_ZN12dScMgSlot3_cD0Ev.cpp -> src/minigames/d_s_mg_slots.cpp | _ZN12dScMgSlot3_cD0Ev -> _ZN12dScMgSlot3_cD0Ev, class dScMgSlot3_c, header dScMgSlot3_c.h
+D0     src/_ZN12dScStarSel_cD0Ev.cpp -> src/game/stages/d_s_star_sel_methods.cpp | _ZN12dScStarSel_cD0Ev -> _ZN12dScStarSel_cD0Ev, class dScStarSel_c, header dScStarSel_c.h
+REVIEW src/_ZN12daDossyCap_cD0Ev.cpp -> src/game/actors/d_a_dossy.cpp | 
 D0     src/_ZN13BasementWaterD0Ev.cpp -> src/game/actors/d_a_obj_c0_water.cpp | _ZN13BasementWaterD0Ev -> _ZN14daObjC0Water_cD0Ev, class daObjC0Water_c, header daObjC0Water_c.h
-REVIEW src/_ZN13BigBrickBlock11OnAttacked1ER8dActor_c.cpp -> src/actors/daObjBlockL_c.cpp | 
-REVIEW src/_ZN13BigBrickBlock11OnAttacked2ER8dActor_c.cpp -> src/actors/daObjBlockL_c.cpp | 
-D0     src/_ZN13BigBrickBlockD0Ev.cpp -> src/actors/daObjBlockL_c.cpp | _ZN13BigBrickBlockD0Ev -> _ZN13daObjBlockL_cD0Ev, class daObjBlockL_c, header daObjBlockL_c.h
-D0     src/_ZN13BowserShutterD0Ev.cpp -> src/actors/daObjWlKoopaShutter_c.cpp | _ZN13BowserShutterD0Ev -> _ZN21daObjWlKoopaShutter_cD0Ev, class daObjWlKoopaShutter_c, header daObjWlKoopaShutter_c.h
-D0     src/_ZN13FortressTowerD0Ev.cpp -> src/actors/daObjSimpleBg_c.cpp | _ZN13FortressTowerD0Ev -> _ZN15daObjSimpleBg_cD0Ev, class daObjSimpleBg_c, header daObjSimpleBg_c.h
-D0     src/_ZN13KoopaTheQuickD0Ev.cpp -> src/actors/daRNk_c.cpp | _ZN13KoopaTheQuickD0Ev -> _ZN7daRNk_cD0Ev, class daRNk_c, header daRNk_c.h
-D0     src/_ZN13MontyMoleRockD0Ev.cpp -> src/actors/daChoropu_c.cpp | _ZN13MontyMoleRockD0Ev -> _ZN14daChoro_Rock_cD0Ev, class daChoro_Rock_c, header daChoro_Rock_c.h
-D0     src/_ZN13PeachPaintingD0Ev.cpp -> src/actors/daObjC1Peach_c.cpp | _ZN13PeachPaintingD0Ev -> _ZN14daObjC1Peach_cD0Ev, class daObjC1Peach_c, header daObjC1Peach_c.h
-D0     src/_ZN13PrincessPeachD0Ev.cpp -> src/actors/daPeach_c.cpp | _ZN13PrincessPeachD0Ev -> _ZN9daPeach_cD0Ev, class daPeach_c, header daPeach_c.h
-D0     src/_ZN13QuestionBlockD0Ev.cpp -> src/actors/daObjHatenaBlock_c.cpp | _ZN13QuestionBlockD0Ev -> _ZN18daObjHatenaBlock_cD0Ev, class daObjHatenaBlock_c, header daObjHatenaBlock_c.h
+REVIEW src/_ZN13BigBrickBlock11OnAttacked1ER8dActor_c.cpp -> src/game/actors/d_a_obj_block_l.cpp | 
+REVIEW src/_ZN13BigBrickBlock11OnAttacked2ER8dActor_c.cpp -> src/game/actors/d_a_obj_block_l.cpp | 
+D0     src/_ZN13BigBrickBlockD0Ev.cpp -> src/game/actors/d_a_obj_block_l.cpp | _ZN13BigBrickBlockD0Ev -> _ZN13daObjBlockL_cD0Ev, class daObjBlockL_c, header daObjBlockL_c.h
+D0     src/_ZN13BowserShutterD0Ev.cpp -> src/game/actors/d_a_obj_wl_koopa_shutter.cpp | _ZN13BowserShutterD0Ev -> _ZN21daObjWlKoopaShutter_cD0Ev, class daObjWlKoopaShutter_c, header daObjWlKoopaShutter_c.h
+D0     src/_ZN13FortressTowerD0Ev.cpp -> src/game/actors/d_a_obj_simple_bg.cpp | _ZN13FortressTowerD0Ev -> _ZN15daObjSimpleBg_cD0Ev, class daObjSimpleBg_c, header daObjSimpleBg_c.h
+D0     src/_ZN13KoopaTheQuickD0Ev.cpp -> src/game/actors/d_a_r_nk.cpp | _ZN13KoopaTheQuickD0Ev -> _ZN7daRNk_cD0Ev, class daRNk_c, header daRNk_c.h
+D0     src/_ZN13MontyMoleRockD0Ev.cpp -> src/game/actors/d_a_choropu.cpp | _ZN13MontyMoleRockD0Ev -> _ZN14daChoro_Rock_cD0Ev, class daChoro_Rock_c, header daChoro_Rock_c.h
+D0     src/_ZN13PeachPaintingD0Ev.cpp -> src/game/actors/d_a_obj_c1_peach.cpp | _ZN13PeachPaintingD0Ev -> _ZN14daObjC1Peach_cD0Ev, class daObjC1Peach_c, header daObjC1Peach_c.h
+D0     src/_ZN13PrincessPeachD0Ev.cpp -> src/game/actors/d_a_peach.cpp | _ZN13PrincessPeachD0Ev -> _ZN9daPeach_cD0Ev, class daPeach_c, header daPeach_c.h
+D0     src/_ZN13QuestionBlockD0Ev.cpp -> src/game/actors/d_a_obj_hatena_block.cpp | _ZN13QuestionBlockD0Ev -> _ZN18daObjHatenaBlock_cD0Ev, class daObjHatenaBlock_c, header daObjHatenaBlock_c.h
 D0     src/_ZN13RacingPenguinD0Ev.cpp -> src/game/actors/d_a_pg_rcer.cpp | _ZN13RacingPenguinD0Ev -> _ZN10daPgRcer_cD0Ev, class daPgRcer_c, header daPgRcer_c.h
 D0     src/_ZN13RollingLogLllD0Ev.cpp -> src/game/actors/d_a_obj_fl_maruta.cpp | _ZN13RollingLogLllD0Ev -> _ZN15daObjFlMaruta_cD0Ev, class daObjFlMaruta_c, header daObjFlMaruta_c.h
-D0     src/_ZN13RollingLogTtmD0Ev.cpp -> src/actors/daObjHmMaruta_c.cpp | _ZN13RollingLogTtmD0Ev -> _ZN15daObjHmMaruta_cD0Ev, class daObjHmMaruta_c, header daObjHmMaruta_c.h
-D0     src/_ZN13SnowmanBreathD0Ev.cpp -> src/actors/daSnmBth_c.cpp | _ZN13SnowmanBreathD0Ev -> _ZN10daSnmBth_cD0Ev, class daSnmBth_c, header daSnmBth_c.h
-D0     src/_ZN13TTC_MovingBarD0Ev.cpp -> src/actors/daObjCtKaitendai_c.cpp | _ZN13TTC_MovingBarD0Ev -> _ZN18daObjCtKaitendai_cD0Ev, class daObjCtKaitendai_c, header daObjCtKaitendai_c.h
-D0     src/_ZN13TreasureChestD0Ev.cpp -> src/actors/daObjTbox_c.cpp | _ZN13TreasureChestD0Ev -> _ZN11daObjTbox_cD0Ev, class daObjTbox_c, header daObjTbox_c.h
-D0     src/_ZN13UpDownLiftBbhD0Ev.cpp -> src/actors/daUdlift_c.cpp | _ZN13UpDownLiftBbhD0Ev -> _ZN10daUdlift_cD0Ev, class daUdlift_c, header daUdlift_c.h
-D0     src/_ZN13dScMgFlower_cD0Ev.cpp -> src/actors/dScMgFlower_c.cpp | _ZN13dScMgFlower_cD0Ev -> _ZN13dScMgFlower_cD0Ev, class dScMgFlower_c, header dScMgFlower_c.h
-REVIEW src/_ZN13daObjDorifu_cD0Ev.cpp -> src/actors/daObjDorifu_c.cpp | 
+D0     src/_ZN13RollingLogTtmD0Ev.cpp -> src/game/actors/d_a_obj_hm_maruta.cpp | _ZN13RollingLogTtmD0Ev -> _ZN15daObjHmMaruta_cD0Ev, class daObjHmMaruta_c, header daObjHmMaruta_c.h
+D0     src/_ZN13SnowmanBreathD0Ev.cpp -> src/game/actors/d_a_snm_bth.cpp | _ZN13SnowmanBreathD0Ev -> _ZN10daSnmBth_cD0Ev, class daSnmBth_c, header daSnmBth_c.h
+D0     src/_ZN13TTC_MovingBarD0Ev.cpp -> src/game/actors/d_a_obj_ct_kaitendai.cpp | _ZN13TTC_MovingBarD0Ev -> _ZN18daObjCtKaitendai_cD0Ev, class daObjCtKaitendai_c, header daObjCtKaitendai_c.h
+D0     src/_ZN13TreasureChestD0Ev.cpp -> src/game/actors/d_a_obj_tbox.cpp | _ZN13TreasureChestD0Ev -> _ZN11daObjTbox_cD0Ev, class daObjTbox_c, header daObjTbox_c.h
+D0     src/_ZN13UpDownLiftBbhD0Ev.cpp -> src/game/actors/d_a_udlift.cpp | _ZN13UpDownLiftBbhD0Ev -> _ZN10daUdlift_cD0Ev, class daUdlift_c, header daUdlift_c.h
+D0     src/_ZN13dScMgFlower_cD0Ev.cpp -> src/minigames/d_s_mg_flower.cpp | _ZN13dScMgFlower_cD0Ev -> _ZN13dScMgFlower_cD0Ev, class dScMgFlower_c, header dScMgFlower_c.h
+REVIEW src/_ZN13daObjDorifu_cD0Ev.cpp -> src/game/actors/d_a_obj_dorifu.cpp | 
 D0     src/_ZN13daObjHmBskt_cD0Ev.cpp -> src/game/actors/d_a_obj_hm_bskt.cpp | _ZN13daObjHmBskt_cD0Ev -> _ZN13daObjHmBskt_cD0Ev, class daObjHmBskt_c, header daObjHmBskt_c.h
-REVIEW src/_ZN13daObjKuruma_cD0Ev.cpp -> src/actors/daObjKuruma_c.cpp | 
+REVIEW src/_ZN13daObjKuruma_cD0Ev.cpp -> src/game/actors/d_a_obj_kuruma.cpp | 
 REVIEW src/_ZN13daObjMaruta_cD0Ev.cpp -> src/game/actors/d_a_obj_maruta.cpp | 
 REVIEW src/_ZN13daObjMaruta_cD1Ev.cpp -> src/game/actors/d_a_obj_maruta.cpp | 
-REVIEW src/_ZN13daObjSwdoor_cD1Ev.cpp -> src/actors/daObjSwdoor_c.cpp | 
-REVIEW src/_ZN14ArrowSignRightD0Ev.cpp -> src/actors/daObjYajirusi_c.cpp | 
+REVIEW src/_ZN13daObjSwdoor_cD1Ev.cpp -> src/game/actors/d_a_obj_swdoor.cpp | 
+REVIEW src/_ZN14ArrowSignRightD0Ev.cpp -> src/game/actors/d_a_obj_yajirusi.cpp | 
 D0     src/_ZN14EnemySwitchTagD0Ev.cpp -> src/game/actors/d_a_e_switch.cpp | _ZN14EnemySwitchTagD0Ev -> _ZN11daESwitch_cD0Ev, class daESwitch_c, header EnemySwitchTag.h
-D0     src/_ZN14KnockDownPlankD0Ev.cpp -> src/actors/daObjBk_Botaosi_c.cpp | _ZN14KnockDownPlankD0Ev -> _ZN17daObjBk_Botaosi_cD0Ev, class daObjBk_Botaosi_c, header daObjBk_Botaosi_c.h
-D0     src/_ZN14SquarePathLiftD0Ev.cpp -> src/actors/daObjEmmYuka_c.cpp | _ZN14SquarePathLiftD0Ev -> _ZN14daObjEmmYuka_cD0Ev, class daObjEmmYuka_c, header daObjEmmYuka_c.h
-D0     src/_ZN14TTC_MovingBeamD0Ev.cpp -> src/actors/daObjCtMecha09_c.cpp | _ZN14TTC_MovingBeamD0Ev -> _ZN16daObjCtMecha09_cD0Ev, class daObjCtMecha09_c, header daObjCtMecha09_c.h
-D0     src/_ZN14dBgW_KcMbgSclYD0Ev.cpp -> src/engine/collision/dBgW_KcMbgSclY.cpp | _ZN14dBgW_KcMbgSclYD0Ev -> _ZN14dBgW_KcMbgSclYD0Ev, class dBgW_KcMbgSclY, header dBgW_KcMbgSclY.h
-D0     src/_ZN14dScMgBomroom_cD0Ev.cpp -> src/actors/dScMgBomroom_c.cpp | _ZN14dScMgBomroom_cD0Ev -> _ZN14dScMgBomroom_cD0Ev, class dScMgBomroom_c, header dScMgBomroom_c.h
-D0     src/_ZN14dScMgCurling_cD0Ev.cpp -> src/actors/dScMgCurling_c.cpp | _ZN14dScMgCurling_cD0Ev -> _ZN14dScMgCurling_cD0Ev, class dScMgCurling_c, header dScMgCurling_c.h
-REVIEW src/_ZN14daObjUkiyuka_cD0Ev.cpp -> src/actors/daObjUkiyuka_c.cpp | 
+D0     src/_ZN14KnockDownPlankD0Ev.cpp -> src/game/actors/d_a_obj_bk_botaosi.cpp | _ZN14KnockDownPlankD0Ev -> _ZN17daObjBk_Botaosi_cD0Ev, class daObjBk_Botaosi_c, header daObjBk_Botaosi_c.h
+D0     src/_ZN14SquarePathLiftD0Ev.cpp -> src/game/actors/d_a_obj_emm_yuka.cpp | _ZN14SquarePathLiftD0Ev -> _ZN14daObjEmmYuka_cD0Ev, class daObjEmmYuka_c, header daObjEmmYuka_c.h
+D0     src/_ZN14TTC_MovingBeamD0Ev.cpp -> src/game/actors/d_a_obj_ct_mecha09.cpp | _ZN14TTC_MovingBeamD0Ev -> _ZN16daObjCtMecha09_cD0Ev, class daObjCtMecha09_c, header daObjCtMecha09_c.h
+D0     src/_ZN14dBgW_KcMbgSclYD0Ev.cpp -> src/engine/collision/d_bg_w_kc_mbg_scl_y.cpp | _ZN14dBgW_KcMbgSclYD0Ev -> _ZN14dBgW_KcMbgSclYD0Ev, class dBgW_KcMbgSclY, header dBgW_KcMbgSclY.h
+D0     src/_ZN14dScMgBomroom_cD0Ev.cpp -> src/minigames/d_s_mg_bomroom.cpp | _ZN14dScMgBomroom_cD0Ev -> _ZN14dScMgBomroom_cD0Ev, class dScMgBomroom_c, header dScMgBomroom_c.h
+D0     src/_ZN14dScMgCurling_cD0Ev.cpp -> src/minigames/d_s_mg_curling.cpp | _ZN14dScMgCurling_cD0Ev -> _ZN14dScMgCurling_cD0Ev, class dScMgCurling_c, header dScMgCurling_c.h
+REVIEW src/_ZN14daObjUkiyuka_cD0Ev.cpp -> src/game/actors/d_a_obj_ukiyuka.cpp | 
 D0     src/_ZN15FireSeaElevatorD0Ev.cpp -> src/game/actors/d_a_obj_km2_agaru.cpp | _ZN15FireSeaElevatorD0Ev -> _ZN16daObjKm2_Agaru_cD0Ev, class daObjKm2_Agaru_c, header daObjKm2_Agaru_c.h
 D0     src/_ZN15MaterialChangerD0Ev.cpp -> src/engine/model/MaterialChanger.cpp | _ZN15MaterialChangerD0Ev -> _ZN15MaterialChangerD0Ev, class MaterialChanger, header MaterialChanger.h
-D0     src/_ZN15RecRoomCupboardD0Ev.cpp -> src/actors/daObjCloset_c.cpp | _ZN15RecRoomCupboardD0Ev -> _ZN13daObjCloset_cD0Ev, class daObjCloset_c, header daObjCloset_c.h
-D0     src/_ZN15RotatingFirebarD0Ev.cpp -> src/actors/daObjFl_KomaU_c.cpp | _ZN15RotatingFirebarD0Ev -> _ZN15daObjFl_KomaU_cD0Ev, class daObjFl_KomaU_c, header daObjFl_KomaU_c.h
+D0     src/_ZN15RecRoomCupboardD0Ev.cpp -> src/game/actors/d_a_obj_closet.cpp | _ZN15RecRoomCupboardD0Ev -> _ZN13daObjCloset_cD0Ev, class daObjCloset_c, header daObjCloset_c.h
+D0     src/_ZN15RotatingFirebarD0Ev.cpp -> src/game/actors/d_a_obj_fl_koma_u.cpp | _ZN15RotatingFirebarD0Ev -> _ZN15daObjFl_KomaU_cD0Ev, class daObjFl_KomaU_c, header daObjFl_KomaU_c.h
 D0     src/_ZN15TextureSequenceD0Ev.cpp -> src/engine/model/TextureSequence.cpp | _ZN15TextureSequenceD0Ev -> _ZN15TextureSequenceD0Ev, class TextureSequence, header TextureSequence.h
-D0     src/_ZN15TtcRotatingCubeD0Ev.cpp -> src/actors/daObjCtRotateBlock_c.cpp | _ZN15TtcRotatingCubeD0Ev -> _ZN20daObjCtRotateBlock_cD0Ev, class daObjCtRotateBlock_c, header daObjCtRotateBlock_c.h
-D0     src/_ZN15TtcRotatingGearD0Ev.cpp -> src/actors/daObjCtMecha08_c.cpp | _ZN15TtcRotatingGearD0Ev -> _ZN16daObjCtMecha08_cD0Ev, class daObjCtMecha08_c, header daObjCtMecha08_c.h
-REVIEW src/_ZN15dScMgCurling2_c6RenderEv.cpp -> src/actors/dScMgCurling2_c.cpp | 
-D0     src/_ZN15dScMgPachinko_cD0Ev.cpp -> src/actors/dScMgPachinko_c.cpp | _ZN15dScMgPachinko_cD0Ev -> _ZN15dScMgPachinko_cD0Ev, class dScMgPachinko_c, header dScMgPachinko_c.h
-D0     src/_ZN15dScMgSnowball_cD0Ev.cpp -> src/actors/dScMgSnowball_c.cpp | _ZN15dScMgSnowball_cD0Ev -> _ZN15dScMgSnowball_cD0Ev, class dScMgSnowball_c, header dScMgSnowball_c.h
-REVIEW src/_ZN15daObjGuragura_cD0Ev.cpp -> src/actors/daObjGuragura_c.cpp | 
-D0     src/_ZN16BowserShockwavesD0Ev.cpp -> src/actors/daFRing_c.cpp | _ZN16BowserShockwavesD0Ev -> _ZN9daFRing_cD0Ev, class daFRing_c, header daFRing_c.h
-D0     src/_ZN16RotatingCogSmallD0Ev.cpp -> src/actors/daObjCtMecha10_c.cpp | _ZN16RotatingCogSmallD0Ev -> _ZN16daObjCtMecha10_cD0Ev, class daObjCtMecha10_c, header daObjCtMecha10_c.h
-D0     src/_ZN16SpinningPlatformD0Ev.cpp -> src/actors/daObjCtMecha11_c.cpp | _ZN16SpinningPlatformD0Ev -> _ZN16daObjCtMecha11_cD0Ev, class daObjCtMecha11_c, header daObjCtMecha11_c.h
-REVIEW src/_ZN16dScMgPachinko2_cD0Ev.cpp -> src/actors/dScMgPachinko2_c.cpp | 
-D0     src/_ZN16dScMgSmartball_cD0Ev.cpp -> src/actors/dScMgSmartball_c.cpp | _ZN16dScMgSmartball_cD0Ev -> _ZN16dScMgSmartball_cD0Ev, class dScMgSmartball_c, header dScMgSmartball_c.h
-REVIEW src/_ZN16daObjFallBlock_cD0Ev.cpp -> src/actors/daObjFallBlock_c.cpp | 
-REVIEW src/_ZN16daObjFallBlock_cD1Ev.cpp -> src/actors/daObjFallBlock_c.cpp | 
-REVIEW src/_ZN16daObjKaitendai_cD0Ev.cpp -> src/actors/daObjKaitendai_c.cpp | 
-REVIEW src/_ZN17BigMovingIceBlockD0Ev.cpp -> src/actors/daObjEwmIceBlock_c.cpp | 
-REVIEW src/_ZN17BigMovingIceBlockD1Ev.cpp -> src/actors/daObjEwmIceBlock_c.cpp | 
-REVIEW src/_ZN17BowserPuzzlePieceD1Ev.cpp -> src/actors/daObjFl_Coin_c.cpp | 
-D0     src/_ZN17BowserSkyPlatformD0Ev.cpp -> src/actors/daKpa3Bg_c.cpp | _ZN17BowserSkyPlatformD0Ev -> _ZN10daKpa3Bg_cD0Ev, class daKpa3Bg_c, header daKpa3Bg_c.h
-D0     src/_ZN17ExtendingPlatformD0Ev.cpp -> src/actors/daObjKm2_Nobiru_c.cpp | _ZN17ExtendingPlatformD0Ev -> _ZN17daObjKm2_Nobiru_cD0Ev, class daObjKm2_Nobiru_c, header daObjKm2_Nobiru_c.h
-D0     src/_ZN17SlidingPlatformWfD0Ev.cpp -> src/actors/daObjSimpleLift_c.cpp | _ZN17SlidingPlatformWfD0Ev -> _ZN17daObjSimpleLift_cD0Ev, class daObjSimpleLift_c, header daObjSimpleLift_c.h
-REVIEW src/_ZN17daObjFloatBoard_cD0Ev.cpp -> src/actors/daObjFloatBoard_c.cpp | 
-REVIEW src/_ZN17daObjKurumajiku_cD0Ev.cpp -> src/actors/daObjKurumajiku_c.cpp | 
+D0     src/_ZN15TtcRotatingCubeD0Ev.cpp -> src/game/actors/d_a_obj_ct_rotate_block.cpp | _ZN15TtcRotatingCubeD0Ev -> _ZN20daObjCtRotateBlock_cD0Ev, class daObjCtRotateBlock_c, header daObjCtRotateBlock_c.h
+D0     src/_ZN15TtcRotatingGearD0Ev.cpp -> src/game/actors/d_a_obj_ct_mecha08.cpp | _ZN15TtcRotatingGearD0Ev -> _ZN16daObjCtMecha08_cD0Ev, class daObjCtMecha08_c, header daObjCtMecha08_c.h
+REVIEW src/_ZN15dScMgCurling2_c6RenderEv.cpp -> src/minigames/d_s_mg_curling2.cpp | 
+D0     src/_ZN15dScMgPachinko_cD0Ev.cpp -> src/minigames/d_s_mg_pachinko.cpp | _ZN15dScMgPachinko_cD0Ev -> _ZN15dScMgPachinko_cD0Ev, class dScMgPachinko_c, header dScMgPachinko_c.h
+D0     src/_ZN15dScMgSnowball_cD0Ev.cpp -> src/minigames/d_s_mg_snowball.cpp | _ZN15dScMgSnowball_cD0Ev -> _ZN15dScMgSnowball_cD0Ev, class dScMgSnowball_c, header dScMgSnowball_c.h
+REVIEW src/_ZN15daObjGuragura_cD0Ev.cpp -> src/game/actors/d_a_obj_guragura.cpp | 
+D0     src/_ZN16BowserShockwavesD0Ev.cpp -> src/game/actors/d_a_f_ring.cpp | _ZN16BowserShockwavesD0Ev -> _ZN9daFRing_cD0Ev, class daFRing_c, header daFRing_c.h
+D0     src/_ZN16RotatingCogSmallD0Ev.cpp -> src/game/actors/d_a_obj_ct_mecha10.cpp | _ZN16RotatingCogSmallD0Ev -> _ZN16daObjCtMecha10_cD0Ev, class daObjCtMecha10_c, header daObjCtMecha10_c.h
+D0     src/_ZN16SpinningPlatformD0Ev.cpp -> src/game/actors/d_a_obj_ct_mecha11.cpp | _ZN16SpinningPlatformD0Ev -> _ZN16daObjCtMecha11_cD0Ev, class daObjCtMecha11_c, header daObjCtMecha11_c.h
+REVIEW src/_ZN16dScMgPachinko2_cD0Ev.cpp -> src/minigames/d_s_mg_pachinko2.cpp | 
+D0     src/_ZN16dScMgSmartball_cD0Ev.cpp -> src/minigames/d_s_mg_smartball.cpp | _ZN16dScMgSmartball_cD0Ev -> _ZN16dScMgSmartball_cD0Ev, class dScMgSmartball_c, header dScMgSmartball_c.h
+REVIEW src/_ZN16daObjFallBlock_cD0Ev.cpp -> src/game/actors/d_a_obj_fall_block.cpp | 
+REVIEW src/_ZN16daObjFallBlock_cD1Ev.cpp -> src/game/actors/d_a_obj_fall_block.cpp | 
+REVIEW src/_ZN16daObjKaitendai_cD0Ev.cpp -> src/game/actors/d_a_obj_kaitendai.cpp | 
+REVIEW src/_ZN17BigMovingIceBlockD0Ev.cpp -> src/game/actors/d_a_obj_ewm_ice_block.cpp | 
+REVIEW src/_ZN17BigMovingIceBlockD1Ev.cpp -> src/game/actors/d_a_obj_ewm_ice_block.cpp | 
+REVIEW src/_ZN17BowserPuzzlePieceD1Ev.cpp -> src/game/actors/d_a_obj_fl_coin.cpp | 
+D0     src/_ZN17BowserSkyPlatformD0Ev.cpp -> src/game/actors/d_a_kpa3_bg.cpp | _ZN17BowserSkyPlatformD0Ev -> _ZN10daKpa3Bg_cD0Ev, class daKpa3Bg_c, header daKpa3Bg_c.h
+D0     src/_ZN17ExtendingPlatformD0Ev.cpp -> src/game/actors/d_a_obj_km2_nobiru.cpp | _ZN17ExtendingPlatformD0Ev -> _ZN17daObjKm2_Nobiru_cD0Ev, class daObjKm2_Nobiru_c, header daObjKm2_Nobiru_c.h
+D0     src/_ZN17SlidingPlatformWfD0Ev.cpp -> src/game/actors/d_a_obj_simple_lift.cpp | _ZN17SlidingPlatformWfD0Ev -> _ZN17daObjSimpleLift_cD0Ev, class daObjSimpleLift_c, header daObjSimpleLift_c.h
+REVIEW src/_ZN17daObjFloatBoard_cD0Ev.cpp -> src/game/actors/d_a_obj_float_board.cpp | 
+REVIEW src/_ZN17daObjKurumajiku_cD0Ev.cpp -> src/game/actors/d_a_obj_kurumajiku.cpp | 
 D0     src/_ZN17daObjWlPolelift_cD0Ev.cpp -> src/game/actors/d_a_obj_wl_polelift.cpp | _ZN17daObjWlPolelift_cD0Ev -> _ZN17daObjWlPolelift_cD0Ev, class daObjWlPolelift_c, header daObjWlPolelift_c.h
 D0     src/_ZN18TextureTransformerD0Ev.cpp -> src/engine/model/TextureTransformer.cpp | _ZN18TextureTransformerD0Ev -> _ZN18TextureTransformerD0Ev, class TextureTransformer, header TextureTransformer.h
-D0     src/_ZN19BowserPuzzleManagerD0Ev.cpp -> src/actors/daObjFl_Coin_c.cpp | _ZN19BowserPuzzleManagerD0Ev -> _ZN14daObjFl_Coin_cD0Ev, class daObjFl_Coin_c, header daObjFl_Coin_c.h
-D0     src/_ZN19FirePiranhaPlantBigD0Ev.cpp -> src/actors/daFPkn_c.cpp | _ZN19FirePiranhaPlantBigD0Ev -> _ZN8daFPkn_cD0Ev, class daFPkn_c, header daFPkn_c.h
-D0     src/_ZN19FloatOnLavaPlatformD0Ev.cpp -> src/actors/daObjFl_Block_c.cpp | _ZN19FloatOnLavaPlatformD0Ev -> _ZN15daObjFl_Block_cD0Ev, class daObjFl_Block_c, header daObjFl_Block_c.h
-D0     src/_ZN21FloatingFloorLllSmallD0Ev.cpp -> src/actors/daObjFl_Ukiyuka_c.cpp | _ZN21FloatingFloorLllSmallD0Ev -> _ZN17daObjFl_Ukiyuka_cD0Ev, class daObjFl_Ukiyuka_c, header daObjFl_Ukiyuka_c.h
+D0     src/_ZN19BowserPuzzleManagerD0Ev.cpp -> src/game/actors/d_a_obj_fl_coin.cpp | _ZN19BowserPuzzleManagerD0Ev -> _ZN14daObjFl_Coin_cD0Ev, class daObjFl_Coin_c, header daObjFl_Coin_c.h
+D0     src/_ZN19FirePiranhaPlantBigD0Ev.cpp -> src/game/actors/d_a_f_pkn.cpp | _ZN19FirePiranhaPlantBigD0Ev -> _ZN8daFPkn_cD0Ev, class daFPkn_c, header daFPkn_c.h
+D0     src/_ZN19FloatOnLavaPlatformD0Ev.cpp -> src/game/actors/d_a_obj_fl_block.cpp | _ZN19FloatOnLavaPlatformD0Ev -> _ZN15daObjFl_Block_cD0Ev, class daObjFl_Block_c, header daObjFl_Block_c.h
+D0     src/_ZN21FloatingFloorLllSmallD0Ev.cpp -> src/game/actors/d_a_obj_fl_ukiyuka.cpp | _ZN21FloatingFloorLllSmallD0Ev -> _ZN17daObjFl_Ukiyuka_cD0Ev, class daObjFl_Ukiyuka_c, header daObjFl_Ukiyuka_c.h
 D0     src/_ZN21daObj_volcanoCannon_cD0Ev.cpp -> src/game/actors/d_a_obj_fl_maruta.cpp | _ZN21daObj_volcanoCannon_cD0Ev -> _ZN21daObj_volcanoCannon_cD0Ev, class daObj_volcanoCannon_c, header daObj_volcanoCannon_c.h
 D0     src/_ZN22RotatingUpDownPlatformD0Ev.cpp -> src/game/actors/d_a_linelift2.cpp | _ZN22RotatingUpDownPlatformD0Ev -> _ZN13daLinelift2_cD0Ev, class daLinelift2_c, header daLinelift2_c.h
-D0     src/_ZN3HUDD0Ev.cpp -> src/actors/dMeter_c.cpp | _ZN3HUDD0Ev -> _ZN8dMeter_cD0Ev, class dMeter_c, header dMeter_c.h
-D0     src/_ZN3KeyD0Ev.cpp -> src/actors/daObjKey_c.cpp | _ZN3KeyD0Ev -> _ZN10daObjKey_cD0Ev, class daObjKey_c, header daObjKey_c.h
-D0     src/_ZN3MrID0Ev.cpp -> src/actors/daEykn_c.cpp | _ZN3MrID0Ev -> _ZN8daEykn_cD0Ev, class daEykn_c, header daEykn_c.h
+D0     src/_ZN3HUDD0Ev.cpp -> src/ui/hud/d_meter.cpp | _ZN3HUDD0Ev -> _ZN8dMeter_cD0Ev, class dMeter_c, header dMeter_c.h
+D0     src/_ZN3KeyD0Ev.cpp -> src/game/actors/d_a_obj_key.cpp | _ZN3KeyD0Ev -> _ZN10daObjKey_cD0Ev, class daObjKey_c, header daObjKey_c.h
+D0     src/_ZN3MrID0Ev.cpp -> src/game/actors/d_a_eykn.cpp | _ZN3MrID0Ev -> _ZN8daEykn_cD0Ev, class daEykn_c, header daEykn_c.h
 D0     src/_ZN4BirdD0Ev.cpp -> src/game/actors/d_a_s_bird_head.cpp | _ZN4BirdD0Ev -> _ZN9daSBird_cD0Ev, class daSBird_c, header daSBird_c.h
-D0     src/_ZN4ClamD0Ev.cpp -> src/actors/daObjShell_c.cpp | _ZN4ClamD0Ev -> _ZN12daObjShell_cD0Ev, class daObjShell_c, header daObjShell_c.h
-D0     src/_ZN4CoinD0Ev.cpp -> src/actors/daCoin_c.cpp | _ZN4CoinD0Ev -> _ZN8daCoin_cD0Ev, class daCoin_c, header daCoin_c.h
+D0     src/_ZN4ClamD0Ev.cpp -> src/game/actors/d_a_obj_shell.cpp | _ZN4ClamD0Ev -> _ZN12daObjShell_cD0Ev, class daObjShell_c, header daObjShell_c.h
+D0     src/_ZN4CoinD0Ev.cpp -> src/game/actors/d_a_coin.cpp | _ZN4CoinD0Ev -> _ZN8daCoin_cD0Ev, class daCoin_c, header daCoin_c.h
 D0     src/_ZN4FishD0Ev.cpp -> src/game/actors/d_a_fish.cpp | _ZN4FishD0Ev -> _ZN8daFish_cD0Ev, class daFish_c, header daFish_c.h
 REVIEW src/_ZN4Toad12St_Talk_MainEv.cpp -> src/game/actors/d_a_kinopio.cpp | 
 D0     src/_ZN4ToadD0Ev.cpp -> src/game/actors/d_a_kinopio.cpp | _ZN4ToadD0Ev -> _ZN11daKinopio_cD0Ev, class daKinopio_c, header daKinopio_c.h
-REVIEW src/_ZN4ViewD0Ev.cpp -> src/engine/view/dView_c.cpp | 
-D0     src/_ZN4dBgWD0Ev.cpp -> src/engine/collision/dBgW.cpp | _ZN4dBgWD0Ev -> _ZN4dBgWD0Ev, class dBgW, header dBgW.h
-D0     src/_ZN5BullyD0Ev.cpp -> src/actors/daDonketu_c.cpp | _ZN5BullyD0Ev -> _ZN11daDonketu_cD0Ev, class daDonketu_c, header daDonketu_c.h
-D0     src/_ZN5CrateD0Ev.cpp -> src/actors/daObjBlockS_c.cpp | _ZN5CrateD0Ev -> _ZN13daObjBlockS_cD0Ev, class daObjBlockS_c, header daObjBlockS_c.h
+REVIEW src/_ZN4ViewD0Ev.cpp -> src/engine/view/d_view.cpp | 
+D0     src/_ZN4dBgWD0Ev.cpp -> src/engine/collision/d_bg_w.cpp | _ZN4dBgWD0Ev -> _ZN4dBgWD0Ev, class dBgW, header dBgW.h
+D0     src/_ZN5BullyD0Ev.cpp -> src/game/actors/d_a_donketu.cpp | _ZN5BullyD0Ev -> _ZN11daDonketu_cD0Ev, class daDonketu_c, header daDonketu_c.h
+D0     src/_ZN5CrateD0Ev.cpp -> src/game/actors/d_a_obj_block_s.cpp | _ZN5CrateD0Ev -> _ZN13daObjBlockS_cD0Ev, class daObjBlockS_c, header daObjBlockS_c.h
 D0     src/_ZN5KoopaD0Ev.cpp -> src/game/actors/d_a_nknk.cpp | _ZN5KoopaD0Ev -> _ZN8daNknk_cD0Ev, class daNknk_c, header Koopa.h
 REVIEW src/_ZN5ModelC2Ev.cpp -> src/engine/model/Model.cpp | 
 REVIEW src/_ZN5ModelD0Ev.cpp -> src/engine/model/Model.cpp | 
 REVIEW src/_ZN5ModelD2Ev.cpp -> src/engine/model/Model.cpp | 
-D0     src/_ZN5SharkD0Ev.cpp -> src/actors/daShark_c.cpp | _ZN5SharkD0Ev -> _ZN9daShark_cD0Ev, class daShark_c, header daShark_c.h
-D0     src/_ZN5SpinyD0Ev.cpp -> src/actors/daTgz_c.cpp | _ZN5SpinyD0Ev -> _ZN7daTgz_cD0Ev, class daTgz_c, header daTgz_c.h
+D0     src/_ZN5SharkD0Ev.cpp -> src/game/actors/d_a_shark.cpp | _ZN5SharkD0Ev -> _ZN9daShark_cD0Ev, class daShark_c, header daShark_c.h
+D0     src/_ZN5SpinyD0Ev.cpp -> src/game/actors/d_a_tgz.cpp | _ZN5SpinyD0Ev -> _ZN7daTgz_cD0Ev, class daTgz_c, header daTgz_c.h
 REVIEW src/_ZN5Stage16CleanupResourcesEv.cpp -> src/_ZN10dScStage_c16CleanupResourcesEv.cpp | 
-D0     src/_ZN5StageD0Ev.cpp -> src/actors/dScStage_c.cpp | _ZN5StageD0Ev -> _ZN10dScStage_cD0Ev, class dScStage_c, header dScStage_c.h
-REVIEW src/_ZN5Stump8BehaviorEv.cpp -> src/actors/daObjPile_c.cpp | 
-D0     src/_ZN5StumpD0Ev.cpp -> src/actors/daObjPile_c.cpp | _ZN5StumpD0Ev -> _ZN11daObjPile_cD0Ev, class daObjPile_c, header daObjPile_c.h
-D0     src/_ZN5SwoopD0Ev.cpp -> src/actors/daBasabasa_c.cpp | _ZN5SwoopD0Ev -> _ZN12daBasabasa_cD0Ev, class daBasabasa_c, header daBasabasa_c.h
-D0     src/_ZN5UnagiD0Ev.cpp -> src/actors/daMoray_c.cpp | _ZN5UnagiD0Ev -> _ZN9daMoray_cD0Ev, class daMoray_c, header daMoray_c.h
+D0     src/_ZN5StageD0Ev.cpp -> src/game/stages/d_s_stage_methods.cpp | _ZN5StageD0Ev -> _ZN10dScStage_cD0Ev, class dScStage_c, header dScStage_c.h
+REVIEW src/_ZN5Stump8BehaviorEv.cpp -> src/game/actors/d_a_obj_pile.cpp | 
+D0     src/_ZN5StumpD0Ev.cpp -> src/game/actors/d_a_obj_pile.cpp | _ZN5StumpD0Ev -> _ZN11daObjPile_cD0Ev, class daObjPile_c, header daObjPile_c.h
+D0     src/_ZN5SwoopD0Ev.cpp -> src/game/actors/d_a_basabasa.cpp | _ZN5SwoopD0Ev -> _ZN12daBasabasa_cD0Ev, class daBasabasa_c, header daBasabasa_c.h
+D0     src/_ZN5UnagiD0Ev.cpp -> src/game/actors/d_a_moray.cpp | _ZN5UnagiD0Ev -> _ZN9daMoray_cD0Ev, class daMoray_c, header daMoray_c.h
 D0     src/_ZN5WhompD0Ev.cpp -> src/game/actors/d_a_btn.cpp | _ZN5WhompD0Ev -> _ZN7daBtn_cD0Ev, class daBtn_c, header daBtn_c.h
-D0     src/_ZN5dBgChD0Ev.cpp -> src/engine/collision/dBgCh.cpp | _ZN5dBgChD0Ev -> _ZN5dBgChD0Ev, class dBgCh, header dBgCh.h
-D0     src/_ZN5dBgPiD0Ev.cpp -> src/engine/collision/dBgCh_SphCrr_query.cpp | _ZN5dBgPiD0Ev -> _ZN5dBgPiD0Ev, class dBgPi, header dBgPi.h
-D0     src/_ZN5dCc_cD0Ev.cpp -> src/engine/collision/dCc_c.cpp | _ZN5dCc_cD0Ev -> _ZN5dCc_cD0Ev, class dCc_c, header dCc_c.h
-REVIEW src/_ZN6Camera14GoBehindPlayerEj.cpp -> src/engine/view/dCamera_c.cpp | 
+D0     src/_ZN5dBgChD0Ev.cpp -> src/engine/collision/d_bg_ch.cpp | _ZN5dBgChD0Ev -> _ZN5dBgChD0Ev, class dBgCh, header dBgCh.h
+D0     src/_ZN5dBgPiD0Ev.cpp -> src/engine/collision/d_bg_ch_sph_crr_query.cpp | _ZN5dBgPiD0Ev -> _ZN5dBgPiD0Ev, class dBgPi, header dBgPi.h
+D0     src/_ZN5dCc_cD0Ev.cpp -> src/engine/collision/d_cc.cpp | _ZN5dCc_cD0Ev -> _ZN5dCc_cD0Ev, class dCc_c, header dCc_c.h
+REVIEW src/_ZN6Camera14GoBehindPlayerEj.cpp -> src/engine/view/d_camera.cpp | 
 D0     src/_ZN6CannonD0Ev.cpp -> src/game/actors/d_a_cnn.cpp | _ZN6CannonD0Ev -> _ZN7daCnn_cD0Ev, class daCnn_c, header daCnn_c.h
-REVIEW src/_ZN6CoffinD0Ev.cpp -> src/actors/daObjCasket_c.cpp | 
-REVIEW src/_ZN6CoffinD1Ev.cpp -> src/actors/daObjCasket_c.cpp | 
-REVIEW src/_ZN6DorrieD0Ev.cpp -> src/actors/daDossy_c.cpp | 
-D0     src/_ZN6EyerokD0Ev.cpp -> src/actors/Eyerok.cpp | _ZN6EyerokD0Ev -> _ZN6EyerokD0Ev, class Eyerok, header Eyerok.h
+REVIEW src/_ZN6CoffinD0Ev.cpp -> src/game/actors/d_a_obj_casket.cpp | 
+REVIEW src/_ZN6CoffinD1Ev.cpp -> src/game/actors/d_a_obj_casket.cpp | 
+REVIEW src/_ZN6DorrieD0Ev.cpp -> src/game/actors/d_a_dossy.cpp | 
+D0     src/_ZN6EyerokD0Ev.cpp -> src/game/actors/d_a_iwante.cpp | _ZN6EyerokD0Ev -> _ZN6EyerokD0Ev, class Eyerok, header Eyerok.h
 D0     src/_ZN6FwooshD0Ev.cpp -> src/game/actors/d_a_hyuhyu.cpp | _ZN6FwooshD0Ev -> _ZN10daHyuhyu_cD0Ev, class daHyuhyu_c, header daHyuhyu_c.h
-D0     src/_ZN6KleptoD0Ev.cpp -> src/actors/daJango_c.cpp | _ZN6KleptoD0Ev -> _ZN9daJango_cD0Ev, class daJango_c, header daJango_c.h
+D0     src/_ZN6KleptoD0Ev.cpp -> src/game/actors/d_a_jango.cpp | _ZN6KleptoD0Ev -> _ZN9daJango_cD0Ev, class daJango_c, header daJango_c.h
 D0     src/_ZN6LakituD0Ev.cpp -> src/game/actors/d_a_jgm.cpp | _ZN6LakituD0Ev -> _ZN7daJgm_cD0Ev, class daJgm_c, header daJgm_c.h
 D0     src/_ZN6NumberD0Ev.cpp -> src/game/actors/d_a_obj_number.cpp | _ZN6NumberD0Ev -> _ZN13daObjNumber_cD0Ev, class daObjNumber_c, header daObjNumber_c.h
 D0     src/_ZN6ShipUpD0Ev.cpp -> src/game/actors/d_a_obj_ki_fune.cpp | _ZN6ShipUpD0Ev -> _ZN14daObjKi_Fune_cD0Ev, class daObjKi_Fune_c, header daObjKi_Fune_c.h
-D0     src/_ZN6ThwompD0Ev.cpp -> src/actors/daDsn_c.cpp | _ZN6ThwompD0Ev -> _ZN7daDsn_cD0Ev, class daDsn_c, header daDsn_c.h
-D0     src/_ZN6ToxBoxD0Ev.cpp -> src/actors/daOnms_c.cpp | _ZN6ToxBoxD0Ev -> _ZN8daOnms_cD0Ev, class daOnms_c, header daOnms_c.h
+D0     src/_ZN6ThwompD0Ev.cpp -> src/game/actors/d_a_dsn.cpp | _ZN6ThwompD0Ev -> _ZN7daDsn_cD0Ev, class daDsn_c, header daDsn_c.h
+D0     src/_ZN6ToxBoxD0Ev.cpp -> src/game/actors/d_a_onms.cpp | _ZN6ToxBoxD0Ev -> _ZN8daOnms_cD0Ev, class daOnms_c, header daOnms_c.h
 D0     src/_ZN7ChuckyaD0Ev.cpp -> src/game/actors/d_a_holhei.cpp | _ZN7ChuckyaD0Ev -> _ZN10daHolhei_cD0Ev, class daHolhei_c, header daHolhei_c.h
-D0     src/_ZN7ClipperD0Ev.cpp -> src/engine/collision/dClipper.cpp | _ZN7ClipperD0Ev -> _ZN8dClipperD0Ev, class dClipper, header dClipper.h
-D0     src/_ZN7HeaveHoD0Ev.cpp -> src/actors/daPopoi_c.cpp | _ZN7HeaveHoD0Ev -> _ZN9daPopoi_cD0Ev, class daPopoi_c, header daPopoi_c.h
-D0     src/_ZN7MinimapD0Ev.cpp -> src/actors/dMap_c.cpp | _ZN7MinimapD0Ev -> _ZN6dMap_cD0Ev, class dMap_c, header dMap_c.h
-D0     src/_ZN7SkeeterD0Ev.cpp -> src/actors/daMenbo_c.cpp | _ZN7SkeeterD0Ev -> _ZN9daMenbo_cD0Ev, class daMenbo_c, header daMenbo_c.h
-D0     src/_ZN7SkiLiftD0Ev.cpp -> src/actors/daObjSm_Lift_c.cpp | _ZN7SkiLiftD0Ev -> _ZN14daObjSm_Lift_cD0Ev, class daObjSm_Lift_c, header daObjSm_Lift_c.h
-REVIEW src/_ZN7TornadoD0Ev.cpp -> src/actors/daTor_c.cpp | 
-D0     src/_ZN7WigglerD0Ev.cpp -> src/actors/daHanachan_c.cpp | _ZN7WigglerD0Ev -> _ZN12daHanachan_cD0Ev, class daHanachan_c, header daHanachan_c.h
-D0     src/_ZN7dBgW_KcD0Ev.cpp -> src/engine/collision/dBgW_Kc.cpp | _ZN7dBgW_KcD0Ev -> _ZN7dBgW_KcD0Ev, class dBgW_Kc, header dBgW_Kc.h
-D0     src/_ZN7dCcAc_cD0Ev.cpp -> src/engine/collision/dCcAc_c.cpp | _ZN7dCcAc_cD0Ev -> _ZN7dCcAc_cD0Ev, class dCcAc_c, header dCcAc_c.h
-D0     src/_ZN7dScMB_cD0Ev.cpp -> src/actors/dScMB_c.cpp | _ZN7dScMB_cD0Ev -> _ZN7dScMB_cD0Ev, class dScMB_c, header dScMB_c.h
-D0     src/_ZN7dWipe_cD0Ev.cpp -> src/engine/fader/dWipe_c.cpp | _ZN7dWipe_cD0Ev -> _ZN7dWipe_cD0Ev, class dWipe_c, header dWipe_c.h
-D0     src/_ZN7daKrb_cD0Ev.cpp -> src/actors/daKrb_c.cpp | _ZN7daKrb_cD0Ev -> _ZN7daKrb_cD0Ev, class daKrb_c, header daKrb_c.h
-REVIEW src/_ZN7fBase_cC2Ev.cpp -> src/actors/ActorBase.cpp | 
-MAIN   src/_ZN7fBase_cD0Ev.cpp -> src/actors/ActorBase.cpp | _ZN7fBase_cD0Ev -> _ZN7fBase_cD0Ev, class fBase_c, header fBase_c.h
-D0     src/_ZN8BigBullyD0Ev.cpp -> src/actors/daBDonketu_c.cpp | _ZN8BigBullyD0Ev -> _ZN12daBDonketu_cD0Ev, class daBDonketu_c, header daBDonketu_c.h
-D0     src/_ZN8CccArenaD0Ev.cpp -> src/actors/daObjEwbIce_c.cpp | _ZN8CccArenaD0Ev -> _ZN13daObjEwbIce_cD0Ev, class daObjEwbIce_c, header daObjEwbIce_c.h
-D0     src/_ZN8FireballD0Ev.cpp -> src/actors/daFPknBall_c.cpp | _ZN8FireballD0Ev -> _ZN12daFPknBall_cD0Ev, class daFPknBall_c, header daFPknBall_c.h
-D0     src/_ZN8GoombossD0Ev.cpp -> src/actors/daKuriKing_c.cpp | _ZN8GoombossD0Ev -> _ZN12daKuriKing_cD0Ev, class daKuriKing_c, header daKuriKing_c.h
+D0     src/_ZN7ClipperD0Ev.cpp -> src/engine/collision/d_clipper.cpp | _ZN7ClipperD0Ev -> _ZN8dClipperD0Ev, class dClipper, header dClipper.h
+D0     src/_ZN7HeaveHoD0Ev.cpp -> src/game/actors/d_a_popoi.cpp | _ZN7HeaveHoD0Ev -> _ZN9daPopoi_cD0Ev, class daPopoi_c, header daPopoi_c.h
+D0     src/_ZN7MinimapD0Ev.cpp -> src/ui/hud/d_map.cpp | _ZN7MinimapD0Ev -> _ZN6dMap_cD0Ev, class dMap_c, header dMap_c.h
+D0     src/_ZN7SkeeterD0Ev.cpp -> src/game/actors/d_a_menbo.cpp | _ZN7SkeeterD0Ev -> _ZN9daMenbo_cD0Ev, class daMenbo_c, header daMenbo_c.h
+D0     src/_ZN7SkiLiftD0Ev.cpp -> src/game/actors/d_a_obj_sm_lift.cpp | _ZN7SkiLiftD0Ev -> _ZN14daObjSm_Lift_cD0Ev, class daObjSm_Lift_c, header daObjSm_Lift_c.h
+REVIEW src/_ZN7TornadoD0Ev.cpp -> src/game/actors/d_a_tor.cpp | 
+D0     src/_ZN7WigglerD0Ev.cpp -> src/game/actors/d_a_hanachan.cpp | _ZN7WigglerD0Ev -> _ZN12daHanachan_cD0Ev, class daHanachan_c, header daHanachan_c.h
+D0     src/_ZN7dBgW_KcD0Ev.cpp -> src/engine/collision/d_bg_w_kc.cpp | _ZN7dBgW_KcD0Ev -> _ZN7dBgW_KcD0Ev, class dBgW_Kc, header dBgW_Kc.h
+D0     src/_ZN7dCcAc_cD0Ev.cpp -> src/engine/collision/d_cc_ac.cpp | _ZN7dCcAc_cD0Ev -> _ZN7dCcAc_cD0Ev, class dCcAc_c, header dCcAc_c.h
+D0     src/_ZN7dScMB_cD0Ev.cpp -> src/game/stages/d_s_mb.cpp | _ZN7dScMB_cD0Ev -> _ZN7dScMB_cD0Ev, class dScMB_c, header dScMB_c.h
+D0     src/_ZN7dWipe_cD0Ev.cpp -> src/runtime/graphics/fader/d_wipe.cpp | _ZN7dWipe_cD0Ev -> _ZN7dWipe_cD0Ev, class dWipe_c, header dWipe_c.h
+D0     src/_ZN7daKrb_cD0Ev.cpp -> src/game/actors/d_a_krb.cpp | _ZN7daKrb_cD0Ev -> _ZN7daKrb_cD0Ev, class daKrb_c, header daKrb_c.h
+REVIEW src/_ZN7fBase_cC2Ev.cpp -> src/runtime/actor/ActorBase.cpp | 
+MAIN   src/_ZN7fBase_cD0Ev.cpp -> src/runtime/actor/ActorBase.cpp | _ZN7fBase_cD0Ev -> _ZN7fBase_cD0Ev, class fBase_c, header fBase_c.h
+D0     src/_ZN8BigBullyD0Ev.cpp -> src/game/actors/d_a_b_donketu.cpp | _ZN8BigBullyD0Ev -> _ZN12daBDonketu_cD0Ev, class daBDonketu_c, header daBDonketu_c.h
+D0     src/_ZN8CccArenaD0Ev.cpp -> src/game/actors/d_a_obj_ewb_ice.cpp | _ZN8CccArenaD0Ev -> _ZN13daObjEwbIce_cD0Ev, class daObjEwbIce_c, header daObjEwbIce_c.h
+D0     src/_ZN8FireballD0Ev.cpp -> src/game/actors/d_a_f_pkn_ball.cpp | _ZN8FireballD0Ev -> _ZN12daFPknBall_cD0Ev, class daFPknBall_c, header daFPknBall_c.h
+D0     src/_ZN8GoombossD0Ev.cpp -> src/game/actors/d_a_kuri_king.cpp | _ZN8GoombossD0Ev -> _ZN12daKuriKing_cD0Ev, class daKuriKing_c, header daKuriKing_c.h
 D0     src/_ZN8IceBlockD0Ev.cpp -> src/game/actors/d_a_obj_ice_block.cpp | _ZN8IceBlockD0Ev -> _ZN15daObjIceBlock_cD0Ev, class daObjIceBlock_c, header daObjIceBlock_c.h
-D0     src/_ZN8MantaRayD0Ev.cpp -> src/actors/daManta_c.cpp | _ZN8MantaRayD0Ev -> _ZN9daManta_cD0Ev, class daManta_c, header daManta_c.h
-D0     src/_ZN8MugenBgmD0Ev.cpp -> src/actors/daMugenBGM_c.cpp | _ZN8MugenBgmD0Ev -> _ZN12daMugenBGM_cD0Ev, class daMugenBGM_c, header daMugenBGM_c.h
+D0     src/_ZN8MantaRayD0Ev.cpp -> src/game/actors/d_a_manta.cpp | _ZN8MantaRayD0Ev -> _ZN9daManta_cD0Ev, class daManta_c, header daManta_c.h
+D0     src/_ZN8MugenBgmD0Ev.cpp -> src/game/actors/d_a_mugen_bgm.cpp | _ZN8MugenBgmD0Ev -> _ZN12daMugenBGM_cD0Ev, class daMugenBGM_c, header daMugenBGM_c.h
 D0     src/_ZN8PaintingD0Ev.cpp -> src/game/actors/d_a_pic_gate.cpp | _ZN8PaintingD0Ev -> _ZN11daPicGate_cD0Ev, class daPicGate_c, header daPicGate_c.h
 REVIEW src/_ZN8PoleLiftD0Ev.cpp -> src/game/actors/d_a_obj_km2_ami_bou.cpp | 
 REVIEW src/_ZN8SaveData8SaveFileEjP12FileSaveData.cpp -> src/engine/save/SaveData.cpp | 
-REVIEW src/_ZN8SignPostD0Ev.cpp -> src/actors/daObjTatefuda_c.cpp | 
-D0     src/_ZN8SnowballD0Ev.cpp -> src/actors/daSnowball_c.cpp | _ZN8SnowballD0Ev -> _ZN12daSnowball_cD0Ev, class daSnowball_c, header daSnowball_c.h
-D0     src/_ZN8WallSignD0Ev.cpp -> src/actors/daObjKanban_c.cpp | _ZN8WallSignD0Ev -> _ZN13daObjKanban_cD0Ev, class daObjKanban_c, header daObjKanban_c.h
-REVIEW src/_ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE.cpp -> src/actors/dActor_c.cpp | 
-D0     src/_ZN8dCcPos_cD0Ev.cpp -> src/engine/collision/dCcPos_c.cpp | _ZN8dCcPos_cD0Ev -> _ZN8dCcPos_cD0Ev, class dCcPos_c, header dCcPos_c.h
-D0     src/_ZN8dM3dGSphD0Ev.cpp -> src/engine/collision/dM3dGSph.cpp | _ZN8dM3dGSphD0Ev -> _ZN8dM3dGSphD0Ev, class dM3dGSph, header dM3dGSph.h
-REVIEW src/_ZN8dScene_cD0Ev.cpp -> src/actors/dScene_c.cpp | 
-REVIEW src/_ZN8daDemo_c10anmModel_cD0Ev.cpp -> src/actors/daDemo_c.cpp | 
-REVIEW src/_ZN8daDemo_c13simpleModel_cD0Ev.cpp -> src/actors/daDemo_c.cpp | 
-D0     src/_ZN9BootSceneD0Ev.cpp -> src/d_s_boot.cpp | _ZN9BootSceneD0Ev -> _ZN9dScBoot_cD0Ev, class dScBoot_c, header dScBoot_c.h
-D0     src/_ZN9ButterflyD0Ev.cpp -> src/actors/daBtfly_c.cpp | _ZN9ButterflyD0Ev -> _ZN9daBtfly_cD0Ev, class daBtfly_c, header daBtfly_c.h
-D0     src/_ZN9JetStreamD0Ev.cpp -> src/actors/daWater_Hakidasi_c.cpp | _ZN9JetStreamD0Ev -> _ZN18daWater_Hakidasi_cD0Ev, class daWater_Hakidasi_c, header daWater_Hakidasi_c.h
-D0     src/_ZN9KoopaFlagD0Ev.cpp -> src/actors/daRFlag_c.cpp | _ZN9KoopaFlagD0Ev -> _ZN9daRFlag_cD0Ev, class daRFlag_c, header daRFlag_c.h
-D0     src/_ZN9LakituBroD0Ev.cpp -> src/actors/daC_Jugem_c.cpp | _ZN9LakituBroD0Ev -> _ZN11daC_Jugem_cD0Ev, class daC_Jugem_c, header daC_Jugem_c.h
-D0     src/_ZN9LavaPlankD0Ev.cpp -> src/actors/daObjFl_UkiKi_c.cpp | _ZN9LavaPlankD0Ev -> _ZN15daObjFl_UkiKi_cD0Ev, class daObjFl_UkiKi_c, header daObjFl_UkiKi_c.h
+REVIEW src/_ZN8SignPostD0Ev.cpp -> src/game/actors/d_a_obj_tatefuda.cpp | 
+D0     src/_ZN8SnowballD0Ev.cpp -> src/game/actors/d_a_snowball.cpp | _ZN8SnowballD0Ev -> _ZN12daSnowball_cD0Ev, class daSnowball_c, header daSnowball_c.h
+D0     src/_ZN8WallSignD0Ev.cpp -> src/game/actors/d_a_obj_kanban.cpp | _ZN8WallSignD0Ev -> _ZN13daObjKanban_cD0Ev, class daObjKanban_c, header daObjKanban_c.h
+REVIEW src/_ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE.cpp -> src/runtime/actor/d_actor.cpp | 
+D0     src/_ZN8dCcPos_cD0Ev.cpp -> src/engine/collision/d_cc_pos.cpp | _ZN8dCcPos_cD0Ev -> _ZN8dCcPos_cD0Ev, class dCcPos_c, header dCcPos_c.h
+D0     src/_ZN8dM3dGSphD0Ev.cpp -> src/engine/collision/d_m3d_g_sph.cpp | _ZN8dM3dGSphD0Ev -> _ZN8dM3dGSphD0Ev, class dM3dGSph, header dM3dGSph.h
+REVIEW src/_ZN8dScene_cD0Ev.cpp -> src/game/stages/d_scene.cpp | 
+REVIEW src/_ZN8daDemo_c10anmModel_cD0Ev.cpp -> src/game/actors/d_a_demo.cpp | 
+REVIEW src/_ZN8daDemo_c13simpleModel_cD0Ev.cpp -> src/game/actors/d_a_demo.cpp | 
+D0     src/_ZN9BootSceneD0Ev.cpp -> src/game/stages/d_s_boot.cpp | _ZN9BootSceneD0Ev -> _ZN9dScBoot_cD0Ev, class dScBoot_c, header dScBoot_c.h
+D0     src/_ZN9ButterflyD0Ev.cpp -> src/game/actors/d_a_btfly.cpp | _ZN9ButterflyD0Ev -> _ZN9daBtfly_cD0Ev, class daBtfly_c, header daBtfly_c.h
+D0     src/_ZN9JetStreamD0Ev.cpp -> src/game/actors/d_a_water_hakidasi.cpp | _ZN9JetStreamD0Ev -> _ZN18daWater_Hakidasi_cD0Ev, class daWater_Hakidasi_c, header daWater_Hakidasi_c.h
+D0     src/_ZN9KoopaFlagD0Ev.cpp -> src/game/actors/d_a_r_flag.cpp | _ZN9KoopaFlagD0Ev -> _ZN9daRFlag_cD0Ev, class daRFlag_c, header daRFlag_c.h
+D0     src/_ZN9LakituBroD0Ev.cpp -> src/game/actors/d_a_c_jugem.cpp | _ZN9LakituBroD0Ev -> _ZN11daC_Jugem_cD0Ev, class daC_Jugem_c, header daC_Jugem_c.h
+D0     src/_ZN9LavaPlankD0Ev.cpp -> src/game/actors/d_a_obj_fl_uki_ki.cpp | _ZN9LavaPlankD0Ev -> _ZN15daObjFl_UkiKi_cD0Ev, class daObjFl_UkiKi_c, header daObjFl_UkiKi_c.h
 REVIEW src/_ZN9LightBeamD1Ev.cpp -> src/game/actors/d_a_obj_c1_hikari.cpp | 
-D0     src/_ZN9MontyMoleD0Ev.cpp -> src/actors/daChoropu_c.cpp | _ZN9MontyMoleD0Ev -> _ZN11daChoropu_cD0Ev, class daChoropu_c, header daChoropu_c.h
-D0     src/_ZN9OneUpLogoD0Ev.cpp -> src/actors/daObj1UpLogo_c.cpp | _ZN9OneUpLogoD0Ev -> _ZN14daObj1UpLogo_cD0Ev, class daObj1UpLogo_c, header daObj1UpLogo_c.h
-D0     src/_ZN9RabbitKeyD0Ev.cpp -> src/actors/daObj_Mip_Key_c.cpp | _ZN9RabbitKeyD0Ev -> _ZN15daObj_Mip_Key_cD0Ev, class daObj_Mip_Key_c, header daObj_Mip_Key_c.h
-D0     src/_ZN9SeesawBobD0Ev.cpp -> src/actors/daObjSeesaw_c.cpp | _ZN9SeesawBobD0Ev -> _ZN13daObjSeesaw_cD0Ev, class daObjSeesaw_c, header daObjSeesaw_c.h
-D0     src/_ZN9SpikeBombD0Ev.cpp -> src/actors/daKirai_c.cpp | _ZN9SpikeBombD0Ev -> _ZN9daKirai_cD0Ev, class daKirai_c, header daKirai_c.h
-D0     src/_ZN9SpindriftD0Ev.cpp -> src/actors/daHuwa_c.cpp | _ZN9SpindriftD0Ev -> _ZN8daHuwa_cD0Ev, class daHuwa_c, header daHuwa_c.h
-D0     src/_ZN9SubmarineD0Ev.cpp -> src/actors/daObjWlSubmarine_c.cpp | _ZN9SubmarineD0Ev -> _ZN18daObjWlSubmarine_cD0Ev, class daObjWlSubmarine_c, header daObjWlSubmarine_c.h
-D0     src/_ZN9TinyCoverD0Ev.cpp -> src/actors/daObjTtFuta_c.cpp | _ZN9TinyCoverD0Ev -> _ZN13daObjTtFuta_cD0Ev, class daObjTtFuta_c, header daObjTtFuta_c.h
-D0     src/_ZN9TinyWaterD0Ev.cpp -> src/actors/daObjTtWater_c.cpp | _ZN9TinyWaterD0Ev -> _ZN14daObjTtWater_cD0Ev, class daObjTtWater_c, header daObjTtWater_c.h
-D0     src/_ZN9TowerStepD0Ev.cpp -> src/actors/daObjBk_Lift_c.cpp | _ZN9TowerStepD0Ev -> _ZN14daObjBk_Lift_cD0Ev, class daObjBk_Lift_c, header daObjBk_Lift_c.h
-D0     src/_ZN9WaterBombD0Ev.cpp -> src/actors/daWbm_c.cpp | _ZN9WaterBombD0Ev -> _ZN7daWbm_cD0Ev, class daWbm_c, header daWbm_c.h
-D0     src/_ZN9WaterRingD0Ev.cpp -> src/actors/daWater_Ring_c.cpp | _ZN9WaterRingD0Ev -> _ZN14daWater_Ring_cD0Ev, class daWater_Ring_c, header daWater_Ring_c.h
-D0     src/_ZN9WhirlpoolD0Ev.cpp -> src/actors/daWater_Tatumaki_c.cpp | _ZN9WhirlpoolD0Ev -> _ZN18daWater_Tatumaki_cD0Ev, class daWater_Tatumaki_c, header daWater_Tatumaki_c.h
-D0     src/_ZN9dBgCh_GndD0Ev.cpp -> src/engine/collision/dBgCh_Gnd.cpp | _ZN9dBgCh_GndD0Ev -> _ZN9dBgCh_GndD0Ev, class dBgCh_Gnd, header dBgCh_Gnd.h
-D0     src/_ZN9dBgCh_LinD0Ev.cpp -> src/engine/collision/dBgCh_Lin.cpp | _ZN9dBgCh_LinD0Ev -> _ZN9dBgCh_LinD0Ev, class dBgCh_Lin, header dBgCh_Lin.h
-REVIEW src/_ZN9dScDSMT_c8BehaviorEv.cpp -> src/actors/dScDSMT_c.cpp | 
-D0     src/_ZN9dScDSMT_cD0Ev.cpp -> src/actors/dScDSMT_c.cpp | _ZN9dScDSMT_cD0Ev -> _ZN9dScDSMT_cD0Ev, class dScDSMT_c, header dScDSMT_c.h
-REVIEW src/_ZThn16_N12dBgCh_SphCrrD0Ev.cpp -> src/engine/collision/dBgCh_SphCrr.cpp | 
-REVIEW src/_ZThn16_N12dBgCh_SphCrrD1Ev.cpp -> src/engine/collision/dBgCh_SphCrr.cpp | 
-REVIEW src/_ZThn16_N9dBgCh_GndD0Ev.cpp -> src/engine/collision/dBgCh_Gnd.cpp | 
-REVIEW src/_ZThn16_N9dBgCh_GndD1Ev.cpp -> src/engine/collision/dBgCh_Gnd.cpp | 
-REVIEW src/_ZThn16_N9dBgCh_LinD0Ev.cpp -> src/engine/collision/dBgCh_Lin.cpp | 
-REVIEW src/_ZThn16_N9dBgCh_LinD1Ev.cpp -> src/engine/collision/dBgCh_Lin.cpp | 
-REVIEW src/_ZThn56_N12dBgCh_SphCrrD0Ev.cpp -> src/engine/collision/dBgCh_SphCrr.cpp | 
-REVIEW src/_ZThn56_N12dBgCh_SphCrrD1Ev.cpp -> src/engine/collision/dBgCh_SphCrr.cpp | 
+D0     src/_ZN9MontyMoleD0Ev.cpp -> src/game/actors/d_a_choropu.cpp | _ZN9MontyMoleD0Ev -> _ZN11daChoropu_cD0Ev, class daChoropu_c, header daChoropu_c.h
+D0     src/_ZN9OneUpLogoD0Ev.cpp -> src/game/actors/d_a_obj1up_logo.cpp | _ZN9OneUpLogoD0Ev -> _ZN14daObj1UpLogo_cD0Ev, class daObj1UpLogo_c, header daObj1UpLogo_c.h
+D0     src/_ZN9RabbitKeyD0Ev.cpp -> src/game/actors/d_a_obj_mip_key.cpp | _ZN9RabbitKeyD0Ev -> _ZN15daObj_Mip_Key_cD0Ev, class daObj_Mip_Key_c, header daObj_Mip_Key_c.h
+D0     src/_ZN9SeesawBobD0Ev.cpp -> src/game/actors/d_a_obj_seesaw.cpp | _ZN9SeesawBobD0Ev -> _ZN13daObjSeesaw_cD0Ev, class daObjSeesaw_c, header daObjSeesaw_c.h
+D0     src/_ZN9SpikeBombD0Ev.cpp -> src/game/actors/d_a_kirai.cpp | _ZN9SpikeBombD0Ev -> _ZN9daKirai_cD0Ev, class daKirai_c, header daKirai_c.h
+D0     src/_ZN9SpindriftD0Ev.cpp -> src/game/actors/d_a_huwa.cpp | _ZN9SpindriftD0Ev -> _ZN8daHuwa_cD0Ev, class daHuwa_c, header daHuwa_c.h
+D0     src/_ZN9SubmarineD0Ev.cpp -> src/game/actors/d_a_obj_wl_submarine.cpp | _ZN9SubmarineD0Ev -> _ZN18daObjWlSubmarine_cD0Ev, class daObjWlSubmarine_c, header daObjWlSubmarine_c.h
+D0     src/_ZN9TinyCoverD0Ev.cpp -> src/game/actors/d_a_obj_tt_futa.cpp | _ZN9TinyCoverD0Ev -> _ZN13daObjTtFuta_cD0Ev, class daObjTtFuta_c, header daObjTtFuta_c.h
+D0     src/_ZN9TinyWaterD0Ev.cpp -> src/game/actors/d_a_obj_tt_water.cpp | _ZN9TinyWaterD0Ev -> _ZN14daObjTtWater_cD0Ev, class daObjTtWater_c, header daObjTtWater_c.h
+D0     src/_ZN9TowerStepD0Ev.cpp -> src/game/actors/d_a_obj_bk_lift.cpp | _ZN9TowerStepD0Ev -> _ZN14daObjBk_Lift_cD0Ev, class daObjBk_Lift_c, header daObjBk_Lift_c.h
+D0     src/_ZN9WaterBombD0Ev.cpp -> src/game/actors/d_a_wbm.cpp | _ZN9WaterBombD0Ev -> _ZN7daWbm_cD0Ev, class daWbm_c, header daWbm_c.h
+D0     src/_ZN9WaterRingD0Ev.cpp -> src/game/actors/d_a_water_ring.cpp | _ZN9WaterRingD0Ev -> _ZN14daWater_Ring_cD0Ev, class daWater_Ring_c, header daWater_Ring_c.h
+D0     src/_ZN9WhirlpoolD0Ev.cpp -> src/game/actors/d_a_water_tatumaki.cpp | _ZN9WhirlpoolD0Ev -> _ZN18daWater_Tatumaki_cD0Ev, class daWater_Tatumaki_c, header daWater_Tatumaki_c.h
+D0     src/_ZN9dBgCh_GndD0Ev.cpp -> src/engine/collision/d_bg_ch_gnd.cpp | _ZN9dBgCh_GndD0Ev -> _ZN9dBgCh_GndD0Ev, class dBgCh_Gnd, header dBgCh_Gnd.h
+D0     src/_ZN9dBgCh_LinD0Ev.cpp -> src/engine/collision/d_bg_ch_lin.cpp | _ZN9dBgCh_LinD0Ev -> _ZN9dBgCh_LinD0Ev, class dBgCh_Lin, header dBgCh_Lin.h
+REVIEW src/_ZN9dScDSMT_c8BehaviorEv.cpp -> src/game/stages/d_s_dsmt.cpp | 
+D0     src/_ZN9dScDSMT_cD0Ev.cpp -> src/game/stages/d_s_dsmt.cpp | _ZN9dScDSMT_cD0Ev -> _ZN9dScDSMT_cD0Ev, class dScDSMT_c, header dScDSMT_c.h
+REVIEW src/_ZThn16_N12dBgCh_SphCrrD0Ev.cpp -> src/engine/collision/d_bg_ch_sph_crr.cpp | 
+REVIEW src/_ZThn16_N12dBgCh_SphCrrD1Ev.cpp -> src/engine/collision/d_bg_ch_sph_crr.cpp | 
+REVIEW src/_ZThn16_N9dBgCh_GndD0Ev.cpp -> src/engine/collision/d_bg_ch_gnd.cpp | 
+REVIEW src/_ZThn16_N9dBgCh_GndD1Ev.cpp -> src/engine/collision/d_bg_ch_gnd.cpp | 
+REVIEW src/_ZThn16_N9dBgCh_LinD0Ev.cpp -> src/engine/collision/d_bg_ch_lin.cpp | 
+REVIEW src/_ZThn16_N9dBgCh_LinD1Ev.cpp -> src/engine/collision/d_bg_ch_lin.cpp | 
+REVIEW src/_ZThn56_N12dBgCh_SphCrrD0Ev.cpp -> src/engine/collision/d_bg_ch_sph_crr.cpp | 
+REVIEW src/_ZThn56_N12dBgCh_SphCrrD1Ev.cpp -> src/engine/collision/d_bg_ch_sph_crr.cpp | 
 REVIEW src/_ZThn80_N8daDemo_c10anmModel_cD1Ev.cpp -> src/_ZThn80_N8daDemo_c10anmModel_cD1Ev.cpp | 
-REVIEW src/actors/Player.cpp -> src/actors/Player.cpp | 
-REVIEW src/actors/dScMgRoulette_c.cpp -> src/actors/dScMgRoulette_c.cpp | 
-REVIEW src/actors/daMky_c.cpp -> src/actors/daMky_c.cpp | 
-REVIEW src/engine/fader/StartEntranceFaderWipe.cpp -> src/engine/fader/StartEntranceFaderWipe.cpp | 
-D0     src/engine/fader/_ZN10FaderColorD0Ev.cpp -> src/engine/fader/dFader_c.cpp | _ZN10FaderColorD0Ev -> _ZN10dFdColor_cD0Ev, class dFdColor_c, header dFdColor_c.h
-D0     src/engine/fader/_ZN15FaderBrightnessD0Ev.cpp -> src/engine/fader/dFader_c.cpp | _ZN15FaderBrightnessD0Ev -> _ZN15dFdBrightness_cD0Ev, class dFdBrightness_c, header dFdBrightness_c.h
-D0     src/engine/fader/_ZN5FaderD0Ev.cpp -> src/engine/fader/dFader_c.cpp | _ZN5FaderD0Ev -> _ZN8dFader_cD0Ev, class dFader_c, header dFader_c.h
-D0     src/engine/fader/_ZN9FaderWipeD0Ev.cpp -> src/engine/fader/dFader_c.cpp | _ZN9FaderWipeD0Ev -> _ZN9dFdWipe_cD0Ev, class dFdWipe_c, header dFdWipe_c.h
-REVIEW src/func_ov002_020bd20c.c -> src/actors/Player.cpp | 
-REVIEW src/func_ov006_020ce988.cpp -> src/actors/unit020cd744.cpp | 
-REVIEW src/func_ov006_021004c0.c -> src/actors/dScMgPachinko2_c.cpp | 
-D0     src/game/actors/WingFeather/_ZN11WingFeatherD0Ev.cpp -> src/game/actors/daFeather_c/daFeather_c.cpp | _ZN11WingFeatherD0Ev -> _ZN11daFeather_cD0Ev, class daFeather_c, header daFeather_c.h
+REVIEW src/game/player/Player.cpp -> src/game/player/Player.cpp | 
+REVIEW src/minigames/d_s_mg_roulette_methods.cpp -> src/minigames/d_s_mg_roulette_methods.cpp | 
+REVIEW src/game/actors/d_a_mky.cpp -> src/game/actors/d_a_mky.cpp | 
+REVIEW src/runtime/graphics/fader/StartEntranceFaderWipe.cpp -> src/runtime/graphics/fader/StartEntranceFaderWipe.cpp | 
+D0     src/engine/fader/_ZN10FaderColorD0Ev.cpp -> src/runtime/graphics/fader/d_fader.cpp | _ZN10FaderColorD0Ev -> _ZN10dFdColor_cD0Ev, class dFdColor_c, header dFdColor_c.h
+D0     src/engine/fader/_ZN15FaderBrightnessD0Ev.cpp -> src/runtime/graphics/fader/d_fader.cpp | _ZN15FaderBrightnessD0Ev -> _ZN15dFdBrightness_cD0Ev, class dFdBrightness_c, header dFdBrightness_c.h
+D0     src/engine/fader/_ZN5FaderD0Ev.cpp -> src/runtime/graphics/fader/d_fader.cpp | _ZN5FaderD0Ev -> _ZN8dFader_cD0Ev, class dFader_c, header dFader_c.h
+D0     src/engine/fader/_ZN9FaderWipeD0Ev.cpp -> src/runtime/graphics/fader/d_fader.cpp | _ZN9FaderWipeD0Ev -> _ZN9dFdWipe_cD0Ev, class dFdWipe_c, header dFdWipe_c.h
+REVIEW src/func_ov002_020bd20c.c -> src/game/player/Player.cpp | 
+REVIEW src/TrmpItem_UpdateMatrix.cpp -> src/minigames/unit020cd744.cpp | 
+REVIEW src/func_ov006_021004c0.c -> src/minigames/d_s_mg_pachinko2.cpp | 
+D0     src/game/actors/WingFeather/_ZN11WingFeatherD0Ev.cpp -> src/game/actors/d_a_feather.cpp | _ZN11WingFeatherD0Ev -> _ZN11daFeather_cD0Ev, class daFeather_c, header daFeather_c.h
 D0     src/game/actors/daObjTh_Fall_Block_c/_ZN12FallBlockBbhD0Ev.cpp -> src/game/actors/d_a_obj_th_fall_block.cpp | _ZN12FallBlockBbhD0Ev -> _ZN20daObjTh_Fall_Block_cD0Ev, class daObjTh_Fall_Block_c, header daObjTh_Fall_Block_c.h
-D0     src/game/actors/daPiano_c/_ZN8MadPianoD0Ev.cpp -> src/game/actors/daPiano_c/d_a_piano.cpp | _ZN8MadPianoD0Ev -> _ZN9daPiano_cD0Ev, class daPiano_c, header daPiano_c.h
-D0     src/game/actors/daTBasket_c/_ZN11daTBasket_cD0Ev.cpp -> src/actors/daTrs_c.cpp | _ZN11daTBasket_cD0Ev -> _ZN11daTBasket_cD0Ev, class daTBasket_c, header daTBasket_c.h
-REVIEW src/game/actors/daTrsIcon_c/_ZN11daTrsIcon_cD1Ev.cpp -> src/actors/daTrs_c.cpp | 
-REVIEW src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_cD1Ev.cpp -> src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp | 
-D0     src/game/actors/daTrs_c/_ZN7daTrs_cD0Ev.cpp -> src/actors/daTrs_c.cpp | _ZN7daTrs_cD0Ev -> _ZN7daTrs_cD0Ev, class daTrs_c, header daTrs_c.h
+D0     src/game/actors/daPiano_c/_ZN8MadPianoD0Ev.cpp -> src/game/actors/d_a_piano.cpp | _ZN8MadPianoD0Ev -> _ZN9daPiano_cD0Ev, class daPiano_c, header daPiano_c.h
+D0     src/game/actors/daTBasket_c/_ZN11daTBasket_cD0Ev.cpp -> src/game/actors/d_a_trs.cpp | _ZN11daTBasket_cD0Ev -> _ZN11daTBasket_cD0Ev, class daTBasket_c, header daTBasket_c.h
+REVIEW src/game/actors/daTrsIcon_c/_ZN11daTrsIcon_cD1Ev.cpp -> src/game/actors/d_a_trs.cpp | 
+REVIEW src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_cD1Ev.cpp -> src/game/actors/d_a_trs_trap.cpp | 
+D0     src/game/actors/daTrs_c/_ZN7daTrs_cD0Ev.cpp -> src/game/actors/d_a_trs.cpp | _ZN7daTrs_cD0Ev -> _ZN7daTrs_cD0Ev, class daTrs_c, header daTrs_c.h
 REVIEW src/minigames/d_s_mg_jump2.cpp -> src/minigames/d_s_mg_jump2.cpp | 
 
 # Hand-added (PORTSYNC2 fix C): arms main kept in src/ but that no longer compile

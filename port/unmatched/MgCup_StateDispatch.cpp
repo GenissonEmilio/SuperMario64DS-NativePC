@@ -57,7 +57,7 @@
 // a bare `bx lr`.
 //
 // THE STATE INDEX IS AT +0x5418 and it is cross-confirmed: vtable slot 18,
-// src/actors/dScMgCup_c.cpp, is the state reset and zeroes the same offset.
+// src/minigames/d_s_mg_cup.cpp, is the state reset and zeroes the same offset.
 // hal/scene_mg_cup.cpp's census prints it at exit.
 //
 // EVERY ADJUSTMENT WORD IS ZERO. All eight pairs were read out of the overlay
@@ -83,12 +83,12 @@
 // that decides what a null code word means, what a nonzero adjustment means
 // and how an UNHANDLED address is reported. Only one link is added in front.
 //
-// IT DEFINES _ZN10dScMgCup_c8BehaviorEv, so src/actors/dScMgCup_c.cpp is OUT of
+// IT DEFINES _ZN10dScMgCup_c8BehaviorEv, so src/minigames/d_s_mg_cup.cpp is OUT of
 // port/slice_cup.txt. That is one linked function traded for a working
 // dispatch, the trade MG2 made five times for curling.
 //
 // THIS FILE IS NOT THE WHOLE OF THIS CLASS'S WALL. There is a SECOND
-// dispatcher, func_ov006_020c2b8c, reached from the tail of the Behavior
+// dispatcher, Presenter_Update, reached from the tail of the Behavior
 // below; unmatched/MgShared4f38_SubDispatch.cpp carries it and its derivation.
 // port/mg_fanout_costs.txt section 12 says 0x020e0204 is "the class ONLY
 // pointer-to-member dispatch site" and that is wrong -- see that file.
@@ -125,11 +125,11 @@ extern MgPmf data_ov006_02141870[];
 
 /* the ordinary callees the host copy below keeps, each spelled as its own src
    TU spells it */
-void func_ov006_020dedfc(char *r7, int r6, int r5, int r4);
-void func_ov006_020debfc(char *c);
-void func_ov006_020c2b8c(char *c);      /* host copy, MgShared4f38_SubDispatch.cpp */
+void Cup_PlayAnimSound(char *r7, int r6, int r5, int r4);
+void CupFx_UpdateAll(char *c);
+void Presenter_Update(char *c);      /* host copy, MgShared4f38_SubDispatch.cpp */
 
-/* src/actors/dScMgCup_c.cpp's own animation-frame table: an array of
+/* src/minigames/d_s_mg_cup.cpp's own animation-frame table: an array of
    POINTERS to {advance, hold} pairs. All seven words carry a relocation in
    config/arm9/overlays/ov006/relocs.txt (0x0213c0d8..0x0213c0f0 -> 0x02139db4
    .. 0x0213a274), so the mount rebases every one of them and the double
@@ -139,7 +139,7 @@ extern MgCupFrame *data_ov006_0213c0d8[];
 
 /* this file's own definition, and the two witnesses hal/scene_mg_cup.cpp
    prints. _ZN10dScMgCup_c8BehaviorEv is DEFINED at the foot of this file with the
-   signature src/actors/dScMgCup_c.cpp defines, `int (char *)`. */
+   signature src/minigames/d_s_mg_cup.cpp defines, `int (char *)`. */
 int      _ZN10dScMgCup_c8BehaviorEv(char *o);
 void     port_mg_cup_call0(void *self, unsigned code, int adj);
 unsigned port_mg_cup_state_hits(void);
@@ -208,7 +208,7 @@ extern "C" void port_mg_cup_state_slots(unsigned *out8)
 // Run link100 lane PMFB5. data_ov006_02141870's eight cells hold HOST addresses
 // after boot, written by port_mg_cup_states_seat below once every cell has been
 // compared against the ROM's own code word and a zero adjustment word, so
-// src/actors/dScMgCup_c.cpp (dScMgCup_c's vtable slot 6 Behavior) compiles
+// src/minigames/d_s_mg_cup.cpp (dScMgCup_c's vtable slot 6 Behavior) compiles
 // from src and this file no longer defines it.
 //
 //   _ZN10dScMgCup_c8BehaviorEv   data_ov006_02141870   8 slots   arity 0

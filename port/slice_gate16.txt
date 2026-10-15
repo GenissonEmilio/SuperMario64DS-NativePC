@@ -13,7 +13,7 @@
 
 # ---- the frame ------------------------------------------------------------
 # The scene-tree housekeeping pass (phase 1) and the tree's own iterator.
-src/actors/ActorBase.cpp
+src/runtime/actor/ActorBase.cpp
 src/unnamed/arm9/0203/func_0203b394.c
 src/unnamed/arm9/0203/func_0203b358.c
 # The cleanup Process's id callback, a hook the port leaves null.
@@ -22,8 +22,8 @@ src/unnamed/arm9/0204/func_0204302c.c
 # ---- the shared vtable slots every actor class dispatches through ---------
 # _ZN8dActor_c22BeforeCleanupResourcesEv is C++ inside a .c (the gate-9 case
 # again); it goes through hostgen, see GATE16_SYMS in CMakeLists.txt
-src/actors/dActor_c.cpp
-# FOLDED into src/actors/dActor_c.cpp (row 25): src/_ZN8dActor_c13OnYoshiTryEatEv.cpp
+src/runtime/actor/d_actor.cpp
+# FOLDED into src/runtime/actor/d_actor.cpp (row 25): src/_ZN8dActor_c13OnYoshiTryEatEv.cpp
 # Slots 13/14 (ActorBase::Virtual34/Virtual38) are NOT here. Both are the
 # actor's own solid-heap creation and pull the whole Heap:: allocator face in
 # behind them; nothing in the castle grounds' object set has a dedicated heap,
@@ -41,13 +41,13 @@ src/game/actors/d_a_tree.cpp
 # ...and the ring it closes over: the cylinder it threads onto the list, the
 # Model face it loads through, the Clipper call its Render fades by, and the
 # two destructors + the MSL array-destroy helper its own dtor calls.
-src/engine/collision/dCcPos_c.cpp
-# FOLDED into src/engine/collision/dCcPos_c.cpp (row 44): src/_ZN8dCcPos_cD1Ev.cpp
+src/engine/collision/d_cc_pos.cpp
+# FOLDED into src/engine/collision/d_cc_pos.cpp (row 44): src/_ZN8dCcPos_cD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN8dCcPos_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN8dCcPos_cD0Ev.cpp
-# FOLDED into src/engine/collision/dCcPos_c.cpp (row 44): src/_ZN8dCcPos_c4InitERK7Vector35Fix12IiES4_jj.cpp
-# FOLDED into src/engine/collision/dCcPos_c.cpp (row 44): src/_ZN8dCcPos_c6GetPosEv.cpp
-# FOLDED into src/engine/collision/dCcPos_c.cpp (row 44): src/_ZN8dCcPos_c10GetOwnerIDEv.cpp
+# FOLDED into src/engine/collision/d_cc_pos.cpp (row 44): src/_ZN8dCcPos_c4InitERK7Vector35Fix12IiES4_jj.cpp
+# FOLDED into src/engine/collision/d_cc_pos.cpp (row 44): src/_ZN8dCcPos_c6GetPosEv.cpp
+# FOLDED into src/engine/collision/d_cc_pos.cpp (row 44): src/_ZN8dCcPos_c10GetOwnerIDEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN5dCc_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN5dCc_cD2Ev.cpp
 src/_ZN5Model14LoadAndSetFileEtii.cpp
@@ -63,11 +63,11 @@ src/_ZN5Model14LoadAndSetFileEtii.cpp
 src/unnamed/arm9/0201/func_02017060.c
 src/unnamed/arm9/0204/func_020469e0.c
 src/engine/heap/Heap.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN4Heap10ReallocateEPvj.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap6Heap_t10ReallocateEPvj.cpp
 src/_ZN9ModelBase12ApplyOpacityEjj.cpp
 src/engine/model/Model4.cpp
 # FOLDED into src/engine/model/Model4.cpp (row 68): src/func_02046208.c
-src/engine/collision/dClipper.cpp
+src/engine/collision/d_clipper.cpp
 src/engine/model/Model.cpp
 # RETIRED at SLICE1: body now in src/_ZN8dActor_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN8dActor_cD2Ev.cpp
@@ -101,12 +101,12 @@ src/engine/save/SaveData.cpp
 # It is the first registry row with a MovingMeshCollider: a KCL of its own,
 # transformed by the actor's matrix, that the Player's own ground and wall
 # probes walk alongside the level's.
-src/actors/daObjBlockL_c.cpp
-# FOLDED into src/actors/daObjBlockL_c.cpp (row 104): src/_ZN13BigBrickBlock13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjBlockL_c.cpp (row 104): src/_ZN13BigBrickBlock8BehaviorEv.cpp
-# FOLDED into src/actors/daObjBlockL_c.cpp (row 104): src/_ZN13BigBrickBlock6RenderEv.cpp
-# FOLDED into src/actors/daObjBlockL_c.cpp (row 104): src/_ZN13BigBrickBlock16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjBlockL_c.cpp (row 104): src/_ZN13BigBrickBlockD1Ev.cpp
+src/game/actors/d_a_obj_block_l.cpp
+# FOLDED into src/game/actors/d_a_obj_block_l.cpp (row 104): src/_ZN13BigBrickBlock13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_block_l.cpp (row 104): src/_ZN13BigBrickBlock8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_block_l.cpp (row 104): src/_ZN13BigBrickBlock6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_block_l.cpp (row 104): src/_ZN13BigBrickBlock16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_block_l.cpp (row 104): src/_ZN13BigBrickBlockD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN13BigBrickBlockD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN13BigBrickBlockD0Ev.cpp
 # The combat tail the ov002 relocations put on this table: slot 21
@@ -120,26 +120,26 @@ src/actors/daObjBlockL_c.cpp
 # port/slice_w31_rs5a.txt (run linkfull, lane RS5A), which carries the MSVC
 # options it needs. Slot 22 OnAttacked1 (0x020b37ec) is seated from
 # port/slice_boobrick1.txt; see hal/actor_classes.cpp.
-# FOLDED into src/actors/daObjBlockL_c.cpp (row 104): src/_ZN13BigBrickBlock15OnGroundPoundedER8dActor_c.cpp
-# FOLDED into src/actors/daObjBlockL_c.cpp (row 104): src/_ZN13BigBrickBlock8OnKickedER8dActor_c.cpp
-# FOLDED into src/actors/daObjBlockL_c.cpp (row 104): src/_ZN13BigBrickBlock4KillEv.cpp
+# FOLDED into src/game/actors/d_a_obj_block_l.cpp (row 104): src/_ZN13BigBrickBlock15OnGroundPoundedER8dActor_c.cpp
+# FOLDED into src/game/actors/d_a_obj_block_l.cpp (row 104): src/_ZN13BigBrickBlock8OnKickedER8dActor_c.cpp
+# FOLDED into src/game/actors/d_a_obj_block_l.cpp (row 104): src/_ZN13BigBrickBlock4KillEv.cpp
 # Kill delegates to this one leaf (no further calls of its own).
-# FOLDED into src/actors/daObjBlockL_c.cpp (row 104): src/_ZN13BigBrickBlock17NotifyLinkedActorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_block_l.cpp (row 104): src/_ZN13BigBrickBlock17NotifyLinkedActorEv.cpp
 # ...and the ring it closes over: the MovingMeshCollider face, the Platform
 # helpers its lifecycle drives, and the event/star bits it reads.
-src/engine/collision/dBgW_KcMbg.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbg.cpp (row 130): src/_ZN10dBgW_KcMbg10DetectClsnER12dBgCh_SphCrr.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbg.cpp (row 130): src/_ZN10dBgW_KcMbg10DetectClsnER9dBgCh_Lin.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbg.cpp (row 130): src/_ZN10dBgW_KcMbg10DetectClsnER9dBgCh_Gnd.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbg.cpp (row 130): src/_ZN10dBgW_KcMbg11GetVelocityER7Vector3.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbg.cpp (row 130): src/_ZN10dBgW_KcMbg12TransformPosERK7Vector3RS0_.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbg.cpp (row 130): src/_ZN10dBgW_KcMbg14GetAngularVelYEv.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbg.cpp (row 130): src/_ZN10dBgW_KcMbg17GetTriangleOriginEsR7Vector3.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbg.cpp (row 130): src/_ZN10dBgW_KcMbg9GetNormalEsR7Vector3.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbg.cpp (row 130): src/_ZN10dBgW_KcMbg9Virtual08Ev.cpp
+src/engine/collision/d_bg_w_kc_mbg.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg.cpp (row 130): src/_ZN10dBgW_KcMbg10DetectClsnER12dBgCh_SphCrr.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg.cpp (row 130): src/_ZN10dBgW_KcMbg10DetectClsnER9dBgCh_Lin.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg.cpp (row 130): src/_ZN10dBgW_KcMbg10DetectClsnER9dBgCh_Gnd.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg.cpp (row 130): src/_ZN10dBgW_KcMbg11GetVelocityER7Vector3.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg.cpp (row 130): src/_ZN10dBgW_KcMbg12TransformPosERK7Vector3RS0_.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg.cpp (row 130): src/_ZN10dBgW_KcMbg14GetAngularVelYEv.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg.cpp (row 130): src/_ZN10dBgW_KcMbg17GetTriangleOriginEsR7Vector3.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg.cpp (row 130): src/_ZN10dBgW_KcMbg9GetNormalEsR7Vector3.cpp
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg.cpp (row 130): src/_ZN10dBgW_KcMbg9Virtual08Ev.cpp
 src/Event.cpp
-# FOLDED into src/actors/dActor_c.cpp (row 25): src/_ZN8dActor_c9TrackStarEjj.cpp
-# FOLDED into src/actors/daObjBlockL_c.cpp (row 104): src/_ZN13BigBrickBlock16HasNonzeroAngleXEv.cpp
+# FOLDED into src/runtime/actor/d_actor.cpp (row 25): src/_ZN8dActor_c9TrackStarEjj.cpp
+# FOLDED into src/game/actors/d_a_obj_block_l.cpp (row 104): src/_ZN13BigBrickBlock16HasNonzeroAngleXEv.cpp
 src/IsStarCollectedInCurLevel.c
 
 # ---- SIGN_POST (actor 184, ov002), x5 -------------------------------------
@@ -148,18 +148,18 @@ src/IsStarCollectedInCurLevel.c
 # a WithMeshClsn of its own and a cuboid shadow. InitResources drops a ground
 # ray from 100 units up and snaps the post to what it finds, which is the first
 # time an actor other than the Player raycasts the level.
-src/actors/daObjTatefuda_c.cpp
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/_ZN8SignPost13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/_ZN8SignPost8BehaviorEv.cpp
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/_ZN8SignPost6RenderEv.cpp
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/_ZN8SignPost16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/_ZN8SignPostD1Ev.cpp
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/_ZN8SignPostD0Ev.cpp
+src/game/actors/d_a_obj_tatefuda.cpp
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/_ZN8SignPost13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/_ZN8SignPost8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/_ZN8SignPost6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/_ZN8SignPost16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/_ZN8SignPostD1Ev.cpp
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/_ZN8SignPostD0Ev.cpp
 port/unmatched/hostarm/_ZN8SignPostD0Ev.cpp
 # ...and the ring: the MovingCylinderClsn it threads, the shadow it drops, the
 # Platform helpers, and the four ov002 leaves its Behavior branches into.
-src/engine/collision/dCcAc_c.cpp
-# FOLDED into src/engine/collision/dCcAc_c.cpp (row 160): src/_ZN7dCcAc_cD1Ev.cpp
+src/engine/collision/d_cc_ac.cpp
+# FOLDED into src/engine/collision/d_cc_ac.cpp (row 160): src/_ZN7dCcAc_cD1Ev.cpp
 # ...and the rest of that class's ROM table. _ZTV7dCcAc_c is
 # [D1, D0, GetPos, GetOwnerID] and hal/actor_classes.cpp fills all four, so D0
 # and both virtuals have to be in the build. While they were not, the table's
@@ -167,8 +167,8 @@ src/engine/collision/dCcAc_c.cpp
 # first frame the sign's trigger cylinder shared data_0209cee8 with anything.
 # RETIRED at SLICE1: body now in src/_ZN7dCcAc_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN7dCcAc_cD0Ev.cpp
-# FOLDED into src/engine/collision/dCcAc_c.cpp (row 160): src/_ZN7dCcAc_c6GetPosEv.cpp
-# FOLDED into src/engine/collision/dCcAc_c.cpp (row 160): src/_ZN7dCcAc_c10GetOwnerIDEv.cpp
+# FOLDED into src/engine/collision/d_cc_ac.cpp (row 160): src/_ZN7dCcAc_c6GetPosEv.cpp
+# FOLDED into src/engine/collision/d_cc_ac.cpp (row 160): src/_ZN7dCcAc_c10GetOwnerIDEv.cpp
 # ShadowModel::InitCuboid is NOT here. The shadow system is deferred (see
 # hal/cxxname_bridge.cpp): the cuboid template BMD at data_020ad524 is built
 # at runtime by boot code the port does not host, so the real InitCuboid
@@ -176,11 +176,11 @@ src/engine/collision/dCcAc_c.cpp
 # SignPost::InitResources did. The C-named no-op already in the HAL is what
 # every other caller gets; hal/actor_class_faces.cpp gives the sign the same
 # answer through the METHOD name its own TU spells.
-src/actors/dBgActor_c.cpp
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/func_ov002_020baf80.c
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/func_ov002_020bafc0.c
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/func_ov002_020bae9c.c
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/func_ov002_020bb060.c
+src/runtime/actor/d_bg_actor.cpp
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/func_ov002_020baf80.c
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/func_ov002_020bafc0.c
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/func_ov002_020bae9c.c
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/func_ov002_020bb060.c
 # func_ov002_020bbda4 and func_ov002_020bbd5c are HOST COPIES in
 # port/unmatched/SignPost_StateDispatch.cpp (mwcc PMF pairs).
 
@@ -195,12 +195,12 @@ src/actors/dBgActor_c.cpp
 # indexed by the level's parameter and picking only the one this level uses
 # would be a guess the next level breaks.
 # RE-KEYED at the main->port sync (lane SYNC7, the wave-9 fold merge): main folded
-# this body into src/actors/da1up_c.cpp (ov002 delinks, .text 0x020b0580..0x020b05d0, one
+# this body into src/game/actors/d_a_1up.cpp (ov002 delinks, .text 0x020b0580..0x020b05d0, one
 # absorbed range), which port/slice_gate16.txt:196 and port/slice_pmfb2.txt:193 already compile, so the
 # symbols this row seated now come from there and the per-function file is gone
 # from main's tree.
 #src/d_a_1up_oneupkinoko.c
-src/actors/da1up_c.cpp
+src/game/actors/d_a_1up.cpp
 # the fourteen type behaviours the PMF table names
 # ...and the ring: the Enemy base the factory constructs, the Yoshi-eat check
 # its Behavior opens with, and the per-frame helper it closes with.
@@ -211,33 +211,33 @@ src/actors/da1up_c.cpp
 # Enemy::Enemy is func_ov002_020aed98: Actor::Actor, then the Enemy vtable.
 # da1up_c_classInit_ONEUPKINOKO's call is relocated to 0x020aed98 module:overlay(2),
 # which is what settles it. The name is bridged in hal/cxx_aliases.cpp.
-src/actors/dEnemyBase_c.cpp
+src/runtime/actor/d_enemy_base.cpp
 
 # ---- the ov002 tier's shared closure ---------------------------------------
 # What the three classes above reach into once and share: the moving-mesh
 # collider's own transform-and-walk pair (the first actor colliders on the
 # level's own list), the shadow and cylinder teardowns every Platform runs,
 # and the leaves of the two Behavior chains.
-src/engine/collision/dBgCh_SphCrr.cpp
-src/engine/model/dExtShadowModel_c.cpp
-src/engine/collision/dBgCh_Actr.cpp
-src/engine/collision/dBgW.cpp
+src/engine/collision/d_bg_ch_sph_crr.cpp
+src/engine/model/d_ext_shadow_model.cpp
+src/engine/collision/d_bg_ch_actr.cpp
+src/engine/collision/d_bg_w.cpp
 # BATCH 2 LINKAGE SEAT: the rest of the MeshColliderBase base cluster. Its
 # vtable (_ZTV4dBgW) is seated with these real matched bodies in
 # hal/meshcolliderbase_vtable.cpp; the already-linked base ctor C2 installs the
 # vptr, so naming the bodies there pulls them in. BeforeClsn (slot 9) was
 # already above. Slots 3/4/5 are pure-virtual nulls (no body). Every one of
 # these is a 2004/b56 byte-match, sizes 0x4..0x38, real ARM entries.
-# FOLDED into src/engine/collision/dBgW.cpp (row 223): src/_ZN4dBgWD1Ev.cpp
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 223): src/_ZN4dBgWD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN4dBgWD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN4dBgWD0Ev.cpp
-# FOLDED into src/engine/collision/dBgW.cpp (row 223): src/_ZN4dBgW9Virtual08Ev.cpp
-# FOLDED into src/engine/collision/dBgW.cpp (row 223): src/_ZN4dBgW10DetectClsnER9dBgCh_Gnd.cpp
-# FOLDED into src/engine/collision/dBgW.cpp (row 223): src/_ZN4dBgW10DetectClsnER9dBgCh_Lin.cpp
-# FOLDED into src/engine/collision/dBgW.cpp (row 223): src/_ZN4dBgW10DetectClsnER12dBgCh_SphCrr.cpp
-# FOLDED into src/engine/collision/dBgW.cpp (row 223): src/_ZN4dBgW12TransformPosERK7Vector3RS0_.cpp
-# FOLDED into src/engine/collision/dBgW.cpp (row 223): src/_ZN4dBgW14GetAngularVelYEv.cpp
-# FOLDED into src/engine/collision/dBgW.cpp (row 223): src/_ZN4dBgW11GetVelocityER7Vector3.cpp
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 223): src/_ZN4dBgW9Virtual08Ev.cpp
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 223): src/_ZN4dBgW10DetectClsnER9dBgCh_Gnd.cpp
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 223): src/_ZN4dBgW10DetectClsnER9dBgCh_Lin.cpp
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 223): src/_ZN4dBgW10DetectClsnER12dBgCh_SphCrr.cpp
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 223): src/_ZN4dBgW12TransformPosERK7Vector3RS0_.cpp
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 223): src/_ZN4dBgW14GetAngularVelYEv.cpp
+# FOLDED into src/engine/collision/d_bg_w.cpp (row 223): src/_ZN4dBgW11GetVelocityER7Vector3.cpp
 # _ZN8dActor_c13DistToCPlayerEv: HOST COPY at unmatched/Actor_ClosestPlayerWrappers.cpp
 # (wired in CMakeLists). The matched C calls Actor::ClosestPlayer() with no argument
 # and relies on `this` being live in ARM r0; cdecl drops it, so the host copy passes
@@ -246,72 +246,72 @@ src/engine/collision/dBgW.cpp
 # (wired in CMakeLists). The matched C calls Actor::ClosestPlayer() with no argument
 # and relies on `this` being live in ARM r0; cdecl drops it, so ClosestPlayer measures
 # from garbage+0x5c. That is the RABBIT fault in crash 9e164e92 (read at 0x0000005c).
-# FOLDED into src/actors/dActor_c.cpp (row 25): src/_ZN8dActor_c19DisappearPoofDustAtERK7Vector3.cpp
-# FOLDED into src/actors/dActor_c.cpp (row 25): src/_ZN8dActor_c24KillAndTrackInDeathTableEv.cpp
-src/actors/Player.cpp
+# FOLDED into src/runtime/actor/d_actor.cpp (row 25): src/_ZN8dActor_c19DisappearPoofDustAtERK7Vector3.cpp
+# FOLDED into src/runtime/actor/d_actor.cpp (row 25): src/_ZN8dActor_c24KillAndTrackInDeathTableEv.cpp
+src/game/player/Player.cpp
 port/unmatched/hostarm/Player.cpp
-src/actors/Player.cpp
-# FOLDED into src/actors/Player.cpp (row 250): src/_ZN6Player17LostGrabbedObjectEv.cpp
+src/game/player/Player.cpp
+# FOLDED into src/game/player/Player.cpp (row 250): src/_ZN6Player17LostGrabbedObjectEv.cpp
 src/engine/particle/Particle.cpp
 src/GiveLives.c
 src/Matrix4x3_ApplyInPlaceToRotationZXYExt.c
 src/Vec3_Lsl.c
 src/unnamed/arm9/0203/func_02035394.c
-src/engine/collision/dBgCh_Gnd.cpp
-# FOLDED into src/engine/collision/dBgCh_SphCrr.cpp (row 220): src/func_02037940.c
-# FOLDED into src/engine/collision/dBgCh_SphCrr.cpp (row 220): src/func_02037a04.c
+src/engine/collision/d_bg_ch_gnd.cpp
+# FOLDED into src/engine/collision/d_bg_ch_sph_crr.cpp (row 220): src/func_02037940.c
+# FOLDED into src/engine/collision/d_bg_ch_sph_crr.cpp (row 220): src/func_02037a04.c
 # RETIRED at SLICE1: body now in src/_ZN7dBgW_KcD0Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN7dBgW_KcD2Ev.cpp
-# FOLDED into src/engine/collision/dBgW_KcMbg.cpp (row 130): src/func_02039db8.c
-# FOLDED into src/engine/collision/dBgW_KcMbg.cpp (row 130): src/func_02039e30.c
-# FOLDED into src/engine/collision/dBgW_KcMbg.cpp (row 130): src/func_02039e48.c
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg.cpp (row 130): src/func_02039db8.c
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg.cpp (row 130): src/func_02039e30.c
+# FOLDED into src/engine/collision/d_bg_w_kc_mbg.cpp (row 130): src/func_02039e48.c
 # RETIRED at SLICE1: body now in src/_ZN12dEnemyBase_cD0Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN12dEnemyBase_cD2Ev.cpp
-# FOLDED into src/actors/Player.cpp (row 250): src/func_ov002_020e496c.c
+# FOLDED into src/game/player/Player.cpp (row 250): src/func_ov002_020e496c.c
 # the 1-up's own leaves: the shared per-frame helper, the collect path and the
 # five type bodies' common tail
 # func_ov002_020aefb8 is C++ inside a .c (the gate-9 case): a WithMeshClsn
 # shadow class with const methods. It goes through hostgen, see GATE16_SYMS.
 src/GiveCoins.c
-# FOLDED into src/actors/dActor_c.cpp (row 25): src/_ZN8dActor_c17TrackInDeathTableEv.cpp
-src/engine/collision/dBgCh_SphCrr_query.cpp
+# FOLDED into src/runtime/actor/d_actor.cpp (row 25): src/_ZN8dActor_c17TrackInDeathTableEv.cpp
+src/engine/collision/d_bg_ch_sph_crr_query.cpp
 # RETIRED at SLICE1: body now in src/_ZN4dBgWD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN4dBgWD2Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN8dM3dGSphD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN8dM3dGSphD2Ev.cpp
-# FOLDED into src/engine/collision/dBgCh_Actr.cpp (row 222): src/_ZNK10dBgCh_Actr13JustHitGroundEv.cpp
-# FOLDED into src/actors/dEnemyBase_c.cpp (row 213): src/_ZN12dEnemyBase_c12UpdateWMClsnER10dBgCh_Actrj.cpp
-# FOLDED into src/actors/dActor_c.cpp (row 25): src/_ZN8dActor_c12ReflectAngleE5Fix12IiES1_s.cpp
+# FOLDED into src/engine/collision/d_bg_ch_actr.cpp (row 222): src/_ZNK10dBgCh_Actr13JustHitGroundEv.cpp
+# FOLDED into src/runtime/actor/d_enemy_base.cpp (row 213): src/_ZN12dEnemyBase_c12UpdateWMClsnER10dBgCh_Actrj.cpp
+# FOLDED into src/runtime/actor/d_actor.cpp (row 25): src/_ZN8dActor_c12ReflectAngleE5Fix12IiES1_s.cpp
 src/DeathTable_SetBit.c
-# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 275): src/dBgCh_Actr_UpdateContinuous_Veneer.c
-# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 275): src/dBgCh_Actr_UpdateDiscreteNoLava_veneer.c
-# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 275): src/func_020383f0.c
-# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 275): src/func_02038414.c
-src/actors/daCoin_c.cpp
-# FOLDED into src/engine/collision/dBgCh_Actr.cpp (row 222): src/_ZN10dBgCh_Actr16UpdateContinuousEv.cpp
-# FOLDED into src/engine/collision/dBgCh_Actr.cpp (row 222): src/_ZN10dBgCh_Actr20UpdateDiscreteNoLavaEv.cpp
-# FOLDED into src/engine/collision/dBgCh_Actr.cpp (row 222): src/_ZN10dBgCh_Actr22UpdateContinuousNoLavaEv.cpp
-# FOLDED into src/engine/collision/dBgCh_Actr.cpp (row 222): src/_ZN10dBgCh_Actr22UpdateDiscreteNoLava_2Ev.cpp
+# FOLDED into src/engine/collision/d_bg_ch_sph_crr_query.cpp (row 275): src/dBgCh_Actr_UpdateContinuous_Veneer.c
+# FOLDED into src/engine/collision/d_bg_ch_sph_crr_query.cpp (row 275): src/dBgCh_Actr_UpdateDiscreteNoLava_veneer.c
+# FOLDED into src/engine/collision/d_bg_ch_sph_crr_query.cpp (row 275): src/func_020383f0.c
+# FOLDED into src/engine/collision/d_bg_ch_sph_crr_query.cpp (row 275): src/func_02038414.c
+src/game/actors/d_a_coin.cpp
+# FOLDED into src/engine/collision/d_bg_ch_actr.cpp (row 222): src/_ZN10dBgCh_Actr16UpdateContinuousEv.cpp
+# FOLDED into src/engine/collision/d_bg_ch_actr.cpp (row 222): src/_ZN10dBgCh_Actr20UpdateDiscreteNoLavaEv.cpp
+# FOLDED into src/engine/collision/d_bg_ch_actr.cpp (row 222): src/_ZN10dBgCh_Actr22UpdateContinuousNoLavaEv.cpp
+# FOLDED into src/engine/collision/d_bg_ch_actr.cpp (row 222): src/_ZN10dBgCh_Actr22UpdateDiscreteNoLava_2Ev.cpp
 # FOLDED into src/Event.cpp (row 140): src/_ZN5Event6SetBitEj.cpp
-src/actors/daStar_c.cpp
-# FOLDED into src/engine/collision/dBgCh_Actr.cpp (row 222): src/_ZNK10dBgCh_Actr15ShouldUpdatePosEv.cpp
-# FOLDED into src/engine/collision/dBgCh_Actr.cpp (row 222): src/func_0203553c.c
-# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 275): src/func_02038a38.cpp
+src/game/actors/d_a_star.cpp
+# FOLDED into src/engine/collision/d_bg_ch_actr.cpp (row 222): src/_ZNK10dBgCh_Actr15ShouldUpdatePosEv.cpp
+# FOLDED into src/engine/collision/d_bg_ch_actr.cpp (row 222): src/func_0203553c.c
+# FOLDED into src/engine/collision/d_bg_ch_sph_crr_query.cpp (row 275): src/func_02038a38.cpp
 src/unnamed/arm9/0202/FUN_0202a130.c
 # the sign's five state bodies (its Init/Main PMF pairs) and the three 1-up
 # type behaviours the first pass did not reach
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/func_ov002_020bba24.c
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/func_ov002_020bb9fc.c
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/func_ov002_020bb9f0.c
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/func_ov002_020bbd50.c
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/func_ov002_020bbcb8.cpp
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/func_ov002_020bbc78.c
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/func_ov002_020bbb14.cpp
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/func_ov002_020bbac8.c
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/func_ov002_020bba28.cpp
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/func_ov002_020bb520.c
-# FOLDED into src/actors/daObjTatefuda_c.cpp (row 151): src/func_ov002_020bb42c.c
-# FOLDED into src/engine/collision/dBgCh_Actr.cpp (row 222): src/_ZNK10dBgCh_Actr12TouchesWaterEv.cpp
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/func_ov002_020bba24.c
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/func_ov002_020bb9fc.c
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/func_ov002_020bb9f0.c
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/func_ov002_020bbd50.c
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/func_ov002_020bbcb8.cpp
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/func_ov002_020bbc78.c
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/func_ov002_020bbb14.cpp
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/func_ov002_020bbac8.c
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/func_ov002_020bba28.cpp
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/func_ov002_020bb520.c
+# FOLDED into src/game/actors/d_a_obj_tatefuda.cpp (row 151): src/func_ov002_020bb42c.c
+# FOLDED into src/engine/collision/d_bg_ch_actr.cpp (row 222): src/_ZNK10dBgCh_Actr12TouchesWaterEv.cpp
 # the sign read state (gate 181): the two player talk-approach helpers its
 # host body calls, both matched and tiny (0x18/0x2c)
 # BATCH 3 LINKAGE SEAT: the concrete MeshCollider destructor pair. D0 (deleting,
@@ -322,7 +322,7 @@ src/unnamed/arm9/0202/FUN_0202a130.c
 # never dispatch (they never delete the level collider).
 # RETIRED at SLICE1: body now in src/_ZN7dBgW_KcD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN7dBgW_KcD0Ev.cpp
-src/engine/collision/dBgW_Kc.cpp
+src/engine/collision/d_bg_w_kc.cpp
 # BATCH 3 LINKAGE SEAT 2: MovingMeshCollider's own deleting dtor (D0,
 # 0x0203a444, 2004/b56 byte-match), seated into slot 0 of _ZTV10dBgW_KcMbg
 # by hal/mmc_vtable.cpp, replacing the wrong-class MeshCollider D0 the seed copy
@@ -332,12 +332,12 @@ src/engine/collision/dBgW_Kc.cpp
 # LANE-LK1 LINKAGE SEAT: ExpandingHeap's VMax pair (VMaxAllocationUnitSize
 # 0x0203c5f8, VMaxAllocatableSize 0x0203c5d0) and the allocator's
 # MaxAllocatableSize (0x0204e0f8) they both forward to, all 2004/b56
-# byte-matches. Seated into slots 10/11 of _ZTV13ExpandingHeap at boot by
+# byte-matches. Seated into slots 10/11 of _ZTVN5mHeap9ExpHeap_tE at boot by
 # hal/lk1_eh_vmax_seat.cpp, walk_window family only: MaxAllocatableSize calls
 # cstd::abs (gate 4b), which the minimal root-heap targets do not link, so
 # those keep the traps.
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN13ExpandingHeap22VMaxAllocationUnitSizeEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN13ExpandingHeap19VMaxAllocatableSizeEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap9ExpHeap_t22VMaxAllocationUnitSizeEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap9ExpHeap_t19VMaxAllocatableSizeEv.cpp
 src/engine/heap/ExpandingHeapAllocator.cpp
 # LINKAGE SEAT (lk2): Platform's own destructor pair -- the two bodies the
 # ROM's base table at ov002 0x0210ae38 carries in slots 16/17 (D1 spelled
@@ -404,18 +404,18 @@ src/_ZN6Player13OnYoshiTryEatEv.cpp
 # and VDestroy (0x0203c72c) are flat .c; VDeallocateAll (0x0203c4b0) and
 # VMemoryLeft (0x0203c5ac) are MSVC methods bridged to the flat-C allocator
 # bodies by hal/lk4_eh_dtor_seat.cpp, which seats slots 0/1/2/5/12 of
-# _ZTV13ExpandingHeap at boot (walk_window family only). The audited closure
+# _ZTVN5mHeap9ExpHeap_tE at boot (walk_window family only). The audited closure
 # rides along: Heap::D2 (the D0/D1 callee), HeapAllocator::Destroy/Remove
 # (the VDestroy chain) and the ExpandingHeapAllocator DeallocateAll/
 # InvokeDeallocate pair. Every deeper callee was already linked.
-src/_ZN13ExpandingHeapD1Ev.cpp
-# RETIRED at SLICE1: body now in src/_ZN13ExpandingHeapD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
-#src/_ZN13ExpandingHeapD0Ev.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN13ExpandingHeap8VDestroyEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN13ExpandingHeap14VDeallocateAllEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN13ExpandingHeap11VMemoryLeftEv.cpp
-# RETIRED at SLICE1: body now in src/_ZN4HeapD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
-#src/_ZN4HeapD2Ev.cpp
+src/engine/heap/Heap.cpp
+# RETIRED at SLICE1: body now in src/_ZN5mHeap9ExpHeap_tD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
+#src/_ZN5mHeap9ExpHeap_tD0Ev.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap9ExpHeap_t8VDestroyEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap9ExpHeap_t14VDeallocateAllEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap9ExpHeap_t11VMemoryLeftEv.cpp
+# RETIRED at SLICE1: body now in src/_ZN5mHeap6Heap_tD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
+#src/_ZN5mHeap6Heap_tD2Ev.cpp
 # FOLDED into src/engine/heap/ExpandingHeapAllocator.cpp (row 339): src/_ZN13HeapAllocator7DestroyEv.cpp
 src/engine/heap/NestedHeapIterator.cpp
 # FOLDED into src/engine/heap/ExpandingHeapAllocator.cpp (row 339): src/_ZN22ExpandingHeapAllocator13DeallocateAllEPFvPvPS_jEj.cpp
@@ -424,45 +424,45 @@ src/engine/heap/NestedHeapIterator.cpp
 # above deferred by name (slots 13/14 "pull the whole Heap:: allocator face
 # in"). The closure was audited first: every member is a matched TU or was
 # already linked, no host-ABI floor, no hardware poke, no inferred body.
-# hal/lk4_solidheap_seat.cpp hosts _ZTV9SolidHeap (sixteen slots, the Heap
+# hal/lk4_solidheap_seat.cpp hosts _ZTVN5mHeap11SolidHeap_tE (sixteen slots, the Heap
 # shape) and data_020a0ea8 (Memory::tmpHeapPtr), fills the table with
 # SolidHeap's own matched bodies, and seats ActorBase::Virtual34/Virtual38
 # (the per-instance heap hooks) into slots 13/14 of _ZTV5Actor at boot,
 # after the registry install's STAR_CAMERA fill trapped them. walk_window
 # family only.
-# FOLDED into src/actors/ActorBase.cpp (row 16): src/_ZN7fBase_c9Virtual34Ejj.cpp
-# FOLDED into src/actors/ActorBase.cpp (row 16): src/_ZN7fBase_c9Virtual38Ejj.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN4Heap28InitializeSolidHeapAsDefaultEjPS_i.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN4Heap23SetupSolidHeapAsDefaultEjPS_i.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN4Heap15CreateSolidHeapEjPS_i.cpp
+# FOLDED into src/runtime/actor/ActorBase.cpp (row 16): src/_ZN7fBase_c9Virtual34Ejj.cpp
+# FOLDED into src/runtime/actor/ActorBase.cpp (row 16): src/_ZN7fBase_c9Virtual38Ejj.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap6Heap_t28InitializeSolidHeapAsDefaultEjPS0_i.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap6Heap_t23SetupSolidHeapAsDefaultEjPS0_i.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap6Heap_t15CreateSolidHeapEjPS0_i.cpp
 src/engine/heap/SolidHeapAllocator.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN4Heap10SetDefaultEv.cpp
-# _ZN4Heap11ResizeToFitEv: C++ inside a .c, rides GATE16_SYMS (hostgen).
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN4Heap20RestoreFromTemporaryEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN4Heap8_DestroyEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN4Heap7DestroyEv.cpp
-src/_ZN9SolidHeapC1EPvjP4HeapP18SolidHeapAllocator.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap6Heap_t10SetDefaultEv.cpp
+# _ZN5mHeap6Heap_t11ResizeToFitEv: C++ inside a .c, rides GATE16_SYMS (hostgen).
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap6Heap_t20RestoreFromTemporaryEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap6Heap_t8_DestroyEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap6Heap_t7DestroyEv.cpp
+src/engine/heap/Heap.cpp
 # FOLDED into src/engine/heap/SolidHeapAllocator.cpp (row 436): src/_ZN18SolidHeapAllocatorC1EPvj.cpp
-src/_ZN9SolidHeapD1Ev.cpp
-# RETIRED at SLICE1: body now in src/_ZN9SolidHeapD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
-#src/_ZN9SolidHeapD0Ev.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN9SolidHeap8VDestroyEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN9SolidHeap9VAllocateEji.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN9SolidHeap11VDeallocateEPv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN9SolidHeap14VDeallocateAllEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN9SolidHeap7VIntactEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN9SolidHeap7VRescueEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN9SolidHeap11VReallocateEPvj.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN9SolidHeap7VSizeofEPv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN9SolidHeap22VMaxAllocationUnitSizeEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN9SolidHeap19VMaxAllocatableSizeEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN9SolidHeap11VMemoryLeftEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN9SolidHeap10VSetNodeIDEj.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN9SolidHeap10VGetNodeIDEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN9SolidHeap12VResizeToFitEv.cpp
+src/engine/heap/Heap.cpp
+# RETIRED at SLICE1: body now in src/_ZN5mHeap11SolidHeap_tD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
+#src/_ZN5mHeap11SolidHeap_tD0Ev.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap11SolidHeap_t8VDestroyEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap11SolidHeap_t9VAllocateEji.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap11SolidHeap_t11VDeallocateEPv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap11SolidHeap_t14VDeallocateAllEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap11SolidHeap_t7VIntactEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap11SolidHeap_t7VRescueEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap11SolidHeap_t11VReallocateEPvj.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap11SolidHeap_t7VSizeofEPv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap11SolidHeap_t22VMaxAllocationUnitSizeEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap11SolidHeap_t19VMaxAllocatableSizeEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap11SolidHeap_t11VMemoryLeftEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap11SolidHeap_t10VSetNodeIDEj.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap11SolidHeap_t10VGetNodeIDEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap11SolidHeap_t12VResizeToFitEv.cpp
 # FOLDED into src/engine/heap/SolidHeapAllocator.cpp (row 436): src/func_0204ebb8.c
 # FOLDED into src/engine/heap/SolidHeapAllocator.cpp (row 436): src/_ZN18SolidHeapAllocator10MemoryLeftEi.cpp
 # FOLDED into src/engine/heap/SolidHeapAllocator.cpp (row 436): src/_ZN18SolidHeapAllocator14TryResizeToFitEv.cpp
-# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN4Heap6RescueEv.cpp
+# FOLDED into src/engine/heap/Heap.cpp (row 65): src/_ZN5mHeap6Heap_t6RescueEv.cpp
 # FOLDED into src/engine/heap/SolidHeapAllocator.cpp (row 436): src/_ZN18SolidHeapAllocator8AllocateEji.cpp
 # FOLDED into src/engine/heap/SolidHeapAllocator.cpp (row 436): src/_ZN18SolidHeapAllocator10ReallocateEPvj.cpp

@@ -106,7 +106,7 @@ int _ZTV22ClockPaintingHandShort[31];      /* the shared hand vtable,
    +0xd4, then Actor's own D2; D0 also frees on the game heap) */
 void _ZN5ModelD1Ev(void *self);
 void *_ZN8dActor_cD2Ev(void *self);
-void _ZN6Memory10DeallocateEPvP4Heap(void *, void *);
+void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *, void *);
 extern void *data_020a0eac;   /* the game heap (== the matched D0s' G0) */
 }
 /* RTTI names the recovered source stores through -- point them at the two

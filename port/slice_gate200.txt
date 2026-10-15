@@ -22,31 +22,31 @@
 #     Actor::D2 (+Deallocate), the 212-byte no-member class.
 #
 # PUSH_BLOCK's factory + own slots
-src/actors/daObjPowerUpItem_c.cpp
-# FOLDED into src/actors/daObjPowerUpItem_c.cpp (row 25): src/_ZN11PowerFlower13InitResourcesEv.cpp
-# FOLDED into src/actors/daObjPowerUpItem_c.cpp (row 25): src/_ZN11PowerFlower16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjPowerUpItem_c.cpp (row 25): src/_ZN11PowerFlower8BehaviorEv.cpp
-# FOLDED into src/actors/daObjPowerUpItem_c.cpp (row 25): src/_ZN11PowerFlower13OnYoshiTryEatEv.cpp
+src/game/actors/d_a_obj_power_up_item.cpp
+# FOLDED into src/game/actors/d_a_obj_power_up_item.cpp (row 25): src/_ZN11PowerFlower13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_power_up_item.cpp (row 25): src/_ZN11PowerFlower16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_power_up_item.cpp (row 25): src/_ZN11PowerFlower8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_power_up_item.cpp (row 25): src/_ZN11PowerFlower13OnYoshiTryEatEv.cpp
 # the six state bodies the seated table dispatches
-# FOLDED into src/actors/daObjPowerUpItem_c.cpp (row 25): src/func_ov002_020b96c0.c
-# FOLDED into src/actors/daObjPowerUpItem_c.cpp (row 25): src/func_ov002_020b94c4.c
-# FOLDED into src/actors/daObjPowerUpItem_c.cpp (row 25): src/func_ov002_020b9450.cpp
-# FOLDED into src/actors/daObjPowerUpItem_c.cpp (row 25): src/func_ov002_020b92c4.cpp
-# FOLDED into src/actors/daObjPowerUpItem_c.cpp (row 25): src/func_ov002_020b92b8.c
-# FOLDED into src/actors/daObjPowerUpItem_c.cpp (row 25): src/func_ov002_020b91fc.c
+# FOLDED into src/game/actors/d_a_obj_power_up_item.cpp (row 25): src/func_ov002_020b96c0.c
+# FOLDED into src/game/actors/d_a_obj_power_up_item.cpp (row 25): src/func_ov002_020b94c4.c
+# FOLDED into src/game/actors/d_a_obj_power_up_item.cpp (row 25): src/func_ov002_020b9450.cpp
+# FOLDED into src/game/actors/d_a_obj_power_up_item.cpp (row 25): src/func_ov002_020b92c4.cpp
+# FOLDED into src/game/actors/d_a_obj_power_up_item.cpp (row 25): src/func_ov002_020b92b8.c
+# FOLDED into src/game/actors/d_a_obj_power_up_item.cpp (row 25): src/func_ov002_020b91fc.c
 # MUGEN_BGM's factory + own slots
-src/actors/daMugenBGM_c.cpp
-# FOLDED into src/actors/daMugenBGM_c.cpp (row 38): src/_ZN8MugenBgm13InitResourcesEv.cpp
-# FOLDED into src/actors/daMugenBGM_c.cpp (row 38): src/_ZN8MugenBgm16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daMugenBGM_c.cpp (row 38): src/_ZN8MugenBgm16OnPendingDestroyEv.cpp
-# FOLDED into src/actors/daMugenBGM_c.cpp (row 38): src/_ZN8MugenBgm6RenderEv.cpp
-# FOLDED into src/actors/daMugenBGM_c.cpp (row 38): src/_ZN8MugenBgm8BehaviorEv.cpp
+src/game/actors/d_a_mugen_bgm.cpp
+# FOLDED into src/game/actors/d_a_mugen_bgm.cpp (row 38): src/_ZN8MugenBgm13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_mugen_bgm.cpp (row 38): src/_ZN8MugenBgm16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_mugen_bgm.cpp (row 38): src/_ZN8MugenBgm16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_mugen_bgm.cpp (row 38): src/_ZN8MugenBgm6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_mugen_bgm.cpp (row 38): src/_ZN8MugenBgm8BehaviorEv.cpp
 # closure: the classes' own helper callees + Fog::Init (extern-C .cpp)
-# FOLDED into src/actors/daObjPowerUpItem_c.cpp (row 25): src/func_ov002_020b9a1c.c
-# FOLDED into src/actors/daObjPowerUpItem_c.cpp (row 25): src/func_ov002_020b979c.c
-# FOLDED into src/actors/daObjPowerUpItem_c.cpp (row 25): src/func_ov002_020b993c.c
+# FOLDED into src/game/actors/d_a_obj_power_up_item.cpp (row 25): src/func_ov002_020b9a1c.c
+# FOLDED into src/game/actors/d_a_obj_power_up_item.cpp (row 25): src/func_ov002_020b979c.c
+# FOLDED into src/game/actors/d_a_obj_power_up_item.cpp (row 25): src/func_ov002_020b993c.c
 src/_ZN3Fog4InitEt5Fix12IiES1_.cpp
 # the power-up grant pair the break branch calls (real Player methods, faced
 # in hal/method_faces.cpp)
-src/actors/Player.cpp
-# FOLDED into src/actors/Player.cpp (row 51): src/_ZN6Player13InitFireYoshiEv.cpp
+src/game/player/Player.cpp
+# FOLDED into src/game/player/Player.cpp (row 51): src/_ZN6Player13InitFireYoshiEv.cpp

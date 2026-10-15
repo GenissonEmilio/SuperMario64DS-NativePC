@@ -24,7 +24,7 @@
  * functions with daTrs_c/daTrsIcon_c (Cleanup at 0x0211ae1c sits between a
  * helper and daTrs_c::CleanupResources; Render, Behavior, InitResources and
  * the factory each sit between other classes' members), so every member is
- * defined in src/actors/daTrs_c.cpp, in ROM order. ~daTBasket_c is defined
+ * defined in src/game/actors/d_a_trs.cpp, in ROM order. ~daTBasket_c is defined
  * there once, out of line: D1 0x02115fc4, D0 0x0211600c, homeless D2 licensed.
  *
  * deslop leftovers:

@@ -58,7 +58,7 @@
 #     in the field at c+0x5004"); the table column contradicts it and the ROM
 #     settles it.
 #
-#   func_ov006_02107db8 (dScMgRoulette_c, "table" data_020a0e68).
+#   RouletteBoard_Update (dScMgRoulette_c, "table" data_020a0e68).
 #     NO POOL WORD IN THE BODY MATCHES 020a0e68 AT ALL. The dispatch is
 #     `ldr r1,[r4,#0x20]`... `ldr r1,[r0]` / `ldr r1,[r1,#0xc]` / `blx r1` off
 #     `r0 = r4 + 0x10` -- a VIRTUAL call on slot 3 of a vtable held at
@@ -165,7 +165,7 @@
 # This is the trap lane PMFB3 hit with the tapped-pad witness: a counter left
 # behind a seat reads zero forever and nothing looks wrong.
 #
-# THREE GUESS MARKERS, ALL ALREADY ADJUDICATED. src/actors/dScMgCup_c.cpp,
+# THREE GUESS MARKERS, ALL ALREADY ADJUDICATED. src/minigames/d_s_mg_cup.cpp,
 # src/_ZN12dScMgSlot3_c8BehaviorEv.cpp and src/minigames/d_s_mg_bsc.cpp carry "recovered
 # from vtable slot identity" headers; inferred_stub_guard.py reports them and
 # does not refuse them, and each is ruled REAL_DECOMP against the ROM in
@@ -177,15 +177,15 @@
 # port_mg_panel_call0 still route the other five dScMgPanel_c tables, including
 # hostgen's MG_PMF_CALL swap. c2_call1 still routes dScMgCurling2_c's other six
 # tables for the four dispatchers that stay host copies.
-src/actors/dScMgCup_c.cpp
+src/minigames/d_s_mg_cup.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (unmatched/MgCurling2_StateDispatch.cpp).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
-#src/actors/dScMgCurling2_c.cpp
-src/actors/dScMgPanel_c.cpp
-src/actors/dScMgSlots.cpp
+#src/minigames/d_s_mg_curling2.cpp
+src/minigames/d_s_mg_panel.cpp
+src/minigames/d_s_mg_slots.cpp
 src/minigames/d_s_mg_bsc.cpp
 #
 # ---- BATCH 2: dScMgCurling_c's COHERENT PAIR, THREE TABLES ------------------
@@ -255,8 +255,8 @@ src/minigames/d_s_mg_bsc.cpp
 # through port_mg_curling_state_hits and it was incremented by the two
 # switches; eleven of this class's twenty-five addresses no longer reach a
 # switch, so each face takes the same increment.
-src/actors/dScMgCurling_c.cpp
-# FOLDED into src/actors/dScMgCurling_c.cpp (row 258): src/_ZN14dScMgCurling_c8BehaviorEv.cpp
+src/minigames/d_s_mg_curling.cpp
+# FOLDED into src/minigames/d_s_mg_curling.cpp (row 258): src/_ZN14dScMgCurling_c8BehaviorEv.cpp
 #
 # ---- BATCH 3: FOUR ACTOR-OVERLAY ROWS, TWO OVERLAYS ------------------------
 #
@@ -468,7 +468,7 @@ src/actors/dScMgCurling_c.cpp
 #   _ZN11MirrorLuigi8BehaviorEv reads INDEX STRIDE FOUR on the census's own
 #     width_ev column, a different shape from every other row in this family,
 #     and _ZN10dScEntry_c8BehaviorEv and func_02043fdc show no index stride at all.
-src/actors/daKpa_c.cpp
-src/actors/daKpaFire_c.cpp
-src/actors/daKirai_c.cpp
+src/game/actors/d_a_kpa.cpp
+src/game/actors/d_a_kpa_fire.cpp
+src/game/actors/d_a_kirai.cpp
 src/game/actors/d_a_klr.cpp

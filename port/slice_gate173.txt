@@ -21,9 +21,9 @@
 #
 # Everything else in the closure is base/lifecycle code already linked by an
 # earlier gate (Actor/Platform/Model/MeshCollider/Memory), so it is not listed.
-src/actors/daUdlift_c.cpp
-# FOLDED into src/actors/daUdlift_c.cpp (row 24): src/_ZN13UpDownLiftBbh13InitResourcesEv.cpp
-# FOLDED into src/actors/daUdlift_c.cpp (row 24): src/_ZN13UpDownLiftBbh16CleanupResourcesEv.cpp
+src/game/actors/d_a_udlift.cpp
+# FOLDED into src/game/actors/d_a_udlift.cpp (row 24): src/_ZN13UpDownLiftBbh13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_udlift.cpp (row 24): src/_ZN13UpDownLiftBbh16CleanupResourcesEv.cpp
 # _ZN13UpDownLiftBbh6RenderEv IS NOT HERE: like PowerStar/Whomp/Scuttlebug it
 # dispatches ModelAnim slot 5 through a local six-virtual ROM-order shadow
 # (b->m(0) off the ModelAnim at +0xd4), which lands on the host _ZTV9ModelAnim's
@@ -31,13 +31,13 @@ src/actors/daUdlift_c.cpp
 # method called with one arg, measured as a c0000005 in Model::Virtual10 reached
 # via UpDownLiftBbh::Render -> ModelAnim::Virtual18 -> Virtual10 -> Model::Virtual10
 # on the natural king-defeat path. Host copy in port/unmatched/ModelAnim_Renders.cpp.
-# FOLDED into src/actors/daUdlift_c.cpp (row 24): src/_ZN13UpDownLiftBbhD1Ev.cpp
+# FOLDED into src/game/actors/d_a_udlift.cpp (row 24): src/_ZN13UpDownLiftBbhD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN13UpDownLiftBbhD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN13UpDownLiftBbhD0Ev.cpp
-# FOLDED into src/actors/daUdlift_c.cpp (row 24): src/func_ov095_02136368.c
-# FOLDED into src/actors/daUdlift_c.cpp (row 24): src/func_ov095_02136298.cpp
-# FOLDED into src/actors/daUdlift_c.cpp (row 24): src/func_ov095_02136178.c
-# FOLDED into src/actors/daUdlift_c.cpp (row 24): src/func_ov095_02136090.cpp
-# FOLDED into src/actors/daUdlift_c.cpp (row 24): src/func_ov095_02136104.cpp
-# FOLDED into src/actors/daUdlift_c.cpp (row 24): src/func_ov095_02136788.c
-# FOLDED into src/actors/daUdlift_c.cpp (row 24): src/func_ov095_02136764.cpp
+# FOLDED into src/game/actors/d_a_udlift.cpp (row 24): src/func_ov095_02136368.c
+# FOLDED into src/game/actors/d_a_udlift.cpp (row 24): src/func_ov095_02136298.cpp
+# FOLDED into src/game/actors/d_a_udlift.cpp (row 24): src/func_ov095_02136178.c
+# FOLDED into src/game/actors/d_a_udlift.cpp (row 24): src/func_ov095_02136090.cpp
+# FOLDED into src/game/actors/d_a_udlift.cpp (row 24): src/func_ov095_02136104.cpp
+# FOLDED into src/game/actors/d_a_udlift.cpp (row 24): src/func_ov095_02136788.c
+# FOLDED into src/game/actors/d_a_udlift.cpp (row 24): src/func_ov095_02136764.cpp

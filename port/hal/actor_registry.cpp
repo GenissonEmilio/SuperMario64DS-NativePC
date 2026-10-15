@@ -312,7 +312,7 @@ extern "C" const char *port_actor_class_name(unsigned id);
    (src/func_0201a798.c). The DS overlay load runs each overlay's static-init
    range, so all 35 ov004/ov006 constructors have run before the factory is
    reached. One of them, __sinit_ov004_020b948c, constructs
-   dScMgBase_c::graphCallback_c in data_ov004_020beb74 (its vtable word is
+   dScMgBase_c::graphCallback_c in sMgGraphCallback (its vtable word is
    data_ov004_020bc03c); every minigame's slot 33 then parks that block in
    data_0209d4a8.
 
@@ -1010,7 +1010,7 @@ extern "C" void port_actor_tick(void)
        the actor's whole state machine stands still for the frame.
 
        WHAT USES IT. The message system. The Player talk state's Main
-       (src/actors/Player.cpp:45-52, the state Player::ShowMessage2 puts the
+       (src/game/player/Player.cpp:45-52, the state Player::ShowMessage2 puts the
        player into) sets its OWN mFlags |= 0x800000, CLEARS the talk partner's,
        ORs 0x800000 into data_0209b454, and only then opens the box. So a
        dialogue freezes every actor in the level except the player reading it,

@@ -95,8 +95,8 @@
 # pass.  Section 18 carries what the battery and the two-player rungs said.
 
 src/_ZN10dScStage_c6RenderEv.cpp
-src/engine/collision/dBgW.cpp
+src/engine/collision/d_bg_w.cpp
 src/_ZN10dScStage_c9RenderFogEv.cpp
 src/engine/gx/G3X.cpp
-src/actors/daMugenBGM_c.cpp
-src/actors/dScStage_c.cpp
+src/game/actors/d_a_mugen_bgm.cpp
+src/game/stages/d_s_stage_methods.cpp

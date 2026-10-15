@@ -158,7 +158,7 @@
 # 1 English, 2 French, 3 German, 4 Italian, 5 Spanish -- against the F/G/I/S
 # filename suffixes with no gaps and no leftovers.
 #
-# SLOT 31's OWN TABLE IS THE SAME SHAPE. _ZN12dScMgAmida_c9Virtual7CEv loads
+# SLOT 31's OWN TABLE IS THE SAME SHAPE. _ZN12dScMgAmida_c15InitSubScreenBgEv loads
 # data_ov006_0213b838[GetGameLanguage()] into the sub-engine BG1 char base and
 # then the fixed id 0x5b, which is MG/d_2d_mg_bg_option_nsc.bin -- the shared
 # options banner, not an amida file, which is why it is the same on both modes.
@@ -200,7 +200,7 @@
 #      belonging to something else -- section 11's whole failure mode -- has no
 #      load relocation of its own, because it is not a pointer. This one has
 #      one, and 0x020d1188 is _ZN12dScMgAmida_c5Unk36Ev in symbols.txt, sized 0x18,
-#      immediately after _ZN12dScMgAmida_c9Virtual8CEv.
+#      immediately after _ZN12dScMgAmida_c12IsAltVariantEv.
 #      The word at index 37, 0x0213b9ac, is the next config symbol, reads
 #      0x00000100, and has NO relocation. The table ends exactly where the span
 #      says it does.
@@ -211,7 +211,7 @@
 # are inside this class's own code block:
 #     func_ov006_020d122c 1, _020d1958 1, _020d1a3c 1, _020d27dc 3,
 #     _020d36a4 3, _020d3ba0 6, _020d48dc 2, _020d4b7c 4, _020d5384 4
-# The 26th, 0x020c1f5c in func_ov006_020c1f4c, is a FALSE POSITIVE of the
+# The 26th, 0x020c1f5c in Mascot_UpdateMatrix, is a FALSE POSITIVE of the
 # offset scan and is recorded so nobody re-finds it: that body reads +0x8c,
 # +0x90 and +0x94 as three consecutive OBJECT FIELDS and passes them to a
 # formatter at 0x0203bf44. The Rn filter section 14 prescribes drops pc and sp;
@@ -275,10 +275,10 @@
 #     9   0x020d48dc  0x2a0  _ZN12dScMgAmida_c6RenderEv.cpp          no   Render
 #    16   0x020d1018  0x0a0  _ZN12dScMgAmida_cD1Ev.c            no   D2
 #    17   0x020d10b8  0x0b4  _ZN12dScMgAmida_cD0Ev.cpp          yes  D0
-#    18   0x020d52f0  0x094  _ZN12dScMgAmida_c13OnYoshiTryEatEi.c            yes  state reset
-#    31   0x020d11a0  0x08c  _ZN12dScMgAmida_c9Virtual7CEv.cpp          yes  sub BG1 load
-#    34   0x020d14c0  0x498  _ZN12dScMgAmida_c9Virtual88Eiiii.c            no
-#    35   0x020d1170  0x018  _ZN12dScMgAmida_c9Virtual8CEv.c            no   mode == 1
+#    18   0x020d52f0  0x094  _ZN12dScMgAmida_c10StartRoundEi.c            yes  state reset
+#    31   0x020d11a0  0x08c  _ZN12dScMgAmida_c15InitSubScreenBgEv.cpp          yes  sub BG1 load
+#    34   0x020d14c0  0x498  _ZN12dScMgAmida_c11PaintSquareEiiii.c            no
+#    35   0x020d1170  0x018  _ZN12dScMgAmida_c12IsAltVariantEv.c            no   mode == 1
 #    36   0x020d1188  0x018  _ZN12dScMgAmida_c5Unk36Ev.c            no   mode == 2
 #
 # THE OTHER 26 SLOTS NEED NO ROW HERE and the arithmetic closes: 7 hold arm9
@@ -333,7 +333,7 @@
 # AMENDED, run mg10 lane F371: ONE OF THE TWO IS CLOSED and the third floor
 # this file's header counts (the ov004 one, in section 7 below) is closed too.
 # func_ov006_020d36a4 is src/func_ov006_020d36a4.cpp now, seated at the end of
-# this file, and func_ov004_020ae5c4 is src/func_ov004_020ae5c4.cpp in
+# this file, and Mg_DrawLine is src/Mg_DrawLine.cpp in
 # port/slice_mg1.txt. What follows is left as lane S371 wrote it because the
 # DERIVATION is still how both were found; only the status changed.
 # port/mg_fanout_costs.txt section 21 has the closures and maps the survivor.
@@ -371,26 +371,26 @@
 # there is no duplicate-symbol assertion for this slice to carry.
 
 src/unnamed/ov006/__sinit_ov006_0212fc7c.c
-src/actors/unit020cd744.cpp
-# FOLDED into src/actors/unit020cd744.cpp (row 374): src/func_ov006_020d1008.c
-# FOLDED into src/actors/unit020cd744.cpp (row 374): src/func_ov006_020d100c.c
-src/actors/dScMgAmida_c.cpp
+src/minigames/unit020cd744.cpp
+# FOLDED into src/minigames/unit020cd744.cpp (row 374): src/TrmpLine_Destroy.c
+# FOLDED into src/minigames/unit020cd744.cpp (row 374): src/TrmpLine_Reset.c
+src/minigames/d_s_mg_amida.cpp
 # RETIRED at SLICE1: body now in src/_ZN12dScMgAmida_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN12dScMgAmida_cD0Ev.cpp
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d116c.c
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c9Virtual8CEv.cpp
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c5Unk36Ev.cpp
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c9Virtual7CEv.cpp
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d122c.cpp
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d1450.c
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c9Virtual88Eiiii.cpp
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d1958.cpp
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d1a3c.cpp
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d1ba0.cpp
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d2580.c
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d25fc.c
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d3624.cpp
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d3668.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/AmidaPiece_ElemDtor.c
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/_ZN12dScMgAmida_c12IsAltVariantEv.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/_ZN12dScMgAmida_c5Unk36Ev.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/_ZN12dScMgAmida_c15InitSubScreenBgEv.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/func_ov006_020d122c.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/func_ov006_020d1450.c
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/_ZN12dScMgAmida_c11PaintSquareEiiii.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/func_ov006_020d1958.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/func_ov006_020d1a3c.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/func_ov006_020d1ba0.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/func_ov006_020d2580.c
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/func_ov006_020d25fc.c
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/Amida_RestoreBgChars.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/Amida_SaveBgChars.cpp
 # src/func_ov006_020d3ba0.cpp IS DELIBERATELY ABSENT and host-copied in
 # port/unmatched/MgAmida_Slot3ba0.cpp. Its extern "C" block writes a bare
 # `int data_0209d4b8;`, which mwccarm takes as a tentative definition and MSVC
@@ -398,19 +398,19 @@ src/actors/dScMgAmida_c.cpp
 # arm9 RNG seed. Listing both would be a duplicate symbol and listing neither
 # would drop the body. The copy is mechanical and its header carries the sed
 # line that reproduces it.
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d452c.c
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d47f4.c
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c6RenderEv.cpp
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c8BehaviorEv.cpp
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c13OnYoshiTryEatEi.cpp
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c13InitResourcesEv.cpp
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/_ZN12dScMgAmida_c21AfterCleanupResourcesEj.cpp
-# WAVE 2. The factory registers func_ov006_020d5a50 as an array element
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/func_ov006_020d452c.c
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/func_ov006_020d47f4.c
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/_ZN12dScMgAmida_c6RenderEv.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/_ZN12dScMgAmida_c8BehaviorEv.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/_ZN12dScMgAmida_c10StartRoundEi.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/_ZN12dScMgAmida_c13InitResourcesEv.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/_ZN12dScMgAmida_c21AfterCleanupResourcesEj.cpp
+# WAVE 2. The factory registers AmidaPiece_ElemCtor as an array element
 # destructor (its pool word at 0x020d5a4c), and 0x020d5a50 is the first
 # function AFTER this class's code block rather than inside it, so the block
 # walk did not reach it. It is a two-line empty body.
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d5a50.c
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/d_s_mg_amida.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/AmidaPiece_ElemCtor.c
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/d_s_mg_amida.cpp
 # WAVE 3, run mg10 lane F371. THE FIRST OF THIS CLASS'S TWO ov006 FLOORS IS
 # CLOSED. func_ov006_020d36a4 is the ROUND SETUP: it shuffles the four ladder
 # lanes with the game's 15-bit range draw, refuses a board that repeats the
@@ -430,7 +430,7 @@ src/actors/dScMgAmida_c.cpp
 # It is a .c compiled as C++ (the slot-36 dispatch is spelled through a dummy
 # 37-virtual struct, the same device src/func_ov006_020d3ba0.cpp uses in this
 # class), so it carries a LANGUAGE CXX row in port/CMakeLists.txt.
-# FOLDED into src/actors/dScMgAmida_c.cpp (row 377): src/func_ov006_020d36a4.cpp
+# FOLDED into src/minigames/d_s_mg_amida.cpp (row 377): src/func_ov006_020d36a4.cpp
 # WAVE 4, run mg10 lane WALKER. THE LAST FLOOR IN THIS SCENE IS CLOSED.
 # func_ov006_020d27dc is THE WALKER TICK, 0xe48 = 3656 bytes, the largest single
 # hole in any seated minigame, one caller at 0x020d4d78 inside vtable slot 6.
@@ -446,7 +446,7 @@ src/actors/dScMgAmida_c.cpp
 # the eight directions guard on the walker's column: the three with a leftward
 # component check 0x21/0x61/0xa1/0xe1 and step left, the three with a rightward
 # component check 0x1f/0x5f/0x9f/0xdf and step right, and both land the walker on
-# 0x20, 0x60, 0xa0 or 0xe0 -- the four rails src/func_ov004_020ae5c4 draws and
+# 0x20, 0x60, 0xa0 or 0xe0 -- the four rails src/Mg_DrawLine draws and
 # the four columns src/func_ov006_020d36a4 starts the walkers on. Those constants
 # were read out of this body before either neighbour was consulted.
 #

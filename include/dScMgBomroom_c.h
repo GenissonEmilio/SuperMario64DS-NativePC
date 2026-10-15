@@ -25,9 +25,9 @@ struct dScMgBomroom_Bomb {
     s32 prevY;        /* +0x20 */
     s32 sound;        /* +0x24 -- sound handle; func_02012468 takes it back
                                    and returns it each frame */
-    s32 unk_28;       /* +0x28 -- set to the spawn step base, see func_ov006_020d8408 */
+    s32 unk_28;       /* +0x28 -- set to the spawn step base, see SpawnBombs */
     u16 angle;        /* +0x2c -- 0..0xffff, sine-table index >> 4 */
-    u16 counter;      /* +0x2e -- frame counter, see func_ov006_020d69b8 */
+    u16 counter;      /* +0x2e -- frame counter, see Bomb_Animate */
     u16 unk_30;       /* +0x30 */
     u16 unk_32;       /* +0x32 -- second per-bomb timer; counts down on a held bomb */
     u8  type;         /* +0x34 -- anim row; picks frame time/count and sfx */
@@ -35,7 +35,7 @@ struct dScMgBomroom_Bomb {
     u8  color;        /* +0x36 -- 0/1; also picks which pen box it bounces in */
     u8  state;        /* +0x37 -- 5 = settled; indexes data_ov006_02141730 */
     u8  active;       /* +0x38 */
-    u8  unk_39;       /* +0x39 -- sprite-drawn flag, see func_ov006_020d7524 */
+    u8  unk_39;       /* +0x39 -- sprite-drawn flag, see DrawBombs */
     u8  pen;          /* +0x3a -- which blast marked it; 0 = was loose */
     u8  substate;     /* +0x3b -- indexes data_ov006_02141708 */
     u8  unk_3c;       /* +0x3c */
@@ -50,12 +50,12 @@ struct dScMgBomroom_Bomb {
 struct dScMgBomroom_Slot {
     s32 x;            /* +0x00 -- Fix12 */
     s32 y;            /* +0x04 -- Fix12 */
-    u16 timer;        /* +0x08 -- frame counter, see func_ov006_020d5d08/020d61dc */
+    u16 timer;        /* +0x08 -- frame counter, see Marker_UpdateAll/020d61dc */
     u8  unk_0a[0x2];
     u8  state;        /* +0x0c -- PMF-table index (markers: animating flag) */
     u8  gate;         /* +0x0d -- dispatch gate (markers: drawn/active) */
     u8  idx;          /* +0x0e -- sprite/sub index */
-    u8  level;        /* +0x0f -- see func_ov006_020d61dc */
+    u8  level;        /* +0x0f -- see SlotB_State1 */
 };
 #ifndef SM64DS_PLATFORM_PC
 /* ROM layout under mwccarm; host ABI divergence is tracked separately. */
@@ -79,92 +79,92 @@ struct dScMgBomroom_c : dScMgBase_c {
     virtual s32 InitResources();  /* slot 0 */
     virtual s32 Behavior();       /* slot 6 */
     virtual s32 Render();         /* slot 9 */
-    virtual void OnYoshiTryEat(int arg);               /* slot 18 */
+    virtual void StartRound(int arg);               /* slot 18 */
 
     /* scene helpers -- the PMF targets of the seven sinit state tables
        (data_ov006_02141660/680/6c0/6e0/708/730 and the raw {fptr,adj} pairs at
        data_ov006_021416a0) plus the per-frame and round bookkeeping they call. */
-    void func_ov006_020d5ab0();
-    void func_ov006_020d5b00();
-    void func_ov006_020d5b10();
-    void func_ov006_020d5c60();
-    void func_ov006_020d5c88();
-    void func_ov006_020d5d08();
-    void func_ov006_020d5d90(int idx);
-    void func_ov006_020d5dd4();
-    void func_ov006_020d5e1c();
-    void func_ov006_020d5e3c();
-    void func_ov006_020d5e5c();
-    void func_ov006_020d5eb8(int index);
-    void func_ov006_020d5f28();
-    void func_ov006_020d5f2c(int index);
-    void func_ov006_020d5fd8(int index);
-    void func_ov006_020d5fec();
-    void func_ov006_020d604c();
-    void func_ov006_020d6084();
-    void func_ov006_020d6098();
-    void func_ov006_020d6100(int index);
-    void func_ov006_020d6170(int index);
-    void func_ov006_020d61dc(int index);
-    void func_ov006_020d6264(int index);
-    void func_ov006_020d6278();
-    void func_ov006_020d62e0();
-    void func_ov006_020d634c(int index);
-    void func_ov006_020d63ac();
-    void func_ov006_020d63d4();
-    void func_ov006_020d6454(int index);
-    void func_ov006_020d64c4();
-    void func_ov006_020d64c8(int index);
-    void func_ov006_020d65b4(int index);
-    void func_ov006_020d65c8();
-    void func_ov006_020d6630();
-    void func_ov006_020d669c();
-    void func_ov006_020d66c4(int index);
-    void func_ov006_020d672c();
-    void func_ov006_020d6784();
-    void func_ov006_020d68a8(int picked);
-    void func_ov006_020d69b8(int index);
-    void func_ov006_020d6b88(int index);
-    void func_ov006_020d6c90(int index);
-    void func_ov006_020d6d7c(int index);
-    void func_ov006_020d6e8c(int index);
-    void func_ov006_020d7524();
-    void func_ov006_020d7604();
-    void func_ov006_020d7778();
-    void func_ov006_020d777c(int index);
-    void func_ov006_020d7958();
-    void func_ov006_020d795c(int index);
-    void func_ov006_020d7a84(int index);
-    void func_ov006_020d7c00(int index);
-    void func_ov006_020d7c4c(int idx);
-    void func_ov006_020d7e7c(int i);
-    void func_ov006_020d7edc(int idx);
-    void func_ov006_020d7f5c(int idx);
-    void func_ov006_020d816c(int idx);
-    void func_ov006_020d8324(int i);
-    void func_ov006_020d836c();
-    void func_ov006_020d8408();
-    void func_ov006_020d8904();
-    void func_ov006_020d893c();
-    void func_ov006_020d89c4();
-    void func_ov006_020d8af8();
+    void DrawRoundOver();
+    void SetRoundOver();
+    void UpdateBg2Lift();
+    void ResetBg2Lift();
+    void Marker_DrawAll();
+    void Marker_UpdateAll();
+    void Marker_Show(int idx);
+    void Marker_HideAll();
+    void SlotB2_Finish();
+    void SlotB2_Start();
+    void SlotB2_Draw();
+    void SlotB2_State3(int index);
+    void SlotB2_State2();
+    void SlotB2_State1(int index);
+    void SlotB2_State0(int index);
+    void SlotB2_Update();
+    void SlotB2_Show();
+    void SlotB2_Hide();
+    void SlotB_DrawAll();
+    void SlotB_State3(int index);
+    void SlotB_State2(int index);
+    void SlotB_State1(int index);
+    void SlotB_State0(int index);
+    void SlotB_UpdateAll();
+    void SlotB_ShowAll();
+    void SlotB_Hit(int index);
+    void SlotB_HideAll();
+    void SlotA_DrawAll();
+    void SlotA_State3(int index);
+    void SlotA_State2();
+    void SlotA_State1(int index);
+    void SlotA_State0(int index);
+    void SlotA_UpdateAll();
+    void SlotA_ShowAll();
+    void SlotA_HideAll();
+    void SlotA_Trigger(int index);
+    void DrawRemaining();
+    void CountSortedBombs();
+    void OnBombExploded(int picked);
+    void Bomb_Animate(int index);
+    void Bomb_CheckSorted(int index);
+    void Bomb_CheckWrongPen(int index);
+    void Bomb_CheckGrab(int index);
+    void Bomb_PushApart(int index);
+    void DrawBombs();
+    void CheckColorComplete();
+    void Bomb_Roam4();
+    void Bomb_Roam3(int index);
+    void Bomb_Roam2();
+    void Bomb_Roam1(int index);
+    void Bomb_Roam0(int index);
+    void Bomb_State6(int index);
+    void Bomb_State5(int idx);
+    void Bomb_State4(int i);
+    void Bomb_State3(int idx);
+    void Bomb_State2(int idx);
+    void Bomb_State1(int idx);
+    void Bomb_State0(int i);
+    void UpdateBombs();
+    void SpawnBombs();
+    void HideExplodedBombs();
+    void ClearBombs();
+    void Round_SubState3();
+    void Round_SubState2();
     int func_ov006_020d8c88();
-    void func_ov006_020d8cc4();
-    void func_ov006_020d8d84();
-    void func_ov006_020d8f34();
-    void func_ov006_020d8f98();
-    void func_ov006_020d8ff4();
-    void func_ov006_020d9020();
-    void func_ov006_020d904c();
-    void func_ov006_020d907c();
+    void Round_SubState1();
+    void Round_SubState0();
+    void Round_State4();
+    void Round_State3();
+    void Round_State2();
+    void Round_State1();
+    void Round_State0();
+    void ResetRound();
 
     dScMgBomroom_Bomb mBombs[0x70]; /* 0x4660 -- 0x70 x 0x40 */
     /* three runs of 0x10-byte slot records; +0x0c/+0x0d are each run's
        PMF-table index and dispatch gate:
-         mSlotsA    @0x6260 -- data_ov006_02141680 (func_ov006_020d65c8)
-         mSlotsB    @0x6280 -- data_ov006_021416c0 (func_ov006_020d6278);
+         mSlotsA    @0x6260 -- data_ov006_02141680 (SlotA_UpdateAll)
+         mSlotsB    @0x6280 -- data_ov006_021416c0 (SlotB_UpdateAll);
                              [2] is the scene-level slot, dispatched through
-                             data_ov006_02141660 by func_ov006_020d5fec
+                             data_ov006_02141660 by SlotB2_Update
          mMarkers   @0x62b0 -- the two HUD sprite markers */
     dScMgBomroom_Slot mSlotsA[2];  /* 0x6260 */
     dScMgBomroom_Slot mSlotsB[3];  /* 0x6280 */

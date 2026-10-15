@@ -58,6 +58,17 @@
  *   outside the claimed range); g_profile_JUGEM is overlay data.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_jgm_AssetId {
+    ASSET_JUGEM_BMD = 0x034c,
+    ASSET_JUGEM_THROW_BCA = 0x034d,
+    ASSET_JUGEM_THROW_BTP = 0x034e,
+    ASSET_JUGEM_WAIT_BCA = 0x034f,
+    ASSET_JUGEM_WAIT_BTP = 0x0350,
+    ASSET_PAIPO_BMD = 0x0429,
+    ASSET_TOGEZO_BMD = 0x042a
+};
+
 #include "common.h"
 #include "daJgm_c.h"
 #include "dBgCh_Gnd.h"
@@ -850,13 +861,13 @@ int daJgm_c::OnAimedAtWithEgg()
  * 0x34f/0x34d), the two texture-sequence handles (files 0x350/0x34e), then
  * the five-pair state table copied from the ROM PMF constants, then the
  * collision-offset vector. */
-DaJgmModelFile data_ov077_02127b50(0x34c);
-DaJgmModelFile data_ov077_02127b48(0x429);
-DaJgmModelFile data_ov077_02127b38(0x42a);
-DaJgmAnimationFilePtr data_ov077_02127b28(0x34f);
-DaJgmAnimationFilePtr data_ov077_02127b40(0x34d);
-DaJgmTexSequenceFilePtr data_ov077_02127b20(0x350);
-DaJgmTexSequenceFilePtr data_ov077_02127b30(0x34e);
+DaJgmModelFile data_ov077_02127b50(ASSET_JUGEM_BMD);
+DaJgmModelFile data_ov077_02127b48(ASSET_PAIPO_BMD);
+DaJgmModelFile data_ov077_02127b38(ASSET_TOGEZO_BMD);
+DaJgmAnimationFilePtr data_ov077_02127b28(ASSET_JUGEM_WAIT_BCA);
+DaJgmAnimationFilePtr data_ov077_02127b40(ASSET_JUGEM_THROW_BCA);
+DaJgmTexSequenceFilePtr data_ov077_02127b20(ASSET_JUGEM_WAIT_BTP);
+DaJgmTexSequenceFilePtr data_ov077_02127b30(ASSET_JUGEM_THROW_BTP);
 DaJgmStateHandlers data_ov077_02127bc4[5] = {
     {data_ov077_021277e0, data_ov077_02127828},
     {data_ov077_02127820, data_ov077_021277e8},

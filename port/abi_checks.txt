@@ -41,10 +41,10 @@ trampoline, so the callers were splicing a return address out of two lists.
 
 AMENDED AGAIN 2026-08-22 by run mg8 lane SBN's follow-up, after the receiver
 ratchet's own scoping shipped a softlock: src/func_ov006_020d8cc4.cpp declared
-`extern "C" int _ZN14dScMgBomroom_c19func_ov006_020d836cEv(void);` where the definition takes the
+`extern "C" int _ZN14dScMgBomroom_c11UpdateBombsEv(void);` where the definition takes the
 per-bomb receiver, and scene 370's Sort or 'Splode hung forever at the first
 full sorting bin (fixed in ba2224f88; the byte gate was green over it because
-the ROM leaves the receiver in r0 across the call). _ZN14dScMgBomroom_c19func_ov006_020d836cEv is not
+the ROM leaves the receiver in r0 across the call). _ZN14dScMgBomroom_c11UpdateBombsEv is not
 a _ZN name, so --gate-receiver never looked at it. What changed here:
   * aritycheck gained a SECOND ratchet, --gate-plainfunc, for the plain
     func_XXXXXXXX / func_ovNNN_XXXXXXXX names: a PROTOTYPED declaration that
@@ -680,7 +680,7 @@ Six days of tree movement. Every resolution is in favour of what is on cons.
 (c) THE POP RULE COULD NOT SEE THE SHAPE THAT ACTUALLY RECURS. The recovered
     aliascheck decided everything by comparing POP SIZE. A zero-argument
     __thiscall method pops 0; a flat extern "C" cdecl name pops 0; they match,
-    and the checker says OK. Heap::SetDefault is ?SetDefault@Heap@@QAEHXZ --
+    and the checker says OK. Heap::SetDefault is ?SetDefault@Heap_t@mHeap@@QAEHXZ --
     no arguments. So the recovered checker could NOT have caught the defect
     that cost a measured fault the day before this lane ran, nor
     Heap::Destroy, Heap::ResizeToFit, HeapAllocator::Remove or
@@ -812,7 +812,7 @@ Ranked by blast radius.
      the directive was at hal/lk4_eh_dtor_seat.cpp:43
      ?DeallocateAll@ExpandingHeapAllocator@@QAEXPAP6AXPAXPAV1@I@ZI@Z
        = __ZN22ExpandingHeapAllocator13DeallocateAllEPFvPvPS_jEj
-     src/_ZN13ExpandingHeap14VDeallocateAllEv.cpp:30 makes a qualified
+     src/engine/heap/Heap.cpp:30 makes a qualified
      thiscall call with two pushed arguments, so the allocator goes into ECX.
      The body src/_ZN22ExpandingHeapAllocator13DeallocateAllEPFvPvPS_jEj.cpp:3
      is flat cdecl (void *thiz, Fn fn, void *ctx) and takes thiz from the
@@ -824,7 +824,7 @@ Ranked by blast radius.
      those two the wrong way round.)
      IT ALSO UNBALANCES THE STACK: the call site is compiled for a callee that
      rets 8, the body pops nothing, so ESP leaks 8 bytes per call. Reachable
-     through _ZTV13ExpandingHeap slot 5, whose thunk eh_vdeallall is seated by
+     through _ZTVN5mHeap9ExpHeap_tE slot 5, whose thunk eh_vdeallall is seated by
      hal_seat_expandingheap_dtors in the same file;
      the caller TU rides port/slice_gate16.txt.
 
@@ -859,8 +859,8 @@ Ranked by blast radius.
      arguments. The body src/_ZN13HeapAllocator6RemoveEv.cpp:23 is __thiscall
      and PASSES `this` to two callees (FindNested(this), then
      Remove(iter, this)). The veneers are themselves entered by cdecl calls
-     that PUSH the allocator (src/_ZN13ExpandingHeap8VDestroyEv.cpp:23,
-     src/_ZN9SolidHeap8VDestroyEv.cpp:23), so nothing in the source ever loads
+     that PUSH the allocator (src/engine/heap/Heap.cpp:23,
+     src/engine/heap/Heap.cpp:23), so nothing in the source ever loads
      the allocator into ECX.
 
      THE HEDGE THIS DOCUMENT FIRST CARRIED WAS TOO WEAK, and the truth is
@@ -872,7 +872,7 @@ Ranked by blast radius.
 
          ?eh_vdestroy@@YIXPAX0@Z (void __fastcall eh_vdestroy(void *,void *)):
            push        ecx
-           call        __ZN13ExpandingHeap8VDestroyEv
+           call        __ZN5mHeap9ExpHeap_t8VDestroyEv
            pop         ecx
            ret
 
@@ -886,7 +886,7 @@ Ranked by blast radius.
      AND THE LAST FOUR WORDS OF THAT PARAGRAPH ARE WRONG, measured by lane RF1
      and left standing above so the correction has something to correct. "On
      every heap teardown" is not true of any path the port can drive.
-     _ZTV13ExpandingHeap slot 2 IS NOT DISPATCHED by a level teardown. With a
+     _ZTVN5mHeap9ExpHeap_tE slot 2 IS NOT DISPATCHED by a level teardown. With a
      throwaway fprintf in all four entry points -- the slot 2 thunk, the slot
      5 thunk, the Remove face and the DeallocateAll face -- and a probe build
      confirmed to carry them (4 occurrences of the marker string in the exe),
@@ -1381,7 +1381,7 @@ Ranked by blast radius.
     four entry points, thirty-three separate drives -- two full level-entry ->
     ExitLevel -> destination cycles, two 300-frame selftests and 120-frame
     selftests over 29 mounted levels -- produced ZERO dispatches of
-    _ZTV13ExpandingHeap slots 2 and 5. Both defects were real and both fixes
+    _ZTVN5mHeap9ExpHeap_tE slots 2 and 5. Both defects were real and both fixes
     are correct; neither could have shown up in any behavioural number the
     port can currently take. Static proof was the only proof available, which
     is an argument for the suite rather than against it.

@@ -33,9 +33,9 @@
  * only member it has past mSysTracker and the reason this file does not
  * stop at 0x5000 (the first draft of it did; the write is what caught it).
  *
- * From above, the bound is dScMgJump_c's: a Jump helper (func_ov006_020ee2c4,
+ * From above, the bound is dScMgJump_c's: a Jump helper (State_Final,
  * once a one-function source directly under src/ that no longer exists --
- * it is now a member of src/actors/dScMgJump_c.cpp, whose manifest entry
+ * it is now a member of src/minigames/d_s_mg_jump_methods.cpp, whose manifest entry
  * config/tu_manifest.d/ov006/dScMgJump_c.json keeps the old full path in its
  * functions[].legacy_source row) writes 0x5004 and 0x5014, and no method of
  * THIS class touches either. Its three siblings begin at 0x500c instead, so
@@ -93,7 +93,7 @@ struct dScMgD3DBase_c : dScMgBase_c {
 
     /* Own copy, same reason dScMgBase_c has one -- unlocks D0 for the four
        descendants. */
-    void operator delete(void *ptr) { _ZN6Memory10DeallocateEPvP4Heap(ptr, data_020a0eac); }
+    void operator delete(void *ptr) { _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(ptr, data_020a0eac); }
 
     /* --- overrides. 1, 2, 5, 7, 10 re-override slots dScMgBase_c already
            gave a body; 11 (AfterRender) is the first override below dScene_c's
@@ -104,15 +104,15 @@ struct dScMgD3DBase_c : dScMgBase_c {
     virtual int  BeforeBehavior();                     /* slot  7 */
     virtual int  BeforeRender();                       /* slot 10 */
     virtual void AfterRender(u32 vfSuccess);           /* slot 11 */
-    virtual int  OnKicked();                           /* slot 24 */
-    virtual int  OnPushed();                           /* slot 25 */
-    virtual int  OnHitByCannonBlastedChar();           /* slot 26 */
-    virtual void OnHitByMegaChar();                    /* slot 27 */
-    virtual int  OnHitFromUnderneath();                /* slot 28 */
-    virtual int  OnAimedAtWithEgg();                   /* slot 29 */
-    virtual void OnAimedAtWithEggReturnVec();          /* slot 30 */
-    virtual int  Virtual7C();                          /* slot 31 */
-    virtual void Virtual84();                          /* slot 33 */
+    virtual int  OnGraphCallback2();                           /* slot 24 */
+    virtual int  OnGraphCallback3();                           /* slot 25 */
+    virtual int  GetDisplayMode();           /* slot 26 */
+    virtual void OpenMenu();                    /* slot 27 */
+    virtual int  CloseMenu();                /* slot 28 */
+    virtual int  SaveScreenForMenu();                   /* slot 29 */
+    virtual void RestoreScreenFromMenu();          /* slot 30 */
+    virtual int  InitSubScreenBg();                          /* slot 31 */
+    virtual void InitEngines();                          /* slot 33 */
 
     /* THAT LIST IS EMPTY NOW.  This class overrides nine of dScMgBase_c's own
        18 new slots (18-35) -- 24 through 31, and 33 -- per
@@ -153,7 +153,7 @@ struct dScMgD3DBase_c : dScMgBase_c {
        (+0xa0..+0xb8), and all four children reference all fourteen. Kept as
        flat names for now because the eight files that read them spell them
        this way; typing it as a real array is its own change. */
-    /* AND EACH ELEMENT IS A MINIGAME CAMERA. Camera_UpdateMatrices (src/actors/unit020bfec0.cpp)
+    /* AND EACH ELEMENT IS A MINIGAME CAMERA. Camera_UpdateMatrices (src/minigames/unit020bfec0.cpp)
        carries the 0xbc layout: matrices in the head, `eye` at +0xa0, `target`
        at +0xac and `angle` at +0xb8. dScMgJump_c::InitResources settles which
        element is which by calling Camera_UpdateMatrices(this + 0x466c) and

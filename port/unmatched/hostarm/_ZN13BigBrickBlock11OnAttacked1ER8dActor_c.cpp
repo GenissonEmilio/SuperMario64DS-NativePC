@@ -1,7 +1,7 @@
 /* HOST ARM recovered by PORTSYNC2.
  * Old path: src/_ZN13BigBrickBlock11OnAttacked1ER8dActor_c.cpp, which carried this under #ifdef _MSC_VER. The
  * 2026-10 main merge took main's src/, which folded that code into
- * src/actors/daObjBlockL_c.cpp without the arm. Main's body still takes a bare return; out of an int function, which MSVC refuses (C2561), so main's definition must be parked in the hostgen copy and this one used instead. Needs /wd4716 on this source (falls off the end on purpose).
+ * src/game/actors/d_a_obj_block_l.cpp without the arm. Main's body still takes a bare return; out of an int function, which MSVC refuses (C2561), so main's definition must be parked in the hostgen copy and this one used instead. Needs /wd4716 on this source (falls off the end on purpose).
  * Only the host arm is here, retargeted to main's names; mwccarm never
  * compiles this file, so nothing here moves a ROM byte. Comments below that
  * name old per-function src/ files describe the pre-merge tree. */

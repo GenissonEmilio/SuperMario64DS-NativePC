@@ -432,7 +432,7 @@ void do_lists(int what, const void *const *lists, const int *engines, const int 
 extern "C" void port_char_hud_apply(int what);
 
 namespace {
-/* THE MINIMAP SEAT. This line's dMap_c is main's class TU (src/actors/dMap_c.cpp): it owns the vtable the minimap object really uses, and its
+/* THE MINIMAP SEAT. This line's dMap_c is main's class TU (src/ui/hud/d_map.cpp): it owns the vtable the minimap object really uses, and its
    Render is called straight through it. The port's own Minimap::Render / Behavior copies (unmatched/Minimap_*.cpp, where the marker repaint
    used to be called from) are not in this link, so the repaint is put in front of Render here instead: the slot that holds Render in the
    class TU's vtable gets a wrapper that repaints and then runs the original. Done once, the first time a costume with a minimap marker is

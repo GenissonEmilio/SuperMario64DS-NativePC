@@ -46,13 +46,13 @@
 # ALL THREE HOSTING TARGETS (walk_window, walk_window_hires, smoke_player):
 # faces_sync_gen.cpp.obj and the three hal files are on all three link lines in
 # build.ninja, so a flat name retired from the ledger must be defined on all three.
-src/actors/daObjKi_Hasira_c.cpp
+src/game/actors/d_a_obj_ki_hasira.cpp
 port/unmatched/hostarm/_ZN10RockPillarD0Ev.cpp
-src/actors/daSlide_Box_c.cpp
+src/game/actors/d_a_slide_box.cpp
 port/unmatched/hostarm/_ZN10SlidingBoxD0Ev.cpp
-src/actors/daGrock_c.cpp
+src/game/actors/d_a_grock.cpp
 port/unmatched/hostarm/_ZN11RollingRockD0Ev.cpp
-src/actors/daObjCvNewsLift_c.cpp
+src/game/actors/d_a_obj_cv_news_lift.cpp
 port/unmatched/hostarm/_ZN12WorkElevatorD0Ev.cpp
-src/actors/daObjRc_Tikuwa_c.cpp
+src/game/actors/d_a_obj_rc_tikuwa.cpp
 port/unmatched/hostarm/_ZN10DonutBlockD0Ev.cpp

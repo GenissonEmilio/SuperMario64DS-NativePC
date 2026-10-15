@@ -126,7 +126,7 @@ int _ZTV10Scuttlebug[31];
 
    THE ALIAS THAT USED TO SIT HERE IS GONE (run linkw wave 12, lane w12). It
    was
-       /alternatename:_data_ov073_02122f88=_data_ov071_02122f88
+       /alternatename:_data_ov073_02122f88=_gSpiderWalkAnimationFile
    and it DIED the moment ov073 was mounted: 0x02122f88 is a real ov073 address
    too -- ChiefChilly's tenth {handler, adj} state record -- so port/ov073_syms.
    txt defines the LHS and a defined LHS defeats /alternatename silently. That
@@ -134,11 +134,11 @@ int _ZTV10Scuttlebug[31];
    at the first link. The routing moved to the R1/R2 remedy, a per-source
    rename on the one TU that needs it, in port/CMakeLists.txt:
 
-       set_source_files_properties(src/actors/Scuttlebug.cpp PROPERTIES
-           COMPILE_DEFINITIONS "data_ov073_02122f88=data_ov071_02122f88")
+       set_source_files_properties(src/game/actors/d_a_spd.cpp PROPERTIES
+           COMPILE_DEFINITIONS "data_ov073_02122f88=gSpiderWalkAnimationFile")
 
    Scuttlebug's behaviour is unchanged: that TU still reads
-   data_ov071_02122f88, by name now instead of through the alias. Leaving the
+   gSpiderWalkAnimationFile, by name now instead of through the alias. Leaving the
    pragma in place would have been the silent failure -- the reference would
    have bound to ChiefChilly's state record and handed Animation::LoadFile a
    code address. */

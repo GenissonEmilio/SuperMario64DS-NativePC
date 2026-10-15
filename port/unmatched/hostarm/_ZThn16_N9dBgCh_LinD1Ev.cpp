@@ -1,7 +1,7 @@
 /* HOST ARM recovered by PORTSYNC2 (port/tools/hostarm_recover.py draft, reviewed).
  * The port line carried this in src/_ZThn16_N9dBgCh_LinD1Ev.cpp under #ifdef _MSC_VER; the
  * 2026-10 main merge (749f5799a) took main's src/, where that code
- * now lives in src/engine/collision/dBgCh_Lin.cpp without the arm. mwccarm never saw the arm,
+ * now lives in src/engine/collision/d_bg_ch_lin.cpp without the arm. mwccarm never saw the arm,
  * so nothing here moves a ROM byte.
  * Main's TU names this thunk only in a comment: mwccarm emits it from the
  * written destructor, MSVC never does, so the flat name is defined only here. */

@@ -45,7 +45,7 @@
 // "none of them fired" is a measurement rather than an absence.
 //
 // THREE OF THE SIX ARE ON dScMgCurling_c's OWN PATH and one of those three is
-// a live STATE TARGET: func_ov006_020e1854 is the code word of the
+// a live STATE TARGET: Aim_Swing is the code word of the
 // pointer-to-member pair at 0x0213c2bc, so this class cannot reach every one of
 // its own states even after section 4 of port/mg_fanout_costs.txt is solved.
 // (It has no trap here because nothing in the slice references it by name --
@@ -91,12 +91,12 @@
 // Twenty-one of the first link's ninety-five unresolved externals came from
 // that one TU, all of the form
 //
-//   unresolved external symbol "void (__thiscall C::* data_ov004_020bc97c)(void)"
-//     (?data_ov004_020bc97c@@3P8C@@AEXXZQ1@)
+//   unresolved external symbol "void (__thiscall C::* pmf_dMgState_c_State09_Enter)(void)"
+//     (?pmf_dMgState_c_State09_Enter@@3P8C@@AEXXZQ1@)
 //
 // and the mangling is the whole story: MSVC encodes the member-pointer TYPE into
 // the symbol name, so a global the ov004 mount emits as the C symbol
-// _data_ov004_020bc97c can never satisfy it. That is only the visible half.
+// _pmf_dMgState_c_State09_Enter can never satisfy it. That is only the visible half.
 // THE TU IS UNCOMPILABLE BY MSVC IN THREE INDEPENDENT WAYS, any one of which is
 // fatal on its own:
 //
@@ -262,18 +262,18 @@ DSSTATE_END
  * extracted/overlays/overlay_0004.bin at (addr - 0x020ad660):
  *
  *   data_ov004_020bc27c   00000380 00000300 00000340
- *     THREE PLAIN INTS. src/func_ov004_020b3278.cpp spells it
+ *     THREE PLAIN INTS. src/Banner_Init.cpp spells it
  *     `struct S3 { int v[3]; }` and reads tmp.v[i] as an int argument. Not a
  *     pair table; twelve bytes that mean the same twelve bytes on both ABIs.
  *     ALIAS IS CORRECT.
- *   data_ov004_020bc904   020b7c04 00000000
- *   data_ov004_020bc914   020b7fec 00000000
+ *   pmf_dMgState_c_UpdateGameOverToMenu   020b7c04 00000000
+ *   pmf_dMgState_c_UpdateRetryFadeOut_2   020b7fec 00000000
  *     THESE TWO ARE mwcc MEMBER POINTERS -- {code, adjustment} with the code
  *     word inside ov004's .text (0x020ad660..0x020b944c) and the adjustment
  *     zero -- and the refusal was right to stop on them. The alias is still
  *     the correct answer, and THE TEST IS WHAT THE CONSUMER SPELLS, NOT WHAT
- *     THE CONSUMER DOES. src/func_ov004_020b7cd0.cpp and
- *     src/func_ov004_020b72d4.cpp each declare `struct Pair { int a; int b; }`
+ *     THE CONSUMER DOES. src/State05_Update.cpp and
+ *     src/UpdateRetryPrompt.cpp each declare `struct Pair { int a; int b; }`
  *     and store .a and .b into the object's own eight-byte state field at
  *     +8/+0xc. That struct is eight bytes on MSVC and eight in the ROM, so the
  *     copy lands exactly the ROM's two words and the alias is sound. The DS
@@ -313,8 +313,8 @@ DSSTATE_END
  * also carries four @@3PAU rows that the pre-hardening generator
  * auto-aliased and nobody individually adjudicated at the time:
  *
- *     ?data_ov004_020beb68@@3PAUBase@@A   ?data_ov004_020bf428@@3PAUPair@@A
- *     ?data_ov004_020beb68@@3PAUObj@@A    ?data_ov004_020bf4f8@@3PAUPair@@A
+ *     ?gMgScene@@3PAUBase@@A   ?sBannerUpdateTable@@3PAUPair@@A
+ *     ?gMgScene@@3PAUObj@@A    ?sBannerDrawTable@@3PAUPair@@A
  *
  * The hardened facegen refuses EVERY @@3PAU spelling, because @@3PAU is the
  * state table's spelling class above, so regenerating this wall sends these
@@ -332,8 +332,8 @@ DSSTATE_END
  * shipped a stride-corrupting alias can never auto-pass again.
  */
 #pragma comment(linker, "/alternatename:?data_ov004_020bc27c@@3US3@@A=_data_ov004_020bc27c")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc904@@3UPair@@A=_data_ov004_020bc904")
-#pragma comment(linker, "/alternatename:?data_ov004_020bc914@@3UPair@@A=_data_ov004_020bc914")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_UpdateGameOverToMenu@@3UPair@@A=_pmf_dMgState_c_UpdateGameOverToMenu")
+#pragma comment(linker, "/alternatename:?pmf_dMgState_c_UpdateRetryFadeOut_2@@3UPair@@A=_pmf_dMgState_c_UpdateRetryFadeOut_2")
 
 /* ---- 2d. ONE MORE, FROM THE SEVENTH WAVE --------------------------------
  *
@@ -474,8 +474,8 @@ extern "C" unsigned port_mg_trap_hits(void) { return g_mg_trap_hits; }
  *
  * The seat above draws the three buttons. Whether the player can USE them is a
  * different claim and it needs a different number, because the two halves of
- * the panel live in different files: src/func_ov004_020ae858.cpp DRAWS off
- * self+0x4646, and src/func_ov004_020aeb24.cpp (matched, untouched) is the
+ * the panel live in different files: src/Mg_DrawMenu.cpp DRAWS off
+ * self+0x4646, and src/Mg_UpdateMenu.cpp (matched, untouched) is the
  * STYLUS HIT TEST that WRITES it -- it boxes the stylus point against the three
  * button centres and on a hit stores the button's index there and 0x10 at
  * +0x4644. So +0x4646 moving from -1 to 0/1/2 is the hit test accepting a tap,
@@ -492,23 +492,23 @@ extern "C" unsigned port_mg_trap_hits(void) { return g_mg_trap_hits; }
  * branch that made this readout inert by construction: the lane dropped its
  * byte-identical cherry-pick of the probe after a trial merge showed it
  * conflicting with OVERLAY's later fixes. Both branches are merged now, the
- * probe is live here, and func_ov006_020d01e0 is seated - the mg12 burst drove
+ * probe is live here, and TrmpLine_Build is seated - the mg12 burst drove
  * this readout on the merged tree and it printed.
  *
  * THAT FLOOR IS CLOSED, run mg14 lane RESULTS, and the diagnosis mg12 left here
  * was aimed one step too far upstream. mg12 read the panel as needing "whatever
  * fills +0x4634..+0x463e and steps +0x4640". Nothing was missing from the FILL:
- * _ZN11dScMgBase_c15OnHitByMegaCharEv, the ROM's own slot 27, writes all six halfwords, and
+ * _ZN11dScMgBase_c8OpenMenuEv, the ROM's own slot 27, writes all six halfwords, and
  * (-128,48) (384,96) (128,224) ARE the values it writes -- the OFF-SCREEN START
  * of a slide-in. The motion was the missing half, and both the slide and the
- * stylus hit test live in ONE function, func_ov004_020aeb24, which is why the
+ * stylus hit test live in ONE function, Mg_UpdateMenu, which is why the
  * buttons being off screen and the taps being ignored were one defect.
  *
  * It never reached its three ApproachLinear2 calls. Its first statement is
- * `if (func_ov004_020b8f78(c + 0xf4) != 0) return;`, and that callee was
+ * `if (_ZN10dMgPsOpt_c6UpdateEv(c + 0xf4) != 0) return;`, and that callee was
  * DEFINED returning u8 while this one caller declares it int. MSVC writes AL
  * and leaves EAX's top 24 bits stale, so the test read 0xFFFFFF00 and took the
- * early return on all 300 frames. src/func_ov004_020b8f78.cpp now returns int,
+ * early return on all 300 frames. src/_ZN10dMgPsOpt_c6UpdateEv.cpp now returns int,
  * which mwccarm compiles to the same `ldrb r0` and which leaves the function
  * MATCHED at 2004/b56 and the 1.2 trio. Measured after: the buttons slide to
  * (128,48) (128,96) (128,144) over sixteen frames, OAM engine B goes 0 placed
@@ -523,14 +523,14 @@ extern "C" unsigned port_mg_trap_hits(void) { return g_mg_trap_hits; }
  * Telling "the probe skipped the round-end resource load" apart from a real
  * tile-source defect needs the panel reached through real play.)
  */
-extern "C" { extern void *data_ov004_020beb68; }
+extern "C" { extern void *gMgScene; }
 
 static void panel_end_readout(void)
 {
     const char *e = std::getenv("SM64DS_MG_RESULTS_PROBE");
     if (!e || !e[0])
         return;
-    char *g = (char *)data_ov004_020beb68;
+    char *g = (char *)gMgScene;
     if (!g) {
         std::printf("[panel-end] no live dScMgBase_c\n");
         std::fflush(stdout);
@@ -557,7 +557,7 @@ extern "C" {
 /* ---- SEATED, run mg12 lane PANEL ---------------------------------------
  *
  * THE LAST ov004 TRAP IN THIS FILE IS GONE, and it was the RESULTS PANEL's
- * label renderer. func_ov004_020ae858 draws the three buttons a minigame's
+ * label renderer. Mg_DrawMenu draws the three buttons a minigame's
  * results screen offers -- the play-again row -- and returning 0 from it is
  * exactly the defect the owner reported as the play-again buttons never
  * appearing: dScMgBase_c::BeforeRender (src/minigames/d_s_mg_base.cpp) hands the
@@ -576,7 +576,7 @@ extern "C" {
  * discards it, which is why nothing ever caught it. include/decl_common.h is
  * corrected in the same commit.
  *
- * IT IS A REAL DECOMPILATION, honestly NONMATCHING. src/func_ov004_020ae858.cpp
+ * IT IS A REAL DECOMPILATION, honestly NONMATCHING. src/Mg_DrawMenu.cpp
  * differs in 10 of 118 words at mwccarm 2004/b56, the closest of all 25 installed
  * builds, on the base-materialization/addressing floor; every reloc and the whole
  * literal pool are identical and its banner carries the measurement. The symbol
@@ -591,7 +591,7 @@ extern "C" {
 
 /* ---- SEATED, run mg10 lane F371 ----------------------------------------
  *
- * func_ov004_020ae5c4 IS NOT A TRAP ANY MORE, and it was the family's LINE
+ * Mg_DrawLine IS NOT A TRAP ANY MORE, and it was the family's LINE
  * RASTERISER. Run mg9 lane BOO stood the trap here rather than in a lane's own
  * hal file because the body is the FAMILY's: seven ov006 TUs across the family
  * call it (func_ov006_020d1ba0, _020d2580, _020d3ba0, _0211f9fc, _0212157c,
@@ -599,7 +599,7 @@ extern "C" {
  * symbol. That reasoning was right and it is why this single line is simply
  * deleted rather than moved.
  *
- * IT IS A REAL DECOMPILATION. src/func_ov004_020ae5c4.cpp is a Bresenham walk
+ * IT IS A REAL DECOMPILATION. src/Mg_DrawLine.cpp is a Bresenham walk
  * from (x0,y0) to (x1,y1) that stamps vtable slot 34 at every lattice point it
  * visits, and the symbol comes from port/slice_mg1.txt. The seven parameters
  * lane BOO derived off the prologue were correct and the new body spells the
@@ -615,28 +615,28 @@ extern "C" {
 
 /* ---- SEATED, run mg7 lane L369 -----------------------------------------
  *
- * func_ov004_020b1710 IS NOT A TRAP ANY MORE, and it was the minigame HUD's
+ * Mg_DrawRecordRow IS NOT A TRAP ANY MORE, and it was the minigame HUD's
  * value drawer. The trap took (void *) and returned int where the ROM takes
  * four arguments and returns void, so the x, the y and the number the six
- * matched call sites in src/func_ov004_020b14f0.c pass were all sitting on
+ * matched call sites in src/Mg_DrawRecordTable.c pass were all sitting on
  * the stack with nothing reading them -- the same defect class as
- * func_ov004_020b2220 below, found the same way: a 3000-frame boot of scene
+ * Mg_DrawNumberRotated below, found the same way: a 3000-frame boot of scene
  * 369 under SM64DS_FAULTS_FATAL=1 entered this one 5657 times.
  *
- * IT IS A REAL DECOMPILATION, not a host copy. src/func_ov004_020b1710.c
+ * IT IS A REAL DECOMPILATION, not a host copy. src/Mg_DrawRecordRow.c
  * byte-matches at mwccarm 1.2/base, 1.2/sp2 and 1.2/sp2p3 and carries its own
  * delink block in config/arm9/overlays/ov004/delinks.txt, so there is nothing
  * to route to and no port_ name to spell: the symbol comes from
  * port/slice_mg1.txt and this line is simply deleted. Two of the six bodies
  * that file's header calls unmatched are real decompilations now, which
- * left func_ov004_020ae858 as the last ov004 trap in this file, and run mg12
+ * left Mg_DrawMenu as the last ov004 trap in this file, and run mg12
  * lane PANEL has now seated that one too.
  */
 
 /* ---- SEATED, run mg5 lane WTIMER ----------------------------------------
  *
  * THE THIRD OF THE THREE ov004 ADDRESSES IS NOT A TRAP ANY MORE, and it was
- * the "Wanted!" countdown timer. func_ov004_020b2220 is the minigame HUD's
+ * the "Wanted!" countdown timer. Mg_DrawNumberRotated is the minigame HUD's
  * scaled number drawer, and returning 0 from it is exactly the defect the
  * owner reported on 2026-08-19 as "Also time is not showing in wanted":
  * dScMgLuigi_c computed the countdown correctly, drew the language label
@@ -647,7 +647,7 @@ extern "C" {
  * sibling minigame scene (368, 374, 376, 378, 390) reports exactly 1. A
  * per-site census of that counter split the 127 as
  *     func_0202e78c              1     the long-standing pre-existing one
- *     func_ov004_020b2220      126     this body, roughly every other frame
+ *     Mg_DrawNumberRotated      126     this body, roughly every other frame
  * and an argument probe on the trap showed the timer arriving correctly and
  * counting down (val=10 on the first calls, val=9 by call 64). The value was
  * never the problem. Nothing drew it.
@@ -668,12 +668,12 @@ extern "C" {
  */
 /* PORTSYNC2 (2026-10 main merge): RETIRED. Main now carries a real
  * decompilation of 0x020b2220 in src/minigames/d_s_mg_base.cpp (the
- * "@symbol func_ov004_020b2220" body, seven arguments, void), which the
+ * "@symbol Mg_DrawNumberRotated" body, seven arguments, void), which the
  * port compiles through hostgen; the face below would be a second
  * definition. The host copy port_mg_hud_scaled_number_020b2220 is no longer
  * called from here. */
 #if 0
-void func_ov004_020b2220(int x, int y, int num, int a3, int a4,
+void Mg_DrawNumberRotated(int x, int y, int num, int a3, int a4,
                          int scale, int angle)
 {
     port_mg_hud_scaled_number_020b2220(x, y, num, a3, a4, scale, angle);
@@ -682,22 +682,22 @@ void func_ov004_020b2220(int x, int y, int num, int a3, int a4,
 
 /* ---- SEATED, run link60 lane CUR2 ---------------------------------------
  *
- * TWO OF THE FIVE ARE NOT TRAPS ANY MORE. func_ov006_020e1dc8 and
- * func_ov006_020e20bc are dScMgCurling_c's two shell-against-shell collision
+ * TWO OF THE FIVE ARE NOT TRAPS ANY MORE. SeparateStones and
+ * ResolveStoneCollision are dScMgCurling_c's two shell-against-shell collision
  * bodies, and returning 0 from them is exactly the defect the owner reported
  * on 2026-08-15 as "no collision against each other on the shells": the
  * shells slid through one another because the only two functions in the class
  * that move a shell out of another shell's way were both faces.
  *
  * They are transcribed from the ROM in port/unmatched/, the same treatment
- * and the same naming rule CT1 applied to func_ov006_020e1854 -- a port_ name,
+ * and the same naming rule CT1 applied to Aim_Swing -- a port_ name,
  * so nothing in this tree claims a decompilation that does not exist. The
  * derivation, the base proof and the callee census are on those two files;
  * port/curling_round2.txt is the lane's evidence trail.
  *
  * THE SIGNATURES CHANGED WITH THE SEAT, and that is not cosmetic. The traps
  * took (void *) and the ROM takes (self, idx): the matched callers
- * src/func_ov006_020e2c08.c and src/func_ov006_020e2868.c both declare and
+ * src/Stone_WaitRelease.c and src/Stone_Slide.c both declare and
  * pass two arguments, so the second was already on the stack and the trap
  * simply never looked at it. A body that ignored it would collide shell 0
  * every time.
@@ -712,11 +712,11 @@ void func_ov004_020b2220(int x, int y, int num, int a3, int a4,
  * link100 wave 14, lane SHADOWS3). The paragraph above is exact about why the
  * host transcription was written -- "neither address has a delink block ... and
  * neither has a src TU" -- and that is no longer true of 0x020e1dc8: PR #2328
- * (ba6e1eef3) matched it, src/func_ov006_020e1dc8.cpp is on
+ * (ba6e1eef3) matched it, src/SeparateStones.cpp is on
  * port/slice_shadows3.txt, and this forwarder is gone. The seat changes nothing
  * about the signature the note above insists on: the matched TU is
  * (dScMgCurling_c *self, int idx), the two arguments the callers already pass.
- * ITS SIBLING func_ov006_020e20bc IS STILL A HOLE -- no delink block, no src TU
+ * ITS SIBLING ResolveStoneCollision IS STILL A HOLE -- no delink block, no src TU
  * -- so the forwarder below and port_mg_curling_collide_020e20bc stay exactly
  * as they are, and so does port_mg_curling_collide_020e1dc8's own file: this
  * lane owns the face, not the transcription beneath it. */
@@ -727,7 +727,7 @@ void func_ov004_020b2220(int x, int y, int num, int a3, int a4,
  * _ZN2GX15DisableAllBanksEv in config/arm9/symbols.txt: thirteen calls, one
  * per VRAM bank family, each already matched in src/ and already in this
  * link (func_02053ee0..func_02054018). The minigame framework's graphics init
- * (_ZN11dScMgBase_c9Virtual84Ev -> func_ov004_020b2980) calls it FIRST, so every bank
+ * (_ZN11dScMgBase_c11InitEnginesEv -> Mg_DisableAllBanks) calls it FIRST, so every bank
  * the 3D game had mapped is released before InitResources re-banks for 2D.
  * With this trapped as return-0, scene 368's engine A BG2 character load
  * (LoadFile 0x46, the Bob-omb Squad airship hull) landed in whatever banking
@@ -793,11 +793,11 @@ int func_0202e78c(void *)
  * here ... The decomp has no body for 0x020e1854" was exactly true when lane
  * CT1 wrote it. The decomp has one now: PR #2352 (86a6e696d, "Match three more
  * ov006 minigame functions: the Coin cup touch test, the pen drag handler and
- * the Coin cursor sprite") landed src/func_ov006_020e1854.c, and this tree
+ * the Coin cursor sprite") landed src/Aim_Swing.c, and this tree
  * carries its delink block --
  *
  *     config/arm9/overlays/ov006/delinks.txt:1785
- *         src/func_ov006_020e1854.c:  .text start:0x020e1854 end:0x020e1b54
+ *         src/Aim_Swing.c:  .text start:0x020e1854 end:0x020e1b54
  *
  * which is 0x300 bytes, the size the address has always had here. The file
  * carries no NONMATCHING banner. It is on port/slice_mg7.txt and
@@ -842,7 +842,7 @@ int func_0202e78c(void *)
 
 extern "C" {
 
-void _ZN14dScMgCurling_c19func_ov006_020e1854Ev(void *arg);          /* src/func_ov006_020e1854.c */
+void _ZN14dScMgCurling_c9Aim_SwingEv(void *arg);          /* src/Aim_Swing.c */
 
 static unsigned g_curling_st_020e1854_entries;
 
@@ -866,12 +866,12 @@ void port_mg_curling_st_020e1854(char *c)
         traced = 1;
         std::fprintf(stderr,
                      "  [scene] dScMgCurling_c STATE 0x020e1854 ENTERED "
-                     "(_ZN14dScMgCurling_c19func_ov006_020e1854Ev, the ROM's matched TU, "
-                     "src/func_ov006_020e1854.c)\n");
+                     "(_ZN14dScMgCurling_c9Aim_SwingEv, the ROM's matched TU, "
+                     "src/Aim_Swing.c)\n");
         std::fflush(stderr);
     }
 
-    _ZN14dScMgCurling_c19func_ov006_020e1854Ev(c);
+    _ZN14dScMgCurling_c9Aim_SwingEv(c);
 
     if (on) {
         std::fprintf(stderr,

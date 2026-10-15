@@ -137,7 +137,7 @@
 # (_ZTV22RotatingUpDownPlatform, 32 slots) sits between
 # g_profile_KM2_SUSUMU:0x1c and _ZTI17daObjSimpleLift_c:0xc, and
 # 0x021353a4..0x02135440 (_ZTV5Stump, 31 slots) between g_profile_HYUHYU:0x1c
-# and data_ov091_02135440:0x8. All nine PMF source records and all three of
+# and gHsUpdownLiftModelFile:0x8. All nine PMF source records and all three of
 # FWOOSH's bss cells are already mounted at their true sizes. So this seat adds
 # ZERO syms rows and there is no T3 size audit to run: nothing was added.
 #

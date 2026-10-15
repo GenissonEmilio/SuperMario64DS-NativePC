@@ -1,7 +1,7 @@
 # run linkw wave C, lane cat-2d, slice 2d1: the one ov004 body a linked arm9
 # caller already reaches.
 #
-# src/LoadFont.cpp's data_0209d698 == 2 arm calls func_ov004_020adc4c twice
+# src/LoadFont.cpp's data_0209d698 == 2 arm calls Mg_GetWorkBuffer twice
 # (config/arm9/relocs.txt from:0x0201fd00 and from:0x0201fd10, both
 # kind:arm_call to:0x020adc4c module:overlay(4)). LoadFont is linked, so this
 # TU is reachable the moment its own callee exists: the one BSS word it reads,

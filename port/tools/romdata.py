@@ -60,7 +60,7 @@ TABLES = [
     # ONE ROW THAT DELIBERATELY OVERLAPS THE TRIG TABLE, run mg11 lane SNW.
     # 0x02082314 is 0x100 bytes into the s16 table above -- entry 128 -- and
     # dScMgSnowball_c reads it BY NAME rather than by index:
-    # src/func_ov006_02126948.c does fdiv(0xc0000, data_02082314), and the ROM
+    # src/Snowball_UpdateCamera.c does fdiv(0xc0000, data_02082314), and the ROM
     # at 0x02126958 is `ldrsh r1,[r1]` off a pool word holding 0x02082314, so
     # the read is one SIGNED HALFWORD and include/decl_common.h declares it
     # `extern short data_02082314;` to match.
@@ -88,25 +88,25 @@ NAMED = [
     # 0xffffffff, read out of extracted/arm9_dec.bin at 0x0208a170.
     #
     # THE -1 IS THE WHOLE REASON THEY COME FROM HERE AND NOT FROM A HAL LINE.
-    # data_0208a174 is the menu's SELECTION and its boot value is the "nothing
+    # gMgLastSelected is the menu's SELECTION and its boot value is the "nothing
     # picked" sentinel; src/func_ov005_020c0378.cpp only ever writes a row index
     # into it, so a host that zeroed it would boot the menu with row 0 already
-    # chosen and nothing in the game would ever say so. data_0208a170 is the
-    # highlighted row base, advanced by func_ov005_020c0878, and 3 is where the
+    # chosen and nothing in the game would ever say so. gMgGroupBase is the
+    # highlighted row base, advanced by MiniGm_UpdateGroupTabs, and 3 is where the
     # ROM starts it. The port does not write Nintendo's numbers down; it reads
     # them, which is the same argument every other row in this list makes.
     #
-    # ONE HONEST GAP, NAMED RATHER THAN LEFT TO BE FOUND. data_0208a174 is
+    # ONE HONEST GAP, NAMED RATHER THAN LEFT TO BE FOUND. gMgLastSelected is
     # MUTABLE DS state -- the menu writes the player's selection into it -- and
     # nothing this emitter produces lands in .dsstate. Every symbol in this
     # file goes into romdata.c's own section (measured: walk_window.map puts
-    # _data_0208a170 at 0003:00004660, outside the captured span), which is the
+    # _gMgGroupBase at 0003:00004660, outside the captured span), which is the
     # mechanism's existing behaviour for all 30-odd NAMED entries and not
     # something these two introduced. The consequence is bounded and specific:
     # a save state taken while the minigame menu is open does not roll back the
     # highlighted row or the selection. Moving the emitter's output into
     # .dsstate is a change to every row here and is not this lane's to make.
-    "data_0208a170", "data_0208a174",
+    "gMgGroupBase", "gMgLastSelected",
     "data_0208a178", "data_0208c178",
     # Run link100 wave 14 (lane SEAT14D): the OBJ char blob the debug level
     # select loads, `GX::LoadOBJ(data_0208c378, 0, 0x2000)` in
@@ -873,7 +873,7 @@ NAMED = [
     # scene reads that same table.
     "data_020914e0:0x40", "data_02091570", "data_020916d8", "data_020918c4",
     "data_0209444c", "data_0209446c", "data_020945d0",
-    # AND ONE FOUR-BYTE SENTINEL, here for the reason data_0208a174 is here.
+    # AND ONE FOUR-BYTE SENTINEL, here for the reason gMgLastSelected is here.
     # data_0208ee4c is "which scene overlay is resident", and its ROM value is
     # -1 (0xffffffff, read at 0x0208ee4c - 0x02004000), the "none" case. It is
     # read and written by src/func_0201a614.c and src/func_0201a694.c -- the
@@ -1070,7 +1070,7 @@ def _emit(root, data):
     # THE ARM9 .data THIS FILE HOSTS IS GAME STATE, NOT A TABLE OF CONSTANTS. The
     # DS writes it (SetNextLevel's return-to-level latch data_0209211c, the
     # loaded-song word data_0208e43c, the minigame menu's selection
-    # data_0208a174 ...), so a save state that leaves it out is half a rollback:
+    # gMgLastSelected ...), so a save state that leaves it out is half a rollback:
     # F9 put the world back and left the return latch at the -1 the first star
     # exit had written, and the next star exit came out at the castle front
     # instead of the painting. These arrays used to sit in the plain .data that

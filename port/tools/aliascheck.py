@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """aliascheck -- an /alternatename is a NAME bridge and never an ABI bridge.
 
-    #pragma comment(linker, "/alternatename:__ZN4Heap10SetDefaultEv="
-                            "?SetDefault@Heap@@QAEHXZ")
+    #pragma comment(linker, "/alternatename:__ZN5mHeap6Heap_t10SetDefaultEv="
+                            "?SetDefault@Heap_t@mHeap@@QAEHXZ")
 
 tells link.exe "if the left name is undefined, resolve it to the right one".
 It renames a symbol and says NOTHING about how that symbol is called.  The
@@ -321,10 +321,10 @@ FIXTURES = [
     #    Each of these is the directive the fix deleted. The checker must see
     #    every one of them; that is what makes it a regression net rather
     #    than a description of today.
-    ("__ZN4Heap10SetDefaultEv", "?SetDefault@Heap@@QAEHXZ", "DROPPED"),
-    ("__ZN4Heap7DestroyEv", "?Destroy@Heap@@QAEXXZ", "DROPPED"),
-    ("__ZN4Heap11ResizeToFitEv", "?ResizeToFit@Heap@@QAEIXZ", "DROPPED"),
-    ("__ZN4Heap8_DestroyEv", "?_Destroy@Heap@@QAEXXZ", "DROPPED"),
+    ("__ZN5mHeap6Heap_t10SetDefaultEv", "?SetDefault@Heap_t@mHeap@@QAEHXZ", "DROPPED"),
+    ("__ZN5mHeap6Heap_t7DestroyEv", "?Destroy@Heap_t@mHeap@@QAEXXZ", "DROPPED"),
+    ("__ZN5mHeap6Heap_t11ResizeToFitEv", "?ResizeToFit@Heap_t@mHeap@@QAEIXZ", "DROPPED"),
+    ("__ZN5mHeap6Heap_t8_DestroyEv", "?_Destroy@Heap_t@mHeap@@QAEXXZ", "DROPPED"),
     ("__ZN10dFdColor_c11AdvanceFadeEv", "?AdvanceFade@dFdColor_c@@QAEHXZ",
      "DROPPED"),
     ("__ZN5Enemy16InitEnemyStandardEjRK7Vector3",
@@ -355,9 +355,9 @@ FIXTURES = [
      "DROPPED"),
     # -- a member declared __cdecl keeps its receiver on the STACK, so
     #    bridging it from a flat C name is NOT a crossing
-    ("__ZN4Heap10SetDefaultEv", "?SetDefault@Heap@@QAAHXZ", None),
+    ("__ZN5mHeap6Heap_t10SetDefaultEv", "?SetDefault@Heap_t@mHeap@@QAAHXZ", None),
     # -- but bridging that same __cdecl member FROM a thiscall spelling is
-    ("?SetDefault@Heap@@QAEHXZ", "?SetDefault@Heap@@QAAHXZ", "SHIFTED"),
+    ("?SetDefault@Heap_t@mHeap@@QAEHXZ", "?SetDefault@Heap_t@mHeap@@QAAHXZ", "SHIFTED"),
 ]
 
 POP_FIXTURES = [

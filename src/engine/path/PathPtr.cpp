@@ -17,7 +17,7 @@
  * def, and GetNode walks the shared flat table of 6-byte (three s16) node
  * records that def->firstNode indexes into. The table helpers are the
  * class's own plumbing: LoadPathObjects hands it the definition table and
- * LoadPathNodeObjects the node table (src/stage/LevelObjects.cpp).
+ * LoadPathNodeObjects the node table (src/game/stages/LevelObjects.cpp).
  *
  * mwccarm emits .text in reverse source order, so the definitions below run
  * ROM-descending; the roster above reads ROM-ascending.

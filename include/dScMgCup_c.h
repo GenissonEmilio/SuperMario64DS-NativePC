@@ -1,7 +1,7 @@
 /* Shell game (MG_CUP). Three cups shuffle on the sub screen; the player
  * touches the cup containing the requested item.
  *
- * mModel is the object func_ov006_020c33dc builds and func_ov006_020c3288
+ * mModel is the object Presenter_Construct builds and Presenter_Destruct
  * tears down. mFx is the 0x20 effects under the cups. mCup is the three
  * positions (element ctor func_0203d738, empty).
  */
@@ -9,31 +9,31 @@
 #define DSCMGCUP_C_H
 #include "dScMgSingle3DBase_c.h"
 
-extern "C" int  func_ov006_020c3288(char *t); /* decl_common.h's own signature */
+extern "C" int  Presenter_Destruct(char *t); /* decl_common.h's own signature */
 extern "C" void __cxa_vec_cleanup(void *base, int count, int stride, void *dtor);
-extern "C" void func_ov006_020deac4(void);
+extern "C" void CupFx_ElemDtor(void);
 extern "C" void NullDestructor_0203d47c(void);
 
-/* func_ov006_020c33dc's own offsets. Byte arrays, not the real classes:
+/* Presenter_Construct's own offsets. Byte arrays, not the real classes:
  * a BlendModelAnim member would make ~dScMgCup_c destroy it twice. */
 struct CupModelParts {
-    u8  pmf[8];                  /* +0x00 -- func_ov006_020c2b8c calls this */
+    u8  pmf[8];                  /* +0x00 -- Presenter_Update calls this */
     u8  blendModelAnim[0x70];    /* +0x08 -- BlendModelAnim */
     u8  model[0x50];             /* +0x78 -- Model */
     u8  textureSequence[0x14];   /* +0xc8 -- TextureSequence */
     u8  textureTransformer[0x14];/* +0xdc -- TextureTransformer */
     u8  filePtr[0x90];           /* +0xf0 -- 18 SharedFilePtr, through +0x178 */
-    s32 pos[3];                  /* +0x180 -- func_ov006_020c2290's translation; func_ov006_020c3050 zeroes it */
-    s32 lean[4];                 /* +0x18c -- func_ov006_020c2be8 eases these toward the touch;
-                                    func_ov006_020c29dc adds them into the model */
+    s32 pos[3];                  /* +0x180 -- Presenter_UpdateMatrix's translation; Presenter_Load zeroes it */
+    s32 lean[4];                 /* +0x18c -- Presenter_TrackStylus eases these toward the touch;
+                                    Presenter_Draw adds them into the model */
 };
 
 #ifndef SM64DS_PLATFORM_PC
 typedef char CupModelParts_size_must_be_0x19c[sizeof(CupModelParts) == 0x19c ? 1 : -1];
 #endif
 
-/* One effect slot. func_ov006_020ded84 fills it, func_ov006_020ded00 steps
- * it, func_ov006_020dec88 draws x>>12, y>>12. */
+/* One effect slot. CupFx_Init fills it, CupFx_Update steps
+ * it, CupFx_Draw draws x>>12, y>>12. */
 struct CupFx {
     s32 x;            /* +0x00 */
     s32 y;            /* +0x04 */
@@ -44,7 +44,7 @@ struct CupFx {
     u8  row;          /* +0x13 -- 1 for kind 2; while set, y drops by 6 */
     u8  delay;        /* +0x14 -- DecIfAbove0_Byte, reloaded to 3 */
     u8  active;       /* +0x15 */
-    u8  kind;         /* +0x16 -- 1 lets func_ov006_020dec5c follow the cup */
+    u8  kind;         /* +0x16 -- 1 lets CupFx_Move follow the cup */
     s8  cup;          /* +0x17 */
 };
 
@@ -87,26 +87,26 @@ struct dScMgCup_c : dScMgSingle3DBase_c {
     void StateFinish();
     void StateIdle();
     s32 InitResources();
-    virtual void OnYoshiTryEat(int arg);               /* slot 18 */
-    virtual void Virtual50();                          /* slot 20 */
+    virtual void StartRound(int arg);               /* slot 18 */
+    virtual void OnNewRecord();                          /* slot 20 */
     s32 Behavior();
     s32 Render();
 
     CupModelParts mModel; /* 0x4f38 */
-    /* func_ov006_020c2be8: while mTouchLock != 0, divide these by 255 and 192
+    /* Presenter_TrackStylus: while mTouchLock != 0, divide these by 255 and 192
        instead of the live gTouchX / gTouchY touch. */
     s32 mTouchX;          /* 0x50d4 */
     s32 mTouchY;          /* 0x50d8 */
     s32 mTouchLock;       /* 0x50dc -- component +0x1a4; the ctor zeroes it */
-    /* func_ov006_020c2594 and func_ov006_020c2440 play a sound only when this is 0. */
+    /* Presenter_PlayAnim7 and Presenter_PlayAnim4 play a sound only when this is 0. */
     s32 mSuppressSound;   /* 0x50e0 -- component +0x1a8 */
     u8  pad_50e4[4];      /* 0x50e4 */
-    CupFx mFx[0x20];      /* 0x50e8 -- elem dtor func_ov006_020deac4 */
+    CupFx mFx[0x20];      /* 0x50e8 -- elem dtor CupFx_ElemDtor */
     CupPos mCup[3];       /* 0x53e8 -- elem dtor NullDestructor_0203d47c */
     s32 mMidX;            /* 0x5400 -- average of the two cups' rest x */
     s32 mMidY;            /* 0x5404 -- average of the two rest y */
     s32 mHalfX;           /* 0x5408 -- mMidX minus the first cup's rest x */
-    s32 mOnes[3];         /* 0x540c -- Fix12 passed to func_ov006_020deed8; it reciprocates it */
+    s32 mOnes[3];         /* 0x540c -- Fix12 passed to Cup_DrawOamList; it reciprocates it */
     s32 mState;           /* 0x5418 */
     s32 mTimer;           /* 0x541c */
     s32 mIds[3];          /* 0x5420 -- which cup sits in each slot */

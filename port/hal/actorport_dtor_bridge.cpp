@@ -46,7 +46,7 @@ extern "C" void __fastcall actorport_dtor_slot_trap(void *self, void *unused)
  *
  * Run link100, lane SINGLES. Section 2's banner below says NOTHING DISPATCHES
  * THROUGH THAT COMPILER TABLE. It does. Level 20's 1-Up mushroom is a real C++
- * class in src/actors/da1up_c.cpp and its objects carry MSVC's own
+ * class in src/game/actors/d_a_1up.cpp and its objects carry MSVC's own
  * ??_7da1up_c@@6B@ from construction, so the one slot-16 dispatcher in the
  * image -- src/_ZN7fBase_c21AfterCleanupResourcesEj.cpp's this->~fBase_c() --
  * reads that table. Measured under cdb on the shipped artifact, at the

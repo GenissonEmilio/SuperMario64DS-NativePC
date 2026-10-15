@@ -867,7 +867,7 @@ void _ZN10dBgW_KcMbgD1Ev(void *);        /* MovingMeshCollider at +0x124 */
 void _ZN5ModelD1Ev(void *);                      /* Model at +0xd4 (declared above too) */
 /* _ZN8dActor_cD2Ev is already declared (returns void*) at this file's own
    line 52 -- no redeclaration here, the type must match exactly. */
-void _ZN6Memory10DeallocateEPvP4Heap(void *, void *);
+void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *, void *);
 void hal_fill_platform_vtable(void);             /* hal/actor_classes.cpp, Platform's
                                                       base table (the JRB/l7/ov064
                                                       precedent for calling it here) */

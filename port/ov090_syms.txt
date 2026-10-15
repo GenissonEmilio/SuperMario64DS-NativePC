@@ -345,17 +345,17 @@ data_ov090_021345c0@0x021345c0
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov090_02134480                        now defined by src/actors/daMenbo_c.cpp
-#   data_ov090_02134488                        now defined by src/actors/daMenbo_c.cpp
-#   data_ov090_02134490                        now defined by src/actors/daMenbo_c.cpp
-#   data_ov090_02134498                        now defined by src/actors/daMenbo_c.cpp
-#   data_ov090_021344a0                        now defined by src/actors/daMenbo_c.cpp
-#   data_ov090_021344e4                        now defined by src/actors/daMenbo_c.cpp
-#   data_ov090_021344f4                        now defined by src/actors/daMenbo_c.cpp
-#   data_ov090_02134504                        now defined by src/actors/daMenbo_c.cpp
-#   data_ov090_02134514                        now defined by src/actors/daMenbo_c.cpp
-#   data_ov090_02134524                        now defined by src/actors/daManta_c.cpp
-#   data_ov090_0213452c                        now defined by src/actors/daManta_c.cpp
+#   data_ov090_02134480                        now defined by src/game/actors/d_a_menbo.cpp
+#   data_ov090_02134488                        now defined by src/game/actors/d_a_menbo.cpp
+#   data_ov090_02134490                        now defined by src/game/actors/d_a_menbo.cpp
+#   data_ov090_02134498                        now defined by src/game/actors/d_a_menbo.cpp
+#   data_ov090_021344a0                        now defined by src/game/actors/d_a_menbo.cpp
+#   data_ov090_021344e4                        now defined by src/game/actors/d_a_menbo.cpp
+#   data_ov090_021344f4                        now defined by src/game/actors/d_a_menbo.cpp
+#   data_ov090_02134504                        now defined by src/game/actors/d_a_menbo.cpp
+#   data_ov090_02134514                        now defined by src/game/actors/d_a_menbo.cpp
+#   data_ov090_02134524                        now defined by src/game/actors/d_a_manta.cpp
+#   data_ov090_0213452c                        now defined by src/game/actors/d_a_manta.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
 data_ov090_0213455c! data_ov090_02134564! data_ov090_02134584! data_ov090_02134594! data_ov090_021345a4! data_ov090_021345ac! data_ov090_021345cc!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):

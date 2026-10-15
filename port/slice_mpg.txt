@@ -75,7 +75,7 @@ src/game/actors/d_a_pg_mthr.cpp
 #   The literal at 0x02112230 is 0x02113bf0 and carries NO relocation row --
 #   a module-internal reference, so it is ov018's own bss, the Animation
 #   SharedFilePtr __sinit_ov018_02112c80 constructs with file id 0x406 and
-#   that func_ov018_021122ec already reads as data_ov018_02113bf0[1]. The
+#   that func_ov018_021122ec already reads as gPenguinWait1AnimationFile[1]. The
 #   port defines data_ov027_02113bf0 as well (ov027's own mount), so the link
 #   would have SUCCEEDED against the wrong storage; the block renames it with
 #   COMPILE_DEFINITIONS, the CleanupResources/func_021270dc precedent.

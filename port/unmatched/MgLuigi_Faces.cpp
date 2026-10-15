@@ -23,7 +23,7 @@
 
 /* ---- 1. the class vtable's Itanium name ----------------------------------
  *
- * src/actors/dScMgLuigi_c.cpp writes `p[0] = (int)_ZTV12dScMgLuigi_c;`. That is the
+ * src/minigames/d_s_mg_luigi.cpp writes `p[0] = (int)_ZTV12dScMgLuigi_c;`. That is the
  * ROM's own class name -- the RTTI string at 0x0213ce60 reads
  * "12dScMgLuigi_c" -- and it is not a config symbol name, so it needs a face
  * onto the mounted table. The address is settled by the ROM twice over:
@@ -42,25 +42,25 @@
  * below is read off the referencing body's OWN literal pool rather than
  * guessed from the name:
  *
- *   func_020beb68  src/actors/dScMgLuigi_c.cpp (slot 18) and
+ *   func_020beb68  src/minigames/d_s_mg_luigi.cpp (slot 18) and
  *                  src/_ZN12dScMgLuigi_c12UpdateRewardEv.c. Pool at 0x020f33b4 = 020BEB68.
  *                  This is the symbol port/mg_fanout_costs.txt section 4 calls
  *                  "the one symbol in the set with no LNK2019 at all"; here it
  *                  emits one, because this lane's first referencing object is
  *                  a different one.
- *   func_020bc864  src/actors/dScMgLuigi_c.cpp (slot 0). Pool at 0x020f37fc.
- *   func_020bc888  src/actors/dScMgLuigi_c.cpp (slot 0). Pool at 0x020f37f8.
+ *   func_020bc864  src/minigames/d_s_mg_luigi.cpp (slot 0). Pool at 0x020f37fc.
+ *   func_020bc888  src/minigames/d_s_mg_luigi.cpp (slot 0). Pool at 0x020f37f8.
  *
  * ov004's config names all three as data_ov004_* at those addresses, and the
  * ov006 relocations that reach them say module overlays(3,4) or overlay(4),
  * with ov004 the co-resident answer on the minigame path. */
-#pragma comment(linker, "/alternatename:_func_020beb68=_data_ov004_020beb68")
+#pragma comment(linker, "/alternatename:_func_020beb68=_gMgScene")
 #pragma comment(linker, "/alternatename:_func_020bc864=_data_ov004_020bc864")
 #pragma comment(linker, "/alternatename:_func_020bc888=_data_ov004_020bc888")
 
 /* ---- 3. two IRQ methods declared at C++ linkage --------------------------
  *
- * src/actors/dScMgLuigi_c.cpp declares
+ * src/minigames/d_s_mg_luigi.cpp declares
  *     namespace IRQ { void SetIRQHandler(unsigned int, IRQHandler);
  *                     void EnableIRQs(unsigned int); }
  * OUTSIDE its extern "C" block, so MSVC mangles both and the Itanium names the
@@ -79,7 +79,7 @@
  * THE NAME LENGTHS DIFFER AND THAT IS THE ITANIUM ENCODING, not a typo:
  * "SetIRQHandler" is 13 characters and "EnableIRQs" is 10.
  *
- * NOTE the sibling that needs NO face: src/actors/dScMgLuigi_c.cpp (slot 5)
+ * NOTE the sibling that needs NO face: src/minigames/d_s_mg_luigi.cpp (slot 5)
  * calls _ZN3IRQ13SetIRQHandlerEjPFvvE by its Itanium name inside extern "C",
  * so it resolves directly. The same function, two spellings, one of which
  * costs a row. */
@@ -88,7 +88,7 @@
 
 /* ---- 4. ONE ov004 BODY IN THE CLOSURE HAS NO SOURCE ----------------------
  *
- * func_ov004_020b0e84, 0x66c bytes. config/arm9/overlays/ov004/symbols.txt
+ * Mg_DrawTally, 0x66c bytes. config/arm9/overlays/ov004/symbols.txt
  * names it, and config/arm9/overlays/ov004/delinks.txt does NOT cover it --
  * the blocks run 0x020b0de0..0x020b0e84 and then jump to 0x020b14f0 -- and no
  * src file defines it. A name-shaped check would call it decompiled; the
@@ -96,8 +96,8 @@
  *
  * IT IS ON THIS CLASS'S RENDER PATH, and that is the honest cost of the trap
  * rather than a footnote. dScMgLuigi_c slot 9 (_ZN12dScMgLuigi_c6RenderEv) opens with
- * func_ov004_020b1e34(c, 0xe0, 0x14, 1), and src/func_ov004_020b1e34.c is a
- * two-line veneer -- `ldr r1,[r0,#0xb4]; b func_ov004_020b0e84` in the ROM --
+ * Mg_DrawScoreTally(c, 0xe0, 0x14, 1), and src/Mg_DrawScoreTally.c is a
+ * two-line veneer -- `ldr r1,[r0,#0xb4]; b Mg_DrawTally` in the ROM --
  * whose whole body is a call to this. So the first thing this class's Render
  * does is enter a trap.
  *
@@ -105,8 +105,8 @@
  * because it is invisible to the byte gate and would be a real defect the day
  * a body lands. The ROM sets r1, r2 and r3 at the call site (mov r1,#0xe0; mov
  * r2,#0x14; mov r3,#1 at 0x020f33c8..0x020f33d0), the veneer overwrites r1 and
- * rides r2 and r3 through, and src/func_ov004_020b1e34.c declares one
- * parameter and calls func_ov004_020b0e84(a, a->b4) with two. So 0xe0, 0x14
+ * rides r2 and r3 through, and src/Mg_DrawScoreTally.c declares one
+ * parameter and calls Mg_DrawTally(a, a->b4) with two. So 0xe0, 0x14
  * and 1 reach the ROM's body and do not reach the host's. Nothing in the tree
  * diagnoses that. This lane does not repair it: src/ is read-only here and the
  * callee is a trap, so there is nothing yet for the arguments to be wrong AT.
@@ -116,11 +116,11 @@
  * The trap takes the two parameters its matched caller declares and passes, so
  * the call site's stack is right whatever happens inside. */
 
-/* Run mg5, lane INTEG: func_ov004_020b0e84 (the "Wanted!" score HUD, 0x66c) was
-   copied across from origin/main as src/func_ov004_020b0e84.cpp with its Obj
+/* Run mg5, lane INTEG: Mg_DrawTally (the "Wanted!" score HUD, 0x66c) was
+   copied across from origin/main as src/Mg_DrawTally.cpp with its Obj
    vtable header include/private/ov004_obj_vtbl.h, and is now in
    port/slice_lui.txt, so the trap that stood in on dScMgLuigi_c's Render path is
-   gone and the real body runs. The veneer func_ov004_020b1e34 still drops the
+   gone and the real body runs. The veneer Mg_DrawScoreTally still drops the
    0xe0/0x14/1 arguments the ROM rides through r2/r3 (see section 4 above); that
    is a separate PORT_HOST_ABI veneer repair, not this seat. The counter is kept
    because hal/scene_mg.cpp prints port_mg_luigi_ov004_trap_hits(); it now stays
@@ -149,7 +149,7 @@
  *   it before the `bx ip` tail call. The host veneer passing a->b4 as the
  *   second argument is therefore not a drop at all; it is the same value.
  *
- *   r2 = 0x14 is clobbered before it is read. func_ov004_020b0e84's fourth
+ *   r2 = 0x14 is clobbered before it is read. Mg_DrawTally's fourth
  *   instruction, `ldr r2,[sl,#0x50]` at 0x020b0e90, writes r2, and nothing
  *   between the prologue and it reads r2.
  *
@@ -176,8 +176,8 @@ extern "C" unsigned port_mg_luigi_ov004_trap_hits(void)
 
 /* ---- 5. THE IRQ 2 HANDLER NAMES AN MMIO REGISTER AS A C SYMBOL -----------
  *
- * src/actors/dScMgLuigi_c.cpp is dScMgLuigi_c's HBlank handler -- the one slot 5
- * tears down and src/actors/dScMgLuigi_c.cpp installs -- and it declares
+ * src/minigames/d_s_mg_luigi.cpp is dScMgLuigi_c's HBlank handler -- the one slot 5
+ * tears down and src/minigames/d_s_mg_luigi.cpp installs -- and it declares
  *
  *     extern volatile u16 data_04000006;
  *
@@ -209,7 +209,7 @@ extern "C" {
 extern char data_023c0000[];
 extern int data_0209f608;
 extern int data_0209f648[][192];
-void func_ov006_020efdac(void);
+void Luigi_PushScanlineRecord(void);
 void MultiCopy_Int(int *dst, int *src, int len);
 }
 
@@ -217,7 +217,7 @@ void MultiCopy_Int(int *dst, int *src, int len);
 /* RETIRED, run link100 lane HOSTGEN2 -- THE BODY ONLY, not the file. The ruling
    this copy rests on is "src names the MMIO register VCOUNT as a C symbol
    (data_04000006) the linker cannot place at its absolute address", and that
-   spelling is gone from the tree: src/actors/dScMgLuigi_c.cpp line 250 reads
+   spelling is gone from the tree: src/minigames/d_s_mg_luigi.cpp line 250 reads
    `line = REG_VCOUNT + 1;` and include/nitro/hw/registers.h defines REG_VCOUNT
    as `(*(volatile u16 *)0x04000006)`, which is the literal deref this copy
    exists to supply. No hostgen row is owed either: hostgen's own MMIO_DEREF
@@ -227,13 +227,13 @@ void MultiCopy_Int(int *dst, int *src, int len);
    sites -- so this is the retirement of one body out of a file that keeps its
    other job. Text kept, not deleted. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void func_ov006_020efcf8(void)
+extern "C" void Luigi_PrepareScanlines(void)
 {
     int v;
     *(int *)(((int)(size_t)data_023c0000 + 0x3ff8)) |= 2;
     v = *(volatile unsigned short *)0x4000006 + 1;
     if (v >= 0xc0) {
-        func_ov006_020efdac();
+        Luigi_PushScanlineRecord();
     } else if (v <= 0xc0) {
         if (*(volatile unsigned short *)0x4000004 & 2) {
             MultiCopy_Int(&data_0209f648[data_0209f608][v],
@@ -241,4 +241,4 @@ extern "C" void func_ov006_020efcf8(void)
         }
     }
 }
-#endif  /* HOSTGEN2: func_ov006_020efcf8 retired to src */
+#endif  /* HOSTGEN2: Luigi_PrepareScanlines retired to src */

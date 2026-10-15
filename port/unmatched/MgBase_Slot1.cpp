@@ -42,9 +42,9 @@ struct Obj {
 
 extern "C" {
 extern void Enable3dEngines(void);
-extern char data_0209b308[];
-extern void *data_ov004_020beb60;
-extern void *data_ov004_020beb68;   /* SYNC4: main declares it void * */
+extern char gMgMenuRow[];
+extern void *sMgWorkBuffer;
+/* PORTDROP2: main declares gMgScene as the scene class pointer now (include/dScMgBase_c.h) */
 extern char data_0209f61c[];
 extern unsigned char data_0209d460[];
 extern unsigned char data_0209d458[];
@@ -61,17 +61,17 @@ int _ZN11dScMgBase_c19BeforeInitResourcesEv(void *cv)
         func_02019028();
     else
         Enable3dEngines();
-    self->unk_0c8 = *(int*)(data_0209b308 + 0x28);
-    if (data_ov004_020beb60 == 0)
-        data_ov004_020beb60 = _ZN6Memory13operator_new2Ej(0x4000);
-    if (data_ov004_020beb68 != 0)
-        *(int*)((char *)data_ov004_020beb68 + 0xb0) = 0;
+    self->mMusicTrack = *(int*)(gMgMenuRow + 0x28);
+    if (sMgWorkBuffer == 0)
+        sMgWorkBuffer = _ZN6Memory13operator_new2Ej(0x4000);
+    if (gMgScene != 0)
+        *(int*)((char *)gMgScene + 0xb0) = 0;
     self->mHudScore = 0;
-    self->unk_0b8 = 0;
-    self->unk_465c = 0;
-    func_ov004_020b8a8c(c + 0x4000);
+    self->mBestHudScore = 0;
+    self->mNewRecord = 0;
+    Mg_ResetBannerLayout(c + 0x4000);
     ((mg30::Obj*)c)->v33();
-    func_ov004_020b2cb8();
+    Mg_LoadBannerFiles();
     _ZN8dScene_c9SetFadersEP15dFdBrightness_c(data_0209f61c);
     _ZN7dWipe_c13func_0202ec9cEi(data_0209f61c, 0);
     data_0209d460[0] = 0;

@@ -30,6 +30,12 @@
  * - common.h first via dBgActor_c.h (SetFile matrix argument).
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_wc_obj04_AssetId {
+    ASSET_WC_OBJ04_BMD = 0x06d1,
+    ASSET_WC_OBJ04_KCL = 0x06d2
+};
+
 #include "common.h"
 #include "daObjWc_Obj04_c.h"
 #include "SharedFilePtr.h"
@@ -228,5 +234,5 @@ extern "C" void func_ov029_021126dc(daObjWc_Obj04_c *c)
 
 /* The static-init globals -- mwcc emits __sinit_d_a_obj_wc_obj04.cpp
    from these: one ctor veneer plus destructor registration per handle. */
-WcObj04ModelFilePtr data_ov029_0211432c(0x6d1);
-WcObj04CollisionFilePtr data_ov029_02114324(0x6d2);
+WcObj04ModelFilePtr data_ov029_0211432c(ASSET_WC_OBJ04_BMD);
+WcObj04CollisionFilePtr data_ov029_02114324(ASSET_WC_OBJ04_KCL);

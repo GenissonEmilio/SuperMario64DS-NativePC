@@ -29,7 +29,7 @@
 # per source to _ZTV10daChRoom_c, the host array the fill writes and the factory
 # installs. HEAP is left alone: its binding to the game heap pointer
 # 0x020a0eac is what that body means.
-src/actors/daChRoom_c.cpp
+src/game/actors/d_a_ch_room.cpp
 #
 # ---- 314, ov039 (9 TUs) ---------------------------------------------------
 # Tiny-Huge Island's sky clouds: level 31 places seventeen and no other level

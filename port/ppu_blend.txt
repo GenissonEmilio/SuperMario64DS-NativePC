@@ -758,19 +758,19 @@ SM64DS_OBJBG_OFF=1: f380 1708 px, f450 4908 px, f560 1720 px -- and the black
 field is IDENTICAL in both arms. The rule does not touch it. The trace says the
 march is running: t374 top=3 sub=2, all forty bombs at state 6 substate 4.
 
-1. THE BOMBS ARE OBJ, ON BOTH ENGINES. src/func_ov004_020afdd0.cpp is the
+1. THE BOMBS ARE OBJ, ON BOTH ENGINES. src/Mg_RenderSpriteBoth.cpp is the
    framework plotter -- OAM::Render at y + 0xc0 + G for the top engine and
    OAM::RenderSub at y for the bottom, the RenderOamBothScreens shape.
 
 2. THEY ARE NOT IN ENGINE A's OAM IN THAT REPRO, AND THE SEED IS WHY.
-   src/actors/dScMgBomroom_c.cpp is the bomb renderer, reached from Render slot 9,
+   src/minigames/d_s_mg_bomroom.cpp is the bomb renderer, reached from Render slot 9,
    and it opens `if (self->e[i].b699 == 0) continue;` -- byte +0x4699. The ROM
-   sets that byte in _ZN14dScMgBomroom_c19func_ov006_020d8324Ei, the spawn-delay state, which counts
+   sets that byte in _ZN14dScMgBomroom_c11Bomb_State0Ei, the spawn-delay state, which counts
    +0x4690 down and then writes +0x4699 = 1, +0x4694 = 1, +0x4697 = 1.
 
    sos_binfill writes +0x698, +0x697, +0x69b, +0x69c, +0x69d, +0x690, +0x692,
    +0x696, +0x670, +0x688, +0x68c, +0x660 and +0x664 -- every field
-   _ZN14dScMgBomroom_c19func_ov006_020d8408Ev writes, which is exactly what its header promises -- and
+   _ZN14dScMgBomroom_c10SpawnBombsEv writes, which is exactly what its header promises -- and
    then calls the ROM's drop handler, which parks the bomb at +0x697 == 5. The
    delay state never runs, so +0x4699 is never set, so no seeded bomb is ever
    submitted. The seed jumps a bomb from "just spawned" straight to "parked in a
@@ -784,7 +784,7 @@ march is running: t374 top=3 sub=2, all forty bombs at state 6 substate 4.
    sos_binfill, beside the existing +0x698/+0x697 writes, add
        *(unsigned char *)(b + 0x699) = 1;
        *(unsigned char *)(b + 0x694) = 1;
-   which is what _ZN14dScMgBomroom_c19func_ov006_020d8324Ei writes when the delay it seeds expires.
+   which is what _ZN14dScMgBomroom_c11Bomb_State0Ei writes when the delay it seeds expires.
    NOT taken here: that file is not this lane's.
 
 3. THE BLACK FIELD IS BG2 SCROLLING OFF, AND THE ROM DRIVES IT.
@@ -806,7 +806,7 @@ march is running: t374 top=3 sub=2, all forty bombs at state 6 substate 4.
    The compositor draws what the registers and VRAM say, on both frames.
 
 4. AND THE ROM ITSELF STOPS DRAWING THE MARCHING BOMBS. At the clamp,
-   _ZN14dScMgBomroom_c19func_ov006_020d5b10Ev calls _ZN14dScMgBomroom_c19func_ov006_020d8904Ev, which writes +0x699 = 0 on
+   _ZN14dScMgBomroom_c13UpdateBg2LiftEv calls _ZN14dScMgBomroom_c17HideExplodedBombsEv, which writes +0x699 = 0 on
    every bomb in state 6. With the seed corrected, engine A's OBJ ownership runs
    13275..14290 px through f442 and falls to 2956 px by f506, centred on that
    clamp.

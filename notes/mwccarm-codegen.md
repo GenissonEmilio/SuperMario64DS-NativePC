@@ -923,7 +923,7 @@ Three parked "not reachable from C" regalloc near-misses cracked byte-exact
   the extra *named webs* that `volatile` + named ints introduce - which is what the
   rotation was. Prefer this form; fall back to `volatile` only if the coloring already
   matches. (Mined from the twin `func_ov006_02107ea8`, now part of
-  [src/actors/dScMgRoulette_c.cpp](../src/actors/dScMgRoulette_c.cpp), as ROM ordinal and func 13 used to assemble TU ,which uses the same idiom.)
+  [src/minigames/d_s_mg_roulette_methods.cpp](../src/minigames/d_s_mg_roulette_methods.cpp), as ROM ordinal and func 13 used to assemble TU ,which uses the same idiom.)
 - **Stack layout is declaration order, low to high** (volatile arrays and structs
   included): `saved[3]` then `v1` then `v2` lands sp+0 / sp+0xc / sp+0x18
   (func_ov092_021311b0; confirmed again on func_ov092_02131010's tmp/eq/dust).
@@ -2971,7 +2971,7 @@ Three corrections fell straight out of it, all of which had been recorded as evi
   meaningless, including ones asserted this session on the grounds that the token appears in
   the binary -- appearing in the binary is not the same as being pragma-exposed.
 - **`long_calls` is not a pragma.** The source now at
-  `src/actors/daObjCtMecha04_c.cpp` carried
+  `src/game/actors/d_a_obj_ct_mecha04.cpp` carried
   `#pragma long_calls on` plus a comment crediting it for the pooled
   `ldr ip,[pc,#8]; bx ip` tail-call. It was silently ignored; the file matches on all 12
   builds with the line removed. Comment corrected.
@@ -5285,7 +5285,7 @@ callee-saved registers suffice. The stored row's source is also the more admissi
 it fabricates an eighth parameter for `OAM::Render` and passes `(OamAttr *)0x1000`, where the
 seed calls `_ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii` with the parameter shape a matched
 sibling on main already uses (`func_ov006_020fa7b8`, since promoted into the folded TU
-`src/actors/dScMgPachinko_c.cpp`). Admissibility is not what
+`src/minigames/d_s_mg_pachinko.cpp`). Admissibility is not what
 `closeness` ranks on, so the DB keeps the worse-shaped source. That is a known cost of the
 metric, not an argument for forcing the ingest.
 
@@ -6333,8 +6333,8 @@ propagation pass is what pushes an `add rN, sp, #imm` down to each use; with pro
 off the address is computed once where the value is born and kept in a callee-saved
 register. The candidate then emits the ROM's hoist, the ROM's six `mov rN, r8` and `this`
 in r7, and 201 divergent words become **four extra instructions**. Precedent for the pragma
-already exists in the tree: `daBombking_c.cpp`, `dScMgBomroom_c.cpp`, `dScMgCurling2_c.cpp`,
-`dScMgLuigi_c.cpp`.
+already exists in the tree: `d_a_bombking.cpp`, `d_s_mg_bomroom.cpp`, `d_s_mg_curling2.cpp`,
+`d_s_mg_luigi.cpp`.
 
 **NO SOURCE-LEVEL LAUNDER REACHES IT.** An address of a local is in 6h's rematerialisable
 class and propagation folds every disguise: a plain named pointer, `(int)` and
@@ -6591,7 +6591,7 @@ and materializes `lsl r1, r2, #2` / `add r0, r0, r1` when it names it one way (a
 all offsets). Spelling the whole function through members, with case 7 keeping its strided
 `char *p = (char *)this; p += 0x15` row walk and the touch x/y read inside the hit loop through
 a 4-byte record view, gives the retail bytes. The 16-bit index below is not needed. See the
-banner on `_ZN12dScMgSlot1_c8BehaviorEv` in `src/actors/dScMgSlots.cpp` and manifest
+banner on `_ZN12dScMgSlot1_c8BehaviorEv` in `src/minigames/d_s_mg_slots.cpp` and manifest
 `config/tu_manifest.d/ov006/dScMgSlot1_c+dScMgSlot3_c.json` (boundary_evidence[3], [4]).
 
 This section replaces the wave-9 text filed under the same number ("declare the scaled index
@@ -6713,10 +6713,10 @@ reproduced in a 15-instruction toy, `_abwork/crkh/toyprobe.py`:
   five-instruction return block that keeps its branch:
       src/unnamed/arm9/0206/func_02062d10.cpp       `bne` over an arm containing `cmp r0,#0 / beq`
       func_ov006_020e83bc         `bge` over an arm containing `cmp r0,#0 / movgt / strgt`
-                                  (now in src/actors/dMg3DEspAnimSet_c.cpp)
+                                  (now in src/minigames/d_mg3d_esp_anim_set.cpp)
   Both are the final `else` of an if / else-if / else chain, so the jumped-over arm is the
   else-if body and contains that arm's own test. The multi-predecessor precedents 6u names
-  (src/unnamed/ov007/func_ov007_020b1f2c.c, func_ov002_020d85fc in src/actors/Player.cpp) are `&&` chains.
+  (src/unnamed/ov007/func_ov007_020b1f2c.c, func_ov002_020d85fc in src/game/player/Player.cpp) are `&&` chains.
   Found by disassembling every matched src/ file's ROM range and looking for a forward
   conditional branch into a <=7-instruction block ending in a return whose only predecessor is
   that branch: 16 hits in the whole corpus.
@@ -7914,7 +7914,7 @@ reached through pointer locals taken beside each stone's reads: a named pointer 
 named local, in declaration order, so their addresses leave the compiler's spill pool and sit in the named
 chain, which is where the ROM keeps them (pool slots sp4/8/c in point 6 are exactly these three addresses).
 (k) The moving stone's new x velocity reuses the outer `dx`, which drops it to the end of the pool. With those
-three the declaration-order climb of point 6 was no longer needed. The file is in src/actors/dScMgCurling_c.cpp
+three the declaration-order climb of point 6 was no longer needed. The file is in src/minigames/d_s_mg_curling.cpp
 and the class is widened to its whole 46-function unit.
 The same levers on 020e5450: the hit stone's angle bound as a reference right after atan2 (`u16 &hitAngle =
 self->mStone[i].angle;`, a reference ranks like a pointer local) took it 70 -> 43; computing `xi` before `yi`

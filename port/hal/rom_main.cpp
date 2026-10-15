@@ -55,7 +55,7 @@
 // port had never run.
 //
 // MEASURED, gate ON against gate OFF, on this tree:
-//   linked into walk_window   10145 -> 10147 (+2: main, _ZN4Heap9SetNodeIDEj)
+//   linked into walk_window   10145 -> 10147 (+2: main, _ZN5mHeap6Heap_t9SetNodeIDEj)
 //   SHADOWS in linkage.py     15 -> 14 (main left the queue; no new row)
 //   the six proofs, the full battery and a captured 20-frame run: see lane
 //   BOOTR1's report. The gate is OBSERVED firing, not assumed: a proof that is
@@ -99,16 +99,18 @@
 #include <cstdio>
 #include <cstdlib>
 
-/* src/_ZN4Heap9SetNodeIDEj.cpp is a real C++ method (`//cpp`), so its object
+/* src/engine/heap/Heap.cpp is a real C++ method (`//cpp`), so its object
    carries MSVC's mangling and nothing carries the flat Itanium name src/main.c
    calls. This is the two-name-space bridge hal/heap_vtable.cpp already writes
    for the allocator's own NodeID accessors, done once more for the base class.
    The declaration matches include/Heap.h:33 exactly (public, non-const,
    unsigned int), so the call mangles onto the same symbol the matched TU
    defines. */
-struct Heap {
+namespace mHeap {
+struct Heap_t {
     void SetNodeID(unsigned int a_);
 };
+}
 
 extern "C" {
 
@@ -168,14 +170,14 @@ void port_rom_loop_seam(void)
    passes `this` in r0 and main.c's own prototype spells that as a leading
    unsigned int, so the two words arrive in the same order a cdecl call makes
    them. */
-void _ZN4Heap9SetNodeIDEj(void *self, unsigned int id)
+void _ZN5mHeap6Heap_t9SetNodeIDEj(void *self, unsigned int id)
 {
     if (!self) {
-        std::fprintf(stderr, "[rom-main] Heap::SetNodeID(%u) on a null heap; "
+        std::fprintf(stderr, "[rom-main] mHeap::Heap_t::SetNodeID(%u) on a null heap; "
                              "skipped\n", id);
         return;
     }
-    ((Heap *)self)->SetNodeID(id);
+    ((mHeap::Heap_t *)self)->SetNodeID(id);
 }
 
 /* THE GATE, DEFAULT ON (run link100, lane BOOTR1). Unset or empty runs the

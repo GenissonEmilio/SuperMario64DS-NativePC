@@ -17,14 +17,14 @@
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
 # zero-argument _ZN8dActor_c13ClosestPlayerEv() call closestplayer_guard refuses (thiscall
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # _ZN7daPkn_c8BehaviorEv IS NOT HERE: the pointer-to-member case (host copy).
 # _ZN7daPkn_c6RenderEv IS NOT HERE: the ModelAnim slot-5 case (host copy).
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
@@ -33,28 +33,28 @@
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
 # zero-argument _ZN8dActor_c13ClosestPlayerEv() call closestplayer_guard refuses (thiscall
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
 # zero-argument _ZN8dActor_c13ClosestPlayerEv() call closestplayer_guard refuses (thiscall
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
 # zero-argument _ZN8dActor_c13ClosestPlayerEv() call closestplayer_guard refuses (thiscall
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # slot 29 (OnAimedAtWithEgg), its own
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
@@ -62,7 +62,7 @@
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # the nine states its Behavior dispatches, all matched
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
@@ -70,35 +70,35 @@
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
 # zero-argument _ZN8dActor_c13ClosestPlayerEv() call closestplayer_guard refuses (thiscall
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
 # zero-argument _ZN8dActor_c13ClosestPlayerEv() call closestplayer_guard refuses (thiscall
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
 # zero-argument _ZN8dActor_c13ClosestPlayerEv() call closestplayer_guard refuses (thiscall
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
 # zero-argument _ZN8dActor_c13ClosestPlayerEv() call closestplayer_guard refuses (thiscall
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # func_ov084_0212f460 IS NOT HERE: C++ inside a .c (the gate-9 case), so it goes
 # through hostgen -- see GATE_L7_SYMS in port/CMakeLists.txt.
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
@@ -107,52 +107,52 @@
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
 # zero-argument _ZN8dActor_c13ClosestPlayerEv() call closestplayer_guard refuses (thiscall
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
 # zero-argument _ZN8dActor_c13ClosestPlayerEv() call closestplayer_guard refuses (thiscall
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # the piranha's own closure: the two per-frame helpers Behavior calls, the
 # spawn/init helpers and the aim path
 # func_ov084_0212f204: r0-passthrough. Calls Actor::ClosestPlayer() with no
 # argument (this rode ARM r0). HOST COPY passes `r4` explicitly at
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp. Byte-locked src unchanged.
-# src/actors/daPkn_c.cpp
+# src/game/actors/d_a_pkn.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
 # zero-argument _ZN8dActor_c13ClosestPlayerEv() call closestplayer_guard refuses (thiscall
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
 # zero-argument _ZN8dActor_c13ClosestPlayerEv() call closestplayer_guard refuses (thiscall
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
 # zero-argument _ZN8dActor_c13ClosestPlayerEv() call closestplayer_guard refuses (thiscall
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main consolidated ov084's
 # PiranhaPlant bodies into this one TU, and the TU carries func_ov084_0212f204, whose
 # zero-argument _ZN8dActor_c13ClosestPlayerEv() call closestplayer_guard refuses (thiscall
 # with no receiver faults on null this + 0x5c). The port already hosts that function in
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp, which the raw TU would now
 # duplicate. Restore this row once the host copy covers the whole consolidated TU.
-#src/actors/daPkn_c.cpp
+#src/game/actors/d_a_pkn.cpp

@@ -1,4 +1,10 @@
 //cpp
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_wc_mizu_AssetId {
+    ASSET_WC_MIZU_BMD = 0x06ca,
+    ASSET_WC_MIZU_KCL = 0x06cb
+};
+
 #include "Sound.h"
 /* PROMOTED translation unit -- ov029/daObjWc_Mizu_c (9 function(s)).
  *
@@ -268,5 +274,5 @@ extern "C" void func_ov029_02112250(daObjWc_Mizu_c *self)
 
 /* The static-init globals -- mwcc emits __sinit_d_a_obj_wc_mizu.cpp
    from these: one ctor veneer plus destructor registration per handle. */
-WcMizuModelFilePtr daObjWc_Obj07_c_ModelFile(0x6ca);
-WcMizuCollisionFilePtr daObjWc_Obj07_c_ClsnFile(0x6cb);
+WcMizuModelFilePtr daObjWc_Obj07_c_ModelFile(ASSET_WC_MIZU_BMD);
+WcMizuCollisionFilePtr daObjWc_Obj07_c_ClsnFile(ASSET_WC_MIZU_KCL);

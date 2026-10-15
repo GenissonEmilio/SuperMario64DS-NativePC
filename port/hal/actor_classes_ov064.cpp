@@ -151,7 +151,7 @@ void _ZN7dCcAc_cD1Ev(void *);   /* the MovingCylinderClsn at +0x33c */
 void _ZN10dBgCh_ActrD1Ev(void *);         /* the WithMeshClsn at +0x174 */
 void _ZN9ModelAnimD1Ev(void *);             /* the ModelAnim at +0x110 */
 void _ZN12dEnemyBase_cD2Ev(void *);           /* the Enemy base D2 (ov002) */
-void _ZN6Memory10DeallocateEPvP4Heap(void *, void *);
+void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *, void *);
 extern void *data_020a0eac;                 /* Memory::gameHeapPtr (== G0) */
 
 /* the three derived vtables, HOST arrays this file fills; 37/37/32 slots.
@@ -482,7 +482,7 @@ int _ZN11daDonketu_c13InitResourcesEv(void *self)
    0x02116ca0 in daOts_c's table and in all three children's, so Bully inherits
    CleanupResources rather than overriding it; ov064's symbols.txt carries no
    _ZN5Bully16CleanupResourcesEv and symbols/actor_renames.tsv:1817 records the
-   rename. src/actors/daOts_c.cpp:175 is the body and its object defines
+   rename. src/game/actors/d_a_ots.cpp:175 is the body and its object defines
    ?CleanupResources@daOts_c@@UAEHXZ.
    include/Bully.h:33 still declares the override the ROM does not have, which is
    what made the call spell itself this way; that line is a decomp-side ask and it

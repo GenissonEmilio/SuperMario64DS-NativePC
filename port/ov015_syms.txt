@@ -79,8 +79,8 @@ _ZTI20daObjBk_Fall_Block_c _ZTI16daObjFallBlock_c data_ov015_0211487c data_ov015
 _ZTS16daObjFallBlock_c data_ov015_02114898 _ZTS20daObjBk_Fall_Block_c data_ov015_021148b4
 g_profile_BK_DOWN_B:0x1c data_ov015_021148e0 data_ov015_021148f0
 data_ov015_02114968@0x02114968 data_ov015_02114984@0x02114984
-data_ov015_02114990@0x02114990 data_ov015_0211499c data_ov015_021149a4 data_ov015_021149ac
-data_ov015_021149b4 data_ov015_021149bc data_ov015_021149c8 data_ov015_021149d4
+data_ov015_02114990@0x02114990 gBkDossunbarLCollisionFile gBkDossunbarSModelFile gBkDossunbarSCollisionFile
+gBkDossunbarLModelFile data_ov015_021149bc data_ov015_021149c8 data_ov015_021149d4
 data_ov015_021149e0 data_ov015_021149ec data_ov015_021149f0 data_ov015_021149fc
 data_ov015_02114a18 data_ov015_02114a24
 data_ov015_02114a6c@0x02114a6c data_ov015_02114a78@0x02114a78
@@ -95,14 +95,14 @@ data_ov015_02114ae4@0x02114ae4 data_ov015_02114af0@0x02114af0
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov015_02114960                        now defined by src/game/actors/d_a_obj_bk_billboard.cpp
-#   data_ov015_02114974                        now defined by src/actors/daObjBk_Botaosi_c.cpp
-#   data_ov015_0211497c                        now defined by src/actors/daObjBk_Botaosi_c.cpp
+#   gBkBillbordModelFile                        now defined by src/game/actors/d_a_obj_bk_billboard.cpp
+#   data_ov015_02114974                        now defined by src/game/actors/d_a_obj_bk_botaosi.cpp
+#   data_ov015_0211497c                        now defined by src/game/actors/d_a_obj_bk_botaosi.cpp
 #   data_ov015_02114a84                        now defined by src/game/actors/d_a_obj_bk_rotebar.cpp
 #   data_ov015_02114a8c                        now defined by src/game/actors/d_a_obj_bk_rotebar.cpp
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov015_02114aac! data_ov015_02114ab4! data_ov015_02114ad4! data_ov015_02114adc!
+gBkUkisimaModelFile! gBkUkisimaCollisionFile! gBkDownBCollisionFile! gBkDownBModelFile!
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov015_02114960! data_ov015_0211497c! data_ov015_02114974! data_ov015_02114a8c! data_ov015_02114a84!
+gBkBillbordModelFile! data_ov015_0211497c! data_ov015_02114974! data_ov015_02114a8c! data_ov015_02114a84!
 # PORTSYNC3: the Bk Lift model and collision file handles (d_a_obj_bk_lift TU defines AND constructs them)
 data_ov015_02114a5c! data_ov015_02114a64!

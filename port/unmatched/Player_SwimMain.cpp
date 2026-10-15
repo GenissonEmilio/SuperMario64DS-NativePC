@@ -1,4 +1,4 @@
-/* HOST COPY of src/actors/Player.cpp -- Player swimming state, per frame.
+/* HOST COPY of src/game/player/Player.cpp -- Player swimming state, per frame.
  *
  * This file is BYTE-IDENTICAL to the byte-locked source except for ONE call:
  * the health check `Player::GetHealth()`. It was produced by copying the source
@@ -26,7 +26,7 @@
  * and the swim state faults -- the SIG-SWIM signature in the JRB matrix. THE FIX
  * passes `this` explicitly, exactly the value the ROM leaves in r0.
  *
- * src/actors/Player.cpp is dropped from slice_gate10.txt in favour
+ * src/game/player/Player.cpp is dropped from slice_gate10.txt in favour
  * of this file; the byte-locked source is unchanged.
  */
 //cpp

@@ -62,7 +62,7 @@
 //   THE ARITIES. src/func_02018d98.c took no parameters and passed none on,
 //     and Heap::_Allocate's veneer was a void() calling a void(). Both are
 //     re-spelled in src/ now: func_02018d98(void *file, const char *path)
-//     passes both to func_0205d518, and src/_ZN4Heap9_AllocateEji.cpp forwards
+//     passes both to func_0205d518, and src/engine/heap/Heap.cpp forwards
 //     (size, align) to Heap::Allocate and returns its block, reached from the C
 //     name through a port/faces_sync.txt R row onto the real member. The last
 //     ride-through on this path, src/func_02018770.c calling UnloadArchive()

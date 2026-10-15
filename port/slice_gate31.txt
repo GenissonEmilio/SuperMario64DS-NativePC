@@ -33,7 +33,7 @@ src/unnamed/arm9/0202/func_0202ae74.c
 # a different pointer spelling, which MSVC reads as overloading an extern "C"
 # function. Same body, five declarations removed. Added to the targets in
 # CMakeLists.txt beside the other unmatched host copies.
-src/actors/Player.cpp
+src/game/player/Player.cpp
 port/unmatched/hostarm/Player.cpp
 src/_ZN6PlayerD1Ev.cpp
 
@@ -42,7 +42,7 @@ src/_ZN6PlayerD1Ev.cpp
 # reason, and it is the one line of the ROM's Stage teardown that applies to
 # the port's boot: the level's collider has to leave the registry before the
 # next level's LoadClsnAndObjects puts its own in.
-src/engine/collision/dBgW.cpp
+src/engine/collision/d_bg_w.cpp
 
 # ---- StartFile's and Player::CleanupResources' own closures ----------------
 # Everything below is reached only from the two entry points above; each is a
@@ -54,9 +54,9 @@ src/engine/collision/dBgW.cpp
 src/SetNumPlayers.c
 src/unnamed/arm9/0203/func_020308d0.c
 src/InitControllerMode.c
-src/actors/daStar_c.cpp
-src/actors/daObjKey_c.cpp
-src/actors/Player.cpp
+src/game/actors/d_a_star.cpp
+src/game/actors/d_a_obj_key.cpp
+src/game/player/Player.cpp
 # func_02073244 and func_0203cbc0 are HOST COPIES too (port/unmatched/): both
 # are ARM argument ride-throughs -- func_0203cbc0 is a veneer that forwards r0
 # to _ZdlPv without declaring an argument, and func_02073244 lets the element
@@ -72,7 +72,7 @@ src/actors/Player.cpp
 # destruction over shadow classes and are written out in actor_classes.cpp.
 src/game/actors/d_a_obj_mc_water.cpp
 src/game/actors/d_a_obj_mc_metalnet.cpp
-src/actors/daObjHatenaBlock_c.cpp
+src/game/actors/d_a_obj_hatena_block.cpp
 # RETIRED at SLICE1: body now in src/_ZN13QuestionBlockD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN13QuestionBlockD0Ev.cpp
 # CastleWater's own chain reaches the texture transformer it scrolls the moat

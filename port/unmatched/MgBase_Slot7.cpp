@@ -62,11 +62,11 @@ extern "C" int _ZN8dScene_c14BeforeBehaviorEv(char *self);
  * lane's call to make from inside port/.
  */
 extern "C" {
-int func_ov004_020b8ee0(char *p);
-void func_ov004_020aeb24(char *c);
+int _ZN10dMgPsOpt_c6IsIdleEv(char *p);
+void Mg_UpdateMenu(char *c);
 void _ZN10dMgState_c8BehaviorEv(char *c);
-void func_ov004_020b321c(char *c);
-void func_ov004_020adf2c(char *c);
+void Banner_Update(char *c);
+void Mg_UpdateFx(char *c);
 void _Z14ApproachLinearRiii(int *p, int a, int b);
 }
 
@@ -117,7 +117,7 @@ extern int data_0208ee44;
 /* local extern: main's include/decl_common.h no longer declares the record
    pool; src/minigames/d_s_mg_base.cpp defines it (C linkage) as a local
    `Ent[0x40]` no header carries, and this body walks it by byte offset. */
-extern char data_ov004_020bebe8[];
+extern char sMgFxPool[];
 
 // PORT_HOST_ABI: src drops the self argument to Scene::BeforeBehavior (decl_Scene.h empty parens); the ROM rides it through r0 but MSVC __cdecl drops it, so the host copy passes self
 int _ZN11dScMgBase_c14BeforeBehaviorEv(void *cv)
@@ -139,7 +139,7 @@ int _ZN11dScMgBase_c14BeforeBehaviorEv(void *cv)
         if ((flags & 8) || (flags & 4) || (flags & 1) || (flags & 2)) {
             if (*(int *)(self + 0x4628) != 0) {
                 if (*(short *)(self + 0x4646) < 0) {
-                    if (func_ov004_020b8ee0(self + 0xf4))
+                    if (_ZN10dMgPsOpt_c6IsIdleEv(self + 0xf4))
                         ((mg20::Self *)self)->m70();
                 }
             } else {
@@ -151,7 +151,7 @@ int _ZN11dScMgBase_c14BeforeBehaviorEv(void *cv)
 
     if (*(int *)(self + 0x4628) != 0) {
         ++g_res_tick_in;
-        func_ov004_020aeb24(self);
+        Mg_UpdateMenu(self);
         ++g_res_tick_out;
         return 0;
     }
@@ -162,21 +162,21 @@ int _ZN11dScMgBase_c14BeforeBehaviorEv(void *cv)
         int i;
         char *g;
         _ZN10dMgState_c8BehaviorEv(self + 0xcc);
-        g = data_ov004_020bf648;
+        g = gMgBanners;
         for (i = 0; i < 3; i++) {
             if (*(int *)(g + 0x20) != 0x1d)
-                func_ov004_020b321c(g);
+                Banner_Update(g);
             g += 0x134;
         }
     }
 
     {
         int j;
-        char *p = data_ov004_020bebe8;
-        char *base = data_ov004_020bebe8;
+        char *p = sMgFxPool;
+        char *base = sMgFxPool;
         for (j = 0; j < 0x40; j++) {
             if (*(short *)(base + j * 0x20 + 0x1a) != 0)
-                func_ov004_020adf2c(p);
+                Mg_UpdateFx(p);
             p += 0x20;
         }
     }

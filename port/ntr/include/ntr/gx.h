@@ -540,7 +540,7 @@ bool gx_menu_scene_active();     // the scene callback is installed and this fra
 // colour and the texture modulates it as usual; with it set (highlight) the
 // vertex colour's green and blue take its red, it modulates as usual and the
 // entry is ADDED after, saturating. The mode-2 users: the cap morph
-// (src/actors/Player.cpp, func_ov002_020be3b0) strips the textures, sets mode 2
+// (src/game/player/Player.cpp, func_ov002_020be3b0) strips the textures, sets mode 2
 // and rotates a rainbow into the table every tick; func_ov002_020beabc (a level
 // entered with a changed character, morph state 5); and ov007, the title menu's
 // Mario head and the file select's vortex (func_ov007_020b2bd4, the table from

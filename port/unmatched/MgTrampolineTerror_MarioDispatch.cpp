@@ -5,12 +5,12 @@
  * ---- 1. WHERE IT SITS ----------------------------------------------------
  *
  * The factory builds TEN records of 0x1d0 bytes at this+0x5ddc (element ctor
- * func_ov006_021248a8, element dtor func_ov006_021227c8 -- the ROM's own r3 and
+ * TrmpItem_Construct, element dtor Trmp2_DestructJumperModels -- the ROM's own r3 and
  * [sp] columns, see unmatched/MgTrampolineTerror_Factory.cpp).  Each record
  * carries an mwcc member pointer at OFFSET 0, and two TUs dispatch it:
  *
- *     src/func_ov006_020cf758.cpp   struct C { PMF pmf; };  (c->*(c->pmf))();
- *     src/func_ov006_020cea2c.cpp   PMF *pp = (PMF *)c;  (((C *)c)->**pp)();
+ *     src/TrmpLine_Update.cpp   struct C { PMF pmf; };  (c->*(c->pmf))();
+ *     src/TrmpItem_Update.cpp   PMF *pp = (PMF *)c;  (((C *)c)->**pp)();
  *
  * Both are real `T::*` declarations, so the prescribed `::*` sweep finds them.
  * THIS LANE RAN THAT SWEEP OVER ALL 216 TUs of its closure -- the 204 slice
@@ -20,7 +20,7 @@
  * unmatched/MgTrampolineTerror_StateDispatch.cpp).
  *
  * THE FOURTH WALL IS NOT ONE OF THEM, and saying it was is the error the mg11
- * review caught. src/func_ov006_020c8f20.cpp declares no `T::*` anywhere; it
+ * review caught. src/Trmp2Mario_Update.cpp declares no `T::*` anywhere; it
  * open-codes the decode in plain ints, which is precisely why
  * unmatched/MgTrampolineTerror_SubDispatch.cpp exists and why a RUN was needed
  * to convict it. The lane's sweep tool reports PMF-SHAPED files -- its `::*` arm
@@ -33,8 +33,8 @@
  * scene 385 faulted with
  *
  *     FAULT code c0000005 at +0x00093129 accessing 3083e230
- *       func_ov006_020cea2c
- *       func_ov006_020cedf0        (walks data_ov006_0214082c, stride 0x1d0)
+ *       TrmpItem_Update
+ *       TrmpItem_UpdateAll        (walks data_ov006_0214082c, stride 0x1d0)
  *       func_ov006_02123cb4        (this class's PLAY state)
  *       _ZN18dScMgTrampoline2_c8BehaviorEv / tte_beh
  *
@@ -48,19 +48,19 @@
  * extracted/overlays/overlay_0006.bin at base 0x020bfec0.  A sample of the
  * writers, each `*(struct S *)c = <pair>`:
  *
- *     src/func_ov006_020cdad0.c  data_ov006_0213b31c   {0x020cd9b0, 0}
- *     src/func_ov006_020cd7b8.c  data_ov006_0213b32c   {0x020cd744, 0}
- *     src/func_ov006_020cdf20.c  data_ov006_0213b34c   {0x020cdf1c, 0}
- *     src/func_ov006_020cdeec.c  data_ov006_0213b354   {0x020cdea0, 0}
- *     src/func_ov006_020cde7c.c  data_ov006_0213b35c   {0x020cde4c, 0}
- *     src/func_ov006_020cfc58.c  data_ov006_0213b364   {0x020cfa44, 0}
- *     src/func_ov006_020cd98c.c  data_ov006_0213b36c   {0x020cd864, 0}
- *     src/func_ov006_020cfa28.c  data_ov006_0213b374   {0x020cf820, 0}
- *     src/func_ov006_020cf804.c  data_ov006_0213b37c   {0x020cf790, 0}
- *     src/func_ov006_020cdce4.c  data_ov006_0213b384   {0x020cdc8c, 0}
- *     src/func_ov006_020cdc68.c  data_ov006_0213b38c   {0x020cdc38, 0}
- *     src/func_ov006_020cdc14.c  data_ov006_0213b394   {0x020cdaec, 0}
- *     src/func_ov006_020cde28.c  data_ov006_0213b39c   {0x020cdd08, 0}
+ *     src/TrmpItem_SetMotion8.c  pmf_TrmpItem_Motion8   {0x020cd9b0, 0}
+ *     src/TrmpItem_ProjectToScreen.c  pmf_TrmpItem_GrowScale   {0x020cd744, 0}
+ *     src/TrmpItem_SetMotion0.c  pmf_TrmpItem_Motion0   {0x020cdf1c, 0}
+ *     src/TrmpItem_SetMotion1.c  pmf_TrmpItem_Motion1   {0x020cdea0, 0}
+ *     src/TrmpItem_SetMotion2.c  pmf_TrmpItem_Motion2   {0x020cde4c, 0}
+ *     src/TrmpLine_SetStateFlex.c  pmf_TrmpLine_StateFlex   {0x020cfa44, 0}
+ *     src/TrmpItem_SetMotion7.c  pmf_TrmpItem_Motion7   {0x020cd864, 0}
+ *     src/TrmpLine_SetStateSettle.c  pmf_TrmpLine_StateSettle   {0x020cf820, 0}
+ *     src/TrmpLine_SetStateFade.c  pmf_TrmpLine_StateFade   {0x020cf790, 0}
+ *     src/TrmpItem_SetMotion4.c  pmf_TrmpItem_Motion4   {0x020cdc8c, 0}
+ *     src/TrmpItem_SetMotion6.c  pmf_TrmpItem_Motion6   {0x020cdc38, 0}
+ *     src/TrmpItem_SetMotion5.c  pmf_TrmpItem_Motion5   {0x020cdaec, 0}
+ *     src/TrmpItem_SetMotion3.c  pmf_TrmpItem_Motion3   {0x020cdd08, 0}
  *
  * The run's ENDS are where it stops being pairs: 0x0213b314 is the ASCII word
  * 0x676e6972 ("ring") and 0x0213b3a4 is a five-word record ({0x1e, 0x0212e05c,
@@ -79,14 +79,14 @@
  * words, for the reason unmatched/MgMemory2_FieldPmf.cpp section 3 gives and
  * port/mg_fanout_costs.txt section 4 derives from the flower: sixteen writers
  * copy these records by value and at least one consumer in this family compares
- * a stored pair word for word (src/func_ov006_020c94e0.cpp does it one record
+ * a stored pair word for word (src/Trmp2Mario_BounceOffLineA.cpp does it one record
  * class over), so host addresses in the .data would make a comparison
  * permanently false while the dispatch itself looked fine.
  *
  * ---- 4. THE TWO HOST COPIES ARE THEIR src TUs WITH THE DISPATCH ROUTED ----
  *
- * func_ov006_020cf758 is one statement and the statement is the dispatch.
- * func_ov006_020cea2c keeps every other line verbatim -- the AddVec3 on
+ * TrmpLine_Update is one statement and the statement is the dispatch.
+ * TrmpItem_Update keeps every other line verbatim -- the AddVec3 on
  * c+8 / c+0x2c, the Animation::Advance at c+0x194 and the nine field copies, in
  * src's order and at src's offsets.  Both src TUs are OUT of
  * port/slice_tte.txt: listing either would be an LNK2005.
@@ -102,30 +102,30 @@ extern "C" {
 void port_mg_call0(void *self, unsigned code, int adj);
 
 /* the fourteen distinct code words in 0x0213b31c..0x0213b39c */
-void func_ov006_020cd744(void *c);
-void func_ov006_020cd864(void *c);
-void func_ov006_020cd9b0(void *c);
-void func_ov006_020cdaec(void *c);
-void func_ov006_020cdc38(void *c);
-void func_ov006_020cdc8c(void *c);
-void func_ov006_020cdd08(void *c);
-void func_ov006_020cde4c(void *c);
-void func_ov006_020cdea0(void *c);
-void func_ov006_020cdf1c(void *c);
-void func_ov006_020cdf3c(void *c);
-void func_ov006_020cf790(void *c);
-void func_ov006_020cf820(void *c);
-void func_ov006_020cfa44(void *c);
+void TrmpItem_GrowScale(void *c);
+void TrmpItem_Motion7(void *c);
+void TrmpItem_Motion8(void *c);
+void TrmpItem_Motion5(void *c);
+void TrmpItem_Motion6(void *c);
+void TrmpItem_Motion4(void *c);
+void TrmpItem_Motion3(void *c);
+void TrmpItem_Motion2(void *c);
+void TrmpItem_Motion1(void *c);
+void TrmpItem_Motion0(void *c);
+void TrmpItem_StateAppear(void *c);
+void TrmpLine_StateFade(void *c);
+void TrmpLine_StateSettle(void *c);
+void TrmpLine_StateFlex(void *c);
 
-/* src/func_ov006_020cea2c.cpp's own callees, spelled as that file spells them */
+/* src/TrmpItem_Update.cpp's own callees, spelled as that file spells them */
 void AddVec3(void *a, void *b, void *c);
 void _ZN15dExtFrameCtrl_c7AdvanceEv(void *anim);
 
 /* run link100 lane FWD gate 3: both are src TUs on port/slice_fwd.txt now,
    not definitions in this file. The declarations stay because the class's
    census and its factory both name them. */
-void func_ov006_020cea2c(char *c);
-void func_ov006_020cf758(void *c);
+void TrmpItem_Update(char *c);
+void TrmpLine_Update(void *c);
 
 }  /* extern "C" */
 
@@ -134,20 +134,20 @@ static unsigned g_tte_mario_calls, g_tte_mario_routed;
 static int tte_mario_try(void *self, unsigned code)
 {
     switch (code) {
-    case 0x020cd744u: func_ov006_020cd744(self); return 1;
-    case 0x020cd864u: func_ov006_020cd864(self); return 1;
-    case 0x020cd9b0u: func_ov006_020cd9b0(self); return 1;
-    case 0x020cdaecu: func_ov006_020cdaec(self); return 1;
-    case 0x020cdc38u: func_ov006_020cdc38(self); return 1;
-    case 0x020cdc8cu: func_ov006_020cdc8c(self); return 1;
-    case 0x020cdd08u: func_ov006_020cdd08(self); return 1;
-    case 0x020cde4cu: func_ov006_020cde4c(self); return 1;
-    case 0x020cdea0u: func_ov006_020cdea0(self); return 1;
-    case 0x020cdf1cu: func_ov006_020cdf1c(self); return 1;
-    case 0x020cdf3cu: func_ov006_020cdf3c(self); return 1;
-    case 0x020cf790u: func_ov006_020cf790(self); return 1;
-    case 0x020cf820u: func_ov006_020cf820(self); return 1;
-    case 0x020cfa44u: func_ov006_020cfa44(self); return 1;
+    case 0x020cd744u: TrmpItem_GrowScale(self); return 1;
+    case 0x020cd864u: TrmpItem_Motion7(self); return 1;
+    case 0x020cd9b0u: TrmpItem_Motion8(self); return 1;
+    case 0x020cdaecu: TrmpItem_Motion5(self); return 1;
+    case 0x020cdc38u: TrmpItem_Motion6(self); return 1;
+    case 0x020cdc8cu: TrmpItem_Motion4(self); return 1;
+    case 0x020cdd08u: TrmpItem_Motion3(self); return 1;
+    case 0x020cde4cu: TrmpItem_Motion2(self); return 1;
+    case 0x020cdea0u: TrmpItem_Motion1(self); return 1;
+    case 0x020cdf1cu: TrmpItem_Motion0(self); return 1;
+    case 0x020cdf3cu: TrmpItem_StateAppear(self); return 1;
+    case 0x020cf790u: TrmpLine_StateFade(self); return 1;
+    case 0x020cf820u: TrmpLine_StateSettle(self); return 1;
+    case 0x020cfa44u: TrmpLine_StateFlex(self); return 1;
     default:                                     return 0;
     }
 }
@@ -171,8 +171,8 @@ extern "C" void port_mg_tte_mario_counts(unsigned *calls, unsigned *routed)
 
 /* ==== RUN link100, LANE FWD gate 3: THE SEVENTEEN PAIRS ARE SEATED ========
  *
- * The two host copies below are retired and src/func_ov006_020cf758.cpp and
- * src/func_ov006_020cea2c.cpp dispatch the field themselves. Both emit
+ * The two host copies below are retired and src/TrmpLine_Update.cpp and
+ * src/TrmpItem_Update.cpp dispatch the field themselves. Both emit
  *     mov ecx, [obj+4] / mov eax, [obj] / add ecx, obj / jmp-or-call eax
  * -- receiver in ecx, ARITY ZERO, nothing pushed (read off their own /FAsc
  * listings, runs/link100/out/FWD/emit_gate3_out.txt; 020cf758 tail-JUMPS and
@@ -192,9 +192,9 @@ extern "C" void port_mg_tte_mario_counts(unsigned *calls, unsigned *routed)
  * and is kept as the control.
  *
  * ONE FACE PER CODE WORD, NOT PER PAIR. Three of the seventeen are BY-VALUE
- * COMPARISON SENTINELS -- src/func_ov006_020ce674.c compares the object's
- * stored pair against data_ov006_0213b324 and _0213b334 word for word, and
- * src/func_ov006_020ce108.cpp against _0213b33c -- and each holds the same code
+ * COMPARISON SENTINELS -- src/TrmpItem_HitTest2D.c compares the object's
+ * stored pair against pmf_TrmpItem_StateAppear and _0213b334 word for word, and
+ * src/TrmpItem_ReflectOffLine.cpp against _0213b33c -- and each holds the same code
  * word as a WRITTEN pair (b324 and b344 both hold 020cdf3c; b334, b33c and b32c
  * all hold 020cd744). A face per pair would make those comparisons permanently
  * false while the dispatch still looked fine, which is section 3's own warning
@@ -218,40 +218,40 @@ extern "C" void port_mg_tte_mario_counts(unsigned *calls, unsigned *routed)
         sym(self);                                                        \
     }
 
-TTE_FACE(func_ov006_020cd744)
-TTE_FACE(func_ov006_020cd864)
-TTE_FACE(func_ov006_020cd9b0)
-TTE_FACE(func_ov006_020cdaec)
-TTE_FACE(func_ov006_020cdc38)
-TTE_FACE(func_ov006_020cdc8c)
-TTE_FACE(func_ov006_020cdd08)
-TTE_FACE(func_ov006_020cde4c)
-TTE_FACE(func_ov006_020cdea0)
-TTE_FACE(func_ov006_020cdf1c)
-TTE_FACE(func_ov006_020cdf3c)
-TTE_FACE(func_ov006_020cf790)
-TTE_FACE(func_ov006_020cf820)
-TTE_FACE(func_ov006_020cfa44)
+TTE_FACE(TrmpItem_GrowScale)
+TTE_FACE(TrmpItem_Motion7)
+TTE_FACE(TrmpItem_Motion8)
+TTE_FACE(TrmpItem_Motion5)
+TTE_FACE(TrmpItem_Motion6)
+TTE_FACE(TrmpItem_Motion4)
+TTE_FACE(TrmpItem_Motion3)
+TTE_FACE(TrmpItem_Motion2)
+TTE_FACE(TrmpItem_Motion1)
+TTE_FACE(TrmpItem_Motion0)
+TTE_FACE(TrmpItem_StateAppear)
+TTE_FACE(TrmpLine_StateFade)
+TTE_FACE(TrmpLine_StateSettle)
+TTE_FACE(TrmpLine_StateFlex)
 
 extern "C" {
 /* the seventeen source pairs, mounted from ov006 .data */
-extern MgPmf data_ov006_0213b31c;   /* written  src/func_ov006_020cdad0.c */
-extern MgPmf data_ov006_0213b324;   /* SENTINEL src/func_ov006_020ce674.c */
-extern MgPmf data_ov006_0213b32c;   /* written  src/func_ov006_020cd7b8.c */
-extern MgPmf data_ov006_0213b334;   /* SENTINEL src/func_ov006_020ce674.c */
-extern MgPmf data_ov006_0213b33c;   /* SENTINEL src/func_ov006_020ce108.cpp */
-extern MgPmf data_ov006_0213b344;   /* written  src/func_ov006_020ce0ac.cpp */
-extern MgPmf data_ov006_0213b34c;   /* written  src/func_ov006_020cdf20.c */
-extern MgPmf data_ov006_0213b354;   /* written  src/func_ov006_020cdeec.c */
-extern MgPmf data_ov006_0213b35c;   /* written  src/func_ov006_020cde7c.c */
-extern MgPmf data_ov006_0213b364;   /* written  src/func_ov006_020cfc58.c */
-extern MgPmf data_ov006_0213b36c;   /* written  src/func_ov006_020cd98c.c */
-extern MgPmf data_ov006_0213b374;   /* written  src/func_ov006_020cfa28.c */
-extern MgPmf data_ov006_0213b37c;   /* written  src/func_ov006_020cf804.c */
-extern MgPmf data_ov006_0213b384;   /* written  src/func_ov006_020cdce4.c */
-extern MgPmf data_ov006_0213b38c;   /* written  src/func_ov006_020cdc68.c */
-extern MgPmf data_ov006_0213b394;   /* written  src/func_ov006_020cdc14.c */
-extern MgPmf data_ov006_0213b39c;   /* written  src/func_ov006_020cde28.c */
+extern MgPmf pmf_TrmpItem_Motion8;   /* written  src/TrmpItem_SetMotion8.c */
+extern MgPmf pmf_TrmpItem_StateAppear;   /* SENTINEL src/TrmpItem_HitTest2D.c */
+extern MgPmf pmf_TrmpItem_GrowScale;   /* written  src/TrmpItem_ProjectToScreen.c */
+extern MgPmf pmf_TrmpItem_GrowScale_2;   /* SENTINEL src/TrmpItem_HitTest2D.c */
+extern MgPmf pmf_TrmpItem_GrowScale_3;   /* SENTINEL src/TrmpItem_ReflectOffLine.cpp */
+extern MgPmf pmf_TrmpItem_StateAppear_2;   /* written  src/TrmpItem_StartAppear.cpp */
+extern MgPmf pmf_TrmpItem_Motion0;   /* written  src/TrmpItem_SetMotion0.c */
+extern MgPmf pmf_TrmpItem_Motion1;   /* written  src/TrmpItem_SetMotion1.c */
+extern MgPmf pmf_TrmpItem_Motion2;   /* written  src/TrmpItem_SetMotion2.c */
+extern MgPmf pmf_TrmpLine_StateFlex;   /* written  src/TrmpLine_SetStateFlex.c */
+extern MgPmf pmf_TrmpItem_Motion7;   /* written  src/TrmpItem_SetMotion7.c */
+extern MgPmf pmf_TrmpLine_StateSettle;   /* written  src/TrmpLine_SetStateSettle.c */
+extern MgPmf pmf_TrmpLine_StateFade;   /* written  src/TrmpLine_SetStateFade.c */
+extern MgPmf pmf_TrmpItem_Motion4;   /* written  src/TrmpItem_SetMotion4.c */
+extern MgPmf pmf_TrmpItem_Motion6;   /* written  src/TrmpItem_SetMotion6.c */
+extern MgPmf pmf_TrmpItem_Motion5;   /* written  src/TrmpItem_SetMotion5.c */
+extern MgPmf pmf_TrmpItem_Motion3;   /* written  src/TrmpItem_SetMotion3.c */
 }
 
 extern "C" void port_mg_tte_pairs_seat(void)
@@ -263,40 +263,40 @@ extern "C" void port_mg_tte_pairs_seat(void)
 
     static const struct { MgPmf *p; unsigned rom; void *face;
                          const char *what; } seats[] = {
-        {&data_ov006_0213b31c, 0x020cd9b0u, (void *)tte_face_func_ov006_020cd9b0,
-         "0213b31c written  src/func_ov006_020cdad0.c"},
-        {&data_ov006_0213b324, 0x020cdf3cu, (void *)tte_face_func_ov006_020cdf3c,
-         "0213b324 SENTINEL src/func_ov006_020ce674.c"},
-        {&data_ov006_0213b32c, 0x020cd744u, (void *)tte_face_func_ov006_020cd744,
-         "0213b32c written  src/func_ov006_020cd7b8.c"},
-        {&data_ov006_0213b334, 0x020cd744u, (void *)tte_face_func_ov006_020cd744,
-         "0213b334 SENTINEL src/func_ov006_020ce674.c"},
-        {&data_ov006_0213b33c, 0x020cd744u, (void *)tte_face_func_ov006_020cd744,
-         "0213b33c SENTINEL src/func_ov006_020ce108.cpp"},
-        {&data_ov006_0213b344, 0x020cdf3cu, (void *)tte_face_func_ov006_020cdf3c,
-         "0213b344 written  src/func_ov006_020ce0ac.cpp"},
-        {&data_ov006_0213b34c, 0x020cdf1cu, (void *)tte_face_func_ov006_020cdf1c,
-         "0213b34c written  src/func_ov006_020cdf20.c"},
-        {&data_ov006_0213b354, 0x020cdea0u, (void *)tte_face_func_ov006_020cdea0,
-         "0213b354 written  src/func_ov006_020cdeec.c"},
-        {&data_ov006_0213b35c, 0x020cde4cu, (void *)tte_face_func_ov006_020cde4c,
-         "0213b35c written  src/func_ov006_020cde7c.c"},
-        {&data_ov006_0213b364, 0x020cfa44u, (void *)tte_face_func_ov006_020cfa44,
-         "0213b364 written  src/func_ov006_020cfc58.c"},
-        {&data_ov006_0213b36c, 0x020cd864u, (void *)tte_face_func_ov006_020cd864,
-         "0213b36c written  src/func_ov006_020cd98c.c"},
-        {&data_ov006_0213b374, 0x020cf820u, (void *)tte_face_func_ov006_020cf820,
-         "0213b374 written  src/func_ov006_020cfa28.c"},
-        {&data_ov006_0213b37c, 0x020cf790u, (void *)tte_face_func_ov006_020cf790,
-         "0213b37c written  src/func_ov006_020cf804.c"},
-        {&data_ov006_0213b384, 0x020cdc8cu, (void *)tte_face_func_ov006_020cdc8c,
-         "0213b384 written  src/func_ov006_020cdce4.c"},
-        {&data_ov006_0213b38c, 0x020cdc38u, (void *)tte_face_func_ov006_020cdc38,
-         "0213b38c written  src/func_ov006_020cdc68.c"},
-        {&data_ov006_0213b394, 0x020cdaecu, (void *)tte_face_func_ov006_020cdaec,
-         "0213b394 written  src/func_ov006_020cdc14.c"},
-        {&data_ov006_0213b39c, 0x020cdd08u, (void *)tte_face_func_ov006_020cdd08,
-         "0213b39c written  src/func_ov006_020cde28.c"},
+        {&pmf_TrmpItem_Motion8, 0x020cd9b0u, (void *)tte_face_TrmpItem_Motion8,
+         "0213b31c written  src/TrmpItem_SetMotion8.c"},
+        {&pmf_TrmpItem_StateAppear, 0x020cdf3cu, (void *)tte_face_TrmpItem_StateAppear,
+         "0213b324 SENTINEL src/TrmpItem_HitTest2D.c"},
+        {&pmf_TrmpItem_GrowScale, 0x020cd744u, (void *)tte_face_TrmpItem_GrowScale,
+         "0213b32c written  src/TrmpItem_ProjectToScreen.c"},
+        {&pmf_TrmpItem_GrowScale_2, 0x020cd744u, (void *)tte_face_TrmpItem_GrowScale,
+         "0213b334 SENTINEL src/TrmpItem_HitTest2D.c"},
+        {&pmf_TrmpItem_GrowScale_3, 0x020cd744u, (void *)tte_face_TrmpItem_GrowScale,
+         "0213b33c SENTINEL src/TrmpItem_ReflectOffLine.cpp"},
+        {&pmf_TrmpItem_StateAppear_2, 0x020cdf3cu, (void *)tte_face_TrmpItem_StateAppear,
+         "0213b344 written  src/TrmpItem_StartAppear.cpp"},
+        {&pmf_TrmpItem_Motion0, 0x020cdf1cu, (void *)tte_face_TrmpItem_Motion0,
+         "0213b34c written  src/TrmpItem_SetMotion0.c"},
+        {&pmf_TrmpItem_Motion1, 0x020cdea0u, (void *)tte_face_TrmpItem_Motion1,
+         "0213b354 written  src/TrmpItem_SetMotion1.c"},
+        {&pmf_TrmpItem_Motion2, 0x020cde4cu, (void *)tte_face_TrmpItem_Motion2,
+         "0213b35c written  src/TrmpItem_SetMotion2.c"},
+        {&pmf_TrmpLine_StateFlex, 0x020cfa44u, (void *)tte_face_TrmpLine_StateFlex,
+         "0213b364 written  src/TrmpLine_SetStateFlex.c"},
+        {&pmf_TrmpItem_Motion7, 0x020cd864u, (void *)tte_face_TrmpItem_Motion7,
+         "0213b36c written  src/TrmpItem_SetMotion7.c"},
+        {&pmf_TrmpLine_StateSettle, 0x020cf820u, (void *)tte_face_TrmpLine_StateSettle,
+         "0213b374 written  src/TrmpLine_SetStateSettle.c"},
+        {&pmf_TrmpLine_StateFade, 0x020cf790u, (void *)tte_face_TrmpLine_StateFade,
+         "0213b37c written  src/TrmpLine_SetStateFade.c"},
+        {&pmf_TrmpItem_Motion4, 0x020cdc8cu, (void *)tte_face_TrmpItem_Motion4,
+         "0213b384 written  src/TrmpItem_SetMotion4.c"},
+        {&pmf_TrmpItem_Motion6, 0x020cdc38u, (void *)tte_face_TrmpItem_Motion6,
+         "0213b38c written  src/TrmpItem_SetMotion6.c"},
+        {&pmf_TrmpItem_Motion5, 0x020cdaecu, (void *)tte_face_TrmpItem_Motion5,
+         "0213b394 written  src/TrmpItem_SetMotion5.c"},
+        {&pmf_TrmpItem_Motion3, 0x020cdd08u, (void *)tte_face_TrmpItem_Motion3,
+         "0213b39c written  src/TrmpItem_SetMotion3.c"},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
@@ -313,12 +313,12 @@ extern "C" void port_mg_tte_pairs_seat(void)
     }
 }
 /* HOST COPY RETIRED, run link100 lane FWD gate 3.
-   src/func_ov006_020cf758.cpp is on port/slice_fwd.txt and dispatches the
+   src/TrmpLine_Update.cpp is on port/slice_fwd.txt and dispatches the
    field itself; its one statement IS the dispatch, and with the pairs seated
    the word it jumps to is a host face. */
 
 /* HOST COPY RETIRED, run link100 lane FWD gate 3.
-   src/func_ov006_020cea2c.cpp is on port/slice_fwd.txt. The nine field copies,
+   src/TrmpItem_Update.cpp is on port/slice_fwd.txt. The nine field copies,
    the AddVec3 on c+8 / c+0x2c and the Animation::Advance at c+0x194 that this
    copy carried verbatim are the matched TU's own again.
 

@@ -5,7 +5,7 @@
 /* The destructor tears down four arrays with __cxa_vec_cleanup; both
    per-element destructors are no-ops. */
 extern "C" void __cxa_vec_cleanup(void *arr, int count, int elemSize, void *dtor);
-extern "C" void func_ov006_020d116c(void);
+extern "C" void AmidaPiece_ElemDtor(void);
 extern "C" void NullDestructor_0203d47c(void);
 
 /* One of the 0x80 falling pieces. Behavior adds vel into pos once a tick
@@ -34,7 +34,7 @@ typedef char dScMgAmida_c_Piece_size_must_be_0x18[sizeof(dScMgAmida_c_Piece) == 
    AfterCleanupResources returns early when vfSuccess != 2, which skips
    the base-class call as well. That is what the ROM does. Keep it.
 
-   Slot 35 is declared and renamed now -- `Virtual8C`, this class's override
+   Slot 35 is declared and renamed now -- `IsAltVariant`, this class's override
    at ov006:0x020d1170.  Nothing in THIS class calls it, which is why it was
    left alone for so long; the thirteen call sites are in four other leaves
    (dScMgCoin_c, dScMgPanel_c, dScMgSound_c, dScMgSnowball_c), each asking the
@@ -89,10 +89,10 @@ struct dScMgAmida_c : dScMgBase_c {
        header, but by the base finally spelling the slots underneath it.
        Keep Unk36 LAST all the same: any further virtual added to dScMgBase_c
        would take 36 and push it out again. */
-    virtual void OnYoshiTryEat(int arg);                 /* slot 18 */
-    virtual int  Virtual7C();                            /* slot 31 */
-    virtual void Virtual88(int cx, int cy, int colour, int size); /* slot 34 */
-    virtual int  Virtual8C();                          /* slot 35 */
+    virtual void StartRound(int arg);                 /* slot 18 */
+    virtual int  InitSubScreenBg();                            /* slot 31 */
+    virtual void PaintSquare(int cx, int cy, int colour, int size); /* slot 34 */
+    virtual int  IsAltVariant();                          /* slot 35 */
     virtual int  Unk36();                                /* slot 36 */
 
     void ShuffleGoals(int count);
@@ -145,7 +145,7 @@ struct dScMgAmida_c : dScMgBase_c {
     u8  mLineEndSet;          /* 0x4705 -- mLineX2/Y2 accepted by the probe */
     u8  mLineCommit;          /* 0x4706 -- set while the accepted rung is painted */
     u8  mSetupInk;            /* 0x4707 -- set while SetupRound paints the
-                                 board; Virtual88 commits straight to the
+                                 board; PaintSquare commits straight to the
                                  ink grid instead of probing */
     u8  mProbeMode;           /* 0x4708 -- slot 34 tests the grid instead of painting */
     u8  mProbeHit;            /* 0x4709 -- slot 34 found an occupied cell */
@@ -155,7 +155,7 @@ struct dScMgAmida_c : dScMgBase_c {
                                  provisional stroke grid slot 34 paints
                                  into; y indexes rows at 0x158 stride */
     u8 *mInkGrid;             /* 0x4710 -- the committed occupancy grid;
-                                 Virtual88 probes it for collisions */
+                                 PaintSquare probes it for collisions */
     s32 mLaneResult[4];       /* 0x4714 -- ShuffleGoals' result table: which
                                  lanes win (mode 1) or each lane's goal */
     s32 mLanePos[4][2];       /* 0x4724 -- Fix12 {x,y} of the four lane

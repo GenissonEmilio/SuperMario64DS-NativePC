@@ -84,7 +84,7 @@
 # ---- 2. THE THREE WIDTH CHECKS, RE-RUN ------------------------------------
 #
 #   1. SPAN. config/arm9/overlays/ov006/symbols.txt:
-#        _ZTV10dScMgCup_c -> next symbol data_ov006_0213c1e4 = 0x90 = 36
+#        _ZTV10dScMgCup_c -> next symbol pmf_dScMgCurling_c_BitA_State2 = 0x90 = 36
 #        _ZTV19dScMgSingle3DBase_c -> next symbol data_ov006_0213e4d8 = 0x90 = 36
 #      An UPPER bound only, so it refuses a width and never grants one.
 #   2. TERMINAL SLOT. Slot 35 holds 0x020ad660 on both tables, which every
@@ -95,7 +95,7 @@
 #      by 0x00000000, an mwcc {code, adjustment} PAIR, and
 #      src/__sinit_ov006_021304ac.c line 75 copies it:
 #
-#          data_ov006_02141930.p2 = data_ov006_0213c1e4;
+#          data_ov006_02141930.p2 = pmf_dScMgCurling_c_BitA_State2;
 #
 #      That is CURLING's overlay constructor filling curling's state table
 #      0x02141930 slot 2, whose address port/unmatched/MgCurling_StateDispatch
@@ -149,18 +149,18 @@
 # row for _ZN10dScMgCup_c8BehaviorEv calls it "the class ONLY pointer-to-member
 # dispatch site", and port/slice_mga361.txt section 4 says "exactly ONE TU
 # dispatches it ... Curling needs five host copies; this needs one" and then
-# lists src/func_ov006_020c2b8c.cpp as an ORDINARY SLICE LINE.
+# lists src/Presenter_Update.cpp as an ORDINARY SLICE LINE.
 #
 # Both sentences are true of the class's own STATE TABLE and false of the
 # class. The Behavior's second-to-last statement is
 #
-#     func_ov006_020c2b8c(o + 0x4f38);
+#     Presenter_Update(o + 0x4f38);
 #
-# and src/func_ov006_020c2b8c.cpp is
+# and src/Presenter_Update.cpp is
 #
 #     struct C; typedef void (C::*PMF)(); struct C { PMF pmf; };
-#     void func_ov006_020c2b8c(C* c) {
-#         func_ov006_020c2be8(c);
+#     void Presenter_Update(C* c) {
+#         Presenter_TrackStylus(c);
 #         if (c->pmf) (c->*(c->pmf))();
 #         ...
 #
@@ -184,12 +184,12 @@
 # THE FOUR SUB-OBJECT ADDRESSES, from the pairs at 0x0213adb8..0x0213adf8, each
 # cross-checked against its load relocation in ov006's relocs.txt:
 #
-#   0213adc0 {020c24e4, 0}  written by func_ov006_020c2594
-#   0213adc8 {020c27c4, 0}  written by func_ov006_020c2848
-#   0213adf0 {020c263c, 0}  written by func_ov006_020c2664
-#   0213adf8 {020c23a8, 0}  written by func_ov006_020c2440
+#   0213adc0 {020c24e4, 0}  written by Presenter_PlayAnim7
+#   0213adc8 {020c27c4, 0}  written by Presenter_PlayIdle
+#   0213adf0 {020c263c, 0}  written by Presenter_PlayAnim1
+#   0213adf8 {020c23a8, 0}  written by Presenter_PlayAnim4
 #   0213adb8 {020c27c4, 0}  NOT a state -- the idle SENTINEL that
-#                           src/func_ov006_020c2994.c compares the live pair
+#                           src/Presenter_IsIdle.c compares the live pair
 #                           against BY VALUE, which is why the stored words are
 #                           routed at the dispatch site and never rewritten
 #
@@ -206,17 +206,17 @@
 # 0x0210a6xx middle-base bodies arrived with the flower and memory2 seats -- so
 # they are not repeated here. FIVE more are removed:
 #
-#   src/actors/dScMgCup_c.cpp  the FACTORY. Host-copied in
+#   src/minigames/d_s_mg_cup.cpp  the FACTORY. Host-copied in
 #       port/unmatched/MgCup_Factory.cpp because it calls the base constructor
 #       with NO argument and the callee writes three vtable words through the
 #       pointer it never received. That header is the displacement ruling
 #       section 12 grants to "whichever lane seats 361".
-#   src/actors/dScMgCup_c.cpp  the BEHAVIOR, the table dispatcher. Host-copied
+#   src/minigames/d_s_mg_cup.cpp  the BEHAVIOR, the table dispatcher. Host-copied
 #       in port/unmatched/MgCup_StateDispatch.cpp. (MGA had already removed it,
 #       so it is not one of the sixty-eight.)
-#   src/func_ov006_020c2b8c.cpp  the SUB-OBJECT dispatcher, section 4 above.
+#   src/Presenter_Update.cpp  the SUB-OBJECT dispatcher, section 4 above.
 #       Host-copied in port/unmatched/MgShared4f38_SubDispatch.cpp.
-#   src/minigames/d_s_mg_single3_d_base.cpp  vtable slot 2, the argument ride-through.
+#   src/minigames/d_s_mg_single3d_base.cpp  vtable slot 2, the argument ride-through.
 #       port/unmatched/MgFlower_Slot2.cpp host-copies it as
 #       port_mg_flower_after_init and this seat CALLS that rather than writing
 #       a second; listing the src line would be an LNK2005 against it. MGA's
@@ -227,20 +227,20 @@
 #       error cannot happen.
 #
 # and FIVE are added: the four sub-object state bodies above plus
-# src/func_ov006_020c2984.c, which three of them call.
+# src/Presenter_IsAnimDone.c, which three of them call.
 #
 #   68 - 18 already compiled in - 4 removed from the sixty-eight + 5 added
 #   = 51 lines.
 #
 # MGA's OTHER THREE FRONTIER ITEMS ARE ALL RETIRED by later lanes and this
 # lane re-checked each against build/port/walk_window.map rather than assuming:
-# data_ov004_020beb6c and data_ov004_020beb74 are hosted, and the named trap
-# for func_ov004_020b0e84 stands. Its "2 NAME-SPELLING FACES"
+# sMgTopScreenYOffset and sMgGraphCallback are hosted, and the named trap
+# for Mg_DrawTally stands. Its "2 NAME-SPELLING FACES"
 # (?_ZTV10dScMgCup_c@@3PAXA and ?_ZTV19dScMgSingle3DBase_c@@3PAXA) also vanish,
 # because they came from the FACTORY declaring both vtables outside its
 # extern "C" block and the factory is host-copied -- MgCup_Factory.cpp declares
 # them at the C linkage the mount defines them with. The two destructors that
-# also name the tables, src/actors/dScMgCup_c.cpp and _020dea1c.cpp, declare
+# also name the tables, src/minigames/d_s_mg_cup.cpp and _020dea1c.cpp, declare
 # them INSIDE extern "C" and need nothing.
 #
 # port/tools/closure.py over this list against this tree's walk_window.map:
@@ -258,30 +258,30 @@
 # ---- the list ---------------------------------------------------------------
 src/engine/sound/Sound.cpp
 src/minigames/d_s_mg_base.cpp
-src/actors/dMgState_c.cpp
-src/actors/unit020bfec0.cpp
-# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2290.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c23a8.cpp
-# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2440.cpp
-# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c24e4.cpp
-# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2594.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c263c.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2664.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c27c4.cpp
-# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2848.cpp
-# HOST-COPIED (mg9 adjudication): src/func_ov006_020c2924.cpp -- a RECEIVER
+src/minigames/d_mg_state.cpp
+src/minigames/unit020bfec0.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 262): src/Presenter_UpdateMatrix.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 262): src/Presenter_StateAnim4.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 262): src/Presenter_PlayAnim4.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 262): src/Presenter_StateAnim7.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 262): src/Presenter_PlayAnim7.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 262): src/Presenter_StateAnim1.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 262): src/Presenter_PlayAnim1.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 262): src/Presenter_StateIdle.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 262): src/Presenter_PlayIdle.cpp
+# HOST-COPIED (mg9 adjudication): src/Presenter_ResetPose.cpp -- a RECEIVER
 #   DROP at a host C++ virtual. The src spells the byte +0x18 call as
 #   `int (**vt)(void*)`, a __cdecl pointer that PUSHES the object, against
 #   HalFaderWipe::IsAtEnd, a __thiscall virtual that reads `this` out of ecx.
 #   The stack balances so nothing faults; the garbage answer gates seven
 #   stores. Found by lane BOX on dScMgSound_c; this class calls the same body
-#   from vtable slot 18 (_ZN10dScMgCup_c13OnYoshiTryEatEi @ 0x020e0018), so scene 361 was
+#   from vtable slot 18 (_ZN10dScMgCup_c10StartRoundEi @ 0x020e0018), so scene 361 was
 #   running the defect too. The fix is
 #   port/unmatched/MgShared4f38_ShadowFader_020c2924.cpp and src/ is untouched.
-# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2984.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2994.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c2be8.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c3050.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c3288.c
-# FOLDED into src/actors/unit020bfec0.cpp (row 262): src/func_ov006_020c33dc.c
-src/actors/dScMgCup_c.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 262): src/Presenter_IsAnimDone.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 262): src/Presenter_IsIdle.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 262): src/Presenter_TrackStylus.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 262): src/Presenter_Load.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 262): src/Presenter_Destruct.c
+# FOLDED into src/minigames/unit020bfec0.cpp (row 262): src/Presenter_Construct.c
+src/minigames/d_s_mg_cup.cpp

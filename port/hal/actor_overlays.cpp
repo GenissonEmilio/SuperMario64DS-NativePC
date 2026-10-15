@@ -675,7 +675,7 @@ static void port_iron_ball_states_seat(void)
 /* ov085 0x0212b8dc IS NOW HOSTED: the Main half of state 0x021306cc -- the
    state Rabbit::InitResources itself enters on its own last line, so it is what
    an ACTIVE rabbit runs every frame. It byte-matched at mwccarm 2004/b56
-   (linkcheck VERIFIED, 0 diffs) and landed as src/actors/daMip_c.cpp
+   (linkcheck VERIFIED, 0 diffs) and landed as src/game/actors/d_a_mip.cpp
    (public main 3bcbc9aea / #1361). The last hole in the rabbit state table is
    closed; the FATAL-refusal stub it used to carry is gone. */
 

@@ -402,7 +402,7 @@
 #                   already files them as documented exceptions.
 #
 # ---------------------------------------------------------------------------
-# 14. ov085 0x0212b8dc  src/actors/daMip_c.cpp (3bcbc9aea 2026-08-10)
+# 14. ov085 0x0212b8dc  src/game/actors/d_a_mip.cpp (3bcbc9aea 2026-08-10)
 #    port hosting   unmatched/Ov085_Rabbit_b8dc.cpp
 #    disposition    NOT CATCH-UP WORK, and this row is here because the
 #                   address-join surfaces it and a reader will otherwise ask.

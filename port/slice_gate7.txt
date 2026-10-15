@@ -12,10 +12,10 @@ src/engine/model/ModelAnim.cpp
 src/_ZN15dExtFrameCtrl_cC1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN9AnimationC1Ev.cpp. MSVC folds the ROM constructor variants into one symbol, so only one of a class two per-function constructor TUs can be compiled.
 #src/_ZN9AnimationC2Ev.cpp
-src/engine/animation/dExtFrameCtrl_c.cpp
-# FOLDED into src/engine/animation/dExtFrameCtrl_c.cpp (row 15): src/_ZN9Animation8SetFlagsEi.cpp
-# FOLDED into src/engine/animation/dExtFrameCtrl_c.cpp (row 15): src/_ZN9Animation7AdvanceEv.cpp
-# FOLDED into src/engine/animation/dExtFrameCtrl_c.cpp (row 15): src/_ZN9Animation8FinishedEv.cpp
-# FOLDED into src/engine/animation/dExtFrameCtrl_c.cpp (row 15): src/_ZN9Animation8GetFlagsEv.cpp
+src/engine/animation/d_ext_frame_ctrl.cpp
+# FOLDED into src/engine/animation/d_ext_frame_ctrl.cpp (row 15): src/_ZN9Animation8SetFlagsEi.cpp
+# FOLDED into src/engine/animation/d_ext_frame_ctrl.cpp (row 15): src/_ZN9Animation7AdvanceEv.cpp
+# FOLDED into src/engine/animation/d_ext_frame_ctrl.cpp (row 15): src/_ZN9Animation8FinishedEv.cpp
+# FOLDED into src/engine/animation/d_ext_frame_ctrl.cpp (row 15): src/_ZN9Animation8GetFlagsEv.cpp
 src/engine/model/Model.cpp
 # FOLDED into src/engine/model/ModelAnim.cpp (row 8): src/_ZN9ModelAnim9Virtual18EjPK7Vector3.cpp

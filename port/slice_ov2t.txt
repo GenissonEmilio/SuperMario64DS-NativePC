@@ -69,8 +69,8 @@
 #     requirement either way. OV2MOUNT inserted both names in address order
 #     into the existing TAIL2 line purely for readability.
 #
-src/actors/daDemo_c.cpp
-# FOLDED into src/actors/daDemo_c.cpp (row 72): src/func_ov002_020f5010.c
+src/game/actors/d_a_demo.cpp
+# FOLDED into src/game/actors/d_a_demo.cpp (row 72): src/func_ov002_020f5010.c
 #
 # REFUSED, and why
 #

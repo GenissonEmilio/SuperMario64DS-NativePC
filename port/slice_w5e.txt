@@ -30,33 +30,33 @@
 # BowserTail would also hand its init a null child spawn -- the ov091 rule.
 
 # ---- the arena class (166), five linkable bodies + Spawn -------------------
-src/actors/daKpa2Bg_c.cpp
-# FOLDED into src/actors/daKpa2Bg_c.cpp (row 33): src/_ZN10daKpa2Bg_c8BehaviorEv.cpp
-# FOLDED into src/actors/daKpa2Bg_c.cpp (row 33): src/_ZN10daKpa2Bg_c6RenderEv.cpp
-# FOLDED into src/actors/daKpa2Bg_c.cpp (row 33): src/_ZN10daKpa2Bg_cD1Ev.cpp
+src/game/actors/d_a_kpa2_bg.cpp
+# FOLDED into src/game/actors/d_a_kpa2_bg.cpp (row 33): src/_ZN10daKpa2Bg_c8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_kpa2_bg.cpp (row 33): src/_ZN10daKpa2Bg_c6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_kpa2_bg.cpp (row 33): src/_ZN10daKpa2Bg_cD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN10daKpa2Bg_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN10daKpa2Bg_cD0Ev.cpp
-# FOLDED into src/actors/daKpa2Bg_c.cpp (row 33): src/d_a_kpa2_bg.c
+# FOLDED into src/game/actors/d_a_kpa2_bg.cpp (row 33): src/d_a_kpa2_bg.c
 
 # ---- ov060's six static initialisers ---------------------------------------
-src/actors/daKpa_c.cpp
-src/actors/daKpaFire_c.cpp
-# FOLDED into src/actors/daKpa2Bg_c.cpp (row 33): src/__sinit_ov060_02119f94.c
-src/actors/daKpa3Bg_c.cpp
-src/actors/daKirai_c.cpp
-src/actors/daFRing_c.cpp
+src/game/actors/d_a_kpa.cpp
+src/game/actors/d_a_kpa_fire.cpp
+# FOLDED into src/game/actors/d_a_kpa2_bg.cpp (row 33): src/__sinit_ov060_02119f94.c
+src/game/actors/d_a_kpa3_bg.cpp
+src/game/actors/d_a_kirai.cpp
+src/game/actors/d_a_f_ring.cpp
 
 # ---- the probe's five class-b TUs ------------------------------------------
 src/AddSpikeBomb.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/Bowser_IsAnimAtLastFrame.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/Bowser_IsAnimAtLastFrame.cpp
 src/ClearSpikeBomb.c
 src/CopyTexPalFromLevelModel.c
-src/engine/collision/dBgCh_SphCrr_query.cpp
+src/engine/collision/d_bg_ch_sph_crr_query.cpp
 # ...whose body calls func_02036acc (the probe could not see past the
 # first unresolved ring; the linker did):
-src/engine/collision/dBgCh_Actr.cpp
-# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 54): src/func_0203842c.cpp
-# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 54): src/func_02038824.cpp
+src/engine/collision/d_bg_ch_actr.cpp
+# FOLDED into src/engine/collision/d_bg_ch_sph_crr_query.cpp (row 54): src/func_0203842c.cpp
+# FOLDED into src/engine/collision/d_bg_ch_sph_crr_query.cpp (row 54): src/func_02038824.cpp
 
 # Sound::StopLoadedMusic_Layer1: ALREADY LINKED via slice_gate10.txt:1212 --
 # the probe's class-c want resolves against it; no line here (duplicate).
@@ -65,17 +65,17 @@ src/engine/collision/dBgCh_Actr.cpp
 port/hal/actor_classes_ov060.cpp
 
 # ---- the 106 func_ov060_* TUs (probe p9) -----------------------------------
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02111a28.cpp
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02111c68.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02111cc0.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02111a28.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02111c68.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02111cc0.cpp
 # func_ov060_02111f08 (the boss-camera state machine) is a zero-argument
 # Actor::ClosestPlayer reader (the receiver-dropping r0 seam); hosted as a
 # receiver-passing copy in port/unmatched/Actor_ClosestPlayer_OverlayReaders
 # .cpp per the closestplayer guard's remedy; the byte-locked src stays out.
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02112350.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021123a0.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021123c8.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021123dc.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02112350.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021123a0.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021123c8.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021123dc.c
 # src/func_ov060_02112434.cpp, BOWSER's flag pass, was HELD OUT by lane w6-A:
 #   it dispatches its state table through an MSVC pointer-to-member whose
 #   stride was not the ROM's 8 then (measured 16). The global /vmg /vmm pair in
@@ -83,110 +83,110 @@ port/hal/actor_classes_ov060.cpp
 #   {code, adjust} since, so run linkfull lane SEATS3 armed the row: HOST COPY 1
 #   in port/unmatched/Ov060_StateDispatch.cpp is retired and the table's four
 #   cells (data_ov060_0211aeb4) hold __fastcall faces, receiver in ECX.
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02112434.cpp
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021125f0.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02112724.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021128c0.cpp
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02112ba8.cpp
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02112bfc.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02112d48.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02112ddc.cpp
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02112ee0.cpp
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021130c0.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02113260.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021132a4.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02113404.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021134ac.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02113564.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021135fc.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02113710.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02113740.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02113a94.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02113b5c.cpp
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02113d20.cpp
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02113d8c.cpp
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02113fcc.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02113ff4.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021142b4.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02114300.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021143b8.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021145a8.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021145d4.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_0211469c.cpp
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021146d0.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02114858.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02114b60.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02114d08.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02114e9c.cpp
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02114f88.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02114ff8.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02115018.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02115060.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021150c4.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021150d0.cpp
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021151d4.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02115314.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021153f8.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021154e8.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02115518.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_021156ec.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02115718.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02115744.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_0211577c.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02115a84.cpp
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02115b0c.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02112434.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021125f0.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02112724.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021128c0.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02112ba8.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02112bfc.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02112d48.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02112ddc.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02112ee0.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021130c0.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02113260.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021132a4.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02113404.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021134ac.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02113564.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021135fc.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02113710.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02113740.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02113a94.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02113b5c.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02113d20.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02113d8c.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02113fcc.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02113ff4.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021142b4.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02114300.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021143b8.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021145a8.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021145d4.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_0211469c.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021146d0.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02114858.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02114b60.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02114d08.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02114e9c.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02114f88.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02114ff8.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02115018.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02115060.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021150c4.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021150d0.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021151d4.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02115314.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021153f8.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021154e8.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02115518.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_021156ec.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02115718.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02115744.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_0211577c.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02115a84.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02115b0c.c
 # src/func_ov060_02115b84.cpp -- HELD OUT by lane w6-A: BOWSER TAIL's frame pass dispatches its state
 #   table through an MSVC pointer-to-member whose stride is not the ROM's 8
 #   (measured 16 -- re-measured at the wave-6 close; the lane banked 4).
 #   Host copy in port/unmatched/Ov060_StateDispatch.cpp.
 # src/func_ov060_02115b84.cpp
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02115c1c.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02115d50.c
-# FOLDED into src/actors/daKpa_c.cpp (row 42): src/func_ov060_02115d68.cpp
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_02116518.c
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_02116740.cpp
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_021167c8.c
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_021167ec.c
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_021168c4.cpp
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_021169b0.c
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_021169f8.c
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_02116b18.c
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_02116b68.c
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_02116c68.c
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_02116f74.c
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_02116f90.c
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_0211712c.c
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_021171e8.c
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_0211722c.c
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_021172c8.c
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_021172e0.cpp
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_0211747c.c
-# FOLDED into src/actors/daKpaFire_c.cpp (row 43): src/func_ov060_02117624.cpp
-# FOLDED into src/actors/daKpa2Bg_c.cpp (row 33): src/func_ov060_02117a3c.c
-# FOLDED into src/actors/daKpa2Bg_c.cpp (row 33): src/func_ov060_02117a64.c
-# FOLDED into src/actors/daKpa2Bg_c.cpp (row 33): src/func_ov060_02117ae0.c
-# FOLDED into src/actors/daKirai_c.cpp (row 46): src/_ZN9SpikeBombD1Ev.cpp
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02115c1c.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02115d50.c
+# FOLDED into src/game/actors/d_a_kpa.cpp (row 42): src/func_ov060_02115d68.cpp
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_02116518.c
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_02116740.cpp
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_021167c8.c
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_021167ec.c
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_021168c4.cpp
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_021169b0.c
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_021169f8.c
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_02116b18.c
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_02116b68.c
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_02116c68.c
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_02116f74.c
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_02116f90.c
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_0211712c.c
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_021171e8.c
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_0211722c.c
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_021172c8.c
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_021172e0.cpp
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_0211747c.c
+# FOLDED into src/game/actors/d_a_kpa_fire.cpp (row 43): src/func_ov060_02117624.cpp
+# FOLDED into src/game/actors/d_a_kpa2_bg.cpp (row 33): src/func_ov060_02117a3c.c
+# FOLDED into src/game/actors/d_a_kpa2_bg.cpp (row 33): src/func_ov060_02117a64.c
+# FOLDED into src/game/actors/d_a_kpa2_bg.cpp (row 33): src/func_ov060_02117ae0.c
+# FOLDED into src/game/actors/d_a_kirai.cpp (row 46): src/_ZN9SpikeBombD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN9SpikeBombD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN9SpikeBombD0Ev.cpp
-# FOLDED into src/actors/daKpa3Bg_c.cpp (row 45): src/func_ov060_02117db8.c
-# FOLDED into src/actors/daKpa3Bg_c.cpp (row 45): src/func_ov060_021180e0.cpp
-# FOLDED into src/actors/daKpa3Bg_c.cpp (row 45): src/func_ov060_021181b4.c
-# FOLDED into src/actors/daKirai_c.cpp (row 46): src/_ZN9SpikeBomb16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daKirai_c.cpp (row 46): src/_ZN9SpikeBomb6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_kpa3_bg.cpp (row 45): src/func_ov060_02117db8.c
+# FOLDED into src/game/actors/d_a_kpa3_bg.cpp (row 45): src/func_ov060_021180e0.cpp
+# FOLDED into src/game/actors/d_a_kpa3_bg.cpp (row 45): src/func_ov060_021181b4.c
+# FOLDED into src/game/actors/d_a_kirai.cpp (row 46): src/_ZN9SpikeBomb16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_kirai.cpp (row 46): src/_ZN9SpikeBomb6RenderEv.cpp
 # src/_ZN9SpikeBomb8BehaviorEv.cpp -- HELD OUT by lane w6-A: SKY PLATFORM's Behavior dispatches its state
 #   table through an MSVC pointer-to-member whose stride is not the ROM's 8
 #   (measured 16 -- re-measured at the wave-6 close; the lane banked 4).
 #   Host copy in port/unmatched/Ov060_StateDispatch.cpp.
 # src/_ZN9SpikeBomb8BehaviorEv.cpp
-# FOLDED into src/actors/daKirai_c.cpp (row 46): src/_ZN9SpikeBomb13InitResourcesEv.cpp
-# FOLDED into src/actors/daKpa3Bg_c.cpp (row 45): src/func_ov060_021183cc.c
-# FOLDED into src/actors/daKpa3Bg_c.cpp (row 45): src/func_ov060_021183f4.c
-# FOLDED into src/actors/daKirai_c.cpp (row 46): src/func_ov060_021184bc.c
-# FOLDED into src/actors/daKirai_c.cpp (row 46): src/func_ov060_02118544.c
-# FOLDED into src/actors/daKirai_c.cpp (row 46): src/func_ov060_021185c4.c
-# FOLDED into src/actors/daKirai_c.cpp (row 46): src/func_ov060_02118690.c
-# FOLDED into src/actors/daKirai_c.cpp (row 46): src/func_ov060_021186d8.c
-# FOLDED into src/actors/daKirai_c.cpp (row 46): src/func_ov060_02118728.c
-# FOLDED into src/actors/daKirai_c.cpp (row 46): src/func_ov060_02118834.c
-# FOLDED into src/actors/daKirai_c.cpp (row 46): src/func_ov060_021188e8.c
-# FOLDED into src/actors/daKirai_c.cpp (row 46): src/func_ov060_02118970.c
+# FOLDED into src/game/actors/d_a_kirai.cpp (row 46): src/_ZN9SpikeBomb13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_kpa3_bg.cpp (row 45): src/func_ov060_021183cc.c
+# FOLDED into src/game/actors/d_a_kpa3_bg.cpp (row 45): src/func_ov060_021183f4.c
+# FOLDED into src/game/actors/d_a_kirai.cpp (row 46): src/func_ov060_021184bc.c
+# FOLDED into src/game/actors/d_a_kirai.cpp (row 46): src/func_ov060_02118544.c
+# FOLDED into src/game/actors/d_a_kirai.cpp (row 46): src/func_ov060_021185c4.c
+# FOLDED into src/game/actors/d_a_kirai.cpp (row 46): src/func_ov060_02118690.c
+# FOLDED into src/game/actors/d_a_kirai.cpp (row 46): src/func_ov060_021186d8.c
+# FOLDED into src/game/actors/d_a_kirai.cpp (row 46): src/func_ov060_02118728.c
+# FOLDED into src/game/actors/d_a_kirai.cpp (row 46): src/func_ov060_02118834.c
+# FOLDED into src/game/actors/d_a_kirai.cpp (row 46): src/func_ov060_021188e8.c
+# FOLDED into src/game/actors/d_a_kirai.cpp (row 46): src/func_ov060_02118970.c

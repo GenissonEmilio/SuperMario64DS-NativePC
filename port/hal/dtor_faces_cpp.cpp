@@ -251,7 +251,7 @@ CPPD1V(Tornado, daTor_c)
    cartridge's own order. Nothing about dispatch changes: hal_cppd1_Tornado's
    call is QUALIFIED, so it was always a direct call to this name, and until now
    that name simply had no body. */
-/* PORTSYNC2: RETIRED. Main's src/actors/daTor_c.cpp now defines
+/* PORTSYNC2: RETIRED. Main's src/game/actors/d_a_tor.cpp now defines
    daTor_c::~daTor_c() itself (??1daTor_c@@UAE@XZ), so the name has a body and
    this hand definition would be a second one; hal_cppd1_Tornado above calls it.
 extern "C" int *_ZN7daTor_cD1Ev(int *self);

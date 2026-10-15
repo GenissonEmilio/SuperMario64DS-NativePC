@@ -230,7 +230,7 @@ uint64_t rt_frame() { return g.frame; }
 // data_020a6438 and re-arms itself. src/func_02059650.c reads the tick as
 // (overflows << 16) | TM0CNT_L, and everything that measures time reads that:
 // Timer::GetTime (the course timer on the HUD, src/_ZN3HUD15RenderTimeTimerEv.cpp,
-// and the Princess's Secret Slide's under-21-second star, src/actors/Player.cpp
+// and the Princess's Secret Slide's under-21-second star, src/game/player/Player.cpp
 // case 16), the tick-to-ms helpers, the alarm list.
 //
 // WHAT THE PORT DID. Nothing moved the counter and nothing raised mask 8, so

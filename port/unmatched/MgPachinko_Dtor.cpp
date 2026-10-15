@@ -10,7 +10,7 @@
 //     {
 //         t[0] = (int)VT;
 //         _ZN11dScMgBase_cD2Ev(t);
-//         _ZN6Memory10DeallocateEPvP4Heap(t, HEAP);
+//         _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(t, HEAP);
 //         return t;
 //     }
 //

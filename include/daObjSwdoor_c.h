@@ -60,7 +60,7 @@ struct daObjSwdoor_c : dBgActor_c {
     /* Slot 9, ov002 0x020babf0 -- this class's only real slot, so declaring
        it out of line makes THIS the key function: the destructor above is
        inline and nothing else was migrated first. Its translation unit is
-       src/actors/daObjSwdoor_c.cpp, which picks up _ZTV13daObjSwdoor_c
+       src/game/actors/d_a_obj_swdoor.cpp, which picks up _ZTV13daObjSwdoor_c
        (already delinked data, ov002 0x021099e4) -- same mechanism the
        Guragura/Kuruma Render comments describe. */
     s32 Render();

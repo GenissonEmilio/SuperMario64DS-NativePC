@@ -95,16 +95,16 @@
 // destruction. The repair is port_mg_flower_after_init in
 // port/unmatched/MgFlower_Slot2.cpp, whose header asks the next lane to call it
 // rather than write a second one; memory2 was the second, mcarlo the third,
-// luckystars the fourth and this is the fifth. src/minigames/d_s_mg_single3_d_base.cpp
+// luckystars the fourth and this is the fifth. src/minigames/d_s_mg_single3d_base.cpp
 // stays out of port/slice_rlt.txt for the same reason it is out of the other
 // four slices.
 //
-// _ZN19dScMgSingle3DBase_c9Virtual84Ev (slot 33, the once-per-boot 3D setup) ends with two
+// _ZN19dScMgSingle3DBase_c11InitEnginesEv (slot 33, the once-per-boot 3D setup) ends with two
 // stores to LIGHT_COLOR at 0x040004cc, which a plain src build lands in the
 // memory ntr maps across the I/O window without ever telling the geometry
 // engine -- the "Yoshi is a black silhouette" defect run mg5 lane YTEX
 // measured. It builds from the hostgen'd copy port/CMakeLists.txt's
-// FLW_HOSTGEN_SYMS already emits, and src/minigames/d_s_mg_single3_d_base.cpp is out of this
+// FLW_HOSTGEN_SYMS already emits, and src/minigames/d_s_mg_single3d_base.cpp is out of this
 // slice for the same reason.
 //
 // ---- 4b. THERE IS NO FOURTH TABLE, AND THAT IS MEASURED -------------------
@@ -113,10 +113,10 @@
 // builds, because dMgMCarloCardObj_c's eighty card records carry a mounted ROM
 // vtable that no vtable-axis derivation can see. This factory builds FIVE
 // records of 0x34 bytes at this+0x51a8 through __cxa_vec_ctor, and the element
-// constructor it hands over is func_ov006_0210a4ac -- ONE WORD, 0xe12fff1e,
-// `bx lr`. The destructor func_ov006_021079c8 is the same instruction. So
+// constructor it hands over is Roulette_ConstructElement -- ONE WORD, 0xe12fff1e,
+// `bx lr`. The destructor Roulette_Nothing is the same instruction. So
 // nothing writes word 0 of a record at construction, and the only later writer
-// is vtable slot 18's func_ov006_021092a0, which puts the plain fixed-point
+// is vtable slot 18's RouletteRacer_PlaceAtStart, which puts the plain fixed-point
 // number 0xc000 there. The two Models at +0x530c+0x10 and +0x530c+0x60 are HOST
 // C++ objects built by _ZN5ModelC1Ev, so their vptrs are MSVC's and not the
 // ROM's. Three tables is the whole set, and the census below prints the raw-DS
@@ -168,20 +168,20 @@
 //   - THE SOURCE, READ BEFORE THE FACE ARRAY WAS WIRED. That ordering is
 //     section 14's practical rule, added after dScMgPanel_c's Behavior turned
 //     out to open-code the ARM Itanium sequence in plain ints and read clean on
-//     every static check. src/actors/dScMgRoulette_c.cpp (slot 6) is a plain
+//     every static check. src/minigames/d_s_mg_roulette_methods.cpp (slot 6) is a plain
 //     `switch (*(short *)(c + 0x53e6))` over ten cases, and slot 19
-//     (src/actors/dScMgRoulette_c.cpp) is the ROM's own `cmp r0,#9 / addls pc,pc,
+//     (src/minigames/d_s_mg_roulette_methods.cpp) is the ROM's own `cmp r0,#9 / addls pc,pc,
 //     r0,lsl #2` jump table over the same index. Neither is the wall.
 //   - A `::*` SWEEP over all 41 TUs in this class's code block finds EXACTLY
-//     ONE: src/actors/dScMgRoulette_c.cpp, the roulette wheel's tick. It is
+//     ONE: src/minigames/d_s_mg_roulette_methods.cpp, the roulette wheel's tick. It is
 //     host-copied in port/unmatched/MgRoulette_WheelDispatch.cpp, whose header
 //     carries the derivation and the two-address universe.
 //   - THE WORD-DECODE SCAN, for the third shape the sweep cannot see. Every
 //     word of this class's code block was decoded looking for
 //     `add Rd,Rn,Rm,asr #1`: ONE site, 0x02107e30, and it is inside
-//     func_ov006_02107db8. There are five `blx Rn` sites in the block and all
-//     five are accounted for -- two in func_ov006_02107d80 and one in
-//     func_ov006_02107db8 are Model virtual dispatches (section 4b's shadow
+//     RouletteBoard_Update. There are five `blx Rn` sites in the block and all
+//     five are accounted for -- two in RouletteBoard_Draw and one in
+//     RouletteBoard_Update are Model virtual dispatches (section 4b's shadow
 //     classes, both host-copied), one at 0x02107e44 is the member-pointer call
 //     itself, and one at 0x0210a3c4 is slot 0's own tail dispatch of vtable
 //     slot 18.
@@ -189,7 +189,7 @@
 //     grep. In this class's whole .data span exactly THREE data words carry a
 //     relocation into its own code, on top of the 36 vtable slots: the
 //     SpawnInfo's factory word at 0x0213e2f0, and the two mwcc pairs
-//     data_ov006_0213e2e8 = {0x021082fc, 0} and data_ov006_0213e2f8 =
+//     pmf_RouletteBoard_StateSpin = {0x021082fc, 0} and pmf_RouletteBoard_StateSlow =
 //     {0x02107ea8, 0}. Those two ARE the wheel's state machine and both are
 //     routed.
 //   - AND THE RUN IS THE ONE THAT CONVICTS. Scene 383 boots under
@@ -200,7 +200,7 @@
 // The FRAMEWORK's wall is still the framework's and is still paid: this class
 // reaches _ZN10dMgState_c8SetStateEi through dScMgBase_c exactly as curling does, and
 // unmatched/MgBase_StateSetter.cpp's eighty routed addresses are inherited.
-// So is the SHARED model sub-object's: slot 6 calls func_ov006_020c19d0 on
+// So is the SHARED model sub-object's: slot 6 calls Dealer_Update on
 // this+0x4f38, whose field pair is routed by
 // port/unmatched/MgMemory2_FieldPmf.cpp, already in the build.
 //
@@ -259,8 +259,8 @@ int   _ZN19dScMgSingle3DBase_c14BeforeBehaviorEv(void *c);                     /
 int   _ZN19dScMgSingle3DBase_c12BeforeRenderEv(void *c);                     /* slot 10 */
 int   _ZN19dScMgSingle3DBase_cD1Ev(char *c);                     /* slot 16 D2 */
 int   _ZN19dScMgSingle3DBase_cD0Ev(char *c);                     /* slot 17 D0 */
-int   _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(void);                        /* slot 26 */
-void  _ZN19dScMgSingle3DBase_c9Virtual84Ev(char *c);                     /* slot 33 */
+int   _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(void);                        /* slot 26 */
+void  _ZN19dScMgSingle3DBase_c11InitEnginesEv(char *c);                     /* slot 33 */
 
 /* dScMgRoulette_c's own eight */
 int   _ZN15dScMgRoulette_c13InitResourcesEv(char *c);           /* slot  0 InitResources    */
@@ -269,8 +269,8 @@ int   _ZN15dScMgRoulette_c8BehaviorEv(char *c);           /* slot  6 Behavior   
 int   _ZN15dScMgRoulette_c6RenderEv(char *c);           /* slot  9 Render           */
 void *_ZN15dScMgRoulette_cD1Ev(char *c);           /* slot 16 D2               */
 void *_ZN15dScMgRoulette_cD0Ev(char *c);           /* slot 17 D0               */
-void  _ZN15dScMgRoulette_c13OnYoshiTryEatEi(char *c);           /* slot 18 state reset      */
-int   _ZN15dScMgRoulette_c13OnTurnIntoEggEi(char *c);           /* slot 19                  */
+void  _ZN15dScMgRoulette_c10StartRoundEi(char *c);           /* slot 18 state reset      */
+int   _ZN15dScMgRoulette_c11CanEndStateEi(char *c);           /* slot 19                  */
 
 /* the factory, host-copied for the dropped receiver (MgRoulette_Factory.cpp) */
 void *dScMgRoulette_c_classInit(void);
@@ -283,19 +283,19 @@ void port_mg_roulette_wheel_counts(unsigned *calls, unsigned *hits,
 void  port_mg_dispatch_counts(unsigned *calls, unsigned *unknown);
 
 /* the shared model sub-object's field-pmf witness, from MgMemory2_FieldPmf.cpp.
-   Slot 6 calls func_ov006_020c19d0 on this+0x4f38 every frame, so this class
+   Slot 6 calls Dealer_Update on this+0x4f38 every frame, so this class
    runs through a chain another seat owns and the honest thing is to print it
    rather than to imply this seat routed it. */
 void  port_mg_memory2_field_counts(unsigned *calls, unsigned *hits);
 
-/* THE PAYOUT. func_ov006_02108b90 is the whole of it: it reads a record's bet
+/* THE PAYOUT. RouletteRacer_GetPayout is the whole of it: it reads a record's bet
    type at +0x2c, compares it against the pocket the ball settled in, and
    writes the multiplier back at +0x2e. Slot 6 case 3 sums those into +0x53f2
-   and slot 19 case 7 hands that sum to func_ov004_020b56c8, which is the coin
+   and slot 19 case 7 hands that sum to MgCoins_StartPayout, which is the coin
    shower. Declared here so the census can both READ the per-record result and
    SWEEP the rule -- see port_mg_roulette_payout_selfcheck. */
-int   func_ov006_02108b90(void *record, int pocket);
-extern int data_ov004_020bf9f8;               /* coins handed to the shower  */
+int   RouletteRacer_GetPayout(void *record, int pocket);
+extern int sMgCoinsPayoutLeft;               /* coins handed to the shower  */
 extern unsigned char data_ov006_0212edb8[];   /* 17 pair rows, stride 4      */
 extern unsigned char data_ov006_0212ed88[];   /*  6 quad rows, stride 8      */
 extern int           data_ov006_021428c8;     /* the "a record is grabbed"   */
@@ -304,16 +304,16 @@ extern unsigned char data_020a0e40[];         /* the live TouchInfo index    */
 
 /* The persistent minigame record. Nothing new is defined here: the storage is
    hal/level_boot.cpp's .dsstate$savblk0004 and the index function is
-   src/func_ov004_020adc3c.c. */
-extern void         *data_ov004_020beb68;     /* the live dScMgBase_c `this` */
+   src/Mg_GetSaveTable.c. */
+extern void         *gMgScene;     /* the live dScMgBase_c `this` */
 extern unsigned char data_0209caf4[];         /* 36 records x 20 bytes       */
-int   func_ov004_020adc3c(void *c);           /* (self->field_8 >> 8) & 0xff */
+int   Mg_GetSaveTable(void *c);           /* (self->field_8 >> 8) & 0xff */
 
 }  /* extern "C" */
 
 static int port_mg_record_index(void)
 {
-    return data_ov004_020beb68 ? func_ov004_020adc3c(data_ov004_020beb68) : -1;
+    return gMgScene ? Mg_GetSaveTable(gMgScene) : -1;
 }
 
 // ---- the tick witness ------------------------------------------------------
@@ -343,9 +343,9 @@ static void *__fastcall s3_d2(void *s, void *)
 static void *__fastcall s3_d0(void *s, void *)
 { R3D(17); return (void *)(size_t)_ZN19dScMgSingle3DBase_cD0Ev((char *)s); }
 static int  __fastcall s3_v26(void *, void *)
-{ R3D(26); return _ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv(); }
+{ R3D(26); return _ZN19dScMgSingle3DBase_c14GetDisplayModeEv(); }
 static int  __fastcall s3_v33(void *s, void *)
-{ R3D(33); _ZN19dScMgSingle3DBase_c9Virtual84Ev((char *)s); return 0; }
+{ R3D(33); _ZN19dScMgSingle3DBase_c11InitEnginesEv((char *)s); return 0; }
 
 /* ---- dScMgRoulette_c's own eight ---------------------------------------- */
 static int  __fastcall rlt_init(void *s, void *)
@@ -372,9 +372,9 @@ static short g_rlt_pay_type[5], g_rlt_pay_mult[5];
 static int  g_rlt_shower_first = -1, g_rlt_shower_tick = -1;
 
 /* SM64DS_RLT_BETLOG=1: one line per stylus press, listing what the five
-   records looked like when func_ov006_02108d28 was offered the grab. The two
-   grab paths disagree about which record they want -- func_ov006_02108e24
-   takes the one within 8 pixels of the stylus and func_ov006_02108d28 takes
+   records looked like when RouletteRacer_CheckLandingB was offered the grab. The two
+   grab paths disagree about which record they want -- RouletteRacer_CheckLandingA
+   takes the one within 8 pixels of the stylus and RouletteRacer_CheckLandingB takes
    the first unplaced one on any board cell -- and both are gated by the same
    data_ov006_021428c8 latch, so a press that does nothing has several possible
    causes and only the record states separate them. */
@@ -415,14 +415,14 @@ static int  __fastcall rlt_beh(void *s, void *)
     const char *const c = (const char *)s;
     rlt_betlog(c);
     /* THE HANDOFF, which is the far end of the payout and a separate claim
-       from the sum. Slot 19 state 7 calls func_ov004_020b56c8 with the sum at
+       from the sum. Slot 19 state 7 calls MgCoins_StartPayout with the sum at
        +0x53f2 and that callee's only job is to store it in
-       data_ov004_020bf9f8 and install func_ov004_020b556c as the per-frame
+       sMgCoinsPayoutLeft and install MgCoins_StepPayoutLayout as the per-frame
        ticker -- the coin shower, up to twenty coins. The sum being right does
        not prove the number ARRIVED: the call site declared the callee with no
        parameters at all, so on the host it stored an unwritten stack slot. */
-    if (g_rlt_shower_first < 0 && data_ov004_020bf9f8 != 0) {
-        g_rlt_shower_first = data_ov004_020bf9f8;
+    if (g_rlt_shower_first < 0 && sMgCoinsPayoutLeft != 0) {
+        g_rlt_shower_first = sMgCoinsPayoutLeft;
         g_rlt_shower_tick  = (int)g_rlt_hits[6];
     }
     const short before = *(const short *)(c + 0x53e6);
@@ -436,7 +436,7 @@ static int  __fastcall rlt_beh(void *s, void *)
             g_rlt_pay_sum    = *(const short *)(c + 0x53f2);
             g_rlt_pay_surv   = *(const short *)(c + 0x53f6);
             g_rlt_pay_count  = *(const int *)(c + 0x53fc);
-            g_rlt_pay_shower = data_ov004_020bf9f8;
+            g_rlt_pay_shower = sMgCoinsPayoutLeft;
             for (int i = 0; i < 5; ++i) {
                 const char *const rec = c + 0x51a8 + i * 0x34;
                 g_rlt_pay_type[i] = *(const short *)(rec + 0x2c);
@@ -456,8 +456,8 @@ static void *__fastcall rlt_d0(void *s, void *)
    where a lane can watch it happen rather than take it on the family's word:
    slot 0's own tail dispatches slot 18 through the object's vtable at offset
    0x48 with `mvn r1,#0` -- one argument, value -1 -- at 0x0210a3bc..0x0210a3c4.
-   Both ROM bodies ignore their r1 (_ZN15dScMgRoulette_c13OnYoshiTryEatEi takes one parameter and
-   _ZN15dScMgRoulette_c13OnTurnIntoEggEi takes one), so the parameter exists so __fastcall cleans
+   Both ROM bodies ignore their r1 (_ZN15dScMgRoulette_c10StartRoundEi takes one parameter and
+   _ZN15dScMgRoulette_c11CanEndStateEi takes one), so the parameter exists so __fastcall cleans
    four bytes and the callee is called without it. A thunk declared
    (void*, void*) compiles to a bare ret, leaks those four bytes, and the
    caller's own `ret` then takes a garbage return address -- which is the fault
@@ -465,9 +465,9 @@ static void *__fastcall rlt_d0(void *s, void *)
    slot18_19_scan.txt is the census: 22 slot-18 sites and 14 slot-19 sites,
    argument count ONE at every one of them. */
 static int  __fastcall rlt_reset(void *s, void *, int /*ridethrough*/)
-{ RLT(18); _ZN15dScMgRoulette_c13OnYoshiTryEatEi((char *)s); return 1; }
+{ RLT(18); _ZN15dScMgRoulette_c10StartRoundEi((char *)s); return 1; }
 static int  __fastcall rlt_v19(void *s, void *, int /*ridethrough*/)
-{ RLT(19); return _ZN15dScMgRoulette_c13OnTurnIntoEggEi((char *)s); }
+{ RLT(19); return _ZN15dScMgRoulette_c11CanEndStateEi((char *)s); }
 
 /* SM64DS_SCENE_SLOT0=0 and SM64DS_SCENE_SLOT9=0, the diagnostics every scene
    seat in this port carries, counted separately so a run can never read a
@@ -703,7 +703,7 @@ extern "C" void port_scene_roulette_hits(void)
     /* THE FIVE RECORDS THE FACTORY BUILDS, printed for section 4b's reason and
        for port/mg_fanout_costs.txt section 15's: a census that measures only
        DISPATCH cannot see a board that was never dealt. Slot 18's
-       func_ov006_021092a0 writes 0xc000 into words 0 and 1 of each, so a record
+       RouletteRacer_PlaceAtStart writes 0xc000 into words 0 and 1 of each, so a record
        still reading zero was never initialised. */
     if (g_rlt_self) {
         unsigned live = 0;
@@ -726,11 +726,11 @@ extern "C" void port_scene_roulette_hits(void)
        causes -- no bet was placed, or every bet was adjudicated a loss. Only
        the per-record row separates them.
 
-         +0x2c  the bet type func_ov006_02108650 classified the record's
+         +0x2c  the bet type Roulette_TileAt classified the record's
                 position into: 0x00..0x0b a single pocket, 0x0c..0x1c a pair,
                 0x1d..0x22 a quad, 0x23 the TOP half, 0x24 the BOTTOM half,
                 0x25 "not on the board at all"
-         +0x2e  the multiplier func_ov006_02108b90 wrote back
+         +0x2e  the multiplier RouletteRacer_GetPayout wrote back
          +0x32  the record's own state byte */
     if (g_rlt_self) {
         const char *c = g_rlt_self;
@@ -738,9 +738,9 @@ extern "C" void port_scene_roulette_hits(void)
         std::printf("[scene] dScMgRoulette_c PAYOUT: winning pocket +0x53d6 = "
                     "%d, sum +0x53f2 = %d, survivors +0x53f6 = %d, active "
                     "records +0x53fc = %d, coins handed to the shower "
-                    "(data_ov004_020bf9f8) = %d\n",
+                    "(sMgCoinsPayoutLeft) = %d\n",
                     *(const short *)(c + 0x53d6), *(const short *)(c + 0x53f2),
-                    *(const short *)(c + 0x53f6), n, data_ov004_020bf9f8);
+                    *(const short *)(c + 0x53f6), n, sMgCoinsPayoutLeft);
         for (int i = 0; i < 5; ++i) {
             const char *r = c + 0x51a8 + i * 0x34;
             std::printf("[scene]   record[%d]%s bet type +0x2c = 0x%02x, "
@@ -762,7 +762,7 @@ extern "C" void port_scene_roulette_hits(void)
         std::printf("[scene] dScMgRoulette_c PAY STATE reached %d time(s); "
                     "first at behavior tick %d: winning pocket %d, stake %d "
                     "record(s), payout sum +0x53f2 = %d, survivors +0x53f6 = "
-                    "%d, coins handed to func_ov004_020b56c8 = %d\n",
+                    "%d, coins handed to MgCoins_StartPayout = %d\n",
                     g_rlt_pay_round, g_rlt_pay_frame, g_rlt_pay_pocket,
                     g_rlt_pay_count, g_rlt_pay_sum, g_rlt_pay_surv,
                     g_rlt_pay_shower);
@@ -772,15 +772,15 @@ extern "C" void port_scene_roulette_hits(void)
                         g_rlt_pay_mult[i]);
         if (g_rlt_shower_first < 0)
             std::printf("[scene]   the coin shower never started: "
-                        "data_ov004_020bf9f8 stayed 0 for the whole run\n");
+                        "sMgCoinsPayoutLeft stayed 0 for the whole run\n");
         else
             std::printf("[scene]   coin shower armed at behavior tick %d with "
-                        "data_ov004_020bf9f8 = %d (must equal the payout sum "
-                        "above; func_ov004_020b56c8 is the only writer)\n",
+                        "sMgCoinsPayoutLeft = %d (must equal the payout sum "
+                        "above; MgCoins_StartPayout is the only writer)\n",
                         g_rlt_shower_tick, g_rlt_shower_first);
     }
 
-    /* THE RULE ITSELF, SWEPT RATHER THAN TRUSTED. func_ov006_02108b90 is
+    /* THE RULE ITSELF, SWEPT RATHER THAN TRUSTED. RouletteRacer_GetPayout is
        NONMATCHING -- the byte gate cannot score it, so for the life of this
        seat the only thing standing behind its arithmetic was a header comment
        that said "logic verified correct vs ROM" and was WRONG about one arm:
@@ -812,7 +812,7 @@ extern "C" void port_scene_roulette_hits(void)
                 for (unsigned k = 0; k < sizeof recbuf / sizeof recbuf[0]; ++k)
                     recbuf[k] = 0;
                 *(short *)(rec + 0x2c) = (short)type;
-                const int got = func_ov006_02108b90(rec, pocket);
+                const int got = RouletteRacer_GetPayout(rec, pocket);
                 if (got != want) {
                     if (bad < 8)
                         std::printf("[scene]   PAYOUT RULE BROKEN: bet type "
@@ -851,7 +851,7 @@ extern "C" void port_scene_roulette_hits(void)
                         rec[0], rec[1], rec[2], rec[3], rec[4]);
         } else {
             std::printf("[scene] dScMgRoulette_c save record: NO minigame index "
-                        "(data_ov004_020beb68 = %p)\n", data_ov004_020beb68);
+                        "(gMgScene = %p)\n", gMgScene);
         }
     }
     std::fflush(stdout);
@@ -873,7 +873,7 @@ extern "C" void port_scene_roulette_hits(void)
  * it is host-copied in port/unmatched/MgRoulette_WheelDispatch.cpp rather than
  * aliased, which is the distinction the corollary exists to make.
  *
- * THE FIRST THREE are src/actors/dScMgRoulette_c.cpp's, a //cpp TU that declares
+ * THE FIRST THREE are src/minigames/d_s_mg_roulette_methods.cpp's, a //cpp TU that declares
  * them at NAMESPACE scope rather than inside its extern "C" block, so MSVC puts
  * the TYPE into the symbol name and the ov006 mount's plain C definition cannot
  * satisfy it. What each one IS, checked before the row was written:
@@ -892,7 +892,7 @@ extern "C" void port_scene_roulette_hits(void)
  *                        section 11 names 0x169's and 0x16c's victims; this is
  *                        a third, found from the other end.
  *   data_ov006_02142aa4  a .bss array of FOUR pointers, which
- *                        func_ov006_02107b70 fills with this+0x52ac, +0x52c4,
+ *                        RouletteStrip_LinkAll fills with this+0x52ac, +0x52c4,
  *                        +0x52dc and +0x52f4 -- four 0x18-byte sub-objects
  *                        inside the scene object. Four is the count the body
  *                        loops to and the span to the next config symbol
@@ -900,11 +900,11 @@ extern "C" void port_scene_roulette_hits(void)
  *                        and the ROM agree.
  *
  * THE FOURTH IS THE BARE-NAME SHAPE, the one MgCoin_Faces.cpp and
- * MgMemory2_Faces.cpp already carry two of. src/actors/dScMgRoulette_c.cpp declares
+ * MgMemory2_Faces.cpp already carry two of. src/minigames/d_s_mg_roulette_methods.cpp declares
  * `extern s32 func_020b9488;` -- a DATA word under a func_ name that exists in
  * no config. Its own relocation says what it is: from inside this class's code
  * block, kind:load to:0x020b9488 module:overlays(0,4), and ov004's symbols.txt
- * has data_ov004_020b9488 at exactly that address.
+ * has sMgCoinRiseFrames at exactly that address.
  */
 #pragma comment(linker, "/alternatename:?data_ov006_021428d0@@3HA=_data_ov006_021428d0")
 #pragma comment(linker, "/alternatename:?data_ov006_0213e2dc@@3HA=_data_ov006_0213e2dc")

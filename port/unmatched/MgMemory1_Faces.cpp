@@ -8,13 +8,13 @@
 // words.  It is the SIXTH call vtable slot 9 (Render) makes -- see
 // src/minigames/d_s_mg_memory.cpp, whose call list is
 //
-//     func_ov006_020c0aa8(c + 0x4660)
-//     func_ov004_020b1bc8(c, 0xc, 0xc, 0)
-//     func_ov004_020b6430()
+//     Camera_InitDealerView(c + 0x4660)
+//     Mg_DrawCredits(c, 0xc, 0xc, 0)
+//     MgCoins_Draw()
 //     _ZN13dScMgMemory_c11DrawMessageEv(c)
 //     _ZN13dScMgMemory_c10DrawCursorEv(c)
 //     _ZN13dScMgMemory_c9DrawCardsEv(c)      <-- this one
-//     func_ov006_020c1804(c + 0x4f38)
+//     Dealer_Draw(c + 0x4f38)
 //
 // and it is the ONLY code in dScMgMemory_c that puts a card pixel anywhere.
 //

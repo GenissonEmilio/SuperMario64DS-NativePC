@@ -1,15 +1,15 @@
 {
   "id": "ov081/daSnowman_c",
   "module": "ov081",
-  "source": "src/actors/daSnowman_c.cpp",
-  "promoted_source": "src/actors/daSnowman_c.cpp",
+  "source": "src/game/actors/d_a_snowman.cpp",
+  "promoted_source": "src/game/actors/d_a_snowman.cpp",
   "status": "promoted",
   "boundary_confidence": "medium",
   "boundary_evidence": [
     "contiguous linker run: 0x2124090..0x2125ec0, 34 function(s), from build/tu_map.json (tools/tu_map.py)",
     "class label(s): daSnowman_c",
     "module sinit corroboration: 5 sinit(s) / 5 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
-    "classInit fold (0930c): the SNOWMAN registry factory daSnowman_c_classInit (0x02125ec0, 0x54) abuts the run's end 0x02125ec0 with no gap and no other symbol between; tu_map left it in its own unlabelled unit because it cuts on symbol name. The widened range 0x02124090..0x02125f14 (35 functions) ends where the daSnowball_c TU (src/actors/daSnowball_c.cpp) begins."
+    "classInit fold (0930c): the SNOWMAN registry factory daSnowman_c_classInit (0x02125ec0, 0x54) abuts the run's end 0x02125ec0 with no gap and no other symbol between; tu_map left it in its own unlabelled unit because it cuts on symbol name. The widened range 0x02124090..0x02125f14 (35 functions) ends where the daSnowball_c TU (src/game/actors/d_a_snowball.cpp) begins."
   ],
   "sections": [
     {
@@ -285,10 +285,10 @@
       "ordinal": 34
     },
     {
-      "symbol": "__sinit_daSnowman_c.cpp",
+      "symbol": "__sinit_d_a_snowman.cpp",
       "address": "0x02128154",
       "size": "0x360",
-      "legacy_source": "src/actors/daSnowman_c.cpp",
+      "legacy_source": "src/game/actors/d_a_snowman.cpp",
       "ordinal": 35
     }
   ],
@@ -436,7 +436,7 @@
   ],
   "bss": [
     {
-      "symbol": "data_ov081_02128d88",
+      "symbol": "gSnowmanJumpStAnimationFile",
       "address": "0x02128d88",
       "size": "0x8",
       "binding": "STB_GLOBAL",
@@ -450,14 +450,14 @@
       "evidence": "snowball model handle, file ID 0x424, constructed by func_02017acc"
     },
     {
-      "symbol": "data_ov081_02128d98",
+      "symbol": "gSnowmanWaitAnimationFile",
       "address": "0x02128d98",
       "size": "0x8",
       "binding": "STB_GLOBAL",
       "evidence": "wait animation handle, file ID 0x423"
     },
     {
-      "symbol": "data_ov081_02128da0",
+      "symbol": "gSnowmanJumpEdAnimationFile",
       "address": "0x02128da0",
       "size": "0x8",
       "binding": "STB_GLOBAL",
@@ -1157,7 +1157,7 @@
   "production_mode": "intact-object",
   "init": [
     {
-      "symbol": "__sinit_daSnowman_c.cpp",
+      "symbol": "__sinit_d_a_snowman.cpp",
       "address": "0x02128154",
       "size": "0x360",
       "binding": "STB_GLOBAL",
@@ -1166,7 +1166,7 @@
   ],
   "ctor": [
     {
-      "symbol": ".p__sinit_daSnowman_c.cpp",
+      "symbol": ".p__sinit_d_a_snowman.cpp",
       "address": "0x02128828",
       "size": "0x4",
       "binding": "STB_GLOBAL",
@@ -1212,13 +1212,13 @@
   ],
   "symbol_binding_rewrites": [
     {
-      "symbol": "__sinit_daSnowman_c.cpp",
+      "symbol": "__sinit_d_a_snowman.cpp",
       "from": "STB_LOCAL",
       "to": "STB_GLOBAL",
       "evidence": "mwcc emits this local; DSD needs a global symbol at the retail address"
     },
     {
-      "symbol": ".p__sinit_daSnowman_c.cpp",
+      "symbol": ".p__sinit_d_a_snowman.cpp",
       "from": "STB_LOCAL",
       "to": "STB_GLOBAL",
       "evidence": "mwcc emits this local; DSD needs a global symbol at the retail address"
@@ -1582,7 +1582,7 @@
       "source": "0x021283fc",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov081_02128d98",
+      "symbol": "gSnowmanWaitAnimationFile",
       "addend": 0,
       "target_module": "ov081",
       "target_address": "0x02128d98"
@@ -1652,7 +1652,7 @@
       "source": "0x02128424",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov081_02128d88",
+      "symbol": "gSnowmanJumpStAnimationFile",
       "addend": 0,
       "target_module": "ov081",
       "target_address": "0x02128d88"
@@ -1672,7 +1672,7 @@
       "source": "0x02128430",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "data_ov081_02128da0",
+      "symbol": "gSnowmanJumpEdAnimationFile",
       "addend": 0,
       "target_module": "ov081",
       "target_address": "0x02128da0"
@@ -1992,7 +1992,7 @@
       "source": "0x02128828",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "__sinit_daSnowman_c.cpp",
+      "symbol": "__sinit_d_a_snowman.cpp",
       "addend": 0,
       "target_module": "ov081",
       "target_address": "0x02128154"

@@ -1,19 +1,19 @@
 //cpp
 /* dScMgSound_c ("Boom Box", actor 0x16f / scene 367): state 1 of the ten-record
    pad array, slot 1 of data_ov006_02142df8. This is the state a TAPPED pad sits
-   in -- src/func_ov006_0211bf44.c (state 0) is the stylus hit test and writes 1
+   in -- src/Note_StateWait.c (state 0) is the stylus hit test and writes 1
    into the record's +0x50f4 on a hit.
 
    It runs the pad's press animation on a per-step timer, and on the last step it
    commits the note: the record moves to state 2, the note is appended to the
    16-bit play log at +0x5610 with the pad index packed into the high byte,
-   func_ov006_0211b654 spawns the note entities, and one of three arm9 sound
+   SpawnPops spawns the note entities, and one of three arm9 sound
    entry points is called. Which one depends on vtable slot 35 and on the mode
    byte at +0x5627.
 
    The slot-35 call is a real virtual through a 36-slot shadow class, so the
    receiver arrives in r0 exactly as the ROM's `ldr r1,[r0] / ldr r1,[r1,#0x8c] /
-   blx r1` expects. src/func_ov006_0211b9c8.cpp spells the same call the same way.
+   blx r1` expects. src/RevealUnmatched.cpp spells the same call the same way.
 
    data_ov006_0212ef3c is the eight-entry per-step frame count; 0x0213f794 is the
    per-note kind (1 or 2) and 0x0213f7e8 the per-note sound id, 42 entries each.
@@ -38,14 +38,14 @@ extern "C" {
 extern unsigned short data_ov006_0212ef3c[];
 extern unsigned short data_ov006_0213f794[];
 extern unsigned short data_ov006_0213f7e8[];
-void func_ov006_0211b654(void *c, int idx);
-void func_ov006_020c2300(void *c);
+void SpawnPops(void *c, int idx);
+void Presenter_PlayAnim7Loop(void *c);
 unsigned int func_02012174(unsigned int a, unsigned int b);
 unsigned int func_02012790(unsigned int a);
 unsigned int _ZN5Sound12PlayBank2_2DEj(unsigned int a);
 }
 
-extern "C" void func_ov006_0211bc8c(Obj *obj, int idx)
+extern "C" void Note_StateOpening(Obj *obj, int idx)
 {
     char *c = (char *)obj;
     int o = idx * 0x14;
@@ -74,7 +74,7 @@ extern "C" void func_ov006_0211bc8c(Obj *obj, int idx)
     }
     *(unsigned short *)(c + 0x5614) = 0x20;
 
-    func_ov006_0211b654(c, idx);
+    SpawnPops(c, idx);
 
     note = ((unsigned char *)(c + 0x50f8))[o];
     if (obj->check()) {
@@ -114,5 +114,5 @@ extern "C" void func_ov006_0211bc8c(Obj *obj, int idx)
     }
 
     if (*(unsigned char *)(c + 0x5624) != 1) return;
-    func_ov006_020c2300(c + 0x4f38);
+    Presenter_PlayAnim7Loop(c + 0x4f38);
 }

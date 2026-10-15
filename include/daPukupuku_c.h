@@ -95,11 +95,11 @@ struct daPukupuku_c {
     u8  pad_0b4[0x5c];
     /* dCcAcPos_c member, named by the class's own destructor calling
        dCcAcPos_c's D1 at +0x110 -- a relocation the ROM build
-       checks. Was a u8 marker. [_ZN12daPukupuku_cD1Ev, now in src/actors/daPukupuku_c.cpp] */
+       checks. Was a u8 marker. [_ZN12daPukupuku_cD1Ev, now in src/game/actors/d_a_pukupuku.cpp] */
     dCcAcPos_c mdCcAcPos_c;            /* 0x110 */
     /* dBgCh_Actr member, named by the class's own destructor calling
        dBgCh_Actr's D1 at +0x150 -- a relocation the ROM build
-       checks. Was a u8 marker. [_ZN12daPukupuku_cD1Ev, now in src/actors/daPukupuku_c.cpp] */
+       checks. Was a u8 marker. [_ZN12daPukupuku_cD1Ev, now in src/game/actors/d_a_pukupuku.cpp] */
     dBgCh_Actr mWithMeshClsn;            /* 0x150 */
     u8  mModelAnim;            /* 0x30c */
     u8  pad_30d[0x67];

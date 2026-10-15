@@ -49,7 +49,7 @@
 # TWO DECOMP-SIDE OBSERVATIONS, recorded so they are not re-derived as
 # mysteries, the way run mg7 lane L370's row was:
 #   - func_ov030_02113324 (0x2e8 bytes) has NO delink block in
-#     config/arm9/overlays/ov030/delinks.txt, but src/actors/daMky_c.cpp
+#     config/arm9/overlays/ov030/delinks.txt, but src/game/actors/d_a_mky.cpp
 #     exists and is a real body. It costs the port nothing -- the port slices a
 #     src file and does not need the block -- so it is in this slice.
 #   - func_ov030_021136b0 (0x3d0 bytes) has neither a delink block nor a src
@@ -67,8 +67,8 @@
 # from this list, because a host copy defines the same symbol and listing both
 # would be an LNK2005.
 #
-#   src/actors/daMky_c.cpp   -> unmatched/Ukiki_StateEnter.cpp
-#   src/actors/daMky_c.cpp   -> unmatched/Ukiki_StateTick.cpp
+#   src/game/actors/d_a_mky.cpp   -> unmatched/Ukiki_StateEnter.cpp
+#   src/game/actors/d_a_mky.cpp   -> unmatched/Ukiki_StateTick.cpp
 #     Both are mwcc POINTER-TO-MEMBER dispatch on a deliberately incomplete
 #     class -- `struct C { char pad[0x3a4]; PMF *pp; };`, no base, no virtuals
 #     -- so mwcc's PMF is the ROM's own 8-byte {function, delta} pair and MSVC's
@@ -76,11 +76,11 @@
 #     BabyPenguin six-cell shape exactly (port/unmatched/BabyPenguin_StateEnter
 #     .cpp and _StateTick.cpp), one cell wider: ELEVEN cells, each two pairs
 #     (`S16 { S8 lo, hi; }` in the sinit's own declaration), enter at pp+0 and
-#     tick at pp+1. src/actors/daMky_c.cpp is the cell-pointer installer --
+#     tick at pp+1. src/game/actors/d_a_mky.cpp is the cell-pointer installer --
 #     it writes `*(Item16 **)(self + 0x3a4) = &data_ov030_02115e0c[idx]` -- and
 #     it is UNCHANGED and stays in this slice.
 #
-#   src/actors/daMky_c.cpp -> unmatched/Ukiki_Behavior.cpp
+#   src/game/actors/d_a_mky.cpp -> unmatched/Ukiki_Behavior.cpp
 #     THE SHADOW-CLASS SLOT DEFECT, and it is the stack-unbalancing half rather
 #     than the merely-wrong-body half. The matched src models the ModelAnim at
 #     this+0xd4 with a local FOUR-virtual shadow `struct VObj` and calls `v3()`,
@@ -96,7 +96,7 @@
 #     is MSVC slot 2 under include/ModelAnim.h. The dispatch stays VIRTUAL in
 #     the host copy, for MgFlower_ModelRender_020c3bf4.cpp's reason.
 #
-#   src/actors/daMky_c.cpp -> spelled INLINE in the fill (slot 16)
+#   src/game/actors/d_a_mky.cpp -> spelled INLINE in the fill (slot 16)
 #     A real MSVC-synthesised destructor over a local shadow class with no
 #     vtable store of its own -- the MotherPenguin / OneUpLogo / BabyPenguin
 #     shape, which gate 191 and gate 193 both keep OUT of the slice for the same
@@ -204,20 +204,20 @@ src/game/actors/d_a_obj_hm_bskt.cpp
 # declared with two different return types in one TU). It is a decomp-side
 # item, not a port one: see runs/link100/out/SYNC5/decomp_side.md. The row
 # returns when main lands the fix.
-#src/actors/daMky_c.cpp
-src/actors/daObjHmMaruta_c.cpp
-src/actors/daMky_c.cpp
-# FOLDED into src/actors/daMky_c.cpp (row 209): src/d_a_mky_monkey_thief.c
+#src/game/actors/d_a_mky.cpp
+src/game/actors/d_a_obj_hm_maruta.cpp
+src/game/actors/d_a_mky.cpp
+# FOLDED into src/game/actors/d_a_mky.cpp (row 209): src/d_a_mky_monkey_thief.c
 # FOLDED into src/game/actors/d_a_obj_hm_bskt.cpp (row 193): src/__sinit_ov030_0211484c.c
-# FOLDED into src/actors/daObjHmMaruta_c.cpp (row 208): src/__sinit_ov030_021148b8.c
+# FOLDED into src/game/actors/d_a_obj_hm_maruta.cpp (row 208): src/__sinit_ov030_021148b8.c
 src/unnamed/ov030/__sinit_ov030_02114924.c
 src/game/actors/d_a_obj_maruta.cpp
 # FOLDED into src/game/actors/d_a_obj_maruta.cpp (row 214): src/_ZN13daObjMaruta_c15OnHitByMegaCharER6Player.cpp
 # FOLDED into src/game/actors/d_a_obj_maruta.cpp (row 214): src/func_ov080_021270dc.c
 # FOLDED into src/game/actors/d_a_obj_maruta.cpp (row 214): src/func_ov080_0212714c.c
 # FOLDED into src/game/actors/d_a_obj_maruta.cpp (row 214): src/func_ov080_021274ac.c
-src/engine/collision/dBgCh_SphCrr_query.cpp
-# FOLDED into src/engine/collision/dBgCh_SphCrr_query.cpp (row 219): src/func_02037f44.c
+src/engine/collision/d_bg_ch_sph_crr_query.cpp
+# FOLDED into src/engine/collision/d_bg_ch_sph_crr_query.cpp (row 219): src/func_02037f44.c
 # FOLDED into src/game/actors/d_a_obj_maruta.cpp (row 214): src/func_ov080_02127094.c
 # FOLDED into src/game/actors/d_a_obj_maruta.cpp (row 214): src/func_ov080_02127658.c
 # FOLDED into src/game/actors/d_a_obj_maruta.cpp (row 214): src/func_ov080_0212758c.c

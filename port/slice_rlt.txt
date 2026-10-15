@@ -139,7 +139,7 @@
 # REAL DECOMP, 0 guesses. Per-body evidence is appended to that file.
 #
 # THE BASE WAS PROVEN FIRST, on the control run mg10 lane F371 established:
-# _ZN12dScMgAmida_c9Virtual8CEv and _020d1188 reproduce the six-instruction mode
+# _ZN12dScMgAmida_c12IsAltVariantEv and _020d1188 reproduce the six-instruction mode
 # predicates instruction for instruction, `cmp r0,#1` and `cmp r0,#2`.
 #
 # EVERY COUNT CLOSES AS instructions + pool = size/4:
@@ -176,17 +176,17 @@
 # answer is not none.
 #
 #   - THE SOURCE, READ BEFORE THE FACE ARRAY WAS WIRED (section 14's practical
-#     rule). Slot 6 (src/actors/dScMgRoulette_c.cpp) is a plain
-#     `switch (*(short *)(c + 0x53e6))` and slot 19 (src/actors/dScMgRoulette_c.cpp)
+#     rule). Slot 6 (src/minigames/d_s_mg_roulette_methods.cpp) is a plain
+#     `switch (*(short *)(c + 0x53e6))` and slot 19 (src/minigames/d_s_mg_roulette_methods.cpp)
 #     is the ROM's own `cmp r0,#9 / addls pc,pc,r0,lsl #2` ten-arm jump table
 #     on the same index. Neither is the wall.
 #   - A `::*` SWEEP over all 41 TUs in the class's code block: EXACTLY ONE,
-#     src/func_ov006_02107db8.cpp.
+#     src/RouletteBoard_Update.cpp.
 #   - THE WORD-DECODE SCAN, for the third shape neither prescribed detector can
 #     see. Every word of 0x0210788c..0x0210a4ac was decoded looking for
 #     `add Rd,Rn,Rm,asr #1`: ONE site, 0x02107e30, inside that same TU. Five
 #     `blx Rn` sites exist in the block and all five are accounted for: two in
-#     func_ov006_02107d80 and one in func_ov006_02107db8 are Model virtual
+#     RouletteBoard_Draw and one in RouletteBoard_Update are Model virtual
 #     dispatches (section 6), 0x02107e44 is the member-pointer call itself, and
 #     0x0210a3c4 is slot 0's tail dispatch of vtable slot 18.
 #   - THE RELOCATION SET, which is a census rather than an absence and is one
@@ -198,9 +198,9 @@
 #         0x0213e2f8  -> 0x02107ea8   an mwcc pair {code, 0}
 #
 # SO THE WHEEL'S STATE MACHINE IS TWO STATES AND THE UNIVERSE IS BOUNDED FROM
-# THE CONSUMERS. data_ov006_0213e2e8 is installed by func_ov006_02108508, which
-# vtable slot 18's func_ov006_02108524 calls; data_ov006_0213e2f8 by
-# func_ov006_021082c4, which state 0x021082fc itself calls. Those two literal
+# THE CONSUMERS. pmf_RouletteBoard_StateSpin is installed by RouletteBoard_SetStateSpin, which
+# vtable slot 18's RouletteBoard_StartSpin calls; pmf_RouletteBoard_StateSlow by
+# RouletteBoard_StartSlowdown, which state 0x021082fc itself calls. Those two literal
 # pool loads (from:0x02108520 and from:0x021082f8) are the ONLY relocations in
 # the whole overlay that name either pair. Both are routed in
 # port/unmatched/MgRoulette_WheelDispatch.cpp.
@@ -220,7 +220,7 @@
 #
 # THE FRAMEWORK'S WALL AND THE SHARED SUB-OBJECT'S ARE STILL PAID AND ARE
 # INHERITED. This class reaches _ZN10dMgState_c8SetStateEi through dScMgBase_c like
-# every sibling, and vtable slot 6 calls func_ov006_020c19d0 on this+0x4f38
+# every sibling, and vtable slot 6 calls Dealer_Update on this+0x4f38
 # every frame -- the shared model sub-object's FIELD member pointer, routed by
 # port/unmatched/MgMemory2_FieldPmf.cpp, which is already in the build. The
 # seat prints both chains' counts rather than folding them into its own.
@@ -231,13 +231,13 @@
 #
 # The wheel object at this+0x530c holds two HOST C++ Model objects at +0x10 and
 # +0x60: dScMgRoulette_c_classInit constructs them with _ZN5ModelC1Ev and vtable
-# slot 0's func_ov006_021085c0 hands them NitroFS files 0x21d and 0x21e through
+# slot 0's RouletteBoard_LoadModels hands them NitroFS files 0x21d and 0x21e through
 # ModelBase::SetFile. Two src TUs dispatch through them with LOCAL SHADOW
 # CLASSES, which is the wrong half of port/mg_fanout_costs.txt section 13's
 # test -- a shadow over a MOUNTED ROM table is correct because the port's fills
 # keep ROM word order, a shadow over an MSVC vtable is not:
 #
-#   src/actors/dScMgRoulette_c.cpp   ROM slot 5, byte +0x14, TWICE, with a NULL
+#   src/minigames/d_s_mg_roulette_methods.cpp   ROM slot 5, byte +0x14, TWICE, with a NULL
 #                                 scale. include/Model.h reads _ZTV5Model out
 #                                 of the ROM as (0 D1, 1 D0, 2 DoSetFile,
 #                                 3 UpdateVerts, 4 Virtual10, 5 Render), so
@@ -245,7 +245,7 @@
 #                                 D0, so the sixth MSVC word is one PAST Render
 #                                 -- off the end of the vtable.
 #                                 HOST COPY: MgRoulette_ModelRender_02107d80.cpp
-#   src/actors/dScMgRoulette_c.cpp   ROM slot 3, byte +0xc, once -- UpdateVerts.
+#   src/minigames/d_s_mg_roulette_methods.cpp   ROM slot 3, byte +0xc, once -- UpdateVerts.
 #                                 The host's fourth word is Virtual10, which is
 #                                 __thiscall with one stack parameter and so
 #                                 returns `ret 4` off a stack the caller never
@@ -266,10 +266,10 @@
 # Run mg9 lane S381's law: a factory-built record object can carry its OWN
 # mounted ROM vtable in word 0, invisible to every vtable-axis derivation. This
 # factory builds five 0x34-byte records at this+0x51a8 through __cxa_vec_ctor
-# with element constructor func_ov006_0210a4ac and destructor
-# func_ov006_021079c8, and BOTH ARE ONE WORD OF 0xe12fff1e -- `bx lr` -- in the
+# with element constructor Roulette_ConstructElement and destructor
+# Roulette_Nothing, and BOTH ARE ONE WORD OF 0xe12fff1e -- `bx lr` -- in the
 # shipped image. Nothing writes word 0 at construction; the only later writer
-# is slot 18's func_ov006_021092a0, which stores the plain fixed-point number
+# is slot 18's RouletteRacer_PlaceAtStart, which stores the plain fixed-point number
 # 0xc000 there. The two Models are host C++ objects with MSVC vptrs. So this
 # class fills THREE tables and there is no fourth, and the seat's census prints
 # the raw-DS-word count for all three.
@@ -303,8 +303,8 @@
 # all 41 symbols in this class's code block have a matched src TU, and the
 # closure walk over the block's 269 relocations reaches nothing in ov006 that
 # does not. Two of the 41 have no delink block in
-# config/arm9/overlays/ov006/delinks.txt (func_ov006_02108b90 and
-# func_ov006_02108d28) -- a decomp-side observation recorded so it is not
+# config/arm9/overlays/ov006/delinks.txt (RouletteRacer_GetPayout and
+# RouletteRacer_CheckLandingB) -- a decomp-side observation recorded so it is not
 # re-derived as a mystery, exactly as run mg7 lane L370's row was; it costs the
 # port nothing, because the port slices a src file and does not need the block.
 #
@@ -403,14 +403,14 @@
 # ===========================================================================
 #
 #   - HOW MANY MUSHROOMS THE PLAYER SHOULD GET. Slot 18 sets the active record
-#     count at +0x53fc from data_ov004_020beb68's +0xa8, clamped to 5, and slot
-#     0 seeds +0xa8 from func_ov004_020ad8b8().
+#     count at +0x53fc from gMgScene's +0xa8, clamped to 5, and slot
+#     0 seeds +0xa8 from Mg_GetSavedRecord0().
 #
 #     THE SENTENCE THAT USED TO CONTINUE "...which is data_0209caf4 row 13
 #     field 1 -- the persistent per-minigame LEVEL" WAS WRONG, and run mg11
-#     lane PAYOUT retracts it. func_ov004_020ad8b8 reads the HUD PANEL's
-#     field 0 -- func_02013580(func_ov004_020adc3c(data_ov004_020beb68), 0),
-#     falling back to data_0209b308[5] when that reads zero -- so +0xa8 is the
+#     lane PAYOUT retracts it. Mg_GetSavedRecord0 reads the HUD PANEL's
+#     field 0 -- func_02013580(Mg_GetSaveTable(gMgScene), 0),
+#     falling back to gMgMenuRow[5] when that reads zero -- so +0xa8 is the
 #     player's CURRENT COIN COUNT and the stake is min(coins, 5). Nothing on
 #     this class's payout chain reads the save level at all. The lane's own
 #     runs did report "spawned 0 of 5", but that line prints +0x53f8 (how many
@@ -447,13 +447,13 @@
 # each of them and listing both would be an LNK2005:
 #
 #   src/minigames/d_s_mg_roulette.cpp  -> unmatched/MgRoulette_Factory.cpp
-#   src/actors/dScMgRoulette_c.cpp       -> unmatched/MgRoulette_WheelDispatch.cpp
-#   src/actors/dScMgRoulette_c.cpp       -> unmatched/MgRoulette_ModelRender_02107d80.cpp
+#   src/minigames/d_s_mg_roulette_methods.cpp       -> unmatched/MgRoulette_WheelDispatch.cpp
+#   src/minigames/d_s_mg_roulette_methods.cpp       -> unmatched/MgRoulette_ModelRender_02107d80.cpp
 #
 # THREE LINES ARE NOT IN THE CLASS'S CODE BLOCK and are here because nothing
-# else in the tree had reached them: func_ov006_0210a4ac (the element
-# constructor the factory hands __cxa_vec_ctor) and func_ov006_020c0e8c /
-# func_ov006_020c0efc (two of the shared sub-object's accessors that slot 6 and
+# else in the tree had reached them: Roulette_ConstructElement (the element
+# constructor the factory hands __cxa_vec_ctor) and Dealer_StartSwap /
+# Dealer_IsAnimDone (two of the shared sub-object's accessors that slot 6 and
 # slot 18 call and that slice_mem.txt does not carry).
 
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
@@ -461,12 +461,12 @@
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
-#src/actors/dScMgRoulette_c.cpp
+#src/minigames/d_s_mg_roulette_methods.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (the slice_rlt host copies).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
 #src/minigames/d_s_mg_roulette.cpp
-src/actors/unit020bfec0.cpp
-# FOLDED into src/actors/unit020bfec0.cpp (row 471): src/func_ov006_020c0efc.c
+src/minigames/unit020bfec0.cpp
+# FOLDED into src/minigames/unit020bfec0.cpp (row 471): src/Dealer_IsAnimDone.c

@@ -53,7 +53,7 @@
 # MEASURED: closes 2, duplicates exactly the three retired members and nothing
 # else, and of the 27 names it references outside the wall, 19 have live
 # /alternatename rows, 5 come out of the CRT under -MT and 8 are bridged below.
-src/actors/daGmch_c.cpp
+src/game/actors/d_a_gmch.cpp
 
 # ---- ov085 MIPS THE RABBIT (actor 229) ------------------------------------
 # The same shape and the same day. Closes daMip_c_classInit outright, and the
@@ -79,10 +79,10 @@ src/actors/daGmch_c.cpp
 # names it references outside the wall, 29 have live /alternatename rows, 5 are
 # CRT, 25 decorated ov085 data names are bridged below and the last is the
 # vtable extern the ZTV row closes.
-src/actors/daMip_c.cpp
+src/game/actors/d_a_mip.cpp
 
 # ---- ov006 MG_ROULETTE (scene 383) ----------------------------------------
-# One row, func_ov006_0210a4ac, an empty four-byte ROM stub. The translation
+# One row, Roulette_ConstructElement, an empty four-byte ROM stub. The translation
 # unit holds exactly two bodies and the other is dScMgRoulette_c_classInit,
 # which port/unmatched/MgRoulette_Factory.cpp host-copies under a standing
 # PORT_HOST_ABI ruling: the matched factory calls _ZN11dScMgBase_cC2Ev() with
@@ -98,7 +98,7 @@ src/actors/daMip_c.cpp
 src/minigames/d_s_mg_roulette.cpp
 
 # ---- dScMgBase_c::OnAimedAtWithEgg, the minigame overlay menu --------------
-# One member, one row: ?OnAimedAtWithEgg@dScMgBase_c@@UAEHXZ, which four class
+# One member, one row: ?SaveScreenForMenu@dScMgBase_c@@UAEHXZ, which four class
 # TUs' vtables ask for by LNK2001 (dScMgPanel_c, dScMgCup_c, dScMgHanachan_c's
 # D1 and dScMgAmida_c's D1) and nothing in this link defines. The TU is on no
 # live slice row: slice_slice1.txt line 67 has it commented out.
@@ -156,13 +156,13 @@ src/minigames/d_s_mg_base.cpp
 # member with its receiver, not through the flat C spelling with no argument,
 # which is the text the guard refuses and the PORT_HOST_ABI ruling
 # port/unmatched/Actor_ClosestPlayer_OverlayReaders.cpp exists for.
-src/actors/dActor_c.cpp
+src/runtime/actor/d_actor.cpp
 
 # dActor_c::HorzAngleToCPlayerOrAng(), ROM 0x0201097c, 0x3c bytes. Closes
 # ?HorzAngleToCPlayerOrAng@dActor_c@@QAEFXZ. The F in the mangle is s16, and
 # the decomp's note on the body proves that width off the ROM's own
 # `ldrsheq r0, [r4, #0x8e]`, a signed halfword load of mAngleY.
-# FOLDED into src/actors/dActor_c.cpp (row 159): src/_ZN8dActor_c23HorzAngleToCPlayerOrAngEv.cpp
+# FOLDED into src/runtime/actor/d_actor.cpp (row 159): src/_ZN8dActor_c23HorzAngleToCPlayerOrAngEv.cpp
 
 # ---- the name bridges the seats need, and two flat rows of their own -------
 # Thirty-three decorated ROM data names across the daGmch_c and daMip_c seats,

@@ -22,10 +22,10 @@
 # port/hal/player_bridges.cpp, at the address config/arm9/overlays/ov002/
 # symbols.txt gives it. These are the last three ov002 St_ addresses the
 # generated player_states.inc did not carry.
-src/actors/Player.cpp
+src/game/player/Player.cpp
 port/unmatched/hostarm/Player.cpp
-# FOLDED into src/actors/Player.cpp (row 25): src/_ZN6Player19St_SwingPlayer_InitEv.cpp
-# FOLDED into src/actors/Player.cpp (row 25): src/_ZN6Player22St_SwingPlayer_CleanupEv.cpp
+# FOLDED into src/game/player/Player.cpp (row 25): src/_ZN6Player19St_SwingPlayer_InitEv.cpp
+# FOLDED into src/game/player/Player.cpp (row 25): src/_ZN6Player22St_SwingPlayer_CleanupEv.cpp
 
 # ---------------------------------------------------------------------------
 # SUPPLY SEATS. Every line below compiles clean against the port headers and
@@ -65,12 +65,12 @@ port/unmatched/hostarm/Player.cpp
 #   020de328  func_ov092_02131010, _ZN7Tornado6State1Ev
 #   020de33c  _ZN7Tornado8BehaviorEv
 #   020ee5d0  _ZN10dBgActor_c20UpdateKillByMegaCharEsss5Fix12IiE
-# FOLDED into src/actors/Player.cpp (row 25): src/func_ov002_020d5f98.cpp
-# FOLDED into src/actors/Player.cpp (row 25): src/func_ov002_020d6048.cpp
-# FOLDED into src/actors/Player.cpp (row 25): src/func_ov002_020db674.c
-# FOLDED into src/actors/Player.cpp (row 25): src/func_ov002_020de328.c
-# FOLDED into src/actors/Player.cpp (row 25): src/func_ov002_020de33c.c
-src/actors/dBgActor_c.cpp
+# FOLDED into src/game/player/Player.cpp (row 25): src/func_ov002_020d5f98.cpp
+# FOLDED into src/game/player/Player.cpp (row 25): src/func_ov002_020d6048.cpp
+# FOLDED into src/game/player/Player.cpp (row 25): src/func_ov002_020db674.c
+# FOLDED into src/game/player/Player.cpp (row 25): src/func_ov002_020de328.c
+# FOLDED into src/game/player/Player.cpp (row 25): src/func_ov002_020de33c.c
+src/runtime/actor/d_bg_actor.cpp
 #
 # Player methods, same story -- none of them is a state function, so none has
 # a dispatcher address; they come alive when their real callers land:
@@ -80,9 +80,9 @@ src/actors/dBgActor_c.cpp
 #   EnterWhirlpool   no caller anywhere in src/ yet
 #   JumpIntoBooCage  no caller anywhere in src/ yet
 #   CanPause         no caller in src/ yet (the arm9 pause menu calls it)
-# FOLDED into src/actors/Player.cpp (row 25): src/_ZN6Player12GetHurtStateEv.cpp
-# FOLDED into src/actors/Player.cpp (row 25): src/_ZN6Player5ShockEj.cpp
-# FOLDED into src/actors/Player.cpp (row 25): src/_ZN6Player8BlowAwayEs.cpp
+# FOLDED into src/game/player/Player.cpp (row 25): src/_ZN6Player12GetHurtStateEv.cpp
+# FOLDED into src/game/player/Player.cpp (row 25): src/_ZN6Player5ShockEj.cpp
+# FOLDED into src/game/player/Player.cpp (row 25): src/_ZN6Player8BlowAwayEs.cpp
 
 # ---------------------------------------------------------------------------
 # WAVE 2 / LANE w2-e: ov002's REAL St_EndingFly_Main and everything under it.
@@ -152,21 +152,21 @@ src/unnamed/arm9/0200/func_0200eec8.c
 #     header essay in hal/method_faces.cpp, bought for nothing:
 #       func_ov006_020d6084  ov006's 0x020d6084; the .inc
 #         dispatches that address to _ZN6Player23St_InYoshiMouth_CleanupEv.
-#       func_ov006_020cac30         ov006's 0x020cac30; same shape.
+#       Trmp2Mario_UpdateAll         ov006's 0x020cac30; same shape.
 #       func_ov006_02110244                 an ov006 class, not a Player member
 #         at all -- see the note in the src file.
 #
 # (b1) _ZN6Player18St_LevelEnter_MainEv is left out for the PMF STRIDE, not
 #     for a shared address, and it sat under (b) with the polarity inverted.
 #     ov002/symbols.txt names 0x020c6f3c with this exact symbol (size 0xa8)
-#     and src/actors/Player.cpp defines the ov002 body, so
+#     and src/game/player/Player.cpp defines the ov002 body, so
 #     the name is this overlay's own rather than another's. It stays out
 #     because that body dispatches through data_ov002_0211075c, whose records
 #     are eight bytes and which MSVC's one-word pointer-to-member would stride
 #     by four. 0x020c6f3c is dispatched to
 #     port/unmatched/func_ov002_020c6f3c.cpp instead, a host copy whose name
 #     is the port's own and is in no symbols.txt. The symbol that DOES name
-#     another overlay's bytes here is ov006's func_ov006_020c6f3c (size 0x34),
+#     another overlay's bytes here is ov006's Heyho_Destruct (size 0x34),
 #     which is not a Player symbol and was never a seating candidate.
 #
 # (b2) _ZN6PlayerD0Ev is matched and links clean, and it is still left out: it
@@ -216,4 +216,4 @@ src/unnamed/arm9/0200/func_0200eec8.c
 # none of those four is linked, so HUD::Render is the whole edge today, gated
 # on data_0209f284 (zeroed bss on this boot) -- a linkage win first, a visible
 # one only on a level that sets it.
-src/actors/dScStage_c.cpp
+src/game/stages/d_s_stage_methods.cpp

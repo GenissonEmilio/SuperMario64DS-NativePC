@@ -8,7 +8,7 @@
 //
 // THE OBVIOUS LEVER IS A TRAP HERE AND THE MEASUREMENT IS WORTH KEEPING.
 // Walking the eleven records with a POINTER instead of an index -- the lever
-// that closed most of func_ov006_020e5450's gap -- narrows the word COUNT from
+// that closed most of Curling2_ResolveStoneCollision's gap -- narrows the word COUNT from
 // 181 to 189, but it costs on the aligned diff the repository actually scores
 // with: tools/nearmiss_db.py's difflib oracle reads the pointer version at 258
 // divergences and this one at 192, because the pointer form makes mwcc spill

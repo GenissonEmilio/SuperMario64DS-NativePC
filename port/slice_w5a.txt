@@ -29,99 +29,99 @@
 # (both matched veneers, three hops end on the linked func_02048fd4) and
 # func_ov002_020c51d0 (matched, its two externs already linked).
 
-src/actors/daTrs_c.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_021160d4.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02116190.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02116244.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_021162c8.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_021163d0.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211640c.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_021169c4.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02116a1c.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02116bf0.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02116bf4.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02116d98.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02116dbc.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02116df0.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02116e14.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02116fac.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_021172a8.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02117364.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211776c.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_021177b0.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02117b0c.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02118458.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211873c.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02118914.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_021189f4.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02118b2c.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02118b98.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02118cd8.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02118ddc.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02118e5c.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02118ea0.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02118eac.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02118f24.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02118f50.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02118f74.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02119074.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02119274.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211934c.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211975c.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02119870.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02119894.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02119960.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02119a2c.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02119a50.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02119ab0.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02119b1c.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02119b84.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02119bb0.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02119c18.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02119c58.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02119cc0.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02119e38.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211a030.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211a0a8.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211a0dc.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211a3d0.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211a564.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211a634.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211a6f0.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211a718.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211a76c.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211a810.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211a8a4.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211a960.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211a964.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211aa34.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211ab68.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211ad00.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211adb4.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_0211adfc.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTrs_c/_ZN7daTrs_c13OnYoshiTryEatEv.cpp
-src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211c6f8.cpp
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211c770.c
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211c7b0.c
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211c82c.c
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211c89c.c
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211cae8.c
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211cb54.c
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211cc18.c
-src/game/actors/daTrsTrap_c/d_a_trs_trap_classinits.cpp
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap_classinits.cpp (row 112): src/unnamed/ov063/func_ov063_0211d28c.c
-src/game/actors/daPiano_c/d_a_piano.cpp
-# FOLDED into src/game/actors/daPiano_c/d_a_piano.cpp (row 114): src/unnamed/ov063/func_ov063_0211d828.cpp
-# FOLDED into src/game/actors/daPiano_c/d_a_piano.cpp (row 114): src/unnamed/ov063/func_ov063_0211d88c.c
-# FOLDED into src/game/actors/daPiano_c/d_a_piano.cpp (row 114): src/unnamed/ov063/func_ov063_0211d8cc.cpp
-# FOLDED into src/game/actors/daPiano_c/d_a_piano.cpp (row 114): src/unnamed/ov063/func_ov063_0211dba4.c
-# FOLDED into src/game/actors/daPiano_c/d_a_piano.cpp (row 114): src/unnamed/ov063/func_ov063_0211dbb8.c
-# FOLDED into src/game/actors/daPiano_c/d_a_piano.cpp (row 114): src/unnamed/ov063/func_ov063_0211dd78.c
-# FOLDED into src/game/actors/daPiano_c/d_a_piano.cpp (row 114): src/unnamed/ov063/func_ov063_0211dd84.c
+src/game/actors/d_a_trs.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_021160d4.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02116190.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02116244.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_021162c8.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_021163d0.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211640c.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_021169c4.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02116a1c.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02116bf0.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02116bf4.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02116d98.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02116dbc.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02116df0.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02116e14.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02116fac.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_021172a8.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02117364.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211776c.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_021177b0.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02117b0c.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02118458.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211873c.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02118914.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_021189f4.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02118b2c.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02118b98.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02118cd8.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02118ddc.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02118e5c.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02118ea0.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02118eac.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02118f24.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02118f50.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02118f74.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02119074.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02119274.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211934c.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211975c.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02119870.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02119894.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02119960.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02119a2c.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02119a50.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02119ab0.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02119b1c.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02119b84.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02119bb0.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02119c18.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02119c58.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02119cc0.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02119e38.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211a030.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211a0a8.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211a0dc.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211a3d0.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211a564.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211a634.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211a6f0.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211a718.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211a76c.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211a810.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211a8a4.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211a960.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211a964.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211aa34.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211ab68.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211ad00.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211adb4.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_0211adfc.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/game/actors/daTrs_c/_ZN7daTrs_c13OnYoshiTryEatEv.cpp
+src/game/actors/d_a_trs_trap.cpp
+# FOLDED into src/game/actors/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211c6f8.cpp
+# FOLDED into src/game/actors/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211c770.c
+# FOLDED into src/game/actors/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211c7b0.c
+# FOLDED into src/game/actors/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211c82c.c
+# FOLDED into src/game/actors/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211c89c.c
+# FOLDED into src/game/actors/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211cae8.c
+# FOLDED into src/game/actors/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211cb54.c
+# FOLDED into src/game/actors/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/func_ov063_0211cc18.c
+src/game/actors/d_a_trs_trap_classinits.cpp
+# FOLDED into src/game/actors/d_a_trs_trap_classinits.cpp (row 112): src/unnamed/ov063/func_ov063_0211d28c.c
+src/game/actors/d_a_piano.cpp
+# FOLDED into src/game/actors/d_a_piano.cpp (row 114): src/unnamed/ov063/func_ov063_0211d828.cpp
+# FOLDED into src/game/actors/d_a_piano.cpp (row 114): src/unnamed/ov063/func_ov063_0211d88c.c
+# FOLDED into src/game/actors/d_a_piano.cpp (row 114): src/unnamed/ov063/func_ov063_0211d8cc.cpp
+# FOLDED into src/game/actors/d_a_piano.cpp (row 114): src/unnamed/ov063/func_ov063_0211dba4.c
+# FOLDED into src/game/actors/d_a_piano.cpp (row 114): src/unnamed/ov063/func_ov063_0211dbb8.c
+# FOLDED into src/game/actors/d_a_piano.cpp (row 114): src/unnamed/ov063/func_ov063_0211dd78.c
+# FOLDED into src/game/actors/d_a_piano.cpp (row 114): src/unnamed/ov063/func_ov063_0211dd84.c
 
 # ---- the named Boo pack ----------------------------------------------------
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTrs_c/d_a_trs_teresa.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/game/actors/daTrs_c/d_a_trs_teresa.cpp
 # _ZN7daTrs_c13InitResourcesEv.c: K&R ClosestPlayer declaration trips
 # tools/closestplayer_guard.py (its calls DO pass the receiver); faithful
 # mirror with the declaration reprototyped:
@@ -135,8 +135,8 @@ src/game/actors/daPiano_c/d_a_piano.cpp
 # unresolved (the flat name) and +1 LNK2005 (the decorated one) in the same
 # build. Retiring it needs the face retired in the same change, which is lane
 # FACES3's ledger and not this row.
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTrs_c/_ZN7daTrs_c16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTrs_c/_ZN7daTrs_c16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/game/actors/daTrs_c/_ZN7daTrs_c16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/game/actors/daTrs_c/_ZN7daTrs_c16OnPendingDestroyEv.cpp
 # _ZN7daTrs_c6RenderEv.cpp OUT: dispatches the mModelAnim (+0x380) draw through a
 # LOCAL six-virtual shadow (ROM slot 5 = ModelAnim::Render; the host
 # _ZTV9ModelAnim slot 5 = Virtual18, two args) -- MEASURED as c0000005 at
@@ -147,29 +147,29 @@ src/game/actors/daPiano_c/d_a_piano.cpp
 # Whomp/Fish recipe.
 # RETIRED at SLICE1: body now in src/game/actors/daTrs_c/_ZN7daTrs_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/game/actors/daTrs_c/_ZN7daTrs_cD0Ev.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTrs_c/_ZN7daTrs_cD1Ev.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTrs_c/d_a_trs_boss_teresa.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTrsIcon_c/d_a_trs_icon.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTrsIcon_c/_ZN11daTrsIcon_c13InitResourcesEv.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTrsIcon_c/_ZN11daTrsIcon_cD0Ev.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTBasket_c/d_a_t_basket.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTBasket_c/_ZN11daTBasket_c13InitResourcesEv.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTBasket_c/_ZN11daTBasket_c16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTBasket_c/_ZN11daTBasket_c6RenderEv.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTBasket_c/_ZN11daTBasket_c8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/game/actors/daTrs_c/_ZN7daTrs_cD1Ev.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/game/actors/daTrs_c/d_a_trs_boss_teresa.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/game/actors/daTrsIcon_c/d_a_trs_icon.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/game/actors/daTrsIcon_c/_ZN11daTrsIcon_c13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/game/actors/daTrsIcon_c/_ZN11daTrsIcon_cD0Ev.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/game/actors/daTBasket_c/d_a_t_basket.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/game/actors/daTBasket_c/_ZN11daTBasket_c13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/game/actors/daTBasket_c/_ZN11daTBasket_c16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/game/actors/daTBasket_c/_ZN11daTBasket_c6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/game/actors/daTBasket_c/_ZN11daTBasket_c8BehaviorEv.cpp
 # RETIRED at SLICE1: body now in src/game/actors/daTBasket_c/_ZN11daTBasket_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/game/actors/daTBasket_c/_ZN11daTBasket_cD0Ev.cpp
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/game/actors/daTBasket_c/_ZN11daTBasket_cD1Ev.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/game/actors/daTBasket_c/_ZN11daTBasket_cD1Ev.cpp
 
 # ---- the furniture (one class, four ids) -----------------------------------
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap_classinits.cpp (row 112): src/game/actors/daTrsTrap_c/d_a_trs_trap_kaidan.c
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap_classinits.cpp (row 112): src/game/actors/daTrsTrap_c/d_a_trs_trap_bookshelf.c
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap_classinits.cpp (row 112): src/game/actors/daTrsTrap_c/d_a_trs_trap_merrygoround.c
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap_classinits.cpp (row 112): src/game/actors/daTrsTrap_c/d_a_trs_trap_teresapit.c
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp (row 103): src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_c16CleanupResourcesEv.cpp
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp (row 103): src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_c16OnPendingDestroyEv.cpp
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp (row 103): src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_c6RenderEv.cpp
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp (row 103): src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_cD0Ev.cpp
+# FOLDED into src/game/actors/d_a_trs_trap_classinits.cpp (row 112): src/game/actors/daTrsTrap_c/d_a_trs_trap_kaidan.c
+# FOLDED into src/game/actors/d_a_trs_trap_classinits.cpp (row 112): src/game/actors/daTrsTrap_c/d_a_trs_trap_bookshelf.c
+# FOLDED into src/game/actors/d_a_trs_trap_classinits.cpp (row 112): src/game/actors/daTrsTrap_c/d_a_trs_trap_merrygoround.c
+# FOLDED into src/game/actors/d_a_trs_trap_classinits.cpp (row 112): src/game/actors/daTrsTrap_c/d_a_trs_trap_teresapit.c
+# FOLDED into src/game/actors/d_a_trs_trap.cpp (row 103): src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_c16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_trs_trap.cpp (row 103): src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_c16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_trs_trap.cpp (row 103): src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_c6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_trs_trap.cpp (row 103): src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_cD0Ev.cpp
 
 # ---- FallBlockBbh + MadPiano -----------------------------------------------
 src/game/actors/d_a_obj_th_fall_block.cpp
@@ -178,29 +178,29 @@ src/game/actors/d_a_obj_th_fall_block.cpp
 # RETIRED at SLICE1: body now in src/game/actors/daObjTh_Fall_Block_c/_ZN12FallBlockBbhD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/game/actors/daObjTh_Fall_Block_c/_ZN12FallBlockBbhD0Ev.cpp
 # FOLDED into src/game/actors/d_a_obj_th_fall_block.cpp (row 176): src/game/actors/daObjTh_Fall_Block_c/_ZN12FallBlockBbhD1Ev.cpp
-src/game/actors/daPiano_c/d_a_piano.cpp
-# FOLDED into src/game/actors/daPiano_c/d_a_piano.cpp (row 114): src/game/actors/daPiano_c/_ZN8MadPiano13InitResourcesEv.cpp
+src/game/actors/d_a_piano.cpp
+# FOLDED into src/game/actors/d_a_piano.cpp (row 114): src/game/actors/daPiano_c/_ZN8MadPiano13InitResourcesEv.cpp
 # _ZN8MadPiano16CleanupResourcesEv.cpp OUT: spells its three SharedFilePtrs
 # G0/G1/G2, and cxx_aliases.cpp binds G0/G1 to SignPost's live ov002
 # pointers -- host thunk mp_clean in hal/actor_classes_ov063.cpp instead
 # (the ov045 PoleLift ep_clean ruling)
-# FOLDED into src/game/actors/daPiano_c/d_a_piano.cpp (row 114): src/game/actors/daPiano_c/_ZN8MadPiano6RenderEv.cpp
-# FOLDED into src/game/actors/daPiano_c/d_a_piano.cpp (row 114): src/game/actors/daPiano_c/_ZN8MadPiano8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_piano.cpp (row 114): src/game/actors/daPiano_c/_ZN8MadPiano6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_piano.cpp (row 114): src/game/actors/daPiano_c/_ZN8MadPiano8BehaviorEv.cpp
 # RETIRED at SLICE1: body now in src/game/actors/daPiano_c/_ZN8MadPianoD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/game/actors/daPiano_c/_ZN8MadPianoD0Ev.cpp
-# FOLDED into src/game/actors/daPiano_c/d_a_piano.cpp (row 114): src/game/actors/daPiano_c/_ZN8MadPianoD1Ev.cpp
+# FOLDED into src/game/actors/d_a_piano.cpp (row 114): src/game/actors/daPiano_c/_ZN8MadPianoD1Ev.cpp
 
 # ---- the four sinits (called from ov63_bringup) ----------------------------
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/__sinit_ov063_0211e29c.c
-# FOLDED into src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/__sinit_ov063_0211e3cc.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/__sinit_ov063_0211e29c.c
+# FOLDED into src/game/actors/d_a_trs_trap.cpp (row 103): src/unnamed/ov063/__sinit_ov063_0211e3cc.c
 # FOLDED into src/game/actors/d_a_obj_th_fall_block.cpp (row 176): src/unnamed/ov063/__sinit_ov063_0211e590.c
-# FOLDED into src/game/actors/daPiano_c/d_a_piano.cpp (row 114): src/game/actors/daPiano_c/__sinit_ov063_0211e5fc.c
+# FOLDED into src/game/actors/d_a_piano.cpp (row 114): src/game/actors/daPiano_c/__sinit_ov063_0211e5fc.c
 
 # ---- closure ---------------------------------------------------------------
-src/actors/dCapEnemy_c_arm9.cpp
-src/actors/dActor_c.cpp
-src/engine/collision/dBgCh_Actr.cpp
-src/actors/Player.cpp
+src/runtime/actor/d_cap_enemy_arm9.cpp
+src/runtime/actor/d_actor.cpp
+src/engine/collision/d_bg_ch_actr.cpp
+src/game/player/Player.cpp
 port/unmatched/hostarm/Player.cpp
 src/engine/sound/Sound.cpp
 src/engine/sound/Sound2.cpp
@@ -223,7 +223,7 @@ src/engine/sound/Sound2.cpp
 # the receiver (line 53, `_ZN8dActor_c13ClosestPlayerEv(arg0)`), so
 # closestplayer_guard has no quarrel with seating it.
 #port/unmatched/Boo_StateTalk.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02117cdc.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02117cdc.c
 # RETIRED by run link100 wave 15 lane SEAT15B (LINK15 BATCH 1): the matched TU
 # src/unnamed/ov063/func_ov063_02117650.c passes the ClosestPlayer receiver itself
 # (src:17, `(self)`), so Boo_Teleport.c had nothing left to work around. The src row
@@ -236,9 +236,9 @@ src/engine/sound/Sound2.cpp
 # 02116f48 calls func_ov063_0211ad00), identical on main, so the host reason is
 # stale and the matched TUs take their seats.
 #port/unmatched/Boo_CrossNamedDispatch.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02116d38.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_021192d4.c
-# FOLDED into src/actors/daTrs_c.cpp (row 32): src/unnamed/ov063/func_ov063_02116f48.cpp
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02116d38.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_021192d4.c
+# FOLDED into src/game/actors/d_a_trs.cpp (row 32): src/unnamed/ov063/func_ov063_02116f48.cpp
 # RETIRED with them: MansionSteps_InitResources.c stood in for
 # _ZN11daTrsTrap_c13InitResourcesEv ("NOT matched in src/ (the other six
 # slots all are)"); it is matched now and on port/slice_shadows3.txt. Because
@@ -255,7 +255,7 @@ port/hal/actor_classes_ov063.cpp
 # UP_DOWN_LIFT_BBH (32, ov095): the third id of gate 173's daUdlift_c trio;
 # only the factory is new (it stores _ZTV13UpDownLiftBbh directly, its own
 # src), everything else already in the build.
-src/actors/daUdlift_c.cpp
+src/game/actors/d_a_udlift.cpp
 
 # THE BOOK CAST (ov020): Bookend 327 + BookShot 325 + BookSwitch 213 +
 # BookShotSpawner 328. src/BookSwitch_Spawn.c is a recovered-name file that
@@ -263,52 +263,52 @@ src/actors/daUdlift_c.cpp
 # factory is the unnamed daBook_c_classInit_BOOK_SWITCH) and stays out.
 # _ZN15BookShotSpawnerD1Ev.cpp OUT: real MSVC destructor, host thunk bks_d1
 # in hal/actor_classes_ov063.cpp (the hc_d1 recipe).
-src/actors/daBook_c.cpp
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/d_a_book_shoot_book.c
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/d_a_book_gen.c
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/d_a_book_book_switch.c
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/_ZN8BookShot16OnAimedAtWithEggEv.cpp
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/_ZN8BookShot13OnYoshiTryEatEv.cpp
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/_ZN8BookShot13InitResourcesEv.cpp
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/_ZN8BookShot16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/_ZN8BookShot6RenderEv.cpp
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/_ZN8BookShot8BehaviorEv.cpp
+src/game/actors/d_a_book.cpp
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/d_a_book_shoot_book.c
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/d_a_book_gen.c
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/d_a_book_book_switch.c
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/_ZN8BookShot16OnAimedAtWithEggEv.cpp
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/_ZN8BookShot13OnYoshiTryEatEv.cpp
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/_ZN8BookShot13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/_ZN8BookShot16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/_ZN8BookShot6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/_ZN8BookShot8BehaviorEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN8BookShotD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN8BookShotD0Ev.cpp
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/_ZN8BookShotD1Ev.cpp
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/_ZN15BookShotSpawner13InitResourcesEv.cpp
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/_ZN15BookShotSpawner16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/_ZN15BookShotSpawner8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/_ZN8BookShotD1Ev.cpp
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/_ZN15BookShotSpawner13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/_ZN15BookShotSpawner16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/_ZN15BookShotSpawner8BehaviorEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN15BookShotSpawnerD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN15BookShotSpawnerD0Ev.cpp
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/__sinit_ov020_02113674.c
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/__sinit_ov020_02113674.c
 
 # BookShot's behaviour closure (the flying-book state machine): 12 matched
 # ov020 TUs plus two host-copied fixes (func_ov020_02111418's data_ov048
 # window name, func_ov020_02111fc4's dropped ClosestPlayer receiver -- see
 # port/unmatched/Book_WindowAndReceiverFixes.cpp).
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/func_ov020_021112b0.c
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/func_ov020_02111340.c
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/func_ov020_021115ac.c
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/func_ov020_0211174c.c
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/func_ov020_021119dc.c
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/func_ov020_02111aa8.c
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/func_ov020_02111b28.cpp
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/func_ov020_02111c30.c
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/func_ov020_02111ee0.cpp
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/func_ov020_02112080.cpp
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/func_ov020_02112110.cpp
-# FOLDED into src/actors/daBook_c.cpp (row 267): src/func_ov020_0211216c.cpp
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/func_ov020_021112b0.c
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/func_ov020_02111340.c
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/func_ov020_021115ac.c
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/func_ov020_0211174c.c
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/func_ov020_021119dc.c
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/func_ov020_02111aa8.c
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/func_ov020_02111b28.cpp
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/func_ov020_02111c30.c
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/func_ov020_02111ee0.cpp
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/func_ov020_02112080.cpp
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/func_ov020_02112110.cpp
+# FOLDED into src/game/actors/d_a_book.cpp (row 267): src/func_ov020_0211216c.cpp
 # ...and the last three book-closure edges: the bump-from-underneath body,
 # cstd::atan2 (the 021112b0 aim math), and two role-name aliases below.
-# FOLDED into src/actors/dActor_c.cpp (row 202): src/_ZN8dActor_c24BumpedUnderneathByPlayerER6Player.cpp
+# FOLDED into src/runtime/actor/d_actor.cpp (row 202): src/_ZN8dActor_c24BumpedUnderneathByPlayerER6Player.cpp
 src/_ZN4cstd5atan2E5Fix12IiES1_.c
 
 # CRAZED_CRATE (193, ov080): everything data-side was already mounted; these
 # are the class TUs, the six state bodies, the state-set helper and the two
 # slot overrides. The two PMF dispatchers (func_ov080_02125104/021250c8) are
 # host copies in Bbh_PmfDispatch.c; the D1 is a host thunk.
-src/actors/daBttBk_c.cpp
+src/game/actors/d_a_btt_bk.cpp
 # _ZN11CrazedCrate13InitResourcesEv.cpp: drops the state setter's second
 # argument (the r1-passthrough seam; ROM passes 0) -- mirrored with the
 # ROM's value spelled out:
@@ -322,44 +322,44 @@ src/actors/daBttBk_c.cpp
 # deleted; this line stays commented so the class's slice still says where its
 # InitResources went.
 # port/unmatched/CrazedCrate_InitResources.cpp
-# FOLDED into src/actors/daBttBk_c.cpp (row 313): src/_ZN11CrazedCrate16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daBttBk_c.cpp (row 313): src/_ZN11CrazedCrate16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_btt_bk.cpp (row 313): src/_ZN11CrazedCrate16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_btt_bk.cpp (row 313): src/_ZN11CrazedCrate16OnPendingDestroyEv.cpp
 
-# FOLDED into src/actors/daBttBk_c.cpp (row 313): src/_ZN11CrazedCrate6RenderEv.cpp
-# FOLDED into src/actors/daBttBk_c.cpp (row 313): src/_ZN11CrazedCrate8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_btt_bk.cpp (row 313): src/_ZN11CrazedCrate6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_btt_bk.cpp (row 313): src/_ZN11CrazedCrate8BehaviorEv.cpp
 # RETIRED at SLICE1: body now in src/_ZN11CrazedCrateD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN11CrazedCrateD0Ev.cpp
-# FOLDED into src/actors/daBttBk_c.cpp (row 313): src/_ZN11CrazedCrate13OnYoshiTryEatEv.cpp
-# FOLDED into src/actors/daBttBk_c.cpp (row 313): src/func_ov080_02124acc.cpp
+# FOLDED into src/game/actors/d_a_btt_bk.cpp (row 313): src/_ZN11CrazedCrate13OnYoshiTryEatEv.cpp
+# FOLDED into src/game/actors/d_a_btt_bk.cpp (row 313): src/func_ov080_02124acc.cpp
 # func_ov080_02124e60.c: its host mirror (port/unmatched/CrazedCrate_State2Tick.c)
 # passed the second argument the ROM leaves in r1 (0); main #3106 spells it, so
 # this is main's blob (run linkfull, lane RS4PORT) and the mirror is retired.
-# FOLDED into src/actors/daBttBk_c.cpp (row 313): src/func_ov080_02124e60.c
-# FOLDED into src/actors/daBttBk_c.cpp (row 313): src/func_ov080_02124eb0.c
-# FOLDED into src/actors/daBttBk_c.cpp (row 313): src/func_ov080_02124edc.cpp
-# FOLDED into src/actors/daBttBk_c.cpp (row 313): src/func_ov080_02124fec.c
-# FOLDED into src/actors/daBttBk_c.cpp (row 313): src/func_ov080_0212500c.cpp
-# FOLDED into src/actors/daBttBk_c.cpp (row 313): src/func_ov080_0212509c.c
-# FOLDED into src/actors/daBttBk_c.cpp (row 313): src/func_ov080_0212513c.c
-# FOLDED into src/actors/daBttBk_c.cpp (row 313): src/func_ov080_02124c3c.cpp
-# FOLDED into src/actors/daBttBk_c.cpp (row 313): src/_ZN11CrazedCrate13OnTurnIntoEggER6Player.cpp
+# FOLDED into src/game/actors/d_a_btt_bk.cpp (row 313): src/func_ov080_02124e60.c
+# FOLDED into src/game/actors/d_a_btt_bk.cpp (row 313): src/func_ov080_02124eb0.c
+# FOLDED into src/game/actors/d_a_btt_bk.cpp (row 313): src/func_ov080_02124edc.cpp
+# FOLDED into src/game/actors/d_a_btt_bk.cpp (row 313): src/func_ov080_02124fec.c
+# FOLDED into src/game/actors/d_a_btt_bk.cpp (row 313): src/func_ov080_0212500c.cpp
+# FOLDED into src/game/actors/d_a_btt_bk.cpp (row 313): src/func_ov080_0212509c.c
+# FOLDED into src/game/actors/d_a_btt_bk.cpp (row 313): src/func_ov080_0212513c.c
+# FOLDED into src/game/actors/d_a_btt_bk.cpp (row 313): src/func_ov080_02124c3c.cpp
+# FOLDED into src/game/actors/d_a_btt_bk.cpp (row 313): src/_ZN11CrazedCrate13OnTurnIntoEggER6Player.cpp
 
 # COFFIN (64, ov071): fill + slice only (mount and sinit already live).
 # The two PMF dispatchers (func_ov071_021223c8/02122414) are host copies in
 # Bbh_PmfDispatch.c.
-src/actors/daObjCasket_c.cpp
+src/game/actors/d_a_obj_casket.cpp
 # _ZN6Coffin13InitResourcesEv.cpp IS NOT IN THIS LIST -- the mirror
 # port/unmatched/Coffin_InitResources.cpp is retired; the matched TU is
 # seated from port/slice_shadows3.txt instead (see that file's note).
-# FOLDED into src/actors/daObjCasket_c.cpp (row 352): src/_ZN6Coffin16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daObjCasket_c.cpp (row 352): src/_ZN6Coffin6RenderEv.cpp
-# FOLDED into src/actors/daObjCasket_c.cpp (row 352): src/_ZN6Coffin8BehaviorEv.cpp
-# FOLDED into src/actors/daObjCasket_c.cpp (row 352): src/_ZN6CoffinD0Ev.cpp
+# FOLDED into src/game/actors/d_a_obj_casket.cpp (row 352): src/_ZN6Coffin16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_obj_casket.cpp (row 352): src/_ZN6Coffin6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_obj_casket.cpp (row 352): src/_ZN6Coffin8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_obj_casket.cpp (row 352): src/_ZN6CoffinD0Ev.cpp
 port/unmatched/hostarm/_ZN6CoffinD0Ev.cpp
-# FOLDED into src/actors/daObjCasket_c.cpp (row 352): src/_ZN6CoffinD1Ev.cpp
+# FOLDED into src/game/actors/d_a_obj_casket.cpp (row 352): src/_ZN6CoffinD1Ev.cpp
 port/unmatched/hostarm/_ZN6CoffinD1Ev.cpp
-# FOLDED into src/actors/daObjCasket_c.cpp (row 352): src/func_ov071_02122080.c
-# FOLDED into src/actors/daObjCasket_c.cpp (row 352): src/func_ov071_021220c8.cpp
-# FOLDED into src/actors/daObjCasket_c.cpp (row 352): src/func_ov071_02122194.c
-# FOLDED into src/actors/daObjCasket_c.cpp (row 352): src/func_ov071_021221bc.c
-# FOLDED into src/actors/daObjCasket_c.cpp (row 352): src/func_ov071_021223b0.c
+# FOLDED into src/game/actors/d_a_obj_casket.cpp (row 352): src/func_ov071_02122080.c
+# FOLDED into src/game/actors/d_a_obj_casket.cpp (row 352): src/func_ov071_021220c8.cpp
+# FOLDED into src/game/actors/d_a_obj_casket.cpp (row 352): src/func_ov071_02122194.c
+# FOLDED into src/game/actors/d_a_obj_casket.cpp (row 352): src/func_ov071_021221bc.c
+# FOLDED into src/game/actors/d_a_obj_casket.cpp (row 352): src/func_ov071_021223b0.c

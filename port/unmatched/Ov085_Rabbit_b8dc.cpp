@@ -1,4 +1,4 @@
-/* HOST COPY of src/actors/daMip_c.cpp -- the RABBIT's (daMip_c) state Main,
+/* HOST COPY of src/game/actors/d_a_mip.cpp -- the RABBIT's (daMip_c) state Main,
  * the closest-Player flee/idle machine that Rabbit::InitResources enters on its
  * last line (the Main half of state 0x021306cc, seated by name in
  * hal/actor_overlays.cpp).
@@ -34,9 +34,9 @@
  * the declaration and the call line, and the port's own guard names it:
  *
  *     $ python -c "import closestplayer_guard as g; \
- *                  print(g.scan_file(P, P))"    # P = src/actors/daMip_c.cpp
- *     src/actors/daMip_c.cpp:13: zero-argument _ZN8dActor_c13ClosestPlayerEv
- *     src/actors/daMip_c.cpp:34: zero-argument _ZN8dActor_c13ClosestPlayerEv
+ *                  print(g.scan_file(P, P))"    # P = src/game/actors/d_a_mip.cpp
+ *     src/game/actors/d_a_mip.cpp:13: zero-argument _ZN8dActor_c13ClosestPlayerEv
+ *     src/game/actors/d_a_mip.cpp:34: zero-argument _ZN8dActor_c13ClosestPlayerEv
  *
  * The host face it would land on is one-argument cdecl --
  * hal/reverse_bridges.cpp:45 declares `void *_ZN8dActor_c13ClosestPlayerEv(void *self)`
@@ -70,7 +70,7 @@ extern "C" {
 
     extern int data_0209e650[];
     extern void* data_ov085_0213066c;
-    extern void* data_ov085_021305d0[];
+    extern void* gMipRunAnimationFile[];
     extern void* data_ov085_021305b0[];
     extern void* data_ov085_021305c0[];
     extern void* data_ov085_021305c8[];
@@ -132,7 +132,7 @@ extern "C" int _ZN7daMip_c13StateIdleMainEv(char* c)
         switch (*(int*)(c + 0x41c)) {
         case 1:
             *(int*)(c + 0x98) = 0x4000;
-            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0x300, data_ov085_021305d0[1], 0x40000000, 0x1000, 0);
+            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0x300, gMipRunAnimationFile[1], 0x40000000, 0x1000, 0);
             (*(int*)(c + 0x41c))++;
             break;
         case 2:
@@ -177,7 +177,7 @@ extern "C" int _ZN7daMip_c13StateIdleMainEv(char* c)
    is unreachable" dead code. The first clause is false and the conclusion with
    it. There is a SECOND writer, on a different path entirely:
 
-     src/actors/daMip_c.cpp:19   *(void**)(c + 0x45c) = o;
+     src/game/actors/d_a_mip.cpp:19   *(void**)(c + 0x45c) = o;
 
    after a successful Player::TryGrab, and _ZN7daMip_c10UpdateGrabEv is called from
    _ZN7daMip_c8BehaviorEv.c:204 -- OUTSIDE the UpdateYoshiEat block, which opens

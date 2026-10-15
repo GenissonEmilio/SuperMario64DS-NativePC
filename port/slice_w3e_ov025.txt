@@ -84,28 +84,28 @@
 # 22 lines below = the whole 22-row census tail.
 
 # ---- SPINDEL (163), table 0x02113760 --------------------------------------
-src/actors/daDgr_c.cpp
+src/game/actors/d_a_dgr.cpp
 # RE-KEYED at the main->port sync (lane SYNC7, the wave-9 fold merge): main folded
-# this body into src/actors/daDgr_c.cpp (ov025 delinks, .text 0x02111898..0x021118c8, one
+# this body into src/game/actors/d_a_dgr.cpp (ov025 delinks, .text 0x02111898..0x021118c8, one
 # absorbed range), which port/slice_w3e_ov025.txt:87 already compile, so the
 # symbols this row seated now come from there and the per-function file is gone
 # from main's tree.
 #src/d_a_dgr.c
 
 # ---- GRINDEL (162), table 0x02113850 --------------------------------------
-src/actors/daDkk_c.cpp
+src/game/actors/d_a_dkk.cpp
 # RE-KEYED at the main->port sync (lane SYNC7, the wave-9 fold merge): main folded
-# this body into src/actors/daDkk_c.cpp (ov025 delinks, .text 0x02111cf4..0x02111d40, one
+# this body into src/game/actors/d_a_dkk.cpp (ov025 delinks, .text 0x02111cf4..0x02111d40, one
 # absorbed range), which port/slice_w3e_ov025.txt's daDkk_c.cpp row already compiles, so the symbols this row seated
 # now come from there and the per-function file is gone from main's tree.
 #src/d_a_dkk.c
 
 # ---- PYRAMID_STEP (87)'s slot 3, reclaimed from wave 15's host thunk -------
-src/actors/daObjDpBrock_c.cpp
+src/game/actors/d_a_obj_dp_brock.cpp
 
 # ---- the two static initialisers these classes need ------------------------
 # ov025 has four; wave 15 runs two (87's and 88's). These are the other two:
 #   02112970  163's model/collision pair 0x02113a68 / 0x02113a60 (files 730/731)
 #   021129dc  162's                      0x02113a88 / 0x02113a90 (0x2dc/0x2dd)
-# FOLDED into src/actors/daDgr_c.cpp (row 87): src/__sinit_ov025_02112970.c
-# FOLDED into src/actors/daDkk_c.cpp (row 96): src/__sinit_ov025_021129dc.c
+# FOLDED into src/game/actors/d_a_dgr.cpp (row 87): src/__sinit_ov025_02112970.c
+# FOLDED into src/game/actors/d_a_dkk.cpp (row 96): src/__sinit_ov025_021129dc.c

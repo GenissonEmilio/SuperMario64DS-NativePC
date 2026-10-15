@@ -6,7 +6,7 @@
 // port/mg_fanout_costs.txt section 4 costs the wall at "five dispatching TUs
 // to host-copy" per minigame, measured on dScMgCurling_c. THIS CLASS HAS
 // ELEVEN -- ten when run mg6 lane PPP seated it, and an eleventh the day run
-// mg7 lane L380 decompiled func_ov006_02106ca4 and found it was a dispatcher
+// mg7 lane L380 decompiled Scene_State6 and found it was a dispatcher
 // as well as a state -- and the reason is structural rather than incidental:
 // dScMgPanel_c runs a TWO-LEVEL state machine. Its Behavior (slot 6) dispatches
 // data_ov006_02142888, and FIVE of that table's own eight states are
@@ -34,13 +34,13 @@
 //
 // port/mg_fanout_costs.txt section 4's FLW amendment names one TU in the whole
 // tree that open-codes the ARM Itanium sequence in plain ints,
-// func_ov006_020c3d18, and says the pair of prescribed detectors -- the link
+// FlowerFace_Update, and says the pair of prescribed detectors -- the link
 // and a `::*` source sweep -- both read clean over it. THIS CLASS HAS THREE
 // MORE OF THEM, and one is vtable slot 6:
 //
-//   src/actors/dScMgPanel_c.cpp   table 02142888, arity 0, VTABLE SLOT 6
-//   src/actors/dScMgPanel_c.cpp     table 02142840, arity 1
-//   src/func_ov006_02106ca4.c     table 02142840, arity 1, AND A STATE --
+//   src/minigames/d_s_mg_panel.cpp   table 02142888, arity 0, VTABLE SLOT 6
+//   src/minigames/d_s_mg_panel.cpp     table 02142840, arity 1
+//   src/Scene_State6.c     table 02142840, arity 1, AND A STATE --
 //                                 slot 6 of data_ov006_02142888. Run mg7 lane
 //                                 L380; the header said TWO before it landed.
 //
@@ -66,7 +66,7 @@
 // ROUTE AT THE DISPATCH SITE, NEVER BY REWRITING THE STORED PAIR. The ov085 /
 // ov100 shape would write host addresses over the .data source pairs before
 // the constructor copies them. It is wrong for the same reason section 4 gives
-// for func_ov006_020c3d18 and for one more that is this class's own: the pairs
+// for FlowerFace_Update and for one more that is this class's own: the pairs
 // live in ov006 .data inside a span whose neighbours belong to other classes,
 // and __sinit_ov006_02131fa4 is not the only constructor reading that region.
 // The stored pair keeps the ROM's own words.
@@ -79,14 +79,14 @@
 // wrapper (the @@3PAUEntry@@A spelling port/tools/facegen.py does NOT refuse,
 // tool finding 1) and five through a bare typedef:
 //
-//   src/actors/dScMgPanel_c.cpp   Entry { PMF pmf[1]; }   021427bc  arity 1
-//   src/actors/dScMgPanel_c.cpp   bare PMF               021427ec  arity 0
-//   src/actors/dScMgPanel_c.cpp   Entry { PMF pmf; }      02142860  arity 0
-//   src/actors/dScMgPanel_c.cpp   bare PMF               02142820  arity 0
-//   src/actors/dScMgPanel_c.cpp   bare PMF               02142840  arity 1
-//   src/actors/dScMgPanel_c.cpp   bare PMF               02142840  arity 1
-//   src/actors/dScMgPanel_c.cpp     bare PMF (//cpp)       02142840  arity 1
-//   src/actors/dScMgPanel_c.cpp   bare PMF               02142840  arity 1
+//   src/minigames/d_s_mg_panel.cpp   Entry { PMF pmf[1]; }   021427bc  arity 1
+//   src/minigames/d_s_mg_panel.cpp   bare PMF               021427ec  arity 0
+//   src/minigames/d_s_mg_panel.cpp   Entry { PMF pmf; }      02142860  arity 0
+//   src/minigames/d_s_mg_panel.cpp   bare PMF               02142820  arity 0
+//   src/minigames/d_s_mg_panel.cpp   bare PMF               02142840  arity 1
+//   src/minigames/d_s_mg_panel.cpp   bare PMF               02142840  arity 1
+//   src/minigames/d_s_mg_panel.cpp     bare PMF (//cpp)       02142840  arity 1
+//   src/minigames/d_s_mg_panel.cpp   bare PMF               02142840  arity 1
 //
 // NONE OF THE ELEVEN HOLDS A MEMBER POINTER AS AN OBJECT FIELD -- all six
 // tables are external -- so the four-byte-versus-eight-byte layout shift that
@@ -99,14 +99,14 @@
 //
 // ONE HARD FLOOR IS LEFT, and it used to be two. Run mg7 lane L380 decompiled
 // 0x02106ca4 -- slot 6 of data_ov006_02142888, the round-end state that a
-// 1200-frame mg6 run asked for 951 times -- and src/func_ov006_02106ca4.c
+// 1200-frame mg6 run asked for 951 times -- and src/Scene_State6.c
 // byte-matches at mwccarm 1.2/sp2p3. What remains:
 //
 //   0x021053a8   slot 2 of data_ov006_02142820
 //
 // port/tools/stategen.py still reports it under REFUSALS as "HAS NO DECOMPILED
 // BODY". It is emitted below as a REPORTING case and never as a call, and no
-// symbol is invented for it. That is curling's func_ov006_020e1854 shape
+// symbol is invented for it. That is curling's Aim_Swing shape
 // before lane CT1 transcribed it; this lane does NOT transcribe, and says so.
 //
 // DECOMPILING 02106ca4 DID NOT PRODUCE A SLICE LINE, IT PRODUCED AN ELEVENTH
@@ -117,8 +117,8 @@
 // carried below, and it is NOT a line in port/slice_ppp.txt.
 //
 // TWO MORE WERE STATEGEN JOIN MISSES AND ARE NOT FLOORS: 0x02106aa8 and
-// 0x02106fdc are outside the delinks join but src/actors/dScMgPanel_c.cpp and
-// src/actors/dScMgPanel_c.cpp both exist, so both are reachable. 02106aa8 joins
+// 0x02106fdc are outside the delinks join but src/minigames/d_s_mg_panel.cpp and
+// src/minigames/d_s_mg_panel.cpp both exist, so both are reachable. 02106aa8 joins
 // port/slice_ppp.txt as an ordinary line; 02106fdc is one of the eleven host
 // copies below, because it is a dispatcher as well as a state.
 
@@ -149,7 +149,7 @@ extern MgPmf data_ov006_02142860[];
 extern MgPmf data_ov006_02142888[];
 
 /* run link100 lane PMFB3: the boot installer for data_ov006_02142860's five
-   cells, so the ROM's own func_ov006_021050bc can read them directly.
+   cells, so the ROM's own IntroCard_Update can read them directly.
    hal/scene_mg.cpp calls it after __sinit_ov006_02131fa4 has filled them. */
 void port_mg_panel_states_seat(void);
 
@@ -160,60 +160,60 @@ void port_mg_panel_states_seat(void);
    defined in this file join port/slice_ppp.txt in the same commit. */
 
 /* arity 0 */
-void _ZN12dScMgPanel_c19func_ov006_021071d4Ev(char *c);
-void _ZN12dScMgPanel_c19func_ov006_0210713cEv(char *c);
-void _ZN12dScMgPanel_c19func_ov006_02105730Ev(char *c);
-void _ZN12dScMgPanel_c19func_ov006_02105670Ev(char *c);
-void _ZN12dScMgPanel_c19func_ov006_021051dcEv(char *c);
-void _ZN12dScMgPanel_c19func_ov006_0210508cEv(char *c);
-void _ZN12dScMgPanel_c19func_ov006_0210500cEv(char *c);
-void _ZN12dScMgPanel_c19func_ov006_02104fb4Ev(unsigned char *c);
-void _ZN12dScMgPanel_c19func_ov006_02104eccEv(char *c);
-void _ZN12dScMgPanel_c19func_ov006_02104ec8Ev(void);          /* empty body, no argument */
-void _ZN12dScMgPanel_c19func_ov006_02104c08Ev(char *c);
-void _ZN12dScMgPanel_c19func_ov006_02104bb0Ev(char *c);
-void _ZN12dScMgPanel_c19func_ov006_02104bacEv(void);          /* empty body, no argument */
+void _ZN12dScMgPanel_c12Scene_State0Ev(char *c);
+void _ZN12dScMgPanel_c12Scene_State1Ev(char *c);
+void _ZN12dScMgPanel_c12Input_State0Ev(char *c);
+void _ZN12dScMgPanel_c12Input_State1Ev(char *c);
+void _ZN12dScMgPanel_c12Input_State3Ev(char *c);
+void _ZN12dScMgPanel_c16IntroCard_State0Ev(char *c);
+void _ZN12dScMgPanel_c16IntroCard_State1Ev(char *c);
+void _ZN12dScMgPanel_c16IntroCard_State2Ev(unsigned char *c);
+void _ZN12dScMgPanel_c16IntroCard_State3Ev(char *c);
+void _ZN12dScMgPanel_c16IntroCard_State4Ev(void);          /* empty body, no argument */
+void _ZN12dScMgPanel_c13Banner_State0Ev(char *c);
+void _ZN12dScMgPanel_c13Banner_State1Ev(char *c);
+void _ZN12dScMgPanel_c13Banner_State2Ev(void);          /* empty body, no argument */
 
 /* arity 1 */
-void _ZN12dScMgPanel_c19func_ov006_02106bacEi(char *c, int i);
-void _ZN12dScMgPanel_c19func_ov006_02106aa8Ei(char *c, int i);
-void _ZN12dScMgPanel_c19func_ov006_02106a08Ei(char *c, int i);
-void _ZN12dScMgPanel_c19func_ov006_02106910Ei(char *c, int i);
-void _ZN12dScMgPanel_c19func_ov006_02104ac0Ei(void);          /* empty body, no argument */
-void _ZN12dScMgPanel_c19func_ov006_02104a10Ei(char *c, int i);
-void _ZN12dScMgPanel_c19func_ov006_02104920Ei(char *c, int i);
+void _ZN12dScMgPanel_c12Panel_State0Ei(char *c, int i);
+void _ZN12dScMgPanel_c12Panel_State1Ei(char *c, int i);
+void _ZN12dScMgPanel_c12Panel_State2Ei(char *c, int i);
+void _ZN12dScMgPanel_c12Panel_State3Ei(char *c, int i);
+void _ZN12dScMgPanel_c12Shake_State0Ei(void);          /* empty body, no argument */
+void _ZN12dScMgPanel_c12Shake_State1Ei(char *c, int i);
+void _ZN12dScMgPanel_c12Shake_State2Ei(char *c, int i);
 
 /* the non-dispatching callees the eleven host copies below reach */
-void _ZN12dScMgPanel_c19func_ov006_02104c60Ev(void *c);
-void _ZN12dScMgPanel_c19func_ov006_021050bcEv(void *c);
-void _ZN12dScMgPanel_c19func_ov006_021057f0Ev(void *c);
-void _ZN12dScMgPanel_c19func_ov006_02105134Ev(void *c);
-void _ZN12dScMgPanel_c19func_ov006_02105854Ev(void *c);
-void _ZN12dScMgPanel_c19func_ov006_02105c88Ev(void *c);
-void _ZN12dScMgPanel_c19func_ov006_02105d20Ev(void *c);
-void _ZN12dScMgPanel_c19func_ov006_02105de4Ev(void *c);
-void _ZN12dScMgPanel_c19func_ov006_02104354Ev(void *c);
-void _ZN12dScMgPanel_c19func_ov006_02104ac4Ev(void *c);
-void _ZN12dScMgPanel_c19func_ov006_02104ea8Ev(char *c);
-void func_ov004_020b0a54(int c);
+void _ZN12dScMgPanel_c13Banner_UpdateEv(void *c);
+void _ZN12dScMgPanel_c16IntroCard_UpdateEv(void *c);
+void _ZN12dScMgPanel_c12Input_UpdateEv(void *c);
+void _ZN12dScMgPanel_c15StartSolveCheckEv(void *c);
+void _ZN12dScMgPanel_c11UpdateMovesEv(void *c);
+void _ZN12dScMgPanel_c13CountFlippingEv(void *c);
+void _ZN12dScMgPanel_c11CheckSolvedEv(void *c);
+void _ZN12dScMgPanel_c11UpdateTouchEv(void *c);
+void _ZN12dScMgPanel_c18Particle_UpdateAllEv(void *c);
+void _ZN12dScMgPanel_c12Shake_UpdateEv(void *c);
+void _ZN12dScMgPanel_c14ClearSlideFlagEv(char *c);
+void Mg_SetSharedState(int c);
 /* the round-end state's own callees, run mg7 lane L380 */
-void _ZN12dScMgPanel_c19func_ov006_02104580Ev(char *c);
-void _ZN12dScMgPanel_c19func_ov006_02104870Ev(char *c);
-void _ZN12dScMgPanel_c19func_ov006_021068d8Ev(char *c);
-void func_ov004_020adb1c(int n);
+void _ZN12dScMgPanel_c13Scroll_UpdateEv(char *c);
+void _ZN12dScMgPanel_c12Scroll_StartEv(char *c);
+void _ZN12dScMgPanel_c14Panel_StartAllEv(char *c);
+void Mg_SubmitScore(int n);
 extern unsigned char data_020a0e40;
 extern unsigned char data_020a0de8[];
 extern unsigned char data_020a0de9[];
-extern char *data_ov004_020beb68;
+extern char *gMgScene;
 
 /* the eleven host copies this file DEFINES, so the seat can name them */
 int  _ZN12dScMgPanel_c8BehaviorEv(char *c);
-void _ZN12dScMgPanel_c19func_ov006_02106ca4Ev(char *c);
-void _ZN12dScMgPanel_c19func_ov006_02106bc0Ev(char *c);
-void _ZN12dScMgPanel_c19func_ov006_02106eb8Ev(char *c);
-void _ZN12dScMgPanel_c19func_ov006_02106f44Ev(char *c);
-void _ZN12dScMgPanel_c19func_ov006_02106fdcEv(void *c);
-void _ZN12dScMgPanel_c19func_ov006_0210709cEv(void *c);
+void _ZN12dScMgPanel_c12Scene_State6Ev(char *c);
+void _ZN12dScMgPanel_c12Scene_State7Ev(char *c);
+void _ZN12dScMgPanel_c12Scene_State5Ev(char *c);
+void _ZN12dScMgPanel_c12Scene_State4Ev(char *c);
+void _ZN12dScMgPanel_c12Scene_State3Ev(void *c);
+void _ZN12dScMgPanel_c12Scene_State2Ev(void *c);
 
 void port_mg_panel_counts(unsigned *hits, unsigned *floor, unsigned *unknown);
 
@@ -235,28 +235,28 @@ static int panel_try_0(void *self, unsigned code)
     char *c = (char *)self;
     switch (code) {
     /* data_ov006_02142888, the Behavior's own eight */
-    case 0x021071d4u: _ZN12dScMgPanel_c19func_ov006_021071d4Ev(c);       return 1;
-    case 0x0210713cu: _ZN12dScMgPanel_c19func_ov006_0210713cEv(c);       return 1;
-    case 0x0210709cu: _ZN12dScMgPanel_c19func_ov006_0210709cEv(c);       return 1;
-    case 0x02106fdcu: _ZN12dScMgPanel_c19func_ov006_02106fdcEv(c);       return 1;
-    case 0x02106f44u: _ZN12dScMgPanel_c19func_ov006_02106f44Ev(c);       return 1;
-    case 0x02106eb8u: _ZN12dScMgPanel_c19func_ov006_02106eb8Ev(c);       return 1;
-    case 0x02106ca4u: _ZN12dScMgPanel_c19func_ov006_02106ca4Ev(c);       return 1;
-    case 0x02106bc0u: _ZN12dScMgPanel_c19func_ov006_02106bc0Ev(c);       return 1;
+    case 0x021071d4u: _ZN12dScMgPanel_c12Scene_State0Ev(c);       return 1;
+    case 0x0210713cu: _ZN12dScMgPanel_c12Scene_State1Ev(c);       return 1;
+    case 0x0210709cu: _ZN12dScMgPanel_c12Scene_State2Ev(c);       return 1;
+    case 0x02106fdcu: _ZN12dScMgPanel_c12Scene_State3Ev(c);       return 1;
+    case 0x02106f44u: _ZN12dScMgPanel_c12Scene_State4Ev(c);       return 1;
+    case 0x02106eb8u: _ZN12dScMgPanel_c12Scene_State5Ev(c);       return 1;
+    case 0x02106ca4u: _ZN12dScMgPanel_c12Scene_State6Ev(c);       return 1;
+    case 0x02106bc0u: _ZN12dScMgPanel_c12Scene_State7Ev(c);       return 1;
     /* data_ov006_02142820 */
-    case 0x02105730u: _ZN12dScMgPanel_c19func_ov006_02105730Ev(c);       return 1;
-    case 0x02105670u: _ZN12dScMgPanel_c19func_ov006_02105670Ev(c);       return 1;
-    case 0x021051dcu: _ZN12dScMgPanel_c19func_ov006_021051dcEv(c);       return 1;
+    case 0x02105730u: _ZN12dScMgPanel_c12Input_State0Ev(c);       return 1;
+    case 0x02105670u: _ZN12dScMgPanel_c12Input_State1Ev(c);       return 1;
+    case 0x021051dcu: _ZN12dScMgPanel_c12Input_State3Ev(c);       return 1;
     /* data_ov006_02142860 */
-    case 0x0210508cu: _ZN12dScMgPanel_c19func_ov006_0210508cEv(c);       return 1;
-    case 0x0210500cu: _ZN12dScMgPanel_c19func_ov006_0210500cEv(c);       return 1;
-    case 0x02104fb4u: _ZN12dScMgPanel_c19func_ov006_02104fb4Ev((unsigned char *)c); return 1;
-    case 0x02104eccu: _ZN12dScMgPanel_c19func_ov006_02104eccEv(c);       return 1;
-    case 0x02104ec8u: _ZN12dScMgPanel_c19func_ov006_02104ec8Ev();        return 1;
+    case 0x0210508cu: _ZN12dScMgPanel_c16IntroCard_State0Ev(c);       return 1;
+    case 0x0210500cu: _ZN12dScMgPanel_c16IntroCard_State1Ev(c);       return 1;
+    case 0x02104fb4u: _ZN12dScMgPanel_c16IntroCard_State2Ev((unsigned char *)c); return 1;
+    case 0x02104eccu: _ZN12dScMgPanel_c16IntroCard_State3Ev(c);       return 1;
+    case 0x02104ec8u: _ZN12dScMgPanel_c16IntroCard_State4Ev();        return 1;
     /* data_ov006_021427ec */
-    case 0x02104c08u: _ZN12dScMgPanel_c19func_ov006_02104c08Ev(c);       return 1;
-    case 0x02104bb0u: _ZN12dScMgPanel_c19func_ov006_02104bb0Ev(c);       return 1;
-    case 0x02104bacu: _ZN12dScMgPanel_c19func_ov006_02104bacEv();        return 1;
+    case 0x02104c08u: _ZN12dScMgPanel_c13Banner_State0Ev(c);       return 1;
+    case 0x02104bb0u: _ZN12dScMgPanel_c13Banner_State1Ev(c);       return 1;
+    case 0x02104bacu: _ZN12dScMgPanel_c13Banner_State2Ev();        return 1;
 
     /* ---- THE ONE REMAINING FLOOR, REPORTED AND NEVER CALLED -------------
      *
@@ -286,14 +286,14 @@ static int panel_try_1(void *self, unsigned code, int a)
     char *c = (char *)self;
     switch (code) {
     /* data_ov006_02142840, dispatched at arity 1 by five level-1 states */
-    case 0x02106bacu: _ZN12dScMgPanel_c19func_ov006_02106bacEi(c, a); return 1;
-    case 0x02106aa8u: _ZN12dScMgPanel_c19func_ov006_02106aa8Ei(c, a); return 1;
-    case 0x02106a08u: _ZN12dScMgPanel_c19func_ov006_02106a08Ei(c, a); return 1;
-    case 0x02106910u: _ZN12dScMgPanel_c19func_ov006_02106910Ei(c, a); return 1;
+    case 0x02106bacu: _ZN12dScMgPanel_c12Panel_State0Ei(c, a); return 1;
+    case 0x02106aa8u: _ZN12dScMgPanel_c12Panel_State1Ei(c, a); return 1;
+    case 0x02106a08u: _ZN12dScMgPanel_c12Panel_State2Ei(c, a); return 1;
+    case 0x02106910u: _ZN12dScMgPanel_c12Panel_State3Ei(c, a); return 1;
     /* data_ov006_021427bc */
-    case 0x02104ac0u: _ZN12dScMgPanel_c19func_ov006_02104ac0Ei();     return 1;
-    case 0x02104a10u: _ZN12dScMgPanel_c19func_ov006_02104a10Ei(c, a); return 1;
-    case 0x02104920u: _ZN12dScMgPanel_c19func_ov006_02104920Ei(c, a); return 1;
+    case 0x02104ac0u: _ZN12dScMgPanel_c12Shake_State0Ei();     return 1;
+    case 0x02104a10u: _ZN12dScMgPanel_c12Shake_State1Ei(c, a); return 1;
+    case 0x02104920u: _ZN12dScMgPanel_c12Shake_State2Ei(c, a); return 1;
     default:
         return 0;
     }
@@ -338,10 +338,10 @@ extern "C" void port_mg_panel_counts(unsigned *hits, unsigned *floor,
 // ---- the nine host copies ---------------------------------------------------
 //
 // (Eleven until lane LINKMG. _ZN12dScMgPanel_c8BehaviorEv, the Behavior, and
-// func_ov006_02106ca4, the round-end state, open-code the pair decode in
+// Scene_State6, the round-end state, open-code the pair decode in
 // plain ints and compile FROM src now, with the one call line routed to
 // port_mg_panel_call0/1 by tools/hostgen.py's MG_PMF_CALL table; see the
-// CMake block after SCENE_MG_SOURCES. func_ov006_02106bc0 is the same shape;
+// CMake block after SCENE_MG_SOURCES. Scene_State7 is the same shape;
 // it stays here for now because MSVC folds it into the switch that calls it,
 // so it never shows in the map and was not on the review's list. The same
 // route is open to it, and its tag below says what its wall actually is.)
@@ -349,15 +349,15 @@ extern "C" void port_mg_panel_counts(unsigned *hits, unsigned *floor,
 // Each is its src TU with the pair declaration replaced by MgPmf and the
 // dispatch replaced by port_mg_panel_call0/1. Everything else is verbatim.
 
-/* src/actors/dScMgPanel_c.cpp, table 02142840, arity 1. THE SECOND THIRD-SHAPE
+/* src/minigames/d_s_mg_panel.cpp, table 02142840, arity 1. THE SECOND THIRD-SHAPE
    TU. ROM 0x02106bc0: r7 = self+0x4000; count = [r7,#0xcb8]; loop index r5;
    idx = ldrb [self+i+0x4000, #0xefa]; add r3,r4,r0,lsl#3; the Itanium
    sequence; mov r1,r5 -- the loop counter is the argument; then the +0x4ec0
-   halfword countdown, func_ov004_020b0a54(0x12), the two flag bytes and
-   func_ov006_02104ea8. */
+   halfword countdown, Mg_SetSharedState(0x12), the two flag bytes and
+   ClearSlideFlag. */
 /* PORT_HOST_ABI: open-coded mwcc member-pointer decode in plain ints; the src compiles under MSVC as it stands, but the decoded code word is a DS address and the call through it is routed to the class's address switch */
 /* RETIRED, run link100 lane HOSTGEN2. The matched body now compiles FROM
-   src/actors/dScMgPanel_c.cpp through the whole-TU hostgen substitution, with
+   src/minigames/d_s_mg_panel.cpp through the whole-TU hostgen substitution, with
    its one dispatch line routed to port_mg_panel_call0/1 by hostgen.py's
    PMF_SEAM table -- which is the same correction this copy was written to
    supply. The PORT_HOST_ABI ruling above says the reason is "MSVC's 4-byte
@@ -373,7 +373,7 @@ extern "C" void port_mg_panel_counts(unsigned *hits, unsigned *floor,
    is untouched: panel_try_0 still names these bodies, and it now reaches the
    matched ones. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void _ZN12dScMgPanel_c19func_ov006_02106bc0Ev(char *c)
+extern "C" void _ZN12dScMgPanel_c12Scene_State7Ev(char *c)
 {
     int i;
     for (i = 0; i < *(int *)(c + 0x4cb8); i++) {
@@ -387,20 +387,20 @@ extern "C" void _ZN12dScMgPanel_c19func_ov006_02106bc0Ev(char *c)
     if (*(short *)(c + 0x4ec0) > 0)
         return;
     *(unsigned short *)(c + 0x4ec0) = 0;
-    func_ov004_020b0a54(0x12);
+    Mg_SetSharedState(0x12);
     *(unsigned char *)(c + 0xc3) = 0;
     *(unsigned char *)(c + 0x4fe3) = 0;
-    _ZN12dScMgPanel_c19func_ov006_02104ea8Ev(c);
+    _ZN12dScMgPanel_c14ClearSlideFlagEv(c);
 }
-#endif  /* HOSTGEN2: func_ov006_02106bc0 retired to src */
+#endif  /* HOSTGEN2: Scene_State7 retired to src */
 
-/* src/actors/dScMgPanel_c.cpp, table 02142840, arity 1.
-   ROM 0x02106eb8: func_ov006_021050bc(self), func_ov006_021057f0(self), then
+/* src/minigames/d_s_mg_panel.cpp, table 02142840, arity 1.
+   ROM 0x02106eb8: IntroCard_Update(self), Input_Update(self), then
    the same count/index loop as 02106bc0 -- [r7,#0xcb8] and ldrb +0xefa -- with
    mov r1,r5. */
 /* PORT_HOST_ABI: mwcc pointer-to-member dispatch (dScMgPanel_c two-level state machine); the 8-byte {code,adj} pair is host-copied as an address switch, MSVC's 4-byte member pointer cannot express it */
 /* RETIRED, run link100 lane HOSTGEN2. The matched body now compiles FROM
-   src/actors/dScMgPanel_c.cpp through the whole-TU hostgen substitution, with
+   src/minigames/d_s_mg_panel.cpp through the whole-TU hostgen substitution, with
    its one dispatch line routed to port_mg_panel_call0/1 by hostgen.py's
    PMF_SEAM table -- which is the same correction this copy was written to
    supply. The PORT_HOST_ABI ruling above says the reason is "MSVC's 4-byte
@@ -416,24 +416,24 @@ extern "C" void _ZN12dScMgPanel_c19func_ov006_02106bc0Ev(char *c)
    is untouched: panel_try_0 still names these bodies, and it now reaches the
    matched ones. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void _ZN12dScMgPanel_c19func_ov006_02106eb8Ev(char *c)
+extern "C" void _ZN12dScMgPanel_c12Scene_State5Ev(char *c)
 {
     int i;
-    _ZN12dScMgPanel_c19func_ov006_021050bcEv(c);
-    _ZN12dScMgPanel_c19func_ov006_021057f0Ev(c);
+    _ZN12dScMgPanel_c16IntroCard_UpdateEv(c);
+    _ZN12dScMgPanel_c12Input_UpdateEv(c);
     for (i = 0; i < *(int *)(c + 0x4cb8); i++) {
         const unsigned char idx = *(unsigned char *)(c + i + 0x4efa);
         const MgPmf *e = &data_ov006_02142840[idx];
         port_mg_panel_call1(c, e->code, e->adj, i);
     }
 }
-#endif  /* HOSTGEN2: func_ov006_02106eb8 retired to src */
+#endif  /* HOSTGEN2: Scene_State5 retired to src */
 
-/* src/actors/dScMgPanel_c.cpp, table 02142840, arity 1. Same loop, with the
-   +0x4fe9 flag set to 1 and func_ov006_02105854 between the two calls. */
+/* src/minigames/d_s_mg_panel.cpp, table 02142840, arity 1. Same loop, with the
+   +0x4fe9 flag set to 1 and UpdateMoves between the two calls. */
 /* PORT_HOST_ABI: mwcc pointer-to-member dispatch (dScMgPanel_c two-level state machine); the 8-byte {code,adj} pair is host-copied as an address switch, MSVC's 4-byte member pointer cannot express it */
 /* RETIRED, run link100 lane HOSTGEN2. The matched body now compiles FROM
-   src/actors/dScMgPanel_c.cpp through the whole-TU hostgen substitution, with
+   src/minigames/d_s_mg_panel.cpp through the whole-TU hostgen substitution, with
    its one dispatch line routed to port_mg_panel_call0/1 by hostgen.py's
    PMF_SEAM table -- which is the same correction this copy was written to
    supply. The PORT_HOST_ABI ruling above says the reason is "MSVC's 4-byte
@@ -449,21 +449,21 @@ extern "C" void _ZN12dScMgPanel_c19func_ov006_02106eb8Ev(char *c)
    is untouched: panel_try_0 still names these bodies, and it now reaches the
    matched ones. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void _ZN12dScMgPanel_c19func_ov006_02106f44Ev(char *c)
+extern "C" void _ZN12dScMgPanel_c12Scene_State4Ev(char *c)
 {
     int i;
-    _ZN12dScMgPanel_c19func_ov006_021050bcEv(c);
+    _ZN12dScMgPanel_c16IntroCard_UpdateEv(c);
     *(unsigned char *)(c + 0x4fe9) = 1;
-    _ZN12dScMgPanel_c19func_ov006_02105854Ev(c);
+    _ZN12dScMgPanel_c11UpdateMovesEv(c);
     for (i = 0; i < *(int *)(c + 0x4cb8); i++) {
         const unsigned char idx = *(unsigned char *)(c + i + 0x4efa);
         const MgPmf *e = &data_ov006_02142840[idx];
         port_mg_panel_call1(c, e->code, e->adj, i);
     }
 }
-#endif  /* HOSTGEN2: func_ov006_02106f44 retired to src */
+#endif  /* HOSTGEN2: Scene_State4 retired to src */
 
-/* src/actors/dScMgPanel_c.cpp, table 02142840, arity 1. BANNERED NONMATCHING
+/* src/minigames/d_s_mg_panel.cpp, table 02142840, arity 1. BANNERED NONMATCHING
    (different op / idiom, div=28) and therefore decompiled rather than matched,
    which is why the ordinary slice line is not enough and why stategen reports
    it as a delinks-join miss rather than a floor. The `found` counter is the
@@ -471,7 +471,7 @@ extern "C" void _ZN12dScMgPanel_c19func_ov006_02106f44Ev(char *c)
    seen, drops the outer state to 4 and sets the two flags. */
 /* PORT_HOST_ABI: mwcc pointer-to-member dispatch (dScMgPanel_c two-level state machine); the 8-byte {code,adj} pair is host-copied as an address switch, MSVC's 4-byte member pointer cannot express it */
 /* RETIRED, run link100 lane HOSTGEN2. The matched body now compiles FROM
-   src/actors/dScMgPanel_c.cpp through the whole-TU hostgen substitution, with
+   src/minigames/d_s_mg_panel.cpp through the whole-TU hostgen substitution, with
    its one dispatch line routed to port_mg_panel_call0/1 by hostgen.py's
    PMF_SEAM table -- which is the same correction this copy was written to
    supply. The PORT_HOST_ABI ruling above says the reason is "MSVC's 4-byte
@@ -487,12 +487,12 @@ extern "C" void _ZN12dScMgPanel_c19func_ov006_02106f44Ev(char *c)
    is untouched: panel_try_0 still names these bodies, and it now reaches the
    matched ones. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void _ZN12dScMgPanel_c19func_ov006_02106fdcEv(void *p)
+extern "C" void _ZN12dScMgPanel_c12Scene_State3Ev(void *p)
 {
     char *c = (char *)p;
     int found = 0;
     int i = 0;
-    _ZN12dScMgPanel_c19func_ov006_021050bcEv(c);
+    _ZN12dScMgPanel_c16IntroCard_UpdateEv(c);
     *(unsigned char *)(c + 0x4fe9) = 1;
     if (*(int *)(c + 0x4cb8) > 0) {
         do {
@@ -510,12 +510,12 @@ extern "C" void _ZN12dScMgPanel_c19func_ov006_02106fdcEv(void *p)
     *(unsigned char *)(c + 0x4fdf) = 1;
     *(short *)(c + 0x4ec4) = 0x40;
 }
-#endif  /* HOSTGEN2: func_ov006_02106fdc retired to src */
+#endif  /* HOSTGEN2: Scene_State3 retired to src */
 
-/* src/actors/dScMgPanel_c.cpp, table 02142840, arity 1. */
+/* src/minigames/d_s_mg_panel.cpp, table 02142840, arity 1. */
 /* PORT_HOST_ABI: mwcc pointer-to-member dispatch (dScMgPanel_c two-level state machine); the 8-byte {code,adj} pair is host-copied as an address switch, MSVC's 4-byte member pointer cannot express it */
 /* RETIRED, run link100 lane HOSTGEN2. The matched body now compiles FROM
-   src/actors/dScMgPanel_c.cpp through the whole-TU hostgen substitution, with
+   src/minigames/d_s_mg_panel.cpp through the whole-TU hostgen substitution, with
    its one dispatch line routed to port_mg_panel_call0/1 by hostgen.py's
    PMF_SEAM table -- which is the same correction this copy was written to
    supply. The PORT_HOST_ABI ruling above says the reason is "MSVC's 4-byte
@@ -531,34 +531,34 @@ extern "C" void _ZN12dScMgPanel_c19func_ov006_02106fdcEv(void *p)
    is untouched: panel_try_0 still names these bodies, and it now reaches the
    matched ones. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void _ZN12dScMgPanel_c19func_ov006_0210709cEv(void *p)
+extern "C" void _ZN12dScMgPanel_c12Scene_State2Ev(void *p)
 {
     char *c = (char *)p;
     int i;
-    _ZN12dScMgPanel_c19func_ov006_02105de4Ev(c);
-    _ZN12dScMgPanel_c19func_ov006_021050bcEv(c);
+    _ZN12dScMgPanel_c11UpdateTouchEv(c);
+    _ZN12dScMgPanel_c16IntroCard_UpdateEv(c);
     *(unsigned char *)(c + 0x4fe9) = 0;
     for (i = 0; i < *(int *)(c + 0x4cb8); i++) {
         const unsigned char idx = *(unsigned char *)(c + i + 0x4efa);
         const MgPmf *e = &data_ov006_02142840[idx];
         port_mg_panel_call1(c, e->code, e->adj, i);
     }
-    _ZN12dScMgPanel_c19func_ov006_02105d20Ev(c);
-    _ZN12dScMgPanel_c19func_ov006_02105c88Ev(c);
-    _ZN12dScMgPanel_c19func_ov006_02105134Ev(c);
+    _ZN12dScMgPanel_c11CheckSolvedEv(c);
+    _ZN12dScMgPanel_c13CountFlippingEv(c);
+    _ZN12dScMgPanel_c15StartSolveCheckEv(c);
 }
-#endif  /* HOSTGEN2: func_ov006_0210709c retired to src */
+#endif  /* HOSTGEN2: Scene_State2 retired to src */
 
-/* ---- 021427bc IS SEATED AND func_ov006_02104ac4 IS GONE -------------------
+/* ---- 021427bc IS SEATED AND Shake_Update IS GONE -------------------
  *
  * Run link100 lane PMFB5. data_ov006_021427bc's three cells hold HOST addresses
  * after boot, written by port_mg_panel_states_seat further down this file --
  * the installer lane PMFB3 wrote for data_ov006_02142860, which now installs
  * both tables -- once every cell has been compared against the ROM's own code
- * word and a zero adjustment word. src/actors/dScMgPanel_c.cpp therefore
+ * word and a zero adjustment word. src/minigames/d_s_mg_panel.cpp therefore
  * compiles from src and this file no longer defines it.
  *
- *   func_ov006_02104ac4   data_ov006_021427bc   3 slots   arity 1
+ *   Shake_Update   data_ov006_021427bc   3 slots   arity 1
  *
  * THE STRIDE, ROM SIDE, read at the body's OWN address out of
  * extracted/overlays/overlay_0006.bin at ov006 base 0x020bfec0
@@ -615,18 +615,18 @@ extern "C" void _ZN12dScMgPanel_c19func_ov006_0210709cEv(void *p)
         sym();                                                            \
     }
 
-PN_FACE_VOID(0, _ZN12dScMgPanel_c19func_ov006_02104ac0Ei)
-PN_FACE(1, _ZN12dScMgPanel_c19func_ov006_02104a10Ei)
-PN_FACE(2, _ZN12dScMgPanel_c19func_ov006_02104920Ei)
+PN_FACE_VOID(0, _ZN12dScMgPanel_c12Shake_State0Ei)
+PN_FACE(1, _ZN12dScMgPanel_c12Shake_State1Ei)
+PN_FACE(2, _ZN12dScMgPanel_c12Shake_State2Ei)
 
-/* src/actors/dScMgPanel_c.cpp, table 021427ec, arity 0.
+/* src/minigames/d_s_mg_panel.cpp, table 021427ec, arity 0.
    ROM 0x02104c60: guard byte at +0x4684; the pooled literal 0x00004680 added
    to self is the halfword decremented; the s16 at +0x4680 tested <= 0 zeroes
    that halfword and the bytes at +0x4684 and +0x4685 and returns; otherwise
    the index is the byte at +0x4686 and the pool at 0x02104cf8 is 021427EC. */
 /* PORT_HOST_ABI: mwcc pointer-to-member dispatch (dScMgPanel_c two-level state machine); the 8-byte {code,adj} pair is host-copied as an address switch, MSVC's 4-byte member pointer cannot express it */
 /* RETIRED, run link100 lane HOSTGEN2. The matched body now compiles FROM
-   src/actors/dScMgPanel_c.cpp through the whole-TU hostgen substitution, with
+   src/minigames/d_s_mg_panel.cpp through the whole-TU hostgen substitution, with
    its one dispatch line routed to port_mg_panel_call0/1 by hostgen.py's
    PMF_SEAM table -- which is the same correction this copy was written to
    supply. The PORT_HOST_ABI ruling above says the reason is "MSVC's 4-byte
@@ -642,7 +642,7 @@ PN_FACE(2, _ZN12dScMgPanel_c19func_ov006_02104920Ei)
    is untouched: panel_try_0 still names these bodies, and it now reaches the
    matched ones. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void _ZN12dScMgPanel_c19func_ov006_02104c60Ev(void *p)
+extern "C" void _ZN12dScMgPanel_c13Banner_UpdateEv(void *p)
 {
     char *c = (char *)p;
     if (*(unsigned char *)(c + 0x4684) == 0)
@@ -658,12 +658,12 @@ extern "C" void _ZN12dScMgPanel_c19func_ov006_02104c60Ev(void *p)
     const MgPmf *e = &data_ov006_021427ec[j];
     port_mg_panel_call0(c, e->code, e->adj);
 }
-#endif  /* HOSTGEN2: func_ov006_02104c60 retired to src */
+#endif  /* HOSTGEN2: Banner_Update retired to src */
 
 /* ---- data_ov006_02142860's BOOT INSTALLER, run link100 lane PMFB3 --------
-   func_ov006_021050bc was a host copy here, reading the pair and handing the
+   IntroCard_Update was a host copy here, reading the pair and handing the
    code word to port_mg_panel_call0's address switch. It is now the ROM's own
-   src/actors/dScMgPanel_c.cpp on port/slice_pmfb3.txt, and this installer puts
+   src/minigames/d_s_mg_panel.cpp on port/slice_pmfb3.txt, and this installer puts
    the five host bodies in the five cells at boot so it dispatches them
    directly. The other five tables in this class are untouched and still route
    through the switch.
@@ -704,23 +704,23 @@ extern "C" void port_mg_panel_states_seat(void)
         unsigned    rom;
         void       *host;
     } seats[] = {
-        {data_ov006_02142860, "02142860", 0, 0x0210508cu, (void *)_ZN12dScMgPanel_c19func_ov006_0210508cEv},
-        {data_ov006_02142860, "02142860", 1, 0x0210500cu, (void *)_ZN12dScMgPanel_c19func_ov006_0210500cEv},
-        {data_ov006_02142860, "02142860", 2, 0x02104fb4u, (void *)_ZN12dScMgPanel_c19func_ov006_02104fb4Ev},
-        {data_ov006_02142860, "02142860", 3, 0x02104eccu, (void *)_ZN12dScMgPanel_c19func_ov006_02104eccEv},
-        {data_ov006_02142860, "02142860", 4, 0x02104ec8u, (void *)_ZN12dScMgPanel_c19func_ov006_02104ec8Ev},
+        {data_ov006_02142860, "02142860", 0, 0x0210508cu, (void *)_ZN12dScMgPanel_c16IntroCard_State0Ev},
+        {data_ov006_02142860, "02142860", 1, 0x0210500cu, (void *)_ZN12dScMgPanel_c16IntroCard_State1Ev},
+        {data_ov006_02142860, "02142860", 2, 0x02104fb4u, (void *)_ZN12dScMgPanel_c16IntroCard_State2Ev},
+        {data_ov006_02142860, "02142860", 3, 0x02104eccu, (void *)_ZN12dScMgPanel_c16IntroCard_State3Ev},
+        {data_ov006_02142860, "02142860", 4, 0x02104ec8u, (void *)_ZN12dScMgPanel_c16IntroCard_State4Ev},
 
         /* Run link100 lane PMFB5: data_ov006_021427bc, whose dispatcher
-           func_ov006_02104ac4 now compiles from src. THE TWO HALVES OF THIS
+           Shake_Update now compiles from src. THE TWO HALVES OF THIS
            TABLE ARE WRITTEN DIFFERENTLY ON PURPOSE. 02142860's dispatcher
            compiles its dispatch to a TAIL JUMP with the frame restored, so its
            five callees inherit a cdecl frame and go in as plain cdecl bodies;
            02104ac4 compiles to `push 0 / mov ecx, tab[i*8+4] / mov eax,
            tab[i*8] / add ecx, edx / call eax` with no caller cleanup, so its
            three cells take one-argument __fastcall faces. */
-        {data_ov006_021427bc, "021427bc", 0, 0x02104ac0u, (void *)pn_s0__ZN12dScMgPanel_c19func_ov006_02104ac0Ei},
-        {data_ov006_021427bc, "021427bc", 1, 0x02104a10u, (void *)pn_s1__ZN12dScMgPanel_c19func_ov006_02104a10Ei},
-        {data_ov006_021427bc, "021427bc", 2, 0x02104920u, (void *)pn_s2__ZN12dScMgPanel_c19func_ov006_02104920Ei},
+        {data_ov006_021427bc, "021427bc", 0, 0x02104ac0u, (void *)pn_s0__ZN12dScMgPanel_c12Shake_State0Ei},
+        {data_ov006_021427bc, "021427bc", 1, 0x02104a10u, (void *)pn_s1__ZN12dScMgPanel_c12Shake_State1Ei},
+        {data_ov006_021427bc, "021427bc", 2, 0x02104920u, (void *)pn_s2__ZN12dScMgPanel_c12Shake_State2Ei},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
@@ -737,19 +737,19 @@ extern "C" void port_mg_panel_states_seat(void)
     }
 }
 
-/* src/actors/dScMgPanel_c.cpp, table 02142820, arity 0.
+/* src/minigames/d_s_mg_panel.cpp, table 02142820, arity 0.
    ROM 0x021057f0: ldr r1,[r0]; ldr r1,[r1,#0x8c]; blx r1 -- a VIRTUAL CALL ON
-   SLOT 35 (0x8c/4), which is dScMgBase_c's _ZN11dScMgBase_c9Virtual8CEv and reads
+   SLOT 35 (0x8c/4), which is dScMgBase_c's _ZN11dScMgBase_c12IsAltVariantEv and reads
    `(this[2] & 0xff) != 0`. A nonzero answer returns without dispatching. The
    index is the byte at +0x4fe0 and the pool at 0x02105850 is 02142820; the
-   tail is func_ov006_02104c60(self).
+   tail is Banner_Update(self).
    THE VIRTUAL IS CALLED THROUGH THE SEATED TABLE, not re-spelled: by the time
    any state runs, port_scene_fill_panel has replaced slot 35's raw DS word
    with hal/scene_mg.cpp's mb_v35 thunk, so this dispatch reaches the ROM body
    through the same path every other slot does. */
 /* PORT_HOST_ABI: mwcc pointer-to-member dispatch (dScMgPanel_c two-level state machine); the 8-byte {code,adj} pair is host-copied as an address switch, MSVC's 4-byte member pointer cannot express it */
 /* RETIRED, run link100 lane HOSTGEN2. The matched body now compiles FROM
-   src/actors/dScMgPanel_c.cpp through the whole-TU hostgen substitution, with
+   src/minigames/d_s_mg_panel.cpp through the whole-TU hostgen substitution, with
    its one dispatch line routed to port_mg_panel_call0/1 by hostgen.py's
    PMF_SEAM table -- which is the same correction this copy was written to
    supply. The PORT_HOST_ABI ruling above says the reason is "MSVC's 4-byte
@@ -765,7 +765,7 @@ extern "C" void port_mg_panel_states_seat(void)
    is untouched: panel_try_0 still names these bodies, and it now reaches the
    matched ones. */
 #if 0  /* HOSTGEN2: body seated from src, see above */
-extern "C" void _ZN12dScMgPanel_c19func_ov006_021057f0Ev(void *p)
+extern "C" void _ZN12dScMgPanel_c12Input_UpdateEv(void *p)
 {
     char *c = (char *)p;
     void **vt = *(void ***)c;
@@ -776,6 +776,6 @@ extern "C" void _ZN12dScMgPanel_c19func_ov006_021057f0Ev(void *p)
     const unsigned j = *(unsigned char *)(c + 0x4fe0);
     const MgPmf *e = &data_ov006_02142820[j];
     port_mg_panel_call0(c, e->code, e->adj);
-    _ZN12dScMgPanel_c19func_ov006_02104c60Ev(c);
+    _ZN12dScMgPanel_c13Banner_UpdateEv(c);
 }
-#endif  /* HOSTGEN2: func_ov006_021057f0 retired to src */
+#endif  /* HOSTGEN2: Input_Update retired to src */

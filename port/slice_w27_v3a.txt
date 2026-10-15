@@ -18,21 +18,21 @@
 # (runs/linkfull/out/V3A/).
 #
 # BATCH A, the collider thunks (tables filled in hal/w2_dtor_heads.cpp).
-src/engine/collision/dBgCh_Gnd.cpp
+src/engine/collision/d_bg_ch_gnd.cpp
 port/unmatched/hostarm/_ZThn16_N9dBgCh_GndD0Ev.cpp
-# FOLDED into src/engine/collision/dBgCh_Gnd.cpp (row 21): src/_ZThn16_N9dBgCh_GndD1Ev.cpp
+# FOLDED into src/engine/collision/d_bg_ch_gnd.cpp (row 21): src/_ZThn16_N9dBgCh_GndD1Ev.cpp
 port/unmatched/hostarm/_ZThn16_N9dBgCh_GndD1Ev.cpp
-src/engine/collision/dBgCh_Lin.cpp
+src/engine/collision/d_bg_ch_lin.cpp
 port/unmatched/hostarm/_ZThn16_N9dBgCh_LinD0Ev.cpp
-# FOLDED into src/engine/collision/dBgCh_Lin.cpp (row 23): src/_ZThn16_N9dBgCh_LinD1Ev.cpp
+# FOLDED into src/engine/collision/d_bg_ch_lin.cpp (row 23): src/_ZThn16_N9dBgCh_LinD1Ev.cpp
 port/unmatched/hostarm/_ZThn16_N9dBgCh_LinD1Ev.cpp
-src/engine/collision/dBgCh_SphCrr.cpp
+src/engine/collision/d_bg_ch_sph_crr.cpp
 port/unmatched/hostarm/_ZThn16_N12dBgCh_SphCrrD0Ev.cpp
-# FOLDED into src/engine/collision/dBgCh_SphCrr.cpp (row 25): src/_ZThn16_N12dBgCh_SphCrrD1Ev.cpp
+# FOLDED into src/engine/collision/d_bg_ch_sph_crr.cpp (row 25): src/_ZThn16_N12dBgCh_SphCrrD1Ev.cpp
 port/unmatched/hostarm/_ZThn16_N12dBgCh_SphCrrD1Ev.cpp
-# FOLDED into src/engine/collision/dBgCh_SphCrr.cpp (row 25): src/_ZThn56_N12dBgCh_SphCrrD0Ev.cpp
+# FOLDED into src/engine/collision/d_bg_ch_sph_crr.cpp (row 25): src/_ZThn56_N12dBgCh_SphCrrD0Ev.cpp
 port/unmatched/hostarm/_ZThn56_N12dBgCh_SphCrrD0Ev.cpp
-# FOLDED into src/engine/collision/dBgCh_SphCrr.cpp (row 25): src/_ZThn56_N12dBgCh_SphCrrD1Ev.cpp
+# FOLDED into src/engine/collision/d_bg_ch_sph_crr.cpp (row 25): src/_ZThn56_N12dBgCh_SphCrrD1Ev.cpp
 port/unmatched/hostarm/_ZThn56_N12dBgCh_SphCrrD1Ev.cpp
 #
 # BATCH B, the Animation-base thunks (tables filled in hal/cxxname_bridge.cpp and

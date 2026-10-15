@@ -1,7 +1,7 @@
 /* HOST ARM recovered by port/tools/hostarm_recover.py.
  * The port line carried this in src/_ZN14SquarePathLiftD0Ev.cpp under #ifdef _MSC_VER; the
  * 2026-10 main merge (749f5799a) took main's src/, where that code
- * now lives in src/actors/daObjEmmYuka_c.cpp without the arm. mwccarm never saw the arm,
+ * now lives in src/game/actors/d_a_obj_emm_yuka.cpp without the arm. mwccarm never saw the arm,
  * so nothing here moves a ROM byte. */
 #include "daObjEmmYuka_c.h"
 

@@ -15,7 +15,7 @@
  *   VARIANT 1 the stars row; VARIANT 2 the multiplayer character row (+0x133 == 1), where the whole
  *   bottom screen is the choice: drawn as a half-size panel (the fallback's shape).
  *
- * GAME OVER (scene 8, dScGameOver_c, src/actors/dScGameOver_c.cpp)
+ * GAME OVER (scene 8, dScGameOver_c, src/game/stages/d_s_game_over.cpp)
  *   The upper screen stays the picture (GAME OVER lettering, gradient); the yes/no plates (engine-B BG0
  *   labels + BG1 plates) are set under the lettering, one piece per plate. The ROM's touch boxes are
  *   x 8..0xf7 with y 0x38..0x57 (Continue) and 0x68..0x87 (Quit) (:342, :364).

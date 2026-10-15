@@ -82,7 +82,7 @@ int _ZN8dClipper13Func_02015560ER9Matrix4x3R7Vector35Fix12IiES3_(
 void Matrix4x3_FromRotationY(Matrix4x3 *m, short ang);
 /* Spelled Vector3 * for the object actually passed. The definition in
  * src/Vec3_AsrInPlace.c says int *, and the tree also carries s32 * and a
- * file-local `struct Vec3 { int x, y, z; }` in src/actors/daKpa3Bg_c.cpp --
+ * file-local `struct Vec3 { int x, y, z; }` in src/game/actors/d_a_kpa3_bg.cpp --
  * four spellings of the same three-word layout, none of them typedefs of each
  * other. The disagreement is nominal, not a contract difference, and int * is
  * the slop spelling this cleanup exists to retire. */

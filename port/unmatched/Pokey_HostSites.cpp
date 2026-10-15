@@ -3,7 +3,7 @@
  * cast-lvl16pair. Each matched TU stays byte-locked in src/ and is simply not
  * referenced from port/slice_ov096.txt, which carries every refusal in full.
  *
- * (1) src/actors/daSanbo_c.cpp -- THE C++-MANGLING WALL. The matched TU is a real
+ * (1) src/game/actors/d_a_sanbo.cpp -- THE C++-MANGLING WALL. The matched TU is a real
  *     C++ class definition ending `virtual ~Pokey();` with an empty body.
  *     mwccarm mangles that Itanium and emits _ZN9daSanbo_cD1Ev, the name vtable
  *     slot 16 needs; MSVC emits ??1Pokey@@UAE@XZ and nothing by the flat name,
@@ -27,7 +27,7 @@
  *                                            0x0213579c (load) 0x021379d8
  *                                            0x021357a0 (load) 0x020a0eac
  *
- *     Resolved against src/actors/daSanbo_c.cpp own member list, which names the
+ *     Resolved against src/game/actors/d_a_sanbo.cpp own member list, which names the
  *     four members and their offsets: WithMeshClsn +0x180 (0x020373f8),
  *     MovingCylinderClsn +0x14c (0x020149a4), ShadowModel +0x124 (0x02015ff8),
  *     Model +0xd4 (0x02016d20), then _ZN8dActor_cD2Ev (0x020112c8). Three of
@@ -43,7 +43,7 @@
  *     /alternatename bridge in hal/actor_classes_ov096.cpp carries the other
  *     spelling to the same storage.
  *
- * (2) and (3) src/actors/daSanbo_c.cpp and src/actors/daSanbo_c.cpp --
+ * (2) and (3) src/game/actors/d_a_sanbo.cpp and src/game/actors/d_a_sanbo.cpp --
  *     THE PMF DISEASE, the ENTER and TICK halves of one two-record cell:
  *         struct C; typedef void (C::*PMF)();
  *         struct C { char pad[0x384]; PMF *pp; };
@@ -54,7 +54,7 @@
  *     dispatch would land in the middle of the enter record.
  *
  *     WHERE THE CELL POINTER COMES FROM, and it is NOT refused:
- *     src/actors/daSanbo_c.cpp stays in the slice and computes it with plain
+ *     src/game/actors/d_a_sanbo.cpp stays in the slice and computes it with plain
  *     integer arithmetic, `*(int *)(c + 0x384) = (int)&data_ov096_02137b48 +
  *     (a << 4)`. The `a << 4` is the proof that the cells are PAIRS of 8-byte
  *     records: six states, twelve records.
@@ -120,7 +120,7 @@ int *_ZN9daSanbo_cD1Ev(int *t)
 /* ---- (2) the ENTER dispatch -------------------------------------------- */
 
 /* func_ov096_021368f0 IS NOT A HOST COPY ANY MORE. Run link100 lane PMF2 put
-   src/actors/daSanbo_c.cpp back on port/slice_pmf2.txt: with /vmg /vmm global (the
+   src/game/actors/d_a_sanbo.cpp back on port/slice_pmf2.txt: with /vmg /vmm global (the
    R8 block in port/CMakeLists.txt) MSVC's pointer-to-member IS the ROM's
    8-byte {function, delta} pair, and the matched TU compiles to the same
    tail jump this body was -- measured, listing in that slice's header.
@@ -128,13 +128,13 @@ int *_ZN9daSanbo_cD1Ev(int *t)
 /* ---- (3) the TICK dispatch --------------------------------------------- */
 
 /* func_ov096_021368b4 IS NOT A HOST COPY ANY MORE. Run link100 lane PMF2 put
-   src/actors/daSanbo_c.cpp back on port/slice_pmf2.txt: with /vmg /vmm global (the
+   src/game/actors/d_a_sanbo.cpp back on port/slice_pmf2.txt: with /vmg /vmm global (the
    R8 block in port/CMakeLists.txt) MSVC's pointer-to-member IS the ROM's
    8-byte {function, delta} pair, and the matched TU compiles to the same
    tail jump this body was -- measured, listing in that slice's header.
    The reading above is kept because it is the derivation. */
 /* ---- (4) THE FALL-OFF-THE-END BODY -------------------------------------
- * src/actors/daSanbo_c.cpp is declared `int` and has NO return statement.
+ * src/game/actors/d_a_sanbo.cpp is declared `int` and has NO return statement.
  * mwccarm accepts that and lets r0 carry whatever the last call left;
  * MSVC refuses the translation unit outright with
  *     error C4716: 'func_ov096_02135e2c': must return a value
@@ -151,7 +151,7 @@ int *_ZN9daSanbo_cD1Ev(int *t)
  *     e8bd40f0  pop {r4-r7,lr}
  *     e12fff1e  bx  lr
  * -- no instruction sets r0 on the way out. And the ONE caller,
- * src/actors/daSanbo_c.cpp:12, declares it `void func_ov096_02135e2c(int *,
+ * src/game/actors/d_a_sanbo.cpp:12, declares it `void func_ov096_02135e2c(int *,
  * void *)` and discards the result at line 47. The `int` in this TU's own
  * signature is the recovery's placeholder, not something the ROM produces, so
  * the returned value is unobservable and 0 is as faithful as any other.
@@ -165,7 +165,7 @@ int *_ZN9daSanbo_cD1Ev(int *t)
  * only one this lane gives up for a reason that is not a real ABI wall.
  * A later lane that owns hostgen.py should convert this: add
  *     "func_ov096_02135e2c": [(<the closing brace anchor>, ... "return 0;")]
- * to FALLS_OFF_RETURN, drop this copy, and put src/actors/daSanbo_c.cpp
+ * to FALLS_OFF_RETURN, drop this copy, and put src/game/actors/d_a_sanbo.cpp
  * back into port/slice_ov096.txt. Every other line below is transcribed from
  * the matched body unchanged.
  */

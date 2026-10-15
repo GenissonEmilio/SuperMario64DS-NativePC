@@ -30,7 +30,7 @@
 // ---- 1. MSVC-TYPED SPELLINGS OF MOUNTED C STORAGE -------------------------
 #pragma comment(linker, "/alternatename:?data_0209f5f8@@3EA=_data_0209f5f8")
 #pragma comment(linker, "/alternatename:?data_020a0dbc@@3RCFC=_data_020a0dbc")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b104@@3PAHA=_data_ov006_0213b104")
+#pragma comment(linker, "/alternatename:?pmf_Trmp2Mario_State7@@3PAHA=_pmf_Trmp2Mario_State7")
 #pragma comment(linker, "/alternatename:?data_ov006_0213b2e0@@3HA=_data_ov006_0213b2e0")
 #pragma comment(linker, "/alternatename:?data_ov006_0213b3a4@@3UBTA_File@@A=_data_ov006_0213b3a4")
 #pragma comment(linker, "/alternatename:?data_ov006_0213b3c4@@3HA=_data_ov006_0213b3c4")
@@ -70,16 +70,16 @@
 #pragma comment(linker, "/alternatename:?data_ov006_02140858@@3Udata_t@@A=_data_ov006_02140858")
 #pragma comment(linker, "/alternatename:?data_ov006_02141a48@@3PAXA=_data_ov006_02141a48")
 #pragma comment(linker, "/alternatename:?data_ov006_02142f80@@3USharedFilePtr@@A=_data_ov006_02142f80")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b344@@3US2@@A=_data_ov006_0213b344")
+#pragma comment(linker, "/alternatename:?pmf_TrmpItem_StateAppear_2@@3US2@@A=_pmf_TrmpItem_StateAppear_2")
 #pragma comment(linker, "/alternatename:?data_ov006_02140828@@3HA=_data_ov006_02140828")
 #pragma comment(linker, "/alternatename:?data_ov006_02140838@@3HA=_data_ov006_02140838")
 #pragma comment(linker, "/alternatename:?data_ov006_0213b0f0@@3HA=_data_ov006_0213b0f0")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b12c@@3UG2@@A=_data_ov006_0213b12c")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b14c@@3US8@@A=_data_ov006_0213b14c")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b184@@3UG2@@A=_data_ov006_0213b184")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b1d4@@3PAHA=_data_ov006_0213b1d4")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b1dc@@3PAHA=_data_ov006_0213b1dc")
-#pragma comment(linker, "/alternatename:?data_ov006_0213b1ec@@3PAHA=_data_ov006_0213b1ec")
+#pragma comment(linker, "/alternatename:?pmf_Trmp3DMario_State10@@3UG2@@A=_pmf_Trmp3DMario_State10")
+#pragma comment(linker, "/alternatename:?pmf_Trmp2Mario_State2@@3US8@@A=_pmf_Trmp2Mario_State2")
+#pragma comment(linker, "/alternatename:?pmf_Trmp3DMario_State11@@3UG2@@A=_pmf_Trmp3DMario_State11")
+#pragma comment(linker, "/alternatename:?pmf_Trmp2Mario_State6_2@@3PAHA=_pmf_Trmp2Mario_State6_2")
+#pragma comment(linker, "/alternatename:?pmf_Trmp3DMario_State5_2@@3PAHA=_pmf_Trmp3DMario_State5_2")
+#pragma comment(linker, "/alternatename:?pmf_Trmp2Mario_State1_2@@3PAHA=_pmf_Trmp2Mario_State1_2")
 #pragma comment(linker, "/alternatename:?data_ov006_0213b22c@@3PAPAXA=_data_ov006_0213b22c")
 #pragma comment(linker, "/alternatename:?data_ov006_02140544@@3HA=_data_ov006_02140544")
 #pragma comment(linker, "/alternatename:?data_ov006_02140558@@3HA=_data_ov006_02140558")
@@ -98,7 +98,7 @@
 
 // ---- 2. FIVE FUNCTION ALIASES, ALL cdecl ON BOTH SIDES --------------------
 //
-// Model::LoadTextureToVram.  src/func_ov006_020d0b2c.cpp declares
+// Model::LoadTextureToVram.  src/TrmpLine_LoadTextures.cpp declares
 // `namespace Model { int LoadTextureToVram(char *, unsigned int); }` and calls
 // it qualified, so MSVC wants ?LoadTextureToVram@Model@@YAHPADI@Z -- a free
 // function in a NAMESPACE called Model, __cdecl.  include/Model.h:68 declares
@@ -110,7 +110,7 @@
 // difference is a spelling: both are four bytes returned in eax.
 #pragma comment(linker, "/alternatename:?LoadTextureToVram@Model@@YAHPADI@Z=?LoadTextureToVram@Model@@SAIPADI@Z")
 //
-// Particle::System::New.  src/func_ov006_020c8f20.cpp declares a local
+// Particle::System::New.  src/Trmp2Mario_Update.cpp declares a local
 // `struct System { static System* New(...); }` with seven parameters, so MSVC
 // wants ?New@System@@SAPAU1@IIHHHPBUVector3_16f@@PAUCallback@@@Z -- SA, a
 // static member, __cdecl.  The matched body is
@@ -131,20 +131,20 @@
 // both sides, so this is a rename and not a receiver placement.
 #pragma comment(linker, "/alternatename:_Scene_AfterRender=__ZN8dScene_c11AfterRenderEj")
 //
-// AND ONE THAT IS NOT EVEN A TYPE RENAME.  src/actors/dScMgD3DBase_c.cpp declares
+// AND ONE THAT IS NOT EVEN A TYPE RENAME.  src/minigames/d_s_mg_d3d_base.cpp declares
 // `extern int func_020beb74[];` and USES IT AS DATA
 // (`func_020beb74[1] = (int)obj; data_0209d4a8 = (void *)func_020beb74;`).
 // There is no function at 0x020beb74: config/arm9/overlays/ov004/symbols.txt
-// has data_ov004_020beb74, kind bss, and 0x020beb74 is inside ov004's bss span
+// has sMgGraphCallback, kind bss, and 0x020beb74 is inside ov004's bss span
 // 0x020beb60..0x020bfec0.  A func_-prefixed name on a data address is a
 // decomp-side naming defect; the port renames rather than editing the
 // byte-gated tree.  ROUTED to the decomp side as a symbol-name correction.
-#pragma comment(linker, "/alternatename:_func_020beb74=_data_ov004_020beb74")
+#pragma comment(linker, "/alternatename:_func_020beb74=_sMgGraphCallback")
 //
 // ApproachLinear2, the INT overload.  src/_Z15ApproachLinear2Riii.cpp defines
 // `int ApproachLinear2(int &, int, int)` with NO extern "C", so MSVC decorates
 // it ?ApproachLinear2@@YAHAAHHH@Z, while three .c TUs in this closure
-// (src/func_ov006_020cd744.c, _020cf790.c and _020cf820.c) spell the ROM's
+// (src/TrmpItem_GrowScale.c, _020cf790.c and _020cf820.c) spell the ROM's
 // Itanium name at C linkage.  port/unmatched/Ov085_Behaviors.cpp:142 records
 // the same fact and solves it the other way, by declaring the C++ signature in
 // a C++ TU; a .c caller cannot do that.  Both sides are plain __cdecl free
@@ -153,11 +153,11 @@
 // above with a reference instead of a pointer.
 #pragma comment(linker, "/alternatename:__Z15ApproachLinear2Riii=?ApproachLinear2@@YAHAAHHH@Z")
 //
-// Sound_PlayBank1Panned.  src/func_ov006_020c94e0.cpp and
-// src/actors/dMgJump3DMario_c.cpp call `func_ov006_020e6df0(a, b, c)` by address-
+// Sound_PlayBank1Panned.  src/Trmp2Mario_BounceOffLineA.cpp and
+// src/minigames/d_mg_jump3d_mario.cpp call `func_ov006_020e6df0(a, b, c)` by address-
 // derived name, while config/arm9/overlays/ov006/symbols.txt:690 gives 0x020e6df0
 // the recovered name Sound_PlayBank1Panned (size 0x4c) and the matched TU is
-// src/actors/dScMgD3DBase_c.cpp, a slice line here.  Same address, same three
+// src/minigames/d_s_mg_d3d_base.cpp, a slice line here.  Same address, same three
 // C-linkage arguments; the row is a rename and nothing else.
 #pragma comment(linker, "/alternatename:_func_ov006_020e6df0=_Sound_PlayBank1Panned")
 
@@ -169,7 +169,7 @@
 // call.  A linker alias would hand the body a `this` that was never pushed.
 
 extern "C" {
-void func_ov006_020cac30(void);
+void Trmp2Mario_UpdateAll(void);
 void _ZN18TextureTransformer7SetFileER8BTA_Filei5Fix12IiEj(
         void *self, void *file, int flags, int speed, unsigned startFrame);
 void _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(
@@ -178,20 +178,20 @@ void _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(
 
 /* Player::St_Null_Init.  src/minigames/d_s_mg_trampoline2.cpp -- this class's state
    0x02123bf4 -- declares `struct Player { void St_Null_Init(); };` and calls
-   `func_ov006_020cedf0(c)->St_Null_Init()`, so MSVC wants
+   `TrmpItem_UpdateAll(c)->St_Null_Init()`, so MSVC wants
    ?St_Null_Init@Player@@QAEXXZ, __thiscall with the receiver in ecx.
 
    THE RECEIVER IS DROPPED ON PURPOSE AND THE ROM DROPS IT TOO.  The matched
-   body src/func_ov006_020cac30.cpp takes `(void)` -- it walks
+   body src/Trmp2Mario_UpdateAll.cpp takes `(void)` -- it walks
    data_ov006_02140554 for data_ov006_021405bc entries and then calls
-   func_ov006_020c8a64, and never reads a receiver.  On ARM the caller's r0 is
+   Puff_UpdateAll, and never reads a receiver.  On ARM the caller's r0 is
    simply not read.  So this is NOT the dropped-receiver disease
    port/mg_fanout_costs.txt warns about: there is no argument to lose, and the
    face is what lets MSVC's ecx-passing caller reach a body that takes none. */
 struct Player { void St_Null_Init(); };
-void Player::St_Null_Init() { func_ov006_020cac30(); }
+void Player::St_Null_Init() { Trmp2Mario_UpdateAll(); }
 
-/* TextureTransformer::SetFile.  src/func_ov006_020cecc0.cpp declares a local
+/* TextureTransformer::SetFile.  src/TrmpItem_Load.cpp declares a local
    `struct TextureTransformer { ...; void SetFile(BTA_File&, int, int, unsigned); }`
    and calls it on `c + 0x194`, so MSVC wants
    ?SetFile@TextureTransformer@@QAEXAAUBTA_File@@HHI@Z -- __thiscall, receiver
@@ -210,7 +210,7 @@ void TextureTransformer::SetFile(BTA_File &f, int a, int b, unsigned c)
 /* ModelAnim::SetAnim, THE void* SPELLING.  hal/bob_enemy_shadow_faces.cpp:88
    already carries this face with a `BCA_File *` first parameter, which MSVC
    mangles ?SetAnim@ModelAnim@@QAEXPAUBCA_File@@HHI@Z.  Two TUs in this closure
-   -- src/func_ov006_020c9c8c.cpp and src/func_ov006_020cc198.cpp -- declare their
+   -- src/Trmp2Mario_EnterState1.cpp and src/Trmp3DMario_PickIdleAnim.cpp -- declare their
    local ModelAnim with the first parameter as `void *`, so MSVC wants
    ?SetAnim@ModelAnim@@QAEXPAXHHI@Z instead.  Different mangled name, same body,
    same four stack arguments and the same receiver in ecx; the existing face
@@ -236,15 +236,15 @@ void TextureTransformer::SetFile(BTA_File &f, int a, int b, unsigned c)
 // callees from static closure, so retiring one of these costs its own slice
 // lines on top of the body.
 //
-//   func_ov006_020cf2fc  0x45c  void(char*)                 src/func_ov006_020d09e0.c
-//   func_ov006_020d01e0  0x800  void(short*,short*,short*)  src/func_ov006_020d0b78.c
-//   func_ov006_020d0c38  0x3ac  int(u16*,u16*)              src/minigames/d_s_mg_trampoline2.cpp
+//   TrmpLine_Draw  0x45c  void(char*)                 src/TrmpLine_DrawAll.c
+//   TrmpLine_Build  0x800  void(short*,short*,short*)  src/TrmpLine_CreateStartLineT2.c
+//   TrmpLine_Create  0x3ac  int(u16*,u16*)              src/minigames/d_s_mg_trampoline2.cpp
 //                                                           (THIS class's slot 23)
-//   func_ov006_020cfc74  0x56c  void(char*)                 src/func_ov006_020cfa44.c
+//   TrmpLine_PushJumper  0x56c  void(char*)                 src/TrmpLine_StateFlex.c
 //
 // THE THIRD ONE IS A PLAYER-FACING GAP AND IT IS NAMED AS ONE.  Slot 23
 // (OnAttacked2) packs the current and previous stylus points into four
-// halfwords and asks func_ov006_020d0c38 whether the stroke connected; the true
+// halfwords and asks TrmpLine_Create whether the stroke connected; the true
 // arm plays func_02012718(0x1af, ...) and the false arm plays
 // func_02012790(0xe).  A trap that returns 0 takes the false arm every time, so
 // on the port every stroke reads as a miss at that test.  The trap says so on
@@ -254,7 +254,7 @@ void TextureTransformer::SetFile(BTA_File &f, int a, int b, unsigned c)
 //
 // SECTION 4 IS HISTORY NOW.  All four of those bodies are seated -- the first
 // three by runs mg12/mg13 in unmatched/MgTrampolineTime_Floors.cpp's slice, and
-// the fourth, func_ov006_020cfc74, by run mg13 lane BOUNCE.  This file traps
+// the fourth, TrmpLine_PushJumper, by run mg13 lane BOUNCE.  This file traps
 // nothing.  The paragraph above is kept because it is the derivation of the
 // arities the seats use, not because any of it is still a floor.
 
@@ -271,14 +271,14 @@ void TextureTransformer::SetFile(BTA_File &f, int a, int b, unsigned c)
    below still come out of the same trap bodies; port_mg_shared_trap_counts is
    TTI's file handing them back, and the census this file feeds is unchanged.
 
-   The FOURTH trap stays here: func_ov006_020cfc74 is behind one of this
+   The FOURTH trap stays here: TrmpLine_PushJumper is behind one of this
    class's 3D-Mario states and only 0x181 reaches it. */
 
 
-/* THIS FILE'S OWN TRAP IS RETIRED.  It used to define func_ov006_020cfc74
+/* THIS FILE'S OWN TRAP IS RETIRED.  It used to define TrmpLine_PushJumper
    count-and-return, 0x56c, with no src and no delinks block, and run mg12 lane
    TRM had already read the listing and called it the bounce.  Run mg13 lane
-   BOUNCE decompiled it: src/func_ov006_020cfc74.c is a slice_tte.txt line now,
+   BOUNCE decompiled it: src/TrmpLine_PushJumper.c is a slice_tte.txt line now,
    an honest NONMATCHING seat at 8 divergences against 339 ROM code words with
    the size, the 8-word literal pool and all 28 call offsets exactly the ROM's,
    and with every one of those 8 divergences a permutation or a re-association
@@ -299,8 +299,8 @@ void TextureTransformer::SetFile(BTA_File &f, int a, int b, unsigned c)
 static const unsigned g_tte_trap_020cfc74 = 0;   /* RETIRED, see above */
 
 /* THE CHARACTER CENSUS, added with the seat by run mg13 lane BOUNCE.
-   src/func_ov006_020cfc74.c walks data_ov006_0214097c -- the up-to-five
-   character records func_ov006_020cae9c (stride 0xdc) and func_ov006_020cd658
+   src/TrmpLine_PushJumper.c walks data_ov006_0214097c -- the up-to-five
+   character records Trmp2Mario_InitPool (stride 0xdc) and Trmp3DMario_InitPool
    (stride 0xd0) register -- and writes each caught character's bounce state to
    its +0x18.  Without this readout a run in which nothing bounces cannot be told
    apart from a run in which nothing was ever REGISTERED, and those two want
@@ -313,11 +313,11 @@ extern unsigned char *data_ov006_0214097c[];
 extern unsigned char data_ov006_02140990[];      /* the four records, stride 0x32c */
 }
 
-/* THE GEOMETRY THE TEST ACTUALLY READS.  func_ov006_020cfc74 projects each
+/* THE GEOMETRY THE TEST ACTUALLY READS.  TrmpLine_PushJumper projects each
    character onto the record's two axes at +0x14 and +0x20, about the origin at
    +0x08, and tests against the segment that runs +/- the half-length at +0x58
    along the first axis.  Those four fields are written by the installer
-   func_ov006_020d01e0, not by the bounce, so printing them separates "the test
+   TrmpLine_Build, not by the bounce, so printing them separates "the test
    ran and nothing crossed" from "the test ran against a segment of length
    zero".  Plain memory reads of a symbol the ov006 mount already defines: no
    vtable is called and nothing is written. */
@@ -368,7 +368,7 @@ static void port_mg_tte_character_census(void)
                the record geometry above without calling a virtual. The record's
                segment sits at y = -720896 (1.12, so -176.0); a character whose
                words never reach that band never had a crossing to find. Read
-               only; 0xdc is the element stride func_ov006_020cae9c registers.
+               only; 0xdc is the element stride Trmp2Mario_InitPool registers.
                Behind SM64DS_TTE_CHARDUMP=1 because it is 55 words per character
                and this census prints on every scene-385 run. */
             if (std::getenv("SM64DS_TTE_CHARDUMP")) {
@@ -390,7 +390,7 @@ static void port_mg_tte_character_census(void)
                 "+0x324 and its caught count at +0x326 in the record readout "
                 "above, and the caught character's own +0x04..+0x0c axis with "
                 "+0x10 and +0x14 in the per-slot lines -- those are written by "
-                "the hit tail of func_ov006_020cfc74 and nothing else clears "
+                "the hit tail of TrmpLine_PushJumper and nothing else clears "
                 "them. Read those three, not this one\n", present, stated);
 }
 

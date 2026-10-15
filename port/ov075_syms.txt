@@ -100,30 +100,30 @@ data_ov075_0211d9bc
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov075_0211d384                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d38c                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d394                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d39c                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d3a4                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d3ac                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d3b4                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d3bc                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d3c4                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d3cc                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d3d4                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d3dc                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d3e4                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d3ec                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d3f4                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d3fc                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d404                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d40c                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d414                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d41c                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d424                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d42c                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d53c                        now defined by src/actors/dEntObj_c.cpp
-#   data_ov075_0211d56c                        now defined by src/actors/dEntObj_c.cpp
-#   g_profile_ENTRY_OBJECT                     now defined by src/actors/dEntObj_c.cpp
+#   data_ov075_0211d384                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d38c                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d394                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d39c                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d3a4                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d3ac                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d3b4                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d3bc                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d3c4                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d3cc                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d3d4                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d3dc                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d3e4                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d3ec                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d3f4                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d3fc                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d404                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d40c                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d414                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d41c                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d424                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d42c                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d53c                        now defined by src/game/stages/d_ent_obj.cpp
+#   data_ov075_0211d56c                        now defined by src/game/stages/d_ent_obj.cpp
+#   g_profile_ENTRY_OBJECT                     now defined by src/game/stages/d_ent_obj.cpp
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
 data_ov075_0211d3c4! data_ov075_0211d3fc! data_ov075_0211d3bc! data_ov075_0211d3ac! data_ov075_0211d42c! data_ov075_0211d3ec! data_ov075_0211d39c! data_ov075_0211d3f4! data_ov075_0211d404! data_ov075_0211d41c! data_ov075_0211d3d4! data_ov075_0211d394! data_ov075_0211d38c! data_ov075_0211d3a4! data_ov075_0211d3e4! data_ov075_0211d3dc! data_ov075_0211d40c! data_ov075_0211d384! data_ov075_0211d3b4! data_ov075_0211d3cc! data_ov075_0211d424! data_ov075_0211d414! data_ov075_0211d56c! data_ov075_0211d53c!

@@ -140,85 +140,85 @@
 // names: those are what the cartridge's relocations
 // name and what this port already resolves.
 extern "C" {
-void _ZN6Memory10DeallocateEPvP4Heap(void *ptr, void *heap);
+void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *ptr, void *heap);
 extern void *GAME_HEAP_PTR;
 }
 
-/* ROM 0x0212497c _ZN10dScMgBSC_cD0Ev -- batch 1, the inline ~dScMgBSC_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x0212497c _ZN10dScMgBSC_cD0Ev -- batch 1, the inline ~dScMgBSC_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN10dScMgBSC_cD0Ev(void *self)
-{ ((dScMgBSC_c *)self)->dScMgBSC_c::~dScMgBSC_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((dScMgBSC_c *)self)->dScMgBSC_c::~dScMgBSC_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02124908 _ZN10dScMgBSC_cD1Ev -- batch 1, the inline ~dScMgBSC_c() */
 extern "C" void _ZN10dScMgBSC_cD1Ev(void *self)
 { ((dScMgBSC_c *)self)->dScMgBSC_c::~dScMgBSC_c(); }
 
-/* ROM 0x020b076c _ZN10daCamTag_cD0Ev -- batch 1, the inline ~daCamTag_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020b076c _ZN10daCamTag_cD0Ev -- batch 1, the inline ~daCamTag_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN10daCamTag_cD0Ev(void *self)
-{ ((daCamTag_c *)self)->daCamTag_c::~daCamTag_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daCamTag_c *)self)->daCamTag_c::~daCamTag_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x020b081c _ZN10daChRoom_cD0Ev -- batch 1, the inline ~daChRoom_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020b081c _ZN10daChRoom_cD0Ev -- batch 1, the inline ~daChRoom_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN10daChRoom_cD0Ev(void *self)
-{ ((daChRoom_c *)self)->daChRoom_c::~daChRoom_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daChRoom_c *)self)->daChRoom_c::~daChRoom_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x021120a8 _ZN10daMcFlag_cD0Ev -- batch 1, the inline ~daMcFlag_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021120a8 _ZN10daMcFlag_cD0Ev -- batch 1, the inline ~daMcFlag_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN10daMcFlag_cD0Ev(void *self)
-{ ((daMcFlag_c *)self)->daMcFlag_c::~daMcFlag_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daMcFlag_c *)self)->daMcFlag_c::~daMcFlag_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x02111924 _ZN10daPgDfdr_cD0Ev -- batch 1, the inline ~daPgDfdr_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111924 _ZN10daPgDfdr_cD0Ev -- batch 1, the inline ~daPgDfdr_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN10daPgDfdr_cD0Ev(void *self)
-{ ((daPgDfdr_c *)self)->daPgDfdr_c::~daPgDfdr_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daPgDfdr_c *)self)->daPgDfdr_c::~daPgDfdr_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021118c8 _ZN10daPgDfdr_cD1Ev -- batch 1, the inline ~daPgDfdr_c() */
 extern "C" void _ZN10daPgDfdr_cD1Ev(void *self)
 { ((daPgDfdr_c *)self)->daPgDfdr_c::~daPgDfdr_c(); }
 
-/* ROM 0x02111898 _ZN10daPgMthr_cD0Ev -- batch 1, the inline ~daPgMthr_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111898 _ZN10daPgMthr_cD0Ev -- batch 1, the inline ~daPgMthr_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN10daPgMthr_cD0Ev(void *self)
-{ ((daPgMthr_c *)self)->daPgMthr_c::~daPgMthr_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daPgMthr_c *)self)->daPgMthr_c::~daPgMthr_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x02112640 _ZN10daSldMng_cD0Ev -- batch 1, the inline ~daSldMng_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02112640 _ZN10daSldMng_cD0Ev -- batch 1, the inline ~daSldMng_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN10daSldMng_cD0Ev(void *self)
-{ ((daSldMng_c *)self)->daSldMng_c::~daSldMng_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daSldMng_c *)self)->daSldMng_c::~daSldMng_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x020d9638 _ZN11dScMgCard_cD0Ev -- batch 1, the inline ~dScMgCard_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020d9638 _ZN11dScMgCard_cD0Ev -- batch 1, the inline ~dScMgCard_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN11dScMgCard_cD0Ev(void *self)
-{ ((dScMgCard_c *)self)->dScMgCard_c::~dScMgCard_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((dScMgCard_c *)self)->dScMgCard_c::~dScMgCard_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020d95a4 _ZN11dScMgCard_cD1Ev -- batch 1, the inline ~dScMgCard_c() */
 extern "C" void _ZN11dScMgCard_cD1Ev(void *self)
 { ((dScMgCard_c *)self)->dScMgCard_c::~dScMgCard_c(); }
 
-/* ROM 0x020b09d4 _ZN11daChScene_cD0Ev -- batch 1, the inline ~daChScene_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020b09d4 _ZN11daChScene_cD0Ev -- batch 1, the inline ~daChScene_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN11daChScene_cD0Ev(void *self)
-{ ((daChScene_c *)self)->daChScene_c::~daChScene_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daChScene_c *)self)->daChScene_c::~daChScene_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x020b5764 _ZN11daObjFire_cD0Ev -- batch 1, the inline ~daObjFire_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020b5764 _ZN11daObjFire_cD0Ev -- batch 1, the inline ~daObjFire_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN11daObjFire_cD0Ev(void *self)
-{ ((daObjFire_c *)self)->daObjFire_c::~daObjFire_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjFire_c *)self)->daObjFire_c::~daObjFire_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x021111d0 _ZN11daObjKumo_cD0Ev -- batch 1, the inline ~daObjKumo_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021111d0 _ZN11daObjKumo_cD0Ev -- batch 1, the inline ~daObjKumo_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN11daObjKumo_cD0Ev(void *self)
-{ ((daObjKumo_c *)self)->daObjKumo_c::~daObjKumo_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjKumo_c *)self)->daObjKumo_c::~daObjKumo_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x020b6d4c _ZN11daObjLava_cD0Ev -- batch 1, the inline ~daObjLava_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020b6d4c _ZN11daObjLava_cD0Ev -- batch 1, the inline ~daObjLava_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN11daObjLava_cD0Ev(void *self)
-{ ((daObjLava_c *)self)->daObjLava_c::~daObjLava_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjLava_c *)self)->daObjLava_c::~daObjLava_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020b6d28 _ZN11daObjLava_cD1Ev -- batch 1, the inline ~daObjLava_c() */
 extern "C" void _ZN11daObjLava_cD1Ev(void *self)
 { ((daObjLava_c *)self)->daObjLava_c::~daObjLava_c(); }
 
-/* ROM 0x020ec3b8 _ZN11daWarpkun_cD0Ev -- batch 1, the inline ~daWarpkun_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020ec3b8 _ZN11daWarpkun_cD0Ev -- batch 1, the inline ~daWarpkun_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN11daWarpkun_cD0Ev(void *self)
-{ ((daWarpkun_c *)self)->daWarpkun_c::~daWarpkun_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daWarpkun_c *)self)->daWarpkun_c::~daWarpkun_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020ec388 _ZN11daWarpkun_cD1Ev -- batch 1, the inline ~daWarpkun_c() */
 extern "C" void _ZN11daWarpkun_cD1Ev(void *self)
 { ((daWarpkun_c *)self)->daWarpkun_c::~daWarpkun_c(); }
 
-/* ROM 0x02119958 _ZN12dScMgSound_cD0Ev -- batch 1, the inline ~dScMgSound_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02119958 _ZN12dScMgSound_cD0Ev -- batch 1, the inline ~dScMgSound_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN12dScMgSound_cD0Ev(void *self)
-{ ((dScMgSound_c *)self)->dScMgSound_c::~dScMgSound_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((dScMgSound_c *)self)->dScMgSound_c::~dScMgSound_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02119904 _ZN12dScMgSound_cD1Ev -- batch 1, the inline ~dScMgSound_c() */
 extern "C" void _ZN12dScMgSound_cD1Ev(void *self)
@@ -228,45 +228,45 @@ extern "C" void _ZN12dScMgSound_cD1Ev(void *self)
 extern "C" void _ZN12daDossyCap_cD1Ev(void *self)
 { ((daDossyCap_c *)self)->daDossyCap_c::~daDossyCap_c(); }
 
-/* ROM 0x02111618 _ZN12daIDonketu_cD0Ev -- batch 1, the inline ~daIDonketu_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111618 _ZN12daIDonketu_cD0Ev -- batch 1, the inline ~daIDonketu_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN12daIDonketu_cD0Ev(void *self)
-{ ((daIDonketu_c *)self)->daIDonketu_c::~daIDonketu_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daIDonketu_c *)self)->daIDonketu_c::~daIDonketu_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021115c4 _ZN12daIDonketu_cD1Ev -- batch 1, the inline ~daIDonketu_c() */
 extern "C" void _ZN12daIDonketu_cD1Ev(void *self)
 { ((daIDonketu_c *)self)->daIDonketu_c::~daIDonketu_c(); }
 
-/* ROM 0x020b32c8 _ZN12daObjAbuku_cD0Ev -- batch 1, the inline ~daObjAbuku_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020b32c8 _ZN12daObjAbuku_cD0Ev -- batch 1, the inline ~daObjAbuku_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN12daObjAbuku_cD0Ev(void *self)
-{ ((daObjAbuku_c *)self)->daObjAbuku_c::~daObjAbuku_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjAbuku_c *)self)->daObjAbuku_c::~daObjAbuku_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020b3298 _ZN12daObjAbuku_cD1Ev -- batch 1, the inline ~daObjAbuku_c() */
 extern "C" void _ZN12daObjAbuku_cD1Ev(void *self)
 { ((daObjAbuku_c *)self)->daObjAbuku_c::~daObjAbuku_c(); }
 
-/* ROM 0x021113ec _ZN12daObjClock_cD0Ev -- batch 1, the inline ~daObjClock_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021113ec _ZN12daObjClock_cD0Ev -- batch 1, the inline ~daObjClock_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN12daObjClock_cD0Ev(void *self)
-{ ((daObjClock_c *)self)->daObjClock_c::~daObjClock_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjClock_c *)self)->daObjClock_c::~daObjClock_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x020f9370 _ZN12daSoundObj_cD0Ev -- batch 1, the inline ~daSoundObj_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020f9370 _ZN12daSoundObj_cD0Ev -- batch 1, the inline ~daSoundObj_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN12daSoundObj_cD0Ev(void *self)
-{ ((daSoundObj_c *)self)->daSoundObj_c::~daSoundObj_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daSoundObj_c *)self)->daSoundObj_c::~daSoundObj_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020f934c _ZN12daSoundObj_cD1Ev -- batch 1, the inline ~daSoundObj_c() */
 extern "C" void _ZN12daSoundObj_cD1Ev(void *self)
 { ((daSoundObj_c *)self)->daSoundObj_c::~daSoundObj_c(); }
 
-/* ROM 0x020b05bc _ZN13dScGameOver_cD0Ev -- batch 1, the inline ~dScGameOver_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020b05bc _ZN13dScGameOver_cD0Ev -- batch 1, the inline ~dScGameOver_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN13dScGameOver_cD0Ev(void *self)
-{ ((dScGameOver_c *)self)->dScGameOver_c::~dScGameOver_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((dScGameOver_c *)self)->dScGameOver_c::~dScGameOver_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020b0580 _ZN13dScGameOver_cD1Ev -- batch 1, the inline ~dScGameOver_c() */
 extern "C" void _ZN13dScGameOver_cD1Ev(void *self)
 { ((dScGameOver_c *)self)->dScGameOver_c::~dScGameOver_c(); }
 
-/* ROM 0x020f76a8 _ZN13dScMgMCarlo_cD0Ev -- batch 1, the inline ~dScMgMCarlo_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020f76a8 _ZN13dScMgMCarlo_cD0Ev -- batch 1, the inline ~dScMgMCarlo_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN13dScMgMCarlo_cD0Ev(void *self)
-{ ((dScMgMCarlo_c *)self)->dScMgMCarlo_c::~dScMgMCarlo_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((dScMgMCarlo_c *)self)->dScMgMCarlo_c::~dScMgMCarlo_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020f7634 _ZN13dScMgMCarlo_cD1Ev -- batch 1, the inline ~dScMgMCarlo_c() */
 extern "C" void _ZN13dScMgMCarlo_cD1Ev(void *self)
@@ -276,41 +276,41 @@ extern "C" void _ZN13dScMgMCarlo_cD1Ev(void *self)
 extern "C" void _ZN13daObjDorifu_cD1Ev(void *self)
 { ((daObjDorifu_c *)self)->daObjDorifu_c::~daObjDorifu_c(); }
 
-/* ROM 0x021111e4 _ZN13daObjEmmLog_cD0Ev -- batch 1, the inline ~daObjEmmLog_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021111e4 _ZN13daObjEmmLog_cD0Ev -- batch 1, the inline ~daObjEmmLog_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN13daObjEmmLog_cD0Ev(void *self)
-{ ((daObjEmmLog_c *)self)->daObjEmmLog_c::~daObjEmmLog_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjEmmLog_c *)self)->daObjEmmLog_c::~daObjEmmLog_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021111a0 _ZN13daObjEmmLog_cD1Ev -- batch 1, the inline ~daObjEmmLog_c() */
 extern "C" void _ZN13daObjEmmLog_cD1Ev(void *self)
 { ((daObjEmmLog_c *)self)->daObjEmmLog_c::~daObjEmmLog_c(); }
 
-/* ROM 0x021124ec _ZN13daObjTdFuta_cD0Ev -- batch 1, the inline ~daObjTdFuta_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021124ec _ZN13daObjTdFuta_cD0Ev -- batch 1, the inline ~daObjTdFuta_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN13daObjTdFuta_cD0Ev(void *self)
-{ ((daObjTdFuta_c *)self)->daObjTdFuta_c::~daObjTdFuta_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjTdFuta_c *)self)->daObjTdFuta_c::~daObjTdFuta_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021124a8 _ZN13daObjTdFuta_cD1Ev -- batch 1, the inline ~daObjTdFuta_c() */
 extern "C" void _ZN13daObjTdFuta_cD1Ev(void *self)
 { ((daObjTdFuta_c *)self)->daObjTdFuta_c::~daObjTdFuta_c(); }
 
-/* ROM 0x020bc444 _ZN13daObjWakame_cD0Ev -- batch 1, the inline ~daObjWakame_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020bc444 _ZN13daObjWakame_cD0Ev -- batch 1, the inline ~daObjWakame_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN13daObjWakame_cD0Ev(void *self)
-{ ((daObjWakame_c *)self)->daObjWakame_c::~daObjWakame_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjWakame_c *)self)->daObjWakame_c::~daObjWakame_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020bc414 _ZN13daObjWakame_cD1Ev -- batch 1, the inline ~daObjWakame_c() */
 extern "C" void _ZN13daObjWakame_cD1Ev(void *self)
 { ((daObjWakame_c *)self)->daObjWakame_c::~daObjWakame_c(); }
 
-/* ROM 0x020f8f68 _ZN14dScMgMCarlo2_cD0Ev -- batch 1, the inline ~dScMgMCarlo2_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020f8f68 _ZN14dScMgMCarlo2_cD0Ev -- batch 1, the inline ~dScMgMCarlo2_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN14dScMgMCarlo2_cD0Ev(void *self)
-{ ((dScMgMCarlo2_c *)self)->dScMgMCarlo2_c::~dScMgMCarlo2_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((dScMgMCarlo2_c *)self)->dScMgMCarlo2_c::~dScMgMCarlo2_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020f8ef4 _ZN14dScMgMCarlo2_cD1Ev -- batch 1, the inline ~dScMgMCarlo2_c() */
 extern "C" void _ZN14dScMgMCarlo2_cD1Ev(void *self)
 { ((dScMgMCarlo2_c *)self)->dScMgMCarlo2_c::~dScMgMCarlo2_c(); }
 
-/* ROM 0x021111f0 _ZN14daObjBSwdoor_cD0Ev -- batch 1, the inline ~daObjBSwdoor_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021111f0 _ZN14daObjBSwdoor_cD0Ev -- batch 1, the inline ~daObjBSwdoor_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN14daObjBSwdoor_cD0Ev(void *self)
-{ ((daObjBSwdoor_c *)self)->daObjBSwdoor_c::~daObjBSwdoor_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjBSwdoor_c *)self)->daObjBSwdoor_c::~daObjBSwdoor_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021111a0 _ZN14daObjBSwdoor_cD1Ev -- batch 1, the inline ~daObjBSwdoor_c() */
 extern "C" void _ZN14daObjBSwdoor_cD1Ev(void *self)
@@ -320,133 +320,133 @@ extern "C" void _ZN14daObjBSwdoor_cD1Ev(void *self)
 extern "C" void _ZN14daObjBk_Lift_cD1Ev(void *self)
 { ((daObjBk_Lift_c *)self)->daObjBk_Lift_c::~daObjBk_Lift_c(); }
 
-/* ROM 0x021111ec _ZN14daObjC1_Trap_cD0Ev -- batch 1, the inline ~daObjC1_Trap_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021111ec _ZN14daObjC1_Trap_cD0Ev -- batch 1, the inline ~daObjC1_Trap_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN14daObjC1_Trap_cD0Ev(void *self)
-{ ((daObjC1_Trap_c *)self)->daObjC1_Trap_c::~daObjC1_Trap_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjC1_Trap_c *)self)->daObjC1_Trap_c::~daObjC1_Trap_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021111a0 _ZN14daObjC1_Trap_cD1Ev -- batch 1, the inline ~daObjC1_Trap_c() */
 extern "C" void _ZN14daObjC1_Trap_cD1Ev(void *self)
 { ((daObjC1_Trap_c *)self)->daObjC1_Trap_c::~daObjC1_Trap_c(); }
 
-/* ROM 0x021111ec _ZN14daObjKsWater_cD0Ev -- batch 1, the inline ~daObjKsWater_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021111ec _ZN14daObjKsWater_cD0Ev -- batch 1, the inline ~daObjKsWater_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN14daObjKsWater_cD0Ev(void *self)
-{ ((daObjKsWater_c *)self)->daObjKsWater_c::~daObjKsWater_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjKsWater_c *)self)->daObjKsWater_c::~daObjKsWater_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021111a0 _ZN14daObjKsWater_cD1Ev -- batch 1, the inline ~daObjKsWater_c() */
 extern "C" void _ZN14daObjKsWater_cD1Ev(void *self)
 { ((daObjKsWater_c *)self)->daObjKsWater_c::~daObjKsWater_c(); }
 
-/* ROM 0x02111abc _ZN14daObjMcWater_cD0Ev -- batch 1, the inline ~daObjMcWater_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111abc _ZN14daObjMcWater_cD0Ev -- batch 1, the inline ~daObjMcWater_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN14daObjMcWater_cD0Ev(void *self)
-{ ((daObjMcWater_c *)self)->daObjMcWater_c::~daObjMcWater_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjMcWater_c *)self)->daObjMcWater_c::~daObjMcWater_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02111a70 _ZN14daObjMcWater_cD1Ev -- batch 1, the inline ~daObjMcWater_c() */
 extern "C" void _ZN14daObjMcWater_cD1Ev(void *self)
 { ((daObjMcWater_c *)self)->daObjMcWater_c::~daObjMcWater_c(); }
 
-/* ROM 0x021115b0 _ZN14daObjRc_Hane_cD0Ev -- batch 1, the inline ~daObjRc_Hane_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021115b0 _ZN14daObjRc_Hane_cD0Ev -- batch 1, the inline ~daObjRc_Hane_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN14daObjRc_Hane_cD0Ev(void *self)
-{ ((daObjRc_Hane_c *)self)->daObjRc_Hane_c::~daObjRc_Hane_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjRc_Hane_c *)self)->daObjRc_Hane_c::~daObjRc_Hane_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x021126e4 _ZN14daObjTdWater_cD0Ev -- batch 1, the inline ~daObjTdWater_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021126e4 _ZN14daObjTdWater_cD0Ev -- batch 1, the inline ~daObjTdWater_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN14daObjTdWater_cD0Ev(void *self)
-{ ((daObjTdWater_c *)self)->daObjTdWater_c::~daObjTdWater_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjTdWater_c *)self)->daObjTdWater_c::~daObjTdWater_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02112698 _ZN14daObjTdWater_cD1Ev -- batch 1, the inline ~daObjTdWater_c() */
 extern "C" void _ZN14daObjTdWater_cD1Ev(void *self)
 { ((daObjTdWater_c *)self)->daObjTdWater_c::~daObjTdWater_c(); }
 
-/* ROM 0x021111f0 _ZN14daObjWcObj01_cD0Ev -- batch 1, the inline ~daObjWcObj01_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021111f0 _ZN14daObjWcObj01_cD0Ev -- batch 1, the inline ~daObjWcObj01_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN14daObjWcObj01_cD0Ev(void *self)
-{ ((daObjWcObj01_c *)self)->daObjWcObj01_c::~daObjWcObj01_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjWcObj01_c *)self)->daObjWcObj01_c::~daObjWcObj01_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021111a0 _ZN14daObjWcObj01_cD1Ev -- batch 1, the inline ~daObjWcObj01_c() */
 extern "C" void _ZN14daObjWcObj01_cD1Ev(void *self)
 { ((daObjWcObj01_c *)self)->daObjWcObj01_c::~daObjWcObj01_c(); }
 
-/* ROM 0x02111ef4 _ZN14daObjWcObj06_cD0Ev -- batch 1, the inline ~daObjWcObj06_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111ef4 _ZN14daObjWcObj06_cD0Ev -- batch 1, the inline ~daObjWcObj06_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN14daObjWcObj06_cD0Ev(void *self)
-{ ((daObjWcObj06_c *)self)->daObjWcObj06_c::~daObjWcObj06_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjWcObj06_c *)self)->daObjWcObj06_c::~daObjWcObj06_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02111ea4 _ZN14daObjWcObj06_cD1Ev -- batch 1, the inline ~daObjWcObj06_c() */
 extern "C" void _ZN14daObjWcObj06_cD1Ev(void *self)
 { ((daObjWcObj06_c *)self)->daObjWcObj06_c::~daObjWcObj06_c(); }
 
-/* ROM 0x02107920 _ZN15dScMgRoulette_cD0Ev -- batch 2, the inline ~dScMgRoulette_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02107920 _ZN15dScMgRoulette_cD0Ev -- batch 2, the inline ~dScMgRoulette_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN15dScMgRoulette_cD0Ev(void *self)
-{ ((dScMgRoulette_c *)self)->dScMgRoulette_c::~dScMgRoulette_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((dScMgRoulette_c *)self)->dScMgRoulette_c::~dScMgRoulette_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x0210788c _ZN15dScMgRoulette_cD1Ev -- batch 2, the inline ~dScMgRoulette_c() */
 extern "C" void _ZN15dScMgRoulette_cD1Ev(void *self)
 { ((dScMgRoulette_c *)self)->dScMgRoulette_c::~dScMgRoulette_c(); }
 
-/* ROM 0x02112800 _ZN15daObjIceBoard_cD0Ev -- batch 2, the inline ~daObjIceBoard_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02112800 _ZN15daObjIceBoard_cD0Ev -- batch 2, the inline ~daObjIceBoard_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN15daObjIceBoard_cD0Ev(void *self)
-{ ((daObjIceBoard_c *)self)->daObjIceBoard_c::~daObjIceBoard_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjIceBoard_c *)self)->daObjIceBoard_c::~daObjIceBoard_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021127bc _ZN15daObjIceBoard_cD1Ev -- batch 2, the inline ~daObjIceBoard_c() */
 extern "C" void _ZN15daObjIceBoard_cD1Ev(void *self)
 { ((daObjIceBoard_c *)self)->daObjIceBoard_c::~daObjIceBoard_c(); }
 
-/* ROM 0x02111c80 _ZN15daObjKm2_Gura_cD0Ev -- batch 2, the inline ~daObjKm2_Gura_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111c80 _ZN15daObjKm2_Gura_cD0Ev -- batch 2, the inline ~daObjKm2_Gura_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN15daObjKm2_Gura_cD0Ev(void *self)
-{ ((daObjKm2_Gura_c *)self)->daObjKm2_Gura_c::~daObjKm2_Gura_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjKm2_Gura_c *)self)->daObjKm2_Gura_c::~daObjKm2_Gura_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02111c30 _ZN15daObjKm2_Gura_cD1Ev -- batch 2, the inline ~daObjKm2_Gura_c() */
 extern "C" void _ZN15daObjKm2_Gura_cD1Ev(void *self)
 { ((daObjKm2_Gura_c *)self)->daObjKm2_Gura_c::~daObjKm2_Gura_c(); }
 
-/* ROM 0x020b6f68 _ZN15daObjMarioCap_cD0Ev -- batch 2, the inline ~daObjMarioCap_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020b6f68 _ZN15daObjMarioCap_cD0Ev -- batch 2, the inline ~daObjMarioCap_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN15daObjMarioCap_cD0Ev(void *self)
-{ ((daObjMarioCap_c *)self)->daObjMarioCap_c::~daObjMarioCap_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjMarioCap_c *)self)->daObjMarioCap_c::~daObjMarioCap_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020b6f18 _ZN15daObjMarioCap_cD1Ev -- batch 2, the inline ~daObjMarioCap_c() */
 extern "C" void _ZN15daObjMarioCap_cD1Ev(void *self)
 { ((daObjMarioCap_c *)self)->daObjMarioCap_c::~daObjMarioCap_c(); }
 
-/* ROM 0x02146dec _ZN15daObjPathLift_cD0Ev -- batch 2, the inline ~daObjPathLift_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02146dec _ZN15daObjPathLift_cD0Ev -- batch 2, the inline ~daObjPathLift_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN15daObjPathLift_cD0Ev(void *self)
-{ ((daObjPathLift_c *)self)->daObjPathLift_c::~daObjPathLift_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjPathLift_c *)self)->daObjPathLift_c::~daObjPathLift_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02146d7c _ZN15daObjPathLift_cD1Ev -- batch 2, the inline ~daObjPathLift_c() */
 extern "C" void _ZN15daObjPathLift_cD1Ev(void *self)
 { ((daObjPathLift_c *)self)->daObjPathLift_c::~daObjPathLift_c(); }
 
-/* ROM 0x021121c8 _ZN15daObjRcCarpet_cD0Ev -- batch 2, the inline ~daObjRcCarpet_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021121c8 _ZN15daObjRcCarpet_cD0Ev -- batch 2, the inline ~daObjRcCarpet_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN15daObjRcCarpet_cD0Ev(void *self)
-{ ((daObjRcCarpet_c *)self)->daObjRcCarpet_c::~daObjRcCarpet_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjRcCarpet_c *)self)->daObjRcCarpet_c::~daObjRcCarpet_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02112158 _ZN15daObjRcCarpet_cD1Ev -- batch 2, the inline ~daObjRcCarpet_c() */
 extern "C" void _ZN15daObjRcCarpet_cD1Ev(void *self)
 { ((daObjRcCarpet_c *)self)->daObjRcCarpet_c::~daObjRcCarpet_c(); }
 
-/* ROM 0x021113c0 _ZN15daObjWc_Obj02_cD0Ev -- batch 2, the inline ~daObjWc_Obj02_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021113c0 _ZN15daObjWc_Obj02_cD0Ev -- batch 2, the inline ~daObjWc_Obj02_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN15daObjWc_Obj02_cD0Ev(void *self)
-{ ((daObjWc_Obj02_c *)self)->daObjWc_Obj02_c::~daObjWc_Obj02_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjWc_Obj02_c *)self)->daObjWc_Obj02_c::~daObjWc_Obj02_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x0211137c _ZN15daObjWc_Obj02_cD1Ev -- batch 2, the inline ~daObjWc_Obj02_c() */
 extern "C" void _ZN15daObjWc_Obj02_cD1Ev(void *self)
 { ((daObjWc_Obj02_c *)self)->daObjWc_Obj02_c::~daObjWc_Obj02_c(); }
 
-/* ROM 0x02111b08 _ZN15daObjWc_Obj05_cD0Ev -- batch 2, the inline ~daObjWc_Obj05_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111b08 _ZN15daObjWc_Obj05_cD0Ev -- batch 2, the inline ~daObjWc_Obj05_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN15daObjWc_Obj05_cD0Ev(void *self)
-{ ((daObjWc_Obj05_c *)self)->daObjWc_Obj05_c::~daObjWc_Obj05_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjWc_Obj05_c *)self)->daObjWc_Obj05_c::~daObjWc_Obj05_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02111ac4 _ZN15daObjWc_Obj05_cD1Ev -- batch 2, the inline ~daObjWc_Obj05_c() */
 extern "C" void _ZN15daObjWc_Obj05_cD1Ev(void *self)
 { ((daObjWc_Obj05_c *)self)->daObjWc_Obj05_c::~daObjWc_Obj05_c(); }
 
-/* ROM 0x021120d0 _ZN15daObjWc_Obj07_cD0Ev -- batch 2, the inline ~daObjWc_Obj07_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021120d0 _ZN15daObjWc_Obj07_cD0Ev -- batch 2, the inline ~daObjWc_Obj07_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN15daObjWc_Obj07_cD0Ev(void *self)
-{ ((daObjWc_Obj07_c *)self)->daObjWc_Obj07_c::~daObjWc_Obj07_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjWc_Obj07_c *)self)->daObjWc_Obj07_c::~daObjWc_Obj07_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02112080 _ZN15daObjWc_Obj07_cD1Ev -- batch 2, the inline ~daObjWc_Obj07_c() */
 extern "C" void _ZN15daObjWc_Obj07_cD1Ev(void *self)
 { ((daObjWc_Obj07_c *)self)->daObjWc_Obj07_c::~daObjWc_Obj07_c(); }
 
-/* ROM 0x02115f28 _ZN15daYurei_Mucho_cD0Ev -- batch 2, the inline ~daYurei_Mucho_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02115f28 _ZN15daYurei_Mucho_cD0Ev -- batch 2, the inline ~daYurei_Mucho_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN15daYurei_Mucho_cD0Ev(void *self)
-{ ((daYurei_Mucho_c *)self)->daYurei_Mucho_c::~daYurei_Mucho_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daYurei_Mucho_c *)self)->daYurei_Mucho_c::~daYurei_Mucho_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02115ee0 _ZN15daYurei_Mucho_cD1Ev -- batch 2, the inline ~daYurei_Mucho_c() */
 extern "C" void _ZN15daYurei_Mucho_cD1Ev(void *self)
@@ -456,113 +456,113 @@ extern "C" void _ZN15daYurei_Mucho_cD1Ev(void *self)
 extern "C" void _ZN16dPathLiftActor_cD1Ev(void *self)
 { ((dPathLiftActor_c *)self)->dPathLiftActor_c::~dPathLiftActor_c(); }
 
-/* ROM 0x020f11f4 _ZN16daObjBC_Switch_cD0Ev -- batch 2, the inline ~daObjBC_Switch_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020f11f4 _ZN16daObjBC_Switch_cD0Ev -- batch 2, the inline ~daObjBC_Switch_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN16daObjBC_Switch_cD0Ev(void *self)
-{ ((daObjBC_Switch_c *)self)->daObjBC_Switch_c::~daObjBC_Switch_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjBC_Switch_c *)self)->daObjBC_Switch_c::~daObjBC_Switch_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020f11b0 _ZN16daObjBC_Switch_cD1Ev -- batch 2, the inline ~daObjBC_Switch_c() */
 extern "C" void _ZN16daObjBC_Switch_cD1Ev(void *self)
 { ((daObjBC_Switch_c *)self)->daObjBC_Switch_c::~daObjBC_Switch_c(); }
 
-/* ROM 0x021111e4 _ZN16daObjC0_Switch_cD0Ev -- batch 2, the inline ~daObjC0_Switch_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021111e4 _ZN16daObjC0_Switch_cD0Ev -- batch 2, the inline ~daObjC0_Switch_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN16daObjC0_Switch_cD0Ev(void *self)
-{ ((daObjC0_Switch_c *)self)->daObjC0_Switch_c::~daObjC0_Switch_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjC0_Switch_c *)self)->daObjC0_Switch_c::~daObjC0_Switch_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021111a0 _ZN16daObjC0_Switch_cD1Ev -- batch 2, the inline ~daObjC0_Switch_c() */
 extern "C" void _ZN16daObjC0_Switch_cD1Ev(void *self)
 { ((daObjC0_Switch_c *)self)->daObjC0_Switch_c::~daObjC0_Switch_c(); }
 
-/* ROM 0x02119f88 _ZN16daObjCtMecha03_cD0Ev -- batch 2, the inline ~daObjCtMecha03_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02119f88 _ZN16daObjCtMecha03_cD0Ev -- batch 2, the inline ~daObjCtMecha03_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN16daObjCtMecha03_cD0Ev(void *self)
-{ ((daObjCtMecha03_c *)self)->daObjCtMecha03_c::~daObjCtMecha03_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjCtMecha03_c *)self)->daObjCtMecha03_c::~daObjCtMecha03_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02119f3c _ZN16daObjCtMecha03_cD1Ev -- batch 2, the inline ~daObjCtMecha03_c() */
 extern "C" void _ZN16daObjCtMecha03_cD1Ev(void *self)
 { ((daObjCtMecha03_c *)self)->daObjCtMecha03_c::~daObjCtMecha03_c(); }
 
-/* ROM 0x0211a4e8 _ZN16daObjCtMecha04_cD0Ev -- batch 2, the inline ~daObjCtMecha04_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x0211a4e8 _ZN16daObjCtMecha04_cD0Ev -- batch 2, the inline ~daObjCtMecha04_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN16daObjCtMecha04_cD0Ev(void *self)
-{ ((daObjCtMecha04_c *)self)->daObjCtMecha04_c::~daObjCtMecha04_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjCtMecha04_c *)self)->daObjCtMecha04_c::~daObjCtMecha04_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x0211a494 _ZN16daObjCtMecha04_cD1Ev -- batch 2, the inline ~daObjCtMecha04_c() */
 extern "C" void _ZN16daObjCtMecha04_cD1Ev(void *self)
 { ((daObjCtMecha04_c *)self)->daObjCtMecha04_c::~daObjCtMecha04_c(); }
 
-/* ROM 0x0211abac _ZN16daObjCtMecha05_cD0Ev -- batch 2, the inline ~daObjCtMecha05_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x0211abac _ZN16daObjCtMecha05_cD0Ev -- batch 2, the inline ~daObjCtMecha05_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN16daObjCtMecha05_cD0Ev(void *self)
-{ ((daObjCtMecha05_c *)self)->daObjCtMecha05_c::~daObjCtMecha05_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjCtMecha05_c *)self)->daObjCtMecha05_c::~daObjCtMecha05_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x0211ab60 _ZN16daObjCtMecha05_cD1Ev -- batch 2, the inline ~daObjCtMecha05_c() */
 extern "C" void _ZN16daObjCtMecha05_cD1Ev(void *self)
 { ((daObjCtMecha05_c *)self)->daObjCtMecha05_c::~daObjCtMecha05_c(); }
 
-/* ROM 0x02112e04 _ZN16daObjCvShutter_cD0Ev -- batch 2, the inline ~daObjCvShutter_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02112e04 _ZN16daObjCvShutter_cD0Ev -- batch 2, the inline ~daObjCvShutter_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN16daObjCvShutter_cD0Ev(void *self)
-{ ((daObjCvShutter_c *)self)->daObjCvShutter_c::~daObjCvShutter_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjCvShutter_c *)self)->daObjCvShutter_c::~daObjCvShutter_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02112db4 _ZN16daObjCvShutter_cD1Ev -- batch 2, the inline ~daObjCvShutter_c() */
 extern "C" void _ZN16daObjCvShutter_cD1Ev(void *self)
 { ((daObjCvShutter_c *)self)->daObjCvShutter_c::~daObjCvShutter_c(); }
 
-/* ROM 0x021119c4 _ZN16daObjFl_London_cD0Ev -- batch 2, the inline ~daObjFl_London_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021119c4 _ZN16daObjFl_London_cD0Ev -- batch 2, the inline ~daObjFl_London_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN16daObjFl_London_cD0Ev(void *self)
-{ ((daObjFl_London_c *)self)->daObjFl_London_c::~daObjFl_London_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjFl_London_c *)self)->daObjFl_London_c::~daObjFl_London_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02111980 _ZN16daObjFl_London_cD1Ev -- batch 2, the inline ~daObjFl_London_c() */
 extern "C" void _ZN16daObjFl_London_cD1Ev(void *self)
 { ((daObjFl_London_c *)self)->daObjFl_London_c::~daObjFl_London_c(); }
 
-/* ROM 0x021111ec _ZN16daObjFm_Battan_cD0Ev -- batch 2, the inline ~daObjFm_Battan_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021111ec _ZN16daObjFm_Battan_cD0Ev -- batch 2, the inline ~daObjFm_Battan_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN16daObjFm_Battan_cD0Ev(void *self)
-{ ((daObjFm_Battan_c *)self)->daObjFm_Battan_c::~daObjFm_Battan_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjFm_Battan_c *)self)->daObjFm_Battan_c::~daObjFm_Battan_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021111a0 _ZN16daObjFm_Battan_cD1Ev -- batch 2, the inline ~daObjFm_Battan_c() */
 extern "C" void _ZN16daObjFm_Battan_cD1Ev(void *self)
 { ((daObjFm_Battan_c *)self)->daObjFm_Battan_c::~daObjFm_Battan_c(); }
 
-/* ROM 0x020b46d0 _ZN16daObjKinokoTag_cD0Ev -- batch 2, the inline ~daObjKinokoTag_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020b46d0 _ZN16daObjKinokoTag_cD0Ev -- batch 2, the inline ~daObjKinokoTag_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN16daObjKinokoTag_cD0Ev(void *self)
-{ ((daObjKinokoTag_c *)self)->daObjKinokoTag_c::~daObjKinokoTag_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjKinokoTag_c *)self)->daObjKinokoTag_c::~daObjKinokoTag_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x020b8c3c _ZN16daObjPushblock_cD0Ev -- batch 2, the inline ~daObjPushblock_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020b8c3c _ZN16daObjPushblock_cD0Ev -- batch 2, the inline ~daObjPushblock_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN16daObjPushblock_cD0Ev(void *self)
-{ ((daObjPushblock_c *)self)->daObjPushblock_c::~daObjPushblock_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjPushblock_c *)self)->daObjPushblock_c::~daObjPushblock_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020b8bf0 _ZN16daObjPushblock_cD1Ev -- batch 2, the inline ~daObjPushblock_c() */
 extern "C" void _ZN16daObjPushblock_cD1Ev(void *self)
 { ((daObjPushblock_c *)self)->daObjPushblock_c::~daObjPushblock_c(); }
 
-/* ROM 0x021111e4 _ZN16daObjRcBuranko_cD0Ev -- batch 2, the inline ~daObjRcBuranko_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021111e4 _ZN16daObjRcBuranko_cD0Ev -- batch 2, the inline ~daObjRcBuranko_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN16daObjRcBuranko_cD0Ev(void *self)
-{ ((daObjRcBuranko_c *)self)->daObjRcBuranko_c::~daObjRcBuranko_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjRcBuranko_c *)self)->daObjRcBuranko_c::~daObjRcBuranko_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021111a0 _ZN16daObjRcBuranko_cD1Ev -- batch 2, the inline ~daObjRcBuranko_c() */
 extern "C" void _ZN16daObjRcBuranko_cD1Ev(void *self)
 { ((daObjRcBuranko_c *)self)->daObjRcBuranko_c::~daObjRcBuranko_c(); }
 
-/* ROM 0x0211200c _ZN16daObjRc_Dorifu_cD0Ev -- batch 2, the inline ~daObjRc_Dorifu_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x0211200c _ZN16daObjRc_Dorifu_cD0Ev -- batch 2, the inline ~daObjRc_Dorifu_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN16daObjRc_Dorifu_cD0Ev(void *self)
-{ ((daObjRc_Dorifu_c *)self)->daObjRc_Dorifu_c::~daObjRc_Dorifu_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjRc_Dorifu_c *)self)->daObjRc_Dorifu_c::~daObjRc_Dorifu_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02111f8c _ZN16daObjRc_Dorifu_cD1Ev -- batch 2, the inline ~daObjRc_Dorifu_c() */
 extern "C" void _ZN16daObjRc_Dorifu_cD1Ev(void *self)
 { ((daObjRc_Dorifu_c *)self)->daObjRc_Dorifu_c::~daObjRc_Dorifu_c(); }
 
-/* ROM 0x020b6e2c _ZN16daObjWaterfall_cD0Ev -- batch 2, the inline ~daObjWaterfall_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020b6e2c _ZN16daObjWaterfall_cD0Ev -- batch 2, the inline ~daObjWaterfall_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN16daObjWaterfall_cD0Ev(void *self)
-{ ((daObjWaterfall_c *)self)->daObjWaterfall_c::~daObjWaterfall_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjWaterfall_c *)self)->daObjWaterfall_c::~daObjWaterfall_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x02120880 _ZN17dScMgTrampoline_cD0Ev -- batch 2, the inline ~dScMgTrampoline_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02120880 _ZN17dScMgTrampoline_cD0Ev -- batch 2, the inline ~dScMgTrampoline_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN17dScMgTrampoline_cD0Ev(void *self)
-{ ((dScMgTrampoline_c *)self)->dScMgTrampoline_c::~dScMgTrampoline_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((dScMgTrampoline_c *)self)->dScMgTrampoline_c::~dScMgTrampoline_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021207dc _ZN17dScMgTrampoline_cD1Ev -- batch 2, the inline ~dScMgTrampoline_c() */
 extern "C" void _ZN17dScMgTrampoline_cD1Ev(void *self)
 { ((dScMgTrampoline_c *)self)->dScMgTrampoline_c::~dScMgTrampoline_c(); }
 
-/* ROM 0x02112988 _ZN17daObjBk_Rotebar_cD0Ev -- batch 2, the inline ~daObjBk_Rotebar_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02112988 _ZN17daObjBk_Rotebar_cD0Ev -- batch 2, the inline ~daObjBk_Rotebar_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN17daObjBk_Rotebar_cD0Ev(void *self)
-{ ((daObjBk_Rotebar_c *)self)->daObjBk_Rotebar_c::~daObjBk_Rotebar_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjBk_Rotebar_c *)self)->daObjBk_Rotebar_c::~daObjBk_Rotebar_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02112944 _ZN17daObjBk_Rotebar_cD1Ev -- batch 2, the inline ~daObjBk_Rotebar_c() */
 extern "C" void _ZN17daObjBk_Rotebar_cD1Ev(void *self)
@@ -572,25 +572,25 @@ extern "C" void _ZN17daObjBk_Rotebar_cD1Ev(void *self)
 extern "C" void _ZN17daObjBk_Ukisima_cD1Ev(void *self)
 { ((daObjBk_Ukisima_c *)self)->daObjBk_Ukisima_c::~daObjBk_Ukisima_c(); }
 
-/* ROM 0x021116b0 _ZN17daObjKm1_Dorifu_cD0Ev -- batch 2, the inline ~daObjKm1_Dorifu_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021116b0 _ZN17daObjKm1_Dorifu_cD0Ev -- batch 2, the inline ~daObjKm1_Dorifu_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN17daObjKm1_Dorifu_cD0Ev(void *self)
-{ ((daObjKm1_Dorifu_c *)self)->daObjKm1_Dorifu_c::~daObjKm1_Dorifu_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjKm1_Dorifu_c *)self)->daObjKm1_Dorifu_c::~daObjKm1_Dorifu_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02111630 _ZN17daObjKm1_Dorifu_cD1Ev -- batch 2, the inline ~daObjKm1_Dorifu_c() */
 extern "C" void _ZN17daObjKm1_Dorifu_cD1Ev(void *self)
 { ((daObjKm1_Dorifu_c *)self)->daObjKm1_Dorifu_c::~daObjKm1_Dorifu_c(); }
 
-/* ROM 0x02111590 _ZN17daObjKm3_Dorifu_cD0Ev -- batch 2, the inline ~daObjKm3_Dorifu_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111590 _ZN17daObjKm3_Dorifu_cD0Ev -- batch 2, the inline ~daObjKm3_Dorifu_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN17daObjKm3_Dorifu_cD0Ev(void *self)
-{ ((daObjKm3_Dorifu_c *)self)->daObjKm3_Dorifu_c::~daObjKm3_Dorifu_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjKm3_Dorifu_c *)self)->daObjKm3_Dorifu_c::~daObjKm3_Dorifu_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02111510 _ZN17daObjKm3_Dorifu_cD1Ev -- batch 2, the inline ~daObjKm3_Dorifu_c() */
 extern "C" void _ZN17daObjKm3_Dorifu_cD1Ev(void *self)
 { ((daObjKm3_Dorifu_c *)self)->daObjKm3_Dorifu_c::~daObjKm3_Dorifu_c(); }
 
-/* ROM 0x02111448 _ZN17daObjKm3_Kuruma_cD0Ev -- batch 2, the inline ~daObjKm3_Kuruma_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111448 _ZN17daObjKm3_Kuruma_cD0Ev -- batch 2, the inline ~daObjKm3_Kuruma_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN17daObjKm3_Kuruma_cD0Ev(void *self)
-{ ((daObjKm3_Kuruma_c *)self)->daObjKm3_Kuruma_c::~daObjKm3_Kuruma_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjKm3_Kuruma_c *)self)->daObjKm3_Kuruma_c::~daObjKm3_Kuruma_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021113f8 _ZN17daObjKm3_Kuruma_cD1Ev -- batch 2, the inline ~daObjKm3_Kuruma_c() */
 extern "C" void _ZN17daObjKm3_Kuruma_cD1Ev(void *self)
@@ -600,29 +600,29 @@ extern "C" void _ZN17daObjKm3_Kuruma_cD1Ev(void *self)
 extern "C" void _ZN18daObjBkBillboard_cD1Ev(void *self)
 { ((daObjBkBillboard_c *)self)->daObjBkBillboard_c::~daObjBkBillboard_c(); }
 
-/* ROM 0x021111d0 _ZN18daObjClockHuriko_cD0Ev -- batch 2, the inline ~daObjClockHuriko_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021111d0 _ZN18daObjClockHuriko_cD0Ev -- batch 2, the inline ~daObjClockHuriko_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN18daObjClockHuriko_cD0Ev(void *self)
-{ ((daObjClockHuriko_c *)self)->daObjClockHuriko_c::~daObjClockHuriko_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjClockHuriko_c *)self)->daObjClockHuriko_c::~daObjClockHuriko_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021111a0 _ZN18daObjClockHuriko_cD1Ev -- batch 2, the inline ~daObjClockHuriko_c() */
 extern "C" void _ZN18daObjClockHuriko_cD1Ev(void *self)
 { ((daObjClockHuriko_c *)self)->daObjClockHuriko_c::~daObjClockHuriko_c(); }
 
-/* ROM 0x021111d0 _ZN18daObjHsBillboard_cD0Ev -- batch 2, the inline ~daObjHsBillboard_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021111d0 _ZN18daObjHsBillboard_cD0Ev -- batch 2, the inline ~daObjHsBillboard_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN18daObjHsBillboard_cD0Ev(void *self)
-{ ((daObjHsBillboard_c *)self)->daObjHsBillboard_c::~daObjHsBillboard_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjHsBillboard_c *)self)->daObjHsBillboard_c::~daObjHsBillboard_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x02111a08 _ZN15daObjC1Hikari_cD0Ev -- batch 3, the inline ~daObjC1Hikari_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111a08 _ZN15daObjC1Hikari_cD0Ev -- batch 3, the inline ~daObjC1Hikari_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN15daObjC1Hikari_cD0Ev(void *self)
-{ ((daObjC1Hikari_c *)self)->daObjC1Hikari_c::~daObjC1Hikari_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjC1Hikari_c *)self)->daObjC1Hikari_c::~daObjC1Hikari_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020badd0 _ZN15daObjTatefuda_cD1Ev -- batch 3, the inline ~daObjTatefuda_c() */
 extern "C" void _ZN15daObjTatefuda_cD1Ev(void *self)
 { ((daObjTatefuda_c *)self)->daObjTatefuda_c::~daObjTatefuda_c(); }
 
-/* ROM 0x021226b0 _ZN18dScMgTrampoline2_cD0Ev -- batch 3, the inline ~dScMgTrampoline2_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021226b0 _ZN18dScMgTrampoline2_cD0Ev -- batch 3, the inline ~dScMgTrampoline2_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN18dScMgTrampoline2_cD0Ev(void *self)
-{ ((dScMgTrampoline2_c *)self)->dScMgTrampoline2_c::~dScMgTrampoline2_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((dScMgTrampoline2_c *)self)->dScMgTrampoline2_c::~dScMgTrampoline2_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021225ac _ZN18dScMgTrampoline2_cD1Ev -- batch 3, the inline ~dScMgTrampoline2_c() */
 extern "C" void _ZN18dScMgTrampoline2_cD1Ev(void *self)
@@ -632,77 +632,77 @@ extern "C" void _ZN18dScMgTrampoline2_cD1Ev(void *self)
 extern "C" void _ZN18daObjKm2_Ami_Bou_cD1Ev(void *self)
 { ((daObjKm2_Ami_Bou_c *)self)->daObjKm2_Ami_Bou_c::~daObjKm2_Ami_Bou_c(); }
 
-/* ROM 0x02111e08 _ZN18daObjMc_Metalnet_cD0Ev -- batch 3, the inline ~daObjMc_Metalnet_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111e08 _ZN18daObjMc_Metalnet_cD0Ev -- batch 3, the inline ~daObjMc_Metalnet_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN18daObjMc_Metalnet_cD0Ev(void *self)
-{ ((daObjMc_Metalnet_c *)self)->daObjMc_Metalnet_c::~daObjMc_Metalnet_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjMc_Metalnet_c *)self)->daObjMc_Metalnet_c::~daObjMc_Metalnet_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02111dc4 _ZN18daObjMc_Metalnet_cD1Ev -- batch 3, the inline ~daObjMc_Metalnet_c() */
 extern "C" void _ZN18daObjMc_Metalnet_cD1Ev(void *self)
 { ((daObjMc_Metalnet_c *)self)->daObjMc_Metalnet_c::~daObjMc_Metalnet_c(); }
 
-/* ROM 0x02111d58 _ZN18daObjRc_Guruguru_cD0Ev -- batch 3, the inline ~daObjRc_Guruguru_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111d58 _ZN18daObjRc_Guruguru_cD0Ev -- batch 3, the inline ~daObjRc_Guruguru_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN18daObjRc_Guruguru_cD0Ev(void *self)
-{ ((daObjRc_Guruguru_c *)self)->daObjRc_Guruguru_c::~daObjRc_Guruguru_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjRc_Guruguru_c *)self)->daObjRc_Guruguru_c::~daObjRc_Guruguru_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02111d14 _ZN18daObjRc_Guruguru_cD1Ev -- batch 3, the inline ~daObjRc_Guruguru_c() */
 extern "C" void _ZN18daObjRc_Guruguru_cD1Ev(void *self)
 { ((daObjRc_Guruguru_c *)self)->daObjRc_Guruguru_c::~daObjRc_Guruguru_c(); }
 
-/* ROM 0x02111be4 _ZN19daObjBk_Dossunbar_cD0Ev -- batch 3, the inline ~daObjBk_Dossunbar_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111be4 _ZN19daObjBk_Dossunbar_cD0Ev -- batch 3, the inline ~daObjBk_Dossunbar_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN19daObjBk_Dossunbar_cD0Ev(void *self)
-{ ((daObjBk_Dossunbar_c *)self)->daObjBk_Dossunbar_c::~daObjBk_Dossunbar_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjBk_Dossunbar_c *)self)->daObjBk_Dossunbar_c::~daObjBk_Dossunbar_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02111ba0 _ZN19daObjBk_Dossunbar_cD1Ev -- batch 3, the inline ~daObjBk_Dossunbar_c() */
 extern "C" void _ZN19daObjBk_Dossunbar_cD1Ev(void *self)
 { ((daObjBk_Dossunbar_c *)self)->daObjBk_Dossunbar_c::~daObjBk_Dossunbar_c(); }
 
-/* ROM 0x020b4f44 _ZN19daObjHatenaSwitch_cD0Ev -- batch 3, the inline ~daObjHatenaSwitch_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020b4f44 _ZN19daObjHatenaSwitch_cD0Ev -- batch 3, the inline ~daObjHatenaSwitch_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN19daObjHatenaSwitch_cD0Ev(void *self)
-{ ((daObjHatenaSwitch_c *)self)->daObjHatenaSwitch_c::~daObjHatenaSwitch_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjHatenaSwitch_c *)self)->daObjHatenaSwitch_c::~daObjHatenaSwitch_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020b4ed8 _ZN19daObjHatenaSwitch_cD1Ev -- batch 3, the inline ~daObjHatenaSwitch_c() */
 extern "C" void _ZN19daObjHatenaSwitch_cD1Ev(void *self)
 { ((daObjHatenaSwitch_c *)self)->daObjHatenaSwitch_c::~daObjHatenaSwitch_c(); }
 
-/* ROM 0x021111d0 _ZN19daObjKb1Billboard_cD0Ev -- batch 3, the inline ~daObjKb1Billboard_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021111d0 _ZN19daObjKb1Billboard_cD0Ev -- batch 3, the inline ~daObjKb1Billboard_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN19daObjKb1Billboard_cD0Ev(void *self)
-{ ((daObjKb1Billboard_c *)self)->daObjKb1Billboard_c::~daObjKb1Billboard_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjKb1Billboard_c *)self)->daObjKb1Billboard_c::~daObjKb1Billboard_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x021111e4 _ZN19daObjKm1_Ukishima_cD0Ev -- batch 3, the inline ~daObjKm1_Ukishima_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021111e4 _ZN19daObjKm1_Ukishima_cD0Ev -- batch 3, the inline ~daObjKm1_Ukishima_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN19daObjKm1_Ukishima_cD0Ev(void *self)
-{ ((daObjKm1_Ukishima_c *)self)->daObjKm1_Ukishima_c::~daObjKm1_Ukishima_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjKm1_Ukishima_c *)self)->daObjKm1_Ukishima_c::~daObjKm1_Ukishima_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021111a0 _ZN19daObjKm1_Ukishima_cD1Ev -- batch 3, the inline ~daObjKm1_Ukishima_c() */
 extern "C" void _ZN19daObjKm1_Ukishima_cD1Ev(void *self)
 { ((daObjKm1_Ukishima_c *)self)->daObjKm1_Ukishima_c::~daObjKm1_Ukishima_c(); }
 
-/* ROM 0x02111494 _ZN19daObjRc_Kaitendai_cD0Ev -- batch 3, the inline ~daObjRc_Kaitendai_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111494 _ZN19daObjRc_Kaitendai_cD0Ev -- batch 3, the inline ~daObjRc_Kaitendai_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN19daObjRc_Kaitendai_cD0Ev(void *self)
-{ ((daObjRc_Kaitendai_c *)self)->daObjRc_Kaitendai_c::~daObjRc_Kaitendai_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjRc_Kaitendai_c *)self)->daObjRc_Kaitendai_c::~daObjRc_Kaitendai_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02111444 _ZN19daObjRc_Kaitendai_cD1Ev -- batch 3, the inline ~daObjRc_Kaitendai_c() */
 extern "C" void _ZN19daObjRc_Kaitendai_cD1Ev(void *self)
 { ((daObjRc_Kaitendai_c *)self)->daObjRc_Kaitendai_c::~daObjRc_Kaitendai_c(); }
 
-/* ROM 0x0211f048 _ZN19daPropeller_Heyho_cD0Ev -- batch 3, the inline ~daPropeller_Heyho_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x0211f048 _ZN19daPropeller_Heyho_cD0Ev -- batch 3, the inline ~daPropeller_Heyho_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN19daPropeller_Heyho_cD0Ev(void *self)
-{ ((daPropeller_Heyho_c *)self)->daPropeller_Heyho_c::~daPropeller_Heyho_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daPropeller_Heyho_c *)self)->daPropeller_Heyho_c::~daPropeller_Heyho_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x0211f000 _ZN19daPropeller_Heyho_cD1Ev -- batch 3, the inline ~daPropeller_Heyho_c() */
 extern "C" void _ZN19daPropeller_Heyho_cD1Ev(void *self)
 { ((daPropeller_Heyho_c *)self)->daPropeller_Heyho_c::~daPropeller_Heyho_c(); }
 
-/* ROM 0x02112d44 _ZN20daObjBk_Fall_Block_cD0Ev -- batch 3, the inline ~daObjBk_Fall_Block_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02112d44 _ZN20daObjBk_Fall_Block_cD0Ev -- batch 3, the inline ~daObjBk_Fall_Block_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN20daObjBk_Fall_Block_cD0Ev(void *self)
-{ ((daObjBk_Fall_Block_c *)self)->daObjBk_Fall_Block_c::~daObjBk_Fall_Block_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjBk_Fall_Block_c *)self)->daObjBk_Fall_Block_c::~daObjBk_Fall_Block_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02112cf4 _ZN20daObjBk_Fall_Block_cD1Ev -- batch 3, the inline ~daObjBk_Fall_Block_c() */
 extern "C" void _ZN20daObjBk_Fall_Block_cD1Ev(void *self)
 { ((daObjBk_Fall_Block_c *)self)->daObjBk_Fall_Block_c::~daObjBk_Fall_Block_c(); }
 
-/* ROM 0x020bc938 _ZN20daObjCannonShutter_cD0Ev -- batch 3, the inline ~daObjCannonShutter_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020bc938 _ZN20daObjCannonShutter_cD0Ev -- batch 3, the inline ~daObjCannonShutter_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN20daObjCannonShutter_cD0Ev(void *self)
-{ ((daObjCannonShutter_c *)self)->daObjCannonShutter_c::~daObjCannonShutter_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjCannonShutter_c *)self)->daObjCannonShutter_c::~daObjCannonShutter_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020bc8f4 _ZN20daObjCannonShutter_cD1Ev -- batch 3, the inline ~daObjCannonShutter_c() */
 extern "C" void _ZN20daObjCannonShutter_cD1Ev(void *self)
@@ -712,97 +712,97 @@ extern "C" void _ZN20daObjCannonShutter_cD1Ev(void *self)
 extern "C" void _ZN20daObjFl_Fall_Block_cD1Ev(void *self)
 { ((daObjFl_Fall_Block_c *)self)->daObjFl_Fall_Block_c::~daObjFl_Fall_Block_c(); }
 
-/* ROM 0x0211130c _ZN20daObjKm3_Kaitendai_cD0Ev -- batch 3, the inline ~daObjKm3_Kaitendai_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x0211130c _ZN20daObjKm3_Kaitendai_cD0Ev -- batch 3, the inline ~daObjKm3_Kaitendai_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN20daObjKm3_Kaitendai_cD0Ev(void *self)
-{ ((daObjKm3_Kaitendai_c *)self)->daObjKm3_Kaitendai_c::~daObjKm3_Kaitendai_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjKm3_Kaitendai_c *)self)->daObjKm3_Kaitendai_c::~daObjKm3_Kaitendai_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021112bc _ZN20daObjKm3_Kaitendai_cD1Ev -- batch 3, the inline ~daObjKm3_Kaitendai_c() */
 extern "C" void _ZN20daObjKm3_Kaitendai_cD1Ev(void *self)
 { ((daObjKm3_Kaitendai_c *)self)->daObjKm3_Kaitendai_c::~daObjKm3_Kaitendai_c(); }
 
-/* ROM 0x02112e50 _ZN20daObjWanwanShutter_cD0Ev -- batch 3, the inline ~daObjWanwanShutter_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02112e50 _ZN20daObjWanwanShutter_cD0Ev -- batch 3, the inline ~daObjWanwanShutter_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN20daObjWanwanShutter_cD0Ev(void *self)
-{ ((daObjWanwanShutter_c *)self)->daObjWanwanShutter_c::~daObjWanwanShutter_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjWanwanShutter_c *)self)->daObjWanwanShutter_c::~daObjWanwanShutter_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02112e0c _ZN20daObjWanwanShutter_cD1Ev -- batch 3, the inline ~daObjWanwanShutter_c() */
 extern "C" void _ZN20daObjWanwanShutter_cD1Ev(void *self)
 { ((daObjWanwanShutter_c *)self)->daObjWanwanShutter_c::~daObjWanwanShutter_c(); }
 
-/* ROM 0x02111d98 _ZN21daObjKm2_Fall_Block_cD0Ev -- batch 3, the inline ~daObjKm2_Fall_Block_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111d98 _ZN21daObjKm2_Fall_Block_cD0Ev -- batch 3, the inline ~daObjKm2_Fall_Block_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN21daObjKm2_Fall_Block_cD0Ev(void *self)
-{ ((daObjKm2_Fall_Block_c *)self)->daObjKm2_Fall_Block_c::~daObjKm2_Fall_Block_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjKm2_Fall_Block_c *)self)->daObjKm2_Fall_Block_c::~daObjKm2_Fall_Block_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x02111d48 _ZN21daObjKm2_Fall_Block_cD1Ev -- batch 3, the inline ~daObjKm2_Fall_Block_c() */
 extern "C" void _ZN21daObjKm2_Fall_Block_cD1Ev(void *self)
 { ((daObjKm2_Fall_Block_c *)self)->daObjKm2_Fall_Block_c::~daObjKm2_Fall_Block_c(); }
 
-/* ROM 0x021111f0 _ZN21daObjKm3_Kurumajiku_cD0Ev -- batch 3, the inline ~daObjKm3_Kurumajiku_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021111f0 _ZN21daObjKm3_Kurumajiku_cD0Ev -- batch 3, the inline ~daObjKm3_Kurumajiku_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN21daObjKm3_Kurumajiku_cD0Ev(void *self)
-{ ((daObjKm3_Kurumajiku_c *)self)->daObjKm3_Kurumajiku_c::~daObjKm3_Kurumajiku_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daObjKm3_Kurumajiku_c *)self)->daObjKm3_Kurumajiku_c::~daObjKm3_Kurumajiku_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021111a0 _ZN21daObjKm3_Kurumajiku_cD1Ev -- batch 3, the inline ~daObjKm3_Kurumajiku_c() */
 extern "C" void _ZN21daObjKm3_Kurumajiku_cD1Ev(void *self)
 { ((daObjKm3_Kurumajiku_c *)self)->daObjKm3_Kurumajiku_c::~daObjKm3_Kurumajiku_c(); }
 
-/* ROM 0x020b0600 _ZN7daBar_cD0Ev -- batch 3, the inline ~daBar_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020b0600 _ZN7daBar_cD0Ev -- batch 3, the inline ~daBar_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN7daBar_cD0Ev(void *self)
-{ ((daBar_c *)self)->daBar_c::~daBar_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daBar_c *)self)->daBar_c::~daBar_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020b05d0 _ZN7daBar_cD1Ev -- batch 3, the inline ~daBar_c() */
 extern "C" void _ZN7daBar_cD1Ev(void *self)
 { ((daBar_c *)self)->daBar_c::~daBar_c(); }
 
-/* ROM 0x0214a9b4 _ZN7daBmb_cD0Ev -- batch 3, the inline ~daBmb_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x0214a9b4 _ZN7daBmb_cD0Ev -- batch 3, the inline ~daBmb_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN7daBmb_cD0Ev(void *self)
-{ ((daBmb_c *)self)->daBmb_c::~daBmb_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daBmb_c *)self)->daBmb_c::~daBmb_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x0214a96c _ZN7daBmb_cD1Ev -- batch 3, the inline ~daBmb_c() */
 extern "C" void _ZN7daBmb_cD1Ev(void *self)
 { ((daBmb_c *)self)->daBmb_c::~daBmb_c(); }
 
-/* ROM 0x021205d0 _ZN7daBrq_cD0Ev -- batch 3, the inline ~daBrq_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021205d0 _ZN7daBrq_cD0Ev -- batch 3, the inline ~daBrq_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN7daBrq_cD0Ev(void *self)
-{ ((daBrq_c *)self)->daBrq_c::~daBrq_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daBrq_c *)self)->daBrq_c::~daBrq_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x021111e4 _ZN7daDgr_cD0Ev -- batch 3, the inline ~daDgr_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021111e4 _ZN7daDgr_cD0Ev -- batch 3, the inline ~daDgr_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN7daDgr_cD0Ev(void *self)
-{ ((daDgr_c *)self)->daDgr_c::~daDgr_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daDgr_c *)self)->daDgr_c::~daDgr_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021111a0 _ZN7daDgr_cD1Ev -- batch 3, the inline ~daDgr_c() */
 extern "C" void _ZN7daDgr_cD1Ev(void *self)
 { ((daDgr_c *)self)->daDgr_c::~daDgr_c(); }
 
-/* ROM 0x02111928 _ZN7daDkk_cD0Ev -- batch 3, the inline ~daDkk_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02111928 _ZN7daDkk_cD0Ev -- batch 3, the inline ~daDkk_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN7daDkk_cD0Ev(void *self)
-{ ((daDkk_c *)self)->daDkk_c::~daDkk_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daDkk_c *)self)->daDkk_c::~daDkk_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021118c8 _ZN7daDkk_cD1Ev -- batch 3, the inline ~daDkk_c() */
 extern "C" void _ZN7daDkk_cD1Ev(void *self)
 { ((daDkk_c *)self)->daDkk_c::~daDkk_c(); }
 
-/* ROM 0x02121aac _ZN8daEyBm_cD0Ev -- batch 3, the inline ~daEyBm_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02121aac _ZN8daEyBm_cD0Ev -- batch 3, the inline ~daEyBm_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN8daEyBm_cD0Ev(void *self)
-{ ((daEyBm_c *)self)->daEyBm_c::~daEyBm_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daEyBm_c *)self)->daEyBm_c::~daEyBm_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x02121b88 _ZN8daKpFr_cD0Ev -- batch 3, the inline ~daKpFr_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02121b88 _ZN8daKpFr_cD0Ev -- batch 3, the inline ~daKpFr_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN8daKpFr_cD0Ev(void *self)
-{ ((daKpFr_c *)self)->daKpFr_c::~daKpFr_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daKpFr_c *)self)->daKpFr_c::~daKpFr_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x02121160 _ZN8daKrpa_cD0Ev -- batch 3, the inline ~daKrpa_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x02121160 _ZN8daKrpa_cD0Ev -- batch 3, the inline ~daKrpa_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN8daKrpa_cD0Ev(void *self)
-{ ((daKrpa_c *)self)->daKrpa_c::~daKrpa_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daKrpa_c *)self)->daKrpa_c::~daKrpa_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
-/* ROM 0x021126f8 _ZN8daSCre_cD0Ev -- batch 3, the inline ~daSCre_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x021126f8 _ZN8daSCre_cD0Ev -- batch 3, the inline ~daSCre_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN8daSCre_cD0Ev(void *self)
-{ ((daSCre_c *)self)->daSCre_c::~daSCre_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daSCre_c *)self)->daSCre_c::~daSCre_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x021126d4 _ZN8daSCre_cD1Ev -- batch 3, the inline ~daSCre_c() */
 extern "C" void _ZN8daSCre_cD1Ev(void *self)
 { ((daSCre_c *)self)->daSCre_c::~daSCre_c(); }
 
-/* ROM 0x020ebfcc _ZN8daTree_cD0Ev -- batch 3, the inline ~daTree_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020ebfcc _ZN8daTree_cD0Ev -- batch 3, the inline ~daTree_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN8daTree_cD0Ev(void *self)
-{ ((daTree_c *)self)->daTree_c::~daTree_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daTree_c *)self)->daTree_c::~daTree_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020ebf8c _ZN8daTree_cD1Ev -- batch 3, the inline ~daTree_c() */
 extern "C" void _ZN8daTree_cD1Ev(void *self)
@@ -812,14 +812,14 @@ extern "C" void _ZN8daTree_cD1Ev(void *self)
 extern "C" void _ZN9daDossy_cD1Ev(void *self)
 { ((daDossy_c *)self)->daDossy_c::~daDossy_c(); }
 
-/* ROM 0x020f03f4 _ZN9daSCoin_cD0Ev -- batch 3, the inline ~daSCoin_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020f03f4 _ZN9daSCoin_cD0Ev -- batch 3, the inline ~daSCoin_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN9daSCoin_cD0Ev(void *self)
-{ ((daSCoin_c *)self)->daSCoin_c::~daSCoin_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daSCoin_c *)self)->daSCoin_c::~daSCoin_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }
 
 /* ROM 0x020f03c4 _ZN9daSCoin_cD1Ev -- batch 3, the inline ~daSCoin_c() */
 extern "C" void _ZN9daSCoin_cD1Ev(void *self)
 { ((daSCoin_c *)self)->daSCoin_c::~daSCoin_c(); }
 
-/* ROM 0x020f19b0 _ZN9daSetSE_cD0Ev -- batch 3, the inline ~daSetSE_c() plus _ZN6Memory10DeallocateEPvP4Heap */
+/* ROM 0x020f19b0 _ZN9daSetSE_cD0Ev -- batch 3, the inline ~daSetSE_c() plus _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE */
 extern "C" void _ZN9daSetSE_cD0Ev(void *self)
-{ ((daSetSE_c *)self)->daSetSE_c::~daSetSE_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
+{ ((daSetSE_c *)self)->daSetSE_c::~daSetSE_c(); _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(self, GAME_HEAP_PTR); }

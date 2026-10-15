@@ -97,7 +97,7 @@
 # ---- 4. THE WIDTH IS 36, CHECKED FIVE WAYS ------------------------------
 #
 #   1. SPAN.  0x0213bdb4 to the next symbol in
-#      config/arm9/overlays/ov006/symbols.txt, data_ov006_0213be44, is 0x90,
+#      config/arm9/overlays/ov006/symbols.txt, pmf_dScMgCoin_c_Bag_State0, is 0x90,
 #      which is 36 words.
 #   2. TERMINAL SLOT.  Slot 35 (0x0213be40) holds 0x020ad660, dScMgBase_c's own
 #      `return (this[2] & 0xff) != 0`, which every class in this family ends on.
@@ -189,9 +189,9 @@
 # in this slice re-copies it.
 #
 # NOTHING HERE REWRITES THE STORED PAIR EITHER, and this class supplies a second
-# witness for why that rule exists.  src/func_ov006_020c0f0c.c, which state 1
+# witness for why that rule exists.  src/Dealer_IsBusy.c, which state 1
 # calls every frame, compares the object's stored pair BY VALUE against the idle
-# sentinels data_ov006_0213acb0 and _0213aca8.  A host address never equals a DS
+# sentinels pmf_Dealer_StateCollect_2 and _0213aca8.  A host address never equals a DS
 # address, so a seat that wrote host words over the pair would leave that test
 # permanently false while the dispatch itself looked fine.
 #
@@ -218,8 +218,8 @@
 # SLOTS 18 AND 19 TAKE THE STACK ARGUMENT AND THIS CLASS IGNORES IT, WITNESSED
 # RATHER THAN ASSUMED.  Run mg9 lane LKY found a class whose slot-18 and slot-19
 # bodies BRANCH on the value and relayed "witness, don't assume".  Here the ROM
-# says the opposite: _ZN11dScMgCard_c13OnYoshiTryEatEi overwrites r1 with a literal load at
-# 0x020db9f4 before ever reading it, and _ZN11dScMgCard_c13OnTurnIntoEggEi's first act is a
+# says the opposite: _ZN11dScMgCard_c10StartRoundEi overwrites r1 with a literal load at
+# 0x020db9f4 before ever reading it, and _ZN11dScMgCard_c11CanEndStateEi's first act is a
 # five-arm jump table on the state at +0x5388.  So the parameter exists only so
 # __fastcall cleans the four bytes the ROM's callers push, which is what every
 # seated class before dScMgBSC_c needed.  Both thunks take it and record it.
@@ -326,24 +326,24 @@
 # 0x020dbe40, in address order.  The 37th is _ZN11dScMgCard_c11ArrangeHandEP12dMgCardObj_c, the hand
 # sorter run mg11 had to trap and run mg12 lane SRT decompiled; section 7.
 src/minigames/d_s_mg_card.cpp
-# The ov004 delta: func_ov004_020b5d74 arms the framework's end-of-round timer
+# The ov004 delta: MgCoins_StartRefund arms the framework's end-of-round timer
 # and is called from src/minigames/d_s_mg_card.cpp (vtable slot 19).  No wired slice
 # reached it before this lane.
-src/actors/unit020b4aa4.cpp
-# and its own callee, wave two: func_ov004_020b5768 is the routine 020b5d74
-# installs into the framework's per-frame hook word data_ov004_020bfa20. The
+src/minigames/unit020b4aa4.cpp
+# and its own callee, wave two: MgCoins_StepRefund is the routine 020b5d74
+# installs into the framework's per-frame hook word sMgCoinsStep. The
 # link named it, which is the ordinary one-wave shape run mg9 lane LKY budgets
 # for; port/tools/closure.py cannot see it because it reports what THIS slice
 # leaves unresolved rather than walking the callee graph.
-# FOLDED into src/actors/unit020b4aa4.cpp (row 332): src/func_ov004_020b5768.cpp
-# and ITS callee, wave three and the last: func_ov004_020b4cc4 re-seeds one
-# 0x24-byte record of the framework's data_ov004_020bfa34 array. The ov004
+# FOLDED into src/actors/unit020b4aa4.cpp (row 332): src/MgCoins_StepRefund.cpp
+# and ITS callee, wave three and the last: Coin_Return re-seeds one
+# 0x24-byte record of the framework's sMgCoins array. The ov004
 # arm_call closure from these three seeds is exactly these three -- walked
 # over config/arm9/overlays/ov004/relocs.txt rather than discovered one
 # LNK2019 at a time, after the second wave made the shape obvious.
-# FOLDED into src/actors/unit020b4aa4.cpp (row 332): src/func_ov004_020b4cc4.c
-# The shared +0x4f38 sub-object delta: func_ov006_020c0f0c is the idle-sentinel
+# FOLDED into src/actors/unit020b4aa4.cpp (row 332): src/Coin_Return.c
+# The shared +0x4f38 sub-object delta: Dealer_IsBusy is the idle-sentinel
 # comparator state 1 asks every frame.  It spells the stored pair as TWO INTS,
 # which is the safe side of section 4's rulebook corollary, so it is an ordinary
 # slice line rather than a host copy.
-src/actors/unit020bfec0.cpp
+src/minigames/unit020bfec0.cpp

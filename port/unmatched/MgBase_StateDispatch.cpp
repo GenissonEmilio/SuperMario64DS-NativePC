@@ -10,7 +10,7 @@
 //
 // An mwcc pointer-to-member is EIGHT bytes, {code, adjustment}, and the call
 // through one is five instructions. Disassembled from
-// extracted/overlays/overlay_0004.bin, func_ov004_020b31b4 verbatim:
+// extracted/overlays/overlay_0004.bin, Banner_Draw verbatim:
 //
 //     020b31dc  add   r3, r0, #8          ; &self->pmf
 //     020b31e0  ldr   r1, [r3, #4]        ; adjustment
@@ -49,7 +49,7 @@
 // FILE THAT SPELLS THE PAIR AS TWO INTS. src/__sinit_ov004_020b948c.c:
 //
 //     struct B8 { int a, b; };  struct B16 { struct B8 p, q; };
-//     data_ov004_020beb88.p = data_ov004_020bbf4c;
+//     sMgFxUpdateTable.p = data_ov004_020bbf4c;
 //
 // Eight bytes on MSVC, eight in the ROM, C linkage, and the mount already
 // defines the storage. So the constructors copy the ROM's pairs into the
@@ -72,7 +72,7 @@
 // not that it is a copy, it is that `struct Pair { int a; int b; }` is eight
 // bytes on both machines.
 //
-// src/func_ov004_020b7cd0.cpp and src/func_ov004_020b72d4.cpp pass the test on
+// src/State05_Update.cpp and src/UpdateRetryPrompt.cpp pass the test on
 // the spelling: each declares `struct Pair { int a; int b; }` and stores the
 // two words into the object's own state field. They are NOT here, they are two
 // ordinary aliases in hal/scene_mg_faces.cpp section 2b, and the alias is right
@@ -88,20 +88,20 @@
 //
 //   NAMED BY THE LINK, because the PMF global is declared at C++ linkage and
 //   MSVC bakes the member-pointer type into the symbol:
-//     func_ov004_020add88  _020adf2c  _020b3278
-//     func_ov006_020e0d84  _020e12d0  _020e3528
+//     Mg_DrawFx  _020adf2c  _020b3278
+//     Bit_RunKindA  _020e12d0  _020e3528
 //
 //   SILENT, and for TWO DIFFERENT REASONS rather than one. Lumping them
 //   together is the easy mistake here, and it hides which half is worse:
 //
 //     the PMF global is declared inside extern "C", so it mangles as the plain
 //     C name the mount already defines and the linker is satisfied:
-//       func_ov006_020e1214  _020e3078
+//       Bit_RunKindB  _020e3078
 //
 //     THERE IS NO PMF GLOBAL AT ALL. The member pointer is a FIELD OF THE
 //     OBJECT, so these four emit no external symbol for it in any linkage and
 //     there was never anything for a link to name:
-//       func_ov004_020b31b4  _020b321c  _020b8714  _020b8778
+//       Banner_Draw  _020b321c  _020b8714  _020b8778
 //
 // So A LINK IS NOT A COMPLETE DETECTOR FOR THIS WALL, and the conclusion is
 // STRONGER for the four than for the two. The two could in principle be caught
@@ -111,7 +111,7 @@
 //
 // The four are also the worse defect. They dispatch the OBJECT'S OWN pmf field
 // rather than a table, so MSVC's four-byte member pointer moves every field
-// after it: src/func_ov004_020b31b4.cpp puts `state` at 0x1c where the ROM
+// after it: src/Banner_Draw.cpp puts `state` at 0x1c where the ROM
 // reads [r0,#0x20]. That is a wrong READ before any dispatch happens, where
 // the two table cases are a wrong stride within a correct object. Their
 // layouts are re-derived from the disassembly below, one offset at a time,
@@ -142,8 +142,8 @@
 // ---- 5. AMENDED, run mg5 lane FWK. A PREMISE FURTHER DOWN HAS EXPIRED ------
 //
 // THE CORRECTION FIRST, because it is the thing that hid this hole. The
-// func_ov004_020b3278 block at the bottom of this file says
-// data_ov004_020bf490 "reads zero" on the port, and it argues that from this
+// Banner_Init block at the bottom of this file says
+// sBannerSetupTable "reads zero" on the port, and it argues that from this
 // premise:
 //
 //     "no sinit in src/ writes it: the constructor that would is
@@ -159,11 +159,11 @@
 // that it fired. So all THREE of the tables that constructor fills are live
 // data on the port now, not zeros:
 //
-//   data_ov004_020bf490  13 pairs  dispatched DIRECTLY by func_ov004_020b3278
-//   data_ov004_020bf428  13 pairs  copied to self+0x00/+0x04, dispatched by
-//                                  func_ov004_020b321c
-//   data_ov004_020bf4f8  13 pairs  copied to self+0x08/+0x0c, dispatched by
-//                                  func_ov004_020b31b4
+//   sBannerSetupTable  13 pairs  dispatched DIRECTLY by Banner_Init
+//   sBannerUpdateTable  13 pairs  copied to self+0x00/+0x04, dispatched by
+//                                  Banner_Update
+//   sBannerDrawTable  13 pairs  copied to self+0x08/+0x0c, dispatched by
+//                                  Banner_Draw
 //
 // The last two are the ones that block calls "the same shape". They are not
 // dispatched by 020b3278 at all: 020b3278 STORES them into the object as the
@@ -176,8 +176,8 @@
 // A scene 366 boot (dScMgLuigi_c, run mg5 lane LUI) reported 174 dispatches
 // hitting the mg_unhandled path at TWO addresses, both of them slot 12:
 //
-//   data_ov004_020bf490.p12 = data_ov004_020bc1d4 -> code 0x020b3698  adj 0
-//   data_ov004_020bf4f8.p12 = data_ov004_020bc194 -> code 0x020b35d8  adj 0
+//   sBannerSetupTable.p12 = pmf_Banner_SetupNone -> code 0x020b3698  adj 0
+//   sBannerDrawTable.p12 = pmf_Banner_DrawLevelNumber -> code 0x020b35d8  adj 0
 //
 // Both pair words were read out of extracted/overlays/overlay_0004.bin at
 // (addr - 0x020ad660), and both are confirmed by the overlay's own relocation
@@ -199,14 +199,14 @@
 // BOTH SLOTS ARE ZERO-ARGUMENT SLOTS. The two dispatch sites are byte-identical
 // in shape and neither sets up an argument register:
 //
-//   func_ov004_020b31b4, the self+8 dispatcher
+//   Banner_Draw, the self+8 dispatcher
 //     020b31dc  add   r3, r0, #8
 //     020b31e0  ldr   r1, [r3, #4]        ; adjustment
 //     020b31e4  add   r0, r0, r1, asr #1  ; adj 0, so r0 stays `this`
 //     020b31f8  ldreq r1, [r3]            ; r1 is OVERWRITTEN with the code
 //     020b31fc  blx   r1
 //
-//   func_ov004_020b3278, the direct call on data_ov004_020bf490
+//   Banner_Init, the direct call on sBannerSetupTable
 //     020b3540  ldr   r0, [r1, r2, lsl #3]  ; stride 8, the pair
 //     020b3548  cmp   r0, #0                ; the ROM's own null-code guard
 //     020b3558  add   r0, r8, r1, asr #1    ; adj 0, so r0 stays `this`
@@ -216,23 +216,23 @@
 // r0 is `this` and r1 is destroyed by the code word itself, so nothing rides
 // through in r1 and there is no argument for a callee to drop. Against that:
 //
-//   func_ov004_020b35d8  0xc0 bytes, and it OPENS `mov r7, r0` then reads
+//   Banner_DrawLevelNumber  0xc0 bytes, and it OPENS `mov r7, r0` then reads
 //     [r7,#0x34], [r7,#0x10], [r7,#0x12], [r7,#0x18], [r7,#0x1c]. It never
-//     touches r1. One argument, `this`, and src/func_ov004_020b35d8.c declares
+//     touches r1. One argument, `this`, and src/Banner_DrawLevelNumber.c declares
 //     exactly that (`struct Obj *self` with fields at 0x10/0x12/0x18/0x1c/0x34,
 //     which is the disassembly field for field). It is called with one
 //     argument below and that is not a ride-through, it is the plain case.
 //
-//     The object it wants is the SAME object func_ov004_020b3278 writes: that
+//     The object it wants is the SAME object Banner_Init writes: that
 //     body sets [self+0x10], [self+0x12], [self+0x18], [self+0x1c] from its own
-//     arguments and hands `self+0x34` to func_ov004_020af5e0. So the `this` the
+//     arguments and hands `self+0x34` to Mg_CopySpriteList. So the `this` the
 //     dispatch delivers is the one the body's fields were filled by, and that
 //     agreement is independent of the dispatch reasoning above.
 //
-//   func_ov004_020b3698  0x4 bytes. The whole body is `bx lr`. It reads
+//   Banner_SetupNone  0x4 bytes. The whole body is `bx lr`. It reads
 //     nothing, so calling it as (void) is exact. This is the benign ARM
 //     ride-through unmatched/MgCurling_StateDispatch.cpp documents for
-//     func_ov006_020e2eb8 and NOT the scene_actor_faces defect class: there is
+//     Scene_Idle and NOT the scene_actor_faces defect class: there is
 //     no callee behind it that wanted an argument, because there is no callee.
 //
 // NEITHER NEEDS A HOST COPY. Both are matched src TUs with delink blocks; the
@@ -246,7 +246,7 @@
 // switch below routed NONE of them. Every one has a matched src TU and a delink
 // block, and none of them was in any slice, so the whole set is wiring and not
 // decomposition. Scene 366 only exposes two of them because
-// func_ov004_020b3278 reaches slot 12 alone on that scene (its `case 13:` arm
+// Banner_Init reaches slot 12 alone on that scene (its `case 13:` arm
 // writes 0xc to [self+0x2e]); a scene that drives a different graphic id will
 // meet the other twenty-one the same way this one met these two.
 //
@@ -281,21 +281,21 @@ extern "C" {
    build before this file: the pair words are mounted DATA holding DS
    addresses, so /OPT:REF had dropped all four. They join port/slice_mg1.txt in
    the same commit as this file, which is what gives them one. */
-void _ZN3Ent19func_ov004_020adc80Ev(int *c);
-void _ZN3Ent19func_ov004_020adcc8Ev(short *obj);
-void _ZN3Ent19func_ov004_020addccEv(char *r5);
-void _ZN3Ent19func_ov004_020adeb0Ev(char *c);
+void _ZN3Ent9DrawFlyToEv(int *c);
+void _ZN3Ent11DrawSparkleEv(short *obj);
+void _ZN3Ent11UpdateFlyToEv(char *r5);
+void _ZN3Ent11UpdateDriftEv(char *c);
 
 /* THE TWO SLOT-12 STATES, added by run mg5 lane FWK; section 5 is the
    derivation. Both are matched src TUs with delink blocks, both are reached
    from a ZERO-ARGUMENT slot, and neither needed a host copy.
-     020b35d8  src/func_ov004_020b35d8.c   0xc0 bytes, reads `this` only
-     020b3698  src/func_ov004_020b3698.c   0x4 bytes, the whole body is `bx lr`
-   Their three slice lines (these two plus src/func_ov004_020b1aec.c, the one
+     020b35d8  src/Banner_DrawLevelNumber.c   0xc0 bytes, reads `this` only
+     020b3698  src/Banner_SetupNone.c   0x4 bytes, the whole body is `bx lr`
+   Their three slice lines (these two plus src/Mg_GetLevel.c, the one
    callee of 020b35d8 the slice did not already carry) join port/slice_mg1.txt
    in the same commit as these cases, which is what gives them a caller. */
-void func_ov004_020b35d8(void *self);
-void func_ov004_020b3698(void);
+void Banner_DrawLevelNumber(void *self);
+void Banner_SetupNone(void);
 
 /* THE OTHER TWENTY-TWO, added by run mg5 lane BASESET. Section 5b left these on
    the table with the note that "each one will print the same report the day a
@@ -326,28 +326,28 @@ void func_ov004_020b3698(void);
    Their twenty-two slice lines join port/slice_mg1.txt in the same commit as
    these cases, which is what gives them a caller. Each takes one pointer, its
    src TU's own spelling, and none needed a host copy. */
-void func_ov004_020b3834(void *self);
-void func_ov004_020b3888(void *self);
-void func_ov004_020b3b38(void *self);
-void func_ov004_020b3c58(void *self);
-void func_ov004_020b3c9c(void *self);
-void func_ov004_020b3cb8(void *self);
-void func_ov004_020b3e9c(void *self);
-void func_ov004_020b4080(void *self);
-void func_ov004_020b40ac(void *self);
-void func_ov004_020b433c(void *self);
-void func_ov004_020b4360(void *self);
-void func_ov004_020b45c0(void *self);
-void func_ov004_020b4820(void *self);
-void func_ov004_020b484c(void *self);
-void func_ov004_020b49b8(void *self);
-void func_ov004_020b49e4(void *self);
-void func_ov004_020b49f0(void *self);
-void func_ov004_020b4a1c(void *self);
-void func_ov004_020b4a28(void *self);
-void func_ov004_020b4a40(void *self);
-void func_ov004_020b4a4c(void *self);
-void func_ov004_020b4a64(void *self);
+void Banner_UpdateDrop(void *self);
+void Banner_SetupDrop(void *self);
+void Banner_DrawSqueeze(void *self);
+void Banner_UpdateFall(void *self);
+void Banner_SetupFall(void *self);
+void Banner_DrawPopSpinA(void *self);
+void Banner_DrawPopSpinB(void *self);
+void Banner_UpdatePopSpin(void *self);
+void Banner_SetupPopSpin(void *self);
+void Banner_SetupZoom(void *self);
+void Banner_DrawZoomA(void *self);
+void Banner_DrawZoomB(void *self);
+void Banner_UpdateZoom(void *self);
+void Banner_SetupZoomBurst(void *self);
+void Banner_UpdateSlideFromRight(void *self);
+void Banner_SetupSlideFromRight(void *self);
+void Banner_UpdateSlideFromLeft(void *self);
+void Banner_SetupSlideFromLeft(void *self);
+void Banner_UpdateSlideFromBottom(void *self);
+void Banner_SetupSlideFromBottom(void *self);
+void Banner_UpdateSlideFromTop(void *self);
+void Banner_SetupSlideFromTop(void *self);
 
 /* the per-class half's switch, tried after this one; the header of
    unmatched/MgCurling_StateDispatch.cpp says why the chain runs this way */
@@ -390,13 +390,13 @@ static void mg_unhandled(const char *what, unsigned code, int adj)
 /* mg_try_ov004_0 IS GONE, run link100 lane MGWRITER, and it is gone because
    every one of its twenty-eight arms is now UNREACHABLE rather than merely
    unused. Four (0x020adc80, _adcc8, _addcc, _adeb0) were retired by lane
-   PMFB3, which installed host bodies into data_ov004_020beb88 and _020beb98.
+   PMFB3, which installed host bodies into sMgFxUpdateTable and _020beb98.
    The other twenty-four are __sinit_ov004_020b955c's three tables, and THE
    SEAT below installs host bodies into all thirty of their code-bearing cells,
    so the two matched TUs that read them through an object field
-   (src/func_ov004_020b31b4.cpp and src/func_ov004_020b321c.cpp, whose fields
-   src/func_ov004_020b3278.cpp writes) and 020b3278's own direct dispatch on
-   data_ov004_020bf490 all reach a host address with no switch in the path. A
+   (src/Banner_Draw.cpp and src/Banner_Update.cpp, whose fields
+   src/Banner_Init.cpp writes) and 020b3278's own direct dispatch on
+   sBannerSetupTable all reach a host address with no switch in the path. A
    switch left standing beside a seated table is not a safety net: it is a
    second opinion about an address that can no longer arrive. */
 
@@ -489,8 +489,8 @@ extern "C" void port_mg_dispatch_counts(unsigned *calls, unsigned *unknown)
 extern "C" {
 /* the two framework tables, re-typed. The mount defines the storage and
    __sinit_ov004_020b948c fills it; see section 2. */
-extern MgPmf data_ov004_020beb88[];
-extern MgPmf data_ov004_020beb98[];
+extern MgPmf sMgFxUpdateTable[];
+extern MgPmf sMgFxDrawTable[];
 
 /* run link100 lane PMFB3: the boot installer that lets the ROM's own two
    framework dispatchers read these tables directly. hal/scene_mg.cpp calls it
@@ -502,7 +502,7 @@ void port_mg_trmpln_field_seat(void);
 }
 
 /* ---- THE TWO ALIASES THE MATCHED TUs ASK FOR (lane PMFB3) ----------------
-   src/func_ov004_020add88.cpp and src/func_ov004_020adf2c.cpp declare their
+   src/Mg_DrawFx.cpp and src/Mg_UpdateFx.cpp declare their
    table at namespace scope rather than inside an extern "C" block, so MSVC
    spells the reference with the C++ decoration below -- read off each TU's own
    /FAsc listing (runs/link100/out/PMFB3/listings/), not guessed -- while the
@@ -511,27 +511,27 @@ void port_mg_trmpln_field_seat(void);
    extern "C" instead. Safe under port/tools/alternatename_guard.py for
    hal/pmfc_aliases.cpp's reason: nothing in the tree DEFINES either LHS, so
    neither can acquire a real definition and be silently defeated. */
-#pragma comment(linker, "/alternatename:?data_ov004_020beb88@@3PAP8C@@AEXXZA=_data_ov004_020beb88")
-#pragma comment(linker, "/alternatename:?data_ov004_020beb98@@3PAP8C@@AEXXZA=_data_ov004_020beb98")
+#pragma comment(linker, "/alternatename:?sMgFxUpdateTable@@3PAP8C@@AEXXZA=_sMgFxUpdateTable")
+#pragma comment(linker, "/alternatename:?sMgFxDrawTable@@3PAP8C@@AEXXZA=_sMgFxDrawTable")
 
 /* ---- THE FRAMEWORK BOOT INSTALLER, run link100 lane PMFB3 ---------------
-   WHAT THIS REPLACES. func_ov004_020add88 and func_ov004_020adf2c were host
+   WHAT THIS REPLACES. Mg_DrawFx and Mg_UpdateFx were host
    copies here, each reading its table's pair and handing the code word to
    port_mg_call0's address switch. That shape cannot retire: taking the host
    copy away takes the switch with it and the matched TU would call a DS
    address. Turning it inside out fixes it once -- install the HOST bodies into
    the four cells at boot, and the ROM's own two dispatchers reach them with no
-   switch at all. Both are now src/func_ov004_020add88.cpp and
-   src/func_ov004_020adf2c.cpp on port/slice_pmfb3.txt.
+   switch at all. Both are now src/Mg_DrawFx.cpp and
+   src/Mg_UpdateFx.cpp on port/slice_pmfb3.txt.
 
    NO FACE, AND THAT IS MEASURED. Both matched TUs compile the dispatch to a
    TAIL JUMP with the frame fully restored:
 
        mov   eax, DWORD PTR _c$[ebp]
        movsx edx, WORD PTR [eax+30]                 the index, a short at +0x1e
-       mov   ecx, ?data_ov004_020beb98@@...[edx*8+4]   the adjustment word
+       mov   ecx, ?sMgFxDrawTable@@...[edx*8+4]   the adjustment word
        add   ecx, eax                                  this
-       mov   eax, ?data_ov004_020beb98@@...[edx*8]     the code word
+       mov   eax, ?sMgFxDrawTable@@...[edx*8]     the code word
        pop   ebp
        jmp   eax
 
@@ -579,14 +579,14 @@ extern "C" void port_mg_framework_states_seat(void)
         unsigned rom;
         void (*host)(void *);
     } seats[] = {
-        {data_ov004_020beb88, "020beb88", 0, 0x020adeb0u,
-                                        (void (*)(void *))_ZN3Ent19func_ov004_020adeb0Ev},
-        {data_ov004_020beb88, "020beb88", 1, 0x020addccu,
-                                        (void (*)(void *))_ZN3Ent19func_ov004_020addccEv},
-        {data_ov004_020beb98, "020beb98", 0, 0x020adcc8u,
-                                        (void (*)(void *))_ZN3Ent19func_ov004_020adcc8Ev},
-        {data_ov004_020beb98, "020beb98", 1, 0x020adc80u,
-                                        (void (*)(void *))_ZN3Ent19func_ov004_020adc80Ev},
+        {sMgFxUpdateTable, "020beb88", 0, 0x020adeb0u,
+                                        (void (*)(void *))_ZN3Ent11UpdateDriftEv},
+        {sMgFxUpdateTable, "020beb88", 1, 0x020addccu,
+                                        (void (*)(void *))_ZN3Ent11UpdateFlyToEv},
+        {sMgFxDrawTable, "020beb98", 0, 0x020adcc8u,
+                                        (void (*)(void *))_ZN3Ent11DrawSparkleEv},
+        {sMgFxDrawTable, "020beb98", 1, 0x020adc80u,
+                                        (void (*)(void *))_ZN3Ent9DrawFlyToEv},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
@@ -616,8 +616,8 @@ extern "C" void port_mg_framework_states_seat(void)
 // ---- THE SEAT, run link100 lane MGWRITER -----------------------------------
 //
 // WHAT THIS REPLACES. Five host copies stood here: the four self-field
-// dispatchers (func_ov004_020b31b4, _020b321c, _020b8714, _020b8778) and the
-// writer func_ov004_020b3278. All five are src/ TUs again, on
+// dispatchers (Banner_Draw, _020b321c, _020b8714, _020b8778) and the
+// writer Banner_Init. All five are src/ TUs again, on
 // port/slice_mgwriter.txt. What made that possible is not a new idea about
 // pointers to member; it is that the STORAGE THEY READ now holds host words.
 //
@@ -629,24 +629,24 @@ extern "C" void port_mg_framework_states_seat(void)
 // and whose value it shifts right by one -- and every measured adjustment in
 // this family is zero, so `this` is the object unchanged:
 //
-//   func_ov004_020b31b4  ldr r1,[r0,#0x20] cmp #0x1d | ldr r1,[r0,#8] cmp #0
+//   Banner_Draw  ldr r1,[r0,#0x20] cmp #0x1d | ldr r1,[r0,#8] cmp #0
 //                        add r3,r0,#8 | ldr r1,[r3,#4] | ldreq r1,[r3] | blx r1
-//   func_ov004_020b321c  ldr r1,[r0,#0x20] cmp #0x1d | ldr r2,[r0] cmp #0
+//   Banner_Update  ldr r1,[r0,#0x20] cmp #0x1d | ldr r2,[r0] cmp #0
 //                        ldr r1,[r0,#4] | add r3,r0,r1,asr #1 | mov r0,r3 | blx
 //   _ZN10dMgState_c6RenderEv  ldr r2,[r0,#0x18] cmp mvn #0 | ldr r1,[r0,#0x10] cmp 0
 //                        add r3,r0,#0x10 | ldr r1,[r3,#4] | ldreq r1,[r3] | blx
 //   _ZN10dMgState_c8BehaviorEv  ldr r1,[r4,#0x18] cmp mvn #0 | bl ApproachLinear on
 //                        r4+0x1c | ldr r0,[r4,#8] cmp #0 | add r3,r4,#8 | blx
-//   func_ov004_020b3278  ldr r0,[r1,r2,lsl #3] cmp #0 | add r0,r8,r1,asr #1 |
+//   Banner_Init  ldr r0,[r1,r2,lsl #3] cmp #0 | add r0,r8,r1,asr #1 |
 //                        ldreq r1,[r3] | blx r1 -- the ONE table dispatch, on
-//                        data_ov004_020bf490, stride EIGHT
+//                        sBannerSetupTable, stride EIGHT
 //
 // THE EMITTED SIDE, off each TU's own /FAsc listing under the port's own flags
 // (runs/link100/out/MGWRITER/listings/, emit_gate1.txt):
 //
 //   the four dispatchers   mov ecx,[eax+12] / [eax+4] / [eax+20] / [esi+12]
 //                          add ecx,<this> ; pop ebp ; JMP edx or eax
-//   func_ov004_020b3278    mov eax,?data_ov004_020bf490@@...[ecx*8]
+//   Banner_Init    mov eax,?sBannerSetupTable@@...[ecx*8]
 //                          test eax,eax ; mov ecx,...[ecx*8+4] ; add ecx,esi
 //                          CALL eax, with NO push and NO add esp after it
 //
@@ -656,7 +656,7 @@ extern "C" void port_mg_framework_states_seat(void)
 // field offsets (+0x0c, +0x04, +0x14, +0x0c) agree with the ROM's own offsets
 // word for word, which is what says the src structs are right at the EIGHT-byte
 // member pointer /vmg /vmm gives this target (block R8 of port/CMakeLists.txt).
-// So the tables below get PLAIN CDECL bodies and data_ov004_020bf490 gets
+// So the tables below get PLAIN CDECL bodies and sBannerSetupTable gets
 // __fastcall FACES, and that difference is measured per row rather than assumed
 // per family.
 //
@@ -678,7 +678,7 @@ extern "C" void port_mg_framework_states_seat(void)
 // relocation row in config/arm9/overlays/ov004/relocs.txt whose destination is
 // one of the eighty-four, keeps the ones whose FOLLOWING word reads zero, and
 // finds NINETY-NINE pairs. They account exactly: 4 + 30 + 7 + 9 + 49, which is
-// the four lane PMFB3 already seated in data_ov004_020beb88 and _020beb98, the
+// the four lane PMFB3 already seated in sMgFxUpdateTable and _020beb98, the
 // thirty this constructor copies FROM (dead once the destination is seated),
 // the seven this lane seats for the 020b3278 object, the nine that belong to
 // dScMgMemory2_c and are NOT this gate's, and the forty-nine of the setter's
@@ -694,17 +694,17 @@ extern "C" void port_mg_framework_states_seat(void)
 //
 // ---- 3. THE THIRTY CELLS, AND WHY THE DESTINATION AND NOT THE SOURCE -----
 //
-// data_ov004_020bf428, _020bf4f8 and _020bf490 are ov004 .bss past the end of
+// sBannerUpdateTable, _020bf4f8 and _020bf490 are ov004 .bss past the end of
 // the overlay image, filled by __sinit_ov004_020b955c out of thirty named .data
 // pairs. The seat runs AFTER that constructor (hal/scene_mg.cpp calls it beside
 // the other twelve), so the destination already holds the cartridge's own words
 // and the destination is what is rewritten. The sources are left alone on
-// purpose: lane PMFB3's framework seat checks data_ov004_020beb88 and _020beb98
+// purpose: lane PMFB3's framework seat checks sMgFxUpdateTable and _020beb98
 // against the ROM's own DS words at that same point in the boot, and seating a
 // source ahead of a sinit would make that check refuse.
 //
 // Nine slots hold the arm9 NULL pair {0,0} rather than a code word
-// (data_ov004_020bf428.p0 and .p12, and _020bf4f8.p0 through .p4 and .p11 --
+// (sBannerUpdateTable.p0 and .p12, and _020bf4f8.p0 through .p4 and .p11 --
 // .p0 field-form, the rest whole-pair copies of the same local). They are not
 // seated because there is no cartridge word to compare against, and the ROM's
 // own null-code guard is what reads them.
@@ -718,8 +718,8 @@ static unsigned g_fwk_field_hits;
 static unsigned g_fwk_490_hits;
 static unsigned g_fwk_seated;
 
-/* ---- THE ALIAS src/func_ov004_020b3278.cpp ASKS FOR ---------------------
-   That TU declares `extern PMF data_ov004_020bf490[]` at namespace scope with
+/* ---- THE ALIAS src/Banner_Init.cpp ASKS FOR ---------------------
+   That TU declares `extern PMF sBannerSetupTable[]` at namespace scope with
    PMF a pointer to member, so MSVC encodes the member-pointer type into the
    reference and spells it as below -- read off the TU's own /FAsc listing
    (runs/link100/out/MGWRITER/listings/func_ov004_020b3278_nozp.asm), not
@@ -730,12 +730,12 @@ static unsigned g_fwk_seated;
    port/tools/alternatename_guard.py for hal/pmfc_aliases.cpp's reason: nothing
    in the tree DEFINES this LHS, so it cannot acquire a real definition and be
    silently defeated. */
-#pragma comment(linker, "/alternatename:?data_ov004_020bf490@@3PAP8Base@@AEXXZA=_data_ov004_020bf490")
+#pragma comment(linker, "/alternatename:?sBannerSetupTable@@3PAP8Base@@AEXXZA=_sBannerSetupTable")
 
 extern "C" {
-extern MgPmf data_ov004_020bf428[];
-extern MgPmf data_ov004_020bf4f8[];
-extern MgPmf data_ov004_020bf490[];
+extern MgPmf sBannerUpdateTable[];
+extern MgPmf sBannerDrawTable[];
+extern MgPmf sBannerSetupTable[];
 }
 
 /* The counting wrappers for the two field tables. A wrapper rather than the
@@ -746,37 +746,37 @@ extern MgPmf data_ov004_020bf490[];
    dispatcher tail-jumps into the wrapper's own frame, the wrapper reads the
    receiver at [esp+4] exactly as the body would, and cleans nothing because the
    frame belongs to the dispatcher's caller. */
-static void fw_020b35d8(void *c) { ++g_fwk_field_hits; func_ov004_020b35d8(c); }
-static void fw_020b3834(void *c) { ++g_fwk_field_hits; func_ov004_020b3834(c); }
-static void fw_020b3b38(void *c) { ++g_fwk_field_hits; func_ov004_020b3b38(c); }
-static void fw_020b3c58(void *c) { ++g_fwk_field_hits; func_ov004_020b3c58(c); }
-static void fw_020b3cb8(void *c) { ++g_fwk_field_hits; func_ov004_020b3cb8(c); }
-static void fw_020b3e9c(void *c) { ++g_fwk_field_hits; func_ov004_020b3e9c(c); }
-static void fw_020b4080(void *c) { ++g_fwk_field_hits; func_ov004_020b4080(c); }
-static void fw_020b4360(void *c) { ++g_fwk_field_hits; func_ov004_020b4360(c); }
-static void fw_020b45c0(void *c) { ++g_fwk_field_hits; func_ov004_020b45c0(c); }
-static void fw_020b4820(void *c) { ++g_fwk_field_hits; func_ov004_020b4820(c); }
-static void fw_020b49b8(void *c) { ++g_fwk_field_hits; func_ov004_020b49b8(c); }
-static void fw_020b49f0(void *c) { ++g_fwk_field_hits; func_ov004_020b49f0(c); }
-static void fw_020b4a28(void *c) { ++g_fwk_field_hits; func_ov004_020b4a28(c); }
-static void fw_020b4a4c(void *c) { ++g_fwk_field_hits; func_ov004_020b4a4c(c); }
+static void fw_020b35d8(void *c) { ++g_fwk_field_hits; Banner_DrawLevelNumber(c); }
+static void fw_020b3834(void *c) { ++g_fwk_field_hits; Banner_UpdateDrop(c); }
+static void fw_020b3b38(void *c) { ++g_fwk_field_hits; Banner_DrawSqueeze(c); }
+static void fw_020b3c58(void *c) { ++g_fwk_field_hits; Banner_UpdateFall(c); }
+static void fw_020b3cb8(void *c) { ++g_fwk_field_hits; Banner_DrawPopSpinA(c); }
+static void fw_020b3e9c(void *c) { ++g_fwk_field_hits; Banner_DrawPopSpinB(c); }
+static void fw_020b4080(void *c) { ++g_fwk_field_hits; Banner_UpdatePopSpin(c); }
+static void fw_020b4360(void *c) { ++g_fwk_field_hits; Banner_DrawZoomA(c); }
+static void fw_020b45c0(void *c) { ++g_fwk_field_hits; Banner_DrawZoomB(c); }
+static void fw_020b4820(void *c) { ++g_fwk_field_hits; Banner_UpdateZoom(c); }
+static void fw_020b49b8(void *c) { ++g_fwk_field_hits; Banner_UpdateSlideFromRight(c); }
+static void fw_020b49f0(void *c) { ++g_fwk_field_hits; Banner_UpdateSlideFromLeft(c); }
+static void fw_020b4a28(void *c) { ++g_fwk_field_hits; Banner_UpdateSlideFromBottom(c); }
+static void fw_020b4a4c(void *c) { ++g_fwk_field_hits; Banner_UpdateSlideFromTop(c); }
 
-/* The faces for data_ov004_020bf490. src/func_ov004_020b3278.cpp compiles its
+/* The faces for sBannerSetupTable. src/Banner_Init.cpp compiles its
    dispatch to `call eax` with the receiver in ecx and NOTHING pushed, so these
    twelve cells hold ten one-cell __fastcall faces (0x020b484c and 0x020b40ac
-   each fill two slots). func_ov004_020b3698 is four bytes of `bx lr` in the ROM
+   each fill two slots). Banner_SetupNone is four bytes of `bx lr` in the ROM
    and its src TU takes no argument, so its face drops the receiver, which is
    exact rather than a dropped pointer. */
-static void __fastcall f490_020b3698(void *self, void *) { ++g_fwk_490_hits; func_ov004_020b3698(); }
-static void __fastcall f490_020b3888(void *self, void *) { ++g_fwk_490_hits; func_ov004_020b3888(self); }
-static void __fastcall f490_020b3c9c(void *self, void *) { ++g_fwk_490_hits; func_ov004_020b3c9c(self); }
-static void __fastcall f490_020b40ac(void *self, void *) { ++g_fwk_490_hits; func_ov004_020b40ac(self); }
-static void __fastcall f490_020b433c(void *self, void *) { ++g_fwk_490_hits; func_ov004_020b433c(self); }
-static void __fastcall f490_020b484c(void *self, void *) { ++g_fwk_490_hits; func_ov004_020b484c(self); }
-static void __fastcall f490_020b49e4(void *self, void *) { ++g_fwk_490_hits; func_ov004_020b49e4(self); }
-static void __fastcall f490_020b4a1c(void *self, void *) { ++g_fwk_490_hits; func_ov004_020b4a1c(self); }
-static void __fastcall f490_020b4a40(void *self, void *) { ++g_fwk_490_hits; func_ov004_020b4a40(self); }
-static void __fastcall f490_020b4a64(void *self, void *) { ++g_fwk_490_hits; func_ov004_020b4a64(self); }
+static void __fastcall f490_020b3698(void *self, void *) { ++g_fwk_490_hits; Banner_SetupNone(); }
+static void __fastcall f490_020b3888(void *self, void *) { ++g_fwk_490_hits; Banner_SetupDrop(self); }
+static void __fastcall f490_020b3c9c(void *self, void *) { ++g_fwk_490_hits; Banner_SetupFall(self); }
+static void __fastcall f490_020b40ac(void *self, void *) { ++g_fwk_490_hits; Banner_SetupPopSpin(self); }
+static void __fastcall f490_020b433c(void *self, void *) { ++g_fwk_490_hits; Banner_SetupZoom(self); }
+static void __fastcall f490_020b484c(void *self, void *) { ++g_fwk_490_hits; Banner_SetupZoomBurst(self); }
+static void __fastcall f490_020b49e4(void *self, void *) { ++g_fwk_490_hits; Banner_SetupSlideFromRight(self); }
+static void __fastcall f490_020b4a1c(void *self, void *) { ++g_fwk_490_hits; Banner_SetupSlideFromLeft(self); }
+static void __fastcall f490_020b4a40(void *self, void *) { ++g_fwk_490_hits; Banner_SetupSlideFromBottom(self); }
+static void __fastcall f490_020b4a64(void *self, void *) { ++g_fwk_490_hits; Banner_SetupSlideFromTop(self); }
 
 typedef void (*SeatFn)(void *);
 
@@ -821,63 +821,63 @@ extern "C" void port_mg_framework_tables_seat(void)
        two different dispatchers with two different conventions, and
        port/tools/pmf_guard.py decides per table.
 
-       cells_field, EIGHTEEN cells, and they stay __cdecl. func_ov004_020b3278
-       copies data_ov004_020bf428[st] into the object at +0x00 and +0x04 and
-       data_ov004_020bf4f8[st] into +0x08 and +0x0c, and those two fields have
+       cells_field, EIGHTEEN cells, and they stay __cdecl. Banner_Init
+       copies sBannerUpdateTable[st] into the object at +0x00 and +0x04 and
+       sBannerDrawTable[st] into +0x08 and +0x0c, and those two fields have
        exactly two readers, both FLAT C dispatchers f(self) whose first stack
        argument IS the receiver and which both tail jump with the frame restored.
        Read off this build:
 
-           _func_ov004_020b321c  +0x3  mov eax, [ebp+8] / +0xc  mov edx, [eax]
+           _Banner_Update  +0x3  mov eax, [ebp+8] / +0xc  mov edx, [eax]
                                  +0x12 mov ecx, [eax+4] / +0x15 add ecx, eax
                                  +0x17 pop ebp / +0x18 jmp edx
-           _func_ov004_020b31b4  +0x3  mov eax, [ebp+8] / +0xc  mov edx, [eax+8]
+           _Banner_Draw  +0x3  mov eax, [ebp+8] / +0xc  mov edx, [eax+8]
                                  +0x13 mov ecx, [eax+0xc] / +0x16 add ecx, eax
                                  +0x18 pop ebp / +0x19 jmp edx
 
        and ?BeforeBehavior@dScMgBase_c@@UAEHXZ+0xb6 reaches the second one as
-       push edi; call _func_ov004_020b321c; add esp, 4, walking the array at
+       push edi; call _Banner_Update; add esp, 4, walking the array at
        0x18238a4 with stride 0x134. A thunk on any of these eighteen would break
        what works, which is the BabyPenguin case 00732a5ab left alone on purpose.
 
        cells_490, TWELVE cells, already __fastcall since lane MGWRITER, because
-       func_ov004_020b3278 dispatches data_ov004_020bf490 itself with a real
+       Banner_Init dispatches sBannerSetupTable itself with a real
        call, ecx = this and nothing pushed. They are in the ledger now so a
        future edit that drops one back to a raw body refuses the build. */
     static const CellRow cells_field[] = {
-    { data_ov004_020bf428, "020bf428",  1, 0x020b4a4cu, (SeatFn)fw_020b4a4c },   /* sinit copies data_ov004_020bc22c */
-    { data_ov004_020bf428, "020bf428",  2, 0x020b4a28u, (SeatFn)fw_020b4a28 },   /* sinit copies data_ov004_020bc19c */
-    { data_ov004_020bf428, "020bf428",  3, 0x020b49f0u, (SeatFn)fw_020b49f0 },   /* sinit copies data_ov004_020bc184 */
-    { data_ov004_020bf428, "020bf428",  4, 0x020b49b8u, (SeatFn)fw_020b49b8 },   /* sinit copies data_ov004_020bc204 */
-    { data_ov004_020bf428, "020bf428",  5, 0x020b4820u, (SeatFn)fw_020b4820 },   /* sinit copies data_ov004_020bc18c */
-    { data_ov004_020bf428, "020bf428",  6, 0x020b4080u, (SeatFn)fw_020b4080 },   /* sinit copies data_ov004_020bc1fc */
-    { data_ov004_020bf428, "020bf428",  7, 0x020b4820u, (SeatFn)fw_020b4820 },   /* sinit copies data_ov004_020bc1f4 */
-    { data_ov004_020bf428, "020bf428",  8, 0x020b4820u, (SeatFn)fw_020b4820 },   /* sinit copies data_ov004_020bc154 */
-    { data_ov004_020bf428, "020bf428",  9, 0x020b4080u, (SeatFn)fw_020b4080 },   /* sinit copies data_ov004_020bc1dc */
-    { data_ov004_020bf428, "020bf428", 10, 0x020b3c58u, (SeatFn)fw_020b3c58 },   /* sinit copies data_ov004_020bc1e4 */
-    { data_ov004_020bf428, "020bf428", 11, 0x020b3834u, (SeatFn)fw_020b3834 },   /* sinit copies data_ov004_020bc214 */
-    { data_ov004_020bf4f8, "020bf4f8",  5, 0x020b45c0u, (SeatFn)fw_020b45c0 },   /* sinit copies data_ov004_020bc1a4 */
-    { data_ov004_020bf4f8, "020bf4f8",  6, 0x020b3e9cu, (SeatFn)fw_020b3e9c },   /* sinit copies data_ov004_020bc24c */
-    { data_ov004_020bf4f8, "020bf4f8",  7, 0x020b45c0u, (SeatFn)fw_020b45c0 },   /* sinit copies data_ov004_020bc21c */
-    { data_ov004_020bf4f8, "020bf4f8",  8, 0x020b4360u, (SeatFn)fw_020b4360 },   /* sinit copies data_ov004_020bc26c */
-    { data_ov004_020bf4f8, "020bf4f8",  9, 0x020b3cb8u, (SeatFn)fw_020b3cb8 },   /* sinit copies data_ov004_020bc1cc */
-    { data_ov004_020bf4f8, "020bf4f8", 10, 0x020b3b38u, (SeatFn)fw_020b3b38 },   /* sinit copies data_ov004_020bc174 */
-    { data_ov004_020bf4f8, "020bf4f8", 12, 0x020b35d8u, (SeatFn)fw_020b35d8 },   /* sinit copies data_ov004_020bc194 */
+    { sBannerUpdateTable, "020bf428",  1, 0x020b4a4cu, (SeatFn)fw_020b4a4c },   /* sinit copies pmf_Banner_UpdateSlideFromTop */
+    { sBannerUpdateTable, "020bf428",  2, 0x020b4a28u, (SeatFn)fw_020b4a28 },   /* sinit copies pmf_Banner_UpdateSlideFromBottom */
+    { sBannerUpdateTable, "020bf428",  3, 0x020b49f0u, (SeatFn)fw_020b49f0 },   /* sinit copies pmf_Banner_UpdateSlideFromLeft */
+    { sBannerUpdateTable, "020bf428",  4, 0x020b49b8u, (SeatFn)fw_020b49b8 },   /* sinit copies pmf_Banner_UpdateSlideFromRight */
+    { sBannerUpdateTable, "020bf428",  5, 0x020b4820u, (SeatFn)fw_020b4820 },   /* sinit copies pmf_Banner_UpdateZoom_2 */
+    { sBannerUpdateTable, "020bf428",  6, 0x020b4080u, (SeatFn)fw_020b4080 },   /* sinit copies pmf_Banner_UpdatePopSpin_2 */
+    { sBannerUpdateTable, "020bf428",  7, 0x020b4820u, (SeatFn)fw_020b4820 },   /* sinit copies pmf_Banner_UpdateZoom_3 */
+    { sBannerUpdateTable, "020bf428",  8, 0x020b4820u, (SeatFn)fw_020b4820 },   /* sinit copies pmf_Banner_UpdateZoom */
+    { sBannerUpdateTable, "020bf428",  9, 0x020b4080u, (SeatFn)fw_020b4080 },   /* sinit copies pmf_Banner_UpdatePopSpin */
+    { sBannerUpdateTable, "020bf428", 10, 0x020b3c58u, (SeatFn)fw_020b3c58 },   /* sinit copies pmf_Banner_UpdateFall */
+    { sBannerUpdateTable, "020bf428", 11, 0x020b3834u, (SeatFn)fw_020b3834 },   /* sinit copies pmf_Banner_UpdateDrop */
+    { sBannerDrawTable, "020bf4f8",  5, 0x020b45c0u, (SeatFn)fw_020b45c0 },   /* sinit copies pmf_Banner_DrawZoomB */
+    { sBannerDrawTable, "020bf4f8",  6, 0x020b3e9cu, (SeatFn)fw_020b3e9c },   /* sinit copies pmf_Banner_DrawPopSpinB */
+    { sBannerDrawTable, "020bf4f8",  7, 0x020b45c0u, (SeatFn)fw_020b45c0 },   /* sinit copies pmf_Banner_DrawZoomB_2 */
+    { sBannerDrawTable, "020bf4f8",  8, 0x020b4360u, (SeatFn)fw_020b4360 },   /* sinit copies pmf_Banner_DrawZoomA */
+    { sBannerDrawTable, "020bf4f8",  9, 0x020b3cb8u, (SeatFn)fw_020b3cb8 },   /* sinit copies pmf_Banner_DrawPopSpinA */
+    { sBannerDrawTable, "020bf4f8", 10, 0x020b3b38u, (SeatFn)fw_020b3b38 },   /* sinit copies pmf_Banner_DrawSqueeze */
+    { sBannerDrawTable, "020bf4f8", 12, 0x020b35d8u, (SeatFn)fw_020b35d8 },   /* sinit copies pmf_Banner_DrawLevelNumber */
     };
 
     static const CellRow cells_490[] = {
-    { data_ov004_020bf490, "020bf490",  1, 0x020b4a64u, (SeatFn)f490_020b4a64 },   /* sinit copies data_ov004_020bc234 */
-    { data_ov004_020bf490, "020bf490",  2, 0x020b4a40u, (SeatFn)f490_020b4a40 },   /* sinit copies data_ov004_020bc23c */
-    { data_ov004_020bf490, "020bf490",  3, 0x020b4a1cu, (SeatFn)f490_020b4a1c },   /* sinit copies data_ov004_020bc244 */
-    { data_ov004_020bf490, "020bf490",  4, 0x020b49e4u, (SeatFn)f490_020b49e4 },   /* sinit copies data_ov004_020bc16c */
-    { data_ov004_020bf490, "020bf490",  5, 0x020b484cu, (SeatFn)f490_020b484c },   /* sinit copies data_ov004_020bc1bc */
-    { data_ov004_020bf490, "020bf490",  6, 0x020b40acu, (SeatFn)f490_020b40ac },   /* sinit copies data_ov004_020bc1ac */
-    { data_ov004_020bf490, "020bf490",  7, 0x020b433cu, (SeatFn)f490_020b433c },   /* sinit copies data_ov004_020bc25c */
-    { data_ov004_020bf490, "020bf490",  8, 0x020b484cu, (SeatFn)f490_020b484c },   /* sinit copies data_ov004_020bc264 */
-    { data_ov004_020bf490, "020bf490",  9, 0x020b40acu, (SeatFn)f490_020b40ac },   /* sinit copies data_ov004_020bc1c4 */
-    { data_ov004_020bf490, "020bf490", 10, 0x020b3c9cu, (SeatFn)f490_020b3c9c },   /* sinit copies data_ov004_020bc164 */
-    { data_ov004_020bf490, "020bf490", 11, 0x020b3888u, (SeatFn)f490_020b3888 },   /* sinit copies data_ov004_020bc15c */
-    { data_ov004_020bf490, "020bf490", 12, 0x020b3698u, (SeatFn)f490_020b3698 },   /* sinit copies data_ov004_020bc1d4 */
+    { sBannerSetupTable, "020bf490",  1, 0x020b4a64u, (SeatFn)f490_020b4a64 },   /* sinit copies pmf_Banner_SetupSlideFromTop */
+    { sBannerSetupTable, "020bf490",  2, 0x020b4a40u, (SeatFn)f490_020b4a40 },   /* sinit copies pmf_Banner_SetupSlideFromBottom */
+    { sBannerSetupTable, "020bf490",  3, 0x020b4a1cu, (SeatFn)f490_020b4a1c },   /* sinit copies pmf_Banner_SetupSlideFromLeft */
+    { sBannerSetupTable, "020bf490",  4, 0x020b49e4u, (SeatFn)f490_020b49e4 },   /* sinit copies pmf_Banner_SetupSlideFromRight */
+    { sBannerSetupTable, "020bf490",  5, 0x020b484cu, (SeatFn)f490_020b484c },   /* sinit copies pmf_Banner_SetupZoomBurst */
+    { sBannerSetupTable, "020bf490",  6, 0x020b40acu, (SeatFn)f490_020b40ac },   /* sinit copies pmf_Banner_SetupPopSpin */
+    { sBannerSetupTable, "020bf490",  7, 0x020b433cu, (SeatFn)f490_020b433c },   /* sinit copies pmf_Banner_SetupZoom */
+    { sBannerSetupTable, "020bf490",  8, 0x020b484cu, (SeatFn)f490_020b484c },   /* sinit copies pmf_Banner_SetupZoomBurst_2 */
+    { sBannerSetupTable, "020bf490",  9, 0x020b40acu, (SeatFn)f490_020b40ac },   /* sinit copies pmf_Banner_SetupPopSpin_2 */
+    { sBannerSetupTable, "020bf490", 10, 0x020b3c9cu, (SeatFn)f490_020b3c9c },   /* sinit copies pmf_Banner_SetupFall */
+    { sBannerSetupTable, "020bf490", 11, 0x020b3888u, (SeatFn)f490_020b3888 },   /* sinit copies pmf_Banner_SetupDrop */
+    { sBannerSetupTable, "020bf490", 12, 0x020b3698u, (SeatFn)f490_020b3698 },   /* sinit copies pmf_Banner_SetupNone */
     };
 
     mgfwk_seat_cells(cells_field, sizeof cells_field / sizeof cells_field[0]);

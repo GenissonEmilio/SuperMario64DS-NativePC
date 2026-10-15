@@ -81,7 +81,7 @@
 //
 // ---- 3. SLOT 2 WAS THE CLASS'S ONE FLOOR. IT IS RETIRED --------------------
 //
-// RUN mg12, LANE MAM MATCHED IT. src/func_ov006_0210adac.c byte-reproduces
+// RUN mg12, LANE MAM MATCHED IT. src/Slot3_State2.c byte-reproduces
 // 0x0210adac under mwccarm 2004/b56 (and 1.2/base, 1.2/sp2, 1.2/sp2p3), it has
 // a delink block in config/arm9/overlays/ov006/delinks.txt covering
 // 0x0210adac..0x0210af64, linkcheck reports VERIFIED with zero blind slots, and
@@ -100,14 +100,14 @@
 // WHAT IT COSTS THE PLAYER, derived rather than guessed. The state index at
 // +0x5000 moves like this:
 //
-//   0 -> 1   src/func_ov006_0210b1fc.c's tail (`*q += 1`), after the 0x50-frame
+//   0 -> 1   src/Slot3_State0.c's tail (`*q += 1`), after the 0x50-frame
 //            open and the reel-lights setup
-//   1 -> 2   src/func_ov006_0210af64.c's tail: once the third reel has been
+//   1 -> 2   src/Slot3_State1.c's tail: once the third reel has been
 //            stopped (`*(u8 *)(c + 0x503d) >= 3`) it sets +0x503e to 0x1e and
 //            writes 2
-//   3 / 4    src/func_ov006_0210ac3c.cpp, the payout and the round reset, which
+//   3 / 4    src/Slot3_State3and4.cpp, the payout and the round reset, which
 //            dispatches vtable slot 18 with the argument 4
-//   6 -> 7   src/func_ov006_0210ab94.c's countdown
+//   6 -> 7   src/Slot3_State6.c's countdown
 //
 // So state 2 is the FACE-EVALUATION step between "all three reels stopped" and
 // "the payout is tallied": the ROM body reads the three visible symbols out of
@@ -146,7 +146,7 @@
 // range and 400-odd source shapes do not move it. A redundant `(int)` cast on
 // the left operand of the sum inside the modulo does: it changes the expression
 // tree mwcc builds and the initialiser stays put. That cast is load-bearing and
-// src/func_ov006_0210adac.c says so at the top. The near-miss row was retired
+// src/Slot3_State2.c says so at the top. The near-miss row was retired
 // with the match.
 //
 // IT HAS TWO EXITS AND THIS PARAGRAPH USED TO NAME ONLY ONE. On the PAY path
@@ -162,7 +162,7 @@
 //
 // BOTH EXITS LAND ON THE SAME BODY, which is the detail that makes the table
 // make sense: slots 3 and 4 of data_ov006_02142bdc are BOTH
-// func_ov006_0210ac3c, so one payout state serves a win and a loss and tells
+// Slot3_State3and4, so one payout state serves a win and a loss and tells
 // them apart by the index it was entered on. It is also why the per-slot
 // counter in this file charges slot 3 for both, and why the switch below has
 // one arm for the two slots.
@@ -171,7 +171,7 @@
 // is a byte match, not a transcription. The mg11 adjudication arithmetic
 // (108 instructions plus a two-word pool = 110 = 0x1b8/4) and the five callees
 // (DecIfAbove0_Byte 0x0203add4, the ITCM divide helper 0x01ffabe4,
-// func_02012790 twice, func_ov004_020adb1c) held exactly: the matched object is
+// func_02012790 twice, Mg_SubmitScore) held exactly: the matched object is
 // 0x1b8 bytes with the same two pool words and the same five relocations.
 //
 // ---- 4. ALL EIGHT NOW HAVE MATCHED src TUs --------------------------------
@@ -198,13 +198,13 @@ void port_mg_call0(void *self, unsigned code, int adj);
 
 /* the eight routed state bodies, each declared with the parameter list ITS OWN
    src TU defines */
-void func_ov006_0210b1fc(char *p);            /* slot 0 */
-void func_ov006_0210af64(char *c);            /* slot 1 */
-void func_ov006_0210adac(char *c);            /* slot 2 */
-void func_ov006_0210ac3c(char *c);            /* slots 3 and 4 */
-void func_ov006_0210ac38(void);               /* slot 5, bx lr body */
-void func_ov006_0210ab94(char *c);            /* slot 6 */
-void func_ov006_0210ab90(void);               /* slot 7, bx lr body */
+void Slot3_State0(char *p);            /* slot 0 */
+void Slot3_State1(char *c);            /* slot 1 */
+void Slot3_State2(char *c);            /* slot 2 */
+void Slot3_State3and4(char *c);            /* slots 3 and 4 */
+void Slot3_State5(void);               /* slot 5, bx lr body */
+void Slot3_State6(char *c);            /* slot 6 */
+void Slot3_State7(void);               /* slot 7, bx lr body */
 
 /* the mount table this file dispatches, re-typed to the ROM's eight-byte pair.
    The ov006 mount defines the storage; __sinit_ov006_02132894 fills it at
@@ -217,7 +217,7 @@ void port_mg_slot3_states_seat(void);
 
 /* the two ordinary callees the host copy below keeps, spelled as their own src
    TUs spell them */
-void func_ov006_020c2144(void *a);
+void Mascot_Update(void *a);
 int  RandomIntInternal(int *seed);
 extern int          data_0209e650;
 extern unsigned char data_0209d45c;
@@ -242,17 +242,17 @@ static int slot3_try_0(void *self, unsigned code)
 {
     char *c = (char *)self;
     switch (code) {
-    case 0x0210b1fcu: ++g_slot3_state_slot[0]; func_ov006_0210b1fc(c); return 1;
-    case 0x0210af64u: ++g_slot3_state_slot[1]; func_ov006_0210af64(c); return 1;
+    case 0x0210b1fcu: ++g_slot3_state_slot[0]; Slot3_State0(c); return 1;
+    case 0x0210af64u: ++g_slot3_state_slot[1]; Slot3_State1(c); return 1;
     /* slot 2 -- the face evaluation, matched by run mg12 lane MAM; section 3 */
-    case 0x0210adacu: ++g_slot3_state_slot[2]; func_ov006_0210adac(c); return 1;
+    case 0x0210adacu: ++g_slot3_state_slot[2]; Slot3_State2(c); return 1;
     /* slots 3 AND 4 are the same body; the per-slot counter cannot tell them
        apart from the code word alone, so this arm charges slot 3 and the
        census says so rather than implying two distinct states ran. */
-    case 0x0210ac3cu: ++g_slot3_state_slot[3]; func_ov006_0210ac3c(c); return 1;
-    case 0x0210ac38u: ++g_slot3_state_slot[5]; func_ov006_0210ac38();  return 1;
-    case 0x0210ab94u: ++g_slot3_state_slot[6]; func_ov006_0210ab94(c); return 1;
-    case 0x0210ab90u: ++g_slot3_state_slot[7]; func_ov006_0210ab90();  return 1;
+    case 0x0210ac3cu: ++g_slot3_state_slot[3]; Slot3_State3and4(c); return 1;
+    case 0x0210ac38u: ++g_slot3_state_slot[5]; Slot3_State5();  return 1;
+    case 0x0210ab94u: ++g_slot3_state_slot[6]; Slot3_State6(c); return 1;
+    case 0x0210ab90u: ++g_slot3_state_slot[7]; Slot3_State7();  return 1;
     default:                                                           return 0;
     }
 }
@@ -356,14 +356,14 @@ extern "C" void port_mg_slot3_state_slots(unsigned *out8)
         sym();                                                            \
     }
 
-S3_FACE(0, func_ov006_0210b1fc)
-S3_FACE(1, func_ov006_0210af64)
-S3_FACE(2, func_ov006_0210adac)
-S3_FACE(3, func_ov006_0210ac3c)
-S3_FACE(4, func_ov006_0210ac3c)
-S3_FACE_VOID(5, func_ov006_0210ac38)
-S3_FACE(6, func_ov006_0210ab94)
-S3_FACE_VOID(7, func_ov006_0210ab90)
+S3_FACE(0, Slot3_State0)
+S3_FACE(1, Slot3_State1)
+S3_FACE(2, Slot3_State2)
+S3_FACE(3, Slot3_State3and4)
+S3_FACE(4, Slot3_State3and4)
+S3_FACE_VOID(5, Slot3_State5)
+S3_FACE(6, Slot3_State6)
+S3_FACE_VOID(7, Slot3_State7)
 
 extern "C" void port_mg_slot3_states_seat(void)
 {
@@ -377,14 +377,14 @@ extern "C" void port_mg_slot3_states_seat(void)
         unsigned rom;
         void *face;
     } seats[] = {
-        {0, 0x0210b1fcu, (void *)s3_s0_func_ov006_0210b1fc},
-        {1, 0x0210af64u, (void *)s3_s1_func_ov006_0210af64},
-        {2, 0x0210adacu, (void *)s3_s2_func_ov006_0210adac},
-        {3, 0x0210ac3cu, (void *)s3_s3_func_ov006_0210ac3c},
-        {4, 0x0210ac3cu, (void *)s3_s4_func_ov006_0210ac3c},
-        {5, 0x0210ac38u, (void *)s3_s5_func_ov006_0210ac38},
-        {6, 0x0210ab94u, (void *)s3_s6_func_ov006_0210ab94},
-        {7, 0x0210ab90u, (void *)s3_s7_func_ov006_0210ab90},
+        {0, 0x0210b1fcu, (void *)s3_s0_Slot3_State0},
+        {1, 0x0210af64u, (void *)s3_s1_Slot3_State1},
+        {2, 0x0210adacu, (void *)s3_s2_Slot3_State2},
+        {3, 0x0210ac3cu, (void *)s3_s3_Slot3_State3and4},
+        {4, 0x0210ac3cu, (void *)s3_s4_Slot3_State3and4},
+        {5, 0x0210ac38u, (void *)s3_s5_Slot3_State5},
+        {6, 0x0210ab94u, (void *)s3_s6_Slot3_State6},
+        {7, 0x0210ab90u, (void *)s3_s7_Slot3_State7},
     };
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {

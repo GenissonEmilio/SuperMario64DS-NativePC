@@ -79,21 +79,21 @@ NS_DEF_FILE = "abi_prove_nsdef.cpp"
 # --------------------------------------------------------------------------
 ALIAS_FIXTURES = [
     ("Heap::SetDefault",
-     "__ZN4Heap10SetDefaultEv=?SetDefault@Heap@@QAEHXZ",
+     "__ZN5mHeap6Heap_t10SetDefaultEv=?SetDefault@Heap_t@mHeap@@QAEHXZ",
      "published a register nobody set into the default-heap pointer; the boot "
      "carried on with it and faulted later in Heap::Allocate",
      "cons 8af183ddb, 2026-08-16"),
     ("Heap::Destroy",
-     "__ZN4Heap7DestroyEv=?Destroy@Heap@@QAEXXZ",
+     "__ZN5mHeap6Heap_t7DestroyEv=?Destroy@Heap_t@mHeap@@QAEXXZ",
      "the body dereferences the receiver, so this one faults rather than "
      "publishing a wrong word",
      "cons 0936784c9, 2026-08-16"),
     ("Heap::_Destroy",
-     "?_Destroy@Heap@@QAEXXZ=__ZN4Heap8_DestroyEv",
+     "?_Destroy@Heap_t@mHeap@@QAEXXZ=__ZN5mHeap6Heap_t8_DestroyEv",
      "the other direction: the caller sets ECX, the flat body reads the stack",
      "cons 0936784c9, 2026-08-16"),
     ("Heap::ResizeToFit",
-     "__ZN4Heap11ResizeToFitEv=?ResizeToFit@Heap@@QAEIXZ",
+     "__ZN5mHeap6Heap_t11ResizeToFitEv=?ResizeToFit@Heap_t@mHeap@@QAEIXZ",
      "reached from Virtual34, slot 13 of _ZTV5Actor",
      "cons cf428a19a, 2026-08-16"),
     ("SolidHeapAllocator::Allocate",
@@ -207,8 +207,8 @@ ARITY_FIXTURES = [
 # --------------------------------------------------------------------------
 PLAIN_FIXTURES = [
     ("Sort or 'Splode per-bomb tick", "src/func_ov006_020d8cc4.cpp",
-     'extern "C" void _ZN14dScMgBomroom_c19func_ov006_020d836cEv(void);',
-     'extern "C" void _ZN14dScMgBomroom_c19func_ov006_020d836cEv(char* c);',
+     'extern "C" void _ZN14dScMgBomroom_c11UpdateBombsEv(void);',
+     'extern "C" void _ZN14dScMgBomroom_c11UpdateBombsEv(char* c);',
      "the bin-full sweep waits on the per-bomb tick; declared (void) the "
      "host call pushes nothing, 020d836c reads a garbage receiver out of "
      "the caller's saved registers, and scene 370 softlocks the first time "

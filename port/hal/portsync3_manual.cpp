@@ -27,7 +27,7 @@ static void port_unmatched_hit(const char *what)
     std::fflush(stderr);
 }
 
-/* ---- the daDemo_c model helpers (src/actors/daDemo_c.cpp) ------------------
+/* ---- the daDemo_c model helpers (src/game/actors/d_a_demo.cpp) ------------------
  * dExtModel_c and its two subclasses are cutscene-only; the ROM bodies sit at
  * anonymous vtable slots (config names only the RTTI). */
 dExtModel_c::~dExtModel_c() {}

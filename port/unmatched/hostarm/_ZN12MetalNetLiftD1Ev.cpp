@@ -1,7 +1,7 @@
 /* HOST ARM recovered by PORTSYNC2.
  * Old path: src/_ZN12MetalNetLiftD1Ev.cpp, which carried this under #ifdef _MSC_VER. The
  * 2026-10 main merge took main's src/, which folded that code into
- * src/actors/daObjFl_Amilift_c.cpp without the arm. MSVC emits one destructor per class and never the ROM's flat Itanium variant name, and port/hal calls that flat name from the class's vtable slot.
+ * src/game/actors/d_a_obj_fl_amilift.cpp without the arm. MSVC emits one destructor per class and never the ROM's flat Itanium variant name, and port/hal calls that flat name from the class's vtable slot.
  * Only the host arm is here, retargeted to main's names; mwccarm never
  * compiles this file, so nothing here moves a ROM byte. Comments below that
  * name old per-function src/ files describe the pre-merge tree. */

@@ -4,10 +4,10 @@
 //
 // ---- THE TRAP IS GONE, AND WHAT IT WAS HIDING IS WORTH KEEPING -------------
 //
-// This file used to define func_ov006_02106168 as a counting stub, because the
+// This file used to define DealPuzzle as a counting stub, because the
 // body had a config symbol, no delink block in
 // config/arm9/overlays/ov006/delinks.txt and no src file in either extension.
-// src/func_ov006_02106168.cpp now exists and byte-matches at mwccarm 1.2/sp2p3
+// src/DealPuzzle.cpp now exists and byte-matches at mwccarm 1.2/sp2p3
 // (135 instructions + 7 pool words = 142 = 0x238/4), so the body is an
 // ordinary line in port/slice_ppp.txt and nothing here stands in for it.
 //
@@ -16,9 +16,9 @@
 // re-checked here:
 //
 //   slot 0  InitResources  _ZN12dScMgPanel_c13InitResourcesEv, bl #0x2106168 at 0x021077a4
-//   slot 18 state reset    _ZN12dScMgPanel_c13OnYoshiTryEatEi, bl #0x2106168 at 0x0210729c
+//   slot 18 state reset    _ZN12dScMgPanel_c10StartRoundEi, bl #0x2106168 at 0x0210729c
 //
-// and it is the sole writer of the two panel arrays func_ov006_021067a4 zeroes
+// and it is the sole writer of the two panel arrays ResetRound zeroes
 // just before it runs: the CURRENT face at c+0x4f1e+i and the TARGET face at
 // c+0x4f42+i. It also writes every panel's fixed-point position (c+0x4cc4+i*4,
 // c+0x4d54+i*4) and the c+0x4cc0 shuffle moves it records at c+0x4fae.
@@ -34,15 +34,15 @@
 //   relocs.txt  from:0x02106384 kind:load to:0x0213e070   gate == 0
 //   relocs.txt  from:0x02106388 kind:load to:0x0213ded0   gate != 0
 //
-// both indexed by c+0x4cb4, the face-set number func_ov006_021063a0 rolls, and
+// both indexed by c+0x4cb4, the face-set number ScramblePanels rolls, and
 // both feeding the two panel arrays. That is the mechanism behind this class
 // carrying two player-facing titles on one actor id, and it is still recorded
 // rather than resolved: nothing here says which mode is "Puzzle Panel" and
 // which is "Puzzle Panic".
 //
-// The virtual call needs no help from this file. src/func_ov006_02106168.cpp
+// The virtual call needs no help from this file. src/DealPuzzle.cpp
 // dispatches slot 35 through the seated table the same way
-// src/actors/dScMgPanel_c.cpp already does, and by the time either runs
+// src/minigames/d_s_mg_panel.cpp already does, and by the time either runs
 // port_scene_fill_panel has replaced that slot's raw DS word with
 // hal/scene_mg.cpp's mb_v35 thunk.
 

@@ -1,7 +1,7 @@
 /* HOST ARM recovered by PORTSYNC2.
- * Old path: src/func_ov006_020ce988.cpp (port line). Its _MSC_VER arm made the
+ * Old path: src/TrmpItem_UpdateMatrix.cpp (port line). Its _MSC_VER arm made the
  * slot-5 Render call a __thiscall; the 2026-10 main merge (749f5799a) took main's
- * src/, which folded the function into src/actors/unit020cd744.cpp (namespace
+ * src/, which folded the function into src/minigames/unit020cd744.cpp (namespace
  * s020ce988, still extern "C") without the arm. This file defines it again:
  * MAIN'S BODY, statement for statement, with only the arm's change applied
  * (main also spells the opacity call _ZN9ModelBase12ApplyOpacityEjj). The same
@@ -10,7 +10,7 @@
 #include "common.h"
 
 namespace s020ce988 {
-// @symbol func_ov006_020ce988
+// @symbol TrmpItem_UpdateMatrix
 
 extern "C" {
 void Matrix4x3_FromQuaternion(const void* q, struct Matrix4x3* mF);
@@ -23,7 +23,7 @@ extern "C" {extern struct Matrix4x3 data_020a0e68;}
 
 struct VtO { int dummy[0x14/4]; void (*f)(void*, void*); };
 
-extern "C" void func_ov006_020ce988(char* c){
+extern "C" void TrmpItem_UpdateMatrix(char* c){
     struct Matrix4x3 tmp;
     Matrix4x3_FromQuaternion(c+0x74, &tmp);
     Matrix4x3_FromTranslation(&data_020a0e68, *(int*)(c+8), *(int*)(c+0xc), *(int*)(c+0x10));

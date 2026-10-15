@@ -330,7 +330,7 @@ extern u32 _ZN3IRQ7RestoreEj(u32 state);
 extern void _ZN4CP1514FlushDataCacheEjj(unsigned int a, unsigned int b);
 extern void _ZN4CP1519InvalidateDataCacheEjj(unsigned int addr, unsigned int n);
 extern void _ZN4CP1527FlushAndInvalidateDataCacheEjj(unsigned int a, unsigned int b);
-extern SolidHeapAllocator *_ZN4Heap24CreateSolidHeapAllocatorEPvjj(void *address, u32 size, u32 flags);
+extern SolidHeapAllocator *_ZN5mHeap6Heap_t24CreateSolidHeapAllocatorEPvjj(void *address, u32 size, u32 flags);
 extern unsigned int _ZN4cstd6strlenEPKc(const char *s);
 extern int __aeabi_idiv(int a, int b);
 extern unsigned int __aeabi_uidiv(unsigned int a, unsigned int b);
@@ -1154,7 +1154,7 @@ extern "C" void *func_0205130c(unsigned int addr, unsigned int size)
         return 0;
     if (end - aligned < 0x10)
         return 0;
-    alloc = ((void *(*)(void *p, unsigned int sz, unsigned int z))_ZN4Heap24CreateSolidHeapAllocatorEPvjj)((void *)(aligned + 0x10),
+    alloc = ((void *(*)(void *p, unsigned int sz, unsigned int z))_ZN5mHeap6Heap_t24CreateSolidHeapAllocatorEPvjj)((void *)(aligned + 0x10),
                                                     (end - aligned) - 0x10, 0);
     if (alloc == 0)
         return 0;

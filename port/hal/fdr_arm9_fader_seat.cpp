@@ -731,7 +731,7 @@ void __cdecl fdr_s08(void *s)
    wrong about the table having one caller shape. The minigame framework
    reaches the same two slots as __thiscall members of a file-local C++
    struct, receiver in ECX, two words pushed and nothing cleaned after the
-   call. src/func_ov004_020b72d4.cpp is the site measured, its exit fade
+   call. src/UpdateRetryPrompt.cpp is the site measured, its exit fade
    `data_0209f5bc->m_10(0x1e, 0)`:
 
        ecx = the fader (data_0209f61c), [esp+4] = 0x1e, [esp+8] = 0
@@ -739,7 +739,7 @@ void __cdecl fdr_s08(void *s)
    so the __cdecl body read 0x1e as its receiver and faulted dereferencing it.
    Measured on the INT48 build, scenes 380, 361 and 386 under a scripted
    stylus: FAULT at this stub +0xa accessing 0x0000001e, returning into
-   func_ov004_020b72d4+0x2e. Refusing instead of faulting would not have been
+   UpdateRetryPrompt+0x2e. Refusing instead of faulting would not have been
    enough: the caller expects eight bytes cleaned, and a __cdecl return leaves
    them on its frame.
 

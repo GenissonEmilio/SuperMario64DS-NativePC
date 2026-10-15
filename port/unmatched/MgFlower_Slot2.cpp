@@ -4,7 +4,7 @@
  * Run mg5, lane FLW.
  *
  * WHAT IS WRONG WITH THE MATCHED TU, and it is an ARM ride-through rather
- * than a bad body. src/minigames/d_s_mg_single3_d_base.cpp is a FAITHFUL DECOMP: it was
+ * than a bad body. src/minigames/d_s_mg_single3d_base.cpp is a FAITHFUL DECOMP: it was
  * disassembled out of extracted/overlays/overlay_0006.bin at base 0x020bfec0
  * and ruled REAL_DECOMP three times over now (lane MGA, lane MGB and this
  * lane), and no constant, offset, branch target or instruction count differs.
@@ -52,7 +52,7 @@
  * IT CARRIES A port_ NAME AND DOES NOT DEFINE _ZN19dScMgSingle3DBase_c18AfterInitResourcesEj. The decomp
  * has a real matched body for that symbol and this file is not a stand-in for
  * it -- it is the host's calling convention being placed by hand. So
- * src/minigames/d_s_mg_single3_d_base.cpp stays out of port/slice_flw.txt (listing both
+ * src/minigames/d_s_mg_single3d_base.cpp stays out of port/slice_flw.txt (listing both
  * would be an LNK2005), the symbol stays absent from the port's map, and
  * nothing in this tree claims a decompilation that does not exist.
  *

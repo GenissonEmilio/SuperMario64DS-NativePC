@@ -1,7 +1,7 @@
 /* HOST ARM recovered by PORTSYNC2 (port/tools/hostarm_recover.py draft, reviewed).
  * The port line carried this in src/_ZN16daObjKaitendai_cD0Ev.cpp under #ifdef _MSC_VER; the
  * 2026-10 main merge (749f5799a) took main's src/, where that code
- * now lives in src/actors/daObjKaitendai_c.cpp without the arm. mwccarm never saw the arm,
+ * now lives in src/game/actors/d_a_obj_kaitendai.cpp without the arm. mwccarm never saw the arm,
  * so nothing here moves a ROM byte.
  *
  * WHY IT EXISTS. The host needs the ROM's flat D0 name (port/hal/actor_classes_ov036.cpp holds it as a

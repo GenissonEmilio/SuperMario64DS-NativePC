@@ -50,7 +50,7 @@
 # instruction epilogue, not a b or a bx.  The distinction matters to nothing
 # here and is recorded because the next reader will disassemble it.
 #
-# func_ov006_021295ac, 0xe0 = 45 instructions plus an ELEVEN-word pool = 56 =
+# dScMgSnowball_c_Construct, 0xe0 = 45 instructions plus an ELEVEN-word pool = 56 =
 # 0xe0/4.  Pool: 0x0000471c, 0x0213e448, 0x0000aba4, 0x0214000c, 0x0000acd8,
 # 0x0203d47c, 0x0203d738, 0x0000b5d8, 0x02125800, 0x0000ba14, 0x0212968c.
 # Two vtable stores into the object's first word, in inheritance order:
@@ -71,13 +71,13 @@
 # "An offset match is a candidate; a blx on the loaded word is the finding."
 # Four readings of the relocation set, and the last one is a ring:
 #
-#   a. dScMgSnowball_c_classInit is the ONLY caller of func_ov006_021295ac in the
+#   a. dScMgSnowball_c_classInit is the ONLY caller of dScMgSnowball_c_Construct in the
 #      whole overlay -- one arm_call, from:0x0212a540.  Nothing else builds
 #      this object.
-#   b. func_ov006_021295ac is the only body that writes 0x0214000c into an
+#   b. dScMgSnowball_c_Construct is the only body that writes 0x0214000c into an
 #      object it constructs.
 #   c. 0x0214000c has exactly THREE load relocations in all of ov006:
-#         from:0x0212966c  in func_ov006_021295ac+0xc0   the constructor
+#         from:0x0212966c  in dScMgSnowball_c_Construct+0xc0   the constructor
 #         from:0x0212571c  in _ZN15dScMgSnowball_cD1Ev+0x90   D2
 #         from:0x021257dc  in _ZN15dScMgSnowball_cD0Ev+0xa0   D0
 #   d. AND SLOTS 16 AND 17 OF THE TABLE ARE THOSE TWO DESTRUCTORS.  The vtable
@@ -100,7 +100,7 @@
 #                constructors and destructors: dScMgCard_c_classInit,
 #                dScMg3DEsp_c_classInit, dScMgMemory_c_classInit, dScMgMemory2_c_classInit,
 #                dScMgMCarlo2_c_classInit, dScMgRoulette_c_classInit,
-#                dScMgSound_c_classInit, dScMgBSC_c_classInit, func_ov006_021295ac
+#                dScMgSound_c_classInit, dScMgBSC_c_classInit, dScMgSnowball_c_Construct
 #                (this class) and their destructor pairs.
 #                It is dScMgSingle3DBase_c, the shared middle base.
 #   0x0213c62c   14 load relocations, from dScMgJump_c_classInit,
@@ -163,7 +163,7 @@
 #      377 is checked against the ROM on every boot.
 #   3. The config's recovered names -- dScMgSnowball_c_InitResources,
 #      _CleanupResources, _Behavior, _OnKicked, _OnPushed, _OnAttacked2 -- and
-#      a generated header dScMgSnowball_c.h that src/_ZN15dScMgSnowball_c8OnKickedEv.cpp
+#      a generated header dScMgSnowball_c.h that src/_ZN15dScMgSnowball_c16OnGraphCallback2Ev.cpp
 #      includes.
 #   4. The four ROM strings in section 5.
 #   5. The ov005 launch table and the BMG chain (section 7).
@@ -260,7 +260,7 @@
 #
 # SLOT 18 READS ITS SECOND ARGUMENT AND THE THUNK FORWARDS IT.  This is the
 # second class to do it -- run mg9 lane LKY found the first, in dScMgBSC_c, and
-# relayed it as "witness, don't assume".  _ZN15dScMgSnowball_c13OnYoshiTryEatEi saves r1 into r4
+# relayed it as "witness, don't assume".  _ZN15dScMgSnowball_c10StartRoundEi saves r1 into r4
 # at 0x0212922c and compares it against 0x13 at 0x0212923c; only on a match
 # does it run func_ov006_02126ee4 and func_ov006_02126a98.  A thunk that merely
 # popped the argument would hand the body stack litter and let that arm fire at
@@ -392,30 +392,30 @@
 # with #, so a trailing comment kills the line silently and the linkage delta
 # comes up short.  Run mg9 lane PSY banked that one.
 #
-src/actors/dScMgSnowball_c.cpp
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_021295ac.cpp
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_c13InitResourcesEv.cpp
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_c16CleanupResourcesEv.cpp
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_c8BehaviorEv.cpp
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_cD1Ev.cpp
+src/minigames/d_s_mg_snowball.cpp
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/dScMgSnowball_c_Construct.cpp
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/_ZN15dScMgSnowball_c13InitResourcesEv.cpp
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/_ZN15dScMgSnowball_c16CleanupResourcesEv.cpp
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/_ZN15dScMgSnowball_c8BehaviorEv.cpp
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/_ZN15dScMgSnowball_cD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN15dScMgSnowball_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN15dScMgSnowball_cD0Ev.cpp
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_c13OnYoshiTryEatEi.cpp
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_c11OnAttacked2Ev.cpp
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_c8OnKickedEv.cpp
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/_ZN15dScMgSnowball_c8OnPushedEv.cpp
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_0212a274.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_0212a110.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_0212a000.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02129eec.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02129e28.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02129cb0.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02129b74.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02129a34.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_0212992c.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02129894.cpp
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_021297c0.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_0212972c.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/_ZN15dScMgSnowball_c10StartRoundEi.cpp
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/_ZN15dScMgSnowball_c16OnGraphCallback0Ev.cpp
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/_ZN15dScMgSnowball_c16OnGraphCallback2Ev.cpp
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/_ZN15dScMgSnowball_c16OnGraphCallback3Ev.cpp
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_0212a274.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_0212a110.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_0212a000.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02129eec.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02129e28.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02129cb0.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02129b74.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02129a34.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_0212992c.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02129894.cpp
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_021297c0.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_0212972c.c
 #
 # ---- 12. WAVE 1: WHAT THE LINK ASKED FOR --------------------------------
 #
@@ -443,14 +443,14 @@ src/actors/dScMgSnowball_c.cpp
 # port/mg_fanout_costs.txt says to budget ONE wave plus its own alias row;
 # this class took one wave, one alias and two traps.
 #
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02125800.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02125804.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02125890.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02126948.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02126a98.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_021279b0.cpp
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_0212968c.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02129690.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/SnowSpray_ElemDtor.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02125804.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02125890.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/Snowball_UpdateCamera.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02126a98.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_021279b0.cpp
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/SnowSpray_ElemCtor.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02129690.c
 #
 # ---- 13. WAVE 2: THE TRAP RULE FIRING -----------------------------------
 #
@@ -481,8 +481,8 @@ src/actors/dScMgSnowball_c.cpp
 # against section 14's "one wave plus its own alias row".  The trap rule is the
 # whole of the difference and it is predictable: budget an extra wave per trap.
 #
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02125994.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_0212a3c0.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02125994.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_0212a3c0.c
 #
 # ---- 14. WAVE 3: A DEFECT ONLY A RUN COULD FIND -------------------------
 #
@@ -620,11 +620,11 @@ src/actors/dScMgSnowball_c.cpp
 # change. It stood at 9 of 691 -- one idiom, the ROM reading the vtable pointer
 # through the argument copy at all three virtual-call sites -- and the seat
 # FAULTED on the first boot of scene 377 under SM64DS_FAULTS_FATAL=1: ecx = 0
-# inside _ZN11dScMgBase_c9Virtual8CEv reading [0+8], because the port's face for that
+# inside _ZN11dScMgBase_c12IsAltVariantEv reading [0+8], because the port's face for that
 # slot is `static int __fastcall mb_v35(void *s, void *)` and a C
 # function-pointer call leaves the receiver on the stack. Spelling it as a real
 # C++ virtual call through a dummy-vtable struct -- the spelling
-# src/actors/dScMgPanel_c.cpp, _02106168.cpp and _021057f0.cpp already use for
+# src/minigames/d_s_mg_panel.cpp, _02106168.cpp and _021057f0.cpp already use for
 # this same slot -- fixes the convention AND closes all nine words, because the
 # ROM's idiom IS the C++ virtual call. The language mode alone is not the lever:
 # compiling the C spelling with -lang c++ is bitwise identical, still 9 of 691.
@@ -671,12 +671,12 @@ src/actors/dScMgSnowball_c.cpp
 #                               +0xac58/+0xacd8 that func_ov006_02126ee4 fills
 #   src/func_ov006_02125cdc.c   the course-geometry (wall) probe
 #
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02125f68.cpp
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02126ee4.cpp
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02126b4c.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_021259d8.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02125bbc.c
-# FOLDED into src/actors/dScMgSnowball_c.cpp (row 395): src/func_ov006_02125cdc.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02125f68.cpp
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02126ee4.cpp
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02126b4c.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_021259d8.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02125bbc.c
+# FOLDED into src/minigames/d_s_mg_snowball.cpp (row 395): src/func_ov006_02125cdc.c
 
 # ---- 18. THE GOAL CRITERION WAS A PRE-SEAT RESULT, AND IS RE-SCOPED --------
 #

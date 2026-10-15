@@ -33,16 +33,16 @@
 #   func_ov002_020f562c  <- data_ov002_02110e7c[2]  (this gate's face)
 #   func_ov002_020f5848  <- data_ov002_02110e7c[1]  (this gate's face)
 # ===========================================================================
-src/actors/daDemo_c.cpp
-# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f3d98.cpp
-# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f37a0.cpp
-# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f5848.cpp
-# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f5990.cpp
-# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f3740.cpp
-# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f2dd4.cpp
-# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f562c.cpp
-# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f5dd8.cpp
-# FOLDED into src/actors/daDemo_c.cpp (row 36): src/func_ov002_020f5f0c.cpp
+src/game/actors/d_a_demo.cpp
+# FOLDED into src/game/actors/d_a_demo.cpp (row 36): src/func_ov002_020f3d98.cpp
+# FOLDED into src/game/actors/d_a_demo.cpp (row 36): src/func_ov002_020f37a0.cpp
+# FOLDED into src/game/actors/d_a_demo.cpp (row 36): src/func_ov002_020f5848.cpp
+# FOLDED into src/game/actors/d_a_demo.cpp (row 36): src/func_ov002_020f5990.cpp
+# FOLDED into src/game/actors/d_a_demo.cpp (row 36): src/func_ov002_020f3740.cpp
+# FOLDED into src/game/actors/d_a_demo.cpp (row 36): src/func_ov002_020f2dd4.cpp
+# FOLDED into src/game/actors/d_a_demo.cpp (row 36): src/func_ov002_020f562c.cpp
+# FOLDED into src/game/actors/d_a_demo.cpp (row 36): src/func_ov002_020f5dd8.cpp
+# FOLDED into src/game/actors/d_a_demo.cpp (row 36): src/func_ov002_020f5f0c.cpp
 
 # ---- gate 2: THE THREE EXTENT-OPEN TABLES ---------------------------------
 #
@@ -76,9 +76,9 @@ src/actors/daDemo_c.cpp
 # Key and UpDownLiftBbh define real C++ MEMBERS and go through the forwarders in
 # port/hal/fwd_forwarders.cpp; ToxBox defines the flat extern "C" name and needs
 # only its table alias.
-src/actors/daObjKey_c.cpp
-src/actors/daUdlift_c.cpp
-src/actors/daOnms_c.cpp
+src/game/actors/d_a_obj_key.cpp
+src/game/actors/d_a_udlift.cpp
+src/game/actors/d_a_onms.cpp
 
 # ---- gate 3: THE OBJECT-FIELD ROWS THE ov006 RANGE SWEEP CLOSES ------------
 #
@@ -88,7 +88,7 @@ src/actors/daOnms_c.cpp
 # This gate runs MGWRITER's range sweep per class code block over ov006 and
 # takes the three rows whose universe closes.
 #
-#   func_ov006_020c2b8c  field +0x00 of the shared +0x4f38 sub-object
+#   Presenter_Update  field +0x00 of the shared +0x4f38 sub-object
 #     block 020c2290..020c2a00 -> 7 {code,0} pairs at 0213adb8..0213adf8, SIX
 #     distinct code words; every reference into the run is from inside the block
 #     (the sixteen from outside point at the two bone-name strings interleaved
@@ -96,7 +96,7 @@ src/actors/daOnms_c.cpp
 #     Emitted: mov eax,[esi] / test / je / mov ecx,[esi+4] / add ecx,esi /
 #     call eax -- ARITY 0, /Zp4 diff 0 lines.
 #
-#   func_ov006_020c4cd8  field +0x30   and   func_ov006_020c7860  field +0x3c
+#   Heyho_Update  field +0x30   and   func_ov006_020c7860  field +0x3c
 #     block 020c4000..020c9000 -> 38 {code,0} pairs in two runs,
 #     0213af18..0213afc8 (23) and 0213b020..0213b090 (15), 16 + 9 = 25 distinct
 #     code words, DISJOINT by field; every reference into either run is from
@@ -110,16 +110,16 @@ src/actors/daOnms_c.cpp
 #
 # ONE FACE PER CODE WORD, not per record, and here it is load-bearing rather
 # than tidy: both retired files refuse a seat in writing because a stored pair
-# is also a BY-VALUE COMPARISON SENTINEL. src/func_ov006_020c2994.c compares an
-# object's pair against data_ov006_0213adb8, which holds the same code word
+# is also a BY-VALUE COMPARISON SENTINEL. src/Presenter_IsIdle.c compares an
+# object's pair against pmf_Presenter_StateIdle, which holds the same code word
 # 0x020c27c4 as the installed record 0213adc8; a face per record would give them
 # different addresses and the comparison would go permanently false while the
 # dispatch still looked right. A face per code word gives them the same address.
-src/actors/unit020bfec0.cpp
-src/actors/dMg3DHeyhoObjAdapter_c.cpp
+src/minigames/unit020bfec0.cpp
+src/minigames/d_mg3d_heyho_obj_adapter.cpp
 # QUARANTINED at the main->port sync (origin/main 9c7f38a24): main folded this
 # class into one TU, and port/ host-copies bodies inside it (the slice_bnp host copies).
 # port/CMakeLists.txt's own assertion refuses the pair, because taking both is a
 # duplicate symbol and taking the src one puts the host copy's reason back. The
 # row returns when the host copy covers the whole consolidated TU.
-#src/actors/dMgJump3DMario_c.cpp
+#src/minigames/d_mg_jump3d_mario.cpp

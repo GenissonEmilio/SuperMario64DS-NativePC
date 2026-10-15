@@ -1,7 +1,7 @@
 /* HOST ARM recovered by PORTSYNC2.
  * Old path: src/_ZN14ArrowSignRightD0Ev.cpp, which carried this under #ifdef _MSC_VER. The
  * 2026-10 main merge took main's src/, which folded that code into
- * src/actors/daObjYajirusi_c.cpp without the arm. MSVC emits one destructor per class and never the ROM's flat Itanium variant name, and port/hal calls that flat name from the class's vtable slot.
+ * src/game/actors/d_a_obj_yajirusi.cpp without the arm. MSVC emits one destructor per class and never the ROM's flat Itanium variant name, and port/hal calls that flat name from the class's vtable slot.
  * Only the host arm is here, retargeted to main's names; mwccarm never
  * compiles this file, so nothing here moves a ROM byte. Comments below that
  * name old per-function src/ files describe the pre-merge tree. */
@@ -32,11 +32,11 @@
  * that deallocation. Nothing here reaches mwccarm: it builds the `#else`
  * arm and emits the ROM bytes it always emitted, and the object is
  * byte-identical either way. */
-extern "C" void _ZN6Memory10DeallocateEPvP4Heap(void *, void *);
+extern "C" void _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(void *, void *);
 extern "C" void *data_020a0eac;
 extern "C" daObjYajirusi_c *_ZN15daObjYajirusi_cD0Ev(daObjYajirusi_c *thiz)
 {
     thiz->daObjYajirusi_c::~daObjYajirusi_c();                /* the D1 body, through the one host symbol */
-    _ZN6Memory10DeallocateEPvP4Heap(thiz, data_020a0eac);   /* the actor-heap delete D0 ends with */
+    _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE(thiz, data_020a0eac);   /* the actor-heap delete D0 ends with */
     return thiz;
 }

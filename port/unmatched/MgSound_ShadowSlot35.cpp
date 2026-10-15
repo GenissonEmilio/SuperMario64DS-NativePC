@@ -1,10 +1,10 @@
-// PORT_HOST_ABI. func_ov006_0211ba88, host-copied. Run mg9, lane BOX.
+// PORT_HOST_ABI. Note_StateScroll, host-copied. Run mg9, lane BOX.
 //
 // dScMgSound_c (actor id 0x16f, scene 367). This body is slot 4 of
 // data_ov006_02142df8, one of the ten per-entity states the 0x14-stride array
 // runs, and it reaches the port FOUR ways broken. All four were found by
 // disassembling 0x0211ba88 out of extracted/overlays/overlay_0006.bin at base
-// 0x020bfec0 and reading it against src/actors/dScMgSound_c.cpp line by line.
+// 0x020bfec0 and reading it against src/minigames/d_s_mg_sound.cpp line by line.
 //
 // THE SRC TU IS BANNERED "Logic verified correct vs ROM" AND IT IS NOT. That
 // sentence is the reason this file exists rather than a slice line, and the
@@ -34,12 +34,12 @@
 //     blx   r1               r0 == this, so the receiver IS passed
 //
 // hal/scene_mg.cpp's mb_v35 is `static int __fastcall mb_v35(void *s, void *)`
-// and forwards s to _ZN11dScMgBase_c9Virtual8CEv, whose matched body is
+// and forwards s to _ZN11dScMgBase_c12IsAltVariantEv, whose matched body is
 // `return (r0[2] & 0xff) != 0`. With no receiver it reads whatever is in ecx.
 // This is the SAME defect port/mg_fanout_costs.txt section 14 found in mb_v35
 // itself and repaired there, arriving from the caller's side this time.
 //
-// THE FIX IS THE ONE src/actors/dScMgPanel_c.cpp ALREADY USES for its own two
+// THE FIX IS THE ONE src/minigames/d_s_mg_panel.cpp ALREADY USES for its own two
 // slot-35 reads: a shadow class of thirty-five virtuals with the slot as the
 // thirty-sixth, so the compiler emits a real __thiscall and `this` rides ecx.
 //
@@ -76,7 +76,7 @@
 //
 // where the ROM at 0x0211bb88 writes `strb lr,[ip,#0xf4]` with lr == 4. The
 // entity record is packed: +0x50f4 is the state index and +0x50f5 is THE
-// IN-PLAY GATE that func_ov006_0211b954 tests before it dispatches at all. A
+// IN-PLAY GATE that UpdateNotes tests before it dispatches at all. A
 // four-byte store at +0x50f4 puts a zero in +0x50f5 and takes that entity out
 // of the machine, which is a silent stop rather than a crash. The store below
 // is a byte.
@@ -123,7 +123,7 @@
 // port/mg_fanout_costs.txt section 10 records for the fabricated ov004
 // language table: whether the corrected source still builds byte-identically
 // under mwccarm is a byte-gated-tree question and this is not a byte-gated
-// tree. src/actors/dScMgSound_c.cpp is UNTOUCHED and is excluded from
+// tree. src/minigames/d_s_mg_sound.cpp is UNTOUCHED and is excluded from
 // port/slice_box.txt; this file defines the symbol.
 //
 // THE FULL LIST THE DECOMP SIDE OWES, so the banner can be corrected in one
@@ -139,9 +139,9 @@ extern int data_ov006_0212ef6c[];
 }
 
 /* The mounted ROM table, in ROM slot order. Thirty-five virtuals so that the
-   thirty-sixth lands on slot 35, which is _ZN11dScMgBase_c9Virtual8CEv --
+   thirty-sixth lands on slot 35, which is _ZN11dScMgBase_c12IsAltVariantEv --
    dScMgBase_c's `return (this[2] & 0xff) != 0`, the packed spawn param's low
-   byte. src/actors/dScMgPanel_c.cpp is the precedent for this spelling. */
+   byte. src/minigames/d_s_mg_panel.cpp is the precedent for this spelling. */
 struct MgSoundVt {
     virtual void v00(); virtual void v01(); virtual void v02(); virtual void v03();
     virtual void v04(); virtual void v05(); virtual void v06(); virtual void v07();
@@ -171,7 +171,7 @@ struct MgSoundVt {
    above): a dropped vtable-slot-35 receiver, an approximated modulo, a byte
    store spelled as an int store over a live neighbour, and a differently
    nested zero test. Host-copied and corrected; not an ABI wall. */
-extern "C" int _ZN12dScMgSound_c19func_ov006_0211ba88Ei(char *base, int idx)
+extern "C" int _ZN12dScMgSound_c16Note_StateScrollEi(char *base, int idx)
 {
     int *cur  = (int *)(base + 0x50e8 + idx * 0x14);
     u8  *flag = (u8 *)(base + 0x50f9 + idx * 0x14);

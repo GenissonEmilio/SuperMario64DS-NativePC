@@ -104,6 +104,12 @@
 
 /* daObjBC_Switch_c.h FIRST: it pulls in dBgActor_c.h, which must reach
    common.h ahead of Model.h or the wrong Matrix4x3 spelling wins. */
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_bc_switch_AssetId {
+    ASSET_B_COIN_SWITCH_BMD = 0x043c,
+    ASSET_B_COIN_SWITCH_KCL = 0x043d
+};
+
 #include "daObjBC_Switch_c.h"
 #include "SharedFilePtr.h"
 #include "decl_common.h"
@@ -420,5 +426,5 @@ int daObjBC_Switch_c::CleanupResources()
 /* Definitions stay after the last .text function so they do not insert
  * a function into the ROM-ascending run. Construction order is the model
  * handle, then the collision handle. */
-BcSwitchModelFilePtr daObjBC_Switch_c_ModelFile(1084);
-BcSwitchCollisionFilePtr daObjBC_Switch_c_ClsnFile(1085);
+BcSwitchModelFilePtr daObjBC_Switch_c_ModelFile(ASSET_B_COIN_SWITCH_BMD);
+BcSwitchCollisionFilePtr daObjBC_Switch_c_ClsnFile(ASSET_B_COIN_SWITCH_KCL);

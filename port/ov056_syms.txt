@@ -117,4 +117,4 @@ g_profile_EWM_ICE_BLOCK:0x1c
  
 data_ov056_02113410@0x02113410 data_ov056_0211341c@0x0211341c
 # PORTSYNC3 name-only rows (the class TU defines the storage):
-data_ov056_02113400! data_ov056_02113408!
+gEwmIceBrockModelFile! gEwmIceBrockCollisionFile!

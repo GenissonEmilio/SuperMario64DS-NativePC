@@ -1,8 +1,8 @@
 {
   "id": "ov075/UnknownVsPlayer+dEntObj_c",
   "module": "ov075",
-  "source": "src/actors/dEntObj_c.cpp",
-  "promoted_source": "src/actors/dEntObj_c.cpp",
+  "source": "src/game/stages/d_ent_obj.cpp",
+  "promoted_source": "src/game/stages/d_ent_obj.cpp",
   "status": "promoted",
   "boundary_confidence": "high",
   "boundary_evidence": [
@@ -1438,7 +1438,7 @@
   ],
   "init": [
     {
-      "symbol": "__sinit_dEntObj_c.cpp",
+      "symbol": "__sinit_d_ent_obj.cpp",
       "address": "0x0211b5e0",
       "size": "0x520",
       "binding": "STB_GLOBAL",
@@ -1447,7 +1447,7 @@
   ],
   "ctor": [
     {
-      "symbol": ".p__sinit_dEntObj_c.cpp",
+      "symbol": ".p__sinit_d_ent_obj.cpp",
       "address": "0x0211c5a4",
       "size": "0x4",
       "binding": "STB_GLOBAL",
@@ -1680,13 +1680,13 @@
   ],
   "symbol_binding_rewrites": [
     {
-      "symbol": "__sinit_dEntObj_c.cpp",
+      "symbol": "__sinit_d_ent_obj.cpp",
       "from": "STB_LOCAL",
       "to": "STB_GLOBAL",
       "evidence": "compiler-generated static initializer is emitted local by mwcc but must be exposed as the configured .init destination at 0x0211b5e0"
     },
     {
-      "symbol": ".p__sinit_dEntObj_c.cpp",
+      "symbol": ".p__sinit_d_ent_obj.cpp",
       "from": "STB_LOCAL",
       "to": "STB_GLOBAL",
       "evidence": "compiler-generated ctor-table object is emitted local by mwcc but must be exposed as the configured .ctor destination at 0x0211c5a4"
@@ -3016,7 +3016,7 @@
       "source": "0x0211c5a4",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "__sinit_dEntObj_c.cpp",
+      "symbol": "__sinit_d_ent_obj.cpp",
       "addend": 0,
       "target_module": "ov075",
       "target_address": "0x0211b5e0"

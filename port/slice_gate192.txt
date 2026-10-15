@@ -16,33 +16,33 @@
 # D1/D0 both call it as their own base-class D2). Self-contained (already-
 # hosted _ZN8dActor_cD2Ev + the already-hosted data_ov002_021081e4 vtable
 # array). Not previously mounted anywhere in the port. ----
-src/actors/dEnemyBase_c.cpp
+src/runtime/actor/d_enemy_base.cpp
 #
 # ---- func_ov081_02123910's (Spindrift's player-bump helper) own callee
-# closure: func_ov004_020ada40 and its
+# closure: Mg_SetSessionBest and its
 # two ov004 (Bob-omb Battlefield) helpers -- all null-guard
-# data_ov004_020beb68 first and return doing nothing when it reads zero
+# gMgScene first and return doing nothing when it reads zero
 # (hal/actor_classes_ov081.cpp hosts it as a zero-initialized global for
 # exactly this). _ZN6Player10SpinBounceE5Fix12IiE and func_ov002_020e10a8
 # are two more previously-unmounted leaves of the same helper's closure. ----
 src/minigames/d_s_mg_base.cpp
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 28): src/func_ov004_020adc1c.c
-# FOLDED into src/minigames/d_s_mg_base.cpp (row 28): src/func_ov004_020adc00.c
-src/actors/Player.cpp
-# FOLDED into src/actors/Player.cpp (row 31): src/func_ov002_020e10a8.cpp
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 28): src/Mg_GetTopRecord.c
+# FOLDED into src/minigames/d_s_mg_base.cpp (row 28): src/Mg_SetTopRecord.c
+src/game/player/Player.cpp
+# FOLDED into src/game/player/Player.cpp (row 31): src/func_ov002_020e10a8.cpp
 #
 # ---- SPINDRIFT (daHuwa_c), an Enemy, 32 slots (own Kill) -------------------
 # D1/D0 stay in the slice: both store _ZTV9Spindrift directly, their own
 # table, no shared-placeholder overwrite (the Unagi/IceSheet/RotatingFirebar
 # treatment).
-src/actors/daHuwa_c.cpp
+src/game/actors/d_a_huwa.cpp
 # RETIRED at SLICE1: body now in src/_ZN9SpindriftD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN9SpindriftD0Ev.cpp
-# FOLDED into src/actors/daHuwa_c.cpp (row 38): src/_ZN9Spindrift16OnAimedAtWithEggEv.cpp
-# FOLDED into src/actors/daHuwa_c.cpp (row 38): src/func_ov081_021237ec.cpp
-# FOLDED into src/actors/daHuwa_c.cpp (row 38): src/func_ov081_02123910.cpp
-# FOLDED into src/actors/daHuwa_c.cpp (row 38): src/func_ov081_02123b20.cpp
-# FOLDED into src/actors/daHuwa_c.cpp (row 38): src/_ZN9Spindrift16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_huwa.cpp (row 38): src/_ZN9Spindrift16OnAimedAtWithEggEv.cpp
+# FOLDED into src/game/actors/d_a_huwa.cpp (row 38): src/func_ov081_021237ec.cpp
+# FOLDED into src/game/actors/d_a_huwa.cpp (row 38): src/func_ov081_02123910.cpp
+# FOLDED into src/game/actors/d_a_huwa.cpp (row 38): src/func_ov081_02123b20.cpp
+# FOLDED into src/game/actors/d_a_huwa.cpp (row 38): src/_ZN9Spindrift16CleanupResourcesEv.cpp
 # _ZN9Spindrift6RenderEv.cpp is NOT in this list -- the ModelAnim slot-5
 # collision (the Whomp/Butterfly/Fish/BabyPenguin case). The matched TU
 # dispatches `((Obj*)&mModelAnim)->m5(0)` through a local six-virtual
@@ -55,11 +55,11 @@ src/actors/daHuwa_c.cpp
 # from survivable to faulting. HOST COPY:
 # port/unmatched/ModelAnim_Renders.cpp. The matched src stays byte-locked
 # in src/ as proof.
-# FOLDED into src/actors/daHuwa_c.cpp (row 38): src/_ZN9Spindrift8BehaviorEv.cpp
-# FOLDED into src/actors/daHuwa_c.cpp (row 38): src/_ZN9Spindrift13InitResourcesEv.cpp
-# FOLDED into src/actors/daHuwa_c.cpp (row 38): src/_ZN9Spindrift13OnTurnIntoEggER6Player.cpp
-# FOLDED into src/actors/daHuwa_c.cpp (row 38): src/_ZN9Spindrift13OnYoshiTryEatEv.cpp
-# FOLDED into src/actors/daHuwa_c.cpp (row 38): src/d_a_huwa.c
+# FOLDED into src/game/actors/d_a_huwa.cpp (row 38): src/_ZN9Spindrift8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_huwa.cpp (row 38): src/_ZN9Spindrift13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_huwa.cpp (row 38): src/_ZN9Spindrift13OnTurnIntoEggER6Player.cpp
+# FOLDED into src/game/actors/d_a_huwa.cpp (row 38): src/_ZN9Spindrift13OnYoshiTryEatEv.cpp
+# FOLDED into src/game/actors/d_a_huwa.cpp (row 38): src/d_a_huwa.c
 #
 # ---- MR_BLIZZARD (daYuki_c), an Enemy, 32 slots (own Kill, own
 # OnPendingDestroy -- NOT the shared default) -------------------------------
@@ -81,46 +81,46 @@ src/actors/daHuwa_c.cpp
 # are seated at runtime by hal/actor_classes_ov081.cpp (verify-then-abort).
 # Both matched files stay byte-locked in src/ as proof, dropped from
 # CMakeLists' gate-192 source list.
-src/actors/daSnowman_c.cpp
+src/game/actors/d_a_snowman.cpp
 # RETIRED at SLICE1: body now in src/_ZN10MrBlizzardD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN10MrBlizzardD0Ev.cpp
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_02124134.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_0212423c.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_021243cc.cpp
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_021245e8.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_021246a0.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_0212479c.cpp
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_02124894.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_0212498c.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_021249f4.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_02124b08.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_02124b98.cpp
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_02124d14.cpp
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_02124d50.cpp
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_02124dfc.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_02124e64.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_02124ec0.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_02124f20.cpp
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_02124f7c.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_02125038.cpp
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_02125068.cpp
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_021250c8.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_02125200.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_02125208.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_0212538c.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/func_ov081_021254d8.cpp
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/_ZN10MrBlizzard16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/_ZN10MrBlizzard16OnPendingDestroyEv.cpp
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/_ZN10MrBlizzard6RenderEv.cpp
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/_ZN10MrBlizzard13InitResourcesEv.cpp
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/_ZN10MrBlizzard16OnAimedAtWithEggEv.cpp
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/d_a_snowman.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_02124134.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_0212423c.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_021243cc.cpp
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_021245e8.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_021246a0.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_0212479c.cpp
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_02124894.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_0212498c.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_021249f4.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_02124b08.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_02124b98.cpp
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_02124d14.cpp
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_02124d50.cpp
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_02124dfc.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_02124e64.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_02124ec0.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_02124f20.cpp
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_02124f7c.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_02125038.cpp
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_02125068.cpp
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_021250c8.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_02125200.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_02125208.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_0212538c.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/func_ov081_021254d8.cpp
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/_ZN10MrBlizzard16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/_ZN10MrBlizzard16OnPendingDestroyEv.cpp
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/_ZN10MrBlizzard6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/_ZN10MrBlizzard13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/_ZN10MrBlizzard16OnAimedAtWithEggEv.cpp
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/d_a_snowman.c
 # func_ov081_021261b8 (MrBlizzard's own Kill, slot 31 -- confirmed by reloc)
 # sits inside delinks.txt's Snowball-labelled range (dsd's own file-discovery
 # order interleaves the two classes' bodies; address, not file grouping, is
 # ground truth here). Self-contained (no external calls at all), no
 # Snowball dependency risk.
-src/actors/daSnowball_c.cpp
+src/game/actors/d_a_snowball.cpp
 #
 # ---- ICE_BLOCK (daObjIceBlock_c), a Platform, 32 slots (own Kill) ----------
 # _ZN8IceBlockD1Ev.c and _ZN8IceBlockD0Ev.c ride from src (lane DTOR-PAIRS-C):
@@ -149,8 +149,8 @@ src/game/actors/d_a_obj_ice_block.cpp
 # unregistered -- INERT: every write lands in MrBlizzard's own mounted
 # statics/bss, and with the class out of the registry nothing ever reads
 # them (no spawn -> no InitResources -> no dispatch through the cells).
-# FOLDED into src/actors/daHuwa_c.cpp (row 38): src/__sinit_ov081_021280e8.c
-# FOLDED into src/actors/daSnowman_c.cpp (row 84): src/__sinit_ov081_02128154.c
+# FOLDED into src/game/actors/d_a_huwa.cpp (row 38): src/__sinit_ov081_021280e8.c
+# FOLDED into src/game/actors/d_a_snowman.cpp (row 84): src/__sinit_ov081_02128154.c
 # FOLDED into src/game/actors/d_a_obj_ice_block.cpp (row 132): src/__sinit_ov081_021287b8.c
 #
 # (The D1/D0 pair used to sit out of this slice behind host thunks; lane

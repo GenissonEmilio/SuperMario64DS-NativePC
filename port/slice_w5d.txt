@@ -26,7 +26,7 @@
 # mode 3 / back faces / ID 0 (the mask pass), func_02046088 sets mode 3 /
 # front faces / ID 1 (the draw pass). All three reached only from the seat
 # in tests/walk_window.cpp.
-src/engine/model/dExtShadowModel_c.cpp
+src/engine/model/d_ext_shadow_model.cpp
 src/engine/model/Model4.cpp
 # FOLDED into src/engine/model/Model4.cpp (row 30): src/func_02046120.c
 #

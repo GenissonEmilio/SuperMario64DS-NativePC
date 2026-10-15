@@ -99,7 +99,7 @@ extern unsigned data_ov065_0211cd1c[], data_ov065_0211cd24[],
    FACES. The paragraph above says the sixteen non-Dorrie rows "DO NOT CHANGE"
    because the two helpers tail jump -- that is still true of the EIGHT ENTER
    records, and no longer true of the eight PER-FRAME ones. With the two host
-   Behaviors retired, src/actors/daYurei_Mucho_c.cpp and
+   Behaviors retired, src/game/actors/d_a_yurei_mucho.cpp and
    src/_ZN5Swoop8BehaviorEv.cpp read the cell's +8 half as a real pointer to
    member and CALL it with the receiver in ecx and nothing pushed (mov
    eax,[cell+8] / test / je / mov ecx,[cell+12] / add ecx,this / call eax,
@@ -131,7 +131,7 @@ OV065_FACE(02117888, _ZN12daBasabasa_c12ExecutePerchEv)   /* swoop  0211cc50 */
    those two helpers AS SEPARATE FRAMES and it is not true of the frame the
    spawn path actually runs in. func_ov065_0211691c and
    daYurei_Mucho_c::InitResources are the same translation unit
-   (src/actors/daYurei_Mucho_c.cpp), so /O2 inlines the helper into
+   (src/game/actors/d_a_yurei_mucho.cpp), so /O2 inlines the helper into
    InitResources' last statement and the pointer-to-member call comes out in
    InitResources' own frame. Read off this build's own walk_window.exe, not
    reasoned about:
@@ -249,7 +249,7 @@ extern "C" void port_ov065_states_seat(void)
  * both words the seat rewrote. */
 
 /* func_ov065_0211691c IS NOT A HOST COPY ANY MORE. Run link100 lane PMF2 put
-   src/actors/daYurei_Mucho_c.cpp back on port/slice_pmf2.txt: with /vmg /vmm global (the
+   src/game/actors/d_a_yurei_mucho.cpp back on port/slice_pmf2.txt: with /vmg /vmm global (the
    R8 block in port/CMakeLists.txt) MSVC's pointer-to-member IS the ROM's
    8-byte {function, delta} pair, and the matched TU compiles to the same
    tail jump this body was -- measured, listing in that slice's header.

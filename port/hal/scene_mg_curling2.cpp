@@ -100,7 +100,7 @@
 //                                LIVE state -- the stylus aim step. SIZE EXACT
 //                                192/192 words; register colouring only.
 //   func_ov006_020e513c   0x314  overlap depenetration over the eleven records
-//   func_ov006_020e5450   0x560  the shell-vs-shell elastic collision, asked
+//   Curling2_ResolveStoneCollision   0x560  the shell-vs-shell elastic collision, asked
 //                                for 6810 times in the mg6 1200-frame run
 //
 // All three ship NONMATCHING-bannered. None is an invented body:
@@ -144,7 +144,7 @@ int   _ZN15dScMgCurling2_c8BehaviorEv(char *c);           /* slot  6 Behavior   
 int   _ZN15dScMgCurling2_c6RenderEv(int c);             /* slot  9 Render        */
 int   _ZN15dScMgCurling2_cD1Ev(int *c);            /* slot 16 D2            */
 int  *_ZN15dScMgCurling2_cD0Ev(int *c);            /* slot 17 D0            */
-void  _ZN15dScMgCurling2_c13OnYoshiTryEatEi(unsigned char *c);  /* slot 18 state reset   */
+void  _ZN15dScMgCurling2_c10StartRoundEi(unsigned char *c);  /* slot 18 state reset   */
 
 /* the factory */
 int  *dScMgCurling2_c_classInit(void);
@@ -199,7 +199,7 @@ static void *__fastcall c2_d0(void *s, void *)
    a return address. The parameter exists so __fastcall cleans four bytes; the
    ROM body ignores its r1 and is called without it. */
 static int __fastcall c2_reset(void *s, void *, int /*ridethrough*/)
-{ C2(18); _ZN15dScMgCurling2_c13OnYoshiTryEatEi((unsigned char *)s); return 1; }
+{ C2(18); _ZN15dScMgCurling2_c10StartRoundEi((unsigned char *)s); return 1; }
 
 /* SM64DS_SCENE_SLOT0=0 and SM64DS_SCENE_SLOT9=0, the diagnostics the ov003,
    ov007, curling and flower seats all carry, counted separately so a run can
@@ -361,7 +361,7 @@ extern "C" void port_scene_curling2_hits(void)
        Table data_ov006_021419d8 is the eleven-record machine run mg6 could not
        run: three of its four states entered a trap and returned, so the records
        stayed where slot 0 left them. All four now have bodies behind them --
-       slot 0 -> func_ov006_020e513c, slot 1 -> func_ov006_020e5450, slot 2 ->
+       slot 0 -> func_ov006_020e513c, slot 1 -> Curling2_ResolveStoneCollision, slot 2 ->
        the same body through the argument-forwarding veneer
        func_ov006_020e5b70 -- so these four counters moving IS the machine
        running. A zero row is a claim, and a claim only printed when it is false
@@ -433,7 +433,7 @@ extern "C" void port_scene_curling2_hits(void)
  * AND THE ROW THIS FILE DELIBERATELY DOES NOT ADD, because it is already
  * there. src/_ZN15dScMgCurling2_c13InitResourcesEv.cpp (slot 0) declares
  * `extern char* func_020adc74(void*)` and hands it &data_ov006_0213c5a0, this
- * class's "/MG/..." path string; 0x020adc74 is func_ov004_020adc74 in
+ * class's "/MG/..." path string; 0x020adc74 is Ov004_LoadFileByPath in
  * config/arm9/overlays/ov004/symbols.txt and the matched TU is already in the
  * image. That is the same misspelling port/mg_fanout_costs.txt section 6d
  * records for curling's own src/_ZN14dScMgCurling_c13InitResourcesEv.cpp, and

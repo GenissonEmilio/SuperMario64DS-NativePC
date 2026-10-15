@@ -250,7 +250,7 @@ static int __fastcall bmb_render(void *s, void *)
   return _ZN7daBmb_c6RenderEv(s); }
 /* SLOT 16 IS LIVE. A bomb that is lit reaches its own blast and marks itself
    for destruction, so the D1 the cleanup pass dispatches has to be the class's
-   own -- and src/actors/daBmb_c.cpp is already exactly the D0 body minus the
+   own -- and src/game/actors/d_a_bmb.cpp is already exactly the D0 body minus the
    final Deallocate, which is what ActorBase::AfterCleanupResources performs
    itself after the dispatch returns. */
 static int __fastcall bmb_d1(void *s, void *)

@@ -117,7 +117,7 @@
 //                             `int f(void *self)` -- receiver passed, not
 //                             dropped
 //     Scene::~Scene D1/D0  -> _ZN7fBase_cD2Ev (flat C, pointer argument) and
-//                             _ZN6Memory10DeallocateEPvP4Heap, both already
+//                             _ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE, both already
 //                             C-named in the map, plus data_0208e4b8 and
 //                             data_020a0eac which are hosted
 //

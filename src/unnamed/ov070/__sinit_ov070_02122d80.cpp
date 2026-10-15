@@ -1,4 +1,13 @@
 //cpp
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum sinit_ov070_02122d80_AssetId {
+    ASSET_BIRIKYU_BMD = 0x02b1,
+    ASSET_BIRIKYU_ELEC_BCA = 0x02b2,
+    ASSET_BIRIKYU_ELEC_BMD = 0x02b3,
+    ASSET_BIRIKYU_ELEC_BTP = 0x02b4,
+    ASSET_BIRIKYU_ELEC_STOP_BCA = 0x02b5
+};
+
 extern "C" {
 int func_02017acc(void*, unsigned int);
 void func_020731dc(void*, void*, void*);
@@ -34,15 +43,15 @@ extern struct D data_ov070_02123668;
 extern int data_ov070_0212365c[];
 
 void __sinit_ov070_02122d80(void) {
-    func_02017acc(data_ov070_021235fc, 0x2b1);
+    func_02017acc(data_ov070_021235fc, ASSET_BIRIKYU_BMD);
     func_020731dc(data_ov070_021235fc, func_02017ab4, data_ov070_02123614);
-    func_02017acc(data_ov070_02123604, 0x2b3);
+    func_02017acc(data_ov070_02123604, ASSET_BIRIKYU_ELEC_BMD);
     func_020731dc(data_ov070_02123604, func_02017ab4, data_ov070_02123620);
-    _ZN13SharedFilePtr9ConstructEj(data_ov070_021235f4, 0x2b2);
+    _ZN13SharedFilePtr9ConstructEj(data_ov070_021235f4, ASSET_BIRIKYU_ELEC_BCA);
     func_020731dc(data_ov070_021235f4, SharedFilePtr_Destruct_Anim, data_ov070_0212362c);
-    _ZN13SharedFilePtr9ConstructEj(data_ov070_0212360c, 0x2b5);
+    _ZN13SharedFilePtr9ConstructEj(data_ov070_0212360c, ASSET_BIRIKYU_ELEC_STOP_BCA);
     func_020731dc(data_ov070_0212360c, SharedFilePtr_Destruct_Anim, data_ov070_02123638);
-    SharedFilePtr_Construct_TexSeq(data_ov070_021235ec, 0x2b4);
+    SharedFilePtr_Construct_TexSeq(data_ov070_021235ec, ASSET_BIRIKYU_ELEC_BTP);
     func_020731dc(data_ov070_021235ec, SharedFilePtr_Destruct_TexSeq, data_ov070_02123650);
 
     data_ov070_02123668.a = data_ov070_0212320c;

@@ -112,7 +112,7 @@
 // table.  It does not here: src/func_ov006_020e8e10.cpp declares
 // `struct Ent { u16 f0, f2, f4, f6; }` and `Ent *data_ov006_02133f24[]`, walks
 // the pointed-at record until f6 == 0xffff and hands it to
-// func_ov004_020af770 -- a sprite layout list, not a pair run.  The array holds
+// Mg_RenderSubSpriteScaled -- a sprite layout list, not a pair run.  The array holds
 // POINTERS, four bytes on both machines, and ov006's relocs.txt has four
 // relocations inside it (from:0x02133f24 to:0x02133f80 and three more), so the
 // ov006 mount rebases the interior pointers and an ordinary alias is correct.
@@ -188,8 +188,8 @@ TextureSequence::~TextureSequence()
    for ??1ModelAnim@@QAE@XZ".  It has not.  Two COMPILED src TUs declare the
    same non-virtual shadow and call it on an embedded member:
 
-       src/func_ov006_020ca604.cpp:3   (live on port/slice_tte.txt)
-       src/func_ov006_020ccfc8.cpp:3   (live on port/slice_tti.txt)
+       src/Trmp2Mario_Destruct.cpp:3   (live on port/slice_tte.txt)
+       src/Trmp3DMario_Destruct.cpp:3   (live on port/slice_tti.txt)
 
    Read back out of their objects with dumpbin at 319f0f191, both carry
    ??1ModelAnim@@QAE@XZ as an UNDEF, and this definition is the only one in the
@@ -241,7 +241,7 @@ ModelAnim::~ModelAnim()
    onto the mounted words is right and the pair keeps the ROM's own values --
    which is exactly what makes that comparison keep answering what the ROM
    answers. */
-#pragma comment(linker, "/alternatename:?data_ov006_0213c744@@3PAHA=_data_ov006_0213c744")
+#pragma comment(linker, "/alternatename:?pmf_dMg3DEspModel_c_Idle_2@@3PAHA=_pmf_dMg3DEspModel_c_Idle_2")
 
 /* ---- 4. WAVE FOUR IS TWO ROWS AND BOTH COME FROM ONE TU ------------------
 
@@ -249,8 +249,8 @@ ModelAnim::~ModelAnim()
    sub-object's +0x210 and it is the one that spells the eight-byte pair as a
    `double`:
 
-       extern double data_ov006_0213c76c;
-       *(double*)((char*)o + 0x210) = data_ov006_0213c76c;
+       extern double pmf_dMg3DEspModel_c_Wait;
+       *(double*)((char*)o + 0x210) = pmf_dMg3DEspModel_c_Wait;
 
    which is a correct eight-byte move on both machines and is why that writer
    needs no host copy -- only an alias for the mangle.  The second row is a
@@ -260,4 +260,4 @@ ModelAnim::~ModelAnim()
    mangles onto one C name.  Three src TUs disagreeing about a type is a fact
    about src, and the alias rows are where the port absorbs it. */
 #pragma comment(linker, "/alternatename:?data_ov006_02141e7c@@3PAHA=_data_ov006_02141e7c")
-#pragma comment(linker, "/alternatename:?data_ov006_0213c76c@@3NA=_data_ov006_0213c76c")
+#pragma comment(linker, "/alternatename:?pmf_dMg3DEspModel_c_Wait@@3NA=_pmf_dMg3DEspModel_c_Wait")

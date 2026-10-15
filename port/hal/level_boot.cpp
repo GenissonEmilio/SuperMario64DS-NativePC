@@ -2417,7 +2417,7 @@ DSSTATE_END
 // by a CpuCopy8 or a DecompressLZ16 into that block, and of the fifty-five TUs
 // under src/ that call LoadFile, forty-six Deallocate what they get. The nine
 // that keep it are the ROM's own keepers: six ov075 TUs hand it to
-// func_ov075_02116030, func_ov004_020b2cb8 keeps a minigame's twenty-nine
+// func_ov075_02116030, Mg_LoadBannerFiles keeps a minigame's twenty-nine
 // per-language files, Stage::LoadClsnAndObjects keeps the level KCL and
 // LoadMessageBankForLanguage keeps the message bank.
 //
@@ -2572,7 +2572,7 @@ unsigned char data_0209f254[4];   /* the star / silver-star request */
    data_0209f26c (src/_ZN5Stage13InitResourcesEv.cpp:201), not a cap check. The
    old comment here said "the 'lost the cap' check gate", which is wrong and cost
    a triage pass: it is what the Player's level-enter step reads to restore
-   health on re-entry (src/actors/Player.cpp:29) and what HUD::InitResources
+   health on re-entry (src/game/player/Player.cpp:29) and what HUD::InitResources
    reads to pick the meter state. The boot latches it; see the seat below. */
 unsigned char data_0209f2fc[4];
 signed char   data_02092114[4];   /* queued character swap, -1 none */
@@ -3146,7 +3146,7 @@ int LoadArchive(int idx);
 void UnloadArchive(int i);
 void LoadTextNarcs(void);
 int func_0203da3c(void);
-int _ZN4Heap10SetDefaultEv(void *thiz);
+int _ZN5mHeap6Heap_t10SetDefaultEv(void *thiz);
 extern void *data_020a0eac;                         /* the game heap */
 void port_card_mount_snapshot(const char *where);   /* hal/card_mount.cpp */
 }
@@ -3246,9 +3246,9 @@ extern "C" void *port_stage_boot_body(void *mc, int spawn)
         LoadTextNarcs();
         LoadArchive(0);
         if (s4arc_level == 1) {
-            const int saved = _ZN4Heap10SetDefaultEv(data_020a0eac);
+            const int saved = _ZN5mHeap6Heap_t10SetDefaultEv(data_020a0eac);
             LoadArchive(7);
-            _ZN4Heap10SetDefaultEv((void *)saved);
+            _ZN5mHeap6Heap_t10SetDefaultEv((void *)saved);
         }
         if (s4arc_archive != 0xBF)
             LoadArchive(s4arc_archive);
@@ -3396,7 +3396,7 @@ extern "C" void *port_stage_boot_body(void *mc, int spawn)
 
        WITHOUT THIS THE PORT CANNOT LEAVE A DEATH. The ROM restores the player
        on re-entry from the Player level-enter state itself,
-       src/actors/Player.cpp:29 --
+       src/game/player/Player.cpp:29 --
 
            if (data_0209f2fc == 1 || data_0209f2fc == 2)
                Player::Heal(c, 0x880);
@@ -3551,7 +3551,7 @@ extern "C" void *port_stage_boot_body(void *mc, int spawn)
        actors (LoadClsnAndObjects, below) or the player's water probes set
        one. The port wrote 0 once per process instead, so a level with no
        water kept a surface at Y 0 (or the previous level's), and
-       Player::St_Teleport_Main (src/actors/Player.cpp), which reads this
+       Player::St_Teleport_Main (src/game/player/Player.cpp), which reads this
        global, put a teleport that lands below it into the swim state in the
        open air: Cool, Cool Mountain's summit teleport. */
     data_0209f32c[0] = (int)0x80000000;
@@ -3718,7 +3718,7 @@ extern "C" void *port_stage_boot_body(void *mc, int spawn)
        registry priority below 2 while the byte lacks it, then latches that
        character's list to "finished" for the rest of the level; a cap the
        manager never raises never gets bit 1 of its dCapIcon_c node, and
-       daObjMarioCap_c::Behavior (src/actors/daObjMarioCap_c.cpp:206-212) then
+       daObjMarioCap_c::Behavior (src/game/actors/d_a_obj_mario_cap.cpp:206-212) then
        hides it and returns before its own state machine, so it can be neither
        seen nor picked up. Measured before this line: Luigi's and Wario's caps
        were hidden in every course for every save file, seeded or not.
@@ -5094,7 +5094,7 @@ extern "C" void *port_debug_spawn(unsigned id, unsigned param)
    of an 8-frame BTP and the first Render walks off the file into Crash() --
    rc 127 one frame after a bare SM64DS_SPAWN_ACTOR=331. Both ROM spawners
    pass a live value: the slide's proximity spawn hard-codes 8
-   (src/actors/daObjMarioCap_c.cpp:45) and IncMegaKillCount passes the running
+   (src/game/actors/d_a_obj_mario_cap.cpp:45) and IncMegaKillCount passes the running
    kill count. So a bare id here gets that class's own ROM value, an
    explicit :param is always honoured verbatim, and the substitution says
    so on stderr. A list of measured ids, not a mechanism. */
@@ -5644,7 +5644,7 @@ static void port_a2_seat_body(int make_stage)
     hal_seat_meshcollider_dtor();
 
     /* Lane-lk1 linkage seat: ExpandingHeap's VMax pair into slots 10/11 of
-       _ZTV13ExpandingHeap. walk_window family only; the pair's allocator
+       _ZTVN5mHeap9ExpHeap_tE. walk_window family only; the pair's allocator
        callee needs gate 4b's cstd::abs, which the minimal root-heap targets
        do not link, so those keep the traps (no caller evidence anywhere). */
     hal_seat_expandingheap_vmax();

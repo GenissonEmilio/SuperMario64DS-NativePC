@@ -28,4 +28,4 @@
 # g_profile_STAR_SWITCH mount (added to ov002_syms.txt) and the registry row,
 # which reuses EXCLAMATION_SWITCH's shared vtable fill (fill 0). No new PMF
 # state table, no method face.
-src/actors/daObjSwitch_c.cpp
+src/game/actors/d_a_obj_switch.cpp

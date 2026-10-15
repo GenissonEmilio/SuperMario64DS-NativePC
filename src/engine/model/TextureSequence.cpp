@@ -34,34 +34,34 @@ extern "C" void func_02046bbc(ModelComponents *model, BTP_File *file, int frame)
    Fix12<int> -- passing one to the member declaration homes it to the
    caller's stack. The declarations in TextureSequence.h and dExtFrameCtrl_c.h
    are the real ones. */
-extern "C" void _ZN15dExtFrameCtrl_c12SetAnimationEti5Fix12IiEt(dExtFrameCtrl_c *self, u16 numFrames, s32 flags, s32 speed, u16 startFrame);
+extern "C" void _ZN15dExtFrameCtrl_c12SetAnimationEti5Fix12IiEt(dExtFrameCtrl_c *self,
+                                                                u16 numFrames, s32 flags, s32 speed,
+                                                                u16 startFrame);
 
 // @symbol _ZN15TextureSequenceC1Ev
-TextureSequence::TextureSequence()
-{
+TextureSequence::TextureSequence() {
     file = 0;
 }
 
 // @symbol _ZN15TextureSequenceD1Ev
-TextureSequence::~TextureSequence()
-{
-}
+TextureSequence::~TextureSequence() {}
 
 // @symbol _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj
-extern "C" void _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(TextureSequence *self, BTP_File *file, s32 flags, s32 speed, u16 startFrame)
-{
+extern "C" void _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(TextureSequence *self,
+                                                                   BTP_File *file, s32 flags,
+                                                                   s32 speed, u16 startFrame) {
     if (file == self->file) {
         self->SetFlags(flags);
         self->speed = speed;
     } else {
         self->file = file;
-        _ZN15dExtFrameCtrl_c12SetAnimationEti5Fix12IiEt(self, file->unk_00, flags, speed, startFrame);
+        _ZN15dExtFrameCtrl_c12SetAnimationEti5Fix12IiEt(self, file->unk_00, flags, speed,
+                                                        startFrame);
     }
 }
 
 // @symbol _ZN15TextureSequence6UpdateER15ModelComponents
-void TextureSequence::Update(ModelComponents &model)
-{
+void TextureSequence::Update(ModelComponents &model) {
     func_02046bbc(&model, file, (u16)((u32)currFrame >> 12));
 }
 
@@ -70,7 +70,6 @@ void TextureSequence::Update(ModelComponents &model)
    own two-argument signature is the call surface. Prepare is static:
    no this. */
 // @symbol _ZN15TextureSequence7PrepareER8BMD_FileR8BTP_File
-void TextureSequence::Prepare(BMD_File &model, BTP_File &animFile)
-{
+void TextureSequence::Prepare(BMD_File &model, BTP_File &animFile) {
     func_02046d50(&model, &animFile);
 }

@@ -250,7 +250,7 @@ would have to change for the edge to exist:
          itself), _ZN4cstd10fdiv_asyncE5Fix12IiE5Fix12IiE (a thin wrapper over
          the DS hardware divider) and
          _ZN7fBase_c7ProcessEMS_FivEMS_FbvEMS_FvjE (the PMF dispatch).
-     1   _ZN4Heap11_DeallocateEPv has a linked caller, _ZdlPv, and is itself an
+     1   _ZN5mHeap6Heap_t11_DeallocateEPv has a linked caller, _ZdlPv, and is itself an
          ARM tail-call veneer -- `void _Deallocate(void)` branching to
          Deallocate with the arguments riding in registers. The MSVC-method
          face in hal/cxx_aliases.cpp is the correct stand-in. Retiring the face

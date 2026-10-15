@@ -15,12 +15,12 @@ of the initializer was never changed. On `main` today:
 - [src/unnamed/ov070/__sinit_ov070_02122d80.cpp](../src/unnamed/ov070/__sinit_ov070_02122d80.cpp) is still the hand-transcribed, separately
   enrolled initializer, byte-identical to the version this audit was measured
   against;
-- [src/actors/daBrq_c.cpp](../src/actors/daBrq_c.cpp), described by
+- [src/game/actors/d_a_brq.cpp](../src/game/actors/d_a_brq.cpp), described by
   [config/tu_manifest.d/ov070/daBrq_c.json](../config/tu_manifest.d/ov070/daBrq_c.json), is the promoted class TU. Its
   manifest records that the initializer, its `.ctor` word, the PMF input
   table, the resource globals, and the state-table BSS remain separately
   enrolled;
-- [src/actors/daBrq_c.cpp](../src/actors/daBrq_c.cpp) now also holds the
+- [src/game/actors/d_a_brq.cpp](../src/game/actors/d_a_brq.cpp) now also holds the
   factory `daBrq_c_classInit` (historical project alias `Amp_Spawn`). That factory
   is the nineteenth `daBrq_c` symbol in the overlay; the manifest's eighteen
   functions plus this factory cover every one.
@@ -31,7 +31,7 @@ produced this initializer organically? It could, as shown below.
 ## Verdict
 
 [__sinit_ov070_02122d80](../src/unnamed/ov070/__sinit_ov070_02122d80.cpp), its `.ctor` word, six PMF descriptors, and the BSS
-objects they initialize belong to the [ov070](../config/arm9/overlays/ov070/symbols.txt) [daBrq_c](../src/actors/daBrq_c.cpp) translation unit.
+objects they initialize belong to the [ov070](../config/arm9/overlays/ov070/symbols.txt) [daBrq_c](../src/game/actors/d_a_brq.cpp) translation unit.
 CodeWarrior 2004/b56 organically reproduces the entire initializer from five
 resource objects, three state-handler pairs, and one `Vector3`-shaped object:
 

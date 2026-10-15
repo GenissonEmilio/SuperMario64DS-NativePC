@@ -13,7 +13,7 @@
  * dMgJump3DMario_c : dMg3DHeyhoObjAdapter_c. The base is abstract (all three
  * vtable slots null) and this class is its only derived class. The destructor
  * is not virtual, so the key function is the first declared virtual,
- * Unk_020c76d8, and src/actors/dMgJump3DMario_c.cpp emits the vtable.
+ * Unk_020c76d8, and src/minigames/d_mg_jump3d_mario.cpp emits the vtable.
  *
  * There is no factory: the owning scenes hold `dMgJump3DMario_c mPlayers[3]`
  * (dScMgJump_c +0x506c, dScMgJump2_c +0x500c) and array-construct it. The base
@@ -79,18 +79,18 @@ struct dMg3DHeyhoObjAdapter_c {
  *   StateDamp     <- 0x0213b030, written by EnterDamp
  *   StateHold     <- 0x0213b028, written by EnterHold
  *   StateMove     <- 0x0213b020, written by EnterMove
- *   StateFallOut  <- 0x0213b090, written by func_ov006_020c8084
- *   StateRiseOut  <- 0x0213b080, written by func_ov006_020c81e0
+ *   StateFallOut  <- 0x0213b090, written by StartFallOut
+ *   StateRiseOut  <- 0x0213b080, written by StartRiseOut
  *   StateBounce   <- 0x0213b060 (EnterBounce) and 0x0213b078 (EnterHit)
- *   StateWindUp   <- 0x0213b050, written by func_ov006_020c862c
+ *   StateWindUp   <- 0x0213b050, written by StartWindUp
  *   StateIdle     <- 0x0213b040, 0x0213b048 and 0x0213b058
  *   StateRespawn  <- 0x0213b038 (EnterRespawn) and 0x0213b088
  *
  * Eight further members keep the address as the method name
- * (func_ov006_020c76e0, func_ov006_020c7734, func_ov006_020c7860,
- * func_ov006_020c8084, func_ov006_020c81e0, func_ov006_020c862c,
- * func_ov006_020c8658, func_ov006_020c87d0). The front helpers at the
- * bottom of the TU (func_ov006_020c6f8c..func_ov006_020c7574) call them
+ * (UpdateModelMatrix, Draw, Update,
+ * StartFallOut, StartRiseOut, StartWindUp,
+ * HideAndIdle, LoadResources). The front helpers at the
+ * bottom of the TU (Jump3D_SetTuning..Jump3D_InitPool) call them
  * as members. Those names are inferred labels and carry no claim about
  * the original spellings.
  */
@@ -102,9 +102,9 @@ struct dMgJump3DMario_c : dMg3DHeyhoObjAdapter_c {
     virtual void *Unk_020c76d0(); /* slot 1 */
     virtual int Unk_020c762c();   /* slot 2 */
 
-    void func_ov006_020c76e0(); /* 0x020c76e0 */
-    void func_ov006_020c7734(); /* 0x020c7734 */
-    void func_ov006_020c7860(); /* 0x020c7860 */
+    void UpdateModelMatrix(); /* 0x020c76e0 */
+    void Draw(); /* 0x020c7734 */
+    void Update(); /* 0x020c7860 */
     void StateDamp();    /* 0x020c78ec */
     void EnterDamp();    /* 0x020c79a8 */
     void StateHold();    /* 0x020c7a30 */
@@ -112,19 +112,19 @@ struct dMgJump3DMario_c : dMg3DHeyhoObjAdapter_c {
     void StateMove();    /* 0x020c7c68 */
     void EnterMove();    /* 0x020c802c */
     void StateFallOut(); /* 0x020c8048 */
-    void func_ov006_020c8084(); /* 0x020c8084 */
+    void StartFallOut(); /* 0x020c8084 */
     void StateRiseOut(); /* 0x020c814c */
-    void func_ov006_020c81e0(); /* 0x020c81e0 */
+    void StartRiseOut(); /* 0x020c81e0 */
     void EnterHit();     /* 0x020c8270 */
     void StateBounce();  /* 0x020c833c */
     void EnterBounce();  /* 0x020c85a0 */
     void StateWindUp();  /* 0x020c85bc */
-    void func_ov006_020c862c(int timer); /* 0x020c862c */
+    void StartWindUp(int timer); /* 0x020c862c */
     void StateIdle();    /* 0x020c864c */
-    void func_ov006_020c8658(); /* 0x020c8658 */
+    void HideAndIdle(); /* 0x020c8658 */
     void StateRespawn(); /* 0x020c8680 */
     void EnterRespawn(); /* 0x020c8768 */
-    int func_ov006_020c87d0(); /* 0x020c87d0 */
+    int LoadResources(); /* 0x020c87d0 */
 
     ModelAnim mModelAnim; /* 0x4c */
     u8 unk_0b0[0x08];     /* 0xb0 -- untouched by every member; proven only by sizeof */

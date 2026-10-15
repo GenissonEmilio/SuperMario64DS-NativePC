@@ -93,7 +93,7 @@ extern "C" void _ZN18NestedHeapIterator4InitEP13HeapAllocator(char *self, char *
 #include "ExpandingHeapAllocator.h"
 #include "MemoryNode.h"
 extern "C" {
-ExpandingHeapAllocator *_ZN4Heap28CreateExpandingHeapAllocatorEPvjj(
+ExpandingHeapAllocator *_ZN5mHeap6Heap_t28CreateExpandingHeapAllocatorEPvjj(
     void *address, u32 size, u32 flags)
 { return Heap::CreateExpandingHeapAllocator(address, size, flags); }
 

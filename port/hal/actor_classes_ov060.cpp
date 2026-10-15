@@ -787,7 +787,7 @@ extern "C" void hal_fill_bowser_fire_vtable(void)
 // stride is 4, not 8. Slot 9's `((Base *)(self + 0xd4))->m(0)` six-virtual
 // shadow lands on _ZTV5Model slot 5, which cxxname_bridge dual-fills -- the
 // SpikeBomb reading, and Platform::Platform is what puts a plain Model there
-// (src/actors/dBgActor_c.cpp, `Model::Model(this + 0xd4)`).
+// (src/runtime/actor/d_bg_actor.cpp, `Model::Model(this + 0xd4)`).
 //
 // NOT PLACED IN LEVEL 38 -- this is level 40's floor (koopa3_boss). It
 // registers here because the seat, the mount and the cast map are all in hand

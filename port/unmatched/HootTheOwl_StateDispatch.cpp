@@ -63,7 +63,7 @@ struct PortHootPmf { unsigned fn; int delta; };
 /* the ten matched state-handler bodies (slice_gate194.txt) each cell's
    enter/tick fn word targets, reloc-confirmed against
    config/arm9/overlays/ov094/relocs.txt. Main folded them into
-   src/actors/daOwl_c.cpp as daOwl_c members (include/daOwl_c.h), so the faces
+   src/game/actors/d_a_owl.cpp as daOwl_c members (include/daOwl_c.h), so the faces
    below call the member, qualified, instead of a flat C body. */
 
 /* the five bss cells, each a 2-entry array of {fn,delta} -- [0]=enter,

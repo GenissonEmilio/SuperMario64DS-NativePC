@@ -1,4 +1,17 @@
 //cpp
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum ZN10dScStage_c14LoadGraphics2DEbi_AssetId {
+    ASSET_D_2D_FRAMEWORK_PAGE_NSC_BIN = 0x022f,
+    ASSET_D_2D_FRAMEWORK_SELECT_PAUSE_NSC_BIN = 0x0230,
+    ASSET_D_2D_OP_BG_CL01_NCG_BIN = 0x0239,
+    ASSET_D_2D_OP_BG_CL01_NSC_BIN = 0x023a,
+    ASSET_D_2D_OP_BG_CL02_NSC_BIN = 0x023b,
+    ASSET_D_2D_OP_BG_CL_NCL_BIN = 0x023c,
+    ASSET_D_2D_OP_OBJ_CL_NCG_BIN = 0x023d,
+    ASSET_D_2D_OP_OBJ_CL_NCL_BIN = 0x023e,
+    ASSET_D_2D_UPR_TOUCH_TO_SELECT_NSC_BIN = 0x025c
+};
+
 #include "types.h"
 extern "C" {
 void SetBg0Offset(int a, int b);
@@ -88,12 +101,12 @@ void dScStage_c::LoadGraphics2D(bool b, int i)
         BG1CNT_SUB &= ~0x40;
         BG2CNT_SUB = (BG2CNT_SUB & 0x43) | 0x1800;
 
-        LoadCompressedFileAt(0x239, _ZN3G2S13GetBG0CharPtrEv());
-        LoadFileAt(0x23c, 0x5000400);
-        LoadCompressedFileAt(0x23b, _ZN3G2S12GetBG0ScrPtrEv());
-        LoadCompressedFileAt(0x23a, _ZN3G2S12GetBG1ScrPtrEv());
-        LoadCompressedFileAt(0x23d, (void *)0x6600000);
-        LoadFileAt(0x23e, 0x5000600);
+        LoadCompressedFileAt(ASSET_D_2D_OP_BG_CL01_NCG_BIN, _ZN3G2S13GetBG0CharPtrEv());
+        LoadFileAt(ASSET_D_2D_OP_BG_CL_NCL_BIN, 0x5000400);
+        LoadCompressedFileAt(ASSET_D_2D_OP_BG_CL02_NSC_BIN, _ZN3G2S12GetBG0ScrPtrEv());
+        LoadCompressedFileAt(ASSET_D_2D_OP_BG_CL01_NSC_BIN, _ZN3G2S12GetBG1ScrPtrEv());
+        LoadCompressedFileAt(ASSET_D_2D_OP_OBJ_CL_NCG_BIN, (void *)0x6600000);
+        LoadFileAt(ASSET_D_2D_OP_OBJ_CL_NCL_BIN, 0x5000600);
         {
             char *scr2 = _ZN3G2S12GetBG2ScrPtrEv();
             volatile u16 sp0 = 0x10d0;
@@ -170,7 +183,7 @@ void dScStage_c::LoadGraphics2D(bool b, int i)
             LoadCompressedFileAt(0xa00f, _ZN2G213GetBG2CharPtrEv());
         }
         LoadFileAt(0x980b, 0x5000000);
-        LoadCompressedFileAt(0x25c, _ZN2G212GetBG2ScrPtrEv() + 0x1800);
+        LoadCompressedFileAt(ASSET_D_2D_UPR_TOUCH_TO_SELECT_NSC_BIN, _ZN2G212GetBG2ScrPtrEv() + 0x1800);
         LoadCompressedFileAt(0x9801, r4 + 0x2800);
         return;
     }
@@ -178,13 +191,13 @@ void dScStage_c::LoadGraphics2D(bool b, int i)
     if (SublevelToLevel(i) == 0x1d) {
         volatile u16 sp2 = 0;
         MultiStore16(sp2, r4, 0x40);
-        LoadCompressedFileAt(0x230, r4 + 0x40);
-        LoadCompressedFileAt(0x22f, _ZN2G212GetBG2ScrPtrEv() + 0x1800);
-        LoadCompressedFileAt(0x25c, _ZN2G212GetBG2ScrPtrEv() + 0x2800);
+        LoadCompressedFileAt(ASSET_D_2D_FRAMEWORK_SELECT_PAUSE_NSC_BIN, r4 + 0x40);
+        LoadCompressedFileAt(ASSET_D_2D_FRAMEWORK_PAGE_NSC_BIN, _ZN2G212GetBG2ScrPtrEv() + 0x1800);
+        LoadCompressedFileAt(ASSET_D_2D_UPR_TOUCH_TO_SELECT_NSC_BIN, _ZN2G212GetBG2ScrPtrEv() + 0x2800);
         LoadCompressedFileAt(0x9802, r4 + 0x2800);
         return;
     }
 
-    LoadCompressedFileAt(0x25c, _ZN2G212GetBG2ScrPtrEv() + 0x1800);
-    LoadCompressedFileAt(0x230, r4);
+    LoadCompressedFileAt(ASSET_D_2D_UPR_TOUCH_TO_SELECT_NSC_BIN, _ZN2G212GetBG2ScrPtrEv() + 0x1800);
+    LoadCompressedFileAt(ASSET_D_2D_FRAMEWORK_SELECT_PAUSE_NSC_BIN, r4);
 }

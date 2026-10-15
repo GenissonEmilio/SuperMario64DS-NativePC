@@ -44,6 +44,13 @@
  *   spelled through handles: SharedFilePtr has no recovered fields.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_hyuhyu_AssetId {
+    ASSET_HYUHYU_BMD = 0x032f,
+    ASSET_HYUHYU_ATTACK_BCA = 0x0330,
+    ASSET_HYUHYU_WAIT_BCA = 0x0331
+};
+
 #include "common.h"
 #include "daHyuhyu_c.h"
 #include "Player.h"
@@ -109,9 +116,9 @@ extern HyuhyuAnimationFileHandle data_ov091_0213567c;  /* BCA: blow */
 extern HyuhyuAnimationFileHandle data_ov091_02135684;  /* BCA: wait */
 
 // @symbol __sinit_d_a_hyuhyu.cpp
-HyuhyuModelFilePtr data_ov091_02135674(0x32f);    /* BMD */
-HyuhyuAnimationFileHandle data_ov091_0213567c(0x330);  /* BCA: blow */
-HyuhyuAnimationFileHandle data_ov091_02135684(0x331);  /* BCA: wait */
+HyuhyuModelFilePtr data_ov091_02135674(ASSET_HYUHYU_BMD);    /* BMD */
+HyuhyuAnimationFileHandle data_ov091_0213567c(ASSET_HYUHYU_ATTACK_BCA);  /* BCA: blow */
+HyuhyuAnimationFileHandle data_ov091_02135684(ASSET_HYUHYU_WAIT_BCA);  /* BCA: wait */
 
 typedef int (daHyuhyu_c::*HyuhyuStateFn)();
 

@@ -2,7 +2,7 @@
  * Old path: src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_cD1Ev.cpp (port line). The
  * 2026-10 main merge (749f5799a) took main's src/, which defines
  * daTrsTrap_c::~daTrsTrap_c as a real member in
- * src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp; under MSVC that is the one
+ * src/game/actors/d_a_trs_trap.cpp; under MSVC that is the one
  * decorated ??1daTrsTrap_c, never the ROM's flat D1 name, which the slot-16
  * thunk ms_d1 in hal/actor_classes_ov063.cpp calls. mwccarm never sees this
  * file, so nothing here moves a ROM byte. */

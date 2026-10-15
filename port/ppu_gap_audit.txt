@@ -1204,16 +1204,16 @@ already invalidated. The trace, one run, in order:
     [loadfile] 0x34 -> 30032180 slot 37 FRESH
     [loadfile] 0x30 -> 30031B60 slot 33 CACHED    <-- the defect
 
-The last line is _ZN14dScMgCurling_c19func_ov006_020e3250Ev, which InitResources calls at its end. It
+The last line is _ZN14dScMgCurling_c9PickHouseEv, which InitResources calls at its end. It
 uploads 0x800 bytes of one of three rink tilemaps (0x30, 0x2d, 0x31) to the BG2
 screen base, and WHICH ONE IS NOT A COIN TOSS ON THIS PATH. Review derived it
-and the code agrees: InitResources calls _ZN14dScMgCurling_c19func_ov006_020e3378Ev immediately
+and the code agrees: InitResources calls _ZN14dScMgCurling_c10ResetHouseEv immediately
 before, whose whole body is `*(int *)(self + 0x4e9c) = 255`, and 255 is exactly
-the value _ZN14dScMgCurling_c19func_ov006_020e3250Ev's first branch tests for. That branch sets the
+the value _ZN14dScMgCurling_c9PickHouseEv's first branch tests for. That branch sets the
 field to 0 and returns without touching the generator, and 0 selects handle
 0x30. The RNG re-roll below it belongs to the OTHER caller,
-_ZN14dScMgCurling_c13OnYoshiTryEatEi, the in-play reset that runs _ZN14dScMgCurling_c19func_ov006_020e3388Ev and
-_ZN14dScMgCurling_c19func_ov006_020e3250Ev without the 255 store. So the first load of the scene picks
+_ZN14dScMgCurling_c10StartRoundEi, the in-play reset that runs _ZN14dScMgCurling_c11ClearStonesEv and
+_ZN14dScMgCurling_c9PickHouseEv without the 255 store. So the first load of the scene picks
 rink 0 on every boot. It asks for handle 0x30 a SECOND time, the host cache
 hands back the block the ROM freed four loads earlier, and that block now holds
 file 0xc7. So the port uploads an LZ-compressed sprite
@@ -1269,7 +1269,7 @@ hard-coded 1D. The bit is clear because Scene::ResetHardwareRegisters ANDs
 mask, and nothing on a scene path sets it again: GX::SetGraphicsMode's own mask
 is 0xfff0fff0, which preserves bit 4, and its third argument only ever reaches
 bit 3 (every call site passes 0 or 1). ov006 does the same clear for engine B
-by hand at func_ov006_020e73c4.
+by hand at D3D_InitDualScreen.
 
 WHICH FILE. Section 11's DISPCNT note recorded this gap against ntr/ppu.cpp,
 and that was accurate about ntr/ppu.cpp and named the wrong file for the
@@ -1365,11 +1365,11 @@ exit codes, as section 12d already says.
   * THE 13c REPRODUCER IS STRONGER THAN THIS LIST FIRST SAID. The bullet here
     read "the trace is one run" and hedged that a run could pick handle 0x2d or
     0x31 instead and hide the defect. Review derived otherwise and the code
-    agrees: _ZN14dScMgCurling_c19func_ov006_020e3378Ev stores 255 into +0x4e9c immediately before
-    InitResources calls _ZN14dScMgCurling_c19func_ov006_020e3250Ev, and 255 is the value that
+    agrees: _ZN14dScMgCurling_c10ResetHouseEv stores 255 into +0x4e9c immediately before
+    InitResources calls _ZN14dScMgCurling_c9PickHouseEv, and 255 is the value that
     function's first branch tests, which zeroes the field and returns without
     reaching the generator. Zero selects handle 0x30. The RNG re-roll is the
-    other caller's, _ZN14dScMgCurling_c13OnYoshiTryEatEi. So the boot path is DETERMINISTIC and
+    other caller's, _ZN14dScMgCurling_c10StartRoundEi. So the boot path is DETERMINISTIC and
     every boot of this scene reproduces it. The hedge is kept visible rather
     than deleted because it is the shape of a wrong reading a successor could
     make again: a generator in the body is not a generator on the path.

@@ -93,9 +93,9 @@ void _ZN8dActor_c19DropShadowRadHeightER17dExtShadowModel_cR9Matrix4x35Fix12IiES
     unsigned opacity);
 void _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(
     ModelAnim *self, void *bca, int flags, int speed, unsigned start);
-void _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(
-    Player *player, const Vector3 *pos, unsigned kind, int power, unsigned a,
-    unsigned b, unsigned c);
+/* local extern: Fix12<int> by value; this scalar bridge follows the definition. */
+int _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(
+    Player *player, void *pos, unsigned kind, int power, u8 a, u8 b, u8 c);
 short _ZN4cstd5atan2E5Fix12IiES1_(int y, int x);
 
 void MulVec3Mat4x3(void *v, void *m, void *dst);
@@ -348,30 +348,28 @@ void func_ov014_02112788(daWanwan_c *c)
 }
 }
 
-typedef struct { int x, y, z; } WanwanVec;
-
 /* Forward chain: head at the actor, then links 1..6, carrying mLinkDelta. */
 extern "C" {
 // @symbol func_ov014_0211250c
 void func_ov014_0211250c(daWanwan_c *c)
 {
     int yoff;
-    WanwanVec dvec;
-    WanwanVec head;
-    WanwanVec rotated;
-    WanwanVec saved;
-    WanwanVec tmp;
-    WanwanVec sum;
-    WanwanVec diff;
-    WanwanVec mul;
+    Vector3 dvec;
+    Vector3 head;
+    Vector3 rotated;
+    Vector3 saved;
+    Vector3 tmp;
+    Vector3 sum;
+    Vector3 diff;
+    Vector3 mul;
     int scale;
-    WanwanVec *seg;
-    WanwanVec *dst;
+    Vector3 *seg;
+    Vector3 *dst;
     int *bound;
     int state;
     short angY;
     short angX;
-    WanwanVec *prev;
+    Vector3 *prev;
     int i;
 
     head.x = 0;
@@ -382,8 +380,8 @@ void func_ov014_0211250c(daWanwan_c *c)
     head.z = -kRestLift;
 
     /* setup order is load-bearing: seg before state so add/cmp schedule matches */
-    seg = (WanwanVec *)&c->mLinkPos[1];
-    dst = (WanwanVec *)&c->mLinkDelta[1];
+    seg = &c->mLinkPos[1];
+    dst = &c->mLinkDelta[1];
     state = c->mState;
     bound = c->mLinkFloorY;
     scale = 0xb68;
@@ -401,7 +399,7 @@ void func_ov014_0211250c(daWanwan_c *c)
     Matrix4x3_FromRotationXYZExt(
         &data_020a0e68, c->mAngleX, c->mAngleY, c->mAngleZ);
     MulVec3Mat4x3(&head, &data_020a0e68, &rotated);
-    Vec3_Add(&tmp, (WanwanVec *)&c->mPosX, &rotated);
+    Vec3_Add(&tmp, &c->mPosX, &rotated);
     saved.x = tmp.x;
     saved.y = tmp.y;
     saved.z = tmp.z;
@@ -466,18 +464,19 @@ extern "C" {
 // @symbol func_ov014_0211236c
 void func_ov014_0211236c(daWanwan_c *c)
 {
-    WanwanVec tmp;
-    WanwanVec head;
-    WanwanVec rotated;
-    WanwanVec sum;
-    WanwanVec prevpos;
-    WanwanVec diff;
-    WanwanVec delta;
-    WanwanVec scaled;
-    WanwanVec mul;
+    Vector3 tmp;
+    Vector3 head;
+    Vector3 rotated;
+    Vector3 sum;
+    Vector3 prevpos;
+    Vector3 diff;
+    Vector3 delta;
+    Vector3 scaled;
+    Vector3 mul;
     short angY;
-    WanwanVec *target;
-    WanwanVec *cur;
+    Vector3 *target;
+    Vector3 *cur;
+    u32 cursor;
     short angX;
     int i;
     int z;
@@ -508,9 +507,10 @@ void func_ov014_0211236c(daWanwan_c *c)
     rotated.y = 0;
     rotated.z = 0;
 
-    cur = (WanwanVec *)&c->mLinkPos[6];
+    cursor = (u32)&c->mLinkPos[6];
     i = 6;
     do {
+        cur = (Vector3 *)cursor;
         target = (i == 6) ? &prevpos : cur + 1;
         Vec3_Sub(&diff, cur, target);
         tmp.x = diff.x;
@@ -534,8 +534,9 @@ void func_ov014_0211236c(daWanwan_c *c)
         sum.x = mul.x;
         sum.y = mul.y;
         sum.z = mul.z;
-        i = i - 1;
-        cur--;
+        --i;
+        /* Advance a target address; convert only valid elements above. */
+        cursor -= sizeof(*cur);
     } while (i >= 0);
 }
 }
@@ -545,17 +546,17 @@ extern "C" {
 // @symbol func_ov014_021122dc
 void func_ov014_021122dc(daWanwan_c *c)
 {
-    WanwanVec *p;
+    Vector3 *p;
     int i;
-    int diff[3];
-    int scaled[3];
+    Vector3 diff;
+    Vector3 scaled;
 
-    Vec3_Sub(diff, &c->mPosX, &c->mLinkPos[0].x);
-    p = (WanwanVec *)&c->mLinkPos[0];
+    Vec3_Sub(&diff, &c->mPosX, &c->mLinkPos[0]);
+    p = &c->mLinkPos[0];
     i = 0;
     do {
-        Vec3_MulScalar(scaled, diff, (7 - i) / 7);
-        AddVec3(p, scaled, p);
+        Vec3_MulScalar(&scaled, &diff, (7 - i) / 7);
+        AddVec3(p, &scaled, p);
         i++;
         p++;
     } while (i < 7);
@@ -610,12 +611,12 @@ void func_ov014_02112114(daWanwan_c *c)
             c->mPrevAngleY = other->mAngleY;
         }
         if (AngleDiff(ang, c->mAngleY) < 0x4000) {
-            int v[3];
-            v[0] = c->mPosX;
-            v[1] = c->mPosY;
-            v[2] = c->mPosZ;
+            Vector3 v;
+            v.x = c->mPosX;
+            v.y = c->mPosY;
+            v.z = c->mPosZ;
             _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(
-                (Player *)other, (Vector3 *)v, 3, 0xc000, 1, 0, 1);
+                (Player *)other, &v, 3, 0xc000, 1, 0, 1);
         }
     }
 

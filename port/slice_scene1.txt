@@ -35,8 +35,8 @@
 # the eight Scene:: lifecycle halves) was already in the walk_window link set.
 # These four were not: the spawn entry, its tail-call veneer, and the two
 # halves the vtable holds at slots 2 and 5.
-src/actors/dScene_c.cpp
-src/actors/ActorDerived.cpp
+src/game/stages/d_scene.cpp
+src/runtime/actor/ActorDerived.cpp
 src/unnamed/arm9/0204/func_02042fe4.c
 # _ZN8dScene_c21AfterCleanupResourcesEj is the matched TU through hostgen
 # --extern-data (CMakeLists.txt HOSTABI_RETIRE_SYMS): the TU DEFINES
@@ -57,7 +57,7 @@ src/unnamed/arm9/0204/func_02042fe4.c
 # the factory: ActorBase::operator new(0x13c), the ActorBase ctor, the three
 # vptr writes the ROM makes in order, the +0x13 flag bits and two Models at
 # +0x64 through __cxa_vec_ctor.
-src/d_s_star_sel.cpp
+src/game/stages/d_s_star_sel.cpp
 # slot 0  InitResources  (NONMATCHING)
 src/_ZN12dScStarSel_c13InitResourcesEv.cpp
 # slot 3  CleanupResources
@@ -65,11 +65,11 @@ src/_ZN12dScStarSel_c16CleanupResourcesEv.cpp
 # slot 6  Behavior  (NONMATCHING)
 src/_ZN12dScStarSel_c8BehaviorEv.cpp
 # slot 9  Render  (NONMATCHING)
-src/actors/dScStarSel_c.cpp
+src/game/stages/d_s_star_sel_methods.cpp
 # slot 12 OnPendingDestroy
-# FOLDED into src/actors/dScStarSel_c.cpp (row 68): src/_ZN12dScStarSel_c16OnPendingDestroyEv.cpp
+# FOLDED into src/game/stages/d_s_star_sel_methods.cpp (row 68): src/_ZN12dScStarSel_c16OnPendingDestroyEv.cpp
 # slot 16 D2
-# FOLDED into src/actors/dScStarSel_c.cpp (row 68): src/_ZN12dScStarSel_cD1Ev.cpp
+# FOLDED into src/game/stages/d_s_star_sel_methods.cpp (row 68): src/_ZN12dScStarSel_cD1Ev.cpp
 # slot 17 D0
 # RETIRED at SLICE1: body now in src/_ZN12dScStarSel_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN12dScStarSel_cD0Ev.cpp
@@ -88,16 +88,16 @@ src/actors/dScStarSel_c.cpp
 # /OPT:REF-dropped -- these two, the thirteen Vram__Map bodies and their two
 # closure TUs below, and _ZN2G212GetBG0ScrPtrEv, which only func_ov003_020adc74
 # calls. scene_boot_map.txt section 8 names all eighteen in one place.
-src/actors/dScTitle_c.cpp
-# FOLDED into src/actors/dScTitle_c.cpp (row 91): src/func_ov003_020adcbc.cpp
-# FOLDED into src/actors/dScStarSel_c.cpp (row 68): src/func_ov003_020adec0.c
-# FOLDED into src/actors/dScStarSel_c.cpp (row 68): src/func_ov003_020adf50.c
-# FOLDED into src/actors/dScStarSel_c.cpp (row 68): src/func_ov003_020adfc8.cpp
-# FOLDED into src/actors/dScStarSel_c.cpp (row 68): src/func_ov003_020ae0b0.c
-# FOLDED into src/actors/dScStarSel_c.cpp (row 68): src/func_ov003_020ae1a4.c
-# FOLDED into src/actors/dScStarSel_c.cpp (row 68): src/func_ov003_020ae238.c
+src/game/stages/d_s_title.cpp
+# FOLDED into src/game/stages/d_s_title.cpp (row 91): src/func_ov003_020adcbc.cpp
+# FOLDED into src/game/stages/d_s_star_sel_methods.cpp (row 68): src/func_ov003_020adec0.c
+# FOLDED into src/game/stages/d_s_star_sel_methods.cpp (row 68): src/func_ov003_020adf50.c
+# FOLDED into src/game/stages/d_s_star_sel_methods.cpp (row 68): src/func_ov003_020adfc8.cpp
+# FOLDED into src/game/stages/d_s_star_sel_methods.cpp (row 68): src/func_ov003_020ae0b0.c
+# FOLDED into src/game/stages/d_s_star_sel_methods.cpp (row 68): src/func_ov003_020ae1a4.c
+# FOLDED into src/game/stages/d_s_star_sel_methods.cpp (row 68): src/func_ov003_020ae238.c
 # (NONMATCHING)
-# FOLDED into src/actors/dScStarSel_c.cpp (row 68): src/func_ov003_020ae358.c
+# FOLDED into src/game/stages/d_s_star_sel_methods.cpp (row 68): src/func_ov003_020ae358.c
 
 # ---- the arm9 closure the star select opens up -----------------------------
 # Everything dScStarSel_c reaches that no level ever did. All matched, all
@@ -213,8 +213,8 @@ src/engine/sound/Sound.cpp
 #
 #   2. THREE of the dtor TUs spell their vptr writes as PER-TU PLACEHOLDERS,
 #      not as symbols: src/_ZN10dScTitle_cD1Ev.cpp writes _ZTV10dScTitle_c /
-#      _ZTV8dScene_c / _ZTV7dBase_c, src/actors/dScGameOver_c.cpp writes
-#      _ZTV13dScGameOver_c / the same two, and src/actors/dScGameOver_c.cpp writes
+#      _ZTV8dScene_c / _ZTV7dBase_c, src/game/stages/d_s_game_over.cpp writes
+#      _ZTV13dScGameOver_c / the same two, and src/game/stages/d_s_game_over.cpp writes
 #      VT0 / VT1 / VT2 and deallocates against G0. None of those six names
 #      exists in config; they are the decomp's own local stand-ins, and the ROM
 #      words at those three sites are 0x020b1650 / 0x02092680 / 0x0208e4b8 (and

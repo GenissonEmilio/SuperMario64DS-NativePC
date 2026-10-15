@@ -127,8 +127,8 @@ DSSTATE_END
 // #pragma comment(linker, "/alternatename:?data_020a0eac@@3HA=_data_020a0eac")
 /* Memory::Deallocate is a STATIC member, so MSVC gives it __cdecl under /Gd
    and the two calling conventions agree; only the decoration differs. */
-/* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines __ZN6Memory10DeallocateEPvP4Heap, and nothing references ?Deallocate@Memory@@SAXPAXPAUHeap@@@Z, so the row can never fire and nothing wants it to. */
-// #pragma comment(linker, "/alternatename:?Deallocate@Memory@@SAXPAXPAUHeap@@@Z=__ZN6Memory10DeallocateEPvP4Heap")
+/* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines __ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE, and nothing references ?Deallocate@Memory@@SAXPAXPAUHeap_t@mHeap@@@Z, so the row can never fire and nothing wants it to. */
+// #pragma comment(linker, "/alternatename:?Deallocate@Memory@@SAXPAXPAUHeap_t@mHeap@@@Z=__ZN6Memory10DeallocateEPvPN5mHeap6Heap_tE")
 
 // ---- the trap --------------------------------------------------------------
 static void ov58_trap_report(void *self, int slot)

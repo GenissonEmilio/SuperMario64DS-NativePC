@@ -1,15 +1,15 @@
 {
   "id": "ov060/daKpaTail_c+daKpa_c",
   "module": "ov060",
-  "source": "src/actors/daKpa_c.cpp",
-  "promoted_source": "src/actors/daKpa_c.cpp",
+  "source": "src/game/actors/d_a_kpa.cpp",
+  "promoted_source": "src/game/actors/d_a_kpa.cpp",
   "status": "promoted",
   "boundary_confidence": "medium",
   "boundary_evidence": [
     "HISTORY: contiguous linker run: 0x2111900..0x21163f0, 79 function(s), from build/tu_map.json (tools/tu_map.py)",
     "class label(s): daKpaTail_c, daKpa_c",
     "module sinit corroboration: 6 sinit(s) / 6 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
-    "CLASSINIT TAIL FOLD (2026-10-09): the run 0x021163f0..0x02116484 abuts this TU's .text end with no gap and is now inside it, written first among the deferred functions (codegen is deferred, so source order is reversed). daKpaTail_c_classInit is `return new daKpaTail_c;` (operator new 0x118, dActor_c base ctor, _ZTV11daKpaTail_c vptr store, dCcAc_c member ctor) and daKpa_c_classInit is `return new daKpa_c;` (operator new 0x454, dActor_c base ctor, _ZTV7daKpa_c vptr store, ModelAnim/TextureSequence/dBgCh_Actr/dExtShadowModel_c/dCcAcPos_c member ctors) -- each the retired shard's hand-spelled sequence, for the KOOPATAIL and KOOPA profiles. Both classes are this unit's; it is now 0x02111900..0x02116484, bounded above by src/actors/daKpaFire_c.cpp, which starts exactly at 0x02116484. The two new-expressions advance mwcc's compiler-label counter by 12, so every @label this unit owns was renumbered (+12: .bss @2250..@2283 -> @2262..@2295, .data @2285..@2337 -> @2297..@2349) in this manifest and ov060 symbols.txt; the six .bss registration nodes that used to be renamed @2249..@2259 -> @2710..@2715 to dodge ov002 daStarBase_c+daStar_c's global @2249..@2259 now compile as @2261..@2271, clear of that range, so defined_symbol_renames was dropped and they carry their compiler names."
+    "CLASSINIT TAIL FOLD (2026-10-09): the run 0x021163f0..0x02116484 abuts this TU's .text end with no gap and is now inside it, written first among the deferred functions (codegen is deferred, so source order is reversed). daKpaTail_c_classInit is `return new daKpaTail_c;` (operator new 0x118, dActor_c base ctor, _ZTV11daKpaTail_c vptr store, dCcAc_c member ctor) and daKpa_c_classInit is `return new daKpa_c;` (operator new 0x454, dActor_c base ctor, _ZTV7daKpa_c vptr store, ModelAnim/TextureSequence/dBgCh_Actr/dExtShadowModel_c/dCcAcPos_c member ctors) -- each the retired shard's hand-spelled sequence, for the KOOPATAIL and KOOPA profiles. Both classes are this unit's; it is now 0x02111900..0x02116484, bounded above by src/game/actors/d_a_kpa_fire.cpp, which starts exactly at 0x02116484. The two new-expressions advance mwcc's compiler-label counter by 12, so every @label this unit owns was renumbered (+12: .bss @2250..@2283 -> @2262..@2295, .data @2285..@2337 -> @2297..@2349) in this manifest and ov060 symbols.txt; the six .bss registration nodes that used to be renamed @2249..@2259 -> @2710..@2715 to dodge ov002 daStarBase_c+daStar_c's global @2249..@2259 now compile as @2261..@2271, clear of that range, so defined_symbol_renames was dropped and they carry their compiler names."
   ],
   "sections": [
     {
@@ -2281,7 +2281,7 @@
   "production_mode": "intact-object",
   "init": [
     {
-      "symbol": "__sinit_daKpa_c.cpp",
+      "symbol": "__sinit_d_a_kpa.cpp",
       "address": "0x21195dc",
       "size": "0x814",
       "binding": "STB_GLOBAL",
@@ -2290,7 +2290,7 @@
   ],
   "ctor": [
     {
-      "symbol": ".p__sinit_daKpa_c.cpp",
+      "symbol": ".p__sinit_d_a_kpa.cpp",
       "address": "0x211a4bc",
       "size": "0x4",
       "binding": "STB_GLOBAL",
@@ -2350,13 +2350,13 @@
   ],
   "symbol_binding_rewrites": [
     {
-      "symbol": "__sinit_daKpa_c.cpp",
+      "symbol": "__sinit_d_a_kpa.cpp",
       "from": "STB_LOCAL",
       "to": "STB_GLOBAL",
       "evidence": "mwcc emits the TU initializer local; DSD requires a configured global relocation destination at the same exact address"
     },
     {
-      "symbol": ".p__sinit_daKpa_c.cpp",
+      "symbol": ".p__sinit_d_a_kpa.cpp",
       "from": "STB_LOCAL",
       "to": "STB_GLOBAL",
       "evidence": "mwcc emits the ctor-table object local; DSD exposes owned symbols globally and cannot encode a local symbols.txt entry"
@@ -2740,7 +2740,7 @@
       "source": "0x0211a4bc",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "__sinit_daKpa_c.cpp",
+      "symbol": "__sinit_d_a_kpa.cpp",
       "addend": 0,
       "target_module": "ov060",
       "target_address": "0x21195dc"

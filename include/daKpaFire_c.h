@@ -2,7 +2,7 @@
  * real base and real member types by hand.
  *
  * class daKpaFire_c: Bowser's fire (KOOPAFIRE, ov060). Every function is
- * defined in src/actors/daKpaFire_c.cpp; its banner lists the eight variants.
+ * defined in src/game/actors/d_a_kpa_fire.cpp; its banner lists the eight variants.
  *
  * The three sub-objects are the real classes, and each one's size is pinned by
  * that class's own static assertion, so the offsets below are checked twice --
@@ -21,11 +21,11 @@
  *
  * Offsets/widths are observed, not guessed. Gaps are explicit padding.
  *
- * What the daKpaFire_c-specific fields do (read off src/actors/daKpaFire_c.cpp):
+ * What the daKpaFire_c-specific fields do (read off src/game/actors/d_a_kpa_fire.cpp):
  *   mVariant        param1 & 7: which of eight behaviours this fire runs. The
  *                   per-variant handler/init pairs are the pointer-to-member
  *                   tables data_ov060_0211afb4 / data_ov060_0211af74, filled by
- *                   __sinit_daKpaFire_c.cpp at 0x02119df0 (the .cpp banner
+ *                   __sinit_d_a_kpa_fire.cpp at 0x02119df0 (the .cpp banner
  *                   lists them).
  *   mSubVariant     (param1 >> 4) & 3, a sub-selector several variants read: it
  *                   indexes the terminal-velocity and particle-id tables and

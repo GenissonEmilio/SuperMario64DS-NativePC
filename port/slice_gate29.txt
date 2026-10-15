@@ -56,33 +56,33 @@ src/engine/particle/Particle_SysTracker_Contents.cpp
 # FOLDED into src/engine/particle/Particle_SysTracker_Contents.cpp (row 54): src/_ZN8Particle10SysTracker8Contents6UpdateEv.cpp
 # FOLDED into src/engine/particle/Particle_SysTracker_Contents.cpp (row 54): src/_ZN8Particle10SysTracker8ContentsC1Ev.cpp
 # FOLDED into src/engine/particle/Particle_SysTracker_Contents.cpp (row 54): src/_ZN8Particle10SysTracker8Contents5Entry5ResetEv.cpp
-src/engine/particle/dPa_c.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c14clipCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c18fitWaterCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c26checkWaterRippleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c20checkWaterCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c20edStarKiraCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c20edStarKiraCallback_c14SpawnParticlesERN8Particle6SystemE.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/func_02022260.c
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c20edStarKiraCallback_cC1Ev.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c20checkYoganCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c20checkYoganCallback_c14SpawnParticlesERN8Particle6SystemE.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c24fitWaterSimpleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c16bubbleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c16splashCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c15scaleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c15scaleCallback_c14SpawnParticlesERN8Particle6SystemE.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c15scaleCallback_cC1Ev.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c16simpleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c16simpleCallback_cC1Ev.cpp
+src/engine/particle/d_pa.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c14clipCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c18fitWaterCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c26checkWaterRippleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c20checkWaterCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c20edStarKiraCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c20edStarKiraCallback_c14SpawnParticlesERN8Particle6SystemE.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/func_02022260.c
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c20edStarKiraCallback_cC1Ev.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c20checkYoganCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c20checkYoganCallback_c14SpawnParticlesERN8Particle6SystemE.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c24fitWaterSimpleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c16bubbleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c16splashCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c15scaleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c15scaleCallback_c14SpawnParticlesERN8Particle6SystemE.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c15scaleCallback_cC1Ev.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c16simpleCallback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c16simpleCallback_cC1Ev.cpp
 # RETIRED at ALIAS2 (wave 8, the main -> port sync): MSVC folds the Itanium
 # C1 and C2 constructors into one ??0simpleCallback_c@level_c@dPa_c@@QAE@XZ,
 # so the two per-function TUs became the same symbol and the link reported it
 # twice (LNK2005). The C1 row above is kept, the same C1-wins/D1-wins rule
 # lane SLICE1 applied to the destructor pairs.
 #src/_ZN5dPa_c7level_c16simpleCallback_cC2Ev.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c10callback_c8OnUpdateERN8Particle6SystemEb.cpp
-# FOLDED into src/engine/particle/dPa_c.cpp (row 59): src/_ZN5dPa_c7level_c10callback_c14SpawnParticlesERN8Particle6SystemE.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c10callback_c8OnUpdateERN8Particle6SystemEb.cpp
+# FOLDED into src/engine/particle/d_pa.cpp (row 59): src/_ZN5dPa_c7level_c10callback_c14SpawnParticlesERN8Particle6SystemE.cpp
 src/engine/particle/Particle.cpp
 # FOLDED into src/engine/particle/Particle.cpp (row 86): src/func_020226fc.c
 # FOLDED into src/engine/particle/Particle.cpp (row 86): src/func_02022774.c

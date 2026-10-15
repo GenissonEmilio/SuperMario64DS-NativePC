@@ -1,7 +1,7 @@
 /* HOST ARM recovered by PORTSYNC2 (port/tools/hostarm_recover.py draft, reviewed).
  * The port line carried this in src/_ZN5Stump8BehaviorEv.cpp under #ifdef _MSC_VER; the
  * 2026-10 main merge (749f5799a) took main's src/, where that code
- * now lives in src/actors/daObjPile_c.cpp without the arm. mwccarm never saw the arm,
+ * now lives in src/game/actors/d_a_obj_pile.cpp without the arm. mwccarm never saw the arm,
  * so nothing here moves a ROM byte.
  *
  * The arm changed both the SpawnCoins declaration and its call inside the
@@ -14,7 +14,7 @@
 #include "daObjPile_c.h"
 #include "Player.h"
 
-/* Main's TU-local by-value coin position (src/actors/daObjPile_c.cpp). */
+/* Main's TU-local by-value coin position (src/game/actors/d_a_obj_pile.cpp). */
 struct V3 {
     int x, y, z;
     V3() {}

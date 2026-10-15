@@ -2,7 +2,7 @@
  * Old path: src/_ZN12WorkElevator8BehaviorEv.cpp, which carried a host arm
  * under #ifdef _MSC_VER inside daObjCvNewsLift_c::Behavior (ov021 0x021116c8).
  * The 2026-10 main merge took main's src/, which folded that body into
- * src/actors/daObjCvNewsLift_c.cpp without the arm.
+ * src/game/actors/d_a_obj_cv_news_lift.cpp without the arm.
  *
  * WHY IT EXISTS. The ROM keeps the three line colliders back to back on the
  * frame (ctors at sp+0x80, +0xf8, +0x170, 0x78 apart) and the raycast loop

@@ -179,7 +179,7 @@ addresses ov006 WANTS, most of which are .text and stay raw, not the count that
 carries a row.)
 
 WHY THEY BIND, IN THE MODEL'S TERMS, and why an address test would refuse them.
-Take ov004's data_ov004_020bbfa8 + 0 -> 0x021373a4. That address is inside
+Take ov004's sMgSpriteTables + 0 -> 0x021373a4. That address is inside
 ov006's window, and also inside ov084's and ov085's, which share the actor-
 overlay base below it. Purely by address that is three candidate answers and the
 pointer goes back to a raw DS address. Under residency ov004 is a scene-slot
@@ -359,22 +359,22 @@ F2  FOUR HOST STAND-INS HAD TO RETIRE, and the ov006 scout said there would be
     ov006's TUs; it did not mount ov006's DATA, and the duplicates are on the
     data side. Mounting the pair produced four LNK2005s:
 
-        data_ov004_020beb60   hal/oam2d_ov004_bss.cpp
-        data_ov004_020beb68   hal/actor_classes_ov081.cpp
+        sMgWorkBuffer   hal/oam2d_ov004_bss.cpp
+        gMgScene   hal/actor_classes_ov081.cpp
         data_ov006_02140330   hal/cxx_aliases.cpp
         data_ov006_02140338   hal/cxx_aliases.cpp
 
     All four are .bss. All four are sized by their ROM span on both sides -- 4,
     4, 8 and 8 bytes -- and all four are zero on both sides, so the swap changes
     no byte the program can observe. St_LevelEnter_Main's Release still reads
-    numRefs 0 on the two ov006 fileptrs, and data_ov004_020beb60 still hands
-    func_ov004_020adc4c the same zero it handed it before.
+    numRefs 0 on the two ov006 fileptrs, and sMgWorkBuffer still hands
+    Mg_GetWorkBuffer the same zero it handed it before.
 
     hal/oam2d_ov004_bss.cpp existed for exactly one of them and is deleted, with
     its CMake line. The other three files keep their surrounding content. The
     comment in hal/actor_classes_ov081.cpp said its two globals were "what
     ov004's own callers will need the day ov004 is mounted"; that day is this
-    commit, and the ov004 half goes home while data_0209b308, which is an arm9
+    commit, and the ov004 half goes home while gMgMenuRow, which is an arm9
     symbol and reached by no mount, stays.
 
     The retirements ship in the same commit as the CMake wiring because either

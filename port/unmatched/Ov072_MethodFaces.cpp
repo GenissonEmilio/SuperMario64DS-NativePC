@@ -3,7 +3,7 @@
  * Two of SnowmanBody's and SnowmanHead's state handlers reach the player's
  * talk entry as a REAL C++ METHOD rather than through the ROM's C name:
  *
- *   src/actors/daBgSnmBdy_c.cpp   declares `int StartTalk(ActorBase &, bool)`
+ *   src/game/actors/d_a_bg_snm_bdy.cpp   declares `int StartTalk(ActorBase &, bool)`
  *                                 on its own local Player shadow and calls
  *                                 ((Player*)player)->StartTalk(*self, 1)
  *   src/_ZN11SnowmanHead6State0Ev.cpp   declares `struct Player : Actor { int
@@ -38,7 +38,7 @@ int _ZN6Player9StartTalkER7fBase_cb(void *self, void *actor, int b);
 
 struct Player { int StartTalk(fBase_c &a, bool b); };
 
-/* RETIRED at SYNC6: src/actors/Player.cpp is back in the build (main #2666)
+/* RETIRED at SYNC6: src/game/player/Player.cpp is back in the build (main #2666)
    and defines ?StartTalk@Player@@QAEHAAUfBase_c@@_N@Z itself, so this face was
    the second definition. The forwarding target is unchanged and still linked.
 int Player::StartTalk(fBase_c &a, bool b)

@@ -1,6 +1,6 @@
 /* HOST COPY of src/_ZN7fBase_c21AfterCleanupResourcesEj.cpp as the port line
  * compiled it before the 2026-10 main merge (749f5799a) folded the body into
- * src/actors/ActorBase.cpp. It has to stay a translation unit of its own:
+ * src/runtime/actor/ActorBase.cpp. It has to stay a translation unit of its own:
  * port/CMakeLists.txt force-includes unmatched/FBase_DtorDispatch_HostAbi.h,
  * which SHADOWS fBase_c, into it (the slot-16 destructor dispatch ruling),
  * and that shadow cannot be put over the whole class TU. GATE9 hostgens it

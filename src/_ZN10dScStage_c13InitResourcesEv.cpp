@@ -142,7 +142,7 @@ void _ZN9dFdWipe_cD1Ev(void *thiz);
 
 void _ZN5Sound6Player19SetPlayableSeqCountEii(int a, int b);
 void _ZN8dScene_c20Initialise3dGraphicsEv(void);
-void *_ZN4Heap10SetDefaultEv(void *self);
+void *_ZN5mHeap6Heap_t10SetDefaultEv(void *self);
 void _ZN2GX15DisableAllBanksEv(void);
 // local extern: member form converts the e3d argument to bool; the ROM call passes the raw int
 void _ZN10dScStage_c14LoadGraphics2DEbi(int e3d, int level);
@@ -255,9 +255,9 @@ int dScStage_c::InitResources()
         LoadTextNarcs();
         LoadArchive(0);
         if (data_0209f2f8 == 1) {
-            void *saved = _ZN4Heap10SetDefaultEv(data_020a0eac);
+            void *saved = _ZN5mHeap6Heap_t10SetDefaultEv(data_020a0eac);
             LoadArchive(7);
-            _ZN4Heap10SetDefaultEv(saved);
+            _ZN5mHeap6Heap_t10SetDefaultEv(saved);
         }
         if (archiveIdx != 0xBF) {
             LoadArchive(archiveIdx);

@@ -214,7 +214,7 @@ matched src TU at all and will need a named trap or a decomp.
   0x182  MgWhichWiggler              0213cab8      36    7     0      0
   0x16c  (g_profile_MG_SLOT1)       0213eb40      36    8     0      0
   0x183  MgHideAndBooSeek            0213fa0c      36    8     0      0
-  0x178  MgBingoBallSlotsShot        0213eefc      36    9     1      0
+  0x178  MgBingoBallSlotsShot        0213eefc      36    9     0      0
   0x173  (g_profile_MG_AMIDA)       0213b918      37   11     0      0
   0x186  (g_profile_MG_FLOWER)       02140140      36   12    0      0
   0x169  (g_profile_MG_CUP)       0213c154      36   13     0      0
@@ -226,7 +226,7 @@ matched src TU at all and will need a named trap or a decomp.
   0x16b  MgMemoryMaster              0213d4d4      36   14    0      0   DONE
   0x184  MgLuckyStars                0213fec8      36   14    0      0
   0x185  MgPsycheOut                 0213c8c4      36   14    0      0
-  0x16d  (g_profile_MG_SLOT3)       0213eaa8      36   15    2      0   DONE
+  0x16d  (g_profile_MG_SLOT3)       0213eaa8      36   15    0      0   DONE
   0x17b  MgPicturePoker              0213bdb4      36   15    0      0   DONE
   0x174  MgBounceAndPounce           0213cbe4      36   23     0      0   DONE
   0x175  MgBounceAndTrounce          0213ccfc      36   23     0      0   DONE
@@ -273,7 +273,7 @@ Everything a seating lane would otherwise re-derive, so it starts at the seat.
 Nothing below is wired: no slice, no registry row, no face array, no host
 copy. The class does not boot and this file does not claim it does.
 
-  class          dScMgMemory2_c, from src/actors/dScMgMemory2_c.cpp's header
+  class          dScMgMemory2_c, from src/minigames/d_s_mg_memory2.cpp's header
   SpawnInfo      0x0213d288  g_profile_MG_MEMORY_J
   factory        0x020f75d4  dScMgMemory2_c_classInit, 0x60
   vtable         0x0213d4d4  36 slots, 14 overrides, 12 markers, 0 nosrc
@@ -283,7 +283,7 @@ copy. The class does not boot and this file does not claim it does.
                  slice) + 578 arm9 blocks walked and not listed, which is
                  curling's precedent for the arm9 half
   PMF TUs        6 must be EXCLUDED and host-copied, the way MG2 host-copied
-                 curling's five: func_ov006_020c07e8, _020c19d0, _020f5c40,
+                 curling's five: MascotWalker_Update, _020c19d0, _020f5c40,
                  _020f71c8, _020f7234, _020f7458. _ZN10dMgState_c8SetStateEi is the
                  framework one and is already trapped
   adjudications  ALL TWELVE MARKERS ARE RULED REAL_DECOMP, with per-body
@@ -338,9 +338,9 @@ and a switch arm, not a decomp.
 THE CURLING ANALOGY DOES NOT HOLD AND THIS PARAGRAPH USED TO CLAIM IT DID.
 An earlier version of it read "ONE STATE TARGET HAS NO DECOMPILED BODY:
 0x020f6904, slot 7 ... and no src file. This class's analogue of curling's
-_ZN14dScMgCurling_c19func_ov006_020e1854Ev". Three things wrong, all found in review: the slot is 5
+_ZN14dScMgCurling_c9Aim_SwingEv". Three things wrong, all found in review: the slot is 5
 and not 7 (stategen prints slot 5/p[5]); the src file exists; and
-_ZN14dScMgCurling_c19func_ov006_020e1854Ev genuinely has NO src at all in either extension, which is
+_ZN14dScMgCurling_c9Aim_SwingEv genuinely has NO src at all in either extension, which is
 what makes IT a floor and this not one. The consequence matters for whoever
 cuts the next lane: **0x16b has ONE hard floor, not two** -- the table with
 no dispatcher below -- and the old text over-costed the class.
@@ -377,7 +377,7 @@ rather than guessed, and the totals above excluded it.
 
 RUN mg11 LANE SNW DERIVED IT AND THE FIRST HYPOTHESIS IS THE RIGHT ONE. The
 indirection is ONE DELEGATED CONSTRUCTOR: src/d_s_mg_snowball.cpp writes
-no vtable at all. It allocates 0xc59c and calls func_ov006_021295ac, and THAT
+no vtable at all. It allocates 0xc59c and calls dScMgSnowball_c_Construct, and THAT
 body writes _ZTV19dScMgSingle3DBase_c and then _ZTV15dScMgSnowball_c into the object's
 first word -- so 0x179 is a fourth class under dScMgSingle3DBase_c, its vtable
 is _ZTV15dScMgSnowball_c, and the row above now reads 36 / 16 / 14 / 0.
@@ -502,11 +502,11 @@ globals, assign one into the object and dispatch it. It produced TWENTY-ONE of
 the first link's ninety-five unresolved externals, all from that single TU, and
 the mangling says exactly why:
 
-    unresolved external symbol "void (__thiscall C::* data_ov004_020bc97c)(void)"
-      (?data_ov004_020bc97c@@3P8C@@AEXXZQ1@)
+    unresolved external symbol "void (__thiscall C::* pmf_dMgState_c_State09_Enter)(void)"
+      (?pmf_dMgState_c_State09_Enter@@3P8C@@AEXXZQ1@)
 
 MSVC encodes the member-pointer TYPE into the symbol name, so a global the ov004
-mount emits as the C symbol _data_ov004_020bc97c can never satisfy it. And that
+mount emits as the C symbol _pmf_dMgState_c_State09_Enter can never satisfy it. And that
 is the mildest of the three problems: the TU's own `struct C` puts field_8 at
 +8 after a leading member pointer, which is only true at eight bytes, so MSVC
 lays the object out wrong before any dispatch happens.
@@ -575,8 +575,8 @@ total is CONFIRMED EXACTLY and two of its sub-counts are one low.
     lines counts SYMBOLS-WITH-A-FIRST-REFERENCE, not symbols, and counts only
     the objects that happened to be first.
 
-    ?data_ov004_020beb68@@3PAUBase@@A IS THE ONE SYMBOL IN THE SET WITH NO
-    LNK2019 AT ALL. It is referenced from seven objects -- _ZN10dMgState_c19func_ov004_020b7124Ev,
+    ?gMgScene@@3PAUBase@@A IS THE ONE SYMBOL IN THE SET WITH NO
+    LNK2019 AT ALL. It is referenced from seven objects -- _ZN10dMgState_c20UpdateFadeThenResumeEv,
     _020b746c, _020b77b4, _020b7cd0, _020b7eac, _020b8284 and _020b8560 -- and
     every one of the seven emits LNK2001. A pass over LNK2019 lines therefore
     returns 35 symbols in 13 objects, which is exactly the "35 and 13" the
@@ -598,12 +598,12 @@ total is CONFIRMED EXACTLY and two of its sub-counts are one low.
   the one part of it that was already right, except that they are spread across
   SIX TUs rather than five. Three of the six are ov004's:
 
-    func_ov004_020add88   ?data_ov004_020beb98@@3PAP8C@@AEXXZA
-    func_ov004_020adf2c   ?data_ov004_020beb88@@3PAP8C@@AEXXZA
-    func_ov004_020b3278   ?data_ov004_020bf490@@3PAP8Base@@AEXXZA
-    _ZN14dScMgCurling_c19func_ov006_020e0d84Ei   ?data_ov006_021418d8@@3PAP8C@@AEXH@ZA
-    _ZN14dScMgCurling_c19func_ov006_020e0d84Ei   ?data_ov006_02141930@@3PAP8C@@AEXH@ZA
-    _ZN14dScMgCurling_c19func_ov006_020e12d0Ev   ?data_ov006_021418c0@@3PAP8C@@AEXH@ZA
+    Mg_DrawFx   ?sMgFxDrawTable@@3PAP8C@@AEXXZA
+    Mg_UpdateFx   ?sMgFxUpdateTable@@3PAP8C@@AEXXZA
+    Banner_Init   ?sBannerSetupTable@@3PAP8Base@@AEXXZA
+    _ZN14dScMgCurling_c12Bit_RunKindAEi   ?data_ov006_021418d8@@3PAP8C@@AEXH@ZA
+    _ZN14dScMgCurling_c12Bit_RunKindAEi   ?data_ov006_02141930@@3PAP8C@@AEXH@ZA
+    _ZN14dScMgCurling_c13Bit_UpdateAllEv   ?data_ov006_021418c0@@3PAP8C@@AEXH@ZA
     _ZN14dScMgCurling_c8BehaviorEv   ?data_ov006_02141950@@3PAUEntry@@A
 
   THE LAST ROW'S SPELLING IS PAU AND NOT U, and the difference is the whole of
@@ -660,20 +660,20 @@ so treat twelve as a floor rather than a census.)
   TWO declare their PMF table inside extern "C", so the global mangles as the
   plain C name the mount already defines and the linker is satisfied. They
   stride an eight-byte ROM table by four.
-      _ZN14dScMgCurling_c19func_ov006_020e1214Ei  _020e3078
+      _ZN14dScMgCurling_c12Bit_RunKindBEi  _020e3078
 
   FOUR HAVE NO PMF GLOBAL AT ALL. The member pointer is a FIELD OF THE OBJECT,
   so nothing external is emitted for it in any linkage.
-      func_ov004_020b31b4  _020b321c  _020b8714  _020b8778
+      Banner_Draw  _020b321c  _020b8714  _020b8778
 
   AND THERE IS A THIRD REASON, run mg5 lane FLW. The sentence above this list
   said TWO, and two was what the sweep that produced this list could see. ONE
   TU OPEN-CODES THE ARM ITANIUM SEQUENCE IN PLAIN INTS.
-      func_ov006_020c3d18
+      FlowerFace_Update
 
   It declares no member-pointer type and no PMF global. The pair is read out of
   the object as two ordinary ints, so there is no symbol for a link to fail on
-  AND no `::*` for a source sweep to match. src/func_ov006_020c3d18.cpp sits
+  AND no `::*` for a source sweep to match. src/FlowerFace_Update.cpp sits
   inside extern "C" and does its own decoding:
 
       int v = *(int*)(c+4);         /* the adjustment word */
@@ -704,8 +704,8 @@ so treat twelve as a floor rather than a census.)
   ROUTE IT AT THE DISPATCH SITE, NOT BY REWRITING THE STORED PAIR. The ov085 /
   ov100 shape named further up -- write host addresses over the .data pair
   before anything reads it -- is wrong for this one, and the reason is a second
-  reader. src/func_ov006_020c3b80.c compares the stored pair against its idle
-  sentinel data_ov006_0213aee0:
+  reader. src/FlowerFace_IsIdle.c compares the stored pair against its idle
+  sentinel pmf_FlowerFace_StateIdle_2:
 
       if (r2 == g[0]) { if (c[1] == g[1] || r2 == 0) ip = 0; }
 
@@ -731,7 +731,7 @@ claim, and the run is the detector: eip on a DS address is the tell.
 
 The four are also the worse defect on their own terms. MSVC's four-byte member
 pointer inside the object moves every field after it, so they read the WRONG
-FIELD before any dispatch happens -- src/func_ov004_020b31b4.cpp reads `state`
+FIELD before any dispatch happens -- src/Banner_Draw.cpp reads `state`
 at 0x1c where the ROM reads [r0,#0x20] -- where the two table cases are a wrong
 stride within a correctly laid out object. All four layouts were re-derived
 from the ROM disassembly rather than from the src structs.
@@ -758,7 +758,7 @@ moves four bytes where the ROM moves eight and shifts every field after it in
 the same object, with no call anywhere. Being a copy is not what makes a copy
 safe; `struct Pair { int a; int b; }` being eight bytes on both machines is.
 
-data_ov004_020bc904 and _020bc914 are genuine {code, 0} member pointers and are
+pmf_dMgState_c_UpdateGameOverToMenu and _020bc914 are genuine {code, 0} member pointers and are
 still ordinary aliases, and they pass on the spelling: both consumers declare
 `struct Pair { int a; int b; }`. The four ov004 TUs that dispatch an object
 FIELD fail on the same test and need host copies, even though no global of
@@ -769,10 +769,10 @@ WHAT IT COSTS PER MINIGAME, measured on this one:
     dispatching TUs to host-copy                  5
       (_ZN14dScMgCurling_c8BehaviorEv, _020e3078, _020e12d0, _020e0d84, _020e1214)
     state entries to route                       25
-    of those with no matched body                 1   _ZN14dScMgCurling_c19func_ov006_020e1854Ev
+    of those with no matched body                 1   _ZN14dScMgCurling_c9Aim_SwingEv
     lines of dispatcher                          ~5 per TU plus 25 cases
 
-THE ONE MISSING STATE IS A HARD FLOOR FOR THIS CLASS. _ZN14dScMgCurling_c19func_ov006_020e1854Ev is
+THE ONE MISSING STATE IS A HARD FLOOR FOR THIS CLASS. _ZN14dScMgCurling_c9Aim_SwingEv is
 the code word of the pair at 0x0213c2bc, it has no delink block in
 config/arm9/overlays/ov006/delinks.txt and no src file defines it, so
 dScMgCurling_c cannot reach every one of its own states even after the
@@ -819,7 +819,7 @@ Found by the twenty-five ROM adjudications rather than by running anything, and
 recorded here because each bites a specific fan-out lane at a specific moment.
 
   a. A DECLARATION CONFLICT THAT STOPS THE BUILD. include/decl_common.h lines
-     2342 and 2343 declare _ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv and _ZN11dScMgBase_c16OnAimedAtWithEggEv with
+     2342 and 2343 declare _ZN11dScMgBase_c21RestoreScreenFromMenuEv and _ZN11dScMgBase_c17SaveScreenForMenuEv with
      void*, and both src TUs define them with char* and Obj* respectively while
      including that header. MSVC refuses each with C2733; mwccarm accepts it,
      which is why the ROM built and the byte gate has never had an opinion.
@@ -853,7 +853,7 @@ recorded here because each bites a specific fan-out lane at a specific moment.
      whatever is on the stack. Seven other src TUs declare the same function
      WITH a pointer parameter. Same ride-through family as (b).
      FIXED, run mg5 lane BASESET, in port/unmatched/MgBase_Slot5.cpp: the src
-     body with that one call given `data_ov004_020beb60[0]`, which is the value
+     body with that one call given `sMgWorkBuffer[0]`, which is the value
      the ROM has in r0 at 0x020b0898. src/minigames/d_s_mg_base.cpp is off BOTH
      port/slice_mg1.txt and port/slice_smb.txt, which are the two slices that
      carried it.
@@ -861,7 +861,7 @@ recorded here because each bites a specific fan-out lane at a specific moment.
      below groups (b) and (c) as "cannot be EXERCISED until section 4's
      dispatch exists", and that is right about (b) and wrong about this one:
      slot 5 is a vtable slot the scene machinery dispatches at teardown, and
-     data_ov004_020beb60 is allocated by slot 1 on every minigame boot, so the
+     sMgWorkBuffer is allocated by slot 1 on every minigame boot, so the
      wild free was live on every minigame exit the whole time. No unattended
      run enters it (every census in lane BASESET reports slot 5 zero), which is
      why nothing had ever caught it.
@@ -873,7 +873,7 @@ recorded here because each bites a specific fan-out lane at a specific moment.
   port. They are named here so the next lane meets them as known work.
 
   A FOURTH, SMALLER: src/_ZN14dScMgCurling_c13InitResourcesEv.cpp spells ov004's
-  func_ov004_020adc74 as bare `func_020adc74`, a name that exists in no config.
+  Ov004_LoadFileByPath as bare `func_020adc74`, a name that exists in no config.
   The reloc says module overlays(3,4) and ov004 is the co-resident answer. A
   name-spelling face, the ordinary kind.
 
@@ -1049,7 +1049,7 @@ LINKAGE, measured on the tip:
   documents give the two that matter: port/ov006_player_map.txt section 4
   states ov006 linked=0 and explains that the single ov006 name in the map was
   an /alternatename onto an ov002 body, and port/slice_mg1.txt records
-  src/func_ov004_020adc4c.c as "the one ov004 body the port could already
+  src/Mg_GetWorkBuffer.c as "the one ov004 body the port could already
   reach". So ov006 0 -> 75 and ov004 1 -> 97 are believed but not measured on
   both ends. The +217 headline IS measured on both ends.
 
@@ -1130,7 +1130,7 @@ TWO PORT DEFECTS ON THE PATH WERE FIXED RATHER THAN SKIPPED, and both were
 found by running rather than by reading:
 
   a. A FABRICATED INITIALIZER, INVISIBLE TO THE BYTE GATE.
-     src/func_ov004_020b2cb8.c opens with Entry entries[29] = {{1,100},
+     src/Mg_LoadBannerFiles.c opens with Entry entries[29] = {{1,100},
      {2,101}, ... {29,128}}, a ramp; it then overwrites twenty-eight of the
      twenty-nine and never touches entry 1, so the loop at the bottom
      dereferenced 101 and the first boot faulted accessing 0x00000065. THE ROM
@@ -1150,7 +1150,7 @@ found by running rather than by reading:
 
   b. A HOST POOL SIZED FOR A LEVEL. hal/level_boot.cpp's LoadFile seam had
      sixteen slots, which is what a level's KCL and object files need. That one
-     ROM function holds TWENTY-NINE files live at once in data_ov004_020bf560,
+     ROM function holds TWENTY-NINE files live at once in sMgBannerFiles,
      so it is a working set and not a leak the per-level release can absorb.
      Sixty-four now, release path unchanged.
 
@@ -1267,12 +1267,12 @@ WHY IT IS NOT A ROUNDING ERROR. The extra word is live data belonging to
 something else, and for 0x169 the chain is complete:
 
     dScMgCup_c's vtable is _ZTV10dScMgCup_c. 36 words later is
-    data_ov006_0213c1e4. That symbol is an mwcc pair {code 0x020e0a24, adj 0},
+    pmf_dScMgCurling_c_BitA_State2. That symbol is an mwcc pair {code 0x020e0a24, adj 0},
     read out of extracted/overlays/overlay_0006.bin at base 0x020bfec0. And
     src/__sinit_ov006_021304ac.c -- CURLING'S OWN overlay constructor -- line
     75 copies it:
 
-        data_ov006_02141930.p2 = data_ov006_0213c1e4;
+        data_ov006_02141930.p2 = pmf_dScMgCurling_c_BitA_State2;
 
     which is curling state table 02141930 slot 2, whose address
     port/unmatched/MgCurling_StateDispatch.cpp's header independently lists as
@@ -1407,7 +1407,7 @@ dScMgCup_c is scene 361 = id 0x169. The ROM's own RTTI at 0x0213c054 reads
     Scene -> dScMgBase_c (0x020bc0c0) -> dScMgSingle3DBase_c (0x0213e448)
           -> dScMgCup_c (0x0213c154)
 
-and the middle name is the ROM's: src/minigames/d_s_mg_single3_d_base.cpp's recovered name
+and the middle name is the ROM's: src/minigames/d_s_mg_single3d_base.cpp's recovered name
 is dScMgSingle3DBase_c and "19dScMgSingle3DBase_c" is at 0x0213bd00. A seat for
 this class therefore fills THREE tables, all width 36.
 
@@ -1461,7 +1461,7 @@ against section 4's shape. port/tools/stategen.py --sinit
 src/__sinit_ov006_021303d0.c --overlay 6 reads ONE table, data_ov006_02141870,
 8 slots, arity 0, every slot with a matched src TU, REFUSALS none. Curling has
 seven tables, twenty-five slots and one hard floor. And exactly one TU
-dispatches it, src/actors/dScMgCup_c.cpp (Behavior, slot 6), against
+dispatches it, src/minigames/d_s_mg_cup.cpp (Behavior, slot 6), against
 curling's five host copies. So the per-class cost is not one number: 0x169 is
 roughly twice curling on the vtable axis and a third of it on the wall axis.
 
@@ -1489,8 +1489,8 @@ CORRECTION 1: THE HIERARCHY IS THREE DEEP AND THE BLOCK NAMES ONE TABLE.
 Six of this class's fourteen overrides -- slots 2, 5, 7, 10, 26 and 33 -- are
 the MIDDLE base's bodies rather than its own, so a seat that filled one derived
 table would have left six raw DS words in a table the factory installs. Both
-edges are read off code: src/actors/dScMgMemory2_c.cpp writes 0x0213e448 into the
-object and then 0x0213d4d4 over it, and slot 17 (src/actors/dScMgMemory2_c.cpp)
+edges are read off code: src/minigames/d_s_mg_memory2.cpp writes 0x0213e448 into the
+object and then 0x0213d4d4 over it, and slot 17 (src/minigames/d_s_mg_memory2.cpp)
 unwinds them in the opposite order.
 
 THE VTABLE AXIS CANNOT SPOT THIS, which is the general lesson. A row's ovr and
@@ -1518,18 +1518,18 @@ one and is already trapped". A source sweep for a member-pointer dispatch over
 this class's whole 869-file closure finds FOURTEEN: those six, seven ov004 TUs
 MG1/MG2/BASESET already host-copied, and
 
-    src/func_ov004_020b52fc.cpp
+    src/Coin_Update.cpp
 
 which is six lines, is in NO wired slice and in no lane's host-copy set, and is
 reached TWENTY TIMES PER FRAME on this class's live path:
 
-    _ZN14dScMgMemory2_c8BehaviorEv (vtable slot 6) -> func_ov004_020b65e4
-      -> for i in 0..0x13: func_ov004_020b52fc(&data_ov004_020bfa34[i*0x24])
+    _ZN14dScMgMemory2_c8BehaviorEv (vtable slot 6) -> MgCoins_Update
+      -> for i in 0..0x13: Coin_Update(&sMgCoins[i*0x24])
 
 It is not in unmatched/MgBase_StateSetter.cpp's eighty-address universe because
 that file bounds ov004's TABLE member pointers and this one is a FIELD of a
 .bss record array. Its twenty records draw from ten pairs at
-data_ov004_020bc7d8..0x020bc820, eight distinct code words, every adjustment
+pmf_Coin_MoveThenRise..0x020bc820, eight distinct code words, every adjustment
 zero; all eight are routed in unmatched/MgMemory2_FieldPmf.cpp. THE ROM HAS NO
 NULL GUARD AT 0x020b52fc, so a record whose pair is still the .bss zero would
 branch to zero on the DS; the port's port_mg_call0 returns on code 0, which is
@@ -1549,7 +1549,7 @@ half matters more than the first.
   dispatch ever reaches one.
 
   THE FLOOR IS ON THE RENDER PATH. _ZN14dScMgMemory2_c9DrawCardsEv is the sixth call vtable
-  slot 9 makes (src/actors/dScMgMemory2_c.cpp line 16). ov006/symbols.txt names it
+  slot 9 makes (src/minigames/d_s_mg_memory2.cpp line 16). ov006/symbols.txt names it
   and sizes it 0xa8, there is no delink block covering it, and no src file
   defines it in either extension. src/func_ov002_020f5b98.c EXISTS and is a
   different function in a different overlay -- the module-residency trap -- so
@@ -1557,7 +1557,7 @@ half matters more than the first.
   trap in unmatched/MgMemory2_Faces.cpp that counts itself: 900 entries on a
   900-frame run, one per Render.
 
-  CLOSED, run mg7 lane MEMCARDS. src/actors/dScMgMemory2_c.cpp defines it now,
+  CLOSED, run mg7 lane MEMCARDS. src/minigames/d_s_mg_memory2.cpp defines it now,
   bannered NONMATCHING against the codegen floor section 15 measures, and the
   named trap in unmatched/MgMemory2_Faces.cpp is deleted with it. This class's
   floor count is ZERO. Section 15 is the measurement; section 16 is the ledger.
@@ -1594,24 +1594,24 @@ THREE HOST COPIES ARE NOT WALL WORK, AND THAT IS THE COST MODEL'S BLIND SPOT.
 None of the three was predictable from the vtable axis, the marker column or
 the state tables, and each was found by a different instrument:
 
-  src/func_ov006_020c0a48.c passes three SharedFilePtr file ids by the names
+  src/MascotWalker_Construct.c passes three SharedFilePtr file ids by the names
     g0, g1 and g2, which exist in no config. THE LINK found it, as three
     unresolved externals. The ROM loads 0x205, 0x206 and 0x207 out of its own
     literal pool at 0x020c0a9c.
-  src/func_ov006_020c1804.cpp draws the model sub-object through a local shadow
+  src/Dealer_Draw.cpp draws the model sub-object through a local shadow
     class at TWO sites and stores two light vectors straight at 0x040004c8. A
     RUN found it, as the Y3D chain one class over: Virtual18 got a null matrix
     and Model::Virtual10 read address zero.
-  src/func_ov006_020c06dc.cpp does the same at a DIFFERENT slot, and that one
+  src/MascotWalker_UpdateMatrix.cpp does the same at a DIFFERENT slot, and that one
     also unbalances the stack. The ROM's byte +0xc is UpdateVerts and MSVC's
     fourth word is Virtual10, which is __thiscall with one stack parameter and
     so returns with `ret 4`, eating four bytes the caller never pushed. Every
-    frame above it shifted by a word and func_ov006_020c07a0's own `ret` jumped
+    frame above it shifted by a word and MascotWalker_Draw's own `ret` jumped
     into the DS heap at its caller's argument. NOTHING IN THE FAULT DUMP NAMED
     IT: the nearest symbol was two frames up.
 
   THE SHADOW-CLASS TEST, because a sweep that flags every one of them is wrong
-  in the expensive direction. src/func_ov006_020c14bc.cpp is in the same slice,
+  in the expensive direction. src/Dealer_StateDeal.cpp is in the same slice,
   models the live dScMgBase_c object with a 22-virtual shadow and calls v21(),
   and is CORRECT: that object's vptr is the MOUNTED ROM TABLE, which the fill
   writes by ROM word and therefore leaves in ROM word order. A shadow class
@@ -1683,25 +1683,25 @@ The doubled-id scan over the whole image finds thirty records and exactly one
 for 0x17c; the arm9 spawn table at 0x02090e54 holds one row for it, in id order
 between 0x17b's and 0x17d's. So "Puzzle Panel" and "Puzzle Panic" are not two
 ids and not two classes. What the ROM has is a gate on VTABLE SLOT 35 --
-dScMgBase_c's _ZN11dScMgBase_c9Virtual8CEv, `return (this[2] & 0xff) != 0` -- read at
+dScMgBase_c's _ZN11dScMgBase_c12IsAltVariantEv, `return (this[2] & 0xff) != 0` -- read at
 FOUR sites, and the way to find all four is the reusable part. An earlier
-version of this paragraph said "two sites" and named _ZN12dScMgPanel_c19func_ov006_021057f0Ev and
+version of this paragraph said "two sites" and named _ZN12dScMgPanel_c12Input_UpdateEv and
 _02106168; review found it low. Scan the overlay image for `ldr Rd,[Rn,#0x8c]`
 WITH Rn NEITHER pc NOR sp -- that filter is the whole trick, because the same
 encoding with Rn = pc is an ordinary literal-pool load, and an unfiltered scan
 returns 92 hits in ov006 against 14 real ones. This class's four:
 
-    0x02105480  _ZN12dScMgPanel_c19func_ov006_021053a8Ev   NO SRC, NO DELINK -- never entered
-    0x021057fc  _ZN12dScMgPanel_c19func_ov006_021057f0Ev   compiled; skips the whole 02142820 state
+    0x02105480  _ZN12dScMgPanel_c12Input_State2Ev   NO SRC, NO DELINK -- never entered
+    0x021057fc  _ZN12dScMgPanel_c12Input_UpdateEv   compiled; skips the whole 02142820 state
                                       dispatch when the gate answers nonzero
-    0x021061ec  _ZN12dScMgPanel_c19func_ov006_02106168Ev   NO SRC, NO DELINK -- trapped; the site
+    0x021061ec  _ZN12dScMgPanel_c10DealPuzzleEv   NO SRC, NO DELINK -- trapped; the site
                                       that picks the board layout from
                                       data_ov006_0213dd4c or _0213dd58
-    0x021063b0  _ZN12dScMgPanel_c19func_ov006_021063a0Ev   compiled; two callers in all of ov006,
+    0x021063b0  _ZN12dScMgPanel_c14ScramblePanelsEv   compiled; two callers in all of ov006,
                                       slot 0 (0x0210779c) and slot 18
                                       (0x02107294)
 
-Only TWO of the four are in a body the port compiles. _ZN12dScMgPanel_c19func_ov006_02106a08Ei is
+Only TWO of the four are in a body the port compiles. _ZN12dScMgPanel_c12Panel_State2Ei is
 NOT a fifth: its word at 0x02106a0c is e59f208c, `ldr r2,[pc,#0x8c]`, fetching
 the constant 0x4e30 -- the exact false positive the Rn filter exists to drop,
 recorded here so nobody re-finds it as a site.
@@ -1714,7 +1714,7 @@ recorded here so nobody re-finds it as a site.
   and y positions the body shifts left twelve into +0x4cc4+i*4 and +0x4d54+i*4.
   They have nothing to do with the mode. The gate picks between the FACE SETS
   data_ov006_0213ded0 when it answers nonzero and data_ov006_0213e070 when it
-  answers zero. Only _ZN12dScMgPanel_c19func_ov006_021053a8Ev is still bodiless, and it is never
+  answers zero. Only _ZN12dScMgPanel_c12Input_State2Ev is still bodiless, and it is never
   entered.
 
 WHICH VALUE IS WHICH TITLE IS NOT DERIVED and this lane does not guess it; on
@@ -1740,17 +1740,17 @@ and then check whether any of the state ADDRESSES it prints is also in the
 dispatcher list.
 
 TWO OF THE TEN ARE THE THIRD SHAPE, AND ONE OF THEM IS A VTABLE SLOT. Section
-4's FLW amendment names func_ov006_020c3d18 as the one TU in the tree that
+4's FLW amendment names FlowerFace_Update as the one TU in the tree that
 open-codes the ARM Itanium sequence in plain ints and says treat twelve as a
 floor rather than a census. It was a floor. This class adds two:
 
-    src/actors/dScMgPanel_c.cpp   table 02142888, arity 0, VTABLE SLOT 6
-    src/actors/dScMgPanel_c.cpp     table 02142840, arity 1
+    src/minigames/d_s_mg_panel.cpp   table 02142888, arity 0, VTABLE SLOT 6
+    src/minigames/d_s_mg_panel.cpp     table 02142840, arity 1
 
 The first is the more serious finding, because it is not a state body a lane
 might overlook -- it is the Behavior, the slot every seat wires by name. A lane
 that ran both prescribed detectors over this class would have seated
-src/actors/dScMgPanel_c.cpp straight into the face array and read clean on the
+src/minigames/d_s_mg_panel.cpp straight into the face array and read clean on the
 link, on the `::*` sweep and on the compile. The ROM at 0x02107358 carries the
 five-instruction sequence one for one with what the src spells.
 
@@ -1763,10 +1763,10 @@ SLOT 35 WAS A LIVE HOST-ABI DEFECT AND NOTHING HAD EVER DISPATCHED IT.
 hal/scene_mg.cpp's mb_v35 read
 
     static int __fastcall mb_v35(void *, void *)
-    { MG_SLOT(35); _ZN11dScMgBase_c9Virtual8CEv(); return 0; }
+    { MG_SLOT(35); _ZN11dScMgBase_c12IsAltVariantEv(); return 0; }
 
-against a declaration of `void _ZN11dScMgBase_c9Virtual8CEv(void);`, while
-src/_ZN11dScMgBase_c9Virtual8CEv.cpp defines `int _ZN11dScMgBase_c9Virtual8CEv(int *r0) { return
+against a declaration of `void _ZN11dScMgBase_c12IsAltVariantEv(void);`, while
+src/_ZN11dScMgBase_c12IsAltVariantEv.cpp defines `int _ZN11dScMgBase_c12IsAltVariantEv(int *r0) { return
 (r0[2] & 0xff) != 0; }`. Both halves are wrong on the host: the callee read the
 stack in place of `this`, and the thunk returned a constant 0 instead of the
 answer. It is the family lane BASESET's slot-18/19 repair and lane FDR2's
@@ -1777,12 +1777,12 @@ repair, which is the check that says the fix touched nobody else.
 
   HOW OFTEN IT FIRES IS MEASURED, AND IT IS NOT "every frame". This section
   first said the class dispatches slot 35 every frame through
-  _ZN12dScMgPanel_c19func_ov006_021057f0Ev. The run says ONCE in 1200 frames, and the arithmetic
-  pins the caller without instrumenting anything: _ZN12dScMgPanel_c19func_ov006_021063a0Ev is
+  _ZN12dScMgPanel_c12Input_UpdateEv. The run says ONCE in 1200 frames, and the arithmetic
+  pins the caller without instrumenting anything: _ZN12dScMgPanel_c14ScramblePanelsEv is
   reached only from slot 0 and slot 18, the run reports init 1 and state-reset
   0, and the slot-35 counter reads exactly 1 -- so the single dispatch is slot
-  0 -> 021063a0 on the INIT PATH. _ZN12dScMgPanel_c19func_ov006_021057f0Ev's only caller is
-  _ZN12dScMgPanel_c19func_ov006_02106eb8Ev, state slot 5 of the Behavior's table, and the class
+  0 -> 021063a0 on the INIT PATH. _ZN12dScMgPanel_c12Input_UpdateEv's only caller is
+  _ZN12dScMgPanel_c12Scene_State5Ev, state slot 5 of the Behavior's table, and the class
   settles in its top-level bodiless state before that state comes round again,
   so 021057f0 never runs at all on an unattended boot.
 
@@ -1797,17 +1797,17 @@ THE TWO STATE FLOORS ARE ONE STORY, AND IT IS THE MOST USEFUL THING THIS LANE
 FOUND ABOUT WHAT "SEATED" MEANS. The class has three bodies with a config
 symbol, no delink block and no src file:
 
-    _ZN12dScMgPanel_c19func_ov006_02106168Ev  0x238, the PANEL LAYOUT BUILDER. Not a state --
+    _ZN12dScMgPanel_c10DealPuzzleEv  0x238, the PANEL LAYOUT BUILDER. Not a state --
         vtable slot 0 (InitResources) and slot 18 (state reset) both call it
         directly. It is the sole writer of the object's two panel arrays,
         karr at +0x4f1e and parr at +0x4f42 (0x0210620c strb [r0,#0xf1e] and
         0x02106218 strb [r0,#0xf42], off r0 = self+0x4000).
-    _ZN12dScMgPanel_c19func_ov006_02106ca4Ev  slot 6 of data_ov006_02142888, the Behavior's OWN
+    _ZN12dScMgPanel_c12Scene_State6Ev  slot 6 of data_ov006_02142888, the Behavior's OWN
         table -- the ROUND-END state.
-    _ZN12dScMgPanel_c19func_ov006_021053a8Ev  slot 2 of data_ov006_02142820, a sub-state.
+    _ZN12dScMgPanel_c12Input_State2Ev  slot 2 of data_ov006_02142820, a sub-state.
 
-_ZN12dScMgPanel_c19func_ov006_021067a4Ev ZEROES both arrays immediately before the layout builder
-runs, and src/actors/dScMgPanel_c.cpp declares the round over when every cell of
+_ZN12dScMgPanel_c10ResetRoundEv ZEROES both arrays immediately before the layout builder
+runs, and src/minigames/d_s_mg_panel.cpp declares the round over when every cell of
 karr equals the same cell of parr. So with the builder trapped, both arrays
 stay all-zero, the solved test passes without a single move, and the class
 advances to the round-end state -- which is the second floor. ONE MISSING BODY
@@ -1819,18 +1819,18 @@ enough to need it.
     THE READING FOR A LATER LANE: a large floor count is not necessarily a
     large amount of missing game. Here it is ONE dead end, entered once and
     re-asked every frame, and the fix for both is one decomp job --
-    _ZN12dScMgPanel_c19func_ov006_02106168Ev wants a delink block and a src TU.
+    _ZN12dScMgPanel_c10DealPuzzleEv wants a delink block and a src TU.
 
     IT GOT BOTH, run mg7 lane L380, AND SO DID THE OTHER FLOOR:
 
-      _ZN12dScMgPanel_c19func_ov006_02106168Ev  src/func_ov006_02106168.cpp  MATCHED, delink block
+      _ZN12dScMgPanel_c10DealPuzzleEv  src/func_ov006_02106168.cpp  MATCHED, delink block
                            .text start:0x02106168 end:0x021063a0
-      _ZN12dScMgPanel_c19func_ov006_02106ca4Ev  src/func_ov006_02106ca4.c    MATCHED, delink block
+      _ZN12dScMgPanel_c12Scene_State6Ev  src/func_ov006_02106ca4.c    MATCHED, delink block
                            .text start:0x02106ca4 end:0x02106eb8
 
     The prediction above held exactly: one decomp job on the layout builder,
     and the round-end state stopped being reachable as a dead end.
-    _ZN12dScMgPanel_c19func_ov006_021053a8Ev REMAINS and is this class's only floor now.
+    _ZN12dScMgPanel_c12Input_State2Ev REMAINS and is this class's only floor now.
     THE 951 IN THE 1200-FRAME ROW BELOW IS RETIRED MEASUREMENT, not a standing
     number: 0x02106ca4 is a routed state now and can only appear in `routed`.
 
@@ -1845,7 +1845,7 @@ WHAT IT COST, against section 10's eight-wave shape:
     state entries to route                   25   27 across six tables
     of those with no matched body             1   2
     ordinary slice lines                      -   53
-    named traps stood                         -   1  (_ZN12dScMgPanel_c19func_ov006_02106168Ev)
+    named traps stood                         -   1  (_ZN12dScMgPanel_c10DealPuzzleEv)
     registry rows                             1   1
     per-source -D rows                        -   1  (VT on slot 17)
 
@@ -1853,8 +1853,8 @@ WHAT IT COST, against section 10's eight-wave shape:
   kept above as the measurement they were. "named traps stood" is now ZERO --
   the trap went with its body's arrival and unmatched/MgPanel_Faces.cpp is only
   the vtable face. "of those with no matched body" is now 1 rather than 2,
-  _ZN12dScMgPanel_c19func_ov006_021053a8Ev alone. "dispatching TUs to host-copy" is 11 rather than
-  10: _ZN12dScMgPanel_c19func_ov006_02106ca4Ev turned out to dispatch data_ov006_02142840 as well as
+  _ZN12dScMgPanel_c12Input_State2Ev alone. "dispatching TUs to host-copy" is 11 rather than
+  10: _ZN12dScMgPanel_c12Scene_State6Ev turned out to dispatch data_ov006_02142840 as well as
   being slot 6 of the Behavior's own table, which is a host copy the mg6 count
   could not see because the body it lives in had no source.
 
@@ -1877,7 +1877,7 @@ LINKAGE, measured on both ends on this tree:
 
   +53 IS THE SLICE LINE COUNT EXACTLY, all 53 of them, and that is worth
   stating because it settles a question a later lane will ask. ONE of the 53 is
-  bannered NONMATCHING (src/actors/dScMgPanel_c.cpp) and it still counts:
+  bannered NONMATCHING (src/minigames/d_s_mg_panel.cpp) and it still counts:
   port/tools/linkage.py's matched_index() walks src/ with os.walk, keys each
   .c/.cpp by its filename stem and NEVER OPENS THE FILE, so no banner is ever
   read and a bannered TU is in the universe like any other. An earlier version
@@ -1915,7 +1915,7 @@ with no witness.
 
   READ THAT AS A LOWER BOUND, NOT A RESULT. The census is taken on a run that
   dead-ends in a decomp gap at state 6, so it says what an unattended boot
-  reaches and not what the class reaches. The day _ZN12dScMgPanel_c19func_ov006_02106168Ev is
+  reaches and not what the class reaches. The day _ZN12dScMgPanel_c10DealPuzzleEv is
   decompiled, the census is worth re-taking before anyone concludes this class
   never uses the framework's state machine.
 
@@ -1968,7 +1968,7 @@ BOTH HALVES OF THAT ARE ONE BODY, and it is section 13's own floor.
 
 WHAT IT DOES, read out of extracted/overlays/overlay_0006.bin at base
 0x020bfec0 (alignment checked first on _ZN14dScMgMemory2_c6RenderEv, whose disassembly
-reproduces src/actors/dScMgMemory2_c.cpp call for call):
+reproduces src/minigames/d_s_mg_memory2.cpp call for call):
 
     p = c; for (i = 0; i < 0x14; i++, p += 0x18)
         if (p[+0x51ba])
@@ -1988,7 +1988,7 @@ reproduces src/actors/dScMgMemory2_c.cpp call for call):
   {0, 1, 2, 2k+2, 2k+1}, so ten card types over sprite indices 0..0x16, which
   is exactly the twenty-three words __sinit_ov006_021314e4 copies from
   data_ov006_02133810 into data_ov006_02142490. Ten types dealt twice is twenty
-  cards, and src/actors/dScMgMemory2_c.cpp deals 16, 18 or 20 of them on the
+  cards, and src/minigames/d_s_mg_memory2.cpp deals 16, 18 or 20 of them on the
   difficulty byte at +0x540a.
 
   AN EARLIER VERSION OF THIS PARAGRAPH SAID TWELVE ROWS AND CALLED ROW 11 ALL
@@ -2031,7 +2031,7 @@ reproduces src/actors/dScMgMemory2_c.cpp call for call):
 THE MODULE-RESIDENCY TRAP IS REAL AND IT ALMOST CLOSED THIS FLOOR TWICE.
 src/func_ov002_020f5b98.c EXISTS, is thirteen instructions, takes a
 `struct Ent *`, and belongs to ov002. Section 13 warned about it; the warning
-earned its place. The new TU is src/actors/dScMgMemory2_c.cpp and the slice comment,
+earned its place. The new TU is src/minigames/d_s_mg_memory2.cpp and the slice comment,
 the Faces comment and this paragraph all say the ov002 file is not a substitute.
 
 WHAT THE SYMPTOM LOOKED LIKE IN NUMBERS, which is the part worth reusing. The
@@ -2122,7 +2122,7 @@ reads high:
     ov006:0x020f5b98 at 23 divergences from a fable escalation batch in July,
     which is the same floor reached independently.
 
-  So the banner is the one src/actors/dScMgMemory2_c.cpp carries, in the same class
+  So the banner is the one src/minigames/d_s_mg_memory2.cpp carries, in the same class
   and at a higher divergence count, and the rule it stands on is the one
   tools/nonmatching.py states: the logic is verified right and only the codegen
   floor remains. tools/nonmatching.py's own --max-div gate REFUSES this entry at
@@ -2168,36 +2168,36 @@ overlay_0004.bin at base 0x020ad660). All seven answer 2004/b56 MATCH. Rows
 marked NONMATCHING carry the banner their lane wrote.
 
   scene 363, dScMgMemory2_c (0x16b), lane MEMCARDS
-    CLOSED   _ZN14dScMgMemory2_c9DrawCardsEv  src/actors/dScMgMemory2_c.cpp    NONMATCHING
+    CLOSED   _ZN14dScMgMemory2_c9DrawCardsEv  src/minigames/d_s_mg_memory2.cpp    NONMATCHING
              The render-path floor of section 13's CORRECTION 3: the card draw,
              sixth call of vtable slot 9. Its named trap in
              unmatched/MgMemory2_Faces.cpp is deleted.
     REMAINS  nothing. This class's floor count is ZERO.
 
   scene 369, dScMgPachinko2_c, lane L369
-    CLOSED   _ZN16dScMgPachinko2_c19func_ov006_020ff8c8Ei  src/func_ov006_020ff8c8.c    MATCHED
-    CLOSED   _ZN16dScMgPachinko2_c19func_ov006_020ffb54Ei  src/func_ov006_020ffb54.c    MATCHED
-    CLOSED   _ZN16dScMgPachinko2_c19func_ov006_02102274Ei  src/func_ov006_02102274.c    MATCHED
-    CLOSED   _ZN16dScMgPachinko2_c19func_ov006_02102fe8Ei  src/func_ov006_02102fe8.cpp    NONMATCHING
-    CLOSED   _ZN16dScMgPachinko2_c19func_ov006_0210076cEi  src/func_ov006_0210076c.c    NONMATCHING
+    CLOSED   _ZN16dScMgPachinko2_c10Cup_State3Ei  src/func_ov006_020ff8c8.c    MATCHED
+    CLOSED   _ZN16dScMgPachinko2_c10Cup_State2Ei  src/func_ov006_020ffb54.c    MATCHED
+    CLOSED   _ZN16dScMgPachinko2_c13Paddle_State0Ei  src/func_ov006_02102274.c    MATCHED
+    CLOSED   _ZN16dScMgPachinko2_c11Ball_State1Ei  src/func_ov006_02102fe8.cpp    NONMATCHING
+    CLOSED   _ZN16dScMgPachinko2_c20Paddle_CheckBallHitsEi  src/func_ov006_0210076c.c    NONMATCHING
              The per-entry follow-up the fifteen-state dispatcher calls after
              every dispatch it makes. unmatched/MgPachinko2_Traps.cpp existed
              for this one symbol and is DELETED rather than emptied: a trap
              standing beside a real definition is a duplicate symbol, not a
              safety net.
-    ALSO     func_ov004_020b1710  src/func_ov004_020b1710.c    MATCHED
+    ALSO     Mg_DrawRecordRow  src/Mg_DrawRecordRow.c    MATCHED
              ov004, and the trap line in hal/scene_mg_faces.cpp goes with it.
     REMAINS  nothing bodiless among this class's 28 states. The scene line
              prints `missing` as proof now rather than as a warning.
 
   scene 370, dScMgBomroom_c, lane L370
-    CLOSED   _ZN14dScMgBomroom_c19func_ov006_020d7c4cEi  src/func_ov006_020d7c4c.cpp    MATCHED
-    CLOSED   _ZN14dScMgBomroom_c19func_ov006_020d8408Ev  src/func_ov006_020d8408.c    NONMATCHING
+    CLOSED   _ZN14dScMgBomroom_c11Bomb_State5Ei  src/func_ov006_020d7c4c.cpp    MATCHED
+    CLOSED   _ZN14dScMgBomroom_c10SpawnBombsEv  src/func_ov006_020d8408.c    NONMATCHING
              unmatched/MgBomroom_Traps.cpp held the trap for the second and is
              DELETED. The largest pointer-to-member bill any seated class has
              run up now stands with seven host copies and no trap.
     REMAINS  nothing.
-    ONE GAP THIS MERGE FOUND AND DID NOT FIX. _ZN14dScMgBomroom_c19func_ov006_020d7c4cEi is byte-
+    ONE GAP THIS MERGE FOUND AND DID NOT FIX. _ZN14dScMgBomroom_c11Bomb_State5Ei is byte-
              matched, re-confirmed by the byte gate on the merged tree, but it
              is the ONLY matched body in this wave with no delink block in
              config/arm9/overlays/ov006/delinks.txt. L369 and L380 both added a
@@ -2205,9 +2205,9 @@ marked NONMATCHING carry the banner their lane wrote.
              wrote it, recorded here so it is not re-derived as a mystery.
 
   scene 375, dScMgCurling2_c, lane L375
-    CLOSED   _ZN15dScMgCurling2_c10DragUpdateEv  src/actors/dScMgCurling2_c.cpp    NONMATCHING
+    CLOSED   _ZN15dScMgCurling2_c10DragUpdateEv  src/minigames/d_s_mg_curling2.cpp    NONMATCHING
     CLOSED   _ZN15dScMgCurling2_c14SeparateStonesEi  src/func_ov006_020e513c.c    NONMATCHING
-    CLOSED   func_ov006_020e5450  src/func_ov006_020e5450.c    NONMATCHING
+    CLOSED   Curling2_ResolveStoneCollision  src/Curling2_ResolveStoneCollision.c    NONMATCHING
              unmatched/MgCurling2_Traps.cpp stood in for the middle two and is
              DELETED. Its counters are replaced by a per-slot census taken at
              the DISPATCH SITE rather than inside a ROM body, which is the
@@ -2215,27 +2215,27 @@ marked NONMATCHING carry the banner their lane wrote.
              dispatch site survives its body being decompiled, a counter inside
              the body has to be deleted to make room for it.
     REMAINS  nothing.
-    NOT THE SAME CLASS AS SECTION 4's FLOOR. _ZN14dScMgCurling_c19func_ov006_020e1854Ev, the hard
+    NOT THE SAME CLASS AS SECTION 4's FLOOR. _ZN14dScMgCurling_c9Aim_SwingEv, the hard
              floor section 4 records for dScMgCurling_c, is UNTOUCHED by this
              lane and still stands. The curling canary on scene 374 is the
              check that says this lane did not reach across into it.
 
   scene 380, dScMgPanel_c (0x17c), lane L380
-    CLOSED   _ZN12dScMgPanel_c19func_ov006_02106168Ev  src/func_ov006_02106168.cpp  MATCHED
+    CLOSED   _ZN12dScMgPanel_c10DealPuzzleEv  src/func_ov006_02106168.cpp  MATCHED
              The layout picker slot 0 and slot 18 both call directly, and the
              sole writer of the two panel arrays at +0x4f1e and +0x4f42.
-    CLOSED   _ZN12dScMgPanel_c19func_ov006_02106ca4Ev  src/func_ov006_02106ca4.c    MATCHED
+    CLOSED   _ZN12dScMgPanel_c12Scene_State6Ev  src/func_ov006_02106ca4.c    MATCHED
              Slot 6 of the Behavior's own table, and it dispatches
              data_ov006_02142840 as well -- an ELEVENTH host copy, not a tenth.
              unmatched/MgPanel_Faces.cpp is now only the vtable face.
-    REMAINS  _ZN12dScMgPanel_c19func_ov006_021053a8Ev, slot 2 of data_ov006_02142820. A sub-state
+    REMAINS  _ZN12dScMgPanel_c12Input_State2Ev, slot 2 of data_ov006_02142820. A sub-state
              that costs one tick and carries on, and this class's only floor.
 
 THE ZEROS THAT ARE HONEST AND THE ZEROS THAT ARE NOT. Several numbers this
 family reports read zero for a reason that is not "nothing is missing", and no
 later lane should bank any of them as coverage:
 
-  - _ZN12dScMgPanel_c19func_ov006_021053a8Ev's zero asks, measured zero on every run so far, mg6 and
+  - _ZN12dScMgPanel_c12Input_State2Ev's zero asks, measured zero on every run so far, mg6 and
     mg7 alike. The class has never been driven far enough by an unattended boot
     to need that sub-state. The zero says the floor is not in the way of a
     BOOT. It does not say the floor is unreachable in play, and the sub-state
@@ -2284,7 +2284,7 @@ byte with the identity capped at 8, 9 or 10.
 
 WHERE +0xb4 COMES FROM, AND IT IS BOTH MECHANISMS AT ONCE.
 
-  SEEDED ONCE, FROM THE SAVE. src/actors/dScMgMemory2_c.cpp (InitResources) is the
+  SEEDED ONCE, FROM THE SAVE. src/minigames/d_s_mg_memory2.cpp (InitResources) is the
   only writer OF THE SEED -- and "nothing else writes +0xb4" would be false said
   plainly, which is the run mg8 reviewer's correction and is kept here because
   the difference is one line of disassembly away. _ZN11dScMgBase_c19BeforeInitResourcesEv, vtable
@@ -2293,8 +2293,8 @@ WHERE +0xb4 COMES FROM, AND IT IS BOTH MECHANISMS AT ONCE.
   field and InitResources then seeds it; the ordering is what makes the seed the
   value that survives, and THE CONCLUSION BELOW IS UNCHANGED. Say "the only
   writer of the seed" or name slot 1 too; do not say "no other writer".
-  The seed itself:  *(int*)(self + 0xb4) = func_ov004_020ad878();  and that body
-  disassembles to func_02013580(func_ov004_020adc3c(data_ov004_020beb68), 1),
+  The seed itself:  *(int*)(self + 0xb4) = Mg_GetSavedRecord1();  and that body
+  disassembles to func_02013580(Mg_GetSaveTable(gMgScene), 1),
   i.e. data_0209caf4[minigame index][1]. A fresh record is ZERO --
   SaveData::ReadMinigameData calls SetDefaultValuesMg on every failure path and
   that memsets 0x2e4 bytes to 0 -- so the ROM's own first-ever board is sixteen
@@ -2305,11 +2305,11 @@ WHERE +0xb4 COMES FROM, AND IT IS BOTH MECHANISMS AT ONCE.
       won   if (+0xb4 < 0x270f) ++(+0xb4);  +0xb8 = max(+0xb8, +0xb4)
       lost  if (+0xb4 > 0)      --(+0xb4)
   and _ZN14dScMgMemory2_c13CheckFinishedEv (which runs every frame of state 2) writes the same
-  +/-1 through to the record:  func_ov004_020ad79c((5 - misses)*5 + score,
-  +0xb4 + 1)  on a clear and  func_ov004_020ad79c(score, +0xb4 - 1)  on the
+  +/-1 through to the record:  Mg_SaveRecordPair((5 - misses)*5 + score,
+  +0xb4 + 1)  on a clear and  Mg_SaveRecordPair(score, +0xb4 - 1)  on the
   fifth miss. State 3 ends at state 4 and state 4 goes back to state 0, so the
   class DEALS AGAIN with the new count, and the record carries it to the next
-  play. +0xb4 is what func_ov004_020adb1c draws as the star badge on the top
+  play. +0xb4 is what Mg_SubmitScore draws as the star badge on the top
   screen.
 
   So the answer to "menu argument, in-session ramp, or saved progress" is the
@@ -2320,17 +2320,17 @@ hal/scene_boot.cpp's port_scene_boot called Scene::SetSceneToSpawn(id, 0) for
 every scene. On the DS a minigame is only ever launched by
 src/func_ov005_020c0378.cpp, whose last act is
 
-    Scene::StartSceneFade(*(u16*)(data_ov005_020c24d8 + m),
+    Scene::StartSceneFade(*(u16*)(sMiniGmRows + m),
                           *(int *)(data_ov005_020c24dc + m), 0);
 
-with data_ov005_020c24dc = data_ov005_020c24d8 + 4, so the second argument is
+with data_ov005_020c24dc = sMiniGmRows + 4, so the second argument is
 the picked row's own +0x04 word, and StartSceneFade hands it to
 SetSceneToSpawn(id, param). dScMgBase_c's constructor unpacks it:
 
     *(short*)(self+0x465e) = data_ov004_020bc070[(*(u32*)(self+8) >> 0x10) & 0xff];
     *(int*)(self+8)        = *(u32*)(self+8) & 0xffff;
 
-and func_ov004_020adc3c reads (field_8 & 0xff00) >> 8 -- which that mask keeps.
+and Mg_GetSaveTable reads (field_8 & 0xff00) >> 8 -- which that mask keeps.
 ONE WORD, TWO INDICES: (param>>8)&0xff is the row of data_0209caf4 and
 (param>>16)&0xff is the row of data_ov004_020bc070, the minigame's name-text id.
 With 0 all thirty minigames shared save record 0 and asked for name text 0, so
@@ -2401,7 +2401,7 @@ WHAT THIS SECTION DOES NOT KNOW.
 
   - THE PARAM'S LOW BYTE IS A THIRD FIELD AND THIS SECTION DID NOT NAME IT.
     The packed param was described here as two fields; it is three. The LOW
-    byte is read by _ZN11dScMgBase_c9Virtual8CEv, which is VTABLE SLOT 35, as the
+    byte is read by _ZN11dScMgBase_c12IsAltVariantEv, which is VTABLE SLOT 35, as the
     boolean (field_8 & 0xff) != 0. Seating the real param flips that boolean
     0 -> 1 for scenes 363, 369 and 375.
 
@@ -2413,7 +2413,7 @@ WHAT THIS SECTION DOES NOT KNOW.
     no run in this section has watched slot 35 act on a 1. (Run mg8 reviewer,
     adversarial finding.)
   - WHAT +0x465e's NEW VALUE CHANGES ON SCREEN. It is a name-text id read by
-    src/_ZN11dScMgBase_c16OnAimedAtWithEggEv.cpp; the five scenes booted clean with it and no
+    src/_ZN11dScMgBase_c17SaveScreenForMenuEv.cpp; the five scenes booted clean with it and no
     lane has compared the banner to a DS.
 
 
@@ -2530,7 +2530,7 @@ DISPATCHED. A scan of overlay_0006.bin for `ldr Rd,[Rn,#0x90]` with Rn neither
 pc nor sp finds 26 sites and 25 are inside this class's own code:
 _ZN12dScMgAmida_c12ShuffleGoalsEi 1, _020d1958 1, _020d1a3c 1, _020d27dc 3, _020d36a4 3,
 _020d3ba0 6, _020d48dc 2, _020d4b7c 4, _020d5384 4. The 26th (0x020c1f5c, in
-func_ov006_020c1f4c) is a FALSE POSITIVE recorded so nobody re-finds it: that
+Mascot_UpdateMatrix) is a FALSE POSITIVE recorded so nobody re-finds it: that
 body reads +0x8c, +0x90 and +0x94 as three consecutive OBJECT FIELDS and hands
 them to a formatter. Section 14's Rn filter drops pc and sp; it does not know a
 field from a slot, and the tell is whether the loaded word is branched to.
@@ -2587,7 +2587,7 @@ callees, found by section 13 CORRECTION 3's method:
 
     _ZN12dScMgAmida_c11StepWalkersEv  0xe48  one caller, inside vtable slot 6
     _ZN12dScMgAmida_c11InitWalkersEv  0x4fc  two callers, slot 6 and the init tail
-    func_ov004_020ae5c4  0x294  ov004, ten call sites across three of this
+    Mg_DrawLine  0x294  ov004, ten call sites across three of this
                                 class's TUs -- and the LINK found this one,
                                 because a block walk over the class's own code
                                 cannot see a hole one overlay over
@@ -2597,22 +2597,22 @@ slot-36 dispatch sites are inside the first two, so the mode branch in those
 bodies is code this seat cannot run.
 
 AND THE THIRD FLOOR EXPLAINS A LIVE HOST-ABI DEFECT NOBODY CAN HIT.
-func_ov004_020ae5c4 is the FAMILY'S ONLY SLOT-34 DISPATCHER: a scan of both
+Mg_DrawLine is the FAMILY'S ONLY SLOT-34 DISPATCHER: a scan of both
 overlay images for `ldr Rd,[Rn,#0x88]` with Rn neither pc nor sp returns ten
 offset matches and EIGHT are inside it, each with one word pushed before the
-blx, so slot 34 takes FIVE arguments and src/_ZN11dScMgBase_c9Virtual88Eiiii.cpp (the base's
+blx, so slot 34 takes FIVE arguments and src/_ZN11dScMgBase_c11PaintSquareEiiii.cpp (the base's
 own slot-34 body) declares five to match. hal/scene_mg.cpp's shared mb_v34 is
 declared (void *, void *) and calls that five-parameter body with ONE argument.
 
   THE OTHER TWO MATCHES ARE FIELD READS AND THIS LANE FIRST MISCOUNTED THEM,
   which is worth the correction because the offset scan is the instrument
   section 14 hands the fan-out. 0x020ce2a4 and 0x020ce318, in
-  func_ov006_020ce108, are `ldr r2,[sl,#0x88]` whose loaded word goes out as
+  TrmpItem_ReflectOffLine, are `ldr r2,[sl,#0x88]` whose loaded word goes out as
   the third argument of `bl 0x0203d290` and is never branched to. Section 14's
   Rn filter drops pc and sp; NOTHING in it distinguishes an object field at
   +0x88 from vtable slot 34, and the only tell is whether the loaded word is
   used as a branch target. The same trap is recorded for slot 36 at
-  func_ov006_020c1f4c, whose +0x8c / +0x90 / +0x94 are three consecutive
+  Mascot_UpdateMatrix, whose +0x8c / +0x90 / +0x94 are three consecutive
   fields, so this is the second instance in one lane and the general rule is:
   AN OFFSET MATCH IS A CANDIDATE, A blx ON THE LOADED WORD IS THE FINDING.
 
@@ -2813,7 +2813,7 @@ The rule they share is section 10(a)'s: a byte-exact TU can still be wrong, and
 the byte gate cannot see it. A banner is a claim about LOGIC, and no gate in
 this repo checks a banner.
 
-  1. src/actors/dScMgSound_c.cpp -- THE BANNER IS FALSE AND ALL FOUR DEFECTS MUST
+  1. src/minigames/d_s_mg_sound.cpp -- THE BANNER IS FALSE AND ALL FOUR DEFECTS MUST
      GO IN ONE PASS. The TU is bannered "Logic verified correct vs ROM" and is
      not. The full list, re-derived from the ROM by run mg9 lane BOX and
      written out in port/unmatched/MgSound_ShadowSlot35.cpp section 4:
@@ -2829,7 +2829,7 @@ this repo checks a banner.
      it as one: the ROM sets no meaningful return value on any path and every
      caller discards it.
 
-  2. src/actors/dScMgCup_c.cpp -- MATCHED, BYTE-EXACT, AND IT READS AN
+  2. src/minigames/d_s_mg_cup.cpp -- MATCHED, BYTE-EXACT, AND IT READS AN
      UNINITIALISED LOCAL on two of its three paths. It is byte-exact by
      REGALLOC LUCK and nothing more: mwccarm happened to put the variable in
      r1, which already holds the parameter the ROM's epilogue uses, so the
@@ -2885,25 +2885,25 @@ exit 0 and clean, reproducing section 19's numbers exactly -- init 1, behavior
 
 BOTH OVERLAY BASES WERE PROVEN BEFORE ANY DISASSEMBLY WAS TRUSTED, which is the
 cheap half of section 15's method and the half a lane skips at its peril.
-ov006 at 0x020bfec0: _ZN12dScMgAmida_c9Virtual8CEv and _020d1188 reproduce section 19's
+ov006 at 0x020bfec0: _ZN12dScMgAmida_c12IsAltVariantEv and _020d1188 reproduce section 19's
 six-instruction mode predicates instruction for instruction, cmp #1 and cmp #2.
-ov004 at 0x020ad660: _ZN11dScMgBase_c9Virtual8CEv reproduces the family's five-
+ov004 at 0x020ad660: _ZN11dScMgBase_c12IsAltVariantEv reproduces the family's five-
 instruction slot 35, and 0x020ae5c4's prologue reproduces its nine-register push
 and 0x14 subtraction.
 
 SECTION 19 LEFT THREE FLOORS. TWO ARE CLOSED AND THE THIRD IS MEASURED.
 
-  func_ov004_020ae5c4  0x294  CLOSED  src/func_ov004_020ae5c4.cpp  NONMATCHING
+  Mg_DrawLine  0x294  CLOSED  src/Mg_DrawLine.cpp  NONMATCHING
   _ZN12dScMgAmida_c11InitWalkersEv  0x4fc  CLOSED  src/func_ov006_020d36a4.cpp  NONMATCHING
   _ZN12dScMgAmida_c11StepWalkersEv  0xe48  STANDS  and section 19's 792 asks are still 792
 
 ---- 1. WHAT THE ov004 FLOOR IS, AND IT ANSWERS SECTION 19's OPEN QUESTION ----
 
-func_ov004_020ae5c4 IS BRESENHAM'S LINE ALGORITHM. It walks from (x0,y0) to
+Mg_DrawLine IS BRESENHAM'S LINE ALGORITHM. It walks from (x0,y0) to
 (x1,y1) -- x-major or y-major on |dx| >= |dy|, error accumulator seeded at half
 the major axis, the minor axis stepped on overflow -- and at every lattice point
 it visits it dispatches VTABLE SLOT 34. Slot 34 is the BRUSH: the base's own
-body, src/_ZN11dScMgBase_c9Virtual88Eiiii.cpp, writes an n-by-n block of val through
+body, src/_ZN11dScMgBase_c11PaintSquareEiiii.cpp, writes an n-by-n block of val through
 MultiCopy_Int. So the pair is "draw a line of thickness n in colour val", and
 the seven parameters are (obj, x0, y0, x1, y1, val, n).
 
@@ -2925,8 +2925,8 @@ live question; this is the code the stylus would be driving.
 SECTION 19 FOUND A LIVE HOST-ABI DEFECT AND DELIBERATELY DID NOT FIX IT, on the
 rule that a repair with no dispatch to witness it is wiring without evidence.
 hal/scene_mg.cpp's shared mb_v34 was declared (void *, void *) and called the
-five-parameter src/_ZN11dScMgBase_c9Virtual88Eiiii.cpp with ONE argument. It could not be
-convicted because the tree's ONLY slot-34 dispatcher is func_ov004_020ae5c4 --
+five-parameter src/_ZN11dScMgBase_c11PaintSquareEiiii.cpp with ONE argument. It could not be
+convicted because the tree's ONLY slot-34 dispatcher is Mg_DrawLine --
 eight ldr Rd,[Rn,#0x88] sites, every one inside it, each storing one word at
 [sp] before the blx -- and that body was TRAPPED. Slot 34 was unreachable on
 every scene rather than merely unreached on the ones anybody had booted.
@@ -2941,12 +2941,12 @@ SITES rather than off the callee:
     / mov r1,sb / mov r2,r8 / blx Rd
 
 r1 and r2 are the walked coordinates, r3 is the caller's val, the pushed word is
-its n, and src/_ZN11dScMgBase_c9Virtual88Eiiii.cpp declares the same five.
+its n, and src/_ZN11dScMgBase_c11PaintSquareEiiii.cpp declares the same five.
 
 AND THE ARITY RATCHET AGREED WITHOUT BEING ASKED, which is the cheapest
 confirmation in the run. port/tools/aritycheck.py --gate-plainfunc came back
 "118 baselined, 117 live, 0 NEW, 1 retired" and the retired row was
-_ZN11dScMgBase_c9Virtual88Eiiii|port/hal/scene_mg.cpp -- the exact declaration repaired. The
+_ZN11dScMgBase_c11PaintSquareEiiii|port/hal/scene_mg.cpp -- the exact declaration repaired. The
 row is deleted from aritycheck_plainfunc_baseline.txt as the gate instructs. The
 receiver ratchet is 166 live, 0 NEW.
 
@@ -3126,7 +3126,7 @@ entries do not survive that check and they are CORRECTIONS, not refinements:
   2400 at 1200 frames; the measured change is a FALL of 1309.
 
   ov006's base 0x020bfec0 was PROVEN before any disassembly was trusted, on
-  section 21's own control: _ZN12dScMgAmida_c9Virtual8CEv and _020d1188 reproduce the
+  section 21's own control: _ZN12dScMgAmida_c12IsAltVariantEv and _020d1188 reproduce the
   six-instruction cmp #1 / cmp #2 mode predicates instruction for instruction.
   The body decoded to 899 instructions plus a 15-word pool, exactly as mapped,
   and the reloc join over its range returns 68 rows that match the map's counts
@@ -3169,7 +3169,7 @@ its release delay at +0x46b8 has run out:
       id 0x1c0. Directions 1 and 6 carry no guard because they do not move the
       column at all. Those eight constants were read out of THIS body and only
       then found to be the rails section 21 part 1 derived from
-      func_ov004_020ae5c4's call sites and the columns _ZN12dScMgAmida_c11InitWalkersEv's tail
+      Mg_DrawLine's call sites and the columns _ZN12dScMgAmida_c11InitWalkersEv's tail
       writes. Three independent derivations agree.
 
   ROW > the bottom -- THE ARRIVAL ARM, and it is where the mode lives. The
@@ -3333,7 +3333,7 @@ CONFIRMATION of where the two words went.
   THE SAME ARTEFACT IS IN SECTION 21's ROW AND IT IS FLAGGED HERE RATHER THAN
   EDITED THERE, since a lane does not rewrite another lane's record. Section 21
   prints `7101 / 11285 -> 7103 / 11285`, but that lane landed TWO new src files
-  (src/func_ov004_020ae5c4.cpp in 5c173cb62 and src/func_ov006_020d36a4.cpp in
+  (src/Mg_DrawLine.cpp in 5c173cb62 and src/func_ov006_020d36a4.cpp in
   a8f292cd0), so its universe grew by two and its BASE denominator was 11283 --
   which is exactly the figure section 20 records as its own tip. Sections 19 and
   20 are unaffected: their +217, +53 and +24 came from adding SLICE LINES for TUs
@@ -3459,7 +3459,7 @@ class. Index 36 of 0x0213d7e8 reads 0x020fb4e0, a real code address in ov006,
 because it is the code half of the first of those twenty-five pairs. The other
 four checks all refuse a 37th slot on the same boundary:
 
-  1. SPAN. Next config symbol after _ZTV14dScMgMCarlo2_c is data_ov006_0213d878.
+  1. SPAN. Next config symbol after _ZTV14dScMgMCarlo2_c is pmf_PachinkoFlyer_State0.
      0x90 = 36 words.
   2. TERMINAL SLOT. Slot 35 holds 0x020ad660, the family terminator.
   3. THE WORD PAST THE END. 0x020fb4e0 -- FAILS TO REFUSE.
@@ -3477,7 +3477,7 @@ is the one that breaks.
 (3) THE nosrc COLUMN IS A DELINKS FACT, NOT A MISSING BODY
 
 Section 3 gives this row `nosrc 1` and port/tools/vtablerows.py reports slot 19
-(_ZN14dScMgMCarlo2_c13OnTurnIntoEggEi) as "NO SOURCE (no delinks block owns this address)". BOTH
+(_ZN14dScMgMCarlo2_c11CanEndStateEi) as "NO SOURCE (no delinks block owns this address)". BOTH
 ARE ACCURATE AND NEITHER MEANS THE BODY IS MISSING.
 
 config/arm9/overlays/ov006/delinks.txt has a GAP at 0x020fa3d0..0x020fa4d4 --
@@ -3490,7 +3490,7 @@ one (51 NONMATCHING TUs sit in seated slices tree-wide).
 The body was compared with the ROM instruction for instruction before it was
 sliced: 0x104 = 65 words = 59 instructions + 6 pool words (0x4f38, 0x5928,
 0x020a0e40, 0x020a0de8, 0x020a0de9, 0x592a). Case 4 calls
-func_ov006_020c1718(self+0x4f38) and bumps +0x5928; case 5 tests
+Dealer_IsIdle(self+0x4f38) and bumps +0x5928; case 5 tests
 data_020a0de8[idx*4] and data_020a0de9[idx*4] with idx = data_020a0e40[0], then
 plays 0x62, sets +0x592a = 0x1e, calls _ZN14dScMgMCarlo2_c14FlipDealtCardsEv and bumps +0x5928;
 the default arm calls ApproachLinear2(+0x592a, 0, 1) and returns 1 if it is
@@ -3604,7 +3604,7 @@ THE BOOT, SM64DS_FAULTS_FATAL=1 with nothing switched off:
 
 SLOT 19 IS NEVER ENTERED ON AN UNATTENDED BOOT AND THAT IS HONEST RATHER THAN A
 GAP -- section 16's distinction. It handles states 4, 5 and 6, and slot 6's case
-3 only advances into them when func_ov006_020c16b4 reports a stylus pick.
+3 only advances into them when Dealer_IsIdleAtRest reports a stylus pick.
 Nothing here drives one. SLOT 3 (CleanupResources), D2 and D0 are zero for the
 same class of reason: a run that ends by exiting the process never tears the
 scene down.

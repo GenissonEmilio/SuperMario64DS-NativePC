@@ -53,6 +53,11 @@
  *   are unnamed Player / Bob-omb helpers.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_cnn_AssetId {
+    ASSET_HOUDAI_BMD = 0x045e
+};
+
 #include "common.h"
 #include "daCnn_c.h"
 #include "SharedFilePtr.h"
@@ -112,7 +117,7 @@ struct CnnModelFilePtr : SharedFilePtr {
  * the model to Model::LoadFile.
  * ------------------------------------------------------------------------ */
 // @symbol __sinit_d_a_cnn.cpp
-CnnModelFilePtr data_ov098_0213c8e8(0x45e);
+CnnModelFilePtr data_ov098_0213c8e8(ASSET_HOUDAI_BMD);
 
 /* The member pointers the initializer copies into the table
    (0x0213c644..0x0213c664 in .data, an unclaimed run). Each record is one

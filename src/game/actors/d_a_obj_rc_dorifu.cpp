@@ -23,6 +23,20 @@
  *   .data (typeinfo at 0x02113e4c); the SharedFilePtrs are BSS.
  */
 
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_rc_dorifu_AssetId {
+    ASSET_RC_DORIFU0_BMD = 0x069a,
+    ASSET_RC_DORIFU0_KCL = 0x069b,
+    ASSET_RC_DORIFU1_BMD = 0x069c,
+    ASSET_RC_DORIFU1_KCL = 0x069d,
+    ASSET_RC_DORIFU2_BMD = 0x069e,
+    ASSET_RC_DORIFU2_KCL = 0x069f,
+    ASSET_RC_DORIFU3_BMD = 0x06a0,
+    ASSET_RC_DORIFU3_KCL = 0x06a1,
+    ASSET_RC_DORIFU4_BMD = 0x06a2,
+    ASSET_RC_DORIFU4_KCL = 0x06a3
+};
+
 #include "daObjRc_Dorifu_c.h"
 
 struct DorifuSpawnInfo {
@@ -121,13 +135,13 @@ s32 daObjRc_Dorifu_c::CleanupResources()
  * Definition order is the retail initializer's construction order: the five
  * model handles (files 1690/1692/1694/1696/1698), then the five collision
  * handles (files 1691/1693/1695/1697/1699). */
-RcDorifuModelFilePtr data_ov036_0211411c(0x69a);
-RcDorifuModelFilePtr data_ov036_021140fc(0x69c);
-RcDorifuModelFilePtr data_ov036_021140e4(0x69e);
-RcDorifuModelFilePtr data_ov036_02114104(0x6a0);
-RcDorifuModelFilePtr data_ov036_0211410c(0x6a2);
-RcDorifuCollisionFilePtr data_ov036_021140f4(0x69b);
-RcDorifuCollisionFilePtr data_ov036_021140d4(0x69d);
-RcDorifuCollisionFilePtr data_ov036_021140ec(0x69f);
-RcDorifuCollisionFilePtr data_ov036_02114114(0x6a1);
-RcDorifuCollisionFilePtr data_ov036_021140dc(0x6a3);
+RcDorifuModelFilePtr data_ov036_0211411c(ASSET_RC_DORIFU0_BMD);
+RcDorifuModelFilePtr data_ov036_021140fc(ASSET_RC_DORIFU1_BMD);
+RcDorifuModelFilePtr data_ov036_021140e4(ASSET_RC_DORIFU2_BMD);
+RcDorifuModelFilePtr data_ov036_02114104(ASSET_RC_DORIFU3_BMD);
+RcDorifuModelFilePtr data_ov036_0211410c(ASSET_RC_DORIFU4_BMD);
+RcDorifuCollisionFilePtr data_ov036_021140f4(ASSET_RC_DORIFU0_KCL);
+RcDorifuCollisionFilePtr data_ov036_021140d4(ASSET_RC_DORIFU1_KCL);
+RcDorifuCollisionFilePtr data_ov036_021140ec(ASSET_RC_DORIFU2_KCL);
+RcDorifuCollisionFilePtr data_ov036_02114114(ASSET_RC_DORIFU3_KCL);
+RcDorifuCollisionFilePtr data_ov036_021140dc(ASSET_RC_DORIFU4_KCL);

@@ -116,7 +116,7 @@ def demangle(names, quiet=False):
 # read a convention out of: public thiscall, thiscall with an argument, virtual
 # thiscall, a static member (cdecl, no receiver), and a data symbol.
 SELFTEST_PAIRS = [
-    ("?SetDefault@Heap@@QAEHXZ",
+    ("?SetDefault@Heap_t@mHeap@@QAEHXZ",
      "public: int __thiscall Heap::SetDefault(void)"),
     ("?TryGrab@Player@@QAE_NAAUActor@@@Z",
      "public: bool __thiscall Player::TryGrab(struct Actor &)"),
@@ -150,7 +150,7 @@ def selftest():
     # The bug this module exists for: undname does NOT read stdin. Pin it, so
     # nobody reintroduces the pipe on the grounds that it looks tidier.
     try:
-        p = subprocess.run([exe], input="?SetDefault@Heap@@QAEHXZ\n",
+        p = subprocess.run([exe], input="?SetDefault@Heap_t@mHeap@@QAEHXZ\n",
                            capture_output=True, text=True, timeout=60)
         stdin_refused = p.returncode != 0 or "Usage:" in p.stdout
     except (OSError, subprocess.SubprocessError):

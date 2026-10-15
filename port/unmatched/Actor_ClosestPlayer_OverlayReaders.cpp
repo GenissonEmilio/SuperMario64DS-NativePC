@@ -2,7 +2,7 @@
  * NO argument and rely on `this` riding ARM r0:
  *
  *     [src/func_ov084_02129cf4.c RETIRED at SEAT15B -- the src passes `c`]
- *     src/actors/daPkn_c.cpp    (ov084 range cache;       receiver `r4`)
+ *     src/game/actors/d_a_pkn.cpp    (ov084 range cache;       receiver `r4`)
  *     [src/func_ov094_02136024.cpp RETIRED at SEAT15B -- the src passes `c`]
  *     src/func_ov102_02149078.c    (ov102 refusal test;      receiver `self`)
  *
@@ -49,7 +49,7 @@
  *    TU is out of port/slice_sweep2_ov032.txt.]
  *   src/game/actors/d_a_bakubaku.cpp                 (ov032, HOSTED -- Bubba_ChaseGate.cpp)
  *   [src/func_ov060_02111f08.c SEATED at SEAT15B -- the src passes `arg0`]
- *   src/actors/Eyerok.cpp               (ov066, calls ClosestPlayer() no arg)
+ *   src/game/actors/d_a_iwante.cpp               (ov066, calls ClosestPlayer() no arg)
  *   src/unnamed/ov063/func_ov063_02117650.c   (ov063, calls ClosestPlayer() no arg)
  *   src/_ZN8dActor_c23HorzAngleToCPlayerOrAngEv.cpp (Actor::HorzAngleToCPlayerOrAng, no arg;
  *                                              already noted in-slice as "in no slice")
@@ -69,7 +69,7 @@ extern "C" void *_ZN8dActor_c13ClosestPlayerEv(void *self);
  * non-stale reason" and it was wrong: src/func_ov084_02129cf4.c:16 passes the
  * ClosestPlayer receiver itself (`(c)`), exactly like the seven rows of BATCH 1.
  * The src row is uncommented in port/slice_gate32.txt. func_ov084_0212f204 below
- * KEEPS its copy: its matched body lives in src/actors/daPkn_c.cpp, a whole-class
+ * KEEPS its copy: its matched body lives in src/game/actors/d_a_pkn.cpp, a whole-class
  * TU, so seating it is a different and much larger change. */
 
 /* Vec3_Dist and Vec3_HorzAngle, kept for the copies below. */
@@ -110,7 +110,7 @@ extern "C" void _ZN7daPkn_c18TrackClosestPlayerEv(char* r4)
 
 /* ---- func_ov102_02149078 -- RETIRED, the matched TU has the seat --------- */
 /* Run linkfull wave 31 lane RS5A (row R4). main #2812 passes the receiver
- * (self->ClosestPlayer() in its promoted src/actors/daObjHatenaBlock_c.cpp), and
+ * (self->ClosestPlayer() in its promoted src/game/actors/d_a_obj_hatena_block.cpp), and
  * the port's per-function src/func_ov102_02149078.c takes that one fix as
  * `_ZN8dActor_c13ClosestPlayerEv(self)` (route (a), byte-identical under
  * mwccarm), so this copy had nothing left to work around. The src row is back

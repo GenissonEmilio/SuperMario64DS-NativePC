@@ -1,4 +1,4 @@
-/* HOST COPY of src/actors/daMky_c.cpp -- the Ukiki's Behavior,
+/* HOST COPY of src/game/actors/d_a_mky.cpp -- the Ukiki's Behavior,
  * ROM slot 6 of the daMky_c table at 0x02115bfc. Run rel0215, lane cast-ov030.
  *
  * THE NAME IS THE CONFIG'S AND IT IS WRONG. 0x02114278 is slot 6 of the table

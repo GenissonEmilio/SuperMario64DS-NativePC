@@ -111,16 +111,16 @@ src/_ZN3IRQ11Dma1HandlerEv.cpp
 src/_ZN3IRQ11Dma2HandlerEv.cpp
 src/_ZN3IRQ11Dma3HandlerEv.cpp
 src/_ZN3IRQ13DmaTimHandlerEj.cpp
-src/actors/dScMB_c.cpp
-# FOLDED into src/actors/dScMB_c.cpp (row 114): src/_ZN7dScMB_c15graphCallback_c14GraphCallback2Ev.cpp
-# FOLDED into src/actors/dScMB_c.cpp (row 114): src/_ZN7dScMB_c15graphCallback_c14GraphCallback3Ev.cpp
-# FOLDED into src/actors/dScMB_c.cpp (row 114): src/func_02034d34.cpp
+src/game/stages/d_s_mb.cpp
+# FOLDED into src/game/stages/d_s_mb.cpp (row 114): src/_ZN7dScMB_c15graphCallback_c14GraphCallback2Ev.cpp
+# FOLDED into src/game/stages/d_s_mb.cpp (row 114): src/_ZN7dScMB_c15graphCallback_c14GraphCallback3Ev.cpp
+# FOLDED into src/game/stages/d_s_mb.cpp (row 114): src/func_02034d34.cpp
 # RETIRED at SLICE1: body now in src/_ZN10dFdDummy_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN10dFdDummy_cD0Ev.cpp
-src/engine/fader/dFader_c.cpp
+src/runtime/graphics/fader/d_fader.cpp
 # RETIRED at SLICE1: body now in src/engine/fader/_ZN15FaderBrightnessD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/engine/fader/_ZN15FaderBrightnessD0Ev.cpp
-# FOLDED into src/engine/fader/dFader_c.cpp (row 120): src/engine/fader/_ZN5FaderD1Ev.cpp
+# FOLDED into src/runtime/graphics/fader/d_fader.cpp (row 120): src/engine/fader/_ZN5FaderD1Ev.cpp
 # RETIRED at SLICE1: body now in src/engine/fader/_ZN5FaderD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/engine/fader/_ZN5FaderD0Ev.cpp
 # RETIRED at SLICE1: body now in src/engine/fader/_ZN10FaderColorD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.

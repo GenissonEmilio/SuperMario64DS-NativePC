@@ -15,18 +15,18 @@
 # daFPknBall_c::OnYoshiTryEat, which is what it is) and byte-matches under
 # tools/match.py with strict relocs; ruled REAL_DECOMP in
 # tools/inferred_stub_adjudicated.txt before seating.
-src/actors/daFPknBall_c.cpp
-# FOLDED into src/actors/daFPknBall_c.cpp (row 18): src/_ZN8Fireball13InitResourcesEv.cpp
-# FOLDED into src/actors/daFPknBall_c.cpp (row 18): src/_ZN8Fireball8BehaviorEv.cpp
-# FOLDED into src/actors/daFPknBall_c.cpp (row 18): src/_ZN8Fireball6RenderEv.cpp
-# FOLDED into src/actors/daFPknBall_c.cpp (row 18): src/_ZN8FireballD1Ev.cpp
+src/game/actors/d_a_f_pkn_ball.cpp
+# FOLDED into src/game/actors/d_a_f_pkn_ball.cpp (row 18): src/_ZN8Fireball13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_f_pkn_ball.cpp (row 18): src/_ZN8Fireball8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_f_pkn_ball.cpp (row 18): src/_ZN8Fireball6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_f_pkn_ball.cpp (row 18): src/_ZN8FireballD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN8FireballD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN8FireballD0Ev.cpp
-# FOLDED into src/actors/daFPknBall_c.cpp (row 18): src/_ZN8Fireball13OnYoshiTryEatEv.cpp
+# FOLDED into src/game/actors/d_a_f_pkn_ball.cpp (row 18): src/_ZN8Fireball13OnYoshiTryEatEv.cpp
 # Behavior's three helpers
-# FOLDED into src/actors/daFPknBall_c.cpp (row 18): src/func_ov002_020f8b24.c
-# FOLDED into src/actors/daFPknBall_c.cpp (row 18): src/func_ov002_020f88ec.c
-# FOLDED into src/actors/daFPknBall_c.cpp (row 18): src/func_ov002_020f897c.c
+# FOLDED into src/game/actors/d_a_f_pkn_ball.cpp (row 18): src/func_ov002_020f8b24.c
+# FOLDED into src/game/actors/d_a_f_pkn_ball.cpp (row 18): src/func_ov002_020f88ec.c
+# FOLDED into src/game/actors/d_a_f_pkn_ball.cpp (row 18): src/func_ov002_020f897c.c
 #
 # ---- BOWSER_SHOCKWAVES (281, ov060) ---------------------------------------
 # _ZTV16BowserShockwaves / _ZTV9daFRing_c 0x0211ab54, 31 slots, hosted as an
@@ -37,11 +37,11 @@ src/actors/daFPknBall_c.cpp
 # ModelAnim slot-5 collision on two ModelAnims, host copy appended to
 # unmatched/Ov060_Renders.cpp. InitResources' two BMA spellings func_021115e4/
 # f4 are the level-overlay window, aliased onto the ov046 per-symbol mount.
-src/actors/daFRing_c.cpp
-# FOLDED into src/actors/daFRing_c.cpp (row 40): src/_ZN16BowserShockwaves13InitResourcesEv.cpp
-# FOLDED into src/actors/daFRing_c.cpp (row 40): src/_ZN16BowserShockwaves16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daFRing_c.cpp (row 40): src/_ZN16BowserShockwaves8BehaviorEv.cpp
-# FOLDED into src/actors/daFRing_c.cpp (row 40): src/_ZN16BowserShockwavesD1Ev.cpp
+src/game/actors/d_a_f_ring.cpp
+# FOLDED into src/game/actors/d_a_f_ring.cpp (row 40): src/_ZN16BowserShockwaves13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_f_ring.cpp (row 40): src/_ZN16BowserShockwaves16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_f_ring.cpp (row 40): src/_ZN16BowserShockwaves8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_f_ring.cpp (row 40): src/_ZN16BowserShockwavesD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN16BowserShockwavesD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN16BowserShockwavesD0Ev.cpp
 #
@@ -88,28 +88,28 @@ src/game/actors/d_a_obj_abuku.cpp
 # func_ov002_020ed0d4 (state 0 main) carries dsd's misname daWarpkun_c::Kill;
 # match.py strict-reloc byte match, ruled REAL_DECOMP in
 # tools/inferred_stub_adjudicated.txt before this seat.
-src/actors/daYegg_c.cpp
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/_ZN8YoshiEgg13InitResourcesEv.cpp
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/_ZN8YoshiEgg16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/_ZN8YoshiEgg8BehaviorEv.cpp
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/_ZN8YoshiEggD1Ev.cpp
+src/game/actors/d_a_yegg.cpp
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/_ZN8YoshiEgg13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/_ZN8YoshiEgg16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/_ZN8YoshiEgg8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/_ZN8YoshiEggD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN8YoshiEggD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN8YoshiEggD0Ev.cpp
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ec654.c
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ec670.c
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ec938.cpp
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ec978.c
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ec9c4.c
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ecad4.c
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ecb0c.c
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ecd18.cpp
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ecf94.c
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ecfc8.c
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ed0d4.c
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ed5b0.c
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ed6cc.c
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ed738.cpp
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ed7f8.c
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020ed998.cpp
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020edb3c.cpp
-# FOLDED into src/actors/daYegg_c.cpp (row 91): src/func_ov002_020eddc4.c
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ec654.c
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ec670.c
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ec938.cpp
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ec978.c
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ec9c4.c
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ecad4.c
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ecb0c.c
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ecd18.cpp
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ecf94.c
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ecfc8.c
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ed0d4.c
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ed5b0.c
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ed6cc.c
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ed738.cpp
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ed7f8.c
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020ed998.cpp
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020edb3c.cpp
+# FOLDED into src/game/actors/d_a_yegg.cpp (row 91): src/func_ov002_020eddc4.c

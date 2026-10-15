@@ -90,7 +90,7 @@ int Player::ChangeState(::State &s)
 void Player::ChangeState(State &s)
 { _ZN6Player11ChangeStateERNS_5StateE(this, &s); }
 /* RETIRED at FACES4 (wave 9c) under the SHADOW RULE. THE GLOBAL-::State
-   spelling only. src/actors/Player.cpp, the TU config says owns the ROM
+   spelling only. src/game/player/Player.cpp, the TU config says owns the ROM
    address, emits ?IsState@Player@@QAE_NAAUState@1@@Z -- returning bool, with
    the NESTED Player::State -- and this file spelled the same one function two
    more ways, returning int, so facegen saw three definitions of Player::IsState
@@ -145,7 +145,7 @@ int ClsnResultIntFace::GetClsnID() const
 { return (int)((const ClsnResult *)this)->ClsnResult::GetClsnID(); }
 #pragma comment(linker, "/alternatename:?GetClsnID@dBgPi@@QBEHXZ=?GetClsnID@ClsnResultIntFace@@QBEHXZ")
 
-/* PORTSYNC3: main's src/engine/collision/dBgCh_Actr.cpp defines these members; the
+/* PORTSYNC3: main's src/engine/collision/d_bg_ch_actr.cpp defines these members; the
    shadow struct and the IsOnGround face that stood here are retired (a duplicate
    definition) and the real header is used for the two flat faces below. */
 

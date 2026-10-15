@@ -15,6 +15,14 @@
  * D1 is 0x0211260c and D0 is 0x02112650, both from the inline
  * destructor in daObjKi_Fune_c.h. InitResources is the key function.
  */
+/* Runtime asset handles resolved through the overlay 0 file table. */
+enum d_a_obj_ki_fune_AssetId {
+    ASSET_KI_FUNE_DOWN_A_BMD = 0x0639,
+    ASSET_KI_FUNE_DOWN_A_KCL = 0x063a,
+    ASSET_KI_FUNE_UP_BMD = 0x063b,
+    ASSET_KI_FUNE_UP_KCL = 0x063c
+};
+
 #include "daObjKi_Fune_c.h"
 #include "decl_common.h"
 #include "SharedFilePtr.h"
@@ -143,7 +151,7 @@ void daObjKi_Fune_c::func_ov016_021126a8()
 }
 
 /* Retail construction order. mwcc emits __sinit_d_a_obj_ki_fune.cpp. */
-KiFuneModelFilePtr data_ov016_02114dd4(1595);
-KiFuneModelFilePtr data_ov016_02114de4(1593);
-KiFuneClsnFileHandle data_ov016_02114ddc(1596);
-KiFuneClsnFileHandle data_ov016_02114dcc(1594);
+KiFuneModelFilePtr gKiFuneUpModelFile(ASSET_KI_FUNE_UP_BMD);
+KiFuneModelFilePtr gKiFuneDownAModelFile(ASSET_KI_FUNE_DOWN_A_BMD);
+KiFuneClsnFileHandle gKiFuneUpCollisionFile(ASSET_KI_FUNE_UP_KCL);
+KiFuneClsnFileHandle gKiFuneDownACollisionFile(ASSET_KI_FUNE_DOWN_A_KCL);

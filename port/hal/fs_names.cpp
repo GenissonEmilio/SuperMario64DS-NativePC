@@ -6,7 +6,7 @@
 //
 //     FAULT c0000005 at func_0205cdf4+0x22 accessing 0x00000010, reached
 //     through mg_init -> _ZN14dScMgCurling_c13InitResourcesEv (dScMgCurling_c::InitResources)
-//     -> func_ov004_020adc74 -> func_020182bc -> func_02018e3c
+//     -> Ov004_LoadFileByPath -> func_020182bc -> func_02018e3c
 //     -> func_0205d644 -> func_0205d714 -> func_0205cdf4
 //
 // reproduced on this lane's own binary before a line of this file was written

@@ -106,12 +106,12 @@
 # (ov080 0x02128008, mounted at the real 0x1c stride) +0 word =
 # daChoro_Rock_c_classInit 0x02124998, +4 halfword = 0x0137 = 311, and
 # daChoro_Rock_c_classInit's own vtable-store reloc names 0x0212802c.
-src/actors/daChoropu_c.cpp
-# FOLDED into src/actors/daChoropu_c.cpp (row 109): src/_ZN13MontyMoleRock13InitResourcesEv.cpp
-# FOLDED into src/actors/daChoropu_c.cpp (row 109): src/_ZN13MontyMoleRock16CleanupResourcesEv.cpp
-# FOLDED into src/actors/daChoropu_c.cpp (row 109): src/_ZN13MontyMoleRock6RenderEv.cpp
-# FOLDED into src/actors/daChoropu_c.cpp (row 109): src/_ZN13MontyMoleRock8BehaviorEv.cpp
-# FOLDED into src/actors/daChoropu_c.cpp (row 109): src/_ZN13MontyMoleRockD1Ev.cpp
+src/game/actors/d_a_choropu.cpp
+# FOLDED into src/game/actors/d_a_choropu.cpp (row 109): src/_ZN13MontyMoleRock13InitResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_choropu.cpp (row 109): src/_ZN13MontyMoleRock16CleanupResourcesEv.cpp
+# FOLDED into src/game/actors/d_a_choropu.cpp (row 109): src/_ZN13MontyMoleRock6RenderEv.cpp
+# FOLDED into src/game/actors/d_a_choropu.cpp (row 109): src/_ZN13MontyMoleRock8BehaviorEv.cpp
+# FOLDED into src/game/actors/d_a_choropu.cpp (row 109): src/_ZN13MontyMoleRockD1Ev.cpp
 # RETIRED at SLICE1: body now in src/_ZN13MontyMoleRockD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN13MontyMoleRockD0Ev.cpp
-# FOLDED into src/actors/daChoropu_c.cpp (row 109): src/func_ov080_02124418.c
+# FOLDED into src/game/actors/d_a_choropu.cpp (row 109): src/func_ov080_02124418.c

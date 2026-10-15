@@ -106,21 +106,21 @@ func_0204f2d4|src/func_0204f630.c
 func_02059950|src/func_0201aaa4.c
 func_0205c91c|src/func_0201a2f8.c
 func_0205caa8|src/func_020423dc.c
-_ZN7da1up_c19func_ov002_020aefb8Ev|src/actors/da1up_c.cpp
+_ZN7da1up_c19func_ov002_020aefb8Ev|src/game/actors/d_a_1up.cpp
 func_ov002_020d4d88|src/_ZN6Player13St_Crawl_MainEv.cpp
-func_ov002_020d4d88|src/actors/Player.cpp
+func_ov002_020d4d88|src/game/player/Player.cpp
 func_ov002_020d4d88|src/_ZN6Player17St_HoldHeavy_MainEv.cpp
 func_ov002_020d4d88|src/_ZN6Player17St_HoldLight_MainEv.cpp
-func_ov002_020d5cec|src/actors/Player.cpp
+func_ov002_020d5cec|src/game/player/Player.cpp
 func_ov002_020de328|src/func_ov092_02131010.cpp
 _ZN8daStar_c19func_ov002_020e8abcEv|src/func_ov002_020e8c34.c
 func_ov002_020f2630|src/func_ov002_020f26d4.c
-func_ov004_020adfc4|src/func_ov004_020b39a4.c
-func_ov004_020adfc4|src/func_ov004_020b484c.c
-func_ov004_020adfc4|src/func_ov006_020dd658.c
-func_ov004_020b19f0|src/func_ov006_021004c0.c
-func_ov004_020b42c0|src/func_ov004_020b31b4.cpp
-func_ov005_020c0030|include/decl_common.h
+Mg_SpawnFx|src/Banner_StartWaveBurst.c
+Mg_SpawnFx|src/Banner_SetupZoomBurst.c
+Mg_SpawnFx|src/func_ov006_020dd658.c
+Mg_DrawTopLeftCounter|src/func_ov006_021004c0.c
+Banner_DrawPlain|src/Banner_Draw.cpp
+MiniGm_ClearNew|include/decl_common.h
 func_ov007_020b3c54|src/func_ov007_020b3360.c
 func_ov007_020b3d30|src/func_ov007_020b3c54.c
 func_ov007_020c99d8|src/func_ov007_020bcdb8.cpp
@@ -141,7 +141,7 @@ _ZN9daBttBk_c19func_ov080_0212513cEi|include/decl_common.h
 #   func_ov002_020aea30 (6 rows): the fourth parameter exists only for the
 #     byte match. ROM 0x020aea4c writes r3 (ldr r3,[ip]) before any read, and
 #     the host body never names `d`.
-#   func_ov004_020ada40 (2 rows): the definition over-declares. ROM 0x020ada44
+#   Mg_SetSessionBest (2 rows): the definition over-declares. ROM 0x020ada44
 #     writes r1 before any read, r2 is never read, and neither callee
 #     (0x020adc00, 0x020adc1c) reads r2. It takes one argument and both
 #     callers pass it.
@@ -169,8 +169,8 @@ func_ov002_020aea30|src/func_ov065_0211704c.c
 func_ov002_020aea30|src/func_ov081_021243cc.cpp
 func_ov002_020aea30|src/func_ov084_02129ed4.c
 func_ov002_020aea30|src/func_ov091_021339fc.c
-func_ov004_020ada40|src/func_ov004_020ad940.cpp
-func_ov004_020ada40|src/func_ov004_020adb1c.c
+Mg_SetSessionBest|src/Mg_RankSessionBest.cpp
+Mg_SetSessionBest|src/Mg_SubmitScore.c
 func_ov007_020c3d1c|src/func_ov007_020c0a9c.c
 func_ov007_020c3d1c|src/func_ov007_020c105c.c
 func_ov007_020c3d1c|src/func_ov007_020c1620.c
@@ -196,12 +196,12 @@ _ZN8daFish_c19func_ov100_02146280Ev|include/decl_common.h
 # declares and passes the value, the #else arm keeps the byte-matched (void)
 # form) still reads as a drop. Each row below is the #else spelling of a site
 # whose host arm passes exactly what the ROM leaves in r0.
-#   func_ov004_020b19f0: the score, dScMgCurling2_c::Render (0x020e67f8).
+#   Mg_DrawTopLeftCounter: the score, dScMgCurling2_c::Render (0x020e67f8).
 #   func_0203dabc / func_0203dae4: the comms slot index from func_0203da9c(),
 #     dScDSMT_c::Behavior (0x020cc310..0x020cc320). Fixed by ARITY31.
-#   func_ov004_020b56c8: the payout sum at +0x53f2, dScMgRoulette_c::
+#   MgCoins_StartPayout: the payout sum at +0x53f2, dScMgRoulette_c::
 #     OnTurnIntoEgg case 7 (0x021097a8). Fixed by ARITY31.
-func_ov004_020b19f0|src/_ZN15dScMgCurling2_c6RenderEv.cpp
+Mg_DrawTopLeftCounter|src/_ZN15dScMgCurling2_c6RenderEv.cpp
 func_0203dabc|include/decl_common.h
 func_0203dae4|include/decl_common.h
-func_ov004_020b56c8|src/actors/dScMgRoulette_c.cpp
+MgCoins_StartPayout|src/minigames/d_s_mg_roulette_methods.cpp

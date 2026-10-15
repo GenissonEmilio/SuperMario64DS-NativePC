@@ -289,13 +289,13 @@
     case 0x020e1990: return ((Player *)self)->Player::St_SlideKickRecover_Init();
     /* St_LevelEnter, the boot state (gate 14). Main is ov002 0x020c6f3c,
        which ov002/symbols.txt names _ZN6Player18St_LevelEnter_MainEv
-       (size 0xa8) and src/actors/Player.cpp defines.
+       (size 0xa8) and src/game/player/Player.cpp defines.
        func_ov002_020c6f3c is NOT a config symbol and is in no
        symbols.txt: it is the port's own name for the host copy in
        port/unmatched, which exists because the matched body dispatches
        through an eight-byte PMF record MSVC would stride by four. The
        symbol that names ANOTHER overlay's bytes at this address is
-       ov006's func_ov006_020c6f3c (size 0x34), and it is not what this
+       ov006's Heyho_Destruct (size 0x34), and it is not what this
        row avoids. An earlier version of this comment had the two
        overlays the wrong way round. The seven entrance-step handlers
        dispatched through data_ov002_0211075c are plain ov002 functions

@@ -46,13 +46,13 @@ ROWS_00[("MEMBER_REDECL", "dMgTrmpln2Mario_c")] = [
 # word there is rec->a. Each anchor now carries its body's own tail so it is
 # unique and names its own record variable.
 ROWS_00[("MG_PMF_CALL", "dScMgPachinko_c")] = [
-    # func_ov006_020fc7d0 (table 02142624, 2 rows of 0x1c)
+    # PachinkoPipe_UpdateAll (table 02142624, 2 rows of 0x1c)
     ("      ((void(*)(void*,int))fn)(obj,i);\n    }\n    i++;\n    row+=0x1c;\n  }while(i<2);",
      "      port_mg_pachinko_call1(obj, (unsigned)rec->a, adj, i);\n    }\n    i++;\n    row+=0x1c;\n  }while(i<2);"),
-    # func_ov006_020fda7c (table 02142694, 30 rows of 0x38)
+    # PachinkoBall_UpdateAll (table 02142694, 30 rows of 0x38)
     ("      ((void(*)(void*,int))fn)(obj,i);\n    }\n    i++;\n    r5+=0x38;\n  }while(i<30);",
      "      port_mg_pachinko_call1(obj, (unsigned)e->a, adj, i);\n    }\n    i++;\n    r5+=0x38;\n  }while(i<30);"),
-    # func_ov006_020fe248 (table 02142644, 48 rows of 0x38)
+    # PachinkoBobOmb_UpdateAll (table 02142644, 48 rows of 0x38)
     ("      ((void(*)(void*,int))fn)(obj,i);\n    }\n    i++;\n    r5+=0x38;\n  }while(i<48);",
      "      port_mg_pachinko_call1(obj, (unsigned)e->a, adj, i);\n    }\n    i++;\n    r5+=0x38;\n  }while(i<48);"),
 ]
@@ -121,35 +121,10 @@ ROWS_00[("VIRTUAL_CALL", "dBgActor_c")] = [
 ]
 
 # ---- dScMgCup_c ------------------------------------------------------------
-# HOST_COPY_PARK: dScMgCup_c_classInit is still host-copied by
-# port/unmatched/MgCup_Factory.cpp (still on port/CMakeLists.txt's link line),
-# so the TU's own definition must stay parked or it is a duplicate symbol.
-# Main rewrote the body onto named members (scene->mSysTracker / mModel / mFx /
-# mCup instead of scene + 0x53e8 ...), so the closing anchor moved; the opening
-# anchor is unchanged. Note for whoever owns the host copy: main's body now
-# passes the object to _ZN11dScMgBase_cC2Ev(scene) explicitly, which was the
-# PORT_HOST_ABI ruling the host copy exists for -- it may be retirable, but
-# that is a port/CMakeLists.txt decision, not this row's.
-ROWS_00[("HOST_COPY_PARK", "dScMgCup_c")] = [
-    ('extern "C" void *dScMgCup_c_classInit()\n{\n',
-     "/* hostgen HOST_COPY_PARK: port/unmatched/MgCup_Factory.cpp defines\n"
-     "   this factory under a standing PORT_HOST_ABI ruling (the base\n"
-     "   constructor call with no argument), so a second definition here is\n"
-     "   a duplicate symbol. Parked, not deleted. See the HOST_COPY_PARK\n"
-     "   table in tools/hostgen.py. */\n"
-     "#if 0  /* hostgen HOST_COPY_PARK: dScMgCup_c_classInit */\n"
-     'extern "C" void *dScMgCup_c_classInit()\n{\n'),
-    ("        __cxa_vec_ctor(scene->mCup, 3, 8,\n"
-     "                      (void *)func_0203d738,\n"
-     "                      (void *)NullDestructor_0203d47c);\n"
-     "    }\n    return scene;\n}\n",
-     "        __cxa_vec_ctor(scene->mCup, 3, 8,\n"
-     "                      (void *)func_0203d738,\n"
-     "                      (void *)NullDestructor_0203d47c);\n"
-     "    }\n    return scene;\n}\n"
-     "#endif  /* hostgen HOST_COPY_PARK: dScMgCup_c_classInit */\n"),
-]
-# UNINIT_LOCAL: DROPPED. The row initialised func_ov006_020def80's `int cup`
+# PORTDROP2: the dScMgCup_c HOST_COPY_PARK row is gone with the factory host copy
+# (port/unmatched/MgCup_Factory.cpp): main's factory passes the object to the
+# base constructor and runs as written.
+# UNINIT_LOCAL: DROPPED. The row initialised Cup_UpdateAnim's `int cup`
 # to `i` because two of the three paths reached the shared epilogue without
 # assigning it (mwcc's r1 happened to hold i). Main's body now assigns
 # `cup = i;` on all three paths before `goto epilogue` / the label, so the
@@ -159,34 +134,34 @@ ROWS_00[("UNINIT_LOCAL", "dScMgCup_c")] = None
 
 # ---- dScMgD3DBase_c --------------------------------------------------------
 # LEDGER_PARK: port/faces_sync.txt still carries the F row for
-# ?OnKicked@dScMgD3DBase_c@@UAEHXZ (the face DEFINES the member and forwards
-# to the flat _ZN14dScMgD3DBase_c8OnKickedEv, supplied by
+# ?OnGraphCallback2@dScMgD3DBase_c@@UAEHXZ (the face DEFINES the member and forwards
+# to the flat _ZN14dScMgD3DBase_c16OnGraphCallback2Ev, supplied by
 # port/unmatched/MgD3DBase_DeclConflict.cpp), so the TU's own member body is
 # still a duplicate symbol and stays parked. Main renamed the body's local
 # `self` -> `raw` and replaced the "ROM ordinal 11" banner after it with
-# `// @symbol _ZN14dScMgD3DBase_c8OnPushedEv`; both anchors re-spelled on
+# `// @symbol _ZN14dScMgD3DBase_c16OnGraphCallback3Ev`; both anchors re-spelled on
 # that text (each unique: one definition, one @symbol line).
 ROWS_00[("LEDGER_PARK", "dScMgD3DBase_c")] = [
-    ("int dScMgD3DBase_c::OnKicked()\n{\n    char *raw = (char *)this;\n",
+    ("int dScMgD3DBase_c::OnGraphCallback2()\n{\n    char *raw = (char *)this;\n",
      "/* hostgen LEDGER_PARK: port/faces_sync.txt already defines this\n"
      "   member as a face forwarding to the flat ROM name, so a\n"
      "   second definition here is a duplicate symbol. Parked, not deleted.\n"
      "   See the LEDGER_PARK table in tools/hostgen.py. */\n"
      "#if 0\n"
-     "int dScMgD3DBase_c::OnKicked()\n{\n    char *raw = (char *)this;\n"),
-    ("    return 1;\n}\n\n// @symbol _ZN14dScMgD3DBase_c8OnPushedEv\n",
+     "int dScMgD3DBase_c::OnGraphCallback2()\n{\n    char *raw = (char *)this;\n"),
+    ("    return 1;\n}\n\n// @symbol _ZN14dScMgD3DBase_c16OnGraphCallback3Ev\n",
      "    return 1;\n}\n"
-     "#endif  /* hostgen LEDGER_PARK: dScMgD3DBase_c::OnKicked */\n"
-     "\n// @symbol _ZN14dScMgD3DBase_c8OnPushedEv\n"),
+     "#endif  /* hostgen LEDGER_PARK: dScMgD3DBase_c::OnGraphCallback2 */\n"
+     "\n// @symbol _ZN14dScMgD3DBase_c16OnGraphCallback3Ev\n"),
 ]
 
 # ---- dScMgSound_c ----------------------------------------------------------
 # HOST_COPY_PARK: DROPPED. The row bracketed the TU's flat-named definition
-# `void _ZN12dScMgSound_c19func_ov006_0211ba88Ei(char *base, int idx)` because
+# `void _ZN12dScMgSound_c16Note_StateScrollEi(char *base, int idx)` because
 # port/unmatched/MgSound_ShadowSlot35.cpp defines that same flat name (LNK2005).
 # Main rewrote the body as a real member, `void
 # dScMgSound_c::func_ov006_0211ba88(int slot)`, which MSVC emits under its own
-# decorated name (?func_ov006_0211ba88@dScMgSound_c@@...), and no
+# decorated name (?Note_StateScroll@dScMgSound_c@@...), and no
 # port/faces_sync.txt row defines or bridges that member -- so the two
 # definitions no longer collide, and port/unmatched/MgSound_StateDispatch.cpp
 # still seats the host copy's flat name in the 02142df8 slot-4 entry, so the
@@ -370,10 +345,8 @@ ROWS_01 = {
     # `((dBgPi *)...->GetWallResult())->surface.CopyNormalTo(*(Vector3 *)wallNormal);`
     # instead of the flat _ZNK10dBgCh_Actr13GetWallResultEv(clsn)+4 call.
     # RE-ANCHOR on the wall branch's CopyNormalTo (unique in the TU).
-    ("FALLS_OFF_RETURN", "daGmch_c"): [
-        ("surface.CopyNormalTo(*(Vector3 *)wallNormal);\n    }\n}",
-         "surface.CopyNormalTo(*(Vector3 *)wallNormal);\n    }\n" + _FOR + "}"),
-    ],
+    # PORTDROP2: main made ApplySlopeToVertSpeed a void member (no value to add): DROP.
+    ("FALLS_OFF_RETURN", "daGmch_c"): None,
 }
 
 # ---- daGmch_c: the factory no longer names its vtable --------------------------
@@ -413,7 +386,7 @@ ROWS_01[("OVERLAY_OBJECT_AT_DECL", "daKuriKing_c")] = (
 # RE-ANCHOR before line 204 with main's own types (a redeclaration must agree).
 # Narrowed: data_ov074_02122e4c/02122e5c/02122e04/02122dfc are now declared
 # extern "C" by main itself (lines 147,160,163,190; 2006-2007), and
-# data_ov074_02123000/02123040/02123030 are now DEFINED in this TU (lines
+# gKurikingModelModelFile/02123040/02123030 are now DEFINED in this TU (lines
 # 1982-1991, the folded static-init) -- C linkage on a definition would move
 # the TU's own object onto the name the ov074 mount already defines.
 # data_ov084_0213089c / 02130cc8 (lines 206-207, from the folded vanish
@@ -463,13 +436,11 @@ ROWS_01[("REDECL_CONFLICT", "daMky_c")] = [
     ("    typedef struct M4x3 { int w[12]; } M4x3;\n",
      "    typedef daMky_M4x3 M4x3;\n"),
     ("    struct S { int w[2]; };\n"
-     "    extern struct S data_ov030_02115d18;\n",
-     "    extern daMky_S data_ov030_02115d18;\n"),
+     "    extern struct S gMonkeyRunAnimationFile;\n",
+     "    extern daMky_S gMonkeyRunAnimationFile;\n"),
     ("    struct G { void *a; void *b; };\n"
-     "    extern struct G data_ov030_02115d18;\n",
-     "    extern daMky_G data_ov030_02115d18;\n"),
-    ("    typedef struct { int a, b, c, d; } Item16;\n",
-     "    typedef daMky_Item16 Item16;\n"),
+     "    extern struct G gMonkeyRunAnimationFile;\n",
+     "    extern daMky_G gMonkeyRunAnimationFile;\n"),
 ]
 
 # ---- daObjBkKillerdai_c: out-of-class member redeclarations (C2761) ----------
@@ -642,10 +613,10 @@ ROWS_03[("DATA_C_LINKAGE", "d_a_obj_wc_obj04")] = None
 # `((dBgPi *)...GetWallResultEv(clsn))->surface.CopyNormalTo(...wallNormal)`.
 # The floor branch writes floorNormal and does not match this text.
 ROWS_03[("FALLS_OFF_RETURN", "d_a_pg_rcer")] = [
-    ("        ((dBgPi *)_ZNK10dBgCh_Actr13GetWallResultEv(clsn))->surface."
-     "CopyNormalTo(*(Vector3 *)wallNormal);\n    }\n}",
-     "        ((dBgPi *)_ZNK10dBgCh_Actr13GetWallResultEv(clsn))->surface."
-     "CopyNormalTo(*(Vector3 *)wallNormal);\n    }\n"
+    ("        ((dBgPi *)clsn->GetWallResult())->surface."
+     "CopyNormalTo(wallNormal);\n    }\n}",
+     "        ((dBgPi *)clsn->GetWallResult())->surface."
+     "CopyNormalTo(wallNormal);\n    }\n"
      "    return 1;  /* hostgen FALLS_OFF_RETURN: see the table's note */\n"
      "}"),
 ]
@@ -706,21 +677,8 @@ ROWS_03[("LEDGER_PARK", "d_a_wanwan")] = [
      "#endif  /* hostgen LEDGER_PARK: daWanwan_c_classInit */\n"),
 ]
 
-# d_s_mg_roulette: LEDGER_PARK brackets dScMgRoulette_c_classInit out because
-# port/unmatched/MgRoulette_Factory.cpp hosts the same factory. RE-ANCHOR: the
-# opening line is unchanged; the body's tail now reads
-# `_ZN5ModelC1Ev(models + 0x60);   /* mModel2 */ ... return scene;`.
-# The host copy still exists, so the park stays.
-ROWS_03[("LEDGER_PARK", "d_s_mg_roulette")] = [
-    ('extern "C" void* dScMgRoulette_c_classInit(void){\n',
-     "#if 0  /* hostgen LEDGER_PARK: dScMgRoulette_c_classInit -- "
-     "port/unmatched/MgRoulette_Factory.cpp hosts this factory for the\n"
-     "          dropped-receiver _ZN11dScMgBase_cC2Ev call */\n"
-     'extern "C" void* dScMgRoulette_c_classInit(void){\n'),
-    ("    _ZN5ModelC1Ev(models + 0x60);   /* mModel2 */\n  }\n  return scene;\n}\n",
-     "    _ZN5ModelC1Ev(models + 0x60);   /* mModel2 */\n  }\n  return scene;\n}\n"
-     "#endif  /* hostgen LEDGER_PARK: dScMgRoulette_c_classInit */\n"),
-]
+# PORTDROP2: the d_s_mg_roulette LEDGER_PARK row is gone with the factory host copy
+# (port/unmatched/MgRoulette_Factory.cpp): main's factory runs as written.
 
 # ======================================================================
 # part_04
@@ -1009,7 +967,7 @@ ROWS_04[("HEADER_SHADOW", "d_s_mg_base")] = ("decl_common.h", ("_ZN11dScMgBase_c
 
 # ---- unit020cd744 ----------------------------------------------------------
 # PARK_SYMBOL -> HOST_COPY_PARK, the dScStage_c::CleanupResources shape. The
-# `// @symbol func_ov006_020ce988` marker sits at the top of the function's
+# `// @symbol TrmpItem_UpdateMatrix` marker sits at the top of the function's
 # namespace, above its `extern "C" { ... }` declaration block, so the
 # marker-to-first-brace park took the five declarations
 # (Matrix4x3_FromQuaternion .. ModelBase::ApplyOpacity) and left the body live
@@ -1020,12 +978,12 @@ ROWS_04[("HEADER_SHADOW", "d_s_mg_base")] = ("decl_common.h", ("_ZN11dScMgBase_c
 # C-linkage externs: NS_C_ALIAS in tools/hostgen.py.)
 ROWS_04[("PARK_SYMBOL", "unit020cd744")] = None
 ROWS_04[("HOST_COPY_PARK", "unit020cd744")] = [
-    ('extern "C" void func_ov006_020ce988(char* c){\n',
+    ('extern "C" void TrmpItem_UpdateMatrix(char* c){\n',
      "#if 0  /* hostgen HOST_COPY_PARK: port/unmatched/hostarm/ carries this body */\n"
-     'extern "C" void func_ov006_020ce988(char* c){\n'),
+     'extern "C" void TrmpItem_UpdateMatrix(char* c){\n'),
     ("        vt->f(o, c+0x68);\n    }\n}\n",
      "        vt->f(o, c+0x68);\n    }\n}\n"
-     "#endif  /* hostgen HOST_COPY_PARK: func_ov006_020ce988 */\n"),
+     "#endif  /* hostgen HOST_COPY_PARK: TrmpItem_UpdateMatrix */\n"),
 ]
 
 
@@ -1108,16 +1066,16 @@ ROWS_05[("PMF_SEAM", "dScMgHanachan_c")] = [
 # now call OAM::Render as a member, which no -D can reach). So the two renames
 # are made here, per body, and the CMake -D rows are retired.
 ROWS_05[("HOST_COPY_PARK", "d_s_mg_base")] = [
-    ('void func_ov004_020afdd0(void* a0, int a1, int a2, int a3, int a4){\n  dScMgBase_c *scene = (dScMgBase_c *)data_ov004_020beb68;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->OnHitByCannonBlastedChar() == 2){\n      if(*(unsigned short*)((char*)data_ov004_020beb68 + 0x4664) == 1){\n        _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii(0, a0, a1, a2 + 0xc0 + data_ov004_020beb6c, a3, a4, 0x1000, 0x1000, 0, -1);\n        return;\n      }\n      _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii(0, a0, a1, a2, a3, a4, 0x1000, 0x1000, 0, -1);\n      return;\n    }\n  }\n  _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii(0, a0, a1, a2 + 0xc0 + data_ov004_020beb6c, a3, a4, 0x1000, 0x1000, 0, -1);\n  OAM::RenderSub((OamAttr*)a0, a1, a2, a3, a4);\n}\n',
-     'void *port_oam_render_routed_10(int, void *, int, int, int, int, int, int, int, int);  /* hostgen: hal/screen_gap.cpp shim */\nvoid func_ov004_020afdd0__rom(void* a0, int a1, int a2, int a3, int a4){\n  dScMgBase_c *scene = (dScMgBase_c *)data_ov004_020beb68;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->OnHitByCannonBlastedChar() == 2){\n      if(*(unsigned short*)((char*)data_ov004_020beb68 + 0x4664) == 1){\n        port_oam_render_routed_10(0, a0, a1, a2 + 0xc0 + data_ov004_020beb6c, a3, a4, 0x1000, 0x1000, 0, -1);\n        return;\n      }\n      port_oam_render_routed_10(0, a0, a1, a2, a3, a4, 0x1000, 0x1000, 0, -1);\n      return;\n    }\n  }\n  port_oam_render_routed_10(0, a0, a1, a2 + 0xc0 + data_ov004_020beb6c, a3, a4, 0x1000, 0x1000, 0, -1);\n  OAM::RenderSub((OamAttr*)a0, a1, a2, a3, a4);\n}\n'),
-    ('extern "C" int func_ov004_020aff38(struct OamAttr* a0, int a1, int a2, int a3, int a4, Fix12i a5, int a6)\n{\n    dScMgBase_c *scene = (dScMgBase_c *)data_ov004_020beb68;\n    if (scene == 0) return 0;\n    if (scene->mMenuOpen == 0 && scene->OnHitByCannonBlastedChar() == 2) {\n        if (*(unsigned short*)((char*)data_ov004_020beb68 + 0x4664) == 1) {\n            int hp = data_ov004_020beb6c;\n            if (a2 >= -0x100 - hp && a2 < -hp) {\n                return _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi(0, a0, a1, a2 + 0xc0 + hp, a3, a4, a5, a6);\n            }\n            if (a2 >= -0x40 && a2 < 0xc0) {\n                return _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi(0, a0, a1, a2, a3, a4, a5, a6);\n            }\n        }\n    } else {\n        int hp = data_ov004_020beb6c;\n        if (a2 >= -0x100 - hp && a2 < -hp) {\n            return _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi(0, a0, a1, a2 + 0xc0 + hp, a3, a4, a5, a6);\n        }\n        if (a2 >= -0x40 && a2 < 0xc0) {\n            return _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi(1, a0, a1, a2, a3, a4, a5, a6);\n        }\n    }\n    return 0;\n}\n',
-     'extern "C" void *port_oam_render_routed_8(int, void *, int, int, int, int, int, int);  /* hostgen: hal/screen_gap.cpp shim */\nextern "C" int func_ov004_020aff38__rom(struct OamAttr* a0, int a1, int a2, int a3, int a4, Fix12i a5, int a6)\n{\n    dScMgBase_c *scene = (dScMgBase_c *)data_ov004_020beb68;\n    if (scene == 0) return 0;\n    if (scene->mMenuOpen == 0 && scene->OnHitByCannonBlastedChar() == 2) {\n        if (*(unsigned short*)((char*)data_ov004_020beb68 + 0x4664) == 1) {\n            int hp = data_ov004_020beb6c;\n            if (a2 >= -0x100 - hp && a2 < -hp) {\n                return (int)(size_t)port_oam_render_routed_8(0, a0, a1, a2 + 0xc0 + hp, a3, a4, a5, a6);\n            }\n            if (a2 >= -0x40 && a2 < 0xc0) {\n                return (int)(size_t)port_oam_render_routed_8(0, a0, a1, a2, a3, a4, a5, a6);\n            }\n        }\n    } else {\n        int hp = data_ov004_020beb6c;\n        if (a2 >= -0x100 - hp && a2 < -hp) {\n            return (int)(size_t)port_oam_render_routed_8(0, a0, a1, a2 + 0xc0 + hp, a3, a4, a5, a6);\n        }\n        if (a2 >= -0x40 && a2 < 0xc0) {\n            return (int)(size_t)port_oam_render_routed_8(1, a0, a1, a2, a3, a4, a5, a6);\n        }\n    }\n    return 0;\n}\n'),
-    ('void RenderOamBothScreens(void* attr, int x, int y, int palette, int priority, void* mtx){\n  dScMgBase_c *scene = (dScMgBase_c *)data_ov004_020beb68;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->OnHitByCannonBlastedChar() == 2){\n      if(*(unsigned short*)((char*)data_ov004_020beb68 + 0x4664) == 1){\n        OAM::Render(false, (OamAttr*)attr, x, y + 0xc0 + data_ov004_020beb6c, palette, priority, (Matrix2x2*)mtx);\n        return;\n      }\n      OAM::Render(false, (OamAttr*)attr, x, y, palette, priority, (Matrix2x2*)mtx);\n      return;\n    }\n  }\n  OAM::Render(false, (OamAttr*)attr, x, y + 0xc0 + data_ov004_020beb6c, palette, priority, (Matrix2x2*)mtx);\n  OAM::Render(true, (OamAttr*)attr, x, y, palette, priority, (Matrix2x2*)mtx);\n}\n',
-     'void *port_oam_render_routed_mtx(int, void *, int, int, int, int, void *);  /* hostgen: hal/screen_gap.cpp shim */\nvoid RenderOamBothScreens__rom(void* attr, int x, int y, int palette, int priority, void* mtx){\n  dScMgBase_c *scene = (dScMgBase_c *)data_ov004_020beb68;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->OnHitByCannonBlastedChar() == 2){\n      if(*(unsigned short*)((char*)data_ov004_020beb68 + 0x4664) == 1){\n        port_oam_render_routed_mtx(false, (OamAttr*)attr, x, y + 0xc0 + data_ov004_020beb6c, palette, priority, (Matrix2x2*)mtx);\n        return;\n      }\n      port_oam_render_routed_mtx(false, (OamAttr*)attr, x, y, palette, priority, (Matrix2x2*)mtx);\n      return;\n    }\n  }\n  port_oam_render_routed_mtx(false, (OamAttr*)attr, x, y + 0xc0 + data_ov004_020beb6c, palette, priority, (Matrix2x2*)mtx);\n  port_oam_render_routed_mtx(true, (OamAttr*)attr, x, y, palette, priority, (Matrix2x2*)mtx);\n}\n'),
-    ('void func_ov004_020b023c(void* a0, int a1, int a2, int a3, void* a4){\n  dScMgBase_c *scene = (dScMgBase_c *)data_ov004_020beb68;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->OnHitByCannonBlastedChar() == 2){\n      if(*(unsigned short*)((char*)data_ov004_020beb68 + 0x4664) == 1){\n        OAM::Render(0, (OamAttr*)a0, a1, a2 + 0xc0 + data_ov004_020beb6c, a3, -1, (Matrix2x2*)a4);\n        return;\n      }\n      OAM::Render(0, (OamAttr*)a0, a1, a2, a3, -1, (Matrix2x2*)a4);\n      return;\n    }\n  }\n  OAM::Render(0, (OamAttr*)a0, a1, a2 + 0xc0 + data_ov004_020beb6c, a3, -1, (Matrix2x2*)a4);\n  OAM::Render(1, (OamAttr*)a0, a1, a2, a3, -1, (Matrix2x2*)a4);\n}\n',
-     'void *port_oam_render_routed_mtx(int, void *, int, int, int, int, void *);  /* hostgen: hal/screen_gap.cpp shim */\nvoid func_ov004_020b023c__rom(void* a0, int a1, int a2, int a3, void* a4){\n  dScMgBase_c *scene = (dScMgBase_c *)data_ov004_020beb68;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->OnHitByCannonBlastedChar() == 2){\n      if(*(unsigned short*)((char*)data_ov004_020beb68 + 0x4664) == 1){\n        port_oam_render_routed_mtx(0, (OamAttr*)a0, a1, a2 + 0xc0 + data_ov004_020beb6c, a3, -1, (Matrix2x2*)a4);\n        return;\n      }\n      port_oam_render_routed_mtx(0, (OamAttr*)a0, a1, a2, a3, -1, (Matrix2x2*)a4);\n      return;\n    }\n  }\n  port_oam_render_routed_mtx(0, (OamAttr*)a0, a1, a2 + 0xc0 + data_ov004_020beb6c, a3, -1, (Matrix2x2*)a4);\n  port_oam_render_routed_mtx(1, (OamAttr*)a0, a1, a2, a3, -1, (Matrix2x2*)a4);\n}\n'),
-    ('void func_ov004_020b0380(void* a0, int a1, int a2, void* a3){\n  dScMgBase_c *scene = (dScMgBase_c *)data_ov004_020beb68;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->OnHitByCannonBlastedChar() == 2){\n      if(*(unsigned short*)((char*)data_ov004_020beb68 + 0x4664) == 1){\n        OAM::Render(0, (OamAttr*)a0, a1, a2 + 0xc0 + data_ov004_020beb6c, -1, -1, (Matrix2x2*)a3);\n        return;\n      }\n      OAM::Render(0, (OamAttr*)a0, a1, a2, -1, -1, (Matrix2x2*)a3);\n      return;\n    }\n  }\n  OAM::Render(0, (OamAttr*)a0, a1, a2 + 0xc0 + data_ov004_020beb6c, -1, -1, (Matrix2x2*)a3);\n  OAM::Render(1, (OamAttr*)a0, a1, a2, -1, -1, (Matrix2x2*)a3);\n}\n',
-     'void *port_oam_render_routed_mtx(int, void *, int, int, int, int, void *);  /* hostgen: hal/screen_gap.cpp shim */\nvoid func_ov004_020b0380__rom(void* a0, int a1, int a2, void* a3){\n  dScMgBase_c *scene = (dScMgBase_c *)data_ov004_020beb68;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->OnHitByCannonBlastedChar() == 2){\n      if(*(unsigned short*)((char*)data_ov004_020beb68 + 0x4664) == 1){\n        port_oam_render_routed_mtx(0, (OamAttr*)a0, a1, a2 + 0xc0 + data_ov004_020beb6c, -1, -1, (Matrix2x2*)a3);\n        return;\n      }\n      port_oam_render_routed_mtx(0, (OamAttr*)a0, a1, a2, -1, -1, (Matrix2x2*)a3);\n      return;\n    }\n  }\n  port_oam_render_routed_mtx(0, (OamAttr*)a0, a1, a2 + 0xc0 + data_ov004_020beb6c, -1, -1, (Matrix2x2*)a3);\n  port_oam_render_routed_mtx(1, (OamAttr*)a0, a1, a2, -1, -1, (Matrix2x2*)a3);\n}\n'),
+    ('void Mg_RenderSpriteBoth(void* a0, int a1, int a2, int a3, int a4){\n  dScMgBase_c *scene = gMgScene;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->GetDisplayMode() == 2){\n      if(*(unsigned short*)((char*)gMgScene + 0x4664) == 1){\n        _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii(0, a0, a1, a2 + 0xc0 + sMgTopScreenYOffset, a3, a4, 0x1000, 0x1000, 0, -1);\n        return;\n      }\n      _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii(0, a0, a1, a2, a3, a4, 0x1000, 0x1000, 0, -1);\n      return;\n    }\n  }\n  _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii(0, a0, a1, a2 + 0xc0 + sMgTopScreenYOffset, a3, a4, 0x1000, 0x1000, 0, -1);\n  OAM::RenderSub((OamAttr*)a0, a1, a2, a3, a4);\n}\n',
+     'void *port_oam_render_routed_10(int, void *, int, int, int, int, int, int, int, int);  /* hostgen: hal/screen_gap.cpp shim */\nvoid func_ov004_020afdd0__rom(void* a0, int a1, int a2, int a3, int a4){\n  dScMgBase_c *scene = gMgScene;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->GetDisplayMode() == 2){\n      if(*(unsigned short*)((char*)gMgScene + 0x4664) == 1){\n        port_oam_render_routed_10(0, a0, a1, a2 + 0xc0 + sMgTopScreenYOffset, a3, a4, 0x1000, 0x1000, 0, -1);\n        return;\n      }\n      port_oam_render_routed_10(0, a0, a1, a2, a3, a4, 0x1000, 0x1000, 0, -1);\n      return;\n    }\n  }\n  port_oam_render_routed_10(0, a0, a1, a2 + 0xc0 + sMgTopScreenYOffset, a3, a4, 0x1000, 0x1000, 0, -1);\n  OAM::RenderSub((OamAttr*)a0, a1, a2, a3, a4);\n}\n'),
+    ('extern "C" int Mg_RenderSpriteBothScaled(struct OamAttr* a0, int a1, int a2, int a3, int a4, Fix12i a5, int a6)\n{\n    dScMgBase_c *scene = gMgScene;\n    if (scene == 0) return 0;\n    if (scene->mMenuOpen == 0 && scene->GetDisplayMode() == 2) {\n        if (*(unsigned short*)((char*)gMgScene + 0x4664) == 1) {\n            int hp = sMgTopScreenYOffset;\n            if (a2 >= -0x100 - hp && a2 < -hp) {\n                return _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi(0, a0, a1, a2 + 0xc0 + hp, a3, a4, a5, a6);\n            }\n            if (a2 >= -0x40 && a2 < 0xc0) {\n                return _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi(0, a0, a1, a2, a3, a4, a5, a6);\n            }\n        }\n    } else {\n        int hp = sMgTopScreenYOffset;\n        if (a2 >= -0x100 - hp && a2 < -hp) {\n            return _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi(0, a0, a1, a2 + 0xc0 + hp, a3, a4, a5, a6);\n        }\n        if (a2 >= -0x40 && a2 < 0xc0) {\n            return _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi(1, a0, a1, a2, a3, a4, a5, a6);\n        }\n    }\n    return 0;\n}\n',
+     'extern "C" void *port_oam_render_routed_8(int, void *, int, int, int, int, int, int);  /* hostgen: hal/screen_gap.cpp shim */\nextern "C" int func_ov004_020aff38__rom(struct OamAttr* a0, int a1, int a2, int a3, int a4, Fix12i a5, int a6)\n{\n    dScMgBase_c *scene = gMgScene;\n    if (scene == 0) return 0;\n    if (scene->mMenuOpen == 0 && scene->GetDisplayMode() == 2) {\n        if (*(unsigned short*)((char*)gMgScene + 0x4664) == 1) {\n            int hp = sMgTopScreenYOffset;\n            if (a2 >= -0x100 - hp && a2 < -hp) {\n                return (int)(size_t)port_oam_render_routed_8(0, a0, a1, a2 + 0xc0 + hp, a3, a4, a5, a6);\n            }\n            if (a2 >= -0x40 && a2 < 0xc0) {\n                return (int)(size_t)port_oam_render_routed_8(0, a0, a1, a2, a3, a4, a5, a6);\n            }\n        }\n    } else {\n        int hp = sMgTopScreenYOffset;\n        if (a2 >= -0x100 - hp && a2 < -hp) {\n            return (int)(size_t)port_oam_render_routed_8(0, a0, a1, a2 + 0xc0 + hp, a3, a4, a5, a6);\n        }\n        if (a2 >= -0x40 && a2 < 0xc0) {\n            return (int)(size_t)port_oam_render_routed_8(1, a0, a1, a2, a3, a4, a5, a6);\n        }\n    }\n    return 0;\n}\n'),
+    ('void RenderOamBothScreens(void* attr, int x, int y, int palette, int priority, void* mtx){\n  dScMgBase_c *scene = gMgScene;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->GetDisplayMode() == 2){\n      if(*(unsigned short*)((char*)gMgScene + 0x4664) == 1){\n        OAM::Render(false, (OamAttr*)attr, x, y + 0xc0 + sMgTopScreenYOffset, palette, priority, (Matrix2x2*)mtx);\n        return;\n      }\n      OAM::Render(false, (OamAttr*)attr, x, y, palette, priority, (Matrix2x2*)mtx);\n      return;\n    }\n  }\n  OAM::Render(false, (OamAttr*)attr, x, y + 0xc0 + sMgTopScreenYOffset, palette, priority, (Matrix2x2*)mtx);\n  OAM::Render(true, (OamAttr*)attr, x, y, palette, priority, (Matrix2x2*)mtx);\n}\n',
+     'void *port_oam_render_routed_mtx(int, void *, int, int, int, int, void *);  /* hostgen: hal/screen_gap.cpp shim */\nvoid RenderOamBothScreens__rom(void* attr, int x, int y, int palette, int priority, void* mtx){\n  dScMgBase_c *scene = gMgScene;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->GetDisplayMode() == 2){\n      if(*(unsigned short*)((char*)gMgScene + 0x4664) == 1){\n        port_oam_render_routed_mtx(false, (OamAttr*)attr, x, y + 0xc0 + sMgTopScreenYOffset, palette, priority, (Matrix2x2*)mtx);\n        return;\n      }\n      port_oam_render_routed_mtx(false, (OamAttr*)attr, x, y, palette, priority, (Matrix2x2*)mtx);\n      return;\n    }\n  }\n  port_oam_render_routed_mtx(false, (OamAttr*)attr, x, y + 0xc0 + sMgTopScreenYOffset, palette, priority, (Matrix2x2*)mtx);\n  port_oam_render_routed_mtx(true, (OamAttr*)attr, x, y, palette, priority, (Matrix2x2*)mtx);\n}\n'),
+    ('void Mg_RenderSpriteBothPalMtx(void* a0, int a1, int a2, int a3, void* a4){\n  dScMgBase_c *scene = gMgScene;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->GetDisplayMode() == 2){\n      if(*(unsigned short*)((char*)gMgScene + 0x4664) == 1){\n        OAM::Render(0, (OamAttr*)a0, a1, a2 + 0xc0 + sMgTopScreenYOffset, a3, -1, (Matrix2x2*)a4);\n        return;\n      }\n      OAM::Render(0, (OamAttr*)a0, a1, a2, a3, -1, (Matrix2x2*)a4);\n      return;\n    }\n  }\n  OAM::Render(0, (OamAttr*)a0, a1, a2 + 0xc0 + sMgTopScreenYOffset, a3, -1, (Matrix2x2*)a4);\n  OAM::Render(1, (OamAttr*)a0, a1, a2, a3, -1, (Matrix2x2*)a4);\n}\n',
+     'void *port_oam_render_routed_mtx(int, void *, int, int, int, int, void *);  /* hostgen: hal/screen_gap.cpp shim */\nvoid func_ov004_020b023c__rom(void* a0, int a1, int a2, int a3, void* a4){\n  dScMgBase_c *scene = gMgScene;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->GetDisplayMode() == 2){\n      if(*(unsigned short*)((char*)gMgScene + 0x4664) == 1){\n        port_oam_render_routed_mtx(0, (OamAttr*)a0, a1, a2 + 0xc0 + sMgTopScreenYOffset, a3, -1, (Matrix2x2*)a4);\n        return;\n      }\n      port_oam_render_routed_mtx(0, (OamAttr*)a0, a1, a2, a3, -1, (Matrix2x2*)a4);\n      return;\n    }\n  }\n  port_oam_render_routed_mtx(0, (OamAttr*)a0, a1, a2 + 0xc0 + sMgTopScreenYOffset, a3, -1, (Matrix2x2*)a4);\n  port_oam_render_routed_mtx(1, (OamAttr*)a0, a1, a2, a3, -1, (Matrix2x2*)a4);\n}\n'),
+    ('void Mg_RenderSpriteBothMtx(void* a0, int a1, int a2, void* a3){\n  dScMgBase_c *scene = gMgScene;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->GetDisplayMode() == 2){\n      if(*(unsigned short*)((char*)gMgScene + 0x4664) == 1){\n        OAM::Render(0, (OamAttr*)a0, a1, a2 + 0xc0 + sMgTopScreenYOffset, -1, -1, (Matrix2x2*)a3);\n        return;\n      }\n      OAM::Render(0, (OamAttr*)a0, a1, a2, -1, -1, (Matrix2x2*)a3);\n      return;\n    }\n  }\n  OAM::Render(0, (OamAttr*)a0, a1, a2 + 0xc0 + sMgTopScreenYOffset, -1, -1, (Matrix2x2*)a3);\n  OAM::Render(1, (OamAttr*)a0, a1, a2, -1, -1, (Matrix2x2*)a3);\n}\n',
+     'void *port_oam_render_routed_mtx(int, void *, int, int, int, int, void *);  /* hostgen: hal/screen_gap.cpp shim */\nvoid func_ov004_020b0380__rom(void* a0, int a1, int a2, void* a3){\n  dScMgBase_c *scene = gMgScene;\n  if(scene == 0) return;\n  if(scene->mMenuOpen == 0){\n    if(scene->GetDisplayMode() == 2){\n      if(*(unsigned short*)((char*)gMgScene + 0x4664) == 1){\n        port_oam_render_routed_mtx(0, (OamAttr*)a0, a1, a2 + 0xc0 + sMgTopScreenYOffset, -1, -1, (Matrix2x2*)a3);\n        return;\n      }\n      port_oam_render_routed_mtx(0, (OamAttr*)a0, a1, a2, -1, -1, (Matrix2x2*)a3);\n      return;\n    }\n  }\n  port_oam_render_routed_mtx(0, (OamAttr*)a0, a1, a2 + 0xc0 + sMgTopScreenYOffset, -1, -1, (Matrix2x2*)a3);\n  port_oam_render_routed_mtx(1, (OamAttr*)a0, a1, a2, -1, -1, (Matrix2x2*)a3);\n}\n'),
 ]
 
 

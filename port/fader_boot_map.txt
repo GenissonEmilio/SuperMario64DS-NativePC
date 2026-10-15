@@ -288,9 +288,9 @@ name four ov004 referencers. THE REAL COUNT IS ELEVEN, across the arm9, itcm,
 dtcm and all ninety overlay reloc tables:
 
     arm9   2   func_0202ed48, __sinit_02074f80
-    ov004  6   func_ov004_020aeb24, _020b0930, _020b72d4, _020b75e4,
+    ov004  6   Mg_UpdateMenu, _020b0930, _020b72d4, _020b75e4,
                _020b7c04, _020b8098
-    ov005  2   _ZN11dScMiniGm_c19func_ov005_020c0378Ev, _ZN11dScMiniGm_c13InitResourcesEv
+    ov005  2   _ZN11dScMiniGm_c16UpdateGameSelectEv, _ZN11dScMiniGm_c13InitResourcesEv
     ov006  1   _ZN12dScMgSlot1_c8BehaviorEv
 
 WHAT CARRIES THE CONCLUSION IS THE REVIEW'S OWN STRONGER FORM, and it does not
@@ -461,7 +461,7 @@ src spells it
 with no parameter and no argument. Under mwccarm that is byte-correct, because
 `bx ip` leaves r0 alone and the receiver rides through. On the host the
 receiver is simply gone. THIS IS THE SAME SHAPE lane LK4 wrote up for
-_ZN4Heap8_DestroyEv in hal/lk4_solidheap_seat.cpp, and it is worth noting that
+_ZN5mHeap6Heap_t8_DestroyEv in hal/lk4_solidheap_seat.cpp, and it is worth noting that
 port/tools/closestplayer_guard.py -- which scans for exactly this -- passes on
 it today, because the TU is not in any active slice.
 
@@ -470,7 +470,7 @@ src/_ZN7dWipe_c8SetToEndEv.cpp stays out of the link. Its sibling src/_ZN7dWipe_
 the same ROM shape and IS seated, because its C keeps the parameter.
 
 THE DECOMP-SIDE FIX IS ROUTED, NOT TAKEN, the same way MG2 routed the
-func_ov004_020b2cb8 template: the src TU should take a receiver and pass it,
+Mg_LoadBannerFiles template: the src TU should take a receiver and pass it,
 and whether that still builds byte-identically under mwccarm is a
 byte-gated-tree question. Seating the fixed TU and deleting the thunk's
 forward is one commit.
@@ -490,7 +490,7 @@ forward is one commit.
       mg_init +0xc                  hal/scene_mg.cpp   (slot 0)
       func_0204335c / func_020433b8 / func_02043098 / Scene::SpawnIfNecessary
 
-    src/func_ov004_020adc74.c is the one-line hop between InitResources and
+    src/Ov004_LoadFileByPath.c is the one-line hop between InitResources and
     func_020182bc, and it is in the caller set for _ZN14dScMgCurling_c13InitResourcesEv.
 
 THE MECHANISM, read out of the src rather than guessed. func_0205d714 is the
@@ -562,7 +562,7 @@ names this and declines to delegate the method for exactly this reason.
 
 It is reachable here only through _ZN7dWipe_c20IsBetweenStartAndEndEv's `type == 1` branch, and type
 is the object's +0x14, which _ZN7dWipe_c13func_0202ed14Ev constructs as 0. It can be MADE 1:
-func_ov004_020aeb24 calls _ZN7dWipe_c13func_0202ec9cEi(data_0209f61c, 1). It is NOT reached on
+Mg_UpdateMenu calls _ZN7dWipe_c13func_0202ec9cEi(data_0209f61c, 1). It is NOT reached on
 the scene-374 path, which is a measurement and not a guarantee, so the face in
 hal/fdr_arm9_fader_seat.cpp prints when the receiver's type is 1 before
 dispatching. With no stack parameters on the traps the skewed dispatch lands on
@@ -631,7 +631,7 @@ believed. Three passes, because no one of them is complete:
     are other objects and neither is reachable from data_0209f5bc.
   * BY HAND, for the receivers a global sweep cannot see: a dispatch on a
     FUNCTION PARAMETER. Scene::SetFaders' `thiz->v24()` and `thiz->v20()` are
-    the two that matter, because _ZN11dScMgBase_c19BeforeInitResourcesEv and func_ov004_020aeb24
+    the two that matter, because _ZN11dScMgBase_c19BeforeInitResourcesEv and Mg_UpdateMenu
     both call SetFaders with &data_0209f61c. _ZN7dWipe_c20IsBetweenStartAndEndEv's `m14()`/`m18()`
     are the same shape on its own receiver.
   * BY HAND, for a dispatch the source does not spell at all: the matched
@@ -977,7 +977,7 @@ counted; nothing calls it now, and that is written into the unproven items.
      WHAT IS NOT PROVEN inside 0x08 is its `type == 1` branch. type is 0 on
      every scene-374 path, so FaderColor::AdvanceFade, Fader::AdvanceInterp
      and the two faces that bridge onto them are compiled, linked and never
-     entered. func_ov004_020aeb24 and _ZN10dMgState_c19func_ov004_020b72d4Ev call
+     entered. Mg_UpdateMenu and _ZN10dMgState_c17UpdateRetryPromptEv call
      _ZN7dWipe_c13func_0202ec9cEi(data_0209f61c, 1) and (..., 2), so the branch is reachable
      on other minigames; none of them boots today.]
   * The SEVEN ROM rulings in inferred_stub_adjudicated.txt (FDR's four, plus
@@ -1056,7 +1056,7 @@ counted; nothing calls it now, and that is written into the unproven items.
 
       THE type == 1 BRANCH AND BOTH NEW FACES ARE UNEXERCISED, for the reason
       4a gives: _ZN7dWipe_c13func_0202ec9cEi(data_0209f61c, 0) leaves +0x14 at 0.
-      func_ov004_020aeb24, _ZN10dMgState_c19func_ov004_020b72d4Ev and _ZN10dMgState_c19func_ov004_020b75e4Ev pass 1
+      Mg_UpdateMenu, _ZN10dMgState_c17UpdateRetryPromptEv and _ZN10dMgState_c14State10_UpdateEv pass 1
       and 2 instead, so the branch is reachable on other minigames and none
       of them boots today.
 

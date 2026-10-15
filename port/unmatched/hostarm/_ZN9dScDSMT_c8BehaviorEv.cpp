@@ -1,7 +1,7 @@
 /* HOST ARM recovered by PORTSYNC2 (port/tools/hostarm_recover.py draft, reviewed).
  * The port line carried this in src/_ZN9dScDSMT_c8BehaviorEv.cpp under #ifdef _MSC_VER; the
  * 2026-10 main merge (749f5799a) took main's src/, where that code
- * now lives in src/actors/dScDSMT_c.cpp without the arm. mwccarm never saw the arm,
+ * now lives in src/game/stages/d_s_dsmt.cpp without the arm. mwccarm never saw the arm,
  * so nothing here moves a ROM byte.
  *
  * The arm sat in the middle of the method, so the host definition is the
@@ -17,7 +17,7 @@
 #include "decl_common.h"
 
 /* include/SaveData.h only forward-declares the 0x44-byte save file; main's
- * TU (src/actors/dScDSMT_c.cpp) defines it locally, and this is that
+ * TU (src/game/stages/d_s_dsmt.cpp) defines it locally, and this is that
  * definition, needed here only for the `data_0209b33c + idx` stride. */
 struct FileSaveData {
     u32 magic8000;

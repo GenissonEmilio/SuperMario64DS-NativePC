@@ -307,9 +307,9 @@ data_ov035_02112cc0@0x02112cc0:0xc data_ov035_02112ccc@0x02112ccc:0xc
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov035_02112c60                        now defined by src/actors/daObjCtMecha10_c.cpp
-#   data_ov035_02112c68                        now defined by src/actors/daObjCtMecha10_c.cpp
-#   data_ov035_02112c70                        now defined by src/actors/daObjCtMecha10_c.cpp
-#   data_ov035_02112c78                        now defined by src/actors/daObjCtMecha10_c.cpp
+#   gCtMechaObj12sModelFile                        now defined by src/game/actors/d_a_obj_ct_mecha10.cpp
+#   gCtMechaObj10CollisionFile                        now defined by src/game/actors/d_a_obj_ct_mecha10.cpp
+#   gCtMechaObj12lModelFile                        now defined by src/game/actors/d_a_obj_ct_mecha10.cpp
+#   gCtMechaObj10ModelFile                        now defined by src/game/actors/d_a_obj_ct_mecha10.cpp
 # PORTSYNC3 name-only rows (extern C definitions in a class TU):
-data_ov035_02112c60! data_ov035_02112c68! data_ov035_02112c70! data_ov035_02112c78!
+gCtMechaObj12sModelFile! gCtMechaObj10CollisionFile! gCtMechaObj12lModelFile! gCtMechaObj10ModelFile!
