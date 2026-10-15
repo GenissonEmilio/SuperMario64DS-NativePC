@@ -99,6 +99,12 @@ def main():
             table = ov_syms[ovid]
         if name in table:
             return table[name]
+        # a name the port itself pins (port/<tag>.txt "name@0xADDR"), for a symbol config renamed or dropped
+        side = root / "port" / f"{tag}.txt"
+        if side.exists():
+            mm = re.search(r"(?m)^" + re.escape(name) + r"@0x([0-9a-fA-F]+)", side.read_text())
+            if mm:
+                return int(mm.group(1), 16)
         m = NAME_HEX_RE.search(name)
         if m:
             return int(m.group(1), 16)
