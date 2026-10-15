@@ -380,7 +380,7 @@ struct Slot {
     Plan plan;
 };
 
-Slot g_slot[4];
+Slot g_slot[5];
 
 const char *pic_path(int what, int ci, int which)
 {
@@ -393,7 +393,76 @@ void do_lists(int what, const void *const *lists, const int *engines, const int 
 {
     const int ci = port_char_active();
     if (ci < 0) return;
-    Slot &S = g_slot[what == PCH_LIFE_ROM ? PCH_LIFE : what];
+    Slot &S = g_slot[what];
+    if (!S.tried) {
+        S.tried = true;
+        for (int w = 0; w < 2; ++w) {
+            const char *p = pic_path(what, ci, w);
+            if (!p) continue;
+            load_png(p, &S.pic[w]);
+            if (!S.pic[w].ok()) fprintf(stderr, "[charhud] %s: %s is not a usable picture; the base art is used\n", tag, p);
+            else fprintf(stderr, "[charhud] %s: repainting from %s (%dx%d)\n", tag, p, S.pic[w].w, S.pic[w].h);
+        }
+    }
+    const Pic *pp[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+    bool any = false;
+    for (int l = 0; l < nl && l < 8; ++l) {
+        const Pic *P = &S.pic[which[l]];
+        pp[l] = P->ok() ? P : S.pic[0].ok() ? &S.pic[0] : 0;
+        if (pp[l]) any = true;
+    }
+    if (!any) return;
+    if (!S.plan.ok || S.plan.dc[0] != rd32(0x04000000u) || S.plan.dc[1] != rd32(0x04001000u)) build_element(nl, engines, lists, pp, &S.plan, tag);
+    if (S.plan.ok) apply_plan(S.plan);
+}
+
+}  // namespace
+
+extern "C" void port_char_hud_apply(int what)
+{
+    dump_all(what);
+    const int ci = port_char_active();
+    if (ci < 0) return;
+    if (!pic_path(what, ci, 0) && !pic_path(what, ci, 1)) return;
+    const int base = port_char_base(ci);
+    if (base < 0 || base > 3) return;
+    static const int z4[4] = { 0, 0, 0, 0 };
+    if (what == PCH_LIFE || what == PCH_LIFE_ROM) {
+        /* HUD::InitResources puts the same tile file at the start of both engines' OBJ VRAM and the palette in both. The port's adventure arm
+           draws the counter on engine A; the ROM's own leaf draws on A in states 3..5 and on B otherwise */
+        const void *l[1] = { _ZN3OAM10LIFE_ICONSE[base] };
+        const int eng[1] = { what == PCH_LIFE ? 0 : (data_ov002_02111178 >= 3 && data_ov002_02111178 < 6) ? 0 : 1 };
+        do_lists(what, l, eng, z4, 1, "life icon");
+    } else if (what == PCH_MINIMAP) {
+            for (int k = 0; k < 4; ++k) { snprintf(nm, sizeof nm, "map_b%d_k%d", b, k); dump_list(1, _ZN3OAM15MM_PLAYER_ICONSE[b * 4 + k], nm); }
+        } else {
+            snprintf(nm, sizeof nm, "face_b%d", b);
+            dump_list(1, data_ov001_020abb34 + 0x20 * b, nm);
+        }
+    }
+}
+
+/* One element: its pictures (a second one only for the minimap's no-cap marker) and its one plan, rebuilt when a display mode changes. */
+struct Slot {
+    Pic pic[2];
+    bool tried = false;
+    Plan plan;
+};
+
+Slot g_slot[5];
+
+const char *pic_path(int what, int ci, int which)
+{
+    if (what == PCH_MINIMAP) return which ? port_char_map_icon_nocap(ci) : port_char_map_icon(ci);
+    return what == PCH_LIFE || what == PCH_LIFE_ROM || what == PCH_STARSEL_LIFE ? port_char_hud_icon(ci) : port_char_face(ci);
+}
+
+/* lists[l] drawn on engines[l] from picture which[l] (0 the main picture, 1 the no-cap one, which falls back to the main one) */
+void do_lists(int what, const void *const *lists, const int *engines, const int *which, int nl, const char *tag)
+{
+    const int ci = port_char_active();
+    if (ci < 0) return;
+    Slot &S = g_slot[what];
     if (!S.tried) {
         S.tried = true;
         for (int w = 0; w < 2; ++w) {
