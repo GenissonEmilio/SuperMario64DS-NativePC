@@ -1103,6 +1103,7 @@ set(SAMECLASS_GX_TU
     src/game/actors/d_a_pic_gate.cpp
     src/game/actors/d_a_pic_gate.cpp
     src/actors/daPicGate_c.cpp
+    src/_ZN11daPicGate_c19func_ov080_021261f4Ev.cpp
     src/actors/dScMiniGm_c.cpp)
 set(SAMECLASS_BOOT_TU
     src/Initialise3dGraphics.cpp
@@ -8176,8 +8177,6 @@ set(SCENE_MG_SOURCES
     # port_mg_curling_collide_020e1dc8 and _020e20bc by name from the faces
     # the matched physics TUs link against, so a target that compiles the
     # faces and not these fails the link on both symbols.
-    unmatched/MgCurling_Collide_020e1dc8.cpp
-    unmatched/MgCurling_Collide_020e20bc.cpp
     # Run mg5, lane PCH: dScMgPachinko_c (id 0x170, scene 368). Same three
     # targets and the same reason as every file above -- hal/scene_boot.cpp's
     # port_scene_classes[] now carries the 368 row, so every target that
@@ -8219,7 +8218,6 @@ set(SCENE_MG_SOURCES
     # hal/scene_mg_faces.cpp now call port_mg_hud_scaled_number_020b2220 by
     # name, so a target that compiles the faces and not this file fails the
     # link on that symbol. Replaces no src TU, because there is none.
-    unmatched/MgHud_ScaledNumber.cpp
     # Run mg6, lane LKT: dScMgPachinko2_c (id 0x171, scene 369). Same three
     # targets and the same reason as every file above -- hal/scene_boot.cpp's
     # port_scene_classes[] now carries the 369 row, so every target that
@@ -10916,7 +10914,6 @@ set(SLICE_TTI_SOURCES hal/scene_mg_trampoline.cpp
                       # trampoline slices now); only 020cf2fc is still trapped
                       # here, and both lanes' counter APIs are unchanged -- the
                       # two retired slots report a fixed 0.
-                      unmatched/MgTrampolineTime_Floors.cpp
                       # The trampoline RECORD READOUT that replaced the retired
                       # hit-test want count as the stroke evidence. Listed ONCE,
                       # here, and read by BOTH scenes' censuses -- every target
@@ -17673,7 +17670,6 @@ add_executable(smoke_player EXCLUDE_FROM_ALL tests/smoke_player.cpp "${OV002DATA
     # on none of them: that file's pt_f_021261f4 face calls
     # func_ov080_021261f4 by name, so a target that takes the seat and not
     # this file fails the link on that symbol.
-    unmatched/Painting_StateRender_021261f4.cpp
     ${CAMERA_HOST_SOURCES} ${LEVELBOOT_HOST_SOURCES} ${SOUND_HOST_SOURCES}
     ${MODELFAMILY_HOST_SOURCES}
     ${SLICE_W23_MODELDTOR_SOURCES}
@@ -17997,7 +17993,6 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     # on none of them: that file's pt_f_021261f4 face calls
     # func_ov080_021261f4 by name, so a target that takes the seat and not
     # this file fails the link on that symbol.
-    unmatched/Painting_StateRender_021261f4.cpp
     ${CAMERA_HOST_SOURCES} ${LEVELBOOT_HOST_SOURCES} ${SOUND_HOST_SOURCES}
     ${MODELFAMILY_HOST_SOURCES}
     ${SLICE_W23_MODELDTOR_SOURCES}
@@ -18459,7 +18454,6 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     # on none of them: that file's pt_f_021261f4 face calls
     # func_ov080_021261f4 by name, so a target that takes the seat and not
     # this file fails the link on that symbol.
-    unmatched/Painting_StateRender_021261f4.cpp
     ${CAMERA_HOST_SOURCES} ${LEVELBOOT_HOST_SOURCES} ${SOUND_HOST_SOURCES}
     ${MODELFAMILY_HOST_SOURCES}
     ${SLICE_W23_MODELDTOR_SOURCES}
@@ -25365,10 +25359,6 @@ add_custom_command(OUTPUT "${OVCROSS_C}" APPEND
 # data_ov002_021000c0, which port/ov002_syms.txt now mounts. All three hosting
 # targets, the SLICE OV2T shape: the face that calls it is compiled into
 # port_slice_shared, so the reference is on every one of the three link lines.
-foreach(_tbbill1 walk_window walk_window_hires smoke_player)
-    target_sources(${_tbbill1} PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/func_ov002_020f3de4.c")
-endforeach()
 
 # XREL1 (run linkfull): EVERY OVERLAY MOUNT DEPENDS ON THE CONFIG IT READS.
 #

@@ -308,15 +308,11 @@ void *dScMgTrampoline_c_classInit(void);
 
 /* the dispatch file's witnesses */
 unsigned port_mg_tti_state_hits(void);
-/* the floor file's witness, unmatched/MgTrampolineTime_Floors.cpp */
-unsigned port_mg_tti_hittest_calls(void);
 /* The DIRECT evidence that a stylus stroke was judged, now that the hit test is
    real code and its trap counter is retired: the three trampoline records
    func_ov006_020d0c38 writes when it accepts a stroke. Defined once in
    hal/trampoline_records.cpp and read by BOTH scenes' censuses. */
 void     port_mg_trampoline_record_report(void);
-void     port_mg_tti_floor_counts(unsigned *hit, unsigned *f2fc,
-                                  unsigned *f1e0);
 unsigned port_mg_tti_floor_hits(void);
 void     port_mg_tti_link_range(int *lo, int *hi);
 void     port_mg_tti_link_hits(unsigned *out5);
@@ -736,20 +732,8 @@ extern "C" void port_scene_trampoline_hits(void)
                     "addresses in the chain reach a matched src TU and none "
                     "carries a NONMATCHING banner\n");
         std::printf("[scene] dScMgTrampoline_c hit test: func_ov006_020d0c38 "
-                    "is DECOMPILED AND SEATED as of run mg12 lane TRM. The "
-                    "retired trap counter reads %u and can only ever read 0 "
-                    "now -- the evidence is the record readout below, not "
-                    "this number\n", port_mg_tti_hittest_calls());
-        {
-            unsigned h = 0, f2 = 0, f1 = 0;
-            port_mg_tti_floor_counts(&h, &f2, &f1);
-            std::printf("[scene] dScMgTrampoline_c closure floors: "
-                        "020cf2fc x%u, 020d01e0 x%u -- BOTH SEATED (the "
-                        "installer in mg12, the mesh draw in mg13), their "
-                        "traps retired, so these counters are hardwired 0 "
-                        "and are not measurements. 020d0c38 also retired "
-                        "(its slot reads %u)\n", f2, f1, h);
-        }
+                    "is DECOMPILED AND SEATED as of run mg12 lane TRM; the "
+                    "evidence is the record readout below\n");
         port_mg_trampoline_record_report();
     }
 

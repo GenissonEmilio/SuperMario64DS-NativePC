@@ -269,10 +269,8 @@ void _ZN11daPicGate_c19func_ov080_021269b8Ev(void *); void _ZN11daPicGate_c19fun
 void _ZN11daPicGate_c19func_ov080_02125fd0Ev(void *); void _ZN11daPicGate_c19func_ov080_0212677cEv(void *);
 void _ZN11daPicGate_c19func_ov080_021265ecEv(void *); void _ZN11daPicGate_c19func_ov080_02125f00Ev(void *);
 void _ZN11daPicGate_c19func_ov080_021264ecEv(void *);
-/* The twelfth body is the host transcription in
-   port/unmatched/Painting_StateRender_021261f4.cpp, not a src/ TU. It is
-   declared with the char* receiver its own definition uses rather than the
-   void* the nine above take, so the two spellings cannot drift. */
+/* The twelfth body is main's matched src/_ZN11daPicGate_c19func_ov080_021261f4Ev.cpp,
+   reached through its reverse face in faces_sync.txt like the nine above. */
 void _ZN11daPicGate_c19func_ov080_021261f4Ev(char *);
 
 /* ov102: QUESTION_BLOCK (and the bob-omb, the koopa shell, the warp pipe and
@@ -1347,7 +1345,7 @@ static void port_princess_peach_states_seat(void)
    machine reached this cell. The trap aborted the process and level 37 went
    PASS -> FAIL on levels=all, warpin=1 and reentry=1.
 
-   IT IS NOW A HOST TRANSCRIPTION, not a guess:
+   IT WAS A HOST TRANSCRIPTION (retired by PORTDROP1, main src now runs):
    port/unmatched/Painting_StateRender_021261f4.cpp carries the 0x2f8 bytes
    statement for statement out of a capstone listing of
    extracted/overlays/overlay_0080.bin at base 0x02123740, with every ROM

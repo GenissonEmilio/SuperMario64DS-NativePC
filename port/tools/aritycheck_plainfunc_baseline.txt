@@ -107,7 +107,6 @@ func_02059950|src/func_0201aaa4.c
 func_0205c91c|src/func_0201a2f8.c
 func_0205caa8|src/func_020423dc.c
 _ZN7da1up_c19func_ov002_020aefb8Ev|src/actors/da1up_c.cpp
-func_ov002_020d4d88|port/unmatched/func_ov002_020d3b9c.c
 func_ov002_020d4d88|src/_ZN6Player13St_Crawl_MainEv.cpp
 func_ov002_020d4d88|src/actors/Player.cpp
 func_ov002_020d4d88|src/_ZN6Player17St_HoldHeavy_MainEv.cpp

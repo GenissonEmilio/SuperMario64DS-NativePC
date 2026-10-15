@@ -37,12 +37,9 @@ src/unnamed/arm9/0203/func_0203d384.c
 # FOLDED into src/actors/Player.cpp (row 7): src/_ZN6Player13St_Climb_MainEv.cpp
 # FOLDED into src/engine/view/dCamera_c.cpp (row 23): src/func_0200d5c0.c
 # FOLDED into src/engine/view/dCamera_c.cpp (row 23): src/func_0200d5fc.c
-# St_SwingPlayer_Main (0x020d9fec) is a MATCHING FLOOR with no matched src TU;
-# its Init and Cleanup are hosted (hal/player_bridges.cpp) but Main was left
-# unhosted, so the state entered and pinned the held partner but never advanced
-# or ran Cleanup. Host-transcribed from the ROM, the Climb shape.
+# St_SwingPlayer_Main (0x020d9fec) runs from the matched Player.cpp body through
+# hal/player_bridges.cpp (PORTDROP1 retired the host transcription).
 port/unmatched/Player_St_Climb.cpp
-port/unmatched/Player_St_SwingPlayer_Main.cpp
 # FOLDED into src/actors/Player.cpp (row 7): src/func_ov002_020d22ec.c
 # FOLDED into src/actors/Player.cpp (row 7): src/func_ov002_020d36d8.c
 # FOLDED into src/actors/Player.cpp (row 7): src/func_ov002_020d4540.c
@@ -496,7 +493,6 @@ src/unnamed/arm9/0204/func_02049764.c
 src/unnamed/arm9/0205/func_0205aaf4.c
 src/unnamed/arm9/0205/func_0205acfc.c
 # FOLDED into src/engine/sound/SoundEngine.cpp (row 106): src/func_0204f504.c
-port/unmatched/func_ov002_020d3b9c.c
 # FOLDED into src/actors/Player.cpp (row 7): src/func_ov002_020d454c.cpp
 # FOLDED into src/actors/Player.cpp (row 7): src/func_ov002_020d4d88.c
 src/unnamed/ov002/func_ov002_020f035c.c

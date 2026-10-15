@@ -3742,8 +3742,6 @@ PARK_SYMBOL = {
     # which forwards to the recovered C2 arm). The host copy is what ran on the
     # port line, so the folded body is parked.
     "daWanwan2_c": ["daWanwan2_c_classInit"],
-    "daDemo_c": ["func_ov002_020f3de4"],
-    "dBgW_Kc_itcm": ["_ZN7dBgW_Kc10DetectClsnER9dBgCh_Lin"],
     "ActorBase": ["_ZN7fBase_cC2Ev"],
     # src/actors/daObjCvNewsLift_c.cpp: the port line kept a host arm INSIDE these bodies; main's
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
@@ -3780,7 +3778,7 @@ PARK_SYMBOL = {
     # src/actors/Player.cpp: the port line kept a host arm INSIDE these bodies; main's
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.
-    "Player": ["func_ov002_020d869c", "func_ov002_020d3b9c", "_ZN6Player19func_ov002_020bd8c0Ej", "_ZN6Player19func_ov002_020bd928Ej", "_ZN6Player19func_ov002_020bd984Ej", "_ZN6Player19func_ov002_020bd9ecEj", "_ZN6Player19func_ov002_020bdb50Ei", "_ZN6Player12St_Swim_MainEv"],
+    "Player": ["func_ov002_020d869c", "_ZN6Player19func_ov002_020bd8c0Ej", "_ZN6Player19func_ov002_020bd928Ej", "_ZN6Player19func_ov002_020bd984Ej", "_ZN6Player19func_ov002_020bd9ecEj", "_ZN6Player19func_ov002_020bdb50Ei", "_ZN6Player12St_Swim_MainEv"],
     # src/actors/dScMgRoulette_c.cpp: the port line kept a host arm INSIDE these bodies; main's
     # text dropped it, and port/unmatched/hostarm/ carries the body with the
     # arm back (see its banner), so the folded copy is parked.

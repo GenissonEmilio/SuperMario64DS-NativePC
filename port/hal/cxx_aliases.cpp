@@ -60,7 +60,6 @@
 #pragma comment(linker, "/alternatename:?func_ov002_020d2e74@@YAXPAX@Z=_func_ov002_020d2e74")
 #pragma comment(linker, "/alternatename:?func_ov002_020d2f24@@YAXPAX@Z=_func_ov002_020d2f24")
 #pragma comment(linker, "/alternatename:?func_ov002_020d2fdc@@YAHPAX@Z=_func_ov002_020d2fdc")
-#pragma comment(linker, "/alternatename:?func_ov002_020d3b9c@@YAHPAX@Z=_func_ov002_020d3b9c")
 #pragma comment(linker, "/alternatename:?func_ov002_020d413c@@YAXPAXF@Z=_func_ov002_020d413c")
 #pragma comment(linker, "/alternatename:?func_ov002_020d45c0@@YAXPAX@Z=_func_ov002_020d45c0")
 #pragma comment(linker, "/alternatename:?_ZN6Player19func_ov002_020d4748Ev@@YAXPAX@Z=__ZN6Player19func_ov002_020d4748Ev")

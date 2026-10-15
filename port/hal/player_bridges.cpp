@@ -2044,8 +2044,6 @@ extern "C" void _ZN6Player19func_ov002_020c6fe4Ev(char *c);
 /* ST_CLIMB's two host entries, port/unmatched/Player_St_Climb.cpp */
 extern "C" int port_player_st_climb_init(void *self);
 extern "C" int port_player_st_climb_main(void *self);
-/* ST_SWINGPLAYER's Main host entry, port/unmatched/Player_St_SwingPlayer_Main.cpp */
-extern "C" int port_player_st_swingplayer_main(void *self);
 /* Player::St_EndingFly_Main, under the flat name the ov002 world gives it
    (the sinit's PMF table pairs it with the EndingFly state; see the case). */
 extern "C" int _ZN6Player17St_EndingFly_MainEv(char *self);
@@ -2121,11 +2119,9 @@ extern "C" int hal_call_state_fn(void *self, unsigned ds_addr)
          _ZN6Player22St_SwingPlayer_CleanupEv  0x020d9fc4
          _ZN6Player19St_SwingPlayer_InitEv     0x020da3b0
 
-       SwingPlayer's Main is NOW HOSTED. St_SwingPlayer_Main 0x020d9fec has
-       no matched src TU (a matching floor), so it took a faithful host
-       transcription from the ROM body, the Climb shape -- see
-       port/unmatched/Player_St_SwingPlayer_Main.cpp and the case below. It
-       was the last unhosted half: Init sets the held partner's pin bit
+       SwingPlayer's Main is HOSTED from main's matched Player::St_SwingPlayer_Main
+       (0x020d9fec; the host transcription that stood here until PORTDROP1 is
+       gone). It was the last unhosted half once: Init sets the held partner's pin bit
        (mHeldObj+0xb0 |= 0x800) and only Cleanup clears it, so with Main
        no-op'd the state never advanced, never ChangeState'd out and Cleanup
        never ran -- the partner stayed pinned and the carrier kept a spin
@@ -2145,7 +2141,7 @@ extern "C" int hal_call_state_fn(void *self, unsigned ds_addr)
     case 0x020c3d6c: return ((Player *)self)->Player::St_EndingFly_Init();
     case 0x020d9fc4: return ((Player *)self)->Player::St_SwingPlayer_Cleanup();
     case 0x020da3b0: return ((Player *)self)->Player::St_SwingPlayer_Init();
-    case 0x020d9fec: return port_player_st_swingplayer_main((void *)self);
+    case 0x020d9fec: return ((Player *)self)->Player::St_SwingPlayer_Main();
     }
     /* Every miss here is a state the port silently does not run, and the only
        record of it used to be a line in the flight recorder that nobody reads
