@@ -24611,3 +24611,11 @@ foreach(_tpcore1 walk_window walk_window_hires)
         target_sources(${_tpcore1} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/pcore.cpp")
     endif()
 endforeach()
+
+# run hunt8, lane HDMETER1: the HD power meter art out of the enabled mods (hal/hd_meter.h). The compositor reaches it through a hook, so
+# the smoke targets (which do not link hal/mods.cpp) draw the DS meter. Own block.
+foreach(_thdmeter1 walk_window walk_window_hires)
+    if(TARGET ${_thdmeter1})
+        target_sources(${_thdmeter1} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/hd_meter.cpp")
+    endif()
+endforeach()

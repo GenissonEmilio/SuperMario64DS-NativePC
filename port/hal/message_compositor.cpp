@@ -110,12 +110,14 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 
 #include "ntr/gx.h"
 #include "ntr/ppu.h"
 #include "ntr/rt.h"
 #include "hal/gpu_raster.h"
 #include "menu_compose.h"   /* run menu1 lane HOOK1: the lift plan (H1) */
+#include "hd_meter.h"       /* run hunt8 lane HDMETER1: the HD power meter art out of the enabled mods */
 #include <chrono>
 /* SAVEOVL1: may the menu layer be used at all (SM64DS_MENU_LAYER, default on)? The card's own readiness is asked per tick. */
 static inline bool port_gpu_layer_ready_env()
@@ -1177,6 +1179,17 @@ static const int kHudMeterLeft = 5;
 static const int kHudMeterX0 = 80, kHudMeterX1 = 153, kHudMeterY1 = 96;
 static const int kHudTimerX0 = 154, kHudTimerX1 = 256, kHudTimerY0 = 38, kHudTimerY1 = 70;   /* the port's timer rows, x 0xa4..0xf8 and the glyph overhang, drawn at y 0x16 + 18 .. 0x1e + 18 + 16 */
 extern "C" unsigned char data_ov002_02111184;   /* the ROM's "a timer runs on this course" byte */
+/* THE HD POWER METER (run hunt8, lane HDMETER1). When an enabled mod carries hud_hd/power_meter art (hal/hd_meter.h) the meter is drawn
+   from it instead of the DS sprites: same footprint (the sprite's 40 x 40 DS pixels at x kHdMeterX0, y mHealthMeterY + kHdMeterDy), same
+   wedge count (the ROM's displayed count), same slide and blink (the ROM still runs HUD::RenderHealthMeter; its cells are what tell us the
+   meter is on screen), same layer priority and brightness. sub_actors.cpp notes the ROM's y and wedge count each frame it draws the
+   meter; the plane step below erases the DS cells of the footprint and the pass after the cell loops paints the art at host resolution.
+   No mod, a smoke target, a non-English label, a level-clear lift or a natively presented scene: nothing here runs and the DS cells stay. */
+extern "C" int g_port_hdmeter_live, g_port_hdmeter_y, g_port_hdmeter_health;   /* hal/sub_actors.cpp */
+extern "C" const HdMeterArt *(*port_hd_meter_art_hook)(int health, int k) = nullptr;   /* set by hal/hd_meter.cpp */
+static int kHdMeterX0 = 108, kHdMeterDy = 0;   /* the DS sprite's top left against (0x80 - 20, mHealthMeterY): measured, see the proof notes */
+struct HdMeterJob { bool on; int x0, y0, off, k; const HdMeterArt *art; };
+static HdMeterJob g_hdm;
 static uint8_t g_hud_row[192][256];   /* 1 = a moved coin counter pixel (read only while g_hud_row_live) */
 static Cell g_hud_cells[192][256];    /* the moved coin counter's cells, a plane of their own so they never replace a cell of g_a (the POWER label) */
 static bool g_hud_row_live;
@@ -3580,12 +3593,19 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     /* THE N64 ROW, once per frame: only in a 3D scene shown at its own layout, never under a level-clear lift. */
     g_hud_row_live = false;
     g_hud_timer_live = false;
+    /* HDMETER1: take this frame's meter note (the ROM drew the meter through the adventure HUD arm) and clear it */
+    const bool hdm_note = g_port_hdmeter_live != 0;
+    const int hdm_y = g_port_hdmeter_y, hdm_health = g_port_hdmeter_health;
+    g_port_hdmeter_live = 0;
+    bool hdm_n64 = false;
+    g_hdm.on = false;
 #ifndef PORT_ROM_CLEAN      /* env-only proof arm: not in the shipped build (g_hud_erase stays false) */
     { static const bool e = std::getenv("SM64DS_HUD_ERASE_PROOF") != nullptr; g_hud_erase = e; }
 #endif
     if (host_setting_hud_layout() == 1 && bg0_3d_shown(dispcnt) && !ntr::present_native()
         && !lc_ov.live && !lc_ov.top_live) {
         g_hud_timer_live = data_ov002_02111184 != 0;
+        hdm_n64 = true;
         /* HUDTWEAK1: the power meter's cells (OBJ, x 80..153, y 0..59) go kHudMeterLeft pixels left, in the plane, before anything
            measures them, so the coin block's gap to the meter is the one it had. */
         for (int y = 0; y < kHudMeterY1; ++y)
@@ -3791,6 +3811,43 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        store per composited pixel, and only when the setting is on. */
     uint32_t *const pre = ntr::gx_aa_preimage();
     uint32_t kept = 0, buried = 0;
+    /* HDMETER1, step 1: erase the DS meter's cells and work out where the art goes (after the element pass, so the anchor is known) */
+    if (hdm_note && port_hd_meter_art_hook && shown3d && !ntr::present_native() && !lc_ov.live && !lc_ov.top_live && hdm_health >= 0 && hdm_health <= 8) {
+#ifndef PORT_ROM_CLEAN
+        static const bool dbg = std::getenv("SM64DS_HD_METER_DBG") != nullptr;
+        { static bool read; if (!read) { read = true; if (const char *e = std::getenv("SM64DS_HD_METER_DX")) kHdMeterX0 = std::atoi(e); if (const char *e = std::getenv("SM64DS_HD_METER_DY")) kHdMeterDy = std::atoi(e); } }
+#else
+        static const bool dbg = false;
+#endif
+        const int X0 = kHdMeterX0 - (hdm_n64 ? kHudMeterLeft : 0), Y0 = hdm_y + kHdMeterDy;
+        const int k = (ntr::present_h() / 192 >= 2) ? 4 : 1;
+        const HdMeterArt *art = port_hd_meter_art_hook(hdm_health, k);
+        if (art) {
+            int n = 0, outside = 0, prio = -1, fx = -1, fy = -1;
+            int bx0 = 999, bx1 = -1, by0 = 999, by1 = -1;
+            for (int y = 0; y < 192 && y < Y0 + 48; ++y)
+                for (int x = (X0 - 6 < 0 ? 0 : X0 - 6); x < X0 + 46 && x < 256; ++x) {
+                    const Cell &c = g_a[y][x];
+                    if (!c.hit || c.owner != kOwnerObj || c.msgcur) continue;
+                    if (x >= X0 && x < X0 + 40 && y >= Y0 && y < Y0 + 40) {
+                        if (n++ == 0) { prio = c.prio; fx = x; fy = y; }
+                        if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y;
+                    } else ++outside;
+                }
+            if (dbg) std::fprintf(stderr, "[hdmeter] y=%d health=%d n64=%d X0=%d Y0=%d cells in footprint %d (bbox %d..%d x %d..%d) outside %d k=%d
+",
+                                  hdm_y, hdm_health, (int)hdm_n64, X0, Y0, n, bx0, bx1, by0, by1, outside, art->k);
+            if (n > 0 && (!honour3d || !layer_behind_3d(kOwnerObj, prio, p3d))) {
+                for (int y = Y0 < 0 ? 0 : Y0; y < Y0 + 40 && y < 192; ++y)
+                    for (int x = X0; x < X0 + 40; ++x) {
+                        Cell &c = g_a[y][x];
+                        if (c.hit && c.owner == kOwnerObj && !c.msgcur) c.hit = false;
+                    }
+                g_hdm.on = true; g_hdm.x0 = X0; g_hdm.y0 = Y0; g_hdm.k = art->k; g_hdm.art = art;
+                g_hdm.off = ntr::widescreen ? (bandsplit ? margin / 2 : hudelem::g_off[hudelem::g_lbl[fy][fx]]) : 0;
+            }
+        }
+    }
     g_cz.mark(4);
     for (int pass = 0; pass < 2; ++pass) {
     if (pass && !g_hud_row_live) break;
@@ -4024,6 +4081,102 @@ extern "C" void port_message_composite_engine_a(void *fbp)
         }
     }
     }   /* the HUD pass loop (menu1 HUD1) */
+    /* HDMETER1, step 2: the art, at host resolution, over the footprint's DS cells that no other layer holds. Each host pixel
+       averages the art pixels it covers (alpha weighted) and is drawn when at least half of them are opaque, so the 1x art lands
+       pixel for pixel on the DS grid and the 4x art is box filtered down to whatever the window is. It goes down through the same
+       three routes the cell loop uses (the card's rects, the card overlay words, the plain frame). */
+    if (g_hdm.on) {
+        const HdMeterArt &A = *g_hdm.art;
+        const int k = g_hdm.k;
+        struct HdPx { uint32_t rgb; uint8_t on, bm; };
+        static std::vector<HdPx> buf;
+        int ya = g_hdm.y0 < 0 ? 0 : g_hdm.y0, yb = g_hdm.y0 + 40 > 192 ? 192 : g_hdm.y0 + 40;
+        int hxa = 1 << 30, hxb = -1;
+        for (int xx = 0; xx < 40; ++xx) {
+            const int x = g_hdm.x0 + xx;
+            if (x < 0 || x > 255) continue;
+            const int a = (ntr::widescreen ? ds_col_x0(x) + g_hdm.off : x * sx), b = (ntr::widescreen ? ds_col_x0(x + 1) + g_hdm.off : (x + 1) * sx);
+            if (a < hxa) hxa = a;
+            if (b > hxb) hxb = b;
+        }
+        const int hya = ds_row_y0(ya), hyb = ds_row_y0(yb);
+        const int W = hxb - hxa, H = hyb - hya;
+        if (W > 0 && H > 0 && W <= 4096 && H <= 4096) {
+            buf.assign((size_t)W * H, HdPx{0, 0, 0});
+            for (int y = ya; y < yb; ++y) {
+                const int yy = y - g_hdm.y0;
+                const int hy0 = ds_row_y0(y), hy1 = ds_row_y0(y + 1), bh = hy1 - hy0;
+                for (int xx = 0; xx < 40; ++xx) {
+                    const int x = g_hdm.x0 + xx;
+                    if (x < 0 || x > 255 || g_a[y][x].hit) continue;
+                    const int hx0 = ntr::widescreen ? ds_col_x0(x) + g_hdm.off : x * sx;
+                    const int bw = ntr::widescreen ? ds_col_x0(x + 1) - ds_col_x0(x) : sx;
+                    const unsigned char bmv = bm_on ? bm_verdict((unsigned)kOwnerObj, window_mask(win, x, y)) : 0;
+                    for (int j = 0; j < bh; ++j) {
+                        const int ay0 = yy * k + j * k / bh;
+                        int ay1 = yy * k + ((j + 1) * k + bh - 1) / bh;
+                        if (ay1 <= ay0) ay1 = ay0 + 1;
+                        for (int dx = 0; dx < bw; ++dx) {
+                            const int ax0 = xx * k + dx * k / bw;
+                            int ax1 = xx * k + ((dx + 1) * k + bw - 1) / bw;
+                            if (ax1 <= ax0) ax1 = ax0 + 1;
+                            unsigned sa = 0, sr = 0, sg = 0, sb = 0, cnt = 0;
+                            for (int ay = ay0; ay < ay1 && ay < A.h; ++ay)
+                                for (int ax = ax0; ax < ax1 && ax < A.w; ++ax) {
+                                    const unsigned char *q = A.rgba + ((size_t)ay * A.w + ax) * 4;
+                                    sa += q[3]; sr += q[0] * q[3]; sg += q[1] * q[3]; sb += q[2] * q[3]; ++cnt;
+                                }
+                            if (!cnt || sa * 2 < cnt * 255u || !sa) continue;
+                            HdPx &px = buf[(size_t)(hy0 + j - hya) * W + (hx0 + dx - hxa)];
+                            px.rgb = ((sr / sa) << 16) | ((sg / sa) << 8) | (sb / sa);
+                            px.on = 1; px.bm = bmv ? 1 : 0;
+                        }
+                    }
+                }
+            }
+            for (int ry = 0; ry < H; ++ry) {
+                const int hy = hya + ry;
+                for (int rx = 0; rx < W;) {
+                    const HdPx &p0 = buf[(size_t)ry * W + rx];
+                    if (!p0.on) { ++rx; continue; }
+                    int rn = 1;
+                    while (rx + rn < W) {
+                        const HdPx &pn = buf[(size_t)ry * W + rx + rn];
+                        if (!pn.on || pn.rgb != p0.rgb || pn.bm != p0.bm) break;
+                        ++rn;
+                    }
+                    const int hx = hxa + rx;
+                    if (gpu_blit && g_tw_n < 256 * 192) {
+                        uint32_t *r = g_tw_inst + (size_t)g_tw_n * 4;
+                        r[0] = (uint32_t)hx | ((uint32_t)hy << 16);
+                        r[1] = (uint32_t)rn | (1u << 16);
+                        r[2] = (p0.rgb & 0x00FFFFFFu) | (GX_OV_FRONT << 24);
+                        r[3] = p0.bm ? 1u : 0u;
+                        ++g_tw_n;
+                    }
+                    if (!gpu_blit || tw_chk) {
+                        for (int d = 0; d < rn; ++d) {
+                            const int x2 = hx + d;
+                            if (ovl3d) {
+                                fb.px[hy][x2] = (p0.rgb & 0x00FFFFFFu) | (GX_OV_FRONT << 24);
+                                if (bm_on) {
+                                    unsigned char &m = g_bm[(size_t)hy * ntr::SCREEN_W + x2];
+                                    m = (unsigned char)((m & 3u) | (p0.bm ? 4u : 0u) | 8u);
+                                }
+                                continue;
+                            }
+                            if (cover && cover[hy * ntr::SCREEN_W + x2]) ++buried;
+                            fb.px[hy][x2] = p0.rgb;
+                            if (bm_on) g_bm[(size_t)hy * ntr::SCREEN_W + x2] = p0.bm;
+                            if (pre) pre[(size_t)hy * ntr::SCREEN_W + x2] = p0.rgb;
+                        }
+                    }
+                    rx += rn;
+                }
+            }
+        }
+        g_hdm.on = false;
+    }
     g_cz.mark(5);
     if (gpu_blit) {
         port_gpu_twod_rects(g_tw_inst, g_tw_n);

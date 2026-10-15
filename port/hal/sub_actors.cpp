@@ -879,6 +879,8 @@ extern signed char data_0209f30c[];         /* per-player red-coin counts     */
 extern char data_ov002_0210c6b8;           /* the red-coin HUD sprite        */
 extern int data_ov001_020abac8[];          /* the silver-star HUD sprite     */
 }
+/* HDMETER1: this frame's meter note, written by the adventure HUD arm below, read and cleared by hal/message_compositor.cpp. */
+extern "C" { int g_port_hdmeter_live; int g_port_hdmeter_y; int g_port_hdmeter_health; extern unsigned char data_ov002_0211117c; }
 static void port_adv_red_silver_bottom(void)
 {
     static int first;                /* 0 none yet, 1 red coins, 2 silver stars */
@@ -936,6 +938,16 @@ static int port_adv_hud_render_stars_lives_on_top(HUD *self)
 
     unsigned char v = data_0209f20c;
     if (((data_0209f2c4 | v | data_0209f294) & 0xff) == 0) {
+        /* HDMETER1: tell the compositor where the ROM puts the meter this frame (mHealthMeterY, +0x68) and which wedge count it picked
+           (the ROM's displayed count), so an enabled mod's HD art (hal/hd_meter.h) can be drawn over the footprint. The ROM still draws
+           its own sprites; the compositor swaps them only when a mod provides the art, and only for the languages whose frame carries the
+           English POWER label (the ROM's branch: not Spanish 5, not French / Italian 2 / 4). */
+        {
+            const int lang = GetOwnerLanguage();
+            g_port_hdmeter_y = *(short *)((char *)self + 0x68);
+            g_port_hdmeter_health = data_ov002_0211117c;
+            g_port_hdmeter_live = (lang != 5 && lang != 4 && lang != 2) ? 1 : 0;
+        }
         _ZN3HUD17RenderHealthMeterEv((void *)self);
         if (_ZN5Event6GetBitEj(0x1d) == 0) {
             port_adv_coin_count_top(self, coin_dy);
