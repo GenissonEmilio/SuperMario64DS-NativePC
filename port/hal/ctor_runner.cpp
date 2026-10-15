@@ -407,6 +407,9 @@ extern unsigned char data_0209f5e8[];
 extern void *_ZTV8dFader_c[12];
 extern void *_ZTV15dFdBrightness_c[12];
 extern void *_ZTV10dFdColor_c[10];
+extern void *_ZTV7dWipe_c[12];   /* hal/fdr_arm9_fader_seat.cpp: the ROM-ordered table the scene faders dispatch through */
+struct dWipe_c;
+extern dWipe_c data_0209f61c;     /* hal/auto_bss.cpp: the minigame scenes' wipe, built by the ROM walk */
 
 /* And that file's own answer about them: whether its seat has run, and how
    many of the thirty-four words it owns are still zero. Rung C1c installs
@@ -886,6 +889,10 @@ extern "C" void port_rom_entry_ctors(void)
        Naming the table each one landed on is what makes either state visible
        in every captured run instead of only in this file's prose, and it is
        how the regression above was read. */
+    /* SYNC093: main's dWipe_c is a real class, so the ROM walk's constructor (__sinit_02074f80 -> dWipe_c::dWipe_c) stores the
+       COMPILED vftable. The scene code reaches this object through the ROM-numbered, flat-faced view (hal/fdr_arm9_fader_seat.cpp)
+       and would call the member functions with the wrong convention (this in ECX, nothing on the stack). Name the seated table. */
+    *(void **)(void *)&data_0209f61c = (void *)_ZTV7dWipe_c;
     {
         const void *cv = *(void *const *)(const void *)data_0209f5e8;
         const void *bv = *(void *const *)(const void *)data_0209f5d0;
