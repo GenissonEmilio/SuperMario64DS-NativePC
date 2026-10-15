@@ -133,6 +133,7 @@ extern "C" int settings_page_swallow_back(void);
 extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back);
 extern "C" int menu_pause_slide_busy(void);    /* PAUSE43FIX2: a 4:3 pause slide in flight eats the click and the back key */
 extern "C" int menu_pause_rom_fallback(void);   /* UIMOD1: hal/menu_recipe_pause.cpp */
+void menu_title_pad_map_rom(uint16_t *pressed, int host_back);   /* PADMENUS1: hal/menu_recipe_title.cpp */
 extern "C" void menu_pause_rom_pad(uint16_t *pressed);   /* hal/menu_recipe_pause.cpp: OneScreenMenus off, the ROM's own pause */   /* PAUSE3: hal/menu_recipe_pause.cpp */
 int hal_present_client_to_sub(int cx, int cy, int *dsx, int *dsy);
 /* the layout mode, defined at the bottom of this file */
@@ -2055,7 +2056,7 @@ struct TouchProbeEnt {
    from sixteen cards to eighteen, and a hundred and seventy for the ten that
    take it to twenty. The array is 5KB of host bookkeeping and no run reads
    past g_tp_n. */
-TouchProbeEnt g_tp[256];
+TouchProbeEnt g_tp[2048];   /* PADMENUS1: a whole minigame gesture is more than 256 pen runs */
 int g_tp_n = -1;            /* -1 = env not read yet, 0 = probe off */
 int g_tp_frame;             /* polls since the first one */
 int g_tp_cur = -1;          /* the frame being polled, for the camera log */
@@ -3790,6 +3791,7 @@ extern "C" void hal_menu_pad_seam(void)
         unsigned short *sp = (unsigned short *)((char *)data_020a0e5a + s0 * 4);
         uint16_t k0 = *pr, k1 = k0;
         menu_pause_rom_pad(&k1);
+        if (port_scene_live_id() == 1 && !g_headless) menu_title_pad_map_rom(&k1, back);   /* PADMENUS1: the ROM's own title: pad A confirms, pad B is the back arrow */
         settings_page_hook_pad(&k1);      /* MENUS093: with the one-screen menus off only the title's MP button guard applies (armed_target is off) */
         if (k1 != k0) { *pr = k1; *sp = k1; }
         return;

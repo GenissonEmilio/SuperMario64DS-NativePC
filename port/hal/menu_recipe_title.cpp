@@ -1881,6 +1881,8 @@ static void title_cursor_assist()
     if (p0[0] == 0xff) p0[1] = 0;
 }
 
+static void title_pad_keys(uint16_t *pressed, int host_back, int inject);
+
 void menu_title_pad_map(uint16_t *pressed, int host_back)
 {
     title_cursor_assist();
@@ -1898,6 +1900,13 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
             g_ch.skip = 1;
         }
     }
+    title_pad_keys(pressed, host_back, inject);
+}
+
+/* PADMENUS1: the title's key meaning, shared by the one-screen recipe (menu_title_pad_map above) and the ROM's own two-screen title (OneScreenMenus
+   off, menu_title_pad_map_rom below): pad A is the ROM's confirm, pad B the back arrow on every page that has one. */
+static void title_pad_keys(uint16_t *pressed, int host_back, int inject)
+{
     /* The ROM's key record (src/func_ov007_020b3190.c: `*(u16*)p & ~*(u16*)(p+2)`, and the repeat counters of
        func_ov007_020b2e64) is built from the HELD word, so the pressed word alone is not enough: the held
        word moves 0x0002 -> 0x0001 too, and a host back is a one-frame B in it. */
@@ -1924,4 +1933,16 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
     if (k & MENU_PAD_CONFIRM) k = (uint16_t)((k & ~(unsigned)MENU_PAD_CONFIRM) | 0x0001);
     if (host_back) k = (uint16_t)(k | 0x0002);
     *pressed = k;
+}
+
+/* PADMENUS1: the same pad meaning for the ROM's own two-screen title and file select (OneScreenMenus off), where no recipe is live: pad A confirms,
+   pad B goes back on the pages that have a back arrow. The page is read off the ROM's own state (the recipe's per-tick answer is not running). The
+   attract and choreography parts of the recipe's version are the recipe's own and stay out. */
+void menu_title_pad_map_rom(uint16_t *pressed, int host_back)
+{
+    int top, elem, req;
+    if (!port_title_page_state(&top, &elem, &req)) return;
+    if (top != g_top || elem != g_elem) { g_top = top; g_elem = elem; }
+    g_last = variant_for(top, elem);
+    title_pad_keys(pressed, host_back, 0);
 }

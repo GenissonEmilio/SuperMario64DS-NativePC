@@ -24,6 +24,7 @@
 
 extern "C" int hal_sub_screen_stacked(void);
 extern "C" int port_scene_live_id(void);
+extern "C" int port_scene_env_want(void);   /* SM64DS_SCENE, -1 when the scene was not asked for by name */
 extern "C" int settings_page_swallow_back(void);
 extern "C" int menu_bigmap_up(void);
 extern "C" int hal_sub_inset_rect(int *x, int *y, int *w, int *h);   /* hal/sub_screen.cpp: the corner panel the last present drew, picture pixels */
@@ -187,7 +188,8 @@ extern "C" void hal_padptr_frame(const PadPtrIn *in, PadPtrOut *out)
 {
     out->eat_confirm = 0;
     out->eat_dpad = 0;
-    const int scene = port_scene_live_id();
+    int scene = port_scene_live_id();
+    if (scene < 0) scene = port_scene_env_want();      /* a scene run asked for by name has no carried scene object */
     int mode = MODE_NONE;
     if (hal_sub_screen_stacked()) mode = MODE_STACKED;
     else if (hal_menu_live() && !menu_bigmap_up()) mode = MODE_MENU;
