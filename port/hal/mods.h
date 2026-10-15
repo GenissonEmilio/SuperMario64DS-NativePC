@@ -48,6 +48,9 @@ int port_mods_api(int i);
 int port_mods_multiplayer(void);
 /* The bundle folder mods/ sits in (the folder settings.json was found in). */
 const char *port_mods_bundle(void);
+/* HD UI art by name: the full path of <mod>/hd_ui/<rel> from the last enabled mod that has it (returns 1), or 0 when none does (draw the port's
+   own art). <rel> is a plain relative path with no "..". Documented at the definition in mods.cpp. */
+int port_mods_ui_file(const char *rel, char *out, unsigned cap);
 
 #ifdef __cplusplus
 }

@@ -282,12 +282,12 @@ void add_parts(const Mod &parent, std::vector<Mod> &list, std::string &summary)
     if (vals) free(vals);
 }
 
-/* A files mod with none of files/, sound/, textures_hd/, palettes/ (in itself
+/* A files mod with none of files/, sound/, textures_hd/, palettes/, hd_ui/ (in itself
    or in an applied part) replaces nothing: say so, once. The usual cause is a
    zip that was unpacked with its contents inside one extra folder. */
 bool has_content(const std::string &folder)
 {
-    static const char *const D[] = { "/files", "/sound", "/textures_hd", "/palettes", "/character", 0 };
+    static const char *const D[] = { "/files", "/sound", "/textures_hd", "/palettes", "/character", "/hd_ui", 0 };
     for (int i = 0; D[i]; ++i)
         if (dir_exists(folder + D[i])) return true;
     return false;
@@ -668,3 +668,36 @@ extern "C" __declspec(allocate(".CRT$XCW"))
 #else
 #pragma comment(linker, "/include:port_mods_ctor")
 #endif
+
+/* THE HD UI FILE LOOKUP (run hunt8, lane HDMETER1; shared by every piece of HD UI art a mod can replace).
+   A mod's hd_ui/<rel> is a file the port draws instead of its own art: the "HD UI Textures" mod carries them. It sits NEXT TO files/,
+   not inside it, because files/ means "this replaces that ROM file" and would answer "names no ROM file" for art the ROM does not have.
+   <rel> is a plain relative path ("hud/power_meter/meter_health3_with_label.png"): letters, digits, - _ . and /, no "..", no leading
+   slash, no drive colon. Returns 1 and fills out with the full path of the file from the LAST enabled mod that has it (a later mod wins,
+   a part folder counts as its own entry), 0 when no enabled mod provides it, which is every run in a lobby or match (the list is empty
+   there) and every run with no such mod: the caller then draws the port's own art, unchanged. The list is boot-latched, so this is
+   a plain directory probe per call; callers cache what they decode. Only the game targets link this file. */
+extern "C" int port_mods_ui_file(const char *rel, char *out, unsigned cap)
+{
+    if (!rel || !out || !cap) return 0;
+    out[0] = 0;
+    if (!rel[0] || rel[0] == '/' || strstr(rel, "..") || strchr(rel, ':') || strchr(rel, '\\') || strlen(rel) > 200) return 0;
+    for (int i = port_mods_count() - 1; i >= 0; --i) {
+        const char *dir = port_mods_folder(i);
+        if (!dir) continue;
+        const std::string path = std::string(dir) + "/hd_ui/" + rel;
+        const DWORD a = GetFileAttributesA(path.c_str());
+        if (a == INVALID_FILE_ATTRIBUTES || (a & FILE_ATTRIBUTE_DIRECTORY)) continue;
+        if (path.size() >= cap) return 0;
+        memcpy(out, path.c_str(), path.size() + 1);
+        return 1;
+    }
+    return 0;
+}
+
+/* run hunt8, lane UIMOD1: hal/ui_art.cpp's lookup answers through this file when it is linked (the game targets); the smoke targets leave
+   the hook null. Called from the menu art worker thread too: the list is boot-latched and the probe is a read-only attribute query. */
+extern "C" int (*port_ui_file_hook)(const char *rel, char *out, unsigned cap);
+namespace {
+struct UiFileHookSet { UiFileHookSet() { port_ui_file_hook = port_mods_ui_file; } } g_ui_file_hook_set;
+}

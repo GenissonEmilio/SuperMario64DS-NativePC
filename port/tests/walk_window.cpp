@@ -16872,6 +16872,31 @@ int main(void)
                 }
             }
 
+            /* ---- SM64DS_HEALTH_POKE=<wedges>@<frame>[,<wedges>@<frame>...] ------
+               Test-only (HDMETER1): on each listed frame set the local player's health to that many wedges (0..8), the word
+               UpdateHealthMeter reads ((data_02092144[p] >> 8) & 0xff). The ROM's own meter then does what a hit or a heal does:
+               appears at y 0x39, holds, rises to 0x19, ticks its displayed count to the new health, and slides away again
+               once the health is full. Inert unless set. */
+            {
+                static int hp_read, hp_n, hp_w[8], hp_f[8];
+                if (!hp_read) {
+                    hp_read = 1;
+                    const char *e = getenv("SM64DS_HEALTH_POKE");
+                    while (e && *e && hp_n < 8) {
+                        int w = 0, f = 0, used = 0;
+                        if (sscanf(e, "%d@%d%n", &w, &f, &used) < 2) break;
+                        hp_w[hp_n] = w; hp_f[hp_n] = f; ++hp_n;
+                        e += used;
+                        if (*e == ',') ++e;
+                    }
+                }
+                for (int i = 0; i < hp_n; ++i)
+                    if (frame == hp_f[i]) {
+                        data_02092144[(int)data_0209f250] = (short)(hp_w[i] << 8);
+                        fprintf(stderr, "[healthpoke] f%d health -> %d wedges\n", frame, hp_w[i]);
+                    }
+            }
+
             /* The pause menu's own words, for the third exit. PS_Update
                (src/_ZN5Stage9PS_UpdateEv.cpp) runs on data_0209f248, takes its
                next sub-state from data_0209f1ec, and RETURNS OUT OF THE WHOLE

@@ -25521,7 +25521,7 @@ endforeach()
 foreach(_tasset2 walk_window walk_window_hires smoke_player)
     target_sources(${_tasset2} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_hostimg.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_logo_data.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/ui_art.cpp")
 endforeach()
 
 # MENU1 / RECROOM1 (run menu1): the Rec Room select one-screen recipe (own file, own block).
@@ -25549,13 +25549,13 @@ if(MSVC)
 endif()
 
 # MENU1 / SETMENU1 (run menu1): the in-game settings page (hal/settings_page.h), drawn at window resolution in the launcher's look, with its
-# font renderer (hal/ui_text.h) and art (res/menu/settings, embedded by tools/embed_settings_art.py). Own block.
+# font renderer (hal/ui_text.h). Run hunt8 UIMOD1: its pictures are the HD UI Textures mod's (hal/ui_art.h), none are embedded. Own block.
 foreach(_tsetmenu1 walk_window walk_window_hires)
     target_sources(${_tsetmenu1} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_page.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_page_hooks.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/ui_text.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_art_data.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/ui_font_plain.cpp")
 endforeach()
 # smoke_player (EXCLUDE_FROM_ALL) links hal/sub_screen.cpp, which calls the page seams: no-op stubs keep it linking without the page.
 target_sources(smoke_player PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_page_stubs.cpp")
@@ -25570,12 +25570,11 @@ foreach(_tstarhook1 walk_window walk_window_hires smoke_player)
     target_sources(${_tstarhook1} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_starsel_api.cpp")
 endforeach()
-# MENU1 / PAUSE2 (run menu1): the pause menu's host-resolution art (res/menu/pause3, embedded by tools/embed_pause3_art.py) and its
+# MENU1 / PAUSE2 (run menu1): the pause menu's host-resolution art names (the pictures are the HD UI Textures mod's, run hunt8 UIMOD1) and its
 # registry behind hostimg's extension ids. Own block.
 foreach(_tpause2 walk_window walk_window_hires)
     target_sources(${_tpause2} PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_pause_art.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_pause_art_data.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_pause_art.cpp")
 endforeach()
 
 # run hunt8, lane PCORE1: keep the hot threads on performance cores (hal/pcore.h). Own block.
@@ -25713,5 +25712,13 @@ foreach(_ps3_t smoke smoke_roots smoke_model smoke_frames smoke_soak smoke_clsn
     if(TARGET ${_ps3_t})
         target_include_directories(${_ps3_t} PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/ntr/include")
+    endif()
+endforeach()
+
+# run hunt8, lane HDMETER1: the HD power meter art out of the enabled mods (hal/hd_meter.h). The compositor reaches it through a hook, so
+# the smoke targets (which do not link hal/mods.cpp) draw the DS meter. Own block.
+foreach(_thdmeter1 walk_window walk_window_hires)
+    if(TARGET ${_thdmeter1})
+        target_sources(${_thdmeter1} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/hd_meter.cpp")
     endif()
 endforeach()

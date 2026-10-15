@@ -90,6 +90,7 @@
 #include "ntr/gx.h"       /* ASSET1: gx_coverage for keycover menu pieces */
 #include "hal/menu_compose.h"   /* run menu1 lane HOOK1: the one-screen menu compose layer */
 #include "hal/menu_bigmap.h"    /* run menu1 lane MAP1: Select shows the big map */
+#include "hal/ui_art.h"          /* run hunt8 lane UIMOD1: the HD UI Textures mod lookup */
 #include "hal/gpu_raster.h"      /* SAVEOVL1: the menu layer on the card */
 #include "hal/comms_seam.h"   /* run mg16 lane MP3: touch_ring_index/advance */
 
@@ -130,6 +131,7 @@ extern "C" int settings_page_hook_touch(unsigned char down, unsigned char sx, un
 extern "C" int settings_page_swallow_back(void);
 extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back);
 extern "C" int menu_pause_slide_busy(void);    /* PAUSE43FIX2: a 4:3 pause slide in flight eats the click and the back key */
+extern "C" int menu_pause_rom_fallback(void);   /* UIMOD1: hal/menu_recipe_pause.cpp */
 extern "C" void menu_pause_rom_pad(uint16_t *pressed);   /* hal/menu_recipe_pause.cpp: OneScreenMenus off, the ROM's own pause */   /* PAUSE3: hal/menu_recipe_pause.cpp */
 int hal_present_client_to_sub(int cx, int cy, int *dsx, int *dsy);
 /* the layout mode, defined at the bottom of this file */
@@ -676,10 +678,8 @@ unsigned g_art_bright, g_art_dark;   /* the artwork's own two extremes */
    published for the boot line and for the captures' measured rows. */
 int g_art_gapx, g_art_gapy;
 
-int art_load_one(const char *dir, const char *name, ArtImage *im)
+int art_load_path(const char *path, ArtImage *im)
 {
-    char path[1200];
-    std::snprintf(path, sizeof path, "%s/%s", dir, name);
     int w = 0, h = 0, comp = 0;
     unsigned char *p = stbi_load(path, &w, &h, &comp, 4);
     if (!p) return 0;
@@ -694,6 +694,13 @@ int art_load_one(const char *dir, const char *name, ArtImage *im)
     im->h = h;
     im->px = px;
     return 1;
+}
+
+int art_load_one(const char *dir, const char *name, ArtImage *im)
+{
+    char path[1200];
+    std::snprintf(path, sizeof path, "%s/%s", dir, name);
+    return art_load_path(path, im);
 }
 
 void art_free(ArtImage *im)
@@ -802,8 +809,13 @@ int art_scan_inner(const ArtImage *im)
 int art_build(void)
 {
     const char *dir = host_setting_minimap_dir();
-    int ok = art_load_one(dir, "SM64DSMapBase.png", &g_art_base)
-          && art_load_one(dir, "SM64DSMapText.png", &g_art_tab)
+    /* run hunt8, lane UIMOD1: the pair is first a file of the "HD UI Textures" mod (hd_ui/minimap/), then the folder below (a dev folder: the kit no
+       longer ships one), then the panel composed from the game's own data. */
+    char pbase[1400], ptab[1400];
+    const bool from_mod = ui_art_path("minimap/SM64DSMapBase.png", pbase, sizeof pbase) && ui_art_path("minimap/SM64DSMapText.png", ptab, sizeof ptab);
+    if (from_mod) dir = "the HD UI Textures mod";
+    int ok = (from_mod ? (art_load_path(pbase, &g_art_base) && art_load_path(ptab, &g_art_tab))
+                       : (art_load_one(dir, "SM64DSMapBase.png", &g_art_base) && art_load_one(dir, "SM64DSMapText.png", &g_art_tab)))
           && art_scan_inner(&g_art_base)
           && g_art_tab.w <= g_art_base.w;
     if (!ok) {
@@ -3742,8 +3754,8 @@ extern "C" void hal_menu_pad_seam(void)
         if (back && menu_pause_slide_busy()) back = 0;        /* PAUSE43FIX2: dropped, not queued */
     }
     menu_bigmap_pad_seam();   /* MAP1: Select shows / hides the big map; the ROM never sees that Select (OneScreenMenus on) */
-    if (!hal_menu_live()) {
-        /* OneScreenMenus off: the ROM's own pause on two screens; its plate cursor and confirm get the keys and the pad */
+    if (!hal_menu_live() || menu_pause_rom_fallback()) {
+        /* OneScreenMenus off (or no mod art for the new pause): the ROM's own pause on two screens; its plate cursor and confirm get the keys and the pad */
         const int s0 = data_020a0e40;
         unsigned short *pr = (unsigned short *)((char *)data_020a0e58 + s0 * 4 + 2);
         unsigned short *sp = (unsigned short *)((char *)data_020a0e5a + s0 * 4);

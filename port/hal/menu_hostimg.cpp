@@ -1,6 +1,7 @@
 /* menu_hostimg.cpp -- see menu_hostimg.h (run menu1, lane ASSET2). */
 #include "menu_hostimg.h"
 #include "../third_party/stb/stb_image.h"
+#include "ui_art.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -19,8 +20,6 @@
 #include <thread>
 #include <string>
 
-extern "C" const unsigned char g_menu_png_logo[], g_menu_png_btn_mp[], g_menu_png_btn_adventure[], g_menu_png_btn_rec[], g_menu_png_arrow_up[], g_menu_png_arrow_down[], g_menu_png_pattern[], g_menu_png_title_star[], g_menu_png_btn_save_cont[], g_menu_png_btn_save_quit[], g_menu_png_btn_cont[], g_menu_png_arrow_orange[];
-extern "C" const unsigned int g_menu_png_logo_len, g_menu_png_btn_mp_len, g_menu_png_btn_adventure_len, g_menu_png_btn_rec_len, g_menu_png_arrow_up_len, g_menu_png_arrow_down_len, g_menu_png_pattern_len, g_menu_png_title_star_len, g_menu_png_btn_save_cont_len, g_menu_png_btn_save_quit_len, g_menu_png_btn_cont_len, g_menu_png_arrow_orange_len;
 
 namespace {
 
@@ -36,21 +35,11 @@ struct Img {
     int last_slot = 0;                  /* the slot filled last (the other one is replaced next) */
 };
 Img g_img[MENU_IMG_EXT_END];
-struct Src { const char *file; const unsigned char *emb; const unsigned *len; };
-const Src kSrc[MENU_IMG_COUNT] = {
-    { 0, 0, 0 },
-    { "logo_sm64_pc.png", g_menu_png_logo, &g_menu_png_logo_len },
-    { "btn_mp.png", g_menu_png_btn_mp, &g_menu_png_btn_mp_len },
-    { "btn_adventure.png", g_menu_png_btn_adventure, &g_menu_png_btn_adventure_len },
-    { "btn_rec.png", g_menu_png_btn_rec, &g_menu_png_btn_rec_len },
-    { "arrow_up.png", g_menu_png_arrow_up, &g_menu_png_arrow_up_len },
-    { "arrow_down.png", g_menu_png_arrow_down, &g_menu_png_arrow_down_len },
-    { "pattern.png", g_menu_png_pattern, &g_menu_png_pattern_len },
-    { "title_star.png", g_menu_png_title_star, &g_menu_png_title_star_len },
-    { "btn_save_cont.png", g_menu_png_btn_save_cont, &g_menu_png_btn_save_cont_len },
-    { "btn_save_quit.png", g_menu_png_btn_save_quit, &g_menu_png_btn_save_quit_len },
-    { "btn_cont.png", g_menu_png_btn_cont, &g_menu_png_btn_cont_len },
-    { "arrow_orange_down.png", g_menu_png_arrow_orange, &g_menu_png_arrow_orange_len },
+/* Where each picture lives: the file name under "menu/" of the HD UI Textures mod (hd_ui/menu/<name>, found through ui_art_path). The port
+   carries NO picture bytes: a name no enabled mod provides is "no picture" and the recipe keeps the ROM's own art. */
+const char *const kSrc[MENU_IMG_COUNT] = {
+    0, "logo_sm64_pc.png", "btn_mp.png", "btn_adventure.png", "btn_rec.png", "arrow_up.png", "arrow_down.png", "pattern.png",
+    "title_star.png", "btn_save_cont.png", "btn_save_quit.png", "btn_cont.png", "arrow_orange_down.png",
 };
 
 bool take(const unsigned char *rgba, int w, int h, Img *I)
@@ -67,15 +56,14 @@ bool take(const unsigned char *rgba, int w, int h, Img *I)
 
 /* WARMFIX1 F4: the environment strings this file reads, copied once (first use is always on the game thread, before any worker exists) so
    a worker never calls getenv while the game thread may be inside _putenv_s. */
-struct Env { bool has_logo = false, has_dir = false, has_root = false; std::string logo, dir, root; };
+struct Env { bool has_logo = false, has_dir = false; std::string logo, dir; };
 const Env &env()
 {
     static const Env e = [] {
         Env v;
-        const char *a = getenv("SM64DS_MENU_LOGO"), *b = getenv("SM64DS_MENU_ART_DIR"), *c = getenv("SM64DS_ASSET_ROOT");
+        const char *a = getenv("SM64DS_MENU_LOGO"), *b = getenv("SM64DS_MENU_ART_DIR");
         if (a) { v.has_logo = true; v.logo = a; }
         if (b) { v.has_dir = true; v.dir = b; }
-        if (c) { v.has_root = true; v.root = c; }
         return v;
     }();
     return e;
@@ -91,34 +79,29 @@ void load_into(int id, Img &I)
     int w = 0, h = 0, comp = 0;
     unsigned char *p = 0;
     char path[1100];
-    /* SM64DS_MENU_LOGO (id 1) or SM64DS_MENU_ART_DIR=<folder> (every id) point somewhere else; a name that cannot be read there
-       means "no picture" (the recipe keeps the DS art) and the embedded copy is NOT used, so the fallback can be proven */
+    /* SM64DS_MENU_LOGO (id 1) or SM64DS_MENU_ART_DIR=<folder> (every id) point somewhere else for a dev run; a name that cannot be read there
+       means "no picture" (the recipe keeps the DS art). Otherwise the HD UI Textures mod (any enabled mod: hd_ui/menu/<name>) is the only
+       source: nothing is embedded in the exe and no kit folder is read. */
     const Env &E = env();
     const char *over = id == MENU_IMG_LOGO && E.has_logo ? E.logo.c_str() : 0;
     const char *dir = E.has_dir ? E.dir.c_str() : 0;
-    const char *efile = 0; const unsigned char *eemb = 0; unsigned elen = 0;
-    const bool ext = id >= MENU_IMG_EXT_BASE && menu_ext_art_src(id, &efile, &eemb, &elen);
+    const char *efile = 0;
+    const bool ext = id >= MENU_IMG_EXT_BASE && menu_ext_art_src(id, &efile);
     if (id >= MENU_IMG_COUNT && !ext) return;
-    const char *fname = ext ? efile : kSrc[id].file;
-    const unsigned char *femb = ext ? eemb : kSrc[id].emb;
-    const unsigned flen = ext ? elen : (kSrc[id].len ? *kSrc[id].len : 0);
+    const char *fname = ext ? efile : kSrc[id];     /* ext: "pause3/<name>" */
     if (over && *over) {
         p = stbi_load(over, &w, &h, &comp, 4);
         fprintf(stderr, "[menu] art %d: SM64DS_MENU_LOGO=%s -> %s\n", id, over, p ? "loaded" : "unreadable, DS art kept");
-    } else if (dir && *dir && strlen(dir) + 40 < sizeof path) {
+    } else if (dir && *dir && strlen(dir) + 60 < sizeof path) {
         snprintf(path, sizeof path, "%s/%s", dir, fname);
         p = stbi_load(path, &w, &h, &comp, 4);
         fprintf(stderr, "[menu] art %d: %s -> %s\n", id, path, p ? "loaded" : "unreadable, DS art kept");
     } else {
-        const char *root = E.has_root ? E.root.c_str() : 0;
-        if (root && *root && strlen(root) + 40 < sizeof path) {
-            snprintf(path, sizeof path, "%s/menu/%s", root, fname);
+        char rel[160];
+        snprintf(rel, sizeof rel, "menu/%s", fname);
+        if (ui_art_path(rel, path, sizeof path)) {
             p = stbi_load(path, &w, &h, &comp, 4);
-            if (p) fprintf(stderr, "[menu] art %d: kit file %s (%dx%d)\n", id, path, w, h);
-        }
-        if (!p) {
-            p = stbi_load_from_memory(femb, (int)flen, &w, &h, &comp, 4);
-            if (p) fprintf(stderr, "[menu] art %d: embedded copy %s (%dx%d)\n", id, fname, w, h);
+            if (p) fprintf(stderr, "[menu] art %d: mod file %s (%dx%d)\n", id, path, w, h);
         }
     }
     if (p) {
