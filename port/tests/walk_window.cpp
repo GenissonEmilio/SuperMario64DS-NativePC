@@ -13589,7 +13589,7 @@ int main(void)
             if (fslot >= 0 && fslot <= 2 && _ZN8SaveData12ReadFileDataEjP12FileSaveData((unsigned)fslot, blk)) {
                 memcpy(data_0209caa0, blk, sizeof blk);
                 ((unsigned char *)data_0209caa0)[0x328] = (unsigned char)fslot;
-                fprintf(stderr, "[chardoor] open file is slot %c from the card (flags %08x, %d bytes)"\n", 'A' + fslot, (unsigned)data_0209caa0[1], (int)sizeof blk);
+                fprintf(stderr, "[chardoor] open file is slot %c from the card (flags %08x, %d bytes)\n", 'A' + fslot, (unsigned)data_0209caa0[1], (int)sizeof blk);
             }
         }
         if (const char *cs = getenv("SM64DS_CHARACTER")) {
