@@ -1912,6 +1912,7 @@ static void title_pad_keys(uint16_t *pressed, int host_back, int inject)
        word moves 0x0002 -> 0x0001 too, and a host back is a one-frame B in it. */
     unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
     unsigned short h = *held;
+    if (hal_menu_trace_on() && ((*pressed | h) & 0x0003)) fprintf(stderr, "[menu] pad keys in: variant %d page %d/%d pressed %04x held %04x back %d\n", g_last, g_top, g_elem, (unsigned)*pressed, (unsigned)h, host_back);
     /* ASSET6: PAD B (the port's punch binding, DS A bit 0x0001 natively; pad A arrives as 0x0002) is the back arrow on every page that has one
        (file select, file options, scores, copy / erase, doodle): the ROM has only a touch back, so it is the same host back Backspace gives.
        On the main page and the attract 0x0001 stays a confirm. */
