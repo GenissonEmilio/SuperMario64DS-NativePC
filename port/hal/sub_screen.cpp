@@ -248,6 +248,7 @@ extern char data_02092124;
 extern int SublevelToLevel(int i);
 /* and the button LC_Update's case 3 takes on Start: see hal_lc_menu_pad */
 extern unsigned char data_0209f2e0;
+extern unsigned char data_0209f248;   /* PADMENUS1: the pause state (5 = VS) for the ROM-pause trace */
 }
 
 namespace {
@@ -3792,6 +3793,14 @@ extern "C" void hal_menu_pad_seam(void)
         unsigned short *pr = (unsigned short *)((char *)data_020a0e58 + s0 * 4 + 2);
         unsigned short *sp = (unsigned short *)((char *)data_020a0e5a + s0 * 4);
         uint16_t k0 = *pr, k1 = k0;
+        if (hal_menu_trace_on()) {      /* PADMENUS1 (SM64DS_MENU_TRACE): the ROM's own pause and its plate cursor, so a pad row can read what a press did with no recipe up */
+            static unsigned last = ~0u;
+            const unsigned now = ((unsigned)data_0209f2c4 << 16) | ((unsigned)data_0209f248 << 8) | (unsigned)data_0209f2e0;
+            if (now != last) {
+                last = now;
+                fprintf(stderr, "[pause-rom] f2c4=%d f248=%d sel=%d\n", (int)data_0209f2c4, (int)data_0209f248, (int)data_0209f2e0);
+            }
+        }
         menu_pause_rom_pad(&k1);
         if (port_scene_live_id() == 8) menu_gameover_pad_rom(&k1);   /* PADMENUS1: the game over screen: the pad moves its cursor, confirm presses it */
         menu_lc_pad_rom(&k1);   /* PADMENUS1: the ROM's own level-clear / save screen (state 3 only: it asks itself) */
