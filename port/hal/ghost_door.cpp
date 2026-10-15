@@ -261,14 +261,77 @@ namespace {
 enum { kLeaves = 2, kPairR = 200 << 12 };
 struct Drive {
     void *door[kLeaves];   // the doors this seat is driving (door[0] null: none)
-    int   orig[kLeaves];   // each one's cursor before the first write (Fix12)
-    int   written[kLeaves];  // ...and as last written
-    bool  yielded;         // the local game moved one: leave them alone until released
-    bool  gate;            // door[0] is a star gate: gorig / gwritten are its leaf offset
-    int   gorig[3];        // the gate's 0xa4/0xa8/0xac before the first write
-    int   gwritten[3];     // ...and as last written
+    bool  gate;            // door[0] is a star gate
+    unsigned stamp;        // the pass that last drove it (watcher_end_pass)
 };
 Drive g_drive[kMaxSeats];
+unsigned g_pass = 1;
+
+/* DOORS9C: WHAT THE DOOR LOOKED LIKE BEFORE ANY FRIEND TOUCHED IT, kept per
+   DOOR and shared by every seat. It used to be kept per seat, so a second
+   friend who took the same door while the first friend's last frame was still
+   in it recorded that frame (half open) as "the door's own", and gave it back
+   at the end: the leaves were left open with nobody near, forever. `last` is
+   the value anyone last wrote, so a write by another friend is not mistaken
+   for the local game moving the door. */
+struct Held {
+    void *door;            // null: free
+    bool  gate;
+    bool  yielded;         // the local game moved it: not ours to write or restore
+    int   users;           // drives holding it
+    int   base;            // plain door: the cursor before the first write (Fix12)
+    int   last;            // ...and as last written
+    int   gbase[3];        // star gate: the offset 0xa4/0xa8/0xac before the first write
+    int   glast[3];
+};
+enum { kHeld = 24 };
+Held g_held[kHeld];
+
+Held *held_find(const void *d) {
+    for (int i = 0; i < kHeld; ++i)
+        if (g_held[i].door == d) return &g_held[i];
+    return 0;
+}
+void held_free(Held *h) { std::memset(h, 0, sizeof *h); }
+
+// One more drive holds `d`; the first one records the door's own state.
+Held *held_take(void *d, bool gate) {
+    Held *h = held_find(d);
+    if (h) { ++h->users; return h; }
+    for (int i = 0; i < kHeld; ++i)    // free entries of doors a level change took
+        if (g_held[i].door && !door_alive(g_held[i].door)) held_free(&g_held[i]);
+    for (int i = 0; i < kHeld; ++i) {
+        if (g_held[i].door) continue;
+        h = &g_held[i];
+        h->door = d;
+        h->gate = gate;
+        h->users = 1;
+        if (gate)
+            for (int k = 0; k < 3; ++k) h->gbase[k] = h->glast[k] = rd(d, kGateOffs + 4 * k);
+        else
+            h->base = h->last = rd(d, kCursor);
+        return h;
+    }
+    return 0;
+}
+
+// A drive lets go of `d`; the last one puts the door back as it was, unless the local game moved it.
+void held_drop(void *d) {
+    Held *h = held_find(d);
+    if (!h) return;
+    if (--h->users > 0) return;
+    if (door_alive(d) && !h->yielded) {
+        if (h->gate) {
+            if (rd(d, kGateOffs) == h->glast[0] && rd(d, kGateOffs + 4) == h->glast[1] &&
+                rd(d, kGateOffs + 8) == h->glast[2])
+                for (int k = 0; k < 3; ++k) *(int *)((char *)d + kGateOffs + 4 * k) = h->gbase[k];
+        } else if (rd(d, kCursor) == h->last) {
+            *(int *)((char *)d + kCursor) = h->base;
+        }
+        ++g_stats.restored;
+    }
+    held_free(h);
+}
 
 // The Door actor nearest to `d` (other than d) within kPairR, or null.
 void *pair_leaf(const void *d) {
@@ -289,20 +352,11 @@ void *pair_leaf(const void *d) {
 }
 
 void give_back(Drive &d) {
-    if (d.gate && d.door[0] && door_alive(d.door[0]) && !d.yielded &&
-        rd(d.door[0], kGateOffs) == d.gwritten[0] &&
-        rd(d.door[0], kGateOffs + 4) == d.gwritten[1] &&
-        rd(d.door[0], kGateOffs + 8) == d.gwritten[2])
-        for (int i = 0; i < 3; ++i)
-            *(int *)((char *)d.door[0] + kGateOffs + 4 * i) = d.gorig[i];
-    d.gate = false;
     for (int k = 0; k < kLeaves; ++k) {
-        if (d.door[k] && door_alive(d.door[k]) && !d.yielded &&
-            rd(d.door[k], kCursor) == d.written[k])
-            *(int *)((char *)d.door[k] + kCursor) = d.orig[k];
+        if (d.door[k]) held_drop(d.door[k]);
         d.door[k] = 0;
     }
-    d.yielded = false;
+    d.gate = false;
 }
 /* [gwdoors] pick: every door a friend opens. The friend's position, the door
    the watcher picked (actor id at +0x0c, param / variant at +8, position) and
@@ -336,9 +390,23 @@ void probe_pick(int seat, unsigned char kind, unsigned char frame,
 void watcher_release(int seat) {
     if (seat < 0 || seat >= kMaxSeats) return;
     Drive &d = g_drive[seat];
-    if (!d.door[0] && !d.yielded) return;
+    if (!d.door[0]) return;
     give_back(d);
     ++g_stats.released;
+}
+
+// Once per follow pass, after every seat: a seat that was not driven this pass or the one before (it left, its
+// frames stopped, the pass skipped it by a path that has no release) gives its door back. Nothing used to.
+void watcher_end_pass() {
+    for (int s = 0; s < kMaxSeats; ++s) {
+        Drive &d = g_drive[s];
+        if (d.door[0] && g_pass - d.stamp >= 2) {
+            give_back(d);
+            ++g_stats.released;
+            ++g_stats.swept;
+        }
+    }
+    ++g_pass;
 }
 
 void watcher_apply(int seat, unsigned char kind, unsigned char frame,
@@ -351,24 +419,19 @@ void watcher_apply(int seat, unsigned char kind, unsigned char frame,
         return;
     }
     if (d.door[0] && !door_alive(d.door[0])) {      // a level change took it
-        for (int k = 0; k < kLeaves; ++k) d.door[k] = 0;
-        d.gate = false;
-        d.yielded = false;
+        give_back(d);
     }
-    if (d.yielded) return;
+    d.stamp = g_pass;
     if (!d.door[0]) {
-        d.door[0] = nearest_any(pos[0], pos[1], pos[2]);
-        if (!d.door[0]) { ++g_stats.no_door; return; }
-        d.gate = is_gate(d.door[0]);
-        d.door[1] = d.gate ? 0 : pair_leaf(d.door[0]);
-        if (d.gate)
-            for (int i = 0; i < 3; ++i)
-                d.gorig[i] = d.gwritten[i] = rd(d.door[0], kGateOffs + 4 * i);
-        for (int k = 0; k < kLeaves; ++k) {
-            if (!d.door[k] || d.gate) continue;
-            d.orig[k] = rd(d.door[k], kCursor);
-            d.written[k] = d.orig[k];
-        }
+        void *nd = nearest_any(pos[0], pos[1], pos[2]);
+        if (!nd) { ++g_stats.no_door; return; }
+        d.gate = is_gate(nd);
+        d.door[0] = nd;
+        d.door[1] = d.gate ? 0 : pair_leaf(nd);
+        for (int k = 0; k < kLeaves; ++k)
+            if (d.door[k] && !held_take(d.door[k], d.gate)) d.door[k] = 0;   // table full: not driven
+        if (!d.door[0]) { d.door[0] = d.door[1]; d.door[1] = 0; }
+        if (!d.door[0]) { d.gate = false; return; }
         if (std::getenv("SM64DS_GHOST_DOOR_PROBE")) probe_pick(seat, kind, frame, pos, d.door[0]);
         /* THE MUST-FAIL CONTROL for the proof rows, inert unset: what the door
            visual would be if it ran the door's REAL touch (the state logic the
@@ -384,23 +447,20 @@ void watcher_apply(int seat, unsigned char kind, unsigned char frame,
             if (me && !d.gate)
                 func_ov100_021451c4((char *)d.door[0], data_ov100_021488f4, (char *)me);
         }
-    } else if (d.gate) {
-        for (int i = 0; i < 3; ++i)
-            if (rd(d.door[0], kGateOffs + 4 * i) != d.gwritten[i]) {
-                d.yielded = true;     // the gate's own state machine moved it
-                ++g_stats.yielded;
-                return;
-            }
-    } else {
-        for (int k = 0; k < kLeaves; ++k) {
-            if (d.door[k] && rd(d.door[k], kCursor) != d.written[k]) {
-                /* the local game (or another ghost's drive) moved it: the
-                   local player is using this door himself. Not ours to write. */
-                d.yielded = true;
-                ++g_stats.yielded;
-                return;
-            }
+    }
+    /* has the LOCAL game moved one? (a write by another friend is not that: held.last is shared) */
+    for (int k = 0; k < kLeaves; ++k) {
+        if (!d.door[k]) continue;
+        Held *h = held_find(d.door[k]);
+        if (!h) continue;
+        if (!h->yielded) {
+            const bool moved = h->gate
+                ? (rd(d.door[k], kGateOffs) != h->glast[0] || rd(d.door[k], kGateOffs + 4) != h->glast[1] ||
+                   rd(d.door[k], kGateOffs + 8) != h->glast[2])
+                : rd(d.door[k], kCursor) != h->last;
+            if (moved) { h->yielded = true; ++g_stats.yielded; }
         }
+        if (h->yielded) return;    // the local player is using this door himself. Not ours to write.
     }
     static int probe = -1;
     if (probe < 0) probe = std::getenv("SM64DS_GHOST_DOOR_PROBE") ? 1 : 0;
@@ -410,9 +470,11 @@ void watcher_apply(int seat, unsigned char kind, unsigned char frame,
            St_OpenClose_Main, which only runs for the local player. Write it. */
         int slide = frame >= kGateBase ? ((int)frame - kGateBase) << 13 : 0;
         if (slide > kGateMax) slide = kGateMax;
-        gate_offset(d.door[0], slide, d.gwritten);
+        Held *h = held_find(d.door[0]);
+        if (!h) return;
+        gate_offset(d.door[0], slide, h->glast);
         for (int i = 0; i < 3; ++i)
-            *(int *)((char *)d.door[0] + kGateOffs + 4 * i) = d.gwritten[i];
+            *(int *)((char *)d.door[0] + kGateOffs + 4 * i) = h->glast[i];
         ++g_stats.applied;
         if (probe)
             std::fprintf(stderr, "[gwdoorw] t=%u seat=%d kind=%u frame=%u gate=%p "
@@ -422,11 +484,13 @@ void watcher_apply(int seat, unsigned char kind, unsigned char frame,
     }
     for (int k = 0; k < kLeaves; ++k) {
         if (!d.door[k]) continue;
+        Held *h = held_find(d.door[k]);
+        if (!h) continue;
         int f = (int)frame;
         const int n = door_frames(d.door[k]);
         if (n > 0 && f >= n) f = n - 1;
-        d.written[k] = f << 12;
-        *(int *)((char *)d.door[k] + kCursor) = d.written[k];
+        h->last = f << 12;
+        *(int *)((char *)d.door[k] + kCursor) = h->last;
         ++g_stats.applied;
         if (probe)
             std::fprintf(stderr, "[gwdoorw] t=%u seat=%d kind=%u frame=%u door=%p "
