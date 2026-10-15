@@ -47,6 +47,10 @@ int port_char_base(int i);                 /* 0 mario, 1 luigi, 2 wario, 3 yoshi
 const char *port_char_preview(int i);
 const char *port_char_icon(int i);
 const char *port_char_credits(int i);
+/* CHARHUD1 (hal/char_hud.h): PNG files for the HUD life icon, the minimap marker and the star select portrait; null when the mod ships none. */
+const char *port_char_hud_icon(int i);
+const char *port_char_map_icon(int i);
+const char *port_char_face(int i);
 
 /* The active skin: index, or -1 for the plain four. Resolved once. */
 int port_char_active(void);

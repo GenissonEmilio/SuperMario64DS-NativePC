@@ -25,7 +25,8 @@ struct Chr {
     std::string mod, key, full, name;
     int base;
     std::string disk[4];   /* body, head with cap, head without cap, metal */
-    std::string preview, icon, credits;   /* CHARMENU1: picker art (png files inside the mod, "" = none) and the credits line */
+    std::string preview, icon, credits;
+    std::string hud_icon, map_icon, face;   /* CHARHUD1: sprite pictures for the HUD life icon, the minimap marker and the star select portrait */   /* CHARMENU1: picker art (png files inside the mod, "" = none) and the credits line */
 };
 
 std::vector<Chr> g_chr;
@@ -228,9 +229,9 @@ void port_char_offer(const char *mod_id, const char *folder, const char *mod_jso
     }
     /* CHARMENU1: the picker's art and credits, all optional. A bad path costs only that picture. */
     {
-        const char *const what[2] = { "preview", "icon" };
-        std::string *const dst[2] = { &c.preview, &c.icon };
-        for (int k = 0; k < 2; ++k) {
+        const char *const what[5] = { "preview", "icon", "hud_icon", "map_icon", "face" };
+        std::string *const dst[5] = { &c.preview, &c.icon, &c.hud_icon, &c.map_icon, &c.face };
+        for (int k = 0; k < 5; ++k) {
             char rel[160] = "";
             if (host_json_string(blk.c_str(), what[k], rel, sizeof rel) && rel[0]) {
                 const std::string disk = std::string(folder) + "/" + rel;
@@ -255,6 +256,9 @@ const char *port_char_name(int i) { return i >= 0 && i < (int)g_chr.size() ? g_c
 int port_char_base(int i) { return i >= 0 && i < (int)g_chr.size() ? g_chr[(size_t)i].base : -1; }
 const char *port_char_preview(int i) { return i >= 0 && i < (int)g_chr.size() && !g_chr[(size_t)i].preview.empty() ? g_chr[(size_t)i].preview.c_str() : 0; }
 const char *port_char_icon(int i) { return i >= 0 && i < (int)g_chr.size() && !g_chr[(size_t)i].icon.empty() ? g_chr[(size_t)i].icon.c_str() : 0; }
+const char *port_char_hud_icon(int i) { return i >= 0 && i < (int)g_chr.size() && !g_chr[(size_t)i].hud_icon.empty() ? g_chr[(size_t)i].hud_icon.c_str() : 0; }
+const char *port_char_map_icon(int i) { return i >= 0 && i < (int)g_chr.size() && !g_chr[(size_t)i].map_icon.empty() ? g_chr[(size_t)i].map_icon.c_str() : 0; }
+const char *port_char_face(int i) { return i >= 0 && i < (int)g_chr.size() && !g_chr[(size_t)i].face.empty() ? g_chr[(size_t)i].face.c_str() : 0; }
 const char *port_char_credits(int i) { return i >= 0 && i < (int)g_chr.size() ? g_chr[(size_t)i].credits.c_str() : ""; }
 
 int port_char_active(void)

@@ -3573,6 +3573,7 @@ extern "C" unsigned port_scene_fill_rom(void **vt, unsigned n)
 // invisible from the outside: the object exists either way. These say how many
 // times the ROM's own processing lists actually entered ov003 code, which is
 // the only evidence that the chain is live rather than merely linked.
+extern "C" void port_char_hud_apply(int what);
 static unsigned g_ss_hits[18];
 static int  __fastcall ss_init(void *s, void *)
 { ++g_ss_hits[0];  _ZN12dScStarSel_c13InitResourcesEv(s); return 1; }
@@ -3581,7 +3582,7 @@ static int  __fastcall ss_clean(void *, void *)
 static int  __fastcall ss_beh(void *s, void *)
 { ++g_ss_hits[6];  return _ZN12dScStarSel_c8BehaviorEv(s); }
 static int  __fastcall ss_render(void *s, void *)
-{ ++g_ss_hits[9];  return _ZN12dScStarSel_c6RenderEv(s); }
+{ ++g_ss_hits[9];  port_char_hud_apply(2);  /* CHARHUD1 */ return _ZN12dScStarSel_c6RenderEv(s); }
 static int  __fastcall ss_pdes(void *, void *)
 { ++g_ss_hits[12]; _ZN12dScStarSel_c16OnPendingDestroyEv(); return 0; }
 /* the SM64DS_SCENE_SLOT9=0 stand-in. Counted separately so a run can never
