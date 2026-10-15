@@ -474,7 +474,12 @@ static void snd1_state1_0211bc8c(char *c, int i)
    native pointers to member, (this->*cell)(i): the receiver in ECX, the index on
    the stack, callee cleanup. A cdecl face entered that way reads the index as its
    receiver. These adapters are that entry: __fastcall (this, dead edx, i). MGSYNC1 */
-#define SND1_FACE(sym)                                                            static void __fastcall snd1f_##sym(void *self, void *dead_edx, int i)         {                                                                                 (void)dead_edx;                                                               (void)sym((char *)self, i);                                               }
+#define SND1_FACE(sym)                                                        \
+    static void __fastcall snd1f_##sym(void *self, void *dead_edx, int i)     \
+    {                                                                         \
+        (void)dead_edx;                                                       \
+        (void)sym((char *)self, i);                                           \
+    }
 SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211bf44Ei)
 SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211bc68Ei)
 SND1_FACE(_ZN12dScMgSound_c19func_ov006_0211bbe0Ei)

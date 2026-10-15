@@ -519,32 +519,41 @@ ES_FACE1(_ZN12dScMg3DEsp_c7RowFadeEi, T_F74)
  * caller also pops. So each cell holds a __cdecl wrapper with the body's own
  * parameter list, counting what the retired host copies counted
  * (g_esp_state_hits, and the per-table census hal/scene_mg_psycheout.cpp
- * prints), and pmf_guard carries the table as an adjudicated __cdecl row. */
+ * prints), and pmf_guard carries the table as an adjudicated __cdecl row.
+ *
+ * MGSYNC1: that reading is the old one. The open-coded C dispatchers are gone;
+ * main's dScMg3DEsp_c::SlotFall and the Flash dispatcher now call these cells as
+ * native pointers to member, (this->*cell)(i): receiver in ECX, index on the
+ * stack, callee cleanup. The cells hold __fastcall (this, dead edx, i) entries. */
 #define ES_CW1(sym, slot)                                                     \
-    static void ew_##sym(char *self, int i)                                   \
+    static void __fastcall ew_##sym(void *self, void *dead_edx, int i)        \
     {                                                                         \
+        (void)dead_edx;                                                       \
         ++g_esp_state_hits;                                                   \
         ++g_esp_table_hits[slot];                                             \
-        sym(self, i);                                                         \
+        sym((char *)self, i);                                                 \
     }
 ES_CW1(_ZN12dScMg3DEsp_c9SlotSetupEi, T_F8C)
 ES_CW1(_ZN12dScMg3DEsp_c8SlotRiseEi, T_F8C)
 ES_CW1(_ZN12dScMg3DEsp_c8SlotKickEi, T_F8C)
 ES_CW1(_ZN12dScMg3DEsp_c10SlotDampenEi, T_F8C)
-static void ew__ZN12dScMg3DEsp_c9FlashOnceEv(char *self)
+static void __fastcall ew__ZN12dScMg3DEsp_c9FlashOnceEv(void *self_v, void *dead_edx)
 {
+    char *self = (char *)self_v; (void)dead_edx;
     ++g_esp_state_hits;
     ++g_esp_table_hits[T_F44];
     _ZN12dScMg3DEsp_c9FlashOnceEv((unsigned char *)self);
 }
-static void ew__ZN12dScMg3DEsp_c9FlashSyncEv(char *self)
+static void __fastcall ew__ZN12dScMg3DEsp_c9FlashSyncEv(void *self_v, void *dead_edx)
 {
+    char *self = (char *)self_v; (void)dead_edx;
     ++g_esp_state_hits;
     ++g_esp_table_hits[T_F44];
     _ZN12dScMg3DEsp_c9FlashSyncEv(self);
 }
-static void ew__ZN12dScMg3DEsp_c10FlashQuickEv(char *self)
+static void __fastcall ew__ZN12dScMg3DEsp_c10FlashQuickEv(void *self_v, void *dead_edx)
 {
+    char *self = (char *)self_v; (void)dead_edx;
     ++g_esp_state_hits;
     ++g_esp_table_hits[T_F44];
     _ZN12dScMg3DEsp_c10FlashQuickEv(self);
