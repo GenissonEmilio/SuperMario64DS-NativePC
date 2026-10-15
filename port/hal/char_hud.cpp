@@ -6,6 +6,10 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 
 #include "char_hud.h"
 #include "char_registry.h"
@@ -16,7 +20,14 @@ extern void *_ZN3OAM10LIFE_ICONSE[];
 extern void *_ZN3OAM15MM_PLAYER_ICONSE[];
 extern unsigned char data_ov002_02111178;     /* HUD::RenderLifeCount: states 3..5 draw on engine A, else B */
 extern unsigned char data_ov001_020abb34[];   /* the four star select portrait lists, 0x20 bytes apart, base 0 1 2 3 */
+/* The minimap's own vtable and Render, under C names (linker aliases to the class TU's C++ symbols; see seat_minimap below). */
+extern void *char_hud_dmap_vtable[];
+extern int __fastcall char_hud_dmap_render(void *self, void *dead_edx);
 }
+#if defined(_MSC_VER) && defined(_M_IX86)
+#pragma comment(linker, "/alternatename:_char_hud_dmap_vtable=??_7dMap_c@@6B@")
+#pragma comment(linker, "/alternatename:@char_hud_dmap_render@8=?Render@dMap_c@@UAEHXZ")
+#endif
 
 namespace {
 
@@ -418,8 +429,45 @@ void do_lists(int what, const void *const *lists, const int *engines, const int 
 
 }  // namespace
 
+extern "C" void port_char_hud_apply(int what);
+
+namespace {
+/* THE MINIMAP SEAT. This line's dMap_c is main's class TU (src/actors/dMap_c.cpp): it owns the vtable the minimap object really uses, and its
+   Render is called straight through it. The port's own Minimap::Render / Behavior copies (unmatched/Minimap_*.cpp, where the marker repaint
+   used to be called from) are not in this link, so the repaint is put in front of Render here instead: the slot that holds Render in the
+   class TU's vtable gets a wrapper that repaints and then runs the original. Done once, the first time a costume with a minimap marker is
+   active; a vtable lives in read-only data, so the page is opened for the one pointer write. */
+int (__fastcall *g_dmap_render_orig)(void *, void *) = 0;
+int __fastcall dmap_render_wrap(void *self, void *edx)
+{
+    port_char_hud_apply(PCH_MINIMAP);
+    return g_dmap_render_orig(self, edx);
+}
+void seat_minimap(void)
+{
+    static bool tried = false;
+    if (tried) return;
+    tried = true;
+#if defined(_WIN32) && defined(_MSC_VER) && defined(_M_IX86)
+    void *orig = (void *)&char_hud_dmap_render;
+    for (int i = 0; i < 24; ++i) {
+        if (char_hud_dmap_vtable[i] != orig) continue;
+        DWORD old = 0;
+        if (!VirtualProtect(&char_hud_dmap_vtable[i], sizeof(void *), PAGE_READWRITE, &old)) break;
+        g_dmap_render_orig = (int (__fastcall *)(void *, void *))orig;
+        char_hud_dmap_vtable[i] = (void *)dmap_render_wrap;
+        VirtualProtect(&char_hud_dmap_vtable[i], sizeof(void *), old, &old);
+        fprintf(stderr, "[charhud] minimap marker: repaint seated in front of dMap_c::Render (vtable slot %d)\n", i);
+        return;
+    }
+    fprintf(stderr, "[charhud] minimap marker: dMap_c::Render is not in the minimap's vtable; the base marker is used\n");
+#endif
+}
+}  // namespace
+
 extern "C" void port_char_hud_apply(int what)
 {
+    if (what != PCH_MINIMAP && port_char_active() >= 0 && port_char_map_icon(port_char_active())) seat_minimap();
     dump_all(what);
     const int ci = port_char_active();
     if (ci < 0) return;
