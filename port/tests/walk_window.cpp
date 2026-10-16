@@ -20780,7 +20780,9 @@ int main(void)
             }
             if (selftest && dump_from >= 0) {
                 const int rf = port_rom_frame_checked(frame, "dump-window");
-                if (rf >= dump_from && rf <= dump_to) {
+                static int dump_step = -1;   /* PLAY093: SM64DS_DUMP_STEP=N writes only every Nth frame of the window */
+                if (dump_step < 0) { const char *e = getenv("SM64DS_DUMP_STEP"); dump_step = e && atoi(e) > 0 ? atoi(e) : 1; }
+                if (rf >= dump_from && rf <= dump_to && ((rf - dump_from) % dump_step) == 0) {
                     char nm[64];
                     snprintf(nm, sizeof nm, "walk_frame_%03d.bmp", rf);
                     ntr::ppu_write_bmp(nm, fb);
