@@ -12870,6 +12870,7 @@ static int  g_fc_selftest;
 static unsigned short g_fc_cam_rot;      /* this frame's held rotate bits  */
 static unsigned short g_fc_cam_rot_prev; /* last frame's, for the edge     */
 
+extern "C" int port_ctrl_script_wrote(int pi, int fld);   /* hal/stage_frame.cpp: PLAY093 */
 extern "C" void port_frame_ctrl_publish(void)
 {
     const XPad &pad = g_fc_pad;
@@ -12962,21 +12963,23 @@ extern "C" void port_frame_ctrl_publish(void)
                        in the child's window crouched MARIO in the child's
                        world. Same one-line character as the PadData[0]
                        clobber, one layer further in. */
-                    *(short *)((char *)data_0209f49c + o) = *(const short *)(r + 0x04);
-                    *(short *)((char *)data_0209f49e + o) = *(const short *)(r + 0x06);
-                    *(short *)((char *)data_0209f4a0 + o) = *(const short *)(r + 0x08);
-                    *(short *)((char *)data_0209f4a2 + o) = *(const short *)(r + 0x0a);
-                    *(short *)((char *)data_0209f4a4 + o) = *(const short *)(r + 0x0c);
-                    *(short *)((char *)data_0209f4a6 + o) = *(const short *)(r + 0x0e);
+                    /* PLAY093: a field a Kuppa script wrote after the prime is the script's (ProcessKuppaScript runs after CheckInput's clear
+                       on the cartridge): the local Mario's scripted walk in the ending was erased here */
+                    if (!port_ctrl_script_wrote(pi, 0)) *(short *)((char *)data_0209f49c + o) = *(const short *)(r + 0x04);
+                    if (!port_ctrl_script_wrote(pi, 1)) *(short *)((char *)data_0209f49e + o) = *(const short *)(r + 0x06);
+                    if (!port_ctrl_script_wrote(pi, 2)) *(short *)((char *)data_0209f4a0 + o) = *(const short *)(r + 0x08);
+                    if (!port_ctrl_script_wrote(pi, 3)) *(short *)((char *)data_0209f4a2 + o) = *(const short *)(r + 0x0a);
+                    if (!port_ctrl_script_wrote(pi, 4)) *(short *)((char *)data_0209f4a4 + o) = *(const short *)(r + 0x0c);
+                    if (!port_ctrl_script_wrote(pi, 5)) *(short *)((char *)data_0209f4a6 + o) = *(const short *)(r + 0x0e);
                     /* THE STYLUS POINT, Ctrl +0x10 and +0x11, the same two
                        bytes hal/stage_frame.cpp's prime copy fans out and for
                        the same reason: Minimap::Behavior draws the touch
                        marker at 0x100 - x, 0x80 - y out of these, so with
                        them stuck at zero it landed in the map's top-left
                        corner wherever the player touched. */
-                    *((unsigned char *)data_0209f4a8 + o) = *(const unsigned char *)(r + 0x10);
-                    *((unsigned char *)data_0209f4a9 + o) = *(const unsigned char *)(r + 0x11);
-                    *((unsigned char *)data_0209f4ac + o) = *(const unsigned char *)(r + 0x14);
+                    if (!port_ctrl_script_wrote(pi, 6)) *((unsigned char *)data_0209f4a8 + o) = *(const unsigned char *)(r + 0x10);
+                    if (!port_ctrl_script_wrote(pi, 7)) *((unsigned char *)data_0209f4a9 + o) = *(const unsigned char *)(r + 0x11);
+                    if (!port_ctrl_script_wrote(pi, 8)) *((unsigned char *)data_0209f4ac + o) = *(const unsigned char *)(r + 0x14);
                 }
             }
             /* ---- RUN MODE ANALOG: the record, refilled from the pad's left
