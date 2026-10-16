@@ -191,28 +191,27 @@ static void HostWidenDraw(dActor_c *a, int r, int thresh, Vector3 *camPos, int r
         /* CAMPACK2 (tester: "Draw Distance doesn't appear to be working, I can't see anything even on max"). BeforeRender returns 0 on
            flag 0x20 whatever the host byte says, and AfterInitResources gives every actor 0x38: only the in-range branch above clears
            0x20, the far branch keeps what it has. So an actor that STARTED beyond its clip distance (every far goomba, tree, coin of a
-           big level) kept 0x20 forever and the widened distance never drew it; only actors that had once been near did. The area is
-           showing here (the area test above did not fire), so 0x20 is stale and is cleared. An actor whose Behavior is skipped while far
-           (flags 1 and 8) and that never ran has no pose yet, so it stays hidden (mode 2, the default); SM64DS_DRAW_DIST_MODE=1 draws it
-           anyway (to look for stray objects at the origin), 0 is the old behaviour. */
+           big level) kept 0x20 forever and the widened distance never drew it; only actors that had once been near did. The game's own
+           flag is NOT touched (draw distance must not change game state): the host byte is set to 2, "area showing, ignore the stale
+           0x20", which only BeforeRender reads. The area test above did not fire, so the area is showing. An actor whose Behavior is
+           skipped while far (flags 1 and 8) and that never ran has no pose yet, so it stays hidden (mode 2, the default);
+           SM64DS_DRAW_DIST_MODE=1 draws it anyway (to look for stray objects at the origin), 0 is the old behaviour. */
         static int mode = -1;
         if (mode < 0) { const char *m = getenv("SM64DS_DRAW_DIST_MODE"); mode = m ? atoi(m) : 2; }
         const int stale20 = (a->mFlags & 0x20) != 0;
         const int noBehave = (a->mFlags & 9) == 9;
         static int n_ok, n_stale_run, n_stale_skip, n_tot;
         ++n_tot;
-        if (stale20 && mode >= 1 && (mode == 1 || !noBehave)) {
-            a->mFlags &= ~0x20u;
-            ++n_stale_run;
-        } else if (stale20) {
-            ++n_stale_skip;
-        } else {
+        if (!stale20) {
             ++n_ok;
-        }
-        if (!stale20 || mode >= 1)
             a->pad_0c5[0] = 1;
-        else
+        } else if (mode >= 1 && (mode == 1 || !noBehave)) {
+            ++n_stale_run;
+            a->pad_0c5[0] = 2;
+        } else {
+            ++n_stale_skip;
             a->pad_0c5[0] = 0;
+        }
         static int cnt, logon = -1;
         if (logon < 0)
             logon = getenv("SM64DS_DRAW_DIST_LOG") ? 1 : 0;
@@ -315,8 +314,13 @@ int dActor_c::BeforeRender()
         return 0;
 
     flags = mFlags;
+#ifdef _MSC_VER
+    if ((flags & 0x20) && pad_0c5[0] != 2)     /* 2 = the host's draw distance saw the area showing past a stale 0x20 */
+        goto ret0;
+#else
     if (flags & 0x20)
         goto ret0;
+#endif
     if (!(flags & 8))
         goto ret1;
     if (!(flags & 2))
