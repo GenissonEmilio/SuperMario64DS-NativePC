@@ -15476,15 +15476,19 @@ int main(void)
         /* CAMPACK1: every camera action as key OR mouse button OR pad button, read once a frame. Left / right are split into the
            key+mouse half and the pad half because the pad's pair means different things per camera (the DS camera rotates with
            it; the analog and free cameras zoom with it). */
-        const int cb_l_km = key_act(HOST_KEY_CAM_LEFT) || mouse_act(HOST_MOUSE_CAM_LEFT);
-        const int cb_r_km = key_act(HOST_KEY_CAM_RIGHT) || mouse_act(HOST_MOUSE_CAM_RIGHT);
-        const int cb_l_pad = pad_live && pad_act(&pad, HOST_PAD_CAM_LEFT);
-        const int cb_r_pad = pad_live && pad_act(&pad, HOST_PAD_CAM_RIGHT);
-        const int cb_up = key_act(HOST_KEY_CAM_UP) || mouse_act(HOST_MOUSE_CAM_UP) || (pad_live && pad_act(&pad, HOST_PAD_CAM_UP));
-        const int cb_dn = key_act(HOST_KEY_CAM_DOWN) || mouse_act(HOST_MOUSE_CAM_DOWN) || (pad_live && pad_act(&pad, HOST_PAD_CAM_DOWN));
-        const int cb_c = key_act(HOST_KEY_CAM_CENTER) || mouse_act(HOST_MOUSE_CAM_CENTER) || (pad_live && pad_act(&pad, HOST_PAD_CAM_CENTER));
-        const int cb_zi = key_act(HOST_KEY_CAM_ZOOM_IN) || mouse_act(HOST_MOUSE_CAM_ZOOM_IN) || (pad_live && pad_act(&pad, HOST_PAD_CAM_ZOOM_IN));
-        const int cb_zo = key_act(HOST_KEY_CAM_ZOOM_OUT) || mouse_act(HOST_MOUSE_CAM_ZOOM_OUT) || (pad_live && pad_act(&pad, HOST_PAD_CAM_ZOOM_OUT));
+        /* CAMPACK2: the ROM's pause is up (data_0209f2c4, Stage::Behavior :206-243; 0 = playing). The camera belongs to the pause: every
+           camera action below reads as not pressed and the rig / the DS camera's turn, zoom and centre do nothing until it closes
+           (tester: the analog camera could still be moved, and the DS camera zoomed out, in the pause). */
+        const int cam_paused = *(volatile unsigned char *)&data_0209f2c4[0] != 0;
+        const int cb_l_km = !cam_paused && (key_act(HOST_KEY_CAM_LEFT) || mouse_act(HOST_MOUSE_CAM_LEFT));
+        const int cb_r_km = !cam_paused && (key_act(HOST_KEY_CAM_RIGHT) || mouse_act(HOST_MOUSE_CAM_RIGHT));
+        const int cb_l_pad = !cam_paused && pad_live && pad_act(&pad, HOST_PAD_CAM_LEFT);
+        const int cb_r_pad = !cam_paused && pad_live && pad_act(&pad, HOST_PAD_CAM_RIGHT);
+        const int cb_up = !cam_paused && (key_act(HOST_KEY_CAM_UP) || mouse_act(HOST_MOUSE_CAM_UP) || (pad_live && pad_act(&pad, HOST_PAD_CAM_UP)));
+        const int cb_dn = !cam_paused && (key_act(HOST_KEY_CAM_DOWN) || mouse_act(HOST_MOUSE_CAM_DOWN) || (pad_live && pad_act(&pad, HOST_PAD_CAM_DOWN)));
+        const int cb_c = !cam_paused && (key_act(HOST_KEY_CAM_CENTER) || mouse_act(HOST_MOUSE_CAM_CENTER) || (pad_live && pad_act(&pad, HOST_PAD_CAM_CENTER)));
+        const int cb_zi = !cam_paused && (key_act(HOST_KEY_CAM_ZOOM_IN) || mouse_act(HOST_MOUSE_CAM_ZOOM_IN) || (pad_live && pad_act(&pad, HOST_PAD_CAM_ZOOM_IN)));
+        const int cb_zo = !cam_paused && (key_act(HOST_KEY_CAM_ZOOM_OUT) || mouse_act(HOST_MOUSE_CAM_ZOOM_OUT) || (pad_live && pad_act(&pad, HOST_PAD_CAM_ZOOM_OUT)));
         const int stick_zoom = host_setting_camera_stick_zoom();   /* right stick up / down zooms instead of tilting */
         /* ---- the freecam toggle (port mod, see the block above the window
            procedure). F1 or a click of the right stick; SM64DS_FREECAM=1
@@ -15550,7 +15554,7 @@ int main(void)
             }
             was_ds = ds;
         }
-        if (cam_mode != CAM_DS && !rb_replaying() && !(cam && cam93_ds_owned(cam))) {
+        if (cam_mode != CAM_DS && !rb_replaying() && !(cam && cam93_ds_owned(cam)) && !cam_paused) {
             /* the rig's own frame: orbit and tilt at a rate proportional to
                the stick, zoom on the bumpers or R/F, C back behind Mario.
                `rig_touched` is what tells the analog auto-recenter to keep its
@@ -15678,6 +15682,20 @@ int main(void)
                         (unsigned)*(unsigned char *)(c + 0x6e3), (unsigned)*(unsigned char *)(c + 0x70a),
                         (unsigned)(unsigned short)*(short *)((char *)cam + 0x17c), *(int *)((char *)cam + 0x8c) >> 12,
                         *(int *)((char *)cam + 0x90) >> 12, *(int *)((char *)cam + 0x94) >> 12);
+        }
+        {   /* CAMPACK2 test hook (SM64DS_CAM93_DUMPAT=<frame>[,<frame>...]): the Camera actor's first 0x200 bytes as words, to find
+               which field holds the Look button's level (far view / close-up) */
+            static const char *at = (const char *)-1;
+            if (at == (const char *)-1) at = getenv("SM64DS_CAM93_DUMPAT");
+            if (at && cam) {
+                char key[24]; snprintf(key, sizeof key, ",%d,", frame);
+                char list[256]; snprintf(list, sizeof list, ",%s,", at);
+                if (strstr(list, key)) {
+                    fprintf(stderr, "[camdump] f%d", frame);
+                    for (int w = 0; w < 0x80; ++w) fprintf(stderr, " %x", ((unsigned *)cam)[w]);
+                    fprintf(stderr, "\n");
+                }
+            }
         }
         if (pad_live && c && *(void **)(c + 0x370) == (void *)data_ov002_021102d4 && !cam93_ds_owned_off()) {
             /* CAMERA093: in the cannon (the Player's own aim state) the DS camera is the picture (camera
@@ -16058,33 +16076,51 @@ int main(void)
                 /* centre camera: the DS L button's bit (raw 0x0200 -> Ctrl
                    0x4000), KeyCamCenter / PadCamCenter / MouseCamCenter */
                 if (cb_c) btn |= 0x4000;
-                if (stick_rx < -10000) cam_rot |= cam_bit_left;
-                if (stick_rx > 10000) cam_rot |= cam_bit_right;
+                if (!cam_paused && stick_rx < -10000) cam_rot |= cam_bit_left;
+                if (!cam_paused && stick_rx > 10000) cam_rot |= cam_bit_right;
                 if (cb_l_pad) cam_rot |= cam_bit_left;
                 if (cb_r_pad) cam_rot |= cam_bit_right;
-                /* CAMPACK1: ZOOM in the DS camera is the ROM's own Look camera, which has levels: each press of the
-                   Look button (Ctrl 0x8000) goes normal -> a raised far view -> the close-up (camera state 9) -> normal,
-                   measured (out CAMPACK1 look_levels). Zoom in presses Look until the close-up is reached; zoom out
-                   presses it until the camera is back to normal (one press from the close-up, two from the raised
-                   view). The right stick's up / down does the same once per push (CameraStickZoom). One press per
-                   edge, so a held key does not step every frame. `phase` follows the presses from any source (the
-                   Look key, pad button, mouse button or these) and is corrected by the camera state. */
+                /* CAMPACK1 / CAMPACK2: ZOOM in the DS camera is the ROM's own Look camera, which has levels: each press of the Look
+                   button (Ctrl 0x8000) goes normal -> a raised far view (the eye a fifth farther) -> the close-up (camera state 9) -> normal.
+                   The two binds read as a ladder with the far view at the bottom and the close-up at the top:
+                       far view (1) <-> normal (0) <-> close-up (2)
+                   Zoom in goes one rung up, zoom out one rung down, and the ROM's ring is walked the short way round:
+                       zoom in  from normal   : Look, Look (the far view lasts the gap between the two presses)  -> close-up
+                       zoom in  from far view : Look, Look (through the close-up)                                -> normal
+                       zoom in  from close-up : nothing (already the closest)
+                       zoom out from close-up : Look                                                            -> normal
+                       zoom out from normal   : Look                                                            -> far view
+                       zoom out from far view : nothing (already the farthest)
+                   (CAMPACK1 pressed Look once from normal for zoom in, so the first press showed the far view, i.e. zoomed OUT, and
+                   zoom out from normal did nothing.) The right stick's up / down does the same once per push (CameraStickZoom). One
+                   action per edge, so a held key does not step every frame. `phase` follows the presses from any source (the Look key,
+                   pad button, mouse button or these) and is corrected by the camera state (the close-up is camera state 9; the far view
+                   has no state of its own). The pause cancels a half-done double press. */
                 {
-                    static int zi_prev, zo_prev, look_prev, phase, second;
+                    static int zi_prev, zo_prev, look_prev, phase, second, since = 99;
                     const int inz = cam && cam93_state_idx(cam) == 9;
-                    if (inz) phase = 2; else if (phase == 2) phase = 0;
-                    const int zi = cb_zi || (stick_zoom && pad_live && stick_ry > 16000);
-                    const int zo = cb_zo || (stick_zoom && pad_live && stick_ry < -16000);
+                    /* the camera's own flag word (Camera +0x154, measured with SM64DS_CAM93_DUMPAT: 0x1000 normal, 0x1002 far view,
+                       0x80000 close-up) says which rung it is on; the presses' own count carries the few ticks before it updates */
+                    ++since;
+                    if (cam && since >= 5 && !second) {
+                        const unsigned cf = *(unsigned *)((char *)cam + 0x154);
+                        phase = inz ? 2 : (cf & 2) ? 1 : 0;
+                    } else if (inz) phase = 2; else if (phase == 2 && since >= 5) phase = 0;
+                    const int zi = !cam_paused && (cb_zi || (stick_zoom && pad_live && stick_ry > 16000));
+                    const int zo = !cam_paused && (cb_zo || (stick_zoom && pad_live && stick_ry < -16000));
                     int press = 0;
-                    if (zi && !zi_prev && phase < 2) press = 1;
+                    if (cam_paused) second = 0;
+                    if (zi && !zi_prev) {
+                        if (phase == 0 || phase == 1) { press = 1; second = 3; }   /* two rungs of the ring: the second press follows */
+                    }
                     if (zo && !zo_prev) {
-                        if (phase == 2) press = 1;
-                        else if (phase == 1) { press = 1; second = 6; }
+                        if (phase == 2) press = 1;           /* close-up -> normal */
+                        else if (phase == 0) press = 1;      /* normal -> far view */
                     }
                     if (second && --second == 0) press = 1;
-                    if (press) btn |= 0x8000;
+                    if (press) { btn |= 0x8000; since = 0; }
                     const int lk = (btn & 0x8000) != 0;
-                    if (lk && !look_prev) phase = (phase + 1) % 3;
+                    if (lk && !look_prev) { phase = (phase + 1) % 3; since = 0; }
                     look_prev = lk;
                     zi_prev = zi; zo_prev = zo;
                 }
