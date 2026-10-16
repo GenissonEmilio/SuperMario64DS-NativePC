@@ -3711,6 +3711,19 @@ extern "C" void *port_stage_boot_body(void *mc, int spawn)
         }
         stars_seeded = true;
     }
+    /* SM64DS_CAPS_SEED=<mask> (PLAY093): the character caps a loaded file would have (the save block's flags2, data_0209caa0 + 8, bit n =
+       character n: 2 Luigi, 4 Wario, 8 Yoshi), written once on the first stage boot like the star seed above; the star select's character row
+       (STRIP_MODE, +0x130) is only built from these. INERT UNLESS SET. */
+    {
+        static bool caps_seeded = false;
+        const char *cs = std::getenv("SM64DS_CAPS_SEED");
+        if (cs && !caps_seeded) {
+            *(unsigned *)(data_0209caa0 + 8) |= (unsigned)std::strtoul(cs, 0, 0);
+            std::fprintf(stderr, "[caps-seed] flags2 now %08x\n", *(unsigned *)(data_0209caa0 + 8));
+            std::fflush(stderr);
+        }
+        caps_seeded = true;
+    }
     /* SM64DS_DEATH_SEED=<n> and SM64DS_DEATH_WATCH=1 -- the actor DEATH TABLE,
        data_0209f4f8, read here because nothing else in the harness can see it.
 

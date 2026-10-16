@@ -572,6 +572,30 @@ extern "C" int data_0209f498[];
    regardless of live player count; only the post-Behavior publish below is
    bounded by player count, because that is the copy that feeds actors that
    read player state. */
+/* PLAY093 (the ending: "Mario does not walk into the castle with the others"). What this prime wrote, so that port_ctrl_script_wrote can say
+   which split fields a Kuppa script changed after it. The script's player commands (func_ov002_020bd4e0 and the other walk / press commands)
+   write the split fields at data_0209f4xx + mPlayerNo * 0x18 inside ProcessKuppaScript, which runs AFTER CheckInput's clear on the cartridge
+   and so wins over it; port_frame_ctrl_publish copied the cleared block over the split for every live player (data_0209f21c, 1 outside VS),
+   which erased the script's walk for the local Mario (slot 0) while the other characters (extra Player actors, slots 1..3, not counted live)
+   kept theirs and walked in alone. */
+static short g_pr_s[4][6];
+static unsigned char g_pr_b[4][3];
+
+extern "C" int port_ctrl_script_wrote(int pi, int fld)
+{
+    extern unsigned char *data_0209fc48;      /* the running Kuppa script, 0 when none */
+    if (pi < 0 || pi >= 4 || fld < 0 || fld >= 9) return 0;
+    if (data_0209fc48 == 0) return 0;
+    const int o = pi * 0x18;
+    static unsigned char *const sp[6] = { data_0209f49c, data_0209f49e, data_0209f4a0, data_0209f4a2, data_0209f4a4, data_0209f4a6 };
+    static unsigned char *const bp[3] = { data_0209f4a8, data_0209f4a9, data_0209f4ac };
+    static int on = -1;
+    if (on < 0) { const char *e = std::getenv("SM64DS_CTRL_SCRIPT_KEEP"); on = (e && e[0] == '0') ? 0 : 1; }   /* 0 = the old copy-over, for the before row */
+    if (!on) return 0;
+    if (fld < 6) return *(short *)(sp[fld] + o) != g_pr_s[pi][fld];
+    return bp[fld - 6][o] != g_pr_b[pi][fld - 6];
+}
+
 static void port_frame_ctrl_prime(void)
 {
     for (int pi = 0; pi < 4; ++pi) {
@@ -583,6 +607,11 @@ static void port_frame_ctrl_prime(void)
         *(short *)(data_0209f4a2 + o) = *(const short *)(r + 0x0a);
         *(short *)(data_0209f4a4 + o) = *(const short *)(r + 0x0c);
         *(short *)(data_0209f4a6 + o) = *(const short *)(r + 0x0e);
+        g_pr_s[pi][0] = *(const short *)(r + 0x04); g_pr_s[pi][1] = *(const short *)(r + 0x06);
+        g_pr_s[pi][2] = *(const short *)(r + 0x08); g_pr_s[pi][3] = *(const short *)(r + 0x0a);
+        g_pr_s[pi][4] = *(const short *)(r + 0x0c); g_pr_s[pi][5] = *(const short *)(r + 0x0e);
+        g_pr_b[pi][0] = *(const unsigned char *)(r + 0x10); g_pr_b[pi][1] = *(const unsigned char *)(r + 0x11);
+        g_pr_b[pi][2] = *(const unsigned char *)(r + 0x14);
         /* THE STYLUS POINT, Ctrl +0x10 and +0x11, and leaving it out was a
            visible bug for every player. Minimap::Behavior places the touch
            marker with `SetSubBg2Offset(0x100 - x, 0x80 - y)` reading exactly

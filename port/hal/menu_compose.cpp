@@ -186,7 +186,7 @@ int src_opaque(const MenuPiece *p, const MenuSources *s, int sx, int sy)
         if (!sp || sx < 0 || sy < 0 || sx >= 256 || sy >= 192) return 0;
         if (p->row_ok && !p->row_ok(sy)) return 0;
         const uint32_t c = sp[sy * 256 + sx];
-        if (p->key_backdrop && (c & 0xffffffu) == (s->sub_backdrop & 0xffffffu)) return 0;
+        if (p->key_backdrop && (c & 0xffffffu) == (((s->bd_masked_on && sp != s->sub) ? s->sub_backdrop_masked : s->sub_backdrop) & 0xffffffu)) return 0;
         return 1;
     }
     case SRC_TOP_2D: {
@@ -385,6 +385,54 @@ int menu_hit(const MenuLayout *L, int bx, int by, int *piece, int *dsx, int *dsy
 void menu_inverse(const MenuLayout *L, int bx, int by, int *drag_piece, int *dsx, int *dsy, int *in)
 {
     int pi = -1;
+    if (L->wz > 1000) {
+        /* MENUS093E: the page behind the touch piece is zoomed about the canvas centre. A touch on a hotspot is the unzoomed place (the buttons are drawn
+           at their DS places); anywhere else is water, and the ROM puts the ripple at the touch point in the page's own space, so the point handed to
+           it is the zoomed page's: the offset from the centre over (scale * zoom). Every pixel of the canvas is water, not only the 4:3 area. */
+        int tp = -1;
+        for (int i = L->np - 1; i >= 0; --i) if (L->p[i].touch) { tp = i; break; }
+        if (tp >= 0) {
+            int ux = 0, uy = 0, hp = -1;
+            const bool on = menu_hit(L, bx, by, &hp, &ux, &uy);
+            if (on) {
+                for (int j = 0; j < L->nh; ++j) {
+                    const MenuHotspot &H = L->hs[j];
+                    if (H.piece == hp && ux >= H.box.x && ux < H.box.x + H.box.w && uy >= H.box.y && uy < H.box.y + H.box.h) {
+                        if (drag_piece) *drag_piece = hp;
+                        *dsx = ux; *dsy = uy; *in = 1;
+                        return;
+                    }
+                }
+            }
+            if (bx >= 0 && by >= 0 && bx < L->w && by < L->h) {
+                const MenuPiece &P = L->p[tp];
+                const int *d = L->dest[tp];
+                const double uz = d[2] > 0 ? (double)d[2] / (P.s.w > 0 ? P.s.w : 1) : 1.0;       /* picture pixels per DS unit */
+                const double sc = uz * (double)L->wz / 1000.0;
+                const double zx = P.s.x + P.s.w / 2.0 + ((double)bx - (L->w / 2.0)) / sc;         /* the zoomed page's point */
+                const double zy = P.s.y + P.s.h / 2.0 + ((double)by - (L->h / 2.0)) / sc;
+                const double ux = P.s.x + P.s.w / 2.0 + ((double)bx - (L->w / 2.0)) / uz;         /* the unzoomed point */
+                const double uy = P.s.y + P.s.h / 2.0 + ((double)by - (L->h / 2.0)) / uz;
+                /* the ROM reads ONE touch point for the ripple AND for its buttons, so the water point must not land in a button the pointer is not over:
+                   walk from the zoomed point toward the unzoomed one (which is clear: a click on a button was answered above) to the first clear point */
+                for (int k = 0; k <= 16; ++k) {
+                    const double fx = zx + (ux - zx) * k / 16.0, fy = zy + (uy - zy) * k / 16.0;
+                    int ix = (int)(fx < 0 ? 0 : fx), iy = (int)(fy < 0 ? 0 : fy);
+                    if (ix > P.s.x + P.s.w - 1) ix = P.s.x + P.s.w - 1;
+                    if (iy > P.s.y + P.s.h - 1) iy = P.s.y + P.s.h - 1;
+                    bool clear = true;
+                    for (int j = 0; j < L->nh && clear; ++j) {
+                        const MenuHotspot &H = L->hs[j];
+                        if (H.piece == tp && ix >= H.box.x - 1 && ix <= H.box.x + H.box.w && iy >= H.box.y - 1 && iy <= H.box.y + H.box.h) clear = false;
+                    }
+                    if (!clear) continue;
+                    if (drag_piece) *drag_piece = tp;
+                    *dsx = ix; *dsy = iy; *in = 1;
+                    return;
+                }
+            }
+        }
+    }
     if (menu_hit(L, bx, by, &pi, dsx, dsy)) {
         if (drag_piece) *drag_piece = pi;
         *in = 1;
@@ -1334,7 +1382,10 @@ static void piece_draw_2d(const MenuLayout *L, int i, const MenuSources *S, uint
         if (!clipped) { g_rep.x0 = x0; g_rep.valid = 1; }
         return;
     }
-    const uint32_t bd = S->sub_backdrop & 0xffffffu;
+    /* MENUS093E: a masked plane drawn over the sentinel backdrop is keyed by the sentinel; a piece that does not key carries the real backdrop in its place */
+    const bool msk = P.src == SRC_SUB && S->bd_masked_on && subp != S->sub;
+    const uint32_t bd = (msk ? S->sub_backdrop_masked : S->sub_backdrop) & 0xffffffu;
+    const uint32_t rbd = S->sub_backdrop | 0xff000000u;
     uint32_t crow[257];
     crow[256] = 0;
     /* the runs of a source row (dest column ranges whose source column is drawn): a row of the same source row as the row above is those
@@ -1353,6 +1404,7 @@ static void piece_draw_2d(const MenuLayout *L, int i, const MenuSources *S, uint
             if (P.src == SRC_SUB) {
                 const uint32_t *srow = subp + sy * 256;
                 if (P.key_backdrop) for (int sx = 0; sx < 256; ++sx) { const uint32_t c = srow[sx]; crow[sx] = (c & 0xffffffu) == bd ? 0u : (c | 0xff000000u); }
+                else if (msk) for (int sx = 0; sx < 256; ++sx) { const uint32_t c = srow[sx]; crow[sx] = (c & 0xffffffu) == bd ? rbd : (c | 0xff000000u); }
                 else for (int sx = 0; sx < 256; ++sx) crow[sx] = srow[sx] | 0xff000000u;
             } else {
                 const MenuTopCell *trow = S->top2d + sy * 256;
@@ -1686,6 +1738,7 @@ int  hal_menu_relift_why(void)
 int  hal_menu_relift_ok(void) { return hal_menu_relift_why() == 0; }
 /* does a re-draw between ticks need the picture as the menu found it (the tick keeps a copy, hal_sub_screen)? A picture piece cuts from it, a
    held-frame piece or a save lays over / copies the finished picture. */
+int  hal_menu_key_sentinel(void) { return g_dd.live && g_dd.L.key_sentinel ? 1 : 0; }
 int  hal_menu_needs_picsnap(void)
 {
     if (!g_dd.live) return 0;
@@ -2269,7 +2322,26 @@ int hal_menu_last_size(int *w, int *h)
 
 void hal_menu_pad(uint16_t *pressed, int host_back)
 {
-    host_menu_cursor_sound_flush();       /* EXTRAS093: once per logic frame a menu is up (the scene runner has no window loop) */
+    host_menu_cursor_sound_flush();
+    {   /* MENUS093E: SM64DS_MENU_INV_PROBE="bx,by[;bx,by...]@N": print where the touch inverse sends those picture pixels, on the Nth call with a menu live */
+        static int rd = 0, at = 0, calls = 0;
+        static char pts[256];
+        if (!rd) {
+            rd = 1;
+            const char *e = getenv("SM64DS_MENU_INV_PROBE");
+            if (e) { const char *a = strchr(e, '@'); at = a ? atoi(a + 1) : 1; strncpy(pts, e, sizeof pts - 1); char *q = strchr(pts, '@'); if (q) *q = 0; }
+        }
+        if (at > 0 && g_live && ++calls == at) {
+            const char *s = pts;
+            while (*s) {
+                int bx = 0, by = 0, dsx = -1, dsy = -1, in = 0;
+                if (sscanf(s, "%d,%d", &bx, &by) != 2) break;
+                hal_menu_touch_inverse(bx, by, &dsx, &dsy, &in);
+                fprintf(stderr, "[invprobe] picture (%d,%d) -> ds (%d,%d) in=%d\n", bx, by, dsx, dsy, in);
+                s = strchr(s, ';'); if (!s) break; ++s;
+            }
+        }
+    }       /* EXTRAS093: once per logic frame a menu is up (the scene runner has no window loop) */
     if (!g_live || !pressed || !g_cur.recipe) return;
     const MenuRecipe *R = g_cur.recipe;
     if (R->pad_ok && !R->pad_ok()) return;      /* the ROM is not reading the menu this frame */

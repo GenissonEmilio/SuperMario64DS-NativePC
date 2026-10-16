@@ -12147,6 +12147,26 @@ static void stack_capture(const uint32_t *img)
         }
     }
     const unsigned long f = frame++;
+    {   /* PLAY093: SM64DS_STACK_BMPS=<prefix>,<f0>,<f1>,<step>: the presented image on every step-th frame of f0..f1, as <prefix>_<frame>.bmp (proof runs) */
+        static int rng = -2, r0, r1, rs;
+        static char rpre[480];
+        if (rng == -2) {
+            rng = 0;
+            if (const char *e = getenv("SM64DS_STACK_BMPS")) {
+                const char *c = strchr(e, ',');
+                if (c && (size_t)(c - e) < sizeof rpre && sscanf(c + 1, "%d,%d,%d", &r0, &r1, &rs) == 3 && rs > 0) {
+                    memcpy(rpre, e, (size_t)(c - e)); rpre[c - e] = 0; rng = 1;
+                }
+            }
+        }
+        if (rng == 1 && img && (long)f >= r0 && (long)f <= r1 && ((long)f - r0) % rs == 0) {
+            int w = 0, h = 0;
+            hal_sub_screen_stacked_size(&w, &h);
+            char nm[512];
+            snprintf(nm, sizeof nm, "%s_%05lu.bmp", rpre, f);
+            ntr::ppu_write_bmp_px(nm, img, w, h);
+        }
+    }
     if (at < 0 || done || !img || (long)f < (long)at) return;
     done = 1;
     int w = 0, h = 0;
@@ -13538,6 +13558,7 @@ static int  g_fc_selftest;
 static unsigned short g_fc_cam_rot;      /* this frame's held rotate bits  */
 static unsigned short g_fc_cam_rot_prev; /* last frame's, for the edge     */
 
+extern "C" int port_ctrl_script_wrote(int pi, int fld);   /* hal/stage_frame.cpp: PLAY093 */
 extern "C" void port_frame_ctrl_publish(void)
 {
     const XPad &pad = g_fc_pad;
@@ -13630,21 +13651,23 @@ extern "C" void port_frame_ctrl_publish(void)
                        in the child's window crouched MARIO in the child's
                        world. Same one-line character as the PadData[0]
                        clobber, one layer further in. */
-                    *(short *)((char *)data_0209f49c + o) = *(const short *)(r + 0x04);
-                    *(short *)((char *)data_0209f49e + o) = *(const short *)(r + 0x06);
-                    *(short *)((char *)data_0209f4a0 + o) = *(const short *)(r + 0x08);
-                    *(short *)((char *)data_0209f4a2 + o) = *(const short *)(r + 0x0a);
-                    *(short *)((char *)data_0209f4a4 + o) = *(const short *)(r + 0x0c);
-                    *(short *)((char *)data_0209f4a6 + o) = *(const short *)(r + 0x0e);
+                    /* PLAY093: a field a Kuppa script wrote after the prime is the script's (ProcessKuppaScript runs after CheckInput's clear
+                       on the cartridge): the local Mario's scripted walk in the ending was erased here */
+                    if (!port_ctrl_script_wrote(pi, 0)) *(short *)((char *)data_0209f49c + o) = *(const short *)(r + 0x04);
+                    if (!port_ctrl_script_wrote(pi, 1)) *(short *)((char *)data_0209f49e + o) = *(const short *)(r + 0x06);
+                    if (!port_ctrl_script_wrote(pi, 2)) *(short *)((char *)data_0209f4a0 + o) = *(const short *)(r + 0x08);
+                    if (!port_ctrl_script_wrote(pi, 3)) *(short *)((char *)data_0209f4a2 + o) = *(const short *)(r + 0x0a);
+                    if (!port_ctrl_script_wrote(pi, 4)) *(short *)((char *)data_0209f4a4 + o) = *(const short *)(r + 0x0c);
+                    if (!port_ctrl_script_wrote(pi, 5)) *(short *)((char *)data_0209f4a6 + o) = *(const short *)(r + 0x0e);
                     /* THE STYLUS POINT, Ctrl +0x10 and +0x11, the same two
                        bytes hal/stage_frame.cpp's prime copy fans out and for
                        the same reason: Minimap::Behavior draws the touch
                        marker at 0x100 - x, 0x80 - y out of these, so with
                        them stuck at zero it landed in the map's top-left
                        corner wherever the player touched. */
-                    *((unsigned char *)data_0209f4a8 + o) = *(const unsigned char *)(r + 0x10);
-                    *((unsigned char *)data_0209f4a9 + o) = *(const unsigned char *)(r + 0x11);
-                    *((unsigned char *)data_0209f4ac + o) = *(const unsigned char *)(r + 0x14);
+                    if (!port_ctrl_script_wrote(pi, 6)) *((unsigned char *)data_0209f4a8 + o) = *(const unsigned char *)(r + 0x10);
+                    if (!port_ctrl_script_wrote(pi, 7)) *((unsigned char *)data_0209f4a9 + o) = *(const unsigned char *)(r + 0x11);
+                    if (!port_ctrl_script_wrote(pi, 8)) *((unsigned char *)data_0209f4ac + o) = *(const unsigned char *)(r + 0x14);
                 }
             }
             /* ---- RUN MODE ANALOG: the record, refilled from the pad's left
@@ -16205,15 +16228,19 @@ int main(void)
         /* CAMPACK1: every camera action as key OR mouse button OR pad button, read once a frame. Left / right are split into the
            key+mouse half and the pad half because the pad's pair means different things per camera (the DS camera rotates with
            it; the analog and free cameras zoom with it). */
-        const int cb_l_km = key_act(HOST_KEY_CAM_LEFT) || mouse_act(HOST_MOUSE_CAM_LEFT);
-        const int cb_r_km = key_act(HOST_KEY_CAM_RIGHT) || mouse_act(HOST_MOUSE_CAM_RIGHT);
-        const int cb_l_pad = pad_live && pad_act(&pad, HOST_PAD_CAM_LEFT);
-        const int cb_r_pad = pad_live && pad_act(&pad, HOST_PAD_CAM_RIGHT);
-        const int cb_up = key_act(HOST_KEY_CAM_UP) || mouse_act(HOST_MOUSE_CAM_UP) || (pad_live && pad_act(&pad, HOST_PAD_CAM_UP));
-        const int cb_dn = key_act(HOST_KEY_CAM_DOWN) || mouse_act(HOST_MOUSE_CAM_DOWN) || (pad_live && pad_act(&pad, HOST_PAD_CAM_DOWN));
-        const int cb_c = key_act(HOST_KEY_CAM_CENTER) || mouse_act(HOST_MOUSE_CAM_CENTER) || (pad_live && pad_act(&pad, HOST_PAD_CAM_CENTER));
-        const int cb_zi = key_act(HOST_KEY_CAM_ZOOM_IN) || mouse_act(HOST_MOUSE_CAM_ZOOM_IN) || (pad_live && pad_act(&pad, HOST_PAD_CAM_ZOOM_IN));
-        const int cb_zo = key_act(HOST_KEY_CAM_ZOOM_OUT) || mouse_act(HOST_MOUSE_CAM_ZOOM_OUT) || (pad_live && pad_act(&pad, HOST_PAD_CAM_ZOOM_OUT));
+        /* CAMPACK2: the ROM's pause is up (data_0209f2c4, Stage::Behavior :206-243; 0 = playing). The camera belongs to the pause: every
+           camera action below reads as not pressed and the rig / the DS camera's turn, zoom and centre do nothing until it closes
+           (tester: the analog camera could still be moved, and the DS camera zoomed out, in the pause). */
+        const int cam_paused = *(volatile unsigned char *)&data_0209f2c4[0] != 0;
+        const int cb_l_km = !cam_paused && (key_act(HOST_KEY_CAM_LEFT) || mouse_act(HOST_MOUSE_CAM_LEFT));
+        const int cb_r_km = !cam_paused && (key_act(HOST_KEY_CAM_RIGHT) || mouse_act(HOST_MOUSE_CAM_RIGHT));
+        const int cb_l_pad = !cam_paused && pad_live && pad_act(&pad, HOST_PAD_CAM_LEFT);
+        const int cb_r_pad = !cam_paused && pad_live && pad_act(&pad, HOST_PAD_CAM_RIGHT);
+        const int cb_up = !cam_paused && (key_act(HOST_KEY_CAM_UP) || mouse_act(HOST_MOUSE_CAM_UP) || (pad_live && pad_act(&pad, HOST_PAD_CAM_UP)));
+        const int cb_dn = !cam_paused && (key_act(HOST_KEY_CAM_DOWN) || mouse_act(HOST_MOUSE_CAM_DOWN) || (pad_live && pad_act(&pad, HOST_PAD_CAM_DOWN)));
+        const int cb_c = !cam_paused && (key_act(HOST_KEY_CAM_CENTER) || mouse_act(HOST_MOUSE_CAM_CENTER) || (pad_live && pad_act(&pad, HOST_PAD_CAM_CENTER)));
+        const int cb_zi = !cam_paused && (key_act(HOST_KEY_CAM_ZOOM_IN) || mouse_act(HOST_MOUSE_CAM_ZOOM_IN) || (pad_live && pad_act(&pad, HOST_PAD_CAM_ZOOM_IN)));
+        const int cb_zo = !cam_paused && (key_act(HOST_KEY_CAM_ZOOM_OUT) || mouse_act(HOST_MOUSE_CAM_ZOOM_OUT) || (pad_live && pad_act(&pad, HOST_PAD_CAM_ZOOM_OUT)));
         const int stick_zoom = host_setting_camera_stick_zoom();   /* right stick up / down zooms instead of tilting */
         /* ---- the freecam toggle (port mod, see the block above the window
            procedure). F1 or a click of the right stick; SM64DS_FREECAM=1
@@ -16279,7 +16306,7 @@ int main(void)
             }
             was_ds = ds;
         }
-        if (cam_mode != CAM_DS && !rb_replaying() && !(cam && cam93_ds_owned(cam))) {
+        if (cam_mode != CAM_DS && !rb_replaying() && !(cam && cam93_ds_owned(cam)) && !cam_paused) {
             /* the rig's own frame: orbit and tilt at a rate proportional to
                the stick, zoom on the bumpers or R/F, C back behind Mario.
                `rig_touched` is what tells the analog auto-recenter to keep its
@@ -16407,6 +16434,20 @@ int main(void)
                         (unsigned)*(unsigned char *)(c + 0x6e3), (unsigned)*(unsigned char *)(c + 0x70a),
                         (unsigned)(unsigned short)*(short *)((char *)cam + 0x17c), *(int *)((char *)cam + 0x8c) >> 12,
                         *(int *)((char *)cam + 0x90) >> 12, *(int *)((char *)cam + 0x94) >> 12);
+        }
+        {   /* CAMPACK2 test hook (SM64DS_CAM93_DUMPAT=<frame>[,<frame>...]): the Camera actor's first 0x200 bytes as words, to find
+               which field holds the Look button's level (far view / close-up) */
+            static const char *at = (const char *)-1;
+            if (at == (const char *)-1) at = getenv("SM64DS_CAM93_DUMPAT");
+            if (at && cam) {
+                char key[24]; snprintf(key, sizeof key, ",%d,", frame);
+                char list[256]; snprintf(list, sizeof list, ",%s,", at);
+                if (strstr(list, key)) {
+                    fprintf(stderr, "[camdump] f%d", frame);
+                    for (int w = 0; w < 0x80; ++w) fprintf(stderr, " %x", ((unsigned *)cam)[w]);
+                    fprintf(stderr, "\n");
+                }
+            }
         }
         if (pad_live && c && *(void **)(c + 0x370) == (void *)data_ov002_021102d4 && !cam93_ds_owned_off()) {
             /* CAMERA093: in the cannon (the Player's own aim state) the DS camera is the picture (camera
@@ -16793,33 +16834,51 @@ int main(void)
                 /* centre camera: the DS L button's bit (raw 0x0200 -> Ctrl
                    0x4000), KeyCamCenter / PadCamCenter / MouseCamCenter */
                 if (cb_c) btn |= 0x4000;
-                if (stick_rx < -10000) cam_rot |= cam_bit_left;
-                if (stick_rx > 10000) cam_rot |= cam_bit_right;
+                if (!cam_paused && stick_rx < -10000) cam_rot |= cam_bit_left;
+                if (!cam_paused && stick_rx > 10000) cam_rot |= cam_bit_right;
                 if (cb_l_pad) cam_rot |= cam_bit_left;
                 if (cb_r_pad) cam_rot |= cam_bit_right;
-                /* CAMPACK1: ZOOM in the DS camera is the ROM's own Look camera, which has levels: each press of the
-                   Look button (Ctrl 0x8000) goes normal -> a raised far view -> the close-up (camera state 9) -> normal,
-                   measured (out CAMPACK1 look_levels). Zoom in presses Look until the close-up is reached; zoom out
-                   presses it until the camera is back to normal (one press from the close-up, two from the raised
-                   view). The right stick's up / down does the same once per push (CameraStickZoom). One press per
-                   edge, so a held key does not step every frame. `phase` follows the presses from any source (the
-                   Look key, pad button, mouse button or these) and is corrected by the camera state. */
+                /* CAMPACK1 / CAMPACK2: ZOOM in the DS camera is the ROM's own Look camera, which has levels: each press of the Look
+                   button (Ctrl 0x8000) goes normal -> a raised far view (the eye a fifth farther) -> the close-up (camera state 9) -> normal.
+                   The two binds read as a ladder with the far view at the bottom and the close-up at the top:
+                       far view (1) <-> normal (0) <-> close-up (2)
+                   Zoom in goes one rung up, zoom out one rung down, and the ROM's ring is walked the short way round:
+                       zoom in  from normal   : Look, Look (the far view lasts the gap between the two presses)  -> close-up
+                       zoom in  from far view : Look, Look (through the close-up)                                -> normal
+                       zoom in  from close-up : nothing (already the closest)
+                       zoom out from close-up : Look                                                            -> normal
+                       zoom out from normal   : Look                                                            -> far view
+                       zoom out from far view : nothing (already the farthest)
+                   (CAMPACK1 pressed Look once from normal for zoom in, so the first press showed the far view, i.e. zoomed OUT, and
+                   zoom out from normal did nothing.) The right stick's up / down does the same once per push (CameraStickZoom). One
+                   action per edge, so a held key does not step every frame. `phase` follows the presses from any source (the Look key,
+                   pad button, mouse button or these) and is corrected by the camera state (the close-up is camera state 9; the far view
+                   has no state of its own). The pause cancels a half-done double press. */
                 {
-                    static int zi_prev, zo_prev, look_prev, phase, second;
+                    static int zi_prev, zo_prev, look_prev, phase, second, since = 99;
                     const int inz = cam && cam93_state_idx(cam) == 9;
-                    if (inz) phase = 2; else if (phase == 2) phase = 0;
-                    const int zi = cb_zi || (stick_zoom && pad_live && stick_ry > 16000);
-                    const int zo = cb_zo || (stick_zoom && pad_live && stick_ry < -16000);
+                    /* the camera's own flag word (Camera +0x154, measured with SM64DS_CAM93_DUMPAT: 0x1000 normal, 0x1002 far view,
+                       0x80000 close-up) says which rung it is on; the presses' own count carries the few ticks before it updates */
+                    ++since;
+                    if (cam && since >= 5 && !second) {
+                        const unsigned cf = *(unsigned *)((char *)cam + 0x154);
+                        phase = inz ? 2 : (cf & 2) ? 1 : 0;
+                    } else if (inz) phase = 2; else if (phase == 2 && since >= 5) phase = 0;
+                    const int zi = !cam_paused && (cb_zi || (stick_zoom && pad_live && stick_ry > 16000));
+                    const int zo = !cam_paused && (cb_zo || (stick_zoom && pad_live && stick_ry < -16000));
                     int press = 0;
-                    if (zi && !zi_prev && phase < 2) press = 1;
+                    if (cam_paused) second = 0;
+                    if (zi && !zi_prev) {
+                        if (phase == 0 || phase == 1) { press = 1; second = 3; }   /* two rungs of the ring: the second press follows */
+                    }
                     if (zo && !zo_prev) {
-                        if (phase == 2) press = 1;
-                        else if (phase == 1) { press = 1; second = 6; }
+                        if (phase == 2) press = 1;           /* close-up -> normal */
+                        else if (phase == 0) press = 1;      /* normal -> far view */
                     }
                     if (second && --second == 0) press = 1;
-                    if (press) btn |= 0x8000;
+                    if (press) { btn |= 0x8000; since = 0; }
                     const int lk = (btn & 0x8000) != 0;
-                    if (lk && !look_prev) phase = (phase + 1) % 3;
+                    if (lk && !look_prev) { phase = (phase + 1) % 3; since = 0; }
                     look_prev = lk;
                     zi_prev = zi; zo_prev = zo;
                 }
@@ -21559,7 +21618,9 @@ int main(void)
             }
             if (selftest && dump_from >= 0) {
                 const int rf = port_rom_frame_checked(frame, "dump-window");
-                if (rf >= dump_from && rf <= dump_to) {
+                static int dump_step = -1;   /* PLAY093: SM64DS_DUMP_STEP=N writes only every Nth frame of the window */
+                if (dump_step < 0) { const char *e = getenv("SM64DS_DUMP_STEP"); dump_step = e && atoi(e) > 0 ? atoi(e) : 1; }
+                if (rf >= dump_from && rf <= dump_to && ((rf - dump_from) % dump_step) == 0) {
                     char nm[64];
                     snprintf(nm, sizeof nm, "walk_frame_%03d.bmp", rf);
                     ntr::ppu_write_bmp(nm, fb);

@@ -411,6 +411,12 @@ long ppu_sub_obj_veto_count(void);
  * is the behaviour this file shipped with.  */
 void ppu_sub_set_bg_suppress(uint32_t mask);
 
+/* MENUS093E: ENGINE B's BACKDROP COLOUR, replaced for one masked scan-out. bgr555 is the colour the pixels no layer drew take instead of palette
+   entry 0 (before the master brightness, which still applies); -1 = the palette's own entry 0, the behaviour this file shipped with. A menu keys
+   "nothing drawn here" by colour, and entry 0 can equal a colour the art really uses (black after a minigame); a colour the art cannot have
+   makes the key exact. Read-only on the ROM; set it around one masked ppu_scanout_sub and clear it after. */
+void ppu_sub_set_backdrop_override(int bgr555);
+
 /* ASSET1 (run menu1): ENGINE B DRAWS ONLY SOME OAM ENTRIES. mask4 is a 128-bit set (bit i of word i / 32 is OAM entry i);
    an entry outside it is skipped exactly as the camera-button veto skips one (obj_decide's skip[], so the scan-out cache
    and the reference raster agree). Null = every entry, the behaviour this file shipped with. Read-only on the ROM's OAM;

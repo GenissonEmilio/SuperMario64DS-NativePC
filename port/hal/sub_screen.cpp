@@ -1524,9 +1524,8 @@ int menu_enable(int key)
    on the finished picture then darkens to the (51,135,14) a capture shows.
    That pair is the fallback value if this read ever has to be replaced by a
    constant. */
-unsigned menu_backdrop_px(void)
+unsigned menu_backdrop_px_of(unsigned c)
 {
-    const unsigned c = *(volatile unsigned short *)0x05000400u;
     const unsigned r5 = c & 0x1Fu, g5 = (c >> 5) & 0x1Fu,
                    b5 = (c >> 10) & 0x1Fu;
     int r = (int)(r5 << 3 | r5 >> 2), g = (int)(g5 << 3 | g5 >> 2),
@@ -1546,6 +1545,12 @@ unsigned menu_backdrop_px(void)
     }
     return ((unsigned)r << 16) | ((unsigned)g << 8) | (unsigned)b;
 }
+unsigned menu_backdrop_px(void) { return menu_backdrop_px_of(*(volatile unsigned short *)0x05000400u); }
+
+/* MENUS093E: the colour a masked scan-out starts its undrawn pixels from while the bound layout keys by colour (hal_menu_key_sentinel): a BGR555
+   value no menu art has (8,16,8 widened), so "nothing drawn" is exact even when palette entry 0 is a colour the art uses (black, after a minigame) */
+const int kKeySentinel = 0x0841;
+int g_sentinel_on;
 
 /* The same suppression hal_sub_screen_present installs for the corner-inset layout every frame (the improved map's
    touch-marker removal), put back after a masked scan-out so nothing later in the frame sees the menu's. */
@@ -1568,7 +1573,9 @@ const uint32_t *menu_sub_for(uint8_t layers)
     ntr::SubFramebuffer &buf = g_msub_n == 0 ? g_sub_menu : g_sub_menu2;
     ++g_msub_n;
     ntr::ppu_sub_set_bg_suppress((~(unsigned)layers & 0x1fu) << 8);
+    if (g_sentinel_on) ntr::ppu_sub_set_backdrop_override(kKeySentinel);
     ntr::ppu_scanout_sub(buf);
+    if (g_sentinel_on) ntr::ppu_sub_set_backdrop_override(-1);
     ntr::ppu_sub_set_bg_suppress(inset_bg_suppress());
     return &buf.px[0][0];
 }
@@ -1583,7 +1590,9 @@ const uint32_t *menu_sub_for_oam(uint8_t layers, int lo, int hi)
     for (int i = lo < 0 ? 0 : lo; i <= hi && i < 128; ++i) sel[i >> 5] |= 1u << (i & 31);
     ntr::ppu_sub_set_bg_suppress((~(unsigned)layers & 0x1fu) << 8);
     ntr::ppu_sub_set_obj_select(sel);
+    if (g_sentinel_on) ntr::ppu_sub_set_backdrop_override(kKeySentinel);
     ntr::ppu_scanout_sub(buf);
+    if (g_sentinel_on) ntr::ppu_sub_set_backdrop_override(-1);
     ntr::ppu_sub_set_obj_select(0);
     ntr::ppu_sub_set_bg_suppress(inset_bg_suppress());
     return &buf.px[0][0];
@@ -1627,6 +1636,9 @@ void menu_prepare_sources(unsigned *dst, int w, int h)
     std::memset(&g_msrc, 0, sizeof g_msrc);
     g_msrc.sub = &g_sub.px[0][0];
     g_msrc.sub_backdrop = menu_backdrop_px();
+    g_sentinel_on = hal_menu_key_sentinel();
+    g_msrc.sub_backdrop_masked = g_sentinel_on ? menu_backdrop_px_of((unsigned)kKeySentinel) : 0;
+    g_msrc.bd_masked_on = g_sentinel_on ? 1 : 0;
     g_msrc.top2d = port_menu_top2d_plane();
     g_msrc.hostrow = port_menu_hostrow_plane();
     g_msrc.hostrow_stride = ntr::SCREEN_W;

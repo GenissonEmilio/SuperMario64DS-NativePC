@@ -8,6 +8,7 @@
 #include "char_door_skin.h"
 #include "char_registry.h"
 #include "char_save.h"
+#include "host_settings.h"
 #include "mods.h"
 
 extern "C" {
@@ -56,6 +57,7 @@ int g_prev_mx = -1, g_prev_my = -1;
 int g_last_hover = -1;
 int g_hold_key, g_hold_frames;
 int g_swallow;             /* the strip took a press: keep every pad bit from the ROM until the pad is released */
+int g_open;                /* custom characters are open for this strip (unlock flag or the from-the-start setting) */
 int g_begun;               /* the head icons were read for this star select */
 int g_ready;               /* every device was seen released once since the strip came up */
 
@@ -125,14 +127,17 @@ void build_lists(void)
     g_nrom = 0;
     for (int c = 0; c < 4; ++c)
         if (rom_unlocked(c)) g_rom[g_nrom++] = c;
-    g_ncust = port_char_count();
+    /* CHARSET1: the arrow and the costumes behind it are earned at the white door (this save slot's unlock flag), or open from the start when
+       the CharactersUnlockedFromStart setting is on */
+    g_open = host_setting_chars_from_start() || port_char_save_unlocked(port_char_save_slot());
+    g_ncust = g_open ? port_char_count() : 0;
     if (g_ncust > 16) g_ncust = 16;
     g_npages = 1 + (g_ncust + PER_PAGE - 1) / PER_PAGE;
     g_page = page_of(current_id());
     if (g_page >= g_npages) g_page = 0;
     build_page(g_page);
     g_built = 1;
-    fprintf(stderr, "[strip] built: %d ROM character(s), %d custom, %d page(s); page %d, %d slot(s), current %d\n", g_nrom, g_ncust, g_npages, g_page, g_nslots, current_id());
+    fprintf(stderr, "[strip] built: %d ROM character(s), %d custom%s, %d page(s); page %d, %d slot(s), current %d\n", g_nrom, g_ncust, g_open ? "" : (port_char_count() > 0 ? " (locked: no unlock yet)" : ""), g_npages, g_page, g_nslots, current_id());
     log_slots();
 }
 

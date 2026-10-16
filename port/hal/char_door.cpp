@@ -7,6 +7,7 @@
 #include "char_door_skin.h"
 #include "char_registry.h"
 #include "char_save.h"
+#include "host_settings.h"
 #include "mods.h"
 
 extern "C" {
@@ -162,7 +163,8 @@ int door_hook(void *door, void *pl)
     g_saw_closed = 0;
     if (g_mode != CD_NONE || g_want != 0) return 1;                /* one is up or on its way */
     const int slot = port_char_save_slot();
-    const int first = !port_char_save_unlocked(slot);
+    /* CHARSET1: with CharactersUnlockedFromStart on, the picker opens at once (no unlock box); the ROM's own star flow ahead of it is unchanged */
+    const int first = !port_char_save_unlocked(slot) && !host_setting_chars_from_start();
     /* the box comes as soon as the ROM's star is done (the player stands wherever the ROM left them); the picker only
        when the player walks into the doorway */
     if (!first) {

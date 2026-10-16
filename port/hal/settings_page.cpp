@@ -621,6 +621,7 @@ const Row ROWS_GENERAL[] = {
     { R_NOTE, "The minimap is the small map in the corner.", -1, -1, 0, 0, 0 },
     { R_CHECK, "Debug menu", SL_DEBUG_MENU, -1, 0, 0, 0 },
     { R_CHOICE, "Chat size", SL_CHAT_SCALE, -1, 0, CHAT_LABELS, 5, CHAT_VALS },
+    { R_CHECK, "Custom characters from the start", SL_CHARS_FROM_START, -1, 0, 0, 0 },
 };
 /* PAUSE3: CONTROLS is the old CONTROLS and CAMERA tabs together (the camera rows first, then the run rows, then the bindings) */
 const Row ROWS_CONTROLS[] = {

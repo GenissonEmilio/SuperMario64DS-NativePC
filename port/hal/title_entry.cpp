@@ -695,6 +695,36 @@ extern "C" int port_title_elem_boxes(int *slot, int *id, int *x0, int *y0, int *
     return n;
 }
 
+/* MENUS093E: IS THE ELEMENT IN SLOT `slot` ONE THE ROM WOULD TAKE A TOUCH ON. The ROM's own gate, src/unnamed/ov007/func_ov007_020b46b0.c
+   elem_selectable(): the element's state word is 0, and its +0x10 scale is at least 1.0 or its table entry (data_ov007_020d77dc, 12 bytes
+   an id) has bit 1, and the table's bit 0 is clear, and (outside the mode func_ov007_020b79e4 tests) it is not one of the two cursor ids.
+   The element records exist for every page's buttons whether they are on show or not (the file select keeps the score / copy / erase
+   buttons' boxes while they are hidden), so a hover or a click over a hidden one must not count. */
+extern "C" unsigned char data_ov007_020d77dc[];
+extern "C" int func_ov007_020b79e4(void);
+extern "C" int port_title_elem_live(int slot)
+{
+    char *g = data_ov007_0210342c;
+    if (!g || slot < 0 || slot >= 24)
+        return 0;
+    char **rec = *(char ***)(g + 0x114 + slot * 4);
+    if (!rec || !rec[0] || !rec[1])
+        return 0;
+    char *obj = rec[0];
+    short *st = *(short **)(obj + 4);
+    if (!st || *st != 0)
+        return 0;
+    const unsigned id = *(unsigned short *)obj;
+    const unsigned f0 = *(unsigned *)(data_ov007_020d77dc + id * 12);
+    if (!(*(int *)(obj + 0x10) >= 0x1000 || (f0 & 2)))
+        return 0;
+    if (f0 & 1)
+        return 0;
+    if (func_ov007_020b79e4() && id != 0x16 && id != 0x17)
+        return 0;
+    return 1;
+}
+
 /* the page the title is on: the top-state and the element machine, -1 when not built */
 extern "C" int port_title_page_state(int *top, int *elem, int *req)
 {
