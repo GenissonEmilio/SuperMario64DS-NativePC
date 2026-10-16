@@ -30,6 +30,7 @@
 #include "menu_hostimg.h"
 
 #include <string.h>
+#include <stdio.h>
 
 extern "C" {
 void *port_scene_live_object(void);
@@ -94,6 +95,11 @@ void menu_recroom_facts(MenuFacts *f)
     }
     r.foc_have = g_foc_have; r.foc_x = g_foc_x; r.foc_y = g_foc_y;
     r.calls = ++calls;
+    if (hal_menu_trace_on()) {
+        static int last = -1;
+        const int bd = *(volatile unsigned short *)0x05000400u;      /* the engine-B backdrop the key_backdrop piece drops */
+        if (bd != last) { last = bd; fprintf(stderr, "[recroom] f%d engine B backdrop (palette 0) = %04x\n", calls, bd); }
+    }
     memcpy(f->blob, &r, sizeof r);
 }
 
@@ -132,6 +138,7 @@ void menu_recroom_build(int, MenuLayout *L)
     MenuPiece m = menu_piece_make(SRC_SUB, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
     m.layers = one ? (MENU_L_BG0 | MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ) : (MENU_L_BG0 | MENU_L_BG2 | MENU_L_OBJ);
     m.key_backdrop = one ? 0 : 1;
+    L->key_sentinel = one ? 0 : 1;      /* MENUS093E: key the exact undrawn pixels, not the colour of palette entry 0 (black after a minigame took the cards' outlines with it) */
     m.touch = 1;
     m.bg = 1;                                              /* it overlaps the pattern pieces by design */
     const int pm = menu_add_piece(L, m);
