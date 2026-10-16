@@ -2349,8 +2349,7 @@ int reload_live(const char *text)
         if (cfs != g_chars_from_start) {
             g_chars_from_start = cfs;
             changed = 1;
-            fprintf(stderr, "[settings] live re-read: CharactersUnlockedFromStart %s
-", cfs ? "ON" : "off");
+            fprintf(stderr, "[settings] live re-read: CharactersUnlockedFromStart %s\n", cfs ? "ON" : "off");
         }
     }
     const int voice_changed = read_voice_keys(text);
