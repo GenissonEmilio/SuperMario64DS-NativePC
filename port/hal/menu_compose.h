@@ -194,7 +194,8 @@ struct MenuLayout { int w, h, unum, uden, canvas_w; /* unit = h/192 reduced; can
                     uint8_t no_focus_paint;
 
                     /* FACE2 (appended): save the composed picture after this frame's pieces are drawn (the snapshot a snap piece draws) */
-                    uint8_t snap_save; };
+                    uint8_t snap_save;
+                    uint8_t key_sentinel; };       /* MENUS093E: key_backdrop pieces key a sentinel backdrop, not palette entry 0 (see hal_menu_key_sentinel) */
 
 enum { MENU_DRV_NATIVE = 0, MENU_DRV_ROM_CURSOR = 1, MENU_DRV_TOUCH = 2, MENU_DRV_MIXED = 3 };
 enum { MENU_KEY_NONE = 0, MENU_KEY_SAVE_MENU_ON_TOP = 1, MENU_KEY_ONE_SCREEN_MENUS = 2 };
@@ -251,6 +252,8 @@ struct MenuTopCell { uint32_t argb; uint8_t bm; uint8_t owner; uint8_t pad[2]; }
 struct MenuSources {
   const uint32_t *sub;            /* SRC_SUB: 256x192 ARGB engine-B scan-out (already engine-B bright) */
   uint32_t sub_backdrop;          /* the engine-B backdrop colour, RGB compared, for key_backdrop */
+  uint32_t sub_backdrop_masked;   /* MENUS093E: the colour a masked plane starts undrawn pixels from while bd_masked_on (the live plane keeps sub_backdrop) */
+  int bd_masked_on;
   const MenuTopCell *top2d;       /* SRC_TOP_2D: 256x192 cells, row-major; owner is a layer INDEX 0..4 */
   const uint32_t *pic;            /* SRC_TOP_PIC: host framebuffer, pic_stride pixels per row */
   int pic_stride, pic_w, pic_h;
@@ -417,6 +420,7 @@ int  hal_menu_interp_mode(void);                /* MENUFOLD1: SM64DS_MENU_INTERP
 int  hal_menu_relift_why(void);                 /* MENUINTERP2: 0 = ok, else 1 mode/fallback, 2 stage or snap_save, 3 held-frame piece, 4 no picture piece */
 void hal_menu_relift_dump(void);                /* MENUINTERP2 debug: one trace line of the bound layout's pieces */
 void hal_menu_present_relift(uint32_t *dst, int w, int h, int stage);   /* MENUINTERP2: hal_menu_present for a picture between ticks */
+int  hal_menu_key_sentinel(void);               /* MENUS093E: the bound layout wants its masked engine-B planes drawn over a sentinel backdrop (exact key_backdrop) */
 int  hal_menu_needs_picsnap(void);              /* MENUINTERP2: the tick must keep the picture as the menu found it for a re-draw between ticks */
 int  hal_menu_relift_ok(void);                  /* MENUINTERP2: a tick the gate snaps may still blend if every in-between re-draws the menu on its own 3D picture (hal_menu_relift) */
 int  hal_menu_interp_ok(void);                  /* MENUFOLD1: the pictures between ticks may run under this tick's menu (no 3D-sourced piece); 1 when no menu is bound */

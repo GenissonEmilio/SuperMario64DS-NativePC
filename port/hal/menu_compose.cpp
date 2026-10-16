@@ -186,7 +186,7 @@ int src_opaque(const MenuPiece *p, const MenuSources *s, int sx, int sy)
         if (!sp || sx < 0 || sy < 0 || sx >= 256 || sy >= 192) return 0;
         if (p->row_ok && !p->row_ok(sy)) return 0;
         const uint32_t c = sp[sy * 256 + sx];
-        if (p->key_backdrop && (c & 0xffffffu) == (s->sub_backdrop & 0xffffffu)) return 0;
+        if (p->key_backdrop && (c & 0xffffffu) == (((s->bd_masked_on && sp != s->sub) ? s->sub_backdrop_masked : s->sub_backdrop) & 0xffffffu)) return 0;
         return 1;
     }
     case SRC_TOP_2D: {
@@ -1334,7 +1334,10 @@ static void piece_draw_2d(const MenuLayout *L, int i, const MenuSources *S, uint
         if (!clipped) { g_rep.x0 = x0; g_rep.valid = 1; }
         return;
     }
-    const uint32_t bd = S->sub_backdrop & 0xffffffu;
+    /* MENUS093E: a masked plane drawn over the sentinel backdrop is keyed by the sentinel; a piece that does not key carries the real backdrop in its place */
+    const bool msk = P.src == SRC_SUB && S->bd_masked_on && subp != S->sub;
+    const uint32_t bd = (msk ? S->sub_backdrop_masked : S->sub_backdrop) & 0xffffffu;
+    const uint32_t rbd = S->sub_backdrop | 0xff000000u;
     uint32_t crow[257];
     crow[256] = 0;
     /* the runs of a source row (dest column ranges whose source column is drawn): a row of the same source row as the row above is those
@@ -1353,6 +1356,7 @@ static void piece_draw_2d(const MenuLayout *L, int i, const MenuSources *S, uint
             if (P.src == SRC_SUB) {
                 const uint32_t *srow = subp + sy * 256;
                 if (P.key_backdrop) for (int sx = 0; sx < 256; ++sx) { const uint32_t c = srow[sx]; crow[sx] = (c & 0xffffffu) == bd ? 0u : (c | 0xff000000u); }
+                else if (msk) for (int sx = 0; sx < 256; ++sx) { const uint32_t c = srow[sx]; crow[sx] = (c & 0xffffffu) == bd ? rbd : (c | 0xff000000u); }
                 else for (int sx = 0; sx < 256; ++sx) crow[sx] = srow[sx] | 0xff000000u;
             } else {
                 const MenuTopCell *trow = S->top2d + sy * 256;
@@ -1686,6 +1690,7 @@ int  hal_menu_relift_why(void)
 int  hal_menu_relift_ok(void) { return hal_menu_relift_why() == 0; }
 /* does a re-draw between ticks need the picture as the menu found it (the tick keeps a copy, hal_sub_screen)? A picture piece cuts from it, a
    held-frame piece or a save lays over / copies the finished picture. */
+int  hal_menu_key_sentinel(void) { return g_dd.live && g_dd.L.key_sentinel ? 1 : 0; }
 int  hal_menu_needs_picsnap(void)
 {
     if (!g_dd.live) return 0;
