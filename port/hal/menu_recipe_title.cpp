@@ -1385,12 +1385,22 @@ void menu_title_facts(MenuFacts *f)
         tf.bx[k][0] = (short)ids[k]; tf.bx[k][1] = (short)x0[k]; tf.bx[k][2] = (short)y0[k]; tf.bx[k][3] = (short)x1[k]; tf.bx[k][4] = (short)y1[k];
         if (port_title_elem_live(slot[k])) tf.live |= 1u << k;
     }
+    if (hal_menu_trace_on()) {
+        static unsigned last_live = 0xffffffffu;
+        if (tf.live != last_live) {
+            last_live = tf.live;
+            char buf[160]; int bl = 0;
+            for (int k = 0; k < tf.nbox && bl < 150; ++k) if ((tf.live >> k) & 1) bl += snprintf(buf + bl, sizeof buf - bl, " %d", (int)tf.bx[k][0]);
+            fprintf(stderr, "[filelive] f%d elements the ROM takes a touch on:%s\n", data_ov007_0210342c ? data_ov007_0210342c[0] : 0, buf);
+        }
+    }
     rom_cursor(&tf.cur, &tf.prs);
     tf.frame = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
     rom_iris(&tf.vis, &tf.s48);
     tf.ch = g_ch;
     tf.wide3d = ntr::gx_menu_wide_active() ? 1 : 0;
     tf.wz = tf.wide3d ? g_file_wz : 0;
+    if (hal_menu_trace_on()) { static int lw = -1; if (tf.wz != lw) { lw = tf.wz; fprintf(stderr, "[filewide] zoom permille %d (active %dx%d present %dx%d)\n", tf.wz, ntr::active_w, ntr::active_h, ntr::present_w(), ntr::present_h()); } }
     tf.sc_on = (tf.wide3d && g_sc.on && data_ov007_0210342c && g_sc.frame + 1 >= data_ov007_0210342c[0]) ? 1 : 0;   /* the callback ran in this tick's Render (the counter moved on once since) */
     tf.sc_K = g_sc.T.K; tf.sc_Tx = g_sc.T.Tx; tf.sc_Ty = g_sc.T.Ty;
     tf.toy_v = 0;

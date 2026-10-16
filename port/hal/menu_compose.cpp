@@ -407,15 +407,29 @@ void menu_inverse(const MenuLayout *L, int bx, int by, int *drag_piece, int *dsx
             if (bx >= 0 && by >= 0 && bx < L->w && by < L->h) {
                 const MenuPiece &P = L->p[tp];
                 const int *d = L->dest[tp];
-                const double sc = (d[2] > 0 ? (double)d[2] / (P.s.w > 0 ? P.s.w : 1) : 1.0) * (double)L->wz / 1000.0;
-                double fx = P.s.x + P.s.w / 2.0 + ((double)bx - (L->w / 2.0)) / sc;
-                double fy = P.s.y + P.s.h / 2.0 + ((double)by - (L->h / 2.0)) / sc;
-                int ix = (int)(fx < 0 ? 0 : fx), iy = (int)(fy < 0 ? 0 : fy);
-                if (ix > P.s.x + P.s.w - 1) ix = P.s.x + P.s.w - 1;
-                if (iy > P.s.y + P.s.h - 1) iy = P.s.y + P.s.h - 1;
-                if (drag_piece) *drag_piece = tp;
-                *dsx = ix; *dsy = iy; *in = 1;
-                return;
+                const double uz = d[2] > 0 ? (double)d[2] / (P.s.w > 0 ? P.s.w : 1) : 1.0;       /* picture pixels per DS unit */
+                const double sc = uz * (double)L->wz / 1000.0;
+                const double zx = P.s.x + P.s.w / 2.0 + ((double)bx - (L->w / 2.0)) / sc;         /* the zoomed page's point */
+                const double zy = P.s.y + P.s.h / 2.0 + ((double)by - (L->h / 2.0)) / sc;
+                const double ux = P.s.x + P.s.w / 2.0 + ((double)bx - (L->w / 2.0)) / uz;         /* the unzoomed point */
+                const double uy = P.s.y + P.s.h / 2.0 + ((double)by - (L->h / 2.0)) / uz;
+                /* the ROM reads ONE touch point for the ripple AND for its buttons, so the water point must not land in a button the pointer is not over:
+                   walk from the zoomed point toward the unzoomed one (which is clear: a click on a button was answered above) to the first clear point */
+                for (int k = 0; k <= 16; ++k) {
+                    const double fx = zx + (ux - zx) * k / 16.0, fy = zy + (uy - zy) * k / 16.0;
+                    int ix = (int)(fx < 0 ? 0 : fx), iy = (int)(fy < 0 ? 0 : fy);
+                    if (ix > P.s.x + P.s.w - 1) ix = P.s.x + P.s.w - 1;
+                    if (iy > P.s.y + P.s.h - 1) iy = P.s.y + P.s.h - 1;
+                    bool clear = true;
+                    for (int j = 0; j < L->nh && clear; ++j) {
+                        const MenuHotspot &H = L->hs[j];
+                        if (H.piece == tp && ix >= H.box.x - 1 && ix <= H.box.x + H.box.w && iy >= H.box.y - 1 && iy <= H.box.y + H.box.h) clear = false;
+                    }
+                    if (!clear) continue;
+                    if (drag_piece) *drag_piece = tp;
+                    *dsx = ix; *dsy = iy; *in = 1;
+                    return;
+                }
             }
         }
     }
