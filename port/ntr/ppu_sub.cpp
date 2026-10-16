@@ -453,6 +453,7 @@ int (*g_obj_veto_b)(unsigned short a2);
 /* DISPCNT_B bits the host wants this scan-out to treat as clear. See the use
    at the register read, and ppu_sub_set_bg_suppress for what it is for. */
 uint32_t g_bg_suppress;
+int g_backdrop_ovr = -1;     /* MENUS093E: see ppu_sub_set_backdrop_override */
 
 /* ASSET1: the OAM entries engine B may draw this scan-out (see ppu_sub_set_obj_select); off = all. */
 uint32_t g_obj_sel[4];
@@ -1060,7 +1061,7 @@ void scan_ref(SubFramebuffer &fb, uint32_t dispcnt, const uint8_t *skip,
 
     raster_obj(dispcnt, skip, obj, objwin);
 
-    const uint32_t backdrop = bgr555(rd16(kPlttBase));
+    const uint32_t backdrop = g_backdrop_ovr >= 0 ? bgr555((uint16_t)g_backdrop_ovr) : bgr555(rd16(kPlttBase));
     const Blend bld = read_blend();
 
     for (int y = 0; y < SUB_H; ++y) {
@@ -1251,7 +1252,7 @@ void scan_fast(SubFramebuffer &fb, uint32_t dispcnt, const uint8_t *skip,
 
     uint32_t pal32[256];
     for (int i = 0; i < 256; ++i) pal32[i] = bgr555(rd16(kPlttBase + i * 2));
-    const uint32_t backdrop = pal32[0];
+    const uint32_t backdrop = g_backdrop_ovr >= 0 ? bgr555((uint16_t)g_backdrop_ovr) : pal32[0];
     const Blend bld = read_blend();
 
     /* The enabled BGs in the reference's visit order (priority, then index),
@@ -1364,6 +1365,7 @@ struct ScanKey {
     uint32_t dispcnt;
     uint32_t oam_src;
     uint32_t rows_on;
+    int bd_ovr;
     uint8_t regs[0x70];
     uint8_t skip[128];
     uint32_t rows[192];
@@ -1525,6 +1527,7 @@ void scan_key(ScanKey &k, uint32_t dispcnt, const uint8_t *skip)
     std::memset(&k, 0, sizeof k);
     k.dispcnt = dispcnt;
     k.oam_src = g_oam_src_b;
+    k.bd_ovr = g_backdrop_ovr;
     for (int i = 0; i < 0x70; ++i) k.regs[i] = rd8(kRegBase + i);
     std::memcpy(k.skip, skip, sizeof k.skip);
     const uint32_t *rows = nullptr;
@@ -1758,6 +1761,11 @@ void ppu_sub_set_obj_veto(int (*fn)(unsigned short a2))
 void ppu_sub_set_bg_suppress(uint32_t mask)
 {
     g_bg_suppress = mask;
+}
+
+void ppu_sub_set_backdrop_override(int bgr555v)
+{
+    g_backdrop_ovr = bgr555v;
 }
 
 void ppu_sub_set_obj_select(const uint32_t *mask4)

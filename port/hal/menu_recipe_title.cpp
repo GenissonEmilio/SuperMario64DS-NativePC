@@ -43,6 +43,7 @@
 
 extern "C" {
 int port_title_elem_boxes(int *slot, int *id, int *x0, int *y0, int *x1, int *y1, int max);
+int port_title_elem_live(int slot);      /* MENUS093E: the ROM would take a touch on that element */
 int port_title_page_state(int *top, int *elem, int *req);
 int port_scene_live_id(void);
 }
@@ -88,6 +89,7 @@ struct Chore {
 struct TitleFacts {
     int nbox;                 /* the live element decoder's answer (0 = it said nothing: the dumped boxes stand in) */
     short bx[24][5];          /* id, x0, y0, x1, y1 */
+    unsigned live;            /* MENUS093E: bit k = bx[k] is an element the ROM takes a touch on (a hidden button keeps its box) */
     int cur, prs;             /* rom_cursor(): the cursor element and whether it is being pressed */
     int frame;                /* the title Render counter (data_ov007_0210342c[0]) */
     int vis, s48;             /* the fade manager's iris sprite: shown, scale */
@@ -96,6 +98,7 @@ struct TitleFacts {
     int dd_e;                 /* FACE2: ticks since the face press handed over to the drawing page (1 on the first hand-over tick), 0 = not reached from the press (no crossfade) */
     int dd_dead;              /* FACE2: 1 while the drawing page's own picture is not the page yet (the ROM's black hand-over frames): no strokes or buttons are cut from it */
     int out_e;                /* FACE2: ticks since the drawing page was left (1 on the first tick of the next page), 0 = not leaving it */
+    int wz;                   /* MENUS093E: the zoom permille of this frame's wide file page (0 = none) */
     int wide3d;               /* FILE2: this tick's 3D frame covered the whole wide frame (the page background was zoomed in the 3D itself: no margin pieces) */
     int yh;                   /* FACE3 (review): the Yoshi hold (element machine 4) after the drawing page: our full-canvas iris covers it too */
     int e3o;                  /* FACE3: ticks since the ROM left the free-draw state for the face tracing (the hand button), 1 on the first tick, 0 = not leaving it */
@@ -165,12 +168,20 @@ int variant_for(int top, int elem)
 }
 
 /* piece + hotspots helper: a hotspot per id, boxes clamped into the piece's source rect */
+int g_file_wz = 0;           /* MENUS093E: the zoom (permille) file_wide_cb last applied */
+bool g_hot_live_only = false;          /* MENUS093E: the file select family: only elements the ROM takes a touch on */
 void hot(MenuLayout *L, int piece, const int *ids, int n)
 {
     const DsRect &s = L->p[piece].s;
     for (int k = 0; k < n; ++k) {
         Box b;
         if (!box_of(ids[k], &b)) continue;
+        if (g_hot_live_only && t_f && t_f->nbox > 0) {       /* MENUS093E: a button the ROM has hidden (or not brought in yet) is not a hotspot: no hover sound, no click */
+            bool live = true;
+            for (int j = 0; j < t_f->nbox; ++j)
+                if (t_f->bx[j][0] == ids[k]) { live = ((t_f->live >> j) & 1) != 0; break; }
+            if (!live) continue;
+        }
         int x0 = b.x0 < s.x ? s.x : b.x0, y0 = b.y0 < s.y ? s.y : b.y0;
         int x1 = b.x1 > s.x + s.w ? s.x + s.w : b.x1, y1 = b.y1 > s.y + s.h ? s.y + s.h : b.y1;
         if (x1 <= x0 || y1 <= y0) continue;
@@ -1372,12 +1383,24 @@ void menu_title_facts(MenuFacts *f)
     tf.nbox = n > 0 ? (n > 24 ? 24 : n) : 0;
     for (int k = 0; k < tf.nbox; ++k) {
         tf.bx[k][0] = (short)ids[k]; tf.bx[k][1] = (short)x0[k]; tf.bx[k][2] = (short)y0[k]; tf.bx[k][3] = (short)x1[k]; tf.bx[k][4] = (short)y1[k];
+        if (port_title_elem_live(slot[k])) tf.live |= 1u << k;
+    }
+    if (hal_menu_trace_on()) {
+        static unsigned last_live = 0xffffffffu;
+        if (tf.live != last_live) {
+            last_live = tf.live;
+            char buf[160]; int bl = 0;
+            for (int k = 0; k < tf.nbox && bl < 150; ++k) if ((tf.live >> k) & 1) bl += snprintf(buf + bl, sizeof buf - bl, " %d", (int)tf.bx[k][0]);
+            fprintf(stderr, "[filelive] f%d elements the ROM takes a touch on:%s\n", data_ov007_0210342c ? data_ov007_0210342c[0] : 0, buf);
+        }
     }
     rom_cursor(&tf.cur, &tf.prs);
     tf.frame = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
     rom_iris(&tf.vis, &tf.s48);
     tf.ch = g_ch;
     tf.wide3d = ntr::gx_menu_wide_active() ? 1 : 0;
+    tf.wz = tf.wide3d ? g_file_wz : 0;
+    if (hal_menu_trace_on()) { static int lw = -1; if (tf.wz != lw) { lw = tf.wz; fprintf(stderr, "[filewide] zoom permille %d (active %dx%d present %dx%d)\n", tf.wz, ntr::active_w, ntr::active_h, ntr::present_w(), ntr::present_h()); } }
     tf.sc_on = (tf.wide3d && g_sc.on && data_ov007_0210342c && g_sc.frame + 1 >= data_ov007_0210342c[0]) ? 1 : 0;   /* the callback ran in this tick's Render (the counter moved on once since) */
     tf.sc_K = g_sc.T.K; tf.sc_Tx = g_sc.T.Tx; tf.sc_Ty = g_sc.T.Ty;
     tf.toy_v = 0;
@@ -1546,6 +1569,7 @@ bool file_wide_cb(float *zoom, float *dy)
     if (z < 1.0f) z = 1.0f;
     *zoom = z;
     *dy = (float)dp / 1000.0f;
+    g_file_wz = (int)(z * 1000.0f + 0.5f);       /* MENUS093E: the touch inverse needs it */
     return true;
 }
 /* TITLE092: THE SCENE CALLBACK, asked once per frame at the first 3D command (in the ROM's Render, so the page is live). The file pages
@@ -1698,6 +1722,7 @@ void file_pages_build(int variant, MenuLayout *L)
     if (pat) pg.keycover = 1;
     if (t_f && t_f->wide3d) pg.nodraw = 1;      /* FILE2: the wide 3D frame already is the picture, in place: this piece only maps clicks */
     const int ip = menu_add_piece(L, pg);
+    if (t_f && t_f->wide3d && !pat) L->wz = t_f->wz;       /* MENUS093E: the reflection is zoomed in the 3D: a touch on the water is the zoomed point */
     if (pat) {
         /* the page's own 2D layer (the SOUND and BACKLIGHT labels, the star) is lifted out of the picture and drawn over the 3D objects,
            in place, with its own transparency */
@@ -1741,7 +1766,9 @@ void file_pages_build(int variant, MenuLayout *L)
         menu_add_piece(L, ar);
     }
     static const int fids[8] = { 14, 15, 16, 17, 18, 19, 21, 20 };
+    g_hot_live_only = true;
     hot(L, ip, fids, 8);
+    g_hot_live_only = false;
 }
 }  // namespace
 
@@ -1862,6 +1889,30 @@ static void title_cursor_assist()
     static int stable;
     static unsigned hov_seen;
     int top, elem, req;
+    if (data_ov007_02103360 && port_title_page_state(&top, &elem, &req) && elem == 5 && req == -1 && (top == 0 || top == 1 || top == 3 || top == 7 || top == 9)) {
+        /* MENUS093E: THE FILE PAGES' CURSOR FOLLOWS THE MOUSE. The same hover write as the main menu's, for the file select family: the cursor values
+           14..21 are the element ids (files A B C, score / copy / erase, the wrench-side button and the back arrow); a hovered element the ROM takes
+           a touch on becomes the cursor's target, so the orange arrow (the ROM's own object, drawn by the host as the HD arrow) goes where the
+           mouse is, and A then presses what the arrow is on. */
+        static unsigned hov_seen_f;
+        short *q0 = *(short **)data_ov007_02103360;
+        int hx, hy;
+        unsigned st;
+        if (q0 && hal_menu_hover_box(&hx, &hy, &st) && st != hov_seen_f) {
+            hov_seen_f = st;
+            int slot[24], ids[24], x0[24], y0[24], x1[24], y1[24];
+            const int n = port_title_elem_boxes(slot, ids, x0, y0, x1, y1, 24);
+            for (int k = 0; k < n; ++k) {
+                if (ids[k] < 14 || ids[k] > 21 || x0[k] != hx || y0[k] != hy || !port_title_elem_live(slot[k])) continue;
+                if (q0[0] != ids[k] && q0[1] != ids[k]) {
+                    if (hal_menu_trace_on()) fprintf(stderr, "[filecur] hover element %d: cursor %d -> %d (page %d/%d)\n", ids[k], (int)q0[0], ids[k], top, elem);
+                    q0[1] = (short)ids[k];
+                }
+                break;
+            }
+        }
+        return;
+    }
     if (!data_ov007_02103360 || !port_title_page_state(&top, &elem, &req) || top != 0 || elem != 0 || req != -1) { stable = 0; return; }
     short *p0 = *(short **)data_ov007_02103360;
     if (!p0) return;
