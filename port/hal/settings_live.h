@@ -54,6 +54,7 @@ enum SlId {
     SL_DRAW_DISTANCE,           /* percent of the ROM's draw distance: 100 (default), 150, 200, 400, 10000 (max); the page shows stops */
     SL_FRAME_RATE,              /* int: 0 native, 60..240; live (FPSLIVE1): the in-game page shows it as a drop-down of stops */
     SL_DEBUG_MENU,              /* bool: the F5 debug menu may open (CHARSLOT1); off by default */
+    SL_CHARS_FROM_START,        /* bool: custom characters open from the start, without the white door unlock (CHARSET1); off by default */
     SL_COUNT
 };
 

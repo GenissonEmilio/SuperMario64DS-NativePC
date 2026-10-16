@@ -847,6 +847,10 @@ int g_adventure_ghosts = 0;
    the gap keys; the accessor also honours SM64DS_DEBUG_MENU. See the header. */
 int g_debug_menu = 0;
 
+/* CharactersUnlockedFromStart: 1 when the custom character picks (the star select strip's arrow and costumes, the white door's picker) are open
+   from the start, without the save slot's white door unlock. Default 0: they appear once the slot has opened the door. Read live. */
+int g_chars_from_start = 0;
+
 /* Aspect: the presentation ratio, WIDTH DIVIDED BY HEIGHT. 0 (the default) is
    the explicit native sentinel -- the DS's own 4:3 at the 512x384 window the
    port has always opened. 1.7777778 is 16:9. It is a NUMBER and not a
@@ -1506,6 +1510,7 @@ void load_once(void)
     g_name_tags = 1;
     g_adventure_ghosts = 0;
     g_debug_menu = 0;
+    g_chars_from_start = 0;
     g_aspect = 0.0;
     g_vs_luigi_infection = 0;
     g_vs_luigi_seconds = 0;
@@ -1704,6 +1709,7 @@ void load_once(void)
            that left it off, which is the ROM's solo game. */
         g_adventure_ghosts = json_bool(text, "AdventureGhosts", 0);
         g_debug_menu = json_bool(text, "DebugMenu", 0);
+        g_chars_from_start = json_bool(text, "CharactersUnlockedFromStart", 0);
         /* the presentation aspect, read against its own default of 0 (native)
            so a file written before this key existed reads as the 4:3 window.
            Sanitised HERE rather than at the accessor, so the stored value is
@@ -2338,6 +2344,15 @@ int reload_live(const char *text)
             fprintf(stderr, "[settings] live re-read: DebugMenu %s\n", dbg ? "ON" : "off");
         }
     }
+    {
+        const int cfs = json_bool(text, "CharactersUnlockedFromStart", g_chars_from_start);
+        if (cfs != g_chars_from_start) {
+            g_chars_from_start = cfs;
+            changed = 1;
+            fprintf(stderr, "[settings] live re-read: CharactersUnlockedFromStart %s
+", cfs ? "ON" : "off");
+        }
+    }
     const int voice_changed = read_voice_keys(text);
     if (voice_changed) {
         changed = 1;
@@ -2620,6 +2635,19 @@ extern "C" int host_setting_debug_menu(void)
     if (env >= 0) return env;
     load_once();
     return g_debug_menu;
+}
+
+/* CharactersUnlockedFromStart, plus SM64DS_CHARS_FROM_START (0 forces it off, any other value on) for proof runs. */
+extern "C" int host_setting_chars_from_start(void)
+{
+    static int env = -2;
+    if (env == -2) {
+        const char *e = getenv("SM64DS_CHARS_FROM_START");
+        env = e ? ((e[0] == '0' && e[1] == 0) ? 0 : 1) : -1;
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_chars_from_start;
 }
 
 /* AdventureGhosts, plus the debug env override every host toggle in this file
@@ -3207,6 +3235,16 @@ extern "C" int host_setting_set_volume(int pct)
     g_volume = pct;
     g_poll_flag = 1;
     queue_int("Volume", pct);
+    return 1;
+}
+
+extern "C" int host_setting_set_chars_from_start(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    g_chars_from_start = on;
+    g_poll_flag = 1;
+    queue_bool("CharactersUnlockedFromStart", on);
     return 1;
 }
 

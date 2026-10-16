@@ -448,6 +448,14 @@ int host_setting_adventure_ghosts(void);
 int host_setting_debug_menu(void);
 int host_setting_set_debug_menu(int on);
 
+/* ---- CharactersUnlockedFromStart: CUSTOM CHARACTERS WITHOUT THE DOOR ------
+   Default 0 (OFF). Off, the star select strip's arrow (and the costumes behind it) shows only once the save slot has opened the white door
+   in the Rec Room (hal/char_save.h port_char_save_unlocked). On, the arrow shows from the start whenever a character mod is installed, and the
+   white door opens the picker at once (the door's own star stays the ROM's). Live like DebugMenu; SM64DS_CHARS_FROM_START=0/1 overrides the
+   file for a proof run. */
+int host_setting_chars_from_start(void);
+int host_setting_set_chars_from_start(int on);
+
 /* Aspect: the presentation ratio, WIDTH DIVIDED BY HEIGHT. 0 (the default) is
    the explicit native sentinel -- the 4:3 window the port has always opened;
    1.7777778 is 16:9. A NUMBER rather than a Widescreen boolean because a
