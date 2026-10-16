@@ -11469,6 +11469,26 @@ static void stack_capture(const uint32_t *img)
         }
     }
     const unsigned long f = frame++;
+    {   /* PLAY093: SM64DS_STACK_BMPS=<prefix>,<f0>,<f1>,<step>: the presented image on every step-th frame of f0..f1, as <prefix>_<frame>.bmp (proof runs) */
+        static int rng = -2, r0, r1, rs;
+        static char rpre[480];
+        if (rng == -2) {
+            rng = 0;
+            if (const char *e = getenv("SM64DS_STACK_BMPS")) {
+                const char *c = strchr(e, ',');
+                if (c && (size_t)(c - e) < sizeof rpre && sscanf(c + 1, "%d,%d,%d", &r0, &r1, &rs) == 3 && rs > 0) {
+                    memcpy(rpre, e, (size_t)(c - e)); rpre[c - e] = 0; rng = 1;
+                }
+            }
+        }
+        if (rng == 1 && img && (long)f >= r0 && (long)f <= r1 && ((long)f - r0) % rs == 0) {
+            int w = 0, h = 0;
+            hal_sub_screen_stacked_size(&w, &h);
+            char nm[512];
+            snprintf(nm, sizeof nm, "%s_%05lu.bmp", rpre, f);
+            ntr::ppu_write_bmp_px(nm, img, w, h);
+        }
+    }
     if (at < 0 || done || !img || (long)f < (long)at) return;
     done = 1;
     int w = 0, h = 0;
