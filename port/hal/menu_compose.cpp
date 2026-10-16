@@ -385,6 +385,40 @@ int menu_hit(const MenuLayout *L, int bx, int by, int *piece, int *dsx, int *dsy
 void menu_inverse(const MenuLayout *L, int bx, int by, int *drag_piece, int *dsx, int *dsy, int *in)
 {
     int pi = -1;
+    if (L->wz > 1000) {
+        /* MENUS093E: the page behind the touch piece is zoomed about the canvas centre. A touch on a hotspot is the unzoomed place (the buttons are drawn
+           at their DS places); anywhere else is water, and the ROM puts the ripple at the touch point in the page's own space, so the point handed to
+           it is the zoomed page's: the offset from the centre over (scale * zoom). Every pixel of the canvas is water, not only the 4:3 area. */
+        int tp = -1;
+        for (int i = L->np - 1; i >= 0; --i) if (L->p[i].touch) { tp = i; break; }
+        if (tp >= 0) {
+            int ux = 0, uy = 0, hp = -1;
+            const bool on = menu_hit(L, bx, by, &hp, &ux, &uy);
+            if (on) {
+                for (int j = 0; j < L->nh; ++j) {
+                    const MenuHotspot &H = L->hs[j];
+                    if (H.piece == hp && ux >= H.box.x && ux < H.box.x + H.box.w && uy >= H.box.y && uy < H.box.y + H.box.h) {
+                        if (drag_piece) *drag_piece = hp;
+                        *dsx = ux; *dsy = uy; *in = 1;
+                        return;
+                    }
+                }
+            }
+            if (bx >= 0 && by >= 0 && bx < L->w && by < L->h) {
+                const MenuPiece &P = L->p[tp];
+                const int *d = L->dest[tp];
+                const double sc = (d[2] > 0 ? (double)d[2] / (P.s.w > 0 ? P.s.w : 1) : 1.0) * (double)L->wz / 1000.0;
+                double fx = P.s.x + P.s.w / 2.0 + ((double)bx - (L->w / 2.0)) / sc;
+                double fy = P.s.y + P.s.h / 2.0 + ((double)by - (L->h / 2.0)) / sc;
+                int ix = (int)(fx < 0 ? 0 : fx), iy = (int)(fy < 0 ? 0 : fy);
+                if (ix > P.s.x + P.s.w - 1) ix = P.s.x + P.s.w - 1;
+                if (iy > P.s.y + P.s.h - 1) iy = P.s.y + P.s.h - 1;
+                if (drag_piece) *drag_piece = tp;
+                *dsx = ix; *dsy = iy; *in = 1;
+                return;
+            }
+        }
+    }
     if (menu_hit(L, bx, by, &pi, dsx, dsy)) {
         if (drag_piece) *drag_piece = pi;
         *in = 1;
@@ -2274,7 +2308,26 @@ int hal_menu_last_size(int *w, int *h)
 
 void hal_menu_pad(uint16_t *pressed, int host_back)
 {
-    host_menu_cursor_sound_flush();       /* EXTRAS093: once per logic frame a menu is up (the scene runner has no window loop) */
+    host_menu_cursor_sound_flush();
+    {   /* MENUS093E: SM64DS_MENU_INV_PROBE="bx,by[;bx,by...]@N": print where the touch inverse sends those picture pixels, on the Nth call with a menu live */
+        static int rd = 0, at = 0, calls = 0;
+        static char pts[256];
+        if (!rd) {
+            rd = 1;
+            const char *e = getenv("SM64DS_MENU_INV_PROBE");
+            if (e) { const char *a = strchr(e, '@'); at = a ? atoi(a + 1) : 1; strncpy(pts, e, sizeof pts - 1); char *q = strchr(pts, '@'); if (q) *q = 0; }
+        }
+        if (at > 0 && g_live && ++calls == at) {
+            const char *s = pts;
+            while (*s) {
+                int bx = 0, by = 0, dsx = -1, dsy = -1, in = 0;
+                if (sscanf(s, "%d,%d", &bx, &by) != 2) break;
+                hal_menu_touch_inverse(bx, by, &dsx, &dsy, &in);
+                fprintf(stderr, "[invprobe] picture (%d,%d) -> ds (%d,%d) in=%d\n", bx, by, dsx, dsy, in);
+                s = strchr(s, ';'); if (!s) break; ++s;
+            }
+        }
+    }       /* EXTRAS093: once per logic frame a menu is up (the scene runner has no window loop) */
     if (!g_live || !pressed || !g_cur.recipe) return;
     const MenuRecipe *R = g_cur.recipe;
     if (R->pad_ok && !R->pad_ok()) return;      /* the ROM is not reading the menu this frame */

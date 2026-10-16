@@ -4497,10 +4497,15 @@ static void clear_fill_classic(Framebuffer &fb)
     const int x0 = mw ? 0 : present_x(), y0 = mw ? 0 : present_y();
     const int x1 = mw ? active_w : x0 + present_w(), y1 = mw ? active_h : y0 + present_h();
     if (g_bmpc.valid && !mw && x1 > x0 && y1 > y0) {       /* MENUS093C (D23): the held bitmap frame, nearest-sampled to the present rectangle */
+        /* MENUS093E: the 2D layer shows the bitmap at its own 4:3 shape in the middle of a wide frame (the dark bars either side), so the held frame is
+           drawn that size too; stretched over the whole wide frame it was the face squashed flat across the window for the length of the hand-over */
+        int bx0 = x0, bx1 = x1;
+        const int dw43 = (int)((long long)(y1 - y0) * 256 / 192);
+        if (dw43 > 0 && dw43 < x1 - x0) { bx0 = x0 + ((x1 - x0) - dw43) / 2; bx1 = bx0 + dw43; }
         for (int y = 0; y < h; ++y)
             for (int x = 0; x < w; ++x) {
-                if (x < x0 || x >= x1 || y < y0 || y >= y1) { fb.px[y][x] = kOldClear; continue; }
-                const int sx = (int)((long long)(x - x0) * 256 / (x1 - x0)), sy = (int)((long long)(y - y0) * 192 / (y1 - y0));
+                if (x < bx0 || x >= bx1 || y < y0 || y >= y1) { fb.px[y][x] = kOldClear; continue; }
+                const int sx = (int)((long long)(x - bx0) * 256 / (bx1 - bx0)), sy = (int)((long long)(y - y0) * 192 / (y1 - y0));
                 fb.px[y][x] = g_bmpc.px[sy * 256 + sx];
             }
         return;

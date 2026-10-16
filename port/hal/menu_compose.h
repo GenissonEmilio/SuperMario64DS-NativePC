@@ -195,7 +195,8 @@ struct MenuLayout { int w, h, unum, uden, canvas_w; /* unit = h/192 reduced; can
 
                     /* FACE2 (appended): save the composed picture after this frame's pieces are drawn (the snapshot a snap piece draws) */
                     uint8_t snap_save;
-                    uint8_t key_sentinel; };       /* MENUS093E: key_backdrop pieces key a sentinel backdrop, not palette entry 0 (see hal_menu_key_sentinel) */
+                    uint8_t key_sentinel;
+                    int wz; };                     /* MENUS093E: permille the page behind the touch piece is zoomed by about the canvas centre (a wide window's file pages), 0 = none: a touch that is not on a hotspot is the point of the ZOOMED page, so the water's ripple (the ROM places it at the touch) lands under the pointer */       /* MENUS093E: key_backdrop pieces key a sentinel backdrop, not palette entry 0 (see hal_menu_key_sentinel) */
 
 enum { MENU_DRV_NATIVE = 0, MENU_DRV_ROM_CURSOR = 1, MENU_DRV_TOUCH = 2, MENU_DRV_MIXED = 3 };
 enum { MENU_KEY_NONE = 0, MENU_KEY_SAVE_MENU_ON_TOP = 1, MENU_KEY_ONE_SCREEN_MENUS = 2 };
