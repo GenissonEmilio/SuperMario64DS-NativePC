@@ -11469,6 +11469,26 @@ static void stack_capture(const uint32_t *img)
         }
     }
     const unsigned long f = frame++;
+    {   /* PLAY093: SM64DS_STACK_BMPS=<prefix>,<f0>,<f1>,<step>: the presented image on every step-th frame of f0..f1, as <prefix>_<frame>.bmp (proof runs) */
+        static int rng = -2, r0, r1, rs;
+        static char rpre[480];
+        if (rng == -2) {
+            rng = 0;
+            if (const char *e = getenv("SM64DS_STACK_BMPS")) {
+                const char *c = strchr(e, ',');
+                if (c && (size_t)(c - e) < sizeof rpre && sscanf(c + 1, "%d,%d,%d", &r0, &r1, &rs) == 3 && rs > 0) {
+                    memcpy(rpre, e, (size_t)(c - e)); rpre[c - e] = 0; rng = 1;
+                }
+            }
+        }
+        if (rng == 1 && img && (long)f >= r0 && (long)f <= r1 && ((long)f - r0) % rs == 0) {
+            int w = 0, h = 0;
+            hal_sub_screen_stacked_size(&w, &h);
+            char nm[512];
+            snprintf(nm, sizeof nm, "%s_%05lu.bmp", rpre, f);
+            ntr::ppu_write_bmp_px(nm, img, w, h);
+        }
+    }
     if (at < 0 || done || !img || (long)f < (long)at) return;
     done = 1;
     int w = 0, h = 0;
@@ -12850,6 +12870,7 @@ static int  g_fc_selftest;
 static unsigned short g_fc_cam_rot;      /* this frame's held rotate bits  */
 static unsigned short g_fc_cam_rot_prev; /* last frame's, for the edge     */
 
+extern "C" int port_ctrl_script_wrote(int pi, int fld);   /* hal/stage_frame.cpp: PLAY093 */
 extern "C" void port_frame_ctrl_publish(void)
 {
     const XPad &pad = g_fc_pad;
@@ -12942,21 +12963,23 @@ extern "C" void port_frame_ctrl_publish(void)
                        in the child's window crouched MARIO in the child's
                        world. Same one-line character as the PadData[0]
                        clobber, one layer further in. */
-                    *(short *)((char *)data_0209f49c + o) = *(const short *)(r + 0x04);
-                    *(short *)((char *)data_0209f49e + o) = *(const short *)(r + 0x06);
-                    *(short *)((char *)data_0209f4a0 + o) = *(const short *)(r + 0x08);
-                    *(short *)((char *)data_0209f4a2 + o) = *(const short *)(r + 0x0a);
-                    *(short *)((char *)data_0209f4a4 + o) = *(const short *)(r + 0x0c);
-                    *(short *)((char *)data_0209f4a6 + o) = *(const short *)(r + 0x0e);
+                    /* PLAY093: a field a Kuppa script wrote after the prime is the script's (ProcessKuppaScript runs after CheckInput's clear
+                       on the cartridge): the local Mario's scripted walk in the ending was erased here */
+                    if (!port_ctrl_script_wrote(pi, 0)) *(short *)((char *)data_0209f49c + o) = *(const short *)(r + 0x04);
+                    if (!port_ctrl_script_wrote(pi, 1)) *(short *)((char *)data_0209f49e + o) = *(const short *)(r + 0x06);
+                    if (!port_ctrl_script_wrote(pi, 2)) *(short *)((char *)data_0209f4a0 + o) = *(const short *)(r + 0x08);
+                    if (!port_ctrl_script_wrote(pi, 3)) *(short *)((char *)data_0209f4a2 + o) = *(const short *)(r + 0x0a);
+                    if (!port_ctrl_script_wrote(pi, 4)) *(short *)((char *)data_0209f4a4 + o) = *(const short *)(r + 0x0c);
+                    if (!port_ctrl_script_wrote(pi, 5)) *(short *)((char *)data_0209f4a6 + o) = *(const short *)(r + 0x0e);
                     /* THE STYLUS POINT, Ctrl +0x10 and +0x11, the same two
                        bytes hal/stage_frame.cpp's prime copy fans out and for
                        the same reason: Minimap::Behavior draws the touch
                        marker at 0x100 - x, 0x80 - y out of these, so with
                        them stuck at zero it landed in the map's top-left
                        corner wherever the player touched. */
-                    *((unsigned char *)data_0209f4a8 + o) = *(const unsigned char *)(r + 0x10);
-                    *((unsigned char *)data_0209f4a9 + o) = *(const unsigned char *)(r + 0x11);
-                    *((unsigned char *)data_0209f4ac + o) = *(const unsigned char *)(r + 0x14);
+                    if (!port_ctrl_script_wrote(pi, 6)) *((unsigned char *)data_0209f4a8 + o) = *(const unsigned char *)(r + 0x10);
+                    if (!port_ctrl_script_wrote(pi, 7)) *((unsigned char *)data_0209f4a9 + o) = *(const unsigned char *)(r + 0x11);
+                    if (!port_ctrl_script_wrote(pi, 8)) *((unsigned char *)data_0209f4ac + o) = *(const unsigned char *)(r + 0x14);
                 }
             }
             /* ---- RUN MODE ANALOG: the record, refilled from the pad's left
@@ -20793,7 +20816,9 @@ int main(void)
             }
             if (selftest && dump_from >= 0) {
                 const int rf = port_rom_frame_checked(frame, "dump-window");
-                if (rf >= dump_from && rf <= dump_to) {
+                static int dump_step = -1;   /* PLAY093: SM64DS_DUMP_STEP=N writes only every Nth frame of the window */
+                if (dump_step < 0) { const char *e = getenv("SM64DS_DUMP_STEP"); dump_step = e && atoi(e) > 0 ? atoi(e) : 1; }
+                if (rf >= dump_from && rf <= dump_to && ((rf - dump_from) % dump_step) == 0) {
                     char nm[64];
                     snprintf(nm, sizeof nm, "walk_frame_%03d.bmp", rf);
                     ntr::ppu_write_bmp(nm, fb);
