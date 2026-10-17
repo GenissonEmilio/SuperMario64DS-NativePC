@@ -5553,3 +5553,11 @@ void hal_sub_screen_probe(void)
 }
 
 }  // extern "C"
+
+/* FIELDUI1 (U7): the in-game counters' slide (src/ui/hud/d_meter.cpp HudSlidePin) is drawn at rest unless the two screens are shown stacked. */
+extern "C" int port_hud_slide_pinned(void)
+{
+    static int keep = -1;      /* SM64DS_HUD_SLIDE_KEEP=1: the ROM's slide again on this exe (before / after pictures) */
+    if (keep < 0) { const char *e = getenv("SM64DS_HUD_SLIDE_KEEP"); keep = (e && *e && *e != '0') ? 1 : 0; }
+    return (keep || hal_sub_screen_stacked()) ? 0 : 1;
+}

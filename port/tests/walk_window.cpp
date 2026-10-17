@@ -17554,6 +17554,18 @@ int main(void)
                     }
             }
 
+            /* SM64DS_HUD_SLIDE_POKE=<frame>: test-only (FIELDUI1 U7). On that frame set the HUD's life / star slide state (data_ov002_02111178) to
+               5, the state a death or a level clear starts, so the ROM's own slide out and back in runs and a picture series can show it. */
+            {
+                extern unsigned char data_ov002_02111178;
+                static int hs = -2;
+                if (hs == -2) { const char *e = getenv("SM64DS_HUD_SLIDE_POKE"); hs = e ? atoi(e) : -1; }
+                if (hs >= 0 && frame == hs) {
+                    data_ov002_02111178 = 5;
+                    fprintf(stderr, "[hudslide] f%d slide state -> 5\n", frame);
+                }
+            }
+
             /* The pause menu's own words, for the third exit. PS_Update
                (src/_ZN5Stage9PS_UpdateEv.cpp) runs on data_0209f248, takes its
                next sub-state from data_0209f1ec, and RETURNS OUT OF THE WHOLE
