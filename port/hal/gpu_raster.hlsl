@@ -799,6 +799,24 @@ void grid_point(GInst I, uint vi, out float3 scr, out float cw)
     } else {
         vw = float4(P.x, P.y, P.z, 1.0);
     }
+    if (I.info.y & 8u) {
+        // SMOOTHREND1: a point that bulges toward the camera goes back along its view ray to the flat
+        // source triangle's plane (n = a0.w a1.w a2.w, d = st.w): gx.cpp's depth snap, same arithmetic
+        precise float3 pn = float3(I.a0.w, I.a1.w, I.a2.w);
+        precise float pnl = sqrt(pn.x * pn.x + pn.y * pn.y + pn.z * pn.z);
+        precise float dn = pn.x * vw.x + pn.y * vw.y + pn.z * vw.z;
+        if (dn > 1e-6 * pnl || dn < -1e-6 * pnl) {
+            precise float k = I.st.w / dn;
+            if (k > 0.0) {
+                precise float dist = sqrt(vw.x * vw.x + vw.y * vw.y + vw.z * vw.z);
+                precise float dk = asfloat(I.info.w) / max(dist, 1e-6);
+                k = min(k, 1.0 + dk);
+                k = max(k, 1.0 - dk);
+                k = k * 1.0003;
+                vw = float4(vw.x * k, vw.y * k, vw.z * k, 1.0);
+            }
+        }
+    }
     precise float4 c0 = vw.x * I.pj0;
     precise float4 c1 = vw.y * I.pj1;
     precise float4 c2 = vw.z * I.pj2;
