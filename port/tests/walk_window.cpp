@@ -17428,6 +17428,10 @@ int main(void)
                         if (!o || *(unsigned short *)(o + 0xc) != 306) continue;
                         if (n++ == bp_fl) { fl = o; break; }
                     }
+                    if (fl && frame == bp_flf && getenv("SM64DS_BALLOON_ASMARIO")) {
+                        *(unsigned *)(pl + 8) = 0;   /* the character switched to Mario after the flowers spawned for Luigi */
+                        fprintf(stderr, "[balloon] f%d player character set to Mario (param1 0)\n", frame);
+                    }
                     if (fl) {
                         *(int *)(pl + 0x5c) = *(int *)(fl + 0x5c);
                         *(int *)(pl + 0x60) = *(int *)(fl + 0x60);
