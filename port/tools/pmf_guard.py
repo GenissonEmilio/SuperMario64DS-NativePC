@@ -700,6 +700,24 @@ DERIVED_BASELINE = [
 ]
 
 DERIVED_OK = [
+    (r"^\?(?:g_states@@|g_chuckya_states@@|rows@\?1\?\?port_koopa_shell_states_seat@@|"
+     r"g_ov090_seats@|g_mri_sources@@|g_rabbit_key_states@@|g_ov091_seats@|"
+     r"g_water_ring_states@@|g_ov064_gate178_sources@@|g_unchained_chomp_states@@)",
+     r".*",
+     "SOURCE tables of seats that write PORT_PMF_TC(host) into the live record "
+     "(hal/pmf_tc.h, PORTSYNC3 d87ca866f19): main's class TUs dispatch their "
+     "state records natively, ECX = this and nothing pushed, so a seat that "
+     "wrote the flat cdecl body into a record would read garbage; since "
+     "PORTSYNC3 every seat below writes a thiscall stub over the flat body "
+     "instead (or, where the mount word is not a DS code address, skips the "
+     "record because the class TU owns the live table). The cells this scan "
+     "reads are the flat bodies those stubs wrap, never a live record cell. "
+     "Read per file, INT093F: LakituBro_Behavior, SignPost_StateDispatch, "
+     "KoopaChuckya_StateDispatch, KoopaShell_States, MrI_StateDispatch, "
+     "Ov064_WaterRing, Ov064Gate178_States and UnchainedChomp_Behavior each "
+     "have one PORT_PMF_TC seat; hal/actor_classes_ov090.cpp and "
+     "actor_classes_ov091.cpp the same in their seat loops; hal/actor_overlays"
+     ".cpp seats g_rabbit_key_states through PORT_PMF_TC at its loop"),
     (r"^_vs_data_patch$", r".*",
      "ov075's patch table is GENERATED and carries the ROM's own words.  The "
      "three of them that are pointer-to-member records are overwritten at boot "
