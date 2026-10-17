@@ -1640,7 +1640,7 @@ bool title_scene_cb(float xf[4])
    bottom edge at their DS rows, anything else on the drawing page (the canvas the strokes are on) by the scene transform. */
 void scene_sprite_xf(char *o)
 {
-    if (!g_sc.on || !data_ov007_0210342c || g_sc.frame != data_ov007_0210342c[0]) return;
+    if (!g_sc.on || !data_ov007_0210342c || g_sc.frame + 1 < data_ov007_0210342c[0]) return;      /* the callback ran in this tick's Render, the counter moved on once since (as build's sc_on) */
     const int v = g_sc.variant;
     if (v == V_ATTRACT || (v == V_INTRO && g_ch.ct < 0)) return;
     float cw, ch;
