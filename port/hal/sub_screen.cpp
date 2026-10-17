@@ -1554,9 +1554,18 @@ int g_sentinel_on;
 
 /* The same suppression hal_sub_screen_present installs for the corner-inset layout every frame (the improved map's
    touch-marker removal), put back after a masked scan-out so nothing later in the frame sees the menu's. */
+/* FIELDPLAY1: engine B's BG2 is the touch marker in a course (the layer mask goes 0x18 to 0x1c on a touch: the map is BG3, the marker
+   BG2 over it) and it is the credits' cake picture in the ending (BG2CNT_B 0a92, a 64x12 tile map, with BG1 and OBJ and no BG3 on).
+   Suppressing the layer for the marker hid the ending's picture on the improved map's panel and left only the strip another layer
+   draws (thunder, 10-16). BG2 is the marker only where BG3, the map, is on. */
+int bg2_b_is_marker(void)
+{
+    return (*(volatile unsigned *)0x04001000 & (1u << 11)) != 0;
+}
+
 uint32_t inset_bg_suppress(void)
 {
-    return improved_map_on() ? (1u << 10) : 0u;
+    return (improved_map_on() && bg2_b_is_marker()) ? (1u << 10) : 0u;
 }
 
 /* ENGINE B'S MASKED SCAN-OUTS, the only source a SRC_SUB piece is drawn from (see the level-clear plates: the buttons
@@ -3933,7 +3942,7 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
        played on and BG2 is nobody's marker. Zero otherwise, which is the
        raster's own old behaviour. */
     ntr::ppu_sub_set_bg_suppress(
-        ((improved_map_on() || menu_bigmap_up()) && !hal_sub_screen_stacked()) ? (1u << 10) : 0u);   /* MAP1: nor the touch marker */
+        ((improved_map_on() || menu_bigmap_up()) && !hal_sub_screen_stacked() && bg2_b_is_marker()) ? (1u << 10) : 0u);   /* MAP1: nor the touch marker (FIELDPLAY1: only where the map layer, BG3, is on) */
     /* THE MAP'S BLACK OUTLINE, and where it comes from. It is not the
        cartridge's: the DS bottom screen's own outermost rows and columns are
        whatever the game drew there. It is this port's, one pixel wide, drawn
