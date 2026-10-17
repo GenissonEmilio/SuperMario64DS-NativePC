@@ -2262,12 +2262,17 @@ static unsigned g_hover_stamp;     /* ASSET3: counts the mouse moves that landed
 static std::atomic<int> g_cursor_snd_req{0};
 static int g_hover_over = -1;      /* EXTRAS093: the hotspot the mouse is over now, -1 when it is over none */
 extern "C" void func_02012790(int id);
+int (*g_menu_cursor_snd_hook)(void);
 void host_menu_cursor_sound(void) { g_cursor_snd_req.store(1); }
 void host_menu_cursor_sound_flush(void)
 {
     if (!g_cursor_snd_req.exchange(0)) return;
     static int log = -1;
     if (log < 0) log = getenv("SM64DS_MENU_SOUND_LOG") ? 1 : 0;
+    if (g_menu_cursor_snd_hook && g_menu_cursor_snd_hook()) {
+        if (log) fprintf(stderr, "[menu] cursor sound (the title's own D-pad move sound)\n");
+        return;
+    }
     if (log) fprintf(stderr, "[menu] cursor sound (func_02012790 0x12e)\n");
     func_02012790(0x12e);
 }

@@ -46,6 +46,7 @@ int port_title_elem_boxes(int *slot, int *id, int *x0, int *y0, int *x1, int *y1
 int port_title_elem_live(int slot);      /* MENUS093E: the ROM would take a touch on that element */
 int port_title_page_state(int *top, int *elem, int *req);
 int port_scene_live_id(void);
+void func_ov007_020bdeb0(int idx);
 }
 
 namespace {
@@ -1640,7 +1641,7 @@ bool title_scene_cb(float xf[4])
    bottom edge at their DS rows, anything else on the drawing page (the canvas the strokes are on) by the scene transform. */
 void scene_sprite_xf(char *o)
 {
-    if (!g_sc.on || !data_ov007_0210342c || g_sc.frame != data_ov007_0210342c[0]) return;
+    if (!g_sc.on || !data_ov007_0210342c || g_sc.frame + 1 < data_ov007_0210342c[0]) return;      /* the callback ran in this tick's Render, the counter moved on once since (as build's sc_on) */
     const int v = g_sc.variant;
     if (v == V_ATTRACT || (v == V_INTRO && g_ch.ct < 0)) return;
     float cw, ch;
@@ -1665,9 +1666,22 @@ void scene_sprite_xf(char *o)
     }
 }
 
+/* FIELDUI1 (U2): a mouse hover on the title or the file pages plays the ROM's own D-pad move sound (func_ov007_020bdeb0 index 4, or 5 on
+   the page the ROM's own step picks it for, src/unnamed/ov007/func_ov007_020b3708.c), not the generic menu cursor sound. Only while the
+   title's page state answers (the title family is the live page). */
+int title_cursor_snd()
+{
+    int top, elem, req;
+    if (!data_ov007_02103360 || !data_ov007_0210342c || !port_title_page_state(&top, &elem, &req)) return 0;
+    if (g_up_stamp < 0 || data_ov007_0210342c[0] - g_up_stamp > 2 || g_up_stamp - data_ov007_0210342c[0] > 2) return 0;
+    func_ov007_020bdeb0((*(int *)(data_ov007_02103360 + 8) != 2) ? 4 : 5);
+    return 1;
+}
+
 struct FileHookInit {
     FileHookInit()
     {
+        g_menu_cursor_snd_hook = title_cursor_snd;
         g_file_prev_skip = g_port_title_draw_skip; g_port_title_draw_skip = file_skip;
         g_port_title_draw_end = file_draw_end;
         ntr::gx_set_menu_wide_cb(file_wide_cb);
