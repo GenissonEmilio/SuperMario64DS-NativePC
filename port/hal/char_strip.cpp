@@ -154,7 +154,8 @@ int wanted(void)
     else if (!(o = (const unsigned char *)port_scene_live_object())) w = 5;
     else if (SublevelToLevel(data_02092110) > 0xe) w = 6;        /* Bowser and the secret courses: the ROM's star-less screen */
     else if (ob(o, 0x133) == 1) w = 7;                           /* the multiplayer character row (VS) */
-    if (w != why && w != 1) { why = w; fprintf(stderr, "[strip] wanted=%d (0 yes, 2 one-screen menus off, 3 no recipe live, 4 multiplayer, 5 no scene, 6 course has no star row, 7 VS row)\n", w); }
+    else if (!host_setting_character_strip()) w = 8;             /* CAPSTOGGLE1: the CharacterStrip setting is off: the DS's own caps row, no strip */
+    if (w != why && w != 1) { why = w; fprintf(stderr, "[strip] wanted=%d (0 yes, 2 one-screen menus off, 3 no recipe live, 4 multiplayer, 5 no scene, 6 course has no star row, 7 VS row, 8 CharacterStrip setting off)\n", w); }
     return w == 0;
 }
 
@@ -317,6 +318,7 @@ unsigned port_char_strip_frame(const struct SpInput *in0)
     if (!wanted()) {
         if (g_up || g_built) fprintf(stderr, "[strip] gone\n");
         forget();                   /* g_pending survives the scene: the restart at the act reads it */
+        if (!host_setting_character_strip()) g_pending = -1;     /* CAPSTOGGLE1: turned off while a costume pick waited: the DS screen restarts nothing */
         return 0;
     }
     if (!g_built) {

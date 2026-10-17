@@ -87,6 +87,7 @@ static const SlInfo INFO[] = {
     { "FrameRate",              SL_KIND_PERCENT, 0, 240, 0, 0, 1 },     /* values 1..59 are sanitised to 0 by the engine */
     { "DebugMenu",              SL_KIND_BOOL,    0, 1, 0, 0, 1 },
     { "CharactersUnlockedFromStart", SL_KIND_BOOL, 0, 1, 0, 0, 1 },
+    { "CharacterStrip",         SL_KIND_BOOL,    0, 1, 1, 0, 1 },
 };
 
 /* INFO[] is positional: row i describes id i. If a host key or pad is added (HOST_KEY_COUNT / HOST_PAD_COUNT move, for example
@@ -136,6 +137,7 @@ int sl_get(int id)
     case SL_FRAME_RATE:         return host_setting_frame_rate();
     case SL_DEBUG_MENU:         return host_setting_debug_menu();
     case SL_CHARS_FROM_START:   return host_setting_chars_from_start();
+    case SL_CHARACTER_STRIP:    return host_setting_character_strip();
     case SL_GAP_COLOR: {
         const unsigned c = host_setting_gap_color() & 0xffffffu;
         for (int i = 0; i < 6; ++i) if (GAP_COLORS[i] == c) return i;
@@ -172,6 +174,7 @@ int sl_set(int id, int v)
     case SL_FRAME_RATE:         host_setting_save_frame_rate(v); return 1;     /* FPSLIVE1 saves the key itself */
     case SL_DEBUG_MENU:         return host_setting_set_debug_menu(v);
     case SL_CHARS_FROM_START:   return host_setting_set_chars_from_start(v);
+    case SL_CHARACTER_STRIP:    return host_setting_set_character_strip(v);
     case SL_GAP_COLOR:
         if (v < 0 || v > 5) return 0;
         return host_setting_set_gap_color(GAP_COLORS[v]);
