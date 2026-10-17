@@ -289,6 +289,23 @@ bool g_on = true;
    owns it (OneScreenMenus off, or a pause variant no recipe covers): the corner panel is the only place those plates show, so the panel
    is forced on for as long as the menu is up even with the panel option off. Set on the decide side each tick, read on the draw side. */
 std::atomic<int> g_force_panel{0};
+/* INT093G: THE ROM'S OWN PAUSE PAGE WITH THE CORNER PANEL UP. With no one-screen recipe owning the pause (OneScreenMenus off, the VS pause) the plates
+   live in the corner panel and the top screen keeps the ROM's page: the course card or the castle's secret star box, its TOUCH TO SELECT band and its
+   score row. The panel sits at the player's MinimapScale over the bottom right of that page and cut the card and the band off. So while that pause is
+   up the page's own 2D layers (the tile layers and the sprites; not the 3D scenery behind them and not the attention arrows, which stay on the panel)
+   are lifted out of the picture by the compositor and drawn again by page_fit_draw, moved (and, only when they have to be, scaled down) into the part
+   of the picture the panel does not cover. Set on the decide side each tick, latched for the frame where the compositor is asked what to lift
+   (hal_menu_hook_h1). SM64DS_PAGEFIT=0 puts the old picture back for a before / after on one binary. */
+std::atomic<int> g_page_fit{0};
+int g_page_fit_frame;
+MenuLiftInfo g_page_lift;
+const int kPageW = 192, kPageH = 140;   /* DS pixels: about the biggest page (the castle card with its band), only used to leave it room */
+int page_fit_off()
+{
+    static int v = -1;
+    if (v < 0) { const char *e = std::getenv("SM64DS_PAGEFIT"); v = (e && e[0] == '0') ? 1 : 0; }
+    return v;
+}
 bool g_ready;
 /* Headless runs must not read the mouse or the keyboard. SM64DS_WINDOW_SELFTEST
    is CI's comparator and several of these binaries run on one machine at once,
@@ -386,7 +403,16 @@ void hal_sub_panel_geometry(int w, int h)
         if (!on) break;
         panel_extents(&el, &et, &er, &eb);
         if (num <= nmin) break;
-        if (el + g_pan_w + er <= w && et + g_pan_h + eb <= h) break;
+        bool room = true;
+        if (g_page_fit.load()) {
+            /* INT093G: the pause page has to fit beside or above the panel at half its size at the very least, so a size that would leave it
+               less than that steps down (a 4:3 window at a large size is all panel); anything bigger than that is the page's to be moved for */
+            const double u = h / 192.0;
+            const double free_l = w - kMargin - er - g_pan_w - el - 10 * u;
+            const double free_t = h - kMargin - eb - g_pan_h - et - 20 * u;
+            room = free_l >= 0.5 * kPageW * u || (free_t >= 0.5 * kPageH * u && w >= 0.5 * kPageW * u);
+        }
+        if (room && el + g_pan_w + er <= w && et + g_pan_h + eb <= h) break;
         num -= 4;
         if (num < nmin) num = nmin;
     }
@@ -3752,6 +3778,8 @@ extern "C" void hal_menu_decide_tick(int w, int h)
     hal_menu_decide(w, h, scene);
     g_force_panel.store((!g_on && scene != MENU_SCENE_GATED && !hal_menu_live() &&
                          (save_menu_is_up() || scene == 8 || scene == 4 || (data_0209f2c4 != 0 && data_0209f20c == 0 && (scene == 3 || scene == -1)))) ? 1 : 0);
+    g_page_fit.store((!page_fit_off() && !hal_menu_live() && scene != MENU_SCENE_GATED && (g_on || g_force_panel.load()) &&
+                      data_0209f2c4 != 0 && data_0209f20c == 0 && (scene == 3 || scene == -1)) ? 1 : 0);
     /* THE COMPOSE'S OWN ANSWER AND ITS RECTANGLES, once a frame, by the same rule: one place decides, everybody else
        reads. They are computed whatever the answer is, so poll_touch's inverse has this frame's numbers on the very
        frame the plates come on. (These two lines read the ROM, so they live on the decide side; they used to sit in
@@ -3764,11 +3792,20 @@ extern "C" void hal_menu_decide_tick(int w, int h)
 }
 
 /* H1 for a one-thread build: decide, then bind the decision for the draw, then hand back the lift plan. */
+static bool page_fit_overlaps(int w, int h);
 extern "C" const MenuLiftInfo *hal_menu_hook_h1(int w, int h)
 {
     hal_menu_decide_tick(w, h);
     hal_menu_draw_frame_begin(0);
-    return hal_menu_lift_info();
+    const MenuLiftInfo *li = hal_menu_lift_info();
+    g_page_fit_frame = 0;
+    if (!li && g_page_fit.load() && !hal_menu_draw_live() && !hal_sub_screen_stacked() && !menu_bigmap_up() && page_fit_overlaps(w, h)) {
+        /* INT093G: the ROM's pause page, to be moved clear of the corner panel (see g_page_fit) */
+        g_page_fit_frame = 1;
+        g_page_lift.lift2d = (uint8_t)(MENU_L_BG1 | MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ);
+        return &g_page_lift;
+    }
+    return li;
 }
 
 /* ---- H4: THE PAD, from a controller or the keyboard -----------------------------------------------------
@@ -3892,6 +3929,131 @@ extern "C" int hal_sub_inset_rect(int *x, int *y, int *w, int *h)
     if (w) *w = g_inset_rect[2];
     if (h) *h = g_inset_rect[3];
     return 1;
+}
+
+/* ---- INT093G: THE ROM'S PAUSE PAGE, MOVED CLEAR OF THE CORNER PANEL -------------------------------------------------------------
+ *
+ * The compositor lifted the page's 2D layers into the DS-space plane (g_page_lift) instead of drawing them, so this is the only place they
+ * land. One piece, SRC_TOP_2D over the opaque bounding box of the lifted cells, placed by the rectangle page_fit_place solves; the layers are
+ * the game's own tiles and sprites, moved, not cut out of a finished picture (the 3D scenery behind them is untouched, and so are the
+ * attention arrows, which the panel's own pass puts on its top corners).
+ *
+ * THE RULE. N is where the page's box would be with nothing in the way (the DS 4:3 area centred on the picture). R is what the panel
+ * takes: the panel with its plate, plus the arrows' room above it and at its left corner, out to the picture's edges. A page that
+ * does not touch R does not move at all. One that does goes to whichever of two places keeps it bigger: left of the panel (the page's
+ * own height is free there) or above it (the page's own width is free there), at the nearest spot to where it was, and it only shrinks
+ * when the place is too small for its natural size. hal_sub_panel_geometry steps the panel's size down before it would leave less than
+ * half the page's size, so the page is never smaller than that. */
+static bool page_fit_place(int w, int h, const int N[4], const int R[4], int D[4], int pad)
+{
+    const int nw = N[2] - N[0], nh = N[3] - N[1];
+    D[0] = N[0]; D[1] = N[1]; D[2] = nw; D[3] = nh;
+    if (nw < 1 || nh < 1) return false;
+    if (N[2] + pad <= R[0] || N[0] >= R[2] || N[3] + pad <= R[1] || N[1] >= R[3]) return false;   /* nothing in the way */
+    /* left of the panel */
+    double kl = 1.0;
+    {
+        const double aw = (double)(R[0] - pad), ah = (double)h;
+        if (aw < 1) kl = 0; else { if (aw / nw < kl) kl = aw / nw; if (ah / nh < kl) kl = ah / nh; }
+    }
+    /* above it */
+    double kt = 1.0;
+    {
+        const double aw = (double)w, ah = (double)(R[1] - pad);
+        if (ah < 1) kt = 0; else { if (aw / nw < kt) kt = aw / nw; if (ah / nh < kt) kt = ah / nh; }
+    }
+    const bool left = kl >= kt;
+    const double k = left ? kl : kt;
+    if (k <= 0) return false;
+    const int dw = (int)(nw * k + 0.5), dh = (int)(nh * k + 0.5);
+    int x, y;
+    if (left) {
+        x = N[0]; if (x + dw > R[0] - pad) x = R[0] - pad - dw;
+        y = (N[1] + N[3] - dh) / 2;
+    } else {
+        y = N[1]; if (y + dh > R[1] - pad) y = R[1] - pad - dh;
+        x = (N[0] + N[2] - dw) / 2;
+    }
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+    if (x + dw > w) x = w - dw;
+    if (y + dh > h) y = h - dh;
+    D[0] = x; D[1] = y; D[2] = dw; D[3] = dh;
+    return true;
+}
+
+/* Does the panel take any of the page's usual place (the biggest page there is, in DS pixels, from the first line of the card to the foot of the band)?
+   Asked at the head of the frame, before the page's cells are known: a page that is clear of the panel is not lifted at all, the compositor draws it
+   where it always did and the picture is the old one to the pixel. */
+static bool page_fit_overlaps(int w, int h)
+{
+    hal_sub_panel_geometry(w, h);
+    int el = 0, et = 0, er = 0, eb = 0;
+    if (improved_map_on()) panel_extents(&el, &et, &er, &eb);
+    const int inset_x0 = g_x0 - (el > 1 ? el : 1), inset_y0 = g_y0 - (et > 1 ? et : 1);
+    const int H = ntr::present_h() > 0 ? ntr::present_h() : h;
+    auto ds = [H](int v) { return (v * H + 191) / 192; };
+    int nx = (w - ds(256)) / 2;
+    if (nx < 0) nx = 0;
+    const int N[4] = { nx + ds(24), ds(40), nx + ds(233), ds(191) };
+    const double u = H / 192.0;
+    const int R[4] = { inset_x0 - (int)(10 * u + 0.5), inset_y0 - (int)(20 * u + 0.5), w, h };
+    int D[4];
+    return page_fit_place(w, h, N, R, D, (int)(3 * u + 0.5));
+}
+
+static void page_fit_draw(unsigned int *dst, int w, int h, const int inset[4])
+{
+    const MenuTopCell *top = port_menu_top2d_plane();
+    if (!top) return;
+    int bx0 = 256, by0 = 192, bx1 = -1, by1 = -1;
+    for (int y = 0; y < 192; ++y)
+        for (int x = 0; x < 256; ++x)
+            if (top[y * 256 + x].argb >> 24) {
+                if (x < bx0) bx0 = x;
+                if (x > bx1) bx1 = x;
+                if (y < by0) by0 = y;
+                if (y > by1) by1 = y;
+            }
+    if (bx1 < 0) return;
+    const int H = ntr::present_h() > 0 ? ntr::present_h() : h;
+    auto ds = [H](int v) { return (v * H + 191) / 192; };
+    int nx = (w - ds(256)) / 2;
+    if (nx < 0) nx = 0;
+    const int N[4] = { nx + ds(bx0), ds(by0), nx + ds(bx1 + 1), ds(by1 + 1) };
+    const double u = H / 192.0;
+    /* the panel's rectangle (hal_sub_screen_present's own inset rectangle) and the arrows' room: above it, and at its left corner */
+    const int R[4] = { inset[0] - (int)(10 * u + 0.5), inset[1] - (int)(20 * u + 0.5), w, h };
+    int D[4];
+    const bool moved = page_fit_place(w, h, N, R, D, (int)(3 * u + 0.5));
+    static int trace = -1;
+    if (trace < 0) trace = std::getenv("SM64DS_PAGEFIT_TRACE") ? 1 : 0;
+    if (trace) {
+        static int last[16];
+        const int cur[16] = { bx0, by0, bx1, by1, N[0], N[1], N[2], N[3], R[0], R[1], D[0], D[1], D[2], D[3], moved, w };
+        if (memcmp(last, cur, sizeof last)) {
+            memcpy(last, cur, sizeof last);
+            std::fprintf(stderr, "[pagefit] cells ds %d,%d..%d,%d  natural %d,%d..%d,%d  panel+arrows from %d,%d  -> %s %d,%d %dx%d (picture %dx%d)\n",
+                         bx0, by0, bx1, by1, N[0], N[1], N[2], N[3], R[0], R[1], moved ? "moved to" : "stays at", D[0], D[1], D[2], D[3], w, h);
+        }
+    }
+    static MenuLayout *L;
+    if (!L) L = (MenuLayout *)std::calloc(1, sizeof(MenuLayout));
+    if (!L) return;
+    menu_layout_begin(L, w, h);
+    MenuPiece P = menu_piece_make(SRC_TOP_2D, bx0, by0, bx1 - bx0 + 1, by1 - by0 + 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+    P.layers = (uint8_t)(MENU_L_BG1 | MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ);
+    P.fixdest = 1;
+    P.fx = (short)D[0]; P.fy = (short)D[1]; P.fw = (short)D[2]; P.fh = (short)D[3];
+    if (menu_add_piece(L, P) < 0) return;
+    menu_layout_dest(L);
+    MenuSources S;
+    std::memset(&S, 0, sizeof S);
+    S.top2d = top;
+    port_engine_a_fade_px_prep();
+    S.bm_apply = port_engine_a_fade_px;
+    hal_menu_set_dst_stride(ntr::SCREEN_W);
+    menu_piece_draw(L, 0, &S, dst, w, h);
 }
 
 static void sub_screen_present_body(unsigned int *dst, int w, int h)
@@ -4156,7 +4318,7 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
            still sees the cue instead of losing it under the map. Engine A's
            raster ran earlier in the frame (port_message_composite_engine_a),
            which is why the sprites are handed over rather than drawn there. */
-        port_bounce_arrows_present(dst, w, h, g_x0, g_y0, g_pan_w, g_pan_h);
+        if (!g_page_fit_frame) port_bounce_arrows_present(dst, w, h, g_x0, g_y0, g_pan_w, g_pan_h);   /* INT093G: a moved page frame puts them on after the fade, below */
     }
     g_ready = true;
 
@@ -4246,6 +4408,13 @@ void hal_sub_screen_present(unsigned int *dst, int w, int h)
         port_engine_a_bright_mask_rect(g_inset_rect[0], g_inset_rect[1],
                                        g_inset_rect[2], g_inset_rect[3]);
     port_engine_a_fade(dst, w, h);
+    /* INT093G: the ROM's pause page, moved clear of the corner panel. After the fade, so each lifted cell takes the ROM's own brightness verdict it carried out of the compositor */
+    if (g_page_fit_frame && g_inset_live) {
+        page_fit_draw(dst, w, h, g_inset_rect);
+        /* the cue's arrows with it, after the fade too: on this frame the compositor went down the processor's loops, whose brightness mask would
+           judge each arrow by the 3D under its new place and dim it with the pause's partial-target dim, which the arrows (sprites) never take */
+        port_bounce_arrows_present(dst, w, h, g_x0, g_y0, g_pan_w, g_pan_h);
+    }
     /* H2's second stage: the recipes that draw over the finished, faded picture */
     if (hal_menu_draws_in(MENU_STAGE_POST_FADE) && !hal_sub_screen_stacked()) {
         if (!menu_layer_try(dst, w, h, MENU_STAGE_POST_FADE)) {
