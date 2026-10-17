@@ -33,8 +33,6 @@
    (?data_02082214@@3PAFA and ?data_0209f2f8@@3CA, the other two mangled
    spellings that TU needs, are ALREADY bound in port/hal/cxx_aliases.cpp:744
    and :746 -- measured, not assumed, so they are not repeated here.) */
-#pragma comment(linker, "/alternatename:?data_ov102_0214e870@@3PAY03P8C@@AEXXZA=_data_ov102_0214e870")
-#pragma comment(linker, "/alternatename:?data_ov102_0214e8c0@@3PAY03P8C@@AEXXZA=_data_ov102_0214e8c0")
 
 extern "C" int _ZN9daMoray_c8BehaviorEv(void *self)
 {

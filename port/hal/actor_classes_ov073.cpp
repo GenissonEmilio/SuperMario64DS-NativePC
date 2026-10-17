@@ -211,7 +211,6 @@ void func_0203d384(void);
    STATIC. Both TUs are in port/slice_w12.txt and this is the bridge -- the
    Sound::LoadInitialGroup precedent in hal/cxx_aliases.cpp, alias rather than
    face so no second declaration of Sound has to agree with the first. */
-#pragma comment(linker, "/alternatename:__ZN5Sound13Func_02048ec4Ev=?Func_02048ec4@Sound@@SAXXZ")
 
 /* THE RECEIVER-BRIDGING FACE FOR Player::GetHurtState, replacing the
    /alternatename this file used to carry beside the data bridges above.
