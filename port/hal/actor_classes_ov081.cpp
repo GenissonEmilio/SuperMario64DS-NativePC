@@ -844,7 +844,6 @@ int _ZN8daGmch_c12UpdateState8Ev(void *self);   /* state 8 tick  */
    MANGLED name, which nothing else in this link can define -- the property
    the R3/R4/R5 rule demands and the exact reason those cases needed a -D
    instead. */
-#pragma comment(linker, "/alternatename:?data_ov081_02128ef8@@3UVector3@@A=_data_ov081_02128ef8")
 #pragma comment(linker, "/alternatename:?data_ov002_0210d9b8@@3PAHA=_data_ov002_0210d9b8")
 
 /* {ROM address the sinit's own source record carries, host body}, in the

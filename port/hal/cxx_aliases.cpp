@@ -1054,8 +1054,6 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
    written, and each LHS is an unresolved row of that same link. */
 #pragma comment(linker, "/alternatename:?data_0209f5e8@@3UFaderColor@@A=_data_0209f5e8")
 #pragma comment(linker, "/alternatename:?data_ov002_0210af70@@3PAHA=_data_ov002_0210af70")
-#pragma comment(linker, "/alternatename:?data_ov070_021235bc@@3UState@daPropeller_Heyho_c@@A=_data_ov070_021235bc")
-#pragma comment(linker, "/alternatename:?data_ov070_021235cc@@3UState@daPropeller_Heyho_c@@A=_data_ov070_021235cc")
 /* ADDED at the main -> port sync (lane SYNC7, wave 9). Five more of the same
    shape, each RHS checked as defined in walk_window's own link inputs and each
    LHS an unresolved row of that link.
@@ -1350,7 +1348,6 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
 #pragma comment(linker, "/alternatename:?data_0209f310@@3CA=_data_0209f310")
 #pragma comment(linker, "/alternatename:?data_ov002_02110364@@3UState@@A=_data_ov002_02110364")
 #pragma comment(linker, "/alternatename:?data_ov002_02110394@@3UState@@A=_data_ov002_02110394")
-#pragma comment(linker, "/alternatename:?data_ov002_02110a5c@@3PAUEntry@@A=_data_ov002_02110a5c")
 #pragma comment(linker, "/alternatename:?func_ov100_02145014@@YAHXZ=_func_ov100_02145014")
 
 /* Same ADDRESS, different overlay label: 0x020e3078 and 0x020c5dec carry
@@ -1574,7 +1571,6 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
    its flat name, and its matched TU defines the namespace function (YAXHH).
    Both reference spellings name that definition directly; all three are
    __cdecl with two ints and no receiver. */
-#pragma comment(linker, "/alternatename:__ZN5Sound16LoadInitialGroupEi=?LoadInitialGroup@Sound@@SAXH@Z")
 #pragma comment(linker, "/alternatename:?LoadGroupAndSetBank@Sound@@SAXHH@Z=?LoadGroupAndSetBank@Sound@@YAXHH@Z")
 #pragma comment(linker, "/alternatename:__ZN5Sound19LoadGroupAndSetBankEii=?LoadGroupAndSetBank@Sound@@YAXHH@Z")
 /* gate 14, stage A2: the entrance step handlers. 020c71e0's own TU spells it
@@ -1890,7 +1886,6 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
 #pragma comment(linker, "/alternatename:?_ZNK7PathPtr8NumNodesEv@@YAHPAX@Z=__ZNK7PathPtr8NumNodesEv")
 #pragma comment(linker, "/alternatename:?data_0209caa0@@3PADA=_data_0209caa0")
 #pragma comment(linker, "/alternatename:?data_0209e650@@3HA=_data_0209e650")
-#pragma comment(linker, "/alternatename:?data_ov085_021305ac@@3HA=_data_ov085_021305ac")
 #pragma comment(linker, "/alternatename:?data_ov085_021305b0@@3DA=_data_ov085_021305b0")
 #pragma comment(linker, "/alternatename:?data_ov085_021305b8@@3DA=_data_ov085_021305b8")
 #pragma comment(linker, "/alternatename:?data_ov085_021305c0@@3DA=_data_ov085_021305c0")
@@ -2445,8 +2440,6 @@ bool Player::TryGrab(dActor_c &actor)
    the rename and mounts the raw address names. Mapping verified against
    main's own config/arm9/overlays/ov016/symbols.txt (ClsnFile=0x02114e1c,
    ModelFile=0x02114e24). */
-#pragma comment(linker, "/alternatename:_RockPillar_ClsnFile=_data_ov016_02114e1c")
-#pragma comment(linker, "/alternatename:_RockPillar_ModelFile=_data_ov016_02114e24")
 /* gate 194: the ov072_02122cac shape a third time. src/_ZN10HootTheOwl13
    InitResourcesEv.cpp declares data_ov094_02136b40 as `extern void*`
    OUTSIDE any extern "C" block; src/func_ov094_021359d8.cpp (a state
@@ -2914,7 +2907,6 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:?data_ov006_0213ce84@@3PAEA=_data_ov006_0213ce84")
 #pragma comment(linker, "/alternatename:?data_ov006_0213cee0@@3PAGA=_data_ov006_0213cee0")
 #pragma comment(linker, "/alternatename:?data_ov006_0213cec0@@3PAEA=_data_ov006_0213cec0")
-#pragma comment(linker, "/alternatename:?data_ov006_0213cdec@@3PAGA=_data_ov006_0213cdec")
 #pragma comment(linker, "/alternatename:?data_ov006_02142254@@3PAP8C_f300c@@AEXH@ZA=_data_ov006_02142254")
 #pragma comment(linker, "/alternatename:?gMgScene@@3PAUV@@A=_gMgScene")
 #pragma comment(linker, "/alternatename:?data_ov006_02142304@@3PAP8dScMgMemory_c@@AEXXZA=_data_ov006_02142304")
@@ -3040,7 +3032,6 @@ DSSTATE_END
 /* RETIRED (run linkfull, lane ASMCPORT). The left hand side is DEFINED in this link now: src/_ZN6Memory16operator_delete2EPv.cpp builds on every target that compiles this file, so the row would be defeated. The flat name aliases the other way, onto that body, in hal/cxxname_bridge.cpp. */
 // #pragma comment(linker, "/alternatename:?operator_delete2@Memory@@YAXPAX@Z=__ZN6Memory16operator_delete2EPv")
 #pragma comment(linker, "/alternatename:?_ZTV16daObjPushblock_c@@3PAPAXA=__ZTV16daObjPushblock_c")
-#pragma comment(linker, "/alternatename:?data_ov002_0210dbc0@@3PAP8dEnemyBase_c@@AEHAAUdBgCh_Actr@@@ZA=_data_ov002_0210dbc0")
 #pragma comment(linker, "/alternatename:?gMgScene@@3PADA=_gMgScene")
 #pragma comment(linker, "/alternatename:?data_ov060_0211af74@@3PAP8dActor_c@@AEXXZA=_data_ov060_0211af74")
 #pragma comment(linker, "/alternatename:?data_ov079_02128280@@3PAP8dActor_c@@AEHXZA=_data_ov079_02128280")
@@ -3055,7 +3046,6 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:?data_0209ee84@@3IA=_data_0209ee84")
 #pragma comment(linker, "/alternatename:?data_0209ee8c@@3IA=_data_0209ee8c")
 #pragma comment(linker, "/alternatename:?data_0209ee88@@3IA=_data_0209ee88")
-#pragma comment(linker, "/alternatename:?__builtin_trap@cstd@@YAXXZ=__ZN4cstd14__builtin_trapEv")
 #pragma comment(linker, "/alternatename:?_ZN3OAM7NUMBERSE@@3PAPAUOamAttr@@A=__ZN3OAM7NUMBERSE")
 
 /* ----------------------------------------------------------------------
@@ -3109,7 +3099,6 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:?VGetNodeID@SolidHeap_t@mHeap@@QAEIXZ=?VGetNodeID@SolidHeap_t@mHeap@@UAEIXZ")
 #pragma comment(linker, "/alternatename:?SetDefault@Heap_t@mHeap@@QAEHXZ=?SetDefault@Heap_t@mHeap@@QAEPAU12@XZ")
 #pragma comment(linker, "/alternatename:?UpdatePosWithOnlySpeed@Actor@@QAEXPAUdCc_c@@@Z=?UpdatePosWithOnlySpeed@Actor@@QAEXPAX@Z")
-#pragma comment(linker, "/alternatename:?LoadInitialGroup@Sound@@YAXH@Z=?LoadInitialGroup@Sound@@SAXH@Z")
 #pragma comment(linker, "/alternatename:?Play2D@Sound@@YAIII@Z=?Play2D@Sound@@SAXII@Z")
 #pragma comment(linker, "/alternatename:?SetFile@ModelBase@@QAEXPAUBMD_File@@HH@Z=?SetFile@ModelBase@@QAEHPAUBMD_File@@HH@Z")
 #pragma comment(linker, "/alternatename:?SetBlendAlpha@G2x@@YAXPCGGGGI@Z=?SetBlendAlpha@G2x@@SAXPCGGGGI@Z")
@@ -3186,8 +3175,6 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:?Initialise@SysTracker@Particle@@QAEHXZ=?Initialise@SysTracker@Particle@@QAEXXZ")
 #pragma comment(linker, "/alternatename:?Update@SysTracker@Particle@@QAEHXZ=?Update@SysTracker@Particle@@QAEXXZ")
 #pragma comment(linker, "/alternatename:?Render@dView_c@@QAEHXZ=?Render@dView_c@@UAEHXZ")
-#pragma comment(linker, "/alternatename:?InitResources@dCamera_c@@UAEHXZ=?InitResources@dCamera_c@@QAEHXZ")
-#pragma comment(linker, "/alternatename:?Render@dCamera_c@@UAEHXZ=?Render@dCamera_c@@QAEHXZ")
 #pragma comment(linker, "/alternatename:?SetSceneToSpawn@dScene_c@@SAXII@Z=?SetSceneToSpawn@dScene_c@@SAHII@Z")
 
 /* ----------------------------------------------------------------------
@@ -3377,7 +3364,6 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:__ZN5Sound12PlayBank2_2DEj=?PlayBank2_2D@Sound@@YAII@Z")
 #pragma comment(linker, "/alternatename:__ZN4cstd4sqrtEy=?sqrt@cstd@@YAH_K@Z")
 #pragma comment(linker, "/alternatename:__ZN3OAM9RenderSubEP7OamAttriiii=?RenderSub@OAM@@SAXPAUOamAttr@@HHHH@Z")
-#pragma comment(linker, "/alternatename:__ZN8dScene_c9SetFadersEP15dFdBrightness_c=?SetFaders@dScene_c@@SAXPAUFaderBrightness@@@Z")
 #pragma comment(linker, "/alternatename:__ZN8Particle6System12FromUniqueIDEj=?FromUniqueID@System@Particle@@SAPAU12@I@Z")
 #pragma comment(linker, "/alternatename:__ZN8Particle9RenderAllEv=?RenderAll@Particle@@YAXXZ")
 #pragma comment(linker, "/alternatename:__ZN5Scene9SetFadersEP15FaderBrightness=?SetFaders@Scene@@SAXPAUFaderBrightness@@@Z")
@@ -3398,7 +3384,6 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:__ZN22ExpandingHeapAllocator10UnlinkNodeEP10MemoryNodeS1_=?UnlinkNode@ExpandingHeapAllocator@@SAPAXPAUMemoryNode@@0@Z")
 #pragma comment(linker, "/alternatename:__ZN22ExpandingHeapAllocator10CreateNodeEPN10MemoryNode6TargetEt=?CreateNode@ExpandingHeapAllocator@@SAPAXPAUTarget@MemoryNode@@G@Z")
 #pragma comment(linker, "/alternatename:__ZN22ExpandingHeapAllocator8LinkNodeEP10MemoryNodeS1_S1_=?LinkNode@ExpandingHeapAllocator@@SAPAXPAUMemoryNode@@00@Z")
-#pragma comment(linker, "/alternatename:__ZN4cstd3absEi=?abs@cstd@@YAHH@Z")
 #pragma comment(linker, "/alternatename:__ZN5dBgCh21ShouldPassThroughImplEPvRK4CLPSRKS_b=_hostgen_nrwide__ZN5dBgCh21ShouldPassThroughImplEPvRK4CLPSRKS_b")
 #pragma comment(linker, "/alternatename:__ZN6Memory8AllocateEjiPN5mHeap6Heap_tE=?Allocate@Memory@@YAPAXIHPAUHeap_t@mHeap@@@Z")
 #pragma comment(linker, "/alternatename:__ZN4cstd11fdiv_resultEv=?fdiv_result@cstd@@YAHXZ")
@@ -3476,7 +3461,6 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:__ZN7Message19DisplaySaveMenuTextEt=?DisplaySaveMenuText@Message@@SAXG@Z")
 #pragma comment(linker, "/alternatename:__ZN7Message19DisplayDontSaveTextEt=?DisplayDontSaveText@Message@@SAXG@Z")
 #pragma comment(linker, "/alternatename:__ZN7Message25DisplayControllerModeTextEt=?DisplayControllerModeText@Message@@SAXG@Z")
-#pragma comment(linker, "/alternatename:__ZN3G3X11SetFogTableEPv=?SetFogTable@G3X@@YAXPAX@Z")
 #pragma comment(linker, "/alternatename:__ZN5mHeap6Heap_t24CreateSolidHeapAllocatorEPvjj=?CreateSolidHeapAllocator@Heap_t@mHeap@@SAPAUSolidHeapAllocator@@PAXII@Z")
 
 /* -------------------------------------------------------------------
@@ -3504,12 +3488,9 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:_BowserShutter_ModelFile=_data_ov026_02113ebc")   /* 0x02113ebc, ov026_syms.c */
 #pragma comment(linker, "/alternatename:_PARTICLE_RNG_STATE=_data_020a4d30")   /* 0x020a4d30, auto_bss.cpp */
 #pragma comment(linker, "/alternatename:_ROOT_HEAP_ARENA_ID=_data_020a0ea4")   /* 0x020a0ea4, os_arena.cpp */
-#pragma comment(linker, "/alternatename:_RotatingClockHand_ModelFile=_data_ov035_02112cb0")   /* 0x02112cb0, ov035_syms.c */
 #pragma comment(linker, "/alternatename:_Submarine_ModelFile=_data_ov026_02113ee4")   /* 0x02113ee4, ov026_syms.c */
 #pragma comment(linker, "/alternatename:_TTC_MovingBar_ClsnFile=_data_ov065_0211d90c")   /* 0x0211d90c, ov065_syms.c */
 #pragma comment(linker, "/alternatename:_TTC_MovingBar_ModelFile=_data_ov065_0211d904")   /* 0x0211d904, ov065_syms.c */
-#pragma comment(linker, "/alternatename:_daObjBC_Switch_c_ClsnFile=_data_ov002_02110ac4")   /* 0x02110ac4, ov002_data.c */
-#pragma comment(linker, "/alternatename:_daObjBC_Switch_c_ModelFile=_data_ov002_02110acc")   /* 0x02110acc, ov002_data.c */
 #pragma comment(linker, "/alternatename:_daObjIceBoard_c_ClsnFile=_data_ov018_02113c7c")   /* 0x02113c7c, ov018_syms.c */
 #pragma comment(linker, "/alternatename:_daObjIceBoard_c_ModelFile=_data_ov018_02113c84")   /* 0x02113c84, ov018_syms.c */
 

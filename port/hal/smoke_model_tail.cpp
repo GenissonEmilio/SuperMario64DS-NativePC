@@ -74,7 +74,10 @@ GXBANK(".dsstate$gxbank12", data_020a60a0, 4, 2);
 #pragma comment(linker, "/alternatename:?data_020a60b4@@3IA=_data_020a60b4")
 #pragma comment(linker, "/alternatename:?data_020a60b8@@3IA=_data_020a60b8")
 #pragma comment(linker, "/alternatename:?data_020a6088@@3UVramReg@@A=_data_020a6088")
-#pragma comment(linker, "/alternatename:__ZN2GX13SetBankForTexEt=?SetBankForTex@GX@@YAXG@Z")
+// GX::SetBankForTex under its C spelling. hal/scene_boot.cpp holds the same forwarding definition
+// for the window build, so the window map defines the name; an alias here would read as defeated there.
+namespace GX { void SetBankForTex(unsigned short); }
+extern "C" void _ZN2GX13SetBankForTexEt(unsigned short v) { GX::SetBankForTex(v); }
 #pragma comment(linker, "/alternatename:__ZN2GX17SetBankForTexPlttEt=?SetBankForTexPltt@GX@@YAXG@Z")
 #pragma comment(linker, "/alternatename:__ZN3G3X13SetClearColorEtiiib=?SetClearColor@G3X@@SAXGHHH_N@Z")
 #pragma comment(linker, "/alternatename:__ZN4cstd11fdiv_resultEv=?fdiv_result@cstd@@YAHXZ")

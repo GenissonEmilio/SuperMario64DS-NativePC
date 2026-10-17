@@ -93,7 +93,6 @@
 #pragma comment(linker, "/alternatename:__ZN6Memory8AllocateEjiPN5mHeap6Heap_tE=?Allocate@Memory@@YAPAXIHPAUHeap_t@mHeap@@@Z")  /* fixed table */
 #pragma comment(linker, "/alternatename:__ZTV7fBase_c=_data_02099edc")  /* renamed from data_02099edc at the same address */
 #pragma comment(linker, "/alternatename:?Deallocate@Memory@@YAXPAXPAUHeap_t@mHeap@@@Z=?Deallocate@Memory@@YAXPAXPAUHeap_t@mHeap@@@Z")  /* class key mismatch (struct versus class) */
-#pragma comment(linker, "/alternatename:?Deallocate@Memory@@YAXPAXPAUHeap_t@mHeap@@@Z=__ZN6Memory10DeallocateEPv")  /* flat host definition of the same function */
 #pragma comment(linker, "/alternatename:?Reset@OAM@@YAXXZ=?Reset@OAM@@SAXXZ")  /* static member versus namespace function */
 #pragma comment(linker, "/alternatename:__ZN3G3X11SetFogTableEPv=?SetFogTable@G3X@@SAXPAX@Z")  /* static member / namespace function (cdecl) */
 #pragma comment(linker, "/alternatename:?InitResources@dMeter_c@@QAEHXZ=?InitResources@dMeter_c@@UAEHXZ")  /* virtual / non-virtual spelling of one member */

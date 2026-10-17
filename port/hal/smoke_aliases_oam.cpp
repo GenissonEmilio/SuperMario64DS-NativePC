@@ -71,8 +71,6 @@
 #pragma comment(linker, "/alternatename:__ZN3OAM16LoadAffineParamsEP7OamAttrPiP9Matrix2x2=?LoadAffineParams@OAM@@SAHPAUOamAttr@@PAHPAUMatrix2x2@@@Z")
 /* hal/cxx_aliases.cpp:3328 */
 #pragma comment(linker, "/alternatename:__ZN3OAM4LoadEv=?Load@OAM@@SAXXZ")
-/* hal/cxx_aliases.cpp:3287 */
-#pragma comment(linker, "/alternatename:__ZN4cstd3absEi=?abs@cstd@@YAHH@Z")
 
 /* THE HEAP-TEARDOWN SEAM, the same four rows port/hal/smoke_aliases_roots.cpp
    carries and for the same reason.  This target hosts the same root-heap layer,

@@ -161,7 +161,6 @@ int _ZTV10Scuttlebug[31];
 #pragma comment(linker, "/alternatename:_AnimLoadFile=?LoadFile@dExtFrameCtrl_c@@SAPADAAUSharedFilePtr@@@Z")
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines ?Init@dBgCh_Actr@@QAEXPAUActor@@HHPAUVector3_16@@H@Z, and nothing references ?Init@dBgCh_Actr@@QAEXPAUActor@@HHPAXH@Z, so the row can never fire and nothing wants it to. */
 // #pragma comment(linker, "/alternatename:?Init@dBgCh_Actr@@QAEXPAUActor@@HHPAXH@Z=?Init@dBgCh_Actr@@QAEXPAUActor@@HHPAUVector3_16@@H@Z")
-#pragma comment(linker, "/alternatename:?GetFloorResult@dBgCh_Actr@@QBEPAXXZ=?GetFloorResult@dBgCh_Actr@@QBEHXZ")
 #pragma comment(linker, "/alternatename:?data_020a0e68@@3UMtx43@@A=_data_020a0e68")
 
 /* func_ov071_0211f7d4 names its second cylinder collider CylinderClsn2 and

@@ -119,8 +119,6 @@
    spell the flat name.  Both sides are YA, __cdecl, one int in and one int
    out, so this is a name hop and nothing else.  Copied verbatim; it is the row
    the window targets have used for the same pair since it was written. */
-/* hal/cxx_aliases.cpp:3287 */
-#pragma comment(linker, "/alternatename:__ZN4cstd3absEi=?abs@cstd@@YAHH@Z")
 
 /* NestedHeapIterator::FindNested.  HeapAllocator::Remove calls it and the
    sibling Remove on the same object; include/NestedHeapIterator.h:26 declares
