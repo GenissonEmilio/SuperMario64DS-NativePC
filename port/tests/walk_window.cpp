@@ -6231,6 +6231,12 @@ static void char_apply_pick(int sel, int keep_place)
                    file it is playing (it boots with no title to say so) */
                 port_char_save_record(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "", chr_base(sel));
                 port_char_save_child_env(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "");
+                /* FIELDPLAY1: the debug menu's character row restarted the level with the default open file (0 stars, no keys): write the
+                   file first, whoever asked, and the child reads it back (SM64DS_CHAR_RELOAD, set by port_char_save_child_env when this
+                   process is playing a real file). The door picker already did this below for its own restart. */
+                if (!keep_place && port_char_save_file_known())
+                    fprintf(stderr, "[menu] saved the open file before the restart: %d
+", _ZN8SaveData15SaveCurrentFileEv());
                 if (keep_place) {
                     /* CHARDOOR1: the child puts the player back where they stood (read once, never inherited on) */
                     char dr[96];
@@ -13915,7 +13921,8 @@ int main(void)
            default open file, not the player's (no key, no star, no door, no unlocked characters). The door picker's
            parent saved the file just before it ended, so read that slot back into the open file here (the ROM's own
            ReadFileData), before anything spawns. The character byte stays what SM64DS_CHARACTER says. */
-        if (getenv("SM64DS_DOOR_RETURN")) {
+        if (getenv("SM64DS_DOOR_RETURN") || getenv("SM64DS_CHAR_RELOAD")) {
+            SetEnvironmentVariableA("SM64DS_CHAR_RELOAD", 0);   /* once: a restart's own later restart sets it again if it must */
             const int fslot = port_char_save_slot();
             unsigned char blk[0x44];
             if (fslot >= 0 && fslot <= 2 && _ZN8SaveData12ReadFileDataEjP12FileSaveData((unsigned)fslot, blk)) {
@@ -16104,47 +16111,47 @@ int main(void)
                 if (!cam_paused && stick_rx > 10000) cam_rot |= cam_bit_right;
                 if (cb_l_pad) cam_rot |= cam_bit_left;
                 if (cb_r_pad) cam_rot |= cam_bit_right;
-                /* CAMPACK1 / CAMPACK2: ZOOM in the DS camera is the ROM's own Look camera, which has levels: each press of the Look
-                   button (Ctrl 0x8000) goes normal -> a raised far view (the eye a fifth farther) -> the close-up (camera state 9) -> normal.
-                   The two binds read as a ladder with the far view at the bottom and the close-up at the top:
+                /* CAMPACK1 / CAMPACK2 / FIELDPLAY1: ZOOM in the DS camera is the ROM's own Look camera. The Look button (Ctrl 0x8000) walks the
+                   Player's ring mUseFarCamera (Player +0x715): 0 normal -> 1 raised far view (the eye a fifth farther) -> 2 the close-up
+                   (camera state 9) -> 0 normal (func_ov002_020ca940). The two binds read as a ladder with the far view at the bottom and the
+                   close-up at the top:
                        far view (1) <-> normal (0) <-> close-up (2)
-                   Zoom in goes one rung up, zoom out one rung down, and the ROM's ring is walked the short way round:
-                       zoom in  from normal   : Look, Look (the far view lasts the gap between the two presses)  -> close-up
-                       zoom in  from far view : Look, Look (through the close-up)                                -> normal
+                   One press moves one rung, and EVERY move is ONE Look press: the ring is stepped by presetting the rung the ROM reads before
+                   it adds one, so no rung is passed through on the way (CAMPACK2 pressed Look twice, three ticks apart, for the two moves that
+                   skip a rung, and the camera showed the rung between for those ticks: the far view on the way to the close-up, the close-up
+                   on the way back from the far view; and in a walk the second press was sometimes not taken and the player was left in the
+                   close-up):
+                       zoom in  from normal   : ring set to 1, Look (1 -> 2)  -> close-up
+                       zoom in  from far view : ring set to 2, Look (2 -> 0)  -> normal
                        zoom in  from close-up : nothing (already the closest)
-                       zoom out from close-up : Look                                                            -> normal
-                       zoom out from normal   : Look                                                            -> far view
+                       zoom out from close-up : Look (2 -> 0)                 -> normal
+                       zoom out from normal   : Look (0 -> 1)                 -> far view
                        zoom out from far view : nothing (already the farthest)
-                   (CAMPACK1 pressed Look once from normal for zoom in, so the first press showed the far view, i.e. zoomed OUT, and
-                   zoom out from normal did nothing.) The right stick's up / down does the same once per push (CameraStickZoom). One
-                   action per edge, so a held key does not step every frame. `phase` follows the presses from any source (the Look key,
-                   pad button, mouse button or these) and is corrected by the camera state (the close-up is camera state 9; the far view
-                   has no state of its own). The pause cancels a half-done double press. */
+                   The ring is read from the Player itself, so it follows presses from any source (the Look key, pad button, mouse button or these)
+                   and no state is guessed from the camera. The right stick's up / down does the same once per push (CameraStickZoom). One
+                   action per edge, so a held key does not step every frame. A preset the ROM did not take (it ignores Look in some Player
+                   states) is put back after four ticks. The pause cancels it. */
                 {
-                    static int zi_prev, zo_prev, look_prev, phase, second, since = 99;
-                    const int inz = cam && cam93_state_idx(cam) == 9;
-                    /* the camera's own flag word (Camera +0x154, measured with SM64DS_CAM93_DUMPAT: 0x1000 normal, 0x1002 far view,
-                       0x80000 close-up) says which rung it is on; the presses' own count carries the few ticks before it updates */
-                    ++since;
-                    if (cam && since >= 5 && !second) {
-                        const unsigned cf = *(unsigned *)((char *)cam + 0x154);
-                        phase = inz ? 2 : (cf & 2) ? 1 : 0;
-                    } else if (inz) phase = 2; else if (phase == 2 && since >= 5) phase = 0;
+                    static int zi_prev, zo_prev, look_prev, undo_in;
+                    static unsigned char undo_val, undo_was;
+                    unsigned char *uf = c ? (unsigned char *)((char *)c + 0x715) : 0;
                     const int zi = !cam_paused && (cb_zi || (stick_zoom && pad_live && stick_ry > 16000));
                     const int zo = !cam_paused && (cb_zo || (stick_zoom && pad_live && stick_ry < -16000));
                     int press = 0;
-                    if (cam_paused) second = 0;
-                    if (zi && !zi_prev) {
-                        if (phase == 0 || phase == 1) { press = 1; second = 3; }   /* two rungs of the ring: the second press follows */
+                    if (uf && undo_in > 0 && --undo_in == 0) {
+                        /* taken: the ring moved off the preset (or the far view was cleared); not taken: put the rung back */
+                        const unsigned cf = cam ? *(unsigned *)((char *)cam + 0x154) : 0;
+                        if (*uf == undo_val && (undo_val == 1 || (cf & 2))) *uf = undo_was;
                     }
-                    if (zo && !zo_prev) {
-                        if (phase == 2) press = 1;           /* close-up -> normal */
-                        else if (phase == 0) press = 1;      /* normal -> far view */
+                    if (uf && zi && !zi_prev) {
+                        if (*uf == 0) { undo_was = 0; undo_val = 1; *uf = 1; undo_in = 4; press = 1; }       /* normal -> close-up */
+                        else if (*uf == 1) { undo_was = 1; undo_val = 2; *uf = 2; undo_in = 4; press = 1; } /* far view -> normal */
                     }
-                    if (second && --second == 0) press = 1;
-                    if (press) { btn |= 0x8000; since = 0; }
+                    if (uf && zo && !zo_prev) {
+                        if (*uf == 2 || *uf == 0) press = 1;     /* close-up -> normal, normal -> far view */
+                    }
+                    if (press) btn |= 0x8000;
                     const int lk = (btn & 0x8000) != 0;
-                    if (lk && !look_prev) { phase = (phase + 1) % 3; since = 0; }
                     look_prev = lk;
                     zi_prev = zi; zo_prev = zo;
                 }

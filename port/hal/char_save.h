@@ -55,6 +55,8 @@ const char *port_char_save_key(int slot);
 /* Environment for a child that is about to be started on the same slot, with the
    given skin key ("" = plain). */
 void port_char_save_child_env(int slot, const char *key);
+/* FIELDPLAY1: 1 when this process is playing a real save file (the title picked it, or it is a restart for one) */
+int port_char_save_file_known(void);
 
 #ifdef __cplusplus
 }
