@@ -39,6 +39,7 @@ Slot g_slot[3];
 int g_last;
 bool g_loaded;
 int g_env_slot = -2;    /* SM64DS_CHAR_SLOT: -2 unread, -1 absent */
+int g_file_picked = 0;  /* the title picked a save file in this process (FIELDPLAY1) */
 std::string g_path;
 
 const char *file_path()
@@ -143,6 +144,7 @@ int on_file_start(int slot)
 {
     if (slot < 0 || slot > 2 || port_mods_multiplayer()) return 0;
     load();
+    g_file_picked = 1;
     g_env_slot = -1;                              /* the title knows the real slot */
     SetEnvironmentVariableA("SM64DS_CHAR_SLOT", 0);
     if (g_last != slot) { g_last = slot; save(); }
@@ -260,11 +262,20 @@ const char *port_char_save_key(int slot)
     return g_slot[slot].key.c_str();
 }
 
+int port_char_save_file_known(void)
+{
+    return g_file_picked || env_slot() >= 0;
+}
+
 void port_char_save_child_env(int slot, const char *key)
 {
     char v[2] = { (char)('0' + (slot < 0 || slot > 2 ? 0 : slot)), 0 };
     SetEnvironmentVariableA("SM64DS_CHAR_SLOT", v);
     SetEnvironmentVariableA("SM64DS_CHAR_SKIN", key && *key ? key : "-");
+    /* FIELDPLAY1: a restart for a costume change must come back with the file the player is on (stars, keys, doors), not the default open
+       file. Only when this process really is playing a file (the title picked it, or it is itself such a restart); a scripted level boot has no
+       file and must never read slot A. The child reads it once and clears this. */
+    SetEnvironmentVariableA("SM64DS_CHAR_RELOAD", port_char_save_file_known() ? "1" : 0);
 }
 
 }
