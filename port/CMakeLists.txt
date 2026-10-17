@@ -334,28 +334,18 @@ endfunction()
 #       called with two arguments where the ROM's caller leaves a third riding
 #       in a register). Added at the main->port sync, lane SYNC5: lane SEAT6
 #       keyed this on the per-function TU main has since folded into this one.
-#   port/unmatched/dScMgHanachan_c.cpp   PMF_SEAM on four typed member-pointer
+#   src/minigames/d_s_mg_hanachan_methods.cpp   PMF_SEAM on four typed member-pointer
 #       dispatches of a FIELD (three per-Wiggler bodies at sub-object +0x10 and
 #       the Behavior at scene +0x4660) and MG_PMF_CALL on a fifth that open-codes
 #       the same decode in plain ints. Nothing seats those fields, so the code
 #       word is a DS address at every one of the five and a raw call jumps into
-#       the mounted overlay's data image. Added run link100, lane HOSTGEN2;
-#       retires the five host copies in unmatched/MgWiggler_StateDispatch.cpp.
-#       THE ROW MOVED OFF src/minigames/d_s_mg_hanachan_methods.cpp, run link100 wave 10
-#       round 4, lane SCENES3: scene 386 died in Wiggler_DrawPassB of an
-#       ARGUMENT EVALUATION ORDER defect (the matched source assigns t.urot
-#       inside the comma expression that is argument two of an OAM::Render call
-#       and reads it as argument eight; MSVC pushes a cdecl call right to left
-#       and passes uninitialised stack on the first loop iteration). src/ is
-#       byte-verified and is not edited, so port/unmatched/dScMgHanachan_c.cpp
-#       is the src TU with that one call spelled in the cartridge's own order,
-#       and THE COPY KEEPS THE STEM on purpose: tools/hostgen.py keys every
-#       patch table on the file stem, so all five rows above go on applying to
-#       the copy verbatim, which a copy under a new name would silently drop.
-#       port/slice_wig.txt names the copy in the src TU's place. The file's own
-#       header carries the ARM disassembly at 0x020eadd8..0x020eae10, the host
-#       disassembly at 0x005cbffa..0x005cc05b and the one line that reproduces
-#       it from the matched source.
+#       the mounted overlay's data image. Added run link100, lane HOSTGEN2.
+#       Run hunt8, lane WIGGLER1: the port-owned stand-in copy (dScMgHanachan_c.cpp,
+#       made for the argument-evaluation-order defect in Wiggler_DrawPassB) is
+#       retired. The src TU now spells that one call with the index and the
+#       rotation assigned in statements before the OAM::Render call, which mwccarm
+#       compiles to the same bytes (match.py, 2004/b56), so the src TU itself is
+#       the one that links and the ledger counts it.
 #   src/minigames/d_s_mg_roulette_methods.cpp   PMF_SEAM on the wheel object's one member-
 #       pointer dispatch, and VIRTUAL_CALL on the same body's other defect -- a
 #       local four-virtual shadow calling ROM slot 3 on the host Model at +0x10,
@@ -451,7 +441,7 @@ set(PORT_HOSTGEN_TU
     src/game/actors/d_a_mc_flag.cpp
     src/minigames/d_s_mg_cup.cpp
     src/minigames/d_s_mg_panel.cpp
-    port/unmatched/dScMgHanachan_c.cpp
+    src/minigames/d_s_mg_hanachan_methods.cpp
     src/minigames/d_s_mg_roulette_methods.cpp
     src/game/actors/d_a_bg_snwmn.cpp
     src/game/actors/d_a_propeller_heyho.cpp
@@ -1217,12 +1207,16 @@ list(APPEND PORT_HOSTGEN_TU
     src/ApproachAngle.cpp
     src/game/actors/d_a_kpa.cpp
     src/game/actors/d_a_f_ring.cpp
-    src/game/actors/d_a_obj_fl_uki_ki.cpp)
+    src/game/actors/d_a_obj_fl_uki_ki.cpp
+    # Run hunt8, lane WIGGLER1: dScEntry_c's three pointer-to-member dispatch sites
+    # (hostgen_portsync2.py rewrites each into port_vs_state_call).
+    src/unnamed/ov075/func_ov075_0211a194.cpp
+    src/_ZN10dScEntry_c8BehaviorEv.cpp
+    src/_ZN10dScEntry_c6RenderEv.cpp)
 list(REMOVE_DUPLICATES PORT_HOSTGEN_TU)
 
 # Whole-TU host copies that REPLACE a src TU (see each copy's header). The
 # end-of-file reroute maps any remaining row naming the src TU onto the copy.
-set("PORT_TU_REPLACED_src/minigames/d_s_mg_hanachan_methods.cpp" "port/unmatched/dScMgHanachan_c.cpp")
 list(REMOVE_DUPLICATES PORT_HOSTGEN_TU)
 get_filename_component(PORT_HOSTGEN_TU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 set(PORT_HOSTGEN_TU_GEN "")
@@ -20391,6 +20385,20 @@ foreach(line IN LISTS SLICE_PMFB6_LINES)
     endif()
     list(APPEND SLICE_PMFB6_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
+# Run hunt8, lane WIGGLER1: /Zp4 ON dScEntry_c's THREE DISPATCH SHARDS. Their local structs
+# spell the pointer-to-member fields at the ROM's +0x5c (Behavior), +0x64 (Render) and
+# +0x54 (the setter's local view); MSVC aligns an eight-byte member to eight and would
+# read them four bytes late and shift every field behind them (iconCount, the fade bytes).
+# Both paths are named: the compile the build runs is the generated copy under host-src.
+set_source_files_properties(
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/ov075/func_ov075_0211a194.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/unnamed/ov075/func_ov075_0211a194.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10dScEntry_c8BehaviorEv.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/_ZN10dScEntry_c8BehaviorEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10dScEntry_c6RenderEv.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/_ZN10dScEntry_c6RenderEv.cpp"
+    PROPERTIES COMPILE_OPTIONS "/Zp4")
+
 # GATE 3. /Zp4 ON ONE SOURCE, MEASURED AND NOT INHERITED.
 # src/minigames/d_mg_jump3d_mario.cpp spells `struct C { char pad[0x3c]; PMF m; };` and
 # the ROM's field is at +0x3c. MSVC aligns an eight-byte member to eight, so
@@ -21950,7 +21958,6 @@ set(PORT_DSSTATE_FI_SOURCES
     src/game/actors/d_a_star_gate.cpp
     # PORTSYNC2: the TUs that define the 541 objects retired from the ov*_syms.txt
     # mounts at the 2026-10 main merge (each list's RETIRED block names them).
-    port/unmatched/dScMgHanachan_c.cpp
     src/game/actors/d_a_iwante.cpp
     src/game/stages/d_ent_obj.cpp
     src/minigames/d_mg3d_esp_anim_set.cpp

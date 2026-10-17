@@ -4868,7 +4868,7 @@ def _fold_stem_keys():
 # that some of the rows were written for, so their rows stay on the old key AND
 # are copied onto the renamed TU's key; every patch keeps its hard error, so a
 # row whose anchor is in only one of the two files fails loudly and is split.
-STEM_KEEP = {"dScMgHanachan_c", "dScMgRoulette_c"}
+STEM_KEEP = {"dScMgRoulette_c"}
 
 STEM_RENAMES = {
     "dActor_c": "d_actor",

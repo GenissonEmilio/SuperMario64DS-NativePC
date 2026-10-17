@@ -408,7 +408,6 @@ src/minigames/d_s_mg_hanachan_methods.cpp
 # the file stem, go on applying to it; the PORT_HOSTGEN_TU row in port/CMakeLists.txt
 # names the copy as well, and the generated copy is what compiles. Taking BOTH rows
 # would be a duplicate symbol, so the src row is deliberately absent.
-port/unmatched/dScMgHanachan_c.cpp
 # HOST-COPIED (WIG): src/minigames/d_s_mg_hanachan_methods.cpp -- table-free FIELD pmf at sub-object +0x10, member-pointer typed
 # HOST-COPIED (WIG): src/minigames/d_s_mg_hanachan_methods.cpp -- FIELD pmf at sub-object +0x10, member-pointer typed
 # HOST-COPIED (WIG): src/minigames/d_s_mg_hanachan_methods.cpp -- FIELD pmf at sub-object +0x10, member-pointer typed; ALSO copies the pair down to +0x00

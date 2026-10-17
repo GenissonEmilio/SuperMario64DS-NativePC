@@ -97,7 +97,6 @@
 #
 # ---- the slice -------------------------------------------------------------
 src/_ZN10dScStage_c16CleanupResourcesEv.cpp
-port/unmatched/hostarm/_ZN5Stage16CleanupResourcesEv.cpp
 src/engine/sound/Sound.cpp
 src/Message.cpp
 src/game/stages/d_s_stage_methods.cpp
