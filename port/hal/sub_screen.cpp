@@ -289,11 +289,6 @@ bool g_on = true;
    owns it (OneScreenMenus off, or a pause variant no recipe covers): the corner panel is the only place those plates show, so the panel
    is forced on for as long as the menu is up even with the panel option off. Set on the decide side each tick, read on the draw side. */
 std::atomic<int> g_force_panel{0};
-/* SLICE1: the ROM's own pause (no one-screen recipe owns it) is up. The corner panel then holds the pause plates, a touch menu that sits over
-   the page the top screen shows (the castle's secret star box and its TOUCH TO SELECT line run to the bottom right). A MinimapScale of 2 or
-   more made the panel big enough to cut that box and text off, so for as long as the pause is up the panel is drawn at the smallest size
-   (the picture the port drew before the option existed). Set on the decide side each tick, read where the geometry is solved. */
-std::atomic<int> g_pause_panel{0};
 bool g_ready;
 /* Headless runs must not read the mouse or the keyboard. SM64DS_WINDOW_SELFTEST
    is CI's comparator and several of these binaries run on one machine at once,
@@ -382,7 +377,6 @@ void hal_sub_panel_geometry(int w, int h)
        it existed, which is half a DS screen: num/den = 1/2 */
     const int on = improved_map_on() ? 1 : 0;
     const int nmin = on ? (den / 2 < 1 ? 1 : den / 2) : num;
-    if (on && g_pause_panel.load()) num = nmin;   /* SLICE1: the pause plates never grow past the smallest panel */
     int el = 0, et = 0, er = 0, eb = 0;
     for (;;) {
         g_pan_num = num;
@@ -3758,7 +3752,6 @@ extern "C" void hal_menu_decide_tick(int w, int h)
     hal_menu_decide(w, h, scene);
     g_force_panel.store((!g_on && scene != MENU_SCENE_GATED && !hal_menu_live() &&
                          (save_menu_is_up() || scene == 8 || scene == 4 || (data_0209f2c4 != 0 && data_0209f20c == 0 && (scene == 3 || scene == -1)))) ? 1 : 0);
-    g_pause_panel.store((!hal_menu_live() && scene != MENU_SCENE_GATED && data_0209f2c4 != 0 && data_0209f20c == 0 && (scene == 3 || scene == -1)) ? 1 : 0);
     /* THE COMPOSE'S OWN ANSWER AND ITS RECTANGLES, once a frame, by the same rule: one place decides, everybody else
        reads. They are computed whatever the answer is, so poll_touch's inverse has this frame's numbers on the very
        frame the plates come on. (These two lines read the ROM, so they live on the decide side; they used to sit in
