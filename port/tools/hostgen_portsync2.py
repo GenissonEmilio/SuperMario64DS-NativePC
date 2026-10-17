@@ -698,17 +698,10 @@ ROWS_04 = {}
 # PARK_SYMBOL row is dropped (None) and the two spots are swapped in place.
 ROWS_04[("PARK_SYMBOL", "_ZN10dScStage_c16CleanupResourcesEv")] = None
 ROWS_04[("HOST_COPY_PARK", "_ZN10dScStage_c16CleanupResourcesEv")] = [
-    ("extern void func_01ffb0c8(void *);
-extern void Deallocate(void);
-",
-     "extern void *func_01ffb0c8(void *);
-extern void Deallocate(void *);
-"),
-    ("    func_01ffb0c8((char *)&mMeshCollider);
-    Deallocate();
-",
-     "    Deallocate(func_01ffb0c8((char *)&mMeshCollider));
-"),
+    ("extern void func_01ffb0c8(void *);\n" "extern void Deallocate(void);\n",
+     "extern void *func_01ffb0c8(void *);\n" "extern void Deallocate(void *);\n"),
+    ("    func_01ffb0c8((char *)&mMeshCollider);\n" "    Deallocate();\n",
+     "    Deallocate(func_01ffb0c8((char *)&mMeshCollider));\n"),
 ]
 
 # ---- dActor_c --------------------------------------------------------------
