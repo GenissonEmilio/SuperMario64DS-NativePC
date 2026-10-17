@@ -1221,7 +1221,7 @@ extern "C" unsigned char data_ov002_02111184;   /* the ROM's "a timer runs on th
    meter is on screen), same layer priority and brightness. sub_actors.cpp notes the ROM's y and wedge count each frame it draws the
    meter; the plane step below erases the DS cells of the footprint and the pass after the cell loops paints the art at host resolution.
    No mod, a smoke target, a non-English label, a level-clear lift or a natively presented scene: nothing here runs and the DS cells stay. */
-extern "C" int g_port_hdmeter_live, g_port_hdmeter_y, g_port_hdmeter_health;   /* hal/sub_actors.cpp */
+extern "C" int g_port_hdmeter_live, g_port_hdmeter_y, g_port_hdmeter_health, g_port_meter_drawn;   /* hal/sub_actors.cpp */
 extern "C" const HdMeterArt *(*port_hd_meter_art_hook)(int health, int k) = nullptr;   /* set by hal/hd_meter.cpp */
 static int kHdMeterX0 = 108, kHdMeterDy = -24;   /* the DS sprite's top left (its 40 x 40 cells) against (0x80 - 20, mHealthMeterY): measured: cells x 108..147, rows y0 .. y0 + 39 with y0 = mHealthMeterY - 24 */
 struct HdMeterJob { bool on; int x0, y0, off, k; const HdMeterArt *art; };
@@ -3633,6 +3633,11 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     const bool hdm_note = g_port_hdmeter_live != 0;
     const int hdm_y = g_port_hdmeter_y, hdm_health = g_port_hdmeter_health;
     g_port_hdmeter_live = 0;
+    /* SLICE1: the N64 row's meter shift below moves every OBJ cell of the meter's DS rectangle (x 80..153, y < 96). Where the ROM draws no
+       meter (the cannon scope, a cutscene) that rectangle holds other sprites, the cannon's aim reticle among them, and the shift cut the
+       reticle in two and slid its upper half 5 pixels left. Only a frame whose HUD arm drew the meter is shifted, and only the rows the meter (at its own y) can reach. */
+    const bool meter_drawn = g_port_meter_drawn != 0;
+    g_port_meter_drawn = 0;
     bool hdm_n64 = false;
     g_hdm.on = false;
 #ifndef PORT_ROM_CLEAN      /* env-only proof arm: not in the shipped build (g_hud_erase stays false) */
@@ -3644,7 +3649,8 @@ extern "C" void port_message_composite_engine_a(void *fbp)
         hdm_n64 = true;
         /* HUDTWEAK1: the power meter's cells (OBJ, x 80..153, y 0..59) go kHudMeterLeft pixels left, in the plane, before anything
            measures them, so the coin block's gap to the meter is the one it had. */
-        for (int y = 0; y < kHudMeterY1; ++y)
+        const int meter_y1 = hdm_y + 38 < kHudMeterY1 ? hdm_y + 38 : kHudMeterY1;   /* SLICE1: the meter and its label end 38 rows under the ROM's meter y (the hidden meter sits at y -24) */
+        for (int y = 0; meter_drawn && y < meter_y1; ++y)
             for (int x = kHudMeterX0; x <= kHudMeterX1; ++x) {
                 Cell &c = g_a[y][x];
                 if (c.hit && c.owner == kOwnerObj && !c.msgcur) {
