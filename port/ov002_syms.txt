@@ -605,13 +605,14 @@ g_profile_PUSHBLOCK:0x1c
 # nothing to rebase. The eight PS rows were bytes of the synthetic gap block
 # port_ov002_gap_0210c548 until now (reached only through the minimap's
 # patched pointers); named, they are the storage both the name and those
-# pointers land on (ovdata's make_covering rule 1). The five VS rows next to
-# LC's (0x0210cfd0..0x0210d188, RenderVsModeNewStar) are NOT here: VS, parked
-# by ruling.
+# pointers land on (ovdata's make_covering rule 1). Run hunt8, lane WIGGLER1 added
+# the five VS rows next to LC's (0x0210cfd0..0x0210d188 and OAM::VS_NEW_STAR_APPEARED,
+# RenderVsModeNewStar's) as the last row below.
 _ZN3OAM13MM_SMALL_STARE _ZN3OAM5PAUSEE _ZN3OAM19ARROW_POINTING_LEFTE _ZN3OAM20ARROW_POINTING_RIGHTE
 _ZN3OAM9TINY_STARE _ZN3OAM26SMALL_ARROW_POINTING_RIGHTE _ZN3OAM25SMALL_ARROW_POINTING_LEFTE _ZN3OAM8VS_PAUSEE
 data_ov002_0210caf4 data_ov002_0210cb14 data_ov002_0210ce90 data_ov002_0210cea8 data_ov002_0210ced0
 data_ov002_0210cee8 data_ov002_0210cf08 data_ov002_0210cf28 data_ov002_0210cf78 data_ov002_0210cfa0
+data_ov002_0210cfd0 data_ov002_0210d050 data_ov002_0210d0e8 data_ov002_0210d188 _ZN3OAM20VS_NEW_STAR_APPEAREDE
 
 # ---- hunt4 CLPS002: six CLPS blocks OTHER overlays point at ----
 # Each is a one-row surface table (43 4c 50 53 08 00 01 00 + one 8-byte row,

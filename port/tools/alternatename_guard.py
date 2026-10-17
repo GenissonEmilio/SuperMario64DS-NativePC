@@ -602,6 +602,9 @@ def rom_address(name):
     return int(m.group(1), 16) & ~1
 
 
+PORT_SYNTH_PREFIXES = ('_port_pmft_', '_port_pmff_')
+
+
 def address_disagreements(directives):
     """Rows whose two sides each name a ROM address, and a DIFFERENT one.
 
@@ -622,6 +625,14 @@ def address_disagreements(directives):
     """
     out = []
     for lhs, rhs, rel, ln in directives:
+        # The generated native-PMF constants (hal/pmf_host_values.cpp) bind a
+        # port-synthetic name, _port_pmft_<table> / _port_pmff_decl_<table>,
+        # onto the member FUNCTION the table's pair holds. The address in that
+        # left-hand name is where the pair is STORED, not an object of its own,
+        # so it is meant to differ from the function's address (143 rows, all
+        # of that one file; INT093F). Not a ROM spelling: nothing to compare.
+        if lhs.startswith(PORT_SYNTH_PREFIXES):
+            continue
         la, ra = rom_address(lhs), rom_address(rhs)
         if la is None or ra is None or la == ra:
             continue
