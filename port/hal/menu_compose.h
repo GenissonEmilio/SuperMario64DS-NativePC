@@ -443,6 +443,9 @@ int  hal_menu_lc_selftest(void);                /* menu_recipe_lc.cpp: COMPOSED 
    itself) does not call this. */
 void host_menu_cursor_sound(void);
 void host_menu_cursor_sound_flush(void);
+/* FIELDUI1 (U2): a surface with its own ROM cursor sound (the title family, whose ROM plays its own D-pad move sound) installs a hook
+   here: the flush asks it first and a nonzero answer means it played the sound (the generic 0x12e is then not played). */
+extern int (*g_menu_cursor_snd_hook)(void);
 #ifdef __cplusplus
 }
 #endif
