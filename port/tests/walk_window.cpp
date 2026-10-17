@@ -6235,8 +6235,7 @@ static void char_apply_pick(int sel, int keep_place)
                    file first, whoever asked, and the child reads it back (SM64DS_CHAR_RELOAD, set by port_char_save_child_env when this
                    process is playing a real file). The door picker already did this below for its own restart. */
                 if (!keep_place && port_char_save_file_known())
-                    fprintf(stderr, "[menu] saved the open file before the restart: %d
-", _ZN8SaveData15SaveCurrentFileEv());
+                    fprintf(stderr, "[menu] saved the open file before the restart: %d\n", _ZN8SaveData15SaveCurrentFileEv());
                 if (keep_place) {
                     /* CHARDOOR1: the child puts the player back where they stood (read once, never inherited on) */
                     char dr[96];
@@ -15701,7 +15700,7 @@ int main(void)
             if (tr < 0) tr = getenv("SM64DS_CAM93_TRACE") ? 1 : 0;
             if (tr && cam && c)
                 fprintf(stderr, "[cam93] f%d st=%d ds=%d mode=%d yaw=%04x pitch=%04x dist=%d scale=%d hit=%d midle=%d want=%d "
-                        "pl=%d,%d,%d pyaw=%04x pst=%p eye=%d,%d,%d hitrel=%d,%d,%d hd=%04x fc48=%x pstep=%u pkind=%u cyaw=%04x ceye=%d,%d,%d\n",
+                        "pl=%d,%d,%d pyaw=%04x pst=%p eye=%d,%d,%d hitrel=%d,%d,%d hd=%04x fc48=%x pstep=%u pkind=%u cyaw=%04x ceye=%d,%d,%d uf=%d cf=%x\n",
                         frame, cam93_state_idx(cam), cam93_ds_owned(cam), cam_mode, (unsigned short)fc_yaw,
                         (unsigned short)fc_pitch, fc_dist >> 12, g_cam93_scale, g_cam93_hit | (g_cam93_floorhit << 1),
                         g_cam93_mouse_owned, g_cam93_wouldscale,
@@ -15712,7 +15711,8 @@ int main(void)
                         (unsigned)(unsigned short)*(short *)((char *)data_020a1164), (unsigned)data_0209fc48,
                         (unsigned)*(unsigned char *)(c + 0x6e3), (unsigned)*(unsigned char *)(c + 0x70a),
                         (unsigned)(unsigned short)*(short *)((char *)cam + 0x17c), *(int *)((char *)cam + 0x8c) >> 12,
-                        *(int *)((char *)cam + 0x90) >> 12, *(int *)((char *)cam + 0x94) >> 12);
+                        *(int *)((char *)cam + 0x90) >> 12, *(int *)((char *)cam + 0x94) >> 12,
+                        (int)*(unsigned char *)(c + 0x715), *(unsigned *)((char *)cam + 0x154));
         }
         {   /* CAMPACK2 test hook (SM64DS_CAM93_DUMPAT=<frame>[,<frame>...]): the Camera actor's first 0x200 bytes as words, to find
                which field holds the Look button's level (far view / close-up) */
