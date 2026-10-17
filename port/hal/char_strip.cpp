@@ -410,7 +410,16 @@ void port_char_strip_idle(void)
 
 void port_char_strip_draw(uint32_t *px, int stride, int w, int h)
 {
-    if (!g_up || !px) return;
+    if (!g_up && px && !host_setting_character_strip() && hal_menu_starsel_up()) {
+        /* CAPSTOGGLE1 proof: SM64DS_STRIP_BMP also writes the picture of the DS star select with the setting off (the frames counted here) */
+        static int off_frames;
+        const int sv = g_frames;
+        g_frames = ++off_frames;
+        capture(px, stride, w, h);
+        g_frames = sv;
+        return;
+    }
+    if (!g_up || !px) return;
     g_pw = w;
     g_ph = h;
     if (!g_begun) { g_begun = 1; cdskin_begin(); }
