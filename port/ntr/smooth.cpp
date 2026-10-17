@@ -2053,7 +2053,7 @@ int topo_classify(const std::vector<int> &mem, double *o_cop, double *o_lb, doub
     *o_cop = *o_lb = *o_lv = 0.0;
     if (n < 4 || n > 400) return SMOOTH_CLASS_NONE;
     int edges = 0, cop = 0, allcop = 1;
-    int open_edges = 0, hard = 0;
+    int open_edges = 0, hard = 0, square = 0;
     int lb = 0, lv = 0;
     std::unordered_map<VertKey, int, KeyHash<VertKey, 3> > vset;
     for (int m = 0; m < n; ++m) {
@@ -2075,6 +2075,7 @@ int topo_classify(const std::vector<int> &mem, double *o_cop, double *o_lb, doub
                 ++edges;
                 if (dc >= 0.99756) ++cop;           // within 4 degrees
                 if (dc <= 0.5) ++hard;              // a 60 degree edge or sharper
+                if (dc <= 0.2 && dc >= -0.2) ++square;   // a right angle, give or take 12 degrees
                 if (dc < 0.99863) allcop = 0;       // beyond 3 degrees
             }
         }
@@ -2083,6 +2084,14 @@ int topo_classify(const std::vector<int> &mem, double *o_cop, double *o_lb, doub
     const double fcop = edges ? (double)cop / edges : 0.0;
     *o_cop = fcop; *o_lb = (double)lb / n; *o_lv = (double)lv / n;
     if (n >= 8 && fcop >= 0.35 && *o_lb >= 0.5) return SMOOTH_CLASS_BOX;
+    /* SMOOTHREND1: A BOX WHOSE SHADING IS ONLY SLIGHTLY ROUNDED. The ice block is a 12 triangle cube (the 6 diagonals the only
+       coplanar edges, one third of the 18) whose corner normals lean 23 degrees off their faces, so the "lying" count above is
+       zero and the curved patch pillowed the whole cube. What gives a box away is its geometry, not its normals: every edge that
+       is not a flat diagonal is a right angle. Left as drawn, like every other box here. */
+    {
+        const int bent = edges - cop;
+        if (n >= 8 && fcop >= 0.30 && bent > 0 && square * 10 >= bent * 9) return SMOOTH_CLASS_BOX;
+    }
     if (n >= 10 && n <= 40 && *o_lv >= 0.9 && fcop < 0.35) return SMOOTH_CLASS_FACET;
     /* A SMALL CLOSED SOLID WITH HARD EDGES, SHADED SMOOTH: the title screen
        star (60 triangles, every edge shared, 30 edges 45 degrees or sharper and

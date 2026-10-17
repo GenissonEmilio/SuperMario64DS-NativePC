@@ -688,29 +688,49 @@ ROWS_03[("LEDGER_PARK", "d_a_wanwan")] = [
 ROWS_04 = {}
 
 # ---- _ZN10dScStage_c16CleanupResourcesEv -----------------------------------
-# PARK_SYMBOL -> HOST_COPY_PARK. The PARK_SYMBOL row parks from the
-# `// @symbol` marker to the first brace pair after it, which works for a
-# folded body whose marker sits on its definition. In this one-function file
-# the marker heads the FILE: it is followed by the includes and the TU's
-# `extern "C" { ... }` declaration block, so the park swallowed the includes
-# and the declarations and left the definition itself live (MSVC C2653,
-# 'dScStage_c' is not a class or namespace name). The reason for the park is
-# unchanged -- port/unmatched/hostarm/_ZN5Stage16CleanupResourcesEv.cpp carries
-# this member with the port line's arm and port/slice_gate213.txt compiles it
-# -- so the bracket now opens on the definition line and closes on the body's
-# own last brace, the HOST_COPY_PARK shape. The declarations stay live and
-# unused.
+# Run hunt8, lane WIGGLER1: the host-arm copy (port/unmatched/hostarm/
+# _ZN5Stage16CleanupResourcesEv.cpp) is retired and the matched shard links.
+# The copy differed from the shard in ONE spot: the KCL free. On ARM,
+# func_01ffb0c8 (MeshCollider::GetFile) returns the level's KCL image in r0 and
+# Deallocate frees whatever r0 still holds, so the shard calls them with no
+# argument. A cdecl host call has no register to ride (Deallocate read a stale
+# stack word), so the generated copy passes the pointer the ROM frees. The
+# PARK_SYMBOL row is dropped (None) and the two spots are swapped in place.
 ROWS_04[("PARK_SYMBOL", "_ZN10dScStage_c16CleanupResourcesEv")] = None
 ROWS_04[("HOST_COPY_PARK", "_ZN10dScStage_c16CleanupResourcesEv")] = [
-    ("int dScStage_c::CleanupResources()\n{\n",
-     "#if 0  /* hostgen HOST_COPY_PARK: port/unmatched/hostarm/\n"
-     "          _ZN5Stage16CleanupResourcesEv.cpp defines this member */\n"
-     "int dScStage_c::CleanupResources()\n{\n"),
-    ("            _ZN5Sound6Player19SetPlayableSeqCountEii(3, 1);\n"
-     "        }\n    }\n    return 1;\n}\n",
-     "            _ZN5Sound6Player19SetPlayableSeqCountEii(3, 1);\n"
-     "        }\n    }\n    return 1;\n}\n"
-     "#endif  /* hostgen HOST_COPY_PARK: dScStage_c::CleanupResources */\n"),
+    ("extern void func_01ffb0c8(void *);\n" "extern void Deallocate(void);\n",
+     "extern void *func_01ffb0c8(void *);\n" "extern void Deallocate(void *);\n"),
+    ("    func_01ffb0c8((char *)&mMeshCollider);\n" "    Deallocate();\n",
+     "    Deallocate(func_01ffb0c8((char *)&mMeshCollider));\n"),
+]
+
+# ---- dScEntry_c's three pointer-to-member dispatch sites -------------------
+# Run hunt8, lane WIGGLER1: the host copies in port/unmatched/VS_EntryDispatch.cpp
+# are retired and the matched shards link. The states live as {fn, delta} pairs at
+# self+0x54/+0x5c/+0x64, seeded by func_ov075_0211a194 from records the sinits build
+# in bss, and the seat's generated patch puts plain cdecl host bodies in the fn words.
+# The shards model the dispatch as an MSVC pointer-to-member, a __thiscall, so the
+# receiver never arrives (measured on the copies: state func_ov075_02119b34 faulting
+# at +0x37 on stack garbage). Each dispatch becomes a call to port_vs_state_call, which
+# is the cdecl-through-record call the copies wrote by hand. Every other line of the
+# three shards is the matched text. /Zp4 on all three (port/CMakeLists.txt) puts the
+# pmf members at the ROM's +0x5c / +0x64 / +0x54.
+_VS_DECL = 'extern "C" void port_vs_state_call(void *self, unsigned off);\n'
+ROWS_04[("HOST_COPY_PARK", "func_ov075_0211a194")] = [
+    ('extern "C" void func_ov075_0211a194(char* self, int* src)\n{\n',
+     _VS_DECL + 'extern "C" void func_ov075_0211a194(char* self, int* src)\n{\n'),
+    ('        PMF* p = (PMF*)(self + 0x54);\n        C* o = (C*)self;\n        (o->**p)();\n',
+     '        port_vs_state_call(self, 0x54);\n'),
+]
+ROWS_04[("HOST_COPY_PARK", "_ZN10dScEntry_c8BehaviorEv")] = [
+    ('#include "dScEntry_c.h"\n', '#include "dScEntry_c.h"\n' + _VS_DECL),
+    ('        PMF *p = &c->pmf;\n        (c->**p)();\n',
+     '        port_vs_state_call(c, 0x5c);\n'),
+]
+ROWS_04[("HOST_COPY_PARK", "_ZN10dScEntry_c6RenderEv")] = [
+    ('#include "dScEntry_c.h"\n', '#include "dScEntry_c.h"\n' + _VS_DECL),
+    ('    PMF *p = c->pp;\n    (c->**p)();\n',
+     '    port_vs_state_call(c, 0x64);\n'),
 ]
 
 # ---- dActor_c --------------------------------------------------------------

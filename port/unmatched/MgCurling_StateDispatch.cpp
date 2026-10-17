@@ -148,7 +148,7 @@ void _ZN14dScMgCurling_c13Stone_CollideEi(char *c, int idx);  /* one-argument sl
                                                 by lane CUR2, see the header */
 void _ZN14dScMgCurling_c11Stone_SlideEi(char *c, int idx);
 void _ZN14dScMgCurling_c17Stone_WaitReleaseEi(char *self, int idx);
-void _ZN14dScMgCurling_c10Scene_IdleEv(void);              /* zero-argument slot, (void) body */
+void _ZN14dScMgCurling_c10Scene_IdleEv(char *thiz);        /* INT093F: a flat face now (receiver on the stack); the body is empty */
 void _ZN14dScMgCurling_c9Scene_EndEv(char *thiz);
 void _ZN14dScMgCurling_c11Scene_ScoreEv(char *c);
 void _ZN14dScMgCurling_c10Scene_PlayEv(char *c);
@@ -190,7 +190,7 @@ extern "C" int port_mg_try_ov006_0(void *self, unsigned code)
     switch (code) {
     case 0x020e1b54u: _ZN14dScMgCurling_c13Aim_WaitTouchEv(c); return 1;
     case 0x020e1854u: port_mg_curling_st_020e1854(c); return 1;
-    case 0x020e2eb8u: _ZN14dScMgCurling_c10Scene_IdleEv();  return 1;   /* (void) body */
+    case 0x020e2eb8u: _ZN14dScMgCurling_c10Scene_IdleEv(c); return 1;   /* the face reads its receiver off the stack */
     case 0x020e2ebcu: _ZN14dScMgCurling_c9Scene_EndEv(c); return 1;
     case 0x020e2f78u: _ZN14dScMgCurling_c11Scene_ScoreEv(c); return 1;
     case 0x020e3078u: _ZN14dScMgCurling_c10Scene_PlayEv(c); return 1;
@@ -398,7 +398,7 @@ CUR_FACE0(t50, 0, _ZN14dScMgCurling_c16Scene_StartRoundEv)
 CUR_FACE0(t50, 1, _ZN14dScMgCurling_c10Scene_PlayEv)
 CUR_FACE0(t50, 2, _ZN14dScMgCurling_c11Scene_ScoreEv)
 CUR_FACE0(t50, 3, _ZN14dScMgCurling_c9Scene_EndEv)
-CUR_FACE0_VOID(t50, 4, _ZN14dScMgCurling_c10Scene_IdleEv)
+CUR_FACE0(t50, 4, _ZN14dScMgCurling_c10Scene_IdleEv)
 
 /* ---- THE LAST THREE TABLES, run linkfull lane PMFMG1 ---------------------
  *

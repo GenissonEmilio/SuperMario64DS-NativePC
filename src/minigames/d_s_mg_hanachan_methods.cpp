@@ -771,9 +771,11 @@ void Wiggler_DrawPassB(void* arg)
         t.res = Wiggler_GetFrame(raw, i);
         px = s.pos.y >> 12;
         py = s.pos.x >> 12;
+        a2i = Wiggler_GetFlag(raw, i);
+        t.urot = (unsigned short)rot;
         _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi(
             1,
-            data_ov006_02142018[(a2i = Wiggler_GetFlag(raw, i), (t.urot = (unsigned short)rot), a2i)],
+            data_ov006_02142018[a2i],
             py, px,
             t.res, -1, 0x1000,
             t.urot);

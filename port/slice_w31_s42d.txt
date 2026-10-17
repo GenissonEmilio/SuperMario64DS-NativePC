@@ -27,12 +27,14 @@
 # _ZN5Stage12RenderNumberEhiibi for the decorated static member, is an
 # /alternatename beside the retired seams in hal/stage_frame.cpp.
 #
-# NOT HERE: Stage::RenderVsModeNewStar (VS, parked; its five ov002 rows stay
-# unmounted and its seam stays in hal/stage_frame.cpp).
+# Stage::RenderVsModeNewStar joined at run hunt8 (lane WIGGLER1): its five ov002
+# rows (0x0210cfd0..0x0210d188 and OAM::VS_NEW_STAR_APPEARED) are mounted by
+# port/ov002_syms.txt and the seam in hal/stage_frame.cpp is gone.
 
 # Slot 9's two renderers, the two window targets.
 src/game/stages/d_s_stage_methods.cpp
 # FOLDED into src/game/stages/d_s_stage_methods.cpp (row 34): src/_ZN5Stage9LC_RenderEv.cpp
+src/_ZN10dScStage_c19RenderVsModeNewStarEv.cpp
 
 # The controller-mode captions (the BG2 text layer of the top screen), every
 # target that compiles hal/sub_screen.cpp.
