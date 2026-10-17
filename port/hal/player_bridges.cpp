@@ -1559,7 +1559,7 @@ extern "C" int data_ov002_0210e750[];      /* [1] = its BCA */
 static bool balloon_model_ready(char *c)
 {
     char *m3 = c + 0xf0;
-    if (*(void **)(m3 + 4) != 0) return true;
+    if (*(void **)(m3 + 8) != 0) return true;
     static int logged;
     unsigned char keep[0x30];
     memcpy(keep, c + 0x10c, sizeof keep);
@@ -1569,7 +1569,7 @@ static bool balloon_model_ready(char *c)
         _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(m3, (void *)(size_t)data_ov002_0210e750[1], 0x40000000, 0x1000, 0);
     }
     memcpy(c + 0x10c, keep, sizeof keep);
-    bool ok = *(void **)(m3 + 4) != 0;
+    bool ok = *(void **)(m3 + 8) != 0;
     if (logged < 3) {
         ++logged;
         fprintf(stderr, "[balloon] Player %p has the balloon on (+0x6fd) with no balloon body (course %d builds none): %s\n",

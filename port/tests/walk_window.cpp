@@ -17443,6 +17443,16 @@ int main(void)
                     fprintf(stderr, "[balloonwatch] f%d level %d char %u 6fd %u 6fe %u opac %u balloonModelFile %08x wingModelFile %08x\n",
                             frame, (int)data_0209f2f8, (unsigned)*(const unsigned *)(pl + 8), pl[0x6fd], pl[0x6fe], pl[0x6f5],
                             *(const unsigned *)(pl + 0xf4), *(const unsigned *)(pl + 0x178));
+                if (bp_watch && pl && frame % 20 == 0) {
+                    int nf = 0; unsigned st0 = 0, tm0 = 0; char *fs0 = 0;
+                    for (int *node = (int *)(size_t)data_020a4b78[0]; node; node = (int *)(size_t)node[1]) {
+                        char *o = (char *)(size_t)node[2];
+                        if (!o || *(unsigned short *)(o + 0xc) != 306) continue;
+                        if (!nf) { st0 = *(unsigned *)(o + 0x8c); tm0 = *(unsigned *)(o + 0x5c); fs0 = o; }
+                        ++nf;
+                    }
+                    fprintf(stderr, "[balloonflowers] f%d live=%d first(flags %08x x %d) player(%d,%d,%d) state %08x mState %d\n", frame, nf, st0, (int)tm0 >> 12, *(int *)(pl + 0x5c) >> 12, *(int *)(pl + 0x60) >> 12, *(int *)(pl + 0x64) >> 12, fs0 ? *(unsigned *)(fs0 + 0x8) : 0u, fs0 ? *(int *)(fs0 + 0x440) : -1);
+                }
                 if (bp_watch && pl && frame % 60 == 0) {
                     const unsigned *w = (const unsigned *)(pl + 0xf0), *x = (const unsigned *)(pl + 0x174);
                     fprintf(stderr, "[balloonwords] f%d f0: %08x %08x %08x %08x %08x %08x | 174: %08x %08x %08x %08x | 1d8 %08x ec %08x\n",
