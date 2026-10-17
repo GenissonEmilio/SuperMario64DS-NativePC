@@ -1102,6 +1102,41 @@ static bool grid_defer_try(const float *pts, long pool_off, int tf,
                            const float *box6);
 static int g_grid_defer = 0;     // this frame's grids may be kept for the card
 
+/* SMOOTHREND1 (N14, eyes sunk into the model): THE DEPTH STAYS THE ROM'S.
+   A curved patch lifts its middle toward the camera, so a flat polygon the artists laid on the
+   face (an eye, a pupil, Lakitu's glasses) ends up BEHIND the lifted face and is buried. The
+   picture wants the curved shading and silhouette, but the DEPTH of every pixel the DS drew is the
+   flat triangle's. So each point of a patch that bulges toward the camera is moved back along its
+   own view ray, to where that ray meets the flat source triangle's plane: the screen position,
+   the texel and the normal are untouched, only the depth (and the perspective weight that rides
+   with it) is the flat one, a hair behind it (kSnapBack).
+   The plane is n.x = d from the three view-space corners; `pl` is n, d. Kill switch
+   SM64DS_SMOOTH_DEPTHSNAP=0. The card's grid stage does the same, from the same four floats. */
+static const float kSnapReach = 0.2f;
+static const float kSnapBack = 1.0003f;   /* a hair behind the flat plane, so a flat polygon coplanar with the face (an eye, a screen) and drawn after it wins the tie as it does on the DS */
+static bool snap_enabled() {
+    static int on = -1;
+    if (on < 0) { const char *e = std::getenv("SM64DS_SMOOTH_DEPTHSNAP"); on = (e && e[0] == '0') ? 0 : 1; }
+    return on != 0;
+}
+static bool snap_plane(const SmoothVertex s[3], float pl[4], float *lim) {
+    const float e1x = s[1].x - s[0].x, e1y = s[1].y - s[0].y, e1z = s[1].z - s[0].z;
+    const float e2x = s[2].x - s[0].x, e2y = s[2].y - s[0].y, e2z = s[2].z - s[0].z;
+    pl[0] = e1y * e2z - e1z * e2y; pl[1] = e1z * e2x - e1x * e2z; pl[2] = e1x * e2y - e1y * e2x;
+    pl[3] = pl[0] * s[0].x + pl[1] * s[0].y + pl[2] * s[0].z;
+    const float l2 = pl[0] * pl[0] + pl[1] * pl[1] + pl[2] * pl[2];
+    /* how far a patch can really lift: a fraction of the triangle's longest edge. A ray that meets the plane
+       farther than that off the point (a triangle seen nearly edge-on) is not a lift, it is the plane's
+       far reach, and the point moves only this far. */
+    const float e3x = s[2].x - s[1].x, e3y = s[2].y - s[1].y, e3z = s[2].z - s[1].z;
+    float m2 = e1x * e1x + e1y * e1y + e1z * e1z;
+    const float b2 = e2x * e2x + e2y * e2y + e2z * e2z, c2 = e3x * e3x + e3y * e3y + e3z * e3z;
+    if (b2 > m2) m2 = b2;
+    if (c2 > m2) m2 = c2;
+    *lim = kSnapReach * std::sqrt(m2);
+    return l2 > 1e-24f;
+}
+
 static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[3],
                                  const Mat *xform, const GxTriangle *st_in,
                                  const Mat *proj_in, const float *widen_in,
@@ -1135,6 +1170,10 @@ static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[
         xr2 = _mm_loadu_ps(xform->m + 8); xr3 = _mm_loadu_ps(xform->m + 12);
     }
     const __m128 one = _mm_set1_ps(1.0f);
+    float pl[4] = {0, 0, 0, 0};
+    float snap_lim = 0.0f;
+    bool snap_on = persp && snap_enabled() && snap_plane(s, pl, &snap_lim);
+    const float pnl = std::sqrt(pl[0] * pl[0] + pl[1] * pl[1] + pl[2] * pl[2]);
     for (int i = 0; i < n; ++i) {
         __m128 vw;                                   // the view-space point, w = 1
         if (xform) {
@@ -1148,6 +1187,22 @@ static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[
             vw = _mm_setr_ps(t[0], t[1], t[2], 1.0f);
         } else {
             vw = _mm_setr_ps(pts[i * 3], pts[i * 3 + 1], pts[i * 3 + 2], 1.0f);
+        }
+        if (snap_on) {
+            /* SMOOTHREND1 (N14 eyes): put this point's depth back on the ROM's own flat triangle (same screen place) */
+            float t4[4]; _mm_storeu_ps(t4, vw);
+            const float dn = pl[0] * t4[0] + pl[1] * t4[1] + pl[2] * t4[2];
+            if (dn > 1e-6f * pnl || dn < -1e-6f * pnl) {
+                float k = pl[3] / dn;
+                if (k > 0.0f) {
+                    const float dist = std::sqrt(t4[0] * t4[0] + t4[1] * t4[1] + t4[2] * t4[2]);
+                    const float dk = snap_lim / (dist > 1e-6f ? dist : 1e-6f);
+                    if (k > 1.0f + dk) k = 1.0f + dk;
+                    if (k < 1.0f - dk) k = 1.0f - dk;
+                    k = k * kSnapBack;
+                    vw = _mm_setr_ps(t4[0] * k, t4[1] * k, t4[2] * k, 1.0f);
+                }
+            }
         }
         const __m128 cl = _mm_add_ps(_mm_add_ps(_mm_add_ps(
             _mm_mul_ps(_mm_shuffle_ps(vw, vw, 0x00), pr0),
@@ -1379,6 +1434,7 @@ static bool grid_defer_try(const float *pts, long pool_off, int tf,
     gr.at = (uint32_t)g.tris.size();
     gr.tf = (uint8_t)tf;
     gr.persp = persp ? 1 : 0;
+    gr.depth_snap = (persp && snap_enabled() && snap_plane(s, gr.pl, &gr.snap_lim)) ? 1 : 0;
     if (pool_off >= 0) {
         gr.from_pool = 1;
         gr.off = (uint32_t)pool_off;
