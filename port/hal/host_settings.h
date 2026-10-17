@@ -456,6 +456,12 @@ int host_setting_set_debug_menu(int on);
 int host_setting_chars_from_start(void);
 int host_setting_set_chars_from_start(int on);
 
+/* ---- CharacterStrip: THE STAR SELECT'S CHARACTER STRIP (CAPSTOGGLE1) -----
+   Default 1 (ON). Off, the star select is the DS's own: Yoshi's caps row when his caps are unlocked, no strip, no custom character arrow. The white
+   door's picker is not touched. Live; SM64DS_CHARACTER_STRIP=0/1 overrides the file for a proof run. */
+int host_setting_character_strip(void);
+int host_setting_set_character_strip(int on);
+
 /* Aspect: the presentation ratio, WIDTH DIVIDED BY HEIGHT. 0 (the default) is
    the explicit native sentinel -- the 4:3 window the port has always opened;
    1.7777778 is 16:9. A NUMBER rather than a Widescreen boolean because a

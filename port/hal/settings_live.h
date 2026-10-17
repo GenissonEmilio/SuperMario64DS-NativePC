@@ -55,6 +55,7 @@ enum SlId {
     SL_FRAME_RATE,              /* int: 0 native, 60..240; live (FPSLIVE1): the in-game page shows it as a drop-down of stops */
     SL_DEBUG_MENU,              /* bool: the F5 debug menu may open (CHARSLOT1); off by default */
     SL_CHARS_FROM_START,        /* bool: custom characters open from the start, without the white door unlock (CHARSET1); off by default */
+    SL_CHARACTER_STRIP,         /* bool: the star select's character strip (CAPSTOGGLE1); on by default, off = the DS's caps row */
     SL_COUNT
 };
 
