@@ -688,29 +688,27 @@ ROWS_03[("LEDGER_PARK", "d_a_wanwan")] = [
 ROWS_04 = {}
 
 # ---- _ZN10dScStage_c16CleanupResourcesEv -----------------------------------
-# PARK_SYMBOL -> HOST_COPY_PARK. The PARK_SYMBOL row parks from the
-# `// @symbol` marker to the first brace pair after it, which works for a
-# folded body whose marker sits on its definition. In this one-function file
-# the marker heads the FILE: it is followed by the includes and the TU's
-# `extern "C" { ... }` declaration block, so the park swallowed the includes
-# and the declarations and left the definition itself live (MSVC C2653,
-# 'dScStage_c' is not a class or namespace name). The reason for the park is
-# unchanged -- port/unmatched/hostarm/_ZN5Stage16CleanupResourcesEv.cpp carries
-# this member with the port line's arm and port/slice_gate213.txt compiles it
-# -- so the bracket now opens on the definition line and closes on the body's
-# own last brace, the HOST_COPY_PARK shape. The declarations stay live and
-# unused.
+# Run hunt8, lane WIGGLER1: the host-arm copy (port/unmatched/hostarm/
+# _ZN5Stage16CleanupResourcesEv.cpp) is retired and the matched shard links.
+# The copy differed from the shard in ONE spot: the KCL free. On ARM,
+# func_01ffb0c8 (MeshCollider::GetFile) returns the level's KCL image in r0 and
+# Deallocate frees whatever r0 still holds, so the shard calls them with no
+# argument. A cdecl host call has no register to ride (Deallocate read a stale
+# stack word), so the generated copy passes the pointer the ROM frees. The
+# PARK_SYMBOL row is dropped (None) and the two spots are swapped in place.
 ROWS_04[("PARK_SYMBOL", "_ZN10dScStage_c16CleanupResourcesEv")] = None
 ROWS_04[("HOST_COPY_PARK", "_ZN10dScStage_c16CleanupResourcesEv")] = [
-    ("int dScStage_c::CleanupResources()\n{\n",
-     "#if 0  /* hostgen HOST_COPY_PARK: port/unmatched/hostarm/\n"
-     "          _ZN5Stage16CleanupResourcesEv.cpp defines this member */\n"
-     "int dScStage_c::CleanupResources()\n{\n"),
-    ("            _ZN5Sound6Player19SetPlayableSeqCountEii(3, 1);\n"
-     "        }\n    }\n    return 1;\n}\n",
-     "            _ZN5Sound6Player19SetPlayableSeqCountEii(3, 1);\n"
-     "        }\n    }\n    return 1;\n}\n"
-     "#endif  /* hostgen HOST_COPY_PARK: dScStage_c::CleanupResources */\n"),
+    ("extern void func_01ffb0c8(void *);
+extern void Deallocate(void);
+",
+     "extern void *func_01ffb0c8(void *);
+extern void Deallocate(void *);
+"),
+    ("    func_01ffb0c8((char *)&mMeshCollider);
+    Deallocate();
+",
+     "    Deallocate(func_01ffb0c8((char *)&mMeshCollider));
+"),
 ]
 
 # ---- dActor_c --------------------------------------------------------------
