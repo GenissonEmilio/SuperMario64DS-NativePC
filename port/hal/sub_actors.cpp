@@ -883,7 +883,7 @@ extern char data_ov002_0210c6b8;           /* the red-coin HUD sprite        */
 extern int data_ov001_020abac8[];          /* the silver-star HUD sprite     */
 }
 /* HDMETER1: this frame's meter note, written by the adventure HUD arm below, read and cleared by hal/message_compositor.cpp. */
-extern "C" { int g_port_hdmeter_live; int g_port_hdmeter_y; int g_port_hdmeter_health; extern unsigned char data_ov002_0211117c; }
+extern "C" { int g_port_hdmeter_live; int g_port_hdmeter_y; int g_port_hdmeter_health; int g_port_meter_drawn; extern unsigned char data_ov002_0211117c; }
 static void port_adv_red_silver_bottom(void)
 {
     static int first;                /* 0 none yet, 1 red coins, 2 silver stars */
@@ -950,6 +950,7 @@ static int port_adv_hud_render_stars_lives_on_top(dMeter_c *self)
             g_port_hdmeter_y = *(short *)((char *)self + 0x68);
             g_port_hdmeter_health = data_ov002_0211117c;
             g_port_hdmeter_live = (lang != 5 && lang != 4 && lang != 2) ? 1 : 0;
+            g_port_meter_drawn = 1;   /* SLICE1: the ROM draws the power meter this frame, in every language (the N64 row's meter shift keys on it) */
         }
         _ZN8dMeter_c17RenderHealthMeterEv((void *)self);
         if (_ZN5Event6GetBitEj(0x1d) == 0) {
