@@ -171,7 +171,8 @@ LEDGER = [
      "_02124718 (00529a90), _02125e5c (00529af0), _02125e20 (00529ad0) and "
      "_02126d5c (0052adc0), each `mov eax,[ebp+8] / mov ecx,[rec+4] / add "
      "ecx,eax / pop ebp / jmp`, so [esp+4] really is the receiver there",
-     r"^_func_ov077_(?!02126640|0212679c|02126ad0|02126a50|021269a8)"),
+     r"^(?:_func_ov077_|__ZN7daJgm_c|__ZN9daPopoi_c19func_ov077_)"
+     r"(?!02126640|0212679c|02126ad0|02126a50|021269a8)"),
     ("ECX", r"^\?g_ov060_states@",
      "ov060's Bowser pack: the five tables dispatched by a matched TU's own "
      "pointer-to-member call (?Behavior and ?InitResources of BowserFire, "
@@ -183,23 +184,15 @@ LEDGER = [
      "record by hand and dispatches it `push edx / call eax`, PUSHING the "
      "receiver, and ?Behavior@SpikeBomb reads 0211b1d8 as int[] and does the "
      "same",
-     r"^_func_ov060_(?!02115c1c|02115d50|02115d68|021167c8|021167ec|"
+     r"^(?:_func_ov060_|__ZN\d+\w+?_c\d+func_ov060_)(?!02115c1c|02115d50|02115d68|021167c8|021167ec|"
      r"021168c4|021169b0|021169f8|02116b18|02116b68|02116c68|02116d78|"
      r"02116f74|02116f90|021171e8|0211722c|0211747c|02117db8|021180e0|"
      r"021181b4|021128c0|02112724|021125f0)"),
 
-    ("ECX", r"^\?g_scuttlebug_sources@@",
-     "Scuttlebug: all eighteen cells take their receiver in ecx. The nine MAIN "
-     "cells go through ?Behavior@Scuttlebug@@UAEHXZ +0x1 mov esi,ecx; +0x10 mov "
-     "eax,[esi+0x380]; +0x19 mov ecx,[eax+0xc]; +0x1c mov eax,[eax+8]; +0x1f add "
-     "ecx,esi; +0x21 call eax. The nine ENTER cells were excused here as __cdecl "
-     "on the reading that the flat __ZN10Scuttlebug8SetStateEi (va 005eb460) is their "
-     "only reader. It is not, and this file's own docstring says why: /O2 inlines "
-     "that dispatcher into fourteen sites in the same TU, thirteen of them `lea "
-     "ecx,[ecx+this]; call dword ptr [cell]` with nothing pushed. Run link100 lane "
-     "HMC1 read every absolute reference into data_ov071_02122fa8 back out of the "
-     "image and thunked the enter half too; both flat dispatchers set ecx as well "
-     "as leaving the receiver on the stack, so they are unaffected"),
+    # g_scuttlebug_sources: row retired with f4ce6e510bb, which deleted the
+    # Scuttlebug pointer-to-member seat (port/unmatched/Scuttlebug_StateDispatch
+    # .cpp); the native PMF constants cover the table now and it is not in the
+    # map. INT093F.
     ("CDECL", r"^\?g_crate_states@@",
      "Crate: the readers are _Crate_SetState (va 0052ce50, +0x21 jmp eax) and "
      "__ZN13daObjBlockS_c19func_ov098_02138b70Ev (va 0052ce80, +0x1e jmp eax), both flat f(self) "
