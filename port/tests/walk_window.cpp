@@ -889,6 +889,7 @@ extern void *data_0209f318;          /* the Camera singleton */
 extern signed char data_02092120;    /* currently shown area, -1 = none */
 extern unsigned char data_0209f250;  /* local player index */
 extern "C" void _ZN6Player14InitMetalWarioEv(void *);   /* SM64DS_METAL_POKE */
+extern "C" void _ZN6Player16InitBalloonMarioEv(void *);   /* SM64DS_BALLOON_POKE */
 extern void *data_0209f394[];        /* per-player Actor* */
 extern unsigned char data_0209f1f8;  /* view-object count */
 extern signed char data_0209f2f8;    /* level/sublevel id (weather select) */
@@ -17375,6 +17376,87 @@ int main(void)
                                 *(const unsigned *)(pl + 0xdc), *(const unsigned *)(pl + 0xe0), *(const unsigned *)(pl + 0xe4), *(const unsigned *)(pl + 0xe8), *(const unsigned *)(pl + 0xec),
                                 *(const unsigned *)(pl + 0x154), *(const unsigned *)(pl + 0x158), *(const unsigned *)(pl + 0x15c), *(const unsigned *)(pl + 0x160),
                                 *(const unsigned *)(pl + 0x164), *(const unsigned *)(pl + 0x168), *(const unsigned *)(pl + 0x16c), *(const unsigned *)(pl + 0x170), (unsigned)pl[0x6db]);
+                }
+            }
+
+            /* ---- SM64DS_BALLOON_POKE=<frame> / SM64DS_BALLOON_WATCH=1 /
+               SM64DS_BALLOON_FLOWER=<idx>[,<frame>[,<hold>]] ---------------
+               Test-only (lane BALLOON1). POKE hands the local player the
+               balloon through the ROM's own Player::InitBalloonMario. WATCH
+               lists every Power Flower actor (class 306) at frame 30 and
+               prints the balloon byte (+0x6fd), the balloon model's file
+               (+0xf0 +4) and the character every 60 frames. FLOWER holds the
+               player on Power Flower #idx from <frame> for <hold> frames so
+               the flower's own CheckPickup makes the choice (a real pickup).
+               Inert unless set. */
+            {
+                static int bp_read, bp_frame = -1, bp_watch, bp_fl = -1, bp_flf = 60, bp_flh = 40;
+                if (!bp_read) {
+                    const char *e = getenv("SM64DS_BALLOON_POKE");
+                    bp_read = 1;
+                    if (e) bp_frame = atoi(e);
+                    bp_watch = getenv("SM64DS_BALLOON_WATCH") ? 1 : 0;
+                    e = getenv("SM64DS_BALLOON_FLOWER");
+                    if (e) {
+                        bp_fl = atoi(e);
+                        const char *cm = strchr(e, ',');
+                        if (cm) { bp_flf = atoi(cm + 1); const char *c2 = strchr(cm + 1, ','); if (c2) bp_flh = atoi(c2 + 1); }
+                        bp_watch = 1;
+                    }
+                }
+                char *pl = (char *)data_0209f394[(int)data_0209f250];
+                if (bp_frame >= 0 && frame == bp_frame && pl) {
+                    _ZN6Player16InitBalloonMarioEv(pl);
+                    fprintf(stderr, "[balloonpoke] f%d player=%p\n", frame, (void *)pl);
+                }
+                if (bp_watch && frame == 30) {
+                    int n = 0;
+                    for (int *node = (int *)(size_t)data_020a4b78[0]; node; node = (int *)(size_t)node[1]) {
+                        char *o = (char *)(size_t)node[2];
+                        if (!o || *(unsigned short *)(o + 0xc) != 306) continue;
+                        fprintf(stderr, "[balloon] flower #%d at (%d,%d,%d) param1 %08x flags %08x\n", n++,
+                                *(int *)(o + 0x5c) >> 12, *(int *)(o + 0x60) >> 12, *(int *)(o + 0x64) >> 12,
+                                *(unsigned *)(o + 8), *(unsigned *)(o + 0x8c));
+                    }
+                    fprintf(stderr, "[balloon] %d Power Flower actor(s) at frame 30\n", n);
+                }
+                if (bp_fl >= 0 && pl && frame >= bp_flf && frame <= bp_flf + bp_flh) {
+                    int n = 0;
+                    char *fl = 0;
+                    for (int *node = (int *)(size_t)data_020a4b78[0]; node; node = (int *)(size_t)node[1]) {
+                        char *o = (char *)(size_t)node[2];
+                        if (!o || *(unsigned short *)(o + 0xc) != 306) continue;
+                        if (n++ == bp_fl) { fl = o; break; }
+                    }
+                    if (fl && frame == bp_flf && getenv("SM64DS_BALLOON_ASMARIO")) {
+                        *(unsigned *)(pl + 8) = 0;   /* the character switched to Mario after the flowers spawned for Luigi */
+                        fprintf(stderr, "[balloon] f%d player character set to Mario (param1 0)\n", frame);
+                    }
+                    if (fl) {
+                        *(int *)(pl + 0x5c) = *(int *)(fl + 0x5c);
+                        *(int *)(pl + 0x60) = *(int *)(fl + 0x60);
+                        *(int *)(pl + 0x64) = *(int *)(fl + 0x64);
+                        *(int *)(pl + 0xa4) = 0; *(int *)(pl + 0xa8) = 0; *(int *)(pl + 0xac) = 0;
+                    }
+                }
+                if (bp_watch && pl && frame % 60 == 0)
+                    fprintf(stderr, "[balloonwatch] f%d level %d char %u 6fd %u 6fe %u opac %u balloonModelFile %08x wingModelFile %08x\n",
+                            frame, (int)data_0209f2f8, (unsigned)*(const unsigned *)(pl + 8), pl[0x6fd], pl[0x6fe], pl[0x6f5],
+                            *(const unsigned *)(pl + 0xf4), *(const unsigned *)(pl + 0x178));
+                if (bp_watch && pl && frame % 20 == 0) {
+                    int nf = 0; unsigned st0 = 0, tm0 = 0; char *fs0 = 0;
+                    for (int *node = (int *)(size_t)data_020a4b78[0]; node; node = (int *)(size_t)node[1]) {
+                        char *o = (char *)(size_t)node[2];
+                        if (!o || *(unsigned short *)(o + 0xc) != 306) continue;
+                        if (!nf) { st0 = *(unsigned *)(o + 0x8c); tm0 = *(unsigned *)(o + 0x5c); fs0 = o; }
+                        ++nf;
+                    }
+                    fprintf(stderr, "[balloonflowers] f%d live=%d first(flags %08x x %d) player(%d,%d,%d) state %08x mState %d\n", frame, nf, st0, (int)tm0 >> 12, *(int *)(pl + 0x5c) >> 12, *(int *)(pl + 0x60) >> 12, *(int *)(pl + 0x64) >> 12, fs0 ? *(unsigned *)(fs0 + 0x8) : 0u, fs0 ? *(int *)(fs0 + 0x440) : -1);
+                }
+                if (bp_watch && pl && frame % 60 == 0) {
+                    const unsigned *w = (const unsigned *)(pl + 0xf0), *x = (const unsigned *)(pl + 0x174);
+                    fprintf(stderr, "[balloonwords] f%d f0: %08x %08x %08x %08x %08x %08x | 174: %08x %08x %08x %08x | 1d8 %08x ec %08x\n",
+                            frame, w[0], w[1], w[2], w[3], w[4], w[5], x[0], x[1], x[2], x[3], *(const unsigned *)(pl + 0x1d8), *(const unsigned *)(pl + 0xec));
                 }
             }
 

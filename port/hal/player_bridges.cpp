@@ -1535,6 +1535,50 @@ extern "C" int port_player_render_hidden(const void *player)
     return 0;
 }
 
+/* BALLOON1: THE BALLOON BODY MAY NOT EXIST WHILE THE BALLOON IS ON.
+   func_ov002_020e5948 (src/func_ov002_020e5948.c:330-345) SetFiles the balloon
+   body at Player+0xf0 only when the course is NOT one of levels 2, 4 and 5
+   (the castle floors). The castle 2F carries four Power Flowers all the same:
+   param1 0xffff, "persistent", which InitResources lets live only while the
+   closest player is Luigi (the Vanish Luigi flower). A Mario who is in the room
+   when one is lying there (the character switched after the course loaded, or a
+   second player standing closer) picks it up, CheckPickup takes the Mario arm
+   and Player::InitBalloonMario turns +0x6fd on with nothing at +0xf0 but the
+   constructed vptr. The first Render then reads a model file that is null
+   (ApplyOpacity -> func_020461b4, fault address 0x24, crash report c926736d).
+   The ROM never checks: on the DS that read lands in the low TCM mirror and the
+   draw that follows is undefined. Here the balloon is built on first use, with
+   the very SetFile / SetAnim the ROM's SetFiles makes (same file, same args),
+   so the balloon looks and flies as it does in every other course. The matrix
+   the behaviour pass already seated at +0x10c is kept across the SetFile. */
+extern "C" void *_ZN5Model8LoadFileER13SharedFilePtr(void *ptr);
+extern "C" int _ZN9ModelBase7SetFileEP8BMD_Fileii(void *self, void *file, int a, int b);
+extern "C" int _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void *, void *, int, int, unsigned int);
+extern "C" char data_ov002_0210e6f8[];     /* SharedFilePtr: the balloon body */
+extern "C" int data_ov002_0210e750[];      /* [1] = its BCA */
+static bool balloon_model_ready(char *c)
+{
+    char *m3 = c + 0xf0;
+    if (*(void **)(m3 + 8) != 0) return true;
+    static int logged;
+    unsigned char keep[0x30];
+    memcpy(keep, c + 0x10c, sizeof keep);
+    void *f = _ZN5Model8LoadFileER13SharedFilePtr(data_ov002_0210e6f8);
+    if (f) {
+        _ZN9ModelBase7SetFileEP8BMD_Fileii(m3, f, 1, 1);
+        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(m3, (void *)(size_t)data_ov002_0210e750[1], 0x40000000, 0x1000, 0);
+    }
+    memcpy(c + 0x10c, keep, sizeof keep);
+    bool ok = *(void **)(m3 + 8) != 0;
+    if (logged < 3) {
+        ++logged;
+        fprintf(stderr, "[balloon] Player %p has the balloon on (+0x6fd) with no balloon body (course %d builds none): %s\n",
+                (void *)c, (int)data_0209f2f8, ok ? "built it on first use" : "could not build it, balloon draw skipped");
+    }
+    return ok;
+}
+
+
 void hal_render_player_world(void *player)
 {
     char *c = (char *)player;
@@ -1762,9 +1806,14 @@ void hal_render_player_world(void *player)
     std::size_t hsink_t1 = 0;
     if (balloon) {
         ModelAnim *m3 = (ModelAnim *)(c + 0xf0);    /* mModelAnim3 */
+        if (!balloon_model_ready(c)) {
+            /* no balloon body and none could be built: draw nothing for it
+               rather than hand the draw a model with no file behind it */
+        } else {
         _ZN9ModelBase12ApplyOpacityEjj(m3, *(const unsigned char *)(c + 0x6f5));
         if (ghost) ghost_opacity(m3);
         m3->Render((const Vector3 *)(c + 0x80));    /* virtual, as the ROM's */
+        }
     } else {
         if (hsink_on()) ntr::gx_polygons(hsink_t0);
         ma->Model::Render((const Vector3 *)(c + 0x80));
