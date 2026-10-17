@@ -89,6 +89,7 @@
 
 #include "ntr/ppu_audit.h"
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -5283,6 +5284,88 @@ void ppu_band_ambient_reset(void)
     std::memset(g_edge_refused, 0, sizeof g_edge_refused);
 }
 
+/* ---- THE CIRCLE WIPE, DRAWN SMOOTH AT HIGH RESOLUTION (FIELDUI1, U3) ---------------------------------------------------------------------
+ * The minigames' circle wipe (dWipe_c type 2, src/runtime/graphics/fader/d_wipe.cpp func_0202ee94: the Rec Room iris) is a window per scanline: for
+ * each DS row the two windows hold the chord of a circle of radius r about (128, 96), and the 2D unit shows the layers inside it and the backdrop
+ * outside. Drawn at 3x or 4x that is a staircase of 3 or 4 pixel steps. When the per-line window rows are a circle about the DS centre (every
+ * non-trivial chord fits one radius), the picture is cut by the circle itself at host resolution with a one pixel soft edge, a little inside
+ * the staircase (0.75 DS pixel) so no drawn cell is lost and the backdrop (the picture's own corner) fills the rest. Star wipes and
+ * every other use of the windows do not fit a circle and are left exactly as they were. Only at a 3x scale or more (a 1024 x 576 window and up);
+ * the 4:3 native tiers the gates run at are untouched. */
+static bool wipe_circle_fit(const uint32_t *rows, float *R)
+{
+    float rr[192];
+    int n = 0;
+    for (int y = 0; y < 192; ++y) {
+        int lo = 256, hi = 0;
+        for (int i = 0; i < 2; ++i) {
+            const uint16_t hh = (uint16_t)(i == 0 ? rows[y] : rows[y] >> 16);
+            const int x1 = hh >> 8, x2 = hh & 0xFF;
+            if (x1 < x2) { if (x1 < lo) lo = x1; if (x2 > hi) hi = x2; }
+            else if (x1 > x2) { if (x1 < lo) lo = x1; hi = 256; }
+        }
+        if (hi <= lo) continue;                    /* an empty line */
+        if (lo <= 0 || hi >= 256) continue;        /* clipped by the screen: no chord to read */
+        if (std::abs(lo + hi - 256) > 3) return false;   /* not about the DS centre column: not this wipe */
+        const float d = (float)(y < 96 ? 96 - y : y - 95);
+        const float s = (hi - lo) * 0.5f + 0.5f;
+        rr[n++] = std::sqrt(s * s + d * d);
+    }
+    if (n < 8) return false;
+    float mn = rr[0], mx = rr[0], sum = 0.f;
+    for (int i = 0; i < n; ++i) { if (rr[i] < mn) mn = rr[i]; if (rr[i] > mx) mx = rr[i]; sum += rr[i]; }
+    if (mx - mn > 2.2f) return false;
+    *R = sum / (float)n;
+    return true;
+}
+
+static void wipe_circle_cut(uint32_t *dst, int dst_w, int x0, int y0, float s, float R)
+{
+    const int cw = (int)(256.f * s + 0.5f), ch = (int)(192.f * s + 0.5f);
+    const uint32_t bd = dst[(size_t)y0 * dst_w + x0];
+    const float cx = (float)x0 + 128.f * s, cy = (float)y0 + 96.f * s;
+    const float rh = (R - 0.75f) * s;
+    for (int y = 0; y < ch; ++y) {
+        const float dy = (float)(y0 + y) + 0.5f - cy;
+        uint32_t *row = dst + (size_t)(y0 + y) * dst_w + x0;
+        for (int x = 0; x < cw; ++x) {
+            const float dx = (float)(x0 + x) + 0.5f - cx;
+            const float d = std::sqrt(dx * dx + dy * dy);
+            float a = rh - d + 0.5f;
+            if (a >= 1.f) continue;
+            if (a < 0.f) a = 0.f;
+            const uint32_t p = row[x];
+            const int ia = (int)(a * 256.f);
+            uint32_t o = 0xFF000000u;
+            for (int sh = 0; sh < 24; sh += 8) {
+                const int c = (int)((p >> sh) & 0xFF), k = (int)((bd >> sh) & 0xFF);
+                o |= (uint32_t)((k * (256 - ia) + c * ia) >> 8) << sh;
+            }
+            row[x] = o;
+        }
+    }
+}
+
+static void wipe_circle_stacked(uint32_t *dst, int dst_w, int a_y, int a_rows, int b_y, int b_x0, int b_rows)
+{
+    if (active_h < 576) return;
+    static int off = -1;
+    if (off < 0) { const char *e = std::getenv("SM64DS_WIPE_SMOOTH"); off = (e && *e == '0') ? 1 : 0; }
+    if (off) return;
+    const uint32_t *rows = nullptr;
+    float R;
+    if (rt_window_rows(0, &rows) && wipe_circle_fit(rows, &R)) {
+        const float s = (float)a_rows / 192.f;
+        const int cw = (int)(256.f * s + 0.5f);
+        wipe_circle_cut(dst, dst_w, (active_w - cw) / 2, a_y, s, R);
+    }
+    if (rt_window_rows(1, &rows) && wipe_circle_fit(rows, &R)) {
+        const float s = (float)b_rows / 192.f;
+        const int cw = (int)(256.f * s + 0.5f);
+        wipe_circle_cut(dst, dst_w, b_x0 >= 0 ? b_x0 : (active_w - cw) / 2, b_y, s, R);
+    }
+}
+
 void ppu_compose_stacked(const uint32_t *top, const SubFramebuffer &sub,
                          uint32_t *dst, int dst_w, int dst_h, int evy,
                          int to_white, const StackLayout &lay)
@@ -5403,6 +5486,7 @@ void ppu_compose_stacked(const uint32_t *top, const SubFramebuffer &sub,
         hinge_paint(dst2, dst_w, lay2);
         seam_straddle(dst2, dst_w, lay2, evy, to_white);
         seam_snow(dst2, dst_w, lay2, evy, to_white);
+        wipe_circle_stacked(dst, dst_w, a_y, a_rows, b_y, px0, lay.pan_h);
         return;
     }
 
@@ -5513,6 +5597,7 @@ void ppu_compose_stacked(const uint32_t *top, const SubFramebuffer &sub,
     seam_straddle(dst, dst_w, lay, evy, to_white);
     /* and the mod's own snow field; see seam_snow */
     seam_snow(dst, dst_w, lay, evy, to_white);
+    wipe_circle_stacked(dst, dst_w, a_y, active_h, b_y, -1, active_h);
 }
 
 }  // namespace ntr

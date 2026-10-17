@@ -3,6 +3,7 @@
 #include "ntr/mmio.h"
 #include "hal/dsstate_seg.h"
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 
@@ -411,6 +412,34 @@ bool rt_irq_masked() { return g.cpsr_i != 0; }
 void rt_scanout_frame() { run_scanlines(); }
 
 bool rt_window_rows(int engine, const uint32_t **rows) {
+#ifndef PORT_ROM_CLEAN
+    /* SM64DS_WIPE_FAKE_CIRCLE=<radius>: test-only (FIELDUI1 U3). Reports the per-line window rows the ROM's type-2 circle wipe builds
+       (src/runtime/graphics/fader/d_wipe.cpp func_0202ee94) for that radius, so the smooth circle cut can be pictured on any scene. */
+    if (engine >= 0 && engine <= 1 && rows) {
+        static int fake = -2;
+        static uint32_t fr[192];
+        if (fake == -2) { const char *e = std::getenv("SM64DS_WIPE_FAKE_CIRCLE"); fake = e ? std::atoi(e) : -1; }
+        if (fake > 0) {
+            for (int y = 0; y < 192; ++y) {
+                const int i = y < 96 ? y : 191 - y;
+                int lo = 0x80, hi = 0x7f;      /* the table's own fill (0x80807f7f): both windows empty */
+                const int a = i - 96 + fake;
+                if (i >= 96 - fake && a >= 0) {
+                    int sq = (int)std::sqrt((double)(a * (2 * fake - a)));
+                    lo = 0x80 - sq; hi = 0x80 + sq;
+                    if (lo < 0) lo = 0;
+                    if (hi > 0xff) hi = 0;
+                }
+                /* WIN0H = x1 0x7f, x2 hi ; WIN1H = x1 lo, x2 0x80 (the table's a b c d bytes) */
+                const uint32_t w0 = (uint32_t)((0x7f << 8) | (hi & 0xFF));
+                const uint32_t w1 = (uint32_t)(((lo & 0xFF) << 8) | 0x80);
+                fr[y] = w0 | (w1 << 16);
+            }
+            *rows = fr;
+            return true;
+        }
+    }
+#endif
     if (!g_win_rows_live || engine < 0 || engine > 1 || !rows) return false;
     *rows = g_win_rows[engine];
     return true;
