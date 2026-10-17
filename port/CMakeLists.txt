@@ -1207,7 +1207,12 @@ list(APPEND PORT_HOSTGEN_TU
     src/ApproachAngle.cpp
     src/game/actors/d_a_kpa.cpp
     src/game/actors/d_a_f_ring.cpp
-    src/game/actors/d_a_obj_fl_uki_ki.cpp)
+    src/game/actors/d_a_obj_fl_uki_ki.cpp
+    # Run hunt8, lane WIGGLER1: dScEntry_c's three pointer-to-member dispatch sites
+    # (hostgen_portsync2.py rewrites each into port_vs_state_call).
+    src/unnamed/ov075/func_ov075_0211a194.cpp
+    src/_ZN10dScEntry_c8BehaviorEv.cpp
+    src/_ZN10dScEntry_c6RenderEv.cpp)
 list(REMOVE_DUPLICATES PORT_HOSTGEN_TU)
 
 # Whole-TU host copies that REPLACE a src TU (see each copy's header). The
@@ -20372,6 +20377,20 @@ foreach(line IN LISTS SLICE_PMFB6_LINES)
     endif()
     list(APPEND SLICE_PMFB6_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
+# Run hunt8, lane WIGGLER1: /Zp4 ON dScEntry_c's THREE DISPATCH SHARDS. Their local structs
+# spell the pointer-to-member fields at the ROM's +0x5c (Behavior), +0x64 (Render) and
+# +0x54 (the setter's local view); MSVC aligns an eight-byte member to eight and would
+# read them four bytes late and shift every field behind them (iconCount, the fade bytes).
+# Both paths are named: the compile the build runs is the generated copy under host-src.
+set_source_files_properties(
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/ov075/func_ov075_0211a194.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/unnamed/ov075/func_ov075_0211a194.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10dScEntry_c8BehaviorEv.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/_ZN10dScEntry_c8BehaviorEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10dScEntry_c6RenderEv.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/_ZN10dScEntry_c6RenderEv.cpp"
+    PROPERTIES COMPILE_OPTIONS "/Zp4")
+
 # GATE 3. /Zp4 ON ONE SOURCE, MEASURED AND NOT INHERITED.
 # src/minigames/d_mg_jump3d_mario.cpp spells `struct C { char pad[0x3c]; PMF m; };` and
 # the ROM's field is at +0x3c. MSVC aligns an eight-byte member to eight, so

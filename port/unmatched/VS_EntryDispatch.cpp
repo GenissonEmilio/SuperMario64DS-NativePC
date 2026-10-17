@@ -19,48 +19,22 @@
  * an explicit cdecl call through the record word with self as the first
  * argument -- which is exactly what the mwcc pair-dispatch does on ARM
  * (r0 = self + delta, delta 0 throughout this single-inheritance scene).
- * The matched TUs stay in src/, byte-verified, excluded from the slice; the
- * fader dispatch data_0209f5bc->v5() keeps the TU's own shape because that
- * object's host vtable already serves every other scene's matched TUs.
- *
- * src/func_ov075_0211a194.cpp, src/_ZN10dScEntry_c8BehaviorEv.cpp and
- * src/_ZN10dScEntry_c6RenderEv.cpp are out of the slice for these.
+ * Run hunt8, lane WIGGLER1: the three host copies of the bodies are RETIRED.
+ * The matched TUs (src/unnamed/ov075/func_ov075_0211a194.cpp,
+ * src/_ZN10dScEntry_c8BehaviorEv.cpp, src/_ZN10dScEntry_c6RenderEv.cpp) are on
+ * the slice through PORT_HOSTGEN_TU, and tools/hostgen_portsync2.py rewrites
+ * each one's pointer-to-member dispatch into a call to port_vs_state_call
+ * below, which is the dispatch the copies spelled by hand. The fader dispatch
+ * data_0209f5bc->v5() and the icon walk keep the TUs' own virtual calls:
+ * those objects' host vtables already serve every other scene's matched TUs.
  */
 
 #include <cstdio>
 
-extern "C" {
-void func_020551f0(void *s, int v);
-int  func_ov075_02119dc4(void *c, void *arg);
-int  func_0203083c(void);
-extern int data_0209fc68;
-extern int data_ov075_0211d930[];
-}
-
-/* the fader object: the TU's own model, unchanged -- its host vtable serves
-   every scene's matched dispatches already */
-struct VsVObj {
-    virtual void v0(); virtual void v1(); virtual void v2();
-    virtual void v3(); virtual void v4(); virtual int v5();
-};
-extern "C" { extern VsVObj *data_0209f5bc; }
-
 typedef void (*VsStateFn)(void *self);
 
-/* the icon records at self+0x70: the matched TU models this walk as a
-   VIRTUAL call, `o->v0()`, and the cartridge agrees -- ov075 0x0211a3cc
-   is `mov r0, r5` before `blx r1`, the receiver in mwcc's `this`
-   register with nothing on the stack. The live records carry MSVC's own
-   ??_7icon_c@dScEntry_c@@6B@, whose two slots are the matched __thiscall
-   members dScEntry_c::icon_c::Behavior and ::Render, so the host has to
-   dispatch with the receiver in ecx. Spelling it cdecl left ecx holding
-   1 and ?Behavior@icon_c@dScEntry_c@@UAEXXZ+0x3 read [1+0x1c]. */
-struct VsIconObj {
-    virtual void v0();
-    virtual void v1();
-};
-
-static void vs_state_call(void *self, unsigned off)
+// PORT_HOST_ABI: mwcc pointer-to-member dispatch spelled as an explicit cdecl call through the record word with self as the first argument
+extern "C" void port_vs_state_call(void *self, unsigned off)
 {
     char *c = (char *)self;
     VsStateFn fn = *(VsStateFn *)(c + off);
@@ -69,74 +43,4 @@ static void vs_state_call(void *self, unsigned off)
     char *recv = c + *(int *)(c + off + 4);
     if (fn)
         fn(recv);
-}
-
-// PORT_HOST_ABI: mwcc pointer-to-member dispatch spelled as an explicit cdecl call through the record word with self as the first argument
-extern "C" void func_ov075_0211a194(char *self, int *src)
-{
-    *(int *)(self + 0x54) = src[0];
-    *(int *)(self + 0x58) = src[1];
-    *(int *)(self + 0x5c) = src[2];
-    *(int *)(self + 0x60) = src[3];
-    *(int *)(self + 0x64) = src[4];
-    *(int *)(self + 0x68) = src[5];
-    if (*(int *)(self + 0x54) != 0)
-        vs_state_call(self, 0x54);
-}
-
-// PORT_HOST_ABI: mwcc pointer-to-member dispatch spelled as an explicit cdecl call through the record word with self as the first argument
-extern "C" int _ZN10dScEntry_c8BehaviorEv(void *cv)
-{
-    char *cc = (char *)cv;
-
-    if (*(unsigned char *)(cc + 0x285) != 0) {
-        (*(unsigned char *)(cc + 0x284))++;
-        if ((*(unsigned char *)(cc + 0x284) & 1) == 0) {
-            (*(unsigned char *)(cc + 0x283))--;
-            func_020551f0((void *)0x4001050, *(unsigned char *)(cc + 0x283));
-            if (*(unsigned char *)(cc + 0x283) == 0) {
-                *(unsigned short *)0x4001050 = 0;
-                *(unsigned char *)(cc + 0x283) = 0;
-                *(unsigned char *)(cc + 0x285) = 0;
-            }
-        }
-    }
-
-    if (data_0209f5bc->v5() == 0 || *(unsigned char *)(cc + 0x285) != 0)
-        return 1;
-
-    if (data_0209fc68 != 0) {
-        if (data_0209fc68 == 6)
-            func_ov075_02119dc4(cc, data_ov075_0211d930);
-    }
-
-    if (*(volatile int *)(cc + 0x5c) != 0)
-        vs_state_call(cc, 0x5c);
-
-    {
-        int i = 0;
-        const int n = *(unsigned char *)(cc + 0x280);
-        if (n > 0) {
-            char *o = cc + 0x70;
-            do {
-                /* the element walk: slot 0 of the record's own table (the
-                   mounted _ZTVN10dScEntry_c6icon_cE), the receiver in ecx --
-                   the mwcc virtual-call shape, spelled out */
-                ((VsIconObj *)o)->v0();
-                ++i;
-                o += 0x24;
-            } while (i < (int)*(unsigned char *)(cc + 0x280));
-        }
-    }
-    return 1;
-}
-
-// PORT_HOST_ABI: mwcc pointer-to-member dispatch spelled as an explicit cdecl call through the record word with self as the first argument
-extern "C" int _ZN10dScEntry_c6RenderEv(void *cv)
-{
-    char *cc = (char *)cv;
-    if (*(volatile int *)(cc + 0x64) != 0)
-        vs_state_call(cc, 0x64);
-    func_0203083c();
-    return 1;
 }

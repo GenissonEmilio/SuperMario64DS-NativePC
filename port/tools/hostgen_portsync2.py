@@ -704,6 +704,35 @@ ROWS_04[("HOST_COPY_PARK", "_ZN10dScStage_c16CleanupResourcesEv")] = [
      "    Deallocate(func_01ffb0c8((char *)&mMeshCollider));\n"),
 ]
 
+# ---- dScEntry_c's three pointer-to-member dispatch sites -------------------
+# Run hunt8, lane WIGGLER1: the host copies in port/unmatched/VS_EntryDispatch.cpp
+# are retired and the matched shards link. The states live as {fn, delta} pairs at
+# self+0x54/+0x5c/+0x64, seeded by func_ov075_0211a194 from records the sinits build
+# in bss, and the seat's generated patch puts plain cdecl host bodies in the fn words.
+# The shards model the dispatch as an MSVC pointer-to-member, a __thiscall, so the
+# receiver never arrives (measured on the copies: state func_ov075_02119b34 faulting
+# at +0x37 on stack garbage). Each dispatch becomes a call to port_vs_state_call, which
+# is the cdecl-through-record call the copies wrote by hand. Every other line of the
+# three shards is the matched text. /Zp4 on all three (port/CMakeLists.txt) puts the
+# pmf members at the ROM's +0x5c / +0x64 / +0x54.
+_VS_DECL = 'extern "C" void port_vs_state_call(void *self, unsigned off);\n'
+ROWS_04[("HOST_COPY_PARK", "func_ov075_0211a194")] = [
+    ('extern "C" void func_ov075_0211a194(char* self, int* src)\n{\n',
+     _VS_DECL + 'extern "C" void func_ov075_0211a194(char* self, int* src)\n{\n'),
+    ('        PMF* p = (PMF*)(self + 0x54);\n        C* o = (C*)self;\n        (o->**p)();\n',
+     '        port_vs_state_call(self, 0x54);\n'),
+]
+ROWS_04[("HOST_COPY_PARK", "_ZN10dScEntry_c8BehaviorEv")] = [
+    ('#include "dScEntry_c.h"\n', '#include "dScEntry_c.h"\n' + _VS_DECL),
+    ('        PMF *p = &c->pmf;\n        (c->**p)();\n',
+     '        port_vs_state_call(c, 0x5c);\n'),
+]
+ROWS_04[("HOST_COPY_PARK", "_ZN10dScEntry_c6RenderEv")] = [
+    ('#include "dScEntry_c.h"\n', '#include "dScEntry_c.h"\n' + _VS_DECL),
+    ('    PMF *p = c->pp;\n    (c->**p)();\n',
+     '    port_vs_state_call(c, 0x64);\n'),
+]
+
 # ---- dActor_c --------------------------------------------------------------
 # PARK_SYMBOL -> HOST_COPY_PARK, the dScStage_c::CleanupResources shape.
 # Main's `// @symbol _ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE` marker is
