@@ -17439,6 +17439,11 @@ int main(void)
                     fprintf(stderr, "[balloonwatch] f%d level %d char %u 6fd %u 6fe %u opac %u balloonModelFile %08x wingModelFile %08x\n",
                             frame, (int)data_0209f2f8, (unsigned)*(const unsigned *)(pl + 8), pl[0x6fd], pl[0x6fe], pl[0x6f5],
                             *(const unsigned *)(pl + 0xf4), *(const unsigned *)(pl + 0x178));
+                if (bp_watch && pl && frame % 60 == 0) {
+                    const unsigned *w = (const unsigned *)(pl + 0xf0), *x = (const unsigned *)(pl + 0x174);
+                    fprintf(stderr, "[balloonwords] f%d f0: %08x %08x %08x %08x %08x %08x | 174: %08x %08x %08x %08x | 1d8 %08x ec %08x\n",
+                            frame, w[0], w[1], w[2], w[3], w[4], w[5], x[0], x[1], x[2], x[3], *(const unsigned *)(pl + 0x1d8), *(const unsigned *)(pl + 0xec));
+                }
             }
 
             /* ---- SM64DS_COIN_WATCH / SM64DS_COIN_POKE -------------------
