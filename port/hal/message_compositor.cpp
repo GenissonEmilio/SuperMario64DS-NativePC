@@ -3635,7 +3635,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     g_port_hdmeter_live = 0;
     /* SLICE1: the N64 row's meter shift below moves every OBJ cell of the meter's DS rectangle (x 80..153, y < 96). Where the ROM draws no
        meter (the cannon scope, a cutscene) that rectangle holds other sprites, the cannon's aim reticle among them, and the shift cut the
-       reticle in two and slid its upper half 5 pixels left. Only a frame whose HUD arm drew the meter is shifted. */
+       reticle in two and slid its upper half 5 pixels left. Only a frame whose HUD arm drew the meter is shifted, and only the rows the meter (at its own y) can reach. */
     const bool meter_drawn = g_port_meter_drawn != 0;
     g_port_meter_drawn = 0;
     bool hdm_n64 = false;
@@ -3649,7 +3649,8 @@ extern "C" void port_message_composite_engine_a(void *fbp)
         hdm_n64 = true;
         /* HUDTWEAK1: the power meter's cells (OBJ, x 80..153, y 0..59) go kHudMeterLeft pixels left, in the plane, before anything
            measures them, so the coin block's gap to the meter is the one it had. */
-        for (int y = 0; meter_drawn && y < kHudMeterY1; ++y)
+        const int meter_y1 = hdm_y + 38 < kHudMeterY1 ? hdm_y + 38 : kHudMeterY1;   /* SLICE1: the meter and its label end 38 rows under the ROM's meter y (the hidden meter sits at y -24) */
+        for (int y = 0; meter_drawn && y < meter_y1; ++y)
             for (int x = kHudMeterX0; x <= kHudMeterX1; ++x) {
                 Cell &c = g_a[y][x];
                 if (c.hit && c.owner == kOwnerObj && !c.msgcur) {
