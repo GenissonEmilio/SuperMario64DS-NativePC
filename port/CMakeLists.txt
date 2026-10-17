@@ -1594,6 +1594,8 @@ foreach(line IN LISTS SLICE2_LINES)
 endforeach()
 
 add_executable(smoke_heap tests/smoke_heap.cpp hal/heap_globals.cpp ${SLICE2_SOURCES})
+# INT093F: cstd::abs (src/cstd4.cpp is no longer listable raw), see hal/smoke_cstd_abs.cpp.
+target_sources(smoke_heap PRIVATE hal/smoke_cstd_abs.cpp)
 target_include_directories(smoke_heap PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/../include")
@@ -2586,7 +2588,13 @@ set(PORT_SMOKE_HEAP_TEARDOWN_SRC
     src/engine/heap/ExpandingHeapAllocator.cpp
     src/engine/heap/Heap.cpp
     src/engine/heap/NestedHeapIterator.cpp
-    src/cstd4.cpp)
+    # INT093F: src/cstd4.cpp is NOT listed here any more (the whole printf core
+    # rides in with it); cstd::abs is hal/smoke_cstd_abs.cpp's. The
+    # SolidHeapAllocator TU and the heap seam replace the shard files this list
+    # named before main folded them.
+    src/engine/heap/SolidHeapAllocator.cpp
+    port/hal/smoke_cstd_abs.cpp
+    port/hal/smoke_heap_tail.cpp)
 
 # smoke_roots: 30 unresolved -> 0.  8 ledger faces (7 copied verbatim from
 # port/faces_sync.txt, 1 derived by address), 19 alias rows (15 copied verbatim
@@ -25573,6 +25581,94 @@ foreach(_tpcore1 walk_window walk_window_hires)
         target_sources(${_tpcore1} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/pcore.cpp")
     endif()
 endforeach()
+
+# INT093F: THE NARROW HARNESSES DO NOT LINK src/cstd4.cpp.
+# Main's merge (PORTSYNC3) made src/cstd4.cpp the whole runtime-library TU
+# (the printf core, the hand-asm primitives, the OS data words they read), and
+# several shared slice lists name it, so every harness that takes one of those
+# lists now asks for a dozen leftovers the harness cannot supply. The
+# harnesses want cstd::abs, memcpy/memset-style primitives and nothing of
+# printf. The window targets never see this line (they take the generated copy).
+foreach(_nc4 smoke_model smoke_soak smoke_frames smoke_oam smoke_anim
+             smoke_soak_anim smoke_modelanim smoke_clsn)
+    get_target_property(_nc4_src ${_nc4} SOURCES)
+    list(FILTER _nc4_src EXCLUDE REGEX "/src/cstd4\.cpp$")
+    set_property(TARGET ${_nc4} PROPERTY SOURCES ${_nc4_src})
+endforeach()
+
+# INT093F: the callees main's folded GX / Model4 / ModelComponents / G3i TUs
+# name that the harnesses' lists never carried (they were reached through
+# other shard files before the folds). Every one is an ordinary src/ source
+# walk_window compiles; none is a new definition.
+set(PORT_SMOKE_FOLD_SRC
+    src/unnamed/arm9/0205/func_0205417c.c
+    src/unnamed/arm9/0205/func_02054168.c
+    src/unnamed/arm9/0205/func_02053ed0.c
+    src/unnamed/arm9/0205/func_02053ec0.c
+    src/unnamed/arm9/0205/func_02053e34.c
+    src/unnamed/arm9/0205/func_02053e1c.c
+    src/unnamed/arm9/0204/func_02047218.c
+    src/unnamed/arm9/0204/func_02047910.c
+    src/InvMat4x3.c
+    src/CrossVec3.c
+    src/DotVec3.c
+    src/MultiCopyHalf.c
+    src/DMASyncHalfTransfer.c
+    src/_ZN2GX13SetBankForTexEt.cpp
+    src/_ZN2GX17SetBankForTexPlttEt.cpp
+    src/unnamed/arm9/0205/func_020541b8.c
+    src/unnamed/arm9/0205/func_02053e4c.c
+    src/LenVec3.c
+    src/Vram__Map.c
+    src/engine/gx/G3X.cpp
+    src/unnamed/arm9/0205/func_02055464.c
+    src/unnamed/arm9/0205/func_02055490.c
+    src/unnamed/arm9/0205/func_0205a064.c
+    src/DMASyncFillTransfer.c
+    src/cstd.cpp
+    src/_ZN9ModelBaseD1Ev.cpp
+    src/MultiCopyHalf.c)
+foreach(_fold smoke_model smoke_soak smoke_frames smoke_oam smoke_anim
+              smoke_soak_anim smoke_modelanim smoke_clsn)
+    set(_fold_src ${PORT_SMOKE_FOLD_SRC})
+    if(_fold STREQUAL "smoke_clsn")
+        list(REMOVE_ITEM _fold_src src/cstd.cpp)    # its own list already has it
+    endif()
+    foreach(_fs IN LISTS _fold_src)
+        target_sources(${_fold} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../${_fs}")
+    endforeach()
+    target_sources(${_fold} PRIVATE hal/smoke_model_tail.cpp)
+endforeach()
+# The divider's flat fdiv, for the six that did not carry hal/cstd_div.c.
+foreach(_fold smoke_model smoke_soak smoke_frames smoke_oam smoke_anim smoke_soak_anim)
+    target_sources(${_fold} PRIVATE hal/cstd_div.c)
+endforeach()
+
+# smoke_modelanim now gets Heap::_Deallocate from src/engine/heap/Heap.cpp (main
+# folded it into the Heap TU), so hal/blend_vtable.cpp's repeat of the face is
+# switched off for that one target with the guard the file already has.
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/hal/blend_vtable.cpp" APPEND PROPERTY
+    COMPILE_DEFINITIONS
+    "$<$<STREQUAL:$<TARGET_PROPERTY:NAME>,smoke_modelanim>:PORT_CXX_ALIASES_LINKED=1>")
+target_sources(mp_comms_seam PRIVATE hal/smoke_comms_alias.cpp)
+
+# INT093F: smoke_oam and smoke_clsn stay out of the default build, as
+# smoke_player, smoke_actor, smoke_savestate and smoke_persist already do (see
+# the ASMCPORT block). Their link lists are not just short a few sources:
+#   smoke_oam   tests/smoke_oam.cpp declares OAM::Reset as a namespace function
+#               (?Reset@OAM@@YAXXZ) where src/engine/oam/OAM.cpp now has the
+#               static member, OAM.cpp spells GetObjWidth / GetObjHeight /
+#               LoadAffineParams under mangled-looking C++ names the harness
+#               never bridged, and main's whole GXS TU asks for twenty G2 / G2S
+#               / GX bank and pointer faces.
+#   smoke_clsn  tests/smoke_clsn.cpp reads g_walk_dbg (a walk_window test
+#               global), the folded dBgCh_Lin / dBgCh_SphCrr TUs need
+#               dM3dGSph / dM3dGLin, dBgPi::RecordHit and the dBgCh_Actr
+#               updates, and func_ov002_020fea4c / 020fea68 are overlay 2
+#               code with no overlay mounted in a harness.
+# Every other harness (smoke_heap .. smoke_soak_anim, smoke_modelanim,
+# mp_comms_seam) links again; these two are the open closure.
+set_target_properties(smoke_oam smoke_clsn PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 # ---- PORTSYNC2: NO TARGET COMPILES A RAW PORT_HOSTGEN_TU SOURCE ---------------
 #
