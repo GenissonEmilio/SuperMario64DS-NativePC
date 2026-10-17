@@ -2363,8 +2363,7 @@ int reload_live(const char *text)
         if (cs != g_character_strip) {
             g_character_strip = cs;
             changed = 1;
-            fprintf(stderr, "[settings] live re-read: CharacterStrip %s
-", cs ? "ON" : "off");
+            fprintf(stderr, "[settings] live re-read: CharacterStrip %s\n", cs ? "ON" : "off");
         }
     }
     const int voice_changed = read_voice_keys(text);
