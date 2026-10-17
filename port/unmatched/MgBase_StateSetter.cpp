@@ -435,8 +435,8 @@ extern MgPmf pmf_dMgState_c_State19_Update;
    wanted a pointer. Checked body by body against the disassembly, not assumed
    from the declaration. */
 void _ZN10dMgState_c15DrawRecordTableEv(int *c);
-void _ZN10dMgState_c15DrawScoreDigitsEv(void);
-void _ZN10dMgState_c9DrawScoreEv(void);
+void _ZN10dMgState_c15DrawScoreDigitsEv(void *c);   /* INT093F: a flat face now (receiver on the stack) */
+void _ZN10dMgState_c9DrawScoreEv(void *c);
 void _ZN10dMgState_c14State19_UpdateEv(void *c);
 void _ZN10dMgState_c14State18_UpdateEv(void *c);
 void _ZN10dMgState_c14State17_UpdateEv(char *c);
@@ -653,8 +653,8 @@ static void bw_020b3978(void *c) { ++g_base_closure_hits; Banner_UpdateWave((cha
 static void bw_020b410c(void *c) { ++g_base_closure_hits; Banner_DrawPressed((char *)c); }
 static void bw_020b4214(void *c) { ++g_base_closure_hits; Banner_UpdatePressed((char *)c); }
 static void __fastcall bwf_020b68e8(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c15DrawRecordTableEv((int *)c); }
-static void __fastcall bwf_020b6948(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c15DrawScoreDigitsEv(); }
-static void __fastcall bwf_020b6ad8(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c9DrawScoreEv(); }
+static void __fastcall bwf_020b6948(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c15DrawScoreDigitsEv(c); }
+static void __fastcall bwf_020b6ad8(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c9DrawScoreEv(c); }
 static void __fastcall bwf_020b6b40(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State19_UpdateEv(c); }
 static void __fastcall bwf_020b6c9c(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State18_UpdateEv(c); }
 static void __fastcall bwf_020b6ddc(void *c, void *) { ++g_base_tick_hits; _ZN10dMgState_c14State17_UpdateEv((char *)c); }
