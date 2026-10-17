@@ -1614,7 +1614,12 @@ void hal_render_player_world(void *player)
         return;
     }
 
-    unsigned id = _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 0);
+    /* SMOOTHREND1 (D18, Metal Wario's closing flicker): Player::Render picks the body with GetBodyModelID(.., 1), the form that
+       reads the RENDER copy of the metal flag (+0x6fa), not the live one (+0x6f9). The behaviour pass clears +0x6fa on every
+       second tick of the last 62 ticks of the cap and sets it back on the next, and that is the whole flicker: the body AND the
+       cap model (the head group below already asked with 1) swap between metal and plain Wario together. Asking with 0 drew the
+       metal body on every tick and only the cap blinked. Outside the flicker the two flags are equal. */
+    unsigned id = _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 1);
     ModelAnim *ma = ((ModelAnim **)(c + 0xdc))[id];
     if (!ma) return;
     /* THE BODY MATRIX IS THE ONE THE SEAT ALREADY WROTE, and this function
@@ -1951,7 +1956,7 @@ void hal_render_player_world(void *player)
 void hal_render_player_body_ex(void *player, int with_head)
 {
     char *c = (char *)player;
-    unsigned id = _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 0);
+    unsigned id = _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 1);   /* the render form, see hal_render_player_world */
     ModelAnim *ma = ((ModelAnim **)(c + 0xdc))[id];
     if (!ma) return;
     for (int i = 0; i < 12; ++i) ((int *)&ma->mat4x3)[i] = 0;

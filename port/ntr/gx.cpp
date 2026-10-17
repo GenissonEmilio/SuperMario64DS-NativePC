@@ -7803,6 +7803,7 @@ struct IpGroup {
     uint32_t ev0, ev1;   // event range [ev0, ev1)
     int part;            // a particle (MTX_IDENTITY then one MULT_4x3)
     double ps;           // its billboard scale, in the view matrix's units
+    int match2 = -1;     // SMOOTHREND1: the group in the record TWO ticks back, when this one has none a tick back (a blinking model)
 };
 
 struct IpRec {
@@ -7814,6 +7815,8 @@ struct IpRec {
     std::vector<int> ev_group;   // group of every event (-1 before the first)
     std::vector<int> blend;      // per event: previous record's event, -1 none,
                                  // -2 unpaired absolute LOAD (camera-corrected)
+    std::vector<int> blend2;     // SMOOTHREND1: per event: the event TWO ticks back (a blinking model), -1 none
+    int has_p2 = 0;              // blend2 was built against the record in the free slot
     State start;
     uint32_t start_teximage = 0, start_plttbase = 0;
     uint32_t sealed = 0;         // events that reached the frame's gx_render
@@ -8125,7 +8128,13 @@ bool ip_cand_less(const IpCand &x, const IpCand &y) {
 }
 
 /* Pair C's groups with P's, then fill C.blend. Returns counts through st. */
-void ip_match(IpRec &C, const IpRec &P, GxInterpStats *st) {
+bool blink_pair_on() {
+    static int on = -1;
+    if (on < 0) { const char *e = std::getenv("SM64DS_BLINK_PAIR"); on = (e && e[0] == '0') ? 0 : 1; }
+    return on != 0;
+}
+
+void ip_match(IpRec &C, const IpRec &P, GxInterpStats *st, const IpRec *P2 = nullptr) {
     std::map<uint64_t, std::vector<int>> kc, kp;
     for (size_t i = 0; i < C.groups.size(); ++i) kc[C.groups[i].key].push_back((int)i);
     for (size_t i = 0; i < P.groups.size(); ++i) kp[P.groups[i].key].push_back((int)i);
@@ -8190,13 +8199,49 @@ void ip_match(IpRec &C, const IpRec &P, GxInterpStats *st) {
             }
         }
     }
+    /* SMOOTHREND1 (D18): A MODEL THAT BLINKS. Metal Wario's closing flicker swaps the whole player model every tick, so
+       a group of tick N has nothing like it in tick N-1 (the other model) and a twin in tick N-2 (the same model, one
+       blink earlier). Without a partner it would sit at its tick-N place in every picture and the runner would hop at
+       30 a second. Pair it with the N-2 twin, and its pictures blend N-2 -> N over two ticks (see gx_interp_begin).
+       Only a group the N-1 record has no key for qualifies: a pair that failed on shape or distance stays unpaired. */
+    C.has_p2 = 0;
+    if (P2 && blink_pair_on()) {
+        std::map<uint64_t, std::vector<int>> k2;
+        for (size_t i = 0; i < P2->groups.size(); ++i) k2[P2->groups[i].key].push_back((int)i);
+        std::vector<char> used2(P2->groups.size(), 0);
+        for (size_t gi = 0; gi < C.groups.size(); ++gi) {
+            IpGroup &gc = C.groups[gi];
+            gc.match2 = -1;
+            if (gc.match >= 0 || gc.part || gc.nmtx <= 0 || !gc.has_pos) continue;
+            if (kp.find(gc.key) != kp.end()) continue;           // the previous tick had that model: not a blink
+            auto it = k2.find(gc.key);
+            if (it == k2.end()) continue;
+            int best = -1;
+            double bd = 1e300;
+            for (int j : it->second) {
+                const IpGroup &gq = P2->groups[j];
+                if (used2[j] || gq.nmtx != gc.nmtx || gq.shape != gc.shape || !gq.has_pos) continue;
+                const double d = ip_dist2(gc, gq);
+                if (d < bd) { bd = d; best = j; }
+            }
+            if (best < 0 || bd > 4.0 * tele2) continue;
+            used2[best] = 1;
+            gc.match2 = best;
+            C.has_p2 = 1;
+        }
+    }
     C.blend.assign(C.sealed, -1);
+    C.blend2.assign(C.has_p2 ? C.sealed : 0, -1);
     for (size_t gi = 0; gi < C.groups.size(); ++gi) {
         const IpGroup &gc = C.groups[gi];
         if (gc.match >= 0) {
             const IpGroup &gp = P.groups[gc.match];
             for (int k = 0; k < gc.nmtx; ++k)
                 C.blend[C.mtx[gc.mtx0 + k]] = P.mtx[gp.mtx0 + k];
+        } else if (gc.match2 >= 0) {
+            const IpGroup &gq = P2->groups[gc.match2];
+            for (int k = 0; k < gc.nmtx; ++k)
+                C.blend2[C.mtx[gc.mtx0 + k]] = P2->mtx[gq.mtx0 + k];
         } else {
             for (int k = 0; k < gc.nmtx; ++k) {
                 const int ei = C.mtx[gc.mtx0 + k];
@@ -8397,7 +8442,12 @@ int gx_interp_commit(const int32_t view[12], int snap, GxInterpStats *st) {
         g_ip_prev_disp[0] = g_ip_prev_disp[1] = g_ip_prev_disp[2] = 0.0;
     }
     r.snap = why;
-    if (P && !why) ip_match(r, *P, st);
+    {
+        /* the record two ticks back is the one the rotation below leaves in the free slot */
+        const IpRec *P2 = (g_ip_p >= 0 && g_ipr[g_ip_p].valid && !g_ipr[g_ip_p].snap &&
+                           g_ipr[g_ip_p].tex_gen == r.tex_gen) ? &g_ipr[g_ip_p] : 0;
+        if (P && !why) ip_match(r, *P, st, P2);
+    }
     if (st) st->snap = why;
     /* rotate: N becomes N-1, the record just sealed becomes N, and the old
        N-1 (or whichever of the three is free) is written next */
@@ -8504,7 +8554,22 @@ int gx_interp_begin(float alpha) {
             int ex_on = 0;
             if (ip_is_mtx(e.cmd) && e.np <= 32) {
                 const int b = C.blend.empty() ? -1 : C.blend[i];
-                if (b >= 0 && e.mode != MTX_TEX) {
+                const int b2 = (C.has_p2 && !C.blend2.empty()) ? C.blend2[i] : -1;
+                if (b2 >= 0 && b < 0 && e.mode != MTX_TEX && g_ipr[g_ip_w].valid) {
+                    /* a blinking model: N-2 -> N, the picture sits (1 + alpha) / 2 of the way */
+                    const IpRec &P2 = g_ipr[g_ip_w];
+                    const IpEv &pe = P2.ev[b2];
+                    const double w2 = (1.0 + (double)alpha) * 0.5;
+                    const int n = e.np < pe.np ? e.np : pe.np;
+                    for (int k = 0; k < e.np; ++k) {
+                        tmp[k] = k < n ? (uint32_t)ip_lerp(P2.par[pe.off + k], pp[k], w2) : pp[k];
+                        g_ip_ex[k] = k < n ? (double)(int32_t)P2.par[pe.off + k] * (1.0 - w2) +
+                                             (double)(int32_t)pp[k] * w2
+                                           : (double)(int32_t)pp[k];
+                    }
+                    pp = tmp;
+                    ex_on = 1;
+                } else if (b >= 0 && e.mode != MTX_TEX) {
                     const IpEv &pe = P.ev[b];
                     const int n = e.np < pe.np ? e.np : pe.np;
                     for (int k = 0; k < e.np; ++k) {
