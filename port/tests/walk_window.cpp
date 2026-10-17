@@ -17407,21 +17407,18 @@ int main(void)
                 char *pl = (char *)data_0209f394[(int)data_0209f250];
                 if (bp_frame >= 0 && frame == bp_frame && pl) {
                     _ZN6Player16InitBalloonMarioEv(pl);
-                    fprintf(stderr, "[balloonpoke] f%d player=%p
-", frame, (void *)pl);
+                    fprintf(stderr, "[balloonpoke] f%d player=%p\n", frame, (void *)pl);
                 }
                 if (bp_watch && frame == 30) {
                     int n = 0;
                     for (int *node = (int *)(size_t)data_020a4b78[0]; node; node = (int *)(size_t)node[1]) {
                         char *o = (char *)(size_t)node[2];
                         if (!o || *(unsigned short *)(o + 0xc) != 306) continue;
-                        fprintf(stderr, "[balloon] flower #%d at (%d,%d,%d) param1 %08x flags %08x
-", n++,
+                        fprintf(stderr, "[balloon] flower #%d at (%d,%d,%d) param1 %08x flags %08x\n", n++,
                                 *(int *)(o + 0x5c) >> 12, *(int *)(o + 0x60) >> 12, *(int *)(o + 0x64) >> 12,
                                 *(unsigned *)(o + 8), *(unsigned *)(o + 0x8c));
                     }
-                    fprintf(stderr, "[balloon] %d Power Flower actor(s) at frame 30
-", n);
+                    fprintf(stderr, "[balloon] %d Power Flower actor(s) at frame 30\n", n);
                 }
                 if (bp_fl >= 0 && pl && frame >= bp_flf && frame <= bp_flf + bp_flh) {
                     int n = 0;
@@ -17439,8 +17436,7 @@ int main(void)
                     }
                 }
                 if (bp_watch && pl && frame % 60 == 0)
-                    fprintf(stderr, "[balloonwatch] f%d level %d char %u 6fd %u 6fe %u opac %u balloonModelFile %08x wingModelFile %08x
-",
+                    fprintf(stderr, "[balloonwatch] f%d level %d char %u 6fd %u 6fe %u opac %u balloonModelFile %08x wingModelFile %08x\n",
                             frame, (int)data_0209f2f8, (unsigned)*(const unsigned *)(pl + 8), pl[0x6fd], pl[0x6fe], pl[0x6f5],
                             *(const unsigned *)(pl + 0xf4), *(const unsigned *)(pl + 0x178));
             }
