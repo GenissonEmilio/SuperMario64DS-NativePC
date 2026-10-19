@@ -8125,9 +8125,12 @@ bool ip_tex_pair_ok(const IpEv &pe, const std::vector<uint32_t> &ppar, const IpE
     }
     if (log && worst) {
         static int n;
-        if (n++ < 400)
-            fprintf(stderr, "  [texmtx] cmd %02x np %d worst word move %ld (%.3f)%s\n", ce.cmd, ce.np, worst, worst / 4096.0,
-                    worst > lim ? "  -> held (over the limit)" : "");
+        if (n++ < 3000) {
+            fprintf(stderr, "  [texmtx] cmd %02x np %d worst %.3f%s |", ce.cmd, ce.np, worst / 4096.0, worst > lim ? " HELD" : "");
+            for (int k = 0; k < ce.np; ++k)
+                fprintf(stderr, " %.2f>%.2f", (int32_t)ppar[pe.off + k] / 4096.0, (int32_t)cp[k] / 4096.0);
+            fprintf(stderr, "%c", 10);
+        }
     }
     return worst <= lim;
 }
@@ -8485,6 +8488,16 @@ int gx_interp_commit(const int32_t view[12], int snap, GxInterpStats *st) {
         const IpRec *P2 = (g_ip_p >= 0 && g_ipr[g_ip_p].valid && !g_ipr[g_ip_p].snap &&
                            g_ipr[g_ip_p].tex_gen == r.tex_gen) ? &g_ipr[g_ip_p] : 0;
         if (P && !why) ip_match(r, *P, st, P2);
+        if (P && !why && getenv("SM64DS_INTERP_BINDLOG")) {   // POLISH093 probe: which texture binds changed since the last tick
+            size_t n = r.binds.size() < P->binds.size() ? r.binds.size() : P->binds.size();
+            int diff = 0;
+            for (size_t i = 0; i < n; ++i)
+                if (r.binds[i].teximage != P->binds[i].teximage || r.binds[i].plttbase != P->binds[i].plttbase || r.binds[i].rgba != P->binds[i].rgba) {
+                    if (diff < 6) fprintf(stderr, "  [bindlog] bind %zu: teximage %08x>%08x pltt %08x>%08x rgba %p>%p %dx%d%c", i, P->binds[i].teximage, r.binds[i].teximage, P->binds[i].plttbase, r.binds[i].plttbase, (const void *)P->binds[i].rgba, (const void *)r.binds[i].rgba, r.binds[i].w, r.binds[i].h, 10);
+                    ++diff;
+                }
+            fprintf(stderr, "  [bindlog] binds %zu/%zu, changed %d%c", r.binds.size(), P->binds.size(), diff, 10);
+        }
     }
     if (st) st->snap = why;
     /* rotate: N becomes N-1, the record just sealed becomes N, and the old

@@ -8681,6 +8681,11 @@ static void ip_live_sync(void)
    blend to offer (a snap), and then nothing was drawn. */
 static int g_ip_card_ok = -1;   /* SM64DS_INTERP_CARD=0 puts the processor's blend back (A/B on one binary) */
 static unsigned long long g_ip_card_pics, g_ip_cpu_pics;
+/* POLISH093 P3: a dialogue box that is OPENING (hal/message_compositor.cpp, port_tween_win): the picture between two ticks shows the box
+   only inside the window that far along. The tick's 2D is a snapshot, so the pixels of the box outside that window are the replayed 3D
+   instead. On the processor's blend only: a tick whose box is opening is composited on the processor (the card's compose cannot clip). */
+extern "C" int port_tween_win(double alpha, int outer[4], int inner[4]);
+static unsigned long long g_ip_tween_pics;
 static int ip_build(double alpha)
 {
     const long long t0 = ip_qpc();
@@ -8707,6 +8712,8 @@ static int ip_build(double alpha)
         if (ip_evy_t < 0) ip_evy_t = 0;
         if (ip_evy_t > 16) ip_evy_t = 16;
     }
+    int tw_outer[4] = {0, 0, 0, 0}, tw_inner[4] = {0, 0, 0, 0};
+    const int tw = port_tween_win(alpha, tw_outer, tw_inner);
     int card = 0;
     if (g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1)
         card = ntr::gx_card_interp_clear(o);
@@ -8721,7 +8728,7 @@ static int ip_build(double alpha)
             port_gpu_card_inter_fade(ip_evy_t, g_ip_fade_white);
         else
             port_gpu_card_inter_fade_off();
-        const int card_done = port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
+        const int card_done = !tw && port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
         port_gpu_card_inter_fade_off();
         if (card_done) {
             ntr::gx_card_retire2(&o);
@@ -8750,6 +8757,7 @@ static int ip_build(double alpha)
         ip_snap(g_ip_p5, *g_ip_level_fb);
     }
     ++g_ip_cpu_pics;
+    if (tw) ++g_ip_tween_pics;
     const unsigned char *ip_bm = (g_ip_fade_on && g_ip_fade_masked && g_ip_fade_cpumask)
                                      ? port_engine_a_bright_mask() : 0;
     if (g_ip_fade_on && g_ip_fade_masked && !ip_bm) {
@@ -8773,16 +8781,28 @@ static int ip_build(double alpha)
             uint32_t *row = o.px[y];
             const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
             const unsigned char *mr = ip_bm ? ip_bm + (size_t)y * ntr::SCREEN_W : 0;
+            const int tw_row = tw && y >= tw_outer[1] && y < tw_outer[3];
+            const int tw_mid = tw_row && y >= tw_inner[1] && y < tw_inner[3];
             for (int x = 0; x < ntr::active_w; ++x) {
                 const int take = mr ? mr[x] : 1;
                 const uint32_t pf = take ? ip_fade_px(a[x], evy, toWhite) : a[x];
-                row[x] = (pf != b[x]) ? b[x] : (take ? ip_fade_px(row[x], ip_evy_t, toWhite) : row[x]);
+                const int tw_cut = tw_row && x >= tw_outer[0] && x < tw_outer[2] &&
+                                   !(tw_mid && x >= tw_inner[0] && x < tw_inner[2]);
+                row[x] = (pf != b[x] && !tw_cut) ? b[x] : (take ? ip_fade_px(row[x], ip_evy_t, toWhite) : row[x]);
             }
         }
     } else {
         for (int y = 0; y < ntr::active_h; ++y) {
             uint32_t *row = o.px[y];
             const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
+            if (tw && y >= tw_outer[1] && y < tw_outer[3]) {
+                const int tw_mid = y >= tw_inner[1] && y < tw_inner[3];
+                for (int x = 0; x < ntr::active_w; ++x) {
+                    const int cut = x >= tw_outer[0] && x < tw_outer[2] && !(tw_mid && x >= tw_inner[0] && x < tw_inner[2]);
+                    if (a[x] != b[x] && !cut) row[x] = b[x];
+                }
+                continue;
+            }
             for (int x = 0; x < ntr::active_w; ++x)
                 if (a[x] != b[x]) row[x] = b[x];
         }
