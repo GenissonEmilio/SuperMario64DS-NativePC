@@ -5470,7 +5470,7 @@ static void wipe_rows_cut(uint32_t *dst, int dst_w, int dst_h, int stride, int x
 }
 
 static int g_wipe_suppress;
-void set_wipe_suppress(bool on) { g_wipe_suppress = on ? 1 : 0; }
+void set_wipe_suppress(bool on) { static const int off = std::getenv("SM64DS_MGEXIT_OFF") ? 1 : 0; g_wipe_suppress = (on && !off) ? 1 : 0; }   /* SM64DS_MGEXIT_OFF=1: the proof arm with the old wipe */
 bool wipe_suppressed() { return g_wipe_suppress != 0; }
 
 /* THE ONE-SCREEN PICTURE'S WIPE: the recipes move pieces of the two screens, and a wipe cut into those screens moved with them (a star per
@@ -5478,6 +5478,7 @@ bool wipe_suppressed() { return g_wipe_suppress != 0; }
    DS rectangle's shape scaled to the picture's height. */
 bool wipe_cut_picture(uint32_t *dst, int w, int h, int stride)
 {
+    if (!g_wipe_suppress) return false;
     const uint32_t *rows = nullptr;
     if (!dst || !rt_window_rows(0, &rows)) return false;
     const float s = (float)h / 192.f;

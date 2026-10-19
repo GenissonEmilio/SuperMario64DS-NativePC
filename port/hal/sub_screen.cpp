@@ -4618,7 +4618,7 @@ const char *wide_scene_name(void)
     }
     /* MGEXIT1 (M4): the minigames' two screens at a wide aspect: the top screen's margins held the 3D clear colour (a dark navy) and the
        bottom screen's black, so a wide window showed dark blue edges on one screen only. Same edge fill as the classic menus. */
-    if (sc >= 100 || sc < 0) return "minigame";   /* a minigame's scene object is not the latched id (-1) */
+    if ((sc >= 100 || sc < 0) && !std::getenv("SM64DS_MGEXIT_OFF")) return "minigame";   /* a minigame's scene object is not the latched id (-1) */
     return 0;
 }
 

@@ -12567,7 +12567,8 @@ static int scene_window_run(void)
         if (w0 >= 0) layout_for = (unsigned)w0;
     }
     while (!quit) {
-        if (data_02092660 == 0 && data_02092664 != 0x187 && data_02092664 != layout_for) {
+        static const int mgexit_off = getenv("SM64DS_MGEXIT_OFF") ? 1 : 0;   /* proof arm: the loop as it was */
+        if (!mgexit_off && data_02092660 == 0 && data_02092664 != 0x187 && data_02092664 != layout_for) {
             layout_for = data_02092664;
             port_crossing_scene_layout((int)layout_for);
             stacked = hal_sub_screen_stacked();
