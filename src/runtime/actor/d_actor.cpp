@@ -247,7 +247,9 @@ static int HostWakeSkipped(dActor_c *a)
 static int HostWidenUpdate(dActor_c *a, int r, int thresh, Vector3 *camPos, int radius)
 {
     const int pct = host_setting_draw_distance_pct();
-    if (pct <= 100 || HostWakeSkipped(a))
+    static int off = -1;     /* SM64DS_WAKE_OFF=1: the ROM's update range at any setting (the "before" rows of a proof) */
+    if (off < 0) off = getenv("SM64DS_WAKE_OFF") ? 1 : 0;
+    if (pct <= 100 || off || HostWakeSkipped(a))
         return 0x7fffffff;
     long long t2 = (long long)thresh * pct / 100;
     if (t2 > 0x3fffffff)
@@ -277,6 +279,12 @@ static void HostWakeLog(dActor_c *a, int updated)
     const unsigned id = *(unsigned short *)((char *)a + 0xc) & 1023;
     ++calls[id];
     upd[id] += updated;
+    {
+        const char *ids = getenv("SM64DS_WAKE_POS");   /* SM64DS_WAKE_POS=<id>: log that class's position now and then */
+        if (ids && (unsigned)atoi(ids) == id && (calls[id] % 30) == 0)
+            fprintf(stderr, "[wakepos] id %u call %u thought %u pos (%d,%d,%d) %s\n", id, calls[id], upd[id],
+                    (int)(a->mPosX >> 12), (int)(a->mPosY >> 12), (int)(a->mPosZ >> 12), updated ? "run" : "frozen");
+    }
     if (++total % 30000 == 0) {
         unsigned c = 0, u = 0;
         for (int i = 0; i < 1024; ++i) { c += calls[i]; u += upd[i]; }
