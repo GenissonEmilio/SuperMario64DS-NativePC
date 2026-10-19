@@ -2124,6 +2124,17 @@ extern "C" int port_entrance_record(int i, int *x, int *y, int *z, int *yaw)
     return 1;
 }
 
+/* The area an entrance record belongs to: the low three bits of its param
+   (LoadEntranceObjects spawns the entrance actor with `param & 7`). The
+   debug menu's warp needs it: a record in another area than the one shown
+   puts the player in a part of the level nothing is drawn for. -1 = no such
+   record. */
+extern "C" int port_entrance_area(int i)
+{
+    if (!g_entrance_entries || i < 0 || i >= g_entrance_count) return -1;
+    return *(const unsigned short *)(g_entrance_entries + (size_t)i * 16 + 0xe) & 7;
+}
+
 extern "C" void port_loader_enter(int idx, const void *tbl)
 {
     static int on = -1;
@@ -3651,6 +3662,29 @@ extern "C" void *port_stage_boot_body(void *mc, int spawn)
             std::fflush(stderr);
         }
         stars_seeded = true;
+    }
+    /* SM64DS_COIN_SEED=<course>:<n>[,...] (FORUM093): the course's coin record, as a loaded file would have it (the star select's SCORE row
+       draws it, up to three digits). Written once on the first stage boot. INERT UNLESS SET. */
+    {
+        static bool coin_seeded = false;
+        const char *cs = std::getenv("SM64DS_COIN_SEED");
+        if (cs && !coin_seeded) {
+            const char *p = cs;
+            while (*p) {
+                char *q;
+                const long course = std::strtol(p, &q, 10);
+                p = q;
+                if (*p == ':') {
+                    ++p;
+                    const long n = std::strtol(p, &q, 10);
+                    p = q;
+                    if (course >= 0 && course < 0x12) data_0209cad2[course] = (unsigned char)n;
+                }
+                while (*p && *p != ',') ++p;
+                if (*p == ',') ++p;
+            }
+        }
+        coin_seeded = true;
     }
     /* SM64DS_CAPS_SEED=<mask> (PLAY093): the character caps a loaded file would have (the save block's flags2, data_0209caa0 + 8, bit n =
        character n: 2 Luigi, 4 Wario, 8 Yoshi), written once on the first stage boot like the star seed above; the star select's character row
