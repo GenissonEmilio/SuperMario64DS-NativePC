@@ -89,6 +89,7 @@
 
 #include "ntr/ppu_audit.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -882,6 +883,7 @@ void read_windows(uint32_t dispcnt, Windows &w) {
                 carry = w.rx1[i][y] > w.rx2[i][y] ? 1 : 0;
             }
         }
+        if (ntr::wipe_suppressed()) { w.rows_on = false; w.any = false; }   /* MGEXIT1: see hal/message_compositor.cpp */
     }
 }
 
@@ -1532,7 +1534,7 @@ void scan_key(ScanKey &k, uint32_t dispcnt, const uint8_t *skip)
     for (int i = 0; i < 0x70; ++i) k.regs[i] = rd8(kRegBase + i);
     std::memcpy(k.skip, skip, sizeof k.skip);
     const uint32_t *rows = nullptr;
-    if (ntr::rt_window_rows(1, &rows)) {
+    if (!ntr::wipe_suppressed() && ntr::rt_window_rows(1, &rows)) {
         k.rows_on = 1;
         std::memcpy(k.rows, rows, sizeof k.rows);
     }
@@ -5346,6 +5348,18 @@ static void wipe_circle_cut(uint32_t *dst, int dst_w, int x0, int y0, float s, f
     }
 }
 
+static void wipe_rows_cut(uint32_t *dst, int dst_w, int dst_h, int stride, int x0, int y0, float s, int cw, int ch,
+                          const uint32_t *rows, uint32_t backdrop, float inset, bool margins);
+/* the stacked picture was already cut by the staircase: the smooth cut only takes away, a little inside it (0.75 DS pixel) so no drawn cell is lost
+   and the backdrop (the picture's own corner) fills the rest. SM64DS_WIPE_STAR_SMOOTH=0 leaves the staircase. */
+static void wipe_star_stacked(uint32_t *dst, int dst_w, int x0, int y0, float s, int cw, int ch, const uint32_t *rows)
+{
+    static int off = -1;
+    if (off < 0) { const char *e = std::getenv("SM64DS_WIPE_STAR_SMOOTH"); off = (e && *e == '0') ? 1 : 0; }
+    if (off) return;
+    wipe_rows_cut(dst, dst_w, y0 + ch, dst_w, x0, y0, s, cw, ch, rows, dst[(size_t)y0 * dst_w + x0], 0.75f, false);
+}
+
 static void wipe_circle_stacked(uint32_t *dst, int dst_w, int a_y, int a_rows, int b_y, int b_x0, int b_rows)
 {
     if (active_h < 576) return;
@@ -5354,16 +5368,151 @@ static void wipe_circle_stacked(uint32_t *dst, int dst_w, int a_y, int a_rows, i
     if (off) return;
     const uint32_t *rows = nullptr;
     float R;
-    if (rt_window_rows(0, &rows) && wipe_circle_fit(rows, &R)) {
+    if (rt_window_rows(0, &rows)) {
         const float s = (float)a_rows / 192.f;
         const int cw = (int)(256.f * s + 0.5f);
-        wipe_circle_cut(dst, dst_w, (active_w - cw) / 2, a_y, s, R);
+        if (wipe_circle_fit(rows, &R)) wipe_circle_cut(dst, dst_w, (active_w - cw) / 2, a_y, s, R);
+        else wipe_star_stacked(dst, dst_w, (active_w - cw) / 2, a_y, s, cw, a_rows, rows);
     }
-    if (rt_window_rows(1, &rows) && wipe_circle_fit(rows, &R)) {
+    if (rt_window_rows(1, &rows)) {
         const float s = (float)b_rows / 192.f;
         const int cw = (int)(256.f * s + 0.5f);
-        wipe_circle_cut(dst, dst_w, b_x0 >= 0 ? b_x0 : (active_w - cw) / 2, b_y, s, R);
+        const int bx = b_x0 >= 0 ? b_x0 : (active_w - cw) / 2;
+        if (wipe_circle_fit(rows, &R)) wipe_circle_cut(dst, dst_w, bx, b_y, s, R);
+        else wipe_star_stacked(dst, dst_w, bx, b_y, s, cw, b_rows, rows);
     }
+}
+
+/* ---- THE WIPE'S OWN SHAPE, ANY SHAPE, DRAWN SMOOTH (MGEXIT1) ------------------------------------------------------------------------
+ * The minigames' wipes (dWipe_c: the circle of func_0202ee94 and the STAR of func_0202efa0) are a window pair per scanline: for each of the 192
+ * DS rows two horizontal intervals, and the 2D unit shows the layers inside and the backdrop outside. The star's table is made of straight
+ * edges (0x53 / 0x160 per row) that are cut to whole DS pixels, so at a 3x or 4x scale every edge is a staircase. This reads the same rows as
+ * a shape: each row's interval edges are samples at the row's centre, the edges are interpolated between rows and the cut is made at host
+ * resolution with a one pixel soft edge. A row whose intervals are empty is outside, a wrapped interval (x1 > x2: to the right edge, and on
+ * to x2) is read as the two pieces it makes. `margins` extends the shape past the DS rectangle for the one-screen picture: a pixel left or
+ * right of the rectangle takes the answer of the nearest column, so a hole that reaches the DS edge reaches the picture's edge.
+ *   inset: DS pixels the cut stays inside the drawn shape, for a picture that was already cut by the staircase and must lose no cell. */
+static void wipe_rows_cut(uint32_t *dst, int dst_w, int dst_h, int stride, int x0, int y0, float s, int cw, int ch,
+                          const uint32_t *rows, uint32_t backdrop, float inset, bool margins)
+{
+    const int xa = margins ? 0 : x0, xb = margins ? dst_w : x0 + cw;
+    const int ya = margins ? 0 : y0, yb = margins ? dst_h : y0 + ch;
+    auto edges = [&](int r, int i, int *x1, int *x2) {
+        if (r < 0) r = 0;
+        if (r > 191) r = 191;
+        const uint16_t hh = (uint16_t)(i == 0 ? rows[r] : rows[r] >> 16);
+        *x1 = hh >> 8; *x2 = hh & 0xFF;
+    };
+    for (int py = ya; py < yb; ++py) {
+        float yd = ((float)py + 0.5f - (float)y0) / s - 0.5f;      /* in row-centre units */
+        if (yd < 0.f) yd = 0.f;
+        if (yd > 191.f) yd = 191.f;
+        const int r0 = (int)yd;
+        const float t = yd - (float)r0;
+        float ex1[2], ex2[2];
+        bool wrap[2], valid[2];
+        for (int i = 0; i < 2; ++i) {
+            int a1, a2, b1, b2;
+            edges(r0, i, &a1, &a2);
+            edges(r0 + 1, i, &b1, &b2);
+            const bool va = a1 != a2, vb = b1 != b2;
+            const bool wa = a1 > a2, wb = b1 > b2;
+            const bool near_b = t >= 0.5f;
+            valid[i] = near_b ? vb : va;
+            wrap[i] = near_b ? wb : wa;
+            if (!valid[i]) { ex1[i] = ex2[i] = 0.f; continue; }
+            if (va && vb && wa == wb) {
+                ex1[i] = (float)a1 + ((float)b1 - (float)a1) * t;
+                ex2[i] = (float)a2 + ((float)b2 - (float)a2) * t;
+            } else if (near_b) { ex1[i] = (float)b1; ex2[i] = (float)b2; }
+            else { ex1[i] = (float)a1; ex2[i] = (float)a2; }
+        }
+        /* the row's intervals as one sorted union: the star's two windows meet at the centre column (one ends at 128, the other starts at 127), and a
+           wrapped window (x1 > x2) is two pieces, so the inset must not open a seam where they join */
+        float iv_s[4], iv_e[4];
+        int niv = 0;
+        for (int i = 0; i < 2; ++i) {
+            if (!valid[i]) continue;
+            if (!wrap[i]) { iv_s[niv] = ex1[i]; iv_e[niv++] = ex2[i]; }
+            else { iv_s[niv] = ex1[i]; iv_e[niv++] = 1e4f; iv_s[niv] = -1e4f; iv_e[niv++] = ex2[i]; }
+        }
+        for (int a1 = 1; a1 < niv; ++a1)                                  /* insertion sort by start */
+            for (int b1 = a1; b1 > 0 && iv_s[b1] < iv_s[b1 - 1]; --b1) {
+                std::swap(iv_s[b1], iv_s[b1 - 1]); std::swap(iv_e[b1], iv_e[b1 - 1]);
+            }
+        int nm = 0;
+        for (int a1 = 0; a1 < niv; ++a1) {
+            if (nm && iv_s[a1] <= iv_e[nm - 1] + 1.01f) { if (iv_e[a1] > iv_e[nm - 1]) iv_e[nm - 1] = iv_e[a1]; }
+            else { iv_s[nm] = iv_s[a1]; iv_e[nm] = iv_e[a1]; ++nm; }
+        }
+        uint32_t *row = dst + (size_t)py * stride;
+        for (int px = xa; px < xb; ++px) {
+            float xd = ((float)px + 0.5f - (float)x0) / s;
+            if (xd < 0.f) xd = 0.f;
+            if (xd > 255.99f) xd = 255.99f;
+            float a = 0.f;
+            for (int i = 0; i < nm; ++i) {
+                const float ai = (std::fmin(xd - iv_s[i], iv_e[i] - xd) - inset) * s + 0.5f;
+                if (ai > a) a = ai;
+            }
+            if (a >= 1.f) continue;
+            if (a < 0.f) a = 0.f;
+            const uint32_t p = row[px];
+            const int ia = (int)(a * 256.f);
+            uint32_t o = 0xFF000000u;
+            for (int sh = 0; sh < 24; sh += 8) {
+                const int c = (int)((p >> sh) & 0xFF), k = (int)((backdrop >> sh) & 0xFF);
+                o |= (uint32_t)((k * (256 - ia) + c * ia) >> 8) << sh;
+            }
+            row[px] = o;
+        }
+    }
+}
+
+static int g_wipe_suppress;
+void set_wipe_suppress(bool on) { static const int off = std::getenv("SM64DS_MGEXIT_OFF") ? 1 : 0; g_wipe_suppress = (on && !off) ? 1 : 0; }   /* SM64DS_MGEXIT_OFF=1: the proof arm with the old wipe */
+bool wipe_suppressed() { return g_wipe_suppress != 0; }
+
+/* THE ONE-SCREEN PICTURE'S WIPE: the recipes move pieces of the two screens, and a wipe cut into those screens moved with them (a star per
+   piece). While a recipe is live the sources are not cut (wipe_suppressed) and this cuts the finished picture once, about its centre, the
+   DS rectangle's shape scaled to the picture's height. */
+bool wipe_cut_picture(uint32_t *dst, int w, int h, int stride)
+{
+    if (!g_wipe_suppress) return false;
+    const uint32_t *rows = nullptr;
+    if (!dst || !rt_window_rows(0, &rows)) return false;
+    const float s = (float)h / 192.f;
+    const int cw = (int)(256.f * s + 0.5f);
+    /* the backdrop of the wipe is palette entry 0 of the main engine (white in every minigame) */
+    const uint16_t c = *(volatile const uint16_t *)0x05000000u;
+    const uint32_t r = (uint32_t)((c & 31) * 255 / 31), g = (uint32_t)(((c >> 5) & 31) * 255 / 31), b = (uint32_t)(((c >> 10) & 31) * 255 / 31);
+    const uint32_t bd = 0xFF000000u | (r << 16) | (g << 8) | b;
+    float R;
+    if (wipe_circle_fit(rows, &R)) {
+        /* a circle goes on past the DS rectangle's edge: the whole picture is cut by the circle itself, one pixel soft edge */
+        const float cx = (float)w * 0.5f, cy = (float)h * 0.5f, rh = R * s;
+        for (int y = 0; y < h; ++y) {
+            const float dy = (float)y + 0.5f - cy;
+            uint32_t *row = dst + (size_t)y * stride;
+            for (int x = 0; x < w; ++x) {
+                const float dx = (float)x + 0.5f - cx;
+                float a = rh - std::sqrt(dx * dx + dy * dy) + 0.5f;
+                if (a >= 1.f) continue;
+                if (a < 0.f) a = 0.f;
+                const uint32_t p = row[x];
+                const int ia = (int)(a * 256.f);
+                uint32_t o = 0xFF000000u;
+                for (int sh = 0; sh < 24; sh += 8) {
+                    const int c2 = (int)((p >> sh) & 0xFF), k = (int)((bd >> sh) & 0xFF);
+                    o |= (uint32_t)((k * (256 - ia) + c2 * ia) >> 8) << sh;
+                }
+                row[x] = o;
+            }
+        }
+        return true;
+    }
+    wipe_rows_cut(dst, w, h, stride, (w - cw) / 2, 0, s, cw, h, rows, bd, 0.f, true);
+    return true;
 }
 
 void ppu_compose_stacked(const uint32_t *top, const SubFramebuffer &sub,
@@ -5601,3 +5750,6 @@ void ppu_compose_stacked(const uint32_t *top, const SubFramebuffer &sub,
 }
 
 }  // namespace ntr
+
+extern "C" void port_wipe_suppress_set(int on) { ntr::set_wipe_suppress(on != 0); }
+extern "C" int port_wipe_cut_picture(uint32_t *dst, int w, int h, int stride) { return ntr::wipe_cut_picture(dst, w, h, stride) ? 1 : 0; }

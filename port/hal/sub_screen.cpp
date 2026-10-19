@@ -3766,6 +3766,7 @@ extern "C" int hal_save_menu_up(void)
    pick through hal_menu_decide, the level-clear pair for the touch seams, the level-clear trace. A render thread
    (RENDERTHREAD1) calls this at the end of the tick, after the ROM tick and before the frame packet is handed off, and
    puts hal_menu_decision_copy in the packet. */
+extern "C" void port_wipe_suppress_set(int on);   /* ntr/ppu_sub.cpp */
 extern "C" void hal_menu_decide_tick(int w, int h)
 {
     static int init;
@@ -3776,6 +3777,7 @@ extern "C" void hal_menu_decide_tick(int w, int h)
     hal_menu_set_netplay(port::comms_transport() != 0);
     const int scene = hal_sub_screen_stacked() ? MENU_SCENE_GATED : port_scene_live_id();
     hal_menu_decide(w, h, scene);
+    port_wipe_suppress_set(hal_menu_live());   /* MGEXIT1: a live one-screen recipe gets the wipe cut into its finished picture */
     g_force_panel.store((!g_on && scene != MENU_SCENE_GATED && !hal_menu_live() &&
                          (save_menu_is_up() || scene == 8 || scene == 4 || (data_0209f2c4 != 0 && data_0209f20c == 0 && (scene == 3 || scene == -1)))) ? 1 : 0);
     g_page_fit.store((!page_fit_off() && !hal_menu_live() && scene != MENU_SCENE_GATED && (g_on || g_force_panel.load()) &&
@@ -4614,6 +4616,9 @@ const char *wide_scene_name(void)
         std::snprintf(nm, sizeof nm, "scene_%d", sc);
         return nm;
     }
+    /* MGEXIT1 (M4): the minigames' two screens at a wide aspect: the top screen's margins held the 3D clear colour (a dark navy) and the
+       bottom screen's black, so a wide window showed dark blue edges on one screen only. Same edge fill as the classic menus. */
+    if ((sc >= 100 || sc < 0) && !std::getenv("SM64DS_MGEXIT_OFF")) return "minigame";   /* a minigame's scene object is not the latched id (-1) */
     return 0;
 }
 
@@ -5738,4 +5743,4 @@ extern "C" int port_hud_slide_pinned(void)
     static int keep = -1;      /* SM64DS_HUD_SLIDE_KEEP=1: the ROM's slide again on this exe (before / after pictures) */
     if (keep < 0) { const char *e = getenv("SM64DS_HUD_SLIDE_KEEP"); keep = (e && *e && *e != '0') ? 1 : 0; }
     return (keep || hal_sub_screen_stacked()) ? 0 : 1;
-}
+}
