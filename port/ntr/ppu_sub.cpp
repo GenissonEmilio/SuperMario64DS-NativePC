@@ -89,6 +89,7 @@
 
 #include "ntr/ppu_audit.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -5426,18 +5427,32 @@ static void wipe_rows_cut(uint32_t *dst, int dst_w, int dst_h, int stride, int x
             } else if (near_b) { ex1[i] = (float)b1; ex2[i] = (float)b2; }
             else { ex1[i] = (float)a1; ex2[i] = (float)a2; }
         }
+        /* the row's intervals as one sorted union: the star's two windows meet at the centre column (one ends at 128, the other starts at 127), and a
+           wrapped window (x1 > x2) is two pieces, so the inset must not open a seam where they join */
+        float iv_s[4], iv_e[4];
+        int niv = 0;
+        for (int i = 0; i < 2; ++i) {
+            if (!valid[i]) continue;
+            if (!wrap[i]) { iv_s[niv] = ex1[i]; iv_e[niv++] = ex2[i]; }
+            else { iv_s[niv] = ex1[i]; iv_e[niv++] = 1e4f; iv_s[niv] = -1e4f; iv_e[niv++] = ex2[i]; }
+        }
+        for (int a1 = 1; a1 < niv; ++a1)                                  /* insertion sort by start */
+            for (int b1 = a1; b1 > 0 && iv_s[b1] < iv_s[b1 - 1]; --b1) {
+                std::swap(iv_s[b1], iv_s[b1 - 1]); std::swap(iv_e[b1], iv_e[b1 - 1]);
+            }
+        int nm = 0;
+        for (int a1 = 0; a1 < niv; ++a1) {
+            if (nm && iv_s[a1] <= iv_e[nm - 1] + 1.01f) { if (iv_e[a1] > iv_e[nm - 1]) iv_e[nm - 1] = iv_e[a1]; }
+            else { iv_s[nm] = iv_s[a1]; iv_e[nm] = iv_e[a1]; ++nm; }
+        }
         uint32_t *row = dst + (size_t)py * stride;
         for (int px = xa; px < xb; ++px) {
             float xd = ((float)px + 0.5f - (float)x0) / s;
             if (xd < 0.f) xd = 0.f;
             if (xd > 255.99f) xd = 255.99f;
             float a = 0.f;
-            for (int i = 0; i < 2; ++i) {
-                if (!valid[i]) continue;
-                float d;
-                if (!wrap[i]) d = std::fmin(xd - ex1[i], ex2[i] - xd) - inset;
-                else d = std::fmax(xd - ex1[i], ex2[i] - xd) - inset;      /* [x1, right edge] or [0, x2] */
-                const float ai = d * s + 0.5f;
+            for (int i = 0; i < nm; ++i) {
+                const float ai = (std::fmin(xd - iv_s[i], iv_e[i] - xd) - inset) * s + 0.5f;
                 if (ai > a) a = ai;
             }
             if (a >= 1.f) continue;
