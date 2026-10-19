@@ -1007,7 +1007,6 @@ extern "C" void port_ov_retake(int ov);               /* hal/ov_reset.cpp */
 extern "C" int overlay_6;                             /* hal/boot_globals.cpp */
 extern "C" int port_ov_id_to_num(int id);             /* hal/ov_reset.cpp */
 extern "C" int port_ov_load(int ov);                  /* hal/ov_reset.cpp */
-extern "C" void port_ov_post(int ov);                 /* hal/ov_reset.cpp */
 /* OVLRESET1. The DS loads the overlay here, so this is where its objects go back
    to their start-up image (hal/ov_reset.cpp). The minigame overlays keep a
    one-time bring-up of the port's own (port_scene_mg_overlay_load: the
@@ -1035,8 +1034,6 @@ extern "C" void LoadOverlay(int id)
             port_ov_retake(4);
             port_ov_retake(6);
         }
-        port_ov_post(4);
-        port_ov_post(6);
     }
 }
 /* func_02017e94's face MOVED (run link100, lane LOADOV) and did not retire: it
