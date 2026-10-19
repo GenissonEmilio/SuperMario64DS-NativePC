@@ -280,12 +280,10 @@ static void HostWakeLog(dActor_c *a, int updated)
     if (++total % 30000 == 0) {
         unsigned c = 0, u = 0;
         for (int i = 0; i < 1024; ++i) { c += calls[i]; u += upd[i]; }
-        fprintf(stderr, "[wake] pct %d: %u calls, %u thought (%.1f%%)
-", host_setting_draw_distance_pct(), c, u, c ? 100.0 * u / c : 0.0);
+        fprintf(stderr, "[wake] pct %d: %u calls, %u thought (%.1f%%)\n", host_setting_draw_distance_pct(), c, u, c ? 100.0 * u / c : 0.0);
         for (int i = 0; i < 1024; ++i)
             if (calls[i] && upd[i] != calls[i])
-                fprintf(stderr, "[wake]   id 0x%x: %u/%u thought
-", i, upd[i], calls[i]);
+                fprintf(stderr, "[wake]   id 0x%x: %u/%u thought\n", i, upd[i], calls[i]);
     }
 }
 #define HOST_WAKE(a, u) HostWakeLog(a, u)
