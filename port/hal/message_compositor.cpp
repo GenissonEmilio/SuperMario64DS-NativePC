@@ -727,6 +727,9 @@ void read_windows(uint32_t dispcnt, Windows &w) {
                 carry = w.rx1[i][y] > w.rx2[i][y] ? 1 : 0;
             }
         }
+        /* MGEXIT1: a one-screen recipe moves pieces of this screen, so a wipe cut into it would move with them (a star per piece); the
+           finished picture is cut once instead (ntr::wipe_cut_picture, from hal/menu_compose.cpp) */
+        if (ntr::wipe_suppressed()) { w.rows_on = false; w.any = false; }
     }
 }
 

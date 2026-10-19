@@ -6101,6 +6101,7 @@ static const int port_vs_lobby_mods_hook_seated =
  * row goes anyway. Measured on the Save and Quit route, the cover arrives
  * well inside it and the cap is never the thing that fires. */
 extern "C" unsigned short data_02092664;   /* Scene::SetSceneToSpawn's id */
+extern "C" unsigned char data_02092660;    /* MGEXIT1: its "already spawned" latch */
 enum { PORT_FRONT_END_FADE_CAP = 90 };
 
 static int port_front_end_quit_poll(int frame)
@@ -12355,6 +12356,37 @@ static void scene_host_present_frame(HWND hwnd, int stacked,
         }
     }
 
+    {   /* MGEXIT1 proof hook: SM64DS_PRESENT_SHOTS=<prefix>,<f0>,<f1>,<step>: the picture this call is about to present (stacked image, or the
+           one-screen / inset framebuffer) on every step-th scene-path frame of f0..f1, as <prefix>_<frame>.bmp. Off unless set. */
+        static int rng = -2, r0, r1, rs;
+        static char rpre[480];
+        static unsigned long fno;
+        if (rng == -2) {
+            rng = 0;
+            if (const char *e = getenv("SM64DS_PRESENT_SHOTS")) {
+                const char *c = strchr(e, ',');
+                if (c && (size_t)(c - e) < sizeof rpre && sscanf(c + 1, "%d,%d,%d", &r0, &r1, &rs) == 3 && rs > 0) {
+                    memcpy(rpre, e, (size_t)(c - e)); rpre[c - e] = 0; rng = 1;
+                }
+            }
+        }
+        const unsigned long f = fno++;
+        if (rng == 1 && (long)f >= r0 && (long)f <= r1 && ((long)f - r0) % rs == 0) {
+            char nm[512];
+            snprintf(nm, sizeof nm, "%s_%05lu.bmp", rpre, f);
+            if (stacked && stack_img) {
+                int w = 0, h = 0;
+                hal_sub_screen_stacked_size(&w, &h);
+                ntr::ppu_write_bmp_px(nm, stack_img, w, h);
+            } else {
+                const int w = ntr::active_w, h = ntr::active_h;
+                std::vector<uint32_t> tmp((size_t)w * h);
+                for (int y = 0; y < h; ++y)
+                    memcpy(&tmp[(size_t)y * w], &fb.px[0][0] + (size_t)y * ntr::SCREEN_W, (size_t)w * 4);
+                ntr::ppu_write_bmp_px(nm, tmp.data(), w, h);
+            }
+        }
+    }
     if (stacked && !rb_skip_render())
         stack_present_arm(stack_img, hwnd);
     ip_scene_present(stacked, stack_img, fb, host_ui);
@@ -12439,7 +12471,7 @@ static int scene_window_run(void)
        rather than invented here, and port_scene_begin's second ask is a no-op
        so the setter never reports a late write that is in fact correct. */
     port_scene_layout_propose();
-    const int stacked = hal_sub_screen_stacked();
+    int stacked = hal_sub_screen_stacked();
 
     HDC hdc = 0;
     HWND hwnd = host_window_open(
@@ -12525,7 +12557,21 @@ static int scene_window_run(void)
        accounts rather than one blurred one. */
     port_rom_frame_begin("scene loop");
     static XPad pad;
+    /* MGEXIT1: THE LAYOUT FOLLOWS THE SCENE THIS LOOP SPAWNS, the way the level-to-scene crossing's hook already does (hal/level_change.cpp).
+       The loop used to latch the first scene's layout for the whole session, so a minigame left to the Rec Room kept the minigame's two
+       stacked screens (the one-screen Rec Room came back as the DS's dual screen), and a Rec Room one-screen picture that spawned a minigame
+       drew it in the corner-inset shape. Once per scene, on the frame the old scene is gone and the next id is pending. */
+    unsigned layout_for = 0xffffu;
+    {
+        const int w0 = port_scene_env_want();
+        if (w0 >= 0) layout_for = (unsigned)w0;
+    }
     while (!quit) {
+        if (data_02092660 == 0 && data_02092664 != 0x187 && data_02092664 != layout_for) {
+            layout_for = data_02092664;
+            port_crossing_scene_layout((int)layout_for);
+            stacked = hal_sub_screen_stacked();
+        }
         /* THE FRAME'S OWN SPAN, the level loop's PH_FRAME exactly: the whole
            loop body with the pace excluded (run perf1). This path never
            measured itself, so F3 on the title screen and in every minigame

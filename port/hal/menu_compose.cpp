@@ -2125,6 +2125,7 @@ static void cost_window(const char *name, int variant, double us)
     }
 }
 
+extern "C" int port_wipe_cut_picture(uint32_t *dst, int w, int h, int stride);   /* ntr/ppu_sub.cpp */
 void hal_menu_present(uint32_t *dst, int w, int h, int stage)
 {
     MenuDecision &D = g_dd;
@@ -2230,6 +2231,9 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
         for (int i = 0; i < D.L.np; ++i) menu_piece_draw(&D.L, i, S, dst, w, h);
     }
     g_rep.enable = 0; g_rep.valid = 0;
+    /* MGEXIT1: the wipe (the minigames' star and circle) is cut into the finished picture once, about its centre; the two source screens were
+       not cut while this recipe is live (ntr::wipe_suppressed), because the recipe moves their pieces */
+    port_wipe_cut_picture(dst, w, h, g_dst_stride > 0 ? g_dst_stride : w);
     if (D.L.snap_save) snap_save(dst, w, h);
     menu_shot_maybe(dst, w, h, D.serial);
     /* HOVERBOX1: no port-made pulsing outline over a hovered or pad-focused hotspot (menu_highlight_paint is no longer called) */

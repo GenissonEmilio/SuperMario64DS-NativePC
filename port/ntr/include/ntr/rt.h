@@ -110,6 +110,11 @@ void rt_scanout_frame();
 // constant for the whole frame and the one-rectangle read is exact. engine 0 is
 // the main engine (0x04000040), 1 the sub engine (0x04001040).
 bool rt_window_rows(int engine, const uint32_t **rows);
+// MGEXIT1: while a one-screen menu recipe is live the per-line window rows are not applied to the two source screens (the recipe moves their pieces;
+// hal/menu_compose.cpp cuts the finished picture instead, ntr::wipe_cut_picture).
+void set_wipe_suppress(bool on);
+bool wipe_suppressed();
+bool wipe_cut_picture(uint32_t *dst, int w, int h, int stride);
 
 // The DS's power-on interrupt state (IME set, IE carrying VBlank). It stands
 // in for src/func_0201a054.c, the game's own IRQ init, which is in no slice.
