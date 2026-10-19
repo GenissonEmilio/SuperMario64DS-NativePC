@@ -631,7 +631,8 @@ int g_cc_pad_taken;
      InvertCameraY      true/false, the analog and free camera's up/down.
      CameraSensitivity  percent of the right stick's (and Q/E's) turn rate,
                         10..400, 100 = today. The DS camera steps a fixed
-                        0x400 per tick in the ROM, so it does not apply there.
+                        0x400 per tick in the ROM; the right stick there turns it by how
+                        far it is pushed (a full push at 100 is that step), scaled by this.
      MouseSensitivity   percent of the mouse look, 10..400, 100 = today.
    g_ctl_gen moves whenever any control or camera value changes (a set or a
    file reload), so the frame loop refreshes its copies on a counter compare. */
