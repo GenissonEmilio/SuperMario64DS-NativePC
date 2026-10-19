@@ -907,6 +907,8 @@ extern int data_0209f20c[], data_0209f294[], data_0209f2c4[];
    says which. Flat names: all four are unsigned char[4] host arrays
    (hal/auto_bss.cpp, hal/w8a_stage_storage.cpp). */
 extern "C" unsigned char data_0209f248[];  /* the pause sub-state that RAN */
+extern "C" short data_0209d48c[], data_0209d490[], data_0209d484[], data_0209d480[], data_0209d494[], data_0209d498[];
+extern "C" int data_0209d49c[], data_0209d478[];
 extern "C" unsigned char data_0209f1ec[];  /* the pause sub-state asked for */
 extern "C" unsigned char data_0209f22c[];  /* the whole-function cooldown */
 extern "C" unsigned char data_0209f2b4[];  /* how many menu buttons are up */
@@ -6837,6 +6839,44 @@ static void pause3_input(int pad_live, const XPad *pad)
     menu_pause_input(k, mv, fx, fy, md);
 }
 
+/* The debug menu's "warp to entrance" action (FORUM093). It MOVES the player
+   to the level's own entrance record, in the units the record stores (world
+   units, <<12 into the actor's fixed point); it is not a re-entry.
+   FORUM093: it also seats the record's AREA. An entrance can sit in a part of
+   the level other than the one shown (Hazy Maze Cave's entrance 0 is in area
+   0, the first door leads to another), and moving the player there without
+   showing that area left him in a void with nothing drawn and no room loaded.
+   A door does exactly this at the end of its swing (daDoor_c, the
+   player's mAreaId + ChangeArea), so the same two writes are made here, and
+   only when the area differs from the one shown (the same-area warp is
+   unchanged). */
+extern "C" int port_entrance_area(int i);
+extern "C" void ChangeArea(int areaID);
+static void menu_warp_to_entrance(int ent)
+{
+    int ex, ey, ez, eyaw;
+    if (!g_menu_host.player || !port_entrance_record(ent, &ex, &ey, &ez, &eyaw))
+        return;
+    *(int *)(g_menu_host.player + 0x5c) = ex << 12;
+    *(int *)(g_menu_host.player + 0x60) = ey << 12;
+    *(int *)(g_menu_host.player + 0x64) = ez << 12;
+    *(short *)(g_menu_host.player + 0x8e) = (short)eyaw;
+    *(int *)(g_menu_host.player + 0x98) = 0;   /* mHorzSpeed */
+    *(int *)(g_menu_host.player + 0xa4) = 0;
+    *(int *)(g_menu_host.player + 0xa8) = 0;   /* mVertSpeed */
+    *(int *)(g_menu_host.player + 0xac) = 0;
+    an_pivot_live = 0;        /* do not ease across a warp */
+    const int area = port_entrance_area(ent);
+    if (area >= 0 && area != (int)data_02092120 &&
+        !getenv("SM64DS_MENU_WARP_NOAREA")) {
+        *(signed char *)(g_menu_host.player + 0xcc) = (signed char)area;
+        ChangeArea(area);
+        fprintf(stderr, "[menu] warp: area %d shown (the entrance's own)\n",
+                area);
+    }
+    fprintf(stderr, "[menu] warp to entrance %d (%d, %d, %d)\n", ent, ex, ey, ez);
+}
+
 static void menu_input(int pad_live, const XPad *pad)
 {
     pause3_input(pad_live, pad);
@@ -7054,29 +7094,7 @@ static void menu_input(int pad_live, const XPad *pad)
                 if (n_ent > 0) {
                     /* left and right pick the entrance; enter warps */
                     if (edge & (1u << 5)) {
-                        int ex, ey, ez, eyaw;
-                        if (port_entrance_record(menu_entrance, &ex,
-                                                 &ey, &ez, &eyaw)) {
-                            /* the level's own record, in the units it
-                               stores: world units, so <<12 into the
-                               actor's fixed point. This MOVES him; it
-                               is not a re-entry, nothing about the
-                               level or the area is reloaded. */
-                            *(int *)(g_menu_host.player + 0x5c) = ex << 12;
-                            *(int *)(g_menu_host.player + 0x60) = ey << 12;
-                            *(int *)(g_menu_host.player + 0x64) = ez << 12;
-                            *(short *)(g_menu_host.player + 0x8e) = (short)eyaw;
-                            *(int *)(g_menu_host.player + 0x98) = 0;   /* mHorzSpeed */
-                            *(int *)(g_menu_host.player + 0xa4) = 0;
-                            *(int *)(g_menu_host.player + 0xa8) = 0;   /* mVertSpeed */
-                            *(int *)(g_menu_host.player + 0xac) = 0;
-                            an_pivot_live = 0;        /* do not ease
-                                                         across a warp */
-                            fprintf(stderr,
-                                    "[menu] warp to entrance %d "
-                                    "(%d, %d, %d)\n", menu_entrance,
-                                    ex, ey, ez);
-                        }
+                        menu_warp_to_entrance(menu_entrance);
                     } else if (dec) {
                         menu_entrance =
                             (menu_entrance + n_ent - 1) % n_ent;
@@ -17115,6 +17133,48 @@ int main(void)
                 if (port_title_select(mw_row)) {
                     menu_on = 0;
                     fprintf(stderr, "[menu] closed for the level handoff\n");
+                }
+            }
+
+            /* SM64DS_MENU_WARP_ENT=<entrance>@<frame>: the debug menu's
+               "warp to entrance" row, headless (menu_input reads no keys under
+               a selftest). Calls the row's own action, nothing else. */
+            {
+                static int mwe_ent = -2, mwe_frame;
+                if (mwe_ent == -2) {
+                    const char *e = getenv("SM64DS_MENU_WARP_ENT");
+                    mwe_ent = -1; mwe_frame = 0;
+                    if (e) {
+                        mwe_ent = atoi(e);
+                        const char *at = strchr(e, 64);
+                        mwe_frame = at ? atoi(at + 1) : 60;
+                    }
+                }
+                {   /* SM64DS_PLAYER_TRACE=<f0>-<f1>: one line a frame, the player's place and air flag */
+                    static int pt0 = -2, pt1;
+                    if (pt0 == -2) {
+                        const char *e = getenv("SM64DS_PLAYER_TRACE");
+                        pt0 = -1; pt1 = -1;
+                        if (e) { pt0 = atoi(e); const char *d = strchr(e, 45); pt1 = d ? atoi(d + 1) : pt0; }
+                    }
+                    if (pt0 >= 0 && frame >= pt0 && frame <= pt1)
+                        fprintf(stderr, "[ptrace] f%d pos (%d, %d, %d) air %d noctl %d state %p\n", frame,
+                                *(int *)(c + 0x5c) >> 12, *(int *)(c + 0x60) >> 12, *(int *)(c + 0x64) >> 12,
+                                (int)*(unsigned char *)(c + 0x6de), (int)*(unsigned char *)(c + 0x709), *(void **)(c + 0x370));
+                    if (pt0 >= 0 && frame >= pt0 && frame <= pt1) {
+                                                                        fprintf(stderr, "[ptrace]   pause sub-state %d stage %d bg2 (%d,%d) bg3 (%d,%d) sub0 (%d,%d) sub1 (%d,%d)\n",
+                                (int)data_0209f1ec[0], (int)data_0209f2c4[0], data_0209d49c[0], data_0209d478[0],
+                                data_0209d48c[0], data_0209d490[0], data_0209d494[0], data_0209d498[0], data_0209d484[0], data_0209d480[0]);
+                    }
+                }
+                if (mwe_ent >= 0 && (frame == mwe_frame + 50 || frame == mwe_frame + 400))
+                    fprintf(stderr, "[mwe] f%d player (%d, %d, %d) area %d mAreaId %d\n", frame,
+                            *(int *)(c + 0x5c) >> 12, *(int *)(c + 0x60) >> 12,
+                            *(int *)(c + 0x64) >> 12, (int)data_02092120,
+                            (int)*(signed char *)(c + 0xcc));
+                if (mwe_ent >= 0 && frame == mwe_frame) {
+                    g_menu_host.player = c;
+                    menu_warp_to_entrance(mwe_ent);
                 }
             }
 
