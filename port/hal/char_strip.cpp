@@ -21,6 +21,22 @@ int  hal_menu_starsel_up(void);
 int  hal_menu_enabled(int key);
 int  hal_menu_live(void);
 void host_menu_cursor_sound(void);
+unsigned int _ZN5Sound6Play2DEjj(unsigned int bank, unsigned int id);
+unsigned int func_02012790(unsigned int id);
+}
+
+/* SNDCAM1 (S4): the select sound and the voice a character gives when picked. The voice is the clip the ROM plays when that character is
+   unlocked: Mario / Luigi / Wario are the player bank's sounds 0xd9 / 0xda / 0xdb (the waves NCS_WAVE_SE_VOICE_MARIO 0, _LUIGI 9, _WARIO 7,
+   Player::St_* character change, src/game/player/Player.cpp: PlayBank0), Yoshi is system sound 0xd8 (NCS_WAVE_SE_VOICE_YOSSY_MG 8). */
+extern "C" void port_char_strip_pick_sound(int ch)
+{
+    func_02012790(0x12e);
+    switch (ch & 3) {
+    case 0: _ZN5Sound6Play2DEjj(0, 0xd9); break;
+    case 1: _ZN5Sound6Play2DEjj(0, 0xda); break;
+    case 2: _ZN5Sound6Play2DEjj(0, 0xdb); break;
+    default: func_02012790(0xd8); break;
+    }
 }
 
 namespace {
@@ -197,6 +213,7 @@ int activate(int i)
         return 0;
     }
     g_pick = g_slot[i].id;
+    port_char_strip_pick_sound(g_slot[i].base & 3);
     {   /* the star select's own life counter (its icon index, +0x116) follows the pick, as it does when the screen is entered as that character */
         unsigned char *o = (unsigned char *)port_scene_live_object();
         if (o) o[0x116] = (unsigned char)(g_slot[i].base & 3);

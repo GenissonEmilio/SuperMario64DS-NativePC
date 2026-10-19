@@ -136,6 +136,7 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
     unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
     *held = (unsigned short)(*held & ~confirm);
     if (tgt == TGT_TITLE) port_host_keys_clear(confirm);   /* MENUS093: the title reads the host key word too */
+    settings_page_set_source(tgt);
     settings_page_request();
     return 1;
 }
@@ -163,11 +164,11 @@ extern "C" int settings_page_hook_touch(unsigned char down, unsigned char sx, un
     if (tgt == TGT_PAUSE) {
         const unsigned st = data_0209f248;
         const unsigned y0 = st == 1 ? 0x70u : 0x68u;
-        if ((unsigned char)(sx - 8) < 0xf0 && (unsigned char)(sy - y0) < 0x20) { settings_page_request(); return 1; }
+        if ((unsigned char)(sx - 8) < 0xf0 && (unsigned char)(sy - y0) < 0x20) { settings_page_set_source(tgt); settings_page_request(); return 1; }
     } else {
         int x0, y0, x1, y1;
         wrench_box(&x0, &y0, &x1, &y1);
-        if (sx >= x0 && sx < x1 && sy >= y0 && sy < y1) { settings_page_request(); return 1; }
+        if (sx >= x0 && sx < x1 && sy >= y0 && sy < y1) { settings_page_set_source(tgt); settings_page_request(); return 1; }
     }
     return 0;
 }
