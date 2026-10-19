@@ -8741,6 +8741,11 @@ static void ip_live_sync(void)
    blend to offer (a snap), and then nothing was drawn. */
 static int g_ip_card_ok = -1;   /* SM64DS_INTERP_CARD=0 puts the processor's blend back (A/B on one binary) */
 static unsigned long long g_ip_card_pics, g_ip_cpu_pics;
+/* POLISH093 P3: a dialogue box that is OPENING (hal/message_compositor.cpp, port_tween_win): the picture between two ticks shows the box
+   only inside the window that far along. The tick's 2D is a snapshot, so the pixels of the box outside that window are the replayed 3D
+   instead. On the processor's blend only: a tick whose box is opening is composited on the processor (the card's compose cannot clip). */
+extern "C" int port_tween_win(double alpha, int outer[4], int inner[4]);
+static unsigned long long g_ip_tween_pics;
 static int ip_build(double alpha)
 {
     const long long t0 = ip_qpc();
@@ -8767,6 +8772,8 @@ static int ip_build(double alpha)
         if (ip_evy_t < 0) ip_evy_t = 0;
         if (ip_evy_t > 16) ip_evy_t = 16;
     }
+    int tw_outer[4] = {0, 0, 0, 0}, tw_inner[4] = {0, 0, 0, 0};
+    const int tw = port_tween_win(alpha, tw_outer, tw_inner);
     int card = 0;
     if (g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1)
         card = ntr::gx_card_interp_clear(o);
@@ -8781,7 +8788,7 @@ static int ip_build(double alpha)
             port_gpu_card_inter_fade(ip_evy_t, g_ip_fade_white);
         else
             port_gpu_card_inter_fade_off();
-        const int card_done = port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
+        const int card_done = !tw && port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
         port_gpu_card_inter_fade_off();
         if (card_done) {
             ntr::gx_card_retire2(&o);
@@ -8810,13 +8817,27 @@ static int ip_build(double alpha)
         ip_snap(g_ip_p5, *g_ip_level_fb);
     }
     ++g_ip_cpu_pics;
+    if (tw) ++g_ip_tween_pics;
     const unsigned char *ip_bm = (g_ip_fade_on && g_ip_fade_masked && g_ip_fade_cpumask)
                                      ? port_engine_a_bright_mask() : 0;
     if (g_ip_fade_on && g_ip_fade_masked && !ip_bm) {
         /* the fade only some pixels take, and the card could not composite this
            picture: the tick's own finished picture stands in for it */
-        for (int y = 0; y < ntr::active_h; ++y)
+        for (int y = 0; y < ntr::active_h; ++y) {
+            if (tw && y >= tw_outer[1] && y < tw_outer[3]) {
+                /* POLISH093 P3: an opening box on a tick with a masked fade: the tick's finished picture, except that the box's own
+                   pixels outside the window that far along are the replayed 3D (through the fade at this alpha) */
+                const int tw_mid = y >= tw_inner[1] && y < tw_inner[3];
+                const uint32_t *a = g_ip_p3->px[y], *c = g_ip_p2->px[y], *d = g_ip_p4->px[y];
+                uint32_t *row = o.px[y];
+                for (int x = 0; x < ntr::active_w; ++x) {
+                    const int cut = x >= tw_outer[0] && x < tw_outer[2] && !(tw_mid && x >= tw_inner[0] && x < tw_inner[2]) && a[x] != c[x];
+                    row[x] = cut ? (ip_evy_t ? ip_fade_px(row[x], ip_evy_t, g_ip_fade_white) : row[x]) : d[x];
+                }
+                continue;
+            }
             memcpy(o.px[y], g_ip_p4->px[y], ntr::active_w * sizeof(uint32_t));
+        }
     } else if (g_ip_fade_on) {
         /* run hunt8, lane FADEINTERP1: a CONSTANT engine A fade (the same
            coefficient on this tick and the one before). The tick's snapshots
@@ -8833,16 +8854,28 @@ static int ip_build(double alpha)
             uint32_t *row = o.px[y];
             const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
             const unsigned char *mr = ip_bm ? ip_bm + (size_t)y * ntr::SCREEN_W : 0;
+            const int tw_row = tw && y >= tw_outer[1] && y < tw_outer[3];
+            const int tw_mid = tw_row && y >= tw_inner[1] && y < tw_inner[3];
             for (int x = 0; x < ntr::active_w; ++x) {
                 const int take = mr ? mr[x] : 1;
                 const uint32_t pf = take ? ip_fade_px(a[x], evy, toWhite) : a[x];
-                row[x] = (pf != b[x]) ? b[x] : (take ? ip_fade_px(row[x], ip_evy_t, toWhite) : row[x]);
+                const int tw_cut = tw_row && x >= tw_outer[0] && x < tw_outer[2] &&
+                                   !(tw_mid && x >= tw_inner[0] && x < tw_inner[2]);
+                row[x] = (pf != b[x] && !tw_cut) ? b[x] : (take ? ip_fade_px(row[x], ip_evy_t, toWhite) : row[x]);
             }
         }
     } else {
         for (int y = 0; y < ntr::active_h; ++y) {
             uint32_t *row = o.px[y];
             const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
+            if (tw && y >= tw_outer[1] && y < tw_outer[3]) {
+                const int tw_mid = y >= tw_inner[1] && y < tw_inner[3];
+                for (int x = 0; x < ntr::active_w; ++x) {
+                    const int cut = x >= tw_outer[0] && x < tw_outer[2] && !(tw_mid && x >= tw_inner[0] && x < tw_inner[2]);
+                    if (a[x] != b[x] && !cut) row[x] = b[x];
+                }
+                continue;
+            }
             for (int x = 0; x < ntr::active_w; ++x)
                 if (a[x] != b[x]) row[x] = b[x];
         }
@@ -16213,8 +16246,12 @@ int main(void)
                 /* centre camera: the DS L button's bit (raw 0x0200 -> Ctrl
                    0x4000), KeyCamCenter / PadCamCenter / MouseCamCenter */
                 if (cb_c) btn |= 0x4000;
-                if (!cam_paused && stick_rx < -10000) cam_rot |= cam_bit_left;
-                if (!cam_paused && stick_rx > 10000) cam_rot |= cam_bit_right;
+                /* POLISH093 P4: the right stick is ANALOG here. It holds the rotate bit from the stick's own floor (fc_stick_rate's 8000, the
+                   analog rig's), and the turn per tick below follows how far it is pushed; the buttons keep the ROM's fixed step. */
+                const int ds_stick_rate = cam_paused ? 0 : fc_stick_rate(stick_rx, CAM_STEP);
+                const int ds_stick_only = !(cb_l_km || cb_r_km || cb_l_pad || cb_r_pad);
+                if (ds_stick_rate < 0) cam_rot |= cam_bit_left;
+                if (ds_stick_rate > 0) cam_rot |= cam_bit_right;
                 if (cb_l_pad) cam_rot |= cam_bit_left;
                 if (cb_r_pad) cam_rot |= cam_bit_right;
                 /* CAMPACK1 / CAMPACK2 / FIELDPLAY1: ZOOM in the DS camera is the ROM's own Look camera. The Look button (Ctrl 0x8000) walks the
@@ -16282,8 +16319,15 @@ int main(void)
                     const int cs = host_setting_camera_sensitivity();
                     const int dir = (cam_rot & cam_bit_right) ? (cam_bit_right == 0x100 ? 1 : -1)
                                   : (cam_rot & cam_bit_left) ? (cam_bit_left == 0x100 ? 1 : -1) : 0;
-                    if (cs != 100 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000))
-                        { g_ds_extra_turn = dir * (0x400 * (cs - 100) / 100); g_ds_cam = cam; }
+                    /* POLISH093 P4: pushed by the stick alone, the turn is the analog curve's rate at the Camera speed (a full push at 100
+                       percent is the ROM's own 0x400, as before); a button, Q or E turns the ROM's fixed step at the speed */
+                    int turn = 0x400 * cs / 100;
+                    if (ds_stick_only && ds_stick_rate) {
+                        const int r = ds_stick_rate < 0 ? -ds_stick_rate : ds_stick_rate;
+                        turn = (int)((long long)r * cs / 100);
+                    }
+                    if (turn != 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000))
+                        { g_ds_extra_turn = dir * (turn - 0x400); g_ds_cam = cam; }
                 }
                 /* orbit probe: hold one of func_02009e70's own rotate bits
                    from frame 20 -- the camera's heading and the angle it

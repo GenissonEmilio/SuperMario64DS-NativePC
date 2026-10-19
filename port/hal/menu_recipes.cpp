@@ -119,7 +119,7 @@ int  menu_lc2_rom_cursor(int dir, int *sel);
 void menu_lc2_facts(MenuFacts *f);
 
 const MenuRecipe g_menu_recipes[] = {
-    { "lc2",      menu_lc2_up, menu_lc2_build, menu_lc2_rom_cursor, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_ROM_CURSOR, 0, 4,
+    { "lc2",      menu_lc2_up, menu_lc2_build, menu_lc2_rom_cursor, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_ROM_CURSOR, 0, 8,
       menu_lc_pad_ok, menu_lc2_facts },
     { "lc",       menu_lc_up, menu_lc_build, menu_lc_rom_cursor, MENU_KEY_SAVE_MENU_ON_TOP, MENU_DRV_ROM_CURSOR, 0, 4,
       menu_lc_pad_ok },

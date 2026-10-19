@@ -8105,6 +8105,47 @@ void ip_build_groups(IpRec &r) {
     close();
 }
 
+
+/* POLISH093 P3: THE TEXTURE MATRIX BETWEEN TWO TICKS. A texture animation (the ROM's BTA: Goomboss's eyes, scrolling water, lava) rewrites the
+   texture matrix once a tick, and the pictures between two ticks used to keep tick N's: the texture ran a tick ahead of the geometry
+   and moved at 30 steps a second. When the group is paired and the two ticks' matrices are the same command with the same shape and every
+   word moved by less than a limit, the in-between picture takes the blend like any other matrix. A bigger move is a wrap or a jump to another
+   cell of an atlas, which a blend would sweep through, so that one stays tick N's. SM64DS_INTERP_TEXMTX=0 puts the old rule back;
+   SM64DS_INTERP_TEXMTX_MAX=<n> sets the limit (4.12 fixed units per word, default 0x6000 = 6.0: a slow scroll, not a hop between cells); SM64DS_INTERP_TEXLOG=1 prints what each
+   pair did, once. */
+int ip_texmtx_mode() {
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_INTERP_TEXMTX"); v = (e && e[0] == '0') ? 0 : 1; }
+    return v;
+}
+bool ip_tex_pair_ok(const IpEv &pe, const std::vector<uint32_t> &ppar, const IpEv &ce, const uint32_t *cp) {
+    if (!ip_texmtx_mode()) return false;
+    if (pe.kind != IPK_CMD || pe.cmd != ce.cmd || pe.np != ce.np) return false;
+    static long lim = -1;
+    static int log = -1;
+    if (lim < 0) {
+        const char *e = getenv("SM64DS_INTERP_TEXMTX_MAX");
+        lim = e ? strtol(e, 0, 0) : 0x6000;
+        log = getenv("SM64DS_INTERP_TEXLOG") ? 1 : 0;
+    }
+    long worst = 0;
+    for (int k = 0; k < ce.np; ++k) {
+        const long d = (long)(int32_t)cp[k] - (long)(int32_t)ppar[pe.off + k];
+        const long a = d < 0 ? -d : d;
+        if (a > worst) worst = a;
+    }
+    if (log && worst) {
+        static int n;
+        if (n++ < 3000) {
+            fprintf(stderr, "  [texmtx] cmd %02x np %d worst %.3f%s |", ce.cmd, ce.np, worst / 4096.0, worst > lim ? " HELD" : "");
+            for (int k = 0; k < ce.np; ++k)
+                fprintf(stderr, " %.2f>%.2f", (int32_t)ppar[pe.off + k] / 4096.0, (int32_t)cp[k] / 4096.0);
+            fprintf(stderr, "%c", 10);
+        }
+    }
+    return worst <= lim;
+}
+
 double ip_dist2(const IpGroup &a, const IpGroup &b) {
     const double dx = a.px - b.px, dy = a.py - b.py, dz = a.pz - b.pz;
     return dx * dx + dy * dy + dz * dz;
@@ -8580,7 +8621,7 @@ int gx_interp_begin(float alpha) {
                     }
                     pp = tmp;
                     ex_on = 1;
-                } else if (b >= 0 && e.mode != MTX_TEX) {
+                } else if (b >= 0 && (e.mode != MTX_TEX || ip_tex_pair_ok(P.ev[b], P.par, e, pp))) {
                     const IpEv &pe = P.ev[b];
                     const int n = e.np < pe.np ? e.np : pe.np;
                     for (int k = 0; k < e.np; ++k) {
