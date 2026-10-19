@@ -4616,6 +4616,9 @@ const char *wide_scene_name(void)
         std::snprintf(nm, sizeof nm, "scene_%d", sc);
         return nm;
     }
+    /* MGEXIT1 (M4): the minigames' two screens at a wide aspect: the top screen's margins held the 3D clear colour (a dark navy) and the
+       bottom screen's black, so a wide window showed dark blue edges on one screen only. Same edge fill as the classic menus. */
+    if (sc >= 100 || sc < 0) return "minigame";   /* a minigame's scene object is not the latched id (-1) */
     return 0;
 }
 
@@ -5740,4 +5743,4 @@ extern "C" int port_hud_slide_pinned(void)
     static int keep = -1;      /* SM64DS_HUD_SLIDE_KEEP=1: the ROM's slide again on this exe (before / after pictures) */
     if (keep < 0) { const char *e = getenv("SM64DS_HUD_SLIDE_KEEP"); keep = (e && *e && *e != '0') ? 1 : 0; }
     return (keep || hal_sub_screen_stacked()) ? 0 : 1;
-}
+}
