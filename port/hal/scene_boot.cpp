@@ -1003,28 +1003,40 @@ extern "C" { int overlay_60, overlay_98; }
    port_scene_mg_overlay_load runs both overlays' constructors in that order,
    so asking on ov006 alone is the DS's own sequence, once. */
 extern "C" void port_scene_mg_overlay_load(void);     /* hal/scene_mg.cpp */
-extern "C" void port_scene_mg_overlay_rearm(void);    /* hal/scene_mg.cpp */
+extern "C" void port_ov_retake(int ov);               /* hal/ov_reset.cpp */
 extern "C" int overlay_6;                             /* hal/boot_globals.cpp */
 extern "C" int port_ov_id_to_num(int id);             /* hal/ov_reset.cpp */
 extern "C" int port_ov_load(int ov);                  /* hal/ov_reset.cpp */
+extern "C" void port_ov_post(int ov);                 /* hal/ov_reset.cpp */
 /* OVLRESET1. The DS loads the overlay here, so this is where its objects go back
    to their start-up image (hal/ov_reset.cpp). The minigame overlays keep a
    one-time bring-up of the port's own (port_scene_mg_overlay_load: the
-   constructors and the seats after them); a restore wipes what that built, so
-   it is re-armed, and it then runs again below, as the DS runs the overlay's
-   static initialisers on every load. ov004 loads first, as func_0201a798 does. */
+   constructors and the state-table seats after them).
+   LOVESME2: THAT BRING-UP IS PART OF THE START-UP IMAGE. OVLRESET1 re-armed it
+   after a restore, so the constructors ran again over the zeroed objects, but
+   the seats (thirty of them, each behind a one-shot guard of its own: they
+   turn the DS code addresses a constructor writes into host bodies) did not,
+   and the second Loves Me called through a raw DS address (the soft lock
+   Tango logged: ov004 / ov006 "load #2", then a quarantined actor 390).
+   The first load of the pair is taken AFTER the bring-up instead
+   (port_ov_retake), so every later load puts back what the constructors and
+   the seats built, which is what the DS has after its own load and static
+   initialisers, and nothing re-runs. ov004 loads first, as func_0201a798 does. */
 extern "C" void LoadOverlay(int id)
 {
-    static int mg_restored;
+    static int mg_taken;
     const int num = port_ov_id_to_num(id);
-    const int restored = num >= 0 ? port_ov_load(num) : 0;
-    if (num == 4)
-        mg_restored = restored;
+    if (num >= 0)
+        port_ov_load(num);
     if (id == (int)(size_t)&overlay_6) {
-        if (restored || mg_restored)
-            port_scene_mg_overlay_rearm();
-        mg_restored = 0;
         port_scene_mg_overlay_load();
+        if (!mg_taken) {
+            mg_taken = 1;
+            port_ov_retake(4);
+            port_ov_retake(6);
+        }
+        port_ov_post(4);
+        port_ov_post(6);
     }
 }
 /* func_02017e94's face MOVED (run link100, lane LOADOV) and did not retire: it

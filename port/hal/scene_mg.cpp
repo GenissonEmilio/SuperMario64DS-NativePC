@@ -1020,13 +1020,6 @@ static void port_scene_mg_mounts(void)
     port_scene_mg_gc_seat();
 }
 
-/* OVLRESET1: ov004 / ov006 went back to their start-up image (hal/ov_reset.cpp),
-   which wipes what the next function built, so it must run again. */
-extern "C" void port_scene_mg_overlay_rearm(void)
-{
-    g_mg_overlay_done = 0;
-}
-
 extern "C" void port_scene_mg_overlay_load(void)
 {
     /* the guard is g_mg_overlay_done above, in the captured section */

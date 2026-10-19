@@ -224,6 +224,72 @@ extern "C" int port_ov_load(int ov)
     return mode() == 1;
 }
 
+
+/* LOVESME2. Take the overlay's start-up image again, from what the objects hold NOW. For an overlay whose
+   one-time bring-up (constructors, state-table seats) runs after its first load, so the image taken in
+   port_ov_load is the one from before it. Calling this once the bring-up is done makes every later restore put
+   the bring-up back with the rest, as the DS's own load plus static initialisers leaves the overlay. */
+extern "C" void port_ov_retake(int ov)
+{
+    if (mode() == 0 || ov < 0 || ov >= 128)
+        return;
+    Ov &o = g_ov[ov];
+    if (!o.seen)
+        return;
+    size_t tot = 0;
+    for (int i = 0; i < 2 + (int)o.nm; ++i) {
+        Range &r = i < 2 ? o.r[i] : o.m[i - 2];
+        if (r.n && r.snap) {
+            std::memcpy(r.snap, r.b, r.n);
+            tot += r.n;
+        }
+    }
+    if (logging())
+        std::fprintf(stderr, "[ovreset] ov%03d start-up image retaken after its bring-up, %zu bytes\n", ov, tot);
+}
+
+/* LOVESME2 diagnostic (SM64DS_OVL_RESET_POST=1): called after an overlay's one-time bring-up ran. The first call keeps
+   a copy of the overlay's restored ranges as they stand then; every later call prints where they differ from it. */
+extern "C" void port_ov_post(int ov)
+{
+    static const bool on = std::getenv("SM64DS_OVL_RESET_POST") != 0;
+    if (!on || ov < 0 || ov >= 128)
+        return;
+    Ov &o = g_ov[ov];
+    static unsigned char *post[128][2];
+    static unsigned visits[128];
+    ++visits[ov];
+    for (int i = 0; i < 2; ++i) {
+        Range &r = o.r[i];
+        if (!r.n)
+            continue;
+        if (!post[ov][i]) {
+            post[ov][i] = (unsigned char *)std::malloc(r.n);
+            std::memcpy(post[ov][i], r.b, r.n);
+            continue;
+        }
+        size_t diff = 0, runs = 0;
+        for (size_t k = 0; k < r.n; ++k) {
+            if (r.b[k] == post[ov][i][k])
+                continue;
+            size_t s = k;
+            while (k + 1 < r.n && r.b[k + 1] != post[ov][i][k + 1])
+                ++k;
+            diff += k - s + 1;
+            if (runs++ < 200) {
+                std::fprintf(stderr, "[ovpost] ov%03d visit %u %s +%zx..+%zx (%p) now", ov, visits[ov], i ? "dsstate" : "data", s, k, (const void *)(r.b + s));
+                for (size_t q = s; q <= k && q < s + 16; ++q)
+                    std::fprintf(stderr, " %02x", r.b[q]);
+                std::fprintf(stderr, ", first-visit");
+                for (size_t q = s; q <= k && q < s + 16; ++q)
+                    std::fprintf(stderr, " %02x", post[ov][i][q]);
+                std::fprintf(stderr, "\n");
+            }
+        }
+        std::fprintf(stderr, "[ovpost] ov%03d visit %u %s: %zu byte(s) differ from the first visit's post-bring-up image\n", ov, visits[ov], i ? "dsstate" : "data", diff);
+    }
+}
+
 /* LoadOrUnloadObjectOverlays' callback. */
 extern "C" void port_ov_load_cb(int id)
 {
