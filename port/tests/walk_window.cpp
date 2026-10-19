@@ -16107,8 +16107,12 @@ int main(void)
                 /* centre camera: the DS L button's bit (raw 0x0200 -> Ctrl
                    0x4000), KeyCamCenter / PadCamCenter / MouseCamCenter */
                 if (cb_c) btn |= 0x4000;
-                if (!cam_paused && stick_rx < -10000) cam_rot |= cam_bit_left;
-                if (!cam_paused && stick_rx > 10000) cam_rot |= cam_bit_right;
+                /* POLISH093 P4: the right stick is ANALOG here. It holds the rotate bit from the stick's own floor (fc_stick_rate's 8000, the
+                   analog rig's), and the turn per tick below follows how far it is pushed; the buttons keep the ROM's fixed step. */
+                const int ds_stick_rate = cam_paused ? 0 : fc_stick_rate(stick_rx, CAM_STEP);
+                const int ds_stick_only = !(cb_l_km || cb_r_km || cb_l_pad || cb_r_pad);
+                if (ds_stick_rate < 0) cam_rot |= cam_bit_left;
+                if (ds_stick_rate > 0) cam_rot |= cam_bit_right;
                 if (cb_l_pad) cam_rot |= cam_bit_left;
                 if (cb_r_pad) cam_rot |= cam_bit_right;
                 /* CAMPACK1 / CAMPACK2 / FIELDPLAY1: ZOOM in the DS camera is the ROM's own Look camera. The Look button (Ctrl 0x8000) walks the
@@ -16161,8 +16165,15 @@ int main(void)
                     const int cs = host_setting_camera_sensitivity();
                     const int dir = (cam_rot & cam_bit_right) ? (cam_bit_right == 0x100 ? 1 : -1)
                                   : (cam_rot & cam_bit_left) ? (cam_bit_left == 0x100 ? 1 : -1) : 0;
-                    if (cs != 100 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000))
-                        { g_ds_extra_turn = dir * (0x400 * (cs - 100) / 100); g_ds_cam = cam; }
+                    /* POLISH093 P4: pushed by the stick alone, the turn is the analog curve's rate at the Camera speed (a full push at 100
+                       percent is the ROM's own 0x400, as before); a button, Q or E turns the ROM's fixed step at the speed */
+                    int turn = 0x400 * cs / 100;
+                    if (ds_stick_only && ds_stick_rate) {
+                        const int r = ds_stick_rate < 0 ? -ds_stick_rate : ds_stick_rate;
+                        turn = (int)((long long)r * cs / 100);
+                    }
+                    if (turn != 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000))
+                        { g_ds_extra_turn = dir * (turn - 0x400); g_ds_cam = cam; }
                 }
                 /* orbit probe: hold one of func_02009e70's own rotate bits
                    from frame 20 -- the camera's heading and the angle it
