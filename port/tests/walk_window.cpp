@@ -6635,6 +6635,27 @@ static void sp_read_devices(SpInput &in, int pad_live, const XPad *pad)
     in.wheel = g_sp_wheel;
 }
 
+/* SNDCAM1 (S3): the ROM's own sounds for the page the port opens in place of the ROM's. Opening: the press sound of what was pressed, then a short
+   hold before the page comes up (the ROM holds a pressed plate data_0208ee44 << 3 ticks before it acts); closing: the sound of the page's back.
+   Pause Options plate: func_02012790 0x54 (src/game/stages/d_s_stage_methods.cpp, the plate's press) and 0x5d (the options page's back).
+   Title wrench: title sound index 0x14 and 0x17 (func_ov007_020bdeb0, measured on the ROM's own wrench press and its back button). */
+extern "C" void func_ov007_020bdeb0(int idx);
+extern "C" unsigned int func_02012790(unsigned int snd);
+static unsigned long long g_sp_wait_t0;
+static int g_sp_src;
+static void sp_open_sound(int src)
+{
+    if (src == 2) func_ov007_020bdeb0(0x14);
+    else if (src == 1) func_02012790(0x54);
+    fprintf(stderr, "[settings] open sound (%s)\n", src == 2 ? "title wrench 0x14" : "pause options 0x54");
+}
+static void sp_close_sound(int src)
+{
+    if (src == 2) func_ov007_020bdeb0(0x17);
+    else if (src == 1) func_02012790(0x5d);
+    fprintf(stderr, "[settings] close sound (%s)\n", src == 2 ? "title back 0x17" : "pause back 0x5d");
+}
+
 static int sp_frame(int pad_live, const XPad *pad)
 {
     if (settings_page_open() && !menu_on) settings_page_close();       /* something else took the pause away */
@@ -6643,9 +6664,17 @@ static int sp_frame(int pad_live, const XPad *pad)
         settings_page_idle_tick(g_sp_idle, ntr::active_w, ntr::active_h);
         const int at = settings_page_env_open_at();
         const int env = at >= 0 && !g_sp_env_done && g_sp_idle >= at;
-        if (!settings_page_pending() && !env) return 0;
+        if (!settings_page_pending() && !env) { g_sp_wait_t0 = 0; return 0; }
         if (env) g_sp_env_done = 1;
-        if (menu_on) { settings_page_clear_request(); return 0; }       /* the debug menu is up: no page */
+        if (menu_on) { settings_page_clear_request(); g_sp_wait_t0 = 0; return 0; }       /* the debug menu is up: no page */
+        if (!env) {
+            /* SNDCAM1 (S3): the press sound, then about a quarter second before the page comes up */
+            const unsigned long long now = GetTickCount64() + 1;
+            if (!g_sp_wait_t0) { g_sp_wait_t0 = now; sp_open_sound(settings_page_source()); }
+            if (now - g_sp_wait_t0 < 260) return 0;
+            g_sp_wait_t0 = 0;
+            g_sp_src = settings_page_source();
+        } else g_sp_src = 0;
         settings_page_open_now(env ? 2 : 0);
         menu_on = 1;
         g_sp_pf = 0;
@@ -6665,6 +6694,7 @@ static int sp_frame(int pad_live, const XPad *pad)
         if (g_key[HOST_KEY_SELECT] > 0 && g_key[HOST_KEY_SELECT] < 256) key_stale[g_key[HOST_KEY_SELECT]] = 1;
         if ((in.keys & SPK_BACK) && pad_live && (pad->buttons & 0x2000)) menu_b_swallow = 1;   /* the B that closed it is not a punch */
         fprintf(stderr, "[settings] page closed\n");
+        if (g_sp_src) { sp_close_sound(g_sp_src); g_sp_src = 0; }
     }
     return 1;
 }
@@ -6777,11 +6807,22 @@ static int starsel_finish_hook(int level, int entrance, int act)
 }
 static const int starsel_finish_seated = (port_starsel_finish_hook = starsel_finish_hook, 1);
 
+extern "C" void *port_scene_live_object(void);
 static void cs_frame(int pad_live, const XPad *pad)
 {
     g_cs_hide = 0;
     if (menu_on) return;
     if (!hal_menu_starsel_up()) { port_char_strip_idle(); return; }        /* nothing but a scene-id compare outside the star select */
+    {   /* SNDCAM1 (S4): the ROM's own caps row (Yoshi's three heads): the pick that starts the act as that character (+0x139 0 -> 2, +0x132 the
+           character) gives that character's voice and the select sound, as a pick on the strip does */
+        static unsigned char prev139;
+        const unsigned char *so = (const unsigned char *)port_scene_live_object();
+        if (so) {
+            const unsigned char now = so[0x139];
+            if (prev139 == 0 && now == 2 && so[0x132] < 4) { port_char_strip_pick_sound(so[0x132]); fprintf(stderr, "[starsel] caps row pick: character %d, select sound + voice\n", (int)so[0x132]); }
+            prev139 = now;
+        } else prev139 = 0;
+    }
     SpInput in;
     memset(&in, 0, sizeof in);
     sp_read_devices(in, pad_live, pad);
@@ -7999,6 +8040,24 @@ static void click_test_finish(void)
     }
 }
 #endif  /* !PORT_ROM_CLEAN: end of SM64DS_CLICK_TEST synthetic-stylus driver */
+
+/* SNDCAM1 (S2): what the ROM's own Look handler (func_ov002_020ca940) would do with a zoom press, asked before the press is made. */
+extern "C" unsigned int func_02012790(unsigned int snd);
+extern "C" unsigned char data_ov002_0211013c[], data_ov002_0211043c[], data_ov002_02110154[], data_ov002_0211064c[];
+static int snd_cam_closeup_ok(const char *pl)
+{
+    if (!pl) return 0;
+    const void *st = *(void *const *)(pl + 0x370);
+    if (st == (const void *)data_ov002_0211064c) return 1;
+    if (pl[0x703] != 0 || data_0209f2d8 == 1) return 0;          /* the mega / 2D cases skip the standing test */
+    return st == (const void *)data_ov002_0211013c || st == (const void *)data_ov002_0211043c || st == (const void *)data_ov002_02110154;
+}
+static int snd_cam_far_ok(const void *cam)
+{
+    const char *rec = *(char *const *)((const char *)cam + 0x140);
+    return !rec || !(*(const unsigned short *)(rec + 0x26) & 1);
+}
+static void snd_cam_buzz() { func_02012790(0xe); fprintf(stderr, "[camzoom] refused: the can't buzz\n"); }
 
 /* ---- THE DS KEYPAD BITS BOTH PATHS AGREE ON (port mod, run link60 SW1) ----
    Buttons -> the Ctrl held/pressed fields directly (CheckInput's remap tables
@@ -16190,12 +16249,27 @@ int main(void)
                         const unsigned cf = cam ? *(unsigned *)((char *)cam + 0x154) : 0;
                         if (*uf == undo_val && (undo_val == 1 || (cf & 2))) *uf = undo_was;
                     }
+                    /* SNDCAM1 (S2): a rung the ROM would refuse is not pressed: the "can't" buzz (func_02012790 0xe, the one Player's own Look
+                       handler plays) and nothing else. Close-up: the ROM enters it from the normal view only while the Player is in one of the three
+                       standing states (or the state 0x0211064c), and not in the 2D / mega cases that skip that test (func_ov002_020ca940, case 2).
+                       Far view: the camera area's own flag (cam +0x140 -> +0x26, bit 0) forbids it (func_0200d0ac: castle lobby, tight rooms);
+                       the ROM then fell through to the close-up on a standing Player, which is why Down did the same as Up. */
+                    const int can_close = uf && snd_cam_closeup_ok(c);
+                    const int can_far = uf && cam && snd_cam_far_ok(cam);
+                    if (uf && ((zi && !zi_prev) || (zo && !zo_prev)))
+                        fprintf(stderr, "[camzoom] %s press: rung %d, close-up ok %d, far view ok %d, state %p\n", (zi && !zi_prev) ? "in" : "out", (int)*uf, can_close, can_far, *(void **)(c + 0x370));
                     if (uf && zi && !zi_prev) {
-                        if (*uf == 0) { undo_was = 0; undo_val = 1; *uf = 1; undo_in = 4; press = 1; }       /* normal -> close-up */
+                        if (*uf == 0) {
+                            if (can_close) { undo_was = 0; undo_val = 1; *uf = 1; undo_in = 4; press = 1; }       /* normal -> close-up */
+                            else snd_cam_buzz();
+                        }
                         else if (*uf == 1) { undo_was = 1; undo_val = 2; *uf = 2; undo_in = 4; press = 1; } /* far view -> normal */
+                        else snd_cam_buzz();                     /* already the closest */
                     }
                     if (uf && zo && !zo_prev) {
-                        if (*uf == 2 || *uf == 0) press = 1;     /* close-up -> normal, normal -> far view */
+                        if (*uf == 2) press = 1;                 /* close-up -> normal */
+                        else if (*uf == 0) { if (can_far) press = 1; else snd_cam_buzz(); }   /* normal -> far view */
+                        else snd_cam_buzz();                     /* already the farthest */
                     }
                     if (press) btn |= 0x8000;
                     const int lk = (btn & 0x8000) != 0;

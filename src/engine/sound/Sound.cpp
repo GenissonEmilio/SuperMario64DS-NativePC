@@ -741,11 +741,13 @@ unsigned int PlayCharVoice(unsigned int a, unsigned int b, const Vector3 &v)
 }
 
 // @symbol func_02012120
-extern "C" void func_02012120(unsigned int p0, unsigned int p1, unsigned int p2,
+/* returns the handle PlayLong gave back (its callers keep it in the Player's looping sound field and pass it in again next frame):
+ * the ARM bytes are the same as the void form, a tail call leaves r0 alone */
+extern "C" int func_02012120(unsigned int p0, unsigned int p1, unsigned int p2,
                               const Vector3 *p3, short p4)
 {
     p2 += data_02075250[p1];
-    Sound::PlayLong(p0, 1, p2, *p3, p4);
+    return Sound::PlayLong(p0, 1, p2, *p3, p4);
 }
 
 namespace Sound {
