@@ -8126,8 +8126,7 @@ bool ip_tex_pair_ok(const IpEv &pe, const std::vector<uint32_t> &ppar, const IpE
     if (log && worst) {
         static int n;
         if (n++ < 400)
-            fprintf(stderr, "  [texmtx] cmd %02x np %d worst word move %ld (%.3f)%s
-", ce.cmd, ce.np, worst, worst / 4096.0,
+            fprintf(stderr, "  [texmtx] cmd %02x np %d worst word move %ld (%.3f)%s\n", ce.cmd, ce.np, worst, worst / 4096.0,
                     worst > lim ? "  -> held (over the limit)" : "");
     }
     return worst <= lim;
