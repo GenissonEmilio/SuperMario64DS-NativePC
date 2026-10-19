@@ -323,6 +323,7 @@
 #pragma comment(linker, "/alternatename:_port_go_vt_scene=__ZTV8dScene_c")
 
 extern "C" {
+void (*port_heap_report_hook)(const char *tag) = 0;   /* run LOVESME1: the window seats a heap-free report here */
 
 /* the spawn table and the two Scene entry points (matched arm9) */
 extern void **data_020a4bb8;                     /* hal/actor_vtables.cpp */
@@ -7934,6 +7935,7 @@ extern "C" void port_scene_tick(int frame, int tick_game)
                             want, spawned ? "SPAWNED" : "declined", frame,
                             (unsigned)data_020a4b4c,
                             data_020a4bb8 ? data_020a4bb8[want & 0x3f] : 0);
+                if (port_heap_report_hook) port_heap_report_hook("scene spawn");
                 std::fflush(stdout);
             }
         }

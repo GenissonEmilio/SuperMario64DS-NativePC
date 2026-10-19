@@ -596,6 +596,30 @@ extern void **data_020a4bb8;
 extern void *data_020a0eac_c;
 extern void *data_020a0ea0;
 extern void *data_020a0e9c;   /* Heap::rootHeap, read for the [heap] root lines only */
+extern "C" void (*port_heap_report_hook)(const char *tag);
+static void port_heap_report_fn(const char *tag)
+{
+    if (!data_020a0eac_c || !data_020a0e9c) return;
+    /* the address space too (the port is a 32-bit process): free total, the largest free block, committed bytes */
+    unsigned long long freeb = 0, big = 0, commit = 0;
+    {
+        MEMORY_BASIC_INFORMATION mbi;
+        SYSTEM_INFO si; GetSystemInfo(&si);
+        char *a = (char *)si.lpMinimumApplicationAddress;
+        char *e = (char *)si.lpMaximumApplicationAddress;
+        while (a < e && VirtualQuery(a, &mbi, sizeof mbi) == sizeof mbi) {
+            if (mbi.State == MEM_FREE) { freeb += mbi.RegionSize; if (mbi.RegionSize > big) big = mbi.RegionSize; }
+            else if (mbi.State == MEM_COMMIT) commit += mbi.RegionSize;
+            a = (char *)mbi.BaseAddress + mbi.RegionSize;
+            if (a <= (char *)mbi.BaseAddress) break;
+        }
+    }
+    fprintf(stderr, "[heap] %s: game heap %u free, root heap %u free; address space: %llu MB free in total, largest free block %llu MB, %llu MB committed\n", tag,
+            _ZN22ExpandingHeapAllocator10MemoryLeftEv(*(void **)((char *)data_020a0eac_c + 0x14)),
+            _ZN22ExpandingHeapAllocator10MemoryLeftEv(*(void **)((char *)data_020a0e9c + 0x14)),
+            freeb >> 20, big >> 20, commit >> 20);
+}
+static struct PortHeapSeat { PortHeapSeat() { port_heap_report_hook = port_heap_report_fn; } } g_port_heap_seat;
 void hal_fill_model_vtable(void);
 void hal_fill_shadow_vtable(void);
 void hal_fill_mmc_vtable(void);
