@@ -2447,9 +2447,20 @@ void exec(uint8_t cmd, const uint32_t *p, int np) {
                ending's 16:9 letterbox writes 32 and 175 and the cartridge
                puts the picture on rows 16..159, bars above and below. */
             const int x1 = p[0] & 0xFF;
-            const int y1 = (191 - ((p[0] >> 24) & 0xFF)) & 0xFF;
+            int y1 = (191 - ((p[0] >> 24) & 0xFF)) & 0xFF;
             const int x2 = (p[0] >> 16) & 0xFF;
-            const int y2 = (191 - ((p[0] >> 8) & 0xFF)) & 0xFF;
+            int y2 = (191 - ((p[0] >> 8) & 0xFF)) & 0xFF;
+            /* DRAWDIST2 (tester, 16:9: the bars around Peach's dialogue scene, the lower one is taller than the
+               upper). The cartridge puts the ending's picture on rows 16..159 and keeps rows 160..191 for the
+               subtitle, so the bars are 16 and 32 rows. On a picture wider than 4:3 the picture is centred
+               between equal bars instead (rows 24..167, 24 and 24); the subtitle box is translucent and keeps its
+               place over the lowest rows. At 4:3 nothing moves: the ROM's own rows. Only this exact rectangle
+               (full width, rows 16..159) is moved, so no other scene's viewport is touched. */
+            if (!menu_wide() && x1 == 0 && x2 == 255 && y1 == 16 && y2 == 159 &&
+                present_w() * 3 > present_h() * 4) {
+                y1 += 8;
+                y2 += 8;
+            }
             /* Scaled into the PRESENT rectangle and offset by its origin, so
                a game-issued full-screen viewport fills the picture the host is
                presenting rather than the whole wide buffer. present_* is the

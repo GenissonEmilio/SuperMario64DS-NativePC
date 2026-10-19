@@ -223,6 +223,74 @@ static void HostWidenDraw(dActor_c *a, int r, int thresh, Vector3 *camPos, int r
                     pct, (int)*(unsigned short *)((char *)a + 0xc), r, thresh, t2);
     }
 }
+
+/* HOST ONLY (settings.json DrawDistance, default 100 = the ROM, where this does nothing and the ROM's
+   update decision below runs byte for byte as before). Past 100 the ROM's clip distance that decides
+   whether an actor THINKS (flag 0x08 set while beyond it, and a Behavior that is skipped while that flag
+   is up) is scaled by the same factor as the draw distance, so a far enemy the player can now see walks
+   and attacks instead of standing frozen (tester: Chain Chomp in Bob-omb Battlefield). Returns the
+   clipper depth when the actor is inside the widened range (so the caller takes the ROM's own "in range"
+   branch), else 0x7fffffff. The side planes still decide, as in the ROM: an actor off to the side of or
+   behind the camera stays asleep. mFarDistance (the ROM's LOD and effect gate) is not scaled.
+   Actor classes listed in g_wake_skip keep the ROM range whatever the setting is; each has a reason. */
+static const unsigned short g_wake_skip[] = {
+    0   /* placeholder terminator: no class is excluded yet */
+};
+static int HostWakeSkipped(dActor_c *a)
+{
+    const unsigned short id = *(unsigned short *)((char *)a + 0xc);
+    for (int i = 0; g_wake_skip[i]; ++i)
+        if (g_wake_skip[i] == id)
+            return 1;
+    return 0;
+}
+static int HostWidenUpdate(dActor_c *a, int r, int thresh, Vector3 *camPos, int radius)
+{
+    const int pct = host_setting_draw_distance_pct();
+    if (pct <= 100 || HostWakeSkipped(a))
+        return 0x7fffffff;
+    long long t2 = (long long)thresh * pct / 100;
+    if (t2 > 0x3fffffff)
+        t2 = 0x3fffffff;
+    if (r == 0x7fffffff) {
+        struct ClipFar { int pad[0x54 / 4]; int farZ; };
+        ClipFar *c = (ClipFar *)&data_0209f43c;
+        const int saved = c->farZ;
+        long long f2 = (long long)saved * pct / 100;
+        if (f2 > 0x3fffffff)
+            f2 = 0x3fffffff;
+        c->farZ = (int)f2;
+        r = _ZN8dClipper13Func_020150E8ER7Vector35Fix12IiEPh(&data_0209f43c, camPos, radius, (u8 *)0);
+        c->farZ = saved;
+    }
+    return (r != 0x7fffffff && r <= t2) ? r : 0x7fffffff;
+}
+/* SM64DS_WAKE_LOG=1: per actor class, how many BeforeBehavior calls the ROM let think (proof rows for the widened update range). */
+static void HostWakeLog(dActor_c *a, int updated)
+{
+    static int on = -1;
+    if (on < 0) on = getenv("SM64DS_WAKE_LOG") ? 1 : 0;
+    if (!on)
+        return;
+    static unsigned calls[1024], upd[1024];
+    static unsigned total;
+    const unsigned id = *(unsigned short *)((char *)a + 0xc) & 1023;
+    ++calls[id];
+    upd[id] += updated;
+    if (++total % 30000 == 0) {
+        unsigned c = 0, u = 0;
+        for (int i = 0; i < 1024; ++i) { c += calls[i]; u += upd[i]; }
+        fprintf(stderr, "[wake] pct %d: %u calls, %u thought (%.1f%%)
+", host_setting_draw_distance_pct(), c, u, c ? 100.0 * u / c : 0.0);
+        for (int i = 0; i < 1024; ++i)
+            if (calls[i] && upd[i] != calls[i])
+                fprintf(stderr, "[wake]   id 0x%x: %u/%u thought
+", i, upd[i], calls[i]);
+    }
+}
+#define HOST_WAKE(a, u) HostWakeLog(a, u)
+#else
+#define HOST_WAKE(a, u) ((void)0)
 #endif
 int dActor_c::BeforeBehavior()
 {
@@ -240,8 +308,10 @@ int dActor_c::BeforeBehavior()
         mCamSpacePosX = 0x7fffffff;
         mCamSpacePosY = 0x7fffffff;
         mCamSpacePosZ = 0x7fffffff;
-        if (data_0209fc68 == 0 || (mFlags & 0x10000))
+        if (data_0209fc68 == 0 || (mFlags & 0x10000)) {
+            HOST_WAKE(this, 0);
             return 0;
+        }
     } else {
         if (mClipRadius != 0) {
             Vector3 tmp;
@@ -259,13 +329,24 @@ int dActor_c::BeforeBehavior()
             int thresh = mClipDistance;
             if (data_0209f274)
                 thresh <<= 1;
+#ifdef _MSC_VER
+            if (r > thresh) {
+                const int rw = HostWidenUpdate(this, r, thresh, (Vector3 *)&mCamSpacePosX, mClipRadius);
+                if (rw != 0x7fffffff) {
+                    r = rw;
+                    thresh = r;       /* inside the widened range: the ROM's in-range branch below */
+                }
+            }
+#endif
             if (r > thresh) {
                 mFlags |= 0x18;
 #ifdef _MSC_VER
                 HostWidenDraw(this, r, thresh, (Vector3 *)&mCamSpacePosX, mClipRadius);
 #endif
-                if (mFlags & 0x10000)
+                if (mFlags & 0x10000) {
+                    HOST_WAKE(this, 0);
                     return 0;
+                }
             } else {
                 u32 *p = &mFlags;
                 *p &= ~0x38;
@@ -284,9 +365,11 @@ int dActor_c::BeforeBehavior()
         if (data_0209fc68 != 0)
             goto do_copy;
     }
+    HOST_WAKE(this, 0);
     return 0;
 
 do_copy:
+    HOST_WAKE(this, 1);
     mPrevPosX = mPosX;
     mPrevPosY = mPosY;
     mPrevPosZ = mPosZ;
