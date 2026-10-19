@@ -3068,9 +3068,43 @@ extern "C" void port_frame_oam_upload(void);
 // Rasterise engine A's 2D layers into the DS 256x192 hit buffer, then composite
 // the covered pixels over the host 3D framebuffer (scaled by integer factor).
 // Called from walk_window right after gx_render and before the fade composite.
+/* ---- POLISH093 P3: THE DIALOGUE BOX OPENING, BETWEEN TWO TICKS ----------------------------------------------------------------
+   The box is BG3 shown through WIN0, and the ROM grows WIN0 a step every tick, so with SmoothMotion the pictures between two ticks showed
+   the box at tick N's size from the first. The tick keeps the window it composed with and the one before it; while the box is GROWING (the
+   last rectangle inside this one) a picture at `alpha` between them shows the box only inside the rectangle that far along. Both
+   rectangles come back in host pixels (the compose's own mapping of DS cells: a DS pixel is present_h / 192 host pixels, centred in a wide
+   picture), outer = this tick's, inner = the one at alpha. Not for a closing box (the picture of the larger rectangle does not exist) and
+   not for a wipe (per-line windows) or any other window use: the signature is BG3 revealed through WIN0 alone. 0 when there is nothing
+   to do. SM64DS_TWEEN_BOX=0 puts the old picture back. */
+namespace { struct TwWin { int valid, x1, x2, y1, y2; }; TwWin g_tw_cur, g_tw_prev; }
+extern "C" int port_tween_win(double alpha, int outer[4], int inner[4])
+{
+    static int off = -1;
+    if (off < 0) { const char *e = std::getenv("SM64DS_TWEEN_BOX"); off = (e && e[0] == '0') ? 1 : 0; }
+    if (off || !g_tw_cur.valid || !g_tw_prev.valid) return 0;
+    const TwWin &c = g_tw_cur, &p = g_tw_prev;
+    if (c.x1 == p.x1 && c.x2 == p.x2 && c.y1 == p.y1 && c.y2 == p.y2) return 0;
+    if (p.x1 < c.x1 || p.x2 > c.x2 || p.y1 < c.y1 || p.y2 > c.y2) return 0;   /* growing only */
+    if (c.x2 - c.x1 > 256 || c.y2 - c.y1 > 192 || p.x2 <= p.x1 || p.y2 <= p.y1) return 0;
+    if (alpha < 0) alpha = 0;
+    if (alpha > 1) alpha = 1;
+    const int ph = ntr::present_h();
+    const int half = (ntr::active_w - ds_col_x0(256)) / 2;
+    auto hx = [&](double x) { return half + (int)(x * ph / 192.0 + 0.5); };
+    auto hy = [&](double y) { return (int)(y * ph / 192.0 + 0.5); };
+    auto lerp = [&](int a, int b) { return a + (b - a) * alpha; };
+    outer[0] = hx(c.x1); outer[1] = hy(c.y1); outer[2] = hx(c.x2); outer[3] = hy(c.y2);
+    inner[0] = hx(lerp(p.x1, c.x1)); inner[1] = hy(lerp(p.y1, c.y1)); inner[2] = hx(lerp(p.x2, c.x2)); inner[3] = hy(lerp(p.y2, c.y2));
+    return 1;
+}
+
 extern "C" void port_message_composite_engine_a(void *fbp)
 {
     ntr::Framebuffer &fb = *reinterpret_cast<ntr::Framebuffer *>(fbp);
+    /* POLISH093 P3 (the text box opening between two ticks, see port_tween_win below): this tick's window record starts empty and the
+       last tick's becomes the previous one. Set where the box's window is read, further down. */
+    g_tw_prev = g_tw_cur;
+    g_tw_cur.valid = 0;
 
     /* THE LEVEL-CLEAR GLYPH OVERLAY'S ONE QUESTION FOR THE FRAME, asked here
        -- above every early return -- so that a frame this unit declines is a
@@ -3349,6 +3383,13 @@ extern "C" void port_message_composite_engine_a(void *fbp)
 
     Windows win;
     read_windows(dispcnt, win);
+    /* POLISH093 P3: the dialogue box's signature: BG3 on, revealed only through WIN0 (WININ0 lets BG3 in, WINOUT keeps it out), no
+       per-line window rows (a wipe). Its rectangle, in DS pixels, is what the box opens by. */
+    if (win.on[0] && !win.rows_on && bgs[3].enabled && (win.in[0] & 8u) && !(win.out & 8u)) {
+        g_tw_cur.valid = 1;
+        g_tw_cur.x1 = win.x1[0]; g_tw_cur.x2 = win.x2[0];
+        g_tw_cur.y1 = win.y1[0]; g_tw_cur.y2 = win.y2[0];
+    }
     /* the 3D layer is a layer like the others: WINOUT / WININ bit 0 gate it
        (see hide_3d_outside_windows) */
     /* TWODGPU1: on a tick the card holds, the card does this and the default

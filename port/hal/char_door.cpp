@@ -150,6 +150,9 @@ int door_hook(void *door, void *pl)
     char *d = (char *)door;
     char *p = (char *)pl;
     if (port_mods_multiplayer()) return 0;                         /* the ROM door, in every multiplayer path */
+    /* POLISH093: with no character mod enabled there is nothing to pick: the white door is the cartridge's own (its star on the
+       first pass, the door walked through after), with no unlock box and no picker */
+    if (port_char_count() == 0) return 0;
     if (!p || *(int *)(d + 8) != 0xd) return 0;
     const unsigned flags1 = *(unsigned *)(data_0209caa0 + 4);
     if (!(flags1 & (0x100u << 6))) {                               /* the ROM has not opened it yet: its key, its star */

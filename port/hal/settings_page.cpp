@@ -1103,6 +1103,9 @@ void activate(const Row &R, int col)
 
 extern "C" int settings_page_open(void) { return S.open; }
 extern "C" void settings_page_request(void) { S.pending = 1; S.hold_touch = 1; }
+static int g_request_src;
+extern "C" void settings_page_set_source(int src) { g_request_src = src; }
+extern "C" int settings_page_source(void) { return g_request_src; }
 extern "C" int settings_page_pending(void) { return S.pending; }
 extern "C" void settings_page_clear_request(void) { S.pending = 0; }
 extern "C" int settings_page_tab(void) { return S.tab; }

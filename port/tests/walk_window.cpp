@@ -907,6 +907,8 @@ extern int data_0209f20c[], data_0209f294[], data_0209f2c4[];
    says which. Flat names: all four are unsigned char[4] host arrays
    (hal/auto_bss.cpp, hal/w8a_stage_storage.cpp). */
 extern "C" unsigned char data_0209f248[];  /* the pause sub-state that RAN */
+extern "C" short data_0209d48c[], data_0209d490[], data_0209d484[], data_0209d480[], data_0209d494[], data_0209d498[];
+extern "C" int data_0209d49c[], data_0209d478[];
 extern "C" unsigned char data_0209f1ec[];  /* the pause sub-state asked for */
 extern "C" unsigned char data_0209f22c[];  /* the whole-function cooldown */
 extern "C" unsigned char data_0209f2b4[];  /* how many menu buttons are up */
@@ -6635,6 +6637,27 @@ static void sp_read_devices(SpInput &in, int pad_live, const XPad *pad)
     in.wheel = g_sp_wheel;
 }
 
+/* SNDCAM1 (S3): the ROM's own sounds for the page the port opens in place of the ROM's. Opening: the press sound of what was pressed, then a short
+   hold before the page comes up (the ROM holds a pressed plate data_0208ee44 << 3 ticks before it acts); closing: the sound of the page's back.
+   Pause Options plate: func_02012790 0x54 (src/game/stages/d_s_stage_methods.cpp, the plate's press) and 0x5d (the options page's back).
+   Title wrench: title sound index 0x14 and 0x17 (func_ov007_020bdeb0, measured on the ROM's own wrench press and its back button). */
+extern "C" void func_ov007_020bdeb0(int idx);
+extern "C" unsigned int func_02012790(unsigned int snd);
+static unsigned long long g_sp_wait_t0;
+static int g_sp_src;
+static void sp_open_sound(int src)
+{
+    if (src == 2) func_ov007_020bdeb0(0x14);
+    else if (src == 1) func_02012790(0x54);
+    fprintf(stderr, "[settings] open sound (%s)\n", src == 2 ? "title wrench 0x14" : "pause options 0x54");
+}
+static void sp_close_sound(int src)
+{
+    if (src == 2) func_ov007_020bdeb0(0x17);
+    else if (src == 1) func_02012790(0x5d);
+    fprintf(stderr, "[settings] close sound (%s)\n", src == 2 ? "title back 0x17" : "pause back 0x5d");
+}
+
 static int sp_frame(int pad_live, const XPad *pad)
 {
     if (settings_page_open() && !menu_on) settings_page_close();       /* something else took the pause away */
@@ -6643,9 +6666,17 @@ static int sp_frame(int pad_live, const XPad *pad)
         settings_page_idle_tick(g_sp_idle, ntr::active_w, ntr::active_h);
         const int at = settings_page_env_open_at();
         const int env = at >= 0 && !g_sp_env_done && g_sp_idle >= at;
-        if (!settings_page_pending() && !env) return 0;
+        if (!settings_page_pending() && !env) { g_sp_wait_t0 = 0; return 0; }
         if (env) g_sp_env_done = 1;
-        if (menu_on) { settings_page_clear_request(); return 0; }       /* the debug menu is up: no page */
+        if (menu_on) { settings_page_clear_request(); g_sp_wait_t0 = 0; return 0; }       /* the debug menu is up: no page */
+        if (!env) {
+            /* SNDCAM1 (S3): the press sound, then about a quarter second before the page comes up */
+            const unsigned long long now = GetTickCount64() + 1;
+            if (!g_sp_wait_t0) { g_sp_wait_t0 = now; sp_open_sound(settings_page_source()); }
+            if (now - g_sp_wait_t0 < 260) return 0;
+            g_sp_wait_t0 = 0;
+            g_sp_src = settings_page_source();
+        } else g_sp_src = 0;
         settings_page_open_now(env ? 2 : 0);
         menu_on = 1;
         g_sp_pf = 0;
@@ -6665,6 +6696,7 @@ static int sp_frame(int pad_live, const XPad *pad)
         if (g_key[HOST_KEY_SELECT] > 0 && g_key[HOST_KEY_SELECT] < 256) key_stale[g_key[HOST_KEY_SELECT]] = 1;
         if ((in.keys & SPK_BACK) && pad_live && (pad->buttons & 0x2000)) menu_b_swallow = 1;   /* the B that closed it is not a punch */
         fprintf(stderr, "[settings] page closed\n");
+        if (g_sp_src) { sp_close_sound(g_sp_src); g_sp_src = 0; }
     }
     return 1;
 }
@@ -6777,11 +6809,22 @@ static int starsel_finish_hook(int level, int entrance, int act)
 }
 static const int starsel_finish_seated = (port_starsel_finish_hook = starsel_finish_hook, 1);
 
+extern "C" void *port_scene_live_object(void);
 static void cs_frame(int pad_live, const XPad *pad)
 {
     g_cs_hide = 0;
     if (menu_on) return;
     if (!hal_menu_starsel_up()) { port_char_strip_idle(); return; }        /* nothing but a scene-id compare outside the star select */
+    {   /* SNDCAM1 (S4): the ROM's own caps row (Yoshi's three heads): the pick that starts the act as that character (+0x139 0 -> 2, +0x132 the
+           character) gives that character's voice and the select sound, as a pick on the strip does */
+        static unsigned char prev139;
+        const unsigned char *so = (const unsigned char *)port_scene_live_object();
+        if (so) {
+            const unsigned char now = so[0x139];
+            if (prev139 == 0 && now == 2 && so[0x132] < 4) { port_char_strip_pick_sound(so[0x132]); fprintf(stderr, "[starsel] caps row pick: character %d, select sound + voice\n", (int)so[0x132]); }
+            prev139 = now;
+        } else prev139 = 0;
+    }
     SpInput in;
     memset(&in, 0, sizeof in);
     sp_read_devices(in, pad_live, pad);
@@ -6836,6 +6879,44 @@ static void pause3_input(int pad_live, const XPad *pad)
     }
 #endif
     menu_pause_input(k, mv, fx, fy, md);
+}
+
+/* The debug menu's "warp to entrance" action (FORUM093). It MOVES the player
+   to the level's own entrance record, in the units the record stores (world
+   units, <<12 into the actor's fixed point); it is not a re-entry.
+   FORUM093: it also seats the record's AREA. An entrance can sit in a part of
+   the level other than the one shown (Hazy Maze Cave's entrance 0 is in area
+   0, the first door leads to another), and moving the player there without
+   showing that area left him in a void with nothing drawn and no room loaded.
+   A door does exactly this at the end of its swing (daDoor_c, the
+   player's mAreaId + ChangeArea), so the same two writes are made here, and
+   only when the area differs from the one shown (the same-area warp is
+   unchanged). */
+extern "C" int port_entrance_area(int i);
+extern "C" void ChangeArea(int areaID);
+static void menu_warp_to_entrance(int ent)
+{
+    int ex, ey, ez, eyaw;
+    if (!g_menu_host.player || !port_entrance_record(ent, &ex, &ey, &ez, &eyaw))
+        return;
+    *(int *)(g_menu_host.player + 0x5c) = ex << 12;
+    *(int *)(g_menu_host.player + 0x60) = ey << 12;
+    *(int *)(g_menu_host.player + 0x64) = ez << 12;
+    *(short *)(g_menu_host.player + 0x8e) = (short)eyaw;
+    *(int *)(g_menu_host.player + 0x98) = 0;   /* mHorzSpeed */
+    *(int *)(g_menu_host.player + 0xa4) = 0;
+    *(int *)(g_menu_host.player + 0xa8) = 0;   /* mVertSpeed */
+    *(int *)(g_menu_host.player + 0xac) = 0;
+    an_pivot_live = 0;        /* do not ease across a warp */
+    const int area = port_entrance_area(ent);
+    if (area >= 0 && area != (int)data_02092120 &&
+        !getenv("SM64DS_MENU_WARP_NOAREA")) {
+        *(signed char *)(g_menu_host.player + 0xcc) = (signed char)area;
+        ChangeArea(area);
+        fprintf(stderr, "[menu] warp: area %d shown (the entrance's own)\n",
+                area);
+    }
+    fprintf(stderr, "[menu] warp to entrance %d (%d, %d, %d)\n", ent, ex, ey, ez);
 }
 
 static void menu_input(int pad_live, const XPad *pad)
@@ -7055,29 +7136,7 @@ static void menu_input(int pad_live, const XPad *pad)
                 if (n_ent > 0) {
                     /* left and right pick the entrance; enter warps */
                     if (edge & (1u << 5)) {
-                        int ex, ey, ez, eyaw;
-                        if (port_entrance_record(menu_entrance, &ex,
-                                                 &ey, &ez, &eyaw)) {
-                            /* the level's own record, in the units it
-                               stores: world units, so <<12 into the
-                               actor's fixed point. This MOVES him; it
-                               is not a re-entry, nothing about the
-                               level or the area is reloaded. */
-                            *(int *)(g_menu_host.player + 0x5c) = ex << 12;
-                            *(int *)(g_menu_host.player + 0x60) = ey << 12;
-                            *(int *)(g_menu_host.player + 0x64) = ez << 12;
-                            *(short *)(g_menu_host.player + 0x8e) = (short)eyaw;
-                            *(int *)(g_menu_host.player + 0x98) = 0;   /* mHorzSpeed */
-                            *(int *)(g_menu_host.player + 0xa4) = 0;
-                            *(int *)(g_menu_host.player + 0xa8) = 0;   /* mVertSpeed */
-                            *(int *)(g_menu_host.player + 0xac) = 0;
-                            an_pivot_live = 0;        /* do not ease
-                                                         across a warp */
-                            fprintf(stderr,
-                                    "[menu] warp to entrance %d "
-                                    "(%d, %d, %d)\n", menu_entrance,
-                                    ex, ey, ez);
-                        }
+                        menu_warp_to_entrance(menu_entrance);
                     } else if (dec) {
                         menu_entrance =
                             (menu_entrance + n_ent - 1) % n_ent;
@@ -8000,6 +8059,24 @@ static void click_test_finish(void)
 }
 #endif  /* !PORT_ROM_CLEAN: end of SM64DS_CLICK_TEST synthetic-stylus driver */
 
+/* SNDCAM1 (S2): what the ROM's own Look handler (func_ov002_020ca940) would do with a zoom press, asked before the press is made. */
+extern "C" unsigned int func_02012790(unsigned int snd);
+extern "C" unsigned char data_ov002_0211013c[], data_ov002_0211043c[], data_ov002_02110154[], data_ov002_0211064c[];
+static int snd_cam_closeup_ok(const char *pl)
+{
+    if (!pl) return 0;
+    const void *st = *(void *const *)(pl + 0x370);
+    if (st == (const void *)data_ov002_0211064c) return 1;
+    if (pl[0x703] != 0 || data_0209f2d8 == 1) return 0;          /* the mega / 2D cases skip the standing test */
+    return st == (const void *)data_ov002_0211013c || st == (const void *)data_ov002_0211043c || st == (const void *)data_ov002_02110154;
+}
+static int snd_cam_far_ok(const void *cam)
+{
+    const char *rec = *(char *const *)((const char *)cam + 0x140);
+    return !rec || !(*(const unsigned short *)(rec + 0x26) & 1);
+}
+static void snd_cam_buzz() { func_02012790(0xe); fprintf(stderr, "[camzoom] refused: the can't buzz\n"); }
+
 /* ---- THE DS KEYPAD BITS BOTH PATHS AGREE ON (port mod, run link60 SW1) ----
    Buttons -> the Ctrl held/pressed fields directly (CheckInput's remap tables
    are ROM pointers with no host image). DS bits: 1 = A (punch), 2 = B (jump),
@@ -8682,6 +8759,11 @@ static void ip_live_sync(void)
    blend to offer (a snap), and then nothing was drawn. */
 static int g_ip_card_ok = -1;   /* SM64DS_INTERP_CARD=0 puts the processor's blend back (A/B on one binary) */
 static unsigned long long g_ip_card_pics, g_ip_cpu_pics;
+/* POLISH093 P3: a dialogue box that is OPENING (hal/message_compositor.cpp, port_tween_win): the picture between two ticks shows the box
+   only inside the window that far along. The tick's 2D is a snapshot, so the pixels of the box outside that window are the replayed 3D
+   instead. On the processor's blend only: a tick whose box is opening is composited on the processor (the card's compose cannot clip). */
+extern "C" int port_tween_win(double alpha, int outer[4], int inner[4]);
+static unsigned long long g_ip_tween_pics;
 static int ip_build(double alpha)
 {
     const long long t0 = ip_qpc();
@@ -8708,6 +8790,8 @@ static int ip_build(double alpha)
         if (ip_evy_t < 0) ip_evy_t = 0;
         if (ip_evy_t > 16) ip_evy_t = 16;
     }
+    int tw_outer[4] = {0, 0, 0, 0}, tw_inner[4] = {0, 0, 0, 0};
+    const int tw = port_tween_win(alpha, tw_outer, tw_inner);
     int card = 0;
     if (g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1)
         card = ntr::gx_card_interp_clear(o);
@@ -8722,7 +8806,7 @@ static int ip_build(double alpha)
             port_gpu_card_inter_fade(ip_evy_t, g_ip_fade_white);
         else
             port_gpu_card_inter_fade_off();
-        const int card_done = port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
+        const int card_done = !tw && port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
         port_gpu_card_inter_fade_off();
         if (card_done) {
             ntr::gx_card_retire2(&o);
@@ -8751,13 +8835,27 @@ static int ip_build(double alpha)
         ip_snap(g_ip_p5, *g_ip_level_fb);
     }
     ++g_ip_cpu_pics;
+    if (tw) ++g_ip_tween_pics;
     const unsigned char *ip_bm = (g_ip_fade_on && g_ip_fade_masked && g_ip_fade_cpumask)
                                      ? port_engine_a_bright_mask() : 0;
     if (g_ip_fade_on && g_ip_fade_masked && !ip_bm) {
         /* the fade only some pixels take, and the card could not composite this
            picture: the tick's own finished picture stands in for it */
-        for (int y = 0; y < ntr::active_h; ++y)
+        for (int y = 0; y < ntr::active_h; ++y) {
+            if (tw && y >= tw_outer[1] && y < tw_outer[3]) {
+                /* POLISH093 P3: an opening box on a tick with a masked fade: the tick's finished picture, except that the box's own
+                   pixels outside the window that far along are the replayed 3D (through the fade at this alpha) */
+                const int tw_mid = y >= tw_inner[1] && y < tw_inner[3];
+                const uint32_t *a = g_ip_p3->px[y], *c = g_ip_p2->px[y], *d = g_ip_p4->px[y];
+                uint32_t *row = o.px[y];
+                for (int x = 0; x < ntr::active_w; ++x) {
+                    const int cut = x >= tw_outer[0] && x < tw_outer[2] && !(tw_mid && x >= tw_inner[0] && x < tw_inner[2]) && a[x] != c[x];
+                    row[x] = cut ? (ip_evy_t ? ip_fade_px(row[x], ip_evy_t, g_ip_fade_white) : row[x]) : d[x];
+                }
+                continue;
+            }
             memcpy(o.px[y], g_ip_p4->px[y], ntr::active_w * sizeof(uint32_t));
+        }
     } else if (g_ip_fade_on) {
         /* run hunt8, lane FADEINTERP1: a CONSTANT engine A fade (the same
            coefficient on this tick and the one before). The tick's snapshots
@@ -8774,16 +8872,28 @@ static int ip_build(double alpha)
             uint32_t *row = o.px[y];
             const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
             const unsigned char *mr = ip_bm ? ip_bm + (size_t)y * ntr::SCREEN_W : 0;
+            const int tw_row = tw && y >= tw_outer[1] && y < tw_outer[3];
+            const int tw_mid = tw_row && y >= tw_inner[1] && y < tw_inner[3];
             for (int x = 0; x < ntr::active_w; ++x) {
                 const int take = mr ? mr[x] : 1;
                 const uint32_t pf = take ? ip_fade_px(a[x], evy, toWhite) : a[x];
-                row[x] = (pf != b[x]) ? b[x] : (take ? ip_fade_px(row[x], ip_evy_t, toWhite) : row[x]);
+                const int tw_cut = tw_row && x >= tw_outer[0] && x < tw_outer[2] &&
+                                   !(tw_mid && x >= tw_inner[0] && x < tw_inner[2]);
+                row[x] = (pf != b[x] && !tw_cut) ? b[x] : (take ? ip_fade_px(row[x], ip_evy_t, toWhite) : row[x]);
             }
         }
     } else {
         for (int y = 0; y < ntr::active_h; ++y) {
             uint32_t *row = o.px[y];
             const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
+            if (tw && y >= tw_outer[1] && y < tw_outer[3]) {
+                const int tw_mid = y >= tw_inner[1] && y < tw_inner[3];
+                for (int x = 0; x < ntr::active_w; ++x) {
+                    const int cut = x >= tw_outer[0] && x < tw_outer[2] && !(tw_mid && x >= tw_inner[0] && x < tw_inner[2]);
+                    if (a[x] != b[x] && !cut) row[x] = b[x];
+                }
+                continue;
+            }
             for (int x = 0; x < ntr::active_w; ++x)
                 if (a[x] != b[x]) row[x] = b[x];
         }
@@ -16154,8 +16264,12 @@ int main(void)
                 /* centre camera: the DS L button's bit (raw 0x0200 -> Ctrl
                    0x4000), KeyCamCenter / PadCamCenter / MouseCamCenter */
                 if (cb_c) btn |= 0x4000;
-                if (!cam_paused && stick_rx < -10000) cam_rot |= cam_bit_left;
-                if (!cam_paused && stick_rx > 10000) cam_rot |= cam_bit_right;
+                /* POLISH093 P4: the right stick is ANALOG here. It holds the rotate bit from the stick's own floor (fc_stick_rate's 8000, the
+                   analog rig's), and the turn per tick below follows how far it is pushed; the buttons keep the ROM's fixed step. */
+                const int ds_stick_rate = cam_paused ? 0 : fc_stick_rate(stick_rx, CAM_STEP);
+                const int ds_stick_only = !(cb_l_km || cb_r_km || cb_l_pad || cb_r_pad);
+                if (ds_stick_rate < 0) cam_rot |= cam_bit_left;
+                if (ds_stick_rate > 0) cam_rot |= cam_bit_right;
                 if (cb_l_pad) cam_rot |= cam_bit_left;
                 if (cb_r_pad) cam_rot |= cam_bit_right;
                 /* CAMPACK1 / CAMPACK2 / FIELDPLAY1: ZOOM in the DS camera is the ROM's own Look camera. The Look button (Ctrl 0x8000) walks the
@@ -16190,12 +16304,27 @@ int main(void)
                         const unsigned cf = cam ? *(unsigned *)((char *)cam + 0x154) : 0;
                         if (*uf == undo_val && (undo_val == 1 || (cf & 2))) *uf = undo_was;
                     }
+                    /* SNDCAM1 (S2): a rung the ROM would refuse is not pressed: the "can't" buzz (func_02012790 0xe, the one Player's own Look
+                       handler plays) and nothing else. Close-up: the ROM enters it from the normal view only while the Player is in one of the three
+                       standing states (or the state 0x0211064c), and not in the 2D / mega cases that skip that test (func_ov002_020ca940, case 2).
+                       Far view: the camera area's own flag (cam +0x140 -> +0x26, bit 0) forbids it (func_0200d0ac: castle lobby, tight rooms);
+                       the ROM then fell through to the close-up on a standing Player, which is why Down did the same as Up. */
+                    const int can_close = uf && snd_cam_closeup_ok(c);
+                    const int can_far = uf && cam && snd_cam_far_ok(cam);
+                    if (uf && ((zi && !zi_prev) || (zo && !zo_prev)))
+                        fprintf(stderr, "[camzoom] %s press: rung %d, close-up ok %d, far view ok %d, state %p\n", (zi && !zi_prev) ? "in" : "out", (int)*uf, can_close, can_far, *(void **)(c + 0x370));
                     if (uf && zi && !zi_prev) {
-                        if (*uf == 0) { undo_was = 0; undo_val = 1; *uf = 1; undo_in = 4; press = 1; }       /* normal -> close-up */
+                        if (*uf == 0) {
+                            if (can_close) { undo_was = 0; undo_val = 1; *uf = 1; undo_in = 4; press = 1; }       /* normal -> close-up */
+                            else snd_cam_buzz();
+                        }
                         else if (*uf == 1) { undo_was = 1; undo_val = 2; *uf = 2; undo_in = 4; press = 1; } /* far view -> normal */
+                        else snd_cam_buzz();                     /* already the closest */
                     }
                     if (uf && zo && !zo_prev) {
-                        if (*uf == 2 || *uf == 0) press = 1;     /* close-up -> normal, normal -> far view */
+                        if (*uf == 2) press = 1;                 /* close-up -> normal */
+                        else if (*uf == 0) { if (can_far) press = 1; else snd_cam_buzz(); }   /* normal -> far view */
+                        else snd_cam_buzz();                     /* already the farthest */
                     }
                     if (press) btn |= 0x8000;
                     const int lk = (btn & 0x8000) != 0;
@@ -16208,8 +16337,15 @@ int main(void)
                     const int cs = host_setting_camera_sensitivity();
                     const int dir = (cam_rot & cam_bit_right) ? (cam_bit_right == 0x100 ? 1 : -1)
                                   : (cam_rot & cam_bit_left) ? (cam_bit_left == 0x100 ? 1 : -1) : 0;
-                    if (cs != 100 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000))
-                        { g_ds_extra_turn = dir * (0x400 * (cs - 100) / 100); g_ds_cam = cam; }
+                    /* POLISH093 P4: pushed by the stick alone, the turn is the analog curve's rate at the Camera speed (a full push at 100
+                       percent is the ROM's own 0x400, as before); a button, Q or E turns the ROM's fixed step at the speed */
+                    int turn = 0x400 * cs / 100;
+                    if (ds_stick_only && ds_stick_rate) {
+                        const int r = ds_stick_rate < 0 ? -ds_stick_rate : ds_stick_rate;
+                        turn = (int)((long long)r * cs / 100);
+                    }
+                    if (turn != 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000))
+                        { g_ds_extra_turn = dir * (turn - 0x400); g_ds_cam = cam; }
                 }
                 /* orbit probe: hold one of func_02009e70's own rotate bits
                    from frame 20 -- the camera's heading and the angle it
@@ -17165,6 +17301,48 @@ int main(void)
                 }
             }
 
+            /* SM64DS_MENU_WARP_ENT=<entrance>@<frame>: the debug menu's
+               "warp to entrance" row, headless (menu_input reads no keys under
+               a selftest). Calls the row's own action, nothing else. */
+            {
+                static int mwe_ent = -2, mwe_frame;
+                if (mwe_ent == -2) {
+                    const char *e = getenv("SM64DS_MENU_WARP_ENT");
+                    mwe_ent = -1; mwe_frame = 0;
+                    if (e) {
+                        mwe_ent = atoi(e);
+                        const char *at = strchr(e, 64);
+                        mwe_frame = at ? atoi(at + 1) : 60;
+                    }
+                }
+                {   /* SM64DS_PLAYER_TRACE=<f0>-<f1>: one line a frame, the player's place and air flag */
+                    static int pt0 = -2, pt1;
+                    if (pt0 == -2) {
+                        const char *e = getenv("SM64DS_PLAYER_TRACE");
+                        pt0 = -1; pt1 = -1;
+                        if (e) { pt0 = atoi(e); const char *d = strchr(e, 45); pt1 = d ? atoi(d + 1) : pt0; }
+                    }
+                    if (pt0 >= 0 && frame >= pt0 && frame <= pt1)
+                        fprintf(stderr, "[ptrace] f%d pos (%d, %d, %d) air %d noctl %d state %p\n", frame,
+                                *(int *)(c + 0x5c) >> 12, *(int *)(c + 0x60) >> 12, *(int *)(c + 0x64) >> 12,
+                                (int)*(unsigned char *)(c + 0x6de), (int)*(unsigned char *)(c + 0x709), *(void **)(c + 0x370));
+                    if (pt0 >= 0 && frame >= pt0 && frame <= pt1) {
+                                                                        fprintf(stderr, "[ptrace]   pause sub-state %d stage %d bg2 (%d,%d) bg3 (%d,%d) sub0 (%d,%d) sub1 (%d,%d)\n",
+                                (int)data_0209f1ec[0], (int)data_0209f2c4[0], data_0209d49c[0], data_0209d478[0],
+                                data_0209d48c[0], data_0209d490[0], data_0209d494[0], data_0209d498[0], data_0209d484[0], data_0209d480[0]);
+                    }
+                }
+                if (mwe_ent >= 0 && (frame == mwe_frame + 50 || frame == mwe_frame + 400))
+                    fprintf(stderr, "[mwe] f%d player (%d, %d, %d) area %d mAreaId %d\n", frame,
+                            *(int *)(c + 0x5c) >> 12, *(int *)(c + 0x60) >> 12,
+                            *(int *)(c + 0x64) >> 12, (int)data_02092120,
+                            (int)*(signed char *)(c + 0xcc));
+                if (mwe_ent >= 0 && frame == mwe_frame) {
+                    g_menu_host.player = c;
+                    menu_warp_to_entrance(mwe_ent);
+                }
+            }
+
             /* SM64DS_SELFTEST_OOB=<frame>: the fell-out-of-the-world death,
                headless. At <frame> put the player into ST_DEAD_PIT
                (data_ov002_02110124) with mStateStep==1, which is the exact state
@@ -17463,6 +17641,22 @@ int main(void)
                     _ZN6Player16InitBalloonMarioEv(pl);
                     fprintf(stderr, "[balloonpoke] f%d player=%p\n", frame, (void *)pl);
                 }
+                {
+                    /* SM64DS_BALLOON_SPAWN=<frame>[,<param>]: a Power Flower on the player at that frame (lane BALLOON2) */
+                    static int bs_read, bs_frame = -1, bs_param;
+                    if (!bs_read) {
+                        const char *e = getenv("SM64DS_BALLOON_SPAWN");
+                        bs_read = 1;
+                        if (e) {
+                            bs_frame = atoi(e);
+                            const char *cm = strchr(e, ',');
+                            if (cm) bs_param = atoi(cm + 1);
+                        }
+                    }
+                    if (frame == bs_frame && pl) {
+                        port_debug_spawn(306, (unsigned)bs_param);
+                    }
+                }
                 if (bp_watch && frame == 30) {
                     int n = 0;
                     for (int *node = (int *)(size_t)data_020a4b78[0]; node; node = (int *)(size_t)node[1]) {
@@ -17486,7 +17680,12 @@ int main(void)
                         *(unsigned *)(pl + 8) = 0;   /* the character switched to Mario after the flowers spawned for Luigi */
                         fprintf(stderr, "[balloon] f%d player character set to Mario (param1 0)\n", frame);
                     }
-                    if (fl) {
+                    if (fl && getenv("SM64DS_BALLOON_PULL")) {
+                        /* the flower comes to the player instead: its collider follows its own position */
+                        *(int *)(fl + 0x5c) = *(int *)(pl + 0x5c);
+                        *(int *)(fl + 0x60) = *(int *)(pl + 0x60);
+                        *(int *)(fl + 0x64) = *(int *)(pl + 0x64);
+                    } else if (fl) {
                         *(int *)(pl + 0x5c) = *(int *)(fl + 0x5c);
                         *(int *)(pl + 0x60) = *(int *)(fl + 0x60);
                         *(int *)(pl + 0x64) = *(int *)(fl + 0x64);
@@ -17505,7 +17704,7 @@ int main(void)
                         if (!nf) { st0 = *(unsigned *)(o + 0x8c); tm0 = *(unsigned *)(o + 0x5c); fs0 = o; }
                         ++nf;
                     }
-                    fprintf(stderr, "[balloonflowers] f%d live=%d first(flags %08x x %d) player(%d,%d,%d) state %08x mState %d\n", frame, nf, st0, (int)tm0 >> 12, *(int *)(pl + 0x5c) >> 12, *(int *)(pl + 0x60) >> 12, *(int *)(pl + 0x64) >> 12, fs0 ? *(unsigned *)(fs0 + 0x8) : 0u, fs0 ? *(int *)(fs0 + 0x440) : -1);
+                    fprintf(stderr, "[balloonflowers] f%d live=%d first(flags %08x x %d) player(%d,%d,%d) state %08x mState %d\n", frame, nf, st0, (int)tm0 >> 12, *(int *)(pl + 0x5c) >> 12, *(int *)(pl + 0x60) >> 12, *(int *)(pl + 0x64) >> 12, fs0 ? *(unsigned *)(fs0 + 0x8) : 0u, fs0 ? *(int *)(fs0 + 0x3c0) : -1);
                 }
                 if (bp_watch && pl && frame % 60 == 0) {
                     const unsigned *w = (const unsigned *)(pl + 0xf0), *x = (const unsigned *)(pl + 0x174);

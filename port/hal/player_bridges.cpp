@@ -61,6 +61,23 @@ void _ZN6Player4HealEi(Player *p, int amt)
 unsigned int Player::GetBodyModelID(unsigned int a, bool b_) const
 { return _ZNK6Player14GetBodyModelIDEjb((char *)this, a, b_ ? 1 : 0); }      */
 
+/* BALLOON2: THE POWER-UP MODELS A CASTLE FLOOR NEVER BUILDS.
+   func_ov002_020e5948 (src/game/player/Player.cpp, the SetFiles arm) builds
+   the balloon models (+0xEC body, +0xF0 balloon, +0x174 wings) only when the
+   course is NOT 2, 4 or 5 (the castle floors) and the game is not VS. A Power
+   Flower still lies on the castle 2F (four persistent ones for Luigi's vanish
+   cap), and a Mario standing near one when it is picked up takes the Mario arm
+   of daObjPowerUpItem_c::CheckPickup: InitBalloonMario / InitWingFeathers turn
+   the flag on and Player::Behavior (func_ov002_020e4768 -> UpdateBones on the
+   body model the balloon selects) then reads the model that was never built
+   and faults at address 0x14. The DS never reaches that read in a retail
+   castle; the port can (a character switched after the course loaded, a second
+   player nearest), so the models are built here, once, with the very calls and
+   files the ROM's own arm makes for every other course, before the first
+   Behavior of a player that lacks them. A castle that never uses them draws
+   and runs exactly as before. The matrices the ROM seats later are untouched. */
+extern "C" { static void port_player_power_models(char *c); }
+
 extern "C" {
 /* gate-10 smoke drives the state machine directly (the ChangeState PMF
    dispatch reads DS-baked member-fn bytes MSVC cannot represent) */
@@ -75,7 +92,7 @@ int hal_player_st_walk_init(void *p)
 int hal_player_st_walk_main(void *p)
 { return ((Player *)p)->Player::St_Walk_Main(); }
 int hal_player_behavior(void *p)
-{ return ((Player *)p)->Player::Behavior(); }
+{ port_player_power_models((char *)p); return ((Player *)p)->Player::Behavior(); }
 /* the walk demo renders the Player's current body ModelAnim in place:
    identity model matrix, bones posed from the anim Behavior advanced */
 /* level model render for the window: identity world matrix (stage models
@@ -2228,6 +2245,35 @@ extern void *data_0209f394[];        /* per-player Actor*, cxxname_bridge's */
 extern short data_02092144[];        /* per-player health, high byte = HP */
 extern void *data_ov002_020ff480[];  /* ANIM_PTRS[anim*4 + char] */
 extern signed char data_02092114;    /* queued in-level swap, -1 = none */
+extern "C" void *_Znwj(unsigned);
+extern "C" void *_ZN10ModelAnim2C1Ev(void *);
+extern "C" void _ZN10ModelAnim213Func_020162C4Eji5Fix12IiEt(void *, unsigned, int, int, unsigned short);
+extern "C" void *_ZN5Model8LoadFileER13SharedFilePtr(void *ptr);
+extern "C" int _ZN9ModelBase7SetFileEP8BMD_Fileii(void *self, void *file, int a, int b);
+extern "C" int _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void *, void *, int, int, unsigned int);
+extern "C" char data_ov002_0210e780[], data_ov002_0210e6f8[], data_ov002_0210e7b0[];
+extern "C" int data_ov002_0210e750[], data_ov002_0210e4c0[];
+static void port_player_power_models(char *c)
+{
+    if (data_0209f2d8 == 1) return;                       /* VS builds its own */
+    { static int off = -1; if (off < 0) off = std::getenv("SM64DS_NO_POWER_MODELS") ? 1 : 0; if (off) return; }   /* test only: the must-fail row */
+    const int lv = (int)data_0209f2f8;
+    if (lv != 2 && lv != 4 && lv != 5) return;            /* every other course built them */
+    if (*(void **)(c + 0xEC) != 0) return;
+    void *p = _Znwj(0x78);
+    if (p) p = _ZN10ModelAnim2C1Ev(p);
+    *(void **)(c + 0xEC) = p;
+    if (!p) return;
+    *(unsigned char *)(c + 0x718) |= 0x20;
+    _ZN9ModelBase7SetFileEP8BMD_Fileii(p, _ZN5Model8LoadFileER13SharedFilePtr(data_ov002_0210e780), 1, -1);
+    _ZN10ModelAnim213Func_020162C4Eji5Fix12IiEt(p, (unsigned)((int *)data_ov002_020ff480[0xC6])[1], 0, 0x1000, 0);
+    _ZN9ModelBase7SetFileEP8BMD_Fileii(c + 0xF0, _ZN5Model8LoadFileER13SharedFilePtr(data_ov002_0210e6f8), 1, 1);
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xF0, (void *)(size_t)data_ov002_0210e750[1], 0, 0x1000, 0);
+    _ZN9ModelBase7SetFileEP8BMD_Fileii(c + 0x174, _ZN5Model8LoadFileER13SharedFilePtr(data_ov002_0210e7b0), 1, 1);
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0x174, (void *)(size_t)data_ov002_0210e4c0[1], 0, 0x1000, 0);
+    fprintf(stderr, "[balloon] Player %p: course %d builds no balloon / wing models; built them before the first Behavior\n", (void *)c, lv);
+}
+
 void _ZN10ModelAnim24CopyERKS_Pcj(void *self, const void *src, char *nf,
                                   unsigned nof);
 
