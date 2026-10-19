@@ -8100,7 +8100,7 @@ void ip_build_groups(IpRec &r) {
    and moved at 30 steps a second. When the group is paired and the two ticks' matrices are the same command with the same shape and every
    word moved by less than a limit, the in-between picture takes the blend like any other matrix. A bigger move is a wrap or a jump to another
    cell of an atlas, which a blend would sweep through, so that one stays tick N's. SM64DS_INTERP_TEXMTX=0 puts the old rule back;
-   SM64DS_INTERP_TEXMTX_MAX=<n> sets the limit (4.12 fixed units per word, default 0x2000 = 2.0); SM64DS_INTERP_TEXLOG=1 prints what each
+   SM64DS_INTERP_TEXMTX_MAX=<n> sets the limit (4.12 fixed units per word, default 0x6000 = 6.0: a slow scroll, not a hop between cells); SM64DS_INTERP_TEXLOG=1 prints what each
    pair did, once. */
 int ip_texmtx_mode() {
     static int v = -1;
@@ -8114,7 +8114,7 @@ bool ip_tex_pair_ok(const IpEv &pe, const std::vector<uint32_t> &ppar, const IpE
     static int log = -1;
     if (lim < 0) {
         const char *e = getenv("SM64DS_INTERP_TEXMTX_MAX");
-        lim = e ? strtol(e, 0, 0) : 0x2000;
+        lim = e ? strtol(e, 0, 0) : 0x6000;
         log = getenv("SM64DS_INTERP_TEXLOG") ? 1 : 0;
     }
     long worst = 0;
@@ -8488,16 +8488,6 @@ int gx_interp_commit(const int32_t view[12], int snap, GxInterpStats *st) {
         const IpRec *P2 = (g_ip_p >= 0 && g_ipr[g_ip_p].valid && !g_ipr[g_ip_p].snap &&
                            g_ipr[g_ip_p].tex_gen == r.tex_gen) ? &g_ipr[g_ip_p] : 0;
         if (P && !why) ip_match(r, *P, st, P2);
-        if (P && !why && getenv("SM64DS_INTERP_BINDLOG")) {   // POLISH093 probe: which texture binds changed since the last tick
-            size_t n = r.binds.size() < P->binds.size() ? r.binds.size() : P->binds.size();
-            int diff = 0;
-            for (size_t i = 0; i < n; ++i)
-                if (r.binds[i].teximage != P->binds[i].teximage || r.binds[i].plttbase != P->binds[i].plttbase || r.binds[i].rgba != P->binds[i].rgba) {
-                    if (diff < 6) fprintf(stderr, "  [bindlog] bind %zu: teximage %08x>%08x pltt %08x>%08x rgba %p>%p %dx%d%c", i, P->binds[i].teximage, r.binds[i].teximage, P->binds[i].plttbase, r.binds[i].plttbase, (const void *)P->binds[i].rgba, (const void *)r.binds[i].rgba, r.binds[i].w, r.binds[i].h, 10);
-                    ++diff;
-                }
-            fprintf(stderr, "  [bindlog] binds %zu/%zu, changed %d%c", r.binds.size(), P->binds.size(), diff, 10);
-        }
     }
     if (st) st->snap = why;
     /* rotate: N becomes N-1, the record just sealed becomes N, and the old

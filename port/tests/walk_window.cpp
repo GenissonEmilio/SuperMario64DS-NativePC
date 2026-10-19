@@ -8763,8 +8763,21 @@ static int ip_build(double alpha)
     if (g_ip_fade_on && g_ip_fade_masked && !ip_bm) {
         /* the fade only some pixels take, and the card could not composite this
            picture: the tick's own finished picture stands in for it */
-        for (int y = 0; y < ntr::active_h; ++y)
+        for (int y = 0; y < ntr::active_h; ++y) {
+            if (tw && y >= tw_outer[1] && y < tw_outer[3]) {
+                /* POLISH093 P3: an opening box on a tick with a masked fade: the tick's finished picture, except that the box's own
+                   pixels outside the window that far along are the replayed 3D (through the fade at this alpha) */
+                const int tw_mid = y >= tw_inner[1] && y < tw_inner[3];
+                const uint32_t *a = g_ip_p3->px[y], *c = g_ip_p2->px[y], *d = g_ip_p4->px[y];
+                uint32_t *row = o.px[y];
+                for (int x = 0; x < ntr::active_w; ++x) {
+                    const int cut = x >= tw_outer[0] && x < tw_outer[2] && !(tw_mid && x >= tw_inner[0] && x < tw_inner[2]) && a[x] != c[x];
+                    row[x] = cut ? (ip_evy_t ? ip_fade_px(row[x], ip_evy_t, g_ip_fade_white) : row[x]) : d[x];
+                }
+                continue;
+            }
             memcpy(o.px[y], g_ip_p4->px[y], ntr::active_w * sizeof(uint32_t));
+        }
     } else if (g_ip_fade_on) {
         /* run hunt8, lane FADEINTERP1: a CONSTANT engine A fade (the same
            coefficient on this tick and the one before). The tick's snapshots
