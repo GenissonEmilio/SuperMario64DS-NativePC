@@ -3182,6 +3182,13 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        wrote, and the beat writes DISPCNT, BGxCNT and OAM. The engine B half
        of the tail reads the same verdict inside hal_sub_screen_present. */
     const bool run_tail = port_graph_block_beat() != 0;
+    /* DRAWFLASH1: A VRAM BANK'S NEW MAPPING IS THIS FRAME'S, so the captured block is in its window before anything below reads it.
+       The beat above is the ROM's VBlank work: it programs VRAMCNT together with DISPCNT / BGxCNT, and on the DS the bank shows through its
+       new mapping from the frame's first scanline, as BG3's direct-colour bitmap does. The move of the captured block into that window
+       lived only in hal_sub_screen_present, after this compose, so for one picture BG3's held-face bitmap was read out of a window still
+       holding the previous capture (the title's drawing page entered a second time: the earlier face, half overwritten, over the page).
+       The same publish, now in the DS's order; the later call finds nothing left to do. */
+    ntr::ppu_vram_publish();
     /* func_02019144 LINES 44-45, THE OAM UPLOAD, and it belongs HERE.
        The ROM's order is slot-2 beat, OAM::Flush, OAM::Load, and only then the
        two layer publishes -- all of it in VBlank, so the frame it configures is
