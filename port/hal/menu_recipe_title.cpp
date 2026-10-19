@@ -1674,6 +1674,32 @@ int title_cursor_snd()
     int top, elem, req;
     if (!data_ov007_02103360 || !data_ov007_0210342c || !port_title_page_state(&top, &elem, &req)) return 0;
     if (g_up_stamp < 0 || data_ov007_0210342c[0] - g_up_stamp > 2 || g_up_stamp - data_ov007_0210342c[0] > 2) return 0;
+    /* SNDCAM1 (S1): a hover that moves nothing makes no sound. A file is already chosen (the file machine's leaving states 11 / 12), or the
+       main page has taken a choice (req != -1): the screen is on its way out and nothing under the mouse is a new selection. And when the
+       ROM's own cursor (the orange arrow on the file pages, the lit plank on the main page) already is on the element the mouse landed on,
+       there is nothing to announce: the same test title_cursor_assist uses before it writes the hover into the cursor. */
+    if (elem == 5 && (top == 11 || top == 12)) return 1;
+    if (req != -1) return 1;
+    int q0dbg0 = -2, q0dbg1 = -2;
+    {
+        short *q0 = *(short **)data_ov007_02103360;
+        int hx, hy;
+        unsigned st;
+        if (q0) { q0dbg0 = q0[0]; q0dbg1 = q0[1]; }
+        if (q0 && hal_menu_hover_box(&hx, &hy, &st)) {
+            int slot[24], ids[24], x0[24], y0[24], x1[24], y1[24];
+            const int n = port_title_elem_boxes(slot, ids, x0, y0, x1, y1, 24);
+            for (int k = 0; k < n; ++k) {
+                if (x0[k] != hx || y0[k] != hy || !port_title_elem_live(slot[k])) continue;
+                if (q0[0] == ids[k] || q0[1] == ids[k]) {
+                    if (hal_menu_trace_on()) fprintf(stderr, "[menu] hover on element %d: the ROM cursor is already there, no sound\n", ids[k]);
+                    return 1;
+                }
+                break;
+            }
+        }
+    }
+    if (hal_menu_trace_on()) fprintf(stderr, "[menu] hover sound: page %d/%d, cursor %d -> %d\n", top, elem, q0dbg0, q0dbg1);
     func_ov007_020bdeb0((*(int *)(data_ov007_02103360 + 8) != 2) ? 4 : 5);
     return 1;
 }

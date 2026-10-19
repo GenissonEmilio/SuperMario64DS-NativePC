@@ -3875,17 +3875,29 @@ extern "C" void hal_menu_pad_seam(void)
        resting on a plate does not keep overriding the pad. */
     {
         static LONG last_x = -1, last_y = -1;
-        static int env_read, env_on, env_at, calls;
+        static int env_read, env_on, env_at, calls, env_n;
         static POINT env_pt;
+        struct HvStep { POINT pt; int at; };
+        static HvStep env_steps[16];
         ++calls;
 #ifndef PORT_ROM_CLEAN      /* the scripted pointer is a proof arm: not in the shipped build */
         if (!env_read) {
             env_read = 1;
             const char *e = getenv("SM64DS_MENU_HOVER_AT");
-            if (e && sscanf(e, "%ld,%ld@%d", &env_pt.x, &env_pt.y, &env_at) >= 2) env_on = 1;
+            /* SNDCAM1: several steps "x,y@N;x,y@N;...": the pointer stands at each point from the Nth live frame on, the last one reached wins */
+            while (e && *e && env_n < 16) {
+                long hx = 0, hy = 0; int hn = 0;
+                if (sscanf(e, "%ld,%ld@%d", &hx, &hy, &hn) >= 2) { env_steps[env_n].pt.x = hx; env_steps[env_n].pt.y = hy; env_steps[env_n].at = hn; ++env_n; env_on = 1; }
+                while (*e && *e != ';') ++e;
+                if (*e == ';') ++e;
+            }
+        }
+        if (env_on) {
+            env_at = env_steps[0].at; env_pt = env_steps[0].pt;
+            for (int hi = 0; hi < env_n; ++hi) if (calls >= env_steps[hi].at) { env_pt = env_steps[hi].pt; env_at = env_steps[hi].at; }
         }
 #else
-        (void)env_read; (void)env_at;
+        (void)env_read; (void)env_at; (void)env_n; (void)env_steps;
 #endif
         POINT p;
         int got = 0;
@@ -3895,7 +3907,10 @@ extern "C" void hal_menu_pad_seam(void)
         if (got && (p.x != last_x || p.y != last_y)) {
             last_x = p.x; last_y = p.y;
             int hbx = -1, hby = -1;
-            if (env_on) hal_menu_hover((int)p.x, (int)p.y);          /* the scripted point is already a picture pixel */
+            if (env_on) {
+                const int hr = hal_menu_hover((int)p.x, (int)p.y);          /* the scripted point is already a picture pixel */
+                if (hal_menu_trace_on()) fprintf(stderr, "[hover-script] call %d: pointer (%ld,%ld) -> %s\n", calls, p.x, p.y, hr ? "on a hotspot" : "on none");
+            }
             else if (hal_present_client_to_fb((int)p.x, (int)p.y, &hbx, &hby)) hal_menu_hover(hbx, hby);
         }
     }
