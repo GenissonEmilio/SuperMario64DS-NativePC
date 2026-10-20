@@ -10552,7 +10552,7 @@ static void setlive_test_apply(int frame, int *pad_live, XPad *pad)
     static int trace, exit_at = -1;
     if (!init) {
         init = 1;
-        if (g_selftest) return;
+        if (g_selftest && !getenv("SM64DS_SETLIVE_IN_SELFTEST")) return;
         e_pad = getenv("SM64DS_SETLIVE_PAD");
         e_mouse = getenv("SM64DS_SETLIVE_MOUSE");
         e_set = getenv("SM64DS_SETLIVE_SET");
@@ -10560,7 +10560,7 @@ static void setlive_test_apply(int frame, int *pad_live, XPad *pad)
         const char *x = getenv("SM64DS_SETLIVE_EXIT");
         if (x) exit_at = atoi(x);
     }
-    if (g_selftest) return;
+    if (g_selftest && !getenv("SM64DS_SETLIVE_IN_SELFTEST")) return;
     if (!e_pad && !e_mouse && !e_set && !trace && exit_at < 0) return;
     if (e_set) {
         const char *p = e_set;
