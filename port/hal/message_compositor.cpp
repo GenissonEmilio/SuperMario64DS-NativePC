@@ -3409,7 +3409,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
         if (up_off < 0) { const char *e = std::getenv("SM64DS_SUBTITLE_UP"); up_off = (e && e[0] == '0') ? 1 : 0; }
         if (!up_off && ntr::gx_ending_viewport_shifted() && win.y2[0] > 168) {
             const int S = win.y2[0] - 168 + 4;   /* 4 rows of air under the last line */
-            win.y1[0] -= S; win.y2[0] -= S;
+            win.y1[0] -= S; win.y2[0] -= S - 2;   /* two rows of window under the last line: the glyphs' lowest row sits on the ROM window's last row */
             bgs[3].vofs = (bgs[3].vofs + S) & 0x1FF;
             g_tw_cur.y1 = win.y1[0]; g_tw_cur.y2 = win.y2[0];
         }
