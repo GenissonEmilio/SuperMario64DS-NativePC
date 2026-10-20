@@ -386,6 +386,10 @@ int       g_cp_mask_stride, g_cp_shown3d, g_cp_clear_opaque;
 ID3D11Texture2D          *g_ov_tex, *g_comp_tex, *g_comp_stage, *g_bm_tex;
 bool                     g_comp_valid;   /* g_comp_tex holds a finished composite (run hunt8, CARDSM1) */
 ID3D11ShaderResourceView *g_ov_srv, *g_comp_srv, *g_bm_srv;
+/* TEXTBOX2: an overlay of zeros (no 2D anywhere), same size as the overlay; and the ring a picture between two ticks cuts the 2D out of (an opening dialogue box) */
+ID3D11Texture2D          *g_zov_tex;
+ID3D11ShaderResourceView *g_zov_srv;
+int                       g_cut_on, g_cut_o[4], g_cut_i[4];
 ID3D11RenderTargetView   *g_comp_rtv;
 /* run hunt8, lane GPUINTERP1: the composite of a picture BETWEEN two ticks has
    a target of its own, so the tick's composite (g_comp_tex) stays whole for the
@@ -818,6 +822,8 @@ void release_targets()
 {
     g_cp_held = false;                 /* the targets the frame lived in are gone */
     if (g_ov_srv) { g_ov_srv->Release(); g_ov_srv = 0; }
+    if (g_zov_srv) { g_zov_srv->Release(); g_zov_srv = 0; }
+    if (g_zov_tex) { g_zov_tex->Release(); g_zov_tex = 0; }
     if (g_ov_tex) { g_ov_tex->Release(); g_ov_tex = 0; }
     if (g_bm_srv) { g_bm_srv->Release(); g_bm_srv = 0; }
     if (g_bm_tex) { g_bm_tex->Release(); g_bm_tex = 0; }
@@ -3524,6 +3530,17 @@ bool cp_ensure(int w, int h)
     if (FAILED(hr)) { cp_give_up("no overlay texture view", hr); return false; }
     hr = g_dev->CreateRenderTargetView(g_ov_tex, 0, &g_ov_rtv);
     if (FAILED(hr)) { cp_give_up("no overlay texture target", hr); return false; }
+    {   /* TEXTBOX2: the zero overlay (immutable, all zero words: no 2D) */
+        static std::vector<uint32_t> zeros;
+        zeros.assign((size_t)w * (size_t)h, 0u);
+        D3D11_TEXTURE2D_DESC zd = d;
+        zd.Usage = D3D11_USAGE_IMMUTABLE;
+        zd.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        D3D11_SUBRESOURCE_DATA zi;
+        zi.pSysMem = &zeros[0]; zi.SysMemPitch = (UINT)w * 4u; zi.SysMemSlicePitch = 0;
+        if (SUCCEEDED(g_dev->CreateTexture2D(&zd, &zi, &g_zov_tex)))
+            g_dev->CreateShaderResourceView(g_zov_tex, 0, &g_zov_srv);
+    }
     d.Format = DXGI_FORMAT_R8_UINT;
     d.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
     hr = g_dev->CreateTexture2D(&d, 0, &g_bm_tex);
@@ -3790,6 +3807,28 @@ void *cp_compose_inter(const uint32_t *overlay, int stride_px)
                                           (g_lay_live && g_lay_two) ? g_lay2_srv : 0 };
     g_ctx->PSSetShaderResources(0, 6, srvs);
     g_ctx->Draw(3, 0);
+    if (g_cut_on && g_zov_srv) {
+        /* TEXTBOX2: an opening dialogue box. Inside the outer rectangle and outside the inner one the picture shows the 3D alone:
+           the same composite with the zero overlay, scissored to the ring's four bands */
+        srvs[2] = g_zov_srv;
+        g_ctx->PSSetShaderResources(0, 6, srvs);
+        const int *o = g_cut_o, *n = g_cut_i;
+        auto band = [&](int x1, int y1, int x2, int y2) {
+            if (x1 < 0) x1 = 0;
+            if (y1 < 0) y1 = 0;
+            if (x2 > g_cp_cw) x2 = g_cp_cw;
+            if (y2 > g_cp_ch) y2 = g_cp_ch;
+            if (x2 <= x1 || y2 <= y1) return;
+            D3D11_RECT r; r.left = x1; r.top = y1; r.right = x2; r.bottom = y2;
+            g_ctx->RSSetScissorRects(1, &r);
+            g_ctx->Draw(3, 0);
+        };
+        band(o[0], o[1], o[2], n[1]);        /* above the inner rectangle */
+        band(o[0], n[3], o[2], o[3]);        /* below */
+        band(o[0], n[1], n[0], n[3]);        /* left */
+        band(n[2], n[1], o[2], n[3]);        /* right */
+        g_ctx->RSSetScissorRects(1, &sc);
+    }
     ID3D11ShaderResourceView *none[6] = { 0, 0, 0, 0, 0, 0 };
     g_ctx->PSSetShaderResources(0, 6, none);
     g_ctx->OMSetRenderTargets(0, 0, 0);
@@ -4588,6 +4627,13 @@ extern "C" void port_gpu_card_inter_fade_off(void)
     g_ipo_on = 0;
 }
 
+extern "C" void port_gpu_card_inter_cut(const int outer[4], const int inner[4])
+{
+    if (!outer || !inner) { g_cut_on = 0; return; }
+    for (int k = 0; k < 4; ++k) { g_cut_o[k] = outer[k]; g_cut_i[k] = inner[k]; }
+    g_cut_on = 1;
+}
+
 extern "C" int port_gpu_card_fade_recorded(void)
 {
     return g_cp_held && g_cp_fade ? 1 : 0;
@@ -4964,6 +5010,7 @@ void *port_gpu_card_retained_view(int) { return 0; }
 void *port_gpu_card_compose_inter(const unsigned int *, int) { return 0; }
 int port_gpu_card_fade_recorded(void) { return 0; }
 void port_gpu_card_inter_fade(int, int) {}
+void port_gpu_card_inter_cut(const int *, const int *) {}
 void port_gpu_card_inter_fade_off(void) {}
 int port_gpu_twod_ready(void) { return 0; }
 int port_gpu_layer_ready(void) { return 0; }

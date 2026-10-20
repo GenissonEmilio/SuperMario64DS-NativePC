@@ -8791,7 +8791,17 @@ static int ip_build(double alpha)
         if (ip_evy_t > 16) ip_evy_t = 16;
     }
     int tw_outer[4] = {0, 0, 0, 0}, tw_inner[4] = {0, 0, 0, 0};
-    const int tw = port_tween_win(alpha, tw_outer, tw_inner);
+    int tw = port_tween_win(alpha, tw_outer, tw_inner);
+    /* TEXTBOX2: SM64DS_TWEEN_CARD=0 is the kill switch for the box's opening tween on the card path: the tick's own picture, no tween */
+    static int tw_card = -1;
+    if (tw_card < 0) { const char *e = getenv("SM64DS_TWEEN_CARD"); tw_card = e ? atoi(e) : 1; }
+    {   static int tl = -1, tn;
+        if (tl < 0) tl = getenv("SM64DS_TWEEN_LOG") ? 1 : 0;
+        if (tl && tw && tn++ < 400)
+            fprintf(stderr, "[tween] a=%.3f outer %d,%d-%d,%d inner %d,%d-%d,%d card=%d mode=%d\n", alpha, tw_outer[0], tw_outer[1], tw_outer[2], tw_outer[3],
+                    tw_inner[0], tw_inner[1], tw_inner[2], tw_inner[3], g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1, tw_card);
+    }
+    if (tw && tw_card == 0 && g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1) tw = 0;
     int card = 0;
     if (g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1)
         card = ntr::gx_card_interp_clear(o);
@@ -8806,7 +8816,12 @@ static int ip_build(double alpha)
             port_gpu_card_inter_fade(ip_evy_t, g_ip_fade_white);
         else
             port_gpu_card_inter_fade_off();
-        const int card_done = !tw && port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
+        /* TEXTBOX2: an opening dialogue box is cut on the card itself (the 3D alone outside the window that far along), so the picture
+           keeps its 3D and the card's own compose */
+        if (tw && tw_card != 2) port_gpu_card_inter_cut(tw_outer, tw_inner);
+        /* SM64DS_TWEEN_CARD=2 is the 0.9.3 round 4b behaviour, kept for before/after rows only: the card refuses a box tick */
+        const int card_done = !(tw && tw_card == 2) && port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
+        port_gpu_card_inter_cut(0, 0);
         port_gpu_card_inter_fade_off();
         if (card_done) {
             ntr::gx_card_retire2(&o);

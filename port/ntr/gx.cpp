@@ -7828,6 +7828,8 @@ struct IpRec {
                                  // -2 unpaired absolute LOAD (camera-corrected)
     std::vector<int> blend2;     // SMOOTHREND1: per event: the event TWO ticks back (a blinking model), -1 none
     int has_p2 = 0;              // blend2 was built against the record in the free slot
+    std::vector<int32_t> tdel;   // TEXTBOX2: per texture-matrix event, indexed like par: this tick's words minus the paired previous tick's (a steady scroll repeats it)
+    std::vector<uint8_t> tdel_ok; // per event: tdel holds a real difference (the event was paired and is a texture matrix)
     State start;
     uint32_t start_teximage = 0, start_plttbase = 0;
     uint32_t sealed = 0;         // events that reached the frame's gx_render
@@ -8118,15 +8120,19 @@ int ip_texmtx_mode() {
     if (v < 0) { const char *e = getenv("SM64DS_INTERP_TEXMTX"); v = (e && e[0] == '0') ? 0 : 1; }
     return v;
 }
-bool ip_tex_pair_ok(const IpEv &pe, const std::vector<uint32_t> &ppar, const IpEv &ce, const uint32_t *cp) {
+bool ip_tex_pair_ok(const IpRec &P, int b, const IpEv &ce, const uint32_t *cp) {
+    const IpEv &pe = P.ev[b];
+    const std::vector<uint32_t> &ppar = P.par;
     if (!ip_texmtx_mode()) return false;
     if (pe.kind != IPK_CMD || pe.cmd != ce.cmd || pe.np != ce.np) return false;
     static long lim = -1;
-    static int log = -1;
+    static int log = -1, steady_on = -1;
     if (lim < 0) {
         const char *e = getenv("SM64DS_INTERP_TEXMTX_MAX");
         lim = e ? strtol(e, 0, 0) : 0x6000;
         log = getenv("SM64DS_INTERP_TEXLOG") ? 1 : 0;
+        const char *st = getenv("SM64DS_INTERP_TEXSTEADY");
+        steady_on = (st && st[0] == '0') ? 0 : 1;
     }
     long worst = 0;
     for (int k = 0; k < ce.np; ++k) {
@@ -8134,16 +8140,37 @@ bool ip_tex_pair_ok(const IpEv &pe, const std::vector<uint32_t> &ppar, const IpE
         const long a = d < 0 ? -d : d;
         if (a > worst) worst = a;
     }
+    bool ok = worst <= lim;
+    /* TEXTBOX2: a scroll that moves a long way every tick (sand: 51 units, over the limit above) is still a scroll when this tick's step is the
+       step the last tick took (the ROM adds a constant, give or take its own rounding): that is blended like a slow one. A wrap or a hop
+       (a step that is not the last one's) and the first step out of rest stay tick N's, as before. A step that wobbles around the limit
+       (a swirl: 5.75, 6.06, 6.6 ...) no longer flips between a blend and a snap tick by tick. SM64DS_INTERP_TEXSTEADY=0 puts the plain limit back. */
+    bool steady = false;
+    if (!ok && steady_on && b < (int)P.tdel_ok.size() && P.tdel_ok[b] && (size_t)pe.off + pe.np <= P.tdel.size()) {
+        steady = true;
+        long pw = 0;
+        for (int k = 0; k < ce.np && steady; ++k) {
+            const long dn = (long)(int32_t)cp[k] - (long)(int32_t)ppar[pe.off + k];
+            const long dp = (long)P.tdel[pe.off + k];
+            const long a = dp < 0 ? -dp : dp;
+            if (a > pw) pw = a;
+            const long diff = dn > dp ? dn - dp : dp - dn;
+            const long tol = a / 4 > 0x800 ? a / 4 : 0x800;   /* the quicksand swirl's step drifts about a tenth tick to tick; a wrap or a hop is a different step by far */
+            if (diff > tol) steady = false;
+        }
+        if (pw <= 0x1000) steady = false;      /* the last tick did not move: not a scroll yet */
+        ok = steady;
+    }
     if (log && worst) {
         static int n;
         if (n++ < 3000) {
-            fprintf(stderr, "  [texmtx] cmd %02x np %d worst %.3f%s |", ce.cmd, ce.np, worst / 4096.0, worst > lim ? " HELD" : "");
+            fprintf(stderr, "  [texmtx] cmd %02x np %d worst %.3f%s%s |", ce.cmd, ce.np, worst / 4096.0, steady ? " STEADY" : "", !ok ? " HELD" : "");
             for (int k = 0; k < ce.np; ++k)
                 fprintf(stderr, " %.2f>%.2f", (int32_t)ppar[pe.off + k] / 4096.0, (int32_t)cp[k] / 4096.0);
             fprintf(stderr, "%c", 10);
         }
     }
-    return worst <= lim;
+    return ok;
 }
 
 double ip_dist2(const IpGroup &a, const IpGroup &b) {
@@ -8310,6 +8337,19 @@ void ip_match(IpRec &C, const IpRec &P, GxInterpStats *st, const IpRec *P2 = nul
                 if (C.ev[ei].np == 12) C.blend[ei] = -3;
             }
         }
+    }
+    /* TEXTBOX2: the texture matrices' tick-to-tick difference, kept for the next tick's pairing (see ip_tex_pair_ok) */
+    C.tdel.assign(C.par.size(), 0);
+    C.tdel_ok.assign(C.sealed, 0);
+    for (uint32_t i = 0; i < C.sealed; ++i) {
+        const int b = C.blend[i];
+        if (b < 0 || C.ev[i].mode != MTX_TEX || !ip_is_mtx(C.ev[i].cmd)) continue;
+        const IpEv &ce = C.ev[i];
+        const IpEv &pe = P.ev[b];
+        if (pe.kind != IPK_CMD || pe.cmd != ce.cmd || pe.np != ce.np || ce.np > 32) continue;
+        for (int k = 0; k < ce.np; ++k)
+            C.tdel[ce.off + k] = (int32_t)(C.par[ce.off + k] - P.par[pe.off + k]);
+        C.tdel_ok[i] = 1;
     }
     if (st) {
         st->groups = (int)C.groups.size();
@@ -8621,7 +8661,7 @@ int gx_interp_begin(float alpha) {
                     }
                     pp = tmp;
                     ex_on = 1;
-                } else if (b >= 0 && (e.mode != MTX_TEX || ip_tex_pair_ok(P.ev[b], P.par, e, pp))) {
+                } else if (b >= 0 && (e.mode != MTX_TEX || ip_tex_pair_ok(P, b, e, pp))) {
                     const IpEv &pe = P.ev[b];
                     const int n = e.np < pe.np ? e.np : pe.np;
                     for (int k = 0; k < e.np; ++k) {

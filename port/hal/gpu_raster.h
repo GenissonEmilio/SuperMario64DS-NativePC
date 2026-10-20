@@ -105,6 +105,9 @@ int port_gpu_card_fade_recorded(void);
    of the tick's own, the whole picture; _off puts the tick's own back. */
 void port_gpu_card_inter_fade(int evy, int white);
 void port_gpu_card_inter_fade_off(void);
+/* TEXTBOX2: the next picture between two ticks shows the 3D alone inside the outer rectangle (x1 y1 x2 y2, host pixels) and outside the
+   inner one: an opening dialogue box. Null arguments clear it. */
+void port_gpu_card_inter_cut(const int outer[4], const int inner[4]);
 
 /* THE READBACK WAIT, summed in milliseconds over every frame the card has
  * drawn. This is the CPU side of the opaque pass: the copy out of the render
