@@ -16344,7 +16344,20 @@ int main(void)
                         const int r = ds_stick_rate < 0 ? -ds_stick_rate : ds_stick_rate;
                         turn = (int)((long long)r * cs / 100);
                     }
-                    if (turn != 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000))
+                    /* CAMVOICE1 (C1): the extra (or the part taken away) is only ever a correction of a turn the ROM itself took. The ROM
+                       steps its heading +-0x400 a tick where its own camera lets the rotate bits turn it and flags the step in the camera's
+                       mFlags (+0x154: 0x40 raised the heading, 0x20 lowered it; the camera tick clears both at its start, so here they are
+                       the previous tick's answer). Where the camera is fixed or locked (the castle lobby, the star-grab camera, the 2F mirror
+                       room, Lethal Lava Land's fixed spots) the ROM never takes a step, so the speed slider and the analog scale add nothing:
+                       the stick can no longer turn a camera the game does not turn. The first tick of a push is the ROM's own plain step. */
+                    const unsigned cam_cf = cam ? *(unsigned *)((char *)cam + 0x154) : 0;
+                    const int rom_took = (dir > 0 && (cam_cf & 0x40)) || (dir < 0 && (cam_cf & 0x20));
+                    static int cv_log = -1;
+                    if (cv_log < 0) cv_log = getenv("SM64DS_CAMVOICE_TRACE") ? 1 : 0;
+                    if (cv_log && dir && turn != 0x400)
+                        fprintf(stderr, "[camdsturn] f%d dir %d turn %x cf %x rom_took %d owned %d
+", frame, dir, turn, cam_cf, rom_took, cam ? cam93_ds_owned(cam) : -1);
+                    if (turn != 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000) && rom_took)
                         { g_ds_extra_turn = dir * (turn - 0x400); g_ds_cam = cam; }
                 }
                 /* orbit probe: hold one of func_02009e70's own rotate bits
