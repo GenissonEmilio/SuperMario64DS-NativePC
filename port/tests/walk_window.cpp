@@ -16355,8 +16355,7 @@ int main(void)
                     static int cv_log = -1;
                     if (cv_log < 0) cv_log = getenv("SM64DS_CAMVOICE_TRACE") ? 1 : 0;
                     if (cv_log && dir && turn != 0x400)
-                        fprintf(stderr, "[camdsturn] f%d dir %d turn %x cf %x rom_took %d owned %d
-", frame, dir, turn, cam_cf, rom_took, cam ? cam93_ds_owned(cam) : -1);
+                        fprintf(stderr, "[camdsturn] f%d dir %d turn %x cf %x rom_took %d owned %d\n", frame, dir, turn, cam_cf, rom_took, cam ? cam93_ds_owned(cam) : -1);
                     if (turn != 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000) && rom_took)
                         { g_ds_extra_turn = dir * (turn - 0x400); g_ds_cam = cam; }
                 }
