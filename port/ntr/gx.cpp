@@ -8120,7 +8120,8 @@ int ip_texmtx_mode() {
     if (v < 0) { const char *e = getenv("SM64DS_INTERP_TEXMTX"); v = (e && e[0] == '0') ? 0 : 1; }
     return v;
 }
-bool ip_tex_pair_ok(const IpRec &P, int b, const IpEv &ce, const uint32_t *cp) {
+bool ip_tex_pair_ok(const IpRec &P, int b, const IpEv &ce, const uint32_t *cp, uint32_t *adj, bool &wrapped) {
+    wrapped = false;
     const IpEv &pe = P.ev[b];
     const std::vector<uint32_t> &ppar = P.par;
     if (!ip_texmtx_mode()) return false;
@@ -8142,29 +8143,38 @@ bool ip_tex_pair_ok(const IpRec &P, int b, const IpEv &ce, const uint32_t *cp) {
     }
     bool ok = worst <= lim;
     /* TEXTBOX2: a scroll that moves a long way every tick (sand: 51 units, over the limit above) is still a scroll when this tick's step is the
-       step the last tick took (the ROM adds a constant, give or take its own rounding): that is blended like a slow one. A wrap or a hop
-       (a step that is not the last one's) and the first step out of rest stay tick N's, as before. A step that wobbles around the limit
-       (a swirl: 5.75, 6.06, 6.6 ...) no longer flips between a blend and a snap tick by tick. SM64DS_INTERP_TEXSTEADY=0 puts the plain limit back. */
+       step the last tick took (the ROM adds a constant, give or take its own rounding): that is blended like a slow one. The step across a
+       texture wrap is the same step taken modulo 512 units (every wrap seen is a whole number of those): the picture blends to the matrix
+       with the wrap taken out, so the wrap tick does not snap. A hop that is not the last step (an atlas cell), the first step out of rest
+       and any step that is not about the last one's stay tick N's, as before. A step that wobbles around the limit (a swirl: 5.75, 6.06,
+       6.6 ...) no longer flips between a blend and a snap tick by tick. SM64DS_INTERP_TEXSTEADY=0 puts the plain limit back. */
     bool steady = false;
     if (!ok && steady_on && b < (int)P.tdel_ok.size() && P.tdel_ok[b] && (size_t)pe.off + pe.np <= P.tdel.size()) {
         steady = true;
         long pw = 0;
+        const long W = 0x200000;
         for (int k = 0; k < ce.np && steady; ++k) {
             const long dn = (long)(int32_t)cp[k] - (long)(int32_t)ppar[pe.off + k];
             const long dp = (long)P.tdel[pe.off + k];
             const long a = dp < 0 ? -dp : dp;
             if (a > pw) pw = a;
-            const long diff = dn > dp ? dn - dp : dp - dn;
-            const long tol = a / 4 > 0x800 ? a / 4 : 0x800;   /* the quicksand swirl's step drifts about a tenth tick to tick; a wrap or a hop is a different step by far */
+            long diff = dn - dp;
+            long m = diff >= 0 ? (diff + W / 2) / W : -((-diff + W / 2) / W);
+            diff -= m * W;
+            if (diff < 0) diff = -diff;
+            const long tol = a / 4 > 0x800 ? a / 4 : 0x800;   /* a swirl's step drifts about a tenth tick to tick; a hop is a different step by far */
             if (diff > tol) steady = false;
+            else if (m) wrapped = true;
+            adj[k] = (uint32_t)((long)(int32_t)cp[k] - m * W);
         }
         if (pw <= 0x1000) steady = false;      /* the last tick did not move: not a scroll yet */
         ok = steady;
+        if (!ok) wrapped = false;
     }
     if (log && worst) {
         static int n;
         if (n++ < 3000) {
-            fprintf(stderr, "  [texmtx] cmd %02x np %d worst %.3f%s%s |", ce.cmd, ce.np, worst / 4096.0, steady ? " STEADY" : "", !ok ? " HELD" : "");
+            fprintf(stderr, "  [texmtx] cmd %02x np %d worst %.3f%s%s%s |", ce.cmd, ce.np, worst / 4096.0, steady ? " STEADY" : "", wrapped ? " WRAP" : "", !ok ? " HELD" : "");
             for (int k = 0; k < ce.np; ++k)
                 fprintf(stderr, " %.2f>%.2f", (int32_t)ppar[pe.off + k] / 4096.0, (int32_t)cp[k] / 4096.0);
             fprintf(stderr, "%c", 10);
@@ -8348,7 +8358,14 @@ void ip_match(IpRec &C, const IpRec &P, GxInterpStats *st, const IpRec *P2 = nul
         const IpEv &pe = P.ev[b];
         if (pe.kind != IPK_CMD || pe.cmd != ce.cmd || pe.np != ce.np || ce.np > 32) continue;
         for (int k = 0; k < ce.np; ++k)
-            C.tdel[ce.off + k] = (int32_t)(C.par[ce.off + k] - P.par[pe.off + k]);
+        {
+            /* the step, taken modulo the texture wrap (512 units, 0x200000 raw: every wrap seen is a whole number of these) so a step across a
+               wrap is the step before it */
+            long d = (long)(int32_t)(C.par[ce.off + k] - P.par[pe.off + k]);
+            const long W = 0x200000;
+            d -= W * (long)std::floor((double)(d + W / 2) / (double)W);
+            C.tdel[ce.off + k] = (int32_t)d;
+        }
         C.tdel_ok[i] = 1;
     }
     if (st) {
@@ -8644,6 +8661,8 @@ int gx_interp_begin(float alpha) {
             if (e.cmd == 0x50 || e.cmd == 0x2A || e.cmd == 0x2B) break;
             const uint32_t *pp = e.np ? &C.par[e.off] : nullptr;
             int ex_on = 0;
+            uint32_t tex_adj[32];
+            bool tex_wrapped = false;
             if (ip_is_mtx(e.cmd) && e.np <= 32) {
                 const int b = C.blend.empty() ? -1 : C.blend[i];
                 const int b2 = (C.has_p2 && !C.blend2.empty()) ? C.blend2[i] : -1;
@@ -8661,9 +8680,11 @@ int gx_interp_begin(float alpha) {
                     }
                     pp = tmp;
                     ex_on = 1;
-                } else if (b >= 0 && (e.mode != MTX_TEX || ip_tex_pair_ok(P, b, e, pp))) {
+                } else if (b >= 0 && (e.mode != MTX_TEX || ip_tex_pair_ok(P, b, e, pp, tex_adj, tex_wrapped))) {
                     const IpEv &pe = P.ev[b];
                     const int n = e.np < pe.np ? e.np : pe.np;
+                    /* TEXTBOX2: a step across a texture wrap blends to the matrix with the wrap taken out (tick N's own at alpha 1) */
+                    if (e.mode == MTX_TEX && tex_wrapped && alpha < 1.0f) pp = tex_adj;
                     for (int k = 0; k < e.np; ++k) {
                         tmp[k] = k < n ? (uint32_t)ip_lerp(P.par[pe.off + k], pp[k], alpha)
                                        : pp[k];
