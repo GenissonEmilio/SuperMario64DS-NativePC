@@ -9396,6 +9396,20 @@ static unsigned long long g_ip_card_pics, g_ip_cpu_pics;
    instead. On the processor's blend only: a tick whose box is opening is composited on the processor (the card's compose cannot clip). */
 extern "C" int port_tween_win(double alpha, int outer[4], int inner[4]);
 static unsigned long long g_ip_tween_pics;
+/* HUDMENU2 (H11): the one-screen HUD slide-in, glided at the display rate. The compositor notes the host rectangles of the life and star counters
+   while the ROM slides them in (state 3) and how far each moved this tick; a picture between two ticks puts each counter's pixels (the tick's own
+   2D where it differs from the 3D layer) where the counter was (1 - alpha) of its step earlier. CPU blend only; a tick with a fade or an opening box
+   keeps its old picture. SM64DS_HUD_GLIDE=0 puts the stepped slide back. */
+struct HudSlideRectW { int x0, y0, x1, y1; float d; };
+struct HudSlideNoteW { int n; HudSlideRectW r[2]; };
+extern "C" const void *port_hud_slide_note(void);
+static int hud_glide_on(void)
+{
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_HUD_GLIDE"); v = (e && e[0] == '0') ? 0 : 1; }
+    return v;
+}
+static unsigned long long g_ip_glide_pics;
 static int ip_build(double alpha)
 {
     const long long t0 = ip_qpc();
@@ -9438,7 +9452,8 @@ static int ip_build(double alpha)
             port_gpu_card_inter_fade(ip_evy_t, g_ip_fade_white);
         else
             port_gpu_card_inter_fade_off();
-        const int card_done = !tw && port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
+        const HudSlideNoteW *gl_note = hud_glide_on() ? (const HudSlideNoteW *)port_hud_slide_note() : 0;
+        const int card_done = !tw && !(gl_note && gl_note->n > 0 && alpha < 0.999) && port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
         port_gpu_card_inter_fade_off();
         if (card_done) {
             ntr::gx_card_retire2(&o);
@@ -9515,9 +9530,46 @@ static int ip_build(double alpha)
             }
         }
     } else {
+        const HudSlideNoteW *gn = (hud_glide_on() && alpha < 0.999 && !tw) ? (const HudSlideNoteW *)port_hud_slide_note() : 0;
+        int gx0[2] = {0, 0}, gx1[2] = {0, 0}, gdx[2] = {0, 0}, gn_n = 0;
+        if (gn && gn->n > 0) {
+            const double uni = (double)ntr::present_h() / 192.0;
+            for (int i = 0; i < gn->n && i < 2; ++i) {
+                const int dx = (int)((alpha - 1.0) * gn->r[i].d * uni + (alpha - 1.0 < 0 && gn->r[i].d > 0 ? -0.5 : 0.5));
+                gdx[i] = dx;
+                const int lo = dx < 0 ? dx : 0, hi = dx > 0 ? dx : 0;
+                gx0[i] = gn->r[i].x0 + lo; gx1[i] = gn->r[i].x1 + hi;
+            }
+            gn_n = gn->n < 2 ? gn->n : 2;
+            ++g_ip_glide_pics;
+        }
         for (int y = 0; y < ntr::active_h; ++y) {
             uint32_t *row = o.px[y];
             const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
+            if (gn_n) {
+                int skip = -1;
+                for (int i = 0; i < gn_n; ++i)
+                    if (y >= gn->r[i].y0 && y < gn->r[i].y1) skip = i;
+                if (skip >= 0) {
+                    int sx0[2], sx1[2], ns = 0;
+                    for (int i = 0; i < gn_n; ++i)
+                        if (y >= gn->r[i].y0 && y < gn->r[i].y1) { sx0[ns] = gx0[i]; sx1[ns] = gx1[i]; ++ns; }
+                    for (int x = 0; x < ntr::active_w; ++x) {
+                        bool in = false;
+                        for (int k = 0; k < ns; ++k) if (x >= sx0[k] && x < sx1[k]) in = true;
+                        if (!in && a[x] != b[x]) row[x] = b[x];
+                    }
+                    for (int i = 0; i < gn_n; ++i) {
+                        if (!(y >= gn->r[i].y0 && y < gn->r[i].y1)) continue;
+                        for (int x = gn->r[i].x0; x < gn->r[i].x1; ++x) {
+                            if (x < 0 || x >= ntr::active_w || a[x] == b[x]) continue;
+                            const int hx = x + gdx[i];
+                            if (hx >= 0 && hx < ntr::active_w) row[hx] = b[x];
+                        }
+                    }
+                    continue;
+                }
+            }
             if (tw && y >= tw_outer[1] && y < tw_outer[3]) {
                 const int tw_mid = y >= tw_inner[1] && y < tw_inner[3];
                 for (int x = 0; x < ntr::active_w; ++x) {

@@ -2286,7 +2286,15 @@ int hal_menu_hover(int bx, int by)
     if (!g_live) return 0;
     if (!menu_focus_hover(&g_cur, bx, by)) { g_hover_over = -1; return 0; }
     /* the mouse arrived on a button it was not on: the ROM's cursor sound, once */
-    if (g_cur.focus != g_hover_over) host_menu_cursor_sound();
+    /* HUDMENU2 (H5, Tango 10-20): a cursor that does not move makes no sound. The plank the mouse landed on is already the lit one (the ROM's cursor is
+       on it: the pause and save plates, the level-clear plates), so there is nothing to announce. The first hover onto a plank that is not lit
+       still plays it; the recipe lights it a frame later. */
+    bool lit_already = false;
+    if (g_cur.focus >= 0 && g_cur.focus < g_cur.nh) {
+        const int pi = g_cur.hs[g_cur.focus].piece;
+        if (pi >= 0 && pi < g_cur.np && (g_cur.p[pi].hl & 1)) lit_already = true;
+    }
+    if (g_cur.focus != g_hover_over && !lit_already) host_menu_cursor_sound();
     g_hover_over = g_cur.focus;
     g_focus_shown = 1;
     ++g_hover_stamp;

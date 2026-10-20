@@ -1462,7 +1462,7 @@ int g_save_menu_on_top = 1;   /* ABSENT MEANS ON: the owner's recommendation */
    ON (the owner's decision for 0.5.7); an explicit false or 0 gives the DS screens.
    HudLayout: 0 = the DS row, 1 = the N64 row; absent means the N64 row, same rule. */
 int g_one_screen_menus = 1;
-int g_hud_layout = 1;
+int g_hud_layout = 0;   /* HUDMENU2 (H10): CoinsMiddle; OFF by default */
 double g_minimap_scale = 1.0; /* the multiplier, 1 or more */
 /* A HAND HAS MOVED THE SIZE THIS RUN. Set by the drag's own write and by
    nothing else; read in host_setting_minimap_scale_value, where the block
@@ -1931,8 +1931,7 @@ void load_once(void)
            both spellings of the toggle (the ImprovedMinimap shape) */
         g_one_screen_menus = (json_int(text, "OneScreenMenus", 1) != 0 &&
                               json_bool(text, "OneScreenMenus", 1) != 0) ? 1 : 0;
-        g_hud_layout = (json_int(text, "HudLayout", 1) == 1 &&
-                        json_bool(text, "HudLayout", 1) != 0) ? 1 : 0;
+        g_hud_layout = json_bool(text, "CoinsMiddle", 0) ? 1 : 0;   /* HUDMENU2 (H10): the old HudLayout key (default on) is ignored */
         {
             int snapped = 0;
             const double want = json_num(text, "MinimapScale", 1.0);
@@ -2396,6 +2395,14 @@ int reload_live(const char *text)
             g_chars_from_start = cfs;
             changed = 1;
             fprintf(stderr, "[settings] live re-read: CharactersUnlockedFromStart %s\n", cfs ? "ON" : "off");
+        }
+    }
+    {
+        const int cm = json_bool(text, "CoinsMiddle", g_hud_layout) ? 1 : 0;
+        if (cm != g_hud_layout) {
+            g_hud_layout = cm;
+            changed = 1;
+            fprintf(stderr, "[settings] live re-read: CoinsMiddle %s\n", cm ? "ON" : "off");
         }
     }
     {
@@ -3328,6 +3335,16 @@ extern "C" int host_setting_set_character_strip(int on)
     g_character_strip = on;
     g_poll_flag = 1;
     queue_bool("CharacterStrip", on);
+    return 1;
+}
+
+extern "C" int host_setting_set_coins_middle(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    g_hud_layout = on;
+    g_poll_flag = 1;
+    queue_bool("CoinsMiddle", on);
     return 1;
 }
 

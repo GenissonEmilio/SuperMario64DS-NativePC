@@ -623,6 +623,8 @@ const Row ROWS_GENERAL[] = {
     { R_CHOICE, "Chat size", SL_CHAT_SCALE, -1, 0, CHAT_LABELS, 5, CHAT_VALS },
     { R_CHECK, "Custom characters from the start", SL_CHARS_FROM_START, -1, 0, 0, 0 },
     { R_CHECK, "Character select on star select", SL_CHARACTER_STRIP, -1, 0, 0, 0 },
+    { R_CHECK, "Coins in the middle", SL_COINS_MIDDLE, -1, 0, 0, 0 },
+    { R_NOTE, "Puts the coin counter at the top middle, like SM64.", -1, -1, 0, 0, 0 },
 };
 /* PAUSE3: CONTROLS is the old CONTROLS and CAMERA tabs together (the camera rows first, then the run rows, then the bindings) */
 const Row ROWS_CONTROLS[] = {
@@ -1110,6 +1112,9 @@ static int g_request_src;
 extern "C" void settings_page_set_source(int src) { g_request_src = src; }
 extern "C" int settings_page_source(void) { return g_request_src; }
 extern "C" int settings_page_pending(void) { return S.pending; }
+/* HUDMENU2 (H4): the press look of the button that asked, while the page waits out its press hold (src 1 = the pause's Options plate, 2 = the title's wrench).
+   A pad confirm is taken from the ROM, so the ROM never plays the plate's press; the recipes draw it from this for the length of the hold. */
+extern "C" int settings_page_press_look(void) { return S.pending ? g_request_src : 0; }
 extern "C" void settings_page_clear_request(void) { S.pending = 0; }
 extern "C" int settings_page_tab(void) { return S.tab; }
 extern "C" int settings_page_row(void) { return S.sel; }

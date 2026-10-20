@@ -487,7 +487,7 @@ void pause_facts(MenuFacts *mf)
     f->show_red = f->red > 0;
     f->status = data_0209f2b8 != 0 && data_0209f2b8 <= 0x3c;
     f->nslots = nslots_of(v);
-    f->pressed = data_0209f22c != 0;
+    f->pressed = data_0209f22c != 0 || (settings_page_press_look() == 1 && data_0209f2e0 == 2);   /* HUDMENU2 (H4): a pad confirm on Options shows the plate's press too */
     int hs = -1;
     if (v == V_NOSAVE) {
         /* touch only: the lit plank is the pad / hover cursor (hotspot 0 = NO, slot 1; hotspot 1 = YES, slot 0) */

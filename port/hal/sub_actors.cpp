@@ -683,10 +683,35 @@ extern unsigned char NumStars(void);
 extern "C" int port_hud_slide_pinned(void);
 static inline int hud_slide_state(void)
 {
-    return data_ov002_02111178 >= 3 && data_ov002_02111178 <= 6 && port_hud_slide_pinned();
+    /* HUDMENU2 (H2, Tango 10-20): slide IN like the DS (state 3), never back OUT: the slide-out (5) and the bottom screen's own
+       slide-in (6) are drawn at rest. The ROM's fields and state machine are untouched. */
+    return data_ov002_02111178 >= 5 && data_ov002_02111178 <= 6 && port_hud_slide_pinned();
 }
+/* HUDMENU2 (H11): how far the ROM moved each counter this tick (DS pixels, the raw field before the one-screen pin), for the pictures between two
+   ticks (message_compositor.cpp's slide note, walk_window.cpp's ip_build): while the counters slide in they glide at the display rate. */
+extern "C" int g_port_hud_dlx = 0, g_port_hud_dsx = 0;
+static int g_hud_lx_prev = -30000, g_hud_sx_prev = -30000;
 static void port_adv_star_count_top(dMeter_c *self, int dy)
 {
+    {
+        const int sxr = *(short *)((char *)self + 0x70);
+        g_port_hud_dsx = g_hud_sx_prev == -30000 ? 0 : sxr - g_hud_sx_prev;
+        g_hud_sx_prev = sxr;
+    }
+#ifndef PORT_ROM_CLEAN
+    {   /* HUDMENU2 proof arm: SM64DS_HUD_SLIDE_IN=<n> puts the counters where a course start leaves them on the n-th HUD frame (state 2, both counters off screen,
+           star mode 1), so the ROM's own slide in (state 3, 4 pixels a tick) runs and a picture series can show it */
+        static int at = -2, cnt = 0;
+        if (at == -2) { const char *e = std::getenv("SM64DS_HUD_SLIDE_IN"); at = e ? std::atoi(e) : -1; }
+        if (at >= 0 && ++cnt == at) {
+            data_0209f2fc = 1;
+            data_ov002_02111178 = 2;
+            *(short *)((char *)self + 0x6e) = -0x3A;
+            *(short *)((char *)self + 0x70) = 0x120 + 0x1b;
+            std::fprintf(stderr, "[hudslide] hud frame %d: counters off screen, slide state 2\n", cnt);
+        }
+    }
+#endif
     int x = *(short *)((char *)self + 0x70);
     if (hud_slide_state() && x > 0xf0) x = 0xf0;
     const signed char *digits = (const signed char *)((char *)self + 0x74);
@@ -742,6 +767,8 @@ static void port_adv_life_count_top(dMeter_c *self, int dy)
     const unsigned char *info = (const unsigned char *)data_0209f394[idx];
     int face = info[0x6d9];
     short xBase = *(short *)((char *)self + 0x6e);
+    g_port_hud_dlx = g_hud_lx_prev == -30000 ? 0 : xBase - g_hud_lx_prev;
+    g_hud_lx_prev = xBase;
     if (hud_slide_state() && xBase < 0x10) xBase = 0x10;
     const signed char *digits = (const signed char *)((char *)self + 0x74);
 

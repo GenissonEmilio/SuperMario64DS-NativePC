@@ -34,6 +34,8 @@
 
 extern "C" int (*port_fog_probe_hook)(unsigned char *o8) = 0;
 namespace ntr {
+
+static int g_ending_vp_shifted;   /* HUDMENU2 (H7): see gx_ending_viewport_shifted() */
 namespace {
 
 constexpr float FX12 = 1.0f / 4096.0f;
@@ -2466,7 +2468,8 @@ void exec(uint8_t cmd, const uint32_t *p, int np) {
                 present_w() * 3 > present_h() * 4) {
                 y1 += 8;
                 y2 += 8;
-            }
+                g_ending_vp_shifted = 1;
+            } else g_ending_vp_shifted = 0;
             /* Scaled into the PRESENT rectangle and offset by its origin, so
                a game-issued full-screen viewport fills the picture the host is
                presenting rather than the whole wide buffer. present_* is the
@@ -4614,6 +4617,7 @@ void gx_menu_sprite(int on) {
     if (g_ip_rec) { const uint32_t v = on ? 1u : 0u; ip_push(IPK_SPRITE, 0, 1, &v); }
 }
 bool gx_menu_wide_active() { return menu_wide(); }
+int gx_ending_viewport_shifted() { return g_ending_vp_shifted; }
 /* TITLE092: the scene transform seam and the per-sprite-object transform, see gx.h */
 void gx_set_menu_scene_cb(bool (*cb)(float xf[4])) { g_menu_scene_cb = cb; }
 bool gx_menu_scene_active() { return g_menu_scene_cb != 0 && menu_wide(); }

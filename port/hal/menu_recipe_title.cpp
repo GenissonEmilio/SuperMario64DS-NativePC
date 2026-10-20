@@ -32,6 +32,7 @@
  */
 #include <chrono>
 #include "menu_compose.h"
+#include "settings_page.h"
 #include "menu_hostimg.h"
 #include "ntr/gx.h"
 #include "ntr/ppu.h"
@@ -458,6 +459,7 @@ void build_main(MenuLayout *L, bool intro)
     menu_add_piece(L, head);
     MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
     wr.keycover = 1; wr.touch = 1;
+    if (settings_page_press_look() == 2) { wr.dy = 1; wr.dx = -1; }   /* HUDMENU2 (H4): the wrench sinks while the press hold of a pad / key confirm runs */
     const int iwr = menu_add_piece(L, wr);
     static const int kPlateId[3] = { 1, 0, 2 };                      /* the ROM's element ids: VS, ADVENTURE, REC ROOM */
     static const int kPlankImg[3] = { MENU_IMG_BTN_MP, MENU_IMG_BTN_ADV, MENU_IMG_BTN_REC };

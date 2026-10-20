@@ -560,6 +560,9 @@ void gx_card_settle_fb(Framebuffer &fb, const char *why);
 void gx_set_menu_wide_cb(bool (*cb)(float *zoom, float *dy));
 void gx_menu_sprite(int on);
 bool gx_menu_wide_active();
+/* HUDMENU2 (H7): 1 while the last VIEWPORT the game wrote is the ending's 16:9 letterbox that DRAWDIST2 moved down 8 rows (rows 24..167);
+   the 2D compositor then moves the subtitle box up so it sits inside that picture. 0 for every other viewport. */
+int gx_ending_viewport_shifted();
 
 /* TITLE092: the title's lower-screen 3D as one full-canvas scene. gx_set_menu_scene_cb installs a callback (null = never; it replaces
    gx_set_menu_wide_cb's when both are set) asked once per frame like it: true = this frame's 3D covers the whole active frame, and
