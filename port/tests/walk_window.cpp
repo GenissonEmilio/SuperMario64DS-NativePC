@@ -4364,8 +4364,7 @@ static void ds_apply_extra_turn(void *cam)
     if (getenv("SM64DS_CAMVOICE_TRACE")) fprintf(stderr, "[camdsturn] apply %d: eye %d,%d -> ", d, eye[0], eye[2]);
     eye[0] = pv[0] + (int)floor(r * sin(a0) + 0.5);
     eye[2] = pv[2] + (int)floor(r * cos(a0) + 0.5);
-    if (getenv("SM64DS_CAMVOICE_TRACE")) fprintf(stderr, "%d,%d" "
-", eye[0], eye[2]);
+    if (getenv("SM64DS_CAMVOICE_TRACE")) fprintf(stderr, "%d,%d\n", eye[0], eye[2]);
 }
 static int g_cam93_mouse_owned;            /* the mouse is steering the camera: no auto-recenter until the stick or keys take it back */
 static int g_cam93_scale = 4096;           /* eased fraction of the eye distance the collision allows */

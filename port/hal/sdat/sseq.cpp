@@ -1331,8 +1331,7 @@ int sd_seq_start(int p, const sd_u8 *seqBase, sd_u32 startOff,
         (void)read_varlen(seqBase, q);
         t0.pc = q;
         g_leadSkipUntilMs = 0;
-        SD_VT("play %2d start: leading rest skipped (CAMVOICE1)
-", p);
+        SD_VT("play %2d start: leading rest skipped (CAMVOICE1)\n", p);
     }
     t0.volume = 127; t0.expression = 127; t0.pan = 64;
     /* TrackInit at 0x037FDA74: mov r1,#0x40 / strb r1,[r4,#0x12]. The
