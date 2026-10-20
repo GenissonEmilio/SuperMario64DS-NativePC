@@ -244,12 +244,23 @@ static int HostWakeSkipped(dActor_c *a)
             return 1;
     return 0;
 }
+extern "C" int port_mods_multiplayer(void);
 static int HostWidenUpdate(dActor_c *a, int r, int thresh, Vector3 *camPos, int radius)
 {
     const int pct = host_setting_draw_distance_pct();
     static int off = -1;     /* SM64DS_WAKE_OFF=1: the ROM's update range at any setting (the "before" rows of a proof) */
     if (off < 0) off = getenv("SM64DS_WAKE_OFF") ? 1 : 0;
     if (pct <= 100 || off || HostWakeSkipped(a))
+        return 0x7fffffff;
+    /* MPSYNC4: WHO THINKS IS GAME STATE, so a multiplayer session keeps the ROM's update range whatever this console's Draw
+       distance is. Lockstep versus has every console run the same actors from the same inputs (one console waking a far enemy the
+       other leaves asleep desyncs the match), and a co-op / world session would have an actor walk on one screen and stand on
+       another. The DRAWING of far actors (HostWidenDraw) is picture only and stays widened online. The session test is the one the
+       mod list and the custom characters use (hal/mods.cpp), asked once. */
+    static int mp = -1;
+    if (mp < 0)
+        mp = port_mods_multiplayer() ? 1 : 0;
+    if (mp)
         return 0x7fffffff;
     long long t2 = (long long)thresh * pct / 100;
     if (t2 > 0x3fffffff)
