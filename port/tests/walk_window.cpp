@@ -4361,8 +4361,11 @@ static void ds_apply_extra_turn(void *cam)
     const double r = sqrt(dx * dx + dz * dz);
     if (r < 1.0) return;
     const double a0 = atan2(dx, dz) + d * (3.14159265358979323846 * 2.0 / 65536.0);
+    if (getenv("SM64DS_CAMVOICE_TRACE")) fprintf(stderr, "[camdsturn] apply %d: eye %d,%d -> ", d, eye[0], eye[2]);
     eye[0] = pv[0] + (int)floor(r * sin(a0) + 0.5);
     eye[2] = pv[2] + (int)floor(r * cos(a0) + 0.5);
+    if (getenv("SM64DS_CAMVOICE_TRACE")) fprintf(stderr, "%d,%d" "
+", eye[0], eye[2]);
 }
 static int g_cam93_mouse_owned;            /* the mouse is steering the camera: no auto-recenter until the stick or keys take it back */
 static int g_cam93_scale = 4096;           /* eased fraction of the eye distance the collision allows */
@@ -16353,10 +16356,12 @@ int main(void)
                     const unsigned cam_cf = cam ? *(unsigned *)((char *)cam + 0x154) : 0;
                     const int rom_took = (dir > 0 && (cam_cf & 0x40)) || (dir < 0 && (cam_cf & 0x20));
                     static int cv_log = -1;
+                    static int cv_old = -1;   /* SM64DS_CAMVOICE_OLD=1: proof only, the turn scaling without the ROM-took gate (the build before CAMVOICE1) */
+                    if (cv_old < 0) cv_old = getenv("SM64DS_CAMVOICE_OLD") ? 1 : 0;
                     if (cv_log < 0) cv_log = getenv("SM64DS_CAMVOICE_TRACE") ? 1 : 0;
                     if (cv_log && dir && turn != 0x400)
                         fprintf(stderr, "[camdsturn] f%d dir %d turn %x cf %x rom_took %d owned %d\n", frame, dir, turn, cam_cf, rom_took, cam ? cam93_ds_owned(cam) : -1);
-                    if (turn != 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000) && rom_took)
+                    if (turn != 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000) && (rom_took || cv_old))
                         { g_ds_extra_turn = dir * (turn - 0x400); g_ds_cam = cam; }
                 }
                 /* orbit probe: hold one of func_02009e70's own rotate bits
