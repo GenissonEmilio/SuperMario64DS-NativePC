@@ -4747,8 +4747,10 @@ static void ds_apply_extra_turn(void *cam)
     const double r = sqrt(dx * dx + dz * dz);
     if (r < 1.0) return;
     const double a0 = atan2(dx, dz) + d * (3.14159265358979323846 * 2.0 / 65536.0);
+    if (getenv("SM64DS_CAMVOICE_TRACE")) fprintf(stderr, "[camdsturn] apply %d: eye %d,%d -> ", d, eye[0], eye[2]);
     eye[0] = pv[0] + (int)floor(r * sin(a0) + 0.5);
     eye[2] = pv[2] + (int)floor(r * cos(a0) + 0.5);
+    if (getenv("SM64DS_CAMVOICE_TRACE")) fprintf(stderr, "%d,%d\n", eye[0], eye[2]);
 }
 static int g_cam93_mouse_owned;            /* the mouse is steering the camera: no auto-recenter until the stick or keys take it back */
 static int g_cam93_scale = 4096;           /* eased fraction of the eye distance the collision allows */
@@ -11180,7 +11182,7 @@ static void setlive_test_apply(int frame, int *pad_live, XPad *pad)
     static int trace, exit_at = -1;
     if (!init) {
         init = 1;
-        if (g_selftest) return;
+        if (g_selftest && !getenv("SM64DS_SETLIVE_IN_SELFTEST")) return;
         e_pad = getenv("SM64DS_SETLIVE_PAD");
         e_mouse = getenv("SM64DS_SETLIVE_MOUSE");
         e_set = getenv("SM64DS_SETLIVE_SET");
@@ -11188,7 +11190,7 @@ static void setlive_test_apply(int frame, int *pad_live, XPad *pad)
         const char *x = getenv("SM64DS_SETLIVE_EXIT");
         if (x) exit_at = atoi(x);
     }
-    if (g_selftest) return;
+    if (g_selftest && !getenv("SM64DS_SETLIVE_IN_SELFTEST")) return;
     if (!e_pad && !e_mouse && !e_set && !trace && exit_at < 0) return;
     if (e_set) {
         const char *p = e_set;
@@ -17079,7 +17081,39 @@ int main(void)
                         const int r = ds_stick_rate < 0 ? -ds_stick_rate : ds_stick_rate;
                         turn = (int)((long long)r * cs / 100);
                     }
-                    if (turn != 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000))
+                    /* CAMVOICE1 (C1): the extra (or the part taken away) is only ever a correction of a turn the ROM itself took. The ROM
+                       steps its heading +-0x400 a tick where its own camera lets the rotate bits turn it and flags the step in the camera's
+                       mFlags (+0x154: 0x40 raised the heading, 0x20 lowered it; the camera tick clears both at its start, so here they are
+                       the previous tick's answer). Where the camera is fixed or locked (the castle lobby, the star-grab camera, the 2F mirror
+                       room, Lethal Lava Land's fixed spots) the ROM never takes a step, so the speed slider and the analog scale add nothing:
+                       the stick can no longer turn a camera the game does not turn. The first tick of a push is the ROM's own plain step. */
+                    const unsigned cam_cf = cam ? *(unsigned *)((char *)cam + 0x154) : 0;
+                    int rom_took = (dir > 0 && (cam_cf & 0x40)) || (dir < 0 && (cam_cf & 0x20));
+                    {
+                        /* The first tick of a push has no previous answer: use what this camera mode (cam +0x140) said the last time it was pushed,
+                           so a gentle push in an ordinary area does not start with the ROM's full 0x400 step, and a mode that refused stays refused. */
+                        static const void *cv_mode[32];
+                        static signed char cv_ok[32];
+                        static int cv_n;
+                        const void *md = cam ? *(void *const *)((char *)cam + 0x140) : 0;
+                        int mi = -1;
+                        for (int k = 0; k < cv_n; ++k) if (cv_mode[k] == md) mi = k;
+                        static int cv_pd;
+                        const int cont = (dir != 0 && cv_pd == dir);
+                        cv_pd = dir;
+                        if (dir && cam) {
+                            if (mi < 0 && cv_n < 32) { mi = cv_n++; cv_mode[mi] = md; cv_ok[mi] = 0; }
+                            if (cont) { if (mi >= 0) cv_ok[mi] = rom_took ? 1 : 0; }   /* the last tick was pushed too: its flags are the answer */
+                            else rom_took = mi >= 0 && cv_ok[mi];
+                        }
+                    }
+                    static int cv_log = -1;
+                    static int cv_old = -1;   /* SM64DS_CAMVOICE_OLD=1: proof only, the turn scaling without the ROM-took gate (the build before CAMVOICE1) */
+                    if (cv_old < 0) cv_old = getenv("SM64DS_CAMVOICE_OLD") ? 1 : 0;
+                    if (cv_log < 0) cv_log = getenv("SM64DS_CAMVOICE_TRACE") ? 1 : 0;
+                    if (cv_log && dir && turn != 0x400)
+                        fprintf(stderr, "[camdsturn] f%d dir %d turn %x cf %x rom_took %d owned %d\n", frame, dir, turn, cam_cf, rom_took, cam ? cam93_ds_owned(cam) : -1);
+                    if (turn != 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000) && (rom_took || cv_old))
                         { g_ds_extra_turn = dir * (turn - 0x400); g_ds_cam = cam; }
                 }
                 /* orbit probe: hold one of func_02009e70's own rotate bits

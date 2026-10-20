@@ -232,6 +232,11 @@ int sd_cnv_vol(int v);
 int sd_seq_start(int player, const sd_u8 *seqBase, sd_u32 startOff,
                  const sd_u8 *sbnk);
 void sd_seq_stop(int player);
+// CAMVOICE1 (C2): arm "skip the leading rest" for the next sequence started within `ms` wall-clock milliseconds whose very first
+// command is a rest (0x80). The character voices the star select picks with (the unlock clips, SEQARC entries `80 60 81 <prog> <key> 7f 00 ff`)
+// wait 96 ticks before their note because the cartridge plays them after the unlock jingle; the pick wants the name call with the select sound.
+// One use: the first sequence that matches takes it, the arming lapses on its own.
+void sd_seq_skip_lead_rest_arm(int ms);
 // Command 0x02: pause (flag 1) or resume (flag 0) a player where it stands.
 void sd_seq_pause(int player, int flag);
 void sd_seq_set_volume(int player, int vol);      // 0..127

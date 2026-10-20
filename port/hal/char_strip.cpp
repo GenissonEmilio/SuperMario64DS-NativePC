@@ -24,19 +24,23 @@ void host_menu_cursor_sound(void);
 unsigned int _ZN5Sound6Play2DEjj(unsigned int bank, unsigned int id);
 unsigned int func_02012790(unsigned int id);
 }
+void sd_seq_skip_lead_rest_arm(int ms);   /* hal/sdat/sdat.h (C++ linkage) */
 
 /* SNDCAM1 (S4): the select sound and the voice a character gives when picked. The voice is the clip the ROM plays when that character is
    unlocked: Mario / Luigi / Wario are the player bank's sounds 0xd9 / 0xda / 0xdb (the waves NCS_WAVE_SE_VOICE_MARIO 0, _LUIGI 9, _WARIO 7,
    Player::St_* character change, src/game/player/Player.cpp: PlayBank0), Yoshi is system sound 0xd8 (NCS_WAVE_SE_VOICE_YOSSY_MG 8). */
 extern "C" void port_char_strip_pick_sound(int ch)
 {
-    func_02012790(0x12e);
+    /* CAMVOICE1 (C2): Mario / Luigi / Wario's clips open with a 96 tick rest (the cartridge plays them after the unlock jingle), so on the pick they
+       came a second behind the select sound while Yoshi's, which has none, came with it. The voice goes first and its leading rest is skipped
+       (sd_seq_skip_lead_rest_arm, one use, lapses in 400 ms); the select sound follows. */
     switch (ch & 3) {
-    case 0: _ZN5Sound6Play2DEjj(0, 0xd9); break;
-    case 1: _ZN5Sound6Play2DEjj(0, 0xda); break;
-    case 2: _ZN5Sound6Play2DEjj(0, 0xdb); break;
+    case 0: sd_seq_skip_lead_rest_arm(400); _ZN5Sound6Play2DEjj(0, 0xd9); break;
+    case 1: sd_seq_skip_lead_rest_arm(400); _ZN5Sound6Play2DEjj(0, 0xda); break;
+    case 2: sd_seq_skip_lead_rest_arm(400); _ZN5Sound6Play2DEjj(0, 0xdb); break;
     default: func_02012790(0xd8); break;
     }
+    func_02012790(0x12e);
 }
 
 namespace {

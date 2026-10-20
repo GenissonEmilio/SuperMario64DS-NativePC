@@ -15,6 +15,7 @@
 #include "sdat.h"
 
 #include <math.h>
+#include <chrono>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -1254,6 +1255,16 @@ static sd_u32 seq_sig(const sd_u8 *seq, sd_u32 off)
     return h;
 }
 
+static unsigned long long g_leadSkipUntilMs;
+static unsigned long long sd_wall_ms(void)
+{
+    return (unsigned long long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+void sd_seq_skip_lead_rest_arm(int ms)
+{
+    g_leadSkipUntilMs = sd_wall_ms() + (unsigned long long)(ms > 0 ? ms : 1);
+}
+
 int sd_seq_start(int p, const sd_u8 *seqBase, sd_u32 startOff,
                  const sd_u8 *sbnk)
 {
@@ -1314,6 +1325,14 @@ int sd_seq_start(int p, const sd_u8 *seqBase, sd_u32 startOff,
     Track &t0 = pl.tr[0];
     t0.active = 1;
     t0.pc = startOff;
+    /* CAMVOICE1 (C2): armed by sd_seq_skip_lead_rest_arm; a sequence whose first command is a rest starts at the command after it. */
+    if (g_leadSkipUntilMs && sd_wall_ms() < g_leadSkipUntilMs && seqBase[startOff] == 0x80) {
+        sd_u32 q = startOff + 1;
+        (void)read_varlen(seqBase, q);
+        t0.pc = q;
+        g_leadSkipUntilMs = 0;
+        SD_VT("play %2d start: leading rest skipped (CAMVOICE1)\n", p);
+    }
     t0.volume = 127; t0.expression = 127; t0.pan = 64;
     /* TrackInit at 0x037FDA74: mov r1,#0x40 / strb r1,[r4,#0x12]. The
        player's cpr is NOT folded in here; see the sum at the note-on. */
