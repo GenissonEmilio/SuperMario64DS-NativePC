@@ -676,9 +676,19 @@ extern unsigned char NumStars(void);
    A) instead of 1 and its y carries dy. The special-state block is already
    sub=0 in the ROM and is copied unchanged. digits[3] is at HUD+0x74, x at
    HUD+0x70. */
+/* FIELDUI1 (U7): the ROM slides the life and star counters on and off the top screen around a death, a level clear and a level start
+   (data_ov002_02111178 states 3..6; the counters then settle on the DS bottom screen). The port draws both on the one picture, so the slide
+   reads as the HUD flying away and back for nothing. In a single-screen layout the counters are drawn at their resting x for the whole slide
+   (the ROM's fields and its state machine are untouched: only the drawn x is held); the stacked two-screen layout keeps the ROM's slide. */
+extern "C" int port_hud_slide_pinned(void);
+static inline int hud_slide_state(void)
+{
+    return data_ov002_02111178 >= 3 && data_ov002_02111178 <= 6 && port_hud_slide_pinned();
+}
 static void port_adv_star_count_top(dMeter_c *self, int dy)
 {
     int x = *(short *)((char *)self + 0x70);
+    if (hud_slide_state() && x > 0xf0) x = 0xf0;
     const signed char *digits = (const signed char *)((char *)self + 0x74);
     int i;
 
@@ -732,6 +742,7 @@ static void port_adv_life_count_top(dMeter_c *self, int dy)
     const unsigned char *info = (const unsigned char *)data_0209f394[idx];
     int face = info[0x6d9];
     short xBase = *(short *)((char *)self + 0x6e);
+    if (hud_slide_state() && xBase < 0x10) xBase = 0x10;
     const signed char *digits = (const signed char *)((char *)self + 0x74);
 
     _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii(0, func_020ab948[face], xBase, 0xa + dy, -1, 1, 0x1000, 0x1000, 0, -1);
@@ -883,7 +894,7 @@ extern char data_ov002_0210c6b8;           /* the red-coin HUD sprite        */
 extern int data_ov001_020abac8[];          /* the silver-star HUD sprite     */
 }
 /* HDMETER1: this frame's meter note, written by the adventure HUD arm below, read and cleared by hal/message_compositor.cpp. */
-extern "C" { int g_port_hdmeter_live; int g_port_hdmeter_y; int g_port_hdmeter_health; extern unsigned char data_ov002_0211117c; }
+extern "C" { int g_port_hdmeter_live; int g_port_hdmeter_y; int g_port_hdmeter_health; int g_port_meter_drawn; extern unsigned char data_ov002_0211117c; }
 static void port_adv_red_silver_bottom(void)
 {
     static int first;                /* 0 none yet, 1 red coins, 2 silver stars */
@@ -950,6 +961,7 @@ static int port_adv_hud_render_stars_lives_on_top(dMeter_c *self)
             g_port_hdmeter_y = *(short *)((char *)self + 0x68);
             g_port_hdmeter_health = data_ov002_0211117c;
             g_port_hdmeter_live = (lang != 5 && lang != 4 && lang != 2) ? 1 : 0;
+            g_port_meter_drawn = 1;   /* SLICE1: the ROM draws the power meter this frame, in every language (the N64 row's meter shift keys on it) */
         }
         _ZN8dMeter_c17RenderHealthMeterEv((void *)self);
         if (_ZN5Event6GetBitEj(0x1d) == 0) {

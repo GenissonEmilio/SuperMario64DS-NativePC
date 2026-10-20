@@ -628,7 +628,6 @@ DSSTATE_END
    PORT_HOST_ABI: shared-window name race -- src/func_ov075_0211478c.c is
    ov075's OWN body at the same window address (a different overlay's image),
    and linking it here would hand WorkElevator VS-mode code for a vtable. */
-#pragma comment(linker, "/alternatename:__ZN15UnknownVsPlayer19func_ov075_0211478cEv=__ZTV17daObjCvNewsLift_c")
 static int __fastcall we_init(void *s, void *)
 { return _ZN17daObjCvNewsLift_c13InitResourcesEv((char *)s); }
 static int __fastcall we_clean(void *s, void *)

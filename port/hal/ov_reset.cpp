@@ -20,6 +20,10 @@
    what the initialisers built, and copying it back equals the DS clearing .bss
    and running the initialisers again, without a second run of initialisers that
    register themselves in global lists.
+   The minigame pair ov004 / ov006 is the exception that proves it: the port brings those up
+   lazily after their first load (constructors, then the state-table seats), so
+   their image is taken again once that is done (port_ov_retake, from LoadOverlay)
+   and nothing re-runs on a later visit (run hunt8, lane LOVESME2).
 
    WHERE THE DS LOADS. port_ov_load(n) is called at the places the DS loads
    overlay n: LoadOverlay (hal/scene_boot.cpp: the scene overlays through
@@ -222,6 +226,30 @@ extern "C" int port_ov_load(int ov)
     if (logging())
         std::fprintf(stderr, ", %zu differ after this load\n", after);
     return mode() == 1;
+}
+
+
+/* LOVESME2. Take the overlay's start-up image again, from what the objects hold NOW. For an overlay whose
+   one-time bring-up (constructors, state-table seats) runs after its first load, so the image taken in
+   port_ov_load is the one from before it. Calling this once the bring-up is done makes every later restore put
+   the bring-up back with the rest, as the DS's own load plus static initialisers leaves the overlay. */
+extern "C" void port_ov_retake(int ov)
+{
+    if (mode() == 0 || ov < 0 || ov >= 128)
+        return;
+    Ov &o = g_ov[ov];
+    if (!o.seen)
+        return;
+    size_t tot = 0;
+    for (int i = 0; i < 2 + (int)o.nm; ++i) {
+        Range &r = i < 2 ? o.r[i] : o.m[i - 2];
+        if (r.n && r.snap) {
+            std::memcpy(r.snap, r.b, r.n);
+            tot += r.n;
+        }
+    }
+    if (logging())
+        std::fprintf(stderr, "[ovreset] ov%03d start-up image retaken after its bring-up, %zu bytes\n", ov, tot);
 }
 
 /* LoadOrUnloadObjectOverlays' callback. */

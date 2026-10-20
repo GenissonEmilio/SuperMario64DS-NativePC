@@ -58,6 +58,9 @@ int  port_char_strip_skin_pending(void);
 void port_char_strip_set_pending(int id);
 /* the star select is over (the scene is gone): forget everything for the next one */
 void port_char_strip_reset(void);
+/* SNDCAM1 (S4): a character was picked on the star select (the strip, or the ROM's caps row): the select sound and that character's voice,
+   the clip heard on unlocking them (ch 0..3 Mario Luigi Wario Yoshi) */
+void port_char_strip_pick_sound(int ch);
 
 /* test seams, read from the log lines the proof rows grep */
 int  port_char_strip_slots(void);

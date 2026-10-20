@@ -2523,7 +2523,7 @@ int draw_full(const ntr::GxGpuFrame *f)
         memcpy(I.pj, gr.proj, sizeof I.pj);
         for (int k = 0; k < 4; ++k) I.vp[k] = (float)gr.vp[k];
         I.info[0] = gr.off;
-        I.info[1] = (gr.from_pool ? 1u : 0u) | (gr.has_xform ? 2u : 0u) | (gr.persp ? 4u : 0u);
+        I.info[1] = (gr.from_pool ? 1u : 0u) | (gr.has_xform ? 2u : 0u) | (gr.persp ? 4u : 0u) | (gr.depth_snap ? 8u : 0u);
         I.info[2] = t.cull;
         const ntr::GxGridCorner *cs[3] = {&gr.s[0], &gr.s[1], &gr.s[2]};
         float *as[3] = {I.a0, I.a1, I.a2};
@@ -2533,6 +2533,10 @@ int draw_full(const ntr::GxGpuFrame *f)
             memcpy(&as[k][2], &cs[k]->color, 4);
         }
         I.st[0] = gr.widen;
+        if (gr.depth_snap) {   /* SMOOTHREND1: the flat triangle's plane rides in the four spare floats */
+            I.a0[3] = gr.pl[0]; I.a1[3] = gr.pl[1]; I.a2[3] = gr.pl[2]; I.st[3] = gr.pl[3];
+            memcpy(&I.info[3], &gr.snap_lim, 4);
+        }
         I.st[1] = (float)((t.alpha >= 31 || t.alpha == 0) ? 31u : t.alpha);
         I.st[2] = (float)(t.polyid + (t.fog ? 256 : 0) + ((t.mode == 2 && f->toon_shade) ? 64 * f->toon_shade : 0));
         I.tx[0] = (float)(t.tex_scale ? t.tex_scale : 1);

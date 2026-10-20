@@ -21,6 +21,22 @@ int  hal_menu_starsel_up(void);
 int  hal_menu_enabled(int key);
 int  hal_menu_live(void);
 void host_menu_cursor_sound(void);
+unsigned int _ZN5Sound6Play2DEjj(unsigned int bank, unsigned int id);
+unsigned int func_02012790(unsigned int id);
+}
+
+/* SNDCAM1 (S4): the select sound and the voice a character gives when picked. The voice is the clip the ROM plays when that character is
+   unlocked: Mario / Luigi / Wario are the player bank's sounds 0xd9 / 0xda / 0xdb (the waves NCS_WAVE_SE_VOICE_MARIO 0, _LUIGI 9, _WARIO 7,
+   Player::St_* character change, src/game/player/Player.cpp: PlayBank0), Yoshi is system sound 0xd8 (NCS_WAVE_SE_VOICE_YOSSY_MG 8). */
+extern "C" void port_char_strip_pick_sound(int ch)
+{
+    func_02012790(0x12e);
+    switch (ch & 3) {
+    case 0: _ZN5Sound6Play2DEjj(0, 0xd9); break;
+    case 1: _ZN5Sound6Play2DEjj(0, 0xda); break;
+    case 2: _ZN5Sound6Play2DEjj(0, 0xdb); break;
+    default: func_02012790(0xd8); break;
+    }
 }
 
 namespace {
@@ -154,7 +170,8 @@ int wanted(void)
     else if (!(o = (const unsigned char *)port_scene_live_object())) w = 5;
     else if (SublevelToLevel(data_02092110) > 0xe) w = 6;        /* Bowser and the secret courses: the ROM's star-less screen */
     else if (ob(o, 0x133) == 1) w = 7;                           /* the multiplayer character row (VS) */
-    if (w != why && w != 1) { why = w; fprintf(stderr, "[strip] wanted=%d (0 yes, 2 one-screen menus off, 3 no recipe live, 4 multiplayer, 5 no scene, 6 course has no star row, 7 VS row)\n", w); }
+    else if (!host_setting_character_strip()) w = 8;             /* CAPSTOGGLE1: the CharacterStrip setting is off: the DS's own caps row, no strip */
+    if (w != why && w != 1) { why = w; fprintf(stderr, "[strip] wanted=%d (0 yes, 2 one-screen menus off, 3 no recipe live, 4 multiplayer, 5 no scene, 6 course has no star row, 7 VS row, 8 CharacterStrip setting off)\n", w); }
     return w == 0;
 }
 
@@ -196,6 +213,7 @@ int activate(int i)
         return 0;
     }
     g_pick = g_slot[i].id;
+    port_char_strip_pick_sound(g_slot[i].base & 3);
     {   /* the star select's own life counter (its icon index, +0x116) follows the pick, as it does when the screen is entered as that character */
         unsigned char *o = (unsigned char *)port_scene_live_object();
         if (o) o[0x116] = (unsigned char)(g_slot[i].base & 3);
@@ -317,6 +335,7 @@ unsigned port_char_strip_frame(const struct SpInput *in0)
     if (!wanted()) {
         if (g_up || g_built) fprintf(stderr, "[strip] gone\n");
         forget();                   /* g_pending survives the scene: the restart at the act reads it */
+        if (!host_setting_character_strip()) g_pending = -1;     /* CAPSTOGGLE1: turned off while a costume pick waited: the DS screen restarts nothing */
         return 0;
     }
     if (!g_built) {
@@ -408,7 +427,16 @@ void port_char_strip_idle(void)
 
 void port_char_strip_draw(uint32_t *px, int stride, int w, int h)
 {
-    if (!g_up || !px) return;
+    if (!g_up && px && !host_setting_character_strip() && hal_menu_starsel_up()) {
+        /* CAPSTOGGLE1 proof: SM64DS_STRIP_BMP also writes the picture of the DS star select with the setting off (the frames counted here) */
+        static int off_frames;
+        const int sv = g_frames;
+        g_frames = ++off_frames;
+        capture(px, stride, w, h);
+        g_frames = sv;
+        return;
+    }
+    if (!g_up || !px) return;
     g_pw = w;
     g_ph = h;
     if (!g_begun) { g_begun = 1; cdskin_begin(); }

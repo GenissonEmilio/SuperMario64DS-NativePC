@@ -70,12 +70,10 @@
    is kept here so the seven tables this slice rests on read as one set
    rather than six plus a dependency on another lane's file. */
 #pragma comment(linker, "/alternatename:?data_ov002_0210e00c@@3PAUEntry@@A=_data_ov002_0210e00c")
-#pragma comment(linker, "/alternatename:?data_ov002_0210e084@@3PAUEntry@@A=_data_ov002_0210e084")
 #pragma comment(linker, "/alternatename:?data_ov064_0211c98c@@3PAUEntry@@A=_data_ov064_0211c98c")
 #pragma comment(linker, "/alternatename:?data_ov074_021230f8@@3PAUEntry@@A=_data_ov074_021230f8")
 #pragma comment(linker, "/alternatename:?data_ov084_02130dc4@@3PAUEntry@@A=_data_ov084_02130dc4")
 #pragma comment(linker, "/alternatename:?data_ov098_0213c878@@3PAUEntry@@A=_data_ov098_0213c878")
-#pragma comment(linker, "/alternatename:?data_ov102_0214e890@@3PAUEntry@@A=_data_ov102_0214e890")
 
 /* An object with nothing but directives is a legal linker input and its
    .drectve section is read like any other's, but this file also carries one

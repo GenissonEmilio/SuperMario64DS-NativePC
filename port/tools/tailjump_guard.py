@@ -299,14 +299,14 @@ CLASS_A = tuple(
         # build. The raw TU coming back on a slice re-arms the row.
         {'frame': 'func_ov007_020b3360', 'callee': 'func_ov007_020b3c54',
          'tu': 'src/unnamed/ov007/func_ov007_020b3360.c',
-         'seated': 'host-src/src/func_ov007_020b3360.cpp',
+         'seated': 'host-src/src/unnamed/ov007/func_ov007_020b3360.cpp',
          'note':
              'b3360 pushes nothing and b3c54 reads its SECOND parameter on '
              'the default arm of a 24-way jump table. The damage is a STORE '
              'of garbage into the object rather than a fault.'},
         {'frame': 'func_ov007_020b3c54', 'callee': 'func_ov007_020b3d30',
          'tu': 'src/unnamed/ov007/func_ov007_020b3c54.c',
-         'seated': 'host-src/src/func_ov007_020b3c54.cpp',
+         'seated': 'host-src/src/unnamed/ov007/func_ov007_020b3c54.cpp',
          'note':
              'b3c54 pushes one argument and b3d30 reads two. The second is '
              'used as an array subscript in seven places and the first of '
@@ -324,12 +324,14 @@ CLASS_A = tuple(
              'A RETURN VALUE RIDING: on ARM the previous call leaves its '
              'result in r0 and c99d8 reads r0. On the host the value is in '
              'EAX and c99d8 reads the stack, and the frame pushes nothing.'},
-        {'frame': 'func_ov007_020cc600', 'callee': 'func_ov007_020cc0e4',
-         'tu': 'src/game/stages/d_s_dsmt.cpp',
-         'note':
-             'The same return-value shape. cc600 is reached from no lifecycle '
-             'slot 5d could trace; its only reference is a data slot at '
-             '0x021032a4.'},
+        # func_ov007_020cc600 -> func_ov007_020cc0e4 (class A, 'the same
+        # return-value shape'): RETIRED by INT093F. Main's d_s_dsmt.cpp now
+        # passes the buffer to cc0e4 explicitly (the arg == 20 arm, `func_ov007_
+        # 020cc0e4((FileSaveData *)sb)`), and MSVC folds that one-use callee
+        # into cc600, so func_ov007_020cc0e4 is not in the map and there is no
+        # call left to carry a return value across. Read off the INT093F
+        # build's map and listing; port/ov007_seat.txt 5d Class A row for it is
+        # stale for the same reason.
         {'frame': 'func_ov007_020b6eb4', 'callee': 'func_ov007_020bd648',
          'tu': 'src/unnamed/ov007/func_ov007_020b6eb4.c',
          'note':
@@ -356,7 +358,7 @@ CLASS_C = tuple(
              'hands it to a function pointer, so the whole chain is tail '
              'jumps and the argument never moves.'},
         {'frame': 'func_0204f76c', 'callee': 'func_0205ac5c',
-         'tu': 'src/engine/sound/SoundEngine.cpp',
+         'tu': 'build/port/host-src/src/engine/sound/SoundEngine.cpp',   # PORTSYNC2 reroute: the build compiles the generated copy
          'note':
              'THE arm9 TRIO, and 5d calls this one the instructive case. By '
              'declaration counting it drops two arguments across two frames. '
@@ -365,10 +367,10 @@ CLASS_C = tuple(
              '[ebp+0x10] are still the original caller second and third, '
              'exactly as r1 and r2 still hold them on ARM.'},
         {'frame': 'func_0204f79c', 'callee': 'func_0205ac84',
-         'tu': 'src/engine/sound/SoundEngine.cpp',
+         'tu': 'build/port/host-src/src/engine/sound/SoundEngine.cpp',   # PORTSYNC2 reroute: the build compiles the generated copy
          'note': 'The arm9 trio, second of three.'},
         {'frame': 'func_0204f73c', 'callee': 'func_0205ad54',
-         'tu': 'src/engine/sound/SoundEngine.cpp',
+         'tu': 'build/port/host-src/src/engine/sound/SoundEngine.cpp',   # PORTSYNC2 reroute: the build compiles the generated copy
          'note': 'The arm9 trio, third of three.'},
         # THE HEAP-TEARDOWN PAIR, added by run link60 lane RF1 when the
         # receiver-bridging face for HeapAllocator::Remove replaced the
@@ -398,7 +400,7 @@ CLASS_C = tuple(
              'at all); the old flat __ZN13HeapAllocator6RemoveEv in '
              'lk4_eh_dtor_seat.cpp.obj is not this jmp\'s target.'},
         {'frame': 'func_0204ebb8',
-         'callee': '_ZN13HeapAllocator6RemoveEv',
+         'callee': '?Remove@HeapAllocator@@QAEXXZ',   # the C++ member since the sync, as the row above
          'tu': 'src/engine/heap/SolidHeapAllocator.cpp',
          'note':
              'The SolidHeap teardown leg, same shape and same consequence; '
@@ -419,8 +421,14 @@ CLASS_C = tuple(
         # garbage `this` and a garbage shell index on every stopped shell,
         # every frame.
         {'frame': '_ZN14dScMgCurling_c13Stone_CollideEi',
-         'callee': '_ZN14dScMgCurling_c21ResolveStoneCollisionEi',
+         'callee': '?ResolveStoneCollision@dScMgCurling_c@@QAEXH@Z',   # a member since main's curling fold
          'tu': 'src/minigames/d_s_mg_curling.cpp',
+         # SEATED by main's curling fold: the flat name is now a generated face
+         # (faces_sync_gen.cpp) that loads the receiver and PUSHES the index
+         # itself -- `push [ebp+0xc] / mov ecx,[ebp+8] / call` -- so the row's
+         # premise (the jmp is what carries the arguments) no longer holds.
+         # Read off the INT093F build's own disassembly.
+         'seated': 'host-src/faces_sync_gen.cpp',
          'note':
              'The curling collision veneer. Its callee is the face in '
              'hal/scene_mg_faces.cpp, which forwards to the transcription; '

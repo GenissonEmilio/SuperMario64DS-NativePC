@@ -147,6 +147,9 @@ struct GxGrid {
     uint8_t has_xform;
     uint8_t persp;
     uint8_t from_pool;      // points are in the shape store's pool, else the frame arena
+    uint8_t depth_snap;     // SMOOTHREND1: points that bulge toward the camera are put back on the flat triangle's plane (pl)
+    float pl[4];            // that plane in view space: n.x = d, n = pl[0..2], d = pl[3]
+    float snap_lim;         // the farthest a point may move along its ray (view units)
 };
 
 // Feed the engine. `gx_write_port` takes a geometry-port address in

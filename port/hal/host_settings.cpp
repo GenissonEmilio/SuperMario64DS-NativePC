@@ -635,7 +635,8 @@ int g_cc_pad_taken;
      InvertCameraY      true/false, the analog and free camera's up/down.
      CameraSensitivity  percent of the right stick's (and Q/E's) turn rate,
                         10..400, 100 = today. The DS camera steps a fixed
-                        0x400 per tick in the ROM, so it does not apply there.
+                        0x400 per tick in the ROM; the right stick there turns it by how
+                        far it is pushed (a full push at 100 is that step), scaled by this.
      MouseSensitivity   percent of the mouse look, 10..400, 100 = today.
    g_ctl_gen moves whenever any control or camera value changes (a set or a
    file reload), so the frame loop refreshes its copies on a counter compare. */
@@ -869,6 +870,10 @@ int g_debug_menu = 0;
 /* CharactersUnlockedFromStart: 1 when the custom character picks (the star select strip's arrow and costumes, the white door's picker) are open
    from the start, without the save slot's white door unlock. Default 0: they appear once the slot has opened the door. Read live. */
 int g_chars_from_start = 0;
+
+/* CharacterStrip: 1 (the default) shows the star select's character strip (PRECOURSE1); 0 leaves the star select as the DS has it: Yoshi's caps row,
+   no strip, no custom character arrow. Read live. */
+int g_character_strip = 1;
 
 /* Aspect: the presentation ratio, WIDTH DIVIDED BY HEIGHT. 0 (the default) is
    the explicit native sentinel -- the DS's own 4:3 at the 512x384 window the
@@ -1532,6 +1537,7 @@ void load_once(void)
     g_adventure_ghosts = 0;
     g_debug_menu = 0;
     g_chars_from_start = 0;
+    g_character_strip = 1;
     g_aspect = 0.0;
     g_vs_luigi_infection = 0;
     g_vs_luigi_seconds = 0;
@@ -1732,6 +1738,7 @@ void load_once(void)
         g_adventure_ghosts = json_bool(text, "AdventureGhosts", 0);
         g_debug_menu = json_bool(text, "DebugMenu", 0);
         g_chars_from_start = json_bool(text, "CharactersUnlockedFromStart", 0);
+        g_character_strip = json_bool(text, "CharacterStrip", 1);
         /* the presentation aspect, read against its own default of 0 (native)
            so a file written before this key existed reads as the 4:3 window.
            Sanitised HERE rather than at the accessor, so the stored value is
@@ -2389,6 +2396,14 @@ int reload_live(const char *text)
             g_chars_from_start = cfs;
             changed = 1;
             fprintf(stderr, "[settings] live re-read: CharactersUnlockedFromStart %s\n", cfs ? "ON" : "off");
+        }
+    }
+    {
+        const int cs = json_bool(text, "CharacterStrip", g_character_strip);
+        if (cs != g_character_strip) {
+            g_character_strip = cs;
+            changed = 1;
+            fprintf(stderr, "[settings] live re-read: CharacterStrip %s\n", cs ? "ON" : "off");
         }
     }
     const int voice_changed = read_voice_keys(text);
@@ -3290,6 +3305,29 @@ extern "C" int host_setting_set_volume(int pct)
     g_volume = pct;
     g_poll_flag = 1;
     queue_int("Volume", pct);
+    return 1;
+}
+
+/* CharacterStrip, plus SM64DS_CHARACTER_STRIP (0 forces it off, any other value on) for proof runs. */
+extern "C" int host_setting_character_strip(void)
+{
+    static int env = -2;
+    if (env == -2) {
+        const char *e = getenv("SM64DS_CHARACTER_STRIP");
+        env = e ? ((e[0] == '0' && e[1] == 0) ? 0 : 1) : -1;
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_character_strip;
+}
+
+extern "C" int host_setting_set_character_strip(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    g_character_strip = on;
+    g_poll_flag = 1;
+    queue_bool("CharacterStrip", on);
     return 1;
 }
 

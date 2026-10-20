@@ -289,7 +289,10 @@ int up_lc2(int scene_id)
        arrows) must not come back for any of them */
     g_lc2_hold = 0;
     if (scene_id != MENU_SCENE_GATED && data_0209f20c != 0 && data_0209f2d4 >= 1 && data_0209f2d4 <= 6) {
-        g_lc2_last = 1 + (data_0209f2b0 != 0) + 2 * (SublevelToLevel(data_02092124) >= 0xf);
+        const int lvl = SublevelToLevel(data_02092124);
+        /* levels 0xf..0x14 (the Bowser arenas and the three key courses, Goomboss Battle among them): LC_Render also draws the
+           CONGRATULATIONS lettering as an OBJ at DS y 0x38 (src/game/stages/d_s_stage_methods.cpp:388), which no band lifted */
+        g_lc2_last = 1 + (data_0209f2b0 != 0) + 2 * (lvl >= 0xf) + 4 * (lvl >= 0xf && lvl < 0x15);
         return g_lc2_last;
     }
     /* the screen flag falls one frame before the picture has changed back: hold the layout for exactly that frame, once */
@@ -354,7 +357,7 @@ void lc2_facts(MenuFacts *f)
 
 void build_lc2(int variant, MenuLayout *L)
 {
-    const int record = (variant - 1) & 1, high = ((variant - 1) >> 1) & 1;
+    const int record = (variant - 1) & 1, high = ((variant - 1) >> 1) & 1, boss = ((variant - 1) >> 2) & 1;
     const int W = L->w, H = L->h;
     if (W < 96 || H < 96) return;
     auto U = [L](int u) { return (int)((long long)u * L->unum / L->uden); };
@@ -377,6 +380,9 @@ void build_lc2(int variant, MenuLayout *L)
     const int coin0 = (record ? 0x8d : 0x7a) - sh, coin1 = (record ? 0xa1 : 0x90) - sh;
     const int arr0 = 162, arr1 = 192;
     const int hA = high ? 0 : hrow(a1) - hrow(a0), hB = hrow(b1) - hrow(b0);
+    /* CONGRATULATIONS (boss courses): glyph rows 50..62, the band stops where the star line's band starts */
+    const int cg0 = 47, cg1 = b0;
+    const int hCg = boss ? hrow(cg1) - hrow(cg0) : 0;
     const int hBan = record ? hrow(ban1) - hrow(ban0) : 0, hCoin = hrow(coin1) - hrow(coin0);
     /* the plates: one size, a stack */
     const int pw = U(104), ph = pw * 2 / 15, pgap = U(5);
@@ -392,6 +398,7 @@ void build_lc2(int variant, MenuLayout *L)
     const int g1 = U(3), g2 = high ? 0 : U(3), g3 = U(5), g4 = U(9);
     int T = hA + g2 + hB + g3 + hCoin + g4 + plates_h;
     if (record) T += hBan + g1;
+    if (boss) T += hCg + g1;
     int y = (H - T) / 2;
     if (y < U(4)) y = U(4);
 
@@ -408,6 +415,7 @@ void build_lc2(int variant, MenuLayout *L)
     band(MENU_L_OBJ, arr0, arr1, 0, false);                             /* the touch-screen arrows */
     int yy = y;
     if (record) { band(MENU_L_OBJ, ban0, ban1, yy, true); yy += hBan + g1; }
+    if (boss) { band(MENU_L_OBJ, cg0, cg1, yy, true); yy += hCg + g1; }     /* CONGRATULATIONS above the star line, the DS order */
     if (!high) { band(MENU_L_BG3, a0, a1, yy, true); yy += hA + g2; }
     band(MENU_L_BG3, b0, b1, yy, true); yy += hB + g3;
     band(MENU_L_OBJ, coin0, coin1, yy, true); yy += hCoin + g4;

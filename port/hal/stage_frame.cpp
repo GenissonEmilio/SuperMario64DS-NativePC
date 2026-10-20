@@ -350,16 +350,9 @@ static void slot9_seam(const char *what, const char *why)
  * for slot 9 alone. */
 #pragma comment(linker, "/alternatename:__ZN10dScStage_c12RenderNumberEhiibi=?RenderNumber@dScStage_c@@SAXEHH_NH@Z")
 
-void dScStage_c::RenderVsModeNewStar()
-{
-    static int said;
-    if (!said) {
-        said = 1;
-        slot9_seam("dScStage_c::RenderVsModeNewStar, the VS new-star popup's draw",
-                   "OAM::VS_NEW_STAR_APPEARED and four more are unmounted "
-                   "ov002 rows at 0x0210cfd0..0x0210d188");
-    }
-}
+/* RenderVsModeNewStar is the ROM's own body now: src/_ZN10dScStage_c19RenderVsModeNewStarEv.cpp
+ * is on port/slice_w31_s42d.txt and its five ov002 rows are mounted by port/ov002_syms.txt
+ * (run hunt8, lane WIGGLER1). */
 
 /* ---- TWO MORE FACES, AND THEY ARE NOT SPELLING FIXES --------------------
  *

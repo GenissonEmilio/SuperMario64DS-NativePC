@@ -60,8 +60,6 @@
 #pragma comment(linker, "/alternatename:__ZN22ExpandingHeapAllocator8LinkNodeEP10MemoryNodeS1_S1_=?LinkNode@ExpandingHeapAllocator@@SAPAXPAUMemoryNode@@00@Z")
 /* hal/cxx_aliases.cpp:3245 */
 #pragma comment(linker, "/alternatename:__ZN2GX11LoadTexPlttEPKvjj=?LoadTexPltt@GX@@YAXPBXII@Z")
-/* hal/cxx_aliases.cpp:3287 */
-#pragma comment(linker, "/alternatename:__ZN4cstd3absEi=?abs@cstd@@YAHH@Z")
 /* hal/cxx_aliases.cpp:3264 */
 #pragma comment(linker, "/alternatename:__ZN4cstd4sqrtEy=?sqrt@cstd@@YAH_K@Z")
 /* hal/cxx_aliases.cpp:3288 */

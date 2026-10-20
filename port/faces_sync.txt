@@ -1336,12 +1336,12 @@ __ZN10dScEntry_c15graphCallback_c14GraphCallback2Ev                      ?GraphC
 __ZN10dScEntry_c15graphCallback_cC1Ev                                    ??0graphCallback_c@dScEntry_c@@QAE@XZ                            0x021160b4 R
 __ZN10dScEntry_c16CleanupResourcesEv                                     ?CleanupResources@dScEntry_c@@UAEHXZ                             0x0211a210 R
 __ZN10dScEntry_c16OnPendingDestroyEv                                     ?OnPendingDestroy@dScEntry_c@@UAEXXZ                             0x0211a268 R
-__ZN10dScEntry_c6RenderEv                                                ?Render@dScEntry_c@@UAEHXZ                                       0x0211a26c F
+__ZN10dScEntry_c6RenderEv                                                ?Render@dScEntry_c@@UAEHXZ                                       0x0211a26c R
 __ZN10dScEntry_c6icon_c6RenderEv                                         ?Render@icon_c@dScEntry_c@@UAEXXZ                                0x02115bcc R
 __ZN10dScEntry_c6icon_c8BehaviorEv                                       ?Behavior@icon_c@dScEntry_c@@UAEXXZ                              0x02115e1c R
 __ZN10dScEntry_c6icon_cC1Ev                                              ??0icon_c@dScEntry_c@@QAE@XZ                                     0x0211a838 R
 __ZN10dScEntry_c6icon_cD1Ev                                              ??1icon_c@dScEntry_c@@QAE@XZ                                     0x02115bac R
-__ZN10dScEntry_c8BehaviorEv                                              ?Behavior@dScEntry_c@@UAEHXZ                                     0x0211a2b8 F
+__ZN10dScEntry_c8BehaviorEv                                              ?Behavior@dScEntry_c@@UAEHXZ                                     0x0211a2b8 R
 __ZN10dScEntry_cD1Ev                                                     ??1dScEntry_c@@UAE@XZ                                            0x02115ab8 R
 
 __ZN13dScGameOver_c13InitResourcesEv                                     ?InitResources@dScGameOver_c@@UAEHXZ                             0x020b0b3c R

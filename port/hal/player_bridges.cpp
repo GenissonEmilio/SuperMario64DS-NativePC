@@ -62,6 +62,23 @@ void _ZN6Player4HealEi(Player *p, int amt)
 unsigned int Player::GetBodyModelID(unsigned int a, bool b_) const
 { return _ZNK6Player14GetBodyModelIDEjb((char *)this, a, b_ ? 1 : 0); }      */
 
+/* BALLOON2: THE POWER-UP MODELS A CASTLE FLOOR NEVER BUILDS.
+   func_ov002_020e5948 (src/game/player/Player.cpp, the SetFiles arm) builds
+   the balloon models (+0xEC body, +0xF0 balloon, +0x174 wings) only when the
+   course is NOT 2, 4 or 5 (the castle floors) and the game is not VS. A Power
+   Flower still lies on the castle 2F (four persistent ones for Luigi's vanish
+   cap), and a Mario standing near one when it is picked up takes the Mario arm
+   of daObjPowerUpItem_c::CheckPickup: InitBalloonMario / InitWingFeathers turn
+   the flag on and Player::Behavior (func_ov002_020e4768 -> UpdateBones on the
+   body model the balloon selects) then reads the model that was never built
+   and faults at address 0x14. The DS never reaches that read in a retail
+   castle; the port can (a character switched after the course loaded, a second
+   player nearest), so the models are built here, once, with the very calls and
+   files the ROM's own arm makes for every other course, before the first
+   Behavior of a player that lacks them. A castle that never uses them draws
+   and runs exactly as before. The matrices the ROM seats later are untouched. */
+extern "C" { static void port_player_power_models(char *c); }
+
 extern "C" {
 /* gate-10 smoke drives the state machine directly (the ChangeState PMF
    dispatch reads DS-baked member-fn bytes MSVC cannot represent) */
@@ -76,7 +93,7 @@ int hal_player_st_walk_init(void *p)
 int hal_player_st_walk_main(void *p)
 { return ((Player *)p)->Player::St_Walk_Main(); }
 int hal_player_behavior(void *p)
-{ return ((Player *)p)->Player::Behavior(); }
+{ port_player_power_models((char *)p); return ((Player *)p)->Player::Behavior(); }
 /* the walk demo renders the Player's current body ModelAnim in place:
    identity model matrix, bones posed from the anim Behavior advanced */
 /* level model render for the window: identity world matrix (stage models
@@ -1836,6 +1853,49 @@ static void ghost_toon_off(char *c, int slot)
                              " the ghost's body and head models (%u)"
                              "\n", slot, chr, cleared[slot]);
 }
+/* BALLOON1: THE BALLOON BODY MAY NOT EXIST WHILE THE BALLOON IS ON.
+   func_ov002_020e5948 (src/func_ov002_020e5948.c:330-345) SetFiles the balloon
+   body at Player+0xf0 only when the course is NOT one of levels 2, 4 and 5
+   (the castle floors). The castle 2F carries four Power Flowers all the same:
+   param1 0xffff, "persistent", which InitResources lets live only while the
+   closest player is Luigi (the Vanish Luigi flower). A Mario who is in the room
+   when one is lying there (the character switched after the course loaded, or a
+   second player standing closer) picks it up, CheckPickup takes the Mario arm
+   and Player::InitBalloonMario turns +0x6fd on with nothing at +0xf0 but the
+   constructed vptr. The first Render then reads a model file that is null
+   (ApplyOpacity -> func_020461b4, fault address 0x24, crash report c926736d).
+   The ROM never checks: on the DS that read lands in the low TCM mirror and the
+   draw that follows is undefined. Here the balloon is built on first use, with
+   the very SetFile / SetAnim the ROM's SetFiles makes (same file, same args),
+   so the balloon looks and flies as it does in every other course. The matrix
+   the behaviour pass already seated at +0x10c is kept across the SetFile. */
+extern "C" void *_ZN5Model8LoadFileER13SharedFilePtr(void *ptr);
+extern "C" int _ZN9ModelBase7SetFileEP8BMD_Fileii(void *self, void *file, int a, int b);
+extern "C" int _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void *, void *, int, int, unsigned int);
+extern "C" char data_ov002_0210e6f8[];     /* SharedFilePtr: the balloon body */
+extern "C" int data_ov002_0210e750[];      /* [1] = its BCA */
+static bool balloon_model_ready(char *c)
+{
+    char *m3 = c + 0xf0;
+    if (*(void **)(m3 + 8) != 0) return true;
+    static int logged;
+    unsigned char keep[0x30];
+    memcpy(keep, c + 0x10c, sizeof keep);
+    void *f = _ZN5Model8LoadFileER13SharedFilePtr(data_ov002_0210e6f8);
+    if (f) {
+        _ZN9ModelBase7SetFileEP8BMD_Fileii(m3, f, 1, 1);
+        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(m3, (void *)(size_t)data_ov002_0210e750[1], 0x40000000, 0x1000, 0);
+    }
+    memcpy(c + 0x10c, keep, sizeof keep);
+    bool ok = *(void **)(m3 + 8) != 0;
+    if (logged < 3) {
+        ++logged;
+        fprintf(stderr, "[balloon] Player %p has the balloon on (+0x6fd) with no balloon body (course %d builds none): %s\n",
+                (void *)c, (int)data_0209f2f8, ok ? "built it on first use" : "could not build it, balloon draw skipped");
+    }
+    return ok;
+}
+
 
 void hal_render_player_world(void *player)
 {
@@ -1961,7 +2021,12 @@ static void hal_render_player_world_body(void *player)
     }
 
     port::party::draw_diag(c);          /* PBODY1: log level 2 only */
-    unsigned id = _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 0);
+    /* SMOOTHREND1 (D18, Metal Wario's closing flicker): Player::Render picks the body with GetBodyModelID(.., 1), the form that
+       reads the RENDER copy of the metal flag (+0x6fa), not the live one (+0x6f9). The behaviour pass clears +0x6fa on every
+       second tick of the last 62 ticks of the cap and sets it back on the next, and that is the whole flicker: the body AND the
+       cap model (the head group below already asked with 1) swap between metal and plain Wario together. Asking with 0 drew the
+       metal body on every tick and only the cap blinked. Outside the flicker the two flags are equal. */
+    unsigned id = _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 1);
     ModelAnim *ma = ((ModelAnim **)(c + 0xdc))[id];
     if (!ma) return;
     /* THE BODY MATRIX IS THE ONE THE SEAT ALREADY WROTE, and this function
@@ -2105,10 +2170,15 @@ static void hal_render_player_world_body(void *player)
     std::size_t hsink_t1 = 0;
     if (balloon) {
         ModelAnim *m3 = (ModelAnim *)(c + 0xf0);    /* mModelAnim3 */
+        if (!balloon_model_ready(c)) {
+            /* no balloon body and none could be built: draw nothing for it
+               rather than hand the draw a model with no file behind it */
+        } else {
         _ZN9ModelBase12ApplyOpacityEjj(m3, *(const unsigned char *)(c + 0x6f5));
         if (ghost) ghost_opacity(m3, party_slot);
         else if (party_solid) _ZN9ModelBase12ApplyOpacityEjj(m3, 31);
         m3->Render((const Vector3 *)(c + 0x80));    /* virtual, as the ROM's */
+        }
     } else {
         if (hsink_on()) ntr::gx_polygons(hsink_t0);
         ma->Model::Render((const Vector3 *)(c + 0x80));
@@ -2309,7 +2379,7 @@ static void hal_render_player_world_body(void *player)
 void hal_render_player_body_ex(void *player, int with_head)
 {
     char *c = (char *)player;
-    unsigned id = _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 0);
+    unsigned id = _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 1);   /* the render form, see hal_render_player_world */
     ModelAnim *ma = ((ModelAnim **)(c + 0xdc))[id];
     if (!ma) return;
     for (int i = 0; i < 12; ++i) ((int *)&ma->mat4x3)[i] = 0;
@@ -2532,6 +2602,35 @@ extern void *data_0209f394[];        /* per-player Actor*, cxxname_bridge's */
 extern short data_02092144[];        /* per-player health, high byte = HP */
 extern void *data_ov002_020ff480[];  /* ANIM_PTRS[anim*4 + char] */
 extern signed char data_02092114;    /* queued in-level swap, -1 = none */
+extern "C" void *_Znwj(unsigned);
+extern "C" void *_ZN10ModelAnim2C1Ev(void *);
+extern "C" void _ZN10ModelAnim213Func_020162C4Eji5Fix12IiEt(void *, unsigned, int, int, unsigned short);
+extern "C" void *_ZN5Model8LoadFileER13SharedFilePtr(void *ptr);
+extern "C" int _ZN9ModelBase7SetFileEP8BMD_Fileii(void *self, void *file, int a, int b);
+extern "C" int _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void *, void *, int, int, unsigned int);
+extern "C" char data_ov002_0210e780[], data_ov002_0210e6f8[], data_ov002_0210e7b0[];
+extern "C" int data_ov002_0210e750[], data_ov002_0210e4c0[];
+static void port_player_power_models(char *c)
+{
+    if (data_0209f2d8 == 1) return;                       /* VS builds its own */
+    { static int off = -1; if (off < 0) off = std::getenv("SM64DS_NO_POWER_MODELS") ? 1 : 0; if (off) return; }   /* test only: the must-fail row */
+    const int lv = (int)data_0209f2f8;
+    if (lv != 2 && lv != 4 && lv != 5) return;            /* every other course built them */
+    if (*(void **)(c + 0xEC) != 0) return;
+    void *p = _Znwj(0x78);
+    if (p) p = _ZN10ModelAnim2C1Ev(p);
+    *(void **)(c + 0xEC) = p;
+    if (!p) return;
+    *(unsigned char *)(c + 0x718) |= 0x20;
+    _ZN9ModelBase7SetFileEP8BMD_Fileii(p, _ZN5Model8LoadFileER13SharedFilePtr(data_ov002_0210e780), 1, -1);
+    _ZN10ModelAnim213Func_020162C4Eji5Fix12IiEt(p, (unsigned)((int *)data_ov002_020ff480[0xC6])[1], 0, 0x1000, 0);
+    _ZN9ModelBase7SetFileEP8BMD_Fileii(c + 0xF0, _ZN5Model8LoadFileER13SharedFilePtr(data_ov002_0210e6f8), 1, 1);
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xF0, (void *)(size_t)data_ov002_0210e750[1], 0, 0x1000, 0);
+    _ZN9ModelBase7SetFileEP8BMD_Fileii(c + 0x174, _ZN5Model8LoadFileER13SharedFilePtr(data_ov002_0210e7b0), 1, 1);
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0x174, (void *)(size_t)data_ov002_0210e4c0[1], 0, 0x1000, 0);
+    fprintf(stderr, "[balloon] Player %p: course %d builds no balloon / wing models; built them before the first Behavior\n", (void *)c, lv);
+}
+
 void _ZN10ModelAnim24CopyERKS_Pcj(void *self, const void *src, char *nf,
                                   unsigned nof);
 

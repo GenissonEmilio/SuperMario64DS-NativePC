@@ -80,7 +80,5 @@
 #pragma comment(linker, "/alternatename:__ZN6Memory16operator_delete2EPv=?operator_delete2@Memory@@YAXPAX@Z")
 /* hal/cxx_aliases.cpp:3665 */
 #pragma comment(linker, "/alternatename:__ZdlPv=??3@YAXPAX@Z")
-/* hal/cxx_aliases.cpp:3287 */
-#pragma comment(linker, "/alternatename:__ZN4cstd3absEi=?abs@cstd@@YAHH@Z")
 /* hal/cxx_aliases.cpp:3299 */
 #pragma comment(linker, "/alternatename:__ZN18NestedHeapIterator10FindNestedEPv=?FindNested@NestedHeapIterator@@SAPAU1@PAX@Z")

@@ -2125,6 +2125,7 @@ static void cost_window(const char *name, int variant, double us)
     }
 }
 
+extern "C" int port_wipe_cut_picture(uint32_t *dst, int w, int h, int stride);   /* ntr/ppu_sub.cpp */
 void hal_menu_present(uint32_t *dst, int w, int h, int stage)
 {
     MenuDecision &D = g_dd;
@@ -2230,6 +2231,9 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
         for (int i = 0; i < D.L.np; ++i) menu_piece_draw(&D.L, i, S, dst, w, h);
     }
     g_rep.enable = 0; g_rep.valid = 0;
+    /* MGEXIT1: the wipe (the minigames' star and circle) is cut into the finished picture once, about its centre; the two source screens were
+       not cut while this recipe is live (ntr::wipe_suppressed), because the recipe moves their pieces */
+    port_wipe_cut_picture(dst, w, h, g_dst_stride > 0 ? g_dst_stride : w);
     if (D.L.snap_save) snap_save(dst, w, h);
     menu_shot_maybe(dst, w, h, D.serial);
     /* HOVERBOX1: no port-made pulsing outline over a hovered or pad-focused hotspot (menu_highlight_paint is no longer called) */
@@ -2262,12 +2266,17 @@ static unsigned g_hover_stamp;     /* ASSET3: counts the mouse moves that landed
 static std::atomic<int> g_cursor_snd_req{0};
 static int g_hover_over = -1;      /* EXTRAS093: the hotspot the mouse is over now, -1 when it is over none */
 extern "C" void func_02012790(int id);
+int (*g_menu_cursor_snd_hook)(void);
 void host_menu_cursor_sound(void) { g_cursor_snd_req.store(1); }
 void host_menu_cursor_sound_flush(void)
 {
     if (!g_cursor_snd_req.exchange(0)) return;
     static int log = -1;
     if (log < 0) log = getenv("SM64DS_MENU_SOUND_LOG") ? 1 : 0;
+    if (g_menu_cursor_snd_hook && g_menu_cursor_snd_hook()) {
+        if (log) fprintf(stderr, "[menu] cursor sound (the title's own D-pad move sound)\n");
+        return;
+    }
     if (log) fprintf(stderr, "[menu] cursor sound (func_02012790 0x12e)\n");
     func_02012790(0x12e);
 }

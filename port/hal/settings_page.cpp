@@ -622,6 +622,7 @@ const Row ROWS_GENERAL[] = {
     { R_CHECK, "Debug menu", SL_DEBUG_MENU, -1, 0, 0, 0 },
     { R_CHOICE, "Chat size", SL_CHAT_SCALE, -1, 0, CHAT_LABELS, 5, CHAT_VALS },
     { R_CHECK, "Custom characters from the start", SL_CHARS_FROM_START, -1, 0, 0, 0 },
+    { R_CHECK, "Character select on star select", SL_CHARACTER_STRIP, -1, 0, 0, 0 },
 };
 /* PAUSE3: CONTROLS is the old CONTROLS and CAMERA tabs together (the camera rows first, then the run rows, then the bindings) */
 const Row ROWS_CONTROLS[] = {
@@ -1105,6 +1106,9 @@ void activate(const Row &R, int col)
 
 extern "C" int settings_page_open(void) { return S.open; }
 extern "C" void settings_page_request(void) { S.pending = 1; S.hold_touch = 1; }
+static int g_request_src;
+extern "C" void settings_page_set_source(int src) { g_request_src = src; }
+extern "C" int settings_page_source(void) { return g_request_src; }
 extern "C" int settings_page_pending(void) { return S.pending; }
 extern "C" void settings_page_clear_request(void) { S.pending = 0; }
 extern "C" int settings_page_tab(void) { return S.tab; }

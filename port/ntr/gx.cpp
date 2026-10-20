@@ -1108,6 +1108,41 @@ static bool grid_defer_try(const float *pts, long pool_off, int tf,
                            const float *box6);
 static int g_grid_defer = 0;     // this frame's grids may be kept for the card
 
+/* SMOOTHREND1 (N14, eyes sunk into the model): THE DEPTH STAYS THE ROM'S.
+   A curved patch lifts its middle toward the camera, so a flat polygon the artists laid on the
+   face (an eye, a pupil, Lakitu's glasses) ends up BEHIND the lifted face and is buried. The
+   picture wants the curved shading and silhouette, but the DEPTH of every pixel the DS drew is the
+   flat triangle's. So each point of a patch that bulges toward the camera is moved back along its
+   own view ray, to where that ray meets the flat source triangle's plane: the screen position,
+   the texel and the normal are untouched, only the depth (and the perspective weight that rides
+   with it) is the flat one, a hair behind it (kSnapBack).
+   The plane is n.x = d from the three view-space corners; `pl` is n, d. Kill switch
+   SM64DS_SMOOTH_DEPTHSNAP=0. The card's grid stage does the same, from the same four floats. */
+static const float kSnapReach = 0.2f;
+static const float kSnapBack = 1.0003f;   /* a hair behind the flat plane, so a flat polygon coplanar with the face (an eye, a screen) and drawn after it wins the tie as it does on the DS */
+static bool snap_enabled() {
+    static int on = -1;
+    if (on < 0) { const char *e = std::getenv("SM64DS_SMOOTH_DEPTHSNAP"); on = (e && e[0] == '0') ? 0 : 1; }
+    return on != 0;
+}
+static bool snap_plane(const SmoothVertex s[3], float pl[4], float *lim) {
+    const float e1x = s[1].x - s[0].x, e1y = s[1].y - s[0].y, e1z = s[1].z - s[0].z;
+    const float e2x = s[2].x - s[0].x, e2y = s[2].y - s[0].y, e2z = s[2].z - s[0].z;
+    pl[0] = e1y * e2z - e1z * e2y; pl[1] = e1z * e2x - e1x * e2z; pl[2] = e1x * e2y - e1y * e2x;
+    pl[3] = pl[0] * s[0].x + pl[1] * s[0].y + pl[2] * s[0].z;
+    const float l2 = pl[0] * pl[0] + pl[1] * pl[1] + pl[2] * pl[2];
+    /* how far a patch can really lift: a fraction of the triangle's longest edge. A ray that meets the plane
+       farther than that off the point (a triangle seen nearly edge-on) is not a lift, it is the plane's
+       far reach, and the point moves only this far. */
+    const float e3x = s[2].x - s[1].x, e3y = s[2].y - s[1].y, e3z = s[2].z - s[1].z;
+    float m2 = e1x * e1x + e1y * e1y + e1z * e1z;
+    const float b2 = e2x * e2x + e2y * e2y + e2z * e2z, c2 = e3x * e3x + e3y * e3y + e3z * e3z;
+    if (b2 > m2) m2 = b2;
+    if (c2 > m2) m2 = c2;
+    *lim = kSnapReach * std::sqrt(m2);
+    return l2 > 1e-24f;
+}
+
 static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[3],
                                  const Mat *xform, const GxTriangle *st_in,
                                  const Mat *proj_in, const float *widen_in,
@@ -1141,6 +1176,10 @@ static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[
         xr2 = _mm_loadu_ps(xform->m + 8); xr3 = _mm_loadu_ps(xform->m + 12);
     }
     const __m128 one = _mm_set1_ps(1.0f);
+    float pl[4] = {0, 0, 0, 0};
+    float snap_lim = 0.0f;
+    bool snap_on = persp && snap_enabled() && snap_plane(s, pl, &snap_lim);
+    const float pnl = std::sqrt(pl[0] * pl[0] + pl[1] * pl[1] + pl[2] * pl[2]);
     for (int i = 0; i < n; ++i) {
         __m128 vw;                                   // the view-space point, w = 1
         if (xform) {
@@ -1154,6 +1193,22 @@ static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[
             vw = _mm_setr_ps(t[0], t[1], t[2], 1.0f);
         } else {
             vw = _mm_setr_ps(pts[i * 3], pts[i * 3 + 1], pts[i * 3 + 2], 1.0f);
+        }
+        if (snap_on) {
+            /* SMOOTHREND1 (N14 eyes): put this point's depth back on the ROM's own flat triangle (same screen place) */
+            float t4[4]; _mm_storeu_ps(t4, vw);
+            const float dn = pl[0] * t4[0] + pl[1] * t4[1] + pl[2] * t4[2];
+            if (dn > 1e-6f * pnl || dn < -1e-6f * pnl) {
+                float k = pl[3] / dn;
+                if (k > 0.0f) {
+                    const float dist = std::sqrt(t4[0] * t4[0] + t4[1] * t4[1] + t4[2] * t4[2]);
+                    const float dk = snap_lim / (dist > 1e-6f ? dist : 1e-6f);
+                    if (k > 1.0f + dk) k = 1.0f + dk;
+                    if (k < 1.0f - dk) k = 1.0f - dk;
+                    k = k * kSnapBack;
+                    vw = _mm_setr_ps(t4[0] * k, t4[1] * k, t4[2] * k, 1.0f);
+                }
+            }
         }
         const __m128 cl = _mm_add_ps(_mm_add_ps(_mm_add_ps(
             _mm_mul_ps(_mm_shuffle_ps(vw, vw, 0x00), pr0),
@@ -1385,6 +1440,7 @@ static bool grid_defer_try(const float *pts, long pool_off, int tf,
     gr.at = (uint32_t)g.tris.size();
     gr.tf = (uint8_t)tf;
     gr.persp = persp ? 1 : 0;
+    gr.depth_snap = (persp && snap_enabled() && snap_plane(s, gr.pl, &gr.snap_lim)) ? 1 : 0;
     if (pool_off >= 0) {
         gr.from_pool = 1;
         gr.off = (uint32_t)pool_off;
@@ -2397,9 +2453,20 @@ void exec(uint8_t cmd, const uint32_t *p, int np) {
                ending's 16:9 letterbox writes 32 and 175 and the cartridge
                puts the picture on rows 16..159, bars above and below. */
             const int x1 = p[0] & 0xFF;
-            const int y1 = (191 - ((p[0] >> 24) & 0xFF)) & 0xFF;
+            int y1 = (191 - ((p[0] >> 24) & 0xFF)) & 0xFF;
             const int x2 = (p[0] >> 16) & 0xFF;
-            const int y2 = (191 - ((p[0] >> 8) & 0xFF)) & 0xFF;
+            int y2 = (191 - ((p[0] >> 8) & 0xFF)) & 0xFF;
+            /* DRAWDIST2 (tester, 16:9: the bars around Peach's dialogue scene, the lower one is taller than the
+               upper). The cartridge puts the ending's picture on rows 16..159 and keeps rows 160..191 for the
+               subtitle, so the bars are 16 and 32 rows. On a picture wider than 4:3 the picture is centred
+               between equal bars instead (rows 24..167, 24 and 24); the subtitle box is translucent and keeps its
+               place over the lowest rows. At 4:3 nothing moves: the ROM's own rows. Only this exact rectangle
+               (full width, rows 16..159) is moved, so no other scene's viewport is touched. */
+            if (!menu_wide() && x1 == 0 && x2 == 255 && y1 == 16 && y2 == 159 &&
+                present_w() * 3 > present_h() * 4) {
+                y1 += 8;
+                y2 += 8;
+            }
             /* Scaled into the PRESENT rectangle and offset by its origin, so
                a game-issued full-screen viewport fills the picture the host is
                presenting rather than the whole wide buffer. present_* is the
@@ -8077,6 +8144,7 @@ struct IpGroup {
     uint32_t ev0, ev1;   // event range [ev0, ev1)
     int part;            // a particle (MTX_IDENTITY then one MULT_4x3)
     double ps;           // its billboard scale, in the view matrix's units
+    int match2 = -1;     // SMOOTHREND1: the group in the record TWO ticks back, when this one has none a tick back (a blinking model)
 };
 
 struct IpRec {
@@ -8088,6 +8156,8 @@ struct IpRec {
     std::vector<int> ev_group;   // group of every event (-1 before the first)
     std::vector<int> blend;      // per event: previous record's event, -1 none,
                                  // -2 unpaired absolute LOAD (camera-corrected)
+    std::vector<int> blend2;     // SMOOTHREND1: per event: the event TWO ticks back (a blinking model), -1 none
+    int has_p2 = 0;              // blend2 was built against the record in the free slot
     State start;
     uint32_t start_teximage = 0, start_plttbase = 0;
     uint32_t sealed = 0;         // events that reached the frame's gx_render
@@ -8365,6 +8435,47 @@ void ip_build_groups(IpRec &r) {
     close();
 }
 
+
+/* POLISH093 P3: THE TEXTURE MATRIX BETWEEN TWO TICKS. A texture animation (the ROM's BTA: Goomboss's eyes, scrolling water, lava) rewrites the
+   texture matrix once a tick, and the pictures between two ticks used to keep tick N's: the texture ran a tick ahead of the geometry
+   and moved at 30 steps a second. When the group is paired and the two ticks' matrices are the same command with the same shape and every
+   word moved by less than a limit, the in-between picture takes the blend like any other matrix. A bigger move is a wrap or a jump to another
+   cell of an atlas, which a blend would sweep through, so that one stays tick N's. SM64DS_INTERP_TEXMTX=0 puts the old rule back;
+   SM64DS_INTERP_TEXMTX_MAX=<n> sets the limit (4.12 fixed units per word, default 0x6000 = 6.0: a slow scroll, not a hop between cells); SM64DS_INTERP_TEXLOG=1 prints what each
+   pair did, once. */
+int ip_texmtx_mode() {
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_INTERP_TEXMTX"); v = (e && e[0] == '0') ? 0 : 1; }
+    return v;
+}
+bool ip_tex_pair_ok(const IpEv &pe, const std::vector<uint32_t> &ppar, const IpEv &ce, const uint32_t *cp) {
+    if (!ip_texmtx_mode()) return false;
+    if (pe.kind != IPK_CMD || pe.cmd != ce.cmd || pe.np != ce.np) return false;
+    static long lim = -1;
+    static int log = -1;
+    if (lim < 0) {
+        const char *e = getenv("SM64DS_INTERP_TEXMTX_MAX");
+        lim = e ? strtol(e, 0, 0) : 0x6000;
+        log = getenv("SM64DS_INTERP_TEXLOG") ? 1 : 0;
+    }
+    long worst = 0;
+    for (int k = 0; k < ce.np; ++k) {
+        const long d = (long)(int32_t)cp[k] - (long)(int32_t)ppar[pe.off + k];
+        const long a = d < 0 ? -d : d;
+        if (a > worst) worst = a;
+    }
+    if (log && worst) {
+        static int n;
+        if (n++ < 3000) {
+            fprintf(stderr, "  [texmtx] cmd %02x np %d worst %.3f%s |", ce.cmd, ce.np, worst / 4096.0, worst > lim ? " HELD" : "");
+            for (int k = 0; k < ce.np; ++k)
+                fprintf(stderr, " %.2f>%.2f", (int32_t)ppar[pe.off + k] / 4096.0, (int32_t)cp[k] / 4096.0);
+            fprintf(stderr, "%c", 10);
+        }
+    }
+    return worst <= lim;
+}
+
 double ip_dist2(const IpGroup &a, const IpGroup &b) {
     const double dx = a.px - b.px, dy = a.py - b.py, dz = a.pz - b.pz;
     return dx * dx + dy * dy + dz * dz;
@@ -8399,7 +8510,13 @@ bool ip_cand_less(const IpCand &x, const IpCand &y) {
 }
 
 /* Pair C's groups with P's, then fill C.blend. Returns counts through st. */
-void ip_match(IpRec &C, const IpRec &P, GxInterpStats *st) {
+bool blink_pair_on() {
+    static int on = -1;
+    if (on < 0) { const char *e = std::getenv("SM64DS_BLINK_PAIR"); on = (e && e[0] == '0') ? 0 : 1; }
+    return on != 0;
+}
+
+void ip_match(IpRec &C, const IpRec &P, GxInterpStats *st, const IpRec *P2 = nullptr) {
     std::map<uint64_t, std::vector<int>> kc, kp;
     for (size_t i = 0; i < C.groups.size(); ++i) kc[C.groups[i].key].push_back((int)i);
     for (size_t i = 0; i < P.groups.size(); ++i) kp[P.groups[i].key].push_back((int)i);
@@ -8464,13 +8581,49 @@ void ip_match(IpRec &C, const IpRec &P, GxInterpStats *st) {
             }
         }
     }
+    /* SMOOTHREND1 (D18): A MODEL THAT BLINKS. Metal Wario's closing flicker swaps the whole player model every tick, so
+       a group of tick N has nothing like it in tick N-1 (the other model) and a twin in tick N-2 (the same model, one
+       blink earlier). Without a partner it would sit at its tick-N place in every picture and the runner would hop at
+       30 a second. Pair it with the N-2 twin, and its pictures blend N-2 -> N over two ticks (see gx_interp_begin).
+       Only a group the N-1 record has no key for qualifies: a pair that failed on shape or distance stays unpaired. */
+    C.has_p2 = 0;
+    if (P2 && blink_pair_on()) {
+        std::map<uint64_t, std::vector<int>> k2;
+        for (size_t i = 0; i < P2->groups.size(); ++i) k2[P2->groups[i].key].push_back((int)i);
+        std::vector<char> used2(P2->groups.size(), 0);
+        for (size_t gi = 0; gi < C.groups.size(); ++gi) {
+            IpGroup &gc = C.groups[gi];
+            gc.match2 = -1;
+            if (gc.match >= 0 || gc.part || gc.nmtx <= 0 || !gc.has_pos) continue;
+            if (kp.find(gc.key) != kp.end()) continue;           // the previous tick had that model: not a blink
+            auto it = k2.find(gc.key);
+            if (it == k2.end()) continue;
+            int best = -1;
+            double bd = 1e300;
+            for (int j : it->second) {
+                const IpGroup &gq = P2->groups[j];
+                if (used2[j] || gq.nmtx != gc.nmtx || gq.shape != gc.shape || !gq.has_pos) continue;
+                const double d = ip_dist2(gc, gq);
+                if (d < bd) { bd = d; best = j; }
+            }
+            if (best < 0 || bd > 4.0 * tele2) continue;
+            used2[best] = 1;
+            gc.match2 = best;
+            C.has_p2 = 1;
+        }
+    }
     C.blend.assign(C.sealed, -1);
+    C.blend2.assign(C.has_p2 ? C.sealed : 0, -1);
     for (size_t gi = 0; gi < C.groups.size(); ++gi) {
         const IpGroup &gc = C.groups[gi];
         if (gc.match >= 0) {
             const IpGroup &gp = P.groups[gc.match];
             for (int k = 0; k < gc.nmtx; ++k)
                 C.blend[C.mtx[gc.mtx0 + k]] = P.mtx[gp.mtx0 + k];
+        } else if (gc.match2 >= 0) {
+            const IpGroup &gq = P2->groups[gc.match2];
+            for (int k = 0; k < gc.nmtx; ++k)
+                C.blend2[C.mtx[gc.mtx0 + k]] = P2->mtx[gq.mtx0 + k];
         } else {
             for (int k = 0; k < gc.nmtx; ++k) {
                 const int ei = C.mtx[gc.mtx0 + k];
@@ -8671,7 +8824,12 @@ int gx_interp_commit(const int32_t view[12], int snap, GxInterpStats *st) {
         g_ip_prev_disp[0] = g_ip_prev_disp[1] = g_ip_prev_disp[2] = 0.0;
     }
     r.snap = why;
-    if (P && !why) ip_match(r, *P, st);
+    {
+        /* the record two ticks back is the one the rotation below leaves in the free slot */
+        const IpRec *P2 = (g_ip_p >= 0 && g_ipr[g_ip_p].valid && !g_ipr[g_ip_p].snap &&
+                           g_ipr[g_ip_p].tex_gen == r.tex_gen) ? &g_ipr[g_ip_p] : 0;
+        if (P && !why) ip_match(r, *P, st, P2);
+    }
     if (st) st->snap = why;
     /* rotate: N becomes N-1, the record just sealed becomes N, and the old
        N-1 (or whichever of the three is free) is written next */
@@ -8778,7 +8936,22 @@ int gx_interp_begin(float alpha) {
             int ex_on = 0;
             if (ip_is_mtx(e.cmd) && e.np <= 32) {
                 const int b = C.blend.empty() ? -1 : C.blend[i];
-                if (b >= 0 && e.mode != MTX_TEX) {
+                const int b2 = (C.has_p2 && !C.blend2.empty()) ? C.blend2[i] : -1;
+                if (b2 >= 0 && b < 0 && e.mode != MTX_TEX && g_ipr[g_ip_w].valid) {
+                    /* a blinking model: N-2 -> N, the picture sits (1 + alpha) / 2 of the way */
+                    const IpRec &P2 = g_ipr[g_ip_w];
+                    const IpEv &pe = P2.ev[b2];
+                    const double w2 = (1.0 + (double)alpha) * 0.5;
+                    const int n = e.np < pe.np ? e.np : pe.np;
+                    for (int k = 0; k < e.np; ++k) {
+                        tmp[k] = k < n ? (uint32_t)ip_lerp(P2.par[pe.off + k], pp[k], w2) : pp[k];
+                        g_ip_ex[k] = k < n ? (double)(int32_t)P2.par[pe.off + k] * (1.0 - w2) +
+                                             (double)(int32_t)pp[k] * w2
+                                           : (double)(int32_t)pp[k];
+                    }
+                    pp = tmp;
+                    ex_on = 1;
+                } else if (b >= 0 && (e.mode != MTX_TEX || ip_tex_pair_ok(P.ev[b], P.par, e, pp))) {
                     const IpEv &pe = P.ev[b];
                     const int n = e.np < pe.np ? e.np : pe.np;
                     for (int k = 0; k < e.np; ++k) {

@@ -334,28 +334,18 @@ endfunction()
 #       called with two arguments where the ROM's caller leaves a third riding
 #       in a register). Added at the main->port sync, lane SYNC5: lane SEAT6
 #       keyed this on the per-function TU main has since folded into this one.
-#   port/unmatched/dScMgHanachan_c.cpp   PMF_SEAM on four typed member-pointer
+#   src/minigames/d_s_mg_hanachan_methods.cpp   PMF_SEAM on four typed member-pointer
 #       dispatches of a FIELD (three per-Wiggler bodies at sub-object +0x10 and
 #       the Behavior at scene +0x4660) and MG_PMF_CALL on a fifth that open-codes
 #       the same decode in plain ints. Nothing seats those fields, so the code
 #       word is a DS address at every one of the five and a raw call jumps into
-#       the mounted overlay's data image. Added run link100, lane HOSTGEN2;
-#       retires the five host copies in unmatched/MgWiggler_StateDispatch.cpp.
-#       THE ROW MOVED OFF src/minigames/d_s_mg_hanachan_methods.cpp, run link100 wave 10
-#       round 4, lane SCENES3: scene 386 died in Wiggler_DrawPassB of an
-#       ARGUMENT EVALUATION ORDER defect (the matched source assigns t.urot
-#       inside the comma expression that is argument two of an OAM::Render call
-#       and reads it as argument eight; MSVC pushes a cdecl call right to left
-#       and passes uninitialised stack on the first loop iteration). src/ is
-#       byte-verified and is not edited, so port/unmatched/dScMgHanachan_c.cpp
-#       is the src TU with that one call spelled in the cartridge's own order,
-#       and THE COPY KEEPS THE STEM on purpose: tools/hostgen.py keys every
-#       patch table on the file stem, so all five rows above go on applying to
-#       the copy verbatim, which a copy under a new name would silently drop.
-#       port/slice_wig.txt names the copy in the src TU's place. The file's own
-#       header carries the ARM disassembly at 0x020eadd8..0x020eae10, the host
-#       disassembly at 0x005cbffa..0x005cc05b and the one line that reproduces
-#       it from the matched source.
+#       the mounted overlay's data image. Added run link100, lane HOSTGEN2.
+#       Run hunt8, lane WIGGLER1: the port-owned stand-in copy (dScMgHanachan_c.cpp,
+#       made for the argument-evaluation-order defect in Wiggler_DrawPassB) is
+#       retired. The src TU now spells that one call with the index and the
+#       rotation assigned in statements before the OAM::Render call, which mwccarm
+#       compiles to the same bytes (match.py, 2004/b56), so the src TU itself is
+#       the one that links and the ledger counts it.
 #   src/minigames/d_s_mg_roulette_methods.cpp   PMF_SEAM on the wheel object's one member-
 #       pointer dispatch, and VIRTUAL_CALL on the same body's other defect -- a
 #       local four-virtual shadow calling ROM slot 3 on the host Model at +0x10,
@@ -451,7 +441,7 @@ set(PORT_HOSTGEN_TU
     src/game/actors/d_a_mc_flag.cpp
     src/minigames/d_s_mg_cup.cpp
     src/minigames/d_s_mg_panel.cpp
-    port/unmatched/dScMgHanachan_c.cpp
+    src/minigames/d_s_mg_hanachan_methods.cpp
     src/minigames/d_s_mg_roulette_methods.cpp
     src/game/actors/d_a_bg_snwmn.cpp
     src/game/actors/d_a_propeller_heyho.cpp
@@ -1217,12 +1207,16 @@ list(APPEND PORT_HOSTGEN_TU
     src/ApproachAngle.cpp
     src/game/actors/d_a_kpa.cpp
     src/game/actors/d_a_f_ring.cpp
-    src/game/actors/d_a_obj_fl_uki_ki.cpp)
+    src/game/actors/d_a_obj_fl_uki_ki.cpp
+    # Run hunt8, lane WIGGLER1: dScEntry_c's three pointer-to-member dispatch sites
+    # (hostgen_portsync2.py rewrites each into port_vs_state_call).
+    src/unnamed/ov075/func_ov075_0211a194.cpp
+    src/_ZN10dScEntry_c8BehaviorEv.cpp
+    src/_ZN10dScEntry_c6RenderEv.cpp)
 list(REMOVE_DUPLICATES PORT_HOSTGEN_TU)
 
 # Whole-TU host copies that REPLACE a src TU (see each copy's header). The
 # end-of-file reroute maps any remaining row naming the src TU onto the copy.
-set("PORT_TU_REPLACED_src/minigames/d_s_mg_hanachan_methods.cpp" "port/unmatched/dScMgHanachan_c.cpp")
 list(REMOVE_DUPLICATES PORT_HOSTGEN_TU)
 get_filename_component(PORT_HOSTGEN_TU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 set(PORT_HOSTGEN_TU_GEN "")
@@ -1594,6 +1588,8 @@ foreach(line IN LISTS SLICE2_LINES)
 endforeach()
 
 add_executable(smoke_heap tests/smoke_heap.cpp hal/heap_globals.cpp ${SLICE2_SOURCES})
+# INT093F: cstd::abs (src/cstd4.cpp is no longer listable raw), see hal/smoke_cstd_abs.cpp.
+target_sources(smoke_heap PRIVATE hal/smoke_cstd_abs.cpp)
 target_include_directories(smoke_heap PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/../include")
@@ -2588,7 +2584,13 @@ set(PORT_SMOKE_HEAP_TEARDOWN_SRC
     src/engine/heap/ExpandingHeapAllocator.cpp
     src/engine/heap/Heap.cpp
     src/engine/heap/NestedHeapIterator.cpp
-    src/cstd4.cpp)
+    # INT093F: src/cstd4.cpp is NOT listed here any more (the whole printf core
+    # rides in with it); cstd::abs is hal/smoke_cstd_abs.cpp's. The
+    # SolidHeapAllocator TU and the heap seam replace the shard files this list
+    # named before main folded them.
+    src/engine/heap/SolidHeapAllocator.cpp
+    port/hal/smoke_cstd_abs.cpp
+    port/hal/smoke_heap_tail.cpp)
 
 # smoke_roots: 30 unresolved -> 0.  8 ledger faces (7 copied verbatim from
 # port/faces_sync.txt, 1 derived by address), 19 alias rows (15 copied verbatim
@@ -20463,6 +20465,20 @@ foreach(line IN LISTS SLICE_PMFB6_LINES)
     endif()
     list(APPEND SLICE_PMFB6_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../${line}")
 endforeach()
+# Run hunt8, lane WIGGLER1: /Zp4 ON dScEntry_c's THREE DISPATCH SHARDS. Their local structs
+# spell the pointer-to-member fields at the ROM's +0x5c (Behavior), +0x64 (Render) and
+# +0x54 (the setter's local view); MSVC aligns an eight-byte member to eight and would
+# read them four bytes late and shift every field behind them (iconCount, the fade bytes).
+# Both paths are named: the compile the build runs is the generated copy under host-src.
+set_source_files_properties(
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/unnamed/ov075/func_ov075_0211a194.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/unnamed/ov075/func_ov075_0211a194.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10dScEntry_c8BehaviorEv.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/_ZN10dScEntry_c8BehaviorEv.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN10dScEntry_c6RenderEv.cpp"
+    "${CMAKE_BINARY_DIR}/host-src/src/_ZN10dScEntry_c6RenderEv.cpp"
+    PROPERTIES COMPILE_OPTIONS "/Zp4")
+
 # GATE 3. /Zp4 ON ONE SOURCE, MEASURED AND NOT INHERITED.
 # src/minigames/d_mg_jump3d_mario.cpp spells `struct C { char pad[0x3c]; PMF m; };` and
 # the ROM's field is at +0x3c. MSVC aligns an eight-byte member to eight, so
@@ -22022,7 +22038,6 @@ set(PORT_DSSTATE_FI_SOURCES
     src/game/actors/d_a_star_gate.cpp
     # PORTSYNC2: the TUs that define the 541 objects retired from the ov*_syms.txt
     # mounts at the 2026-10 main merge (each list's RETIRED block names them).
-    port/unmatched/dScMgHanachan_c.cpp
     src/game/actors/d_a_iwante.cpp
     src/game/stages/d_ent_obj.cpp
     src/minigames/d_mg3d_esp_anim_set.cpp
@@ -25653,6 +25668,94 @@ foreach(_tpcore1 walk_window walk_window_hires)
         target_sources(${_tpcore1} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/pcore.cpp")
     endif()
 endforeach()
+
+# INT093F: THE NARROW HARNESSES DO NOT LINK src/cstd4.cpp.
+# Main's merge (PORTSYNC3) made src/cstd4.cpp the whole runtime-library TU
+# (the printf core, the hand-asm primitives, the OS data words they read), and
+# several shared slice lists name it, so every harness that takes one of those
+# lists now asks for a dozen leftovers the harness cannot supply. The
+# harnesses want cstd::abs, memcpy/memset-style primitives and nothing of
+# printf. The window targets never see this line (they take the generated copy).
+foreach(_nc4 smoke_model smoke_soak smoke_frames smoke_oam smoke_anim
+             smoke_soak_anim smoke_modelanim smoke_clsn)
+    get_target_property(_nc4_src ${_nc4} SOURCES)
+    list(FILTER _nc4_src EXCLUDE REGEX "/src/cstd4\.cpp$")
+    set_property(TARGET ${_nc4} PROPERTY SOURCES ${_nc4_src})
+endforeach()
+
+# INT093F: the callees main's folded GX / Model4 / ModelComponents / G3i TUs
+# name that the harnesses' lists never carried (they were reached through
+# other shard files before the folds). Every one is an ordinary src/ source
+# walk_window compiles; none is a new definition.
+set(PORT_SMOKE_FOLD_SRC
+    src/unnamed/arm9/0205/func_0205417c.c
+    src/unnamed/arm9/0205/func_02054168.c
+    src/unnamed/arm9/0205/func_02053ed0.c
+    src/unnamed/arm9/0205/func_02053ec0.c
+    src/unnamed/arm9/0205/func_02053e34.c
+    src/unnamed/arm9/0205/func_02053e1c.c
+    src/unnamed/arm9/0204/func_02047218.c
+    src/unnamed/arm9/0204/func_02047910.c
+    src/InvMat4x3.c
+    src/CrossVec3.c
+    src/DotVec3.c
+    src/MultiCopyHalf.c
+    src/DMASyncHalfTransfer.c
+    src/_ZN2GX13SetBankForTexEt.cpp
+    src/_ZN2GX17SetBankForTexPlttEt.cpp
+    src/unnamed/arm9/0205/func_020541b8.c
+    src/unnamed/arm9/0205/func_02053e4c.c
+    src/LenVec3.c
+    src/Vram__Map.c
+    src/engine/gx/G3X.cpp
+    src/unnamed/arm9/0205/func_02055464.c
+    src/unnamed/arm9/0205/func_02055490.c
+    src/unnamed/arm9/0205/func_0205a064.c
+    src/DMASyncFillTransfer.c
+    src/cstd.cpp
+    src/_ZN9ModelBaseD1Ev.cpp
+    src/MultiCopyHalf.c)
+foreach(_fold smoke_model smoke_soak smoke_frames smoke_oam smoke_anim
+              smoke_soak_anim smoke_modelanim smoke_clsn)
+    set(_fold_src ${PORT_SMOKE_FOLD_SRC})
+    if(_fold STREQUAL "smoke_clsn")
+        list(REMOVE_ITEM _fold_src src/cstd.cpp)    # its own list already has it
+    endif()
+    foreach(_fs IN LISTS _fold_src)
+        target_sources(${_fold} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../${_fs}")
+    endforeach()
+    target_sources(${_fold} PRIVATE hal/smoke_model_tail.cpp)
+endforeach()
+# The divider's flat fdiv, for the six that did not carry hal/cstd_div.c.
+foreach(_fold smoke_model smoke_soak smoke_frames smoke_oam smoke_anim smoke_soak_anim)
+    target_sources(${_fold} PRIVATE hal/cstd_div.c)
+endforeach()
+
+# smoke_modelanim now gets Heap::_Deallocate from src/engine/heap/Heap.cpp (main
+# folded it into the Heap TU), so hal/blend_vtable.cpp's repeat of the face is
+# switched off for that one target with the guard the file already has.
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/hal/blend_vtable.cpp" APPEND PROPERTY
+    COMPILE_DEFINITIONS
+    "$<$<STREQUAL:$<TARGET_PROPERTY:NAME>,smoke_modelanim>:PORT_CXX_ALIASES_LINKED=1>")
+target_sources(mp_comms_seam PRIVATE hal/smoke_comms_alias.cpp)
+
+# INT093F: smoke_oam and smoke_clsn stay out of the default build, as
+# smoke_player, smoke_actor, smoke_savestate and smoke_persist already do (see
+# the ASMCPORT block). Their link lists are not just short a few sources:
+#   smoke_oam   tests/smoke_oam.cpp declares OAM::Reset as a namespace function
+#               (?Reset@OAM@@YAXXZ) where src/engine/oam/OAM.cpp now has the
+#               static member, OAM.cpp spells GetObjWidth / GetObjHeight /
+#               LoadAffineParams under mangled-looking C++ names the harness
+#               never bridged, and main's whole GXS TU asks for twenty G2 / G2S
+#               / GX bank and pointer faces.
+#   smoke_clsn  tests/smoke_clsn.cpp reads g_walk_dbg (a walk_window test
+#               global), the folded dBgCh_Lin / dBgCh_SphCrr TUs need
+#               dM3dGSph / dM3dGLin, dBgPi::RecordHit and the dBgCh_Actr
+#               updates, and func_ov002_020fea4c / 020fea68 are overlay 2
+#               code with no overlay mounted in a harness.
+# Every other harness (smoke_heap .. smoke_soak_anim, smoke_modelanim,
+# mp_comms_seam) links again; these two are the open closure.
+set_target_properties(smoke_oam smoke_clsn PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 # ---- PORTSYNC2: NO TARGET COMPILES A RAW PORT_HOSTGEN_TU SOURCE ---------------
 #

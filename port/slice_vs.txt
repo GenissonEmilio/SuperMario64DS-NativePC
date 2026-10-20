@@ -564,13 +564,15 @@ src/unnamed/arm9/0203/func_0203d918.c
 src/unnamed/arm9/0203/func_0203d930.c
 src/unnamed/arm9/0203/func_0203d9b4.c
 src/unnamed/arm9/0203/func_0203da2c.c
-# ---- THE THREE PMF DISPATCH SITES are OUT of the slice: their matched TUs
-# dispatch states and elements through MSVC pointer-to-member / virtual
-# calls (this in ecx) onto plain cdecl host bodies -- the receiver never
-# arrives (measured: state func_ov075_02119b34 faulting at +0x37 on stack
-# garbage). port/unmatched/VS_EntryDispatch.cpp carries the host copies with
-# the dispatches spelled out as cdecl-through-record; src keeps the
-# byte-matched originals:
-#   src/func_ov075_0211a194.cpp   the state setter (+0x54/+0x5c/+0x64)
-#   src/_ZN10dScEntry_c8BehaviorEv.cpp   Behavior (pmf + the element v0 walk)
-#   src/_ZN10dScEntry_c6RenderEv.cpp   Render (pmf)
+# ---- THE THREE PMF DISPATCH SITES, run hunt8 lane WIGGLER1: they were out of the
+# slice (their matched TUs dispatch states and elements through MSVC pointer-to-member
+# / virtual calls with this in ecx onto plain cdecl host bodies, so the receiver never
+# arrived: state func_ov075_02119b34 faulting at +0x37 on stack garbage) and
+# port/unmatched/VS_EntryDispatch.cpp carried hand-written host copies. They are IN now,
+# as generated copies: port/CMakeLists.txt puts the three on PORT_HOSTGEN_TU and
+# port/tools/hostgen_portsync2.py rewrites each pointer-to-member dispatch into
+# port_vs_state_call (VS_EntryDispatch.cpp), the same cdecl-through-record call the
+# copies spelled out.
+src/unnamed/ov075/func_ov075_0211a194.cpp
+src/_ZN10dScEntry_c8BehaviorEv.cpp
+src/_ZN10dScEntry_c6RenderEv.cpp

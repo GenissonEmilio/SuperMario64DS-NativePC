@@ -347,7 +347,6 @@ extern unsigned char data_ov074_02122f38[];   /* the file table's column 1 */
    the object, not assumed). Static members are __cdecl under /Gd, so the
    calling conventions agree and only the decoration differs -- the ov058
    Memory::Deallocate case. */
-#pragma comment(linker, "/alternatename:__ZN5Sound13Func_02048ee4Ev=?Func_02048ee4@Sound@@SAXXZ")
 
 /* ---- THE NAMING DELTA BETWEEN THE TWO LINES, BRIDGED BY ADDRESS ----------
    run rel0215 lane prop17. src/func_ov074_021201f0.c is taken VERBATIM off

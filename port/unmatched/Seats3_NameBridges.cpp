@@ -104,8 +104,6 @@
  * calling convention, so this is a pure name bridge.
  */
 
-#pragma comment(linker, "/alternatename:_daObjWc_Obj07_c_ModelFile=_data_ov029_021142fc")
-#pragma comment(linker, "/alternatename:_daObjWc_Obj07_c_ClsnFile=_data_ov029_02114304")
 
 /* A translation unit with no code in it still has to have something to
  * compile, and the pragmas above are directives rather than definitions. */

@@ -881,6 +881,17 @@ void ppu_display_capture(const uint32_t *src, int w, int h) {
     }
     if (!src || w <= 0 || h <= 0) { ++g_cap_refused; return; }
 
+    /* FIELDUI1 (U6): A SCENE PRESENTED NATIVELY IS ONLY THE CENTRED 4:3 RECTANGLE OF A WIDE FRAME. The held frame the title's face page leaves
+       under the drawing page (gx.cpp bgbmp, nearest-sampled back into that same rectangle) used to be a capture of the WHOLE wide frame, so
+       it came back squeezed to 3/4 across (a tall face, a narrow paper with grey bars). The unit now samples the rectangle the scene is
+       drawn in, which on every 4:3 extent is the whole frame (no change there). */
+    int cap_x0 = 0;
+    if (g_present_native && present_w() < w) {
+        cap_x0 = present_x();
+        w = present_w();
+        if (present_h() < h) h = present_h();
+    }
+
     const unsigned block = (cap >> 16) & 3;
 
     /* ---- THE DESTINATION HAS TO BE A BLOCK ---------------------------------
@@ -1015,7 +1026,7 @@ void ppu_display_capture(const uint32_t *src, int w, int h) {
            SCREEN_W (the buffer max), which equals w on every fixed tier and is
            1024 on NTR_WIDE_RT with a 512-wide active image. Index by the stride,
            sample within the extent. */
-        const uint32_t *row = src + (size_t)(sy < h ? sy : h - 1) * (size_t)SCREEN_W;
+        const uint32_t *row = src + (size_t)(sy < h ? sy : h - 1) * (size_t)SCREEN_W + (size_t)cap_x0;
         for (int x = 0; x < cw; ++x) {
             const int sx = rx > 0 ? x * rx : (x * w) / SUB_W;
             const uint32_t p = row[sx < w ? sx : w - 1];

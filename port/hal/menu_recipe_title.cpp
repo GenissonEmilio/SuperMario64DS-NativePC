@@ -46,6 +46,7 @@ int port_title_elem_boxes(int *slot, int *id, int *x0, int *y0, int *x1, int *y1
 int port_title_elem_live(int slot);      /* MENUS093E: the ROM would take a touch on that element */
 int port_title_page_state(int *top, int *elem, int *req);
 int port_scene_live_id(void);
+void func_ov007_020bdeb0(int idx);
 }
 
 namespace {
@@ -1640,7 +1641,7 @@ bool title_scene_cb(float xf[4])
    bottom edge at their DS rows, anything else on the drawing page (the canvas the strokes are on) by the scene transform. */
 void scene_sprite_xf(char *o)
 {
-    if (!g_sc.on || !data_ov007_0210342c || g_sc.frame != data_ov007_0210342c[0]) return;
+    if (!g_sc.on || !data_ov007_0210342c || g_sc.frame + 1 < data_ov007_0210342c[0]) return;      /* the callback ran in this tick's Render, the counter moved on once since (as build's sc_on) */
     const int v = g_sc.variant;
     if (v == V_ATTRACT || (v == V_INTRO && g_ch.ct < 0)) return;
     float cw, ch;
@@ -1665,9 +1666,48 @@ void scene_sprite_xf(char *o)
     }
 }
 
+/* FIELDUI1 (U2): a mouse hover on the title or the file pages plays the ROM's own D-pad move sound (func_ov007_020bdeb0 index 4, or 5 on
+   the page the ROM's own step picks it for, src/unnamed/ov007/func_ov007_020b3708.c), not the generic menu cursor sound. Only while the
+   title's page state answers (the title family is the live page). */
+int title_cursor_snd()
+{
+    int top, elem, req;
+    if (!data_ov007_02103360 || !data_ov007_0210342c || !port_title_page_state(&top, &elem, &req)) return 0;
+    if (g_up_stamp < 0 || data_ov007_0210342c[0] - g_up_stamp > 2 || g_up_stamp - data_ov007_0210342c[0] > 2) return 0;
+    /* SNDCAM1 (S1): a hover that moves nothing makes no sound. A file is already chosen (the file machine's leaving states 11 / 12), or the
+       main page has taken a choice (req != -1): the screen is on its way out and nothing under the mouse is a new selection. And when the
+       ROM's own cursor (the orange arrow on the file pages, the lit plank on the main page) already is on the element the mouse landed on,
+       there is nothing to announce: the same test title_cursor_assist uses before it writes the hover into the cursor. */
+    if (elem == 5 && (top == 11 || top == 12)) return 1;
+    if (req != -1) return 1;
+    int q0dbg0 = -2, q0dbg1 = -2;
+    {
+        short *q0 = *(short **)data_ov007_02103360;
+        int hx, hy;
+        unsigned st;
+        if (q0) { q0dbg0 = q0[0]; q0dbg1 = q0[1]; }
+        if (q0 && hal_menu_hover_box(&hx, &hy, &st)) {
+            int slot[24], ids[24], x0[24], y0[24], x1[24], y1[24];
+            const int n = port_title_elem_boxes(slot, ids, x0, y0, x1, y1, 24);
+            for (int k = 0; k < n; ++k) {
+                if (x0[k] != hx || y0[k] != hy || !port_title_elem_live(slot[k])) continue;
+                if (q0[0] == ids[k] || q0[1] == ids[k]) {
+                    if (hal_menu_trace_on()) fprintf(stderr, "[menu] hover on element %d: the ROM cursor is already there, no sound\n", ids[k]);
+                    return 1;
+                }
+                break;
+            }
+        }
+    }
+    if (hal_menu_trace_on()) fprintf(stderr, "[menu] hover sound: page %d/%d, cursor %d -> %d\n", top, elem, q0dbg0, q0dbg1);
+    func_ov007_020bdeb0((*(int *)(data_ov007_02103360 + 8) != 2) ? 4 : 5);
+    return 1;
+}
+
 struct FileHookInit {
     FileHookInit()
     {
+        g_menu_cursor_snd_hook = title_cursor_snd;
         g_file_prev_skip = g_port_title_draw_skip; g_port_title_draw_skip = file_skip;
         g_port_title_draw_end = file_draw_end;
         ntr::gx_set_menu_wide_cb(file_wide_cb);
