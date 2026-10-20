@@ -260,8 +260,15 @@ static int HostWidenUpdate(dActor_c *a, int r, int thresh, Vector3 *camPos, int 
     static int mp = -1;
     if (mp < 0)
         mp = port_mods_multiplayer() ? 1 : 0;
-    if (mp)
+    if (mp) {
+        static int said;
+        if (!said) {
+            said = 1;
+            fprintf(stderr, "[wake] multiplayer session: actors keep the ROM's update range (Draw distance %d%% widens the drawing only)
+", pct);
+        }
         return 0x7fffffff;
+    }
     long long t2 = (long long)thresh * pct / 100;
     if (t2 > 0x3fffffff)
         t2 = 0x3fffffff;
