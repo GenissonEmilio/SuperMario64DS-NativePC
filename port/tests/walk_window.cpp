@@ -16353,7 +16353,25 @@ int main(void)
                        room, Lethal Lava Land's fixed spots) the ROM never takes a step, so the speed slider and the analog scale add nothing:
                        the stick can no longer turn a camera the game does not turn. The first tick of a push is the ROM's own plain step. */
                     const unsigned cam_cf = cam ? *(unsigned *)((char *)cam + 0x154) : 0;
-                    const int rom_took = (dir > 0 && (cam_cf & 0x40)) || (dir < 0 && (cam_cf & 0x20));
+                    int rom_took = (dir > 0 && (cam_cf & 0x40)) || (dir < 0 && (cam_cf & 0x20));
+                    {
+                        /* The first tick of a push has no previous answer: use what this camera mode (cam +0x140) said the last time it was pushed,
+                           so a gentle push in an ordinary area does not start with the ROM's full 0x400 step, and a mode that refused stays refused. */
+                        static const void *cv_mode[32];
+                        static signed char cv_ok[32];
+                        static int cv_n;
+                        const void *md = cam ? *(void *const *)((char *)cam + 0x140) : 0;
+                        int mi = -1;
+                        for (int k = 0; k < cv_n; ++k) if (cv_mode[k] == md) mi = k;
+                        static int cv_pd;
+                        const int cont = (dir != 0 && cv_pd == dir);
+                        cv_pd = dir;
+                        if (dir && cam) {
+                            if (mi < 0 && cv_n < 32) { mi = cv_n++; cv_mode[mi] = md; cv_ok[mi] = 0; }
+                            if (cont) { if (mi >= 0) cv_ok[mi] = rom_took ? 1 : 0; }   /* the last tick was pushed too: its flags are the answer */
+                            else rom_took = mi >= 0 && cv_ok[mi];
+                        }
+                    }
                     static int cv_log = -1;
                     static int cv_old = -1;   /* SM64DS_CAMVOICE_OLD=1: proof only, the turn scaling without the ROM-took gate (the build before CAMVOICE1) */
                     if (cv_old < 0) cv_old = getenv("SM64DS_CAMVOICE_OLD") ? 1 : 0;
