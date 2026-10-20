@@ -1212,6 +1212,17 @@ static const int kHudCoinDxMin = 24, kHudCoinDy = 18, kHudMeterGap = 7, kHudMete
    6 -> 11, the squeeze floor stays 3), the power meter moves the same 5 pixels left so the two keep their gap, and the race timer,
    which the port draws one coin row (kHudCoinDy) under the coin count, moves up into the row the coin counter left. */
 static const int kHudMeterLeft = 5;
+static const int kHudMidX = 150;      /* HUDMENU2 (H10): the coin block's left edge in the plane when it sits on the centre anchor (the meter's art ends at DS x 142) */
+static bool g_hud_mid;                 /* this frame's coin block is on the centre anchor */
+extern "C" unsigned char data_ov002_02111178;
+extern "C" int g_port_hud_dlx, g_port_hud_dsx;
+static int g_slide_n, g_slide_ds[2][4];
+static int g_slide_d[2];
+struct HudSlideRect { int x0, y0, x1, y1; float d; };
+struct HudSlideNote { int n; HudSlideRect r[2]; };
+static HudSlideNote g_note;
+/* HUDMENU2 (H11): the counters sliding in, as host rectangles and the DS pixels each moved this tick; read by walk_window.cpp's ip_build */
+extern "C" const void *port_hud_slide_note(void) { return &g_note; }
 /* the meter's DS rectangle (x 80..153), clear of the lives and the star counter. Its rows run to y 95, not to the 59 it rests within: the
    appear animation draws the meter at y 0x39 (src/_ZN3HUD17UpdateHealthMeterEv.cpp: mHealthMeterY = 0x39, held 0x5a ticks, then 4 a tick up to
    0x19), its lower half reaching about y 90, and a box that ends at 59 moved only the top half left (the meter showed sliced and offset). */
@@ -3105,6 +3116,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        last tick's becomes the previous one. Set where the box's window is read, further down. */
     g_tw_prev = g_tw_cur;
     g_tw_cur.valid = 0;
+    g_note.n = 0; g_slide_n = 0;   /* HUDMENU2 (H11) */
 
     /* THE LEVEL-CLEAR GLYPH OVERLAY'S ONE QUESTION FOR THE FRAME, asked here
        -- above every early return -- so that a frame this unit declines is a
@@ -3389,6 +3401,18 @@ extern "C" void port_message_composite_engine_a(void *fbp)
         g_tw_cur.valid = 1;
         g_tw_cur.x1 = win.x1[0]; g_tw_cur.x2 = win.x2[0];
         g_tw_cur.y1 = win.y1[0]; g_tw_cur.y2 = win.y2[0];
+        /* HUDMENU2 (H7, Tango 10-20): the ending's subtitle box. DRAWDIST2 centred Peach's picture (rows 24..167) between equal bars, and the
+           box the ROM puts on rows 160..191 then hung out of the picture into the lower bar. The box's window and its BG3 rows are moved
+           up in this compose's own copies (never the registers) until the box ends at the picture's last row, so box and text sit inside
+           the picture. Wide pictures only (the same condition that moved the 3D rows); 4:3 keeps the ROM's rows. SM64DS_SUBTITLE_UP=0 for the before picture. */
+        static int up_off = -1;
+        if (up_off < 0) { const char *e = std::getenv("SM64DS_SUBTITLE_UP"); up_off = (e && e[0] == '0') ? 1 : 0; }
+        if (!up_off && ntr::gx_ending_viewport_shifted() && win.y2[0] > 168) {
+            const int S = win.y2[0] - 168 + 4;   /* 4 rows of air under the last line */
+            win.y1[0] -= S; win.y2[0] -= S;
+            bgs[3].vofs = (bgs[3].vofs + S) & 0x1FF;
+            g_tw_cur.y1 = win.y1[0]; g_tw_cur.y2 = win.y2[0];
+        }
     }
     /* the 3D layer is a layer like the others: WINOUT / WININ bit 0 gate it
        (see hide_3d_outside_windows) */
@@ -3694,6 +3718,44 @@ extern "C" void port_message_composite_engine_a(void *fbp)
 #ifndef PORT_ROM_CLEAN      /* env-only proof arm: not in the shipped build (g_hud_erase stays false) */
     { static const bool e = std::getenv("SM64DS_HUD_ERASE_PROOF") != nullptr; g_hud_erase = e; }
 #endif
+    /* HUDMENU2 (H11): the life counter's and the star counter's DS boxes while the ROM slides them in (state 3), taken before anything moves
+       them; the note after the element pass turns them into host rectangles for the pictures between two ticks. */
+    g_slide_n = 0;
+    if (data_ov002_02111178 == 3 && bg0_3d_shown(dispcnt) && !ntr::present_native() && !lc_ov.live && !lc_ov.top_live) {
+        for (int c = 0; c < 2; ++c) {
+            const int xa = c ? 180 : 0, xb = c ? 255 : 110;
+            int bx0 = 999, bx1 = -1, by0 = 999, by1 = -1;
+            for (int y = 0; y < 19; ++y)
+                for (int x = xa; x <= xb; ++x) {
+                    const Cell &g = g_a[y][x];
+                    if (!g.hit || g.owner != kOwnerObj || g.msgcur) continue;
+                    if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y;
+                }
+            const int d = c ? g_port_hud_dsx : g_port_hud_dlx;
+            if (bx1 >= 0 && d != 0) {
+                g_slide_ds[g_slide_n][0] = bx0; g_slide_ds[g_slide_n][1] = by0; g_slide_ds[g_slide_n][2] = bx1; g_slide_ds[g_slide_n][3] = by1;
+                g_slide_d[g_slide_n] = d;
+                ++g_slide_n;
+            }
+        }
+    }
+#ifndef PORT_ROM_CLEAN
+    {   /* HUDMENU2 proof arm: SM64DS_HUD_OAMDUMP=<n> lists engine A's placed OAM entries for the first n frames (every frame: the last n of them) */
+        static int n = -1, cnt = 0;
+        if (n < 0) { const char *e = std::getenv("SM64DS_HUD_OAMDUMP"); n = e ? std::atoi(e) : 0; }
+        if (n > 0 && ++cnt % n == 0) {
+            std::fprintf(stderr, "[oamdump] frame %d\n", cnt);
+            for (int i = 0; i < 128; ++i) {
+                const uint16_t a0 = rd16(kOamBase + i * 8), a1 = rd16(kOamBase + i * 8 + 2), a2 = rd16(kOamBase + i * 8 + 4);
+                if ((a0 & 0x300) == 0x200) continue;   /* disabled */
+                const int y = a0 & 0xff, x = a1 & 0x1ff;
+                if (y >= 192 && y < 240) continue;
+                std::fprintf(stderr, "[oamdump]  #%d x=%d y=%d shape=%d size=%d mode=%d tile=%d pal=%d prio=%d\n", i, x >= 256 ? x - 512 : x, y >= 128 ? y - 256 : y,
+                             (a0 >> 14) & 3, (a1 >> 14) & 3, (a0 >> 10) & 3, a2 & 0x3ff, (a2 >> 12) & 15, (a2 >> 10) & 3);
+            }
+        }
+    }
+#endif
     if (host_setting_hud_layout() == 1 && bg0_3d_shown(dispcnt) && !ntr::present_native()
         && !lc_ov.live && !lc_ov.top_live) {
         g_hud_timer_live = data_ov002_02111184 != 0;
@@ -3733,9 +3795,30 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                 for (int x = 180; x < 256; ++x)
                     if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) g_a[y][x].hit = false;
         int star_left = 256;
-        for (int y = 0; y < kHudZoneY0 - 1; ++y)
-            for (int x = 180; x < star_left; ++x)
-                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { star_left = x; break; }
+        /* HUDMENU2 (H1 / H9): the star counter is ONE piece (icon, x, digits, gaps of a few pixels), so its left edge is walked from its right
+           end leftwards and stops at the first run of kStarBridge empty columns. Any other sprite pixel of rows 0..18 further left (a stray
+           glyph; the tester's picture shows one beside the coin counter) is not the star counter and must not pull the coin block left
+           of where the stars really start. SM64DS_STAR_BRIDGE=0 puts the old first-pixel scan back. */
+        {
+            static int bridge = -1;
+            if (bridge < 0) { const char *e = std::getenv("SM64DS_STAR_BRIDGE"); bridge = e ? std::atoi(e) : 14; }
+            int right = -1;
+            for (int y = 0; y < kHudZoneY0 - 1; ++y)
+                for (int x = 255; x > right && x >= 180; --x)
+                    if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { right = x; break; }
+            if (right >= 0 && bridge > 0) {
+                int x = right, gap = 0;
+                for (; x >= 180 && gap <= bridge; --x) {
+                    bool any = false;
+                    for (int y = 0; y < kHudZoneY0 - 1 && !any; ++y) any = g_a[y][x].hit && g_a[y][x].owner == kOwnerObj;
+                    if (any) { star_left = x; gap = 0; } else ++gap;
+                }
+            } else {
+                for (int y = 0; y < kHudZoneY0 - 1; ++y)
+                    for (int x = 180; x < star_left; ++x)
+                        if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { star_left = x; break; }
+            }
+        }
         const int star_raw = star_left;
         static int s_star_left = 256, s_star_larger = 0, s_star_right = -1;
         if (star_left < 256) {
@@ -3774,6 +3857,15 @@ extern "C" void port_message_composite_engine_a(void *fbp)
         int dx_move = 0, star_gap = kHudStarGap, meter_gap = kHudMeterGap, star_shift = 0;
         const bool wide = ntr::widescreen;
         bool fits = blk_right >= 0;
+        g_hud_mid = false;
+        if (fits && wide) {
+            /* HUDMENU2 (H10, "Coins in the middle"): in a wide picture the block takes the CENTRE anchor, the power meter's own, with its left edge
+               kHudMidX in the plane: right of the meter, left of the stars, the SM64 row (lives left, coins middle, stars right) whatever
+               the star count. At 4:3 there is no spare width, so the squeeze below (next to the stars) stays. */
+            int d = blk_left - kHudMidX;
+            if (d < kHudCoinDxMin) d = kHudCoinDxMin;
+            dx_move = d; g_hud_mid = true;
+        } else
         if (fits) {
             const int star_room = (wide || star_right < 0 || star_left >= 256) ? 0 : (255 - kHudEdgeGap - star_right);
             bool ok = false;
@@ -3855,6 +3947,21 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     }
     const bool bandsplit = hud_bandsplit_env();
     if (ntr::widescreen && !bandsplit) hudelem::resolve(band_l, band_r, margin);
+    /* HUDMENU2 (H11): the slide note's host rectangles, with the anchor each counter really sits on in this picture */
+    g_note.n = 0;
+    if (g_slide_n && !bandsplit) {
+        const int sxs = ntr::active_w / 256;
+        for (int i = 0; i < g_slide_n && i < 2; ++i) {
+            const int x0 = g_slide_ds[i][0], y0 = g_slide_ds[i][1], x1 = g_slide_ds[i][2], y1 = g_slide_ds[i][3];
+            int off = 0;
+            if (ntr::widescreen) off = hudelem::g_off[hudelem::g_lbl[y0][x0] > 0 ? hudelem::g_lbl[y0][x0] : 0];
+            HudSlideRect &r = g_note.r[g_note.n++];
+            r.x0 = ntr::widescreen ? ds_col_x0(x0) + off : x0 * sxs;
+            r.x1 = ntr::widescreen ? ds_col_x0(x1 + 1) + off : (x1 + 1) * sxs;
+            r.y0 = ds_row_y0(y0); r.y1 = ds_row_y0(y1 + 1);
+            r.d = (float)g_slide_d[i];
+        }
+    }
     /* TWO QUESTIONS, KEPT APART SO THE A/B ARM STILL MEASURES. `shown3d` is
        whether the 3D layer is in the picture at all, which decides whether the
        coverage mask means anything; `honour3d` is whether this run obeys its
@@ -4010,7 +4117,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                           : (ntr::present_native() || !shown3d)
                           ? ux0 + margin / 2
                           : pass
-                          ? ux0 + margin   /* the moved coin block rides the right edge with the star counter */
+                          ? (g_hud_mid ? ux0 + margin / 2 : ux0 + margin)   /* the moved coin block rides the right edge with the star counter; HUDMENU2: in a wide picture the centre anchor, beside the meter */
                           : !bandsplit
                           ? ux0 + hudelem::g_off[hudelem::g_lbl[y][x]]
                           : (x < band_l) ? ux0

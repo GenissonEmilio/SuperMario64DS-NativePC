@@ -298,6 +298,10 @@ std::atomic<int> g_force_panel{0};
    (hal_menu_hook_h1). SM64DS_PAGEFIT=0 puts the old picture back for a before / after on one binary. */
 std::atomic<int> g_page_fit{0};
 int g_page_fit_frame;
+/* HUDMENU2 (H3): the moved page's source box is the largest box seen since the page went up, not each frame's own. The right arrow's press
+   frames draw the page's cells two DS pixels wider, and the placement of a page that sits against the panel (x = left edge of the panel less
+   the page's width) followed that width, so the whole chart stepped left on every other frame while the arrow was pressed. */
+int g_pf_union_valid, g_pf_bx0, g_pf_by0, g_pf_bx1, g_pf_by1;
 MenuLiftInfo g_page_lift;
 const int kPageW = 192, kPageH = 140;   /* DS pixels: about the biggest page (the castle card with its band), only used to leave it room */
 int page_fit_off()
@@ -3800,10 +3804,12 @@ extern "C" const MenuLiftInfo *hal_menu_hook_h1(int w, int h)
     hal_menu_decide_tick(w, h);
     hal_menu_draw_frame_begin(0);
     const MenuLiftInfo *li = hal_menu_lift_info();
+    const int pf_was = g_page_fit_frame;
     g_page_fit_frame = 0;
     if (!li && g_page_fit.load() && !hal_menu_draw_live() && !hal_sub_screen_stacked() && !menu_bigmap_up() && page_fit_overlaps(w, h)) {
         /* INT093G: the ROM's pause page, to be moved clear of the corner panel (see g_page_fit) */
         g_page_fit_frame = 1;
+        if (!pf_was) g_pf_union_valid = 0;   /* HUDMENU2 (H3): a new moved-page stretch starts from its own first picture */
         g_page_lift.lift2d = (uint8_t)(MENU_L_BG1 | MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ);
         return &g_page_lift;
     }
@@ -4033,6 +4039,25 @@ static void page_fit_draw(unsigned int *dst, int w, int h, const int inset[4])
                 if (y > by1) by1 = y;
             }
     if (bx1 < 0) return;
+    {
+        static int off = -1;
+        if (off < 0) { const char *e = std::getenv("SM64DS_PAGEFIT_UNION"); off = (e && e[0] == '0') ? 1 : 0; }   /* 0 = the old per-frame box, for the before picture */
+        if (!off) {
+            /* the arrows bob by a pixel or two (and the press frames draw them a row lower): room of 3 DS pixels all round, from the first frame */
+            if (bx0 > 3) bx0 -= 3; else bx0 = 0;
+            if (by0 > 3) by0 -= 3; else by0 = 0;
+            if (bx1 < 252) bx1 += 3; else bx1 = 255;
+            if (by1 < 188) by1 += 3; else by1 = 191;
+            if (g_pf_union_valid) {
+                if (bx0 > g_pf_bx0) bx0 = g_pf_bx0;
+                if (by0 > g_pf_by0) by0 = g_pf_by0;
+                if (bx1 < g_pf_bx1) bx1 = g_pf_bx1;
+                if (by1 < g_pf_by1) by1 = g_pf_by1;
+            }
+            g_pf_bx0 = bx0; g_pf_by0 = by0; g_pf_bx1 = bx1; g_pf_by1 = by1;
+            g_pf_union_valid = 1;
+        }
+    }
     const int H = ntr::present_h() > 0 ? ntr::present_h() : h;
     auto ds = [H](int v) { return (v * H + 191) / 192; };
     int nx = (w - ds(256)) / 2;

@@ -49,6 +49,7 @@ int  settings_page_open(void);                       /* 1 while the page is up *
 void settings_page_request(void);                    /* ask for it to open on the next frame (a hook saw the press) */
 void settings_page_set_source(int src);              /* SNDCAM1: who asked: 1 = the pause's Options plate, 2 = the title's wrench (call before settings_page_request) */
 int  settings_page_source(void);
+int  settings_page_press_look(void);                 /* HUDMENU2 (H4): 1 / 2 while the press hold of the Options plate / the title wrench runs, else 0 */
 int  settings_page_pending(void);                    /* a request is waiting (cleared by settings_page_open_now) */
 void settings_page_clear_request(void);               /* drop a request that cannot be honoured (the debug menu holds the pause) */
 void settings_page_open_now(int from);               /* from: 0 pause, 1 title, 2 other; starts on CONTROLS, cursor on the first row */
