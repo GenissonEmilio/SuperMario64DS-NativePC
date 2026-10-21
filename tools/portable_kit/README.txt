@@ -36,37 +36,87 @@ HOW TO PLAY
    "build". It only happens once; after that Play starts the game straight
    away.
 
-3. That is all.
+3. The menu, HUD and map art comes from a mod called HD UI Textures. The
+   launcher fetches it the first time you start it (this needs the internet
+   once), so the Mods page shows it as installed and on. Without it the game
+   still works, but the menus and HUD use the DS's own plainer art.
+
+4. If you want the game to start without the launcher, tick Skip launcher in
+   Settings. Hold Shift while it starts to open the launcher again.
+
+5. That is all.
 
 
-PLAYING WITH OTHER PEOPLE
--------------------------
+PLAYING WITH OTHER PEOPLE (open beta)
+-------------------------------------
 
-You can play a versus match against other people over the internet. Nobody
-needs to change any setting on their router.
+Multiplayer is an open beta in 0.9.3. Expect rough edges, and please tell us
+what breaks. Nobody needs to change any setting on their router, and nothing
+needs an account.
 
-1. Open the launcher and click Multiplayer.
+Everyone in a room has to run the same build. If someone is on another
+version they are turned away, and the launcher says why.
 
-2. Type a name for yourself. Then either click Make a room, or type in the
-   six-letter code a friend read out to you and click Join.
+1. Open the launcher and click Multiplayer. A window opens.
 
-3. Whoever made the room is the host. Everyone else joining sees the room
-   fill up. There is a chat box if you want to talk first.
+2. Type a name for yourself under Your name. My colours picks the colours of
+   your Yoshi and its shoes.
 
-4. The host picks the arena and how the match is won, either most stars when
-   the clock runs out or first to a number of stars. Then the host clicks
-   Start and everybody's game opens.
+3. Press Play adventure online, or make or join a room:
 
-5. When the match ends the game says who won and everyone comes back to the
-   room, so the host can start another one straight away.
+   Play adventure online   An always-on world for up to 16 players. You play
+                           your own game and see the others as see-through
+                           figures with their name and stars.
+   Create a VS room        A match for stars. The host picks the arena, how
+                           many play and the mode under Game settings (Play
+                           the clock, First to this many stars, King of the
+                           Star or Luigi Infection), then presses START
+                           MATCH. A referee on the server decides stars,
+                           hits, the score and the winner; the host can tick
+                           Classic netcode instead. You can join a match
+                           that is already running.
+   Create party room       Up to 4 players. Friends share the stars they
+                           collect. In the game, walk next to a friend and
+                           press D-pad Up (or B on the keyboard) to invite,
+                           the same key to join, and D-pad Down (or N) twice
+                           to leave. The host sets the Room rules (bumping,
+                           hits, teleport to friends, share stars).
+   Create coop room        Up to 4 players in one shared world. Enemies,
+                           bosses, blocks, coins and stars are shared, and
+                           each player gets their own cap or coins from a
+                           block. The host picks a new or an existing coop
+                           save, and it is kept on the host's PC. The room
+                           ends when the host leaves.
 
-The room code is six letters and is not case sensitive. A room disappears
-once everybody has left it, so a code is only good while somebody is still in
-there. The host can remove somebody from the room.
+   In party and coop rooms everyone presses PLAY when they are ready, and
+   can do it at any time.
 
-Nothing about this needs an account and nothing is saved anywhere. Your name
-and your chat are only ever held in memory on the server while the room is
-open, and they go when the room does.
+   A room gives you a six letter code. A friend types it into the Room code
+   box and presses Join. The code is not case sensitive and only works while
+   somebody is still in the room. The host can remove a player with the
+   Remove player button, and that player cannot come back to the room for a
+   couple of minutes.
+
+Chat: press T to type, Enter to send, Esc to cancel. Messages show over
+heads. The Chat size setting changes the text size. A small ping readout
+sits at the bottom right while you play online. Inside a room, the window
+has its own chat box too.
+
+Online, mods, custom characters and save states are turned off, so every
+player sees the same game.
+
+Privacy: your name and your chat are only held in memory on the server while
+the room is open, and they go when the room does. The server writes no names
+and no chat to disk. It does keep a plain log of rooms opening, filling and
+closing: room codes, seat numbers, and the first two parts of your internet
+address (like 134.101.x.x). The relay that carries the game traffic keeps the
+same kind of log. The coop save stays on the host's PC and is never sent.
+
+To report a problem while playing, press F6 (the launcher keeps running
+behind the game). A small box asks what happened. If bug reports are off in
+Settings it asks before it sends. Also useful: the newest play_*.log in the
+playlog folder next to the game, from each player, with the room type and
+who hosted.
 
 
 CONTROLS
@@ -80,9 +130,12 @@ Xbox controller:
     B                   punch
     Y                   first-person look (press again to go back)
     Right trigger       crouch
-    Right stick         swing the camera around
-    Bumpers             zoom the camera in and out
+    Left trigger        put the camera back behind Mario
+    Right stick         turn the camera (the harder you push, the faster)
+    Bumpers             turn the DS camera one step left or right (in the
+                        chase and free cameras they zoom out and in)
     Right stick click   same as F1 below
+    Start               the game's own Start button (pause)
 
 Keyboard and mouse:
 
@@ -92,50 +145,134 @@ Keyboard and mouse:
     Ctrl                crouch
     X                   punch
     Z                   first-person look (press again to go back)
-    Q and E             swing the camera around
-    R and F             tilt the camera
+    Q and E             turn the camera
+    R and F             tilt the camera (chase and free cameras only)
     C                   put the camera back behind Mario
-    Right mouse drag    look around
-    Mouse wheel         zoom
-    Esc                 open or close the debug menu (quit with Alt+F4
-                        or the window's X button)
+    Enter               the game's own Start button (pause)
+    Right mouse drag    look around (chase and free cameras only)
+    Mouse wheel         zoom (chase and free cameras only)
+    Esc                 back out of the game's Settings page and the
+                        character picker. With the Debug menu setting on it
+                        also opens or closes the debug menu. It does not
+                        quit: use Alt+F4 or the window's X button.
+
+The camera starts as DS stepped, the cartridge's own camera. F1 below
+changes it.
 
 Extra keys:
 
-    F1   change camera: chase rig, free camera, DS-exact stepped rotate
+    F1   change camera: DS stepped (the default), chase rig, free camera
     F3   stats overlay (frame rate, where Mario is, what state he is in)
-    F4   switch character on the spot: Mario, Luigi, Wario, Yoshi
-    F5   debug menu (same as Esc). Arrows or the d-pad move, Enter or A
-         picks, F5 or Esc closes.
-         The game pauses while it is open. Rows:
+    F4   switch character on the spot: Mario, Luigi, Wario, Yoshi (not while
+         you are playing online)
+    F5   debug menu (same as Esc), only when the Debug menu setting is on
+         (the game's Settings, General page, off by default). Arrows or the
+         d-pad move, Enter or A picks, F5 or Esc closes. The controller's
+         Back button opens it too.
+         The game pauses while it is open. Rows include:
              warp to any entrance in the level
              level select (the game's own table; picking a level loads it)
+             minigames and the VS test maps
              exit course
              character
+             camera, running and save state rows
          F5 does nothing during a multiplayer match, on purpose.
+    F6   report a problem (needs the launcher; see Playing With Other People)
     Tab  show or hide the DS bottom screen under the main view
-    F8   save a state (not during cutscenes)
+    F8   save a state (not during cutscenes, and not online)
     F9   load the saved state (it is not loaded automatically at startup)
+    F11 or F12   borderless fullscreen on or off
+    T    text chat, when you are playing online
 
-Smooth motion is off by default. To turn it on, open Settings in the
-launcher, pick a Frame rate of 60 or more on the General page and tick
-Smooth motion right under it.
+Every camera action can be put on a key, a pad button or a mouse button
+(Settings, Controls). The list has Rotate camera left and right, Tilt camera
+up and down, Zoom camera in and out, and Center camera. Zoom is not bound to
+anything until you pick a key. Right stick zooms makes the right stick zoom
+the DS camera instead of turning it. Camera speed also changes how fast the
+DS camera turns. The camera binds and sticks do nothing while the game is
+paused.
+
+A controller works in every menu: A confirms and B goes back. On the face
+pages and in the minigames the right stick moves a small pointer, A taps
+and Start pauses.
 
 First-person look (Y and Z above) can be rebound like the other buttons,
 under Controls in the launcher's Settings.
+
+Frame rate is on the General page of the launcher's Settings. Native is the
+DS's own speed. Pick 60 or more and the game draws extra pictures in
+between, so motion looks smooth. It takes effect the next time the game
+starts.
+
+
+NEW SETTINGS IN 0.9.3
+---------------------
+
+These are in the launcher's Settings. The ones marked (game) are also on the
+Settings page inside the game: open the pause menu's options, or press the
+wrench on the title screen.
+
+    Start fullscreen         General page. Starts the game in borderless
+                             fullscreen. Off by default.
+
+    Chat size (game)         General page. How big the text chat is in
+                             online play, 75% to 200%. 100% by default.
+
+    One-screen menus         General page, on by default. Directly under it:
+    Coins in the middle      Moves the coin counter to the top middle, like
+    (game)                   SM64. Off by default. Off keeps the DS layout.
+
+    Custom characters from   General page. Lets you pick a custom character
+    the start (game)         at the Rec Room's white door without unlocking
+                             it first. Off by default. Needs a character mod.
+
+    Character select on      General page. Shows a row of character heads
+    star select (game)       before the course on the star select screen.
+                             On by default. Off keeps the DS caps row.
+
+    Skip launcher            General page. Starts the game straight away
+                             after a short Starting window. Hold Shift while
+                             it starts to open the launcher. Off by default.
+
+    add to Steam             General page button. Adds the launcher to Steam
+                             as a shortcut called SM64DS Port. Close Steam
+                             first.
+
+    Draw distance (game)     Picture page (Display page in the game). How
+                             far away objects are drawn compared with the
+                             DS: 1x, 1.5x, 2x, 4x or Max. 1x by default.
+                             Offline it also wakes far enemies, which stand
+                             still past the DS's own range. Online it only
+                             changes what is drawn, so every player sees the
+                             same game.
+
+    Debug menu (game)        Only in the game's Settings, General page. Off
+                             by default. F5 and Esc open nothing until it is
+                             on.
 
 
 WHAT YOU CAN DO IN IT
 ---------------------
 
-The game boots to its own title screen. Every level in the game is mounted
-and reachable from the level select, most of them populated with their real
-enemies, items and music, and the minigames are playable. In a versus match
-each player is a different coloured Yoshi, the timer and star counts show on
-screen, and the match ends by naming the winner.
+The game boots to its own title screen and plays from there the way the
+cartridge does: pick a file, walk around the castle, go into the courses,
+and play the minigames in the Rec Room. Mario, Luigi, Wario and Yoshi are
+all there. The Mods page in the launcher installs mods and turns them on and
+off. In a VS room each player is a different coloured Yoshi, the timer and
+star counts show on screen, and the match ends by naming the winner.
 
-This is a port in progress rather than a finished game. Some things are
-missing or rough, and some levels are further along than others.
+This is a pre-1.0 release. Some things are still rough, and some levels are
+further along than others.
+
+
+CREDITS
+-------
+
+Testing: thunderit tested every round of 0.9.3, rounds 1 to 6.
+
+HD power meter art (in the HD UI Textures mod): the original sprite is
+Nintendo's, from Super Mario 3D All-Stars. thunderit modified it to match
+SM64DS's style.
 
 
 LINUX AND STEAM DECK (Proton)
@@ -202,6 +339,10 @@ IF SOMETHING GOES WRONG
 "That is not a Super Mario 64 DS dump"
     The .nds file here is a different game, or the dump is damaged.
 
+"This is the US version. The PC port needs the European cartridge for now."
+    Your dump is another region's (the message names it). Only the European
+    cartridge works for now.
+
 "This dump is truncated" or "incomplete"
     The dump did not finish. Dump the cartridge again.
 
@@ -218,23 +359,37 @@ The game window opens and closes immediately
 WHAT IS IN THIS FOLDER
 ----------------------
 
-    SM64DSLauncher.exe     the launcher: Play, Multiplayer, settings, updates
+    SM64DSLauncher.exe     the launcher: Play, Multiplayer, Mods, settings,
+                           updates
     walk_window.exe        the game itself (the launcher starts this)
     PLACE YOUR ROM HERE\   where your .nds dump goes
     README.txt             this file
-    launch.sh              Linux and Steam Deck only: starts it under Proton (see above)
-    extract_assets.py      Linux and Steam Deck only: unpacks the game data with Python
+    launch.sh              Linux and Steam Deck only: starts it under Proton
+                           (see above)
+    extract_assets.py      Linux and Steam Deck only: unpacks the game data
+                           with Python
+    extract_assets.ps1     the PowerShell script the launcher uses to unpack
+                           your dump on Windows
 
-Once you have run it, two more folders appear, both made from your own dump:
+The rest are small files the launcher and the game read. Leave them as they
+are: version.json, launcher_config.json, romdata.manifest,
+romdata.recipe.tsv and walk_window.symtab.
 
-    extracted\           the game's files, exactly as your cartridge holds them
+Once you have run it, more appear, all made on your PC:
+
+    extracted\           the game's files as your cartridge holds them
     build\assets\        the small index and table files that name them, plus
                          the game's own data tables rebuilt from your dump
+    mods\                your installed mods (HD UI Textures lands here after
+                         the first start)
+    settings.json        your settings
+    playlog\             the game's log of each session (play_*.log)
 
-The game itself reads your dump, writes those two folders next to itself, and
-runs. The launcher checks tangos.dev for updates, and if the game crashes it
-can send a small crash report, and after each session a short performance
-report (how the game ran and your PC's hardware), so problems get fixed;
-both can be turned off in the launcher's settings. Multiplayer talks to our
-server only while you are in a room or a match. Nothing else here touches
-the internet or changes any setting on your PC.
+The game itself reads your dump, writes those folders next to itself, and
+runs. The launcher checks tangos.dev for updates and for the recommended mods
+(HD UI Textures), and if the game crashes it can send a small crash report,
+and after each session a short performance report (how the game ran and your
+PC's hardware), so problems get fixed; both can be turned off in the
+launcher's settings. Multiplayer talks to our server only while you are in a
+room, a match or the online world. Nothing else here touches the internet or
+changes any setting on your PC.
