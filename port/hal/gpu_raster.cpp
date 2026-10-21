@@ -394,7 +394,7 @@ ID3D11ShaderResourceView *g_ov_srv, *g_comp_srv, *g_bm_srv;
 /* TEXTBOX2: an overlay of zeros (no 2D anywhere), same size as the overlay; and the ring a picture between two ticks cuts the 2D out of (an opening dialogue box) */
 ID3D11Texture2D          *g_zov_tex;
 ID3D11ShaderResourceView *g_zov_srv;
-int                       g_cut_on, g_cut_o[4], g_cut_i[4];
+int                       g_cut_on, g_cut_o[4], g_cut_i[4], g_cut_closing;
 ID3D11RenderTargetView   *g_comp_rtv;
 /* run hunt8, lane GPUINTERP1: the composite of a picture BETWEEN two ticks has
    a target of its own, so the tick's composite (g_comp_tex) stays whole for the
@@ -3975,6 +3975,8 @@ void *cp_compose_inter(const uint32_t *overlay, int stride_px)
             (g_lay_live ? (g_lay_post ? 128u : 64u) : 0u) |
             ((g_lay_live && g_lay_two) ? 256u : 0u);
     u[11] = (uint32_t)(f_on ? f_evy : 0);
+    uint32_t cbsave[12];
+    for (int k = 0; k < 12; ++k) cbsave[k] = u[k];
     g_ctx->Unmap(g_comp_cb, 0);
 
     D3D11_VIEWPORT vp;
@@ -4007,10 +4009,39 @@ void *cp_compose_inter(const uint32_t *overlay, int stride_px)
                                           (g_lay_live && g_lay_two) ? g_lay2_srv : 0 };
     g_ctx->PSSetShaderResources(0, 6, srvs);
     g_ctx->Draw(3, 0);
-    if (g_cut_on && g_zov_srv) {
+    const int cut_run = (g_cut_on && g_zov_srv && !(g_cut_closing && !f_on)) ? 1 : 0;
+    if (cut_run) {
         /* TEXTBOX2: an opening dialogue box. Inside the outer rectangle and outside the inner one the picture shows the 3D alone:
            the same composite with the zero overlay, scissored to the ring's four bands */
         srvs[2] = g_zov_srv;
+        /* INTERP093 I1: a fade that takes only the tick's own mask (the box's window) takes none of the ring: the ring is outside the
+           window that far along, so the 3D there is unfaded (the masked fade drawn here was the full-size box in every picture) */
+        if (g_cut_closing && f_on) {
+            /* INTERP093 I1: a CLOSING box: the ring is the panel with no text, the fade of the tick on the 3D there with no mask */
+            D3D11_MAPPED_SUBRESOURCE cm2;
+            memset(&cm2, 0, sizeof cm2);
+            if (SUCCEEDED(g_ctx->Map(g_comp_cb, 0, D3D11_MAP_WRITE_DISCARD, 0, &cm2)) && cm2.pData) {
+                uint32_t *w = (uint32_t *)cm2.pData;
+                for (int k = 0; k < 12; ++k) w[k] = cbsave[k];
+                w[10] |= 2u;
+                w[10] &= ~8u;
+                g_ctx->Unmap(g_comp_cb, 0);
+                srvs[3] = 0;
+            }
+        } else if (g_cut_closing) {
+            g_cut_on = 0;   /* no fade to draw the panel with: the tick's own picture */
+        } else if (f_mask) {
+            D3D11_MAPPED_SUBRESOURCE cm2;
+            memset(&cm2, 0, sizeof cm2);
+            if (SUCCEEDED(g_ctx->Map(g_comp_cb, 0, D3D11_MAP_WRITE_DISCARD, 0, &cm2)) && cm2.pData) {
+                uint32_t *w = (uint32_t *)cm2.pData;
+                for (int k = 0; k < 12; ++k) w[k] = cbsave[k];
+                w[10] &= ~(2u | 4u | 8u);
+                w[11] = 0;
+                g_ctx->Unmap(g_comp_cb, 0);
+                srvs[3] = 0;
+            }
+        }
         g_ctx->PSSetShaderResources(0, 6, srvs);
         const int *o = g_cut_o, *n = g_cut_i;
         auto band = [&](int x1, int y1, int x2, int y2) {
@@ -4831,6 +4862,11 @@ extern "C" void port_gpu_card_inter_fade_off(void)
     g_ipo_on = 0;
 }
 
+extern "C" void port_gpu_card_inter_cut_closing(int closing)
+{
+    g_cut_closing = closing ? 1 : 0;
+}
+
 extern "C" void port_gpu_card_inter_cut(const int outer[4], const int inner[4])
 {
     if (!outer || !inner) { g_cut_on = 0; return; }
@@ -5215,6 +5251,7 @@ void *port_gpu_card_compose_inter(const unsigned int *, int) { return 0; }
 int port_gpu_card_fade_recorded(void) { return 0; }
 void port_gpu_card_inter_fade(int, int) {}
 void port_gpu_card_inter_cut(const int *, const int *) {}
+void port_gpu_card_inter_cut_closing(int) {}
 void port_gpu_card_inter_fade_off(void) {}
 int port_gpu_twod_ready(void) { return 0; }
 int port_gpu_layer_ready(void) { return 0; }
