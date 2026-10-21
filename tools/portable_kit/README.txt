@@ -20,7 +20,8 @@ WHAT YOU NEED
    downloaded from the internet is not the same thing and is not supported
    here.
 
-   European and North American cartridges both work.
+   Only the European cartridge works for now. A North American or Japanese
+   dump is a different build, and the launcher tells you so.
 
 
 HOW TO PLAY
