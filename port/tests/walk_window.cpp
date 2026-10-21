@@ -17181,12 +17181,14 @@ int main(void)
                        the ROM's own test (heading past the preset) cancel the press, and a gentle tilt then turns the camera by our correction
                        alone. So with the latch up (or taken this tick) the stick gets the ROM's own answer, nothing added. */
                     const unsigned char cam_latch = cam ? *(unsigned char *)((char *)cam + 0x1a6) : 0;
+                    const char *cl_md = cam ? *(const char *const *)((char *)cam + 0x13c) : 0;
+                    const unsigned cl_mflags = cl_md ? *(const unsigned short *)(cl_md + 0x26) : 0;
                     const int cl_stepped = cam && (cam_latch != 0 || (cam_cf & 0x40000));
                     static int cl_trace = -1;
                     if (cl_trace < 0) cl_trace = getenv("SM64DS_CAMLOCK_TRACE") ? 1 : 0;
                     if (cl_trace && dir)
-                        fprintf(stderr, "[camlock] f%d dir %d cf %x latch %d mode %p stepped %d rom_took %d\n", frame, dir, cam_cf, cam_latch,
-                                cam ? *(void **)((char *)cam + 0x140) : 0, cl_stepped, rom_took);
+                        fprintf(stderr, "[camlock] f%d dir %d cf %x latch %d mode %p mflags %x stepped %d rom_took %d\n", frame, dir, cam_cf, cam_latch,
+                                cam ? *(void **)((char *)cam + 0x140) : 0, cl_mflags, cl_stepped, rom_took);
                     static int cl_old = -1;   /* SM64DS_CAMLOCK_OLD=1: proof only, the CAMVOICE1 rule without the stepped-camera gate */
                     if (cl_old < 0) cl_old = getenv("SM64DS_CAMLOCK_OLD") ? 1 : 0;
                     if (cl_stepped && !cl_old) rom_took = 0;
