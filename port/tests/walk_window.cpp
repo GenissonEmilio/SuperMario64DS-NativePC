@@ -4737,10 +4737,12 @@ static int cam93_ds_owned_off(void) { return getenv("SM64DS_CAM93_RIG_ALWAYS") ?
    takes the heading from the eye (func_02009e70 recomputes +0x17c from the pivot +0x80 and eye +0x8c) and then steps +-0x400. */
 static int g_ds_extra_turn;
 static void *g_ds_cam;
+static int g_cl_applied;   /* CAMLOCK2: the correction the last call really rotated onto the eye (0 when none) */
 static void ds_apply_extra_turn(void *cam)
 {
     const int d = g_ds_extra_turn;
     g_ds_extra_turn = 0;
+    g_cl_applied = 0;
     if (!d || !cam) return;
     int *pv = (int *)((char *)cam + 0x80), *eye = (int *)((char *)cam + 0x8c);
     const double dx = (double)eye[0] - pv[0], dz = (double)eye[2] - pv[2];
@@ -4751,6 +4753,7 @@ static void ds_apply_extra_turn(void *cam)
     eye[0] = pv[0] + (int)floor(r * sin(a0) + 0.5);
     eye[2] = pv[2] + (int)floor(r * cos(a0) + 0.5);
     if (getenv("SM64DS_CAMVOICE_TRACE")) fprintf(stderr, "%d,%d\n", eye[0], eye[2]);
+    g_cl_applied = d;
 }
 static int g_cam93_mouse_owned;            /* the mouse is steering the camera: no auto-recenter until the stick or keys take it back */
 static int g_cam93_scale = 4096;           /* eased fraction of the eye distance the collision allows */
@@ -17156,6 +17159,30 @@ int main(void)
                        the stick can no longer turn a camera the game does not turn. The first tick of a push is the ROM's own plain step. */
                     const unsigned cam_cf = cam ? *(unsigned *)((char *)cam + 0x154) : 0;
                     int rom_took = (dir > 0 && (cam_cf & 0x40)) || (dir < 0 && (cam_cf & 0x20));
+                    static int cl_trace = -1;
+                    if (cl_trace < 0) cl_trace = getenv("SM64DS_CAMLOCK_TRACE") ? 1 : 0;
+                    static int cl_old_early = -1;   /* SM64DS_CAMLOCK_OLD=1: proof only, the CAMVOICE1 rule without the CAMLOCK2 gates */
+                    if (cl_old_early < 0) cl_old_early = getenv("SM64DS_CAMLOCK_OLD") ? 1 : 0;
+                    /* CAMLOCK2 (L1): the ROM's own free step is exactly +-0x400 of heading a tick. The camera also turns for other reasons that
+                       raise the same flags (the go-behind-the-player approach, the preset approach, an intro), and a correction laid over those
+                       turns the camera by itself (Lethal Lava Land's start, ticks 40 to 220: a gentle tilt spun the view 900 degrees). The heading
+                       the last tick produced, less the correction we put on it, must be that plain step before the next correction is allowed. */
+                    int cl_pure = 0;
+                    {
+                        static int h_prev = -1, pd_prev;
+                        int h_now = -1;
+                        if (cam) {
+                            const int *pv = (const int *)((char *)cam + 0x80), *ey = (const int *)((char *)cam + 0x8c);
+                            h_now = (int)floor(atan2((double)ey[0] - pv[0], (double)ey[2] - pv[2]) * (65536.0 / 6.28318530717958647692) + 0.5) & 0xffff;
+                        }
+                        if (cam && h_prev >= 0 && h_now >= 0 && dir && dir == pd_prev) {
+                            const int dl = (((h_now - h_prev) & 0xffff) ^ 0x8000) - 0x8000;
+                            const int err = dl - g_cl_applied - dir * 0x400;
+                            cl_pure = (err < 0 ? -err : err) <= 64;
+                        }
+                        h_prev = h_now; pd_prev = dir;
+                    }
+                    if (cl_trace && dir) fprintf(stderr, "[camlock] f%d pure %d applied_last %d\n", frame, cl_pure, g_cl_applied);
                     {
                         /* The first tick of a push has no previous answer: use what this camera mode (cam +0x140) said the last time it was pushed,
                            so a gentle push in an ordinary area does not start with the ROM's full 0x400 step, and a mode that refused stays refused. */
@@ -17170,7 +17197,7 @@ int main(void)
                         cv_pd = dir;
                         if (dir && cam) {
                             if (mi < 0 && cv_n < 32) { mi = cv_n++; cv_mode[mi] = md; cv_ok[mi] = 0; }
-                            if (cont) { if (mi >= 0) cv_ok[mi] = rom_took ? 1 : 0; }   /* the last tick was pushed too: its flags are the answer */
+                            if (cont) { rom_took = rom_took && (cl_pure || cl_old_early); if (mi >= 0) cv_ok[mi] = rom_took ? 1 : 0; }   /* the last tick was pushed too: its flags are the answer */
                             else rom_took = mi >= 0 && cv_ok[mi];
                         }
                     }
@@ -17184,13 +17211,10 @@ int main(void)
                     const char *cl_md = cam ? *(const char *const *)((char *)cam + 0x13c) : 0;
                     const unsigned cl_mflags = cl_md ? *(const unsigned short *)(cl_md + 0x26) : 0;
                     const int cl_stepped = cam && (cam_latch != 0 || (cam_cf & 0x40000));
-                    static int cl_trace = -1;
-                    if (cl_trace < 0) cl_trace = getenv("SM64DS_CAMLOCK_TRACE") ? 1 : 0;
                     if (cl_trace && dir)
                         fprintf(stderr, "[camlock] f%d dir %d cf %x latch %d mode %p mflags %x stepped %d rom_took %d\n", frame, dir, cam_cf, cam_latch,
                                 cam ? *(void **)((char *)cam + 0x140) : 0, cl_mflags, cl_stepped, rom_took);
-                    static int cl_old = -1;   /* SM64DS_CAMLOCK_OLD=1: proof only, the CAMVOICE1 rule without the stepped-camera gate */
-                    if (cl_old < 0) cl_old = getenv("SM64DS_CAMLOCK_OLD") ? 1 : 0;
+                    const int cl_old = cl_old_early;
                     if (cl_stepped && !cl_old) rom_took = 0;
                     static int cv_log = -1;
                     static int cv_old = -1;   /* SM64DS_CAMVOICE_OLD=1: proof only, the turn scaling without the ROM-took gate (the build before CAMVOICE1) */
