@@ -17185,8 +17185,7 @@ int main(void)
                     static int cl_trace = -1;
                     if (cl_trace < 0) cl_trace = getenv("SM64DS_CAMLOCK_TRACE") ? 1 : 0;
                     if (cl_trace && dir)
-                        fprintf(stderr, "[camlock] f%d dir %d cf %x latch %d mode %p stepped %d rom_took %d
-", frame, dir, cam_cf, cam_latch,
+                        fprintf(stderr, "[camlock] f%d dir %d cf %x latch %d mode %p stepped %d rom_took %d\n", frame, dir, cam_cf, cam_latch,
                                 cam ? *(void **)((char *)cam + 0x140) : 0, cl_stepped, rom_took);
                     static int cl_old = -1;   /* SM64DS_CAMLOCK_OLD=1: proof only, the CAMVOICE1 rule without the stepped-camera gate */
                     if (cl_old < 0) cl_old = getenv("SM64DS_CAMLOCK_OLD") ? 1 : 0;
