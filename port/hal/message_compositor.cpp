@@ -843,6 +843,39 @@ void hide_3d_outside_windows(uint32_t dispcnt, const Windows &w, ntr::Framebuffe
     }
 }
 
+/* ENDMENU1 (run hunt8, Tango 10-20: the THE END screen is pure black on the cartridge). DISPCNT bit 3 makes BG0 the 3D engine's
+ * output and bit 8 is BG0's own enable. The ending fades the castle out, then clears bit 8 and fades the sprites back in: from that
+ * frame the DS shows the backdrop (palette entry 0) behind the OBJ text, whatever the 3D engine still has in its buffer. The port
+ * draws the 3D frame into the framebuffer without looking at bit 8 and this unit writes only the 2D pixels it owns, so the castle
+ * stayed under the text. Same rule as hide_3d_outside_windows, for the whole screen: a 3D layer that is switched off is not in the
+ * picture, so the present rectangle takes the backdrop, its coverage and the pre-smoothing copy go with it, and a frame held on the
+ * graphics card is read back first so there is a picture to wipe. SM64DS_BG0OFF_KEEP=1 puts the old picture back on this binary. */
+inline bool bg0off_keep_env() {
+    static int v = -1;
+    if (v < 0) {
+        const char *e = std::getenv("SM64DS_BG0OFF_KEEP");
+        v = (e && *e && *e != '0') ? 1 : 0;
+    }
+    return v != 0;
+}
+
+void hide_3d_layer_off(uint32_t dispcnt, ntr::Framebuffer &fb)
+{
+    if (!bg0_is_3d(dispcnt) || ((dispcnt >> 8) & 1u) != 0 || bg0off_keep_env()) return;
+    if (ntr::gx_card_overlay_active()) ntr::gx_card_settle_because("the 3D layer is switched off (BG0 enable clear)");
+    uint8_t *const cover = const_cast<uint8_t *>(ntr::gx_coverage());
+    uint32_t *const pre = ntr::gx_aa_preimage();
+    const uint32_t bd = bgr555(rd16(kPlttBase));
+    const int x0 = ntr::present_x(), y0 = ntr::present_y();
+    const int x1 = x0 + ntr::present_w(), y1 = y0 + ntr::present_h();
+    for (int hy = y0 < 0 ? 0 : y0; hy < y1 && hy < ntr::active_h; ++hy)
+        for (int hx = x0 < 0 ? 0 : x0; hx < x1 && hx < ntr::active_w; ++hx) {
+            fb.px[hy][hx] = bd;
+            if (pre) pre[(size_t)hy * ntr::SCREEN_W + hx] = bd;
+            if (cover) cover[(size_t)hy * ntr::SCREEN_W + hx] = 0;
+        }
+}
+
 // ---- the colour special-effects unit (BLDCNT, engine A) --------------------
 // Alpha only (mode 1) plus the always-on semi-transparent-OBJ alpha; brightness
 // modes 2/3 are the fade path's (see the header note). Mirror of ppu_sub.cpp's
@@ -3460,6 +3493,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        real signal for what 2D to composite. */
     if (forced_blank)
         return;
+    hide_3d_layer_off(dispcnt, fb);
 
     BgConfig bgs[4];
     bool any_bg = false;
