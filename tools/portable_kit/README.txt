@@ -106,11 +106,11 @@ Online, mods, custom characters and save states are turned off, so every
 player sees the same game.
 
 Privacy: your name and your chat are only held in memory on the server while
-the room is open, and they go when the room does. The server writes no names
-and no chat to disk. It does keep a plain log of rooms opening, filling and
-closing: room codes, seat numbers, and the first two parts of your internet
-address (like 134.101.x.x). The relay that carries the game traffic keeps the
-same kind of log. The coop save stays on the host's PC and is never sent.
+the room is open, and they go when the room does. The server writes no names,
+no chat and no internet addresses to disk. It keeps a plain log of rooms
+opening, filling and closing (room codes and seat numbers, no addresses), and
+so does the relay that carries the game traffic. The coop save stays on the
+host's PC and is never sent.
 
 To report a problem while playing, press F6 (the launcher keeps running
 behind the game). A small box asks what happened. If bug reports are off in
