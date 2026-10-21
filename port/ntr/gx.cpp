@@ -8276,6 +8276,22 @@ bool ip_particle_pair() {
     return on != 0;
 }
 
+/* INTERP093 I2: SM64DS_SPARKLE_MODE: 0 the old blend of a paired particle's whole matrix, 1 tick N's matrix for every paired particle (re-viewed
+   through the blended camera), 4 (default) tick N's matrix for a twinkling one only */
+int ip_sparkle_mode() {
+    static int m = -1;
+    if (m < 0) { const char *e = getenv("SM64DS_SPARKLE_MODE"); m = e ? atoi(e) : 4; }
+    return m;
+}
+
+/* INTERP093 I2: a TWINKLE: the particle's size jumped by more than a third between the two ticks (the end-of-game star's glitter, Peach's). It
+   is not a puff that grows: tick N's own matrix is kept for it and the picture does not slide or swell it between two ticks */
+bool ip_part_twinkle(const IpGroup &gc, const IpGroup &gp) {
+    if (gp.ps <= 1e-9) return true;
+    const double r = gc.ps / gp.ps;
+    return r < 0.77 || r > 1.3;
+}
+
 bool ip_newborn_recam() {
     static int on = -1;
     if (on < 0) {
@@ -9012,6 +9028,13 @@ int gx_interp_begin(float alpha) {
                                              (double)(int32_t)pp[k] * w2
                                            : (double)(int32_t)pp[k];
                     }
+                    pp = tmp;
+                    ex_on = 1;
+                } else if (b >= 0 && gi >= 0 && C.groups[gi].part && e.np == 12 && alpha < 1.0f && ip_proj_perspective() &&
+                           (ip_sparkle_mode() == 1 || (ip_sparkle_mode() >= 4 && ip_part_twinkle(C.groups[gi], P.groups[C.groups[gi].match])))) {
+                    /* INTERP093 I2: a particle keeps tick N's own matrix (size, turn, place): the sparkles twinkle and turn a lot between
+                       two ticks and a blend of two billboards' matrices is neither; the point is re-viewed through the blended camera */
+                    ip_recamera_trans(pp, tmp);
                     pp = tmp;
                     ex_on = 1;
                 } else if (b >= 0 && (e.mode != MTX_TEX || ip_tex_pair_ok(P, b, e, pp, tex_adj, tex_wrapped))) {

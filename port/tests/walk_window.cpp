@@ -9395,6 +9395,7 @@ static unsigned long long g_ip_card_pics, g_ip_cpu_pics;
    only inside the window that far along. The tick's 2D is a snapshot, so the pixels of the box outside that window are the replayed 3D
    instead. On the processor's blend only: a tick whose box is opening is composited on the processor (the card's compose cannot clip). */
 extern "C" int port_tween_win(double alpha, int outer[4], int inner[4]);
+extern "C" int port_tween_closing(void);
 static unsigned long long g_ip_tween_pics;
 /* HUDMENU2 (H11): the one-screen HUD slide-in, glided at the display rate. The compositor notes the host rectangles of the life and star counters
    while the ROM slides them in (state 3) and how far each moved this tick; a picture between two ticks puts each counter's pixels (the tick's own
@@ -9438,6 +9439,9 @@ static int ip_build(double alpha)
     }
     int tw_outer[4] = {0, 0, 0, 0}, tw_inner[4] = {0, 0, 0, 0};
     int tw = port_tween_win(alpha, tw_outer, tw_inner);
+    /* INTERP093 I1: a CLOSING box is drawn only where the tick has a fade to make the panel with */
+    int twc = tw ? port_tween_closing() : 0;
+    if (twc && !g_ip_fade_on) { tw = 0; twc = 0; }
     /* TEXTBOX2: SM64DS_TWEEN_CARD=0 is the kill switch for the box's opening tween on the card path: the tick's own picture, no tween */
     static int tw_card = -1;
     if (tw_card < 0) { const char *e = getenv("SM64DS_TWEEN_CARD"); tw_card = e ? atoi(e) : 1; }
@@ -9448,6 +9452,7 @@ static int ip_build(double alpha)
                     tw_inner[0], tw_inner[1], tw_inner[2], tw_inner[3], g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1, tw_card);
     }
     if (tw && tw_card == 0 && g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1) tw = 0;
+    if (!tw) twc = 0;
     int card = 0;
     if (g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1)
         card = ntr::gx_card_interp_clear(o);
@@ -9465,10 +9470,11 @@ static int ip_build(double alpha)
         const HudSlideNoteW *gl_note = hud_glide_on() ? (const HudSlideNoteW *)port_hud_slide_note() : 0;
         /* TEXTBOX2: an opening dialogue box is cut on the card itself (the 3D alone outside the window that far along), so the picture
            keeps its 3D and the card's own compose */
-        if (tw && tw_card != 2) port_gpu_card_inter_cut(tw_outer, tw_inner);
+        if (tw && tw_card != 2) { port_gpu_card_inter_cut(tw_outer, tw_inner); port_gpu_card_inter_cut_closing(twc); }
         /* SM64DS_TWEEN_CARD=2 is the 0.9.3 round 4b behaviour, kept for before/after rows only: the card refuses a box tick */
         const int card_done = !(tw && tw_card == 2) && !(gl_note && gl_note->n > 0 && alpha < 0.999) && port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
         port_gpu_card_inter_cut(0, 0);
+        port_gpu_card_inter_cut_closing(0);
         port_gpu_card_inter_fade_off();
         if (card_done) {
             ntr::gx_card_retire2(&o);
@@ -9498,6 +9504,8 @@ static int ip_build(double alpha)
     }
     ++g_ip_cpu_pics;
     if (tw) ++g_ip_tween_pics;
+    const int tw_ring = twc;   /* INTERP093 I1: a closing box's ring, faded after the picture is built */
+    if (twc) tw = 0;
     const unsigned char *ip_bm = (g_ip_fade_on && g_ip_fade_masked && g_ip_fade_cpumask)
                                      ? port_engine_a_bright_mask() : 0;
     if (g_ip_fade_on && g_ip_fade_masked && !ip_bm) {
@@ -9512,7 +9520,9 @@ static int ip_build(double alpha)
                 uint32_t *row = o.px[y];
                 for (int x = 0; x < ntr::active_w; ++x) {
                     const int cut = x >= tw_outer[0] && x < tw_outer[2] && !(tw_mid && x >= tw_inner[0] && x < tw_inner[2]) && a[x] != c[x];
-                    row[x] = cut ? (ip_evy_t ? ip_fade_px(row[x], ip_evy_t, g_ip_fade_white) : row[x]) : d[x];
+                    /* INTERP093 I1: this fade takes only the box's own window (a masked fade), and the window that far along is the
+                       inner rectangle: the replayed 3D outside it is not faded (the faded replay was the full-size box in every picture) */
+                    row[x] = cut ? row[x] : d[x];
                 }
                 continue;
             }
@@ -9541,7 +9551,7 @@ static int ip_build(double alpha)
                 const uint32_t pf = take ? ip_fade_px(a[x], evy, toWhite) : a[x];
                 const int tw_cut = tw_row && x >= tw_outer[0] && x < tw_outer[2] &&
                                    !(tw_mid && x >= tw_inner[0] && x < tw_inner[2]);
-                row[x] = (pf != b[x] && !tw_cut) ? b[x] : (take ? ip_fade_px(row[x], ip_evy_t, toWhite) : row[x]);
+                row[x] = (pf != b[x] && !tw_cut) ? b[x] : ((take && !(tw_cut && mr)) ? ip_fade_px(row[x], ip_evy_t, toWhite) : row[x]);
             }
         }
     } else {
@@ -9609,8 +9619,28 @@ static int ip_build(double alpha)
     for (int y = 0; y < ntr::active_h; ++y) {
         uint32_t *row = o.px[y];
         const uint32_t *a = g_ip_p4->px[y], *b = g_ip_p5->px[y];
-        for (int x = 0; x < ntr::active_w; ++x)
-            if (a[x] != b[x]) row[x] = b[x];
+        /* INTERP093 I1: an opening box's pixels outside the window that far along are the replayed 3D in this stage too */
+        const int tw_row = tw && y >= tw_outer[1] && y < tw_outer[3];
+        const int tw_mid = tw_row && y >= tw_inner[1] && y < tw_inner[3];
+        for (int x = 0; x < ntr::active_w; ++x) {
+            if (a[x] == b[x]) continue;
+            if (tw_row && x >= tw_outer[0] && x < tw_outer[2] && !(tw_mid && x >= tw_inner[0] && x < tw_inner[2])) continue;
+            row[x] = b[x];
+        }
+    }
+    if (tw_ring) {
+        /* INTERP093 I1: a closing box: the 3D in the ring between the rectangle that far along and this tick's is the box's panel with no
+           text: the tick's fade on the picture there */
+        for (int y = tw_outer[1]; y < tw_outer[3] && y < ntr::active_h; ++y) {
+            if (y < 0) continue;
+            const int mid = y >= tw_inner[1] && y < tw_inner[3];
+            uint32_t *row = o.px[y];
+            for (int x = tw_outer[0]; x < tw_outer[2] && x < ntr::active_w; ++x) {
+                if (x < 0) continue;
+                if (mid && x >= tw_inner[0] && x < tw_inner[2]) continue;
+                row[x] = ip_fade_px(row[x], g_ip_fade_evy, g_ip_fade_white);
+            }
+        }
     }
     g_ip_sum_compose += ip_ms_since(t2);
     return 1;

@@ -3219,16 +3219,24 @@ extern "C" void port_frame_oam_upload(void);
    picture), outer = this tick's, inner = the one at alpha. Not for a closing box (the picture of the larger rectangle does not exist) and
    not for a wipe (per-line windows) or any other window use: the signature is BG3 revealed through WIN0 alone. 0 when there is nothing
    to do. SM64DS_TWEEN_BOX=0 puts the old picture back. */
-namespace { struct TwWin { int valid, x1, x2, y1, y2; }; TwWin g_tw_cur, g_tw_prev; }
+namespace { struct TwWin { int valid, x1, x2, y1, y2; }; TwWin g_tw_cur, g_tw_prev; int g_tw_closing; }
+/* INTERP093 I1: 1 when the last port_tween_win answer was a CLOSING box (the rectangle shrinking): outer is then the rectangle that far along
+   (between the last tick's and this one's), inner this tick's; the ring between them is the box's panel with no text. */
+extern "C" int port_tween_closing(void) { return g_tw_closing; }
 extern "C" int port_tween_win(double alpha, int outer[4], int inner[4])
 {
+    g_tw_closing = 0;
     static int off = -1;
     if (off < 0) { const char *e = std::getenv("SM64DS_TWEEN_BOX"); off = (e && e[0] == '0') ? 1 : 0; }
     if (off || !g_tw_cur.valid || !g_tw_prev.valid) return 0;
     const TwWin &c = g_tw_cur, &p = g_tw_prev;
     if (c.x1 == p.x1 && c.x2 == p.x2 && c.y1 == p.y1 && c.y2 == p.y2) return 0;
-    if (p.x1 < c.x1 || p.x2 > c.x2 || p.y1 < c.y1 || p.y2 > c.y2) return 0;   /* growing only */
     if (c.x2 - c.x1 > 256 || c.y2 - c.y1 > 192 || p.x2 <= p.x1 || p.y2 <= p.y1) return 0;
+    const bool growing = !(p.x1 < c.x1 || p.x2 > c.x2 || p.y1 < c.y1 || p.y2 > c.y2);
+    const bool shrinking = !(c.x1 < p.x1 || c.x2 > p.x2 || c.y1 < p.y1 || c.y2 > p.y2);
+    static int cl_off = -1;
+    if (cl_off < 0) { const char *e = std::getenv("SM64DS_TWEEN_CLOSE"); cl_off = (e && e[0] == '0') ? 1 : 0; }
+    if (!growing && !(shrinking && !cl_off)) return 0;
     if (alpha < 0) alpha = 0;
     if (alpha > 1) alpha = 1;
     const int ph = ntr::present_h();
@@ -3236,8 +3244,14 @@ extern "C" int port_tween_win(double alpha, int outer[4], int inner[4])
     auto hx = [&](double x) { return half + (int)(x * ph / 192.0 + 0.5); };
     auto hy = [&](double y) { return (int)(y * ph / 192.0 + 0.5); };
     auto lerp = [&](int a, int b) { return a + (b - a) * alpha; };
-    outer[0] = hx(c.x1); outer[1] = hy(c.y1); outer[2] = hx(c.x2); outer[3] = hy(c.y2);
-    inner[0] = hx(lerp(p.x1, c.x1)); inner[1] = hy(lerp(p.y1, c.y1)); inner[2] = hx(lerp(p.x2, c.x2)); inner[3] = hy(lerp(p.y2, c.y2));
+    if (growing) {
+        outer[0] = hx(c.x1); outer[1] = hy(c.y1); outer[2] = hx(c.x2); outer[3] = hy(c.y2);
+        inner[0] = hx(lerp(p.x1, c.x1)); inner[1] = hy(lerp(p.y1, c.y1)); inner[2] = hx(lerp(p.x2, c.x2)); inner[3] = hy(lerp(p.y2, c.y2));
+        return 1;
+    }
+    outer[0] = hx(lerp(p.x1, c.x1)); outer[1] = hy(lerp(p.y1, c.y1)); outer[2] = hx(lerp(p.x2, c.x2)); outer[3] = hy(lerp(p.y2, c.y2));
+    inner[0] = hx(c.x1); inner[1] = hy(c.y1); inner[2] = hx(c.x2); inner[3] = hy(c.y2);
+    g_tw_closing = 1;
     return 1;
 }
 
