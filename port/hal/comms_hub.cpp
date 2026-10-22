@@ -1141,8 +1141,8 @@ bool install_open(bool want_relay, const char *relay, const char *code,
         }
         std::memcpy(g_code, code, cl);
         if (!parse_host_port(relay, 41234, &g_relay)) {
-            std::fprintf(stderr, "[hub] could not resolve the relay '%s'; "
-                         "%s is off\n", relay, what);
+            std::fprintf(stderr, "[hub] could not resolve the relay; "
+                         "%s is off\n", what);
             return true;
         }
         g_want_seat = want_seat;
@@ -1184,8 +1184,8 @@ bool install_open(bool want_relay, const char *relay, const char *code,
         std::memcpy(cs, g_code, 8);
         if (g_mode == kModeRelay)
             std::fprintf(stderr, "[hub] installed: ARENA through the relay "
-                         "%s, code %s, role 3, want seat %d. No DS session "
-                         "and no rounds; the referee is the relay.\n", relay,
+                         "(address withheld), code %s, role 3, want seat %d. No DS session "
+                         "and no rounds; the referee is the relay.\n",
                          cs, g_want_seat);
         else
             std::fprintf(stderr, "[hub] installed: ARENA on the loopback mesh "
@@ -1195,8 +1195,8 @@ bool install_open(bool want_relay, const char *relay, const char *code,
         char cs[9] = {};
         std::memcpy(cs, g_code, 8);
         std::fprintf(stderr, "[hub] installed: adventure hub through the "
-                     "relay %s, code %s, want seat %d%s. No DS session is "
-                     "seated; this console plays its own game.\n", relay, cs,
+                     "relay (address withheld), code %s, want seat %d%s. No DS session is "
+                     "seated; this console plays its own game.\n", cs,
                      g_want_seat,
                      g_room == kHubRoomParty ? ", PARTY room (role 4)"
                      : g_room == kHubRoomCoop ? ", COOP room (role 5)" : "");
