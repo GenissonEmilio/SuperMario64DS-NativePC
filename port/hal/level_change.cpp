@@ -985,7 +985,7 @@ extern "C" int port_level_teardown(void)
        statement, stale for the same reason, and are cleared because leaving a
        known-dangling pointer live to wait for a different heap layout is how
        this one got found in the first place. */
-    for (int k = 0; k < (int)port::kPortBodySlots; ++k)   /* 0.3.2: sixteen slots; MPTEST9: all 32 hub body slots (slots 16..31 kept the destroyed bodies and Minimap::Behavior faulted on them after a level change) */
+    for (int k = 0; k < (int)kPortBodySlots; ++k)   /* 0.3.2: sixteen slots; MPTEST9: all 32 hub body slots (slots 16..31 kept the destroyed bodies and Minimap::Behavior faulted on them after a level change) */
         data_0209f394[k] = 0;
     data_0209f318 = 0;
     data_0209f2c4 = 0;
