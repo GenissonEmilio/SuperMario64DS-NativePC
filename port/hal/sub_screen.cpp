@@ -4829,8 +4829,7 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
        columns, so anything that moves across the edge, a button bouncing, a sparkle, a page easing in, repainted the whole bar with it,
        one picture to the next, and at 240 pictures a second that reads as flicker. The bar is this port's decoration and the DS has
        nothing there, so it is eased in time: each row moves toward the new edge colour with a 0.35 s time constant on the wall
-       clock (the same at 60 and 240 fps). A big uniform change (a fade, a page cut) snaps, so the bar never glows around a picture
-       that has gone black. State is per physical screen and starts again when the scene key, the rows or the margin move.
+       clock (the same at 60 and 240 fps). The bar's overall light follows the picture at once (a fade or a cut), only the shape of the edge is eased. State is per physical screen and starts again when the scene key, the rows or the margin move.
        SM64DS_WIDE_EASE=0 turns the easing off. */
     {
         static int ease_on = -1;
@@ -4858,26 +4857,33 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
                 double a = 1.0 - std::exp(-(dt > 0.0 ? dt : 0.0) / 0.35);
                 if (a > 1.0) a = 1.0;
                 for (int side = 0; side < 2; ++side) {
+                    /* each row eases toward the new colour; the bar's overall light follows the picture at once, so a fade to black
+                       or a cut never leaves it glowing around a dark picture (only the shape of the edge is eased, not its level) */
+                    unsigned tmp2[8192];
+                    const int n = rows < 8192 ? rows : 8192;
                     long long lo = 0, ln = 0;
-                    for (int r = 0; r < rows; ++r) {
-                        const unsigned o = Z.c[side][r], n = E[side][r];
-                        lo += ((o >> 16) & 255) + ((o >> 8) & 255) + (o & 255);
-                        ln += ((n >> 16) & 255) + ((n >> 8) & 255) + (n & 255);
-                    }
-                    const long long dl = lo > ln ? lo - ln : ln - lo;
-                    const bool snap = dl * 100 > (lo > ln ? lo : ln) * 30;      /* a fade or a cut: more than 30 percent of the bar's light */
-                    for (int r = 0; r < rows; ++r) {
-                        if (!snap) {
-                            const unsigned o = Z.c[side][r], n = E[side][r];
-                            unsigned ch[3];
-                            for (int k = 0; k < 3; ++k) {
-                                const int sh = 16 - 8 * k;
-                                const double ov = (double)((o >> sh) & 255), nv = (double)((n >> sh) & 255);
-                                ch[k] = (unsigned)(ov + (nv - ov) * a + 0.5);
-                                if (ch[k] > 255) ch[k] = 255;
-                            }
-                            E[side][r] = 0xFF000000u | (ch[0] << 16) | (ch[1] << 8) | ch[2];
+                    for (int r = 0; r < n; ++r) {
+                        const unsigned o = Z.c[side][r], nw = E[side][r];
+                        unsigned ch[3];
+                        for (int k = 0; k < 3; ++k) {
+                            const int sh = 16 - 8 * k;
+                            const double ov = (double)((o >> sh) & 255), nv = (double)((nw >> sh) & 255);
+                            ch[k] = (unsigned)(ov + (nv - ov) * a + 0.5);
+                            if (ch[k] > 255) ch[k] = 255;
                         }
+                        tmp2[r] = (ch[0] << 16) | (ch[1] << 8) | ch[2];
+                        lo += ch[0] + ch[1] + ch[2];
+                        ln += ((nw >> 16) & 255) + ((nw >> 8) & 255) + (nw & 255);
+                    }
+                    const double g = lo > 0 ? (double)ln / (double)lo : 1.0;
+                    for (int r = 0; r < n; ++r) {
+                        unsigned ch[3] = { (tmp2[r] >> 16) & 255, (tmp2[r] >> 8) & 255, tmp2[r] & 255 };
+                        for (int k = 0; k < 3; ++k) {
+                            double v = lo > 0 ? ch[k] * g : (double)ch[k];
+                            if (v > 255.0) v = 255.0;
+                            ch[k] = (unsigned)(v + 0.5);
+                        }
+                        E[side][r] = 0xFF000000u | (ch[0] << 16) | (ch[1] << 8) | ch[2];
                         Z.c[side][r] = E[side][r];
                     }
                 }
