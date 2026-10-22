@@ -1276,6 +1276,35 @@ static int ss_online_refused(const char *how)
     return 1;
 }
 
+/* ---- F-KEYS ARE OFF ONLINE (run hunt8, lane ONLINEKEYS1) -------------------
+   In any online session (the same three tests as the save states: VS carrier,
+   adventure hub, launched for a session) the game functions on the F row do
+   nothing: F1 camera mode (the right stick click and the mouse binding too),
+   F4 character swap, F5 / Esc / pad BACK debug menu, F8 / F9 save states. Each
+   is a single-console action. KEPT online on purpose: F3 stats overlay, F6
+   problem report (a launcher / window level key, not read here), F11 / F12
+   fullscreen (window only), T chat, and Esc backing out of the game's own
+   Settings page. SM64DS_ONLINE_FKEYS=1 restores the old behaviour for
+   debugging. Offline this returns 0 and nothing changes. `what` names the
+   function in the one log line, printed on the press edge only. */
+static int online_blocks_fkey(const char *what)
+{
+    static int kill = -1;
+    if (kill < 0) {
+        const char *e = getenv("SM64DS_ONLINE_FKEYS");
+        kill = (e && *e && *e != '0');
+    }
+    if (kill)
+        return 0;
+    const char *why = ss_online_why();
+    if (!why)
+        return 0;
+    if (what)
+        fprintf(stderr, "[onlinekeys] %s refused: off online (%s)
+", what, why);
+    return 1;
+}
+
 /* The one save path: the F8 latch, the debug menu's save row and the scripted
    SM64DS_SS_SAVE all come through here, so a refusal cannot be true on one of
    them and false on another. Returns 1 if the world was snapshotted.
@@ -7594,6 +7623,8 @@ static void menu_input(int pad_live, const XPad *pad)
      *
      * SM64DS_MP_DEBUG_MENU=1 for a developer who wants it anyway, off by
      * default, named so it cannot be reached by accident. */
+    if ((edge & (1u << 0)) && !menu_on && online_blocks_fkey("debug menu (F5 / Esc / BACK)"))
+        edge &= ~(1u << 0);
     if ((edge & (1u << 0)) && !menu_on) {
         static int allow = -1;
         if (allow < 0) allow = getenv("SM64DS_MP_DEBUG_MENU") != 0;
@@ -15986,7 +16017,9 @@ int main(void)
         {
             static int chr_edge;
             const int now = key_live(VK_F4);
-            if (now && !chr_edge) {
+            if (now && !chr_edge && online_blocks_fkey("F4 character swap")) {
+                /* off online: nothing */
+            } else if (now && !chr_edge) {
                 const port::CommsReadout cr = port::comms_readout();
                 if (cr.connected && cr.players > 1) {
                     fprintf(stderr,
@@ -16017,8 +16050,10 @@ int main(void)
            the menu never swallows them. */
         {
             static int save_edge, load_edge;
-            const int save_now = key_live(VK_F8);
-            const int load_now = key_live(VK_F9);
+            int save_now = key_live(VK_F8);
+            int load_now = key_live(VK_F9);
+            if (save_now && !save_edge && online_blocks_fkey("F8 save state")) save_now = 1, save_edge = 1;
+            if (load_now && !load_edge && online_blocks_fkey("F9 load state")) load_now = 1, load_edge = 1;
             if (save_now && !save_edge)
                 ss_save_state("F8", 1);
             int do_load = load_now && !load_edge;
@@ -16544,6 +16579,11 @@ int main(void)
                right stick's click by default, the two it always was */
             int now = key_act(HOST_KEY_CAM_MODE) || mouse_act(HOST_MOUSE_CAM_MODE) ||
                       (pad_live && pad_act(&pad, HOST_PAD_CAM_MODE));
+            {   /* off online: F1, the right stick click and the mouse binding do nothing (one log line per press) */
+                static int fc_online_held;
+                if (now && online_blocks_fkey(fc_online_held ? 0 : "F1 camera mode")) { now = 0; fc_online_held = 1; }
+                else if (!now) fc_online_held = 0;
+            }
             if (selftest && getenv("SM64DS_SELFTEST_FREECAM")) {
                 /* the probe wants the mod ON at 20 and OFF three quarters
                    through, which a three-way cycle cannot express -- so set
