@@ -1300,8 +1300,7 @@ static int online_blocks_fkey(const char *what)
     if (!why)
         return 0;
     if (what)
-        fprintf(stderr, "[onlinekeys] %s refused: off online (%s)
-", what, why);
+        fprintf(stderr, "[onlinekeys] %s refused: off online (%s)\n", what, why);
     return 1;
 }
 
