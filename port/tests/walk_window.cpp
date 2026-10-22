@@ -4730,6 +4730,8 @@ static void fc_push_view(void *cam, const int *eye, const int *at)
       sets the flag, so nothing changes for them. */
 extern "C" int _ZN8dActor_c17DetectRaycastClsnER7Vector3S1_b(void *self, void *a0, void *a1, bool a2);
 extern "C" void _ZN9dCamera_c14GoBehindPlayerEj(void *self, unsigned int j);
+extern "C" void func_0200d10c(void *cam, unsigned char playerID);   /* CAMTEST9: the camera into the grab-tail state (18) */
+extern "C" unsigned char data_0208733c[];   /* CAMTEST9: the stepped 8-direction camera mode (func_0200bb28) */
 extern "C" unsigned char data_ov002_021102d4[];   /* the Player's cannon-aim State object */
 extern "C" unsigned data_0209b018[], data_0209b028[], data_0209b038[], data_0209b048[], data_0209b058[],
     data_0209b068[], data_0209b088[], data_0209b098[], data_0209b0a8[], data_0209b0b8[], data_0209b0c8[],
@@ -4813,6 +4815,14 @@ static void ct_camera_behavior_post(void *cam)
     const double ha = atan2(dx, dz);
     int delta = (int)floor((ha - hb) * K + 0.5);
     delta = ((delta & 0xffff) ^ 0x8000) - 0x8000;
+    {   /* CAMTEST9: what the ROM left this tick, for the preset-camera investigation */
+        static int tr9 = -1;
+        if (tr9 < 0) tr9 = getenv("SM64DS_CAMTEST_TRACE") ? 1 : 0;
+        if (tr9) fprintf(stderr, "[camtest9] post dir %d turn %d delta %d cf %x a0 %x a6 %d h17c %04x h186 %04x h19e %04x\n",
+                         dir, turn, delta, *(unsigned *)((char *)cam + 0x154), *(unsigned short *)((char *)cam + 0x1a0),
+                         *(unsigned char *)((char *)cam + 0x1a6), *(unsigned short *)((char *)cam + 0x17c),
+                         *(unsigned short *)((char *)cam + 0x186), *(unsigned short *)((char *)cam + 0x19e));
+    }
     if (delta == 0 || (delta > 0) != (dir > 0)) return;     /* only the turn in the pressed direction */
     const int want = (int)((long long)delta * turn / 0x400);
     const int back = want - delta;
@@ -17174,6 +17184,15 @@ int main(void)
                    g_fc_cam_rot instead and are merged inside
                    port_frame_ctrl_publish, at the instant
                    Stage::CheckCameraInput merges the cartridge's own arrows. */
+                {   /* CAMTEST9 C3 proof probe: SM64DS_CAMTEST_TAILCAM=<frame> puts the camera into the grab-Bowser's-tail state (18) exactly as
+                       St_GrabBowserTail_Init does (func_0200d10c), so the stick turn in that state can be measured without a Bowser fight. */
+                    static int tc_f = -2;
+                    if (tc_f == -2) { const char *e = getenv("SM64DS_CAMTEST_TAILCAM"); tc_f = e ? atoi(e) : -1; }
+                    if (tc_f >= 0 && frame == tc_f && cam) {
+                        func_0200d10c(cam, data_0209f250);
+                        fprintf(stderr, "[camtest9] f%d camera put into state 18 (tail grab), now idx %d\n", frame, cam93_state_idx(cam));
+                    }
+                }
                 const unsigned cam_bit_right = (cam_turn > 0) ? 0x100u : 0x200u;
                 const unsigned cam_bit_left  = (cam_turn > 0) ? 0x200u : 0x100u;
                 if (cb_l_km) cam_rot |= cam_bit_left;
@@ -17350,13 +17369,25 @@ int main(void)
                         fprintf(stderr, "[camdsturn] f%d dir %d turn %x cf %x rom_took %d owned %d\n", frame, dir, turn, cam_cf, rom_took, cam ? cam93_ds_owned(cam) : -1);
                     static int ct_old = -1;   /* SM64DS_CAMTAGS_OLD=1: proof only, the CAMLOCK2 rule for a turn below the ROM's step */
                     if (ct_old < 0) ct_old = getenv("SM64DS_CAMTAGS_OLD") ? 1 : 0;
+                    /* CAMTEST9 (C3, thunderit round 6): the grab-Bowser's-tail camera (state 18) is the follow body (func_02005000 only eases
+                       one camera-def field, then runs func_02009e70) with a hand-over to the DS picture, not a scripted look. It is "owned" for the
+                       rig's sake, but the stick turn there ran the ROM's full 0x400 step on any tilt. The scaling treats it like the ordinary follow
+                       states. SM64DS_CAMTEST_C3_OLD=1: proof only, the build 9 exemption. */
+                    /* CAMTEST9 (C2): the stepped camera (CamMode 0x0208733c, func_0200bb28: Super Mario 64 DS levels 28 32 37 39 and the Lethal Lava
+                       Land start) answers any rotate press with one 45 degree preset (+-0x2000 on +0x184, ApproachLinear at 0x800 a tick, 0x14 ticks
+                       between steps) and zeroes the key word itself. The post-tick scaling shrank that approach's eye turn, the ROM re-derived its
+                       heading from the shifted eye and the eye drifted the wrong way for 40 ticks. Its own answer stands, as in CAMLOCK2's rows. */
+                    const int ct_stepped_mode = cam && *(void **)((char *)cam + 0x140) == (void *)data_0208733c;
+                    static int c3_old = -1;
+                    if (c3_old < 0) c3_old = getenv("SM64DS_CAMTEST_C3_OLD") ? 1 : 0;
+                    const int ct_owned = cam && cam93_ds_owned(cam) && !(!c3_old && cam93_state_idx(cam) == 18);
                     g_ct_dir = 0;
-                    if (!ct_old && turn < 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000)) {
+                    if (!ct_old && turn < 0x400 && dir && cam && !ct_owned && !ct_stepped_mode && !(btn & 0x4000)) {
                         /* below the ROM's step: scaled after the camera's own tick (ct_camera_behavior_post) */
                         g_ct_turn = turn > 0 ? turn : 1;
                         g_ct_dir = dir;
                     } else
-                    if (turn != 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000) && (rom_took || cv_old))
+                    if (turn != 0x400 && dir && cam && !ct_owned && !(btn & 0x4000) && (rom_took || cv_old))
                         { g_ds_extra_turn = dir * (turn - 0x400); g_ds_cam = cam; }
                 }
                 /* orbit probe: hold one of func_02009e70's own rotate bits
