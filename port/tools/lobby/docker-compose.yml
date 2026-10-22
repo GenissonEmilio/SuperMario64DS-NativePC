@@ -95,7 +95,7 @@ services:
       # live members one client address may hold (a household behind one
       # connection; a fifth ask retires that address's oldest).
       MAX_WORLDS: "64"
-      WORLD_SEATS: "16"
+      WORLD_SEATS: "32"
       WORLD_MEMBER_S: "30"
       WORLD_EMPTY_S: "30"
       WORLD_ADDR_TOKENS: "4"

@@ -145,7 +145,8 @@ STATUS_WRONG_KIND = 5       # a star role into a hub code, or the reverse
 
 KIND_STAR = "star"
 KIND_HUB = "hub"
-HUB_SEATS = 16              # a hub session holds seats 0..15, nobody hosts
+HUB_SEATS = 16              # an arena session holds seats 0..15 (VS stays 16)
+WORLD_SEATS = 32            # a world hub holds seats 0..31, nobody hosts (WORLD32)
 ROLE_ARENA = 3              # an arena member (hub-shaped, refereed)
 KIND_ARENA = "arena"
 # ---- party and coop rooms (run mp1 wave 56, lane WIRE1) --------------------
@@ -428,6 +429,10 @@ RATE_BURST_V2 = RATE_PPS_V2
 SESSION_FWD_PPS = clamp_int(os.environ.get("SM64DS_RELAY_SESSION_FWD_PPS"),
                             15000, 100, 1000000)
 SESSION_FWD_BURST = SESSION_FWD_PPS
+# WORLD32: a 32-seat world fans each datagram to 31 others, so its worst case
+# is ~2.5x the 16-seat one (voice off: ~19000/s of ghosts, pings, chat).
+SESSION_FWD_PPS_WORLD = clamp_int(
+    os.environ.get("SM64DS_RELAY_SESSION_FWD_PPS_WORLD"), 48000, 100, 1000000)
 # A sender's per-kind allowances are kept by source ADDRESS (finding H3: a
 # re-HELLO into another seat used to hand out fresh ones). They are forgotten
 # this long after the address last spent one and holds no seat; any value
@@ -637,7 +642,7 @@ class SessionV2(object):
     """A version 2 session: a STAR (seat 0 is the parent, 1..MAX_CHILDREN the
     children) or a HUB (seats 0..HUB_SEATS-1, all members, nobody hosts)."""
     __slots__ = ("code", "kind", "seats", "created", "fwd_tokens",
-                 "fwd_stamp", "referee")
+                 "fwd_stamp", "referee", "fwd_pps", "fwd_burst")
     version = PROTO_V2
 
     def __init__(self, code, kind, now):
@@ -647,7 +652,9 @@ class SessionV2(object):
         self.created = now
         self.referee = None     # arena sessions only (referee.Referee)
         # the per-session forward budget (SESSION_FWD_PPS), in copies sent
-        self.fwd_tokens = float(SESSION_FWD_BURST)
+        self.fwd_pps = SESSION_FWD_PPS_WORLD if kind == KIND_HUB else SESSION_FWD_PPS
+        self.fwd_burst = self.fwd_pps
+        self.fwd_tokens = float(self.fwd_burst)
         self.fwd_stamp = now
 
     def budget_ok(self, copies, now):
@@ -656,8 +663,8 @@ class SessionV2(object):
         datagram gets it or none does)."""
         elapsed = now - self.fwd_stamp
         if elapsed > 0:
-            self.fwd_tokens = min(float(SESSION_FWD_BURST),
-                                  self.fwd_tokens + elapsed * SESSION_FWD_PPS)
+            self.fwd_tokens = min(float(self.fwd_burst),
+                                  self.fwd_tokens + elapsed * self.fwd_pps)
             self.fwd_stamp = now
         if self.fwd_tokens < copies:
             return False
@@ -670,7 +677,9 @@ class SessionV2(object):
     def capacity(self):
         if self.kind in (KIND_PARTY, KIND_COOP):
             return PARTY_SEATS
-        if self.kind in (KIND_HUB, KIND_ARENA):
+        if self.kind == KIND_HUB:
+            return WORLD_SEATS
+        if self.kind == KIND_ARENA:
             return HUB_SEATS
         return MAX_ENDPOINTS_PER_SESSION
 
@@ -1034,7 +1043,7 @@ class RelayProtocol(asyncio.DatagramProtocol):
         elif role == ROLE_CHILD:
             ok = (1 <= want <= 15) or want == WANT_ANY
         elif role == ROLE_MEMBER:
-            ok = (0 <= want < HUB_SEATS) or want == WANT_ANY
+            ok = (0 <= want < WORLD_SEATS) or want == WANT_ANY
         elif role == ROLE_ARENA and referee is not None:
             ok = (0 <= want < HUB_SEATS) or want == WANT_ANY
         elif role in (ROLE_PARTY, ROLE_COOP):
@@ -1117,7 +1126,8 @@ class RelayProtocol(asyncio.DatagramProtocol):
             # bodies (the referee learns that from the first READY's
             # capacity; before it, the room is open to every hub seat). A
             # seat with no body would be a console the game cannot seat.
-            top = PARTY_SEATS if kind in (KIND_PARTY, KIND_COOP) else HUB_SEATS
+            top = PARTY_SEATS if kind in (KIND_PARTY, KIND_COOP) else (
+                WORLD_SEATS if kind == KIND_HUB else HUB_SEATS)
             if kind == KIND_ARENA and session.referee is not None:
                 bodies = session.referee.body_count()
                 if bodies is not None:
@@ -1126,7 +1136,7 @@ class RelayProtocol(asyncio.DatagramProtocol):
                 seat = session.free_seat(0, top - 1)
                 if seat is None:
                     status, why = STATUS_FULL, (
-                        "hub full" if top == HUB_SEATS else
+                        "hub full" if kind == KIND_HUB else
                         "all %d seats of this %s room are taken" % (top, kind)
                         if kind in (KIND_PARTY, KIND_COOP) else
                         "all %d bodies of this arena are seated" % top)
@@ -1604,7 +1614,7 @@ async def run():
            RATE_BURST, MAX_ENDPOINTS_PER_SESSION, MAX_CHILDREN))
     log("v2: rate_pps_v2=%d session_fwd_pps=%d host_mp2l_pps=%d "
         "hub_idle=%.0fs hub_seats=%d kinds=%s"
-        % (RATE_PPS_V2, SESSION_FWD_PPS, HOST_MP2L_PPS, hub_idle_s, HUB_SEATS,
+        % (RATE_PPS_V2, SESSION_FWD_PPS, HOST_MP2L_PPS, hub_idle_s, WORLD_SEATS,
            ",".join(t.decode("ascii") for t in KIND_ORDER)))
     if os.name == "nt":
         log("windows: udp connreset %s" % connreset)

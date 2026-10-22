@@ -112,7 +112,7 @@
 namespace port {
 
 enum : int {
-    kHubMaxSeats     = 16,
+    kHubMaxSeats     = 32,       // WORLD32: 32 world seats (was 16); arena VS stays 16 on the relay
     kHubEnvelopeBytes = 8,
     kHubMaxDatagram  = 700,     // the largest kind (coop world / control);
                                 // was 340 (voice) before wave 56

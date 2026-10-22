@@ -176,7 +176,7 @@ bool build_room(NetHudView *v) {
     long long sum = 0;
     int n = 0, worst = -1;
     bool quiet = false;
-    const int others = popcount16(st.seat_mask & 0xFFFFu);
+    const int others = popcount16(st.seat_mask);
     for (int s = 0; s < kHubMaxSeats; ++s) {
         if (!(st.seat_mask & (1u << s))) continue;
         HubSeatInfo info;

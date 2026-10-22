@@ -122,14 +122,14 @@ struct State {
 
     Pending  pend[kPending];
     Bucket   send_bucket;
-    Bucket   recv_bucket[kCommsMaxPlayers];
+    Bucket   recv_bucket[kHubMaxSeats];
     unsigned dd_key[kDedupe];  // (seat << 16) | id, 0xFFFFFFFF = empty
     int      dd_head;
 
     Line     lines[kChatShowLines];
     int      line_head;        // next slot to fill (oldest when all used)
 
-    SeatBubble sb[kCommsMaxPlayers];
+    SeatBubble sb[kHubMaxSeats];
     unsigned short type_seq;
     unsigned type_next_ms;     // next state-1 refresh while the box is open
     bool     type_zero_due;    // the second state-0 copy is still owed
@@ -369,7 +369,7 @@ int clean(const unsigned char *s, int n, char *out, int cap, CleanStats *st) {
 // ---------------------------------------------------------------------------
 // NAMES AND COLOURS
 // ---------------------------------------------------------------------------
-const unsigned kPalette[kCommsMaxPlayers] = {
+const unsigned kPalette[16] = {
     0xFFFF6060u, 0xFF60A0FFu, 0xFF60E060u, 0xFFFFE040u,
     0xFFFF80FFu, 0xFF40E0E0u, 0xFFFFA040u, 0xFFC090FFu,
     0xFFFFFFFFu, 0xFFA0FF80u, 0xFFFF9090u, 0xFF80C0FFu,
@@ -478,7 +478,7 @@ void typing_off(int seat, const char *why, unsigned now) {
 }
 
 void set_bubble(int seat, const char *shown, unsigned now) {
-    if (seat < 0 || seat >= kCommsMaxPlayers) return;
+    if (seat < 0 || seat >= kHubMaxSeats) return;
     SeatBubble &s = g.sb[seat];
     typing_off(seat, "line", now);          // the message ends the typing
     s.has_text = true;
@@ -506,8 +506,8 @@ void bubbles_age(unsigned now) {
     } else if (g.carrier == kHub) {
         live = comms_hub_seat_mask();
     }
-    if (g.my_seat >= 0 && g.my_seat < kCommsMaxPlayers) live |= 1u << g.my_seat;
-    for (int seat = 0; seat < kCommsMaxPlayers; ++seat) {
+    if (g.my_seat >= 0 && g.my_seat < kHubMaxSeats) live |= 1u << g.my_seat;
+    for (int seat = 0; seat < kHubMaxSeats; ++seat) {
         SeatBubble &s = g.sb[seat];
         if (!((live >> seat) & 1u)) {
             typing_off(seat, "left", now);
@@ -677,7 +677,7 @@ void pump_recv() {
                 ++g.rx_typing_bad;
                 continue;
             }
-            if (seat < 0 || seat >= kCommsMaxPlayers) { ++g.rx_bad_seat; continue; }
+            if (seat < 0 || seat >= kHubMaxSeats) { ++g.rx_bad_seat; continue; }
             if (seat == g.my_seat) { ++g.rx_self; continue; }
             const unsigned now = now_ms();
             SeatBubble &s = g.sb[seat];
@@ -709,7 +709,7 @@ void pump_recv() {
             ++g.rx_bad_len;
             continue;
         }
-        if (seat < 0 || seat >= kCommsMaxPlayers) { ++g.rx_bad_seat; continue; }
+        if (seat < 0 || seat >= kHubMaxSeats) { ++g.rx_bad_seat; continue; }
         if (seat == g.my_seat) { ++g.rx_self; continue; }
         if (dedupe_seen(((unsigned)seat << 16) | h.msg_id)) {
             ++g.rx_dup;
@@ -1026,7 +1026,7 @@ void chat_view(ChatView *out) {
 
 bool chat_bubble(int seat, ChatBubble *out) {
     std::memset(out, 0, sizeof *out);
-    if (seat < 0 || seat >= kCommsMaxPlayers || g.carrier == kNone) return false;
+    if (seat < 0 || seat >= kHubMaxSeats || g.carrier == kNone) return false;
     const unsigned now = now_ms();
     const SeatBubble &s = g.sb[seat];
     out->typing = seat == g.my_seat ? g.typing
