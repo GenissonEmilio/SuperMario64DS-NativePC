@@ -4829,7 +4829,7 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
        columns, so anything that moves across the edge, a button bouncing, a sparkle, a page easing in, repainted the whole bar with it,
        one picture to the next, and at 240 pictures a second that reads as flicker. The bar is this port's decoration and the DS has
        nothing there, so it is eased in time: each row moves toward the new edge colour with a 0.35 s time constant on the wall
-       clock (the same at 60 and 240 fps). A fade to black (the bar's light more than halved in one picture) is followed at once so the bar never glows around a dark picture. State is per physical screen and starts again when the scene key, the rows or the margin move.
+       clock (the same at 60 and 240 fps). A fade to black (the bar's light more than halved in one picture) is followed at once so the bar never glows around a dark picture. State is per physical screen and starts again when the rows or the margin move (a layout change).
        SM64DS_WIDE_EASE=0 turns the easing off. */
     {
         static int ease_on = -1;
@@ -4841,7 +4841,7 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
         if (ease_on) {
             Ease &Z = S[y0 > 0 ? 1 : 0];
             const long long now = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-            const bool same = Z.c[0] && Z.rows == rows && Z.cx0 == cx0 && Z.cx1 == cx1 && Z.iw == iw && !std::strncmp(Z.key, key, sizeof Z.key - 1);
+            const bool same = Z.c[0] && Z.rows == rows && Z.cx0 == cx0 && Z.cx1 == cx1 && Z.iw == iw;   /* the scene key is NOT compared: a page change on the same screen keeps easing, so a lagging bar does not pop at the change */
             if (!same) {
                 for (int side = 0; side < 2; ++side) {
                     std::free(Z.c[side]);
