@@ -3793,7 +3793,7 @@ extern "C" void port_adventure_hub_seat() {
     if (!(adventure_ghost_mode() && comms_hub_active())) return;
     port_adventure_hub_opening_tick();
     const int count = (int)data_0209f21c;
-    if (count <= 1 || count > 4) return;      // the live bytes are four wide
+    if (count <= 1 || count > kCommsMaxPlayers) return;
     bool short_seat = (int)data_0208a0e0 != count;
     for (int i = 0; i < count; ++i)
         if (!data_0209fc5c[i]) short_seat = true;
@@ -3896,7 +3896,7 @@ extern "C" void port_adventure_hub_level_seat() {
     g_hub_opening = false;
     if (!(adventure_ghost_mode() && comms_hub_active())) return;
     const int want = vs_player_count();
-    if (want <= 1 || want > 4) return;        // the live bytes are four wide
+    if (want <= 1 || want > kCommsMaxPlayers) return;
     std::fprintf(stderr, "[ghost] hub: the opening's level load seats the "
                  "hub's %d bodies again (count was %d); SetNumPlayers(%d)\n",
                  want, (int)data_0209f21c, want);

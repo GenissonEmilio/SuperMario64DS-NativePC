@@ -83,6 +83,8 @@
 // ===========================================================================
 
 #include "comms_seam.h"
+#include "party.h"
+#include "coop_wire.h"
 #include "comms_hub.h"         // run mp1 lane GHOSTWIRE1: the adventure hub's
                                // ghost bodies (vs_player_count)
 #include "player_fields.h"   // run mg16 lane MP4: state_id for the VS probe
@@ -1008,6 +1010,20 @@ void vs_probe(int frame) {
 // lane spends a day on the wrong half.
 // ===========================================================================
 
+int hub_body_count() {
+    static int n = 0;
+    if (party::active() || coop_world_active()) return 4;   // party / coop rooms stay 4
+    if (!n) {
+        n = 16;
+        if (const char *e = std::getenv("SM64DS_HUB_BODIES")) {
+            const int v = std::atoi(e);
+            if (v >= 1 && v <= kCommsMaxPlayers) n = v;
+        }
+        std::fprintf(stderr, "[ghost] hub bodies: %d\n", n);
+    }
+    return n;
+}
+
 int vs_player_count() {
     if (const char *s = std::getenv("SM64DS_VS_PLAYERS")) {
         const int v = std::atoi(s);
@@ -1026,8 +1042,8 @@ int vs_player_count() {
        and the save at 2 and 4 bodies and lose both at 8 and 16 (the star arms
        and the course never ends). The hub is installed only for an adventure
        console with a relay or test mesh, so VS and solo never reach this. */
-    enum : int { kHubBodies = 4 };
-    if (comms_hub_active()) return kHubBodies;
+    /* GHOSTBODIES1: hub_body_count() (default 16, the VS width; SM64DS_HUB_BODIES=4 is the old count) */
+    if (comms_hub_active()) return hub_body_count();
     const CommsTransport *t = comms_transport();
     if (!t) return 1;                       // solo: unchanged, and that is load-bearing
     const int n = t->player_count();

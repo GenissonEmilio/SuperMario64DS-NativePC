@@ -603,6 +603,7 @@ bool comms_inject_touch(int *down, int *x, int *y);
 // otherwise the live count the ROM's conductor negotiated. hal/level_boot.cpp
 // seats data_0209f21c from it. SM64DS_VS_PLAYERS overrides, for proofs.
 int vs_player_count();
+int hub_body_count();   // GHOSTBODIES1: bodies seated on the adventure hub
 
 // SM64DS_VS_PROBE=1: one stderr line per frame per player slot, read out of
 // data_0209f394 (the per-slot Player pointers), each actor's mPlayerNo, its
