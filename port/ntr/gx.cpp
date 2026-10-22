@@ -23,6 +23,7 @@
 #include <emmintrin.h>
 #include <map>
 #include <mutex>
+#include <set>
 #include <thread>
 #include <type_traits>
 #include <utility>
@@ -8153,12 +8154,14 @@ struct IpGroup {
     int part;            // a particle (MTX_IDENTITY then one MULT_4x3)
     double ps;           // its billboard scale, in the view matrix's units
     int match2 = -1;     // SMOOTHREND1: the group in the record TWO ticks back, when this one has none a tick back (a blinking model)
+    int bind = -1;       // VISUAL093B: index into IpRec::binds of the texture bound when the group's first matrix command ran (-1 none)
 };
 
 struct IpRec {
     std::vector<IpEv> ev;
     std::vector<uint32_t> par;
     std::vector<IpBind> binds;
+    mutable std::vector<int8_t> bind_sparkle;   // VISUAL093B: per bind, -1 not looked at, 0 not a sparkle texture, 1 it is
     std::vector<IpGroup> groups;
     std::vector<int> mtx;        // event index of every matrix-parameter command
     std::vector<int> ev_group;   // group of every event (-1 before the first)
@@ -8284,7 +8287,7 @@ bool ip_particle_pair() {
    through the blended camera), 4 (default) tick N's matrix for a twinkling one only */
 int ip_sparkle_mode() {
     static int m = -1;
-    if (m < 0) { const char *e = getenv("SM64DS_SPARKLE_MODE"); m = e ? atoi(e) : 4; }
+    if (m < 0) { const char *e = getenv("SM64DS_SPARKLE_MODE"); m = e ? atoi(e) : 5; }
     return m;
 }
 
@@ -8294,6 +8297,31 @@ bool ip_part_twinkle(const IpGroup &gc, const IpGroup &gp) {
     if (gp.ps <= 1e-9) return true;
     const double r = gc.ps / gp.ps;
     return r < 0.77 || r > 1.3;
+}
+
+/* VISUAL093B V2: THE SPARKLE TEXTURES. The Grand Star's glitter, Peach's glitter at the ending and the star-get sparkles are particles drawn with the
+   same two 16x16 glint textures (content hashes below; the texture ids differ per load, the texels do not). Their size and turn change a lot every
+   tick, and they pair with a neighbour in a cloud of a hundred, so a blend of two ticks' matrices slid, swelled and jumped between pictures
+   (thunderit, 0.9.3 round 6, at 120 / 144 / 240 fps). A particle with one of these textures keeps tick N's own matrix, re-viewed through the blended
+   camera: it twinkles at the DS's tick rate and does not move between two ticks. SM64DS_SPARKLE_MODE=4 puts back the twinkle-only rule, 0 the old blend. */
+bool ip_bind_is_sparkle(const IpRec &C, int bi) {
+    if (bi < 0 || bi >= (int)C.binds.size()) return false;
+    if (C.bind_sparkle.size() != C.binds.size()) C.bind_sparkle.assign(C.binds.size(), (int8_t)-1);
+    int8_t &c = C.bind_sparkle[bi];
+    if (c < 0) {
+        const IpBind &b = C.binds[bi];
+        c = 0;
+        if (b.rgba && b.w > 0 && b.h > 0 && b.w * b.h <= 1024) {
+            uint32_t h = 2166136261u;
+            for (int q = 0; q < b.w * b.h; ++q) h = (h ^ b.rgba[q]) * 16777619u;
+            /* the glint quarters (16x16, mirrored into the four-point star), the glitter flecks and the light rays (8x1) of the
+               Grand Star scene and Peach's ending, measured with SM64DS_PART_LOG / PART_TEXDIR over the whole ending */
+            static const uint32_t kSparkle[] = { 0x406c40c5u, 0x3b6c40c5u, 0x216c40c5u, 0xe86c40c5u, 0xe54f21c5u, 0x437d3be5u,
+                                                 0x75788b4cu, 0x0048febbu, 0x1d2b1433u, 0xe1f119a8u };
+            for (uint32_t k : kSparkle) if (h == k) c = 1;
+        }
+    }
+    return c == 1;
 }
 
 bool ip_newborn_recam() {
@@ -8310,6 +8338,7 @@ void ip_rec_begin() {
     r.ev.clear();
     r.par.clear();
     r.binds.clear();
+    r.bind_sparkle.clear();
     r.is_sealed = 0;
     r.valid = 0;
     r.start = g;
@@ -8383,11 +8412,14 @@ void ip_build_groups(IpRec &r) {
                               : ((uint64_t)2 << 40) | ghash);
         G.shape = shape;
     };
+    int run_bind = -1;
     for (uint32_t i = 0; i < r.sealed; ++i) {
         const IpEv &e = r.ev[i];
+        if (e.kind == IPK_BIND) run_bind = (int)e.off;
         if (e.kind == IPK_CMD && ip_is_mtx(e.cmd) && (cur < 0 || geom)) {
             close();
             IpGroup G;
+            G.bind = run_bind;
             G.key = 0; G.shape = 0; G.nmtx = 0;
             G.mtx0 = static_cast<int>(r.mtx.size());
             G.has_pos = 0; G.px = G.py = G.pz = 0;
@@ -8577,7 +8609,9 @@ bool blink_pair_on() {
     return on != 0;
 }
 
+int g_ip_tick_no = 0;   // VISUAL093B: ticks matched so far (the diag logs)
 void ip_match(IpRec &C, const IpRec &P, GxInterpStats *st, const IpRec *P2 = nullptr) {
+    ++g_ip_tick_no;
     std::map<uint64_t, std::vector<int>> kc, kp;
     for (size_t i = 0; i < C.groups.size(); ++i) kc[C.groups[i].key].push_back((int)i);
     for (size_t i = 0; i < P.groups.size(); ++i) kp[P.groups[i].key].push_back((int)i);
@@ -8699,6 +8733,37 @@ void ip_match(IpRec &C, const IpRec &P, GxInterpStats *st, const IpRec *P2 = nul
             if (gc.part && gc.nmtx == 1 && ip_newborn_recam()) {
                 const int ei = C.mtx[gc.mtx0];
                 if (C.ev[ei].np == 12) C.blend[ei] = -3;
+            }
+        }
+    }
+    /* VISUAL093B: SM64DS_PART_LOG=1 prints every particle group of the tick: its pairing, size, move and bound texture (for the sparkle test) */
+    {
+        static const int plog = std::getenv("SM64DS_PART_LOG") ? 1 : 0;
+        static int tk = 0;
+        ++tk;
+        if (plog) {
+            for (size_t gi = 0; gi < C.groups.size(); ++gi) {
+                const IpGroup &gc = C.groups[gi];
+                if (!gc.part) continue;
+                const IpBind *bd = (gc.bind >= 0 && gc.bind < (int)C.binds.size()) ? &C.binds[gc.bind] : nullptr;
+                double pps = 0, mv = 0;
+                if (gc.match >= 0) { const IpGroup &gp = P.groups[gc.match]; pps = gp.ps; mv = std::sqrt(ip_dist2(gc, gp)); }
+                uint32_t th = 2166136261u;
+                if (bd && bd->rgba) for (int q = 0; q < bd->w * bd->h; ++q) th = (th ^ bd->rgba[q]) * 16777619u;
+                {
+                    static const char *tdir = std::getenv("SM64DS_PART_TEXDIR");
+                    static std::set<uint32_t> seen;
+                    if (tdir && bd && bd->rgba && seen.insert(th).second) {
+                        char fn[600]; std::snprintf(fn, sizeof fn, "%s/tex_%08x_%dx%d.ppm", tdir, th, bd->w, bd->h);
+                        if (FILE *pf = std::fopen(fn, "wb")) {
+                            std::fprintf(pf, "P6 %d %d 255 ", bd->w, bd->h);
+                            for (int q = 0; q < bd->w * bd->h; ++q) { const uint32_t c = bd->rgba[q]; const unsigned char px[3] = { (unsigned char)(c >> 24), (unsigned char)(c >> 24), (unsigned char)(c >> 24) }; std::fwrite(px, 1, 3, pf); }
+                            std::fclose(pf);
+                        }
+                    }
+                }
+                std::fprintf(stderr, "[part] tk %d g %d m %d ps %.4f pps %.4f mv %.4f tex %08x/%08x %dx%d id %u hash %08x\n", tk, (int)gi, gc.match, gc.ps, pps, mv,
+                             bd ? bd->teximage : 0u, bd ? bd->plttbase : 0u, bd ? bd->w : 0, bd ? bd->h : 0, bd ? bd->id : 0u, th);
             }
         }
     }
@@ -8999,6 +9064,8 @@ int gx_interp_begin(float alpha) {
     g_ip_group_tri0.assign(C.groups.size(), 0);
     g_ip_group_tri1.assign(C.groups.size(), 0);
 
+    static int pic = 0;
+    ++pic;
     g_ip_replaying = 1;
     uint32_t tmp[32];
     int last_group = -1;
@@ -9035,7 +9102,8 @@ int gx_interp_begin(float alpha) {
                     pp = tmp;
                     ex_on = 1;
                 } else if (b >= 0 && gi >= 0 && C.groups[gi].part && e.np == 12 && alpha < 1.0f && ip_proj_perspective() &&
-                           (ip_sparkle_mode() == 1 || (ip_sparkle_mode() >= 4 && ip_part_twinkle(C.groups[gi], P.groups[C.groups[gi].match])))) {
+                           (ip_sparkle_mode() == 1 || (ip_sparkle_mode() >= 4 && ip_part_twinkle(C.groups[gi], P.groups[C.groups[gi].match])) ||
+                            (ip_sparkle_mode() >= 5 && ip_bind_is_sparkle(C, C.groups[gi].bind)))) {
                     /* INTERP093 I2: a particle keeps tick N's own matrix (size, turn, place): the sparkles twinkle and turn a lot between
                        two ticks and a blend of two billboards' matrices is neither; the point is re-viewed through the blended camera */
                     ip_recamera_trans(pp, tmp);
@@ -9066,6 +9134,14 @@ int gx_interp_begin(float alpha) {
                     ip_recamera(pp, e.np, tmp);
                     pp = tmp;
                     ex_on = 1;
+                }
+            }
+            {
+                static const int pdraw = std::getenv("SM64DS_PART_DRAW") ? 1 : 0;
+                if (pdraw && gi >= 0 && C.groups[gi].part && e.np == 12 && e.cmd == 0x19) {
+                    const double a_ = (int32_t)pp[0] / 4096.0, b_ = (int32_t)pp[1] / 4096.0;
+                    std::fprintf(stderr, "[pdraw] tick %d pic %d alpha %.3f ps %.5f x %.4f y %.4f z %.4f sp %d match %d\n", g_ip_tick_no, pic, (double)alpha, std::sqrt(a_ * a_ + b_ * b_),
+                                 (int32_t)pp[9] / 4096.0, (int32_t)pp[10] / 4096.0, (int32_t)pp[11] / 4096.0, ip_bind_is_sparkle(C, C.groups[gi].bind) ? 1 : 0, C.groups[gi].match);
                 }
             }
             g_ip_ex_on = ex_on;
