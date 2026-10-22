@@ -2012,15 +2012,36 @@ void daStar_c::func_ov002_020e930c() {
         if (_ZN5Event6GetBitEj(0x1e) != 0) return;
         if (func_ov002_020e8ef0(o) == 0) return;
         if (mKind != KIND_6) return;
+#ifdef _MSC_VER
+        /* THE MARKER IS THE RECEIVER, AS ON THE CARTRIDGE: Collect is called straight
+           after the FindWithID whose result is still in r0. Declared with no
+           parameters, the host call pushed nothing and the face read its receiver off
+           the stack, so the glass container kept its drawn bit after its star was
+           taken (fixed in c5d002ec342, lost when this file was folded). */
+        {
+            void* mk = _ZN8dActor_c10FindWithIDEj(mMarkerID);
+            if (mk == 0) return;
+            ((daStarBase_c *)mk)->Collect();
+        }
+#else
         if (_ZN8dActor_c10FindWithIDEj(mMarkerID) == 0) return;
         _ZN12daStarBase_c7CollectEv();
+#endif
     } else {
         if (flags & 0x8000) {
             if (b->mIsNoControl != 0) return;
             if (_ZN5Event6GetBitEj(0x1e) != 0) return;
             if (mKind != KIND_6) return;
+#ifdef _MSC_VER
+            {
+                void* mk = _ZN8dActor_c10FindWithIDEj(mMarkerID);
+                if (mk == 0) return;
+                ((daStarBase_c *)mk)->Collect();
+            }
+#else
             if (_ZN8dActor_c10FindWithIDEj(mMarkerID) == 0) return;
             _ZN12daStarBase_c7CollectEv();
+#endif
         }
     }
 }
