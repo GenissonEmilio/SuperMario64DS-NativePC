@@ -17308,13 +17308,30 @@ int main(void)
                                 cam ? *(void **)((char *)cam + 0x140) : 0, cl_mflags, cl_stepped, rom_took);
                     const int cl_old = cl_old_early;
                     if (cl_stepped && !cl_old) rom_took = 0;
+                    /* CAMTAGS C1 (field 093G, Thunder: a slight tilt turns the camera at full speed while MOVING). Walking into a wall or
+                       corner raises the wall latch for tens of ticks, and for all of them the ROM answers ANY press of a rotate bit with its
+                       preset approach at a fixed rate: a tilt of 10 percent and a full push turn the same. Where the stick alone asks for a
+                       slight turn (below nine tenths of the ROM's step) the press is not given to the ROM in those ticks and the turn the
+                       stick asked for is laid on the eye instead, exactly as the open camera gets it. A full push still gets the ROM's own
+                       preset approach. SM64DS_CAMTAGS_OLD=1 puts the CAMLOCK2 behaviour back (proof only). */
+                    static int ct_old = -1;
+                    if (ct_old < 0) ct_old = getenv("SM64DS_CAMTAGS_OLD") ? 1 : 0;
+                    int ct_free = 0;
+                    if (!ct_old && cl_stepped && cam_latch != 0 && dir && cam && ds_stick_only && ds_stick_rate && !cam93_ds_owned(cam) &&
+                        !(btn & 0x4000) && turn * 10 < 0x400 * 9) {
+                        cam_rot &= ~(cam_bit_left | cam_bit_right);
+                        g_ds_extra_turn = dir * turn;
+                        g_ds_cam = cam;
+                        ct_free = 1;
+                        if (cl_trace) fprintf(stderr, "[camlock] f%d latch free turn %d dir %d\n", frame, turn, dir);
+                    }
                     static int cv_log = -1;
                     static int cv_old = -1;   /* SM64DS_CAMVOICE_OLD=1: proof only, the turn scaling without the ROM-took gate (the build before CAMVOICE1) */
                     if (cv_old < 0) cv_old = getenv("SM64DS_CAMVOICE_OLD") ? 1 : 0;
                     if (cv_log < 0) cv_log = getenv("SM64DS_CAMVOICE_TRACE") ? 1 : 0;
                     if (cv_log && dir && turn != 0x400)
                         fprintf(stderr, "[camdsturn] f%d dir %d turn %x cf %x rom_took %d owned %d\n", frame, dir, turn, cam_cf, rom_took, cam ? cam93_ds_owned(cam) : -1);
-                    if (turn != 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000) && (rom_took || cv_old))
+                    if (!ct_free && turn != 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000) && (rom_took || cv_old))
                         { g_ds_extra_turn = dir * (turn - 0x400); g_ds_cam = cam; }
                 }
                 /* orbit probe: hold one of func_02009e70's own rotate bits
