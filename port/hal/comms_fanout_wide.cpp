@@ -152,9 +152,16 @@ void pad_fanout_tail(void)
     }
 }
 
+// VS9: the arena has no comms session (comms_session_players() answers 0), yet
+// a seat of 4..15 reads PadData[seat] / TouchInfo[seat], which only the tails
+// below build. hal/vs_arena.cpp raises this when it installs with more than
+// four bodies, so the tails run for the arena too (build 7 left them off:
+// every seat past 3 had a zero pad, held and pressed).
+int g_arena_wide = 0;
+
 inline bool wide(void)
 {
-    return port::comms_session_players() > kPortNarrowPlayers;
+    return port::comms_session_players() > kPortNarrowPlayers || g_arena_wide;
 }
 
 // ===========================================================================
@@ -331,4 +338,10 @@ extern "C" void func_0203bc7c(void)
     if (wide()) pad_fanout_tail();        /* slots 4..15, and only those */
     fanout_dump();
     wf_settle();                          /* WM9: the frame's settled words */
+}
+
+// Called by hal/vs_arena.cpp at install (VS9).
+extern "C" void port_fanout_force_wide(int on)
+{
+    g_arena_wide = on ? 1 : 0;
 }
