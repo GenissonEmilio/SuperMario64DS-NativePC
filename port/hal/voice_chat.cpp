@@ -319,7 +319,7 @@ struct RemoteVoice {
     int   dist;               // world units, for the report line
 };
 
-RemoteVoice g_rv[kCommsMaxPlayers];
+RemoteVoice g_rv[kHubMaxSeats];
 
 void rv_reset(RemoteVoice &r)
 {
@@ -386,7 +386,7 @@ unsigned g_report_ms;
    Kept outside RemoteVoice on purpose: rv_reset runs whenever a peer goes quiet
    for 400 ms, and a proof that asks "did every seat hear every talking seat"
    needs a count that a pause between two sentences does not wipe. */
-unsigned long long g_rx_from[kCommsMaxPlayers];
+unsigned long long g_rx_from[kHubMaxSeats];
 
 // ---------------------------------------------------------------------------
 // THE MIC GATE (run mp1 lane VOICE1). Voice goes on the wire only while the
@@ -457,7 +457,7 @@ int g_allowed = 1;
 // On the receive side the distance is the same one: my body against the
 // sender's newest ghost position, and a sender in another level is silent.
 // ---------------------------------------------------------------------------
-static_assert(kHubMaxSeats == kCommsMaxPlayers, "hub seats index g_rv");
+
 int g_hub;                       // 1 while this tick runs over the hub
 int g_in_range;                  // some seat can hear me (hub only)
 int g_in_range_n;                // how many, for the report
@@ -596,7 +596,7 @@ void voice_mix_render(sd_s16 *dst, int frames)
 {
     if (!g_on) return;
     const unsigned step_per_frame = resample_step();
-    for (int s = 0; s < kCommsMaxPlayers; ++s) {
+    for (int s = 0; s < kHubMaxSeats; ++s) {
         RemoteVoice &r = g_rv[s];
         if (!r.playing) { r.cur_gain = r.gain; continue; }
         if (r.gain <= 0.0f && r.cur_gain <= 0.0f) continue;
@@ -705,7 +705,7 @@ void refresh_settings()
                toggle back on does not replay 200 ms of what was said before
                the player turned it off. */
             voice::cap_close();
-            for (int i = 0; i < kCommsMaxPlayers; ++i) rv_reset(g_rv[i]);
+            for (int i = 0; i < kHubMaxSeats; ++i) rv_reset(g_rv[i]);
             gate_reset();
         }
     }
@@ -996,7 +996,7 @@ void recv_pump()
         n = g_hub ? comms_hub_recv(kHubVoice, pkt, (int)sizeof pkt, &from)
                   : comms_recv_voice(pkt, (int)sizeof pkt, &from);
         if (n <= 0) break;
-        if (from < 0 || from >= kCommsMaxPlayers) { ++g_rx_bad; continue; }
+        if (from < 0 || from >= kHubMaxSeats) { ++g_rx_bad; continue; }
         if (n < kHeaderBytes + kBlockBytes) { ++g_rx_bad; continue; }
         if (pkt[4] != kVersion) { ++g_rx_bad; continue; }
         const int nf = pkt[6];
@@ -1068,7 +1068,7 @@ void update_gains()
     const int me = g_hub ? comms_hub_my_seat() : (int)data_0209f250;
     const float vol = (float)g_vol / 100.0f;
     const unsigned t = now_ms();
-    for (int s = 0; s < kCommsMaxPlayers; ++s) {
+    for (int s = 0; s < kHubMaxSeats; ++s) {
         RemoteVoice &r = g_rv[s];
         if (s == me) { r.gain = 0.0f; r.dist = -1; continue; }
         if (!r.playing && r.avail == 0) { r.gain = 0.0f; r.dist = -1; continue; }
@@ -1103,7 +1103,7 @@ void voice_tick()
         g_inited = 1;
         g_tone = env_on("SM64DS_VOICE_TEST_TONE");
         g_report = env_on("SM64DS_VOICE_REPORT");
-        for (int i = 0; i < kCommsMaxPlayers; ++i) rv_reset(g_rv[i]);
+        for (int i = 0; i < kHubMaxSeats; ++i) rv_reset(g_rv[i]);
         if (env_on("SM64DS_VOICE_DEVICES")) dump_devices();
         if (env_on("SM64DS_VOICE_CODEC_SELFTEST")) codec_selftest();
         if (env_on("SM64DS_VOICE_GATE_SELFTEST")) gate_selftest();
@@ -1173,7 +1173,7 @@ void voice_tick()
     }
     if (!live) {
         gate_reset();
-        for (int i = 0; i < kCommsMaxPlayers; ++i)
+        for (int i = 0; i < kHubMaxSeats; ++i)
             if (g_rv[i].playing || g_rv[i].avail) rv_reset(g_rv[i]);
         capture_pump(0);
         return;
@@ -1207,10 +1207,10 @@ void voice_report(const char *tag)
                      g_vol, g_near, g_far, g_allowed, g_gate_thr, g_gate_open,
                      g_gate_level, g_gate_opens, g_gate_quiet, voice_talking(),
                      g_hub, g_in_range_n, g_tx_nobody);
-    for (int s = 0; s < kCommsMaxPlayers && k > 0 && k < (int)sizeof line; ++s)
+    for (int s = 0; s < kHubMaxSeats && k > 0 && k < (int)sizeof line; ++s)
         k += snprintf(line + k, sizeof line - (size_t)k, "%s%llu",
                       s ? "," : "", g_rx_from[s]);
-    for (int s = 0; s < kCommsMaxPlayers && k > 0 && k < (int)sizeof line; ++s) {
+    for (int s = 0; s < kHubMaxSeats && k > 0 && k < (int)sizeof line; ++s) {
         const RemoteVoice &r = g_rv[s];
         if (!r.playing && r.avail == 0 && r.dist < 0) continue;
         k += snprintf(line + k, sizeof line - (size_t)k,

@@ -355,7 +355,7 @@ ADV_EMPTY_S = env_int("ADV_EMPTY_S", 600, 30, 86400)
 # WORLD_EMPTY_S is 30 s, not the ten minutes it started at (review REVLOBBY5,
 # S2): a world nobody plays in costs nothing to reopen, while ten minutes made
 # a burst of opens cheap to hold for a long time.
-WORLD_SEATS = env_int("WORLD_SEATS", 16, 2, DIAL_HARD_MAX)
+WORLD_SEATS = env_int("WORLD_SEATS", 32, 2, 32)   # WORLD32: a world holds 32
 WORLD_MEMBER_S = env_int("WORLD_MEMBER_S", 30, 5, 3600)
 WORLD_EMPTY_S = env_int("WORLD_EMPTY_S", 30, 5, 86400)
 MAX_WORLDS = env_int("MAX_WORLDS", 64, 1, 4096)
