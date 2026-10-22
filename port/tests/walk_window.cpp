@@ -17270,8 +17270,7 @@ int main(void)
                                 err2 = e2 < 0 ? -e2 : e2;
                                 if (err2 <= 64) cl_pure = 1;
                             }
-                            if (getenv("SM64DS_CAMLOCK_TRACE")) fprintf(stderr, "[camlock] f%d err %d err_pivot %d
-", frame, err, err2);
+                            if (getenv("SM64DS_CAMLOCK_TRACE")) fprintf(stderr, "[camlock] f%d err %d err_pivot %d\n", frame, err, err2);
                         }
                         h_prev = h_now; pd_prev = dir;
                     }
