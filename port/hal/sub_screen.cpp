@@ -4091,12 +4091,12 @@ static void page_fit_draw(unsigned int *dst, int w, int h, const int inset[4])
             if (by1 < 188) by1 += 3; else by1 = 191;
             /* REGRESS093 (R4): the page's own arrows are lifted with it but only show their full reach once pressed (the arrow slides out
                6 DS pixels and draws wider): measured on the pause page, the box was 24..231 until the first press and 12..243 after it,
-               so the whole chart jumped 72 pixels left and grew on the FIRST arrow press (thunderit, 16:9, 240 fps, x3, MinimapScale 2).
+               so the whole chart jumped left and grew on the FIRST arrow press (thunderit, 16:9, 240 fps, x3, MinimapScale 2).
                The box now always reaches the arrows' full travel, from the first picture. SM64DS_PAGEFIT_ARROWROOM=0 for the before. */
             {
                 static int room = -1;
                 if (room < 0) { const char *e = std::getenv("SM64DS_PAGEFIT_ARROWROOM"); room = (e && e[0] == '0') ? 0 : 1; }
-                if (room) { if (bx0 > 12) bx0 = 12; if (bx1 < 243) bx1 = 243; }
+                if (room) { if (bx0 > 8) bx0 = 8; if (bx1 < 250) bx1 = 250; }
             }
             if (g_pf_union_valid) {
                 if (bx0 > g_pf_bx0) bx0 = g_pf_bx0;
