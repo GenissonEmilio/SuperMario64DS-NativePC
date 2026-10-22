@@ -78,6 +78,7 @@
 // env is read HERE so there is one place that decides.
 #include <atomic>      /* POLISH1A: the forced-panel flag */
 #include <cstdio>
+#include <cmath>
 #include <cstdlib>
 
 #include <windows.h>
@@ -4088,6 +4089,15 @@ static void page_fit_draw(unsigned int *dst, int w, int h, const int inset[4])
             if (by0 > 3) by0 -= 3; else by0 = 0;
             if (bx1 < 252) bx1 += 3; else bx1 = 255;
             if (by1 < 188) by1 += 3; else by1 = 191;
+            /* REGRESS093 (R4): the page's own arrows are lifted with it but only show their full reach once pressed (the arrow slides out
+               6 DS pixels and draws wider): measured on the pause page, the box was 24..231 until the first press and 12..243 after it,
+               so the whole chart jumped left and grew on the FIRST arrow press (thunderit, 16:9, 240 fps, x3, MinimapScale 2).
+               The box now always reaches the arrows' full travel, from the first picture. SM64DS_PAGEFIT_ARROWROOM=0 for the before. */
+            {
+                static int room = -1;
+                if (room < 0) { const char *e = std::getenv("SM64DS_PAGEFIT_ARROWROOM"); room = (e && e[0] == '0') ? 0 : 1; }
+                if (room) { if (bx0 > 8) bx0 = 8; if (bx1 < 250) bx1 = 250; }
+            }
             if (g_pf_union_valid) {
                 if (bx0 > g_pf_bx0) bx0 = g_pf_bx0;
                 if (by0 > g_pf_by0) by0 = g_pf_by0;
@@ -4815,6 +4825,71 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
             }
         }
     }
+    /* REGRESS093 (R3, thunderit round 6: "the side bar on the bottom screen flickers"): the fill follows the picture's own edge
+       columns, so anything that moves across the edge, a button bouncing, a sparkle, a page easing in, repainted the whole bar with it,
+       one picture to the next, and at 240 pictures a second that reads as flicker. The bar is this port's decoration and the DS has
+       nothing there, so it is eased in time: each row moves toward the new edge colour with a 0.35 s time constant on the wall
+       clock (the same at 60 and 240 fps). A fade to black (the bar's light more than halved in one picture) is followed at once so the bar never glows around a dark picture. State is per physical screen and starts again when the rows or the margin move (a layout change).
+       SM64DS_WIDE_EASE=0 turns the easing off. */
+    {
+        static int ease_on = -1;
+        if (ease_on < 0) { const char *e = std::getenv("SM64DS_WIDE_EASE"); ease_on = (e && *e == '0') ? 0 : 1; }
+        struct Ease { unsigned *c[2]; int rows, cx0, cx1, iw; char key[64]; long long t; };
+        static Ease S[2];
+        for (int side = 0; side < 2; ++side)
+            if (flat[side]) for (int r = 0; r < rows; ++r) E[side][r] = flatc[side];
+        if (ease_on) {
+            Ease &Z = S[y0 > 0 ? 1 : 0];
+            const long long now = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+            const bool same = Z.c[0] && Z.rows == rows && Z.cx0 == cx0 && Z.cx1 == cx1 && Z.iw == iw;   /* the scene key is NOT compared: a page change on the same screen keeps easing, so a lagging bar does not pop at the change */
+            if (!same) {
+                for (int side = 0; side < 2; ++side) {
+                    std::free(Z.c[side]);
+                    Z.c[side] = (unsigned *)std::malloc((size_t)rows * 4u);
+                }
+                Z.rows = rows; Z.cx0 = cx0; Z.cx1 = cx1; Z.iw = iw;
+                std::snprintf(Z.key, sizeof Z.key, "%s", key);
+                if (Z.c[0] && Z.c[1])
+                    for (int side = 0; side < 2; ++side) std::memcpy(Z.c[side], E[side], (size_t)rows * 4u);
+                else { std::free(Z.c[0]); std::free(Z.c[1]); Z.c[0] = Z.c[1] = 0; }
+            } else {
+                const double dt = (double)(now - Z.t) * 1e-6;
+                double a = 1.0 - std::exp(-(dt > 0.0 ? dt : 0.0) / 0.35);
+                if (a > 1.0) a = 1.0;
+                for (int side = 0; side < 2; ++side) {
+                    /* each row eases toward the new colour; a big drop in the bar's overall light (a fade to black, a cut) is followed at once */
+                    unsigned tmp2[8192];
+                    const int n = rows < 8192 ? rows : 8192;
+                    long long lo = 0, ln = 0;
+                    for (int r = 0; r < n; ++r) {
+                        const unsigned o = Z.c[side][r], nw = E[side][r];
+                        unsigned ch[3];
+                        for (int k = 0; k < 3; ++k) {
+                            const int sh = 16 - 8 * k;
+                            const double ov = (double)((o >> sh) & 255), nv = (double)((nw >> sh) & 255);
+                            ch[k] = (unsigned)(ov + (nv - ov) * a + 0.5);
+                            if (ch[k] > 255) ch[k] = 255;
+                        }
+                        tmp2[r] = (ch[0] << 16) | (ch[1] << 8) | ch[2];
+                        lo += ch[0] + ch[1] + ch[2];
+                        ln += ((nw >> 16) & 255) + ((nw >> 8) & 255) + (nw & 255);
+                    }
+                    const double g = (lo > 0 && ln * 2 < lo) ? (double)ln / (double)lo : 1.0;   /* only a real fade to black (the bar's light more than halved) is followed at once */
+                    for (int r = 0; r < n; ++r) {
+                        unsigned ch[3] = { (tmp2[r] >> 16) & 255, (tmp2[r] >> 8) & 255, tmp2[r] & 255 };
+                        for (int k = 0; k < 3; ++k) {
+                            double v = lo > 0 ? ch[k] * g : (double)ch[k];
+                            if (v > 255.0) v = 255.0;
+                            ch[k] = (unsigned)(v + 0.5);
+                        }
+                        E[side][r] = 0xFF000000u | (ch[0] << 16) | (ch[1] << 8) | ch[2];
+                        Z.c[side][r] = E[side][r];
+                    }
+                }
+            }
+            Z.t = now;
+        }
+    }
     WideArt *art = wide_art_for(key);
     const int mL = cx0 > 0 ? cx0 : 0, mR = iw - cx1 > 0 ? iw - cx1 : 0;
     for (int r = 0; r < rows; ++r) {
@@ -4837,7 +4912,7 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
                 const unsigned a = art->px[(size_t)ayi * art->w + axi];
                 if ((a >> 24) >= 128) { c = 0xFF000000u | (a & 0xFFFFFFu); have = 1; }
             }
-            if (!have && flat[left ? 0 : 1]) { c = flatc[left ? 0 : 1]; have = 1; }
+            if (!have && flat[left ? 0 : 1]) { c = E[left ? 0 : 1][r]; have = 1; }   /* REGRESS093: eased above (the flat colour was written into E first) */
             if (!have) {
                 static int darken = -1;
                 if (darken < 0) { const char *e = std::getenv("SM64DS_WIDE_DARKEN"); darken = (e && *e == '1') ? 1 : 0; }

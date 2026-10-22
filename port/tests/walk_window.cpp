@@ -6409,6 +6409,7 @@ static const char *const PORT_RELAUNCH_CLEAR[] = {
        destinations, which are the ones it was written about. */
     "SM64DS_COMMS_ROLE",    "SM64DS_COMMS_PORT",
     "SM64DS_COMMS_SLOT",    "SM64DS_COMMS_INJECT",
+    "SM64DS_RELAUNCH_AT",   /* REGRESS093: the handoff proof row; an inherited one would restart the child at the same frame, forever */
 };
 
 /* ONE RELAUNCH, TWO DESTINATIONS. `scene_id >= 0` starts the child on the
@@ -6421,6 +6422,10 @@ static const char *const PORT_RELAUNCH_CLEAR[] = {
    knobs, SM64DS_ENTRANCE and SM64DS_STAR_FILTER); SM64DS_STARSEL_RESUME marks the child so that its own later restarts clear them again */
 static const char *g_relaunch_entrance;
 static const char *g_relaunch_act;
+/* REGRESS093 (R2): the window handoff, defined with the window code below */
+static void port_handoff_prepare(void);
+static void port_handoff_arm(void);
+static void port_handoff_wait(void);
 static int port_menu_relaunch(int scene_id, int level_id)
 {
     char exe[MAX_PATH];
@@ -6481,10 +6486,14 @@ static int port_menu_relaunch(int scene_id, int level_id)
        a few statements of entering main. Measured -- run both under
        SM64DS_NO_PLAYLOG=1, which is the switch that skips that freopen, and
        the two do interleave on the shared console whatever this flag says. */
-    if (!CreateProcessA(exe, 0, 0, 0, FALSE, 0, 0, 0, &si, &pi))
+    port_handoff_prepare();
+    if (!CreateProcessA(exe, 0, 0, 0, FALSE, 0, 0, 0, &si, &pi)) {
+        SetEnvironmentVariableA("SM64DS_HANDOFF_FROM", 0);
         return 0;
+    }
     CloseHandle(pi.hThread);
     CloseHandle(pi.hProcess);
+    port_handoff_arm();
     return 1;
 }
 
@@ -6619,10 +6628,14 @@ static int port_menu_relaunch_vs(int vs_map)
     memset(&si, 0, sizeof si);
     si.cb = sizeof si;
     memset(&pi, 0, sizeof pi);
-    if (!CreateProcessA(exe, 0, 0, 0, FALSE, 0, 0, 0, &si, &pi))
+    port_handoff_prepare();
+    if (!CreateProcessA(exe, 0, 0, 0, FALSE, 0, 0, 0, &si, &pi)) {
+        SetEnvironmentVariableA("SM64DS_HANDOFF_FROM", 0);
         return 0;
+    }
     CloseHandle(pi.hThread);
     CloseHandle(pi.hProcess);
+    port_handoff_arm();
     return 1;
 }
 
@@ -6652,6 +6665,7 @@ static int port_vs_lobby_mods_relaunch(void)
     memset(&si, 0, sizeof si);
     si.cb = sizeof si;
     memset(&pi, 0, sizeof pi);
+    port_handoff_prepare();
     if (!CreateProcessA(exe, 0, 0, 0, FALSE, 0, 0, 0, &si, &pi)) {
         fprintf(stderr, "[mods] VS lobby: could not relaunch with mods off (win32 %lu); mods stay on\n",
                 (unsigned long)GetLastError());
@@ -6659,6 +6673,7 @@ static int port_vs_lobby_mods_relaunch(void)
     }
     CloseHandle(pi.hThread);
     CloseHandle(pi.hProcess);
+    port_handoff_arm();
     fprintf(stderr, "[mods] VS lobby: relaunched with mods off (SM64DS_MODS=0), this process is quitting\n");
     W.PostQuitMessage_(0);
     return 1;
@@ -7444,6 +7459,7 @@ static int starsel_finish_hook(int level, int entrance, int act)
     g_relaunch_entrance = g_relaunch_act = 0;
     if (!ok) { fprintf(stderr, "[strip] could not start the course again (win32 %lu); it starts here\n", (unsigned long)GetLastError()); return 0; }
     fflush(stderr);
+    port_handoff_wait();
     ExitProcess(0);
     return 1;
 }
@@ -8965,6 +8981,23 @@ static void present_body(void);
    picture already up again (nothing drawn since). The presenter thread
    repeats pictures on its own clock, so a repeat is skipped when it runs. */
 static int g_present_repeat;
+/* ---- THE WINDOW HANDOFF (run hunt8, lane REGRESS093, R2) -------------------------------------------------------------------------
+   Going back to the title, switching to a minigame or restarting a course starts the game again as a new process (port_menu_relaunch): the
+   port has no Stage teardown, so a level cannot be left and another entered in one process (the ROM's Stage::CleanupResources is not
+   hosted, and SM64DS_SCENE / SM64DS_LEVEL / the screen layout are read once for the life of the process by about seventy sites). The
+   player used to see the window vanish and a new one open a few seconds later.
+   This keeps the WINDOW across the restart, not the process: the parent hands its place and size to the child (SM64DS_HANDOFF_FROM),
+   mutes itself, and stays up on its last picture (the faded-out black) until the child has drawn its third picture, then exits; the
+   child opens exactly where the parent was (a maximised or borderless-fullscreen parent gives a maximised or fullscreen child, a
+   hand-sized window keeps its size, and an ordinary one keeps its centre). A child that never answers is waited for 10 s and then the
+   parent leaves as it always did. SM64DS_HANDOFF_OFF=1 puts the old behaviour back; a frame-budget selftest never hands over. */
+static HANDLE g_hf_ev;                  /* parent: set by the successor once it has drawn */
+static int g_hf_in;                     /* child: a handoff was read */
+static int g_hf_in_full, g_hf_in_zoom, g_hf_in_sized;
+static unsigned long g_hf_parent_pid;
+static RECT g_hf_in_rect;
+static void port_handoff_signal(void);
+
 static void present(void)
 {
     port_gpu_present_set_repeat(g_present_repeat);
@@ -8998,6 +9031,7 @@ static void present_body(void)
        work (hal/gpu_device.h). */
     port_gpu_timer_frame_end();
     ++g_present_n;
+    if (g_present_n == 3) port_handoff_signal();   /* REGRESS093 R2 */
     if (!g_present_hwnd || !g_present_hdc || !g_present_bi || !g_present_fb)
         return;
     if (!W.GetClientRect_ || !W.StretchDIBits_) return;
@@ -11228,7 +11262,7 @@ static void fullscreen_boot(HWND h)
     static int done;
     if (done) return;
     done = 1;
-    if (host_setting_start_fullscreen() && !g_fullscreen) {
+    if ((host_setting_start_fullscreen() || (g_hf_in && g_hf_in_full)) && !g_fullscreen) {   /* REGRESS093 R2: a handoff from a fullscreen parent */
         fprintf(stderr, "[settings] StartFullscreen: borderless fullscreen\n");
         fullscreen_toggle(h);
         if (W.GetClientRect_ && W.GetWindowLongA_) {
@@ -11642,6 +11676,94 @@ static int mo_capture_want(int selftest, int stacked)
    Set by the window procedure below; read by stack_present_arm, which is the
    one thing that would otherwise re-size a running window. */
 static int g_user_sized;
+
+static void port_handoff_prepare(void)
+{
+    SetEnvironmentVariableA("SM64DS_HANDOFF_FROM", 0);
+    if (g_hf_ev) { CloseHandle(g_hf_ev); g_hf_ev = 0; }
+    { const char *o = getenv("SM64DS_HANDOFF_OFF"); if ((o && *o == '1') || g_selftest_frames || !g_present_hwnd) return; }
+    HMODULE u = GetModuleHandleA("user32.dll");
+    BOOL(WINAPI *grect)(HWND, RECT *) = u ? (BOOL(WINAPI *)(HWND, RECT *))GetProcAddress(u, "GetWindowRect") : 0;
+    if (!grect || !W.GetWindowPlacement_) return;
+    WINDOWPLACEMENT wp;
+    memset(&wp, 0, sizeof wp);
+    wp.length = sizeof wp;
+    if (!W.GetWindowPlacement_(g_present_hwnd, &wp) || wp.showCmd == SW_SHOWMINIMIZED) return;
+    RECT r;
+    if (!grect(g_present_hwnd, &r)) return;
+    const int full = g_fullscreen, zoom = (wp.showCmd == SW_SHOWMAXIMIZED) ? 1 : 0;
+    if (full) r = g_fs_placement.rcNormalPosition;     /* the windowed place F12 will give back */
+    if (r.left <= -30000 || r.right - r.left < 64 || r.bottom - r.top < 64) return;
+    char name[64], val[200];
+    snprintf(name, sizeof name, "Local\\sm64ds_handoff_%lu", (unsigned long)GetCurrentProcessId());
+    g_hf_ev = CreateEventA(0, TRUE, FALSE, name);
+    if (!g_hf_ev) return;
+    snprintf(val, sizeof val, "%lu,%ld,%ld,%ld,%ld,%d,%d,%d", (unsigned long)GetCurrentProcessId(), (long)r.left, (long)r.top,
+             (long)(r.right - r.left), (long)(r.bottom - r.top), full, zoom, g_user_sized ? 1 : 0);
+    SetEnvironmentVariableA("SM64DS_HANDOFF_FROM", val);
+    fprintf(stderr, "[handoff] parent: SM64DS_HANDOFF_FROM=%s\n", val);
+}
+extern "C" void out_set_volume_pct(int pct);
+static void port_handoff_arm(void)
+{
+    if (!g_hf_ev) return;
+    out_set_volume_pct(0);               /* the parent lingers on its last picture: two soundtracks at once would be worse than the gap */
+    atexit(port_handoff_wait);
+}
+static void port_handoff_wait(void)
+{
+    if (!g_hf_ev) return;
+    HANDLE ev = g_hf_ev;
+    g_hf_ev = 0;
+    HMODULE u = GetModuleHandleA("user32.dll");
+    BOOL(WINAPI *tr)(const MSG *) = u ? (BOOL(WINAPI *)(const MSG *))GetProcAddress(u, "TranslateMessage") : 0;
+    LRESULT(WINAPI *dp)(const MSG *) = u ? (LRESULT(WINAPI *)(const MSG *))GetProcAddress(u, "DispatchMessageA") : 0;
+    const DWORD t0 = GetTickCount();
+    while (GetTickCount() - t0 < 10000) {
+        if (WaitForSingleObject(ev, 25) == WAIT_OBJECT_0) {
+            fprintf(stderr, "[handoff] parent: the successor has drawn after %lu ms, leaving\n", (unsigned long)(GetTickCount() - t0));
+            break;
+        }
+        MSG m;
+        while (W.PeekMessageA_ && W.PeekMessageA_(&m, 0, 0, 0, PM_REMOVE)) {
+            if (tr) tr(&m);
+            if (dp) dp(&m);
+        }
+    }
+    CloseHandle(ev);
+}
+/* child: read once, never inherited on */
+static void port_handoff_read(void)
+{
+    static int done;
+    if (done) return;
+    done = 1;
+    const char *e = getenv("SM64DS_HANDOFF_FROM");
+    if (!e || !*e) return;
+    unsigned long pid = 0;
+    long x = 0, y = 0, w = 0, h = 0;
+    int full = 0, zoom = 0, sized = 0;
+    char buf[200];
+    snprintf(buf, sizeof buf, "%s", e);
+    SetEnvironmentVariableA("SM64DS_HANDOFF_FROM", 0);
+    if (sscanf(buf, "%lu,%ld,%ld,%ld,%ld,%d,%d,%d", &pid, &x, &y, &w, &h, &full, &zoom, &sized) != 8) return;
+    g_hf_in = 1;
+    g_hf_parent_pid = pid;
+    g_hf_in_rect.left = (LONG)x; g_hf_in_rect.top = (LONG)y; g_hf_in_rect.right = (LONG)(x + w); g_hf_in_rect.bottom = (LONG)(y + h);
+    g_hf_in_full = full; g_hf_in_zoom = zoom; g_hf_in_sized = sized;
+    fprintf(stderr, "[handoff] child: from pid %lu, place %ld,%ld %ldx%ld fullscreen %d maximised %d hand-sized %d\n", pid, x, y, w, h, full, zoom, sized);
+}
+static void port_handoff_signal(void)
+{
+    static int done;
+    if (done || !g_hf_in) return;
+    done = 1;
+    char name[64];
+    snprintf(name, sizeof name, "Local\\sm64ds_handoff_%lu", g_hf_parent_pid);
+    HANDLE ev = OpenEventA(EVENT_MODIFY_STATE, FALSE, name);
+    if (ev) { SetEvent(ev); CloseHandle(ev); fprintf(stderr, "[handoff] child: told the parent (%s)\n", name); }
+}
+
 
 static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l)
 {
@@ -12330,6 +12452,22 @@ static HWND host_window_open(int stacked, HDC *out_hdc, const char *title)
                                 "keeping the placement above\n", wp);
             }
         }
+    }
+    /* REGRESS093 (R2): a restart opens where the window it replaces was (see THE WINDOW HANDOFF). A hand-sized, maximised or fullscreen
+       parent gives its size too; an ordinary one keeps its centre, so a change of layout (the title is taller than a level) grows around it. */
+    port_handoff_read();
+    if (g_hf_in && !getenv("SM64DS_WINDOW_POS")) {
+        const int ww = r.right - r.left, wh = r.bottom - r.top;
+        const int pw = g_hf_in_rect.right - g_hf_in_rect.left, ph = g_hf_in_rect.bottom - g_hf_in_rect.top;
+        if (g_hf_in_sized || g_hf_in_zoom || g_hf_in_full) {
+            wx = g_hf_in_rect.left; wy = g_hf_in_rect.top;
+            r.right = r.left + pw; r.bottom = r.top + ph;
+            g_user_sized = 1;
+        } else {
+            wx = g_hf_in_rect.left + (pw - ww) / 2; wy = g_hf_in_rect.top + (ph - wh) / 2;
+            if (wy < 0) wy = 0;
+        }
+        fprintf(stderr, "[handoff] child: window at %d,%d size %ldx%ld\n", wx, wy, (long)(r.right - r.left), (long)(r.bottom - r.top));
     }
     /* SM64DS_NO_FOCUS (see nofocus_mode above) and the launcher's own show
        request (host_show_mode above). Dropping WS_VISIBLE is what stops
@@ -17709,6 +17847,15 @@ int main(void)
                                  *(unsigned short *)((char *)data_020a0e58 +
                                      ((unsigned)data_020a0e40[0] << 2)));
                 static int srst_answered;
+                {   /* REGRESS093: SM64DS_RELAUNCH_AT=<frame> restarts at the front door on that frame, the proof row for the window handoff (cleared on every relaunch) */
+                    static int rl_at = -2;
+                    if (rl_at == -2) { const char *e = getenv("SM64DS_RELAUNCH_AT"); rl_at = e ? atoi(e) : -1; }
+                    if (rl_at >= 0 && frame == rl_at && !g_selftest_frames && !srst_answered) {
+                        srst_answered = 1;
+                        fprintf(stderr, "[loopin2] f%d SM64DS_RELAUNCH_AT: restarting at the front door\n", frame);
+                        if (port_menu_relaunch(-1, -1)) W.PostQuitMessage_(0);
+                    }
+                }
                 if (srst_up && data_0209f1e0[0] && !srst_answered &&
                     !rb_replaying()) {
                     srst_answered = 1;
