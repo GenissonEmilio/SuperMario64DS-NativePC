@@ -182,11 +182,15 @@
    the line and stays out: a savestate is a snapshot of RAM and a cartridge is
    not RAM, so restoring a state must not un-write a save. */
 #include "hal/dsstate_seg.h"
+#include "hal/host_settings.h"   /* adventure_ghost_mode() */
+#include <random>
 
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cstdint>
+#include <ctime>
 
 #ifdef _WIN32
 #  ifndef WIN32_LEAN_AND_MEAN
@@ -413,8 +417,160 @@ void make_dir(const char *dir)
 #endif
 }
 
+// ===========================================================================
+// ADVENTURE ONLINE SAVE (run hunt8, lane ONLINESAVE1)
+// An Adventure Online session (world or party room) never touches the
+// single-player save. Its medium is <save folder>/online.sav: a 56 byte header
+// (magic "SOLS", version, this install's random id, HMAC-SHA256 over id + the
+// 8192 save bytes) followed by the image. A missing, wrong-size, mis-signed or
+// foreign-install file is renamed online.sav.rejected-<time> and the run starts
+// blank. SM64DS_ONLINE_SAVE=0 turns it off. Honest limit: the key is inside the
+// exe, so this stops copying and casual edits, not someone who reads the exe.
+// ===========================================================================
+bool          g_online = false;
+unsigned char g_oid[16];
+const size_t  kOnHdr = 56;
+
+struct Sha256 {
+    uint32_t h[8]; unsigned char buf[64]; uint64_t len; size_t n;
+    static uint32_t rr(uint32_t x, int c) { return (x >> c) | (x << (32 - c)); }
+    void init() {
+        static const uint32_t i0[8] = {0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,
+                                       0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19};
+        std::memcpy(h, i0, sizeof h); len = 0; n = 0;
+    }
+    void block(const unsigned char *p) {
+        static const uint32_t k[64] = {
+0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2};
+        uint32_t w[64];
+        for (int i = 0; i < 16; ++i)
+            w[i] = ((uint32_t)p[i*4] << 24) | ((uint32_t)p[i*4+1] << 16) |
+                   ((uint32_t)p[i*4+2] << 8) | p[i*4+3];
+        for (int i = 16; i < 64; ++i) {
+            uint32_t s0 = rr(w[i-15],7) ^ rr(w[i-15],18) ^ (w[i-15] >> 3);
+            uint32_t s1 = rr(w[i-2],17) ^ rr(w[i-2],19) ^ (w[i-2] >> 10);
+            w[i] = w[i-16] + s0 + w[i-7] + s1;
+        }
+        uint32_t a=h[0],b=h[1],c=h[2],d=h[3],e=h[4],f=h[5],g=h[6],hh=h[7];
+        for (int i = 0; i < 64; ++i) {
+            uint32_t t1 = hh + (rr(e,6)^rr(e,11)^rr(e,25)) + ((e&f)^(~e&g)) + k[i] + w[i];
+            uint32_t t2 = (rr(a,2)^rr(a,13)^rr(a,22)) + ((a&b)^(a&c)^(b&c));
+            hh=g; g=f; f=e; e=d+t1; d=c; c=b; b=a; a=t1+t2;
+        }
+        h[0]+=a;h[1]+=b;h[2]+=c;h[3]+=d;h[4]+=e;h[5]+=f;h[6]+=g;h[7]+=hh;
+    }
+    void update(const unsigned char *p, size_t m) {
+        len += m;
+        while (m) {
+            size_t t = 64 - n; if (t > m) t = m;
+            std::memcpy(buf + n, p, t); n += t; p += t; m -= t;
+            if (n == 64) { block(buf); n = 0; }
+        }
+    }
+    void finish(unsigned char out[32]) {
+        uint64_t bits = len * 8;
+        unsigned char one = 0x80, z = 0;
+        update(&one, 1);
+        while (n != 56) update(&z, 1);
+        unsigned char l[8];
+        for (int i = 0; i < 8; ++i) l[i] = (unsigned char)(bits >> (56 - 8 * i));
+        update(l, 8);
+        for (int i = 0; i < 8; ++i) {
+            out[i*4] = (unsigned char)(h[i] >> 24); out[i*4+1] = (unsigned char)(h[i] >> 16);
+            out[i*4+2] = (unsigned char)(h[i] >> 8); out[i*4+3] = (unsigned char)h[i];
+        }
+    }
+};
+
+void online_hmac(const unsigned char *img, unsigned char out[32])
+{
+    static const char key[] = "sm64ds-adventure-online-save/v1/2c9f7e41b8d3a605";
+    unsigned char k[64], ip[64], op[64], inner[32];
+    std::memset(k, 0, sizeof k);
+    std::memcpy(k, key, sizeof key - 1);
+    for (int i = 0; i < 64; ++i) { ip[i] = k[i] ^ 0x36; op[i] = k[i] ^ 0x5c; }
+    Sha256 a; a.init(); a.update(ip, 64); a.update(g_oid, 16); a.update(img, kSize); a.finish(inner);
+    Sha256 b; b.init(); b.update(op, 64); b.update(inner, 32); b.finish(out);
+}
+
+bool online_wanted()
+{
+    if (coop_mode()) return false;
+    const char *k = std::getenv("SM64DS_ONLINE_SAVE");
+    if (k && *k == '0') return false;
+    const char *vs = std::getenv("SM64DS_VS_MAP");
+    if (vs && *vs) return false;
+    const char *r = std::getenv("SM64DS_COMMS_RELAY");
+    const char *m = std::getenv("SM64DS_HUB_PORT");
+    if (!((r && *r) || (m && *m))) return false;
+    return port::adventure_ghost_mode();
+}
+
+// raw = header + image (kOnHdr + kSize bytes): true if it is ours and intact.
+bool online_verify(const unsigned char *raw)
+{
+    if (std::memcmp(raw, "SOLS", 4) != 0) return false;
+    if (raw[4] != 1 || raw[5] || raw[6] || raw[7]) return false;
+    if (std::memcmp(raw + 8, g_oid, 16) != 0) return false;
+    unsigned char mac[32];
+    online_hmac(raw + kOnHdr, mac);
+    unsigned char d = 0;
+    for (int i = 0; i < 32; ++i) d |= (unsigned char)(mac[i] ^ raw[24 + i]);
+    return d == 0;
+}
+
+void online_load_id(const char *dir)
+{
+    char idp[1000];
+    std::snprintf(idp, sizeof idp, "%s/online.id", dir);
+    unsigned char hex[32];
+    if (std::FILE *f = std::fopen(idp, "rb")) {
+        size_t n = std::fread(hex, 1, 32, f);
+        std::fclose(f);
+        if (n == 32) {
+            bool ok = true;
+            for (int i = 0; i < 16 && ok; ++i) {
+                int v = 0;
+                for (int j = 0; j < 2; ++j) {
+                    int c = hex[i*2+j];
+                    int d = -1;
+                    if (c >= '0' && c <= '9') d = c - '0';
+                    else if (c >= 'a' && c <= 'f') d = c - 'a' + 10;
+                    if (d < 0) { ok = false; break; }
+                    v = v * 16 + d;
+                }
+                g_oid[i] = (unsigned char)v;
+            }
+            if (ok) return;
+        }
+    }
+    std::random_device rd;
+    for (int i = 0; i < 16; ++i) g_oid[i] = (unsigned char)(rd() ^ (rd() >> 8));
+    if (std::FILE *f = std::fopen(idp, "wb")) {
+        for (int i = 0; i < 16; ++i) std::fprintf(f, "%02x", g_oid[i]);
+        std::fclose(f);
+    }
+}
+
+void online_reject(const char *why)
+{
+    char dst[1100];
+    std::snprintf(dst, sizeof dst, "%s.rejected-%lu", g_path, (unsigned long)std::time(NULL));
+    std::fprintf(stderr, "[online-save] %s refused (%s); moved to %s, starting blank\n",
+                 g_path, why, dst);
+    std::remove(dst);
+    if (std::rename(g_path, dst) != 0) std::remove(g_path);
+}
+
 // Fill g_path. Candidate order is documented in the header block above.
-void resolve_path()
+void resolve_path_sp()
 {
     /* COOP (section 6): a guest runs on its own temp image; the host on the
        file the launcher named. The fence refuses a coop room with no file. */
@@ -485,6 +641,23 @@ void resolve_path()
     std::snprintf(g_path, sizeof g_path, "%s/sm64ds.sav", sub);
 }
 
+void resolve_path()
+{
+    resolve_path_sp();
+    g_online = online_wanted();
+    if (!g_online) return;
+    char dir[1024];
+    std::snprintf(dir, sizeof dir, "%s", g_path);
+    char *bs = std::strrchr(dir, '\\');
+    char *fs = std::strrchr(dir, '/');
+    if (fs && (!bs || fs > bs)) bs = fs;
+    if (bs) *bs = '\0'; else std::snprintf(dir, sizeof dir, ".");
+    make_dir(dir);
+    online_load_id(dir);
+    std::snprintf(g_path, sizeof g_path, "%s/online.sav", dir);
+    std::fprintf(stderr, "[online-save] adventure online: save medium is %s\n", g_path);
+}
+
 // Read the image, or manufacture an erased chip. A file that is not exactly
 // kSize bytes is NOT a save this port wrote; it is left on disk untouched and
 // the run gets an erased chip in memory, so a truncated or foreign file can
@@ -500,6 +673,19 @@ void open_once()
     std::memset(g_image, kErased, sizeof g_image);
     g_fresh = true;
 
+    if (g_online) {
+        std::FILE *of = std::fopen(g_path, "rb");
+        if (!of) return;
+        unsigned char raw[kOnHdr + kSize];
+        size_t got = std::fread(raw, 1, sizeof raw, of);
+        int extra = (std::fgetc(of) != EOF);
+        std::fclose(of);
+        if (got != sizeof raw || extra) { online_reject("wrong size"); return; }
+        if (!online_verify(raw)) { online_reject("bad header or signature"); return; }
+        std::memcpy(g_image, raw + kOnHdr, sizeof g_image);
+        g_fresh = false;
+        return;
+    }
     std::FILE *f = std::fopen(g_path, "rb");
     if (!f) {
         if (trace_on())
@@ -566,7 +752,20 @@ bool flush()
         }
         return false;
     }
-    bool ok = std::fwrite(g_image, 1, sizeof g_image, f) == (size_t)kSize;
+    bool ok;
+    if (g_online) {
+        unsigned char hdr[kOnHdr];
+        std::memset(hdr, 0, sizeof hdr);
+        std::memcpy(hdr, "SOLS", 4);
+        hdr[4] = 1;
+        std::memcpy(hdr + 8, g_oid, 16);
+        online_hmac(g_image, hdr + 24);
+        ok = std::fwrite(hdr, 1, kOnHdr, f) == kOnHdr &&
+             std::fwrite(g_image, 1, sizeof g_image, f) == (size_t)kSize;
+    } else {
+        ok = std::fwrite(g_image, 1, sizeof g_image, f) == (size_t)kSize;
+    }
+
     if (std::fflush(f) != 0) ok = false;
     if (std::fclose(f) != 0) ok = false;
     if (!ok) {
@@ -632,9 +831,21 @@ void refresh_from_disk()
     std::FILE *f = std::fopen(g_path, "rb");
     if (!f) return;
     unsigned char buf[kSize];
-    size_t got = std::fread(buf, 1, sizeof buf, f);
-    int extra = (std::fgetc(f) != EOF);
-    std::fclose(f);
+    size_t got, extra;
+    if (g_online) {
+        unsigned char raw[kOnHdr + kSize];
+        got = std::fread(raw, 1, sizeof raw, f);
+        extra = (std::fgetc(f) != EOF);
+        std::fclose(f);
+        if (got != sizeof raw || extra || !online_verify(raw)) return;
+        std::memcpy(buf, raw + kOnHdr, kSize);
+        got = kSize;
+        extra = 0;
+    } else {
+        got = std::fread(buf, 1, sizeof buf, f);
+        extra = (std::fgetc(f) != EOF);
+        std::fclose(f);
+    }
     if (got != (size_t)kSize || extra) return;
     if (std::memcmp(g_image, buf, sizeof g_image) != 0) {
         fence_image(buf, g_path);   /* a file swapped under a running game */
