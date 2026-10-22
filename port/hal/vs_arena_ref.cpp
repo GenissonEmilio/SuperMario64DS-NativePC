@@ -3454,29 +3454,25 @@ void star_dump(unsigned frame) {
     if (!on || frame % 30 != 0) return;
     each_class(kClassStar, [&](char *a) {
         const Inst *i = inst_by_uid(actor_uid(a));
-        std::fprintf(stderr, "[starlog] f=%u star uid=%u id=%d st=%d pos=(%d,%d,%d) t130=%x inst=%d
-",
+        std::fprintf(stderr, "[starlog] f=%u star uid=%u id=%d st=%d pos=(%d,%d,%d) t130=%x inst=%d\n",
                      frame, actor_uid(a), (int)*u8p(a, 0x49d), s32r(a, 0x440), s32r(a, 0x5c) >> 12,
                      s32r(a, 0x60) >> 12, s32r(a, 0x64) >> 12, u32r(a, 0x130),
                      i ? (int)(i - g.inst) : -1);
     });
     each_class(kClassMarker, [&](char *a) {
-        std::fprintf(stderr, "[starlog] f=%u marker id=%d live=%d glass=%02x pos=(%d,%d,%d)
-", frame,
+        std::fprintf(stderr, "[starlog] f=%u marker id=%d live=%d glass=%02x pos=(%d,%d,%d)\n", frame,
                      (int)*u8p(a, 0x1d9), (int)*u8p(a, 0x1d8), (unsigned)*u8p(a, 0x1db),
                      s32r(a, 0x5c) >> 12, s32r(a, 0x60) >> 12, s32r(a, 0x64) >> 12);
     });
     each_class(337, [&](char *a) {
-        std::fprintf(stderr, "[starlog] f=%u chomp pos=(%d,%d,%d) endactor=%u done=%d
-", frame,
+        std::fprintf(stderr, "[starlog] f=%u chomp pos=(%d,%d,%d) endactor=%u done=%d\n", frame,
                      s32r(a, 0x5c) >> 12, s32r(a, 0x60) >> 12, s32r(a, 0x64) >> 12,
                      u32r(a, 0x6d0), (int)*u8p(a, 0x6c8));
     });
     for (int k = 1; k < kMaxInst; ++k) {
         const Inst &i = g.inst[k];
         if (i.used)
-            std::fprintf(stderr, "[starlog] f=%u inst=%d star_id=%d state=%d uid=%u claimed=%d holding=%d spilled=%d
-",
+            std::fprintf(stderr, "[starlog] f=%u inst=%d star_id=%d state=%d uid=%u claimed=%d holding=%d spilled=%d\n",
                          frame, k, (int)i.star_id, (int)i.state, i.uid, (int)i.claimed, (int)i.holding, (int)i.spilled);
     }
 }
