@@ -271,7 +271,7 @@ COMM(".dsstate$camrec0004", data_020a1166, 0x12);
 COMM(".dsstate$camrec0005", data_020a1178, 4);
 COMM(".dsstate$camrec0006", data_020a117c, 0x24);
 COMM(".dsstate$camrec0007", data_020a11a0, 0x24);
-COMM(".dsstate$camrec0008", data_020a11c4, 0x20 + 12 * 0x24);
+COMM(".dsstate$camrec0008", data_020a11c4, 0x20 + 28 * 0x24);   /* HUB32: 32 records */
 
 #undef COMM
 
@@ -314,7 +314,7 @@ int hal_camera_check_layout(void)
        is really checking that nobody shrank it back without reading the
        band comment above. */
     if ((data_020a11c4 - data_020a1154) + (long)sizeof(data_020a11c4)
-            != 16 * 0x24) {
+            != 32 * 0x24) {
         std::fprintf(stderr, "  [cam] COMMS RECORD RUN IS NOT SIXTEEN WIDE\n");
         ok = 0;
     }

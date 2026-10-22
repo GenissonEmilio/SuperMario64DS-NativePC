@@ -539,7 +539,7 @@ extern "C" void port_adventure_ghost_hold()
     if (!port::adventure_ghost_mode()) return;
     port_adventure_hub_seat();
     const int me = (int)data_0209f250;
-    for (int i = 0; i < kPortMaxPlayers; ++i) {
+    for (int i = 0; i < kPortBodySlots; ++i) {
         if (i == me) continue;
         if (data_0209fc5c[i] == 0) continue;   /* slot not live */
         /* PARTY (PBODY1): a party body is held and parked like any hub ghost
@@ -1666,7 +1666,7 @@ extern "C" int port_player_render_hidden(const void *player)
     const char *c = (const char *)player;
     const unsigned char no = *(const unsigned char *)(c + 0x6d8);
     /* :44-48  VS liveness (0.3.2: kPortMaxPlayers is sixteen) */
-    if (data_0209f2d8 == 1 && no < kPortMaxPlayers && data_0209fc5c[no] == 0)
+    if (data_0209f2d8 == 1 && no < kPortBodySlots && data_0209fc5c[no] == 0)
         return 1;
     /* :49-55  blink. The ROM picks bit 1 or bit 0 off IsState(hurt); that state
        object is ov002's and unreachable here, so the port takes the conservative
@@ -2680,7 +2680,7 @@ static int port_door_swap(char *c, int chr)
        (hal/level_boot.cpp, right after Actor::Spawn returns), so the only
        thing owed here is a bound, not a mask. */
     unsigned pno = *(unsigned char *)(c + 0x6d8);
-    if (pno >= (unsigned)kPortMaxPlayers) pno = 0;
+    if (pno >= (unsigned)kPortBodySlots) pno = 0;
     const short saved_hp = data_02092144[pno];
     /* which body model is animating RIGHT NOW, before param1 moves */
     const unsigned old_id =

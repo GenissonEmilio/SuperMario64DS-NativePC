@@ -58,6 +58,11 @@
 
 enum { kPortNarrowPlayers = 4 };
 enum { kPortMaxPlayers = 16 };
+// HUB32: Adventure Online seats up to 32 Player bodies (own + 31 ghosts). This is
+// STORAGE width only: every per-slot table a body is indexed by (health, the
+// Player pointer table, live bytes, input records...) is this wide. VS, the wire,
+// rollback and every loop that means "the VS roster" stay on kPortMaxPlayers.
+enum { kPortBodySlots = 32 };
 
 // The two must not drift apart from hal/comms_seam.h's pair, which is the same
 // fact stated for the transport. They are separate declarations because the

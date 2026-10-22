@@ -254,7 +254,7 @@ __declspec(allocate(".dsstate$hready0001")) __declspec(align(1))
    bytes, one per seat: func_020308d0 writes fc5c[i] = 1 for i < n and its
    first loop was always generic upward, so the ROM's own seat fills all
    sixteen the moment SetNumPlayers is called with sixteen. */
-unsigned char data_0209fc5d[kPortMaxPlayers - 1];
+unsigned char data_0209fc5d[kPortBodySlots - 1];
 }
 
 /* The ROM's NULL pointer-to-member pair at 0x02086b58 (kind:data(any), 8 bytes

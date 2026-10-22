@@ -17,7 +17,7 @@
 
 typedef unsigned int u32;
 
-enum { HOST_ARENA = 8 << 20 };   /* 8 MB: larger than the DS main-RAM arena */
+enum { HOST_ARENA = 32 << 20 };   /* HUB32: 32 MB (was 8): room for 32 Player bodies on the hub; SM64DS_HOST_ARENA_MB overrides */
 
 static char *g_lo, *g_hi;
 

@@ -323,7 +323,7 @@ int data_0209f21c[8];
 /* THE PER-SLOT Player* TABLE, and the one array in this list every VS path
    walks: the entrance loader writes it, the sync layer reads it by slot, the
    conductor censuses it. run vs16: sixteen seats. */
-int data_0209f394[kPortMaxPlayers];
+int data_0209f394[kPortBodySlots];
 DSSTATE_END
 }
 

@@ -70,7 +70,7 @@
 extern "C" {
 /* BSS the aliased data references land on (non-ov002 ring) */
 DSSTATE_BEGIN
-int data_0208e6ec[4]; short data_02092144[kPortMaxPlayers];   /* 0.3.2: per-player health, sixteen; the ROM seats 0..3, hal/level_boot.cpp seats 4..15 */
+int data_0208e6ec[4]; short data_02092144[kPortBodySlots];   /* 0.3.2: per-player health, sixteen; the ROM seats 0..3, hal/level_boot.cpp seats 4..15 */
 void *_ZTV9dBgCh_Lin[4], *VTable_dBgPi_dBgCh_LinThunk[4];
 DSSTATE_END
 /* data_0209b0c8 moved to hal/camera_states.cpp (camera State object 12) */

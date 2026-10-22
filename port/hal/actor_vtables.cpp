@@ -391,7 +391,7 @@ int VT2[20];    /* ...and its sibling: SphereClsn's D1 spells its three
 void *_ZTV10dBgCh_Actr[20];   /* WithMeshClsn's own vtable, same treatment */
 /* the coin counter GiveCoins increments, PER PLAYER -- HUD::Behavior reads
    data_0209f358[data_0209f250]. run vs16: sixteen. */
-short data_0209f358[kPortMaxPlayers];
+short data_0209f358[kPortBodySlots];
 unsigned char data_0209f208; /* the current-star index PowerStar reads */
 short data_0209f308;         /* the star-marker timer FUN_0202a130 arms */
 unsigned char data_0209f1f4; /* ...and the flag it clears with it */
@@ -483,9 +483,9 @@ void *data_0209f318 = HAL_CAMERA;
    data_0209f4a0 at stride 0x18: a two-byte write 24 bytes past a two-byte
    object, into whatever the linker put next -- the same stray this file's
    next paragraph documents catching once already. */
-unsigned char data_0209f49c[0x18 * kPortMaxPlayers];   /* 0.3.2: sixteen, see the hold loop in star_flow.cpp and the fan-out in walk_window.cpp */
-unsigned char data_0209f49e[0x18 * kPortMaxPlayers];   /* 0.3.2: sixteen, see the hold loop in star_flow.cpp and the fan-out in walk_window.cpp */
-unsigned char data_0209f4a0[0x18 * kPortMaxPlayers];   /* 0.3.2: sixteen, see the hold loop in star_flow.cpp and the fan-out in walk_window.cpp */
+unsigned char data_0209f49c[0x18 * kPortBodySlots];   /* 0.3.2: sixteen, see the hold loop in star_flow.cpp and the fan-out in walk_window.cpp */
+unsigned char data_0209f49e[0x18 * kPortBodySlots];   /* 0.3.2: sixteen, see the hold loop in star_flow.cpp and the fan-out in walk_window.cpp */
+unsigned char data_0209f4a0[0x18 * kPortBodySlots];   /* 0.3.2: sixteen, see the hold loop in star_flow.cpp and the fan-out in walk_window.cpp */
 unsigned char data_0209f4ab;
 /* Per-player controller records, stride 0x18, four players. The matched
    writers index BOTH bases by player: InitControllerMode stores the mode
@@ -498,8 +498,8 @@ unsigned char data_0209f4ab;
    0x00) and sent the frame-0 cylinder pass into LakituBro's deleting
    destructor. The two bases are distinct fields of the same DS record and
    are only ever indexed apart, so separate full-extent backing is safe. */
-unsigned char data_0209f4ac[0x18 * kPortMaxPlayers];   /* 0.3.2: sixteen, see the hold loop in star_flow.cpp and the fan-out in walk_window.cpp */
-unsigned char data_0209f4ae[0x18 * kPortMaxPlayers];   /* 0.3.2: sixteen, see the hold loop in star_flow.cpp and the fan-out in walk_window.cpp */
+unsigned char data_0209f4ac[0x18 * kPortBodySlots];   /* 0.3.2: sixteen, see the hold loop in star_flow.cpp and the fan-out in walk_window.cpp */
+unsigned char data_0209f4ae[0x18 * kPortBodySlots];   /* 0.3.2: sixteen, see the hold loop in star_flow.cpp and the fan-out in walk_window.cpp */
 int data_020a0e40[8];
 }
 

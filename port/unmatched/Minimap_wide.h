@@ -37,7 +37,7 @@
 #ifndef PORT_MINIMAP_WIDE_H
 #define PORT_MINIMAP_WIDE_H
 
-enum { kMinimapWidePlayers = 16 };   /* == vs_width.h kPortMaxPlayers */
+enum { kMinimapWidePlayers = 32 };   /* HUB32: == vs_width.h kPortBodySlots (VS still only fills 0..15) */
 
 #ifdef __cplusplus
 extern "C" {

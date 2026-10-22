@@ -251,23 +251,23 @@ unsigned char data_0209f30d[4];
    ResetInput both walk data_0209f21c, the live player count, not a literal
    four (src/_ZN5Stage10CheckInputEv.cpp:80-83, src/ResetInput.c:21). So the
    storage was the whole ceiling here, and it is a number. */
-unsigned char data_0209f4a2[0x18 * kPortMaxPlayers];
-unsigned char data_0209f4a4[0x18 * kPortMaxPlayers];
-unsigned char data_0209f4a6[0x18 * kPortMaxPlayers];
+unsigned char data_0209f4a2[0x18 * kPortBodySlots];
+unsigned char data_0209f4a4[0x18 * kPortBodySlots];
+unsigned char data_0209f4a6[0x18 * kPortBodySlots];
 /* Stage::CheckInput's own view of the pad records: the matched TU
    accesses the whole 0x18-stride Ctrl block through this ONE symbol
    while older TUs read the per-field splits above -- the harness
    copies fields out after each CheckInput call (see walk_window).
    run vs16: 24 ints is 0x18 * 4 bytes; this is the same extent, sixteen
    records wide, written as bytes-over-four so the arithmetic is visible. */
-int data_0209f498[(0x18 * kPortMaxPlayers) / 4];
+int data_0209f498[(0x18 * kPortBodySlots) / 4];
 /* per-player stylus-mode byte, read by Stage::CheckInput as `st[i]`.
    run vs16: one entry per player. */
-int data_0209f350[kPortMaxPlayers];
+int data_0209f350[kPortBodySlots];
 /* the actor the player is CARRYING. Rabbit::Behavior parks itself here when
    it is caught and Minimap::Behavior reads it back; engine BSS either way.
    run vs16: per-player, so it grows with the roster. */
-int data_0209f33c[kPortMaxPlayers];
+int data_0209f33c[kPortBodySlots];
 /* data_0209fc5c MOVED to hal/scene_vs_menu.cpp (fc5c width reconciliation),
    for the reason data_0209b2ec moved: dsd splits the four-byte run at
    0x0209fc5c into data_0209fc5c (1 byte) and data_0209fc5d (3), the ROM walks
@@ -354,8 +354,8 @@ __pragma(section(".dsstate$touch0002", read, write)) __declspec(allocate(".dssta
    the contiguity every guard and every ROM reader depends on is untouched;
    the tail simply carries records 1..15 instead of 1..3. 4 bytes a record x
    sixteen records = 64, less the three bytes the head names own = 61. */
-__pragma(section(".dsstate$touch0003", read, write)) __declspec(allocate(".dsstate$touch0003")) __declspec(align(1)) unsigned char data_020a0deb[4 * kPortMaxPlayers - 3] = { 0 };
-int data_020a0e5a[kPortMaxPlayers * 2];
+__pragma(section(".dsstate$touch0003", read, write)) __declspec(allocate(".dsstate$touch0003")) __declspec(align(1)) unsigned char data_020a0deb[4 * kPortBodySlots - 3] = { 0 };
+int data_020a0e5a[kPortBodySlots * 2];
 /* data_020a1052 moved to hal/camera_bridges.cpp: it is a field INSIDE the
    local comms record at data_020a1040, not storage of its own */
 /* data_0209cab4 moved to hal/level_boot.cpp: it is the second symbol of
@@ -374,7 +374,7 @@ int data_0209fc4c[8];
    data_020a0e58[i] and by src/_ZN9BootScene8BehaviorEv.cpp at data_020a0e40 * 4.
    run vs16: sized for sixteen at the WIDER of the two strides the tree reads
    it at, which is the only safe reading when two matched TUs disagree. */
-int data_020a0e58[kPortMaxPlayers * 2];
+int data_020a0e58[kPortBodySlots * 2];
 int data_0209b004[8];
 int data_0209b138[0x138 / 4];   /* ROM span 0x138 */
 int data_0209b270[8];
@@ -461,7 +461,7 @@ unsigned char data_0209f2d4[4];
    data_0209f30c[i]. run vs16: sixteen. Note that
    src/_ZN5Stage13InitResourcesEv.cpp:29 already DECLARES this [16] -- the
    host copy was the short one, not the ROM's own view of it. */
-unsigned char data_0209f30c[kPortMaxPlayers];
+unsigned char data_0209f30c[kPortBodySlots];
 unsigned char data_0209fc9c[4];
 unsigned char data_0209f248[4];
 /* gate 25: the bottom screen. The three SetSubBgyOffset scroll shadows and
@@ -484,7 +484,7 @@ unsigned char data_020a0f00[4];
    Stage's ModelComponents pointer) at 10-11, data_0209f228 at 12-13 and the
    player count data_0209fc50 at seat 14. That last one is why a 15- or 16-player
    match used to start while 5 to 14 did not (hal/stage_frame.cpp's census). */
-unsigned short data_0209f368[kPortMaxPlayers];
+unsigned short data_0209f368[kPortBodySlots];
 unsigned char data_ov002_02111180[4];
 /* gate 26, the boot spine: Stage::LoadModel's last line parks the Stage's own
    ModelComponents pointer (Stage+0x874) here, and CopyTexPalFromLevelModel
@@ -508,7 +508,7 @@ unsigned char data_0209f228[4];
 unsigned char data_0209fc50[4];
 /* the per-slot player map func_020308d0 fills with data_0209fc64[i] = i.
    run vs16: one entry per seat. */
-char data_0209fc64[kPortMaxPlayers];
+char data_0209fc64[kPortBodySlots];
 /* gate 31: the second word CleanCommonModelDataArr resets. Its two siblings
    (the count at 0x0209cef8 and the array at 0x0209cefc) already have storage
    in hal/model_host.cpp; this one had no reader until the level teardown

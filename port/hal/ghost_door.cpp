@@ -51,7 +51,7 @@ enum {
     kNode        = 0x140,                 // the state callback node
     kSearchR     = 300 << 12,             // a door this near the body (x, z)
     kSearchY     = 220 << 12,
-    kMaxSeats    = 16,
+    kMaxSeats    = 32,   // HUB32
 };
 
 Stats g_stats;
