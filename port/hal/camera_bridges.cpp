@@ -189,11 +189,18 @@ extern "C" void hal_fill_camera_vtable(void)
 extern "C" int port_actor_frame_camera_rom(void);   /* hal/actor_registry.cpp */
 extern "C" void (*port_level_camera_render_hook)(void *cam);
 void (*port_level_camera_render_hook)(void *cam);
+/* CAMTAGS C1: the host's seat just AFTER Camera::Behavior on a ROM frame (a DS camera turn below the ROM's step is scaled there) */
+extern "C" void (*port_level_camera_behavior_hook)(void *cam);
+void (*port_level_camera_behavior_hook)(void *cam);
 
 static int __fastcall cs_frame_behavior(void *s, void *)
 {
-    if (port_actor_frame_camera_rom())
-        return _ZN9dCamera_c8BehaviorEv(s);
+    if (port_actor_frame_camera_rom()) {
+        const int r = _ZN9dCamera_c8BehaviorEv(s);
+        if (port_level_camera_behavior_hook)
+            port_level_camera_behavior_hook(s);
+        return r;
+    }
     return 1;
 }
 static int __fastcall cs_frame_render(void *s, void *)
