@@ -1866,6 +1866,7 @@ void port_mod_plugins_load(void);   /* hal/mod_plugins.cpp */
 int port_actor_frame_split_forced(void);
 /* the host rig's seat on Camera::Render's face (hal/camera_bridges.cpp) */
 extern void (*port_level_camera_render_hook)(void *cam);
+extern void (*port_level_camera_behavior_hook)(void *cam);   /* CAMTAGS C1 */
 void port_actor_census(void);
 void port_actor_lists_probe(void);
 /* the [lvl-perf] level-entry spans (hal/level_boot.cpp). The harness owns the
@@ -4766,11 +4767,17 @@ static int cam93_ds_owned_off(void) { return getenv("SM64DS_CAM93_RIG_ALWAYS") ?
 static int g_ds_extra_turn;
 static void *g_ds_cam;
 static int g_cl_applied;   /* CAMLOCK2: the correction the last call really rotated onto the eye (0 when none) */
+static int g_cl_eye[3], g_cl_eye_ok;   /* CAMTAGS C1: the eye as the camera's tick will read it (after our correction), to tell the ROM's step from the player walking away */
 static void ds_apply_extra_turn(void *cam)
 {
     const int d = g_ds_extra_turn;
     g_ds_extra_turn = 0;
     g_cl_applied = 0;
+    g_cl_eye_ok = 0;
+    if (cam && !d) {
+        const int *e0 = (const int *)((char *)cam + 0x8c);
+        g_cl_eye[0] = e0[0]; g_cl_eye[1] = e0[1]; g_cl_eye[2] = e0[2]; g_cl_eye_ok = 1;
+    }
     if (!d || !cam) return;
     int *pv = (int *)((char *)cam + 0x80), *eye = (int *)((char *)cam + 0x8c);
     const double dx = (double)eye[0] - pv[0], dz = (double)eye[2] - pv[2];
@@ -4782,6 +4789,39 @@ static void ds_apply_extra_turn(void *cam)
     eye[2] = pv[2] + (int)floor(r * cos(a0) + 0.5);
     if (getenv("SM64DS_CAMVOICE_TRACE")) fprintf(stderr, "%d,%d\n", eye[0], eye[2]);
     g_cl_applied = d;
+    g_cl_eye[0] = eye[0]; g_cl_eye[1] = eye[1]; g_cl_eye[2] = eye[2]; g_cl_eye_ok = 1;
+}
+/* CAMTAGS C1 (field 093G, Thunder: a slight tilt turns the DS camera at full speed while MOVING). The turn the camera takes in its own
+   tick, however the ROM decided on it (the plain +-0x400 step, a preset approach against a wall, a mix with its follow while the
+   player walks), is scaled AFTER the tick to the stick's share of a full step: the eye is turned back about the pivot by the part of
+   the ROM's turn that the stick did not ask for. Nothing is predicted, so there is nothing to misjudge; a camera that does not turn
+   has nothing to scale. Set in the input phase (g_ct_turn = the turn per tick the stick/keys ask for, below the ROM's 0x400; g_ct_dir
+   = the direction), used and cleared by the post-Behavior hook below (hal/camera_bridges.cpp). SM64DS_CAMTAGS_OLD=1: the CAMLOCK2 rule. */
+static int g_ct_turn, g_ct_dir;
+static void ct_camera_behavior_post(void *cam)
+{
+    const int dir = g_ct_dir, turn = g_ct_turn;
+    g_ct_dir = 0;
+    if (!dir || !cam || turn <= 0 || turn >= 0x400) return;
+    int *pv = (int *)((char *)cam + 0x80), *eye = (int *)((char *)cam + 0x8c);
+    const int *eprev = (const int *)((char *)cam + 0xd4);     /* the eye as the tick began (Behavior's own copy) */
+    const double K = 65536.0 / 6.28318530717958647692;
+    const double hb = atan2((double)eprev[0] - pv[0], (double)eprev[2] - pv[2]);
+    const double dx = (double)eye[0] - pv[0], dz = (double)eye[2] - pv[2];
+    const double r = sqrt(dx * dx + dz * dz);
+    if (r < 1.0) return;
+    const double ha = atan2(dx, dz);
+    int delta = (int)floor((ha - hb) * K + 0.5);
+    delta = ((delta & 0xffff) ^ 0x8000) - 0x8000;
+    if (delta == 0 || (delta > 0) != (dir > 0)) return;     /* only the turn in the pressed direction */
+    const int want = (int)((long long)delta * turn / 0x400);
+    const int back = want - delta;
+    const double a0 = ha + back / K;
+    eye[0] = pv[0] + (int)floor(r * sin(a0) + 0.5);
+    eye[2] = pv[2] + (int)floor(r * cos(a0) + 0.5);
+    static int tr = -1;
+    if (tr < 0) tr = getenv("SM64DS_CAMLOCK_TRACE") ? 1 : 0;
+    if (tr) fprintf(stderr, "[camtags] rom turned %d, stick asked %d of 1024 -> %d\n", delta, turn, want);
 }
 static int g_cam93_mouse_owned;            /* the mouse is steering the camera: no auto-recenter until the stick or keys take it back */
 static int g_cam93_scale = 4096;           /* eased fraction of the eye distance the collision allows */
@@ -17248,6 +17288,22 @@ int main(void)
                             const int dl = (((h_now - h_prev) & 0xffff) ^ 0x8000) - 0x8000;
                             const int err = dl - g_cl_applied - dir * 0x400;
                             cl_pure = (err < 0 ? -err : err) <= 64;
+                            /* CAMTAGS C1 (field 093G, Thunder): WHILE MOVING the pivot walks away from the eye, so the heading
+                               (eye - pivot) changes by more than the ROM's step and the test above said "not the ROM's plain step":
+                               the correction was withheld and the camera turned the full 0x400 on a slight tilt. The step is
+                               judged again from the eye the tick began with (ours, after the correction) seen from the pivot the
+                               tick ended with: that takes the player's own movement out. The go-behind approach and the presets
+                               move the heading by far more than 64 against this basis too, so they stay excluded. */
+                            int err2 = 0x7fff;
+                            if (g_cl_eye_ok) {
+                                const int *pv = (const int *)((char *)cam + 0x80);
+                                const int hb = (int)floor(atan2((double)g_cl_eye[0] - pv[0], (double)g_cl_eye[2] - pv[2]) * (65536.0 / 6.28318530717958647692) + 0.5) & 0xffff;
+                                const int d2 = (((h_now - hb) & 0xffff) ^ 0x8000) - 0x8000;
+                                const int e2 = d2 - dir * 0x400;
+                                err2 = e2 < 0 ? -e2 : e2;
+                                if (err2 <= 64) cl_pure = 1;
+                            }
+                            if (getenv("SM64DS_CAMLOCK_TRACE")) fprintf(stderr, "[camlock] f%d err %d err_pivot %d\n", frame, err, err2);
                         }
                         h_prev = h_now; pd_prev = dir;
                     }
@@ -17291,6 +17347,14 @@ int main(void)
                     if (cv_log < 0) cv_log = getenv("SM64DS_CAMVOICE_TRACE") ? 1 : 0;
                     if (cv_log && dir && turn != 0x400)
                         fprintf(stderr, "[camdsturn] f%d dir %d turn %x cf %x rom_took %d owned %d\n", frame, dir, turn, cam_cf, rom_took, cam ? cam93_ds_owned(cam) : -1);
+                    static int ct_old = -1;   /* SM64DS_CAMTAGS_OLD=1: proof only, the CAMLOCK2 rule for a turn below the ROM's step */
+                    if (ct_old < 0) ct_old = getenv("SM64DS_CAMTAGS_OLD") ? 1 : 0;
+                    g_ct_dir = 0;
+                    if (!ct_old && turn < 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000)) {
+                        /* below the ROM's step: scaled after the camera's own tick (ct_camera_behavior_post) */
+                        g_ct_turn = turn > 0 ? turn : 1;
+                        g_ct_dir = dir;
+                    } else
                     if (turn != 0x400 && dir && cam && !cam93_ds_owned(cam) && !(btn & 0x4000) && (rom_took || cv_old))
                         { g_ds_extra_turn = dir * (turn - 0x400); g_ds_cam = cam; }
                 }
@@ -17305,7 +17369,7 @@ int main(void)
             }
             if (menu_on) btn = 0;   /* enter/A belong to the menu, not to him */
             g_fc_cam_rot = menu_on ? 0 : cam_rot;
-            if (menu_on) g_ds_extra_turn = 0;
+            if (menu_on) { g_ds_extra_turn = 0; g_ct_dir = 0; }
             /* TEMPORARY: fold the scripted probe's A/B into the button word so
                StartTalk's b==0 gate (data_0209f49e & 3) sees the press, and the
                camera-rotate readers do not (mask to bits 0-1). SM64DS_PROBE_INPUT. */
@@ -19768,6 +19832,7 @@ int main(void)
                     ntr::gx_enable_lights(0x1);
                     g_k1_player = c;
                     port_level_camera_render_hook = k1_level_camera_render_hook;
+                    port_level_camera_behavior_hook = ct_camera_behavior_post;
                     port_actor_frame(1);
                 } else {
                     port_actor_tick();

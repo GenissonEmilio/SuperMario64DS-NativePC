@@ -372,6 +372,12 @@ static float g_nt_proj[16];
 static int g_nt_view[12];
 static int g_nt_vp[4] = {0, 0, ntr::SCREEN_W, ntr::SCREEN_H};
 static int g_nt_have_view;
+/* ntr/gx.cpp view_to_clip's WIDESCREEN widen, stashed with the matrices: the ROM builds its
+   perspective for a 4:3 picture and the renderer scales clip x by (4/3) * present_h / present_w
+   (1.0 at 4:3, 0.75 at 16:9) so the wide window shows more world instead of a stretched image.
+   The tags used to project through the bare 4:3 projection, which put them off the body by an
+   amount that grows toward the screen edges and with the aspect (CAMTAGS C2). */
+static float g_nt_widen = 1.0f;
 
 static void nt_stash_view(void)
 {
@@ -384,6 +390,13 @@ static void nt_stash_view(void)
     } else {
         g_nt_vp[0] = 0; g_nt_vp[1] = 0;
         g_nt_vp[2] = ntr::SCREEN_W; g_nt_vp[3] = ntr::SCREEN_H;
+    }
+    {
+        const int pw = ntr::present_w(), ph = ntr::present_h();
+        const bool persp = g_nt_proj[3] != 0.0f || g_nt_proj[7] != 0.0f ||
+                           g_nt_proj[11] != 0.0f;
+        g_nt_widen = (persp && pw > 0 && ph > 0)
+                         ? (4.0f / 3.0f) * ((float)ph / (float)pw) : 1.0f;
     }
     g_nt_have_view = 1;
 }
@@ -409,7 +422,7 @@ static int nt_project(const int wp[3], float *sx, float *sy, float *depth)
                       + m[11] / 4096.0;
 
     const float *P = g_nt_proj;
-    const double cx = vx * P[0] + vy * P[4] + vz * P[8] + P[12];
+    const double cx = (vx * P[0] + vy * P[4] + vz * P[8] + P[12]) * g_nt_widen;
     const double cy = vx * P[1] + vy * P[5] + vz * P[9] + P[13];
     const double cw = vx * P[3] + vy * P[7] + vz * P[11] + P[15];
     /* THE NEAR CULL, AND WHY IT IS NOT 1e-4. A body far off-axis but within a
@@ -754,7 +767,9 @@ static void nt_draw(const OvlSurface &fb)
            threshold is scene units, an arena films its others at w 100..130).
            A ghost tag is a touch smaller and does not take the close step, so a
            crowd of ghosts stays legible without shouting. */
-        const int scale = adventure ? OVL_SCALE : OVL_SCALE * (d < 200.0f ? 2 : 1);
+        /* CAMTAGS C2 (field 093G): ONE small size at every distance. The close step
+           (x2 under w 200) made a tag fill the screen when people piled up. */
+        const int scale = OVL_SCALE;
         const int lh = NT_GH * scale + 2 * scale;
 
         /* PROXIMITY FADE, ghosts only, on the voice lane's radii (world units,
