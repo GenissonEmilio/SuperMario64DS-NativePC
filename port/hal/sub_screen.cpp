@@ -4829,7 +4829,7 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
        columns, so anything that moves across the edge, a button bouncing, a sparkle, a page easing in, repainted the whole bar with it,
        one picture to the next, and at 240 pictures a second that reads as flicker. The bar is this port's decoration and the DS has
        nothing there, so it is eased in time: each row moves toward the new edge colour with a 0.35 s time constant on the wall
-       clock (the same at 60 and 240 fps). The bar's overall light follows the picture at once (a fade or a cut), only the shape of the edge is eased. State is per physical screen and starts again when the scene key, the rows or the margin move.
+       clock (the same at 60 and 240 fps). A fade to black (the bar's light more than halved in one picture) is followed at once so the bar never glows around a dark picture. State is per physical screen and starts again when the scene key, the rows or the margin move.
        SM64DS_WIDE_EASE=0 turns the easing off. */
     {
         static int ease_on = -1;
@@ -4857,8 +4857,7 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
                 double a = 1.0 - std::exp(-(dt > 0.0 ? dt : 0.0) / 0.35);
                 if (a > 1.0) a = 1.0;
                 for (int side = 0; side < 2; ++side) {
-                    /* each row eases toward the new colour; the bar's overall light follows the picture at once, so a fade to black
-                       or a cut never leaves it glowing around a dark picture (only the shape of the edge is eased, not its level) */
+                    /* each row eases toward the new colour; a big drop in the bar's overall light (a fade to black, a cut) is followed at once */
                     unsigned tmp2[8192];
                     const int n = rows < 8192 ? rows : 8192;
                     long long lo = 0, ln = 0;
@@ -4875,7 +4874,7 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
                         lo += ch[0] + ch[1] + ch[2];
                         ln += ((nw >> 16) & 255) + ((nw >> 8) & 255) + (nw & 255);
                     }
-                    const double g = lo > 0 ? (double)ln / (double)lo : 1.0;
+                    const double g = (lo > 0 && ln * 2 < lo) ? (double)ln / (double)lo : 1.0;   /* only a real fade to black (the bar's light more than halved) is followed at once */
                     for (int r = 0; r < n; ++r) {
                         unsigned ch[3] = { (tmp2[r] >> 16) & 255, (tmp2[r] >> 8) & 255, tmp2[r] & 255 };
                         for (int k = 0; k < 3; ++k) {
