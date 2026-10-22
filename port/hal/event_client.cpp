@@ -409,6 +409,9 @@ extern "C" void port_event_frame(void) {
     using namespace port;
     ++g_frame;
     if (!enabled()) return;
+    if (std::getenv("SM64DS_EVENT_LOG") && (g_frame == 1 || g_frame % 600 == 0))
+        std::fprintf(stderr, "[event] hook alive: call %u body=%p hub=%d fakes=%d\n", g_frame, (void *)my_body(),
+                     comms_hub_active() ? 1 : 0, g_nfake);
 
     // fake events (the single-console knob)
     if (g_nfake < 0) read_fakes();
