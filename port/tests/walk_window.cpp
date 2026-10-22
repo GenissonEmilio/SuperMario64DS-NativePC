@@ -4814,6 +4814,14 @@ static void ct_camera_behavior_post(void *cam)
     const double ha = atan2(dx, dz);
     int delta = (int)floor((ha - hb) * K + 0.5);
     delta = ((delta & 0xffff) ^ 0x8000) - 0x8000;
+    {   /* CAMTEST9: what the ROM left this tick, for the preset-camera investigation */
+        static int tr9 = -1;
+        if (tr9 < 0) tr9 = getenv("SM64DS_CAMTEST_TRACE") ? 1 : 0;
+        if (tr9) fprintf(stderr, "[camtest9] post dir %d turn %d delta %d cf %x a0 %x a6 %d h17c %04x h186 %04x h19e %04x\n",
+                         dir, turn, delta, *(unsigned *)((char *)cam + 0x154), *(unsigned short *)((char *)cam + 0x1a0),
+                         *(unsigned char *)((char *)cam + 0x1a6), *(unsigned short *)((char *)cam + 0x17c),
+                         *(unsigned short *)((char *)cam + 0x186), *(unsigned short *)((char *)cam + 0x19e));
+    }
     if (delta == 0 || (delta > 0) != (dir > 0)) return;     /* only the turn in the pressed direction */
     const int want = (int)((long long)delta * turn / 0x400);
     const int back = want - delta;
