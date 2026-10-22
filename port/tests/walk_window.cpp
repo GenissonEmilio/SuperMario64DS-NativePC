@@ -17180,8 +17180,7 @@ int main(void)
                     if (tc_f == -2) { const char *e = getenv("SM64DS_CAMTEST_TAILCAM"); tc_f = e ? atoi(e) : -1; }
                     if (tc_f >= 0 && frame == tc_f && cam) {
                         func_0200d10c(cam, data_0209f250);
-                        fprintf(stderr, "[camtest9] f%d camera put into state 18 (tail grab), now idx %d
-", frame, cam93_state_idx(cam));
+                        fprintf(stderr, "[camtest9] f%d camera put into state 18 (tail grab), now idx %d\n", frame, cam93_state_idx(cam));
                     }
                 }
                 const unsigned cam_bit_right = (cam_turn > 0) ? 0x100u : 0x200u;
