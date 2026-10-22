@@ -4731,6 +4731,7 @@ static void fc_push_view(void *cam, const int *eye, const int *at)
 extern "C" int _ZN8dActor_c17DetectRaycastClsnER7Vector3S1_b(void *self, void *a0, void *a1, bool a2);
 extern "C" void _ZN9dCamera_c14GoBehindPlayerEj(void *self, unsigned int j);
 extern "C" void func_0200d10c(void *cam, unsigned char playerID);   /* CAMTEST9: the camera into the grab-tail state (18) */
+extern "C" unsigned char data_0208733c[];   /* CAMTEST9: the stepped 8-direction camera mode (func_0200bb28) */
 extern "C" unsigned char data_ov002_021102d4[];   /* the Player's cannon-aim State object */
 extern "C" unsigned data_0209b018[], data_0209b028[], data_0209b038[], data_0209b048[], data_0209b058[],
     data_0209b068[], data_0209b088[], data_0209b098[], data_0209b0a8[], data_0209b0b8[], data_0209b0c8[],
@@ -17371,11 +17372,16 @@ int main(void)
                        one camera-def field, then runs func_02009e70) with a hand-over to the DS picture, not a scripted look. It is "owned" for the
                        rig's sake, but the stick turn there ran the ROM's full 0x400 step on any tilt. The scaling treats it like the ordinary follow
                        states. SM64DS_CAMTEST_C3_OLD=1: proof only, the build 9 exemption. */
+                    /* CAMTEST9 (C2): the stepped camera (CamMode 0x0208733c, func_0200bb28: Super Mario 64 DS levels 28 32 37 39 and the Lethal Lava
+                       Land start) answers any rotate press with one 45 degree preset (+-0x2000 on +0x184, ApproachLinear at 0x800 a tick, 0x14 ticks
+                       between steps) and zeroes the key word itself. The post-tick scaling shrank that approach's eye turn, the ROM re-derived its
+                       heading from the shifted eye and the eye drifted the wrong way for 40 ticks. Its own answer stands, as in CAMLOCK2's rows. */
+                    const int ct_stepped_mode = cam && *(void **)((char *)cam + 0x140) == (void *)data_0208733c;
                     static int c3_old = -1;
                     if (c3_old < 0) c3_old = getenv("SM64DS_CAMTEST_C3_OLD") ? 1 : 0;
                     const int ct_owned = cam && cam93_ds_owned(cam) && !(!c3_old && cam93_state_idx(cam) == 18);
                     g_ct_dir = 0;
-                    if (!ct_old && turn < 0x400 && dir && cam && !ct_owned && !(btn & 0x4000)) {
+                    if (!ct_old && turn < 0x400 && dir && cam && !ct_owned && !ct_stepped_mode && !(btn & 0x4000)) {
                         /* below the ROM's step: scaled after the camera's own tick (ct_camera_behavior_post) */
                         g_ct_turn = turn > 0 ? turn : 1;
                         g_ct_dir = dir;
