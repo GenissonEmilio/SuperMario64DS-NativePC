@@ -12459,6 +12459,29 @@ static void stack_capture(const uint32_t *img)
             ntr::ppu_write_bmp_px(nm, img, w, h);
         }
     }
+    {   /* EVENTS1 (proof runs): SM64DS_STACK_BMP_ON=<prefix>|<flagfile>: while the flag file exists, the presented image on every 20th frame as
+           <prefix>_<frame>.bmp. The harness decides WHEN by creating and deleting the file, so a picture can be taken at the moment an event
+           is on screen without knowing the frame number in advance. */
+        static int fl = -2;
+        static char fpre[480], fflag[480];
+        if (fl == -2) {
+            fl = 0;
+            if (const char *e = getenv("SM64DS_STACK_BMP_ON")) {
+                const char *bar = strchr(e, '|');
+                if (bar && (size_t)(bar - e) < sizeof fpre && strlen(bar + 1) < sizeof fflag) {
+                    memcpy(fpre, e, (size_t)(bar - e)); fpre[bar - e] = 0;
+                    strcpy(fflag, bar + 1); fl = 1;
+                }
+            }
+        }
+        if (fl == 1 && img && (f % 20) == 0 && GetFileAttributesA(fflag) != INVALID_FILE_ATTRIBUTES) {
+            int w = 0, h = 0;
+            hal_sub_screen_stacked_size(&w, &h);
+            char nm[512];
+            snprintf(nm, sizeof nm, "%s_%05lu.bmp", fpre, f);
+            ntr::ppu_write_bmp_px(nm, img, w, h);
+        }
+    }
     if (at < 0 || done || !img || (long)f < (long)at) return;
     done = 1;
     int w = 0, h = 0;
