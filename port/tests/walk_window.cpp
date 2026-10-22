@@ -13933,7 +13933,7 @@ extern "C" void port_frame_ctrl_publish(void)
                    now; the old cap at four was what kept slots 4..15 motionless
                    in a wide match -- their records arrived and were never
                    fanned out, so every peer agreed they stood still. */
-                if (np > kPortMaxPlayers) np = kPortMaxPlayers;
+                if (np > kPortBodySlots) np = kPortMaxPlayers;
                 for (int pi = 0; pi < np; ++pi) {
                     const char *r = q + pi * 0x18;
                     const int o = pi * 0x18;
@@ -15010,7 +15010,7 @@ int main(void)
                the roster was four wide. It said so in its own log line every
                run, which is the only reason it took minutes rather than
                hours. */
-            if (me < 0 || me >= kPortMaxPlayers || !data_0209f394[me]) {
+            if (me < 0 || me >= kPortBodySlots || !data_0209f394[me]) {
                 if (me != 0)
                     fprintf(stderr,
                             "[vs] local player index %d has no actor; the "
@@ -19109,7 +19109,7 @@ int main(void)
                    at all. */
                 {
                     int me2 = (int)data_0209f250;
-                    if (me2 < 0 || me2 >= kPortMaxPlayers
+                    if (me2 < 0 || me2 >= kPortBodySlots
                             || !data_0209f394[me2]) me2 = 0;   /* run vs16 */
                     player = data_0209f394[me2];
                 }

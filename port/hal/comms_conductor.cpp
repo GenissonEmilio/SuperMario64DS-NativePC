@@ -83,6 +83,7 @@
 // ===========================================================================
 
 #include "comms_seam.h"
+#include "vs_width.h"
 #include "party.h"
 #include "coop_wire.h"
 #include "comms_hub.h"         // run mp1 lane GHOSTWIRE1: the adventure hub's
@@ -1014,10 +1015,10 @@ int hub_body_count() {
     static int n = 0;
     if (party::active() || coop_world_active()) return 4;   // party / coop rooms stay 4
     if (!n) {
-        n = 16;
+        n = comms_hub_arena() ? (int)kCommsMaxPlayers : (int)kPortBodySlots;   /* HUB32: world hub 32, arena VS 16 */
         if (const char *e = std::getenv("SM64DS_HUB_BODIES")) {
             const int v = std::atoi(e);
-            if (v >= 1 && v <= kCommsMaxPlayers) n = v;
+            if (v >= 1 && v <= kPortBodySlots) n = v;
         }
         std::fprintf(stderr, "[ghost] hub bodies: %d\n", n);
     }

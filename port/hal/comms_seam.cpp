@@ -8,6 +8,7 @@
 // seam: everything ABOVE them stays the ROM's, verbatim.
 
 #include "comms_seam.h"
+#include "vs_width.h"
 
 #include "os_thread.h"
 
@@ -314,7 +315,7 @@ extern "C" {
 // is MEASURED and nowhere else. No shipped target compiles the block below.
 #ifdef PORT_COMMS_SEAM_PROBE_FACE_020408B0
 void func_020408b0(unsigned short mode) {
-    std::memset(data_020a1154 + 4 * 0x24, 0, 12 * 0x24);
+    std::memset(data_020a1154 + 4 * 0x24, 0, 28 * 0x24);   // HUB32: 32 records
     const port::CommsTransport *t = port::comms_transport();
     if (t) {
         t->open(mode);
@@ -881,7 +882,7 @@ extern "C" {
 __declspec(allocate(".dsstate$wcomms")) __declspec(align(4))
 unsigned char data_020a0e44[4] = {0};       // 0x020a0e44 .. 0x020a0e48
 __declspec(allocate(".dsstate$wcomms")) __declspec(align(2))
-unsigned short data_020a0e48[port::kCommsMaxPlayers] = {0};   // 0x020a0e48 .. 0x020a0e50 on the DS; sixteen here (0.3.2, the wide fan-out walks it)
+unsigned short data_020a0e48[kPortBodySlots] = {0};   // 0x020a0e48 .. 0x020a0e50 on the DS; sixteen here (0.3.2, the wide fan-out walks it)
 __declspec(allocate(".dsstate$wcomms")) __declspec(align(2))
-unsigned short data_020a0e50[port::kCommsMaxPlayers] = {0};   // 0x020a0e50 .. 0x020a0e58 on the DS; sixteen here (0.3.2)
+unsigned short data_020a0e50[kPortBodySlots] = {0};   // 0x020a0e50 .. 0x020a0e58 on the DS; sixteen here (0.3.2)
 }

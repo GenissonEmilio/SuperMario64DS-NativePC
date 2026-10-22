@@ -62,6 +62,7 @@
 // makes a netcode feel like rubber. rung SY2 asserts it.
 
 #include "comms_seam.h"
+#include "vs_width.h"
 #include "hitch_probe.h"     // HITCH9C
 #include "comms_hub.h"       // run mp1 lane GHOSTWIRE1: the adventure hub carries
                              // 'SYNG' / 'SYNI' when it is installed
@@ -579,14 +580,15 @@ unsigned char  g_ev_ground = 0;
 // transition, whether or not the world needed correcting (on a healthy
 // deterministic pair the peer's own sim has already made the change, so
 // apply_pose no-ops and wire arrival is the only measurable edge).
-bool           g_arr_seen[kCommsMaxPlayers];
-unsigned short g_arr_anim[kCommsMaxPlayers];
+static_assert((int)kPortBodySlots >= (int)kHubMaxSeats, "HUB32: a body slot per hub seat");
+bool           g_arr_seen[kPortBodySlots];
+unsigned short g_arr_anim[kPortBodySlots];
 
 // Item 4's per-slot wire-side animation-length estimate: the high-water
 // received cursor for the id currently playing on that slot. Reset on id
 // change. See the wrap note in apply_pose.
-unsigned short g_ph_id[kCommsMaxPlayers];
-int            g_ph_hw[kCommsMaxPlayers];
+unsigned short g_ph_id[kPortBodySlots];
+int            g_ph_hw[kPortBodySlots];
 
 // ADVENTURE GHOSTS: the per-slot follow target. In adventure mode apply_snapshot
 // does NOT move the body -- it records the latest snapshot here, and
@@ -595,7 +597,7 @@ int            g_ph_hw[kCommsMaxPlayers];
 // its own ROM physics in between) into a smooth pure follower.
 struct GhostTarget { bool have; int x, y, z; short yaw; bool teleport;
                      int vx, vz; };
-GhostTarget g_gtarget[kCommsMaxPlayers];
+GhostTarget g_gtarget[kPortBodySlots];
 
 // ADVENTURE GHOSTS, the ANIMATION half of the follower. The ROM keeps ticking a
 // ghost's own Player::Behavior, which forces the puppet back into its spawn
@@ -607,9 +609,9 @@ GhostTarget g_gtarget[kCommsMaxPlayers];
 // wire's current anim id, g_gcursor the playback cursor in 20.12 (advanced one
 // frame per render frame, re-synced to the wire on every snapshot so it stays in
 // phase with the sender's own cycle).
-unsigned short g_ganim[kCommsMaxPlayers];
-int            g_gcursor[kCommsMaxPlayers];
-bool           g_ganim_have[kCommsMaxPlayers];
+unsigned short g_ganim[kPortBodySlots];
+int            g_gcursor[kPortBodySlots];
+bool           g_ganim_have[kPortBodySlots];
 
 // ADVENTURE co-op (M2), PRESENCE. The per-slot filter that turns "everyone on
 // the wire" into "everyone in MY level". Filled from every received snapshot:
@@ -622,9 +624,9 @@ bool           g_ganim_have[kCommsMaxPlayers];
 // warps to another level, or that this console warps away from, drops out of
 // visible on the next frame -- which is the despawn.
 enum : unsigned { kPresenceTimeoutMs = 2000u };
-int      g_peer_level[kCommsMaxPlayers];
-unsigned g_peer_seen_ms[kCommsMaxPlayers];
-bool     g_peer_present[kCommsMaxPlayers];
+int      g_peer_level[kPortBodySlots];
+unsigned g_peer_seen_ms[kPortBodySlots];
+bool     g_peer_present[kPortBodySlots];
 
 
 // Item 2's sender-side velocity sample: the local body's position last frame,
@@ -1035,13 +1037,13 @@ void gw_me_read() {
 // true of a unit or two and the three drawn ghosts swapped every 2 s
 // (REVGHOSTWIRE1-R3, crowd8: 10-16 swaps per console). A seat without a body
 // is still on the wire (name, tag facts, voice, chat); it is simply not drawn.
-int      g_body_seat[kCommsMaxPlayers];     // seat driving body i, or -1
-unsigned g_body_since[kCommsMaxPlayers];    // GetTickCount of that assignment
+int      g_body_seat[kPortBodySlots];     // seat driving body i, or -1
+unsigned g_body_since[kPortBodySlots];    // GetTickCount of that assignment
 bool     g_assign_init = false;
 unsigned g_gw_myseat_seen = 0xffffffffu;
 
 int gw_seat_for_body(int body) {
-    if (!g_assign_init || body < 0 || body >= kCommsMaxPlayers) return -1;
+    if (!g_assign_init || body < 0 || body >= kPortBodySlots) return -1;
     if (body >= (int)data_0209f21c || body == (int)data_0209f250) return -1;
     return g_body_seat[body];
 }
@@ -1059,23 +1061,23 @@ long long gw_dist2(int seat, const int me_xyz[3]) {
 
 void gw_assign(unsigned now) {
     if (!g_assign_init) {
-        for (int b = 0; b < kCommsMaxPlayers; ++b) g_body_seat[b] = -1;
+        for (int b = 0; b < kPortBodySlots; ++b) g_body_seat[b] = -1;
         g_assign_init = true;
     }
     const int my = comms_hub_my_seat();
     const int me = (int)data_0209f250;
-    const int nb = (int)data_0209f21c < kCommsMaxPlayers ? (int)data_0209f21c
-                                                         : kCommsMaxPlayers;
+    const int nb = (int)data_0209f21c < kPortBodySlots ? (int)data_0209f21c
+                                                         : kPortBodySlots;
     if ((unsigned)my != g_gw_myseat_seen) {      // re-paired: start over
         g_gw_myseat_seen = (unsigned)my;
-        for (int b = 0; b < kCommsMaxPlayers; ++b) g_body_seat[b] = -1;
+        for (int b = 0; b < kPortBodySlots; ++b) g_body_seat[b] = -1;
     }
-    if (my < 0 || me < 0 || me >= kCommsMaxPlayers || !data_0209f394[me]) return;
+    if (my < 0 || me < 0 || me >= kPortBodySlots || !data_0209f394[me]) return;
     void *mb = data_0209f394[me];
     const int me_xyz[3] = {*player::pos_x(mb), *player::pos_y(mb),
                            *player::pos_z(mb)};
     bool has[kHubMaxSeats] = {};
-    for (int b = 0; b < kCommsMaxPlayers; ++b) {
+    for (int b = 0; b < kPortBodySlots; ++b) {
         const int s = g_body_seat[b];
         if (s < 0) continue;
         if (b >= nb || b == me || !gw_visible(s)) { g_body_seat[b] = -1; continue; }
@@ -1917,9 +1919,9 @@ struct GwRowSeen {
     unsigned cp[8];          // words 0..1 of a row drawn here (the cache key)
     unsigned sum[8];         // ...and all sixteen words, hashed
 };
-GwRowSeen g_row_seen[kCommsMaxPlayers];
-unsigned short g_row_last[kCommsMaxPlayers][16];   // the last row written
-bool g_row_last_have[kCommsMaxPlayers];            // into each body's row
+GwRowSeen g_row_seen[kPortBodySlots];
+unsigned short g_row_last[kPortBodySlots][16];   // the last row written
+bool g_row_last_have[kPortBodySlots];            // into each body's row
 
 unsigned gw_row_sum(const unsigned short *r) {
     unsigned h = 2166136261u;
@@ -1976,7 +1978,7 @@ int gw_colour_row(GwSeat &z, void *a) {
     const char *c = (const char *)a;
     const int no = (int)*(const unsigned char *)(c + 0x6d8);
     const int pal = *(const int *)(c + 0x61c);
-    if (no <= 0 || no >= kCommsMaxPlayers) return -1;
+    if (no <= 0 || no >= kPortBodySlots) return -1;
     const unsigned short *r0 = gw_pltt_row(pal - (no << 1));
     unsigned short *rp = gw_pltt_row(pal);
     if (!r0 || !rp) return -1;
@@ -2015,7 +2017,7 @@ void gw_send_ident(unsigned now) {
     h.seat = 0xff;
     h.name_len = (unsigned char)g_gw_me.name_len;
     const int me = (int)data_0209f250;
-    void *a = (me >= 0 && me < kCommsMaxPlayers) ? data_0209f394[me] : 0;
+    void *a = (me >= 0 && me < kPortBodySlots) ? data_0209f394[me] : 0;
     h.character = (unsigned char)(a ? gw_char(a) : 0u);
     h.build_id = g_gw_me.build_id;
     std::memcpy(h.body_rgb, g_gw_me.body, 3);
@@ -2057,7 +2059,7 @@ void gw_ident_tick(unsigned now) {
 void gw_send(unsigned now) {
     if (comms_hub_state() != kHubLive) return;
     const int me = (int)data_0209f250;
-    if (me < 0 || me >= kCommsMaxPlayers) return;
+    if (me < 0 || me >= kPortBodySlots) return;
     void *a = data_0209f394[me];
     if (!a) return;
 
@@ -2257,7 +2259,7 @@ void gw_report(const char *tag) {
     unsigned vis = 0, drawn = 0;
     for (int s = 0; s < kHubMaxSeats; ++s)
         if (gw_visible(s)) vis |= 1u << s;
-    for (int b = 0; b < kCommsMaxPlayers; ++b) {
+    for (int b = 0; b < kPortBodySlots; ++b) {
         const int s = gw_seat_for_body(b);
         if (s >= 0) drawn |= 1u << s;
     }
@@ -2583,7 +2585,7 @@ void sync_send_own() {
        apply_snapshot's never-local skip reads, so the sender's "mine" and the
        receiver's "not mine" can never disagree about which body that is. */
     const int me = (int)data_0209f250;
-    if (me < 0 || me >= kCommsMaxPlayers) return;
+    if (me < 0 || me >= kPortBodySlots) return;
     void *a = data_0209f394[me];
     if (!a) return;
 
@@ -2747,7 +2749,7 @@ void apply_snapshot(const unsigned char *buf, int n) {
        overlapping, the pushback that separates them runs while early
        corrections move the remote copy, and a standing session came out 2.49
        units apart at frame 34 with zero input and zero local writes. */
-    void *a_me = (me >= 0 && me < kCommsMaxPlayers) ? data_0209f394[me] : 0;
+    void *a_me = (me >= 0 && me < kPortBodySlots) ? data_0209f394[me] : 0;
     int wx = 0, wy = 0, wz = 0;
     short wyaw = 0;
     if (a_me) {
@@ -2760,7 +2762,7 @@ void apply_snapshot(const unsigned char *buf, int n) {
     const SyncPlayerV1 *e = (const SyncPlayerV1 *)(buf + sizeof(SyncMsgV1));
     for (int i = 0; i < (int)m->count; ++i, ++e) {
         const int slot = e->slot;
-        if (slot < 0 || slot >= kCommsMaxPlayers) continue;
+        if (slot < 0 || slot >= kPortBodySlots) continue;
         if (slot == me) {
             /* NEVER the local body -- spec trap 3, the line every refactor
                must keep. Under owner authority nobody publishes another
@@ -2954,7 +2956,7 @@ void handle_ping(const unsigned char *buf, int n) {
 // exactly for a clean assert. Inert unless called.
 extern "C" void port_adventure_probe_apply_lvl(int slot, int x, int y, int z,
                                                short yaw, int level) {
-    if (slot < 0 || slot >= kCommsMaxPlayers) return;
+    if (slot < 0 || slot >= kPortBodySlots) return;
     void *a = data_0209f394[slot];
     unsigned char buf[kSyncBufBytes];
     SyncMsgV1 *m = (SyncMsgV1 *)buf;
@@ -3009,7 +3011,7 @@ extern "C" void port_adventure_probe_apply(int slot, int x, int y, int z,
 namespace {
 bool peer_visible(int slot) {
     if (!adventure_ghost_mode()) return false;
-    if (slot < 0 || slot >= kCommsMaxPlayers) return false;
+    if (slot < 0 || slot >= kPortBodySlots) return false;
     if (slot == (int)data_0209f250) return false;
     /* GHOSTWIRE1: on the hub the body's seat decides, off its own frames */
     if (g_hub) return !gw_cut() && gw_visible(gw_seat_for_body(slot));
@@ -3254,16 +3256,16 @@ static void gw_exit_summary() {
     std::fflush(stderr);
 }
                               // (from 1: a seat's show_n starts at 0)
-int g_drawpos_have[kCommsMaxPlayers];
-int g_gw_pal[kCommsMaxPlayers];   // GHOSTLOOK1: the row each body draws with
-const void *g_gw_pal_body[kCommsMaxPlayers];   // ...the body it was made for
-int g_drawpos[kCommsMaxPlayers][3];
+int g_drawpos_have[kPortBodySlots];
+int g_gw_pal[kPortBodySlots];   // GHOSTLOOK1: the row each body draws with
+const void *g_gw_pal_body[kPortBodySlots];   // ...the body it was made for
+int g_drawpos[kPortBodySlots][3];
 
 void gw_park_body(void *a) {
     if (g_gw_nopark < 0) g_gw_nopark = std::getenv("SM64DS_GHOST_NO_PARK") ? 1 : 0;
     if (g_gw_nopark || !a) return;
     const int me = (int)data_0209f250;
-    void *mb = (me >= 0 && me < kCommsMaxPlayers) ? data_0209f394[me] : 0;
+    void *mb = (me >= 0 && me < kPortBodySlots) ? data_0209f394[me] : 0;
     if (!mb || mb == a) return;
     *player::pos_x(a) = *player::pos_x(mb);
     *player::pos_y(a) = *player::pos_y(mb) + kGwParkUp;
@@ -3275,8 +3277,8 @@ void gw_park_body(void *a) {
 }
 
 /* POSE9: per ghost body, the Yoshi tongue (head animation) and the hurt blink. */
-ghost_tongue::State g_gtongue[kCommsMaxPlayers];
-ghost_tongue::Blink g_gblink[kCommsMaxPlayers];
+ghost_tongue::State g_gtongue[kPortBodySlots];
+ghost_tongue::Blink g_gblink[kPortBodySlots];
 
 /* INTERACT9: THE ATTACH RULE. While seat V is in somebody's mouth or hands (party_hits.cpp keeps the
    book from the victim's own broadcast), every console that draws V places V's body at the holder's
@@ -3316,8 +3318,8 @@ void gw_follow() {
     const unsigned now = GetTickCount();
     const unsigned tnow = gw_legacy() ? now : comms_hub_now_ms();
     const int me = (int)data_0209f250;
-    const int nb = (int)data_0209f21c < kCommsMaxPlayers ? (int)data_0209f21c
-                                                         : kCommsMaxPlayers;
+    const int nb = (int)data_0209f21c < kPortBodySlots ? (int)data_0209f21c
+                                                         : kPortBodySlots;
     const bool in_cut = data_0209fc48 != 0;
     bool shown_any = false;
     ++g_gw_follow_n;
@@ -3587,7 +3589,7 @@ void gw_follow() {
         if (pseat) {
             /* PLAYINT1 hook 4: the squash after a stomp I landed (+0x84 is the Y scale).
                Written only while a squash runs and put back once when it ends. */
-            static bool squashed[kCommsMaxPlayers];
+            static bool squashed[kPortBodySlots];
             const int sy = port::party_hits::squash_scale_for_seat(s);
             if (sy != 0x1000) {
                 *(int *)((char *)a + 0x84) = sy;
@@ -3608,7 +3610,7 @@ void gw_follow() {
             {
                 static int pin = -2;
                 if (pin == -2) { const char *e = std::getenv("SM64DS_GHOST_BLINK_PIN"); pin = e && *e ? std::atoi(e) : 0; }
-                static bool pinned[kCommsMaxPlayers];
+                static bool pinned[kPortBodySlots];
                 if (pin > 0 && (started || pinned[i])) { pinned[i] = true; v = (unsigned)(pin & 3); g_gblink[i].left = 1; }
             }
             *(unsigned short *)((char *)a + player::kInvincibleTimer) = (unsigned short)v;
@@ -3683,8 +3685,8 @@ void gw_target_probe() {
     if (on < 0) on = std::getenv("SM64DS_GHOST_TARGET_PROBE") ? 1 : 0;
     if (!on) return;
     const int me = (int)data_0209f250;
-    const int nb = (int)data_0209f21c < kCommsMaxPlayers ? (int)data_0209f21c
-                                                         : kCommsMaxPlayers;
+    const int nb = (int)data_0209f21c < kPortBodySlots ? (int)data_0209f21c
+                                                         : kPortBodySlots;
     for (const char *a = (const char *)_ZN8dActor_c4NextEPKS_(0); a;
          a = (const char *)_ZN8dActor_c4NextEPKS_(a)) {
         bool is_player = false;
@@ -3750,7 +3752,7 @@ extern "C" int port_adventure_hub_body(int slot) {
     /* the hub itself, not g_hub: sync_decide runs at the first pad publish,
        and a level can seat and tick its bodies before that */
     return (adventure_ghost_mode() && comms_hub_active() &&
-            slot >= 0 && slot < kCommsMaxPlayers &&
+            slot >= 0 && slot < kPortBodySlots &&
             slot != (int)data_0209f250 && slot < (int)data_0209f21c) ? 1 : 0;
 }
 extern "C" void port_adventure_ghost_park(void *body) { gw_park_body(body); }
@@ -3793,7 +3795,7 @@ extern "C" void port_adventure_hub_seat() {
     if (!(adventure_ghost_mode() && comms_hub_active())) return;
     port_adventure_hub_opening_tick();
     const int count = (int)data_0209f21c;
-    if (count <= 1 || count > kCommsMaxPlayers) return;
+    if (count <= 1 || count > kPortBodySlots) return;
     bool short_seat = (int)data_0208a0e0 != count;
     for (int i = 0; i < count; ++i)
         if (!data_0209fc5c[i]) short_seat = true;
@@ -3822,7 +3824,7 @@ extern "C" void port_adventure_hub_seat() {
         if (i <= 0 || i >= count || i == me || data_0209f394[i]) continue;
         if (*(const unsigned *)(a + 0x4) != base + (unsigned)i) continue;
         bool seated = false;
-        for (int j = 0; j < kCommsMaxPlayers; ++j)
+        for (int j = 0; j < kPortBodySlots; ++j)
             if (data_0209f394[j] == a) seated = true;
         if (seated) continue;
         data_0209f394[i] = (void *)a;
@@ -3896,7 +3898,7 @@ extern "C" void port_adventure_hub_level_seat() {
     g_hub_opening = false;
     if (!(adventure_ghost_mode() && comms_hub_active())) return;
     const int want = vs_player_count();
-    if (want <= 1 || want > kCommsMaxPlayers) return;
+    if (want <= 1 || want > kPortBodySlots) return;
     std::fprintf(stderr, "[ghost] hub: the opening's level load seats the "
                  "hub's %d bodies again (count was %d); SetNumPlayers(%d)\n",
                  want, (int)data_0209f21c, want);
@@ -3941,7 +3943,7 @@ static void port_adventure_hub_opening_tick() {
 // Where the follower put a hub ghost this frame (tests/nametag.h reads the tag
 // position here: by the time the overlay draws, the body is parked again).
 extern "C" int port_adventure_ghost_drawpos(int slot, int out[3]) {
-    if (!g_hub || slot < 0 || slot >= kCommsMaxPlayers || !g_drawpos_have[slot])
+    if (!g_hub || slot < 0 || slot >= kPortBodySlots || !g_drawpos_have[slot])
         return 0;
     out[0] = g_drawpos[slot][0];
     out[1] = g_drawpos[slot][1];
@@ -3983,7 +3985,7 @@ void gw_body_probe() {
     }
     if (stride <= 0) return;
     const int me = (int)data_0209f250;
-    const char *mb = (me >= 0 && me < kCommsMaxPlayers)
+    const char *mb = (me >= 0 && me < kPortBodySlots)
                          ? (const char *)data_0209f394[me] : 0;
     if (!mb) return;
     const void *vt = *(void *const *)mb;
@@ -3994,7 +3996,7 @@ void gw_body_probe() {
          a && w < 1000; a = (const char *)_ZN8dActor_c4NextEPKS_(a)) {
         if (*(void *const *)a != vt) continue;
         int idx = -1;
-        for (int i = 0; i < kCommsMaxPlayers; ++i)
+        for (int i = 0; i < kPortBodySlots; ++i)
             if (data_0209f394[i] == a) idx = i;
         ++n;
         sig = sig * 31u + (unsigned)(idx + 2);
@@ -4038,7 +4040,7 @@ void gw_body_probe() {
 // written for: a level load seats new bodies and uploads the file's rows again
 // before the next follower pass, and that frame draws the model's own row.
 extern "C" int port_adventure_ghost_palette(int slot) {
-    if (!g_hub || slot < 0 || slot >= kCommsMaxPlayers) return -1;
+    if (!g_hub || slot < 0 || slot >= kPortBodySlots) return -1;
     const int pal = g_gw_pal[slot];
     if (pal < 0 || !g_row_last_have[slot]) return -1;
     if (g_gw_pal_body[slot] != data_0209f394[slot]) return -1;
@@ -4090,7 +4092,7 @@ extern "C" int port_adventure_local_palette(void *body) {
     if (gw_char(body) != 3u) return -1;
     const char *c = (const char *)body;
     const int me = (int)data_0209f250;
-    if (me < 0 || me >= kCommsMaxPlayers || data_0209f394[me] != body)
+    if (me < 0 || me >= kPortBodySlots || data_0209f394[me] != body)
         return -1;
     if ((int)data_0209f21c > kOwnRowNo) return -1;   // a body could draw row 15
     const int no = (int)*(const unsigned char *)(c + 0x6d8);
@@ -4149,7 +4151,7 @@ extern "C" void port_adventure_ghost_follow() {
     gw_body_probe();
     if (g_hub) { gw_follow(); return; }
     const int me = (int)data_0209f250;
-    for (int i = 0; i < kCommsMaxPlayers; ++i) {
+    for (int i = 0; i < kPortBodySlots; ++i) {
         if (i == me) continue;
         /* PRESENCE (M2): only DRIVE a ghost that is present in this console's
            level. A peer in another level (or gone quiet) is despawned -- its

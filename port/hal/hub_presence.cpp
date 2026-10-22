@@ -143,7 +143,7 @@ bool sample(HubPresence *out) {
     out->seat = comms_hub_my_seat();
     out->area = -1;
     const int me = (int)data_0209f250;
-    void *a = (me >= 0 && me < 16) ? data_0209f394[me] : nullptr;
+    void *a = (me >= 0 && me < 32) ? data_0209f394[me] : nullptr;
     const unsigned beh = port_stage_behavior_calls();
     if (g_beh_seeded && beh == g_beh_last) {
         if (g_beh_still < 1000) ++g_beh_still;

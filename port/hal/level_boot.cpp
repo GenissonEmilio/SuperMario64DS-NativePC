@@ -2372,7 +2372,7 @@ static void port_load1(void *t, int a, unsigned b)
            the camera itself, so a log shows the answer rather than the
            intent. */
         int films = -1;
-        for (int i = 0; i < kPortMaxPlayers; ++i)
+        for (int i = 0; i < kPortBodySlots; ++i)
             if (data_0209f394[i] &&
                 *(void **)(cam + 0x110) == data_0209f394[i]) {
                 films = i;
@@ -4830,6 +4830,20 @@ static void port_vs_extra_start(int bx, int by, int bz, int slot, int *out)
                                      3313, -1266, -4096, -1266,  3313 }; /* +36 */
     static const short kSin[10] = {     0,  3895,  2408, -2408, -3895,
                                      2408,  3895,     0, -3895, -2408 };
+    if (slot >= kPortMaxPlayers) {
+        /* HUB32: slots 16..31 (Adventure Online only; VS never reaches them).
+           Two rings of eight at radius 144 and 240, 45 degree bearings. The
+           bodies are ghosts the network moves anyway, so this only has to be
+           deterministic and inside the level. */
+        static const short kC8[8] = { 4096, 2896, 0, -2896, -4096, -2896, 0, 2896 };
+        static const short kS8[8] = { 0, 2896, 4096, 2896, 0, -2896, -4096, -2896 };
+        const int s2 = slot - kPortMaxPlayers;
+        const int r8 = (s2 >= 8) ? 240 : 144;
+        out[0] = (bx << 12) + r8 * (int)kC8[s2 & 7];
+        out[1] =  by << 12;
+        out[2] = (bz << 12) + r8 * (int)kS8[s2 & 7];
+        return;
+    }
     const int ring = (slot - 1) / 5;              /* 0, 1, 2 */
     const int step = (slot - 1) % 5;
     const int idx  = (ring & 1) ? 5 + step : step;
@@ -4891,7 +4905,7 @@ extern "C" void port_vs_spawn_extra_players(void *tbl, unsigned p3)
        and nothing else would notice. Repairing on the DISAGREEMENT rather
        than on which function did the spawning covers both, and says out loud
        when it fires. */
-    for (int i = 0; i < n && i < kPortMaxPlayers; ++i) {
+    for (int i = 0; i < n && i < kPortBodySlots; ++i) {
         char *a = (char *)data_0209f394[i];
         if (!a) continue;
         const unsigned packed = *(unsigned char *)(a + 0x6d8);
@@ -4910,7 +4924,7 @@ extern "C" void port_vs_spawn_extra_players(void *tbl, unsigned p3)
     const unsigned sl = (unsigned)((base->param >> 7) & 0xf);
     const int area = (int)(signed char)(base->param & 7);
 
-    for (int i = 1; i < n && i < kPortMaxPlayers; ++i) {
+    for (int i = 1; i < n && i < kPortBodySlots; ++i) {
         if (data_0209f394[i]) continue;             /* the level had a start */
         if (data_0209fc5c[i] == 0) continue;        /* slot not live */
 

@@ -668,10 +668,10 @@ static void nt_draw(const OvlSurface &fb)
 
     const int me = (int)data_0209f250;
     const unsigned vs_live = adventure ? 0u : port_vs_seat_live_mask();
-    NtBody bodies[kPortMaxPlayers];
+    NtBody bodies[kPortBodySlots];
     int nb = 0;
     bool nt_test_pos = false;
-    for (int i = 0; i < kPortMaxPlayers; ++i) {
+    for (int i = 0; i < kPortBodySlots; ++i) {
         const char *p = (const char *)data_0209f394[i];
         if (!p) continue;
         if (data_0209fc5c[i] == 0) continue;     /* Player::Render's own guard */
@@ -742,7 +742,7 @@ static void nt_draw(const OvlSurface &fb)
             bodies[b - 1] = t;
         }
 
-    static unsigned s_said[kPortMaxPlayers];     /* the probe's last bubble line */
+    static unsigned s_said[kPortBodySlots];     /* the probe's last bubble line */
     for (int k = 0; k < nb; ++k) {
         const NtBody &e = bodies[k];
         const int i = e.i;
