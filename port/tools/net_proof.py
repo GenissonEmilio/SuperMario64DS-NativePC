@@ -131,7 +131,7 @@ def mode_of(t):
         return "relay"
     if "DIRECT" in line:
         return "direct"
-    if "udp 127.0.0.1:" in line:
+    if "udp this-machine port" in line:
         return "loopback"
     return "?"
 
@@ -317,7 +317,7 @@ def rungN2(a):
     modes = [mode_of(res[k]) for k in ("tp", "tc")]
     ok &= M.verdict(modes == ["direct", "direct"],
                     "rungN2 and both ends are in DIRECT mode | modes=%s" % modes)
-    learned = "direct: learned slot 1 at %s" % ip
+    learned = "direct: learned slot 1 from a peer"
     ok &= M.verdict(learned in res["tp"],
                     "rungN2 and the parent LEARNED the child's address off the "
                     "wire | expected '%s' in the parent log (the loopback "

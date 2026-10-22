@@ -1141,8 +1141,8 @@ bool install_open(bool want_relay, const char *relay, const char *code,
         }
         std::memcpy(g_code, code, cl);
         if (!parse_host_port(relay, 41234, &g_relay)) {
-            std::fprintf(stderr, "[hub] could not resolve the relay '%s'; "
-                         "%s is off\n", relay, what);
+            std::fprintf(stderr, "[hub] could not resolve the relay; "
+                         "%s is off\n", what);
             return true;
         }
         g_want_seat = want_seat;

@@ -1260,13 +1260,13 @@ void server_thread()
     addr.sin_addr.s_addr = hton32(INADDR_LOOPBACK);
     if (WS.bind(srv, (sockaddr *)&addr, sizeof addr) != 0 ||
         WS.listen(srv, 1) != 0) {
-        std::fprintf(stderr, "[editor] 127.0.0.1:%u unavailable; channel stays "
+        std::fprintf(stderr, "[editor] local port %u unavailable; channel stays "
                              "off\n", (unsigned)EDITOR_PORT);
         WS.closesocket(srv);
         return;
     }
     set_nonblocking(srv);
-    std::fprintf(stderr, "[editor] listening on 127.0.0.1:%u\n",
+    std::fprintf(stderr, "[editor] listening on local port %u\n",
                  (unsigned)EDITOR_PORT);
     std::fflush(stderr);
 

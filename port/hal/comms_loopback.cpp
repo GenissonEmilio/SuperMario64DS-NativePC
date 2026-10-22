@@ -1834,17 +1834,8 @@ bool same_addr(const sockaddr_in &a, const sockaddr_in &b) {
     return a.sin_addr.s_addr == b.sin_addr.s_addr && a.sin_port == b.sin_port;
 }
 
-// A printable address, for the log lines that now have somewhere to point.
-// Built by hand rather than through inet_ntoa: that is one more ws2_32 entry
-// to look up, and it returns a shared static buffer that two arguments to one
-// printf would silently alias.
-const char *addr_text(const sockaddr_in &a, char *buf, int cap) {
-    const unsigned long h = hton32(a.sin_addr.s_addr);   // back to host order
-    std::snprintf(buf, (size_t)cap, "%lu.%lu.%lu.%lu:%u",
-                  (h >> 24) & 0xFF, (h >> 16) & 0xFF, (h >> 8) & 0xFF, h & 0xFF,
-                  (unsigned)ntoh16(a.sin_port));
-    return buf;
-}
+// No address-to-text helper on purpose: the playlog never carries a peer's
+// internet address (LOGNOIP1). Lines name the seat or "peer" instead.
 
 // "1.2.3.4", "1.2.3.4:5678", "relay.example:41234", "relay.example" ->
 // sockaddr_in. Returns false and says why on stderr; a knob that cannot be
@@ -1869,7 +1860,7 @@ bool parse_host_port(const char *s, int default_port, sockaddr_in *out) {
     const char *colon = std::strrchr(s, ':');
     size_t hlen = colon ? (size_t)(colon - s) : std::strlen(s);
     if (hlen == 0 || hlen >= sizeof host) {
-        std::fprintf(stderr, "[comms:loopback] '%s' is not a usable address\n", s);
+        std::fprintf(stderr, "[comms:loopback] a configured address is not usable\n");
         return false;
     }
     std::memcpy(host, s, hlen);
@@ -1877,8 +1868,8 @@ bool parse_host_port(const char *s, int default_port, sockaddr_in *out) {
     if (colon) {
         port = std::atoi(colon + 1);
         if (port <= 0 || port > 65535) {
-            std::fprintf(stderr, "[comms:loopback] port in '%s' is out of "
-                         "range; using %d\n", s, default_port);
+            std::fprintf(stderr, "[comms:loopback] a configured port is out "
+                         "of range; using the default port %d\n", default_port);
             port = default_port;
         }
     }
@@ -1899,7 +1890,7 @@ bool parse_host_port(const char *s, int default_port, sockaddr_in *out) {
             return true;
         }
     }
-    std::fprintf(stderr, "[comms:loopback] could not resolve '%s'\n", host);
+    std::fprintf(stderr, "[comms:loopback] could not resolve the configured host\n");
     return false;
 }
 
@@ -2395,9 +2386,8 @@ int classify_sender(const sockaddr_in &from, int claimed, bool learn_ok) {
         }
         g_peer_addr[want]  = from;
         g_peer_known[want] = true;
-        char t[32];
-        std::fprintf(stderr, "[comms:loopback] direct: learned slot %d at %s\n",
-                     want, addr_text(from, t, sizeof t));
+        std::fprintf(stderr, "[comms:loopback] direct: learned slot %d from a "
+                     "peer\n", want);
         return want;
     }
 
@@ -4218,9 +4208,9 @@ void dispatch(const unsigned char *raw, int n, const sockaddr_in &from) {
             send_raw(&r, kPacketNarrowBytes, from);
             ++g_refused_narrow;
             std::fprintf(stderr, "[comms:loopback] refused a four-player peer "
-                         "on port %u: it spoke wire version %u into a "
+                         "(peer): it spoke wire version %u into a "
                          "%d-player session\n",
-                         (unsigned)ntoh16(from.sin_port), (unsigned)p.version,
+                         (unsigned)p.version,
                          g_want_players);
         }
         ++g_dropped;
@@ -4696,25 +4686,25 @@ void lb_open(unsigned mode) {
         }
     }
 
-    char t[32];
     if (g_net_mode == kNetRelay) {
         std::fprintf(stderr, "[comms:loopback] open(mode=%u) as %s, slot %d, "
-                     "udp *:%d via RELAY %s, code '%.8s'\n",
+                     "udp local port %d via RELAY (relay address withheld), "
+                     "code '%.8s'\n",
                      mode, g_role == kRoleParent ? "parent" : "child",
-                     g_slot, g_my_port, addr_text(g_relay_addr, t, sizeof t),
+                     g_slot, g_my_port,
                      (const char *)g_code);
     } else if (g_net_mode == kNetDirect) {
         std::fprintf(stderr, "[comms:loopback] open(mode=%u) as %s, slot %d, "
-                     "udp %s:%d DIRECT (peer %s)\n",
+                     "udp %s local port %d DIRECT (peer %s)\n",
                      mode, g_role == kRoleParent ? "parent" : "child",
-                     g_slot, g_bind_any || g_role == kRoleChild ? "*"
-                                                                : "127.0.0.1",
+                     g_slot, g_bind_any || g_role == kRoleChild
+                                 ? "any interface" : "this machine only",
                      g_my_port,
-                     g_peer_known[0] ? addr_text(g_peer_addr[0], t, sizeof t)
+                     g_peer_known[0] ? "address given"
                                      : "learned from the JOIN");
     } else {
         std::fprintf(stderr, "[comms:loopback] open(mode=%u) as %s, slot %d, "
-                     "udp 127.0.0.1:%d (parent at :%d)\n",
+                     "udp this-machine port %d (parent at port %d)\n",
                      mode, g_role == kRoleParent ? "parent" : "child",
                      g_slot, g_my_port, g_port_base);
     }
@@ -5792,7 +5782,7 @@ void lb_abandon() {
 }
 
 const CommsTransport kLoopback = {
-    "loopback (udp 127.0.0.1)",
+    "loopback (udp, this machine)",
     lb_open,
     lb_close,
     lb_become_parent,
@@ -6098,10 +6088,10 @@ bool comms_loopback_install_from_env() {
 
     if (relay && *relay) {
         if (!parse_host_port(relay, kRelayDefaultPort, &g_relay_addr)) {
-            std::fprintf(stderr, "[comms:loopback] SM64DS_COMMS_RELAY='%s' "
+            std::fprintf(stderr, "[comms:loopback] SM64DS_COMMS_RELAY "
                          "could not be resolved; NOT installing, so the seam "
                          "keeps its solo answers rather than pretending to "
-                         "have a session\n", relay);
+                         "have a session\n");
             return false;
         }
         // The session code. Up to 8 ASCII, right-padded with NUL, and the
@@ -6145,8 +6135,8 @@ bool comms_loopback_install_from_env() {
         // told nothing and learns each child from its JOIN.
         if (g_role == kRoleChild) {
             if (!parse_host_port(host, g_port_base, &g_peer_addr[0])) {
-                std::fprintf(stderr, "[comms:loopback] SM64DS_COMMS_HOST='%s' "
-                             "could not be resolved; NOT installing\n", host);
+                std::fprintf(stderr, "[comms:loopback] SM64DS_COMMS_HOST "
+                             "could not be resolved; NOT installing\n");
                 return false;
             }
             g_peer_known[0] = true;
@@ -6190,7 +6180,7 @@ bool comms_loopback_install_from_env() {
     if (g_net_mode == kNetDirect && g_role == kRoleParent && !g_bind_any) {
         std::fprintf(stderr,
             "[comms:loopback] DIRECT MODE PARENT WITHOUT SM64DS_COMMS_BIND_ANY=1. "
-            "The socket will bind 127.0.0.1 and no child off this machine can "
+            "The socket will bind this machine only and no child off this machine can "
             "reach it. Set SM64DS_COMMS_BIND_ANY=1 to accept a session on "
             "every interface.\n");
     }
