@@ -851,7 +851,11 @@ static void fog_latch() {
     const uint32_t col = *reinterpret_cast<const volatile uint32_t *>(0x04000358u);
     for (int k = 0; k < 3; ++k) {
         const uint32_t c5 = (col >> (5 * k)) & 31u;
-        g_fog.rgb[2 - k] = (float)((c5 << 3) | (c5 >> 2));   /* BGR555 to R, G, B */
+        /* FOG_COLOR is BGR555: bits 0-4 are RED, 5-9 green, 10-14 BLUE (melonDS FogColor, GBATEK). rgb[] is R, G, B
+           and the rasters index it that way. It used to be filled back to front, so every fog drew with red and blue
+           swapped: the castle moat's default underwater fog (0x6000, a deep blue) came out dark red and Jolly Roger
+           Bay / Dire Dire Docks' light blue came out tan (thunderit's "red water", 0.9.3 round 6). Grey fogs hid it. */
+        g_fog.rgb[k] = (float)((c5 << 3) | (c5 >> 2));
     }
     for (int i = 0; i < 32; ++i) {
         const int v = *reinterpret_cast<const volatile uint8_t *>(0x04000360u + i) & 0x7F;
