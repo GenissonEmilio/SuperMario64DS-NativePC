@@ -64,10 +64,10 @@ version they are turned away, and the launcher says why.
 
 3. Press Play adventure online, or make or join a room:
 
-   Play adventure online   An always-on world for up to 16 players. You play
+   Play adventure online   An always-on world for up to 32 players. You play
                            your own game and see the others as see-through
                            figures with their name and stars.
-   Create a VS room        A match for stars. The host picks the arena, how
+   Create a VS room        A match for stars, up to 16 on the new netcode. The host picks the arena, how
                            many play and the mode under Game settings (Play
                            the clock, First to this many stars, King of the
                            Star or Luigi Infection), then presses START
