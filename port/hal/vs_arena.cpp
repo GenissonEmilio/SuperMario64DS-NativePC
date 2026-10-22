@@ -208,6 +208,7 @@ enum : int {
     kStHurt = 7, kStHurtWater = 8,            // state_table.json
     kRecStride = 0x24, kRecKeys = 0x0e,       // per-slot comms record
     kNarrowSlots = 4,                         // the ROM's record copy width
+    kArenaWide = 16,                          // the wide fan-out (comms_fanout_wide.cpp) feeds slots 4..15
     kGraceFrames = 150,                       // 5 s: a seat never heard by
                                               // then has its body held
     kParkUp = 200000 << 12,                   // DROPOUT1's parking spot
@@ -1862,20 +1863,20 @@ bool vs_arena_install_from_env() {
         const char *ps = std::getenv("SM64DS_VS_PLAYERS");
         char *pend = nullptr;
         const long pn = (ps && *ps) ? std::strtol(ps, &pend, 10) : 0;
-        if (ps && *ps && pend != ps && !*pend && pn > kNarrowSlots) {
+        if (ps && *ps && pend != ps && !*pend && pn > kArenaWide) {
             std::fprintf(stderr, "[vsarena] ERROR: SM64DS_VS_PLAYERS=%ld is "
-                         "more than the %d seats phase A of the arena can "
+                         "more than the %d seats the arena can "
                          "drive; arena mode refused, this console plays "
-                         "without it\n", pn, kNarrowSlots);
+                         "without it\n", pn, kArenaWide);
             return false;
         }
         const char *pwhy = "";
         const int ppin = seat_pin_from_env(&pwhy);
-        if (ppin >= kNarrowSlots && ppin < kArenaSeats) {
+        if (ppin >= kArenaWide && ppin < kArenaSeats) {
             std::fprintf(stderr, "[vsarena] ERROR: seat pin %d (%s) is past "
                          "the %d seats phase A of the arena can drive; arena "
                          "mode refused, this console plays without it\n",
-                         ppin, pwhy, kNarrowSlots);
+                         ppin, pwhy, kArenaWide);
             return false;
         }
     }
@@ -1992,7 +1993,11 @@ int vs_arena_my_seat() { return g.installed ? g.seat : -1; }
 
 void vs_arena_route_pads() {
     if (!g.installed || g.seat < 0) return;
-    for (int i = 0; i < kNarrowSlots; ++i)
+    // The ROM's solo copy fills records 0..3 only. A seat of 4..15 gets my
+    // key word from record 0 first (the wide fan-out then feeds PadData[seat]).
+    if (g.seat >= kNarrowSlots && g.seat < kArenaWide)
+        *slot_keys(g.seat) = *slot_keys(0);
+    for (int i = 0; i < kArenaWide; ++i)
         if (i != g.seat) *slot_keys(i) = 0;
 }
 

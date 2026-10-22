@@ -17455,7 +17455,7 @@ int main(void)
                 func_0203bc7c();
             }
             if (!b5_transport)
-                for (int b5_i = 0; b5_i < 4; ++b5_i)
+                for (int b5_i = 0; b5_i < 16; ++b5_i)
                     *(unsigned short *)((char *)data_020a0e5a + b5_i * 4) =
                         *(unsigned short *)((char *)data_020a0e58 + b5_i * 4 + 2);
             /* the menu compose layer's pad step (hal/sub_screen.cpp's banner
