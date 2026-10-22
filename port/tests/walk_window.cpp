@@ -17820,8 +17820,7 @@ int main(void)
                     if (rl_at == -2) { const char *e = getenv("SM64DS_RELAUNCH_AT"); rl_at = e ? atoi(e) : -1; }
                     if (rl_at >= 0 && frame == rl_at && !g_selftest_frames && !srst_answered) {
                         srst_answered = 1;
-                        fprintf(stderr, "[loopin2] f%d SM64DS_RELAUNCH_AT: restarting at the front door
-", frame);
+                        fprintf(stderr, "[loopin2] f%d SM64DS_RELAUNCH_AT: restarting at the front door\n", frame);
                         if (port_menu_relaunch(-1, -1)) W.PostQuitMessage_(0);
                     }
                 }
