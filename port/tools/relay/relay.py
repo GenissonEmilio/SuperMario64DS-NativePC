@@ -105,6 +105,8 @@ Python 3 standard library only. No dependencies, no state on disk.
 """
 
 import asyncio
+import hashlib
+import hmac
 import importlib.util
 import os
 import socket
@@ -595,6 +597,162 @@ def rss_kb():
 # ------------------------------------------------------------------ tables
 
 
+
+# ---- HOST EVENTS (prototype, lane EVENTS1) ---------------------------------
+#
+# An event is something the host puts on every player's screen in the always
+# online world: a message, a music track, or a timed modifier. Each console
+# applies it to its own game; the relay only carries the event and its clock.
+#
+# THE ONLY WAY IN is a signed command on a private UDP socket bound to the
+# loopback address (SM64DS_EVENT_CMD_PORT; the lobby's admin endpoint is what
+# talks to it). The command is signed with SM64DS_EVENT_KEY, an HMAC-SHA256
+# over the whole text, and carries a millisecond stamp that must be newer than
+# the last accepted command and within EVENT_SKEW_S of this box's clock, so a
+# captured command cannot be replayed. With no key set the socket is never
+# opened and the feature does not exist. A player's datagram can never start
+# one: the data port's kind table has no SYNZ row, so a member's 'SYNZ' is an
+# unknown tag and is dropped like any other.
+#
+# THE WIRE TO THE GAME ('SYNZ', 96 bytes, relay to members of world hubs only,
+# byte 5 = 0xFD so a console can tell it from a seat):
+#   0 tag 'SYNZ' | 4 version 1 | 5 0xFD | 6 type | 7 0
+#   8 event id u32 | 12 remaining ms u32 | 16 total ms u32
+#   20 arg u16 | 22 text_len u8 | 23 0 | 24 text, 72 bytes, zero padded
+# type 1 message, 2 music (arg = a sublevel whose course song to play),
+# 3 modifier (arg 1 triple speed, 2 one hit, 3 chaos, 4 race to 50 stars),
+# 4 clear (stop everything now).
+# The relay re-sends every live event once a second with its REMAINING time,
+# so loss costs nothing, a late joiner picks up what is still running, and the
+# clock every console follows is this one.
+EVENT_TAG = b"SYNZ"
+EVENT_LEN = 96
+EVENT_SEAT = 0xFD
+EVENT_TEXT_MAX = 70
+EVENT_MAX_LIVE = 8
+EVENT_MAX_SECS = 3600
+EVENT_SKEW_S = 120
+EV_MESSAGE, EV_MUSIC, EV_MODIFIER, EV_CLEAR = 1, 2, 3, 4
+
+
+def event_sign(key, body):
+    return hmac.new(key, body.encode("ascii"), hashlib.sha256).hexdigest()[:32]
+
+
+def event_parse(key, raw, last_ts, now_wall):
+    """One command datagram -> (event dict | None, reason). Pure, so the unit
+    tests drive it without a socket."""
+    try:
+        text = raw.decode("ascii")
+    except UnicodeDecodeError:
+        return None, "ascii"
+    if len(text) > 400 or "|" not in text:
+        return None, "shape"
+    body, _, sig = text.rpartition("|")
+    if not hmac.compare_digest(event_sign(key, body), sig):
+        return None, "signature"
+    parts = body.split(" ")
+    if len(parts) != 6 or parts[0] != "EVT1":
+        return None, "shape"
+    try:
+        ts = int(parts[1])
+        etype = int(parts[2])
+        arg = int(parts[3])
+        secs = int(parts[4])
+        msg = bytes.fromhex(parts[5]).decode("ascii") if parts[5] != "-" else ""
+    except (ValueError, UnicodeDecodeError):
+        return None, "field"
+    if ts <= last_ts:
+        return None, "replay"
+    if abs(ts / 1000.0 - now_wall) > EVENT_SKEW_S:
+        return None, "skew"
+    if etype not in (EV_MESSAGE, EV_MUSIC, EV_MODIFIER, EV_CLEAR):
+        return None, "type"
+    if not 0 <= arg <= 255 or not 0 <= secs <= EVENT_MAX_SECS:
+        return None, "range"
+    if len(msg) > EVENT_TEXT_MAX or any(not 32 <= ord(c) < 127 for c in msg):
+        return None, "text"
+    if etype == EV_MODIFIER and not 1 <= arg <= 4:
+        return None, "range"
+    if etype == EV_MESSAGE and not msg:
+        return None, "text"
+    return {"ts": ts, "type": etype, "arg": arg, "secs": secs, "text": msg}, "ok"
+
+
+def event_pack(eid, etype, arg, text, remain_ms, total_ms):
+    raw = text.encode("ascii")
+    out = bytearray(EVENT_LEN)
+    out[0:4] = EVENT_TAG
+    out[4] = 1
+    out[5] = EVENT_SEAT
+    out[6] = etype
+    out[8:12] = (eid & 0xFFFFFFFF).to_bytes(4, "little")
+    out[12:16] = max(0, int(remain_ms)).to_bytes(4, "little")
+    out[16:20] = max(0, int(total_ms)).to_bytes(4, "little")
+    out[20:22] = arg.to_bytes(2, "little")
+    out[22] = len(raw)
+    out[24:24 + len(raw)] = raw
+    return bytes(out)
+
+
+class EventBoard(object):
+    """What is live. `now` is always the caller's monotonic seconds."""
+
+    def __init__(self):
+        self.live = []          # dicts: id type arg text start total
+        self.next_id = 1
+        self.clear_until = 0.0
+        self.clear_id = 0
+
+    def add(self, ev, now):
+        if ev["type"] == EV_CLEAR:
+            self.live = []
+            self.clear_id = self.next_id
+            self.next_id += 1
+            self.clear_until = now + 4.0
+            return self.clear_id
+        total = ev["secs"] if ev["secs"] else (8 if ev["type"] == EV_MESSAGE else 60)
+        rec = {"id": self.next_id, "type": ev["type"], "arg": ev["arg"],
+               "text": ev["text"], "start": now, "total": float(total)}
+        self.next_id += 1
+        if ev["type"] == EV_MODIFIER:
+            # one running copy of a modifier kind: a new one replaces it
+            self.live = [r for r in self.live
+                         if not (r["type"] == EV_MODIFIER and r["arg"] == rec["arg"])]
+        if ev["type"] == EV_MUSIC:
+            self.live = [r for r in self.live if r["type"] != EV_MUSIC]
+        self.live.append(rec)
+        if len(self.live) > EVENT_MAX_LIVE:
+            self.live = self.live[-EVENT_MAX_LIVE:]
+        return rec["id"]
+
+    def sweep(self, now):
+        self.live = [r for r in self.live if now - r["start"] < r["total"]]
+
+    def datagrams(self, now):
+        self.sweep(now)
+        out = []
+        if now < self.clear_until:
+            out.append(event_pack(self.clear_id, EV_CLEAR, 0, "", 0, 0))
+        for r in self.live:
+            remain = (r["total"] - (now - r["start"])) * 1000
+            out.append(event_pack(r["id"], r["type"], r["arg"], r["text"],
+                                  remain, r["total"] * 1000))
+        return out
+
+
+class EventCmdProtocol(asyncio.DatagramProtocol):
+    """The private command socket (loopback only)."""
+
+    def __init__(self, relay):
+        self.relay = relay
+
+    def datagram_received(self, data, addr):
+        if addr[0] not in ("127.0.0.1", "::1"):
+            return
+        self.relay.event_command(data, addr)
+
+
 class Endpoint(object):
     # version / seat / caps are version 2 only; a version 1 endpoint keeps
     # version 1, seat None and no caps, and nothing on its path reads them.
@@ -747,6 +905,54 @@ class RelayProtocol(asyncio.DatagramProtocol):
         self.akstats = dict((tag, [0, 0, 0]) for tag in ARENA_ORDER)
         self.a_drop = dict((r, 0) for r in ARENA_DROPS)
         self.n_ref_tx = 0
+        # host events (lane EVENTS1)
+        self.event_key = None
+        self.board = EventBoard()
+        self.event_last_ts = 0
+        self.n_event_cmd = 0
+        self.n_event_bad = {}
+        self.n_event_tx = 0
+
+    # ---- host events
+
+    def event_command(self, raw, addr, now=None, wall=None):
+        """A datagram on the private command socket. Returns the reason."""
+        if self.event_key is None:
+            return "off"
+        now = time.monotonic() if now is None else now
+        wall = time.time() if wall is None else wall
+        ev, why = event_parse(self.event_key, raw, self.event_last_ts, wall)
+        if ev is None:
+            self.n_event_bad[why] = self.n_event_bad.get(why, 0) + 1
+            log("event: refused a command (%s)" % why)
+            return why
+        self.event_last_ts = ev["ts"]
+        eid = self.board.add(ev, now)
+        self.n_event_cmd += 1
+        log("event: id %d type %d arg %d secs %d%s"
+            % (eid, ev["type"], ev["arg"], ev["secs"],
+               (" text %r" % ev["text"]) if ev["text"] else ""))
+        self.event_broadcast(now)
+        return "ok"
+
+    def event_broadcast(self, now):
+        """Send every live event to every member of every world hub."""
+        dgs = self.board.datagrams(now)
+        if not dgs:
+            return 0
+        sent = 0
+        for session in list(self.sessions.values()):
+            if session.version != PROTO_V2 or session.kind != KIND_HUB:
+                continue
+            for addr in list(session.seats.values()):
+                for dg in dgs:
+                    try:
+                        self.transport.sendto(dg, addr)
+                    except Exception:
+                        continue
+                    sent += 1
+        self.n_event_tx += sent
+        return sent
 
     # ---- asyncio hooks
 
@@ -1633,7 +1839,32 @@ async def run():
     log("party: roles 4 (party) and 5 (coop), seats=%d kinds=%s"
         % (PARTY_SEATS, ",".join(t.decode("ascii") for t in PARTY_ORDER)))
 
+    # host events (lane EVENTS1): off unless a key is set
+    ev_key = os.environ.get("SM64DS_EVENT_KEY", "")
+    ev_port = clamp_int(os.environ.get("SM64DS_EVENT_CMD_PORT", ""), 0, 0, 65535)
+    ev_transport = None
+    if ev_key and len(ev_key) >= 16 and ev_port:
+        protocol.event_key = ev_key.encode("ascii", "replace")
+        ev_transport, _ = await loop.create_datagram_endpoint(
+            lambda: EventCmdProtocol(protocol), local_addr=("127.0.0.1", ev_port))
+        log("events: ON, command socket 127.0.0.1:%d (signed commands only)"
+            % ev_port)
+    else:
+        log("events: OFF (SM64DS_EVENT_KEY of 16+ characters and "
+            "SM64DS_EVENT_CMD_PORT both needed)")
+
     stop = asyncio.Event()
+
+    async def event_clock():
+        while not stop.is_set():
+            await asyncio.sleep(1.0)
+            if protocol.event_key is not None:
+                try:
+                    protocol.event_broadcast(time.monotonic())
+                except Exception as exc:
+                    log("event tick error: %s: %s" % (type(exc).__name__, exc))
+
+    event_task = loop.create_task(event_clock())
 
     async def referee_clock():
         # Only arena sessions do anything here; without one a tick is a
@@ -1671,6 +1902,9 @@ async def run():
                 log(protocol.stats_line())
     finally:
         clock_task.cancel()
+        event_task.cancel()
+        if ev_transport is not None:
+            ev_transport.close()
         log(protocol.stats_line())
         log("relay stopping")
         transport.close()

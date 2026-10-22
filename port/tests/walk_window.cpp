@@ -646,6 +646,7 @@ int port_coop_boot_frame(void);
 /* run mp1 lane COOPWORLD1: the coop world core (hal/coop_world.cpp). */
 void port_coop_world_frame(void);
 void port_star_popup_frame(void);
+void port_event_frame(void);   /* run hunt8 lane EVENTS1 (hal/event_client.cpp) */
 int port_star_popup_stop_now(void);   /* run mp1 lane STARPOP1 (hal/star_popup.cpp) */
 /* PARTY: per-slot party-member predicate (hal/comms_sync.cpp). */
 extern "C" int port_party_member(int slot);
@@ -4225,6 +4226,7 @@ static void chat_draw(const OvlSurface &fb)
 #include "hal/net_hud.h"
 #include "hal/player_list_paint.h"   /* run mp1 PLIST1: party / coop player list */
 #include "hal/star_popup_paint.h"   /* run mp1 lane STARPOP1 */
+#include "hal/event_paint.h"   /* run hunt8 lane EVENTS1 */
 #include "hal/world_party_paint.h"   /* run mp1 lane PINVITE1: parties inside the world */
 
 /* the per-phase clock. One QueryPerformanceCounter pair per phase and a
@@ -5365,6 +5367,7 @@ static void chat_host_frame(const OvlSurface &surf, int frame)
     if (!rb_skip_render()) chat_draw(surf);
     if (!rb_skip_render()) net_hud_draw(surf);
     if (!rb_skip_render()) star_popup_draw(surf);
+    if (!rb_skip_render()) event_draw(surf);   /* hook: EVENTS1 */
     if (!rb_skip_render()) world_party_draw(surf);   /* hook: PINVITE1, inert outside a world room */
 }
 
@@ -19921,6 +19924,7 @@ int main(void)
             port_party_stars_frame();
             port_party_hits_frame();   /* hook: PLAYINT1, inert outside party / coop rooms */
             port_star_popup_frame();   /* hook: STARPOP1, inert outside party / coop rooms */
+            port_event_frame();        /* hook: EVENTS1, inert outside a live world hub */
         }
         /* PARTY: the render boundary (a party body solid+colliding vs a
            non-party ghost translucent+pass-through) and party-body liveness.

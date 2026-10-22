@@ -11987,6 +11987,9 @@ list(APPEND SLICE_COMMS_SOURCES hal/party_hits.cpp)
 # Run mp1 lane STARPOP1: star / key popup and the shared exit (party + coop). INERT
 # outside party / coop rooms; see hal/star_popup.h.
 list(APPEND SLICE_COMMS_SOURCES hal/star_popup.cpp)
+# HOST EVENTS (run hunt8, lane EVENTS1, prototype): a message, a song or a timed modifier from the host, applied by
+# each console to its own game; see hal/event_client.h. Inert unless a world hub is live; SM64DS_EVENTS=0 turns it off.
+list(APPEND SLICE_COMMS_SOURCES hal/event_client.cpp)
 # Run mp1 lane SMALLS9: the other players on the minimap (coop_minimap) and each player's own star
 # tally over their head (star_tally). INERT outside party / coop / world rooms.
 list(APPEND SLICE_COMMS_SOURCES hal/coop_minimap.cpp hal/star_tally.cpp)
