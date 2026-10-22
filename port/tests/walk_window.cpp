@@ -6399,6 +6399,7 @@ static const char *const PORT_RELAUNCH_CLEAR[] = {
        destinations, which are the ones it was written about. */
     "SM64DS_COMMS_ROLE",    "SM64DS_COMMS_PORT",
     "SM64DS_COMMS_SLOT",    "SM64DS_COMMS_INJECT",
+    "SM64DS_RELAUNCH_AT",   /* REGRESS093: the handoff proof row; an inherited one would restart the child at the same frame, forever */
 };
 
 /* ONE RELAUNCH, TWO DESTINATIONS. `scene_id >= 0` starts the child on the
@@ -17814,6 +17815,16 @@ int main(void)
                                  *(unsigned short *)((char *)data_020a0e58 +
                                      ((unsigned)data_020a0e40[0] << 2)));
                 static int srst_answered;
+                {   /* REGRESS093: SM64DS_RELAUNCH_AT=<frame> restarts at the front door on that frame, the proof row for the window handoff (cleared on every relaunch) */
+                    static int rl_at = -2;
+                    if (rl_at == -2) { const char *e = getenv("SM64DS_RELAUNCH_AT"); rl_at = e ? atoi(e) : -1; }
+                    if (rl_at >= 0 && frame == rl_at && !g_selftest_frames && !srst_answered) {
+                        srst_answered = 1;
+                        fprintf(stderr, "[loopin2] f%d SM64DS_RELAUNCH_AT: restarting at the front door
+", frame);
+                        if (port_menu_relaunch(-1, -1)) W.PostQuitMessage_(0);
+                    }
+                }
                 if (srst_up && data_0209f1e0[0] && !srst_answered &&
                     !rb_replaying()) {
                     srst_answered = 1;
