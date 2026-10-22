@@ -133,10 +133,11 @@ bool enabled() {
 bool logging() {
     if (g_log < 0) {
         const char *e = std::getenv("SM64DS_EVENT_LOG");
-        g_log = (e && *e && *e != '0') ? 1 : 0;
+        g_log = (e && *e && *e != '0') ? ((*e == '2') ? 2 : 1) : 0;
     }
-    return g_log == 1;
+    return g_log >= 1;
 }
+unsigned log_every() { return g_log == 2 ? 5u : 30u; }
 
 char *my_body() {
     const int me = (int)data_0209f250;
@@ -482,10 +483,30 @@ extern "C" void port_event_frame(void) {
     if (in_level) {
         const int hp = (int)(signed char)(data_02092144[data_0209f250 & 15] >> 8);
 
-        if (logging() && dt > 0 && (ticks - g_log_tick) >= 30u) {
+        if (logging() && dt > 0 && (ticks - g_log_tick) >= log_every()) {
             g_log_tick = ticks;
             std::fprintf(stderr, "[event] me tick=%u pos=(%d,%d,%d) hspeed=%d hp=%d\n", ticks, rd32(b, 0x5c), rd32(b, 0x60),
                          rd32(b, 0x64), rd32(b, 0x98), hp);
+        }
+
+        // proof knob: SM64DS_EVENT_TESTHURT=<tick>[,<tick>...] hurts the local body by one wedge at those game ticks (a control for
+        // one hit mode: without the modifier health goes 8 -> 7, with it the console dies)
+        {
+            static unsigned th[4]; static int nth = -1, thi = 0;
+            if (nth < 0) {
+                nth = 0;
+                if (const char *e = std::getenv("SM64DS_EVENT_TESTHURT")) {
+                    char buf[128]; std::strncpy(buf, e, sizeof buf - 1); buf[sizeof buf - 1] = 0;
+                    for (char *t = std::strtok(buf, ","); t && nth < 4; t = std::strtok(nullptr, ",")) th[nth++] = (unsigned)std::atoi(t);
+                }
+            }
+            if (dt > 0 && thi < nth && ticks >= th[thi]) {
+                ++thi;
+                int pos[3] = { rd32(b, 0x5c), rd32(b, 0x60) + 0x1000, rd32(b, 0x64) };
+                const int r = _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(b, pos, 1u, 0x8000, 1, 0, 1);
+                std::fprintf(stderr, "[event] TESTHURT at tick %u: Hurt returned %d, hp %d -> %d\n", ticks, r, hp,
+                             (int)(signed char)(data_02092144[data_0209f250 & 15] >> 8));
+            }
         }
 
         // one hit: any drop in health is the end of it

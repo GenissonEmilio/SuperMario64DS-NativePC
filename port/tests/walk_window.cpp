@@ -12462,7 +12462,7 @@ static void stack_capture(const uint32_t *img)
     {   /* EVENTS1 (proof runs): SM64DS_STACK_BMP_ON=<prefix>|<flagfile>: while the flag file exists, the presented image on every 20th frame as
            <prefix>_<frame>.bmp. The harness decides WHEN by creating and deleting the file, so a picture can be taken at the moment an event
            is on screen without knowing the frame number in advance. */
-        static int fl = -2;
+        static int fl = -2, fstep = 20;
         static char fpre[480], fflag[480];
         if (fl == -2) {
             fl = 0;
@@ -12471,10 +12471,12 @@ static void stack_capture(const uint32_t *img)
                 if (bar && (size_t)(bar - e) < sizeof fpre && strlen(bar + 1) < sizeof fflag) {
                     memcpy(fpre, e, (size_t)(bar - e)); fpre[bar - e] = 0;
                     strcpy(fflag, bar + 1); fl = 1;
+                    char *b2 = strchr(fflag, '|');       // optional |<step>
+                    if (b2) { *b2 = 0; fstep = atoi(b2 + 1); if (fstep < 1) fstep = 20; }
                 }
             }
         }
-        if (fl == 1 && img && (f % 20) == 0 && GetFileAttributesA(fflag) != INVALID_FILE_ATTRIBUTES) {
+        if (fl == 1 && img && (f % (unsigned long)fstep) == 0 && GetFileAttributesA(fflag) != INVALID_FILE_ATTRIBUTES) {
             int w = 0, h = 0;
             hal_sub_screen_stacked_size(&w, &h);
             char nm[512];
