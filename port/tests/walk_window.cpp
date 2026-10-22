@@ -4766,11 +4766,17 @@ static int cam93_ds_owned_off(void) { return getenv("SM64DS_CAM93_RIG_ALWAYS") ?
 static int g_ds_extra_turn;
 static void *g_ds_cam;
 static int g_cl_applied;   /* CAMLOCK2: the correction the last call really rotated onto the eye (0 when none) */
+static int g_cl_eye[3], g_cl_eye_ok;   /* CAMTAGS C1: the eye as the camera's tick will read it (after our correction), to tell the ROM's step from the player walking away */
 static void ds_apply_extra_turn(void *cam)
 {
     const int d = g_ds_extra_turn;
     g_ds_extra_turn = 0;
     g_cl_applied = 0;
+    g_cl_eye_ok = 0;
+    if (cam && !d) {
+        const int *e0 = (const int *)((char *)cam + 0x8c);
+        g_cl_eye[0] = e0[0]; g_cl_eye[1] = e0[1]; g_cl_eye[2] = e0[2]; g_cl_eye_ok = 1;
+    }
     if (!d || !cam) return;
     int *pv = (int *)((char *)cam + 0x80), *eye = (int *)((char *)cam + 0x8c);
     const double dx = (double)eye[0] - pv[0], dz = (double)eye[2] - pv[2];
@@ -4782,6 +4788,7 @@ static void ds_apply_extra_turn(void *cam)
     eye[2] = pv[2] + (int)floor(r * cos(a0) + 0.5);
     if (getenv("SM64DS_CAMVOICE_TRACE")) fprintf(stderr, "%d,%d\n", eye[0], eye[2]);
     g_cl_applied = d;
+    g_cl_eye[0] = eye[0]; g_cl_eye[1] = eye[1]; g_cl_eye[2] = eye[2]; g_cl_eye_ok = 1;
 }
 static int g_cam93_mouse_owned;            /* the mouse is steering the camera: no auto-recenter until the stick or keys take it back */
 static int g_cam93_scale = 4096;           /* eased fraction of the eye distance the collision allows */
@@ -17248,6 +17255,23 @@ int main(void)
                             const int dl = (((h_now - h_prev) & 0xffff) ^ 0x8000) - 0x8000;
                             const int err = dl - g_cl_applied - dir * 0x400;
                             cl_pure = (err < 0 ? -err : err) <= 64;
+                            /* CAMTAGS C1 (field 093G, Thunder): WHILE MOVING the pivot walks away from the eye, so the heading
+                               (eye - pivot) changes by more than the ROM's step and the test above said "not the ROM's plain step":
+                               the correction was withheld and the camera turned the full 0x400 on a slight tilt. The step is
+                               judged again from the eye the tick began with (ours, after the correction) seen from the pivot the
+                               tick ended with: that takes the player's own movement out. The go-behind approach and the presets
+                               move the heading by far more than 64 against this basis too, so they stay excluded. */
+                            int err2 = 0x7fff;
+                            if (g_cl_eye_ok) {
+                                const int *pv = (const int *)((char *)cam + 0x80);
+                                const int hb = (int)floor(atan2((double)g_cl_eye[0] - pv[0], (double)g_cl_eye[2] - pv[2]) * (65536.0 / 6.28318530717958647692) + 0.5) & 0xffff;
+                                const int d2 = (((h_now - hb) & 0xffff) ^ 0x8000) - 0x8000;
+                                const int e2 = d2 - dir * 0x400;
+                                err2 = e2 < 0 ? -e2 : e2;
+                                if (err2 <= 64) cl_pure = 1;
+                            }
+                            if (getenv("SM64DS_CAMLOCK_TRACE")) fprintf(stderr, "[camlock] f%d err %d err_pivot %d
+", frame, err, err2);
                         }
                         h_prev = h_now; pd_prev = dir;
                     }
