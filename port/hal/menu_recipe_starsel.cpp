@@ -309,7 +309,7 @@ void build_gameover(int, MenuLayout *L)
         const long long UN = L->unum, UD = L->uden;
         int iw = 1, ih = 1;
         menu_hostimg_size(MENU_IMG_GO_CLICK, &iw, &ih);
-        const int dh = (int)(12 * UN / UD), dw = (int)((long long)dh * iw / ih);
+        const int dh = (int)(11 * UN / UD), dw = (int)((long long)dh * iw / ih);
         MenuPiece tx = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         tx.bg = 1; tx.hostimg = MENU_IMG_GO_CLICK; tx.lden = 1; tx.lnum = 1; tx.fw = (short)dw; tx.fh = (short)dh;
         tx.fx = (short)(L->w / 2 - dw / 2); tx.fy = (short)(179 * UN / UD);
