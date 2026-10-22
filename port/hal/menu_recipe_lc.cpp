@@ -173,6 +173,7 @@ const int kLcDimTicks = 12;                 /* the same number as lc_dim_ease's 
 int g_dim_clock = -1;                       /* the frame clock when state 3 was first seen; -1 = not seen on this screen */
 int g_dim_state;                            /* the state word last time up_* ran */
 
+int dim_progress(void);
 void dim_track(void)
 {
     const int st = (data_0209f20c != 0) ? (int)data_0209f2d4 : 0;

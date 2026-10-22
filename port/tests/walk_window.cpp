@@ -607,6 +607,7 @@ int hal_player_behavior(void *p);
 int hal_player_process(void *p);   /* gate 15: BeforeBehavior/Behavior/After */
 void sdat_host_tick(void);         /* hosted ARM7: hal/sdat/ */
 void hal_render_player_world(void *p);
+extern "C" int hal_actor_off_native_view(void *actor);   /* hal/camera_bridges.cpp */
 /* ADVENTURE GHOSTS: the per-frame no-collision hold over remote slots
    (hal/player_bridges.cpp). No-op unless adventure-ghost mode is on. */
 void port_adventure_ghost_hold(void);
@@ -21476,9 +21477,22 @@ int main(void)
             if (void *other = data_0209f394[pi])
                 hal_render_player_world(other);
         }
-        if (!rb_skip_render())
-            hal_render_player_world(player);
-        else
+        if (!rb_skip_render()) {
+            /* SHELF1 (S3): the opening's controlled character waits at its start mark with the ROM's cull-off-screen flag (0x2) up, and
+               the DS tests it against the 4:3 planes so nobody sees it there. The 16:9 view reaches that mark (a bind-pose Wario /
+               Luigi at the cliff under the bridge). Same test the cast bodies get (level_boot.cpp ps_render); a body that is on the 4:3
+               screen, and every body in play, draws as before. SM64DS_PLAYER_NATIVE=0 is the control. */
+            static int pn = -1;
+            if (pn < 0) { const char *e = getenv("SM64DS_PLAYER_NATIVE"); pn = (e && e[0] == '0' && !e[1]) ? 0 : 1; }
+            const char *pc = (const char *)player;
+            const bool off4x3 = pn && (*(const unsigned *)(pc + 0xb0) & 2) && hal_actor_off_native_view(player);
+            static int ptr = -1;
+            if (ptr < 0) { const char *e = getenv("SM64DS_PLAYER_NATIVE_LOG"); ptr = e && *e && *e != '0'; }
+            if (ptr) fprintf(stderr, "[plnative] f%d flags %08x off4x3 %d ch %u pos (%d,%d,%d)\n", frame, *(const unsigned *)(pc + 0xb0), (int)off4x3,
+                             *(const unsigned *)(pc + 8) & 0xffu, *(const int *)(pc + 0x5c) >> 12, *(const int *)(pc + 0x60) >> 12, *(const int *)(pc + 0x64) >> 12);
+            if (!off4x3)
+                hal_render_player_world(player);
+        } else
             hal_player_texseq_tick(player);
         /* PHASE 5, THE ROM'S func_02019404 (run linkfull, lane K2RENDER):
            src/func_020197b8.c:48, the graphics block's word 1, after the
