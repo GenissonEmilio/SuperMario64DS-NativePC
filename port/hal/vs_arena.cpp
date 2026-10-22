@@ -1847,6 +1847,8 @@ bool vs_arena_requested() {
     return true;
 }
 
+extern "C" void port_fanout_force_wide(int on);   // hal/comms_fanout_wide.cpp (VS9)
+
 bool vs_arena_install_from_env() {
     static bool tried = false;
     if (tried) return g.installed;
@@ -1902,6 +1904,9 @@ bool vs_arena_install_from_env() {
         std::fprintf(stderr, "[vsarena] SM64DS_VS_PLAYERS is not set; the arena "
                      "boots 4 bodies\n");
     }
+    // VS9: past four bodies the PadData / TouchInfo tails of the wide fan-out
+    // must run, and comms_session_players() is 0 here (no comms session).
+    port_fanout_force_wide(g.bodies > kNarrowSlots ? 1 : 0);
     const char *why = "";
     g.want_seat = seat_pin_from_env(&why);
     // THE VS CARRIER MUST NEVER OPEN IN AN ARENA PROCESS, and main() is not
@@ -1976,10 +1981,6 @@ void vs_arena_seat_world() {
         std::fflush(stdout);
         ::ExitProcess(4);
     }
-    if (seat >= kNarrowSlots)
-        std::fprintf(stderr, "[vsarena] ERROR: seat %d is past the %d seats "
-                     "phase A of the arena can drive (no pad reaches it); this "
-                     "console drives nothing\n", seat, kNarrowSlots);
     if (g.seat >= 0 && g.seat != seat)
         std::fprintf(stderr, "[vsarena] my seat moved %d -> %d at a level "
                      "boot\n", g.seat, seat);
@@ -1995,8 +1996,15 @@ void vs_arena_route_pads() {
     if (!g.installed || g.seat < 0) return;
     // The ROM's solo copy fills records 0..3 only. A seat of 4..15 gets my
     // key word from record 0 first (the wide fan-out then feeds PadData[seat]).
+    // VS9: the WHOLE record, not only the key word. The ROM's solo copy
+    // (func_0203e0ac) fills records 0..3 with the local record: key word,
+    // touch, and the camera heading GetAngleToCamera(seat) reads at +0x10 (the
+    // direction the stick is turned by). Records 4..15 were zero, so a body
+    // past seat 3 walked relative to heading 0, not to its camera (the
+    // "inverted" movement of the open test).
     if (g.seat >= kNarrowSlots && g.seat < kArenaWide)
-        *slot_keys(g.seat) = *slot_keys(0);
+        std::memcpy(data_020a1154 + g.seat * kRecStride, data_020a1154,
+                    kRecStride);
     for (int i = 0; i < kArenaWide; ++i)
         if (i != g.seat) *slot_keys(i) = 0;
 }
