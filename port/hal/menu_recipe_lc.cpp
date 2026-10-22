@@ -41,6 +41,7 @@ extern unsigned char data_0209f2e0;   /* the chosen plate */
 extern unsigned char data_0209f2b4;   /* how many buttons the menu has */
 extern unsigned char data_0209f22c;   /* LC_Update's own wait */
 extern unsigned char data_0209f244;   /* the chosen plate's blink */
+extern int data_020a0db0[8];          /* the frame clock (hal/fader_wipes.cpp port_frame_clock_tick) */
 void _ZN10dScStage_c17UpdateMenuButtonsEb(int b);
 void func_02012790(int id);
 int GetOwnerLanguage(void);
@@ -162,10 +163,42 @@ int lc_pair(void)
     return data_0209f20c != 0 && data_0209f2d4 >= 1 && data_0209f2d4 <= 3;
 }
 
+
+/* SHELF1 (S4): THE PLATES WAIT FOR THE DIM. LC_Update case 2 writes the dim (BLDY 7) and moves to state 3 in one tick, so on the
+   cartridge the plates and the dim land together. The port eases that dim over kLcDimTicks of the frame clock
+   (hal/fader_wipes.cpp lc_dim_ease, MENUS093B), and the plates used to stand at full strength while the picture was still bright.
+   dim_progress() is 0 until state 3 is first seen, then climbs to 255 over the same number of ticks; up_lc / up_lc2 (called once a
+   frame, before the layout is solved) keep it. 255 whenever the screen is past state 3 or was first seen there. */
+const int kLcDimTicks = 12;                 /* the same number as lc_dim_ease's kLcEaseTicks */
+int g_dim_clock = -1;                       /* the frame clock when state 3 was first seen; -1 = not seen on this screen */
+int g_dim_state;                            /* the state word last time up_* ran */
+
+void dim_track(void)
+{
+    const int st = (data_0209f20c != 0) ? (int)data_0209f2d4 : 0;
+    if (st == 0 || st > 6) { g_dim_clock = -1; g_dim_state = 0; return; }
+    if (st < 3) g_dim_clock = -1;
+    else if (st == 3 && g_dim_state >= 1 && g_dim_state < 3) g_dim_clock = data_020a0db0[0];   /* the tick LC_Update case 2 wrote the dim */
+    g_dim_state = st;
+}
+
+int dim_progress(void)
+{
+    if (data_0209f20c == 0) return 255;     /* no screen (the layout selftest, a warm-up solve): the plates at rest */
+    const int st = (int)data_0209f2d4;
+    if (st > 3 || st == 0) return 255;      /* pressed, saving or closing: the dim is long over */
+    if (st < 3) return 0;                   /* the coin count and the 60 tick wait: the plates do not exist yet */
+    if (g_dim_clock < 0) return 255;        /* first seen late (a loaded state): never hold the plates back */
+    const int dt = data_020a0db0[0] - g_dim_clock;
+    if (dt < 0 || dt >= kLcDimTicks) return 255;
+    return dt * 255 / kLcDimTicks;
+}
+
 int g_cursor_shown;              /* the pad cursor: the first press only shows it */
 
 int up_lc(int scene_id)
 {
+    dim_track();
     if (scene_id == MENU_SCENE_GATED || !lc_pair()) {
         g_cursor_shown = 0;      /* the menu is gone: the next one shows its cursor first */
         return 0;
@@ -191,6 +224,13 @@ void build_lc(int variant, MenuLayout *L)
     MenuPiece c = menu_piece_make(SRC_TOP_HOSTROW, 0, g.cy_src, L->w, g.c_h, MENU_AX_L, MENU_AY_B, 0, 0, 1, 1);
     c.layers = MENU_L_OBJ;
     menu_add_piece(L, c);
+    /* SHELF1 (S4): the plates wait for the end of the port's dim ease (the cartridge dims and shows them in one tick) */
+    if (dim_progress() < 255) {
+        L->hide_owners = MENU_L_BG2;
+        L->backdrop = MENU_BACKDROP_TOP_AS_IS;
+        L->stage = MENU_STAGE_PRE_FADE;
+        return;
+    }
     /* the three plates, BG0 | BG1 of engine B, placed and sampled by the legacy rational */
     MenuPiece p = menu_piece_make(SRC_SUB, 0, kMenuFirstRow, SUB_W, kMenuRows, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
     p.layers = MENU_L_BG0 | MENU_L_BG1;
@@ -288,6 +328,7 @@ int up_lc2(int scene_id)
     /* up through the save itself (LC_Update states 4 and 5) and the closing state 6: the old two-screen top (CLEAR!, the touch
        arrows) must not come back for any of them */
     g_lc2_hold = 0;
+    dim_track();
     if (scene_id != MENU_SCENE_GATED && data_0209f20c != 0 && data_0209f2d4 >= 1 && data_0209f2d4 <= 6) {
         const int lvl = SublevelToLevel(data_02092124);
         /* levels 0xf..0x14 (the Bowser arenas and the three key courses, Goomboss Battle among them): LC_Render also draws the
@@ -353,6 +394,8 @@ void lc2_facts(MenuFacts *f)
     f->spare[1] = ++g_lc2_frame;
     f->spare[3] = g_lc2_hold;          /* the held last frame after the screen flag fell: text and total only */
     f->spare[2] = data_0209f2d4;       /* the ROM's state word: the plates exist from state 2 on (case 1 is the coin count) */
+    f->spare[4] = data_0209f22c;       /* SHELF1 (S1): LC_Update's own wait; after a press (states 4 and 6) it is the plate's pressed hold */
+    f->spare[5] = dim_progress();      /* SHELF1 (S4): 0..255, the port's dim ease; the plates fade in with it */
 }
 
 void build_lc2(int variant, MenuLayout *L)
@@ -369,7 +412,13 @@ void build_lc2(int variant, MenuLayout *L)
     const int sel = (L->facts.spare[0] >= 0 && L->facts.spare[0] <= 2) ? L->facts.spare[0] : 0;
     const int state = L->facts.spare[2];         /* the ROM's LC_Update state; 0 = unknown, as in the selftest */
     const bool saving = state == 5;              /* the save runs: the ROM's status box instead of the plates (state 4, 9 frames after the press, still has the plates) */
-    const bool show = state != 1 && state != 6 && !saving && !L->facts.spare[3];   /* state 1 counts the coins and 6 closes: text and total only, no plates */
+    /* state 1 counts the coins and 6 closes: text and total only, no plates. SHELF1 (S1): state 6 right after a press on Continue still
+       holds the plate for the ROM's 8 tick wait (data_0209f22c), pressed; the save that ends in 6 has no wait left, so no plates then.
+       SHELF1 (S4): nothing before the dim has started (spare[5] 0 is state 2, whose plates the ROM has not enabled yet) */
+    const int wait = L->facts.spare[4];
+    const int dimp = L->facts.spare[5];
+    const bool show = state != 1 && (state != 6 || wait != 0) && !saving && !L->facts.spare[3] && dimp > 0;
+    const bool pressed = wait != 0 && (state == 4 || state == 6);
     const bool planks = show && art;
 
     /* the source bands, DS rows */
@@ -436,12 +485,13 @@ void build_lc2(int variant, MenuLayout *L)
             pl.fx = (short)((W - pw) / 2);
             pl.fy = (short)(py0 + k * (ph + pgap));
             hs_top[k] = pl.fy;
-            if (k == sel) pl.hl = 1;
+            if (k == sel) pl.hl = (uint8_t)(1 | (pressed ? 2 : 0));      /* S1: sunk and darker while the ROM's press wait runs, like the title plates */
+            if (dimp < 255) pl.alpha = (uint8_t)(dimp < 1 ? 1 : dimp);   /* S4: fades in with the dim */
             const int ip = menu_add_piece(L, pl);
             menu_add_hotspot(L, ip, 8, kMenuFirstRow + k * kPlatePitch, 240, 0x20, k);
         }
-    } else {
-        /* the ROM's own plates at 1/2, host-fixed like lc's: dest pixel -> source = floor(pixel * 2 uden / unum) */
+    } else if (dimp >= 255) {
+        /* the ROM's own plates at 1/2, host-fixed like lc's (S4: no fade for these, they wait for the end of the dim): dest pixel -> source = floor(pixel * 2 uden / unum) */
         MenuPiece p = menu_piece_make(SRC_SUB, 0, kMenuFirstRow, SUB_W, kMenuRows, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         p.layers = MENU_L_BG0 | MENU_L_BG1;
         p.key_backdrop = 1;
@@ -455,7 +505,7 @@ void build_lc2(int variant, MenuLayout *L)
             hs_top[b] = py0 + (b * kPlatePitch) * fbh / kMenuRows;
         }
     }
-    if (arrow && show) {
+    if (arrow && show && (planks || dimp >= 255)) {
         static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
         const int bob2 = kBob[L->facts.spare[1] & 7];
         int iw = 1, ih = 1;
@@ -463,6 +513,7 @@ void build_lc2(int variant, MenuLayout *L)
         const int aw = U(10), ah = (int)((long long)aw * ih / iw);
         MenuPiece ar = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         ar.bg = 1; ar.hostimg = MENU_IMG_ARROW_DOWN; ar.lden = 1; ar.lnum = 1; ar.fw = (short)aw; ar.fh = (short)ah;
+        if (dimp < 255) ar.alpha = (uint8_t)(dimp < 1 ? 1 : dimp);
         ar.fx = (short)(hs_cx - aw / 2);
         ar.fy = (short)(hs_top[sel] + (2 + bob2) * L->unum / (2 * L->uden) - ah);
         menu_add_piece(L, ar);
