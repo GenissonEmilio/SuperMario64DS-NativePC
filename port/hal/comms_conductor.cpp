@@ -1025,6 +1025,31 @@ int hub_body_count() {
     return n;
 }
 
+unsigned hub_game_heap_extra() {
+    /* MPTEST9: the ROM carves a FIXED 0x3b000-byte game heap (Heap::InitializeGameHeap(0x3b000, 0) at
+       0x0201a100) and every Player body is allocated out of it: 1912 bytes each, measured (level 1 and 6,
+       0 to 32 bodies, 7648 bytes per four). Lethal Lava Land (level 28) has 29648 free offline, Bob-omb
+       Battlefield 67592; 32 bodies there ran out (Crash() in LoadStandardObjects, 24 bodies an access
+       violation). HUB32 raised the OS arena to 32 MB but that only grows the ROOT heap the game heap is carved
+       from. So the online world hub (the hub installed, not the arena, not a party or coop room) gets 4096
+       bytes per body slot on top: 128 KB at 32. Offline, VS and the small rooms get 0, byte for byte as before.
+       SM64DS_HUB_HEAP_EXTRA=<bytes> overrides (0 = the old fixed heap). Asked at the carve, before any
+       room code has run, so it reads the same env the body count does. */
+    if (!comms_hub_active() || comms_hub_arena()) return 0;
+    if (const char *e = std::getenv("SM64DS_HUB_HEAP_EXTRA")) {
+        const long v = std::atol(e);
+        return (v > 0 && v <= 0x800000) ? (unsigned)v : 0u;
+    }
+    const char *rk = std::getenv("SM64DS_ROOM_KIND");
+    if (rk && (!std::strcmp(rk, "party") || !std::strcmp(rk, "coop"))) return 0;
+    int bodies = (int)kPortBodySlots;
+    if (const char *b = std::getenv("SM64DS_HUB_BODIES")) {
+        const int v = std::atoi(b);
+        if (v >= 1 && v <= (int)kPortBodySlots) bodies = v;
+    }
+    return (unsigned)bodies * 4096u;
+}
+
 int vs_player_count() {
     if (const char *s = std::getenv("SM64DS_VS_PLAYERS")) {
         const int v = std::atoi(s);

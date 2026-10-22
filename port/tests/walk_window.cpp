@@ -14838,7 +14838,8 @@ int main(void)
        record and the debug name. hal/boot_os.cpp lists the arms it skips. */
     pt_milestone("level boot begins");
     port_boot_rom_game_init_head();
-    _ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_(0x3b000, 0);
+    const unsigned game_heap_bytes = 0x3b000u + port::hub_game_heap_extra();   /* MPTEST9: 0 unless the online world hub */
+    _ZN5mHeap6Heap_t18InitializeGameHeapEjPS0_(game_heap_bytes, 0);
     if (!data_020a0eac_c) {
         /* Heap::Allocate Crash()es on a failed carve when the parent's flag
            word has 0x4000 set, which Heap::Heap sets, so a null here means
@@ -14852,7 +14853,7 @@ int main(void)
        not just for the DS: the free space in the game heap right after the
        carve, and again at the end of a selftest. The DS budget is the budget. */
     fprintf(stderr, "[heap] game heap %p, 0x%x bytes, %u free after boot\n",
-            data_020a0eac_c, 0x3b000u,
+            data_020a0eac_c, game_heap_bytes,
             _ZN22ExpandingHeapAllocator10MemoryLeftEv(
                 *(void **)((char *)data_020a0eac_c + 0x14)));
     /* AND THE ROOT HEAP, the parent the game heap was just carved out of and

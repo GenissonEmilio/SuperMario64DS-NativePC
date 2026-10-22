@@ -604,6 +604,9 @@ bool comms_inject_touch(int *down, int *x, int *y);
 // seats data_0209f21c from it. SM64DS_VS_PLAYERS overrides, for proofs.
 int vs_player_count();
 int hub_body_count();   // GHOSTBODIES1: bodies seated on the adventure hub
+// MPTEST9: extra bytes the ROM's fixed 0x3b000 game heap needs on the online world hub (each extra body costs
+// about 1.9 KB of it and Lethal Lava Land has 29 KB to spare alone). 0 offline, in VS and in party / coop rooms.
+unsigned hub_game_heap_extra();
 
 // SM64DS_VS_PROBE=1: one stderr line per frame per player slot, read out of
 // data_0209f394 (the per-slot Player pointers), each actor's mPlayerNo, its
