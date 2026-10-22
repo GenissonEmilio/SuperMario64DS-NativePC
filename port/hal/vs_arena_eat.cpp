@@ -447,15 +447,13 @@ void v_enter(int eater, const RefEvent &ev) {
     // my own victim's release is e_monitor's job (it sees my mouth empty and claims SPIT).
     if (ptr(me, kEatenBy) != ep && _ZN6Player7IsStateERNS_5StateE(me, data_ov002_02110064)) {
         ptr(me, kEatenBy) = ep;
-        std::fprintf(stderr, "[eat] V: eaten while eating: my old state's cleanup had cleared the eater; put seat %d back
-", eater);
+        std::fprintf(stderr, "[eat] V: eaten while eating: my old state's cleanup had cleared the eater; put seat %d back\n", eater);
     }
     if (!_ZN6Player7IsStateERNS_5StateE(me, data_ov002_02110064)) {
         ptr(ep, kMouthObj) = nullptr;
         ptr(me, kEatenBy) = nullptr;
         vs_ref_claim(CLAIM_ESCAPE, (unsigned char)eater, 0, 0, 0, 0);
-        std::fprintf(stderr, "[eat] V: EATEN by seat %d but my state would not change to the mouth: ESCAPE claimed
-", eater);
+        std::fprintf(stderr, "[eat] V: EATEN by seat %d but my state would not change to the mouth: ESCAPE claimed\n", eater);
         return;
     }
     // the ROM's hold: the eater's timer is 0x5a, and in a lockstep world BOTH the
