@@ -439,6 +439,23 @@ void v_enter(int eater, const RefEvent &ev) {
                      "the mouth\n", eater);
         return;
     }
+    // MPTEST9: eaten while I am eating (seat 0 holds seat 1, then seat 2 eats seat 0). The ROM's entry
+    // above stores mEatingPlayer BEFORE it changes state, and ChangeState runs the cleanup of the state
+    // being left first: the eating state's cleanup clears +0xd0 (and lets go of my own mouthful), so
+    // my new mouth state started with no eater and St_InYoshiMouth_Main read null+0x5c (c0000005 in the
+    // 16-console row, 3-console rig SM64DS_EAT_RIG=nested). Put the eater back once the state changed;
+    // my own victim's release is e_monitor's job (it sees my mouth empty and claims SPIT).
+    if (ptr(me, kEatenBy) != ep && _ZN6Player7IsStateERNS_5StateE(me, data_ov002_02110064)) {
+        ptr(me, kEatenBy) = ep;
+        std::fprintf(stderr, "[eat] V: eaten while eating: my old state's cleanup had cleared the eater; put seat %d back\n", eater);
+    }
+    if (!_ZN6Player7IsStateERNS_5StateE(me, data_ov002_02110064)) {
+        ptr(ep, kMouthObj) = nullptr;
+        ptr(me, kEatenBy) = nullptr;
+        vs_ref_claim(CLAIM_ESCAPE, (unsigned char)eater, 0, 0, 0, 0);
+        std::fprintf(stderr, "[eat] V: EATEN by seat %d but my state would not change to the mouth: ESCAPE claimed\n", eater);
+        return;
+    }
     // the ROM's hold: the eater's timer is 0x5a, and in a lockstep world BOTH the
     // eater's own Behavior and my mouth state count it down, so it runs out in
     // about 45 frames; here only my mouth state counts the puppet's copy
