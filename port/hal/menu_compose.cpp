@@ -579,6 +579,8 @@ int menu_focus_move(MenuLayout *L, int dir)
 namespace {
 float g_sky_ref = 0.f, g_fade = 1.f;     /* brightest sky luminance seen on this page, and this frame's fade factor */
 int   g_sky_frame = -1000;
+float g_go_ref = 0.f, g_go_fade = 1.f;   /* HDART1: the game over gradient's own fade (see go_fade_update) */
+int   g_go_frame = -1000;
 
 /* MENUCOST1: what the gradient kept from the last frame (the medians, the smoothed ramp, the finished rect) */
 struct GradCache {
@@ -748,6 +750,7 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
     if (!src) return;
     const size_t stride = (size_t)stride_of(w);
     int f256 = (P.hostimg == MENU_IMG_LOGO && !P.nofade) ? (int)(g_fade * 256.f + 0.5f) : 256;
+    if (P.hostimg == MENU_IMG_GO_GRAD) f256 = (int)(g_go_fade * 256.f + 0.5f);   /* HDART1: fades in with the ROM's own gradient */
     const unsigned af = P.alpha ? P.alpha : 255u;     /* ASSET5: the piece's own fade (premultiplied: colour and alpha scale together) */
     /* the plank's own look: selected = lifted, pulsing on the ROM's 8-frame cadence; pressed = sunk and darker */
     const int owns = L->focus >= 0 && L->focus < L->nh && L->hs[L->focus].piece == i;
@@ -1200,6 +1203,24 @@ extern "C++" int menu_iris_covers(int w, int h, float cx, float cy, float R)
     return iris_star_inside((float)w, (float)h, cx, cy, R) && iris_star_inside(0.f, 0.f, cx, cy, R);
 }
 
+/* HDART1: the game over gradient is a host picture, so the ROM's fade-in (engine A's brightness on its BG2 gradient) is read from the
+   lifted gradient itself: the lifted cell mid-screen in the clear column, brightness applied, over the brightest seen on this page. */
+static void go_fade_update(const MenuSources *S)
+{
+    if (!S || !S->top2d) { g_go_fade = 1.f; return; }
+    const MenuTopCell &c = S->top2d[96 * 256 + 16];
+    if ((c.argb >> 24) == 0 || c.owner != 2) return;      /* BG2 not lifted this frame: keep the last factor */
+    uint32_t col = c.argb;
+    if (S->bm_apply) col = S->bm_apply(col, c.bm);
+    const float lum = 0.3f * ((col >> 16) & 255) + 0.59f * ((col >> 8) & 255) + 0.11f * (col & 255);
+    if ((int)g_draw_frame - g_go_frame > 30) g_go_ref = 0.f;
+    g_go_frame = (int)g_draw_frame;
+    if (lum > g_go_ref) g_go_ref = lum;
+    g_go_fade = lum / (g_go_ref > 96.f ? g_go_ref : 96.f);   /* the DS gradient peaks at about 100: dark first frames read dark, never a full-bright flash */
+    if (g_go_fade > 1.f) g_go_fade = 1.f;
+    if (g_go_fade < 0.f) g_go_fade = 0.f;
+}
+
 static void piece_draw_ref(const MenuLayout *L, int i, const MenuSources *S, uint32_t *dst, int w, int h)
 {
     if (!S || !dst || i < 0 || i >= L->np) return;
@@ -1209,6 +1230,7 @@ static void piece_draw_ref(const MenuLayout *L, int i, const MenuSources *S, uin
     if (P.src == SRC_HOSTIMG && P.iris) { draw_iris(L, i, dst, w, h); return; }
     if (P.src == SRC_HOSTIMG && P.paper) { draw_paper(L, i, dst, w, h); return; }
     if (P.src == SRC_HOSTIMG && P.snap) { draw_snap(L, i, dst, w, h); return; }
+    if (P.src == SRC_HOSTIMG && P.hostimg == MENU_IMG_GO_GRAD) go_fade_update(S);
     if (P.src == SRC_HOSTIMG) { draw_hostimg(L, i, dst, w, h); return; }
     if (P.hostgrad) { draw_hostgrad(L, i, S, dst, w, h); return; }
     const int *d = L->dest[i];

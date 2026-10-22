@@ -255,6 +255,13 @@ void build_gameover(int, MenuLayout *L)
     /* BG2 rows 174..183 are the band the ROM hides under the text: on some frames (the arrows' bounce) those cells read as
        the backdrop colour or navy. The gradient is drawn from rows 0..173, rows 172..173 repeat over the band's 10 rows,
        and rows 184..191 are drawn as they are. */
+    if (menu_hostimg_ready(MENU_IMG_GO_GRAD)) {
+        /* HDART1: thunderit's HD gradient (the HD UI Textures mod) over the whole picture, smooth at any size. It fades in with the ROM's own
+           gradient (menu_compose go_fade_update reads the lifted BG2 cell), so the screen opens exactly as the DS one does. */
+        MenuPiece g = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        g.bg = 1; g.hostimg = MENU_IMG_GO_GRAD; g.lden = 1; g.lnum = 1; g.fx = 0; g.fy = 0; g.fw = (short)L->w; g.fh = (short)L->h;
+        menu_add_piece(L, g);
+    } else
     for (int k = 0; k < 7; k++) {
         const int sy = k == 0 ? 0 : (k <= 5 ? 172 : 184), sh = k == 0 ? 174 : (k <= 5 ? 2 : 8),
                   dy = k == 0 ? 0 : (k <= 5 ? 174 + (k - 1) * 2 : 184);
@@ -295,6 +302,18 @@ void build_gameover(int, MenuLayout *L)
         if (top < 0) top = 0;
         ar.fy = (short)top;
         menu_add_piece(L, ar);
+    }
+    /* HDART1: thunderit's "Click to select" (the HD UI Textures mod; the DS text said "Touch to select" and sat just above the plates, where this
+       layout has the lettering and the cursor, so it goes in the free band under the Quit plate). Once the plates are in, like the cursor. */
+    if (L->facts.spare[0] > 0 && menu_hostimg_ready(MENU_IMG_GO_CLICK)) {
+        const long long UN = L->unum, UD = L->uden;
+        int iw = 1, ih = 1;
+        menu_hostimg_size(MENU_IMG_GO_CLICK, &iw, &ih);
+        const int dh = (int)(12 * UN / UD), dw = (int)((long long)dh * iw / ih);
+        MenuPiece tx = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        tx.bg = 1; tx.hostimg = MENU_IMG_GO_CLICK; tx.lden = 1; tx.lnum = 1; tx.fw = (short)dw; tx.fh = (short)dh;
+        tx.fx = (short)(L->w / 2 - dw / 2); tx.fy = (short)(179 * UN / UD);
+        menu_add_piece(L, tx);
     }
     L->lift_owners = MENU_L_BG2 | MENU_L_OBJ;
     L->hide_owners = MENU_L_BG0;
