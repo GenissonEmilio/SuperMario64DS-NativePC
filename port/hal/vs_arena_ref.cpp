@@ -3446,6 +3446,38 @@ void vs_ref_pre_walk(int frame) {
     }
 }
 
+// VS9 (V3): the UNCHAINED_CHOMP of arena 1 carries one of the match's stars. In a VS match the ROM
+// (src/game/actors/d_a_wanwan2.cpp func_ov100_021435e8) spawns a PowerStar (id 0x30 | param) and its
+// StarMarker at the chain's last link and then, every frame until the star is collected, writes the
+// star's position over the link's. The marker stays where it was spawned; the star rides the chain
+// at 100+ units a second across the arena, and the chomp chases the NEAREST player of each console,
+// so it is a different place on every screen. Nobody could reach it, the referee's range check
+// could not agree with any screen, and the star the order wakes third sat there for the whole match.
+// The star is an ordinary arena star: put it on its marker (the way every other level star is
+// placed) and latch the chomp's carry (mChainEndDone, the state its own code reaches when the star
+// is collected) so the chain never moves it again. SM64DS_CHOMP_STAR_PIN=1 leaves the ROM's carry
+// alone (the control row).
+void chomp_star_unpin() {
+    static const bool keep = env_on("SM64DS_CHOMP_STAR_PIN");
+    if (keep) return;
+    each_class(337, [&](char *c) {                      // UNCHAINED_CHOMP
+        if (*u8p(c, 0x6c8) != 0) return;               // mChainEndDone
+        const unsigned uid = u32r(c, 0x6d0);           // mChainEndActorID
+        if (!uid) return;
+        char *s = star_by_uid(uid);
+        if (!s) return;
+        char *m = marker_by_id(*u8p(s, 0x49d));
+        if (!m) return;                                  // (the marker is spawned a line after the star)
+        s32r(s, 0x5c) = s32r(m, 0x5c);
+        s32r(s, 0x60) = s32r(m, 0x60);
+        s32r(s, 0x64) = s32r(m, 0x64);
+        *u8p(c, 0x6c8) = 1;
+        u32r(c, 0x6d0) = 0;
+        std::fprintf(stderr, "[vsarena-ref] chomp star (id %d) put on its marker at (%d,%d,%d); the chain no longer carries it\n",
+                     (int)*u8p(s, 0x49d), s32r(s, 0x5c) >> 12, s32r(s, 0x60) >> 12, s32r(s, 0x64) >> 12);
+    });
+}
+
 // VS9 lab: SM64DS_ARENA_STARLOG=1 prints, every 30 frames, each PowerStar actor (uid, star
 // id, ROM state, position, touch words), each marker (id, live, glass bit, position) and
 // the UNCHAINED_CHOMP (position, chain-end latch), with the instance that owns each star.
@@ -3480,6 +3512,7 @@ void star_dump(unsigned frame) {
 void vs_ref_post_walk(int frame) {
     (void)frame;
     if (!vs_ref_active() || data_0209f2d8 != 1 || !g.inited) return;
+    chomp_star_unpin();
     if (g.started && !g.over) {
         if (g.ledger_live)
             for (int k = 0; k < 16; ++k) data_0209f310[k] = g.ledger[k];
