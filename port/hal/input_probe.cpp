@@ -855,8 +855,22 @@ extern int _ZN15daObjTatefuda_c12TryStartTalkEv(void *sign);   /* the sign's pla
 extern "C" int Vec3_HorzDist(void *a, void *b);
 static int port_sign_prev_dist;
 
+extern "C" void func_0201f32c(int arg0);
+/* SM64DS_MSG_SHOW="<frame>:<id>" (TEST ONLY, inert unset; TEXT2D1): open the dialogue box on message bank id <id> at that frame, the call an NPC's talk makes
+   (func_0201f32c), so a row can read any line of the bank without walking to the NPC. */
+static void port_msg_show(int frame)
+{
+    static int f = -2, id;
+    if (f == -2) {
+        const char *e = std::getenv("SM64DS_MSG_SHOW");
+        f = -1;
+        if (e && std::sscanf(e, "%d:%d", &f, &id) != 2) f = -1;
+    }
+    if (f >= 0 && frame == f) func_0201f32c(id);
+}
 extern "C" void port_input_probe_sign_trigger(int frame)
 {
+    port_msg_show(frame);
     if (!std::getenv("SM64DS_SIGN_TRIGGER")) return;
     if (frame < 60) return;
     static int entered;

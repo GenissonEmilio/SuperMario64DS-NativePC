@@ -9529,6 +9529,11 @@ static int hud_glide_on(void)
     return v;
 }
 static unsigned long long g_ip_glide_pics;
+/* TEXT2D1: the dialogue box's line scroll, glided at the display rate (hal/message_compositor.cpp port_text_scroll_note). While the ROM scrolls the
+   lines (4 DS pixels a tick) a picture between two ticks puts the tick's text pixels back down by (1 - alpha) of the step, clipped to the box;
+   the panel stays the replayed 3D (faded). CPU blend only, like the HUD glide. SM64DS_TEXT_GLIDE=0 puts the stepped scroll back. */
+extern "C" int port_text_scroll_note(int rect[4], double *step_host);
+static unsigned long long g_ip_tscroll_pics;
 static int ip_build(double alpha)
 {
     const long long t0 = ip_qpc();
@@ -9571,6 +9576,23 @@ static int ip_build(double alpha)
     }
     if (tw && tw_card == 0 && g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1) tw = 0;
     if (!tw) twc = 0;
+    int ts_rect[4] = {0, 0, 0, 0}, ts_D = 0;
+    {
+        double ts_step = 0;
+        if (!tw && alpha < 0.999 && port_text_scroll_note(ts_rect, &ts_step)) {
+            ts_D = (int)((1.0 - alpha) * ts_step + 0.5);
+            if (ts_rect[0] < 0) ts_rect[0] = 0;
+            if (ts_rect[1] < 0) ts_rect[1] = 0;
+        }
+    }
+    {   static int tl = -1, tn;
+        if (tl < 0) tl = getenv("SM64DS_TEXT_LOG") ? 1 : 0;
+        if (tl && tn++ < 600) {
+            int r4[4] = {0, 0, 0, 0}; double st = 0;
+            const int note = port_text_scroll_note(r4, &st);
+            fprintf(stderr, "[tscroll] a=%.3f tw=%d note=%d D=%d rect %d,%d-%d,%d fade=%d masked=%d card=%d\n", alpha, tw, note, ts_D, r4[0], r4[1], r4[2], r4[3], g_ip_fade_on, g_ip_fade_masked, g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1);
+        }
+    }
     int card = 0;
     if (g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1)
         card = ntr::gx_card_interp_clear(o);
@@ -9590,7 +9612,7 @@ static int ip_build(double alpha)
            keeps its 3D and the card's own compose */
         if (tw && tw_card != 2) { port_gpu_card_inter_cut(tw_outer, tw_inner); port_gpu_card_inter_cut_closing(twc); }
         /* SM64DS_TWEEN_CARD=2 is the 0.9.3 round 4b behaviour, kept for before/after rows only: the card refuses a box tick */
-        const int card_done = !(tw && tw_card == 2) && !(gl_note && gl_note->n > 0 && alpha < 0.999) && port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
+        const int card_done = !(tw && tw_card == 2) && !(gl_note && gl_note->n > 0 && alpha < 0.999) && !ts_D && port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
         port_gpu_card_inter_cut(0, 0);
         port_gpu_card_inter_cut_closing(0);
         port_gpu_card_inter_fade_off();
@@ -9644,6 +9666,25 @@ static int ip_build(double alpha)
                 }
                 continue;
             }
+            if (ts_D > 0 && y >= ts_rect[1] && y < ts_rect[3]) {
+                /* TEXT2D1: a box with a masked fade and no processor mask (the box's own window is the mask): outside the box the tick's finished
+                   picture, inside it the replayed 3D through the fade, and the tick's text pixels (the ones that differ from that faded 3D) moved
+                   down by what is left of the step */
+                uint32_t *row = o.px[y];
+                const uint32_t *d = g_ip_p4->px[y];
+                const int evy = g_ip_fade_evy, toWhite = g_ip_fade_white;
+                const int ys = y - ts_D;
+                for (int x = 0; x < ntr::active_w; ++x) {
+                    if (x < ts_rect[0] || x >= ts_rect[2]) { row[x] = d[x]; continue; }
+                    row[x] = ip_fade_px(row[x], ip_evy_t, toWhite);
+                    if (ys >= ts_rect[1]) {
+                        const uint32_t sb = g_ip_p2->px[ys][x];
+                        if (ip_fade_px(g_ip_p3->px[ys][x], evy, toWhite) != sb) row[x] = sb;
+                    }
+                }
+                ++g_ip_tscroll_pics;
+                continue;
+            }
             memcpy(o.px[y], g_ip_p4->px[y], ntr::active_w * sizeof(uint32_t));
         }
     } else if (g_ip_fade_on) {
@@ -9664,13 +9705,26 @@ static int ip_build(double alpha)
             const unsigned char *mr = ip_bm ? ip_bm + (size_t)y * ntr::SCREEN_W : 0;
             const int tw_row = tw && y >= tw_outer[1] && y < tw_outer[3];
             const int tw_mid = tw_row && y >= tw_inner[1] && y < tw_inner[3];
+            const int ts_row = ts_D > 0 && y >= ts_rect[1] && y < ts_rect[3];
             for (int x = 0; x < ntr::active_w; ++x) {
                 const int take = mr ? mr[x] : 1;
                 const uint32_t pf = take ? ip_fade_px(a[x], evy, toWhite) : a[x];
                 const int tw_cut = tw_row && x >= tw_outer[0] && x < tw_outer[2] &&
                                    !(tw_mid && x >= tw_inner[0] && x < tw_inner[2]);
-                row[x] = (pf != b[x] && !tw_cut) ? b[x] : ((take && !(tw_cut && mr)) ? ip_fade_px(row[x], ip_evy_t, toWhite) : row[x]);
+                const int ts_in = ts_row && x >= ts_rect[0] && x < ts_rect[2];
+                row[x] = (pf != b[x] && !tw_cut && !ts_in) ? b[x] : ((take && !(tw_cut && mr)) ? ip_fade_px(row[x], ip_evy_t, toWhite) : row[x]);
+                if (ts_in) {
+                    /* TEXT2D1: the tick's text pixel that sits ts_D rows above this one, moved down */
+                    const int ys = y - ts_D;
+                    if (ys >= ts_rect[1]) {
+                        const int tk2 = ip_bm ? ip_bm[(size_t)ys * ntr::SCREEN_W + x] : 1;
+                        const uint32_t sa = g_ip_p3->px[ys][x], sb = g_ip_p2->px[ys][x];
+                        const uint32_t sf = tk2 ? ip_fade_px(sa, evy, toWhite) : sa;
+                        if (sf != sb) row[x] = sb;
+                    }
+                }
             }
+            if (ts_row) ++g_ip_tscroll_pics;
         }
     } else {
         const HudSlideNoteW *gn = (hud_glide_on() && alpha < 0.999 && !tw) ? (const HudSlideNoteW *)port_hud_slide_note() : 0;
@@ -9719,6 +9773,16 @@ static int ip_build(double alpha)
                     const int cut = x >= tw_outer[0] && x < tw_outer[2] && !(tw_mid && x >= tw_inner[0] && x < tw_inner[2]);
                     if (a[x] != b[x] && !cut) row[x] = b[x];
                 }
+                continue;
+            }
+            if (ts_D > 0 && !gn_n && y >= ts_rect[1] && y < ts_rect[3]) {
+                const int ys = y - ts_D;
+                for (int x = 0; x < ntr::active_w; ++x) {
+                    if (x >= ts_rect[0] && x < ts_rect[2]) {
+                        if (ys >= ts_rect[1] && g_ip_p3->px[ys][x] != g_ip_p2->px[ys][x]) row[x] = g_ip_p2->px[ys][x];
+                    } else if (a[x] != b[x]) row[x] = b[x];
+                }
+                ++g_ip_tscroll_pics;
                 continue;
             }
             for (int x = 0; x < ntr::active_w; ++x)
