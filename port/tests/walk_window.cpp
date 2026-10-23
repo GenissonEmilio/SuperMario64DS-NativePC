@@ -195,6 +195,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <emmintrin.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -607,6 +608,8 @@ int hal_player_behavior(void *p);
 int hal_player_process(void *p);   /* gate 15: BeforeBehavior/Behavior/After */
 void sdat_host_tick(void);         /* hosted ARM7: hal/sdat/ */
 void hal_render_player_world(void *p);
+extern "C" int port_adventure_hub_body(int slot);     /* hal/comms_sync.cpp, GHOSTPERF1 */
+extern "C" void port_adventure_ghost_park(void *body);   /* hal/comms_sync.cpp */
 extern "C" int hal_actor_off_native_view(void *actor);   /* hal/camera_bridges.cpp */
 /* ADVENTURE GHOSTS: the per-frame no-collision hold over remote slots
    (hal/player_bridges.cpp). No-op unless adventure-ghost mode is on. */
@@ -3944,6 +3947,7 @@ static int ovl_text(const OvlSurface &fb, int x0, int y0, const char *s,
    OvlSurface and sizes itself off OVL_SCALE, both of which are above; its own
    banner carries the font decode, the projection and the slot rules. */
 #include "nametag.h"
+#include "ghost_cull.h"   /* GHOSTPERF1 */
 
 /* ---- THE CHAT OVERLAY (run mp1, lane CHATUI1) ------------------------------
    hal/adv_chat.cpp owns the messages and the rules; this is the pixels. The
@@ -9529,6 +9533,22 @@ static int hud_glide_on(void)
     return v;
 }
 static unsigned long long g_ip_glide_pics;
+/* run hunt8, lane GHOSTPERF1: row[x] = b[x] where a[x] != b[x], four pixels at a time (the picture's 2D laid back over the replayed 3D;
+   a scalar compare-and-store per pixel over the whole frame was 0.5 ms of every picture) */
+static inline void ip_merge_row(uint32_t *row, const uint32_t *a, const uint32_t *b, int w)
+{
+    int x = 0;
+    for (; x + 4 <= w; x += 4) {
+        const __m128i va = _mm_loadu_si128((const __m128i *)(a + x));
+        const __m128i vb = _mm_loadu_si128((const __m128i *)(b + x));
+        const __m128i vr = _mm_loadu_si128((const __m128i *)(row + x));
+        const __m128i eq = _mm_cmpeq_epi32(va, vb);
+        _mm_storeu_si128((__m128i *)(row + x), _mm_or_si128(_mm_and_si128(eq, vr), _mm_andnot_si128(eq, vb)));
+    }
+    for (; x < w; ++x)
+        if (a[x] != b[x]) row[x] = b[x];
+}
+
 static int ip_build(double alpha)
 {
     const long long t0 = ip_qpc();
@@ -9721,8 +9741,7 @@ static int ip_build(double alpha)
                 }
                 continue;
             }
-            for (int x = 0; x < ntr::active_w; ++x)
-                if (a[x] != b[x]) row[x] = b[x];
+            ip_merge_row(row, a, b, ntr::active_w);
         }
     }
     /* run hunt8, lane MENUINTERP2: the menu again, on this picture's own 3D (the pieces it lifts from the 3D picture are cut from
@@ -9740,6 +9759,7 @@ static int ip_build(double alpha)
         /* INTERP093 I1: an opening box's pixels outside the window that far along are the replayed 3D in this stage too */
         const int tw_row = tw && y >= tw_outer[1] && y < tw_outer[3];
         const int tw_mid = tw_row && y >= tw_inner[1] && y < tw_inner[3];
+        if (!tw_row) { ip_merge_row(row, a, b, ntr::active_w); continue; }
         for (int x = 0; x < ntr::active_w; ++x) {
             if (a[x] == b[x]) continue;
             if (tw_row && x >= tw_outer[0] && x < tw_outer[2] && !(tw_mid && x >= tw_inner[0] && x < tw_inner[2])) continue;
@@ -9783,11 +9803,11 @@ static void ip_note(double build_ms, double pres_ms)
     fprintf(stderr, "[interp] %d blended pictures: build ms avg %.2f p50 %.2f "
             "p95 %.2f max %.2f (replay %.2f raster %.2f 2D %.2f) | present ms "
             "avg %.2f p95 %.2f max %.2f | total pictures %llu blended %llu "
-            "plain %llu\n",
+            "plain %llu card %llu cpu %llu\n",
             IP_WIN, ab / IP_WIN, sb[IP_WIN / 2], sb[(IP_WIN * 95) / 100],
             sb[IP_WIN - 1], g_ip_sum_replay / IP_WIN, g_ip_sum_raster / IP_WIN,
             g_ip_sum_compose / IP_WIN, ap / IP_WIN, sp[(IP_WIN * 95) / 100],
-            sp[IP_WIN - 1], g_ip_pictures, g_ip_blended, g_ip_plain);
+            sp[IP_WIN - 1], g_ip_pictures, g_ip_blended, g_ip_plain, g_ip_card_pics, g_ip_cpu_pics);
     if (g_ip_menu_n) fprintf(stderr, "[interp] menu re-draw in %u of those pictures: %.2f ms each (inside '2D')\n", g_ip_menu_n, g_ip_sum_menu / g_ip_menu_n);
     g_ip_sum_menu = 0; g_ip_menu_n = 0;
     g_ip_sum_replay = g_ip_sum_raster = g_ip_sum_compose = 0;
@@ -10957,6 +10977,22 @@ static void ip_probe(int frame, int rom_frame)
             char nm[64];
             snprintf(nm, sizeof nm, "interp_f%05d_%02d.bmp", rom_frame, j);
             ntr::ppu_write_bmp(nm, *g_ip_fb);
+        }
+        /* GHOSTPERF1: SM64DS_INTERP_PROBE_AB=1 builds the same picture again with every ghost group replayed (the old way) and
+           writes it beside the other as interp_f<frame>_<j>_ref.bmp, so the ghost shortcut is compared on one tick's own data */
+        {
+            static int ab = -1;
+            if (ab < 0) ab = getenv("SM64DS_INTERP_PROBE_AB") ? 1 : 0;
+            if (ab) {
+                ntr::gx_ghost_fast_override(0);
+                ip_build(alpha);
+                ntr::gx_ghost_fast_override(-1);
+                if (ntr::gx_card_retained(g_ip_fb))
+                    ntr::gx_card_settle_fb(*g_ip_fb, "the SmoothMotion probe (a picture between ticks)");
+                char nm2[64];
+                snprintf(nm2, sizeof nm2, "interp_f%05d_%02d_ref.bmp", rom_frame, j);
+                ntr::ppu_write_bmp(nm2, *g_ip_fb);
+            }
         }
     }
     (void)frame;
@@ -21653,8 +21689,23 @@ int main(void)
                     hal_player_texseq_tick(other);
                 continue;
             }
-            if (void *other = data_0209f394[pi])
+            if (void *other = data_0209f394[pi]) {
+                /* GHOSTPERF1: a hub ghost nobody can see this tick is not drawn. It is still parked
+                   (the park is the half of the draw that keeps its body out of the level) and its
+                   eye-blink state still advances, like a replayed frame's. */
+                if (ghost_cull_on() && port_adventure_hub_body(pi)) {
+                    const int cbp[3] = {*(const int *)((const char *)other + 0x5c), *(const int *)((const char *)other + 0x60),
+                                        *(const int *)((const char *)other + 0x64)};
+                    ++g_gc_seen;
+                    if (ghost_cull_outside(cbp)) {
+                        ++g_gc_culled;
+                        hal_player_texseq_tick(other);
+                        port_adventure_ghost_park(other);
+                        continue;
+                    }
+                }
                 hal_render_player_world(other);
+            }
         }
         if (!rb_skip_render()) {
             /* SHELF1 (S3): the opening's controlled character waits at its start mark with the ROM's cull-off-screen flag (0x2) up, and

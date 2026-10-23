@@ -156,6 +156,12 @@ struct GxGrid {
 // 0x4000440..0x40005FF; `gx_write_fifo` takes a word pushed at 0x4000400.
 void gx_write_port(uint32_t addr, uint32_t value);
 void gx_write_fifo(uint32_t word);
+// GHOSTPERF1: a display list pushed as a block (the DMA to the FIFO). Exactly gx_write_fifo on each word in order (same commands run in the
+// same order, same stream hash and word count), but a command word whose parameters are all in the block runs them in place instead of
+// through the one-word-at-a-time state machine. A block that ends inside a command, or starts inside one, finishes word by word.
+void gx_write_fifo_block(const uint32_t *words, int n);
+// GHOSTPERF1 proof instrument: 0 makes the in-between pictures replay every ghost group (the old way), -1 puts the setting back.
+void gx_ghost_fast_override(int v);
 
 // Reset the command stream, matrix stacks and polygon list.
 void gx_reset();
