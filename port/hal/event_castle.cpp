@@ -1,0 +1,102 @@
+// CASTLE UNLOCKED, the door side (run after093, lane EVENTS2). See hal/event_client.h for the event itself.
+//
+// While a castle-unlocked event is live on this console every star door, key door and star gate behaves as if the player held every star
+// and both keys, and NOTHING is written to the save. How, with no change to the cartridge's code:
+//
+// The ROM's closed door (daDoor_c idle callback, src/game/actors/d_a_door.cpp func_ov100_02144cf8) and the big star gate's waiting state
+// (daStarGate_c::St_Wait_Main, src/game/actors/d_a_star_gate.cpp) each ask the save's flag word (data_0209caa0 + 4) FIRST whether the door's
+// own "unlocked" bit is set, and if it is they send the player straight through without looking at the star count or the keys:
+//     star door  flags1 & (0x8000 << entry->flagShift)      (DOOR_SAVE_STAR_UNLOCKED)
+//     key door   flags1 & (0x100  << entry->flagShift)      (DOOR_SAVE_KEY_UNLOCKED)
+//     star gate  flags1 & (0x8000 << entry->saveFlag)
+// So the hook raises exactly that one bit for the one door being asked, calls the ROM body unchanged, and puts the bit back to what it was
+// before returning. The bit is raised only for the duration of that one call (single-threaded host), so the save never carries it into a
+// save write, a pause, or another door; the "opened by a key" / "opened by a star" writes (d_a_door.cpp lines 649 and 730) live in the
+// unlock states, which this path never enters (it takes the same exit as a door that was unlocked long ago). When the event ends the next
+// idle call finds the bit clear and the door asks for its stars or its key again.
+//
+// Seam: unmatched/Door_Behavior.cpp (the idle face) and hal/actor_overlays.cpp (the gate's Wait face) call a hook pointer that is null on
+// every target that does not seat it; this file seats them (walk_window targets only, like hal/char_door.cpp).
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "event_client.h"
+
+extern "C" {
+extern unsigned char data_0209caa0[];
+/* the ROM bodies the faces would call, C names as the faces use them */
+int _ZN8daDoor_c19func_ov100_02144cf8EP6Player(void *self, void *player);
+int _ZN12daStarGate_c12St_Wait_MainEP6Player(void *self, void *player);
+/* the seams (unmatched/Door_Behavior.cpp, hal/actor_overlays.cpp) */
+extern int (*port_event_door_idle_hook)(void *door, void *player);
+extern int (*port_event_gate_wait_hook)(void *gate, void *player);
+extern int (*port_event_pause_line_hook)(char *out, int cap);    /* hal/pause_page.inc, in settings_page.cpp */
+/* the ROM tables the ROM bodies index by the actor's param1 (+8) */
+extern unsigned char data_ov100_02148204[];      /* DoorEntry[]: 16 bytes each; +8 starsNeeded, +9 keyIndex, +10 flagShift */
+extern unsigned char data_ov100_02148390[];      /* daStarGateInfo[4]: 6 bytes each; +0 numStars, +1 saveFlag */
+}
+
+namespace {
+
+enum : unsigned { kStarUnlocked = 0x8000u, kKeyUnlocked = 0x100u };
+enum { kDoorEntries = 0x130 / 16, kGateEntries = 4 };
+
+unsigned g_door_calls, g_gate_calls;
+
+// The door's own unlock bit for this entry (0 = none: a plain door, or a shift that does not name a bit).
+unsigned door_bit(void *door)
+{
+    const unsigned idx = *(unsigned *)((char *)door + 8);
+    if (idx >= (unsigned)kDoorEntries) return 0;
+    const signed char *e = (const signed char *)(data_ov100_02148204 + idx * 16);
+    const int stars = e[8], key = e[9], sh = e[10];
+    if (sh < 0 || sh > 8) return 0;
+    if (stars >= 0) return kStarUnlocked << sh;
+    if (key >= 0) return kKeyUnlocked << sh;
+    return 0;
+}
+
+int door_hook(void *door, void *player)
+{
+    if (!port_event_castle_live()) return 0;
+    const unsigned bit = door_bit(door);
+    if (!bit) return 0;
+    unsigned *flags1 = (unsigned *)(data_0209caa0 + 4);
+    const unsigned before = *flags1;
+    *flags1 = before | bit;
+    const int r = _ZN8daDoor_c19func_ov100_02144cf8EP6Player(door, player);
+    *flags1 = (*flags1 & ~bit) | (before & bit);
+    if (!(before & bit) && (++g_door_calls & 63u) == 1u)
+        fprintf(stderr, "[event] castle: door %u held open for the player (calls %u)\n", *(unsigned *)((char *)door + 8), g_door_calls);
+    return 1;
+}
+
+int gate_hook(void *gate, void *player)
+{
+    if (!port_event_castle_live()) return 0;
+    const unsigned idx = *(unsigned *)((char *)gate + 8);
+    if (idx >= (unsigned)kGateEntries) return 0;
+    const int sh = ((const signed char *)(data_ov100_02148390 + idx * 6))[1];
+    if (sh < 0 || sh > 8) return 0;
+    const unsigned bit = kStarUnlocked << sh;
+    unsigned *flags1 = (unsigned *)(data_0209caa0 + 4);
+    const unsigned before = *flags1;
+    *flags1 = before | bit;
+    _ZN12daStarGate_c12St_Wait_MainEP6Player(gate, player);
+    *flags1 = (*flags1 & ~bit) | (before & bit);
+    if (!(before & bit) && (++g_gate_calls & 63u) == 1u)
+        fprintf(stderr, "[event] castle: star gate %u held open for the player (calls %u)\n", idx, g_gate_calls);
+    return 1;
+}
+
+int seat(void)
+{
+    port_event_door_idle_hook = door_hook;
+    port_event_gate_wait_hook = gate_hook;
+    port_event_pause_line_hook = [](char *out, int cap) -> int { return port::event_pause_line(out, cap) ? 1 : 0; };
+    return 1;
+}
+const int g_seated = seat();
+
+}  // namespace

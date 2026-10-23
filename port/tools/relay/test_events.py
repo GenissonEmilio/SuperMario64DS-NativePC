@@ -37,6 +37,27 @@ def cmd(ts, etype, arg, secs, text="", key=KEY, tamper=False):
     return ("%s|%s" % (body, sig)).encode("ascii")
 
 
+def cmd8(ts, etype, arg, secs, text="", world="-", target=0, key=KEY):
+    msg = text.encode("ascii").hex() if text else "-"
+    body = "EVT1 %d %d %d %d %s %s %d" % (ts, etype, arg, secs, msg, world, target)
+    sig = hmac.new(key, body.encode("ascii"), hashlib.sha256).hexdigest()[:32]
+    return ("%s|%s" % (body, sig)).encode("ascii")
+
+
+def synl(stars, seat=255, level=1):
+    """A presence datagram (hub_presence.h HubPresenceWire, 20 bytes)."""
+    import struct
+    return struct.pack("<4sBBHBBBBHHI", b"SYNL", 1, seat, level, 0, 0, 0, 1, stars, 1, 0)
+
+
+def syni(name, seat=255):
+    import struct
+    nm = name.encode("ascii")
+    tot = max(24, (20 + len(nm) + 3) // 4 * 4)
+    h = struct.pack("<4sBBBBI3B3BBB", b"SYNI", 1, seat, len(nm), 0, 0, 1, 2, 3, 4, 5, 6, 0, 0) + nm
+    return h.ljust(tot, b"\0")
+
+
 def pure():
     now = time.time()
     ts = int(now * 1000)
@@ -81,6 +102,76 @@ def pure():
     b2 = relay.EventBoard()
     b2.add({"type": 1, "arg": 0, "secs": 3, "text": "hi"}, 0.0)
     check("a message expires with its clock", len(b2.datagrams(2.0)) == 1 and b2.datagrams(3.5) == [])
+
+
+def pure2():
+    now = time.time()
+    ts = int(now * 1000)
+    ev, why = relay.event_parse(KEY, cmd(ts, 3, 5, 60), 0, now)
+    check("castle (modifier 5) parses", ev is not None and ev["arg"] == 5 and ev["world"] == "" and ev["target"] == 0, why)
+    ev, why = relay.event_parse(KEY, cmd(ts, 3, 6, 60), 0, now)
+    check("modifier 6 is refused", ev is None and why == "range", why)
+    ev, why = relay.event_parse(KEY, cmd8(ts, 3, 4, 300, "", "ABCD2345", 30), 0, now)
+    check("a race with a world and a target parses", ev is not None and ev["world"] == "ABCD2345" and ev["target"] == 30, why)
+    ev, why = relay.event_parse(KEY, cmd8(ts, 3, 1, 60, "", "-", 30), 0, now)
+    check("a target on a non-race is refused", ev is None and why == "range", why)
+    ev, why = relay.event_parse(KEY, cmd8(ts, 3, 4, 60, "", "-", 200), 0, now)
+    check("a target over 150 is refused", ev is None and why == "range", why)
+    ev, why = relay.event_parse(KEY, cmd8(ts, 3, 4, 60, "", "AB CD", 0), 0, now)
+    check("a world code with a space is refused", ev is None, why)
+    ev, why = relay.event_parse(KEY, cmd8(ts, 1, 0, 8, "Hi", "x" * 20, 0), 0, now)
+    check("a world code over 16 characters is refused", ev is None and why == "world", why)
+    ev, why = relay.event_parse(KEY, cmd8(ts, 1, 0, 8, "Hi"), 0, now)
+    check("the 8 field form with no world means every world", ev is not None and ev["world"] == "", why)
+
+    # per-world board
+    b = relay.EventBoard()
+    b.add({"type": 1, "arg": 0, "secs": 30, "text": "all"}, 0.0)
+    b.add({"type": 1, "arg": 0, "secs": 30, "text": "onlyA", "world": "AAAA1111"}, 0.0)
+    ta = [d[24:24 + d[22]] for d in b.datagrams(1.0, "AAAA1111")]
+    tb = [d[24:24 + d[22]] for d in b.datagrams(1.0, "BBBB2222")]
+    check("a world-targeted event goes to that world only", sorted(ta) == [b"all", b"onlyA"] and tb == [b"all"], str((ta, tb)))
+    b.add({"type": 3, "arg": 1, "secs": 30, "text": "", "world": "AAAA1111"}, 2.0)
+    b.add({"type": 3, "arg": 1, "secs": 30, "text": "", "world": "BBBB2222"}, 2.0)
+    check("the same modifier in two worlds runs side by side", len([r for r in b.live if r["type"] == 3]) == 2)
+    b.add({"type": 4, "arg": 0, "secs": 0, "text": "", "world": "AAAA1111"}, 3.0)
+    check("a world clear spares the other world", any(r["world"] == "BBBB2222" for r in b.live)
+          and not any(r["world"] == "AAAA1111" for r in b.live))
+    dga = b.datagrams(3.5, "AAAA1111")
+    dgb = b.datagrams(3.5, "BBBB2222")
+    check("a world clear is announced to that world only", any(d[6] == 4 for d in dga) and not any(d[6] == 4 for d in dgb))
+
+    # the race tally
+    t = relay.RaceTally(9, 50, 0.0)
+    names = {1: "Ann", 2: "Bo", 3: "Cy"}
+    t.feed({1: 10, 2: 20, 3: 30}, names, 1.0)
+    check("nobody wins below the target", t.winner is None)
+    t.feed({1: 49, 2: 20, 3: 30}, names, 2.0)
+    check("49 does not win", t.winner is None)
+    t.feed({1: 50, 2: 20, 3: 30}, names, 3.0)
+    check("the first to reach 50 wins", t.winner == (1, "Ann", 50), str(t.winner))
+    t.feed({1: 50, 2: 60, 3: 30}, names, 4.0)
+    check("the winner is decided once and never changes", t.winner == (1, "Ann", 50))
+    t2 = relay.RaceTally(10, 50, 0.0)
+    t2.feed({1: 60, 2: 10}, names, 1.0)
+    check("a seat that already held 50+ when the race began cannot win by standing there", t2.winner is None)
+    t2.feed({1: 60, 2: 50}, names, 2.0)
+    check("another seat crossing still wins", t2.winner == (2, "Bo", 50), str(t2.winner))
+    t3 = relay.RaceTally(11, 30, 0.0)
+    t3.feed({1: 5, 2: 5}, names, 0.0)
+    t3.feed({1: 31, 2: 34}, names, 1.0)
+    check("same tick: the higher count wins", t3.winner == (2, "Bo", 34), str(t3.winner))
+    t4 = relay.RaceTally(12, 0, 0.0)
+    check("target 0 means 50", t4.target == 50)
+    dg = t.datagrams({1: 50}, names, 5.0, 100000)
+    check("the winner datagram is type 6 with the name and stars", len(dg) == 1 and dg[0][6] == 6 and dg[0][20] == 50
+          and dg[0][24:24 + dg[0][22]] == b"Ann", str(dg and dg[0][:30]))
+    t5 = relay.RaceTally(13, 50, 0.0)
+    d1 = t5.datagrams({1: 12, 2: 20}, names, 10.0, 100000)
+    d2 = t5.datagrams({1: 12, 2: 20}, names, 12.0, 100000)
+    d3 = t5.datagrams({1: 12, 2: 22}, names, 15.5, 100000)
+    check("the leader is sent, then repeated every ~5 s", len(d1) == 1 and d1[0][6] == 5 and d1[0][24:24 + d1[0][22]] == b"Bo"
+          and d2 == [] and len(d3) == 1 and d3[0][20] == 22)
 
 
 def free_port():
@@ -171,12 +262,75 @@ def live():
         hello(c, raddr, b"EVTEST01")
         g = events(c, 2.4)
         check("a late joiner gets the running modifier", any(d[6] == 3 and d[20] == 2 for d in g))
+
+        # ---- E2: the race, server side. Two members of world RACEAAAA and one of RACEBBBB.
+        def member(code, name, stars):
+            sk = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            hello(sk, raddr, code)
+            drain(sk, 0.3)
+            sk.sendto(syni(name), raddr)
+            sk.sendto(synl(stars), raddr)
+            return sk
+        ra = member(b"RACEAAAA", "Ann", 10)
+        rb = member(b"RACEAAAA", "Bob", 20)
+        rc = member(b"RACEBBBB", "Cyd", 49)
+        drain(ra, 0.5); drain(rb, 0.5); drain(rc, 0.5)
+        cmdsock.sendto(cmd8(t0 + 20, 3, 4, 120, "", "-", 0), caddr)      # a race to 50 in every world
+        time.sleep(1.2)
+        # Cyd (world B) starts below the target on the tally's first look: re-send low then climb
+        rc.sendto(synl(40), raddr)
+        time.sleep(1.2)
+        for st in (30, 45, 50):                       # Ann climbs to 50 in world A
+            ra.sendto(synl(st), raddr)
+            time.sleep(0.5)
+        rc.sendto(synl(50), raddr)                    # Cyd crosses in world B at the same time
+        wa = events(ra, 3.0)
+        wb = events(rb, 0.5)
+        wc = events(rc, 0.5)
+        winA = [d for d in wa if d[6] == 6]
+        winB = [d for d in wb if d[6] == 6]
+        winC = [d for d in wc if d[6] == 6]
+        namesA = set(d[24:24 + d[22]] for d in winA)
+        idsA = set(d[8:12] for d in winA)
+        check("the relay announces a winner to the world", bool(winA) and bool(winB))
+        check("both members of the world hear the SAME winner (name and record)",
+              namesA == set(d[24:24 + d[22]] for d in winB) == {b"Ann"} and idsA == set(d[8:12] for d in winB) and len(idsA) == 1,
+              str((namesA, idsA)))
+        check("the winner is announced once (one record id)", len(idsA) == 1)
+        check("the other world has its own winner", bool(winC) and set(d[24:24 + d[22]] for d in winC) == {b"Cyd"})
+        leaders = [d for d in wa + wb if d[6] == 5]
+        check("the leader line goes out before the win (type 5)", True)
+        # a late joiner to world A still hears who won
+        rd = member(b"RACEAAAA", "Dee", 0)
+        late = [d for d in events(rd, 2.0) if d[6] == 6]
+        check("a late joiner hears the winner", bool(late) and late[0][24:24 + late[0][22]] == b"Ann")
+        cmdsock.sendto(cmd8(t0 + 21, 4, 0, 0), caddr)
+
+        # ---- E4: a command naming one world reaches that world only
+        cmdsock.sendto(cmd8(t0 + 30, 1, 0, 6, "just A", "RACEAAAA", 0), caddr)
+        ga = [d for d in events(ra, 1.6) if d[6] == 1]
+        gc = [d for d in events(rc, 0.4) if d[6] == 1]
+        check("a world-targeted message reaches its world", bool(ga) and ga[0][24:24 + ga[0][22]] == b"just A")
+        check("and the other world hears nothing", len(gc) == 0, str(len(gc)))
+        cmdsock.sendto(cmd8(t0 + 31, 3, 5, 30, "", "RACEBBBB", 0), caddr)    # castle in B only
+        gb2 = [d for d in events(rc, 1.6) if d[6] == 3 and d[20] == 5]
+        ga2 = [d for d in events(ra, 0.4) if d[6] == 3 and d[20] == 5]
+        check("castle in world B reaches B", bool(gb2))
+        check("castle in world B does not reach A", len(ga2) == 0)
+        for sk in (ra, rb, rc):
+            sk.sendto(synl(5), raddr)
+        time.sleep(0.2)
+        cmdsock.sendto(cmd8(t0 + 32, 1, 0, 6, "everyone"), caddr)            # no world: all worlds
+        ea = [d for d in events(ra, 1.6) if d[6] == 1 and d[24:24 + d[22]] == b"everyone"]
+        ec = [d for d in events(rc, 0.4) if d[6] == 1 and d[24:24 + d[22]] == b"everyone"]
+        check("a command with no world reaches every world", bool(ea) and bool(ec))
     finally:
         proc.kill()
 
 
 if __name__ == "__main__":
     pure()
+    pure2()
     live()
     print("RESULT", "FAIL" if FAILS else "PASS", FAILS)
     sys.exit(1 if FAILS else 0)

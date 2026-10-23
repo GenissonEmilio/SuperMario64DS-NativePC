@@ -548,7 +548,14 @@ static void __fastcall sd_cb_02145b7c(void *self, void *, void *arg) { _ZN12daSt
 static void __fastcall sd_cb_02145ab4(void *self, void *, void *)    { _ZN12daStarGate_c17St_OpenClose_InitEP6Player(self); }
 static void __fastcall sd_cb_02145b10(void *self, void *, void *arg) { _ZN12daStarGate_c17St_Unlocking_MainEP6Player(self, arg); }
 static void __fastcall sd_cb_02145c2c(void *self, void *, void *)    { _ZN12daStarGate_c23St_TalkingToPlayer_InitEP6Player(self); }
-static void __fastcall sd_cb_02145c58(void *self, void *, void *arg) { _ZN12daStarGate_c12St_Wait_MainEP6Player(self, arg); }
+/* EVENTS2: while a castle-unlocked event is live the hook (hal/event_castle.cpp) runs this same ROM body with the gate's own unlock bit
+   raised for the one call; null on every target that does not seat it */
+extern "C" int (*port_event_gate_wait_hook)(void *gate, void *player) = 0;
+static void __fastcall sd_cb_02145c58(void *self, void *, void *arg)
+{
+    if (port_event_gate_wait_hook && port_event_gate_wait_hook(self, arg)) return;
+    _ZN12daStarGate_c12St_Wait_MainEP6Player(self, arg);
+}
 
 static const struct { PortPmfSD *slot; unsigned rom; void *host; }
 g_star_door_callbacks[] = {

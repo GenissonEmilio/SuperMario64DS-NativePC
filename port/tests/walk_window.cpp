@@ -12608,6 +12608,7 @@ static void stack_capture(const uint32_t *img)
             ntr::ppu_write_bmp_px(nm, img, w, h);
         }
     }
+#ifndef PORT_ROM_CLEAN   /* EVENTS2: a proof knob, compiled out of the kit */
     {   /* EVENTS1 (proof runs): SM64DS_STACK_BMP_ON=<prefix>|<flagfile>: while the flag file exists, the presented image on every 20th frame as
            <prefix>_<frame>.bmp. The harness decides WHEN by creating and deleting the file, so a picture can be taken at the moment an event
            is on screen without knowing the frame number in advance. */
@@ -12633,6 +12634,7 @@ static void stack_capture(const uint32_t *img)
             ntr::ppu_write_bmp_px(nm, img, w, h);
         }
     }
+#endif
     if (at < 0 || done || !img || (long)f < (long)at) return;
     done = 1;
     int w = 0, h = 0;

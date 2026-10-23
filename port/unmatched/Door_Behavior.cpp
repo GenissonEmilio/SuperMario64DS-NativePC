@@ -128,10 +128,16 @@ DOOR_FACE(_ZN8daDoor_c19func_ov100_021444e8Ei)
    to hal/char_door.cpp first. The hook is null on every target that does not seat it, and answers 1 only for variant 0xd
    in the cases hal/char_door.h lists; the ROM body is untouched. */
 extern "C" int (*port_char_door_idle_hook)(void *door, void *player) = 0;
+/* EVENTS2: the castle-unlocked event (hal/event_castle.cpp) answers the same question for a star door or a key door while the event is
+   live: it raises the door's own unlock bit for this one call, runs the ROM body, and puts the bit back. Null on every target that does not
+   seat it; 0 means the ROM body runs as before. */
+extern "C" int (*port_event_door_idle_hook)(void *door, void *player) = 0;
 static int __fastcall door_f__ZN8daDoor_c19func_ov100_02144cf8EP6Player(void *self, void *dead_edx, void *arg)
 {
     (void)dead_edx;
     if (port_char_door_idle_hook && port_char_door_idle_hook(self, arg))
+        return 1;
+    if (port_event_door_idle_hook && port_event_door_idle_hook(self, arg))
         return 1;
     return _ZN8daDoor_c19func_ov100_02144cf8EP6Player(self, arg);
 }

@@ -871,6 +871,10 @@ int g_debug_menu = 0;
    from the start, without the save slot's white door unlock. Default 0: they appear once the slot has opened the door. Read live. */
 int g_chars_from_start = 0;
 
+/* OnlineEvents (EVENTS2): 1 when this console takes the host's events in an Adventure Online world (a message, a song, triple speed,
+   one hit, chaos, castle unlocked, a race). Default 1 (on). The player's own switch; SM64DS_EVENTS=0 still turns it off for a test run. */
+int g_online_events = 1;
+
 /* CharacterStrip: 1 (the default) shows the star select's character strip (PRECOURSE1); 0 leaves the star select as the DS has it: Yoshi's caps row,
    no strip, no custom character arrow. Read live. */
 int g_character_strip = 1;
@@ -1537,6 +1541,7 @@ void load_once(void)
     g_adventure_ghosts = 0;
     g_debug_menu = 0;
     g_chars_from_start = 0;
+    g_online_events = 1;
     g_character_strip = 1;
     g_aspect = 0.0;
     g_vs_luigi_infection = 0;
@@ -1738,6 +1743,7 @@ void load_once(void)
         g_adventure_ghosts = json_bool(text, "AdventureGhosts", 0);
         g_debug_menu = json_bool(text, "DebugMenu", 0);
         g_chars_from_start = json_bool(text, "CharactersUnlockedFromStart", 0);
+        g_online_events = json_bool(text, "OnlineEvents", 1);
         g_character_strip = json_bool(text, "CharacterStrip", 1);
         /* the presentation aspect, read against its own default of 0 (native)
            so a file written before this key existed reads as the 4:3 window.
@@ -2390,6 +2396,14 @@ int reload_live(const char *text)
         }
     }
     {
+        const int oe = json_bool(text, "OnlineEvents", g_online_events);
+        if (oe != g_online_events) {
+            g_online_events = oe;
+            changed = 1;
+            fprintf(stderr, "[settings] live re-read: OnlineEvents %s\n", oe ? "ON" : "off");
+        }
+    }
+    {
         const int cfs = json_bool(text, "CharactersUnlockedFromStart", g_chars_from_start);
         if (cfs != g_chars_from_start) {
             g_chars_from_start = cfs;
@@ -2712,6 +2726,13 @@ extern "C" int host_setting_chat_scale(void)
     if (env >= 0) return env;
     load_once();
     return g_chat_scale;
+}
+
+/* OnlineEvents: the player's switch for the host's events (hal/event_client.cpp). The test knob SM64DS_EVENTS=0 is read there. */
+extern "C" int host_setting_online_events(void)
+{
+    load_once();
+    return g_online_events;
 }
 
 /* CharactersUnlockedFromStart, plus SM64DS_CHARS_FROM_START (0 forces it off, any other value on) for proof runs. */
@@ -3345,6 +3366,16 @@ extern "C" int host_setting_set_coins_middle(int on)
     g_hud_layout = on;
     g_poll_flag = 1;
     queue_bool("CoinsMiddle", on);
+    return 1;
+}
+
+extern "C" int host_setting_set_online_events(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    g_online_events = on;
+    g_poll_flag = 1;
+    queue_bool("OnlineEvents", on);
     return 1;
 }
 

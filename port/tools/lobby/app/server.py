@@ -3480,7 +3480,7 @@ EVENT_ON = (len(EVENT_ADMIN_TOKEN) >= 24 and len(EVENT_KEY) >= 16
             and EVENT_CMD_PORT > 0)
 EVENT_NAMES = {"message": (1, 0), "music": (2, 0), "clear": (4, 0),
                "speed": (3, 1), "onehit": (3, 2), "chaos": (3, 3),
-               "race": (3, 4)}
+               "race": (3, 4), "castle": (3, 5)}
 _EVENT_LAST_TS = [0]
 
 
@@ -3497,8 +3497,27 @@ def event_token_ok(given):
                                EVENT_ADMIN_TOKEN.encode("utf-8", "replace"))
 
 
-def event_build(body):
-    """A request body -> (command text | None, error code). Pure."""
+def event_world(value, worlds):
+    """The optional "world" field -> (hub code | "", error). `worlds` maps hub
+    code -> world number. A world number (1, 2, ...) is looked up; a hub code
+    must be one the lobby knows. Empty/absent = every world."""
+    if value is None or value == "":
+        return "", None
+    if isinstance(value, bool):
+        return None, "bad_world"
+    if isinstance(value, int) or (isinstance(value, str) and value.isdigit()):
+        hits = [c for c, no in worlds.items() if no == int(value)]
+        if len(hits) == 1:
+            return hits[0], None
+        return None, "ambiguous_world" if hits else "unknown_world"
+    if isinstance(value, str) and value in worlds:
+        return value, None
+    return None, "unknown_world"
+
+
+def event_build(body, worlds=None):
+    """A request body -> (command text | None, error code). Pure.
+    `worlds`: hub code -> world number, for the optional "world" field."""
     if not isinstance(body, dict):
         return None, "bad_shape"
     name = body.get("event")
@@ -3520,10 +3539,19 @@ def event_build(body):
         return None, "bad_text"
     if name == "clear":
         secs = 0
+    stars = body.get("stars", 0)
+    if isinstance(stars, bool) or not isinstance(stars, int) or not 0 <= stars <= 150:
+        return None, "bad_stars"
+    if stars and name != "race":
+        return None, "bad_stars"
+    world, err = event_world(body.get("world"), worlds if worlds is not None else {})
+    if err:
+        return None, err
     ts = max(int(time.time() * 1000), _EVENT_LAST_TS[0] + 1)
     _EVENT_LAST_TS[0] = ts
     msg = text.encode("ascii").hex() if text else "-"
-    line = "EVT1 %d %d %d %d %s" % (ts, etype, arg, secs, msg)
+    line = "EVT1 %d %d %d %d %s %s %d" % (ts, etype, arg, secs, msg,
+                                         world or "-", stars)
     sig = hmac.new(EVENT_KEY.encode("ascii", "replace"), line.encode("ascii"),
                    hashlib.sha256).hexdigest()[:32]
     return "%s|%s" % (line, sig), None
@@ -3743,6 +3771,22 @@ class Handler(BaseHTTPRequestHandler):
     # -- GET -------------------------------------------------------------
 
     def do_GET(self):
+        if self.path == PREFIX + "admin/worlds":
+            # the host's list of live worlds (number, hub code, members). Same
+            # door as the event endpoint: off = 404, wrong token = 403.
+            if not EVENT_ON:
+                self._reject(404, "unknown_verb", 0)
+                return
+            if not event_token_ok(event_bearer(self.headers)):
+                self._reject(403, "forbidden", 0, kind="auth")
+                return
+            now = time.monotonic()
+            with LOCK:
+                rows = [{"no": w.no, "code": c, "members": w.count(now)}
+                        for c, w in sorted(WORLDS.items(),
+                                           key=lambda kv: kv[1].no)]
+            self._send(200, {"v": 1, "worlds": rows})
+            return
         if self.path != PREFIX + "health":
             self._reject(404, "unknown_verb", 0)
             return
@@ -3961,7 +4005,9 @@ def _admin_event(self, announced):
     except (OSError, ValueError, UnicodeDecodeError, RecursionError):
         self._reject(400, "bad_shape", 0)
         return
-    cmd, err = event_build(body)
+    with LOCK:
+        worlds = dict((c, w.no) for c, w in WORLDS.items())
+    cmd, err = event_build(body, worlds)
     if err:
         self._send(400, {"v": 1, "error": err})
         return
@@ -3970,7 +4016,8 @@ def _admin_event(self, announced):
     except OSError:
         self._send(502, {"v": 1, "error": "relay_unreachable"})
         return
-    log("admin event %s secs %s" % (body.get("event"), body.get("secs", 0)))
+    log("admin event %s secs %s world %s" % (body.get("event"), body.get("secs", 0),
+                                              body.get("world") or "all"))
     self._send(200, {"v": 1, "ok": True})
 
 

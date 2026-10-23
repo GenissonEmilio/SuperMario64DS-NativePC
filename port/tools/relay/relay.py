@@ -633,6 +633,14 @@ EVENT_MAX_LIVE = 8
 EVENT_MAX_SECS = 3600
 EVENT_SKEW_S = 120
 EV_MESSAGE, EV_MUSIC, EV_MODIFIER, EV_CLEAR = 1, 2, 3, 4
+# wire-only types the relay itself makes (never accepted as a command):
+EV_LEADER, EV_WINNER = 5, 6
+# modifier args: 1 triple speed, 2 one hit, 3 chaos, 4 race, 5 castle unlocked
+MOD_RACE, MOD_CASTLE, MOD_MAX = 4, 5, 5
+RACE_DEFAULT_TARGET = 50
+RACE_LEADER_EVERY_S = 5.0     # the leader is repeated this often
+RACE_WIN_SHOW_S = 10          # the winner stays on the wire this long after a win
+WORLD_CODE_MAX = 16
 
 
 def event_sign(key, body):
@@ -652,14 +660,19 @@ def event_parse(key, raw, last_ts, now_wall):
     if not hmac.compare_digest(event_sign(key, body), sig):
         return None, "signature"
     parts = body.split(" ")
-    if len(parts) != 6 or parts[0] != "EVT1":
+    if len(parts) not in (6, 8) or parts[0] != "EVT1":
         return None, "shape"
+    world = ""
+    target = 0
     try:
         ts = int(parts[1])
         etype = int(parts[2])
         arg = int(parts[3])
         secs = int(parts[4])
         msg = bytes.fromhex(parts[5]).decode("ascii") if parts[5] != "-" else ""
+        if len(parts) == 8:
+            world = "" if parts[6] == "-" else parts[6]
+            target = int(parts[7])
     except (ValueError, UnicodeDecodeError):
         return None, "field"
     if ts <= last_ts:
@@ -672,20 +685,28 @@ def event_parse(key, raw, last_ts, now_wall):
         return None, "range"
     if len(msg) > EVENT_TEXT_MAX or any(not 32 <= ord(c) < 127 for c in msg):
         return None, "text"
-    if etype == EV_MODIFIER and not 1 <= arg <= 4:
+    if etype == EV_MODIFIER and not 1 <= arg <= MOD_MAX:
+        return None, "range"
+    if len(world) > WORLD_CODE_MAX or any(
+            not (c.isalnum() or c in "-_") or ord(c) > 126 for c in world):
+        return None, "world"
+    if not 0 <= target <= 150 or (target and not (etype == EV_MODIFIER
+                                                  and arg == MOD_RACE)):
         return None, "range"
     if etype == EV_MESSAGE and not msg:
         return None, "text"
-    return {"ts": ts, "type": etype, "arg": arg, "secs": secs, "text": msg}, "ok"
+    return {"ts": ts, "type": etype, "arg": arg, "secs": secs, "text": msg,
+            "world": world, "target": target}, "ok"
 
 
-def event_pack(eid, etype, arg, text, remain_ms, total_ms):
+def event_pack(eid, etype, arg, text, remain_ms, total_ms, extra=0):
     raw = text.encode("ascii")
     out = bytearray(EVENT_LEN)
     out[0:4] = EVENT_TAG
     out[4] = 1
     out[5] = EVENT_SEAT
     out[6] = etype
+    out[7] = extra & 0xFF       # race target (0 = the default 50)
     out[8:12] = (eid & 0xFFFFFFFF).to_bytes(4, "little")
     out[12:16] = max(0, int(remain_ms)).to_bytes(4, "little")
     out[16:20] = max(0, int(total_ms)).to_bytes(4, "little")
@@ -703,22 +724,29 @@ class EventBoard(object):
         self.next_id = 1
         self.clear_until = 0.0
         self.clear_id = 0
+        self.clear_world = ""
 
     def add(self, ev, now):
         if ev["type"] == EV_CLEAR:
-            self.live = []
+            if ev.get("world"):
+                self.live = [r for r in self.live if r["world"] != ev["world"]]
+            else:
+                self.live = []
+            self.clear_world = ev.get("world", "")
             self.clear_id = self.next_id
             self.next_id += 1
             self.clear_until = now + 4.0
             return self.clear_id
         total = ev["secs"] if ev["secs"] else (8 if ev["type"] == EV_MESSAGE else 60)
         rec = {"id": self.next_id, "type": ev["type"], "arg": ev["arg"],
-               "text": ev["text"], "start": now, "total": float(total)}
+               "text": ev["text"], "start": now, "total": float(total),
+               "world": ev.get("world", ""), "target": ev.get("target", 0)}
         self.next_id += 1
         if ev["type"] == EV_MODIFIER:
             # one running copy of a modifier kind: a new one replaces it
             self.live = [r for r in self.live
-                         if not (r["type"] == EV_MODIFIER and r["arg"] == rec["arg"])]
+                         if not (r["type"] == EV_MODIFIER and r["arg"] == rec["arg"]
+                                 and r["world"] == rec["world"])]
         if ev["type"] == EV_MUSIC:
             self.live = [r for r in self.live if r["type"] != EV_MUSIC]
         self.live.append(rec)
@@ -729,15 +757,86 @@ class EventBoard(object):
     def sweep(self, now):
         self.live = [r for r in self.live if now - r["start"] < r["total"]]
 
-    def datagrams(self, now):
+    def races(self, world):
+        """The live race records that apply to this world code."""
+        return [r for r in self.live if r["type"] == EV_MODIFIER
+                and r["arg"] == MOD_RACE and (not r["world"] or r["world"] == world)]
+
+    def datagrams(self, now, world=None):
+        """Every datagram for one world (world None: the untargeted ones
+        only). An event that names a world goes to that world alone."""
         self.sweep(now)
         out = []
-        if now < self.clear_until:
+        if now < self.clear_until and (not self.clear_world
+                                       or self.clear_world == world):
             out.append(event_pack(self.clear_id, EV_CLEAR, 0, "", 0, 0))
         for r in self.live:
+            if r["world"] and r["world"] != world:
+                continue
             remain = (r["total"] - (now - r["start"])) * 1000
             out.append(event_pack(r["id"], r["type"], r["arg"], r["text"],
-                                  remain, r["total"] * 1000))
+                                  remain, r["total"] * 1000,
+                                  r["target"] if r["arg"] == MOD_RACE else 0))
+        return out
+
+
+class RaceTally(object):
+    """One world's race to N stars. The relay holds it, so no console can lie
+    about who won: it reads the star totals every console already sends in its
+    presence datagram (SYNL, 12..13 little endian). A seat wins only by CROSSING
+    the target during the race: its first count seen by this tally must be
+    under the target (a save that starts at 50 or more cannot win by standing
+    there). Of two seats crossing in the same tick, the higher count wins, then
+    the lower seat. The winner is decided once and never changes."""
+
+    def __init__(self, race_id, target, now):
+        self.race_id = race_id
+        self.target = target or RACE_DEFAULT_TARGET
+        self.base = {}
+        self.winner = None          # (seat, name, stars) once decided
+        self.win_time = 0.0
+        self.last_leader = -1e9
+        self.started = now
+
+    def leader(self, stars):
+        best = None
+        for seat in sorted(stars):
+            if best is None or stars[seat] > stars[best]:
+                best = seat
+        return best
+
+    def feed(self, stars, names, now):
+        """stars: seat -> count now; names: seat -> text. Decides a winner."""
+        for seat, n in stars.items():
+            self.base.setdefault(seat, n)
+        if self.winner is not None:
+            return self.winner
+        cross = [(-n, seat) for seat, n in stars.items()
+                 if n >= self.target and self.base.get(seat, n) < self.target]
+        if cross:
+            cross.sort()
+            n, seat = -cross[0][0], cross[0][1]
+            self.winner = (seat, names.get(seat) or "Player %d" % (seat + 1), n)
+            self.win_time = now
+        return self.winner
+
+    def datagrams(self, stars, names, now, remain_ms):
+        """What to put on the wire this second."""
+        out = []
+        if self.winner is not None:
+            seat, name, n = self.winner
+            left = RACE_WIN_SHOW_S * 1000 - (now - self.win_time) * 1000
+            out.append(event_pack(0x40000000 + self.race_id, EV_WINNER, n,
+                                  name, max(left, 0),
+                                  RACE_WIN_SHOW_S * 1000, self.target))
+            return out
+        if now - self.last_leader >= RACE_LEADER_EVERY_S and stars:
+            self.last_leader = now
+            seat = self.leader(stars)
+            out.append(event_pack(0x20000000 + self.race_id, EV_LEADER,
+                                  stars[seat],
+                                  names.get(seat) or "Player %d" % (seat + 1),
+                                  remain_ms, remain_ms, self.target))
         return out
 
 
@@ -800,7 +899,8 @@ class SessionV2(object):
     """A version 2 session: a STAR (seat 0 is the parent, 1..MAX_CHILDREN the
     children) or a HUB (seats 0..HUB_SEATS-1, all members, nobody hosts)."""
     __slots__ = ("code", "kind", "seats", "created", "fwd_tokens",
-                 "fwd_stamp", "referee", "fwd_pps", "fwd_burst")
+                 "fwd_stamp", "referee", "fwd_pps", "fwd_burst",
+                 "stars", "names", "race")
     version = PROTO_V2
 
     def __init__(self, code, kind, now):
@@ -809,6 +909,9 @@ class SessionV2(object):
         self.seats = {}         # seat -> addr
         self.created = now
         self.referee = None     # arena sessions only (referee.Referee)
+        self.stars = {}         # hub only: seat -> star total from its presence
+        self.names = {}         # hub only: seat -> name from its identity frame
+        self.race = None        # hub only: the RaceTally of the live race
         # the per-session forward budget (SESSION_FWD_PPS), in copies sent
         self.fwd_pps = SESSION_FWD_PPS_WORLD if kind == KIND_HUB else SESSION_FWD_PPS
         self.fwd_burst = self.fwd_pps
@@ -912,6 +1015,7 @@ class RelayProtocol(asyncio.DatagramProtocol):
         self.n_event_cmd = 0
         self.n_event_bad = {}
         self.n_event_tx = 0
+        self.n_event_wins = 0
 
     # ---- host events
 
@@ -937,12 +1041,13 @@ class RelayProtocol(asyncio.DatagramProtocol):
 
     def event_broadcast(self, now):
         """Send every live event to every member of every world hub."""
-        dgs = self.board.datagrams(now)
-        if not dgs:
-            return 0
         sent = 0
         for session in list(self.sessions.values()):
             if session.version != PROTO_V2 or session.kind != KIND_HUB:
+                continue
+            dgs = self.board.datagrams(now, session.code)
+            dgs += self.race_datagrams(session, now)
+            if not dgs:
                 continue
             for addr in list(session.seats.values()):
                 for dg in dgs:
@@ -953,6 +1058,29 @@ class RelayProtocol(asyncio.DatagramProtocol):
                     sent += 1
         self.n_event_tx += sent
         return sent
+
+    def race_datagrams(self, session, now):
+        """The leader (every few seconds) and the winner (once decided, until
+        the race record expires) for one world, from the relay's own tally."""
+        races = self.board.races(session.code)
+        if not races:
+            session.race = None
+            return []
+        rec = races[-1]
+        if session.race is None or session.race.race_id != rec["id"]:
+            session.race = RaceTally(rec["id"], rec["target"], now)
+            log("event: race %d in world %s to %d stars" % (
+                rec["id"], session.code, session.race.target))
+        tally = session.race
+        was = tally.winner
+        tally.feed(session.stars, session.names, now)
+        if was is None and tally.winner is not None:
+            self.n_event_wins += 1
+            log("event: race %d WON in world %s by seat %d %r with %d stars"
+                % (rec["id"], session.code, tally.winner[0],
+                   tally.winner[1], tally.winner[2]))
+        remain_ms = max(0.0, (rec["total"] - (now - rec["start"])) * 1000)
+        return tally.datagrams(session.stars, session.names, now, remain_ms)
 
     # ---- asyncio hooks
 
@@ -1487,6 +1615,15 @@ class RelayProtocol(asyncio.DatagramProtocol):
             self._drop_v2("cap", kstat)
             return
         endpoint.last_seen = now
+        if session.kind == KIND_HUB:
+            # what the host's race reads: the sender's own star total and name
+            if kind.tag == b"SYNL" and n == 20:
+                session.stars[seat] = data[12] | (data[13] << 8)
+            elif kind.tag == b"SYNI" and n >= 24:
+                nl = data[6]
+                raw = bytes(data[20:20 + nl])
+                session.names[seat] = "".join(
+                    chr(c) if 32 <= c < 127 else "?" for c in raw)[:24]
         if not targets:
             self._drop_v2("target", kstat)
             return
@@ -1632,6 +1769,8 @@ class RelayProtocol(asyncio.DatagramProtocol):
         if session.version == PROTO_V2:
             if session.seats.get(endpoint.seat) == endpoint.addr:
                 del session.seats[endpoint.seat]
+                session.stars.pop(endpoint.seat, None)
+                session.names.pop(endpoint.seat, None)
                 if session.referee is not None:
                     session.referee.on_leave(
                         endpoint.seat,

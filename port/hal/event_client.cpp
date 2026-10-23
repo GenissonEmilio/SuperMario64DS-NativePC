@@ -19,6 +19,7 @@
 #include "event_client.h"
 #include "comms_hub.h"
 #include "hub_presence.h"
+#include "host_settings.h"
 
 #include <windows.h>
 
@@ -59,13 +60,14 @@ bool event_decode(const unsigned char *d, int len, EventWire *out) {
     if (!d || len != 96) return false;
     if (std::memcmp(d, "SYNZ", 4) != 0 || d[4] != 1) return false;
     const int type = d[6];
-    if (type < 1 || type > 4) return false;
+    if (type < 1 || type > 6) return false;
     const int tlen = d[22];
     if (tlen > 70) return false;
     std::memcpy(&out->id, d + 8, 4);
     std::memcpy(&out->remain_ms, d + 12, 4);
     std::memcpy(&out->total_ms, d + 16, 4);
     out->type = type;
+    out->extra = d[7];
     out->arg = (int)d[20] | ((int)d[21] << 8);
     for (int i = 0; i < tlen; ++i) {
         const unsigned char c = d[24 + i];
@@ -77,17 +79,19 @@ bool event_decode(const unsigned char *d, int len, EventWire *out) {
 
 namespace {
 
-enum : int { kMsg = 1, kMusic = 2, kMod = 3, kClear = 4 };
-enum : int { kModSpeed = 1, kModOneHit = 2, kModChaos = 3, kModRace = 4 };
+enum : int { kMsg = 1, kMusic = 2, kMod = 3, kClear = 4, kLeader = 5, kWinner = 6 };
+enum : int { kModSpeed = 1, kModOneHit = 2, kModChaos = 3, kModRace = 4, kModCastle = 5 };
 enum : int { kRecs = 8, kDead = 16 };
 enum : int { kChaosTicks = 120, kChaosCooldown = 240, kRaceStars = 50 };
+// The player is "in control" this many game ticks after the level is up (the opening camera is over), and has moved or 900 ticks went by.
+enum : int { kReadyTicks = 300, kReadyForceTicks = 900 };
 enum : unsigned { kAnnounceMs = 6000, kWinMs = 10000 };
 
 struct Rec {
     bool     used;
     bool     applied;
     unsigned id;
-    int      type, arg;
+    int      type, arg, extra;
     char     text[73];
     unsigned start_ms, end_ms, total_ms;
 };
@@ -112,17 +116,30 @@ bool           g_tick_seeded = false;
 int            g_still = 0, g_cool = 0, g_boom_pending = 0;
 int            g_px = 0, g_py = 0, g_pz = 0;
 bool           g_pos_have = false;
-unsigned       g_race_done_id = 0;
-int            g_win_seat = -2;    // -2 none, -1 me, else the seat
-unsigned       g_win_until = 0;
+bool           g_castle = false;   // a castle-unlocked event is live (the door hooks read it)
+unsigned       g_win_id = 0;       // the relay's winner record we already showed
+char           g_win_name[40] = {};
+int            g_win_stars = 0;
+unsigned       g_win_until = 0;    // 0 = no banner
+int            g_lead_stars = -1;  // the relay's last word on who leads (-1 none)
+char           g_lead_name[40] = {};
+unsigned       g_lead_id = 0;
+// "in control": the level has been up for a while, the player has moved (or a long time passed), no cutscene / menu / fade
+int            g_up_ticks = 0, g_up_key = -1;
+bool           g_moved = false;
+int            g_sx = 0, g_sy = 0, g_sz = 0;
 unsigned       g_log_tick = 0;
 unsigned       g_frame = 0;
 
+#ifndef PORT_ROM_CLEAN
+// proof-only (compiled out of the kit)
 struct Fake { int frame; int type, arg, secs; char text[73]; bool done; };
 Fake g_fake[8];
+#endif
 int  g_nfake = -1;
 
-bool enabled() {
+// SM64DS_EVENTS=0, the kill switch (kept in the kit)
+bool env_on() {
     if (g_off < 0) {
         const char *e = std::getenv("SM64DS_EVENTS");
         g_off = (e && e[0] == '0') ? 1 : 0;
@@ -130,6 +147,8 @@ bool enabled() {
     }
     return g_off == 0;
 }
+// the kill switch AND the player's own "Online events" switch
+bool enabled() { return env_on() && host_setting_online_events() != 0; }
 bool logging() {
     if (g_log < 0) {
         const char *e = std::getenv("SM64DS_EVENT_LOG");
@@ -162,12 +181,15 @@ void note_dead(unsigned id) {
     ++g_dead_n;
 }
 
-const char *mod_name(int arg) {
+const char *mod_name(int arg, int extra, char *buf, int cap) {
     switch (arg) {
     case kModSpeed:  return "TRIPLE SPEED";
     case kModOneHit: return "ONE HIT MODE";
     case kModChaos:  return "CHAOS MODE";
-    case kModRace:   return "RACE TO 50 STARS";
+    case kModCastle: return "CASTLE UNLOCKED";
+    case kModRace:
+        std::snprintf(buf, (size_t)cap, "RACE TO %d STARS", extra > 0 ? extra : kRaceStars);
+        return buf;
     }
     return "EVENT";
 }
@@ -242,22 +264,6 @@ void kill_now(char *b, const char *why) {
                  (int)(signed char)(data_02092144[data_0209f250 & 15] >> 8));
 }
 
-void name_of(int seat, char *out, int cap) {
-    out[0] = 0;
-    unsigned char buf[64];
-    unsigned age = 0;
-    const int n = comms_hub_latest(kHubIdent, seat, buf, (int)sizeof buf, &age);
-    if (n >= 24) {
-        const int nl = buf[6];
-        for (int i = 0; i < nl && i < cap - 1 && 20 + i < n; ++i) {
-            const unsigned char c = buf[20 + i];
-            out[i] = (c >= 32 && c < 127) ? (char)c : '?';
-            out[i + 1] = 0;
-        }
-    }
-    if (!out[0]) std::snprintf(out, (size_t)cap, "Player %d", seat + 1);
-}
-
 // ---- the list ------------------------------------------------------------------------------------------------------
 
 Rec *find_rec(unsigned id) {
@@ -270,6 +276,7 @@ void end_rec(Rec &r, const char *why) {
     if (r.type == kMod && r.arg == kModSpeed) speed_apply(false);
     if (r.type == kMod && r.arg == kModOneHit) g_hp_prev = -99;
     if (r.type == kMod && r.arg == kModChaos) { g_still = 0; g_pos_have = false; }
+    if (r.type == kMod && r.arg == kModCastle) g_castle = false;
     if (r.type == kMusic) music_apply(false, 0);
     note_dead(r.id);
     r.used = false;
@@ -280,6 +287,26 @@ void end_all(const char *why) {
     for (auto &r : g_rec) if (r.used) end_rec(r, why);
     speed_apply(false);
     music_apply(false, 0);
+    g_castle = false;
+}
+
+// The player turned Online events off (or the world is gone): undo every effect but do NOT remember the records as finished, so turning
+// the switch back on picks up what still runs from the relay's next repeat.
+void drop_all(const char *why) {
+    bool any = false;
+    for (auto &r : g_rec) any = any || r.used;
+    for (auto &r : g_rec) {
+        if (!r.used) continue;
+        if (r.type == kMod && r.arg == kModOneHit) g_hp_prev = -99;
+        if (r.type == kMod && r.arg == kModChaos) { g_still = 0; g_pos_have = false; }
+        r.used = false;
+    }
+    speed_apply(false);
+    music_apply(false, 0);
+    g_castle = false;
+    g_win_until = 0;
+    g_lead_stars = -1;
+    if (any) std::fprintf(stderr, "[event] events dropped (%s)\n", why);
 }
 
 void put_event(const EventWire &w, unsigned now) {
@@ -289,6 +316,26 @@ void put_event(const EventWire &w, unsigned now) {
             std::fprintf(stderr, "[event] CLEAR from the host (id %u)\n", w.id);
             end_all("host cleared");
         }
+        return;
+    }
+    if (w.type == kLeader) {
+        // the relay's word on who leads the race (every few seconds)
+        g_lead_id = w.id;
+        g_lead_stars = w.arg;
+        std::snprintf(g_lead_name, sizeof g_lead_name, "%s", w.text);
+        return;
+    }
+    if (w.type == kWinner) {
+        // the relay's word on who won (decided once, repeated until the race record runs out): the ONLY way a console shows a winner
+        if (w.id == g_win_id) return;
+        g_win_id = w.id;
+        g_win_stars = w.arg;
+        std::snprintf(g_win_name, sizeof g_win_name, "%s", w.text[0] ? w.text : "SOMEONE");
+        g_win_until = now + (w.remain_ms ? w.remain_ms : 1000u);
+        for (auto &x : g_rec) if (x.used && x.type == kMod && x.arg == kModRace) end_rec(x, "race decided");
+        g_lead_stars = -1;
+        std::fprintf(stderr, "[event] RACE WINNER (relay word, record %u): %s with %d stars, shown for %u ms\n", w.id, g_win_name,
+                     w.arg, w.remain_ms);
         return;
     }
     if (dead_id(w.id)) return;
@@ -301,6 +348,7 @@ void put_event(const EventWire &w, unsigned now) {
         r->id = w.id;
         r->type = w.type;
         r->arg = w.arg;
+        r->extra = w.extra;
         std::memcpy(r->text, w.text, sizeof r->text);
         r->start_ms = now;
         r->total_ms = w.total_ms;
@@ -315,9 +363,13 @@ void on_event(int, const unsigned char *d, int len, void *) {
     EventWire w;
     if (!event_decode(d, len, &w)) { ++g_st.dropped_bad; return; }
     ++g_st.rx;
+    if (!enabled()) return;      // the relay handed it out; this console's own switch says no
     put_event(w, comms_hub_now_ms());
 }
 
+#ifdef PORT_ROM_CLEAN
+void read_fakes() { g_nfake = 0; }
+#else
 void read_fakes() {
     g_nfake = 0;
     const char *e = std::getenv("SM64DS_EVENT_FAKE");
@@ -336,6 +388,7 @@ void read_fakes() {
         }
     }
 }
+#endif
 
 bool hub_ok() {
     return comms_hub_active() && !comms_hub_arena() && comms_hub_state() == kHubLive &&
@@ -345,6 +398,9 @@ bool hub_ok() {
 }  // namespace
 
 EventStats event_stats() { return g_st; }
+
+// "m:ss" of the time a record has left
+static int secs_left(const Rec &r, unsigned now) { return (int)((r.end_ms - now) / 1000u) + 1; }
 
 void event_view(EventView *out) {
     out->n = 0;
@@ -356,10 +412,10 @@ void event_view(EventView *out) {
         out->style[out->n] = style;
         ++out->n;
     };
-    if (g_win_seat != -2 && now < g_win_until) {
-        char nm[40], line[80];
-        if (g_win_seat == -1) std::snprintf(line, sizeof line, "YOU WIN THE RACE!");
-        else { name_of(g_win_seat, nm, sizeof nm); std::snprintf(line, sizeof line, "%s WINS THE RACE!", nm); }
+    // the race winner: the relay's word, the same text on every console
+    if (g_win_until != 0 && (int)(now - g_win_until) < 0) {
+        char line[80];
+        std::snprintf(line, sizeof line, "%s WINS THE RACE", g_win_name);
         add(line, 0);
     }
     // the newest message first, then one line per modifier
@@ -368,33 +424,33 @@ void event_view(EventView *out) {
     if (msg) add(msg->text, 0);
     for (const auto &r : g_rec) {
         if (!r.used) continue;
-        char line[80];
+        char line[80], nb[32];
         if (r.type == kMod && now - r.start_ms < kAnnounceMs) {
             const unsigned tot = (r.total_ms + 500) / 1000;
+            const char *nm = mod_name(r.arg, r.extra, nb, sizeof nb);
             if (tot >= 120 && tot % 60 == 0)
-                std::snprintf(line, sizeof line, "%s EVENT: %u MINUTES", mod_name(r.arg), tot / 60);
+                std::snprintf(line, sizeof line, "%s EVENT: %u MINUTES", nm, tot / 60);
             else if (tot == 60)
-                std::snprintf(line, sizeof line, "%s EVENT: 1 MINUTE", mod_name(r.arg));
+                std::snprintf(line, sizeof line, "%s EVENT: 1 MINUTE", nm);
             else
-                std::snprintf(line, sizeof line, "%s EVENT: %u SECONDS", mod_name(r.arg), tot);
+                std::snprintf(line, sizeof line, "%s EVENT: %u SECONDS", nm, tot);
             add(line, 0);
         }
     }
     for (const auto &r : g_rec) {
         if (!r.used) continue;
-        const int left = (int)((r.end_ms - now) / 1000u) + 1;
-        char line[80];
+        const int left = secs_left(r, now);
+        char line[80], nb[32];
         if (r.type == kMod) {
+            const char *nm = mod_name(r.arg, r.extra, nb, sizeof nb);
             if (r.arg == kModRace) {
-                int best = NumStars();
-                for (int s = 0; s < kHubMaxSeats; ++s) {
-                    HubPresence p;
-                    if (hub_presence_get(s, &p) && p.stars_total > best) best = p.stars_total;
-                }
-                std::snprintf(line, sizeof line, "%s  you %d  best %d  %d:%02d", mod_name(r.arg), (int)NumStars(), best,
-                              left / 60, left % 60);
+                if (g_lead_stars >= 0)
+                    std::snprintf(line, sizeof line, "%s  you %d  %s %d  %d:%02d", nm, (int)NumStars(), g_lead_name, g_lead_stars,
+                                  left / 60, left % 60);
+                else
+                    std::snprintf(line, sizeof line, "%s  you %d  %d:%02d", nm, (int)NumStars(), left / 60, left % 60);
             } else {
-                std::snprintf(line, sizeof line, "%s  %d:%02d", mod_name(r.arg), left / 60, left % 60);
+                std::snprintf(line, sizeof line, "%s  %d:%02d", nm, left / 60, left % 60);
             }
             add(line, 1);
         } else if (r.type == kMusic) {
@@ -404,20 +460,62 @@ void event_view(EventView *out) {
     }
 }
 
+// The pause menu's one line: the first live modifier (else the song) and its time left. Basic wording, nothing when idle.
+bool event_pause_line(char *out, int cap) {
+    if (!enabled() || cap < 8) return false;
+    const unsigned now = comms_hub_now_ms();
+    const Rec *best = nullptr;
+    for (const auto &r : g_rec)
+        if (r.used && (r.type == kMod || r.type == kMusic) && (!best || (r.type == kMod && best->type != kMod))) best = &r;
+    if (!best) return false;
+    const int left = secs_left(*best, now);
+    char nb[32];
+    if (best->type == kMusic) {
+        std::snprintf(out, (size_t)cap, "Event: song %d:%02d", left / 60, left % 60);
+    } else {
+        // sentence case of the banner name: "Triple speed"
+        const char *nm = mod_name(best->arg, best->extra, nb, sizeof nb);
+        char t[40];
+        size_t k = 0;
+        for (const char *p = nm; *p && k + 1 < sizeof t; ++p) {
+            char c = *p;
+            if (p != nm && c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
+            t[k++] = c;
+        }
+        t[k] = 0;
+        std::snprintf(out, (size_t)cap, "Event: %s %d:%02d", t, left / 60, left % 60);
+    }
+    return true;
+}
+
 }  // namespace port
+
+extern "C" int port_event_castle_live(void) { return port::g_castle ? 1 : 0; }
 
 extern "C" void port_event_frame(void) {
     using namespace port;
     ++g_frame;
-    if (!enabled()) return;
+    if (!env_on()) { g_castle = false; return; }
     if (std::getenv("SM64DS_EVENT_LOG") && (g_frame == 1 || g_frame % 600 == 0))
-        std::fprintf(stderr, "[event] hook alive: call %u body=%p hub=%d fakes=%d\n", g_frame, (void *)my_body(),
-                     comms_hub_active() ? 1 : 0, g_nfake);
+        std::fprintf(stderr, "[event] hook alive: call %u body=%p hub=%d fakes=%d setting=%d\n", g_frame, (void *)my_body(),
+                     comms_hub_active() ? 1 : 0, g_nfake, host_setting_online_events());
 
-    // fake events (the single-console knob)
+    if (comms_hub_active() && !g_registered) {
+        hub_on_kind(kHubEvent, on_event, nullptr);
+        g_registered = true;
+    }
+
+    // the player's own switch: off = nothing applied, nothing shown, nothing remembered as finished
+    if (!host_setting_online_events()) {
+        drop_all("Online events is off");
+        return;
+    }
+
+    // fake events (the single-console knob, dev builds only)
     if (g_nfake < 0) read_fakes();
     const unsigned now = comms_hub_now_ms();
     bool fake_live = false;
+#ifndef PORT_ROM_CLEAN
     for (int i = 0; i < g_nfake; ++i) {
         Fake &f = g_fake[i];
         fake_live = true;
@@ -433,27 +531,27 @@ extern "C" void port_event_frame(void) {
             put_event(w, now);
         }
     }
+#endif
 
-    if (comms_hub_active() && !g_registered) {
-        hub_on_kind(kHubEvent, on_event, nullptr);
-        g_registered = true;
-    }
     const bool live = hub_ok();
     if (!live && !fake_live) {
         bool any = false;
         for (auto &r : g_rec) any = any || r.used;
-        if (any || g_speed_on || g_music_on) end_all("the world is gone");
+        if (any || g_speed_on || g_music_on || g_castle) end_all("the world is gone");
+        g_win_until = 0;
+        g_lead_stars = -1;
         return;
     }
 
     // time's up
     for (auto &r : g_rec)
         if (r.used && (int)(now - r.end_ms) >= 0) end_rec(r, "time is up");
+    if (g_win_until != 0 && (int)(now - g_win_until) >= 0) g_win_until = 0;
 
     char *b = my_body();
     const bool in_level = b != nullptr;
 
-    bool want_speed = false, want_onehit = false, want_chaos = false, want_race = false;
+    bool want_speed = false, want_onehit = false, want_chaos = false, want_castle = false;
     const Rec *music = nullptr;
     for (const auto &r : g_rec) {
         if (!r.used) continue;
@@ -461,10 +559,16 @@ extern "C" void port_event_frame(void) {
             want_speed  = want_speed  || r.arg == kModSpeed;
             want_onehit = want_onehit || r.arg == kModOneHit;
             want_chaos  = want_chaos  || r.arg == kModChaos;
-            want_race   = want_race   || r.arg == kModRace;
+            want_castle = want_castle || r.arg == kModCastle;
         } else if (r.type == kMusic) {
             music = &r;
         }
+    }
+
+    // castle unlocked: the door hooks (hal/event_castle.cpp) ask port_event_castle_live; nothing is written to the save
+    if (want_castle != g_castle) {
+        std::fprintf(stderr, "[event] castle unlocked %s\n", want_castle ? "ON: every star and key door opens" : "OFF: the save's own doors");
+        g_castle = want_castle;
     }
 
     // triple speed: re-asserted every frame (an overlay reload puts the table back)
@@ -480,17 +584,36 @@ extern "C" void port_event_frame(void) {
     g_tick_prev = ticks;
     g_tick_seeded = true;
 
+    if (!in_level) {
+        g_up_ticks = 0;
+        g_up_key = -1;
+        g_moved = false;
+    }
+
     if (in_level) {
         const int hp = (int)(signed char)(data_02092144[data_0209f250 & 15] >> 8);
 
+        // "in control": the level is up (not the opening camera), nothing modal, and the player moved at least once (or a long time went
+        // by). A level change, a death and a respawn all take the body away for a while, which starts this over.
+        const int key = ((int)data_0209f2f8 << 8) | (int)(unsigned char)data_02092120;
+        const int x0 = rd32(b, 0x5c), y0 = rd32(b, 0x60), z0 = rd32(b, 0x64);
+        if (key != g_up_key) { g_up_key = key; g_up_ticks = 0; g_moved = false; g_sx = x0; g_sy = y0; g_sz = z0; }
+        if (dt > 0 && !busy()) g_up_ticks += (int)dt;
+        {
+            const int dx = x0 - g_sx, dy = y0 - g_sy, dz = z0 - g_sz;
+            if ((dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy) + (dz < 0 ? -dz : dz) > 0x20000) g_moved = true;
+        }
+        const bool ready = g_up_ticks >= kReadyTicks && (g_moved || g_up_ticks >= kReadyForceTicks) && !busy() && hp > 0;
+
         if (logging() && dt > 0 && (ticks - g_log_tick) >= log_every()) {
             g_log_tick = ticks;
-            std::fprintf(stderr, "[event] me tick=%u pos=(%d,%d,%d) hspeed=%d hp=%d\n", ticks, rd32(b, 0x5c), rd32(b, 0x60),
-                         rd32(b, 0x64), rd32(b, 0x98), hp);
+            std::fprintf(stderr, "[event] me tick=%u pos=(%d,%d,%d) hspeed=%d hp=%d ready=%d up=%d\n", ticks, rd32(b, 0x5c), rd32(b, 0x60),
+                         rd32(b, 0x64), rd32(b, 0x98), hp, ready ? 1 : 0, g_up_ticks);
         }
 
-        // proof knob: SM64DS_EVENT_TESTHURT=<tick>[,<tick>...] hurts the local body by one wedge at those game ticks (a control for
-        // one hit mode: without the modifier health goes 8 -> 7, with it the console dies)
+#ifndef PORT_ROM_CLEAN
+        // proof knob (dev builds only): SM64DS_EVENT_TESTHURT=<tick>[,<tick>...] hurts the local body by one wedge at those game ticks (a
+        // control for one hit mode: without the modifier health goes 8 -> 7, with it the console dies)
         {
             static unsigned th[4]; static int nth = -1, thi = 0;
             if (nth < 0) {
@@ -508,11 +631,12 @@ extern "C" void port_event_frame(void) {
                              (int)(signed char)(data_02092144[data_0209f250 & 15] >> 8));
             }
         }
+#endif
 
-        // one hit: any drop in health is the end of it
+        // one hit: any drop in health is the end of it (only once the player is in control)
         if (want_onehit) {
-            if (g_hp_prev != -99 && hp > 0 && hp < g_hp_prev) kill_now(b, "ONE HIT");
-            g_hp_prev = hp;
+            if (ready && g_hp_prev != -99 && hp > 0 && hp < g_hp_prev) kill_now(b, "ONE HIT");
+            g_hp_prev = ready ? hp : -99;
         }
 
         // an explosion that did not take (invincible frames): finish it
@@ -521,11 +645,11 @@ extern "C" void port_event_frame(void) {
             if (g_boom_pending == 0 && hp > 0) kill_now(b, "CHAOS finish");
         }
 
-        // chaos: two seconds of game time without moving
+        // chaos: two seconds of game time without moving, never before the player is in control
         if (want_chaos && dt > 0) {
             const int x = rd32(b, 0x5c), y = rd32(b, 0x60), z = rd32(b, 0x64);
             if (g_cool > 0) { g_cool -= (int)dt; g_still = 0; }
-            else if (hp <= 0 || busy()) { g_still = 0; }
+            else if (!ready) { g_still = 0; }
             else {
                 const int dx = x - g_px, dy = y - g_py, dz = z - g_pz;
                 const int moved = (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy) + (dz < 0 ? -dz : dz);
@@ -538,25 +662,6 @@ extern "C" void port_event_frame(void) {
                 }
             }
             g_px = x; g_py = y; g_pz = z; g_pos_have = true;
-        }
-    }
-
-    // the race: the star totals everyone already sends
-    if (want_race) {
-        for (const auto &r : g_rec) {
-            if (!r.used || r.type != kMod || r.arg != kModRace || r.id == g_race_done_id) continue;
-            int winner = -2;
-            if (NumStars() >= kRaceStars) winner = -1;
-            for (int s = 0; s < kHubMaxSeats && winner == -2; ++s) {
-                HubPresence p;
-                if (s != comms_hub_my_seat() && hub_presence_get(s, &p) && p.stars_total >= kRaceStars) winner = s;
-            }
-            if (winner != -2) {
-                g_race_done_id = r.id;
-                g_win_seat = winner;
-                g_win_until = now + kWinMs;
-                std::fprintf(stderr, "[event] RACE won by %s\n", winner == -1 ? "me" : "a peer");
-            }
         }
     }
 }

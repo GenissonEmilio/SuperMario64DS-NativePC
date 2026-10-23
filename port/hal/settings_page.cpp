@@ -622,6 +622,7 @@ const Row ROWS_GENERAL[] = {
     { R_CHECK, "Debug menu", SL_DEBUG_MENU, -1, 0, 0, 0 },
     { R_CHOICE, "Chat size", SL_CHAT_SCALE, -1, 0, CHAT_LABELS, 5, CHAT_VALS },
     { R_CHECK, "Custom characters from the start", SL_CHARS_FROM_START, -1, 0, 0, 0 },
+    { R_CHECK, "Online events", SL_ONLINE_EVENTS, -1, 0, 0, 0 },
     { R_CHECK, "Character select on star select", SL_CHARACTER_STRIP, -1, 0, 0, 0 },
     { R_CHECK, "Coins in the middle", SL_COINS_MIDDLE, -1, 0, 0, 0 },
     { R_NOTE, "Puts the coin counter at the top middle, like SM64.", -1, -1, 0, 0, 0 },
