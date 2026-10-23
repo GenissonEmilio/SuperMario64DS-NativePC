@@ -242,6 +242,11 @@ LISTEN_PORT = env_int("LISTEN_PORT", 8091, 1, 65535)
 LISTEN_ADDR = env_str("LISTEN_ADDR", "0.0.0.0")
 
 MAX_ROOMS = env_int("MAX_ROOMS", 64, 1, 4096)
+# SECREV1: the room table is shared by everybody, and rooms are cheap to make
+# (30 an hour per address), so three addresses could hold all 64 for as long as
+# they kept them alive. One address may host at most this many rooms at once;
+# the answer is the existing 429 too_fast, which every launcher already shows.
+ROOMS_PER_ADDR = env_int("ROOMS_PER_ADDR", 3, 1, 64)
 
 # THE HARD CEILING ON THE DIAL. Sixteen is the number the owner asked the dial
 # to reach, and it is written here once so that every other bound in this file
@@ -1781,6 +1786,16 @@ def refuse_member(room, token, now):
     return 403, {"error": "not_a_member"}
 
 
+def rooms_hosted_by(who):
+    """How many open rooms this address is the host of (SECREV1)."""
+    n = 0
+    for room in ROOMS.values():
+        host = room.members.get(room.host_seat)
+        if host is not None and host.last_addr == who:
+            n += 1
+    return n
+
+
 def do_create(body, who, now):
     err = shape_for("create", body)
     if err:
@@ -1838,6 +1853,8 @@ def do_create(body, who, now):
         return 400, {"error": "bad_field"}
 
     if not BUCKETS.allow_create(who, now):
+        return 429, {"error": "too_fast"}
+    if rooms_hosted_by(who) >= ROOMS_PER_ADDR:
         return 429, {"error": "too_fast"}
     if len(ROOMS) >= MAX_ROOMS:
         return 503, {"error": "full"}
