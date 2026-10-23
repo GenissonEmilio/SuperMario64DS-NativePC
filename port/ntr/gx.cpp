@@ -65,7 +65,7 @@ Mat mul(const Mat &a, const Mat &b) {
 
 struct Vec4 { float x, y, z, w; };
 
-Vec4 mul(const Vec4 &v, const Mat &m) {
+__forceinline Vec4 mul(const Vec4 &v, const Mat &m) {   /* GHOSTPERF1: inline, so the four results stay in registers (a returned struct was stored narrow and loaded wide) */
     return {v.x * m.m[0] + v.y * m.m[4] + v.z * m.m[8] + v.w * m.m[12],
             v.x * m.m[1] + v.y * m.m[5] + v.z * m.m[9] + v.w * m.m[13],
             v.x * m.m[2] + v.y * m.m[6] + v.z * m.m[10] + v.w * m.m[14],
@@ -230,6 +230,7 @@ int g_ip_open = 0;        // gx_interp_begin has saved the live state
 int g_ip_in_vram = 0;     // inside the VRAM bind, which records its own result
 uint32_t g_ip_dma_src = 0;
 void ip_push(uint8_t kind, uint8_t cmd, int np, const uint32_t *p);
+const GxTriangle *ip_diverted_ghosts(size_t &n);   /* a picture between ticks: the figures its replay made, kept apart from the frame list */
 const GxTriangle *ip_sealed_ghosts(size_t &n);   /* the record just sealed: its ghost triangles, or null when it has none it vouches for */
 void ip_rec_bind_now();
 void ip_rec_begin();
@@ -618,7 +619,7 @@ static inline void menu_wide_place(float &cx, float &cy, float cw) {
     }
 }
 
-Vec4 view_to_clip(const Vec4 &view) {
+__forceinline Vec4 view_to_clip(const Vec4 &view) {
     Vec4 c = mul(view, g.proj);
     if (menu_wide()) {
         /* MENU WIDE 3D: the viewport is the whole wide frame, so EVERY projection (ortho included) is squeezed to where the
@@ -2128,7 +2129,7 @@ void mtx_load_log(uint8_t cmd, const uint32_t *p) {
 
 int param_count(uint8_t cmd);   /* defined below; the trap needs it */
 
-void exec(uint8_t cmd, const uint32_t *p, int np) {
+void exec(unsigned cmd, const uint32_t *p, int np) {   /* GHOSTPERF1: a full-width argument (a byte one was spilled and read back wide on every command: a store-forwarding stall) */
     (void)np;
     if (g_ip_rec) ip_push(IPK_CMD, cmd, np, p);
     if (!g_ip_replaying) {
@@ -6722,8 +6723,18 @@ void gx_render(Framebuffer &fb) {
         size_t nghost = 0;
         for (const GxTriangle &t : g.tris)
             if (t.ghost) ++nghost;
-        const bool any = nghost != 0;
+        /* a picture between ticks keeps its figures apart (ip_ghost_emit): when the frame list holds none of its own they are read from
+           where they were made, with no lift and no append back; SM64DS_GHOST_DIVERT=0 puts them in the list as before */
+        size_t dn = 0;
+        const GxTriangle *dp = (g_ip_open && nghost == 0) ? ip_diverted_ghosts(dn) : nullptr;
+        if (dp && dn) { gl_p = dp; gl_n = dn; gl_alias = true; }
+        const bool any = nghost != 0 || (g_ip_open && !gl_alias && ip_diverted_ghosts(dn) && dn);
         if (any) {
+            if (g_ip_open) {   /* both kinds in one picture: the diverted ones join the lifted ones */
+                size_t dn2 = 0;
+                const GxTriangle *dp2 = ip_diverted_ghosts(dn2);
+                if (dp2 && dn2) { s_ghost.reserve(nghost + dn2); s_ghost.insert(s_ghost.end(), dp2, dp2 + dn2); }
+            }
             /* run hunt8, lane GHOSTPERF1: the tick's record (ip_ghost_save, just sealed) already holds exactly these triangles in this
                order; the picture reads them from there instead of a second copy of ~4 MB, and they are not appended back (the
                frame's list is cleared at the next frame and the record has them). SM64DS_GHOST_ALIAS=0 is the old copy. */
@@ -6731,9 +6742,9 @@ void gx_render(Framebuffer &fb) {
             static const int dbg_env = (std::getenv("SM64DS_GHOST_LAYER_PROBE") || std::getenv("SM64DS_GHOST_LAYER_HIDE")) ? 1 : 0;
             size_t rn = 0;
             const GxTriangle *rp = (alias_on && !dbg_env && sealed_now) ? ip_sealed_ghosts(rn) : nullptr;
-            gl_alias = rp && rn == nghost;
+            gl_alias = rp && rn == nghost && !g_ip_open;
             if (gl_alias) { gl_p = rp; gl_n = nghost; }
-            else s_ghost.reserve(nghost);
+            else s_ghost.reserve(s_ghost.size() + nghost);
             size_t w = 0;
             for (size_t i = 0; i < g.tris.size(); ++i) {
                 if (g.tris[i].ghost) {
@@ -8241,6 +8252,10 @@ struct IpRec {
     std::vector<uint32_t> ev_tri;
     std::vector<GxTriangle> gt;
     std::vector<uint32_t> ev_gt;
+    /* GHOSTPERF1: per event, the next event a ghost-fast replay has to look at (itself, or past a run of a paired figure's vertex-class
+       commands, which it skips anyway); built on first use after the pairs are made */
+    mutable std::vector<uint32_t> nn;
+    mutable int nn_valid = 0;
     uint32_t tri_end = 0;
     int gt_bad = 0, gt_ok = 0;
     struct GPair { int p; uint32_t ca, cb, pa, pb; };
@@ -8254,6 +8269,13 @@ double g_ip_prev_disp[3] = {0, 0, 0};
 
 /* The replay's own buffers, kept so a picture does not reallocate them. */
 std::vector<GxTriangle> g_ip_tris;
+std::vector<GxTriangle> g_ip_gh;   // GHOSTPERF1: the figures a picture between ticks is made of (not in the frame list)
+int g_ip_gh_div = -1;              // SM64DS_GHOST_DIVERT: 0 keeps them in the frame list
+
+const GxTriangle *ip_diverted_ghosts(size_t &n) {
+    n = g_ip_gh.size();
+    return g_ip_gh.empty() ? nullptr : g_ip_gh.data();
+}
 std::vector<GxGrid> g_ip_grids;
 std::vector<float> g_ip_grid_pts;
 std::vector<GxVertex> g_ip_strip;
@@ -8473,6 +8495,7 @@ bool ip_group_ghost_range(const IpRec &r, const IpGroup &G, uint32_t *a, uint32_
 
 void ip_ghost_pairs(IpRec &C, const IpRec &P) {
     C.gpair.clear();
+    C.nn_valid = 0;
     if (!C.gt_ok || !P.gt_ok) return;
     C.gpair.assign(C.groups.size(), IpRec::GPair{-1, 0, 0, 0, 0});
     for (size_t i = 0; i < C.groups.size(); ++i) {
@@ -8516,8 +8539,12 @@ void ip_ghost_emit(const IpRec &C, const IpRec &P, const IpRec::GPair &q, float 
     const size_t base = g.tris.size();
     const GxTriangle *c = &C.gt[q.ca];
     const GxTriangle *p = &P.gt[q.pa];
-    g.tris.insert(g.tris.end(), c, c + n);   /* copies tick N's triangles whole, no zero fill first */
-    GxTriangle *out = &g.tris[base];
+    if (g_ip_gh_div < 0) { const char *e = std::getenv("SM64DS_GHOST_DIVERT"); g_ip_gh_div = (e && *e == '0') ? 0 : 1; }
+    std::vector<GxTriangle> &dst = g_ip_gh_div ? g_ip_gh : g.tris;
+    const size_t base2 = dst.size();
+    dst.insert(dst.end(), c, c + n);   /* copies tick N's triangles whole, no zero fill first */
+    GxTriangle *out = &dst[base2];
+    (void)base;
     const uint32_t t256 = (uint32_t)(alpha * 256.0f + 0.5f) > 256u ? 256u : (uint32_t)(alpha * 256.0f + 0.5f);
     for (size_t k = 0; k < n; ++k) {
         for (int j = 0; j < 3; ++j) {
@@ -9258,6 +9285,7 @@ int gx_interp_begin(float alpha) {
     g.strip = std::move(g_ip_strip);
     g.strip_raw = std::move(g_ip_strip_raw);
     g.tris.clear();
+    g_ip_gh.clear();
     g.strip.clear();
     g.strip_raw.clear();
     g_teximage = C.start_teximage;
@@ -9272,7 +9300,25 @@ int gx_interp_begin(float alpha) {
     uint32_t tmp[32];
     int last_group = -1;
     const bool gfast = !C.gpair.empty() && g_ipr[g_ip_p].gt_ok && g_gf_override != 0;
+    if (gfast && !C.nn_valid) {
+        C.nn.assign((size_t)C.sealed + 1, 0);
+        C.nn[C.sealed] = C.sealed;
+        for (uint32_t i = C.sealed; i-- > 0;) {
+            const IpEv &e = C.ev[i];
+            const int gi = C.ev_group[i];
+            const bool skip = gi >= 0 && C.gpair[gi].p >= 0 && e.kind == IPK_CMD &&
+                              ((e.cmd >= 0x20 && e.cmd <= 0x28) || e.cmd == 0x40 || e.cmd == 0x41);
+            if (!skip) C.nn[i] = i;
+            else C.nn[i] = (i + 1 < C.sealed && C.ev_group[i + 1] == gi) ? C.nn[i + 1] : i + 1;
+        }
+        C.nn_valid = 1;
+    }
+    const bool use_nn = gfast && C.nn_valid && C.nn.size() == (size_t)C.sealed + 1;
     for (uint32_t i = 0; i < C.sealed; ++i) {
+        if (use_nn) {
+            const uint32_t j = C.nn[i];
+            if (j != i) { i = j - 1; continue; }
+        }
         const IpEv &e = C.ev[i];
         const int gi = C.ev_group[i];
         if (gi != last_group) {
