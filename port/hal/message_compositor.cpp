@@ -3223,6 +3223,24 @@ namespace { struct TwWin { int valid, x1, x2, y1, y2; }; TwWin g_tw_cur, g_tw_pr
 /* INTERP093 I1: 1 when the last port_tween_win answer was a CLOSING box (the rectangle shrinking): outer is then the rectangle that far along
    (between the last tick's and this one's), inner this tick's; the ring between them is the box's panel with no text. */
 extern "C" int port_tween_closing(void) { return g_tw_closing; }
+/* TEXT2D1: the dialogue box's line scroll (the ROM moves the text rows up 4 DS pixels a tick while its state is 3). A picture between two ticks
+   shows the tick's text pixels moved back down by (1 - alpha) of that step, inside the box's rectangle (host pixels, like port_tween_win's).
+   Returns 1 and fills rect (x0,y0,x1,y1) and *step_host (the full step in host pixels) when this tick scrolled; 0 otherwise.
+   SM64DS_TEXT_GLIDE=0 is the kill switch (the tick's own picture). */
+static int g_ts_live, g_ts_pend;
+extern "C" int port_text_scroll_take(void);
+extern "C" int port_text_scroll_note(int rect[4], double *step_host)
+{
+    static int off = -1;
+    if (off < 0) { const char *e = std::getenv("SM64DS_TEXT_GLIDE"); off = (e && e[0] == '0') ? 1 : 0; }
+    if (off || !g_ts_live || !g_tw_cur.valid) return 0;
+    const int ph = ntr::present_h();
+    const int half = (ntr::active_w - ds_col_x0(256)) / 2;
+    rect[0] = half + (int)(g_tw_cur.x1 * ph / 192.0 + 0.5); rect[2] = half + (int)(g_tw_cur.x2 * ph / 192.0 + 0.5);
+    rect[1] = (int)(g_tw_cur.y1 * ph / 192.0 + 0.5);        rect[3] = (int)(g_tw_cur.y2 * ph / 192.0 + 0.5);
+    *step_host = 4.0 * ph / 192.0;
+    return 1;
+}
 extern "C" int port_tween_win(double alpha, int outer[4], int inner[4])
 {
     g_tw_closing = 0;
@@ -3263,6 +3281,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     g_tw_prev = g_tw_cur;
     g_tw_cur.valid = 0;
     g_note.n = 0; g_slide_n = 0;   /* HUDMENU2 (H11) */
+    g_ts_pend = port_text_scroll_take(); g_ts_live = 0;   /* TEXT2D1 */
 
     /* THE LEVEL-CLEAR GLYPH OVERLAY'S ONE QUESTION FOR THE FRAME, asked here
        -- above every early return -- so that a frame this unit declines is a
@@ -3545,6 +3564,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     /* POLISH093 P3: the dialogue box's signature: BG3 on, revealed only through WIN0 (WININ0 lets BG3 in, WINOUT keeps it out), no
        per-line window rows (a wipe). Its rectangle, in DS pixels, is what the box opens by. */
     if (win.on[0] && !win.rows_on && bgs[3].enabled && (win.in[0] & 8u) && !(win.out & 8u)) {
+        g_ts_live = g_ts_pend;   /* TEXT2D1 */
         g_tw_cur.valid = 1;
         g_tw_cur.x1 = win.x1[0]; g_tw_cur.x2 = win.x2[0];
         g_tw_cur.y1 = win.y1[0]; g_tw_cur.y2 = win.y2[0];

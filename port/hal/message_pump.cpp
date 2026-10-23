@@ -79,6 +79,7 @@ extern "C" {
 void _ZN7Message6UpdateEv(void *self);     /* Message::Update, faced in reverse_bridges */
 
 extern unsigned char data_0209d45c;   /* engine-A BG-enable layer mask */
+extern unsigned char data_0209d6bc;   /* the box's state (3 = the lines scrolling) */
 extern short data_0209d48c, data_0209d490;   /* BG3 hofs/vofs shadows */
 
 }
@@ -114,9 +115,16 @@ struct dScStage_c {
 
 /* ?Update@Message@@SAXXZ: the ROM body's dialogue-arm call. The matched
    Message::Update, then the engine-A sync the box needs on the port. */
+/* TEXT2D1: 1 when this tick's Message::Update ran the box's line scroll (state 3: func_0201adfc moves the text tile rows up, 4 DS pixels
+   a tick). The compositor takes it for this tick's picture (port_text_scroll_take); a picture between two ticks then slides the text
+   back down by what is left of the step. */
+static int g_text_scroll_tick;
+extern "C" int port_text_scroll_take(void) { int v = g_text_scroll_tick; g_text_scroll_tick = 0; return v; }
 void Message::Update()
 {
+    const unsigned char st = data_0209d6bc;
     _ZN7Message6UpdateEv(0);
+    g_text_scroll_tick = (st == 3) ? 1 : 0;
     port_message_flush_engine_a_regs();
 }
 
