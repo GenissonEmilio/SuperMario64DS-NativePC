@@ -22,6 +22,12 @@ extern unsigned char data_0209caa0[];
 extern int (*port_title_file_start_hook)(int slot);
 extern const char *(*port_lk7_skin_key_hook)(void);
 extern int (*port_title_front_door_hook)(void);
+/* SHELVED1 KeepLives: seams in src/SetPlayerGlobals.c and src/GiveLives.c (_MSC_VER arms), the setting, and the game's own globals */
+extern void (*port_lives_restore_hook)(void);
+extern void (*port_lives_note_hook)(int lives);
+int host_setting_keep_lives(void);
+extern signed char data_0209f2f4[];
+extern unsigned char data_0209f2d8[];
 }
 
 namespace {
@@ -35,6 +41,7 @@ struct Slot {
     Slot() : unlocked(false) {}
 };
 
+void lives_restore(void);   /* SHELVED1, below */
 Slot g_slot[3];
 int g_last;
 bool g_loaded;
@@ -147,6 +154,7 @@ int on_file_start(int slot)
     g_file_picked = 1;
     g_env_slot = -1;                              /* the title knows the real slot */
     SetEnvironmentVariableA("SM64DS_CHAR_SLOT", 0);
+    lives_restore();                              /* SHELVED1: StartFile's own 4 ran before this pick was known; KeepLives puts the kept count back */
     if (g_last != slot) { g_last = slot; save(); }
     const std::string want = g_slot[slot].key;
     int idx = -1;
@@ -196,9 +204,102 @@ const char *state_key(void)
     return s.c_str();
 }
 
+/* ---- SHELVED1: THE KeepLives SETTING ---------------------------------------------------------------------------------------------------
+   The cartridge starts every file with 4 lives: src/SetPlayerGlobals.c writes 4 to data_0209f2f4 (the life count, GiveLives' only
+   variable) when StartFile, PrepareVsMode or the port's level boot call it. With KeepLives on, each file slot's count is kept in
+   lives.json beside characters.json (the cartridge save is never touched) and put back right after that 4 for a single player file.
+   Both seams are null-by-default function pointers defined in the _MSC_VER arms of src/SetPlayerGlobals.c and src/GiveLives.c, so the DS
+   side is unchanged. Not in VS (data_0209f2d8 != 0), not in multiplayer, not on a scripted level boot with no file. A recorded 0 (game
+   over) or an unreadable file is "nothing recorded": the file starts with the DS's 4. */
+int g_lives[3];
+bool g_lives_loaded;
+
+std::string lives_path()
+{
+    std::string p = file_path();
+    const size_t cut = p.rfind("characters.json");
+    if (cut != std::string::npos) return p.substr(0, cut) + "lives.json";
+    return p + ".lives.json";
+}
+
+void lives_load(void)
+{
+    if (g_lives_loaded) return;
+    g_lives_loaded = true;
+    FILE *f = fopen(lives_path().c_str(), "rb");
+    if (!f) return;
+    char buf[512];
+    const size_t n = fread(buf, 1, sizeof buf - 1, f);
+    fclose(f);
+    buf[n] = 0;
+    const char *p = strstr(buf, "\"lives\"");
+    if (!p || !(p = strchr(p, '['))) return;
+    for (int i = 0; i < 3; ++i) {
+        ++p;
+        while (*p == ' ') ++p;
+        const int v = atoi(p);
+        g_lives[i] = v >= 1 && v <= 100 ? v : 0;
+        p = strchr(p, ',');
+        if (!p) break;
+    }
+}
+
+void lives_save(void)
+{
+    const std::string path = lives_path();
+    const std::string tmp = path + ".tmp";
+    FILE *f = fopen(tmp.c_str(), "wb");
+    if (!f) { fprintf(stderr, "[lives] cannot write %s\n", tmp.c_str()); return; }
+    fprintf(f, "{\n  \"version\": 1,\n  \"lives\": [%d, %d, %d]\n}\n", g_lives[0], g_lives[1], g_lives[2]);
+    const int ok = fclose(f) == 0;
+    if (!ok || !MoveFileExA(tmp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+        fprintf(stderr, "[lives] could not replace %s\n", path.c_str());
+        remove(tmp.c_str());
+    }
+}
+
+/* the file this process is playing, when KeepLives applies to it; -1 when it does not */
+int lives_slot(void)
+{
+    if (!host_setting_keep_lives() || port_mods_multiplayer()) return -1;
+    if (data_0209f2d8[0] != 0) return -1;                  /* VS */
+    if (!port_char_save_file_known()) return -1;           /* a scripted level boot: no file */
+    const int slot = port_char_save_slot();
+    return slot >= 0 && slot <= 2 ? slot : -1;
+}
+
+void lives_restore(void)
+{
+    const int slot = lives_slot();
+    if (slot < 0) return;
+    lives_load();
+    const int v = g_lives[slot];
+    if (v < 1) {
+        fprintf(stderr, "[lives] file %c: nothing kept, the DS's %d\n", 'A' + slot, (int)data_0209f2f4[0]);
+        return;
+    }
+    fprintf(stderr, "[lives] file %c: %d lives kept from the last session (the DS would start with %d)\n", 'A' + slot, v, (int)data_0209f2f4[0]);
+    data_0209f2f4[0] = (signed char)v;
+}
+
+void lives_note(int lives)
+{
+    const int slot = lives_slot();
+    if (slot < 0) return;
+    lives_load();
+    const int v = lives >= 1 && lives <= 100 ? lives : 0;
+    if (g_lives[slot] == v) return;
+    g_lives[slot] = v;
+    lives_save();
+    fprintf(stderr, "[lives] file %c: %d lives written\n", 'A' + slot, v);
+}
+
+
 int seat(void)
 {
     port_title_file_start_hook = on_file_start;
+    port_lives_restore_hook = lives_restore;
+    port_lives_note_hook = lives_note;
     port_lk7_skin_key_hook = state_key;
     return 1;
 }

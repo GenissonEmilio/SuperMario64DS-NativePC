@@ -475,6 +475,9 @@ int host_setting_set_character_strip(int on);
 /* HUDMENU2 (H10): CoinsMiddle, bool, OFF by default. On puts the coin counter at the top middle (lives left, coins centre, stars right) in every HUD layout.
    host_setting_hud_layout() answers it (1 = coins in the middle); SM64DS_HUD_LAYOUT outranks the file. The old HudLayout key is no longer read. */
 int host_setting_set_coins_middle(int on);
+/* SHELVED1: KeepLives, bool, OFF by default. 1 keeps each save file's life count in the port's own side file (save/lives.json) and gives it back when that file starts; 0 is the DS, which starts every file with 4 lives. Live; SM64DS_KEEP_LIVES=0/1 overrides the file for a proof run. */
+int host_setting_keep_lives(void);
+int host_setting_set_keep_lives(int on);
 
 /* Aspect: the presentation ratio, WIDTH DIVIDED BY HEIGHT. 0 (the default) is
    the explicit native sentinel -- the 4:3 window the port has always opened;
