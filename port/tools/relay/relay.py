@@ -2012,6 +2012,8 @@ async def run():
         "hub_idle=%.0fs hub_seats=%d kinds=%s"
         % (RATE_PPS_V2, SESSION_FWD_PPS, HOST_MP2L_PPS, hub_idle_s, WORLD_SEATS,
            ",".join(t.decode("ascii") for t in KIND_ORDER)))
+    log("per-host caps: seats=%d sessions=%d buckets=%d (loopback and private exempt)"
+        % (MAX_SEATS_PER_IP, MAX_SESSIONS_PER_IP, MAX_BUCKETS_PER_IP))
     if os.name == "nt":
         log("windows: udp connreset %s" % connreset)
     if RATE_PPS < 240:
