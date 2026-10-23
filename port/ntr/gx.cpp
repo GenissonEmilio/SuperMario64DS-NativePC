@@ -225,6 +225,9 @@ int g_store_count;
 enum { IPK_CMD = 0, IPK_BIND, IPK_LIGHT, IPK_LMASK, IPK_SLOT, IPK_SPRITE, IPK_SPRXF };
 int g_ip_armed = 0;       // the key is on: level frames are recorded
 int g_ip_rec = 0;         // a frame's stream is being recorded right now
+int g_ip_tick_div = 0;    // GHOSTPERF1: ... and its ghost figures' triangles go straight into the record (not the frame list)
+void ip_tick_ghost_push(const GxTriangle &t);
+bool ip_ghost_fast_on();
 int g_ip_replaying = 0;   // a recorded stream is being replayed right now
 int g_ip_open = 0;        // gx_interp_begin has saved the live state
 int g_ip_in_vram = 0;     // inside the VRAM bind, which records its own result
@@ -976,6 +979,7 @@ void push_screen_tri(const GxVertex &a, const GxVertex &b, const GxVertex &c) {
     GxTriangle t{};
     t.v[0] = a; t.v[1] = b; t.v[2] = c;
     fill_tri_state(t);
+    if (t.ghost && g_ip_rec && g_ip_tick_div) { ip_tick_ghost_push(t); return; }
     g.tris.push_back(t);
     /* MDL: what actually reached the polygon list. Paired with
        SMOOTH_COUNT_IN in emit_tri, this is the submitted-versus-emitted row
@@ -1261,7 +1265,7 @@ static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[
         const int i0 = idx[i * 3], i1 = idx[i * 3 + 1], i2 = idx[i * 3 + 2];
         if (isin[i0] && isin[i1] && isin[i2]) {
             t.v[0] = sv[i0]; t.v[1] = sv[i1]; t.v[2] = sv[i2];
-            g.tris.push_back(t);
+            if (t.ghost && g_ip_rec && g_ip_tick_div) ip_tick_ghost_push(t); else g.tris.push_back(t);
             ++fast;
         } else {
             emit_tri_near(v[i0], v[i1], v[i2]);
@@ -6728,6 +6732,12 @@ void gx_render(Framebuffer &fb) {
         size_t dn = 0;
         const GxTriangle *dp = (g_ip_open && nghost == 0) ? ip_diverted_ghosts(dn) : nullptr;
         if (dp && dn) { gl_p = dp; gl_n = dn; gl_alias = true; }
+        else if (!g_ip_open && nghost == 0 && sealed_now) {   /* the tick made its figures straight into the record */
+            size_t tn = 0;
+            const GxTriangle *tp = ip_sealed_ghosts(tn);
+            static const int a_on = (std::getenv("SM64DS_GHOST_ALIAS") && *std::getenv("SM64DS_GHOST_ALIAS") == '0') ? 0 : 1;
+            if (a_on && tp && tn) { gl_p = tp; gl_n = tn; gl_alias = true; }
+        }
         const bool any = nghost != 0 || (g_ip_open && !gl_alias && ip_diverted_ghosts(dn) && dn);
         if (any) {
             if (g_ip_open) {   /* both kinds in one picture: the diverted ones join the lifted ones */
@@ -8258,6 +8268,7 @@ struct IpRec {
     mutable int nn_valid = 0;
     uint32_t tri_end = 0;
     int gt_bad = 0, gt_ok = 0;
+    int gt_div = 0;              // GHOSTPERF1: the figures were made straight into gt (ev_gt filled as the events came)
     struct GPair { int p; uint32_t ca, cb, pa, pb; };
     std::vector<GPair> gpair;
 };
@@ -8429,6 +8440,13 @@ void ip_rec_begin() {
     r.gt_ok = 0;
     r.is_sealed = 0;
     r.valid = 0;
+    {   /* GHOSTPERF1: the figures of this tick are made straight into the record (SM64DS_GHOST_TICKDIV=0: made in the frame list and copied at the seal) */
+        static const int div_on = (std::getenv("SM64DS_GHOST_TICKDIV") && *std::getenv("SM64DS_GHOST_TICKDIV") == '0') ? 0 : 1;
+        r.gt.clear();
+        r.ev_gt.clear();
+        r.gt_div = (div_on && g_ghost_layer_on && ip_ghost_fast_on()) ? 1 : 0;
+        g_ip_tick_div = r.gt_div;
+    }
     r.start = g;
     r.start_teximage = g_teximage;
     r.start_plttbase = g_plttbase;
@@ -8450,7 +8468,24 @@ bool ip_ghost_fast_on() {
     return on != 0;
 }
 
+void ip_tick_ghost_push(const GxTriangle &t) { g_ipr[g_ip_w].gt.push_back(t); }
+
 void ip_ghost_save(IpRec &r) {
+    if (r.gt_div) {
+        /* the figures are in gt already; vouch for them, or put them back into the frame list for the ordinary path */
+        r.gpair.clear();
+        r.gt_ok = 0;
+        r.tri_end = static_cast<uint32_t>(g.tris.size());
+        const bool ok = !r.gt_bad && g.grids.empty() && r.ev_tri.size() == r.ev.size() && r.ev_gt.size() == r.ev.size() && !r.gt.empty();
+        if (ok) { r.ev_gt.push_back(static_cast<uint32_t>(r.gt.size())); r.gt_ok = 1; }
+        else {
+            g.tris.insert(g.tris.end(), r.gt.begin(), r.gt.end());
+            r.gt.clear();
+            r.ev_gt.clear();
+        }
+        g_ip_tick_div = 0;
+        return;
+    }
     r.gt.clear();
     r.ev_gt.clear();
     r.gpair.clear();
@@ -8490,7 +8525,7 @@ bool ip_group_ghost_range(const IpRec &r, const IpGroup &G, uint32_t *a, uint32_
     const uint32_t t1 = G.ev1 < r.sealed ? r.ev_tri[G.ev1] : r.tri_end;
     *a = r.ev_gt[G.ev0];
     *b = r.ev_gt[G.ev1];
-    return *b > *a && (t1 - t0) == (*b - *a);
+    return *b > *a && (t1 - t0) == (r.gt_div ? 0u : (*b - *a));
 }
 
 void ip_ghost_pairs(IpRec &C, const IpRec &P) {
@@ -8595,6 +8630,7 @@ void ip_push(uint8_t kind, uint8_t cmd, int np, const uint32_t *p) {
     }
     r.ev.push_back(e);
     r.ev_tri.push_back(static_cast<uint32_t>(g.tris.size()));
+    if (r.gt_div) r.ev_gt.push_back(static_cast<uint32_t>(r.gt.size()));
     if (!g.grids.empty()) r.gt_bad = 1;
 }
 
@@ -8619,6 +8655,7 @@ void ip_rec_bind_now() {
     r.binds.push_back(b);
     r.ev.push_back(e);
     r.ev_tri.push_back(static_cast<uint32_t>(g.tris.size()));
+    if (r.gt_div) r.ev_gt.push_back(static_cast<uint32_t>(r.gt.size()));
 }
 
 /* Cut the sealed record into groups and key them. */
