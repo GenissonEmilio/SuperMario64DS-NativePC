@@ -54,7 +54,17 @@
 #include "Player.h"
 #include "SharedFilePtr.h"
 
+#ifdef _MSC_VER
+/* Port only: the object the snowman TU (d_a_snowman.cpp) constructs with the snowball model, file 0x424. Declared
+ * under its own type name so the host link binds this reference to that object and not to the zero-filled ROM mount of
+ * the same address, whose file id is 0. */
+struct daSnowmanModelFilePtr : SharedFilePtr {
+    u32 words[2];
+};
+extern daSnowmanModelFilePtr data_ov081_02128d90;
+#else
 extern SharedFilePtr data_ov081_02128d90;
+#endif
 extern daSnowball_StateRec data_ov081_02128eb4;
 
 extern "C" {
