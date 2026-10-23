@@ -537,27 +537,9 @@ def capped_host(host):
 
 
 def short_addr(addr):
-    """A logging form of a client address with the host part blunted.
-
-    We keep enough to tell two clients apart in a log and to spot a region,
-    and drop the rest. Full client addresses never reach the log.
-    """
-    try:
-        host = addr[0]
-        port = addr[1]
-    except Exception:
-        return "?"
-    if ":" in host:
-        groups = host.split(":")
-        head = ":".join(g for g in groups[:2] if g)
-        host = (head + "::x") if head else "::x"
-    else:
-        octets = host.split(".")
-        if len(octets) == 4:
-            host = "%s.%s.x.x" % (octets[0], octets[1])
-        else:
-            host = "x"
-    return "%s#%d" % (host, port)
+    """A logging form of a client address: no part of it. The log says "client"
+    and the caller's own context (session code, seat) tells clients apart."""
+    return "client"
 
 
 def parse_code(raw):
