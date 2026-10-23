@@ -59,6 +59,7 @@
 // which is what the decomp recovered). Nothing dispatches through the base
 // one, so it is storage and no more.
 #include "port_d16.h"
+#include "hal/vs_width.h"   /* kPortBodySlots */
 
 #include <cstdio>
 #include <cstdlib>
@@ -233,8 +234,8 @@ unsigned data_020a60a4;               /* GXS ext-palette: the saved VRAM bank */
 
    SIZED FOR EVERY SEAT, because that fan-out walks one record per player and
    a sixteen-wide session would have run off a four-record array. */
-unsigned char data_0209f4a8[0x18 * 16];
-unsigned char data_0209f4a9[0x18 * 16];
+unsigned char data_0209f4a8[0x18 * kPortBodySlots];   /* KITCRASH1: one record per body slot (32), not per wire seat (16): the Ctrl fan-out in walk_window.cpp writes slot N at N * 0x18 and slots 16..31 ran past the end onto g_stage */
+unsigned char data_0209f4a9[0x18 * kPortBodySlots];
 DSSTATE_END
 }
 
