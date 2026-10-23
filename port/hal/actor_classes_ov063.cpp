@@ -78,6 +78,7 @@
 // divergence a register rename or scheduling swap. When the decomp matches
 // any of them, the src TU replaces the copy via slice_w5a.txt.
 #include "port_d16.h"
+#include "hal/pmf_tc.h"
 
 #include <cstdio>
 
@@ -1163,13 +1164,17 @@ extern "C" void hal_fill_coffin_vtable(void)
     vt[16] = (void *)PORT_D16(cf_d1);
     vt[17] = (void *)cf_d0;
     vt[31] = (void *)ov63_kill;
-    /* the 20-byte-entry state-table re-seat (Bbh_PmfDispatch.c addendum 2) */
-    *(void *volatile *)(data_ov071_02122ecc + 0)  = (void *)_ZN13daObjCasket_c12St_Wait_InitEv;
+    /* the 20-byte-entry state-table re-seat (Bbh_PmfDispatch.c addendum 2).
+       HUBBOOT1: RunState / SetState call these cells natively (this in ECX, nothing on
+       the stack); the flat names read this off the stack, which only worked while the
+       caller happened to hold this in a saved register and read garbage (a 1) once the
+       hub put more than one body in the level. PORT_PMF_TC makes the thiscall entry. */
+    *(void *volatile *)(data_ov071_02122ecc + 0)  = (void *)(size_t)PORT_PMF_TC(_ZN13daObjCasket_c12St_Wait_InitEv);
     *(int volatile *)(data_ov071_02122ecc + 4)   = 0;
-    *(void *volatile *)(data_ov071_02122ecc + 8)  = (void *)_ZN13daObjCasket_c12St_Wait_MainEv;
+    *(void *volatile *)(data_ov071_02122ecc + 8)  = (void *)(size_t)PORT_PMF_TC(_ZN13daObjCasket_c12St_Wait_MainEv);
     *(int volatile *)(data_ov071_02122ecc + 12)  = 0;
-    *(void *volatile *)(data_ov071_02122ecc + 20) = (void *)_ZN13daObjCasket_c15St_StandUp_InitEv;
+    *(void *volatile *)(data_ov071_02122ecc + 20) = (void *)(size_t)PORT_PMF_TC(_ZN13daObjCasket_c15St_StandUp_InitEv);
     *(int volatile *)(data_ov071_02122ecc + 24)  = 0;
-    *(void *volatile *)(data_ov071_02122ecc + 28) = (void *)_ZN13daObjCasket_c15St_StandUp_MainEv;
+    *(void *volatile *)(data_ov071_02122ecc + 28) = (void *)(size_t)PORT_PMF_TC(_ZN13daObjCasket_c15St_StandUp_MainEv);
     *(int volatile *)(data_ov071_02122ecc + 32)  = 0;
 }

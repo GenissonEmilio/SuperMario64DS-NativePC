@@ -400,6 +400,17 @@ int daBtn_c::InitResources()
 
     {
         s32 cnt = data_0209f21c;
+#ifdef _MSC_VER
+        /* THE HOST SEATS MORE BODIES THAN THE CARTRIDGE EVER DID (the Adventure
+           Online world puts up to 32 in every course). mPlayers holds four, as
+           on the cartridge, whose player count never passed four; the copy below
+           ran off the end of it and over mPounder, mState and the rest of the
+           object, so the Whomp's Fortress and Whomp boss courses faulted on the
+           first Behavior. The first four seats are the local player and
+           the next three bodies. The ARM arm is untouched. */
+        if (cnt > 4)
+            cnt = 4;
+#endif
         if (cnt > 0) {
             i = 0;
             do {
