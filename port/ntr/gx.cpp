@@ -8441,7 +8441,8 @@ void ip_rec_begin() {
     r.is_sealed = 0;
     r.valid = 0;
     {   /* GHOSTPERF1: the figures of this tick are made straight into the record (SM64DS_GHOST_TICKDIV=0: made in the frame list and copied at the seal) */
-        static const int div_on = (std::getenv("SM64DS_GHOST_TICKDIV") && *std::getenv("SM64DS_GHOST_TICKDIV") == '0') ? 0 : 1;
+        static const int div_on = ((std::getenv("SM64DS_GHOST_TICKDIV") && *std::getenv("SM64DS_GHOST_TICKDIV") == '0') ||
+                                   (std::getenv("SM64DS_GHOST_ALIAS") && *std::getenv("SM64DS_GHOST_ALIAS") == '0')) ? 0 : 1;   /* the record's figures are read in place: no alias, no divert */
         r.gt.clear();
         r.ev_gt.clear();
         r.gt_div = (div_on && g_ghost_layer_on && ip_ghost_fast_on()) ? 1 : 0;
