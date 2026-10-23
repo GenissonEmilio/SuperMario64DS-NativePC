@@ -68,6 +68,14 @@ double perf_now_ms(void)
     return n.QuadPart * 1000.0 / qpf.QuadPart;
 }
 
+/* MPTEST9 LAB ONLY: SM64DS_LAB_BUCKET_S=1 samples every second (worst-second rows) */
+double lab_bucket_s(void)
+{
+    static double v;
+    if (v == 0.0) { const char *e = getenv("SM64DS_LAB_BUCKET_S"); v = e ? atof(e) : 5.0; if (v < 0.5) v = 5.0; }
+    return v;
+}
+
 FILE  *g_fp;
 char   g_session[80];
 int    g_header_written;
@@ -678,7 +686,7 @@ extern "C" void port_perf_log_frame(const struct PortPerfFrame *f)
         g_header_written = 1;
         perf_write_header(f->window_w, f->window_h);
         g_t0_ms = perf_now_ms();
-        g_next_t_s = 5.0;
+        g_next_t_s = lab_bucket_s();
         bucket_reset();
         if (boot_line) perf_write_boot();   /* the run began in a course */
         return;
@@ -765,7 +773,7 @@ extern "C" void port_perf_log_frame(const struct PortPerfFrame *f)
         return;
     }
     perf_write_sample(t_s);
-    g_next_t_s += 5.0;
+    g_next_t_s += lab_bucket_s();
     bucket_reset();
 }
 
