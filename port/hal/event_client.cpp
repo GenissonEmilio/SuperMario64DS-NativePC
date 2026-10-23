@@ -31,6 +31,7 @@
 extern "C" {
 extern void *data_0209f394[];
 extern unsigned char data_0209f250;
+extern unsigned char data_0209caa0[];     // the save data in memory (flags1 at +4)
 extern signed char data_0209f2f8;
 extern signed char data_02092120;
 extern short data_02092144[];
@@ -167,10 +168,11 @@ int rd32(const char *b, int off) { int v; std::memcpy(&v, b + off, 4); return v;
 
 // The game is in a state where standing still means nothing (the star_popup
 // exit gate's list).
-bool busy() {
-    return data_0209f294[0] || data_0209f2c4[0] || data_0209d660[0] || data_0209fc48[0] ||
-           data_0209b454[0] || data_0209f2d8[0] == 2;
+unsigned busy_mask() {
+    return (data_0209f294[0] ? 1u : 0u) | (data_0209f2c4[0] ? 2u : 0u) | (data_0209d660[0] ? 4u : 0u) | (data_0209fc48[0] ? 8u : 0u) |
+           (data_0209b454[0] ? 16u : 0u) | (data_0209f2d8[0] == 2 ? 32u : 0u);
 }
+bool busy() { return busy_mask() != 0; }
 
 bool dead_id(unsigned id) {
     for (int i = 0; i < g_dead_n && i < kDead; ++i) if (g_dead[i] == id) return true;
@@ -567,7 +569,7 @@ extern "C" void port_event_frame(void) {
 
     // castle unlocked: the door hooks (hal/event_castle.cpp) ask port_event_castle_live; nothing is written to the save
     if (want_castle != g_castle) {
-        std::fprintf(stderr, "[event] castle unlocked %s\n", want_castle ? "ON: every star and key door opens" : "OFF: the save's own doors");
+        std::fprintf(stderr, "[event] castle unlocked %s (save flags1 %08x)\n", want_castle ? "ON: every star and key door opens" : "OFF: the save's own doors", *(unsigned *)(data_0209caa0 + 4));
         g_castle = want_castle;
     }
 
@@ -607,8 +609,8 @@ extern "C" void port_event_frame(void) {
 
         if (logging() && dt > 0 && (ticks - g_log_tick) >= log_every()) {
             g_log_tick = ticks;
-            std::fprintf(stderr, "[event] me tick=%u pos=(%d,%d,%d) hspeed=%d hp=%d ready=%d up=%d\n", ticks, rd32(b, 0x5c), rd32(b, 0x60),
-                         rd32(b, 0x64), rd32(b, 0x98), hp, ready ? 1 : 0, g_up_ticks);
+            std::fprintf(stderr, "[event] me tick=%u pos=(%d,%d,%d) hspeed=%d hp=%d ready=%d up=%d busy=%x\n", ticks, rd32(b, 0x5c), rd32(b, 0x60),
+                         rd32(b, 0x64), rd32(b, 0x98), hp, ready ? 1 : 0, g_up_ticks, busy_mask());
         }
 
 #ifndef PORT_ROM_CLEAN

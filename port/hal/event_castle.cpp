@@ -19,6 +19,7 @@
 // every target that does not seat it; this file seats them (walk_window targets only, like hal/char_door.cpp).
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "event_client.h"
@@ -57,8 +58,34 @@ unsigned door_bit(void *door)
     return 0;
 }
 
+#ifndef PORT_ROM_CLEAN
+// proof aid (dev builds only): SM64DS_CASTLE_LOG=1 prints each door once, with the position and what it asks for
+void castle_log_once(const char *kind, void *a, unsigned idx, int stars, int key, int sh)
+{
+    static int lg = -1;
+    static void *seen[64];
+    static int nseen = 0;
+    if (lg < 0) lg = getenv("SM64DS_CASTLE_LOG") ? 1 : 0;
+    if (!lg) return;
+    for (int i = 0; i < nseen; ++i) if (seen[i] == a) return;
+    if (nseen < 64) seen[nseen++] = a;
+    const int *pos = (const int *)((char *)a + 0x5c);
+    fprintf(stderr, "[castle-log] %s %p param %u pos=(%d,%d,%d) stars %d key %d shift %d\n", kind, a, idx, pos[0] >> 12, pos[1] >> 12,
+            pos[2] >> 12, stars, key, sh);
+}
+#endif
+
 int door_hook(void *door, void *player)
 {
+#ifndef PORT_ROM_CLEAN
+    {
+        const unsigned i = *(unsigned *)((char *)door + 8);
+        if (i < (unsigned)kDoorEntries) {
+            const signed char *e = (const signed char *)(data_ov100_02148204 + i * 16);
+            castle_log_once("door", door, i, e[8], e[9], e[10]);
+        }
+    }
+#endif
     if (!port_event_castle_live()) return 0;
     const unsigned bit = door_bit(door);
     if (!bit) return 0;
@@ -67,13 +94,22 @@ int door_hook(void *door, void *player)
     *flags1 = before | bit;
     const int r = _ZN8daDoor_c19func_ov100_02144cf8EP6Player(door, player);
     *flags1 = (*flags1 & ~bit) | (before & bit);
-    if (!(before & bit) && (++g_door_calls & 63u) == 1u)
+    if (!(before & bit) && (++g_door_calls & 4095u) == 1u)
         fprintf(stderr, "[event] castle: door %u held open for the player (calls %u)\n", *(unsigned *)((char *)door + 8), g_door_calls);
     return 1;
 }
 
 int gate_hook(void *gate, void *player)
 {
+#ifndef PORT_ROM_CLEAN
+    {
+        const unsigned i = *(unsigned *)((char *)gate + 8);
+        if (i < (unsigned)kGateEntries) {
+            const signed char *e = (const signed char *)(data_ov100_02148390 + i * 6);
+            castle_log_once("gate", gate, i, e[0], -1, e[1]);
+        }
+    }
+#endif
     if (!port_event_castle_live()) return 0;
     const unsigned idx = *(unsigned *)((char *)gate + 8);
     if (idx >= (unsigned)kGateEntries) return 0;
@@ -85,7 +121,7 @@ int gate_hook(void *gate, void *player)
     *flags1 = before | bit;
     _ZN12daStarGate_c12St_Wait_MainEP6Player(gate, player);
     *flags1 = (*flags1 & ~bit) | (before & bit);
-    if (!(before & bit) && (++g_gate_calls & 63u) == 1u)
+    if (!(before & bit) && (++g_gate_calls & 4095u) == 1u)
         fprintf(stderr, "[event] castle: star gate %u held open for the player (calls %u)\n", idx, g_gate_calls);
     return 1;
 }

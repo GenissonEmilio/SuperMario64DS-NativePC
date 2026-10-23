@@ -205,7 +205,8 @@ def live():
     env = dict(os.environ, SM64DS_RELAY_PORT=str(rp), SM64DS_RELAY_BIND="127.0.0.1",
                SM64DS_EVENT_KEY=KEY.decode(), SM64DS_EVENT_CMD_PORT=str(cp))
     proc = subprocess.Popen([sys.executable, os.path.join(HERE, "relay.py")], env=env,
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            stdout=open(os.environ["EVENTS_TEST_RELAY_LOG"], "w") if os.environ.get("EVENTS_TEST_RELAY_LOG") else subprocess.DEVNULL,
+                            stderr=subprocess.STDOUT)
     try:
         time.sleep(1.5)
         raddr = ("127.0.0.1", rp)
@@ -317,13 +318,14 @@ def live():
         ga2 = [d for d in events(ra, 0.4) if d[6] == 3 and d[20] == 5]
         check("castle in world B reaches B", bool(gb2))
         check("castle in world B does not reach A", len(ga2) == 0)
-        for sk in (ra, rb, rc):
+        for sk, cd in ((ra, b"RACEAAAA"), (rb, b"RACEAAAA"), (rc, b"RACEBBBB")):
+            hello(sk, raddr, cd)       # members idle out of the relay after a few seconds: keep them
             sk.sendto(synl(5), raddr)
-        time.sleep(0.2)
+        time.sleep(0.3)
         cmdsock.sendto(cmd8(t0 + 32, 1, 0, 6, "everyone"), caddr)            # no world: all worlds
         ea = [d for d in events(ra, 1.6) if d[6] == 1 and d[24:24 + d[22]] == b"everyone"]
         ec = [d for d in events(rc, 0.4) if d[6] == 1 and d[24:24 + d[22]] == b"everyone"]
-        check("a command with no world reaches every world", bool(ea) and bool(ec))
+        check("a command with no world reaches every world", bool(ea) and bool(ec), "A %d B %d" % (len(ea), len(ec)))
     finally:
         proc.kill()
 
