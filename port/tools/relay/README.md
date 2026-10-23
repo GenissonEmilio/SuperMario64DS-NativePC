@@ -654,6 +654,66 @@ price of never letting a stranger take over a seat by quoting the code.
   that session as a spare child. Codes should be random enough not to be
   guessed by accident.
 
+## Host events (Adventure Online)
+
+The host can put a message, a song or a timed modifier on every player's screen in the always-on world. The relay only carries the event and its
+clock; each console applies it to its own game (hal/event_client.cpp). Off unless both variables are set:
+
+| Variable | Meaning |
+|---|---|
+| `SM64DS_EVENT_KEY` | 16+ characters. Signs every command (HMAC-SHA256 of the whole line, first 32 hex characters). Unset or short = the feature does not exist: no socket is opened and the log says `events: OFF`. |
+| `SM64DS_EVENT_CMD_PORT` | UDP port of the private command socket, bound to **127.0.0.1 only**. |
+
+The only way in is a datagram on that socket (a player's datagram can never start one: `SYNZ` has no row in the kind table, so it is an unknown tag).
+The lobby's `POST /port/lobby/admin/event` builds it; `event_send.py` builds the same line when the lobby cannot reach the relay's loopback.
+
+### The command
+
+One ASCII line, then `|` and the signature:
+
+    EVT1 <stamp ms> <type> <arg> <secs> <text hex or -> [<world> <stars>]|<sig>
+
+`type 1` message, `2` music (arg = a sublevel whose course song plays), `3` modifier (arg `1` triple speed, `2` one hit, `3` chaos, `4` race, `5`
+castle unlocked), `4` clear. `secs` 0..3600 (0 = 8 s for a message, 60 s otherwise). The two optional fields (always sent by the lobby; a 6 field
+line from an older sender still works) are the world's hub code (`-` = every world) and a race target in stars (0 = 50, 1..150, race only).
+
+### The refuse rules
+
+The relay logs `event: refused a command (<why>)` and does nothing for: `ascii` (not ASCII), `shape` (not an `EVT1` line of 6 or 8 fields, over 400
+bytes), `signature` (wrong key, or the line was changed), `field` (not numbers), `replay` (the stamp must rise with every accepted command),
+`skew` (the stamp is more than 120 s from this box's clock), `type` / `range` (unknown type, modifier above 5, `secs` over 3600, a target on a
+non-race), `text` (over 70 characters, not plain ASCII, or an empty message), `world` (not letters and digits, over 16 characters). An accepted command
+logs `event: id N type T arg A secs S`.
+
+### What goes to the consoles
+
+`SYNZ`, 96 bytes, relay to the members of **world hubs only** (party, coop and VS arena members never get one), byte 5 = `0xFD`:
+
+    0 tag | 4 version 1 | 5 0xFD | 6 type | 7 race target | 8 id u32 | 12 remaining ms u32 | 16 total ms u32 | 20 arg u16 | 22 text length | 24 text
+
+Every live event is repeated once a second with the time LEFT, so a lost datagram costs nothing, a late joiner picks up what still runs, and the
+relay's clock is the one every console follows. Types the relay makes itself: `5` race leader (arg = its stars, text = its name, every ~5 s while
+someone has stars), `6` race winner (arg = its stars, text = its name). A command that names a world is repeated to that world only; the other worlds
+hear nothing; `clear` with a world clears that world's events only.
+
+### The race
+
+The relay keeps a tally per world. It reads each seat's star total from the `SYNL` presence every console already sends, and the name from its `SYNI`
+identity frame. The first seat to CROSS the target (its first count the tally saw was under it, and it reaches the target) wins; two seats crossing in one
+tick: the higher count, then the lower seat. The winner is decided once, per world, and sent as `SYNZ` type 6 until the race record runs out (the
+record id `0x40000000 + race id` is the same on every console, so each shows it once). A console shows "<name> WINS THE RACE" from that word only.
+
+### event_send.py
+
+On the relay's own machine, with the unit's two variables:
+
+    python3 event_send.py castle --secs 600
+    python3 event_send.py race --secs 900 --stars 50 --world ABCD2345
+    python3 event_send.py clear
+
+The hub code of a world is in the relay log (`session ABCD2345 create ...`) and in the lobby's `GET /port/lobby/admin/worlds`. `test_events.py` (no
+arguments) runs the checks: the signature and refuse rules, the board, the race tally, the wire, and a live relay with fake members.
+
 ## Tests
 
 The suite runs entirely locally. It spawns relay instances on ports derived

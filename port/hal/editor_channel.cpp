@@ -1173,6 +1173,8 @@ void set_nonblocking(SOCKET s)
     WS.ioctlsocket(s, FIONBIO, &one);
 }
 
+bool looks_like_http(const std::string &line);
+
 void serve_client(SOCKET c)
 {
     set_nonblocking(c);
@@ -1186,11 +1188,13 @@ void serve_client(SOCKET c)
 
     std::string buf;
     char rd[1024];
+    bool first_line = true, not_for_us = false;
     for (;;) {
         {
             std::lock_guard<std::mutex> lk(g_mtx);
             if (g_drop) break;
         }
+        if (not_for_us) break;
         int n = WS.recv(c, rd, (int)sizeof rd, 0);
         if (n == 0) break;                      /* peer closed */
         if (n < 0) {
@@ -1216,6 +1220,14 @@ void serve_client(SOCKET c)
             }
             std::string line = buf.substr(0, nl);
             buf.erase(0, nl + 1);
+            if (first_line) {
+                first_line = false;
+                if (looks_like_http(line)) {
+                    std::fprintf(stderr, "[editor] closed a connection that opened with an HTTP request\n");
+                    not_for_us = true;
+                    break;
+                }
+            }
             if (line.size() <= MAX_LINE)
                 handle_line(line);
             /* an over-long line is dropped: no reply, no crash, keep going */
@@ -1230,6 +1242,22 @@ void serve_client(SOCKET c)
         g_drop = false;
     }
     WS.closesocket(c);
+}
+
+/* SECREV1: a web page can make a browser open a TCP connection to
+   127.0.0.1:7355 and write text into it (a form with enctype text/plain, or
+   fetch with mode no-cors). The request line and the headers each answer
+   "err unknown", but the BODY is a script of lines, and every line would be run
+   as an editor command (objkill, objspawn, warp ...). This channel speaks plain
+   lines, never HTTP, so a connection whose first line is an HTTP request is
+   closed before anything is run. */
+bool looks_like_http(const std::string &line)
+{
+    static const char *const verbs[] = { "GET ", "POST ", "PUT ", "HEAD ", "DELETE ",
+                                         "OPTIONS ", "PATCH ", "CONNECT ", "TRACE " };
+    for (size_t i = 0; i < sizeof verbs / sizeof verbs[0]; ++i)
+        if (line.compare(0, std::strlen(verbs[i]), verbs[i]) == 0) return true;
+    return line.find(" HTTP/") != std::string::npos;
 }
 
 void server_thread()

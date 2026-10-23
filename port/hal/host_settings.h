@@ -467,6 +467,12 @@ int host_setting_set_debug_menu(int on);
 int host_setting_chars_from_start(void);
 int host_setting_set_chars_from_start(int on);
 
+/* ---- OnlineEvents (EVENTS2): THE PLAYER'S SWITCH FOR THE HOST'S EVENTS ----
+   Default 1 (ON). Off, an Adventure Online console ignores every event the relay repeats (nothing is applied, nothing is shown); the relay still
+   hands them out. Live like DebugMenu. The test knob SM64DS_EVENTS=0 (hal/event_client.h) still wins over an on switch. */
+int host_setting_online_events(void);
+int host_setting_set_online_events(int on);
+
 /* ---- CharacterStrip: THE STAR SELECT'S CHARACTER STRIP (CAPSTOGGLE1) -----
    Default 1 (ON). Off, the star select is the DS's own: Yoshi's caps row when his caps are unlocked, no strip, no custom character arrow. The white
    door's picker is not touched. Live; SM64DS_CHARACTER_STRIP=0/1 overrides the file for a proof run. */

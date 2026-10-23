@@ -1043,6 +1043,44 @@ player's environment.
 
 ---
 
+## Host events: the admin endpoint (EVENTS1, EVENTS2)
+
+Off by default and indistinguishable from an unknown verb: both endpoints answer `404 unknown_verb` unless ALL of these are in the lobby's environment:
+
+| Variable | Meaning |
+|---|---|
+| `EVENT_ADMIN_TOKEN` | the host's secret, 24+ characters, sent as `Authorization: Bearer <token>`. Never in the game zip, never in a log line. |
+| `EVENT_KEY` | 16+ characters, the same string as the relay's `SM64DS_EVENT_KEY`. The lobby signs each command with it. |
+| `EVENT_CMD_PORT` | the relay's command port (`SM64DS_EVENT_CMD_PORT`). |
+| `EVENT_CMD_HOST` | default `127.0.0.1`. The relay's command socket is loopback only, so a relay on another machine needs a tunnel (or use `relay/event_send.py` on that machine). |
+
+A wrong or missing token is `403 forbidden` and counts toward the lobby's normal "refused too often" rule. The lobby never forwards anything a player sent:
+the body is checked field by field and re-encoded.
+
+`POST /port/lobby/admin/event`, JSON, always `"v": 1`:
+
+| field | meaning |
+|---|---|
+| `event` | `message`, `music`, `speed` (triple speed), `onehit`, `chaos`, `race`, `castle` (every star and key door open, nothing saved), `clear` |
+| `text` | the message, 1..70 plain ASCII characters (message only) |
+| `sublevel` | the course whose song plays (music only), 0..255 |
+| `secs` | 0..3600; 0 = 8 s for a message, 60 s for the rest |
+| `world` | optional: a world NUMBER from `GET admin/worlds` or its 8 character hub code; absent = every world. A number that two builds share is `ambiguous_world` |
+| `stars` | optional race target, 1..150 (race only; 0 or absent = 50) |
+
+Answers: `200 {"ok": true}`; `400` with `bad_shape`, `bad_event`, `bad_sublevel`, `bad_secs`, `bad_text`, `bad_stars`, `bad_world`, `unknown_world`,
+`ambiguous_world`; `403 forbidden`; `404 unknown_verb` (feature off); `502 relay_unreachable`.
+
+`GET /port/lobby/admin/worlds` (same token, same 404 / 403 rules) lists the live worlds: `{"worlds": [{"no": 1, "code": "ABCD2345", "members": 7}]}`.
+
+Examples (the token and key are yours to make; keep them out of shell history):
+
+    curl -s -X POST https://HOST/port/lobby/admin/event -H "Authorization: Bearer $TOKEN" -d '{"v":1,"event":"castle","secs":600}'
+    curl -s -X POST https://HOST/port/lobby/admin/event -H "Authorization: Bearer $TOKEN" -d '{"v":1,"event":"race","secs":900,"stars":50,"world":1}'
+    curl -s -X POST https://HOST/port/lobby/admin/event -H "Authorization: Bearer $TOKEN" -d '{"v":1,"event":"message","text":"Welcome to the event"}'
+    curl -s -X POST https://HOST/port/lobby/admin/event -H "Authorization: Bearer $TOKEN" -d '{"v":1,"event":"clear"}'
+    curl -s https://HOST/port/lobby/admin/worlds -H "Authorization: Bearer $TOKEN"
+
 ## DEPLOY (not applied by the build lane)
 
 ```

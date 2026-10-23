@@ -184,14 +184,12 @@ def test_grammar():
 
 
 def test_addresses():
-    print("\n-- address blunting (nothing whole ever reaches a log)")
-    check("an IPv4 address keeps two octets",
-          S.blunt_host("203.0.113.42") == "203.0.x.x")
-    check("an IPv6 address keeps two groups",
-          S.blunt_host("2001:db8:1234::1") == "2001:db8::x")
-    check("localhost blunts too", S.blunt_host("127.0.0.1") == "127.0.x.x")
-    check("an empty address does not crash", S.blunt_host("") == "x")
-    check("junk does not crash", S.blunt_host("not-an-address") == "x")
+    print("\n-- address blunting (no part of an address ever reaches a log)")
+    check("an IPv4 address leaves nothing", S.blunt_host("203.0.113.42") == "client")
+    check("an IPv6 address leaves nothing", S.blunt_host("2001:db8:1234::1") == "client")
+    check("localhost leaves nothing", S.blunt_host("127.0.0.1") == "client")
+    check("an empty address does not crash", S.blunt_host("") == "client")
+    check("junk does not crash", S.blunt_host("not-an-address") == "client")
 
 
 def test_codes():
@@ -2025,8 +2023,8 @@ def _world_pool():
     check("the 17th goes to a NEW world 2 with its own code",
           st == 200 and w2["world_no"] == 2 and w2["code"] != w1["code"],
           (st, w2))
-    check("and world 1 holds exactly 16",
-          S.WORLDS[w1["code"]].count(1000.0) == 16)
+    check("and world 1 holds exactly WORLD_SEATS (32 since WORLD32)",
+          S.WORLDS[w1["code"]].count(1000.0) == S.WORLD_SEATS)
 
     # A different game build has its own pool, starting at 1.
     st, o = world("old", game="0.9.9", who="10.9.3.1")

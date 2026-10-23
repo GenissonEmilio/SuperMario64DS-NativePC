@@ -59,6 +59,7 @@ enum SlId {
     SL_CHARACTER_STRIP,         /* bool: the star select's character strip (CAPSTOGGLE1); on by default, off = the DS's caps row */
     SL_COINS_MIDDLE,            /* bool: HUDMENU2 H10, the coin counter at the top middle like SM64; off by default (the DS puts it beside the stars) */
     SL_KEEP_LIVES,        /* bool: KeepLives; off by default (SHELVED1) */
+    SL_ONLINE_EVENTS,           /* bool: take the host's events in Adventure Online (EVENTS2); on by default */
     SL_COUNT
 };
 
