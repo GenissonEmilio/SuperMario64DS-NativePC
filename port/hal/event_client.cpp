@@ -278,7 +278,10 @@ void end_rec(Rec &r, const char *why) {
     if (r.type == kMod && r.arg == kModSpeed) speed_apply(false);
     if (r.type == kMod && r.arg == kModOneHit) g_hp_prev = -99;
     if (r.type == kMod && r.arg == kModChaos) { g_still = 0; g_pos_have = false; }
-    if (r.type == kMod && r.arg == kModCastle) g_castle = false;
+    if (r.type == kMod && r.arg == kModCastle && g_castle) {
+        g_castle = false;
+        std::fprintf(stderr, "[event] castle unlocked OFF: the save's own doors (save flags1 %08x)\n", *(unsigned *)(data_0209caa0 + 4));
+    }
     if (r.type == kMusic) music_apply(false, 0);
     note_dead(r.id);
     r.used = false;
