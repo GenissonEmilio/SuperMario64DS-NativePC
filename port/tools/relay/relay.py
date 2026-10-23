@@ -108,6 +108,7 @@ import asyncio
 import hashlib
 import hmac
 import importlib.util
+import ipaddress
 import os
 import socket
 import sys
@@ -481,6 +482,18 @@ BAD_ACK_INTERVAL_S = 1.0    # at most one status 2 per second per endpoint
 BAD_IGNORE_S = 10.0         # then that endpoint is ignored for this long
 BUCKET_IDLE_S = 30.0        # forget a rate bucket after this much quiet
 MAX_BUCKETS = 8192          # hard ceiling on tracked source addresses
+# SECREV1: ONE MACHINE MUST NOT BE ABLE TO USE UP A SHARED TABLE. Every source port
+# is its own "address", so a single PC could open 8192 sockets and the fail-closed
+# bucket table above then refused every new player on the relay; open 256 sessions
+# and the session table was full; take every seat of a world whose code it had been
+# given. These three per-host caps (a host = the IP, not the port) stop that. The
+# loopback and private ranges are exempt, so a LAN test rig or the local harnesses
+# (32 synthetic seats from 127.0.0.1) behave as before. A household behind one
+# public address gets 4 seats a session, the same number the lobby gives it
+# (WORLD_ADDR_TOKENS); raise SM64DS_RELAY_MAX_SEATS_PER_IP for a bigger one.
+MAX_BUCKETS_PER_IP = clamp_int(os.environ.get("SM64DS_RELAY_MAX_BUCKETS_PER_IP"), 64, 1, 8192)
+MAX_SESSIONS_PER_IP = clamp_int(os.environ.get("SM64DS_RELAY_MAX_SESSIONS_PER_IP"), 8, 1, 256)
+MAX_SEATS_PER_IP = clamp_int(os.environ.get("SM64DS_RELAY_MAX_SEATS_PER_IP"), 4, 1, 64)
 SWEEP_INTERVAL_S = 1.0
 
 DEFAULT_PORT = 41234
@@ -503,6 +516,24 @@ def log(msg):
     """One line to stdout. systemd picks these up; journalctl shows them."""
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     print("%s %s" % (ts, msg), flush=True)
+
+
+CAP_PRIVATE = os.environ.get("SM64DS_RELAY_CAP_PRIVATE") == "1"   # tests: cap loopback / LAN hosts too
+
+
+def capped_host(host):
+    """True when the per-host caps apply to this source IP: any public address.
+    Loopback and private (RFC 1918 / unique local) hosts are exempt (unless
+    SM64DS_RELAY_CAP_PRIVATE=1, which the socket repro uses on loopback)."""
+    if CAP_PRIVATE:
+        return True
+    try:
+        ip = ipaddress.ip_address(host.split("%")[0])
+    except ValueError:
+        return True
+    if ip.version == 6 and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    return not (ip.is_loopback or ip.is_private)
 
 
 def short_addr(addr):
@@ -901,7 +932,7 @@ class SessionV2(object):
     children) or a HUB (seats 0..HUB_SEATS-1, all members, nobody hosts)."""
     __slots__ = ("code", "kind", "seats", "created", "fwd_tokens",
                  "fwd_stamp", "referee", "fwd_pps", "fwd_burst",
-                 "stars", "names", "race")
+                 "stars", "names", "race", "creator_ip")
     version = PROTO_V2
 
     def __init__(self, code, kind, now):
@@ -909,6 +940,7 @@ class SessionV2(object):
         self.kind = kind
         self.seats = {}         # seat -> addr
         self.created = now
+        self.creator_ip = None  # the host whose HELLO opened it (SECREV1)
         self.referee = None     # arena sessions only (referee.Referee)
         self.stars = {}         # hub only: seat -> star total from its presence
         self.names = {}         # hub only: seat -> name from its identity frame
@@ -974,6 +1006,7 @@ class RelayProtocol(asyncio.DatagramProtocol):
         self.sessions = {}      # code -> Session
         self.endpoints = {}     # addr -> Endpoint
         self.buckets = {}       # addr -> Bucket
+        self.ip_buckets = {}    # host -> number of buckets it holds (SECREV1)
         self.bad_ack_at = {}    # addr -> monotonic of last status 2 sent
         self.ignored = {}       # addr -> monotonic when the ignore ends
         self.kind_caps = {}     # addr -> {tag: [tokens, stamp]} (v2 senders)
@@ -1178,6 +1211,14 @@ class RelayProtocol(asyncio.DatagramProtocol):
             if len(self.buckets) >= MAX_BUCKETS:
                 # Tracking table is full. Fail closed rather than grow.
                 return False
+            host = addr[0]
+            if capped_host(host):
+                if self.ip_buckets.get(host, 0) >= MAX_BUCKETS_PER_IP:
+                    # One machine holds its share of the table already: its
+                    # further source ports are dropped, everyone else is
+                    # unaffected (SECREV1).
+                    return False
+                self.ip_buckets[host] = self.ip_buckets.get(host, 0) + 1
             bucket = Bucket(now, burst)
             self.buckets[addr] = bucket
         else:
@@ -1428,7 +1469,14 @@ class RelayProtocol(asyncio.DatagramProtocol):
                 self._refuse_v2(addr, STATUS_FULL, code, code_raw, n,
                                 "relay at %d sessions" % MAX_SESSIONS)
                 return
+            if (capped_host(addr[0])
+                    and self._sessions_from(addr[0]) >= MAX_SESSIONS_PER_IP):
+                self._refuse_v2(addr, STATUS_FULL, code, code_raw, n,
+                                "this host already opened %d sessions"
+                                % MAX_SESSIONS_PER_IP)
+                return
             session = SessionV2(code, kind, now)
+            session.creator_ip = addr[0]
             if kind == KIND_ARENA:
                 session.referee = self._new_referee(session, now)
                 self.arenas[code] = session
@@ -1508,6 +1556,10 @@ class RelayProtocol(asyncio.DatagramProtocol):
                     status, why = STATUS_SEAT_TAKEN, "seat %d taken" % want
             else:
                 seat = want
+        if (status == STATUS_OK and capped_host(addr[0])
+                and self._seats_from(session, addr[0], addr) >= MAX_SEATS_PER_IP):
+            status, why = STATUS_FULL, ("this host already holds %d seats here"
+                                        % MAX_SEATS_PER_IP)
         if status != STATUS_OK:
             self._refuse_v2(addr, status, code, code_raw, n, why)
             if created:
@@ -1529,6 +1581,17 @@ class RelayProtocol(asyncio.DatagramProtocol):
             session.referee.on_join(seat, now)
 
     # ---- version 2: forwarding by the kind table
+
+    def _sessions_from(self, host):
+        """Sessions that this host's HELLO opened and that still exist."""
+        return sum(1 for s in self.sessions.values()
+                   if getattr(s, "creator_ip", None) == host)
+
+    @staticmethod
+    def _seats_from(session, host, except_addr):
+        """Seats of `session` held by `host` under another source port."""
+        return sum(1 for a in session.seats.values()
+                   if a[0] == host and a != except_addr)
 
     def _kind_cap_ok(self, endpoint, kind, now, rate=None):
         """Per (sender, kind) token bucket: kind.cap a second (or `rate`),
@@ -1815,6 +1878,11 @@ class RelayProtocol(asyncio.DatagramProtocol):
         for addr, bucket in list(self.buckets.items()):
             if (now - bucket.stamp) > BUCKET_IDLE_S and addr not in self.endpoints:
                 del self.buckets[addr]
+                n = self.ip_buckets.get(addr[0], 0) - 1
+                if n > 0:
+                    self.ip_buckets[addr[0]] = n
+                else:
+                    self.ip_buckets.pop(addr[0], None)
         for addr, until in list(self.ignored.items()):
             if until <= now:
                 del self.ignored[addr]
