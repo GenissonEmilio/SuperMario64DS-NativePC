@@ -32,7 +32,6 @@ int _ZN12daStarGate_c12St_Wait_MainEP6Player(void *self, void *player);
 /* the seams (unmatched/Door_Behavior.cpp, hal/actor_overlays.cpp) */
 extern int (*port_event_door_idle_hook)(void *door, void *player);
 extern int (*port_event_gate_wait_hook)(void *gate, void *player);
-extern int (*port_event_pause_line_hook)(char *out, int cap);    /* hal/pause_page.inc, in settings_page.cpp */
 /* the ROM tables the ROM bodies index by the actor's param1 (+8) */
 extern unsigned char data_ov100_02148204[];      /* DoorEntry[]: 16 bytes each; +8 starsNeeded, +9 keyIndex, +10 flagShift */
 extern unsigned char data_ov100_02148390[];      /* daStarGateInfo[4]: 6 bytes each; +0 numStars, +1 saveFlag */
@@ -130,7 +129,6 @@ int seat(void)
 {
     port_event_door_idle_hook = door_hook;
     port_event_gate_wait_hook = gate_hook;
-    port_event_pause_line_hook = [](char *out, int cap) -> int { return port::event_pause_line(out, cap) ? 1 : 0; };
     return 1;
 }
 const int g_seated = seat();

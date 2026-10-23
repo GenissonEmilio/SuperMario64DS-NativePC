@@ -325,10 +325,6 @@ void pp_pointer(const Surf &sf, const PauseGeo &g, const PauseFacts *f)
 
 }  // namespace
 
-/* EVENTS2: the pause shows ONE line for the host's live event ("Event: Triple speed 0:42"), seated by hal/event_castle.cpp on the
-   walk_window targets; null elsewhere, and the hook says false when nothing runs. */
-extern "C" int (*port_event_pause_line_hook)(char *out, int cap) = 0;
-
 extern "C" void pause_page_draw(const MenuLayout *lay, int piece, uint32_t *dst, int w, int h, int stride)
 {
     (void)piece;
@@ -342,15 +338,6 @@ extern "C" void pause_page_draw(const MenuLayout *lay, int piece, uint32_t *dst,
     if (dialog) pp_dialog(sf, g, f);
     if (!g.wide && main_page && !f->settings_open) pp_tabs(sf, g, f);
     if (!(!g.wide && f->slide_t1000 > 500)) pp_pointer(sf, g, f);
-    char evl[64];
-    if (main_page && !f->settings_open && port_event_pause_line_hook && port_event_pause_line_hook(evl, (int)sizeof evl)) {
-        const float em = (float)(30 * g.u);
-        const float tw = ui_text_width(evl, em);
-        const float bw = tw + (float)(40 * g.u), bh = (float)(48 * g.u);
-        const float bx = w * 0.5f - bw * 0.5f, by = h - bh - (float)(18 * g.u);
-        fill_rrect(sf, bx, by, bw, bh, (float)(8 * g.u), PP_DKBROWN, 235, 0);
-        ui_text_draw(&sf, w * 0.5f - tw * 0.5f, by + bh * 0.5f + ui_text_cap_height(em) * 0.5f, evl, em, 0xFFF0D8u, 255, 0);
-    }
 }
 
 /* the pictures the pause draws itself, for the warm-up to decode and scale ahead of the first open: idx 0.. -> (id, dw, dh), 1 while idx is valid */

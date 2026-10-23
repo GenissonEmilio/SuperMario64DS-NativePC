@@ -503,34 +503,6 @@ void event_view(EventView *out) {
     }
 }
 
-// The pause menu's one line: the first live modifier (else the song) and its time left. Basic wording, nothing when idle.
-bool event_pause_line(char *out, int cap) {
-    if (!enabled() || cap < 8) return false;
-    const unsigned now = comms_hub_now_ms();
-    const Rec *best = nullptr;
-    for (const auto &r : g_rec)
-        if (r.used && (r.type == kMod || r.type == kMusic) && (!best || (r.type == kMod && best->type != kMod))) best = &r;
-    if (!best) return false;
-    const int left = secs_left(*best, now);
-    char nb[32];
-    if (best->type == kMusic) {
-        std::snprintf(out, (size_t)cap, "Event: song %d:%02d", left / 60, left % 60);
-    } else {
-        // sentence case of the banner name: "Triple speed"
-        const char *nm = mod_name(best->arg, best->extra, nb, sizeof nb);
-        char t[40];
-        size_t k = 0;
-        for (const char *p = nm; *p && k + 1 < sizeof t; ++p) {
-            char c = *p;
-            if (p != nm && c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
-            t[k++] = c;
-        }
-        t[k] = 0;
-        std::snprintf(out, (size_t)cap, "Event: %s %d:%02d", t, left / 60, left % 60);
-    }
-    return true;
-}
-
 }  // namespace port
 
 extern "C" int port_event_castle_live(void) { return port::g_castle ? 1 : 0; }

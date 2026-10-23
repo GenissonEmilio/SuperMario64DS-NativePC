@@ -73,10 +73,6 @@ struct EventView {
 };
 void event_view(EventView *out);
 
-// One line for the pause menu: the live event and the time left ("Triple speed
-// 0:42"). False (and out untouched) when nothing runs or events are off.
-bool event_pause_line(char *out, int cap);
-
 struct EventStats {
     unsigned long long rx, applied, ended, dropped_bad, explosions, kills;
 };
