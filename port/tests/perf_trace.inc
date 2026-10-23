@@ -108,6 +108,7 @@ static long long g_pt_samp_busy_qpc;   /* the sampler's own time holding threads
 static long g_pt_ticks;
 static unsigned g_pt_exe_lo, g_pt_exe_hi;      /* the exe's code range */
 static unsigned g_pt_stackbuf[1024];
+static int g_pt_deep;     /* SM64DS_PERF_DEEP=1 (OPTIM1): stack read for every main-thread sample; set at arm time, never in the sampler */
 
 static int pt_on(void)
 {
@@ -117,6 +118,7 @@ static int pt_on(void)
            timers only (no frame table, no sampler, no file), and a "[hitch]" line on stderr for a
            frame whose work ran past SM64DS_HITCH_MS (default 28). SM64DS_HITCH_MS=0 turns it off. */
         g_pt_on = e ? atoi(e) : 3;
+        { const char *dv = getenv("SM64DS_PERF_DEEP"); g_pt_deep = (dv && *dv == '1') ? 1 : 0; }
         if (g_pt_on < 0) g_pt_on = 0;
         if (g_pt_on == 3) {
             const char *h = getenv("SM64DS_HITCH_MS");
@@ -292,8 +294,10 @@ static DWORD WINAPI pt_sampler_main(void *)
                of its stack while it is still held. ReadProcessMemory is a
                system call on our own address space, takes no user-mode lock,
                and fails cleanly on an uncommitted page. */
+            /* SM64DS_PERF_DEEP=1 (OPTIM1): read the main thread's stack for every sample, so a leaf inside the exe's own
+               runtime (the big memcpy) also names the callers above it */
             const int want_stack = ok && g_pt_tids[i] == g_pt_main_tid &&
-                                   (eip < g_pt_exe_lo || eip >= g_pt_exe_hi);
+                                   (g_pt_deep || eip < g_pt_exe_lo || eip >= g_pt_exe_hi);
             if (want_stack &&
                 !ReadProcessMemory(GetCurrentProcess(), (void *)(size_t)sp,
                                    g_pt_stackbuf, sizeof g_pt_stackbuf, &got))
