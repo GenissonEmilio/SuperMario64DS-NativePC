@@ -1173,6 +1173,8 @@ void set_nonblocking(SOCKET s)
     WS.ioctlsocket(s, FIONBIO, &one);
 }
 
+bool looks_like_http(const std::string &line);
+
 void serve_client(SOCKET c)
 {
     set_nonblocking(c);
