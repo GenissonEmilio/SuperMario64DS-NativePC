@@ -174,6 +174,18 @@ def pure2():
           and d2 == [] and len(d3) == 1 and d3[0][20] == 22)
 
 
+def pure3():
+    import event_send
+    now = time.time()
+    line = event_send.build(KEY.decode(), "race", secs=300, world="ABCD2345", stars=30, ts=int(now * 1000))
+    ev, why = relay.event_parse(KEY, line.encode("ascii"), 0, now)
+    check("event_send builds a line the relay accepts (race, world, target)", ev is not None and ev["world"] == "ABCD2345"
+          and ev["target"] == 30 and ev["arg"] == 4, why)
+    line = event_send.build(KEY.decode(), "castle", secs=60, ts=int(now * 1000))
+    ev, why = relay.event_parse(KEY, line.encode("ascii"), 0, now)
+    check("event_send castle parses as modifier 5 for every world", ev is not None and ev["arg"] == 5 and ev["world"] == "", why)
+
+
 def free_port():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(("127.0.0.1", 0))
@@ -356,6 +368,7 @@ def live():
 if __name__ == "__main__":
     pure()
     pure2()
+    pure3()
     live()
     print("RESULT", "FAIL" if FAILS else "PASS", FAILS)
     sys.exit(1 if FAILS else 0)

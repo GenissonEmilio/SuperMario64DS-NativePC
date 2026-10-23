@@ -2025,8 +2025,8 @@ def _world_pool():
     check("the 17th goes to a NEW world 2 with its own code",
           st == 200 and w2["world_no"] == 2 and w2["code"] != w1["code"],
           (st, w2))
-    check("and world 1 holds exactly 16",
-          S.WORLDS[w1["code"]].count(1000.0) == 16)
+    check("and world 1 holds exactly WORLD_SEATS (32 since WORLD32)",
+          S.WORLDS[w1["code"]].count(1000.0) == S.WORLD_SEATS)
 
     # A different game build has its own pool, starting at 1.
     st, o = world("old", game="0.9.9", who="10.9.3.1")

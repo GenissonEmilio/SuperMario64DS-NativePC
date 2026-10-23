@@ -394,6 +394,45 @@ void read_fakes() {
 }
 #endif
 
+#ifndef PORT_ROM_CLEAN
+// proof knob (dev builds only): SM64DS_EVENT_TESTHURT=<tick>[,<tick>...] hurts the local body by one wedge at those game ticks, or
+// SM64DS_EVENT_TESTHURT=file:<path> one wedge each time the harness creates that file. A control for one hit mode: without the modifier
+// health goes 8 -> 7, with it the console dies. It runs BEFORE the kill switch and the Online events switch are looked at, so a console
+// that takes no events can be hurt the same way as one that does.
+void testhurt_poll() {
+    static unsigned th[4]; static int nth = -1, thi = 0;
+    static char hurt_file[260] = {};
+    static unsigned prev = 0; static bool seeded = false;
+    if (nth < 0) {
+        nth = 0;
+        if (const char *e = std::getenv("SM64DS_EVENT_TESTHURT")) {
+            if (std::strncmp(e, "file:", 5) == 0) {
+                std::strncpy(hurt_file, e + 5, sizeof hurt_file - 1);
+            } else {
+                char buf[128]; std::strncpy(buf, e, sizeof buf - 1); buf[sizeof buf - 1] = 0;
+                for (char *t = std::strtok(buf, ","); t && nth < 4; t = std::strtok(nullptr, ",")) th[nth++] = (unsigned)std::atoi(t);
+            }
+        }
+    }
+    if (nth == 0 && !hurt_file[0]) return;
+    char *b = my_body();
+    const unsigned ticks = port_stage_behavior_calls();
+    const unsigned dt = seeded ? ticks - prev : 0;
+    prev = ticks;
+    seeded = true;
+    if (!b || dt == 0) return;
+    const int hp = (int)(signed char)(data_02092144[data_0209f250 & 15] >> 8);
+    bool hurt_now = false;
+    if (thi < nth && ticks >= th[thi]) { ++thi; hurt_now = true; }
+    if (hurt_file[0] && hp > 0 && GetFileAttributesA(hurt_file) != INVALID_FILE_ATTRIBUTES) { DeleteFileA(hurt_file); hurt_now = true; }
+    if (!hurt_now) return;
+    int pos[3] = { rd32(b, 0x5c), rd32(b, 0x60) + 0x1000, rd32(b, 0x64) };
+    const int r = _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(b, pos, 1u, 0x8000, 1, 0, 1);
+    std::fprintf(stderr, "[event] TESTHURT at tick %u: Hurt returned %d, hp %d -> %d\n", ticks, r, hp,
+                 (int)(signed char)(data_02092144[data_0209f250 & 15] >> 8));
+}
+#endif
+
 bool hub_ok() {
     return comms_hub_active() && !comms_hub_arena() && comms_hub_state() == kHubLive &&
            comms_hub_room_kind() == kHubRoomWorld;
@@ -499,6 +538,9 @@ extern "C" int port_event_castle_live(void) { return port::g_castle ? 1 : 0; }
 extern "C" void port_event_frame(void) {
     using namespace port;
     ++g_frame;
+#ifndef PORT_ROM_CLEAN
+    testhurt_poll();
+#endif
     if (!env_on()) { g_castle = false; return; }
     if (std::getenv("SM64DS_EVENT_LOG") && (g_frame == 1 || g_frame % 600 == 0))
         std::fprintf(stderr, "[event] hook alive: call %u body=%p hub=%d fakes=%d setting=%d\n", g_frame, (void *)my_body(),
@@ -615,34 +657,6 @@ extern "C" void port_event_frame(void) {
                          rd32(b, 0x64), rd32(b, 0x98), hp, ready ? 1 : 0, g_up_ticks, busy_mask());
         }
 
-#ifndef PORT_ROM_CLEAN
-        // proof knob (dev builds only): SM64DS_EVENT_TESTHURT=<tick>[,<tick>...] hurts the local body by one wedge at those game ticks (a
-        // control for one hit mode: without the modifier health goes 8 -> 7, with it the console dies)
-        {
-            static unsigned th[4]; static int nth = -1, thi = 0;
-            static unsigned period = 0, last_hurt = 0;     // "every<n>": a wedge of damage every n game ticks, for as long as the console lives
-            if (nth < 0) {
-                nth = 0;
-                if (const char *e = std::getenv("SM64DS_EVENT_TESTHURT")) {
-                    if (std::strncmp(e, "every", 5) == 0) {
-                        period = (unsigned)std::atoi(e + 5);
-                    } else {
-                        char buf[128]; std::strncpy(buf, e, sizeof buf - 1); buf[sizeof buf - 1] = 0;
-                        for (char *t = std::strtok(buf, ","); t && nth < 4; t = std::strtok(nullptr, ",")) th[nth++] = (unsigned)std::atoi(t);
-                    }
-                }
-            }
-            bool hurt_now = false;
-            if (dt > 0 && thi < nth && ticks >= th[thi]) { ++thi; hurt_now = true; }
-            if (period && dt > 0 && hp > 0 && g_up_ticks >= kReadyTicks && ticks - last_hurt >= period) { last_hurt = ticks; hurt_now = true; }
-            if (hurt_now) {
-                int pos[3] = { rd32(b, 0x5c), rd32(b, 0x60) + 0x1000, rd32(b, 0x64) };
-                const int r = _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(b, pos, 1u, 0x8000, 1, 0, 1);
-                std::fprintf(stderr, "[event] TESTHURT at tick %u: Hurt returned %d, hp %d -> %d\n", ticks, r, hp,
-                             (int)(signed char)(data_02092144[data_0209f250 & 15] >> 8));
-            }
-        }
-#endif
 
         // one hit: any drop in health is the end of it (only once the player is in control)
         if (want_onehit) {
