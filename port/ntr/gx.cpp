@@ -230,6 +230,7 @@ int g_ip_open = 0;        // gx_interp_begin has saved the live state
 int g_ip_in_vram = 0;     // inside the VRAM bind, which records its own result
 uint32_t g_ip_dma_src = 0;
 void ip_push(uint8_t kind, uint8_t cmd, int np, const uint32_t *p);
+const GxTriangle *ip_sealed_ghosts(size_t &n);   /* the record just sealed: its ghost triangles, or null when it has none it vouches for */
 void ip_rec_bind_now();
 void ip_rec_begin();
 void ip_rec_seal();
@@ -6702,6 +6703,7 @@ void gx_render(Framebuffer &fb) {
         grids_materialize_w(3);
     capture_drill(false);
     /* run interp1: what reached the raster is the frame; seal its record. */
+    const bool sealed_now = g_ip_rec != 0;
     if (g_ip_rec) ip_rec_seal();
     /* LAST FRAME'S PRE-SMOOTHING COPY STOPS BEING THIS FRAME'S HERE, before
        anything is drawn. A capture that somehow ran against a frame this
@@ -6713,15 +6715,29 @@ void gx_render(Framebuffer &fb) {
        list is the one the frame was submitted as for whatever reads it after. */
     static std::vector<GxTriangle> s_ghost;
     s_ghost.clear();
+    const GxTriangle *gl_p = nullptr;      /* the lifted figures: s_ghost, or the tick record's own copy */
+    size_t gl_n = 0;
+    bool gl_alias = false;
     if (g_ghost_layer_on) {
-        bool any = false;
+        size_t nghost = 0;
         for (const GxTriangle &t : g.tris)
-            if (t.ghost) { any = true; break; }
+            if (t.ghost) ++nghost;
+        const bool any = nghost != 0;
         if (any) {
+            /* run hunt8, lane GHOSTPERF1: the tick's record (ip_ghost_save, just sealed) already holds exactly these triangles in this
+               order; the picture reads them from there instead of a second copy of ~4 MB, and they are not appended back (the
+               frame's list is cleared at the next frame and the record has them). SM64DS_GHOST_ALIAS=0 is the old copy. */
+            static const int alias_on = (std::getenv("SM64DS_GHOST_ALIAS") && *std::getenv("SM64DS_GHOST_ALIAS") == '0') ? 0 : 1;
+            static const int dbg_env = (std::getenv("SM64DS_GHOST_LAYER_PROBE") || std::getenv("SM64DS_GHOST_LAYER_HIDE")) ? 1 : 0;
+            size_t rn = 0;
+            const GxTriangle *rp = (alias_on && !dbg_env && sealed_now) ? ip_sealed_ghosts(rn) : nullptr;
+            gl_alias = rp && rn == nghost;
+            if (gl_alias) { gl_p = rp; gl_n = nghost; }
+            else s_ghost.reserve(nghost);
             size_t w = 0;
             for (size_t i = 0; i < g.tris.size(); ++i) {
                 if (g.tris[i].ghost) {
-                    s_ghost.push_back(g.tris[i]);
+                    if (!gl_alias) s_ghost.push_back(g.tris[i]);
                 } else {
                     if (w != i) g.tris[w] = g.tris[i];
                     ++w;
@@ -6753,7 +6769,8 @@ void gx_render(Framebuffer &fb) {
         }
         if (hide) s_ghost.clear();
     }
-    const bool have_ghost = !s_ghost.empty();
+    if (!gl_alias) { gl_p = s_ghost.data(); gl_n = s_ghost.size(); }
+    const bool have_ghost = gl_n != 0;
     const int tm = frame_ms();
     std::chrono::steady_clock::time_point t_enter;
     if (tm) t_enter = std::chrono::steady_clock::now();
@@ -6892,8 +6909,8 @@ void gx_render(Framebuffer &fb) {
         size_t n2 = g.grid_mode2;
         for (const GxTriangle &t : g.tris)
             if (t.mode == 2) ++n2;
-        for (const GxTriangle &t : s_ghost)
-            if (t.mode == 2) ++n2;
+        for (size_t gi_ = 0; gi_ < gl_n; ++gi_)
+            if (gl_p[gi_].mode == 2) ++n2;
         if (n2) g_toon_shade = gx_toon_table(g_toon8);
         static const int tprobe = std::getenv("SM64DS_TOON_PROBE") ? 1 : 0;
         if (tprobe && n2) {
@@ -7004,8 +7021,8 @@ void gx_render(Framebuffer &fb) {
         f.out = &gpu_out;
         f.keep = g_cp_pending;
         f.outside_argb = kOldClear;
-        f.ghost_tris = s_ghost.data();
-        f.ghost_count = s_ghost.size();
+        f.ghost_tris = gl_p;
+        f.ghost_count = gl_n;
         if (g_aa_mode && aa_scratch_alloc()) {
             f.aa_mode = 1;
             f.pre = g_aa_src;
@@ -7748,8 +7765,8 @@ void gx_render(Framebuffer &fb) {
         f.ab = ab_mode();
         f.out = &gpu_out;
         if (!ab_mode()) {
-            f.ghost_tris = s_ghost.data();
-            f.ghost_count = s_ghost.size();
+            f.ghost_tris = gl_p;
+            f.ghost_count = gl_n;
         }
 
         if (!ab_mode()) {
@@ -8046,7 +8063,10 @@ void gx_render(Framebuffer &fb) {
 
     /* the ghost figures, as layers over the finished frame, before the edge
        smoothing reads it (a whole-frame card draws them itself) */
-    if (have_ghost && !gpu_full) ghost_pass_cpu(fb, s_ghost, want_id);
+    if (have_ghost && !gpu_full) {
+        if (gl_alias) { s_ghost.assign(gl_p, gl_p + gl_n); gl_alias = false; }   /* the processor pass wants a vector */
+        ghost_pass_cpu(fb, s_ghost, want_id);
+    }
 
     if (tm) t_pass1 = std::chrono::steady_clock::now();
 
@@ -8076,7 +8096,7 @@ void gx_render(Framebuffer &fb) {
     }
     aa_report();
     capture_drill(true);
-    if (have_ghost) g.tris.insert(g.tris.end(), s_ghost.begin(), s_ghost.end());
+    if (have_ghost && !gl_alias) g.tris.insert(g.tris.end(), s_ghost.begin(), s_ghost.end());
 
     if (tm) t_aa1 = std::chrono::steady_clock::now();
 
@@ -8095,7 +8115,7 @@ void gx_render(Framebuffer &fb) {
         acc_aa += ms(t_aa1 - t_pass1).count();
         if (prev.time_since_epoch().count()) acc_frame += ms(t_exit - prev).count();
         prev = t_exit;
-        acc_tris += static_cast<long long>(g.tris.size());
+        acc_tris += static_cast<long long>(g.tris.size() + (gl_alias ? gl_n : 0));
         if (++n >= 30) {
             /* The three new numbers are APPENDED, so anything that already
                 reads this line by its prefix reads it unchanged. With the card
@@ -8512,6 +8532,12 @@ void ip_ghost_emit(const IpRec &C, const IpRec &P, const IpRec::GPair &q, float 
     }
 }
 
+const GxTriangle *ip_sealed_ghosts(size_t &n) {
+    const IpRec &r = g_ipr[g_ip_w];
+    n = r.gt.size();
+    return r.gt_ok ? r.gt.data() : nullptr;
+}
+
 void ip_rec_seal() {
     IpRec &r = g_ipr[g_ip_w];
     r.sealed = static_cast<uint32_t>(r.ev.size());
@@ -8532,7 +8558,14 @@ void ip_push(uint8_t kind, uint8_t cmd, int np, const uint32_t *p) {
     e.mode = static_cast<uint8_t>(g.mode & 3);
     e.off = static_cast<uint32_t>(r.par.size());
     e.src = g_ip_dma_src;
-    if (np) r.par.insert(r.par.end(), p, p + np);
+    if (np) {
+        /* run hunt8, lane GHOSTPERF1: one growth check and a plain copy per command (a generic range insert showed up in the tick) */
+        const size_t at = r.par.size();
+        if (at + (size_t)np > r.par.capacity()) r.par.reserve(r.par.capacity() < 4096 ? 8192 : r.par.capacity() * 2);
+        r.par.resize(at + (size_t)np);
+        uint32_t *d = r.par.data() + at;
+        for (int k = 0; k < np; ++k) d[k] = p[k];
+    }
     r.ev.push_back(e);
     r.ev_tri.push_back(static_cast<uint32_t>(g.tris.size()));
     if (!g.grids.empty()) r.gt_bad = 1;
