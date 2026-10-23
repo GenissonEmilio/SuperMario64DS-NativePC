@@ -643,8 +643,10 @@ extern "C" void port_event_frame(void) {
         // by). A level change, a death and a respawn all take the body away for a while, which starts this over.
         const int key = ((int)data_0209f2f8 << 8) | (int)(unsigned char)data_02092120;
         const int x0 = rd32(b, 0x5c), y0 = rd32(b, 0x60), z0 = rd32(b, 0x64);
-        if (key != g_up_key) { g_up_key = key; g_up_ticks = 0; g_moved = false; g_sx = x0; g_sy = y0; g_sz = z0; }
+        if (key != g_up_key) { g_up_key = key; g_up_ticks = 0; g_moved = false; }
         if (dt > 0 && !busy()) g_up_ticks += (int)dt;
+        // "moved" is judged from where the player stood when the opening time ran out, so the first fall onto the floor does not count
+        if (g_up_ticks < kReadyTicks || busy()) { g_moved = false; g_sx = x0; g_sy = y0; g_sz = z0; }
         {
             const int dx = x0 - g_sx, dy = y0 - g_sy, dz = z0 - g_sz;
             if ((dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy) + (dz < 0 ? -dz : dz) > 0x20000) g_moved = true;
