@@ -34,7 +34,7 @@ bool g_printed_any = false;
 
 const char *const kKindName[kHubKinds + 1] = {
     "ghost", "ident", "chat", "voice", "arenastate", "arenaobj", "arenaref", "arenaclaim",
-    "presence", "partystar", "partyhit", "coopworld", "coopctl", "moverq" };
+    "presence", "partystar", "partyhit", "coopworld", "coopctl", "event", "moverq" };
 
 void emit(const char *why, unsigned now) {
     int lv = -1, ac = 0;

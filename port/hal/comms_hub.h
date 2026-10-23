@@ -136,9 +136,13 @@ enum HubKind : int {
     kHubPartyHit  = 10,    // 'SYNH'  party only, to one seat
     kHubCoopWorld = 11,    // 'SYNW'  coop only
     kHubCoopCtl   = 12,    // 'SYNB'  coop only
-    kHubKinds = 13,
+    // HOST EVENTS (lane EVENTS1, prototype; hal/event_client.h). Receive only,
+    // and only from the relay itself (byte 5 == 0xFD) in a world room.
+    kHubEvent     = 13,    // 'SYNZ'  96 bytes, version 1
+    kHubKinds = 14,
 };
 enum : int { kHubRefereeSeat = 0xFE };   // byte 5 of what the referee sends
+enum : int { kHubEventSeat = 0xFD };     // byte 5 of what the relay sends as an event
 
 // The tags as little-endian words (the first four bytes read as a u32).
 enum : unsigned {
@@ -152,6 +156,7 @@ enum : unsigned {
     kHubTagArenaObject = 0x4f4e5953u,   // 'S','Y','N','O'
     kHubTagArenaRef    = 0x524e5953u,   // 'S','Y','N','R'
     kHubTagArenaClaim  = 0x454e5953u,   // 'S','Y','N','E'
+    kHubTagEvent       = 0x5a4e5953u,   // 'S','Y','N','Z'  (host events, relay only)
 };
 
 // ---------------------------------------------------------------------------

@@ -647,6 +647,7 @@ int port_coop_boot_frame(void);
 /* run mp1 lane COOPWORLD1: the coop world core (hal/coop_world.cpp). */
 void port_coop_world_frame(void);
 void port_star_popup_frame(void);
+void port_event_frame(void);   /* run hunt8 lane EVENTS1 (hal/event_client.cpp) */
 int port_star_popup_stop_now(void);   /* run mp1 lane STARPOP1 (hal/star_popup.cpp) */
 /* PARTY: per-slot party-member predicate (hal/comms_sync.cpp). */
 extern "C" int port_party_member(int slot);
@@ -4226,6 +4227,7 @@ static void chat_draw(const OvlSurface &fb)
 #include "hal/net_hud.h"
 #include "hal/player_list_paint.h"   /* run mp1 PLIST1: party / coop player list */
 #include "hal/star_popup_paint.h"   /* run mp1 lane STARPOP1 */
+#include "hal/event_paint.h"   /* run hunt8 lane EVENTS1 */
 #include "hal/world_party_paint.h"   /* run mp1 lane PINVITE1: parties inside the world */
 
 /* the per-phase clock. One QueryPerformanceCounter pair per phase and a
@@ -5376,6 +5378,7 @@ static void chat_host_frame(const OvlSurface &surf, int frame)
     if (!rb_skip_render()) chat_draw(surf);
     if (!rb_skip_render()) net_hud_draw(surf);
     if (!rb_skip_render()) star_popup_draw(surf);
+    if (!rb_skip_render()) event_draw(surf);   /* hook: EVENTS1 */
     if (!rb_skip_render()) world_party_draw(surf);   /* hook: PINVITE1, inert outside a world room */
 }
 
@@ -12602,6 +12605,31 @@ static void stack_capture(const uint32_t *img)
             hal_sub_screen_stacked_size(&w, &h);
             char nm[512];
             snprintf(nm, sizeof nm, "%s_%05lu.bmp", rpre, f);
+            ntr::ppu_write_bmp_px(nm, img, w, h);
+        }
+    }
+    {   /* EVENTS1 (proof runs): SM64DS_STACK_BMP_ON=<prefix>|<flagfile>: while the flag file exists, the presented image on every 20th frame as
+           <prefix>_<frame>.bmp. The harness decides WHEN by creating and deleting the file, so a picture can be taken at the moment an event
+           is on screen without knowing the frame number in advance. */
+        static int fl = -2, fstep = 20;
+        static char fpre[480], fflag[480];
+        if (fl == -2) {
+            fl = 0;
+            if (const char *e = getenv("SM64DS_STACK_BMP_ON")) {
+                const char *bar = strchr(e, '|');
+                if (bar && (size_t)(bar - e) < sizeof fpre && strlen(bar + 1) < sizeof fflag) {
+                    memcpy(fpre, e, (size_t)(bar - e)); fpre[bar - e] = 0;
+                    strcpy(fflag, bar + 1); fl = 1;
+                    char *b2 = strchr(fflag, '|');       // optional |<step>
+                    if (b2) { *b2 = 0; fstep = atoi(b2 + 1); if (fstep < 1) fstep = 20; }
+                }
+            }
+        }
+        if (fl == 1 && img && (f % (unsigned long)fstep) == 0 && GetFileAttributesA(fflag) != INVALID_FILE_ATTRIBUTES) {
+            int w = 0, h = 0;
+            hal_sub_screen_stacked_size(&w, &h);
+            char nm[512];
+            snprintf(nm, sizeof nm, "%s_%05lu.bmp", fpre, f);
             ntr::ppu_write_bmp_px(nm, img, w, h);
         }
     }
@@ -20101,6 +20129,7 @@ int main(void)
             port_party_stars_frame();
             port_party_hits_frame();   /* hook: PLAYINT1, inert outside party / coop rooms */
             port_star_popup_frame();   /* hook: STARPOP1, inert outside party / coop rooms */
+            port_event_frame();        /* hook: EVENTS1, inert outside a live world hub */
         }
         /* PARTY: the render boundary (a party body solid+colliding vs a
            non-party ghost translucent+pass-through) and party-body liveness.

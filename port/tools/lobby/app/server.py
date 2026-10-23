@@ -47,6 +47,8 @@ Content-Length first, and reject only through `_reject`, which drains the
 announced body (bounded) before it answers.
 """
 
+import hashlib
+import hmac
 import json
 import os
 import random
@@ -3452,6 +3454,88 @@ assert set(VERBS) == set(VERB_FIELDS), (
     "VERBS and VERB_FIELDS disagree: %s"
     % sorted(set(VERBS) ^ set(VERB_FIELDS)))
 
+
+# ------------------------------------------------------------ host events
+#
+# PROTOTYPE (lane EVENTS1). One admin-only endpoint, POST /port/lobby/admin/event,
+# lets the host put a message, a song or a timed modifier on every player's
+# screen in the always-online world. It is OFF (404, exactly like any unknown
+# verb) unless BOTH of these are in the lobby's environment:
+#
+#   EVENT_ADMIN_TOKEN   the host's secret, 24+ characters, sent as
+#                       "Authorization: Bearer <token>". Never in the game zip
+#                       and never in a log line.
+#   EVENT_KEY           16+ characters, shared with the relay
+#                       (SM64DS_EVENT_KEY there). The lobby signs each command
+#                       with it; the relay refuses anything unsigned or old.
+#
+# and EVENT_CMD_PORT names the relay's private command port (UDP, loopback).
+# The lobby never forwards anything a player sent: the body is checked field by
+# field below and re-encoded, so the relay sees only what this file built.
+EVENT_ADMIN_TOKEN = os.environ.get("EVENT_ADMIN_TOKEN", "")
+EVENT_KEY = os.environ.get("EVENT_KEY", "")
+EVENT_CMD_PORT = env_int("EVENT_CMD_PORT", 0, 0, 65535)
+EVENT_CMD_HOST = os.environ.get("EVENT_CMD_HOST", "127.0.0.1") or "127.0.0.1"
+EVENT_ON = (len(EVENT_ADMIN_TOKEN) >= 24 and len(EVENT_KEY) >= 16
+            and EVENT_CMD_PORT > 0)
+EVENT_NAMES = {"message": (1, 0), "music": (2, 0), "clear": (4, 0),
+               "speed": (3, 1), "onehit": (3, 2), "chaos": (3, 3),
+               "race": (3, 4)}
+_EVENT_LAST_TS = [0]
+
+
+def event_bearer(headers):
+    """The token the caller sent, or ''."""
+    auth = headers.get("Authorization") or ""
+    if auth.lower().startswith("bearer "):
+        return auth[7:].strip()
+    return (headers.get("X-Admin-Token") or "").strip()
+
+
+def event_token_ok(given):
+    return hmac.compare_digest(given.encode("utf-8", "replace"),
+                               EVENT_ADMIN_TOKEN.encode("utf-8", "replace"))
+
+
+def event_build(body):
+    """A request body -> (command text | None, error code). Pure."""
+    if not isinstance(body, dict):
+        return None, "bad_shape"
+    name = body.get("event")
+    if not isinstance(name, str) or name not in EVENT_NAMES:
+        return None, "bad_event"
+    etype, arg = EVENT_NAMES[name]
+    if name == "music":
+        arg = body.get("sublevel")
+        if isinstance(arg, bool) or not isinstance(arg, int) or not 0 <= arg <= 255:
+            return None, "bad_sublevel"
+    secs = body.get("secs", 0)
+    if isinstance(secs, bool) or not isinstance(secs, int) or not 0 <= secs <= 3600:
+        return None, "bad_secs"
+    text = body.get("text", "")
+    if not isinstance(text, str) or len(text) > 70 or any(
+            not 32 <= ord(c) < 127 for c in text):
+        return None, "bad_text"
+    if name == "message" and not text:
+        return None, "bad_text"
+    if name == "clear":
+        secs = 0
+    ts = max(int(time.time() * 1000), _EVENT_LAST_TS[0] + 1)
+    _EVENT_LAST_TS[0] = ts
+    msg = text.encode("ascii").hex() if text else "-"
+    line = "EVT1 %d %d %d %d %s" % (ts, etype, arg, secs, msg)
+    sig = hmac.new(EVENT_KEY.encode("ascii", "replace"), line.encode("ascii"),
+                   hashlib.sha256).hexdigest()[:32]
+    return "%s|%s" % (line, sig), None
+
+
+def event_send(cmd):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.sendto(cmd.encode("ascii"), (EVENT_CMD_HOST, EVENT_CMD_PORT))
+    finally:
+        sock.close()
+
 # ------------------------------------------------------------------ reaper
 
 
@@ -3769,6 +3853,13 @@ class Handler(BaseHTTPRequestHandler):
                          announced, kind="rate")
             return
 
+        # 2b. THE HOST'S ADMIN ENDPOINT (lane EVENTS1). Off, it is an unknown
+        #     verb like any other. On, it needs the host's token before it
+        #     reads one byte of the body.
+        if self.path == PREFIX + "admin/event":
+            self._admin_event(announced)
+            return
+
         # 3. THE PATH. Exactly one of the verbs this file serves, and never
         #    with a query string.
         path = self.path
@@ -3855,6 +3946,35 @@ class Handler(BaseHTTPRequestHandler):
                 % (blunt_host(host_key), safe_path(self.path), status,
                    payload.get("error", "?")))
         self._send(status, payload)
+
+
+def _admin_event(self, announced):
+    if not EVENT_ON:
+        self._reject(404, "unknown_verb", announced)
+        return
+    if not event_token_ok(event_bearer(self.headers)):
+        self._reject(403, "forbidden", announced, kind="auth")
+        return
+    try:
+        raw = self.rfile.read(announced) if announced else b""
+        body = json.loads(raw.decode("utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError, RecursionError):
+        self._reject(400, "bad_shape", 0)
+        return
+    cmd, err = event_build(body)
+    if err:
+        self._send(400, {"v": 1, "error": err})
+        return
+    try:
+        event_send(cmd)
+    except OSError:
+        self._send(502, {"v": 1, "error": "relay_unreachable"})
+        return
+    log("admin event %s secs %s" % (body.get("event"), body.get("secs", 0)))
+    self._send(200, {"v": 1, "ok": True})
+
+
+Handler._admin_event = _admin_event
 
 
 class Server(ThreadingHTTPServer):
