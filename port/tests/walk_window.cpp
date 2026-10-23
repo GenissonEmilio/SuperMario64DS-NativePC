@@ -195,6 +195,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <emmintrin.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -9532,6 +9533,22 @@ static int hud_glide_on(void)
     return v;
 }
 static unsigned long long g_ip_glide_pics;
+/* run hunt8, lane GHOSTPERF1: row[x] = b[x] where a[x] != b[x], four pixels at a time (the picture's 2D laid back over the replayed 3D;
+   a scalar compare-and-store per pixel over the whole frame was 0.5 ms of every picture) */
+static inline void ip_merge_row(uint32_t *row, const uint32_t *a, const uint32_t *b, int w)
+{
+    int x = 0;
+    for (; x + 4 <= w; x += 4) {
+        const __m128i va = _mm_loadu_si128((const __m128i *)(a + x));
+        const __m128i vb = _mm_loadu_si128((const __m128i *)(b + x));
+        const __m128i vr = _mm_loadu_si128((const __m128i *)(row + x));
+        const __m128i eq = _mm_cmpeq_epi32(va, vb);
+        _mm_storeu_si128((__m128i *)(row + x), _mm_or_si128(_mm_and_si128(eq, vr), _mm_andnot_si128(eq, vb)));
+    }
+    for (; x < w; ++x)
+        if (a[x] != b[x]) row[x] = b[x];
+}
+
 static int ip_build(double alpha)
 {
     const long long t0 = ip_qpc();
@@ -9724,8 +9741,7 @@ static int ip_build(double alpha)
                 }
                 continue;
             }
-            for (int x = 0; x < ntr::active_w; ++x)
-                if (a[x] != b[x]) row[x] = b[x];
+            ip_merge_row(row, a, b, ntr::active_w);
         }
     }
     /* run hunt8, lane MENUINTERP2: the menu again, on this picture's own 3D (the pieces it lifts from the 3D picture are cut from
@@ -9743,6 +9759,7 @@ static int ip_build(double alpha)
         /* INTERP093 I1: an opening box's pixels outside the window that far along are the replayed 3D in this stage too */
         const int tw_row = tw && y >= tw_outer[1] && y < tw_outer[3];
         const int tw_mid = tw_row && y >= tw_inner[1] && y < tw_inner[3];
+        if (!tw_row) { ip_merge_row(row, a, b, ntr::active_w); continue; }
         for (int x = 0; x < ntr::active_w; ++x) {
             if (a[x] == b[x]) continue;
             if (tw_row && x >= tw_outer[0] && x < tw_outer[2] && !(tw_mid && x >= tw_inner[0] && x < tw_inner[2])) continue;
@@ -9786,11 +9803,11 @@ static void ip_note(double build_ms, double pres_ms)
     fprintf(stderr, "[interp] %d blended pictures: build ms avg %.2f p50 %.2f "
             "p95 %.2f max %.2f (replay %.2f raster %.2f 2D %.2f) | present ms "
             "avg %.2f p95 %.2f max %.2f | total pictures %llu blended %llu "
-            "plain %llu\n",
+            "plain %llu card %llu cpu %llu\n",
             IP_WIN, ab / IP_WIN, sb[IP_WIN / 2], sb[(IP_WIN * 95) / 100],
             sb[IP_WIN - 1], g_ip_sum_replay / IP_WIN, g_ip_sum_raster / IP_WIN,
             g_ip_sum_compose / IP_WIN, ap / IP_WIN, sp[(IP_WIN * 95) / 100],
-            sp[IP_WIN - 1], g_ip_pictures, g_ip_blended, g_ip_plain);
+            sp[IP_WIN - 1], g_ip_pictures, g_ip_blended, g_ip_plain, g_ip_card_pics, g_ip_cpu_pics);
     if (g_ip_menu_n) fprintf(stderr, "[interp] menu re-draw in %u of those pictures: %.2f ms each (inside '2D')\n", g_ip_menu_n, g_ip_sum_menu / g_ip_menu_n);
     g_ip_sum_menu = 0; g_ip_menu_n = 0;
     g_ip_sum_replay = g_ip_sum_raster = g_ip_sum_compose = 0;
