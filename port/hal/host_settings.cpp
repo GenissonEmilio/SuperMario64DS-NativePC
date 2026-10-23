@@ -875,6 +875,9 @@ int g_chars_from_start = 0;
    no strip, no custom character arrow. Read live. */
 int g_character_strip = 1;
 
+/* KeepLives: 1 keeps each save file's life count in the port's own side file (save/lives.json) and gives it back when that file starts; 0 is the DS, which starts every file with 4 lives. Default 0. Read live. */
+int g_keep_lives = 0;
+
 /* Aspect: the presentation ratio, WIDTH DIVIDED BY HEIGHT. 0 (the default) is
    the explicit native sentinel -- the DS's own 4:3 at the 512x384 window the
    port has always opened. 1.7777778 is 16:9. It is a NUMBER and not a
@@ -1538,6 +1541,7 @@ void load_once(void)
     g_debug_menu = 0;
     g_chars_from_start = 0;
     g_character_strip = 1;
+    g_keep_lives = 0;
     g_aspect = 0.0;
     g_vs_luigi_infection = 0;
     g_vs_luigi_seconds = 0;
@@ -1739,6 +1743,7 @@ void load_once(void)
         g_debug_menu = json_bool(text, "DebugMenu", 0);
         g_chars_from_start = json_bool(text, "CharactersUnlockedFromStart", 0);
         g_character_strip = json_bool(text, "CharacterStrip", 1);
+        g_keep_lives = json_bool(text, "KeepLives", 0);
         /* the presentation aspect, read against its own default of 0 (native)
            so a file written before this key existed reads as the 4:3 window.
            Sanitised HERE rather than at the accessor, so the stored value is
@@ -2411,6 +2416,14 @@ int reload_live(const char *text)
             g_character_strip = cs;
             changed = 1;
             fprintf(stderr, "[settings] live re-read: CharacterStrip %s\n", cs ? "ON" : "off");
+        }
+    }
+    {
+        const int kv = json_bool(text, "KeepLives", g_keep_lives);
+        if (kv != g_keep_lives) {
+            g_keep_lives = kv;
+            changed = 1;
+            fprintf(stderr, "[settings] live re-read: KeepLives %s\n", kv ? "ON" : "off");
         }
     }
     const int voice_changed = read_voice_keys(text);
@@ -3335,6 +3348,29 @@ extern "C" int host_setting_set_character_strip(int on)
     g_character_strip = on;
     g_poll_flag = 1;
     queue_bool("CharacterStrip", on);
+    return 1;
+}
+
+/* KeepLives, plus SM64DS_KEEP_LIVES (0 forces it off, any other value on) for proof runs. */
+extern "C" int host_setting_keep_lives(void)
+{
+    static int env = -2;
+    if (env == -2) {
+        const char *e = getenv("SM64DS_KEEP_LIVES");
+        env = e ? ((e[0] == '0' && e[1] == 0) ? 0 : 1) : -1;
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_keep_lives;
+}
+
+extern "C" int host_setting_set_keep_lives(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    g_keep_lives = on;
+    g_poll_flag = 1;
+    queue_bool("KeepLives", on);
     return 1;
 }
 

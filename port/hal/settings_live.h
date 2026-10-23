@@ -58,6 +58,7 @@ enum SlId {
     SL_CHARS_FROM_START,        /* bool: custom characters open from the start, without the white door unlock (CHARSET1); off by default */
     SL_CHARACTER_STRIP,         /* bool: the star select's character strip (CAPSTOGGLE1); on by default, off = the DS's caps row */
     SL_COINS_MIDDLE,            /* bool: HUDMENU2 H10, the coin counter at the top middle like SM64; off by default (the DS puts it beside the stars) */
+    SL_KEEP_LIVES,        /* bool: KeepLives; off by default (SHELVED1) */
     SL_COUNT
 };
 

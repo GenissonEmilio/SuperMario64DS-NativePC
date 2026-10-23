@@ -94,6 +94,7 @@ static const SlInfo INFO[] = {
     { "CharactersUnlockedFromStart", SL_KIND_BOOL, 0, 1, 0, 0, 1 },
     { "CharacterStrip",         SL_KIND_BOOL,    0, 1, 1, 0, 1 },
     { "CoinsMiddle",            SL_KIND_BOOL,    0, 1, 0, 0, 1 },
+    { "KeepLives", SL_KIND_BOOL, 0, 1, 0, 0, 1 },
 };
 
 /* INFO[] is positional: row i describes id i. If a host key or pad is added (HOST_KEY_COUNT / HOST_PAD_COUNT move, for example
@@ -146,6 +147,7 @@ int sl_get(int id)
     case SL_CHARS_FROM_START:   return host_setting_chars_from_start();
     case SL_CHARACTER_STRIP:    return host_setting_character_strip();
     case SL_COINS_MIDDLE:       return host_setting_hud_layout();
+    case SL_KEEP_LIVES: return host_setting_keep_lives();
     case SL_GAP_COLOR: {
         const unsigned c = host_setting_gap_color() & 0xffffffu;
         for (int i = 0; i < 6; ++i) if (GAP_COLORS[i] == c) return i;
@@ -187,6 +189,7 @@ int sl_set(int id, int v)
     case SL_CHARS_FROM_START:   return host_setting_set_chars_from_start(v);
     case SL_CHARACTER_STRIP:    return host_setting_set_character_strip(v);
     case SL_COINS_MIDDLE:       return host_setting_set_coins_middle(v);
+    case SL_KEEP_LIVES: return host_setting_set_keep_lives(v);
     case SL_GAP_COLOR:
         if (v < 0 || v > 5) return 0;
         return host_setting_set_gap_color(GAP_COLORS[v]);
