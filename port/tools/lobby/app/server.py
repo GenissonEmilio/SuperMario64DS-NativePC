@@ -626,23 +626,13 @@ def log(msg):
 
 
 def blunt_host(host):
-    """A logging form of a client address with the host part blunted.
+    """What a log line shows for a client address: nothing of it.
 
-    Same intent as relay.py's short_addr: keep enough to tell two clients apart
-    in a log and to spot a region, drop the rest. The source PORT is dropped
-    entirely rather than kept, because behind Caddy it is the proxy's ephemeral
-    port and says nothing about the client.
+    Since 10-21 no part of a client address reaches a log (before, the first
+    two octets did). Callers keep calling this so every log site stays one
+    place to audit; the rate limiter keys on the real address in memory only.
     """
-    if not host:
-        return "x"
-    if ":" in host:
-        groups = host.split(":")
-        head = ":".join(g for g in groups[:2] if g)
-        return (head + "::x") if head else "::x"
-    octets = host.split(".")
-    if len(octets) == 4:
-        return "%s.%s.x.x" % (octets[0], octets[1])
-    return "x"
+    return "client"
 
 
 PATH_LOG_MAX = 80

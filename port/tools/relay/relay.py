@@ -537,9 +537,17 @@ def capped_host(host):
 
 
 def short_addr(addr):
-    """A logging form of a client address: no part of it. The log says "client"
-    and the caller's own context (session code, seat) tells clients apart."""
-    return "client"
+    """A logging form of a client address: the source port only.
+
+    Since 10-21 no part of the host reaches the log (before, the first two
+    octets did). The port is kept so two clients in one session can still be
+    told apart in a log.
+    """
+    try:
+        port = addr[1]
+    except Exception:
+        return "?"
+    return "client#%d" % port
 
 
 def parse_code(raw):
