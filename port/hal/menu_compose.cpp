@@ -1581,6 +1581,9 @@ static void piece_draw_pic(const MenuLayout *L, int i, const MenuSources *S, uin
     const __m128i amask = _mm_set1_epi32((int)0xff000000u), m24 = _mm_set1_epi32(0x00ffffff);
     const __m128i k1 = _mm_set1_epi32(0x101820), k2 = _mm_set1_epi32(0x080808), c20 = _mm_set1_epi8(20), zero = _mm_setzero_si128();
     const int n = xb - xa;
+    /* a piece drawn 1:1 (cx counts up by one a column) reads the picture and the cover plane in place: no gather */
+    const bool unit = cx[xb - 1] - cx[xa] == n - 1;
+    const int q0 = cx[xa];
     int have_qy = -2;    /* the source row the scratch row holds */
     int span_qy = -2, span_ks = 0, span_ke = 0;   /* the covered columns [ks, ke) of that source row, counted from xa */
     for (int yy = 0; yy < dh; ++yy) {
@@ -1641,17 +1644,21 @@ static void piece_draw_pic(const MenuLayout *L, int i, const MenuSources *S, uin
             }
             if (span_ks >= span_ke) continue;
             const int kg0 = span_ks & ~3, kg1 = (span_ke + 3 < n) ? ((span_ke + 3) & ~3) : n;
-            if (have_qy != qy) { for (int q = kg0; q < kg1; ++q) tcv[q] = cov[cx[xa + q]]; have_qy = qy; }
+            const uint8_t *tc = tcv;
+            if (unit) tc = cov + q0;
+            else if (have_qy != qy) { for (int q = kg0; q < kg1; ++q) tcv[q] = cov[cx[xa + q]]; have_qy = qy; }
+            have_qy = qy;
             k = kg0;
             for (; k + 4 <= kg1; k += 4) {
                 if (k + 16 <= kg1 && (k & 15) == 0) {          /* sixteen cover bytes at once: nothing covered, nothing to do */
-                    const __m128i cb16 = _mm_loadu_si128((const __m128i *)(tcv + k));
+                    const __m128i cb16 = _mm_loadu_si128((const __m128i *)(tc + k));
                     if (_mm_movemask_epi8(_mm_cmpeq_epi8(cb16, zero)) == 0xFFFF) { k += 12; continue; }
                 }
                 int cw;
-                memcpy(&cw, tcv + k, 4);
+                memcpy(&cw, tc + k, 4);
                 if (cw == 0) continue;
-                const __m128i c = _mm_set_epi32((int)prow[cx[xa + k + 3]], (int)prow[cx[xa + k + 2]], (int)prow[cx[xa + k + 1]], (int)prow[cx[xa + k]]);
+                const __m128i c = unit ? _mm_loadu_si128((const __m128i *)(prow + q0 + k))
+                                       : _mm_set_epi32((int)prow[cx[xa + k + 3]], (int)prow[cx[xa + k + 2]], (int)prow[cx[xa + k + 1]], (int)prow[cx[xa + k]]);
                 __m128i r = _mm_or_si128(c, amask);
                 if (key) {
                     const __m128i q = _mm_and_si128(c, m24);
@@ -1665,19 +1672,21 @@ static void piece_draw_pic(const MenuLayout *L, int i, const MenuSources *S, uin
                 _mm_storeu_si128((__m128i *)(o + k), _mm_or_si128(_mm_andnot_si128(um, r), _mm_and_si128(um, old)));
             }
             for (; k < kg1; ++k) {
-                if (!tcv[k]) continue;
+                if (!tc[k]) continue;
                 const uint32_t c = prow[cx[xa + k]];
                 if (key && clear_key(c)) o[k] = 0xff000000u;
                 else o[k] = c | 0xff000000u;
             }
             continue;
         }
-        if (have_qy != qy) {
+        const uint32_t *sp = tmp;
+        if (unit) sp = prow + q0;
+        else if (have_qy != qy) {
             for (int q = 0; q < n; ++q) tmp[q] = prow[cx[xa + q]];
-            have_qy = qy;
         }
+        have_qy = qy;
         for (; k + 4 <= n; k += 4) {
-            const __m128i c = _mm_loadu_si128((const __m128i *)(tmp + k));
+            const __m128i c = _mm_loadu_si128((const __m128i *)(sp + k));
             __m128i r = _mm_or_si128(c, amask);
             if (key) {
                 const __m128i q = _mm_and_si128(c, m24);
@@ -1688,7 +1697,7 @@ static void piece_draw_pic(const MenuLayout *L, int i, const MenuSources *S, uin
             _mm_storeu_si128((__m128i *)(o + k), r);
         }
         for (; k < n; ++k) {
-            const uint32_t c = tmp[k];
+            const uint32_t c = sp[k];
             if (key && clear_key(c)) o[k] = 0xff000000u;
             else o[k] = c | 0xff000000u;
         }
