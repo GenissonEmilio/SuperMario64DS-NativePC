@@ -830,7 +830,8 @@ class RaceTally(object):
                                   name, max(left, 0),
                                   RACE_WIN_SHOW_S * 1000, self.target))
             return out
-        if now - self.last_leader >= RACE_LEADER_EVERY_S and stars:
+        if (now - self.last_leader >= RACE_LEADER_EVERY_S and stars
+                and max(stars.values()) > 0):
             self.last_leader = now
             seat = self.leader(stars)
             out.append(event_pack(0x20000000 + self.race_id, EV_LEADER,

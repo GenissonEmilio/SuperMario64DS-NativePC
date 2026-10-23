@@ -285,7 +285,7 @@ Why classify(const unsigned char *p, int len, int *kind) {
         *kind = kHubEvent;
         if (len != 96) return kBadLen;
         if (p[4] != 1) return kBadVersion;
-        return (p[6] >= 1 && p[6] <= 4 && p[22] <= 70) ? kOk : kBadField;
+        return (p[6] >= 1 && p[6] <= 6 && p[22] <= 70) ? kOk : kBadField;
     case kHubTagCoopWorld:
     case kHubTagCoopCtl:
         *kind = tag == kHubTagCoopWorld ? kHubCoopWorld : kHubCoopCtl;

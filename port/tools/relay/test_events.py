@@ -307,6 +307,29 @@ def live():
         check("a late joiner hears the winner", bool(late) and late[0][24:24 + late[0][22]] == b"Ann")
         cmdsock.sendto(cmd8(t0 + 21, 4, 0, 0), caddr)
 
+        # ---- solo / VS / party / coop never take an event: only a world hub member hears the relay's SYNZ
+        def role_member(code, role):
+            sk = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sk.sendto(b"SMRC" + bytes([2, role, 255, 0]) + code.ljust(8, b"\0"), raddr)
+            return sk
+        rp_ = role_member(b"PARTYAAA", 4)
+        rc_ = role_member(b"COOPAAAA", 5)
+        rv_ = role_member(b"ARENAAAA", 3)
+        drain(rp_, 0.4); drain(rc_, 0.4); drain(rv_, 0.4)
+        for sk, cd, role in ((ra, b"RACEAAAA", 2), (rp_, b"PARTYAAA", 4), (rc_, b"COOPAAAA", 5), (rv_, b"ARENAAAA", 3)):
+            hello(sk, raddr, cd) if role == 2 else sk.sendto(b"SMRC" + bytes([2, role, 255, 0]) + cd.ljust(8, b"\0"), raddr)
+        cmdsock.sendto(cmd8(t0 + 25, 1, 0, 2, "world only"), caddr)
+        gw = [d for d in events(ra, 1.8) if d[6] == 1]
+        gp = events(rp_, 0.3); gcoop = events(rc_, 0.3); gv = events(rv_, 0.3)
+        check("a world member hears the event (control)", bool(gw))
+        check("a party room member hears nothing", len(gp) == 0, str(len(gp)))
+        check("a coop room member hears nothing", len(gcoop) == 0, str(len(gcoop)))
+        check("an arena (VS) member hears nothing", len(gv) == 0, str(len(gv)))
+
+        time.sleep(3.2)                                  # the short message above has expired
+        for sk, cd in ((ra, b"RACEAAAA"), (rb, b"RACEAAAA"), (rc, b"RACEBBBB")):
+            hello(sk, raddr, cd)
+        drain(ra, 0.3); drain(rb, 0.3); drain(rc, 0.3)
         # ---- E4: a command naming one world reaches that world only
         cmdsock.sendto(cmd8(t0 + 30, 1, 0, 6, "just A", "RACEAAAA", 0), caddr)
         ga = [d for d in events(ra, 1.6) if d[6] == 1]
