@@ -607,6 +607,8 @@ int hal_player_behavior(void *p);
 int hal_player_process(void *p);   /* gate 15: BeforeBehavior/Behavior/After */
 void sdat_host_tick(void);         /* hosted ARM7: hal/sdat/ */
 void hal_render_player_world(void *p);
+extern "C" int port_adventure_hub_body(int slot);     /* hal/comms_sync.cpp, GHOSTPERF1 */
+extern "C" void port_adventure_ghost_park(void *body);   /* hal/comms_sync.cpp */
 extern "C" int hal_actor_off_native_view(void *actor);   /* hal/camera_bridges.cpp */
 /* ADVENTURE GHOSTS: the per-frame no-collision hold over remote slots
    (hal/player_bridges.cpp). No-op unless adventure-ghost mode is on. */
@@ -3944,6 +3946,7 @@ static int ovl_text(const OvlSurface &fb, int x0, int y0, const char *s,
    OvlSurface and sizes itself off OVL_SCALE, both of which are above; its own
    banner carries the font decode, the projection and the slot rules. */
 #include "nametag.h"
+#include "ghost_cull.h"   /* GHOSTPERF1 */
 
 /* ---- THE CHAT OVERLAY (run mp1, lane CHATUI1) ------------------------------
    hal/adv_chat.cpp owns the messages and the rules; this is the pixels. The
@@ -10957,6 +10960,22 @@ static void ip_probe(int frame, int rom_frame)
             char nm[64];
             snprintf(nm, sizeof nm, "interp_f%05d_%02d.bmp", rom_frame, j);
             ntr::ppu_write_bmp(nm, *g_ip_fb);
+        }
+        /* GHOSTPERF1: SM64DS_INTERP_PROBE_AB=1 builds the same picture again with every ghost group replayed (the old way) and
+           writes it beside the other as interp_f<frame>_<j>_ref.bmp, so the ghost shortcut is compared on one tick's own data */
+        {
+            static int ab = -1;
+            if (ab < 0) ab = getenv("SM64DS_INTERP_PROBE_AB") ? 1 : 0;
+            if (ab) {
+                ntr::gx_ghost_fast_override(0);
+                ip_build(alpha);
+                ntr::gx_ghost_fast_override(-1);
+                if (ntr::gx_card_retained(g_ip_fb))
+                    ntr::gx_card_settle_fb(*g_ip_fb, "the SmoothMotion probe (a picture between ticks)");
+                char nm2[64];
+                snprintf(nm2, sizeof nm2, "interp_f%05d_%02d_ref.bmp", rom_frame, j);
+                ntr::ppu_write_bmp(nm2, *g_ip_fb);
+            }
         }
     }
     (void)frame;
@@ -21653,8 +21672,23 @@ int main(void)
                     hal_player_texseq_tick(other);
                 continue;
             }
-            if (void *other = data_0209f394[pi])
+            if (void *other = data_0209f394[pi]) {
+                /* GHOSTPERF1: a hub ghost nobody can see this tick is not drawn. It is still parked
+                   (the park is the half of the draw that keeps its body out of the level) and its
+                   eye-blink state still advances, like a replayed frame's. */
+                if (ghost_cull_on() && port_adventure_hub_body(pi)) {
+                    const int cbp[3] = {*(const int *)((const char *)other + 0x5c), *(const int *)((const char *)other + 0x60),
+                                        *(const int *)((const char *)other + 0x64)};
+                    ++g_gc_seen;
+                    if (ghost_cull_outside(cbp)) {
+                        ++g_gc_culled;
+                        hal_player_texseq_tick(other);
+                        port_adventure_ghost_park(other);
+                        continue;
+                    }
+                }
                 hal_render_player_world(other);
+            }
         }
         if (!rb_skip_render()) {
             /* SHELF1 (S3): the opening's controlled character waits at its start mark with the ROM's cull-off-screen flag (0x2) up, and

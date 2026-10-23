@@ -2585,6 +2585,38 @@ int g_port_have = 0;
 void gx_stream_note(uint32_t w);
 void gx_write_fifo(uint32_t word) { ++g_fifo_n; gx_stream_note(word); feed(word); }
 
+namespace {
+/* param_count as a table (GHOSTPERF1): the switch above, answered once per command byte */
+struct ParamTab {
+    uint8_t n[256];
+    ParamTab() { for (int i = 0; i < 256; ++i) n[i] = static_cast<uint8_t>(param_count(static_cast<uint8_t>(i))); }
+};
+}  // namespace
+
+void gx_write_fifo_block(const uint32_t *src, int n) {
+    static const ParamTab tab;
+    static int off = -1;
+    if (off < 0) { const char *e = std::getenv("SM64DS_GX_BLOCK"); off = (e && e[0] == '0' && !e[1]) ? 1 : 0; }
+    int i = 0;
+    while (i < n) {
+        if (off || g_queued != 0) { gx_write_fifo(src[i++]); continue; }
+        const uint32_t w = src[i];
+        const uint8_t c[4] = { static_cast<uint8_t>(w), static_cast<uint8_t>(w >> 8), static_cast<uint8_t>(w >> 16),
+                               static_cast<uint8_t>(w >> 24) };
+        const int need = tab.n[c[0]] + tab.n[c[1]] + tab.n[c[2]] + tab.n[c[3]];
+        if (i + 1 + need > n) { gx_write_fifo(src[i++]); continue; }   // the group runs past the block: word by word
+        g_fifo_n += static_cast<uint32_t>(1 + need);
+        for (int k = 0; k <= need; ++k) gx_stream_note(src[i + k]);
+        const uint32_t *pp = src + i + 1;
+        for (int q = 0; q < 4; ++q) {
+            const int np = tab.n[c[q]];
+            exec(c[q], np ? pp : nullptr, np);
+            pp += np;
+        }
+        i += 1 + need;
+    }
+}
+
 void gx_set_matrix_slot(int slot, const float m[16]) {
     if (slot < 0 || slot >= 32) return;
     Mat mm;
@@ -8182,6 +8214,17 @@ struct IpRec {
     int snap = 0;
     uint32_t tex_gen = 0;
     int32_t view[12] = {};
+    /* GHOSTPERF1: THE GHOST FIGURES' TRIANGLES, KEPT WHOLE (see ip_ghost_pairs). The tick's own triangles that belong to a ghost figure,
+       in submission order, copied at the seal (before gx_render lifts them out); ev_tri is the length of the frame's triangle list when
+       each event was pushed, ev_gt the number of ghost triangles before each event (sealed + 1 entries). gpair: per group, the matching
+       group of the previous record when both are a whole ghost figure part of the same size, with the two ranges into gt. */
+    std::vector<uint32_t> ev_tri;
+    std::vector<GxTriangle> gt;
+    std::vector<uint32_t> ev_gt;
+    uint32_t tri_end = 0;
+    int gt_bad = 0, gt_ok = 0;
+    struct GPair { int p; uint32_t ca, cb, pa, pb; };
+    std::vector<GPair> gpair;
 };
 
 IpRec g_ipr[3];
@@ -8339,6 +8382,9 @@ void ip_rec_begin() {
     r.par.clear();
     r.binds.clear();
     r.bind_sparkle.clear();
+    r.ev_tri.clear();
+    r.gt_bad = 0;
+    r.gt_ok = 0;
     r.is_sealed = 0;
     r.valid = 0;
     r.start = g;
@@ -8347,9 +8393,129 @@ void ip_rec_begin() {
     g_ip_rec = 1;
 }
 
+/* GHOSTPERF1: the in-between pictures of a ghost figure.
+   A hub ghost is drawn by the ROM's player renderer, a display list of a few hundred triangles that the replay of every in-between picture
+   used to run again command by command: about as much work as the tick itself, per ghost, per picture (31 ghosts: 6 ms of an 8.8 ms
+   picture). Its triangles are already in the tick's list, in screen space, and both ticks of a pair have the same shape. So a figure part
+   that is wholly ghost-layer in both ticks and the same size is not replayed: the picture takes tick N's triangles with each corner
+   (x, y, z, w) and colour moved the alpha part of the way from tick N-1's. The matrix commands of the part still run (the stack must be
+   what the next part expects); only the commands that make vertices are skipped. Anything that does not qualify replays as it always did.
+   SM64DS_GHOST_FAST=0 turns it off. */
+int g_gf_override = -1;   // the probe's A/B: 0 replays every group, -1 the setting
+bool ip_ghost_fast_on() {
+    static int on = -1;
+    if (on < 0) { const char *e = std::getenv("SM64DS_GHOST_FAST"); on = (e && e[0] == '0' && !e[1]) ? 0 : 1; }
+    return on != 0;
+}
+
+void ip_ghost_save(IpRec &r) {
+    r.gt.clear();
+    r.ev_gt.clear();
+    r.gpair.clear();
+    r.gt_ok = 0;
+    r.tri_end = static_cast<uint32_t>(g.tris.size());
+    if (!g_ghost_layer_on || !ip_ghost_fast_on() || r.gt_bad || !g.grids.empty()) return;
+    if (r.ev_tri.size() != r.ev.size()) return;
+    const size_t nt = g.tris.size();
+    const size_t ne = r.ev.size();
+    r.ev_gt.resize(ne + 1);
+    /* one pass over the frame's triangles, the events' triangle counts walked beside them (both only ever rise) */
+    uint32_t n = 0;
+    size_t e = 0;
+    uint32_t last = 0;
+    for (size_t i = 0; i < nt; ++i) {
+        while (e < ne && r.ev_tri[e] <= i) {
+            if (r.ev_tri[e] < last) { r.gt.clear(); r.ev_gt.clear(); return; }   // the list shrank under the record
+            last = r.ev_tri[e];
+            r.ev_gt[e++] = n;
+        }
+        if (g.tris[i].ghost) { r.gt.push_back(g.tris[i]); ++n; }
+    }
+    for (; e < ne; ++e) {
+        if (r.ev_tri[e] < last || r.ev_tri[e] > nt) { r.gt.clear(); r.ev_gt.clear(); return; }
+        last = r.ev_tri[e];
+        r.ev_gt[e] = n;
+    }
+    if (n == 0) { r.gt.clear(); r.ev_gt.clear(); return; }
+    r.ev_gt[ne] = n;
+    r.gt_ok = 1;
+}
+
+/* the ghost triangles a group made, as [a, b), and whether they are ALL it made */
+bool ip_group_ghost_range(const IpRec &r, const IpGroup &G, uint32_t *a, uint32_t *b) {
+    if (!r.gt_ok || G.ev1 > r.sealed || G.ev0 >= G.ev1) return false;
+    const uint32_t t0 = r.ev_tri[G.ev0];
+    const uint32_t t1 = G.ev1 < r.sealed ? r.ev_tri[G.ev1] : r.tri_end;
+    *a = r.ev_gt[G.ev0];
+    *b = r.ev_gt[G.ev1];
+    return *b > *a && (t1 - t0) == (*b - *a);
+}
+
+void ip_ghost_pairs(IpRec &C, const IpRec &P) {
+    C.gpair.clear();
+    if (!C.gt_ok || !P.gt_ok) return;
+    C.gpair.assign(C.groups.size(), IpRec::GPair{-1, 0, 0, 0, 0});
+    for (size_t i = 0; i < C.groups.size(); ++i) {
+        const IpGroup &G = C.groups[i];
+        if (G.match < 0 || G.match >= (int)P.groups.size()) continue;
+        uint32_t ca, cb, pa, pb;
+        if (!ip_group_ghost_range(C, G, &ca, &cb)) continue;
+        if (!ip_group_ghost_range(P, P.groups[G.match], &pa, &pb)) continue;
+        if (cb - ca != pb - pa) continue;
+        /* a pair that crossed over (two ghosts swapped places in the match) would streak across the picture: the replay path judges that
+           by the matrices; here the first corners must be where the same figure part could have walked in one tick */
+        const GxVertex &c0 = C.gt[ca].v[0], &p0 = P.gt[pa].v[0];
+        const float dx = c0.x - p0.x, dy = c0.y - p0.y;
+        if (dx * dx + dy * dy > 150.0f * 150.0f) continue;
+        C.gpair[i] = IpRec::GPair{G.match, ca, cb, pa, pb};
+    }
+    static int lg = -1, tick = 0;
+    if (lg < 0) { const char *e = std::getenv("SM64DS_GHOST_FAST_LOG"); lg = e && *e && *e != '0'; }
+    if (lg && (++tick % 120) == 1) {
+        int nf = 0, gg = 0; uint32_t tf = 0;
+        for (size_t i = 0; i < C.gpair.size(); ++i) {
+            if (C.gpair[i].p >= 0) { ++nf; tf += C.gpair[i].cb - C.gpair[i].ca; }
+            uint32_t a, b;
+            if (ip_group_ghost_range(C, C.groups[i], &a, &b)) ++gg;
+        }
+        std::fprintf(stderr, "[gfast] groups %zu whole-ghost groups %d fast %d ghost tris %zu fast tris %u\n", C.groups.size(), gg, nf, C.gt.size(), tf);
+    }
+}
+
+static inline uint32_t ip_lerp_col(uint32_t a, uint32_t b, uint32_t t256) {
+    if (a == b) return a;
+    const uint32_t u = 256u - t256;
+    const uint32_t rb = (((a & 0x00FF00FFu) * u + (b & 0x00FF00FFu) * t256) >> 8) & 0x00FF00FFu;
+    const uint32_t ag = ((((a >> 8) & 0x00FF00FFu) * u + ((b >> 8) & 0x00FF00FFu) * t256)) & 0xFF00FF00u;
+    return rb | ag;
+}
+
+/* tick N's triangles [ca, cb) of C, moved from P's [pa, pb) by alpha, appended to the replay's list */
+void ip_ghost_emit(const IpRec &C, const IpRec &P, const IpRec::GPair &q, float alpha) {
+    const size_t n = q.cb - q.ca;
+    const size_t base = g.tris.size();
+    const GxTriangle *c = &C.gt[q.ca];
+    const GxTriangle *p = &P.gt[q.pa];
+    g.tris.insert(g.tris.end(), c, c + n);   /* copies tick N's triangles whole, no zero fill first */
+    GxTriangle *out = &g.tris[base];
+    const uint32_t t256 = (uint32_t)(alpha * 256.0f + 0.5f) > 256u ? 256u : (uint32_t)(alpha * 256.0f + 0.5f);
+    for (size_t k = 0; k < n; ++k) {
+        for (int j = 0; j < 3; ++j) {
+            GxVertex &o = out[k].v[j];
+            const GxVertex &a = p[k].v[j];
+            o.x = a.x + (c[k].v[j].x - a.x) * alpha;
+            o.y = a.y + (c[k].v[j].y - a.y) * alpha;
+            o.z = a.z + (c[k].v[j].z - a.z) * alpha;
+            o.w = a.w + (c[k].v[j].w - a.w) * alpha;
+            o.color = ip_lerp_col(a.color, c[k].v[j].color, t256);
+        }
+    }
+}
+
 void ip_rec_seal() {
     IpRec &r = g_ipr[g_ip_w];
     r.sealed = static_cast<uint32_t>(r.ev.size());
+    ip_ghost_save(r);
     r.mw_eval = g.mw_eval; r.mw_on = g.mw_on; r.mw_zoom = g.mw_zoom; r.mw_dy = g.mw_dy;
     r.mw_kx = g.mw_kx; r.mw_tx = g.mw_tx; r.mw_ky = g.mw_ky; r.mw_ty = g.mw_ty;
     r.is_sealed = 1;
@@ -8366,8 +8532,10 @@ void ip_push(uint8_t kind, uint8_t cmd, int np, const uint32_t *p) {
     e.mode = static_cast<uint8_t>(g.mode & 3);
     e.off = static_cast<uint32_t>(r.par.size());
     e.src = g_ip_dma_src;
-    for (int i = 0; i < np; ++i) r.par.push_back(p[i]);
+    if (np) r.par.insert(r.par.end(), p, p + np);
     r.ev.push_back(e);
+    r.ev_tri.push_back(static_cast<uint32_t>(g.tris.size()));
+    if (!g.grids.empty()) r.gt_bad = 1;
 }
 
 void ip_rec_bind_now() {
@@ -8390,6 +8558,7 @@ void ip_rec_bind_now() {
     e.src = 0;
     r.binds.push_back(b);
     r.ev.push_back(e);
+    r.ev_tri.push_back(static_cast<uint32_t>(g.tris.size()));
 }
 
 /* Cut the sealed record into groups and key them. */
@@ -8974,7 +9143,7 @@ int gx_interp_commit(const int32_t view[12], int snap, GxInterpStats *st) {
         /* the record two ticks back is the one the rotation below leaves in the free slot */
         const IpRec *P2 = (g_ip_p >= 0 && g_ipr[g_ip_p].valid && !g_ipr[g_ip_p].snap &&
                            g_ipr[g_ip_p].tex_gen == r.tex_gen) ? &g_ipr[g_ip_p] : 0;
-        if (P && !why) ip_match(r, *P, st, P2);
+        if (P && !why) { ip_match(r, *P, st, P2); ip_ghost_pairs(r, *P); }
     }
     if (st) st->snap = why;
     /* rotate: N becomes N-1, the record just sealed becomes N, and the old
@@ -9069,6 +9238,7 @@ int gx_interp_begin(float alpha) {
     g_ip_replaying = 1;
     uint32_t tmp[32];
     int last_group = -1;
+    const bool gfast = !C.gpair.empty() && g_ipr[g_ip_p].gt_ok && g_gf_override != 0;
     for (uint32_t i = 0; i < C.sealed; ++i) {
         const IpEv &e = C.ev[i];
         const int gi = C.ev_group[i];
@@ -9076,10 +9246,12 @@ int gx_interp_begin(float alpha) {
             if (last_group >= 0) g_ip_group_tri1[last_group] = (uint32_t)g.tris.size() + g.grid_subtris;
             if (gi >= 0) g_ip_group_tri0[gi] = (uint32_t)g.tris.size() + g.grid_subtris;
             last_group = gi;
+            if (gfast && gi >= 0 && C.gpair[gi].p >= 0) ip_ghost_emit(C, P, C.gpair[gi], alpha);
         }
         switch (e.kind) {
         case IPK_CMD: {
             if (e.cmd == 0x50 || e.cmd == 0x2A || e.cmd == 0x2B) break;
+            if (gfast && gi >= 0 && C.gpair[gi].p >= 0 && ((e.cmd >= 0x20 && e.cmd <= 0x28) || e.cmd == 0x40 || e.cmd == 0x41)) break;
             const uint32_t *pp = e.np ? &C.par[e.off] : nullptr;
             int ex_on = 0;
             uint32_t tex_adj[32];
@@ -9195,6 +9367,8 @@ int gx_interp_begin(float alpha) {
     g_ip_replaying = 0;
     return 1;
 }
+
+void gx_ghost_fast_override(int v) { g_gf_override = v; }
 
 void gx_interp_end() {
     if (!g_ip_open) return;

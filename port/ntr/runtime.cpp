@@ -109,7 +109,7 @@ void copy_words(const uint32_t *src, uint32_t *dst, int n) {
     if (reinterpret_cast<uintptr_t>(dst) == GXFIFO) {
         /* run interp1: the display list's own address keys its draw group */
         ntr::gx_dma_source(static_cast<uint32_t>(reinterpret_cast<uintptr_t>(src)));
-        for (int i = 0; i < n; ++i) ntr::gx_write_fifo(src[i]);
+        ntr::gx_write_fifo_block(src, n);
         ntr::gx_dma_source(0);
     } else {
         for (int i = 0; i < n; ++i) dst[i] = src[i];
