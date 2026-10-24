@@ -867,10 +867,10 @@ static void port_msg_show(int frame)
         f = -1;
         if (e && std::sscanf(e, "%d:%d", &f, &id) != 2) f = -1;
     }
-    /* SM64DS_MSG_SHOW_RABBITS=<0..8> (TEST ONLY, inert unset; RABBIT1): at the same frame, first set the save's glowing-rabbit bits
+    /* SM64DS_MSG_SHOW_RABBITS=<0..8> (TEST ONLY, inert unset; RABBIT1): ten frames before it, set the save's glowing-rabbit bits
        (flags word data_0209caa0[2], bits 20..27, the bits SaveData::NumGlowingRabbitsFound counts) to that many, so a row can read the
        glowing rabbit's line (0x142 / 0x146 / 0x143 / 0x147) at any catch count. A save-field poke, not a catch. */
-    if (f >= 0 && frame == f) {
+    if (f >= 10 && frame == f - 10) {   /* ten frames ahead, as a real catch count is set long before its talk */
         if (const char *r = std::getenv("SM64DS_MSG_SHOW_RABBITS")) {
             int n = std::atoi(r);
             if (n < 0) n = 0;
@@ -878,8 +878,8 @@ static void port_msg_show(int frame)
             data_0209caa0[2] = (data_0209caa0[2] & ~0x0ff00000) | (((1 << n) - 1) << 20);
             std::fprintf(stderr, "  [rabbit] f%d save glowing-rabbit bits poked to %d found\n", frame, n);
         }
-        func_0201f32c(id);
     }
+    if (f >= 0 && frame == f) func_0201f32c(id);
 }
 extern "C" void port_input_probe_sign_trigger(int frame)
 {
