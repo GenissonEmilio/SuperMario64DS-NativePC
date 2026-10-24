@@ -153,7 +153,14 @@ int tick_hook() {
             online_join_begin(f, "JoinTest");
         }
     }
-    if (g_state == kJoinWaiting) online_join_step();
+    /* SM64DS_JOIN_TEST_CANCEL=<n>: cancel the wait n ticks after the request (the cancel row) */
+    static int since = 0;
+    if (g_state == kJoinWaiting) {
+        ++since;
+        const char *c = std::getenv("SM64DS_JOIN_TEST_CANCEL");
+        if (c && *c && since == std::atoi(c)) { online_join_cancel(); return 0; }
+        online_join_step();
+    }
     return g_state == kJoinEntering;
 }
 const int g_seated = (port_online_join_tick_hook = tick_hook, 1);
@@ -220,7 +227,7 @@ OnlineJoinState online_join_step() {
     if (now - g_t0 >= kWaitMs) {
         DeleteFileA(req_path().c_str());
         fail("No launcher answered. Start the game from the launcher to play online.");
-        std::fprintf(stderr, "[join] timed out after 20 s\n");
+        std::fprintf(stderr, "[join] timed out after 20 s: %s\n", g_sentence.c_str());
         std::fflush(stderr);
     }
     return g_state;
