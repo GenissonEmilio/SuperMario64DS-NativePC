@@ -10043,9 +10043,30 @@ static void ip_stack_for_blend(void)
         const int rows = lay.pan_x0 > 0 ? (lay.main_lower ? lay.pan_h : lay.top_h)
                                         : ntr::active_h;
         uint32_t *W = g_ip_stack_snap;
-        for (int y = 0; y < rows; ++y)
-            memcpy(W + (size_t)(a_y + y) * lay.w, &g_ip_fb->px[y][0],
-                   (size_t)ntr::active_w * sizeof(uint32_t));
+        /* run after093, lane FIELD093H (F1): the row copy brings engine A's whole width, side margins
+           included, and in the wide layout those margins hold the 3D clear colour. The tick's image
+           had them filled (sub_screen.cpp wide_fill_screen: the picture's own edge colour, eased), so
+           every blended picture showed raw clear-colour bars where the tick's own picture showed the
+           light ones, and at 240 pictures a second that is the bottom bar flicker. The margin pixels
+           that still hold the row's backdrop (the same test the fill uses: equal to the pixel just
+           outside the picture) take the tick's filled bar back; 3D overhanging the picture stays. */
+        const int mx0 = lay.pan_x0, mx1 = lay.pan_x0 + lay.pan_w;
+        static int bars_off = -1;
+        if (bars_off < 0) bars_off = getenv("SM64DS_BLEND_BARS_OFF") ? 1 : 0;   /* =1 puts the old picture back (A/B) */
+        const int fix_margins = lay.pan_x0 > 0 && lay.pan_w > 0 && mx1 <= lay.w && !bars_off;
+        for (int y = 0; y < rows; ++y) {
+            uint32_t *row = W + (size_t)(a_y + y) * lay.w;
+            memcpy(row, &g_ip_fb->px[y][0], (size_t)ntr::active_w * sizeof(uint32_t));
+            if (fix_margins && lay.w == ntr::active_w) {
+                const uint32_t *fin = g_ip_stack_final + (size_t)(a_y + y) * lay.w;
+                const uint32_t kl = (mx0 >= 3 ? row[mx0 - 3] : row[0]) & 0xFFFFFFu;
+                const uint32_t kr = (mx1 + 3 <= lay.w ? row[mx1 + 2] : row[lay.w - 1]) & 0xFFFFFFu;
+                for (int x = 0; x < mx0; ++x)
+                    if ((row[x] & 0xFFFFFFu) == kl) row[x] = fin[x];
+                for (int x = mx1; x < lay.w; ++x)
+                    if ((row[x] & 0xFFFFFFu) == kr) row[x] = fin[x];
+            }
+        }
         if (g_ip_stack_ui) {
             const size_t i0 = (size_t)a_y * lay.w, i1 = (size_t)(a_y + rows) * lay.w;
             for (size_t i = i0; i < i1; ++i)
