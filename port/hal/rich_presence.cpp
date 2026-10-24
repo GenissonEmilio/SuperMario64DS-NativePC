@@ -207,7 +207,7 @@ DWORD WINAPI presence_thread(LPVOID)
     Presence presence;
     ULONGLONG next_connect = 0, last_send = 0;
     bool sent_once = false;
-    std::string last_details, last_state, last_error;
+    std::string last_details, last_state;
     std::fprintf(stderr, "[rpc] presence on, mode \"%s\"\n", mode.c_str());
 
     for (;;) {
@@ -242,15 +242,13 @@ DWORD WINAPI presence_thread(LPVOID)
                 continue;
             if (!presence.connect(app, pipe)) {
                 const std::string &why = presence.error();
-                if (why != last_error) {
-                    std::fprintf(stderr, "[rpc] t=%.1f not connected: %s\n", since(t0), why.c_str());
-                    last_error = why;
-                }
-                next_connect = now + (why.compare(0, 17, "Discord refused: ") == 0
-                                          ? kRefusedRetryMs : kRetryMs);
+                const bool refused = why.compare(0, 17, "Discord refused: ") == 0;
+                const ULONGLONG wait_ms = refused ? kRefusedRetryMs : kRetryMs;
+                std::fprintf(stderr, "[rpc] t=%.1f not connected: %s (next look in %d s)\n", since(t0), why.c_str(),
+                             (int)(wait_ms / 1000));
+                next_connect = now + wait_ms;
                 continue;
             }
-            last_error.clear();
             std::fprintf(stderr, "[rpc] t=%.1f connected\n", since(t0));
             last_details.clear();               /* say it again on a fresh pipe */
             last_state.clear();
