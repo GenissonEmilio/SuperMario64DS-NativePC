@@ -554,6 +554,11 @@ int daKinopio_c::Behavior()
  * mwcc propagates the reloaded mMessageID through the 0xffff test and the
  * function changes shape. */
 #pragma opt_propagation off
+#ifdef _MSC_VER
+/* run after093, lane EVENTS3: the Toad picks its star-count line as if the player held every star while a castle event is live (hal/event_castle.cpp seats the view; host only, the DS side is untouched) */
+extern "C" unsigned char port_event_numstars(void);
+#define NumStars port_event_numstars
+#endif
 int daKinopio_c::InitResources()
 {
     Vector3 objPos;
@@ -622,6 +627,9 @@ int daKinopio_c::InitResources()
     }
     return 1;
 }
+#ifdef _MSC_VER
+#undef NumStars
+#endif
 #pragma opt_propagation on
 
 // @symbol daKinopio_c_classInit

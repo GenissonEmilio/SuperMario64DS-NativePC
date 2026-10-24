@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <windows.h>
 #include "event_client.h"
 
 extern "C" {
@@ -125,8 +126,35 @@ int gate_hook(void *gate, void *player)
     return 1;
 }
 
+// EVENTS3: the star-count view. The ROM sites that gate on the star total (a Toad's line, the rabbit tiers, the 14-star light, the endless stairs)
+// call port_event_numstars (src/engine/save/SaveData.cpp _MSC_VER arm), which asks this view; while a castle event is live every total reads
+// as all 150 stars. Nothing is written: the real total, the HUD, the presence and the save keep the true count.
+extern "C" unsigned char (*port_event_star_view)(unsigned char real);
+unsigned char star_view(unsigned char real)
+{
+    if (!port_event_castle_live()) return real;
+#ifndef PORT_ROM_CLEAN
+    {   // proof aid (dev builds only): each distinct caller of the view once, as return addresses to read against the map
+        static void *seen[32];
+        static int nseen = 0;
+        void *bt[4] = {};
+        RtlCaptureStackBackTrace(1, 3, bt, 0);
+        bool dup = false;
+        for (int i = 0; i < nseen; ++i) dup = dup || seen[i] == bt[1];
+        if (!dup && nseen < 32) {
+            seen[nseen++] = bt[1];
+            fprintf(stderr, "[event] castle: star view asked from %p %p %p (real %u)\n", bt[0], bt[1], bt[2], real);
+        }
+    }
+#endif
+    static unsigned n;
+    if (real < 150 && (++n & 1023u) == 1u) fprintf(stderr, "[event] castle: a star check sees 150 stars (real %u, calls %u)\n", real, n);
+    return 150;
+}
+
 int seat(void)
 {
+    port_event_star_view = star_view;
     port_event_door_idle_hook = door_hook;
     port_event_gate_wait_hook = gate_hook;
     return 1;

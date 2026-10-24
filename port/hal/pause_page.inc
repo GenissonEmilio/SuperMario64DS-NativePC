@@ -299,6 +299,25 @@ void pp_dialog(const Surf &sf, const PauseGeo &g, const PauseFacts *f)
     }
 }
 
+/* EVENTS3: the running online event as a small card (the tracker's parchment) with its name and time left, one row per line; the race adds
+   its leader. Under the plank stack. */
+void pp_event_card(const Surf &sf, const PauseGeo &g, const PauseFacts *f, int cx, int top)
+{
+    if (f->event_n <= 0) return;
+    const PauseRect r = pause_event_rect(g, f->event_n, cx, top);
+    if (r.x >= sf.w || r.x + r.w <= 0 || r.y + r.h > sf.h) return;
+    const Piece *sheet = sheet_piece(r.w, r.h, (int)(g.u * 100 + 0.5));
+    if (sheet) blit_piece(sf, sheet, r.x, r.y);
+    for (int i = 0; i < f->event_n && i < 2; ++i) {
+        const char *s = f->event[i];
+        float em = (float)(30 * g.u);
+        const float need = ui_text_width(s, em), room = (float)(r.w - 70 * g.u);
+        if (need > room && room > 0) em *= room / need;
+        const float cy = r.y + (float)((13 + i * 42 + 21) * g.u);
+        ui_text_draw(&sf, r.x + r.w * 0.5f - ui_text_width(s, em) * 0.5f, cy + ui_text_cap_height(em) * 0.5f, s, em, i == 0 ? PP_BROWN : PP_DKBROWN, 255, 0);
+    }
+}
+
 /* the 4:3 edge tabs and the pointer beside the lit plank */
 void pp_tabs(const Surf &sf, const PauseGeo &g, const PauseFacts *f)
 {
@@ -336,6 +355,11 @@ extern "C" void pause_page_draw(const MenuLayout *lay, int piece, uint32_t *dst,
     const int main_page = f->variant == PAUSE_V_CASTLE || f->variant == PAUSE_V_COURSE;
     if (g.wide || (main_page && f->slide_t1000 > 0)) pp_tracker(sf, g, f);
     if (dialog) pp_dialog(sf, g, f);
+    if (main_page && f->event_n > 0 && !f->settings_open) {
+        /* EVENTS3: under the plank stack (it slides away with the planks) */
+        const PauseRect last = pause_plank_rect(g, f, 3, 2);
+        if (g.wide || f->slide_t1000 < 1000) pp_event_card(sf, g, f, g.pcx + pause_planks_dx(g, f), last.y + last.h + (int)(30 * g.u));
+    }
     if (!g.wide && main_page && !f->settings_open) pp_tabs(sf, g, f);
     if (!(!g.wide && f->slide_t1000 > 500)) pp_pointer(sf, g, f);
 }

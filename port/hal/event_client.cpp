@@ -78,6 +78,41 @@ bool event_decode(const unsigned char *d, int len, EventWire *out) {
     return true;
 }
 
+// The relay's winner text: "51 Ann;47 Bo;40 Cy" (a count, a space, a name; up to three, ';' between, the winner first). Fills the winner's name and
+// the banner row "1. Ann 51  2. Bo 47  3. Cy 40". A text that is not in that shape (an older relay: just the name) is the name alone and no row.
+void race_ranking(const char *text, char *name, int name_cap, char *rank, int rank_cap) {
+    name[0] = 0;
+    rank[0] = 0;
+    char buf[80];
+    std::snprintf(buf, sizeof buf, "%s", text);
+    struct E { int n; const char *nm; } e[3];
+    int ne = 0;
+    bool ok = true;
+    for (char *p = buf; p && *p && ne < 3;) {
+        char *semi = std::strchr(p, ';');
+        if (semi) *semi = 0;
+        char *q = p;
+        int n = 0, digits = 0;
+        while (*q >= '0' && *q <= '9' && digits < 4) { n = n * 10 + (*q - '0'); ++q; ++digits; }
+        if (digits == 0 || *q != ' ' || !q[1]) { ok = false; break; }
+        e[ne].n = n;
+        e[ne].nm = q + 1;
+        ++ne;
+        p = semi ? semi + 1 : nullptr;
+    }
+    if (!ok || ne == 0) {
+        std::snprintf(name, (size_t)name_cap, "%s", text[0] ? text : "SOMEONE");
+        return;
+    }
+    std::snprintf(name, (size_t)name_cap, "%s", e[0].nm);
+    int len = 0;
+    for (int i = 0; i < ne; ++i) {
+        const int w = std::snprintf(rank + len, (size_t)(rank_cap - len), "%s%d. %s %d", i ? "  " : "", i + 1, e[i].nm, e[i].n);
+        if (w < 0 || len + w >= rank_cap) break;
+        len += w;
+    }
+}
+
 namespace {
 
 enum : int { kMsg = 1, kMusic = 2, kMod = 3, kClear = 4, kLeader = 5, kWinner = 6 };
@@ -120,6 +155,7 @@ bool           g_pos_have = false;
 bool           g_castle = false;   // a castle-unlocked event is live (the door hooks read it)
 unsigned       g_win_id = 0;       // the relay's winner record we already showed
 char           g_win_name[40] = {};
+char           g_win_rank[88] = {};   // "1. Ann 51  2. Bo 47  3. Cy 40" from the relay's ranking, "" when the relay sent only a name
 int            g_win_stars = 0;
 unsigned       g_win_until = 0;    // 0 = no banner
 int            g_lead_stars = -1;  // the relay's last word on who leads (-1 none)
@@ -337,12 +373,13 @@ void put_event(const EventWire &w, unsigned now) {
         if (w.id == g_win_id) return;
         g_win_id = w.id;
         g_win_stars = w.arg;
-        std::snprintf(g_win_name, sizeof g_win_name, "%s", w.text[0] ? w.text : "SOMEONE");
+        race_ranking(w.text, g_win_name, sizeof g_win_name, g_win_rank, sizeof g_win_rank);
         g_win_until = now + (w.remain_ms ? w.remain_ms : 1000u);
         for (auto &x : g_rec) if (x.used && x.type == kMod && x.arg == kModRace) end_rec(x, "race decided");
         g_lead_stars = -1;
         std::fprintf(stderr, "[event] RACE WINNER (relay word, record %u): %s with %d stars, shown for %u ms\n", w.id, g_win_name,
                      w.arg, w.remain_ms);
+        if (g_win_rank[0]) std::fprintf(stderr, "[event] RACE TOP THREE (relay word, record %u): %s\n", w.id, g_win_rank);
         return;
     }
     if (dead_id(w.id)) return;
@@ -463,6 +500,7 @@ void event_view(EventView *out) {
         char line[80];
         std::snprintf(line, sizeof line, "%s WINS THE RACE", g_win_name);
         add(line, 0);
+        if (g_win_rank[0]) add(g_win_rank, 0);
     }
     // the newest message first, then one line per modifier
     const Rec *msg = nullptr;
@@ -504,6 +542,26 @@ void event_view(EventView *out) {
             add(line, 2);
         }
     }
+}
+
+int event_pause_lines(char (*out)[44], int max) {
+    int n = 0;
+    if (!enabled() || max <= 0) return 0;
+    const unsigned now = comms_hub_now_ms();
+    for (const auto &r : g_rec) {
+        if (!r.used || n >= max) continue;
+        const int left = secs_left(r, now);
+        char nb[32];
+        if (r.type == kMod) {
+            const char *nm = mod_name(r.arg, r.extra, nb, sizeof nb);
+            std::snprintf(out[n++], 44, "%s %d:%02d", nm, left / 60, left % 60);
+            if (r.arg == kModRace && g_lead_stars >= 0 && n < max)
+                std::snprintf(out[n++], 44, "%s leads, %d stars", g_lead_name, g_lead_stars);
+        } else if (r.type == kMusic) {
+            std::snprintf(out[n++], 44, "EVENT SONG %d:%02d", left / 60, left % 60);
+        }
+    }
+    return n;
 }
 
 }  // namespace port
