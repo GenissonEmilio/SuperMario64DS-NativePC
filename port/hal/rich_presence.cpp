@@ -61,7 +61,7 @@ namespace {
 
 /* The Discord application. Not a secret: it is public by design (it is in every
    game that shows presence). Set from the Discord developer portal. */
-constexpr const char *kApplicationId = "";
+constexpr const char *kApplicationId = "1563680817765683321";
 
 constexpr ULONGLONG kMinSendMs = 15000;       /* Discord's rule */
 constexpr ULONGLONG kRetryMs = 60000;         /* Discord not running */
