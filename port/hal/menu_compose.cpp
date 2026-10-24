@@ -750,7 +750,8 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
     if (!src) return;
     const size_t stride = (size_t)stride_of(w);
     int f256 = (P.hostimg == MENU_IMG_LOGO && !P.nofade) ? (int)(g_fade * 256.f + 0.5f) : 256;
-    if (P.hostimg == MENU_IMG_GO_GRAD) f256 = (int)(g_go_fade * 256.f + 0.5f);   /* HDART1: fades in with the ROM's own gradient */
+    if (P.hostimg == MENU_IMG_GO_GRAD || P.hostimg == MENU_IMG_GO_CLICK || (P.hostimg >= MENU_IMG_GO_L0 && P.hostimg <= MENU_IMG_GO_L7))
+        f256 = (int)(g_go_fade * 256.f + 0.5f);   /* HDART1/2: fades in with the ROM's own gradient (the lettering and the text are engine A's too) */
     const unsigned af = P.alpha ? P.alpha : 255u;     /* ASSET5: the piece's own fade (premultiplied: colour and alpha scale together) */
     /* the plank's own look: selected = lifted, pulsing on the ROM's 8-frame cadence; pressed = sunk and darker */
     const int owns = L->focus >= 0 && L->focus < L->nh && L->hs[L->focus].piece == i;
@@ -1230,7 +1231,7 @@ static void piece_draw_ref(const MenuLayout *L, int i, const MenuSources *S, uin
     if (P.src == SRC_HOSTIMG && P.iris) { draw_iris(L, i, dst, w, h); return; }
     if (P.src == SRC_HOSTIMG && P.paper) { draw_paper(L, i, dst, w, h); return; }
     if (P.src == SRC_HOSTIMG && P.snap) { draw_snap(L, i, dst, w, h); return; }
-    if (P.src == SRC_HOSTIMG && P.hostimg == MENU_IMG_GO_GRAD) go_fade_update(S);
+    if (P.src == SRC_HOSTIMG && (P.hostimg == MENU_IMG_GO_GRAD || P.hostimg == MENU_IMG_GO_CLICK || (P.hostimg >= MENU_IMG_GO_L0 && P.hostimg <= MENU_IMG_GO_L7))) go_fade_update(S);
     if (P.src == SRC_HOSTIMG) { draw_hostimg(L, i, dst, w, h); return; }
     if (P.hostgrad) { draw_hostgrad(L, i, S, dst, w, h); return; }
     const int *d = L->dest[i];

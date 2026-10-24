@@ -41,6 +41,7 @@ const char *const kSrc[MENU_IMG_COUNT] = {
     0, "logo_sm64_pc.png", "btn_mp.png", "btn_adventure.png", "btn_rec.png", "arrow_up.png", "arrow_down.png", "pattern.png",
     "title_star.png", "btn_save_cont.png", "btn_save_quit.png", "btn_cont.png", "arrow_orange_down.png",
     "go_click.png", "go_gradient.png",
+    "go_l0.png", "go_l1.png", "go_l2.png", "go_l3.png", "go_l4.png", "go_l5.png", "go_l6.png", "go_l7.png",
 };
 
 bool take(const unsigned char *rgba, int w, int h, Img *I)
