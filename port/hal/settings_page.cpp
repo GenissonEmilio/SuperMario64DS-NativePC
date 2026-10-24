@@ -628,12 +628,20 @@ const Row ROWS_GENERAL[] = {
     { R_NOTE, "Puts the coin counter at the top middle, like SM64.", -1, -1, 0, 0, 0 },
 };
 /* PATCHES: changes to how the original game plays. "Keep lives between sessions" moved here from GENERAL (same key, SL_KEEP_LIVES,
-   same default off). The "Fix original bugs" row goes in this table once the community picks which bugs it fixes; it is not
-   added yet. */
-const Row ROWS_PATCHES[] = {
-    { R_CHECK, "Keep lives between sessions", SL_KEEP_LIVES, -1, 0, 0, 0 },
-    { R_NOTE, "Off is the DS: every file starts with 4 lives.", -1, -1, 0, 0, 0 },
-};
+   same default off). "Fix original bugs" (key FixOriginalBugs, default on, SM64DS_FIX_ORIGINAL_BUGS=0 off) is defined in
+   settings_live by the lane that implements it; the row is looked up by key name, like Draw distance, so it shows once that key
+   exists in a build and the page builds without it. New patch rows go in patches_rows(). */
+Row g_patch_rows[6];
+const Row *patches_rows(int *n)
+{
+    int k = 0;
+    g_patch_rows[k++] = Row{ R_CHECK, "Keep lives between sessions", SL_KEEP_LIVES, -1, 0, 0, 0 };
+    g_patch_rows[k++] = Row{ R_NOTE, "Off is the DS: every file starts with 4 lives.", -1, -1, 0, 0, 0 };
+    const int fb = sl_find("FixOriginalBugs");
+    if (fb >= 0) g_patch_rows[k++] = Row{ R_CHECK, "Fix original bugs", fb, -1, 0, 0, 0 };
+    *n = k;
+    return g_patch_rows;
+}
 /* PAUSE3: CONTROLS is the old CONTROLS and CAMERA tabs together (the camera rows first, then the run rows, then the bindings) */
 const Row ROWS_CONTROLS[] = {
     { R_CHOICE, "Camera", SL_CAMERA_MODE, -1, 0, CAM_LABELS, 3 },
@@ -714,7 +722,7 @@ const Row *rows_of(int tab, int *n)
     switch (tab) {
     case T_DISPLAY: return display_rows(n);
     case T_SOUND: *n = (int)(sizeof ROWS_SOUND / sizeof ROWS_SOUND[0]); return ROWS_SOUND;
-    case T_PATCHES: *n = (int)(sizeof ROWS_PATCHES / sizeof ROWS_PATCHES[0]); return ROWS_PATCHES;
+    case T_PATCHES: return patches_rows(n);
     case T_CONTROLS: *n = (int)(sizeof ROWS_CONTROLS / sizeof ROWS_CONTROLS[0]); return ROWS_CONTROLS;
     default: *n = (int)(sizeof ROWS_GENERAL / sizeof ROWS_GENERAL[0]); return ROWS_GENERAL;
     }
