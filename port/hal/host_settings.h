@@ -484,6 +484,9 @@ int host_setting_set_coins_middle(int on);
 /* SHELVED1: KeepLives, bool, OFF by default. 1 keeps each save file's life count in the port's own side file (save/lives.json) and gives it back when that file starts; 0 is the DS, which starts every file with 4 lives. Live; SM64DS_KEEP_LIVES=0/1 overrides the file for a proof run. */
 int host_setting_keep_lives(void);
 int host_setting_set_keep_lives(int on);
+/* RABBIT1: FixOriginalBugs, bool, ON by default. 1 applies the port's fixes for the cartridge's own bugs (the glowing rabbits name their rank by catch order, English only); 0 is the cartridge's text byte for byte. Live; SM64DS_FIX_ORIGINAL_BUGS=0/1 overrides the file. */
+int host_setting_fix_original_bugs(void);
+int host_setting_set_fix_original_bugs(int on);
 
 /* Aspect: the presentation ratio, WIDTH DIVIDED BY HEIGHT. 0 (the default) is
    the explicit native sentinel -- the 4:3 window the port has always opened;

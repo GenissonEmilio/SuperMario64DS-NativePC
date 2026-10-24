@@ -881,6 +881,8 @@ int g_character_strip = 1;
 
 /* KeepLives: 1 keeps each save file's life count in the port's own side file (save/lives.json) and gives it back when that file starts; 0 is the DS, which starts every file with 4 lives. Default 0. Read live. */
 int g_keep_lives = 0;
+/* FixOriginalBugs (RABBIT1): 1 applies the port's fixes for the cartridge's own bugs (the glowing rabbits rank themselves by catch order). Default 1. Read live. */
+int g_fix_original_bugs = 1;
 
 /* Aspect: the presentation ratio, WIDTH DIVIDED BY HEIGHT. 0 (the default) is
    the explicit native sentinel -- the DS's own 4:3 at the 512x384 window the
@@ -1551,6 +1553,7 @@ void load_once(void)
     g_online_events = 1;
     g_character_strip = 1;
     g_keep_lives = 0;
+    g_fix_original_bugs = 1;
     g_aspect = 0.0;
     g_vs_luigi_infection = 0;
     g_vs_luigi_seconds = 0;
@@ -1754,6 +1757,7 @@ void load_once(void)
         g_online_events = json_bool(text, "OnlineEvents", 1);
         g_character_strip = json_bool(text, "CharacterStrip", 1);
         g_keep_lives = json_bool(text, "KeepLives", 0);
+        g_fix_original_bugs = json_bool(text, "FixOriginalBugs", 1);
         /* the presentation aspect, read against its own default of 0 (native)
            so a file written before this key existed reads as the 4:3 window.
            Sanitised HERE rather than at the accessor, so the stored value is
@@ -2442,6 +2446,14 @@ int reload_live(const char *text)
             g_keep_lives = kv;
             changed = 1;
             fprintf(stderr, "[settings] live re-read: KeepLives %s\n", kv ? "ON" : "off");
+        }
+    }
+    {
+        const int fv = json_bool(text, "FixOriginalBugs", g_fix_original_bugs);
+        if (fv != g_fix_original_bugs) {
+            g_fix_original_bugs = fv;
+            changed = 1;
+            fprintf(stderr, "[settings] live re-read: FixOriginalBugs %s\n", fv ? "ON" : "off");
         }
     }
     const int voice_changed = read_voice_keys(text);
@@ -3387,6 +3399,29 @@ extern "C" int host_setting_keep_lives(void)
     if (env >= 0) return env;
     load_once();
     return g_keep_lives;
+}
+
+/* FixOriginalBugs, plus SM64DS_FIX_ORIGINAL_BUGS (0 forces it off, any other value on) for proof runs and for turning it off by env. */
+extern "C" int host_setting_fix_original_bugs(void)
+{
+    static int env = -2;
+    if (env == -2) {
+        const char *e = getenv("SM64DS_FIX_ORIGINAL_BUGS");
+        env = (e && *e) ? ((e[0] == '0' && e[1] == 0) ? 0 : 1) : -1;
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_fix_original_bugs;
+}
+
+extern "C" int host_setting_set_fix_original_bugs(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    g_fix_original_bugs = on;
+    g_poll_flag = 1;
+    queue_bool("FixOriginalBugs", on);
+    return 1;
 }
 
 extern "C" int host_setting_set_keep_lives(int on)

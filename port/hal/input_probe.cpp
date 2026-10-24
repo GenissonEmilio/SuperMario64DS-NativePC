@@ -856,6 +856,7 @@ extern "C" int Vec3_HorzDist(void *a, void *b);
 static int port_sign_prev_dist;
 
 extern "C" void func_0201f32c(int arg0);
+extern "C" int data_0209caa0[];   /* the save/global flag block (RABBIT1 knob below) */
 /* SM64DS_MSG_SHOW="<frame>:<id>" (TEST ONLY, inert unset; TEXT2D1): open the dialogue box on message bank id <id> at that frame, the call an NPC's talk makes
    (func_0201f32c), so a row can read any line of the bank without walking to the NPC. */
 static void port_msg_show(int frame)
@@ -865,6 +866,18 @@ static void port_msg_show(int frame)
         const char *e = std::getenv("SM64DS_MSG_SHOW");
         f = -1;
         if (e && std::sscanf(e, "%d:%d", &f, &id) != 2) f = -1;
+    }
+    /* SM64DS_MSG_SHOW_RABBITS=<0..8> (TEST ONLY, inert unset; RABBIT1): ten frames before it, set the save's glowing-rabbit bits
+       (flags word data_0209caa0[2], bits 20..27, the bits SaveData::NumGlowingRabbitsFound counts) to that many, so a row can read the
+       glowing rabbit's line (0x142 / 0x146 / 0x143 / 0x147) at any catch count. A save-field poke, not a catch. */
+    if (f >= 10 && frame == f - 10) {   /* ten frames ahead, as a real catch count is set long before its talk */
+        if (const char *r = std::getenv("SM64DS_MSG_SHOW_RABBITS")) {
+            int n = std::atoi(r);
+            if (n < 0) n = 0;
+            if (n > 8) n = 8;
+            data_0209caa0[2] = (data_0209caa0[2] & ~0x0ff00000) | (((1 << n) - 1) << 20);
+            std::fprintf(stderr, "  [rabbit] f%d save glowing-rabbit bits poked to %d found\n", frame, n);
+        }
     }
     if (f >= 0 && frame == f) func_0201f32c(id);
 }
