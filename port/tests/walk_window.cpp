@@ -11379,6 +11379,8 @@ static void fullscreen_toggle(HWND h)
     present();
 }
 
+extern "C" void port_rich_presence_scene(int scene);       /* hal/rich_presence.cpp */
+
 /* settings.json StartFullscreen: the first frame of a run puts the window in
    the same borderless fullscreen F12 toggles. Once per process; absent or
    false does nothing. */
@@ -11387,6 +11389,7 @@ static void fullscreen_boot(HWND h)
     static int done;
     if (done) return;
     done = 1;
+    port_rich_presence_scene(-3);       /* RPC1: the window is up; a boot straight into a level has no scene crossing to start it */
     if ((host_setting_start_fullscreen() || (g_hf_in && g_hf_in_full)) && !g_fullscreen) {   /* REGRESS093 R2: a handoff from a fullscreen parent */
         fprintf(stderr, "[settings] StartFullscreen: borderless fullscreen\n");
         fullscreen_toggle(h);
@@ -12994,8 +12997,6 @@ static void host_layout_follow_scene(HWND hwnd, int two_screen, const char *what
  * own answer is the one a scene run gets. */
 extern "C" int port_scene_layout_two_screen(int scene);   /* hal/scene_boot.cpp */
 extern "C" int port_scene_layout_native(int scene);       /* hal/scene_boot.cpp */
-
-extern "C" void port_rich_presence_scene(int scene);       /* hal/rich_presence.cpp */
 
 static void port_crossing_scene_layout(int scene)
 {

@@ -225,6 +225,13 @@ DWORD WINAPI presence_thread(LPVOID)
             }
         } else if (scene >= 0 && !port_scene_is_menu(scene)) {
             details = "Playing a minigame";
+        } else if (scene == -2 && course_name((int)data_0209f2f8)) {
+            /* no scene crossing seen yet: a level the game booted straight into */
+            details = course_name((int)data_0209f2f8);
+            if (!is_vs) {
+                const int stars = (int)NumStars();
+                state += ", " + std::to_string(stars) + (stars == 1 ? " star" : " stars");
+            }
         } else {
             details = "In the menus";
         }
@@ -278,7 +285,8 @@ DWORD WINAPI presence_thread(LPVOID)
    thread; a run with presence off never starts it. */
 extern "C" void port_rich_presence_scene(int scene)
 {
-    g_scene.store(scene);
+    if (scene != -3)                    /* -3: just make sure the thread is up */
+        g_scene.store(scene);
     if (g_started.exchange(1))
         return;
     if (!wanted()) {
