@@ -52,7 +52,6 @@ void func_ov007_020bdeb0(int idx);
 
 namespace {
 
-enum { kIrisLead = 5 };   /* INTROCARD092 (3a): the intro iris opens this many ticks into the star's flight (the ROM's own flight is 14 ticks; the black beat is the flight with nothing behind it) */
 enum { kMpDimAlpha = 110 };   /* MENUS093: how faint the unavailable MP plank is drawn (alpha of 255) */
 enum { V_ATTRACT = 1, V_MAIN = 2, V_FILES = 3, V_OPTIONS = 4, V_DOODLE = 5, V_TABLE = 6, V_INTRO = 7, V_TOY = 8 };   /* V_TOY: the face press (top 4, elem 0), FACE1 */
 
@@ -70,7 +69,10 @@ const Box kBoxes[24] = {
 
 enum { CH_NONE = 0, CH_INTRO = 1, CH_RETURN = 2 };
 enum { CH_LOGO_POP = 22, CH_BOUNCE_LEN = 40, CH_FACE_FADE = 24, CH_LOGO_OUT = 24, CH_LOGO_IN = 30, CH_PLANK_DUR = 28, CH_PLANK_GAP = 6,
-       CH_PLANK_START = 4, CH_FLY = 14, CH_SWAP_END = CH_PLANK_START + 2 * CH_PLANK_GAP + CH_PLANK_DUR, CH_VEIL = 10 };
+       CH_PLANK_START = 4, CH_FLY = 14, CH_VEIL = 10,
+       /* INTRO2 (Tango 10-24): the logo's trip to the top left takes 2 s (120 ticks) after the head has flown in; the planks rise during it */
+       CH_LOGO_MOVE = 120, CH_PLANK_START_INTRO = 40,
+       CH_PLANKS_END = CH_PLANK_START + 2 * CH_PLANK_GAP + CH_PLANK_DUR, CH_PLANKS_END_INTRO = CH_PLANK_START_INTRO + 2 * CH_PLANK_GAP + CH_PLANK_DUR };
 struct Chore {
     int mode;            /* CH_* */
     int in_fam;          /* the main family (V_INTRO / V_MAIN) is the page */
@@ -84,7 +86,13 @@ struct Chore {
     int ff2_done;
     int attract_t;       /* the ROM's attract counter as last read */
     int fly_t;           /* ASSET6: frames since the press, while the star flies off the top (state 10 before the iris) */
+    int released;        /* INTRO2: a tick without a touch / click went by since the family was entered (the press that started the intro is over) */
 } g_ch;
+static int g_press_tick;      /* INTRO2: a touch / click went into the ROM this tick */
+/* INTRO2: the swap (sw_t counts it) is the logo's 2 s trip in the intro and the planks' own rise on a return; the planks start at their own tick */
+static inline int swap_end(const Chore &c) { return c.mode == CH_INTRO ? (int)CH_LOGO_MOVE : (int)CH_PLANKS_END; }
+static inline int plank_start(const Chore &c) { return c.mode == CH_INTRO ? (int)CH_PLANK_START_INTRO : (int)CH_PLANK_START; }
+static inline int planks_end(const Chore &c) { return c.mode == CH_INTRO ? (int)CH_PLANKS_END_INTRO : (int)CH_PLANKS_END; }
 
 /* INT2 (the decide / draw split): the ROM values build() needs, read once per tick by menu_title_facts on the logic thread and carried in
    MenuLayout.facts.blob. build() and everything it calls read this and never a ROM address. */
@@ -629,15 +637,18 @@ void chore_step(int variant, int top, int elem, int req)
     if (!c.in_fam) {              /* entering the main family */
         c.in_fam = 1;
         c.mode = (c.prev_variant == V_ATTRACT) ? CH_INTRO : CH_RETURN;
-        c.ct = -1; c.fam_t = 0; c.sw_t = -1; c.face_a = 0; c.skip = 0; c.iris_covered = 0; c.ff2_done = 0; c.fly_t = 0;
+        c.ct = -1; c.fam_t = 0; c.sw_t = -1; c.face_a = 0; c.skip = 0; c.iris_covered = 0; c.ff2_done = 0; c.fly_t = 0; c.released = 0;
         if (hal_menu_trace_on()) fprintf(stderr, "[chore] enter family mode=%s top=%d\n", c.mode == CH_INTRO ? "intro" : "return", top);
     }
     ++c.fam_t;
+    if (!g_press_tick) c.released = 1;
+    g_press_tick = 0;
     if (g_iris_cov_req) { g_iris_cov_req = 0; c.iris_covered = 1; }      /* build() saw the picture covered */
     const bool rest = top == 0 && elem == 0 && req == -1;
     int vis = 0, s48 = 0;
     rom_iris(&vis, &s48);
     if (c.mode == CH_INTRO) {
+        if (c.skip) c.iris_covered = 1;      /* INTRO2: a press skips the wipe too */
         if (c.ct >= 0 && !vis && !c.iris_covered) c.iris_covered = 1;      /* the ROM's iris is gone: nothing left to draw */
         if (c.ct < 0) {
             if (top == 10 && !vis) ++c.fly_t;
@@ -658,11 +669,14 @@ void chore_step(int variant, int top, int elem, int req)
     } else {
         ++c.sw_t;
     }
-    if (c.skip && c.sw_t >= 0 && c.sw_t < CH_SWAP_END) c.sw_t = CH_SWAP_END;
+    if (c.skip && c.sw_t >= 0 && c.sw_t < swap_end(c)) c.sw_t = swap_end(c);
+    /* INTRO2: in the intro the head is not faded in: the ROM's own entrance (top-state 1, src/func_ov007_020b1b74.c: the head object plays
+       its fly-in while the scale ramps for 30 ticks) is shown from its first tick, whole, and the swap (the logo's trip) starts when it is at rest */
+    const bool head_in = c.mode == CH_INTRO && bounced && (top == 1 || rest);
     /* the face: faded in once the ROM is at rest and the swap began; faded out quickly when the ROM leaves rest (it walks out) */
-    if (c.sw_t < 0) c.face_a = 0;
-    else if (rest || arriving) {
-        const int step = c.skip || c.sw_t >= CH_SWAP_END ? 255 : 255 / CH_FACE_FADE + 1;
+    if (c.sw_t < 0) c.face_a = head_in ? 255 : 0;
+    else if (head_in || rest || arriving) {
+        const int step = c.skip || head_in || c.sw_t >= swap_end(c) ? 255 : 255 / CH_FACE_FADE + 1;
         c.face_a += step; if (c.face_a > 255) c.face_a = 255;
     } else {
         c.face_a -= 40; if (c.face_a < 0) c.face_a = 0;
@@ -709,7 +723,12 @@ static void sv_restore()
     g_sv_q = 0;
     if (hal_menu_trace_on()) fprintf(stderr, "[chore] press: save words given back\n");
 }
-extern "C" void port_title_press_seen(void) { if (g_ch.attract_t >= 6) sv_restore(); }   /* the ROM's gate reads input from its frame 4 on */     /* sub_screen.cpp: a touch / click is going into the ROM this frame */
+extern "C" void port_title_press_seen(void)
+{
+    if (g_ch.attract_t >= 6) sv_restore();
+    g_press_tick = 1;
+    if (g_ch.in_fam && g_ch.mode == CH_INTRO && g_ch.released && g_ch.sw_t < swap_end(g_ch)) g_ch.skip = 1;      /* INTRO2: any new click skips the intro too */
+}   /* the ROM's gate reads input from its frame 4 on */     /* sub_screen.cpp: a touch / click is going into the ROM this frame */
 
 void chore_rom_writes(int top, int req)
 {
@@ -733,6 +752,8 @@ void chore_rom_writes(int top, int req)
             if (hal_menu_trace_on()) fprintf(stderr, "[chore] return: ROM iris progress finished early\n");
         }
     }
+    /* INTRO2: the skip also ends the head's 30 tick entrance (state 1, counter 0..30: src/func_ov007_020b1b74.c hands over to the resting menu past 30) */
+    if (top == 1 && g_ch.mode == CH_INTRO && g_ch.skip) { if (*t >= 1 && *t < 9) *t = 9; else if (*t >= 11 && *t < 29) *t = 29; }
     /* ASSET6: leaving a file page the ROM idles 30 frames (state 11, element machine 5) before its star iris closes over the page: skipped once its own 6 frame fade-in is over (an iris asked for while that fade runs is dropped) */
     if (top == 11 && g_elem == 5 && *t >= 9 && *t < 29) { *t = 29; if (hal_menu_trace_on()) fprintf(stderr, "[chore] file page exit: idle counter skipped\n"); }
     if (top == 10 && g_ch.mode == CH_INTRO) {
@@ -740,6 +761,9 @@ void chore_rom_writes(int top, int req)
         /* ASSET6: the star has flown off the top (CH_FLY frames after the press); the counter skips to 29 (the t = 30 sound still plays) and
            runs the ROM's own way after it (INTROVOICE2), so the iris comes at t = 60 */
         if (*t >= ctune(9, CH_FLY) && *t < 29) { *t = 29; if (hal_menu_trace_on()) fprintf(stderr, "[chore] ROM counter t jumped to 29\n"); }
+        /* INTRO2: a press skips to the menu: the counter runs on to the tick before the wipe is asked for (t = 60), and the finish below
+           then needs no voice wait */
+        if (g_ch.skip && *t < 59) *t = 59;
         /* once our iris covers the picture the ROM's iris is finished: progress to its last step so the callback asks for the arrival.
            INTROVOICE2: src/func_ov007_020b10dc.c plays the title voice in two calls of the top-state 10 handler: id 0x2b ("It's-a me") at
            t = 30 and id 0x2d ("Mario!") at t = 128 (Luigi 0x2c at 30 and 0x2e at 122), with the iris whoosh (0x30) at t = 60 between them.
@@ -748,7 +772,9 @@ void chore_rom_writes(int top, int req)
         if (g_ch.iris_covered && !g_ch.ff2_done && data_ov007_02104bd8) {
             char *o6 = *(char **)data_ov007_02104bd8;
             const int voice_t = (*(int *)(g + 0xec) == 1) ? 0x7a : 0x80;
-            if (o6 && *(int *)(o6 + 8) == 1 && (*t > voice_t || g_ch.skip)) {
+            int ivis = 0, is48 = 0;
+            rom_iris(&ivis, &is48);      /* INTRO2: a skip finishes the iris object only once the wipe itself is up (before it, object 6 is the screen fade) */
+            if (o6 && *(int *)(o6 + 8) == 1 && (*t > voice_t || (g_ch.skip && ivis))) {
                 const int step = *(int *)(o6 + 0x18);
                 const int want = 0x1000 - step + 1;
                 if (*(int *)(o6 + 0x14) < want) *(int *)(o6 + 0x14) = want;
@@ -758,6 +784,8 @@ void chore_rom_writes(int top, int req)
         }
     }
 }
+
+static inline float smooth01(float x) { if (x <= 0.f) return 0.f; if (x >= 1.f) return 1.f; return x * x * (3.f - 2.f * x); }
 
 /* the DS logo's bounce, measured (above): offset in canvas units after the pop, tb frames since it (down is positive) */
 float logo_bounce(int tb)
@@ -963,7 +991,7 @@ void build_main_pc(MenuLayout *L, bool intro)
     menu_hostimg_size(MENU_IMG_LOGO, &iw, &ih);
     /* the logos: big (centred, as the main menu used to have it) and small (top left) */
     int big_a = 0, small_a = 0;
-    float dy = 0.f;
+    float dy = 0.f, mv = 0.f;
     if (c.mode == CH_INTRO) {
         const int tb = c.ct - ctune(0, CH_LOGO_POP);
         if (c.ct >= 0 && tb >= 0) {
@@ -971,9 +999,12 @@ void build_main_pc(MenuLayout *L, bool intro)
             dy = logo_bounce(tb);
         }
         if (c.sw_t >= 0) {
-            const int o = c.sw_t;
-            if (o < CH_LOGO_OUT) big_a = big_a * (CH_LOGO_OUT - o) / CH_LOGO_OUT; else big_a = 0;
-            if (o >= CH_LOGO_OUT) small_a = o >= CH_LOGO_OUT + CH_LOGO_IN ? 255 : 255 * (o - CH_LOGO_OUT + 1) / (CH_LOGO_IN + 1);
+            /* INTRO2 (Tango 10-24): the big logo travels to the top left and shrinks to the small one's size and place over 2 s (smoothstep),
+               fading out as it goes, while the small logo fades in at its own place: one logo that becomes the small one */
+            const float u = c.sw_t >= CH_LOGO_MOVE ? 1.f : (float)c.sw_t / (float)CH_LOGO_MOVE;
+            mv = smooth01(u);
+            big_a = (int)((float)big_a * (1.f - smooth01(u / 0.8f)) + 0.5f);
+            small_a = (int)(255.f * smooth01((u - 0.2f) / 0.8f) + 0.5f);
         }
     } else {
         small_a = 255;
@@ -981,11 +1012,15 @@ void build_main_pc(MenuLayout *L, bool intro)
     if (c.skip) { big_a = 0; small_a = 255; }
     if (big_a > 0) {
         const int lt = ltune(0, 26), lh = ltune(1, 112), ldx = ltune(2, 0);
-        const int dh = U(lh), dw = (int)((long long)dh * iw / ih);
+        const int dhb = U(lh), dwb = (int)((long long)dhb * iw / ih);
+        const int dhs = U(ctune(2, 40)), dws = (int)((long long)dhs * iw / ih);
+        const int dh = dhb + (int)((float)(dhs - dhb) * mv), dw = (int)((long long)dh * iw / ih);
+        const int fx0 = (w - dwb) / 2 + U(ldx), fx1 = U(ctune(3, 6)), fy0 = U(lt) + Uf(dy), fy1 = U(ctune(4, 6));
+        (void)dws;
         MenuPiece lg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         lg.bg = 1; lg.hostimg = MENU_IMG_LOGO; lg.nofade = 1; lg.alpha = (uint8_t)(big_a >= 255 ? 0 : big_a);
         lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
-        lg.fx = (short)((w - dw) / 2 + U(ldx)); lg.fy = (short)(U(lt) + Uf(dy));
+        lg.fx = (short)(fx0 + (int)((float)(fx1 - fx0) * mv)); lg.fy = (short)(fy0 + (int)((float)(fy1 - fy0) * mv));
         menu_add_piece(L, lg);
     }
     if (small_a > 0) {
@@ -1074,11 +1109,11 @@ void build_main_pc(MenuLayout *L, bool intro)
         static const int kPlateId[3] = { 1, 0, 2 };
         static const int kPlankImg[3] = { MENU_IMG_BTN_MP, MENU_IMG_BTN_ADV, MENU_IMG_BTN_REC };
         const int cur = t_f ? t_f->cur : -1, prs = t_f ? t_f->prs : 0;
-        const bool landed = c.sw_t >= CH_SWAP_END - 4 || c.skip;
+        const bool landed = c.sw_t >= planks_end(c) - 4 || c.skip;
         for (int k = 0; k < 3; ++k) {
             Box bx;
             if (!box_of(kPlateId[k], &bx)) continue;
-            const int pt = c.sw_t - (CH_PLANK_START + CH_PLANK_GAP * k);
+            const int pt = c.sw_t - (plank_start(c) + CH_PLANK_GAP * k);
             if (!toy && (c.sw_t < 0 || (pt < 0 && !c.skip))) continue;
             float rise = 0.f;                                       /* canvas units below the resting place */
             int plank_a = 255;
@@ -1143,15 +1178,9 @@ void build_main_pc(MenuLayout *L, bool intro)
         float Rds = 0.f;
         if (vis && c.ct >= 0) Rds = 0.004382f * (float)s48;
         if (c.ct >= 0 && !vis) c.iris_covered = 1;
-        {
-            /* TITLE092 (3a): the iris opens from the frame the star leaves the top, at 1.5 times the ROM's pace (8.28 DS pixels of radius a
-               frame), not from the ROM's own start 5 frames later at its pace; the ROM's value still wins once it is ahead */
-            const int n = c.fly_t + (c.ct > 0 ? c.ct : 0) - kIrisLead;
-            if (n >= 0) {
-                const float syn = 8.28f * (float)ctune(10, 150) / 100.f * (float)(n + 1);
-                if (syn > Rds) Rds = syn;
-            }
-        }
+        /* INTRO2 (Tango 10-24): the wipe is the ROM's own (the fade manager's star sprite, raised at ROM counter t = 60 by src/func_ov007_020b10dc.c
+           with the whoosh), about half a second after the star has left the top: black until the ROM's sprite shows, then its radius. The early
+           synthetic star of TITLE092 / INTROCARD092 (3a) is gone. */
         const float Rpx = Rds * (float)h / 192.f;
         ir.icx = w / 2;
         ir.icy = (int)((96.f + 0.0864f * Rds) * (float)h / 192.f + 0.5f);
@@ -1861,11 +1890,8 @@ static void menu_title_build_impl(int variant, MenuLayout *L)
     }
     /* TITLE092 (3a): the black first frames are only while the host star is on its way up (fly_t < 14: its centre is above the top edge at
        14); from then the iris takes over at once, see build_main_pc, instead of a black beat and the ROM's iris starting from a point */
-    if (variant == V_INTRO && t_f && t_f->ch.mode == CH_INTRO && t_f->ch.ct < 0 && (t_f->ch.fly_t < 14 || getenv("SM64DS_CHORE_BLACK"))) {
+    if (variant == V_INTRO && t_f && t_f->ch.mode == CH_INTRO && t_f->ch.ct < 0 && !t_f->ch.skip && (t_f->ch.fly_t < 14 || getenv("SM64DS_CHORE_BLACK"))) {
         add_black_under(L);
-        /* INTROCARD092 (3a): from kIrisLead ticks into the flight the page is already coming up under our iris (drawn first), and the ROM's
-           scene layer and the host star go over it: no black beat while the star is still on its way */
-        if (t_f->ch.fly_t >= kIrisLead && pc_assets_ready()) build_main_sel(L, true);
         /* ASSET6: the first frames of the ROM's state 10 are the lower screen going out (the star leaves, the screen fades to black): shown
            as the ROM draws them until its iris sprite appears */
         MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
@@ -1989,7 +2015,7 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
             sv_restore();
             inject = 1;      /* the held word gets the A edge too, so a Start / Enter / Space press is an edge the ROM's gate reads */
         }
-        if (g_ch.in_fam && g_ch.sw_t < CH_SWAP_END && ((*pressed & MENU_PAD_CONFIRM) || g_ch.skip)) {
+        if (g_ch.in_fam && g_ch.sw_t < swap_end(g_ch) && ((*pressed & MENU_PAD_CONFIRM) || g_ch.skip)) {
             if (!g_ch.skip && hal_menu_trace_on()) fprintf(stderr, "[chore] confirm during the choreography: finishing it\n");
             g_ch.skip = 1;
         }
