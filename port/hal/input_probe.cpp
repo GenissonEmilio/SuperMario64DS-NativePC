@@ -876,8 +876,7 @@ static void port_msg_show(int frame)
             if (n < 0) n = 0;
             if (n > 8) n = 8;
             data_0209caa0[2] = (data_0209caa0[2] & ~0x0ff00000) | (((1 << n) - 1) << 20);
-            std::fprintf(stderr, "  [rabbit] f%d save glowing-rabbit bits poked to %d found
-", frame, n);
+            std::fprintf(stderr, "  [rabbit] f%d save glowing-rabbit bits poked to %d found\n", frame, n);
         }
         func_0201f32c(id);
     }

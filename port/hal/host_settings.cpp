@@ -2453,8 +2453,7 @@ int reload_live(const char *text)
         if (fv != g_fix_original_bugs) {
             g_fix_original_bugs = fv;
             changed = 1;
-            fprintf(stderr, "[settings] live re-read: FixOriginalBugs %s
-", fv ? "ON" : "off");
+            fprintf(stderr, "[settings] live re-read: FixOriginalBugs %s\n", fv ? "ON" : "off");
         }
     }
     const int voice_changed = read_voice_keys(text);

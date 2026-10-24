@@ -3338,8 +3338,7 @@ static void rabbit_rank_refresh(void)
         int off = (want < 0 || want == 6) ? s_orig[m] : (int)(s_text[m][want] - tbase);
         *reinterpret_cast<int *>(entries + kIds[m] * 8) = off;
     }
-    fprintf(stderr, "[rabbit] rank line: %s (found %d)
-", want < 0 ? "ROM text" : kOrd[want], want);
+    fprintf(stderr, "[rabbit] rank line: %s (found %d)\n", want < 0 ? "ROM text" : kOrd[want], want);
     s_cur = want;
 }
 
