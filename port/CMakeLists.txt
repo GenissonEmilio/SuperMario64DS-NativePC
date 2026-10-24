@@ -17970,7 +17970,7 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     ${SLICE214_SOURCES} ${SLICE_IPCSEND_SOURCES}
     # dialogue pipeline (2026-08-08): the box pump (Stage::UpdateMessage's
     # dialogue arm), the engine-A 2D-over-3D compositor, and the headless probe.
-    hal/message_pump.cpp hal/message_compositor.cpp hal/message_probe.cpp hal/message_gen_text.cpp hal/input_probe.cpp
+    hal/message_pump.cpp hal/message_compositor.cpp hal/message_probe.cpp hal/message_gen_text.cpp hal/input_probe.cpp hal/rich_presence.cpp
     # the launcher's settings.json, read by the game (camera turn direction,
     # and the four screen-gap keys hal/screen_gap.cpp reads)
     hal/host_settings.cpp hal/screen_gap.cpp
@@ -18432,7 +18432,7 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     # this target compiles tests/walk_window.cpp, which carries the boot calls.
     ${SLICE214_SOURCES} ${SLICE_IPCSEND_SOURCES}
     # dialogue pipeline (2026-08-08): pump, engine-A compositor, headless probe.
-    hal/message_pump.cpp hal/message_compositor.cpp hal/message_probe.cpp hal/message_gen_text.cpp hal/input_probe.cpp
+    hal/message_pump.cpp hal/message_compositor.cpp hal/message_probe.cpp hal/message_gen_text.cpp hal/input_probe.cpp hal/rich_presence.cpp
     # the launcher's settings.json, read by the game (camera turn direction,
     # and the four screen-gap keys hal/screen_gap.cpp reads)
     hal/host_settings.cpp hal/screen_gap.cpp
@@ -25928,10 +25928,9 @@ endif()
 
 # RPC1: Discord Rich Presence. hal/rich_presence.cpp is called from the scene
 # crossing hook in tests/walk_window.cpp; discord_presence (SahilKDas, PR 3569)
-# is the pipe client above. Both window targets carry it; no DLL, no library.
+# is the pipe client above. Both window targets list rich_presence.cpp in their sources and link it; no DLL.
 foreach(rpc1_t walk_window walk_window_hires)
     if(TARGET ${rpc1_t})
-        target_sources(${rpc1_t} PRIVATE hal/rich_presence.cpp)
         target_link_libraries(${rpc1_t} PRIVATE discord_presence)
     endif()
 endforeach()
