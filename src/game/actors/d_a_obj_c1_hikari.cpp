@@ -103,6 +103,11 @@ extern "C" daObjC1Hikari_c *daObjC1Hikari_c_classInit()
 }
 
 // @symbol _ZN15daObjC1Hikari_c13InitResourcesEv
+#ifdef _MSC_VER
+/* run after093, lane EVENTS3: the 14-star light appears while a castle event is live (hal/event_castle.cpp seats the view; host only, the DS side is untouched) */
+extern "C" unsigned char port_event_numstars(void);
+#define NumStars port_event_numstars
+#endif
 int daObjC1Hikari_c::InitResources()
 {
     Model::LoadFile(gC1HikariModelFile);
@@ -116,6 +121,9 @@ int daObjC1Hikari_c::InitResources()
     UpdateModelTransform();
     return 1;
 }
+#ifdef _MSC_VER
+#undef NumStars
+#endif
 
 // @symbol _ZN15daObjC1Hikari_c8BehaviorEv
 int daObjC1Hikari_c::Behavior()

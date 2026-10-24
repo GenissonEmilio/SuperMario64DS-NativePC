@@ -1935,6 +1935,11 @@ void Player::func_ov002_020bf36c(void* arg){
 /* recovered: shared common types, declarations from a shared header */
 /* recovered: shared common types */
 extern "C" {
+#ifdef _MSC_VER
+/* run after093, lane EVENTS3: the castle star checks (the endless stairs ground, the 14-star light warp) see every star while a castle event is live (hal/event_castle.cpp seats the view; host only, the DS side is untouched) */
+extern "C" unsigned char port_event_numstars(void);
+#define NumStars port_event_numstars
+#endif
 int Player::func_ov002_020bf40c(){
     struct dBgCh_Gnd { char pad[0x50]; };
     extern unsigned char NumStars(void);
@@ -1972,6 +1977,9 @@ int Player::func_ov002_020bf40c(){
   }
   return 0;
 }
+#ifdef _MSC_VER
+#undef NumStars
+#endif
 }
 
 /* -------------------------------------------------------------------------- */
@@ -9563,6 +9571,11 @@ int Player::St_CameraZoom_Cleanup()
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020cac60
 extern "C" {
+#ifdef _MSC_VER
+/* run after093, lane EVENTS3: the castle star checks (the endless stairs ground, the 14-star light warp) see every star while a castle event is live (hal/event_castle.cpp seats the view; host only, the DS side is untouched) */
+extern "C" unsigned char port_event_numstars(void);
+#define NumStars port_event_numstars
+#endif
 int func_ov002_020cac60(char *self)
 {
     Player *player = (Player *)self;
@@ -9587,6 +9600,9 @@ int func_ov002_020cac60(char *self)
     }
     return 0;
 }
+#ifdef _MSC_VER
+#undef NumStars
+#endif
 }
 
 /* -------------------------------------------------------------------------- */

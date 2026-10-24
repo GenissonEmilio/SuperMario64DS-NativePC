@@ -1537,6 +1537,11 @@ int daMip_c::Behavior()
 }
 
 // @symbol _ZN7daMip_c13InitResourcesEv
+#ifdef _MSC_VER
+/* run after093, lane EVENTS3: the rabbit star-count tiers (40 / 81 stars) see every star while a castle event is live (hal/event_castle.cpp seats the view; host only, the DS side is untouched) */
+extern "C" unsigned char port_event_numstars(void);
+#define NumStars port_event_numstars
+#endif
 int daMip_c::InitResources()
 {
     extern DaMipAnimationFilePtr data_ov085_021305b8;
@@ -1690,6 +1695,9 @@ block_out:
     SetState(&data_ov085_021306cc);
     return 1;
 }
+#ifdef _MSC_VER
+#undef NumStars
+#endif
 
 // @symbol _ZN7daMip_c13OnYoshiTryEatEv
 s32 daMip_c::OnYoshiTryEat() {

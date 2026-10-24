@@ -125,8 +125,22 @@ int gate_hook(void *gate, void *player)
     return 1;
 }
 
+// EVENTS3: the star-count view. The ROM sites that gate on the star total (a Toad's line, the rabbit tiers, the 14-star light, the endless stairs)
+// call port_event_numstars (src/engine/save/SaveData.cpp _MSC_VER arm), which asks this view; while a castle event is live every total reads
+// as all 150 stars. Nothing is written: the real total, the HUD, the presence and the save keep the true count.
+extern "C" unsigned char (*port_event_star_view)(unsigned char real);
+unsigned char star_view(unsigned char real)
+{
+    if (!port_event_castle_live()) return real;
+    static unsigned n;
+    if (real < 150 && (++n & 1023u) == 1u) fprintf(stderr, "[event] castle: a star check sees 150 stars (real %u, calls %u)
+", real, n);
+    return 150;
+}
+
 int seat(void)
 {
+    port_event_star_view = star_view;
     port_event_door_idle_hook = door_hook;
     port_event_gate_wait_hook = gate_hook;
     return 1;
