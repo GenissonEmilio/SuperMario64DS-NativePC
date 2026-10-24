@@ -126,7 +126,9 @@ bool apply_plan(const std::string &t, int server) {
     else SetEnvironmentVariableA("SM64DS_HUB_SEAT", nullptr);
     if (has_name) SetEnvironmentVariableA("SM64DS_PLAYER_NAME", name.c_str());
     if (has_cols) { SetEnvironmentVariableA("SM64DS_PLAYER_COLOR", color.c_str()); SetEnvironmentVariableA("SM64DS_PLAYER_SHOES", shoes.c_str()); }
+#ifndef PORT_ROM_CLEAN
     SetEnvironmentVariableA("SM64DS_JOIN_TEST", nullptr);
+#endif
     char v[2] = { (char)('0' + g_file), 0 };
     SetEnvironmentVariableA("SM64DS_BOOT_FILE", v);
     std::fprintf(stderr, "[join] plan applied for server %d, file %d: starting the game again at its front door with the hub environment\n", server, g_file);
@@ -141,7 +143,8 @@ bool apply_plan(const std::string &t, int server) {
 }
 
 int tick_hook() {
-    /* SM64DS_JOIN_TEST=<file>: write the request at tick 300 (proof knob; the child clears it) */
+#ifndef PORT_ROM_CLEAN
+    /* SM64DS_JOIN_TEST=<file>: write the request at tick 300 (proof knob, compiled out of the kit; the child clears it) */
     static int ticks = 0;
     static int fired = 0;
     if (!fired) {
@@ -152,12 +155,15 @@ int tick_hook() {
             online_join_begin(f, "JoinTest");
         }
     }
-    /* SM64DS_JOIN_TEST_CANCEL=<n>: cancel the wait n ticks after the request (the cancel row) */
-    static int since = 0;
+#endif
     if (g_state == kJoinWaiting) {
+#ifndef PORT_ROM_CLEAN
+        /* SM64DS_JOIN_TEST_CANCEL=<n>: cancel the wait n ticks after the request (proof knob, compiled out of the kit) */
+        static int since = 0;
         ++since;
         const char *c = std::getenv("SM64DS_JOIN_TEST_CANCEL");
         if (c && *c && since == std::atoi(c)) { online_join_cancel(); return 0; }
+#endif
         online_join_step();
     }
     return g_state == kJoinEntering;
