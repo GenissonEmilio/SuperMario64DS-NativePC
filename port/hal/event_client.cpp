@@ -379,6 +379,7 @@ void put_event(const EventWire &w, unsigned now) {
         g_lead_stars = -1;
         std::fprintf(stderr, "[event] RACE WINNER (relay word, record %u): %s with %d stars, shown for %u ms\n", w.id, g_win_name,
                      w.arg, w.remain_ms);
+        if (g_win_rank[0]) std::fprintf(stderr, "[event] RACE TOP THREE (relay word, record %u): %s\n", w.id, g_win_rank);
         return;
     }
     if (dead_id(w.id)) return;

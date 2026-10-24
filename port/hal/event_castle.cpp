@@ -133,8 +133,7 @@ unsigned char star_view(unsigned char real)
 {
     if (!port_event_castle_live()) return real;
     static unsigned n;
-    if (real < 150 && (++n & 1023u) == 1u) fprintf(stderr, "[event] castle: a star check sees 150 stars (real %u, calls %u)
-", real, n);
+    if (real < 150 && (++n & 1023u) == 1u) fprintf(stderr, "[event] castle: a star check sees 150 stars (real %u, calls %u)\n", real, n);
     return 150;
 }
 
