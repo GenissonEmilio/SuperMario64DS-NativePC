@@ -1242,7 +1242,11 @@ int frame_rate_sanitise(int n)
 {
     if (n <= 0) return 0;
     if (n < 60) return 0;
-    if (n > 240) return 240;
+    /* SM64DS_FRAME_RATE_MAX=N (OPTIM1, measurement only, inert unset): lifts the 240 clamp so a run can show how far the picture rate goes
+       when nothing caps it. Never in a settings file's reach: the file's own value is still read through this same function. */
+    static int top = 0;
+    if (!top) { const char *e = getenv("SM64DS_FRAME_RATE_MAX"); top = (e && atoi(e) > 240 && atoi(e) <= 2000) ? atoi(e) : 240; }
+    if (n > top) return top;
     return n;
 }
 
