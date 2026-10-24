@@ -4226,6 +4226,46 @@ bool raster_buffers(void)
 
 }  // namespace
 
+/* run after093, lane MENU2: the A/B phase and the row-band helper (see gx.h) */
+static int g_menu2_phase;
+void gx_menu2_phase_set(int phase) { g_menu2_phase = phase ? 1 : 0; }
+int gx_menu2_phase_get(void) { return g_menu2_phase; }
+int gx_menu_knob_value(const char *env)
+{
+    const char *e = std::getenv(env);
+    if (!e || !*e) return 1;
+    if (e[0] == '0' && !e[1]) return 0;
+    if (e[0] == '2' && !e[1]) return 2;
+    return 1;
+}
+int gx_menu_knob_on(int value) { return value == 2 ? g_menu2_phase : (value != 0 ? 1 : 0); }
+namespace {
+struct ParRows { void (*fn)(void *, int, int); void *ctx; int rows; };
+void par_band(void *c, int id, int n)
+{
+    const ParRows *p = (const ParRows *)c;
+    const int y0 = (int)((long long)p->rows * id / n), y1 = (int)((long long)p->rows * (id + 1) / n);
+    if (y1 > y0) p->fn(p->ctx, y0, y1);
+}
+}  // namespace
+void gx_parallel_rows(int rows, int min_rows, void (*fn)(void *, int, int), void *ctx, int knob_value)
+{
+    const int threads = raster_threads();
+    if (rows < min_rows || threads <= 1 || !gx_menu_knob_on(knob_value)) { fn(ctx, 0, rows); return; }
+    /* the pool runs one job at a time: a second caller (or a band that calls back in) does its rows itself */
+    static std::mutex par_m;
+    if (!par_m.try_lock()) { fn(ctx, 0, rows); return; }
+    ParRows p = { fn, ctx, rows };
+    pool(threads).run(par_band, &p);
+    par_m.unlock();
+}
+int gx_parallel_available(void)
+{
+    static int knob = -2;
+    if (knob == -2) knob = gx_menu_knob_value("SM64DS_MENU_PAR");
+    return raster_threads() >= 4 && gx_menu_knob_on(knob) ? 1 : 0;
+}
+
 /* THE DEPTH AND POLYGON-ID PLANES AFTER A FRAME THE CARD DREW WHOLE (run
    cardfull). That pass does not bring them back, because nothing in a game
    reads them; the one reader that exists (tests/smoke_gpu_raster.cpp) asks
@@ -6737,10 +6777,10 @@ static void late_run_cb(void *p) { late_run((LateCtx *)p); }
 
 int gx_late_possible(void)
 {
-    static int env = -1;
-    if (env < 0) { const char *e = std::getenv("SM64DS_MENU_LATE"); env = (e && e[0] == '0' && !e[1]) ? 0 : 1; }
+    static int env = -2;
+    if (env == -2) env = gx_menu_knob_value("SM64DS_MENU_LATE");
     static const bool tex_only = std::getenv("SM64DS_TEX_ONLY") != nullptr;
-    return env && !tex_only && gpu_full_probe() ? 1 : 0;
+    return gx_menu_knob_on(env) && !tex_only && gpu_full_probe() ? 1 : 0;
 }
 int gx_readback_pending(void)
 {

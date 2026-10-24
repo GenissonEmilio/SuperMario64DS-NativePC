@@ -25,7 +25,7 @@
 #include <mutex>
 #include <atomic>
 
-namespace ntr { int gx_anti_aliasing(); }
+namespace ntr { int gx_anti_aliasing(); int gx_menu_knob_value(const char *env); void gx_parallel_rows(int rows, int min_rows, void (*fn)(void *ctx, int y0, int y1), void *ctx, int knob_value); }
 
 namespace {
 /* The ROM 3D clear colours key_backdrop turns to black: 0x101820 and 0x080808 exactly. MENUS093B (B1): with the edge smoothing on, the
@@ -1550,6 +1550,7 @@ static int pic_fast(void)
     return v;
 }
 
+template <class F> static void pic_rows_tramp(void *c, int y0, int y1) { (*(F *)c)(y0, y1); }
 static void piece_draw_pic(const MenuLayout *L, int i, const MenuSources *S, uint32_t *dst, int w, int h)
 {
     const MenuPiece &P = L->p[i];
@@ -1586,81 +1587,116 @@ static void piece_draw_pic(const MenuLayout *L, int i, const MenuSources *S, uin
     /* a piece drawn 1:1 (cx counts up by one a column) reads the picture and the cover plane in place: no gather */
     const bool unit = cx[xb - 1] - cx[xa] == n - 1;
     const int q0 = cx[xa];
-    int have_qy = -2;    /* the source row the scratch row holds */
-    int span_qy = -2, span_ks = 0, span_ke = 0;   /* the covered columns [ks, ke) of that source row, counted from xa */
-    for (int yy = 0; yy < dh; ++yy) {
-        const int py = y0 + yy;
-        if (py < 0 || py >= h) continue;
-        uint32_t *row = dst + (size_t)py * stride + x0;
-        const long long uy = (long long)P.s.y * dh + (long long)yy * P.s.h;
-        const int qy = S->pic_ry + (int)fdiv(uy * S->pic_rh, 192LL * dh);
-        if (qy < 0 || qy >= S->pic_h) continue;
-        const uint32_t *prow = S->pic + (size_t)qy * S->pic_stride;
-        const uint8_t *cov = 0;
-        int in1 = 0, in2 = 0, in3 = 0;
-        if (P.keycover) {
-            if (!S->pic_cover) continue;
-            cov = S->pic_cover + (size_t)qy * S->pic_stride;
-            if (P.has_ex) {
-                const int ey = (qy - S->pic_ry) * 192 / S->pic_rh;
-                in1 = ey >= P.ex.y && ey < P.ex.y + P.ex.h;
-                in2 = P.has_ex2 && ey >= P.ex2.y && ey < P.ex2.y + P.ex2.h;
-                in3 = P.has_ex3 && ey >= P.ex3.y && ey < P.ex3.y + P.ex3.h;
-            }
-        }
-        if (in1 | in2 | in3) {     /* a row crossed by an exclusion rect: the old per-pixel code */
-            for (int xx = xa; xx < xb; ++xx) {
-                const int qx = cx[xx];
-                if (!cov[qx]) continue;
-                if (in1 && exc[xx] >= P.ex.x && exc[xx] < P.ex.x + P.ex.w) continue;
-                if (in2 && exc[xx] >= P.ex2.x && exc[xx] < P.ex2.x + P.ex2.w) continue;
-                if (in3 && exc[xx] >= P.ex3.x && exc[xx] < P.ex3.x + P.ex3.w) continue;
-                const uint32_t c = prow[qx];
-                if (key && clear_key(c)) { row[xx] = 0xff000000u; continue; }
-                row[xx] = c | 0xff000000u;
-            }
-            continue;
-        }
-        uint32_t *o = row + xa;
-        int k = 0;
-        if (cov) {
-            /* the covered span of this source row, found once on the cover plane itself (contiguous bytes), then mapped to destination columns:
-               every pixel outside it is uncovered and would be skipped anyway */
-            if (span_qy != qy) {
-                span_qy = qy;
-                const int ql = cx[xa], qh = cx[xb - 1];
-                int lo = ql, hi = qh;
-                while (lo + 16 <= qh + 1 && _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)(cov + lo)), zero)) == 0xFFFF) lo += 16;
-                while (lo <= qh && !cov[lo]) ++lo;
-                while (hi - 15 >= lo && _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)(cov + hi - 15)), zero)) == 0xFFFF) hi -= 16;
-                while (hi >= lo && !cov[hi]) --hi;
-                if (lo > hi) { span_ks = 1; span_ke = 0; }
-                else {
-                    int a2 = 0, b2 = n;                       /* first k with cx >= lo */
-                    while (a2 < b2) { const int m = (a2 + b2) >> 1; if (cx[xa + m] >= lo) b2 = m; else a2 = m + 1; }
-                    span_ks = a2;
-                    a2 = 0; b2 = n;                           /* first k with cx > hi */
-                    while (a2 < b2) { const int m = (a2 + b2) >> 1; if (cx[xa + m] > hi) b2 = m; else a2 = m + 1; }
-                    span_ke = a2;
+    /* MENU2: the rows are independent (each has its own source row, and the span and scratch row below are only a cache of the last
+       source row), so whole rows go to the raster pool's threads, each band with its own scratch row. SM64DS_MENU_PAR2=0 keeps one. */
+    auto rows_job = [&](int ylo, int yhi) {
+        std::vector<uint32_t> tmpv((size_t)dw + 8);
+        std::vector<uint8_t> tcvv((size_t)dw + 8);
+        uint32_t *tmp = &tmpv[0];
+        uint8_t *tcv = &tcvv[0];
+        int have_qy = -2;    /* the source row the scratch row holds */
+        int span_qy = -2, span_ks = 0, span_ke = 0;   /* the covered columns [ks, ke) of that source row, counted from xa */
+        for (int yy = ylo; yy < yhi; ++yy) {
+            const int py = y0 + yy;
+            if (py < 0 || py >= h) continue;
+            uint32_t *row = dst + (size_t)py * stride + x0;
+            const long long uy = (long long)P.s.y * dh + (long long)yy * P.s.h;
+            const int qy = S->pic_ry + (int)fdiv(uy * S->pic_rh, 192LL * dh);
+            if (qy < 0 || qy >= S->pic_h) continue;
+            const uint32_t *prow = S->pic + (size_t)qy * S->pic_stride;
+            const uint8_t *cov = 0;
+            int in1 = 0, in2 = 0, in3 = 0;
+            if (P.keycover) {
+                if (!S->pic_cover) continue;
+                cov = S->pic_cover + (size_t)qy * S->pic_stride;
+                if (P.has_ex) {
+                    const int ey = (qy - S->pic_ry) * 192 / S->pic_rh;
+                    in1 = ey >= P.ex.y && ey < P.ex.y + P.ex.h;
+                    in2 = P.has_ex2 && ey >= P.ex2.y && ey < P.ex2.y + P.ex2.h;
+                    in3 = P.has_ex3 && ey >= P.ex3.y && ey < P.ex3.y + P.ex3.h;
                 }
             }
-            if (span_ks >= span_ke) continue;
-            const int kg0 = span_ks & ~3, kg1 = (span_ke + 3 < n) ? ((span_ke + 3) & ~3) : n;
-            const uint8_t *tc = tcv;
-            if (unit) tc = cov + q0;
-            else if (have_qy != qy) { for (int q = kg0; q < kg1; ++q) tcv[q] = cov[cx[xa + q]]; have_qy = qy; }
+            if (in1 | in2 | in3) {     /* a row crossed by an exclusion rect: the old per-pixel code */
+                for (int xx = xa; xx < xb; ++xx) {
+                    const int qx = cx[xx];
+                    if (!cov[qx]) continue;
+                    if (in1 && exc[xx] >= P.ex.x && exc[xx] < P.ex.x + P.ex.w) continue;
+                    if (in2 && exc[xx] >= P.ex2.x && exc[xx] < P.ex2.x + P.ex2.w) continue;
+                    if (in3 && exc[xx] >= P.ex3.x && exc[xx] < P.ex3.x + P.ex3.w) continue;
+                    const uint32_t c = prow[qx];
+                    if (key && clear_key(c)) { row[xx] = 0xff000000u; continue; }
+                    row[xx] = c | 0xff000000u;
+                }
+                continue;
+            }
+            uint32_t *o = row + xa;
+            int k = 0;
+            if (cov) {
+                /* the covered span of this source row, found once on the cover plane itself (contiguous bytes), then mapped to destination columns:
+                   every pixel outside it is uncovered and would be skipped anyway */
+                if (span_qy != qy) {
+                    span_qy = qy;
+                    const int ql = cx[xa], qh = cx[xb - 1];
+                    int lo = ql, hi = qh;
+                    while (lo + 16 <= qh + 1 && _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)(cov + lo)), zero)) == 0xFFFF) lo += 16;
+                    while (lo <= qh && !cov[lo]) ++lo;
+                    while (hi - 15 >= lo && _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)(cov + hi - 15)), zero)) == 0xFFFF) hi -= 16;
+                    while (hi >= lo && !cov[hi]) --hi;
+                    if (lo > hi) { span_ks = 1; span_ke = 0; }
+                    else {
+                        int a2 = 0, b2 = n;                       /* first k with cx >= lo */
+                        while (a2 < b2) { const int m = (a2 + b2) >> 1; if (cx[xa + m] >= lo) b2 = m; else a2 = m + 1; }
+                        span_ks = a2;
+                        a2 = 0; b2 = n;                           /* first k with cx > hi */
+                        while (a2 < b2) { const int m = (a2 + b2) >> 1; if (cx[xa + m] > hi) b2 = m; else a2 = m + 1; }
+                        span_ke = a2;
+                    }
+                }
+                if (span_ks >= span_ke) continue;
+                const int kg0 = span_ks & ~3, kg1 = (span_ke + 3 < n) ? ((span_ke + 3) & ~3) : n;
+                const uint8_t *tc = tcv;
+                if (unit) tc = cov + q0;
+                else if (have_qy != qy) { for (int q = kg0; q < kg1; ++q) tcv[q] = cov[cx[xa + q]]; have_qy = qy; }
+                have_qy = qy;
+                k = kg0;
+                for (; k + 4 <= kg1; k += 4) {
+                    if (k + 16 <= kg1 && (k & 15) == 0) {          /* sixteen cover bytes at once: nothing covered, nothing to do */
+                        const __m128i cb16 = _mm_loadu_si128((const __m128i *)(tc + k));
+                        if (_mm_movemask_epi8(_mm_cmpeq_epi8(cb16, zero)) == 0xFFFF) { k += 12; continue; }
+                    }
+                    int cw;
+                    memcpy(&cw, tc + k, 4);
+                    if (cw == 0) continue;
+                    const __m128i c = unit ? _mm_loadu_si128((const __m128i *)(prow + q0 + k))
+                                           : _mm_set_epi32((int)prow[cx[xa + k + 3]], (int)prow[cx[xa + k + 2]], (int)prow[cx[xa + k + 1]], (int)prow[cx[xa + k]]);
+                    __m128i r = _mm_or_si128(c, amask);
+                    if (key) {
+                        const __m128i q = _mm_and_si128(c, m24);
+                        __m128i km = _mm_or_si128(_mm_cmpeq_epi32(q, k1), _mm_cmpeq_epi32(q, k2));
+                        if (aa) km = _mm_or_si128(km, _mm_cmpeq_epi32(_mm_subs_epu8(q, c20), zero));
+                        r = _mm_or_si128(_mm_andnot_si128(km, r), _mm_and_si128(km, amask));
+                    }
+                    const __m128i cb = _mm_cvtsi32_si128(cw);
+                    const __m128i um = _mm_cmpeq_epi32(_mm_unpacklo_epi16(_mm_unpacklo_epi8(cb, zero), zero), zero);   /* all ones where NOT covered */
+                    const __m128i old = _mm_loadu_si128((const __m128i *)(o + k));
+                    _mm_storeu_si128((__m128i *)(o + k), _mm_or_si128(_mm_andnot_si128(um, r), _mm_and_si128(um, old)));
+                }
+                for (; k < kg1; ++k) {
+                    if (!tc[k]) continue;
+                    const uint32_t c = prow[cx[xa + k]];
+                    if (key && clear_key(c)) o[k] = 0xff000000u;
+                    else o[k] = c | 0xff000000u;
+                }
+                continue;
+            }
+            const uint32_t *sp = tmp;
+            if (unit) sp = prow + q0;
+            else if (have_qy != qy) {
+                for (int q = 0; q < n; ++q) tmp[q] = prow[cx[xa + q]];
+            }
             have_qy = qy;
-            k = kg0;
-            for (; k + 4 <= kg1; k += 4) {
-                if (k + 16 <= kg1 && (k & 15) == 0) {          /* sixteen cover bytes at once: nothing covered, nothing to do */
-                    const __m128i cb16 = _mm_loadu_si128((const __m128i *)(tc + k));
-                    if (_mm_movemask_epi8(_mm_cmpeq_epi8(cb16, zero)) == 0xFFFF) { k += 12; continue; }
-                }
-                int cw;
-                memcpy(&cw, tc + k, 4);
-                if (cw == 0) continue;
-                const __m128i c = unit ? _mm_loadu_si128((const __m128i *)(prow + q0 + k))
-                                       : _mm_set_epi32((int)prow[cx[xa + k + 3]], (int)prow[cx[xa + k + 2]], (int)prow[cx[xa + k + 1]], (int)prow[cx[xa + k]]);
+            for (; k + 4 <= n; k += 4) {
+                const __m128i c = _mm_loadu_si128((const __m128i *)(sp + k));
                 __m128i r = _mm_or_si128(c, amask);
                 if (key) {
                     const __m128i q = _mm_and_si128(c, m24);
@@ -1668,42 +1704,19 @@ static void piece_draw_pic(const MenuLayout *L, int i, const MenuSources *S, uin
                     if (aa) km = _mm_or_si128(km, _mm_cmpeq_epi32(_mm_subs_epu8(q, c20), zero));
                     r = _mm_or_si128(_mm_andnot_si128(km, r), _mm_and_si128(km, amask));
                 }
-                const __m128i cb = _mm_cvtsi32_si128(cw);
-                const __m128i um = _mm_cmpeq_epi32(_mm_unpacklo_epi16(_mm_unpacklo_epi8(cb, zero), zero), zero);   /* all ones where NOT covered */
-                const __m128i old = _mm_loadu_si128((const __m128i *)(o + k));
-                _mm_storeu_si128((__m128i *)(o + k), _mm_or_si128(_mm_andnot_si128(um, r), _mm_and_si128(um, old)));
+                _mm_storeu_si128((__m128i *)(o + k), r);
             }
-            for (; k < kg1; ++k) {
-                if (!tc[k]) continue;
-                const uint32_t c = prow[cx[xa + k]];
+            for (; k < n; ++k) {
+                const uint32_t c = sp[k];
                 if (key && clear_key(c)) o[k] = 0xff000000u;
                 else o[k] = c | 0xff000000u;
             }
-            continue;
         }
-        const uint32_t *sp = tmp;
-        if (unit) sp = prow + q0;
-        else if (have_qy != qy) {
-            for (int q = 0; q < n; ++q) tmp[q] = prow[cx[xa + q]];
-        }
-        have_qy = qy;
-        for (; k + 4 <= n; k += 4) {
-            const __m128i c = _mm_loadu_si128((const __m128i *)(sp + k));
-            __m128i r = _mm_or_si128(c, amask);
-            if (key) {
-                const __m128i q = _mm_and_si128(c, m24);
-                __m128i km = _mm_or_si128(_mm_cmpeq_epi32(q, k1), _mm_cmpeq_epi32(q, k2));
-                if (aa) km = _mm_or_si128(km, _mm_cmpeq_epi32(_mm_subs_epu8(q, c20), zero));
-                r = _mm_or_si128(_mm_andnot_si128(km, r), _mm_and_si128(km, amask));
-            }
-            _mm_storeu_si128((__m128i *)(o + k), r);
-        }
-        for (; k < n; ++k) {
-            const uint32_t c = sp[k];
-            if (key && clear_key(c)) o[k] = 0xff000000u;
-            else o[k] = c | 0xff000000u;
-        }
-    }
+
+    };
+    static int pknob = -2;
+    if (pknob == -2) pknob = ntr::gx_menu_knob_value("SM64DS_MENU_PAR2");
+    ntr::gx_parallel_rows(dh, 192, pic_rows_tramp<decltype(rows_job)>, &rows_job, pknob);
 }
 
 void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t *dst, int w, int h)

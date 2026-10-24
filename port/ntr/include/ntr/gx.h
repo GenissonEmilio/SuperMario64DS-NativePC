@@ -529,6 +529,23 @@ void gx_clear_fill(Framebuffer &fb);
 // run before a clear writes into fb while an older picture is still pending
 // (the card took a later frame the sync way): walk_window finishes and
 // presents the older picture there.
+// The menu lane's A/B knobs (run after093, lane MENU2). A kill switch read as
+// "2" alternates on and off every 120 scene ticks inside ONE run (the scene
+// path calls gx_menu2_phase_set at each tick), so a before/after on a noisy
+// box compares neighbouring seconds. gx_menu_knob_on turns the knob's value
+// (0 off, 1 on, 2 alternate) into this tick's answer.
+int  gx_menu_knob_value(const char *env);          // 0, 1 or 2; read the environment once per call site
+int  gx_menu_knob_on(int value);
+void gx_menu2_phase_set(int phase);
+int  gx_menu2_phase_get(void);
+// Runs fn over [0, rows) in bands on the raster pool's threads (the calling
+// thread takes the first), or in one piece when the job is smaller than
+// min_rows, one thread is all there is, or the caller's knob (gx_menu_knob_value) is off. Every band is
+// whole rows, so a loop whose rows do not depend on each other gives the same
+// bytes as one thread.
+void gx_parallel_rows(int rows, int min_rows, void (*fn)(void *ctx, int y0, int y1), void *ctx, int knob_value);
+// 1 when gx_parallel_rows will use more than one thread (four or more raster threads, SM64DS_MENU_PAR not 0)
+int  gx_parallel_available(void);
 int  gx_late_possible(void);
 void gx_clear_fill_late(Framebuffer &fb);
 void gx_defer_request(int on);

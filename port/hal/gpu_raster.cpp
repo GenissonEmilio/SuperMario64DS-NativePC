@@ -179,6 +179,7 @@
 #include <string.h>
 
 #include <map>
+#include <atomic>
 #include <vector>
 
 #include "hal/gpu_raster.h"
@@ -1930,9 +1931,39 @@ inline int pop4(int m) { return (m & 1) + ((m >> 1) & 1) + ((m >> 2) & 1) + ((m 
    pass says "I moved this one". `only_fe` writes ONLY those pixels (the
    smoothed ones, laid over a frame whose unsmoothed colours were copied
    first) and leaves the coverage alone. */
+struct CopyBoxCtx {
+    const ntr::GxGpuFrame *f;
+    int bx0, bx1;
+    const D3D11_MAPPED_SUBRESOURCE *m;
+    bool only_fe;
+    std::atomic<long long> cnt;
+    int by0;
+};
+void copy_box_a_rows(const ntr::GxGpuFrame *f, int by0, int by1, int bx0, int bx1,
+                     const D3D11_MAPPED_SUBRESOURCE &m, unsigned long long *changed,
+                     bool only_fe);
+void copy_box_a_job(void *c, int y0, int y1)
+{
+    CopyBoxCtx *x = (CopyBoxCtx *)c;
+    unsigned long long n = 0;
+    copy_box_a_rows(x->f, x->by0 + y0, x->by0 + y1, x->bx0, x->bx1, *x->m, &n, x->only_fe);
+    x->cnt += (long long)n;
+}
 void copy_box_a(const ntr::GxGpuFrame *f, int bx0, int by0, int bx1, int by1,
                 const D3D11_MAPPED_SUBRESOURCE &m, unsigned long long *changed,
                 bool only_fe)
+{
+    /* MENU2: the copy is memory-bound; whole rows go to the raster pool's threads (SM64DS_MENU_PAR=0 keeps one) */
+    CopyBoxCtx x;
+    x.f = f; x.bx0 = bx0; x.bx1 = bx1; x.m = &m; x.only_fe = only_fe; x.cnt = 0; x.by0 = by0;
+    static int knob = -2;
+    if (knob == -2) knob = ntr::gx_menu_knob_value("SM64DS_MENU_PAR");
+    ntr::gx_parallel_rows(by1 - by0, 200, copy_box_a_job, &x, knob);
+    if (changed) *changed += (unsigned long long)x.cnt.load();
+}
+void copy_box_a_rows(const ntr::GxGpuFrame *f, int by0, int by1, int bx0, int bx1,
+                     const D3D11_MAPPED_SUBRESOURCE &m, unsigned long long *changed,
+                     bool only_fe)
 {
     const __m128i amask = _mm_set1_epi32((int)0xFF000000u);
     const __m128i zero = _mm_setzero_si128();
@@ -2479,9 +2510,9 @@ int g_lp_head, g_lp_n;
 
 bool late_gpu_on()
 {
-    static int v = -1;
-    if (v < 0) { const char *e = getenv("SM64DS_MENU_LATE"); v = (e && e[0] == '0' && !e[1]) ? 0 : 1; }
-    return v != 0;
+    static int v = -2;
+    if (v == -2) v = ntr::gx_menu_knob_value("SM64DS_MENU_LATE");
+    return ntr::gx_menu_knob_on(v) != 0;
 }
 
 bool ensure_fa_q(int w, int h)
