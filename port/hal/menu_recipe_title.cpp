@@ -1216,7 +1216,7 @@ void build_main_pc(MenuLayout *L, bool intro)
     }
     if (!intro) {                                              /* NAME1: the ? button (online planks, settled) and the modal screen */
         const OnlFacts *of = onl_facts_of(L);
-        const bool settled = c.sw_t >= CH_SWAP_END - 4 || c.skip || c.mode == CH_NONE;
+        const bool settled = c.sw_t >= swap_end(c) - 4 || c.skip || c.mode == CH_NONE;
         online_overlays(L, true, of && of->on && settled && !(t_f && t_f->toy_v > 0));
     }
     /* the iris: black outside the star while the ROM's iris is up (and all black before it shows), a veil on a returning page */
