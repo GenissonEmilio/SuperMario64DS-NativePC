@@ -856,6 +856,7 @@ extern "C" int Vec3_HorzDist(void *a, void *b);
 static int port_sign_prev_dist;
 
 extern "C" void func_0201f32c(int arg0);
+extern "C" int data_0209caa0[];   /* the save/global flag block (RABBIT1 knob below) */
 /* SM64DS_MSG_SHOW="<frame>:<id>" (TEST ONLY, inert unset; TEXT2D1): open the dialogue box on message bank id <id> at that frame, the call an NPC's talk makes
    (func_0201f32c), so a row can read any line of the bank without walking to the NPC. */
 static void port_msg_show(int frame)
