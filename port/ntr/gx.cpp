@@ -4248,10 +4248,18 @@ void par_band(void *c, int id, int n)
     if (y1 > y0) p->fn(p->ctx, y0, y1);
 }
 }  // namespace
+/* the bands need real cores: a machine with fewer than four hardware threads runs the rows itself (its raster pool of four is for
+   the CPU raster, which has nothing else to do while it waits) */
+static bool par_cores_ok()
+{
+    static int ok = -1;
+    if (ok < 0) { const unsigned hc = std::thread::hardware_concurrency(); ok = (hc == 0 || hc >= 4) ? 1 : 0; }
+    return ok != 0;
+}
 void gx_parallel_rows(int rows, int min_rows, void (*fn)(void *, int, int), void *ctx, int knob_value)
 {
     const int threads = raster_threads();
-    if (rows < min_rows || threads <= 1 || !gx_menu_knob_on(knob_value)) { fn(ctx, 0, rows); return; }
+    if (rows < min_rows || threads <= 1 || !par_cores_ok() || !gx_menu_knob_on(knob_value)) { fn(ctx, 0, rows); return; }
     /* the pool runs one job at a time: a second caller (or a band that calls back in) does its rows itself */
     static std::mutex par_m;
     if (!par_m.try_lock()) { fn(ctx, 0, rows); return; }
@@ -4263,7 +4271,7 @@ int gx_parallel_available(void)
 {
     static int knob = -2;
     if (knob == -2) knob = gx_menu_knob_value("SM64DS_MENU_PAR");
-    return raster_threads() >= 4 && gx_menu_knob_on(knob) ? 1 : 0;
+    return raster_threads() >= 4 && par_cores_ok() && gx_menu_knob_on(knob) ? 1 : 0;
 }
 
 /* THE DEPTH AND POLYGON-ID PLANES AFTER A FRAME THE CARD DREW WHOLE (run
