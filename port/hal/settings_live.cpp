@@ -96,6 +96,7 @@ static const SlInfo INFO[] = {
     { "CoinsMiddle",            SL_KIND_BOOL,    0, 1, 0, 0, 1 },
     { "KeepLives", SL_KIND_BOOL, 0, 1, 0, 0, 1 },
     { "OnlineEvents",           SL_KIND_BOOL,    0, 1, 1, 0, 1 },
+    { "FixOriginalBugs",        SL_KIND_BOOL,    0, 1, 1, 0, 1 },
 };
 
 /* INFO[] is positional: row i describes id i. If a host key or pad is added (HOST_KEY_COUNT / HOST_PAD_COUNT move, for example
@@ -150,6 +151,7 @@ int sl_get(int id)
     case SL_COINS_MIDDLE:       return host_setting_hud_layout();
     case SL_KEEP_LIVES: return host_setting_keep_lives();
     case SL_ONLINE_EVENTS:      return host_setting_online_events();
+    case SL_FIX_ORIGINAL_BUGS:  return host_setting_fix_original_bugs();
     case SL_GAP_COLOR: {
         const unsigned c = host_setting_gap_color() & 0xffffffu;
         for (int i = 0; i < 6; ++i) if (GAP_COLORS[i] == c) return i;
@@ -193,6 +195,7 @@ int sl_set(int id, int v)
     case SL_COINS_MIDDLE:       return host_setting_set_coins_middle(v);
     case SL_KEEP_LIVES: return host_setting_set_keep_lives(v);
     case SL_ONLINE_EVENTS:      return host_setting_set_online_events(v);
+    case SL_FIX_ORIGINAL_BUGS:  return host_setting_set_fix_original_bugs(v);
     case SL_GAP_COLOR:
         if (v < 0 || v > 5) return 0;
         return host_setting_set_gap_color(GAP_COLORS[v]);

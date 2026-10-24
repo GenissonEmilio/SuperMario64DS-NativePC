@@ -3273,8 +3273,79 @@ extern "C" int port_tween_win(double alpha, int outer[4], int inner[4])
     return 1;
 }
 
+/* RABBIT1: the glowing rabbits' rank by catch order (setting FixOriginalBugs, English only).
+   The ROM gives every glowing rabbit but the last the same line, messages 0x142 (Mario) / 0x146 (Yoshi): "I'm the second fastest of my
+   eight brothers" (src/game/actors/d_a_mip.cpp, StateReleased: SaveData::NumGlowingRabbitsFound() == 7 picks 0x143 / 0x147 "fastest", anything
+   else 0x142 / 0x146). With the setting on, the word "second" in those two messages becomes the ordinal for 8 - (rabbits found before this
+   catch): 0 eighth, 1 seventh, 2 sixth, 3 fifth, 4 fourth, 5 third, 6 second (the ROM's own text). Found 7 keeps 0x143 / 0x147 untouched.
+   HOW: the bank in memory is never edited. The two messages' entries (data_0209d708 + id * 8, {s32 textOffset, u16 width, u8 lines}) get a
+   textOffset that points at a host copy of the text with the six glyph bytes of "second" swapped; setting off (or a rank of "second") puts the
+   ROM's textOffset back, so the bank is then byte for byte the cartridge's. Done once a frame here (the count cannot change between the talk
+   being chosen and the box reading the entry: the rabbit is counted found only after its line). The widths: every ordinal line measures
+   <= 113 px on the DS font (data_0208f074) against the 117 px box, so no line is re-broken (tools in out/RABBIT1/scripts). */
+extern "C" int host_setting_fix_original_bugs(void);
+extern "C" int GetOwnerLanguage(void);
+extern "C" int _ZN8SaveData22NumGlowingRabbitsFoundEv(void);
+extern "C" int data_0209d6fc[];   /* gMessageBankBase */
+extern "C" int data_0209d708[];   /* gMessageEntries */
+extern "C" int data_0209d70c[];   /* gMessageInfoSection */
+static void rabbit_rank_refresh(void)
+{
+    static const int kIds[2] = { 0x142, 0x146 };
+    static const char *const kOrd[7] = { "eighth", "seventh", "sixth", "fifth", "fourth", "third", "second" };
+    static unsigned char s_text[2][7][320];   /* [message][rank][bytes] */
+    static int s_orig[2];                     /* the ROM's textOffset values */
+    static int s_base, s_ready;               /* bank base the copies were made for */
+    static int s_cur = -1;                    /* -1 = ROM offsets in place, 0..6 = the rank in place */
+    const int base_i = data_0209d6fc[0];
+    if (!base_i || !data_0209d708[0] || !data_0209d70c[0]) return;
+    const int lang = GetOwnerLanguage();
+    const bool english = !(lang >= 2 && lang <= 5);
+    int want = -1;
+    if (english && host_setting_fix_original_bugs()) {
+        const int found = _ZN8SaveData22NumGlowingRabbitsFoundEv();
+        if (found >= 0 && found <= 6) want = found;   /* found 7 keeps 0x143 / 0x147, the ROM's "fastest" */
+    }
+    if (!s_ready && want < 0) return;   /* nothing ever changed: nothing to restore */
+    unsigned char *entries = reinterpret_cast<unsigned char *>((size_t)data_0209d708[0]);
+    if (s_ready && s_base != base_i) { s_ready = 0; s_cur = -1; }
+    if (!s_ready) {
+        unsigned char *info = reinterpret_cast<unsigned char *>((size_t)data_0209d70c[0]);
+        const unsigned char *tbase = reinterpret_cast<unsigned char *>((size_t)base_i) + 0x28 + *reinterpret_cast<int *>(info + 4);
+        static const unsigned char kSecond[6] = { 0x40, 0x31, 0x2f, 0x3b, 0x3a, 0x30 };   /* s e c o n d in the font's glyph order */
+        for (int m = 0; m < 2; ++m) {
+            int off = *reinterpret_cast<int *>(entries + kIds[m] * 8);
+            const unsigned char *t = tbase + off;
+            int n = 0; while (n < 300 && t[n] != 0xff) ++n;
+            int at = -1;
+            for (int i = 0; i + 6 <= n; ++i) if (!memcmp(t + i, kSecond, 6)) { at = i; break; }
+            if (at < 0 || n >= 300) { s_ready = 0; return; }   /* not the ROM text: leave the messages alone */
+            for (int r = 0; r < 7; ++r) {
+                const char *w = kOrd[r]; const int wl = (int)strlen(w);
+                unsigned char *d = s_text[m][r]; int o = 0;
+                memcpy(d, t, at); o = at;
+                for (int k = 0; k < wl; ++k) d[o++] = (unsigned char)(0x2d + (w[k] - 'a'));   /* a..z = 0x2d.. */
+                memcpy(d + o, t + at + 6, n - at - 6 + 1); /* with the 0xff */
+            }
+            s_orig[m] = off;
+        }
+        s_base = base_i; s_ready = 1; s_cur = -1;
+    }
+    if (want == s_cur) return;
+    const unsigned char *tbase = reinterpret_cast<unsigned char *>((size_t)base_i) + 0x28
+        + *reinterpret_cast<int *>((size_t)data_0209d70c[0] + 4);
+    for (int m = 0; m < 2; ++m) {
+        int off = (want < 0 || want == 6) ? s_orig[m] : (int)(s_text[m][want] - tbase);
+        *reinterpret_cast<int *>(entries + kIds[m] * 8) = off;
+    }
+    fprintf(stderr, "[rabbit] rank line: %s (found %d)
+", want < 0 ? "ROM text" : kOrd[want], want);
+    s_cur = want;
+}
+
 extern "C" void port_message_composite_engine_a(void *fbp)
 {
+    rabbit_rank_refresh();   /* RABBIT1 */
     ntr::Framebuffer &fb = *reinterpret_cast<ntr::Framebuffer *>(fbp);
     /* POLISH093 P3 (the text box opening between two ticks, see port_tween_win below): this tick's window record starts empty and the
        last tick's becomes the previous one. Set where the box's window is read, further down. */
