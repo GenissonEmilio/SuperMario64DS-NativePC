@@ -500,7 +500,7 @@ void event_view(EventView *out) {
         char line[80];
         std::snprintf(line, sizeof line, "%s WINS THE RACE", g_win_name);
         add(line, 0);
-        if (g_win_rank[0]) add(g_win_rank, 1);
+        if (g_win_rank[0]) add(g_win_rank, 0);
     }
     // the newest message first, then one line per modifier
     const Rec *msg = nullptr;

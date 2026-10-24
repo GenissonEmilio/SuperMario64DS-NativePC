@@ -140,9 +140,9 @@ unsigned char star_view(unsigned char real)
         void *bt[4] = {};
         RtlCaptureStackBackTrace(1, 3, bt, 0);
         bool dup = false;
-        for (int i = 0; i < nseen; ++i) dup = dup || seen[i] == bt[0];
+        for (int i = 0; i < nseen; ++i) dup = dup || seen[i] == bt[1];
         if (!dup && nseen < 32) {
-            seen[nseen++] = bt[0];
+            seen[nseen++] = bt[1];
             fprintf(stderr, "[event] castle: star view asked from %p %p %p (real %u)\n", bt[0], bt[1], bt[2], real);
         }
     }
