@@ -15,6 +15,7 @@
             ROM's cursor (data_ov007_02103360) names 7 while it is selected.
    Nothing here draws or reads a device. */
 #include "settings_page.h"
+#include "menu_online.h"
 #include "menu_compose.h"
 
 #include <stdint.h>
@@ -77,6 +78,21 @@ int title_main_page()
     return port_title_page_state(&top, &elem, &req) && top == 0 && elem == 0 && req == -1;
 }
 
+/* NAME1: the file select page itself (top 0, element machine 5), and the ROM cursor's element (0xff = not shown) */
+int title_file_page()
+{
+    if (port_scene_live_id() != 1) return 0;
+    int top, elem, req;
+    return port_title_page_state(&top, &elem, &req) && top == 0 && elem == 5;
+}
+
+int title_cursor_elem()
+{
+    if (!data_ov007_02103360) return -1;
+    const short *p0 = *(const short **)data_ov007_02103360;
+    return p0 ? (int)p0[0] : -1;
+}
+
 int vs_box(int *x0, int *y0, int *x1, int *y1)
 {
     int slot[24], ids[24], bx0[24], by0[24], bx1[24], by1[24];
@@ -108,14 +124,37 @@ int title_cursor_on_wrench()
 extern "C" int settings_page_hook_pad(uint16_t *pressed)
 {
     {
+        /* NAME1: the D-pad's way to the ? button. The ROM's cursor has nowhere to go from the wrench to the left, nor up from the file row, so the
+           step is the online menu's; it is kept out of the held word for as long as the key is down (the ROM builds its key record from it). */
+        static unsigned short strip_dirs;
+        unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+        strip_dirs = (unsigned short)(strip_dirs & *held);
+        const unsigned dirs = *pressed & 0x00f0u;
+        const int kind = title_main_page() ? 1 : title_file_page() ? 2 : 0;
+        if (kind && dirs && menu_online_dir(kind, title_cursor_elem(), dirs)) strip_dirs = (unsigned short)(strip_dirs | dirs);
+        if (strip_dirs) {
+            *pressed = (uint16_t)(*pressed & ~strip_dirs);
+            *held = (unsigned short)(*held & ~strip_dirs);
+            port_host_keys_clear(strip_dirs);
+        }
+    }
+    {
         /* MENUS093: a confirm on the title's MP button does nothing. MENUS093B: it is the HELD word the ROM's key record is built from
            (current & ~previous), so a press that lasts more than one frame must be taken out of the held word on every frame it is down, not
            only on the frame of its edge: the guard used to read the pressed word alone, the held word came back on the second frame and the
            ROM saw a fresh edge (a keyboard or pad press is never one frame long). */
-        const uint16_t bits = 0x0001 | 0x0002 | 0x0008;
+        /* NAME1: on the file select 0x0001 (pad B, the port's punch) is the back arrow, not a confirm (hal/menu_recipe_title.cpp title_pad_keys) */
+        const uint16_t bits = title_file_page() ? (uint16_t)(0x0002 | 0x0008) : (uint16_t)(0x0001 | 0x0002 | 0x0008);
         unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
         if ((*pressed | *held) & bits) {
-            if (title_main_page() && title_cursor_on_vs()) {
+            /* NAME1 (run after093): the MP plank is ONLINE now; its press, the planks it turns, the modal screens and the online file select's
+               picks are the online menu's (hal/menu_online.cpp), which says whether the ROM may see this press. A press it keeps is taken out
+               of the pressed and the held word on every frame it is down, as the MP swallow always was. */
+            const int edge = (*pressed & bits) != 0;
+            int swallow = 0;
+            if (title_main_page()) swallow = menu_online_press_main(title_cursor_elem(), edge);
+            else if (title_file_page()) swallow = menu_online_press_file(title_cursor_elem(), edge);
+            if (swallow) {
                 *pressed = (uint16_t)(*pressed & ~bits);
                 *held = (unsigned short)(*held & ~bits);
                 port_host_keys_clear(bits);
@@ -153,6 +192,10 @@ extern "C" int settings_page_hook_touch(unsigned char down, unsigned char sx, un
         if (cd_hold) { if (!down) cd_hold = 0; return 1; }
     }
     if (settings_page_swallow_touch(down)) return 1;
+    {   /* NAME1: the online menu reads every stylus state on the main page and the file select (its screens take everything while up) */
+        const int kind = title_main_page() ? 1 : title_file_page() ? 2 : 0;
+        if (kind && menu_online_touch(kind, down, sx, sy)) return 1;
+    }
     if (!down) return 0;
     if (title_main_page()) {                           /* MENUS093: a stylus / click on the title's MP button does nothing */
         int vx0, vy0, vx1, vy1;
