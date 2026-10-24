@@ -386,6 +386,9 @@ int host_setting_mouse_capture(void);
 /* StartFullscreen: 1 when the window opens in F12's borderless fullscreen.
    Default 0. Boot only. */
 int host_setting_start_fullscreen(void);
+/* RichPresence: 1 (the default) lets the game show the course, mode and stars on a running Discord. Boot only.
+   SM64DS_RICH_PRESENCE=0 turns it off for one run. */
+int host_setting_rich_presence(void);
 /* DrawDistance: percent (100..10000) of each actor's ROM draw distance. 100 is
    the ROM's own and the default. Drawing only. */
 int host_setting_draw_distance_pct(void);

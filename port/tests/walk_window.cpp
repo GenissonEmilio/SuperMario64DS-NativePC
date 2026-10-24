@@ -12995,10 +12995,13 @@ static void host_layout_follow_scene(HWND hwnd, int two_screen, const char *what
 extern "C" int port_scene_layout_two_screen(int scene);   /* hal/scene_boot.cpp */
 extern "C" int port_scene_layout_native(int scene);       /* hal/scene_boot.cpp */
 
+extern "C" void port_rich_presence_scene(int scene);       /* hal/rich_presence.cpp */
+
 static void port_crossing_scene_layout(int scene)
 {
     if (!g_present_hwnd)
         return;                 /* no window: the headless frame has no shape */
+    port_rich_presence_scene(scene);   /* RPC1: Discord Rich Presence follows the scene (starts itself on the first call) */
     char what[32];
     if (scene < 0)
         snprintf(what, sizeof what, "the level");

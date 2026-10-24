@@ -25925,3 +25925,13 @@ endforeach()
 if(PORT_ROM_CLEAN)
     set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/hal/event_client.cpp" APPEND PROPERTY COMPILE_DEFINITIONS PORT_ROM_CLEAN)
 endif()
+
+# RPC1: Discord Rich Presence. hal/rich_presence.cpp is called from the scene
+# crossing hook in tests/walk_window.cpp; discord_presence (SahilKDas, PR 3569)
+# is the pipe client above. Both window targets carry it; no DLL, no library.
+foreach(rpc1_t walk_window walk_window_hires)
+    if(TARGET ${rpc1_t})
+        target_sources(${rpc1_t} PRIVATE hal/rich_presence.cpp)
+        target_link_libraries(${rpc1_t} PRIVATE discord_presence)
+    endif()
+endforeach()

@@ -828,6 +828,10 @@ int g_mouse_capture;
    F12 toggles. Default 0 (today). Read at boot only. */
 int g_start_fullscreen;
 
+/* RichPresence: 1 lets the game tell a running Discord the course, mode and star
+   count (hal/rich_presence.cpp). Default 1. Read at boot only. */
+int g_rich_presence = 1;
+
 /* DrawDistance: percent of the ROM's own per-actor draw distance an actor may
    be drawn out to (100 = the ROM exactly, the default; 10000 = Max). Drawing
    only: dActor_c::BeforeBehavior keeps the ROM's update decision untouched. */
@@ -1549,6 +1553,7 @@ void load_once(void)
     g_debug_menu = 0;
     g_chars_from_start = 0;
     g_online_events = 1;
+    g_rich_presence = 1;
     g_character_strip = 1;
     g_keep_lives = 0;
     g_aspect = 0.0;
@@ -1897,6 +1902,7 @@ void load_once(void)
            reads exactly as one that turned it off, which is the old program */
         g_mouse_capture = json_bool(text, "MouseCapture", 0);
         g_start_fullscreen = json_bool(text, "StartFullscreen", 0);
+        g_rich_presence = json_bool(text, "RichPresence", 1);
         g_draw_dist = draw_dist_clamp(json_int(text, "DrawDistance", 100));
         /* the learned controller maps; absent is none, like every key */
         padlayouts_parse(text);
@@ -2696,6 +2702,16 @@ extern "C" int host_setting_start_fullscreen(void)
 {
     load_once();
     return g_start_fullscreen;
+}
+
+/* RichPresence, plus SM64DS_RICH_PRESENCE=0 (off for this run whatever the file says). */
+extern "C" int host_setting_rich_presence(void)
+{
+    load_once();
+    const char *e = getenv("SM64DS_RICH_PRESENCE");
+    if (e && *e == '0')
+        return 0;
+    return g_rich_presence;
 }
 
 /* NameTags, plus the debug env override every host overlay in this port has.
