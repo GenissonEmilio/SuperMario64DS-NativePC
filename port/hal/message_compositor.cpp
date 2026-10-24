@@ -3312,14 +3312,14 @@ static void rabbit_rank_refresh(void)
     if (!s_ready) {
         unsigned char *info = reinterpret_cast<unsigned char *>((size_t)data_0209d70c[0]);
         const unsigned char *tbase = reinterpret_cast<unsigned char *>((size_t)base_i) + 0x28 + *reinterpret_cast<int *>(info + 4);
-        static const unsigned char kSecond[6] = { 0x40, 0x31, 0x2f, 0x3b, 0x3a, 0x30 };   /* s e c o n d in the font's glyph order */
+        static const unsigned char kSecond[6] = { 0x3f, 0x31, 0x2f, 0x3b, 0x3a, 0x30 };   /* s e c o n d in the font's glyph order */
         for (int m = 0; m < 2; ++m) {
             int off = *reinterpret_cast<int *>(entries + kIds[m] * 8);
             const unsigned char *t = tbase + off;
             int n = 0; while (n < 300 && t[n] != 0xff) ++n;
             int at = -1;
             for (int i = 0; i + 6 <= n; ++i) if (!memcmp(t + i, kSecond, 6)) { at = i; break; }
-            if (at < 0 || n >= 300) { s_ready = 0; return; }   /* not the ROM text: leave the messages alone */
+            if (at < 0 || n >= 300) { static int warned; if (!warned++) fprintf(stderr, "[rabbit] message %x is not the ROM text; left alone\n", kIds[m]); s_ready = 0; return; }
             for (int r = 0; r < 7; ++r) {
                 const char *w = kOrd[r]; const int wl = (int)strlen(w);
                 unsigned char *d = s_text[m][r]; int o = 0;
