@@ -9279,6 +9279,7 @@ static void present_body(void)
  * the tick's present and the pacer's extra presents call present() exactly
  * as before. */
 static ntr::Framebuffer *g_ip_fb, *g_ip_p3, *g_ip_p2, *g_ip_p4, *g_ip_p5;
+static int g_ip_p4_valid = 1;   /* MENU2 M1: this scene tick took the p4 snapshot (see scene_ip_hook_body stage 2) */
 static const ntr::Framebuffer *g_ip_level_fb;
 /* run hunt8, lane SCENEINTERP1: SMOOTH MOTION ON THE SCENE PATH. The scene
    loop (scene_window_run, the title, the menus, the file select, the star
@@ -10722,7 +10723,18 @@ static void scene_ip_hook_body(int stage, void *fbp, int frame, int tick_game)
     }
     /* p4 (the picture after the fade) is read only by a masked fade, which
        snaps above, and by the host-UI diff of the inset layout */
-    if (!hal_sub_screen_stacked()) ip_snap(g_ip_p4, fb);
+    /* MENU2 M1: the snapshot of the picture after the fade is read only for the host UI's diff (ip_scene_present: F3, the pause menu, a
+       toast, the pad pointer); a tick with none of them skips the 4 MB copy. SM64DS_P4_SKIP=0 puts the copy back on every tick. */
+    {
+        static int p4_skip = -1;
+        if (p4_skip < 0) { const char *e = getenv("SM64DS_P4_SKIP"); p4_skip = (e && e[0] == '0' && !e[1]) ? 0 : 1; }
+        g_ip_p4_valid = 0;
+        if (!hal_sub_screen_stacked() &&
+            (!p4_skip || g_overlay_on || menu_on || ss_toast_left > 0 || hal_padptr_on())) {
+            ip_snap(g_ip_p4, fb);
+            g_ip_p4_valid = 1;
+        }
+    }
     g_ip_snapstage = 2;
     if ((g_si_ticks % 240) == 0 && (ip_trace() || getenv("SM64DS_SCENE_INTERP_TRACE")))
         scene_ip_report();
@@ -10920,6 +10932,11 @@ static void ip_scene_present(int stacked, uint32_t *stack_img,
             }
         } else {
             g_ip_skip_p5 = host_ui ? 0 : 1;
+            if (host_ui && !g_ip_p4_valid) {
+                /* MENU2 M1: host UI appeared after stage 2 decided to skip the p4 snapshot: this tick snaps (never seen in practice) */
+                g_ip_tick_ok = 0;
+                scene_ip_note(SI_UI);
+            } else
             if (host_ui) ip_snap(g_ip_p5, fb);
         }
         ip_scene_force(stacked, tick_hash);
