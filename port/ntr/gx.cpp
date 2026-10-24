@@ -4557,8 +4557,24 @@ int bgbmp_clear_wanted()
 
 static void clear_fill_classic(Framebuffer &fb);
 
+/* run after093, lane MENU2: LATE CLEARS. gx_clear_fill_late leaves fb and the coverage plane uncleared; the clears run
+   (late_run) from the card backend after its draw is on the card, from its deferred finish, or from gx_render when the card
+   declined the frame. One LateCtx per frame in flight (two pending readbacks and the one being drawn). */
+struct LateCtx { Framebuffer *fb; int cw, ch; bool ran; };
+static LateCtx g_late_ctx[4];
+static unsigned g_late_i;
+static struct { bool pending; Framebuffer *fb; } g_late;
+static bool g_late_req;
+static int g_defer_req;
+static void (*g_flush_hook)(void);
+
 static void clear_fill_impl(Framebuffer &fb, bool wipe);
 void gx_clear_fill(Framebuffer &fb) { clear_fill_impl(fb, true); }
+void gx_clear_fill_late(Framebuffer &fb) { g_late_req = true; clear_fill_impl(fb, true); g_late_req = false; }
+void gx_defer_request(int on) { g_defer_req = on ? 1 : 0; }
+static int g_render_deferred;
+int gx_render_deferred(void) { return g_render_deferred; }
+void gx_set_flush_hook(void (*fn)(void)) { g_flush_hook = fn; }
 
 /* run hunt8, lane GPUINTERP1: the clear for a picture between two ticks that
    the card is to keep. The same answer as gx_clear_fill after
@@ -4574,6 +4590,7 @@ int gx_card_interp_clear(Framebuffer &fb)
 
 static void clear_fill_impl(Framebuffer &fb, bool wipe)
 {
+    g_late.pending = false;      /* MENU2: a late clear nobody ran is dropped with the frame it was for */
     /* a new frame: nothing from the last one is held any more */
     g_cp_active = 0;
     g_cp_pending = 0;
@@ -4606,6 +4623,11 @@ static void clear_fill_impl(Framebuffer &fb, bool wipe)
             g_cp_pending = 1;
             return;
         }
+    }
+    if (g_late_req && !g_bmpc.valid) {       /* MENU2: the pixel clears wait for the card (see LateCtx) */
+        g_late.pending = true;
+        g_late.fb = &fb;
+        return;
     }
     clear_fill_classic(fb);
 }
@@ -6701,6 +6723,43 @@ void ghost_pass_cpu(Framebuffer &fb, const std::vector<GxTriangle> &gt,
 
 }  // namespace
 
+/* run after093, lane MENU2: the late clears and the deferred readback's seam (see gx_clear_fill_late in gx.h) */
+static void late_run(LateCtx *c)
+{
+    if (!c || c->ran) return;
+    c->ran = true;
+    /* a picture older than this frame may still be waiting to be finished and shown: it owns fb until then */
+    if (g_flush_hook) g_flush_hook();
+    clear_fill_classic(*c->fb);
+    for (int y = 0; y < c->ch; ++y) std::memset(g_cover[y], 0, (size_t)c->cw);
+}
+static void late_run_cb(void *p) { late_run((LateCtx *)p); }
+
+int gx_late_possible(void)
+{
+    static int env = -1;
+    if (env < 0) { const char *e = std::getenv("SM64DS_MENU_LATE"); env = (e && e[0] == '0' && !e[1]) ? 0 : 1; }
+    static const bool tex_only = std::getenv("SM64DS_TEX_ONLY") != nullptr;
+    return env && !tex_only && gpu_full_probe() ? 1 : 0;
+}
+int gx_readback_pending(void)
+{
+    if (!g_gpu_opaque) return 0;
+    GxGpuFrame f;
+    std::memset(&f, 0, sizeof f);
+    f.finish = 2;
+    return g_gpu_opaque(&f);
+}
+void gx_finish_readback(void)
+{
+    if (!g_gpu_opaque) return;
+    GxGpuFrame f;
+    std::memset(&f, 0, sizeof f);
+    f.finish = 1;
+    g_gpu_opaque(&f);
+}
+void gx_aa_note_changed(unsigned long long n) { g_aa_changed += n; }
+
 void gx_render(Framebuffer &fb) {
     /* kept grids stay kept only for a frame the card draws whole */
     if (!g.grids.empty() &&
@@ -6838,7 +6897,14 @@ void gx_render(Framebuffer &fb) {
        It is written from the raster tiles, and that is safe for the reason
        the framebuffer itself is: a tile owns its rows and no other tile
        touches them. */
-    for (int y = 0; y < ch; ++y) std::memset(g_cover[y], 0, (size_t)cw);
+    LateCtx *lc = nullptr;     /* MENU2: this frame's clears are late (gx_clear_fill_late) */
+    if (g_late.pending && g_late.fb == &fb) {
+        lc = &g_late_ctx[g_late_i++ & 3];
+        lc->fb = &fb; lc->cw = cw; lc->ch = ch; lc->ran = false;
+        g_late.pending = false;
+    }
+    if (!lc)
+        for (int y = 0; y < ch; ++y) std::memset(g_cover[y], 0, (size_t)cw);
 
     /* --- shadow-polygon (POLYGON_ATTR mode 3) machinery -------------------
        GBATEK's two-step protocol, and the reason a per-pixel stencil bit and
@@ -7028,8 +7094,14 @@ void gx_render(Framebuffer &fb) {
         f.want_depth = 0;
         f.tex_filter = g_tex_filter;
         f.tex_generation = g_tex_generation;
-        f.clear_argb = g_cp_pending ? gx_clear_argb()
+        f.clear_argb = (g_cp_pending || lc) ? gx_clear_argb()
                        : (cw > 0 && ch > 0) ? fb.px[f.py0][f.px0] : 0xFF000000u;
+        if (lc) {
+            f.late = 1;
+            f.defer = g_defer_req;
+            f.pre_read = late_run_cb;
+            f.pre_arg = lc;
+        }
         f.toon_shade = g_toon_shade;
         f.toon_rgb = g_toon8;
         f.fog_on = g_fog.on;
@@ -7064,6 +7136,9 @@ void gx_render(Framebuffer &fb) {
             }
         }
     }
+    /* MENU2: the card did not take the late clears (it declined the frame): they run now, after any older picture is out of fb */
+    g_render_deferred = gpu_out.deferred ? 1 : 0;
+    if (lc && !lc->ran && !gpu_out.deferred) late_run(lc);
     /* a frame the card did not draw whole needs its triangles */
     if (!gpu_full) grids_materialize_w(4);
     /* A frame the card did not keep goes on as an ordinary one: the CPU passes

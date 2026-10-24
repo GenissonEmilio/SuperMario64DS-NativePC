@@ -840,8 +840,10 @@ ID3D11SamplerState *psampler(int au, int av)
 
 /* ---- the three targets --------------------------------------------------- */
 
+void late_drop();
 void release_targets()
 {
+    late_drop();                       /* MENU2: pending late readbacks cannot outlive their targets */
     g_cp_held = false;                 /* the targets the frame lived in are gone */
     if (g_ov_srv) { g_ov_srv->Release(); g_ov_srv = 0; }
     if (g_zov_srv) { g_zov_srv->Release(); g_zov_srv = 0; }
@@ -2456,6 +2458,131 @@ bool grid_draw(UINT first, UINT count, int lvl)
     return true;
 }
 
+/* ---- LATE AND DEFERRED READBACK OF THE SMOOTHED PICTURE (run after093, lane MENU2) -------------------
+   A frame the caller marked late (GxGpuFrame::late) has its fb / coverage clears still to do. The usual smoothed whole frame
+   (no pre-smoothing copy wanted, no A/B) copies the box into a staging texture of its own (g_fa_q, two of them), flushes, and
+   then FINISHES: pre_read (the caller's clears, now hidden under the card's work), the wait, the copy into fb and the
+   coverage plane. With GxGpuFrame::defer the finish is left for gx_finish_readback and the caller does other work first; at
+   most two are pending, finished in the order they were drawn. Anything else the frame needs takes the old path, with
+   pre_read called before the first CPU buffer is written. SM64DS_MENU_LATE=0 turns all of it off. */
+ID3D11Texture2D *g_fa_q[2];
+int g_fa_q_w, g_fa_q_h;
+struct LatePend {
+    ntr::GxGpuFrame f;
+    int bx0, by0, bx1, by1;
+    int q;
+    long long t0, t1, t2;
+    size_t nverts, nbatches;
+};
+LatePend g_lp[2];
+int g_lp_head, g_lp_n;
+
+bool late_gpu_on()
+{
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_MENU_LATE"); v = (e && e[0] == '0' && !e[1]) ? 0 : 1; }
+    return v != 0;
+}
+
+bool ensure_fa_q(int w, int h)
+{
+    if (g_fa_q[0] && g_fa_q[1] && g_fa_q_w == w && g_fa_q_h == h) return true;
+    for (int i = 0; i < 2; ++i) if (g_fa_q[i]) { g_fa_q[i]->Release(); g_fa_q[i] = 0; }
+    D3D11_TEXTURE2D_DESC d;
+    memset(&d, 0, sizeof d);
+    d.Width = (UINT)w;
+    d.Height = (UINT)h;
+    d.MipLevels = d.ArraySize = 1;
+    d.SampleDesc.Count = 1;
+    d.Usage = D3D11_USAGE_STAGING;
+    d.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    d.Format = DXGI_FORMAT_R32_UINT;
+    for (int i = 0; i < 2; ++i) {
+        if (FAILED(g_dev->CreateTexture2D(&d, 0, &g_fa_q[i]))) {
+            for (int j = 0; j < 2; ++j) if (g_fa_q[j]) { g_fa_q[j]->Release(); g_fa_q[j] = 0; }
+            return false;
+        }
+    }
+    g_fa_q_w = w;
+    g_fa_q_h = h;
+    return true;
+}
+
+/* the oldest pending readback: the caller's clears, the wait, the copy. The entry is taken off the queue first, so a flush
+   hook that runs inside pre_read and finishes "the oldest" finishes the next one, not this. */
+void late_finish_one()
+{
+    if (g_lp_n <= 0) return;
+    LatePend P = g_lp[g_lp_head];
+    g_lp_head = (g_lp_head + 1) & 1;
+    --g_lp_n;
+    const ntr::GxGpuFrame *f = &P.f;
+    const long long tf0 = qpc();
+    if (f->pre_read) f->pre_read(f->pre_arg);
+    D3D11_MAPPED_SUBRESOURCE mfa;
+    memset(&mfa, 0, sizeof mfa);
+    const long long tw0 = qpc();
+    HRESULT hr = g_ctx ? g_ctx->Map(g_fa_q[P.q], 0, D3D11_MAP_READ, 0, &mfa) : E_FAIL;
+    const double wait_ms = ms_between(tw0, qpc());
+    if (FAILED(hr)) {
+        fall_back("the picture could not be read back", hr);
+        return;
+    }
+    unsigned long long changed = 0;
+    copy_box_a(f, P.bx0, P.by0, P.bx1, P.by1, mfa, &changed, false);
+    g_ctx->Unmap(g_fa_q[P.q], 0);
+    const long long t3 = qpc();
+    ++g_frames;
+    g_tris += (long long)(P.nverts / 3);
+    g_verts += (long long)P.nverts;
+    g_ms_build += ms_between(P.t0, P.t1);
+    g_ms_draw += ms_between(P.t1, P.t2);
+    g_ms_read += ms_between(tf0, t3);
+    port::hitch_add(port::HK_GPUBUILD, ms_between(P.t0, P.t1));
+    port::hitch_add(port::HK_GPUDRAW, ms_between(P.t1, P.t2));
+    port::hitch_add(port::HK_GPUWAIT, wait_ms);
+    port::hitch_add(port::HK_GPUCOPY, ms_between(tf0, t3) - wait_ms);
+    ++g_aa_frames;
+    g_aa_ms += ms_between(P.t1, P.t2) + ms_between(tf0, t3);
+    if (g_perf) {
+        g_perf_build += ms_between(P.t0, P.t1);
+        g_perf_draw += ms_between(P.t1, P.t2);
+        g_perf_read += ms_between(tf0, t3);
+        g_perf_wait += wait_ms;
+        g_perf_copy += ms_between(tf0, t3) - wait_ms;
+        g_perf_tris += (long long)(P.nverts / 3);
+        g_perf_batches += (long long)P.nbatches;
+        if (++g_perf_n >= 30) {
+            fprintf(stderr, "[renderer] build %6.3fms submit %6.3fms readback "
+                    "%6.3fms (wait %6.3fms copy %6.3fms) tris %6lld batches "
+                    "%4lld (whole frame, late)\n",
+                    g_perf_build / g_perf_n, g_perf_draw / g_perf_n,
+                    g_perf_read / g_perf_n, g_perf_wait / g_perf_n,
+                    g_perf_copy / g_perf_n, g_perf_tris / g_perf_n,
+                    g_perf_batches / g_perf_n);
+            g_perf_build = g_perf_draw = g_perf_read = 0.0;
+            g_perf_wait = g_perf_copy = 0.0;
+            g_perf_tris = g_perf_batches = 0;
+            g_perf_n = 0;
+        }
+    }
+    if (f->out) f->out->aa_changed = changed;
+    else ntr::gx_aa_note_changed(changed);
+}
+
+/* the targets are going away (a size change, a lost device): the pending frames cannot be finished; their callers' clears run
+   so the buffers hold the clear colour for the one picture that shows it */
+void late_drop()
+{
+    while (g_lp_n > 0) {
+        LatePend P = g_lp[g_lp_head];
+        g_lp_head = (g_lp_head + 1) & 1;
+        --g_lp_n;
+        if (P.f.pre_read) P.f.pre_read(P.f.pre_arg);
+    }
+    for (int i = 0; i < 2; ++i) if (g_fa_q[i]) { g_fa_q[i]->Release(); g_fa_q[i] = 0; }
+}
+
 int draw_full(const ntr::GxGpuFrame *f)
 {
     if (!make_full_pipeline()) return -1;
@@ -3197,8 +3324,21 @@ int draw_full(const ntr::GxGpuFrame *f)
     if (read_col)
         g_ctx->CopySubresourceRegion(g_col_stage, 0, (UINT)bx0, (UINT)by0, 0,
                                      g_col, 0, &box);
+    /* MENU2: a late smoothed frame goes to one of the two late staging textures, and is finished below */
+    ID3D11Texture2D *fa_dst = g_fa_st;
+    int lp_slot = 0;
+    bool late_q = false;
+    if (f->late && late_gpu_on() && smoothed && !keep_pre && have_box && !f->ab && !f->keep &&
+        (f->defer || g_lp_n == 0) && !(g_fail_readback && g_frames >= g_fail_readback)) {
+        if (g_lp_n >= 2) late_finish_one();
+        if (ensure_fa_q(f->cw, f->ch)) {
+            lp_slot = (g_lp_head + g_lp_n) & 1;
+            fa_dst = g_fa_q[lp_slot];
+            late_q = true;
+        }
+    }
     if (smoothed)
-        g_ctx->CopySubresourceRegion(g_fa_st, 0, (UINT)bx0, (UINT)by0, 0,
+        g_ctx->CopySubresourceRegion(fa_dst, 0, (UINT)bx0, (UINT)by0, 0,
                                      g_fa_out, 0, &box);
     const bool read_ab = have_box && f->ab;
     if (read_ab) {
@@ -3208,6 +3348,37 @@ int draw_full(const ntr::GxGpuFrame *f)
     if (!nothing) port_gpu_timer_span_end(PORT_GPU_SPAN_OPAQUE);
 
     const long long t2 = qpc();
+
+    if (late_q) {
+        g_ctx->Flush();                       /* the card starts now; the caller's clears (and, deferred, its other work) hide under it */
+        LatePend &P = g_lp[lp_slot];
+        P.f = *f;
+        P.f.out = 0;
+        P.bx0 = bx0; P.by0 = by0; P.bx1 = bx1; P.by1 = by1;
+        P.q = lp_slot;
+        P.t0 = t0; P.t1 = t1; P.t2 = t2;
+        P.nverts = g_scratch.size() + g_scratch1.size() + g_scratch2.size();
+        P.nbatches = g_batch.size() + g_ops.size();
+        ++g_lp_n;
+        g_last_full = true;
+        g_last_box = have_box;
+        g_lb_x0 = bx0;
+        g_lb_y0 = by0;
+        g_lb_x1 = bx1;
+        g_lb_y1 = by1;
+        if (f->out) {
+            f->out->aa_done = 1;
+            f->out->pre_valid = 0;
+            f->out->aa_changed = 0;
+            f->out->deferred = f->defer ? 1 : 0;
+        }
+        if (f->defer) return 2;
+        P.f.out = f->out;
+        late_finish_one();
+        return 2;
+    }
+    /* not a frame the late path takes: the caller's clears now, before any CPU buffer is written */
+    if (f->late && f->pre_read) f->pre_read(f->pre_arg);
 
     if (g_fail_readback && g_frames >= g_fail_readback) {
         fprintf(stderr, "[renderer] SM64DS_RENDERER_FAIL_READBACK=%d reached "
@@ -4376,6 +4547,10 @@ int draw_frame(const ntr::GxGpuFrame *f)
        held on the card and card_settle knows how to leave the clear colour
        under the 2D when the card has gone (run cardfull, CARD2 review F1). */
     if (f->settle) return card_settle(f);
+    if (f->finish) {                    /* MENU2: finish the oldest pending late readback (2 only reports) */
+        if (f->finish == 1) late_finish_one();
+        return g_lp_n;
+    }
     if (g_down) return 0;
     /* THE PROBE (ntr/gx.h): would a frame offered whole be drawn whole? Costs
        three tests and touches nothing. 3 is "and held on the card". */
