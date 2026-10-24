@@ -506,6 +506,26 @@ void event_view(EventView *out) {
     }
 }
 
+int event_pause_lines(char (*out)[44], int max) {
+    int n = 0;
+    if (!enabled() || max <= 0) return 0;
+    const unsigned now = comms_hub_now_ms();
+    for (const auto &r : g_rec) {
+        if (!r.used || n >= max) continue;
+        const int left = secs_left(r, now);
+        char nb[32];
+        if (r.type == kMod) {
+            const char *nm = mod_name(r.arg, r.extra, nb, sizeof nb);
+            std::snprintf(out[n++], 44, "%s %d:%02d", nm, left / 60, left % 60);
+            if (r.arg == kModRace && g_lead_stars >= 0 && n < max)
+                std::snprintf(out[n++], 44, "%s leads, %d stars", g_lead_name, g_lead_stars);
+        } else if (r.type == kMusic) {
+            std::snprintf(out[n++], 44, "EVENT SONG %d:%02d", left / 60, left % 60);
+        }
+    }
+    return n;
+}
+
 }  // namespace port
 
 extern "C" int port_event_castle_live(void) { return port::g_castle ? 1 : 0; }

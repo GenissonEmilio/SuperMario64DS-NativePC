@@ -73,6 +73,11 @@ struct EventView {
 };
 void event_view(EventView *out);
 
+// The pause card's own rows (hal/menu_recipe_pause.cpp pause_facts): up to `max` short lines for what runs now, "CASTLE UNLOCKED 4:32",
+// and during a race the leader on the next line, "syn00 leads, 31 stars". Returns the count (0 = nothing runs, or the player's Online events
+// switch is off). Same clock and same records as event_view; a message and the winner banner are not rows of the card.
+int event_pause_lines(char (*out)[44], int max);
+
 struct EventStats {
     unsigned long long rx, applied, ended, dropped_bad, explosions, kills;
 };
