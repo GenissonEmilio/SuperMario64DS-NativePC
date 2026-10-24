@@ -304,6 +304,7 @@ void build_gameover(int, MenuLayout *L)
             tx.fx = (short)(ox + (kGoGlyph[i][0] / 6.0 + kGoOffX + g_go_dx[i]) * k + 0.5);
             tx.fy = (short)((kGoGlyph[i][1] / 6.0 + kGoOffY) * k + 0.5);
             tx.fw = (short)(kGoGlyph[i][2] / 6.0 * k + 0.5); tx.fh = (short)(kGoGlyph[i][3] / 6.0 * k + 0.5);
+            tx.has_clipx = 1; tx.clipx0 = (short)(ox + 0.5); tx.clipx1 = (short)(ox + 256.0 * k + 0.5);   /* only the DS picture's 256 columns, like its OBJ layer */
             menu_add_piece(L, tx);
         }
     } else {

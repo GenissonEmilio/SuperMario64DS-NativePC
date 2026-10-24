@@ -135,6 +135,10 @@ struct MenuPiece {
      and nothing else is drawn for it; the callback reads only the layout (L->facts, L->w / L->h) and the picture, so it stays on the draw side of
      the decide / draw contract. A custom piece has no source, no touch and no hotspot of its own. */
   void (*custom)(const struct MenuLayout *L, int piece, uint32_t *dst, int w, int h, int stride);
+  /* HDART2 (appended): has_clipx = a hostimg piece is cut to the host columns clipx0 .. clipx1 (exclusive): the game over glyphs slide in from
+     beyond the DS picture and the cartridge shows only what is inside its 256 columns, which a wide frame would otherwise let through. */
+  uint8_t has_clipx;
+  short clipx0, clipx1;
 };
 
 struct MenuHotspot { uint8_t piece; DsRect box;     /* bottom-screen DS box = the ROM's own touch box */
