@@ -178,6 +178,8 @@ def pure2():
     check("E3 one finisher: the ranking is just the winner", d1[0][24:24 + d1[0][22]] == b"50 Ann", str(d1[0][24:24 + d1[0][22]]))
     r2, d2 = rank_of({1: 40, 2: 30}, {1: 50, 2: 33}, nm)
     check("E3 two finishers: winner then the other", d2[0][24:24 + d2[0][22]] == b"50 Ann;33 Bo", str(d2[0][24:24 + d2[0][22]]))
+    r3a, d3a = rank_of({1: 40, 2: 30, 3: 20}, {1: 50, 2: 47, 3: 41}, nm)
+    check("E3 three finishers: all three in order", d3a[0][24:24 + d3a[0][22]] == b"50 Ann;47 Bo;41 Cy", str(d3a[0][24:24 + d3a[0][22]]))
     r3, d3 = rank_of({1: 40, 2: 30, 3: 20, 4: 45}, {1: 50, 2: 47, 3: 40, 4: 41}, nm)
     check("E3 four seats: the top three, the winner first, the rest by count",
           d3[0][24:24 + d3[0][22]] == b"50 Ann;47 Bo;41 Di", str(d3[0][24:24 + d3[0][22]]))
