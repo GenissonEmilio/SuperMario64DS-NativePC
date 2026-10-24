@@ -815,6 +815,7 @@ class RaceTally(object):
         self.target = target or RACE_DEFAULT_TARGET
         self.base = {}
         self.winner = None          # (seat, name, stars) once decided
+        self.ranking = []           # the top three at the win: [(seat, name, stars)], the winner first
         self.win_time = 0.0
         self.last_leader = -1e9
         self.started = now
@@ -839,7 +840,33 @@ class RaceTally(object):
             n, seat = -cross[0][0], cross[0][1]
             self.winner = (seat, names.get(seat) or "Player %d" % (seat + 1), n)
             self.win_time = now
+            self.ranking = self.top_three(stars, names, seat)
         return self.winner
+
+    @staticmethod
+    def top_three(stars, names, winner_seat):
+        """The ranking at the moment of the win: the winner first (the first to
+        cross the target), then the rest by count, the lower seat on a tie.
+        Fixed once, so every console prints the same three."""
+        rest = sorted((s for s in stars if s != winner_seat),
+                      key=lambda s: (-stars[s], s))
+        out = []
+        for seat in [winner_seat] + rest[:2]:
+            out.append((seat, names.get(seat) or "Player %d" % (seat + 1),
+                        stars[seat]))
+        return out
+
+    @staticmethod
+    def ranking_text(ranking):
+        """'51 Ann;47 Bo;40 Cy': a count, a space, a name (no ';'), joined by
+        ';'. Names are cut to 14 characters so three always fit the 70 byte
+        text field of the winner datagram."""
+        parts = []
+        for _seat, name, n in ranking[:3]:
+            clean = "".join(c if 32 <= ord(c) < 127 and c != ";" else "_"
+                            for c in name)[:14]
+            parts.append("%d %s" % (n, clean))
+        return ";".join(parts)
 
     def datagrams(self, stars, names, now, remain_ms):
         """What to put on the wire this second."""
@@ -848,7 +875,9 @@ class RaceTally(object):
             seat, name, n = self.winner
             left = RACE_WIN_SHOW_S * 1000 - (now - self.win_time) * 1000
             out.append(event_pack(0x40000000 + self.race_id, EV_WINNER, n,
-                                  name, max(left, 0),
+                                  self.ranking_text(self.ranking or
+                                                    [(seat, name, n)]),
+                                  max(left, 0),
                                   RACE_WIN_SHOW_S * 1000, self.target))
             return out
         if (now - self.last_leader >= RACE_LEADER_EVERY_S and stars

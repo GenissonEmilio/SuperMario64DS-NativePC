@@ -165,7 +165,39 @@ def pure2():
     check("target 0 means 50", t4.target == 50)
     dg = t.datagrams({1: 50}, names, 5.0, 100000)
     check("the winner datagram is type 6 with the name and stars", len(dg) == 1 and dg[0][6] == 6 and dg[0][20] == 50
-          and dg[0][24:24 + dg[0][22]] == b"Ann", str(dg and dg[0][:30]))
+          and dg[0][24:24 + dg[0][22]].startswith(b"50 Ann;"), str(dg and dg[0][:30]))
+    # E3: the winner datagram carries the top three (count, space, name; ';' between), fixed at the win
+    def rank_of(stars_before, stars_win, nm, target=50):
+        r = relay.RaceTally(20, target, 0.0)
+        r.feed(stars_before, nm, 0.0)
+        r.feed(stars_win, nm, 1.0)
+        d = r.datagrams(stars_win, nm, 2.0, 100000)
+        return r, d
+    nm = {1: "Ann", 2: "Bo", 3: "Cy", 4: "Di"}
+    r1, d1 = rank_of({1: 40}, {1: 50}, nm)
+    check("E3 one finisher: the ranking is just the winner", d1[0][24:24 + d1[0][22]] == b"50 Ann", str(d1[0][24:24 + d1[0][22]]))
+    r2, d2 = rank_of({1: 40, 2: 30}, {1: 50, 2: 33}, nm)
+    check("E3 two finishers: winner then the other", d2[0][24:24 + d2[0][22]] == b"50 Ann;33 Bo", str(d2[0][24:24 + d2[0][22]]))
+    r3, d3 = rank_of({1: 40, 2: 30, 3: 20, 4: 45}, {1: 50, 2: 47, 3: 40, 4: 41}, nm)
+    check("E3 four seats: the top three, the winner first, the rest by count",
+          d3[0][24:24 + d3[0][22]] == b"50 Ann;47 Bo;41 Di", str(d3[0][24:24 + d3[0][22]]))
+    r4, d4 = rank_of({1: 40, 2: 40, 3: 40, 4: 40}, {1: 50, 2: 44, 3: 44, 4: 44}, nm)
+    check("E3 a tie for second: the lower seat first, the third tied seat cut",
+          d4[0][24:24 + d4[0][22]] == b"50 Ann;44 Bo;44 Cy", str(d4[0][24:24 + d4[0][22]]))
+    r5, d5 = rank_of({1: 45, 2: 45}, {1: 50, 2: 50}, nm)
+    check("E3 a tie for the win: the lower seat wins, the other is second",
+          r5.winner[0] == 1 and d5[0][24:24 + d5[0][22]] == b"50 Ann;50 Bo", str(d5[0][24:24 + d5[0][22]]))
+    r6 = relay.RaceTally(21, 50, 0.0)
+    r6.feed({1: 40, 2: 30}, nm, 0.0)
+    r6.feed({1: 50, 2: 33}, nm, 1.0)
+    first = r6.datagrams({1: 50, 2: 33}, nm, 2.0, 1)
+    r6.feed({1: 50, 2: 49}, nm, 3.0)
+    later = r6.datagrams({1: 50, 2: 49}, nm, 4.0, 1)
+    check("E3 the ranking is fixed at the win and repeated unchanged", first[0][24:] == later[0][24:] and first[0][8:12] == later[0][8:12])
+    long_nm = {1: "A;very long name here", 2: "Bo"}
+    r7, d7 = rank_of({1: 1, 2: 1}, {1: 50, 2: 2}, long_nm)
+    check("E3 names are cut to 14 and lose their ';'", d7[0][24:24 + d7[0][22]] == b"50 A_very long na;2 Bo", str(d7[0][24:24 + d7[0][22]]))
+    check("E3 the longest ranking fits the text field", len(relay.RaceTally.ranking_text([(1, "x" * 30, 150)] * 3).encode()) <= 70)
     t5 = relay.RaceTally(13, 50, 0.0)
     d1 = t5.datagrams({1: 12, 2: 20}, names, 10.0, 100000)
     d2 = t5.datagrams({1: 12, 2: 20}, names, 12.0, 100000)
@@ -307,16 +339,16 @@ def live():
         idsA = set(d[8:12] for d in winA)
         check("the relay announces a winner to the world", bool(winA) and bool(winB))
         check("both members of the world hear the SAME winner (name and record)",
-              namesA == set(d[24:24 + d[22]] for d in winB) == {b"Ann"} and idsA == set(d[8:12] for d in winB) and len(idsA) == 1,
+              namesA == set(d[24:24 + d[22]] for d in winB) == {b"50 Ann;20 Bob"} and idsA == set(d[8:12] for d in winB) and len(idsA) == 1,
               str((namesA, idsA)))
         check("the winner is announced once (one record id)", len(idsA) == 1)
-        check("the other world has its own winner", bool(winC) and set(d[24:24 + d[22]] for d in winC) == {b"Cyd"})
+        check("the other world has its own winner", bool(winC) and all(d[24:24 + d[22]].startswith(b"50 Cyd") for d in winC))
         leaders = [d for d in wa + wb if d[6] == 5]
         check("the leader line goes out before the win (type 5)", True)
         # a late joiner to world A still hears who won
         rd = member(b"RACEAAAA", "Dee", 0)
         late = [d for d in events(rd, 2.0) if d[6] == 6]
-        check("a late joiner hears the winner", bool(late) and late[0][24:24 + late[0][22]] == b"Ann")
+        check("a late joiner hears the winner", bool(late) and late[0][24:24 + late[0][22]].startswith(b"50 Ann"))
         cmdsock.sendto(cmd8(t0 + 21, 4, 0, 0), caddr)
 
         # ---- solo / VS / party / coop never take an event: only a world hub member hears the relay's SYNZ
