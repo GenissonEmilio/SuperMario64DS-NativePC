@@ -3282,7 +3282,7 @@ extern "C" int port_tween_win(double alpha, int outer[4], int inner[4])
    textOffset that points at a host copy of the text with the six glyph bytes of "second" swapped; setting off (or a rank of "second") puts the
    ROM's textOffset back, so the bank is then byte for byte the cartridge's. Done once a frame here (the count cannot change between the talk
    being chosen and the box reading the entry: the rabbit is counted found only after its line). The widths: every ordinal line measures
-   <= 113 px on the DS font (data_0208f074) against the 117 px box, so no line is re-broken (tools in out/RABBIT1/scripts). */
+   <= 113 px on the DS font (data_0208f074) against the 117 px box, so no line is re-broken. */
 extern "C" int host_setting_fix_original_bugs(void);
 extern "C" int GetOwnerLanguage(void);
 extern "C" int _ZN8SaveData22NumGlowingRabbitsFoundEv(void);
