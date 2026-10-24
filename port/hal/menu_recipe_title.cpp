@@ -34,6 +34,7 @@
 #include "menu_compose.h"
 #include "settings_page.h"
 #include "menu_hostimg.h"
+#include "menu_online.h"
 #include "ntr/gx.h"
 #include "ntr/ppu.h"
 
@@ -52,7 +53,6 @@ void func_ov007_020bdeb0(int idx);
 
 namespace {
 
-enum { kMpDimAlpha = 110 };   /* MENUS093: how faint the unavailable MP plank is drawn (alpha of 255) */
 enum { V_ATTRACT = 1, V_MAIN = 2, V_FILES = 3, V_OPTIONS = 4, V_DOODLE = 5, V_TABLE = 6, V_INTRO = 7, V_TOY = 8 };   /* V_TOY: the face press (top 4, elem 0), FACE1 */
 
 /* the 24 element boxes as dumped on the shipped ROM (SM64DS_TITLE_ELEMS, identical at f299, f419, f650,
@@ -117,8 +117,9 @@ struct TitleFacts {
     int dd_live;              /* TITLE092 (3b): ticks since the drawing page's own picture became the page (1 on the first live tick), 0 = still the ROM's black hand-over frames */
     int sc_on;                /* TITLE092: this frame's 3D was drawn as the full-canvas scene (g_sc), and sc_T is its transform */
     float sc_K, sc_Tx, sc_Ty;
+    int pg_top, pg_elem;      /* NAME1: the ROM's top-state and element machine of this tick (-1 = not built) */
 };
-static_assert(sizeof(TitleFacts) <= sizeof(MenuFacts::blob), "TitleFacts must fit MenuFacts.blob");
+static_assert(sizeof(TitleFacts) <= ONL_FACTS_OFF, "TitleFacts must leave the tail of MenuFacts.blob to the online facts");
 thread_local const TitleFacts *t_f = 0;     /* set for the length of one build() */
 int g_iris_cov_req;                         /* build() saw the picture covered: folded into g_ch.iris_covered by the next chore_step (a one-way flag) */
 bool box_of(int id, Box *out);
@@ -399,6 +400,41 @@ inline int face_dy(const FaceK &k) { return (int)(135.7 - 134.5 * k.n / k.d + 0.
    Source rects are in lower-screen DS pixels and tile the screen: head+star+sparkles (216 x 140, the whole upper
    part; a drag on the face stays inside it), sparkles right of the wrench, the wrench, and the three plates. They
    are placed at the lower screen's own positions on the 4:3 core; tune knobs (SM64DS_TITLE_TUNE) move the head. */
+/* NAME1 (run after093): THE ONLINE PLANKS. Plank k of the main page (0 = the MP slot, now ONLINE; 1 = ADVENTURE; 2 = REC ROOM) is in its solo or online
+   state, or turning between them (menu_online_plank_state). An online-family plank (ONLINE, ADVENTURE ONLINE, VS) is added here, from the mod's
+   picture or drawn in code (hal/menu_online_draw.cpp), over the ROM's own box; the function answers 1 when it did. A solo plank is the caller's own
+   (its picture or its ROM cut), drawn at *w1000 permille of its width while it turns. */
+bool online_plank(MenuLayout *L, int k, const Box &bx, int rise_px, int alpha, bool lit, bool pressed, bool touch, int *w1000)
+{
+    const OnlFacts *of = onl_facts_of(L);
+    int kind = ONL_K_ONLINE;
+    menu_online_plank_state(of, k, &kind, w1000);
+    if (kind != ONL_K_ONLINE && kind != ONL_K_ADV_ONLINE && kind != ONL_K_VS) return false;
+    const int un = L->unum, ud = L->uden;
+    const int bh = bx.y1 - bx.y0, dh = bh * un / ud;
+    int dw = menu_online_plank_w(kind, dh) * *w1000 / 1000;
+    if (dw < 1) dw = 1;
+    const int cxu = (bx.x0 + bx.x1) / 2 - 128, cyu2 = bx.y0 + bx.y1;
+    const int fx = L->w / 2 + cxu * un / ud - dw / 2, fy = cyu2 * un / (2 * ud) - dh / 2 + rise_px;
+    const int ip = menu_online_add_plank(L, kind, fx, fy, dw, dh, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, lit ? 1 : 0, pressed ? 1 : 0, alpha, touch ? 1 : 0,
+                                         t_f ? t_f->frame : 0);
+    if (touch && ip >= 0) menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
+    return true;
+}
+
+/* the ? button of the online screens and the modal screen over the page (both after the page's own pieces, so they are topmost) */
+void online_overlays(MenuLayout *L, bool main_page, bool show_help)
+{
+    const OnlFacts *of = onl_facts_of(L);
+    if (!of) return;
+    const int un = L->unum, ud = L->uden;
+    if (show_help && of->scr == ONL_SCR_NONE) {
+        if (main_page) menu_online_add_help(L, L->w - 44 * un / ud, 5 * un / ud, 30 * un / ud);
+        else menu_online_add_help(L, L->w / 2 + (ONL_HELP_X + ONL_HELP_W - 128) * un / ud, ONL_HELP_Y * un / ud, ONL_HELP_W * un / ud);
+    }
+    menu_online_add_modal(L, of);
+}
+
 void build_main(MenuLayout *L, bool intro)
 {
     const int cw = L->w * L->uden / L->unum;                 /* exact canvas width in units, floored */
@@ -476,6 +512,8 @@ void build_main(MenuLayout *L, bool intro)
     for (int k = 0; k < 3; ++k) {
         Box bx;
         if (!box_of(kPlateId[k], &bx)) continue;
+        int w1000 = 1000;
+        if (online_plank(L, k, bx, 0, 0, cur == kPlateId[k], cur == kPlateId[k] && prs, true, &w1000)) continue;   /* NAME1: ONLINE / ADVENTURE ONLINE / VS */
         if (planks) {
             /* ASSET2: a plank drawn at the window's resolution over the ROM's own box (the 3D plate is not drawn: its
                wallpaper object is skipped at submit and its sprite is not in any piece). 40 units tall (the box height),
@@ -483,7 +521,8 @@ void build_main(MenuLayout *L, bool intro)
             int iw = 1, ih = 1;
             menu_hostimg_size(kPlankImg[k], &iw, &ih);
             const int bh = bx.y1 - bx.y0;
-            const int dh = bh * L->unum / L->uden, dw = (int)((long long)dh * iw / ih);
+            const int dh = bh * L->unum / L->uden, dw0 = (int)((long long)dh * iw / ih);
+            const int dw = dw0 * w1000 / 1000 < 1 ? 1 : dw0 * w1000 / 1000;     /* NAME1: the turn */
             const int cxu = (bx.x0 + bx.x1) / 2 - 128, cyu2 = bx.y0 + bx.y1;   /* centre x from 128, centre y * 2 */
             MenuPiece pl = menu_piece_make(SRC_HOSTIMG, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
             pl.hostimg = (uint8_t)kPlankImg[k]; pl.touch = 1;
@@ -491,7 +530,6 @@ void build_main(MenuLayout *L, bool intro)
             pl.fx = (short)(L->w / 2 + cxu * L->unum / L->uden - dw / 2);
             pl.fy = (short)(cyu2 * L->unum / (2 * L->uden) - dh / 2);
             if (cur == kPlateId[k]) pl.hl = (uint8_t)(1 | (prs ? 2 : 0));
-            if (k == 0) { pl.hl = 0; pl.alpha = kMpDimAlpha; }    /* MENUS093: multiplayer is not in this build, the MP plank is greyed (a press does nothing) */
             const int ip = menu_add_piece(L, pl);
             menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
             continue;
@@ -499,6 +537,13 @@ void build_main(MenuLayout *L, bool intro)
         static const int kPlateX[3] = { 0, 70, 188 }, kPlateW[3] = { 70, 118, 68 };
         MenuPiece pl = menu_piece_make(SRC_TOP_PIC, kPlateX[k], 140, kPlateW[k], 52, MENU_AX_C, MENU_AY_B, kPlateX[k] - 128 + kPlateW[k] / 2, 0, 1, 1);
         pl.keycover = 1; pl.touch = 1;
+        if (w1000 < 1000) {                                                    /* NAME1: the turn of the ROM's own plate: its cut, narrowed about its centre */
+            const int un = L->unum, ud = L->uden;
+            int dwf = kPlateW[k] * un / ud * w1000 / 1000;
+            if (dwf < 1) dwf = 1;
+            const int dhf = 52 * un / ud, cx = L->w / 2 + (kPlateX[k] - 128 + kPlateW[k] / 2) * un / ud;
+            pl.fixdest = 1; pl.fx = (short)(cx - dwf / 2); pl.fy = (short)(L->h - dhf); pl.fw = (short)dwf; pl.fh = (short)dhf;
+        }
         const int ip = menu_add_piece(L, pl);
         hot(L, ip, &kPlateId[k], 1);
     }
@@ -537,6 +582,7 @@ void build_main(MenuLayout *L, bool intro)
         }
         if (ar.fx > -1000) menu_add_piece(L, ar);
     }
+    { const OnlFacts *of = onl_facts_of(L); online_overlays(L, true, of && of->on); }     /* NAME1: the ? button and the modal screen */
 }
 
 
@@ -1122,10 +1168,13 @@ void build_main_pc(MenuLayout *L, bool intro)
                 if (u >= 14) continue;
                 if (u > 0) { const float e = (float)u / 14.f; rise = e * e * 72.f; plank_a = 255 - 255 * u / 14; }
             } else if (!c.skip && pt < CH_PLANK_DUR) rise = (1.f - ease_out_back((float)pt / CH_PLANK_DUR)) * 72.f;
+            int w1000 = 1000;
+            if (online_plank(L, k, bx, Uf(rise), plank_a, landed && cur == kPlateId[k], landed && cur == kPlateId[k] && prs, !toy, &w1000)) continue;   /* NAME1 */
             int pw = 1, ph = 1;
             menu_hostimg_size(kPlankImg[k], &pw, &ph);
             const int bh = bx.y1 - bx.y0;
-            const int dh = bh * un / ud, dw = (int)((long long)dh * pw / ph);
+            const int dh = bh * un / ud, dw0 = (int)((long long)dh * pw / ph);
+            const int dw = dw0 * w1000 / 1000 < 1 ? 1 : dw0 * w1000 / 1000;     /* NAME1: the turn */
             const int cxu = (bx.x0 + bx.x1) / 2 - 128, cyu2 = bx.y0 + bx.y1;
             MenuPiece pl = menu_piece_make(SRC_HOSTIMG, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
             pl.hostimg = (uint8_t)kPlankImg[k]; pl.touch = toy ? 0 : 1;
@@ -1134,11 +1183,6 @@ void build_main_pc(MenuLayout *L, bool intro)
             pl.fy = (short)(cyu2 * un / (2 * ud) - dh / 2 + Uf(rise));
             if (plank_a < 255) pl.alpha = (uint8_t)(plank_a < 1 ? 1 : plank_a);
             if (landed && cur == kPlateId[k]) pl.hl = (uint8_t)(1 | (prs ? 2 : 0));
-            if (k == 0) {                                           /* MENUS093: the MP plank stays greyed, in its fades too */
-                pl.hl = 0;
-                const int a = plank_a < 255 ? plank_a : 255;
-                pl.alpha = (uint8_t)(a * kMpDimAlpha / 255 < 1 ? 1 : a * kMpDimAlpha / 255);
-            }
             const int ip = menu_add_piece(L, pl);
             if (!toy) menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
         }
@@ -1169,6 +1213,11 @@ void build_main_pc(MenuLayout *L, bool intro)
                 }
             }
         }
+    }
+    if (!intro) {                                              /* NAME1: the ? button (online planks, settled) and the modal screen */
+        const OnlFacts *of = onl_facts_of(L);
+        const bool settled = c.sw_t >= CH_SWAP_END - 4 || c.skip || c.mode == CH_NONE;
+        online_overlays(L, true, of && of->on && settled && !(t_f && t_f->toy_v > 0));
     }
     /* the iris: black outside the star while the ROM's iris is up (and all black before it shows), a veil on a returning page */
     if (c.mode == CH_INTRO && !c.iris_covered && c.ct <= ctune(0, CH_LOGO_POP) + 60) {
@@ -1370,7 +1419,7 @@ static void title_timeline(int top, int elem, int req)
 
 int menu_title_up(int scene_id)
 {
-    if (scene_id != 1) { g_up_stamp = -1; return 0; }   /* FILEFIX1: out of the title scene no stale stamp can match the title counter (file_wide_cb runs on every frame's first 3D command) */
+    if (scene_id != 1) { g_up_stamp = -1; menu_online_scene_left(); return 0; }   /* FILEFIX1: out of the title scene no stale stamp can match the title counter (file_wide_cb runs on every frame's first 3D command) */
     int top, elem, req;
     {   /* INTROCARD092 (SM64DS_TITLE_TL=2): the wall-clock gap between title ticks, printed when it is over 45 ms, with the page and the ROM's own counter */
         static int on = -1;
@@ -1386,6 +1435,7 @@ int menu_title_up(int scene_id)
         }
     if (!port_title_page_state(&top, &elem, &req)) return g_last;   /* not built yet: the attract */
     title_timeline(top, elem, req);
+    menu_online_tick(top, elem, req);       /* NAME1: the online menu's waits and the save medium follow this page */
     }
     if (top != g_top || elem != g_elem) {
         g_top = top; g_elem = elem;
@@ -1477,7 +1527,12 @@ void menu_title_facts(MenuFacts *f)
             if (out_e >= DD_XF + 2) { was_dd = 0; out_e = 0; dd_chain = 0; dd_live_c = 0; }
         }
     }
+    {
+        int t2 = -1, e2 = -1, r2 = -1;
+        if (port_title_page_state(&t2, &e2, &r2)) { tf.pg_top = t2; tf.pg_elem = e2; } else { tf.pg_top = -1; tf.pg_elem = -1; }
+    }
     memcpy(f->blob, &tf, sizeof tf);
+    menu_online_facts((OnlFacts *)(f->blob + ONL_FACTS_OFF));      /* NAME1 */
 }
 
 /* ---- THE FILE PAGES (run menu1, lane FILE1) ----------------------------------------------------------------
@@ -1840,6 +1895,10 @@ void file_pages_build(int variant, MenuLayout *L)
     g_hot_live_only = true;
     hot(L, ip, fids, 8);
     g_hot_live_only = false;
+    if (variant == V_FILES) {                                  /* NAME1: the online file select: the ? button (the select page itself) and the modal screen */
+        const OnlFacts *of = onl_facts_of(L);
+        if (of && of->flow) online_overlays(L, false, t_f && t_f->pg_top == 0 && t_f->pg_elem == 5);
+    }
 }
 }  // namespace
 
@@ -2018,6 +2077,20 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
         if (g_ch.in_fam && g_ch.sw_t < swap_end(g_ch) && ((*pressed & MENU_PAD_CONFIRM) || g_ch.skip)) {
             if (!g_ch.skip && hal_menu_trace_on()) fprintf(stderr, "[chore] confirm during the choreography: finishing it\n");
             g_ch.skip = 1;
+        }
+    }
+    {
+        /* NAME1: the online menu's keys. Back closes a screen of it or turns the online planks back; pad B on the file select is the back arrow, so
+           it closes a screen first. The ? text opens from the mouse or the D-pad (settings_page_hooks.cpp). Everything else is the ROM's. */
+        const int kind = g_last == V_MAIN ? 1 : g_last == V_FILES ? 2 : 0;
+        if (host_back && hal_menu_trace_on()) fprintf(stderr, "[online] back key: page kind %d (variant %d) top %d elem %d\n", kind, g_last, g_top, g_elem);
+        if (kind) {
+            unsigned short *hh = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+            const int punch = kind == 2 && (*pressed & 0x0001);
+            if ((host_back || punch) && menu_online_back(kind)) {
+                host_back = 0;
+                if (punch) { *pressed = (uint16_t)(*pressed & ~0x0001u); *hh = (unsigned short)(*hh & ~0x0001u); }
+            }
         }
     }
     title_pad_keys(pressed, host_back, inject);

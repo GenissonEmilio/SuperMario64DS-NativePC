@@ -1,0 +1,79 @@
+/* menu_online.h -- the title's online menu (run after093, lane NAME1).
+
+   The title's MP plank is ONLINE. Pressing it morphs ADVENTURE into ADVENTURE ONLINE and REC ROOM into VS (the planks turn like a file select
+   tile); pressing it again, or Back, turns them back. ADVENTURE ONLINE opens the file select on the ONLINE saves (the signed online save of
+   ntr/backup.cpp, never the solo files), picking a file asks the launcher for a server (hal/online_join.h) behind a "Finding a server..."
+   screen, VS for now says the lobby is the launcher's. A ? button explains the mode.
+
+   THE SPLIT. This file's state (g_on) lives on the LOGIC thread: the title recipe's menu_title_facts copies it into the facts blob (OnlFacts, at
+   the fixed offset ONL_FACTS_OFF so the draw side finds it without knowing the recipe's own struct), and build() / the draw callbacks read only
+   that copy. The press entry points below are called from the pad / touch seams (hal/settings_page_hooks.cpp, the recipe's pad map) and from
+   the recipe's tick; all on the logic thread.
+
+   WHAT DRAWS WHAT. With the HD UI mod's plank pictures (menu/online/*.png, menu_pause_art_ids.h ids 46..51) the planks are hostimg pieces;
+   without them (no mod, or an older mod) the planks are drawn in code in the DS plank's colours with ui_text's font. */
+#ifndef MENU_ONLINE_H
+#define MENU_ONLINE_H
+#include <stdint.h>
+#include "menu_compose.h"
+
+enum { ONL_SCR_NONE = 0, ONL_SCR_VS = 1, ONL_SCR_HELP = 2, ONL_SCR_WAIT = 3, ONL_SCR_FAIL = 4 };
+/* plank kinds (MenuPiece.wtw of a code drawn plank carries one) */
+enum { ONL_K_ONLINE = 0, ONL_K_ADV_ONLINE = 1, ONL_K_VS = 2, ONL_K_HELP = 3, ONL_K_BACK = 4, ONL_K_CANCEL = 5, ONL_K_ADV = 6, ONL_K_REC = 7 };
+
+struct OnlFacts {
+    int magic;          /* ONL_MAGIC when written by menu_online_facts */
+    int on;             /* the online planks are the target (ADVENTURE ONLINE / VS) */
+    int age;            /* ticks since the last toggle (0 .. 999; 999 = never toggled this visit) */
+    int scr;            /* ONL_SCR_* modal screen */
+    int scr_age;
+    int flow;           /* the online file select is the page (ADVENTURE ONLINE was pressed) */
+    int help_files;     /* the help screen was opened on the file select (its text differs) */
+    char why[96];       /* the FAIL sentence */
+};
+#define ONL_MAGIC 0x4f4e4c31
+#define ONL_FACTS_OFF (1024 - 128)
+static_assert(sizeof(OnlFacts) <= 128, "OnlFacts must fit the tail of MenuFacts.blob");
+
+/* the DS boxes this menu owns (the hook and the pieces agree on them; a click maps proportionally into a piece's box) */
+#define ONL_HELP_X 176
+#define ONL_HELP_Y 4
+#define ONL_HELP_W 32
+#define ONL_HELP_H 32
+#define ONL_BTN_X 88
+#define ONL_BTN_Y 106
+#define ONL_BTN_W 80
+#define ONL_BTN_H 32
+
+const OnlFacts *onl_facts_of(const MenuLayout *L);       /* null when the blob carries none (the layout selftest) */
+
+/* ---- logic thread --------------------------------------------------------------------------------------------- */
+void menu_online_facts(OnlFacts *f);                     /* called once per tick by menu_title_facts */
+void menu_online_tick(int top, int elem, int req);       /* called once per tick by menu_title_up: waits, the medium follows the page */
+void menu_online_scene_left(void);                       /* the title scene is not the live scene */
+int  menu_online_enabled(void);                          /* the one-screen menus are on: the online UI is shown at all */
+int  menu_online_on(void);
+int  menu_online_modal(void);                            /* a modal screen is up */
+/* a confirm on the main page's ROM cursor element `elem` (edge = this tick is the press's first). 1 = the ROM must not see it. */
+int  menu_online_press_main(int elem, int edge);
+/* a confirm on the file select's cursor element (14, 15, 16 = file A, B, C) while the online file select is the page. 1 = the ROM must not see it. */
+int  menu_online_press_file(int elem, int edge);
+/* a stylus at (sx, sy) in DS pixels on the title; kind 1 main page, 2 file select page. 1 = swallowed. */
+int  menu_online_touch(int kind, int down, int sx, int sy);
+int  menu_online_dir(int kind, int cursor, unsigned dirs);   /* a D-pad step the ROM cursor has nowhere to go with: wrench + left, or the file row + up, opens the ? text */
+int  menu_online_help_pad(int kind);                     /* X / Y on a page that has the ? button: 1 = taken */
+int  menu_online_back(int kind);                         /* the back key: 1 = taken (closes a screen or turns the planks back) */
+
+/* ---- recipe (build / draw side) -------------------------------------------------------------------------------- */
+/* the state of plank k (0 = the MP slot, 1 = ADVENTURE, 2 = REC ROOM) at age: kind = ONL_K_*, w1000 = width in permille of the full plank (the turn) */
+void menu_online_plank_state(const OnlFacts *f, int k, int *kind, int *w1000);
+/* adds the piece of an online-family plank (kind): the HD picture if the mod has it, else a code drawn plank. The dest rect is in host pixels; the
+   ROM touch box (bx, by, bw, bh) is what a click maps to. lit / pressed: the selection look. alpha 0 = opaque. Returns the piece index or -1. */
+int  menu_online_add_plank(MenuLayout *L, int kind, int fx, int fy, int fw, int fh, int bx, int by, int bw, int bh, int lit, int pressed, int alpha,
+                           int touch, int frame);
+int  menu_online_plank_w(int kind, int fh);              /* the full width of a plank of this kind at height fh (the picture's shape, else a fixed one) */
+int  menu_online_plank_art_ready(int kind);              /* 1 when the mod's picture for this kind decoded */
+/* the modal screen over the page (veil, panel, text, its button) and the ? button; both add pieces to the layout. */
+void menu_online_add_modal(MenuLayout *L, const OnlFacts *f);
+void menu_online_add_help(MenuLayout *L, int right_edge_x, int top_y, int size_px);   /* the ? button at that host place; the box is ONL_HELP_* */
+#endif
