@@ -587,7 +587,7 @@ const Piece *arrow_right_piece(int w, int h)
 
 /* =========================================================== state and rows ============================================ */
 
-enum Tab { T_GENERAL = 0, T_DISPLAY, T_CONTROLS, T_SOUND, T_COUNT };
+enum Tab { T_GENERAL = 0, T_DISPLAY, T_CONTROLS, T_SOUND, T_PATCHES, T_COUNT };
 enum RType { R_CHOICE, R_SLIDER, R_CHECK, R_BIND, R_HEAD, R_NOTE };
 struct Row { RType t; const char *label; int id, id2, step; const char *const *names; int nn; const int *vals; int id3p1 = 0; };   /* vals: the value of each choice when it is not min + index (the frame rate stops) */
 
@@ -626,7 +626,13 @@ const Row ROWS_GENERAL[] = {
     { R_CHECK, "Character select on star select", SL_CHARACTER_STRIP, -1, 0, 0, 0 },
     { R_CHECK, "Coins in the middle", SL_COINS_MIDDLE, -1, 0, 0, 0 },
     { R_NOTE, "Puts the coin counter at the top middle, like SM64.", -1, -1, 0, 0, 0 },
+};
+/* PATCHES: changes to how the original game plays. "Keep lives between sessions" moved here from GENERAL (same key, SL_KEEP_LIVES,
+   same default off). The "Fix original bugs" row goes in this table once the community picks which bugs it fixes; it is not
+   added yet. */
+const Row ROWS_PATCHES[] = {
     { R_CHECK, "Keep lives between sessions", SL_KEEP_LIVES, -1, 0, 0, 0 },
+    { R_NOTE, "Off is the DS: every file starts with 4 lives.", -1, -1, 0, 0, 0 },
 };
 /* PAUSE3: CONTROLS is the old CONTROLS and CAMERA tabs together (the camera rows first, then the run rows, then the bindings) */
 const Row ROWS_CONTROLS[] = {
@@ -667,7 +673,7 @@ const Row ROWS_SOUND[] = {
     { R_SLIDER, "Volume", SL_VOLUME, -1, 5, 0, 0 },
     { R_NOTE, "Music and effects share one volume.", -1, -1, 0, 0, 0 },
 };
-const char *const TAB_NAMES[T_COUNT] = { "GENERAL", "DISPLAY", "CONTROLS", "SOUND" };
+const char *const TAB_NAMES[T_COUNT] = { "GENERAL", "DISPLAY", "CONTROLS", "SOUND", "PATCHES" };
 
 /* DISPLAY is built per call: the Frame rate row is there only when this build's settings_live has a FrameRate row (another lane makes it
    live; until then it stays a launcher setting and the note says so) */
@@ -708,6 +714,7 @@ const Row *rows_of(int tab, int *n)
     switch (tab) {
     case T_DISPLAY: return display_rows(n);
     case T_SOUND: *n = (int)(sizeof ROWS_SOUND / sizeof ROWS_SOUND[0]); return ROWS_SOUND;
+    case T_PATCHES: *n = (int)(sizeof ROWS_PATCHES / sizeof ROWS_PATCHES[0]); return ROWS_PATCHES;
     case T_CONTROLS: *n = (int)(sizeof ROWS_CONTROLS / sizeof ROWS_CONTROLS[0]); return ROWS_CONTROLS;
     default: *n = (int)(sizeof ROWS_GENERAL / sizeof ROWS_GENERAL[0]); return ROWS_GENERAL;
     }
