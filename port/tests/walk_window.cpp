@@ -17619,7 +17619,14 @@ int main(void)
                     const int ct_stepped_mode = cam && *(void **)((char *)cam + 0x140) == (void *)data_0208733c;
                     static int c3_old = -1;
                     if (c3_old < 0) c3_old = getenv("SM64DS_CAMTEST_C3_OLD") ? 1 : 0;
-                    const int ct_owned = cam && cam93_ds_owned(cam) && !(!c3_old && cam93_state_idx(cam) == 18);
+                    /* FIELD093H (F3, thunderit round 11): the cannon camera (state 11, entering the cannon and aiming it) is the same follow body
+                       (data_0209b0b8's main is func_02009e70, camera_states.cpp) with a hand-over to the DS picture, and a slight tilt turned it
+                       at the ROM's full step the whole time. Treated like the ordinary follow states and state 18 for the stick's turn scaling.
+                       SM64DS_FIELD093H_F3_OLD=1: proof only, state 11 stays exempt. */
+                    static int f3_old = -1;
+                    if (f3_old < 0) f3_old = getenv("SM64DS_FIELD093H_F3_OLD") ? 1 : 0;
+                    const int ct_idx = cam ? cam93_state_idx(cam) : -1;
+                    const int ct_owned = cam && cam93_ds_owned(cam) && !(!c3_old && ct_idx == 18) && !(!f3_old && ct_idx == 11);
                     g_ct_dir = 0;
                     if (!ct_old && turn < 0x400 && dir && cam && !ct_owned && !ct_stepped_mode && !(btn & 0x4000)) {
                         /* below the ROM's step: scaled after the camera's own tick (ct_camera_behavior_post) */
