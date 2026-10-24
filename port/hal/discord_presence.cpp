@@ -11,6 +11,7 @@ namespace {
 
 constexpr std::uint32_t kHandshake = 0;
 constexpr std::uint32_t kFrame = 1;
+constexpr std::uint32_t kClose = 2;
 constexpr const char *kTangoRepository = "https://github.com/tangosdev/sm64ds-decomp";
 
 std::string escape_json(const std::string &value)
@@ -50,15 +51,38 @@ bool write_frame(HANDLE pipe, std::uint32_t opcode, const std::string &json)
            WriteFile(pipe, json.data(), size, &written, nullptr) && written == size;
 }
 
-bool read_frame(HANDLE pipe)
+// Waits up to wait_ms for a whole frame header to be readable. Never blocks past
+// that: a Discord that accepts the pipe and then says nothing must not hang us.
+bool frame_ready(HANDLE pipe, DWORD wait_ms)
+{
+    const ULONGLONG end = GetTickCount64() + wait_ms;
+    for (;;) {
+        DWORD avail = 0;
+        if (!PeekNamedPipe(pipe, nullptr, 0, nullptr, &avail, nullptr))
+            return false;
+        if (avail >= 8)
+            return true;
+        if (GetTickCount64() >= end)
+            return false;
+        Sleep(10);
+    }
+}
+
+// Reads one frame. Opcode 2 is Discord closing the pipe on us (bad client id and
+// the like); its payload is kept so the caller can say why.
+bool read_frame(HANDLE pipe, std::uint32_t *opcode, std::string *payload)
 {
     std::uint32_t header[2] = {};
     DWORD read = 0;
     if (!ReadFile(pipe, header, sizeof(header), &read, nullptr) || read != sizeof(header) ||
         header[1] > 1024 * 1024)
         return false;
-    std::string payload(header[1], '\0');
-    return ReadFile(pipe, payload.data(), header[1], &read, nullptr) && read == header[1];
+    payload->assign(header[1], '\0');
+    if (header[1] != 0 &&
+        (!ReadFile(pipe, payload->data(), header[1], &read, nullptr) || read != header[1]))
+        return false;
+    *opcode = header[0];
+    return true;
 }
 
 } // namespace
@@ -79,25 +103,40 @@ std::string make_activity_json(const Activity &activity, unsigned long process_i
 Presence::Presence() : pipe_(INVALID_HANDLE_VALUE) {}
 Presence::~Presence() { disconnect(); }
 
-bool Presence::connect(const std::string &application_id)
+bool Presence::connect(const std::string &application_id, const char *pipe_prefix)
 {
     disconnect();
-    if (application_id.empty())
+    error_.clear();
+    if (application_id.empty()) {
+        error_ = "no application id";
         return false;
+    }
+    const std::string prefix = pipe_prefix && *pipe_prefix ? pipe_prefix : "\\\\.\\pipe\\discord-ipc-";
     for (int index = 0; index != 10; ++index) {
-        const std::string name = "\\\\.\\pipe\\discord-ipc-" + std::to_string(index);
+        const std::string name = prefix + std::to_string(index);
         HANDLE pipe = CreateFileA(name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr,
                                   OPEN_EXISTING, 0, nullptr);
         if (pipe == INVALID_HANDLE_VALUE)
             continue;
         const std::string hello = "{\"v\":1,\"client_id\":\"" +
                                   escape_json(application_id) + "\"}";
-        if (write_frame(pipe, kHandshake, hello) && read_frame(pipe)) {
+        std::uint32_t opcode = 0;
+        std::string reply;
+        if (write_frame(pipe, kHandshake, hello) && frame_ready(pipe, 3000) &&
+            read_frame(pipe, &opcode, &reply)) {
+            if (opcode == kClose) {
+                error_ = "Discord refused: " + reply;
+                CloseHandle(pipe);
+                return false;
+            }
             pipe_ = pipe;
             return true;
         }
+        error_ = "no answer to the handshake";
         CloseHandle(pipe);
     }
+    if (error_.empty())
+        error_ = "Discord is not running";
     return false;
 }
 
@@ -109,6 +148,16 @@ bool Presence::update(const Activity &activity)
     if (!write_frame(pipe, kFrame, make_activity_json(activity, GetCurrentProcessId()))) {
         disconnect();
         return false;
+    }
+    // Discord answers every SET_ACTIVITY; read the answers so its side of the pipe
+    // never fills up over a long session.
+    while (frame_ready(pipe, 0)) {
+        std::uint32_t opcode = 0;
+        std::string reply;
+        if (!read_frame(pipe, &opcode, &reply) || opcode == kClose) {
+            disconnect();
+            return false;
+        }
     }
     return true;
 }
