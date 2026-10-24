@@ -467,6 +467,12 @@ int host_setting_set_debug_menu(int on);
 int host_setting_chars_from_start(void);
 int host_setting_set_chars_from_start(int on);
 
+/* ---- OnlineEvents (EVENTS2): THE PLAYER'S SWITCH FOR THE HOST'S EVENTS ----
+   Default 1 (ON). Off, an Adventure Online console ignores every event the relay repeats (nothing is applied, nothing is shown); the relay still
+   hands them out. Live like DebugMenu. The test knob SM64DS_EVENTS=0 (hal/event_client.h) still wins over an on switch. */
+int host_setting_online_events(void);
+int host_setting_set_online_events(int on);
+
 /* ---- CharacterStrip: THE STAR SELECT'S CHARACTER STRIP (CAPSTOGGLE1) -----
    Default 1 (ON). Off, the star select is the DS's own: Yoshi's caps row when his caps are unlocked, no strip, no custom character arrow. The white
    door's picker is not touched. Live; SM64DS_CHARACTER_STRIP=0/1 overrides the file for a proof run. */
@@ -475,6 +481,9 @@ int host_setting_set_character_strip(int on);
 /* HUDMENU2 (H10): CoinsMiddle, bool, OFF by default. On puts the coin counter at the top middle (lives left, coins centre, stars right) in every HUD layout.
    host_setting_hud_layout() answers it (1 = coins in the middle); SM64DS_HUD_LAYOUT outranks the file. The old HudLayout key is no longer read. */
 int host_setting_set_coins_middle(int on);
+/* SHELVED1: KeepLives, bool, OFF by default. 1 keeps each save file's life count in the port's own side file (save/lives.json) and gives it back when that file starts; 0 is the DS, which starts every file with 4 lives. Live; SM64DS_KEEP_LIVES=0/1 overrides the file for a proof run. */
+int host_setting_keep_lives(void);
+int host_setting_set_keep_lives(int on);
 
 /* Aspect: the presentation ratio, WIDTH DIVIDED BY HEIGHT. 0 (the default) is
    the explicit native sentinel -- the 4:3 window the port has always opened;

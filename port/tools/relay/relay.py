@@ -105,7 +105,10 @@ Python 3 standard library only. No dependencies, no state on disk.
 """
 
 import asyncio
+import hashlib
+import hmac
 import importlib.util
+import ipaddress
 import os
 import socket
 import sys
@@ -479,6 +482,18 @@ BAD_ACK_INTERVAL_S = 1.0    # at most one status 2 per second per endpoint
 BAD_IGNORE_S = 10.0         # then that endpoint is ignored for this long
 BUCKET_IDLE_S = 30.0        # forget a rate bucket after this much quiet
 MAX_BUCKETS = 8192          # hard ceiling on tracked source addresses
+# SECREV1: ONE MACHINE MUST NOT BE ABLE TO USE UP A SHARED TABLE. Every source port
+# is its own "address", so a single PC could open 8192 sockets and the fail-closed
+# bucket table above then refused every new player on the relay; open 256 sessions
+# and the session table was full; take every seat of a world whose code it had been
+# given. These three per-host caps (a host = the IP, not the port) stop that. The
+# loopback and private ranges are exempt, so a LAN test rig or the local harnesses
+# (32 synthetic seats from 127.0.0.1) behave as before. A household behind one
+# public address gets 4 seats a session, the same number the lobby gives it
+# (WORLD_ADDR_TOKENS); raise SM64DS_RELAY_MAX_SEATS_PER_IP for a bigger one.
+MAX_BUCKETS_PER_IP = clamp_int(os.environ.get("SM64DS_RELAY_MAX_BUCKETS_PER_IP"), 64, 1, 8192)
+MAX_SESSIONS_PER_IP = clamp_int(os.environ.get("SM64DS_RELAY_MAX_SESSIONS_PER_IP"), 8, 1, 256)
+MAX_SEATS_PER_IP = clamp_int(os.environ.get("SM64DS_RELAY_MAX_SEATS_PER_IP"), 4, 1, 64)
 SWEEP_INTERVAL_S = 1.0
 
 DEFAULT_PORT = 41234
@@ -503,28 +518,36 @@ def log(msg):
     print("%s %s" % (ts, msg), flush=True)
 
 
-def short_addr(addr):
-    """A logging form of a client address with the host part blunted.
+CAP_PRIVATE = os.environ.get("SM64DS_RELAY_CAP_PRIVATE") == "1"   # tests: cap loopback / LAN hosts too
 
-    We keep enough to tell two clients apart in a log and to spot a region,
-    and drop the rest. Full client addresses never reach the log.
+
+def capped_host(host):
+    """True when the per-host caps apply to this source IP: any public address.
+    Loopback and private (RFC 1918 / unique local) hosts are exempt (unless
+    SM64DS_RELAY_CAP_PRIVATE=1, which the socket repro uses on loopback)."""
+    if CAP_PRIVATE:
+        return True
+    try:
+        ip = ipaddress.ip_address(host.split("%")[0])
+    except ValueError:
+        return True
+    if ip.version == 6 and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    return not (ip.is_loopback or ip.is_private)
+
+
+def short_addr(addr):
+    """A logging form of a client address: the source port only.
+
+    Since 10-21 no part of the host reaches the log (before, the first two
+    octets did). The port is kept so two clients in one session can still be
+    told apart in a log.
     """
     try:
-        host = addr[0]
         port = addr[1]
     except Exception:
         return "?"
-    if ":" in host:
-        groups = host.split(":")
-        head = ":".join(g for g in groups[:2] if g)
-        host = (head + "::x") if head else "::x"
-    else:
-        octets = host.split(".")
-        if len(octets) == 4:
-            host = "%s.%s.x.x" % (octets[0], octets[1])
-        else:
-            host = "x"
-    return "%s#%d" % (host, port)
+    return "client#%d" % port
 
 
 def parse_code(raw):
@@ -595,6 +618,262 @@ def rss_kb():
 # ------------------------------------------------------------------ tables
 
 
+
+# ---- HOST EVENTS (prototype, lane EVENTS1) ---------------------------------
+#
+# An event is something the host puts on every player's screen in the always
+# online world: a message, a music track, or a timed modifier. Each console
+# applies it to its own game; the relay only carries the event and its clock.
+#
+# THE ONLY WAY IN is a signed command on a private UDP socket bound to the
+# loopback address (SM64DS_EVENT_CMD_PORT; the lobby's admin endpoint is what
+# talks to it). The command is signed with SM64DS_EVENT_KEY, an HMAC-SHA256
+# over the whole text, and carries a millisecond stamp that must be newer than
+# the last accepted command and within EVENT_SKEW_S of this box's clock, so a
+# captured command cannot be replayed. With no key set the socket is never
+# opened and the feature does not exist. A player's datagram can never start
+# one: the data port's kind table has no SYNZ row, so a member's 'SYNZ' is an
+# unknown tag and is dropped like any other.
+#
+# THE WIRE TO THE GAME ('SYNZ', 96 bytes, relay to members of world hubs only,
+# byte 5 = 0xFD so a console can tell it from a seat):
+#   0 tag 'SYNZ' | 4 version 1 | 5 0xFD | 6 type | 7 0
+#   8 event id u32 | 12 remaining ms u32 | 16 total ms u32
+#   20 arg u16 | 22 text_len u8 | 23 0 | 24 text, 72 bytes, zero padded
+# type 1 message, 2 music (arg = a sublevel whose course song to play),
+# 3 modifier (arg 1 triple speed, 2 one hit, 3 chaos, 4 race to 50 stars),
+# 4 clear (stop everything now).
+# The relay re-sends every live event once a second with its REMAINING time,
+# so loss costs nothing, a late joiner picks up what is still running, and the
+# clock every console follows is this one.
+EVENT_TAG = b"SYNZ"
+EVENT_LEN = 96
+EVENT_SEAT = 0xFD
+EVENT_TEXT_MAX = 70
+EVENT_MAX_LIVE = 8
+EVENT_MAX_SECS = 3600
+EVENT_SKEW_S = 120
+EV_MESSAGE, EV_MUSIC, EV_MODIFIER, EV_CLEAR = 1, 2, 3, 4
+# wire-only types the relay itself makes (never accepted as a command):
+EV_LEADER, EV_WINNER = 5, 6
+# modifier args: 1 triple speed, 2 one hit, 3 chaos, 4 race, 5 castle unlocked
+MOD_RACE, MOD_CASTLE, MOD_MAX = 4, 5, 5
+RACE_DEFAULT_TARGET = 50
+RACE_LEADER_EVERY_S = 5.0     # the leader is repeated this often
+RACE_WIN_SHOW_S = 10          # the winner stays on the wire this long after a win
+WORLD_CODE_MAX = 16
+
+
+def event_sign(key, body):
+    return hmac.new(key, body.encode("ascii"), hashlib.sha256).hexdigest()[:32]
+
+
+def event_parse(key, raw, last_ts, now_wall):
+    """One command datagram -> (event dict | None, reason). Pure, so the unit
+    tests drive it without a socket."""
+    try:
+        text = raw.decode("ascii")
+    except UnicodeDecodeError:
+        return None, "ascii"
+    if len(text) > 400 or "|" not in text:
+        return None, "shape"
+    body, _, sig = text.rpartition("|")
+    if not hmac.compare_digest(event_sign(key, body), sig):
+        return None, "signature"
+    parts = body.split(" ")
+    if len(parts) not in (6, 8) or parts[0] != "EVT1":
+        return None, "shape"
+    world = ""
+    target = 0
+    try:
+        ts = int(parts[1])
+        etype = int(parts[2])
+        arg = int(parts[3])
+        secs = int(parts[4])
+        msg = bytes.fromhex(parts[5]).decode("ascii") if parts[5] != "-" else ""
+        if len(parts) == 8:
+            world = "" if parts[6] == "-" else parts[6]
+            target = int(parts[7])
+    except (ValueError, UnicodeDecodeError):
+        return None, "field"
+    if ts <= last_ts:
+        return None, "replay"
+    if abs(ts / 1000.0 - now_wall) > EVENT_SKEW_S:
+        return None, "skew"
+    if etype not in (EV_MESSAGE, EV_MUSIC, EV_MODIFIER, EV_CLEAR):
+        return None, "type"
+    if not 0 <= arg <= 255 or not 0 <= secs <= EVENT_MAX_SECS:
+        return None, "range"
+    if len(msg) > EVENT_TEXT_MAX or any(not 32 <= ord(c) < 127 for c in msg):
+        return None, "text"
+    if etype == EV_MODIFIER and not 1 <= arg <= MOD_MAX:
+        return None, "range"
+    if len(world) > WORLD_CODE_MAX or any(
+            not (c.isalnum() or c in "-_") or ord(c) > 126 for c in world):
+        return None, "world"
+    if not 0 <= target <= 150 or (target and not (etype == EV_MODIFIER
+                                                  and arg == MOD_RACE)):
+        return None, "range"
+    if etype == EV_MESSAGE and not msg:
+        return None, "text"
+    return {"ts": ts, "type": etype, "arg": arg, "secs": secs, "text": msg,
+            "world": world, "target": target}, "ok"
+
+
+def event_pack(eid, etype, arg, text, remain_ms, total_ms, extra=0):
+    raw = text.encode("ascii")
+    out = bytearray(EVENT_LEN)
+    out[0:4] = EVENT_TAG
+    out[4] = 1
+    out[5] = EVENT_SEAT
+    out[6] = etype
+    out[7] = extra & 0xFF       # race target (0 = the default 50)
+    out[8:12] = (eid & 0xFFFFFFFF).to_bytes(4, "little")
+    out[12:16] = max(0, int(remain_ms)).to_bytes(4, "little")
+    out[16:20] = max(0, int(total_ms)).to_bytes(4, "little")
+    out[20:22] = arg.to_bytes(2, "little")
+    out[22] = len(raw)
+    out[24:24 + len(raw)] = raw
+    return bytes(out)
+
+
+class EventBoard(object):
+    """What is live. `now` is always the caller's monotonic seconds."""
+
+    def __init__(self):
+        self.live = []          # dicts: id type arg text start total
+        self.next_id = 1
+        self.clear_until = 0.0
+        self.clear_id = 0
+        self.clear_world = ""
+
+    def add(self, ev, now):
+        if ev["type"] == EV_CLEAR:
+            if ev.get("world"):
+                self.live = [r for r in self.live if r["world"] != ev["world"]]
+            else:
+                self.live = []
+            self.clear_world = ev.get("world", "")
+            self.clear_id = self.next_id
+            self.next_id += 1
+            self.clear_until = now + 4.0
+            return self.clear_id
+        total = ev["secs"] if ev["secs"] else (8 if ev["type"] == EV_MESSAGE else 60)
+        rec = {"id": self.next_id, "type": ev["type"], "arg": ev["arg"],
+               "text": ev["text"], "start": now, "total": float(total),
+               "world": ev.get("world", ""), "target": ev.get("target", 0)}
+        self.next_id += 1
+        if ev["type"] == EV_MODIFIER:
+            # one running copy of a modifier kind: a new one replaces it
+            self.live = [r for r in self.live
+                         if not (r["type"] == EV_MODIFIER and r["arg"] == rec["arg"]
+                                 and r["world"] == rec["world"])]
+        if ev["type"] == EV_MUSIC:
+            self.live = [r for r in self.live if r["type"] != EV_MUSIC]
+        self.live.append(rec)
+        if len(self.live) > EVENT_MAX_LIVE:
+            self.live = self.live[-EVENT_MAX_LIVE:]
+        return rec["id"]
+
+    def sweep(self, now):
+        self.live = [r for r in self.live if now - r["start"] < r["total"]]
+
+    def races(self, world):
+        """The live race records that apply to this world code."""
+        return [r for r in self.live if r["type"] == EV_MODIFIER
+                and r["arg"] == MOD_RACE and (not r["world"] or r["world"] == world)]
+
+    def datagrams(self, now, world=None):
+        """Every datagram for one world (world None: the untargeted ones
+        only). An event that names a world goes to that world alone."""
+        self.sweep(now)
+        out = []
+        if now < self.clear_until and (not self.clear_world
+                                       or self.clear_world == world):
+            out.append(event_pack(self.clear_id, EV_CLEAR, 0, "", 0, 0))
+        for r in self.live:
+            if r["world"] and r["world"] != world:
+                continue
+            remain = (r["total"] - (now - r["start"])) * 1000
+            out.append(event_pack(r["id"], r["type"], r["arg"], r["text"],
+                                  remain, r["total"] * 1000,
+                                  r["target"] if r["arg"] == MOD_RACE else 0))
+        return out
+
+
+class RaceTally(object):
+    """One world's race to N stars. The relay holds it, so no console can lie
+    about who won: it reads the star totals every console already sends in its
+    presence datagram (SYNL, 12..13 little endian). A seat wins only by CROSSING
+    the target during the race: its first count seen by this tally must be
+    under the target (a save that starts at 50 or more cannot win by standing
+    there). Of two seats crossing in the same tick, the higher count wins, then
+    the lower seat. The winner is decided once and never changes."""
+
+    def __init__(self, race_id, target, now):
+        self.race_id = race_id
+        self.target = target or RACE_DEFAULT_TARGET
+        self.base = {}
+        self.winner = None          # (seat, name, stars) once decided
+        self.win_time = 0.0
+        self.last_leader = -1e9
+        self.started = now
+
+    def leader(self, stars):
+        best = None
+        for seat in sorted(stars):
+            if best is None or stars[seat] > stars[best]:
+                best = seat
+        return best
+
+    def feed(self, stars, names, now):
+        """stars: seat -> count now; names: seat -> text. Decides a winner."""
+        for seat, n in stars.items():
+            self.base.setdefault(seat, n)
+        if self.winner is not None:
+            return self.winner
+        cross = [(-n, seat) for seat, n in stars.items()
+                 if n >= self.target and self.base.get(seat, n) < self.target]
+        if cross:
+            cross.sort()
+            n, seat = -cross[0][0], cross[0][1]
+            self.winner = (seat, names.get(seat) or "Player %d" % (seat + 1), n)
+            self.win_time = now
+        return self.winner
+
+    def datagrams(self, stars, names, now, remain_ms):
+        """What to put on the wire this second."""
+        out = []
+        if self.winner is not None:
+            seat, name, n = self.winner
+            left = RACE_WIN_SHOW_S * 1000 - (now - self.win_time) * 1000
+            out.append(event_pack(0x40000000 + self.race_id, EV_WINNER, n,
+                                  name, max(left, 0),
+                                  RACE_WIN_SHOW_S * 1000, self.target))
+            return out
+        if (now - self.last_leader >= RACE_LEADER_EVERY_S and stars
+                and max(stars.values()) > 0):
+            self.last_leader = now
+            seat = self.leader(stars)
+            out.append(event_pack(0x20000000 + self.race_id, EV_LEADER,
+                                  stars[seat],
+                                  names.get(seat) or "Player %d" % (seat + 1),
+                                  remain_ms, remain_ms, self.target))
+        return out
+
+
+class EventCmdProtocol(asyncio.DatagramProtocol):
+    """The private command socket (loopback only)."""
+
+    def __init__(self, relay):
+        self.relay = relay
+
+    def datagram_received(self, data, addr):
+        if addr[0] not in ("127.0.0.1", "::1"):
+            return
+        self.relay.event_command(data, addr)
+
+
 class Endpoint(object):
     # version / seat / caps are version 2 only; a version 1 endpoint keeps
     # version 1, seat None and no caps, and nothing on its path reads them.
@@ -642,7 +921,8 @@ class SessionV2(object):
     """A version 2 session: a STAR (seat 0 is the parent, 1..MAX_CHILDREN the
     children) or a HUB (seats 0..HUB_SEATS-1, all members, nobody hosts)."""
     __slots__ = ("code", "kind", "seats", "created", "fwd_tokens",
-                 "fwd_stamp", "referee", "fwd_pps", "fwd_burst")
+                 "fwd_stamp", "referee", "fwd_pps", "fwd_burst",
+                 "stars", "names", "race", "creator_ip")
     version = PROTO_V2
 
     def __init__(self, code, kind, now):
@@ -650,7 +930,11 @@ class SessionV2(object):
         self.kind = kind
         self.seats = {}         # seat -> addr
         self.created = now
+        self.creator_ip = None  # the host whose HELLO opened it (SECREV1)
         self.referee = None     # arena sessions only (referee.Referee)
+        self.stars = {}         # hub only: seat -> star total from its presence
+        self.names = {}         # hub only: seat -> name from its identity frame
+        self.race = None        # hub only: the RaceTally of the live race
         # the per-session forward budget (SESSION_FWD_PPS), in copies sent
         self.fwd_pps = SESSION_FWD_PPS_WORLD if kind == KIND_HUB else SESSION_FWD_PPS
         self.fwd_burst = self.fwd_pps
@@ -712,6 +996,7 @@ class RelayProtocol(asyncio.DatagramProtocol):
         self.sessions = {}      # code -> Session
         self.endpoints = {}     # addr -> Endpoint
         self.buckets = {}       # addr -> Bucket
+        self.ip_buckets = {}    # host -> number of buckets it holds (SECREV1)
         self.bad_ack_at = {}    # addr -> monotonic of last status 2 sent
         self.ignored = {}       # addr -> monotonic when the ignore ends
         self.kind_caps = {}     # addr -> {tag: [tokens, stamp]} (v2 senders)
@@ -747,6 +1032,79 @@ class RelayProtocol(asyncio.DatagramProtocol):
         self.akstats = dict((tag, [0, 0, 0]) for tag in ARENA_ORDER)
         self.a_drop = dict((r, 0) for r in ARENA_DROPS)
         self.n_ref_tx = 0
+        # host events (lane EVENTS1)
+        self.event_key = None
+        self.board = EventBoard()
+        self.event_last_ts = 0
+        self.n_event_cmd = 0
+        self.n_event_bad = {}
+        self.n_event_tx = 0
+        self.n_event_wins = 0
+
+    # ---- host events
+
+    def event_command(self, raw, addr, now=None, wall=None):
+        """A datagram on the private command socket. Returns the reason."""
+        if self.event_key is None:
+            return "off"
+        now = time.monotonic() if now is None else now
+        wall = time.time() if wall is None else wall
+        ev, why = event_parse(self.event_key, raw, self.event_last_ts, wall)
+        if ev is None:
+            self.n_event_bad[why] = self.n_event_bad.get(why, 0) + 1
+            log("event: refused a command (%s)" % why)
+            return why
+        self.event_last_ts = ev["ts"]
+        eid = self.board.add(ev, now)
+        self.n_event_cmd += 1
+        log("event: id %d type %d arg %d secs %d%s"
+            % (eid, ev["type"], ev["arg"], ev["secs"],
+               (" text %r" % ev["text"]) if ev["text"] else ""))
+        self.event_broadcast(now)
+        return "ok"
+
+    def event_broadcast(self, now):
+        """Send every live event to every member of every world hub."""
+        sent = 0
+        for session in list(self.sessions.values()):
+            if session.version != PROTO_V2 or session.kind != KIND_HUB:
+                continue
+            dgs = self.board.datagrams(now, session.code)
+            dgs += self.race_datagrams(session, now)
+            if not dgs:
+                continue
+            for addr in list(session.seats.values()):
+                for dg in dgs:
+                    try:
+                        self.transport.sendto(dg, addr)
+                    except Exception:
+                        continue
+                    sent += 1
+        self.n_event_tx += sent
+        return sent
+
+    def race_datagrams(self, session, now):
+        """The leader (every few seconds) and the winner (once decided, until
+        the race record expires) for one world, from the relay's own tally."""
+        races = self.board.races(session.code)
+        if not races:
+            session.race = None
+            return []
+        rec = races[-1]
+        if session.race is None or session.race.race_id != rec["id"]:
+            session.race = RaceTally(rec["id"], rec["target"], now)
+            log("event: race %d in world %s to %d stars" % (
+                rec["id"], session.code, session.race.target))
+        tally = session.race
+        was = tally.winner
+        tally.feed(session.stars, session.names, now)
+        if was is None and tally.winner is not None:
+            self.n_event_wins += 1
+            log("event: race %d WON in world %s by seat %d %r with %d stars"
+                % (rec["id"], session.code, tally.winner[0],
+                   tally.winner[1], tally.winner[2]))
+        remain_ms = max(0.0, (rec["total"] - (now - rec["start"])) * 1000)
+        return tally.datagrams(session.stars, session.names, now, remain_ms)
 
     # ---- asyncio hooks
 
@@ -843,6 +1201,14 @@ class RelayProtocol(asyncio.DatagramProtocol):
             if len(self.buckets) >= MAX_BUCKETS:
                 # Tracking table is full. Fail closed rather than grow.
                 return False
+            host = addr[0]
+            if capped_host(host):
+                if self.ip_buckets.get(host, 0) >= MAX_BUCKETS_PER_IP:
+                    # One machine holds its share of the table already: its
+                    # further source ports are dropped, everyone else is
+                    # unaffected (SECREV1).
+                    return False
+                self.ip_buckets[host] = self.ip_buckets.get(host, 0) + 1
             bucket = Bucket(now, burst)
             self.buckets[addr] = bucket
         else:
@@ -1093,7 +1459,14 @@ class RelayProtocol(asyncio.DatagramProtocol):
                 self._refuse_v2(addr, STATUS_FULL, code, code_raw, n,
                                 "relay at %d sessions" % MAX_SESSIONS)
                 return
+            if (capped_host(addr[0])
+                    and self._sessions_from(addr[0]) >= MAX_SESSIONS_PER_IP):
+                self._refuse_v2(addr, STATUS_FULL, code, code_raw, n,
+                                "this host already opened %d sessions"
+                                % MAX_SESSIONS_PER_IP)
+                return
             session = SessionV2(code, kind, now)
+            session.creator_ip = addr[0]
             if kind == KIND_ARENA:
                 session.referee = self._new_referee(session, now)
                 self.arenas[code] = session
@@ -1173,6 +1546,10 @@ class RelayProtocol(asyncio.DatagramProtocol):
                     status, why = STATUS_SEAT_TAKEN, "seat %d taken" % want
             else:
                 seat = want
+        if (status == STATUS_OK and capped_host(addr[0])
+                and self._seats_from(session, addr[0], addr) >= MAX_SEATS_PER_IP):
+            status, why = STATUS_FULL, ("this host already holds %d seats here"
+                                        % MAX_SEATS_PER_IP)
         if status != STATUS_OK:
             self._refuse_v2(addr, status, code, code_raw, n, why)
             if created:
@@ -1194,6 +1571,17 @@ class RelayProtocol(asyncio.DatagramProtocol):
             session.referee.on_join(seat, now)
 
     # ---- version 2: forwarding by the kind table
+
+    def _sessions_from(self, host):
+        """Sessions that this host's HELLO opened and that still exist."""
+        return sum(1 for s in self.sessions.values()
+                   if getattr(s, "creator_ip", None) == host)
+
+    @staticmethod
+    def _seats_from(session, host, except_addr):
+        """Seats of `session` held by `host` under another source port."""
+        return sum(1 for a in session.seats.values()
+                   if a[0] == host and a != except_addr)
 
     def _kind_cap_ok(self, endpoint, kind, now, rate=None):
         """Per (sender, kind) token bucket: kind.cap a second (or `rate`),
@@ -1281,6 +1669,15 @@ class RelayProtocol(asyncio.DatagramProtocol):
             self._drop_v2("cap", kstat)
             return
         endpoint.last_seen = now
+        if session.kind == KIND_HUB:
+            # what the host's race reads: the sender's own star total and name
+            if kind.tag == b"SYNL" and n == 20:
+                session.stars[seat] = data[12] | (data[13] << 8)
+            elif kind.tag == b"SYNI" and n >= 24:
+                nl = data[6]
+                raw = bytes(data[20:20 + nl])
+                session.names[seat] = "".join(
+                    chr(c) if 32 <= c < 127 else "?" for c in raw)[:24]
         if not targets:
             self._drop_v2("target", kstat)
             return
@@ -1426,6 +1823,8 @@ class RelayProtocol(asyncio.DatagramProtocol):
         if session.version == PROTO_V2:
             if session.seats.get(endpoint.seat) == endpoint.addr:
                 del session.seats[endpoint.seat]
+                session.stars.pop(endpoint.seat, None)
+                session.names.pop(endpoint.seat, None)
                 if session.referee is not None:
                     session.referee.on_leave(
                         endpoint.seat,
@@ -1469,6 +1868,11 @@ class RelayProtocol(asyncio.DatagramProtocol):
         for addr, bucket in list(self.buckets.items()):
             if (now - bucket.stamp) > BUCKET_IDLE_S and addr not in self.endpoints:
                 del self.buckets[addr]
+                n = self.ip_buckets.get(addr[0], 0) - 1
+                if n > 0:
+                    self.ip_buckets[addr[0]] = n
+                else:
+                    self.ip_buckets.pop(addr[0], None)
         for addr, until in list(self.ignored.items()):
             if until <= now:
                 del self.ignored[addr]
@@ -1616,6 +2020,8 @@ async def run():
         "hub_idle=%.0fs hub_seats=%d kinds=%s"
         % (RATE_PPS_V2, SESSION_FWD_PPS, HOST_MP2L_PPS, hub_idle_s, WORLD_SEATS,
            ",".join(t.decode("ascii") for t in KIND_ORDER)))
+    log("per-host caps: seats=%d sessions=%d buckets=%d (loopback and private exempt)"
+        % (MAX_SEATS_PER_IP, MAX_SESSIONS_PER_IP, MAX_BUCKETS_PER_IP))
     if os.name == "nt":
         log("windows: udp connreset %s" % connreset)
     if RATE_PPS < 240:
@@ -1633,7 +2039,32 @@ async def run():
     log("party: roles 4 (party) and 5 (coop), seats=%d kinds=%s"
         % (PARTY_SEATS, ",".join(t.decode("ascii") for t in PARTY_ORDER)))
 
+    # host events (lane EVENTS1): off unless a key is set
+    ev_key = os.environ.get("SM64DS_EVENT_KEY", "")
+    ev_port = clamp_int(os.environ.get("SM64DS_EVENT_CMD_PORT", ""), 0, 0, 65535)
+    ev_transport = None
+    if ev_key and len(ev_key) >= 16 and ev_port:
+        protocol.event_key = ev_key.encode("ascii", "replace")
+        ev_transport, _ = await loop.create_datagram_endpoint(
+            lambda: EventCmdProtocol(protocol), local_addr=("127.0.0.1", ev_port))
+        log("events: ON, command socket 127.0.0.1:%d (signed commands only)"
+            % ev_port)
+    else:
+        log("events: OFF (SM64DS_EVENT_KEY of 16+ characters and "
+            "SM64DS_EVENT_CMD_PORT both needed)")
+
     stop = asyncio.Event()
+
+    async def event_clock():
+        while not stop.is_set():
+            await asyncio.sleep(1.0)
+            if protocol.event_key is not None:
+                try:
+                    protocol.event_broadcast(time.monotonic())
+                except Exception as exc:
+                    log("event tick error: %s: %s" % (type(exc).__name__, exc))
+
+    event_task = loop.create_task(event_clock())
 
     async def referee_clock():
         # Only arena sessions do anything here; without one a tick is a
@@ -1671,6 +2102,9 @@ async def run():
                 log(protocol.stats_line())
     finally:
         clock_task.cancel()
+        event_task.cancel()
+        if ev_transport is not None:
+            ev_transport.close()
         log(protocol.stats_line())
         log("relay stopping")
         transport.close()

@@ -195,6 +195,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <emmintrin.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -631,6 +632,8 @@ int hal_player_behavior(void *p);
 int hal_player_process(void *p);   /* gate 15: BeforeBehavior/Behavior/After */
 void sdat_host_tick(void);         /* hosted ARM7: hal/sdat/ */
 void hal_render_player_world(void *p);
+extern "C" int port_adventure_hub_body(int slot);     /* hal/comms_sync.cpp, GHOSTPERF1 */
+extern "C" void port_adventure_ghost_park(void *body);   /* hal/comms_sync.cpp */
 extern "C" int hal_actor_off_native_view(void *actor);   /* hal/camera_bridges.cpp */
 /* ADVENTURE GHOSTS: the per-frame no-collision hold over remote slots
    (hal/player_bridges.cpp). No-op unless adventure-ghost mode is on. */
@@ -671,6 +674,7 @@ int port_coop_boot_frame(void);
 /* run mp1 lane COOPWORLD1: the coop world core (hal/coop_world.cpp). */
 void port_coop_world_frame(void);
 void port_star_popup_frame(void);
+void port_event_frame(void);   /* run hunt8 lane EVENTS1 (hal/event_client.cpp) */
 int port_star_popup_stop_now(void);   /* run mp1 lane STARPOP1 (hal/star_popup.cpp) */
 /* PARTY: per-slot party-member predicate (hal/comms_sync.cpp). */
 extern "C" int port_party_member(int slot);
@@ -3968,6 +3972,7 @@ static int ovl_text(const OvlSurface &fb, int x0, int y0, const char *s,
    OvlSurface and sizes itself off OVL_SCALE, both of which are above; its own
    banner carries the font decode, the projection and the slot rules. */
 #include "nametag.h"
+#include "ghost_cull.h"   /* GHOSTPERF1 */
 
 /* ---- THE CHAT OVERLAY (run mp1, lane CHATUI1) ------------------------------
    hal/adv_chat.cpp owns the messages and the rules; this is the pixels. The
@@ -4250,6 +4255,7 @@ static void chat_draw(const OvlSurface &fb)
 #include "hal/net_hud.h"
 #include "hal/player_list_paint.h"   /* run mp1 PLIST1: party / coop player list */
 #include "hal/star_popup_paint.h"   /* run mp1 lane STARPOP1 */
+#include "hal/event_paint.h"   /* run hunt8 lane EVENTS1 */
 #include "hal/world_party_paint.h"   /* run mp1 lane PINVITE1: parties inside the world */
 
 /* the per-phase clock. One QueryPerformanceCounter pair per phase and a
@@ -5400,6 +5406,7 @@ static void chat_host_frame(const OvlSurface &surf, int frame)
     if (!rb_skip_render()) chat_draw(surf);
     if (!rb_skip_render()) net_hud_draw(surf);
     if (!rb_skip_render()) star_popup_draw(surf);
+    if (!rb_skip_render()) event_draw(surf);   /* hook: EVENTS1 */
     if (!rb_skip_render()) world_party_draw(surf);   /* hook: PINVITE1, inert outside a world room */
 }
 
@@ -9553,6 +9560,27 @@ static int hud_glide_on(void)
     return v;
 }
 static unsigned long long g_ip_glide_pics;
+/* run hunt8, lane GHOSTPERF1: row[x] = b[x] where a[x] != b[x], four pixels at a time (the picture's 2D laid back over the replayed 3D;
+   a scalar compare-and-store per pixel over the whole frame was 0.5 ms of every picture) */
+static inline void ip_merge_row(uint32_t *row, const uint32_t *a, const uint32_t *b, int w)
+{
+    int x = 0;
+    for (; x + 4 <= w; x += 4) {
+        const __m128i va = _mm_loadu_si128((const __m128i *)(a + x));
+        const __m128i vb = _mm_loadu_si128((const __m128i *)(b + x));
+        const __m128i vr = _mm_loadu_si128((const __m128i *)(row + x));
+        const __m128i eq = _mm_cmpeq_epi32(va, vb);
+        _mm_storeu_si128((__m128i *)(row + x), _mm_or_si128(_mm_and_si128(eq, vr), _mm_andnot_si128(eq, vb)));
+    }
+    for (; x < w; ++x)
+        if (a[x] != b[x]) row[x] = b[x];
+}
+
+/* TEXT2D1: the dialogue box's line scroll, glided at the display rate (hal/message_compositor.cpp port_text_scroll_note). While the ROM scrolls the
+   lines (4 DS pixels a tick) a picture between two ticks puts the tick's text pixels back down by (1 - alpha) of the step, clipped to the box;
+   the panel stays the replayed 3D (faded). CPU blend only, like the HUD glide. SM64DS_TEXT_GLIDE=0 puts the stepped scroll back. */
+extern "C" int port_text_scroll_note(int rect[4], double *step_host);
+static unsigned long long g_ip_tscroll_pics;
 static int ip_build(double alpha)
 {
     const long long t0 = ip_qpc();
@@ -9595,6 +9623,23 @@ static int ip_build(double alpha)
     }
     if (tw && tw_card == 0 && g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1) tw = 0;
     if (!tw) twc = 0;
+    int ts_rect[4] = {0, 0, 0, 0}, ts_D = 0;
+    {
+        double ts_step = 0;
+        if (!tw && alpha < 0.999 && port_text_scroll_note(ts_rect, &ts_step)) {
+            ts_D = (int)((1.0 - alpha) * ts_step + 0.5);
+            if (ts_rect[0] < 0) ts_rect[0] = 0;
+            if (ts_rect[1] < 0) ts_rect[1] = 0;
+        }
+    }
+    {   static int tl = -1, tn;
+        if (tl < 0) tl = getenv("SM64DS_TEXT_LOG") ? 1 : 0;
+        if (tl && tn++ < 600) {
+            int r4[4] = {0, 0, 0, 0}; double st = 0;
+            const int note = port_text_scroll_note(r4, &st);
+            fprintf(stderr, "[tscroll] a=%.3f tw=%d note=%d D=%d rect %d,%d-%d,%d fade=%d masked=%d card=%d\n", alpha, tw, note, ts_D, r4[0], r4[1], r4[2], r4[3], g_ip_fade_on, g_ip_fade_masked, g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1);
+        }
+    }
     int card = 0;
     if (g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1)
         card = ntr::gx_card_interp_clear(o);
@@ -9614,7 +9659,7 @@ static int ip_build(double alpha)
            keeps its 3D and the card's own compose */
         if (tw && tw_card != 2) { port_gpu_card_inter_cut(tw_outer, tw_inner); port_gpu_card_inter_cut_closing(twc); }
         /* SM64DS_TWEEN_CARD=2 is the 0.9.3 round 4b behaviour, kept for before/after rows only: the card refuses a box tick */
-        const int card_done = !(tw && tw_card == 2) && !(gl_note && gl_note->n > 0 && alpha < 0.999) && port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
+        const int card_done = !(tw && tw_card == 2) && !(gl_note && gl_note->n > 0 && alpha < 0.999) && !ts_D && port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
         port_gpu_card_inter_cut(0, 0);
         port_gpu_card_inter_cut_closing(0);
         port_gpu_card_inter_fade_off();
@@ -9668,6 +9713,25 @@ static int ip_build(double alpha)
                 }
                 continue;
             }
+            if (ts_D > 0 && y >= ts_rect[1] && y < ts_rect[3]) {
+                /* TEXT2D1: a box with a masked fade and no processor mask (the box's own window is the mask): outside the box the tick's finished
+                   picture, inside it the replayed 3D through the fade, and the tick's text pixels (the ones that differ from that faded 3D) moved
+                   down by what is left of the step */
+                uint32_t *row = o.px[y];
+                const uint32_t *d = g_ip_p4->px[y];
+                const int evy = g_ip_fade_evy, toWhite = g_ip_fade_white;
+                const int ys = y - ts_D;
+                for (int x = 0; x < ntr::active_w; ++x) {
+                    if (x < ts_rect[0] || x >= ts_rect[2]) { row[x] = d[x]; continue; }
+                    row[x] = ip_fade_px(row[x], ip_evy_t, toWhite);
+                    if (ys >= ts_rect[1]) {
+                        const uint32_t sb = g_ip_p2->px[ys][x];
+                        if (ip_fade_px(g_ip_p3->px[ys][x], evy, toWhite) != sb) row[x] = sb;
+                    }
+                }
+                ++g_ip_tscroll_pics;
+                continue;
+            }
             memcpy(o.px[y], g_ip_p4->px[y], ntr::active_w * sizeof(uint32_t));
         }
     } else if (g_ip_fade_on) {
@@ -9688,13 +9752,26 @@ static int ip_build(double alpha)
             const unsigned char *mr = ip_bm ? ip_bm + (size_t)y * ntr::SCREEN_W : 0;
             const int tw_row = tw && y >= tw_outer[1] && y < tw_outer[3];
             const int tw_mid = tw_row && y >= tw_inner[1] && y < tw_inner[3];
+            const int ts_row = ts_D > 0 && y >= ts_rect[1] && y < ts_rect[3];
             for (int x = 0; x < ntr::active_w; ++x) {
                 const int take = mr ? mr[x] : 1;
                 const uint32_t pf = take ? ip_fade_px(a[x], evy, toWhite) : a[x];
                 const int tw_cut = tw_row && x >= tw_outer[0] && x < tw_outer[2] &&
                                    !(tw_mid && x >= tw_inner[0] && x < tw_inner[2]);
-                row[x] = (pf != b[x] && !tw_cut) ? b[x] : ((take && !(tw_cut && mr)) ? ip_fade_px(row[x], ip_evy_t, toWhite) : row[x]);
+                const int ts_in = ts_row && x >= ts_rect[0] && x < ts_rect[2];
+                row[x] = (pf != b[x] && !tw_cut && !ts_in) ? b[x] : ((take && !(tw_cut && mr)) ? ip_fade_px(row[x], ip_evy_t, toWhite) : row[x]);
+                if (ts_in) {
+                    /* TEXT2D1: the tick's text pixel that sits ts_D rows above this one, moved down */
+                    const int ys = y - ts_D;
+                    if (ys >= ts_rect[1]) {
+                        const int tk2 = ip_bm ? ip_bm[(size_t)ys * ntr::SCREEN_W + x] : 1;
+                        const uint32_t sa = g_ip_p3->px[ys][x], sb = g_ip_p2->px[ys][x];
+                        const uint32_t sf = tk2 ? ip_fade_px(sa, evy, toWhite) : sa;
+                        if (sf != sb) row[x] = sb;
+                    }
+                }
             }
+            if (ts_row) ++g_ip_tscroll_pics;
         }
     } else {
         const HudSlideNoteW *gn = (hud_glide_on() && alpha < 0.999 && !tw) ? (const HudSlideNoteW *)port_hud_slide_note() : 0;
@@ -9745,8 +9822,17 @@ static int ip_build(double alpha)
                 }
                 continue;
             }
-            for (int x = 0; x < ntr::active_w; ++x)
-                if (a[x] != b[x]) row[x] = b[x];
+            if (ts_D > 0 && !gn_n && y >= ts_rect[1] && y < ts_rect[3]) {
+                const int ys = y - ts_D;
+                for (int x = 0; x < ntr::active_w; ++x) {
+                    if (x >= ts_rect[0] && x < ts_rect[2]) {
+                        if (ys >= ts_rect[1] && g_ip_p3->px[ys][x] != g_ip_p2->px[ys][x]) row[x] = g_ip_p2->px[ys][x];
+                    } else if (a[x] != b[x]) row[x] = b[x];
+                }
+                ++g_ip_tscroll_pics;
+                continue;
+            }
+            ip_merge_row(row, a, b, ntr::active_w);
         }
     }
     /* run hunt8, lane MENUINTERP2: the menu again, on this picture's own 3D (the pieces it lifts from the 3D picture are cut from
@@ -9764,6 +9850,7 @@ static int ip_build(double alpha)
         /* INTERP093 I1: an opening box's pixels outside the window that far along are the replayed 3D in this stage too */
         const int tw_row = tw && y >= tw_outer[1] && y < tw_outer[3];
         const int tw_mid = tw_row && y >= tw_inner[1] && y < tw_inner[3];
+        if (!tw_row) { ip_merge_row(row, a, b, ntr::active_w); continue; }
         for (int x = 0; x < ntr::active_w; ++x) {
             if (a[x] == b[x]) continue;
             if (tw_row && x >= tw_outer[0] && x < tw_outer[2] && !(tw_mid && x >= tw_inner[0] && x < tw_inner[2])) continue;
@@ -9807,11 +9894,11 @@ static void ip_note(double build_ms, double pres_ms)
     fprintf(stderr, "[interp] %d blended pictures: build ms avg %.2f p50 %.2f "
             "p95 %.2f max %.2f (replay %.2f raster %.2f 2D %.2f) | present ms "
             "avg %.2f p95 %.2f max %.2f | total pictures %llu blended %llu "
-            "plain %llu\n",
+            "plain %llu card %llu cpu %llu\n",
             IP_WIN, ab / IP_WIN, sb[IP_WIN / 2], sb[(IP_WIN * 95) / 100],
             sb[IP_WIN - 1], g_ip_sum_replay / IP_WIN, g_ip_sum_raster / IP_WIN,
             g_ip_sum_compose / IP_WIN, ap / IP_WIN, sp[(IP_WIN * 95) / 100],
-            sp[IP_WIN - 1], g_ip_pictures, g_ip_blended, g_ip_plain);
+            sp[IP_WIN - 1], g_ip_pictures, g_ip_blended, g_ip_plain, g_ip_card_pics, g_ip_cpu_pics);
     if (g_ip_menu_n) fprintf(stderr, "[interp] menu re-draw in %u of those pictures: %.2f ms each (inside '2D')\n", g_ip_menu_n, g_ip_sum_menu / g_ip_menu_n);
     g_ip_sum_menu = 0; g_ip_menu_n = 0;
     g_ip_sum_replay = g_ip_sum_raster = g_ip_sum_compose = 0;
@@ -9983,9 +10070,30 @@ static void ip_stack_for_blend(void)
         const int rows = lay.pan_x0 > 0 ? (lay.main_lower ? lay.pan_h : lay.top_h)
                                         : ntr::active_h;
         uint32_t *W = g_ip_stack_snap;
-        for (int y = 0; y < rows; ++y)
-            memcpy(W + (size_t)(a_y + y) * lay.w, &g_ip_fb->px[y][0],
-                   (size_t)ntr::active_w * sizeof(uint32_t));
+        /* run after093, lane FIELD093H (F1): the row copy brings engine A's whole width, side margins
+           included, and in the wide layout those margins hold the 3D clear colour. The tick's image
+           had them filled (sub_screen.cpp wide_fill_screen: the picture's own edge colour, eased), so
+           every blended picture showed raw clear-colour bars where the tick's own picture showed the
+           light ones, and at 240 pictures a second that is the bottom bar flicker. The margin pixels
+           that still hold the row's backdrop (the same test the fill uses: equal to the pixel just
+           outside the picture) take the tick's filled bar back; 3D overhanging the picture stays. */
+        const int mx0 = lay.pan_x0, mx1 = lay.pan_x0 + lay.pan_w;
+        static int bars_off = -1;
+        if (bars_off < 0) bars_off = getenv("SM64DS_BLEND_BARS_OFF") ? 1 : 0;   /* =1 puts the old picture back (A/B) */
+        const int fix_margins = lay.pan_x0 > 0 && lay.pan_w > 0 && mx1 <= lay.w && !bars_off;
+        for (int y = 0; y < rows; ++y) {
+            uint32_t *row = W + (size_t)(a_y + y) * lay.w;
+            memcpy(row, &g_ip_fb->px[y][0], (size_t)ntr::active_w * sizeof(uint32_t));
+            if (fix_margins && lay.w == ntr::active_w) {
+                const uint32_t *fin = g_ip_stack_final + (size_t)(a_y + y) * lay.w;
+                const uint32_t kl = (mx0 >= 3 ? row[mx0 - 3] : row[0]) & 0xFFFFFFu;
+                const uint32_t kr = (mx1 + 3 <= lay.w ? row[mx1 + 2] : row[lay.w - 1]) & 0xFFFFFFu;
+                for (int x = 0; x < mx0; ++x)
+                    if ((row[x] & 0xFFFFFFu) == kl) row[x] = fin[x];
+                for (int x = mx1; x < lay.w; ++x)
+                    if ((row[x] & 0xFFFFFFu) == kr) row[x] = fin[x];
+            }
+        }
         if (g_ip_stack_ui) {
             const size_t i0 = (size_t)a_y * lay.w, i1 = (size_t)(a_y + rows) * lay.w;
             for (size_t i = i0; i < i1; ++i)
@@ -10981,6 +11089,22 @@ static void ip_probe(int frame, int rom_frame)
             char nm[64];
             snprintf(nm, sizeof nm, "interp_f%05d_%02d.bmp", rom_frame, j);
             ntr::ppu_write_bmp(nm, *g_ip_fb);
+        }
+        /* GHOSTPERF1: SM64DS_INTERP_PROBE_AB=1 builds the same picture again with every ghost group replayed (the old way) and
+           writes it beside the other as interp_f<frame>_<j>_ref.bmp, so the ghost shortcut is compared on one tick's own data */
+        {
+            static int ab = -1;
+            if (ab < 0) ab = getenv("SM64DS_INTERP_PROBE_AB") ? 1 : 0;
+            if (ab) {
+                ntr::gx_ghost_fast_override(0);
+                ip_build(alpha);
+                ntr::gx_ghost_fast_override(-1);
+                if (ntr::gx_card_retained(g_ip_fb))
+                    ntr::gx_card_settle_fb(*g_ip_fb, "the SmoothMotion probe (a picture between ticks)");
+                char nm2[64];
+                snprintf(nm2, sizeof nm2, "interp_f%05d_%02d_ref.bmp", rom_frame, j);
+                ntr::ppu_write_bmp(nm2, *g_ip_fb);
+            }
         }
     }
     (void)frame;
@@ -12629,6 +12753,33 @@ static void stack_capture(const uint32_t *img)
             ntr::ppu_write_bmp_px(nm, img, w, h);
         }
     }
+#ifndef PORT_ROM_CLEAN   /* EVENTS2: a proof knob, compiled out of the kit */
+    {   /* EVENTS1 (proof runs): SM64DS_STACK_BMP_ON=<prefix>|<flagfile>: while the flag file exists, the presented image on every 20th frame as
+           <prefix>_<frame>.bmp. The harness decides WHEN by creating and deleting the file, so a picture can be taken at the moment an event
+           is on screen without knowing the frame number in advance. */
+        static int fl = -2, fstep = 20;
+        static char fpre[480], fflag[480];
+        if (fl == -2) {
+            fl = 0;
+            if (const char *e = getenv("SM64DS_STACK_BMP_ON")) {
+                const char *bar = strchr(e, '|');
+                if (bar && (size_t)(bar - e) < sizeof fpre && strlen(bar + 1) < sizeof fflag) {
+                    memcpy(fpre, e, (size_t)(bar - e)); fpre[bar - e] = 0;
+                    strcpy(fflag, bar + 1); fl = 1;
+                    char *b2 = strchr(fflag, '|');       // optional |<step>
+                    if (b2) { *b2 = 0; fstep = atoi(b2 + 1); if (fstep < 1) fstep = 20; }
+                }
+            }
+        }
+        if (fl == 1 && img && (f % (unsigned long)fstep) == 0 && GetFileAttributesA(fflag) != INVALID_FILE_ATTRIBUTES) {
+            int w = 0, h = 0;
+            hal_sub_screen_stacked_size(&w, &h);
+            char nm[512];
+            snprintf(nm, sizeof nm, "%s_%05lu.bmp", fpre, f);
+            ntr::ppu_write_bmp_px(nm, img, w, h);
+        }
+    }
+#endif
     if (at < 0 || done || !img || (long)f < (long)at) return;
     done = 1;
     int w = 0, h = 0;
@@ -17543,7 +17694,14 @@ int main(void)
                     const int ct_stepped_mode = cam && *(void **)((char *)cam + 0x140) == (void *)data_0208733c;
                     static int c3_old = -1;
                     if (c3_old < 0) c3_old = getenv("SM64DS_CAMTEST_C3_OLD") ? 1 : 0;
-                    const int ct_owned = cam && cam93_ds_owned(cam) && !(!c3_old && cam93_state_idx(cam) == 18);
+                    /* FIELD093H (F3, thunderit round 11): the cannon camera (state 11, entering the cannon and aiming it) is the same follow body
+                       (data_0209b0b8's main is func_02009e70, camera_states.cpp) with a hand-over to the DS picture, and a slight tilt turned it
+                       at the ROM's full step the whole time. Treated like the ordinary follow states and state 18 for the stick's turn scaling.
+                       SM64DS_FIELD093H_F3_OLD=1: proof only, state 11 stays exempt. */
+                    static int f3_old = -1;
+                    if (f3_old < 0) f3_old = getenv("SM64DS_FIELD093H_F3_OLD") ? 1 : 0;
+                    const int ct_idx = cam ? cam93_state_idx(cam) : -1;
+                    const int ct_owned = cam && cam93_ds_owned(cam) && !(!c3_old && ct_idx == 18) && !(!f3_old && ct_idx == 11);
                     g_ct_dir = 0;
                     if (!ct_old && turn < 0x400 && dir && cam && !ct_owned && !ct_stepped_mode && !(btn & 0x4000)) {
                         /* below the ROM's step: scaled after the camera's own tick (ct_camera_behavior_post) */
@@ -20125,6 +20283,7 @@ int main(void)
             port_party_stars_frame();
             port_party_hits_frame();   /* hook: PLAYINT1, inert outside party / coop rooms */
             port_star_popup_frame();   /* hook: STARPOP1, inert outside party / coop rooms */
+            port_event_frame();        /* hook: EVENTS1, inert outside a live world hub */
         }
         /* PARTY: the render boundary (a party body solid+colliding vs a
            non-party ghost translucent+pass-through) and party-body liveness.
@@ -21677,8 +21836,23 @@ int main(void)
                     hal_player_texseq_tick(other);
                 continue;
             }
-            if (void *other = data_0209f394[pi])
+            if (void *other = data_0209f394[pi]) {
+                /* GHOSTPERF1: a hub ghost nobody can see this tick is not drawn. It is still parked
+                   (the park is the half of the draw that keeps its body out of the level) and its
+                   eye-blink state still advances, like a replayed frame's. */
+                if (ghost_cull_on() && port_adventure_hub_body(pi)) {
+                    const int cbp[3] = {*(const int *)((const char *)other + 0x5c), *(const int *)((const char *)other + 0x60),
+                                        *(const int *)((const char *)other + 0x64)};
+                    ++g_gc_seen;
+                    if (ghost_cull_outside(cbp)) {
+                        ++g_gc_culled;
+                        hal_player_texseq_tick(other);
+                        port_adventure_ghost_park(other);
+                        continue;
+                    }
+                }
                 hal_render_player_world(other);
+            }
         }
         if (!rb_skip_render()) {
             /* SHELF1 (S3): the opening's controlled character waits at its start mark with the ROM's cull-off-screen flag (0x2) up, and

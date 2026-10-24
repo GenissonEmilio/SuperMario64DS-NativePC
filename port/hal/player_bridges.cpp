@@ -611,7 +611,8 @@ extern signed char data_0209f2f8;
    at the render site so the party probe reads an observation rather than
    re-deriving the decision. 1 = drawn ghost (translucent), 0 = drawn solid,
    -1 = not drawn this frame. Indexed by the player slot (Player +0x6d8). */
-extern "C" signed char g_party_render_ghost[16] = {
+extern "C" signed char g_party_render_ghost[kPortBodySlots] = {
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 
 /* TEMP faithful eat/egg-lay reproduction driver (SM64DS_YOSHI_EGG_REPRO=<frame>).
@@ -1042,7 +1043,7 @@ extern "C" void port_adventure_presence_probe(int frame)
    MOVEMENT through the shipped rollback sim under injected input.
 
    Prints one [partyprobe] line with ALL PASS. Inert unless the knob is set. */
-extern "C" signed char g_party_render_ghost[16];
+extern "C" signed char g_party_render_ghost[kPortBodySlots];
 extern "C" void port_party_probe(int frame)
 {
     /* DIAG (SM64DS_PARTY_DIAG=<stride>): per-slot party treatment + position,
@@ -1901,7 +1902,7 @@ void hal_render_player_world(void *player)
 {
     const int slot = (int)*(const unsigned char *)((const char *)player + 0x6d8);
     int pal = -1;
-    if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < 16 &&
+    if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < kPortBodySlots &&
         data_0209f394[slot] == player)
         pal = port_adventure_ghost_palette(slot);
     else if (player == data_0209f394[data_0209f250] &&
@@ -1909,7 +1910,7 @@ void hal_render_player_world(void *player)
         pal = port_adventure_local_palette(player);
     GhostPalStamp st;
     st.n[0] = st.n[1] = 0;
-    if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < 16 &&
+    if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < kPortBodySlots &&
         data_0209f394[slot] == player && port::adventure_ghost_mode()) {
         ghost_toon_off((char *)player, slot);
         ghost_draw_probe((char *)player, slot, pal);
@@ -1926,7 +1927,7 @@ void hal_render_player_world(void *player)
     }
     hal_render_player_world_body(player);
     if (pal >= 0) ghost_unstamp(st);
-    if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < 16 &&
+    if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < kPortBodySlots &&
         data_0209f394[slot] == player && port_adventure_hub_body(slot))
         port_adventure_ghost_park(player);
 }
@@ -1952,14 +1953,14 @@ static void hal_render_player_world_body(void *player)
        ps_render) carry player numbers 0..2 too but are nobody's seat, and in
        solo they draw solid; in adventure they were drawn see-through. */
     const bool remote = player != data_0209f394[data_0209f250] &&
-                        party_slot >= 0 && party_slot < 16 &&
+                        party_slot >= 0 && party_slot < kPortBodySlots &&
                         data_0209f394[party_slot] == player;
     const bool ghost = port::adventure_ghost_mode() && remote &&
                        !port_party_member(party_slot);
     /* PBODY1: a solid party body is drawn at full alpha: its materials may still hold the alpha a
        ghost draw stamped (a fade-in, a pass as a ghost before it was solid), and nothing else resets it */
     const bool party_solid = !ghost && remote && port_party_member(party_slot) != 0;
-    if (party_slot >= 0 && party_slot < 16)
+    if (party_slot >= 0 && party_slot < kPortBodySlots)
         g_party_render_ghost[party_slot] = (signed char)(ghost ? 1 : 0);
     std::size_t vscol_tris0 = 0;
     static int vscol_frame = -1;
@@ -2015,7 +2016,7 @@ static void hal_render_player_world_body(void *player)
                          (unsigned)*(const unsigned char *)(c + 0x6d8));
         /* PARTY: not drawn this frame -- the recorded treatment is neither
            solid nor ghost. */
-        if (party_slot >= 0 && party_slot < 16)
+        if (party_slot >= 0 && party_slot < kPortBodySlots)
             g_party_render_ghost[party_slot] = -1;
         return;
     }

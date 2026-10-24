@@ -11987,6 +11987,9 @@ list(APPEND SLICE_COMMS_SOURCES hal/party_hits.cpp)
 # Run mp1 lane STARPOP1: star / key popup and the shared exit (party + coop). INERT
 # outside party / coop rooms; see hal/star_popup.h.
 list(APPEND SLICE_COMMS_SOURCES hal/star_popup.cpp)
+# HOST EVENTS (run hunt8, lane EVENTS1, prototype): a message, a song or a timed modifier from the host, applied by
+# each console to its own game; see hal/event_client.h. Inert unless a world hub is live; SM64DS_EVENTS=0 turns it off.
+list(APPEND SLICE_COMMS_SOURCES hal/event_client.cpp)
 # Run mp1 lane SMALLS9: the other players on the minimap (coop_minimap) and each player's own star
 # tally over their head (star_tally). INERT outside party / coop / world rooms.
 list(APPEND SLICE_COMMS_SOURCES hal/coop_minimap.cpp hal/star_tally.cpp)
@@ -25902,3 +25905,15 @@ foreach(_tpadptr walk_window walk_window_hires smoke_player)
         target_sources(${_tpadptr} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/pad_pointer.cpp")
     endif()
 endforeach()
+
+# run after093, lane EVENTS2: castle unlocked (hal/event_castle.cpp seats the door and star gate hooks; same targets as hal/char_door.cpp),
+# and the kit (PORT_ROM_CLEAN) compiles the events proof knobs out of hal/event_client.cpp (that source is shared by several targets, so
+# the define goes on the source; APPEND, never SET). Own block.
+foreach(_tevc walk_window walk_window_hires)
+    if(TARGET ${_tevc})
+        target_sources(${_tevc} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/event_castle.cpp")
+    endif()
+endforeach()
+if(PORT_ROM_CLEAN)
+    set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/hal/event_client.cpp" APPEND PROPERTY COMPILE_DEFINITIONS PORT_ROM_CLEAN)
+endif()

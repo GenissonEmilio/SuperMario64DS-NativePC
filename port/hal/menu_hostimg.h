@@ -18,7 +18,9 @@ enum { MENU_IMG_LOGO = 1, MENU_IMG_BTN_MP = 2, MENU_IMG_BTN_ADV = 3, MENU_IMG_BT
        MENU_IMG_ARROW_ORANGE = 12,   /* POLISH1A: the file pages' orange cursor arrow (HD, replaces the ROM file_menu_U one) */
        MENU_IMG_GO_CLICK = 13,       /* HDART1: thunderit's "Click to select" (the DS "Touch to select" text) for the game over screen */
        MENU_IMG_GO_GRAD = 14,        /* HDART1: thunderit's smooth HD gradient for the game over screen */
-       MENU_IMG_COUNT = 15 };
+       MENU_IMG_GO_L0 = 15,          /* HDART2: thunderit's eight GAME OVER glyphs (G A M E O V E R), ids 15..22, one picture each */
+       MENU_IMG_GO_L7 = 22,
+       MENU_IMG_COUNT = 23 };
 /* PAUSE2 (appended): extension ids 32..63. Their picture list lives with the lane that owns the art (hal/menu_pause_art.cpp answers
    menu_ext_art_src), so adding art never touches this file's table. menu_hostimg_is_plank: the ids the compose lights when selected
    and sinks when pressed (the original planks and every extension plank). */

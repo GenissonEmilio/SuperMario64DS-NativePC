@@ -281,6 +281,11 @@ Why classify(const unsigned char *p, int len, int *kind) {
         if (len != (int)sizeof(HubPartyHitWire)) return kBadLen;
         if (p[4] != 1) return kBadVersion;
         return hub_party_hit_validate(p, len) ? kOk : kBadField;
+    case kHubTagEvent:
+        *kind = kHubEvent;
+        if (len != 96) return kBadLen;
+        if (p[4] != 1) return kBadVersion;
+        return (p[6] >= 1 && p[6] <= 6 && p[22] <= 70) ? kOk : kBadField;
     case kHubTagCoopWorld:
     case kHubTagCoopCtl:
         *kind = tag == kHubTagCoopWorld ? kHubCoopWorld : kHubCoopCtl;
@@ -315,10 +320,12 @@ bool room_kind_ok(int kind, bool arena, int room) {
     case kHubPartyHit: return !arena && room == kHubRoomParty;
     case kHubCoopWorld:
     case kHubCoopCtl: return !arena && room == kHubRoomCoop;
+    case kHubEvent: return !arena && room == kHubRoomWorld;
     }
     return true;
 }
 bool shape_ok_send(int kind, bool arena, int room) {
+    if (kind == kHubEvent) return false;      // the relay speaks it; a console never does
     if (kind == kHubGhost) return !arena;
     if (kind == kHubArenaRef || kind == kKindRefPong) return false;
     if (arena_kind(kind)) return arena;
@@ -345,7 +352,7 @@ enum : int { kModeNone = 0, kModeRelay = 1, kModeMesh = 2 };
 // the mover batches (SYNW sub-type 0x10, 10 Hz state that the next batch replaces) go to their own 48-deep queue, so a
 // load or a star select can no longer evict a one-shot event with a burst of poses.
 const int kFifoDepth[kHubKinds] = { 64, 32, 32, 32, 64, 64, 32, 1,
-                                    16, 16, 16, 128, 32 };
+                                    16, 16, 16, 128, 32, 16 };
 enum : int { kFifoMaxDepth = 128, kMoverFifoDepth = 48, kMoverSubtype = 0x10 };
 
 struct Msg {
@@ -584,6 +591,20 @@ void accept_datagram(unsigned char *p, int len, int seat, unsigned now,
     if (w == kBadVersion) { ++g_st.drop_version; return; }
     if (w == kBadField) { ++g_drop_field; return; }
     const bool from_ref = (g_mode == kModeRelay && seat == kHubRefereeSeat);
+    // HOST EVENTS (lane EVENTS1): 'SYNZ' is the relay's own and nothing else
+    // is ever taken from seat 0xFD. A member cannot forge one: the relay
+    // stamps byte 5 with the member's seat, which is never 0xFD (seats are
+    // 0..31), and a console that is not in relay mode never takes one at all.
+    if (seat == kHubEventSeat && g_mode == kModeRelay) {
+        if (kind != kHubEvent || !shape_ok_recv(kind, g_arena, false, g_room)) {
+            ++g_st.drop_shape;
+            return;
+        }
+        ++g_st.recvd[kind];
+        fifo_push(kind, p, len, kHubEventSeat, now);
+        return;
+    }
+    if (kind == kHubEvent) { ++g_st.drop_shape; return; }
     if (!shape_ok_recv(kind, g_arena, from_ref, g_room)) {
         ++g_st.drop_shape;
         return;

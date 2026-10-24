@@ -38,6 +38,8 @@ void *port_scene_live_object(void);
 int  port_scene_live_id(void);
 void _ZN13dScGameOver_c19func_ov003_020b0730Ei(void *self, int arg);
 void func_02012790(int id);
+int GetOwnerLanguage(void);
+extern short data_ov003_020b1774[];
 extern int data_0208ee44;
 extern unsigned char data_0209caa0[];
 }
@@ -250,6 +252,27 @@ int up_gameover(int scene_id) { return scene_id == kGoScene ? 1 : 0; }
 const int kPlYc = 0x36, kPlYq = 0x66, kPlH = 36;
 const int kGradCol = 16;      /* a column clear of the arrows (x 0..12), the text (from x 27) and the lettering */
 
+/* HDART2: thunderit's GAME OVER glyph layout (Game Over Sprites.svg, 6 units per DS pixel): x, y, w, h of each glyph picture in his units, and the
+   shift from his page to the DS picture (his GAME OVER sits at the DS lettering's place). g_go_dx = how far each ROM glyph is from its settled x. */
+const double kGoGlyph[8][4] = {
+    { 102.03, 1241.98, 150.28, 174.08 },
+    { 247.39, 1249.24, 156.09, 168.96 },
+    { 404.39, 1235.53, 166.60, 179.20 },
+    { 570.83, 1251.29, 149.12, 163.84 },
+    { 804.27, 1259.43, 152.83, 158.72 },
+    { 937.21, 1236.25, 162.40, 179.20 },
+    { 1104.71, 1250.88, 149.12, 163.84 },
+    { 1259.68, 1240.47, 149.60, 174.08 }
+};
+const double kGoOffX = 2.1, kGoOffY = -125.0;
+int g_go_dx[8];
+bool go_letters_hd(const MenuLayout *L)
+{
+    if (L->facts.spare[3] <= 0 || L->facts.language > 1) return false;
+    for (int i = 0; i < 8; ++i) if (!menu_hostimg_ready(MENU_IMG_GO_L0 + i)) return false;
+    return true;
+}
+
 void build_gameover(int, MenuLayout *L)
 {
     /* BG2 rows 174..183 are the band the ROM hides under the text: on some frames (the arrows' bounce) those cells read as
@@ -269,9 +292,26 @@ void build_gameover(int, MenuLayout *L)
         g.layers = MENU_L_BG2; g.bg = 1; g.xfill = 1; g.fill_w = (short)L->canvas_w;
         menu_add_piece(L, g);
     }
-    MenuPiece t = menu_piece_make(SRC_TOP_2D, 0, 0, 256, 136, MENU_AX_C, MENU_AY_T, 0, 0, 1, 1);
-    t.layers = MENU_L_OBJ; t.bg = 1;
-    menu_add_piece(L, t);
+    if (go_letters_hd(L)) {
+        /* HDART2: thunderit's eight GAME OVER glyphs (the HD UI Textures mod), one picture each, placed where his layout has them and slid
+           by how far the ROM's own glyph x is from its settled x, so they drop in the way the cartridge's sprites do. The ROM's OBJ lettering
+           stays lifted (and hidden) like the text layer. English only: the other languages keep their own ROM lettering. */
+        const long long UN = L->unum, UD = L->uden;
+        const double k = (double)UN / (double)UD, ox = ((double)L->w - 256.0 * k) * 0.5;
+        for (int i = 0; i < 8; ++i) {
+            MenuPiece tx = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            tx.bg = 1; tx.hostimg = MENU_IMG_GO_L0 + i; tx.lden = 1; tx.lnum = 1;
+            tx.fx = (short)(ox + (kGoGlyph[i][0] / 6.0 + kGoOffX + g_go_dx[i]) * k + 0.5);
+            tx.fy = (short)((kGoGlyph[i][1] / 6.0 + kGoOffY) * k + 0.5);
+            tx.fw = (short)(kGoGlyph[i][2] / 6.0 * k + 0.5); tx.fh = (short)(kGoGlyph[i][3] / 6.0 * k + 0.5);
+            tx.has_clipx = 1; tx.clipx0 = (short)(ox + 0.5); tx.clipx1 = (short)(ox + 256.0 * k + 0.5);   /* only the DS picture's 256 columns, like its OBJ layer */
+            menu_add_piece(L, tx);
+        }
+    } else {
+        MenuPiece t = menu_piece_make(SRC_TOP_2D, 0, 0, 256, 136, MENU_AX_C, MENU_AY_T, 0, 0, 1, 1);
+        t.layers = MENU_L_OBJ; t.bg = 1;
+        menu_add_piece(L, t);
+    }
     MenuPiece c = menu_piece_make(SRC_SUB, 0, kPlYc, 256, kPlH, MENU_AX_C, MENU_AY_T, 0, 118, 3, 4);
     c.layers = MENU_L_BG0 | MENU_L_BG1;
     c.key_backdrop = 1;
@@ -309,10 +349,10 @@ void build_gameover(int, MenuLayout *L)
         const long long UN = L->unum, UD = L->uden;
         int iw = 1, ih = 1;
         menu_hostimg_size(MENU_IMG_GO_CLICK, &iw, &ih);
-        const int dh = (int)(11 * UN / UD), dw = (int)((long long)dh * iw / ih);
+        const int dh = (int)(10 * UN / UD), dw = (int)((long long)dh * iw / ih);
         MenuPiece tx = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         tx.bg = 1; tx.hostimg = MENU_IMG_GO_CLICK; tx.lden = 1; tx.lnum = 1; tx.fw = (short)dw; tx.fh = (short)dh;
-        tx.fx = (short)(L->w / 2 - dw / 2); tx.fy = (short)(179 * UN / UD);
+        tx.fx = (short)(L->w / 2 - dw / 2); tx.fy = (short)(177 * UN / UD);
         menu_add_piece(L, tx);
     }
     L->lift_owners = MENU_L_BG2 | MENU_L_OBJ;
@@ -323,15 +363,37 @@ void build_gameover(int, MenuLayout *L)
 
 /* MENUSPLIT1 facts for the game over cursor: the ROM's own cursor byte (+0x91, 0 Continue, 1 Quit) once the intro is in
    (+0x94 >= 2); spare[0] = 1 + the selected plate, spare[2] = a per-tick counter for the arrow's bob. */
+int g_go_shown;      /* the pad cursor has painted its highlight on this screen */
+
 void gameover_facts(MenuFacts *f)
 {
     const void *o = port_scene_live_object();
     if (!o || port_scene_live_id() != kGoScene) return;
     if (ob(o, 0x94) >= 2) f->spare[0] = 1 + (ob(o, 0x91) ? 1 : 0);
     { static int calls; f->spare[2] = ++calls; }
+    f->language = (int16_t)GetOwnerLanguage();
+    /* HDART2: the glyphs' x (dScGameOver_c +0x50, s16 x8) against their settled x (ROM table data_ov003_020b1774) */
+    const short *gx = (const short *)((const unsigned char *)o + 0x50);
+    for (int i = 0; i < 8; ++i) g_go_dx[i] = (int)gx[i] - (int)data_ov003_020b1774[i];
+    f->spare[3] = 1;
+    /* HDART2: a mouse that moved onto Continue or Quit makes that plate the ROM's chosen one, the way the file select does (the hover sound
+       itself is played by hal_menu_hover when the pointer arrives on a plate that is not the lit one). The same ROM cursor byte (+0x91) and the
+       same repaint (func_ov003_020b0730) the pad uses, under the same gate (intro in, FSM waiting). */
+    static unsigned seen;
+    int hx, hy;
+    unsigned st;
+    if (ob(o, 0x94) >= 2 && ob(o, 0x90) == 0 && hal_menu_hover_box(&hx, &hy, &st) && st != seen) {
+        seen = st;
+        const int want = hy >= 0x60 ? 1 : 0;       /* the Continue plate's touch box is y 0x38, Quit's is 0x68 */
+        unsigned char *s = (unsigned char *)port_scene_live_object();
+        if (s[0x91] != want || !g_go_shown) {
+            g_go_shown = 1;
+            s[0x91] = (unsigned char)want;
+            _ZN13dScGameOver_c19func_ov003_020b0730Ei(s, 0);
+            f->spare[0] = 1 + want;
+        }
+    }
 }
-
-int g_go_shown;      /* the pad cursor has painted its highlight on this screen */
 
 /* The ROM reads the pad only once the intro is in (+0x94 >= 2) and while its FSM waits (+0x90 == 0). */
 int pad_ok_gameover(void)
