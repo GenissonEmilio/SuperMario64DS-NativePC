@@ -26,6 +26,7 @@ int art_id(int kind)
     case ONL_K_HELP: return MENU_IMG_ONL_HELP;
     case ONL_K_BACK: return MENU_IMG_ONL_BACK;
     case ONL_K_CANCEL: return MENU_IMG_ONL_CANCEL;
+    case ONL_K_SOLO: return MENU_IMG_ONL_SOLO;
     }
     return 0;
 }
@@ -95,6 +96,7 @@ void text_lines(const UiSurface &sf, int kind, int X, int Y, int W, int H, int s
     case ONL_K_HELP: l1 = "?"; break;
     case ONL_K_BACK: l1 = "BACK"; break;
     case ONL_K_CANCEL: l1 = "CANCEL"; break;
+    case ONL_K_SOLO: l1 = "SOLO"; break;
     default: return;
     }
     if (!ui_text_ready()) return;
@@ -256,10 +258,9 @@ int menu_online_plank_art_ready(int kind) { return menu_online_plank_art_ready_c
 void menu_online_plank_state(const OnlFacts *f, int k, int *kind, int *w1000)
 {
     *w1000 = 1000;
-    if (k == 0) { *kind = ONL_K_ONLINE; return; }
-    const int solo = k == 1 ? ONL_K_ADV : ONL_K_REC, onl = k == 1 ? ONL_K_ADV_ONLINE : ONL_K_VS;
+    const int solo = k == 0 ? ONL_K_ONLINE : k == 1 ? ONL_K_ADV : ONL_K_REC, onl = k == 0 ? ONL_K_SOLO : k == 1 ? ONL_K_ADV_ONLINE : ONL_K_VS;
     const int on = f ? f->on : 0, age = f ? f->age : 999;
-    const int dur = 16, start = (k - 1) * 3;
+    const int dur = 16, start = k == 0 ? 0 : (k - 1) * 3;
     const int a = age - start;
     const int from = on ? solo : onl, to = on ? onl : solo;
     if (age >= 999 || a >= dur) { *kind = to; return; }

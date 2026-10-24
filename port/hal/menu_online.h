@@ -19,7 +19,7 @@
 
 enum { ONL_SCR_NONE = 0, ONL_SCR_VS = 1, ONL_SCR_HELP = 2, ONL_SCR_WAIT = 3, ONL_SCR_FAIL = 4 };
 /* plank kinds (MenuPiece.wtw of a code drawn plank carries one) */
-enum { ONL_K_ONLINE = 0, ONL_K_ADV_ONLINE = 1, ONL_K_VS = 2, ONL_K_HELP = 3, ONL_K_BACK = 4, ONL_K_CANCEL = 5, ONL_K_ADV = 6, ONL_K_REC = 7 };
+enum { ONL_K_ONLINE = 0, ONL_K_ADV_ONLINE = 1, ONL_K_VS = 2, ONL_K_HELP = 3, ONL_K_BACK = 4, ONL_K_CANCEL = 5, ONL_K_ADV = 6, ONL_K_REC = 7, ONL_K_SOLO = 8 };
 
 struct OnlFacts {
     int magic;          /* ONL_MAGIC when written by menu_online_facts */

@@ -401,7 +401,7 @@ bool online_plank(MenuLayout *L, int k, const Box &bx, int rise_px, int alpha, b
     const OnlFacts *of = onl_facts_of(L);
     int kind = ONL_K_ONLINE;
     menu_online_plank_state(of, k, &kind, w1000);
-    if (kind != ONL_K_ONLINE && kind != ONL_K_ADV_ONLINE && kind != ONL_K_VS) return false;
+    if (kind != ONL_K_ONLINE && kind != ONL_K_SOLO && kind != ONL_K_ADV_ONLINE && kind != ONL_K_VS) return false;
     const int un = L->unum, ud = L->uden;
     const int bh = bx.y1 - bx.y0, dh = bh * un / ud;
     int dw = menu_online_plank_w(kind, dh) * *w1000 / 1000;
