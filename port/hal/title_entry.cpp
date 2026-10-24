@@ -902,8 +902,16 @@ extern "C" void port_title_skip_tick(int frame)
    bridge. 0 = keep ticking. Non-zero = the title is done and the run should
    stop; whether that stop is an ENTRY or a REFUSAL is settled by
    port_title_entry_commit, which prints either way. */
+/* JOIN1 (hal/online_join.cpp seats it): per-tick poll of the online join wait; 1 = the join was accepted and the successor started,
+   so this process stops. Null on every target that does not link online_join.cpp. */
+extern "C" {
+int (*port_online_join_tick_hook)(void) = 0;
+}
+
 extern "C" int port_title_entry_should_stop(void)
 {
+    if (port_online_join_tick_hook && port_online_join_tick_hook())
+        return 1;
     if (!port_title_entry_armed())
         return port_title_front_door_poll();   /* a scene session: see above */
     if (data_02092664 != SCENE_STAGE)
