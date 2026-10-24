@@ -4694,8 +4694,15 @@ static void clear_fill_classic(Framebuffer &fb)
     for (int x = 0; x < w; ++x)
         fb.px[0][x] = (x >= x0 && x < x1 && 0 >= y0 && 0 < y1) ? c : kOldClear;
     if (c == kOldClear || (x0 <= 0 && x1 >= w && y0 <= 0 && y1 >= h)) {
-        for (int y = 1; y < h; ++y)
-            std::memcpy(fb.px[y], fb.px[0], (size_t)w * sizeof(fb.px[0][0]));
+        /* MENU2: every row is a copy of row 0; in row bands on the raster pool's threads (SM64DS_MENU_PAR=0 keeps one) */
+        struct ClrPk { Framebuffer *fb; int w; } pk = { &fb, w };
+        static int clr_knob = -2;
+        if (clr_knob == -2) clr_knob = gx_menu_knob_value("SM64DS_MENU_PAR");
+        gx_parallel_rows(h - 1, 256, [](void *c, int y0, int y1) {
+            const ClrPk *p = (const ClrPk *)c;
+            for (int y = y0 + 1; y < y1 + 1; ++y)
+                std::memcpy(p->fb->px[y], p->fb->px[0], (size_t)p->w * sizeof(p->fb->px[0][0]));
+        }, &pk, clr_knob);
         return;
     }
     int in_row = -1, out_row = -1;
