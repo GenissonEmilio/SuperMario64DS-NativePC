@@ -126,7 +126,6 @@ bool apply_plan(const std::string &t, int server) {
     else SetEnvironmentVariableA("SM64DS_HUB_SEAT", nullptr);
     if (has_name) SetEnvironmentVariableA("SM64DS_PLAYER_NAME", name.c_str());
     if (has_cols) { SetEnvironmentVariableA("SM64DS_PLAYER_COLOR", color.c_str()); SetEnvironmentVariableA("SM64DS_PLAYER_SHOES", shoes.c_str()); }
-    SetEnvironmentVariableA("SM64DS_SKIP_INTRO", "1");
     SetEnvironmentVariableA("SM64DS_JOIN_TEST", nullptr);
     char v[2] = { (char)('0' + g_file), 0 };
     SetEnvironmentVariableA("SM64DS_BOOT_FILE", v);
@@ -226,6 +225,7 @@ OnlineJoinState online_join_step() {
     }
     if (now - g_t0 >= kWaitMs) {
         DeleteFileA(req_path().c_str());
+        DeleteFileA(plan_path().c_str());
         fail("No launcher answered. Start the game from the launcher to play online.");
         std::fprintf(stderr, "[join] timed out after 20 s: %s\n", g_sentence.c_str());
         std::fflush(stderr);
@@ -236,6 +236,7 @@ OnlineJoinState online_join_step() {
 void online_join_cancel() {
     if (g_state == kJoinWaiting) {
         DeleteFileA(req_path().c_str());
+        DeleteFileA(plan_path().c_str());
         g_state = kJoinCancelled;
         std::fprintf(stderr, "[join] cancelled\n");
         std::fflush(stderr);
