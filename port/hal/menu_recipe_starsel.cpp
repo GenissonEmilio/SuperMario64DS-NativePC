@@ -264,7 +264,10 @@ const double kGoGlyph[8][4] = {
     { 1104.71, 1250.88, 149.12, 163.84 },
     { 1259.68, 1240.47, 149.60, 174.08 }
 };
-const double kGoOffX = 2.1, kGoOffY = -125.0;
+const double kGoOffX = 2.1, kGoOffY = -125.0 - 64.0;
+/* Three equal bands (Tango): rows 0..63 GAME OVER, 64..127 the two planks, 128..191 CLICK TO SELECT. The lettering's ink spans rows 82..111 in the ROM
+   (centre 96.5) and the planks' block 118..176 (centre 147.5), so they move up 64 and 51 rows; the text is centred on row 160. */
+const int kGoLetterUp = 64, kGoPlankUp = 51, kGoPlYcDst = 118 - kGoPlankUp, kGoPlYqDst = 150 - kGoPlankUp, kGoClickCy = 160;
 int g_go_dx[8];
 bool go_letters_hd(const MenuLayout *L)
 {
@@ -308,16 +311,16 @@ void build_gameover(int, MenuLayout *L)
             menu_add_piece(L, tx);
         }
     } else {
-        MenuPiece t = menu_piece_make(SRC_TOP_2D, 0, 0, 256, 136, MENU_AX_C, MENU_AY_T, 0, 0, 1, 1);
+        MenuPiece t = menu_piece_make(SRC_TOP_2D, 0, 0, 256, 136, MENU_AX_C, MENU_AY_T, 0, -kGoLetterUp, 1, 1);
         t.layers = MENU_L_OBJ; t.bg = 1;
         menu_add_piece(L, t);
     }
-    MenuPiece c = menu_piece_make(SRC_SUB, 0, kPlYc, 256, kPlH, MENU_AX_C, MENU_AY_T, 0, 118, 3, 4);
+    MenuPiece c = menu_piece_make(SRC_SUB, 0, kPlYc, 256, kPlH, MENU_AX_C, MENU_AY_T, 0, kGoPlYcDst, 3, 4);
     c.layers = MENU_L_BG0 | MENU_L_BG1;
     c.key_backdrop = 1;
     c.touch = 1;
     const int pc = menu_add_piece(L, c);
-    MenuPiece q = menu_piece_make(SRC_SUB, 0, kPlYq, 256, kPlH, MENU_AX_C, MENU_AY_T, 0, 150, 3, 4);
+    MenuPiece q = menu_piece_make(SRC_SUB, 0, kPlYq, 256, kPlH, MENU_AX_C, MENU_AY_T, 0, kGoPlYqDst, 3, 4);
     q.layers = MENU_L_BG0 | MENU_L_BG1;
     q.key_backdrop = 1;
     q.touch = 1;
@@ -337,7 +340,7 @@ void build_gameover(int, MenuLayout *L)
         MenuPiece ar = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         ar.bg = 1; ar.hostimg = MENU_IMG_ARROW_DOWN; ar.lden = 1; ar.lnum = 1; ar.fw = (short)dw; ar.fh = (short)dh;
         ar.fx = (short)(L->w / 2 - dw / 2);
-        const int plate_top = L->facts.spare[0] == 1 ? 118 : 150;
+        const int plate_top = L->facts.spare[0] == 1 ? kGoPlYcDst : kGoPlYqDst;
         int top = (int)(((long long)(2 * (plate_top - 2) + kBob[L->facts.spare[2] & 7]) * UN) / (2 * UD)) - dh;
         if (top < 0) top = 0;
         ar.fy = (short)top;
@@ -352,7 +355,7 @@ void build_gameover(int, MenuLayout *L)
         const int dh = (int)(10 * UN / UD), dw = (int)((long long)dh * iw / ih);
         MenuPiece tx = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         tx.bg = 1; tx.hostimg = MENU_IMG_GO_CLICK; tx.lden = 1; tx.lnum = 1; tx.fw = (short)dw; tx.fh = (short)dh;
-        tx.fx = (short)(L->w / 2 - dw / 2); tx.fy = (short)(177 * UN / UD);
+        tx.fx = (short)(L->w / 2 - dw / 2); tx.fy = (short)((kGoClickCy * UN - (long long)5 * UN) / UD);   /* 10 units tall, centred on row 160 */
         menu_add_piece(L, tx);
     }
     L->lift_owners = MENU_L_BG2 | MENU_L_OBJ;
