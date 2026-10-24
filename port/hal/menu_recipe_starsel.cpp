@@ -266,8 +266,8 @@ const double kGoGlyph[8][4] = {
 };
 const double kGoOffX = 2.1, kGoOffY = -125.0 - 64.0;
 /* Three equal bands (Tango): rows 0..63 GAME OVER, 64..127 the two planks, 128..191 CLICK TO SELECT. The lettering's ink spans rows 82..111 in the ROM
-   (centre 96.5) and the planks' block 118..176 (centre 147.5), so they move up 64 and 24 rows (the Continue plank's top edge sits on the midline, row 96); the text is centred on row 160. */
-const int kGoLetterUp = 64, kGoPlankUp = 24, kGoPlYcDst = 118 - kGoPlankUp, kGoPlYqDst = 150 - kGoPlankUp, kGoClickCy = 160;
+   (centre 96.5) and the planks' block 118..176 (centre 147.5), so they move up 64 and 48 rows (the Continue plank's bottom edge sits on the midline, row 96); the text is centred on row 160. */
+const int kGoLetterUp = 64, kGoPlankUp = 48, kGoPlYcDst = 118 - kGoPlankUp, kGoPlYqDst = 150 - kGoPlankUp, kGoClickCy = 160;
 int g_go_dx[8];
 bool go_letters_hd(const MenuLayout *L)
 {
