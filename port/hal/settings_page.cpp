@@ -871,7 +871,7 @@ void compute_layout(int w, int h)
     L.tab_h = P(44); L.tab_y = L.sy + P(74);
     {   /* the tab names in a row, centred on the sheet */
         const float em = (float)P(27);
-        const float gap = (float)P(34);
+        const float gap = (float)P(22);   /* INPUTMATRIX1: was 34; the margins beside the first and last tab hold the LB / RB hints */
         float tot = 0, tw[T_COUNT];
         for (int i = 0; i < T_COUNT; ++i) { tw[i] = ui_text_width(TAB_NAMES[i], em); tot += tw[i] + (i ? gap : 0); }
         float x = L.sx + (L.sw - tot) * 0.5f;
@@ -1773,10 +1773,14 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
             ui_text_draw(&s, (float)L.tab_x[i], (float)by, TAB_NAMES[i], em, on ? C_TEXT : C_QUIET, 255, 0);
             if (on) fill_rrect(s, (float)L.tab_x[i], (float)(by + P(6)), (float)L.tab_w[i], (float)P(5), (float)P(2), C_TEXT, 255, 0);
         }
+        /* INPUTMATRIX1 (Thunder: "the LB and RB positions are a bit low"): the hints used to sit on top of the first and last tab names, at a height
+           of their own. They now stand level with the tab names (the same cap-height centre) in the margin beside the first and last tab. */
         const float sm = (float)P(22);
-        text_mid(s, (float)(L.sx + P(50)), (float)(L.tab_y + L.tab_h / 2 - P(2)), "LB", sm, C_QUIET, 200, 0);
-        const float rw = ui_text_width("RB", sm);
-        text_mid(s, (float)(L.sx + L.sw - P(50)) - rw, (float)(L.tab_y + L.tab_h / 2 - P(2)), "RB", sm, C_QUIET, 200, 0);
+        const float cy = (float)by - ui_text_cap_height(em) * 0.5f;
+        const float lw = ui_text_width("LB", sm), rw = ui_text_width("RB", sm);
+        const float lend = (float)L.tab_x[0], rbeg = (float)(L.tab_x[T_COUNT - 1] + L.tab_w[T_COUNT - 1]);
+        text_mid(s, (float)L.sx + (lend - L.sx - lw) * 0.5f, cy, "LB", sm, C_QUIET, 200, 0);
+        text_mid(s, rbeg + ((float)(L.sx + L.sw) - rbeg - rw) * 0.5f, cy, "RB", sm, C_QUIET, 200, 0);
     }
     }
     const int *clip = L.body;
