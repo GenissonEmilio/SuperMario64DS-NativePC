@@ -2950,6 +2950,7 @@ static int g_ip_w_after_slot, g_ip_w_after_tick;
 static int ip_present_slot(long long t, long long deadline);
 static int ip_owns_picture(void);
 static void ip_flush_deferred(void);
+static void ip_pend_flush_end(void);
 
 /* run hunt8, lane MENUPACE1: SM64DS_SLOT_TRACE=1, a per-slot log of the scene/level pacer (inert unless asked for). One "[slot]" line per
    decision, in tick time (ms after the tick's start): what the slot was due at, the clock's own time, the time left to the tick's end,
@@ -3222,6 +3223,7 @@ extern "C" double port_present_clock(long long now, long long deadline,
         g_pic_due += step;
     }
 
+    ip_pend_flush_end();     /* MENU2: the burst's last picture is finished and shown before the pacer sleeps */
     port_sleep_until(deadline, qpf);
     QueryPerformanceCounter(&end);
     return (end.QuadPart - now) * 1000.0 / (double)qpf;
@@ -9279,6 +9281,7 @@ static void present_body(void)
  * the tick's present and the pacer's extra presents call present() exactly
  * as before. */
 static ntr::Framebuffer *g_ip_fb, *g_ip_p3, *g_ip_p2, *g_ip_p4, *g_ip_p5;
+static int g_ip_p4_valid = 1;   /* MENU2 M1: this scene tick took the p4 snapshot (see scene_ip_hook_body stage 2) */
 static const ntr::Framebuffer *g_ip_level_fb;
 /* run hunt8, lane SCENEINTERP1: SMOOTH MOTION ON THE SCENE PATH. The scene
    loop (scene_window_run, the title, the menus, the file select, the star
@@ -9385,11 +9388,21 @@ static int ip_trace(void)
     return t;
 }
 
+struct IpSnapPk { ntr::Framebuffer *d; const ntr::Framebuffer *s; };
+static void ip_snap_job(void *c, int y0, int y1)
+{
+    const IpSnapPk *p = (const IpSnapPk *)c;
+    for (int y = y0; y < y1; ++y)
+        memcpy(p->d->px[y], p->s->px[y], ntr::active_w * sizeof(uint32_t));
+}
 static void ip_snap(ntr::Framebuffer *dst, const ntr::Framebuffer &src)
 {
     if (!dst) return;
-    for (int y = 0; y < ntr::active_h; ++y)
-        memcpy(dst->px[y], src.px[y], ntr::active_w * sizeof(uint32_t));
+    /* MENU2: a 4 MB copy is memory-bound, so whole rows go to the raster pool's threads (SM64DS_MENU_PAR=0 keeps one) */
+    IpSnapPk p = { dst, &src };
+    static int knob = -2;
+    if (knob == -2) knob = ntr::gx_menu_knob_value("SM64DS_MENU_PAR");
+    ntr::gx_parallel_rows(ntr::active_h, 256, ip_snap_job, &p, knob);
 }
 
 /* run hunt8, lane TWODGPU1: a tick whose 2D the card drew itself (the overlay
@@ -9557,8 +9570,55 @@ static inline void ip_merge_row(uint32_t *row, const uint32_t *a, const uint32_t
    the panel stays the replayed 3D (faded). CPU blend only, like the HUD glide. SM64DS_TEXT_GLIDE=0 puts the stepped scroll back. */
 extern "C" int port_text_scroll_note(int rect[4], double *step_host);
 static unsigned long long g_ip_tscroll_pics;
+/* run after093, lane MENU2: ONE PICTURE BETWEEN TICKS IN TWO HALVES. ip_build_a replays the tick's 3D and puts it on the card
+   (with the pipe flag, the card's readback may be left pending: the fb and coverage clears wait too); ip_build_b is everything
+   after the readback (the blend with the tick's 2D, the menu again, the present). The pacer's burst of pictures runs A for the
+   next picture before B for the one before it, so the card works while the processor composes and presents. The pictures are
+   the same pictures: only the order of the work changes. SM64DS_MENU_OVERLAP=0 runs A and B back to back, as before. */
+struct IpPend {
+    int active;
+    double alpha;
+    int timed;
+    long long slot_t;            /* the presenter's moment for this picture (timed pictures) */
+    long long q0;                /* ip_present_alpha's start, for the cost sample */
+    int ip_evy_t, tw, twc, tw_outer[4], tw_inner[4], ts_rect[4], ts_D, card;
+    long long t2;
+    int tag_j, tag_k;            /* the force instrument's picture number */
+    int was_pending;             /* this picture's readback was left pending while the one before it was finished */
+};
+static IpPend g_ip_pend;
+static void (*g_ip_deliver)(IpPend *P);
+static void ip_pend_flush(void);
+static int tw_card = -1;
+static int ip_overlap_on(void)
+{
+    /* SM64DS_MENU_OVERLAP: unset = on when the row bands run on several threads (measured: with one thread the overlap costs about
+       what it hides), 1 = on whatever the threads, 0 = off, 2 = alternate every 120 scene ticks (the A/B census) */
+    static int v = -2;
+    static int autom;
+    if (v == -2) {
+        const char *e = getenv("SM64DS_MENU_OVERLAP");
+        autom = (!e || !*e) ? 1 : 0;
+        v = ntr::gx_menu_knob_value("SM64DS_MENU_OVERLAP");
+    }
+    if (autom && !ntr::gx_parallel_available()) return 0;
+    return ntr::gx_menu_knob_on(v);
+}
+static int ip_build_b(IpPend *P);
+static int ip_build_a(double alpha, IpPend *P, int pipe);
 static int ip_build(double alpha)
 {
+    IpPend P;
+    memset(&P, 0, sizeof P);
+    if (!ip_build_a(alpha, &P, 0)) return 0;
+    return ip_build_b(&P);
+}
+static int ip_build_a(double alpha, IpPend *P, int pipe)
+{
+    if (pipe) {
+        static int hooked;
+        if (!hooked) { hooked = 1; ntr::gx_set_flush_hook(ip_pend_flush); }
+    }
     const long long t0 = ip_qpc();
     if (!ntr::gx_interp_begin((float)alpha)) return 0;
     g_ip_sum_replay += ip_ms_since(t0);
@@ -9589,7 +9649,6 @@ static int ip_build(double alpha)
     int twc = tw ? port_tween_closing() : 0;
     if (twc && !g_ip_fade_on) { tw = 0; twc = 0; }
     /* TEXTBOX2: SM64DS_TWEEN_CARD=0 is the kill switch for the box's opening tween on the card path: the tick's own picture, no tween */
-    static int tw_card = -1;
     if (tw_card < 0) { const char *e = getenv("SM64DS_TWEEN_CARD"); tw_card = e ? atoi(e) : 1; }
     {   static int tl = -1, tn;
         if (tl < 0) tl = getenv("SM64DS_TWEEN_LOG") ? 1 : 0;
@@ -9617,14 +9676,51 @@ static int ip_build(double alpha)
         }
     }
     int card = 0;
-    if (g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1)
+    int deferred = 0;
+    if (g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1) {
+        if (pipe) ip_pend_flush();
         card = ntr::gx_card_interp_clear(o);
-    else
+    } else if (pipe && ntr::gx_late_possible()) {
+        /* MENU2: the clears of fb and the coverage plane wait for the card; its readback may be left pending (fb still holds the
+           picture before this one until ip_pend_flush has finished and shown it) */
+        ntr::gx_clear_fill_late(o);
+        ntr::gx_defer_request(1);
+        deferred = 1;
+    } else {
+        if (pipe) ip_pend_flush();
         ntr::gx_clear_fill(o);     /* the frame's own clear, as the tick's */
+    }
     ntr::gx_render(o);
+    if (deferred) ntr::gx_defer_request(0);
     ntr::gx_interp_end();
     g_ip_sum_raster += ip_ms_since(t1);
     const long long t2 = ip_qpc();
+    P->alpha = alpha;
+    P->ip_evy_t = ip_evy_t;
+    P->tw = tw;
+    P->twc = twc;
+    memcpy(P->tw_outer, tw_outer, sizeof tw_outer);
+    memcpy(P->tw_inner, tw_inner, sizeof tw_inner);
+    memcpy(P->ts_rect, ts_rect, sizeof ts_rect);
+    P->ts_D = ts_D;
+    P->card = card;
+    P->t2 = t2;
+    return (deferred && ntr::gx_render_deferred()) ? 2 : 1;
+}
+
+static int ip_build_b(IpPend *P)
+{
+    const double alpha = P->alpha;
+    const int ip_evy_t = P->ip_evy_t;
+    int tw = P->tw, twc = P->twc;
+    const int ts_D = P->ts_D;
+    int tw_outer[4], tw_inner[4], ts_rect[4];
+    memcpy(tw_outer, P->tw_outer, sizeof tw_outer);
+    memcpy(tw_inner, P->tw_inner, sizeof tw_inner);
+    memcpy(ts_rect, P->ts_rect, sizeof ts_rect);
+    const int card = P->card;
+    const long long t2 = P->t2;
+    ntr::Framebuffer &o = *g_ip_fb;
     if (card && ntr::gx_card_overlay_active()) {
         if (g_ip_fade_on && g_ip_fade_mov)
             port_gpu_card_inter_fade(ip_evy_t, g_ip_fade_white);
@@ -9763,6 +9859,16 @@ static int ip_build(double alpha)
             gn_n = gn->n < 2 ? gn->n : 2;
             ++g_ip_glide_pics;
         }
+        if (gn_n == 0 && !tw && ts_D <= 0) {
+            /* MENU2: the plain case (no HUD glide, no opening box, no text scroll): every row is the same merge, in bands */
+            struct MergePk { ntr::Framebuffer *o; const ntr::Framebuffer *a, *b; } pk = { &o, g_ip_p3, g_ip_p2 };
+            static int knob = -2;
+            if (knob == -2) knob = ntr::gx_menu_knob_value("SM64DS_MENU_PAR2");
+            ntr::gx_parallel_rows(ntr::active_h, 256, [](void *c, int y0, int y1) {
+                const MergePk *p = (const MergePk *)c;
+                for (int y = y0; y < y1; ++y) ip_merge_row(p->o->px[y], p->a->px[y], p->b->px[y], ntr::active_w);
+            }, &pk, knob);
+        } else
         for (int y = 0; y < ntr::active_h; ++y) {
             uint32_t *row = o.px[y];
             const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
@@ -9819,6 +9925,15 @@ static int ip_build(double alpha)
         g_ip_sum_menu += ip_ms_since(tm);
         ++g_ip_menu_n;
     }
+    if (!g_ip_skip_p5 && !tw) {
+        struct MergePk { ntr::Framebuffer *o; const ntr::Framebuffer *a, *b; } pk = { &o, g_ip_p4, g_ip_p5 };
+        static int knob = -2;
+        if (knob == -2) knob = ntr::gx_menu_knob_value("SM64DS_MENU_PAR2");
+        ntr::gx_parallel_rows(ntr::active_h, 256, [](void *c, int y0, int y1) {
+            const MergePk *p = (const MergePk *)c;
+            for (int y = y0; y < y1; ++y) ip_merge_row(p->o->px[y], p->a->px[y], p->b->px[y], ntr::active_w);
+        }, &pk, knob);
+    } else
     if (!g_ip_skip_p5)
     for (int y = 0; y < ntr::active_h; ++y) {
         uint32_t *row = o.px[y];
@@ -10092,6 +10207,8 @@ static void ip_stack_for_blend(void)
 }
 
 /* One picture: blended when this tick can, the tick's own frame otherwise. */
+static long long g_chk_excl_q;    /* QPC ticks the overlap check itself took, left out of the cost sample and of the lateness test */
+static void ip_present_after(double alpha, long long q0ticks, int sample = 1);
 static void ip_present_alpha(double alpha)
 {
     ++g_ip_pictures;
@@ -10114,6 +10231,15 @@ static void ip_present_alpha(double alpha)
         present();
         return;
     }
+    ip_present_after(alpha, q0.QuadPart);
+}
+
+/* the part of ip_present_alpha after the picture is built: the present, the counters, the cost sample */
+static void ip_present_after(double alpha, long long q0ticks, int sample)
+{
+    LARGE_INTEGER q0, q1, q2, qf;
+    QueryPerformanceFrequency(&qf);
+    q0.QuadPart = q0ticks;
     QueryPerformanceCounter(&q1);
     const ntr::Framebuffer *was = g_present_fb;
     const uint32_t *was_stack = g_present_stack;
@@ -10136,12 +10262,159 @@ static void ip_present_alpha(double alpha)
         if (rd) presenter_note_ready((q2.QuadPart - g_ip_tick_t0) * 1000.0 / (double)qf.QuadPart);
     }
     const double cost = (q2.QuadPart - q0.QuadPart) * 1000.0 / (double)qf.QuadPart;
-    ip_cost_sample(cost);
+    if (sample) ip_cost_sample(cost);
     /* finished past the tick's end: this blend made the game late */
-    if (g_ip_tick_len > 0 && q2.QuadPart > g_ip_tick_t0 + g_ip_tick_len)
+    if (g_ip_tick_len > 0 && q2.QuadPart - g_chk_excl_q > g_ip_tick_t0 + g_ip_tick_len)
         g_ip_tick_late = 1;
     ip_note((q1.QuadPart - q0.QuadPart) * 1000.0 / (double)qf.QuadPart,
             (q2.QuadPart - q1.QuadPart) * 1000.0 / (double)qf.QuadPart);
+}
+
+/* MENU2: the older picture of the burst, its readback finished and shown (or, for the force instrument, hashed) */
+static void ip_pend_flush_end(void) { ip_pend_flush(); }
+static double g_ip_b_ms = 1.0;   /* running average of the second half of a picture, for the fit rule */
+/* SM64DS_MENU_OVERLAP_CHECK=1 (a proof instrument, inert unless set): every picture the overlapped path finishes is built a second
+   time the old way (both halves back to back, same alpha, same tick state) and the two framebuffers are compared; the line says how
+   many pictures were compared and how many differ (the second build also runs the row bands on one thread, so it checks them too). SM64DS_MENU_OVERLAP_CHECK=<dir> also writes one pair there (the 360th compared, written when the run ends) as
+   <n>_pipe.bmp and <n>_sync.bmp (the picture the overlapped path made, and the one the old path makes). The picture shown is the
+   second, which equals the first when the line says 0 differ. */
+static unsigned long long g_chk_n, g_chk_bad, g_chk_pend;
+static char g_chk_dir[400];
+static std::vector<uint32_t> g_chk_ka, g_chk_kb;   /* the pair kept for the exit dump (a write in the middle of a run stalls the pictures) */
+static void ip_check_report(void)
+{
+    if (!g_chk_ka.empty() && g_chk_dir[0]) {
+        char nm[480];
+        _snprintf(nm, sizeof nm, "%s/pair_pipe.bmp", g_chk_dir);
+        ntr::ppu_write_bmp_px(nm, g_chk_ka.data(), ntr::active_w, ntr::active_h);
+        _snprintf(nm, sizeof nm, "%s/pair_sync.bmp", g_chk_dir);
+        ntr::ppu_write_bmp_px(nm, g_chk_kb.data(), ntr::active_w, ntr::active_h);
+        g_chk_ka.clear();
+    }
+    if (g_chk_n) fprintf(stderr, "[overlap-check] %llu pictures compared, %llu differ, %llu of them had their readback overlapped with the picture before\n", g_chk_n, g_chk_bad, g_chk_pend);
+}
+static void ip_check_pair(IpPend *P)
+{
+    static int on = -1;
+    if (on < 0) {
+#ifndef PORT_ROM_CLEAN
+        const char *e = getenv("SM64DS_MENU_OVERLAP_CHECK");      /* proof instrument: not in the shipping build */
+#else
+        const char *e = 0;
+#endif
+        on = (e && *e && !(e[0] == '0' && !e[1])) ? 1 : 0;
+        if (on) {
+            if (!(e[0] == '1' && !e[1])) _snprintf(g_chk_dir, sizeof g_chk_dir, "%s", e);
+            atexit(ip_check_report);
+        }
+    }
+    if (!on || g_ip_deliver) return;
+    const long long tchk = ip_qpc();
+    const int w = ntr::active_w, h = ntr::active_h;
+    std::vector<uint32_t> a((size_t)w * h);
+    for (int y = 0; y < h; ++y) memcpy(&a[(size_t)y * w], g_ip_fb->px[y], (size_t)w * 4);
+    ntr::gx_parallel_serial(1);      /* the reference is the old path in every way: one thread, both halves back to back */
+    const int built = ip_build(P->alpha);
+    ntr::gx_parallel_serial(0);
+    ++g_chk_n;
+    if (P->was_pending) ++g_chk_pend;
+    int bad = !built;
+    if (built)
+        for (int y = 0; y < h && !bad; ++y)
+            if (memcmp(&a[(size_t)y * w], g_ip_fb->px[y], (size_t)w * 4)) bad = 1;
+    if (bad) ++g_chk_bad;
+    if (g_chk_dir[0] && g_chk_n == 360 && built) {
+        g_chk_ka = a;
+        g_chk_kb.assign((size_t)w * h, 0);
+        for (int y = 0; y < h; ++y) memcpy(&g_chk_kb[(size_t)y * w], g_ip_fb->px[y], (size_t)w * 4);
+    }
+    if (bad || (g_chk_n % 300) == 0) ip_check_report();
+    g_chk_excl_q += ip_qpc() - tchk;
+}
+static void ip_deliver_present(IpPend *P)
+{
+    pt_push(PS_SMOOTH);
+    const int ok = ip_build_b(P);
+    if (ok) ip_check_pair(P);
+    pt_pop();
+    ip_note_cam(ok ? P->alpha : 1.0);
+    if (P->timed) presenter_set_target(P->slot_t);
+    if (!ok) {
+        ++g_ip_plain;
+        present();
+    } else {
+        /* the cost sample of a pipelined picture is the slot call's own time (ip_present_alpha_pipe), not first half to last */
+        ip_present_after(P->alpha, P->q0, 0);
+    }
+    if (P->timed) presenter_set_target(0);
+    g_ip_tick_shown = 1;
+}
+static void ip_pend_flush(void)
+{
+    if (!g_ip_pend.active) return;
+    IpPend P = g_ip_pend;
+    g_ip_pend.active = 0;
+    const long long tb = ip_qpc();
+    const long long excl0 = g_chk_excl_q;
+    ntr::gx_finish_readback();          /* the clears, the wait, the copy into fb and the coverage plane */
+    if (g_ip_deliver) g_ip_deliver(&P); else ip_deliver_present(&P);
+    LARGE_INTEGER qf;
+    QueryPerformanceFrequency(&qf);
+    /* one hitch must not lock the fit rule out (the average only moves when a picture is drawn): a sample counts at most twice the
+       average plus a millisecond, and ip_fits lets the average decay while it refuses */
+    double bs = ip_ms_since(tb) - (g_chk_excl_q - excl0) * 1000.0 / (double)qf.QuadPart;
+    if (bs > g_ip_b_ms * 2.0 + 1.0) bs = g_ip_b_ms * 2.0 + 1.0;
+    g_ip_b_ms = g_ip_b_ms * 0.8 + bs * 0.2;
+}
+/* the slot's picture on the pipelined path: this picture goes to the card, then the one before it is finished and shown.
+   Returns 1 when a picture went to the screen. */
+static int ip_present_alpha_pipe_body(double alpha, long long t, int timed, long long q0ticks);
+static int ip_present_alpha_pipe(double alpha, long long t, int timed)
+{
+    const long long q0 = ip_qpc();
+    g_chk_excl_q = 0;
+    const int shown = ip_present_alpha_pipe_body(alpha, t, timed, q0);
+    LARGE_INTEGER f;
+    QueryPerformanceFrequency(&f);
+    ip_cost_sample(ip_ms_since(q0) - g_chk_excl_q * 1000.0 / (double)f.QuadPart);
+    return shown;
+}
+static int ip_present_alpha_pipe_body(double alpha, long long t, int timed, long long q0ticks)
+{
+    ++g_ip_pictures;
+    (void)q0ticks;
+    IpPend P;
+    memset(&P, 0, sizeof P);
+    P.timed = timed;
+    P.slot_t = t;
+    LARGE_INTEGER q0;
+    QueryPerformanceCounter(&q0);
+    P.q0 = q0.QuadPart;
+    pt_push(PS_SMOOTH);
+    const int a = ip_build_a(alpha, &P, 1);
+    pt_pop();
+    if (!a) {
+        const int had = g_ip_pend.active;
+        ip_pend_flush();
+        ip_note_cam(1.0);
+        ++g_ip_plain;
+        if (timed) presenter_set_target(t);
+        present();
+        if (timed) presenter_set_target(0);
+        (void)had;
+        return 1;
+    }
+    const int had = g_ip_pend.active;
+    if (a == 2) {
+        ip_pend_flush();                /* the card works on this picture while the one before it is composed and shown */
+        P.active = 1;
+        P.was_pending = 1;
+        g_ip_pend = P;
+        return had;
+    }
+    ip_pend_flush();
+    if (g_ip_deliver) g_ip_deliver(&P); else ip_deliver_present(&P);
+    return 1;
 }
 
 static int ip_owns_picture(void)
@@ -10167,6 +10440,7 @@ static int ip_owns_picture(void)
 static double ip_left_ms(long long deadline);
 static void ip_present_plain_or_skip(int *presented, long long deadline)
 {
+    ip_pend_flush();     /* MENU2: pictures go to the screen in the order they were drawn */
     if (!g_ip_tick_final &&
         (!g_ip_tick_shown ||
          ip_left_ms(deadline) >= g_ip_plain_ms + 0.25)) {
@@ -10224,7 +10498,15 @@ static int ip_fits(long long deadline)
     /* the scene path (menus) starts a blend when the time left covers its cost plus 0.3 ms, so a second one fits beside the tick's work
        and its picture (measured quiet: main menu idle 128 -> 139 distinct pictures a second, tick pacing unchanged); the level path keeps
        1.2 x cost + 0.5 ms. SM64DS_FIT_RULE=<k1>,<k2> sets both. */
-    return g_ip_scene_tick ? ip_left_ms(deadline) >= c * s1 + s2 : ip_left_ms(deadline) >= c * k1 + k2;
+    /* MENU2: with the overlap a picture's second half (finish and show) comes after its slot call, so the call's cost (the cost
+       samples) does not include it: the time before the tick's end has to cover that too */
+    const double pend = (g_ip_scene_tick && ip_overlap_on()) ? g_ip_b_ms : 0.0;
+    if (g_ip_scene_tick) {
+        const int fits = ip_left_ms(deadline) >= c * s1 + s2 + pend;
+        if (!fits && pend > 0.5) g_ip_b_ms *= 0.97;     /* a refused slot loosens the margin a little, so a stale one cannot hold the pictures off for good */
+        return fits;
+    }
+    return ip_left_ms(deadline) >= c * k1 + k2;
 }
 /* The fallback's measuring retry: its first blend is drawn whatever the cost
    window says, so the cost is always measured again (see ip_fit_commit).
@@ -10249,6 +10531,7 @@ static int ip_measure_now(long long deadline)
 static int ip_present_slot(long long t, long long deadline)
 {
     if (!ip_owns_picture()) {
+        ip_pend_flush();
         g_present_repeat = 1;
         present();
         g_present_repeat = 0;
@@ -10271,13 +10554,21 @@ static int ip_present_slot(long long t, long long deadline)
        picture carries that moment. A moment at or past the tick's end is the
        next tick's to draw. */
     const bool timed = presenter_timed();
+    const bool pipe = g_ip_scene_tick && ip_overlap_on();   /* MENU2: the scene path's burst overlaps the card's readback with the processor's work */
     if (timed) {
         alpha = (double)(t - g_ip_tick_t0) / (double)g_ip_tick_len;
         if (alpha < 0.0) alpha = 0.0;
         if (alpha >= 1.0) { slot_log("SKIP", t, deadline, g_ip_cost_ms, "moment at or past the tick's end"); return 0; }
-        presenter_set_target(t);
+        if (!pipe) presenter_set_target(t);
     } else if (alpha >= 1.0) {
         ++g_ip_w_after_slot;
+    }
+    if (pipe) {
+        const long long q0 = ip_qpc();
+        const int shown = ip_present_alpha_pipe(alpha, t, timed ? 1 : 0);
+        char w[64]; _snprintf(w, sizeof w, "BLEND-PIPE alpha %.3f took %.2f ms shown %d", alpha, ip_ms_since(q0), shown); slot_log("BLEND", t, deadline, g_ip_cost_ms, w);
+        g_ip_tick_shown = 1;
+        return shown;
     }
     { const long long q0 = ip_qpc(); ip_present_alpha(alpha);
       char w[64]; _snprintf(w, sizeof w, "BLEND alpha %.3f took %.2f ms", alpha, ip_ms_since(q0)); slot_log("BLEND", t, deadline, g_ip_cost_ms, w); }
@@ -10292,6 +10583,7 @@ static int ip_present_slot(long long t, long long deadline)
    so every blended picture lands on the even grid; unpaced, it is drawn here. */
 static void ip_present_tick(void)
 {
+    ip_pend_flush();     /* MENU2 */
     LARGE_INTEGER now;
     QueryPerformanceCounter(&now);
     /* the tick's own work, measured to here: the fit line's W */
@@ -10342,6 +10634,7 @@ static void ip_present_tick(void)
    hand-off made in its own turn; the picture already up stays until then. */
 static void ip_flush_deferred(void)
 {
+    ip_pend_flush();     /* MENU2 */
     if (ip_owns_picture() && !g_ip_tick_shown && ip_fits(0)) return;
     g_ip_deferred = 0;
     if (!ip_owns_picture()) { present(); return; }
@@ -10390,8 +10683,38 @@ static int ip_bits(unsigned v)
     for (; v; v &= v - 1) ++n;
     return n;
 }
+/* SM64DS_MENU2_CENSUS=1 (measurement only, inert unset): pictures between ticks per scene tick, split by the A/B phase (see
+   gx_menu_knob_on: with a knob read as 2, phase 1 is "on"), one line per 600 ticks */
+static void menu2_census(void)
+{
+    static int on = -1;
+#ifndef PORT_ROM_CLEAN
+    if (on < 0) { const char *e = getenv("SM64DS_MENU2_CENSUS"); on = (e && e[0] == '1') ? 1 : 0; }
+#else
+    on = 0;      /* measurement knob: not in the shipping build */
+#endif
+    if (!on || !g_ip_scene_tick) return;
+    static int prev = -1;
+    static unsigned long long n[2], b[2], late[2], plain[2];
+    static double cost[2];
+    static int tot;
+    if (prev >= 0 && g_ip_rate_ok && g_ip_tick_t0 > 0) {
+        ++n[prev];
+        b[prev] += (unsigned long long)g_ip_tick_blends;
+        if (g_ip_tick_late) ++late[prev];
+        cost[prev] += g_ip_cost_ms;
+        if (++tot >= 600) {
+            fprintf(stderr, "[menu2-census] knobs off: %llu ticks, %.3f pictures between ticks per tick, %llu late, cost %.2f ms | knobs on: %llu ticks, %.3f per tick, %llu late, cost %.2f ms\n",
+                    n[0], n[0] ? (double)b[0] / n[0] : 0.0, late[0], n[0] ? cost[0] / n[0] : 0.0,
+                    n[1], n[1] ? (double)b[1] / n[1] : 0.0, late[1], n[1] ? cost[1] / n[1] : 0.0);
+            tot = 0;
+        }
+    }
+    prev = ntr::gx_menu2_phase_get();
+}
 static int ip_fit_commit(void)
 {
+    menu2_census();
     static int slow, nofit, since, ready_prev, retries;
     static unsigned late_bits;
     static int w_ticks, w_ready, w_blend, w_slow, w_refused, w_blends, w_late;
@@ -10583,6 +10906,7 @@ static void scene_ip_hook_body(int stage, void *fbp, int frame, int tick_game)
     static int sub_prev_on, sub_prev_evy, sub_prev_white;
     if (stage == 1) {
         ++g_si_ticks;
+        ntr::gx_menu2_phase_set((int)((g_si_ticks / 120) & 1));   /* MENU2: the A/B knobs read as 2 alternate every 120 scene ticks */
         g_ip_tick_ok = 0;
         g_ip_menu_relift = 0;
         /* a scene tick is never held on the card (the stacked layout is not
@@ -10722,7 +11046,19 @@ static void scene_ip_hook_body(int stage, void *fbp, int frame, int tick_game)
     }
     /* p4 (the picture after the fade) is read only by a masked fade, which
        snaps above, and by the host-UI diff of the inset layout */
-    if (!hal_sub_screen_stacked()) ip_snap(g_ip_p4, fb);
+    /* MENU2 M1: the snapshot of the picture after the fade is read only for the host UI's diff (ip_scene_present: F3, the pause menu, a
+       toast, the pad pointer); a tick with none of them skips the 4 MB copy. SM64DS_P4_SKIP=0 puts the copy back on every tick. */
+    {
+        static int p4_knob = -2;
+        if (p4_knob == -2) p4_knob = ntr::gx_menu_knob_value("SM64DS_P4_SKIP");
+        const int p4_skip = ntr::gx_menu_knob_on(p4_knob);
+        g_ip_p4_valid = 0;
+        if (!hal_sub_screen_stacked() &&
+            (!p4_skip || g_overlay_on || menu_on || ss_toast_left > 0 || hal_padptr_on())) {
+            ip_snap(g_ip_p4, fb);
+            g_ip_p4_valid = 1;
+        }
+    }
     g_ip_snapstage = 2;
     if ((g_si_ticks % 240) == 0 && (ip_trace() || getenv("SM64DS_SCENE_INTERP_TRACE")))
         scene_ip_report();
@@ -10824,6 +11160,65 @@ static void si_ram_hash(int frame)
    (alpha 1) must be the tick's own picture, bit for bit: the line says so. It
    makes the replay run on every tick whatever the pacer has time for, which is
    what a state proof needs. */
+static int g_force_stacked;
+static unsigned g_force_tick_hash;
+/* the force instrument's second half of a picture: B is already done by the caller; this prints the hash line */
+static void ip_force_print(int j, int k, double alpha)
+{
+    unsigned hs;
+    const uint32_t *was_stack = g_present_stack;
+    if (g_force_stacked && g_ip_stack_on) {
+        ip_stack_for_blend();
+        int w = 0, h = 0;
+        hal_sub_screen_stacked_size(&w, &h);
+        hs = si_hash_px(g_present_stack, w, h, w);
+        si_pic('b', alpha, g_ip_fb, g_present_stack);
+        g_present_stack = was_stack;
+    } else {
+        hs = si_hash_px(&g_ip_fb->px[0][0], ntr::active_w, ntr::active_h, ntr::SCREEN_W);
+        si_pic('b', alpha, g_ip_fb, 0);
+    }
+    fprintf(stderr, "[blendhash] t%u j%d/%d alpha %.4f %08x%s" "\n", g_si_pic_tick, j, k,
+            alpha, hs, j == k ? (hs == g_force_tick_hash ? " == the tick's picture" : " DIFFERS from the tick's picture") : "");
+}
+static int g_force_k;
+static void ip_force_deliver(IpPend *P)
+{
+    if (!ip_build_b(P)) {
+        fprintf(stderr, "[blendhash] t%u j%d/%d SNAP" "\n", g_si_pic_tick, P->tag_j, g_force_k);
+        return;
+    }
+    ip_force_print(P->tag_j, g_force_k, P->alpha);
+}
+static void ip_scene_force_pipe(int stacked, unsigned tick_hash, int k)
+{
+    g_force_stacked = stacked;
+    g_force_tick_hash = tick_hash;
+    g_force_k = k;
+    g_ip_deliver = ip_force_deliver;
+    for (int j = 1; j <= k; ++j) {
+        const double alpha = (double)j / k;
+        IpPend P;
+        memset(&P, 0, sizeof P);
+        P.tag_j = j;
+        const int a = ip_build_a(alpha, &P, 1);
+        if (!a) {
+            ip_pend_flush();
+            fprintf(stderr, "[blendhash] t%u j%d/%d SNAP" "\n", g_si_pic_tick, j, k);
+            continue;
+        }
+        if (a == 2) {
+            ip_pend_flush();
+            P.active = 1;
+            g_ip_pend = P;
+            continue;
+        }
+        ip_pend_flush();
+        ip_force_deliver(&P);
+    }
+    ip_pend_flush();
+    g_ip_deliver = 0;
+}
 static void ip_scene_force(int stacked, unsigned tick_hash)
 {
     static int k = -1;
@@ -10832,6 +11227,14 @@ static void ip_scene_force(int stacked, unsigned tick_hash)
         k = e ? atoi(e) : 0;
     }
     if (k <= 0 || g_ip_on <= 0 || !g_ip_tick_ok) return;
+    /* MENU2: SM64DS_SCENE_INTERP_FORCE_PIPE=1 (default when the overlap is on) builds the k pictures the way the pacer's burst does:
+       the next picture goes to the card before the one before it is finished. Same alphas, so the hashes must equal the sync run's. */
+    static int force_pipe = -1;
+    if (force_pipe < 0) { const char *e = getenv("SM64DS_SCENE_INTERP_FORCE_PIPE"); force_pipe = e ? atoi(e) : ip_overlap_on(); }
+    if (force_pipe && ip_overlap_on()) {
+        ip_scene_force_pipe(stacked, tick_hash, k);
+        return;
+    }
     for (int j = 1; j <= k; ++j) {
         const double alpha = (double)j / k;
         const double r0 = g_ip_sum_replay, a0 = g_ip_sum_raster, c0 = g_ip_sum_compose, m0 = g_ip_sum_menu;
@@ -10920,6 +11323,11 @@ static void ip_scene_present(int stacked, uint32_t *stack_img,
             }
         } else {
             g_ip_skip_p5 = host_ui ? 0 : 1;
+            if (host_ui && !g_ip_p4_valid) {
+                /* MENU2 M1: host UI appeared after stage 2 decided to skip the p4 snapshot: this tick snaps (never seen in practice) */
+                g_ip_tick_ok = 0;
+                scene_ip_note(SI_UI);
+            } else
             if (host_ui) ip_snap(g_ip_p5, fb);
         }
         ip_scene_force(stacked, tick_hash);
