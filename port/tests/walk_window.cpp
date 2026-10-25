@@ -9790,21 +9790,27 @@ static int ip_build_b(IpPend *P)
                    picture, inside it the replayed 3D through the fade, and the tick's text pixels (the ones that differ from that faded 3D) moved
                    down by what is left of the step */
                 uint32_t *row = o.px[y];
-                const uint32_t *d = g_ip_p4->px[y];
+                const uint32_t *d = g_ip_p4->px[y], *a3 = g_ip_p3->px[y];
                 const int evy = g_ip_fade_evy, toWhite = g_ip_fade_white;
                 const int ys = y - ts_D;
                 for (int x = 0; x < ntr::active_w; ++x) {
-                    if (x < ts_rect[0] || x >= ts_rect[2]) { row[x] = d[x]; continue; }
+                    /* FIELD093J: outside the box the picture is the replayed 3D with the tick's 2D over it (the pixels the tick's 2D changed).
+                       The tick's p4 is NOT a finished picture when the tick's 3D lives on the card (p3 and the 3D holes of p4 are empty
+                       there), so copying it blanked the whole 3D for the pictures between ticks of every text scroll. */
+                    if (x < ts_rect[0] || x >= ts_rect[2]) { if (a3[x] != d[x]) row[x] = d[x]; continue; }
                     row[x] = ip_fade_px(row[x], ip_evy_t, toWhite);
                     if (ys >= ts_rect[1]) {
                         const uint32_t sb = g_ip_p2->px[ys][x];
-                        if (ip_fade_px(g_ip_p3->px[ys][x], evy, toWhite) != sb) row[x] = sb;
+                        /* FIELD093J: sb == 0 is no 2D there (a card tick's overlay is transparent and its p3 is empty, so the faded p3
+                           is never 0 and every such pixel read as text, wiping the replayed 3D inside the box) */
+                        if (sb != 0 && ip_fade_px(g_ip_p3->px[ys][x], evy, toWhite) != sb) row[x] = sb;
                     }
                 }
                 ++g_ip_tscroll_pics;
                 continue;
             }
-            memcpy(o.px[y], g_ip_p4->px[y], ntr::active_w * sizeof(uint32_t));
+            /* FIELD093J: the replayed 3D with the tick's 2D over it (see above); the tick's p4 alone has no 3D on a card tick */
+            ip_merge_row(o.px[y], g_ip_p3->px[y], g_ip_p4->px[y], ntr::active_w);
         }
     } else if (g_ip_fade_on) {
         /* run hunt8, lane FADEINTERP1: a CONSTANT engine A fade (the same
