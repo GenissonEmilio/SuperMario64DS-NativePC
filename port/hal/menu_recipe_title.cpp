@@ -468,6 +468,7 @@ void build_main(MenuLayout *L, bool intro)
     /* THE INTRO (top-state 10): the ROM opens the lower screen through a black star iris, drawn as 3D polygons with a thin
        dark edge, and the plates and the head arrive inside it. On one screen the logo simply fades in alone and the
        lower screen's art appears with the page itself, so nothing of the iris is drawn. */
+    menu_online_add_tint(L, onl_facts_of(L));      /* NAME1: the green over the sky (and, with the DS logo, its blue letters) */
     if (intro) return;
     if (tune(6, -1) >= 0 && tune(7, -1) >= tune(6, -1)) {
         /* DEBUG (SM64DS_TITLE_TUNE index 6,7 = first,last engine-B OAM entry): the upper screen's OAM entries alone, keyed on
@@ -991,6 +992,7 @@ void build_main_pc(MenuLayout *L, bool intro)
         wl.wink = (uint8_t)ctune(8, 107);
         menu_add_piece(L, wl);
     }
+    menu_online_add_tint(L, onl_facts_of(L));      /* NAME1: the online mode's green over the sky and the pattern, before anything else is drawn */
     {
         /* MENUS093C (D23): on the face press page the DS lower screen's wallpaper fades to the drawing paper's cream while the head jumps
            (measured on the cartridge: still blue 8 ticks after the touch, lavender at 20, beige at 32, cream by 44). Ours stayed blue
@@ -1819,6 +1821,7 @@ void file_pages_build(int variant, MenuLayout *L)
     if (pat) pg.keycover = 1;
     if (t_f && t_f->wide3d) pg.nodraw = 1;      /* FILE2: the wide 3D frame already is the picture, in place: this piece only maps clicks */
     const int ip = menu_add_piece(L, pg);
+    if (variant == V_FILES) menu_online_add_tint(L, onl_facts_of(L));      /* NAME1: the online file select keeps the green over its water */
     if (t_f && t_f->wide3d && !pat) L->wz = t_f->wz;       /* MENUS093E: the reflection is zoomed in the 3D: a touch on the water is the zoomed point */
     if (pat) {
         /* the page's own 2D layer (the SOUND and BACKLIGHT labels, the star) is lifted out of the picture and drawn over the 3D objects,
