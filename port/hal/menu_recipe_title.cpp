@@ -421,8 +421,8 @@ void online_overlays(MenuLayout *L, bool main_page, bool show_help)
     if (!of) return;
     const int un = L->unum, ud = L->uden;
     if (show_help && of->scr == ONL_SCR_NONE) {
-        if (main_page) menu_online_add_help(L, L->w - 44 * un / ud, 5 * un / ud, 30 * un / ud);
-        else menu_online_add_help(L, L->w / 2 + (ONL_HELP_X + ONL_HELP_W - 128) * un / ud, ONL_HELP_Y * un / ud, ONL_HELP_W * un / ud);
+        (void)main_page;      /* the WINDOW's right edge on every page: the title (beside the wrench) and the online file select place it alike */
+        menu_online_add_help(L, L->w - 44 * un / ud, 5 * un / ud, 30 * un / ud);
     }
     menu_online_add_modal(L, of);
 }
