@@ -20537,6 +20537,27 @@ int main(void)
             port_stage0_vs_breakall(frame);    /* STAGE 0: SM64DS_VS_BREAKALL */
             port_vs_hud_probe(frame);          /* TEMPORARY: SM64DS_VS_HUD */
             port_input_probe_sign_trigger(frame);   /* TEMPORARY: SM64DS_SIGN_TRIGGER */
+#ifndef PORT_ROM_CLEAN
+            /* FIELD093J (TEST ONLY, inert unset): the selftest-only pokes of the HUD rows, on the live paced path.
+               SM64DS_LIVE_WARP=<lvl>@<frame> drives LoadLevelNoReturn like SM64DS_WARP_SEQ, SM64DS_LIVE_HEALTH=<wedges>@<frame> sets the local
+               player's health like SM64DS_HEALTH_POKE. */
+            {
+                static int lv_read, lv_warp_l = -1, lv_warp_f = -1, lv_hp_w = -1, lv_hp_f = -1;
+                if (!lv_read) {
+                    lv_read = 1;
+                    if (const char *e = getenv("SM64DS_LIVE_WARP")) sscanf(e, "%d@%d", &lv_warp_l, &lv_warp_f);
+                    if (const char *e = getenv("SM64DS_LIVE_HEALTH")) sscanf(e, "%d@%d", &lv_hp_w, &lv_hp_f);
+                }
+                if (lv_warp_f >= 0 && frame == lv_warp_f) {
+                    fprintf(stderr, "[livewarp] frame %d: warp to level %d\n", frame, lv_warp_l);
+                    LoadLevelNoReturn(lv_warp_l, 0, 1, 1);
+                }
+                if (lv_hp_f >= 0 && frame == lv_hp_f) {
+                    data_02092144[(int)data_0209f250] = (short)(lv_hp_w << 8);
+                    fprintf(stderr, "[livehealth] f%d health -> %d wedges\n", frame, lv_hp_w);
+                }
+            }
+#endif
             port_probe_alcheck();
             port_probe_sign_yaw();
             port_probe_chomp(frame);
