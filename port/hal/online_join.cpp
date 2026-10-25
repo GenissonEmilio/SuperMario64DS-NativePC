@@ -89,9 +89,10 @@ bool jbool(const std::string &t, const char *key, bool *v) {
     return false;
 }
 
-bool printable(const std::string &s, size_t lo, size_t hi) {
+bool printable(const std::string &s, size_t lo, size_t hi, bool allow_space = false) {
     if (s.size() < lo || s.size() > hi) return false;
-    for (char c : s) if ((unsigned char)c < 0x21 || (unsigned char)c > 0x7E || c == '"') return false;
+    const unsigned char first = allow_space ? 0x20 : 0x21;
+    for (char c : s) if ((unsigned char)c < first || (unsigned char)c > 0x7E || c == '"') return false;
     return true;
 }
 bool hex6(const std::string &s) {
@@ -108,11 +109,18 @@ bool apply_plan(const std::string &t, int server) {
     long long seat = 255;
     jstr(t, "relay", &relay); jstr(t, "code", &code); jstr(t, "kind", &kind);
     jnum(t, "seat", &seat);
-    const bool has_name = jstr(t, "name", &name);
+    bool has_name = jstr(t, "name", &name);
     const bool has_cols = jstr(t, "color", &color) && jstr(t, "shoes", &shoes);
     bool ok = printable(relay, 1, 253) && printable(code, 1, 8) && kind == "world" &&
               ((seat >= 0 && seat < 32) || seat == 255);
-    if (has_name && !printable(name, 1, 24)) ok = false;
+    /* The player's nickname may hold spaces ("Mario Fan"; the launcher keeps 0x20..0x7E). Leading and trailing spaces are
+       trimmed; a name of only spaces is treated as no name (the tag falls back to PLAYER n). Relay and code stay strict. */
+    if (has_name) {
+        size_t b = name.find_first_not_of(' '), e = name.find_last_not_of(' ');
+        name = (b == std::string::npos) ? std::string() : name.substr(b, e - b + 1);
+        if (name.empty()) has_name = false;
+        else if (!printable(name, 1, 24, true)) ok = false;
+    }
     if (has_cols && !(hex6(color) && hex6(shoes))) ok = false;
     if (!ok) { fail("The launcher's answer looked wrong. Try again."); return false; }
     if (!port_title_front_door_hook) { fail("This game cannot join from here."); return false; }
