@@ -40,6 +40,7 @@ void _ZN13dScGameOver_c19func_ov003_020b0730Ei(void *self, int arg);
 void func_02012790(int id);
 int GetOwnerLanguage(void);
 extern short data_ov003_020b1774[];
+extern short data_ov003_020b1764[];
 extern int data_0208ee44;
 extern unsigned char data_0209caa0[];
 }
@@ -266,9 +267,9 @@ const double kGoGlyph[8][4] = {
 };
 const double kGoOffX = 2.1, kGoOffY = -125.0 - 64.0;
 /* Three equal bands (Tango): rows 0..63 GAME OVER, 64..127 the two planks, 128..191 CLICK TO SELECT. The lettering's ink spans rows 82..111 in the ROM
-   (centre 96.5) and the planks' block 118..176 (centre 147.5), so they move up 64 and 51 rows; the text is centred on row 160. */
-const int kGoLetterUp = 64, kGoPlankUp = 51, kGoPlYcDst = 118 - kGoPlankUp, kGoPlYqDst = 150 - kGoPlankUp, kGoClickCy = 160;
-int g_go_dx[8];
+   (centre 96.5) and the planks' block 118..176 (centre 147.5), so they move up 64 and 48 rows (the Continue plank's bottom edge sits on the midline, row 96); the text is centred on row 160. */
+const int kGoLetterUp = 64, kGoPlankUp = 48, kGoPlYcDst = 118 - kGoPlankUp, kGoPlYqDst = 150 - kGoPlankUp, kGoClickCy = 160;
+int g_go_dx[8], g_go_dx0[8];     /* now / at the start: how far each ROM glyph is from its settled x (the start table data_ov003_020b1764) */
 bool go_letters_hd(const MenuLayout *L)
 {
     if (L->facts.spare[3] <= 0 || L->facts.language > 1) return false;
@@ -297,17 +298,23 @@ void build_gameover(int, MenuLayout *L)
     }
     if (go_letters_hd(L)) {
         /* HDART2: thunderit's eight GAME OVER glyphs (the HD UI Textures mod), one picture each, placed where his layout has them and slid
-           by how far the ROM's own glyph x is from its settled x, so they drop in the way the cartridge's sprites do. The ROM's OBJ lettering
+           by how far the ROM's own glyph x is from its settled x, so they drop in the way the cartridge's sprites do (from the window edge, see below). The ROM's OBJ lettering
            stays lifted (and hidden) like the text layer. English only: the other languages keep their own ROM lettering. */
         const long long UN = L->unum, UD = L->uden;
         const double k = (double)UN / (double)UD, ox = ((double)L->w - 256.0 * k) * 0.5;
         for (int i = 0; i < 8; ++i) {
             MenuPiece tx = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
             tx.bg = 1; tx.hostimg = MENU_IMG_GO_L0 + i; tx.lden = 1; tx.lnum = 1;
-            tx.fx = (short)(ox + (kGoGlyph[i][0] / 6.0 + kGoOffX + g_go_dx[i]) * k + 0.5);
+            /* The glyphs come in from the actual window edge, not the DS picture's: the slide (the ROM's dx, from its start x to 0, with the
+               ROM's own delay and landing frame) is stretched by f so that at the start the glyph is just outside the window, whatever the
+               aspect (extra = DS units the window shows beyond each side of the 256 columns). Resting place is unchanged (dx 0). */
+            const double X = kGoGlyph[i][0] / 6.0 + kGoOffX, gw = kGoGlyph[i][2] / 6.0, extra = ox / k + 2.0, d0 = g_go_dx0[i];
+            double f = 1.0;
+            if (i < 4 && d0 < 0.0) { f = (X + gw + extra) / -d0; if (f < 1.0) f = 1.0; }
+            else if (i >= 4 && d0 > 0.0) { f = (256.0 + extra - X) / d0; if (f < 1.0) f = 1.0; }
+            tx.fx = (short)(ox + (X + g_go_dx[i] * f) * k + 0.5);
             tx.fy = (short)((kGoGlyph[i][1] / 6.0 + kGoOffY) * k + 0.5);
             tx.fw = (short)(kGoGlyph[i][2] / 6.0 * k + 0.5); tx.fh = (short)(kGoGlyph[i][3] / 6.0 * k + 0.5);
-            tx.has_clipx = 1; tx.clipx0 = (short)(ox + 0.5); tx.clipx1 = (short)(ox + 256.0 * k + 0.5);   /* only the DS picture's 256 columns, like its OBJ layer */
             menu_add_piece(L, tx);
         }
     } else {
@@ -377,7 +384,10 @@ void gameover_facts(MenuFacts *f)
     f->language = (int16_t)GetOwnerLanguage();
     /* HDART2: the glyphs' x (dScGameOver_c +0x50, s16 x8) against their settled x (ROM table data_ov003_020b1774) */
     const short *gx = (const short *)((const unsigned char *)o + 0x50);
-    for (int i = 0; i < 8; ++i) g_go_dx[i] = (int)gx[i] - (int)data_ov003_020b1774[i];
+    for (int i = 0; i < 8; ++i) {
+        g_go_dx[i] = (int)gx[i] - (int)data_ov003_020b1774[i];
+        g_go_dx0[i] = (int)data_ov003_020b1764[i] - (int)data_ov003_020b1774[i];
+    }
     f->spare[3] = 1;
     /* HDART2: a mouse that moved onto Continue or Quit makes that plate the ROM's chosen one, the way the file select does (the hover sound
        itself is played by hal_menu_hover when the pointer arrives on a plate that is not the lit one). The same ROM cursor byte (+0x91) and the
