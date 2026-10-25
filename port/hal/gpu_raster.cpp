@@ -2513,7 +2513,11 @@ void late_drill_init()
 {
     if (g_late_drill_kind != -1) return;
     g_late_drill_kind = 0;
-    const char *e = getenv("SM64DS_MENU_LATE_DRILL");
+#ifndef PORT_ROM_CLEAN
+    const char *e = getenv("SM64DS_MENU_LATE_DRILL");      /* proof drill: not in the shipping build */
+#else
+    const char *e = 0;
+#endif
     if (e && !strncmp(e, "fail:", 5)) { g_late_drill_kind = 1; g_late_drill_n = atoi(e + 5); }
     else if (e && !strncmp(e, "drop:", 5)) { g_late_drill_kind = 2; g_late_drill_n = atoi(e + 5); }
 }
@@ -3407,7 +3411,9 @@ int draw_full(const ntr::GxGpuFrame *f)
         late_drill_init();
         ++g_late_issued;
         if (g_late_drill_kind == 2 && g_late_issued == g_late_drill_n) {
+#ifndef PORT_ROM_CLEAN
             fprintf(stderr, "[renderer] SM64DS_MENU_LATE_DRILL: dropping the targets with %d readback(s) pending\n", g_lp_n);
+#endif
             release_targets();
             return 2;     /* the frame is drawn and its buffers hold the clear colour; the next frame builds the targets again */
         }

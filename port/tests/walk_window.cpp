@@ -10297,7 +10297,11 @@ static void ip_check_pair(IpPend *P)
 {
     static int on = -1;
     if (on < 0) {
-        const char *e = getenv("SM64DS_MENU_OVERLAP_CHECK");
+#ifndef PORT_ROM_CLEAN
+        const char *e = getenv("SM64DS_MENU_OVERLAP_CHECK");      /* proof instrument: not in the shipping build */
+#else
+        const char *e = 0;
+#endif
         on = (e && *e && !(e[0] == '0' && !e[1])) ? 1 : 0;
         if (on) {
             if (!(e[0] == '1' && !e[1])) _snprintf(g_chk_dir, sizeof g_chk_dir, "%s", e);
@@ -10684,7 +10688,11 @@ static int ip_bits(unsigned v)
 static void menu2_census(void)
 {
     static int on = -1;
+#ifndef PORT_ROM_CLEAN
     if (on < 0) { const char *e = getenv("SM64DS_MENU2_CENSUS"); on = (e && e[0] == '1') ? 1 : 0; }
+#else
+    on = 0;      /* measurement knob: not in the shipping build */
+#endif
     if (!on || !g_ip_scene_tick) return;
     static int prev = -1;
     static unsigned long long n[2], b[2], late[2], plain[2];

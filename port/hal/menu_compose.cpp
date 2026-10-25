@@ -1755,7 +1755,11 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
     if (P.src == SRC_TOP_PIC) {
         /* OPTIM1 proof knob: SM64DS_MENU_PIC_CHECK=1 draws the piece both ways from the same starting picture and counts the pixels that differ */
         static int chk = -1;
+#ifndef PORT_ROM_CLEAN
         if (chk < 0) { const char *e = getenv("SM64DS_MENU_PIC_CHECK"); chk = (e && *e == '1') ? 1 : 0; }
+#else
+        chk = 0;     /* proof knob: not in the shipping build */
+#endif
         if (chk && pic_fast()) {
             const size_t n = (size_t)stride_of(w) * (size_t)h;
             static std::vector<uint32_t> tmp;
