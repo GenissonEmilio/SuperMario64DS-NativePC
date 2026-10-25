@@ -10274,7 +10274,7 @@ static void ip_pend_flush_end(void) { ip_pend_flush(); }
 static double g_ip_b_ms = 1.0;   /* running average of the second half of a picture, for the fit rule */
 /* SM64DS_MENU_OVERLAP_CHECK=1 (a proof instrument, inert unless set): every picture the overlapped path finishes is built a second
    time the old way (both halves back to back, same alpha, same tick state) and the two framebuffers are compared; the line says how
-   many pictures were compared and how many differ (the second build also runs the row bands on one thread, so it checks them too). SM64DS_MENU_OVERLAP_CHECK=<dir> also writes the first 40 pairs there as
+   many pictures were compared and how many differ (the second build also runs the row bands on one thread, so it checks them too). SM64DS_MENU_OVERLAP_CHECK=<dir> also writes 12 pairs there (one in every 120 compared) as
    <n>_pipe.bmp and <n>_sync.bmp (the picture the overlapped path made, and the one the old path makes). The picture shown is the
    second, which equals the first when the line says 0 differ. */
 static unsigned long long g_chk_n, g_chk_bad, g_chk_pend;
@@ -10308,13 +10308,15 @@ static void ip_check_pair(IpPend *P)
         for (int y = 0; y < h && !bad; ++y)
             if (memcmp(&a[(size_t)y * w], g_ip_fb->px[y], (size_t)w * 4)) bad = 1;
     if (bad) ++g_chk_bad;
-    if (g_chk_dir[0] && g_chk_n <= 40 && built) {
+    static int dumped;
+    if (g_chk_dir[0] && dumped < 12 && (g_chk_n % 120) == 1 && built) {
         char nm[480];
-        _snprintf(nm, sizeof nm, "%s/%02llu_pipe.bmp", g_chk_dir, g_chk_n);
+        ++dumped;
+        _snprintf(nm, sizeof nm, "%s/%04llu_pipe.bmp", g_chk_dir, g_chk_n);
         ntr::ppu_write_bmp_px(nm, a.data(), w, h);
         std::vector<uint32_t> b((size_t)w * h);
         for (int y = 0; y < h; ++y) memcpy(&b[(size_t)y * w], g_ip_fb->px[y], (size_t)w * 4);
-        _snprintf(nm, sizeof nm, "%s/%02llu_sync.bmp", g_chk_dir, g_chk_n);
+        _snprintf(nm, sizeof nm, "%s/%04llu_sync.bmp", g_chk_dir, g_chk_n);
         ntr::ppu_write_bmp_px(nm, b.data(), w, h);
     }
     if (bad || (g_chk_n % 300) == 0) ip_check_report();
