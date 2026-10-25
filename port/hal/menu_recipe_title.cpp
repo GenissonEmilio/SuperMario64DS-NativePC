@@ -1603,6 +1603,15 @@ void scene_sprite_xf(char *o);
    same translation the drawing page's pencil gets in scene_sprite_xf. The plates and the page stay centred; at 4:3 the translation
    is zero and nothing is set. file_back_shift_units() is the one number the sprite, the cursor arrow and the touch piece share. */
 static bool file_back_obj(int x, int y) { return x >= 180 && y >= 136; }
+/* ANCHOR1 (design, Tango's choice): SM64DS_FILEOPT_EDGE=1 mirrors the FILE OPTIONS plank to the window's LEFT edge with the back arrow's inset (4 units),
+   so the bottom row balances the moved back arrow. Default off: the plank stays centred with the plates. */
+static bool fileopt_edge_on()
+{
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_FILEOPT_EDGE"); v = (e && *e && *e != '0') ? 1 : 0; }
+    return v != 0;
+}
+static bool fileopt_obj(int x, int y) { return x >= 28 && x <= 156 && y >= 136; }       /* the plank's object (id 1c) and its cursor sit inside its DS box */
 static bool file_wide_page_now()
 {
     if (!ntr::widescreen || ntr::active_h <= 0 || !hal_menu_live()) return false;
@@ -1620,6 +1629,7 @@ static void file_back_xf(char *o)
     if (cw <= 256.5f) return;
     const int x = ((const int *)o)[1] >> 12, y = ((const int *)o)[2] >> 12;
     if (file_back_obj(x, y)) ntr::gx_menu_sprite_xf(1.f, (cw - 256.f) / cw, 1.f, 0.f);       /* 2 * ((cw - 256) / 2) / cw */
+    else if (fileopt_edge_on() && fileopt_obj(x, y)) ntr::gx_menu_sprite_xf(1.f, -((cw - 256.f) + 48.f) / cw, 1.f, 0.f);   /* its box's left edge (DS x 28) to 4 units from the window's left edge */
 }
 int file_skip(char *o)
 {
@@ -1654,18 +1664,20 @@ int file_skip_inner(char *o)
    touch (the host already hands the ROM the water point for one). */
 extern "C" void port_title_ripple_xf(int *x, int *y)
 {
-    if (!file_back_obj(*x, *y) || !file_wide_page_now()) return;
+    const bool bk = file_back_obj(*x, *y), op = !bk && fileopt_edge_on() && fileopt_obj(*x, *y);
+    if ((!bk && !op) || !file_wide_page_now()) return;
     float cw, ch;
     scene_canvas_units(&cw, &ch);
     if (cw <= 256.5f || g_file_wz <= 1000) return;
     const float zoom = (float)g_file_wz / 1000.0f;
-    int nx = 128 + (int)(((float)(*x - 128) + (cw - 256.0f) * 0.5f) / zoom);
+    const float shift = bk ? (cw - 256.0f) * 0.5f : -((cw - 256.0f) * 0.5f + 24.0f);
+    int nx = 128 + (int)(((float)(*x - 128) + shift) / zoom);
     int ny = 96 + (int)((float)(*y - 96) / zoom);
     if (nx < 0) nx = 0;
     if (nx > 255) nx = 255;
     if (ny < 0) ny = 0;
     if (ny > 191) ny = 191;
-    if (hal_menu_trace_on()) fprintf(stderr, "[filecur] ripple of the cursor leaving the back arrow: DS (%d,%d) -> water (%d,%d)\n", *x, *y, nx, ny);
+    if (hal_menu_trace_on()) fprintf(stderr, "[filecur] ripple of the cursor leaving a moved plank: DS (%d,%d) -> water (%d,%d)\n", *x, *y, nx, ny);
     *x = nx; *y = ny;
 }
 extern "C" {
@@ -1903,9 +1915,22 @@ void file_pages_build(int variant, MenuLayout *L)
         pg.ay = MENU_AY_T;
     }
     const int ip = menu_add_piece(L, pg);
-    if (split) {
+    int ip_fo = -1;
+    if (split && fileopt_edge_on()) {
+        /* the knob: the lower left is cut into the part left of the plank, the part between the plank and the arrow's corner (both centred, so the
+           old plank place maps to nothing), and the plank's own piece on the window's left edge (DS x 24 .. 160, its left edge 4 units in) */
+        MenuPiece a = pg; a.s.x = 0; a.s.y = 133; a.s.w = 24; a.s.h = 59; a.ax = MENU_AX_C; a.ay = MENU_AY_T; a.dx = (short)(0 + 12 - 128); a.dy = 133;
+        ip_lo = menu_add_piece(L, a);
+        MenuPiece b = pg; b.s.x = 160; b.s.y = 133; b.s.w = 20; b.s.h = 59; b.ax = MENU_AX_C; b.ay = MENU_AY_T; b.dx = (short)(160 + 10 - 128); b.dy = 133;
+        menu_add_piece(L, b);
+        MenuPiece f = pg; f.s.x = 24; f.s.y = 133; f.s.w = 136; f.s.h = 59; f.ax = MENU_AX_L; f.ay = MENU_AY_T; f.dx = 0; f.dy = 133;
+        ip_fo = menu_add_piece(L, f);
+    }
+    if (split && ip_fo < 0) {
         MenuPiece lo = pg; lo.s.x = 0; lo.s.y = 133; lo.s.w = 180; lo.s.h = 59; lo.ax = MENU_AX_C; lo.ay = MENU_AY_T; lo.dx = (short)(0 + 90 - 128); lo.dy = 133;
         ip_lo = menu_add_piece(L, lo);
+    }
+    if (split) {
         MenuPiece bk = pg; bk.s.x = 180; bk.s.y = 133; bk.s.w = 76; bk.s.h = 59; bk.ax = MENU_AX_R; bk.ay = MENU_AY_T; bk.dx = 0; bk.dy = 133;
         ip_bk = menu_add_piece(L, bk);
     }
@@ -1950,6 +1975,7 @@ void file_pages_build(int variant, MenuLayout *L)
         ar.bg = 1; ar.hostimg = MENU_IMG_ARROW_ORANGE; ar.lden = 1; ar.lnum = 1; ar.fw = (short)dw; ar.fh = (short)dh;
         ar.fx = (short)(L->w / 2 + (g_oa_x - 11 - 128) * un / ud);
         if (ip_bk >= 0 && file_back_obj(g_oa_x, g_oa_y + 8)) ar.fx = (short)(ar.fx + (L->w - 256 * un / ud) / 2);      /* ANCHOR1: the cursor arrow points at the back arrow where it is now */
+        else if (ip_bk >= 0 && fileopt_edge_on() && fileopt_obj(g_oa_x, g_oa_y + 8)) ar.fx = (short)(ar.fx - ((L->w - 256 * un / ud) / 2 + 24 * un / ud));      /* ... and at the FILE OPTIONS plank where the knob put it */
         ar.fy = (short)((g_oa_y - 8) * un / ud + (L->h - 192 * un / ud) / 2);
         menu_add_piece(L, ar);
     }
@@ -1957,7 +1983,7 @@ void file_pages_build(int variant, MenuLayout *L)
     g_hot_live_only = true;
     if (split) {
         hot(L, ip, fids, 6);
-        hot(L, ip_lo, fids + 6, 1);
+        hot(L, ip_fo >= 0 ? ip_fo : ip_lo, fids + 6, 1);
         hot(L, ip_bk, fids + 7, 1);
     } else {
         hot(L, ip, fids, 8);
