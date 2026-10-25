@@ -117,12 +117,29 @@ int title_cursor_on_wrench()
     return p0 && p0[0] == 7;
 }
 
+unsigned short *g_strip_conf;   /* INPUTMATRIX1: the pad hook's confirm strip (see settings_page_hook_pad) */
+
 }  // namespace
 
 /* the pad seam's pressed word, before hal_menu_pad: 1 when this press opened the page (the bits are taken out of the pressed AND the held
    word, so the ROM, which builds its key record from the held word on the title, sees no confirm) */
 extern "C" int settings_page_hook_pad(uint16_t *pressed)
 {
+    {
+        /* INPUTMATRIX1 (Thunder, wrench via controller): a confirm this hook took (the wrench, the ? text's close, an online plank) is kept out
+           of the pressed AND the held word for as long as the key stays down. It used to be taken on its edge frame only: the settings page opens
+           a quarter second later, a real press lasts longer than a frame, and the held word came back on the next frame as a fresh edge for the
+           ROM, whose cursor was still on the wrench (its own OPTIONS screen opened behind our page). The same stripping as the D-pad steps below. */
+        static unsigned short strip_conf;
+        unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+        strip_conf = (unsigned short)(strip_conf & (*held | *pressed));
+        if (strip_conf) {
+            *pressed = (uint16_t)(*pressed & ~strip_conf);
+            *held = (unsigned short)(*held & ~strip_conf);
+            port_host_keys_clear(strip_conf);
+        }
+        g_strip_conf = &strip_conf;
+    }
     {
         /* NAME1: the D-pad's way to the ? button. The ROM's cursor has nowhere to go from the wrench to the left, nor up from the file row, so the
            step is the online menu's; it is kept out of the held word for as long as the key is down (the ROM builds its key record from it). */
@@ -155,6 +172,7 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
             if (title_main_page()) swallow = menu_online_press_main(title_cursor_elem(), edge);
             else if (title_file_page()) swallow = menu_online_press_file(title_cursor_elem(), edge);
             if (swallow) {
+                if (g_strip_conf) *g_strip_conf = (unsigned short)(*g_strip_conf | (bits & (*pressed | *held)));
                 *pressed = (uint16_t)(*pressed & ~bits);
                 *held = (unsigned short)(*held & ~bits);
                 port_host_keys_clear(bits);
@@ -171,8 +189,9 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
     } else {
         if (!title_cursor_on_wrench()) return 0;
     }
-    *pressed = (uint16_t)(*pressed & ~confirm);
     unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+    if (g_strip_conf) *g_strip_conf = (unsigned short)(*g_strip_conf | (confirm & (*pressed | *held)));
+    *pressed = (uint16_t)(*pressed & ~confirm);
     *held = (unsigned short)(*held & ~confirm);
     if (tgt == TGT_TITLE) port_host_keys_clear(confirm);   /* MENUS093: the title reads the host key word too */
     settings_page_set_source(tgt);
