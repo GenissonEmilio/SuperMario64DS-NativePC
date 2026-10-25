@@ -179,8 +179,12 @@ void menu_recroom_build(int, MenuLayout *L)
             u.layers = MENU_L_BG0; u.touch = 0; u.ax = MENU_AX_C; u.ay = MENU_AY_T; u.dx = 0; u.dy = 0;
             menu_add_piece(L, u);
         }
-        const uint8_t arrows = slide ? (uint8_t)MENU_L_OBJ : all;      /* a slide: objects only, so no second copy of a card lands at a window edge */
-        p_tab = cut(0, 0, lw, 192, MENU_AX_L, all);
+        /* A slide: the pieces at the window edges draw the strip and the objects only (BG2 + OBJ). The tab piece reads DS columns 0 .. lw at the
+           window's left edge, so with BG0 in it the cards crossing those columns were drawn a second time, shifted by the side margin, and the
+           arrows' pieces did the same at the right: the cards now appear only in the centred DS box and are cut at its left and right edges, the
+           way the cartridge draws the slide (under the strip on the left, at the screen edge on the right). */
+        const uint8_t arrows = slide ? (uint8_t)(MENU_L_BG2 | MENU_L_OBJ) : all;
+        p_tab = cut(0, 0, lw, 192, MENU_AX_L, arrows);
         if (mode == 0) {
             p_cards = cut(lw, 0, 0xd0 - lw, 192, MENU_AX_C, all);
             if (slide) { if (!o || R.arrow) p_right = cut(0xd4, 0x3c, 44, 0x48, MENU_AX_R, arrows); }     /* the page arrow only: the ROM draws it only while no page change runs */
