@@ -141,35 +141,64 @@ void menu_recroom_build(int, MenuLayout *L)
     L->key_sentinel = one ? 0 : 1;      /* MENUS093E: key the exact undrawn pixels, not the colour of palette entry 0 (black after a minigame took the cards' outlines with it) */
     m.touch = 1;
     m.bg = 1;                                              /* it overlaps the pattern pieces by design */
-    const int pm = menu_add_piece(L, m);
+    const int mode = R.mode;
+    /* ANCHOR1: on a wide picture the corner controls ride the WINDOW's edges (Tango 10-24, the corner-control rule), the cards stay
+       centred. The one block is cut into pieces of the same layers: the tab column at the left edge (DS x 0 .. kLw; on page two the
+       page arrow is beside it), the page arrow and the back arrow at the right edge (DS x 0xd0 .. 256, right edge on the picture's
+       edge), the cards between, centred. 4:3 (one) is the single block, untouched. The page slide's clip then sits at the cards
+       piece's left edge instead of under the tab column (RECROOM1's DECISION traded that clip for one block; the rule outranks it). */
+    int pm = -1, p_tab = -1, p_right = -1, p_back = -1, p_cards = -1;
+    if (one) {
+        pm = menu_add_piece(L, m);
+        p_tab = p_right = p_back = p_cards = pm;
+    } else {
+        const int lw = mode == 0 ? 0x3c : 0x5c;          /* the tab column's strip ends at DS x 0x37; the cards start at 0x40 (page two: 0x60) */
+        auto cut = [&](int sx, int sy, int sw, int sh, int ax) {
+            MenuPiece q = m;
+            q.s.x = (short)sx; q.s.y = (short)sy; q.s.w = (short)sw; q.s.h = (short)sh;
+            q.ay = MENU_AY_T; q.dy = (short)sy; q.ax = (uint8_t)ax;
+            q.dx = (short)(ax == MENU_AX_C ? sx + sw / 2 - 128 : 0);       /* centred pieces keep their DS x from the DS box's centre */
+            return menu_add_piece(L, q);
+        };
+        p_tab = cut(0, 0, lw, 192, MENU_AX_L);
+        if (mode == 0) {
+            p_cards = cut(lw, 0, 0xd0 - lw, 192, MENU_AX_C);
+            p_right = cut(0xd0, 0, 48, 0x88, MENU_AX_R);
+        } else {
+            p_cards = cut(lw, 0, 256 - lw, 0x88, MENU_AX_C);
+            cut(lw, 0x88, 0xd0 - lw, 56, MENU_AX_C);
+            p_right = p_tab;                              /* page two: the page arrow is beside the tab column */
+        }
+        p_back = cut(0xd0, 0x88, 48, 56, MENU_AX_R);
+        pm = p_cards;
+    }
 
     /* the ROM's boxes (inclusive byte compares in the cited source, so a box is one wider than the span) */
     /* category tabs: x <= 0x30, tab i y 2 + 0x30 i .. 0x2e + 0x30 i (src/MiniGm_UpdateGroupTabs.cpp:60-71) */
-    for (int i = 0; i < 4; ++i) menu_add_hotspot(L, pm, 0, 2 + 0x30 * i, 0x31, 0x2d, -1);
+    for (int i = 0; i < 4; ++i) menu_add_hotspot(L, p_tab, 0, 2 + 0x30 * i, 0x31, 0x2d, -1);
     /* back arrow: x 0xd8..0xf8, y 0x90..0xb0 (src/MiniGm_UpdateExitButton.cpp:25-31) */
-    L->back = (int8_t)menu_add_hotspot(L, pm, kBackX, kBackY, kBackW, kBackH, -1);
+    L->back = (int8_t)menu_add_hotspot(L, p_back, kBackX, kBackY, kBackW, kBackH, -1);
 
     /* no live object (the layout selftest): the 2 x 3 page with every card and the next-page arrow */
-    const int mode = R.mode;
     /* game cells (src/UpdateGameSelect.cpp:77-90): the ROM accepts a cell whose game is unlocked (c00b4) */
     if (mode == 0) {
         for (int row = 0; row < 2; ++row)
             for (int col = 0; col < 3; ++col) {
                 if (o && !((R.cells >> (row * 3 + col)) & 1)) continue;
-                menu_add_hotspot(L, pm, 0x40 + 0x30 * col, 0x18 + 0x48 * row, 0x30, 0x48, -1);
+                menu_add_hotspot(L, p_cards, 0x40 + 0x30 * col, 0x18 + 0x48 * row, 0x30, 0x48, -1);
             }
     } else {
         for (int col = 0; col < 3; ++col) {
             if (o && !((R.cells >> col) & 1)) continue;
-            menu_add_hotspot(L, pm, 0x60 + 0x30 * col, 0x38, 0x30, 0x48, -1);
+            menu_add_hotspot(L, p_cards, 0x60 + 0x30 * col, 0x38, 0x30, 0x48, -1);
         }
     }
     /* page arrow: drawn only while no flip is running and, on the first page, only if some page two exists
        (src/_ZN11dScMiniGm_c6RenderEv.cpp:84-110); boxes src/MiniGm_UpdatePageArrows.c:30-45 */
     const bool arrow = !o || R.arrow;
     if (arrow) {
-        if (mode == 0) menu_add_hotspot(L, pm, 0xd8, 0x40, 0x21, 0x41, -1);
-        else menu_add_hotspot(L, pm, 0x38, 0x40, 0x21, 0x41, -1);
+        if (mode == 0) menu_add_hotspot(L, p_right, 0xd8, 0x40, 0x21, 0x41, -1);
+        else menu_add_hotspot(L, p_right, 0x38, 0x40, 0x21, 0x41, -1);
     }
     /* THE FOCUS ARROW (a pad or key focus, or the mouse hovering): the title's own blue triangle (menu_hostimg.h, the art
        cut from the ROM's cursor object) points down at the focused item from above, its tip a little way into the item's
@@ -188,6 +217,7 @@ void menu_recroom_build(int, MenuLayout *L)
             ar.bg = 1; ar.hostimg = MENU_IMG_ARROW_DOWN; ar.lden = 1; ar.lnum = 1; ar.fw = (short)dw; ar.fh = (short)dh;
             const int cxu2 = 2 * H.box.x + H.box.w - 256;                  /* centre x from 128, times 2 */
             ar.fx = (short)(L->w / 2 + cxu2 * L->unum / (2 * L->uden) - dw / 2);
+            if (!one) { int hx, hy; menu_hotspot_centre(L, j, &hx, &hy); ar.fx = (short)(hx - dw / 2); }      /* ANCHOR1: the hotspot's own place, its piece may ride an edge */
             int top = ((2 * H.box.y + 6 + kBob[calls & 7]) * L->unum) / (2 * L->uden) - dh;
             if (top < 0) top = 0;
             if (top + dh > L->h) top = L->h - dh;
