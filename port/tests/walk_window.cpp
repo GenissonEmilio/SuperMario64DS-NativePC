@@ -10356,7 +10356,11 @@ static void ip_pend_flush(void)
     if (g_ip_deliver) g_ip_deliver(&P); else ip_deliver_present(&P);
     LARGE_INTEGER qf;
     QueryPerformanceFrequency(&qf);
-    g_ip_b_ms = g_ip_b_ms * 0.8 + (ip_ms_since(tb) - (g_chk_excl_q - excl0) * 1000.0 / (double)qf.QuadPart) * 0.2;
+    /* one hitch must not lock the fit rule out (the average only moves when a picture is drawn): a sample counts at most twice the
+       average plus a millisecond, and ip_fits lets the average decay while it refuses */
+    double bs = ip_ms_since(tb) - (g_chk_excl_q - excl0) * 1000.0 / (double)qf.QuadPart;
+    if (bs > g_ip_b_ms * 2.0 + 1.0) bs = g_ip_b_ms * 2.0 + 1.0;
+    g_ip_b_ms = g_ip_b_ms * 0.8 + bs * 0.2;
 }
 /* the slot's picture on the pipelined path: this picture goes to the card, then the one before it is finished and shown.
    Returns 1 when a picture went to the screen. */
@@ -10493,7 +10497,12 @@ static int ip_fits(long long deadline)
     /* MENU2: with the overlap a picture's second half (finish and show) comes after its slot call, so the call's cost (the cost
        samples) does not include it: the time before the tick's end has to cover that too */
     const double pend = (g_ip_scene_tick && ip_overlap_on()) ? g_ip_b_ms : 0.0;
-    return g_ip_scene_tick ? ip_left_ms(deadline) >= c * s1 + s2 + pend : ip_left_ms(deadline) >= c * k1 + k2;
+    if (g_ip_scene_tick) {
+        const int fits = ip_left_ms(deadline) >= c * s1 + s2 + pend;
+        if (!fits && pend > 0.5) g_ip_b_ms *= 0.97;     /* a refused slot loosens the margin a little, so a stale one cannot hold the pictures off for good */
+        return fits;
+    }
+    return ip_left_ms(deadline) >= c * k1 + k2;
 }
 /* The fallback's measuring retry: its first blend is drawn whatever the cost
    window says, so the cost is always measured again (see ip_fit_commit).
