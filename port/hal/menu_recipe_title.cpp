@@ -404,7 +404,7 @@ inline int face_dy(const FaceK &k) { return (int)(135.7 - 134.5 * k.n / k.d + 0.
 int wrench_dx(const MenuLayout *L)
 {
     const OnlFacts *o = onl_facts_of(L);
-    return (o && o->on) ? -30 : 0;
+    return (o && o->on) ? -35 : 0;      /* NAME2: the ? (30 units) and its gap from the window edge (5 units, the same as its gap from the top) */
 }
 
 /* NAME1 (run after093): THE ONLINE PLANKS. Plank k of the main page (0 = the MP slot, now ONLINE; 1 = ADVENTURE; 2 = REC ROOM) is in its solo or online
@@ -436,8 +436,8 @@ void online_overlays(MenuLayout *L, bool main_page, bool show_help)
     if (!of) return;
     const int un = L->unum, ud = L->uden;
     if (show_help && of->scr == ONL_SCR_NONE) {
-        (void)main_page;      /* flush against the WINDOW's right edge on every page; on the title the wrench stands beside it (wrench_dx) */
-        menu_online_add_help(L, L->w, 5 * un / ud, 30 * un / ud);
+        (void)main_page;      /* 5 units in from the WINDOW's right edge on every page; on the title the wrench stands beside it (wrench_dx) */
+        menu_online_add_help(L, L->w - 5 * un / ud, 5 * un / ud, 30 * un / ud);      /* NAME2: 5 units in from the window's right edge, as it is from the top */
     }
     menu_online_add_modal(L, of);
 }
@@ -1781,7 +1781,7 @@ void scene_sprite_xf(char *o)
         if (id == 0x1b && y < 100) {
             float up = 0.f;
             if (v == V_TOY) { const int tv = title_page_counter(); const float e = tv >= 10 ? 1.f : (float)tv / 10.f; up = e * e * 60.f; }
-            ntr::gx_menu_sprite_xf(1.f, 2.f * (sx - (menu_online_on() ? 30.f : 0.f)) / cw, 1.f, 2.f * (sy + up) / ch);      /* NAME1: beside the ? button in online mode */
+            ntr::gx_menu_sprite_xf(1.f, 2.f * (sx - (menu_online_on() ? 35.f : 0.f)) / cw, 1.f, 2.f * (sy + up) / ch);      /* NAME1: beside the ? button in online mode; NAME2: the ? (30) and its gap from the window edge (5) */
         }
         return;
     }
