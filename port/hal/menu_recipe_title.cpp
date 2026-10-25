@@ -392,6 +392,13 @@ inline int face_dy(const FaceK &k) { return (int)(135.7 - 134.5 * k.n / k.d + 0.
    Source rects are in lower-screen DS pixels and tile the screen: head+star+sparkles (216 x 140, the whole upper
    part; a drag on the face stays inside it), sparkles right of the wrench, the wrench, and the three plates. They
    are placed at the lower screen's own positions on the 4:3 core; tune knobs (SM64DS_TITLE_TUNE) move the head. */
+/* NAME1: with the ? button flush against the window's right edge (30 units wide) the wrench steps left by that width, so the pair stays side by side with the ? outermost */
+int wrench_dx(const MenuLayout *L)
+{
+    const OnlFacts *o = onl_facts_of(L);
+    return (o && o->on) ? -30 : 0;
+}
+
 /* NAME1 (run after093): THE ONLINE PLANKS. Plank k of the main page (0 = the MP slot, now ONLINE; 1 = ADVENTURE; 2 = REC ROOM) is in its solo or online
    state, or turning between them (menu_online_plank_state). An online-family plank (ONLINE, ADVENTURE ONLINE, VS) is added here, from the mod's
    picture or drawn in code (hal/menu_online_draw.cpp), over the ROM's own box; the function answers 1 when it did. A solo plank is the caller's own
@@ -421,8 +428,8 @@ void online_overlays(MenuLayout *L, bool main_page, bool show_help)
     if (!of) return;
     const int un = L->unum, ud = L->uden;
     if (show_help && of->scr == ONL_SCR_NONE) {
-        (void)main_page;      /* the WINDOW's right edge on every page: the title (beside the wrench) and the online file select place it alike */
-        menu_online_add_help(L, L->w - 44 * un / ud, 5 * un / ud, 30 * un / ud);
+        (void)main_page;      /* flush against the WINDOW's right edge on every page; on the title the wrench stands beside it (wrench_dx) */
+        menu_online_add_help(L, L->w, 5 * un / ud, 30 * un / ud);
     }
     menu_online_add_modal(L, of);
 }
@@ -494,9 +501,9 @@ void build_main(MenuLayout *L, bool intro)
     MenuPiece head = menu_piece_make(SRC_TOP_PIC, 20, 0, 156, 140, MENU_AX_C, MENU_AY_T, tune(2, -18), tune(3, 46), hk, hd);
     head.touch = 1; head.nodraw = 1;
     menu_add_piece(L, head);
-    MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
+    MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, wrench_dx(L), 0, 1, 1);
     wr.keycover = 1; wr.touch = 1;
-    if (settings_page_press_look() == 2) { wr.dy = 1; wr.dx = -1; }   /* HUDMENU2 (H4): the wrench sinks while the press hold of a pad / key confirm runs */
+    if (settings_page_press_look() == 2) { wr.dy = 1; wr.dx = (short)(wrench_dx(L) - 1); }   /* HUDMENU2 (H4): the wrench sinks while the press hold of a pad / key confirm runs */
     const int iwr = menu_add_piece(L, wr);
     static const int kPlateId[3] = { 1, 0, 2 };                      /* the ROM's element ids: VS, ADVENTURE, REC ROOM */
     static const int kPlankImg[3] = { MENU_IMG_BTN_MP, MENU_IMG_BTN_ADV, MENU_IMG_BTN_REC };
@@ -560,7 +567,7 @@ void build_main(MenuLayout *L, bool intro)
         if (cur == 7) {
             Box wb;
             if (!box_of(7, &wb)) wb = kBoxes[7];
-            ar.fx = (short)(L->w - (256 - (wb.x0 + wb.x1) / 2) * L->unum / L->uden - dw / 2);
+            ar.fx = (short)(L->w - (256 - (wb.x0 + wb.x1) / 2 - wrench_dx(L)) * L->unum / L->uden - dw / 2);
             ar.fy = (short)((wb.y1 * 2 + 2 + bob2) * L->unum / (2 * L->uden));
         } else {
             /* ASSET4 (Tango): ONE arrow, centred on the plank, pointing down. ARROWFIX1: raised 2 units so the flat tip no longer sinks into the
@@ -1072,7 +1079,7 @@ void build_main_pc(MenuLayout *L, bool intro)
                 menu_add_piece(L, scene_twin(L, T, 0, 0, 256, 192));        /* the page reads touches over the whole layer */
             } else {
                 menu_add_piece(L, scene_twin(L, T, 20, 0, 156, 134));
-                MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
+                MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, wrench_dx(L), 0, 1, 1);
                 wr.touch = 1; wr.nodraw = 1;
                 const int iwr = menu_add_piece(L, wr);
                 static const int wr_ids[1] = { 7 };
@@ -1094,7 +1101,7 @@ void build_main_pc(MenuLayout *L, bool intro)
                 /* the wrench leaves with the planks */
                 const int wa = tv >= 10 ? 0 : 255 - 255 * tv / 10;
                 if (wa > 0) {
-                    MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
+                    MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, wrench_dx(L), 0, 1, 1);
                     wr.keycover = 1; wr.alpha = (uint8_t)(wa >= 255 ? 0 : wa);
                     menu_add_piece(L, wr);
                 }
@@ -1109,7 +1116,7 @@ void build_main_pc(MenuLayout *L, bool intro)
         MenuPiece head = menu_piece_make(SRC_TOP_PIC, 20, 0, 156, 134, MENU_AX_C, MENU_AY_T, face_dx(fk) - (30 * hk + hd / 2) / hd, face_dy(fk), hk, hd);
         head.touch = 1; head.nodraw = 1;
         menu_add_piece(L, head);
-        MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
+        MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, wrench_dx(L), 0, 1, 1);
         wr.keycover = 1; wr.touch = 1; wr.alpha = (uint8_t)(fa >= 255 ? 0 : fa);
         wr.nodraw = fa <= 0;
         {
@@ -1168,7 +1175,7 @@ void build_main_pc(MenuLayout *L, bool intro)
             if (cur == 7) {
                 Box wb;
                 if (!box_of(7, &wb)) wb = kBoxes[7];
-                ar.fx = (short)(w - (256 - (wb.x0 + wb.x1) / 2) * un / ud - dw / 2);
+                ar.fx = (short)(w - (256 - (wb.x0 + wb.x1) / 2 - wrench_dx(L)) * un / ud - dw / 2);
                 ar.fy = (short)((wb.y1 * 2 + 2 + bob2) * un / (2 * ud));
                 menu_add_piece(L, ar);
             } else {
@@ -1713,7 +1720,7 @@ void scene_sprite_xf(char *o)
         if (id == 0x1b && y < 100) {
             float up = 0.f;
             if (v == V_TOY) { const int tv = title_page_counter(); const float e = tv >= 10 ? 1.f : (float)tv / 10.f; up = e * e * 60.f; }
-            ntr::gx_menu_sprite_xf(1.f, 2.f * sx / cw, 1.f, 2.f * (sy + up) / ch);
+            ntr::gx_menu_sprite_xf(1.f, 2.f * (sx - (menu_online_on() ? 30.f : 0.f)) / cw, 1.f, 2.f * (sy + up) / ch);      /* NAME1: beside the ? button in online mode */
         }
         return;
     }
