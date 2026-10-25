@@ -153,6 +153,11 @@ bool apply_plan(const std::string &t, int server) {
         /* back to a clean solo process: the hub names set above must not steer the solo file select (online_wanted reads them) */
         static const char *const k_join_env[] = { "SM64DS_ADVENTURE", "SM64DS_COMMS_RELAY", "SM64DS_COMMS_CODE", "SM64DS_ROOM_KIND",
             "SM64DS_VOICE_ALLOWED", "SM64DS_HUB_SEAT", "SM64DS_PLAYER_NAME", "SM64DS_PLAYER_COLOR", "SM64DS_PLAYER_SHOES", "SM64DS_WORLD_NO" };
+#ifndef PORT_ROM_CLEAN
+        /* SM64DS_JOIN_TEST_RELAUNCH_FAIL=2: keep the names set (replays the behaviour before this clean-up, for the before/after proof) */
+        const char *drill = std::getenv("SM64DS_JOIN_TEST_RELAUNCH_FAIL");
+        if (!(drill && drill[0] == '2'))
+#endif
         for (const char *n : k_join_env) SetEnvironmentVariableA(n, nullptr);
 #ifndef PORT_ROM_CLEAN
         std::fprintf(stderr, "[join] restart refused: join environment cleared, COMMS_RELAY now %s\n", std::getenv("SM64DS_COMMS_RELAY") ? "SET" : "unset");
@@ -204,7 +209,11 @@ bool online_join_begin(int file, const char *nick) {
     std::string n;
     for (const char *p = nick ? nick : ""; *p && n.size() < 16; ++p)
         if ((unsigned char)*p >= 0x20 && (unsigned char)*p < 0x7F && *p != '"' && *p != '\\' && *p != ',') n += *p;
-    if (n.empty()) n = "Player";
+    bool keep_empty = false;
+#ifndef PORT_ROM_CLEAN
+    keep_empty = std::getenv("SM64DS_JOIN_TEST_EMPTY_NICK") != nullptr;   /* proof knob: send the empty nick so the launcher's own nickname rides */
+#endif
+    if (n.empty() && !keep_empty) n = "Player";
     g_stamp = now_ms();
     char buf[256];
     std::snprintf(buf, sizeof buf, "{\"v\":1,\"mode\":\"adventure\",\"file\":%d,\"nick\":\"%s\",\"stamp\":%llu}\n", file, n.c_str(), g_stamp);
