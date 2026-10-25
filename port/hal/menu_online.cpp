@@ -52,6 +52,7 @@ struct St {
     int last_down;
     unsigned t_flow;           /* tick ADVENTURE ONLINE was pressed: the settled main page does not reset the flow for a while after it */
     int released_since;        /* the touch / key that opened a screen must be let go before it can press that screen's button */
+    int touch_hold;            /* INPUTMATRIX1: a stylus / click that closed a screen is kept from the ROM until it is lifted */
 } g;
 
 enum { kWaitCapMs = 22000 };
@@ -253,13 +254,17 @@ int menu_online_touch(int kind, int down, int sx, int sy)
     g.last_down = down;
     if (!down) {
         g.released_since = 1;
+        g.touch_hold = 0;
         return 0;
     }
     if (!menu_online_enabled()) return 0;
     if (g.scr != ONL_SCR_NONE) {
-        if (edge && g.released_since && in_box(sx, sy, ONL_BTN_X, ONL_BTN_Y, ONL_BTN_W, ONL_BTN_H)) modal_button();
+        /* the press that closes the screen keeps being swallowed until the finger is up: the screen is gone on the next frame and the ROM's
+           title underneath (the face, the planks) would otherwise see the rest of that same press as a fresh touch */
+        if (edge && g.released_since && in_box(sx, sy, ONL_BTN_X, ONL_BTN_Y, ONL_BTN_W, ONL_BTN_H)) { modal_button(); g.touch_hold = 1; }
         return 1;
     }
+    if (g.touch_hold) return 1;
     if (kind == 1) {
         if (g.on && in_box(sx, sy, ONL_HELP_X, ONL_HELP_Y, ONL_HELP_W, ONL_HELP_H)) {
             if (edge) { g.help_files = 0; set_screen(ONL_SCR_HELP); }
