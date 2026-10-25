@@ -1589,7 +1589,28 @@ static void piece_draw_pic(const MenuLayout *L, int i, const MenuSources *S, uin
     const int q0 = cx[xa];
     /* MENU2: the rows are independent (each has its own source row, and the span and scratch row below are only a cache of the last
        source row), so whole rows go to the raster pool's threads, each band with its own scratch row. SM64DS_MENU_PAR2=0 keeps one. */
-    auto rows_job = [&](int ylo, int yhi) {
+    /* the loop's invariants are copied to locals first: a capture by reference makes the compiler reload them around every store (measured 15 percent on one thread) */
+    auto rows_job = [&, n_ = n, unit_ = unit, q0_ = q0, xa_ = xa, key_ = key, aa_ = aa, cx_ = cx, exc_ = exc, stride_ = stride, x0_ = x0, h_ = h, y0_ = y0, dh_ = dh, dst_ = dst, amask_ = amask, m24_ = m24, k1_ = k1, k2_ = k2, c20_ = c20, zero_ = zero](int ylo, int yhi) {
+        const int n = n_;
+        const bool unit = unit_;
+        const int q0 = q0_;
+        const int xa = xa_;
+        const bool key = key_;
+        const bool aa = aa_;
+        int *const cx = cx_;
+        int *const exc = exc_;
+        const size_t stride = stride_;
+        const int x0 = x0_;
+        const int h = h_;
+        const int y0 = y0_;
+        const int dh = dh_;
+        uint32_t *const dst = dst_;
+        const __m128i amask = amask_;
+        const __m128i m24 = m24_;
+        const __m128i k1 = k1_;
+        const __m128i k2 = k2_;
+        const __m128i c20 = c20_;
+        const __m128i zero = zero_;
         std::vector<uint32_t> tmpv((size_t)dw + 8);
         std::vector<uint8_t> tcvv((size_t)dw + 8);
         uint32_t *tmp = &tmpv[0];
