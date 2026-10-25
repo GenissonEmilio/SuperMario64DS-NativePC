@@ -1601,16 +1601,18 @@ uint32_t inset_bg_suppress(void)
 
 /* ENGINE B'S MASKED SCAN-OUTS, the only source a SRC_SUB piece is drawn from (see the level-clear plates: the buttons
    are BG0 and BG1, the course map behind them is BG3 and OBJ, and a colour key cannot tell them apart). One extra
-   scan-out per distinct layer mask, at most two a frame; the ROM's registers are not written (the suppression is
+   scan-out per distinct layer mask, at most four a frame (two until ANCHOR1); the ROM's registers are not written (the suppression is
    read-only, ntr/ppu.h). The core caches the answer per mask, so this runs at most once per mask per drawn frame. */
 ntr::SubFramebuffer g_sub_menu;
 ntr::SubFramebuffer g_sub_menu2;
+ntr::SubFramebuffer g_sub_menu3, g_sub_menu4;       /* ANCHOR1: the Rec Room's wide layout reads four masks (stars, cards, cards + strip + objects, objects) */
 int g_msub_n;
+ntr::SubFramebuffer &menu_sub_buf(int n) { return n == 0 ? g_sub_menu : n == 1 ? g_sub_menu2 : n == 2 ? g_sub_menu3 : g_sub_menu4; }
 
 const uint32_t *menu_sub_for(uint8_t layers)
 {
-    if (g_msub_n >= 2) return &g_sub.px[0][0];       /* over the cap: the live scan-out */
-    ntr::SubFramebuffer &buf = g_msub_n == 0 ? g_sub_menu : g_sub_menu2;
+    if (g_msub_n >= 4) return &g_sub.px[0][0];       /* over the cap: the live scan-out */
+    ntr::SubFramebuffer &buf = menu_sub_buf(g_msub_n);
     ++g_msub_n;
     ntr::ppu_sub_set_bg_suppress((~(unsigned)layers & 0x1fu) << 8);
     if (g_sentinel_on) ntr::ppu_sub_set_backdrop_override(kKeySentinel);
@@ -1623,8 +1625,8 @@ const uint32_t *menu_sub_for(uint8_t layers)
 /* ASSET1: the same masked scan-out with only OAM entries lo..hi drawn (one sprite or a set, alone). */
 const uint32_t *menu_sub_for_oam(uint8_t layers, int lo, int hi)
 {
-    if (g_msub_n >= 2) return &g_sub.px[0][0];
-    ntr::SubFramebuffer &buf = g_msub_n == 0 ? g_sub_menu : g_sub_menu2;
+    if (g_msub_n >= 4) return &g_sub.px[0][0];
+    ntr::SubFramebuffer &buf = menu_sub_buf(g_msub_n);
     ++g_msub_n;
     uint32_t sel[4] = { 0, 0, 0, 0 };
     for (int i = lo < 0 ? 0 : lo; i <= hi && i < 128; ++i) sel[i >> 5] |= 1u << (i & 31);

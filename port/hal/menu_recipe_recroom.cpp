@@ -153,23 +153,35 @@ void menu_recroom_build(int, MenuLayout *L)
         p_tab = p_right = p_back = p_cards = pm;
     } else {
         const int lw = mode == 0 ? 0x3c : 0x5c;          /* the tab column's strip ends at DS x 0x37; the cards start at 0x40 (page two: 0x60) */
-        auto cut = [&](int sx, int sy, int sw, int sh, int ax) {
+        auto cut = [&](int sx, int sy, int sw, int sh, int ax, uint8_t layers) {
             MenuPiece q = m;
             q.s.x = (short)sx; q.s.y = (short)sy; q.s.w = (short)sw; q.s.h = (short)sh;
-            q.ay = MENU_AY_T; q.dy = (short)sy; q.ax = (uint8_t)ax;
+            q.ay = MENU_AY_T; q.dy = (short)sy; q.ax = (uint8_t)ax; q.layers = layers;
             q.dx = (short)(ax == MENU_AX_C ? sx + sw / 2 - 128 : 0);       /* centred pieces keep their DS x from the DS box's centre */
             return menu_add_piece(L, q);
         };
-        p_tab = cut(0, 0, lw, 192, MENU_AX_L);
+        const uint8_t all = m.layers;
+        /* ANCHOR1 page change: the cards slide sideways across the whole DS width and the ROM hides them under the tab column / clips them at the
+           screen edge. The cut pieces below would tear that slide at their seams (a blank band as wide as the side margin), so the BG0 layer
+           (the cards' art, and nothing else) is drawn first as ONE centred piece over the whole DS width: the art is continuous across the
+           margin up to the tab column's edge, where the tab piece (strip + tabs, opaque) is drawn over it, exactly the ROM's own order. The
+           edge pieces for the arrows draw the OBJ layer only, so no second copy of a card is drawn at a window edge. */
+        {
+            MenuPiece u = m;
+            u.s.x = 0; u.s.y = 0; u.s.w = 256; u.s.h = 192;
+            u.layers = MENU_L_BG0; u.touch = 0; u.ax = MENU_AX_C; u.ay = MENU_AY_T; u.dx = 0; u.dy = 0;
+            menu_add_piece(L, u);
+        }
+        p_tab = cut(0, 0, lw, 192, MENU_AX_L, all);
         if (mode == 0) {
-            p_cards = cut(lw, 0, 0xd0 - lw, 192, MENU_AX_C);
-            p_right = cut(0xd0, 0, 48, 0x88, MENU_AX_R);
+            p_cards = cut(lw, 0, 0xd0 - lw, 192, MENU_AX_C, all);
+            if (!o || R.arrow) p_right = cut(0xd4, 0x3c, 44, 0x48, MENU_AX_R, MENU_L_OBJ);     /* the page arrow only: the ROM draws it only while no page change runs */
         } else {
-            p_cards = cut(lw, 0, 256 - lw, 0x88, MENU_AX_C);
-            cut(lw, 0x88, 0xd0 - lw, 56, MENU_AX_C);
+            p_cards = cut(lw, 0, 256 - lw, 0x88, MENU_AX_C, all);
+            cut(lw, 0x88, 0xd0 - lw, 56, MENU_AX_C, all);
             p_right = p_tab;                              /* page two: the page arrow is beside the tab column */
         }
-        p_back = cut(0xd0, 0x88, 48, 56, MENU_AX_R);
+        p_back = cut(0xd4, 0x8c, 44, 0x2c, MENU_AX_R, MENU_L_OBJ);
         pm = p_cards;
     }
 
