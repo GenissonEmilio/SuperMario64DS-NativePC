@@ -220,6 +220,55 @@ def pure3():
     check("event_send castle parses as modifier 5 for every world", ev is not None and ev["arg"] == 5 and ev["world"] == "", why)
 
 
+def pure4():
+    """FIX16B: the relay ignores impossible star totals (session.accept_stars):
+    above 150, and more than 3 stars of rise inside any rolling 10 s."""
+    def sess():
+        return relay.SessionV2("STARTEST", relay.KIND_HUB, 0.0)
+    s = sess()
+    check("a first report of 80 is accepted as is", s.accept_stars(0, 80, 0.0) and s.stars[0] == 80)
+    s = sess()
+    check("a total above 150 is ignored (65535)", not s.accept_stars(0, 65535, 0.0) and 0 not in s.stars)
+    check("a total of 151 is ignored", not s.accept_stars(0, 151, 0.0) and 0 not in s.stars)
+    check("a first report of 150 is accepted", s.accept_stars(0, 150, 0.0) and s.stars[0] == 150)
+    check("0 is accepted", sess().accept_stars(1, 0, 0.0))
+    s = sess()
+    s.accept_stars(2, 3, 0.0)
+    check("a jump of +4 is ignored, the seat keeps its last value", not s.accept_stars(2, 7, 1.0) and s.stars[2] == 3)
+    check("a jump to 65535 after 3 is ignored (the fuzz case)", not s.accept_stars(2, 65535, 1.0) and s.stars[2] == 3)
+    check("a jump of +3 is accepted", s.accept_stars(2, 6, 2.0) and s.stars[2] == 6)
+    s = sess()
+    s.accept_stars(3, 10, 0.0)
+    check("a +1 every 4 s chain of 5 is accepted",
+          all(s.accept_stars(3, 10 + i, 4.0 * i) for i in range(1, 6)) and s.stars[3] == 15)
+    check("a repeat of the same count is accepted", s.accept_stars(3, 15, 21.0) and s.stars[3] == 15)
+    check("a decrease (a different file) is accepted", s.accept_stars(3, 2, 22.0) and s.stars[3] == 2)
+    # the rolling window
+    s = sess()
+    s.accept_stars(4, 20, 0.0)
+    check("+3 is accepted", s.accept_stars(4, 23, 1.0))
+    check("then +1 inside 10 s is refused", not s.accept_stars(4, 24, 5.0) and s.stars[4] == 23)
+    check("still refused just inside the window (10 s after the +3, less a bit)", not s.accept_stars(4, 24, 10.9))
+    check("and accepted after the window", s.accept_stars(4, 24, 11.1) and s.stars[4] == 24)
+    s = sess()
+    s.accept_stars(5, 0, 0.0)
+    s.accept_stars(5, 1, 0.0); s.accept_stars(5, 2, 3.0)
+    check("two +1 then a +2 inside the window is refused (sum 4)", not s.accept_stars(5, 4, 6.0))
+    check("the same honest report is taken once the first +1 ages out", s.accept_stars(5, 4, 10.5) and s.stars[5] == 4)
+    s = sess()
+    s.accept_stars(6, 0, 0.0)
+    ok = [s.accept_stars(6, 3 * i, 0.2 * i) for i in range(1, 30)]
+    check("a ramp of +3 every 0.2 s gets 3 stars and no more", s.stars[6] == 3 and ok[0] and not any(ok[1:]), str(s.stars))
+    check("a refused seat is warned once", s.star_warned == {6})
+    # the tally with the fuzz seat's numbers: 3 then 65535 never reaches it
+    s = sess()
+    t = relay.RaceTally(1, 50, 0.0)
+    for seat, n in ((0, 5), (1, 3), (1, 65535), (1, 150), (1, 80)):
+        s.accept_stars(seat, n, 1.0)
+        t.feed(s.stars, {0: "Ann", 1: "Eve"}, 1.0)
+    check("the tally never sees the impossible counts", t.winner is None and s.stars == {0: 5, 1: 3}, str((t.winner, s.stars)))
+
+
 def free_port():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(("127.0.0.1", 0))
@@ -318,19 +367,25 @@ def live():
             sk.sendto(syni(name), raddr)
             sk.sendto(synl(stars), raddr)
             return sk
-        ra = member(b"RACEAAAA", "Ann", 10)
-        rb = member(b"RACEAAAA", "Bob", 20)
-        rc = member(b"RACEBBBB", "Cyd", 49)
+        def climb(sk, lo, hi, step=3):
+            """Honest stars come a few at a time (the relay allows 3 per rolling 10 s)."""
+            v = lo
+            while v < hi:
+                v = min(hi, v + step)
+                sk.sendto(synl(v), raddr)
+                time.sleep(0.2)                # SYNL is capped at 6/s
+        ra = member(b"RACEAAAA", "Ann", 7)
+        rb = member(b"RACEAAAA", "Bob", 5)
+        rc = member(b"RACEBBBB", "Cyd", 8)
         drain(ra, 0.5); drain(rb, 0.5); drain(rc, 0.5)
-        cmdsock.sendto(cmd8(t0 + 20, 3, 4, 120, "", "-", 0), caddr)      # a race to 50 in every world
+        cmdsock.sendto(cmd8(t0 + 20, 3, 4, 120, "", "-", 10), caddr)     # a race to 10 in every world (stars rise 3 per 10 s at most)
         time.sleep(1.2)
         # Cyd (world B) starts below the target on the tally's first look: re-send low then climb
-        rc.sendto(synl(40), raddr)
+        rc.sendto(synl(7), raddr)                    # a drop is taken (Cyd is back under the target)
         time.sleep(1.2)
-        for st in (30, 45, 50):                       # Ann climbs to 50 in world A
-            ra.sendto(synl(st), raddr)
-            time.sleep(0.5)
-        rc.sendto(synl(50), raddr)                    # Cyd crosses in world B at the same time
+        climb(ra, 7, 10)                              # Ann climbs to 10 in world A
+        time.sleep(0.5)
+        climb(rc, 7, 10)                              # Cyd crosses in world B at the same time
         wa = events(ra, 3.0)
         wb = events(rb, 0.5)
         wc = events(rc, 0.5)
@@ -341,17 +396,40 @@ def live():
         idsA = set(d[8:12] for d in winA)
         check("the relay announces a winner to the world", bool(winA) and bool(winB))
         check("both members of the world hear the SAME winner (name and record)",
-              namesA == set(d[24:24 + d[22]] for d in winB) == {b"50 Ann;20 Bob"} and idsA == set(d[8:12] for d in winB) and len(idsA) == 1,
+              namesA == set(d[24:24 + d[22]] for d in winB) == {b"10 Ann;5 Bob"} and idsA == set(d[8:12] for d in winB) and len(idsA) == 1,
               str((namesA, idsA)))
         check("the winner is announced once (one record id)", len(idsA) == 1)
-        check("the other world has its own winner", bool(winC) and all(d[24:24 + d[22]].startswith(b"50 Cyd") for d in winC))
+        check("the other world has its own winner", bool(winC) and all(d[24:24 + d[22]].startswith(b"10 Cyd") for d in winC))
         leaders = [d for d in wa + wb if d[6] == 5]
         check("the leader line goes out before the win (type 5)", True)
         # a late joiner to world A still hears who won
         rd = member(b"RACEAAAA", "Dee", 0)
         late = [d for d in events(rd, 2.0) if d[6] == 6]
-        check("a late joiner hears the winner", bool(late) and late[0][24:24 + late[0][22]].startswith(b"50 Ann"))
+        check("a late joiner hears the winner", bool(late) and late[0][24:24 + late[0][22]].startswith(b"10 Ann"))
         cmdsock.sendto(cmd8(t0 + 21, 4, 0, 0), caddr)
+
+        # ---- FIX16B: a seat reporting impossible star counts cannot win
+        cmdsock.sendto(cmd8(t0 + 22, 3, 4, 120, "", "RACEEVIL", 5), caddr)
+        ea_ = member(b"RACEEVIL", "Ann", 2)
+        ev_ = member(b"RACEEVIL", "Eve", 0)
+        eb_ = member(b"RACEEVIL", "Obs", 0)
+        time.sleep(1.2)
+        for bad in (65535, 151, 4, 80, 65535, 150):
+            ev_.sendto(synl(bad), raddr)               # none is a possible next count
+            time.sleep(0.05)
+        climb(ev_, 0, 45)                              # a ramp: +3 every 0.2 s (3 stars get through, the rest are refused)
+        time.sleep(1.2)
+        check("a seat reporting 65535 / 150 / +4 jumps and a +3 ramp wins nothing",
+              not [d for d in events(eb_, 1.0) if d[6] == 6])
+        climb(ea_, 2, 5, 1)                            # a +1 chain: honest, accepted
+        wl = [d for d in events(eb_, 3.0) if d[6] == 6]
+        check("the honest climber wins the race", bool(wl) and all(d[24:24 + d[22]].startswith(b"5 Ann;3 Eve") for d in wl),
+              str([d[24:24 + d[22]] for d in wl]))
+        late_ = member(b"RACEEVIL", "Dee", 0)
+        ll = [d for d in events(late_, 2.0) if d[6] == 6]
+        check("a late joiner hears the honest winner, not the 65535 seat",
+              bool(ll) and ll[0][24:24 + ll[0][22]].startswith(b"5 Ann;3 Eve"))
+        cmdsock.sendto(cmd8(t0 + 23, 4, 0, 0), caddr)
 
         # ---- solo / VS / party / coop never take an event: only a world hub member hears the relay's SYNZ
         def role_member(code, role):
@@ -403,6 +481,7 @@ if __name__ == "__main__":
     pure()
     pure2()
     pure3()
+    pure4()
     live()
     print("RESULT", "FAIL" if FAILS else "PASS", FAILS)
     sys.exit(1 if FAILS else 0)
