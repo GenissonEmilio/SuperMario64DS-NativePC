@@ -4096,13 +4096,30 @@ struct RasterPool {
     }
 };
 
+/* run after093, lane MENU2: the threads this process can actually run on: the affinity mask's bits, capped by the machine's hardware
+   threads (a launcher, a job object or `start /affinity` can leave a 12-thread machine two cores) */
+unsigned usable_threads() {
+    static unsigned n = 0;
+    if (!n) {
+        const unsigned hc = std::thread::hardware_concurrency();
+        DWORD_PTR pm = 0, sm = 0;
+        unsigned pc = 0;
+        if (GetProcessAffinityMask(GetCurrentProcess(), &pm, &sm))
+            for (; pm; pm &= pm - 1) ++pc;
+        n = pc ? pc : hc;
+        if (hc && n > hc) n = hc;
+        if (!n) n = 1;
+    }
+    return n;
+}
+
 int raster_threads() {
     static int n = -1;
     if (n < 0) {
         if (const char *e = getenv("SM64DS_RASTER_THREADS")) {
             n = atoi(e);
         } else {
-            unsigned hc = std::thread::hardware_concurrency();
+            unsigned hc = usable_threads();
             n = hc ? (int)hc : 1;
             if (n > 8) n = 8;   /* past this the row bands stop paying */
             /* SMALL MACHINES GET TWO WORKERS A CORE, AT LEAST FOUR (run perf2,
@@ -4225,6 +4242,62 @@ bool raster_buffers(void)
 }
 
 }  // namespace
+
+/* run after093, lane MENU2: the A/B phase and the row-band helper (see gx.h) */
+static int g_menu2_phase;
+void gx_menu2_phase_set(int phase) { g_menu2_phase = phase ? 1 : 0; }
+int gx_menu2_phase_get(void) { return g_menu2_phase; }
+int gx_menu_knob_value(const char *env)
+{
+    const char *e = std::getenv(env);
+    if (!e || !*e) return 1;
+    if (e[0] == '0' && !e[1]) return 0;
+    if (e[0] == '2' && !e[1]) return 2;
+    return 1;
+}
+int gx_menu_knob_on(int value) { return value == 2 ? g_menu2_phase : (value != 0 ? 1 : 0); }
+namespace {
+struct ParRows { void (*fn)(void *, int, int); void *ctx; int rows; };
+void par_band(void *c, int id, int n)
+{
+    const ParRows *p = (const ParRows *)c;
+    const int y0 = (int)((long long)p->rows * id / n), y1 = (int)((long long)p->rows * (id + 1) / n);
+    if (y1 > y0) p->fn(p->ctx, y0, y1);
+}
+}  // namespace
+/* the bands need real cores: a machine with fewer than four hardware threads runs the rows itself (its raster pool of four is for
+   the CPU raster, which has nothing else to do while it waits) */
+static int g_par_serial;
+void gx_parallel_serial(int on) { g_par_serial = on ? 1 : 0; }
+static bool par_cores_ok()
+{
+    static int ok = -1;
+    if (ok < 0) ok = usable_threads() >= 4 ? 1 : 0;
+    return ok != 0;
+}
+void gx_parallel_rows(int rows, int min_rows, void (*fn)(void *, int, int), void *ctx, int knob_value)
+{
+    /* the pool belongs to the thread that first asked (the main thread: the scene tick and the pacer); any other thread's rows run on
+       that thread itself, never through the pool */
+    static DWORD owner;
+    const DWORD me = GetCurrentThreadId();
+    if (!owner) owner = me;
+    if (me != owner) { fn(ctx, 0, rows); return; }
+    const int threads = raster_threads();
+    if (rows < min_rows || threads <= 1 || !par_cores_ok() || g_par_serial || !gx_menu_knob_on(knob_value)) { fn(ctx, 0, rows); return; }
+    /* the pool runs one job at a time: a second caller (or a band that calls back in) does its rows itself */
+    static std::mutex par_m;
+    if (!par_m.try_lock()) { fn(ctx, 0, rows); return; }
+    ParRows p = { fn, ctx, rows };
+    pool(threads).run(par_band, &p);
+    par_m.unlock();
+}
+int gx_parallel_available(void)
+{
+    static int knob = -2;
+    if (knob == -2) knob = gx_menu_knob_value("SM64DS_MENU_PAR");
+    return raster_threads() >= 4 && par_cores_ok() && gx_menu_knob_on(knob) ? 1 : 0;
+}
 
 /* THE DEPTH AND POLYGON-ID PLANES AFTER A FRAME THE CARD DREW WHOLE (run
    cardfull). That pass does not bring them back, because nothing in a game
@@ -4557,8 +4630,24 @@ int bgbmp_clear_wanted()
 
 static void clear_fill_classic(Framebuffer &fb);
 
+/* run after093, lane MENU2: LATE CLEARS. gx_clear_fill_late leaves fb and the coverage plane uncleared; the clears run
+   (late_run) from the card backend after its draw is on the card, from its deferred finish, or from gx_render when the card
+   declined the frame. One LateCtx per frame in flight (two pending readbacks and the one being drawn). */
+struct LateCtx { Framebuffer *fb; int cw, ch; bool ran; };
+static LateCtx g_late_ctx[4];
+static unsigned g_late_i;
+static struct { bool pending; Framebuffer *fb; } g_late;
+static bool g_late_req;
+static int g_defer_req;
+static void (*g_flush_hook)(void);
+
 static void clear_fill_impl(Framebuffer &fb, bool wipe);
 void gx_clear_fill(Framebuffer &fb) { clear_fill_impl(fb, true); }
+void gx_clear_fill_late(Framebuffer &fb) { g_late_req = true; clear_fill_impl(fb, true); g_late_req = false; }
+void gx_defer_request(int on) { g_defer_req = on ? 1 : 0; }
+static int g_render_deferred;
+int gx_render_deferred(void) { return g_render_deferred; }
+void gx_set_flush_hook(void (*fn)(void)) { g_flush_hook = fn; }
 
 /* run hunt8, lane GPUINTERP1: the clear for a picture between two ticks that
    the card is to keep. The same answer as gx_clear_fill after
@@ -4574,6 +4663,7 @@ int gx_card_interp_clear(Framebuffer &fb)
 
 static void clear_fill_impl(Framebuffer &fb, bool wipe)
 {
+    g_late.pending = false;      /* MENU2: a late clear nobody ran is dropped with the frame it was for */
     /* a new frame: nothing from the last one is held any more */
     g_cp_active = 0;
     g_cp_pending = 0;
@@ -4607,6 +4697,11 @@ static void clear_fill_impl(Framebuffer &fb, bool wipe)
             return;
         }
     }
+    if (g_late_req && !g_bmpc.valid) {       /* MENU2: the pixel clears wait for the card (see LateCtx) */
+        g_late.pending = true;
+        g_late.fb = &fb;
+        return;
+    }
     clear_fill_classic(fb);
 }
 
@@ -4632,8 +4727,15 @@ static void clear_fill_classic(Framebuffer &fb)
     for (int x = 0; x < w; ++x)
         fb.px[0][x] = (x >= x0 && x < x1 && 0 >= y0 && 0 < y1) ? c : kOldClear;
     if (c == kOldClear || (x0 <= 0 && x1 >= w && y0 <= 0 && y1 >= h)) {
-        for (int y = 1; y < h; ++y)
-            std::memcpy(fb.px[y], fb.px[0], (size_t)w * sizeof(fb.px[0][0]));
+        /* MENU2: every row is a copy of row 0; in row bands on the raster pool's threads (SM64DS_MENU_PAR=0 keeps one) */
+        struct ClrPk { Framebuffer *fb; int w; } pk = { &fb, w };
+        static int clr_knob = -2;
+        if (clr_knob == -2) clr_knob = gx_menu_knob_value("SM64DS_MENU_PAR");
+        gx_parallel_rows(h - 1, 256, [](void *c, int y0, int y1) {
+            const ClrPk *p = (const ClrPk *)c;
+            for (int y = y0 + 1; y < y1 + 1; ++y)
+                std::memcpy(p->fb->px[y], p->fb->px[0], (size_t)p->w * sizeof(p->fb->px[0][0]));
+        }, &pk, clr_knob);
         return;
     }
     int in_row = -1, out_row = -1;
@@ -6701,6 +6803,43 @@ void ghost_pass_cpu(Framebuffer &fb, const std::vector<GxTriangle> &gt,
 
 }  // namespace
 
+/* run after093, lane MENU2: the late clears and the deferred readback's seam (see gx_clear_fill_late in gx.h) */
+static void late_run(LateCtx *c)
+{
+    if (!c || c->ran) return;
+    c->ran = true;
+    /* a picture older than this frame may still be waiting to be finished and shown: it owns fb until then */
+    if (g_flush_hook) g_flush_hook();
+    clear_fill_classic(*c->fb);
+    for (int y = 0; y < c->ch; ++y) std::memset(g_cover[y], 0, (size_t)c->cw);
+}
+static void late_run_cb(void *p) { late_run((LateCtx *)p); }
+
+int gx_late_possible(void)
+{
+    static int env = -2;
+    if (env == -2) env = gx_menu_knob_value("SM64DS_MENU_LATE");
+    static const bool tex_only = std::getenv("SM64DS_TEX_ONLY") != nullptr;
+    return gx_menu_knob_on(env) && !tex_only && gpu_full_probe() ? 1 : 0;
+}
+int gx_readback_pending(void)
+{
+    if (!g_gpu_opaque) return 0;
+    GxGpuFrame f;
+    std::memset(&f, 0, sizeof f);
+    f.finish = 2;
+    return g_gpu_opaque(&f);
+}
+void gx_finish_readback(void)
+{
+    if (!g_gpu_opaque) return;
+    GxGpuFrame f;
+    std::memset(&f, 0, sizeof f);
+    f.finish = 1;
+    g_gpu_opaque(&f);
+}
+void gx_aa_note_changed(unsigned long long n) { g_aa_changed += n; }
+
 void gx_render(Framebuffer &fb) {
     /* kept grids stay kept only for a frame the card draws whole */
     if (!g.grids.empty() &&
@@ -6838,7 +6977,14 @@ void gx_render(Framebuffer &fb) {
        It is written from the raster tiles, and that is safe for the reason
        the framebuffer itself is: a tile owns its rows and no other tile
        touches them. */
-    for (int y = 0; y < ch; ++y) std::memset(g_cover[y], 0, (size_t)cw);
+    LateCtx *lc = nullptr;     /* MENU2: this frame's clears are late (gx_clear_fill_late) */
+    if (g_late.pending && g_late.fb == &fb) {
+        lc = &g_late_ctx[g_late_i++ & 3];
+        lc->fb = &fb; lc->cw = cw; lc->ch = ch; lc->ran = false;
+        g_late.pending = false;
+    }
+    if (!lc)
+        for (int y = 0; y < ch; ++y) std::memset(g_cover[y], 0, (size_t)cw);
 
     /* --- shadow-polygon (POLYGON_ATTR mode 3) machinery -------------------
        GBATEK's two-step protocol, and the reason a per-pixel stencil bit and
@@ -7028,8 +7174,14 @@ void gx_render(Framebuffer &fb) {
         f.want_depth = 0;
         f.tex_filter = g_tex_filter;
         f.tex_generation = g_tex_generation;
-        f.clear_argb = g_cp_pending ? gx_clear_argb()
+        f.clear_argb = (g_cp_pending || lc) ? gx_clear_argb()
                        : (cw > 0 && ch > 0) ? fb.px[f.py0][f.px0] : 0xFF000000u;
+        if (lc) {
+            f.late = 1;
+            f.defer = g_defer_req;
+            f.pre_read = late_run_cb;
+            f.pre_arg = lc;
+        }
         f.toon_shade = g_toon_shade;
         f.toon_rgb = g_toon8;
         f.fog_on = g_fog.on;
@@ -7064,6 +7216,9 @@ void gx_render(Framebuffer &fb) {
             }
         }
     }
+    /* MENU2: the card did not take the late clears (it declined the frame): they run now, after any older picture is out of fb */
+    g_render_deferred = gpu_out.deferred ? 1 : 0;
+    if (lc && !lc->ran && !gpu_out.deferred) late_run(lc);
     /* a frame the card did not draw whole needs its triangles */
     if (!gpu_full) grids_materialize_w(4);
     /* A frame the card did not keep goes on as an ordinary one: the CPU passes

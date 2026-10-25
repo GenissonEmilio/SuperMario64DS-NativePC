@@ -1601,16 +1601,18 @@ uint32_t inset_bg_suppress(void)
 
 /* ENGINE B'S MASKED SCAN-OUTS, the only source a SRC_SUB piece is drawn from (see the level-clear plates: the buttons
    are BG0 and BG1, the course map behind them is BG3 and OBJ, and a colour key cannot tell them apart). One extra
-   scan-out per distinct layer mask, at most two a frame; the ROM's registers are not written (the suppression is
+   scan-out per distinct layer mask, at most four a frame (two until ANCHOR1); the ROM's registers are not written (the suppression is
    read-only, ntr/ppu.h). The core caches the answer per mask, so this runs at most once per mask per drawn frame. */
 ntr::SubFramebuffer g_sub_menu;
 ntr::SubFramebuffer g_sub_menu2;
+ntr::SubFramebuffer g_sub_menu3, g_sub_menu4;       /* ANCHOR1: the Rec Room's wide layout reads four masks (stars, cards, cards + strip + objects, objects) */
 int g_msub_n;
+ntr::SubFramebuffer &menu_sub_buf(int n) { return n == 0 ? g_sub_menu : n == 1 ? g_sub_menu2 : n == 2 ? g_sub_menu3 : g_sub_menu4; }
 
 const uint32_t *menu_sub_for(uint8_t layers)
 {
-    if (g_msub_n >= 2) return &g_sub.px[0][0];       /* over the cap: the live scan-out */
-    ntr::SubFramebuffer &buf = g_msub_n == 0 ? g_sub_menu : g_sub_menu2;
+    if (g_msub_n >= 4) return &g_sub.px[0][0];       /* over the cap: the live scan-out */
+    ntr::SubFramebuffer &buf = menu_sub_buf(g_msub_n);
     ++g_msub_n;
     ntr::ppu_sub_set_bg_suppress((~(unsigned)layers & 0x1fu) << 8);
     if (g_sentinel_on) ntr::ppu_sub_set_backdrop_override(kKeySentinel);
@@ -1623,8 +1625,8 @@ const uint32_t *menu_sub_for(uint8_t layers)
 /* ASSET1: the same masked scan-out with only OAM entries lo..hi drawn (one sprite or a set, alone). */
 const uint32_t *menu_sub_for_oam(uint8_t layers, int lo, int hi)
 {
-    if (g_msub_n >= 2) return &g_sub.px[0][0];
-    ntr::SubFramebuffer &buf = g_msub_n == 0 ? g_sub_menu : g_sub_menu2;
+    if (g_msub_n >= 4) return &g_sub.px[0][0];
+    ntr::SubFramebuffer &buf = menu_sub_buf(g_msub_n);
     ++g_msub_n;
     uint32_t sel[4] = { 0, 0, 0, 0 };
     for (int i = lo < 0 ? 0 : lo; i <= hi && i < 128; ++i) sel[i >> 5] |= 1u << (i & 31);
@@ -1687,10 +1689,16 @@ void menu_prepare_sources(unsigned *dst, int w, int h)
     if (hal_menu_uses_src(SRC_TOP_PIC) || hal_menu_needs_picsnap()) {
         if (!g_picsnap) g_picsnap = (uint32_t *)std::malloc((size_t)ntr::SCREEN_W * ntr::SCREEN_H * sizeof(uint32_t));
         if (g_picsnap) {
-            /* source and destination overlap (the backdrop piece is the whole picture), so the layer reads a copy */
-            for (int y = 0; y < h; ++y)
-                std::memcpy(g_picsnap + (size_t)y * ntr::SCREEN_W, dst + (size_t)y * ntr::SCREEN_W,
-                            (size_t)w * sizeof(uint32_t));
+            /* source and destination overlap (the backdrop piece is the whole picture), so the layer reads a copy.
+               MENU2: a 4 MB copy, in row bands on the raster pool's threads (SM64DS_MENU_PAR=0 keeps one) */
+            struct SnapPk { uint32_t *d; const unsigned *s; int w; } pk = { g_picsnap, dst, w };
+            static int snap_knob = -2;
+            if (snap_knob == -2) snap_knob = ntr::gx_menu_knob_value("SM64DS_MENU_PAR");
+            ntr::gx_parallel_rows(h, 256, [](void *c, int y0, int y1) {
+                const SnapPk *p = (const SnapPk *)c;
+                for (int y = y0; y < y1; ++y)
+                    std::memcpy(p->d + (size_t)y * ntr::SCREEN_W, p->s + (size_t)y * ntr::SCREEN_W, (size_t)p->w * sizeof(uint32_t));
+            }, &pk, snap_knob);
             g_msrc.pic = g_picsnap;
             g_msrc.pic_stride = ntr::SCREEN_W;
             g_msrc.pic_w = w;

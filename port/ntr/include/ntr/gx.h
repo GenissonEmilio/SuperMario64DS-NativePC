@@ -284,6 +284,7 @@ struct GxGpuOut {
     int pre_valid;
     unsigned long long aa_changed;
     int kept;              // the picture was left on the card (GxGpuFrame::keep)
+    int deferred;          // the readback was left pending (GxGpuFrame::defer): fb and cover are not final yet
 };
 
 // ---- THE OPTIONAL GRAPHICS-CARD BACKEND FOR THE OPAQUE PASS (run hd2) -----
@@ -423,6 +424,28 @@ struct GxGpuFrame {
     //                 grids too (so gx.cpp knows whether to keep them)
     int probe_grids;
 
+    // ---- LATE AND DEFERRED READBACK (run after093, lane MENU2) --------------
+    // late      gx_clear_fill_late was used: fb and the coverage plane have NOT
+    //           been cleared. A backend that reads the picture back calls
+    //           pre_read(pre_arg) once, after its draw is on the card and
+    //           before it waits for it (so the clears hide under the card's
+    //           work), and must call it before the first CPU buffer is written;
+    //           a backend that does not read back (or returns 0) leaves it, and
+    //           gx_render runs the clears itself.
+    // defer     with late: the backend may leave the readback pending and answer
+    //           2 with out->deferred 1; gx_finish_readback finishes it later
+    //           (pre_read, the wait, the copy into fb / cover). Two at most.
+    // probe_defer  with probe: answer 4 when a late, deferring frame like this
+    //           would be left pending, 0 otherwise
+    // finish    do not draw: 1 finishes the oldest pending readback, 2 only
+    //           reports; both answer the number still pending
+    int late;
+    int defer;
+    int probe_defer;
+    int finish;
+    void (*pre_read)(void *);
+    void *pre_arg;
+
     // ---- THE GHOST LAYER (run mp1, lane GHOSTLAYER1) ------------------------
     // The ghost figures of the frame (GxTriangle::ghost != 0), kept OUT of
     // `tris`. A backend draws them after its translucent pass and before its
@@ -493,6 +516,46 @@ void gx_render(Framebuffer &fb);
 // prints every change of the registers the answer is made from.
 uint32_t gx_clear_argb();
 void gx_clear_fill(Framebuffer &fb);
+
+// run after093, lane MENU2: gx_clear_fill for a frame the card will read back.
+// gx_late_possible says whether the next frame can take it (a card backend that
+// draws whole frames, not the A/B, no held bitmap frame under the 3D, and
+// SM64DS_MENU_LATE not 0). gx_clear_fill_late(fb) then leaves fb and the
+// coverage plane UNCLEARED: gx_render clears them (so the card's work hides the
+// clears) when it has the picture on the card, or when the card declines it.
+// gx_defer_request(1) before that gx_render lets the card leave the readback
+// pending: fb and gx_coverage are then NOT final until gx_finish_readback
+// (the oldest; at most two are pending). gx_set_flush_hook registers what must
+// run before a clear writes into fb while an older picture is still pending
+// (the card took a later frame the sync way): walk_window finishes and
+// presents the older picture there.
+// The menu lane's A/B knobs (run after093, lane MENU2). A kill switch read as
+// "2" alternates on and off every 120 scene ticks inside ONE run (the scene
+// path calls gx_menu2_phase_set at each tick), so a before/after on a noisy
+// box compares neighbouring seconds. gx_menu_knob_on turns the knob's value
+// (0 off, 1 on, 2 alternate) into this tick's answer.
+int  gx_menu_knob_value(const char *env);          // 0, 1 or 2; read the environment once per call site
+int  gx_menu_knob_on(int value);
+void gx_menu2_phase_set(int phase);
+int  gx_menu2_phase_get(void);
+// Runs fn over [0, rows) in bands on the raster pool's threads (the calling
+// thread takes the first), or in one piece when the job is smaller than
+// min_rows, one thread is all there is, or the caller's knob (gx_menu_knob_value) is off. Every band is
+// whole rows, so a loop whose rows do not depend on each other gives the same
+// bytes as one thread.
+void gx_parallel_rows(int rows, int min_rows, void (*fn)(void *ctx, int y0, int y1), void *ctx, int knob_value);
+// 1 when gx_parallel_rows will use more than one thread (four or more raster threads, SM64DS_MENU_PAR not 0)
+int  gx_parallel_available(void);
+// 1 makes every gx_parallel_rows run on the calling thread (the single-thread reference for the proof instruments)
+void gx_parallel_serial(int on);
+int  gx_late_possible(void);
+void gx_clear_fill_late(Framebuffer &fb);
+void gx_defer_request(int on);
+int  gx_render_deferred(void);   // the last gx_render left its readback pending
+int  gx_readback_pending(void);
+void gx_finish_readback(void);
+void gx_set_flush_hook(void (*fn)(void));
+void gx_aa_note_changed(unsigned long long n);
 
 // ---- THE PICTURE NEVER COMES BACK TO THE PROCESSOR (run cardfull, CARD2) ----
 //
