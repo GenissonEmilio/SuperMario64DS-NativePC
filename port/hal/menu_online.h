@@ -19,7 +19,7 @@
 
 enum { ONL_SCR_NONE = 0, ONL_SCR_VS = 1, ONL_SCR_HELP = 2, ONL_SCR_WAIT = 3, ONL_SCR_FAIL = 4 };
 /* plank kinds (MenuPiece.wtw of a code drawn plank carries one) */
-enum { ONL_K_ONLINE = 0, ONL_K_ADV_ONLINE = 1, ONL_K_VS = 2, ONL_K_HELP = 3, ONL_K_BACK = 4, ONL_K_CANCEL = 5, ONL_K_ADV = 6, ONL_K_REC = 7 };
+enum { ONL_K_ONLINE = 0, ONL_K_ADV_ONLINE = 1, ONL_K_VS = 2, ONL_K_HELP = 3, ONL_K_BACK = 4, ONL_K_CANCEL = 5, ONL_K_ADV = 6, ONL_K_REC = 7, ONL_K_SOLO = 8 };
 
 struct OnlFacts {
     int magic;          /* ONL_MAGIC when written by menu_online_facts */
@@ -74,6 +74,12 @@ int  menu_online_add_plank(MenuLayout *L, int kind, int fx, int fy, int fw, int 
 int  menu_online_plank_w(int kind, int fh);              /* the full width of a plank of this kind at height fh (the picture's shape, else a fixed one) */
 int  menu_online_plank_art_ready(int kind);              /* 1 when the mod's picture for this kind decoded */
 /* the modal screen over the page (veil, panel, text, its button) and the ? button; both add pieces to the layout. */
+/* the green of the online mode: a custom piece that turns the BLUE parts of what is already drawn (the sky and the logo pattern of the title, the water of the
+   file select; wood, faces and lettering are not blue and stay) toward a light green. The title ramps it over the morph (34 ticks, the length of the face press page's
+   wallpaper-to-paper fade, which is the in-port tint with a measured timing) and back; the online file select (flow) holds it at full. Add it right after the
+   background so only the background is in the picture when it runs. No piece when the strength is 0. */
+void menu_online_add_tint(MenuLayout *L, const OnlFacts *f);
+int  menu_online_tint_permille(const OnlFacts *f);
 void menu_online_add_modal(MenuLayout *L, const OnlFacts *f);
 void menu_online_add_help(MenuLayout *L, int right_edge_x, int top_y, int size_px);   /* the ? button at that host place; the box is ONL_HELP_* */
 #endif

@@ -26,6 +26,7 @@ int art_id(int kind)
     case ONL_K_HELP: return MENU_IMG_ONL_HELP;
     case ONL_K_BACK: return MENU_IMG_ONL_BACK;
     case ONL_K_CANCEL: return MENU_IMG_ONL_CANCEL;
+    case ONL_K_SOLO: return MENU_IMG_ONL_SOLO;
     }
     return 0;
 }
@@ -95,6 +96,7 @@ void text_lines(const UiSurface &sf, int kind, int X, int Y, int W, int H, int s
     case ONL_K_HELP: l1 = "?"; break;
     case ONL_K_BACK: l1 = "BACK"; break;
     case ONL_K_CANCEL: l1 = "CANCEL"; break;
+    case ONL_K_SOLO: l1 = "SOLO"; break;
     default: return;
     }
     if (!ui_text_ready()) return;
@@ -256,10 +258,9 @@ int menu_online_plank_art_ready(int kind) { return menu_online_plank_art_ready_c
 void menu_online_plank_state(const OnlFacts *f, int k, int *kind, int *w1000)
 {
     *w1000 = 1000;
-    if (k == 0) { *kind = ONL_K_ONLINE; return; }
-    const int solo = k == 1 ? ONL_K_ADV : ONL_K_REC, onl = k == 1 ? ONL_K_ADV_ONLINE : ONL_K_VS;
+    const int solo = k == 0 ? ONL_K_ONLINE : k == 1 ? ONL_K_ADV : ONL_K_REC, onl = k == 0 ? ONL_K_SOLO : k == 1 ? ONL_K_ADV_ONLINE : ONL_K_VS;
     const int on = f ? f->on : 0, age = f ? f->age : 999;
-    const int dur = 16, start = (k - 1) * 3;
+    const int dur = 16, start = k == 0 ? 0 : (k - 1) * 3;
     const int a = age - start;
     const int from = on ? solo : onl, to = on ? onl : solo;
     if (age >= 999 || a >= dur) { *kind = to; return; }
@@ -317,6 +318,49 @@ void menu_online_add_modal(MenuLayout *L, const OnlFacts *f)
     const int cx = L->w / 2 + (ONL_BTN_X + ONL_BTN_W / 2 - 128) * un / ud;
     const int ip = menu_online_add_plank(L, kind, cx - dw / 2, ONL_BTN_Y * un / ud, dw, dh, ONL_BTN_X, ONL_BTN_Y, ONL_BTN_W, ONL_BTN_H, 1, 0, 0, 1, 0);
     if (ip >= 0) menu_add_hotspot(L, ip, ONL_BTN_X, ONL_BTN_Y, ONL_BTN_W, ONL_BTN_H, -1);
+}
+
+int menu_online_tint_permille(const OnlFacts *f)
+{
+    if (!f) return 0;
+    if (f->flow) return 1000;
+    const int dur = 34, age = f->age;
+    if (age >= 999) return f->on ? 1000 : 0;
+    if (age >= dur) return f->on ? 1000 : 0;
+    return f->on ? 1000 * age / dur : 1000 * (dur - age) / dur;
+}
+
+namespace {
+void tint_draw(const MenuLayout *L, int piece, uint32_t *dst, int w, int h, int stride)
+{
+    (void)piece;
+    const OnlFacts *f = onl_facts_of(L);
+    const int s = menu_online_tint_permille(f);
+    if (s <= 0 || w < 8 || h < 8) return;
+    for (int y = 0; y < h; ++y) {
+        uint32_t *p = dst + (size_t)y * stride;
+        for (int x = 0; x < w; ++x) {
+            const uint32_t c = p[x];
+            const int r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255;
+            const int d = b - (r > g ? r : g);                 /* how blue the pixel is */
+            if (d < -10) continue;
+            const int wgt = d >= 50 ? 256 : (d + 10) * 256 / 60;
+            const int nr = r * 85 / 100 + 20, ng = g * 95 / 100 + (b - g) * 55 / 100, nb = b * 45 / 100 + g / 10;
+            const int k = wgt * s / 1000;
+            const int rr = r + (nr - r) * k / 256, gg = g + (ng - g) * k / 256, bb = b + (nb - b) * k / 256;
+            p[x] = (c & 0xFF000000u) | (uint32_t)(clampi(rr, 0, 255) << 16) | (uint32_t)(clampi(gg, 0, 255) << 8) | (uint32_t)clampi(bb, 0, 255);
+        }
+    }
+}
+}  // namespace
+
+void menu_online_add_tint(MenuLayout *L, const OnlFacts *f)
+{
+    if (menu_online_tint_permille(f) <= 0) return;
+    MenuPiece p = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+    p.bg = 1; p.fixdest = 1; p.fx = 0; p.fy = 0; p.fw = (short)L->w; p.fh = (short)L->h;
+    p.custom = tint_draw;
+    menu_add_piece(L, p);
 }
 
 int menu_online_plank_w(int kind, int fh)
