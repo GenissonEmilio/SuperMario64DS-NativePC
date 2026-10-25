@@ -56,6 +56,7 @@ struct RecFacts {
     int mode;            /* gMgMenuPage[0] */
     int cells;           /* bit i: the ROM accepts the cell (mode 0: row * 3 + col; else col) */
     int arrow;           /* the page arrow is drawn and accepted */
+    int flip;            /* ANCHOR1: the cards are off their resting scroll, a page slide is running */
     int foc_have, foc_x, foc_y;
     int calls;           /* a per-tick counter for the arrow's bob */
 };
@@ -92,9 +93,11 @@ void menu_recroom_facts(MenuFacts *f)
                 if (MiniGm_IsUnlocked((void *)o, base + 0x18 + col * 4)) r.cells |= 1 << col;
         }
         r.arrow = ob(o, 0x54) == 0 && (r.mode != 0 || MiniGm_HasSecondPage((void *)o) != 0);
+        r.flip = ow(o, 0x50) != (r.mode != 0 ? 0xb0 : 0);        /* mSubBgScrollX (src/minigames/d_s_mini_gm.cpp MiniGm_UpdatePageScroll): off the page's resting scroll (0 page one, 0xb0 page two) = the cards are sliding */
     }
     r.foc_have = g_foc_have; r.foc_x = g_foc_x; r.foc_y = g_foc_y;
     r.calls = ++calls;
+    if (hal_menu_trace_on()) { static int lf = -1; if (r.flip != lf) { lf = r.flip; fprintf(stderr, "[recroom] f%d slide flag %d\n", calls, r.flip); } }
     if (hal_menu_trace_on()) {
         static int last = -1;
         const int bd = *(volatile unsigned short *)0x05000400u;      /* the engine-B backdrop the key_backdrop piece drops */
@@ -166,22 +169,28 @@ void menu_recroom_build(int, MenuLayout *L)
            (the cards' art, and nothing else) is drawn first as ONE centred piece over the whole DS width: the art is continuous across the
            margin up to the tab column's edge, where the tab piece (strip + tabs, opaque) is drawn over it, exactly the ROM's own order. The
            edge pieces for the arrows draw the OBJ layer only, so no second copy of a card is drawn at a window edge. */
-        {
+        /* Only WHILE a slide runs. At rest the cards are where the ROM put them and the page that is not showing is parked under the DS
+           strip (hidden there by the strip, which now sits at the window edge), so a full width cards layer would show the parked page
+           between the tab column and the arrow; at rest the cut pieces alone are exact, and cost two scan-outs, not four. */
+        const bool slide = o && R.flip != 0;
+        if (slide) {
             MenuPiece u = m;
             u.s.x = 0; u.s.y = 0; u.s.w = 256; u.s.h = 192;
             u.layers = MENU_L_BG0; u.touch = 0; u.ax = MENU_AX_C; u.ay = MENU_AY_T; u.dx = 0; u.dy = 0;
             menu_add_piece(L, u);
         }
+        const uint8_t arrows = slide ? (uint8_t)MENU_L_OBJ : all;      /* a slide: objects only, so no second copy of a card lands at a window edge */
         p_tab = cut(0, 0, lw, 192, MENU_AX_L, all);
         if (mode == 0) {
             p_cards = cut(lw, 0, 0xd0 - lw, 192, MENU_AX_C, all);
-            if (!o || R.arrow) p_right = cut(0xd4, 0x3c, 44, 0x48, MENU_AX_R, MENU_L_OBJ);     /* the page arrow only: the ROM draws it only while no page change runs */
+            if (slide) { if (!o || R.arrow) p_right = cut(0xd4, 0x3c, 44, 0x48, MENU_AX_R, arrows); }     /* the page arrow only: the ROM draws it only while no page change runs */
+            else p_right = cut(0xd0, 0, 48, 0x88, MENU_AX_R, arrows);
         } else {
             p_cards = cut(lw, 0, 256 - lw, 0x88, MENU_AX_C, all);
             cut(lw, 0x88, 0xd0 - lw, 56, MENU_AX_C, all);
             p_right = p_tab;                              /* page two: the page arrow is beside the tab column */
         }
-        p_back = cut(0xd4, 0x8c, 44, 0x2c, MENU_AX_R, MENU_L_OBJ);
+        p_back = slide ? cut(0xd4, 0x8c, 44, 0x2c, MENU_AX_R, arrows) : cut(0xd0, 0x88, 48, 56, MENU_AX_R, arrows);
         pm = p_cards;
     }
 
