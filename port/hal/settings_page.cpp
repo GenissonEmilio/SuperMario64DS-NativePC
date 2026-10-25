@@ -10,6 +10,8 @@
 #include "menu_pause_geo.h"
 #include "../third_party/stb/stb_image.h"
 
+extern "C" void settings_page_press_sound(void);   /* hal/settings_page_hooks.cpp: the select sound of a button (INPUTMATRIX1) */
+
 #if defined(_MSC_VER) || defined(__SSE2__)
 #include <emmintrin.h>
 #endif
@@ -869,7 +871,7 @@ void compute_layout(int w, int h)
     L.tab_h = P(44); L.tab_y = L.sy + P(74);
     {   /* the tab names in a row, centred on the sheet */
         const float em = (float)P(27);
-        const float gap = (float)P(34);
+        const float gap = (float)P(22);   /* INPUTMATRIX1: was 34; the margins beside the first and last tab hold the LB / RB hints */
         float tot = 0, tw[T_COUNT];
         for (int i = 0; i < T_COUNT; ++i) { tw[i] = ui_text_width(TAB_NAMES[i], em); tot += tw[i] + (i ? gap : 0); }
         float x = L.sx + (L.sw - tot) * 0.5f;
@@ -977,12 +979,25 @@ bool row_focusable(const Row &R)
 
 int step_of(const Row &R) { return R.step > 0 ? R.step : 1; }
 
+/* INPUTMATRIX1 (Thunder: "all the option's sounds make select sounds", and a control that changed made none of its own): a control that changes plays
+   the menu's move tick (host_menu_cursor_sound, the one the D-pad plays), at most one every 70 ms so a dragged slider ticks instead of buzzing; only
+   the buttons (RESET here, BACK and the open in the frame loop) play the select sound. */
+void ctl_sound()
+{
+    static unsigned long long last;
+    const unsigned long long now = (unsigned long long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    if (now - last < 70) return;
+    last = now;
+    host_menu_cursor_sound();
+}
+
 void set_value(int id, int v)
 {
+    const int before = sl_get(id);
     if (!sl_set(id, v)) {
         const char *why = sl_set_refused();
         if (why && *why) note(why);
-    }
+    } else if (sl_get(id) != before) ctl_sound();
 }
 
 void adjust(const Row &R, int dir, int big)
@@ -1021,6 +1036,7 @@ void reset_tab()
         }
     sl_flush();
     note("Back to the defaults");
+    settings_page_press_sound();
 }
 
 void start_capture(int id)
@@ -1040,6 +1056,7 @@ void switch_tab(int t)
     if (t >= T_COUNT) t = 0;
     if (t == S.tab) return;
     sl_flush();
+    host_menu_cursor_sound();
     S.tab = t; S.sel = 0; S.col = 0; S.scroll = 0; S.dd_open = 0; S.drag = -1;
     int n = 0;
     const Row *rows = rows_of(t, &n);
@@ -1756,10 +1773,14 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
             ui_text_draw(&s, (float)L.tab_x[i], (float)by, TAB_NAMES[i], em, on ? C_TEXT : C_QUIET, 255, 0);
             if (on) fill_rrect(s, (float)L.tab_x[i], (float)(by + P(6)), (float)L.tab_w[i], (float)P(5), (float)P(2), C_TEXT, 255, 0);
         }
+        /* INPUTMATRIX1 (Thunder: "the LB and RB positions are a bit low"): the hints used to sit on top of the first and last tab names, at a height
+           of their own. They now stand level with the tab names (the same cap-height centre) in the margin beside the first and last tab. */
         const float sm = (float)P(22);
-        text_mid(s, (float)(L.sx + P(50)), (float)(L.tab_y + L.tab_h / 2 - P(2)), "LB", sm, C_QUIET, 200, 0);
-        const float rw = ui_text_width("RB", sm);
-        text_mid(s, (float)(L.sx + L.sw - P(50)) - rw, (float)(L.tab_y + L.tab_h / 2 - P(2)), "RB", sm, C_QUIET, 200, 0);
+        const float cy = (float)by - ui_text_cap_height(em) * 0.5f;
+        const float lw = ui_text_width("LB", sm), rw = ui_text_width("RB", sm);
+        const float lend = (float)L.tab_x[0], rbeg = (float)(L.tab_x[T_COUNT - 1] + L.tab_w[T_COUNT - 1]);
+        text_mid(s, (float)L.sx + (lend - L.sx - lw) * 0.5f, cy, "LB", sm, C_QUIET, 200, 0);
+        text_mid(s, rbeg + ((float)(L.sx + L.sw) - rbeg - rw) * 0.5f, cy, "RB", sm, C_QUIET, 200, 0);
     }
     }
     const int *clip = L.body;
