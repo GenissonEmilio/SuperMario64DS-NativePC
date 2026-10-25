@@ -141,8 +141,21 @@ bool apply_plan(const std::string &t, int server) {
     SetEnvironmentVariableA("SM64DS_BOOT_FILE", v);
     std::fprintf(stderr, "[join] plan applied for server %d, file %d: starting the game again at its front door with the hub environment\n", server, g_file);
     std::fflush(stderr);
-    if (!port_title_front_door_hook()) {
+#ifndef PORT_ROM_CLEAN
+    /* SM64DS_JOIN_TEST_RELAUNCH_FAIL=1: act as if the restart was refused (drill for the clean-up below; compiled out of the kit) */
+    const bool relaunched = std::getenv("SM64DS_JOIN_TEST_RELAUNCH_FAIL") ? false : port_title_front_door_hook() != 0;
+#else
+    const bool relaunched = port_title_front_door_hook() != 0;
+#endif
+    if (!relaunched) {
         SetEnvironmentVariableA("SM64DS_BOOT_FILE", nullptr);
+        /* back to a clean solo process: the hub names set above must not steer the solo file select (online_wanted reads them) */
+        static const char *const k_join_env[] = { "SM64DS_ADVENTURE", "SM64DS_COMMS_RELAY", "SM64DS_COMMS_CODE", "SM64DS_ROOM_KIND",
+            "SM64DS_VOICE_ALLOWED", "SM64DS_HUB_SEAT", "SM64DS_PLAYER_NAME", "SM64DS_PLAYER_COLOR", "SM64DS_PLAYER_SHOES" };
+        for (const char *n : k_join_env) SetEnvironmentVariableA(n, nullptr);
+#ifndef PORT_ROM_CLEAN
+        std::fprintf(stderr, "[join] restart refused: join environment cleared, COMMS_RELAY now %s\n", std::getenv("SM64DS_COMMS_RELAY") ? "SET" : "unset");
+#endif
         fail("The game could not restart to join. Try again.");
         return false;
     }
