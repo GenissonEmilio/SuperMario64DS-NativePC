@@ -226,6 +226,7 @@ void menu_recroom_build(int, MenuLayout *L)
        top edge, bobbing on the 8-frame cadence; pulled down into the picture where the item is at the top edge. The core
        also brightens and outlines the item itself. Backdrop class, so a click goes through to the item below it. */
     const int fx = R.foc_x, fy = R.foc_y, calls = R.calls;
+    if (!one && R.foc_have) menu_layout_dest(L);     /* ANCHOR1: menu_hotspot_centre reads the pieces' dest rects, which the solve makes only after build(): without them every wide hotspot centred at host x 0 (the arrow half off the window edge, or off it entirely over a card) */
     if (R.foc_have && menu_hostimg_ready(MENU_IMG_ARROW_DOWN)) {
         for (int j = 0; j < L->nh; ++j) {
             const MenuHotspot &H = L->hs[j];
@@ -238,7 +239,7 @@ void menu_recroom_build(int, MenuLayout *L)
             ar.bg = 1; ar.hostimg = MENU_IMG_ARROW_DOWN; ar.lden = 1; ar.lnum = 1; ar.fw = (short)dw; ar.fh = (short)dh;
             const int cxu2 = 2 * H.box.x + H.box.w - 256;                  /* centre x from 128, times 2 */
             ar.fx = (short)(L->w / 2 + cxu2 * L->unum / (2 * L->uden) - dw / 2);
-            if (!one) { int hx, hy; menu_hotspot_centre(L, j, &hx, &hy); ar.fx = (short)(hx - dw / 2); }      /* ANCHOR1: the hotspot's own place, its piece may ride an edge */
+            if (!one) { int hx, hy; menu_hotspot_centre(L, j, &hx, &hy); ar.fx = (short)(hx - dw / 2); }      /* ANCHOR1: the hotspot's own place, its piece may ride an edge (the dest rects were made just above: build runs before the solve makes them) */
             int top = ((2 * H.box.y + 6 + kBob[calls & 7]) * L->unum) / (2 * L->uden) - dh;
             if (top < 0) top = 0;
             if (top + dh > L->h) top = L->h - dh;
