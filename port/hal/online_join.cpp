@@ -160,7 +160,10 @@ bool apply_plan(const std::string &t, int server) {
 #endif
         for (const char *n : k_join_env) SetEnvironmentVariableA(n, nullptr);
 #ifndef PORT_ROM_CLEAN
-        std::fprintf(stderr, "[join] restart refused: join environment cleared, COMMS_RELAY now %s\n", std::getenv("SM64DS_COMMS_RELAY") ? "SET" : "unset");
+        char w32[16] = "";
+        const DWORD wn = GetEnvironmentVariableA("SM64DS_COMMS_RELAY", w32, sizeof w32);
+        std::fprintf(stderr, "[join] restart refused: COMMS_RELAY seen by the process (getenv) %s, by the system block %s"
+                            "\n", std::getenv("SM64DS_COMMS_RELAY") ? "SET" : "unset", wn ? "SET" : "unset");
 #endif
         fail("The game could not restart to join. Try again.");
         return false;
