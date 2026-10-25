@@ -89,9 +89,10 @@ bool jbool(const std::string &t, const char *key, bool *v) {
     return false;
 }
 
-bool printable(const std::string &s, size_t lo, size_t hi) {
+bool printable(const std::string &s, size_t lo, size_t hi, bool allow_space = false) {
     if (s.size() < lo || s.size() > hi) return false;
-    for (char c : s) if ((unsigned char)c < 0x21 || (unsigned char)c > 0x7E || c == '"') return false;
+    const unsigned char first = allow_space ? 0x20 : 0x21;
+    for (char c : s) if ((unsigned char)c < first || (unsigned char)c > 0x7E || c == '"') return false;
     return true;
 }
 bool hex6(const std::string &s) {
@@ -108,11 +109,18 @@ bool apply_plan(const std::string &t, int server) {
     long long seat = 255;
     jstr(t, "relay", &relay); jstr(t, "code", &code); jstr(t, "kind", &kind);
     jnum(t, "seat", &seat);
-    const bool has_name = jstr(t, "name", &name);
+    bool has_name = jstr(t, "name", &name);
     const bool has_cols = jstr(t, "color", &color) && jstr(t, "shoes", &shoes);
     bool ok = printable(relay, 1, 253) && printable(code, 1, 8) && kind == "world" &&
               ((seat >= 0 && seat < 32) || seat == 255);
-    if (has_name && !printable(name, 1, 24)) ok = false;
+    /* The player's nickname may hold spaces ("Mario Fan"; the launcher keeps 0x20..0x7E). Leading and trailing spaces are
+       trimmed; a name of only spaces is treated as no name (the tag falls back to PLAYER n). Relay and code stay strict. */
+    if (has_name) {
+        size_t b = name.find_first_not_of(' '), e = name.find_last_not_of(' ');
+        name = (b == std::string::npos) ? std::string() : name.substr(b, e - b + 1);
+        if (name.empty()) has_name = false;
+        else if (!printable(name, 1, 24, true)) ok = false;
+    }
     if (has_cols && !(hex6(color) && hex6(shoes))) ok = false;
     if (!ok) { fail("The launcher's answer looked wrong. Try again."); return false; }
     if (!port_title_front_door_hook) { fail("This game cannot join from here."); return false; }
@@ -124,6 +132,7 @@ bool apply_plan(const std::string &t, int server) {
     SetEnvironmentVariableA("SM64DS_VOICE_ALLOWED", "0");
     if (seat != 255) { char b[8]; std::snprintf(b, sizeof b, "%lld", seat); SetEnvironmentVariableA("SM64DS_HUB_SEAT", b); }
     else SetEnvironmentVariableA("SM64DS_HUB_SEAT", nullptr);
+    if (server > 0 && server < 1000) { char w[8]; std::snprintf(w, sizeof w, "%d", server); SetEnvironmentVariableA("SM64DS_WORLD_NO", w); }   /* Rich Presence shows the number */
     if (has_name) SetEnvironmentVariableA("SM64DS_PLAYER_NAME", name.c_str());
     if (has_cols) { SetEnvironmentVariableA("SM64DS_PLAYER_COLOR", color.c_str()); SetEnvironmentVariableA("SM64DS_PLAYER_SHOES", shoes.c_str()); }
 #ifndef PORT_ROM_CLEAN
@@ -133,8 +142,29 @@ bool apply_plan(const std::string &t, int server) {
     SetEnvironmentVariableA("SM64DS_BOOT_FILE", v);
     std::fprintf(stderr, "[join] plan applied for server %d, file %d: starting the game again at its front door with the hub environment\n", server, g_file);
     std::fflush(stderr);
-    if (!port_title_front_door_hook()) {
+#ifndef PORT_ROM_CLEAN
+    /* SM64DS_JOIN_TEST_RELAUNCH_FAIL=1: act as if the restart was refused (drill for the clean-up below; compiled out of the kit) */
+    const bool relaunched = std::getenv("SM64DS_JOIN_TEST_RELAUNCH_FAIL") ? false : port_title_front_door_hook() != 0;
+#else
+    const bool relaunched = port_title_front_door_hook() != 0;
+#endif
+    if (!relaunched) {
         SetEnvironmentVariableA("SM64DS_BOOT_FILE", nullptr);
+        /* back to a clean solo process: the hub names set above must not steer the solo file select (online_wanted reads them) */
+        static const char *const k_join_env[] = { "SM64DS_ADVENTURE", "SM64DS_COMMS_RELAY", "SM64DS_COMMS_CODE", "SM64DS_ROOM_KIND",
+            "SM64DS_VOICE_ALLOWED", "SM64DS_HUB_SEAT", "SM64DS_PLAYER_NAME", "SM64DS_PLAYER_COLOR", "SM64DS_PLAYER_SHOES", "SM64DS_WORLD_NO" };
+#ifndef PORT_ROM_CLEAN
+        /* SM64DS_JOIN_TEST_RELAUNCH_FAIL=2: keep the names set (replays the behaviour before this clean-up, for the before/after proof) */
+        const char *drill = std::getenv("SM64DS_JOIN_TEST_RELAUNCH_FAIL");
+        if (!(drill && drill[0] == '2'))
+#endif
+        for (const char *n : k_join_env) SetEnvironmentVariableA(n, nullptr);
+#ifndef PORT_ROM_CLEAN
+        char w32[16] = "";
+        const DWORD wn = GetEnvironmentVariableA("SM64DS_COMMS_RELAY", w32, sizeof w32);
+        std::fprintf(stderr, "[join] restart refused: COMMS_RELAY seen by the process (getenv) %s, by the system block %s"
+                            "\n", std::getenv("SM64DS_COMMS_RELAY") ? "SET" : "unset", wn ? "SET" : "unset");
+#endif
         fail("The game could not restart to join. Try again.");
         return false;
     }
@@ -182,7 +212,7 @@ bool online_join_begin(int file, const char *nick) {
     std::string n;
     for (const char *p = nick ? nick : ""; *p && n.size() < 16; ++p)
         if ((unsigned char)*p >= 0x20 && (unsigned char)*p < 0x7F && *p != '"' && *p != '\\' && *p != ',') n += *p;
-    if (n.empty()) n = "Player";
+    /* An empty nick stays empty: the launcher then fills in the nickname the player set there (JoinHelper.HandleAsync). */
     g_stamp = now_ms();
     char buf[256];
     std::snprintf(buf, sizeof buf, "{\"v\":1,\"mode\":\"adventure\",\"file\":%d,\"nick\":\"%s\",\"stamp\":%llu}\n", file, n.c_str(), g_stamp);
