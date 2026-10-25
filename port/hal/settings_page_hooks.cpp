@@ -32,6 +32,8 @@ extern char *data_ov007_02103360;      /* the title's element-cursor struct */
 extern unsigned char data_020a0e40;    /* the local player's slot */
 extern int data_020a0e58[];            /* PadData[i]: {u16 held, u16 pressed} */
 int port_scene_live_id(void);
+void func_ov007_020bdeb0(int idx);         /* the title scene's own sound call (overlay 7) */
+unsigned int func_02012790(unsigned int snd);   /* the common sound call */
 int port_title_elem_boxes(int *slot, int *id, int *x0, int *y0, int *x1, int *y1, int max);
 int port_title_page_state(int *top, int *elem, int *req);
 void port_host_keys_clear(unsigned short mask);   /* hal/scene_boot.cpp */
@@ -120,6 +122,14 @@ int title_cursor_on_wrench()
 unsigned short *g_strip_conf;   /* INPUTMATRIX1: the pad hook's confirm strip (see settings_page_hook_pad) */
 
 }  // namespace
+
+/* INPUTMATRIX1: the press (select) sound of a button on the settings page (RESET). The same sounds the page's open uses for the control that
+   asked for it: on the title the wrench's press (title sound index 0x14), elsewhere the pause Options plate's press (func_02012790 0x54). */
+extern "C" void settings_page_press_sound(void)
+{
+    if (port_scene_live_id() == 1) func_ov007_020bdeb0(0x14);
+    else func_02012790(0x54);
+}
 
 /* the pad seam's pressed word, before hal_menu_pad: 1 when this press opened the page (the bits are taken out of the pressed AND the held
    word, so the ROM, which builds its key record from the held word on the title, sees no confirm) */

@@ -10,6 +10,8 @@
 #include "menu_pause_geo.h"
 #include "../third_party/stb/stb_image.h"
 
+extern "C" void settings_page_press_sound(void);   /* hal/settings_page_hooks.cpp: the select sound of a button (INPUTMATRIX1) */
+
 #if defined(_MSC_VER) || defined(__SSE2__)
 #include <emmintrin.h>
 #endif
@@ -977,12 +979,25 @@ bool row_focusable(const Row &R)
 
 int step_of(const Row &R) { return R.step > 0 ? R.step : 1; }
 
+/* INPUTMATRIX1 (Thunder: "all the option's sounds make select sounds", and a control that changed made none of its own): a control that changes plays
+   the menu's move tick (host_menu_cursor_sound, the one the D-pad plays), at most one every 70 ms so a dragged slider ticks instead of buzzing; only
+   the buttons (RESET here, BACK and the open in the frame loop) play the select sound. */
+void ctl_sound()
+{
+    static unsigned long long last;
+    const unsigned long long now = (unsigned long long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    if (now - last < 70) return;
+    last = now;
+    host_menu_cursor_sound();
+}
+
 void set_value(int id, int v)
 {
+    const int before = sl_get(id);
     if (!sl_set(id, v)) {
         const char *why = sl_set_refused();
         if (why && *why) note(why);
-    }
+    } else if (sl_get(id) != before) ctl_sound();
 }
 
 void adjust(const Row &R, int dir, int big)
@@ -1021,6 +1036,7 @@ void reset_tab()
         }
     sl_flush();
     note("Back to the defaults");
+    settings_page_press_sound();
 }
 
 void start_capture(int id)
@@ -1040,6 +1056,7 @@ void switch_tab(int t)
     if (t >= T_COUNT) t = 0;
     if (t == S.tab) return;
     sl_flush();
+    host_menu_cursor_sound();
     S.tab = t; S.sel = 0; S.col = 0; S.scroll = 0; S.dd_open = 0; S.drag = -1;
     int n = 0;
     const Row *rows = rows_of(t, &n);
