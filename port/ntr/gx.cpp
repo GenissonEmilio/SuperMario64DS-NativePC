@@ -4096,13 +4096,30 @@ struct RasterPool {
     }
 };
 
+/* run after093, lane MENU2: the threads this process can actually run on: the affinity mask's bits, capped by the machine's hardware
+   threads (a launcher, a job object or `start /affinity` can leave a 12-thread machine two cores) */
+unsigned usable_threads() {
+    static unsigned n = 0;
+    if (!n) {
+        const unsigned hc = std::thread::hardware_concurrency();
+        DWORD_PTR pm = 0, sm = 0;
+        unsigned pc = 0;
+        if (GetProcessAffinityMask(GetCurrentProcess(), &pm, &sm))
+            for (; pm; pm &= pm - 1) ++pc;
+        n = pc ? pc : hc;
+        if (hc && n > hc) n = hc;
+        if (!n) n = 1;
+    }
+    return n;
+}
+
 int raster_threads() {
     static int n = -1;
     if (n < 0) {
         if (const char *e = getenv("SM64DS_RASTER_THREADS")) {
             n = atoi(e);
         } else {
-            unsigned hc = std::thread::hardware_concurrency();
+            unsigned hc = usable_threads();
             n = hc ? (int)hc : 1;
             if (n > 8) n = 8;   /* past this the row bands stop paying */
             /* SMALL MACHINES GET TWO WORKERS A CORE, AT LEAST FOUR (run perf2,
@@ -4255,11 +4272,17 @@ void gx_parallel_serial(int on) { g_par_serial = on ? 1 : 0; }
 static bool par_cores_ok()
 {
     static int ok = -1;
-    if (ok < 0) { const unsigned hc = std::thread::hardware_concurrency(); ok = (hc == 0 || hc >= 4) ? 1 : 0; }
+    if (ok < 0) ok = usable_threads() >= 4 ? 1 : 0;
     return ok != 0;
 }
 void gx_parallel_rows(int rows, int min_rows, void (*fn)(void *, int, int), void *ctx, int knob_value)
 {
+    /* the pool belongs to the thread that first asked (the main thread: the scene tick and the pacer); any other thread's rows run on
+       that thread itself, never through the pool */
+    static DWORD owner;
+    const DWORD me = GetCurrentThreadId();
+    if (!owner) owner = me;
+    if (me != owner) { fn(ctx, 0, rows); return; }
     const int threads = raster_threads();
     if (rows < min_rows || threads <= 1 || !par_cores_ok() || g_par_serial || !gx_menu_knob_on(knob_value)) { fn(ctx, 0, rows); return; }
     /* the pool runs one job at a time: a second caller (or a band that calls back in) does its rows itself */
