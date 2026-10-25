@@ -497,12 +497,18 @@ void build_main(MenuLayout *L, bool intro)
     const int hk = tune(0, 2), hd = tune(1, 3);
     MenuPiece face = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, tune(2, -18) + 20, tune(3, 46), hk, hd);
     face.keycover = 1; face.bg = 1; face.has_ex = 1; face.ex.x = 216; face.ex.y = 0; face.ex.w = 40; face.ex.h = 40;
+    /* INTRO2: the ROM's head entrance fades in over its first 9 ticks on the DS-art title too (the intro only, never a later page) */
+    int ent_a = 255;
+    if (t_f && t_f->ch.mode == CH_INTRO && t_f->ch.sw_t >= 0 && !t_f->ch.skip && t_f->ch.sw_t < 9) ent_a = (t_f->ch.sw_t + 1) * 255 / 9;
+    if (t_f && t_f->ch.mode == CH_INTRO && t_f->ch.sw_t < 0 && !t_f->ch.skip && t_f->ch.ct >= CH_LOGO_POP + CH_BOUNCE_LEN) ent_a = 1;      /* before the swap the head is still off the picture: nothing of the layer shows */
+    if (ent_a < 255) face.alpha = (uint8_t)ent_a;
     menu_add_piece(L, face);
     MenuPiece head = menu_piece_make(SRC_TOP_PIC, 20, 0, 156, 140, MENU_AX_C, MENU_AY_T, tune(2, -18), tune(3, 46), hk, hd);
     head.touch = 1; head.nodraw = 1;
     menu_add_piece(L, head);
     MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
     wr.keycover = 1; wr.touch = 1;
+    if (ent_a < 255) wr.alpha = (uint8_t)ent_a;
     if (settings_page_press_look() == 2) { wr.dy = 1; wr.dx = -1; }   /* HUDMENU2 (H4): the wrench sinks while the press hold of a pad / key confirm runs */
     const int iwr = menu_add_piece(L, wr);
     static const int kPlateId[3] = { 1, 0, 2 };                      /* the ROM's element ids: VS, ADVENTURE, REC ROOM */
@@ -720,9 +726,11 @@ void chore_step(int variant, int top, int elem, int req)
        its fly-in while the scale ramps for 30 ticks) is shown from its first tick, whole, and the swap (the logo's trip) starts when it is at rest */
     const bool head_in = c.mode == CH_INTRO && bounced && (top == 1 || rest);
     /* the face: faded in once the ROM is at rest and the swap began; faded out quickly when the ROM leaves rest (it walks out) */
-    if (c.sw_t < 0) c.face_a = head_in ? 255 : 0;
+    /* the flight is the ROM's, at its own speed (top-state 0's first anim: the head is not on the picture before the swap starts); only the pop is
+       smoothed: transparent to full over the first 9 ticks of the swap (Tango 10-24 late) */
+    if (c.sw_t < 0) c.face_a = (head_in && c.skip) ? 255 : 0;
     else if (head_in || rest || arriving) {
-        const int step = c.skip || head_in || c.sw_t >= swap_end(c) ? 255 : 255 / CH_FACE_FADE + 1;
+        const int step = c.skip || c.sw_t >= swap_end(c) ? 255 : (c.mode == CH_INTRO ? 255 / 9 + 1 : 255 / CH_FACE_FADE + 1);
         c.face_a += step; if (c.face_a > 255) c.face_a = 255;
     } else {
         c.face_a -= 40; if (c.face_a < 0) c.face_a = 0;
