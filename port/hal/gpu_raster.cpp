@@ -2507,6 +2507,16 @@ struct LatePend {
 };
 LatePend g_lp[2];
 int g_lp_head, g_lp_n;
+long long g_late_issued, g_late_finished;
+int g_late_drill_kind = -1, g_late_drill_n;     /* SM64DS_MENU_LATE_DRILL=fail:N or drop:N (proof rows for the edge paths; inert unset) */
+void late_drill_init()
+{
+    if (g_late_drill_kind != -1) return;
+    g_late_drill_kind = 0;
+    const char *e = getenv("SM64DS_MENU_LATE_DRILL");
+    if (e && !strncmp(e, "fail:", 5)) { g_late_drill_kind = 1; g_late_drill_n = atoi(e + 5); }
+    else if (e && !strncmp(e, "drop:", 5)) { g_late_drill_kind = 2; g_late_drill_n = atoi(e + 5); }
+}
 
 bool late_gpu_on()
 {
@@ -2553,7 +2563,10 @@ void late_finish_one()
     D3D11_MAPPED_SUBRESOURCE mfa;
     memset(&mfa, 0, sizeof mfa);
     const long long tw0 = qpc();
-    HRESULT hr = g_ctx ? g_ctx->Map(g_fa_q[P.q], 0, D3D11_MAP_READ, 0, &mfa) : E_FAIL;
+    late_drill_init();
+    ++g_late_finished;
+    HRESULT hr = (g_ctx && g_fa_q[P.q] && !(g_late_drill_kind == 1 && g_late_finished == g_late_drill_n))
+                     ? g_ctx->Map(g_fa_q[P.q], 0, D3D11_MAP_READ, 0, &mfa) : E_FAIL;
     const double wait_ms = ms_between(tw0, qpc());
     if (FAILED(hr)) {
         fall_back("the picture could not be read back", hr);
@@ -3391,6 +3404,13 @@ int draw_full(const ntr::GxGpuFrame *f)
         P.nverts = g_scratch.size() + g_scratch1.size() + g_scratch2.size();
         P.nbatches = g_batch.size() + g_ops.size();
         ++g_lp_n;
+        late_drill_init();
+        ++g_late_issued;
+        if (g_late_drill_kind == 2 && g_late_issued == g_late_drill_n) {
+            fprintf(stderr, "[renderer] SM64DS_MENU_LATE_DRILL: dropping the targets with %d readback(s) pending\n", g_lp_n);
+            release_targets();
+            return 2;     /* the frame is drawn and its buffers hold the clear colour; the next frame builds the targets again */
+        }
         g_last_full = true;
         g_last_box = have_box;
         g_lb_x0 = bx0;

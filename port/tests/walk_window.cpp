@@ -10263,7 +10263,7 @@ static void ip_present_after(double alpha, long long q0ticks, int sample)
     const double cost = (q2.QuadPart - q0.QuadPart) * 1000.0 / (double)qf.QuadPart;
     if (sample) ip_cost_sample(cost);
     /* finished past the tick's end: this blend made the game late */
-    if (g_ip_tick_len > 0 && q2.QuadPart > g_ip_tick_t0 + g_ip_tick_len)
+    if (g_ip_tick_len > 0 && q2.QuadPart - g_chk_excl_q > g_ip_tick_t0 + g_ip_tick_len)
         g_ip_tick_late = 1;
     ip_note((q1.QuadPart - q0.QuadPart) * 1000.0 / (double)qf.QuadPart,
             (q2.QuadPart - q1.QuadPart) * 1000.0 / (double)qf.QuadPart);
@@ -10278,6 +10278,7 @@ static double g_ip_b_ms = 1.0;   /* running average of the second half of a pict
    <n>_pipe.bmp and <n>_sync.bmp (the picture the overlapped path made, and the one the old path makes). The picture shown is the
    second, which equals the first when the line says 0 differ. */
 static unsigned long long g_chk_n, g_chk_bad, g_chk_pend;
+static long long g_chk_excl_q;    /* QPC ticks the check itself took, left out of the cost sample and of the lateness test */
 static char g_chk_dir[400];
 static std::vector<uint32_t> g_chk_ka, g_chk_kb;   /* the pair kept for the exit dump (a write in the middle of a run stalls the pictures) */
 static void ip_check_report(void)
@@ -10304,6 +10305,7 @@ static void ip_check_pair(IpPend *P)
         }
     }
     if (!on || g_ip_deliver) return;
+    const long long tchk = ip_qpc();
     const int w = ntr::active_w, h = ntr::active_h;
     std::vector<uint32_t> a((size_t)w * h);
     for (int y = 0; y < h; ++y) memcpy(&a[(size_t)y * w], g_ip_fb->px[y], (size_t)w * 4);
@@ -10323,6 +10325,7 @@ static void ip_check_pair(IpPend *P)
         for (int y = 0; y < h; ++y) memcpy(&g_chk_kb[(size_t)y * w], g_ip_fb->px[y], (size_t)w * 4);
     }
     if (bad || (g_chk_n % 300) == 0) ip_check_report();
+    g_chk_excl_q += ip_qpc() - tchk;
 }
 static void ip_deliver_present(IpPend *P)
 {
@@ -10348,9 +10351,12 @@ static void ip_pend_flush(void)
     IpPend P = g_ip_pend;
     g_ip_pend.active = 0;
     const long long tb = ip_qpc();
+    const long long excl0 = g_chk_excl_q;
     ntr::gx_finish_readback();          /* the clears, the wait, the copy into fb and the coverage plane */
     if (g_ip_deliver) g_ip_deliver(&P); else ip_deliver_present(&P);
-    g_ip_b_ms = g_ip_b_ms * 0.8 + ip_ms_since(tb) * 0.2;
+    LARGE_INTEGER qf;
+    QueryPerformanceFrequency(&qf);
+    g_ip_b_ms = g_ip_b_ms * 0.8 + (ip_ms_since(tb) - (g_chk_excl_q - excl0) * 1000.0 / (double)qf.QuadPart) * 0.2;
 }
 /* the slot's picture on the pipelined path: this picture goes to the card, then the one before it is finished and shown.
    Returns 1 when a picture went to the screen. */
@@ -10358,8 +10364,11 @@ static int ip_present_alpha_pipe_body(double alpha, long long t, int timed, long
 static int ip_present_alpha_pipe(double alpha, long long t, int timed)
 {
     const long long q0 = ip_qpc();
+    g_chk_excl_q = 0;
     const int shown = ip_present_alpha_pipe_body(alpha, t, timed, q0);
-    ip_cost_sample(ip_ms_since(q0));
+    LARGE_INTEGER f;
+    QueryPerformanceFrequency(&f);
+    ip_cost_sample(ip_ms_since(q0) - g_chk_excl_q * 1000.0 / (double)f.QuadPart);
     return shown;
 }
 static int ip_present_alpha_pipe_body(double alpha, long long t, int timed, long long q0ticks)
