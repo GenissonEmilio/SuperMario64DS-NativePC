@@ -10207,6 +10207,7 @@ static void ip_stack_for_blend(void)
 }
 
 /* One picture: blended when this tick can, the tick's own frame otherwise. */
+static long long g_chk_excl_q;    /* QPC ticks the overlap check itself took, left out of the cost sample and of the lateness test */
 static void ip_present_after(double alpha, long long q0ticks, int sample = 1);
 static void ip_present_alpha(double alpha)
 {
@@ -10278,7 +10279,6 @@ static double g_ip_b_ms = 1.0;   /* running average of the second half of a pict
    <n>_pipe.bmp and <n>_sync.bmp (the picture the overlapped path made, and the one the old path makes). The picture shown is the
    second, which equals the first when the line says 0 differ. */
 static unsigned long long g_chk_n, g_chk_bad, g_chk_pend;
-static long long g_chk_excl_q;    /* QPC ticks the check itself took, left out of the cost sample and of the lateness test */
 static char g_chk_dir[400];
 static std::vector<uint32_t> g_chk_ka, g_chk_kb;   /* the pair kept for the exit dump (a write in the middle of a run stalls the pictures) */
 static void ip_check_report(void)
