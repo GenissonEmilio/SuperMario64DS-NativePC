@@ -1646,6 +1646,28 @@ int file_skip_inner(char *o)
     return g_file_prev_skip ? g_file_prev_skip(o) : 0;
 }
 }  // namespace
+/* ANCHOR1 (F4): the water ripple of a cursor that LEAVES an element. The ROM spawns it at the element's object position (func_ov007_020beeb0,
+   the branch with no stylus down, strength 0x7d0, through func_ov007_020bed60), which for the back arrow is its DS place; the arrow is now drawn
+   at the window's right edge, so the ripple came up where the arrow used to be. This maps that DS point to the water point under the arrow's
+   WINDOW place: the page behind it is zoomed about the canvas centre (g_file_wz), so the point is the centre plus the arrow's offset from the
+   canvas centre over the zoom, the same arithmetic menu_inverse uses for a touch on the water. Anything else is left alone, and so is a stylus
+   touch (the host already hands the ROM the water point for one). */
+extern "C" void port_title_ripple_xf(int *x, int *y)
+{
+    if (!file_back_obj(*x, *y) || !file_wide_page_now()) return;
+    float cw, ch;
+    scene_canvas_units(&cw, &ch);
+    if (cw <= 256.5f || g_file_wz <= 1000) return;
+    const float zoom = (float)g_file_wz / 1000.0f;
+    int nx = 128 + (int)(((float)(*x - 128) + (cw - 256.0f) * 0.5f) / zoom);
+    int ny = 96 + (int)((float)(*y - 96) / zoom);
+    if (nx < 0) nx = 0;
+    if (nx > 255) nx = 255;
+    if (ny < 0) ny = 0;
+    if (ny > 191) ny = 191;
+    if (hal_menu_trace_on()) fprintf(stderr, "[filecur] ripple of the cursor leaving the back arrow: DS (%d,%d) -> water (%d,%d)\n", *x, *y, nx, ny);
+    *x = nx; *y = ny;
+}
 extern "C" {
 extern void (*g_port_title_draw_end)(void);
 }
