@@ -1598,12 +1598,36 @@ bool table_skip_active()
 }
 int file_skip_inner(char *o);
 void scene_sprite_xf(char *o);
+/* ANCHOR1: the back arrow (tile and glyph, DS box x 180..252, y 140..176) of the wide file pages (select, options, scores pick, copy,
+   erase, the score table) is a corner control: it keeps its DS inset (4 units from the right edge) from the WINDOW's right edge, the
+   same translation the drawing page's pencil gets in scene_sprite_xf. The plates and the page stay centred; at 4:3 the translation
+   is zero and nothing is set. file_back_shift_units() is the one number the sprite, the cursor arrow and the touch piece share. */
+static bool file_back_obj(int x, int y) { return x >= 180 && y >= 136; }
+static bool file_wide_page_now()
+{
+    if (!ntr::widescreen || ntr::active_h <= 0 || !hal_menu_live()) return false;
+    if (!data_ov007_0210342c || g_up_stamp != data_ov007_0210342c[0]) return false;
+    int top, elem, req;
+    if (!port_title_page_state(&top, &elem, &req)) return false;
+    const int v = variant_for(top, elem);
+    return (v == V_FILES || v == V_TABLE) && ntr::gx_menu_wide_active();
+}
+static void file_back_xf(char *o)
+{
+    if (!file_wide_page_now()) return;
+    float cw, ch;
+    scene_canvas_units(&cw, &ch);
+    if (cw <= 256.5f) return;
+    const int x = ((const int *)o)[1] >> 12, y = ((const int *)o)[2] >> 12;
+    if (file_back_obj(x, y)) ntr::gx_menu_sprite_xf(1.f, (cw - 256.f) / cw, 1.f, 0.f);       /* 2 * ((cw - 256) / 2) / cw */
+}
 int file_skip(char *o)
 {
     const int r = file_skip_inner(o);
     if (!r) {
         ntr::gx_menu_sprite(1);      /* FILE2: this object is drawn: its triangles are sprite objects, not the page model */
         scene_sprite_xf(o);          /* TITLE092: and in the title's full-canvas scene it has its own place */
+        file_back_xf(o);             /* ANCHOR1: the wide file pages' back arrow rides the window's right edge */
     }
     return r;
 }
@@ -1847,7 +1871,22 @@ void file_pages_build(int variant, MenuLayout *L)
     pg.bg = 1; pg.touch = 1;
     if (pat) pg.keycover = 1;
     if (t_f && t_f->wide3d) pg.nodraw = 1;      /* FILE2: the wide 3D frame already is the picture, in place: this piece only maps clicks */
+    /* ANCHOR1: on the wide 3D file pages the back arrow rides the window's right edge (file_back_xf), so its touch box rides with it: the
+       click-mapping piece is cut in three, the page above row 133 and the lower left (both centred, as before) and the arrow's own corner
+       (DS x 180..256, y 133..192, right edge on the canvas edge). A click where the arrow used to be maps to nothing. */
+    const bool split = t_f && t_f->wide3d && !pat && L->w * L->uden / L->unum > 256;
+    int ip_lo = -1, ip_bk = -1;
+    if (split) {
+        pg.s.h = 133;
+        pg.ay = MENU_AY_T;
+    }
     const int ip = menu_add_piece(L, pg);
+    if (split) {
+        MenuPiece lo = pg; lo.s.x = 0; lo.s.y = 133; lo.s.w = 180; lo.s.h = 59; lo.ax = MENU_AX_C; lo.ay = MENU_AY_T; lo.dx = (short)(0 + 90 - 128); lo.dy = 133;
+        ip_lo = menu_add_piece(L, lo);
+        MenuPiece bk = pg; bk.s.x = 180; bk.s.y = 133; bk.s.w = 76; bk.s.h = 59; bk.ax = MENU_AX_R; bk.ay = MENU_AY_T; bk.dx = 0; bk.dy = 133;
+        ip_bk = menu_add_piece(L, bk);
+    }
     if (t_f && t_f->wide3d && !pat) L->wz = t_f->wz;       /* MENUS093E: the reflection is zoomed in the 3D: a touch on the water is the zoomed point */
     if (pat) {
         /* the page's own 2D layer (the SOUND and BACKLIGHT labels, the star) is lifted out of the picture and drawn over the 3D objects,
@@ -1870,7 +1909,7 @@ void file_pages_build(int variant, MenuLayout *L)
         lo.layers = L->lift_owners;
         menu_add_piece(L, lo);
         static const int bk_ids[1] = { 20 };
-        hot(L, ip, bk_ids, 1);
+        hot(L, ip_bk >= 0 ? ip_bk : ip, bk_ids, 1);
         return;
     }
     if (variant == V_DOODLE || variant == V_TOY) return;
@@ -1888,12 +1927,19 @@ void file_pages_build(int variant, MenuLayout *L)
         MenuPiece ar = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         ar.bg = 1; ar.hostimg = MENU_IMG_ARROW_ORANGE; ar.lden = 1; ar.lnum = 1; ar.fw = (short)dw; ar.fh = (short)dh;
         ar.fx = (short)(L->w / 2 + (g_oa_x - 11 - 128) * un / ud);
+        if (ip_bk >= 0 && file_back_obj(g_oa_x, g_oa_y + 8)) ar.fx = (short)(ar.fx + (L->w - 256 * un / ud) / 2);      /* ANCHOR1: the cursor arrow points at the back arrow where it is now */
         ar.fy = (short)((g_oa_y - 8) * un / ud + (L->h - 192 * un / ud) / 2);
         menu_add_piece(L, ar);
     }
     static const int fids[8] = { 14, 15, 16, 17, 18, 19, 21, 20 };
     g_hot_live_only = true;
-    hot(L, ip, fids, 8);
+    if (split) {
+        hot(L, ip, fids, 6);
+        hot(L, ip_lo, fids + 6, 1);
+        hot(L, ip_bk, fids + 7, 1);
+    } else {
+        hot(L, ip, fids, 8);
+    }
     g_hot_live_only = false;
     if (variant == V_FILES) {                                  /* NAME1: the online file select: the ? button (the select page itself) and the modal screen */
         const OnlFacts *of = onl_facts_of(L);
