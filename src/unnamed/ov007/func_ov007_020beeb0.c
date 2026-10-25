@@ -7,6 +7,14 @@ extern int func_ov007_020c1da0(int i);
 extern int func_020531a4(int a);
 extern int _ZN4cstd3divEii(int a, int b);
 extern void func_ov007_020bed60(int a, int b, int c);
+#ifdef _MSC_VER
+/* host arm only: the ripple a leaving cursor makes follows the back arrow the window moved (port/hal/menu_recipe_title.cpp port_title_ripple_xf) */
+extern void port_title_ripple_xf(int *x, int *y);
+static void ripple_leave(int x, int y, int s) { port_title_ripple_xf(&x, &y); func_ov007_020bed60(x, y, s); }
+#define RIPPLE_LEAVE(x, y, s) ripple_leave((x), (y), (s))
+#else
+#define RIPPLE_LEAVE(x, y, s) func_ov007_020bed60((x), (y), (s))
+#endif
 extern char *func_ov007_020b2cdc(void);
 extern void func_ov007_020ca1d4(char *self, int a);
 extern void func_ov007_020cba78(char *c, int a);
@@ -57,7 +65,7 @@ void func_ov007_020beeb0(void)
                 if (a >= 0 && a < 0x18) {
                     char *q = *(char **)(*(char **)data_ov007_0210342c + a * 4 + 0x114);
                     char *v = *(char **)q;
-                    func_ov007_020bed60(*(int *)(v + 8) >> 0xc, *(int *)(v + 0xc) >> 0xc, 0x7d0);
+                    RIPPLE_LEAVE(*(int *)(v + 8) >> 0xc, *(int *)(v + 0xc) >> 0xc, 0x7d0);
                 }
             }
         }
