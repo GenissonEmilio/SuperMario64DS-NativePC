@@ -212,11 +212,7 @@ bool online_join_begin(int file, const char *nick) {
     std::string n;
     for (const char *p = nick ? nick : ""; *p && n.size() < 16; ++p)
         if ((unsigned char)*p >= 0x20 && (unsigned char)*p < 0x7F && *p != '"' && *p != '\\' && *p != ',') n += *p;
-    bool keep_empty = false;
-#ifndef PORT_ROM_CLEAN
-    keep_empty = std::getenv("SM64DS_JOIN_TEST_EMPTY_NICK") != nullptr;   /* proof knob: send the empty nick so the launcher's own nickname rides */
-#endif
-    if (n.empty() && !keep_empty) n = "Player";
+    /* An empty nick stays empty: the launcher then fills in the nickname the player set there (JoinHelper.HandleAsync). */
     g_stamp = now_ms();
     char buf[256];
     std::snprintf(buf, sizeof buf, "{\"v\":1,\"mode\":\"adventure\",\"file\":%d,\"nick\":\"%s\",\"stamp\":%llu}\n", file, n.c_str(), g_stamp);
