@@ -546,6 +546,8 @@ int  gx_menu2_phase_get(void);
 void gx_parallel_rows(int rows, int min_rows, void (*fn)(void *ctx, int y0, int y1), void *ctx, int knob_value);
 // 1 when gx_parallel_rows will use more than one thread (four or more raster threads, SM64DS_MENU_PAR not 0)
 int  gx_parallel_available(void);
+// 1 makes every gx_parallel_rows run on the calling thread (the single-thread reference for the proof instruments)
+void gx_parallel_serial(int on);
 int  gx_late_possible(void);
 void gx_clear_fill_late(Framebuffer &fb);
 void gx_defer_request(int on);

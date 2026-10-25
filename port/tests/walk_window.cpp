@@ -10274,7 +10274,7 @@ static void ip_pend_flush_end(void) { ip_pend_flush(); }
 static double g_ip_b_ms = 1.0;   /* running average of the second half of a picture, for the fit rule */
 /* SM64DS_MENU_OVERLAP_CHECK=1 (a proof instrument, inert unless set): every picture the overlapped path finishes is built a second
    time the old way (both halves back to back, same alpha, same tick state) and the two framebuffers are compared; the line says how
-   many pictures were compared and how many differ. SM64DS_MENU_OVERLAP_CHECK=<dir> also writes the first 40 pairs there as
+   many pictures were compared and how many differ (the second build also runs the row bands on one thread, so it checks them too). SM64DS_MENU_OVERLAP_CHECK=<dir> also writes the first 40 pairs there as
    <n>_pipe.bmp and <n>_sync.bmp (the picture the overlapped path made, and the one the old path makes). The picture shown is the
    second, which equals the first when the line says 0 differ. */
 static unsigned long long g_chk_n, g_chk_bad, g_chk_pend;
@@ -10298,7 +10298,9 @@ static void ip_check_pair(IpPend *P)
     const int w = ntr::active_w, h = ntr::active_h;
     std::vector<uint32_t> a((size_t)w * h);
     for (int y = 0; y < h; ++y) memcpy(&a[(size_t)y * w], g_ip_fb->px[y], (size_t)w * 4);
+    ntr::gx_parallel_serial(1);      /* the reference is the old path in every way: one thread, both halves back to back */
     const int built = ip_build(P->alpha);
+    ntr::gx_parallel_serial(0);
     ++g_chk_n;
     if (P->was_pending) ++g_chk_pend;
     int bad = !built;

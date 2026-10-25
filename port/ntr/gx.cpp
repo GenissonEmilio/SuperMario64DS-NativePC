@@ -4250,6 +4250,8 @@ void par_band(void *c, int id, int n)
 }  // namespace
 /* the bands need real cores: a machine with fewer than four hardware threads runs the rows itself (its raster pool of four is for
    the CPU raster, which has nothing else to do while it waits) */
+static int g_par_serial;
+void gx_parallel_serial(int on) { g_par_serial = on ? 1 : 0; }
 static bool par_cores_ok()
 {
     static int ok = -1;
@@ -4259,7 +4261,7 @@ static bool par_cores_ok()
 void gx_parallel_rows(int rows, int min_rows, void (*fn)(void *, int, int), void *ctx, int knob_value)
 {
     const int threads = raster_threads();
-    if (rows < min_rows || threads <= 1 || !par_cores_ok() || !gx_menu_knob_on(knob_value)) { fn(ctx, 0, rows); return; }
+    if (rows < min_rows || threads <= 1 || !par_cores_ok() || g_par_serial || !gx_menu_knob_on(knob_value)) { fn(ctx, 0, rows); return; }
     /* the pool runs one job at a time: a second caller (or a band that calls back in) does its rows itself */
     static std::mutex par_m;
     if (!par_m.try_lock()) { fn(ctx, 0, rows); return; }
