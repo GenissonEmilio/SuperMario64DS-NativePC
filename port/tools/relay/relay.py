@@ -662,7 +662,8 @@ RACE_DEFAULT_TARGET = 50
 RACE_LEADER_EVERY_S = 5.0     # the leader is repeated this often
 RACE_WIN_SHOW_S = 10          # the winner stays on the wire this long after a win
 STAR_MAX = 150                # a star total above this is impossible (ignored)
-STAR_RISE_MAX = 3             # most a seat's total may rise in one accepted report
+STAR_RISE_MAX = 3             # most a seat's total may rise within STAR_RISE_WINDOW_S
+STAR_RISE_WINDOW_S = 10.0     # the rolling window for that limit
 WORLD_CODE_MAX = 16
 
 
@@ -953,7 +954,7 @@ class SessionV2(object):
     children) or a HUB (seats 0..HUB_SEATS-1, all members, nobody hosts)."""
     __slots__ = ("code", "kind", "seats", "created", "fwd_tokens",
                  "fwd_stamp", "referee", "fwd_pps", "fwd_burst",
-                 "stars", "names", "race", "creator_ip", "star_warned")
+                 "stars", "names", "race", "creator_ip", "star_warned", "star_rises")
     version = PROTO_V2
 
     def __init__(self, code, kind, now):
@@ -967,29 +968,48 @@ class SessionV2(object):
         self.names = {}         # hub only: seat -> name from its identity frame
         self.race = None        # hub only: the RaceTally of the live race
         self.star_warned = set()  # seats already logged for an impossible star count
+        self.star_rises = {}    # seat -> [(time, rise)] of accepted rises, newest last
         # the per-session forward budget (SESSION_FWD_PPS), in copies sent
         self.fwd_pps = SESSION_FWD_PPS_WORLD if kind == KIND_HUB else SESSION_FWD_PPS
         self.fwd_burst = self.fwd_pps
         self.fwd_tokens = float(self.fwd_burst)
         self.fwd_stamp = now
 
-    def accept_stars(self, seat, n):
+    def accept_stars(self, seat, n, now=None):
         """Take a star total from a seat's presence datagram, or ignore it.
         The tally reads totals, so a console must not be able to report a
         number a player cannot have: outside 0..STAR_MAX is ignored, and so
-        is a rise of more than STAR_RISE_MAX over the seat's last accepted
-        value (stars come one at a time; the seat keeps its honest value, it
-        is not clamped). The first report of a seat is taken as is within
-        0..STAR_MAX. A drop is taken: the tally only wins by crossing the
-        target upward from the first count it saw, so a lower number cannot
-        win. A refused report is logged once per seat, never raises."""
+        is a rise that takes the seat's accepted total up by more than
+        STAR_RISE_MAX within any rolling STAR_RISE_WINDOW_S seconds (stars
+        come one at a time; a seat sending +3 every report would otherwise
+        ramp to the target in seconds). A refused value is ignored, not
+        clamped: the seat keeps its honest value and an honest report is
+        taken as soon as the window has room. The first report of a seat is
+        taken as is within 0..STAR_MAX. A drop is taken: the tally only wins
+        by crossing the target upward from the first count it saw, so a lower
+        number cannot win. A refused report is logged once per seat, never
+        raises."""
+        if now is None:
+            now = time.monotonic()
         last = self.stars.get(seat)
-        if n > STAR_MAX or (last is not None and n > last + STAR_RISE_MAX):
+        ok = n <= STAR_MAX
+        rise = 0
+        hist = None
+        if ok and last is not None:
+            rise = n - last
+            if rise > 0:
+                hist = [h for h in self.star_rises.get(seat, ())
+                        if now - h[0] < STAR_RISE_WINDOW_S]
+                ok = rise <= STAR_RISE_MAX - sum(h[1] for h in hist)
+        if not ok:
             if seat not in self.star_warned:
                 self.star_warned.add(seat)
                 log("session %s seat %d: star count %d ignored (last %s)"
                     % (self.code, seat, n, last))
             return False
+        if rise > 0:
+            hist.append((now, rise))
+            self.star_rises[seat] = hist
         self.stars[seat] = n
         return True
 
@@ -1877,6 +1897,7 @@ class RelayProtocol(asyncio.DatagramProtocol):
                 del session.seats[endpoint.seat]
                 session.stars.pop(endpoint.seat, None)
                 session.star_warned.discard(endpoint.seat)
+                session.star_rises.pop(endpoint.seat, None)
                 session.names.pop(endpoint.seat, None)
                 if session.referee is not None:
                     session.referee.on_leave(
