@@ -132,6 +132,7 @@ bool apply_plan(const std::string &t, int server) {
     SetEnvironmentVariableA("SM64DS_VOICE_ALLOWED", "0");
     if (seat != 255) { char b[8]; std::snprintf(b, sizeof b, "%lld", seat); SetEnvironmentVariableA("SM64DS_HUB_SEAT", b); }
     else SetEnvironmentVariableA("SM64DS_HUB_SEAT", nullptr);
+    if (server > 0 && server < 1000) { char w[8]; std::snprintf(w, sizeof w, "%d", server); SetEnvironmentVariableA("SM64DS_WORLD_NO", w); }   /* Rich Presence shows the number */
     if (has_name) SetEnvironmentVariableA("SM64DS_PLAYER_NAME", name.c_str());
     if (has_cols) { SetEnvironmentVariableA("SM64DS_PLAYER_COLOR", color.c_str()); SetEnvironmentVariableA("SM64DS_PLAYER_SHOES", shoes.c_str()); }
 #ifndef PORT_ROM_CLEAN
@@ -151,7 +152,7 @@ bool apply_plan(const std::string &t, int server) {
         SetEnvironmentVariableA("SM64DS_BOOT_FILE", nullptr);
         /* back to a clean solo process: the hub names set above must not steer the solo file select (online_wanted reads them) */
         static const char *const k_join_env[] = { "SM64DS_ADVENTURE", "SM64DS_COMMS_RELAY", "SM64DS_COMMS_CODE", "SM64DS_ROOM_KIND",
-            "SM64DS_VOICE_ALLOWED", "SM64DS_HUB_SEAT", "SM64DS_PLAYER_NAME", "SM64DS_PLAYER_COLOR", "SM64DS_PLAYER_SHOES" };
+            "SM64DS_VOICE_ALLOWED", "SM64DS_HUB_SEAT", "SM64DS_PLAYER_NAME", "SM64DS_PLAYER_COLOR", "SM64DS_PLAYER_SHOES", "SM64DS_WORLD_NO" };
         for (const char *n : k_join_env) SetEnvironmentVariableA(n, nullptr);
 #ifndef PORT_ROM_CLEAN
         std::fprintf(stderr, "[join] restart refused: join environment cleared, COMMS_RELAY now %s\n", std::getenv("SM64DS_COMMS_RELAY") ? "SET" : "unset");
