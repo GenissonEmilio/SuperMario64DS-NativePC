@@ -81,5 +81,6 @@ int  menu_online_plank_art_ready(int kind);              /* 1 when the mod's pic
 void menu_online_add_tint(MenuLayout *L, const OnlFacts *f);
 int  menu_online_tint_permille(const OnlFacts *f);
 void menu_online_add_modal(MenuLayout *L, const OnlFacts *f);
+void menu_online_add_arrow(MenuLayout *L, int up, int fx, int fy, int fw, int fh);   /* NAME2: the title's selection arrow from the code's own art (no mod picture) */
 void menu_online_add_help(MenuLayout *L, int right_edge_x, int top_y, int size_px);   /* the ? button at that host place; the box is ONL_HELP_* */
 #endif

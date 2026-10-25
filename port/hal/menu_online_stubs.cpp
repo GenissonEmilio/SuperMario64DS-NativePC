@@ -14,3 +14,4 @@ void menu_online_add_modal(MenuLayout *, const OnlFacts *) {}
 void menu_online_add_tint(MenuLayout *, const OnlFacts *) {}
 int menu_online_tint_permille(const OnlFacts *) { return 0; }
 void menu_online_add_help(MenuLayout *, int, int, int) {}
+void menu_online_add_arrow(MenuLayout *, int, int, int, int, int) {}
