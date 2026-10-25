@@ -1540,6 +1540,14 @@ port_configure_input("${CMAKE_CURRENT_SOURCE_DIR}/tools/tierscan.py")
 #     is a diagnostic string in fault dumps, and registering .git would
 #     reconfigure on every commit, which the house laws ask lanes to do often.
 #     Touch this file, or pass any argument to build-port.cmd, to refresh it.
+add_library(discord_presence STATIC hal/discord_presence.cpp)
+target_include_directories(discord_presence PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_features(discord_presence PUBLIC cxx_std_17)
+
+add_executable(discord_presence_probe tests/discord_presence_probe.cpp)
+target_link_libraries(discord_presence_probe PRIVATE discord_presence)
+target_compile_features(discord_presence_probe PRIVATE cxx_std_17)
+add_test(NAME discord_presence_probe COMMAND discord_presence_probe)
 
 # Gate 1: compile the manifest slice out of ../src plus the HAL, link the
 # smoke runner. 32-bit host only -- platform.h enforces it at compile time.
@@ -17962,7 +17970,7 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     ${SLICE214_SOURCES} ${SLICE_IPCSEND_SOURCES}
     # dialogue pipeline (2026-08-08): the box pump (Stage::UpdateMessage's
     # dialogue arm), the engine-A 2D-over-3D compositor, and the headless probe.
-    hal/message_pump.cpp hal/message_compositor.cpp hal/message_probe.cpp hal/message_gen_text.cpp hal/input_probe.cpp
+    hal/message_pump.cpp hal/message_compositor.cpp hal/message_probe.cpp hal/message_gen_text.cpp hal/input_probe.cpp hal/rich_presence.cpp
     # the launcher's settings.json, read by the game (camera turn direction,
     # and the four screen-gap keys hal/screen_gap.cpp reads)
     hal/host_settings.cpp hal/screen_gap.cpp
@@ -18424,7 +18432,7 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     # this target compiles tests/walk_window.cpp, which carries the boot calls.
     ${SLICE214_SOURCES} ${SLICE_IPCSEND_SOURCES}
     # dialogue pipeline (2026-08-08): pump, engine-A compositor, headless probe.
-    hal/message_pump.cpp hal/message_compositor.cpp hal/message_probe.cpp hal/message_gen_text.cpp hal/input_probe.cpp
+    hal/message_pump.cpp hal/message_compositor.cpp hal/message_probe.cpp hal/message_gen_text.cpp hal/input_probe.cpp hal/rich_presence.cpp
     # the launcher's settings.json, read by the game (camera turn direction,
     # and the four screen-gap keys hal/screen_gap.cpp reads)
     hal/host_settings.cpp hal/screen_gap.cpp
@@ -25916,4 +25924,38 @@ foreach(_tevc walk_window walk_window_hires)
 endforeach()
 if(PORT_ROM_CLEAN)
     set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/hal/event_client.cpp" APPEND PROPERTY COMPILE_DEFINITIONS PORT_ROM_CLEAN)
+endif()
+
+# RPC1: Discord Rich Presence. hal/rich_presence.cpp is called from the scene
+# crossing hook in tests/walk_window.cpp; discord_presence (SahilKDas, PR 3569)
+# is the pipe client above. Both window targets list rich_presence.cpp in their sources and link it; no DLL.
+foreach(rpc1_t walk_window walk_window_hires)
+    if(TARGET ${rpc1_t})
+        target_link_libraries(${rpc1_t} PRIVATE discord_presence)
+    endif()
+endforeach()
+
+# run after093, lane NAME1: the title's online menu (hal/menu_online.h). The logic side is linked wherever the title recipe is; the draw side needs ui_text
+# (walk_window only), the smoke player gets inert stubs. Own block.
+foreach(_tonl1 walk_window walk_window_hires smoke_player)
+    if(TARGET ${_tonl1})
+        target_sources(${_tonl1} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_online.cpp")
+    endif()
+endforeach()
+foreach(_tonl2 walk_window walk_window_hires)
+    if(TARGET ${_tonl2})
+        target_sources(${_tonl2} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_online_draw.cpp")
+    endif()
+endforeach()
+if(TARGET smoke_player)
+    target_sources(smoke_player PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_online_stubs.cpp")
+endif()
+# run after093, lane JOIN1: the in-game online join handshake with the launcher (hal/online_join.h). Own block.
+foreach(_tjoin1 walk_window walk_window_hires)
+    if(TARGET ${_tjoin1})
+        target_sources(${_tjoin1} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/online_join.cpp")
+    endif()
+endforeach()
+if(PORT_ROM_CLEAN)
+    set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/hal/online_join.cpp" APPEND PROPERTY COMPILE_DEFINITIONS PORT_ROM_CLEAN)
 endif()

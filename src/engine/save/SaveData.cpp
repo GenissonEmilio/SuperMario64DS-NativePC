@@ -400,6 +400,18 @@ extern "C" u8 NumStars(void)
     return count;
 }
 
+#ifdef _MSC_VER
+/* run after093, lane EVENTS3: the castle-unlocked online event. The actor sites that decide a star-count gate (a Toad's line, the rabbit tiers, the
+   14-star light, the endless stairs) call port_event_numstars instead of NumStars; it is NumStars unless the host seated a view, and the view only
+   answers while an event is live. NumStars itself, the HUD, the presence and the save never see the view. Host only: the DS build has no _MSC_VER. */
+extern "C" u8 (*port_event_star_view)(u8 real) = 0;
+extern "C" u8 port_event_numstars(void)
+{
+    const u8 real = NumStars();
+    return port_event_star_view ? port_event_star_view(real) : real;
+}
+#endif
+
 // @symbol _ZN8SaveData13GetCoinRecordEj
 u8 SaveData::GetCoinRecord(u32 courseID)
 {

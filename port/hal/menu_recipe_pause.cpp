@@ -31,6 +31,7 @@
 #include "menu_pause_geo.h"
 #include "settings_page.h"
 #include "settings_live.h"
+#include "event_client.h"
 
 #include <atomic>
 #include <chrono>
@@ -495,6 +496,7 @@ void pause_facts(MenuFacts *mf)
     } else if (v == V_CASTLE || v == V_COURSE || v == V_SAVE) {
         f->sel_slot = slot_of_rom(v, data_0209f2e0);
     } else f->sel_slot = -1;
+    f->event_n = port::event_pause_lines(f->event, 2);     /* EVENTS3 */
     f->rom_art = !pause_art_present();     /* PAUSEFULL1: no mod planks, the ROM's own plates */
     f->arrows_live = f->paging && (wide || f->slide_t1000 >= 1000) && !f->settings_open && is_main_page(v);
     publish_embed(f, wide);

@@ -774,8 +774,7 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
         if (py < 0 || py >= h) continue;
         uint32_t *row = dst + (size_t)py * stride;
         const uint32_t *sr = src + (size_t)yy * d[2];
-        int xs = d[0] < 0 ? -d[0] : 0, xe = d[0] + d[2] > w ? w - d[0] : d[2];
-        if (P.has_clipx) { if (P.clipx0 - d[0] > xs) xs = P.clipx0 - d[0]; if (P.clipx1 - d[0] < xe) xe = P.clipx1 - d[0]; if (xs >= xe) continue; }   /* HDART2 */
+        const int xs = d[0] < 0 ? -d[0] : 0, xe = d[0] + d[2] > w ? w - d[0] : d[2];
         int xx = xs;
 #if defined(_MSC_VER) || defined(__SSE2__)
         /* MENUCOST1: a faded or darkened picture (the logo's fade, a pressed plank) four pixels at a time, in 16 bit lanes. The same integer

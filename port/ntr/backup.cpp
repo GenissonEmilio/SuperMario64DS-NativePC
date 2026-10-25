@@ -500,9 +500,12 @@ void online_hmac(const unsigned char *img, unsigned char out[32])
     Sha256 b; b.init(); b.update(op, 64); b.update(inner, 32); b.finish(out);
 }
 
+int           g_force_online = -1;   // NAME1: the in-game online menu's own choice (-1 = decide from the environment as at boot, 0 solo save, 1 online save)
+
 bool online_wanted()
 {
     if (coop_mode()) return false;
+    if (g_force_online >= 0) return g_force_online == 1;
     const char *k = std::getenv("SM64DS_ONLINE_SAVE");
     if (k && *k == '0') return false;
     const char *vs = std::getenv("SM64DS_VS_MAP");
@@ -996,6 +999,22 @@ bool verify(unsigned addr, const void *src, unsigned len)
 }
 
 Stats stats() { return g_stats; }
+
+// NAME1 (run after093): the title's online menu picks the save medium at run time. on=1: the signed online save (a missing or foreign file
+// starts blank, as at boot); on=0: the single player save; on<0: back to what the environment says (the boot's own choice). The image is
+// reloaded from the chosen medium, so the file select the ROM builds next reads that medium. The image in memory is always already on disk
+// (every write flushes), so nothing is lost by the switch.
+void select_online(int on)
+{
+    if (coop_mode()) return;
+    const int want = on < 0 ? -1 : (on ? 1 : 0);
+    if (g_open && g_force_online == want) return;
+    g_force_online = want;
+    g_open = false;
+    open_once();
+    std::fprintf(stderr, "[online-save] medium is now %s (%s)\n", g_online ? "the online save" : "the single player save", g_path);
+}
+bool online_selected() { return g_online; }
 
 }  // namespace backup
 }  // namespace ntr

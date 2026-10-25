@@ -17,7 +17,7 @@
 //   type 1 message, 2 music (arg = a sublevel whose course song plays),
 //   3 modifier (arg 1 triple speed, 2 one hit, 3 chaos, 4 race, 5 castle
 //   unlocked), 4 clear, 5 race leader (arg = its stars, text = its name),
-//   6 race winner (arg = its stars, text = its name; byte 7 = the target).
+//   6 race winner (arg = its stars, text = the top three "51 Ann;47 Bo;40 Cy", the winner first; byte 7 = the target).
 //   Byte 7 of a race modifier is its target in stars (0 = 50).
 // The relay repeats every live event once a second with its REMAINING time, so
 // a lost datagram costs nothing and a late joiner picks up what still runs.
@@ -73,6 +73,11 @@ struct EventView {
 };
 void event_view(EventView *out);
 
+// The pause card's own rows (hal/menu_recipe_pause.cpp pause_facts): up to `max` short lines for what runs now, "CASTLE UNLOCKED 4:32",
+// and during a race the leader on the next line, "syn00 leads, 31 stars". Returns the count (0 = nothing runs, or the player's Online events
+// switch is off). Same clock and same records as event_view; a message and the winner banner are not rows of the card.
+int event_pause_lines(char (*out)[44], int max);
+
 struct EventStats {
     unsigned long long rx, applied, ended, dropped_bad, explosions, kills;
 };
@@ -87,6 +92,10 @@ struct EventWire {
     char     text[73];
 };
 bool event_decode(const unsigned char *d, int len, EventWire *out);
+
+// EVENTS3: the race winner datagram's text is the relay's top three, "51 Ann;47 Bo;40 Cy" (a count, a space, a name; ';' between; the winner
+// first). Splits it into the winner's name and the banner row "1. Ann 51  2. Bo 47  3. Cy 40" ("" when the text is only a name).
+void race_ranking(const char *text, char *name, int name_cap, char *rank, int rank_cap);
 
 }  // namespace port
 

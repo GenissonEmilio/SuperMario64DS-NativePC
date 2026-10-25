@@ -11403,6 +11403,8 @@ static void fullscreen_toggle(HWND h)
     present();
 }
 
+extern "C" void port_rich_presence_scene(int scene);       /* hal/rich_presence.cpp */
+
 /* settings.json StartFullscreen: the first frame of a run puts the window in
    the same borderless fullscreen F12 toggles. Once per process; absent or
    false does nothing. */
@@ -11411,6 +11413,7 @@ static void fullscreen_boot(HWND h)
     static int done;
     if (done) return;
     done = 1;
+    port_rich_presence_scene(-3);       /* RPC1: the window is up; a boot straight into a level has no scene crossing to start it */
     if ((host_setting_start_fullscreen() || (g_hf_in && g_hf_in_full)) && !g_fullscreen) {   /* REGRESS093 R2: a handoff from a fullscreen parent */
         fprintf(stderr, "[settings] StartFullscreen: borderless fullscreen\n");
         fullscreen_toggle(h);
@@ -13023,6 +13026,7 @@ static void port_crossing_scene_layout(int scene)
 {
     if (!g_present_hwnd)
         return;                 /* no window: the headless frame has no shape */
+    port_rich_presence_scene(scene);   /* RPC1: Discord Rich Presence follows the scene (starts itself on the first call) */
     char what[32];
     if (scene < 0)
         snprintf(what, sizeof what, "the level");

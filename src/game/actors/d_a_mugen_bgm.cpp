@@ -86,6 +86,11 @@ int daMugenBGM_c::InitResources()
 
 /* -------------------------------------------------------------------------- */
 // @symbol _ZN12daMugenBGM_c8BehaviorEv
+#ifdef _MSC_VER
+/* run after093, lane EVENTS3: the endless stairs fog and song check (80 stars) sees every star while a castle event is live (hal/event_castle.cpp seats the view; host only, the DS side is untouched) */
+extern "C" unsigned char port_event_numstars(void);
+#define NumStars port_event_numstars
+#endif
 int daMugenBGM_c::Behavior()
 {
     int vol;
@@ -156,6 +161,9 @@ int daMugenBGM_c::Behavior()
     }
     return 1;
 }
+#ifdef _MSC_VER
+#undef NumStars
+#endif
 
 /* -------------------------------------------------------------------------- */
 // @symbol _ZN12daMugenBGM_c6RenderEv

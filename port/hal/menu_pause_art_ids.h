@@ -16,5 +16,12 @@ enum {
     MENU_IMG_P_STAR_OFF = 43,
     MENU_IMG_P_COIN_GOLD = 44,
     MENU_IMG_P_COIN_RED = 45,
-    MENU_IMG_P_END = 46 };
+    MENU_IMG_ONL_ONLINE = 46,      /* run after093, NAME1: the title's online planks (menu/online/ in the mod) */
+    MENU_IMG_ONL_ADV = 47,
+    MENU_IMG_ONL_VS = 48,
+    MENU_IMG_ONL_HELP = 49,
+    MENU_IMG_ONL_BACK = 50,
+    MENU_IMG_ONL_CANCEL = 51,
+    MENU_IMG_ONL_SOLO = 52,        /* the ONLINE plank while the planks are online: it says SOLO and turns them back */
+    MENU_IMG_P_END = 53 };
 #endif

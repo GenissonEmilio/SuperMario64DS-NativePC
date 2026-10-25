@@ -34,6 +34,7 @@
 #include "menu_compose.h"
 #include "settings_page.h"
 #include "menu_hostimg.h"
+#include "menu_online.h"
 #include "ntr/gx.h"
 #include "ntr/ppu.h"
 
@@ -52,8 +53,6 @@ void func_ov007_020bdeb0(int idx);
 
 namespace {
 
-enum { kIrisLead = 5 };   /* INTROCARD092 (3a): the intro iris opens this many ticks into the star's flight (the ROM's own flight is 14 ticks; the black beat is the flight with nothing behind it) */
-enum { kMpDimAlpha = 110 };   /* MENUS093: how faint the unavailable MP plank is drawn (alpha of 255) */
 enum { V_ATTRACT = 1, V_MAIN = 2, V_FILES = 3, V_OPTIONS = 4, V_DOODLE = 5, V_TABLE = 6, V_INTRO = 7, V_TOY = 8 };   /* V_TOY: the face press (top 4, elem 0), FACE1 */
 
 /* the 24 element boxes as dumped on the shipped ROM (SM64DS_TITLE_ELEMS, identical at f299, f419, f650,
@@ -70,7 +69,10 @@ const Box kBoxes[24] = {
 
 enum { CH_NONE = 0, CH_INTRO = 1, CH_RETURN = 2 };
 enum { CH_LOGO_POP = 22, CH_BOUNCE_LEN = 40, CH_FACE_FADE = 24, CH_LOGO_OUT = 24, CH_LOGO_IN = 30, CH_PLANK_DUR = 28, CH_PLANK_GAP = 6,
-       CH_PLANK_START = 4, CH_FLY = 14, CH_SWAP_END = CH_PLANK_START + 2 * CH_PLANK_GAP + CH_PLANK_DUR, CH_VEIL = 10 };
+       CH_PLANK_START = 4, CH_FLY = 14, CH_VEIL = 10,
+       /* INTRO2 (Tango 10-24): the logo's trip to the top left takes 2 s (120 ticks) after the head has flown in; the planks rise during it */
+       CH_LOGO_MOVE = 120, CH_PLANK_START_INTRO = 40,
+       CH_PLANKS_END = CH_PLANK_START + 2 * CH_PLANK_GAP + CH_PLANK_DUR, CH_PLANKS_END_INTRO = CH_PLANK_START_INTRO + 2 * CH_PLANK_GAP + CH_PLANK_DUR };
 struct Chore {
     int mode;            /* CH_* */
     int in_fam;          /* the main family (V_INTRO / V_MAIN) is the page */
@@ -84,7 +86,13 @@ struct Chore {
     int ff2_done;
     int attract_t;       /* the ROM's attract counter as last read */
     int fly_t;           /* ASSET6: frames since the press, while the star flies off the top (state 10 before the iris) */
+    int released;        /* INTRO2: a tick without a touch / click went by since the family was entered (the press that started the intro is over) */
 } g_ch;
+static int g_press_tick;      /* INTRO2: a touch / click went into the ROM this tick */
+/* INTRO2: the swap (sw_t counts it) is the logo's 2 s trip in the intro and the planks' own rise on a return; the planks start at their own tick */
+static inline int swap_end(const Chore &c) { return c.mode == CH_INTRO ? (int)CH_LOGO_MOVE : (int)CH_PLANKS_END; }
+static inline int plank_start(const Chore &c) { return c.mode == CH_INTRO ? (int)CH_PLANK_START_INTRO : (int)CH_PLANK_START; }
+static inline int planks_end(const Chore &c) { return c.mode == CH_INTRO ? (int)CH_PLANKS_END_INTRO : (int)CH_PLANKS_END; }
 
 /* INT2 (the decide / draw split): the ROM values build() needs, read once per tick by menu_title_facts on the logic thread and carried in
    MenuLayout.facts.blob. build() and everything it calls read this and never a ROM address. */
@@ -109,8 +117,9 @@ struct TitleFacts {
     int dd_live;              /* TITLE092 (3b): ticks since the drawing page's own picture became the page (1 on the first live tick), 0 = still the ROM's black hand-over frames */
     int sc_on;                /* TITLE092: this frame's 3D was drawn as the full-canvas scene (g_sc), and sc_T is its transform */
     float sc_K, sc_Tx, sc_Ty;
+    int pg_top, pg_elem;      /* NAME1: the ROM's top-state and element machine of this tick (-1 = not built) */
 };
-static_assert(sizeof(TitleFacts) <= sizeof(MenuFacts::blob), "TitleFacts must fit MenuFacts.blob");
+static_assert(sizeof(TitleFacts) <= ONL_FACTS_OFF, "TitleFacts must leave the tail of MenuFacts.blob to the online facts");
 thread_local const TitleFacts *t_f = 0;     /* set for the length of one build() */
 int g_iris_cov_req;                         /* build() saw the picture covered: folded into g_ch.iris_covered by the next chore_step (a one-way flag) */
 bool box_of(int id, Box *out);
@@ -391,6 +400,41 @@ inline int face_dy(const FaceK &k) { return (int)(135.7 - 134.5 * k.n / k.d + 0.
    Source rects are in lower-screen DS pixels and tile the screen: head+star+sparkles (216 x 140, the whole upper
    part; a drag on the face stays inside it), sparkles right of the wrench, the wrench, and the three plates. They
    are placed at the lower screen's own positions on the 4:3 core; tune knobs (SM64DS_TITLE_TUNE) move the head. */
+/* NAME1 (run after093): THE ONLINE PLANKS. Plank k of the main page (0 = the MP slot, now ONLINE; 1 = ADVENTURE; 2 = REC ROOM) is in its solo or online
+   state, or turning between them (menu_online_plank_state). An online-family plank (ONLINE, ADVENTURE ONLINE, VS) is added here, from the mod's
+   picture or drawn in code (hal/menu_online_draw.cpp), over the ROM's own box; the function answers 1 when it did. A solo plank is the caller's own
+   (its picture or its ROM cut), drawn at *w1000 permille of its width while it turns. */
+bool online_plank(MenuLayout *L, int k, const Box &bx, int rise_px, int alpha, bool lit, bool pressed, bool touch, int *w1000)
+{
+    const OnlFacts *of = onl_facts_of(L);
+    int kind = ONL_K_ONLINE;
+    menu_online_plank_state(of, k, &kind, w1000);
+    if (kind != ONL_K_ONLINE && kind != ONL_K_SOLO && kind != ONL_K_ADV_ONLINE && kind != ONL_K_VS) return false;
+    const int un = L->unum, ud = L->uden;
+    const int bh = bx.y1 - bx.y0, dh = bh * un / ud;
+    int dw = menu_online_plank_w(kind, dh) * *w1000 / 1000;
+    if (dw < 1) dw = 1;
+    const int cxu = (bx.x0 + bx.x1) / 2 - 128, cyu2 = bx.y0 + bx.y1;
+    const int fx = L->w / 2 + cxu * un / ud - dw / 2, fy = cyu2 * un / (2 * ud) - dh / 2 + rise_px;
+    const int ip = menu_online_add_plank(L, kind, fx, fy, dw, dh, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, lit ? 1 : 0, pressed ? 1 : 0, alpha, touch ? 1 : 0,
+                                         t_f ? t_f->frame : 0);
+    if (touch && ip >= 0) menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
+    return true;
+}
+
+/* the ? button of the online screens and the modal screen over the page (both after the page's own pieces, so they are topmost) */
+void online_overlays(MenuLayout *L, bool main_page, bool show_help)
+{
+    const OnlFacts *of = onl_facts_of(L);
+    if (!of) return;
+    const int un = L->unum, ud = L->uden;
+    if (show_help && of->scr == ONL_SCR_NONE) {
+        if (main_page) menu_online_add_help(L, L->w - 44 * un / ud, 5 * un / ud, 30 * un / ud);
+        else menu_online_add_help(L, L->w / 2 + (ONL_HELP_X + ONL_HELP_W - 128) * un / ud, ONL_HELP_Y * un / ud, ONL_HELP_W * un / ud);
+    }
+    menu_online_add_modal(L, of);
+}
+
 void build_main(MenuLayout *L, bool intro)
 {
     const int cw = L->w * L->uden / L->unum;                 /* exact canvas width in units, floored */
@@ -432,6 +476,7 @@ void build_main(MenuLayout *L, bool intro)
     /* THE INTRO (top-state 10): the ROM opens the lower screen through a black star iris, drawn as 3D polygons with a thin
        dark edge, and the plates and the head arrive inside it. On one screen the logo simply fades in alone and the
        lower screen's art appears with the page itself, so nothing of the iris is drawn. */
+    menu_online_add_tint(L, onl_facts_of(L));      /* NAME1: the green over the sky (and, with the DS logo, its blue letters) */
     if (intro) return;
     if (tune(6, -1) >= 0 && tune(7, -1) >= tune(6, -1)) {
         /* DEBUG (SM64DS_TITLE_TUNE index 6,7 = first,last engine-B OAM entry): the upper screen's OAM entries alone, keyed on
@@ -453,12 +498,18 @@ void build_main(MenuLayout *L, bool intro)
     const int hk = tune(0, 2), hd = tune(1, 3);
     MenuPiece face = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, tune(2, -18) + 20, tune(3, 46), hk, hd);
     face.keycover = 1; face.bg = 1; face.has_ex = 1; face.ex.x = 216; face.ex.y = 0; face.ex.w = 40; face.ex.h = 40;
+    /* INTRO2: the ROM's head entrance fades in over its first 9 ticks on the DS-art title too (the intro only, never a later page) */
+    int ent_a = 255;
+    if (t_f && t_f->ch.mode == CH_INTRO && t_f->ch.sw_t >= 0 && !t_f->ch.skip && t_f->ch.sw_t < 9) ent_a = (t_f->ch.sw_t + 1) * 255 / 9;
+    if (t_f && t_f->ch.mode == CH_INTRO && t_f->ch.sw_t < 0 && !t_f->ch.skip && t_f->ch.ct >= CH_LOGO_POP + CH_BOUNCE_LEN) ent_a = 1;      /* before the swap the head is still off the picture: nothing of the layer shows */
+    if (ent_a < 255) face.alpha = (uint8_t)ent_a;
     menu_add_piece(L, face);
     MenuPiece head = menu_piece_make(SRC_TOP_PIC, 20, 0, 156, 140, MENU_AX_C, MENU_AY_T, tune(2, -18), tune(3, 46), hk, hd);
     head.touch = 1; head.nodraw = 1;
     menu_add_piece(L, head);
     MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
     wr.keycover = 1; wr.touch = 1;
+    if (ent_a < 255) wr.alpha = (uint8_t)ent_a;
     if (settings_page_press_look() == 2) { wr.dy = 1; wr.dx = -1; }   /* HUDMENU2 (H4): the wrench sinks while the press hold of a pad / key confirm runs */
     const int iwr = menu_add_piece(L, wr);
     static const int kPlateId[3] = { 1, 0, 2 };                      /* the ROM's element ids: VS, ADVENTURE, REC ROOM */
@@ -468,6 +519,8 @@ void build_main(MenuLayout *L, bool intro)
     for (int k = 0; k < 3; ++k) {
         Box bx;
         if (!box_of(kPlateId[k], &bx)) continue;
+        int w1000 = 1000;
+        if (online_plank(L, k, bx, 0, 0, cur == kPlateId[k], cur == kPlateId[k] && prs, true, &w1000)) continue;   /* NAME1: ONLINE / ADVENTURE ONLINE / VS */
         if (planks) {
             /* ASSET2: a plank drawn at the window's resolution over the ROM's own box (the 3D plate is not drawn: its
                wallpaper object is skipped at submit and its sprite is not in any piece). 40 units tall (the box height),
@@ -475,7 +528,8 @@ void build_main(MenuLayout *L, bool intro)
             int iw = 1, ih = 1;
             menu_hostimg_size(kPlankImg[k], &iw, &ih);
             const int bh = bx.y1 - bx.y0;
-            const int dh = bh * L->unum / L->uden, dw = (int)((long long)dh * iw / ih);
+            const int dh = bh * L->unum / L->uden, dw0 = (int)((long long)dh * iw / ih);
+            const int dw = dw0 * w1000 / 1000 < 1 ? 1 : dw0 * w1000 / 1000;     /* NAME1: the turn */
             const int cxu = (bx.x0 + bx.x1) / 2 - 128, cyu2 = bx.y0 + bx.y1;   /* centre x from 128, centre y * 2 */
             MenuPiece pl = menu_piece_make(SRC_HOSTIMG, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
             pl.hostimg = (uint8_t)kPlankImg[k]; pl.touch = 1;
@@ -483,7 +537,6 @@ void build_main(MenuLayout *L, bool intro)
             pl.fx = (short)(L->w / 2 + cxu * L->unum / L->uden - dw / 2);
             pl.fy = (short)(cyu2 * L->unum / (2 * L->uden) - dh / 2);
             if (cur == kPlateId[k]) pl.hl = (uint8_t)(1 | (prs ? 2 : 0));
-            if (k == 0) { pl.hl = 0; pl.alpha = kMpDimAlpha; }    /* MENUS093: multiplayer is not in this build, the MP plank is greyed (a press does nothing) */
             const int ip = menu_add_piece(L, pl);
             menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
             continue;
@@ -491,6 +544,13 @@ void build_main(MenuLayout *L, bool intro)
         static const int kPlateX[3] = { 0, 70, 188 }, kPlateW[3] = { 70, 118, 68 };
         MenuPiece pl = menu_piece_make(SRC_TOP_PIC, kPlateX[k], 140, kPlateW[k], 52, MENU_AX_C, MENU_AY_B, kPlateX[k] - 128 + kPlateW[k] / 2, 0, 1, 1);
         pl.keycover = 1; pl.touch = 1;
+        if (w1000 < 1000) {                                                    /* NAME1: the turn of the ROM's own plate: its cut, narrowed about its centre */
+            const int un = L->unum, ud = L->uden;
+            int dwf = kPlateW[k] * un / ud * w1000 / 1000;
+            if (dwf < 1) dwf = 1;
+            const int dhf = 52 * un / ud, cx = L->w / 2 + (kPlateX[k] - 128 + kPlateW[k] / 2) * un / ud;
+            pl.fixdest = 1; pl.fx = (short)(cx - dwf / 2); pl.fy = (short)(L->h - dhf); pl.fw = (short)dwf; pl.fh = (short)dhf;
+        }
         const int ip = menu_add_piece(L, pl);
         hot(L, ip, &kPlateId[k], 1);
     }
@@ -529,6 +589,7 @@ void build_main(MenuLayout *L, bool intro)
         }
         if (ar.fx > -1000) menu_add_piece(L, ar);
     }
+    { const OnlFacts *of = onl_facts_of(L); online_overlays(L, true, of && of->on); }     /* NAME1: the ? button and the modal screen */
 }
 
 
@@ -629,15 +690,18 @@ void chore_step(int variant, int top, int elem, int req)
     if (!c.in_fam) {              /* entering the main family */
         c.in_fam = 1;
         c.mode = (c.prev_variant == V_ATTRACT) ? CH_INTRO : CH_RETURN;
-        c.ct = -1; c.fam_t = 0; c.sw_t = -1; c.face_a = 0; c.skip = 0; c.iris_covered = 0; c.ff2_done = 0; c.fly_t = 0;
+        c.ct = -1; c.fam_t = 0; c.sw_t = -1; c.face_a = 0; c.skip = 0; c.iris_covered = 0; c.ff2_done = 0; c.fly_t = 0; c.released = 0;
         if (hal_menu_trace_on()) fprintf(stderr, "[chore] enter family mode=%s top=%d\n", c.mode == CH_INTRO ? "intro" : "return", top);
     }
     ++c.fam_t;
+    if (!g_press_tick) c.released = 1;
+    g_press_tick = 0;
     if (g_iris_cov_req) { g_iris_cov_req = 0; c.iris_covered = 1; }      /* build() saw the picture covered */
     const bool rest = top == 0 && elem == 0 && req == -1;
     int vis = 0, s48 = 0;
     rom_iris(&vis, &s48);
     if (c.mode == CH_INTRO) {
+        if (c.skip) c.iris_covered = 1;      /* INTRO2: a press skips the wipe too */
         if (c.ct >= 0 && !vis && !c.iris_covered) c.iris_covered = 1;      /* the ROM's iris is gone: nothing left to draw */
         if (c.ct < 0) {
             if (top == 10 && !vis) ++c.fly_t;
@@ -658,11 +722,16 @@ void chore_step(int variant, int top, int elem, int req)
     } else {
         ++c.sw_t;
     }
-    if (c.skip && c.sw_t >= 0 && c.sw_t < CH_SWAP_END) c.sw_t = CH_SWAP_END;
+    if (c.skip && c.sw_t >= 0 && c.sw_t < swap_end(c)) c.sw_t = swap_end(c);
+    /* INTRO2: in the intro the head is not faded in: the ROM's own entrance (top-state 1, src/func_ov007_020b1b74.c: the head object plays
+       its fly-in while the scale ramps for 30 ticks) is shown from its first tick, whole, and the swap (the logo's trip) starts when it is at rest */
+    const bool head_in = c.mode == CH_INTRO && bounced && (top == 1 || rest);
     /* the face: faded in once the ROM is at rest and the swap began; faded out quickly when the ROM leaves rest (it walks out) */
-    if (c.sw_t < 0) c.face_a = 0;
-    else if (rest || arriving) {
-        const int step = c.skip || c.sw_t >= CH_SWAP_END ? 255 : 255 / CH_FACE_FADE + 1;
+    /* the flight is the ROM's, at its own speed (top-state 0's first anim: the head is not on the picture before the swap starts); only the pop is
+       smoothed: transparent to full over the first 9 ticks of the swap (Tango 10-24 late) */
+    if (c.sw_t < 0) c.face_a = (head_in && c.skip) ? 255 : 0;
+    else if (head_in || rest || arriving) {
+        const int step = c.skip || c.sw_t >= swap_end(c) ? 255 : (c.mode == CH_INTRO ? 255 / 9 + 1 : 255 / CH_FACE_FADE + 1);
         c.face_a += step; if (c.face_a > 255) c.face_a = 255;
     } else {
         c.face_a -= 40; if (c.face_a < 0) c.face_a = 0;
@@ -709,7 +778,12 @@ static void sv_restore()
     g_sv_q = 0;
     if (hal_menu_trace_on()) fprintf(stderr, "[chore] press: save words given back\n");
 }
-extern "C" void port_title_press_seen(void) { if (g_ch.attract_t >= 6) sv_restore(); }   /* the ROM's gate reads input from its frame 4 on */     /* sub_screen.cpp: a touch / click is going into the ROM this frame */
+extern "C" void port_title_press_seen(void)
+{
+    if (g_ch.attract_t >= 6) sv_restore();
+    g_press_tick = 1;
+    if (g_ch.in_fam && g_ch.mode == CH_INTRO && g_ch.released && g_ch.sw_t < swap_end(g_ch)) g_ch.skip = 1;      /* INTRO2: any new click skips the intro too */
+}   /* the ROM's gate reads input from its frame 4 on */     /* sub_screen.cpp: a touch / click is going into the ROM this frame */
 
 void chore_rom_writes(int top, int req)
 {
@@ -733,6 +807,8 @@ void chore_rom_writes(int top, int req)
             if (hal_menu_trace_on()) fprintf(stderr, "[chore] return: ROM iris progress finished early\n");
         }
     }
+    /* INTRO2: the skip also ends the head's 30 tick entrance (state 1, counter 0..30: src/func_ov007_020b1b74.c hands over to the resting menu past 30) */
+    if (top == 1 && g_ch.mode == CH_INTRO && g_ch.skip) { if (*t >= 1 && *t < 9) *t = 9; else if (*t >= 11 && *t < 29) *t = 29; }
     /* ASSET6: leaving a file page the ROM idles 30 frames (state 11, element machine 5) before its star iris closes over the page: skipped once its own 6 frame fade-in is over (an iris asked for while that fade runs is dropped) */
     if (top == 11 && g_elem == 5 && *t >= 9 && *t < 29) { *t = 29; if (hal_menu_trace_on()) fprintf(stderr, "[chore] file page exit: idle counter skipped\n"); }
     if (top == 10 && g_ch.mode == CH_INTRO) {
@@ -740,6 +816,9 @@ void chore_rom_writes(int top, int req)
         /* ASSET6: the star has flown off the top (CH_FLY frames after the press); the counter skips to 29 (the t = 30 sound still plays) and
            runs the ROM's own way after it (INTROVOICE2), so the iris comes at t = 60 */
         if (*t >= ctune(9, CH_FLY) && *t < 29) { *t = 29; if (hal_menu_trace_on()) fprintf(stderr, "[chore] ROM counter t jumped to 29\n"); }
+        /* INTRO2: a press skips to the menu: the counter runs on to the tick before the wipe is asked for (t = 60), and the finish below
+           then needs no voice wait */
+        if (g_ch.skip && *t < 59) *t = 59;
         /* once our iris covers the picture the ROM's iris is finished: progress to its last step so the callback asks for the arrival.
            INTROVOICE2: src/func_ov007_020b10dc.c plays the title voice in two calls of the top-state 10 handler: id 0x2b ("It's-a me") at
            t = 30 and id 0x2d ("Mario!") at t = 128 (Luigi 0x2c at 30 and 0x2e at 122), with the iris whoosh (0x30) at t = 60 between them.
@@ -748,7 +827,9 @@ void chore_rom_writes(int top, int req)
         if (g_ch.iris_covered && !g_ch.ff2_done && data_ov007_02104bd8) {
             char *o6 = *(char **)data_ov007_02104bd8;
             const int voice_t = (*(int *)(g + 0xec) == 1) ? 0x7a : 0x80;
-            if (o6 && *(int *)(o6 + 8) == 1 && (*t > voice_t || g_ch.skip)) {
+            int ivis = 0, is48 = 0;
+            rom_iris(&ivis, &is48);      /* INTRO2: a skip finishes the iris object only once the wipe itself is up (before it, object 6 is the screen fade) */
+            if (o6 && *(int *)(o6 + 8) == 1 && (*t > voice_t || (g_ch.skip && ivis))) {
                 const int step = *(int *)(o6 + 0x18);
                 const int want = 0x1000 - step + 1;
                 if (*(int *)(o6 + 0x14) < want) *(int *)(o6 + 0x14) = want;
@@ -758,6 +839,8 @@ void chore_rom_writes(int top, int req)
         }
     }
 }
+
+static inline float smooth01(float x) { if (x <= 0.f) return 0.f; if (x >= 1.f) return 1.f; return x * x * (3.f - 2.f * x); }
 
 /* the DS logo's bounce, measured (above): offset in canvas units after the pop, tb frames since it (down is positive) */
 float logo_bounce(int tb)
@@ -945,6 +1028,7 @@ void build_main_pc(MenuLayout *L, bool intro)
         wl.wink = (uint8_t)ctune(8, 107);
         menu_add_piece(L, wl);
     }
+    menu_online_add_tint(L, onl_facts_of(L));      /* NAME1: the online mode's green over the sky and the pattern, before anything else is drawn */
     {
         /* MENUS093C (D23): on the face press page the DS lower screen's wallpaper fades to the drawing paper's cream while the head jumps
            (measured on the cartridge: still blue 8 ticks after the touch, lavender at 20, beige at 32, cream by 44). Ours stayed blue
@@ -963,7 +1047,7 @@ void build_main_pc(MenuLayout *L, bool intro)
     menu_hostimg_size(MENU_IMG_LOGO, &iw, &ih);
     /* the logos: big (centred, as the main menu used to have it) and small (top left) */
     int big_a = 0, small_a = 0;
-    float dy = 0.f;
+    float dy = 0.f, mv = 0.f;
     if (c.mode == CH_INTRO) {
         const int tb = c.ct - ctune(0, CH_LOGO_POP);
         if (c.ct >= 0 && tb >= 0) {
@@ -971,9 +1055,12 @@ void build_main_pc(MenuLayout *L, bool intro)
             dy = logo_bounce(tb);
         }
         if (c.sw_t >= 0) {
-            const int o = c.sw_t;
-            if (o < CH_LOGO_OUT) big_a = big_a * (CH_LOGO_OUT - o) / CH_LOGO_OUT; else big_a = 0;
-            if (o >= CH_LOGO_OUT) small_a = o >= CH_LOGO_OUT + CH_LOGO_IN ? 255 : 255 * (o - CH_LOGO_OUT + 1) / (CH_LOGO_IN + 1);
+            /* INTRO2 (Tango 10-24): the big logo travels to the top left and shrinks to the small one's size and place over 2 s (smoothstep),
+               fading out as it goes, while the small logo fades in at its own place: one logo that becomes the small one */
+            const float u = c.sw_t >= CH_LOGO_MOVE ? 1.f : (float)c.sw_t / (float)CH_LOGO_MOVE;
+            mv = smooth01(u);
+            big_a = (int)((float)big_a * (1.f - smooth01(u / 0.8f)) + 0.5f);
+            small_a = (int)(255.f * smooth01((u - 0.2f) / 0.8f) + 0.5f);
         }
     } else {
         small_a = 255;
@@ -981,11 +1068,15 @@ void build_main_pc(MenuLayout *L, bool intro)
     if (c.skip) { big_a = 0; small_a = 255; }
     if (big_a > 0) {
         const int lt = ltune(0, 26), lh = ltune(1, 112), ldx = ltune(2, 0);
-        const int dh = U(lh), dw = (int)((long long)dh * iw / ih);
+        const int dhb = U(lh), dwb = (int)((long long)dhb * iw / ih);
+        const int dhs = U(ctune(2, 40)), dws = (int)((long long)dhs * iw / ih);
+        const int dh = dhb + (int)((float)(dhs - dhb) * mv), dw = (int)((long long)dh * iw / ih);
+        const int fx0 = (w - dwb) / 2 + U(ldx), fx1 = U(ctune(3, 6)), fy0 = U(lt) + Uf(dy), fy1 = U(ctune(4, 6));
+        (void)dws;
         MenuPiece lg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         lg.bg = 1; lg.hostimg = MENU_IMG_LOGO; lg.nofade = 1; lg.alpha = (uint8_t)(big_a >= 255 ? 0 : big_a);
         lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
-        lg.fx = (short)((w - dw) / 2 + U(ldx)); lg.fy = (short)(U(lt) + Uf(dy));
+        lg.fx = (short)(fx0 + (int)((float)(fx1 - fx0) * mv)); lg.fy = (short)(fy0 + (int)((float)(fy1 - fy0) * mv));
         menu_add_piece(L, lg);
     }
     if (small_a > 0) {
@@ -1074,11 +1165,11 @@ void build_main_pc(MenuLayout *L, bool intro)
         static const int kPlateId[3] = { 1, 0, 2 };
         static const int kPlankImg[3] = { MENU_IMG_BTN_MP, MENU_IMG_BTN_ADV, MENU_IMG_BTN_REC };
         const int cur = t_f ? t_f->cur : -1, prs = t_f ? t_f->prs : 0;
-        const bool landed = c.sw_t >= CH_SWAP_END - 4 || c.skip;
+        const bool landed = c.sw_t >= planks_end(c) - 4 || c.skip;
         for (int k = 0; k < 3; ++k) {
             Box bx;
             if (!box_of(kPlateId[k], &bx)) continue;
-            const int pt = c.sw_t - (CH_PLANK_START + CH_PLANK_GAP * k);
+            const int pt = c.sw_t - (plank_start(c) + CH_PLANK_GAP * k);
             if (!toy && (c.sw_t < 0 || (pt < 0 && !c.skip))) continue;
             float rise = 0.f;                                       /* canvas units below the resting place */
             int plank_a = 255;
@@ -1087,10 +1178,13 @@ void build_main_pc(MenuLayout *L, bool intro)
                 if (u >= 14) continue;
                 if (u > 0) { const float e = (float)u / 14.f; rise = e * e * 72.f; plank_a = 255 - 255 * u / 14; }
             } else if (!c.skip && pt < CH_PLANK_DUR) rise = (1.f - ease_out_back((float)pt / CH_PLANK_DUR)) * 72.f;
+            int w1000 = 1000;
+            if (online_plank(L, k, bx, Uf(rise), plank_a, landed && cur == kPlateId[k], landed && cur == kPlateId[k] && prs, !toy, &w1000)) continue;   /* NAME1 */
             int pw = 1, ph = 1;
             menu_hostimg_size(kPlankImg[k], &pw, &ph);
             const int bh = bx.y1 - bx.y0;
-            const int dh = bh * un / ud, dw = (int)((long long)dh * pw / ph);
+            const int dh = bh * un / ud, dw0 = (int)((long long)dh * pw / ph);
+            const int dw = dw0 * w1000 / 1000 < 1 ? 1 : dw0 * w1000 / 1000;     /* NAME1: the turn */
             const int cxu = (bx.x0 + bx.x1) / 2 - 128, cyu2 = bx.y0 + bx.y1;
             MenuPiece pl = menu_piece_make(SRC_HOSTIMG, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
             pl.hostimg = (uint8_t)kPlankImg[k]; pl.touch = toy ? 0 : 1;
@@ -1099,11 +1193,6 @@ void build_main_pc(MenuLayout *L, bool intro)
             pl.fy = (short)(cyu2 * un / (2 * ud) - dh / 2 + Uf(rise));
             if (plank_a < 255) pl.alpha = (uint8_t)(plank_a < 1 ? 1 : plank_a);
             if (landed && cur == kPlateId[k]) pl.hl = (uint8_t)(1 | (prs ? 2 : 0));
-            if (k == 0) {                                           /* MENUS093: the MP plank stays greyed, in its fades too */
-                pl.hl = 0;
-                const int a = plank_a < 255 ? plank_a : 255;
-                pl.alpha = (uint8_t)(a * kMpDimAlpha / 255 < 1 ? 1 : a * kMpDimAlpha / 255);
-            }
             const int ip = menu_add_piece(L, pl);
             if (!toy) menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
         }
@@ -1135,6 +1224,11 @@ void build_main_pc(MenuLayout *L, bool intro)
             }
         }
     }
+    if (!intro) {                                              /* NAME1: the ? button (online planks, settled) and the modal screen */
+        const OnlFacts *of = onl_facts_of(L);
+        const bool settled = c.sw_t >= swap_end(c) - 4 || c.skip || c.mode == CH_NONE;
+        online_overlays(L, true, of && of->on && settled && !(t_f && t_f->toy_v > 0));
+    }
     /* the iris: black outside the star while the ROM's iris is up (and all black before it shows), a veil on a returning page */
     if (c.mode == CH_INTRO && !c.iris_covered && c.ct <= ctune(0, CH_LOGO_POP) + 60) {
         const int vis = t_f ? t_f->vis : 0, s48 = t_f ? t_f->s48 : 0;
@@ -1143,15 +1237,9 @@ void build_main_pc(MenuLayout *L, bool intro)
         float Rds = 0.f;
         if (vis && c.ct >= 0) Rds = 0.004382f * (float)s48;
         if (c.ct >= 0 && !vis) c.iris_covered = 1;
-        {
-            /* TITLE092 (3a): the iris opens from the frame the star leaves the top, at 1.5 times the ROM's pace (8.28 DS pixels of radius a
-               frame), not from the ROM's own start 5 frames later at its pace; the ROM's value still wins once it is ahead */
-            const int n = c.fly_t + (c.ct > 0 ? c.ct : 0) - kIrisLead;
-            if (n >= 0) {
-                const float syn = 8.28f * (float)ctune(10, 150) / 100.f * (float)(n + 1);
-                if (syn > Rds) Rds = syn;
-            }
-        }
+        /* INTRO2 (Tango 10-24): the wipe is the ROM's own (the fade manager's star sprite, raised at ROM counter t = 60 by src/func_ov007_020b10dc.c
+           with the whoosh), about half a second after the star has left the top: black until the ROM's sprite shows, then its radius. The early
+           synthetic star of TITLE092 / INTROCARD092 (3a) is gone. */
         const float Rpx = Rds * (float)h / 192.f;
         ir.icx = w / 2;
         ir.icy = (int)((96.f + 0.0864f * Rds) * (float)h / 192.f + 0.5f);
@@ -1341,7 +1429,7 @@ static void title_timeline(int top, int elem, int req)
 
 int menu_title_up(int scene_id)
 {
-    if (scene_id != 1) { g_up_stamp = -1; return 0; }   /* FILEFIX1: out of the title scene no stale stamp can match the title counter (file_wide_cb runs on every frame's first 3D command) */
+    if (scene_id != 1) { g_up_stamp = -1; menu_online_scene_left(); return 0; }   /* FILEFIX1: out of the title scene no stale stamp can match the title counter (file_wide_cb runs on every frame's first 3D command) */
     int top, elem, req;
     {   /* INTROCARD092 (SM64DS_TITLE_TL=2): the wall-clock gap between title ticks, printed when it is over 45 ms, with the page and the ROM's own counter */
         static int on = -1;
@@ -1357,6 +1445,7 @@ int menu_title_up(int scene_id)
         }
     if (!port_title_page_state(&top, &elem, &req)) return g_last;   /* not built yet: the attract */
     title_timeline(top, elem, req);
+    menu_online_tick(top, elem, req);       /* NAME1: the online menu's waits and the save medium follow this page */
     }
     if (top != g_top || elem != g_elem) {
         g_top = top; g_elem = elem;
@@ -1448,7 +1537,12 @@ void menu_title_facts(MenuFacts *f)
             if (out_e >= DD_XF + 2) { was_dd = 0; out_e = 0; dd_chain = 0; dd_live_c = 0; }
         }
     }
+    {
+        int t2 = -1, e2 = -1, r2 = -1;
+        if (port_title_page_state(&t2, &e2, &r2)) { tf.pg_top = t2; tf.pg_elem = e2; } else { tf.pg_top = -1; tf.pg_elem = -1; }
+    }
     memcpy(f->blob, &tf, sizeof tf);
+    menu_online_facts((OnlFacts *)(f->blob + ONL_FACTS_OFF));      /* NAME1 */
 }
 
 /* ---- THE FILE PAGES (run menu1, lane FILE1) ----------------------------------------------------------------
@@ -1764,6 +1858,7 @@ void file_pages_build(int variant, MenuLayout *L)
     if (pat) pg.keycover = 1;
     if (t_f && t_f->wide3d) pg.nodraw = 1;      /* FILE2: the wide 3D frame already is the picture, in place: this piece only maps clicks */
     const int ip = menu_add_piece(L, pg);
+    if (variant == V_FILES) menu_online_add_tint(L, onl_facts_of(L));      /* NAME1: the online file select keeps the green over its water */
     if (t_f && t_f->wide3d && !pat) L->wz = t_f->wz;       /* MENUS093E: the reflection is zoomed in the 3D: a touch on the water is the zoomed point */
     if (pat) {
         /* the page's own 2D layer (the SOUND and BACKLIGHT labels, the star) is lifted out of the picture and drawn over the 3D objects,
@@ -1811,6 +1906,10 @@ void file_pages_build(int variant, MenuLayout *L)
     g_hot_live_only = true;
     hot(L, ip, fids, 8);
     g_hot_live_only = false;
+    if (variant == V_FILES) {                                  /* NAME1: the online file select: the ? button (the select page itself) and the modal screen */
+        const OnlFacts *of = onl_facts_of(L);
+        if (of && of->flow) online_overlays(L, false, t_f && t_f->pg_top == 0 && t_f->pg_elem == 5);
+    }
 }
 }  // namespace
 
@@ -1861,11 +1960,8 @@ static void menu_title_build_impl(int variant, MenuLayout *L)
     }
     /* TITLE092 (3a): the black first frames are only while the host star is on its way up (fly_t < 14: its centre is above the top edge at
        14); from then the iris takes over at once, see build_main_pc, instead of a black beat and the ROM's iris starting from a point */
-    if (variant == V_INTRO && t_f && t_f->ch.mode == CH_INTRO && t_f->ch.ct < 0 && (t_f->ch.fly_t < 14 || getenv("SM64DS_CHORE_BLACK"))) {
+    if (variant == V_INTRO && t_f && t_f->ch.mode == CH_INTRO && t_f->ch.ct < 0 && !t_f->ch.skip && (t_f->ch.fly_t < 14 || getenv("SM64DS_CHORE_BLACK"))) {
         add_black_under(L);
-        /* INTROCARD092 (3a): from kIrisLead ticks into the flight the page is already coming up under our iris (drawn first), and the ROM's
-           scene layer and the host star go over it: no black beat while the star is still on its way */
-        if (t_f->ch.fly_t >= kIrisLead && pc_assets_ready()) build_main_sel(L, true);
         /* ASSET6: the first frames of the ROM's state 10 are the lower screen going out (the star leaves, the screen fades to black): shown
            as the ROM draws them until its iris sprite appears */
         MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
@@ -1989,9 +2085,23 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
             sv_restore();
             inject = 1;      /* the held word gets the A edge too, so a Start / Enter / Space press is an edge the ROM's gate reads */
         }
-        if (g_ch.in_fam && g_ch.sw_t < CH_SWAP_END && ((*pressed & MENU_PAD_CONFIRM) || g_ch.skip)) {
+        if (g_ch.in_fam && g_ch.sw_t < swap_end(g_ch) && ((*pressed & MENU_PAD_CONFIRM) || g_ch.skip)) {
             if (!g_ch.skip && hal_menu_trace_on()) fprintf(stderr, "[chore] confirm during the choreography: finishing it\n");
             g_ch.skip = 1;
+        }
+    }
+    {
+        /* NAME1: the online menu's keys. Back closes a screen of it or turns the online planks back; pad B on the file select is the back arrow, so
+           it closes a screen first. The ? text opens from the mouse or the D-pad (settings_page_hooks.cpp). Everything else is the ROM's. */
+        const int kind = g_last == V_MAIN ? 1 : g_last == V_FILES ? 2 : 0;
+        if (host_back && hal_menu_trace_on()) fprintf(stderr, "[online] back key: page kind %d (variant %d) top %d elem %d\n", kind, g_last, g_top, g_elem);
+        if (kind) {
+            unsigned short *hh = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+            const int punch = kind == 2 && (*pressed & 0x0001);
+            if ((host_back || punch) && menu_online_back(kind)) {
+                host_back = 0;
+                if (punch) { *pressed = (uint16_t)(*pressed & ~0x0001u); *hh = (unsigned short)(*hh & ~0x0001u); }
+            }
         }
     }
     title_pad_keys(pressed, host_back, inject);

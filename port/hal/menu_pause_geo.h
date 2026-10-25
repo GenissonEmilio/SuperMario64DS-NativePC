@@ -56,6 +56,9 @@ struct PauseFacts {
        shown, never a total per place. */
     uint8_t secret_got[15];
     char secret_name[15][28];
+    /* EVENTS3: the live online event's rows ("CASTLE UNLOCKED 4:32", a race's leader), 0 rows when nothing runs */
+    int32_t event_n;
+    char event[2][44];
 };
 static_assert(sizeof(PauseFacts) <= 1024, "PauseFacts must fit MenuFacts.blob");
 
@@ -160,6 +163,18 @@ inline PauseRect pause_plank_rect(const PauseGeo &g, const PauseFacts *f, int n,
     r.w = pw; r.h = ph;
     r.x = g.pcx - pw / 2 + pause_planks_dx(g, f);
     r.y = g.pcy - total / 2 + i * (ph + gap);
+    return r;
+}
+
+/* EVENTS3: the event strip, a small card under the plank stack: box for n rows, centred on cx.
+   (cx, top) is the card's top middle; the rows are 40 u tall. */
+inline PauseRect pause_event_rect(const PauseGeo &g, int n, int cx, int top)
+{
+    PauseRect r;
+    r.w = pause_round(540 * g.u);
+    r.h = pause_round((n * 42 + 26) * g.u);
+    r.x = cx - r.w / 2;
+    r.y = top;
     return r;
 }
 
