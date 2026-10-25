@@ -9814,21 +9814,27 @@ static int ip_build_b(IpPend *P)
                    picture, inside it the replayed 3D through the fade, and the tick's text pixels (the ones that differ from that faded 3D) moved
                    down by what is left of the step */
                 uint32_t *row = o.px[y];
-                const uint32_t *d = g_ip_p4->px[y];
+                const uint32_t *d = g_ip_p4->px[y], *a3 = g_ip_p3->px[y];
                 const int evy = g_ip_fade_evy, toWhite = g_ip_fade_white;
                 const int ys = y - ts_D;
                 for (int x = 0; x < ntr::active_w; ++x) {
-                    if (x < ts_rect[0] || x >= ts_rect[2]) { row[x] = d[x]; continue; }
+                    /* FIELD093J: outside the box the picture is the replayed 3D with the tick's 2D over it (the pixels the tick's 2D changed).
+                       The tick's p4 is NOT a finished picture when the tick's 3D lives on the card (p3 and the 3D holes of p4 are empty
+                       there), so copying it blanked the whole 3D for the pictures between ticks of every text scroll. */
+                    if (x < ts_rect[0] || x >= ts_rect[2]) { if (a3[x] != d[x]) row[x] = d[x]; continue; }
                     row[x] = ip_fade_px(row[x], ip_evy_t, toWhite);
                     if (ys >= ts_rect[1]) {
                         const uint32_t sb = g_ip_p2->px[ys][x];
-                        if (ip_fade_px(g_ip_p3->px[ys][x], evy, toWhite) != sb) row[x] = sb;
+                        /* FIELD093J: sb == 0 is no 2D there (a card tick's overlay is transparent and its p3 is empty, so the faded p3
+                           is never 0 and every such pixel read as text, wiping the replayed 3D inside the box) */
+                        if (sb != 0 && ip_fade_px(g_ip_p3->px[ys][x], evy, toWhite) != sb) row[x] = sb;
                     }
                 }
                 ++g_ip_tscroll_pics;
                 continue;
             }
-            memcpy(o.px[y], g_ip_p4->px[y], ntr::active_w * sizeof(uint32_t));
+            /* FIELD093J: the replayed 3D with the tick's 2D over it (see above); the tick's p4 alone has no 3D on a card tick */
+            ip_merge_row(o.px[y], g_ip_p3->px[y], g_ip_p4->px[y], ntr::active_w);
         }
     } else if (g_ip_fade_on) {
         /* run hunt8, lane FADEINTERP1: a CONSTANT engine A fade (the same
@@ -20555,6 +20561,27 @@ int main(void)
             port_stage0_vs_breakall(frame);    /* STAGE 0: SM64DS_VS_BREAKALL */
             port_vs_hud_probe(frame);          /* TEMPORARY: SM64DS_VS_HUD */
             port_input_probe_sign_trigger(frame);   /* TEMPORARY: SM64DS_SIGN_TRIGGER */
+#ifndef PORT_ROM_CLEAN
+            /* FIELD093J (TEST ONLY, inert unset): the selftest-only pokes of the HUD rows, on the live paced path.
+               SM64DS_LIVE_WARP=<lvl>@<frame> drives LoadLevelNoReturn like SM64DS_WARP_SEQ, SM64DS_LIVE_HEALTH=<wedges>@<frame> sets the local
+               player's health like SM64DS_HEALTH_POKE. */
+            {
+                static int lv_read, lv_warp_l = -1, lv_warp_f = -1, lv_hp_w = -1, lv_hp_f = -1;
+                if (!lv_read) {
+                    lv_read = 1;
+                    if (const char *e = getenv("SM64DS_LIVE_WARP")) sscanf(e, "%d@%d", &lv_warp_l, &lv_warp_f);
+                    if (const char *e = getenv("SM64DS_LIVE_HEALTH")) sscanf(e, "%d@%d", &lv_hp_w, &lv_hp_f);
+                }
+                if (lv_warp_f >= 0 && frame == lv_warp_f) {
+                    fprintf(stderr, "[livewarp] frame %d: warp to level %d\n", frame, lv_warp_l);
+                    LoadLevelNoReturn(lv_warp_l, 0, 1, 1);
+                }
+                if (lv_hp_f >= 0 && frame == lv_hp_f) {
+                    data_02092144[(int)data_0209f250] = (short)(lv_hp_w << 8);
+                    fprintf(stderr, "[livehealth] f%d health -> %d wedges\n", frame, lv_hp_w);
+                }
+            }
+#endif
             port_probe_alcheck();
             port_probe_sign_yaw();
             port_probe_chomp(frame);

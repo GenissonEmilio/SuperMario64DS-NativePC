@@ -1,6 +1,7 @@
 /* menu_online_draw.cpp -- the title's online menu, build and draw side (run after093, lane NAME1). See menu_online.h.
    Reads only the layout and its facts blob (the decide / draw contract): no ROM, no logic state. */
 #include "menu_online.h"
+#include "menu_online_arrow_art.h"
 #include "menu_hostimg.h"
 #include "menu_pause_art_ids.h"
 #include "ui_text.h"
@@ -295,6 +296,31 @@ int menu_online_add_plank(MenuLayout *L, int kind, int fx, int fy, int fw, int f
     menu_add_piece(L, cp);
     pl.nodraw = 1;
     return menu_add_piece(L, pl);
+}
+
+namespace {
+/* NAME2: the selection arrow drawn from the code's own 22 x 15 copy of the art (the mod's picture is not there): nearest scaled to the piece's rect */
+void arrow_draw(const MenuLayout *L, int piece, uint32_t *dst, int w, int h, int stride)
+{
+    const MenuPiece &P = L->p[piece];
+    const int X = L->dest[piece][0], Y = L->dest[piece][1], W = L->dest[piece][2], H = L->dest[piece][3];
+    if (W < 1 || H < 1) return;
+    const unsigned int *art = P.wtw ? kArrowUpArt : kArrowDownArt;
+    for (int y = 0; y < H; ++y)
+        for (int x = 0; x < W; ++x) {
+            const unsigned int c = art[(y * 15 / H) * 22 + (x * 22 / W)];
+            if (c >> 24) put(dst, stride, w, h, X + x, Y + y, c & 0xFFFFFF, 255);
+        }
+}
+}  // namespace
+
+void menu_online_add_arrow(MenuLayout *L, int up, int fx, int fy, int fw, int fh)
+{
+    MenuPiece cp = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+    cp.bg = 1; cp.lden = 1; cp.lnum = 1; cp.fixdest = 1; cp.fw = (short)fw; cp.fh = (short)fh; cp.fx = (short)fx; cp.fy = (short)fy;
+    cp.custom = arrow_draw;
+    cp.wtw = (short)(up ? 1 : 0);
+    menu_add_piece(L, cp);
 }
 
 void menu_online_add_help(MenuLayout *L, int right_edge_x, int top_y, int size_px)

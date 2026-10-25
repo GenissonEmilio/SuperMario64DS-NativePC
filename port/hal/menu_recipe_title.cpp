@@ -290,6 +290,16 @@ bool wall_skip_active()
     return v == V_MAIN || v == V_INTRO;
 }
 
+/* NAME2: the main family only (the title's planks page and its intro), without the sound page and the face press page that wall_skip_active also takes */
+bool main_page_skip_active()
+{
+    if (!data_ov007_0210342c || g_up_stamp != data_ov007_0210342c[0]) return false;
+    int top, elem, req;
+    if (!port_title_page_state(&top, &elem, &req)) return false;
+    const int v = variant_for(top, elem);
+    return v == V_MAIN || v == V_INTRO;
+}
+
 /* POLISH1A: the file pages' orange cursor arrow. The ROM's cursor object (id 0x21) draws the file_menu_U orange down arrow on the file
    machine's pages (elem 5: select, options, scores pick, copy, erase). While the page is the one-screen file page and the HD arrow
    is ready the sprite is not submitted; its place (DS pixels, the object's own x / y: the arrow's top left is (x - 11, y - 8), the tip
@@ -326,6 +336,10 @@ int title_skip(char *o)
        the whole layer (the ROM's plate art no longer shows under the host planks, nothing below the chin is ever in it) */
     if (*(unsigned char *)(o + 0x4e) == 0x1b && (((const int *)o)[2] >> 12) >= 100 && wall_skip_active() && menu_hostimg_ready(MENU_IMG_BTN_MP) &&
         menu_hostimg_ready(MENU_IMG_BTN_ADV) && menu_hostimg_ready(MENU_IMG_BTN_REC)) return 1;
+    /* NAME2: with the DS's own planks the cursor arrow is drawn from the code's art (build_main), so the ROM's own, which sits over the plate rows
+       of the layer, is left out of the submit and the layer can stop above the plates; the main page only */
+    if (*(unsigned char *)(o + 0x4e) == 0x21 && main_page_skip_active() && !(menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) &&
+        menu_hostimg_ready(MENU_IMG_BTN_MP) && menu_hostimg_ready(MENU_IMG_BTN_ADV) && menu_hostimg_ready(MENU_IMG_BTN_REC))) return 1;
     static int trace = -1;
     static unsigned skipk;
     if (trace < 0) {
@@ -404,7 +418,7 @@ inline int face_dy(const FaceK &k) { return (int)(135.7 - 134.5 * k.n / k.d + 0.
 int wrench_dx(const MenuLayout *L)
 {
     const OnlFacts *o = onl_facts_of(L);
-    return (o && o->on) ? -30 : 0;
+    return (o && o->on) ? -35 : 0;      /* NAME2: the ? (30 units) and its gap from the window edge (5 units, the same as its gap from the top) */
 }
 
 /* NAME1 (run after093): THE ONLINE PLANKS. Plank k of the main page (0 = the MP slot, now ONLINE; 1 = ADVENTURE; 2 = REC ROOM) is in its solo or online
@@ -436,8 +450,8 @@ void online_overlays(MenuLayout *L, bool main_page, bool show_help)
     if (!of) return;
     const int un = L->unum, ud = L->uden;
     if (show_help && of->scr == ONL_SCR_NONE) {
-        (void)main_page;      /* flush against the WINDOW's right edge on every page; on the title the wrench stands beside it (wrench_dx) */
-        menu_online_add_help(L, L->w, 5 * un / ud, 30 * un / ud);
+        (void)main_page;      /* 5 units in from the WINDOW's right edge on every page; on the title the wrench stands beside it (wrench_dx) */
+        menu_online_add_help(L, L->w - 5 * un / ud, 5 * un / ud, 30 * un / ud);      /* NAME2: 5 units in from the window's right edge, as it is from the top */
     }
     menu_online_add_modal(L, of);
 }
@@ -503,7 +517,12 @@ void build_main(MenuLayout *L, bool intro)
        and stars and sparkles now share that transform so they stay where the ROM put them around the face. A touch-only piece
        holds the old head rect (the ROM's face toy reads a touch on the head). */
     const int hk = tune(0, 2), hd = tune(1, 3);
-    MenuPiece face = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, tune(2, -18) + 20, tune(3, 46), hk, hd);
+    /* NAME2 (Tango, 4:3 plank overlap): with the DS's own plates (no host planks) the layer still holds the three plates, and this piece draws
+       the whole layer at 2/3 scale, so they showed in small behind and above the code drawn SOLO / ADVENTURE ONLINE / VS planks, and behind the
+       ROM's own planks (the cut pieces below draw the real plates at full size). The plates start at source row 140 (the cut pieces' own y),
+       the head, star, sparkles and cursor are above it: the piece stops there. With the host planks the plate sprites are never submitted. */
+    const bool plates_in_layer = !(menu_hostimg_ready(MENU_IMG_BTN_MP) && menu_hostimg_ready(MENU_IMG_BTN_ADV) && menu_hostimg_ready(MENU_IMG_BTN_REC));
+    MenuPiece face = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, plates_in_layer ? 140 : 192, MENU_AX_C, MENU_AY_T, tune(2, -18) + 20, tune(3, 46), hk, hd);
     face.keycover = 1; face.bg = 1; face.has_ex = 1; face.ex.x = 216; face.ex.y = 0; face.ex.w = 40; face.ex.h = 40;
     /* INTRO2: the ROM's head entrance fades in over its first 9 ticks on the DS-art title too (the intro only, never a later page) */
     int ent_a = 255;
@@ -567,13 +586,15 @@ void build_main(MenuLayout *L, bool intro)
        above) is drawn again from its own art at the window's resolution: pointing down at the selected plank from above, or up at the
        wrench from below, bobbing on the ROM's 8-frame cadence. Pieces here are backdrop-class (no touch): a click goes through to
        the plank under it. */
-    if (planks && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) && (cur == 7 || (cur >= 0 && cur <= 2))) {
+    /* NAME2: without the mod's pictures the arrow is the code's own copy of the same art (the ROM's own is skipped at submit, title_skip) */
+    const bool art_arrows = planks && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN);
+    if ((cur == 7 || (cur >= 0 && cur <= 2))) {
         static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };       /* the plank pulse's cadence, in half units */
         const int fr = t_f ? t_f->frame : 0;
         const int bob2 = kBob[fr & 7];
         const int aimg = cur == 7 ? MENU_IMG_ARROW_UP : MENU_IMG_ARROW_DOWN;
-        int iw = 1, ih = 1;
-        menu_hostimg_size(aimg, &iw, &ih);
+        int iw = 22, ih = 15;
+        if (art_arrows) menu_hostimg_size(aimg, &iw, &ih);
         const int au = ltune(3, 18);                                  /* the arrow's width in canvas units (the DS art is 22 x 15 pixels) */
         const int dw = au * L->unum / L->uden, dh = (int)((long long)dw * ih / iw);
         MenuPiece ar = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
@@ -594,7 +615,7 @@ void build_main(MenuLayout *L, bool intro)
                 ar.fx = -1000;
             }
         }
-        if (ar.fx > -1000) menu_add_piece(L, ar);
+        if (ar.fx > -1000) { if (art_arrows) menu_add_piece(L, ar); else menu_online_add_arrow(L, cur == 7 ? 1 : 0, ar.fx, ar.fy, dw, dh); }
     }
     { const OnlFacts *of = onl_facts_of(L); online_overlays(L, true, of && of->on); }     /* NAME1: the ? button and the modal screen */
 }
@@ -1620,6 +1641,15 @@ void scene_sprite_xf(char *o);
    same translation the drawing page's pencil gets in scene_sprite_xf. The plates and the page stay centred; at 4:3 the translation
    is zero and nothing is set. file_back_shift_units() is the one number the sprite, the cursor arrow and the touch piece share. */
 static bool file_back_obj(int x, int y) { return x >= 180 && y >= 136; }
+/* ANCHOR1 (design, Tango's choice): SM64DS_FILEOPT_EDGE=1 mirrors the FILE OPTIONS plank to the window's LEFT edge with the back arrow's inset (4 units),
+   so the bottom row balances the moved back arrow. Default off: the plank stays centred with the plates. */
+static bool fileopt_edge_on()
+{
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_FILEOPT_EDGE"); v = (e && *e && *e != '0') ? 1 : 0; }
+    return v != 0;
+}
+static bool fileopt_obj(int x, int y) { return x >= 28 && x <= 156 && y >= 136; }       /* the plank's object (id 1c) and its cursor sit inside its DS box */
 static bool file_wide_page_now()
 {
     if (!ntr::widescreen || ntr::active_h <= 0 || !hal_menu_live()) return false;
@@ -1637,6 +1667,7 @@ static void file_back_xf(char *o)
     if (cw <= 256.5f) return;
     const int x = ((const int *)o)[1] >> 12, y = ((const int *)o)[2] >> 12;
     if (file_back_obj(x, y)) ntr::gx_menu_sprite_xf(1.f, (cw - 256.f) / cw, 1.f, 0.f);       /* 2 * ((cw - 256) / 2) / cw */
+    else if (fileopt_edge_on() && fileopt_obj(x, y)) ntr::gx_menu_sprite_xf(1.f, -((cw - 256.f) + 48.f) / cw, 1.f, 0.f);   /* its box's left edge (DS x 28) to 4 units from the window's left edge */
 }
 int file_skip(char *o)
 {
@@ -1663,6 +1694,30 @@ int file_skip_inner(char *o)
     return g_file_prev_skip ? g_file_prev_skip(o) : 0;
 }
 }  // namespace
+/* ANCHOR1 (F4): the water ripple of a cursor that LEAVES an element. The ROM spawns it at the element's object position (func_ov007_020beeb0,
+   the branch with no stylus down, strength 0x7d0, through func_ov007_020bed60), which for the back arrow is its DS place; the arrow is now drawn
+   at the window's right edge, so the ripple came up where the arrow used to be. This maps that DS point to the water point under the arrow's
+   WINDOW place: the page behind it is zoomed about the canvas centre (g_file_wz), so the point is the centre plus the arrow's offset from the
+   canvas centre over the zoom, the same arithmetic menu_inverse uses for a touch on the water. Anything else is left alone, and so is a stylus
+   touch (the host already hands the ROM the water point for one). */
+extern "C" void port_title_ripple_xf(int *x, int *y)
+{
+    const bool bk = file_back_obj(*x, *y), op = !bk && fileopt_edge_on() && fileopt_obj(*x, *y);
+    if ((!bk && !op) || !file_wide_page_now()) return;
+    float cw, ch;
+    scene_canvas_units(&cw, &ch);
+    if (cw <= 256.5f || g_file_wz <= 1000) return;
+    const float zoom = (float)g_file_wz / 1000.0f;
+    const float shift = bk ? (cw - 256.0f) * 0.5f : -((cw - 256.0f) * 0.5f + 24.0f);
+    int nx = 128 + (int)(((float)(*x - 128) + shift) / zoom);
+    int ny = 96 + (int)((float)(*y - 96) / zoom);
+    if (nx < 0) nx = 0;
+    if (nx > 255) nx = 255;
+    if (ny < 0) ny = 0;
+    if (ny > 191) ny = 191;
+    if (hal_menu_trace_on()) fprintf(stderr, "[filecur] ripple of the cursor leaving a moved plank: DS (%d,%d) -> water (%d,%d)\n", *x, *y, nx, ny);
+    *x = nx; *y = ny;
+}
 extern "C" {
 extern void (*g_port_title_draw_end)(void);
 }
@@ -1781,7 +1836,7 @@ void scene_sprite_xf(char *o)
         if (id == 0x1b && y < 100) {
             float up = 0.f;
             if (v == V_TOY) { const int tv = title_page_counter(); const float e = tv >= 10 ? 1.f : (float)tv / 10.f; up = e * e * 60.f; }
-            ntr::gx_menu_sprite_xf(1.f, 2.f * (sx - (menu_online_on() ? 30.f : 0.f)) / cw, 1.f, 2.f * (sy + up) / ch);      /* NAME1: beside the ? button in online mode */
+            ntr::gx_menu_sprite_xf(1.f, 2.f * (sx - (menu_online_on() ? 35.f : 0.f)) / cw, 1.f, 2.f * (sy + up) / ch);      /* NAME1: beside the ? button in online mode; NAME2: the ? (30) and its gap from the window edge (5) */
         }
         return;
     }
@@ -1899,9 +1954,22 @@ void file_pages_build(int variant, MenuLayout *L)
     }
     const int ip = menu_add_piece(L, pg);
     if (variant == V_FILES) menu_online_add_tint(L, onl_facts_of(L));      /* NAME1: the online file select keeps the green over its water */
-    if (split) {
+    int ip_fo = -1;
+    if (split && fileopt_edge_on()) {
+        /* the knob: the lower left is cut into the part left of the plank, the part between the plank and the arrow's corner (both centred, so the
+           old plank place maps to nothing), and the plank's own piece on the window's left edge (DS x 24 .. 160, its left edge 4 units in) */
+        MenuPiece a = pg; a.s.x = 0; a.s.y = 133; a.s.w = 24; a.s.h = 59; a.ax = MENU_AX_C; a.ay = MENU_AY_T; a.dx = (short)(0 + 12 - 128); a.dy = 133;
+        ip_lo = menu_add_piece(L, a);
+        MenuPiece b = pg; b.s.x = 160; b.s.y = 133; b.s.w = 20; b.s.h = 59; b.ax = MENU_AX_C; b.ay = MENU_AY_T; b.dx = (short)(160 + 10 - 128); b.dy = 133;
+        menu_add_piece(L, b);
+        MenuPiece f = pg; f.s.x = 24; f.s.y = 133; f.s.w = 136; f.s.h = 59; f.ax = MENU_AX_L; f.ay = MENU_AY_T; f.dx = 0; f.dy = 133;
+        ip_fo = menu_add_piece(L, f);
+    }
+    if (split && ip_fo < 0) {
         MenuPiece lo = pg; lo.s.x = 0; lo.s.y = 133; lo.s.w = 180; lo.s.h = 59; lo.ax = MENU_AX_C; lo.ay = MENU_AY_T; lo.dx = (short)(0 + 90 - 128); lo.dy = 133;
         ip_lo = menu_add_piece(L, lo);
+    }
+    if (split) {
         MenuPiece bk = pg; bk.s.x = 180; bk.s.y = 133; bk.s.w = 76; bk.s.h = 59; bk.ax = MENU_AX_R; bk.ay = MENU_AY_T; bk.dx = 0; bk.dy = 133;
         ip_bk = menu_add_piece(L, bk);
     }
@@ -1946,6 +2014,7 @@ void file_pages_build(int variant, MenuLayout *L)
         ar.bg = 1; ar.hostimg = MENU_IMG_ARROW_ORANGE; ar.lden = 1; ar.lnum = 1; ar.fw = (short)dw; ar.fh = (short)dh;
         ar.fx = (short)(L->w / 2 + (g_oa_x - 11 - 128) * un / ud);
         if (ip_bk >= 0 && file_back_obj(g_oa_x, g_oa_y + 8)) ar.fx = (short)(ar.fx + (L->w - 256 * un / ud) / 2);      /* ANCHOR1: the cursor arrow points at the back arrow where it is now */
+        else if (ip_bk >= 0 && fileopt_edge_on() && fileopt_obj(g_oa_x, g_oa_y + 8)) ar.fx = (short)(ar.fx - ((L->w - 256 * un / ud) / 2 + 24 * un / ud));      /* ... and at the FILE OPTIONS plank where the knob put it */
         ar.fy = (short)((g_oa_y - 8) * un / ud + (L->h - 192 * un / ud) / 2);
         menu_add_piece(L, ar);
     }
@@ -1953,7 +2022,7 @@ void file_pages_build(int variant, MenuLayout *L)
     g_hot_live_only = true;
     if (split) {
         hot(L, ip, fids, 6);
-        hot(L, ip_lo, fids + 6, 1);
+        hot(L, ip_fo >= 0 ? ip_fo : ip_lo, fids + 6, 1);
         hot(L, ip_bk, fids + 7, 1);
     } else {
         hot(L, ip, fids, 8);
