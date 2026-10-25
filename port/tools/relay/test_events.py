@@ -220,6 +220,44 @@ def pure3():
     check("event_send castle parses as modifier 5 for every world", ev is not None and ev["arg"] == 5 and ev["world"] == "", why)
 
 
+def pure4():
+    """FIX16B: the relay ignores impossible star totals (session.accept_stars)."""
+    def sess():
+        return relay.SessionV2("STARTEST", relay.KIND_HUB, 0.0)
+    s = sess()
+    check("a first report of 80 is accepted as is", s.accept_stars(0, 80) and s.stars[0] == 80)
+    s = sess()
+    check("a total above 150 is ignored (65535)", not s.accept_stars(0, 65535) and 0 not in s.stars)
+    check("a total of 151 is ignored", not s.accept_stars(0, 151) and 0 not in s.stars)
+    check("a first report of 150 is accepted", s.accept_stars(0, 150) and s.stars[0] == 150)
+    check("0 is accepted", sess().accept_stars(1, 0))
+    s = sess()
+    s.accept_stars(2, 3)
+    check("a jump of +4 is ignored, the seat keeps its last value", not s.accept_stars(2, 7) and s.stars[2] == 3)
+    check("a jump to 65535 after 3 is ignored (the fuzz case)", not s.accept_stars(2, 65535) and s.stars[2] == 3)
+    check("a jump of +3 is accepted", s.accept_stars(2, 6) and s.stars[2] == 6)
+    s = sess()
+    s.accept_stars(3, 10)
+    ok = all(s.accept_stars(3, 10 + i) for i in range(1, 6))
+    check("a +1 chain of 5 is accepted", ok and s.stars[3] == 15)
+    check("a repeat of the same count is accepted", s.accept_stars(3, 15) and s.stars[3] == 15)
+    check("a decrease (a different file) is accepted", s.accept_stars(3, 2) and s.stars[3] == 2)
+    check("a climb after the decrease continues from it", s.accept_stars(3, 4) and not s.accept_stars(3, 9) and s.stars[3] == 4)
+    # the tally with the fuzz seat's numbers: 3 then 65535 never reaches it
+    s = sess()
+    t = relay.RaceTally(1, 50, 0.0)
+    for seat, n in ((0, 5), (1, 3), (1, 65535), (1, 150), (1, 80)):
+        s.accept_stars(seat, n)
+        t.feed(s.stars, {0: "Ann", 1: "Eve"}, 1.0)
+    check("the tally never sees the impossible counts", t.winner is None and s.stars == {0: 5, 1: 3}, str((t.winner, s.stars)))
+    # one log line per seat, not per message
+    s = sess()
+    s.accept_stars(0, 1)
+    for _ in range(50):
+        s.accept_stars(0, 65535)
+    check("a refused seat is warned once", s.star_warned == {0})
+
+
 def free_port():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(("127.0.0.1", 0))
@@ -318,6 +356,13 @@ def live():
             sk.sendto(syni(name), raddr)
             sk.sendto(synl(stars), raddr)
             return sk
+        def climb(sk, lo, hi, step=3):
+            """Honest stars come a few at a time (the relay refuses a bigger jump)."""
+            v = lo
+            while v < hi:
+                v = min(hi, v + step)
+                sk.sendto(synl(v), raddr)
+                time.sleep(0.2)                # SYNL is capped at 6/s
         ra = member(b"RACEAAAA", "Ann", 10)
         rb = member(b"RACEAAAA", "Bob", 20)
         rc = member(b"RACEBBBB", "Cyd", 49)
@@ -325,12 +370,12 @@ def live():
         cmdsock.sendto(cmd8(t0 + 20, 3, 4, 120, "", "-", 0), caddr)      # a race to 50 in every world
         time.sleep(1.2)
         # Cyd (world B) starts below the target on the tally's first look: re-send low then climb
-        rc.sendto(synl(40), raddr)
+        climb(rc, 49, 49)
+        rc.sendto(synl(40), raddr)                    # a drop is taken (Cyd is back under the target)
         time.sleep(1.2)
-        for st in (30, 45, 50):                       # Ann climbs to 50 in world A
-            ra.sendto(synl(st), raddr)
-            time.sleep(0.5)
-        rc.sendto(synl(50), raddr)                    # Cyd crosses in world B at the same time
+        climb(ra, 10, 50)                             # Ann climbs to 50 in world A
+        time.sleep(0.5)
+        climb(rc, 40, 50)                             # Cyd crosses in world B at the same time
         wa = events(ra, 3.0)
         wb = events(rb, 0.5)
         wc = events(rc, 0.5)
@@ -352,6 +397,29 @@ def live():
         late = [d for d in events(rd, 2.0) if d[6] == 6]
         check("a late joiner hears the winner", bool(late) and late[0][24:24 + late[0][22]].startswith(b"50 Ann"))
         cmdsock.sendto(cmd8(t0 + 21, 4, 0, 0), caddr)
+
+        # ---- FIX16B: a seat reporting impossible star counts cannot win
+        cmdsock.sendto(cmd8(t0 + 22, 3, 4, 120, "", "RACEEVIL", 0), caddr)
+        ea_ = member(b"RACEEVIL", "Ann", 5)
+        ev_ = member(b"RACEEVIL", "Eve", 3)
+        eb_ = member(b"RACEEVIL", "Obs", 0)
+        time.sleep(1.2)
+        for bad in (65535, 151, 3 + 4, 80, 65535, 150):
+            ev_.sendto(synl(bad), raddr)               # none is a possible next count
+            time.sleep(0.05)
+        time.sleep(1.2)
+        check("a seat reporting 65535 / 150 / +4 jumps wins nothing",
+              not [d for d in events(eb_, 1.0) if d[6] == 6])
+        climb(ea_, 5, 12, 1)                           # a +1 chain: honest, accepted
+        climb(ea_, 12, 50)
+        wl = [d for d in events(eb_, 3.0) if d[6] == 6]
+        check("the honest climber wins the race", bool(wl) and all(d[24:24 + d[22]].startswith(b"50 Ann") for d in wl),
+              str([d[24:24 + d[22]] for d in wl]))
+        late_ = member(b"RACEEVIL", "Dee", 0)
+        ll = [d for d in events(late_, 2.0) if d[6] == 6]
+        check("a late joiner hears the honest winner, not the 65535 seat",
+              bool(ll) and ll[0][24:24 + ll[0][22]].startswith(b"50 Ann"))
+        cmdsock.sendto(cmd8(t0 + 23, 4, 0, 0), caddr)
 
         # ---- solo / VS / party / coop never take an event: only a world hub member hears the relay's SYNZ
         def role_member(code, role):
@@ -403,6 +471,7 @@ if __name__ == "__main__":
     pure()
     pure2()
     pure3()
+    pure4()
     live()
     print("RESULT", "FAIL" if FAILS else "PASS", FAILS)
     sys.exit(1 if FAILS else 0)

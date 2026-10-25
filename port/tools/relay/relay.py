@@ -661,6 +661,8 @@ MOD_RACE, MOD_CASTLE, MOD_MAX = 4, 5, 5
 RACE_DEFAULT_TARGET = 50
 RACE_LEADER_EVERY_S = 5.0     # the leader is repeated this often
 RACE_WIN_SHOW_S = 10          # the winner stays on the wire this long after a win
+STAR_MAX = 150                # a star total above this is impossible (ignored)
+STAR_RISE_MAX = 3             # most a seat's total may rise in one accepted report
 WORLD_CODE_MAX = 16
 
 
@@ -951,7 +953,7 @@ class SessionV2(object):
     children) or a HUB (seats 0..HUB_SEATS-1, all members, nobody hosts)."""
     __slots__ = ("code", "kind", "seats", "created", "fwd_tokens",
                  "fwd_stamp", "referee", "fwd_pps", "fwd_burst",
-                 "stars", "names", "race", "creator_ip")
+                 "stars", "names", "race", "creator_ip", "star_warned")
     version = PROTO_V2
 
     def __init__(self, code, kind, now):
@@ -964,11 +966,32 @@ class SessionV2(object):
         self.stars = {}         # hub only: seat -> star total from its presence
         self.names = {}         # hub only: seat -> name from its identity frame
         self.race = None        # hub only: the RaceTally of the live race
+        self.star_warned = set()  # seats already logged for an impossible star count
         # the per-session forward budget (SESSION_FWD_PPS), in copies sent
         self.fwd_pps = SESSION_FWD_PPS_WORLD if kind == KIND_HUB else SESSION_FWD_PPS
         self.fwd_burst = self.fwd_pps
         self.fwd_tokens = float(self.fwd_burst)
         self.fwd_stamp = now
+
+    def accept_stars(self, seat, n):
+        """Take a star total from a seat's presence datagram, or ignore it.
+        The tally reads totals, so a console must not be able to report a
+        number a player cannot have: outside 0..STAR_MAX is ignored, and so
+        is a rise of more than STAR_RISE_MAX over the seat's last accepted
+        value (stars come one at a time; the seat keeps its honest value, it
+        is not clamped). The first report of a seat is taken as is within
+        0..STAR_MAX. A drop is taken: the tally only wins by crossing the
+        target upward from the first count it saw, so a lower number cannot
+        win. A refused report is logged once per seat, never raises."""
+        last = self.stars.get(seat)
+        if n > STAR_MAX or (last is not None and n > last + STAR_RISE_MAX):
+            if seat not in self.star_warned:
+                self.star_warned.add(seat)
+                log("session %s seat %d: star count %d ignored (last %s)"
+                    % (self.code, seat, n, last))
+            return False
+        self.stars[seat] = n
+        return True
 
     def budget_ok(self, copies, now):
         """Spend `copies` of the session's forward budget, or refuse the
@@ -1701,7 +1724,7 @@ class RelayProtocol(asyncio.DatagramProtocol):
         if session.kind == KIND_HUB:
             # what the host's race reads: the sender's own star total and name
             if kind.tag == b"SYNL" and n == 20:
-                session.stars[seat] = data[12] | (data[13] << 8)
+                session.accept_stars(seat, data[12] | (data[13] << 8))
             elif kind.tag == b"SYNI" and n >= 24:
                 nl = data[6]
                 raw = bytes(data[20:20 + nl])
@@ -1853,6 +1876,7 @@ class RelayProtocol(asyncio.DatagramProtocol):
             if session.seats.get(endpoint.seat) == endpoint.addr:
                 del session.seats[endpoint.seat]
                 session.stars.pop(endpoint.seat, None)
+                session.star_warned.discard(endpoint.seat)
                 session.names.pop(endpoint.seat, None)
                 if session.referee is not None:
                     session.referee.on_leave(
