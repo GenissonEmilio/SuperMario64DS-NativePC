@@ -3,12 +3,13 @@
    Tango (10-25): "We need a name and colour popup before people can join adventure online." The popup is one of the online menu's modal screens
    (ONL_SCR_PROFILE in menu_online.h). It shows when an online file is picked while no name has been saved yet, and from a NAME plank on the online
    file select at any time. The name is typed on the keyboard only (letters, digits, space, Backspace; Enter = OK; 16 at most); a pad player keeps
-   the name the field starts with (the saved name, else the launcher's nickname, else "Player") and can still pick the colour and press OK. The
-   colour is the player's online Yoshi body and shoes, one of the eight pairs below; the join exports it as SM64DS_PLAYER_COLOR / SM64DS_PLAYER_SHOES
-   (hal/online_join.cpp), which the comms identity ('SYNI') already carries to every other console.
+   the name the field starts with (the saved name, else the launcher's nickname, else "Player") and can still pick the colours and press OK. The
+   colours are the player's online Yoshi BODY and SHOES, each freely chosen from a hue by shade grid (a picker in the game's plank look); the join
+   exports them as SM64DS_PLAYER_COLOR / SM64DS_PLAYER_SHOES (hal/online_join.cpp), which the comms identity ('SYNI') already carries to every other
+   console.
 
    Same split as the rest of the online menu: the logic below runs on the logic thread and is copied into the facts blob (ProfFacts inside OnlFacts);
-   the draw side reads only the facts. Settings: host_settings.h OnlineName / OnlineYoshiColor. */
+   the draw side reads only the facts. Settings: host_settings.h OnlineName / OnlineBodyColor / OnlineShoeColor. */
 #ifndef MENU_ONLINE_PROFILE_H
 #define MENU_ONLINE_PROFILE_H
 #include <stdint.h>
@@ -16,8 +17,9 @@
 
 struct OnlFacts;
 
-/* the colour table: body and shoes, six hex digits each (the lobby's grammar). The first four are the ROM's own four Yoshi rows (kVsRomRows in
-   hal/vs_palette_gen.h; each pair is the colour the VS arithmetic anchors that row on, measured with vspal::family_rep), the last four are new. */
+/* the first four pairs are the ROM's own four Yoshi rows (kVsRomRows in hal/vs_palette_gen.h; each pair is the colour the VS arithmetic anchors that
+   row on, measured with vspal::family_rep): the picker's "classic" cells. The last four were the old fixed list; they are kept only so a settings.json
+   with the old OnlineYoshiColor index maps to its pair (host_settings.cpp carries the same eight). */
 struct OnlineYoshiColor { const char *name; const char *body; const char *shoes; };
 static const OnlineYoshiColor kOnlineYoshiColors[8] = {
     { "Green",  "208B20", "E66218" },
@@ -31,37 +33,52 @@ static const OnlineYoshiColor kOnlineYoshiColors[8] = {
 };
 
 /* focus rows of the popup */
-enum { PROF_F_NAME = 0, PROF_F_COLOUR = 1, PROF_F_OK = 2, PROF_F_BACK = 3 };
+enum { PROF_F_NAME = 0, PROF_F_ROW = 1, PROF_F_GRID = 2, PROF_F_OK = 3, PROF_F_BACK = 4 };
+/* the picker grid: PROF_COLS columns x PROF_ROWS rows. Column 0 = the ROM's four classic colours (body or shoe set, by the row picked), column 1 = white,
+   grey, dark grey, black, columns 2..13 = twelve hues (red at 0 degrees, every 30) each in four shades (light, pure, dark, darker). */
+#define PROF_COLS 14
+#define PROF_ROWS 4
+uint32_t profile_cell_colour(int which, int col, int row);      /* 0xRRGGBB of a grid cell; which 0 = BODY, 1 = SHOES */
 
 /* what the draw side needs (copied into OnlFacts by menu_online_facts) */
 struct ProfFacts {
-    int focus;          /* PROF_F_* */
-    int colour;         /* index into kOnlineYoshiColors */
-    int caret;          /* blink phase, 0 / 1 */
-    int pending;        /* the file waiting for the OK (0..2) or -1 */
+    uint32_t body, shoes;         /* 0xRRGGBB */
+    unsigned char focus;          /* PROF_F_* */
+    unsigned char which;          /* the row being picked: 0 BODY, 1 SHOES */
+    unsigned char cx, cy;         /* the grid cell cursor */
+    unsigned char caret;          /* blink phase, 0 / 1 */
+    signed char pending;          /* the file waiting for the OK (0..2) or -1 */
     char name[20];
 };
 
 /* the DS boxes of the popup (the hook and the pieces agree on them; a click maps proportionally into a piece's box) */
 #define PROF_PANEL_X 16
-#define PROF_PANEL_Y 6
+#define PROF_PANEL_Y 4
 #define PROF_PANEL_W 224
-#define PROF_PANEL_H 154
+#define PROF_PANEL_H 178
 #define PROF_FIELD_X 28
-#define PROF_FIELD_Y 33
+#define PROF_FIELD_Y 18
 #define PROF_FIELD_W 200
-#define PROF_FIELD_H 20
-#define PROF_SW_X 34
-#define PROF_SW_Y 88
-#define PROF_SW_W 20
-#define PROF_SW_H 20
-#define PROF_SW_STEP 24
+#define PROF_FIELD_H 18
+#define PROF_TAB_Y 49          /* the BODY and SHOES row labels, each with its live swatch */
+#define PROF_TAB_H 18
+#define PROF_TAB0_X 28
+#define PROF_TAB1_X 130
+#define PROF_TAB_W 98
+#define PROF_GRID_X 24
+#define PROF_GRID_Y 74
+#define PROF_CELL_W 14
+#define PROF_CELL_H 12
+#define PROF_CELL_STEPX 15
+#define PROF_CELL_STEPY 13
+#define PROF_GRID_W (PROF_COLS * PROF_CELL_STEPX - 1)
+#define PROF_GRID_H (PROF_ROWS * PROF_CELL_STEPY - 1)
 #define PROF_OK_X 40
-#define PROF_OK_Y 128
+#define PROF_OK_Y 148
 #define PROF_OK_W 80
 #define PROF_OK_H 28
 #define PROF_BACK_X 136
-#define PROF_BACK_Y 128
+#define PROF_BACK_Y 148
 #define PROF_BACK_W 80
 #define PROF_BACK_H 28
 /* the NAME plank on the online file select */

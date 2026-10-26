@@ -148,20 +148,24 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
             *held = (unsigned short)(*held & ~strip_conf);
             port_host_keys_clear(strip_conf);
         }
-        g_strip_conf = &strip_conf;
-    }
-    {
-        /* PROFILE1: while the name and colour popup is up it takes the D-pad and the confirm keys (A / Space, Start / Enter), kept out of the ROM's key words
-           for as long as they are down, like the other confirms this hook takes. Pad B and Backspace come through the recipe's back route. */
-        const unsigned short *heldp = (const unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
-        const unsigned take = profile_pad(*pressed, *heldp);
-        if (take) {
-            unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
-            if (g_strip_conf) *g_strip_conf = (unsigned short)(*g_strip_conf | (take & (*pressed | *held)));
-            *pressed = (uint16_t)(*pressed & ~take);
-            *held = (unsigned short)(*held & ~take);
-            port_host_keys_clear((unsigned short)take);
+        /* PROFILE1: THE NAME AND COLOUR POPUP TAKES THE PAD HERE, INSIDE THIS FIRST BLOCK AND BEFORE ANY LATER BLOCK, so it is the first to see the words and
+           the later modal-pad blocks of this hook (INPUTMATRIX1's "the pad is modal for the ? text, the VS note and the wait screen", which zeroes the pad for
+           every online screen) never run while the popup is up: this block returns first. It takes the D-pad and the confirm keys (A / Space, Start / Enter),
+           kept out of the ROM's key words for as long as they are down (strip_conf, as above). Pad B and Backspace are not taken here: they come through
+           the recipe's back route (menu_title_pad_map), which is why the early return leaves them in the words. */
+        {
+            const int up = profile_active();          /* before the call: an OK or BACK inside it closes the popup */
+            const unsigned take = profile_pad(*pressed, *held);
+            if (up) {
+                strip_conf = (unsigned short)(strip_conf | (take & (*pressed | *held)));
+                *pressed = (uint16_t)(*pressed & ~take);
+                *held = (unsigned short)(*held & ~take);
+                port_host_keys_clear((unsigned short)take);
+                g_strip_conf = &strip_conf;
+                return 1;
+            }
         }
+        g_strip_conf = &strip_conf;
     }
     {
         /* NAME1: the D-pad's way to the ? button. The ROM's cursor has nowhere to go from the wrench to the left, nor up from the file row, so the

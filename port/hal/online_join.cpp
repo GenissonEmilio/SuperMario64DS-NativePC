@@ -10,7 +10,6 @@
 
 #include "ntr/backup.h"
 #include "host_settings.h"
-#include "menu_online_profile.h"     /* PROFILE1: the colour table */
 
 extern "C" {
 extern int (*port_title_front_door_hook)(void);   /* hal/title_entry.cpp; tests/walk_window.cpp seats it: start the game again at its front door */
@@ -144,12 +143,14 @@ bool apply_plan(const std::string &t, int server) {
     {
         const char *own = host_setting_online_name();
         if (own[0]) SetEnvironmentVariableA("SM64DS_PLAYER_NAME", own);
-        const int ci = host_setting_online_yoshi_color();
-        if (ci >= 0 && ci < HOST_ONLINE_COLORS) {
-            SetEnvironmentVariableA("SM64DS_PLAYER_COLOR", kOnlineYoshiColors[ci].body);
-            SetEnvironmentVariableA("SM64DS_PLAYER_SHOES", kOnlineYoshiColors[ci].shoes);
-            std::fprintf(stderr, "[join] own profile: name \"%s\" colour %d (%s) body %s shoes %s\n", own, ci, kOnlineYoshiColors[ci].name,
-                         kOnlineYoshiColors[ci].body, kOnlineYoshiColors[ci].shoes);
+        unsigned body = 0, shoes = 0;
+        if (host_setting_online_colours(&body, &shoes)) {
+            char b6[8], s6[8];
+            std::snprintf(b6, sizeof b6, "%06X", body & 0xFFFFFFu);
+            std::snprintf(s6, sizeof s6, "%06X", shoes & 0xFFFFFFu);
+            SetEnvironmentVariableA("SM64DS_PLAYER_COLOR", b6);
+            SetEnvironmentVariableA("SM64DS_PLAYER_SHOES", s6);
+            std::fprintf(stderr, "[join] own profile: name \"%s\" body %s shoes %s\n", own, b6, s6);
         }
     }
 #ifndef PORT_ROM_CLEAN
