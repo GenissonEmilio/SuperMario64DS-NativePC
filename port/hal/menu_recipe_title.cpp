@@ -2247,10 +2247,9 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
             unsigned short *hh = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
             const int punch = kind == 2 && (*pressed & 0x0001);
             if (host_back && profile_backspace()) host_back = 0;      /* PROFILE1: Backspace edits the name field first (and is BACK on the popup's other rows) */
-            profile_punch_filter(pressed, hh);      /* PROFILE1: a pad B that closed a screen stays out of the key words until it is let go */
             if ((host_back || punch) && menu_online_back(kind)) {
                 host_back = 0;
-                if (punch) { *pressed = (uint16_t)(*pressed & ~0x0001u); *hh = (unsigned short)(*hh & ~0x0001u); profile_punch_taken(); }
+                if (punch) { *pressed = (uint16_t)(*pressed & ~0x0001u); *hh = (unsigned short)(*hh & ~0x0001u); }
             }
         }
     }

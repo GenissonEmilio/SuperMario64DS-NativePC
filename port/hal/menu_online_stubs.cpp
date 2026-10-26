@@ -24,8 +24,6 @@ int profile_name_needed(void) { return 0; }
 const char *profile_saved_name(void) { return ""; }
 void profile_facts(ProfFacts *f) { memset(f, 0, sizeof *f); f->pending = -1; }
 void profile_tick(void) {}
-void profile_punch_taken(void) {}
-void profile_punch_filter(uint16_t *, unsigned short *) {}
 unsigned profile_pad(unsigned, unsigned) { return 0; }
 int profile_touch(int, int, int) { return 0; }
 int profile_back(void) { return 0; }

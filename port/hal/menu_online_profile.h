@@ -93,8 +93,6 @@ int  profile_active(void);
 int  profile_name_needed(void);                         /* 1 while no name has been saved yet (the popup shows before a join) */
 const char *profile_saved_name(void);                   /* the saved name ("" if none) */
 void profile_facts(ProfFacts *f);
-void profile_punch_taken(void);                         /* pad B (the port's punch bit, DS 0x0001) just closed a screen of the online menu */
-void profile_punch_filter(uint16_t *pressed, unsigned short *held);   /* then keeps that bit out of the key words until it is let go (the ROM's file select reads it as its back arrow) */
 void profile_tick(void);                                /* once per tick while open: the typed keys, the caret */
 /* a pad word's bits while the popup is up: the bits the popup takes (the hook strips them from the ROM's key words while down) */
 unsigned profile_pad(unsigned pressed, unsigned held);

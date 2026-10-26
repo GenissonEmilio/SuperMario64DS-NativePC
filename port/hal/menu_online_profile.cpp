@@ -163,22 +163,6 @@ uint32_t profile_cell_colour(int which, int col, int row)
     return hue_cell((col - 2) % 12, row);
 }
 
-/* THE CLOSE SWALLOW FOR PAD B. The press that closes a screen of the online menu is still down on the next frames; the file select reads that
-   bit as its back arrow, so a popup or ? text closed by B used to leave the file select as well (found on the int100g exe with the ? text).
-   The bit is kept out of both key words until the key is up. */
-namespace { int g_b_strip; }
-void profile_punch_taken(void) { g_b_strip = 1; port_host_keys_clear(0x0001); }      /* the title also reads the host key word: clear it on the edge frame too */
-void profile_punch_filter(uint16_t *pressed, unsigned short *held)
-{
-    if (!g_b_strip) return;
-    if ((*pressed | *held) & 0x0001u) {
-        *pressed = (uint16_t)(*pressed & ~0x0001u);
-        *held = (unsigned short)(*held & ~0x0001u);
-        port_host_keys_clear(0x0001);
-    } else {
-        g_b_strip = 0;
-    }
-}
 int profile_name_needed(void) { host_setting_online_colours(0, 0); return host_setting_online_name()[0] == 0; }      /* the colours read also maps an old index key once */
 const char *profile_saved_name(void) { return host_setting_online_name(); }
 
