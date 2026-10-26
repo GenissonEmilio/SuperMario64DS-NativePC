@@ -152,6 +152,22 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
             *held = (unsigned short)(*held & ~strip_conf);
             port_host_keys_clear(strip_conf);
         }
+        /* PROFILE1: THE NAME AND COLOUR POPUP TAKES THE PAD HERE, INSIDE THIS FIRST BLOCK AND BEFORE ANY LATER BLOCK, so it is the first to see the words and
+           the later modal-pad blocks of this hook (INPUTMATRIX1's "the pad is modal for the ? text, the VS note and the wait screen", which zeroes the pad for
+           every online screen) never run while the popup is up: this block returns first. It takes the D-pad and the confirm keys (A / Space, Start / Enter),
+           kept out of the ROM's key words for as long as they are down (strip_conf, as above). Pad B and Backspace are not taken here: they come through
+           the recipe's back route (menu_title_pad_map), which is why the early return leaves them in the words. */
+        {
+            const int up = profile_active();          /* before the call: an OK or BACK inside it closes the popup */
+            const unsigned take = profile_pad(*pressed, *held);
+            if (up) {
+                strip_conf = (unsigned short)(strip_conf | (take & (*pressed | *held)));
+                *pressed = (uint16_t)(*pressed & ~take);
+                *held = (unsigned short)(*held & ~take);
+                port_host_keys_clear((unsigned short)take);
+                return 1;
+            }
+        }
     }
     {
         /* INPUTMATRIX1: THE ? TEXT, THE VS NOTE AND THE WAIT SCREEN ARE MODAL FOR THE PAD. While one is up its close button is the only thing the

@@ -25945,6 +25945,7 @@ endforeach()
 foreach(_tonl2 walk_window walk_window_hires)
     if(TARGET ${_tonl2})
         target_sources(${_tonl2} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_online_draw.cpp")
+        target_sources(${_tonl2} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_online_profile.cpp")      # run after093, lane PROFILE1: the name and colour popup
     endif()
 endforeach()
 if(TARGET smoke_player)

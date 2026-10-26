@@ -9,6 +9,7 @@
 #include <string>
 
 #include "ntr/backup.h"
+#include "host_settings.h"
 
 extern "C" {
 extern int (*port_title_front_door_hook)(void);   /* hal/title_entry.cpp; tests/walk_window.cpp seats it: start the game again at its front door */
@@ -135,6 +136,23 @@ bool apply_plan(const std::string &t, int server) {
     if (server > 0 && server < 1000) { char w[8]; std::snprintf(w, sizeof w, "%d", server); SetEnvironmentVariableA("SM64DS_WORLD_NO", w); }   /* Rich Presence shows the number */
     if (has_name) SetEnvironmentVariableA("SM64DS_PLAYER_NAME", name.c_str());
     if (has_cols) { SetEnvironmentVariableA("SM64DS_PLAYER_COLOR", color.c_str()); SetEnvironmentVariableA("SM64DS_PLAYER_SHOES", shoes.c_str()); }
+    /* PROFILE1: the player's own pick from the in-game popup wins over what the launcher / lobby sent: the saved name is the one every other console
+       reads in the identity message, and the saved colour is exported as the same six-hex-digit pair the launcher's own start uses
+       (hal/comms_sync.cpp gw_rgb_env), so this player's Yoshi and the figure every other console draws for them show it. Nothing saved (the popup
+       always runs before a pick joins, so this is a launcher-started game's own path) leaves the plan's values as they were. */
+    {
+        const char *own = host_setting_online_name();
+        if (own[0]) SetEnvironmentVariableA("SM64DS_PLAYER_NAME", own);
+        unsigned body = 0, shoes = 0;
+        if (host_setting_online_colours(&body, &shoes)) {
+            char b6[8], s6[8];
+            std::snprintf(b6, sizeof b6, "%06X", body & 0xFFFFFFu);
+            std::snprintf(s6, sizeof s6, "%06X", shoes & 0xFFFFFFu);
+            SetEnvironmentVariableA("SM64DS_PLAYER_COLOR", b6);
+            SetEnvironmentVariableA("SM64DS_PLAYER_SHOES", s6);
+            std::fprintf(stderr, "[join] own profile: name \"%s\" body %s shoes %s\n", own, b6, s6);
+        }
+    }
 #ifndef PORT_ROM_CLEAN
     SetEnvironmentVariableA("SM64DS_JOIN_TEST", nullptr);
 #endif
@@ -228,7 +246,7 @@ bool online_join_begin(int file, const char *nick) {
     g_state = kJoinWaiting;
     g_t0 = GetTickCount64();
     g_last_poll = 0;
-    std::fprintf(stderr, "[join] request written: file %d, stamp %llu\n", file, g_stamp);
+    std::fprintf(stderr, "[join] request written: file %d, nick \"%s\", stamp %llu\n", file, n.c_str(), g_stamp);
     std::fflush(stderr);
     return true;
 }
