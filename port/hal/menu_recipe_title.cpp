@@ -838,9 +838,10 @@ static void sv_restore()
    (src/func_ov007_020b0a20.c flag block) and the beat and the wipe follow. The same on a played and an empty save. SM64DS_INTRO_CUT=<ticks> tries another length (dev builds). */
 /* The cut follows the star body on both saves. The ROM picks the star's scale at its tick 0 from the same save test the skip uses (func_ov007_020aebac: the words +0xb..+0xd and
    +4 of the record all zero = no save, src/func_ov007_020b0a20.c: 0x1770 with no save, 0xDAC with one), so a played save shows a smaller star that leaves the top earlier. Measured on the
-   native flight (star blob under 100 pixels): gone at press+88 with no save, press+59 with a save. The cut is that tick on each, so the beat starts 0 ticks after the star body leaves on either.
+   native flight (star blob under 100 pixels): gone at press+88 with no save, press+59 with a save. Tango picked the cut at press+134 on the numbered native sheets, after the sparkle trail: 46 ticks after the star body leaves with no save,
+   and the same 46 after it with a save (105), so the beat starts the same number of ticks after the star on either.
    The played save is known here by the words the port hid from the ROM (g_sv_faked). */
-enum { CH_CUT = 88, CH_CUT_SAVED = 59 };
+enum { CH_CUT = 134, CH_CUT_SAVED = 105 };
 static int g_cut_t = -1;        /* ticks since the press on the attract page (0 on the press tick), -1 = no press */
 static int g_cut_fire;          /* the cut is due: the next pre-tick pad hook applies the skip */
 static int g_cut_len;           /* the cut length chosen at the press */
