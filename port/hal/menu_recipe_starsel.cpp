@@ -102,11 +102,22 @@ void starsel_facts(MenuFacts *f)
      phase, so one press of A starts the act and the first Left / Right moves.
    - the mouse over a star selects it (the ROM's own selection change, without the touch edge that would start the act).
    Added to the pressed word only; the ROM reads the keys itself (native driver). */
+extern "C" void port_host_keys_clear(unsigned short mask);   /* hal/scene_boot.cpp */
+extern "C" unsigned char data_020a0e40;
+extern "C" int data_020a0e58[];
 void starsel_keys(uint16_t *pressed, int)
 {
     unsigned char *o = (unsigned char *)port_scene_live_object();
     if (!o || port_scene_live_id() != kStarScene) return;
     if (SublevelToLevel(data_02092110) > 0xe) return;              /* Bowser / secret courses: the ROM's own star-less screen */
+    {   /* INPUTMATRIX1 (Tango: the pad's south button confirms and east backs in every menu): pad B arrives as the DS A bit, which the ROM takes as
+           a confirm, so east started the act. It is taken out of the pressed, held and host key words here; pad A (the DS B bit, which the ROM
+           also takes as a confirm on this screen) is the confirm, and east does nothing. */
+        unsigned short *hh = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+        *pressed = (uint16_t)(*pressed & ~0x0001u);
+        *hh = (unsigned short)(*hh & ~0x0001u);
+        port_host_keys_clear(0x0001);
+    }
     if (o[0x133] == 1) return;                                      /* the character row: the ROM's own keys */
     const bool charrow = o[0x130] > 1 && data_0209caa0[0x41] == 3;
     uint16_t k = *pressed;

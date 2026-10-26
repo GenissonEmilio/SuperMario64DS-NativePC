@@ -40,6 +40,7 @@ void plank_shape(int kind, int *num, int *den)
     if (id && menu_hostimg_size(id, &w, &h) && w > 0 && h > 0) { *num = w; *den = h; return; }
     switch (kind) {
     case ONL_K_ADV_ONLINE: *num = 944; *den = 320; break;
+    case ONL_K_NAME: *num = 640; *den = 320; break;      /* PROFILE1: no mod picture yet (out/PROFILE1/ART.md): code drawn */
     case ONL_K_HELP: *num = 1; *den = 1; break;
     case ONL_K_VS: *num = 512; *den = 320; break;
     default: *num = 496; *den = 320; break;
@@ -98,6 +99,8 @@ void text_lines(const UiSurface &sf, int kind, int X, int Y, int W, int H, int s
     case ONL_K_BACK: l1 = "BACK"; break;
     case ONL_K_CANCEL: l1 = "CANCEL"; break;
     case ONL_K_SOLO: l1 = "SOLO"; break;
+    case ONL_K_OK: l1 = "OK"; break;
+    case ONL_K_NAME: l1 = "NAME"; break;
     default: return;
     }
     if (!ui_text_ready()) return;
@@ -332,6 +335,7 @@ void menu_online_add_help(MenuLayout *L, int right_edge_x, int top_y, int size_p
 void menu_online_add_modal(MenuLayout *L, const OnlFacts *f)
 {
     if (!f || f->scr == ONL_SCR_NONE) return;
+    if (f->scr == ONL_SCR_PROFILE) { menu_online_profile_modal(L, f); return; }      /* PROFILE1: the name and colour popup builds its own pieces */
     MenuPiece p = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
     p.bg = 1; p.fixdest = 1; p.fx = 0; p.fy = 0; p.fw = (short)L->w; p.fh = (short)L->h;
     p.custom = modal_draw;

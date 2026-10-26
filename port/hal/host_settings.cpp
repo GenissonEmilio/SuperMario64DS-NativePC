@@ -885,6 +885,11 @@ int g_character_strip = 1;
 
 /* KeepLives: 1 keeps each save file's life count in the port's own side file (save/lives.json) and gives it back when that file starts; 0 is the DS, which starts every file with 4 lives. Default 0. Read live. */
 int g_keep_lives = 0;
+char g_online_name[20];      /* PROFILE1: OnlineName, "" until the player set one */
+int g_online_have = 0;       /* PROFILE1: 1 once the player has picked colours (OnlineBodyColor / OnlineShoeColor, or the old OnlineYoshiColor index mapped) */
+unsigned g_online_body, g_online_shoes;   /* 0xRRGGBB */
+int g_online_migrate = 0;    /* the old index key was mapped on this load: write the two new keys once */
+char g_launcher_nick[24];    /* PROFILE1: the launcher's Nickname key, read for the popup's first suggestion only */
 /* FixOriginalBugs (RABBIT1): 1 applies the port's fixes for the cartridge's own bugs (the glowing rabbits rank themselves by catch order). Default 1. Read live. */
 int g_fix_original_bugs = 1;
 
@@ -1558,6 +1563,10 @@ void load_once(void)
     g_rich_presence = 1;
     g_character_strip = 1;
     g_keep_lives = 0;
+    g_online_name[0] = '\0';
+    g_online_have = 0;
+    g_online_migrate = 0;
+    g_launcher_nick[0] = '\0';
     g_fix_original_bugs = 1;
     g_aspect = 0.0;
     g_vs_luigi_infection = 0;
@@ -1762,6 +1771,34 @@ void load_once(void)
         g_online_events = json_bool(text, "OnlineEvents", 1);
         g_character_strip = json_bool(text, "CharacterStrip", 1);
         g_keep_lives = json_bool(text, "KeepLives", 0);
+        /* PROFILE1: the player's Adventure Online name and Yoshi colour. The name is cleaned the way the popup writes it. */
+        {
+            char nm[40];
+            g_online_name[0] = '\0';
+            if (json_str(text, "OnlineName", nm, sizeof nm)) host_online_name_clean(nm, g_online_name, sizeof g_online_name);
+            char hb[16], hs[16];
+            g_online_have = 0;
+            if (json_str(text, "OnlineBodyColor", hb, sizeof hb) && json_str(text, "OnlineShoeColor", hs, sizeof hs) &&
+                host_online_rgb_parse(hb) >= 0 && host_online_rgb_parse(hs) >= 0) {
+                g_online_body = (unsigned)host_online_rgb_parse(hb);
+                g_online_shoes = (unsigned)host_online_rgb_parse(hs);
+                g_online_have = 1;
+            } else {
+                /* a settings.json from before the picker holds the index of the old eight fixed pairs: map it once, the next read writes the new keys */
+                static const char *const kOld[HOST_ONLINE_COLORS][2] = {
+                    { "208B20", "E66218" }, { "FF3139", "004AFF" }, { "6AACE6", "9C089C" }, { "FFCD00", "31AC00" },
+                    { "FF7FBF", "8A1F5C" }, { "20D8E0", "0E5E7A" }, { "8A4FD8", "3A1A7A" }, { "FF8A1E", "7A3A10" } };
+                const int yc = json_int(text, "OnlineYoshiColor", -1);
+                if (yc >= 0 && yc < HOST_ONLINE_COLORS) {
+                    g_online_body = (unsigned)host_online_rgb_parse(kOld[yc][0]);
+                    g_online_shoes = (unsigned)host_online_rgb_parse(kOld[yc][1]);
+                    g_online_have = 1;
+                    g_online_migrate = 1;
+                }
+            }
+            g_launcher_nick[0] = '\0';
+            if (json_str(text, "Nickname", nm, sizeof nm)) host_online_name_clean(nm, g_launcher_nick, sizeof g_launcher_nick);
+        }
         g_fix_original_bugs = json_bool(text, "FixOriginalBugs", 1);
         /* the presentation aspect, read against its own default of 0 (native)
            so a file written before this key existed reads as the 4:3 window.
@@ -3081,6 +3118,23 @@ extern "C" void host_settings_lock_name(const char *path, char *out, int cap)
 #endif
 }
 
+/* PROFILE1: a name is letters, digits and single spaces, trimmed, at most 16 bytes ("" when nothing is left). The same cleaning everywhere it is read or written. */
+extern "C" void host_online_name_clean(const char *in, char *out, size_t cap)
+{
+    size_t n = 0;
+    int pend_space = 0;
+    if (cap == 0) return;
+    for (const char *p = in ? in : ""; *p && n < 16 && n + 1 < cap; ++p) {
+        const unsigned char c = (unsigned char)*p;
+        const int ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+        if (c == ' ') { pend_space = n > 0; continue; }
+        if (!ok) continue;
+        if (pend_space) { if (n + 2 >= cap || n >= 15) break; out[n++] = ' '; pend_space = 0; }
+        out[n++] = (char)c;
+    }
+    out[n] = '\0';
+}
+
 namespace {
 int save_keys(const char *const *keys, const char *const *vals, int n,
               const char *what)
@@ -3447,6 +3501,67 @@ extern "C" int host_setting_set_keep_lives(int on)
     g_keep_lives = on;
     g_poll_flag = 1;
     queue_bool("KeepLives", on);
+    return 1;
+}
+
+extern "C" const char *host_setting_online_name(void)
+{
+    load_once();
+    return g_online_name;
+}
+extern "C" const char *host_setting_launcher_nick(void)
+{
+    load_once();
+    return g_launcher_nick;
+}
+/* "RRGGBB" (six hex digits, either case) -> 0xRRGGBB, -1 when it is anything else */
+extern "C" int host_online_rgb_parse(const char *s)
+{
+    unsigned v = 0;
+    if (!s || strlen(s) != 6) return -1;
+    for (int i = 0; i < 6; ++i) {
+        const char ch = s[i];
+        const int d = (ch >= '0' && ch <= '9') ? ch - '0' : (ch >= 'a' && ch <= 'f') ? ch - 'a' + 10 : (ch >= 'A' && ch <= 'F') ? ch - 'A' + 10 : -1;
+        if (d < 0) return -1;
+        v = v * 16 + (unsigned)d;
+    }
+    return (int)v;
+}
+namespace {
+void online_colours_queue(void)
+{
+    char b[16], s[16];
+    snprintf(b, sizeof b, "\"%06X\"", g_online_body);
+    snprintf(s, sizeof s, "\"%06X\"", g_online_shoes);
+    queue_save("OnlineBodyColor", b);
+    queue_save("OnlineShoeColor", s);
+}
+}  // namespace
+extern "C" int host_setting_online_colours(unsigned *body, unsigned *shoes)
+{
+    load_once();
+    if (g_online_migrate) { g_online_migrate = 0; online_colours_queue(); host_settings_save_flush(); }
+    if (!g_online_have) return 0;
+    if (body) *body = g_online_body;
+    if (shoes) *shoes = g_online_shoes;
+    return 1;
+}
+extern "C" int host_setting_set_online_profile(const char *name, unsigned body, unsigned shoes)
+{
+    char clean[20];
+    load_once();
+    host_online_name_clean(name, clean, sizeof clean);
+    snprintf(g_online_name, sizeof g_online_name, "%s", clean);
+    g_online_body = body & 0xFFFFFFu;
+    g_online_shoes = shoes & 0xFFFFFFu;
+    g_online_have = 1;
+    g_online_migrate = 0;
+    g_poll_flag = 1;
+    char q[32];
+    snprintf(q, sizeof q, "\"%s\"", clean);
+    queue_save("OnlineName", q);
+    online_colours_queue();
+    host_settings_save_flush();
     return 1;
 }
 

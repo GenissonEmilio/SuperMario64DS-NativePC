@@ -452,6 +452,7 @@ void online_overlays(MenuLayout *L, bool main_page, bool show_help)
     if (show_help && of->scr == ONL_SCR_NONE) {
         (void)main_page;      /* 5 units in from the WINDOW's right edge on every page; on the title the wrench stands beside it (wrench_dx) */
         menu_online_add_help(L, L->w - 5 * un / ud, 5 * un / ud, 30 * un / ud);      /* NAME2: 5 units in from the window's right edge, as it is from the top */
+        if (!main_page) menu_online_add_name_plank(L, L->w - 40 * un / ud, 5 * un / ud, 30 * un / ud);      /* PROFILE1: the NAME plank beside the ? on the online file select (5 units gap) */
     }
     menu_online_add_modal(L, of);
 }
@@ -797,6 +798,29 @@ static void sv_fake()
     g_sv_faked = 1;
     if (hal_menu_trace_on()) fprintf(stderr, "[chore] attract holds: save words hidden from the ROM until a press\n");
 }
+static int g_sv_lie;       /* FIELD093K: the record was EMPTY and the words were made non-empty for the press (see sv_press) */
+static char *g_sv_lq;
+/* FIELD093K: a press on the attract with an EMPTY save (a new player). The ROM's skip of the star flight (src/func_ov007_020b0a20.c: the key / touch edge
+   branch) only runs when func_ov007_020aebac() == 0, i.e. when a save exists, so a new player waited the whole 260 tick flight (6 s from the press to the
+   wipe) and a pad / key press did nothing at all. The port shows the ROM a non-empty record for the press, exactly what it already does for a played save
+   (sv_restore): the ROM then takes its own skip and asks for state 10. The words go back to empty once the attract is left. */
+static void sv_press()
+{
+    char *q = sv_rec();
+    if (!q || g_sv_lie) return;
+    if (q[0xb] || q[0xc] || q[0xd] || *(int *)(q + 4)) return;     /* a played save: sv_restore gave the real words */
+    q[0xb] = 1;
+    g_sv_lie = 1;
+    g_sv_lq = q;
+    if (hal_menu_trace_on()) fprintf(stderr, "[chore] press on an empty save: the ROM sees a save for this press (its flight skip)\n");
+}
+static void sv_unlie()
+{
+    if (!g_sv_lie) return;
+    if (g_sv_lq && g_sv_lq == sv_rec()) g_sv_lq[0xb] = 0;
+    g_sv_lie = 0;
+    g_sv_lq = 0;
+}
 static void sv_restore()
 {
     if (!g_sv_faked) return;
@@ -808,7 +832,7 @@ static void sv_restore()
 }
 extern "C" void port_title_press_seen(void)
 {
-    if (g_ch.attract_t >= 6) sv_restore();
+    if (g_ch.attract_t >= 6) { sv_restore(); if (g_last == V_ATTRACT && g_elem == 0) sv_press(); }
     g_press_tick = 1;
     if (g_ch.in_fam && g_ch.mode == CH_INTRO && g_ch.released && g_ch.sw_t < swap_end(g_ch)) g_ch.skip = 1;      /* INTRO2: any new click skips the intro too */
 }   /* the ROM's gate reads input from its frame 4 on */     /* sub_screen.cpp: a touch / click is going into the ROM this frame */
@@ -817,7 +841,7 @@ void chore_rom_writes(int top, int req)
 {
     if (!data_ov007_0210342c) return;
     if (top == 11 && g_ch.attract_t >= 0 && !g_sv_faked && g_ch.attract_t < 8 && g_last == V_ATTRACT) sv_fake();
-    else if (top != 11) sv_restore();
+    else if (top != 11) { sv_restore(); sv_unlie(); }
     if (!ff_on()) return;
     char *g = (char *)data_ov007_0210342c;
     char *sp = *(char **)(g + 8);
@@ -2193,6 +2217,7 @@ static void title_cursor_assist()
     if (p0[0] == 0xff) p0[1] = 0;
 }
 
+extern "C" void port_host_keys_clear(unsigned short mask);   /* hal/scene_boot.cpp */
 static void title_pad_keys(uint16_t *pressed, int host_back, int inject);
 
 void menu_title_pad_map(uint16_t *pressed, int host_back)
@@ -2203,8 +2228,9 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
     int inject = 0;
     {
         int top, elem, req;
-        if (port_title_page_state(&top, &elem, &req) && top == 11 && g_sv_faked && g_ch.attract_t >= 6 && (*pressed & (MENU_PAD_CONFIRM | 0x0001 | 0x0008))) {
+        if (port_title_page_state(&top, &elem, &req) && top == 11 && g_ch.attract_t >= 6 && (g_sv_faked || (g_last == V_ATTRACT && elem == 0)) && (*pressed & (MENU_PAD_CONFIRM | 0x0001 | 0x0008))) {
             sv_restore();
+            if (g_last == V_ATTRACT && elem == 0) sv_press();
             inject = 1;      /* the held word gets the A edge too, so a Start / Enter / Space press is an edge the ROM's gate reads */
         }
         if (g_ch.in_fam && g_ch.sw_t < swap_end(g_ch) && ((*pressed & MENU_PAD_CONFIRM) || g_ch.skip)) {
@@ -2220,9 +2246,10 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
         if (kind) {
             unsigned short *hh = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
             const int punch = kind == 2 && (*pressed & 0x0001);
+            if (host_back && profile_backspace()) host_back = 0;      /* PROFILE1: Backspace edits the name field first (and is BACK on the popup's other rows) */
             if ((host_back || punch) && menu_online_back(kind)) {
                 host_back = 0;
-                if (punch) { *pressed = (uint16_t)(*pressed & ~0x0001u); *hh = (unsigned short)(*hh & ~0x0001u); }
+                if (punch) { *pressed = (uint16_t)(*pressed & ~0x0001u); *hh = (unsigned short)(*hh & ~0x0001u); port_host_keys_clear(0x0001); }
             }
         }
     }
@@ -2245,6 +2272,14 @@ static void title_pad_keys(uint16_t *pressed, int host_back, int inject)
         if (*pressed & 0x0001) host_back = 1;
         *pressed = (uint16_t)(*pressed & ~0x0001u);
         h = (unsigned short)(h & ~0x0001u);
+        port_host_keys_clear(0x0001);     /* INPUTMATRIX1: the title also reads the host key word, which still held the B as the DS A key: B picked the file under the cursor */
+    }
+    /* INPUTMATRIX1: pad B (the DS A bit) is no confirm on the main page either: it is taken out of the held, pressed and host key words before pad A is converted
+       below. (The one-screen page's online back is the hook's, hal/settings_page_hooks.cpp.) */
+    if (g_last == V_MAIN && ((*pressed | h) & 0x0001)) {
+        *pressed = (uint16_t)(*pressed & ~0x0001u);
+        h = (unsigned short)(h & ~0x0001u);
+        port_host_keys_clear(0x0001);
     }
     /* FACE3: the free-draw page has no pad handling in the ROM (touch only): the back key (Backspace, pad B) taps its Yoshi button, the ROM's own box 6, which leaves for the main menu */
     if (host_back && g_last == V_DOODLE && g_elem == 3) {
