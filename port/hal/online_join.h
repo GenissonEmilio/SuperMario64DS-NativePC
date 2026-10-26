@@ -44,6 +44,8 @@ OnlineJoinState online_join_state();
 const char *online_join_sentence();
 /* seconds left of the 20 s wait while kJoinWaiting, else 0 */
 int online_join_seconds_left();
+/* JOINFLOW1: remove every name a join sets from this process (a refused restart, or a cancel on the Joining plate) */
+void online_join_clear_env();
 
 }  // namespace port
 

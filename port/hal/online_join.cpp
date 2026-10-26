@@ -158,6 +158,22 @@ bool apply_plan(const std::string &t, int server) {
 #endif
     char v[2] = { (char)('0' + g_file), 0 };
     SetEnvironmentVariableA("SM64DS_BOOT_FILE", v);
+    /* JOINFLOW1: this start is a join successor. The restarted game reads (and clears) SM64DS_JOIN_QUIET and runs its quiet entry: a plain "Joining" plate
+       over every picture until the adventure is entered (hal/menu_join_plate.cpp). The value is the server number (0 = not known). Games the launcher's own
+       Multiplayer window starts never carry it, so they are untouched. */
+    {
+        char q[8];
+        std::snprintf(q, sizeof q, "%d", (server > 0 && server < 1000) ? server : 0);
+        SetEnvironmentVariableA("SM64DS_JOIN_QUIET", q);
+    }
+#ifndef PORT_ROM_CLEAN
+    /* SM64DS_JOINFLOW_OFFSCREEN=<bmp name with %d>: the restarted game (only) reads back every picture it presents, from its first one (proof knob, compiled out of the kit) */
+    if (const char *dump = std::getenv("SM64DS_JOINFLOW_OFFSCREEN")) {
+        SetEnvironmentVariableA("SM64DS_PRESENT_OFFSCREEN", "1");
+        SetEnvironmentVariableA("SM64DS_PRESENT_OFFSCREEN_EVERY", "1");
+        SetEnvironmentVariableA("SM64DS_PRESENT_OFFSCREEN_BMP", dump);
+    }
+#endif
     std::fprintf(stderr, "[join] plan applied for server %d, file %d: starting the game again at its front door with the hub environment\n", server, g_file);
     std::fflush(stderr);
 #ifndef PORT_ROM_CLEAN
@@ -169,14 +185,12 @@ bool apply_plan(const std::string &t, int server) {
     if (!relaunched) {
         SetEnvironmentVariableA("SM64DS_BOOT_FILE", nullptr);
         /* back to a clean solo process: the hub names set above must not steer the solo file select (online_wanted reads them) */
-        static const char *const k_join_env[] = { "SM64DS_ADVENTURE", "SM64DS_COMMS_RELAY", "SM64DS_COMMS_CODE", "SM64DS_ROOM_KIND",
-            "SM64DS_VOICE_ALLOWED", "SM64DS_HUB_SEAT", "SM64DS_PLAYER_NAME", "SM64DS_PLAYER_COLOR", "SM64DS_PLAYER_SHOES", "SM64DS_WORLD_NO" };
 #ifndef PORT_ROM_CLEAN
         /* SM64DS_JOIN_TEST_RELAUNCH_FAIL=2: keep the names set (replays the behaviour before this clean-up, for the before/after proof) */
         const char *drill = std::getenv("SM64DS_JOIN_TEST_RELAUNCH_FAIL");
         if (!(drill && drill[0] == '2'))
 #endif
-        for (const char *n : k_join_env) SetEnvironmentVariableA(n, nullptr);
+        online_join_clear_env();
 #ifndef PORT_ROM_CLEAN
         char w32[16] = "";
         const DWORD wn = GetEnvironmentVariableA("SM64DS_COMMS_RELAY", w32, sizeof w32);
@@ -219,6 +233,15 @@ int tick_hook() {
 const int g_seated = (port_online_join_tick_hook = tick_hook, 1);
 
 }  // namespace
+
+/* JOINFLOW1: take every name a join sets out of this process again (the restart was refused, or the player cancelled on the Joining plate): the
+   solo file select, the mod rule and the hub all read these. One list for both clean-up paths. */
+void online_join_clear_env() {
+    static const char *const k_join_env[] = { "SM64DS_ADVENTURE", "SM64DS_COMMS_RELAY", "SM64DS_COMMS_CODE", "SM64DS_ROOM_KIND",
+        "SM64DS_VOICE_ALLOWED", "SM64DS_HUB_SEAT", "SM64DS_PLAYER_NAME", "SM64DS_PLAYER_COLOR", "SM64DS_PLAYER_SHOES", "SM64DS_WORLD_NO",
+        "SM64DS_JOIN_QUIET", "SM64DS_BOOT_FILE" };
+    for (const char *n : k_join_env) SetEnvironmentVariableA(n, nullptr);
+}
 
 bool online_join_begin(int file, const char *nick) {
     if (file < 0 || file > 2) file = 0;
