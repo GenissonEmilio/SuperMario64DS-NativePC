@@ -885,6 +885,9 @@ int g_character_strip = 1;
 
 /* KeepLives: 1 keeps each save file's life count in the port's own side file (save/lives.json) and gives it back when that file starts; 0 is the DS, which starts every file with 4 lives. Default 0. Read live. */
 int g_keep_lives = 0;
+char g_online_name[20];      /* PROFILE1: OnlineName, "" until the player set one */
+int g_online_yoshi = -1;     /* PROFILE1: OnlineYoshiColor index, -1 until the player picked one */
+char g_launcher_nick[24];    /* PROFILE1: the launcher's Nickname key, read for the popup's first suggestion only */
 /* FixOriginalBugs (RABBIT1): 1 applies the port's fixes for the cartridge's own bugs (the glowing rabbits rank themselves by catch order). Default 1. Read live. */
 int g_fix_original_bugs = 1;
 
@@ -1558,6 +1561,9 @@ void load_once(void)
     g_rich_presence = 1;
     g_character_strip = 1;
     g_keep_lives = 0;
+    g_online_name[0] = '\0';
+    g_online_yoshi = -1;
+    g_launcher_nick[0] = '\0';
     g_fix_original_bugs = 1;
     g_aspect = 0.0;
     g_vs_luigi_infection = 0;
@@ -1762,6 +1768,16 @@ void load_once(void)
         g_online_events = json_bool(text, "OnlineEvents", 1);
         g_character_strip = json_bool(text, "CharacterStrip", 1);
         g_keep_lives = json_bool(text, "KeepLives", 0);
+        /* PROFILE1: the player's Adventure Online name and Yoshi colour. The name is cleaned the way the popup writes it. */
+        {
+            char nm[40];
+            g_online_name[0] = '\0';
+            if (json_str(text, "OnlineName", nm, sizeof nm)) host_online_name_clean(nm, g_online_name, sizeof g_online_name);
+            const int yc = json_int(text, "OnlineYoshiColor", -1);
+            g_online_yoshi = (yc >= 0 && yc < HOST_ONLINE_COLORS) ? yc : -1;
+            g_launcher_nick[0] = '\0';
+            if (json_str(text, "Nickname", nm, sizeof nm)) host_online_name_clean(nm, g_launcher_nick, sizeof g_launcher_nick);
+        }
         g_fix_original_bugs = json_bool(text, "FixOriginalBugs", 1);
         /* the presentation aspect, read against its own default of 0 (native)
            so a file written before this key existed reads as the 4:3 window.
@@ -3081,6 +3097,23 @@ extern "C" void host_settings_lock_name(const char *path, char *out, int cap)
 #endif
 }
 
+/* PROFILE1: a name is letters, digits and single spaces, trimmed, at most 16 bytes ("" when nothing is left). The same cleaning everywhere it is read or written. */
+extern "C" void host_online_name_clean(const char *in, char *out, size_t cap)
+{
+    size_t n = 0;
+    int pend_space = 0;
+    if (cap == 0) return;
+    for (const char *p = in ? in : ""; *p && n < 16 && n + 1 < cap; ++p) {
+        const unsigned char c = (unsigned char)*p;
+        const int ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+        if (c == ' ') { pend_space = n > 0; continue; }
+        if (!ok) continue;
+        if (pend_space) { if (n + 2 >= cap || n >= 15) break; out[n++] = ' '; pend_space = 0; }
+        out[n++] = (char)c;
+    }
+    out[n] = '\0';
+}
+
 namespace {
 int save_keys(const char *const *keys, const char *const *vals, int n,
               const char *what)
@@ -3447,6 +3480,38 @@ extern "C" int host_setting_set_keep_lives(int on)
     g_keep_lives = on;
     g_poll_flag = 1;
     queue_bool("KeepLives", on);
+    return 1;
+}
+
+extern "C" const char *host_setting_online_name(void)
+{
+    load_once();
+    return g_online_name;
+}
+extern "C" const char *host_setting_launcher_nick(void)
+{
+    load_once();
+    return g_launcher_nick;
+}
+extern "C" int host_setting_online_yoshi_color(void)
+{
+    load_once();
+    return g_online_yoshi;
+}
+extern "C" int host_setting_set_online_profile(const char *name, int color)
+{
+    char clean[20];
+    load_once();
+    host_online_name_clean(name, clean, sizeof clean);
+    if (color < 0 || color >= HOST_ONLINE_COLORS) color = 0;
+    snprintf(g_online_name, sizeof g_online_name, "%s", clean);
+    g_online_yoshi = color;
+    g_poll_flag = 1;
+    char q[32];
+    snprintf(q, sizeof q, "\"%s\"", clean);
+    queue_save("OnlineName", q);
+    queue_int("OnlineYoshiColor", color);
+    host_settings_save_flush();
     return 1;
 }
 
