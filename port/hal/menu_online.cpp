@@ -97,7 +97,7 @@ void join_start(int slot)
     g.wait0 = std::chrono::steady_clock::now();
     set_screen(ONL_SCR_WAIT);
 #if ONL_JOIN_REAL
-    if (!port::online_join_begin(slot, "")) say_fail(port::online_join_sentence());
+    if (!port::online_join_begin(slot, profile_saved_name())) say_fail(port::online_join_sentence());
 #endif
 }
 
@@ -106,6 +106,12 @@ void join_cancel()
 #if ONL_JOIN_REAL
     if (!g.entering) port::online_join_cancel();
 #endif
+}
+
+void open_profile(int pending)
+{
+    profile_open(pending);
+    set_screen(ONL_SCR_PROFILE);
 }
 
 }  // namespace
@@ -132,6 +138,7 @@ void menu_online_facts(OnlFacts *f)
     f->flow = g.flow;
     f->help_files = g.help_files;
     memcpy(f->why, g.why, sizeof f->why);
+    profile_facts(&f->prof);
 }
 
 void menu_online_scene_left(void)
@@ -140,6 +147,7 @@ void menu_online_scene_left(void)
     g.t_toggle = 0;
     g.help_files = 0;
     if (g.scr == ONL_SCR_WAIT) join_cancel();
+    if (g.scr == ONL_SCR_PROFILE) profile_back();
     g.scr = ONL_SCR_NONE;
     /* the medium and g.flow stay: a started online game reads the online save; the next settled main page switches back */
 }
@@ -147,6 +155,7 @@ void menu_online_scene_left(void)
 void menu_online_tick(int top, int elem, int req)
 {
     ++g.tick;
+    if (g.scr == ONL_SCR_PROFILE) profile_tick();
     if (g.scr != ONL_SCR_NONE && g.tick - g.t_scr > 8) g.released_since = 1;
     if (top == 0 && elem == 0 && req == -1) {            /* the main page is settled */
         if ((g.flow || g.med_online) && g.tick - g.t_flow > 40) {
@@ -175,6 +184,14 @@ void menu_online_tick(int top, int elem, int req)
     }
 }
 
+/* PROFILE1: the popup finished (OK saved the name and colour, or BACK). The screen closes; an OK with a file waiting starts the join. */
+void menu_online_profile_done(int ok, int pending_slot)
+{
+    if (g.scr == ONL_SCR_PROFILE) { fprintf(stderr, "[online] profile popup closed (%s)\n", ok ? "ok" : "back"); set_screen(ONL_SCR_NONE); }
+    g.touch_hold = 1;      /* the press that closed it is kept from the ROM underneath until it is lifted */
+    if (ok && pending_slot >= 0) join_start(pending_slot);
+}
+
 static void toggle_on()
 {
     g.on = !g.on;
@@ -201,7 +218,7 @@ int menu_online_press_main(int elem, int edge)
 {
     if (!menu_online_enabled()) return elem == 1 ? 1 : 0;       /* the classic title: the MP / VS plate takes no press, as before */
     if (g.scr != ONL_SCR_NONE) {
-        if (edge) { if (g.released_since) modal_button(); }
+        if (edge && g.scr != ONL_SCR_PROFILE) { if (g.released_since) modal_button(); }
         return 1;
     }
     if (elem == 1) { if (edge) toggle_on(); return 1; }
@@ -226,7 +243,7 @@ int menu_online_press_file(int elem, int edge)
     if (!g.flow) return 0;
     if (edge) fprintf(stderr, "[online] confirm on the online file select, ROM cursor element %d\n", elem);
     if (g.scr != ONL_SCR_NONE) {
-        if (edge) { if (g.released_since) modal_button(); }
+        if (edge && g.scr != ONL_SCR_PROFILE) { if (g.released_since) modal_button(); }
         return 1;
     }
     if (elem == 255 || elem < 0) {                       /* the ROM's cursor is not shown yet: the first confirm only shows it, on file A */
@@ -238,8 +255,13 @@ int menu_online_press_file(int elem, int edge)
     }
     if (elem >= 14 && elem <= 16) {
         if (edge) {
-            fprintf(stderr, "[online] file %d picked: asking the launcher for a server\n", elem - 14);
-            join_start(elem - 14);
+            if (profile_name_needed()) {          /* PROFILE1: the first time, the name and colour popup comes before the join */
+                fprintf(stderr, "[online] file %d picked: no name saved yet, the name popup first\n", elem - 14);
+                open_profile(elem - 14);
+            } else {
+                fprintf(stderr, "[online] file %d picked: asking the launcher for a server\n", elem - 14);
+                join_start(elem - 14);
+            }
         }
         return 1;
     }
@@ -258,6 +280,10 @@ int menu_online_touch(int kind, int down, int sx, int sy)
         return 0;
     }
     if (!menu_online_enabled()) return 0;
+    if (g.scr == ONL_SCR_PROFILE) {         /* PROFILE1: the popup takes every stylus state; the press that closes it is held back like the other screens' */
+        if (edge && g.released_since) profile_touch(sx, sy, 1);
+        return 1;
+    }
     if (g.scr != ONL_SCR_NONE) {
         /* the press that closes the screen keeps being swallowed until the finger is up: the screen is gone on the next frame and the ROM's
            title underneath (the face, the planks) would otherwise see the rest of that same press as a fresh touch */
@@ -282,6 +308,10 @@ int menu_online_touch(int kind, int down, int sx, int sy)
             if (edge) { g.help_files = 1; set_screen(ONL_SCR_HELP); }
             return 1;
         }
+        if (in_box(sx, sy, ONL_NAME_X, ONL_NAME_Y, ONL_NAME_W, ONL_NAME_H)) {           /* PROFILE1: the NAME plank */
+            if (edge) { fprintf(stderr, "[online] NAME plank: the name popup\n"); open_profile(-1); }
+            return 1;
+        }
         int x0, y0, x1, y1;
         for (int id = 14; id <= 16; ++id) {
             if (!elem_box(id, &x0, &y0, &x1, &y1) || !in_box(sx, sy, x0, y0, x1 - x0, y1 - y0)) continue;
@@ -296,7 +326,9 @@ int menu_online_dir(int kind, int cursor, unsigned dirs)
 {
     if (!menu_online_enabled() || g.scr != ONL_SCR_NONE) return 0;
     if (kind == 1 && g.on && cursor == 7 && (dirs & 0x20)) { g.help_files = 0; set_screen(ONL_SCR_HELP); return 1; }          /* wrench, then left */
-    if (kind == 2 && g.flow && (cursor == 14 || cursor == 15 || cursor == 16) && (dirs & 0x40)) { g.help_files = 1; set_screen(ONL_SCR_HELP); return 1; }   /* the file row, then up */
+    if (kind == 2 && g.flow && cursor == 16 && (dirs & 0x40)) { open_profile(-1); return 1; }          /* PROFILE1: file C, then up: the NAME plank above it */
+    if (kind == 2 && g.flow && cursor == 16 && (dirs & 0x10)) { g.help_files = 1; set_screen(ONL_SCR_HELP); return 1; }   /* file C, then right: the ? */
+    if (kind == 2 && g.flow && (cursor == 14 || cursor == 15) && (dirs & 0x40)) { g.help_files = 1; set_screen(ONL_SCR_HELP); return 1; }   /* files A, B, then up: the ? */
     return 0;
 }
 
@@ -311,6 +343,7 @@ int menu_online_help_pad(int kind)
 int menu_online_back(int kind)
 {
     if (!menu_online_enabled()) return 0;
+    if (g.scr == ONL_SCR_PROFILE) { profile_back(); return 1; }
     if (g.scr != ONL_SCR_NONE) { close_screen(); return 1; }
     if (kind == 1 && g.on) { toggle_on(); return 1; }
     return 0;

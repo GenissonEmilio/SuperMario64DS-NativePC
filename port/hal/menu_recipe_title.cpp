@@ -452,6 +452,7 @@ void online_overlays(MenuLayout *L, bool main_page, bool show_help)
     if (show_help && of->scr == ONL_SCR_NONE) {
         (void)main_page;      /* 5 units in from the WINDOW's right edge on every page; on the title the wrench stands beside it (wrench_dx) */
         menu_online_add_help(L, L->w - 5 * un / ud, 5 * un / ud, 30 * un / ud);      /* NAME2: 5 units in from the window's right edge, as it is from the top */
+        if (!main_page) menu_online_add_name_plank(L, L->w - 40 * un / ud, 5 * un / ud, 30 * un / ud);      /* PROFILE1: the NAME plank beside the ? on the online file select (5 units gap) */
     }
     menu_online_add_modal(L, of);
 }
@@ -2220,9 +2221,11 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
         if (kind) {
             unsigned short *hh = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
             const int punch = kind == 2 && (*pressed & 0x0001);
+            if (host_back && profile_backspace()) host_back = 0;      /* PROFILE1: Backspace edits the name field first (and is BACK on the popup's other rows) */
+            profile_punch_filter(pressed, hh);      /* PROFILE1: a pad B that closed a screen stays out of the key words until it is let go */
             if ((host_back || punch) && menu_online_back(kind)) {
                 host_back = 0;
-                if (punch) { *pressed = (uint16_t)(*pressed & ~0x0001u); *hh = (unsigned short)(*hh & ~0x0001u); }
+                if (punch) { *pressed = (uint16_t)(*pressed & ~0x0001u); *hh = (unsigned short)(*hh & ~0x0001u); profile_punch_taken(); }
             }
         }
     }

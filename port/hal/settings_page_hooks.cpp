@@ -151,6 +151,19 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
         g_strip_conf = &strip_conf;
     }
     {
+        /* PROFILE1: while the name and colour popup is up it takes the D-pad and the confirm keys (A / Space, Start / Enter), kept out of the ROM's key words
+           for as long as they are down, like the other confirms this hook takes. Pad B and Backspace come through the recipe's back route. */
+        const unsigned short *heldp = (const unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+        const unsigned take = profile_pad(*pressed, *heldp);
+        if (take) {
+            unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+            if (g_strip_conf) *g_strip_conf = (unsigned short)(*g_strip_conf | (take & (*pressed | *held)));
+            *pressed = (uint16_t)(*pressed & ~take);
+            *held = (unsigned short)(*held & ~take);
+            port_host_keys_clear((unsigned short)take);
+        }
+    }
+    {
         /* NAME1: the D-pad's way to the ? button. The ROM's cursor has nowhere to go from the wrench to the left, nor up from the file row, so the
            step is the online menu's; it is kept out of the held word for as long as the key is down (the ROM builds its key record from it). */
         static unsigned short strip_dirs;

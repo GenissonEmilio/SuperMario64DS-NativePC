@@ -16,10 +16,11 @@
 #define MENU_ONLINE_H
 #include <stdint.h>
 #include "menu_compose.h"
+#include "menu_online_profile.h"
 
-enum { ONL_SCR_NONE = 0, ONL_SCR_VS = 1, ONL_SCR_HELP = 2, ONL_SCR_WAIT = 3, ONL_SCR_FAIL = 4 };
+enum { ONL_SCR_NONE = 0, ONL_SCR_VS = 1, ONL_SCR_HELP = 2, ONL_SCR_WAIT = 3, ONL_SCR_FAIL = 4, ONL_SCR_PROFILE = 5 };   /* PROFILE1: the name and colour popup (hal/menu_online_profile.cpp) */
 /* plank kinds (MenuPiece.wtw of a code drawn plank carries one) */
-enum { ONL_K_ONLINE = 0, ONL_K_ADV_ONLINE = 1, ONL_K_VS = 2, ONL_K_HELP = 3, ONL_K_BACK = 4, ONL_K_CANCEL = 5, ONL_K_ADV = 6, ONL_K_REC = 7, ONL_K_SOLO = 8 };
+enum { ONL_K_ONLINE = 0, ONL_K_ADV_ONLINE = 1, ONL_K_VS = 2, ONL_K_HELP = 3, ONL_K_BACK = 4, ONL_K_CANCEL = 5, ONL_K_ADV = 6, ONL_K_REC = 7, ONL_K_SOLO = 8, ONL_K_OK = 9, ONL_K_NAME = 10 };
 
 struct OnlFacts {
     int magic;          /* ONL_MAGIC when written by menu_online_facts */
@@ -30,10 +31,11 @@ struct OnlFacts {
     int flow;           /* the online file select is the page (ADVENTURE ONLINE was pressed) */
     int help_files;     /* the help screen was opened on the file select (its text differs) */
     char why[96];       /* the FAIL sentence */
+    ProfFacts prof;     /* PROFILE1: the name and colour popup */
 };
 #define ONL_MAGIC 0x4f4e4c31
-#define ONL_FACTS_OFF (1024 - 128)
-static_assert(sizeof(OnlFacts) <= 128, "OnlFacts must fit the tail of MenuFacts.blob");
+#define ONL_FACTS_OFF (1024 - 160)
+static_assert(sizeof(OnlFacts) <= 160, "OnlFacts must fit the tail of MenuFacts.blob");
 
 /* the DS boxes this menu owns (the hook and the pieces agree on them; a click maps proportionally into a piece's box) */
 #define ONL_HELP_X 176
