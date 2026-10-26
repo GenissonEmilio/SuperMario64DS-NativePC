@@ -487,6 +487,7 @@ extern "C" const unsigned char *port_fs_archive_member(unsigned fileID,
                                                        unsigned *len_out);
 extern "C" void DecompressLZ16(void *src, void *dst);
 extern "C" void port_title_press_seen(void);   /* hal/menu_recipe_title.cpp */
+extern "C" void port_title_press_aim(unsigned char *x, unsigned char *y);   /* INTROCUT1: hal/menu_recipe_title.cpp */
 extern "C" int port_host_key_script(int vk);   /* tests/walk_window.cpp: SM64DS_HOST_KEY, 0 when unset */
 
 const unsigned kWallScreen = 0x8401, kWallTiles = 0x8402, kWallPltt = 0x8406;
@@ -2668,7 +2669,7 @@ void poll_touch(void)
     if (down && menu_pause_slide_busy()) down = 0;     /* PAUSE43FIX2: a click while a 4:3 pause slide runs is eaten */
 
     /* ASSET6: a stylus / click / queued press going into the ROM gives the title attract its hidden save words back first */
-    if (down) port_title_press_seen();
+    if (down) { port_title_press_aim(&sx, &sy); port_title_press_seen(); }
 
     /* ---- BYTE +1 IS THE ROM'S CHANGE EDGE, NOT "HELD FOR TWO FRAMES" ------
      *
