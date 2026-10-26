@@ -47,6 +47,7 @@ struct St {
     int entering;              /* JOIN1 started the successor: this process is quitting */
     int pick_slot;
     int help_files;
+    int padfocus, pf_cur, pf_kind;   /* PADNAV1: the pad focus on a host plank (ONL_PF_*), the ROM cursor it was set over, the page kind */
     char why[96];
     std::chrono::steady_clock::time_point wait0;
     int last_down;
@@ -137,6 +138,7 @@ void menu_online_facts(OnlFacts *f)
     f->scr_age = (int)(g.tick - g.t_scr);
     f->flow = g.flow;
     f->help_files = g.help_files;
+    f->padfocus = g.scr == ONL_SCR_NONE ? g.padfocus : 0;
     memcpy(f->why, g.why, sizeof f->why);
     profile_facts(&f->prof);
 }
@@ -214,9 +216,22 @@ static void modal_button()
     close_screen();
 }
 
+/* PADNAV1: a confirm while the pad focus is on a host plank (the ? or NAME): it opens that plank's screen; the ROM never sees it */
+static int pad_focus_press(int kind, int edge)
+{
+    if (!g.padfocus || g.scr != ONL_SCR_NONE) return 0;
+    if (edge) {
+        if (hal_menu_trace_on()) fprintf(stderr, "[padnav] confirm on the focused plank %d\n", g.padfocus);
+        if (g.padfocus == ONL_PF_HELP) { g.help_files = kind == 2; set_screen(ONL_SCR_HELP); }
+        else if (g.padfocus == ONL_PF_NAME && kind == 2) { fprintf(stderr, "[online] NAME plank: the name popup (pad)\n"); open_profile(-1); }
+    }
+    return 1;
+}
+
 int menu_online_press_main(int elem, int edge)
 {
     if (!menu_online_enabled()) return elem == 1 ? 1 : 0;       /* the classic title: the MP / VS plate takes no press, as before */
+    if (pad_focus_press(1, edge)) return 1;
     if (g.scr != ONL_SCR_NONE) {
         if (edge && g.scr != ONL_SCR_PROFILE) { if (g.released_since) modal_button(); }
         return 1;
@@ -241,6 +256,7 @@ int menu_online_press_main(int elem, int edge)
 int menu_online_press_file(int elem, int edge)
 {
     if (!g.flow) return 0;
+    if (pad_focus_press(2, edge)) return 1;
     if (edge) fprintf(stderr, "[online] confirm on the online file select, ROM cursor element %d\n", elem);
     if (g.scr != ONL_SCR_NONE) {
         if (edge && g.scr != ONL_SCR_PROFILE) { if (g.released_since) modal_button(); }
@@ -274,6 +290,7 @@ int menu_online_touch(int kind, int down, int sx, int sy)
 {
     const int edge = down && !g.last_down;
     g.last_down = down;
+    if (edge) g.padfocus = 0;       /* PADNAV1: a mouse press is not the pad focus */
     if (!down) {
         g.released_since = 1;
         g.touch_hold = 0;
@@ -321,15 +338,63 @@ int menu_online_touch(int kind, int down, int sx, int sy)
     return 0;
 }
 
-/* a D-pad step (DS bits 0x10 right, 0x20 left, 0x40 up, 0x80 down) the ROM's cursor cannot take: the way to the ? button. 1 = taken. */
+void menu_online_pad_frame(int kind, int cursor)
+{
+    if (kind != g.pf_kind) { g.pf_kind = kind; g.padfocus = 0; }
+    if (g.padfocus && cursor != g.pf_cur) g.padfocus = 0;     /* the mouse moved the ROM cursor */
+}
+
+static void rom_cursor_to(int id)
+{
+    if (!data_ov007_02103360) return;
+    short *p0 = *(short **)data_ov007_02103360;
+    if (p0) p0[1] = (short)id;
+}
+
+/* PADNAV1: THE PAD'S D-PAD GRAPH of the online menu's pages, by element, never by pixel distance (the planks sit at the window edges on wide windows).
+   dirs are DS bits 0x10 right, 0x20 left, 0x40 up, 0x80 down. 1 = the step is the host's (the ROM never sees it).
+   File select (solo and online), the ROM's elements 14 / 15 / 16 = files A / B / C, 21 = FILE OPTIONS, 20 = the back arrow; online also the NAME and ? planks:
+       A: right B, down FILE OPTIONS, up NAME        NAME: right ?, down B
+       B: left A, right C, down FILE OPTIONS, up NAME   ?: left NAME, down C
+       C: left B, down back arrow, up ?
+       FILE OPTIONS: up A, right back arrow      back arrow: up C, left FILE OPTIONS
+   Online title: from the wrench left to the ?, from the ? right to the wrench and down to the right plank; the ROM keeps the planks and the wrench otherwise.
+   Nothing opens a screen by a step: A on the focused ? / NAME does (pad_focus_press). The first step with the ROM's cursor hidden shows it on file A. */
 int menu_online_dir(int kind, int cursor, unsigned dirs)
 {
-    if (!menu_online_enabled() || g.scr != ONL_SCR_NONE) return 0;
-    if (kind == 1 && g.on && cursor == 7 && (dirs & 0x20)) { g.help_files = 0; set_screen(ONL_SCR_HELP); return 1; }          /* wrench, then left */
-    if (kind == 2 && g.flow && cursor == 16 && (dirs & 0x40)) { open_profile(-1); return 1; }          /* PROFILE1: file C, then up: the NAME plank above it */
-    if (kind == 2 && g.flow && cursor == 16 && (dirs & 0x10)) { g.help_files = 1; set_screen(ONL_SCR_HELP); return 1; }   /* file C, then right: the ? */
-    if (kind == 2 && g.flow && (cursor == 14 || cursor == 15) && (dirs & 0x40)) { g.help_files = 1; set_screen(ONL_SCR_HELP); return 1; }   /* files A, B, then up: the ? */
-    return 0;
+    if (!menu_online_enabled() || g.scr != ONL_SCR_NONE || !dirs) return 0;
+    const int d = (dirs & 0x10) ? 0x10 : (dirs & 0x20) ? 0x20 : (dirs & 0x40) ? 0x40 : (dirs & 0x80) ? 0x80 : 0;
+    if (!d) return 0;
+    if (kind == 1) {
+        if (!g.on) return 0;
+        if (g.padfocus == ONL_PF_HELP) {
+            if (hal_menu_trace_on()) fprintf(stderr, "[padnav] title: focus 100 (the ?), step 0x%x -> %d\n", d, d == 0x10 ? 7 : d == 0x80 ? 2 : 100);
+            if (d == 0x10) { g.padfocus = 0; rom_cursor_to(7); }
+            else if (d == 0x80) { g.padfocus = 0; rom_cursor_to(2); }
+            return 1;
+        }
+        if (cursor == 7 && d == 0x20) { g.padfocus = ONL_PF_HELP; g.pf_cur = cursor; if (hal_menu_trace_on()) fprintf(stderr, "[padnav] title: focus 7 (wrench), step 0x20 -> 100 (the ?)\n"); return 1; }
+        return 0;
+    }
+    if (kind != 2) return 0;
+    int node = g.padfocus ? g.padfocus : cursor;
+    if (!g.padfocus && (cursor == 255 || cursor < 0)) { rom_cursor_to(14); return 1; }
+    if (!g.padfocus && cursor != 14 && cursor != 15 && cursor != 16 && cursor != 20 && cursor != 21) return 0;
+    int next = -1;
+    switch (node) {          /* ROM elements: 14 / 15 / 16 files, 21 FILE OPTIONS, 20 the back arrow (the order of the page's hotspots, hal/menu_recipe_title.cpp fids) */
+    case 14: next = d == 0x10 ? 15 : d == 0x80 ? 21 : d == 0x40 ? (g.flow ? ONL_PF_NAME : -1) : -1; break;
+    case 15: next = d == 0x20 ? 14 : d == 0x10 ? 16 : d == 0x80 ? 21 : d == 0x40 ? (g.flow ? ONL_PF_NAME : -1) : -1; break;
+    case 16: next = d == 0x20 ? 15 : d == 0x80 ? 20 : d == 0x40 ? (g.flow ? ONL_PF_HELP : -1) : -1; break;
+    case 21: next = d == 0x40 ? 14 : d == 0x10 ? 20 : -1; break;
+    case 20: next = d == 0x40 ? 16 : d == 0x20 ? 21 : -1; break;
+    case ONL_PF_NAME: next = d == 0x10 ? ONL_PF_HELP : d == 0x80 ? 15 : -1; break;
+    case ONL_PF_HELP: next = d == 0x20 ? ONL_PF_NAME : d == 0x80 ? 16 : -1; break;
+    default: break;
+    }
+    if (hal_menu_trace_on()) fprintf(stderr, "[padnav] file select: focus %d, step 0x%x -> %d%s\n", node, d, next >= 0 ? next : node, next >= 0 ? "" : " (edge, stays)");
+    if (next >= 100) { g.padfocus = next; g.pf_cur = cursor; }
+    else if (next >= 0) { g.padfocus = 0; rom_cursor_to(next); }
+    return 1;
 }
 
 int menu_online_help_pad(int kind)

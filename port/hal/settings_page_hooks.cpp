@@ -196,6 +196,7 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
         strip_dirs = (unsigned short)(strip_dirs & *held);
         const unsigned dirs = *pressed & 0x00f0u;
         const int kind = title_main_page() ? 1 : title_file_page() ? 2 : 0;
+        if (menu_online_enabled()) menu_online_pad_frame(kind, title_cursor_elem());
         if (kind && dirs && menu_online_dir(kind, title_cursor_elem(), dirs)) strip_dirs = (unsigned short)(strip_dirs | dirs);
         if (strip_dirs) {
             *pressed = (uint16_t)(*pressed & ~strip_dirs);

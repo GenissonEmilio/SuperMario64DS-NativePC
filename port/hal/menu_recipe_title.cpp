@@ -457,6 +457,13 @@ void online_overlays(MenuLayout *L, bool main_page, bool show_help)
         (void)main_page;      /* 5 units in from the WINDOW's right edge on every page; on the title the wrench stands beside it (wrench_dx) */
         menu_online_add_help(L, L->w - 5 * un / ud, 5 * un / ud, 30 * un / ud);      /* NAME2: 5 units in from the window's right edge, as it is from the top */
         if (!main_page) menu_online_add_name_plank(L, L->w - 40 * un / ud, 5 * un / ud, 30 * un / ud);      /* PROFILE1: the NAME plank beside the ? on the online file select (5 units gap) */
+        if (of->padfocus) {      /* PADNAV1: the pad focus is on the ? or NAME plank: the cursor arrow points up at it from below (the plank is lit too) */
+            const int hpx = 30 * un / ud;
+            const int right = of->padfocus == ONL_PF_HELP ? L->w - 5 * un / ud : L->w - 40 * un / ud;
+            const int pw = of->padfocus == ONL_PF_HELP ? hpx : menu_online_plank_w(ONL_K_NAME, hpx);
+            const int aw = 18 * un / ud, ah = aw * 15 / 22;
+            menu_online_add_arrow(L, 1, right - pw / 2 - aw / 2, 5 * un / ud + hpx + un / ud, aw, ah);
+        }
     }
     menu_online_add_modal(L, of);
 }
@@ -593,7 +600,8 @@ void build_main(MenuLayout *L, bool intro)
        the plank under it. */
     /* NAME2: without the mod's pictures the arrow is the code's own copy of the same art (the ROM's own is skipped at submit, title_skip) */
     const bool art_arrows = planks && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN);
-    if ((cur == 7 || (cur >= 0 && cur <= 2))) {
+    const OnlFacts *pfm = onl_facts_of(L);     /* PADNAV1: no arrow over the wrench while the pad focus is on the ? */
+    if ((cur == 7 || (cur >= 0 && cur <= 2)) && !(pfm && pfm->padfocus)) {
         static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };       /* the plank pulse's cadence, in half units */
         const int fr = t_f ? t_f->frame : 0;
         const int bob2 = kBob[fr & 7];
@@ -1310,7 +1318,8 @@ void build_main_pc(MenuLayout *L, bool intro)
             if (!toy) menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
         }
         /* the selection arrow, once the planks have landed */
-        if (landed && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) && (cur == 7 || (cur >= 0 && cur <= 2))) {
+        const OnlFacts *pfl = onl_facts_of(L);      /* PADNAV1: no cursor arrow here while the pad focus is on the ? */
+        if (landed && !(pfl && pfl->padfocus) && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) && (cur == 7 || (cur >= 0 && cur <= 2))) {
             static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
             const int fr = t_f ? t_f->frame : 0;
             const int bob2 = kBob[fr & 7];
@@ -2091,7 +2100,8 @@ void file_pages_build(int variant, MenuLayout *L)
     }
     /* POLISH1A: the HD orange cursor arrow where the ROM's sprite was (kept this frame or the one before: the page and the sprite are
        submitted by the same Render), same 22 x 15 DS footprint, tip anchored at the bottom centre; drawn over the plates */
-    if (variant == V_FILES && t_f && g_oa_frame >= 0 && t_f->frame - g_oa_frame <= 1 &&
+    const OnlFacts *pfo = onl_facts_of(L);     /* PADNAV1: with the pad focus on the ? or NAME plank the cursor arrow is not drawn (the plank is lit instead) */
+    if (variant == V_FILES && t_f && g_oa_frame >= 0 && t_f->frame - g_oa_frame <= 1 && !(pfo && pfo->padfocus) &&
         menu_hostimg_ready(MENU_IMG_ARROW_ORANGE)) {
         const int un = L->unum, ud = L->uden;
         const int dw = 22 * un / ud, dh = 15 * un / ud;

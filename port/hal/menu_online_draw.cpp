@@ -328,7 +328,8 @@ void menu_online_add_arrow(MenuLayout *L, int up, int fx, int fy, int fw, int fh
 
 void menu_online_add_help(MenuLayout *L, int right_edge_x, int top_y, int size_px)
 {
-    const int ip = menu_online_add_plank(L, ONL_K_HELP, right_edge_x - size_px, top_y, size_px, size_px, ONL_HELP_X, ONL_HELP_Y, ONL_HELP_W, ONL_HELP_H, 0, 0, 0, 1, 0);
+    const OnlFacts *pf = onl_facts_of(L);      /* PADNAV1: lit while the pad focus is on it */
+    const int ip = menu_online_add_plank(L, ONL_K_HELP, right_edge_x - size_px, top_y, size_px, size_px, ONL_HELP_X, ONL_HELP_Y, ONL_HELP_W, ONL_HELP_H, pf && pf->padfocus == ONL_PF_HELP ? 1 : 0, 0, 0, 1, 0);
     if (ip >= 0) menu_add_hotspot(L, ip, ONL_HELP_X, ONL_HELP_Y, ONL_HELP_W, ONL_HELP_H, -1);
 }
 
