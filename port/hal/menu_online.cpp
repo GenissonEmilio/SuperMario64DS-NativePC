@@ -308,6 +308,8 @@ int menu_online_help_pad(int kind)
     return 0;
 }
 
+int menu_online_modal_up(void) { return menu_online_enabled() && g.scr != ONL_SCR_NONE; }
+
 int menu_online_back(int kind)
 {
     if (!menu_online_enabled()) return 0;

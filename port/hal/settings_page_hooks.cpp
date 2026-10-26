@@ -151,6 +151,25 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
         g_strip_conf = &strip_conf;
     }
     {
+        /* INPUTMATRIX1: THE ? TEXT, THE VS NOTE AND THE WAIT SCREEN ARE MODAL FOR THE PAD. While one is up its close button is the only thing the
+           pad can reach: A, B and Start close it, and nothing else of the pad (the D-pad, the other buttons) reaches the ROM's title or file select
+           underneath until it is closed (the mouse already behaved so). The closing key stays out of the ROM until it is up (strip_conf). */
+        const int mk = title_main_page() ? 1 : title_file_page() ? 2 : 0;
+        if (mk && menu_online_modal_up()) {
+            unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+            const uint16_t cb = 0x0001 | 0x0002 | 0x0008;
+            if (*pressed & cb) {
+                if (mk == 1) menu_online_press_main(title_cursor_elem(), 1);
+                else menu_online_press_file(title_cursor_elem(), 1);
+            }
+            if (g_strip_conf) *g_strip_conf = (unsigned short)(*g_strip_conf | (cb & (*pressed | *held)));
+            *pressed = 0;
+            *held = 0;
+            port_host_keys_clear(0xffff);
+            return 1;
+        }
+    }
+    {
         /* NAME1: the D-pad's way to the ? button. The ROM's cursor has nowhere to go from the wrench to the left, nor up from the file row, so the
            step is the online menu's; it is kept out of the held word for as long as the key is down (the ROM builds its key record from it). */
         static unsigned short strip_dirs;
