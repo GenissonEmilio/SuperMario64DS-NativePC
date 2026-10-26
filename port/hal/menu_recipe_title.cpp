@@ -49,6 +49,7 @@ int port_title_elem_live(int slot);      /* MENUS093E: the ROM would take a touc
 int port_title_page_state(int *top, int *elem, int *req);
 int port_scene_live_id(void);
 void func_ov007_020bdeb0(int idx);
+void func_ov007_020bde70(int idx, int arg);      /* INTROCUT1: stops the sequence started under that id, fading over arg ticks */
 int hal_menu_touch_queue_press(int dsx, int dsy);
 }
 
@@ -2256,6 +2257,9 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
         if (got && top == 11 && g_cut_fire) {
             sv_restore();
             sv_press();
+            func_ov007_020bde70(0x34, 0x1e);      /* the flight's own sound ends with the flight (the skip block stops 0x32 / 0x33, which are not the ones playing) */
+            func_ov007_020bde70(0x32, 0x1e);
+            func_ov007_020bde70(0x33, 0x1e);
             inject = 1;      /* the held word gets the A edge: the ROM's gate reads an edge */
             if (hal_menu_trace_on()) fprintf(stderr, "[chore] the skip is applied (flight tick %d)\n", g_cut_t);
         }
