@@ -68,9 +68,10 @@ int g_star0;           /* the star count while it was shut: the ROM's star has b
 
 enum { MAX_ROWS = 5 };   /* visible list rows (the layout shows five) */
 
+/* CHARLOCK1: flags2 bit c (SaveData::IsCharacterUnlocked); Yoshi always, the character every file starts with (SetDefaultValues) */
 int rom_char_unlocked(int c)
 {
-    return c == 0 || (*(int *)(data_0209caa0 + 8) & (1 << c)) != 0;
+    return c == 3 || (*(int *)(data_0209caa0 + 8) & (1 << c)) != 0;
 }
 
 void build_list(int cur)

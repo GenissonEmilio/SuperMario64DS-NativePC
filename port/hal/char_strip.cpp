@@ -83,9 +83,13 @@ int g_ready;               /* every device was seen released once since the stri
 
 unsigned char ob(const void *o, int off) { return ((const unsigned char *)o)[off]; }
 
+/* CHARLOCK1: the ROM characters this save file has. The cartridge keeps them in the record's flags2 word (data_0209caa0 + 8): bit 0 Mario,
+   1 Luigi, 2 Wario, set at their doors; SaveData::IsCharacterUnlocked (src/engine/save/SaveData.cpp) is flags2 & (1 << c) with no exception, and
+   SaveData::SetDefaultValues starts every file with Yoshi only (flags2 |= 8, character byte 3). Mario was listed always here, so a new file
+   offered him. Yoshi is always listed: the star select's own row never tests his bit (d_s_star_sel_methods.cpp tests i < 3). */
 int rom_unlocked(int c)
 {
-    if (c == 0 || (*(int *)(data_0209caa0 + 8) & (1 << c)) != 0) return 1;
+    if (c == 3 || (*(int *)(data_0209caa0 + 8) & (1 << c)) != 0) return 1;
 #ifndef PORT_ROM_CLEAN
     /* SM64DS_STRIP_UNLOCK=<mask>: proof runs only, the characters (bit n) the strip lists although the save has not got them yet; the ROM's save is not touched */
     static int extra = -1;
