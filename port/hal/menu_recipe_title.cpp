@@ -49,6 +49,10 @@ int port_title_elem_live(int slot);      /* MENUS093E: the ROM would take a touc
 int port_title_page_state(int *top, int *elem, int *req);
 int port_scene_live_id(void);
 void func_ov007_020bdeb0(int idx);
+void func_ov007_020bde70(int idx, int arg);      /* INTROCUT1: stops the sequence started under that id, fading over arg ticks */
+int hal_menu_touch_queue_press(int dsx, int dsy);
+void *func_ov007_020b3f20(int idx);      /* ROUND5: the title's resource table lookup */
+extern char data_ov007_02104bc8[];       /* ROUND5: the star objects' second animation pointers (8 byte slots, one per object) */
 }
 
 namespace {
@@ -453,6 +457,13 @@ void online_overlays(MenuLayout *L, bool main_page, bool show_help)
         (void)main_page;      /* 5 units in from the WINDOW's right edge on every page; on the title the wrench stands beside it (wrench_dx) */
         menu_online_add_help(L, L->w - 5 * un / ud, 5 * un / ud, 30 * un / ud);      /* NAME2: 5 units in from the window's right edge, as it is from the top */
         if (!main_page) menu_online_add_name_plank(L, L->w - 40 * un / ud, 5 * un / ud, 30 * un / ud);      /* PROFILE1: the NAME plank beside the ? on the online file select (5 units gap) */
+        if (of->padfocus) {      /* PADNAV1: the pad focus is on the ? or NAME plank: the cursor arrow points up at it from below (the plank is lit too) */
+            const int hpx = 30 * un / ud;
+            const int right = of->padfocus == ONL_PF_HELP ? L->w - 5 * un / ud : L->w - 40 * un / ud;
+            const int pw = of->padfocus == ONL_PF_HELP ? hpx : menu_online_plank_w(ONL_K_NAME, hpx);
+            const int aw = 18 * un / ud, ah = aw * 15 / 22;
+            menu_online_add_arrow(L, 1, right - pw / 2 - aw / 2, 5 * un / ud + hpx + un / ud, aw, ah);
+        }
     }
     menu_online_add_modal(L, of);
 }
@@ -589,7 +600,8 @@ void build_main(MenuLayout *L, bool intro)
        the plank under it. */
     /* NAME2: without the mod's pictures the arrow is the code's own copy of the same art (the ROM's own is skipped at submit, title_skip) */
     const bool art_arrows = planks && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN);
-    if ((cur == 7 || (cur >= 0 && cur <= 2))) {
+    const OnlFacts *pfm = onl_facts_of(L);     /* PADNAV1: no arrow over the wrench while the pad focus is on the ? */
+    if ((cur == 7 || (cur >= 0 && cur <= 2)) && !(pfm && pfm->padfocus)) {
         static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };       /* the plank pulse's cadence, in half units */
         const int fr = t_f ? t_f->frame : 0;
         const int bob2 = kBob[fr & 7];
@@ -830,9 +842,48 @@ static void sv_restore()
     g_sv_q = 0;
     if (hal_menu_trace_on()) fprintf(stderr, "[chore] press: save words given back\n");
 }
+/* INTROCUT1 (Tango, round 18): the press no longer cuts the star's flight at once. The ROM's own flight runs (a touch on the star starts it: src/func_ov007_020b0da0.c, box
+   x 0x60..0xa0, y 0x40..0x80; it stops the idle loop sound and starts the flight sound by itself) and CH_CUT ticks after the press, when the star is off the top of the picture,
+   the skip is applied: the ROM is shown a save (the real words on a played save, a marker word on an empty one) and a key edge, which is the ROM's own skip of the rest of the flight
+   (src/func_ov007_020b0a20.c flag block) and the beat and the wipe follow. The same on a played and an empty save. SM64DS_INTRO_CUT=<ticks> tries another length (dev builds). */
+/* One cut length for both saves: a played save is made to look and fly exactly like the empty one (the star's scale is put to the no-save value right after the ROM's
+   tick 0, see chore_rom_writes), so the star body leaves at press+88 on either (measured on the native flight, blob under 100 pixels). Tango picked the cut at press+134 on the numbered
+   native sheets, after the sparkle trail, 46 ticks after the star body. */
+enum { CH_CUT = 134 };
+static int g_cut_t = -1;        /* ticks since the press on the attract page (0 on the press tick), -1 = no press */
+static int g_cut_fire;          /* the cut is due: the next pre-tick pad hook applies the skip */
+static int g_cut_len;           /* the cut length chosen at the press */
+static int cut_len_for()
+{
+    static int len = -1;
+    if (len < 0) {
+        len = CH_CUT;
+#ifndef PORT_ROM_CLEAN
+        const char *e = getenv("SM64DS_INTRO_CUT");     /* dev only: another cut length in ticks */
+        if (e && *e) len = atoi(e);
+#endif
+        if (len < 1) len = 1;
+    }
+    return len;
+}
+static bool cut_ready() { return g_cut_t < 0 && g_last == V_ATTRACT && g_elem == 0 && g_ch.attract_t >= 6 && ff_on(); }
+static void cut_begin()
+{
+    if (!cut_ready()) return;
+    g_cut_t = 0;
+    g_cut_fire = 0;
+    g_cut_len = cut_len_for();
+    if (hal_menu_trace_on()) fprintf(stderr, "[chore] press on the attract (%s save): the ROM's flight runs, the skip comes in %d ticks\n", g_sv_faked ? "a" : "no", g_cut_len);
+}
+/* a touch / click going into the ROM on the attract page that has not started its flight yet is aimed at the star (the ROM only starts the flight on a touch inside the star's box) */
+extern "C" void port_title_press_aim(unsigned char *x, unsigned char *y)
+{
+    if (!cut_ready()) return;
+    *x = 128; *y = 96;
+}
 extern "C" void port_title_press_seen(void)
 {
-    if (g_ch.attract_t >= 6) { sv_restore(); if (g_last == V_ATTRACT && g_elem == 0) sv_press(); }
+    cut_begin();
     g_press_tick = 1;
     if (g_ch.in_fam && g_ch.mode == CH_INTRO && g_ch.released && g_ch.sw_t < swap_end(g_ch)) g_ch.skip = 1;      /* INTRO2: any new click skips the intro too */
 }   /* the ROM's gate reads input from its frame 4 on */     /* sub_screen.cpp: a touch / click is going into the ROM this frame */
@@ -840,8 +891,26 @@ extern "C" void port_title_press_seen(void)
 void chore_rom_writes(int top, int req)
 {
     if (!data_ov007_0210342c) return;
-    if (top == 11 && g_ch.attract_t >= 0 && !g_sv_faked && g_ch.attract_t < 8 && g_last == V_ATTRACT) sv_fake();
+    if (top == 11 && g_ch.attract_t >= 0 && !g_sv_faked && g_ch.attract_t < 8 && g_last == V_ATTRACT) {
+        sv_fake();
+        /* ROUND5: the ROM reads the save record at its attract tick 0 (src/func_ov007_020b0a20.c, mode 0: the star's scale is 0xDAC with a save, 0x1770 with none) and the port can hide the
+           words only after that tick has run, so a played save showed the small star and, at the press, its other (popping, twice edge-on) flight. The words are hidden from tick 1 on, so the
+           scale (element +0x40 / +0x44 / +0x48 of the attract object, the three words tick 0 sets together) is put to the no-save value by hand here, once, right after tick 0. */
+        if (g_sv_faked && data_ov007_0210342c) {
+            char *gg = (char *)data_ov007_0210342c;
+            char *s100 = *(char **)(gg + 0x100);
+            char *el = s100 ? *(char **)(s100 + 4) : 0;
+            if (el) {
+                *(int *)(el + 0x40) = 0x1770; *(int *)(el + 0x44) = 0x1770; *(int *)(el + 0x48) = 0x1770;
+                /* and the animation: beaa0 (src/func_ov007_020beaa0.c) picked resource 0xe with no save and 0xf with one for the two star objects (p0 = 0, 1), the "other flight" */
+                for (int p0 = 0; p0 < 2; ++p0) *(void **)(data_ov007_02104bc8 + 8 * p0) = func_ov007_020b3f20(0xe);
+                if (hal_menu_trace_on()) fprintf(stderr, "[chore] played save: the star's scale put to the no-save value (0x1770)\n");
+            }
+        }
+    }
     else if (top != 11) { sv_restore(); sv_unlie(); }
+    if (top == 11 && g_cut_t >= 0) { if (++g_cut_t >= g_cut_len) g_cut_fire = 1; }
+    else if (top != 11) { g_cut_t = -1; g_cut_fire = 0; }
     if (!ff_on()) return;
     char *g = (char *)data_ov007_0210342c;
     char *sp = *(char **)(g + 8);
@@ -1249,7 +1318,8 @@ void build_main_pc(MenuLayout *L, bool intro)
             if (!toy) menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
         }
         /* the selection arrow, once the planks have landed */
-        if (landed && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) && (cur == 7 || (cur >= 0 && cur <= 2))) {
+        const OnlFacts *pfl = onl_facts_of(L);      /* PADNAV1: no cursor arrow here while the pad focus is on the ? */
+        if (landed && !(pfl && pfl->padfocus) && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) && (cur == 7 || (cur >= 0 && cur <= 2))) {
             static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
             const int fr = t_f ? t_f->frame : 0;
             const int bob2 = kBob[fr & 7];
@@ -2030,7 +2100,8 @@ void file_pages_build(int variant, MenuLayout *L)
     }
     /* POLISH1A: the HD orange cursor arrow where the ROM's sprite was (kept this frame or the one before: the page and the sprite are
        submitted by the same Render), same 22 x 15 DS footprint, tip anchored at the bottom centre; drawn over the plates */
-    if (variant == V_FILES && t_f && g_oa_frame >= 0 && t_f->frame - g_oa_frame <= 1 &&
+    const OnlFacts *pfo = onl_facts_of(L);     /* PADNAV1: with the pad focus on the ? or NAME plank the cursor arrow is not drawn (the plank is lit instead) */
+    if (variant == V_FILES && t_f && g_oa_frame >= 0 && t_f->frame - g_oa_frame <= 1 && !(pfo && pfo->padfocus) &&
         menu_hostimg_ready(MENU_IMG_ARROW_ORANGE)) {
         const int un = L->unum, ud = L->uden;
         const int dw = 22 * un / ud, dh = 15 * un / ud;
@@ -2121,24 +2192,8 @@ static void menu_title_build_impl(int variant, MenuLayout *L)
         menu_add_piece(L, p);
         L->backdrop = MENU_BACKDROP_TOP_AS_IS;
         L->stage = MENU_STAGE_POST_FADE;
-        /* the star: the ROM takes its own off the picture on the press frame, so ours (cut from the ROM's render, hd_ui/menu/title_star.png of the HD UI Textures mod)
-           takes its place and flies up off the top edge, accelerating (the ROM's flight measured 16 frames from the middle of the screen
-           to off the top) */
-        if (menu_hostimg_ready(MENU_IMG_STAR) && t_f->ch.fly_t >= 0) {
-            const int un = L->unum, ud = L->uden;
-            const float ft = (float)t_f->ch.fly_t;
-            const float cy = 91.6f - 0.55f * ft * ft;                  /* DS pixels, the star's centre */
-            int sw = 1, sh = 1;
-            menu_hostimg_size(MENU_IMG_STAR, &sw, &sh);
-            const int dw = 25 * un / ud, dh = (int)((long long)dw * sh / sw);
-            if (cy > -16.f) {
-                MenuPiece st = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
-                st.bg = 1; st.hostimg = MENU_IMG_STAR; st.nofade = 1; st.lden = 1; st.lnum = 1; st.fw = (short)dw; st.fh = (short)dh;
-                st.fx = (short)(L->w / 2 + (int)((127.6f - 128.f) * (float)un / (float)ud) - dw / 2);
-                st.fy = (short)((int)(cy * (float)un / (float)ud) - dh / 2 + (L->h - 192 * un / ud) / 2);
-                menu_add_piece(L, st);
-            }
-        }
+        /* INTROCUT1: no host star here any more. The press no longer cuts the ROM's flight, so its own star has already left the top of the picture when the skip comes
+           (the host copy used to fly up from the middle of the screen, which showed as the star jumping back). */
         return;
     }
     if (variant == V_DOODLE || (variant == V_TOY && t_f && t_f->toy_v >= 1000)) {   /* FACE2: the hand-over frames are the crossfade, not a main menu with a dip */
@@ -2228,10 +2283,19 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
     int inject = 0;
     {
         int top, elem, req;
-        if (port_title_page_state(&top, &elem, &req) && top == 11 && g_ch.attract_t >= 6 && (g_sv_faked || (g_last == V_ATTRACT && elem == 0)) && (*pressed & (MENU_PAD_CONFIRM | 0x0001 | 0x0008))) {
+        const bool got = port_title_page_state(&top, &elem, &req) != 0;
+        if (got && top == 11 && cut_ready() && (*pressed & (MENU_PAD_CONFIRM | 0x0001 | 0x0008))) {
+            cut_begin();
+            hal_menu_touch_queue_press(128, 96);      /* a key / pad press starts the flight the way a touch on the star does */
+        }
+        if (got && top == 11 && g_cut_fire) {
             sv_restore();
-            if (g_last == V_ATTRACT && elem == 0) sv_press();
-            inject = 1;      /* the held word gets the A edge too, so a Start / Enter / Space press is an edge the ROM's gate reads */
+            sv_press();
+            func_ov007_020bde70(0x34, 0x1e);      /* the flight's own sound ends with the flight (the skip block stops 0x32 / 0x33, which are not the ones playing) */
+            func_ov007_020bde70(0x32, 0x1e);
+            func_ov007_020bde70(0x33, 0x1e);
+            inject = 1;      /* the held word gets the A edge: the ROM's gate reads an edge */
+            if (hal_menu_trace_on()) fprintf(stderr, "[chore] the skip is applied (flight tick %d)\n", g_cut_t);
         }
         if (g_ch.in_fam && g_ch.sw_t < swap_end(g_ch) && ((*pressed & MENU_PAD_CONFIRM) || g_ch.skip)) {
             if (!g_ch.skip && hal_menu_trace_on()) fprintf(stderr, "[chore] confirm during the choreography: finishing it\n");

@@ -487,6 +487,7 @@ extern "C" const unsigned char *port_fs_archive_member(unsigned fileID,
                                                        unsigned *len_out);
 extern "C" void DecompressLZ16(void *src, void *dst);
 extern "C" void port_title_press_seen(void);   /* hal/menu_recipe_title.cpp */
+extern "C" void port_title_press_aim(unsigned char *x, unsigned char *y);   /* INTROCUT1: hal/menu_recipe_title.cpp */
 extern "C" int port_host_key_script(int vk);   /* tests/walk_window.cpp: SM64DS_HOST_KEY, 0 when unset */
 
 const unsigned kWallScreen = 0x8401, kWallTiles = 0x8402, kWallPltt = 0x8406;
@@ -2366,6 +2367,8 @@ extern "C" unsigned long port_tsc_arm7_sample_count(void);
    Read-only here, for the watcher two paragraphs below. */
 extern "C" unsigned short data_020a0dd8[4];
 
+/* JOINFLOW1: seated by hal/menu_join_plate.cpp (walk_window targets); null on every target without it. 1 = the Joining plate covers the game. */
+extern "C" { int (*port_join_plate_up_hook)(void) = 0; }
 void poll_touch(void)
 {
     unsigned char down = 0, sx = 0, sy = 0;
@@ -2416,7 +2419,7 @@ void poll_touch(void)
         btn = 1;
     } else {
         static int raw_was, focus_was, hold_ok;
-        const int raw = (!g_headless && (g_on || g_force_panel.load() || hal_menu_live()) && !menu_bigmap_up() && GetAsyncKeyState_ &&   /* MAP1: no stylus under the big map */
+        const int raw = (!g_headless && (g_on || g_force_panel.load() || hal_menu_live()) && !menu_bigmap_up() && !(port_join_plate_up_hook && port_join_plate_up_hook()) && GetAsyncKeyState_ &&   /* MAP1: no stylus under the big map; JOINFLOW1: none under the Joining plate */
                          (GetAsyncKeyState_(VK_LBUTTON) & 0x8000)) ? 1 : 0;
         const int foc = hal_window_focused();
         if (!raw)              hold_ok = 0;
@@ -2668,7 +2671,7 @@ void poll_touch(void)
     if (down && menu_pause_slide_busy()) down = 0;     /* PAUSE43FIX2: a click while a 4:3 pause slide runs is eaten */
 
     /* ASSET6: a stylus / click / queued press going into the ROM gives the title attract its hidden save words back first */
-    if (down) port_title_press_seen();
+    if (down) { port_title_press_aim(&sx, &sy); port_title_press_seen(); }
 
     /* ---- BYTE +1 IS THE ROM'S CHANGE EDGE, NOT "HELD FOR TWO FRAMES" ------
      *

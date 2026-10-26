@@ -442,6 +442,7 @@ extern "C" void host_menu_cursor_sound_flush(void);   /* hal/menu_compose.cpp: o
 #include "hal/pad_pointer.h"      /* run hunt8 lane PADMENUS1: the pad pointer (a controller driven stylus) */
 #include "hal/gpu_raster.h"       /* run hd2 lane GPU2: the optional D3D11 renderer */
 #include "hal/gpu_device.h"       /* the shared device, and the card's own clock */
+#include "hal/menu_join_plate.h"    /* run after093 JOINFLOW1: the Joining plate of a join successor */
 
 /* run mg16 lane MP3: the raw DS pad bits for this frame, handed from where the
    harness computes them to where hal/comms_conductor.cpp publishes them into
@@ -9031,6 +9032,7 @@ static int g_hf_in_full, g_hf_in_zoom, g_hf_in_sized;
 static unsigned long g_hf_parent_pid;
 static RECT g_hf_in_rect;
 static void port_handoff_signal(void);
+static void join_settings_dump_once(void);   /* JOINFLOW1 */
 
 static void present(void)
 {
@@ -9066,6 +9068,7 @@ static void present_body(void)
     port_gpu_timer_frame_end();
     ++g_present_n;
     if (g_present_n == 3) port_handoff_signal();   /* REGRESS093 R2 */
+    if (g_present_n == 2) join_settings_dump_once();   /* JOINFLOW1: the settings comparison line */
     if (!g_present_hwnd || !g_present_hdc || !g_present_bi || !g_present_fb)
         return;
     if (!W.GetClientRect_ || !W.StretchDIBits_) return;
@@ -9112,6 +9115,27 @@ static void present_body(void)
        over the card's other targets, shows it from there. Where it cannot, the
        picture is read back into the framebuffer and presented the ordinary
        way. */
+    /* JOINFLOW1: a join successor shows the Joining plate in place of every picture it would present until the adventure is entered
+       (hal/menu_join_plate.h). The plate is built at the client area's size (or a small fixed size when there is no client area, the
+       offscreen proof mode) and goes through the same fit, filter and present below, so nothing of the title walk is ever shown. */
+    static BITMAPINFO join_bi;
+    const uint32_t *join_bits = 0;
+    int join_w = 0, join_h = 0;
+    if (port_join_plate_up()) {
+        join_w = cw > 0 ? cw : 640;
+        join_h = ch > 0 ? ch : 360;
+        join_bits = port_join_plate_picture(join_w, join_h);
+        if (join_bits) {
+            memset(&join_bi, 0, sizeof join_bi);
+            join_bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+            join_bi.bmiHeader.biWidth = join_w;
+            join_bi.bmiHeader.biHeight = -join_h;
+            join_bi.bmiHeader.biPlanes = 1;
+            join_bi.bmiHeader.biBitCount = 32;
+            join_bi.bmiHeader.biCompression = BI_RGB;
+        }
+    }
+    if (!join_bits) {
     if (const int ret_slot = ntr::gx_card_retained(g_present_fb)) {
         if (gpu_offscreen && !g_present_stack &&
             port_gpu_present_retained_offscreen(port_gpu_card_retained_view(ret_slot),
@@ -9160,10 +9184,16 @@ static void present_body(void)
         }
         ntr::gx_card_settle_because("the present could not take it from the card");
     }
+    }
     const uint32_t *bits;
     const BITMAPINFO *bi;
     int sw, sh;
-    if (g_present_stack && g_present_stack_bi) {
+    if (join_bits) {
+        bits = join_bits;
+        bi = &join_bi;
+        sw = join_w;
+        sh = join_h;
+    } else if (g_present_stack && g_present_stack_bi) {
         bits = g_present_stack;
         bi = g_present_stack_bi;
         /* THE SOURCE SIZE IS THE HEADER'S, not a constant, and it is read out
@@ -12270,6 +12300,23 @@ static void port_handoff_prepare(void)
     fprintf(stderr, "[handoff] parent: SM64DS_HANDOFF_FROM=%s\n", val);
 }
 extern "C" void out_set_volume_pct(int pct);
+/* JOINFLOW1: one line of the effective settings and the window's place, on this process's second picture; the solo game and its join successor print the
+   same line so the two can be compared field by field (out/JOINFLOW1 settings table). The window figures are the window's place; a minimised test
+   window prints "minimised" (its size is read from the [win] and [handoff] lines). */
+static void join_settings_dump_once(void)
+{
+    int cw = 0, ch = 0;
+    if (W.GetWindowPlacement_ && g_present_hwnd) {
+        WINDOWPLACEMENT wp;
+        memset(&wp, 0, sizeof wp);
+        wp.length = sizeof wp;
+        if (W.GetWindowPlacement_(g_present_hwnd, &wp) && wp.showCmd != SW_SHOWMINIMIZED) {
+            cw = (int)(wp.rcNormalPosition.right - wp.rcNormalPosition.left);
+            ch = (int)(wp.rcNormalPosition.bottom - wp.rcNormalPosition.top);
+        }
+    }
+    port_join_settings_dump(cw, ch, g_fullscreen, 0, g_user_sized ? 1 : 0);
+}
 static void port_handoff_arm(void)
 {
     if (!g_hf_ev) return;
@@ -12470,6 +12517,8 @@ static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l)
         }
         return 0;
     case WM_LBUTTONDOWN: {
+        /* JOINFLOW1: the Joining plate takes the click (BACK cancels the join); nothing reaches the title walk under it */
+        if (port_join_plate_up() && port_join_plate_click((short)LOWORD(l), (short)HIWORD(l))) return 0;
         /* CLIENT PIXELS BACK TO FRAMEBUFFER PIXELS, and it is no longer a
            divide by ZOOM. The picture is centred in whatever the client area
            is now and scaled to fit it, so undoing that is the present rect's
@@ -13862,6 +13911,14 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
     stick_script_apply(frame, &pad_live, pad);    /* STARSEL093: the scripted stick (inert unless SM64DS_STICK_SCRIPT is set) on the scene path too */
     rstick_script_apply(frame, &pad_live, pad);   /* PADMENUS1: the scripted right stick (inert unless SM64DS_RSTICK_SCRIPT is set) */
     setlive_test_apply(frame, &pad_live, pad);
+    /* JOINFLOW1: the Joining plate of a join successor is modal. B (the pad's, or the attack key) and Esc cancel the join; nothing else the player
+       does reaches the hidden title walk (the walk's own presses come from the game, not from here). */
+    if (port_join_plate_up()) {
+        port_join_plate_input(key_live(VK_ESCAPE) ? 1 : 0,
+                              (key_act(HOST_KEY_ATTACK) || (pad_live && pad_act(pad, HOST_PAD_ATTACK))) ? 1 : 0);
+        pad_live = 0;
+        memset(pad, 0, sizeof *pad);
+    }
     controls_refresh();
     rebind_capture_frame(&pad_live, pad);
     padptr_frame(frame, pad_live, pad);           /* PADMENUS1: the pad pointer (a virtual stylus) takes the pen button / the minigame D-pad it owns */
@@ -13880,7 +13937,8 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
        refuse in words instead of writing through a null -- and what leaves
        the MINIGAME row working, because a relaunch needs nothing from the
        loop it was started in. */
-    menu_input(pad_live, pad);
+    if (!port_join_plate_up())      /* JOINFLOW1: no debug menu behind the Joining plate (Esc is the plate's cancel) */
+        menu_input(pad_live, pad);
     menu_b_swallow_spend(pad_live, pad);
 
     /* THE DS KEYPAD, written every frame so a release is a release. The
@@ -13946,6 +14004,7 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
            link100, lane INPUTRAW) because the pad-mirror store below
            wants this SAME value. */
         if (g_cs_hide) btn = (unsigned short)(btn & ~g_cs_hide);      /* PRECOURSE1: what the star select's strip took */
+        if (port_join_plate_up()) btn = 0;                           /* JOINFLOW1: the Joining plate takes every key */
         const unsigned short scene_raw_all =
             (unsigned short)(host_btn_to_raw_keys(btn) | (btn & 0x00fc));
         port_host_keys_set(scene_raw_all);
@@ -14381,7 +14440,8 @@ static int scene_window_run(void)
            path's number, and pacing a minigame to it ran the whole minigame at
            EXACTLY HALF SPEED. See frame_pace's banner. */
         frame_stat();
-        frame_pace();
+        if (!port_join_plate_fast())   /* JOINFLOW1: the hidden title walk of a join successor runs faster than real time */
+            frame_pace();
     }
     /* THE ORDINARY EXIT. A window close, an Esc, or the minigame row's own
        PostQuitMessage all arrive here the same way, and the census below is

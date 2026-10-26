@@ -474,6 +474,7 @@ void menu_online_profile_modal(MenuLayout *L, const OnlFacts *f)
 void menu_online_add_name_plank(MenuLayout *L, int right_edge_x, int top_y, int h_px)
 {
     const int dw = menu_online_plank_w(ONL_K_NAME, h_px);
-    const int ip = menu_online_add_plank(L, ONL_K_NAME, right_edge_x - dw, top_y, dw, h_px, ONL_NAME_X, ONL_NAME_Y, ONL_NAME_W, ONL_NAME_H, 0, 0, 0, 1, 0);
+    const OnlFacts *pf = onl_facts_of(L);      /* PADNAV1: lit while the pad focus is on it */
+    const int ip = menu_online_add_plank(L, ONL_K_NAME, right_edge_x - dw, top_y, dw, h_px, ONL_NAME_X, ONL_NAME_Y, ONL_NAME_W, ONL_NAME_H, pf && pf->padfocus == ONL_PF_NAME ? 1 : 0, 0, 0, 1, 0);
     if (ip >= 0) menu_add_hotspot(L, ip, ONL_NAME_X, ONL_NAME_Y, ONL_NAME_W, ONL_NAME_H, -1);
 }

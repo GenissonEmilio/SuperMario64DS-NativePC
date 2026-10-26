@@ -30,9 +30,11 @@ struct OnlFacts {
     int scr_age;
     int flow;           /* the online file select is the page (ADVENTURE ONLINE was pressed) */
     int help_files;     /* the help screen was opened on the file select (its text differs) */
-    char why[96];       /* the FAIL sentence */
+    char why[92];       /* the FAIL sentence (PADNAV1: 4 bytes shorter for padfocus below; the sentences are far shorter) */
     ProfFacts prof;     /* PROFILE1: the name and colour popup */
+    int padfocus;       /* PADNAV1: the pad focus is on a host plank: ONL_PF_HELP (the ?) or ONL_PF_NAME, else 0 (the ROM cursor is the focus) */
 };
+enum { ONL_PF_HELP = 100, ONL_PF_NAME = 101 };
 #define ONL_MAGIC 0x4f4e4c31
 #define ONL_FACTS_OFF (1024 - 160)
 static_assert(sizeof(OnlFacts) <= 160, "OnlFacts must fit the tail of MenuFacts.blob");
@@ -62,6 +64,7 @@ int  menu_online_press_main(int elem, int edge);
 int  menu_online_press_file(int elem, int edge);
 /* a stylus at (sx, sy) in DS pixels on the title; kind 1 main page, 2 file select page. 1 = swallowed. */
 int  menu_online_touch(int kind, int down, int sx, int sy);
+void menu_online_pad_frame(int kind, int cursor);          /* PADNAV1: once a frame on the title main page / file select: forget a host focus the mouse or a page change left behind */
 int  menu_online_dir(int kind, int cursor, unsigned dirs);   /* a D-pad step the ROM cursor has nowhere to go with: wrench + left, or the file row + up, opens the ? text */
 int  menu_online_help_pad(int kind);                     /* X / Y on a page that has the ? button: 1 = taken */
 int  menu_online_modal_up(void);                         /* a ? text, the VS note or the wait screen is up (INPUTMATRIX1: the pad is modal for it) */
