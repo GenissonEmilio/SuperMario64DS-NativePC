@@ -2249,7 +2249,7 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
             if (host_back && profile_backspace()) host_back = 0;      /* PROFILE1: Backspace edits the name field first (and is BACK on the popup's other rows) */
             if ((host_back || punch) && menu_online_back(kind)) {
                 host_back = 0;
-                if (punch) { *pressed = (uint16_t)(*pressed & ~0x0001u); *hh = (unsigned short)(*hh & ~0x0001u); }
+                if (punch) { *pressed = (uint16_t)(*pressed & ~0x0001u); *hh = (unsigned short)(*hh & ~0x0001u); port_host_keys_clear(0x0001); }
             }
         }
     }
