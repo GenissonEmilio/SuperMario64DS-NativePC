@@ -251,6 +251,9 @@ OnlineJoinState online_join_step() {
             } else {
                 std::string why;
                 if (!jstr(t, "why", &why) || why.empty() || why.size() > 160) why = "No server could be found.";
+                /* the lobby's refusal of the name itself (the launcher's bad_nick sentence): say where to fix it */
+                else if (why.compare(0, 10, "That name ") == 0 && why.find("lobby will not take") != std::string::npos)
+                    why = "The lobby refused that nickname. Set one in the launcher's settings.";
                 fail(why.c_str());
             }
             std::fprintf(stderr, "[join] plan %s\n", g_state == kJoinEntering ? "accepted" : g_sentence.c_str());
