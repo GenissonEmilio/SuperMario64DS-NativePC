@@ -2179,6 +2179,13 @@ static void title_pad_keys(uint16_t *pressed, int host_back, int inject)
         h = (unsigned short)(h & ~0x0001u);
         port_host_keys_clear(0x0001);     /* INPUTMATRIX1: the title also reads the host key word, which still held the B as the DS A key: B picked the file under the cursor */
     }
+    /* INPUTMATRIX1: pad B (the DS A bit) is no confirm on the main page either: it is taken out of the held, pressed and host key words before pad A is converted
+       below. (The one-screen page's online back is the hook's, hal/settings_page_hooks.cpp.) */
+    if (g_last == V_MAIN && ((*pressed | h) & 0x0001)) {
+        *pressed = (uint16_t)(*pressed & ~0x0001u);
+        h = (unsigned short)(h & ~0x0001u);
+        port_host_keys_clear(0x0001);
+    }
     /* FACE3: the free-draw page has no pad handling in the ROM (touch only): the back key (Backspace, pad B) taps its Yoshi button, the ROM's own box 6, which leaves for the main menu */
     if (host_back && g_last == V_DOODLE && g_elem == 3) {
         Box b;

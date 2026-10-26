@@ -142,13 +142,16 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
            ROM, whose cursor was still on the wrench (its own OPTIONS screen opened behind our page). The same stripping as the D-pad steps below. */
         static unsigned short strip_conf;
         unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+        g_strip_conf = hal_menu_enabled(MENU_KEY_ONE_SCREEN_MENUS) ? &strip_conf : 0;
+        /* with the one-screen menus off the ROM's own title runs and menu_title_pad_map_rom rebuilds its pad words every frame before this hook; the
+           edge-frame swallow is what that mode was proven with (PADMENUS1 T4), so only the one-screen pages keep the strip */
+        if (!g_strip_conf) strip_conf = 0;
         strip_conf = (unsigned short)(strip_conf & (*held | *pressed));
         if (strip_conf) {
             *pressed = (uint16_t)(*pressed & ~strip_conf);
             *held = (unsigned short)(*held & ~strip_conf);
             port_host_keys_clear(strip_conf);
         }
-        g_strip_conf = &strip_conf;
     }
     {
         /* INPUTMATRIX1: THE ? TEXT, THE VS NOTE AND THE WAIT SCREEN ARE MODAL FOR THE PAD. While one is up its close button is the only thing the
@@ -193,7 +196,7 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
         /* INPUTMATRIX1: pad B (the port's punch bit 0x0001) is never a confirm on the title's host pages: A and Start are. On the main page it is
            the back key (the online planks turn back; solo it does nothing) and stays out of the ROM; on the file select it is the back arrow
            (hal/menu_recipe_title.cpp title_pad_keys). */
-        const int onmain = title_main_page();
+        const int onmain = title_main_page() && hal_menu_enabled(MENU_KEY_ONE_SCREEN_MENUS);   /* the ROM two-screen title maps A to the DS A bit before this hook runs, so there 0x0001 is the converted A */
         if (onmain) {
             unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
             if ((*pressed | *held) & 0x0001) {
