@@ -514,6 +514,64 @@ bool sample_bg(const BgConfig &c, int x, int y, uint32_t &out) {
     return true;
 }
 
+/* TITLEPERF1: the per-tick getenv calls of the composite, read once. */
+inline bool msg_composite_debug() { static const bool v = std::getenv("SM64DS_MSG_COMPOSITE_DEBUG") != nullptr; return v; }
+
+/* TITLEPERF1: SM64DS_COMPA_ROWFAST=0 puts the per-pixel sample_bg loop back on the same binary (the A/B for the row sampler below) */
+inline bool row_fast_off() {
+    static int off = -1;
+    if (off < 0) {
+#ifndef PORT_ROM_CLEAN
+        const char *e = std::getenv("SM64DS_COMPA_ROWFAST");
+        off = (e && e[0] == '0') ? 1 : 0;
+#else
+        off = 0;
+#endif
+    }
+    return off != 0;
+}
+
+/* TITLEPERF1: sample_bg for the 256 pixels of one row, a tiled (non-bitmap) background only. The screen entry, the flips and the tile's
+   address are read once per 8 pixels instead of once per pixel; every value is the one sample_bg would have returned (the same volatile
+   reads at the same addresses, in the same arithmetic), so a row filled here equals 256 calls of sample_bg. hit[x] 0 = transparent. */
+void sample_bg_row(const BgConfig &c, int y, uint32_t *col, uint8_t *hit) {
+    const int py = (y + c.vofs) & (c.tiles_h * 8 - 1);
+    const int wmask = c.tiles_w * 8 - 1;
+    const int ty = py >> 3, fy0 = py & 7;
+    int last_tx = -1;
+    int fxflip = 0;
+    uint32_t vrow = 0;      /* the tile's row of indices (8 bpp: 8 bytes, 4 bpp: 4 bytes) */
+    uint32_t palbase = 0;
+    for (int x = 0; x < 256; ++x) {
+        const int px = (x + c.hofs) & wmask;
+        const int tx = px >> 3;
+        if (tx != last_tx) {
+            last_tx = tx;
+            const uint16_t se = rd16(screen_entry_addr(c, tx, ty));
+            const int tile = se & 0x3FF;
+            int fy = fy0;
+            if (se & 0x800) fy = 7 - fy;
+            fxflip = (se & 0x400) ? 1 : 0;
+            vrow = c.bpp8 ? c.chars + tile * 64 + fy * 8 : c.chars + tile * 32 + fy * 4;
+            palbase = c.bpp8 ? 0u : (uint32_t)((se >> 12) & 0xF) * 16u;
+        }
+        int fx = px & 7;
+        if (fxflip) fx = 7 - fx;
+        uint32_t index;
+        if (c.bpp8) {
+            index = *reinterpret_cast<volatile uint8_t *>(vrow + fx);
+            if (index == 0) { hit[x] = 0; continue; }
+        } else {
+            const uint8_t pair = *reinterpret_cast<volatile uint8_t *>(vrow + (fx >> 1));
+            index = (fx & 1) ? (pair >> 4) : (pair & 0xF);
+            if (index == 0) { hit[x] = 0; continue; }
+            index += palbase;
+        }
+        col[x] = bgr555(rd16(kPlttBase + index * 2));
+        hit[x] = 1;
+    }
+}
+
 // ---- the window unit (engine A, register base 0x04000000) ------------------
 // Mirror of ppu_sub.cpp's read_windows/window_mask. Bits 0..3 BG0..BG3, bit 4
 // OBJ, bit 5 colour effect. Edges are exclusive; a right/bottom at or before
@@ -1846,7 +1904,7 @@ void arrow_tiles_init(void)
         }
         if (a3 == 0xffff) break;
     }
-    if (std::getenv("SM64DS_MINIMAP_TRACE")) {
+    if ([] { static const bool v = std::getenv("SM64DS_MINIMAP_TRACE") != nullptr; return v; }()) {
         std::fprintf(stderr, "[mmtrace] bouncing-arrow tiles (%d):",
                      g_arrow_tiles_n);
         for (int k = 0; k < g_arrow_tiles_n; ++k)
@@ -3568,7 +3626,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        receive it. `boxed` keeps the old reading available rather than
        dropping it -- a line taken with no box up and a line taken with one are
        different measurements and the reader has to be able to tell. */
-    if (std::getenv("SM64DS_MSG_COMPOSITE_DEBUG")) {
+    if (msg_composite_debug()) {
         extern unsigned char data_0209d660, data_0209d45c;
         static int dumped;
         if (!dumped) {
@@ -3748,14 +3806,23 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     if (twod_old_a_on()) {
         bg_loop_ref(g_a, bgs, win, lmask, bl);
     } else if (nbg) {
+        static uint32_t rcol[4][256];
+        static uint8_t rhit[4][256];
+        const bool rowfast = !row_fast_off();
         for (int y = 0; y < 192; ++y) {
+            bool rf[4] = {false, false, false, false};
+            if (rowfast)
+                for (int k = 0; k < nbg; ++k) {
+                    const int bg = bgorder[k];
+                    if (!bgs[bg].bmp) { sample_bg_row(bgs[bg], y, rcol[bg], rhit[bg]); rf[bg] = true; }
+                }
             for (int x = 0; x < 256; ++x) {
                 const unsigned mask = window_mask(win, x, y);
                 for (int k = 0; k < nbg; ++k) {
                     const int bg = bgorder[k];
                     if (!(mask & (1u << bg))) continue;
                     uint32_t s;
-                    if (sample_bg(bgs[bg], x, y, s)) {
+                    if (rf[bg] ? (rhit[bg][x] ? (s = rcol[bg][x], true) : false) : sample_bg(bgs[bg], x, y, s)) {
                         // BGs draw far->near (prio 3..0, then bg 3..0), so when
                         // a 1st-target BG writes, g_a already holds the layer
                         // directly below it. Mode-1 alpha over a 2nd-target 2D
@@ -3782,13 +3849,13 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     enga_layer_px();
     enga_strip_probe(dispcnt);
 
-    if (std::getenv("SM64DS_MSG_COMPOSITE_DEBUG"))
+    if (msg_composite_debug())
         attrib_take();
 
     // One-shot diagnostic (SM64DS_MSG_COMPOSITE_DEBUG): the engine-A 2D state
     // the frame the compositor first finds any 2D enabled, so a headless run
     // can confirm the box BG is on and how many pixels it covers.
-    if (std::getenv("SM64DS_MSG_COMPOSITE_DEBUG")) {
+    if (msg_composite_debug()) {
         int hits = 0;
         for (int y = 0; y < 192; ++y)
             for (int x = 0; x < 256; ++x) if (g_a[y][x].hit) ++hits;
@@ -3975,7 +4042,8 @@ extern "C" void port_message_composite_engine_a(void *fbp)
 
        Unset, this is exactly the two constants it replaces. */
     int band_l = 96, band_r = 160;                 /* source-x band splits */
-    if (const char *bands = std::getenv("SM64DS_HUD_BANDS")) {
+    static const char *const bands_env = std::getenv("SM64DS_HUD_BANDS");
+    if (const char *bands = bands_env) {
         int l = 0, r = 0;
         if (std::sscanf(bands, "%d,%d", &l, &r) == 2
             && l >= 0 && r > l && r <= 256) { band_l = l; band_r = r; }
@@ -4675,7 +4743,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        row comparable with the host framebuffer's own size. A full-screen sweep
        is instrumentation and nothing reads it unless the probe is on, so it is
        gated: an ordinary play frame does not pay for a number nobody prints. */
-    if (honour3d && cover && std::getenv("SM64DS_MSG_COMPOSITE_DEBUG")) {
+    if (honour3d && cover && msg_composite_debug()) {
         for (int hy = 0; hy < ntr::active_h; ++hy)
             for (int hx = 0; hx < ntr::active_w; ++hx)
                 if (cover[hy * ntr::SCREEN_W + hx]

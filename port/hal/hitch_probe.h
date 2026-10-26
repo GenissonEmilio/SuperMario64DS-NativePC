@@ -34,10 +34,24 @@ enum HitchKind {
     HK_SWAP,         // the ROM frame step + geometry swap at the frame boundary
     HK_MSGBM,        // message_compositor bm_fill_default (the brightness mask's default pass)
     HK_MSGRESOLVE,   // message_compositor hudelem::resolve (the widescreen element labelling), when it ran
+    // TITLEPERF1: the scene tick's own blocks, for the dev-only per-section summary (SM64DS_TP_SECT=1); never printed on a hitch line
+    HK_TP_TICK,      // port_scene_tick: port_actor_tick (the ROM's behaviour walk)
+    HK_TP_RENDER,    // port_scene_tick: port_actor_render (the ROM's render walk, gx command decode, smoothing)
+    HK_TP_CLEAR,     // port_scene_tick: gx_clear_fill
+    HK_TP_GXREND,    // port_scene_tick: ntr::gx_render (the 3D picture: card build, draw, wait, copy)
+    HK_TP_IP1,       // port_scene_tick: SmoothMotion hook stage 1
+    HK_TP_COMPA,     // port_scene_tick: port_message_composite_engine_a
+    HK_TP_SUBPRES,   // port_scene_tick: hal_sub_screen_present (the menu compose and bottom screen)
+    HK_TP_IP2,       // port_scene_tick: SmoothMotion hook stage 2
+    HK_TP_SOUND,     // port_scene_tick: sdat_host_tick
+    HK_TP_IPA,       // SmoothMotion ip_build_a (replay + raster)
+    HK_TP_IPM1,      // ip_build_b: the tick's 2D merged over the replay (p3/p2)
+    HK_TP_IPRL,      // ip_build_b: hal_menu_relift (the menu's re-draw)
+    HK_TP_IPM2,      // ip_build_b: the second merge (p4/p5)
     HK_COUNT
 };
 
-inline const char *const kHitchKindName[HK_COUNT] = {"tex", "cardfile", "sfpload", "tongue", "chat", "nethook", "hubpump", "ghostfollow", "gpubuild", "gpudraw", "gpuwait", "gpucopy", "flush", "swap", "msgbm", "msgresolve"};
+inline const char *const kHitchKindName[HK_COUNT] = {"tex", "cardfile", "sfpload", "tongue", "chat", "nethook", "hubpump", "ghostfollow", "gpubuild", "gpudraw", "gpuwait", "gpucopy", "flush", "swap", "msgbm", "msgresolve", "tp_tick", "tp_render", "tp_clear", "tp_gxrend", "tp_ip1", "tp_compa", "tp_subpres", "tp_ip2", "tp_sound", "tp_ipa", "tp_ipm1", "tp_iprl", "tp_ipm2"};
 
 struct HitchCell { double ms; unsigned n; };
 inline HitchCell g_hitch_cell[HK_COUNT];
