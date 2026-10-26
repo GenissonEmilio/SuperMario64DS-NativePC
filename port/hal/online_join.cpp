@@ -11,6 +11,8 @@
 #include "ntr/backup.h"
 #include "host_settings.h"
 
+int out_volume_pct(void);   /* hal/sdat/out_win.cpp: the master volume this process plays at right now (0..100) */
+
 extern "C" {
 extern int (*port_title_front_door_hook)(void);   /* hal/title_entry.cpp; tests/walk_window.cpp seats it: start the game again at its front door */
 extern int (*port_online_join_tick_hook)(void);   /* hal/title_entry.cpp; seated below */
@@ -158,6 +160,15 @@ bool apply_plan(const std::string &t, int server) {
 #endif
     char v[2] = { (char)('0' + g_file), 0 };
     SetEnvironmentVariableA("SM64DS_BOOT_FILE", v);
+    /* JOINFLOW1: THE VOLUME GOES WITH THE PLAYER. The launcher starts a game with SM64DS_VOLUME set to the launcher's own volume, and that variable
+       outranks settings.json inside the game for the whole life of the process. A volume the player turned in the in-game settings page since then
+       is live in this process (and saved), so the restarted game, which inherits the launcher's number, played at the old volume until the file next
+       changed. It is handed the number this process is playing at now. */
+    {
+        char vol[8];
+        std::snprintf(vol, sizeof vol, "%d", out_volume_pct());
+        SetEnvironmentVariableA("SM64DS_VOLUME", vol);
+    }
     /* JOINFLOW1: this start is a join successor. The restarted game reads (and clears) SM64DS_JOIN_QUIET and runs its quiet entry: a plain "Joining" plate
        over every picture until the adventure is entered (hal/menu_join_plate.cpp). The value is the server number (0 = not known). Games the launcher's own
        Multiplayer window starts never carry it, so they are untouched. */
