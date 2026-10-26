@@ -797,6 +797,29 @@ static void sv_fake()
     g_sv_faked = 1;
     if (hal_menu_trace_on()) fprintf(stderr, "[chore] attract holds: save words hidden from the ROM until a press\n");
 }
+static int g_sv_lie;       /* FIELD093K: the record was EMPTY and the words were made non-empty for the press (see sv_press) */
+static char *g_sv_lq;
+/* FIELD093K: a press on the attract with an EMPTY save (a new player). The ROM's skip of the star flight (src/func_ov007_020b0a20.c: the key / touch edge
+   branch) only runs when func_ov007_020aebac() == 0, i.e. when a save exists, so a new player waited the whole 260 tick flight (6 s from the press to the
+   wipe) and a pad / key press did nothing at all. The port shows the ROM a non-empty record for the press, exactly what it already does for a played save
+   (sv_restore): the ROM then takes its own skip and asks for state 10. The words go back to empty once the attract is left. */
+static void sv_press()
+{
+    char *q = sv_rec();
+    if (!q || g_sv_lie) return;
+    if (q[0xb] || q[0xc] || q[0xd] || *(int *)(q + 4)) return;     /* a played save: sv_restore gave the real words */
+    q[0xb] = 1;
+    g_sv_lie = 1;
+    g_sv_lq = q;
+    if (hal_menu_trace_on()) fprintf(stderr, "[chore] press on an empty save: the ROM sees a save for this press (its flight skip)\n");
+}
+static void sv_unlie()
+{
+    if (!g_sv_lie) return;
+    if (g_sv_lq && g_sv_lq == sv_rec()) g_sv_lq[0xb] = 0;
+    g_sv_lie = 0;
+    g_sv_lq = 0;
+}
 static void sv_restore()
 {
     if (!g_sv_faked) return;
@@ -808,7 +831,7 @@ static void sv_restore()
 }
 extern "C" void port_title_press_seen(void)
 {
-    if (g_ch.attract_t >= 6) sv_restore();
+    if (g_ch.attract_t >= 6) { sv_restore(); if (g_last == V_ATTRACT && g_elem == 0) sv_press(); }
     g_press_tick = 1;
     if (g_ch.in_fam && g_ch.mode == CH_INTRO && g_ch.released && g_ch.sw_t < swap_end(g_ch)) g_ch.skip = 1;      /* INTRO2: any new click skips the intro too */
 }   /* the ROM's gate reads input from its frame 4 on */     /* sub_screen.cpp: a touch / click is going into the ROM this frame */
@@ -817,7 +840,7 @@ void chore_rom_writes(int top, int req)
 {
     if (!data_ov007_0210342c) return;
     if (top == 11 && g_ch.attract_t >= 0 && !g_sv_faked && g_ch.attract_t < 8 && g_last == V_ATTRACT) sv_fake();
-    else if (top != 11) sv_restore();
+    else if (top != 11) { sv_restore(); sv_unlie(); }
     if (!ff_on()) return;
     char *g = (char *)data_ov007_0210342c;
     char *sp = *(char **)(g + 8);
@@ -2203,8 +2226,9 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
     int inject = 0;
     {
         int top, elem, req;
-        if (port_title_page_state(&top, &elem, &req) && top == 11 && g_sv_faked && g_ch.attract_t >= 6 && (*pressed & (MENU_PAD_CONFIRM | 0x0001 | 0x0008))) {
+        if (port_title_page_state(&top, &elem, &req) && top == 11 && g_ch.attract_t >= 6 && (g_sv_faked || (g_last == V_ATTRACT && elem == 0)) && (*pressed & (MENU_PAD_CONFIRM | 0x0001 | 0x0008))) {
             sv_restore();
+            if (g_last == V_ATTRACT && elem == 0) sv_press();
             inject = 1;      /* the held word gets the A edge too, so a Start / Enter / Space press is an edge the ROM's gate reads */
         }
         if (g_ch.in_fam && g_ch.sw_t < swap_end(g_ch) && ((*pressed & MENU_PAD_CONFIRM) || g_ch.skip)) {
