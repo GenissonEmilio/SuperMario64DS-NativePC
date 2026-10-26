@@ -348,14 +348,14 @@ static void hl_close(long long now)
         const double wall = (now - g_pt_frame_t0) * g_pt_qpf_ms;
         const int load = g_pt_cur[PS_HOST_IN] > 150.0 || g_pt_cur[PS_SCENE_IN] > 150.0;
         if (load || printed < 400) {
-            char b[512];
+            char b[720];
             int n = _snprintf(b, sizeof b, "[hitch] t=%.1fs frame=%u lvl=%d work=%.1f wall=%.1f%s |",
                               pt_since_create_ms() / 1000.0, frames, g_pt_level, work, wall, load ? " LOAD" : "");
             for (int s = 0; s < PS_COUNT && n > 0 && n < 400; ++s)
                 if (s != PS_PACE && g_pt_cur[s] >= 1.5)
                     n += _snprintf(b + n, sizeof b - n, " %s=%.1f", k_ps_name[s], g_pt_cur[s]);
             if (n > 0 && n < 400) n += _snprintf(b + n, sizeof b - n, " |");
-            for (int k = 0; k < port::HK_COUNT && n > 0 && n < 440; ++k)
+            for (int k = 0; k < port::HK_COUNT && n > 0 && n < 660; ++k)
                 if (port::g_hitch_cell[k].n && port::g_hitch_cell[k].ms >= 0.3)
                     n += _snprintf(b + n, sizeof b - n, " %s=%ux/%.1fms", port::kHitchKindName[k],
                                    port::g_hitch_cell[k].n, port::g_hitch_cell[k].ms);
@@ -364,6 +364,33 @@ static void hl_close(long long now)
             (void)t_first_ms;
         }
     }
+#ifndef PORT_ROM_CLEAN
+    /* TITLEPERF1 (dev only, SM64DS_TP_SECT=<frames per line>): the mean cost of every named section and of every stage over
+       a window of frames, printed as one "[tpsect]" line. Frames with a gap over 150 ms (boot, loads) are skipped. */
+    {
+        static int on = -1;
+        static double sk[port::HK_COUNT], ss[PS_COUNT], swork;
+        static int nf;
+        if (on < 0) { const char *e = getenv("SM64DS_TP_SECT"); on = e ? atoi(e) : 0; }
+        if (on > 0 && frames > 120 && work < 150.0) {
+            for (int k = 0; k < port::HK_COUNT; ++k) sk[k] += port::g_hitch_cell[k].ms;
+            for (int q = 0; q < PS_COUNT; ++q) ss[q] += g_pt_cur[q];
+            swork += work;
+            if (++nf >= on) {
+                char b[900]; int n = _snprintf(b, sizeof b, "[tpsect] f%u n=%d work=%.2f |", frames, nf, swork / nf);
+                for (int q = 0; q < PS_COUNT && n > 0 && n < 700; ++q)
+                    if (q != PS_PACE && ss[q] / nf >= 0.005) n += _snprintf(b + n, sizeof b - n, " %s=%.2f", k_ps_name[q], ss[q] / nf);
+                if (n > 0 && n < 800) n += _snprintf(b + n, sizeof b - n, " |");
+                for (int k = 0; k < port::HK_COUNT && n > 0 && n < 880; ++k)
+                    if (sk[k] / nf >= 0.005) n += _snprintf(b + n, sizeof b - n, " %s=%.2f", port::kHitchKindName[k], sk[k] / nf);
+                fprintf(stderr, "%s\n", b);
+                nf = 0; swork = 0;
+                for (int k = 0; k < port::HK_COUNT; ++k) sk[k] = 0;
+                for (int q = 0; q < PS_COUNT; ++q) ss[q] = 0;
+            }
+        }
+    }
+#endif
     for (int k = 0; k < port::HK_COUNT; ++k) port::g_hitch_cell[k].ms = 0.0, port::g_hitch_cell[k].n = 0;
 }
 
