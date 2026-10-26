@@ -80,7 +80,7 @@ int pause_page_art(int w, int h, int idx, int *id, int *dw, int *dh);
 namespace {
 
 enum { V_CASTLE = PAUSE_V_CASTLE, V_COURSE = PAUSE_V_COURSE, V_CTL, V_CTL_SEL, V_OPT, V_SAVE = PAUSE_V_SAVE, V_STATUS = PAUSE_V_STATUS,
-       V_NOSAVE = PAUSE_V_NOSAVE, V_VS };
+       V_NOSAVE = PAUSE_V_NOSAVE, V_VS, V_AIR = PAUSE_V_AIR };
 
 /* ---- the variant, with hysteresis over the leaving states ---------------- */
 
@@ -97,7 +97,13 @@ int pause_variant(void)
     case 2: case 3: v = V_COURSE; break;
     case 4: case 5: v = 0; break;      /* VS pause: the ROM draws its own until a real lobby proof exists (PAUSEFIX1 F3) */
     case 7: case 8: v = data_0209f218 ? V_CTL_SEL : V_CTL; break;
-    case 9: case 0xa: case 0xb: v = V_OPT; break;
+    case 9: case 0xa: v = V_OPT; break;
+    /* THE REDUCED PAUSE. PS_Update case 2 (src/game/stages/d_s_stage_methods.cpp, the course pause's init) goes to state 0xb instead of the
+       plates when func_02029408 (Player::CanPause: airborne, taking damage, no control, or underwater outside the two swim states) says no, or
+       the player's health word data_02092144[slot] is 0. State 0xb has no plates: the ROM shows the course card on the top screen and the PAUSE
+       sprite on the bottom one, and resumes on Start / Select only (case 0xb, IsButtonInputValid's in-pause path). The new look gives it the
+       Resume plank alone. The VS pause reaches 0xb too (case 4) and stays the ROM's own, as the rest of the VS pause does. */
+    case 0xb: v = data_0209f2d8 == 1 ? V_OPT : V_AIR; break;
     case 0xc: case 0xd: v = V_SAVE; break;
     case 0xe: case 0xf: v = V_STATUS; break;
     case 0x10: case 0x11: v = V_NOSAVE; break;
@@ -121,7 +127,7 @@ double wnow_ms(void)
 int g_idle_ticks, g_warm_v, g_warm_p, g_warm_a, g_warm_w, g_warm_h, g_warm_solved_v;
 double g_last_claim = -1e9, g_last_call = -1e9;
 int g_calm;
-const int kWarmVars[] = { V_CASTLE, V_COURSE, V_SAVE, V_NOSAVE };
+const int kWarmVars[] = { V_CASTLE, V_COURSE, V_SAVE, V_NOSAVE, V_AIR };
 const int kNWarmVars = (int)(sizeof kWarmVars / sizeof kWarmVars[0]);
 
 void warm_slice(int w, int h)
@@ -375,7 +381,7 @@ const int kRomSave[3] = { 1, 2, 0 };         /* Save & Quit, Quit without saving
 const int *slot_rom_table(int variant) { return variant == V_SAVE ? kRomSave : kRomMain; }
 int nslots_of(int variant)
 {
-    return variant == V_CASTLE || variant == V_COURSE || variant == V_SAVE ? 3 : (variant == V_NOSAVE ? 2 : 0);
+    return variant == V_CASTLE || variant == V_COURSE || variant == V_SAVE ? 3 : (variant == V_NOSAVE ? 2 : (variant == V_AIR ? 1 : 0));
 }
 int slot_of_rom(int variant, int rom)
 {
@@ -392,6 +398,8 @@ int g_frame;
 int g_save_init;        /* the save page's cursor was put on Save & Quit once for this visit */
 int g_embed_set;
 int g_nosave_focus;     /* the quit-without-saving page's cursor was put on NO once for this visit */
+int g_air_hold;         /* V_AIR: the pointer went down on the Resume plank and is still held there */
+int g_air_resume;       /* V_AIR: a click on the Resume plank, delivered to the ROM as its Start on the next pad frame */
 
 int pause_cursor_live(void)
 {
@@ -495,6 +503,9 @@ void pause_facts(MenuFacts *mf)
         f->sel_slot = hal_menu_focus_shown(&hs) ? (hs == 0 ? 1 : 0) : -1;
     } else if (v == V_CASTLE || v == V_COURSE || v == V_SAVE) {
         f->sel_slot = slot_of_rom(v, data_0209f2e0);
+    } else if (v == V_AIR) {
+        f->sel_slot = 0;                                   /* one plank: always the lit one */
+        f->pressed = data_0209f244 != 0 || g_air_hold;     /* the ROM's resume flash (case 0xb), or the pointer held on the plank */
     } else f->sel_slot = -1;
     f->event_n = port::event_pause_lines(f->event, 2);     /* EVENTS3 */
     f->rom_art = !pause_art_present();     /* PAUSEFULL1: no mod planks, the ROM's own plates */
@@ -607,6 +618,17 @@ void build_new(MenuLayout *L, int variant)
                                          : add_plank(L, img[i], r, 8, box_y[i], 240, 32, kRomMain[i], i == sel, prs);
                 if (i == 0 && rest && h >= 0) L->back = (int8_t)h;
             }
+        }
+    } else if (variant == V_AIR) {
+        /* the Resume plank alone, where the course page's stack is centred. No hotspot: the ROM's state 0xb takes no touch (case 0xb reads
+           only IsButtonInputValid), so the click is the recipe's own (menu_pause_input) and reaches the ROM as Start (menu_pause_hook_pad). */
+        const PauseRect r = pause_plank_rect(g, f, 1, 0);
+        if (!f->rom_art) {          /* no mod planks: the page draws a plain one (pause_page.inc pp_air_plank), the ROM has no plate up here */
+            MenuPiece p = menu_piece_make(SRC_HOSTIMG, 8, 0x18, 240, 32, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            p.hostimg = MENU_IMG_P_PK_RESUME;
+            p.fixdest = 1; p.fx = (short)r.x; p.fy = (short)r.y; p.fw = (short)r.w; p.fh = (short)r.h;
+            p.hl = (uint8_t)(1 | (prs ? 2 : 0));
+            menu_add_piece(L, p);
         }
     } else if (variant == V_SAVE) {
         static const int box_y[3] = { 0x50, 0x78, 0x28 };            /* the ROM plates 1, 2, 0 */
@@ -726,7 +748,7 @@ void build_plain(MenuLayout *L, int variant)
 void pause_build(int variant, MenuLayout *L)
 {
     const int english = L->facts.language <= 1;
-    if (english && (variant == V_CASTLE || variant == V_COURSE || variant == V_SAVE || variant == V_STATUS || variant == V_NOSAVE)) build_new(L, variant);
+    if (english && (variant == V_CASTLE || variant == V_COURSE || variant == V_SAVE || variant == V_STATUS || variant == V_NOSAVE || variant == V_AIR)) build_new(L, variant);
     else if (variant >= V_CASTLE && variant <= V_NOSAVE) build_plain(L, variant);
 }
 
@@ -835,6 +857,21 @@ extern "C" int menu_pause_input(unsigned keys, int mvalid, int mx, int my, int m
     prev_down = mdown;
     const int v = g_last_variant;
     if (!v) { g_tab_hover = g_tab_press = -1; g_nosave_focus = 0; return 0; }
+    if (v != V_AIR) g_air_hold = g_air_resume = 0;
+    else {
+        /* V_AIR: a click (down and up) on the Resume plank resumes; the pointer anywhere else does nothing */
+        PauseFacts f0;
+        memset(&f0, 0, sizeof f0);
+        f0.variant = V_AIR; f0.dir = 1; f0.in_course = 1; f0.nslots = 1;
+        f0.rom_art = !pause_art_present();
+        const PauseGeo g = pause_geo(g_pic_w, g_pic_h, &f0, 1);
+        const PauseRect r = pause_plank_rect(g, &f0, 1, 0);
+        const int inside = mvalid && mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h;
+        if (down_edge && inside) g_air_hold = 1;
+        if (up_edge && g_air_hold && inside) g_air_resume = 1;
+        if (!mdown || !inside) g_air_hold = 0;
+        return 1;
+    }
     if (v != V_NOSAVE) g_nosave_focus = 0;
     else if (!g_nosave_focus && hal_menu_focus_set(0)) g_nosave_focus = 1;     /* the confirm page is touch only: the cursor starts on "No, keep playing" (hotspot 0) */
     if (!is_main_page(v) || GetOwnerLanguage() > 1) return 1;
@@ -883,6 +920,17 @@ extern "C" int menu_pause_input(unsigned keys, int mvalid, int mx, int my, int m
 extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back)
 {
     if (g_last_variant) park_idle_stylus();
+    if (g_last_variant == V_AIR) {
+        /* the reduced pause: Start, pad A (the port's confirm), pad B / the attack key, the back key and a click on the plank are all the
+           ROM's Start, the one key its state 0xb resumes on (Select, its other one, belongs to the big map); the directions have nothing to move */
+        uint16_t k = *pressed;
+        const int go = (k & (MENU_PAD_START | MENU_PAD_CONFIRM | 0x0001)) || back || g_air_resume;
+        k = (uint16_t)(k & ~(unsigned)(MENU_PAD_CONFIRM | 0x0001 | MENU_PAD_UP | MENU_PAD_DOWN | MENU_PAD_LEFT | MENU_PAD_RIGHT));
+        if (go) k = (uint16_t)(k | MENU_PAD_START);
+        g_air_resume = 0;
+        *pressed = k;
+        return;
+    }
     if (slide_busy()) { *pressed = 0; return; }       /* a slide in flight eats the pad */
     if (!tracker_view() || settings_page_open()) return;
     const uint16_t confirm = (uint16_t)(MENU_PAD_CONFIRM | MENU_PAD_START | 0x0001);

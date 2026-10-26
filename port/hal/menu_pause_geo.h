@@ -20,7 +20,8 @@
 #include <stdint.h>
 
 enum {
-    PAUSE_V_CASTLE = 1, PAUSE_V_COURSE = 2, PAUSE_V_SAVE = 6, PAUSE_V_STATUS = 7, PAUSE_V_NOSAVE = 8
+    PAUSE_V_CASTLE = 1, PAUSE_V_COURSE = 2, PAUSE_V_SAVE = 6, PAUSE_V_STATUS = 7, PAUSE_V_NOSAVE = 8,
+    PAUSE_V_AIR = 10          /* the ROM's reduced course pause (PS state 0xb): the Resume plank alone */
 };
 
 #define PAUSE_FACTS_MAGIC 0x50415533

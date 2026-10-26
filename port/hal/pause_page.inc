@@ -332,7 +332,7 @@ void pp_pointer(const Surf &sf, const PauseGeo &g, const PauseFacts *f)
 {
     if (f->sel_slot < 0 || f->sel_slot >= f->nslots || f->settings_open) return;
     PauseRect r;
-    if (f->variant == PAUSE_V_CASTLE || f->variant == PAUSE_V_COURSE) r = pause_plank_rect(g, f, f->nslots, f->sel_slot);
+    if (f->variant == PAUSE_V_CASTLE || f->variant == PAUSE_V_COURSE || f->variant == PAUSE_V_AIR) r = pause_plank_rect(g, f, f->nslots, f->sel_slot);
     else r = pause_dialog_plank(g, f, f->variant, f->nslots, f->sel_slot);
     const int ah = (int)(r.h * 0.5 + 0.5), aw = (int)(ah * 24.0 / 34.0 + 0.5);
     const Piece *ap = arrow_right_piece(aw, ah);
@@ -340,6 +340,20 @@ void pp_pointer(const Surf &sf, const PauseGeo &g, const PauseFacts *f)
     static const int bob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
     const int ax = r.x - aw - (int)(22 * g.u) + (int)(bob[(f->frame >> 1) & 7] * g.u * 0.5);
     blit(sf, ap->px, ap->w, ap->h, ax, r.y + r.h / 2 - ah / 2, 255, 0, 0, 0);
+}
+
+/* the reduced pause's Resume plank when no mod carries the planks: the ROM's own Continue plate is not on its bottom screen in state 0xb (the
+   ROM leaves engine B's plate layers off there), so the plank is the plain skin's (the edge tabs' wood and lettering), lit, sinking when pressed */
+void pp_air_plank(const Surf &sf, const PauseGeo &g, const PauseFacts *f)
+{
+    const PauseRect r = pause_plank_rect(g, f, 1, 0);
+    const int shade = f->pressed ? 25 : 0, sink = f->pressed ? (int)(2 * g.u + 0.5) : 0;
+    const float x = (float)r.x, y = (float)(r.y + sink), w = (float)r.w, h = (float)r.h;
+    fill_rrect(sf, x, y, w, h, h * 0.28f, plain_tint(0x8A5A10, 30, shade), 255, 0);
+    fill_rrect(sf, x + h * 0.08f, y + h * 0.08f, w - h * 0.16f, h * 0.84f, h * 0.22f, plain_tint(0xF0B850, 30, shade), 255, 0);
+    const char *t = "Resume";
+    const float em = h * 0.62f, tw = ui_text_width(t, em);
+    ui_text_draw(&sf, x + (w - tw) * 0.5f, y + h * 0.5f + ui_text_cap_height(em) * 0.5f, t, em, plain_tint(0x7A3A0C, 0, shade), 255, 0);
 }
 
 }  // namespace
@@ -361,6 +375,7 @@ extern "C" void pause_page_draw(const MenuLayout *lay, int piece, uint32_t *dst,
         if (g.wide || f->slide_t1000 < 1000) pp_event_card(sf, g, f, g.pcx + pause_planks_dx(g, f), last.y + last.h + (int)(30 * g.u));
     }
     if (!g.wide && main_page && !f->settings_open) pp_tabs(sf, g, f);
+    if (f->variant == PAUSE_V_AIR && f->rom_art) pp_air_plank(sf, g, f);
     if (!(!g.wide && f->slide_t1000 > 500)) pp_pointer(sf, g, f);
 }
 
