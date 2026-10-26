@@ -190,7 +190,21 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
            only on the frame of its edge: the guard used to read the pressed word alone, the held word came back on the second frame and the
            ROM saw a fresh edge (a keyboard or pad press is never one frame long). */
         /* NAME1: on the file select 0x0001 (pad B, the port's punch) is the back arrow, not a confirm (hal/menu_recipe_title.cpp title_pad_keys) */
-        const uint16_t bits = title_file_page() ? (uint16_t)(0x0002 | 0x0008) : (uint16_t)(0x0001 | 0x0002 | 0x0008);
+        /* INPUTMATRIX1: pad B (the port's punch bit 0x0001) is never a confirm on the title's host pages: A and Start are. On the main page it is
+           the back key (the online planks turn back; solo it does nothing) and stays out of the ROM; on the file select it is the back arrow
+           (hal/menu_recipe_title.cpp title_pad_keys). */
+        const int onmain = title_main_page();
+        if (onmain) {
+            unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+            if ((*pressed | *held) & 0x0001) {
+                if (*pressed & 0x0001) menu_online_back(1);
+                if (g_strip_conf) *g_strip_conf = (unsigned short)(*g_strip_conf | 0x0001);
+                *pressed = (uint16_t)(*pressed & ~0x0001);
+                *held = (unsigned short)(*held & ~0x0001);
+                port_host_keys_clear(0x0001);
+            }
+        }
+        const uint16_t bits = (title_file_page() || onmain) ? (uint16_t)(0x0002 | 0x0008) : (uint16_t)(0x0001 | 0x0002 | 0x0008);
         unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
         if ((*pressed | *held) & bits) {
             /* NAME1 (run after093): the MP plank is ONLINE now; its press, the planks it turns, the modal screens and the online file select's
