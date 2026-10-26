@@ -435,8 +435,9 @@ void port_char_strip_idle(void)
 
 void port_char_strip_draw(uint32_t *px, int stride, int w, int h)
 {
-    if (!g_up && px && !host_setting_character_strip() && hal_menu_starsel_up()) {
-        /* CAPSTOGGLE1 proof: SM64DS_STRIP_BMP also writes the picture of the DS star select with the setting off (the frames counted here) */
+    if (!g_up && px && hal_menu_starsel_up()) {
+        /* CAPSTOGGLE1 proof: SM64DS_STRIP_BMP also writes the picture of the DS star select with the setting off (the frames counted here);
+           CHARLOCK1: and with no strip because the file has one character and no costume open */
         static int off_frames;
         const int sv = g_frames;
         g_frames = ++off_frames;
