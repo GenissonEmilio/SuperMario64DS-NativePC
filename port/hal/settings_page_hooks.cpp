@@ -142,13 +142,35 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
            ROM, whose cursor was still on the wrench (its own OPTIONS screen opened behind our page). The same stripping as the D-pad steps below. */
         static unsigned short strip_conf;
         unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+        g_strip_conf = hal_menu_enabled(MENU_KEY_ONE_SCREEN_MENUS) ? &strip_conf : 0;
+        /* with the one-screen menus off the ROM's own title runs and menu_title_pad_map_rom rebuilds its pad words every frame before this hook; the
+           edge-frame swallow is what that mode was proven with (PADMENUS1 T4), so only the one-screen pages keep the strip */
+        if (!g_strip_conf) strip_conf = 0;
         strip_conf = (unsigned short)(strip_conf & (*held | *pressed));
         if (strip_conf) {
             *pressed = (uint16_t)(*pressed & ~strip_conf);
             *held = (unsigned short)(*held & ~strip_conf);
             port_host_keys_clear(strip_conf);
         }
-        g_strip_conf = &strip_conf;
+    }
+    {
+        /* INPUTMATRIX1: THE ? TEXT, THE VS NOTE AND THE WAIT SCREEN ARE MODAL FOR THE PAD. While one is up its close button is the only thing the
+           pad can reach: A, B and Start close it, and nothing else of the pad (the D-pad, the other buttons) reaches the ROM's title or file select
+           underneath until it is closed (the mouse already behaved so). The closing key stays out of the ROM until it is up (strip_conf). */
+        const int mk = title_main_page() ? 1 : title_file_page() ? 2 : 0;
+        if (mk && menu_online_modal_up()) {
+            unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+            const uint16_t cb = 0x0001 | 0x0002 | 0x0008;
+            if (*pressed & cb) {
+                if (mk == 1) menu_online_press_main(title_cursor_elem(), 1);
+                else menu_online_press_file(title_cursor_elem(), 1);
+            }
+            if (g_strip_conf) *g_strip_conf = (unsigned short)(*g_strip_conf | (cb & (*pressed | *held)));
+            *pressed = 0;
+            *held = 0;
+            port_host_keys_clear(0xffff);
+            return 1;
+        }
     }
     {
         /* NAME1: the D-pad's way to the ? button. The ROM's cursor has nowhere to go from the wrench to the left, nor up from the file row, so the
@@ -171,7 +193,21 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
            only on the frame of its edge: the guard used to read the pressed word alone, the held word came back on the second frame and the
            ROM saw a fresh edge (a keyboard or pad press is never one frame long). */
         /* NAME1: on the file select 0x0001 (pad B, the port's punch) is the back arrow, not a confirm (hal/menu_recipe_title.cpp title_pad_keys) */
-        const uint16_t bits = title_file_page() ? (uint16_t)(0x0002 | 0x0008) : (uint16_t)(0x0001 | 0x0002 | 0x0008);
+        /* INPUTMATRIX1: pad B (the port's punch bit 0x0001) is never a confirm on the title's host pages: A and Start are. On the main page it is
+           the back key (the online planks turn back; solo it does nothing) and stays out of the ROM; on the file select it is the back arrow
+           (hal/menu_recipe_title.cpp title_pad_keys). */
+        const int onmain = title_main_page() && hal_menu_enabled(MENU_KEY_ONE_SCREEN_MENUS);   /* the ROM two-screen title maps A to the DS A bit before this hook runs, so there 0x0001 is the converted A */
+        if (onmain) {
+            unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+            if ((*pressed | *held) & 0x0001) {
+                if (*pressed & 0x0001) menu_online_back(1);
+                if (g_strip_conf) *g_strip_conf = (unsigned short)(*g_strip_conf | 0x0001);
+                *pressed = (uint16_t)(*pressed & ~0x0001);
+                *held = (unsigned short)(*held & ~0x0001);
+                port_host_keys_clear(0x0001);
+            }
+        }
+        const uint16_t bits = (title_file_page() || onmain) ? (uint16_t)(0x0002 | 0x0008) : (uint16_t)(0x0001 | 0x0002 | 0x0008);
         unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
         if ((*pressed | *held) & bits) {
             /* NAME1 (run after093): the MP plank is ONLINE now; its press, the planks it turns, the modal screens and the online file select's

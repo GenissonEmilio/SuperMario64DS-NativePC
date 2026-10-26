@@ -62,6 +62,7 @@ int  menu_online_press_file(int elem, int edge);
 int  menu_online_touch(int kind, int down, int sx, int sy);
 int  menu_online_dir(int kind, int cursor, unsigned dirs);   /* a D-pad step the ROM cursor has nowhere to go with: wrench + left, or the file row + up, opens the ? text */
 int  menu_online_help_pad(int kind);                     /* X / Y on a page that has the ? button: 1 = taken */
+int  menu_online_modal_up(void);                         /* a ? text, the VS note or the wait screen is up (INPUTMATRIX1: the pad is modal for it) */
 int  menu_online_back(int kind);                         /* the back key: 1 = taken (closes a screen or turns the planks back) */
 
 /* ---- recipe (build / draw side) -------------------------------------------------------------------------------- */
