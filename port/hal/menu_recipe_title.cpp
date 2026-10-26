@@ -836,20 +836,26 @@ static void sv_restore()
    x 0x60..0xa0, y 0x40..0x80; it stops the idle loop sound and starts the flight sound by itself) and CH_CUT ticks after the press, when the star is off the top of the picture,
    the skip is applied: the ROM is shown a save (the real words on a played save, a marker word on an empty one) and a key edge, which is the ROM's own skip of the rest of the flight
    (src/func_ov007_020b0a20.c flag block) and the beat and the wipe follow. The same on a played and an empty save. SM64DS_INTRO_CUT=<ticks> tries another length (dev builds). */
-enum { CH_CUT = 88 };
+/* The cut follows the star body on both saves. The ROM picks the star's scale at its tick 0 from the same save test the skip uses (func_ov007_020aebac: the words +0xb..+0xd and
+   +4 of the record all zero = no save, src/func_ov007_020b0a20.c: 0x1770 with no save, 0xDAC with one), so a played save shows a smaller star that leaves the top earlier. Measured on the
+   native flight (star blob under 100 pixels): gone at press+88 with no save, press+59 with a save. The cut is that tick on each, so the beat starts 0 ticks after the star body leaves on either.
+   The played save is known here by the words the port hid from the ROM (g_sv_faked). */
+enum { CH_CUT = 88, CH_CUT_SAVED = 59 };
 static int g_cut_t = -1;        /* ticks since the press on the attract page (0 on the press tick), -1 = no press */
 static int g_cut_fire;          /* the cut is due: the next pre-tick pad hook applies the skip */
-static int cut_len()
+static int g_cut_len;           /* the cut length chosen at the press */
+static int cut_len_for(bool saved)
 {
-    static int v = -1;
-    if (v < 0) {
-        v = CH_CUT;
+    static int shift = -99999;
+    if (shift == -99999) {
+        shift = 0;
 #ifndef PORT_ROM_CLEAN
-        const char *e = getenv("SM64DS_INTRO_CUT");
-        if (e && *e) v = atoi(e);
+        const char *e = getenv("SM64DS_INTRO_CUT");     /* dev only: the no-save length, the saved length moves by the same amount */
+        if (e && *e) shift = atoi(e) - CH_CUT;
 #endif
     }
-    return v;
+    const int v = (saved ? CH_CUT_SAVED : CH_CUT) + shift;
+    return v < 1 ? 1 : v;
 }
 static bool cut_ready() { return g_cut_t < 0 && g_last == V_ATTRACT && g_elem == 0 && g_ch.attract_t >= 6 && ff_on(); }
 static void cut_begin()
@@ -857,7 +863,8 @@ static void cut_begin()
     if (!cut_ready()) return;
     g_cut_t = 0;
     g_cut_fire = 0;
-    if (hal_menu_trace_on()) fprintf(stderr, "[chore] press on the attract: the ROM's flight runs, the skip comes in %d ticks\n", cut_len());
+    g_cut_len = cut_len_for(g_sv_faked != 0);
+    if (hal_menu_trace_on()) fprintf(stderr, "[chore] press on the attract (%s save): the ROM's flight runs, the skip comes in %d ticks\n", g_sv_faked ? "a" : "no", g_cut_len);
 }
 /* a touch / click going into the ROM on the attract page that has not started its flight yet is aimed at the star (the ROM only starts the flight on a touch inside the star's box) */
 extern "C" void port_title_press_aim(unsigned char *x, unsigned char *y)
@@ -877,7 +884,7 @@ void chore_rom_writes(int top, int req)
     if (!data_ov007_0210342c) return;
     if (top == 11 && g_ch.attract_t >= 0 && !g_sv_faked && g_ch.attract_t < 8 && g_last == V_ATTRACT) sv_fake();
     else if (top != 11) { sv_restore(); sv_unlie(); }
-    if (top == 11 && g_cut_t >= 0) { if (++g_cut_t >= cut_len()) g_cut_fire = 1; }
+    if (top == 11 && g_cut_t >= 0) { if (++g_cut_t >= g_cut_len) g_cut_fire = 1; }
     else if (top != 11) { g_cut_t = -1; g_cut_fire = 0; }
     if (!ff_on()) return;
     char *g = (char *)data_ov007_0210342c;
