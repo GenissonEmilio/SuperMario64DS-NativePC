@@ -165,6 +165,14 @@ int on_file_start(int slot)
     fprintf(stderr, "[chars] file %c picked: saved skin '%s' (%s), running skin %s, character %s\n",
             'A' + slot, want.c_str(), idx >= 0 ? "installed" : want.empty() ? "plain" : "NOT installed, plain used",
             cur >= 0 ? port_char_key(cur) : "(none)", BASE_NAME[chr]);
+    {   /* CHARLOCK1: a saved pick made on a ROM character this file has not earned (flags2 bit 0 Mario, 1 Luigi, 2 Wario: SaveData::
+           IsCharacterUnlocked) is not applied: the file plays as its own character, Yoshi on a new file. The entry is kept. */
+        const unsigned flags2 = *(const unsigned *)(data_0209caa0 + 8);
+        for (int c = 0; c < 3; ++c)
+            if (g_slot[slot].base == BASE_NAME[c] && !(flags2 & (1u << c)))
+                fprintf(stderr, "[chars] file %c: the saved base '%s' is locked on this file (flags2 0x%08x); playing as %s\n",
+                        'A' + slot, BASE_NAME[c], flags2, BASE_NAME[chr]);
+    }
     if (idx >= 0 && port_char_base(idx) != chr)
         fprintf(stderr, "[chars] the file's character is %s, the skin is for %s: it shows when that character is played\n",
                 BASE_NAME[chr], BASE_NAME[port_char_base(idx)]);
