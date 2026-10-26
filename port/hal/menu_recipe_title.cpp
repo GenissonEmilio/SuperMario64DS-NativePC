@@ -51,6 +51,8 @@ int port_scene_live_id(void);
 void func_ov007_020bdeb0(int idx);
 void func_ov007_020bde70(int idx, int arg);      /* INTROCUT1: stops the sequence started under that id, fading over arg ticks */
 int hal_menu_touch_queue_press(int dsx, int dsy);
+void *func_ov007_020b3f20(int idx);      /* ROUND5: the title's resource table lookup */
+extern char data_ov007_02104bc8[];       /* ROUND5: the star objects' second animation pointers (8 byte slots, one per object) */
 }
 
 namespace {
@@ -836,27 +838,25 @@ static void sv_restore()
    x 0x60..0xa0, y 0x40..0x80; it stops the idle loop sound and starts the flight sound by itself) and CH_CUT ticks after the press, when the star is off the top of the picture,
    the skip is applied: the ROM is shown a save (the real words on a played save, a marker word on an empty one) and a key edge, which is the ROM's own skip of the rest of the flight
    (src/func_ov007_020b0a20.c flag block) and the beat and the wipe follow. The same on a played and an empty save. SM64DS_INTRO_CUT=<ticks> tries another length (dev builds). */
-/* The cut follows the star body on both saves. The ROM picks the star's scale at its tick 0 from the same save test the skip uses (func_ov007_020aebac: the words +0xb..+0xd and
-   +4 of the record all zero = no save, src/func_ov007_020b0a20.c: 0x1770 with no save, 0xDAC with one), so a played save shows a smaller star that leaves the top earlier. Measured on the
-   native flight (star blob under 100 pixels): gone at press+88 with no save, press+59 with a save. Tango picked the cut at press+134 on the numbered native sheets, after the sparkle trail: 46 ticks after the star body leaves with no save,
-   and the same 46 after it with a save (105), so the beat starts the same number of ticks after the star on either.
-   The played save is known here by the words the port hid from the ROM (g_sv_faked). */
-enum { CH_CUT = 134, CH_CUT_SAVED = 105 };
+/* One cut length for both saves: a played save is made to look and fly exactly like the empty one (the star's scale is put to the no-save value right after the ROM's
+   tick 0, see chore_rom_writes), so the star body leaves at press+88 on either (measured on the native flight, blob under 100 pixels). Tango picked the cut at press+134 on the numbered
+   native sheets, after the sparkle trail, 46 ticks after the star body. */
+enum { CH_CUT = 134 };
 static int g_cut_t = -1;        /* ticks since the press on the attract page (0 on the press tick), -1 = no press */
 static int g_cut_fire;          /* the cut is due: the next pre-tick pad hook applies the skip */
 static int g_cut_len;           /* the cut length chosen at the press */
-static int cut_len_for(bool saved)
+static int cut_len_for()
 {
-    static int shift = -99999;
-    if (shift == -99999) {
-        shift = 0;
+    static int len = -1;
+    if (len < 0) {
+        len = CH_CUT;
 #ifndef PORT_ROM_CLEAN
-        const char *e = getenv("SM64DS_INTRO_CUT");     /* dev only: the no-save length, the saved length moves by the same amount */
-        if (e && *e) shift = atoi(e) - CH_CUT;
+        const char *e = getenv("SM64DS_INTRO_CUT");     /* dev only: another cut length in ticks */
+        if (e && *e) len = atoi(e);
 #endif
+        if (len < 1) len = 1;
     }
-    const int v = (saved ? CH_CUT_SAVED : CH_CUT) + shift;
-    return v < 1 ? 1 : v;
+    return len;
 }
 static bool cut_ready() { return g_cut_t < 0 && g_last == V_ATTRACT && g_elem == 0 && g_ch.attract_t >= 6 && ff_on(); }
 static void cut_begin()
@@ -864,7 +864,7 @@ static void cut_begin()
     if (!cut_ready()) return;
     g_cut_t = 0;
     g_cut_fire = 0;
-    g_cut_len = cut_len_for(g_sv_faked != 0);
+    g_cut_len = cut_len_for();
     if (hal_menu_trace_on()) fprintf(stderr, "[chore] press on the attract (%s save): the ROM's flight runs, the skip comes in %d ticks\n", g_sv_faked ? "a" : "no", g_cut_len);
 }
 /* a touch / click going into the ROM on the attract page that has not started its flight yet is aimed at the star (the ROM only starts the flight on a touch inside the star's box) */
@@ -883,7 +883,23 @@ extern "C" void port_title_press_seen(void)
 void chore_rom_writes(int top, int req)
 {
     if (!data_ov007_0210342c) return;
-    if (top == 11 && g_ch.attract_t >= 0 && !g_sv_faked && g_ch.attract_t < 8 && g_last == V_ATTRACT) sv_fake();
+    if (top == 11 && g_ch.attract_t >= 0 && !g_sv_faked && g_ch.attract_t < 8 && g_last == V_ATTRACT) {
+        sv_fake();
+        /* ROUND5: the ROM reads the save record at its attract tick 0 (src/func_ov007_020b0a20.c, mode 0: the star's scale is 0xDAC with a save, 0x1770 with none) and the port can hide the
+           words only after that tick has run, so a played save showed the small star and, at the press, its other (popping, twice edge-on) flight. The words are hidden from tick 1 on, so the
+           scale (element +0x40 / +0x44 / +0x48 of the attract object, the three words tick 0 sets together) is put to the no-save value by hand here, once, right after tick 0. */
+        if (g_sv_faked && data_ov007_0210342c) {
+            char *gg = (char *)data_ov007_0210342c;
+            char *s100 = *(char **)(gg + 0x100);
+            char *el = s100 ? *(char **)(s100 + 4) : 0;
+            if (el) {
+                *(int *)(el + 0x40) = 0x1770; *(int *)(el + 0x44) = 0x1770; *(int *)(el + 0x48) = 0x1770;
+                /* and the animation: beaa0 (src/func_ov007_020beaa0.c) picked resource 0xe with no save and 0xf with one for the two star objects (p0 = 0, 1), the "other flight" */
+                for (int p0 = 0; p0 < 2; ++p0) *(void **)(data_ov007_02104bc8 + 8 * p0) = func_ov007_020b3f20(0xe);
+                if (hal_menu_trace_on()) fprintf(stderr, "[chore] played save: the star's scale put to the no-save value (0x1770)\n");
+            }
+        }
+    }
     else if (top != 11) { sv_restore(); sv_unlie(); }
     if (top == 11 && g_cut_t >= 0) { if (++g_cut_t >= g_cut_len) g_cut_fire = 1; }
     else if (top != 11) { g_cut_t = -1; g_cut_fire = 0; }
