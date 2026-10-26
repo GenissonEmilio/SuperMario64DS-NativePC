@@ -908,9 +908,22 @@ extern "C" {
 int (*port_online_join_tick_hook)(void) = 0;
 }
 
+/* JOINFLOW1 (hal/menu_join_plate.cpp seats these): the quiet entry of a join successor. The title walk below this file's front door still runs
+   (the ROM's own title, menu and file select, pressed through the ROM's handlers), but every picture is the Joining plate until the adventure is
+   entered. tick: per frame after the scene tick; 1 = the player cancelled (or the walk never finished) and the game was started again as a clean
+   solo title, so this process stops. end: the adventure is entered, the plate comes down. cancelled: 1 once a cancel started the solo title, so
+   no later commit enters the adventure in this process. Null / 0 on every target that does not link the plate. */
+extern "C" {
+int  (*port_join_quiet_tick_hook)(void) = 0;
+void (*port_join_quiet_end_hook)(const char *why) = 0;
+int  port_join_quiet_cancelled = 0;
+}
+
 extern "C" int port_title_entry_should_stop(void)
 {
     if (port_online_join_tick_hook && port_online_join_tick_hook())
+        return 1;
+    if (port_join_quiet_tick_hook && port_join_quiet_tick_hook())
         return 1;
     if (!port_title_entry_armed())
         return port_title_front_door_poll();   /* a scene session: see above */
@@ -929,6 +942,12 @@ extern "C" int port_title_entry_commit(void)
         return 0;
     if (data_02092664 != SCENE_STAGE)
         return 0;
+    if (port_join_quiet_cancelled) {
+        /* JOINFLOW1: the player cancelled the join on the same frame the ROM asked for the Stage; a clean solo title is already starting */
+        std::printf("[title-entry] the join was cancelled; not entering the adventure in this process\n");
+        std::fflush(stdout);
+        return 0;
+    }
 
     const int slot = (int)data_0209caa0[0x328];
     const int chr  = (int)data_0209caa0[0x41];
@@ -989,6 +1008,8 @@ extern "C" int port_title_entry_commit(void)
     std::fflush(stdout);
 
     g_taken = 1;
+    if (port_join_quiet_end_hook)
+        port_join_quiet_end_hook("the adventure is entered");
     return 1;
 }
 
