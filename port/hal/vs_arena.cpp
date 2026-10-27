@@ -2002,8 +2002,12 @@ bool vs_arena_leave_reset(const char *why) {
     port_fanout_force_wide(0);
     g_tried = false;
     g_in_place = false;
+    // my body's number back to the solo game's 0 (vs_arena_seat_world wrote the seat; a process that never joined has 0 in this ROM
+    // word, and the solo level that follows spawns player 0 only: a seat-1 console's first door read the missing player 1 and faulted)
+    const unsigned me_was = data_020a0f10[0];
+    data_020a0f10[0] = 0;
     std::fprintf(stderr, "[seamless] VS arena taken down (%s): it was seat %d of %d bodies; referee client, eat, grab and puppets reset, "
-                 "the install latch forgotten\n", why ? why : "?", seat, bodies);
+                 "the install latch forgotten, my body number data_020a0f10 %u -> 0\n", why ? why : "?", seat, bodies, me_was);
     std::fflush(stderr);
     return true;
 }
