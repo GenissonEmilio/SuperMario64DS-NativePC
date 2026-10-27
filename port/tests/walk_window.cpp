@@ -1022,6 +1022,7 @@ extern int (*port_interlude_frame_hook)(int frame);
    flag unset every one of them answers 0 without reading anything else. */
 int port_title_entry_armed(void);
 int port_title_entry_should_stop(void);
+extern "C" int (*port_online_join_tick_hook)(void);   /* hal/title_entry.cpp (SEAMJOIN2: port_interlude_frame asks it too) */
 int port_title_entry_commit(void);
 int port_title_entry_taken(void);
 int port_title_entry_run(void);
@@ -14507,6 +14508,15 @@ extern "C" int port_interlude_frame(int f)
     if (!quit) {
         port_scene_tick(f, !menu_on);
         scene_host_present_frame(g_present_hwnd, stacked, sfb);
+        /* SEAMJOIN2: A JOIN THAT RESTARTS FROM THIS TITLE ENDS THIS PROCESS, as it does from the boot title. The title a leave or a quit
+           brings up runs here, inside hal/level_change.cpp's crossing, and that loop never asked the join's tick
+           (port_title_entry_should_stop asks it on the boot title): after a refused in-place join started the successor this window kept
+           drawing beside the successor's until the player closed one. Now the crossing ends the process the way a closed window does, and
+           the hand-off's atexit wait (port_handoff_wait) hides this window on the successor's first picture. */
+        if (port_online_join_tick_hook && port_online_join_tick_hook()) {
+            fprintf(stderr, "[handoff] parent: a join started the game again from the title in this crossing; leaving it\n");
+            quit = 1;
+        }
         /* the paused frames' sound, scene_window_run's rule exactly: the game's
            frames were pumped inside the tick, the paused ones are pumped here,
            and no frame is pumped twice */
