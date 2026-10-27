@@ -1026,6 +1026,7 @@ extern "C" {
 extern void (*port_sdat_frame_hook)(void);                    /* hal/sdat/consumer.cpp: one call per game frame, every loop */
 int port_scene_live_id(void);                                 /* hal/scene_boot.cpp: 1 = the title is the live scene */
 int port_mods_relatch_after_level(const char *reason);        /* hal/mods.cpp */
+int port_mods_relatch_forced(const char *reason);             /* hal/mods.cpp (SEAMCLEAN1) */
 int port_mods_relatch_at_title(const char *reason);
 int port_mods_multiplayer(void);
 int port_mods_count(void);
@@ -1144,13 +1145,24 @@ void build_line(int w, int h) {
     }
 }
 
-void lv_restart(const char *why) {
+void lv_restart(const char *why, bool mods_refused = false) {
     std::fprintf(stderr, "[seamless] in place refused: %s; restarting\n", why);
     std::fflush(stderr);
     if (!port_online_leave_restart_hook || !port_online_leave_restart_hook()) {
         std::fprintf(stderr, "[seamless] the restart could not be started (win32 %lu); this process stays on the title\n",
                      (unsigned long)GetLastError());
         std::fflush(stderr);
+        /* SEAMCLEAN1 (item 3 for the coop leave): the room is down and the mods relatch was refused, so the title holds the
+           multiplayer list with no restart coming: the offline list goes on anyway (hal/online_join.cpp leave_restart) */
+        if (mods_refused) {
+            if (port_mods_relatch_forced("the restart could not be started"))
+                std::fprintf(stderr, "[seamless] the title stays playable: the offline mod list is latched (%d mod(s) on)\n",
+                             port_mods_count());
+            else
+                std::fprintf(stderr, "[seamless] the title stays on the multiplayer mod list (%d mod(s) on); close the game and start "
+                             "it again for the full list\n", port_mods_count());
+            std::fflush(stderr);
+        }
     }
 }
 
@@ -1199,7 +1211,7 @@ void leave_at_title() {
     line_lower("the title is up");
     LV = LeaveState{};
     if (!ok) {
-        lv_restart("the mods layer refused the switch back to the offline list");
+        lv_restart("the mods layer refused the switch back to the offline list", true);
         return;
     }
     std::fprintf(stderr, "[seamless] now solo after the coop room: save medium %s (coop %d); adventure %d; multiplayer mod rule %d; "
