@@ -461,7 +461,12 @@ void leave_restart(const char *why, bool cleared = false)
 void leave_at_title()
 {
     g_leave = 2;
-    port_sdat_frame_hook = g_leave_prev_hook;
+    /* SEAMCLEAN1 (item 31): only if the hook is still this leave's own; a layer chained above it (the hand-off poll, a coop hook) is
+       never dropped. leave_frame stays chained then and does nothing more (g_leave is 2), as the VS end's restore does. */
+    if (port_sdat_frame_hook == leave_frame)
+        port_sdat_frame_hook = g_leave_prev_hook;
+    else
+        std::fprintf(stderr, "[seamless] note: another frame hook was chained after the leave's; it stays chained\n");
     std::fprintf(stderr, "[seamless] the title is up (quit at f%d): leaving the online session in this process\n", g_leave_frame);
     if (!comms_hub_teardown("leaving the online world in place")) {
         leave_restart("the hub's I/O thread did not stop");
