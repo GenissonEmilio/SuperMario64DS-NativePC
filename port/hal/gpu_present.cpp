@@ -905,6 +905,7 @@ typedef BOOL (WINAPI *SetWindowPos_t)(HWND, HWND, int, int, int, int, UINT);
 typedef LONG (WINAPI *SetWindowLongA_t)(HWND, int, LONG);
 typedef LRESULT (WINAPI *CallWindowProcA_t)(WNDPROC, HWND, UINT, WPARAM, LPARAM);
 typedef BOOL (WINAPI *GetClientRect_t)(HWND, LPRECT);
+typedef LONG (WINAPI *GetWindowLongA_t)(HWND, int);
 DefWindowProcA_t g_defproc;
 ShowWindow_t g_showwin;
 SetWindowPos_t g_setpos;
@@ -912,6 +913,7 @@ CreateWindowExA_t g_crewin;
 SetWindowLongA_t g_setlong;
 CallWindowProcA_t g_callproc;
 GetClientRect_t g_getclient;
+GetWindowLongA_t g_getlong;
 int g_child_class;      /* 1 registered, -1 it could not be: the swap chain goes on the game window */
 void hook_parent(HWND parent);
 int g_child_w, g_child_h;       /* the size the surface window was last given */
@@ -951,6 +953,7 @@ HWND make_child(HWND parent, int w, int h)
         g_setlong = (SetWindowLongA_t)GetProcAddress(g_user32, "SetWindowLongA");
         g_callproc = (CallWindowProcA_t)GetProcAddress(g_user32, "CallWindowProcA");
         g_getclient = (GetClientRect_t)GetProcAddress(g_user32, "GetClientRect");
+        g_getlong = (GetWindowLongA_t)GetProcAddress(g_user32, "GetWindowLongA");
         g_destroywin = (DestroyWindow_t)GetProcAddress(g_user32, "DestroyWindow");
         WNDCLASSA wc;
         memset(&wc, 0, sizeof wc);
@@ -1000,9 +1003,23 @@ void child_size(int w, int h)
    WM_WINDOWPOSCHANGED for every move and size (F12, StartFullscreen, the
    hand-off's placement, a maximise, a border drag) and WM_SIZE behind it. The
    rectangle is the client area, the one the present path sizes the swap chain
-   to. A minimised window is left alone. */
+   to. A minimised window is left alone.
+   EARLIER STILL, IN WM_NCCALCSIZE: WM_WINDOWPOSCHANGED comes after the game
+   window's new rectangle is already in place and after its frame is
+   repainted, so a size taken there left the surface window one step behind
+   for a few milliseconds (seen as one 10 ms sample of a rectangle sampler).
+   WM_NCCALCSIZE is the step that computes the new client rectangle, just
+   before the window manager puts it in place: the surface window takes that
+   size there, and WM_WINDOWPOSCHANGED only confirms it. */
 LRESULT CALLBACK parent_size_hook(HWND h, UINT m, WPARAM w, LPARAM l)
 {
+    if (m == WM_NCCALCSIZE && w && l && h == g_hooked && h == g_parent && g_child &&
+        !(g_getlong && (g_getlong(h, GWL_STYLE) & WS_MINIMIZE))) {
+        const LRESULT r = g_callproc(g_hooked_proc, h, m, w, l);
+        const RECT &rc = ((const NCCALCSIZE_PARAMS *)l)->rgrc[0];
+        child_size(rc.right - rc.left, rc.bottom - rc.top);
+        return r;
+    }
     if (h == g_hooked && h == g_parent && g_child) {
         if (m == WM_WINDOWPOSCHANGED && g_getclient) {
             const WINDOWPOS *wp = (const WINDOWPOS *)l;
