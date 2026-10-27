@@ -1034,11 +1034,19 @@ LRESULT CALLBACK parent_size_hook(HWND h, UINT m, WPARAM w, LPARAM l)
     return g_callproc(g_hooked_proc, h, m, w, l);
 }
 
-/* Once per game window, the first time a surface window is made on it. */
+/* Once per game window, the first time a surface window is made on it. A DIFFERENT game window in the same process (a window
+   rebuilt, SEAMCLEAN1) is hooked too: the old one is let go first (its procedure put back if ours is still the top one; a window
+   that is already destroyed answers nothing and costs nothing). */
 void hook_parent(HWND parent)
 {
     if (g_hooked == parent || !g_setlong || !g_callproc || !g_getclient) return;
-    if (g_hooked) return;       /* one game window per run */
+    if (g_hooked) {
+        if (g_getlong && g_hooked_proc &&
+            (LONG)g_getlong(g_hooked, GWL_WNDPROC) == (LONG)(LONG_PTR)parent_size_hook)
+            g_setlong(g_hooked, GWL_WNDPROC, (LONG)(LONG_PTR)g_hooked_proc);
+        g_hooked = 0;
+        g_hooked_proc = 0;
+    }
     const LONG old = g_setlong(parent, GWL_WNDPROC, (LONG)(LONG_PTR)parent_size_hook);
     if (!old) return;
     g_hooked_proc = (WNDPROC)(LONG_PTR)old;
