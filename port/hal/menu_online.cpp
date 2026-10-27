@@ -407,6 +407,18 @@ int menu_online_help_pad(int kind)
     return 0;
 }
 
+int menu_online_padfocus(void) { return menu_online_enabled() && g.scr == ONL_SCR_NONE ? g.padfocus : 0; }
+
+void menu_online_hover_focus(int kind, int pf, int cursor)
+{
+    if (!menu_online_enabled() || g.scr != ONL_SCR_NONE) return;
+    if (pf == ONL_PF_HELP && !((kind == 1 && g.on) || (kind == 2 && g.flow))) return;      /* the ? is up on the online title and the online file select only */
+    if (pf == ONL_PF_NAME && !(kind == 2 && g.flow)) return;                                /* NAME only on the online file select */
+    if (pf != ONL_PF_HELP && pf != ONL_PF_NAME) pf = 0;
+    if (pf != g.padfocus && hal_menu_trace_on()) fprintf(stderr, "[padnav] hover: focus %d -> %d (page %d, cursor %d)\n", g.padfocus, pf, kind, cursor);
+    g.padfocus = pf; g.pf_cur = cursor; g.pf_kind = kind;
+}
+
 int menu_online_modal_up(void) { return menu_online_enabled() && g.scr != ONL_SCR_NONE; }
 
 int menu_online_back(int kind)

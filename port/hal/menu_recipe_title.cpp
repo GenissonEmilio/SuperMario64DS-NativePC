@@ -1963,11 +1963,19 @@ int title_cursor_snd()
         unsigned st;
         if (q0) { q0dbg0 = q0[0]; q0dbg1 = q0[1]; }
         if (q0 && hal_menu_hover_box(&hx, &hy, &st)) {
+            /* TITLEUI1: the online planks the pad focus can sit on (the ?, NAME): the arrow is already under the one the mouse landed on, nothing to announce.
+               A hover back on the ROM element the cursor holds while the focus is on such a plank does move the arrow (title_cursor_assist hands the focus back). */
+            const int pf = menu_online_padfocus();
+            const int hpf = (hx == ONL_HELP_X && hy == ONL_HELP_Y) ? ONL_PF_HELP : (hx == ONL_NAME_X && hy == ONL_NAME_Y) ? ONL_PF_NAME : 0;
+            if (hpf && hpf == pf) {
+                if (hal_menu_trace_on()) fprintf(stderr, "[menu] hover on plank %d: the pad focus is already there, no sound\n", hpf);
+                return 1;
+            }
             int slot[24], ids[24], x0[24], y0[24], x1[24], y1[24];
-            const int n = port_title_elem_boxes(slot, ids, x0, y0, x1, y1, 24);
+            const int n = hpf ? 0 : port_title_elem_boxes(slot, ids, x0, y0, x1, y1, 24);
             for (int k = 0; k < n; ++k) {
                 if (x0[k] != hx || y0[k] != hy || !port_title_elem_live(slot[k])) continue;
-                if (q0[0] == ids[k] || q0[1] == ids[k]) {
+                if ((q0[0] == ids[k] || q0[1] == ids[k]) && !pf) {
                     if (hal_menu_trace_on()) fprintf(stderr, "[menu] hover on element %d: the ROM cursor is already there, no sound\n", ids[k]);
                     return 1;
                 }
@@ -2239,10 +2247,14 @@ static void title_cursor_assist()
         unsigned st;
         if (q0 && hal_menu_hover_box(&hx, &hy, &st) && st != hov_seen_f) {
             hov_seen_f = st;
+            /* TITLEUI1: a hover on the online file select's ? or NAME plank lands the pad focus there (the arrow follows it, as the D-pad's step would) */
+            if (hx == ONL_HELP_X && hy == ONL_HELP_Y) { menu_online_hover_focus(2, ONL_PF_HELP, q0[0]); return; }
+            if (hx == ONL_NAME_X && hy == ONL_NAME_Y) { menu_online_hover_focus(2, ONL_PF_NAME, q0[0]); return; }
             int slot[24], ids[24], x0[24], y0[24], x1[24], y1[24];
             const int n = port_title_elem_boxes(slot, ids, x0, y0, x1, y1, 24);
             for (int k = 0; k < n; ++k) {
                 if (ids[k] < 14 || ids[k] > 21 || x0[k] != hx || y0[k] != hy || !port_title_elem_live(slot[k])) continue;
+                if (menu_online_padfocus()) menu_online_hover_focus(2, 0, q0[0]);      /* TITLEUI1: the arrow leaves the ? / NAME plank for the hovered element */
                 if (q0[0] != ids[k] && q0[1] != ids[k]) {
                     if (hal_menu_trace_on()) fprintf(stderr, "[filecur] hover element %d: cursor %d -> %d (page %d/%d)\n", ids[k], (int)q0[0], ids[k], top, elem);
                     q0[1] = (short)ids[k];
@@ -2260,10 +2272,14 @@ static void title_cursor_assist()
     unsigned st;
     if (hal_menu_hover_box(&hx, &hy, &st) && st != hov_seen) {
         hov_seen = st;
+        /* TITLEUI1: the ? of the online title is a host plank the ROM's cursor cannot hold: a hover on it lands the pad focus there, so the arrow goes under
+           it exactly as the D-pad's step from the wrench puts it (hal/menu_online.cpp menu_online_dir) */
+        if (hx == ONL_HELP_X && hy == ONL_HELP_Y) { menu_online_hover_focus(1, ONL_PF_HELP, p0[0]); return; }
         static const int ids[4] = { 1, 0, 2, 7 };
         for (int k = 0; k < 4; ++k) {
             Box b;
             if (box_of_live(ids[k], &b) && b.x0 == hx && b.y0 == hy) {
+                if (menu_online_padfocus()) menu_online_hover_focus(1, 0, p0[0]);      /* TITLEUI1: the wrench or a plank takes the arrow back from the ? */
                 if (p0[0] != ids[k]) p0[1] = (short)ids[k];
                 return;
             }
