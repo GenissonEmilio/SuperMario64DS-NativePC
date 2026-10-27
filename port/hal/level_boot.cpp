@@ -5638,7 +5638,14 @@ static void port_a2_seat_body(int make_stage)
        slot" byte (data_020a0f10) before func_0203da9c is read below and by
        Stage::InitResources, so body <seat> is mine. The body count is the
        room's capacity (SM64DS_VS_PLAYERS, which vs_player_count reads first).
-       No-op outside arena. */
+       No-op outside arena.
+       WHO RUNS THIS BLOCK (SEAMCLEAN1, DECISION): a process's FIRST level boot, here, in main(). A level the level-to-scene
+       crossing hands back (a title reached after a quit, a match, a leave) boots through hal/level_change.cpp
+       port_level_change_apply and never comes through here, so the VS session words (my seat, SetNumPlayers, the per-player input
+       gate) are NOT re-seated by that path. The VS hand-off handler is their owner on a crossing: hal/scene_vs_menu.cpp
+       port_vs_handoff step 4b seats them before it asks for the match, and Stage::InitResources copies them as it does on a
+       child's boot (the second-match rows of SEAMVS1: seat and clock correct). Running this block on the crossing too would seat
+       them twice for no change, so the handler stays the owner. */
     port::vs_arena_seat_world();
 
     const int vs_players = port::vs_player_count();
