@@ -895,10 +895,13 @@ extern "C" int port_char_door_open(void);
 namespace {
 
 /* WHAT THE GAME HAS READ, BY FAT ID AND WHEN. Every card block the ROM reads names the files it covers (hal/fs_names.cpp); the
-   phase is the boot (before the title was ever live), the title (scene 1 live) or later (a level or another scene). Kept always:
-   it is one byte per file id and an OR per block, and it is what the held-file refusal reads. */
+   phase is the boot (before the title was ever live), the title (scene 1 live) or later (a level or another scene). It is what the
+   held-file refusal reads. DEV BUILDS ONLY (lane SEAMART1): the kit has no relatch caller (the dev knob below is its only one, and
+   the relatch links out of the kit), so the kit seats no hook and carries no record; there g_read_phase stays zero and the skin in
+   place's held check (which only ever meets arc0 members, never counted as held) decides as it does now. */
 enum { RD_BOOT = 1, RD_TITLE = 2, RD_LATER = 4, FAT_IDS = 4096 };
 unsigned char g_read_phase[FAT_IDS];
+#ifndef PORT_ROM_CLEAN
 unsigned g_read_count[FAT_IDS];
 volatile int g_title_seen;
 
@@ -912,6 +915,7 @@ void census_note(unsigned id)
 }
 
 struct NoteSet { NoteSet() { port_nitrofs_census_hook = census_note; } } g_note_set;
+#endif
 
 bool held_at_title(unsigned id) { return id < FAT_IDS && (g_read_phase[id] & (RD_BOOT | RD_TITLE)) != 0; }
 
