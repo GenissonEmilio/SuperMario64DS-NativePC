@@ -861,8 +861,10 @@ struct UiFileHookSet { UiFileHookSet() { port_ui_file_hook = port_mods_ui_file; 
    generation it feeds. What is held at the title cannot be switched here, so the call REFUSES, changing nothing, and the caller
    restarts as before:
      - a code mod on either side (a plugin DLL cannot be unloaded);
-     - a change in which mods ship hd_ui/ (seven menu art caches outside this file decode once and keep it), or a character
-       (mod.json "character" or character/);
+     - a change in which mods ship hd_ui/ while the settings page or the character door is open (their pictures are on screen);
+       otherwise the seven menu art caches that decode hd_ui/ once are reset below (lane SEAMART1) and the next draw decodes the
+       new list's pictures;
+     - a character (mod.json "character" or character/);
      - a files/ change to a file the game read before the title or while the title is live (the title holds its own files).
    The game says which in one line. 1 = switched, 0 = refused. Game thread only. */
 extern "C" int port_scene_live_id(void);                         /* hal/scene_boot.cpp: 1 = SCENE_TITLE, -1 none */
@@ -874,6 +876,21 @@ extern "C" void (*port_nitrofs_census_hook)(unsigned file_id);   /* hal/fs_names
 extern "C" void (*port_sdat_frame_hook)(void);                   /* hal/sdat/consumer.cpp */
 namespace ntr { int hdtex_reindex(void); void gx_invalidate_textures(); }
 extern "C" int sdat_reseat_mods(const char *reason);           /* hal/sdat/sdat.cpp (SEAMSND1) */
+/* THE HD UI ART CACHES (lane SEAMART1, one-process plan M3c): every file that decodes hd_ui/ art keeps it for the life of the process; each
+   has a reset that drops what it decoded and re-arms its first-use load, so the next draw reads the new list. Two of them decode on a worker
+   thread: the quiesce calls wait for that worker to be idle before the list changes under it. All of these files link with this one (the
+   two game targets). */
+extern "C" int port_menu_hostimg_hd_ui_quiesce(void);           /* hal/menu_hostimg.cpp: title, pause, game over, star select art */
+extern "C" int port_settings_page_hd_ui_quiesce(void);          /* hal/settings_page.cpp */
+extern "C" int port_menu_hostimg_hd_ui_reset(void);
+extern "C" int port_settings_page_hd_ui_reset(void);
+extern "C" int port_menu_pause_hd_ui_reset(void);               /* hal/menu_recipe_pause.cpp: planks or the ROM's plates */
+extern "C" int port_sub_screen_hd_ui_reset(void);               /* hal/sub_screen.cpp: the minimap panel */
+extern "C" int port_ui_text_hd_ui_reset(void);                  /* hal/ui_text.cpp: the mod font */
+extern "C" int port_hd_meter_hd_ui_reset(void);                 /* hal/hd_meter.cpp: the HD power meter */
+extern "C" int port_char_door_hd_ui_reset(void);                /* hal/char_door_skin.cpp: the character door's skin */
+extern "C" int settings_page_open(void);
+extern "C" int port_char_door_open(void);
 
 namespace {
 
@@ -940,6 +957,8 @@ int relatch(const char *reason, const char *list_json)
         fflush(stderr);
         return 0;
     }
+    /* the art workers read the mod list (port_mods_ui_file) while they decode: let them finish before it changes */
+    const int quiet = port_menu_hostimg_hd_ui_quiesce() & port_settings_page_hd_ui_quiesce();
     latch();
     build_overrides();
 
@@ -967,13 +986,15 @@ int relatch(const char *reason, const char *list_json)
     for (size_t i = 0; i < g_mods.size() && !why[0]; ++i)
         if (g_mods[i].kind == "code") snprintf(why, sizeof why, "code mod %s would be on", g_mods[i].id.c_str());
     /* sound/ is not on this list any more (lane SEAMSND1): a change in the mods shipping it re-seats the sound archive below,
-       hal/sdat/sdat.cpp sdat_reseat_mods, with the output device kept open */
-    static const char *const HELD[][2] = { { "/hd_ui", "hd_ui/ (menu art the menus decoded once)" } };
-    for (int k = 0; k < 1 && !why[0]; ++k) {
-        const std::string a = ids_with(old_mods, HELD[k][0]), b = ids_with(g_mods, HELD[k][0]);
-        if (a != b)
-            snprintf(why, sizeof why, "the mods shipping %s change (%s -> %s)", HELD[k][1], a.empty() ? "-" : a.c_str(),
-                     b.empty() ? "-" : b.c_str());
+       hal/sdat/sdat.cpp sdat_reseat_mods, with the output device kept open. Nor is hd_ui/ (lane SEAMART1): a change in the mods
+       shipping it resets the seven art caches below, unless a page drawing that art is open now or an art worker would not go idle. */
+    const std::string ui_old = ids_with(old_mods, "/hd_ui"), ui_new = ids_with(g_mods, "/hd_ui");
+    if (!why[0] && ui_old != ui_new) {
+        const char *busy = settings_page_open() ? "the settings page is open" : port_char_door_open() ? "the character door is open"
+                         : !quiet ? "a menu art decode did not finish within 2 s" : 0;
+        if (busy)
+            snprintf(why, sizeof why, "the mods shipping hd_ui/ change (%s -> %s) and %s", ui_old.empty() ? "-" : ui_old.c_str(),
+                     ui_new.empty() ? "-" : ui_new.c_str(), busy);
     }
     if (!why[0]) {
         const std::string a = ids_with_character(old_mods), b = ids_with_character(g_mods);
@@ -1017,7 +1038,15 @@ int relatch(const char *reason, const char *list_json)
     port_fs_mods_relatch_reset();
     port_nitrofs_patch_relatch();
     const int tex = ntr::hdtex_reindex();
-    ntr::gx_invalidate_textures();
+    if (ui_old != ui_new) {
+        const int a = port_menu_hostimg_hd_ui_reset(), b = port_settings_page_hd_ui_reset(), c = port_menu_pause_hd_ui_reset(),
+                  d = port_sub_screen_hd_ui_reset(), e = port_ui_text_hd_ui_reset(), f = port_hd_meter_hd_ui_reset(),
+                  g = port_char_door_hd_ui_reset();
+        fprintf(stderr, "[mods] hd_ui art reset (%s -> %s): menu pictures %d, settings pictures %d, pause planks %d, minimap panel %d, "
+                "mod font %d, power meter %d, door skin %d dropped; each loads again from the new list on its next draw\n",
+                ui_old.empty() ? "-" : ui_old.c_str(), ui_new.empty() ? "-" : ui_new.c_str(), a, b, c, d, e, f, g);
+    }
+    ntr::gx_invalidate_textures();     /* after the art resets: the GPU drops every texture the old pictures fed */
     if (snd_old != snd_new) {
         char sr[160];
         snprintf(sr, sizeof sr, "%s; sound mods %s -> %s", reason, snd_old.empty() ? "-" : snd_old.c_str(),

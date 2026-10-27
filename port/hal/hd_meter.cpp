@@ -60,3 +60,17 @@ extern "C" const HdMeterArt *(*port_hd_meter_art_hook)(int health, int k);
 namespace {
 struct HookSet { HookSet() { port_hd_meter_art_hook = hd_meter_art; } } g_hook_set;
 }
+
+/* run after093, lane SEAMART1 (one-process plan M3c): hal/mods.cpp's relatch at the title changed which mods ship hd_ui/, so every wedge
+   picture is freed and asked for again on its next draw (the compositor takes the picture a frame at a time; no level, so no meter, at the
+   title). Returns the number of pictures freed. Game thread only. */
+extern "C" int port_hd_meter_hd_ui_reset(void)
+{
+    int n = 0;
+    for (int i = 0; i < 18; ++i) {
+        if (g_art[i].rgba) { stbi_image_free((void *)g_art[i].rgba); ++n; }
+        g_art[i] = HdMeterArt();
+        g_tried[i] = false;
+    }
+    return n;
+}

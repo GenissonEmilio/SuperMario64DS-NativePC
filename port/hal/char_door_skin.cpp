@@ -849,3 +849,17 @@ void cdskin_strip_draw(uint32_t *px, int stride, int w, int h, const CsGeom *gp,
         f.draw(s, (float)(px0 + (pw - tw) / 2), py0 + (ph - f.cap(em)) / 2, m.label, em, C_TEXT);
     }
 }
+
+/* run after093, lane SEAMART1 (one-process plan M3c): hal/mods.cpp's relatch at the title changed which mods ship hd_ui/, so the door's skin
+   (HD planks and parchment or the plain one) is decided again on its next open, and its pictures, the custom characters' icons and the
+   pieces made from them are dropped (the door is shut at the title: the relatch refuses while it is open). Returns 1 when the old skin was
+   the HD one. Game thread only. */
+extern "C" int port_char_door_hd_ui_reset(void)
+{
+    const int was = g_hd == 1;
+    g_hd = -1;
+    for (int i = 0; i < A_COUNT; ++i) g_art[i] = Img();
+    for (int i = 0; i < 16; ++i) g_cust[i] = CustomArt();
+    g_pieces.clear();
+    return was;
+}
