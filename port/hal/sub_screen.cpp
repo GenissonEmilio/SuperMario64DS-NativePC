@@ -153,6 +153,8 @@ int hal_window_focused(void);
    the ordinary case: the ROM raises the cue only on a map event. */
 void port_bounce_arrows_present(unsigned int *dst, int dst_w, int dst_h,
                                 int px0, int py0, int pw, int ph);
+/* the room those arrows take above a decorated panel pw x ph on a picture pic_h tall (host pixels), for the pause page's fit (MAPARROW1) */
+int port_bounce_arrows_room(int pw, int ph, int pic_h);
 /* THE MENU COMPOSE'S PLANES (hal/message_compositor.cpp, which owns engine A's layers; this file feeds them to
    hal/menu_compose.cpp). The host-row plane holds the lifted SRC_TOP_HOSTROW pixels (ARGB, alpha 0 = nothing, SCREEN_W
    stride); the top2d plane holds the lifted SRC_TOP_2D cells in DS space. Null on a frame that lifted nothing there. */
@@ -4072,7 +4074,13 @@ static bool page_fit_overlaps(int w, int h)
     if (nx < 0) nx = 0;
     const int N[4] = { nx + ds(24), ds(40), nx + ds(233), ds(191) };
     const double u = H / 192.0;
-    const int R[4] = { inset_x0 - (int)(10 * u + 0.5), inset_y0 - (int)(20 * u + 0.5), w, h };
+    /* The page keeps clear of the panel and of the room around it. Above: the map hint arrows' own room (MAPARROW1), never less than
+       the 20 DS units the page always kept. Beside: 10 DS units, the page's own breathing space (rounds 15 to 19); the arrows do not
+       need it, the page does, or a 4:3 pause page is judged clear and drawn a few pixels from the panel. */
+    const int inset_x1 = g_x0 + g_pan_w + (er > 1 ? er : 1), inset_y1 = g_y0 + g_pan_h + (eb > 1 ? eb : 1);
+    const int room = port_bounce_arrows_room(inset_x1 - inset_x0, inset_y1 - inset_y0, H);
+    const int above = (int)(20 * u + 0.5) > room ? (int)(20 * u + 0.5) : room;
+    const int R[4] = { inset_x0 - (int)(10 * u + 0.5), inset_y0 - above, w, h };
     int D[4];
     return page_fit_place(w, h, N, R, D, (int)(3 * u + 0.5));
 }
@@ -4125,8 +4133,11 @@ static void page_fit_draw(unsigned int *dst, int w, int h, const int inset[4])
     if (nx < 0) nx = 0;
     const int N[4] = { nx + ds(bx0), ds(by0), nx + ds(bx1 + 1), ds(by1 + 1) };
     const double u = H / 192.0;
-    /* the panel's rectangle (hal_sub_screen_present's own inset rectangle) and the arrows' room: above it, and at its left corner */
-    const int R[4] = { inset[0] - (int)(10 * u + 0.5), inset[1] - (int)(20 * u + 0.5), w, h };
+    /* the panel's rectangle (hal_sub_screen_present's own inset rectangle, x0 y0 x1 y1) and the room the page keeps from it, as in
+       page_fit_overlaps: above, the arrows' room (MAPARROW1) but never less than 20 DS units; beside, the page's own 10 DS units */
+    const int room = port_bounce_arrows_room(inset[2] - inset[0], inset[3] - inset[1], H);
+    const int above = (int)(20 * u + 0.5) > room ? (int)(20 * u + 0.5) : room;
+    const int R[4] = { inset[0] - (int)(10 * u + 0.5), inset[1] - above, w, h };
     int D[4];
     const bool moved = page_fit_place(w, h, N, R, D, (int)(3 * u + 0.5));
     static int trace = -1;
@@ -4136,8 +4147,9 @@ static void page_fit_draw(unsigned int *dst, int w, int h, const int inset[4])
         const int cur[16] = { bx0, by0, bx1, by1, N[0], N[1], N[2], N[3], R[0], R[1], D[0], D[1], D[2], D[3], moved, w };
         if (memcmp(last, cur, sizeof last)) {
             memcpy(last, cur, sizeof last);
-            std::fprintf(stderr, "[pagefit] cells ds %d,%d..%d,%d  natural %d,%d..%d,%d  panel+arrows from %d,%d  -> %s %d,%d %dx%d (picture %dx%d)\n",
-                         bx0, by0, bx1, by1, N[0], N[1], N[2], N[3], R[0], R[1], moved ? "moved to" : "stays at", D[0], D[1], D[2], D[3], w, h);
+            std::fprintf(stderr, "[pagefit] cells ds %d,%d..%d,%d  natural %d,%d..%d,%d  panel %d,%d..%d,%d + arrows %d, kept %d above -> from %d,%d  -> %s %d,%d %dx%d (picture %dx%d)\n",
+                         bx0, by0, bx1, by1, N[0], N[1], N[2], N[3], inset[0], inset[1], inset[2], inset[3], room, above, R[0], R[1],
+                         moved ? "moved to" : "stays at", D[0], D[1], D[2], D[3], w, h);
         }
     }
     static MenuLayout *L;

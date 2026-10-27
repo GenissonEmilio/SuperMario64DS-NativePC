@@ -2483,6 +2483,8 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
             if (i < 24) g_piece_us[i] = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - tp).count();
         }
         g_piece_n = D.L.np;
+        { static int said; if (D.L.np >= 8 && said != D.L.np) { said = D.L.np; for (int i = 0; i < D.L.np; ++i) { const MenuPiece &Q = D.L.p[i]; const int *dd = D.L.dest[i];
+            fprintf(stderr, "[menu] piece %d: src %d dest %d,%d %dx%d s %d,%d %dx%d alpha %d custom %d nodraw %d hostimg %d key %d layers %x\n", i, (int)Q.src, dd[0], dd[1], dd[2], dd[3], Q.s.x, Q.s.y, Q.s.w, Q.s.h, (int)Q.alpha, Q.custom ? 1 : 0, (int)Q.nodraw, (int)Q.hostimg, (int)Q.key_backdrop, (unsigned)Q.layers); } } }
     } else {
         for (int i = 0; i < D.L.np; ++i) menu_piece_draw(&D.L, i, S, dst, w, h);
     }

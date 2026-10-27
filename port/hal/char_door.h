@@ -24,8 +24,8 @@
    the state, the list, the input rules and the layout. After either closes the door stays shut to the
    player until they step out of its doorway (so Back leaves them standing at the door).
 
-   THE LIST. Mario always, then Luigi, Wario, Yoshi when this save has them (SaveData::IsCharacterUnlocked,
-   save flags2 bit n), then every installed character mod (Tango: every installed one, name and base).
+   THE LIST. Mario, Luigi, Wario when this save has them (SaveData::IsCharacterUnlocked, save flags2 bit n),
+   Yoshi always (every file starts with him), then every installed character mod (Tango: every installed one, name and base).
    The cursor starts on the character being played. */
 #ifndef PORT_HAL_CHAR_DOOR_H
 #define PORT_HAL_CHAR_DOOR_H

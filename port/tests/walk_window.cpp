@@ -9664,7 +9664,7 @@ static int ip_build(double alpha)
 {
     IpPend P;
     memset(&P, 0, sizeof P);
-    if (!ip_build_a(alpha, &P, 0)) return 0;
+    { HITCH_SCOPE(HK_TP_IPA); if (!ip_build_a(alpha, &P, 0)) return 0; }
     return ip_build_b(&P);
 }
 static int ip_build_a(double alpha, IpPend *P, int pipe)
@@ -9924,10 +9924,11 @@ static int ip_build_b(IpPend *P)
             struct MergePk { ntr::Framebuffer *o; const ntr::Framebuffer *a, *b; } pk = { &o, g_ip_p3, g_ip_p2 };
             static int knob = -2;
             if (knob == -2) knob = ntr::gx_menu_knob_value("SM64DS_MENU_PAR2");
+            { HITCH_SCOPE(HK_TP_IPM1);
             ntr::gx_parallel_rows(ntr::active_h, 256, [](void *c, int y0, int y1) {
                 const MergePk *p = (const MergePk *)c;
                 for (int y = y0; y < y1; ++y) ip_merge_row(p->o->px[y], p->a->px[y], p->b->px[y], ntr::active_w);
-            }, &pk, knob);
+            }, &pk, knob); }
         } else
         for (int y = 0; y < ntr::active_h; ++y) {
             uint32_t *row = o.px[y];
@@ -9981,7 +9982,7 @@ static int ip_build_b(IpPend *P)
        the replay, not from the tick) */
     if (g_ip_menu_relift) {
         const long long tm = ip_qpc();
-        hal_menu_relift(&o.px[0][0], ntr::active_w, ntr::active_h);
+        { HITCH_SCOPE(HK_TP_IPRL); hal_menu_relift(&o.px[0][0], ntr::active_w, ntr::active_h); }
         g_ip_sum_menu += ip_ms_since(tm);
         ++g_ip_menu_n;
     }
@@ -9989,10 +9990,11 @@ static int ip_build_b(IpPend *P)
         struct MergePk { ntr::Framebuffer *o; const ntr::Framebuffer *a, *b; } pk = { &o, g_ip_p4, g_ip_p5 };
         static int knob = -2;
         if (knob == -2) knob = ntr::gx_menu_knob_value("SM64DS_MENU_PAR2");
+        { HITCH_SCOPE(HK_TP_IPM2);
         ntr::gx_parallel_rows(ntr::active_h, 256, [](void *c, int y0, int y1) {
             const MergePk *p = (const MergePk *)c;
             for (int y = y0; y < y1; ++y) ip_merge_row(p->o->px[y], p->a->px[y], p->b->px[y], ntr::active_w);
-        }, &pk, knob);
+        }, &pk, knob); }
     } else
     if (!g_ip_skip_p5)
     for (int y = 0; y < ntr::active_h; ++y) {
@@ -10451,7 +10453,7 @@ static int ip_present_alpha_pipe_body(double alpha, long long t, int timed, long
     QueryPerformanceCounter(&q0);
     P.q0 = q0.QuadPart;
     pt_push(PS_SMOOTH);
-    const int a = ip_build_a(alpha, &P, 1);
+    int a; { HITCH_SCOPE(HK_TP_IPA); a = ip_build_a(alpha, &P, 1); }
     pt_pop();
     if (!a) {
         const int had = g_ip_pend.active;
@@ -11261,7 +11263,7 @@ static void ip_scene_force_pipe(int stacked, unsigned tick_hash, int k)
         IpPend P;
         memset(&P, 0, sizeof P);
         P.tag_j = j;
-        const int a = ip_build_a(alpha, &P, 1);
+        int a; { HITCH_SCOPE(HK_TP_IPA); a = ip_build_a(alpha, &P, 1); }
         if (!a) {
             ip_pend_flush();
             fprintf(stderr, "[blendhash] t%u j%d/%d SNAP" "\n", g_si_pic_tick, j, k);

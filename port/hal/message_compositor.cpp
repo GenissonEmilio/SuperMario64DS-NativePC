@@ -106,6 +106,7 @@
 //     and what each of the two OBJ tests decided about it. That is the probe
 //     port/ppu_blend.txt section 4 took by hand-patching raster_obj for mg8;
 //     keeping it means the next lane's per-pixel transcript needs no patch.
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -511,6 +512,64 @@ bool sample_bg(const BgConfig &c, int x, int y, uint32_t &out) {
     }
     out = bgr555(rd16(kPlttBase + index * 2));
     return true;
+}
+
+/* TITLEPERF1: the per-tick getenv calls of the composite, read once. */
+inline bool msg_composite_debug() { static const bool v = std::getenv("SM64DS_MSG_COMPOSITE_DEBUG") != nullptr; return v; }
+
+/* TITLEPERF1: SM64DS_COMPA_ROWFAST=0 puts the per-pixel sample_bg loop back on the same binary (the A/B for the row sampler below) */
+inline bool row_fast_off() {
+    static int off = -1;
+    if (off < 0) {
+#ifndef PORT_ROM_CLEAN
+        const char *e = std::getenv("SM64DS_COMPA_ROWFAST");
+        off = (e && e[0] == '0') ? 1 : 0;
+#else
+        off = 0;
+#endif
+    }
+    return off != 0;
+}
+
+/* TITLEPERF1: sample_bg for the 256 pixels of one row, a tiled (non-bitmap) background only. The screen entry, the flips and the tile's
+   address are read once per 8 pixels instead of once per pixel; every value is the one sample_bg would have returned (the same volatile
+   reads at the same addresses, in the same arithmetic), so a row filled here equals 256 calls of sample_bg. hit[x] 0 = transparent. */
+void sample_bg_row(const BgConfig &c, int y, uint32_t *col, uint8_t *hit) {
+    const int py = (y + c.vofs) & (c.tiles_h * 8 - 1);
+    const int wmask = c.tiles_w * 8 - 1;
+    const int ty = py >> 3, fy0 = py & 7;
+    int last_tx = -1;
+    int fxflip = 0;
+    uint32_t vrow = 0;      /* the tile's row of indices (8 bpp: 8 bytes, 4 bpp: 4 bytes) */
+    uint32_t palbase = 0;
+    for (int x = 0; x < 256; ++x) {
+        const int px = (x + c.hofs) & wmask;
+        const int tx = px >> 3;
+        if (tx != last_tx) {
+            last_tx = tx;
+            const uint16_t se = rd16(screen_entry_addr(c, tx, ty));
+            const int tile = se & 0x3FF;
+            int fy = fy0;
+            if (se & 0x800) fy = 7 - fy;
+            fxflip = (se & 0x400) ? 1 : 0;
+            vrow = c.bpp8 ? c.chars + tile * 64 + fy * 8 : c.chars + tile * 32 + fy * 4;
+            palbase = c.bpp8 ? 0u : (uint32_t)((se >> 12) & 0xF) * 16u;
+        }
+        int fx = px & 7;
+        if (fxflip) fx = 7 - fx;
+        uint32_t index;
+        if (c.bpp8) {
+            index = *reinterpret_cast<volatile uint8_t *>(vrow + fx);
+            if (index == 0) { hit[x] = 0; continue; }
+        } else {
+            const uint8_t pair = *reinterpret_cast<volatile uint8_t *>(vrow + (fx >> 1));
+            index = (fx & 1) ? (pair >> 4) : (pair & 0xF);
+            if (index == 0) { hit[x] = 0; continue; }
+            index += palbase;
+        }
+        col[x] = bgr555(rd16(kPlttBase + index * 2));
+        hit[x] = 1;
+    }
 }
 
 // ---- the window unit (engine A, register base 0x04000000) ------------------
@@ -1798,10 +1857,11 @@ void enga_strip_probe(uint32_t dispcnt)
  *
  * WHAT HAPPENS INSTEAD. With the improved map on, the arrow texels are kept
  * OUT of the top screen's own buffer here and handed to hal/sub_screen.cpp,
- * which draws them just above the map panel after it has composed it: one
- * above the panel's top-left corner, one above its middle, one above its
- * top-right corner. Nothing in src/ changes, no call is skipped, the ROM still
- * computes and submits three sprites, and the sound is not touched at all.
+ * which draws the two outer ones, small, just above the map panel after it
+ * has composed it: one over the panel's left quarter, one over its right
+ * quarter (port_bounce_arrows_present). Nothing in src/ changes, no call is
+ * skipped, the ROM still computes and submits three sprites, and the sound is
+ * not touched at all.
  *
  * THE TRANSLATION IS CONSTANT, WHICH IS WHAT KEEPS THE BOUNCE. The arrows
  * bounce by alternating their row, so a placement that PINNED them to a fixed
@@ -1811,10 +1871,10 @@ void enga_strip_probe(uint32_t dispcnt)
  * ROM rests them against the bottom edge, so at rest they sit on the panel and
  * bounce up off it, which is the motion the cartridge draws.
  *
- * THEY KEEP THEIR OWN SIZE. The panel's scale factor moves them; it does not
- * shrink them. A DS sprite drawn at the map's own scale would be a quarter of
- * its size at 1x and its two-pixel bounce would be sub-pixel, and nothing in
- * the request asks for smaller arrows -- only for arrows in the right place. */
+ * THEY ARE SIZED TO THE PANEL. Drawn at the picture's own scale each arrow
+ * was about a third of the inset panel's height and the three spanned wider
+ * than it; each is now ARROW_PANEL_FRAC of the panel's width (one constant,
+ * below), and the bounce is scaled with it. */
 uint32_t g_arrow_px[192][256];
 int g_arrow_n;                           /* texels captured this frame */
 int g_arrow_x0, g_arrow_x1, g_arrow_y0, g_arrow_y1;   /* their bounding box */
@@ -1844,7 +1904,7 @@ void arrow_tiles_init(void)
         }
         if (a3 == 0xffff) break;
     }
-    if (std::getenv("SM64DS_MINIMAP_TRACE")) {
+    if ([] { static const bool v = std::getenv("SM64DS_MINIMAP_TRACE") != nullptr; return v; }()) {
         std::fprintf(stderr, "[mmtrace] bouncing-arrow tiles (%d):",
                      g_arrow_tiles_n);
         for (int k = 0; k < g_arrow_tiles_n; ++k)
@@ -3067,65 +3127,105 @@ extern "C" void port_engine_a_fade(unsigned int *px, int w, int h)
     }
 }
 
-/* ---- AND WHERE THE CUE GOES: JUST ABOVE THE MAP ---------------------------
+/* ---- AND WHERE THE CUE GOES: TWO SMALL ARROWS ON THE MAP'S TOP CORNERS ----
  *
- * Called by hal/sub_screen.cpp with the rectangle the map panel was just drawn
- * into, so the arrows follow MinimapScale, the aspect and the render scale
- * without knowing about any of them. Nothing captured means nothing drawn,
- * which is every frame but the ones the ROM raises the cue on.
+ * Called by hal/sub_screen.cpp with the rectangle the map was just drawn into,
+ * after the panel. Nothing captured means nothing drawn, which is every frame
+ * but the ones the ROM raises the cue on: the cue starts, bounces and ends
+ * exactly when Stage::RenderBouncingArrows draws it, and its sound is the
+ * ROM's own and is not touched here.
  *
- * THE ARROWS ARE SPREAD ALONG THE PANEL'S TOP EDGE IN THE ORDER THE ROM
- * SUBMITTED THEM: the leftmost over the top-left corner, the rightmost over the
- * top-right corner, the rest evenly between -- which for the three-arrow form
- * the request is about is exactly "one above the top left, middle, and top
- * right corner". The two-arrow form the same function can draw (it puts them at
- * the screen's far edges instead) lands on the two corners by the same
- * arithmetic, so neither form needs a special case.
+ * THE PANEL IS WHAT THEY ARE SIZED TO, not the picture. The DS sprites drawn
+ * at the picture's scale were each about a third of the inset panel's height
+ * and the three of them spanned wider than the panel (course 1, the Bob-omb
+ * Buddy's "look on the Touch Screen map" line, 4:3). So each arrow is drawn
+ * ARROW_PANEL_FRAC of the panel's width wide (never wider than the sprite at
+ * the picture's own scale, for the biggest maps), keeping the sprite's aspect,
+ * and only the two OUTER arrows the ROM submitted are drawn: the leftmost
+ * centred over the panel's left quarter, the rightmost over its right quarter.
+ * The middle one of the ROM's three (x 0x80) is not drawn. The panel here is
+ * the decorated one the player sees (hal_sub_inset_rect, plate included), so
+ * the arrows sit over its outer corners, a gap of ARROW_GAP_FRAC of its height
+ * above its top edge. They are the ROM's own sprite texels (engine A's OBJ
+ * layer), not mod art, so a mod pack changes nothing here.
  *
  * GROUPS ARE FOUND BY THEIR COLUMNS. The capture layer holds nothing but this
  * cue, so a run of columns with any texel in it is one arrow and a gap ends it.
- * That reads the arrows the ROM actually submitted rather than assuming three,
- * and it costs one pass over 256 flags.
+ * That reads the arrows the ROM actually submitted rather than assuming three.
  *
- * VERTICALLY THE WHOLE BAND MOVES BY ONE OFFSET (see the banner in the
- * namespace above), and the offset is LATCHED for as long as the cue runs. The
- * arrows bounce by alternating their row, so measuring the band's bottom edge
- * every frame and pinning THAT to the panel would hold them perfectly still --
- * the offset has to be constant for the motion to survive. So the first frame
- * of a cue decides it: that frame's bottom row is put one DS row above the
- * panel's top edge, and every later frame of the same cue keeps the same
- * offset, so the arrows bounce off the map exactly as they bounce off the
- * bottom of the screen on a DS. The latch drops the moment the cue stops, so
- * the next one measures itself afresh and nothing carries between scenes.
+ * THE BOUNCE IS THE ROM'S, SCALED. The arrows bounce by alternating their row
+ * (y 0xae / 0xb0), so the band is moved by one LATCHED offset for the whole
+ * cue: the lowest row the cue has reached is its resting row, and that row's
+ * bottom edge lands the gap above the panel; every other row is carried
+ * relative to it at the same scale as the width, so the two-row bounce shows
+ * as the same motion, scaled. The latch drops the moment a frame captures
+ * nothing, so the next cue measures itself afresh.
  *
- * If the band would run off the top of the picture -- the biggest map on a 4:3
- * window is the whole window, so there is no "above" left -- it is pushed back
- * down until it fits, and the player sees the cue over the map instead of not
- * at all. */
+ * If the band would run off the top of the picture (the biggest map on a 4:3
+ * window is the whole window) it is pushed back down until it fits, and the
+ * player sees the cue over the map instead of not at all. */
+namespace {
+/* The size may want nudging: this is the one number. */
+const double ARROW_PANEL_FRAC = 0.20;   /* one arrow's width / the panel's width */
+const double ARROW_GAP_FRAC = 0.10;     /* gap under the resting arrows / the panel's height */
+
+/* The template's own box (DS pixels), for the room the cue needs above the panel before any arrow is captured
+   (hal/sub_screen.cpp's pause-page fit asks at the head of the frame). Read out of the cartridge's OamAttr records:
+   shape in attr0 bits 14-15, size in attr1 bits 14-15, signed offsets in attr0 bits 0-7 and attr1 bits 0-8. */
+void arrow_template_box(int *bw, int *bh)
+{
+    static int w = -1, h = -1;
+    if (w < 0) {
+        static const unsigned char dims[3][4][2] = {
+            { {8, 8}, {16, 16}, {32, 32}, {64, 64} },
+            { {16, 8}, {32, 8}, {32, 16}, {64, 32} },
+            { {8, 16}, {8, 32}, {16, 32}, {32, 64} } };
+        const unsigned short *t = _ZN3OAM14BOUNCING_ARROWE;
+        int x0 = 1 << 30, y0 = 1 << 30, x1 = -(1 << 30), y1 = -(1 << 30);
+        for (int i = 0; i < 16; ++i) {
+            const unsigned a0 = t[i * 4], a1 = t[i * 4 + 1];
+            const unsigned shape = (a0 >> 14) & 3u, size = (a1 >> 14) & 3u;
+            if (shape < 3) {
+                const int ox = (int)(a1 & 0x1FFu) - ((a1 & 0x100u) ? 0x200 : 0);
+                const int oy = (int)(signed char)(a0 & 0xFFu);
+                if (ox < x0) x0 = ox;
+                if (oy < y0) y0 = oy;
+                if (ox + dims[shape][size][0] > x1) x1 = ox + dims[shape][size][0];
+                if (oy + dims[shape][size][1] > y1) y1 = oy + dims[shape][size][1];
+            }
+            if (t[i * 4 + 3] == 0xffff) break;
+        }
+        w = x1 > x0 ? x1 - x0 : 24;
+        h = y1 > y0 ? y1 - y0 : 24;
+    }
+    *bw = w;
+    *bh = h;
+}
+}   /* namespace */
+
+extern "C" int hal_sub_inset_rect(int *x, int *y, int *w, int *h);
+
+/* THE ROOM THE CUE TAKES ABOVE A PANEL pw x ph (decorated, host pixels) on a picture pic_h rows tall: the gap, the
+   arrow's height at its drawn scale and the ROM's two-row bounce. hal/sub_screen.cpp's pause-page fit keeps the page
+   out of it. Sideways the arrows stay inside the panel's own width, so no room is needed at its sides. */
+extern "C" int port_bounce_arrows_room(int pw, int ph, int pic_h)
+{
+    int bw, bh;
+    arrow_template_box(&bw, &bh);
+    double f = ARROW_PANEL_FRAC * pw / bw;
+    if (pic_h > 0 && f > pic_h / 192.0) f = pic_h / 192.0;   /* never bigger than the sprite at the picture's own scale */
+    return (int)(ARROW_GAP_FRAC * ph + (bh + 2) * f + 0.999);
+}
+
 extern "C" void port_bounce_arrows_present(unsigned int *dst, int dst_w,
                                            int dst_h, int px0, int py0,
                                            int pw, int ph)
 {
-    (void)ph;
     /* The latch this cue's vertical offset is measured into, and the frame
        that drops it: a frame with nothing captured is a frame with no cue. */
     static int rest_held, rest_y1;
     if (!g_arrow_n || !dst || dst_w < 1 || dst_h < 1) { rest_held = 0; return; }
-    /* THE LOWEST ROW THIS CUE HAS BOUNCED TO, which is its resting row. The
-       cue alternates between two rows a few frames apart, so the first frame
-       is as likely to be the raised one as the rest; taking the lowest seen
-       settles the band within the cue's first bounce and then never moves
-       again, which is what makes the arrows rest ON the panel rather than two
-       rows inside it. It is a maximum over ONE cue only -- the latch is
-       dropped above the moment a frame captures nothing. */
     if (!rest_held || g_arrow_y1 > rest_y1) { rest_y1 = g_arrow_y1; rest_held = 1; }
-
-    /* The top screen's own uniform host scale: one DS row is this many host
-       rows, and in the widescreen arm of the blit above it is this many host
-       columns too (uni == sy). At 4:3 sx == sy, so this is that scale as well.
-       The arrows are drawn at it, which is the size they have on screen now. */
-    int s = dst_h / 192;
-    if (s < 1) s = 1;
 
     /* Which columns this cue occupies, and therefore how many arrows it is. */
     int gx0[8], gx1[8], n = 0;
@@ -3150,52 +3250,60 @@ extern "C" void port_bounce_arrows_present(unsigned int *dst, int dst_w,
     }
     if (n < 1) return;
 
-    /* The band's vertical offset, and the clamp that keeps it on the picture.
-       `base` is where the latched resting row lands: one DS row above the
-       panel's top edge. Every other row is carried relative to it. */
-    int base = py0 - s;
-    int top = base + (g_arrow_y0 - rest_y1) * s;
-    if (top < 0) { base -= top; top = 0; }
+    /* The panel as the player sees it: the decorated rectangle the present
+       just drew, or the bare map rectangle if there is none. */
+    int qx = px0, qy = py0, qw = pw, qh = ph;
+    {
+        int x, y, w, h;
+        if (hal_sub_inset_rect(&x, &y, &w, &h)) { qx = x; qy = y; qw = w - x; qh = h - y; }
+    }
+    if (qw < 1 || qh < 1) return;
+
+    /* The two outer arrows (or the one, if the ROM drew one). */
+    const int m = n >= 2 ? 2 : 1;
+    const int pick[2] = { 0, n - 1 };
+    int aw = 1;
+    for (int j = 0; j < m; ++j)
+        if (gx1[pick[j]] - gx0[pick[j]] + 1 > aw) aw = gx1[pick[j]] - gx0[pick[j]] + 1;
+    double f = ARROW_PANEL_FRAC * qw / aw;   /* host pixels per DS pixel, both ways */
+    /* A big map (MinimapScale 3 and up) would make that larger than the sprite at the picture's own scale, the size the
+       request found too big: never draw them bigger than that. */
+    if (f > dst_h / 192.0) f = dst_h / 192.0;
+    if (f <= 0) return;
+
+    /* `base` is the host row the resting row's bottom edge lands on. */
+    int base = qy - (int)(ARROW_GAP_FRAC * qh + 0.5);
+    const int top = base - (int)((rest_y1 + 1 - g_arrow_y0) * f + 0.5);
+    if (top < 0) base -= top;
 
     const int stride = ntr::SCREEN_W;
-    const int trace = std::getenv("SM64DS_MINIMAP_TRACE") ? 1 : 0;
-    for (int k = 0; k < n; ++k) {
-        const int gcx = (gx0[k] + gx1[k] + 1) / 2;
-        int tcx = (n == 1) ? px0 + pw / 2
-                           : px0 + (int)((long)pw * k / (n - 1));
-        /* AND THE SAME CLAMP SIDEWAYS, for the same reason as the vertical
-           one. The panel sits eight pixels in from the right edge, so an arrow
-           centred on its top-right corner has half of itself off the picture.
-           Sliding it back in keeps a whole arrow over the corner instead of
-           half of one, which is what the cue is for. It only ever moves the
-           outer two, and only when the panel is near an edge. */
-        {
-            const int half_l = (gcx - gx0[k]) * s;
-            const int half_r = (gx1[k] - gcx + 1) * s;
-            if (tcx - half_l < 0) tcx = half_l;
-            if (tcx + half_r > dst_w) tcx = dst_w - half_r;
-        }
+    static const int trace = std::getenv("SM64DS_MINIMAP_TRACE") ? 1 : 0;
+    for (int j = 0; j < m; ++j) {
+        const int k = pick[j];
+        const int wds = gx1[k] - gx0[k] + 1;
+        const double cx = (m == 1) ? qx + qw * 0.5 : qx + qw * (j == 0 ? 0.125 : 0.875);
+        const int dw = (int)(wds * f + 0.5);
+        int left = (int)(cx - dw * 0.5 + 0.5);
+        /* the same clamp sideways: a whole arrow over the corner, never half of one */
+        if (left + dw > dst_w) left = dst_w - dw;
+        if (left < 0) left = 0;
+        const int hy_a = base - (int)((rest_y1 + 1 - g_arrow_y0) * f + 0.5);
+        const int hy_b = base - (int)((rest_y1 - g_arrow_y1) * f + 0.5);
         if (trace)
-            std::fprintf(stderr, "[mmtrace] arrow %d/%d ds x %d..%d centre %d "
-                         "-> host centre %d, rows %d..%d, scale %d\n",
-                         k + 1, n, gx0[k], gx1[k], gcx, tcx,
-                         base + (g_arrow_y0 - rest_y1) * s,
-                         base + (g_arrow_y1 - rest_y1) * s + s - 1, s);
-        for (int y = g_arrow_y0; y <= g_arrow_y1; ++y) {
-            const int hy0 = base + (y - rest_y1) * s;
-            for (int x = gx0[k]; x <= gx1[k]; ++x) {
-                const uint32_t c = g_arrow_px[y][x];
-                if (!c) continue;
-                const int hx0 = tcx + (x - gcx) * s;
-                for (int dy = 0; dy < s; ++dy) {
-                    const int hy = hy0 + dy;
-                    if (hy < 0 || hy >= dst_h) continue;
-                    for (int dx = 0; dx < s; ++dx) {
-                        const int hx = hx0 + dx;
-                        if (hx < 0 || hx >= dst_w) continue;
-                        dst[hy * stride + hx] = c;
-                    }
-                }
+            std::fprintf(stderr, "[mmtrace] arrow %d of %d (drawn %d of %d) ds x %d..%d rows %d..%d -> host x %d..%d "
+                         "rows %d..%d scale %.3f panel %d,%d %dx%d arrow/panel %.3f\n",
+                         k + 1, n, j + 1, m, gx0[k], gx1[k], g_arrow_y0, g_arrow_y1, left, left + dw - 1,
+                         hy_a, hy_b - 1, f, qx, qy, qw, qh, (double)dw / qw);
+        for (int hy = hy_a; hy < hy_b; ++hy) {
+            if (hy < 0 || hy >= dst_h) continue;
+            const int sy = rest_y1 + 1 + (int)std::floor((hy + 0.5 - base) / f);
+            if (sy < g_arrow_y0 || sy > g_arrow_y1) continue;
+            for (int hx = left; hx < left + dw; ++hx) {
+                if (hx >= dst_w) break;
+                const int sx = gx0[k] + (int)std::floor((hx + 0.5 - left) / f);
+                if (sx < gx0[k] || sx > gx1[k]) continue;
+                const uint32_t c = g_arrow_px[sy][sx];
+                if (c) dst[hy * stride + hx] = c;
             }
         }
     }
@@ -3518,7 +3626,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        receive it. `boxed` keeps the old reading available rather than
        dropping it -- a line taken with no box up and a line taken with one are
        different measurements and the reader has to be able to tell. */
-    if (std::getenv("SM64DS_MSG_COMPOSITE_DEBUG")) {
+    if (msg_composite_debug()) {
         extern unsigned char data_0209d660, data_0209d45c;
         static int dumped;
         if (!dumped) {
@@ -3698,14 +3806,23 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     if (twod_old_a_on()) {
         bg_loop_ref(g_a, bgs, win, lmask, bl);
     } else if (nbg) {
+        static uint32_t rcol[4][256];
+        static uint8_t rhit[4][256];
+        const bool rowfast = !row_fast_off();
         for (int y = 0; y < 192; ++y) {
+            bool rf[4] = {false, false, false, false};
+            if (rowfast)
+                for (int k = 0; k < nbg; ++k) {
+                    const int bg = bgorder[k];
+                    if (!bgs[bg].bmp) { sample_bg_row(bgs[bg], y, rcol[bg], rhit[bg]); rf[bg] = true; }
+                }
             for (int x = 0; x < 256; ++x) {
                 const unsigned mask = window_mask(win, x, y);
                 for (int k = 0; k < nbg; ++k) {
                     const int bg = bgorder[k];
                     if (!(mask & (1u << bg))) continue;
                     uint32_t s;
-                    if (sample_bg(bgs[bg], x, y, s)) {
+                    if (rf[bg] ? (rhit[bg][x] ? (s = rcol[bg][x], true) : false) : sample_bg(bgs[bg], x, y, s)) {
                         // BGs draw far->near (prio 3..0, then bg 3..0), so when
                         // a 1st-target BG writes, g_a already holds the layer
                         // directly below it. Mode-1 alpha over a 2nd-target 2D
@@ -3732,13 +3849,13 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     enga_layer_px();
     enga_strip_probe(dispcnt);
 
-    if (std::getenv("SM64DS_MSG_COMPOSITE_DEBUG"))
+    if (msg_composite_debug())
         attrib_take();
 
     // One-shot diagnostic (SM64DS_MSG_COMPOSITE_DEBUG): the engine-A 2D state
     // the frame the compositor first finds any 2D enabled, so a headless run
     // can confirm the box BG is on and how many pixels it covers.
-    if (std::getenv("SM64DS_MSG_COMPOSITE_DEBUG")) {
+    if (msg_composite_debug()) {
         int hits = 0;
         for (int y = 0; y < 192; ++y)
             for (int x = 0; x < 256; ++x) if (g_a[y][x].hit) ++hits;
@@ -3925,7 +4042,8 @@ extern "C" void port_message_composite_engine_a(void *fbp)
 
        Unset, this is exactly the two constants it replaces. */
     int band_l = 96, band_r = 160;                 /* source-x band splits */
-    if (const char *bands = std::getenv("SM64DS_HUD_BANDS")) {
+    static const char *const bands_env = std::getenv("SM64DS_HUD_BANDS");
+    if (const char *bands = bands_env) {
         int l = 0, r = 0;
         if (std::sscanf(bands, "%d,%d", &l, &r) == 2
             && l >= 0 && r > l && r <= 256) { band_l = l; band_r = r; }
@@ -4625,7 +4743,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        row comparable with the host framebuffer's own size. A full-screen sweep
        is instrumentation and nothing reads it unless the probe is on, so it is
        gated: an ordinary play frame does not pay for a number nobody prints. */
-    if (honour3d && cover && std::getenv("SM64DS_MSG_COMPOSITE_DEBUG")) {
+    if (honour3d && cover && msg_composite_debug()) {
         for (int hy = 0; hy < ntr::active_h; ++hy)
             for (int hx = 0; hx < ntr::active_w; ++hx)
                 if (cover[hy * ntr::SCREEN_W + hx]

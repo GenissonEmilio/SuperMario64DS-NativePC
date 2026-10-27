@@ -152,6 +152,7 @@
 /* the transport query alone (run mg16 lane MPBTN): the scene publisher below
    must not read the pad record while a session's fan-out owns it */
 #include "comms_seam.h"
+#include "hal/hitch_probe.h"   /* TITLEPERF1: scene tick sections */
 
 // ---- THE LINKAGE FACES ov003's OWN SOURCES NEED -----------------------------
 //
@@ -7960,7 +7961,7 @@ extern "C" void port_scene_tick(int frame, int tick_game)
         }
         if (tick_game) {
             if (k1_rom) {
-                port_actor_frame(0);
+                { HITCH_SCOPE(HK_TP_TICK); port_actor_frame(0); }
                 /* PHASE 5 (run linkfull, lane K2RENDER): src/func_020197b8.c:48,
                    `data_0209d50c = 5; func_02019404();`, the graphics block's
                    word 1, right after the render walk it follows on the DS.
@@ -8101,10 +8102,10 @@ extern "C" void port_scene_tick(int frame, int tick_game)
             /* the colour the DS shows where nothing is drawn: the 3D
                CLEAR_COLOR when it is opaque (the star select's white), else
                engine A's backdrop; see gx_clear_fill in ntr/gx.h */
-            ntr::gx_clear_fill(fb);
+            { HITCH_SCOPE(HK_TP_CLEAR); ntr::gx_clear_fill(fb); }
             if (trace) std::fprintf(stderr, "[scene-trace] f%d gx_render\n", frame);
-            ntr::gx_render(fb);
-            if (port_scene_ip_hook) port_scene_ip_hook(1, &fb, frame, tick_game);
+            { HITCH_SCOPE(HK_TP_GXREND); ntr::gx_render(fb); }
+            if (port_scene_ip_hook) { HITCH_SCOPE(HK_TP_IP1); port_scene_ip_hook(1, &fb, frame, tick_game); }
             if (trace) std::fprintf(stderr, "[scene-trace] f%d composite\n", frame);
             /* run mg12 TITLE lane experiment, DEFAULT OFF. HERE and not at the
                head of the tick: the Render slot above is what BUILDS the two
@@ -8125,10 +8126,10 @@ extern "C" void port_scene_tick(int frame, int tick_game)
                byte-identical and reads as "the experiment says no difference".
                */
             title_oam_tail_zero();
-            port_message_composite_engine_a(&fb);
+            { HITCH_SCOPE(HK_TP_COMPA); port_message_composite_engine_a(&fb); }
             if (trace) std::fprintf(stderr, "[scene-trace] f%d sub_present\n", frame);
-            hal_sub_screen_present(&fb.px[0][0], ntr::active_w, ntr::active_h);
-            if (port_scene_ip_hook) port_scene_ip_hook(2, &fb, frame, tick_game);
+            { HITCH_SCOPE(HK_TP_SUBPRES); hal_sub_screen_present(&fb.px[0][0], ntr::active_w, ntr::active_h); }
+            if (port_scene_ip_hook) { HITCH_SCOPE(HK_TP_IP2); port_scene_ip_hook(2, &fb, frame, tick_game); }
             if (trace) std::fprintf(stderr, "[scene-trace] f%d render done\n", frame);
             hal_widen_probe_scene_frame(frame, "post");
         }
@@ -8158,7 +8159,7 @@ extern "C" void port_scene_tick(int frame, int tick_game)
            pause, like the game work above it: a paused scene should not keep
            advancing the sequencer. */
         if (tick_game)
-            sdat_host_tick();
+            { HITCH_SCOPE(HK_TP_SOUND); sdat_host_tick(); }
 
         if (frame == 0)
             std::printf("[scene] f0 ticked\n");
