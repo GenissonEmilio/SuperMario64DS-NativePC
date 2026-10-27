@@ -701,3 +701,6 @@ void sd_out_push(void)
     bt_line("nodev", -1, cum0);
 #endif
 }
+
+/* SEAMSND1: frames rendered since boot (read only), so a log line can say where in the output a sound re-seat happened. */
+extern "C" unsigned sd_out_frames(void) { return (unsigned)g_cum; }

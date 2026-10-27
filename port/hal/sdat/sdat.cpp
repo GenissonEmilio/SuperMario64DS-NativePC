@@ -41,6 +41,7 @@
 #include "sd_audio.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <psapi.h>
 
 #ifndef PORT_REPO_ROOT
 #define PORT_REPO_ROOT "."
@@ -1337,4 +1338,181 @@ int sdat_init(void)
             rd32(g_sdat.info + rd32(g_sdat.info + 8 + SDAT_REC_WAVEARC * 4)),
             rd32(g_sdat.info + rd32(g_sdat.info + 8 + SDAT_REC_GROUP * 4)));
     return 1;
+}
+
+// ---- the re-seat at the title (run after093, lane SEAMSND1; one-process plan M3b) ----
+//
+// hal/mods.cpp's relatch at the title calls sdat_reseat_mods when the set of
+// mods that ship sound/ changes. What the game holds of the sound archive is
+// exactly what sdat_init built plus what the ROM's own func_02050f34 read:
+//   - this process's image (g_sdat.base: the stock file with every mod's
+//     sound/ members appended and their FAT records repointed), and the
+//     recordings that stand in for music tracks (g_music);
+//   - the ROM's header, INFO and FAT, read off the card into the sound heap.
+//     A sound mod never changes INFO (sdat_apply_mods repoints FAT records in
+//     this process's image only), and the ROM's copy is the cartridge file's
+//     either way, so those stay as they are. What ties the ROM's FAT to the
+//     image is the runtime address slot of each record, which
+//     sdat_seat_rom_residency writes.
+// So the re-seat is the boot's own two steps again and nothing more: build the
+// image from the file with the list as it is now, then fill the ROM's address
+// slots from it. The output device is not touched (no close, no reopen).
+//
+// A SOUND ALREADY PLAYING KEEPS THE DATA IT STARTED WITH. On the DS a sequence
+// plays out of the bank and wave archive that were loaded when it started, and
+// the game only changes what is loaded between sounds; it never swaps data
+// under a running player. The title music is such a player: it plays on from
+// the old image to its end (or until the game stops it, as the file pick
+// does), with no cut and so no click, and every sound started after this call
+// is the new set's. So the old image is retired, not freed, and
+// sdat_retired_sweep frees it on the first tick no player, voice or recording
+// still uses it (a START already queued from the old FAT runs in the same
+// tick, so a retired image is also kept three ticks at least).
+struct SdatRetired {
+    sd_u8 *base;
+    size_t size;
+    std::vector<MusicRep> music;
+    int age;
+};
+static std::vector<SdatRetired> g_retired;
+
+int sd_seq_uses_range(const sd_u8 *lo, const sd_u8 *hi);   // sseq.cpp
+int sd_mix_uses_pcm(const sd_s16 *lo, const sd_s16 *hi);    // mixer.cpp
+int sd_mix_any_stream(void);                                 // mixer.cpp
+extern "C" unsigned sd_out_frames(void);                     // out_win.cpp
+
+static int sdat_blocks(sd_u8 *buf, size_t len, sd_u8 **info, sd_u8 **fat, sd_u8 **file)
+{
+    *info = *fat = *file = 0;
+    int nblocks = rd16(buf + 0x0e);
+    for (int i = 0; i < nblocks && i < 8; i++) {
+        sd_u32 off = rd32(buf + 0x10 + i * 8);
+        if (!off || off >= (sd_u32)len) continue;
+        sd_u8 *b = buf + off;
+        if (!memcmp(b, "INFO", 4)) *info = b;
+        else if (!memcmp(b, "FAT ", 4)) *fat = b;
+        else if (!memcmp(b, "FILE", 4)) *file = b;
+    }
+    return *info && *fat;
+}
+
+extern "C" int sdat_reseat_mods(const char *reason)
+{
+    if (!reason) reason = "?";
+    if (!g_sdat.base) {
+        // sound is not up yet: sdat_init reads the list as it stands when it runs
+        fprintf(stderr, "[sdat] re-seat (%s): the archive is not loaded yet; the first sound reads the new list\n", reason);
+        return 1;
+    }
+    char path[512];
+    const char *env = getenv("SM64DS_SDAT");
+    if (env) snprintf(path, sizeof path, "%s", env);
+    else snprintf(path, sizeof path, "%s/extracted/dsd/files/data/sound_data.sdat", asset_root());
+    FILE *f = fopen(path, "rb");
+    if (!f) {
+        fprintf(stderr, "[sdat] re-seat (%s): cannot open %s; the old set plays on\n", reason, path);
+        return 0;
+    }
+    fseek(f, 0, SEEK_END);
+    long len = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    sd_u8 *buf = len >= 0x40 ? (sd_u8 *)malloc((size_t)len) : 0;
+    if (!buf || fread(buf, 1, (size_t)len, f) != (size_t)len || memcmp(buf, "SDAT", 4) != 0) {
+        fclose(f);
+        free(buf);
+        fprintf(stderr, "[sdat] re-seat (%s): %s is unreadable; the old set plays on\n", reason, path);
+        return 0;
+    }
+    fclose(f);
+
+    // the recordings belong to the image they were built with: retire them together
+    std::vector<MusicRep> old_music;
+    old_music.swap(g_music);
+    std::unordered_map<sd_u32, int> old_by_fid;
+    old_by_fid.swap(g_musicByFid);
+    size_t mlen = (size_t)len;
+    try {
+        buf = sdat_apply_mods(buf, mlen);
+    } catch (...) {
+        fprintf(stderr, "[mods] sound: failed while applying replacements, stock archive kept\n");
+        g_music.clear();
+        g_musicByFid.clear();
+    }
+    sd_u8 *info = 0, *fat = 0, *file = 0;
+    const bool same_shape = sdat_blocks(buf, mlen, &info, &fat, &file) && rd32(fat + 8) == g_sdat.fatCount &&
+                            rd32(info + 4) == rd32(g_sdat.info + 4) && memcmp(info, g_sdat.info, rd32(info + 4)) == 0;
+    if (!same_shape) {
+        // never expected (a mod changes FAT records only): keep the old image whole
+        fprintf(stderr, "[sdat] re-seat (%s): the rebuilt archive's INFO or FAT is not the shape the ROM read; "
+                        "the old set plays on\n", reason);
+        free(buf);
+        g_music.swap(old_music);
+        g_musicByFid.swap(old_by_fid);
+        return 0;
+    }
+
+    SdatRetired r;
+    r.base = g_sdat.base;
+    r.size = g_sdat.size;
+    r.music.swap(old_music);
+    r.age = 0;
+    g_retired.push_back(std::move(r));
+
+    g_sdat.base = buf;
+    g_sdat.size = mlen;
+    g_sdat.info = info;
+    g_sdat.fat = fat;
+    if (g_sdat.root) {
+        *(sd_u8 **)(g_sdat.root + 0x7c) = fat;
+        *(sd_u8 **)(g_sdat.root + 0x80) = file;
+        *(sd_u8 **)(g_sdat.root + 0x84) = info;
+    }
+    // the boot's second step: the ROM's FAT address slots now name this image
+    if (g_rom_root_seated) sdat_seat_rom_residency();
+    else sd_sdat_reseat();
+    unsigned appended = 0;
+    for (sd_u32 i = 0; i < g_sdat.fatCount; i++)
+        if (rd32(fat + 0xc + i * 16) >= (sd_u32)len) ++appended;
+    fprintf(stderr, "[sdat] re-seated at the title (%s): %lu bytes, %u member(s) served from a sound mod, %u recording(s); "
+                    "the output device kept open (no reopen); %u old image(s) kept for sounds still playing; output frame %u\n",
+            reason, (unsigned long)mlen, appended, (unsigned)g_music.size(), (unsigned)g_retired.size(), sd_out_frames());
+    fflush(stderr);
+    return 1;
+}
+
+// Once per sound tick (hal/sdat/consumer.cpp): free a retired image nothing plays from any more.
+extern "C" void sdat_retired_sweep(void)
+{
+    for (size_t i = 0; i < g_retired.size();) {
+        SdatRetired &r = g_retired[i];
+        if (++r.age < 3) { ++i; continue; }
+        const sd_u8 *lo = r.base, *hi = r.base + r.size;
+        bool used = sd_seq_uses_range(lo, hi) != 0 || (!r.music.empty() && sd_mix_any_stream());
+        for (auto it = g_waves.begin(); it != g_waves.end() && !used; ++it) {
+            const sd_u8 *k = (const sd_u8 *)it->first;
+            if (k >= lo && k < hi && !it->second.pcm.empty() &&
+                sd_mix_uses_pcm(it->second.pcm.data(), it->second.pcm.data() + it->second.pcm.size()))
+                used = true;
+        }
+        if (used) { ++i; continue; }
+        unsigned dropped = 0;
+        for (auto it = g_waves.begin(); it != g_waves.end();) {
+            const sd_u8 *k = (const sd_u8 *)it->first;
+            if (k >= lo && k < hi) { it = g_waves.erase(it); ++dropped; }
+            else ++it;
+        }
+        for (auto it = g_ownRecs.begin(); it != g_ownRecs.end();) {
+            if (*it >= lo && *it < hi) it = g_ownRecs.erase(it);
+            else ++it;
+        }
+        const unsigned long freed = (unsigned long)r.size, music = (unsigned long)r.music.size();
+        free(r.base);
+        g_retired.erase(g_retired.begin() + (long)i);
+        PROCESS_MEMORY_COUNTERS pmc;
+        memset(&pmc, 0, sizeof pmc);
+        K32GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof pmc);
+        fprintf(stderr, "[sdat] old sound image freed (%lu bytes, %u decoded wave(s), %lu recording(s)): nothing plays from it now; "
+                "working set %lu KB\n", freed, dropped, music, (unsigned long)(pmc.WorkingSetSize / 1024));
+        fflush(stderr);
+    }
 }

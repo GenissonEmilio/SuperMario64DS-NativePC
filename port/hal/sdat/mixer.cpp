@@ -1285,3 +1285,20 @@ void sd_mix_set_aux_render(void (*fn)(sd_s16 *, int))
 {
     g_aux_render = fn;
 }
+
+// SEAMSND1: read-only questions for freeing a retired sound image
+// (hal/sdat/sdat.cpp sdat_retired_sweep): is a live voice still playing
+// samples inside [lo, hi), and is any recording stream still sounding.
+int sd_mix_uses_pcm(const sd_s16 *lo, const sd_s16 *hi)
+{
+    for (int i = 0; i < SD_CHANNELS; i++)
+        if (g_ch[i].active && g_ch[i].pcm >= lo && g_ch[i].pcm < hi) return 1;
+    return 0;
+}
+
+int sd_mix_any_stream(void)
+{
+    for (int i = 0; i < ST_MAX; i++)
+        if (g_st[i].state) return 1;
+    return 0;
+}

@@ -861,8 +861,8 @@ struct UiFileHookSet { UiFileHookSet() { port_ui_file_hook = port_mods_ui_file; 
    generation it feeds. What is held at the title cannot be switched here, so the call REFUSES, changing nothing, and the caller
    restarts as before:
      - a code mod on either side (a plugin DLL cannot be unloaded);
-     - a change in which mods ship hd_ui/ (seven menu art caches outside this file decode once and keep it), sound/ (the ROM's
-       sound heap holds the archive tables and the resident banks), or a character (mod.json "character" or character/);
+     - a change in which mods ship hd_ui/ (seven menu art caches outside this file decode once and keep it), or a character
+       (mod.json "character" or character/);
      - a files/ change to a file the game read before the title or while the title is live (the title holds its own files).
    The game says which in one line. 1 = switched, 0 = refused. Game thread only. */
 extern "C" int port_scene_live_id(void);                         /* hal/scene_boot.cpp: 1 = SCENE_TITLE, -1 none */
@@ -873,6 +873,7 @@ extern "C" void port_nitrofs_patch_relatch(void);                /* hal/fs_names
 extern "C" void (*port_nitrofs_census_hook)(unsigned file_id);   /* hal/fs_names.cpp */
 extern "C" void (*port_sdat_frame_hook)(void);                   /* hal/sdat/consumer.cpp */
 namespace ntr { int hdtex_reindex(void); void gx_invalidate_textures(); }
+extern "C" int sdat_reseat_mods(const char *reason);           /* hal/sdat/sdat.cpp (SEAMSND1) */
 
 namespace {
 
@@ -965,9 +966,10 @@ int relatch(const char *reason, const char *list_json)
         if (old_mods[i].kind == "code") snprintf(why, sizeof why, "code mod %s is on now", old_mods[i].id.c_str());
     for (size_t i = 0; i < g_mods.size() && !why[0]; ++i)
         if (g_mods[i].kind == "code") snprintf(why, sizeof why, "code mod %s would be on", g_mods[i].id.c_str());
-    static const char *const HELD[][2] = { { "/hd_ui", "hd_ui/ (menu art the menus decoded once)" },
-                                           { "/sound", "sound/ (the sound archive the ROM holds)" } };
-    for (int k = 0; k < 2 && !why[0]; ++k) {
+    /* sound/ is not on this list any more (lane SEAMSND1): a change in the mods shipping it re-seats the sound archive below,
+       hal/sdat/sdat.cpp sdat_reseat_mods, with the output device kept open */
+    static const char *const HELD[][2] = { { "/hd_ui", "hd_ui/ (menu art the menus decoded once)" } };
+    for (int k = 0; k < 1 && !why[0]; ++k) {
         const std::string a = ids_with(old_mods, HELD[k][0]), b = ids_with(g_mods, HELD[k][0]);
         if (a != b)
             snprintf(why, sizeof why, "the mods shipping %s change (%s -> %s)", HELD[k][1], a.empty() ? "-" : a.c_str(),
@@ -1009,12 +1011,19 @@ int relatch(const char *reason, const char *list_json)
         return 0;
     }
 
+    const std::string snd_old = ids_with(old_mods, "/sound"), snd_new = ids_with(g_mods, "/sound");
     g_said.clear();
     const unsigned long dropped = port_fs_mod_relatch_reset();
     port_fs_mods_relatch_reset();
     port_nitrofs_patch_relatch();
     const int tex = ntr::hdtex_reindex();
     ntr::gx_invalidate_textures();
+    if (snd_old != snd_new) {
+        char sr[160];
+        snprintf(sr, sizeof sr, "%s; sound mods %s -> %s", reason, snd_old.empty() ? "-" : snd_old.c_str(),
+                 snd_new.empty() ? "-" : snd_new.c_str());
+        sdat_reseat_mods(sr);
+    }
     g_mods_prev.swap(old_mods);
     PROCESS_MEMORY_COUNTERS pmc;
     memset(&pmc, 0, sizeof pmc);
