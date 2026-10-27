@@ -28,18 +28,34 @@
 #include <vector>
 
 extern "C" {
-/* hal/handoff_poll.h (SEAMVS1), the same declarations */
+/* hal/handoff_poll.h (SEAMVS1), copied verbatim */
 typedef struct PortHandoffRequest {
-    const char *kind;
-    const char *nonce;
-    int nset;
-    const char *const *set_name;
+    const char *kind;               /* "adventure", "vs", "coop" */
+    const char *nonce;              /* the launcher's 16 hex digits */
+    int nset;                       /* the launcher's setEnv, in file order */
+    const char *const *set_name;    /* "SM64DS_<NAME>" */
     const char *const *set_value;
-    int nclear;
+    int nclear;                     /* the launcher's clearEnv */
     const char *const *clear_name;
 } PortHandoffRequest;
+
+/* 0 = the running game took the match; else why not (a refusal: the response says it, the game quits with exit code 8) */
 typedef const char *(*PortHandoffFn)(const PortHandoffRequest *req);
+
+/* Register the handler of one kind (at static initialisation is fine: the table is constant-initialised). A second registration of a
+   kind replaces the first. 1 = registered, 0 = refused (no kind, no handler, table full). */
 int port_handoff_register(const char *kind, PortHandoffFn fn);
+
+/* The request's value for one name of its set list, or 0 when the request does not set it. */
+const char *port_handoff_value(const PortHandoffRequest *req, const char *name);
+
+/* The environment a fresh process would be started with: every name of the clear list out of BOTH copies of the environment (the CRT's,
+   which getenv reads, and the Win32 block a later restart would inherit), then every name of the set list into both. Returns how many
+   names were touched. */
+int port_handoff_apply_env(const PortHandoffRequest *req);
+
+/* A handler that refuses after port_handoff_apply_env: every name of the set list out of both copies again. */
+void port_handoff_unset_env(const PortHandoffRequest *req);
 
 extern void (*port_sdat_frame_hook)(void);   /* hal/sdat/consumer.cpp */
 int port_scene_live_id(void);                /* hal/scene_boot.cpp */
@@ -233,6 +249,11 @@ void frame_hook() {
     if (g_prev) g_prev();
     if (++g_frames % 15) return;
     if (port_scene_live_id() != 1 || port::comms_hub_active() || port_join_plate_up() || port_coop_session_busy()) return;
+    {   /* as SEAMVS1's poll: never while a coop room's names are still in the environment (either copy) */
+        const char *c = std::getenv("SM64DS_COOP");
+        char v[4];
+        if ((c && *c) || GetEnvironmentVariableA("SM64DS_COOP", v, sizeof v) > 0) return;
+    }
     poll_once();
 }
 
@@ -249,6 +270,34 @@ extern "C" int port_handoff_register(const char *kind, PortHandoffFn fn) {
     g_reg[g_nreg].fn = fn;
     ++g_nreg;
     return 1;
+}
+
+extern "C" const char *port_handoff_value(const PortHandoffRequest *req, const char *name) {
+    if (!req || !name) return 0;
+    for (int i = 0; i < req->nset; ++i)
+        if (req->set_name[i] && !std::strcmp(req->set_name[i], name)) return req->set_value[i];
+    return 0;
+}
+
+extern "C" int port_handoff_apply_env(const PortHandoffRequest *req) {
+    if (!req) return 0;
+    int n = 0;
+    for (int i = 0; i < req->nclear; ++i)
+        if (req->clear_name[i]) { SetEnvironmentVariableA(req->clear_name[i], nullptr); _putenv_s(req->clear_name[i], ""); ++n; }
+    for (int i = 0; i < req->nset; ++i)
+        if (req->set_name[i]) {
+            const char *v = req->set_value[i] ? req->set_value[i] : "";
+            SetEnvironmentVariableA(req->set_name[i], *v ? v : nullptr);
+            _putenv_s(req->set_name[i], v);
+            ++n;
+        }
+    return n;
+}
+
+extern "C" void port_handoff_unset_env(const PortHandoffRequest *req) {
+    if (!req) return;
+    for (int i = 0; i < req->nset; ++i)
+        if (req->set_name[i]) { SetEnvironmentVariableA(req->set_name[i], nullptr); _putenv_s(req->set_name[i], ""); }
 }
 
 #endif  /* PORT_HANDOFF_STUB_DROPPED */

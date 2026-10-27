@@ -8,18 +8,34 @@
 #include <cstddef>
 
 extern "C" {
-/* hal/handoff_poll.h (SEAMVS1), the same declarations */
+/* hal/handoff_poll.h (SEAMVS1), copied verbatim */
 typedef struct PortHandoffRequest {
-    const char *kind;
-    const char *nonce;
-    int nset;
-    const char *const *set_name;
+    const char *kind;               /* "adventure", "vs", "coop" */
+    const char *nonce;              /* the launcher's 16 hex digits */
+    int nset;                       /* the launcher's setEnv, in file order */
+    const char *const *set_name;    /* "SM64DS_<NAME>" */
     const char *const *set_value;
-    int nclear;
+    int nclear;                     /* the launcher's clearEnv */
     const char *const *clear_name;
 } PortHandoffRequest;
+
+/* 0 = the running game took the match; else why not (a refusal: the response says it, the game quits with exit code 8) */
 typedef const char *(*PortHandoffFn)(const PortHandoffRequest *req);
+
+/* Register the handler of one kind (at static initialisation is fine: the table is constant-initialised). A second registration of a
+   kind replaces the first. 1 = registered, 0 = refused (no kind, no handler, table full). */
 int port_handoff_register(const char *kind, PortHandoffFn fn);
+
+/* The request's value for one name of its set list, or 0 when the request does not set it. */
+const char *port_handoff_value(const PortHandoffRequest *req, const char *name);
+
+/* The environment a fresh process would be started with: every name of the clear list out of BOTH copies of the environment (the CRT's,
+   which getenv reads, and the Win32 block a later restart would inherit), then every name of the set list into both. Returns how many
+   names were touched. */
+int port_handoff_apply_env(const PortHandoffRequest *req);
+
+/* A handler that refuses after port_handoff_apply_env: every name of the set list out of both copies again. */
+void port_handoff_unset_env(const PortHandoffRequest *req);
 
 /* hal/coop_boot.cpp: 0 = the room is being booted in this process; else why not (nothing of the request is left applied) */
 const char *port_coop_handoff_apply(int nset, const char *const *set_name, const char *const *set_value, int nclear,

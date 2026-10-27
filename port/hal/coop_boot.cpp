@@ -1383,14 +1383,24 @@ const char *hv(int nset, const char *const *sn, const char *const *sv, const cha
     return nullptr;
 }
 
-void ip_undo(int nset, const char *const *sn, bool medium) {
+void ip_undo(int nset, const char *const *sn, bool medium, bool relatched) {
     online_session_clear();
     for (int i = 0; i < nset; ++i) if (sn[i]) env_put(sn[i], nullptr);
     host_setting_adventure_env_reread();
     if (medium) { ntr::backup::select_coop(0); reread_files("the hand-off was undone"); }
     coop_world_session_reset();
     coop_save_session_reset();
+    party_hits::session_reset();
     boot_state_reset();
+    if (relatched) {   // BROADCAST-SEAMCOOP1-2: a refusal after changing things puts everything back before the exit
+        unsigned extra = 0;
+        const bool after_level = hub_game_heap_carved(&extra);
+        if (!(after_level ? port_mods_relatch_after_level("the coop hand-off was refused")
+                          : port_mods_relatch_at_title("the coop hand-off was refused")))
+            LOG("the mods layer refused the switch back to the offline list (the refusal's exit follows)");
+    }
+    LOG("the hand-off's changes are undone: record, both environment copies, coop layer%s%s", medium ? ", medium" : "",
+        relatched ? ", mods" : "");
 }
 
 /* the room taken down before its level (B on the plate, a gate that failed was handled by guest_fail): the title tears it down now */
@@ -1578,7 +1588,7 @@ extern "C" const char *port_coop_handoff_apply(int nset, const char *const *sn, 
     unsigned extra = 0;
     const bool after_level = hub_game_heap_carved(&extra);
     if (!(after_level ? port_mods_relatch_after_level("booting a coop room") : port_mods_relatch_at_title("booting a coop room"))) {
-        ip_undo(nset, sn, false);
+        ip_undo(nset, sn, false, false);
         return "the mods layer refused the switch to the online list";
     }
     // 5. the coop layer, the host's file, the medium, the title's files
@@ -1587,7 +1597,7 @@ extern "C" const char *port_coop_handoff_apply(int nset, const char *const *sn, 
     party_hits::session_reset();
     boot_state_reset();
     if (host && !coop_save_prepare()) {
-        ip_undo(nset, sn, false);
+        ip_undo(nset, sn, false, true);
         return "the host's coop save could not be prepared";
     }
     ntr::backup::select_coop(host ? 2 : 1);
@@ -1600,13 +1610,13 @@ extern "C" const char *port_coop_handoff_apply(int nset, const char *const *sn, 
     const char *hwhy = nullptr;
     if (!comms_hub_install_in_place(&hwhy)) {
         std::snprintf(buf, sizeof buf, "the hub could not be installed in place (%s)", hwhy ? hwhy : "?");
-        ip_undo(nset, sn, true);
+        ip_undo(nset, sn, true, true);
         return buf;
     }
     if (!comms_sync_join_in_place()) {
         comms_hub_teardown("the ghost layer did not decide on");
         comms_sync_leave_reset();
-        ip_undo(nset, sn, true);
+        ip_undo(nset, sn, true, true);
         return "the ghost layer did not come up on the hub";
     }
     // 7. the coop boot, armed as port_coop_boot_begin arms it
