@@ -6764,12 +6764,24 @@ static const int port_vs_lobby_mods_hook_seated =
 extern "C" unsigned short data_02092664;   /* Scene::SetSceneToSpawn's id */
 extern "C" unsigned char data_02092660;    /* MGEXIT1: its "already spawned" latch */
 enum { PORT_FRONT_END_FADE_CAP = 90 };
+extern "C" int port_online_quit_offline_env(void);   /* hal/online_join.cpp (JOINWIN1) */
 
 static int port_front_end_quit_poll(int frame)
 {
     static int seen = -1;       /* the frame the request first appeared */
     static int fired;
     if (fired) return 1;
+#ifndef PORT_ROM_CLEAN
+    {   /* JOINWIN1: SM64DS_JOINWIN_QUIT_AT=<frame> makes the quit rows' own request (scene 1 parked in data_02092664, as StartSceneFade(1, 0, 0)
+           does) on that frame: the proof row for the restart out of an online session (dev only; read once and cleared, so no child inherits it) */
+        static int qa = -2;
+        if (qa == -2) { const char *e = getenv("SM64DS_JOINWIN_QUIT_AT"); qa = e ? atoi(e) : -1; SetEnvironmentVariableA("SM64DS_JOINWIN_QUIT_AT", 0); }
+        if (qa >= 0 && frame == qa && data_02092664 != 1) {
+            fprintf(stderr, "[quit] f%d SM64DS_JOINWIN_QUIT_AT: the quit rows' request for scene 1 is made here\n", frame);
+            data_02092664 = 1;
+        }
+    }
+#endif
     if (data_02092664 != 1) return 0;
     if (seen < 0) {
         seen = frame;
@@ -6799,7 +6811,7 @@ static int port_front_end_quit_poll(int frame)
     if (g_selftest_frames) {
         fprintf(stderr, "[quit] no successor: this run is a %d-frame selftest, "
                 "which has no window to hand over\n", g_selftest_frames);
-    } else if (port_menu_relaunch(-1, -1)) {
+    } else if (port_online_quit_offline_env(), port_menu_relaunch(-1, -1)) {   /* JOINWIN1: out of an online session = an offline start */
         fprintf(stderr, "[quit] started the game again at its front door (the "
                 "title), this process is quitting\n");
     } else {
@@ -18507,7 +18519,7 @@ int main(void)
                         fprintf(stderr, "[loopin2] soft reset: no successor: "
                                 "this run is a %d-frame selftest, which has no "
                                 "window to hand over\n", g_selftest_frames);
-                    } else if (port_menu_relaunch(-1, -1)) {
+                    } else if (port_online_quit_offline_env(), port_menu_relaunch(-1, -1)) {   /* JOINWIN1 */
                         fprintf(stderr, "[loopin2] soft reset: started the "
                                 "game again at its front door (the title), "
                                 "this process is quitting\n");
