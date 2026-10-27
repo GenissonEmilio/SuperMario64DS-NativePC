@@ -35,6 +35,7 @@
 #include "settings_page.h"
 #include "menu_hostimg.h"
 #include "menu_online.h"
+#include "egg_audio.h"
 #include "ntr/gx.h"
 #include "ntr/ppu.h"
 
@@ -42,6 +43,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <mutex>
 
 extern "C" {
 int port_title_elem_boxes(int *slot, int *id, int *x0, int *y0, int *x1, int *y1, int max);
@@ -512,8 +514,62 @@ void swap_fade_host(MenuLayout *L, int from, int a)
     }
 }
 
+/* EGG1 (Tango 10-27): THE SMALL LOGO'S SECRET. A MOUSE click on the logo at the top left of the main page plays one short clip
+   (hal/egg_audio.cpp) through the game's own sound, at the game's volume, once; a click while it plays does nothing. Mouse only: the logo
+   is no hotspot (the pad / keyboard walk never reaches it, hovering it does nothing and makes no sound) and no touch piece (the click never
+   reaches the ROM as the stylus: hal/sub_screen.cpp publishes a recipe click only on a touch piece, so a point off every touch piece is no
+   DS touch at all). Where the logo overlaps a touch piece (the head, the wrench, a plank) that piece keeps the click and the ROM has it as
+   before; the clip plays only off them. The target: with the PC art, the small logo piece, once it is fully in (not during the intro's trip);
+   without it there is no small logo, and the ROM's own logo on the upper-screen backdrop is the target: its letters' box (DS px 11,21 to
+   247,141 of that screen) mapped through the backdrop piece. Nothing on the intro, the face press, the file pages or under an online popup.
+   The builds (the logic thread's decide, or a draw-side re-solve) write the spot, tagged with the picture size; the pad map (the logic
+   thread, once a frame) reads it and only trusts a spot made at the size of this tick's decide. */
+struct EggSpot { int on, w, h, x, y, cw, ch, nt; int t[12][4]; };
+static std::mutex g_egg_mu;
+static EggSpot g_egg;
+
+static void egg_note(MenuLayout *L, int piece, bool ok, const int *dsbox)
+{
+    EggSpot e;
+    memset(&e, 0, sizeof e);
+    e.w = L->w; e.h = L->h;
+    if (ok && piece >= 0 && piece < L->np) {
+        menu_layout_dest(L);      /* pure: the dest rects from the pieces (menu_layout_solve runs it again after build) */
+        const int *d = L->dest[piece];
+        if (dsbox) {              /* a DS box (x0, y0, x1, y1) of the piece's 256 x 192 source */
+            e.x = d[0] + dsbox[0] * d[2] / 256; e.y = d[1] + dsbox[1] * d[3] / 192;
+            e.cw = d[0] + dsbox[2] * d[2] / 256 - e.x; e.ch = d[1] + dsbox[3] * d[3] / 192 - e.y;
+        } else {
+            e.x = d[0]; e.y = d[1]; e.cw = d[2]; e.ch = d[3];
+        }
+        for (int i = 0; i < L->np && e.nt < 12; ++i) {
+            if (!L->p[i].touch) continue;
+            memcpy(e.t[e.nt++], L->dest[i], sizeof e.t[0]);
+        }
+        e.on = e.cw > 0 && e.ch > 0;
+    }
+    std::lock_guard<std::mutex> lk(g_egg_mu);
+    if (hal_menu_trace_on() && (e.on != g_egg.on || e.x != g_egg.x || e.y != g_egg.y || e.cw != g_egg.cw || e.ch != g_egg.ch || e.w != g_egg.w)) {
+        fprintf(stderr, "[egg] spot %s: picture %dx%d logo (%d,%d,%d,%d), %d touch pieces", e.on ? "on" : "off", e.w, e.h, e.x, e.y, e.cw, e.ch, e.nt);
+        for (int i = 0; i < e.nt; ++i) fprintf(stderr, " (%d,%d,%d,%d)", e.t[i][0], e.t[i][1], e.t[i][2], e.t[i][3]);
+        fprintf(stderr, "\n");
+    }
+    g_egg = e;
+}
+
+/* the page is at rest: the intro's choreography is over, no face press, no online popup up */
+static bool egg_page_ok(const MenuLayout *L, bool intro)
+{
+    if (intro || !t_f || t_f->toy_v > 0) return false;
+    const Chore &c = t_f->ch;
+    if (!(c.sw_t >= swap_end(c) - 4 || c.skip || c.mode == CH_NONE)) return false;
+    const OnlFacts *of = onl_facts_of(L);
+    return !(of && of->scr != ONL_SCR_NONE);
+}
+
 void build_main(MenuLayout *L, bool intro)
 {
+    int egg_piece = -1, egg_ds = 0;      /* EGG1: the logo piece of this page (egg_ds: the DS backdrop, its logo box) */
     const int cw = L->w * L->uden / L->unum;                 /* exact canvas width in units, floored */
     const int side = cw > 256 ? (cw - 256 + 1) / 2 + 2 : 0;  /* the wide margin on each side, with an overlap */
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
@@ -535,7 +591,7 @@ void build_main(MenuLayout *L, bool intro)
         lg.bg = 1; lg.hostimg = MENU_IMG_LOGO;
         lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
         lg.fx = (short)((L->w - dw) / 2 + ldx * L->unum / L->uden); lg.fy = (short)(lt * L->unum / L->uden);
-        menu_add_piece(L, lg);
+        egg_piece = menu_add_piece(L, lg);
     } else {
     if (side > 0) {
         MenuPiece lf = menu_piece_make(SRC_SUB, 0, 0, 1, 192, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
@@ -548,13 +604,14 @@ void build_main(MenuLayout *L, bool intro)
     MenuPiece bg = menu_piece_make(SRC_SUB, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
     bg.bg = 1;
     bg.layers = (uint8_t)tune(5, 0x0f);
-    menu_add_piece(L, bg);
+    egg_piece = menu_add_piece(L, bg);
+    egg_ds = 1;
     }
     /* THE INTRO (top-state 10): the ROM opens the lower screen through a black star iris, drawn as 3D polygons with a thin
        dark edge, and the plates and the head arrive inside it. On one screen the logo simply fades in alone and the
        lower screen's art appears with the page itself, so nothing of the iris is drawn. */
     menu_online_add_tint(L, onl_facts_of(L));      /* NAME1: the green over the sky (and, with the DS logo, its blue letters) */
-    if (intro) return;
+    if (intro) { egg_note(L, -1, false, nullptr); return; }
     if (tune(6, -1) >= 0 && tune(7, -1) >= tune(6, -1)) {
         /* DEBUG (SM64DS_TITLE_TUNE index 6,7 = first,last engine-B OAM entry): the upper screen's OAM entries alone, keyed on
            their own transparency, drawn at the top of the picture: the proof of the OAM-range plane on a live screen */
@@ -687,6 +744,10 @@ void build_main(MenuLayout *L, bool intro)
     { const OnlFacts *of = onl_facts_of(L); online_overlays(L, true, of && of->on); }     /* NAME1: the ? button and the modal screen */
     { const OnlFacts *of = onl_facts_of(L); if (cs.swap_a >= 0 && !(of && of->scr != ONL_SCR_NONE)) swap_fade_host(L, np_ov, cs.swap_a); }     /* TITLEART1: the ? too */
     if (cs.swap_a >= 0 && hal_menu_trace_on()) fprintf(stderr, "[swapfade-host] f%d level %d alpha %d\n", t_f ? t_f->frame : -1, cs.swap_lv, cs.swap_a);      /* TITLEART2 */
+    {
+        static const int kDsLogo[4] = { 11, 21, 247, 141 };      /* EGG1: the ROM logo's letters on its upper screen (measured on the 4:3 picture, out/EGG1) */
+        egg_note(L, egg_piece, egg_page_ok(L, intro), egg_ds ? kDsLogo : nullptr);
+    }
 }
 
 
@@ -1274,6 +1335,66 @@ MenuPiece scene_twin(const MenuLayout *L, const SceneT &t, int sx, int sy, int s
     return p;
 }
 
+/* EGG1: THE HEAD'S TOUCH PIECE STEPS OUT FROM UNDER THE SMALL LOGO. The head's touch-only piece is a rectangle (the ROM takes a touch
+   anywhere on it) and its left part lies under the small logo, which is drawn above the head (TITLEART2): measured on b3, a click on the
+   logo's letters at 4:3 published a DS touch and the ROM went to its face press (top 0 elem 2); at 16:9 the logo's right third is over the
+   head's rectangle too. While the secret is live the piece is cut along the logo's own edges into the head's rectangle minus the logo:
+   the part right of the logo (full height: the face), and the strips above and under the logo. Each keeps its share of the source
+   rectangle (the cut's source column / row is the nearest to the host edge), so a click anywhere they cover still reaches the ROM within
+   a DS pixel of where the whole piece sent it (the largest difference is printed under SM64DS_MENU_TRACE). Only when the logo hangs over
+   the head's left side; any other overlap is left alone (the click then stays the head's and the clip does not play: egg_click_poll). */
+static int egg_inv1(int s0, int sw, int d0, int dw, int b) { const long long n = (long long)(b - d0) * sw; return s0 + (int)(n >= 0 ? n / dw : -((-n + dw - 1) / dw)); }
+static void egg_err(int *err, int e) { if (e < 0) e = -e; if (e > *err) *err = e; }
+static void egg_trim_head(MenuLayout *L, int hi, int lx, int ly, int lw, int lh)
+{
+    if (hi < 0 || hi >= L->np) return;
+    menu_layout_dest(L);
+    const int *d = L->dest[hi];
+    const int d0 = d[0], d1 = d[1], d2 = d[2], d3 = d[3];
+    const int lx1 = lx + lw, ly1 = ly + lh;
+    if (d2 <= 0 || d3 <= 0 || lx1 <= d0 || ly1 <= d1 || lx >= d0 + d2 || ly >= d1 + d3) return;     /* no overlap */
+    if (lx > d0 || lx1 >= d0 + d2) {
+        if (hal_menu_trace_on()) fprintf(stderr, "[egg] the logo overlaps the head piece (%d,%d,%d,%d) other than over its left side: left as it is\n", d0, d1, d2, d3);
+        return;
+    }
+    const MenuPiece P = L->p[hi];
+    const int sw = P.s.w, sh = P.s.h;
+    const int kx = (int)(((long long)(lx1 - d0) * sw * 2 + d2) / (2LL * d2));                  /* the source column nearest the logo's right edge */
+    if (kx <= 0 || kx >= sw) return;
+    const int kyt = ly > d1 ? (int)(((long long)(ly - d1) * sh * 2 + d3) / (2LL * d3)) : 0;
+    const int kyb = ly1 < d1 + d3 ? (int)(((long long)(ly1 - d1) * sh * 2 + d3) / (2LL * d3)) : sh;
+    MenuPiece r = P;
+    r.fixdest = 1; r.fx = (short)lx1; r.fy = (short)d1; r.fw = (short)(d0 + d2 - lx1); r.fh = (short)d3;
+    r.s.x = (short)(P.s.x + kx); r.s.w = (short)(sw - kx);
+    L->p[hi] = r;
+    int err = 0;
+    for (int bx = lx1; bx < d0 + d2; ++bx) egg_err(&err, egg_inv1(r.s.x, r.s.w, lx1, r.fw, bx) - egg_inv1(P.s.x, sw, d0, d2, bx));
+    for (int bx = d0; bx < lx1; ++bx) egg_err(&err, egg_inv1(P.s.x, kx, d0, lx1 - d0, bx) - egg_inv1(P.s.x, sw, d0, d2, bx));
+    if (kyt > 0 && ly > d1) {
+        MenuPiece t = P;
+        t.fixdest = 1; t.fx = (short)d0; t.fy = (short)d1; t.fw = (short)(lx1 - d0); t.fh = (short)(ly - d1);
+        t.s.w = (short)kx; t.s.h = (short)kyt;
+        menu_add_piece(L, t);
+        for (int by = d1; by < ly; ++by) egg_err(&err, egg_inv1(t.s.y, t.s.h, d1, t.fh, by) - egg_inv1(P.s.y, sh, d1, d3, by));
+    }
+    if (kyb < sh && ly1 < d1 + d3) {
+        MenuPiece b = P;
+        b.fixdest = 1; b.fx = (short)d0; b.fy = (short)ly1; b.fw = (short)(lx1 - d0); b.fh = (short)(d1 + d3 - ly1);
+        b.s.w = (short)kx; b.s.y = (short)(P.s.y + kyb); b.s.h = (short)(sh - kyb);
+        menu_add_piece(L, b);
+        for (int by = ly1; by < d1 + d3; ++by) egg_err(&err, egg_inv1(b.s.y, b.s.h, ly1, b.fh, by) - egg_inv1(P.s.y, sh, d1, d3, by));
+    }
+    if (hal_menu_trace_on()) {
+        static int last[6];
+        const int now[6] = { d0, d1, d2, d3, lx1, ly1 };
+        if (memcmp(last, now, sizeof now)) {
+            memcpy(last, now, sizeof now);
+            fprintf(stderr, "[egg] head piece (%d,%d,%d,%d) cut around the logo (%d,%d,%d,%d): src column %d, rows %d / %d, largest DS difference %d px\n",
+                    d0, d1, d2, d3, lx, ly, lw, lh, P.s.x + kx, P.s.y + kyt, P.s.y + kyb, err);
+        }
+    }
+}
+
 void build_main_pc(MenuLayout *L, bool intro)
 {
     Chore c = t_f ? t_f->ch : Chore();      /* a copy: build() never writes the clock */
@@ -1337,6 +1458,7 @@ void build_main_pc(MenuLayout *L, bool intro)
        big logo still hovers centred; with the logo pieces added before the face piece any face alpha above 0 drew the head over the logo, the hat
        first. The logos are now added after the face, the head's touch map and the wrench, and before the planks, and the face swap's fade skips them
        as it did before (they were outside its span). */
+    int egg_small = -1;      /* EGG1: the small logo piece */
     auto add_logos = [&]() {
         if (big_a > 0) {
             const int lt = ltune(0, 26), lh = ltune(1, 112), ldx = ltune(2, 0);
@@ -1358,8 +1480,14 @@ void build_main_pc(MenuLayout *L, bool intro)
             lg.bg = 1; lg.hostimg = MENU_IMG_LOGO; lg.nofade = 1; lg.alpha = (uint8_t)(small_a >= 255 ? 0 : small_a);
             lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
             lg.fx = (short)U(mx); lg.fy = (short)U(my);
-            menu_add_piece(L, lg);
+            egg_small = menu_add_piece(L, lg);
         }
+    };
+    /* EGG1: the head's touch piece steps out from under the small logo (egg_trim_head) once the logo is fully in, off the face press */
+    auto egg_cut_head = [&](int ihd) {
+        if (small_a < 255 || (t_f && t_f->toy_v > 0) || !egg_page_ok(L, intro)) return;
+        const int edh = U(ctune(2, 40)), edw = (int)((long long)edh * iw / ih);      /* the small logo's place, as add_logos puts it */
+        egg_trim_head(L, ihd, U(ctune(3, 6)), U(ctune(4, 6)), edw, edh);
     };
     if (intro) add_logos();
     const int np_swap = L->np;      /* TITLEUI1: the pieces from here to the overlays are the lower screen's: the face swap fades them (swap_fade) */
@@ -1389,7 +1517,7 @@ void build_main_pc(MenuLayout *L, bool intro)
                 if (tv <= 93) L->snap_save = 1;      /* FACE2: the held frame of the crossfade into the drawing page */
                 menu_add_piece(L, scene_twin(L, T, 0, 0, 256, 192));        /* the page reads touches over the whole layer */
             } else {
-                menu_add_piece(L, scene_twin(L, T, 20, 0, 156, 134));
+                egg_cut_head(menu_add_piece(L, scene_twin(L, T, 20, 0, 156, 134)));      /* EGG1: the live head (the scene's twin) */
                 MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, wrench_dx(L), 0, 1, 1);
                 wr.touch = 1; wr.nodraw = 1;
                 const int iwr = menu_add_piece(L, wr);
@@ -1426,7 +1554,7 @@ void build_main_pc(MenuLayout *L, bool intro)
         }
         MenuPiece head = menu_piece_make(SRC_TOP_PIC, 20, 0, 156, 134, MENU_AX_C, MENU_AY_T, face_dx(fk) - (30 * hk + hd / 2) / hd, face_dy(fk), hk, hd);
         head.touch = 1; head.nodraw = 1;
-        menu_add_piece(L, head);
+        egg_cut_head(menu_add_piece(L, head));      /* EGG1 */
         MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, wrench_dx(L), 0, 1, 1);
         wr.keycover = 1; wr.touch = 1; wr.alpha = (uint8_t)(fa >= 255 ? 0 : fa);
         wr.nodraw = fa <= 0;
@@ -1506,6 +1634,7 @@ void build_main_pc(MenuLayout *L, bool intro)
         }
         if (c.swap_a >= 0) swap_fade(L, np_arrow, c.swap_a);      /* TITLEUI1: and the arrow */
     }
+    egg_note(L, egg_small, small_a >= 255 && !(t_f && t_f->toy_v > 0) && egg_page_ok(L, intro), nullptr);      /* EGG1: once the small logo is fully in */
     if (!intro) {                                              /* NAME1: the ? button (online planks, settled) and the modal screen */
         const OnlFacts *of = onl_facts_of(L);
         const bool settled = c.sw_t >= swap_end(c) - 4 || c.skip || c.mode == CH_NONE;
@@ -2329,6 +2458,7 @@ void menu_title_build(int variant, MenuLayout *L)
 {
     TitleFactsScope scope((const TitleFacts *)L->facts.blob);
     menu_title_build_impl(variant, L);
+    if (variant != V_MAIN) egg_note(L, -1, false, nullptr);      /* EGG1: only the main page has the secret */
     if (t_f && t_f->out_e > 0 && t_f->out_e < DD_XF && variant != V_DOODLE && (variant == V_MAIN || variant == V_TOY)) {     /* FACE2: the drawing page's last frame fades out over the page that follows */
         MenuPiece sn = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         sn.bg = 1; sn.snap = 1; sn.lden = 1; sn.lnum = 1; sn.fx = 0; sn.fy = 0; sn.fw = (short)L->w; sn.fh = (short)L->h;
@@ -2463,8 +2593,61 @@ static void title_cursor_assist()
 extern "C" void port_host_keys_clear(unsigned short mask);   /* hal/scene_boot.cpp */
 static void title_pad_keys(uint16_t *pressed, int host_back, int inject);
 
+/* EGG1: THE CLICK. Read once a frame on the logic thread from the pad map, beside the stylus seam rather than through it: the button is the
+   mouse's own (GetAsyncKeyState, the same rule hal/sub_screen.cpp's poll_touch keeps: only while this window is the foreground one and only a
+   press that began while it already was, so the click that brings the window to the front is no click), or the scripted stylus while one is
+   latched (port_touch_inject_peek: the dev click scripts; nothing arms it in a kit). Only the press EDGE counts. The client point goes through
+   the present rectangle to a picture pixel, and the spot the build wrote decides. The pad pointer (a controller-driven stylus) is not the
+   mouse button and never gets here; neither do keys. */
+extern "C" int port_touch_inject_peek(int *cx, int *cy);              /* hal/sub_screen.cpp */
+extern "C" int hal_window_focused(void);                             /* hal/sub_screen.cpp */
+extern "C" int hal_present_client_to_fb(int cx, int cy, int *fx, int *fy);
+static void egg_click_poll()
+{
+    static int raw_was, focus_was, hold_ok, was_down;
+    int down = 0, cx = 0, cy = 0, scripted = 0;
+    if (port_touch_inject_peek(&cx, &cy)) {
+        down = 1;
+        scripted = 1;
+    } else {
+        int px = 0, py = 0;
+        const int raw = egg_mouse_read(&px, &py);
+        const int foc = hal_window_focused();
+        if (!raw)          hold_ok = 0;
+        else if (!raw_was) hold_ok = foc && focus_was;
+        else if (!foc)     hold_ok = 0;
+        raw_was = raw;
+        focus_was = foc;
+        down = raw && foc && hold_ok;
+        if (raw < 0) down = 0;      /* the button is down but the point could not be read */
+        cx = px; cy = py;
+    }
+    const int edge = down && !was_down;
+    was_down = down;
+    if (!edge) return;
+    int fx = -1, fy = -1;
+    if (!hal_present_client_to_fb(cx, cy, &fx, &fy)) return;
+    EggSpot e;
+    { std::lock_guard<std::mutex> lk(g_egg_mu); e = g_egg; }
+    int lw = 0, lh = 0;
+    if (!e.on || !hal_menu_last_size(&lw, &lh) || lw != e.w || lh != e.h) return;
+    if (fx < e.x || fx >= e.x + e.cw || fy < e.y || fy >= e.y + e.ch) return;
+    for (int i = 0; i < e.nt; ++i) {
+        const int *t = e.t[i];
+        if (fx >= t[0] && fx < t[0] + t[2] && fy >= t[1] && fy < t[1] + t[3]) {
+            fprintf(stderr, "[egg] click at picture (%d,%d) on the logo over touch piece (%d,%d,%d,%d): that piece has it\n", fx, fy, t[0], t[1], t[2], t[3]);
+            return;
+        }
+    }
+    if (settings_page_open()) return;
+    const int r = egg_audio_play();
+    fprintf(stderr, "[egg] %s click at picture (%d,%d) on the small logo: %s\n", scripted ? "scripted" : "mouse", fx, fy,
+            r > 0 ? "clip started" : r == 0 ? "already playing, nothing" : "no clip");
+}
+
 void menu_title_pad_map(uint16_t *pressed, int host_back)
 {
+    egg_click_poll();      /* EGG1 */
     title_cursor_assist();
     /* ASSET5: THE ATTRACT'S TOUCH-TO-START, given by the port once the star is off the top of the lower screen (counter 56; SM64DS_TITLE_FF=0
        turns it off), for one frame as the DS A key edge the ROM's own skip reads; and a confirm during the swap finishes the choreography. */

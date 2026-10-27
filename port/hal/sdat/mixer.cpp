@@ -1101,6 +1101,12 @@ void stat_report(void)
 }
 }  // namespace
 
+/* Lane EGG1: the PRE-volume host render hook (hal/egg_audio.cpp: the title's small-logo clip). Nullable, for g_aux_render's
+   reason (targets without the caller link this file too). Called once per render block, after the DS mixer and before the host
+   master volume, so what it adds plays at the game's own volume and SM64DS_VOLUME=0 / the Volume setting at 0 silences it. */
+static void (*g_pre_volume_render)(sd_s16 *, int, int);
+void sd_mix_set_pre_volume_render(void (*fn)(sd_s16 *dst, int frames, int rate)) { g_pre_volume_render = fn; }
+
 static void sd_mix_render_body(sd_s16 *dst, int frames);
 
 void sd_mix_render(sd_s16 *dst, int frames)
@@ -1248,6 +1254,8 @@ static void sd_mix_render_body(sd_s16 *dst, int frames)
             sd_mix_frame();
         }
     }
+
+    if (g_pre_volume_render) g_pre_volume_render(dst, frames, g_mixRate);      // lane EGG1, see the hook's banner
 
     // Host master volume: one final scalar on the already-mixed stereo buffer.
     // This is the output stage, not the DS mixer -- every voice, envelope and
