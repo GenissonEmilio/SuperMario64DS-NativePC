@@ -64,6 +64,7 @@ struct Plate {
     int test_at;                         /* SM64DS_JOIN_QUIET_CANCEL=<frame>[:b|esc] (not in the kit) */
     int test_how;
     int test_file;
+    int inplace;                         /* SEAMJOIN1: raised by an in-place join in this process (hal/online_join.cpp drives it, not the title walk) */
 } P;
 
 /* JOINWIN1: the join takes longer than this before the corner line shows */
@@ -120,7 +121,7 @@ int do_cancel()
 
 int tick()
 {
-    if (!P.up || P.parent) return 0;
+    if (!P.up || P.parent || P.inplace) return 0;   /* SEAMJOIN1: an in-place join ticks its plate itself (port_join_plate_inplace_tick) */
     if (!P.said) {
         P.said = 1;
         fprintf(stderr, "[joinflow] quiet entry: the window holds black until the adventure is entered (server %d)\n", P.server);
@@ -145,6 +146,7 @@ void ended(const char *why)
 {
     if (!P.up || port_join_quiet_cancelled) return;
     P.up = 0;
+    P.inplace = 0;
     sd_host_mute(0);
     fprintf(stderr, "[joinflow] plate down after %u frames: %s\n", P.frames, why ? why : "");
     fflush(stderr);
@@ -202,6 +204,67 @@ extern "C" void port_join_plate_raise_black(void)
     fflush(stderr);
 }
 
+/* SEAMJOIN1: THE PLATE OF AN IN-PLACE JOIN. Joining from the online file select no longer starts a successor: this process installs the hub
+   and enters the world itself (hal/online_join.cpp). The player sees what a successor showed: black from the moment the plan is applied until
+   the level, the corner line after 3 s, the title muted, B or Esc cancels. The cancel does not start a solo title any more: online_join.cpp
+   polls it (port_join_plate_inplace_tick), takes the session down in this process and lowers the plate (port_join_plate_inplace_end). */
+extern "C" void port_join_plate_raise_in_place(int server)
+{
+    P.up = 1;
+    P.parent = 0;
+    P.inplace = 1;
+    P.server = server;
+    P.t0 = GetTickCount64();
+    P.frames = 0;
+    P.said = 0;
+    P.cancel = 0;
+    P.armed = 0;
+    P.prev_esc = P.prev_b = 0;
+    P.line = 0;
+    P.px.clear();
+    P.test_at = -1;
+    P.test_file = -1;
+#ifndef PORT_ROM_CLEAN
+    if (const char *t = getenv("SM64DS_JOIN_QUIET_CANCEL")) {   /* the successor's cancel drill, read here for the in-place join */
+        P.test_at = atoi(t);
+        const char *c = strchr(t, ':');
+        P.test_how = (c && !_stricmp(c + 1, "esc")) ? 1 : 0;
+    }
+#endif
+    sd_host_mute(1);
+    fprintf(stderr, "[joinflow] in place: the window holds black until the adventure is entered (server %d)\n", server);
+    fflush(stderr);
+}
+
+/* once a game frame while an in-place join waits for the world: 1 = the player asked to cancel */
+extern "C" int port_join_plate_inplace_tick(void)
+{
+    if (!P.up || !P.inplace) return 0;
+    ++P.frames;
+    sd_host_mute(1);
+#ifndef PORT_ROM_CLEAN
+    if (!P.cancel && P.test_at >= 0 && (int)P.frames == P.test_at) {
+        if (P.test_how == 1) port_join_plate_input(1, 0);
+        else port_join_plate_input(0, 1);
+        fprintf(stderr, "[joinflow] test cancel injected at frame %u (%s)\n", P.frames, P.test_how == 1 ? "Esc" : "B");
+    }
+#endif
+    return P.cancel ? 1 : 0;
+}
+
+extern "C" int port_join_plate_inplace_up(void) { return P.up && P.inplace; }
+
+extern "C" void port_join_plate_inplace_end(const char *why)
+{
+    if (!P.up || !P.inplace) return;
+    P.up = 0;
+    P.inplace = 0;
+    P.cancel = 0;
+    sd_host_mute(0);
+    fprintf(stderr, "[joinflow] plate down after %u frames: %s\n", P.frames, why ? why : "");
+    fflush(stderr);
+}
+
 extern "C" int port_join_plate_click(int cx, int cy)
 {
     (void)cx; (void)cy;
@@ -227,6 +290,7 @@ extern "C" void port_join_plate_input(int esc_down, int b_down)
 extern "C" int port_join_plate_fast(void)
 {
     if (!P.up || port_join_quiet_cancelled) return 0;
+    if (P.inplace) return 0;                 /* SEAMJOIN1: nothing is hidden behind an in-place join's black: the frames keep their pace */
 #ifndef PORT_ROM_CLEAN
     static int off = -1;
     if (off < 0) { const char *e = getenv("SM64DS_JOIN_QUIET_PACED"); off = (e && *e) ? 1 : 0; }

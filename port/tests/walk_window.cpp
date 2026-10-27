@@ -6868,12 +6868,26 @@ static int port_front_end_quit_poll(int frame)
         fprintf(stderr, "[quit] f%d a level was handed back after the in-place quit: the quit rows are armed again\n", frame);
         if (port_join_settings_armed()) join_settings_dump_once();   /* SEAMHUB1: after an online leave, this level is a new solo session */
     }
+    if (port_join_settings_armed()) join_settings_dump_once();   /* SEAMJOIN1: a world joined in place is a new online session: its line */
     if (fired) return 1;
 #ifndef PORT_ROM_CLEAN
     {   /* JOINWIN1: SM64DS_JOINWIN_QUIT_AT=<frame> makes the quit rows' own request (scene 1 parked in data_02092664, as StartSceneFade(1, 0, 0)
            does) on that frame: the proof row for the restart out of an online session (dev only; read once and cleared, so no child inherits it) */
-        static int qa = -2;
-        if (qa == -2) { const char *e = getenv("SM64DS_JOINWIN_QUIT_AT"); qa = e ? atoi(e) : -1; SetEnvironmentVariableA("SM64DS_JOINWIN_QUIT_AT", 0); }
+        /* SEAMJOIN1: a comma list (<frame>[,<frame>...], up to four) for the rows that join and leave twice in one process */
+        static int qa_list[4] = { -2, -1, -1, -1 };
+        if (qa_list[0] == -2) {
+            qa_list[0] = -1;
+            const char *e = getenv("SM64DS_JOINWIN_QUIT_AT");
+            for (int i = 0; e && *e && i < 4; ++i) {
+                qa_list[i] = atoi(e);
+                e = strchr(e, ',');
+                if (e) ++e;
+            }
+            SetEnvironmentVariableA("SM64DS_JOINWIN_QUIT_AT", 0);
+        }
+        int qa = -1;
+        for (int i = 0; i < 4; ++i)
+            if (qa_list[i] >= 0 && frame == qa_list[i]) qa = qa_list[i];
         if (qa >= 0 && frame == qa && data_02092664 != 1) {
             fprintf(stderr, "[quit] f%d SM64DS_JOINWIN_QUIT_AT: the quit rows' request for scene 1 is made here\n", frame);
             data_02092664 = 1;
