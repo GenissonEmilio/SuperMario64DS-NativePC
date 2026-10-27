@@ -2032,6 +2032,7 @@ extern "C" int port_settings_page_hd_ui_quiesce(void)
     return 0;
 }
 
+extern "C" void settings_page_warm_rearm(void);   /* hal/settings_page_hooks.cpp */
 extern "C" int port_settings_page_hd_ui_reset(void)
 {
     if (g_wd) {
@@ -2051,5 +2052,6 @@ extern "C" int port_settings_page_hd_ui_reset(void)
     }
     g_ws_w = g_ws_h = 0; g_ws_stage = 0; g_ws_y = 0; g_ws_tab = 0; g_ws_row = -1; g_ws_cpn = 1; g_ws_tile_ok = 0;
     std::vector<uint32_t>().swap(g_ws_tile); std::vector<uint32_t>().swap(g_ws_buf);
+    settings_page_warm_rearm();                    /* the idle warm-up runs again, so the first open after a switch is as quick as fresh */
     return n;
 }
