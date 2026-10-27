@@ -9,7 +9,9 @@
    (sd_host_mute), and the frame pacer is skipped on most frames while it runs so it takes a moment instead of ten seconds. title_entry.cpp's commit ends
    the plate when the ROM asks for the Stage; the first picture after it is the level's own.
 
-   THE CANCEL. B (the pad's B, the attack key), Esc or a click on BACK. It clears every name a join set (online_join_clear_env), drops the boot file, and
+   JOINWIN1: the plate is no longer a plate. The window holds black (build below), with one corner line "Joining..." after 3 s.
+
+   THE CANCEL. B (the pad's B, the attack key) or Esc. It clears every name a join set (online_join_clear_env), drops the boot file, and
    starts the game again at its front door as a clean solo title (the same hook the join itself used); this process then ends. A walk that has not reached
    the adventure after 90 s does the same, so the plate can never be a dead end.
 
@@ -21,7 +23,6 @@
 #include "mods.h"
 
 #include <windows.h>
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,120 +56,33 @@ struct Plate {
     int cancel;                          /* 0 none, 1 player, 2 the walk never finished */
     int armed;                           /* B / Esc have been seen released since the plate came up */
     int prev_esc, prev_b;
-    int bx, by, bw, bh;                  /* the BACK plank in the last picture */
+    int parent;                          /* JOINWIN1: raised in the process that started the successor, for its last pictures (no input, no cancel) */
+    int line;                            /* JOINWIN1: the corner "Joining..." line is in the picture */
     int pw, ph;
     std::vector<uint32_t> px;
-    int test_at;                         /* SM64DS_JOIN_QUIET_CANCEL=<frame>[:b|esc|click] (not in the kit) */
+    int test_at;                         /* SM64DS_JOIN_QUIET_CANCEL=<frame>[:b|esc] (not in the kit) */
     int test_how;
     int test_file;
 } P;
 
-inline int clampi(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
-inline uint32_t mix(uint32_t a, uint32_t b, int k)
-{
-    const int ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255, br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
-    return 0xFF000000u | (uint32_t)(((ar * (255 - k) + br * k) / 255) << 16) | (uint32_t)(((ag * (255 - k) + bg * k) / 255) << 8) | (uint32_t)((ab * (255 - k) + bb * k) / 255);
-}
-inline uint32_t lerp3(uint32_t a, uint32_t b, int num, int den)
-{
-    if (den < 1) den = 1;
-    return mix(a, b, clampi(num * 255 / den, 0, 255));
-}
-inline int rr_cov(int x, int y, int w, int h, int r)
-{
-    int dx = 0, dy = 0;
-    if (x < r) dx = r - x - 1; else if (x >= w - r) dx = x - (w - r);
-    if (y < r) dy = r - y - 1; else if (y >= h - r) dy = y - (h - r);
-    if (!dx && !dy) return 255;
-    const float d = sqrtf((float)(dx * dx + dy * dy)) + 0.5f;
-    const float c = (float)r + 0.5f - d;
-    return c >= 1.f ? 255 : c <= 0.f ? 0 : (int)(c * 255.f);
-}
+/* JOINWIN1: the join takes longer than this before the corner line shows */
+const ULONGLONG kLineMs = 3000;
 
-struct Pal { int top, bot, edge, hi; };
-
-/* the online pages' code drawn plank: the DS plank's wood, bevel, border and grain (the same look hal/menu_online_draw.cpp draws) */
-void plank(uint32_t *dst, int w, int h, int X, int Y, int W, int H, const Pal &pa)
-{
-    const int r = clampi(H * 14 / 100, 2, 40);
-    const int bw = clampi(H * 7 / 100, 1, 12);
-    const int bev = clampi(H / 9, 2, 14);
-    for (int y = 0; y < H; ++y) {
-        for (int x = 0; x < W; ++x) {
-            const int c = rr_cov(x, y, W, H, r);
-            if (!c) continue;
-            const int px = X + x, py = Y + y;
-            if (px < 0 || py < 0 || px >= w || py >= h) continue;
-            uint32_t col;
-            const int ix = x - bw, iy = y - bw;
-            const bool border = x < bw || y < bw || x >= W - bw || y >= H - bw || rr_cov(x - bw, y - bw, W - 2 * bw, H - 2 * bw, r > bw ? r - bw : 1) == 0;
-            if (border) col = pa.edge;
-            else {
-                col = lerp3(pa.top, pa.bot, y, H);
-                if (iy < bev) col = mix(col, pa.hi, 90);
-                else if (y >= H - bw - bev) col = mix(col, pa.edge, 70);
-                if (ix < bev / 2) col = mix(col, pa.hi, 50);
-                if (x >= W - bw - bev / 2) col = mix(col, pa.edge, 45);
-                if (((y * 7 + (x >> 3) * 3) % 23) == 0) col = mix(col, pa.edge, 28);
-            }
-            uint32_t *p = dst + (size_t)py * w + px;
-            *p = c >= 255 ? (0xFF000000u | (col & 0xFFFFFF)) : mix(*p, col & 0xFFFFFF, c);
-        }
-    }
-}
-
-/* centred label on a plank: two passes (a lighter offset shadow under the dark lettering), shrunk to fit */
-void label(uint32_t *dst, int w, int h, int X, int Y, int W, int H, const char *s, float cap_frac)
-{
-    if (!ui_text_ready()) return;
-    float cap = cap_frac * (float)H;
-    float em = cap / 0.75f;
-    const float tw = ui_text_width(s, em), maxw = 0.86f * (float)W;
-    if (tw > maxw) { em *= maxw / tw; cap = ui_text_cap_height(em); }
-    const UiSurface sf = { dst, w, w, h };
-    const int clip[4] = { X + 2, Y + 2, X + W - 2, Y + H - 2 };
-    const float x = (float)X + ((float)W - ui_text_width(s, em)) * 0.5f;
-    const float by = (float)Y + ((float)H - cap) * 0.5f + cap;
-    const float sh = em * 0.07f > 1.f ? em * 0.07f : 1.f;
-    ui_text_draw(&sf, x + sh * 0.6f, by + sh, s, em, 0xEBA546, 255, clip);
-    ui_text_draw(&sf, x, by, s, em, 0x7A3A28, 255, clip);
-}
-
+/* JOINWIN1: NO PLATE. The player's report on the whole-window "Joining server N" plank over a green background: "a really ugly popup". The window
+   holds black instead, the colour the ROM's own screen fade ends on, from the parent's last picture until the level's first one: the parent goes
+   black the moment the successor is started (port_join_plate_raise_black), the successor is black from its first picture. If the join takes more
+   than kLineMs one small line, "Joining...", sits in the bottom-left corner in the online pages' font, no box and no plank. */
 void build(int w, int h)
 {
     P.px.assign((size_t)w * h, 0xFF000000u);
-    uint32_t *d = P.px.data();
-    /* the plain background: the online mode's green, a very soft vertical ramp */
-    for (int y = 0; y < h; ++y) {
-        const uint32_t c = lerp3(0x2A7B52, 0x1D5638, y, h);
-        for (int x = 0; x < w; ++x) d[(size_t)y * w + x] = c;
+    if (P.line && ui_text_ready()) {
+        const float em = (float)h * 0.045f > 10.f ? (float)h * 0.045f : 10.f;
+        const UiSurface sf = { P.px.data(), w, w, h };
+        const float m = (float)h * 0.03f;
+        ui_text_draw(&sf, m, (float)h - m, "Joining...", em, 0xD0D0D0, 255, 0);
     }
-    char title[48];
-    if (P.server > 0) snprintf(title, sizeof title, "Joining server %d...", P.server);
-    else snprintf(title, sizeof title, "Joining...");
-    int W = clampi(w * 66 / 100, 80, h * 150 / 100);
-    int H = W * 26 / 100;
-    if (H > h * 30 / 100) { H = h * 30 / 100; }
-    const int X = (w - W) / 2, Y = h * 36 / 100 - H / 2;
-    const Pal gold = { 0xF6C060, 0xD99A38, 0x6A3A18, 0xFFE9A8 };
-    plank(d, w, h, X, Y, W, H, gold);
-    label(d, w, h, X, Y, W, H, title, 0.30f);
-    /* "Press B to cancel" and the BACK plank */
-    if (ui_text_ready()) {
-        const float em = (float)H * 0.30f;
-        const UiSurface sf = { d, w, w, h };
-        const char *hint = "Press B to cancel";
-        const float tw = ui_text_width(hint, em);
-        ui_text_draw(&sf, ((float)w - tw) * 0.5f, (float)(Y + H) + (float)H * 0.62f, hint, em, 0xFFF3D0, 255, 0);
-    }
-    const int BW = W * 40 / 100, BH = H * 62 / 100;
-    const int BX = (w - BW) / 2, BY = Y + H + H * 90 / 100;
-    const Pal orange = { 0xF58838, 0xD2641E, 0x6A2E0C, 0xFFB878 };
-    plank(d, w, h, BX, BY, BW, BH, orange);
-    label(d, w, h, BX, BY, BW, BH, "BACK", 0.34f);
-    P.bx = BX; P.by = BY; P.bw = BW; P.bh = BH;
     P.pw = w; P.ph = h;
-    fprintf(stderr, "[joinflow] plate %dx%d built; BACK plank at %d,%d size %dx%d\n", w, h, BX, BY, BW, BH);
+    fprintf(stderr, "[joinflow] black picture %dx%d built%s\n", w, h, P.line ? " with the corner line" : "");
 }
 
 int do_cancel()
@@ -205,10 +119,10 @@ int do_cancel()
 
 int tick()
 {
-    if (!P.up) return 0;
+    if (!P.up || P.parent) return 0;
     if (!P.said) {
         P.said = 1;
-        fprintf(stderr, "[joinflow] quiet entry: the Joining plate covers every picture until the adventure is entered (server %d)\n", P.server);
+        fprintf(stderr, "[joinflow] quiet entry: the window holds black until the adventure is entered (server %d)\n", P.server);
         fflush(stderr);
     }
     ++P.frames;
@@ -217,10 +131,9 @@ int tick()
     if (!P.cancel && GetTickCount64() - P.t0 > kGiveUpMs) P.cancel = 2;
 #ifndef PORT_ROM_CLEAN
     if (!P.cancel && P.test_at >= 0 && (int)P.frames == P.test_at) {
-        if (P.test_how == 0) port_join_plate_input(0, 1);
-        else if (P.test_how == 1) port_join_plate_input(1, 0);
-        else port_join_plate_click(P.bx + P.bw / 2, P.by + P.bh / 2);
-        fprintf(stderr, "[joinflow] test cancel injected at frame %u (%s)\n", P.frames, P.test_how == 0 ? "B" : P.test_how == 1 ? "Esc" : "click on BACK");
+        if (P.test_how == 1) port_join_plate_input(1, 0);
+        else port_join_plate_input(0, 1);
+        fprintf(stderr, "[joinflow] test cancel injected at frame %u (%s)\n", P.frames, P.test_how == 1 ? "Esc" : "B");
     }
 #endif
     if (P.cancel) return do_cancel();
@@ -251,7 +164,7 @@ int boot()
         if (const char *t = getenv("SM64DS_JOIN_QUIET_CANCEL")) {
             P.test_at = atoi(t);
             const char *c = strchr(t, ':');
-            P.test_how = (c && !_stricmp(c + 1, "esc")) ? 1 : (c && !_stricmp(c + 1, "click")) ? 2 : 0;
+            P.test_how = (c && !_stricmp(c + 1, "esc")) ? 1 : 0;
         }
         if (const char *f = getenv("SM64DS_JOIN_QUIET_CANCEL_FILE")) P.test_file = atoi(f);
 #endif
@@ -270,23 +183,33 @@ extern "C" int port_join_plate_up(void) { return P.up; }
 extern "C" const uint32_t *port_join_plate_picture(int w, int h)
 {
     if (!P.up || w < 32 || h < 32) return nullptr;
-    if (P.pw != w || P.ph != h || P.px.empty()) build(w, h);
+    const int line = (!P.parent && GetTickCount64() - P.t0 > kLineMs) ? 1 : 0;
+    if (P.pw != w || P.ph != h || P.px.empty() || P.line != line) { P.line = line; build(w, h); }
     return P.px.data();
+}
+
+/* JOINWIN1: the process that has just started a join successor holds black over its last pictures (the parent half of the hand-off), so the
+   window goes from the online file select to black and stays black through the successor's walk. */
+extern "C" void port_join_plate_raise_black(void)
+{
+    if (P.up) return;
+    P.up = 1;
+    P.parent = 1;
+    P.t0 = GetTickCount64();
+    P.px.clear();
+    fprintf(stderr, "[joinflow] the successor is starting: this window holds black until it closes\n");
+    fflush(stderr);
 }
 
 extern "C" int port_join_plate_click(int cx, int cy)
 {
-    if (!P.up) return 0;
-    if (!P.cancel && cx >= P.bx && cx < P.bx + P.bw && cy >= P.by && cy < P.by + P.bh) {
-        P.cancel = 1;
-        fprintf(stderr, "[joinflow] BACK clicked\n");
-    }
-    return 1;
+    (void)cx; (void)cy;
+    return P.up ? 1 : 0;                     /* JOINWIN1: nothing to click on the black (B / Esc cancel); the click still reaches nothing behind it */
 }
 
 extern "C" void port_join_plate_input(int esc_down, int b_down)
 {
-    if (!P.up) return;
+    if (!P.up || P.parent) return;
     /* a key or button already down when the plate came up cannot cancel until it has been let go */
     if (!P.armed) {
         if (!esc_down && !b_down) P.armed = 1;

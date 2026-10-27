@@ -16,6 +16,7 @@ int out_volume_pct(void);   /* hal/sdat/out_win.cpp: the master volume this proc
 extern "C" {
 extern int (*port_title_front_door_hook)(void);   /* hal/title_entry.cpp; tests/walk_window.cpp seats it: start the game again at its front door */
 extern int (*port_online_join_tick_hook)(void);   /* hal/title_entry.cpp; seated below */
+void port_join_plate_raise_black(void);            /* hal/menu_join_plate.cpp (JOINWIN1) */
 }
 
 namespace port {
@@ -239,7 +240,14 @@ int tick_hook() {
 #endif
         online_join_step();
     }
-    return g_state == kJoinEntering;
+    /* JOINWIN1: the successor is started. This window goes black for its last pictures (one more tick is drawn black before this process
+       stops), so the player sees the file select, then black, then the level: the successor is black from its first picture too. */
+    if (g_state == kJoinEntering) {
+        static int black_ticks = 0;
+        if (black_ticks++ == 0) { port_join_plate_raise_black(); return 0; }
+        return 1;
+    }
+    return 0;
 }
 const int g_seated = (port_online_join_tick_hook = tick_hook, 1);
 
