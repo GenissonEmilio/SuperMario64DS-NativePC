@@ -1021,3 +1021,11 @@ extern "C" void port_party_hits_prewalk(void) {
         }
     }
 }
+
+/* SEAMCOOP1 (run after093, the one-process plan's M5b; BROADCAST-M5-1): a coop room left or entered inside a running game. The hub
+   teardown forgets every hub_on_kind handler and the room's toggles come from the next room's names, so the whole state goes back to
+   a process that never was in a room: the next frame with a live hub latches, registers and reads the env again. */
+namespace port { namespace party_hits {
+void session_reset() { g = G(); }
+}  // namespace party_hits
+}  // namespace port

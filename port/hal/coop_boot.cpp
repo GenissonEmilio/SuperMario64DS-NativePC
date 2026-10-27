@@ -897,6 +897,8 @@ extern "C" int port_coop_boot_frame(void) {
     if (coop_leave_holds()) { comms_hub_pump(); return 1; }   // SEAMCOOP1: the line is up: nothing moves under it
     if (!C.at_first_frame) {
         C.at_first_frame = true;
+        if (C.inplace)   // BROADCAST-M5-1 note 4: the time from the accepted hand-off to the room's first level frame
+            LOG("first frame of the room %u ms after the hand-off was accepted (in place)", (unsigned)(tick() - C.t_boot));
         C.late_at_first = C.released;
         C.host_ready_ms = tick();
         C.last_ready = 0;
@@ -1036,6 +1038,7 @@ extern int (*port_online_leave_restart_hook)(void);           /* hal/online_join
 extern unsigned short data_02092664;                          /* Scene::SetSceneToSpawn's pending id */
 }
 namespace ntr { namespace backup { void select_coop(int mode); bool coop_selected(); bool online_selected(); } }
+namespace port { namespace party_hits { void session_reset(); } }   /* hal/party_hits.cpp (BROADCAST-M5-1) */
 
 namespace port {
 bool adventure_ghost_mode();                                  /* hal/host_settings.h */
@@ -1182,6 +1185,7 @@ void leave_at_title() {
     host_setting_adventure_env_reread();
     coop_world_session_reset();
     coop_save_session_reset();
+    party_hits::session_reset();
     boot_state_reset();
     std::fprintf(stderr, "[seamless] coop room torn down: hub, ghost layer, presence; session record cleared (%d field(s)); %d launcher "
                  "name(s) cleared from both copies of the environment: %s\n", fields, names, names ? cleared.c_str() : "-");
@@ -1573,6 +1577,7 @@ extern "C" const char *port_coop_handoff_apply(int nset, const char *const *sn, 
     // 5. the coop layer, the host's file, the medium, the title's files
     coop_world_session_reset();
     coop_save_session_reset();
+    party_hits::session_reset();
     boot_state_reset();
     if (host && !coop_save_prepare()) {
         ip_undo(nset, sn, false);

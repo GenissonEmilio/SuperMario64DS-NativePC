@@ -1045,8 +1045,11 @@ static bool register_range(Reg *arr, int *n, int lo, int hi, int mine_lo, int mi
                            CoopSubFn fn, void *user) {
     if (!fn || lo < 0 || hi > 255 || lo > hi) return false;
     if (!(hi < mine_lo || lo > mine_hi)) return false;
-    for (int i = 0; i < *n; ++i)
+    for (int i = 0; i < *n; ++i) {
+        // SEAMCOOP1: the very same range and handler again (a once-per-room latch reset for a second room in place): already there
+        if (arr[i].lo == lo && arr[i].hi == hi && arr[i].fn == fn && arr[i].user == user) return true;
         if (!(hi < arr[i].lo || lo > arr[i].hi)) return false;
+    }
     if (*n >= kMaxRegs) return false;
     arr[(*n)++] = {lo, hi, fn, user};
     return true;
