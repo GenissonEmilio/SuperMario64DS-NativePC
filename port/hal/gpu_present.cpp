@@ -892,11 +892,21 @@ bool make_swapchain(HWND hwnd, int w, int h)
 
 typedef BOOL (WINAPI *ShowWindow_t)(HWND, int);
 typedef BOOL (WINAPI *SetWindowPos_t)(HWND, HWND, int, int, int, int, UINT);
+typedef LONG (WINAPI *SetWindowLongA_t)(HWND, int, LONG);
+typedef LRESULT (WINAPI *CallWindowProcA_t)(WNDPROC, HWND, UINT, WPARAM, LPARAM);
+typedef BOOL (WINAPI *GetClientRect_t)(HWND, LPRECT);
 DefWindowProcA_t g_defproc;
 ShowWindow_t g_showwin;
 SetWindowPos_t g_setpos;
 CreateWindowExA_t g_crewin;
+SetWindowLongA_t g_setlong;
+CallWindowProcA_t g_callproc;
+GetClientRect_t g_getclient;
 int g_child_class;      /* 1 registered, -1 it could not be: the swap chain goes on the game window */
+void hook_parent(HWND parent);
+int g_child_w, g_child_h;       /* the size the surface window was last given */
+HWND g_hooked;                  /* the game window whose size changes this file hears */
+WNDPROC g_hooked_proc;          /* its own window procedure, called after */
 
 LRESULT CALLBACK surface_proc(HWND h, UINT m, WPARAM w, LPARAM l)
 {
@@ -919,6 +929,9 @@ HWND make_child(HWND parent, int w, int h)
         g_defproc = (DefWindowProcA_t)GetProcAddress(g_user32, "DefWindowProcA");
         g_showwin = (ShowWindow_t)GetProcAddress(g_user32, "ShowWindow");
         g_setpos = (SetWindowPos_t)GetProcAddress(g_user32, "SetWindowPos");
+        g_setlong = (SetWindowLongA_t)GetProcAddress(g_user32, "SetWindowLongA");
+        g_callproc = (CallWindowProcA_t)GetProcAddress(g_user32, "CallWindowProcA");
+        g_getclient = (GetClientRect_t)GetProcAddress(g_user32, "GetClientRect");
         WNDCLASSA wc;
         memset(&wc, 0, sizeof wc);
         wc.lpfnWndProc = surface_proc;
@@ -931,9 +944,15 @@ HWND make_child(HWND parent, int w, int h)
         }
         g_child_class = 1;
     }
-    return g_crewin(WS_EX_NOPARENTNOTIFY, "sm64ds_card_surface", "",
-                    WS_CHILD | WS_VISIBLE | WS_DISABLED | WS_CLIPSIBLINGS,
-                    0, 0, w, h, parent, 0, GetModuleHandleA(0), 0);
+    HWND c = g_crewin(WS_EX_NOPARENTNOTIFY, "sm64ds_card_surface", "",
+                      WS_CHILD | WS_VISIBLE | WS_DISABLED | WS_CLIPSIBLINGS,
+                      0, 0, w, h, parent, 0, GetModuleHandleA(0), 0);
+    if (c) {
+        g_child_w = w;
+        g_child_h = h;
+        hook_parent(parent);
+    }
+    return c;
 }
 
 void child_hide()
@@ -943,9 +962,50 @@ void child_hide()
 
 void child_size(int w, int h)
 {
-    if (g_child && g_setpos)
-        g_setpos(g_child, 0, 0, 0, w, h,
-                 SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+    if (!g_child || !g_setpos || w <= 0 || h <= 0) return;
+    if (w == g_child_w && h == g_child_h) return;
+    g_child_w = w;
+    g_child_h = h;
+    g_setpos(g_child, 0, 0, 0, w, h,
+             SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+}
+
+/* THE SURFACE WINDOW FOLLOWS THE GAME WINDOW'S SIZE AT ONCE (run after093,
+   lane MGFREEZE3). Sized only when the next picture was presented, the
+   surface window stayed at the old size inside a window that had just gone
+   fullscreen, maximised or been handed over, and the game window's own white
+   surface showed around it until a picture came (up to half a second on a
+   loaded box). The game window's size changes are heard here instead, in the
+   message that reports them, before the game window's own procedure runs:
+   WM_WINDOWPOSCHANGED for every move and size (F12, StartFullscreen, the
+   hand-off's placement, a maximise, a border drag) and WM_SIZE behind it. The
+   rectangle is the client area, the one the present path sizes the swap chain
+   to. A minimised window is left alone. */
+LRESULT CALLBACK parent_size_hook(HWND h, UINT m, WPARAM w, LPARAM l)
+{
+    if (h == g_hooked && h == g_parent && g_child) {
+        if (m == WM_WINDOWPOSCHANGED && g_getclient) {
+            const WINDOWPOS *wp = (const WINDOWPOS *)l;
+            if (!wp || !(wp->flags & SWP_NOSIZE) || (wp->flags & SWP_FRAMECHANGED)) {
+                RECT rc;
+                if (g_getclient(h, &rc)) child_size(rc.right - rc.left, rc.bottom - rc.top);
+            }
+        } else if (m == WM_SIZE && w != SIZE_MINIMIZED) {
+            child_size((int)LOWORD(l), (int)HIWORD(l));
+        }
+    }
+    return g_callproc(g_hooked_proc, h, m, w, l);
+}
+
+/* Once per game window, the first time a surface window is made on it. */
+void hook_parent(HWND parent)
+{
+    if (g_hooked == parent || !g_setlong || !g_callproc || !g_getclient) return;
+    if (g_hooked) return;       /* one game window per run */
+    const LONG old = g_setlong(parent, GWL_WNDPROC, (LONG)(LONG_PTR)parent_size_hook);
+    if (!old) return;
+    g_hooked_proc = (WNDPROC)(LONG_PTR)old;
+    g_hooked = parent;
 }
 
 /* Everything the lost path showed through is left alone: the presenter's
