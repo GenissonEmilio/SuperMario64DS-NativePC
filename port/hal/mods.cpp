@@ -1124,6 +1124,11 @@ int relatch(const char *reason, const char *list_json)
     /* sound/ is not on this list any more (lane SEAMSND1): a change in the mods shipping it re-seats the sound archive below,
        hal/sdat/sdat.cpp sdat_reseat_mods, with the output device kept open. Nor is hd_ui/ (lane SEAMART1): a change in the mods
        shipping it resets the seven art caches below, unless a page drawing that art is open now (a busy art worker refused above). */
+    /* SEAMCLEAN1, DECISION (review item 9): the hd_ui art caches reset when the SET of mods shipping hd_ui/ changes (this comparison
+       is by mod id). A mod that keeps its id but changes its hd_ui files on disk between two relatches keeps its old decoded pictures
+       until the process ends or the set changes. That is documented, not hashed: the mods folder is read at boot and a player edits
+       a mod with the game closed; hashing every hd_ui file at each relatch would cost a full read of the art on every online
+       leave and join, for a case no flow of the game creates. */
     const std::string ui_old = ids_with(old_mods, "/hd_ui"), ui_new = ids_with(g_mods, "/hd_ui");
     if (!why[0] && ui_old != ui_new) {
         const char *busy = settings_page_open() ? "the settings page is open" : port_char_door_open() ? "the character door is open" : 0;
