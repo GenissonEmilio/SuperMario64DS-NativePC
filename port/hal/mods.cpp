@@ -401,6 +401,14 @@ bool online_ok(const Mod &m, const std::vector<Mod> &list, size_t first, size_t 
     return true;
 }
 
+/* port_mods_relatch_at_title (below) runs the latch a second time: with
+   g_relatching set it skips the character registry's offer (a character block
+   on either side of a relatch is refused, so an unchanged one is already
+   registered), and g_list_override, when set, is the EnabledMods array text to
+   use instead of settings.json's (the dev knob SM64DS_MODS_RELATCH_AT). */
+int g_relatching;
+const char *g_list_override;
+
 void latch(void)
 {
     char bundle[1024];
@@ -417,7 +425,11 @@ void latch(void)
     /* A multiplayer session keeps only the mods online_ok passes, in their
        order, and says so in ONE line once the list is read. */
     const bool mp = port_mods_multiplayer() != 0;
-    const int have = host_setting_enabled_mods(bundle, sizeof bundle, arr, sizeof arr);
+    int have = host_setting_enabled_mods(bundle, sizeof bundle, arr, sizeof arr);
+    if (g_list_override && have >= 0 && strlen(g_list_override) < sizeof arr) {
+        strcpy(arr, g_list_override);
+        have = 1;
+    }
     g_bundle = bundle;
     if (have < 0) {
         fprintf(stderr, "[mods] EnabledMods too long (over %u characters); no mods are on this run (bundle %s)\n",
@@ -521,7 +533,8 @@ void latch(void)
         if (!g_summary_loaded.empty()) g_summary_loaded += ", ";
         g_mods.push_back(m);
         g_summary_loaded += id + " (" + kind + ")";
-        port_char_offer(id.c_str(), folder.c_str(), json_copy.c_str());   /* CHARSLOT1: a "character" block registers dormant */
+        if (!g_relatching)
+            port_char_offer(id.c_str(), folder.c_str(), json_copy.c_str());   /* CHARSLOT1: a "character" block registers dormant */
         const size_t before = g_mods.size();
         add_parts(m, g_mods, g_summary_loaded);
         if (!strcmp(kind, "files")) {
@@ -838,3 +851,270 @@ extern "C" int (*port_ui_file_hook)(const char *rel, char *out, unsigned cap);
 namespace {
 struct UiFileHookSet { UiFileHookSet() { port_ui_file_hook = port_mods_ui_file; } } g_ui_file_hook_set;
 }
+
+/* ==== THE RE-LATCH AT THE TITLE (run after093, lane SEAMMODS1; one-process plan M3a) ===========================================
+   port_mods_relatch_at_title switches the mods FILE LAYER in place, at the title, with no level loaded: the list is read again
+   (EnabledMods, and the multiplayer rule through port_mods_multiplayer as it stands now), the files/ overrides are built again,
+   the card image serves the new list (hal/fs_names.cpp port_nitrofs_patch_relatch, after hal/fs.cpp and hal/fs_mods.cpp forget
+   what the last latch emitted and read), the textures_hd index is built again and gx.cpp's decode cache dropped with the GPU
+   generation it feeds. What is held at the title cannot be switched here, so the call REFUSES, changing nothing, and the caller
+   restarts as before:
+     - a code mod on either side (a plugin DLL cannot be unloaded);
+     - a change in which mods ship hd_ui/ (seven menu art caches outside this file decode once and keep it), sound/ (the ROM's
+       sound heap holds the archive tables and the resident banks), or a character (mod.json "character" or character/);
+     - a files/ change to a file the game read before the title or while the title is live (the title holds its own files).
+   The game says which in one line. 1 = switched, 0 = refused. Game thread only. */
+extern "C" int port_scene_live_id(void);                         /* hal/scene_boot.cpp: 1 = SCENE_TITLE, -1 none */
+extern "C" unsigned long port_fs_mod_relatch_reset(void);        /* hal/fs.cpp */
+extern "C" void port_fs_cache_size(unsigned long *files, unsigned long *bytes);
+extern "C" void port_fs_mods_relatch_reset(void);                /* hal/fs_mods.cpp */
+extern "C" void port_nitrofs_patch_relatch(void);                /* hal/fs_names.cpp */
+extern "C" void (*port_nitrofs_census_hook)(unsigned file_id);   /* hal/fs_names.cpp */
+extern "C" void (*port_sdat_frame_hook)(void);                   /* hal/sdat/consumer.cpp */
+namespace ntr { int hdtex_reindex(void); void gx_invalidate_textures(); }
+
+namespace {
+
+/* WHAT THE GAME HAS READ, BY FAT ID AND WHEN. Every card block the ROM reads names the files it covers (hal/fs_names.cpp); the
+   phase is the boot (before the title was ever live), the title (scene 1 live) or later (a level or another scene). Kept always:
+   it is one byte per file id and an OR per block, and it is what the held-file refusal reads. */
+enum { RD_BOOT = 1, RD_TITLE = 2, RD_LATER = 4, FAT_IDS = 4096 };
+unsigned char g_read_phase[FAT_IDS];
+unsigned g_read_count[FAT_IDS];
+volatile int g_title_seen;
+
+void census_note(unsigned id)
+{
+    if (id >= FAT_IDS) return;
+    const int sc = port_scene_live_id();
+    if (sc == 1) g_title_seen = 1;
+    g_read_phase[id] |= sc == 1 ? RD_TITLE : (g_title_seen ? RD_LATER : RD_BOOT);
+    ++g_read_count[id];
+}
+
+struct NoteSet { NoteSet() { port_nitrofs_census_hook = census_note; } } g_note_set;
+
+bool held_at_title(unsigned id) { return id < FAT_IDS && (g_read_phase[id] & (RD_BOOT | RD_TITLE)) != 0; }
+
+/* the ids of the mods in l that ship folder sub (a part counts as its own entry), joined in order */
+std::string ids_with(const std::vector<Mod> &l, const char *sub)
+{
+    std::string r;
+    for (size_t i = 0; i < l.size(); ++i)
+        if (dir_exists(l[i].folder + sub)) r += (r.empty() ? "" : ",") + l[i].id;
+    return r;
+}
+
+std::string ids_with_character(const std::vector<Mod> &l)
+{
+    std::string r;
+    for (size_t i = 0; i < l.size(); ++i) {
+        bool c = dir_exists(l[i].folder + "/character");
+        if (!c && !l[i].part) {
+            char *t = slurp_small(l[i].folder + "/mod.json");
+            if (t) { c = json_top_value(t, "character") != 0; free(t); }
+        }
+        if (c) r += (r.empty() ? "" : ",") + l[i].id;
+    }
+    return r;
+}
+
+std::string list_text(const std::vector<Mod> &l)
+{
+    std::string r;
+    for (size_t i = 0; i < l.size(); ++i) r += (i ? ", " : "") + l[i].id;
+    return r.empty() ? "-" : r;
+}
+
+std::vector<Mod> g_mods_prev;   /* the list before the last relatch, kept one relatch long for a reader mid-call */
+
+int relatch(const char *reason, const char *list_json)
+{
+    char why[600] = "";
+    const int sc = port_scene_live_id();
+    if (!reason) reason = "?";
+    if (sc != 1) {
+        fprintf(stderr, "[mods] relatch at the title refused (%s): the title is not the live scene (scene %d); the caller restarts\n", reason, sc);
+        fflush(stderr);
+        return 0;
+    }
+    latch();
+    build_overrides();
+
+    std::vector<Mod> old_mods = g_mods;
+    std::unordered_map<unsigned, std::string> old_override = g_override;
+    const std::string old_loaded = g_summary_loaded, old_skipped = g_summary_skipped, old_bundle = g_bundle;
+    const int old_nskipped = g_nskipped;
+
+    g_mods.clear();
+    g_summary_loaded.clear();
+    g_summary_skipped.clear();
+    g_nskipped = 0;
+    g_latched = 0;
+    g_relatching = 1;
+    g_list_override = list_json;
+    latch();
+    g_list_override = 0;
+    g_override.clear();
+    g_override_built = 0;
+    build_overrides();
+    g_relatching = 0;
+
+    for (size_t i = 0; i < old_mods.size() && !why[0]; ++i)
+        if (old_mods[i].kind == "code") snprintf(why, sizeof why, "code mod %s is on now", old_mods[i].id.c_str());
+    for (size_t i = 0; i < g_mods.size() && !why[0]; ++i)
+        if (g_mods[i].kind == "code") snprintf(why, sizeof why, "code mod %s would be on", g_mods[i].id.c_str());
+    static const char *const HELD[][2] = { { "/hd_ui", "hd_ui/ (menu art the menus decoded once)" },
+                                           { "/sound", "sound/ (the sound archive the ROM holds)" } };
+    for (int k = 0; k < 2 && !why[0]; ++k) {
+        const std::string a = ids_with(old_mods, HELD[k][0]), b = ids_with(g_mods, HELD[k][0]);
+        if (a != b)
+            snprintf(why, sizeof why, "the mods shipping %s change (%s -> %s)", HELD[k][1], a.empty() ? "-" : a.c_str(),
+                     b.empty() ? "-" : b.c_str());
+    }
+    if (!why[0]) {
+        const std::string a = ids_with_character(old_mods), b = ids_with_character(g_mods);
+        if (a != b)
+            snprintf(why, sizeof why, "the character mods change (%s -> %s)", a.empty() ? "-" : a.c_str(), b.empty() ? "-" : b.c_str());
+    }
+    unsigned changed = 0;
+    if (!why[0]) {
+        std::unordered_map<unsigned, std::string> all = old_override;
+        for (std::unordered_map<unsigned, std::string>::const_iterator it = g_override.begin(); it != g_override.end(); ++it)
+            all[it->first];
+        for (std::unordered_map<unsigned, std::string>::const_iterator it = all.begin(); it != all.end() && !why[0]; ++it) {
+            std::unordered_map<unsigned, std::string>::const_iterator o = old_override.find(it->first), n = g_override.find(it->first);
+            const std::string ov = o == old_override.end() ? "" : o->second, nv = n == g_override.end() ? "" : n->second;
+            if (ov == nv) continue;
+            ++changed;
+            if (held_at_title(it->first)) {
+                const char *cp = port_fs_catalog_path(it->first);
+                snprintf(why, sizeof why, "files/ changes file id %u (%s), which the game read %s and still holds", it->first,
+                         cp ? cp : "an archive member", (g_read_phase[it->first] & RD_BOOT) ? "at boot" : "at the title");
+            }
+        }
+    }
+    if (why[0]) {
+        g_mods = old_mods;
+        g_override = old_override;
+        g_summary_loaded = old_loaded;
+        g_summary_skipped = old_skipped;
+        g_bundle = old_bundle;
+        g_nskipped = old_nskipped;
+        g_latched = 1;
+        g_override_built = 1;
+        fprintf(stderr, "[mods] relatch at the title refused (%s): %s; nothing changed, the caller restarts\n", reason, why);
+        fflush(stderr);
+        return 0;
+    }
+
+    g_said.clear();
+    const unsigned long dropped = port_fs_mod_relatch_reset();
+    port_fs_mods_relatch_reset();
+    port_nitrofs_patch_relatch();
+    const int tex = ntr::hdtex_reindex();
+    ntr::gx_invalidate_textures();
+    g_mods_prev.swap(old_mods);
+    fprintf(stderr, "[mods] relatched at the title (%s): %u mod(s) %s (was %s); %u ROM file id(s) overridden (was %u, %u changed); "
+            "fs cache %lu byte(s) dropped; textures_hd %d name(s) indexed\n", reason, (unsigned)g_mods.size(), list_text(g_mods).c_str(),
+            list_text(g_mods_prev).c_str(), (unsigned)g_override.size(), (unsigned)old_override.size(), changed, dropped, tex);
+    fflush(stderr);
+    return 1;
+}
+
+#ifndef PORT_ROM_CLEAN
+/* ---- dev knobs, compiled out of the kit --------------------------------------------------------------------------------------
+   SM64DS_MODS_RELATCH_AT=<tick>[,<id>+<id>...][;<tick>[,...]]...  at the title's <tick>th frame (counted from the first frame the
+   title is the live scene) call the relatch; with a list, that list stands in for settings.json's EnabledMods ("-" = no mods).
+   SM64DS_FS_CENSUS=<tick>  at that title frame (default 200) and at exit, print every FAT id the game has read, with when
+   (boot / title / later) and how often, and the fs cache size. */
+struct RelatchStep { int tick; bool has_list; std::string json; };
+std::vector<RelatchStep> g_steps;
+int g_census_tick = -1;
+unsigned g_title_ticks;
+
+void census_dump(const char *when)
+{
+    unsigned long files = 0, bytes = 0;
+    port_fs_cache_size(&files, &bytes);
+    unsigned nb = 0, nt = 0, nl = 0;
+    for (unsigned i = 0; i < FAT_IDS; ++i) {
+        if (g_read_phase[i] & RD_BOOT) ++nb;
+        if (g_read_phase[i] & RD_TITLE) ++nt;
+        if (g_read_phase[i] & RD_LATER) ++nl;
+    }
+    fprintf(stderr, "[census] %s: %u id(s) read at boot, %u at the title, %u later; fs cache %lu file(s) %lu byte(s); "
+            "%u mod(s) on, %u id(s) overridden\n", when, nb, nt, nl, files, bytes, (unsigned)g_mods.size(), (unsigned)g_override.size());
+    for (unsigned i = 0; i < FAT_IDS; ++i) {
+        if (!g_read_phase[i]) continue;
+        const char *cp = port_fs_catalog_path(i);
+        fprintf(stderr, "[census]   id %4u %c%c%c blocks %6u %s%s\n", i, (g_read_phase[i] & RD_BOOT) ? 'B' : '-',
+                (g_read_phase[i] & RD_TITLE) ? 'T' : '-', (g_read_phase[i] & RD_LATER) ? 'L' : '-', g_read_count[i], cp ? cp : "?",
+                g_override.count(i) ? " (overridden)" : "");
+    }
+    fflush(stderr);
+}
+
+void census_at_exit(void) { census_dump("at exit"); }
+
+void dev_frame(void)
+{
+    if (port_scene_live_id() != 1) return;
+    const unsigned t = g_title_ticks++;
+    if ((int)t == g_census_tick) census_dump("at the title");
+    for (size_t i = 0; i < g_steps.size(); ++i)
+        if (g_steps[i].tick == (int)t) {
+            char reason[64];
+            snprintf(reason, sizeof reason, "SM64DS_MODS_RELATCH_AT title frame %u", t);
+            relatch(reason, g_steps[i].has_list ? g_steps[i].json.c_str() : 0);
+        }
+}
+
+std::vector<std::string> split(const std::string &s, char sep)
+{
+    std::vector<std::string> r;
+    size_t at = 0;
+    for (;;) {
+        const size_t k = s.find(sep, at);
+        r.push_back(s.substr(at, k == std::string::npos ? std::string::npos : k - at));
+        if (k == std::string::npos) return r;
+        at = k + 1;
+    }
+}
+
+struct DevKnobs {
+    DevKnobs()
+    {
+        const char *e = getenv("SM64DS_MODS_RELATCH_AT");
+        if (e && *e) {
+            const std::vector<std::string> steps = split(e, ';');
+            for (size_t i = 0; i < steps.size(); ++i) {
+                if (steps[i].empty()) continue;
+                RelatchStep st;
+                st.tick = atoi(steps[i].c_str());
+                const size_t comma = steps[i].find(',');
+                st.has_list = comma != std::string::npos;
+                st.json = "[";
+                if (st.has_list && steps[i].substr(comma + 1) != "-") {
+                    const std::vector<std::string> ids = split(steps[i].substr(comma + 1), '+');
+                    for (size_t k = 0; k < ids.size(); ++k)
+                        if (!ids[k].empty()) st.json += (st.json.size() > 1 ? ",\"" : "\"") + ids[k] + "\"";
+                }
+                st.json += "]";
+                g_steps.push_back(st);
+            }
+        }
+        const char *c = getenv("SM64DS_FS_CENSUS");
+        if (c && *c && strcmp(c, "0")) {
+            g_census_tick = atoi(c) > 1 ? atoi(c) : 200;
+            atexit(census_at_exit);
+        }
+        if (!g_steps.empty() || g_census_tick >= 0)
+            port_sdat_frame_hook = dev_frame;
+    }
+} g_dev_knobs;
+#endif
+
+}  /* namespace */
+
+extern "C" int port_mods_relatch_at_title(const char *reason) { return relatch(reason, 0); }

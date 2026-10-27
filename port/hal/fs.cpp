@@ -760,9 +760,10 @@ extern "C" unsigned port_fs_member_claim_cap(void)
    wrapped the way the cartridge holds the stock file; an archive member waits
    for its NARC's rebuild. Two mods claiming one id serve it once (the filter
    chain already runs both). */
+static u8 g_claim_seen[MAX_FILES];   /* loose ids already emitted this latch */
 static void fs_patch_claim(unsigned fid)
 {
-    static u8 seen[MAX_FILES];
+    u8 *seen = g_claim_seen;
     struct fs_cache_entry e;
     char path[PATH_MAX_ * 2];
     FILE *f;
@@ -836,6 +837,39 @@ static void fs_patch_claim(unsigned fid)
                 port_fs_mod_map && port_fs_mod_map(fid) != fid ? " (mapped)" : "");
     free(served);
     free(e.data);
+}
+
+/* THE RE-LATCH'S HALF HERE (run after093, lane SEAMMODS1). hal/mods.cpp
+   switches the mod list at the title and then asks the card image to run the
+   claims again (hal/fs_names.cpp port_nitrofs_patch_relatch); before that,
+   this forgets which loose ids the last latch emitted (so each is emitted again
+   for the new list) and drops every decoded master the host Load cached, which
+   were filtered through the old list. The game targets link the ROM's Load and
+   never fill g_fcache (SM64DS_SFP_LOAD_ROM), so there the drop frees nothing;
+   the narrow harnesses' Load refills it on the next read. Returns the bytes
+   the cache held, for the caller's log line. */
+extern "C" unsigned long port_fs_mod_relatch_reset(void)
+{
+    const unsigned long had = g_fcache_bytes;
+    memset(g_claim_seen, 0, sizeof g_claim_seen);
+    if (g_fcache) {
+        for (unsigned i = 0; i < FS_CACHE_SLOTS; ++i)
+            if (g_fcache[i].valid || g_fcache[i].data) {
+                free(g_fcache[i].data);
+                memset(&g_fcache[i], 0, sizeof g_fcache[i]);
+            }
+    }
+    g_fcache_bytes = 0;
+    g_fcache_files = 0;
+    g_fcache_capped = 0;
+    return had;
+}
+
+/* The decoded-file cache's size now, for SM64DS_FS_CENSUS. */
+extern "C" void port_fs_cache_size(unsigned long *files, unsigned long *bytes)
+{
+    *files = g_fcache_files;
+    *bytes = g_fcache_bytes;
 }
 
 /* SharedFilePtr::Load -- the seam. Same contract as 0x02017c54. */

@@ -1145,8 +1145,13 @@ static void snd_voice_probe(void)
         }
 }
 
+/* run after093, lane SEAMMODS1: one call per game frame on the game thread, for hal/mods.cpp's dev knobs (SM64DS_MODS_RELATCH_AT,
+   SM64DS_FS_CENSUS). Null unless one of them is set; never seated in the kit. */
+extern "C" { void (*port_sdat_frame_hook)(void) = 0; }
+
 extern "C" void sdat_host_tick(void)
 {
+    if (port_sdat_frame_hook) port_sdat_frame_hook();
     sd_consumer_init();
     snd_coin_probe();
     snd_break_probe();
