@@ -1212,6 +1212,126 @@ extern "C" void port_vs_stage_and_start(int mapIdx)
     func_ov075_02116c8c();
 }
 
+/* ==== SEAMVS1: THE LAUNCHER HAND-OFF'S "vs" KIND (hal/handoff_poll.h) ===========================================================
+   A VS match the launcher hands to a game already running at its title (HANDOFF_CONTRACT v1). The request carries exactly the names
+   the launcher starts a VS child with (LobbyLaunch.cs: SM64DS_VS_MAP, the relay and code, the role and slot, the players, the targets,
+   the names, the arena switch). What that child does at boot (tests/walk_window.cpp main()): vs_arena_install_from_env opens the
+   arena hub before the ROM's pre-main; the mods latch under the multiplayer rule (SM64DS_VS_MAP is set); the VS boot block runs
+   port_vs_stage_and_start(map) (the ROM's own func_ov075_02116c8c: PrepareVsMode, StartSceneFade(3), LoadLevelNoReturn(map, 0, 2, 0)),
+   latches the staged level, releases the scene request and puts SM64DS_ENTRANCE=0 / SM64DS_STAR_FILTER=2 in the CRT environment, and
+   the level boot seats the arena (hal/level_boot.cpp vs_arena_seat_world). In place, at the title:
+     1. the clear and set lists into both environment copies (port_handoff_apply_env) and the session record from the same names;
+     2. the mods latched again under the multiplayer rule (after a level: the files a level read count as held);
+     3. the single player save (a VS child sets SM64DS_ADVENTURE=0);
+     4. the arena installed live (hal/vs_arena.cpp vs_arena_install_in_place: the same install, its latches forgotten, the hub opened);
+     5. port_vs_stage_and_start(map) from the title, then the same two env names. The title hands the game to the level path the way
+        a file pick does: on the process's first title through its commit and main()'s level boot (which runs the VS boot block once
+        more, so the ROM's start is called a second time with the same map, as in the child), on a title reached by a crossing
+        through the level-to-scene crossing and port_level_change_apply.
+   VS NEEDS NO ONLINE HEAP (hal/comms_conductor.cpp hub_game_heap_extra: the arena gets 0), so a title after a solo level takes it.
+   REFUSED (the launcher starts a fresh game): a lockstep match (no SM64DS_VS_NETMODE=arena: hal/comms_loopback.cpp has no in-place
+   install or teardown), lobby colours (hal/fs_mods.cpp reads SM64DS_VS_COLORS once per process), Luigi Infection after an earlier VS
+   match in this process (hal/luigi_infection.cpp reads it once), a map this build does not mount, a code mod, a relatch refusal, an
+   install failure (undone first). */
+#include "handoff_poll.h"
+extern "C" void port_level_mounts_install(void);                  /* hal/level_boot.cpp */
+extern "C" int port_level_is_mounted(int level);
+extern "C" int port_mods_relatch_after_level(const char *reason);
+extern "C" const char *port_mods_id(int i);
+extern "C" const char *port_mods_kind(int i);
+extern "C" int port_vs_matches_ended_in_place(void);               /* hal/star_flow.cpp */
+extern "C" void host_setting_adventure_env_reread(void);           /* hal/host_settings.cpp */
+extern "C" int port_vs_map_level(int mapIdx);
+namespace ntr { namespace backup { void select_online(int on); } }
+namespace port {
+enum OnlineSessionField : int;
+void online_session_begin();
+void online_session_set(OnlineSessionField f, const char *v);
+const char *online_session_name(OnlineSessionField f);
+int online_session_clear();
+bool hub_game_heap_carved(unsigned *extra);
+bool vs_arena_install_in_place(const char **why);                 /* hal/vs_arena.cpp (SEAMVS1) */
+}
+
+static void vs_handoff_undo(const PortHandoffRequest *r)
+{
+    port::online_session_clear();
+    port_handoff_unset_env(r);
+    host_setting_adventure_env_reread();
+}
+
+static const char *port_vs_handoff(const PortHandoffRequest *r)
+{
+    static char buf[260];
+    const char *map = port_handoff_value(r, "SM64DS_VS_MAP");
+    if (!map || map[0] < '0' || map[0] > '3' || map[1]) return "the VS request names no map 0..3 (SM64DS_VS_MAP)";
+    const char *nm = port_handoff_value(r, "SM64DS_VS_NETMODE");
+    if (!nm || strcmp(nm, "arena"))
+        return "a lockstep VS match (no SM64DS_VS_NETMODE=arena): the lockstep carrier (hal/comms_loopback.cpp) is not installed in place yet";
+    const char *relay = port_handoff_value(r, "SM64DS_COMMS_RELAY");
+    if (!relay || !*relay) return "the VS request names no relay (SM64DS_COMMS_RELAY)";
+    const char *col = port_handoff_value(r, "SM64DS_VS_COLORS");
+    if (col && *col) return "the lobby colours are read once per process (hal/fs_mods.cpp vsc_load); a fresh game shows them";
+    const char *li = port_handoff_value(r, "SM64DS_VS_LUIGI_INFECTION");
+    if (li && *li && port_vs_matches_ended_in_place() > 0)
+        return "Luigi Infection is read once per process (hal/luigi_infection.cpp li_load) and a VS match already ran here";
+    for (int i = 0; i < port_mods_count(); ++i) {
+        const char *k = port_mods_kind(i);
+        if (k && !strcmp(k, "code")) {
+            snprintf(buf, sizeof buf, "a code mod is loaded (%s) and a plugin cannot be unloaded", port_mods_id(i));
+            return buf;
+        }
+    }
+    if (port_scene_live_id() != 1) return "the title is not the live scene";
+    const int mi = map[0] - '0';
+    port_level_mounts_install();
+    const int vlv = port_vs_map_level(mi);
+    if (!port_level_is_mounted(vlv)) {
+        snprintf(buf, sizeof buf, "VS map %d is level %d, not mounted in this build", mi + 1, vlv);
+        return buf;
+    }
+    /* 1. the environment and the record */
+    port_handoff_apply_env(r);
+    port::online_session_begin();
+    for (int f = 0; f <= 10; ++f) {
+        const port::OnlineSessionField ff = (port::OnlineSessionField)f;
+        port::online_session_set(ff, port_handoff_value(r, port::online_session_name(ff)));
+    }
+    host_setting_adventure_env_reread();
+    /* 2. the mods under the multiplayer rule */
+    unsigned extra = 0;
+    const bool after_level = port::hub_game_heap_carved(&extra);
+    const int ok = after_level ? port_mods_relatch_after_level("a VS match handed to the running game")
+                               : port_mods_relatch_at_title("a VS match handed to the running game");
+    if (!ok) {
+        vs_handoff_undo(r);
+        return "the mods layer refused the switch to the multiplayer list";
+    }
+    /* 3. the single player save */
+    ntr::backup::select_online(0);
+    /* 4. the arena */
+    const char *why = 0;
+    if (!port::vs_arena_install_in_place(&why)) {
+        snprintf(buf, sizeof buf, "the VS arena could not be installed in place (%s)", why ? why : "?");
+        vs_handoff_undo(r);
+        if (!(after_level ? port_mods_relatch_after_level("the VS hand-off did not go through")
+                          : port_mods_relatch_at_title("the VS hand-off did not go through")))
+            fprintf(stderr, "[seamless] the mods layer refused the switch back to the offline list\n");
+        return buf;
+    }
+    /* 5. the ROM's own VS start, from the title */
+    port_vs_stage_and_start(mi);
+    _putenv_s("SM64DS_ENTRANCE", "0");
+    _putenv_s("SM64DS_STAR_FILTER", "2");
+    fprintf(stderr, "[seamless] VS match handed to this process: map %d of 4 -> level %d, the ROM's own start called from the title "
+            "(PrepareVsMode, scene 3 asked for, pending %u); %d mod(s) on under the multiplayer rule (%s); the title hands the game to "
+            "the level path\n", mi + 1, vlv, (unsigned)data_02092664, port_mods_count(), after_level ? "a title after a level" :
+            "the process's first title");
+    fflush(stderr);
+    return 0;
+}
+static const int g_vs_handoff_seated = port_handoff_register("vs", port_vs_handoff);
+
 /* the map list, read for the debug row's display and the env boot's report */
 extern "C" {
 extern signed char data_ov075_0211c6ec[];

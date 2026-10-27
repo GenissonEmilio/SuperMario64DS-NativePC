@@ -11,6 +11,7 @@
 #include "ntr/backup.h"
 #include "host_settings.h"
 #include "comms_hub.h"   /* SEAMHUB1: the session record and the teardown */
+#include "handoff_poll.h"   /* SEAMVS1: the launcher hand-off's "adventure" kind */
 
 int out_volume_pct(void);   /* hal/sdat/out_win.cpp: the master volume this process plays at right now (0..100) */
 
@@ -114,6 +115,7 @@ struct JoinPlan {
     long long seat;
     int server;
     bool has_name, has_cols;
+    bool no_press = false;   /* SEAMVS1: a launcher hand-off at the title: the hub comes up and the player picks the file */
 };
 const char *join_in_place(const JoinPlan &p);   /* 0 = joining in this process; else why not (the caller restarts) */
 int join_in_place_phase();                      /* 0 none, 1 waiting for the seat / the file select, 2 file pressed, 3 entered */
@@ -592,7 +594,7 @@ void join_in_place_cancel(const char *why);
 void event_client_hub_reset();    /* hal/event_client.cpp: its hub event handler is registered again on the new hub */
 void star_tally_session_reset();  /* hal/star_tally.cpp: the name hash and tables of the new session */
 namespace {
-enum { kIpNone = 0, kIpWaiting = 1, kIpPressed = 2, kIpEntered = 3 };
+enum { kIpNone = 0, kIpWaiting = 1, kIpPressed = 2, kIpEntered = 3, kIpAtTitle = 4 };   /* 4: SEAMVS1, joined at the title, no press */
 const ULONGLONG kIpSeatMs = 5000;       /* press without a seat after this long (the successor never waited for one) */
 const ULONGLONG kIpHoldMs = 1000;       /* and never sooner than this: B / Esc on the black can still cancel (a successor's black lasts several seconds) */
 const ULONGLONG kIpSettleMs = 15000;    /* the file select must be settled by then, or the join is withdrawn */
@@ -743,7 +745,7 @@ const char *join_in_place(const JoinPlan &p)
     if (const char *why = join_refusal()) return why;
     unsigned extra = 0;
     g_ip_after_level = hub_game_heap_carved(&extra);
-    std::fprintf(stderr, "[seamless] joining server %d in this process (file %c, %s; in-place quit flag %d)\n", p.server, 'A' + g_file,
+    std::fprintf(stderr, "[seamless] joining server %d in this process (file %c, %s; in-place quit flag %d)\n", p.server, p.no_press ? '-' : 'A' + g_file,
                  g_ip_after_level ? "a title reached after a level" : "the first title of the process", port_front_end_in_place);
 
     /* 1. the record from the plan, and the same names in both environment copies */
@@ -798,6 +800,17 @@ const char *join_in_place(const JoinPlan &p)
             std::fprintf(stderr, "[seamless] the mods layer refused the switch back to the offline list; the restart takes over\n");
         return "the ghost layer did not come up on the hub";
     }
+    /* SEAMVS1: a launcher hand-off at the title ends here, where a launcher-started online process stands once main() has installed
+       the hub: the title up with the hub, the online save and the multiplayer mods, and the player picks the file (no plate, no press) */
+    if (p.no_press) {
+        port_join_settings_rearm();
+        g_leave = 0;
+        g_ip = kIpAtTitle;
+        std::fprintf(stderr, "[seamless] joined at the title in place: hub up, ghosts on the hub, the online save, %d mod(s) on; the player "
+                     "picks the file as in a launcher-started online game\n", port_mods_count());
+        std::fflush(stderr);
+        return 0;
+    }
     /* 5. the plate, the settings line for the world, the leave armed again */
     port_join_plate_raise_in_place(p.server);
     port_join_settings_rearm();
@@ -819,6 +832,56 @@ const char *join_in_place(const JoinPlan &p)
 /* 0 = no in-place join in this session (the restart path's rules apply); 1 waiting, 2 pressed, 3 entered (online_join_begin
    resets it for the next join) */
 int join_in_place_phase() { return g_ip; }
+
+/* ==== SEAMVS1: THE LAUNCHER HAND-OFF'S "adventure" KIND (hal/handoff_poll.h) ==================================================
+   The launcher's online start, handed to a game that is already running at its title (HANDOFF_CONTRACT v1): the request carries
+   exactly the names the launcher's BuildAdventureEnv would start a process with. A process started with them installs the hub in main()
+   (comms_hub_install_from_env), comes up at the title with the online save, the multiplayer mods and the hub's identity, and the player
+   picks a file. In place: the clear list and the set list go into both environment copies (port_handoff_apply_env), and the plan built
+   from the same names goes through SEAMJOIN1's join_in_place with no press, which fills the record, relatches the mods under the
+   multiplayer rule, switches to the online save, installs the hub live and decides the ghost layer on it. A request that names a file
+   (SM64DS_BOOT_FILE, the coop shape) is pressed the way SEAMJOIN1's in-game join presses it. NEEDS THE ONLINE HEAP: join_in_place
+   refuses at a title reached after a solo level (the game heap was carved without the hub's 128 KB), and the launcher then starts a
+   fresh game. A party or coop room is not this kind's: refused. */
+const char *handoff_adventure(const PortHandoffRequest *r)
+{
+    static char buf[200];
+    const char *relay = port_handoff_value(r, "SM64DS_COMMS_RELAY"), *code = port_handoff_value(r, "SM64DS_COMMS_CODE");
+    const char *rk = port_handoff_value(r, "SM64DS_ROOM_KIND"), *party = port_handoff_value(r, "SM64DS_PARTY");
+    const char *adv = port_handoff_value(r, "SM64DS_ADVENTURE");
+    if (!adv || std::strcmp(adv, "1")) return "the adventure request does not set SM64DS_ADVENTURE=1";
+    if (!relay || !*relay || !code || !*code) return "the adventure request names no relay or no hub code";
+    if (!printable(relay, 1, 253) || !printable(code, 1, 8)) return "the adventure request's relay or code does not read";
+    if ((rk && std::strcmp(rk, "world")) || (party && *party && std::strcmp(party, "0"))) {
+        std::snprintf(buf, sizeof buf, "a %s room is not joined in place (SM64DS_ROOM_KIND=%s)", rk ? rk : "party", rk ? rk : "-");
+        return buf;
+    }
+    JoinPlan jp;
+    jp.relay = relay;
+    jp.code = code;
+    jp.seat = 255;
+    if (const char *s = port_handoff_value(r, "SM64DS_HUB_SEAT")) {
+        const int v = std::atoi(s);
+        if (*s && v >= 0 && v < 32) jp.seat = v;
+    }
+    jp.server = 0;
+    if (const char *w = port_handoff_value(r, "SM64DS_WORLD_NO")) jp.server = std::atoi(w);
+    const char *nm = port_handoff_value(r, "SM64DS_PLAYER_NAME");
+    jp.has_name = nm && *nm;
+    if (jp.has_name) jp.name = nm;
+    const char *col = port_handoff_value(r, "SM64DS_PLAYER_COLOR"), *sh = port_handoff_value(r, "SM64DS_PLAYER_SHOES");
+    jp.has_cols = col && sh && hex6(col) && hex6(sh);
+    if (jp.has_cols) { jp.color = col; jp.shoes = sh; }
+    const char *bf = port_handoff_value(r, "SM64DS_BOOT_FILE");
+    jp.no_press = !(bf && bf[0] >= '0' && bf[0] <= '2' && !bf[1]);
+    if (!jp.no_press) g_file = bf[0] - '0';
+    if (const char *why = join_refusal()) return why;   /* before the environment is touched */
+    port_handoff_apply_env(r);
+    const char *why = join_in_place(jp);
+    if (!why && !jp.no_press) g_state = kJoinWaiting;
+    return why;
+}
+const int g_handoff_adventure_seated = port_handoff_register("adventure", handoff_adventure);
 }  // namespace
 
 /* the cancel of an in-place join before the file is pressed: the plate down, the session taken down in this process, the online menu
