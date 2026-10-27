@@ -199,7 +199,10 @@ static void HostWidenDraw(dActor_c *a, int r, int thresh, Vector3 *camPos, int r
         static int mode = -1;
         if (mode < 0) { const char *m = getenv("SM64DS_DRAW_DIST_MODE"); mode = m ? atoi(m) : 2; }
         const int stale20 = (a->mFlags & 0x20) != 0;
-        const int noBehave = (a->mFlags & 9) == 9;
+        /* INTROBIRD1: a 0x10000 actor past its clip range returns from BeforeBehavior right after this call, so it is
+           skipped exactly like the flags-1-and-8 case and has no pose either. The castle-grounds birds carry 0x10002
+           (no 0x01): before this they were drawn here with Model::C2's identity matrix, at the world origin. */
+        const int noBehave = (a->mFlags & 9) == 9 || (a->mFlags & 0x10000) != 0;
         static int n_ok, n_stale_run, n_stale_skip, n_tot;
         ++n_tot;
         if (!stale20) {
@@ -243,6 +246,15 @@ static int HostWakeSkipped(dActor_c *a)
         if (g_wake_skip[i] == id)
             return 1;
     return 0;
+}
+/* INTROBIRD1: the ROM's own think gate at the foot of BeforeBehavior, read for an actor the widened range would take
+   into the in-range branch (so 0x08 is about to clear and (flags & 9) != 9). A cutscene's think mask (data_0209b464,
+   0x20000000 through the castle-grounds opening) or a freeze byte refuses it the same way. */
+static int HostWouldThink(dActor_c *a)
+{
+    if (((data_0209f2c4 | data_0209f20c | data_0209f294) & 0xff) != 0)
+        return 0;
+    return data_0209b464 == 0 || (a->mFlags & data_0209b464) != 0 || data_0209fc68 != 0;
 }
 extern "C" int port_mods_multiplayer(void);
 static int HostWidenUpdate(dActor_c *a, int r, int thresh, Vector3 *camPos, int radius)
@@ -355,7 +367,13 @@ int dActor_c::BeforeBehavior()
 #ifdef _MSC_VER
             if (r > thresh) {
                 const int rw = HostWidenUpdate(this, r, thresh, (Vector3 *)&mCamSpacePosX, mClipRadius);
-                if (rw != 0x7fffffff) {
+                /* INTROBIRD1: the widened range is for actors that will THINK. One that has never been in range
+                   (0x20 still set from AfterInitResources) and that the think gate below refuses this frame would
+                   only lose 0x38 and be drawn without ever having posed: the castle-grounds flock leader, frozen by
+                   the opening's think mask, drew at the world origin in the moat under the bridge (Draw distance
+                   above 100 only; the cartridge culls it there). It keeps the ROM's out-of-range branch instead. */
+                const int neverPosed = (mFlags & 0x20) && !HostWouldThink(this);
+                if (rw != 0x7fffffff && !neverPosed) {
                     r = rw;
                     thresh = r;       /* inside the widened range: the ROM's in-range branch below */
                 }
