@@ -1251,7 +1251,13 @@ const char *online_session_name(OnlineSessionField f);
 int online_session_clear();
 bool hub_game_heap_carved(unsigned *extra);
 bool vs_arena_install_in_place(const char **why);                 /* hal/vs_arena.cpp (SEAMVS1) */
+void vs_arena_seat_world();
+int vs_arena_my_seat();
+bool vs_arena_leave_reset(const char *why);
+int vs_player_count();                                            /* hal/comms_conductor.cpp */
 }
+extern "C" void SetNumPlayers(int n);                             /* the ROM's own setter of data_0208a0e0 */
+extern "C" unsigned char data_0209f21c, data_0209fc68[], data_020a0f10[], data_0209f250[];
 
 static void vs_handoff_undo(const PortHandoffRequest *r)
 {
@@ -1318,6 +1324,32 @@ static const char *port_vs_handoff(const PortHandoffRequest *r)
                           : port_mods_relatch_at_title("the VS hand-off did not go through")))
             fprintf(stderr, "[seamless] the mods layer refused the switch back to the offline list\n");
         return buf;
+    }
+    /* 4b. the session words main()'s level boot seats for a VS child before its first Stage (hal/level_boot.cpp, after
+       comms_wait_for_session): my seat from the relay (vs_arena_seat_world, the ROM's "my comms slot" byte), the player count through
+       the ROM's own SetNumPlayers, the per-player input gate. A title reached by a crossing boots the level through the crossing's
+       first-entry path, which does not run that block, so the hand-off seats them here; Stage::InitResources then copies them
+       (data_0209f21c = data_0208a0e0, data_0209f250 = func_0203da9c()) as on the child's boot. On the process's first title main()
+       runs the block again with the same values. */
+    port::vs_arena_seat_world();
+    if (port::vs_arena_my_seat() < 0) {
+        /* the relay's seat has no body here (the room is full): the arena down again, the environment and mods back, and the
+           hand-off refused; the fresh game the launcher then starts leaves with exit 4 as a full room always has */
+        port::vs_arena_leave_reset("the handed-off match's seat has no body");
+        vs_handoff_undo(r);
+        if (!(after_level ? port_mods_relatch_after_level("the VS hand-off did not go through")
+                          : port_mods_relatch_at_title("the VS hand-off did not go through")))
+            fprintf(stderr, "[seamless] the mods layer refused the switch back to the offline list\n");
+        return "the relay's seat has no body in this match (the room is full)";
+    }
+    {
+        const int np = port::vs_player_count();
+        data_0209fc68[0] = np > 1 ? 1 : 0;
+        SetNumPlayers(np);
+        data_0209f21c = (unsigned char)np;
+        data_0209f250[0] = data_020a0f10[0];
+        fprintf(stderr, "[seamless] VS session words seated at the title: %d player(s), input gate %d, I am slot %d\n", np,
+                (int)data_0209fc68[0], (int)data_0209f250[0]);
     }
     /* 5. the ROM's own VS start, from the title */
     port_vs_stage_and_start(mi);

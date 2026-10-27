@@ -1861,6 +1861,7 @@ extern "C" unsigned char data_0209f250[];        // the world's local player ind
 #define port_vs_local_index data_0209f250
 extern "C" int port_vs_force_nobody = 0;          // SEAMVS1: the "seat has no body" drill, set only by a dev knob (hal/handoff_poll.cpp)
 extern "C" int port_vs_leave_to_title(const char *why);   // hal/star_flow.cpp (SEAMVS1): the match leaves to the title in place
+extern "C" int port_scene_live_id(void);                   // hal/scene_boot.cpp: 1 = the title is the live scene
 
 // SEAMVS1: the install's latch at file scope, so a VS match that ended in place (vs_arena_leave_reset) can forget it and the next
 // match handed to this process installs the arena again (vs_arena_install_in_place). g_in_place: this process's arena was installed
@@ -2080,6 +2081,10 @@ void vs_arena_seat_world() {
         std::fflush(stdout);
         // SEAMVS1: a match handed to a running game leaves it back at the title in place (the way its end does); my body word
         // stays where it was and my pad goes nowhere for the fade. A process that booted into the match still exits 4.
+        if (g_in_place && port_scene_live_id() == 1) {   // seated by the hand-off at the title: the hand-off refuses (scene_vs_menu)
+            g.seat = -1;
+            return;
+        }
         if (g_in_place && port_vs_leave_to_title("seat has no body")) {
             g.seat = -1;
             return;
