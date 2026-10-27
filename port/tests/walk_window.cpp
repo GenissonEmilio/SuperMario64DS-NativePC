@@ -890,6 +890,8 @@ extern "C" void *data_0209f1e4;             /* SEAMRESET1: the reset fade in fli
 extern "C" int data_0209f5d0[3];            /* SEAMRESET1: the reset's brightness fader (hal/auto_bss.cpp) */
 extern "C" unsigned char data_0209b340[];   /* SEAMRESET1: the title's session block (hal/scene_boot.cpp) */
 extern "C" void _ZN8dScene_c14StartSceneFadeEjjt(unsigned, unsigned, unsigned short);   /* SEAMRESET1: the ROM's */
+extern "C" unsigned char data_0209f5e8[];   /* SEAMRESET2: the colour (scene) fader, a HalFaderWipe (hal/fader_wipes.cpp) */
+extern "C" int __cdecl port_hal_wipe_s10(void *s, int frames, int);   /* SEAMRESET2: its seated SetForwardTime body */
 extern "C" void port_loopin2_p17(int frame, int latch_before,
                                  unsigned held_before, unsigned held_after);
 extern "C" void port_loopin2_p7(void);
@@ -18784,10 +18786,12 @@ int main(void)
                    the restart below and says why. */
                 static int srst_wait = -1;     /* the frame the in-place answer started waiting for the ROM's fader */
                 static int srst_in_place;      /* answered in place; re-armed below once a level is back */
+                static int srst_parked;        /* SEAMRESET2: the ROM parked its brightness fader for this reset */
                 if (srst_in_place && !port_front_end_in_place && !data_0209f1e0[0]) {
                     srst_in_place = 0;
                     srst_answered = 0;
                     srst_wait = -1;
+                    srst_parked = 0;
                     fprintf(stderr, "[loopin2] f%d soft reset: a level was handed back after the in-place reset "
                             "(latch %u, still-held %u): the reset is armed again\n", frame,
                             (unsigned)data_0209f1e0[0], (unsigned)data_0209f1dc[0]);
@@ -18795,10 +18799,30 @@ int main(void)
                 if (srst_up && data_0209f1e0[0] && !srst_answered && !rb_replaying()) {
                     const char *srst_why = port_quit_in_place_refusal();
                     int srst_hold = 0;
-                    if (!srst_why && data_0209f1e4 != (void *)data_0209f5d0) {
+                    /* SEAMRESET2: THE LEVEL STAYS FROZEN FOR THE ROM'S 16 FRAMES. On the cartridge the latch stays up for
+                       the whole brightness fade (SetForwardTime(0x10) in BeforeBehavior): every frame func_02023498 zeroes
+                       the pad, the touch and the Ctrl records, and the Stage's BeforeBehavior takes its latch branch and
+                       returns 0, so nothing in the level moves; on the fade's last frame it asks for scene 1, snaps the
+                       colour fader to its end and marks the Stage. So the latch is held up here for 16 frames from the first
+                       frame the ROM's clears ran, and the parked fader is taken back every frame so phase 2 never steps the
+                       trapped slot (the ROM's latch branch parks it again, which only resets its interpolator). Then the
+                       stores below, the ROM's StartSceneFade(1, 0, 0) and its snap of the colour fader (d_scene.cpp: its
+                       SetForwardTime(0, 0), through the seated body). The ROM marks the Stage in that same frame; here the
+                       marked-and-return-0 path faults in fBase_c::Process (SEAMRESET1 cal_r2), so the fader is put at its end
+                       as well (dFdBrightness_c::SetToEnd's body, d_fader.cpp: currInterp = 0x1000, the word after the
+                       vptr in HalFaderWipe as in the ROM's Fader): the next frame's ordinary BeforeBehavior finds it at its
+                       end and marks the Stage, one frame after the cartridge, instead of restarting a 0x1e-frame fade
+                       from its start (fz rows: the cut came 30 frames after the answer with the snap alone). */
+                    if (!srst_why) {
                         if (srst_wait < 0) srst_wait = frame;
-                        if (frame - srst_wait < 30) srst_hold = 1;
-                        else srst_why = "the ROM did not start its reset fade within 30 frames";
+                        if (data_0209f1e4 == (void *)data_0209f5d0) srst_parked = 1;
+                        data_0209f1e4 = 0;
+                        if (!srst_parked) {
+                            if (frame - srst_wait < 30) srst_hold = 1;
+                            else srst_why = "the ROM did not start its reset fade within 30 frames";
+                        } else if (frame - srst_wait < 16) {
+                            srst_hold = 1;
+                        }
                     }
                     if (!srst_hold && !srst_why) {
                         srst_answered = 1;
@@ -18808,9 +18832,12 @@ int main(void)
                         data_0209f1e0[0] = 0;
                         data_0209f1e4 = 0;
                         _ZN8dScene_c14StartSceneFadeEjjt(1, 0, 0);
+                        port_hal_wipe_s10(data_0209f5e8, 0, 0);
+                        ((int *)data_0209f5e8)[1] = 0x1000;
                         fprintf(stderr, "[loopin2] f%d soft reset: returning to the title in this process (the ROM's own "
-                                "scene change to scene 1; the latch byte lowered and data_0209b340[1] = 1 stored as the "
-                                "title would, scene %u asked for)\n", frame, (unsigned)data_02092664);
+                                "scene change to scene 1 after %d frozen frames; the latch byte lowered and data_0209b340[1] "
+                                "= 1 stored as the title would, scene %u asked for, the colour fader at its end)\n", frame,
+                                frame - srst_wait, (unsigned)data_02092664);
                     } else if (!srst_hold) {
                         fprintf(stderr, "[seamless] in place refused: %s; restarting\n", srst_why);
                     }
@@ -18839,6 +18866,11 @@ int main(void)
                     }
                     W.PostQuitMessage_(0);
                 }
+                /* SEAMRESET2: func_02023498 found the latch up, so its ResetInput zeroed the Ctrl records this frame; the
+                   host's direct Ctrl store further down (data_0209f49c / data_0209f49e from btn) would write the held keys
+                   straight back before phase 4, and Mario jumped on an A pressed inside the reset (rows fz_r1 before this
+                   line). The store gets the zeroed word on every frame the ROM zeroes, as the cartridge's records are. */
+                if (srst_up) btn = 0;
             }
             g_pad_mirror_prev = raw_all;
             /* ---- THE THIRD BUTTON WRITER, AND THE ONE HIS HANDS FOUND ------
