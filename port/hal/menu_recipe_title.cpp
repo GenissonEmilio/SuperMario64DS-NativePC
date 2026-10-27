@@ -467,8 +467,18 @@ void online_overlays(MenuLayout *L, bool main_page, bool show_help)
             const int hpx = 30 * un / ud;
             const int right = of->padfocus == ONL_PF_HELP ? L->w - 5 * un / ud : L->w - 40 * un / ud;
             const int pw = of->padfocus == ONL_PF_HELP ? hpx : menu_online_plank_w(ONL_K_NAME, hpx);
+            if (!main_page) {
+                /* TITLEART1 (Tango 10-26: "it should be orange arrow"): on the file select the cue is the file pages' own ORANGE arrow, at its size (22 x 15
+                   units, as the HD one under the file plates) and bobbing on the title's 8-tick cadence, drawn smooth at the window's scale; the same with
+                   or without the HD UI mod (the mod draws no arrow of its own here) */
+                static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
+                const int bob2 = kBob[(t_f ? t_f->frame : 0) & 7];
+                const int aw = 22 * un / ud, ah = 15 * un / ud;
+                menu_online_add_arrow(L, 3, right - pw / 2 - aw / 2, 5 * un / ud + hpx + ((2 + bob2) * un) / (2 * ud), aw, ah);
+            } else {
             const int aw = 18 * un / ud, ah = aw * 15 / 22;
             menu_online_add_arrow(L, 1, right - pw / 2 - aw / 2, 5 * un / ud + hpx + un / ud, aw, ah);
+            }
         }
     }
     menu_online_add_modal(L, of);
