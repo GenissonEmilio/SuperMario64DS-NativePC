@@ -431,6 +431,13 @@ void do_lists(int what, const void *const *lists, const int *engines, const int 
 
 extern "C" void port_char_hud_apply(int what);
 
+/* SEAMSND1 (run after093): the skin changed in place (hal/mods.cpp port_char_reskin_now). Every element's pictures were decoded for
+   the old skin; drop them and their plans so the next draw loads the new skin's, as a fresh boot with it would. */
+extern "C" void port_char_hud_reskin_reset(void)
+{
+    for (int i = 0; i < 5; ++i) g_slot[i] = Slot();
+}
+
 namespace {
 /* THE MINIMAP SEAT. This line's dMap_c is main's class TU (src/ui/hud/d_map.cpp): it owns the vtable the minimap object really uses, and its
    Render is called straight through it. The port's own Minimap::Render / Behavior copies (unmatched/Minimap_*.cpp, where the marker repaint

@@ -60,6 +60,18 @@ int port_char_active(void);
    ROM path being replaced (as under extracted/dsd/files/), disk the mod's file. */
 int port_char_skin_file(int k, const char **rom, const char **disk);
 
+/* SEAMSND1 (run after093, one-process plan M3b): the skin changed in place. port_char_select makes skin idx (-1 = the plain
+   character) the active one and rebuilds its file list; hal/mods.cpp port_char_reskin_now calls it and then serves the files.
+   Returns the skin that was active. port_char_mod_of: the mod id part of skin idx's key (static buffer), or 0. */
+int port_char_select(int idx);
+const char *port_char_mod_of(int idx);
+/* The skin a pick inside a level asked for, applied at the next level load (hal/mods.cpp); -2 = none pending. */
+int port_char_skin_pending(void);
+void port_char_skin_set_pending(int idx);
+/* hal/mods.cpp: the switch itself (THE SKIN IN PLACE there). 1 = switched / marked for the next level; 0 = refused and *why says why. */
+int port_char_reskin_now(int idx, const char *reason, int away_from_title, char *why, unsigned cap);
+int port_char_reskin_next_level(int idx, char *why, unsigned cap);
+
 #ifdef __cplusplus
 }
 #endif

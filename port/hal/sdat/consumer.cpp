@@ -770,9 +770,14 @@ void sd_sound_init_host(void)
 // func_020119c8 was before the frame reaper was wired. hal/level_change.cpp calls
 // this from its teardown, at the point the ROM's Scene::BeforeCleanupResources
 // would have fired, before the new level boots.
+extern "C" { void (*port_level_reap_hook)(void) = 0; }   /* SEAMSND1: hal/mods.cpp, a skin picked inside a level */
+
 extern "C" void sd_sound_level_reap(void)
 {
     func_02011974(data_0209b53c);
+    /* the same point is where a skin picked inside the old level is switched (hal/mods.cpp THE SKIN IN PLACE): the old level's
+       actors are gone and the new level has not booted, which is when the cartridge would load the character next */
+    if (port_level_reap_hook) port_level_reap_hook();
 }
 
 /* Put the command queue back in its just-booted shape, and it is the ROM that
@@ -1145,8 +1150,15 @@ static void snd_voice_probe(void)
         }
 }
 
+/* run after093, lane SEAMMODS1: one call per game frame on the game thread, for hal/mods.cpp's dev knobs (SM64DS_MODS_RELATCH_AT,
+   SM64DS_FS_CENSUS). Null unless one of them is set; never seated in the kit. */
+extern "C" { void (*port_sdat_frame_hook)(void) = 0; }
+extern "C" void sdat_retired_sweep(void);   /* hal/sdat/sdat.cpp: SEAMSND1, an old image after a sound re-seat */
+
 extern "C" void sdat_host_tick(void)
 {
+    if (port_sdat_frame_hook) port_sdat_frame_hook();
+    sdat_retired_sweep();
     sd_consumer_init();
     snd_coin_probe();
     snd_break_probe();

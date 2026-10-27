@@ -6870,6 +6870,27 @@ extern "C" int _ZN8SaveData15SaveCurrentFileEv(void);
 extern "C" int _ZN8SaveData12ReadFileDataEjP12FileSaveData(unsigned slot, void *dest);   /* the ROM's own slot read (hal/cxx_aliases.cpp seats the name) */   /* the ROM's own file save (hal/cxx_aliases.cpp seats the name) */
 static void char_apply_pick(int sel, int keep_place)
 {
+    if (chr_skin(sel) != port_char_active() && menu_live_player()) {
+        /* SEAMSND1 (one-process plan M3b): THE PICK WAITS FOR THE NEXT LEVEL LOAD, in this process. The cartridge reads the
+           character with the level (the save byte data_0209caa0[0x41] by LoadEntranceObjects, the body files by
+           Player::InitResources), so the base and the skin are set for the level that boots next, exactly as the no-Player branch
+           below sets the base between two courses, and the skin's files are switched at that level change (hal/mods.cpp THE SKIN
+           IN PLACE). This level keeps the running character. What cannot be done that way keeps the restart below. */
+        const int sk = chr_skin(sel);
+        char why[400];
+        if (port_char_reskin_next_level(sk, why, sizeof why)) {
+            g_character_pending = chr_base(sel);
+            port_char_save_record(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "", g_character_pending);
+            character_set_pending(g_character_pending);
+            data_02092128[0] = (unsigned char)g_character_pending;
+            fprintf(stderr, "[menu] character %s: set for the next level load (base %s, skin %s); no restart\n", chr_label(sel),
+                    CHAR_NAME[g_character_pending & 3], sk >= 0 ? port_char_key(sk) : "plain");
+            ss_note("the new character comes with the next level");
+            (void)keep_place;
+            return;
+        }
+        fprintf(stderr, "[seamless] in place refused: %s; restarting\n", why);
+    }
     if (chr_skin(sel) != port_char_active()) {
         /* A SKIN CHANGE (CHARSLOT1): the file layer is boot-latched,
            so the costume is applied by starting the program again on
@@ -7462,6 +7483,17 @@ static int starsel_finish_hook(int level, int entrance, int act)
     const int sel = port_char_strip_skin_pending();
     if (sel < 0 || chr_skin(sel) == port_char_active()) return 0;
     const int sk = chr_skin(sel);
+    {   /* SEAMSND1 (one-process plan M3b): the old level is torn down and the course has not booted, so no level holds the running
+           skin: switch it here, in this process, and the course boots with the pick (its base was set when it was picked). */
+        char why[400];
+        if (port_char_reskin_now(sk, "star select pick", 1, why, sizeof why)) {
+            port_char_strip_set_pending(-1);
+            fprintf(stderr, "[strip] the act is chosen: course %d (entrance %d, act %d) starts as %s in this process\n", level, entrance,
+                    act, chr_label(sel));
+            return 0;
+        }
+        fprintf(stderr, "[seamless] in place refused: %s; restarting\n", why);
+    }
     char bs[8], en[16], ac[16];
     snprintf(bs, sizeof bs, "%d", chr_base(sel));
     snprintf(en, sizeof en, "%d", entrance);

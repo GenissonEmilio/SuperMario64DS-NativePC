@@ -303,9 +303,11 @@ extern "C" int settings_page_hook_touch(unsigned char down, unsigned char sx, un
    (menu_warm_claim, menu_recipe_pause.cpp: one slot per few ms for the pause and the page together, none while the game is hitching)
    is free. Nothing at all when OneScreenMenus is off. */
 extern "C" int menu_warm_claim(void);
+static int done_w, done_h;
+/* lane SEAMART2: hal/settings_page.cpp's HD UI art reset drops what the warm-up built; this lets the warm-up run again at that size */
+extern "C" void settings_page_warm_rearm(void) { done_w = done_h = 0; }
 extern "C" void settings_page_idle_tick(int idle_frames, int w, int h)
 {
-    static int done_w, done_h;
     if (idle_frames < 120) return;
     if (!hal_menu_enabled(MENU_KEY_ONE_SCREEN_MENUS)) return;
     if (done_w == w && done_h == h) return;

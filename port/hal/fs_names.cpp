@@ -517,12 +517,13 @@ extern "C" void port_fs_card_patches(void (*emit)(unsigned, const u8 *, u32));
 
 namespace {
 
+int g_patch_latched;   /* run after093 lane SEAMMODS1: port_nitrofs_patch_relatch reads it */
+
 void patch_latch(void)
 {
-    static int done;
-    if (done)
+    if (g_patch_latched)
         return;
-    done = 1;
+    g_patch_latched = 1;
     g_fat_served = (u8 *)malloc(g_tables.fat_size);
     if (!g_fat_served) {
         fprintf(stderr, "FATAL: out of host memory copying the FAT\n");
@@ -532,6 +533,34 @@ void patch_latch(void)
     memcpy(g_fat_served, g_tables.fat, g_tables.fat_size);
     port_fs_card_patches(patch_emit);
 }
+
+}  /* anonymous namespace */
+
+/* THE RE-LATCH (run after093, lane SEAMMODS1). hal/mods.cpp switches the mod
+   list at the title, where no level is loaded and no archive is mounted, and
+   asks for the card image to serve the new list: the served FAT goes back to
+   the cartridge's own, the patched range is dropped, and the claims run again
+   exactly as the first latch ran them. The cartridge's own bytes kept in
+   g_img_bytes stay (they are the cartridge's, whatever the mods). Before the
+   first card read there is nothing to redo: the first read latches as always. */
+extern "C" void port_nitrofs_patch_relatch(void)
+{
+    if (!g_patch_latched || !g_fat_served)
+        return;
+    memcpy(g_fat_served, g_tables.fat, g_tables.fat_size);
+    free(g_patch);
+    g_patch = 0;
+    g_patch_len = 0;
+    port_fs_card_patches(patch_emit);
+}
+
+/* Told the FAT id of every file a card block covers. hal/mods.cpp seats it
+   at start in every build, the kit included (lane SEAMART2), to record which
+   ids the game read and when: the relatch's held-file check reads that record.
+   Only the dev build counts blocks per id, for the SM64DS_FS_CENSUS dump. */
+extern "C" { void (*port_nitrofs_census_hook)(unsigned file_id) = 0; }
+
+namespace {
 
 /* The FAT is 8 bytes per file id, {u32 start, u32 end}, in id order but NOT in
    offset order for every ROM, so the lookup is a scan rather than a bisect.
@@ -782,6 +811,8 @@ void port_nitrofs_rom_read(u32 addr, u32 len, unsigned char *out)
         const char *rel;
         if (lo >= hi)
             continue;
+        if (port_nitrofs_census_hook)
+            port_nitrofs_census_hook(f->id);
         rel = port_fs_catalog_path(f->id);
         if (!rel || !rel[0]) {
             if (!unserved++)
