@@ -141,6 +141,29 @@ int g_swapprobe;
 int g_fail_after;       /* the device-lost drill */
 int g_want_warp = -1;   /* -1 hardware then WARP, 0 hardware only, 1 WARP only */
 
+/* ---- the pictures in flight (run after093, lane MGFREEZE1) ----------------
+   The upload texture is DYNAMIC and every picture maps it WRITE_DISCARD, so
+   while the card still reads the last picture the driver hands out a fresh
+   copy of the whole texture. Nothing on this device ever waited for the card:
+   the swap chain is the presenter thread's, on its own device, so its frame
+   latency limit never reached this queue. On a fast card that costs nothing.
+   On a tester's Intel UHD (128 MB, the card 30 to 80 ms behind a tick) the
+   stacked minigame picture is 1364x1664, 9 MB a copy, and the copies piled up
+   until Map said E_OUTOFMEMORY and the run fell back for good. Now an event
+   query marks each upload and the next one waits until at most
+   g_inflight_max of them are still unfinished on the card, which is the frame
+   latency limit a swap chain on this device would have given. */
+enum { FENCE_RING = 32 };
+int g_inflight_max = 2;         /* SM64DS_PRESENT_INFLIGHT (0 = no limit, the old behaviour) */
+ID3D11Query *g_fence[FENCE_RING];
+int g_fence_head, g_fence_n;
+int g_fence_deep;               /* deepest count of unfinished uploads seen at an upload */
+int g_fence_failed;             /* the card would not make a query: no limit, as before */
+long long g_fence_waits;
+double g_fence_wait_ms;
+int g_oom_retries, g_oom_recovered;
+int g_uploads;                  /* pictures uploaded this run */
+
 /* ---- what the run learned, for the one summary line at exit ------------- */
 
 int g_presents;             /* frames handed to the swap chain */
@@ -294,6 +317,9 @@ void read_settings()
     g_addrcheck = env_int("SM64DS_PRESENT_ADDRCHECK", 0);
     g_swapprobe = env_int("SM64DS_PRESENT_SWAPPROBE", 0);
     g_fail_after = env_int("SM64DS_PRESENT_FAIL_AFTER", 0);
+    g_inflight_max = env_int("SM64DS_PRESENT_INFLIGHT", 2);
+    if (g_inflight_max < 0) g_inflight_max = 0;
+    if (g_inflight_max > FENCE_RING - 1) g_inflight_max = FENCE_RING - 1;
 
     LARGE_INTEGER f;
     if (QueryPerformanceFrequency(&f)) g_qpf = f.QuadPart;
@@ -363,6 +389,98 @@ bool make_pipeline()
     return true;
 }
 
+/* The fences. GetData with no flags also flushes the queue, so a wait never
+   waits on work that was not yet handed to the card. */
+void fence_pop()
+{
+    g_fence_head = (g_fence_head + 1) % FENCE_RING;
+    --g_fence_n;
+}
+
+bool fence_wait_oldest(double limit_ms)
+{
+    ID3D11Query *q = g_fence[g_fence_head];
+    const long long t0 = qpc();
+    bool done = false;
+    for (;;) {
+        const HRESULT hr = g_ctx->GetData(q, 0, 0, 0);
+        if (hr == S_OK) { done = true; break; }
+        if (FAILED(hr)) break;                     /* a removed device answers here */
+        if (ms_between(t0, qpc()) > limit_ms) break;
+        SwitchToThread();
+    }
+    g_fence_wait_ms += ms_between(t0, qpc());
+    fence_pop();
+    return done;
+}
+
+void inflight_retire()
+{
+    while (g_fence_n && g_ctx->GetData(g_fence[g_fence_head], 0, 0,
+                                       D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK)
+        fence_pop();
+}
+
+/* Before an upload: let the card catch up to at most g_inflight_max
+   unfinished pictures. A second at most per wait, so a hung card can stall a
+   picture but never the run. */
+void inflight_throttle()
+{
+    if (g_fence_failed || !g_ctx) return;
+    inflight_retire();
+    if (g_fence_n > g_fence_deep) g_fence_deep = g_fence_n;
+    if (!g_inflight_max) {
+        if (g_fence_n >= FENCE_RING - 1) fence_pop();   /* counting only: the deepest then reads "at least" */
+        return;
+    }
+    while (g_fence_n >= g_inflight_max) {
+        ++g_fence_waits;
+        fence_wait_oldest(1000.0);
+    }
+}
+
+/* After an upload: mark it. */
+void inflight_mark()
+{
+    if (g_fence_failed || !g_dev || !g_ctx) return;
+    const int at = (g_fence_head + g_fence_n) % FENCE_RING;
+    if (!g_fence[at]) {
+        D3D11_QUERY_DESC qd;
+        qd.Query = D3D11_QUERY_EVENT;
+        qd.MiscFlags = 0;
+        if (FAILED(g_dev->CreateQuery(&qd, &g_fence[at])) || !g_fence[at]) {
+            g_fence[at] = 0;
+            g_fence_failed = 1;
+            fprintf(stderr, "[present] the card would not make an event query; uploads are not paced\n");
+            return;
+        }
+    }
+    g_ctx->End(g_fence[at]);
+    ++g_fence_n;
+}
+
+/* Everything handed over, and all of it finished (or two seconds gone). */
+void inflight_drain()
+{
+    if (!g_ctx) return;
+    g_ctx->Flush();
+    if (g_fence_failed) { Sleep(50); return; }
+    const long long t0 = qpc();
+    inflight_mark();
+    while (g_fence_n && ms_between(t0, qpc()) < 2000.0)
+        fence_wait_oldest(2000.0 - ms_between(t0, qpc()));
+}
+
+int inflight_now() { return g_fence_n; }
+int inflight_deepest() { return g_fence_deep; }
+
+void release_fences()
+{
+    for (int i = 0; i < FENCE_RING; ++i)
+        if (g_fence[i]) { g_fence[i]->Release(); g_fence[i] = 0; }
+    g_fence_head = g_fence_n = 0;
+}
+
 /* The upload texture, sized to the picture. Recreated when the source size
    changes, which happens when the layout switches between the inset level
    picture and the taller stacked one. */
@@ -401,16 +519,32 @@ bool ensure_texture(int w, int h)
 bool upload(const void *pixels, int stride_px, int w, int h)
 {
     if (!ensure_texture(w, h)) return false;
+    inflight_throttle();
     D3D11_MAPPED_SUBRESOURCE m;
     memset(&m, 0, sizeof m);
-    const HRESULT hr = g_ctx->Map(g_tex, 0, D3D11_MAP_WRITE_DISCARD, 0, &m);
+    HRESULT hr = g_ctx->Map(g_tex, 0, D3D11_MAP_WRITE_DISCARD, 0, &m);
+    if (hr == E_OUTOFMEMORY) {
+        /* The card is out of room for another copy. Hand it everything, wait
+           until it has finished it (which frees every older copy), and try
+           once more before giving the card path up. */
+        ++g_oom_retries;
+        if (g_oom_retries <= 3)
+            fprintf(stderr, "[present] the upload ran out of card memory (code %08x); "
+                    "waiting for the card and trying once more\n", (unsigned)hr);
+        inflight_drain();
+        memset(&m, 0, sizeof m);
+        hr = g_ctx->Map(g_tex, 0, D3D11_MAP_WRITE_DISCARD, 0, &m);
+        if (SUCCEEDED(hr) && m.pData) ++g_oom_recovered;
+    }
     if (FAILED(hr) || !m.pData) { fall_back("the upload was refused", hr); return false; }
+    ++g_uploads;
     const unsigned char *src = (const unsigned char *)pixels;
     unsigned char *dst = (unsigned char *)m.pData;
     const size_t row = (size_t)w * 4;
     for (int y = 0; y < h; ++y)
         memcpy(dst + (size_t)y * m.RowPitch, src + (size_t)y * stride_px * 4, row);
     g_ctx->Unmap(g_tex, 0);
+    inflight_mark();
     return true;
 }
 
@@ -1006,6 +1140,7 @@ void release_all()
     presenter_end();
     release_swapchain();
     presenter_shutdown();
+    release_fences();
     if (g_off_rtv) { g_off_rtv->Release(); g_off_rtv = 0; }
     if (g_off_stage) { g_off_stage->Release(); g_off_stage = 0; }
     if (g_off_rt) { g_off_rt->Release(); g_off_rt = 0; }
@@ -1042,6 +1177,12 @@ void at_exit()
     if (g_presents)
         fprintf(stderr, "[present] %d picture(s) went through the graphics "
                 "card this run\n", g_presents);
+    if (g_uploads)
+        fprintf(stderr, "[present] %d upload(s); at most %d picture(s) in flight on the card "
+                "(deepest seen %d), %lld wait(s) for it, %.1f ms in all; %d out-of-memory "
+                "retr%s, %d recovered\n", g_uploads, g_inflight_max, g_fence_deep,
+                g_fence_waits, g_fence_wait_ms, g_oom_retries,
+                g_oom_retries == 1 ? "y" : "ies", g_oom_recovered);
     address_rows("exit  ");
     /* THE EXIT RULE (hal/gpu_device.h): stop the presenter thread and leave
        every Direct3D object to the system. Releasing them here crashed the
