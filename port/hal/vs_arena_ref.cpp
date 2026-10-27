@@ -3331,7 +3331,8 @@ void init_once() {
         g.deadhit_orig = cell[0];
         cell[0] = (unsigned)(size_t)&vs_ref_deadhit_main_face;
     }
-    std::atexit(quit_at_exit);
+    static bool quit_hooked = false;   // SEAMVS1: once per process, though a later match in place runs init_once again
+    if (!quit_hooked) { quit_hooked = true; std::atexit(quit_at_exit); }
     rig_parse();
     std::fprintf(stderr, "[vsarena] referee client up: seat %d, %d bodies, order "
                  "buffer installed, collect + hurt seams wrapped\n", g.seat,
@@ -3657,6 +3658,23 @@ void vs_ref_report(const char *tag) {
                  tag ? tag : "", g.st.cap_claims, g.st.cap_lost, g.st.cap_taken, g.st.cap_removed,
                  g.st.cap_dropped, g.st.cap_drop_claims, g.st.cap_copies, g.st.cap_respawns,
                  g.st.cap_puppet_touches);
+}
+
+
+// SEAMVS1: the referee client of a match that ended in place, back to a client that never saw a match, for the next match
+// handed to this process. The four ROM seams init_once wrapped stay wrapped (their original words are kept, so init_once's
+// guards do not wrap them twice), and so does the event sink; the order buffer is filled again by the next init_once.
+void vs_ref_match_reset() {
+    const unsigned s5 = g.star5_orig, hu = g.hurt_orig, hw = g.hurtwater_orig, dh = g.deadhit_orig;
+    const VsRefEventSink sink = g.sink;
+    g = Ref();
+    g.star5_orig = s5;
+    g.hurt_orig = hu;
+    g.hurtwater_orig = hw;
+    g.deadhit_orig = dh;
+    g.sink = sink;
+    for (CapSeen &c : g_cap_seen) c = CapSeen();
+    g_tc = TongueCap();
 }
 
 }  // namespace port

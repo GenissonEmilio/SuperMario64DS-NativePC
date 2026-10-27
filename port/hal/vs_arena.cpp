@@ -1848,9 +1848,20 @@ bool vs_arena_requested() {
 }
 
 extern "C" void port_fanout_force_wide(int on);   // hal/comms_fanout_wide.cpp (VS9)
+extern "C" int port_vs_force_nobody = 0;          // SEAMVS1: the "seat has no body" drill, set only by a dev knob (hal/handoff_poll.cpp)
+extern "C" int port_vs_leave_to_title(const char *why);   // hal/star_flow.cpp (SEAMVS1): the match leaves to the title in place
+
+// SEAMVS1: the install's latch at file scope, so a VS match that ended in place (vs_arena_leave_reset) can forget it and the next
+// match handed to this process installs the arena again (vs_arena_install_in_place). g_in_place: this process's arena was installed
+// by a hand-off at the title, not by main() at boot.
+namespace {
+bool g_tried = false;
+bool g_in_place = false;
+bool g_report_hooked = false;
+}  // namespace
 
 bool vs_arena_install_from_env() {
-    static bool tried = false;
+    bool &tried = g_tried;
     if (tried) return g.installed;
     tried = true;
     if (!vs_arena_requested()) return false;
@@ -1882,8 +1893,10 @@ bool vs_arena_install_from_env() {
             return false;
         }
     }
-    ::InitializeCriticalSection(&g_cs);
-    g_cs_up = true;
+    if (!g_cs_up) {   // SEAMVS1: once per process; a second install in place keeps the section
+        ::InitializeCriticalSection(&g_cs);
+        g_cs_up = true;
+    }
     for (int k = 0; k < kArenaSeats; ++k) reset_ring(g.ring[k], 0);
 
     // AN ARENA CONSOLE IS NEVER AN ADVENTURE CONSOLE. The adventure ghost
@@ -1931,11 +1944,71 @@ bool vs_arena_install_from_env() {
                  g.hub ? "open" : "NOT OPEN (no SM64DS_COMMS_RELAY or "
                                   "SM64DS_HUB_PORT): this console plays the "
                                   "arena alone");
-    std::atexit(report_at_exit);
+    if (!g_report_hooked) { g_report_hooked = true; std::atexit(report_at_exit); }
     return true;
 }
 
 bool vs_arena_active() { return g.installed; }
+
+void vs_ref_match_reset();    // hal/vs_arena_ref.cpp (SEAMVS1)
+void vs_eat_match_reset();    // hal/vs_arena_eat.cpp
+void vs_grab_match_reset();   // hal/vs_arena_grab.cpp
+bool vs_arena_leave_reset(const char *why);
+
+// SEAMVS1: THE ARENA INTO A LIVE PROCESS, for the launcher hand-off of a VS match at the title. The install main() makes at boot
+// (vs_arena_install_from_env: the seat pin, the body count, the hub opened through comms_hub_install_arena), made again from the
+// environment the hand-off has just written. Refuses (false, *why) when an arena is still installed, when the env does not ask for
+// one, or when the hub does not open (the arena with no relay is a lab shape; a launcher match always names one); a failed install is
+// taken down again so the caller refuses with nothing of it left.
+bool vs_arena_install_in_place(const char **why) {
+    *why = nullptr;
+    if (g.installed) { *why = "a VS arena of an earlier match is still installed"; return false; }
+    g_tried = false;
+    if (!vs_arena_install_from_env() || !g.installed) { *why = "the arena install refused the request's names"; return false; }
+    if (!g.hub || !comms_hub_active()) {
+        *why = "the arena's hub did not open (no relay)";
+        vs_arena_leave_reset("the in-place arena install did not open its hub");
+        return false;
+    }
+    g_in_place = true;
+    std::fprintf(stderr, "[seamless] VS arena installed in this process: %d bodies, seat pin %d\n", g.bodies, g.want_seat);
+    std::fflush(stderr);
+    return true;
+}
+
+// SEAMVS1: THE ARENA OUT OF A LIVE PROCESS, at the title after a VS match ended in place: the hub torn down (comms_hub_teardown:
+// the I/O thread joined, the socket closed, the arena latch forgotten), the arena, the referee client, the eat and grab state and
+// the puppets back to a process that never installed one, the wide fan-out off. False when the hub's thread did not stop (nothing
+// else changed; the caller closes the game as before).
+bool vs_arena_leave_reset(const char *why) {
+    if (comms_hub_active() || comms_hub_state() != kHubOff)
+        if (!comms_hub_teardown(why)) return false;
+    const int bodies = g.bodies, seat = g.seat;
+    {
+        Guard l;
+        g = Arena();
+        for (int k = 0; k < kArenaSeats; ++k) reset_ring(g.ring[k], 0);
+    }
+    for (int k = 0; k < kArenaSeats; ++k) g_pup[k] = Pup();
+    {
+        const int on = g_lat.on;
+        g_lat = Lat();
+        g_lat.on = on;
+    }
+    for (int k = 0; k < 2; ++k) { g_sq[k] = SfxQueue(); g_sfx_cap[k] = 0; }
+    vs_ref_match_reset();
+    vs_eat_match_reset();
+    vs_grab_match_reset();
+    port_fanout_force_wide(0);
+    g_tried = false;
+    g_in_place = false;
+    std::fprintf(stderr, "[seamless] VS arena taken down (%s): it was seat %d of %d bodies; referee client, eat, grab and puppets reset, "
+                 "the install latch forgotten\n", why ? why : "?", seat, bodies);
+    std::fflush(stderr);
+    return true;
+}
+
+bool vs_arena_in_place() { return g_in_place; }
 
 void vs_arena_seat_world() {
     if (!g.installed) return;
@@ -1970,6 +2043,11 @@ void vs_arena_seat_world() {
                      "(%s)\n", seat, g.want_seat < kArenaSeats ? "the pin"
                                                               : "default");
     }
+    if (g_in_place && port_vs_force_nobody) {   // SEAMVS1 drill (dev knob, hal/handoff_poll.cpp): a seat past the bodies
+        port_vs_force_nobody = 0;
+        std::fprintf(stderr, "[vsarena] SM64DS_VS_FORCE_NOBODY: seat %d taken as %d, past the %d bodies\n", seat, g.bodies, g.bodies);
+        seat = g.bodies;
+    }
     if (seat >= g.bodies) {
         // A seat with no body faults the first frame that reaches for it.
         // Leave the match instead, the way a full room does (exit 4,
@@ -1979,6 +2057,12 @@ void vs_arena_seat_world() {
                      g.bodies);
         std::fflush(stderr);
         std::fflush(stdout);
+        // SEAMVS1: a match handed to a running game leaves it back at the title in place (the way its end does); my body word
+        // stays where it was and my pad goes nowhere for the fade. A process that booted into the match still exits 4.
+        if (g_in_place && port_vs_leave_to_title("seat has no body")) {
+            g.seat = -1;
+            return;
+        }
         ::ExitProcess(4);
     }
     if (g.seat >= 0 && g.seat != seat)

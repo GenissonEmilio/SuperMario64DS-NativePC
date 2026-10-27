@@ -944,3 +944,51 @@ int online_join_seconds_left() {
 }
 
 }  // namespace port
+
+/* ==== SEAMVS1: what the hand-off poll and the VS match end share with the online session code =================================== */
+/* 1 when an online leave or join is under way in this process (*why says which): the hand-off poll waits */
+extern "C" int port_online_handoff_busy(const char **why)
+{
+    using namespace port;
+    *why = 0;
+    if (g_leave == 1) { *why = "an online leave is under way"; return 1; }
+    const int ph = join_in_place_phase();
+    if (ph == 1 || ph == 2) { *why = "an online join is under way"; return 1; }
+    if (online_join_state() == kJoinWaiting) { *why = "the online menu is waiting for the launcher's plan"; return 1; }
+    return 0;
+}
+
+/* The session record cleared and every session name this process may hold (the join's 12 and the launcher's 31: the list the restart
+   clears) out of BOTH copies of the environment; the Adventure flag's env latch read again. Returns how many names were set; names
+   (cap bytes) lists them without the SM64DS_ prefix; *fields is how many record fields were set. Game thread, at the title. */
+extern "C" int port_session_env_clear(int *fields, char *names, int cap)
+{
+    using namespace port;
+    *fields = online_session_clear();
+    std::string cleared;
+    int n = 0;
+    for (int pass = 0; pass < 2; ++pass) {
+        const char *const *l = pass ? k_session_env : k_join_env;
+        const size_t c = pass ? sizeof k_session_env / sizeof *k_session_env : sizeof k_join_env / sizeof *k_join_env;
+        for (size_t i = 0; i < c; ++i) {
+            if (!env_any(l[i])) continue;
+            SetEnvironmentVariableA(l[i], nullptr);
+            _putenv_s(l[i], "");
+            if (n++) cleared += ' ';
+            cleared += l[i] + 7;
+        }
+    }
+    host_setting_adventure_env_reread();
+    if (names && cap > 0) std::snprintf(names, (size_t)cap, "%s", n ? cleared.c_str() : "-");
+    return n;
+}
+
+/* How many names that clear list holds (the 43 the VS match end's line prints). */
+extern "C" int port_session_env_list_size(void)
+{
+    using namespace port;
+    return (int)(sizeof k_join_env / sizeof *k_join_env + sizeof k_session_env / sizeof *k_session_env);
+}
+
+/* The restart a title-time refusal takes (SEAMHUB1's leave_restart: the front door, the hand-off wait, this process ends). */
+extern "C" void port_session_restart(const char *why) { port::leave_restart(why); }

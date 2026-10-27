@@ -976,4 +976,15 @@ VsEatStats vs_eat_stats() {
     return s;
 }
 
+
+// SEAMVS1: the eat state of a match that ended in place (the mouth, the eater and victim halves), back to nothing for the next
+// match handed to this process. The wraps stay installed (they are the same seams in every match) and so do the counters.
+void vs_eat_match_reset() {
+    g.mouth_ptr = nullptr;
+    g.mouth_uid = 0;
+    g.e = EatE();
+    g.v = EatV();
+    g.cool_until = 0;
+}
+
 }  // namespace port
