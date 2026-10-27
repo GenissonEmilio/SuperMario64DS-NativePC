@@ -419,11 +419,12 @@ void seat_identity(int seat, char *name, unsigned *rgb) {
     const bool mine = seat == g.my_seat;
     if (g.carrier == kHub) {
         if (mine) {
-            if (const char *e = std::getenv("SM64DS_PLAYER_NAME"))
+            /* SEAMCLEAN1: the name and colour come off the session record (hal/comms_hub.h), not getenv */
+            if (const char *e = online_session_get(kSessPlayerName))
                 clean((const unsigned char *)e, (int)std::strlen(e), name,
                       kChatNameMax + 1, nullptr);
             unsigned c;
-            if (const char *e = std::getenv("SM64DS_PLAYER_COLOR"))
+            if (const char *e = online_session_get(kSessPlayerColor))
                 if (std::strlen(e) == 6 && rgb6(e, &c)) *rgb = c;
         } else {
             // The newest identity from that seat, peeked (W2 GHOSTWIRE1 is the

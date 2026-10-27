@@ -291,12 +291,13 @@ void player_list_view(PlayerListView *out) {
         PlayerListRow &r = out->row[out->n];
         std::memset(&r, 0, sizeof r);
         char nm[kPlistNameMax + 1] = {0};
-        if (const char *e = std::getenv("SM64DS_PLAYER_NAME"))
+        /* SEAMCLEAN1: name and colour from the session record (hal/comms_hub.h), not getenv */
+        if (const char *e = online_session_get(kSessPlayerName))
             clean_name((const unsigned char *)e, (int)std::strlen(e), nm);
         if (!nm[0]) std::snprintf(nm, sizeof nm, "PLAYER %d", my_seat + 1);
         std::strcpy(r.name, nm);
         unsigned rgb = kDefaultRgb[my_seat & 3];
-        if (const char *e = std::getenv("SM64DS_PLAYER_COLOR")) hexval(e, &rgb);
+        if (const char *e = online_session_get(kSessPlayerColor)) hexval(e, &rgb);
         r.body_rgb = rgb;
         r.character = mychar;
         fill_row(r, my_seat, true, mine, mine);

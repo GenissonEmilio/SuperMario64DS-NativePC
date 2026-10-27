@@ -52,7 +52,8 @@ void init_once() {
     g.enabled = !(e && e[0] == '0' && e[1] == 0);
     e = std::getenv("SM64DS_STAR_TALLY_LOG");
     g.log = e && *e && !(e[0] == '0' && e[1] == 0);
-    if (const char *nm = std::getenv("SM64DS_PLAYER_NAME")) if (*nm) g.key = fnv(nm);
+    /* SEAMCLEAN1: the name off the session record (hal/comms_hub.h), not getenv */
+    if (const char *nm = online_session_get(kSessPlayerName)) if (*nm) g.key = fnv(nm);
     if (const char *f = std::getenv("SM64DS_STAR_TALLY_FAKE")) {
         const char *p = f; int k = 0;
         while (*p && k < 6) {

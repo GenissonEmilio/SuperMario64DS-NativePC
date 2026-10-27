@@ -183,6 +183,7 @@
    not RAM, so restoring a state must not un-write a save. */
 #include "hal/dsstate_seg.h"
 #include "hal/host_settings.h"   /* adventure_ghost_mode() */
+#include "hal/comms_hub.h"       /* SEAMCLEAN1: port::online_session_get, the session record */
 #include <random>
 
 #include <cstddef>
@@ -513,8 +514,9 @@ bool online_wanted()
     if (k && *k == '0') return false;
     const char *vs = std::getenv("SM64DS_VS_MAP");
     if (vs && *vs) return false;
-    const char *r = std::getenv("SM64DS_COMMS_RELAY");
-    const char *m = std::getenv("SM64DS_HUB_PORT");
+    /* SEAMCLEAN1: the relay and the test mesh's port come off the session record, not getenv */
+    const char *r = port::online_session_get(port::kSessRelay);
+    const char *m = port::online_session_get(port::kSessHubPort);
     if (!((r && *r) || (m && *m))) return false;
     return port::adventure_ghost_mode();
 }

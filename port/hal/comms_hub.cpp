@@ -1303,6 +1303,11 @@ const char *online_session_get(OnlineSessionField f) {
     return g_sess.set[f] ? g_sess.value[f] : nullptr;
 }
 
+// SEAMCLEAN1: host_settings.cpp reads the Adventure flag through the record when this file is linked in
+extern "C" const char *(*port_session_adventure_hook)(void);
+static const char *session_adventure_now() { return online_session_get(kSessAdventure); }
+static struct SessionAdventureSeat { SessionAdventureSeat() { port_session_adventure_hook = session_adventure_now; } } g_session_adventure_seat;
+
 const char *online_session_name(OnlineSessionField f) {
     return (f >= 0 && f < kSessFields) ? k_sess_names[f] : "?";
 }

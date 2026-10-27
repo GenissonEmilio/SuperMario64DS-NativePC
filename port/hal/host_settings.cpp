@@ -2835,13 +2835,16 @@ extern "C" int host_setting_chars_from_start(void)
    on, so a proof run can pin the answer without editing a player's file; unset
    is the file's answer, live re-read included. Read once, like every other env
    in this file's neighbourhood. */
+extern "C" { const char *(*port_session_adventure_hook)(void) = 0; }   /* hal/comms_hub.cpp seats it (SEAMCLEAN1) */
 static int g_adventure_env = -2;   /* SEAMHUB1: the env latch below, out where the in-place leave can re-arm it */
 
 extern "C" int host_setting_adventure_ghosts(void)
 {
     int &env = g_adventure_env;
     if (env == -2) {
-        const char *e = getenv("SM64DS_ADVENTURE");
+        /* SEAMCLEAN1: the session record's answer when hal/comms_hub.cpp is linked in (it seats the hook), else the environment's
+           (the narrow harnesses that link this file alone) */
+        const char *e = port_session_adventure_hook ? port_session_adventure_hook() : getenv("SM64DS_ADVENTURE");
         env = e ? ((e[0] == '0' && e[1] == 0) ? 0 : 1) : -1;
     }
     if (env >= 0) return env;

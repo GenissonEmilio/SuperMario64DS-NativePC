@@ -623,10 +623,11 @@ void world_party_view(WparView *out) {
         WparRow &r = out->row[n++];
         std::memset(&r, 0, sizeof r);
         r.seat = my_seat;
-        if (const char *e = std::getenv("SM64DS_PLAYER_NAME")) clean_name((const unsigned char *)e, (int)std::strlen(e), r.name);
+        /* SEAMCLEAN1: name and colour from the session record (hal/comms_hub.h), not getenv */
+        if (const char *e = online_session_get(kSessPlayerName)) clean_name((const unsigned char *)e, (int)std::strlen(e), r.name);
         if (!r.name[0]) std::snprintf(r.name, sizeof r.name, "PLAYER %d", my_seat + 1);
         r.body_rgb = kDefaultRgb[my_seat & 3];
-        if (const char *e = std::getenv("SM64DS_PLAYER_COLOR")) {
+        if (const char *e = online_session_get(kSessPlayerColor)) {
             char *end = nullptr;
             const unsigned long v = std::strtoul(e, &end, 16);
             if (end && *end == 0 && std::strlen(e) == 6) r.body_rgb = (unsigned)v;
