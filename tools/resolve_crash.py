@@ -39,6 +39,16 @@ refusals guard every resolution now: an offset past the image's end
 port/tools/faultmap.py) is refused outright, and a resolution implausibly far
 past the symbol it matched is refused even inside the image, where the data
 sections sit past the last code symbol.
+
+OTHER MODULES ARE NAMED, AND LEFT ALONE. Since lane CRASHWALK1 the dump names
+the module of every address: the port's own image keeps the bare "+0x<rva>"
+form, another image prints "<name>+0x<rva>" (ntdll.dll+0x000b5abb), and an
+address in no image prints raw with "(no module)". A "+0x" token glued to a
+module name is an offset into THAT module, so resolving it against the exe map
+would name a wrong symbol with full confidence; such a token is left as it is
+unless the name is the port's own (the first "module <base>-<end> <name>" line
+of the dump, or the exe next to the map, or walk_window.exe /
+walk_window_hires.exe), which an older block of the dump also prints glued.
 """
 import argparse
 import glob
@@ -49,6 +59,11 @@ import sys
 # the dump writes "+NNNNNNNN" (8 hex, no 0x); crash.txt/exit.txt also print a
 # "+0xNNNNNNNN" style in a couple of spots, so accept both.
 OFF_RE = re.compile(r"\+(?:0x)?([0-9a-fA-F]{8})\b")
+# the module name glued in front of a "+0x" token, read backwards from the "+"
+NAME_TAIL_RE = re.compile(r"([A-Za-z0-9_.\-]+)$")
+# the dump's module table row; the first one is the port's own image
+MODULE_RE = re.compile(r"^module ([0-9a-fA-F]{8})-([0-9a-fA-F]{8}) (\S+)\s*$")
+PORT_NAMES = ("walk_window.exe", "walk_window_hires.exe")
 # a MAP symbol row:  0001:00003c20       _main            00404c20 f   walk_window.cpp.obj
 SYM_RE = re.compile(
     r"^\s*[0-9a-fA-F]{4}:[0-9a-fA-F]{8}\s+"
@@ -143,14 +158,35 @@ def resolve_one(offset, syms):
     return name, offset - rva, obj
 
 
-def annotate(line, syms, size=None):
+def port_names_for(lines, map_path=None):
+    """The names that mean the port's own image: the dump's first module row,
+    the exe next to the map, and the two shipped exe names."""
+    names = set(n.lower() for n in PORT_NAMES)
+    if map_path:
+        names.add((os.path.splitext(os.path.basename(map_path))[0] + ".exe").lower())
+    for line in lines:
+        mm = MODULE_RE.match(line.strip())
+        if mm:
+            names.add(mm.group(3).lower())
+            break
+    return names
+
+
+def annotate(line, syms, size=None, port_names=None):
     """Append resolved symbol names to every +offset token on a line.
 
     An offset the map cannot honestly answer gets a refusal in the slot a
-    resolution would occupy, never a confident wrong name.
+    resolution would occupy, never a confident wrong name. A token glued to
+    another module's name ("ntdll.dll+0x...") is not an exe offset and is
+    left alone.
     """
+    if port_names is None:
+        port_names = set(n.lower() for n in PORT_NAMES)
     hits = []
     for m in OFF_RE.finditer(line):
+        glued = NAME_TAIL_RE.search(line[:m.start()])
+        if glued and glued.group(1).lower() not in port_names:
+            continue
         off = int(m.group(1), 16)
         if size is not None and off >= size:
             hits.append("<outside the module: image ends at +0x%x, "
@@ -243,6 +279,24 @@ def selftest():
          annotate("frame 1: +0x00002010", syms, None),
          "__last_code +0x10 (tail.cpp.obj)")
 
+    # lane CRASHWALK1: a token glued to ANOTHER module is an offset into that
+    # module; resolving it against the exe map would name a wrong symbol
+    want("a line naming another module is left alone",
+         annotate("  frame 0: ntdll.dll+0x00001104", syms, FIX_SIZE),
+         "ntdll.dll+0x00001104", absent="->")
+    want("another module's token is skipped, the port's on the same line "
+         "still resolves",
+         annotate("  [8] user32.dll+0x00001104 +0x00001104", syms, FIX_SIZE),
+         "user32.dll+0x00001104 +0x00001104   ->   ?Render@Trap@@QAEHXZ +0x4 "
+         "(trap.cpp.obj)", absent="| ")
+    want("a token glued to the port's own name (first module row) resolves",
+         annotate("  [2] game.exe+0x00001104", syms, FIX_SIZE,
+                  port_names_for(["module 00400000-00500000 game.exe"])),
+         "?Render@Trap@@QAEHXZ +0x4 (trap.cpp.obj)")
+    want("a raw no-module address is left alone",
+         annotate("  frame 3: 6cdcd8e0 (no module)", syms, FIX_SIZE),
+         "6cdcd8e0 (no module)", absent="->")
+
     print("SELFTEST %s" % ("PASSED" if not bad else "FAILED (%d)" % bad))
     return 1 if bad else 0
 
@@ -297,8 +351,10 @@ def main():
               "bound" % MAX_CODE_DELTA, file=sys.stderr)
 
     with open(dump, "r", errors="replace") as f:
-        for line in f:
-            print(annotate(line, syms, size))
+        lines = f.readlines()
+    names = port_names_for(lines, map_path)
+    for line in lines:
+        print(annotate(line, syms, size, names))
     return 0
 
 

@@ -23286,6 +23286,7 @@ int main(void)
            the cross-check below it is what makes a green row a proof that the
            two counters agreed on all of it. */
         port_last_frame = port_rom_frame_checked(frame, "fault-context");
+        PORT_FAULT_TEST_TICK(port_last_frame);   /* dev-only SM64DS_FAULT_TEST, fault_probe.h */
         /* the frame's stdout, one write; the setvbuf note above is why */
         { HITCH_SCOPE(HK_FLUSH); fflush(stdout); }   /* HITCH9C */
         /* SM64DS_COMMS_STOP_ROUND=R (run rel0215 lane LAGDELAY): under a
