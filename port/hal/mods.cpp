@@ -912,26 +912,49 @@ namespace {
 
 /* WHAT THE GAME HAS READ, BY FAT ID AND WHEN. Every card block the ROM reads names the files it covers (hal/fs_names.cpp); the
    phase is the boot (before the title was ever live), the title (scene 1 live) or later (a level or another scene). It is what the
-   held-file refusal reads. DEV BUILDS ONLY (lane SEAMART1): the kit has no relatch caller (the dev knob below is its only one, and
-   the relatch links out of the kit), so the kit seats no hook and carries no record; there g_read_phase stays zero and the skin in
-   place's held check (which only ever meets arc0 members, never counted as held) decides as it does now. */
+   held-file refusal reads, so it runs in every build, the kit included (lane SEAMART2): the relatch's callers (the in-place leave of an
+   online world, the join) are kit code, and a kit with no record would accept every files/ change. One byte per FAT id and an OR per
+   card block. Only the per-id block counters, the SM64DS_FS_CENSUS dump and the knobs below are dev only. The first card read after the
+   title says the record's two counts once (boot, title), in every build: the kit's proof that its record is the dev build's. */
 enum { RD_BOOT = 1, RD_TITLE = 2, RD_LATER = 4, FAT_IDS = 4096 };
 unsigned char g_read_phase[FAT_IDS];
+volatile int g_title_seen;
+volatile int g_record_said;
 #ifndef PORT_ROM_CLEAN
 unsigned g_read_count[FAT_IDS];
-volatile int g_title_seen;
+#endif
+
+void record_say(void)
+{
+    unsigned nb = 0, nt = 0;
+    for (unsigned i = 0; i < FAT_IDS; ++i) {
+        if (g_read_phase[i] & RD_BOOT) ++nb;
+        if (g_read_phase[i] & RD_TITLE) ++nt;
+    }
+    fprintf(stderr, "[mods] file record at the end of the title: %u file id(s) read at boot, %u while the title was live\n", nb, nt);
+    fflush(stderr);
+}
 
 void census_note(unsigned id)
 {
     if (id >= FAT_IDS) return;
     const int sc = port_scene_live_id();
     if (sc == 1) g_title_seen = 1;
+    else if (g_title_seen && !g_record_said) { g_record_said = 1; record_say(); }
     g_read_phase[id] |= sc == 1 ? RD_TITLE : (g_title_seen ? RD_LATER : RD_BOOT);
+#ifndef PORT_ROM_CLEAN
     ++g_read_count[id];
+#endif
 }
 
 struct NoteSet { NoteSet() { port_nitrofs_census_hook = census_note; } } g_note_set;
-#endif
+
+/* SEAMHUB1 (SEAMMODS1 note c): a relatch at the title AFTER A LEVEL (the in-place leave of an online world) cannot tell which of the
+   files a level read the game still keeps across the return to the title, so on that call every one of them counts as held, a loose
+   file or an archive member alike (lane SEAMART2). port_mods_relatch_after_level raises it for the one call. */
+int g_after_level;
+
+int held_mask(void) { return RD_BOOT | RD_TITLE | (g_after_level ? RD_LATER : 0); }
 
 /* ARCHIVE MEMBERS (ids >= 0x8000, lane SEAMART1): a card block read inside a NARC names the NARC's own FAT id, so a member override is
    held when the archive it lives in was read at boot or while the title is live: what the ROM decoded out of c2d (2D art), cee / cef
@@ -968,18 +991,19 @@ int archive_of(unsigned id)
 
 bool held_at_title(unsigned id)
 {
-    if (id < FAT_IDS) return (g_read_phase[id] & (RD_BOOT | RD_TITLE)) != 0;
+    if (id < FAT_IDS) return (g_read_phase[id] & held_mask()) != 0;
     const int a = archive_of(id);
     if (a < 0 || a == ARC_PER_LEVEL) return false;
     const unsigned narc = narc_fat_id(a);
-    return narc && (g_read_phase[narc] & (RD_BOOT | RD_TITLE)) != 0;
+    return narc && (g_read_phase[narc] & held_mask()) != 0;
 }
 
-/* how a held id was read, for the refusal line: "at boot" / "at the title", through its archive for a member */
+/* how a held id was read, for the refusal line: "at boot" / "at the title" / "in a level", through its archive for a member */
 const char *held_when(unsigned id)
 {
     const unsigned f = id < FAT_IDS ? id : narc_fat_id(archive_of(id));
-    return f < FAT_IDS && (g_read_phase[f] & RD_BOOT) ? "at boot" : "at the title";
+    if (f >= FAT_IDS) return "at the title";
+    return (g_read_phase[f] & RD_BOOT) ? "at boot" : (g_read_phase[f] & RD_TITLE) ? "at the title" : "in a level";
 }
 
 /* the path of a FAT id, or of a member: "<narc> member <n>" */
@@ -1287,9 +1311,12 @@ struct ReapSet { ReapSet() { port_level_reap_hook = reskin_at_level_change; } } 
 /* ---- dev knobs, compiled out of the kit --------------------------------------------------------------------------------------
    SM64DS_MODS_RELATCH_AT=<tick>[,<id>+<id>...][;<tick>[,...]]...  at the title's <tick>th frame (counted from the first frame the
    title is the live scene) call the relatch; with a list, that list stands in for settings.json's EnabledMods ("-" = no mods).
+   A tick written <tick>L calls it as port_mods_relatch_after_level (files a level read count as held).
+   SM64DS_MODS_MARK_LATER=<id>[,<id>...]  marks those FAT ids read in a level, as if a level had read them before this title (no
+   in-place return from a level to the title on this branch); with an L step it proves the after-level rule on a dev build.
    SM64DS_FS_CENSUS=<tick>  at that title frame (default 200) and at exit, print every FAT id the game has read, with when
    (boot / title / later) and how often, and the fs cache size. */
-struct RelatchStep { int tick; bool has_list; std::string json; };
+struct RelatchStep { int tick; bool has_list; bool after_level; std::string json; };
 std::vector<RelatchStep> g_steps;
 int g_census_tick = -1;
 unsigned g_title_ticks;
@@ -1326,8 +1353,12 @@ void dev_frame(void)
     for (size_t i = 0; i < g_steps.size(); ++i)
         if (g_steps[i].tick == (int)t) {
             char reason[64];
-            snprintf(reason, sizeof reason, "SM64DS_MODS_RELATCH_AT title frame %u", t);
-            relatch(reason, g_steps[i].has_list ? g_steps[i].json.c_str() : 0);
+            snprintf(reason, sizeof reason, "SM64DS_MODS_RELATCH_AT title frame %u%s", t, g_steps[i].after_level ? " after a level" : "");
+            if (g_steps[i].after_level) g_after_level = 1;
+            const int r = relatch(reason, g_steps[i].has_list ? g_steps[i].json.c_str() : 0);
+            g_after_level = 0;
+            fprintf(stderr, "[mods] dev: relatch returned %d%s\n", r, r ? "" : " (a real caller restarts the game here)");
+            fflush(stderr);
         }
 }
 
@@ -1353,6 +1384,7 @@ struct DevKnobs {
                 if (steps[i].empty()) continue;
                 RelatchStep st;
                 st.tick = atoi(steps[i].c_str());
+                st.after_level = steps[i].find('L') != std::string::npos && steps[i].find('L') < steps[i].find(',');
                 const size_t comma = steps[i].find(',');
                 st.has_list = comma != std::string::npos;
                 st.json = "[";
@@ -1363,6 +1395,14 @@ struct DevKnobs {
                 }
                 st.json += "]";
                 g_steps.push_back(st);
+            }
+        }
+        const char *ml = getenv("SM64DS_MODS_MARK_LATER");
+        if (ml && *ml) {
+            const std::vector<std::string> ids = split(ml, ',');
+            for (size_t k = 0; k < ids.size(); ++k) {
+                const unsigned id = (unsigned)strtoul(ids[k].c_str(), 0, 0);
+                if (id < FAT_IDS) g_read_phase[id] |= RD_LATER;
             }
         }
         const char *c = getenv("SM64DS_FS_CENSUS");
@@ -1379,6 +1419,16 @@ struct DevKnobs {
 }  /* namespace */
 
 extern "C" int port_mods_relatch_at_title(const char *reason) { return relatch(reason, 0); }
+
+/* SEAMHUB1: the same relatch, for a title reached from a level (the in-place leave of an online world): files a level read count as
+   held (note c above held_at_title). */
+extern "C" int port_mods_relatch_after_level(const char *reason)
+{
+    g_after_level = 1;
+    const int r = relatch(reason, 0);
+    g_after_level = 0;
+    return r;
+}
 
 /* SEAMSND1: the skin in place (see THE SKIN IN PLACE above). port_char_reskin_now: switch now, where no level holds the old skin
    (away_from_title = 1 anywhere but the title). port_char_reskin_next_level: a pick inside a level; checks everything now (a dry run)

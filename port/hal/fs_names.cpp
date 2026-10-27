@@ -554,11 +554,10 @@ extern "C" void port_nitrofs_patch_relatch(void)
     port_fs_card_patches(patch_emit);
 }
 
-/* Told the FAT id of every file a card block covers. Null in the kit
-   (PORT_ROM_CLEAN): nothing seats it there. A dev build's hal/mods.cpp seats
-   it at start (lane SEAMART1 corrected this note: it was seated whether or
-   not the SM64DS_FS_CENSUS knob is on) to record which ids the game read and
-   when, for the relatch's held-file check and the census knob's dump. */
+/* Told the FAT id of every file a card block covers. hal/mods.cpp seats it
+   at start in every build, the kit included (lane SEAMART2), to record which
+   ids the game read and when: the relatch's held-file check reads that record.
+   Only the dev build counts blocks per id, for the SM64DS_FS_CENSUS dump. */
 extern "C" { void (*port_nitrofs_census_hook)(unsigned file_id) = 0; }
 
 namespace {
