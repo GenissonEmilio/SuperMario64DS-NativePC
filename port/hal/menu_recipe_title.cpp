@@ -484,6 +484,30 @@ void online_overlays(MenuLayout *L, bool main_page, bool show_help)
     menu_online_add_modal(L, of);
 }
 
+/* TITLEART1: THE SWAP FADE WITHOUT THE HD UI MOD. Here the face, the wrench and the ROM's own plates are cut from the ROM's lower screen, which the
+   ROM itself whitens through its brightness fade (rom_swap_level, the level TITLEUI1 reads for the HD page); only the pieces the port draws in code (the
+   online planks, the arrow, the ?) stayed at full strength. They take alpha (255 - whiteness) over a picture that is going white under them, so they go
+   white with it. Pieces cut from the ROM's picture are left alone (fading them too would fade them twice). */
+Box rest_box(int id, const Box &live)      /* TITLEART1: the element's box on the settled main page (the dumped boxes), else the live one */
+{
+    for (int k = 0; k < 24; ++k)
+        if (kBoxes[k].id == id) return kBoxes[k];
+    return live;
+}
+
+void swap_fade_host(MenuLayout *L, int from, int a)
+{
+    if (a >= 255) return;
+    for (int i = from; i < L->np; ++i) {
+        MenuPiece &p = L->p[i];
+        if (p.nodraw || p.src == SRC_TOP_PIC || p.src == SRC_SUB) continue;
+        if (a <= 0) { p.nodraw = 1; continue; }
+        const int own = p.alpha ? p.alpha : 255;
+        const int na = own * a / 255;
+        p.alpha = (uint8_t)(na < 1 ? 1 : na);
+    }
+}
+
 void build_main(MenuLayout *L, bool intro)
 {
     const int cw = L->w * L->uden / L->unum;                 /* exact canvas width in units, floored */
@@ -550,6 +574,7 @@ void build_main(MenuLayout *L, bool intro)
        ROM's own planks (the cut pieces below draw the real plates at full size). The plates start at source row 140 (the cut pieces' own y),
        the head, star, sparkles and cursor are above it: the piece stops there. With the host planks the plate sprites are never submitted. */
     const bool plates_in_layer = !(menu_hostimg_ready(MENU_IMG_BTN_MP) && menu_hostimg_ready(MENU_IMG_BTN_ADV) && menu_hostimg_ready(MENU_IMG_BTN_REC));
+    const int np_swap = L->np;      /* TITLEART1: from here the lower screen's pieces; the face swap fades the code-drawn ones (swap_fade_host) */
     MenuPiece face = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, plates_in_layer ? 140 : 192, MENU_AX_C, MENU_AY_T, tune(2, -18) + 20, tune(3, 46), hk, hd);
     face.keycover = 1; face.bg = 1; face.has_ex = 1; face.ex.x = 216; face.ex.y = 0; face.ex.w = 40; face.ex.h = 40;
     /* INTRO2: the ROM's head entrance fades in over its first 9 ticks on the DS-art title too (the intro only, never a later page) */
@@ -574,7 +599,12 @@ void build_main(MenuLayout *L, bool intro)
         Box bx;
         if (!box_of(kPlateId[k], &bx)) continue;
         int w1000 = 1000;
-        if (online_plank(L, k, bx, 0, 0, cur == kPlateId[k], cur == kPlateId[k] && prs, true, &w1000)) continue;   /* NAME1: ONLINE / ADVENTURE ONLINE / VS */
+        /* TITLEART1: a code plank stands on its element's REST box (the dumped one). After the face swap the ROM brings its plates back in from off the
+           screen (top-state 1) and the live boxes travel with them, wrapping past the screen's edges; a code plank that followed them vanished, then slid
+           in crossed with its neighbour and cut by the window's edge (VS over SOLO). The ROM's own plate art is not in this picture (it is under the
+           code plank), so nothing of the ROM's arrival is lost; a touch during it is not taken by the ROM anyway. */
+        const Box rb = rest_box(kPlateId[k], bx);
+        if (online_plank(L, k, rb, 0, 0, cur == kPlateId[k], cur == kPlateId[k] && prs, true, &w1000)) continue;   /* NAME1: ONLINE / ADVENTURE ONLINE / VS */
         if (planks) {
             /* ASSET2: a plank drawn at the window's resolution over the ROM's own box (the 3D plate is not drawn: its
                wallpaper object is skipped at submit and its sprite is not in any piece). 40 units tall (the box height),
@@ -638,6 +668,7 @@ void build_main(MenuLayout *L, bool intro)
                plank's dark top border and reads as cut off (it bobs from 1 unit above the border to 1 unit into it) */
             Box bx;
             if (box_of(cur, &bx)) {
+                if (!art_arrows) bx = rest_box(cur, bx);      /* TITLEART1: the code arrow names the code plank, which stands on its rest box */
                 ar.fy = (short)(((bx.y0 * 2 - 2 + bob2) * L->unum) / (2 * L->uden) - dh);
                 ar.fx = (short)(L->w / 2 + ((bx.x0 + bx.x1) / 2 - 128) * L->unum / L->uden - dw / 2);
             } else {
@@ -646,7 +677,11 @@ void build_main(MenuLayout *L, bool intro)
         }
         if (ar.fx > -1000) { if (art_arrows) menu_add_piece(L, ar); else menu_online_add_arrow(L, cur == 7 ? 1 : 0, ar.fx, ar.fy, dw, dh); }
     }
+    const Chore cs = t_f ? t_f->ch : Chore();
+    if (cs.swap_a >= 0) swap_fade_host(L, np_swap, cs.swap_a);      /* TITLEART1: the code planks and the arrow take the ROM's swap fade */
+    const int np_ov = L->np;
     { const OnlFacts *of = onl_facts_of(L); online_overlays(L, true, of && of->on); }     /* NAME1: the ? button and the modal screen */
+    { const OnlFacts *of = onl_facts_of(L); if (cs.swap_a >= 0 && !(of && of->scr != ONL_SCR_NONE)) swap_fade_host(L, np_ov, cs.swap_a); }     /* TITLEART1: the ? too */
 }
 
 
