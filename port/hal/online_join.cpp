@@ -458,6 +458,8 @@ void leave_restart(const char *why, bool cleared = false)
     }
 }
 
+void leave_frame();
+
 void leave_at_title()
 {
     g_leave = 2;
