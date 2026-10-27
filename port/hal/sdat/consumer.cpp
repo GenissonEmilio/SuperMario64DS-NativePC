@@ -770,9 +770,14 @@ void sd_sound_init_host(void)
 // func_020119c8 was before the frame reaper was wired. hal/level_change.cpp calls
 // this from its teardown, at the point the ROM's Scene::BeforeCleanupResources
 // would have fired, before the new level boots.
+extern "C" { void (*port_level_reap_hook)(void) = 0; }   /* SEAMSND1: hal/mods.cpp, a skin picked inside a level */
+
 extern "C" void sd_sound_level_reap(void)
 {
     func_02011974(data_0209b53c);
+    /* the same point is where a skin picked inside the old level is switched (hal/mods.cpp THE SKIN IN PLACE): the old level's
+       actors are gone and the new level has not booted, which is when the cartridge would load the character next */
+    if (port_level_reap_hook) port_level_reap_hook();
 }
 
 /* Put the command queue back in its just-booted shape, and it is the ROM that

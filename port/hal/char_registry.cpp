@@ -150,6 +150,18 @@ std::string json_string_list(const char *json, const char *key)
     return out;
 }
 
+int g_pending = -2;   /* SEAMSND1: a skin picked inside a level, for the next level load */
+
+void fill_skin(void)
+{
+    g_skin.clear();
+    if (g_active < 0) return;
+    const Chr &c = g_chr[(size_t)g_active];
+    for (int k = 0; k < 4; ++k)
+        if (!c.disk[k].empty() && ROM_FILES[c.base][k])
+            g_skin.push_back(std::make_pair(std::string(ROM_FILES[c.base][k]), c.disk[k]));
+}
+
 void resolve_active(void)
 {
     if (g_active != -2) return;
@@ -180,9 +192,7 @@ void resolve_active(void)
     }
     g_active = hit;
     const Chr &c = g_chr[(size_t)hit];
-    for (int k = 0; k < 4; ++k)
-        if (!c.disk[k].empty() && ROM_FILES[c.base][k])
-            g_skin.push_back(std::make_pair(std::string(ROM_FILES[c.base][k]), c.disk[k]));
+    fill_skin();
     fprintf(stderr, "[chars] skin active: %s (%s) on base %s, %u file(s)\n", c.full.c_str(), c.name.c_str(),
             BASE_NAME[c.base], (unsigned)g_skin.size());
 }
@@ -277,5 +287,23 @@ int port_char_skin_file(int k, const char **rom, const char **disk)
     *disk = g_skin[(size_t)k].second.c_str();
     return 1;
 }
+
+int port_char_select(int idx)
+{
+    const int was = port_char_active();
+    g_active = idx >= 0 && idx < (int)g_chr.size() ? idx : -1;
+    fill_skin();
+    g_pending = -2;
+    return was;
+}
+
+const char *port_char_mod_of(int idx)
+{
+    if (idx < 0 || idx >= (int)g_chr.size()) return 0;
+    return g_chr[(size_t)idx].mod.c_str();
+}
+
+int port_char_skin_pending(void) { return g_pending; }
+void port_char_skin_set_pending(int idx) { g_pending = idx; }
 
 }

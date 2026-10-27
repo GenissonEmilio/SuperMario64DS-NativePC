@@ -1036,6 +1036,143 @@ int relatch(const char *reason, const char *list_json)
     return 1;
 }
 
+/* ==== THE SKIN IN PLACE (run after093, lane SEAMSND1; one-process plan M3b) ====================================================
+   A skin is files and nothing else: char_registry's list of the base character's body and head files, served on top of every
+   files/ entry (build_overrides above), plus the HUD pictures hal/char_hud.cpp decodes for it. The cartridge reads a character's
+   files when a level loads it (Player::InitResources, under Stage::InitResources), so a skin can be switched without a restart
+   whenever no level holds the old one: the files layer is rebuilt for the new skin and the card image serves it, the same three
+   steps as the relatch above with the mod list unchanged. port_char_reskin_now does that at once (the file pick at the title,
+   the star select's pick once its course is chosen and the old level torn down); port_char_reskin_next_level checks the same
+   things inside a level and marks the pick, and the switch happens at the next level change, at the point the ROM's
+   Scene::BeforeCleanupResources runs (hal/sdat/consumer.cpp sd_sound_level_reap, after the old level's actors are gone and
+   before the new level boots). Refused (0, *why says why, nothing changed; the caller restarts as before) when:
+     - this is a multiplayer session (the base character is forced there);
+     - the old or the new skin comes from a code mod (a plugin cannot be unloaded);
+     - a skin file is one the game read at boot or at the title and still holds.
+   Away from the title the archives are unmounted with the title's own UnloadArchives first (see reskin_now): the body files are
+   arc0 members, and the ROM mounts an archive once. */
+extern "C" void port_char_hud_reskin_reset(void);   /* hal/char_hud.cpp */
+
+int g_reskin_pending_level;   /* 1 = the pending skin waits for the next level change */
+
+int reskin_check(int idx, int away_from_title, char *why, unsigned cap)
+{
+    why[0] = 0;
+    latch();
+    build_overrides();
+    if (port_mods_multiplayer()) {
+        snprintf(why, cap, "a multiplayer session forces the base character");
+        return 0;
+    }
+    const int cur = port_char_active();
+    const int ends[2] = { cur, idx };
+    for (int e = 0; e < 2; ++e) {
+        const char *mid = port_char_mod_of(ends[e]);
+        if (!mid) continue;
+        for (size_t i = 0; i < g_mods.size(); ++i)
+            if (g_mods[i].id == mid && g_mods[i].kind == "code") {
+                snprintf(why, cap, "the %s skin comes from code mod %s, and a plugin cannot be unloaded", e ? "new" : "running", mid);
+                return 0;
+            }
+    }
+    (void)away_from_title;
+    return 1;
+}
+
+/* The archive table the ROM's LoadArchive / UnloadArchives walk (src/LoadArchive.c, src/UnloadArchives.c): 13 records of five words,
+   the first the mounted archive (0 = not mounted). */
+extern "C" int data_0208ecf4[];
+extern "C" void UnloadArchives(void);
+
+unsigned archives_mounted(void)
+{
+    unsigned n = 0;
+    for (int i = 0; i < 13; ++i)
+        if (data_0208ecf4[i * 5]) ++n;
+    return n;
+}
+
+int reskin_now(int idx, const char *reason, int away_from_title, int dry, char *why, unsigned cap)
+{
+    if (!reason) reason = "?";
+    if (!reskin_check(idx, away_from_title, why, cap)) {
+        fprintf(stderr, "[chars] skin in place refused (%s): %s\n", reason, why);
+        fflush(stderr);
+        return 0;
+    }
+    const std::unordered_map<unsigned, std::string> old_override = g_override;
+    const int was = port_char_select(idx);
+    g_override.clear();
+    g_override_built = 0;
+    build_overrides();
+    unsigned changed = 0;
+    std::unordered_map<unsigned, std::string> all = old_override;
+    for (std::unordered_map<unsigned, std::string>::const_iterator it = g_override.begin(); it != g_override.end(); ++it)
+        all[it->first];
+    for (std::unordered_map<unsigned, std::string>::const_iterator it = all.begin(); it != all.end() && !why[0]; ++it) {
+        std::unordered_map<unsigned, std::string>::const_iterator o = old_override.find(it->first), n = g_override.find(it->first);
+        const std::string ov = o == old_override.end() ? "" : o->second, nv = n == g_override.end() ? "" : n->second;
+        if (ov == nv) continue;
+        ++changed;
+        if (held_at_title(it->first)) {
+            const char *cp = port_fs_catalog_path(it->first);
+            snprintf(why, cap, "skin file id %u (%s) was read %s and is still held", it->first, cp ? cp : "?",
+                     (g_read_phase[it->first] & RD_BOOT) ? "at boot" : "at the title");
+        }
+    }
+    if (why[0] || dry) {
+        port_char_select(was);
+        g_override = old_override;
+        g_override_built = 1;
+        if (!why[0]) return 1;   /* the dry run of a pick inside a level: it can switch at the next level change */
+        fprintf(stderr, "[chars] skin in place refused (%s): %s\n", reason, why);
+        fflush(stderr);
+        return 0;
+    }
+    /* THE PLAYER MODELS ARE ARCHIVE MEMBERS (arc0), and the ROM mounts an archive once: LoadArchive returns at once while its record
+       is set, and only the title's UnloadArchives (src/game/stages/d_s_title.cpp) clears the records. At the title they are already
+       clear. Away from it (a level change, the star select), the old level is torn down and the next one has not booted, so the
+       records are cleared here with the title's own call, and the next Stage::InitResources mounts arc0 again off the card, where
+       the new skin's members are served. Without this the level after the switch read the old mount: the skin did not show. */
+    const unsigned mounted = archives_mounted();
+    if (mounted) UnloadArchives();
+    g_said.clear();
+    port_fs_mod_relatch_reset();
+    port_nitrofs_patch_relatch();
+    port_char_hud_reskin_reset();
+    g_reskin_pending_level = 0;
+    if (mounted)
+        fprintf(stderr, "[chars] %u archive(s) were mounted: unmounted with the title's own UnloadArchives, so the next level mounts "
+                "them again with the new skin\n", mounted);
+    PROCESS_MEMORY_COUNTERS pmc;
+    memset(&pmc, 0, sizeof pmc);
+    K32GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof pmc);
+    fprintf(stderr, "[chars] skin switched in place (%s): %s -> %s, %u ROM file id(s) changed, no restart; working set %lu KB\n",
+            reason, was >= 0 ? port_char_key(was) : "plain", idx >= 0 ? port_char_key(idx) : "plain", changed,
+            (unsigned long)(pmc.WorkingSetSize / 1024));
+    fflush(stderr);
+    return 1;
+}
+
+/* hal/sdat/consumer.cpp's level reap, seated below: the old level's actors are gone, the next level has not booted */
+void reskin_at_level_change(void)
+{
+    if (!g_reskin_pending_level) return;
+    const int idx = port_char_skin_pending();
+    g_reskin_pending_level = 0;
+    if (idx == -2) return;
+    char why[400];
+    if (!reskin_now(idx, "the level change after a pick inside a level", 1, 0, why, sizeof why))
+        fprintf(stderr, "[chars] the pending skin was not applied (%s); the running one stays\n", why);
+}
+
+}  /* namespace */
+
+extern "C" void (*port_level_reap_hook)(void);   /* hal/sdat/consumer.cpp */
+
+namespace {
+struct ReapSet { ReapSet() { port_level_reap_hook = reskin_at_level_change; } } g_reap_set;
+
 #ifndef PORT_ROM_CLEAN
 /* ---- dev knobs, compiled out of the kit --------------------------------------------------------------------------------------
    SM64DS_MODS_RELATCH_AT=<tick>[,<id>+<id>...][;<tick>[,...]]...  at the title's <tick>th frame (counted from the first frame the
@@ -1132,3 +1269,22 @@ struct DevKnobs {
 }  /* namespace */
 
 extern "C" int port_mods_relatch_at_title(const char *reason) { return relatch(reason, 0); }
+
+/* SEAMSND1: the skin in place (see THE SKIN IN PLACE above). port_char_reskin_now: switch now, where no level holds the old skin
+   (away_from_title = 1 anywhere but the title). port_char_reskin_next_level: a pick inside a level; checks everything now (a dry run)
+   and marks it for the next level change. 1 = done / marked; 0 = refused, *why says why, the caller restarts as before. */
+extern "C" int port_char_reskin_now(int idx, const char *reason, int away_from_title, char *why, unsigned cap)
+{
+    return reskin_now(idx, reason, away_from_title, 0, why, cap);
+}
+
+extern "C" int port_char_reskin_next_level(int idx, char *why, unsigned cap)
+{
+    if (!reskin_now(idx, "a pick inside a level", 1, 1, why, cap)) return 0;
+    port_char_skin_set_pending(idx);
+    g_reskin_pending_level = 1;
+    fprintf(stderr, "[chars] skin %s marked for the next level load (the cartridge loads the character with the level); this level "
+            "keeps %s\n", idx >= 0 ? port_char_key(idx) : "plain", port_char_active() >= 0 ? port_char_key(port_char_active()) : "plain");
+    fflush(stderr);
+    return 1;
+}
