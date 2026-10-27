@@ -309,10 +309,11 @@ void arrow_draw(const MenuLayout *L, int piece, uint32_t *dst, int w, int h, int
     const int X = L->dest[piece][0], Y = L->dest[piece][1], W = L->dest[piece][2], H = L->dest[piece][3];
     if (W < 1 || H < 1) return;
     const unsigned int *art = P.wtw ? kArrowUpArt : kArrowDownArt;
+    const int a = P.alpha ? P.alpha : 255;      /* TITLEUI1: the piece's alpha (the title's face swap fades the arrow with the wrench) */
     for (int y = 0; y < H; ++y)
         for (int x = 0; x < W; ++x) {
             const unsigned int c = art[(y * 15 / H) * 22 + (x * 22 / W)];
-            if (c >> 24) put(dst, stride, w, h, X + x, Y + y, c & 0xFFFFFF, 255);
+            if (c >> 24) put(dst, stride, w, h, X + x, Y + y, c & 0xFFFFFF, a);
         }
 }
 }  // namespace
