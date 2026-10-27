@@ -753,6 +753,24 @@ extern "C" void *presenter_swap_device(void *dev1)
     return g_dev2;
 }
 
+/* THE CARD PATH IS REBUILT (run after093, lane MGFREEZE2). The thread is
+   stopped and its ring freed exactly as before a resize (the swap chain is
+   still alive at that point, which is the order every resize has used), and
+   then the presenter's own device and context are ABANDONED, not released:
+   hal/gpu_present.cpp abandons the swap chain on it too, because releasing
+   and flushing them mid-run crashed the AMD driver's worker thread in every
+   try (run after093, lane MGFREEZE1). The next presenter_swap_device makes a
+   fresh device, the way the first one was made. */
+extern "C" void presenter_abandon_device(void)
+{
+    presenter_end();
+    if (g_leaked) return;           /* a stuck thread still uses them: the presenter stays off */
+    g_dev2 = 0;
+    g_ctx2 = 0;
+    g_dev2_failed = 0;
+    g_sc = 0;
+}
+
 /* After the swap chain is released (process exit). */
 extern "C" void presenter_shutdown(void)
 {
