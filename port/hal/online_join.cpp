@@ -395,6 +395,7 @@ namespace ntr { namespace backup { void select_online(int on); bool online_selec
 extern "C" {
 extern void (*port_sdat_frame_hook)(void);                    /* hal/sdat/consumer.cpp: one call per game frame */
 int port_scene_live_id(void);                                 /* hal/scene_boot.cpp: 1 = the title is the live scene */
+int port_scene_is_hosted(int id);                             /* hal/scene_boot.cpp (SEAMCLEAN1) */
 int port_mods_relatch_after_level(const char *reason);        /* hal/mods.cpp */
 int port_mods_relatch_forced(const char *reason);             /* hal/mods.cpp (SEAMCLEAN1) */
 int port_mods_multiplayer(void);
@@ -522,6 +523,9 @@ extern "C" int port_online_leave_refusal(const char **why)
     const bool online = comms_hub_active() || online_session_get(kSessAdventure) || online_session_get(kSessRelay) ||
                         online_session_get(kSessHubPort);
     if (!online) return 0;
+    /* SEAMCLEAN1: SEAMQUIT1's can-host-title check, which port_quit_in_place_refusal makes before this runs for an offline quit
+       and which this test replaces wholesale: a build that does not host the title scene has no title to leave to */
+    if (!port_scene_is_hosted(1)) { *why = "this build does not host the title scene"; return 1; }
     static const char *const k_carrier[] = { "SM64DS_VS_MAP", "SM64DS_VS_PLAYERS", "SM64DS_VS_NETMODE", "SM64DS_COMMS_ROLE",
         "SM64DS_COMMS_HOST", "SM64DS_COMMS_SLOT", "SM64DS_NETMODE", "SM64DS_PARTY", "SM64DS_COOP", "SM64DS_COOP_HOST" };
     for (const char *n : k_carrier)
