@@ -2,7 +2,7 @@
  *
  * The launcher hands a coop room to the running game (in\HANDOFF_CONTRACT.md v1) instead of starting a second process once the game is
  * back at its title. The registry and the title poll are hal/handoff_poll.cpp's (lane SEAMVS1; on this lane's branch a fold-dropped
- * stand-in, hal/handoff_register_stub.cpp). This file only registers the "coop" kind; the work is hal/coop_boot.cpp's
+ * registry, hal/handoff_poll.cpp). This file only registers the "coop" kind; the work is hal/coop_boot.cpp's
  * port_coop_handoff_apply, which does in this process what a coop child does at boot with the same names (see its banner).
  * Linked into the game windows only (walk_window, walk_window_hires), like the registry. */
 #include <cstddef>

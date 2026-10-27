@@ -1539,7 +1539,7 @@ void inplace_step() {
 }  // namespace
 }  // namespace port
 
-/* hal/handoff_register_stub.cpp / hal/handoff_poll.cpp: the title poll only picks a request up when no session is up */
+/* hal/handoff_poll.cpp (the registry): the title poll only picks a request up when no session is up */
 extern "C" int port_coop_session_busy(void) {
     using namespace port;
     return (C.on || LV.st != kLvNone || IP.st != kIpNone) ? 1 : 0;
