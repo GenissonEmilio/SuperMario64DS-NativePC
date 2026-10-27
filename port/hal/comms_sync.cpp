@@ -935,6 +935,7 @@ unsigned char g_gw_prev_dkind = 0;   // GHOSTDOOR1: the last tick's door kind
 int      g_gw_v[3];
 unsigned g_gw_last_report_ms = 0;
 unsigned g_gw_frame = 0;
+bool     g_gw_quiet = false;       // SEAMHUB1: no periodic report (an in-place leave is under way)
 
 // Who I am on the wire. SM64DS_PLAYER_NAME (1..24 bytes, 0x20..0x7e),
 // SM64DS_PLAYER_COLOR / SM64DS_PLAYER_SHOES (six hex digits, the lobby's colour
@@ -2348,7 +2349,7 @@ void gw_tick() {
                   : (g_cfg.report ? 5 : 0);
         if (every < 0) every = 0;
     }
-    if (every > 0) {
+    if (every > 0 && !g_gw_quiet) {   /* SEAMHUB1: the in-place leave stops the report at the quit */
         if (!g_gw_last_report_ms) g_gw_last_report_ms = now;
         if ((unsigned)(now - g_gw_last_report_ms) >= (unsigned)every * 1000u) {
             g_gw_last_report_ms = now;
@@ -4792,6 +4793,7 @@ void comms_sync_leave_reset() {
     leave_zero(g_gw_v);
     g_gw_last_report_ms = 0;
     g_gw_frame = 0;
+    g_gw_quiet = false;
     g_gw_me = GwMe();
     leave_zero(g_body_seat);
     leave_zero(g_body_since);
@@ -4828,6 +4830,10 @@ void comms_sync_leave_reset() {
                  "body words: count %d -> %d (ROM %d -> %d), input gate %d -> %d, %d stale body pointer(s) cleared\n",
                  was_count, (int)data_0209f21c, was_rom, (int)data_0208a0e0, was_gate, data_0209fc68[0], bodies);
     std::fflush(stderr);
+}
+
+void comms_sync_reports_off() {
+    g_gw_quiet = true;
 }
 
 void comms_sync_identity_text(char *out, int cap) {

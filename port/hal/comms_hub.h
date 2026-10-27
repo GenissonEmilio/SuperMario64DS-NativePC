@@ -462,6 +462,8 @@ int online_session_clear();
 bool comms_hub_teardown(const char *why);
 // No more periodic "[hub]" report lines (the leave asks for this at the quit).
 void comms_hub_reports_off();
+// The same for the ghost layer's periodic "[ghost:tick]" line.
+void comms_sync_reports_off();
 // The other layers' halves, called by the leave after comms_hub_teardown:
 // hal/comms_sync.cpp (the ghost layer, its file globals, the read-once
 // identity, the own colour row and the ROM's body count / input gate words),

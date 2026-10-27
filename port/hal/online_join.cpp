@@ -366,6 +366,7 @@ void host_setting_adventure_env_reread(void);                 /* hal/host_settin
 int host_setting_lovesme_character(void);
 int host_setting_voice_enabled(void);
 void port_join_settings_rearm(void);                          /* hal/menu_join_plate.cpp */
+extern int port_front_end_in_place;                           /* hal/level_change.cpp (SEAMQUIT1) */
 int (*port_online_leave_restart_hook)(void) = 0;              /* tests/walk_window.cpp seats it */
 }
 
@@ -435,11 +436,11 @@ void leave_at_title()
     comms_sync_identity_text(id, sizeof id);
     const int lm = host_setting_lovesme_character();
     std::fprintf(stderr, "[seamless] now solo: save medium %s; identity %s; lobby colours %s; Loves Me %d (%s); adventure %d; "
-                 "multiplayer mod rule %d; %d mod(s) on; hub %s\n",
+                 "multiplayer mod rule %d; %d mod(s) on; hub %s (install latch reset); in-place quit flag %d until a level is handed back\n",
                  ntr::backup::online_selected() ? "THE ONLINE SAVE" : "the single player save", id,
                  env_any("SM64DS_VS_COLORS") ? "SET" : "none (SM64DS_VS_COLORS unset, as a solo boot)",
                  lm, lm ? "settings.json, read the same as a solo boot" : "Yoshi, the ROM", adventure_ghost_mode() ? 1 : 0,
-                 port_mods_multiplayer(), port_mods_count(), comms_hub_active() ? "STILL ACTIVE" : "off");
+                 port_mods_multiplayer(), port_mods_count(), comms_hub_active() ? "STILL ACTIVE" : "off", port_front_end_in_place);
     std::fflush(stderr);
     port_join_settings_rearm();
 }
@@ -499,6 +500,7 @@ extern "C" void port_online_leave_begin(int frame)
     g_leave_frame = frame;
     ntr::backup::select_online(0);
     comms_hub_reports_off();
+    comms_sync_reports_off();
     g_leave_prev_hook = port_sdat_frame_hook;
     port_sdat_frame_hook = leave_frame;
     std::fprintf(stderr, "[seamless] f%d leaving the online world in this process: the hub stays up through the fade, the title "
