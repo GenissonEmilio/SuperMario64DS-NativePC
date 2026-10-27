@@ -2590,8 +2590,14 @@ extern "C" int port_level_change_poll(void)
  *   scene 3 and scene 4 are the level path's own (the level change and the
  *     star-select interlude release or run them before the Stage is marked);
  *   scene 1, the pause and level-clear menus' quit rows, is answered by
- *     tests/walk_window.cpp's port_front_end_quit_poll, which releases the id
- *     before the Stage is marked and relaunches at the front door;
+ *     tests/walk_window.cpp's port_front_end_quit_poll. In an offline solo
+ *     session (run after093, lane SEAMQUIT1) the poll leaves the request in
+ *     place and raises port_front_end_in_place, and this crossing takes scene 1
+ *     exactly as it takes Game Over's QUIT: the title comes up in this process,
+ *     as it does on the cartridge. Every other session (online, VS, coop, a
+ *     code mod) keeps the old answer: the poll releases the id before the
+ *     Stage is marked and relaunches at the front door, so scene 1 is not
+ *     admitted here;
  *   a scene the port does not host is refused here, loudly, and the dispatch
  *     keeps the named slot-3 abort (st_clean only runs the ROM body inside
  *     this crossing): tearing a world down for a spawn the carrier will
@@ -2627,6 +2633,12 @@ static int g_crossing_live;       /* the reap pump is running: slot 3 may run
    destroyed the Stage and no level has booted since, so the apply builds one */
 
 extern "C" int port_level_crossing_live(void) { return g_crossing_live; }
+
+/* SEAMQUIT1: 1 while a quit row's scene-1 request is being answered in this
+   process (raised by tests/walk_window.cpp's port_front_end_quit_poll, which
+   also lowers it once a level has been handed back). Only then is scene 1 a
+   crossing; see the SCOPE list above. */
+extern "C" int port_front_end_in_place = 0;
 extern "C" int port_level_crossed_scenes(void) { return g_crossed_scenes; }
 
 static int port_scene_crossing_due(void)
@@ -2634,8 +2646,10 @@ static int port_scene_crossing_due(void)
     if (data_02092110 >= 0)
         return 0;                  /* a level change: the apply owns it */
     const unsigned id = data_02092664;
-    if (id == 0x187 || id == 1 || id == 3 || id == 4)
+    if (id == 0x187 || id == 3 || id == 4)
         return 0;                  /* nothing, or a path above owns it */
+    if (id == 1 && !port_front_end_in_place)
+        return 0;                  /* the quit poll restarts this session */
     void *st = port_stage_object();
     if (!st)
         return 0;

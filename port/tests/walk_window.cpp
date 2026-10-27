@@ -6762,11 +6762,91 @@ extern "C" unsigned short data_02092664;   /* Scene::SetSceneToSpawn's id */
 extern "C" unsigned char data_02092660;    /* MGEXIT1: its "already spawned" latch */
 enum { PORT_FRONT_END_FADE_CAP = 90 };
 extern "C" int port_online_quit_offline_env(void);   /* hal/online_join.cpp (JOINWIN1) */
+extern "C" int port_front_end_in_place;               /* hal/level_change.cpp (SEAMQUIT1) */
+extern "C" int port_level_crossing_live(void);        /* hal/level_change.cpp */
+extern "C" int port_mods_count(void);                 /* hal/mods.cpp */
+extern "C" const char *port_mods_id(int i);
+extern "C" const char *port_mods_kind(int i);
+extern "C" int port_mods_multiplayer(void);
+
+/* SEAMQUIT1: THE QUIT GOES BACK TO THE TITLE IN THIS PROCESS, THE WAY GAME OVER'S QUIT ALREADY DOES.
+ * The banner above predates the level-to-scene crossing (hal/level_change.cpp, run linkfull lane GAMEOVER1). Game Over's QUIT row is the
+ * same request (StartSceneFade(1, 0, 0), scene 1 parked in data_02092664) and it has gone back to the title in place since then: the
+ * ROM's fade covers, Scene::BeforeBehavior marks the Stage, the crossing tears it down through the ROM's own Stage::CleanupResources,
+ * runs the title and the file select in this window and boots the picked file's level through the first-entry path. On the cartridge
+ * Save and Quit is that scene change too; nothing reboots. So for an offline solo session this row now does what the ROM does: it
+ * leaves the request in place, the fade and the mark are the ROM's, and port_scene_crossing_due admits scene 1 because
+ * port_front_end_in_place says so.
+ *
+ * THE RESTART STAYS for everything the in-place path is not proven for: an online, VS, coop or party session (the hub, the VS carrier
+ * and the online mod rule are chosen at boot), a code mod (a plugin DLL cannot be unloaded), a scene-booted process
+ * (port_scene_env_want is read once), or a build that does not host the title. Each refusal is said in one line. The names are looked
+ * for in both copies of the environment: the CRT's (what this process read at boot) and the Win32 block (what a join set and a
+ * restart would inherit). Returns 0 when the quit may stay in this process, else the reason. */
+static int port_quit_env_has(const char *const *pre, size_t npre, char *hit, size_t cap)
+{
+    for (int pass = 0; pass < 2; ++pass) {
+        char *block = pass ? GetEnvironmentStringsA() : 0;
+        char **crt = pass ? 0 : _environ;
+        const char *e = pass ? block : (crt ? crt[0] : 0);
+        while (e && *e) {
+            const char *eq = strchr(e, '=');
+            for (size_t i = 0; i < npre; ++i) {
+                if (eq && eq[1] && !strncmp(e, pre[i], strlen(pre[i]))) {
+                    _snprintf(hit, cap, "%.*s", (int)(eq - e), e);
+                    hit[cap - 1] = 0;
+                    if (block) FreeEnvironmentStringsA(block);
+                    return 1;
+                }
+            }
+            if (pass) e += strlen(e) + 1;
+            else e = *++crt;
+        }
+        if (block) FreeEnvironmentStringsA(block);
+    }
+    return 0;
+}
+
+static const char *port_quit_in_place_refusal(void)
+{
+    static char why[200];
+    static const char *const k_session[] = {
+        "SM64DS_ADVENTURE=", "SM64DS_COMMS_", "SM64DS_PARTY", "SM64DS_COOP", "SM64DS_VS_", "SM64DS_HUB_", "SM64DS_ROOM_",
+        "SM64DS_NETMODE=", "SM64DS_SESSION_DIGEST=", "SM64DS_SCENE=" };
+    char hit[96];
+    if (port_quit_env_has(k_session, sizeof k_session / sizeof *k_session, hit, sizeof hit)) {
+        _snprintf(why, sizeof why, "not a solo offline session (%s is set)", hit);
+        why[sizeof why - 1] = 0;
+        return why;
+    }
+    if (port::comms_hub_active()) return "the multiplayer hub is installed";
+    if (port_mods_multiplayer()) return "this run is under the multiplayer mod rule";
+    if (port::adventure_ghost_mode()) return "Adventure ghosts are on (settings.json AdventureGhosts)";
+    for (int i = 0; i < port_mods_count(); ++i) {
+        const char *k = port_mods_kind(i);
+        if (k && !strcmp(k, "code")) {
+            _snprintf(why, sizeof why, "a code mod is loaded (%s) and a plugin cannot be unloaded", port_mods_id(i));
+            why[sizeof why - 1] = 0;
+            return why;
+        }
+    }
+    if (!port_scene_is_hosted(1)) return "this build does not host the title scene";
+    return 0;
+}
 
 static int port_front_end_quit_poll(int frame)
 {
     static int seen = -1;       /* the frame the request first appeared */
     static int fired;
+    /* SEAMQUIT1: an in-place quit hands the game back to a level through the crossing; once the request has been consumed (the title's
+       StartFile asked for scene 3 and the crossing returned) the poll is armed again for the next quit of this session. */
+    if (port_front_end_in_place) {
+        if (data_02092664 == 1 || port_level_crossing_live()) return 0;
+        port_front_end_in_place = 0;
+        fired = 0;
+        seen = -1;
+        fprintf(stderr, "[quit] f%d a level was handed back after the in-place quit: the quit rows are armed again\n", frame);
+    }
     if (fired) return 1;
 #ifndef PORT_ROM_CLEAN
     {   /* JOINWIN1: SM64DS_JOINWIN_QUIT_AT=<frame> makes the quit rows' own request (scene 1 parked in data_02092664, as StartSceneFade(1, 0, 0)
@@ -6786,6 +6866,13 @@ static int port_front_end_quit_poll(int frame)
                 "the level-clear menu's Save and Quit row or one of the pause "
                 "menu's quit rows. The save, if the row saves, is already "
                 "written.\n", frame);
+        if (const char *why = port_quit_in_place_refusal()) {
+            fprintf(stderr, "[seamless] in place refused: %s; restarting\n", why);
+        } else {
+            port_front_end_in_place = 1;
+            fprintf(stderr, "[quit] f%d returning to the title in this process (the ROM's own scene change)\n", frame);
+            return 0;
+        }
     }
     int evy = 0, tw = 0;
     const int covered = port_fader_blend_state(&evy, &tw) && evy >= 16;
