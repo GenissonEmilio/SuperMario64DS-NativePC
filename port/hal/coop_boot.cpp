@@ -1557,13 +1557,11 @@ extern "C" const char *port_coop_handoff_apply(int nset, const char *const *sn, 
         const char *p = hv(nset, sn, sv, "SM64DS_COOP_SAVE");
         const size_t pl = p ? std::strlen(p) : 0;
         if (pl < 9 || _stricmp(p + pl - 8, ".coopsav")) return "the host's request names no .coopsav file (SM64DS_COOP_SAVE)";
-        /* A NEW FILE'S OPENING ON A TITLE REACHED AFTER A LEVEL: the level-to-scene crossing does not run the hub's one-player
-           opening seat (port_adventure_hub_opening_begin; review SEAMJOIN1 C, fixed by lane SEAMJOIN2 in level_change / level_boot,
-           not this lane's files): measured here (row rh3 on c2), room 2 into a new file played the opening on the 4-seat count with
-           no coop opening barrier. Until that lands, such a room takes a fresh process (exit 8 after the response). */
-        unsigned carved = 0;
-        if (hub_game_heap_carved(&carved) && !coop_save_file_has_record(p))
-            return "the room's file is new and its opening would play on a title reached after a level (a fresh game plays it)";
+        /* A NEW FILE'S OPENING ON A TITLE REACHED AFTER A LEVEL (SEAMCLEAN1: the guard that refused this is gone). The
+           level-to-scene crossing did not run the hub's one-player opening seat (review SEAMJOIN1 C); lane SEAMJOIN2 fixed that in
+           hal/level_change.cpp (g_cross_opening: port_adventure_hub_opening_begin on the crossing, the same test as the title
+           fall-through in tests/walk_window.cpp), which does not look at the room kind, so a coop host's new file picked on a
+           title reached after a level plays the room's opening on the one-player seat as a boot-title host does. */
     }
     LOG("coop hand-off: booting the room in this process as the %s (%d set, %d clear)", host ? "host" : "guest", nset, nclear);
     // 2. the environment a child would be started with
