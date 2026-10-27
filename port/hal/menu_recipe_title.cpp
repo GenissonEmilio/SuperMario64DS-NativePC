@@ -2009,12 +2009,21 @@ bool title_scene_cb(float xf[4])
         T = scene_main();
         break;
     case V_TOY:
-        if (!pc) return false;
+        if (!pc) {
+            /* TITLEART1: without the HD UI mod the press page is the ROM's lower screen at the DS layout (file_pages_build); the hand-over frames
+               that follow it keep that layout (see V_DOODLE) */
+            if (top == 4 && elem == 0) return false;
+            break;
+        }
         if (top == 4 && elem == 0) T = scene_toy(toy_grow(title_page_counter()));
         else T = scene_doodle(0);                                   /* the hand-over frames: the drawing page's rest pose */
         break;
     case V_DOODLE:
-        T = scene_doodle(g_sc.e3);
+        /* TITLEART1: without the HD UI mod the head you press is drawn at the DS layout (the press page above), so the drawing page is drawn at that
+           same layout {1, 0, 0}: the ROM's line art then lies on the head it replaces, as on the DS (FACE1 measured the strokes over the press page's
+           rest pose), and the crossfade from the press page's held frame no longer jumps from a big head to a small outline. The touch twins and the
+           sprite placement read this same transform, so a stroke lands under the pointer. The HD page keeps its own (the head the main menu drew). */
+        T = pc ? scene_doodle(g_sc.e3) : T;
         break;
     default:
         return false;
