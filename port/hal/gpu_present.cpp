@@ -227,6 +227,12 @@ int g_tell_renderer;            /* the shared device is new: the renderer may co
    give-up after two failures can be watched too. */
 int g_lost_drill_at;
 int g_rebuild_fail_drill;
+/* SM64DS_PRESENT_LOST_EVERY=<n> arms the drill again n pictures after each
+   rebuild (the memory account across many rebuilds, lane MGFREEZE3);
+   SM64DS_PRESENT_LOST_KEEPDEV=1 makes it a loss that keeps the shared device
+   (the sixty refusals' kind) instead of a removed card. */
+int g_lost_drill_every;
+int g_lost_drill_keepdev;
 #endif
 #ifndef PORT_ROM_CLEAN
 /* DEVELOPER KNOBS, compiled out of the kit (run after093, lane MGFREEZE1).
@@ -412,6 +418,8 @@ void read_settings()
     g_fail_at_once = env_int("SM64DS_PRESENT_FAIL_AT_ONCE", 0);
     g_lost_drill_at = env_int("SM64DS_PRESENT_LOST_AT", 0);
     g_rebuild_fail_drill = env_int("SM64DS_PRESENT_REBUILD_FAIL", 0);
+    g_lost_drill_every = env_int("SM64DS_PRESENT_LOST_EVERY", 0);
+    g_lost_drill_keepdev = env_int("SM64DS_PRESENT_LOST_KEEPDEV", 0);
 #endif
     if (g_inflight_max < 0) g_inflight_max = 0;
     if (g_inflight_max > FENCE_RING - 1) g_inflight_max = FENCE_RING - 1;
@@ -908,6 +916,15 @@ int g_child_class;      /* 1 registered, -1 it could not be: the swap chain goes
 void hook_parent(HWND parent);
 int g_child_w, g_child_h;       /* the size the surface window was last given */
 HWND g_hooked;                  /* the game window whose size changes this file hears */
+typedef BOOL (WINAPI *DestroyWindow_t)(HWND);
+DestroyWindow_t g_destroywin;
+/* THE OLD SURFACE WINDOWS ARE CLOSED (run after093, lane MGFREEZE3): each
+   rebuild hid the one it gave up and kept it until the game window closed.
+   They are destroyed once the new surface has shown CLOSE_AFTER pictures. */
+enum { OLD_KIDS_MAX = 32, CLOSE_AFTER = 3 };
+HWND g_old_kid[OLD_KIDS_MAX];
+int g_old_kids;
+int g_kids_closed;
 WNDPROC g_hooked_proc;          /* its own window procedure, called after */
 
 LRESULT CALLBACK surface_proc(HWND h, UINT m, WPARAM w, LPARAM l)
@@ -934,6 +951,7 @@ HWND make_child(HWND parent, int w, int h)
         g_setlong = (SetWindowLongA_t)GetProcAddress(g_user32, "SetWindowLongA");
         g_callproc = (CallWindowProcA_t)GetProcAddress(g_user32, "CallWindowProcA");
         g_getclient = (GetClientRect_t)GetProcAddress(g_user32, "GetClientRect");
+        g_destroywin = (DestroyWindow_t)GetProcAddress(g_user32, "DestroyWindow");
         WNDCLASSA wc;
         memset(&wc, 0, sizeof wc);
         wc.lpfnWndProc = surface_proc;
@@ -1018,7 +1036,16 @@ void hook_parent(HWND parent)
 void abandon_card_path()
 {
     presenter_abandon_device();
+    /* STILL ABANDONED, MEASURED (run after093, lane MGFREEZE3): releasing the
+       old chain and the presenter's old device from the presenter thread once
+       the new chain had shown three pictures (no flush after) crashed the AMD
+       driver's worker thread on a loss that kept the shared device (one run of
+       fourteen, the same signature as MGFREEZE1's). So they stay abandoned,
+       and the cost is measured instead: the line at the rebuild cap gives it,
+       about 10 to 12 MB a rebuild for a loss that keeps the shared device and
+       36 to 39 MB for a removed card's drill, measured on both cards here. */
     child_hide();
+    if (g_child && g_old_kids < OLD_KIDS_MAX) g_old_kid[g_old_kids++] = g_child;
     g_child = 0;
     g_scrtv = 0;
     g_sc1 = 0;
@@ -1039,6 +1066,72 @@ void abandon_card_path()
     }
 }
 
+/* THE CARD MEMORY A REBUILD COSTS (run after093, lane MGFREEZE3): this
+   process's usage of the card's own memory and of system memory the card
+   maps, before the loss and CLOSE_AFTER * 10 pictures after the rebuild, so
+   what a rebuild keeps is a number in the log, not a guess. */
+IDXGIAdapter3 *g_use_ad3;
+ID3D11Device *g_use_dev;
+bool card_usage(double *lo_mb, double *nl_mb)
+{
+    *lo_mb = *nl_mb = 0.0;
+    if (!g_dev) return false;
+    if (g_use_dev != g_dev) {
+        g_use_dev = g_dev;
+        g_use_ad3 = 0;
+        IDXGIDevice *dx = 0;
+        if (SUCCEEDED(g_dev->QueryInterface(__uuidof(IDXGIDevice), (void **)&dx)) && dx) {
+            IDXGIAdapter *ad = 0;
+            if (SUCCEEDED(dx->GetAdapter(&ad)) && ad) {
+                ad->QueryInterface(__uuidof(IDXGIAdapter3), (void **)&g_use_ad3);
+                ad->Release();
+            }
+            dx->Release();
+        }
+    }
+    if (!g_use_ad3) return false;
+    DXGI_QUERY_VIDEO_MEMORY_INFO lo, nl;
+    memset(&lo, 0, sizeof lo);
+    memset(&nl, 0, sizeof nl);
+    if (FAILED(g_use_ad3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &lo)) ||
+        FAILED(g_use_ad3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &nl)))
+        return false;
+    *lo_mb = (double)lo.CurrentUsage / (1024.0 * 1024.0);
+    *nl_mb = (double)nl.CurrentUsage / (1024.0 * 1024.0);
+    return true;
+}
+double g_use_lo0, g_use_nl0;    /* before the loss */
+int g_use_have0;
+int g_since_rebuild = -1;       /* pictures since the last rebuild, -1 for none pending */
+double g_kept_mb;               /* what the measured rebuilds kept, local + non-local */
+int g_kept_n;
+
+/* Once a picture: the old surface windows closed, and the cost measured. */
+void after_rebuild_tick()
+{
+    if (g_since_rebuild < 0) return;
+    ++g_since_rebuild;
+    if (g_since_rebuild == CLOSE_AFTER && g_old_kids && g_destroywin) {
+        int n = 0;
+        for (int i = 0; i < g_old_kids; ++i)
+            if (g_old_kid[i] && g_destroywin(g_old_kid[i])) ++n;
+        g_kids_closed += n;
+        fprintf(stderr, "[present] %d old surface window(s) closed (%d this run)\n", n, g_kids_closed);
+        g_old_kids = 0;
+    }
+    if (g_since_rebuild == CLOSE_AFTER * 10) {
+        g_since_rebuild = -1;
+        double lo, nl;
+        if (g_use_have0 && card_usage(&lo, &nl)) {
+            g_kept_mb += (lo - g_use_lo0) + (nl - g_use_nl0);
+            ++g_kept_n;
+            fprintf(stderr, "[present] rebuild %d: card memory local %.1f MB (%+.1f), non-local "
+                    "%.1f MB (%+.1f) against before the loss\n", g_recoveries, lo, lo - g_use_lo0,
+                    nl, nl - g_use_nl0);
+        }
+    }
+}
+
 /* True when the loss is taken up by a rebuild; false gives the run up. */
 bool lose(const char *why, HRESULT hr)
 {
@@ -1051,8 +1144,13 @@ bool lose(const char *why, HRESULT hr)
         }
     } else {
         if (g_recoveries >= RECOVERIES_MAX) {
-            fprintf(stderr, "[present] the graphics card path was lost again (%s, code %08x) "
-                    "after %d rebuilds\n", why, (unsigned)hr, g_recoveries);
+            if (g_kept_n)
+                fprintf(stderr, "[present] the graphics card path was lost again (%s, code %08x) "
+                        "after %d rebuilds (each kept about %.1f MB of card memory, measured)\n",
+                        why, (unsigned)hr, g_recoveries, g_kept_mb / g_kept_n);
+            else
+                fprintf(stderr, "[present] the graphics card path was lost again (%s, code %08x) "
+                        "after %d rebuilds\n", why, (unsigned)hr, g_recoveries);
             g_giving_up = 1;
             return false;
         }
@@ -1060,6 +1158,8 @@ bool lose(const char *why, HRESULT hr)
         g_lost_hr = hr;
         g_lost_at = qpc();
         g_rebuild_fails = 0;
+        g_use_have0 = card_usage(&g_use_lo0, &g_use_nl0) ? 1 : 0;
+        g_since_rebuild = -1;
         fprintf(stderr, "[present] the graphics card path was lost (%s, code %08x); "
                 "rebuilding it\n", why, (unsigned)hr);
     }
@@ -1075,6 +1175,10 @@ void recovered()
     g_lost = 0;
     g_rebuild_fails = 0;
     ++g_recoveries;
+    g_since_rebuild = 0;
+#ifndef PORT_ROM_CLEAN
+    if (g_lost_drill_every > 0 && g_lost_drill_at < 0) g_lost_drill_at = g_presents + g_lost_drill_every;
+#endif
     fprintf(stderr, "[present] the graphics card path was lost (code %08x) and came back "
             "after %.0f ms\n", (unsigned)g_lost_hr, ms_between(g_lost_at, qpc()));
     /* the renderer went to the processor with the old device: it makes its
@@ -1898,11 +2002,12 @@ static int present_impl(void *hwnd, const void *pixels, int stride_px,
     }
 #ifndef PORT_ROM_CLEAN
     if (g_lost_drill_at > 0 && g_presents == g_lost_drill_at) {
-        g_lost_drill_at = 0;
+        g_lost_drill_at = g_lost_drill_every > 0 ? -1 : 0;
         fprintf(stderr, "[present] SM64DS_PRESENT_LOST_AT: picture %d acts as if the card "
-                "had been removed\n", g_presents);
-        g_renew = 1;
-        fall_back("the card was removed", (HRESULT)0x887A0005L);
+                "had been %s\n", g_presents, g_lost_drill_keepdev ? "out of memory" : "removed");
+        if (!g_lost_drill_keepdev) g_renew = 1;
+        fall_back(g_lost_drill_keepdev ? "a test asked for a rebuild" : "the card was removed",
+                  g_lost_drill_keepdev ? E_OUTOFMEMORY : (HRESULT)0x887A0005L);
         return 0;
     }
     if (g_lost && !g_sc && g_rebuild_fail_drill > 0) {
@@ -1996,6 +2101,7 @@ static int present_impl(void *hwnd, const void *pixels, int stride_px,
         presenter_publish(g_repeat);
         ++g_presents;
         recovered();
+        after_rebuild_tick();
         g_up_ms += ms_between(p0, p1);
         g_draw_ms += ms_between(p1, p2);
         ++g_cost_n;
@@ -2038,6 +2144,7 @@ static int present_impl(void *hwnd, const void *pixels, int stride_px,
     presenter_stat_note(t2, !g_repeat);
     ++g_presents;
     recovered();
+    after_rebuild_tick();
     g_up_ms += ms_between(t0, t1);
     g_draw_ms += ms_between(t1, t2);
     g_block_ms += ms_between(t2, t3);
