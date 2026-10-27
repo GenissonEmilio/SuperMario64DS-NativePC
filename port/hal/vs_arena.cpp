@@ -2067,7 +2067,7 @@ void vs_arena_seat_world() {
     }
     if (g_in_place && port_vs_force_nobody) {   // SEAMVS1 drill (dev knob, hal/handoff_poll.cpp): a seat past the bodies
         port_vs_force_nobody = 0;
-        std::fprintf(stderr, "[vsarena] SM64DS_VS_FORCE_NOBODY: seat %d taken as %d, past the %d bodies\n", seat, g.bodies, g.bodies);
+        std::fprintf(stderr, "[vsarena] the no-body drill: seat %d taken as %d, past the %d bodies\n", seat, g.bodies, g.bodies);
         seat = g.bodies;
     }
     if (seat >= g.bodies) {

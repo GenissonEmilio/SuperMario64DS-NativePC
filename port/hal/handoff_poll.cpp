@@ -337,7 +337,7 @@ void take()
     DeleteFileA(taken.c_str());
     const unsigned long long now = now_ms();
     std::fprintf(stderr, "[handoff] request picked up at title frame %u (%u byte(s); renamed to request.taken, read, deleted; folder %s%s)\n",
-                 g_frames, (unsigned)t.size(), folder().c_str(), g_dir_dev ? ", SM64DS_HANDOFF_TEST" : "");
+                 g_frames, (unsigned)t.size(), folder().c_str(), g_dir_dev ? ", the dev folder" : "");
     std::fflush(stderr);
     Req r;
     if (const char *why = parse(t, &r)) {
