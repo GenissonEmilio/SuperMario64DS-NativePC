@@ -88,6 +88,7 @@
 #include <windows.h>
 #include <d3d11.h>
 #include <dxgi1_2.h>
+#include <dxgi1_4.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -163,6 +164,23 @@ long long g_fence_waits;
 double g_fence_wait_ms;
 int g_oom_retries, g_oom_recovered;
 int g_uploads;                  /* pictures uploaded this run */
+#ifndef PORT_ROM_CLEAN
+/* DEVELOPER KNOBS, compiled out of the kit (run after093, lane MGFREEZE1).
+   SM64DS_GPU_MEMTRACE=1 prints the adapter's own memory account once a second
+   (IDXGIAdapter3::QueryVideoMemoryInfo, local and non-local, usage against the
+   budget the driver gives this process), so a growth curve is a number and not
+   a guess. SM64DS_PRESENT_FAIL_AT=<n> makes upload n come back E_OUTOFMEMORY,
+   the way the card refused it on a tester's 128 MB Intel chip, on the first try
+   and on the retry, so the fallback runs; with SM64DS_PRESENT_FAIL_AT_ONCE=1
+   only the first try fails and the retry is what is exercised. */
+int g_memtrace;
+int g_fail_at;
+int g_fail_at_once;
+long long g_memtrace_last;
+int g_memtrace_up_last;
+IDXGIAdapter3 *g_ad3;
+int g_ad3_tried;
+#endif
 
 /* ---- what the run learned, for the one summary line at exit ------------- */
 
@@ -318,6 +336,11 @@ void read_settings()
     g_swapprobe = env_int("SM64DS_PRESENT_SWAPPROBE", 0);
     g_fail_after = env_int("SM64DS_PRESENT_FAIL_AFTER", 0);
     g_inflight_max = env_int("SM64DS_PRESENT_INFLIGHT", 2);
+#ifndef PORT_ROM_CLEAN
+    g_memtrace = env_int("SM64DS_GPU_MEMTRACE", 0);
+    g_fail_at = env_int("SM64DS_PRESENT_FAIL_AT", 0);
+    g_fail_at_once = env_int("SM64DS_PRESENT_FAIL_AT_ONCE", 0);
+#endif
     if (g_inflight_max < 0) g_inflight_max = 0;
     if (g_inflight_max > FENCE_RING - 1) g_inflight_max = FENCE_RING - 1;
 
@@ -481,6 +504,67 @@ void release_fences()
     g_fence_head = g_fence_n = 0;
 }
 
+#ifndef PORT_ROM_CLEAN
+/* The memory trace's one line, at most once a second. */
+void memtrace_tick()
+{
+    if (!g_memtrace || !g_dev || !g_qpf) return;
+    const long long now = qpc();
+    if (g_memtrace_last && ms_between(g_memtrace_last, now) < 1000.0) return;
+    static long long first;
+    if (!first) first = now;
+    g_memtrace_last = now;
+    if (!g_ad3 && !g_ad3_tried) {
+        g_ad3_tried = 1;
+        IDXGIDevice *dx = 0;
+        if (SUCCEEDED(g_dev->QueryInterface(__uuidof(IDXGIDevice), (void **)&dx)) && dx) {
+            IDXGIAdapter *ad = 0;
+            if (SUCCEEDED(dx->GetAdapter(&ad)) && ad) {
+                ad->QueryInterface(__uuidof(IDXGIAdapter3), (void **)&g_ad3);
+                ad->Release();
+            }
+            dx->Release();
+        }
+        if (!g_ad3) fprintf(stderr, "[memtrace] this Windows has no IDXGIAdapter3; no memory account\n");
+    }
+    DXGI_QUERY_VIDEO_MEMORY_INFO lo, nl;
+    memset(&lo, 0, sizeof lo);
+    memset(&nl, 0, sizeof nl);
+    if (g_ad3) {
+        g_ad3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &lo);
+        g_ad3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &nl);
+    }
+    const double mb = 1024.0 * 1024.0;
+    fprintf(stderr, "[memtrace] t=%.1fs local %.1f of %.1f MB, non-local %.1f of %.1f MB, "
+            "uploads %d (+%d this second), upload texture %dx%d (%.2f MB), in flight %d "
+            "(deepest %d, limit %d, waits %lld)\n",
+            ms_between(first, now) / 1000.0,
+            (double)lo.CurrentUsage / mb, (double)lo.Budget / mb,
+            (double)nl.CurrentUsage / mb, (double)nl.Budget / mb,
+            g_uploads, g_uploads - g_memtrace_up_last, g_tex_w, g_tex_h,
+            (double)g_tex_w * g_tex_h * 4.0 / mb, inflight_now(), inflight_deepest(),
+            g_inflight_max, g_fence_waits);
+    g_memtrace_up_last = g_uploads;
+}
+
+/* The drill's Map: a real Map, then the refusal the tester's card gave. */
+HRESULT drill_map(D3D11_MAPPED_SUBRESOURCE *m, int retry)
+{
+    HRESULT hr = g_ctx->Map(g_tex, 0, D3D11_MAP_WRITE_DISCARD, 0, m);
+    if (g_fail_at && g_uploads + 1 == g_fail_at && (!retry || !g_fail_at_once)) {
+        if (SUCCEEDED(hr)) g_ctx->Unmap(g_tex, 0);
+        fprintf(stderr, "[present] SM64DS_PRESENT_FAIL_AT=%d: upload %d answers E_OUTOFMEMORY%s\n",
+                g_fail_at, g_uploads + 1, retry ? " on the retry too" : "");
+        memset(m, 0, sizeof *m);
+        hr = E_OUTOFMEMORY;
+    }
+    return hr;
+}
+#define UPLOAD_MAP(m, retry) drill_map((m), (retry))
+#else
+#define UPLOAD_MAP(m, retry) g_ctx->Map(g_tex, 0, D3D11_MAP_WRITE_DISCARD, 0, (m))
+#endif
+
 /* The upload texture, sized to the picture. Recreated when the source size
    changes, which happens when the layout switches between the inset level
    picture and the taller stacked one. */
@@ -522,7 +606,7 @@ bool upload(const void *pixels, int stride_px, int w, int h)
     inflight_throttle();
     D3D11_MAPPED_SUBRESOURCE m;
     memset(&m, 0, sizeof m);
-    HRESULT hr = g_ctx->Map(g_tex, 0, D3D11_MAP_WRITE_DISCARD, 0, &m);
+    HRESULT hr = UPLOAD_MAP(&m, 0);
     if (hr == E_OUTOFMEMORY) {
         /* The card is out of room for another copy. Hand it everything, wait
            until it has finished it (which frees every older copy), and try
@@ -533,7 +617,7 @@ bool upload(const void *pixels, int stride_px, int w, int h)
                     "waiting for the card and trying once more\n", (unsigned)hr);
         inflight_drain();
         memset(&m, 0, sizeof m);
-        hr = g_ctx->Map(g_tex, 0, D3D11_MAP_WRITE_DISCARD, 0, &m);
+        hr = UPLOAD_MAP(&m, 1);
         if (SUCCEEDED(hr) && m.pData) ++g_oom_recovered;
     }
     if (FAILED(hr) || !m.pData) { fall_back("the upload was refused", hr); return false; }
@@ -1259,6 +1343,9 @@ extern "C" void port_gpu_present_offscreen_frame(const void *pixels,
     if (!port_gpu_present_offscreen_mode()) return;
     if (!pixels || src_w <= 0 || src_h <= 0) return;
     if (!start()) return;
+#ifndef PORT_ROM_CLEAN
+    memtrace_tick();
+#endif
 
     /* the device-lost drill, on this path too: the offscreen mode is the only
        one a headless run reaches, so without this the fallback could only ever
@@ -1455,6 +1542,9 @@ static int present_impl(void *hwnd, const void *pixels, int stride_px,
     if (!pixels || src_w <= 0 || src_h <= 0 || client_w <= 0 || client_h <= 0)
         return 0;
     if (!start()) return 0;
+#ifndef PORT_ROM_CLEAN
+    memtrace_tick();
+#endif
 
     /* the device-lost drill: a run asks for the fallback on purpose so the
        recovery path is exercised rather than assumed */
