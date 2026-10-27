@@ -1027,6 +1027,25 @@ int hub_body_count() {
     return n;
 }
 
+namespace {
+bool g_heap_carved = false;      // SEAMJOIN1: the game heap has been carved (hub_game_heap_extra was asked, at main's level boot)
+unsigned g_heap_extra = 0;       // and the extra it was carved with
+unsigned hub_heap_carved(unsigned extra) {
+    g_heap_carved = true;
+    g_heap_extra = extra;
+    return extra;
+}
+}  // namespace
+
+unsigned hub_heap_need();
+
+/* SEAMJOIN1: true once main's level boot has carved the game heap (a level has been played in this process); *extra is what it was
+   carved with on top of 0x3b000. */
+bool hub_game_heap_carved(unsigned *extra) {
+    if (extra) *extra = g_heap_extra;
+    return g_heap_carved;
+}
+
 unsigned hub_game_heap_extra() {
     /* MPTEST9: the ROM carves a FIXED 0x3b000-byte game heap (Heap::InitializeGameHeap(0x3b000, 0) at
        0x0201a100) and every Player body is allocated out of it: 1912 bytes each, measured (level 1 and 6,
@@ -1037,7 +1056,13 @@ unsigned hub_game_heap_extra() {
        bytes per body slot on top: 128 KB at 32. Offline, VS and the small rooms get 0, byte for byte as before.
        SM64DS_HUB_HEAP_EXTRA=<bytes> overrides (0 = the old fixed heap). Asked at the carve, before any
        room code has run, so it reads the same env the body count does. */
-    if (!comms_hub_active() || comms_hub_arena()) return 0;
+    if (!comms_hub_active() || comms_hub_arena()) return hub_heap_carved(0);
+    return hub_heap_carved(hub_heap_need());
+}
+
+/* SEAMJOIN1: what the online world hub's game heap needs on top of the ROM's 0x3b000 (the answer above, asked whether or not the
+   hub is installed yet): the in-place join compares it with what the heap was carved with. */
+unsigned hub_heap_need() {
     if (const char *e = std::getenv("SM64DS_HUB_HEAP_EXTRA")) {
         const long v = std::atol(e);
         return (v > 0 && v <= 0x800000) ? (unsigned)v : 0u;

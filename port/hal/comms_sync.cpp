@@ -127,6 +127,8 @@ void SetNumPlayers(int n);
 // data_020a0e40 at its own slot (hal/level_boot.cpp's a2 seat: 1 when more
 // than one body is seated, 0 for one), for the hub's opening hold.
 extern int data_0209fc68[];
+// SEAMJOIN1: my comms slot (src/func_0203da9c.c: return data_020a0f10), for the a2 seat's bring-up made again in place
+int func_0203da9c(void);
 // The file's save block (FileSaveData); byte 8 bit 7 is the opening-seen bit,
 // for the end of the hub opening's hand-over.
 extern unsigned char data_0209caa0[];
@@ -4731,12 +4733,32 @@ template <class T, size_t N> static void leave_zero(T (&a)[N]) {
     for (size_t i = 0; i < N; ++i) a[i] = T();
 }
 
+static void sync_globals_reset();
+
 void comms_sync_leave_reset() {
     int bodies = 0;
     for (int i = 0; i < kPortBodySlots; ++i)
         if (data_0209f394[i]) ++bodies;
     const int was_count = (int)data_0209f21c, was_rom = (int)data_0208a0e0, was_gate = data_0209fc68[0];
 
+    sync_globals_reset();
+
+    /* the Stage's teardown destroyed every body, but the ROM's per-player actor table keeps the pointers (each Player seats itself
+       there at spawn and nothing clears the slot on its way out); a solo title has none of them, and the hub's 31 ghost slots are
+       never seated by a solo spawn, so they would point at freed actors for the rest of the process */
+    for (int i = 0; i < kPortBodySlots; ++i) data_0209f394[i] = 0;
+    data_0209fc68[0] = 0;
+    SetNumPlayers(1);
+    data_0209f21c = data_0208a0e0;
+    std::fprintf(stderr, "[seamless] ghost layer reset: off, identity and own colour row forgotten; "
+                 "body words: count %d -> %d (ROM %d -> %d), input gate %d -> %d, %d stale body pointer(s) cleared\n",
+                 was_count, (int)data_0209f21c, was_rom, (int)data_0208a0e0, was_gate, data_0209fc68[0], bodies);
+    std::fflush(stderr);
+}
+
+// SEAMJOIN1: every file global of the sync and ghost layers back to a process that never joined (the leave's half above, without
+// the ROM's body words, which the join leaves to the level boot exactly as a restarted game does).
+static void sync_globals_reset() {
     g_cfg = SyncCfg();
     g_send_every = 1;
     g_frame = 0;
@@ -4818,18 +4840,45 @@ void comms_sync_leave_reset() {
     g_follow_fcount = 0;
     g_own = OwnRow();
     g_gated_now = false;
+}
 
-    /* the Stage's teardown destroyed every body, but the ROM's per-player actor table keeps the pointers (each Player seats itself
-       there at spawn and nothing clears the slot on its way out); a solo title has none of them, and the hub's 31 ghost slots are
-       never seated by a solo spawn, so they would point at freed actors for the rest of the process */
-    for (int i = 0; i < kPortBodySlots; ++i) data_0209f394[i] = 0;
-    data_0209fc68[0] = 0;
-    SetNumPlayers(1);
-    data_0209f21c = data_0208a0e0;
-    std::fprintf(stderr, "[seamless] ghost layer reset: off, identity and own colour row forgotten; "
-                 "body words: count %d -> %d (ROM %d -> %d), input gate %d -> %d, %d stale body pointer(s) cleared\n",
-                 was_count, (int)data_0209f21c, was_rom, (int)data_0208a0e0, was_gate, data_0209fc68[0], bodies);
+// ===========================================================================
+// THE IN-PLACE JOIN'S HALF (run after093, lane SEAMJOIN1; the one-process
+// plan's M4b). A restarted join successor decides the ghost layer once, at its
+// first pad publish (hal/comms_conductor.cpp comms_publish_pad -> sync_decide),
+// with the hub already installed by main(). A process joining in place made
+// that decision long ago as a solo game (the layer off), and nothing asks
+// again. So, once hal/online_join.cpp has the hub installed from the session
+// record: every global back to a process that never joined (the leave's
+// reset), then the same decision, now on the hub's arm (gw_decide: g_hub,
+// g_enabled, the identity read from the record). The body count needs nothing
+// here: the level boot asks vs_player_count() (hub_body_count: 32) at the
+// spawn, as it does in a restarted successor, and the own colour row is filled
+// from g_gw_me the first time a body draws.
+// ===========================================================================
+bool comms_sync_join_in_place() {
+    sync_globals_reset();
+    sync_decide();
+    /* THE BRING-UP THE A2 SEAT MAKES ONCE PER PROCESS (hal/level_boot.cpp port_a2_seat_body, at boot, before the title). In a successor
+       it ran with the hub installed: the per-player input gate open, the ROM's count and live bytes at the hub's bodies through the ROM's
+       own setter, the window copy of the count, and my comms slot. This process ran it as a solo game, so the same four words are made
+       here, in the same order, with the hub now installed; the title's StartFile then takes the count to 1 and the hub seat repair puts
+       it back at the level's spawn, as in a successor. */
+    const int bodies = vs_player_count();
+    const int was_gate = data_0209fc68[0], was_count = (int)data_0208a0e0;
+    data_0209fc68[0] = (bodies > 1) ? 1 : 0;
+    SetNumPlayers(bodies);
+    data_0209f21c = (unsigned char)bodies;
+    data_0209f250 = (unsigned char)func_0203da9c();
+    std::fprintf(stderr, "[seamless] the a2 seat's player words made again for the hub: input gate %d -> %d, count %d -> %d, "
+                 "I am slot %d\n", was_gate, data_0209fc68[0], was_count, (int)data_0208a0e0, (int)data_0209f250);
+    std::fprintf(stderr, "[seamless] ghost layer decided again in this process: %s; identity name \"%s\", colours %s "
+                 "%02x%02x%02x / %02x%02x%02x; the level boot seats %d bodies\n",
+                 g_hub && g_enabled ? "ON on the hub" : "OFF", g_gw_me.name, g_gw_me.colours ? "picked" : "none (the file's own)",
+                 g_gw_me.body[0], g_gw_me.body[1], g_gw_me.body[2], g_gw_me.shoes[0], g_gw_me.shoes[1], g_gw_me.shoes[2],
+                 vs_player_count());
     std::fflush(stderr);
+    return g_hub && g_enabled;
 }
 
 void comms_sync_reports_off() {

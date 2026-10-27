@@ -217,3 +217,9 @@ bool star_tally_on_payload(bool host, int seat, const uint8_t *pl, int len) {
 }
 
 }  // namespace port
+
+// SEAMJOIN1 (run after093): a new online session in this process (a join in place) starts the tally the way a new process does: the
+// name hash, my count and both tables are read and built again for the new session.
+namespace port {
+void star_tally_session_reset() { g = State(); }
+}  // namespace port
