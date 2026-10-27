@@ -146,6 +146,17 @@ static void li_load(void)
             g_li_seed, g_li_time_frames ? "override" : "ROM match clock");
 }
 
+/* SEAMCLEAN1: Luigi Infection is read once per process (li_load). A VS hand-off to the running game takes the names of the match it
+   brings (SM64DS_VS_LUIGI_INFECTION, _SEED, _TIME), so the read, the round's seed latch and the team table go back to "not yet". */
+extern "C" void port_luigi_reset(void)
+{
+    g_li_read = 0;
+    g_li_on = 0;
+    g_li_seeded = 0;
+    g_li_absent = 0;
+    for (int i = 0; i < kPortMaxPlayers; ++i) g_li_team[i] = 0;
+}
+
 extern "C" int port_luigi_enabled(void)
 {
     li_load();

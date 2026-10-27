@@ -3015,4 +3015,15 @@ extern "C" void port_fs_mods_relatch_reset(void)
         g_pc[c].active = 0;
     }
     g_pc_state = 0;
+    /* SEAMCLEAN1: the lobby colours are read once per process (vsc_load); a hand-off that brings new ones after an earlier
+       match must read them again, so the state goes back to "not read" and the patch is freed, like the two palette mods above */
+    free(g_vsc_blob);
+    free(g_vsc_patch);
+    g_vsc_blob = 0;
+    g_vsc_patch = 0;
+    g_vsc_npatch = 0;
+    g_vsc_any = 0;
+    g_vsc_fields = 0;
+    memset(g_vsc, 0, sizeof g_vsc);
+    g_vsc_state = 0;
 }

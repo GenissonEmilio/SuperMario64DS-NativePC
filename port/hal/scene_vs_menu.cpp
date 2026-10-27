@@ -1230,9 +1230,9 @@ extern "C" void port_vs_stage_and_start(int mapIdx)
         through the level-to-scene crossing and port_level_change_apply.
    VS NEEDS NO ONLINE HEAP (hal/comms_conductor.cpp hub_game_heap_extra: the arena gets 0), so a title after a solo level takes it.
    REFUSED (the launcher starts a fresh game): a lockstep match (no SM64DS_VS_NETMODE=arena: hal/comms_loopback.cpp has no in-place
-   install or teardown), lobby colours (hal/fs_mods.cpp reads SM64DS_VS_COLORS once per process), Luigi Infection after an earlier VS
-   match in this process (hal/luigi_infection.cpp reads it once), a map this build does not mount, a code mod, a relatch refusal, an
-   install failure (undone first). */
+   install or teardown), a map this build does not mount, a code mod, a relatch refusal, an install failure (undone first). The lobby
+   colours (hal/fs_mods.cpp vsc_load) and Luigi Infection (hal/luigi_infection.cpp li_load) read once per process; SEAMCLEAN1 resets
+   both on the hand-off (port_fs_mods_relatch_reset, port_luigi_reset), so a second match with colours or Luigi no longer refuses. */
 #include "handoff_poll.h"
 extern "C" void port_level_mounts_install(void);                  /* hal/level_boot.cpp */
 extern "C" int port_level_is_mounted(int level);
@@ -1240,6 +1240,7 @@ extern "C" int port_mods_relatch_after_level(const char *reason);
 extern "C" const char *port_mods_id(int i);
 extern "C" const char *port_mods_kind(int i);
 extern "C" int port_vs_matches_ended_in_place(void);               /* hal/star_flow.cpp */
+extern "C" void port_luigi_reset(void);                            /* hal/luigi_infection.cpp (SEAMCLEAN1) */
 extern "C" void host_setting_adventure_env_reread(void);           /* hal/host_settings.cpp */
 extern "C" int port_vs_map_level(int mapIdx);
 namespace ntr { namespace backup { void select_online(int on); } }
@@ -1276,11 +1277,6 @@ static const char *port_vs_handoff(const PortHandoffRequest *r)
         return "a lockstep VS match (no SM64DS_VS_NETMODE=arena): the lockstep carrier (hal/comms_loopback.cpp) is not installed in place yet";
     const char *relay = port_handoff_value(r, "SM64DS_COMMS_RELAY");
     if (!relay || !*relay) return "the VS request names no relay (SM64DS_COMMS_RELAY)";
-    const char *col = port_handoff_value(r, "SM64DS_VS_COLORS");
-    if (col && *col) return "the lobby colours are read once per process (hal/fs_mods.cpp vsc_load); a fresh game shows them";
-    const char *li = port_handoff_value(r, "SM64DS_VS_LUIGI_INFECTION");
-    if (li && *li && port_vs_matches_ended_in_place() > 0)
-        return "Luigi Infection is read once per process (hal/luigi_infection.cpp li_load) and a VS match already ran here";
     for (int i = 0; i < port_mods_count(); ++i) {
         const char *k = port_mods_kind(i);
         if (k && !strcmp(k, "code")) {
@@ -1298,6 +1294,7 @@ static const char *port_vs_handoff(const PortHandoffRequest *r)
     }
     /* 1. the environment and the record */
     port_handoff_apply_env(r);
+    port_luigi_reset();     /* SEAMCLEAN1: li_load reads the match's names again (the colours reset with the relatch below) */
     port::online_session_begin();
     for (int f = 0; f <= 10; ++f) {
         const port::OnlineSessionField ff = (port::OnlineSessionField)f;
