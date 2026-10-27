@@ -417,6 +417,12 @@ extern "C" {
 int (*port_title_file_start_hook)(int slot) = 0;
 }
 
+/* SEAMCLEAN1 (one-process plan M6, R10): THIS POLL IS NOW ONLY THE FALLBACK. It acts on a scene-booted process (SM64DS_SCENE set,
+   not the title, not the star select) that picks a file; the processes that are scene-booted are the children of the debug menu's
+   rows that still relaunch (a minigame row pressed from a scene, the VS row) and a developer's scene run. The debug menu's minigame
+   row from a level, the level row, the character row, the quit, the reset and every hand-off now go through the in-place paths
+   (hal/level_change.cpp's crossing, hal/mods.cpp's skin and mod relatch, hal/online_join.cpp), so a normal play session never
+   reaches this function. */
 static int port_title_front_door_poll(void)
 {
     static int fired;

@@ -8110,6 +8110,18 @@ static void menu_input(int pad_live, const XPad *pad)
                                 "not a hosted scene yet -- refused, "
                                 "menu stays open\n", id,
                                 MG_SCENE[mi].name);
+                    } else if (menu_live_player() && !port_quit_in_place_refusal()) {
+                        /* SEAMCLEAN1 (one-process plan M6, R11): FROM A LEVEL THE ROW GOES IN THIS PROCESS. The scene change is
+                           the one the Rec Room's door makes: the ROM's Scene::StartSceneFade parks the scene and starts its
+                           fade, the Stage marks itself when the fade ends, and the level-to-scene crossing
+                           (hal/level_change.cpp port_scene_crossing_due admits any hosted scene but 3 and 4) tears the
+                           level down and spawns the scene in the same window, laid out for a scene by the crossing's
+                           layout hook. Only a solo offline session gets it (the quit poll's own refusal test: no hub,
+                           VS, coop, party, code mod); a scene or a session keeps the relaunch below. */
+                        _ZN8dScene_c14StartSceneFadeEjjt((unsigned)id, 0, 0);
+                        menu_on = 0;
+                        fprintf(stderr, "[menu] minigame %d (%s): the scene is asked for in this process (the level-to-scene "
+                                "crossing takes it; no restart)\n", id, MG_SCENE[mi].name);
                     } else if (port_menu_relaunch(id, -1)) {
                         fprintf(stderr, "[menu] minigame %d (%s): "
                                 "started SM64DS_SCENE=%d "
@@ -18975,6 +18987,12 @@ int main(void)
                     }
                     W.PostQuitMessage_(0);
                 }
+                /* SEAMCLEAN1, DECISION (review item 7): THE SCENE-LOOP RESET STAYS AS IT IS (the Rec Room, the card game, the star
+                   select). The scene key word has no L source and func_0203bc7c does not run on the solo scene loop, so the combo
+                   never raises the latch there (rows rr5, rr366, star of REVSEAMRESET2); wiring both also needs a port answer for
+                   the trapped brightness fader on the scene side or the player is left with dead input. A PC player leaves those
+                   scenes through their own exits or the pause menu. Revisit after 1.0 if asked; the two seams are in
+                   out/SEAMRESET2/suspects.tsv. */
                 /* SEAMRESET2: func_02023498 found the latch up, so its ResetInput zeroed the Ctrl records this frame; the
                    host's direct Ctrl store further down (data_0209f49c / data_0209f49e from btn) would write the held keys
                    straight back before phase 4, and Mario jumped on an A pressed inside the reset (rows fz_r1 before this
