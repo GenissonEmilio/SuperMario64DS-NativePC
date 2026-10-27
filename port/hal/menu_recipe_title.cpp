@@ -791,12 +791,14 @@ float ease_out_back(float t)         /* 0..1 -> 0..1 with a 9 percent overshoot 
     return 1.f + c3 * u * u * u + c1 * u * u;
 }
 
+static int g_face_swap;      /* TITLEART1 (J): see chore_step */
 /* one frame of the choreography clock, from menu_title_up (once per DS frame, after the ROM ran its tick) */
 void chore_step(int variant, int top, int elem, int req)
 {
     Chore &c = g_ch;
     const bool fam = variant == V_INTRO || variant == V_MAIN;
     if (!fam) {
+        g_face_swap = 0;
         c.in_fam = 0; c.mode = CH_NONE; c.prev_variant = variant;
         if (variant == V_ATTRACT && data_ov007_0210342c) {
             const char *sp = *(const char *const *)((const char *)data_ov007_0210342c + 8);
@@ -855,11 +857,34 @@ void chore_step(int variant, int top, int elem, int req)
     }
     /* TITLEUI1: the face swap (top-state 6, the change tick 0 / 6, top-state 5): the head, the wrench and every port plank take the ROM's own fade
        level (rom_swap_level) tick for tick, so the face is not faded a second time by the port's own clock */
-    c.swap_a = -1; c.swap_lv = -1;
-    if ((top == 6 && elem == 0) || (top == 0 && elem == 6) || (top == 5 && elem == 0)) {
-        const int lv = rom_swap_level();
-        if (lv >= 0) { c.swap_lv = lv; c.swap_a = 255 - (lv * 255 + 0x800) / 0x1000; c.face_a = 255; }
+    /* TITLEART1 (J): ONLY THE FACE SWAP. Top-state 6 also leaves the main page for the file select and the Rec Room with the same white fade;
+       the face swap is the one whose request word (the title global + 0x10, src/unnamed/ov007/func_ov007_020b155c.c) is 8, the case whose fade
+       callback (func_ov007_020b1604.c) sets element machine 6 and so the fade back of top-state 5. A leave keeps the main page's own way out
+       (the face drops in about 6 ticks, the planks stay until the cut). g_face_swap: 0 none, 1 fading out (top 6, 0 / 6), 2 coming back. */
+    {
+        const int g10 = data_ov007_0210342c ? data_ov007_0210342c[4] : -1;
+        if (top == 6 && elem == 0 && g10 == 8 && g_face_swap == 0) g_face_swap = 1;
+        if (top == 0 && elem == 6 && g_face_swap == 0) g_face_swap = 1;
+        if (g_face_swap && rest && c.sw_t >= swap_end(c)) g_face_swap = 0;
     }
+    c.swap_a = -1; c.swap_lv = -1;
+    if (g_face_swap && ((top == 6 && elem == 0) || (top == 0 && elem == 6) || (top == 5 && elem == 0))) {
+        const int lv = rom_swap_level();
+        if (lv >= 0) { c.swap_lv = lv; c.swap_a = 255 - (lv * 255 + 0x800) / 0x1000; if (top != 5) c.face_a = 255; }
+    }
+    /* TITLEART1 (J): THE WAY BACK. In top-state 5 the ROM fades the page back in from white with no head on it, and its top-state 1 then brings the
+       new head and the plates in. The page enters ONCE, as a return from a file page does (b2's look): from the first tick of top-state 5 the head,
+       the wrench, the planks, the ? and the arrow are off, and the ROM's arrival starts the swap clock again, so the head and the wrench fade in
+       over CH_FACE_FADE from the tick the ROM begins to bring the head (no pop at full strength) and the planks rise once from the bottom edge. */
+    if (g_face_swap == 1 && top == 5) {
+        g_face_swap = 2;
+        c.mode = CH_RETURN; c.sw_t = -1; c.fam_t = CH_VEIL + 4; c.face_a = 0; c.skip = 0;      /* fam_t past the return veil: the page is not black */
+        /* with the HD UI mod the ROM's white fade back is not in the picture (the page is ours), so the ROM is told its fade is over at once, as a
+           return from a file page does (chore_rom_writes, b2's pace); without the mod the page IS the ROM's picture, so its own fade runs whole */
+        c.ff2_done = pc_assets_ready() ? 0 : 1;
+        if (hal_menu_trace_on()) fprintf(stderr, "[chore] face swap: the way back enters once (top 5)\n");
+    }
+    if (g_face_swap == 2 && c.sw_t < 0) c.face_a = 0;
     c.prev_variant = variant;
 }
 
