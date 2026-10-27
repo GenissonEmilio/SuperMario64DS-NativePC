@@ -119,6 +119,7 @@ extern "C" int port_gpu_device_renew(void);
 extern "C" void presenter_abandon_device(void);
 extern "C" void port_gpu_raster_set_lost_hook(void (*f)(long));
 extern "C" void port_gpu_raster_device_lost(long hr);
+extern "C" void port_gpu_raster_device_renewed(void);
 
 /* Older SDKs spell the flip model in a later dxgi header; the value is fixed. */
 #ifndef DXGI_SWAP_EFFECT_FLIP_DISCARD
@@ -217,6 +218,7 @@ int g_renew;                    /* the shared device is gone too: make a new one
 int g_rebuild_fails;            /* failed rebuilds in a row */
 int g_recoveries;               /* rebuilds finished this run */
 int g_giving_up;
+int g_tell_renderer;            /* the shared device is new: the renderer may come back to the card */
 #ifndef PORT_ROM_CLEAN
 /* DEVELOPER DRILLS, compiled out of the kit. SM64DS_PRESENT_LOST_AT=<n>: at
    picture n the run acts as if the card had been removed (the whole rebuild,
@@ -1075,6 +1077,12 @@ void recovered()
     ++g_recoveries;
     fprintf(stderr, "[present] the graphics card path was lost (code %08x) and came back "
             "after %.0f ms\n", (unsigned)g_lost_hr, ms_between(g_lost_at, qpc()));
+    /* the renderer went to the processor with the old device: it makes its
+       card objects again on the new one from its next frame (MGFREEZE3) */
+    if (g_tell_renderer) {
+        g_tell_renderer = 0;
+        port_gpu_raster_device_renewed();
+    }
 }
 
 /* The renderer heard first that the card is gone (hal/gpu_raster.cpp). */
@@ -1117,7 +1125,9 @@ bool renew_device()
     g_dev = (ID3D11Device *)port_gpu_device();
     g_ctx = (ID3D11DeviceContext *)port_gpu_device_context();
     if (!g_dev || !g_ctx) { fall_back("the new Direct3D device went missing", 0); return false; }
-    return make_pipeline();
+    if (!make_pipeline()) return false;
+    g_tell_renderer = 1;
+    return true;
 }
 
 /* ---- the offscreen proof path -------------------------------------------- */

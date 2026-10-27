@@ -196,6 +196,16 @@ namespace {
 int g_on;              /* the key said yes */
 int g_started;
 int g_down;            /* fallen back for the rest of the run */
+/* THE CARD COMES BACK AFTER A LOST CARD (run after093, lane MGFREEZE3). A
+   g_down that a removed or reset card caused is not for the rest of the run
+   any more: once hal/gpu_present.cpp has a new device and has presented on it
+   (g_renewed), the next frame makes this file's card objects again through
+   the same path the first frame took (card_return). Two failed tries in a row
+   and the 3D stays on the processor, with one line. */
+int g_down_lost;       /* g_down came from a lost card */
+int g_renewed;         /* the present path has a new device */
+int g_return_fails;    /* tries in a row that did not bring the card back */
+int g_returns;         /* times the card came back this run */
 int g_want_warp = -1;  /* SM64DS_RENDERER_DEVICE */
 int g_perf;            /* SM64DS_RENDERER_PERF: the cost breakdown */
 int g_fail_after;      /* SM64DS_RENDERER_FAIL_AFTER: the fallback drill */
@@ -510,6 +520,7 @@ void fall_back(const char *why, HRESULT hr)
 {
     if (g_down) return;
     g_down = 1;
+    if (lost_code(hr)) g_down_lost = 1;
     if (lost_code(hr) && g_lost_hook) g_lost_hook((long)hr);
     if (hr)
         fprintf(stderr, "[renderer] the graphics card stopped drawing the 3D "
@@ -1163,7 +1174,8 @@ bool start()
                         "after them still run here.");
     if (!make_pipeline()) return false;
     port_gpu_device_address_rows("after ", g_addrcheck);
-    atexit(at_exit);
+    static int exit_said;
+    if (!exit_said) { exit_said = 1; atexit(at_exit); }
     return true;
 }
 
@@ -4611,9 +4623,99 @@ void tw_fold(uint32_t *fb, int stride, bool finish)
     if (finish) g_tw_live = false;
 }
 
+/* The one-way latches as they stood at the last frame drawn before the card
+   was lost, so a latch the dying card tripped is undone when it comes back
+   and one a working card tripped earlier stays. */
+int g_latch_cp, g_latch_aa, g_latch_grid, g_latch_full;
+
+/* Everything this file made on the lost device is ABANDONED, not released
+   (the rule hal/gpu_present.cpp keeps for its own: a release mid-run is what
+   crashed the AMD driver's worker thread), every size and "made" flag that
+   says it exists is cleared, and start() makes the device's pipeline again
+   the way the first frame did; every other object is made again by its own
+   ensure_* on first use, as at boot. */
+void card_return()
+{
+    g_renewed = 0;
+    if (g_lp_n) { g_renewed = 1; return; }     /* the pending late readbacks finish first */
+    g_dev = 0; g_ctx = 0; g_vs = 0; g_ps = 0; g_ps_filt = 0; g_layout = 0; g_rast = 0; g_dss = 0;
+    g_dss_w = 0; g_blend = 0; g_vb = 0; g_full_vs = 0; g_ps_tl = 0; g_ps_tlop = 0; g_ps_shadow = 0;
+    g_ps_faa = 0; g_ps_tl_f = 0; g_ps_tlop_f = 0; g_ps_shadow_f = 0;
+    memset(g_dss_v, 0, sizeof g_dss_v); memset(g_dss_tl, 0, sizeof g_dss_tl);
+    memset(g_dss_tlop, 0, sizeof g_dss_tlop); memset(g_dss_mask, 0, sizeof g_dss_mask);
+    memset(g_dss_shadow, 0, sizeof g_dss_shadow); g_dss_clrm = 0;
+    memset(g_dss_gz, 0, sizeof g_dss_gz); g_dss_gc = 0; g_blend_full = 0; g_toon_cb = 0;
+    memset(g_smp, 0, sizeof g_smp); memset(g_psmp, 0, sizeof g_psmp); g_white = 0; g_white_srv = 0;
+    g_col = 0; g_col_stage = 0; g_col_rtv = 0; g_id = 0; g_id_stage = 0; g_id_rtv = 0; g_dep = 0;
+    g_dep_stage = 0; g_dep_dsv = 0; g_col_srv = 0; g_id_srv = 0; g_fa_out = 0; g_fa_st = 0;
+    g_fa_rtv = 0; g_fa_srv = 0; g_ov_tex = 0; g_comp_tex = 0; g_comp_stage = 0; g_bm_tex = 0;
+    g_ov_srv = 0; g_comp_srv = 0; g_bm_srv = 0; g_zov_tex = 0; g_zov_srv = 0; g_comp_rtv = 0;
+    g_comp2_tex = 0; g_comp2_srv = 0; g_comp2_rtv = 0; g_comp_cb = 0; g_ps_comp = 0; g_ov_rtv = 0;
+    g_bm_rtv = 0; g_tw_wm_tex = 0; g_tw_up_tex = 0; g_tw_st_ov = 0; g_tw_st_bm = 0;
+    g_tw_wm_srv = 0; g_tw_up_srv = 0; g_tw_inst_srv = 0; g_tw_inst_buf = 0; g_tw_cb = 0;
+    g_tw_ps_hide = 0; g_tw_ps_bmdef = 0; g_tw_ps_rect = 0; g_tw_ps_inset = 0; g_tw_ps_boxup = 0;
+    g_tw_vs_rect = 0; g_tw_vs_box = 0; g_lay_tex = 0; g_lay2_tex = 0; g_lay_srv = 0;
+    g_lay2_srv = 0; g_aa_vs = 0; g_aa_ps = 0; g_aa_in = 0; g_aa_cv = 0; g_aa_out = 0; g_aa_st = 0;
+    g_aa_in_srv = 0; g_aa_cv_srv = 0; g_aa_rtv = 0; g_vs_grid = 0; g_gi_buf = 0; g_gi_srv = 0;
+    g_gp_buf = 0; g_gp_srv = 0; g_ga_buf = 0; g_ga_srv = 0; g_gt_abc = 0; g_gt_idx = 0;
+    g_gt_abc_srv = 0; g_gt_idx_srv = 0; g_gcb_frame = 0; g_gcb_draw = 0;
+    memset(g_fa_q, 0, sizeof g_fa_q);
+    g_vb_verts = 0;
+    g_full_ready = false;
+    g_toon_valid = false;
+    g_rt_w = g_rt_h = 0;
+    g_rt_full = false;
+    g_aa_w = g_aa_h = 0;
+    g_fa_q_w = g_fa_q_h = 0;
+    g_cp_w = g_cp_h = 0;
+    g_tw_w = g_tw_h = 0;
+    g_lay_w = g_lay_h = 0;
+    g_lay2_tex_dirty = false;
+    memset(g_lay_tex_box, 0, sizeof g_lay_tex_box);
+    g_grid_ready = false;
+    g_gi_cap = 0;
+    g_gp_cap = g_gp_have = 0;
+    g_gp_gen = 0;
+    g_ga_cap = 0;
+    g_tex.clear();
+    g_tex_bytes = 0;
+    g_comp_valid = g_comp2_valid = false;
+    g_cp_held = false;
+    g_last_full = false;
+    g_tw_live = g_tw_bm = false;
+    g_lay_live = false;
+    g_cp_dead = g_latch_cp;
+    g_aa_dead = g_latch_aa;
+    g_grid_dead = g_latch_grid;
+    g_full_dead = g_latch_full;
+    g_down = 0;
+    g_down_lost = 0;
+    if (start()) {
+        g_return_fails = 0;
+        ++g_returns;
+        fprintf(stderr, "[renderer] the graphics card draws the 3D picture again after the "
+                "lost card (%d time(s) this run)\n", g_returns);
+        return;
+    }
+    if (++g_return_fails < 2) {
+        g_down_lost = 1;            /* one more try on the next frame */
+        g_renewed = 1;
+        return;
+    }
+    fprintf(stderr, "[renderer] the graphics card would not take the 3D picture back "
+            "(%d tries in a row); it stays on the processor for this run\n", g_return_fails);
+}
+
 int draw_frame(const ntr::GxGpuFrame *f)
 {
     if (!f) return 0;
+    if (g_down && g_down_lost && g_renewed) card_return();
+    if (!g_down) {
+        g_latch_cp = g_cp_dead;
+        g_latch_aa = g_aa_dead;
+        g_latch_grid = g_grid_dead;
+        g_latch_full = g_full_dead;
+    }
     /* A SETTLE IS ANSWERED EVEN WITH THE RENDERER DOWN: the frame in hand is
        held on the card and card_settle knows how to leave the clear colour
        under the 2D when the card has gone (run cardfull, CARD2 review F1). */
@@ -5097,6 +5199,8 @@ extern "C" void *port_gpu_card_compose(const unsigned int *overlay, int stride_p
    here; it may also tell the renderer the card is gone, which puts the 3D
    picture on the processor for the rest of the run, as any lost card does. */
 extern "C" void port_gpu_raster_set_lost_hook(void (*f)(long)) { g_lost_hook = f; }
+/* The present path has a new device and has presented on it (MGFREEZE3). */
+extern "C" void port_gpu_raster_device_renewed(void) { if (g_down_lost) g_renewed = 1; }
 extern "C" void port_gpu_raster_device_lost(long hr)
 {
     void (*f)(long) = g_lost_hook;
