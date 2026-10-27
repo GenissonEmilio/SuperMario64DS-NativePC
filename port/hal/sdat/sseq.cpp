@@ -1773,3 +1773,14 @@ int sd_seq_seek_to(const SdSeqPos *in)
     }
     return n;
 }
+
+// SEAMSND1: is any running player still reading this byte range (a retired
+// sound image, hal/sdat/sdat.cpp sdat_retired_sweep)? Read only.
+int sd_seq_uses_range(const sd_u8 *lo, const sd_u8 *hi)
+{
+    for (int p = 0; p < SD_PLAYERS; p++) {
+        if (!g_pl[p].active) continue;
+        if ((g_pl[p].seq >= lo && g_pl[p].seq < hi) || (g_pl[p].sbnk >= lo && g_pl[p].sbnk < hi)) return 1;
+    }
+    return 0;
+}

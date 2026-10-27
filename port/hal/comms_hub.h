@@ -407,6 +407,93 @@ CommsHubStats comms_hub_stats();
 unsigned long long comms_hub_queue_drops(int kind);
 void comms_hub_report(const char *tag);   // one "[hub] ..." line to stderr
 
+// ---------------------------------------------------------------------------
+// THE SESSION RECORD (run after093, lane SEAMHUB1; the one-process plan's
+// M-f). An online game is told what it is through environment names: the
+// launcher's own start sets them, and a join from the title sets them for the
+// game it starts again (hal/online_join.cpp apply_plan). MSVC's getenv reads
+// the CRT's copy of the environment, which SetEnvironmentVariableA does not
+// change, so a name set or cleared after boot is never seen by a getenv in
+// this process. Leaving an online world in place has to make the game stop
+// reading them, so the hub, the ghost layer and the join plate read this
+// record instead: it is filled from the environment on the first read (what
+// this process was started with, as before), and the in-place leave clears it
+// for good. The restart path is unchanged: it still hands the names to the
+// game it starts through the environment block.
+// ---------------------------------------------------------------------------
+enum OnlineSessionField : int {
+    kSessAdventure = 0,     // SM64DS_ADVENTURE
+    kSessRelay,             // SM64DS_COMMS_RELAY
+    kSessCode,              // SM64DS_COMMS_CODE
+    kSessRoomKind,          // SM64DS_ROOM_KIND
+    kSessVoiceAllowed,      // SM64DS_VOICE_ALLOWED
+    kSessHubSeat,           // SM64DS_HUB_SEAT
+    kSessPlayerName,        // SM64DS_PLAYER_NAME
+    kSessPlayerColor,       // SM64DS_PLAYER_COLOR
+    kSessPlayerShoes,       // SM64DS_PLAYER_SHOES
+    kSessWorldNo,           // SM64DS_WORLD_NO
+    kSessHubPort,           // SM64DS_HUB_PORT (the test mesh's base port)
+    kSessFields
+};
+struct OnlineSession {
+    bool filled;                       // read from the environment once
+    bool cleared;                      // the in-place leave emptied it for good
+    bool set[kSessFields];
+    char value[kSessFields][256];
+};
+// The value of one field, or null when it is not set (or the record was
+// cleared). Game thread.
+const char *online_session_get(OnlineSessionField f);
+// The environment name a field stands for ("SM64DS_COMMS_RELAY").
+const char *online_session_name(OnlineSessionField f);
+// The whole record (filled on first use).
+const OnlineSession &online_session();
+// Empty the record for the rest of this process (the in-place leave). Returns
+// how many fields were set.
+int online_session_clear();
+// SEAMJOIN1: the in-place join (hal/online_join.cpp apply_plan) fills the record
+// from the launcher's plan instead of the environment: begin empties it and
+// marks it filled (so the environment is not read over it), set writes one
+// field (null or "" = not set). Game thread.
+void online_session_begin();
+void online_session_set(OnlineSessionField f, const char *v);
+
+// ---------------------------------------------------------------------------
+// THE TEARDOWN (lane SEAMHUB1): the hub out of a live process, for the
+// in-place leave. Stops and joins the I/O thread, closes the socket, empties
+// every queue, seat and counter, forgets the install latch and every
+// hub_on_kind handler, so comms_hub_active() is false and a later install
+// starts from nothing. False (and nothing else changed) when the thread did
+// not stop within the bound: the caller then restarts as before.
+bool comms_hub_teardown(const char *why);
+// No more periodic "[hub]" report lines (the leave asks for this at the quit).
+void comms_hub_reports_off();
+// SEAMJOIN1: the hub INTO a live process, for the in-place join: the install
+// comms_hub_install_from_env makes in main(), made again from the session
+// record now that the title has it filled. Refuses (false, *why says why,
+// nothing left installed) when a hub is still up or its I/O thread still
+// exists, or when the install itself fails (no socket, bad address or code).
+bool comms_hub_install_in_place(const char **why);
+// The same for the ghost layer's periodic "[ghost:tick]" line.
+void comms_sync_reports_off();
+// The other layers' halves, called by the leave after comms_hub_teardown:
+// hal/comms_sync.cpp (the ghost layer, its file globals, the read-once
+// identity, the own colour row and the ROM's body count / input gate words),
+// hal/comms_conductor.cpp (the hub body count latch) and hal/hub_presence.cpp.
+void comms_sync_leave_reset();
+void comms_conductor_leave_reset();
+void hub_presence_leave_reset();
+// One line of what a fresh read of this console's identity gives now (name,
+// both colours, the own colour row), for the leave's proof line.
+void comms_sync_identity_text(char *out, int cap);
+// SEAMJOIN1: the in-place join's halves. hal/comms_sync.cpp: the ghost layer
+// reset and decided again on the hub just installed (true = on).
+bool comms_sync_join_in_place();
+// hal/comms_conductor.cpp: has main's level boot carved the game heap yet, and
+// with what extra (*extra); and what the online world hub needs on top.
+bool hub_game_heap_carved(unsigned *extra);
+unsigned hub_heap_need();
+
 }  // namespace port
 
 #endif  // PORT_HAL_COMMS_HUB_H

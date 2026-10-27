@@ -506,3 +506,44 @@ extern "C" int menu_hostimg_predecode(int id)
         return 1;
     }
 }
+
+/* run after093, lane SEAMART1 (one-process plan M3c): the HD UI art in place. hal/mods.cpp's relatch at the title changes which mods ship
+   hd_ui/, and every picture above was decoded from the old list. port_menu_hostimg_hd_ui_quiesce waits (at most 2 s) until the worker has no
+   job queued or running, so no decode reads the mod list while the relatch rebuilds it; only the game thread queues jobs, and it is inside
+   the relatch. port_menu_hostimg_hd_ui_reset then drops every finished job and every decoded and scaled picture (the vectors go to the
+   graves, as a replaced picture always does, so a pointer handed out this frame stays valid) and clears the tried flags: the next draw
+   decodes again from the new list. Returns the number of pictures dropped. Game thread only. */
+extern "C" int port_menu_hostimg_hd_ui_quiesce(void)
+{
+    if (!g_wk) return 1;
+    for (int i = 0; i < 2000; ++i) {
+        {
+            std::lock_guard<std::mutex> lk(g_wk->m);
+            if (g_wk->busy <= 0 && g_wk->in.empty()) return 1;
+        }
+        Sleep(1);
+    }
+    return 0;
+}
+
+extern "C" int port_menu_hostimg_hd_ui_reset(void)
+{
+    if (g_wk) {
+        std::lock_guard<std::mutex> lk(g_wk->m);
+        g_wk->out.clear();
+        g_wk->live.clear();
+        g_wk->src.clear();
+    }
+    int n = 0;
+    std::lock_guard<std::mutex> lk(g_mx);
+    g_grave_prev.swap(g_grave); g_grave.clear();                     /* what was replaced two resets / installs ago is freed now */
+    for (int id = 0; id < MENU_IMG_EXT_END; ++id) {
+        Img &I = g_img[id];
+        if (I.tried && !I.px.empty()) ++n;
+        g_grave.push_back(std::move(I.px));
+        g_grave.push_back(std::move(I.scaled));
+        g_grave.push_back(std::move(I.scaled1));
+        I = Img();
+    }
+    return n;
+}

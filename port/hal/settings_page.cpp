@@ -2012,3 +2012,46 @@ extern "C" int settings_page_scripted(SpInput *in, int pf)
     in->mouse_valid = mx >= 0; in->mouse_x = mx; in->mouse_y = my; in->mouse_l = ml; in->mouse_r = mr;
     return 1;
 }
+
+/* run after093, lane SEAMART1 (one-process plan M3c): the page's HD UI art in place. hal/mods.cpp's relatch at the title changes which mods
+   ship hd_ui/; the page's pictures (g_im), every piece made from them or from the mod font (g_pieces) and the warm-up's tile were made from
+   the old list. port_settings_page_hd_ui_quiesce waits (at most 2 s) until the worker has no decode or scale in flight (only the game thread
+   asks it for work, and it is inside the relatch). port_settings_page_hd_ui_reset frees every piece (the page is closed and the relatch is
+   not inside a warm step, so no draw holds one), clears the pictures and their tried flags and sends the warm-up back to its first stage, so the next open
+   decodes from the new list. Refused by the relatch while the page is open. Returns the number of pictures dropped. Game thread only. */
+extern "C" int port_settings_page_hd_ui_quiesce(void)
+{
+    if (!g_wd) return 1;
+    for (int i = 0; i < 2000; ++i) {
+        {
+            std::lock_guard<std::mutex> lk(g_wd->m);
+            if (g_wd->req < 0 && !g_wd->sreq) return 1;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    return 0;
+}
+
+extern "C" void settings_page_warm_rearm(void);   /* hal/settings_page_hooks.cpp */
+extern "C" int port_settings_page_hd_ui_reset(void)
+{
+    if (g_wd) {
+        std::lock_guard<std::mutex> lk(g_wd->m);
+        g_wd->done = -1; g_wd->img = Img();
+        g_wd->sdone = false; g_wd->spx.clear();
+    }
+    int n = 0;
+    {
+        std::lock_guard<std::mutex> lk(g_pc_mx);
+        g_pieces.clear();                              /* the page is closed and no warm step is running: nothing holds a piece */
+        g_retired.clear();
+        for (int id = 0; id < IM_COUNT; ++id) {
+            if (g_im[id].tried && !g_im[id].px.empty()) ++n;
+            g_im[id] = Img();
+        }
+    }
+    g_ws_w = g_ws_h = 0; g_ws_stage = 0; g_ws_y = 0; g_ws_tab = 0; g_ws_row = -1; g_ws_cpn = 1; g_ws_tile_ok = 0;
+    std::vector<uint32_t>().swap(g_ws_tile); std::vector<uint32_t>().swap(g_ws_buf);
+    settings_page_warm_rearm();                    /* the idle warm-up runs again, so the first open after a switch is as quick as fresh */
+    return n;
+}

@@ -177,6 +177,12 @@ int on_file_start(int slot)
         fprintf(stderr, "[chars] the file's character is %s, the skin is for %s: it shows when that character is played\n",
                 BASE_NAME[chr], BASE_NAME[port_char_base(idx)]);
     if (idx == cur) return 0;
+    {   /* SEAMSND1 (one-process plan M3b): the title has torn down and the level has not booted, so no level holds the running skin's
+           files and the new one is switched in this process (hal/mods.cpp THE SKIN IN PLACE). The restart below is for what cannot be. */
+        char why[400];
+        if (port_char_reskin_now(idx, "file pick", 0, why, sizeof why)) return 0;
+        fprintf(stderr, "[seamless] in place refused: %s; restarting\n", why);
+    }
     if (getenv("SM64DS_CHAR_RELAUNCHED") || getenv("SM64DS_SCENE_FRAMES")) {
         fprintf(stderr, "[chars] a skin change at the file pick is needed but %s; carrying on with the running skin\n",
                 getenv("SM64DS_CHAR_RELAUNCHED") ? "this process is already the restart" : "this is a frame-budget run");

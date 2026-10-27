@@ -443,6 +443,8 @@ extern "C" void host_menu_cursor_sound_flush(void);   /* hal/menu_compose.cpp: o
 #include "hal/gpu_raster.h"       /* run hd2 lane GPU2: the optional D3D11 renderer */
 #include "hal/gpu_device.h"       /* the shared device, and the card's own clock */
 #include "hal/menu_join_plate.h"    /* run after093 JOINFLOW1: the Joining plate of a join successor */
+extern "C" int port_coop_line_up(void);                     /* hal/coop_boot.cpp (SEAMCOOP1): a coop room's last line */
+extern "C" const uint32_t *port_coop_line_picture(int w, int h);
 
 /* run mg16 lane MP3: the raw DS pad bits for this frame, handed from where the
    harness computes them to where hal/comms_conductor.cpp publishes them into
@@ -909,6 +911,13 @@ extern "C" int data_0209d574[];            /* hal/actor_vtables.cpp: the
    the lane's census of phases 0x17 and 7 (hal/b5input_globals.cpp). */
 extern "C" void func_02023498(void);
 extern "C" unsigned char data_0209f1e0[];
+extern "C" unsigned char data_0209f1dc[];   /* SEAMRESET1: "still held" (hal/b5input_globals.cpp) */
+extern "C" void *data_0209f1e4;             /* SEAMRESET1: the reset fade in flight (hal/auto_bss.cpp) */
+extern "C" int data_0209f5d0[3];            /* SEAMRESET1: the reset's brightness fader (hal/auto_bss.cpp) */
+extern "C" unsigned char data_0209b340[];   /* SEAMRESET1: the title's session block (hal/scene_boot.cpp) */
+extern "C" void _ZN8dScene_c14StartSceneFadeEjjt(unsigned, unsigned, unsigned short);   /* SEAMRESET1: the ROM's */
+extern "C" unsigned char data_0209f5e8[];   /* SEAMRESET2: the colour (scene) fader, a HalFaderWipe (hal/fader_wipes.cpp) */
+extern "C" int __cdecl port_hal_wipe_s10(void *s, int frames, int);   /* SEAMRESET2: its seated SetForwardTime body */
 extern "C" void port_loopin2_p17(int frame, int latch_before,
                                  unsigned held_before, unsigned held_after);
 extern "C" void port_loopin2_p7(void);
@@ -1046,6 +1055,7 @@ extern int (*port_interlude_frame_hook)(int frame);
    flag unset every one of them answers 0 without reading anything else. */
 int port_title_entry_armed(void);
 int port_title_entry_should_stop(void);
+extern "C" int (*port_online_join_tick_hook)(void);   /* hal/title_entry.cpp (SEAMJOIN2: port_interlude_frame asks it too) */
 int port_title_entry_commit(void);
 int port_title_entry_taken(void);
 int port_title_entry_run(void);
@@ -6786,17 +6796,134 @@ extern "C" unsigned short data_02092664;   /* Scene::SetSceneToSpawn's id */
 extern "C" unsigned char data_02092660;    /* MGEXIT1: its "already spawned" latch */
 enum { PORT_FRONT_END_FADE_CAP = 90 };
 extern "C" int port_online_quit_offline_env(void);   /* hal/online_join.cpp (JOINWIN1) */
+extern "C" int port_front_end_in_place;               /* hal/level_change.cpp (SEAMQUIT1) */
+extern "C" int port_level_crossing_live(void);        /* hal/level_change.cpp */
+extern "C" int port_mods_count(void);                 /* hal/mods.cpp */
+extern "C" const char *port_mods_id(int i);
+extern "C" const char *port_mods_kind(int i);
+extern "C" int port_mods_multiplayer(void);
+
+/* SEAMQUIT1: THE QUIT GOES BACK TO THE TITLE IN THIS PROCESS, THE WAY GAME OVER'S QUIT ALREADY DOES.
+ * The banner above predates the level-to-scene crossing (hal/level_change.cpp, run linkfull lane GAMEOVER1). Game Over's QUIT row is the
+ * same request (StartSceneFade(1, 0, 0), scene 1 parked in data_02092664) and it has gone back to the title in place since then: the
+ * ROM's fade covers, Scene::BeforeBehavior marks the Stage, the crossing tears it down through the ROM's own Stage::CleanupResources,
+ * runs the title and the file select in this window and boots the picked file's level through the first-entry path. On the cartridge
+ * Save and Quit is that scene change too; nothing reboots. So for an offline solo session this row now does what the ROM does: it
+ * leaves the request in place, the fade and the mark are the ROM's, and port_scene_crossing_due admits scene 1 because
+ * port_front_end_in_place says so.
+ *
+ * THE RESTART STAYS for everything the in-place path is not proven for: an online, VS, coop or party session (the hub, the VS carrier
+ * and the online mod rule are chosen at boot), a code mod (a plugin DLL cannot be unloaded), a scene-booted process
+ * (port_scene_env_want is read once), or a build that does not host the title. Each refusal is said in one line. The names are looked
+ * for in both copies of the environment: the CRT's (what this process read at boot) and the Win32 block (what a join set and a
+ * restart would inherit). Returns 0 when the quit may stay in this process, else the reason. */
+static int port_quit_env_has(const char *const *pre, size_t npre, char *hit, size_t cap)
+{
+    for (int pass = 0; pass < 2; ++pass) {
+        char *block = pass ? GetEnvironmentStringsA() : 0;
+        char **crt = pass ? 0 : _environ;
+        const char *e = pass ? block : (crt ? crt[0] : 0);
+        while (e && *e) {
+            const char *eq = strchr(e, '=');
+            for (size_t i = 0; i < npre; ++i) {
+                if (eq && eq[1] && !strncmp(e, pre[i], strlen(pre[i]))) {
+                    _snprintf(hit, cap, "%.*s", (int)(eq - e), e);
+                    hit[cap - 1] = 0;
+                    if (block) FreeEnvironmentStringsA(block);
+                    return 1;
+                }
+            }
+            if (pass) e += strlen(e) + 1;
+            else e = *++crt;
+        }
+        if (block) FreeEnvironmentStringsA(block);
+    }
+    return 0;
+}
+
+static const char *port_quit_in_place_refusal(void)
+{
+    static char why[200];
+    static const char *const k_session[] = {
+        "SM64DS_ADVENTURE=", "SM64DS_COMMS_", "SM64DS_PARTY", "SM64DS_COOP", "SM64DS_VS_", "SM64DS_HUB_", "SM64DS_ROOM_",
+        "SM64DS_NETMODE=", "SM64DS_SESSION_DIGEST=", "SM64DS_SCENE=" };
+    char hit[96];
+    if (port_quit_env_has(k_session, sizeof k_session / sizeof *k_session, hit, sizeof hit)) {
+        _snprintf(why, sizeof why, "not a solo offline session (%s is set)", hit);
+        why[sizeof why - 1] = 0;
+        return why;
+    }
+    if (port::comms_hub_active()) return "the multiplayer hub is installed";
+    if (port_mods_multiplayer()) return "this run is under the multiplayer mod rule";
+    if (port::adventure_ghost_mode()) return "Adventure ghosts are on (settings.json AdventureGhosts)";
+    for (int i = 0; i < port_mods_count(); ++i) {
+        const char *k = port_mods_kind(i);
+        if (k && !strcmp(k, "code")) {
+            _snprintf(why, sizeof why, "a code mod is loaded (%s) and a plugin cannot be unloaded", port_mods_id(i));
+            why[sizeof why - 1] = 0;
+            return why;
+        }
+    }
+    if (!port_scene_is_hosted(1)) return "this build does not host the title scene";
+    return 0;
+}
+
+/* SEAMHUB1: the online world's in-place leave (hal/online_join.cpp). The quit poll asks it before restarting an online session; a
+   leave the title then refuses (the hub thread would not stop, the mods layer refused the offline list) restarts here, the way the
+   course restart of starsel_finish_hook does: the front door, the hand-off wait, and this process ends. */
+extern "C" int port_online_leave_refusal(const char **why);
+extern "C" void port_online_leave_begin(int frame);
+extern "C" int port_coop_leave_refusal(const char **why);   /* hal/coop_boot.cpp (SEAMCOOP1) */
+extern "C" void port_coop_leave_begin(int frame);
+extern "C" int (*port_online_leave_restart_hook)(void);
+extern "C" int port_join_settings_armed(void);   /* hal/menu_join_plate.cpp */
+static void join_settings_dump_once(void);
+static int port_online_leave_restart(void)
+{
+    port_online_quit_offline_env();
+    if (!port_menu_relaunch(-1, -1)) return 0;
+    fprintf(stderr, "[quit] started the game again at its front door (the title), this process is quitting\n");
+    fflush(stderr);
+    port_handoff_wait();
+    ExitProcess(0);
+    return 1;
+}
+static const int port_online_leave_restart_seated = (port_online_leave_restart_hook = port_online_leave_restart, 1);
 
 static int port_front_end_quit_poll(int frame)
 {
     static int seen = -1;       /* the frame the request first appeared */
     static int fired;
+    /* SEAMQUIT1: an in-place quit hands the game back to a level through the crossing; once the request has been consumed (the title's
+       StartFile asked for scene 3 and the crossing returned) the poll is armed again for the next quit of this session. */
+    if (port_front_end_in_place) {
+        if (data_02092664 == 1 || port_level_crossing_live()) return 0;
+        port_front_end_in_place = 0;
+        fired = 0;
+        seen = -1;
+        fprintf(stderr, "[quit] f%d a level was handed back after the in-place quit: the quit rows are armed again\n", frame);
+        if (port_join_settings_armed()) join_settings_dump_once();   /* SEAMHUB1: after an online leave, this level is a new solo session */
+    }
+    if (port_join_settings_armed()) join_settings_dump_once();   /* SEAMJOIN1: a world joined in place is a new online session: its line */
     if (fired) return 1;
 #ifndef PORT_ROM_CLEAN
     {   /* JOINWIN1: SM64DS_JOINWIN_QUIT_AT=<frame> makes the quit rows' own request (scene 1 parked in data_02092664, as StartSceneFade(1, 0, 0)
            does) on that frame: the proof row for the restart out of an online session (dev only; read once and cleared, so no child inherits it) */
-        static int qa = -2;
-        if (qa == -2) { const char *e = getenv("SM64DS_JOINWIN_QUIT_AT"); qa = e ? atoi(e) : -1; SetEnvironmentVariableA("SM64DS_JOINWIN_QUIT_AT", 0); }
+        /* SEAMJOIN1: a comma list (<frame>[,<frame>...], up to four) for the rows that join and leave twice in one process */
+        static int qa_list[4] = { -2, -1, -1, -1 };
+        if (qa_list[0] == -2) {
+            qa_list[0] = -1;
+            const char *e = getenv("SM64DS_JOINWIN_QUIT_AT");
+            for (int i = 0; e && *e && i < 4; ++i) {
+                qa_list[i] = atoi(e);
+                e = strchr(e, ',');
+                if (e) ++e;
+            }
+            SetEnvironmentVariableA("SM64DS_JOINWIN_QUIT_AT", 0);
+        }
+        int qa = -1;
+        for (int i = 0; i < 4; ++i)
+            if (qa_list[i] >= 0 && frame == qa_list[i]) qa = qa_list[i];
         if (qa >= 0 && frame == qa && data_02092664 != 1) {
             fprintf(stderr, "[quit] f%d SM64DS_JOINWIN_QUIT_AT: the quit rows' request for scene 1 is made here\n", frame);
             data_02092664 = 1;
@@ -6810,6 +6937,34 @@ static int port_front_end_quit_poll(int frame)
                 "the level-clear menu's Save and Quit row or one of the pause "
                 "menu's quit rows. The save, if the row saves, is already "
                 "written.\n", frame);
+        if (const char *why = port_quit_in_place_refusal()) {
+            /* SEAMCOOP1: a coop room is left in place too (hal/coop_boot.cpp): the same scene change, the title tears the room down */
+            const char *cwhy = 0;
+            if (port_coop_leave_refusal(&cwhy)) {
+                if (!cwhy) {
+                    port_coop_leave_begin(frame);
+                    port_front_end_in_place = 1;
+                    fprintf(stderr, "[quit] f%d returning to the title in this process (the ROM's own scene change), leaving the coop "
+                            "room\n", frame);
+                    return 0;
+                }
+                why = cwhy;
+            }
+            /* SEAMHUB1: an online world may be left in place too; it takes the same scene change, and the title tears the hub down */
+            const char *lwhy = 0;
+            if (!cwhy && port_online_leave_refusal(&lwhy) && !lwhy) {
+                port_online_leave_begin(frame);
+                port_front_end_in_place = 1;
+                fprintf(stderr, "[quit] f%d returning to the title in this process (the ROM's own scene change), leaving the online "
+                        "session\n", frame);
+                return 0;
+            }
+            fprintf(stderr, "[seamless] in place refused: %s; restarting\n", lwhy ? lwhy : why);
+        } else {
+            port_front_end_in_place = 1;
+            fprintf(stderr, "[quit] f%d returning to the title in this process (the ROM's own scene change)\n", frame);
+            return 0;
+        }
     }
     int evy = 0, tw = 0;
     const int covered = port_fader_blend_state(&evy, &tw) && evy >= 16;
@@ -6894,6 +7049,27 @@ extern "C" int _ZN8SaveData15SaveCurrentFileEv(void);
 extern "C" int _ZN8SaveData12ReadFileDataEjP12FileSaveData(unsigned slot, void *dest);   /* the ROM's own slot read (hal/cxx_aliases.cpp seats the name) */   /* the ROM's own file save (hal/cxx_aliases.cpp seats the name) */
 static void char_apply_pick(int sel, int keep_place)
 {
+    if (chr_skin(sel) != port_char_active() && menu_live_player()) {
+        /* SEAMSND1 (one-process plan M3b): THE PICK WAITS FOR THE NEXT LEVEL LOAD, in this process. The cartridge reads the
+           character with the level (the save byte data_0209caa0[0x41] by LoadEntranceObjects, the body files by
+           Player::InitResources), so the base and the skin are set for the level that boots next, exactly as the no-Player branch
+           below sets the base between two courses, and the skin's files are switched at that level change (hal/mods.cpp THE SKIN
+           IN PLACE). This level keeps the running character. What cannot be done that way keeps the restart below. */
+        const int sk = chr_skin(sel);
+        char why[400];
+        if (port_char_reskin_next_level(sk, why, sizeof why)) {
+            g_character_pending = chr_base(sel);
+            port_char_save_record(port_char_save_slot(), sk >= 0 ? port_char_key(sk) : "", g_character_pending);
+            character_set_pending(g_character_pending);
+            data_02092128[0] = (unsigned char)g_character_pending;
+            fprintf(stderr, "[menu] character %s: set for the next level load (base %s, skin %s); no restart\n", chr_label(sel),
+                    CHAR_NAME[g_character_pending & 3], sk >= 0 ? port_char_key(sk) : "plain");
+            ss_note("the new character comes with the next level");
+            (void)keep_place;
+            return;
+        }
+        fprintf(stderr, "[seamless] in place refused: %s; restarting\n", why);
+    }
     if (chr_skin(sel) != port_char_active()) {
         /* A SKIN CHANGE (CHARSLOT1): the file layer is boot-latched,
            so the costume is applied by starting the program again on
@@ -7486,6 +7662,17 @@ static int starsel_finish_hook(int level, int entrance, int act)
     const int sel = port_char_strip_skin_pending();
     if (sel < 0 || chr_skin(sel) == port_char_active()) return 0;
     const int sk = chr_skin(sel);
+    {   /* SEAMSND1 (one-process plan M3b): the old level is torn down and the course has not booted, so no level holds the running
+           skin: switch it here, in this process, and the course boots with the pick (its base was set when it was picked). */
+        char why[400];
+        if (port_char_reskin_now(sk, "star select pick", 1, why, sizeof why)) {
+            port_char_strip_set_pending(-1);
+            fprintf(stderr, "[strip] the act is chosen: course %d (entrance %d, act %d) starts as %s in this process\n", level, entrance,
+                    act, chr_label(sel));
+            return 0;
+        }
+        fprintf(stderr, "[seamless] in place refused: %s; restarting\n", why);
+    }
     char bs[8], en[16], ac[16];
     snprintf(bs, sizeof bs, "%d", chr_base(sel));
     snprintf(en, sizeof en, "%d", entrance);
@@ -7947,6 +8134,18 @@ static void menu_input(int pad_live, const XPad *pad)
                                 "not a hosted scene yet -- refused, "
                                 "menu stays open\n", id,
                                 MG_SCENE[mi].name);
+                    } else if (menu_live_player() && !port_quit_in_place_refusal()) {
+                        /* SEAMCLEAN1 (one-process plan M6, R11): FROM A LEVEL THE ROW GOES IN THIS PROCESS. The scene change is
+                           the one the Rec Room's door makes: the ROM's Scene::StartSceneFade parks the scene and starts its
+                           fade, the Stage marks itself when the fade ends, and the level-to-scene crossing
+                           (hal/level_change.cpp port_scene_crossing_due admits any hosted scene but 3 and 4) tears the
+                           level down and spawns the scene in the same window, laid out for a scene by the crossing's
+                           layout hook. Only a solo offline session gets it (the quit poll's own refusal test: no hub,
+                           VS, coop, party, code mod); a scene or a session keeps the relaunch below. */
+                        _ZN8dScene_c14StartSceneFadeEjjt((unsigned)id, 0, 0);
+                        menu_on = 0;
+                        fprintf(stderr, "[menu] minigame %d (%s): the scene is asked for in this process (the level-to-scene "
+                                "crossing takes it; no restart)\n", id, MG_SCENE[mi].name);
                     } else if (port_menu_relaunch(id, -1)) {
                         fprintf(stderr, "[menu] minigame %d (%s): "
                                 "started SM64DS_SCENE=%d "
@@ -9149,10 +9348,11 @@ static void present_body(void)
     static BITMAPINFO join_bi;
     const uint32_t *join_bits = 0;
     int join_w = 0, join_h = 0;
-    if (port_join_plate_up()) {
+    const int coop_line = !port_join_plate_up() && port_coop_line_up();   /* SEAMCOOP1: a coop room's last line, in the window */
+    if (port_join_plate_up() || coop_line) {
         join_w = cw > 0 ? cw : 640;
         join_h = ch > 0 ? ch : 360;
-        join_bits = port_join_plate_picture(join_w, join_h);
+        join_bits = coop_line ? port_coop_line_picture(join_w, join_h) : port_join_plate_picture(join_w, join_h);
         if (join_bits) {
             memset(&join_bi, 0, sizeof join_bi);
             join_bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -14400,6 +14600,15 @@ extern "C" int port_interlude_frame(int f)
     if (!quit) {
         port_scene_tick(f, !menu_on);
         scene_host_present_frame(g_present_hwnd, stacked, sfb);
+        /* SEAMJOIN2: A JOIN THAT RESTARTS FROM THIS TITLE ENDS THIS PROCESS, as it does from the boot title. The title a leave or a quit
+           brings up runs here, inside hal/level_change.cpp's crossing, and that loop never asked the join's tick
+           (port_title_entry_should_stop asks it on the boot title): after a refused in-place join started the successor this window kept
+           drawing beside the successor's until the player closed one. Now the crossing ends the process the way a closed window does, and
+           the hand-off's atexit wait (port_handoff_wait) hides this window on the successor's first picture. */
+        if (port_online_join_tick_hook && port_online_join_tick_hook()) {
+            fprintf(stderr, "[handoff] parent: a join started the game again from the title in this crossing; leaving it\n");
+            quit = 1;
+        }
         /* the paused frames' sound, scene_window_run's rule exactly: the game's
            frames were pumped inside the tick, the paused ones are pumped here,
            and no frame is pumped twice */
@@ -18696,8 +18905,90 @@ int main(void)
                         if (port_menu_relaunch(-1, -1)) W.PostQuitMessage_(0);
                     }
                 }
-                if (srst_up && data_0209f1e0[0] && !srst_answered &&
-                    !rb_replaying()) {
+                /* SEAMRESET1: THE SOFT RESET GOES BACK TO THE TITLE IN THIS PROCESS, BECAUSE ON THE CARTRIDGE IT IS A SCENE
+                   CHANGE, NOT A REBOOT. src/game/stages/d_scene.cpp dScene_c::BeforeBehavior (the latch branch, behind
+                   data_0209f1e0) runs a 16-frame brightness fade on data_0209f5d0 and at its end calls StartSceneFade(1, 0, 0),
+                   snaps the scene fader shut and marks the Stage, so the title comes up as it does after Save and Quit. The
+                   title's dScDSMT_c::InitResources (src/game/stages/d_s_dsmt.cpp) then sees the latch still up, stores
+                   data_0209b340[1] = 1 and clears the latch through func_02023544; data_0209f1dc stays up until the combo is let
+                   go (func_02023498). Nothing in src/ calls OS_ResetSystem.
+                   This port cannot step that fade (FaderBrightness::AdvanceFade, _ZTV15dFdBrightness_c slot 2, is still
+                   hal/scene_boot.cpp's trap) and its at-end branch snaps data_0209f5e8 through a slot that is trapped too, so the
+                   reset takes the Save and Quit path instead, which this process already crosses in place (SEAMQUIT1): once the
+                   ROM has parked its fader (the cartridge's sign that the reset is going ahead), this block makes the two stores
+                   the title would have made (data_0209b340[1] = 1, the latch byte down), drops the parked fader so phase 2 stops
+                   stepping the trapped slot, and asks for scene 1 with the ROM's own StartSceneFade(1, 0, 0). The Stage's
+                   ordinary BeforeBehavior path runs the scene fade and marks it, and the crossing takes it because
+                   port_front_end_in_place says so. data_0209f1dc is left to func_02023498, so a combo still held cannot raise
+                   the latch again. What a player misses is the fade being the scene fader's instead of the brightness one.
+                   Everything the quit poll refuses (online, VS, coop, party, the hub, a code mod, a scene-booted process) keeps
+                   the restart below and says why. */
+                static int srst_wait = -1;     /* the frame the in-place answer started waiting for the ROM's fader */
+                static int srst_in_place;      /* answered in place; re-armed below once a level is back */
+                static int srst_parked;        /* SEAMRESET2: the ROM parked its brightness fader for this reset */
+                if (srst_in_place && !port_front_end_in_place && !data_0209f1e0[0]) {
+                    srst_in_place = 0;
+                    srst_answered = 0;
+                    srst_wait = -1;
+                    srst_parked = 0;
+                    fprintf(stderr, "[loopin2] f%d soft reset: a level was handed back after the in-place reset "
+                            "(latch %u, still-held %u): the reset is armed again\n", frame,
+                            (unsigned)data_0209f1e0[0], (unsigned)data_0209f1dc[0]);
+                }
+                if (srst_up && data_0209f1e0[0] && !srst_answered && !rb_replaying()) {
+                    const char *srst_why = port_quit_in_place_refusal();
+                    int srst_hold = 0;
+                    /* SEAMRESET2: THE LEVEL STAYS FROZEN FOR THE ROM'S 16 FRAMES. On the cartridge the latch stays up for
+                       the whole brightness fade (SetForwardTime(0x10) in BeforeBehavior): every frame func_02023498 zeroes
+                       the pad, the touch and the Ctrl records, and the Stage's BeforeBehavior takes its latch branch and
+                       returns 0, so nothing in the level moves; on the fade's last frame it asks for scene 1, snaps the
+                       colour fader to its end and marks the Stage. So the latch is held up here for 16 frames from the first
+                       frame the ROM's clears ran, and the parked fader is taken back every frame so phase 2 never steps the
+                       trapped slot (the ROM's latch branch parks it again, which only resets its interpolator). Then the
+                       stores below, the ROM's StartSceneFade(1, 0, 0) and its snap of the colour fader (d_scene.cpp: its
+                       SetForwardTime(0, 0), through the seated body). The ROM marks the Stage in that same frame; here the
+                       marked-and-return-0 path faults in fBase_c::Process (SEAMRESET1 cal_r2), so the fader is put at its end
+                       as well (dFdBrightness_c::SetToEnd's body, d_fader.cpp: currInterp = 0x1000, the word after the
+                       vptr in HalFaderWipe as in the ROM's Fader): the next frame's ordinary BeforeBehavior finds it at its
+                       end and marks the Stage, one frame after the cartridge, instead of restarting a 0x1e-frame fade
+                       from its start (fz rows: the cut came 30 frames after the answer with the snap alone). */
+                    if (!srst_why) {
+                        if (srst_wait < 0) srst_wait = frame;
+                        /* SEAMCLEAN1: only the ROM's own parked brightness fader is taken back each frame; any other fade
+                           in flight (a level's entry fade, a pause fade) is left alone, as the 30 frame wait did before
+                           SEAMRESET2 (the ROM's latch branch parks its fader over whatever is installed, so nothing of
+                           the other fade survives on the cartridge either; the port only stops dropping it early) */
+                        if (data_0209f1e4 == (void *)data_0209f5d0) {
+                            srst_parked = 1;
+                            data_0209f1e4 = 0;
+                        }
+                        if (!srst_parked) {
+                            if (frame - srst_wait < 30) srst_hold = 1;
+                            else srst_why = "the ROM did not start its reset fade within 30 frames";
+                        } else if (frame - srst_wait < 15) {
+                            srst_hold = 1;   /* SEAMCLEAN1: 15 frozen frames; the ROM marks the Stage at its f316, this port at f316 now */
+                        }
+                    }
+                    if (!srst_hold && !srst_why) {
+                        srst_answered = 1;
+                        srst_in_place = 1;
+                        port_front_end_in_place = 1;
+                        data_0209b340[1] = 1;
+                        data_0209f1e0[0] = 0;
+                        data_0209f1e4 = 0;
+                        _ZN8dScene_c14StartSceneFadeEjjt(1, 0, 0);
+                        port_hal_wipe_s10(data_0209f5e8, 0, 0);
+                        ((int *)data_0209f5e8)[1] = 0x1000;
+                        fprintf(stderr, "[loopin2] f%d soft reset: returning to the title in this process (the ROM's own "
+                                "scene change to scene 1 after %d frozen frames; the latch byte lowered and data_0209b340[1] "
+                                "= 1 stored as the title would, scene %u asked for, the colour fader at its end)\n", frame,
+                                frame - srst_wait, (unsigned)data_02092664);
+                    } else if (!srst_hold) {
+                        fprintf(stderr, "[seamless] in place refused: %s; restarting\n", srst_why);
+                    }
+                }
+                if (srst_up && data_0209f1e0[0] && !srst_answered && !srst_in_place &&
+                    !rb_replaying() && (srst_wait < 0 || frame - srst_wait >= 30 || port_quit_in_place_refusal())) {
                     srst_answered = 1;
                     fprintf(stderr, "[loopin2] f%d soft reset: the ROM's latch "
                             "is up and its clears ran this frame; its fade "
@@ -18720,6 +19011,21 @@ int main(void)
                     }
                     W.PostQuitMessage_(0);
                 }
+                /* SEAMCLEAN1, DECISION (review item 7): THE SCENE-LOOP RESET STAYS AS IT IS (the Rec Room, the card game, the star
+                   select). The scene key word has no L source and func_0203bc7c does not run on the solo scene loop, so the combo
+                   never raises the latch there (rows rr5, rr366, star of REVSEAMRESET2); wiring both also needs a port answer for
+                   the trapped brightness fader on the scene side or the player is left with dead input. A PC player leaves those
+                   scenes through their own exits or the pause menu. Revisit after 1.0 if asked; the two seams are in
+                   out/SEAMRESET2/suspects.tsv. */
+                /* SEAMRESET2: func_02023498 found the latch up, so its ResetInput zeroed the Ctrl records this frame; the
+                   host's direct Ctrl store further down (data_0209f49c / data_0209f49e from btn) would write the held keys
+                   straight back before phase 4, and Mario jumped on an A pressed inside the reset (rows fz_r1 before this
+                   line). The store gets the zeroed word on every frame the ROM zeroes, as the cartridge's records are. */
+                /* SEAMCLEAN1, DECISION (review item: "keep stale input instead of zeros"): zeros stay. The ROM's ResetInput
+                   (src/ResetInput.c, called by func_02023498 on every frame the latch is up) clears every player's Ctrl record
+                   (data_0209f498, 0x18 bytes each) before the actors' phase, so a held stick reads as nothing there as well;
+                   Stage::CheckInput not running leaves no older record behind for the actors to read. */
+                if (srst_up) btn = 0;
             }
             g_pad_mirror_prev = raw_all;
             /* ---- THE THIRD BUTTON WRITER, AND THE ONE HIS HANDS FOUND ------

@@ -435,6 +435,23 @@ void hdtex_configure(int enabled, const char *pack_dir)
     }
 }
 
+/* THE RE-INDEX (run after093, lane SEAMMODS1). hal/mods.cpp switches the mod
+   list at the title and the textures_hd folders it answers through
+   hdtex_mod_dir_hook change with it: the index is built again from the hook
+   and the main pack the same way hdtex_configure built it (the HdTextures
+   setting and the dump are not touched). The caller then drops gx.cpp's decode
+   cache (gx_invalidate_textures), which holds pictures this index chose.
+   Returns the number of names indexed. */
+int hdtex_reindex(void)
+{
+    delete g_names;
+    delete g_dirs;
+    g_names = 0;
+    g_dirs = 0;
+    index_pack();
+    return g_stats.pack_entries;
+}
+
 int hdtex_enabled(void) { return g_enabled; }
 
 const char *hdtex_pack_dir(void) { return g_pack_dir; }

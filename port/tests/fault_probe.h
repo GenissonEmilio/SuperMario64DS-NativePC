@@ -1289,7 +1289,9 @@ static void port_exit_write_file(unsigned code)
 
 static void __stdcall port_exit_hook(LONG code)
 {
-    if (code != 0)
+    /* 8 = the launcher hand-off was refused (hal/handoff_poll.cpp): the launcher starts the game again, nothing died, so no
+       exit file and no rich dump (lane SEAMCLEAN1); every other nonzero code is still filed */
+    if (code != 0 && code != 8)
         port_exit_write_file((unsigned)code);
     {
         HMODULE nt = GetModuleHandleA("ntdll.dll");

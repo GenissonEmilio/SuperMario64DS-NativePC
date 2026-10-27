@@ -568,6 +568,23 @@ void report(const char *tag) {
 PartyStarsStats party_stars_stats() { return g.st; }
 bool party_stars_enabled() { return g.inited && party_room(); }
 
+// SEAMJOIN2: A NEW HUB SESSION IN THIS PROCESS STARTS FROM NOTHING. The in-place
+// leave tears the hub down with every hub_on_kind handler (comms_hub_teardown),
+// and the star handler was registered once per process (g.registered), so a
+// world party formed in a second in-place session never got its stars. Called
+// by hal/comms_conductor.cpp's comms_conductor_leave_reset, which the in-place
+// leave and the in-place join both make (hal/online_join.cpp). Everything goes
+// but the exit report's atexit, which is registered once per process.
+static int g_star_handler_sessions;   // how many times the star handler went onto a hub (the proof line)
+void party_stars_session_reset() {
+    const bool hooked = g.report_hooked;
+    const bool had = g.registered;
+    g = State{};
+    g.report_hooked = hooked;
+    if (had)
+        std::fprintf(stderr, "[pstar] session reset: the star handler goes onto the next hub again\n");
+}
+
 }  // namespace port
 
 // THE ONE HOOK LINE (tests/walk_window.cpp, once a frame, after
@@ -586,6 +603,7 @@ extern "C" void port_party_stars_frame(void) {
     if (!g.registered) {
         hub_on_kind(kHubPartyStar, on_star, nullptr);
         g.registered = true;
+        std::fprintf(stderr, "[pstar] star handler registered on the hub (%d in this process)\n", ++g_star_handler_sessions);
     }
     const unsigned now = comms_hub_now_ms();
     // Stage::Behavior ran since last frame?

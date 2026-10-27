@@ -48,6 +48,7 @@
    from the other. A future fix is a mods signature (the ordered list of ids
    with each mod's version) in the save-state header, refused or warned about
    on a load that does not match. Nothing here writes or checks one yet. */
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,6 +62,7 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#include <psapi.h>
 
 #include "mods.h"
 #include "char_registry.h"
@@ -109,6 +111,21 @@ extern "C" int port_mods_multiplayer(void)
 }
 
 namespace {
+
+/* the latch's and the files layer's log lines (lane SEAMART1). Straight to stderr, except while the relatch at the title builds the
+   new list: then they wait in g_log_hold, and the relatch prints them only once the switch is accepted. A refused relatch prints its
+   one refusal line and nothing else, where it used to print the whole list a second time (REVSEAMMODS1 note e). */
+std::string *g_log_hold;
+void mlog(const char *fmt, ...)
+{
+    char b[2048];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(b, sizeof b, fmt, ap);
+    va_end(ap);
+    if (g_log_hold) *g_log_hold += b;
+    else fputs(b, stderr);
+}
 
 struct Mod {
     std::string id, folder, kind, game, min_game;
@@ -239,9 +256,9 @@ void add_parts(const Mod &parent, std::vector<Mod> &list, std::string &summary)
                 const char *src = have ? "player's value" : "default";
                 const std::string cur = have ? val : def;
                 if (!key[0]) continue;
-                if (nparts >= 16) { fprintf(stderr, "[mods] %s: more than 16 parts, the rest are ignored\n", parent.id.c_str()); break; }
+                if (nparts >= 16) { mlog("[mods] %s: more than 16 parts, the rest are ignored\n", parent.id.c_str()); break; }
                 if (!part_path_ok(files)) {
-                    fprintf(stderr, "[mods] %s: setting %s: part folder \"%s\" is not a plain folder inside the mod, ignored\n",
+                    mlog("[mods] %s: setting %s: part folder \"%s\" is not a plain folder inside the mod, ignored\n",
                             parent.id.c_str(), key, files);
                     continue;
                 }
@@ -253,18 +270,18 @@ void add_parts(const Mod &parent, std::vector<Mod> &list, std::string &summary)
                     on = !cur.empty() && part_path_ok(cur) && cur.find('/') == std::string::npos;
                     if (on) rel += "/" + cur;
                 } else {
-                    fprintf(stderr, "[mods] %s: setting %s: \"files\" needs a bool or choice setting, ignored\n", parent.id.c_str(), key);
+                    mlog("[mods] %s: setting %s: \"files\" needs a bool or choice setting, ignored\n", parent.id.c_str(), key);
                     continue;
                 }
                 ++nparts;
                 if (!on) {
-                    fprintf(stderr, "[mods] %s: setting %s = %s (%s): part %s is off\n", parent.id.c_str(), key,
+                    mlog("[mods] %s: setting %s = %s (%s): part %s is off\n", parent.id.c_str(), key,
                             cur.empty() ? "-" : cur.c_str(), src, rel.c_str());
                     continue;
                 }
                 const std::string dir = parent.folder + "/" + rel;
                 if (!dir_exists(dir)) {
-                    fprintf(stderr, "[mods] %s: setting %s = %s (%s): part folder %s does not exist, nothing applied\n",
+                    mlog("[mods] %s: setting %s = %s (%s): part folder %s does not exist, nothing applied\n",
                             parent.id.c_str(), key, cur.c_str(), src, rel.c_str());
                     continue;
                 }
@@ -277,7 +294,7 @@ void add_parts(const Mod &parent, std::vector<Mod> &list, std::string &summary)
                 pm.online = false;
                 list.push_back(pm);
                 summary += " + part " + rel;
-                fprintf(stderr, "[mods] %s: setting %s = %s (%s): part %s is on\n", parent.id.c_str(), key,
+                mlog("[mods] %s: setting %s = %s (%s): part %s is on\n", parent.id.c_str(), key,
                         cur.c_str(), src, rel.c_str());
             }
         }
@@ -302,7 +319,7 @@ int g_nskipped;
 
 void skip(const std::string &id, const char *why)
 {
-    fprintf(stderr, "[mods] skipped %s: %s\n", id.c_str(), why);
+    mlog("[mods] skipped %s: %s\n", id.c_str(), why);
     if (g_nskipped++) g_summary_skipped += ", ";
     g_summary_skipped += id + " (" + why + ")";
 }
@@ -401,6 +418,14 @@ bool online_ok(const Mod &m, const std::vector<Mod> &list, size_t first, size_t 
     return true;
 }
 
+/* port_mods_relatch_at_title (below) runs the latch a second time: with
+   g_relatching set it skips the character registry's offer (a character block
+   on either side of a relatch is refused, so an unchanged one is already
+   registered), and g_list_override, when set, is the EnabledMods array text to
+   use instead of settings.json's (the dev knob SM64DS_MODS_RELATCH_AT). */
+int g_relatching;
+const char *g_list_override;
+
 void latch(void)
 {
     char bundle[1024];
@@ -411,24 +436,28 @@ void latch(void)
 
     kill = getenv("SM64DS_MODS");
     if (kill && strcmp(kill, "0") == 0) {
-        fprintf(stderr, "[mods] SM64DS_MODS=0: every mod is off for this run\n");
+        mlog("[mods] SM64DS_MODS=0: every mod is off for this run\n");
         return;
     }
     /* A multiplayer session keeps only the mods online_ok passes, in their
        order, and says so in ONE line once the list is read. */
     const bool mp = port_mods_multiplayer() != 0;
-    const int have = host_setting_enabled_mods(bundle, sizeof bundle, arr, sizeof arr);
+    int have = host_setting_enabled_mods(bundle, sizeof bundle, arr, sizeof arr);
+    if (g_list_override && have >= 0 && strlen(g_list_override) < sizeof arr) {
+        strcpy(arr, g_list_override);
+        have = 1;
+    }
     g_bundle = bundle;
     if (have < 0) {
-        fprintf(stderr, "[mods] EnabledMods too long (over %u characters); no mods are on this run (bundle %s)\n",
+        mlog("[mods] EnabledMods too long (over %u characters); no mods are on this run (bundle %s)\n",
                 (unsigned)(sizeof arr - 1), bundle);
-        if (mp) fprintf(stderr, "[mods] multiplayer match: 0 mod(s) kept (Online Compatible): -; 0 off: -\n");
+        if (mp) mlog("[mods] multiplayer match: 0 mod(s) kept (Online Compatible): -; 0 off: -\n");
         return;
     }
     if (!have) {
         /* No EnabledMods: nothing on. Said once so a support log shows it. */
-        fprintf(stderr, "[mods] none enabled (bundle %s)\n", bundle);
-        if (mp) fprintf(stderr, "[mods] multiplayer match: 0 mod(s) kept (Online Compatible): -; 0 off: -\n");
+        mlog("[mods] none enabled (bundle %s)\n", bundle);
+        if (mp) mlog("[mods] multiplayer match: 0 mod(s) kept (Online Compatible): -; 0 off: -\n");
         return;
     }
     std::string mp_kept, mp_off;
@@ -502,7 +531,7 @@ void latch(void)
             if (!online_ok(m, g_mods, at + 1, g_mods.size(), json_copy, &why)) {
                 g_mods.erase(g_mods.begin() + (std::ptrdiff_t)at, g_mods.end());
                 if (!why.empty())
-                    fprintf(stderr, "[mods] %s: Online Compatible refused: %s\n", id.c_str(), why.c_str());
+                    mlog("[mods] %s: Online Compatible refused: %s\n", id.c_str(), why.c_str());
                 if (mp_noff++) mp_off += ", ";
                 mp_off += id;
                 continue;
@@ -514,28 +543,29 @@ void latch(void)
             bool any = has_content(folder);
             for (size_t q = at + 1; q < g_mods.size() && !any; ++q) any = has_content(g_mods[q].folder);
             if (!any)
-                fprintf(stderr, "[mods] WARNING: %s replaces nothing: it has no files/, sound/, textures_hd/ or palettes/ folder "
+                mlog("[mods] WARNING: %s replaces nothing: it has no files/, sound/, textures_hd/ or palettes/ folder "
                         "(a zip unpacked with everything inside one extra folder looks like this)\n", id.c_str());
             continue;
         }
         if (!g_summary_loaded.empty()) g_summary_loaded += ", ";
         g_mods.push_back(m);
         g_summary_loaded += id + " (" + kind + ")";
-        port_char_offer(id.c_str(), folder.c_str(), json_copy.c_str());   /* CHARSLOT1: a "character" block registers dormant */
+        if (!g_relatching)
+            port_char_offer(id.c_str(), folder.c_str(), json_copy.c_str());   /* CHARSLOT1: a "character" block registers dormant */
         const size_t before = g_mods.size();
         add_parts(m, g_mods, g_summary_loaded);
         if (!strcmp(kind, "files")) {
             bool any = has_content(folder);
             for (size_t q = before; q < g_mods.size() && !any; ++q) any = has_content(g_mods[q].folder);
             if (!any)
-                fprintf(stderr, "[mods] WARNING: %s replaces nothing: it has no files/, sound/, textures_hd/ or palettes/ folder "
+                mlog("[mods] WARNING: %s replaces nothing: it has no files/, sound/, textures_hd/ or palettes/ folder "
                         "(a zip unpacked with everything inside one extra folder looks like this)\n", id.c_str());
         }
     }
     if (mp)
-        fprintf(stderr, "[mods] multiplayer match: %u mod(s) kept (Online Compatible): %s; %u off: %s\n",
+        mlog("[mods] multiplayer match: %u mod(s) kept (Online Compatible): %s; %u off: %s\n",
                 mp_nkept, mp_nkept ? mp_kept.c_str() : "-", mp_noff, mp_noff ? mp_off.c_str() : "-");
-    fprintf(stderr, "[mods] %u loaded: %s | %d skipped%s%s\n", (unsigned)g_mods.size(),
+    mlog("[mods] %u loaded: %s | %d skipped%s%s\n", (unsigned)g_mods.size(),
             g_mods.empty() ? "-" : g_summary_loaded.c_str(), g_nskipped,
             g_nskipped ? ": " : "", g_summary_skipped.c_str());
     fflush(stderr);
@@ -566,7 +596,7 @@ void walk(const std::string &root, const std::string &rel, std::vector<std::stri
         if (fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
             /* a junction or symlink inside a mod folder could point anywhere
                on the disk; the mod's own files are real files and folders */
-            fprintf(stderr, "[mods] %s/%s is a link, skipped\n", root.c_str(), r.c_str());
+            mlog("[mods] %s/%s is a link, skipped\n", root.c_str(), r.c_str());
             continue;
         }
         if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
@@ -607,14 +637,14 @@ void build_overrides(void)
             if (it != loose.end()) id = it->second;
             else id = port_fs_interior_id_nocase(rels[k].c_str());
             if (!id) {
-                fprintf(stderr, "[mods] %s: files/%s is not a ROM file, ignored\n",
+                mlog("[mods] %s: files/%s is not a ROM file, ignored\n",
                         g_mods[m].id.c_str(), rels[k].c_str());
                 ++ignored;
                 continue;
             }
             std::unordered_map<unsigned, std::string>::const_iterator o = owner.find(id);
             if (o != owner.end())
-                fprintf(stderr, "[mods] files/%s is replaced by %s and by %s; %s wins (later in the list)\n",
+                mlog("[mods] files/%s is replaced by %s and by %s; %s wins (later in the list)\n",
                         rels[k].c_str(), o->second.c_str(), g_mods[m].id.c_str(), g_mods[m].id.c_str());
             if (id >= 0x8000 && !owner.count(id)) ++members;
             owner[id] = g_mods[m].id;
@@ -622,14 +652,14 @@ void build_overrides(void)
             ++used;
         }
         if (used || ignored)
-            fprintf(stderr, "[mods] %s: files/ replaces %u ROM file(s)%s\n", g_mods[m].id.c_str(), used,
+            mlog("[mods] %s: files/ replaces %u ROM file(s)%s\n", g_mods[m].id.c_str(), used,
                     ignored ? " (some ignored, see above)" : "");
         total_members += members;
         if (!warned && total_members > port_fs_member_claim_cap()) {
             /* hal/fs.cpp holds this many archive members at once; the rest
                keep the cartridge's bytes. One line, naming the mod whose files
                went over, instead of one line per member. */
-            fprintf(stderr, "[mods] WARNING: %u archive members are replaced in all, more than the %u the game can hold; "
+            mlog("[mods] WARNING: %u archive members are replaced in all, more than the %u the game can hold; "
                     "%s is the mod that went over, and its members past the limit keep the cartridge's bytes\n",
                     total_members, port_fs_member_claim_cap(), g_mods[m].id.c_str());
             warned = 1;
@@ -645,11 +675,11 @@ void build_overrides(void)
         std::unordered_map<std::string, unsigned>::const_iterator it = loose.find(lower(rom));
         if (it != loose.end()) id = it->second;
         else id = port_fs_interior_id_nocase(rom);
-        if (!id) { fprintf(stderr, "[chars] %s is not a ROM file in this dump; skin file skipped\n", rom); continue; }
+        if (!id) { mlog("[chars] %s is not a ROM file in this dump; skin file skipped\n", rom); continue; }
         g_override[id] = disk;
-        fprintf(stderr, "[chars] skin file %s serves ROM file id %u (%s)\n", disk, id, rom);
+        mlog("[chars] skin file %s serves ROM file id %u (%s)\n", disk, id, rom);
     }
-    fprintf(stderr, "[mods] files layer: %u ROM file id(s) overridden in all\n", (unsigned)g_override.size());
+    mlog("[mods] files layer: %u ROM file id(s) overridden in all\n", (unsigned)g_override.size());
     fflush(stderr);
 }
 
@@ -837,4 +867,640 @@ extern "C" int port_mods_ui_file(const char *rel, char *out, unsigned cap)
 extern "C" int (*port_ui_file_hook)(const char *rel, char *out, unsigned cap);
 namespace {
 struct UiFileHookSet { UiFileHookSet() { port_ui_file_hook = port_mods_ui_file; } } g_ui_file_hook_set;
+}
+
+/* ==== THE RE-LATCH AT THE TITLE (run after093, lane SEAMMODS1; one-process plan M3a) ===========================================
+   port_mods_relatch_at_title switches the mods FILE LAYER in place, at the title, with no level loaded: the list is read again
+   (EnabledMods, and the multiplayer rule through port_mods_multiplayer as it stands now), the files/ overrides are built again,
+   the card image serves the new list (hal/fs_names.cpp port_nitrofs_patch_relatch, after hal/fs.cpp and hal/fs_mods.cpp forget
+   what the last latch emitted and read), the textures_hd index is built again and gx.cpp's decode cache dropped with the GPU
+   generation it feeds. What is held at the title cannot be switched here, so the call REFUSES, changing nothing, and the caller
+   restarts as before:
+     - a code mod on either side (a plugin DLL cannot be unloaded);
+     - a change in which mods ship hd_ui/ while the settings page or the character door is open (their pictures are on screen);
+       otherwise the seven menu art caches that decode hd_ui/ once are reset below (lane SEAMART1) and the next draw decodes the
+       new list's pictures;
+     - a character (mod.json "character" or character/);
+     - a files/ change to a file the game read before the title or while the title is live (the title holds its own files).
+   The game says which in one line. 1 = switched, 0 = refused. Game thread only. */
+extern "C" int port_scene_live_id(void);                         /* hal/scene_boot.cpp: 1 = SCENE_TITLE, -1 none */
+extern "C" unsigned long port_fs_mod_relatch_reset(void);        /* hal/fs.cpp */
+extern "C" void port_fs_cache_size(unsigned long *files, unsigned long *bytes);
+extern "C" void port_fs_mods_relatch_reset(void);                /* hal/fs_mods.cpp */
+extern "C" void port_nitrofs_patch_relatch(void);                /* hal/fs_names.cpp */
+extern "C" void (*port_nitrofs_census_hook)(unsigned file_id);   /* hal/fs_names.cpp */
+extern "C" void (*port_sdat_frame_hook)(void);                   /* hal/sdat/consumer.cpp */
+namespace ntr { int hdtex_reindex(void); void gx_invalidate_textures(); }
+extern "C" int sdat_reseat_mods(const char *reason);           /* hal/sdat/sdat.cpp (SEAMSND1) */
+/* THE HD UI ART CACHES (lane SEAMART1, one-process plan M3c): every file that decodes hd_ui/ art keeps it for the life of the process; each
+   has a reset that drops what it decoded and re-arms its first-use load, so the next draw reads the new list. Two of them decode on a worker
+   thread: the quiesce calls wait for that worker to be idle before the list changes under it. All of these files link with this one (the
+   two game targets). */
+extern "C" int port_menu_hostimg_hd_ui_quiesce(void);           /* hal/menu_hostimg.cpp: title, pause, game over, star select art */
+extern "C" int port_settings_page_hd_ui_quiesce(void);          /* hal/settings_page.cpp */
+extern "C" int port_menu_hostimg_hd_ui_reset(void);
+extern "C" int port_settings_page_hd_ui_reset(void);
+extern "C" int port_menu_pause_hd_ui_reset(void);               /* hal/menu_recipe_pause.cpp: planks or the ROM's plates */
+extern "C" int port_sub_screen_hd_ui_reset(void);               /* hal/sub_screen.cpp: the minimap panel */
+extern "C" int port_ui_text_hd_ui_reset(void);                  /* hal/ui_text.cpp: the mod font */
+extern "C" int port_hd_meter_hd_ui_reset(void);                 /* hal/hd_meter.cpp: the HD power meter */
+extern "C" int port_char_door_hd_ui_reset(void);                /* hal/char_door_skin.cpp: the character door's skin */
+extern "C" int settings_page_open(void);
+extern "C" int port_char_door_open(void);
+
+namespace {
+
+/* WHAT THE GAME HAS READ, BY FAT ID AND WHEN. Every card block the ROM reads names the files it covers (hal/fs_names.cpp); the
+   phase is the boot (before the title was ever live), the title (scene 1 live) or later (a level or another scene). It is what the
+   held-file refusal reads, so it runs in every build, the kit included (lane SEAMART2): the relatch's callers (the in-place leave of an
+   online world, the join) are kit code, and a kit with no record would accept every files/ change. One byte per FAT id and an OR per
+   card block. Only the per-id block counters, the SM64DS_FS_CENSUS dump and the knobs below are dev only. The first card read after the
+   title says the record's two counts once (boot, title), in every build: the kit's proof that its record is the dev build's. */
+enum { RD_BOOT = 1, RD_TITLE = 2, RD_LATER = 4, FAT_IDS = 4096 };
+unsigned char g_read_phase[FAT_IDS];
+volatile int g_title_seen;
+volatile int g_record_said;
+#ifndef PORT_ROM_CLEAN
+unsigned g_read_count[FAT_IDS];
+#endif
+
+void record_say(void)
+{
+    unsigned nb = 0, nt = 0;
+    for (unsigned i = 0; i < FAT_IDS; ++i) {
+        if (g_read_phase[i] & RD_BOOT) ++nb;
+        if (g_read_phase[i] & RD_TITLE) ++nt;
+    }
+    fprintf(stderr, "[mods] file record at the end of the title: %u file id(s) read at boot, %u while the title was live\n", nb, nt);
+    fflush(stderr);
+}
+
+void census_note(unsigned id)
+{
+    if (id >= FAT_IDS) return;
+    const int sc = port_scene_live_id();
+    if (sc == 1) g_title_seen = 1;
+    else if (g_title_seen && !g_record_said) { g_record_said = 1; record_say(); }
+    g_read_phase[id] |= sc == 1 ? RD_TITLE : (g_title_seen ? RD_LATER : RD_BOOT);
+#ifndef PORT_ROM_CLEAN
+    ++g_read_count[id];
+#endif
+}
+
+struct NoteSet { NoteSet() { port_nitrofs_census_hook = census_note; } } g_note_set;
+
+/* SEAMHUB1 (SEAMMODS1 note c): a relatch at the title AFTER A LEVEL (the in-place leave of an online world) cannot tell which of the
+   files a level read the game still keeps across the return to the title, so on that call every one of them counts as held, a loose
+   file or an archive member alike (lane SEAMART2). port_mods_relatch_after_level raises it for the one call. */
+int g_after_level;
+
+#ifndef PORT_ROM_CLEAN
+/* SM64DS_MODS_FORCE_BUSY=menu|settings (dev only): the relatch treats that art worker as not idle, the case a decode longer than 2 s
+   makes, so the refusal below can be shown on demand. */
+const char *g_force_busy;
+#endif
+
+int held_mask(void) { return RD_BOOT | RD_TITLE | (g_after_level ? RD_LATER : 0); }
+
+/* ARCHIVE MEMBERS (ids >= 0x8000, lane SEAMART1): a card block read inside a NARC names the NARC's own FAT id, so a member override is
+   held when the archive it lives in was read at boot or while the title is live (or, after a level, in a level). The level boot,
+   dScStage_c::InitResources (src/_ZN10dScStage_c13InitResourcesEv.cpp:255-263), remounts c2d and the language text archive
+   (LoadTextNarcs: archive 6 = c2d, then one of 8..12 = cee cef ceg cei ces by language), arc0 (LoadArchive(0)), ar1 on level 1
+   and the VS archive of its level, after the title's UnloadArchives dropped every mount; LoadArchive mounts only (header and FAT)
+   and members are read on demand. So the mount is not
+   what holds a member: what the boot DECODED out of an archive does. c2d (2D art) and cee (the text and font) are decoded at boot
+   (about 133 and 94 card blocks) into heaps that outlive the title, so their members are held; cef shows one boot block and is
+   refused the same way (an over-refusal: an English game decodes nothing from it). arc0 is the exception: its boot reads are its
+   header and FAT only, and the next level boot reads its members off the card again, so a member override there reaches that level
+   whole (REVSEAMMODS1's arc0 rows: on -> off and off -> on == fresh).
+   port_archive_map is the ROM's mount table (index = LoadArchive's idx; [base, end) member ids; the NARC's path). */
+struct port_arc_entry { unsigned short base, end; const char *narc; };
+extern "C" struct port_arc_entry port_archive_map[13];
+enum { ARC_COUNT = 13, ARC_PER_LEVEL = 0 };
+
+unsigned narc_fat_id(int a)
+{
+    static unsigned id[ARC_COUNT];
+    static bool done;
+    if (!done) {
+        done = true;
+        for (unsigned i = 0; i < FAT_IDS; ++i) {
+            const char *cp = port_fs_catalog_path(i);
+            if (!cp) continue;
+            for (int k = 0; k < ARC_COUNT; ++k)
+                if (port_archive_map[k].narc && !strcmp(cp, port_archive_map[k].narc)) id[k] = i;
+        }
+    }
+    return a >= 0 && a < ARC_COUNT ? id[a] : 0;
+}
+
+int archive_of(unsigned id)
+{
+    for (int k = 0; k < ARC_COUNT; ++k)
+        if (id >= port_archive_map[k].base && id < port_archive_map[k].end) return k;
+    return -1;
+}
+
+bool held_at_title(unsigned id)
+{
+    if (id < FAT_IDS) return (g_read_phase[id] & held_mask()) != 0;
+    const int a = archive_of(id);
+    if (a < 0 || a == ARC_PER_LEVEL) return false;
+    const unsigned narc = narc_fat_id(a);
+    return narc && (g_read_phase[narc] & held_mask()) != 0;
+}
+
+/* how a held id was read, for the refusal line: "at boot" / "at the title" / "in a level", through its archive for a member */
+const char *held_when(unsigned id)
+{
+    const unsigned f = id < FAT_IDS ? id : narc_fat_id(archive_of(id));
+    if (f >= FAT_IDS) return "at the title";
+    return (g_read_phase[f] & RD_BOOT) ? "at boot" : (g_read_phase[f] & RD_TITLE) ? "at the title" : "in a level";
+}
+
+/* the path of a FAT id, or of a member: "<narc> member <n>" */
+std::string held_path(unsigned id)
+{
+    if (id < FAT_IDS) {
+        const char *cp = port_fs_catalog_path(id);
+        return cp ? cp : "?";
+    }
+    const int a = archive_of(id);
+    if (a < 0) return "an archive member";
+    char b[200];
+    snprintf(b, sizeof b, "%s member %u", port_archive_map[a].narc ? port_archive_map[a].narc : "?", id - port_archive_map[a].base);
+    return b;
+}
+
+/* the ids of the mods in l that ship folder sub (a part counts as its own entry), joined in order */
+std::string ids_with(const std::vector<Mod> &l, const char *sub)
+{
+    std::string r;
+    for (size_t i = 0; i < l.size(); ++i)
+        if (dir_exists(l[i].folder + sub)) r += (r.empty() ? "" : ",") + l[i].id;
+    return r;
+}
+
+std::string ids_with_character(const std::vector<Mod> &l)
+{
+    std::string r;
+    for (size_t i = 0; i < l.size(); ++i) {
+        bool c = dir_exists(l[i].folder + "/character");
+        if (!c && !l[i].part) {
+            char *t = slurp_small(l[i].folder + "/mod.json");
+            if (t) { c = json_top_value(t, "character") != 0; free(t); }
+        }
+        if (c) r += (r.empty() ? "" : ",") + l[i].id;
+    }
+    return r;
+}
+
+std::string list_text(const std::vector<Mod> &l)
+{
+    std::string r;
+    for (size_t i = 0; i < l.size(); ++i) r += (i ? ", " : "") + l[i].id;
+    return r.empty() ? "-" : r;
+}
+
+std::vector<Mod> g_mods_prev;   /* the list before the last relatch, kept one relatch long for a reader mid-call */
+
+int g_force_held = 0;   /* SEAMCLEAN1: the title-time restart failed; accept a file a level read (see port_mods_relatch_forced) */
+
+int relatch(const char *reason, const char *list_json)
+{
+    char why[600] = "";
+    const int sc = port_scene_live_id();
+    if (!reason) reason = "?";
+    if (sc != 1) {
+        fprintf(stderr, "[mods] relatch at the title refused (%s): the title is not the live scene (scene %d); the caller restarts\n", reason, sc);
+        fflush(stderr);
+        return 0;
+    }
+    /* the art workers read the mod list (port_mods_ui_file) while they decode: let them finish before it changes. A worker that is
+       still busy after the bounded wait (about 2 s) may be reading g_mods right now, so the list is not touched at all: refused before
+       the first rebuild (lane SEAMART2; the old list, overrides and pictures stay as they are). */
+    int menu_idle = port_menu_hostimg_hd_ui_quiesce(), page_idle = port_settings_page_hd_ui_quiesce();
+#ifndef PORT_ROM_CLEAN
+    if (g_force_busy && !strcmp(g_force_busy, "menu")) menu_idle = 0;
+    if (g_force_busy && !strcmp(g_force_busy, "settings")) page_idle = 0;
+#endif
+    if (!menu_idle || !page_idle) {
+        const char *who = !menu_idle ? "menu art" : "settings page";
+        fprintf(stderr, "[seamless] in place refused: the %s decode worker is still busy; restarting\n", who);
+        fprintf(stderr, "[mods] relatch at the title refused (%s): the %s decode worker did not go idle within 2 s; nothing changed "
+                "(the list was not rebuilt), the caller restarts\n", reason, who);
+        fflush(stderr);
+        return 0;
+    }
+    latch();
+    build_overrides();
+
+    std::vector<Mod> old_mods = g_mods;
+    std::unordered_map<unsigned, std::string> old_override = g_override;
+    const std::string old_loaded = g_summary_loaded, old_skipped = g_summary_skipped, old_bundle = g_bundle;
+    const int old_nskipped = g_nskipped;
+
+    g_mods.clear();
+    g_summary_loaded.clear();
+    g_summary_skipped.clear();
+    g_nskipped = 0;
+    g_latched = 0;
+    g_relatching = 1;
+    g_list_override = list_json;
+    std::string held_log;          /* the new list's lines: printed below only if the switch is accepted (once, not twice) */
+    g_log_hold = &held_log;
+    latch();
+    g_list_override = 0;
+    g_override.clear();
+    g_override_built = 0;
+    build_overrides();
+    g_log_hold = 0;
+    g_relatching = 0;
+
+    for (size_t i = 0; i < old_mods.size() && !why[0]; ++i)
+        if (old_mods[i].kind == "code") snprintf(why, sizeof why, "code mod %s is on now", old_mods[i].id.c_str());
+    for (size_t i = 0; i < g_mods.size() && !why[0]; ++i)
+        if (g_mods[i].kind == "code") snprintf(why, sizeof why, "code mod %s would be on", g_mods[i].id.c_str());
+    /* sound/ is not on this list any more (lane SEAMSND1): a change in the mods shipping it re-seats the sound archive below,
+       hal/sdat/sdat.cpp sdat_reseat_mods, with the output device kept open. Nor is hd_ui/ (lane SEAMART1): a change in the mods
+       shipping it resets the seven art caches below, unless a page drawing that art is open now (a busy art worker refused above). */
+    /* SEAMCLEAN1, DECISION (review item 9): the hd_ui art caches reset when the SET of mods shipping hd_ui/ changes (this comparison
+       is by mod id). A mod that keeps its id but changes its hd_ui files on disk between two relatches keeps its old decoded pictures
+       until the process ends or the set changes. That is documented, not hashed: the mods folder is read at boot and a player edits
+       a mod with the game closed; hashing every hd_ui file at each relatch would cost a full read of the art on every online
+       leave and join, for a case no flow of the game creates. */
+    const std::string ui_old = ids_with(old_mods, "/hd_ui"), ui_new = ids_with(g_mods, "/hd_ui");
+    if (!why[0] && ui_old != ui_new) {
+        const char *busy = settings_page_open() ? "the settings page is open" : port_char_door_open() ? "the character door is open" : 0;
+        if (busy)
+            snprintf(why, sizeof why, "the mods shipping hd_ui/ change (%s -> %s) and %s", ui_old.empty() ? "-" : ui_old.c_str(),
+                     ui_new.empty() ? "-" : ui_new.c_str(), busy);
+    }
+    if (!why[0]) {
+        const std::string a = ids_with_character(old_mods), b = ids_with_character(g_mods);
+        if (a != b)
+            snprintf(why, sizeof why, "the character mods change (%s -> %s)", a.empty() ? "-" : a.c_str(), b.empty() ? "-" : b.c_str());
+    }
+    unsigned changed = 0;
+    if (!why[0]) {
+        std::unordered_map<unsigned, std::string> all = old_override;
+        for (std::unordered_map<unsigned, std::string>::const_iterator it = g_override.begin(); it != g_override.end(); ++it)
+            all[it->first];
+        for (std::unordered_map<unsigned, std::string>::const_iterator it = all.begin(); it != all.end() && !why[0]; ++it) {
+            std::unordered_map<unsigned, std::string>::const_iterator o = old_override.find(it->first), n = g_override.find(it->first);
+            const std::string ov = o == old_override.end() ? "" : o->second, nv = n == g_override.end() ? "" : n->second;
+            if (ov == nv) continue;
+            ++changed;
+            if (held_at_title(it->first)) {
+                if (g_force_held) {
+                    fprintf(stderr, "[mods] forced: file id %u (%s) was read %s; the new list serves it from its next read\n", it->first,
+                            held_path(it->first).c_str(), held_when(it->first));
+                    continue;
+                }
+                snprintf(why, sizeof why, "files/ changes file id %u (%s), which the game read %s and still holds", it->first,
+                         held_path(it->first).c_str(), held_when(it->first));
+            }
+        }
+    }
+    if (why[0]) {
+        g_mods = old_mods;
+        g_override = old_override;
+        g_summary_loaded = old_loaded;
+        g_summary_skipped = old_skipped;
+        g_bundle = old_bundle;
+        g_nskipped = old_nskipped;
+        g_latched = 1;
+        g_override_built = 1;
+        fprintf(stderr, "[mods] relatch at the title refused (%s): %s; nothing changed, the caller restarts\n", reason, why);
+        fflush(stderr);
+        return 0;
+    }
+    fputs(held_log.c_str(), stderr);
+
+    const std::string snd_old = ids_with(old_mods, "/sound"), snd_new = ids_with(g_mods, "/sound");
+    g_said.clear();
+    const unsigned long dropped = port_fs_mod_relatch_reset();
+    port_fs_mods_relatch_reset();
+    port_nitrofs_patch_relatch();
+    const int tex = ntr::hdtex_reindex();
+    if (ui_old != ui_new) {
+        const int a = port_menu_hostimg_hd_ui_reset(), b = port_settings_page_hd_ui_reset(), c = port_menu_pause_hd_ui_reset(),
+                  d = port_sub_screen_hd_ui_reset(), e = port_ui_text_hd_ui_reset(), f = port_hd_meter_hd_ui_reset(),
+                  g = port_char_door_hd_ui_reset();
+        fprintf(stderr, "[mods] hd_ui art reset (%s -> %s): menu pictures %d, settings pictures %d, pause planks %d, minimap panel %d, "
+                "mod font %d, power meter %d, door skin %d dropped; each loads again from the new list on its next draw\n",
+                ui_old.empty() ? "-" : ui_old.c_str(), ui_new.empty() ? "-" : ui_new.c_str(), a, b, c, d, e, f, g);
+    }
+    ntr::gx_invalidate_textures();     /* after the art resets: the GPU drops every texture the old pictures fed */
+    if (snd_old != snd_new) {
+        char sr[160];
+        snprintf(sr, sizeof sr, "%s; sound mods %s -> %s", reason, snd_old.empty() ? "-" : snd_old.c_str(),
+                 snd_new.empty() ? "-" : snd_new.c_str());
+        sdat_reseat_mods(sr);
+    }
+    g_mods_prev.swap(old_mods);
+    PROCESS_MEMORY_COUNTERS pmc;
+    memset(&pmc, 0, sizeof pmc);
+    K32GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof pmc);
+    fprintf(stderr, "[mods] relatched at the title (%s): %u mod(s) %s (was %s); %u ROM file id(s) overridden (was %u, %u changed); "
+            "fs cache %lu byte(s) dropped; textures_hd %d name(s) indexed; working set %lu KB\n", reason, (unsigned)g_mods.size(),
+            list_text(g_mods).c_str(), list_text(g_mods_prev).c_str(), (unsigned)g_override.size(), (unsigned)old_override.size(), changed,
+            dropped, tex, (unsigned long)(pmc.WorkingSetSize / 1024));
+    fflush(stderr);
+    return 1;
+}
+
+/* ==== THE SKIN IN PLACE (run after093, lane SEAMSND1; one-process plan M3b) ====================================================
+   A skin is files and nothing else: char_registry's list of the base character's body and head files, served on top of every
+   files/ entry (build_overrides above), plus the HUD pictures hal/char_hud.cpp decodes for it. The cartridge reads a character's
+   files when a level loads it (Player::InitResources, under Stage::InitResources), so a skin can be switched without a restart
+   whenever no level holds the old one: the files layer is rebuilt for the new skin and the card image serves it, the same three
+   steps as the relatch above with the mod list unchanged. port_char_reskin_now does that at once (the file pick at the title,
+   the star select's pick once its course is chosen and the old level torn down); port_char_reskin_next_level checks the same
+   things inside a level and marks the pick, and the switch happens at the next level change, at the point the ROM's
+   Scene::BeforeCleanupResources runs (hal/sdat/consumer.cpp sd_sound_level_reap, after the old level's actors are gone and
+   before the new level boots). Refused (0, *why says why, nothing changed; the caller restarts as before) when:
+     - this is a multiplayer session (the base character is forced there);
+     - the old or the new skin comes from a code mod (a plugin cannot be unloaded);
+     - a skin file is one the game read at boot or at the title and still holds.
+   Away from the title the archives are unmounted with the title's own UnloadArchives first (see reskin_now): the body files are
+   arc0 members, and the ROM mounts an archive once. */
+extern "C" void port_char_hud_reskin_reset(void);   /* hal/char_hud.cpp */
+
+int g_reskin_pending_level;   /* 1 = the pending skin waits for the next level change */
+
+int reskin_check(int idx, int away_from_title, char *why, unsigned cap)
+{
+    why[0] = 0;
+    latch();
+    build_overrides();
+    if (port_mods_multiplayer()) {
+        snprintf(why, cap, "a multiplayer session forces the base character");
+        return 0;
+    }
+    const int cur = port_char_active();
+    const int ends[2] = { cur, idx };
+    for (int e = 0; e < 2; ++e) {
+        const char *mid = port_char_mod_of(ends[e]);
+        if (!mid) continue;
+        for (size_t i = 0; i < g_mods.size(); ++i)
+            if (g_mods[i].id == mid && g_mods[i].kind == "code") {
+                snprintf(why, cap, "the %s skin comes from code mod %s, and a plugin cannot be unloaded", e ? "new" : "running", mid);
+                return 0;
+            }
+    }
+    (void)away_from_title;
+    return 1;
+}
+
+/* The archive table the ROM's LoadArchive / UnloadArchives walk (src/LoadArchive.c, src/UnloadArchives.c): 13 records of five words,
+   the first the mounted archive (0 = not mounted). */
+extern "C" int data_0208ecf4[];
+extern "C" void UnloadArchives(void);
+
+unsigned archives_mounted(void)
+{
+    unsigned n = 0;
+    for (int i = 0; i < 13; ++i)
+        if (data_0208ecf4[i * 5]) ++n;
+    return n;
+}
+
+int reskin_now(int idx, const char *reason, int away_from_title, int dry, char *why, unsigned cap)
+{
+    if (!reason) reason = "?";
+    if (!reskin_check(idx, away_from_title, why, cap)) {
+        fprintf(stderr, "[chars] skin in place refused (%s): %s\n", reason, why);
+        fflush(stderr);
+        return 0;
+    }
+    const std::unordered_map<unsigned, std::string> old_override = g_override;
+    const int was = port_char_select(idx);
+    g_override.clear();
+    g_override_built = 0;
+    build_overrides();
+    unsigned changed = 0;
+    std::unordered_map<unsigned, std::string> all = old_override;
+    for (std::unordered_map<unsigned, std::string>::const_iterator it = g_override.begin(); it != g_override.end(); ++it)
+        all[it->first];
+    for (std::unordered_map<unsigned, std::string>::const_iterator it = all.begin(); it != all.end() && !why[0]; ++it) {
+        std::unordered_map<unsigned, std::string>::const_iterator o = old_override.find(it->first), n = g_override.find(it->first);
+        const std::string ov = o == old_override.end() ? "" : o->second, nv = n == g_override.end() ? "" : n->second;
+        if (ov == nv) continue;
+        ++changed;
+        if (held_at_title(it->first))
+            snprintf(why, cap, "skin file id %u (%s) was read %s and is still held", it->first, held_path(it->first).c_str(),
+                     held_when(it->first));
+    }
+    if (why[0] || dry) {
+        port_char_select(was);
+        g_override = old_override;
+        g_override_built = 1;
+        if (!why[0]) return 1;   /* the dry run of a pick inside a level: it can switch at the next level change */
+        fprintf(stderr, "[chars] skin in place refused (%s): %s\n", reason, why);
+        fflush(stderr);
+        return 0;
+    }
+    /* THE PLAYER MODELS ARE ARCHIVE MEMBERS (arc0), and the ROM mounts an archive once: LoadArchive returns at once while its record
+       is set, and only the title's UnloadArchives (src/game/stages/d_s_title.cpp) clears the records. At the title they are already
+       clear. Away from it (a level change, the star select), the old level is torn down and the next one has not booted, so the
+       records are cleared here with the title's own call, and the next Stage::InitResources mounts arc0 again off the card, where
+       the new skin's members are served. Without this the level after the switch read the old mount: the skin did not show. */
+    const unsigned mounted = archives_mounted();
+    if (mounted) UnloadArchives();
+    g_said.clear();
+    port_fs_mod_relatch_reset();
+    port_nitrofs_patch_relatch();
+    port_char_hud_reskin_reset();
+    g_reskin_pending_level = 0;
+    if (mounted)
+        fprintf(stderr, "[chars] %u archive(s) were mounted: unmounted with the title's own UnloadArchives, so the next level mounts "
+                "them again with the new skin\n", mounted);
+    PROCESS_MEMORY_COUNTERS pmc;
+    memset(&pmc, 0, sizeof pmc);
+    K32GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof pmc);
+    fprintf(stderr, "[chars] skin switched in place (%s): %s -> %s, %u ROM file id(s) changed, no restart; working set %lu KB\n",
+            reason, was >= 0 ? port_char_key(was) : "plain", idx >= 0 ? port_char_key(idx) : "plain", changed,
+            (unsigned long)(pmc.WorkingSetSize / 1024));
+    fflush(stderr);
+    return 1;
+}
+
+/* hal/sdat/consumer.cpp's level reap, seated below: the old level's actors are gone, the next level has not booted */
+void reskin_at_level_change(void)
+{
+    if (!g_reskin_pending_level) return;
+    const int idx = port_char_skin_pending();
+    g_reskin_pending_level = 0;
+    if (idx == -2) return;
+    char why[400];
+    if (!reskin_now(idx, "the level change after a pick inside a level", 1, 0, why, sizeof why))
+        fprintf(stderr, "[chars] the pending skin was not applied (%s); the running one stays\n", why);
+}
+
+}  /* namespace */
+
+extern "C" void (*port_level_reap_hook)(void);   /* hal/sdat/consumer.cpp */
+
+namespace {
+struct ReapSet { ReapSet() { port_level_reap_hook = reskin_at_level_change; } } g_reap_set;
+
+#ifndef PORT_ROM_CLEAN
+/* ---- dev knobs, compiled out of the kit --------------------------------------------------------------------------------------
+   SM64DS_MODS_RELATCH_AT=<tick>[,<id>+<id>...][;<tick>[,...]]...  at the title's <tick>th frame (counted from the first frame the
+   title is the live scene) call the relatch; with a list, that list stands in for settings.json's EnabledMods ("-" = no mods).
+   A tick written <tick>L calls it as port_mods_relatch_after_level (files a level read count as held).
+   SM64DS_MODS_MARK_LATER=<id>[,<id>...]  marks those FAT ids read in a level, as if a level had read them before this title (no
+   in-place return from a level to the title on this branch); with an L step it proves the after-level rule on a dev build.
+   SM64DS_FS_CENSUS=<tick>  at that title frame (default 200) and at exit, print every FAT id the game has read, with when
+   (boot / title / later) and how often, and the fs cache size. */
+struct RelatchStep { int tick; bool has_list; bool after_level; std::string json; };
+std::vector<RelatchStep> g_steps;
+int g_census_tick = -1;
+unsigned g_title_ticks;
+
+void census_dump(const char *when)
+{
+    unsigned long files = 0, bytes = 0;
+    port_fs_cache_size(&files, &bytes);
+    unsigned nb = 0, nt = 0, nl = 0;
+    for (unsigned i = 0; i < FAT_IDS; ++i) {
+        if (g_read_phase[i] & RD_BOOT) ++nb;
+        if (g_read_phase[i] & RD_TITLE) ++nt;
+        if (g_read_phase[i] & RD_LATER) ++nl;
+    }
+    fprintf(stderr, "[census] %s: %u id(s) read at boot, %u at the title, %u later; fs cache %lu file(s) %lu byte(s); "
+            "%u mod(s) on, %u id(s) overridden\n", when, nb, nt, nl, files, bytes, (unsigned)g_mods.size(), (unsigned)g_override.size());
+    for (unsigned i = 0; i < FAT_IDS; ++i) {
+        if (!g_read_phase[i]) continue;
+        const char *cp = port_fs_catalog_path(i);
+        fprintf(stderr, "[census]   id %4u %c%c%c blocks %6u %s%s\n", i, (g_read_phase[i] & RD_BOOT) ? 'B' : '-',
+                (g_read_phase[i] & RD_TITLE) ? 'T' : '-', (g_read_phase[i] & RD_LATER) ? 'L' : '-', g_read_count[i], cp ? cp : "?",
+                g_override.count(i) ? " (overridden)" : "");
+    }
+    fflush(stderr);
+}
+
+void census_at_exit(void) { census_dump("at exit"); }
+
+void (*g_dev_prev_hook)(void) = 0;   /* SEAMCLEAN1 (item 32): the hook that was seated before this one, called first */
+void dev_frame(void)
+{
+    if (g_dev_prev_hook) g_dev_prev_hook();
+    if (port_scene_live_id() != 1) return;
+    const unsigned t = g_title_ticks++;
+    if ((int)t == g_census_tick) census_dump("at the title");
+    for (size_t i = 0; i < g_steps.size(); ++i)
+        if (g_steps[i].tick == (int)t) {
+            char reason[64];
+            snprintf(reason, sizeof reason, "SM64DS_MODS_RELATCH_AT title frame %u%s", t, g_steps[i].after_level ? " after a level" : "");
+            if (g_steps[i].after_level) g_after_level = 1;
+            const int r = relatch(reason, g_steps[i].has_list ? g_steps[i].json.c_str() : 0);
+            g_after_level = 0;
+            fprintf(stderr, "[mods] dev: relatch returned %d%s\n", r, r ? "" : " (a real caller restarts the game here)");
+            fflush(stderr);
+        }
+}
+
+std::vector<std::string> split(const std::string &s, char sep)
+{
+    std::vector<std::string> r;
+    size_t at = 0;
+    for (;;) {
+        const size_t k = s.find(sep, at);
+        r.push_back(s.substr(at, k == std::string::npos ? std::string::npos : k - at));
+        if (k == std::string::npos) return r;
+        at = k + 1;
+    }
+}
+
+struct DevKnobs {
+    DevKnobs()
+    {
+        const char *e = getenv("SM64DS_MODS_RELATCH_AT");
+        if (e && *e) {
+            const std::vector<std::string> steps = split(e, ';');
+            for (size_t i = 0; i < steps.size(); ++i) {
+                if (steps[i].empty()) continue;
+                RelatchStep st;
+                st.tick = atoi(steps[i].c_str());
+                st.after_level = steps[i].find('L') != std::string::npos && steps[i].find('L') < steps[i].find(',');
+                const size_t comma = steps[i].find(',');
+                st.has_list = comma != std::string::npos;
+                st.json = "[";
+                if (st.has_list && steps[i].substr(comma + 1) != "-") {
+                    const std::vector<std::string> ids = split(steps[i].substr(comma + 1), '+');
+                    for (size_t k = 0; k < ids.size(); ++k)
+                        if (!ids[k].empty()) st.json += (st.json.size() > 1 ? ",\"" : "\"") + ids[k] + "\"";
+                }
+                st.json += "]";
+                g_steps.push_back(st);
+            }
+        }
+        const char *ml = getenv("SM64DS_MODS_MARK_LATER");
+        if (ml && *ml) {
+            const std::vector<std::string> ids = split(ml, ',');
+            for (size_t k = 0; k < ids.size(); ++k) {
+                const unsigned id = (unsigned)strtoul(ids[k].c_str(), 0, 0);
+                if (id < FAT_IDS) g_read_phase[id] |= RD_LATER;
+            }
+        }
+        const char *fb = getenv("SM64DS_MODS_FORCE_BUSY");
+        if (fb && *fb) g_force_busy = fb;
+        const char *c = getenv("SM64DS_FS_CENSUS");
+        if (c && *c && strcmp(c, "0")) {
+            g_census_tick = atoi(c) > 1 ? atoi(c) : 200;
+            atexit(census_at_exit);
+        }
+        if (!g_steps.empty() || g_census_tick >= 0)
+        {
+            g_dev_prev_hook = port_sdat_frame_hook;
+            port_sdat_frame_hook = dev_frame;
+        }
+    }
+} g_dev_knobs;
+#endif
+
+}  /* namespace */
+
+extern "C" int port_mods_relatch_at_title(const char *reason) { return relatch(reason, 0); }
+
+/* SEAMHUB1: the same relatch, for a title reached from a level (the in-place leave of an online world): files a level read count as
+   held (note c above held_at_title). */
+extern "C" int port_mods_relatch_after_level(const char *reason)
+{
+    g_after_level = 1;
+    const int r = relatch(reason, 0);
+    g_after_level = 0;
+    return r;
+}
+
+/* SEAMCLEAN1: the last resort of an online leave whose relatch was refused and whose restart then failed to start: the player is on
+   a title with the online mod list and no other way out, so the offline list goes on anyway, accepting files a level read (they show
+   from their next read; the title holds no level). A code mod still refuses (a plugin cannot be unloaded). */
+extern "C" int port_mods_relatch_forced(const char *reason)
+{
+    g_force_held = 1;
+    const int r = port_mods_relatch_after_level(reason);
+    g_force_held = 0;
+    return r;
+}
+
+/* SEAMSND1: the skin in place (see THE SKIN IN PLACE above). port_char_reskin_now: switch now, where no level holds the old skin
+   (away_from_title = 1 anywhere but the title). port_char_reskin_next_level: a pick inside a level; checks everything now (a dry run)
+   and marks it for the next level change. 1 = done / marked; 0 = refused, *why says why, the caller restarts as before. */
+extern "C" int port_char_reskin_now(int idx, const char *reason, int away_from_title, char *why, unsigned cap)
+{
+    return reskin_now(idx, reason, away_from_title, 0, why, cap);
+}
+
+extern "C" int port_char_reskin_next_level(int idx, char *why, unsigned cap)
+{
+    if (!reskin_now(idx, "a pick inside a level", 1, 1, why, cap)) return 0;
+    port_char_skin_set_pending(idx);
+    g_reskin_pending_level = 1;
+    fprintf(stderr, "[chars] skin %s marked for the next level load (the cartridge loads the character with the level); this level "
+            "keeps %s\n", idx >= 0 ? port_char_key(idx) : "plain", port_char_active() >= 0 ? port_char_key(port_char_active()) : "plain");
+    fflush(stderr);
+    return 1;
 }

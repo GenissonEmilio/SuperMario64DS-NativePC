@@ -86,6 +86,7 @@ struct HubWs {
     int    (WSAAPI *WSAGetLastError)(void);
     unsigned long (WSAAPI *inet_addr)(const char *);
     struct hostent *(WSAAPI *gethostbyname)(const char *);
+    int    (WSAAPI *getsockname)(SOCKET, struct sockaddr *, int *);   // SEAMJOIN1
 };
 HubWs WS;
 
@@ -105,7 +106,7 @@ bool ws_up() {
     HUB_WS(WSAStartup) HUB_WS(socket) HUB_WS(WSAIoctl) HUB_WS(ioctlsocket)
     HUB_WS(setsockopt) HUB_WS(bind) HUB_WS(sendto) HUB_WS(recvfrom)
     HUB_WS(select) HUB_WS(closesocket) HUB_WS(WSAGetLastError)
-    HUB_WS(inet_addr) HUB_WS(gethostbyname)
+    HUB_WS(inet_addr) HUB_WS(gethostbyname) HUB_WS(getsockname)
 #undef HUB_WS
     if (!ok) {
         std::fprintf(stderr, "[hub] ws2_32.dll is missing an entry point; "
@@ -138,8 +139,7 @@ unsigned now_ms() {
                       (unsigned long long)f.QuadPart);
 }
 
-int env_int(const char *name, int def, int lo, int hi) {
-    const char *s = std::getenv(name);
+int str_int(const char *name, const char *s, int def, int lo, int hi) {
     if (!s || !*s) return def;
     char *end = nullptr;
     const long v = std::strtol(s, &end, 10);
@@ -149,6 +149,15 @@ int env_int(const char *name, int def, int lo, int hi) {
         return def;
     }
     return (int)v;
+}
+
+int env_int(const char *name, int def, int lo, int hi) {
+    return str_int(name, std::getenv(name), def, lo, hi);
+}
+
+// SEAMHUB1: a session record field, parsed like env_int
+int sess_int(OnlineSessionField f, int def, int lo, int hi) {
+    return str_int(online_session_name(f), online_session_get(f), def, lo, hi);
 }
 
 bool parse_host_port(const char *s, int default_port, sockaddr_in *out) {
@@ -1070,11 +1079,37 @@ bool open_socket_mesh(int prefer) {
     return false;
 }
 
+// SEAMJOIN1: THE SEAT OF A SESSION LEFT IN PLACE ENDS AT ONCE ON THE NEXT JOIN.
+// The relay has no goodbye message: a seat ends when its holder is unheard for
+// the hub idle time (10 s), or when the SAME address says hello again, which
+// the relay answers by detaching the old endpoint first ("leave ... (rejoin)",
+// tools/relay/relay.py) and then seating the hello as new. A join after an
+// in-place leave opens a new socket, so it binds the local port the last one
+// had (comms_hub_teardown keeps it here): to the relay the new hello comes
+// from the old address, the old seat is retired on the spot, and the join gets
+// a clean seat instead of racing the idle timer. A port no longer free falls
+// back to any port, which is the old behaviour (the old seat then idles out).
+unsigned short g_last_local_port = 0;   // network order; 0 = none kept
+
 bool open_socket_relay() {
     SOCKET s = WS.socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (s == INVALID_SOCKET) return false;
     sockaddr_in a = {};
     a.sin_family = AF_INET;   // any address, any port: the NAT picks
+    if (g_last_local_port) {
+        a.sin_port = g_last_local_port;
+        if (WS.bind(s, (const sockaddr *)&a, (int)sizeof a) == 0) {
+            std::fprintf(stderr, "[seamless] the hub socket took the last session's local port again: the relay retires "
+                         "the old seat when this hello arrives\n");
+            g_last_local_port = 0;
+            g_sock = s;
+            return true;
+        }
+        std::fprintf(stderr, "[seamless] the last session's local port is taken; the hub socket takes any port (the old "
+                     "seat idles out)\n");
+        g_last_local_port = 0;
+        a.sin_port = 0;
+    }
     if (WS.bind(s, (const sockaddr *)&a, (int)sizeof a) != 0) {
         WS.closesocket(s);
         return false;
@@ -1125,7 +1160,7 @@ bool install_open(bool want_relay, const char *relay, const char *code,
     // old world hub. An arena is never a party or coop room.
     g_room = kHubRoomWorld;
     if (!g_arena) {
-        const char *rk = std::getenv("SM64DS_ROOM_KIND");
+        const char *rk = online_session_get(kSessRoomKind);   /* SEAMHUB1: the session record */
         if (rk && *rk) {
             if (!std::strcmp(rk, "party")) g_room = kHubRoomParty;
             else if (!std::strcmp(rk, "coop")) g_room = kHubRoomCoop;
@@ -1175,7 +1210,7 @@ bool install_open(bool want_relay, const char *relay, const char *code,
         g_state = kHubPairing;
     } else {
         g_mode = kModeMesh;
-        g_mesh_base = env_int("SM64DS_HUB_PORT", 0, 1024, 65535 - kHubMaxSeats);
+        g_mesh_base = sess_int(kSessHubPort, 0, 1024, 65535 - kHubMaxSeats);
         if (!g_mesh_base) return true;
         if (g_mesh_base <= 51765 && 51765 < g_mesh_base + kHubMaxSeats)
             std::fprintf(stderr, "[hub] WARNING: mesh ports %d..%d include "
@@ -1199,7 +1234,12 @@ bool install_open(bool want_relay, const char *relay, const char *code,
         return true;
     }
     g_thread = th;   // kept open: report_at_exit waits on it
-    std::atexit(report_at_exit);
+    /* SEAMJOIN1: an in-place join installs a second time in one process; the exit hook goes in once */
+    static bool exit_hooked = false;
+    if (!exit_hooked) {
+        exit_hooked = true;
+        std::atexit(report_at_exit);
+    }
     if (g_arena) {
         char cs[9] = {};
         std::memcpy(cs, g_code, 8);
@@ -1234,11 +1274,101 @@ bool install_open(bool want_relay, const char *relay, const char *code,
 }  // namespace
 
 // ===========================================================================
+// THE SESSION RECORD (lane SEAMHUB1; see hal/comms_hub.h)
+// ===========================================================================
+namespace {
+const char *const k_sess_names[kSessFields] = {
+    "SM64DS_ADVENTURE", "SM64DS_COMMS_RELAY", "SM64DS_COMMS_CODE", "SM64DS_ROOM_KIND", "SM64DS_VOICE_ALLOWED",
+    "SM64DS_HUB_SEAT", "SM64DS_PLAYER_NAME", "SM64DS_PLAYER_COLOR", "SM64DS_PLAYER_SHOES", "SM64DS_WORLD_NO",
+    "SM64DS_HUB_PORT" };
+OnlineSession g_sess;
+
+void sess_fill() {
+    if (g_sess.filled) return;
+    g_sess.filled = true;
+    if (g_sess.cleared) return;
+    for (int i = 0; i < kSessFields; ++i) {
+        const char *e = std::getenv(k_sess_names[i]);
+        if (!e) continue;
+        g_sess.set[i] = true;
+        std::strncpy(g_sess.value[i], e, sizeof g_sess.value[i] - 1);
+        g_sess.value[i][sizeof g_sess.value[i] - 1] = 0;
+    }
+}
+}  // namespace
+
+const char *online_session_get(OnlineSessionField f) {
+    if (f < 0 || f >= kSessFields) return nullptr;
+    sess_fill();
+    return g_sess.set[f] ? g_sess.value[f] : nullptr;
+}
+
+// SEAMCLEAN1: host_settings.cpp reads the Adventure flag through the record when this file is linked in
+extern "C" const char *(*port_session_adventure_hook)(void);
+static const char *session_adventure_now() { return online_session_get(kSessAdventure); }
+static struct SessionAdventureSeat { SessionAdventureSeat() { port_session_adventure_hook = session_adventure_now; } } g_session_adventure_seat;
+
+const char *online_session_name(OnlineSessionField f) {
+    return (f >= 0 && f < kSessFields) ? k_sess_names[f] : "?";
+}
+
+const OnlineSession &online_session() {
+    sess_fill();
+    return g_sess;
+}
+
+// SEAMJOIN1: the in-place join writes the record from the plan
+void online_session_begin() {
+    g_sess.filled = true;
+    g_sess.cleared = false;
+    for (int i = 0; i < kSessFields; ++i) {
+        g_sess.set[i] = false;
+        g_sess.value[i][0] = 0;
+    }
+}
+
+void online_session_set(OnlineSessionField f, const char *v) {
+    if (f < 0 || f >= kSessFields) return;
+    if (!v || !*v) {
+        g_sess.set[f] = false;
+        g_sess.value[f][0] = 0;
+        return;
+    }
+    g_sess.set[f] = true;
+    std::strncpy(g_sess.value[f], v, sizeof g_sess.value[f] - 1);
+    g_sess.value[f][sizeof g_sess.value[f] - 1] = 0;
+}
+
+int online_session_clear() {
+    sess_fill();
+    int n = 0;
+    for (int i = 0; i < kSessFields; ++i) {
+        if (g_sess.set[i]) ++n;
+        g_sess.set[i] = false;
+        g_sess.value[i][0] = 0;
+    }
+    g_sess.cleared = true;
+    return n;
+}
+
+// ===========================================================================
 // PUBLIC
 // ===========================================================================
+// SEAMHUB1: the install's answer lives here, not in the function, so the
+// in-place leave (comms_hub_teardown) can forget it.
+namespace {
+bool g_inst_tried = false;
+bool g_inst_owned = false;   // the answer: true = skip the VS carrier
+// SEAMVS1: the arena install's latch, here for the same reason: a VS match
+// that ends in place tears the hub down, and the next match handed to this
+// process installs the arena again.
+bool g_arena_tried = false;
+bool g_arena_owned = false;
+}  // namespace
+
 bool comms_hub_install_from_env() {
-    static bool tried = false;
-    static bool owned = false;   // the answer: true = skip the VS carrier
+    bool &tried = g_inst_tried;
+    bool &owned = g_inst_owned;
     if (tried) return owned;
     tried = true;
 
@@ -1252,9 +1382,10 @@ bool comms_hub_install_from_env() {
     if (const char *vs = std::getenv("SM64DS_VS_MAP"))
         if (*vs) return false;
 
-    const char *relay = std::getenv("SM64DS_COMMS_RELAY");
-    const char *code = std::getenv("SM64DS_COMMS_CODE");
-    const char *mesh = std::getenv("SM64DS_HUB_PORT");
+    /* SEAMHUB1: the address, the code and the seat come from the session record (hal/comms_hub.h), which the in-place leave clears */
+    const char *relay = online_session_get(kSessRelay);
+    const char *code = online_session_get(kSessCode);
+    const char *mesh = online_session_get(kSessHubPort);
     const bool want_relay = relay && *relay;
     const bool want_mesh = !want_relay && mesh && *mesh;
     if (!want_relay && !want_mesh) {
@@ -1281,7 +1412,7 @@ bool comms_hub_install_from_env() {
                      "carrier\n", role);
 
     return install_open(want_relay, relay, code,
-                        env_int("SM64DS_HUB_SEAT", 0xFF, 0, 0xFF));
+                        sess_int(kSessHubSeat, 0xFF, 0, 0xFF));
 }
 
 // THE ARENA INSTALL (lane ARENACORE1; hal/vs_arena.cpp is the only caller).
@@ -1289,13 +1420,13 @@ bool comms_hub_install_from_env() {
 // no VS refusal here. Only the address is read from the env, the same two
 // knobs the adventure hub uses.
 bool comms_hub_install_arena(int want_seat) {
-    static bool tried = false;
-    static bool owned = false;
+    bool &tried = g_arena_tried;
+    bool &owned = g_arena_owned;
     if (tried) return owned;
     tried = true;
-    const char *relay = std::getenv("SM64DS_COMMS_RELAY");
-    const char *code = std::getenv("SM64DS_COMMS_CODE");
-    const char *mesh = std::getenv("SM64DS_HUB_PORT");
+    const char *relay = online_session_get(kSessRelay);   /* SEAMHUB1: the session record */
+    const char *code = online_session_get(kSessCode);
+    const char *mesh = online_session_get(kSessHubPort);
     const bool want_relay = relay && *relay;
     const bool want_mesh = !want_relay && mesh && *mesh;
     if (!want_relay && !want_mesh) return false;
@@ -1543,6 +1674,158 @@ void comms_hub_report(const char *tag) {
     Lock l;
     if (!g_installed) return;
     report_locked(tag ? tag : "report");
+}
+
+// SEAMHUB1: no more periodic report lines from the I/O thread (the in-place leave asks for this at the quit, so the fade and the
+// title print no "[hub]" line before the teardown).
+void comms_hub_reports_off() {
+    Lock l;
+    g_report_s = 0;
+}
+
+// ===========================================================================
+// THE TEARDOWN (run after093, lane SEAMHUB1; the one-process plan's H-a).
+// Until now the hub lived as long as the process: installed once in main(),
+// its I/O thread stopped only by report_at_exit. Leaving an Adventure Online
+// world to the title in place needs it gone while the process carries on as a
+// solo game, so this stops the thread the way report_at_exit does (the flag,
+// then a wait; the thread looks at the flag every 5 ms), and only once it has
+// returned closes the socket and puts every piece of state back to what a
+// process that never installed the hub has. The atexit hook stays registered
+// (it cannot be removed) and has nothing left to do: no thread to wait for,
+// and comms_hub_report says nothing with the hub not installed. Winsock stays
+// started, as it always has. Game thread only.
+// ===========================================================================
+bool comms_hub_teardown(const char *why) {
+    HANDLE th;
+    {
+        Lock l;
+        th = g_thread;
+    }
+    unsigned long long sent_g = 0, recvd_g = 0;
+    int seat = -1, peers = 0;
+    {
+        Lock l;
+        sent_g = g_st.sent[0];
+        recvd_g = g_st.recvd[0];
+        seat = g_seat;
+        for (int s = 0; s < kHubMaxSeats; ++s)
+            if (g_seats[s].present && s != g_seat) ++peers;
+    }
+    if (th) {
+        ::InterlockedExchange(&g_stop, 1);
+        const DWORD w = ::WaitForSingleObject(th, 2000);
+        if (w != WAIT_OBJECT_0) {
+            ::InterlockedExchange(&g_stop, 0);
+            std::fprintf(stderr, "[seamless] the hub's I/O thread did not stop in 2 s "
+                         "(wait %lu); the hub is left as it was (%s)\n",
+                         (unsigned long)w, why ? why : "?");
+            std::fflush(stderr);
+            return false;
+        }
+        ::CloseHandle(th);
+    }
+    const bool had_socket = g_sock != INVALID_SOCKET;
+    /* SEAMJOIN1: keep the relay socket's local port for the next join in this process (open_socket_relay) */
+    if (had_socket && g_mode == kModeRelay && WS.getsockname) {
+        sockaddr_in me = {};
+        int len = (int)sizeof me;
+        if (WS.getsockname(g_sock, (sockaddr *)&me, &len) == 0) g_last_local_port = me.sin_port;
+    }
+    if (had_socket && WS.closesocket) WS.closesocket(g_sock);
+    {
+        Lock l;
+        g_installed = false;
+        g_arena = false;
+        g_room = kHubRoomWorld;
+        for (int k = 0; k < kHubKinds; ++k) g_handler[k] = KindHandler();
+        g_mode = kModeNone;
+        g_state = kHubOff;
+        g_seat = -1;
+        g_sock = INVALID_SOCKET;
+        g_relay = sockaddr_in();
+        g_mesh_base = 0;
+        std::memset(g_code, 0, sizeof g_code);
+        g_want_seat = 0xFF;
+        g_seat_taken_since = 0;
+        g_ever_paired = false;
+        g_exit_full = false;
+        g_thread = nullptr;
+        g_last_ack = 0;
+        ++g_roster_version;            // every roster reader sees the change
+        g_ping_rr = 0;
+        std::memset(g_fifo, 0, sizeof g_fifo);
+        std::memset(&g_mfifo, 0, sizeof g_mfifo);
+        std::memset(g_qdrop, 0, sizeof g_qdrop);
+        std::memset(g_seats, 0, sizeof g_seats);
+        g_st = CommsHubStats();
+        g_drop_stale = 0;
+        g_drop_field = 0;
+        g_dispatched = 0;
+        std::memset(g_ref, 0, sizeof g_ref);
+        g_ref_next = 0;
+        g_ref_last_t_ref = 0;
+        g_ref_last_recv = 0;
+        g_ref_have = false;
+        g_ref_cap_ms = -1;
+        g_delay_ms = 0;
+        g_loss_pct = 0;
+        g_report_s = 10;
+        g_held_head = 0;
+        g_held_count = 0;
+    }
+    ::InterlockedExchange(&g_stop, 0);
+    g_inst_tried = false;
+    g_inst_owned = false;
+    g_arena_tried = false;   // SEAMVS1
+    g_arena_owned = false;
+    std::fprintf(stderr, "[seamless] hub torn down (%s): I/O thread %s, socket %s; "
+                 "it was seat %d with %d other seat(s) present, %llu ghost frame(s) "
+                 "sent, %llu received\n", why ? why : "?",
+                 th ? "stopped and joined" : "never started",
+                 had_socket ? "closed" : "never opened", seat, peers, sent_g, recvd_g);
+    std::fflush(stderr);
+    return true;
+}
+
+// ===========================================================================
+// THE INSTALL IN A LIVE PROCESS (run after093, lane SEAMJOIN1; the one-process
+// plan's M4b). Joining an online world from the title used to start the game
+// again so that main() could make this install with the join's names in the
+// environment. The in-place join fills the session record instead and asks
+// for the same install here, at the title, before any level of the session is
+// loaded: comms_hub_install_from_env with its latch forgotten, reading the
+// record, opening the socket and starting the I/O thread exactly as at boot.
+// A hub still up (a previous session not torn down) or a thread handle still
+// held refuses; so does an install that did not come up (no socket, a bad
+// address or code), which is torn down again so the caller can restart as
+// before with nothing of it left in this process. Game thread only.
+// ===========================================================================
+bool comms_hub_install_in_place(const char **why) {
+    static char buf[160];
+    *why = nullptr;
+    {
+        Lock l;
+        if (g_installed || g_thread) {
+            *why = "a hub of an earlier session is still installed in this process";
+            return false;
+        }
+    }
+    g_inst_tried = false;
+    g_inst_owned = false;
+    const bool owned = comms_hub_install_from_env();
+    const int st = comms_hub_state();
+    if (owned && comms_hub_active() && st != kHubFailed && g_thread) {
+        std::fprintf(stderr, "[seamless] hub installed in this process (state %d, want seat %d)\n",
+                     st, g_want_seat);
+        std::fflush(stderr);
+        return true;
+    }
+    std::snprintf(buf, sizeof buf, "the hub install did not come up (owned %d, socket %s, state %d)",
+                  owned ? 1 : 0, comms_hub_active() ? "open" : "none", st);
+    *why = buf;
+    comms_hub_teardown("the in-place install did not come up");
+    return false;
 }
 
 }  // namespace port

@@ -699,6 +699,16 @@ def _is_hostgen_reroute_start(name, args):
     return name == 'get_property' and [a.value for a in args[:2]] == ['_ps2_targets', 'DIRECTORY']
 
 
+# A target's source list read, filtered by list(FILTER ... EXCLUDE ...) and written back unchanged apart from that: a pure removal,
+# so it adds no owner and cannot hide a selected one for the reference check (the smoke harnesses' cstd4.cpp drop). Found by shape in
+# the file text; (target word, variable word) pairs. Anything else that rewrites SOURCES is still refused.
+_FILTER_ONLY_REWRITES = set()
+_FILTER_ONLY_RE = re.compile(
+    r'get_target_property\(\s*(\w+)\s+(\$\{\w+\}|\w+)\s+SOURCES\s*\)\s*'
+    r'list\(\s*FILTER\s+\1\s+EXCLUDE[^)]*\)\s*'
+    r'set_property\(\s*TARGET\s+\2\s+PROPERTY\s+SOURCES\s+\$\{\1\}\s*\)')
+
+
 def _reject_source_rewrite(name, args, variables, helpers, active=(), targets_exist=False,
                            allow_loop_control=False, allow_return=False):
     if (name == 'return' and not allow_return) or (name in ('break', 'continue') and not allow_loop_control):
@@ -724,6 +734,9 @@ def _reject_source_rewrite(name, args, variables, helpers, active=(), targets_ex
     words = [arg.value for arg in _cmake_values(args, variables)]
     if name == 'set_property' and words[:1] == ['TARGET'] and 'PROPERTY' in words:
         prop = words[words.index('PROPERTY') + 1:][:1]
+        if (prop == ['SOURCES'] and len(args) >= 5 and
+                (args[1].value, args[4].value[2:-1] if args[4].value.startswith('${') else args[4].value) in _FILTER_ONLY_REWRITES):
+            return
         if not prop or prop == ['SOURCES'] or '$' in prop[0]:
             raise ValueError('unsupported target SOURCES rewrite; cannot retain selected owners')
     if name == 'set_target_properties' and 'PROPERTIES' in words:
@@ -796,6 +809,9 @@ def _cmake_build_inputs(text, symbol_expansions=None):
     a symbol table or an unused generation rule alone supplies neither.
     """
     commands = list(_cmake_commands(text))
+    _FILTER_ONLY_REWRITES.clear()
+    for _m in _FILTER_ONLY_RE.finditer(text):
+        _FILTER_ONLY_REWRITES.add((_m.group(2), _m.group(1)))
     helpers = _cmake_helper_writes(commands)
     env = _BuiltinEnv({"CMAKE_CURRENT_SOURCE_DIR": [Token(str(PORT), 0)],
                        "CMAKE_SOURCE_DIR": [Token(str(PORT), 0)],

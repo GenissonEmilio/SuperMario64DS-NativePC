@@ -42,6 +42,8 @@ struct CoopWorldStats {
 CoopWorldStats coop_world_stats();
 
 // STEP-0 API for the phase-2 lanes (run mp1, COOPINT1). All inert (false / -1 / 0) outside a coop room.
+// SEAMCOOP1: the room's state back to a process that never was in one (a coop room left or entered in place: hal/coop_boot.cpp).
+void coop_world_session_reset();
 bool coop_group_key(int *level, int *act);     // my current group's sublevel and act
 bool coop_group_established();                 // I hold the group's state (snapshot taken, level live)
 int  coop_group_owner();                       // owner seat, -1 none

@@ -1101,6 +1101,12 @@ void stat_report(void)
 }
 }  // namespace
 
+/* Lane EGG1: the PRE-volume host render hook (hal/egg_audio.cpp: the title's small-logo clip). Nullable, for g_aux_render's
+   reason (targets without the caller link this file too). Called once per render block, after the DS mixer and before the host
+   master volume, so what it adds plays at the game's own volume and SM64DS_VOLUME=0 / the Volume setting at 0 silences it. */
+static void (*g_pre_volume_render)(sd_s16 *, int, int);
+void sd_mix_set_pre_volume_render(void (*fn)(sd_s16 *dst, int frames, int rate)) { g_pre_volume_render = fn; }
+
 static void sd_mix_render_body(sd_s16 *dst, int frames);
 
 void sd_mix_render(sd_s16 *dst, int frames)
@@ -1249,6 +1255,8 @@ static void sd_mix_render_body(sd_s16 *dst, int frames)
         }
     }
 
+    if (g_pre_volume_render) g_pre_volume_render(dst, frames, g_mixRate);      // lane EGG1, see the hook's banner
+
     // Host master volume: one final scalar on the already-mixed stereo buffer.
     // This is the output stage, not the DS mixer -- every voice, envelope and
     // pan above stayed hardware-faithful; this only trims the summed result on
@@ -1284,4 +1292,21 @@ static void sd_mix_render_body(sd_s16 *dst, int frames)
 void sd_mix_set_aux_render(void (*fn)(sd_s16 *, int))
 {
     g_aux_render = fn;
+}
+
+// SEAMSND1: read-only questions for freeing a retired sound image
+// (hal/sdat/sdat.cpp sdat_retired_sweep): is a live voice still playing
+// samples inside [lo, hi), and is any recording stream still sounding.
+int sd_mix_uses_pcm(const sd_s16 *lo, const sd_s16 *hi)
+{
+    for (int i = 0; i < SD_CHANNELS; i++)
+        if (g_ch[i].active && g_ch[i].pcm >= lo && g_ch[i].pcm < hi) return 1;
+    return 0;
+}
+
+int sd_mix_any_stream(void)
+{
+    for (int i = 0; i < ST_MAX; i++)
+        if (g_st[i].state) return 1;
+    return 0;
 }

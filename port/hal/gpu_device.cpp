@@ -348,6 +348,36 @@ extern "C" int port_gpu_device_acquire(int want_warp)
     return 1;
 }
 
+/* THE CARD LOST FOR GOOD, AND A NEW DEVICE IN ITS PLACE (run after093, lane
+   MGFREEZE2). When the card reports the device removed or reset (the
+   tester's DXGI_ERROR_DEVICE_REMOVED right after an out-of-memory), nothing
+   made on the old device works again, so hal/gpu_present.cpp asks for a new
+   one on the same adapter and rebuilds the present path on it. The old device,
+   its context and the card's clock queries are ABANDONED, not released: a
+   release in the middle of a run, like the one THE EXIT RULE in
+   hal/gpu_device.h forbids at quit, crashed the AMD driver's own worker
+   thread in every try (run after093, lane MGFREEZE1). A removed device holds
+   next to nothing, so what is abandoned costs next to nothing. Returns 1 with
+   the new device in place, 0 with the old one left as it was. */
+extern "C" int port_gpu_device_renew(void)
+{
+    if (!g_dev || !p_create) return 0;
+    ID3D11Device *old_dev = g_dev;
+    ID3D11DeviceContext *old_ctx = g_ctx;
+    g_dev = 0;
+    g_ctx = 0;
+    if (!make_device(g_is_warp ? D3D_DRIVER_TYPE_WARP : D3D_DRIVER_TYPE_HARDWARE)) {
+        g_dev = old_dev;
+        g_ctx = old_ctx;
+        return 0;
+    }
+    memset(g_tslot, 0, sizeof g_tslot);   /* the old clock queries go with the old device */
+    g_timer_ready = 0;
+    g_timer_cur = -1;
+    name_adapter();
+    return 1;
+}
+
 extern "C" void *port_gpu_device(void) { return (void *)g_dev; }
 extern "C" void *port_gpu_device_context(void) { return (void *)g_ctx; }
 extern "C" const char *port_gpu_device_adapter(void) { return g_adapter; }

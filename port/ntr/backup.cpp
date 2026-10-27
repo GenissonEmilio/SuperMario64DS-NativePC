@@ -183,6 +183,7 @@
    not RAM, so restoring a state must not un-write a save. */
 #include "hal/dsstate_seg.h"
 #include "hal/host_settings.h"   /* adventure_ghost_mode() */
+#include "hal/comms_hub.h"       /* SEAMCLEAN1: port::online_session_get, the session record */
 #include <random>
 
 #include <cstddef>
@@ -222,8 +223,11 @@ bool env_on(const char *name)
     return e && *e && *e != '0';
 }
 
-bool coop_mode() { static int v = -1; if (v < 0) v = env_on("SM64DS_COOP") ? 1 : 0; return v != 0; }
-bool coop_host() { static int v = -1; if (v < 0) v = env_on("SM64DS_COOP_HOST") ? 1 : 0; return v != 0; }
+/* SEAMCOOP1: a coop room entered or left in a live process (hal/coop_boot.cpp) chooses at run time through select_coop below:
+   -1 = the environment as at boot, 0 = solo, 1 = coop guest, 2 = coop host */
+int  g_force_coop = -1;
+bool coop_mode() { if (g_force_coop >= 0) return g_force_coop != 0; static int v = -1; if (v < 0) v = env_on("SM64DS_COOP") ? 1 : 0; return v != 0; }
+bool coop_host() { if (g_force_coop >= 0) return g_force_coop == 2; static int v = -1; if (v < 0) v = env_on("SM64DS_COOP_HOST") ? 1 : 0; return v != 0; }
 
 /* The ROM copies "ds mario" into data_020a4b40 at boot (func_02042f68, run by
    hal/boot_arms.cpp R2c), after this file static init. A coop room therefore
@@ -510,8 +514,9 @@ bool online_wanted()
     if (k && *k == '0') return false;
     const char *vs = std::getenv("SM64DS_VS_MAP");
     if (vs && *vs) return false;
-    const char *r = std::getenv("SM64DS_COMMS_RELAY");
-    const char *m = std::getenv("SM64DS_HUB_PORT");
+    /* SEAMCLEAN1: the relay and the test mesh's port come off the session record, not getenv */
+    const char *r = port::online_session_get(port::kSessRelay);
+    const char *m = port::online_session_get(port::kSessHubPort);
     if (!((r && *r) || (m && *m))) return false;
     return port::adventure_ghost_mode();
 }
@@ -1015,6 +1020,34 @@ void select_online(int on)
     std::fprintf(stderr, "[online-save] medium is now %s (%s)\n", g_online ? "the online save" : "the single player save", g_path);
 }
 bool online_selected() { return g_online; }
+
+/* SEAMCOOP1: THE COOP MEDIUM AT RUN TIME (run after093; the one-process plan's M5b). A coop room member used to be a process started
+   with SM64DS_COOP (and SM64DS_COOP_HOST + SM64DS_COOP_SAVE on the host), which this file read once: the host on its .coopsav, a guest
+   on a temp image of its own. A coop room is now entered and left inside a running game (hal/coop_boot.cpp), so the same choice is
+   made here at the title, where no level holds the image: 1 = a guest's temp image, 2 = the host's SM64DS_COOP_SAVE file, 0 = back to
+   the single player save. The fence (section 6) applies exactly as at boot. Leaving coop puts the ROM's own record tag back
+   ("ds mario", arm9 .rodata data_0208ee50, which func_02042f68 copies to data_020a4b40 at boot) and deletes the guest's temp image. */
+void select_coop(int mode)
+{
+    const int want = mode < 0 ? -1 : (mode > 2 ? 2 : mode);
+    if (g_open && g_force_coop == want) return;
+    const bool was_guest = coop_mode() && !coop_host();
+    g_force_coop = want;
+#ifdef _WIN32
+    if (was_guest && want != 1) guest_cleanup_atexit();
+#else
+    (void)was_guest;
+#endif
+    if (want == 0) {
+        g_force_online = 0;
+        if (std::memcmp(data_020a4b40, "ds coop!", 8) == 0) std::memcpy(data_020a4b40, "ds mario", 8);
+    }
+    g_open = false;
+    open_once();
+    std::fprintf(stderr, "[coop-save] medium is now %s (%s)\n",
+                 !coop_mode() ? "the single player save" : coop_host() ? "the coop host's file" : "a coop guest's temp image", g_path);
+}
+bool coop_selected() { return coop_mode(); }
 
 }  // namespace backup
 }  // namespace ntr

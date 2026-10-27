@@ -3848,6 +3848,10 @@ extern int data_020a0e5a[];           /* the split spelling of .pressed */
 
 /* SETMENU1: where the pointer is over the picture, in picture pixels (the settings page's mouse); 0 when the window is not focused or the
    pointer is off the picture. SM64DS_SETPAGE_SCRIPT stands in for it on a scripted run (settings_page_scripted). */
+/* SEAMCLEAN1: 1 when this run has no window to read a mouse for (a selftest or a scene run without a window), where
+   hal_window_focused() fails open; the logo egg's click poll takes its real mouse only when this is 0. */
+extern "C" int hal_window_headless(void) { return g_headless ? 1 : 0; }
+
 extern "C" int hal_window_cursor_fb(int *fx, int *fy)
 {
     if (g_headless || !GetCursorPos_ || !ScreenToClient_ || !hal_window_focused()) return 0;
@@ -5921,4 +5925,22 @@ extern "C" int port_hud_slide_pinned(void)
     static int keep = -1;      /* SM64DS_HUD_SLIDE_KEEP=1: the ROM's slide again on this exe (before / after pictures) */
     if (keep < 0) { const char *e = getenv("SM64DS_HUD_SLIDE_KEEP"); keep = (e && *e && *e != '0') ? 1 : 0; }
     return (keep || hal_sub_screen_stacked()) ? 0 : 1;
+}
+
+/* run after093, lane SEAMART1 (one-process plan M3c): hal/mods.cpp's relatch at the title changed which mods ship hd_ui/, so the minimap
+   panel pair (hd_ui/minimap/) is asked for again: the two pictures and the two scaled copies made from them are freed (a scaled copy is keyed
+   on its source's address, which the next load may reuse) and g_art_state goes back to "not tried"; the next panel draw builds it from the
+   new list. Returns 1 when the panel art was loaded. Game thread only (no level, so no panel draw, at the title). */
+extern "C" int port_sub_screen_hd_ui_reset(void)
+{
+    const int was = g_art_state == 1;
+    std::free(g_scaled_base.px);
+    std::free(g_scaled_tab.px);
+    std::memset(&g_scaled_base, 0, sizeof g_scaled_base);
+    std::memset(&g_scaled_tab, 0, sizeof g_scaled_tab);
+    art_free(&g_art_base);
+    art_free(&g_art_tab);
+    g_art_base.w = g_art_base.h = g_art_tab.w = g_art_tab.h = 0;
+    g_art_state = 0;
+    return was;
 }

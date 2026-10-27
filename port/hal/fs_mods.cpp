@@ -2993,3 +2993,37 @@ struct InstallHooks {
 } g_install;
 
 } /* namespace */
+
+/* THE RE-LATCH'S HALF HERE (run after093, lane SEAMMODS1). The two palette
+   mods read their .pal once, and palette_open_named looks in the ENABLED MODS'
+   palettes/ first, so a mod list switched at the title (hal/mods.cpp
+   port_mods_relatch_at_title) must let them read again: both states go back to
+   "not tried" and their blobs are freed. They re-read on the card claims that
+   follow, exactly as at boot. Everything else here is settings-driven (Loves
+   Me, the lobby colours) or unconditional (the sixteen Yoshi rows) and the
+   claims re-run it the same way the first latch did. */
+extern "C" void port_fs_mods_relatch_reset(void)
+{
+    palette_release();
+    g_pal_state = 0;
+    for (int c = 0; c < PC_COUNT; ++c) {
+        free(g_pc[c].blob);
+        free(g_pc[c].patch);
+        g_pc[c].blob = 0;
+        g_pc[c].patch = 0;
+        g_pc[c].npatch = 0;
+        g_pc[c].active = 0;
+    }
+    g_pc_state = 0;
+    /* SEAMCLEAN1: the lobby colours are read once per process (vsc_load); a hand-off that brings new ones after an earlier
+       match must read them again, so the state goes back to "not read" and the patch is freed, like the two palette mods above */
+    free(g_vsc_blob);
+    free(g_vsc_patch);
+    g_vsc_blob = 0;
+    g_vsc_patch = 0;
+    g_vsc_npatch = 0;
+    g_vsc_any = 0;
+    g_vsc_fields = 0;
+    memset(g_vsc, 0, sizeof g_vsc);
+    g_vsc_state = 0;
+}

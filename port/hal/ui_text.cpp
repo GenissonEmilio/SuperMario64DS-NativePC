@@ -174,3 +174,20 @@ float ui_text_draw(const UiSurface *dst, float x, float by, const char *s, float
 }
 
 int ui_text_cache_count(void) { return (int)g_cache.size(); }
+
+/* run after093, lane SEAMART1 (one-process plan M3c): hal/mods.cpp's relatch at the title changed which mods ship hd_ui/, so the font is
+   chosen again on its next use: the mod's atlas (hd_ui/menu/settings/font.png) or the plain one. The atlas, the glyph table and every glyph
+   cut from them are dropped. The settings page's and the character door's pieces drawn with the old font are dropped by their own resets in
+   the same relatch. Returns 1 when the old font was the mod's. Game thread only. */
+extern "C" int port_ui_text_hd_ui_reset(void)
+{
+    const int was = g_tried && !strcmp(g_font_from, "mod");
+    g_tried = 0;
+    g_ok = 0;
+    g_font_from = "plain";
+    g_em = 96; g_aw = 0; g_ah = 0;
+    std::vector<uint8_t>().swap(g_atlas);
+    g_cache.clear();
+    memset(kGlyphSrc, 0, sizeof kGlyphSrc);
+    return was;
+}

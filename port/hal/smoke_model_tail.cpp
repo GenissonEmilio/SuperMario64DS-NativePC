@@ -82,10 +82,7 @@ extern "C" void _ZN2GX13SetBankForTexEt(unsigned short v) { GX::SetBankForTex(v)
 #pragma comment(linker, "/alternatename:__ZN3G3X13SetClearColorEtiiib=?SetClearColor@G3X@@SAXGHHH_N@Z")
 #pragma comment(linker, "/alternatename:__ZN4cstd11fdiv_resultEv=?fdiv_result@cstd@@YAHXZ")
 #pragma comment(linker, "/alternatename:__ZN4cstd11ldiv_resultEv=?ldiv_result@cstd@@YA_JXZ")
-// data_0208e87c is the port's old name for ModelBase's vtable at arm9
-// 0x0208e87c; config now calls it _ZTV9ModelBase and hal/model_host.cpp defines
-// the storage under that name. port/unmatched/ModelBaseModel_Dtors_HostCopy.c
-// still spells the old one; the window build does not compile that file, the
-// harnesses do. One table, two names (the row the PORTSYNC3 alias cleanup
-// removed from smoke_aliases_model.cpp with the window build's copy).
-#pragma comment(linker, "/alternatename:_data_0208e87c=__ZTV9ModelBase")
+// data_0208e87c was the port's old name for ModelBase's vtable at arm9
+// 0x0208e87c; config calls it _ZTV9ModelBase and hal/model_host.cpp defines the
+// storage under that name. The harness copies in port/unmatched/ now spell the
+// new name, so the alias this file used to carry is gone (SEAMCLEAN1).

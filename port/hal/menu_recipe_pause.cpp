@@ -757,11 +757,12 @@ void pause_build(int variant, MenuLayout *L)
 /* run hunt8, lanes UIMOD1 and PAUSEFULL1: the new pause is drawn from the planks of the "HD UI Textures" mod (hd_ui/menu/pause3/pk_*.png). When no
    enabled mod carries all seven, the same one-screen pause stands (same layout slots, same input) with the ROM's own plank plates: each plate is
    its own element, the engine-B rows of its touch box (the plates are BG1 tiles and Stage::UpdateMenuButtons gives the chosen one its lit palette),
-   moved onto the slot at the mod plank's width (add_rom_plate). The tracker and the dialogs keep the plain code-drawn skin. Asked once per run: the
-   mod list is latched at boot. */
+   moved onto the slot at the mod plank's width (add_rom_plate). The tracker and the dialogs keep the plain code-drawn skin. Asked once per mod
+   list: hal/mods.cpp's relatch at the title asks again (port_menu_pause_hd_ui_reset, SEAMART1). */
+static int g_pause_art = -1;
 int pause_art_present()
 {
-    static int v = -1;
+    int &v = g_pause_art;
     if (v < 0) {
         static const char *const kPk[] = { "pk_resume", "pk_settings", "pk_exit", "pk_savequit", "pk_quitnosave", "pk_yesquit", "pk_nokeep" };
         char rel[96], path[1400];
@@ -984,3 +985,12 @@ extern "C" int menu_pause_rom_fallback(void) { return 0; }      /* PAUSEFULL1: w
 extern "C" int menu_pause_active(void) { return g_last_variant != 0; }
 /* 1 while a 4:3 pause slide is in flight: the host stylus / click and the Backspace back key are eaten by their seam (hal/sub_screen.cpp) */
 extern "C" int menu_pause_slide_busy(void) { return slide_busy(); }
+
+/* run after093, lane SEAMART1 (one-process plan M3c): hal/mods.cpp's relatch at the title changed which mods ship hd_ui/, so the planks-or-plates
+   answer above is asked again on the next pause (no pause is open at the title). Returns 1 when the old answer was the mod's planks. */
+extern "C" int port_menu_pause_hd_ui_reset(void)
+{
+    const int was = g_pause_art;
+    g_pause_art = -1;
+    return was == 1;
+}
