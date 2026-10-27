@@ -4069,8 +4069,15 @@ extern "C" int port_adventure_ghost_palette(int slot) {
 // served another pick's decode for it, and nothing here needs the ghosts'
 // same-key hold (gw_row_drawable). A level load uploads the file's rows again,
 // so the row is written back whenever it no longer holds the pick.
+//
+// JOINWIN1: THE ROW MOVED TO 32. HUB32 seats 32 bodies (data_0209f21c 32 on
+// every hub level) and grows the file to 32 rows, one per body number, so row
+// 15 belongs to body 15 and the guard below refused the pick on every hub
+// level: his own Yoshi stayed green on his screen while everyone else saw his
+// colour. hal/fs_mods.cpp now grows one row more, row 32, which no body number
+// names (0..31).
 namespace {
-enum { kOwnRowNo = 15 };
+enum { kOwnRowNo = 32 };
 struct OwnRow {
     bool have;                       // out is the row for src + the pick
     unsigned short src[16], out[16];
@@ -4094,7 +4101,16 @@ extern "C" int port_adventure_local_palette(void *body) {
     const int me = (int)data_0209f250;
     if (me < 0 || me >= kPortBodySlots || data_0209f394[me] != body)
         return -1;
-    if ((int)data_0209f21c > kOwnRowNo) return -1;   // a body could draw row 15
+    if ((int)data_0209f21c > kOwnRowNo) {            // a body could draw the row
+        static bool said;
+        if (!said) {
+            said = true;
+            std::fprintf(stderr, "[own] my pick is not drawn on my own Yoshi: %d "
+                         "bodies, and row %d belongs to one of them\n",
+                         (int)data_0209f21c, (int)kOwnRowNo);
+        }
+        return -1;
+    }
     const int no = (int)*(const unsigned char *)(c + 0x6d8);
     const int pal = *(const int *)(c + 0x61c);
     if (no != me) return -1;

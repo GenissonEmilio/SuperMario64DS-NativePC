@@ -308,11 +308,41 @@ void arrow_draw(const MenuLayout *L, int piece, uint32_t *dst, int w, int h, int
     const MenuPiece &P = L->p[piece];
     const int X = L->dest[piece][0], Y = L->dest[piece][1], W = L->dest[piece][2], H = L->dest[piece][3];
     if (W < 1 || H < 1) return;
+    const int a = P.alpha ? P.alpha : 255;      /* TITLEUI1: the piece's alpha (the title's face swap fades the arrow with the wrench) */
+    if (P.wtw >= 2) {
+        /* TITLEART1: the orange arrow (wtw 2 = down, 3 = up), sampled bilinear from its 66 x 45 premultiplied table at the piece's own size */
+        const int up = P.wtw == 3;
+        for (int y = 0; y < H; ++y) {
+            float sy = ((float)y + 0.5f) * 45.f / (float)H - 0.5f;
+            if (up) sy = 44.f - sy;
+            const int y0 = sy < 0.f ? 0 : (int)sy, y1 = y0 + 1 > 44 ? 44 : y0 + 1;
+            const float fy = sy < 0.f ? 0.f : sy - (float)y0;
+            for (int x = 0; x < W; ++x) {
+                const float sx = ((float)x + 0.5f) * 66.f / (float)W - 0.5f;
+                const int x0 = sx < 0.f ? 0 : (int)sx, x1 = x0 + 1 > 65 ? 65 : x0 + 1;
+                const float fx = sx < 0.f ? 0.f : sx - (float)x0;
+                const unsigned int c00 = kArrowOrangeArt[y0 * 66 + x0], c01 = kArrowOrangeArt[y0 * 66 + x1];
+                const unsigned int c10 = kArrowOrangeArt[y1 * 66 + x0], c11 = kArrowOrangeArt[y1 * 66 + x1];
+                float ch[4];
+                for (int k = 0; k < 4; ++k) {
+                    const int s = 24 - 8 * k;
+                    const float t0 = (float)((c00 >> s) & 255) * (1.f - fx) + (float)((c01 >> s) & 255) * fx;
+                    const float t1 = (float)((c10 >> s) & 255) * (1.f - fx) + (float)((c11 >> s) & 255) * fx;
+                    ch[k] = t0 * (1.f - fy) + t1 * fy;
+                }
+                if (ch[0] < 0.5f) continue;
+                const int r = (int)(ch[1] * 255.f / ch[0] + 0.5f), g = (int)(ch[2] * 255.f / ch[0] + 0.5f), b = (int)(ch[3] * 255.f / ch[0] + 0.5f);
+                const uint32_t rgb = (uint32_t)((r > 255 ? 255 : r) << 16 | (g > 255 ? 255 : g) << 8 | (b > 255 ? 255 : b));
+                put(dst, stride, w, h, X + x, Y + y, rgb, (int)(ch[0] + 0.5f) * a / 255);
+            }
+        }
+        return;
+    }
     const unsigned int *art = P.wtw ? kArrowUpArt : kArrowDownArt;
     for (int y = 0; y < H; ++y)
         for (int x = 0; x < W; ++x) {
             const unsigned int c = art[(y * 15 / H) * 22 + (x * 22 / W)];
-            if (c >> 24) put(dst, stride, w, h, X + x, Y + y, c & 0xFFFFFF, 255);
+            if (c >> 24) put(dst, stride, w, h, X + x, Y + y, c & 0xFFFFFF, a);
         }
 }
 }  // namespace
@@ -322,7 +352,7 @@ void menu_online_add_arrow(MenuLayout *L, int up, int fx, int fy, int fw, int fh
     MenuPiece cp = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
     cp.bg = 1; cp.lden = 1; cp.lnum = 1; cp.fixdest = 1; cp.fw = (short)fw; cp.fh = (short)fh; cp.fx = (short)fx; cp.fy = (short)fy;
     cp.custom = arrow_draw;
-    cp.wtw = (short)(up ? 1 : 0);
+    cp.wtw = (short)(up >= 2 ? up : up ? 1 : 0);      /* TITLEART1: 2 / 3 = the orange arrow, down / up */
     menu_add_piece(L, cp);
 }
 

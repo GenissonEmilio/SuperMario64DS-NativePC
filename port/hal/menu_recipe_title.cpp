@@ -91,6 +91,8 @@ struct Chore {
     int attract_t;       /* the ROM's attract counter as last read */
     int fly_t;           /* ASSET6: frames since the press, while the star flies off the top (state 10 before the iris) */
     int released;        /* INTRO2: a tick without a touch / click went by since the family was entered (the press that started the intro is over) */
+    int swap_a;          /* TITLEUI1: 255 - the ROM's brightness fade level (0..255) while the face swap's fade runs on the main page, -1 = none (rom_swap_level) */
+    int swap_lv;         /* TITLEUI1: that level as the ROM holds it (0..0x1000), for the trace */
 } g_ch;
 static int g_press_tick;      /* INTRO2: a touch / click went into the ROM this tick */
 /* INTRO2: the swap (sw_t counts it) is the logo's 2 s trip in the intro and the planks' own rise on a return; the planks start at their own tick */
@@ -169,6 +171,10 @@ int variant_for(int top, int elem)
     if (elem == 3) return V_DOODLE;                 /* FACE3: the free-draw state after the pencil (reached only from the drawing page): same page family, its own layout in build_doodle */
     if (elem == 2 && g_last == V_DOODLE) return V_DOODLE;   /* FACE2: the ROM's drawing mode proper (elem 2) is the same page as the face tracing (elem 1) */
     if (elem == 1) return ((top == 0 || top == 1) && g_last == V_TOY) ? V_TOY : V_DOODLE;     /* FACE1: the hand-over frames keep our picture */
+    /* TITLEUI1: element machine 6 is the face swap's change tick (0 / 6, between top-state 6 and 5, src/unnamed/ov007/func_ov007_020b166c.c reads it):
+       still the main page. It used to fall through to the file pages for that one tick, which drew the ROM's whitened lower screen whole (a white frame)
+       and made the main family start over as a return (a black veil and the planks rising again): the flash of the swap. */
+    if (elem == 6 && (g_last == V_MAIN || g_last == V_INTRO)) return g_last;
     if (elem == 0) {
         if (top == 0) return V_MAIN;
         if (top == 8) return V_OPTIONS;
@@ -461,11 +467,49 @@ void online_overlays(MenuLayout *L, bool main_page, bool show_help)
             const int hpx = 30 * un / ud;
             const int right = of->padfocus == ONL_PF_HELP ? L->w - 5 * un / ud : L->w - 40 * un / ud;
             const int pw = of->padfocus == ONL_PF_HELP ? hpx : menu_online_plank_w(ONL_K_NAME, hpx);
+            if (!main_page) {
+                /* TITLEART1 (Tango 10-26: "it should be orange arrow"): on the file select the cue is the file pages' own ORANGE arrow, at its size (22 x 15
+                   units, as the HD one under the file plates) and bobbing on the title's 8-tick cadence, drawn smooth at the window's scale; the same with
+                   or without the HD UI mod (the mod draws no arrow of its own here) */
+                static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
+                const int bob2 = kBob[(t_f ? t_f->frame : 0) & 7];
+                const int aw = 22 * un / ud, ah = 15 * un / ud;
+                menu_online_add_arrow(L, 3, right - pw / 2 - aw / 2, 5 * un / ud + hpx + ((2 + bob2) * un) / (2 * ud), aw, ah);
+            } else {
             const int aw = 18 * un / ud, ah = aw * 15 / 22;
             menu_online_add_arrow(L, 1, right - pw / 2 - aw / 2, 5 * un / ud + hpx + un / ud, aw, ah);
+            }
         }
     }
     menu_online_add_modal(L, of);
+}
+
+/* TITLEART1: THE SWAP FADE WITHOUT THE HD UI MOD. Here the face, the wrench and the ROM's own plates are cut from the ROM's lower screen, which the
+   ROM itself whitens through its brightness fade (rom_swap_level, the level TITLEUI1 reads for the HD page); only the pieces the port draws in code (the
+   online planks, the arrow, the ?) stayed at full strength. They take alpha (255 - whiteness) over a picture that is going white under them, so they go
+   white with it. Pieces cut from the ROM's picture are left alone (fading them too would fade them twice). */
+Box rest_box(int id, const Box &live)      /* TITLEART1: the element's box on the settled main page (the dumped boxes), else the live one */
+{
+    for (int k = 0; k < 24; ++k)
+        if (kBoxes[k].id == id) return kBoxes[k];
+    return live;
+}
+
+void swap_fade_host(MenuLayout *L, int from, int a)
+{
+    if (a >= 255) return;
+    for (int i = from; i < L->np; ++i) {
+        MenuPiece &p = L->p[i];
+        if (p.nodraw || p.src == SRC_TOP_PIC || p.src == SRC_SUB) continue;
+        /* TITLEART2: a code drawn piece (custom: the planks, the arrow and the ? without their pictures) is drawn by menu_piece_draw before it looks at
+           nodraw, so at the swap's peak (whiteness 0x1000, alpha 0: the change tick 0 / 6 and the first top-state 5 tick)
+           they were hidden in name only and drawn at full strength over the white page for two ticks. A custom piece has no touch of its own, so it
+           loses its draw call here as well. */
+        if (a <= 0) { p.nodraw = 1; p.custom = nullptr; continue; }
+        const int own = p.alpha ? p.alpha : 255;
+        const int na = own * a / 255;
+        p.alpha = (uint8_t)(na < 1 ? 1 : na);
+    }
 }
 
 void build_main(MenuLayout *L, bool intro)
@@ -534,6 +578,7 @@ void build_main(MenuLayout *L, bool intro)
        ROM's own planks (the cut pieces below draw the real plates at full size). The plates start at source row 140 (the cut pieces' own y),
        the head, star, sparkles and cursor are above it: the piece stops there. With the host planks the plate sprites are never submitted. */
     const bool plates_in_layer = !(menu_hostimg_ready(MENU_IMG_BTN_MP) && menu_hostimg_ready(MENU_IMG_BTN_ADV) && menu_hostimg_ready(MENU_IMG_BTN_REC));
+    const int np_swap = L->np;      /* TITLEART1: from here the lower screen's pieces; the face swap fades the code-drawn ones (swap_fade_host) */
     MenuPiece face = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, plates_in_layer ? 140 : 192, MENU_AX_C, MENU_AY_T, tune(2, -18) + 20, tune(3, 46), hk, hd);
     face.keycover = 1; face.bg = 1; face.has_ex = 1; face.ex.x = 216; face.ex.y = 0; face.ex.w = 40; face.ex.h = 40;
     /* INTRO2: the ROM's head entrance fades in over its first 9 ticks on the DS-art title too (the intro only, never a later page) */
@@ -558,7 +603,12 @@ void build_main(MenuLayout *L, bool intro)
         Box bx;
         if (!box_of(kPlateId[k], &bx)) continue;
         int w1000 = 1000;
-        if (online_plank(L, k, bx, 0, 0, cur == kPlateId[k], cur == kPlateId[k] && prs, true, &w1000)) continue;   /* NAME1: ONLINE / ADVENTURE ONLINE / VS */
+        /* TITLEART1: a code plank stands on its element's REST box (the dumped one). After the face swap the ROM brings its plates back in from off the
+           screen (top-state 1) and the live boxes travel with them, wrapping past the screen's edges; a code plank that followed them vanished, then slid
+           in crossed with its neighbour and cut by the window's edge (VS over SOLO). The ROM's own plate art is not in this picture (it is under the
+           code plank), so nothing of the ROM's arrival is lost; a touch during it is not taken by the ROM anyway. */
+        const Box rb = rest_box(kPlateId[k], bx);
+        if (online_plank(L, k, rb, 0, 0, cur == kPlateId[k], cur == kPlateId[k] && prs, true, &w1000)) continue;   /* NAME1: ONLINE / ADVENTURE ONLINE / VS */
         if (planks) {
             /* ASSET2: a plank drawn at the window's resolution over the ROM's own box (the 3D plate is not drawn: its
                wallpaper object is skipped at submit and its sprite is not in any piece). 40 units tall (the box height),
@@ -622,6 +672,7 @@ void build_main(MenuLayout *L, bool intro)
                plank's dark top border and reads as cut off (it bobs from 1 unit above the border to 1 unit into it) */
             Box bx;
             if (box_of(cur, &bx)) {
+                if (!art_arrows) bx = rest_box(cur, bx);      /* TITLEART1: the code arrow names the code plank, which stands on its rest box */
                 ar.fy = (short)(((bx.y0 * 2 - 2 + bob2) * L->unum) / (2 * L->uden) - dh);
                 ar.fx = (short)(L->w / 2 + ((bx.x0 + bx.x1) / 2 - 128) * L->unum / L->uden - dw / 2);
             } else {
@@ -630,7 +681,12 @@ void build_main(MenuLayout *L, bool intro)
         }
         if (ar.fx > -1000) { if (art_arrows) menu_add_piece(L, ar); else menu_online_add_arrow(L, cur == 7 ? 1 : 0, ar.fx, ar.fy, dw, dh); }
     }
+    const Chore cs = t_f ? t_f->ch : Chore();
+    if (cs.swap_a >= 0) swap_fade_host(L, np_swap, cs.swap_a);      /* TITLEART1: the code planks and the arrow take the ROM's swap fade */
+    const int np_ov = L->np;
     { const OnlFacts *of = onl_facts_of(L); online_overlays(L, true, of && of->on); }     /* NAME1: the ? button and the modal screen */
+    { const OnlFacts *of = onl_facts_of(L); if (cs.swap_a >= 0 && !(of && of->scr != ONL_SCR_NONE)) swap_fade_host(L, np_ov, cs.swap_a); }     /* TITLEART1: the ? too */
+    if (cs.swap_a >= 0 && hal_menu_trace_on()) fprintf(stderr, "[swapfade-host] f%d level %d alpha %d\n", t_f ? t_f->frame : -1, cs.swap_lv, cs.swap_a);      /* TITLEART2 */
 }
 
 
@@ -707,6 +763,31 @@ bool rom_iris(int *vis, int *s48)
     return true;
 }
 
+/* TITLEUI1: THE FACE SWAP'S FADE. Idle on the main page, the ROM changes the head (Mario <-> Yoshi): top-state 6 (src/unnamed/ov007/func_ov007_020b155c.c)
+   asks the screen-fade manager for RequestScreenFade(1, 0, ..) and, after the change, top-state 5 (func_ov007_020b166c.c, element machine 6 before it)
+   for RequestScreenFade(1, 2, ..). Type 1 (src/unnamed/ov007/func_ov007_020bf790.c) is a brightness fade of the whole lower screen (object mode 4, layers
+   0x3f, brightness +0x10: toward white, step 0x3c a tick: 68 ticks), flags 0 / 2 = no iris sprite, the second one run backwards. The manager's object
+   (data_ov007_02104bd8 -> obj6) holds the level: progress +0x14 (0..0x1000) through curve +0x10, turned round when +0x1c is 1
+   (src/unnamed/ov007/func_ov007_020c8498.c), handed to func_ov007_020c8b34.c, which writes the lower screen's blend brightness from it: +0x2c (+16, white)
+   at 0, +0x30 (0, the picture as it is) at 0x1000. Returns the whiteness, 0x1000 minus that level (0 = untouched, 0x1000 = all white), while such a fade
+   (a white brightness fade without the iris) is up or held at its end, else -1. */
+int rom_swap_level()
+{
+    const char *F = data_ov007_02104bd8;
+    if (!F) return -1;
+    const char *o6 = *(const char *const *)F;
+    if (!o6) return -1;
+    const int mode = *(const int *)(o6 + 0), st = *(const int *)(o6 + 8), curve = *(const int *)(o6 + 0x10), prog = *(const int *)(o6 + 0x14);
+    const int dir = *(const int *)(o6 + 0x1c), bright = *(const int *)(o6 + 0x2c), flags = *(const int *)(F + 8);
+    if (mode != 4 || st == 0 || bright <= 0 || (flags & 1)) return -1;
+    int r = prog;
+    if (curve == 1) { r = prog << 1; if (r > 0x1000) r = 0x2000 - r; }
+    else if (curve == 2) r = (int)(((long long)prog * prog) >> 12);
+    if (dir == 1) r = 0x1000 - r;
+    r = 0x1000 - r;
+    return r < 0 ? 0 : r > 0x1000 ? 0x1000 : r;
+}
+
 float ease_out_back(float t)         /* 0..1 -> 0..1 with a 9 percent overshoot that settles at 1 */
 {
     if (t <= 0.f) return 0.f;
@@ -715,12 +796,14 @@ float ease_out_back(float t)         /* 0..1 -> 0..1 with a 9 percent overshoot 
     return 1.f + c3 * u * u * u + c1 * u * u;
 }
 
+static int g_face_swap;      /* TITLEART1 (J): see chore_step */
 /* one frame of the choreography clock, from menu_title_up (once per DS frame, after the ROM ran its tick) */
 void chore_step(int variant, int top, int elem, int req)
 {
     Chore &c = g_ch;
     const bool fam = variant == V_INTRO || variant == V_MAIN;
     if (!fam) {
+        g_face_swap = 0;
         c.in_fam = 0; c.mode = CH_NONE; c.prev_variant = variant;
         if (variant == V_ATTRACT && data_ov007_0210342c) {
             const char *sp = *(const char *const *)((const char *)data_ov007_0210342c + 8);
@@ -777,6 +860,36 @@ void chore_step(int variant, int top, int elem, int req)
     } else {
         c.face_a -= 40; if (c.face_a < 0) c.face_a = 0;
     }
+    /* TITLEUI1: the face swap (top-state 6, the change tick 0 / 6, top-state 5): the head, the wrench and every port plank take the ROM's own fade
+       level (rom_swap_level) tick for tick, so the face is not faded a second time by the port's own clock */
+    /* TITLEART1 (J): ONLY THE FACE SWAP. Top-state 6 also leaves the main page for the file select and the Rec Room with the same white fade;
+       the face swap is the one whose request word (the title global + 0x10, src/unnamed/ov007/func_ov007_020b155c.c) is 8, the case whose fade
+       callback (func_ov007_020b1604.c) sets element machine 6 and so the fade back of top-state 5. A leave keeps the main page's own way out
+       (the face drops in about 6 ticks, the planks stay until the cut). g_face_swap: 0 none, 1 fading out (top 6, 0 / 6), 2 coming back. */
+    {
+        const int g10 = data_ov007_0210342c ? data_ov007_0210342c[4] : -1;
+        if (top == 6 && elem == 0 && g10 == 8 && g_face_swap == 0) g_face_swap = 1;
+        if (top == 0 && elem == 6 && g_face_swap == 0) g_face_swap = 1;
+        if (g_face_swap && rest && c.sw_t >= swap_end(c)) g_face_swap = 0;
+    }
+    c.swap_a = -1; c.swap_lv = -1;
+    if (g_face_swap && ((top == 6 && elem == 0) || (top == 0 && elem == 6) || (top == 5 && elem == 0))) {
+        const int lv = rom_swap_level();
+        if (lv >= 0) { c.swap_lv = lv; c.swap_a = 255 - (lv * 255 + 0x800) / 0x1000; if (top != 5) c.face_a = 255; }
+    }
+    /* TITLEART1 (J): THE WAY BACK. In top-state 5 the ROM fades the page back in from white with no head on it, and its top-state 1 then brings the
+       new head and the plates in. The page enters ONCE, as a return from a file page does (b2's look): from the first tick of top-state 5 the head,
+       the wrench, the planks, the ? and the arrow are off, and the ROM's arrival starts the swap clock again, so the head and the wrench fade in
+       over CH_FACE_FADE from the tick the ROM begins to bring the head (no pop at full strength) and the planks rise once from the bottom edge. */
+    if (g_face_swap == 1 && top == 5) {
+        g_face_swap = 2;
+        c.mode = CH_RETURN; c.sw_t = -1; c.fam_t = CH_VEIL + 4; c.face_a = 0; c.skip = 0;      /* fam_t past the return veil: the page is not black */
+        /* with the HD UI mod the ROM's white fade back is not in the picture (the page is ours), so the ROM is told its fade is over at once, as a
+           return from a file page does (chore_rom_writes, b2's pace); without the mod the page IS the ROM's picture, so its own fade runs whole */
+        c.ff2_done = pc_assets_ready() ? 0 : 1;
+        if (hal_menu_trace_on()) fprintf(stderr, "[chore] face swap: the way back enters once (top 5)\n");
+    }
+    if (g_face_swap == 2 && c.sw_t < 0) c.face_a = 0;
     c.prev_variant = variant;
 }
 
@@ -970,6 +1083,39 @@ float logo_bounce(int tb)
     const float amp = 21.f * expf(-(tb - 2.f) / 16.1f);
     const float a = (amp > 21.f ? 21.f : amp) * sinf(6.2831853f * tb / 8.f);
     return -a;
+}
+
+/* TITLEUI1: pieces [from, L->np) at alpha a (0..255) on top of their own: a = 255 leaves them, 0 hides them (their touch maps stay) */
+void swap_fade_span(MenuLayout *L, int from, int to, int a)      /* TITLEART2: pieces [from, to) only */
+{
+    if (a >= 255) return;
+    for (int i = from; i < to; ++i) {
+        MenuPiece &p = L->p[i];
+        if (p.nodraw) continue;
+        if (a <= 0) { p.nodraw = 1; continue; }
+        const int own = p.alpha ? p.alpha : 255;
+        const int na = own * a / 255;
+        p.alpha = (uint8_t)(na < 1 ? 1 : na);
+    }
+}
+void swap_fade(MenuLayout *L, int from, int a) { swap_fade_span(L, from, L->np, a); }
+/* TITLEUI1: one line a tick across the face swap (SM64DS_MENU_TRACE): the ROM's level and the alpha each kind of piece is drawn at (255 = whole, 0 = hidden,
+   -2 = no such piece this tick) */
+void swap_trace(const MenuLayout *L, const Chore &c, int from, int to)
+{
+    int wr = -2, help = -2, arr = -2, plank = -2, face = -2;
+    for (int i = from; i < L->np; ++i) {
+        const MenuPiece &p = L->p[i];
+        const int a = p.nodraw ? 0 : p.alpha ? p.alpha : 255;
+        if (p.src == SRC_TOP_PIC && p.s.x == 216 && p.s.w == 40 && p.touch) wr = p.nodraw && !p.keycover ? -1 : a;      /* -1: drawn inside the scene layer (face) */
+        else if (p.src == SRC_TOP_PIC && p.s.w == 256) face = a;
+        else if (p.hostimg == MENU_IMG_ARROW_UP || p.hostimg == MENU_IMG_ARROW_DOWN) arr = a;
+        else if (i >= to && p.s.x == ONL_HELP_X && p.s.y == ONL_HELP_Y && p.s.w == ONL_HELP_W && !(p.nodraw && p.touch && a == 0 && help != -2)) help = a;
+        else if (i >= to && p.custom) arr = a;
+        else if (i < to && p.s.y >= 100 && p.touch && plank == -2) plank = a;
+    }
+    if (wr == -1) wr = face;
+    fprintf(stderr, "[swapfade] f%d level %d swap_a %d face %d wrench %d plank %d help %d arrow %d\n", t_f ? t_f->frame : -1, c.swap_lv, c.swap_a, face, wr, plank, help, arr);
 }
 
 /* THE MAIN MENU WITH OUR ART (logo, planks, arrows and wallpaper all loaded). intro = the ROM is not at rest yet (top-state 10 / 1). */
@@ -1187,28 +1333,36 @@ void build_main_pc(MenuLayout *L, bool intro)
         small_a = 255;
     }
     if (c.skip) { big_a = 0; small_a = 255; }
-    if (big_a > 0) {
-        const int lt = ltune(0, 26), lh = ltune(1, 112), ldx = ltune(2, 0);
-        const int dhb = U(lh), dwb = (int)((long long)dhb * iw / ih);
-        const int dhs = U(ctune(2, 40)), dws = (int)((long long)dhs * iw / ih);
-        const int dh = dhb + (int)((float)(dhs - dhb) * mv), dw = (int)((long long)dh * iw / ih);
-        const int fx0 = (w - dwb) / 2 + U(ldx), fx1 = U(ctune(3, 6)), fy0 = U(lt) + Uf(dy), fy1 = U(ctune(4, 6));
-        (void)dws;
-        MenuPiece lg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
-        lg.bg = 1; lg.hostimg = MENU_IMG_LOGO; lg.nofade = 1; lg.alpha = (uint8_t)(big_a >= 255 ? 0 : big_a);
-        lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
-        lg.fx = (short)(fx0 + (int)((float)(fx1 - fx0) * mv)); lg.fy = (short)(fy0 + (int)((float)(fy1 - fy0) * mv));
-        menu_add_piece(L, lg);
-    }
-    if (small_a > 0) {
-        const int lh = ctune(2, 40), mx = ctune(3, 6), my = ctune(4, 6);
-        const int dh = U(lh), dw = (int)((long long)dh * iw / ih);
-        MenuPiece lg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
-        lg.bg = 1; lg.hostimg = MENU_IMG_LOGO; lg.nofade = 1; lg.alpha = (uint8_t)(small_a >= 255 ? 0 : small_a);
-        lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
-        lg.fx = (short)U(mx); lg.fy = (short)U(my);
-        menu_add_piece(L, lg);
-    }
+    /* TITLEART2: the PC logo is always above the head. On the intro the head fades in (from the swap tick, about t341 of the real route) while the
+       big logo still hovers centred; with the logo pieces added before the face piece any face alpha above 0 drew the head over the logo, the hat
+       first. The logos are now added after the face, the head's touch map and the wrench, and before the planks, and the face swap's fade skips them
+       as it did before (they were outside its span). */
+    auto add_logos = [&]() {
+        if (big_a > 0) {
+            const int lt = ltune(0, 26), lh = ltune(1, 112), ldx = ltune(2, 0);
+            const int dhb = U(lh), dwb = (int)((long long)dhb * iw / ih);
+            const int dhs = U(ctune(2, 40)), dws = (int)((long long)dhs * iw / ih);
+            const int dh = dhb + (int)((float)(dhs - dhb) * mv), dw = (int)((long long)dh * iw / ih);
+            const int fx0 = (w - dwb) / 2 + U(ldx), fx1 = U(ctune(3, 6)), fy0 = U(lt) + Uf(dy), fy1 = U(ctune(4, 6));
+            (void)dws;
+            MenuPiece lg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            lg.bg = 1; lg.hostimg = MENU_IMG_LOGO; lg.nofade = 1; lg.alpha = (uint8_t)(big_a >= 255 ? 0 : big_a);
+            lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
+            lg.fx = (short)(fx0 + (int)((float)(fx1 - fx0) * mv)); lg.fy = (short)(fy0 + (int)((float)(fy1 - fy0) * mv));
+            menu_add_piece(L, lg);
+        }
+        if (small_a > 0) {
+            const int lh = ctune(2, 40), mx = ctune(3, 6), my = ctune(4, 6);
+            const int dh = U(lh), dw = (int)((long long)dh * iw / ih);
+            MenuPiece lg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            lg.bg = 1; lg.hostimg = MENU_IMG_LOGO; lg.nofade = 1; lg.alpha = (uint8_t)(small_a >= 255 ? 0 : small_a);
+            lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
+            lg.fx = (short)U(mx); lg.fy = (short)U(my);
+            menu_add_piece(L, lg);
+        }
+    };
+    if (intro) add_logos();
+    const int np_swap = L->np;      /* TITLEUI1: the pieces from here to the overlays are the lower screen's: the face swap fades them (swap_fade) */
     if (!intro) {
         /* the face (the whole lower 3D layer minus the wrench corner, round 4's piece) at the swap's alpha */
         const FaceK fk = face_k();
@@ -1282,6 +1436,9 @@ void build_main_pc(MenuLayout *L, bool intro)
             hot(L, iwr, wr_ids, 1);
         }
         }
+        const int np_logo = L->np;
+        add_logos();
+        const int np_logo_end = L->np;
         /* the planks, each rising from the bottom edge with an overshoot, staggered */
         static const int kPlateId[3] = { 1, 0, 2 };
         static const int kPlankImg[3] = { MENU_IMG_BTN_MP, MENU_IMG_BTN_ADV, MENU_IMG_BTN_REC };
@@ -1317,6 +1474,8 @@ void build_main_pc(MenuLayout *L, bool intro)
             const int ip = menu_add_piece(L, pl);
             if (!toy) menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
         }
+        if (c.swap_a >= 0) { swap_fade_span(L, np_swap, np_logo, c.swap_a); swap_fade(L, np_logo_end, c.swap_a); }      /* TITLEUI1: the face, the wrench and the planks take the ROM's fade level (TITLEART2: not the logos) */
+        const int np_arrow = L->np;
         /* the selection arrow, once the planks have landed */
         const OnlFacts *pfl = onl_facts_of(L);      /* PADNAV1: no cursor arrow here while the pad focus is on the ? */
         if (landed && !(pfl && pfl->padfocus) && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) && (cur == 7 || (cur >= 0 && cur <= 2))) {
@@ -1345,11 +1504,15 @@ void build_main_pc(MenuLayout *L, bool intro)
                 }
             }
         }
+        if (c.swap_a >= 0) swap_fade(L, np_arrow, c.swap_a);      /* TITLEUI1: and the arrow */
     }
     if (!intro) {                                              /* NAME1: the ? button (online planks, settled) and the modal screen */
         const OnlFacts *of = onl_facts_of(L);
         const bool settled = c.sw_t >= swap_end(c) - 4 || c.skip || c.mode == CH_NONE;
+        const int np_ov = L->np;
         online_overlays(L, true, of && of->on && settled && !(t_f && t_f->toy_v > 0));
+        if (c.swap_a >= 0 && !(of && of->scr != ONL_SCR_NONE)) swap_fade(L, np_ov, c.swap_a);      /* TITLEUI1: the ? and its arrow too */
+        if (c.swap_a >= 0 && hal_menu_trace_on()) swap_trace(L, c, np_swap, np_ov);
     }
     /* the iris: black outside the star while the ROM's iris is up (and all black before it shows), a veil on a returning page */
     if (c.mode == CH_INTRO && !c.iris_covered && c.ct <= ctune(0, CH_LOGO_POP) + 60) {
@@ -1887,12 +2050,21 @@ bool title_scene_cb(float xf[4])
         T = scene_main();
         break;
     case V_TOY:
-        if (!pc) return false;
+        if (!pc) {
+            /* TITLEART1: without the HD UI mod the press page is the ROM's lower screen at the DS layout (file_pages_build); the hand-over frames
+               that follow it keep that layout (see V_DOODLE) */
+            if (top == 4 && elem == 0) return false;
+            break;
+        }
         if (top == 4 && elem == 0) T = scene_toy(toy_grow(title_page_counter()));
         else T = scene_doodle(0);                                   /* the hand-over frames: the drawing page's rest pose */
         break;
     case V_DOODLE:
-        T = scene_doodle(g_sc.e3);
+        /* TITLEART1: without the HD UI mod the head you press is drawn at the DS layout (the press page above), so the drawing page is drawn at that
+           same layout {1, 0, 0}: the ROM's line art then lies on the head it replaces, as on the DS (FACE1 measured the strokes over the press page's
+           rest pose), and the crossfade from the press page's held frame no longer jumps from a big head to a small outline. The touch twins and the
+           sprite placement read this same transform, so a stroke lands under the pointer. The HD page keeps its own (the head the main menu drew). */
+        T = pc ? scene_doodle(g_sc.e3) : T;
         break;
     default:
         return false;
@@ -1963,11 +2135,19 @@ int title_cursor_snd()
         unsigned st;
         if (q0) { q0dbg0 = q0[0]; q0dbg1 = q0[1]; }
         if (q0 && hal_menu_hover_box(&hx, &hy, &st)) {
+            /* TITLEUI1: the online planks the pad focus can sit on (the ?, NAME): the arrow is already under the one the mouse landed on, nothing to announce.
+               A hover back on the ROM element the cursor holds while the focus is on such a plank does move the arrow (title_cursor_assist hands the focus back). */
+            const int pf = menu_online_padfocus();
+            const int hpf = (hx == ONL_HELP_X && hy == ONL_HELP_Y) ? ONL_PF_HELP : (hx == ONL_NAME_X && hy == ONL_NAME_Y) ? ONL_PF_NAME : 0;
+            if (hpf && hpf == pf) {
+                if (hal_menu_trace_on()) fprintf(stderr, "[menu] hover on plank %d: the pad focus is already there, no sound\n", hpf);
+                return 1;
+            }
             int slot[24], ids[24], x0[24], y0[24], x1[24], y1[24];
-            const int n = port_title_elem_boxes(slot, ids, x0, y0, x1, y1, 24);
+            const int n = hpf ? 0 : port_title_elem_boxes(slot, ids, x0, y0, x1, y1, 24);
             for (int k = 0; k < n; ++k) {
                 if (x0[k] != hx || y0[k] != hy || !port_title_elem_live(slot[k])) continue;
-                if (q0[0] == ids[k] || q0[1] == ids[k]) {
+                if ((q0[0] == ids[k] || q0[1] == ids[k]) && !pf) {
                     if (hal_menu_trace_on()) fprintf(stderr, "[menu] hover on element %d: the ROM cursor is already there, no sound\n", ids[k]);
                     return 1;
                 }
@@ -2239,10 +2419,14 @@ static void title_cursor_assist()
         unsigned st;
         if (q0 && hal_menu_hover_box(&hx, &hy, &st) && st != hov_seen_f) {
             hov_seen_f = st;
+            /* TITLEUI1: a hover on the online file select's ? or NAME plank lands the pad focus there (the arrow follows it, as the D-pad's step would) */
+            if (hx == ONL_HELP_X && hy == ONL_HELP_Y) { menu_online_hover_focus(2, ONL_PF_HELP, q0[0]); return; }
+            if (hx == ONL_NAME_X && hy == ONL_NAME_Y) { menu_online_hover_focus(2, ONL_PF_NAME, q0[0]); return; }
             int slot[24], ids[24], x0[24], y0[24], x1[24], y1[24];
             const int n = port_title_elem_boxes(slot, ids, x0, y0, x1, y1, 24);
             for (int k = 0; k < n; ++k) {
                 if (ids[k] < 14 || ids[k] > 21 || x0[k] != hx || y0[k] != hy || !port_title_elem_live(slot[k])) continue;
+                if (menu_online_padfocus()) menu_online_hover_focus(2, 0, q0[0]);      /* TITLEUI1: the arrow leaves the ? / NAME plank for the hovered element */
                 if (q0[0] != ids[k] && q0[1] != ids[k]) {
                     if (hal_menu_trace_on()) fprintf(stderr, "[filecur] hover element %d: cursor %d -> %d (page %d/%d)\n", ids[k], (int)q0[0], ids[k], top, elem);
                     q0[1] = (short)ids[k];
@@ -2260,10 +2444,14 @@ static void title_cursor_assist()
     unsigned st;
     if (hal_menu_hover_box(&hx, &hy, &st) && st != hov_seen) {
         hov_seen = st;
+        /* TITLEUI1: the ? of the online title is a host plank the ROM's cursor cannot hold: a hover on it lands the pad focus there, so the arrow goes under
+           it exactly as the D-pad's step from the wrench puts it (hal/menu_online.cpp menu_online_dir) */
+        if (hx == ONL_HELP_X && hy == ONL_HELP_Y) { menu_online_hover_focus(1, ONL_PF_HELP, p0[0]); return; }
         static const int ids[4] = { 1, 0, 2, 7 };
         for (int k = 0; k < 4; ++k) {
             Box b;
             if (box_of_live(ids[k], &b) && b.x0 == hx && b.y0 == hy) {
+                if (menu_online_padfocus()) menu_online_hover_focus(1, 0, p0[0]);      /* TITLEUI1: the wrench or a plank takes the arrow back from the ? */
                 if (p0[0] != ids[k]) p0[1] = (short)ids[k];
                 return;
             }

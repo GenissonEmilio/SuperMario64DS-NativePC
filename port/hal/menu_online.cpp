@@ -358,7 +358,9 @@ static void rom_cursor_to(int id)
        B: left A, right C, down FILE OPTIONS, up NAME   ?: left NAME, down C
        C: left B, down back arrow, up ?
        FILE OPTIONS: up A, right back arrow      back arrow: up C, left FILE OPTIONS
-   Online title: from the wrench left to the ?, from the ? right to the wrench and down to the right plank; the ROM keeps the planks and the wrench otherwise.
+   Online title: the ? stands right of the wrench (flush at the window's right edge, the wrench one ? width in from it), so from the wrench RIGHT goes to the ?
+   and from the ? LEFT comes back to the wrench, DOWN to the right plank (RIGHT and UP stay); every other step on the planks and the wrench (the wrench's LEFT
+   included) is the ROM's own.
    Nothing opens a screen by a step: A on the focused ? / NAME does (pad_focus_press). The first step with the ROM's cursor hidden shows it on file A. */
 int menu_online_dir(int kind, int cursor, unsigned dirs)
 {
@@ -368,12 +370,12 @@ int menu_online_dir(int kind, int cursor, unsigned dirs)
     if (kind == 1) {
         if (!g.on) return 0;
         if (g.padfocus == ONL_PF_HELP) {
-            if (hal_menu_trace_on()) fprintf(stderr, "[padnav] title: focus 100 (the ?), step 0x%x -> %d\n", d, d == 0x10 ? 7 : d == 0x80 ? 2 : 100);
-            if (d == 0x10) { g.padfocus = 0; rom_cursor_to(7); }
+            if (hal_menu_trace_on()) fprintf(stderr, "[padnav] title: focus 100 (the ?), step 0x%x -> %d\n", d, d == 0x20 ? 7 : d == 0x80 ? 2 : 100);
+            if (d == 0x20) { g.padfocus = 0; rom_cursor_to(7); }
             else if (d == 0x80) { g.padfocus = 0; rom_cursor_to(2); }
             return 1;
         }
-        if (cursor == 7 && d == 0x20) { g.padfocus = ONL_PF_HELP; g.pf_cur = cursor; if (hal_menu_trace_on()) fprintf(stderr, "[padnav] title: focus 7 (wrench), step 0x20 -> 100 (the ?)\n"); return 1; }
+        if (cursor == 7 && d == 0x10) { g.padfocus = ONL_PF_HELP; g.pf_cur = cursor; if (hal_menu_trace_on()) fprintf(stderr, "[padnav] title: focus 7 (wrench), step 0x10 -> 100 (the ?)\n"); return 1; }
         return 0;
     }
     if (kind != 2) return 0;
@@ -403,6 +405,18 @@ int menu_online_help_pad(int kind)
     if (kind == 1 && g.on) { g.help_files = 0; set_screen(ONL_SCR_HELP); return 1; }
     if (kind == 2 && g.flow) { g.help_files = 1; set_screen(ONL_SCR_HELP); return 1; }
     return 0;
+}
+
+int menu_online_padfocus(void) { return menu_online_enabled() && g.scr == ONL_SCR_NONE ? g.padfocus : 0; }
+
+void menu_online_hover_focus(int kind, int pf, int cursor)
+{
+    if (!menu_online_enabled() || g.scr != ONL_SCR_NONE) return;
+    if (pf == ONL_PF_HELP && !((kind == 1 && g.on) || (kind == 2 && g.flow))) return;      /* the ? is up on the online title and the online file select only */
+    if (pf == ONL_PF_NAME && !(kind == 2 && g.flow)) return;                                /* NAME only on the online file select */
+    if (pf != ONL_PF_HELP && pf != ONL_PF_NAME) pf = 0;
+    if (pf != g.padfocus && hal_menu_trace_on()) fprintf(stderr, "[padnav] hover: focus %d -> %d (page %d, cursor %d)\n", g.padfocus, pf, kind, cursor);
+    g.padfocus = pf; g.pf_cur = cursor; g.pf_kind = kind;
 }
 
 int menu_online_modal_up(void) { return menu_online_enabled() && g.scr != ONL_SCR_NONE; }

@@ -82,13 +82,15 @@ extern u32 (*port_fs_mod_filter)(unsigned fileID, u8 **data, u32 size);
 extern void (*port_fs_mod_claims)(void (*claim)(unsigned fileID));
 }
 
-/* Mods are for single player only. A multiplayer session is any of: the
+/* A multiplayer session is any of: the
    launcher's lobby / VS match env (comms role and relay knobs, the VS-match
    knobs), SM64DS_PARTY set to a nonzero number (read the way comms_sync.cpp
    reads it), or the Adventure hub (settings.json AdventureGhosts, or the
    SM64DS_ADVENTURE override), which is the shared adventure with other players.
-   The ONE definition: the mod list below asks it, and the plugin loader only
-   sees the emptied list. host_setting_adventure_ghosts() runs the settings
+   The ONE definition: the mod list below asks it and, in a multiplayer session,
+   keeps only the mods tagged Online Compatible that are cosmetic by content
+   (online_ok below); the plugin loader only sees that list, which never holds
+   a code mod. host_setting_adventure_ghosts() runs the settings
    loader (load_once), which reads the file itself and never calls back into
    mods, and host_setting_enabled_mods() reads the file on its own, so there is
    no loop, and load_once's one-shot guard makes any second call a no-op. */
@@ -112,6 +114,7 @@ struct Mod {
     std::string id, folder, kind, game, min_game;
     int api;
     bool part;   /* a switchable sub-folder of the mod above it (see add_parts) */
+    bool online; /* mod.json "onlineCompatible": true (the literal true, nothing else) */
 };
 
 std::vector<Mod> g_mods;
@@ -271,6 +274,7 @@ void add_parts(const Mod &parent, std::vector<Mod> &list, std::string &summary)
                 pm.kind = "files";
                 pm.api = 0;
                 pm.part = true;
+                pm.online = false;
                 list.push_back(pm);
                 summary += " + part " + rel;
                 fprintf(stderr, "[mods] %s: setting %s = %s (%s): part %s is on\n", parent.id.c_str(), key,
@@ -303,6 +307,100 @@ void skip(const std::string &id, const char *why)
     g_summary_skipped += id + " (" + why + ")";
 }
 
+/* ---- Online Compatible (run after093, lane MODONLINE1) ------------------
+   mod.json "onlineCompatible": true is the author's claim that the mod is
+   cosmetic only: it changes what THIS player sees and hears and nothing the
+   other players' games have to agree with. In a multiplayer session a mod
+   stays on only when it carries the tag AND its content proves it (online_ok);
+   every other mod is off there, as before.
+
+   The tag is the JSON literal true at the top level of mod.json, the key
+   spelled exactly; absent, false, "true" (a string), 1 or anything else is no
+   tag. json_top_value is host_settings.cpp's top-level scan, case-sensitive. */
+const char *json_skip_ws(const char *q)
+{
+    while (*q == ' ' || *q == '\t' || *q == '\r' || *q == '\n') ++q;
+    return q;
+}
+
+const char *json_top_value(const char *s, const char *key)
+{
+    const size_t klen = strlen(key);
+    int depth = 0;
+    for (const char *p = s; *p; ++p) {
+        if (*p == '{' || *p == '[') { ++depth; continue; }
+        if (*p == '}' || *p == ']') { --depth; continue; }
+        if (*p != '"') continue;
+        const char *name = p + 1, *end = name;
+        while (*end && *end != '"') end += (*end == '\\' && end[1]) ? 2 : 1;
+        if (*end != '"') return 0;
+        p = end;
+        if (depth != 1) continue;
+        const char *q = json_skip_ws(end + 1);
+        if (*q != ':') continue;
+        if ((size_t)(end - name) == klen && strncmp(name, key, klen) == 0)
+            return json_skip_ws(q + 1);
+    }
+    return 0;
+}
+
+bool json_top_true(const char *s, const char *key)
+{
+    const char *q = json_top_value(s, key);
+    if (!q || strncmp(q, "true", 4) != 0) return false;
+    q = json_skip_ws(q + 4);
+    return *q == ',' || *q == '}';
+}
+
+/* THE CONTENT CHECK: the tag is a claim, the game verifies it. A folder is
+   cosmetic when every folder directly inside it is textures_hd/ (HD
+   textures), hd_ui/ (UI art), sound/ (sounds) or palettes/ (colour tables).
+   Anything else is not: files/ replaces raw game data (models, collision,
+   levels, scripts), character/ is a playable character, plugin/ is code, and
+   a folder this check does not know (parts/ included) is refused rather than
+   guessed at. Loose files beside mod.json (a readme, settings.json) are not
+   applied by the game and do not count. Names are compared the way Windows
+   opens them, ignoring case. True, or false with the first failing folder's
+   name in *bad. */
+bool cosmetic_folder(const std::string &folder, std::string *bad)
+{
+    static const char *const OK[] = { "textures_hd", "hd_ui", "sound", "palettes", 0 };
+    WIN32_FIND_DATAA fd;
+    HANDLE h = FindFirstFileA((folder + "/*").c_str(), &fd);
+    if (h == INVALID_HANDLE_VALUE) return true;
+    bool ok = true;
+    do {
+        if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) continue;
+        const char *n = fd.cFileName;
+        if (!strcmp(n, ".") || !strcmp(n, "..")) continue;
+        bool hit = false;
+        for (int i = 0; OK[i] && !hit; ++i) hit = _stricmp(n, OK[i]) == 0;
+        if (!hit) { *bad = n; ok = false; }
+    } while (ok && FindNextFileA(h, &fd));
+    FindClose(h);
+    return ok;
+}
+
+/* Whether mod m, with its applied parts list[first, last), may stay on in a
+   multiplayer session. For a TAGGED mod that is refused, *why says why. */
+bool online_ok(const Mod &m, const std::vector<Mod> &list, size_t first, size_t last,
+               const std::string &json, std::string *why)
+{
+    std::string bad;
+    if (!m.online) return false;
+    if (m.kind != "files") { *why = "code mod"; return false; }
+    if (!cosmetic_folder(m.folder, &bad)) { *why = "ships " + bad + "/"; return false; }
+    for (size_t q = first; q < last; ++q)
+        if (!cosmetic_folder(list[q].folder, &bad)) {
+            *why = "part " + list[q].id.substr(m.id.size() + 1) + " ships " + bad + "/";
+            return false;
+        }
+    /* a mod.json "character" block registers a playable character
+       (hal/char_registry.cpp) wherever its files sit */
+    if (json_top_value(json.c_str(), "character")) { *why = "declares a character"; return false; }
+    return true;
+}
+
 void latch(void)
 {
     char bundle[1024];
@@ -316,22 +414,25 @@ void latch(void)
         fprintf(stderr, "[mods] SM64DS_MODS=0: every mod is off for this run\n");
         return;
     }
-    if (port_mods_multiplayer()) {
-        fprintf(stderr, "[mods] multiplayer match: every mod is off\n");
-        return;
-    }
+    /* A multiplayer session keeps only the mods online_ok passes, in their
+       order, and says so in ONE line once the list is read. */
+    const bool mp = port_mods_multiplayer() != 0;
     const int have = host_setting_enabled_mods(bundle, sizeof bundle, arr, sizeof arr);
     g_bundle = bundle;
     if (have < 0) {
         fprintf(stderr, "[mods] EnabledMods too long (over %u characters); no mods are on this run (bundle %s)\n",
                 (unsigned)(sizeof arr - 1), bundle);
+        if (mp) fprintf(stderr, "[mods] multiplayer match: 0 mod(s) kept (Online Compatible): -; 0 off: -\n");
         return;
     }
     if (!have) {
         /* No EnabledMods: nothing on. Said once so a support log shows it. */
         fprintf(stderr, "[mods] none enabled (bundle %s)\n", bundle);
+        if (mp) fprintf(stderr, "[mods] multiplayer match: 0 mod(s) kept (Online Compatible): -; 0 off: -\n");
         return;
     }
+    std::string mp_kept, mp_off;
+    unsigned mp_nkept = 0, mp_noff = 0;
 
     /* Only string elements directly in the array count. Numbers, true, false
        and null are passed over; a nested array or object is passed over whole,
@@ -390,6 +491,33 @@ void latch(void)
         m.min_game = mingame;
         m.api = atoi(api);
         m.part = false;
+        m.online = json_top_true(json_copy.c_str(), "onlineCompatible");
+        if (mp) {
+            /* the parts are read first, so the check sees every folder this
+               mod would apply; a refused mod takes its parts with it */
+            const size_t at = g_mods.size();
+            std::string parts_summary, why;
+            g_mods.push_back(m);
+            add_parts(m, g_mods, parts_summary);
+            if (!online_ok(m, g_mods, at + 1, g_mods.size(), json_copy, &why)) {
+                g_mods.erase(g_mods.begin() + (std::ptrdiff_t)at, g_mods.end());
+                if (!why.empty())
+                    fprintf(stderr, "[mods] %s: Online Compatible refused: %s\n", id.c_str(), why.c_str());
+                if (mp_noff++) mp_off += ", ";
+                mp_off += id;
+                continue;
+            }
+            if (mp_nkept++) mp_kept += ", ";
+            mp_kept += id;
+            if (!g_summary_loaded.empty()) g_summary_loaded += ", ";
+            g_summary_loaded += id + " (" + kind + ")" + parts_summary;
+            bool any = has_content(folder);
+            for (size_t q = at + 1; q < g_mods.size() && !any; ++q) any = has_content(g_mods[q].folder);
+            if (!any)
+                fprintf(stderr, "[mods] WARNING: %s replaces nothing: it has no files/, sound/, textures_hd/ or palettes/ folder "
+                        "(a zip unpacked with everything inside one extra folder looks like this)\n", id.c_str());
+            continue;
+        }
         if (!g_summary_loaded.empty()) g_summary_loaded += ", ";
         g_mods.push_back(m);
         g_summary_loaded += id + " (" + kind + ")";
@@ -404,6 +532,9 @@ void latch(void)
                         "(a zip unpacked with everything inside one extra folder looks like this)\n", id.c_str());
         }
     }
+    if (mp)
+        fprintf(stderr, "[mods] multiplayer match: %u mod(s) kept (Online Compatible): %s; %u off: %s\n",
+                mp_nkept, mp_nkept ? mp_kept.c_str() : "-", mp_noff, mp_noff ? mp_off.c_str() : "-");
     fprintf(stderr, "[mods] %u loaded: %s | %d skipped%s%s\n", (unsigned)g_mods.size(),
             g_mods.empty() ? "-" : g_summary_loaded.c_str(), g_nskipped,
             g_nskipped ? ": " : "", g_summary_skipped.c_str());
@@ -680,8 +811,8 @@ extern "C" __declspec(allocate(".CRT$XCW"))
    not inside it, because files/ means "this replaces that ROM file" and would answer "names no ROM file" for art the ROM does not have.
    <rel> is a plain relative path ("hud/power_meter/meter_health3_with_label.png"): letters, digits, - _ . and /, no "..", no leading
    slash, no drive colon. Returns 1 and fills out with the full path of the file from the LAST enabled mod that has it (a later mod wins,
-   a part folder counts as its own entry), 0 when no enabled mod provides it, which is every run in a lobby or match (the list is empty
-   there) and every run with no such mod: the caller then draws the port's own art, unchanged. The list is boot-latched, so this is
+   a part folder counts as its own entry), 0 when no enabled mod provides it, which is every run in a lobby or match without an Online
+   Compatible mod that has it (only those stay in the list there) and every run with no such mod: the caller then draws the port's own art, unchanged. The list is boot-latched, so this is
    a plain directory probe per call; callers cache what they decode. Only the game targets link this file. */
 extern "C" int port_mods_ui_file(const char *rel, char *out, unsigned cap)
 {

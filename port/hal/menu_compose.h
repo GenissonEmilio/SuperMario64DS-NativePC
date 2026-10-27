@@ -238,6 +238,7 @@ void menu_title_build(int variant, MenuLayout *L);
 void menu_title_pad_map(uint16_t *pressed, int host_back);
 void menu_title_facts(MenuFacts *f);
 #define MENU_TITLE_NVARIANTS 7
+#define MENU_TITLE_V_DOODLE 5            /* the drawing page's variant id (menu_recipe_title.cpp V_DOODLE) */
 
 /* the ONE static table (menu_recipes.cpp) */
 extern const MenuRecipe g_menu_recipes[];
@@ -418,7 +419,7 @@ int  hal_menu_fallback_frames(void);
 const MenuLiftInfo *hal_menu_lift_info(void);   /* this frame's lift plan, null = lift nothing */
 int  hal_menu_uses_src(int src);                /* the live layout has a piece of this MenuSrc */
 int  hal_menu_interp_mode(void);                /* MENUFOLD1: SM64DS_MENU_INTERP 0 snap / 1 default (MENUINTERP2: re-lift per picture) / 2 proof instrument (every menu tick blends, as the tick's pieces) / 3 MENUFOLD1's gate (snap when a piece takes 3D pixels) */
-int  hal_menu_relift_why(void);                 /* MENUINTERP2: 0 = ok, else 1 mode/fallback, 2 stage or snap_save, 3 held-frame piece, 4 no picture piece */
+int  hal_menu_relift_why(void);                 /* MENUINTERP2: 0 = ok, else 1 mode/fallback, 2 stage or the drawing page's held frame (snap_save) */
 void hal_menu_relift_dump(void);                /* MENUINTERP2 debug: one trace line of the bound layout's pieces */
 void hal_menu_present_relift(uint32_t *dst, int w, int h, int stage);   /* MENUINTERP2: hal_menu_present for a picture between ticks */
 int  hal_menu_key_sentinel(void);               /* MENUS093E: the bound layout wants its masked engine-B planes drawn over a sentinel backdrop (exact key_backdrop) */

@@ -914,13 +914,16 @@ static void __fastcall ent_pdes(void *s, void *)
    list is latched at boot, so a process that booted with mods on cannot run VS
    plain. tests/walk_window.cpp seats this hook: it relaunches the game on this
    same lobby scene with SM64DS_MODS=0 and quits this process. port_mods_count()
-   is 0 in the child, so the hook never fires twice. */
+   is 0 in the child, so the hook never fires twice. A process already in a
+   multiplayer session (hal/mods.cpp port_mods_multiplayer) latched only the
+   Online Compatible mods, which are meant to stay on, so it never relaunches. */
 extern "C" int port_mods_count(void);
+extern "C" int port_mods_multiplayer(void);
 extern "C" int (*port_vs_lobby_mods_hook)(void);
 extern "C" int (*port_vs_lobby_mods_hook)(void) = 0;
 extern "C" void *port_vs_spawn(void)
 {
-    if (port_vs_lobby_mods_hook && port_mods_count() > 0)
+    if (port_vs_lobby_mods_hook && port_mods_count() > 0 && !port_mods_multiplayer())
         port_vs_lobby_mods_hook();
     return dScEntry_c_classInit_ENTRY();
 }
