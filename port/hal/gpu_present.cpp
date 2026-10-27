@@ -116,6 +116,7 @@ extern "C" void hal_present_fit(int cw, int ch, int sw, int sh, int *x,
    hal/presenter.cpp abandons its own, hal/gpu_raster.cpp hears and reports a
    removed card. */
 extern "C" int port_gpu_device_renew(void);
+extern "C" int port_scene_live_id(void);                       /* hal/scene_boot.cpp: -1 = no scene is live (a level) */
 extern "C" void presenter_abandon_device(void);
 extern "C" void port_gpu_raster_set_lost_hook(void (*f)(long));
 extern "C" void port_gpu_raster_device_lost(long hr);
@@ -209,6 +210,12 @@ int g_uploads;                  /* pictures uploaded this run */
    then the child is hidden first, so the game window's own picture is what
    Windows shows. */
 enum { RECOVERIES_MAX = 8, REBUILD_FAILS_MAX = 2 };
+/* SEAMCLEAN1: a rebuild in a LEVEL keeps about 80 MB (measured by MGFREEZE3's reviewer: AMD +83 MB, NVIDIA +68 local and +14
+   non-local), against 36 to 39 MB from a minigame screen, because the level's renderer objects stay behind with the abandoned
+   device. Eight of those would be 640 MB, so a level gives the card path up after three (about 240 MB) and the ordinary Windows
+   path takes over, as it does after eight anywhere else. */
+enum { RECOVERIES_IN_LEVEL_MAX = 3 };
+static int recoveries_cap() { return port_scene_live_id() < 0 ? RECOVERIES_IN_LEVEL_MAX : RECOVERIES_MAX; }
 HWND g_parent;                  /* the game window the card path presents for */
 HWND g_child;                   /* the window the swap chain is made on (0: the game window itself) */
 int g_lost;                     /* a rebuild is under way */
@@ -1068,7 +1075,10 @@ void abandon_card_path()
        fourteen, the same signature as MGFREEZE1's). So they stay abandoned,
        and the cost is measured instead: the line at the rebuild cap gives it,
        about 10 to 12 MB a rebuild for a loss that keeps the shared device and
-       36 to 39 MB for a removed card's drill, measured on both cards here. */
+       36 to 39 MB for a removed card's drill from a minigame screen, measured
+       on both cards here, and about 80 MB for the same drill in a level
+       (MGFREEZE3's review; SEAMCLEAN1 prints the measured figure on each
+       rebuild's line and caps a level at RECOVERIES_IN_LEVEL_MAX). */
     child_hide();
     if (g_child && g_old_kids < OLD_KIDS_MAX) g_old_kid[g_old_kids++] = g_child;
     g_child = 0;
@@ -1151,8 +1161,8 @@ void after_rebuild_tick()
             g_kept_mb += (lo - g_use_lo0) + (nl - g_use_nl0);
             ++g_kept_n;
             fprintf(stderr, "[present] rebuild %d: card memory local %.1f MB (%+.1f), non-local "
-                    "%.1f MB (%+.1f) against before the loss\n", g_recoveries, lo, lo - g_use_lo0,
-                    nl, nl - g_use_nl0);
+                    "%.1f MB (%+.1f) against before the loss; this rebuild kept %.1f MB (%s)\n", g_recoveries, lo, lo - g_use_lo0,
+                    nl, nl - g_use_nl0, (lo - g_use_lo0) + (nl - g_use_nl0), port_scene_live_id() < 0 ? "in a level" : "on a scene");
         }
     }
 }
@@ -1168,7 +1178,7 @@ bool lose(const char *why, HRESULT hr)
             return false;
         }
     } else {
-        if (g_recoveries >= RECOVERIES_MAX) {
+        if (g_recoveries >= recoveries_cap()) {
             if (g_kept_n)
                 fprintf(stderr, "[present] the graphics card path was lost again (%s, code %08x) "
                         "after %d rebuilds (each kept about %.1f MB of card memory, measured)\n",
