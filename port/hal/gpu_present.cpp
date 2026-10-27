@@ -88,6 +88,7 @@
 #include <windows.h>
 #include <d3d11.h>
 #include <dxgi1_2.h>
+#include <dxgi1_4.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -140,6 +141,58 @@ int g_addrcheck;
 int g_swapprobe;
 int g_fail_after;       /* the device-lost drill */
 int g_want_warp = -1;   /* -1 hardware then WARP, 0 hardware only, 1 WARP only */
+
+/* ---- the pictures in flight (run after093, lane MGFREEZE1) ----------------
+   The upload texture is DYNAMIC and every picture maps it WRITE_DISCARD, so
+   while the card still reads the last picture the driver hands out a fresh
+   copy of the whole texture. Nothing on this device ever waited for the card:
+   the swap chain is the presenter thread's, on its own device, so its frame
+   latency limit never reached this queue. On a fast card that costs nothing.
+   On a tester's Intel UHD (128 MB, the card 30 to 80 ms behind a tick) the
+   stacked minigame picture is 1364x1664, 9 MB a copy, and the copies piled up
+   until Map said E_OUTOFMEMORY and the run fell back for good. Now an event
+   query marks each upload and the next one waits until at most
+   g_inflight_max of them are still unfinished on the card, which is the frame
+   latency limit a swap chain on this device would have given. */
+enum { FENCE_RING = 32 };
+int g_inflight_max = 2;         /* SM64DS_PRESENT_INFLIGHT (0 = no limit, the old behaviour) */
+ID3D11Query *g_fence[FENCE_RING];
+int g_fence_head, g_fence_n;
+int g_fence_deep;               /* deepest count of unfinished uploads seen at an upload */
+int g_fence_failed;             /* the card would not make a query: no limit, as before */
+long long g_fence_waits;
+double g_fence_wait_ms;
+int g_oom_retries, g_oom_recovered;
+/* A REFUSED UPLOAD SKIPS ONE PICTURE, IT DOES NOT END THE CARD PATH (run
+   after093, lane MGFREEZE1). The fallback cannot give a moving picture back:
+   the swap chain is a flip-model one, the compositor shows its buffers as the
+   window and not what GDI draws there, and releasing it mid-run (which is what
+   would hand the window back) crashed the AMD driver's own worker thread in
+   every try. So one refusal (after the wait and the retry above) drops that
+   picture and leaves the one on show; the next picture tries again. Only a
+   card that refuses UPLOAD_REFUSALS_MAX pictures in a row is given up. */
+enum { UPLOAD_REFUSALS_MAX = 60 };
+int g_up_refused_run;           /* refusals in a row */
+int g_up_refused;               /* refusals this run */
+int g_up_skipped_said;
+int g_uploads;                  /* pictures uploaded this run */
+#ifndef PORT_ROM_CLEAN
+/* DEVELOPER KNOBS, compiled out of the kit (run after093, lane MGFREEZE1).
+   SM64DS_GPU_MEMTRACE=1 prints the adapter's own memory account once a second
+   (IDXGIAdapter3::QueryVideoMemoryInfo, local and non-local, usage against the
+   budget the driver gives this process), so a growth curve is a number and not
+   a guess. SM64DS_PRESENT_FAIL_AT=<n> makes upload n come back E_OUTOFMEMORY,
+   the way the card refused it on a tester's 128 MB Intel chip, on the first try
+   and on the retry, so the fallback runs; with SM64DS_PRESENT_FAIL_AT_ONCE=1
+   only the first try fails and the retry is what is exercised. */
+int g_memtrace;
+int g_fail_at;
+int g_fail_at_once;
+long long g_memtrace_last;
+int g_memtrace_up_last;
+IDXGIAdapter3 *g_ad3;
+int g_ad3_tried;
+#endif
 
 /* ---- what the run learned, for the one summary line at exit ------------- */
 
@@ -294,6 +347,14 @@ void read_settings()
     g_addrcheck = env_int("SM64DS_PRESENT_ADDRCHECK", 0);
     g_swapprobe = env_int("SM64DS_PRESENT_SWAPPROBE", 0);
     g_fail_after = env_int("SM64DS_PRESENT_FAIL_AFTER", 0);
+    g_inflight_max = env_int("SM64DS_PRESENT_INFLIGHT", 2);
+#ifndef PORT_ROM_CLEAN
+    g_memtrace = env_int("SM64DS_GPU_MEMTRACE", 0);
+    g_fail_at = env_int("SM64DS_PRESENT_FAIL_AT", 0);
+    g_fail_at_once = env_int("SM64DS_PRESENT_FAIL_AT_ONCE", 0);
+#endif
+    if (g_inflight_max < 0) g_inflight_max = 0;
+    if (g_inflight_max > FENCE_RING - 1) g_inflight_max = FENCE_RING - 1;
 
     LARGE_INTEGER f;
     if (QueryPerformanceFrequency(&f)) g_qpf = f.QuadPart;
@@ -363,6 +424,165 @@ bool make_pipeline()
     return true;
 }
 
+/* The fences. GetData with no flags also flushes the queue, so a wait never
+   waits on work that was not yet handed to the card. */
+void fence_pop()
+{
+    g_fence_head = (g_fence_head + 1) % FENCE_RING;
+    --g_fence_n;
+}
+
+bool fence_wait_oldest(double limit_ms)
+{
+    ID3D11Query *q = g_fence[g_fence_head];
+    const long long t0 = qpc();
+    bool done = false;
+    for (;;) {
+        const HRESULT hr = g_ctx->GetData(q, 0, 0, 0);
+        if (hr == S_OK) { done = true; break; }
+        if (FAILED(hr)) break;                     /* a removed device answers here */
+        if (ms_between(t0, qpc()) > limit_ms) break;
+        SwitchToThread();
+    }
+    g_fence_wait_ms += ms_between(t0, qpc());
+    fence_pop();
+    return done;
+}
+
+void inflight_retire()
+{
+    while (g_fence_n && g_ctx->GetData(g_fence[g_fence_head], 0, 0,
+                                       D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK)
+        fence_pop();
+}
+
+/* Before an upload: let the card catch up to at most g_inflight_max
+   unfinished pictures. A second at most per wait, so a hung card can stall a
+   picture but never the run. */
+void inflight_throttle()
+{
+    if (g_fence_failed || !g_ctx) return;
+    inflight_retire();
+    if (g_fence_n > g_fence_deep) g_fence_deep = g_fence_n;
+    if (!g_inflight_max) {
+        if (g_fence_n >= FENCE_RING - 1) fence_pop();   /* counting only: the deepest then reads "at least" */
+        return;
+    }
+    while (g_fence_n >= g_inflight_max) {
+        ++g_fence_waits;
+        fence_wait_oldest(1000.0);
+    }
+}
+
+/* After an upload: mark it. */
+void inflight_mark()
+{
+    if (g_fence_failed || !g_dev || !g_ctx) return;
+    const int at = (g_fence_head + g_fence_n) % FENCE_RING;
+    if (!g_fence[at]) {
+        D3D11_QUERY_DESC qd;
+        qd.Query = D3D11_QUERY_EVENT;
+        qd.MiscFlags = 0;
+        if (FAILED(g_dev->CreateQuery(&qd, &g_fence[at])) || !g_fence[at]) {
+            g_fence[at] = 0;
+            g_fence_failed = 1;
+            fprintf(stderr, "[present] the card would not make an event query; uploads are not paced\n");
+            return;
+        }
+    }
+    g_ctx->End(g_fence[at]);
+    ++g_fence_n;
+}
+
+/* Everything handed over, and all of it finished (or two seconds gone). */
+void inflight_drain()
+{
+    if (!g_ctx) return;
+    g_ctx->Flush();
+    if (g_fence_failed) { Sleep(50); return; }
+    const long long t0 = qpc();
+    inflight_mark();
+    while (g_fence_n && ms_between(t0, qpc()) < 2000.0)
+        fence_wait_oldest(2000.0 - ms_between(t0, qpc()));
+}
+
+int inflight_now() { return g_fence_n; }
+int inflight_deepest() { return g_fence_deep; }
+
+void release_fences()
+{
+    for (int i = 0; i < FENCE_RING; ++i)
+        if (g_fence[i]) { g_fence[i]->Release(); g_fence[i] = 0; }
+    g_fence_head = g_fence_n = 0;
+}
+
+#ifndef PORT_ROM_CLEAN
+/* The memory trace's one line, at most once a second. */
+void memtrace_tick()
+{
+    if (!g_memtrace || !g_dev || !g_qpf) return;
+    const long long now = qpc();
+    if (g_memtrace_last && ms_between(g_memtrace_last, now) < 1000.0) return;
+    static long long first;
+    if (!first) first = now;
+    g_memtrace_last = now;
+    if (!g_ad3 && !g_ad3_tried) {
+        g_ad3_tried = 1;
+        IDXGIDevice *dx = 0;
+        if (SUCCEEDED(g_dev->QueryInterface(__uuidof(IDXGIDevice), (void **)&dx)) && dx) {
+            IDXGIAdapter *ad = 0;
+            if (SUCCEEDED(dx->GetAdapter(&ad)) && ad) {
+                ad->QueryInterface(__uuidof(IDXGIAdapter3), (void **)&g_ad3);
+                ad->Release();
+            }
+            dx->Release();
+        }
+        if (!g_ad3) fprintf(stderr, "[memtrace] this Windows has no IDXGIAdapter3; no memory account\n");
+    }
+    DXGI_QUERY_VIDEO_MEMORY_INFO lo, nl;
+    memset(&lo, 0, sizeof lo);
+    memset(&nl, 0, sizeof nl);
+    if (g_ad3) {
+        g_ad3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &lo);
+        g_ad3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &nl);
+    }
+    const double mb = 1024.0 * 1024.0;
+    fprintf(stderr, "[memtrace] t=%.1fs local %.1f of %.1f MB, non-local %.1f of %.1f MB, "
+            "uploads %d (+%d this second), upload texture %dx%d (%.2f MB), in flight %d "
+            "(deepest %d, limit %d, waits %lld)\n",
+            ms_between(first, now) / 1000.0,
+            (double)lo.CurrentUsage / mb, (double)lo.Budget / mb,
+            (double)nl.CurrentUsage / mb, (double)nl.Budget / mb,
+            g_uploads, g_uploads - g_memtrace_up_last, g_tex_w, g_tex_h,
+            (double)g_tex_w * g_tex_h * 4.0 / mb, inflight_now(), inflight_deepest(),
+            g_inflight_max, g_fence_waits);
+    g_memtrace_up_last = g_uploads;
+}
+
+/* The drill's Map: a real Map, then the refusal the tester's card gave. */
+HRESULT drill_map(D3D11_MAPPED_SUBRESOURCE *m, int retry)
+{
+    HRESULT hr = g_ctx->Map(g_tex, 0, D3D11_MAP_WRITE_DISCARD, 0, m);
+    /* SM64DS_PRESENT_FAIL_AT_RUN=<k>: that many pictures in a row are refused
+       (default 1), so the give-up after a run of refusals can be drilled too */
+    static int left = -1;
+    if (left < 0) left = env_int("SM64DS_PRESENT_FAIL_AT_RUN", 1);
+    if (g_fail_at && g_uploads + 1 == g_fail_at && left > 0 && (!retry || !g_fail_at_once)) {
+        if (SUCCEEDED(hr)) g_ctx->Unmap(g_tex, 0);
+        if (retry) --left;
+        if (left < 2 || retry == 0)
+        fprintf(stderr, "[present] SM64DS_PRESENT_FAIL_AT=%d: upload %d answers E_OUTOFMEMORY%s\n",
+                g_fail_at, g_uploads + 1, retry ? " on the retry too" : "");
+        memset(m, 0, sizeof *m);
+        hr = E_OUTOFMEMORY;
+    }
+    return hr;
+}
+#define UPLOAD_MAP(m, retry) drill_map((m), (retry))
+#else
+#define UPLOAD_MAP(m, retry) g_ctx->Map(g_tex, 0, D3D11_MAP_WRITE_DISCARD, 0, (m))
+#endif
+
 /* The upload texture, sized to the picture. Recreated when the source size
    changes, which happens when the layout switches between the inset level
    picture and the taller stacked one. */
@@ -401,16 +621,46 @@ bool ensure_texture(int w, int h)
 bool upload(const void *pixels, int stride_px, int w, int h)
 {
     if (!ensure_texture(w, h)) return false;
+    inflight_throttle();
     D3D11_MAPPED_SUBRESOURCE m;
     memset(&m, 0, sizeof m);
-    const HRESULT hr = g_ctx->Map(g_tex, 0, D3D11_MAP_WRITE_DISCARD, 0, &m);
-    if (FAILED(hr) || !m.pData) { fall_back("the upload was refused", hr); return false; }
+    HRESULT hr = UPLOAD_MAP(&m, 0);
+    if (hr == E_OUTOFMEMORY) {
+        /* The card is out of room for another copy. Hand it everything, wait
+           until it has finished it (which frees every older copy), and try
+           once more before giving the card path up. */
+        ++g_oom_retries;
+        if (g_oom_retries <= 3)
+            fprintf(stderr, "[present] the upload ran out of card memory (code %08x); "
+                    "waiting for the card and trying once more\n", (unsigned)hr);
+        inflight_drain();
+        memset(&m, 0, sizeof m);
+        hr = UPLOAD_MAP(&m, 1);
+        if (SUCCEEDED(hr) && m.pData) ++g_oom_recovered;
+    }
+    if (FAILED(hr) || !m.pData) {
+        ++g_up_refused;
+        if (++g_up_refused_run >= UPLOAD_REFUSALS_MAX) {
+            fall_back("the upload was refused", hr);
+            return false;
+        }
+        if (g_up_skipped_said < 3) {
+            ++g_up_skipped_said;
+            fprintf(stderr, "[present] the card refused upload %d (code %08x); that picture is "
+                    "skipped, the one on show stays and the next one tries again\n",
+                    g_uploads + 1, (unsigned)hr);
+        }
+        return false;
+    }
+    g_up_refused_run = 0;
+    ++g_uploads;
     const unsigned char *src = (const unsigned char *)pixels;
     unsigned char *dst = (unsigned char *)m.pData;
     const size_t row = (size_t)w * 4;
     for (int y = 0; y < h; ++y)
         memcpy(dst + (size_t)y * m.RowPitch, src + (size_t)y * stride_px * 4, row);
     g_ctx->Unmap(g_tex, 0);
+    inflight_mark();
     return true;
 }
 
@@ -1006,6 +1256,7 @@ void release_all()
     presenter_end();
     release_swapchain();
     presenter_shutdown();
+    release_fences();
     if (g_off_rtv) { g_off_rtv->Release(); g_off_rtv = 0; }
     if (g_off_stage) { g_off_stage->Release(); g_off_stage = 0; }
     if (g_off_rt) { g_off_rt->Release(); g_off_rt = 0; }
@@ -1042,6 +1293,12 @@ void at_exit()
     if (g_presents)
         fprintf(stderr, "[present] %d picture(s) went through the graphics "
                 "card this run\n", g_presents);
+    if (g_uploads)
+        fprintf(stderr, "[present] %d upload(s); at most %d picture(s) in flight on the card "
+                "(deepest seen %d), %lld wait(s) for it, %.1f ms in all; %d out-of-memory "
+                "retr%s, %d recovered; %d picture(s) skipped\n", g_uploads, g_inflight_max,
+                g_fence_deep, g_fence_waits, g_fence_wait_ms, g_oom_retries,
+                g_oom_retries == 1 ? "y" : "ies", g_oom_recovered, g_up_refused);
     address_rows("exit  ");
     /* THE EXIT RULE (hal/gpu_device.h): stop the presenter thread and leave
        every Direct3D object to the system. Releasing them here crashed the
@@ -1118,6 +1375,9 @@ extern "C" void port_gpu_present_offscreen_frame(const void *pixels,
     if (!port_gpu_present_offscreen_mode()) return;
     if (!pixels || src_w <= 0 || src_h <= 0) return;
     if (!start()) return;
+#ifndef PORT_ROM_CLEAN
+    memtrace_tick();
+#endif
 
     /* the device-lost drill, on this path too: the offscreen mode is the only
        one a headless run reaches, so without this the fallback could only ever
@@ -1314,6 +1574,9 @@ static int present_impl(void *hwnd, const void *pixels, int stride_px,
     if (!pixels || src_w <= 0 || src_h <= 0 || client_w <= 0 || client_h <= 0)
         return 0;
     if (!start()) return 0;
+#ifndef PORT_ROM_CLEAN
+    memtrace_tick();
+#endif
 
     /* the device-lost drill: a run asks for the fallback on purpose so the
        recovery path is exercised rather than assumed */
