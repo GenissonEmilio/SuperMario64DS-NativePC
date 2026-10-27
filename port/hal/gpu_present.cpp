@@ -163,6 +163,18 @@ int g_fence_failed;             /* the card would not make a query: no limit, as
 long long g_fence_waits;
 double g_fence_wait_ms;
 int g_oom_retries, g_oom_recovered;
+/* A REFUSED UPLOAD SKIPS ONE PICTURE, IT DOES NOT END THE CARD PATH (run
+   after093, lane MGFREEZE1). The fallback cannot give a moving picture back:
+   the swap chain is a flip-model one, the compositor shows its buffers as the
+   window and not what GDI draws there, and releasing it mid-run (which is what
+   would hand the window back) crashed the AMD driver's own worker thread in
+   every try. So one refusal (after the wait and the retry above) drops that
+   picture and leaves the one on show; the next picture tries again. Only a
+   card that refuses UPLOAD_REFUSALS_MAX pictures in a row is given up. */
+enum { UPLOAD_REFUSALS_MAX = 60 };
+int g_up_refused_run;           /* refusals in a row */
+int g_up_refused;               /* refusals this run */
+int g_up_skipped_said;
 int g_uploads;                  /* pictures uploaded this run */
 #ifndef PORT_ROM_CLEAN
 /* DEVELOPER KNOBS, compiled out of the kit (run after093, lane MGFREEZE1).
@@ -551,8 +563,14 @@ void memtrace_tick()
 HRESULT drill_map(D3D11_MAPPED_SUBRESOURCE *m, int retry)
 {
     HRESULT hr = g_ctx->Map(g_tex, 0, D3D11_MAP_WRITE_DISCARD, 0, m);
-    if (g_fail_at && g_uploads + 1 == g_fail_at && (!retry || !g_fail_at_once)) {
+    /* SM64DS_PRESENT_FAIL_AT_RUN=<k>: that many pictures in a row are refused
+       (default 1), so the give-up after a run of refusals can be drilled too */
+    static int left = -1;
+    if (left < 0) left = env_int("SM64DS_PRESENT_FAIL_AT_RUN", 1);
+    if (g_fail_at && g_uploads + 1 == g_fail_at && left > 0 && (!retry || !g_fail_at_once)) {
         if (SUCCEEDED(hr)) g_ctx->Unmap(g_tex, 0);
+        if (retry) --left;
+        if (left < 2 || retry == 0)
         fprintf(stderr, "[present] SM64DS_PRESENT_FAIL_AT=%d: upload %d answers E_OUTOFMEMORY%s\n",
                 g_fail_at, g_uploads + 1, retry ? " on the retry too" : "");
         memset(m, 0, sizeof *m);
@@ -620,7 +638,21 @@ bool upload(const void *pixels, int stride_px, int w, int h)
         hr = UPLOAD_MAP(&m, 1);
         if (SUCCEEDED(hr) && m.pData) ++g_oom_recovered;
     }
-    if (FAILED(hr) || !m.pData) { fall_back("the upload was refused", hr); return false; }
+    if (FAILED(hr) || !m.pData) {
+        ++g_up_refused;
+        if (++g_up_refused_run >= UPLOAD_REFUSALS_MAX) {
+            fall_back("the upload was refused", hr);
+            return false;
+        }
+        if (g_up_skipped_said < 3) {
+            ++g_up_skipped_said;
+            fprintf(stderr, "[present] the card refused upload %d (code %08x); that picture is "
+                    "skipped, the one on show stays and the next one tries again\n",
+                    g_uploads + 1, (unsigned)hr);
+        }
+        return false;
+    }
+    g_up_refused_run = 0;
     ++g_uploads;
     const unsigned char *src = (const unsigned char *)pixels;
     unsigned char *dst = (unsigned char *)m.pData;
@@ -1264,9 +1296,9 @@ void at_exit()
     if (g_uploads)
         fprintf(stderr, "[present] %d upload(s); at most %d picture(s) in flight on the card "
                 "(deepest seen %d), %lld wait(s) for it, %.1f ms in all; %d out-of-memory "
-                "retr%s, %d recovered\n", g_uploads, g_inflight_max, g_fence_deep,
-                g_fence_waits, g_fence_wait_ms, g_oom_retries,
-                g_oom_retries == 1 ? "y" : "ies", g_oom_recovered);
+                "retr%s, %d recovered; %d picture(s) skipped\n", g_uploads, g_inflight_max,
+                g_fence_deep, g_fence_waits, g_fence_wait_ms, g_oom_retries,
+                g_oom_retries == 1 ? "y" : "ies", g_oom_recovered, g_up_refused);
     address_rows("exit  ");
     /* THE EXIT RULE (hal/gpu_device.h): stop the presenter thread and leave
        every Direct3D object to the system. Releasing them here crashed the
