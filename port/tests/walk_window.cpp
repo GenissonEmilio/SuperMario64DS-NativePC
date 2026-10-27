@@ -18918,13 +18918,19 @@ int main(void)
                        from its start (fz rows: the cut came 30 frames after the answer with the snap alone). */
                     if (!srst_why) {
                         if (srst_wait < 0) srst_wait = frame;
-                        if (data_0209f1e4 == (void *)data_0209f5d0) srst_parked = 1;
-                        data_0209f1e4 = 0;
+                        /* SEAMCLEAN1: only the ROM's own parked brightness fader is taken back each frame; any other fade
+                           in flight (a level's entry fade, a pause fade) is left alone, as the 30 frame wait did before
+                           SEAMRESET2 (the ROM's latch branch parks its fader over whatever is installed, so nothing of
+                           the other fade survives on the cartridge either; the port only stops dropping it early) */
+                        if (data_0209f1e4 == (void *)data_0209f5d0) {
+                            srst_parked = 1;
+                            data_0209f1e4 = 0;
+                        }
                         if (!srst_parked) {
                             if (frame - srst_wait < 30) srst_hold = 1;
                             else srst_why = "the ROM did not start its reset fade within 30 frames";
-                        } else if (frame - srst_wait < 16) {
-                            srst_hold = 1;
+                        } else if (frame - srst_wait < 15) {
+                            srst_hold = 1;   /* SEAMCLEAN1: 15 frozen frames; the ROM marks the Stage at its f316, this port at f316 now */
                         }
                     }
                     if (!srst_hold && !srst_why) {
@@ -18973,6 +18979,10 @@ int main(void)
                    host's direct Ctrl store further down (data_0209f49c / data_0209f49e from btn) would write the held keys
                    straight back before phase 4, and Mario jumped on an A pressed inside the reset (rows fz_r1 before this
                    line). The store gets the zeroed word on every frame the ROM zeroes, as the cartridge's records are. */
+                /* SEAMCLEAN1, DECISION (review item: "keep stale input instead of zeros"): zeros stay. The ROM's ResetInput
+                   (src/ResetInput.c, called by func_02023498 on every frame the latch is up) clears every player's Ctrl record
+                   (data_0209f498, 0x18 bytes each) before the actors' phase, so a held stick reads as nothing there as well;
+                   Stage::CheckInput not running leaves no older record behind for the actors to read. */
                 if (srst_up) btn = 0;
             }
             g_pad_mirror_prev = raw_all;
