@@ -44,6 +44,7 @@ extern char *data_ov007_0210342c;            /* dScDSMT_c's scene global (hal/ti
 void func_ov007_020aec94(int choice);        /* src/func_ov007_020aec94.c: the title's own "the player chose X" */
 void func_ov007_020b6134(int slot);          /* src/func_ov007_020b6134.cpp: the file select's A / B / C handler */
 void port_touch_force_press(int x, int y, int frames);   /* hal/sub_screen.cpp */
+extern unsigned char data_020a0f10[], data_0209f250[], data_0208a0e0, data_0209fc68[], data_0209f2d8;   /* the rows' state line */
 #endif
 }
 
@@ -433,6 +434,9 @@ void dev_frame(unsigned title_frame)
                              "(func_ov007_020aec94(9))\n", title_frame);
             } else if (state == 0 && req == -1 && ep && *(short *)ep == 5 && *(short *)(ep + 2) == -1 && sf >= 8) {
                 af_step = 3;
+                std::fprintf(stderr, "[seamless] title frame %u SM64DS_VS_AFTER_FILE: before the press: data_020a0f10 %u data_0209f250 %u "
+                             "data_0208a0e0 %u data_0209fc68 %u data_0209f2d8 %u\n", title_frame, (unsigned)data_020a0f10[0],
+                             (unsigned)data_0209f250[0], (unsigned)data_0208a0e0, (unsigned)data_0209fc68[0], (unsigned)data_0209f2d8);
                 func_ov007_020b6134(af);
                 std::fprintf(stderr, "[seamless] title frame %u SM64DS_VS_AFTER_FILE: file %c pressed through func_ov007_020b6134(%d)\n",
                              title_frame, 'A' + af, af);

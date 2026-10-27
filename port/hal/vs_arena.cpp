@@ -293,8 +293,17 @@ bool env_on(const char *name) {
 // new knob. 0xFF = any free seat.
 int seat_pin_from_env(const char **why) {
     *why = "no pin: any free seat";
-    if (const char *s = std::getenv("SM64DS_HUB_SEAT"))
-        if (*s) { *why = "SM64DS_HUB_SEAT"; return env_int("SM64DS_HUB_SEAT", 0xFF, 0, 15); }
+    /* SEAMVS1 (REVSEAMJOIN1 note): the hub seat comes from the session record (hal/comms_hub.h), which a hand-off fills and the
+       in-place end clears, the way the hub's own install reads it */
+    if (const char *s = online_session_get(kSessHubSeat))
+        if (*s) {
+            char *end = nullptr;
+            const long v = std::strtol(s, &end, 10);
+            *why = "SM64DS_HUB_SEAT (the session record)";
+            if (end != s && !*end && v >= 0 && v <= 15) return (int)v;
+            std::fprintf(stderr, "[vsarena] SM64DS_HUB_SEAT=%s is out of range 0..15; using any free seat\n", s);
+            return 0xFF;
+        }
     if (const char *s = std::getenv("SM64DS_COMMS_SLOT"))
         if (*s) { *why = "SM64DS_COMMS_SLOT"; return env_int("SM64DS_COMMS_SLOT", 0xFF, 0, 15); }
     if (const char *r = std::getenv("SM64DS_COMMS_ROLE"))
@@ -1848,6 +1857,8 @@ bool vs_arena_requested() {
 }
 
 extern "C" void port_fanout_force_wide(int on);   // hal/comms_fanout_wide.cpp (VS9)
+extern "C" unsigned char data_0209f250[];        // the world's local player index (hal/auto_bss.cpp)
+#define port_vs_local_index data_0209f250
 extern "C" int port_vs_force_nobody = 0;          // SEAMVS1: the "seat has no body" drill, set only by a dev knob (hal/handoff_poll.cpp)
 extern "C" int port_vs_leave_to_title(const char *why);   // hal/star_flow.cpp (SEAMVS1): the match leaves to the title in place
 
@@ -1857,6 +1868,7 @@ extern "C" int port_vs_leave_to_title(const char *why);   // hal/star_flow.cpp (
 namespace {
 bool g_tried = false;
 bool g_in_place = false;
+ULONGLONG g_in_place_t0 = 0;   // when the hand-off installed the arena (the time to the level's seat is printed from it)
 bool g_report_hooked = false;
 }  // namespace
 
@@ -1971,6 +1983,7 @@ bool vs_arena_install_in_place(const char **why) {
         return false;
     }
     g_in_place = true;
+    g_in_place_t0 = ::GetTickCount64();
     std::fprintf(stderr, "[seamless] VS arena installed in this process: %d bodies, seat pin %d\n", g.bodies, g.want_seat);
     std::fflush(stderr);
     return true;
@@ -2004,10 +2017,14 @@ bool vs_arena_leave_reset(const char *why) {
     g_in_place = false;
     // my body's number back to the solo game's 0 (vs_arena_seat_world wrote the seat; a process that never joined has 0 in this ROM
     // word, and the solo level that follows spawns player 0 only: a seat-1 console's first door read the missing player 1 and faulted)
-    const unsigned me_was = data_020a0f10[0];
+    // and the world's local player index the Stage seated from it (Stage::InitResources:178, data_0209f250 = func_0203da9c()): back to
+    // the 0 a process that never joined holds until its first Stage
+    const unsigned me_was = data_020a0f10[0], local_was = port_vs_local_index[0];
     data_020a0f10[0] = 0;
+    port_vs_local_index[0] = 0;
     std::fprintf(stderr, "[seamless] VS arena taken down (%s): it was seat %d of %d bodies; referee client, eat, grab and puppets reset, "
-                 "the install latch forgotten, my body number data_020a0f10 %u -> 0\n", why ? why : "?", seat, bodies, me_was);
+                 "the install latch forgotten, my body number data_020a0f10 %u -> 0, local player index data_0209f250 %u -> 0\n",
+                 why ? why : "?", seat, bodies, me_was, local_was);
     std::fflush(stderr);
     return true;
 }
@@ -2074,6 +2091,11 @@ void vs_arena_seat_world() {
                      "boot\n", g.seat, seat);
     g.seat = seat;
     data_020a0f10[0] = (unsigned char)seat;
+    if (g_in_place && g_in_place_t0) {   // SEAMVS1: the hand-off's time to the world (REVSEAMJOIN1 note 4)
+        std::fprintf(stderr, "[seamless] the handed-off VS match's level is seated %llu ms after the hand-off installed the arena\n",
+                     (unsigned long long)(::GetTickCount64() - g_in_place_t0));
+        g_in_place_t0 = 0;
+    }
     std::fprintf(stderr, "[vsarena] seated: seat %d is my body (data_020a0f10 = "
                  "%d), %d bodies\n", seat, seat, g.bodies);
 }
