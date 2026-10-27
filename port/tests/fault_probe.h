@@ -60,6 +60,167 @@ static unsigned port_module_span(const void *modbase)
 }
 
 
+/* ---- WHICH MODULE OWNS EVERY ADDRESS, AND THE FAULTING THREAD'S OWN WALK ----
+   (run after093, lane CRASHWALK1.) Five dumps from one tester on 2026-10-26
+   named nothing: eip sat in a DLL the dump could not name, the 32 module
+   return words were empty because the faulting worker had no exe code on its
+   stack, and the "FAULT ... frame N:" lines in the playlog tail were
+   CaptureStackBackTrace taken INSIDE this handler, so they began at
+   port_fault_probe itself and walked on into ntdll's dispatcher.
+
+   Two pieces, both safe on a broken heap and under a held loader lock:
+     - port_crash_mods_scan() reads the PEB's InMemoryOrderModuleList (the
+       loader's own table: DllBase, SizeOfImage, BaseDllName) into a static
+       table of at most 64 rows, the port's own image first. No API that
+       allocates or locks; every node read is checked by VirtualQuery first,
+       and the walk is bounded, so a torn list stops the table rather than
+       the dump.
+     - port_crash_walk() starts from the EXCEPTION_POINTERS context (Eip, Ebp)
+       and follows the ebp chain ([ebp+4] the return, [ebp] the next frame),
+       every read range-checked against the thread's StackLimit / StackBase
+       from the TEB, so it needs no SEH and cannot fault. The port builds with
+       /Oy- so its own frames chain; a frameless leaf in a system DLL drops its
+       immediate caller from the chain, which the raw scan from Esp covers.
+
+   Naming, one rule everywhere: an address in the port's own image prints in
+   the old bare "+0x<rva>" form (tools/resolve_crash.py and
+   port/tools/faultmap.py resolve it), an address in another image prints as
+   "<name>+0x<rva>" (resolve_crash.py leaves those alone), and anything else
+   prints raw with " (no module)". */
+#define PORT_MODS_MAX 64
+struct port_crash_mod { uintptr_t base, end; char name[40]; };
+static struct port_crash_mod port_crash_mods[PORT_MODS_MAX];
+static int port_crash_nmods;
+static int port_crash_mods_more;   /* loaded modules past the table cap */
+
+/* committed, readable, and [addr, addr+len) inside one region */
+static int port_crash_readable(uintptr_t addr, unsigned len)
+{
+    MEMORY_BASIC_INFORMATION mbi;
+    if (!addr || VirtualQuery((LPCVOID)addr, &mbi, sizeof mbi) != sizeof mbi)
+        return 0;
+    if (mbi.State != MEM_COMMIT || (mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD)))
+        return 0;
+    return addr + len <= (uintptr_t)mbi.BaseAddress + mbi.RegionSize;
+}
+
+static void port_crash_mods_scan(void)
+{
+    /* x86 layouts: TEB+0x30 PEB, PEB+0x0c Ldr, Ldr+0x14 the in-memory-order
+       list head. A link points at an entry's InMemoryOrderLinks (entry+0x08):
+       link+0x10 DllBase, +0x18 SizeOfImage, +0x24 BaseDllName (Length,
+       MaximumLength, Buffer). */
+    uintptr_t peb = *(uintptr_t *)((char *)NtCurrentTeb() + 0x30);
+    uintptr_t ldr, head, link;
+    int steps = 0;
+    port_crash_nmods = 0;
+    port_crash_mods_more = 0;
+    if (!port_crash_readable(peb + 0x0c, 4))
+        return;
+    ldr = *(uintptr_t *)(peb + 0x0c);
+    if (!port_crash_readable(ldr + 0x14, 8))
+        return;
+    head = ldr + 0x14;
+    link = *(uintptr_t *)head;
+    while (link != head && steps++ < 1024) {
+        if (!port_crash_readable(link, 0x2c))
+            break;
+        if (port_crash_nmods < PORT_MODS_MAX) {
+            struct port_crash_mod *m = &port_crash_mods[port_crash_nmods];
+            unsigned short blen = *(unsigned short *)(link + 0x24);
+            const unsigned short *w = *(const unsigned short **)(link + 0x28);
+            unsigned i, n = 0;
+            m->base = *(uintptr_t *)(link + 0x10);
+            m->end = m->base + *(unsigned *)(link + 0x18);
+            if (w && port_crash_readable((uintptr_t)w, blen))
+                for (i = 0; i < blen / 2u && n < sizeof m->name - 1; ++i)
+                    m->name[n++] = (w[i] > 0x20 && w[i] < 0x7f) ? (char)w[i] : '?';
+            if (!n)
+                m->name[n++] = '?';
+            m->name[n] = 0;
+            if (m->base)
+                ++port_crash_nmods;
+        } else {
+            ++port_crash_mods_more;
+        }
+        link = *(uintptr_t *)link;
+    }
+}
+
+/* table row owning addr, -1 when none (row 0 is the port's own image) */
+static int port_crash_mod_of(uintptr_t a)
+{
+    int i;
+    for (i = 0; i < port_crash_nmods; ++i)
+        if (a >= port_crash_mods[i].base && a < port_crash_mods[i].end)
+            return i;
+    return -1;
+}
+
+static unsigned port_crash_hex8(char *dst, unsigned v)
+{
+    static const char h[] = "0123456789abcdef";
+    int i;
+    for (i = 0; i < 8; ++i)
+        dst[i] = h[(v >> (28 - 4 * i)) & 0xf];
+    return 8;
+}
+
+/* "+0x<rva>" (port), "<name>+0x<rva>" (other image), "<raw> (no module)";
+   writes at most 64 bytes, NUL-terminated, returns the length. */
+static unsigned port_crash_name_addr(char *dst, uintptr_t a)
+{
+    int m = port_crash_mod_of(a);
+    unsigned n = 0;
+    if (m < 0) {
+        n += port_crash_hex8(dst, (unsigned)a);
+        lstrcpyA(dst + n, " (no module)");
+        return n + 12;
+    }
+    if (m > 0) {
+        const char *q = port_crash_mods[m].name;
+        while (*q) dst[n++] = *q++;
+    }
+    dst[n++] = '+'; dst[n++] = '0'; dst[n++] = 'x';
+    n += port_crash_hex8(dst + n, (unsigned)(a - port_crash_mods[m].base));
+    dst[n] = 0;
+    return n;
+}
+
+/* The faulting thread's stack, from the TEB (the handler runs on it). */
+static void port_crash_stack_range(uintptr_t *lo, uintptr_t *hi)
+{
+    NT_TIB *tib = (NT_TIB *)NtCurrentTeb();
+    *lo = (uintptr_t)tib->StackLimit;
+    *hi = (uintptr_t)tib->StackBase;
+}
+
+/* frames[0] = Eip, then the ebp chain's return addresses; returns the count
+   and each frame's ebp in ebps[] (0 for frame 0). */
+static unsigned port_crash_walk(const CONTEXT *cx, uintptr_t *frames,
+                                uintptr_t *ebps, unsigned max)
+{
+    uintptr_t lo, hi, bp;
+    unsigned n = 0;
+    if (!max)
+        return 0;
+    port_crash_stack_range(&lo, &hi);
+    frames[n] = cx->Eip; ebps[n] = 0; ++n;
+    bp = cx->Ebp;
+    while (n < max && bp >= lo && bp + 8 <= hi && !(bp & 3)) {
+        uintptr_t ret = *(uintptr_t *)(bp + 4);
+        uintptr_t next = *(uintptr_t *)bp;
+        if (!ret)
+            break;
+        frames[n] = ret; ebps[n] = bp; ++n;
+        if (next <= bp)
+            break;
+        bp = next;
+    }
+    return n;
+}
+
+
 /* The ROM's list walker (func_02043fdc) parks the node it is processing in
    data_020a4b68 before every callback, so at fault time node[2] names the
    actor whose phase code was running -- the question every actor-phase crash
@@ -102,11 +263,28 @@ static LONG WINAPI port_fault_probe(EXCEPTION_POINTERS *ep)
                 (a && !IsBadReadPtr(a, 0x10)) ? *(unsigned short *)(a + 0xc)
                                               : 0xffffu);
     }
-    void *frames[12];
-    unsigned n = CaptureStackBackTrace(0, 12, frames, 0);
-    for (unsigned i = 0; i < n; ++i)
-        fprintf(stderr, "  frame %u: +0x%08x\n", i,
-                (unsigned)((char *)frames[i] - base));
+    /* the frames come from the FAULTING context (the old CaptureStackBackTrace
+       here walked this handler's own frames into ntdll's dispatcher), named by
+       module the same way the rich dump names them */
+    port_crash_mods_scan();
+    if (ep->ContextRecord) {
+        uintptr_t frames[33], ebps[33], lo, hi;
+        char nm[72];
+        unsigned n = port_crash_walk(ep->ContextRecord, frames, ebps, 33);
+        port_crash_stack_range(&lo, &hi);
+        fprintf(stderr, "  thread %08lx stack %08x-%08x\n",
+                GetCurrentThreadId(), (unsigned)lo, (unsigned)hi);
+        for (unsigned i = 0; i < n; ++i) {
+            port_crash_name_addr(nm, frames[i]);
+            fprintf(stderr, "  frame %u: %s\n", i, nm);
+        }
+    } else {
+        void *frames[12];
+        unsigned n = CaptureStackBackTrace(0, 12, frames, 0);
+        for (unsigned i = 0; i < n; ++i)
+            fprintf(stderr, "  frame %u: +0x%08x\n", i,
+                    (unsigned)((char *)frames[i] - base));
+    }
     /* raw return-address candidates off the FAULTING stack (the frames
        above are the handler's own); module-relative, /MAP-resolvable */
     if (ep->ContextRecord) {
@@ -402,26 +580,26 @@ static void port_crash_append_playlog(HANDLE out)
    is not an image. */
 static unsigned port_crash_modrva(char *dst, unsigned cap, uintptr_t addr)
 {
-    MEMORY_BASIC_INFORMATION mbi;
-    char full[MAX_PATH];
-    unsigned n = 0, len = 0, i, start = 0;
+    /* lane CRASHWALK1: the owner comes from the PEB table (port_crash_mods_scan)
+       instead of VirtualQuery + GetModuleFileNameA, which takes the loader lock
+       a crashing thread may already hold. Same output as before. */
+    unsigned n = 0, i;
+    int m;
     static const char hx[] = "0123456789abcdef";
-    if (VirtualQuery((LPCVOID)addr, &mbi, sizeof mbi) != sizeof mbi ||
-        mbi.State != MEM_COMMIT || mbi.Type != MEM_IMAGE || !mbi.AllocationBase ||
-        !GetModuleFileNameA((HMODULE)mbi.AllocationBase, full, MAX_PATH)) {
+    if (!port_crash_nmods)
+        port_crash_mods_scan();
+    m = port_crash_mod_of(addr);
+    if (m < 0) {
         if (cap > 2) { dst[0] = '?'; return 1; }
         return 0;
     }
-    len = (unsigned)lstrlenA(full);
-    for (i = 0; i < len; ++i)
-        if (full[i] == 92 || full[i] == '/') start = i + 1;
-    for (i = start; i < len && n + 24 < cap; ++i)
-        dst[n++] = full[i];
+    for (i = 0; port_crash_mods[m].name[i] && n + 24 < cap; ++i)
+        dst[n++] = port_crash_mods[m].name[i];
     dst[n++] = '+';
     dst[n++] = '0';
     dst[n++] = 'x';
     {
-        unsigned v = (unsigned)(addr - (uintptr_t)mbi.AllocationBase);
+        unsigned v = (unsigned)(addr - port_crash_mods[m].base);
         int sh;
         for (sh = 28; sh >= 0; sh -= 4)
             dst[n++] = hx[(v >> sh) & 0xf];
@@ -449,13 +627,14 @@ static void port_rich_dump(EXCEPTION_POINTERS *ep, unsigned code,
                            const char *reason)
 {
     static char path[MAX_PATH + 64];
-    static char buf[8192];
+    static char buf[24576];   /* was 8192; the module table + walk need room */
     char *base = (char *)GetModuleHandleA(0);
     unsigned p = 0;
     SYSTEMTIME st;
     HANDLE f;
     if (!port_crash_dir[0])
         port_crash_dir_boot();
+    port_crash_mods_scan();
     GetLocalTime(&st);
     /* crash-YYYYMMDD-HHMMSS-<pid>.txt */
     {
@@ -648,6 +827,78 @@ static void port_rich_dump(EXCEPTION_POINTERS *ep, unsigned code,
             PORT_RD_HEX((uintptr_t)tib->StackLimit);
         }
         PORT_RD_STR("\r\n");
+    }
+    /* THE MODULE TABLE AND THE FAULTING THREAD'S WALK (lane CRASHWALK1; the
+       banner above port_crash_mods_scan says why). */
+    {
+        static char nm[72];
+        int k;
+        PORT_RD_STR("---- modules ----\r\n"
+                    "names: +0x<rva> = the port (first module), "
+                    "<name>+0x<rva> = another module, <raw> (no module)");
+        for (k = 0; k < port_crash_nmods; ++k) {
+            PORT_RD_STR("\r\nmodule ");
+            PORT_RD_HEX(port_crash_mods[k].base);
+            PORT_RD_STR("-");
+            PORT_RD_HEX(port_crash_mods[k].end);
+            PORT_RD_STR(" ");
+            PORT_RD_STR(port_crash_mods[k].name);
+        }
+        if (port_crash_mods_more) {
+            PORT_RD_STR("\r\n(");
+            PORT_RD_DEC(port_crash_mods_more);
+            PORT_RD_STR(" more modules not listed)");
+        }
+        PORT_RD_STR("\r\n");
+        if (ep && ep->ContextRecord) {
+            CONTEXT *cx = ep->ContextRecord;
+            uintptr_t frames[33], ebps[33], lo, hi;
+            unsigned nf = port_crash_walk(cx, frames, ebps, 33), q;
+            unsigned *sp3 = (unsigned *)cx->Esp;
+            int got3 = 0;
+            port_crash_stack_range(&lo, &hi);
+            PORT_RD_STR("---- faulting thread ----\r\nthread ");
+            PORT_RD_HEX(GetCurrentThreadId());
+            PORT_RD_STR(" stack ");
+            PORT_RD_HEX(lo);
+            PORT_RD_STR("-");
+            PORT_RD_HEX(hi);
+            PORT_RD_STR("\r\nebp chain from the faulting context (eip, then returns)");
+            for (q = 0; q < nf; ++q) {
+                PORT_RD_STR("\r\n  frame ");
+                PORT_RD_DEC(q);
+                PORT_RD_STR(": ");
+                port_crash_name_addr(nm, frames[q]);
+                PORT_RD_STR(nm);
+                if (q) {
+                    PORT_RD_STR("  ebp ");
+                    PORT_RD_HEX(ebps[q]);
+                }
+            }
+            PORT_RD_STR("\r\nraw scan from esp ");
+            PORT_RD_HEX(cx->Esp);
+            PORT_RD_STR(" (256 words, module code only)");
+            if ((uintptr_t)sp3 >= lo && (uintptr_t)sp3 < hi &&
+                !((uintptr_t)sp3 & 3)) {
+                for (k = 0; k < 256 && got3 < 64; ++k) {
+                    uintptr_t at = (uintptr_t)(sp3 + k), v;
+                    if (at + 4 > hi)
+                        break;
+                    v = sp3[k];
+                    if (port_crash_mod_of(v) >= 0 && port_addr_is_exec(v)) {
+                        PORT_RD_STR("\r\n  [");
+                        PORT_RD_DEC(k);
+                        PORT_RD_STR("] ");
+                        port_crash_name_addr(nm, v);
+                        PORT_RD_STR(nm);
+                        ++got3;
+                    }
+                }
+            } else {
+                PORT_RD_STR("\r\n  esp is outside the thread's stack");
+            }
+            PORT_RD_STR("\r\n");
+        }
     }
     /* THE INSTALL BLOCK. What the asset folder turned out to be, and what
        happened to any save state in it, both settled at boot by
@@ -1256,6 +1507,86 @@ static void port_install_watchdog(void)
     if (!a.secs) a.secs = 10;
     CreateThread(0, 0, port_watchdog_thread, &a, 0, 0);
 }
+
+/* ---- SM64DS_FAULT_TEST=<n>[@frame]: raise a REAL crash on purpose ----------
+   Dev builds only (compiled out of a PORT_ROM_CLEAN kit). Lane CRASHWALK1
+   wrote it to prove the dump above against faults whose callers are known:
+     1  a read through a null pointer + 0x30 on the main thread
+     2  the same read on a worker thread the port starts for it
+     3  a call into a system DLL that faults there: EnumWindows calls back into
+        the port, and the callback hands kernel32's RtlMoveMemory a source of
+        0x30, so eip lands in a system DLL with port frames below it (the
+        shape of the 2026-10-26 tester dumps)
+   The frame defaults to 60. walk_window calls PORT_FAULT_TEST_TICK once per
+   frame; nothing runs unless the variable is set. */
+#ifndef PORT_ROM_CLEAN
+static int *volatile port_fault_test_null;   /* stays 0 */
+static __declspec(noinline) int port_fault_test_read(void)
+{
+    return port_fault_test_null[0x30 / 4];
+}
+static __declspec(noinline) int port_fault_test_deep(int d)
+{
+    return d ? port_fault_test_deep(d - 1) + 1 : port_fault_test_read();
+}
+static DWORD WINAPI port_fault_test_thread(LPVOID unused)
+{
+    (void)unused;
+    return (DWORD)port_fault_test_deep(2);
+}
+typedef void (WINAPI *port_fault_move_t)(void *, const void *, SIZE_T);
+typedef BOOL (WINAPI *port_fault_enum_t)(WNDENUMPROC, LPARAM);
+static BOOL CALLBACK port_fault_test_enum_cb(HWND h, LPARAM l)
+{
+    unsigned sink = 0;
+    (void)h;
+    ((port_fault_move_t)l)(&sink, (const void *)0x30, 4);
+    return sink == 0x12345678;
+}
+static __declspec(noinline) void port_fault_test_fire(int mode)
+{
+    if (mode == 1) {
+        port_fault_test_deep(2);
+    } else if (mode == 2) {
+        HANDLE t = CreateThread(0, 0, port_fault_test_thread, 0, 0, 0);
+        if (t)
+            WaitForSingleObject(t, INFINITE);
+    } else if (mode == 3) {
+        HMODULE k = GetModuleHandleA("kernel32.dll");
+        HMODULE u = LoadLibraryA("user32.dll");
+        port_fault_move_t mv = k
+            ? (port_fault_move_t)GetProcAddress(k, "RtlMoveMemory") : 0;
+        port_fault_enum_t en = u
+            ? (port_fault_enum_t)GetProcAddress(u, "EnumWindows") : 0;
+        if (mv && en)
+            en(port_fault_test_enum_cb, (LPARAM)mv);
+    }
+}
+static void port_fault_test_tick(int frame)
+{
+    static int mode = -1, at = 60;
+    if (mode < 0) {
+        const char *e = getenv("SM64DS_FAULT_TEST");
+        mode = e ? atoi(e) : 0;
+        if (e) {
+            const char *a = e;
+            while (*a && *a != '@') ++a;
+            if (*a == '@') at = atoi(a + 1);
+        }
+        if (mode)
+            fprintf(stderr, "[fault-test] mode %d at frame %d\n", mode, at);
+    }
+    if (mode > 0 && frame >= at) {
+        int m = mode;
+        mode = 0;
+        fprintf(stderr, "[fault-test] firing mode %d at frame %d\n", m, frame);
+        port_fault_test_fire(m);
+    }
+}
+#define PORT_FAULT_TEST_TICK(frame) port_fault_test_tick(frame)
+#else
+#define PORT_FAULT_TEST_TICK(frame) ((void)0)
+#endif
 
 /* ---- external seams for the quarantine walker -----------------------------
    port/unmatched/func_02043fdc_hostcopy.cpp catches per-actor faults but must not
