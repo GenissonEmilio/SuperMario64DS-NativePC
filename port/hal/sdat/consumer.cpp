@@ -1151,7 +1151,8 @@ static void snd_voice_probe(void)
 }
 
 /* run after093, lane SEAMMODS1: one call per game frame on the game thread, for hal/mods.cpp's dev knobs (SM64DS_MODS_RELATCH_AT,
-   SM64DS_FS_CENSUS). Null unless one of them is set; never seated in the kit. */
+   SM64DS_FS_CENSUS). Null unless one of them is set or a leave is under way: SEAMHUB1's online leave (hal/online_join.cpp) and the
+   in-place join chain onto it in the kit too, so it IS seated there (SEAMCLEAN1 corrects the old note). */
 extern "C" { void (*port_sdat_frame_hook)(void) = 0; }
 extern "C" void sdat_retired_sweep(void);   /* hal/sdat/sdat.cpp: SEAMSND1, an old image after a sound re-seat */
 
