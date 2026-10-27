@@ -65,6 +65,7 @@ struct Plate {
     int test_how;
     int test_file;
     int inplace;                         /* SEAMJOIN1: raised by an in-place join in this process (hal/online_join.cpp drives it, not the title walk) */
+    int lowering;                        /* SEAMJOIN2: an in-place join's plate is ended and covers one more picture, the world's first */
 } P;
 
 /* JOINWIN1: the join takes longer than this before the corner line shows */
@@ -183,11 +184,14 @@ const int g_seated = boot();
 
 extern "C" int port_join_plate_up(void) { return P.up; }
 
+static void plate_lowered(void);   /* SEAMJOIN2: below, with the in-place plate's end */
+
 extern "C" const uint32_t *port_join_plate_picture(int w, int h)
 {
     if (!P.up || w < 32 || h < 32) return nullptr;
     const int line = (!P.parent && GetTickCount64() - P.t0 > kLineMs) ? 1 : 0;
     if (P.pw != w || P.ph != h || P.px.empty() || P.line != line) { P.line = line; build(w, h); }
+    if (P.lowering) plate_lowered();   /* SEAMJOIN2: this picture is the last the plate covers (px stays allocated for this present) */
     return P.px.data();
 }
 
@@ -213,6 +217,7 @@ extern "C" void port_join_plate_raise_in_place(int server)
     P.up = 1;
     P.parent = 0;
     P.inplace = 1;
+    P.lowering = 0;
     P.server = server;
     P.t0 = GetTickCount64();
     P.frames = 0;
@@ -242,7 +247,7 @@ extern "C" void port_join_plate_raise_in_place(int server)
 /* once a game frame while an in-place join waits for the world: 1 = the player asked to cancel */
 extern "C" int port_join_plate_inplace_tick(void)
 {
-    if (!P.up || !P.inplace) return 0;
+    if (!P.up || !P.inplace || P.lowering) return 0;
     ++P.frames;
     sd_host_mute(1);
 #ifndef PORT_ROM_CLEAN
@@ -255,16 +260,27 @@ extern "C" int port_join_plate_inplace_tick(void)
     return P.cancel ? 1 : 0;
 }
 
-extern "C" int port_join_plate_inplace_up(void) { return P.up && P.inplace; }
+extern "C" int port_join_plate_inplace_up(void) { return P.up && P.inplace && !P.lowering; }
+
+/* SEAMJOIN2: THE PLATE COVERS THE WORLD'S FIRST PICTURE, as a successor's does. The end is called on the game frame the title hands the game
+   to the level, and lowering the plate there let the next picture through: a full white frame where the restart path still shows black,
+   then the same pictures on both paths from the second on. So the end keeps the plate for one more picture and port_join_plate_picture
+   takes it down after drawing it; the sound comes back here, at the end, as before. */
+static void plate_lowered(void)
+{
+    P.up = 0;
+    P.inplace = 0;
+    P.lowering = 0;
+    P.cancel = 0;
+}
 
 extern "C" void port_join_plate_inplace_end(const char *why)
 {
-    if (!P.up || !P.inplace) return;
-    P.up = 0;
-    P.inplace = 0;
+    if (!P.up || !P.inplace || P.lowering) return;
+    P.lowering = 1;
     P.cancel = 0;
     sd_host_mute(0);
-    fprintf(stderr, "[joinflow] plate down after %u frames: %s\n", P.frames, why ? why : "");
+    fprintf(stderr, "[joinflow] plate down after %u frames (it covers one more picture): %s\n", P.frames, why ? why : "");
     fflush(stderr);
 }
 

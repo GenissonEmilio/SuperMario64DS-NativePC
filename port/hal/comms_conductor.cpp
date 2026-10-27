@@ -1802,8 +1802,11 @@ void comms_install_pump() {
 /* SEAMHUB1: the in-place leave (hal/online_join.cpp, after comms_hub_teardown). The hub's body count is latched on first ask; a
    process that never joined has not asked. The conductor's pump and the VS carrier are not the hub's (the hub installs no transport)
    and are left as they are; the leave refuses a process with a transport installed. */
+void party_stars_session_reset();   /* hal/party_stars.cpp (SEAMJOIN2) */
 void comms_conductor_leave_reset() {
     g_hub_bodies = 0;
+    /* SEAMJOIN2: the party stars' hub handler and per-seat memory belong to the session too (the leave and the join both call this) */
+    party_stars_session_reset();
 }
 
 }  // namespace port
