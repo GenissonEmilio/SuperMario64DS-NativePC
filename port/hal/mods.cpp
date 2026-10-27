@@ -954,6 +954,12 @@ struct NoteSet { NoteSet() { port_nitrofs_census_hook = census_note; } } g_note_
    file or an archive member alike (lane SEAMART2). port_mods_relatch_after_level raises it for the one call. */
 int g_after_level;
 
+#ifndef PORT_ROM_CLEAN
+/* SM64DS_MODS_FORCE_BUSY=menu|settings (dev only): the relatch treats that art worker as not idle, the case a decode longer than 2 s
+   makes, so the refusal below can be shown on demand. */
+const char *g_force_busy;
+#endif
+
 int held_mask(void) { return RD_BOOT | RD_TITLE | (g_after_level ? RD_LATER : 0); }
 
 /* ARCHIVE MEMBERS (ids >= 0x8000, lane SEAMART1): a card block read inside a NARC names the NARC's own FAT id, so a member override is
@@ -1062,8 +1068,22 @@ int relatch(const char *reason, const char *list_json)
         fflush(stderr);
         return 0;
     }
-    /* the art workers read the mod list (port_mods_ui_file) while they decode: let them finish before it changes */
-    const int quiet = port_menu_hostimg_hd_ui_quiesce() & port_settings_page_hd_ui_quiesce();
+    /* the art workers read the mod list (port_mods_ui_file) while they decode: let them finish before it changes. A worker that is
+       still busy after the bounded wait (about 2 s) may be reading g_mods right now, so the list is not touched at all: refused before
+       the first rebuild (lane SEAMART2; the old list, overrides and pictures stay as they are). */
+    int menu_idle = port_menu_hostimg_hd_ui_quiesce(), page_idle = port_settings_page_hd_ui_quiesce();
+#ifndef PORT_ROM_CLEAN
+    if (g_force_busy && !strcmp(g_force_busy, "menu")) menu_idle = 0;
+    if (g_force_busy && !strcmp(g_force_busy, "settings")) page_idle = 0;
+#endif
+    if (!menu_idle || !page_idle) {
+        const char *who = !menu_idle ? "menu art" : "settings page";
+        fprintf(stderr, "[seamless] in place refused: the %s decode worker is still busy; restarting\n", who);
+        fprintf(stderr, "[mods] relatch at the title refused (%s): the %s decode worker did not go idle within 2 s; nothing changed "
+                "(the list was not rebuilt), the caller restarts\n", reason, who);
+        fflush(stderr);
+        return 0;
+    }
     latch();
     build_overrides();
 
@@ -1095,11 +1115,10 @@ int relatch(const char *reason, const char *list_json)
         if (g_mods[i].kind == "code") snprintf(why, sizeof why, "code mod %s would be on", g_mods[i].id.c_str());
     /* sound/ is not on this list any more (lane SEAMSND1): a change in the mods shipping it re-seats the sound archive below,
        hal/sdat/sdat.cpp sdat_reseat_mods, with the output device kept open. Nor is hd_ui/ (lane SEAMART1): a change in the mods
-       shipping it resets the seven art caches below, unless a page drawing that art is open now or an art worker would not go idle. */
+       shipping it resets the seven art caches below, unless a page drawing that art is open now (a busy art worker refused above). */
     const std::string ui_old = ids_with(old_mods, "/hd_ui"), ui_new = ids_with(g_mods, "/hd_ui");
     if (!why[0] && ui_old != ui_new) {
-        const char *busy = settings_page_open() ? "the settings page is open" : port_char_door_open() ? "the character door is open"
-                         : !quiet ? "a menu art decode did not finish within 2 s" : 0;
+        const char *busy = settings_page_open() ? "the settings page is open" : port_char_door_open() ? "the character door is open" : 0;
         if (busy)
             snprintf(why, sizeof why, "the mods shipping hd_ui/ change (%s -> %s) and %s", ui_old.empty() ? "-" : ui_old.c_str(),
                      ui_new.empty() ? "-" : ui_new.c_str(), busy);
@@ -1405,6 +1424,8 @@ struct DevKnobs {
                 if (id < FAT_IDS) g_read_phase[id] |= RD_LATER;
             }
         }
+        const char *fb = getenv("SM64DS_MODS_FORCE_BUSY");
+        if (fb && *fb) g_force_busy = fb;
         const char *c = getenv("SM64DS_FS_CENSUS");
         if (c && *c && strcmp(c, "0")) {
             g_census_tick = atoi(c) > 1 ? atoi(c) : 200;
