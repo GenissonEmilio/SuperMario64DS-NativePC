@@ -885,6 +885,11 @@ extern "C" int data_0209d574[];            /* hal/actor_vtables.cpp: the
    the lane's census of phases 0x17 and 7 (hal/b5input_globals.cpp). */
 extern "C" void func_02023498(void);
 extern "C" unsigned char data_0209f1e0[];
+extern "C" unsigned char data_0209f1dc[];   /* SEAMRESET1: "still held" (hal/b5input_globals.cpp) */
+extern "C" void *data_0209f1e4;             /* SEAMRESET1: the reset fade in flight (hal/auto_bss.cpp) */
+extern "C" int data_0209f5d0[3];            /* SEAMRESET1: the reset's brightness fader (hal/auto_bss.cpp) */
+extern "C" unsigned char data_0209b340[];   /* SEAMRESET1: the title's session block (hal/scene_boot.cpp) */
+extern "C" void _ZN8dScene_c14StartSceneFadeEjjt(unsigned, unsigned, unsigned short);   /* SEAMRESET1: the ROM's */
 extern "C" void port_loopin2_p17(int frame, int latch_before,
                                  unsigned held_before, unsigned held_after);
 extern "C" void port_loopin2_p7(void);
@@ -18759,8 +18764,59 @@ int main(void)
                         if (port_menu_relaunch(-1, -1)) W.PostQuitMessage_(0);
                     }
                 }
-                if (srst_up && data_0209f1e0[0] && !srst_answered &&
-                    !rb_replaying()) {
+                /* SEAMRESET1: THE SOFT RESET GOES BACK TO THE TITLE IN THIS PROCESS, BECAUSE ON THE CARTRIDGE IT IS A SCENE
+                   CHANGE, NOT A REBOOT. src/game/stages/d_scene.cpp dScene_c::BeforeBehavior (the latch branch, behind
+                   data_0209f1e0) runs a 16-frame brightness fade on data_0209f5d0 and at its end calls StartSceneFade(1, 0, 0),
+                   snaps the scene fader shut and marks the Stage, so the title comes up as it does after Save and Quit. The
+                   title's dScDSMT_c::InitResources (src/game/stages/d_s_dsmt.cpp) then sees the latch still up, stores
+                   data_0209b340[1] = 1 and clears the latch through func_02023544; data_0209f1dc stays up until the combo is let
+                   go (func_02023498). Nothing in src/ calls OS_ResetSystem.
+                   This port cannot step that fade (FaderBrightness::AdvanceFade, _ZTV15dFdBrightness_c slot 2, is still
+                   hal/scene_boot.cpp's trap) and its at-end branch snaps data_0209f5e8 through a slot that is trapped too, so the
+                   reset takes the Save and Quit path instead, which this process already crosses in place (SEAMQUIT1): once the
+                   ROM has parked its fader (the cartridge's sign that the reset is going ahead), this block makes the two stores
+                   the title would have made (data_0209b340[1] = 1, the latch byte down), drops the parked fader so phase 2 stops
+                   stepping the trapped slot, and asks for scene 1 with the ROM's own StartSceneFade(1, 0, 0). The Stage's
+                   ordinary BeforeBehavior path runs the scene fade and marks it, and the crossing takes it because
+                   port_front_end_in_place says so. data_0209f1dc is left to func_02023498, so a combo still held cannot raise
+                   the latch again. What a player misses is the fade being the scene fader's instead of the brightness one.
+                   Everything the quit poll refuses (online, VS, coop, party, the hub, a code mod, a scene-booted process) keeps
+                   the restart below and says why. */
+                static int srst_wait = -1;     /* the frame the in-place answer started waiting for the ROM's fader */
+                static int srst_in_place;      /* answered in place; re-armed below once a level is back */
+                if (srst_in_place && !port_front_end_in_place && !data_0209f1e0[0]) {
+                    srst_in_place = 0;
+                    srst_answered = 0;
+                    srst_wait = -1;
+                    fprintf(stderr, "[loopin2] f%d soft reset: a level was handed back after the in-place reset "
+                            "(latch %u, still-held %u): the reset is armed again\n", frame,
+                            (unsigned)data_0209f1e0[0], (unsigned)data_0209f1dc[0]);
+                }
+                if (srst_up && data_0209f1e0[0] && !srst_answered && !rb_replaying()) {
+                    const char *srst_why = port_quit_in_place_refusal();
+                    int srst_hold = 0;
+                    if (!srst_why && data_0209f1e4 != (void *)data_0209f5d0) {
+                        if (srst_wait < 0) srst_wait = frame;
+                        if (frame - srst_wait < 30) srst_hold = 1;
+                        else srst_why = "the ROM did not start its reset fade within 30 frames";
+                    }
+                    if (!srst_hold && !srst_why) {
+                        srst_answered = 1;
+                        srst_in_place = 1;
+                        port_front_end_in_place = 1;
+                        data_0209b340[1] = 1;
+                        data_0209f1e0[0] = 0;
+                        data_0209f1e4 = 0;
+                        _ZN8dScene_c14StartSceneFadeEjjt(1, 0, 0);
+                        fprintf(stderr, "[loopin2] f%d soft reset: returning to the title in this process (the ROM's own "
+                                "scene change to scene 1; the latch byte lowered and data_0209b340[1] = 1 stored as the "
+                                "title would, scene %u asked for)\n", frame, (unsigned)data_02092664);
+                    } else if (!srst_hold) {
+                        fprintf(stderr, "[seamless] in place refused: %s; restarting\n", srst_why);
+                    }
+                }
+                if (srst_up && data_0209f1e0[0] && !srst_answered && !srst_in_place &&
+                    !rb_replaying() && (srst_wait < 0 || frame - srst_wait >= 30 || port_quit_in_place_refusal())) {
                     srst_answered = 1;
                     fprintf(stderr, "[loopin2] f%d soft reset: the ROM's latch "
                             "is up and its clears ran this frame; its fade "
