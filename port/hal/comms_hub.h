@@ -451,6 +451,12 @@ const OnlineSession &online_session();
 // Empty the record for the rest of this process (the in-place leave). Returns
 // how many fields were set.
 int online_session_clear();
+// SEAMJOIN1: the in-place join (hal/online_join.cpp apply_plan) fills the record
+// from the launcher's plan instead of the environment: begin empties it and
+// marks it filled (so the environment is not read over it), set writes one
+// field (null or "" = not set). Game thread.
+void online_session_begin();
+void online_session_set(OnlineSessionField f, const char *v);
 
 // ---------------------------------------------------------------------------
 // THE TEARDOWN (lane SEAMHUB1): the hub out of a live process, for the
@@ -462,6 +468,12 @@ int online_session_clear();
 bool comms_hub_teardown(const char *why);
 // No more periodic "[hub]" report lines (the leave asks for this at the quit).
 void comms_hub_reports_off();
+// SEAMJOIN1: the hub INTO a live process, for the in-place join: the install
+// comms_hub_install_from_env makes in main(), made again from the session
+// record now that the title has it filled. Refuses (false, *why says why,
+// nothing left installed) when a hub is still up or its I/O thread still
+// exists, or when the install itself fails (no socket, bad address or code).
+bool comms_hub_install_in_place(const char **why);
 // The same for the ghost layer's periodic "[ghost:tick]" line.
 void comms_sync_reports_off();
 // The other layers' halves, called by the leave after comms_hub_teardown:
@@ -474,6 +486,13 @@ void hub_presence_leave_reset();
 // One line of what a fresh read of this console's identity gives now (name,
 // both colours, the own colour row), for the leave's proof line.
 void comms_sync_identity_text(char *out, int cap);
+// SEAMJOIN1: the in-place join's halves. hal/comms_sync.cpp: the ghost layer
+// reset and decided again on the hub just installed (true = on).
+bool comms_sync_join_in_place();
+// hal/comms_conductor.cpp: has main's level boot carved the game heap yet, and
+// with what extra (*extra); and what the online world hub needs on top.
+bool hub_game_heap_carved(unsigned *extra);
+unsigned hub_heap_need();
 
 }  // namespace port
 
