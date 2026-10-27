@@ -279,7 +279,10 @@ extern "C" int port_online_quit_offline_env(void)
         "SM64DS_COOP", "SM64DS_COOP_HOST", "SM64DS_COOP_SAVE", "SM64DS_COOP_SAVE_NAME", "SM64DS_COOP_TP",
         "SM64DS_ROOM_COLLISION", "SM64DS_ROOM_INTERACT", "SM64DS_ROOM_DAMAGE", "SM64DS_ROOM_TP", "SM64DS_ROOM_STARSHARE",
         "SM64DS_VS_PLAYERS", "SM64DS_VS_NAMES", "SM64DS_VS_COLORS", "SM64DS_VS_NETMODE", "SM64DS_SESSION_DIGEST",
-        "SM64DS_SKIP_MENU" };
+        "SM64DS_SKIP_MENU",
+        /* JOINWIN2: the launcher's VS child also carries the arena and its star target (hal/comms_hub.cpp and hal/comms_loopback.cpp read
+           both); a VS_MAP left set makes the restart a VS boot instead of the title */
+        "SM64DS_VS_MAP", "SM64DS_VS_STAR_TARGET" };
     struct List { const char *const *names; size_t count; };
     const List lists[2] = { { k_join_env, sizeof k_join_env / sizeof *k_join_env },
                             { k_session_env, sizeof k_session_env / sizeof *k_session_env } };
