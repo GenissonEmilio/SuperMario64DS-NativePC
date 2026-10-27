@@ -25975,3 +25975,10 @@ foreach(_tegg1 walk_window walk_window_hires smoke_player)
         target_sources(${_tegg1} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/egg_audio.cpp")
     endif()
 endforeach()
+# run after093, lane SEAMCOOP1: the coop kind of the launcher hand-off (hal/coop_handoff.cpp registers it through hal/handoff_poll.h,
+# lane SEAMVS1's registry; the work is hal/coop_boot.cpp's). The fold dropped the stand-in hal/handoff_register_stub.cpp. Own block.
+foreach(_tscoop1 walk_window walk_window_hires)
+    if(TARGET ${_tscoop1})
+        target_sources(${_tscoop1} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/coop_handoff.cpp")
+    endif()
+endforeach()

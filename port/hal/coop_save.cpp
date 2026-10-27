@@ -412,6 +412,79 @@ void run_forge() {
 
 // ---- public ----------------------------------------------------------------
 bool coop_save_active() { return coop(); }
+
+void coop_save_leave_flush() { exit_save(); }
+
+bool coop_save_file_has_record(const char *path) {
+    if (!path || !*path) return false;
+    std::FILE *f = std::fopen(path, "rb");
+    if (!f) return false;
+    static uint8_t img[0x1000 + 10 + kCoopRecBytes];
+    const size_t got = std::fread(img, 1, sizeof img, f);
+    std::fclose(f);
+    for (int copy = 0; copy < 2; ++copy) {
+        const size_t off = copy ? 0x1000u : 0u;
+        if (got < off + 10 + kCoopRecBytes) continue;
+        const uint8_t *b = img + off;
+        if (std::memcmp(b + 2, kCoopTag, 8) != 0) continue;
+        if ((uint16_t)(b[0] | (b[1] << 8)) != coop_record_checksum(kCoopTag, b + 10, kCoopRecBytes)) continue;
+        if (std::memcmp(b + 10, kMagic, 4) != 0) continue;
+        return true;
+    }
+    return false;
+}
+
+void coop_save_session_reset() {
+    g_coop = g_host = -1;
+    g_init = false;
+    g_registered = false;      // comms_hub_teardown forgot every hub_on_kind handler
+    g_frame = 0;
+    g_sav[0] = 0;
+    g_st = CoopSaveStats{};
+    g_pending_have = g_host_have = g_host_blank = g_host_dirty = g_answer = g_last_have = false;
+    g_last_send_ms = g_last_req_ms = g_json_ms = 0;
+    g_json_dirty = false;
+    g_probe_done = g_forge_done = g_fetched = false;
+    g_save_retry = false;      // g_atexit stays: exit_save is registered once per process and asks coop() itself
+    g_retry_frame = g_fail_seen = g_retry_tries = 0;
+    g_retry_ms = 0;
+    g_guard = CoopGrantGuard{};
+    std::memset(g_visit_t, 0, sizeof g_visit_t);
+    std::memset(g_visit_seen, 0, sizeof g_visit_seen);
+    std::memset(g_epoch, 0, sizeof g_epoch);
+    std::memset(g_epoch_have, 0, sizeof g_epoch_have);
+}
+
+int coop_save_fetch_step(int timeout_ms) {
+    static ULONGLONG t0 = 0;
+    if (!coop() || host() || g_fetched) { t0 = 0; return 1; }
+    ensure_init();
+    const ULONGLONG now = GetTickCount64();
+    if (!t0) t0 = now;
+    if (g_host_have) {
+        if (!g_host_blank) write_guest_seed(g_hostrec);
+        ++g_st.fetch_ok;
+        g_fetched = true;
+        g_host_dirty = false;
+        std::fprintf(stderr, "[coopsave] fetch ok in %llu ms (in place): %s, stars %d\n", (unsigned long long)(now - t0),
+                     g_host_blank ? "new file (blank)" : "host record seeded into slot 0", g_host_blank ? 0 : coop_record_stars(g_hostrec));
+        t0 = 0;
+        return 1;
+    }
+    if ((long long)(now - t0) >= timeout_ms) {
+        ++g_st.fetch_timeout;
+        std::fprintf(stderr, "[coopsave] fetch TIMEOUT after %llu ms (budget %d, in place): the host did not answer\n",
+                     (unsigned long long)(now - t0), timeout_ms);
+        t0 = 0;
+        return -1;
+    }
+    if (comms_hub_state() == kHubLive && now - g_last_req_ms >= 250) {
+        uint8_t z[kCoopReqPayload] = {0, 0, 0, 0};
+        if (send_ctl(kCoopSaveSubReq, z, sizeof z)) ++g_st.req_sent;
+        g_last_req_ms = now;
+    }
+    return 0;
+}
 bool coop_save_is_host() { return coop() && host(); }
 CoopSaveStats coop_save_stats() { return g_st; }
 void coop_save_set_external_dispatch(bool on) { g_external = on; }
