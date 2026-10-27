@@ -965,10 +965,9 @@ int gw_hex(char c) {
 }
 
 // true when the variable was there and was six hex digits (out is then it)
-bool gw_rgb_env(const char *var, unsigned char out[3],
+bool gw_rgb_env(const char *var, const char *e, unsigned char out[3],
                 unsigned char r, unsigned char g, unsigned char b) {
     out[0] = r; out[1] = g; out[2] = b;
-    const char *e = std::getenv(var);
     if (!e) return false;
     if (std::strlen(e) != 6) {
         std::fprintf(stderr, "[ghost] %s ignored: not six hex digits\n", var);
@@ -993,7 +992,8 @@ void gw_me_read() {
     g_gw_me.read = true;
     g_gw_me.name[0] = 0;
     g_gw_me.name_len = 0;
-    if (const char *e = std::getenv("SM64DS_PLAYER_NAME")) {
+    /* SEAMHUB1: the name and both colours come from the session record (hal/comms_hub.h), which the in-place leave clears */
+    if (const char *e = online_session_get(kSessPlayerName)) {
         const size_t n = std::strlen(e);
         bool ok = n >= 1 && n <= (size_t)kHubIdentNameMax;
         for (size_t i = 0; ok && i < n; ++i)
@@ -1010,9 +1010,9 @@ void gw_me_read() {
     /* GHOSTLOOK1: a pick is the PAIR, the launcher's both-or-neither rule
        (LobbyLaunch IdentityEnv): one without the other is no pick */
     const bool b_ok =
-        gw_rgb_env("SM64DS_PLAYER_COLOR", g_gw_me.body, 0xff, 0xff, 0xff);
+        gw_rgb_env("SM64DS_PLAYER_COLOR", online_session_get(kSessPlayerColor), g_gw_me.body, 0xff, 0xff, 0xff);
     const bool s_ok =
-        gw_rgb_env("SM64DS_PLAYER_SHOES", g_gw_me.shoes, 0x80, 0x40, 0x20);
+        gw_rgb_env("SM64DS_PLAYER_SHOES", online_session_get(kSessPlayerShoes), g_gw_me.shoes, 0x80, 0x40, 0x20);
     g_gw_me.colours = b_ok && s_ok;
     /* A build id for the identity record: FNV-1a of this TU's build stamp.
        Display / diagnosis only (design 6.2: never parsed for meaning). */

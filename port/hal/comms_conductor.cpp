@@ -1040,7 +1040,7 @@ unsigned hub_game_heap_extra() {
         const long v = std::atol(e);
         return (v > 0 && v <= 0x800000) ? (unsigned)v : 0u;
     }
-    const char *rk = std::getenv("SM64DS_ROOM_KIND");
+    const char *rk = online_session_get(kSessRoomKind);   /* SEAMHUB1: the session record */
     if (rk && (!std::strcmp(rk, "party") || !std::strcmp(rk, "coop"))) return 0;
     int bodies = (int)kPortBodySlots;
     if (const char *b = std::getenv("SM64DS_HUB_BODIES")) {

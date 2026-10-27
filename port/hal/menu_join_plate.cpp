@@ -21,6 +21,7 @@
 #include "ui_text.h"
 #include "host_settings.h"
 #include "mods.h"
+#include "comms_hub.h"   /* SEAMHUB1: the session record */
 
 #include <windows.h>
 #include <stdio.h>
@@ -257,7 +258,7 @@ extern "C" void port_join_settings_dump(int cw, int ch, int fullscreen, int maxi
             "one_screen_menus=%d hud_layout=%d volume=%d draw_distance=%d camera_mode=%d start_fullscreen=%d adventure_ghosts=%d name_tags=%d "
             "improved_minimap=%d save_menu_on_top=%d character_strip=%d keep_lives=%d skip_menu=%d skip_intro=%d aspect_env=%s dual_screen_env=%s "
             "mods_in_file=%s mods_in_effect=%d[%s] multiplayer=%d\n",
-            getenv("SM64DS_ADVENTURE") ? "adventure" : "solo", winbuf, fullscreen, maximised, hand_sized,
+            port::online_session_get(port::kSessAdventure) ? "adventure" : "solo", winbuf, fullscreen, maximised, hand_sized,
             host_setting_frame_rate(), host_setting_smooth_motion(), host_setting_render_scale(), host_setting_hd_textures(),
             host_setting_smooth_models(), host_setting_texture_filter(), host_setting_anti_aliasing(), host_setting_present_backend(),
             host_setting_present_filter(), host_setting_vsync(), host_setting_renderer(), host_setting_one_screen_menus(), host_setting_hud_layout(),

@@ -138,8 +138,7 @@ unsigned now_ms() {
                       (unsigned long long)f.QuadPart);
 }
 
-int env_int(const char *name, int def, int lo, int hi) {
-    const char *s = std::getenv(name);
+int str_int(const char *name, const char *s, int def, int lo, int hi) {
     if (!s || !*s) return def;
     char *end = nullptr;
     const long v = std::strtol(s, &end, 10);
@@ -149,6 +148,15 @@ int env_int(const char *name, int def, int lo, int hi) {
         return def;
     }
     return (int)v;
+}
+
+int env_int(const char *name, int def, int lo, int hi) {
+    return str_int(name, std::getenv(name), def, lo, hi);
+}
+
+// SEAMHUB1: a session record field, parsed like env_int
+int sess_int(OnlineSessionField f, int def, int lo, int hi) {
+    return str_int(online_session_name(f), online_session_get(f), def, lo, hi);
 }
 
 bool parse_host_port(const char *s, int default_port, sockaddr_in *out) {
@@ -1125,7 +1133,7 @@ bool install_open(bool want_relay, const char *relay, const char *code,
     // old world hub. An arena is never a party or coop room.
     g_room = kHubRoomWorld;
     if (!g_arena) {
-        const char *rk = std::getenv("SM64DS_ROOM_KIND");
+        const char *rk = online_session_get(kSessRoomKind);   /* SEAMHUB1: the session record */
         if (rk && *rk) {
             if (!std::strcmp(rk, "party")) g_room = kHubRoomParty;
             else if (!std::strcmp(rk, "coop")) g_room = kHubRoomCoop;
@@ -1175,7 +1183,7 @@ bool install_open(bool want_relay, const char *relay, const char *code,
         g_state = kHubPairing;
     } else {
         g_mode = kModeMesh;
-        g_mesh_base = env_int("SM64DS_HUB_PORT", 0, 1024, 65535 - kHubMaxSeats);
+        g_mesh_base = sess_int(kSessHubPort, 0, 1024, 65535 - kHubMaxSeats);
         if (!g_mesh_base) return true;
         if (g_mesh_base <= 51765 && 51765 < g_mesh_base + kHubMaxSeats)
             std::fprintf(stderr, "[hub] WARNING: mesh ports %d..%d include "
@@ -1234,6 +1242,57 @@ bool install_open(bool want_relay, const char *relay, const char *code,
 }  // namespace
 
 // ===========================================================================
+// THE SESSION RECORD (lane SEAMHUB1; see hal/comms_hub.h)
+// ===========================================================================
+namespace {
+const char *const k_sess_names[kSessFields] = {
+    "SM64DS_ADVENTURE", "SM64DS_COMMS_RELAY", "SM64DS_COMMS_CODE", "SM64DS_ROOM_KIND", "SM64DS_VOICE_ALLOWED",
+    "SM64DS_HUB_SEAT", "SM64DS_PLAYER_NAME", "SM64DS_PLAYER_COLOR", "SM64DS_PLAYER_SHOES", "SM64DS_WORLD_NO",
+    "SM64DS_HUB_PORT" };
+OnlineSession g_sess;
+
+void sess_fill() {
+    if (g_sess.filled) return;
+    g_sess.filled = true;
+    if (g_sess.cleared) return;
+    for (int i = 0; i < kSessFields; ++i) {
+        const char *e = std::getenv(k_sess_names[i]);
+        if (!e) continue;
+        g_sess.set[i] = true;
+        std::strncpy(g_sess.value[i], e, sizeof g_sess.value[i] - 1);
+        g_sess.value[i][sizeof g_sess.value[i] - 1] = 0;
+    }
+}
+}  // namespace
+
+const char *online_session_get(OnlineSessionField f) {
+    if (f < 0 || f >= kSessFields) return nullptr;
+    sess_fill();
+    return g_sess.set[f] ? g_sess.value[f] : nullptr;
+}
+
+const char *online_session_name(OnlineSessionField f) {
+    return (f >= 0 && f < kSessFields) ? k_sess_names[f] : "?";
+}
+
+const OnlineSession &online_session() {
+    sess_fill();
+    return g_sess;
+}
+
+int online_session_clear() {
+    sess_fill();
+    int n = 0;
+    for (int i = 0; i < kSessFields; ++i) {
+        if (g_sess.set[i]) ++n;
+        g_sess.set[i] = false;
+        g_sess.value[i][0] = 0;
+    }
+    g_sess.cleared = true;
+    return n;
+}
+
+// ===========================================================================
 // PUBLIC
 // ===========================================================================
 bool comms_hub_install_from_env() {
@@ -1252,9 +1311,10 @@ bool comms_hub_install_from_env() {
     if (const char *vs = std::getenv("SM64DS_VS_MAP"))
         if (*vs) return false;
 
-    const char *relay = std::getenv("SM64DS_COMMS_RELAY");
-    const char *code = std::getenv("SM64DS_COMMS_CODE");
-    const char *mesh = std::getenv("SM64DS_HUB_PORT");
+    /* SEAMHUB1: the address, the code and the seat come from the session record (hal/comms_hub.h), which the in-place leave clears */
+    const char *relay = online_session_get(kSessRelay);
+    const char *code = online_session_get(kSessCode);
+    const char *mesh = online_session_get(kSessHubPort);
     const bool want_relay = relay && *relay;
     const bool want_mesh = !want_relay && mesh && *mesh;
     if (!want_relay && !want_mesh) {
@@ -1281,7 +1341,7 @@ bool comms_hub_install_from_env() {
                      "carrier\n", role);
 
     return install_open(want_relay, relay, code,
-                        env_int("SM64DS_HUB_SEAT", 0xFF, 0, 0xFF));
+                        sess_int(kSessHubSeat, 0xFF, 0, 0xFF));
 }
 
 // THE ARENA INSTALL (lane ARENACORE1; hal/vs_arena.cpp is the only caller).
@@ -1293,9 +1353,9 @@ bool comms_hub_install_arena(int want_seat) {
     static bool owned = false;
     if (tried) return owned;
     tried = true;
-    const char *relay = std::getenv("SM64DS_COMMS_RELAY");
-    const char *code = std::getenv("SM64DS_COMMS_CODE");
-    const char *mesh = std::getenv("SM64DS_HUB_PORT");
+    const char *relay = online_session_get(kSessRelay);   /* SEAMHUB1: the session record */
+    const char *code = online_session_get(kSessCode);
+    const char *mesh = online_session_get(kSessHubPort);
     const bool want_relay = relay && *relay;
     const bool want_mesh = !want_relay && mesh && *mesh;
     if (!want_relay && !want_mesh) return false;

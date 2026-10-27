@@ -407,6 +407,51 @@ CommsHubStats comms_hub_stats();
 unsigned long long comms_hub_queue_drops(int kind);
 void comms_hub_report(const char *tag);   // one "[hub] ..." line to stderr
 
+// ---------------------------------------------------------------------------
+// THE SESSION RECORD (run after093, lane SEAMHUB1; the one-process plan's
+// M-f). An online game is told what it is through environment names: the
+// launcher's own start sets them, and a join from the title sets them for the
+// game it starts again (hal/online_join.cpp apply_plan). MSVC's getenv reads
+// the CRT's copy of the environment, which SetEnvironmentVariableA does not
+// change, so a name set or cleared after boot is never seen by a getenv in
+// this process. Leaving an online world in place has to make the game stop
+// reading them, so the hub, the ghost layer and the join plate read this
+// record instead: it is filled from the environment on the first read (what
+// this process was started with, as before), and the in-place leave clears it
+// for good. The restart path is unchanged: it still hands the names to the
+// game it starts through the environment block.
+// ---------------------------------------------------------------------------
+enum OnlineSessionField : int {
+    kSessAdventure = 0,     // SM64DS_ADVENTURE
+    kSessRelay,             // SM64DS_COMMS_RELAY
+    kSessCode,              // SM64DS_COMMS_CODE
+    kSessRoomKind,          // SM64DS_ROOM_KIND
+    kSessVoiceAllowed,      // SM64DS_VOICE_ALLOWED
+    kSessHubSeat,           // SM64DS_HUB_SEAT
+    kSessPlayerName,        // SM64DS_PLAYER_NAME
+    kSessPlayerColor,       // SM64DS_PLAYER_COLOR
+    kSessPlayerShoes,       // SM64DS_PLAYER_SHOES
+    kSessWorldNo,           // SM64DS_WORLD_NO
+    kSessHubPort,           // SM64DS_HUB_PORT (the test mesh's base port)
+    kSessFields
+};
+struct OnlineSession {
+    bool filled;                       // read from the environment once
+    bool cleared;                      // the in-place leave emptied it for good
+    bool set[kSessFields];
+    char value[kSessFields][256];
+};
+// The value of one field, or null when it is not set (or the record was
+// cleared). Game thread.
+const char *online_session_get(OnlineSessionField f);
+// The environment name a field stands for ("SM64DS_COMMS_RELAY").
+const char *online_session_name(OnlineSessionField f);
+// The whole record (filled on first use).
+const OnlineSession &online_session();
+// Empty the record for the rest of this process (the in-place leave). Returns
+// how many fields were set.
+int online_session_clear();
+
 }  // namespace port
 
 #endif  // PORT_HAL_COMMS_HUB_H
