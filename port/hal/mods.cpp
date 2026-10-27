@@ -917,7 +917,68 @@ void census_note(unsigned id)
 struct NoteSet { NoteSet() { port_nitrofs_census_hook = census_note; } } g_note_set;
 #endif
 
-bool held_at_title(unsigned id) { return id < FAT_IDS && (g_read_phase[id] & (RD_BOOT | RD_TITLE)) != 0; }
+/* ARCHIVE MEMBERS (ids >= 0x8000, lane SEAMART1): a card block read inside a NARC names the NARC's own FAT id, so a member override is
+   held when the archive it lives in was read at boot or while the title is live: what the ROM decoded out of c2d (2D art), cee / cef
+   (the text and font) at boot stays in its heaps past the title's UnloadArchives. arc0 is the exception: its boot reads are the
+   header and FAT, and Stage::InitResources (src/game/stages/d_s_mb.cpp, LoadArchive(0)) reads its members again off the card on every
+   level boot, so a member override there reaches the next level whole (REVSEAMMODS1's arc0 rows: on -> off and off -> on == fresh).
+   port_archive_map is the ROM's mount table (index = LoadArchive's idx; [base, end) member ids; the NARC's path). */
+struct port_arc_entry { unsigned short base, end; const char *narc; };
+extern "C" struct port_arc_entry port_archive_map[13];
+enum { ARC_COUNT = 13, ARC_PER_LEVEL = 0 };
+
+unsigned narc_fat_id(int a)
+{
+    static unsigned id[ARC_COUNT];
+    static bool done;
+    if (!done) {
+        done = true;
+        for (unsigned i = 0; i < FAT_IDS; ++i) {
+            const char *cp = port_fs_catalog_path(i);
+            if (!cp) continue;
+            for (int k = 0; k < ARC_COUNT; ++k)
+                if (port_archive_map[k].narc && !strcmp(cp, port_archive_map[k].narc)) id[k] = i;
+        }
+    }
+    return a >= 0 && a < ARC_COUNT ? id[a] : 0;
+}
+
+int archive_of(unsigned id)
+{
+    for (int k = 0; k < ARC_COUNT; ++k)
+        if (id >= port_archive_map[k].base && id < port_archive_map[k].end) return k;
+    return -1;
+}
+
+bool held_at_title(unsigned id)
+{
+    if (id < FAT_IDS) return (g_read_phase[id] & (RD_BOOT | RD_TITLE)) != 0;
+    const int a = archive_of(id);
+    if (a < 0 || a == ARC_PER_LEVEL) return false;
+    const unsigned narc = narc_fat_id(a);
+    return narc && (g_read_phase[narc] & (RD_BOOT | RD_TITLE)) != 0;
+}
+
+/* how a held id was read, for the refusal line: "at boot" / "at the title", through its archive for a member */
+const char *held_when(unsigned id)
+{
+    const unsigned f = id < FAT_IDS ? id : narc_fat_id(archive_of(id));
+    return f < FAT_IDS && (g_read_phase[f] & RD_BOOT) ? "at boot" : "at the title";
+}
+
+/* the path of a FAT id, or of a member: "<narc> member <n>" */
+std::string held_path(unsigned id)
+{
+    if (id < FAT_IDS) {
+        const char *cp = port_fs_catalog_path(id);
+        return cp ? cp : "?";
+    }
+    const int a = archive_of(id);
+    if (a < 0) return "an archive member";
+    char b[200];
+    snprintf(b, sizeof b, "%s member %u", port_archive_map[a].narc ? port_archive_map[a].narc : "?", id - port_archive_map[a].base);
+    return b;
+}
 
 /* the ids of the mods in l that ship folder sub (a part counts as its own entry), joined in order */
 std::string ids_with(const std::vector<Mod> &l, const char *sub)
@@ -1015,11 +1076,9 @@ int relatch(const char *reason, const char *list_json)
             const std::string ov = o == old_override.end() ? "" : o->second, nv = n == g_override.end() ? "" : n->second;
             if (ov == nv) continue;
             ++changed;
-            if (held_at_title(it->first)) {
-                const char *cp = port_fs_catalog_path(it->first);
+            if (held_at_title(it->first))
                 snprintf(why, sizeof why, "files/ changes file id %u (%s), which the game read %s and still holds", it->first,
-                         cp ? cp : "an archive member", (g_read_phase[it->first] & RD_BOOT) ? "at boot" : "at the title");
-            }
+                         held_path(it->first).c_str(), held_when(it->first));
         }
     }
     if (why[0]) {
@@ -1147,11 +1206,9 @@ int reskin_now(int idx, const char *reason, int away_from_title, int dry, char *
         const std::string ov = o == old_override.end() ? "" : o->second, nv = n == g_override.end() ? "" : n->second;
         if (ov == nv) continue;
         ++changed;
-        if (held_at_title(it->first)) {
-            const char *cp = port_fs_catalog_path(it->first);
-            snprintf(why, cap, "skin file id %u (%s) was read %s and is still held", it->first, cp ? cp : "?",
-                     (g_read_phase[it->first] & RD_BOOT) ? "at boot" : "at the title");
-        }
+        if (held_at_title(it->first))
+            snprintf(why, cap, "skin file id %u (%s) was read %s and is still held", it->first, held_path(it->first).c_str(),
+                     held_when(it->first));
     }
     if (why[0] || dry) {
         port_char_select(was);
