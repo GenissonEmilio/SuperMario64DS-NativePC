@@ -107,6 +107,8 @@ struct Ctl {
     int ticked = 0;
     ULONGLONG gone_since = 0;
 } C;
+bool g_ranges_registered = false;   // SEAMCOOP1: the two SYNB ranges are registered once per process
+bool g_host_atexit = false;         // and host_atexit once
 
 ULONGLONG tick() { return GetTickCount64(); }
 
@@ -595,10 +597,12 @@ extern "C" void port_coop_boot_begin(void) {
     hub_on_kind(kHubCoopCtl, gate_on_ctl, nullptr);
     const bool r1 = coop_ctl_register(0x20, 0x2f, sub_save, nullptr);
     const bool r2 = coop_ctl_register(kCoopBootSubLo, kCoopBootSubHi, sub_boot, nullptr);
+    g_ranges_registered = true;
     LOG("SYNB ranges registered with the world core: 0x20-0x2f %d, 0x30-0x3f %d", r1 ? 1 : 0, r2 ? 1 : 0);
     if (C.host) {
         coop_save_prepare();
         std::atexit(host_atexit);
+        g_host_atexit = true;
         gate();
     } else {
         guest_gate();
@@ -1307,7 +1311,313 @@ extern "C" void port_coop_leave_begin(int frame) {
         C.host ? "host" : "guest");
 }
 
-namespace port { namespace {
-void inplace_step() {}
+
+// ==== SEAMCOOP1: A COOP ROOM BOOTED IN PLACE (the launcher hand-off, kind "coop") ===========================================
+// A coop room member was a process the launcher started with the room's names (LobbyLaunch.cs BuildAdventureEnv): main() installed the
+// hub from them (tests/walk_window.cpp comms_hub_install_from_env), port_coop_boot_begin forced the boot-to-file names, registered the
+// SYNB ranges and ran the gate before the ROM loaded (the host 3 s answering save requests; a guest 15 s for the host's word, the wait
+// for the host's opening, the save fetch), ntr/backup.cpp opened the coop medium (the host's .coopsav, a guest's temp image seeded with
+// the host's record), hal/mods.cpp latched the multiplayer mod list, and the title walked itself to file A (hal/title_entry.cpp
+// port_title_skip_tick: the tap, the menu row, func_ov007_020b6134(0)). port_coop_handoff_apply does the same in a running game at its
+// title, in that order, from the request's set / clear lists:
+//   1. refusals before anything is touched: not a coop request, a room / hub / leave still up, a scene-booted process, a loaded code
+//      mod (a plugin cannot be unloaded), the title not live or not built, a host request with no .coopsav. (No heap refusal: a coop
+//      room asks no hub heap, hal/comms_conductor.cpp hub_heap_need answers 0 for party / coop, so a solo-carved heap is the child's.)
+//   2. the clear list out of both environment copies, the set list into both (the readers still on getenv: this file, coop_save,
+//      coop_world, party, star_popup, ntr/backup, the mod rule, the Adventure flag), SKIP_INTRO cleared as the boot contract does;
+//   3. the session record filled from the set list (hal/comms_hub.h) and the Adventure flag's env latch read again;
+//   4. the mods relatched under the multiplayer rule (hal/mods.cpp, after a level: the files a level read count as held);
+//   5. the coop layer reset, the host's file prepared (coop_save_prepare), the save medium switched (ntr/backup.cpp select_coop) and
+//      the title's three files read again from it (the ROM's own command 20, func_ov007_020cc600, as hal/menu_online.cpp does);
+//   6. the hub installed live (comms_hub_install_in_place, SEAMJOIN1's) and the ghost layer decided on it (comms_sync_join_in_place);
+//   7. the coop boot armed (this file's state, the SYNB stand-in handler, the two ranges registered once per process) and its gates
+//      stepped once per game frame instead of blocking: the host's 3 s gate; a guest's 15 s wait for the host under the Joining plate
+//      (its corner line after 3 s; B / Esc cancels back to the title in place), the host's opening, the save fetch (45 s);
+//   8. the title walked to file A the way port_title_skip_tick does (the tap on the title screen, func_ov007_020aec94(9) on the main
+//      menu, func_ov007_020b6134(0) on the settled file select); from there the ROM's own StartFile and the level-to-scene crossing
+//      enter the room's level, and port_coop_boot_frame's barriers take over exactly as in a child.
+// A failure after the record is filled undoes the record, the env and the medium; the caller answers "refused" and the game quits
+// with exit code 8 (the contract), so a fresh process takes the room.
+extern "C" {
+extern char *data_ov007_0210342c;                             /* dScDSMT_c's scene global (hal/title_entry.cpp reads it the same way) */
+void func_ov007_020aec94(int choice);                         /* src/func_ov007_020aec94.c: the main menu's choice */
+void func_ov007_020b6134(int slot);                           /* src/func_ov007_020b6134.cpp: the file select's A / B / C handler */
+unsigned char func_ov007_020cc600(int arg);                   /* src/game/stages/d_s_dsmt.cpp: 20 = read the three files again */
+void port_touch_force_press(int x, int y, int frames);        /* hal/sub_screen.cpp */
+void port_join_plate_raise_in_place(int server);              /* hal/menu_join_plate.cpp */
+int port_join_plate_inplace_tick(void);
+int port_join_plate_inplace_up(void);
+void port_join_plate_inplace_end(const char *why);
+}
+namespace port {
+void event_client_hub_reset();    /* hal/event_client.cpp */
+void star_tally_session_reset();  /* hal/star_tally.cpp */
+namespace {
+enum { kIpNone = 0, kIpHostGate, kIpGuestHear, kIpGuestOpening, kIpGuestFetch, kIpDrive, kIpPressed };
+struct InPlace {
+    int st = kIpNone;
+    ULONGLONG t0 = 0, tap_t = 0, drive_t0 = 0;
+    bool chosen = false, opening_said = false;
+} IP;
+
+void env_put(const char *n, const char *v) {
+    SetEnvironmentVariableA(n, v);
+    _putenv_s(n, v ? v : "");
+}
+
+void reread_files(const char *why) {
+    if (!data_ov007_0210342c) { LOG("the title's files are not read again (%s): no title scene", why); return; }
+    func_ov007_020cc600(20);
+    LOG("the title's three files read again from the medium now selected (the ROM's command 20; %s)", why);
+}
+
+const char *hv(int nset, const char *const *sn, const char *const *sv, const char *n) {
+    for (int i = 0; i < nset; ++i)
+        if (sn[i] && !std::strcmp(sn[i], n)) return sv[i];
+    return nullptr;
+}
+
+void ip_undo(int nset, const char *const *sn, bool medium) {
+    online_session_clear();
+    for (int i = 0; i < nset; ++i) if (sn[i]) env_put(sn[i], nullptr);
+    host_setting_adventure_env_reread();
+    if (medium) { ntr::backup::select_coop(0); reread_files("the hand-off was undone"); }
+    coop_world_session_reset();
+    coop_save_session_reset();
+    boot_state_reset();
+}
+
+/* the room taken down before its level (B on the plate, a gate that failed was handled by guest_fail): the title tears it down now */
+void ip_cancel(const char *why) {
+    IP = InPlace{};
+    if (port_join_plate_inplace_up()) port_join_plate_inplace_end(why);
+    LOG("the room is cancelled in place (%s): taking it down at the title", why);
+    C.exiting = true;
+    leave_at_title();
+}
+
+void drive_title() {
+    char *g = data_ov007_0210342c;
+    if (!g) return;
+    char *sp = *(char **)(g + 8);
+    char *ep = *(char **)(g + 4);
+    if (!sp) return;
+    const int state = *(short *)sp, req = *(short *)(sp + 2), fr = *(int *)(sp + 0xc);
+    if (state == 11) {
+        if (fr >= 8 && tick() - IP.tap_t >= 1000) {
+            IP.tap_t = tick();
+            port_touch_force_press(128, 96, 2);
+            LOG("title walk: the title screen waits for a touch (top-state 11): one at (128,96), as port_title_skip_tick gives");
+        }
+        return;
+    }
+    if (state != 0 || req != -1 || fr < 8) return;
+    if (ep && *(short *)ep == 5 && *(short *)(ep + 2) == -1) {
+        IP.st = kIpPressed;
+        func_ov007_020b6134(0);
+        LOG("title walk: the file select is up; pressed file A through the ROM's own func_ov007_020b6134(0), as a coop child's "
+            "SM64DS_BOOT_FILE=0 does (top-state now asks for %d)", (int)*(short *)(sp + 2));
+        return;
+    }
+    if (IP.chosen || *(int *)(g + 0x10) != 0 || !*(char **)(g + 0x28)) return;
+    IP.chosen = true;
+    func_ov007_020aec94(9);
+    LOG("title walk: the main menu: chose the file select through the ROM's own func_ov007_020aec94(9)");
+}
+
+void host_serve() {
+    if (C.host && comms_hub_state() == kHubLive) {
+        if (tick() - C.last_beat >= (C.released ? (ULONGLONG)kBeatMs : (ULONGLONG)kBeatGatherMs)) send_state();
+        port_coop_save_frame();
+    }
+}
+
+void inplace_step() {
+    if (IP.st == kIpNone) return;
+    if (LV.st != kLvNone) { IP = InPlace{}; return; }   // the room is ending (guest_fail / the host left): the leave owns it now
+    comms_hub_pump();
+    switch (IP.st) {
+    case kIpHostGate: {
+        host_serve();
+        const unsigned others = present_others();
+        const bool served = others && (C.req_seen & others) == others && tick() - C.last_req_ms >= 500;
+        if (served || tick() - IP.t0 >= 3000) {
+            LOG("host gate (in place): %s after %u ms (guests present %x asked %x); walking the title to file A",
+                served ? "every present guest served" : "done", (unsigned)(tick() - IP.t0), others, C.req_seen);
+            IP.st = kIpDrive;
+            IP.drive_t0 = tick();
+        }
+        return;
+    }
+    case kIpGuestHear:
+        if (port_join_plate_inplace_tick()) { ip_cancel("the player cancelled while waiting for the host"); return; }
+        if (C.state_heard) {
+            LOG("host heard after %u ms (in place; phase %d go %d closed %d)", (unsigned)(tick() - IP.t0), C.hs.phase, C.hs.go, C.hs.closed);
+            IP.st = kIpGuestOpening;
+            IP.t0 = tick();
+        } else if ((int)(tick() - IP.t0) >= env_int("SM64DS_COOPBOOT_HEAR_MS", 15000)) {
+            char why[64];
+            std::snprintf(why, sizeof why, "no word from the host in %d s", env_int("SM64DS_COOPBOOT_HEAR_MS", 15000) / 1000);
+            port_join_plate_inplace_end("no host");
+            IP.st = kIpNone;
+            guest_fail(why);
+        }
+        return;
+    case kIpGuestOpening:
+        if (port_join_plate_inplace_tick()) { ip_cancel("the player cancelled while waiting for the host's opening"); return; }
+        check_host_gone();
+        if (C.exiting) return;
+        if (C.hs.go && C.hs.phase == kCoopPhaseIntro) {
+            if (!IP.opening_said) { IP.opening_said = true; LOG("joined during the opening: waiting for it to end (in place)"); }
+            return;
+        }
+        IP.st = kIpGuestFetch;
+        IP.t0 = tick();
+        return;
+    case kIpGuestFetch: {
+        if (port_join_plate_inplace_tick()) { ip_cancel("the player cancelled while the save was fetched"); return; }
+        const int r = coop_save_fetch_step(env_int("SM64DS_COOPBOOT_FETCH_MS", 45000));
+        if (r < 0) {
+            port_join_plate_inplace_end("no save");
+            IP.st = kIpNone;
+            char why[64];
+            std::snprintf(why, sizeof why, "the host did not send the save in %d s", env_int("SM64DS_COOPBOOT_FETCH_MS", 45000) / 1000);
+            guest_fail(why);
+            return;
+        }
+        if (r == 0) return;
+        reread_files("the host's record is in the guest's image");
+        port_join_plate_inplace_end("the host answered and its save is here: the title walks to the room");
+        IP.st = kIpDrive;
+        IP.drive_t0 = tick();
+        return;
+    }
+    case kIpDrive:
+        host_serve();
+        drive_title();
+        if (IP.st == kIpDrive && tick() - IP.drive_t0 > 30000) ip_cancel("the title did not reach the file select in 30 s");
+        return;
+    case kIpPressed:
+        host_serve();
+        if (data_02092664 == 3 || C.at_first_frame) {
+            LOG("the title handed the game to the room's level (in place, as a coop child's title does)");
+            IP.st = kIpNone;
+        }
+        return;
+    default: return;
+    }
+}
+
 }  // namespace
 }  // namespace port
+
+/* hal/handoff_register_stub.cpp / hal/handoff_poll.cpp: the title poll only picks a request up when no session is up */
+extern "C" int port_coop_session_busy(void) {
+    using namespace port;
+    return (C.on || LV.st != kLvNone || IP.st != kIpNone) ? 1 : 0;
+}
+
+extern "C" const char *port_coop_handoff_apply(int nset, const char *const *sn, const char *const *sv, int nclear, const char *const *cn) {
+    using namespace port;
+    static char buf[240];
+    const char *cv = hv(nset, sn, sv, "SM64DS_COOP");
+    const char *rk = hv(nset, sn, sv, "SM64DS_ROOM_KIND");
+    if (!cv || std::strcmp(cv, "1") || !rk || std::strcmp(rk, "coop")) return "the request is not a coop room (SM64DS_COOP=1, SM64DS_ROOM_KIND=coop)";
+    if (C.on || LV.st != kLvNone || IP.st != kIpNone) return "a coop room is still up in this process";
+    if (comms_hub_active() || comms_hub_state() != kHubOff || comms_hub_arena()) return "a hub session is still up in this process";
+    if (env_any("SM64DS_SCENE")) return "a scene-booted process";
+    for (int i = 0; i < port_mods_count(); ++i) {
+        const char *k = port_mods_kind(i);
+        if (k && !std::strcmp(k, "code")) {
+            std::snprintf(buf, sizeof buf, "a code mod is loaded (%s) and a plugin cannot be unloaded", port_mods_id(i));
+            return buf;
+        }
+    }
+    if (port_scene_live_id() != 1) return "the title is not the live scene";
+    if (!data_ov007_0210342c) return "the title scene is not built yet";
+    const char *hs = hv(nset, sn, sv, "SM64DS_COOP_HOST");
+    const bool host = hs && !std::strcmp(hs, "1");
+    if (host) {
+        const char *p = hv(nset, sn, sv, "SM64DS_COOP_SAVE");
+        const size_t pl = p ? std::strlen(p) : 0;
+        if (pl < 9 || _stricmp(p + pl - 8, ".coopsav")) return "the host's request names no .coopsav file (SM64DS_COOP_SAVE)";
+    }
+    LOG("coop hand-off: booting the room in this process as the %s (%d set, %d clear)", host ? "host" : "guest", nset, nclear);
+    // 2. the environment a child would be started with
+    int ncl = 0;
+    for (int i = 0; i < nclear; ++i) if (cn[i] && env_any(cn[i])) { env_put(cn[i], nullptr); ++ncl; }
+    for (int i = 0; i < nset; ++i) if (sn[i]) env_put(sn[i], sv[i] && *sv[i] ? sv[i] : nullptr);
+    env_put("SM64DS_SKIP_INTRO", nullptr);
+    // 3. the session record
+    online_session_begin();
+    int nf = 0;
+    for (int f = 0; f < kSessFields; ++f) {
+        const char *v = hv(nset, sn, sv, online_session_name((OnlineSessionField)f));
+        online_session_set((OnlineSessionField)f, v);
+        if (v && *v) ++nf;
+    }
+    host_setting_adventure_env_reread();
+    std::fprintf(stderr, "[seamless] coop hand-off: %d name(s) cleared and %d set in both environment copies; session record filled "
+                 "(%d field(s), room %s); adventure %d, multiplayer mod rule %d\n", ncl, nset, nf, rk, adventure_ghost_mode() ? 1 : 0,
+                 port_mods_multiplayer());
+    std::fflush(stderr);
+    // 4. the mods under the multiplayer rule
+    unsigned extra = 0;
+    const bool after_level = hub_game_heap_carved(&extra);
+    if (!(after_level ? port_mods_relatch_after_level("booting a coop room") : port_mods_relatch_at_title("booting a coop room"))) {
+        ip_undo(nset, sn, false);
+        return "the mods layer refused the switch to the online list";
+    }
+    // 5. the coop layer, the host's file, the medium, the title's files
+    coop_world_session_reset();
+    coop_save_session_reset();
+    boot_state_reset();
+    if (host && !coop_save_prepare()) {
+        ip_undo(nset, sn, false);
+        return "the host's coop save could not be prepared";
+    }
+    ntr::backup::select_coop(host ? 2 : 1);
+    reread_files("the coop medium");
+    // 6. the hub and the ghost layer
+    comms_conductor_leave_reset();
+    hub_presence_leave_reset();
+    event_client_hub_reset();
+    star_tally_session_reset();
+    const char *hwhy = nullptr;
+    if (!comms_hub_install_in_place(&hwhy)) {
+        std::snprintf(buf, sizeof buf, "the hub could not be installed in place (%s)", hwhy ? hwhy : "?");
+        ip_undo(nset, sn, true);
+        return buf;
+    }
+    if (!comms_sync_join_in_place()) {
+        comms_hub_teardown("the ghost layer did not decide on");
+        comms_sync_leave_reset();
+        ip_undo(nset, sn, true);
+        return "the ghost layer did not come up on the hub";
+    }
+    // 7. the coop boot, armed as port_coop_boot_begin arms it
+    C.init = true;
+    C.on = true;
+    C.host = host;
+    C.inplace = true;
+    C.title_seen = true;
+    C.t_boot = tick();
+    coop_save_set_external_dispatch(true);
+    hub_on_kind(kHubCoopCtl, gate_on_ctl, nullptr);
+    if (!g_ranges_registered) {
+        g_ranges_registered = true;
+        const bool r1 = coop_ctl_register(0x20, 0x2f, sub_save, nullptr);
+        const bool r2 = coop_ctl_register(kCoopBootSubLo, kCoopBootSubHi, sub_boot, nullptr);
+        LOG("SYNB ranges registered with the world core (once per process): 0x20-0x2f %d, 0x30-0x3f %d", r1 ? 1 : 0, r2 ? 1 : 0);
+    }
+    if (host && !g_host_atexit) { g_host_atexit = true; std::atexit(host_atexit); }
+    IP = InPlace{};
+    IP.st = host ? kIpHostGate : kIpGuestHear;
+    IP.t0 = tick();
+    if (!host) port_join_plate_raise_in_place(0);
+    port_join_settings_rearm();
+    lv_chain();
+    LOG("coop boot (in place): role=%s, the gate is stepped once per game frame%s", host ? "host" : "guest",
+        host ? "" : " under the Joining plate (B / Esc cancels)");
+    return nullptr;
+}

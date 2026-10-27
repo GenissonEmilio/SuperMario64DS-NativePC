@@ -25969,3 +25969,15 @@ endforeach()
 if(PORT_ROM_CLEAN)
     set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_join_plate.cpp" APPEND PROPERTY COMPILE_DEFINITIONS PORT_ROM_CLEAN)
 endif()
+# run after093, lane SEAMCOOP1: the coop kind of the launcher hand-off (hal/coop_handoff.cpp registers it; the work is hal/coop_boot.cpp's)
+# and, until the fold brings lane SEAMVS1's hal/handoff_poll.cpp, its fold-dropped stand-in registry and title poll
+# (hal/handoff_register_stub.cpp compiles to nothing once hal/handoff_poll.h exists). Own block.
+foreach(_tscoop1 walk_window walk_window_hires)
+    if(TARGET ${_tscoop1})
+        target_sources(${_tscoop1} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/coop_handoff.cpp"
+                                           "${CMAKE_CURRENT_SOURCE_DIR}/hal/handoff_register_stub.cpp")
+    endif()
+endforeach()
+if(PORT_ROM_CLEAN)
+    set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/hal/handoff_register_stub.cpp" APPEND PROPERTY COMPILE_DEFINITIONS PORT_ROM_CLEAN)
+endif()
