@@ -65,6 +65,18 @@ struct CoopSaveStats {
 };
 CoopSaveStats coop_save_stats();
 
+// SEAMCOOP1 (a coop room left or entered inside a running game, hal/coop_boot.cpp):
+// the host's last save attempt the exit used to make (exit_save), made at the leave;
+// and every latch and record of the room back to a process that never was in one,
+// so the next read of SM64DS_COOP / SM64DS_COOP_HOST decides again.
+void coop_save_leave_flush();
+void coop_save_session_reset();
+// The guest's save fetch as a per-frame step for a room booted in place (the
+// boot's coop_save_fetch blocks): 1 = the record is here (seeded), 0 = still
+// waiting (a request goes out every 250 ms), -1 = timed out after timeout_ms
+// from the first call.
+int coop_save_fetch_step(int timeout_ms);
+
 }  // namespace port
 
 extern "C" void port_coop_save_frame(void);

@@ -994,6 +994,44 @@ void tick_est(unsigned now) {
 // ---------------------------------------------------------------------------
 // Public.
 // ---------------------------------------------------------------------------
+// SEAMCOOP1 (run after093, the one-process plan's M5b): a coop room left or entered inside a running game. Everything this room
+// learned goes back to a process that never was in one: the env is read again (so SM64DS_COOP, cleared or set by hal/coop_boot.cpp,
+// decides), the hub handlers are installed again on the next room's hub (comms_hub_teardown forgot them), the group, its shadows, the
+// outgoing queue, the snapshot and the per-seat jobs are emptied. The phase-2 registries (coop_on_*, coop_ctl_register) are
+// registrations made once per process and stay; the enter nonce and the sequence numbers keep counting (a stale answer from the last
+// room can never match).
+void coop_world_session_reset() {
+    g_env_read = false;
+    g_on = false;
+    g_handlers = false;
+    g_prev_members = 0;
+    g_grp.reset(-1);
+    g_st = CoopWorldStats{};
+    g_my = -1;
+    g_frame = g_est_frames = g_kframe = 0;
+    g_key = CoopKey();
+    g_rejected = CoopKey();
+    g_part = -1;
+    std::memset(g_prev, 0, sizeof g_prev);
+    std::memset(g_sticky, 0, sizeof g_sticky);
+    std::memset(g_star_seen, 0, sizeof g_star_seen);
+    g_star_n = 0;
+    g_enter_nonce = 0;
+    std::memset(g_remote, 0, sizeof g_remote);
+    g_recon_dirty = false;
+    g_last_bits_hash = 0;
+    g_out_n = 0;
+    g_snap_waiting = false;
+    g_snap_done = false;
+    g_snap_total = 0;
+    g_snap_mask = 0;
+    g_snap_owner = -1;
+    g_ack_last = 0;
+    for (Job &j : g_job) j = Job{};
+    std::memset(g_heard, 0, sizeof g_heard);
+    g_hello_t = g_full_t = 0;
+}
+
 bool coop_world_active() {
     read_env();
     if (!g_on) return false;

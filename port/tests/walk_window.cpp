@@ -443,6 +443,8 @@ extern "C" void host_menu_cursor_sound_flush(void);   /* hal/menu_compose.cpp: o
 #include "hal/gpu_raster.h"       /* run hd2 lane GPU2: the optional D3D11 renderer */
 #include "hal/gpu_device.h"       /* the shared device, and the card's own clock */
 #include "hal/menu_join_plate.h"    /* run after093 JOINFLOW1: the Joining plate of a join successor */
+extern "C" int port_coop_line_up(void);                     /* hal/coop_boot.cpp (SEAMCOOP1): a coop room's last line */
+extern "C" const uint32_t *port_coop_line_picture(int w, int h);
 
 /* run mg16 lane MP3: the raw DS pad bits for this frame, handed from where the
    harness computes them to where hal/comms_conductor.cpp publishes them into
@@ -6839,6 +6841,8 @@ static const char *port_quit_in_place_refusal(void)
    course restart of starsel_finish_hook does: the front door, the hand-off wait, and this process ends. */
 extern "C" int port_online_leave_refusal(const char **why);
 extern "C" void port_online_leave_begin(int frame);
+extern "C" int port_coop_leave_refusal(const char **why);   /* hal/coop_boot.cpp (SEAMCOOP1) */
+extern "C" void port_coop_leave_begin(int frame);
 extern "C" int (*port_online_leave_restart_hook)(void);
 extern "C" int port_join_settings_armed(void);   /* hal/menu_join_plate.cpp */
 static void join_settings_dump_once(void);
@@ -6902,9 +6906,21 @@ static int port_front_end_quit_poll(int frame)
                 "menu's quit rows. The save, if the row saves, is already "
                 "written.\n", frame);
         if (const char *why = port_quit_in_place_refusal()) {
+            /* SEAMCOOP1: a coop room is left in place too (hal/coop_boot.cpp): the same scene change, the title tears the room down */
+            const char *cwhy = 0;
+            if (port_coop_leave_refusal(&cwhy)) {
+                if (!cwhy) {
+                    port_coop_leave_begin(frame);
+                    port_front_end_in_place = 1;
+                    fprintf(stderr, "[quit] f%d returning to the title in this process (the ROM's own scene change), leaving the coop "
+                            "room\n", frame);
+                    return 0;
+                }
+                why = cwhy;
+            }
             /* SEAMHUB1: an online world may be left in place too; it takes the same scene change, and the title tears the hub down */
             const char *lwhy = 0;
-            if (port_online_leave_refusal(&lwhy) && !lwhy) {
+            if (!cwhy && port_online_leave_refusal(&lwhy) && !lwhy) {
                 port_online_leave_begin(frame);
                 port_front_end_in_place = 1;
                 fprintf(stderr, "[quit] f%d returning to the title in this process (the ROM's own scene change), leaving the online "
@@ -9256,10 +9272,11 @@ static void present_body(void)
     static BITMAPINFO join_bi;
     const uint32_t *join_bits = 0;
     int join_w = 0, join_h = 0;
-    if (port_join_plate_up()) {
+    const int coop_line = !port_join_plate_up() && port_coop_line_up();   /* SEAMCOOP1: a coop room's last line, in the window */
+    if (port_join_plate_up() || coop_line) {
         join_w = cw > 0 ? cw : 640;
         join_h = ch > 0 ? ch : 360;
-        join_bits = port_join_plate_picture(join_w, join_h);
+        join_bits = coop_line ? port_coop_line_picture(join_w, join_h) : port_join_plate_picture(join_w, join_h);
         if (join_bits) {
             memset(&join_bi, 0, sizeof join_bi);
             join_bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
