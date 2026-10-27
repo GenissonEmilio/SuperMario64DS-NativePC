@@ -415,6 +415,25 @@ bool coop_save_active() { return coop(); }
 
 void coop_save_leave_flush() { exit_save(); }
 
+bool coop_save_file_has_record(const char *path) {
+    if (!path || !*path) return false;
+    std::FILE *f = std::fopen(path, "rb");
+    if (!f) return false;
+    static uint8_t img[0x1000 + 10 + kCoopRecBytes];
+    const size_t got = std::fread(img, 1, sizeof img, f);
+    std::fclose(f);
+    for (int copy = 0; copy < 2; ++copy) {
+        const size_t off = copy ? 0x1000u : 0u;
+        if (got < off + 10 + kCoopRecBytes) continue;
+        const uint8_t *b = img + off;
+        if (std::memcmp(b + 2, kCoopTag, 8) != 0) continue;
+        if ((uint16_t)(b[0] | (b[1] << 8)) != coop_record_checksum(kCoopTag, b + 10, kCoopRecBytes)) continue;
+        if (std::memcmp(b + 10, kMagic, 4) != 0) continue;
+        return true;
+    }
+    return false;
+}
+
 void coop_save_session_reset() {
     g_coop = g_host = -1;
     g_init = false;

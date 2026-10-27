@@ -70,6 +70,10 @@ CoopSaveStats coop_save_stats();
 // and every latch and record of the room back to a process that never was in one,
 // so the next read of SM64DS_COOP / SM64DS_COOP_HOST decides again.
 void coop_save_leave_flush();
+// True when the .coopsav at path holds a valid room record (slot 0 or its copy:
+// the coop tag, its checksum, the "8000" magic): a file that is missing or
+// erased is a NEW file, whose opening plays when it is picked.
+bool coop_save_file_has_record(const char *path);
 void coop_save_session_reset();
 // The guest's save fetch as a per-frame step for a room booted in place (the
 // boot's coop_save_fetch blocks): 1 = the record is here (seeded), 0 = still
