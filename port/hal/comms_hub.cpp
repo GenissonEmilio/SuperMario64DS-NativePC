@@ -1354,6 +1354,11 @@ int online_session_clear() {
 namespace {
 bool g_inst_tried = false;
 bool g_inst_owned = false;   // the answer: true = skip the VS carrier
+// SEAMVS1: the arena install's latch, here for the same reason: a VS match
+// that ends in place tears the hub down, and the next match handed to this
+// process installs the arena again.
+bool g_arena_tried = false;
+bool g_arena_owned = false;
 }  // namespace
 
 bool comms_hub_install_from_env() {
@@ -1410,8 +1415,8 @@ bool comms_hub_install_from_env() {
 // no VS refusal here. Only the address is read from the env, the same two
 // knobs the adventure hub uses.
 bool comms_hub_install_arena(int want_seat) {
-    static bool tried = false;
-    static bool owned = false;
+    bool &tried = g_arena_tried;
+    bool &owned = g_arena_owned;
     if (tried) return owned;
     tried = true;
     const char *relay = online_session_get(kSessRelay);   /* SEAMHUB1: the session record */
@@ -1767,6 +1772,8 @@ bool comms_hub_teardown(const char *why) {
     ::InterlockedExchange(&g_stop, 0);
     g_inst_tried = false;
     g_inst_owned = false;
+    g_arena_tried = false;   // SEAMVS1
+    g_arena_owned = false;
     std::fprintf(stderr, "[seamless] hub torn down (%s): I/O thread %s, socket %s; "
                  "it was seat %d with %d other seat(s) present, %llu ghost frame(s) "
                  "sent, %llu received\n", why ? why : "?",

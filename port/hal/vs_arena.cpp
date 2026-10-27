@@ -293,8 +293,17 @@ bool env_on(const char *name) {
 // new knob. 0xFF = any free seat.
 int seat_pin_from_env(const char **why) {
     *why = "no pin: any free seat";
-    if (const char *s = std::getenv("SM64DS_HUB_SEAT"))
-        if (*s) { *why = "SM64DS_HUB_SEAT"; return env_int("SM64DS_HUB_SEAT", 0xFF, 0, 15); }
+    /* SEAMVS1 (REVSEAMJOIN1 note): the hub seat comes from the session record (hal/comms_hub.h), which a hand-off fills and the
+       in-place end clears, the way the hub's own install reads it */
+    if (const char *s = online_session_get(kSessHubSeat))
+        if (*s) {
+            char *end = nullptr;
+            const long v = std::strtol(s, &end, 10);
+            *why = "SM64DS_HUB_SEAT (the session record)";
+            if (end != s && !*end && v >= 0 && v <= 15) return (int)v;
+            std::fprintf(stderr, "[vsarena] SM64DS_HUB_SEAT=%s is out of range 0..15; using any free seat\n", s);
+            return 0xFF;
+        }
     if (const char *s = std::getenv("SM64DS_COMMS_SLOT"))
         if (*s) { *why = "SM64DS_COMMS_SLOT"; return env_int("SM64DS_COMMS_SLOT", 0xFF, 0, 15); }
     if (const char *r = std::getenv("SM64DS_COMMS_ROLE"))
@@ -1848,9 +1857,24 @@ bool vs_arena_requested() {
 }
 
 extern "C" void port_fanout_force_wide(int on);   // hal/comms_fanout_wide.cpp (VS9)
+extern "C" unsigned char data_0209f250[];        // the world's local player index (hal/auto_bss.cpp)
+#define port_vs_local_index data_0209f250
+extern "C" int port_vs_force_nobody = 0;          // SEAMVS1: the "seat has no body" drill, set only by a dev knob (hal/handoff_poll.cpp)
+extern "C" int port_vs_leave_to_title(const char *why);   // hal/star_flow.cpp (SEAMVS1): the match leaves to the title in place
+extern "C" int port_scene_live_id(void);                   // hal/scene_boot.cpp: 1 = the title is the live scene
+
+// SEAMVS1: the install's latch at file scope, so a VS match that ended in place (vs_arena_leave_reset) can forget it and the next
+// match handed to this process installs the arena again (vs_arena_install_in_place). g_in_place: this process's arena was installed
+// by a hand-off at the title, not by main() at boot.
+namespace {
+bool g_tried = false;
+bool g_in_place = false;
+ULONGLONG g_in_place_t0 = 0;   // when the hand-off installed the arena (the time to the level's seat is printed from it)
+bool g_report_hooked = false;
+}  // namespace
 
 bool vs_arena_install_from_env() {
-    static bool tried = false;
+    bool &tried = g_tried;
     if (tried) return g.installed;
     tried = true;
     if (!vs_arena_requested()) return false;
@@ -1882,8 +1906,10 @@ bool vs_arena_install_from_env() {
             return false;
         }
     }
-    ::InitializeCriticalSection(&g_cs);
-    g_cs_up = true;
+    if (!g_cs_up) {   // SEAMVS1: once per process; a second install in place keeps the section
+        ::InitializeCriticalSection(&g_cs);
+        g_cs_up = true;
+    }
     for (int k = 0; k < kArenaSeats; ++k) reset_ring(g.ring[k], 0);
 
     // AN ARENA CONSOLE IS NEVER AN ADVENTURE CONSOLE. The adventure ghost
@@ -1931,11 +1957,80 @@ bool vs_arena_install_from_env() {
                  g.hub ? "open" : "NOT OPEN (no SM64DS_COMMS_RELAY or "
                                   "SM64DS_HUB_PORT): this console plays the "
                                   "arena alone");
-    std::atexit(report_at_exit);
+    if (!g_report_hooked) { g_report_hooked = true; std::atexit(report_at_exit); }
     return true;
 }
 
 bool vs_arena_active() { return g.installed; }
+
+void vs_ref_match_reset();    // hal/vs_arena_ref.cpp (SEAMVS1)
+void vs_eat_match_reset();    // hal/vs_arena_eat.cpp
+void vs_grab_match_reset();   // hal/vs_arena_grab.cpp
+bool vs_arena_leave_reset(const char *why);
+
+// SEAMVS1: THE ARENA INTO A LIVE PROCESS, for the launcher hand-off of a VS match at the title. The install main() makes at boot
+// (vs_arena_install_from_env: the seat pin, the body count, the hub opened through comms_hub_install_arena), made again from the
+// environment the hand-off has just written. Refuses (false, *why) when an arena is still installed, when the env does not ask for
+// one, or when the hub does not open (the arena with no relay is a lab shape; a launcher match always names one); a failed install is
+// taken down again so the caller refuses with nothing of it left.
+bool vs_arena_install_in_place(const char **why) {
+    *why = nullptr;
+    if (g.installed) { *why = "a VS arena of an earlier match is still installed"; return false; }
+    g_tried = false;
+    if (!vs_arena_install_from_env() || !g.installed) { *why = "the arena install refused the request's names"; return false; }
+    if (!g.hub || !comms_hub_active()) {
+        *why = "the arena's hub did not open (no relay)";
+        vs_arena_leave_reset("the in-place arena install did not open its hub");
+        return false;
+    }
+    g_in_place = true;
+    g_in_place_t0 = ::GetTickCount64();
+    std::fprintf(stderr, "[seamless] VS arena installed in this process: %d bodies, seat pin %d\n", g.bodies, g.want_seat);
+    std::fflush(stderr);
+    return true;
+}
+
+// SEAMVS1: THE ARENA OUT OF A LIVE PROCESS, at the title after a VS match ended in place: the hub torn down (comms_hub_teardown:
+// the I/O thread joined, the socket closed, the arena latch forgotten), the arena, the referee client, the eat and grab state and
+// the puppets back to a process that never installed one, the wide fan-out off. False when the hub's thread did not stop (nothing
+// else changed; the caller closes the game as before).
+bool vs_arena_leave_reset(const char *why) {
+    if (comms_hub_active() || comms_hub_state() != kHubOff)
+        if (!comms_hub_teardown(why)) return false;
+    const int bodies = g.bodies, seat = g.seat;
+    {
+        Guard l;
+        g = Arena();
+        for (int k = 0; k < kArenaSeats; ++k) reset_ring(g.ring[k], 0);
+    }
+    for (int k = 0; k < kArenaSeats; ++k) g_pup[k] = Pup();
+    {
+        const int on = g_lat.on;
+        g_lat = Lat();
+        g_lat.on = on;
+    }
+    for (int k = 0; k < 2; ++k) { g_sq[k] = SfxQueue(); g_sfx_cap[k] = 0; }
+    vs_ref_match_reset();
+    vs_eat_match_reset();
+    vs_grab_match_reset();
+    port_fanout_force_wide(0);
+    g_tried = false;
+    g_in_place = false;
+    // my body's number back to the solo game's 0 (vs_arena_seat_world wrote the seat; a process that never joined has 0 in this ROM
+    // word, and the solo level that follows spawns player 0 only: a seat-1 console's first door read the missing player 1 and faulted)
+    // and the world's local player index the Stage seated from it (Stage::InitResources:178, data_0209f250 = func_0203da9c()): back to
+    // the 0 a process that never joined holds until its first Stage
+    const unsigned me_was = data_020a0f10[0], local_was = port_vs_local_index[0];
+    data_020a0f10[0] = 0;
+    port_vs_local_index[0] = 0;
+    std::fprintf(stderr, "[seamless] VS arena taken down (%s): it was seat %d of %d bodies; referee client, eat, grab and puppets reset, "
+                 "the install latch forgotten, my body number data_020a0f10 %u -> 0, local player index data_0209f250 %u -> 0\n",
+                 why ? why : "?", seat, bodies, me_was, local_was);
+    std::fflush(stderr);
+    return true;
+}
+
+bool vs_arena_in_place() { return g_in_place; }
 
 void vs_arena_seat_world() {
     if (!g.installed) return;
@@ -1970,6 +2065,11 @@ void vs_arena_seat_world() {
                      "(%s)\n", seat, g.want_seat < kArenaSeats ? "the pin"
                                                               : "default");
     }
+    if (g_in_place && port_vs_force_nobody) {   // SEAMVS1 drill (dev knob, hal/handoff_poll.cpp): a seat past the bodies
+        port_vs_force_nobody = 0;
+        std::fprintf(stderr, "[vsarena] the no-body drill: seat %d taken as %d, past the %d bodies\n", seat, g.bodies, g.bodies);
+        seat = g.bodies;
+    }
     if (seat >= g.bodies) {
         // A seat with no body faults the first frame that reaches for it.
         // Leave the match instead, the way a full room does (exit 4,
@@ -1979,6 +2079,16 @@ void vs_arena_seat_world() {
                      g.bodies);
         std::fflush(stderr);
         std::fflush(stdout);
+        // SEAMVS1: a match handed to a running game leaves it back at the title in place (the way its end does); my body word
+        // stays where it was and my pad goes nowhere for the fade. A process that booted into the match still exits 4.
+        if (g_in_place && port_scene_live_id() == 1) {   // seated by the hand-off at the title: the hand-off refuses (scene_vs_menu)
+            g.seat = -1;
+            return;
+        }
+        if (g_in_place && port_vs_leave_to_title("seat has no body")) {
+            g.seat = -1;
+            return;
+        }
         ::ExitProcess(4);
     }
     if (g.seat >= 0 && g.seat != seat)
@@ -1986,6 +2096,11 @@ void vs_arena_seat_world() {
                      "boot\n", g.seat, seat);
     g.seat = seat;
     data_020a0f10[0] = (unsigned char)seat;
+    if (g_in_place && g_in_place_t0) {   // SEAMVS1: the hand-off's time to the world (REVSEAMJOIN1 note 4)
+        std::fprintf(stderr, "[seamless] the handed-off VS match's level is seated %llu ms after the hand-off installed the arena\n",
+                     (unsigned long long)(::GetTickCount64() - g_in_place_t0));
+        g_in_place_t0 = 0;
+    }
     std::fprintf(stderr, "[vsarena] seated: seat %d is my body (data_020a0f10 = "
                  "%d), %d bodies\n", seat, seat, g.bodies);
 }

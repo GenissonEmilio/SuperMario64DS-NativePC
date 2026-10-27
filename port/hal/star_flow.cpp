@@ -2406,6 +2406,213 @@ extern "C" void port_vs_match_end_hold(void)
     }
 }
 
+/* ==== SEAMVS1: THE VS MATCH END RETURNS TO THE TITLE IN THIS PROCESS (run after093; the one-process plan's M5a) =================
+ * The end path below used to close the game once the winner had been on screen for the grace window ("closing IS going to the lobby":
+ * the launcher was the lobby and started the next match as a new process). With the launcher hand-off (hal/handoff_poll.h) the
+ * running game takes the next match itself, so the match now ends the way a quit row does: the title is asked for with the ROM's own
+ * call (dScene_c::StartSceneFade(1, 0, 0)), port_front_end_in_place lets the level-to-scene crossing take scene 1 (SEAMQUIT1), the ROM
+ * fades and marks the Stage, the crossing tears it down through Stage::CleanupResources and runs the title in this window. The ROM's
+ * Stage::Behavior keeps asking for scene 7 (the VS results screen, not hosted) every frame its end guard is open; while this end is
+ * under way that ask is answered with the title instead of the sentinel, so the fade runs to the title.
+ *
+ * AT THE TITLE (the first game frame with the title live; port_sdat_frame_hook, chained):
+ *   1. the arena is taken down (hal/vs_arena.cpp vs_arena_leave_reset: the hub torn down with SEAMHUB1's comms_hub_teardown, the
+ *      arena's install latch and comms_hub_install_arena's forgotten, the referee client, eat, grab and puppets reset), or a plain hub;
+ *   2. the ghost layer, the hub body count and presence back to a process that never joined (SEAMHUB1's leave resets);
+ *   3. the session record cleared and every launcher name out of both copies of the environment (hal/online_join.cpp
+ *      port_session_env_clear: the 43 names the restart clears), the Adventure flag's env latch read again;
+ *   4. the mods latched again to the offline list (hal/mods.cpp port_mods_relatch_after_level);
+ *   5. the save medium back to the single player save (ntr/backup.cpp select_online(0));
+ *   6. this file's VS latches back to unread (the end state, the players, the names, the king target, the end knobs), the Luigi
+ *      Infection latch reset, the game mode word data_0209f2d8 back to 0 (adventure: what the title's own file pick writes,
+ *      src/game/stages/d_s_title.cpp, and what main() writes before a first level);
+ *   7. one line says what is now in effect, and the SETTINGS line is armed again for the next level.
+ * SM64DS_VS_EXIT_ON_END=1 keeps the old close (a tester knob; the launcher never sets it); =0 keeps the old opt-out (the match stays on
+ * screen). REFUSALS take the old close (exit 0), with one line: the lockstep carrier (hal/comms_loopback.cpp has no teardown), a
+ * scene-booted process, a build that does not host the title; at the title a hub thread that does not stop or a relatch the mods layer
+ * refuses. */
+extern "C" {
+int port_scene_live_id(void);                          /* hal/scene_boot.cpp: 1 = the title is the live scene */
+int port_scene_is_hosted(int id);
+extern void (*port_sdat_frame_hook)(void);             /* hal/sdat/consumer.cpp */
+extern int port_front_end_in_place;                    /* hal/level_change.cpp (SEAMQUIT1) */
+int port_session_env_clear(int *fields, char *names, int cap);   /* hal/online_join.cpp (SEAMVS1) */
+int port_session_env_list_size(void);
+int port_mods_relatch_after_level(const char *reason); /* hal/mods.cpp */
+int port_mods_count(void);
+int port_mods_multiplayer(void);
+const char *port_mods_id(int i);
+const char *port_mods_kind(int i);
+void port_join_settings_rearm(void);                   /* hal/menu_join_plate.cpp */
+void port_luigi_match_reset(void);
+void port_window_quit(int code);                       /* hal/handoff_poll.cpp: WM_QUIT, the window's own way out */
+}
+extern "C++" {   /* this part of the file sits inside an extern "C" block: these are C++ names */
+namespace ntr { namespace backup { void select_online(int on); bool online_selected(); } }
+namespace port {
+bool vs_arena_leave_reset(const char *why);            /* hal/vs_arena.cpp (SEAMVS1) */
+bool comms_hub_active();
+int comms_hub_state();
+bool comms_hub_teardown(const char *why);
+void comms_hub_reports_off();
+void comms_sync_reports_off();
+void comms_sync_leave_reset();
+void comms_conductor_leave_reset();
+void hub_presence_leave_reset();
+bool adventure_ghost_mode();
+struct CommsTransport;
+const CommsTransport *comms_transport();
+}
+}
+
+static int g_vs_end_ip;                 /* 0 none, 1 asked (the fade to the title runs), 2 done at the title */
+static int g_vs_end_at;                 /* the frame it was asked */
+static const char *g_vs_end_why = "";
+static void (*g_vs_end_prev)(void);
+static int g_vs_matches;                /* VS matches this process has ended in place */
+/* the end poll's env-derived knobs, at file scope so a match that ends in place can have them read again for the next one */
+static int g_mep_on = -1, g_mep_want_scene = -1, g_mep_want_exit = -1, g_mep_grace = -1, g_mep_star_target = -1;
+
+extern "C" int port_vs_end_pending(void) { return g_vs_end_ip == 1; }
+extern "C" int port_vs_matches_ended_in_place(void) { return g_vs_matches; }
+
+/* every VS latch of this file back to a process that never played VS: the disarm the poll makes outside VS, plus the env-derived
+   configuration (players, names, king target, the end knobs) read again by the next match */
+static void vs_latches_reset(void)
+{
+    g_end_fired = -1;
+    g_end_announced = 0;
+    g_end_by_target = 0;
+    g_end_by_king = 0;
+    g_end_by_luigi = 0;
+    g_end_by_last = 0;
+    g_end_total = 0;
+    for (int i = 0; i < kPortMaxPlayers; ++i) { g_end_scores[i] = 0; g_king_points[i] = 0; }
+    port_luigi_match_reset();
+    g_vs_seen = 0;
+    g_vs_left = 0;
+    g_scene7_answered = 0;
+    g_arena_results = 0;
+    g_king_armed = 0;
+    g_king_tick = 0;
+    g_king_holder = -1;
+    g_king_target = -1;
+    g_vs_players_cache = 0;
+    g_vs_names_read = 0;
+    g_vs_frame = -1;
+    g_mep_on = g_mep_want_scene = g_mep_want_exit = g_mep_grace = g_mep_star_target = -1;
+    /* the ROM's "the VS clock ran out" latch (src/ui/hud/d_meter.cpp sets it at 0; Stage::InitResources:288 writes 0 for a new Stage on
+       the boot path, and a fresh process has 0). A Stage the level-to-scene crossing builds kept the 1 of the match before, and the
+       next match's clock read as run out 1.5 s after its start: back to 0 with the rest of the match. */
+    data_0209f204 = 0;
+}
+
+static const char *vs_end_refusal(void)
+{
+    static char why[200];
+    if (g_vs_end_ip == 1) return "an in-place end is already under way";
+    if (port::comms_transport()) return "the lockstep VS carrier (hal/comms_loopback.cpp) has no teardown yet";
+    if (const char *sc = std::getenv("SM64DS_SCENE"))
+        if (*sc) return "a scene-booted process";
+    if (!port_scene_is_hosted(1)) return "this build does not host the title scene";
+    for (int i = 0; i < port_mods_count(); ++i) {
+        const char *k = port_mods_kind(i);
+        if (k && !std::strcmp(k, "code")) {
+            std::snprintf(why, sizeof why, "a code mod is loaded (%s) and a plugin cannot be unloaded", port_mods_id(i));
+            return why;
+        }
+    }
+    return 0;
+}
+
+static void vs_end_frame_hook(void);
+
+static void vs_end_close(const char *why)
+{
+    fprintf(stderr, "[seamless] in place refused at the title: %s; closing the game as before (exit 0)\n", why);
+    fflush(stderr);
+    port_window_quit(0);
+}
+
+static void vs_end_at_title(void)
+{
+    g_vs_end_ip = 2;
+    if (port_sdat_frame_hook != vs_end_frame_hook) {
+        fprintf(stderr, "[seamless] note: another frame hook was chained after the VS end's; it stays chained\n");
+    } else {
+        port_sdat_frame_hook = g_vs_end_prev;
+    }
+    fprintf(stderr, "[seamless] the title is up (the VS match ended in place at f%d: %s): leaving the VS session in this process\n",
+            g_vs_end_at, g_vs_end_why);
+    /* 1. the arena (or a plain hub) */
+    if (!port::vs_arena_leave_reset("the VS match ended in place")) {
+        vs_end_close("the hub's I/O thread did not stop");
+        return;
+    }
+    /* 2. the ghost layer, the body count, presence */
+    port::comms_sync_leave_reset();
+    port::comms_conductor_leave_reset();
+    port::hub_presence_leave_reset();
+    /* 3. the record and both environment copies */
+    int fields = 0;
+    char names[1024];
+    const int n = port_session_env_clear(&fields, names, (int)sizeof names);
+    fprintf(stderr, "[seamless] session record cleared (%d field(s)); %d of the %d launcher name(s) were set and are cleared from both "
+            "copies of the environment: %s\n", fields, n, port_session_env_list_size(), names);
+    fflush(stderr);
+    /* 4. the mods back to the offline list */
+    if (!port_mods_relatch_after_level("leaving the VS match")) {
+        vs_end_close("the mods layer refused the switch back to the offline list");
+        return;
+    }
+    /* 5. the single player save; 6. the VS latches and the game mode */
+    ntr::backup::select_online(0);
+    vs_latches_reset();
+    data_0209f2d8 = 0;
+    ++g_vs_matches;
+    port_join_settings_rearm();
+    fprintf(stderr, "[seamless] now solo after the VS match: save medium %s; adventure %d; multiplayer mod rule %d; %d mod(s) on; hub %s "
+            "(state %d); game mode %d; VS latches reset (%d match(es) ended in place in this process); in-place quit flag %d until a "
+            "level is handed back\n", ntr::backup::online_selected() ? "THE ONLINE SAVE" : "the single player save",
+            port::adventure_ghost_mode() ? 1 : 0, port_mods_multiplayer(), port_mods_count(),
+            port::comms_hub_active() ? "STILL ACTIVE" : "off", port::comms_hub_state(), (int)data_0209f2d8, g_vs_matches,
+            port_front_end_in_place);
+    fflush(stderr);
+}
+
+static void vs_end_frame_hook(void)
+{
+    if (g_vs_end_prev) g_vs_end_prev();
+    if (g_vs_end_ip == 1 && port_scene_live_id() == 1) vs_end_at_title();
+}
+
+/* ask for the title in this process; 0 (with the refused line) when the old close must be taken */
+static int vs_end_begin(int frame, const char *why)
+{
+    if (const char *r = vs_end_refusal()) {
+        fprintf(stderr, "[seamless] in place refused: %s; closing as before\n", r);
+        fflush(stderr);
+        return 0;
+    }
+    g_vs_end_ip = 1;
+    g_vs_end_at = frame;
+    g_vs_end_why = why;
+    port::comms_hub_reports_off();
+    port::comms_sync_reports_off();
+    g_vs_end_prev = port_sdat_frame_hook;
+    port_sdat_frame_hook = vs_end_frame_hook;
+    port_front_end_in_place = 1;
+    _ZN8dScene_c14StartSceneFadeEjjt(1, 0, 0);
+    fprintf(stderr, "[seamless] f%d the VS match ends in this process (%s): the title is asked for with the ROM's own "
+            "StartSceneFade(1, 0, 0) (pending scene id %u); the arena stays up through the fade and the title tears it down\n", frame,
+            why, (unsigned)data_02092664);
+    fflush(stderr);
+    return 1;
+}
+
+/* hal/vs_arena.cpp: a match handed to a running game that cannot go on (a seat with no body) leaves to the title in place */
+extern "C" int port_vs_leave_to_title(const char *why) { return vs_end_begin(g_vs_frame, why); }
+
 extern "C" int port_vs_match_end_poll(int frame)
 {
     g_vs_frame = frame;
@@ -2439,15 +2646,17 @@ extern "C" int port_vs_match_end_poll(int frame)
        the actor walk and before vs_arena_tick sends this frame's state. */
     port::vs_ref_post_walk(frame);
 
-    static int on = -1, want_scene = -1, want_exit = -1, grace = -1,
-               star_target = -1;
+    /* SEAMVS1: file scope (g_mep_*), so a match that ends in place has them read again for the next one */
+    int &on = g_mep_on, &want_scene = g_mep_want_scene, &want_exit = g_mep_want_exit, &grace = g_mep_grace,
+        &star_target = g_mep_star_target;
     if (on < 0) {
         const char *e = std::getenv("SM64DS_VS_MATCH_END");
         on = (e && e[0] == '0') ? 0 : 1;
         e = std::getenv("SM64DS_VS_END_SCENE");
         want_scene = e ? (e[0] != '0') : (int)PORT_VS_END_SCENE_DEFAULT;
         e = std::getenv("SM64DS_VS_EXIT_ON_END");
-        want_exit = (e && e[0] == '0') ? 0 : 1;
+        /* SEAMVS1: unset (the launcher's way) = back to the title in this process; 1 = the old close; 0 = stay on the arena */
+        want_exit = (e && e[0] == '0') ? 0 : (e && e[0] == '1') ? 1 : 2;
         e = std::getenv("SM64DS_VS_END_GRACE");
         grace = e ? std::atoi(e) : 240;
         if (grace < 0) grace = 0;
@@ -2495,7 +2704,8 @@ extern "C" int port_vs_match_end_poll(int frame)
                     "pending id goes back to the sentinel (the Stage is not torn "
                     "down)\n", frame);
         ++g_scene7_answered;
-        data_02092664 = 0x187;
+        /* SEAMVS1: while the match ends in place the ask is answered with the title, so the ROM's fade runs to scene 1 */
+        data_02092664 = g_vs_end_ip == 1 ? 1 : 0x187;
     }
 
     if (!on)
@@ -2876,6 +3086,9 @@ extern "C" int port_vs_match_end_poll(int frame)
        window before this runs. Nobody's window disappears without being told
        who won. SM64DS_VS_EXIT_ON_END=0 still opts out. */
     if (!want_exit)
+        return 0;
+    /* SEAMVS1: the launcher's way now: back to the title in this process (the block over vs_end_begin) */
+    if (want_exit == 2 && vs_end_begin(frame, "the winner was on screen for the whole grace window"))
         return 0;
     fprintf(stderr, "  [vs] closing: the winner has been on screen for the "
             "whole grace window, so the match ends the way the owner asked -- "

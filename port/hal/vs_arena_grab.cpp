@@ -1146,4 +1146,17 @@ void vs_grab_export_link(char *holder, char *carried, bool ready) { link_pair(ho
 void vs_grab_export_unlink(char *holder, char *carried) { unlink_pair(holder, carried); }
 void vs_grab_export_overlay(char *holder, char *carried) { puppet_carry_overlay(holder, carried); }
 
+
+// SEAMVS1: a VS match that ended in place leaves this process at the title; the next match handed to it starts the grab
+// state from nothing (who holds whom, the pending contact, the stomp wait). The lab knobs and the counters stay.
+void vs_grab_match_reset() {
+    g.h = Holder();
+    g.v = Victim();
+    g.p = Pending();
+    g.st = Stomp();
+    g.stomp_cool = 0;
+    g.cool_until = 0;
+    for (int &p : g.pair_h) p = kSeatNone;
+}
+
 }  // namespace port
