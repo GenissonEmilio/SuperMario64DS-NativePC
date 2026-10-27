@@ -1295,9 +1295,16 @@ int online_session_clear() {
 // ===========================================================================
 // PUBLIC
 // ===========================================================================
+// SEAMHUB1: the install's answer lives here, not in the function, so the
+// in-place leave (comms_hub_teardown) can forget it.
+namespace {
+bool g_inst_tried = false;
+bool g_inst_owned = false;   // the answer: true = skip the VS carrier
+}  // namespace
+
 bool comms_hub_install_from_env() {
-    static bool tried = false;
-    static bool owned = false;   // the answer: true = skip the VS carrier
+    bool &tried = g_inst_tried;
+    bool &owned = g_inst_owned;
     if (tried) return owned;
     tried = true;
 
@@ -1603,6 +1610,110 @@ void comms_hub_report(const char *tag) {
     Lock l;
     if (!g_installed) return;
     report_locked(tag ? tag : "report");
+}
+
+// SEAMHUB1: no more periodic report lines from the I/O thread (the in-place leave asks for this at the quit, so the fade and the
+// title print no "[hub]" line before the teardown).
+void comms_hub_reports_off() {
+    Lock l;
+    g_report_s = 0;
+}
+
+// ===========================================================================
+// THE TEARDOWN (run after093, lane SEAMHUB1; the one-process plan's H-a).
+// Until now the hub lived as long as the process: installed once in main(),
+// its I/O thread stopped only by report_at_exit. Leaving an Adventure Online
+// world to the title in place needs it gone while the process carries on as a
+// solo game, so this stops the thread the way report_at_exit does (the flag,
+// then a wait; the thread looks at the flag every 5 ms), and only once it has
+// returned closes the socket and puts every piece of state back to what a
+// process that never installed the hub has. The atexit hook stays registered
+// (it cannot be removed) and has nothing left to do: no thread to wait for,
+// and comms_hub_report says nothing with the hub not installed. Winsock stays
+// started, as it always has. Game thread only.
+// ===========================================================================
+bool comms_hub_teardown(const char *why) {
+    HANDLE th;
+    {
+        Lock l;
+        th = g_thread;
+    }
+    unsigned long long sent_g = 0, recvd_g = 0;
+    int seat = -1, peers = 0;
+    {
+        Lock l;
+        sent_g = g_st.sent[0];
+        recvd_g = g_st.recvd[0];
+        seat = g_seat;
+        for (int s = 0; s < kHubMaxSeats; ++s)
+            if (g_seats[s].present && s != g_seat) ++peers;
+    }
+    if (th) {
+        ::InterlockedExchange(&g_stop, 1);
+        const DWORD w = ::WaitForSingleObject(th, 2000);
+        if (w != WAIT_OBJECT_0) {
+            ::InterlockedExchange(&g_stop, 0);
+            std::fprintf(stderr, "[seamless] the hub's I/O thread did not stop in 2 s "
+                         "(wait %lu); the hub is left as it was (%s)\n",
+                         (unsigned long)w, why ? why : "?");
+            std::fflush(stderr);
+            return false;
+        }
+        ::CloseHandle(th);
+    }
+    const bool had_socket = g_sock != INVALID_SOCKET;
+    if (had_socket && WS.closesocket) WS.closesocket(g_sock);
+    {
+        Lock l;
+        g_installed = false;
+        g_arena = false;
+        g_room = kHubRoomWorld;
+        for (int k = 0; k < kHubKinds; ++k) g_handler[k] = KindHandler();
+        g_mode = kModeNone;
+        g_state = kHubOff;
+        g_seat = -1;
+        g_sock = INVALID_SOCKET;
+        g_relay = sockaddr_in();
+        g_mesh_base = 0;
+        std::memset(g_code, 0, sizeof g_code);
+        g_want_seat = 0xFF;
+        g_seat_taken_since = 0;
+        g_ever_paired = false;
+        g_exit_full = false;
+        g_thread = nullptr;
+        g_last_ack = 0;
+        ++g_roster_version;            // every roster reader sees the change
+        g_ping_rr = 0;
+        std::memset(g_fifo, 0, sizeof g_fifo);
+        std::memset(&g_mfifo, 0, sizeof g_mfifo);
+        std::memset(g_qdrop, 0, sizeof g_qdrop);
+        std::memset(g_seats, 0, sizeof g_seats);
+        g_st = CommsHubStats();
+        g_drop_stale = 0;
+        g_drop_field = 0;
+        g_dispatched = 0;
+        std::memset(g_ref, 0, sizeof g_ref);
+        g_ref_next = 0;
+        g_ref_last_t_ref = 0;
+        g_ref_last_recv = 0;
+        g_ref_have = false;
+        g_ref_cap_ms = -1;
+        g_delay_ms = 0;
+        g_loss_pct = 0;
+        g_report_s = 10;
+        g_held_head = 0;
+        g_held_count = 0;
+    }
+    ::InterlockedExchange(&g_stop, 0);
+    g_inst_tried = false;
+    g_inst_owned = false;
+    std::fprintf(stderr, "[seamless] hub torn down (%s): I/O thread %s, socket %s; "
+                 "it was seat %d with %d other seat(s) present, %llu ghost frame(s) "
+                 "sent, %llu received\n", why ? why : "?",
+                 th ? "stopped and joined" : "never started",
+                 had_socket ? "closed" : "never opened", seat, peers, sent_g, recvd_g);
+    std::fflush(stderr);
+    return true;
 }
 
 }  // namespace port

@@ -452,6 +452,27 @@ const OnlineSession &online_session();
 // how many fields were set.
 int online_session_clear();
 
+// ---------------------------------------------------------------------------
+// THE TEARDOWN (lane SEAMHUB1): the hub out of a live process, for the
+// in-place leave. Stops and joins the I/O thread, closes the socket, empties
+// every queue, seat and counter, forgets the install latch and every
+// hub_on_kind handler, so comms_hub_active() is false and a later install
+// starts from nothing. False (and nothing else changed) when the thread did
+// not stop within the bound: the caller then restarts as before.
+bool comms_hub_teardown(const char *why);
+// No more periodic "[hub]" report lines (the leave asks for this at the quit).
+void comms_hub_reports_off();
+// The other layers' halves, called by the leave after comms_hub_teardown:
+// hal/comms_sync.cpp (the ghost layer, its file globals, the read-once
+// identity, the own colour row and the ROM's body count / input gate words),
+// hal/comms_conductor.cpp (the hub body count latch) and hal/hub_presence.cpp.
+void comms_sync_leave_reset();
+void comms_conductor_leave_reset();
+void hub_presence_leave_reset();
+// One line of what a fresh read of this console's identity gives now (name,
+// both colours, the own colour row), for the leave's proof line.
+void comms_sync_identity_text(char *out, int cap);
+
 }  // namespace port
 
 #endif  // PORT_HAL_COMMS_HUB_H

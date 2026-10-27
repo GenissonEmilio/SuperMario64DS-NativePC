@@ -239,6 +239,26 @@ HubPresenceStats hub_presence_stats() {
 
 }  // namespace port
 
+// SEAMHUB1: the in-place leave (hal/online_join.cpp, after comms_hub_teardown, which also dropped the
+// presence handler with every other hub_on_kind registration): back to a process that never sent one.
+namespace port {
+void hub_presence_leave_reset() {
+    Lock l;
+    for (int s = 0; s < kHubMaxSeats; ++s) g_slot[s] = Slot();
+    g_mine = HubPresence();
+    g_have_mine = false;
+    g_registered = false;
+    g_sent_have = false;
+    g_sent = HubPresence();
+    g_sent_t = 0;
+    g_seq = 0;
+    g_beh_last = 0;
+    g_beh_still = 0;
+    g_beh_seeded = false;
+    g_st = HubPresenceStats();
+}
+}  // namespace port
+
 // THE ONE HOOK LINE (tests/walk_window.cpp, once a frame). Global, no
 // namespace, like the other port_* frame calls.
 extern "C" void port_hub_presence_frame(void) {

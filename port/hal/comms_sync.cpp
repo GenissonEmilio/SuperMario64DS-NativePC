@@ -4705,4 +4705,137 @@ bool comms_sync_ghost_look(int seat, unsigned *anim, unsigned *character) {
     return true;
 }
 
+// ===========================================================================
+// THE IN-PLACE LEAVE (run after093, lane SEAMHUB1; the one-process plan's M-e
+// and H-a). Leaving an Adventure Online world to the title in this process:
+// hal/online_join.cpp calls this at the title, once the Stage (and with it
+// every ghost body) is gone and comms_hub_teardown has stopped the hub. Every
+// file global of the sync and ghost layers goes back to the value a process
+// that never joined starts with, so nothing of the session is drawn, sent or
+// counted again: the layer is off (g_enabled, g_hub), the configuration is
+// parsed again on the next decide, the read-once identity (g_gw_me: name and
+// colours) is read again from the session record (empty after the leave), the
+// own colour row (g_own) is forgotten, and the opening hold is off.
+//
+// THE ROM'S BODY WORDS. The hub seats 32 bodies through the ROM's own setter
+// and opens the per-player input gate (data_0209fc68[0] = 1, what
+// hal/level_boot.cpp does for more than one player). The title's StartFile
+// puts the count back to 1 on the next file pick (src/StartFile.c), but the
+// gate is the port's: it goes back to 0 here, and the count is put to the
+// solo value through the same setter now, so the title runs with the words a
+// solo boot has. Environment knobs latched in function statics (probe and
+// tuning knobs) mean the same before and after and are kept.
+// ===========================================================================
+template <class T, size_t N> static void leave_zero(T (&a)[N]) {
+    for (size_t i = 0; i < N; ++i) a[i] = T();
+}
+
+void comms_sync_leave_reset() {
+    int bodies = 0;
+    for (int i = 0; i < kPortBodySlots; ++i)
+        if (data_0209f394[i]) ++bodies;
+    const int was_count = (int)data_0209f21c, was_rom = (int)data_0208a0e0, was_gate = data_0209fc68[0];
+
+    g_cfg = SyncCfg();
+    g_send_every = 1;
+    g_frame = 0;
+    g_parsed = false;
+    g_enabled = false;
+    g_said_refusal = false;
+    g_stats = SyncStats();
+    leave_zero(g_delayq);
+    g_dq_head = 0;
+    g_dq_count = 0;
+    g_last_ping_ms = 0;
+    g_ev_tokens = kEvBurst;
+    g_ev_seeded = false;
+    g_ev_anim = 0;
+    g_ev_ground = 0;
+    leave_zero(g_arr_seen);
+    leave_zero(g_arr_anim);
+    leave_zero(g_ph_id);
+    leave_zero(g_ph_hw);
+    leave_zero(g_gtarget);
+    leave_zero(g_ganim);
+    leave_zero(g_gcursor);
+    leave_zero(g_ganim_have);
+    leave_zero(g_peer_level);
+    leave_zero(g_peer_seen_ms);
+    leave_zero(g_peer_present);
+    g_vel_seeded = false;
+    leave_zero(g_vel_prev);
+    leave_zero(g_vel);
+    g_warp_pending = false;
+
+    leave_zero(g_gw);
+    g_hub = false;
+    g_gws = GwStats();
+    g_gw_t0 = 0;
+    g_gw_f0 = 0;
+    g_gw_t0_set = false;
+    g_gw_sent = HubGhostFrame();
+    g_gw_sent_have = false;
+    g_gw_last_seq = 0xffffffffu;
+    g_gw_last_send_ms = 0;
+    g_gw_last_ident_ms = 0;
+    g_gw_ident_sent = false;
+    g_gw_roster = 0;
+    g_gw_beh_last = 0;
+    g_gw_beh_seeded = false;
+    g_gw_frozen = 0;
+    leave_zero(g_gw_fz);
+    g_gw_prev_have = false;
+    leave_zero(g_gw_prev);
+    g_gw_prev_level = -1;
+    g_gw_warp = false;
+    g_gw_prev_dkind = 0;
+    leave_zero(g_gw_v);
+    g_gw_last_report_ms = 0;
+    g_gw_frame = 0;
+    g_gw_me = GwMe();
+    leave_zero(g_body_seat);
+    leave_zero(g_body_since);
+    g_assign_init = false;
+    g_gw_myseat_seen = 0xffffffffu;
+    leave_zero(g_gw_last);
+    leave_zero(g_row_seen);
+    std::memset(g_row_last, 0, sizeof g_row_last);
+    leave_zero(g_row_last_have);
+    g_gw_follow_n = 1;
+    leave_zero(g_drawpos_have);
+    leave_zero(g_gw_pal);
+    leave_zero(g_gw_pal_body);
+    std::memset(g_drawpos, 0, sizeof g_drawpos);
+    leave_zero(g_gtongue);
+    leave_zero(g_gblink);
+    g_hub_opening = false;
+    g_hub_opening_spawn = false;
+    g_hub_handover = false;
+    g_hub_handover_level = -1;
+    g_follow_diag = -1;
+    g_follow_fcount = 0;
+    g_own = OwnRow();
+    g_gated_now = false;
+
+    /* the Stage's teardown destroyed every body, but the ROM's per-player actor table keeps the pointers (each Player seats itself
+       there at spawn and nothing clears the slot on its way out); a solo title has none of them, and the hub's 31 ghost slots are
+       never seated by a solo spawn, so they would point at freed actors for the rest of the process */
+    for (int i = 0; i < kPortBodySlots; ++i) data_0209f394[i] = 0;
+    data_0209fc68[0] = 0;
+    SetNumPlayers(1);
+    data_0209f21c = data_0208a0e0;
+    std::fprintf(stderr, "[seamless] ghost layer reset: off, identity and own colour row forgotten; "
+                 "body words: count %d -> %d (ROM %d -> %d), input gate %d -> %d, %d stale body pointer(s) cleared\n",
+                 was_count, (int)data_0209f21c, was_rom, (int)data_0208a0e0, was_gate, data_0209fc68[0], bodies);
+    std::fflush(stderr);
+}
+
+void comms_sync_identity_text(char *out, int cap) {
+    gw_me_read();
+    std::snprintf(out, (size_t)cap, "name \"%s\" (%d byte(s)), colours %s %02x%02x%02x / %02x%02x%02x, own row %s",
+                  g_gw_me.name, g_gw_me.name_len, g_gw_me.colours ? "picked" : "none (the file's own)",
+                  g_gw_me.body[0], g_gw_me.body[1], g_gw_me.body[2], g_gw_me.shoes[0], g_gw_me.shoes[1],
+                  g_gw_me.shoes[2], g_own.have ? "held" : "none");
+}
+
 }  // namespace port

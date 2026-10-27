@@ -1011,8 +1011,10 @@ void vs_probe(int frame) {
 // lane spends a day on the wrong half.
 // ===========================================================================
 
+namespace { int g_hub_bodies = 0; }   // SEAMHUB1: the latch, out where the leave can forget it
+
 int hub_body_count() {
-    static int n = 0;
+    int &n = g_hub_bodies;
     if (party::active() || coop_world_active()) return 4;   // party / coop rooms stay 4
     if (!n) {
         n = comms_hub_arena() ? (int)kCommsMaxPlayers : (int)kPortBodySlots;   /* HUB32: world hub 32, arena VS 16 */
@@ -1765,6 +1767,13 @@ void comms_install_pump() {
                  "(src/func_0203ea5c.c:417 -> func_02042778 -> func_0201a4d0). "
                  "HOLE 1 is closed%s\n",
                  g_prev_pump ? ", chaining the pump that was already there" : "");
+}
+
+/* SEAMHUB1: the in-place leave (hal/online_join.cpp, after comms_hub_teardown). The hub's body count is latched on first ask; a
+   process that never joined has not asked. The conductor's pump and the VS carrier are not the hub's (the hub installs no transport)
+   and are left as they are; the leave refuses a process with a transport installed. */
+void comms_conductor_leave_reset() {
+    g_hub_bodies = 0;
 }
 
 }  // namespace port
