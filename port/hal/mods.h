@@ -46,8 +46,11 @@ const char *port_mods_min_game(int i);
 /* 1 when this run is multiplayer: the launcher's lobby / VS match environment
    (any of SM64DS_COMMS_ROLE/RELAY/HOST/CODE/SLOT, SM64DS_VS_MAP/MODE/PLAYERS
    non-empty, SM64DS_PARTY nonzero) or the Adventure hub (settings.json
-   AdventureGhosts, SM64DS_ADVENTURE). Mods are for single player only: in that
-   case the mod list is empty for the whole run and the match runs the plain game. */
+   AdventureGhosts, SM64DS_ADVENTURE). In that case the list keeps, for the whole
+   run, only the mods whose mod.json says "onlineCompatible": true AND that are
+   cosmetic by content (kind "files", every folder one of textures_hd/, hd_ui/,
+   sound/, palettes/, no "character" block); every other mod is off and no code
+   mod is ever in the list. */
 int port_mods_multiplayer(void);
 /* The bundle folder mods/ sits in (the folder settings.json was found in). */
 const char *port_mods_bundle(void);
