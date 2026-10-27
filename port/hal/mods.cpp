@@ -48,6 +48,7 @@
    from the other. A future fix is a mods signature (the ordered list of ids
    with each mod's version) in the save-state header, refused or warned about
    on a load that does not match. Nothing here writes or checks one yet. */
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -110,6 +111,21 @@ extern "C" int port_mods_multiplayer(void)
 }
 
 namespace {
+
+/* the latch's and the files layer's log lines (lane SEAMART1). Straight to stderr, except while the relatch at the title builds the
+   new list: then they wait in g_log_hold, and the relatch prints them only once the switch is accepted. A refused relatch prints its
+   one refusal line and nothing else, where it used to print the whole list a second time (REVSEAMMODS1 note e). */
+std::string *g_log_hold;
+void mlog(const char *fmt, ...)
+{
+    char b[2048];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(b, sizeof b, fmt, ap);
+    va_end(ap);
+    if (g_log_hold) *g_log_hold += b;
+    else fputs(b, stderr);
+}
 
 struct Mod {
     std::string id, folder, kind, game, min_game;
@@ -240,9 +256,9 @@ void add_parts(const Mod &parent, std::vector<Mod> &list, std::string &summary)
                 const char *src = have ? "player's value" : "default";
                 const std::string cur = have ? val : def;
                 if (!key[0]) continue;
-                if (nparts >= 16) { fprintf(stderr, "[mods] %s: more than 16 parts, the rest are ignored\n", parent.id.c_str()); break; }
+                if (nparts >= 16) { mlog("[mods] %s: more than 16 parts, the rest are ignored\n", parent.id.c_str()); break; }
                 if (!part_path_ok(files)) {
-                    fprintf(stderr, "[mods] %s: setting %s: part folder \"%s\" is not a plain folder inside the mod, ignored\n",
+                    mlog("[mods] %s: setting %s: part folder \"%s\" is not a plain folder inside the mod, ignored\n",
                             parent.id.c_str(), key, files);
                     continue;
                 }
@@ -254,18 +270,18 @@ void add_parts(const Mod &parent, std::vector<Mod> &list, std::string &summary)
                     on = !cur.empty() && part_path_ok(cur) && cur.find('/') == std::string::npos;
                     if (on) rel += "/" + cur;
                 } else {
-                    fprintf(stderr, "[mods] %s: setting %s: \"files\" needs a bool or choice setting, ignored\n", parent.id.c_str(), key);
+                    mlog("[mods] %s: setting %s: \"files\" needs a bool or choice setting, ignored\n", parent.id.c_str(), key);
                     continue;
                 }
                 ++nparts;
                 if (!on) {
-                    fprintf(stderr, "[mods] %s: setting %s = %s (%s): part %s is off\n", parent.id.c_str(), key,
+                    mlog("[mods] %s: setting %s = %s (%s): part %s is off\n", parent.id.c_str(), key,
                             cur.empty() ? "-" : cur.c_str(), src, rel.c_str());
                     continue;
                 }
                 const std::string dir = parent.folder + "/" + rel;
                 if (!dir_exists(dir)) {
-                    fprintf(stderr, "[mods] %s: setting %s = %s (%s): part folder %s does not exist, nothing applied\n",
+                    mlog("[mods] %s: setting %s = %s (%s): part folder %s does not exist, nothing applied\n",
                             parent.id.c_str(), key, cur.c_str(), src, rel.c_str());
                     continue;
                 }
@@ -278,7 +294,7 @@ void add_parts(const Mod &parent, std::vector<Mod> &list, std::string &summary)
                 pm.online = false;
                 list.push_back(pm);
                 summary += " + part " + rel;
-                fprintf(stderr, "[mods] %s: setting %s = %s (%s): part %s is on\n", parent.id.c_str(), key,
+                mlog("[mods] %s: setting %s = %s (%s): part %s is on\n", parent.id.c_str(), key,
                         cur.c_str(), src, rel.c_str());
             }
         }
@@ -303,7 +319,7 @@ int g_nskipped;
 
 void skip(const std::string &id, const char *why)
 {
-    fprintf(stderr, "[mods] skipped %s: %s\n", id.c_str(), why);
+    mlog("[mods] skipped %s: %s\n", id.c_str(), why);
     if (g_nskipped++) g_summary_skipped += ", ";
     g_summary_skipped += id + " (" + why + ")";
 }
@@ -420,7 +436,7 @@ void latch(void)
 
     kill = getenv("SM64DS_MODS");
     if (kill && strcmp(kill, "0") == 0) {
-        fprintf(stderr, "[mods] SM64DS_MODS=0: every mod is off for this run\n");
+        mlog("[mods] SM64DS_MODS=0: every mod is off for this run\n");
         return;
     }
     /* A multiplayer session keeps only the mods online_ok passes, in their
@@ -433,15 +449,15 @@ void latch(void)
     }
     g_bundle = bundle;
     if (have < 0) {
-        fprintf(stderr, "[mods] EnabledMods too long (over %u characters); no mods are on this run (bundle %s)\n",
+        mlog("[mods] EnabledMods too long (over %u characters); no mods are on this run (bundle %s)\n",
                 (unsigned)(sizeof arr - 1), bundle);
-        if (mp) fprintf(stderr, "[mods] multiplayer match: 0 mod(s) kept (Online Compatible): -; 0 off: -\n");
+        if (mp) mlog("[mods] multiplayer match: 0 mod(s) kept (Online Compatible): -; 0 off: -\n");
         return;
     }
     if (!have) {
         /* No EnabledMods: nothing on. Said once so a support log shows it. */
-        fprintf(stderr, "[mods] none enabled (bundle %s)\n", bundle);
-        if (mp) fprintf(stderr, "[mods] multiplayer match: 0 mod(s) kept (Online Compatible): -; 0 off: -\n");
+        mlog("[mods] none enabled (bundle %s)\n", bundle);
+        if (mp) mlog("[mods] multiplayer match: 0 mod(s) kept (Online Compatible): -; 0 off: -\n");
         return;
     }
     std::string mp_kept, mp_off;
@@ -515,7 +531,7 @@ void latch(void)
             if (!online_ok(m, g_mods, at + 1, g_mods.size(), json_copy, &why)) {
                 g_mods.erase(g_mods.begin() + (std::ptrdiff_t)at, g_mods.end());
                 if (!why.empty())
-                    fprintf(stderr, "[mods] %s: Online Compatible refused: %s\n", id.c_str(), why.c_str());
+                    mlog("[mods] %s: Online Compatible refused: %s\n", id.c_str(), why.c_str());
                 if (mp_noff++) mp_off += ", ";
                 mp_off += id;
                 continue;
@@ -527,7 +543,7 @@ void latch(void)
             bool any = has_content(folder);
             for (size_t q = at + 1; q < g_mods.size() && !any; ++q) any = has_content(g_mods[q].folder);
             if (!any)
-                fprintf(stderr, "[mods] WARNING: %s replaces nothing: it has no files/, sound/, textures_hd/ or palettes/ folder "
+                mlog("[mods] WARNING: %s replaces nothing: it has no files/, sound/, textures_hd/ or palettes/ folder "
                         "(a zip unpacked with everything inside one extra folder looks like this)\n", id.c_str());
             continue;
         }
@@ -542,14 +558,14 @@ void latch(void)
             bool any = has_content(folder);
             for (size_t q = before; q < g_mods.size() && !any; ++q) any = has_content(g_mods[q].folder);
             if (!any)
-                fprintf(stderr, "[mods] WARNING: %s replaces nothing: it has no files/, sound/, textures_hd/ or palettes/ folder "
+                mlog("[mods] WARNING: %s replaces nothing: it has no files/, sound/, textures_hd/ or palettes/ folder "
                         "(a zip unpacked with everything inside one extra folder looks like this)\n", id.c_str());
         }
     }
     if (mp)
-        fprintf(stderr, "[mods] multiplayer match: %u mod(s) kept (Online Compatible): %s; %u off: %s\n",
+        mlog("[mods] multiplayer match: %u mod(s) kept (Online Compatible): %s; %u off: %s\n",
                 mp_nkept, mp_nkept ? mp_kept.c_str() : "-", mp_noff, mp_noff ? mp_off.c_str() : "-");
-    fprintf(stderr, "[mods] %u loaded: %s | %d skipped%s%s\n", (unsigned)g_mods.size(),
+    mlog("[mods] %u loaded: %s | %d skipped%s%s\n", (unsigned)g_mods.size(),
             g_mods.empty() ? "-" : g_summary_loaded.c_str(), g_nskipped,
             g_nskipped ? ": " : "", g_summary_skipped.c_str());
     fflush(stderr);
@@ -580,7 +596,7 @@ void walk(const std::string &root, const std::string &rel, std::vector<std::stri
         if (fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
             /* a junction or symlink inside a mod folder could point anywhere
                on the disk; the mod's own files are real files and folders */
-            fprintf(stderr, "[mods] %s/%s is a link, skipped\n", root.c_str(), r.c_str());
+            mlog("[mods] %s/%s is a link, skipped\n", root.c_str(), r.c_str());
             continue;
         }
         if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
@@ -621,14 +637,14 @@ void build_overrides(void)
             if (it != loose.end()) id = it->second;
             else id = port_fs_interior_id_nocase(rels[k].c_str());
             if (!id) {
-                fprintf(stderr, "[mods] %s: files/%s is not a ROM file, ignored\n",
+                mlog("[mods] %s: files/%s is not a ROM file, ignored\n",
                         g_mods[m].id.c_str(), rels[k].c_str());
                 ++ignored;
                 continue;
             }
             std::unordered_map<unsigned, std::string>::const_iterator o = owner.find(id);
             if (o != owner.end())
-                fprintf(stderr, "[mods] files/%s is replaced by %s and by %s; %s wins (later in the list)\n",
+                mlog("[mods] files/%s is replaced by %s and by %s; %s wins (later in the list)\n",
                         rels[k].c_str(), o->second.c_str(), g_mods[m].id.c_str(), g_mods[m].id.c_str());
             if (id >= 0x8000 && !owner.count(id)) ++members;
             owner[id] = g_mods[m].id;
@@ -636,14 +652,14 @@ void build_overrides(void)
             ++used;
         }
         if (used || ignored)
-            fprintf(stderr, "[mods] %s: files/ replaces %u ROM file(s)%s\n", g_mods[m].id.c_str(), used,
+            mlog("[mods] %s: files/ replaces %u ROM file(s)%s\n", g_mods[m].id.c_str(), used,
                     ignored ? " (some ignored, see above)" : "");
         total_members += members;
         if (!warned && total_members > port_fs_member_claim_cap()) {
             /* hal/fs.cpp holds this many archive members at once; the rest
                keep the cartridge's bytes. One line, naming the mod whose files
                went over, instead of one line per member. */
-            fprintf(stderr, "[mods] WARNING: %u archive members are replaced in all, more than the %u the game can hold; "
+            mlog("[mods] WARNING: %u archive members are replaced in all, more than the %u the game can hold; "
                     "%s is the mod that went over, and its members past the limit keep the cartridge's bytes\n",
                     total_members, port_fs_member_claim_cap(), g_mods[m].id.c_str());
             warned = 1;
@@ -659,11 +675,11 @@ void build_overrides(void)
         std::unordered_map<std::string, unsigned>::const_iterator it = loose.find(lower(rom));
         if (it != loose.end()) id = it->second;
         else id = port_fs_interior_id_nocase(rom);
-        if (!id) { fprintf(stderr, "[chars] %s is not a ROM file in this dump; skin file skipped\n", rom); continue; }
+        if (!id) { mlog("[chars] %s is not a ROM file in this dump; skin file skipped\n", rom); continue; }
         g_override[id] = disk;
-        fprintf(stderr, "[chars] skin file %s serves ROM file id %u (%s)\n", disk, id, rom);
+        mlog("[chars] skin file %s serves ROM file id %u (%s)\n", disk, id, rom);
     }
-    fprintf(stderr, "[mods] files layer: %u ROM file id(s) overridden in all\n", (unsigned)g_override.size());
+    mlog("[mods] files layer: %u ROM file id(s) overridden in all\n", (unsigned)g_override.size());
     fflush(stderr);
 }
 
@@ -1039,11 +1055,14 @@ int relatch(const char *reason, const char *list_json)
     g_latched = 0;
     g_relatching = 1;
     g_list_override = list_json;
+    std::string held_log;          /* the new list's lines: printed below only if the switch is accepted (once, not twice) */
+    g_log_hold = &held_log;
     latch();
     g_list_override = 0;
     g_override.clear();
     g_override_built = 0;
     build_overrides();
+    g_log_hold = 0;
     g_relatching = 0;
 
     for (size_t i = 0; i < old_mods.size() && !why[0]; ++i)
@@ -1094,6 +1113,7 @@ int relatch(const char *reason, const char *list_json)
         fflush(stderr);
         return 0;
     }
+    fputs(held_log.c_str(), stderr);
 
     const std::string snd_old = ids_with(old_mods, "/sound"), snd_new = ids_with(g_mods, "/sound");
     g_said.clear();
