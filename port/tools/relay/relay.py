@@ -966,6 +966,9 @@ class SessionV2(object):
         self.referee = None     # arena sessions only (referee.Referee)
         self.stars = {}         # hub only: seat -> star total from its presence
         self.names = {}         # hub only: seat -> name from its identity frame
+        # SEAMCLEAN1, DECISION (review item 14): the names a console caches from the roster ("names=") keep a leaver's name until
+        # the seat is taken again. The relay drops its own entry when the seat goes (see the pop below); the cache is the
+        # consoles', so this is left and noted here for whoever next touches the roster frame.
         self.race = None        # hub only: the RaceTally of the live race
         self.star_warned = set()  # seats already logged for an impossible star count
         self.star_rises = {}    # seat -> [(time, rise)] of accepted rises, newest last

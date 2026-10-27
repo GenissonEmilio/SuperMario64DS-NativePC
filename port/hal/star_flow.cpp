@@ -2511,6 +2511,10 @@ static const char *vs_end_refusal(void)
 {
     static char why[200];
     if (g_vs_end_ip == 1) return "an in-place end is already under way";
+    /* SEAMCLEAN1, DECISION (review item 20): LEFT, AND DOCUMENTED. A lockstep (non-arena) VS match has no teardown in
+       hal/comms_loopback.cpp, so its end still closes the game (exit 0) and a lockstep hand-off is refused (exit 8): the old
+       two-process path, one window at a time. The arena is the lobby's default netmode and is the in-place path; lockstep stays
+       for developer pairs. A teardown would be a lane of its own (the carrier owns a thread, a socket and the frame ring). */
     if (port::comms_transport()) return "the lockstep VS carrier (hal/comms_loopback.cpp) has no teardown yet";
     if (const char *sc = std::getenv("SM64DS_SCENE"))
         if (*sc) return "a scene-booted process";
