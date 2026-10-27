@@ -428,7 +428,8 @@ void read_settings()
     g_lost_drill_every = env_int("SM64DS_PRESENT_LOST_EVERY", 0);
     g_lost_drill_keepdev = env_int("SM64DS_PRESENT_LOST_KEEPDEV", 0);
 #endif
-    if (g_inflight_max < 0) g_inflight_max = 0;
+    /* SEAMCLEAN1: a negative SM64DS_PRESENT_INFLIGHT is not a limit of "none" (that is 0 alone): it reads as the default */
+    if (g_inflight_max < 0) g_inflight_max = 2;
     if (g_inflight_max > FENCE_RING - 1) g_inflight_max = FENCE_RING - 1;
 
     LARGE_INTEGER f;
