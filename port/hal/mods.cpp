@@ -963,10 +963,16 @@ const char *g_force_busy;
 int held_mask(void) { return RD_BOOT | RD_TITLE | (g_after_level ? RD_LATER : 0); }
 
 /* ARCHIVE MEMBERS (ids >= 0x8000, lane SEAMART1): a card block read inside a NARC names the NARC's own FAT id, so a member override is
-   held when the archive it lives in was read at boot or while the title is live: what the ROM decoded out of c2d (2D art), cee / cef
-   (the text and font) at boot stays in its heaps past the title's UnloadArchives. arc0 is the exception: its boot reads are the
-   header and FAT, and Stage::InitResources (src/game/stages/d_s_mb.cpp, LoadArchive(0)) reads its members again off the card on every
-   level boot, so a member override there reaches the next level whole (REVSEAMMODS1's arc0 rows: on -> off and off -> on == fresh).
+   held when the archive it lives in was read at boot or while the title is live (or, after a level, in a level). The level boot,
+   dScStage_c::InitResources (src/_ZN10dScStage_c13InitResourcesEv.cpp:255-263), remounts c2d and the language text archive
+   (LoadTextNarcs: archive 6 = c2d, then one of 8..12 = cee cef ceg cei ces by language), arc0 (LoadArchive(0)), ar1 on level 1
+   and the VS archive of its level, after the title's UnloadArchives dropped every mount; LoadArchive mounts only (header and FAT)
+   and members are read on demand. So the mount is not
+   what holds a member: what the boot DECODED out of an archive does. c2d (2D art) and cee (the text and font) are decoded at boot
+   (about 133 and 94 card blocks) into heaps that outlive the title, so their members are held; cef shows one boot block and is
+   refused the same way (an over-refusal: an English game decodes nothing from it). arc0 is the exception: its boot reads are its
+   header and FAT only, and the next level boot reads its members off the card again, so a member override there reaches that level
+   whole (REVSEAMMODS1's arc0 rows: on -> off and off -> on == fresh).
    port_archive_map is the ROM's mount table (index = LoadArchive's idx; [base, end) member ids; the NARC's path). */
 struct port_arc_entry { unsigned short base, end; const char *narc; };
 extern "C" struct port_arc_entry port_archive_map[13];
