@@ -171,6 +171,10 @@ int variant_for(int top, int elem)
     if (elem == 3) return V_DOODLE;                 /* FACE3: the free-draw state after the pencil (reached only from the drawing page): same page family, its own layout in build_doodle */
     if (elem == 2 && g_last == V_DOODLE) return V_DOODLE;   /* FACE2: the ROM's drawing mode proper (elem 2) is the same page as the face tracing (elem 1) */
     if (elem == 1) return ((top == 0 || top == 1) && g_last == V_TOY) ? V_TOY : V_DOODLE;     /* FACE1: the hand-over frames keep our picture */
+    /* TITLEUI1: element machine 6 is the face swap's change tick (0 / 6, between top-state 6 and 5, src/unnamed/ov007/func_ov007_020b166c.c reads it):
+       still the main page. It used to fall through to the file pages for that one tick, which drew the ROM's whitened lower screen whole (a white frame)
+       and made the main family start over as a return (a black veil and the planks rising again): the flash of the swap. */
+    if (elem == 6 && (g_last == V_MAIN || g_last == V_INTRO)) return g_last;
     if (elem == 0) {
         if (top == 0) return V_MAIN;
         if (top == 8) return V_OPTIONS;
