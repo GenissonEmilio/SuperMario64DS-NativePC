@@ -921,10 +921,61 @@ extern "C" int port_mods_count(void);
 extern "C" int port_mods_multiplayer(void);
 extern "C" int (*port_vs_lobby_mods_hook)(void);
 extern "C" int (*port_vs_lobby_mods_hook)(void) = 0;
+
+/* SEAMVS1 (run after093; the one-process plan's M5a): THE LOBBY'S MODS SWITCH IN PLACE. The mods layer can now be latched again at the
+   title (hal/mods.cpp port_mods_relatch_at_title, SEAMMODS1), so the relaunch above is the refusal path only. The title asks for the
+   lobby with StartSceneFade(6, ...) (src/game/stages/d_s_dsmt.cpp, the file select's VS button) and stays the live scene through its
+   fade; on that frame (port_vs_lobby_title_frame, called every title frame by hal/handoff_poll.cpp's frame hook) the list is latched
+   again under the multiplayer rule, which hal/mods.cpp port_mods_multiplayer answers from the VS names: SM64DS_VS_MODE is put in the
+   CRT environment for that one call (the lobby is a VS session; nothing else reads that name in place) and taken out again. The
+   Online Compatible mods stay on, every other mod goes off, and the lobby scene spawns in this process. A refusal (a code mod, a held
+   file, an hd_ui / sound / character change) changes nothing and the spawn below takes the relaunch, as before, with the
+   "[seamless] in place refused" line. Back at the title from the lobby, the offline list is latched again. */
+extern "C" int port_mods_relatch_at_title(const char *reason);   /* hal/mods.cpp */
+extern "C" int port_scene_live_id(void);                          /* hal/scene_boot.cpp */
+extern "C" unsigned short data_02092664;                          /* Scene::SetSceneToSpawn's pending id (0x187 = nothing) */
+static int g_lobby_mods;             /* 0 nothing done, 1 latched for the lobby at the title, 2 refused there */
+static int g_lobby_entered;          /* the lobby spawned in this process under the multiplayer list */
+extern "C" void port_vs_lobby_title_frame(void)
+{
+    if (port_scene_live_id() != 1) return;
+    if (data_02092664 == 6) {
+        if (g_lobby_mods || port_mods_count() <= 0 || port_mods_multiplayer()) return;
+        _putenv_s("SM64DS_VS_MODE", "1");
+        const int ok = port_mods_relatch_at_title("entering the VS lobby (the multiplayer rule)");
+        _putenv_s("SM64DS_VS_MODE", "");
+        g_lobby_mods = ok ? 1 : 2;
+        fprintf(stderr, "[seamless] the title asked for the VS lobby with %d mod(s) on: %s\n", port_mods_count(),
+                ok ? "latched again in place under the multiplayer rule (Online Compatible mods kept), the lobby spawns in this process"
+                   : "the mods layer refused the multiplayer list; the lobby relaunch takes over");
+        fflush(stderr);
+        return;
+    }
+    if (g_lobby_entered && data_02092664 == 0x187) {
+        g_lobby_entered = 0;
+        g_lobby_mods = 0;
+        if (!port_mods_relatch_at_title("back at the title from the VS lobby"))
+            fprintf(stderr, "[seamless] the offline mod list was refused at the title after the VS lobby; the multiplayer list stays\n");
+        fflush(stderr);
+    }
+}
+
 extern "C" void *port_vs_spawn(void)
 {
-    if (port_vs_lobby_mods_hook && port_mods_count() > 0 && !port_mods_multiplayer())
+    if (g_lobby_mods == 1) {
+        g_lobby_mods = 0;
+        g_lobby_entered = 1;
+        fprintf(stderr, "[seamless] VS lobby (scene 6) spawned in this process with %d mod(s) on under the multiplayer rule\n",
+                port_mods_count());
+        fflush(stderr);
+    } else if (port_vs_lobby_mods_hook && port_mods_count() > 0 && !port_mods_multiplayer() && !g_lobby_entered) {
+        fprintf(stderr, "[seamless] in place refused: %s; restarting\n",
+                g_lobby_mods == 2 ? "the mods layer refused the switch to the multiplayer list"
+                                  : "the VS lobby was not asked for from a live title (a scene-booted process)");
+        fflush(stderr);
+        g_lobby_mods = 0;
         port_vs_lobby_mods_hook();
+    }
     return dScEntry_c_classInit_ENTRY();
 }
 extern "C" void *port_vs_entry_spawn(void) { return dEntObj_c_classInit(); }
