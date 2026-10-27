@@ -3848,6 +3848,10 @@ extern int data_020a0e5a[];           /* the split spelling of .pressed */
 
 /* SETMENU1: where the pointer is over the picture, in picture pixels (the settings page's mouse); 0 when the window is not focused or the
    pointer is off the picture. SM64DS_SETPAGE_SCRIPT stands in for it on a scripted run (settings_page_scripted). */
+/* SEAMCLEAN1: 1 when this run has no window to read a mouse for (a selftest or a scene run without a window), where
+   hal_window_focused() fails open; the logo egg's click poll takes its real mouse only when this is 0. */
+extern "C" int hal_window_headless(void) { return g_headless ? 1 : 0; }
+
 extern "C" int hal_window_cursor_fb(int *fx, int *fy)
 {
     if (g_headless || !GetCursorPos_ || !ScreenToClient_ || !hal_window_focused()) return 0;

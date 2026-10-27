@@ -2601,6 +2601,7 @@ static void title_pad_keys(uint16_t *pressed, int host_back, int inject);
    mouse button and never gets here; neither do keys. */
 extern "C" int port_touch_inject_peek(int *cx, int *cy);              /* hal/sub_screen.cpp */
 extern "C" int hal_window_focused(void);                             /* hal/sub_screen.cpp */
+extern "C" int hal_window_headless(void);                            /* hal/sub_screen.cpp (SEAMCLEAN1) */
 extern "C" int hal_present_client_to_fb(int cx, int cy, int *fx, int *fy);
 static void egg_click_poll()
 {
@@ -2611,6 +2612,9 @@ static void egg_click_poll()
         scripted = 1;
     } else {
         int px = 0, py = 0;
+        /* SEAMCLEAN1: no window, no mouse (hal_window_focused fails open there, so a real click in whatever window was in front
+           would have been read by a windowless run) */
+        if (hal_window_headless()) { was_down = 0; return; }
         const int raw = egg_mouse_read(&px, &py);
         const int foc = hal_window_focused();
         if (!raw)          hold_ok = 0;
