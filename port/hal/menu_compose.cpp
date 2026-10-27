@@ -1983,12 +1983,17 @@ int  hal_menu_interp_ok(void)
    (hal_menu_relift, hal_sub_screen). What cannot: a held-frame piece (snap, snap_save),
    the fallback frame. (An edge-column fill, xfill, re-reads the picture's edge and re-lifts like any other.) Only the POST_FADE stage (every recipe that takes 3D pixels draws there), and only with a picture piece to
    re-lift. SM64DS_MENU_INTERP=3 is MENUFOLD1's gate (no relift), 0 snaps everything. Draw side only. */
-/* why not (0 = ok): 1 live/mode/fallback, 2 stage */
+/* why not (0 = ok): 1 live/mode/fallback, 2 stage or the drawing page's held frame.
+   DOODLEFIX1: the title's drawing page (variant MENU_TITLE_V_DOODLE) keeps its held frame (snap_save) on every live tick and snaps:
+   the ROM draws the page once per tick, and an in-between re-lifted its 3D layer (the strokes and buttons) from the replayed 3D, whose
+   blend of two ticks carries the head's colours along the stroke edges. The face press page (V_TOY) also saves a held frame during its
+   first 94 ticks, but its squash and jump keeps its in-betweens, so the gate names the drawing page and not snap_save alone. */
 int  hal_menu_relift_why(void)
 {
     if (!g_dd.live || hal_menu_interp_mode() != 1 || g_dd.fallback) return 1;
     const MenuLayout &L = g_dd.L;
     if (L.stage != MENU_STAGE_POST_FADE) return 2;
+    if (L.snap_save && L.recipe && L.recipe->build == menu_title_build && L.variant == MENU_TITLE_V_DOODLE) return 2;
     return 0;
 }
 int  hal_menu_relift_ok(void) { return hal_menu_relift_why() == 0; }
