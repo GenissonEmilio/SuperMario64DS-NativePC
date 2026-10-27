@@ -39,6 +39,7 @@ void port_vs_lobby_title_frame(void);        /* hal/scene_vs_menu.cpp: the VS lo
 void _ZN8dScene_c14StartSceneFadeEjjt(unsigned id, unsigned param, unsigned short color);
 extern int port_vs_force_nobody;             /* hal/vs_arena.cpp: the "seat has no body" drill (dev) */
 int port_vs_matches_ended_in_place(void);    /* hal/star_flow.cpp */
+extern int port_front_end_in_place;          /* hal/level_change.cpp (SEAMQUIT1): a title reached by an in-place quit */
 extern char *data_ov007_0210342c;            /* dScDSMT_c's scene global (hal/title_entry.cpp reads it the same way) */
 void func_ov007_020aec94(int choice);        /* src/func_ov007_020aec94.c: the title's own "the player chose X" */
 void func_ov007_020b6134(int slot);          /* src/func_ov007_020b6134.cpp: the file select's A / B / C handler */
@@ -407,13 +408,14 @@ void dev_frame(unsigned title_frame)
     /* SM64DS_VS_AFTER_FILE=<0..2>: at a title reached by a VS match that ended in place, walk it the way hal/title_entry.cpp's
        port_title_skip_tick walks the boot title for SM64DS_BOOT_FILE (the touch on the title screen, the ROM's own menu choice 9, then
        the file's own button handler), so the R7 rows can pick a file after the match with no pad timing. The same after an accepted
-       "adventure" hand-off that leaves the game at the title (the player's own file pick in a launcher-started online game). */
+       "adventure" hand-off that leaves the game at the title (the player's own file pick in a launcher-started online game), and at a
+       title reached by an in-place quit (the reference rows: an offline quit's title, then the same file). */
     static int af = -2, af_step = 0;
     if (af == -2) {
         const char *e = std::getenv("SM64DS_VS_AFTER_FILE");
         af = e && e[0] >= '0' && e[0] <= '2' && !e[1] ? e[0] - '0' : -1;
     }
-    if (af >= 0 && af_step < 3 && (port_vs_matches_ended_in_place() > 0 || g_accepted) && data_ov007_0210342c) {
+    if (af >= 0 && af_step < 3 && (port_vs_matches_ended_in_place() > 0 || g_accepted || port_front_end_in_place) && data_ov007_0210342c) {
         char *g = data_ov007_0210342c;
         char *sp = *(char **)(g + 8);
         char *ep = *(char **)(g + 4);
