@@ -10,6 +10,7 @@
 
 #include "ntr/backup.h"
 #include "host_settings.h"
+#include "comms_hub.h"   /* SEAMHUB1: the session record and the teardown */
 
 int out_volume_pct(void);   /* hal/sdat/out_win.cpp: the master volume this process plays at right now (0..100) */
 
@@ -271,18 +272,21 @@ void online_join_clear_env() {
    and every online session name the launcher's own start sets (its AlwaysClear and lobby names) goes, so the restart reads the player's own
    settings.json and mods like any offline boot. The volume is handed over as this process plays it now, the way apply_plan does. A solo process
    holds none of these names: nothing is printed and nothing changes for it. */
+/* The launcher's own online session names (its AlwaysClear and lobby names). SEAMHUB1 moved the list out of
+   port_online_quit_offline_env so the in-place leave clears exactly the names the restart clears. */
+static const char *const k_session_env[] = {
+    "SM64DS_COMMS_HOST", "SM64DS_COMMS_ROLE", "SM64DS_COMMS_SLOT", "SM64DS_COMMS_PORT", "SM64DS_COMMS_INPUT_DELAY",
+    "SM64DS_HUB_PORT", "SM64DS_HUB_DELAY_MS", "SM64DS_PARTY", "SM64DS_PARTY_SHARE_STARS", "SM64DS_NETMODE",
+    "SM64DS_COOP", "SM64DS_COOP_HOST", "SM64DS_COOP_SAVE", "SM64DS_COOP_SAVE_NAME", "SM64DS_COOP_TP",
+    "SM64DS_ROOM_COLLISION", "SM64DS_ROOM_INTERACT", "SM64DS_ROOM_DAMAGE", "SM64DS_ROOM_TP", "SM64DS_ROOM_STARSHARE",
+    "SM64DS_VS_PLAYERS", "SM64DS_VS_NAMES", "SM64DS_VS_COLORS", "SM64DS_VS_NETMODE", "SM64DS_SESSION_DIGEST",
+    "SM64DS_SKIP_MENU",
+    /* JOINWIN2: the launcher's VS child also carries the arena and its star target (hal/comms_hub.cpp and hal/comms_loopback.cpp read
+       both); a VS_MAP left set makes the restart a VS boot instead of the title */
+    "SM64DS_VS_MAP", "SM64DS_VS_STAR_TARGET" };
+
 extern "C" int port_online_quit_offline_env(void)
 {
-    static const char *const k_session_env[] = {
-        "SM64DS_COMMS_HOST", "SM64DS_COMMS_ROLE", "SM64DS_COMMS_SLOT", "SM64DS_COMMS_PORT", "SM64DS_COMMS_INPUT_DELAY",
-        "SM64DS_HUB_PORT", "SM64DS_HUB_DELAY_MS", "SM64DS_PARTY", "SM64DS_PARTY_SHARE_STARS", "SM64DS_NETMODE",
-        "SM64DS_COOP", "SM64DS_COOP_HOST", "SM64DS_COOP_SAVE", "SM64DS_COOP_SAVE_NAME", "SM64DS_COOP_TP",
-        "SM64DS_ROOM_COLLISION", "SM64DS_ROOM_INTERACT", "SM64DS_ROOM_DAMAGE", "SM64DS_ROOM_TP", "SM64DS_ROOM_STARSHARE",
-        "SM64DS_VS_PLAYERS", "SM64DS_VS_NAMES", "SM64DS_VS_COLORS", "SM64DS_VS_NETMODE", "SM64DS_SESSION_DIGEST",
-        "SM64DS_SKIP_MENU",
-        /* JOINWIN2: the launcher's VS child also carries the arena and its star target (hal/comms_hub.cpp and hal/comms_loopback.cpp read
-           both); a VS_MAP left set makes the restart a VS boot instead of the title */
-        "SM64DS_VS_MAP", "SM64DS_VS_STAR_TARGET" };
     struct List { const char *const *names; size_t count; };
     const List lists[2] = { { k_join_env, sizeof k_join_env / sizeof *k_join_env },
                             { k_session_env, sizeof k_session_env / sizeof *k_session_env } };
@@ -315,6 +319,194 @@ extern "C" int port_online_quit_offline_env(void)
     std::fflush(stderr);
     return n;
 }
+
+/* ==== SEAMHUB1: LEAVING AN ONLINE WORLD IN PLACE (run after093; the one-process plan's M4a) ====================================
+   Save and Quit (or a pause quit row) out of an Adventure Online world went back to the solo title by starting the game again
+   (port_online_quit_offline_env + the front door): the hub, the mod rule, the online save and the player's online name and colours
+   are all chosen when a process starts. SEAMQUIT1 made the offline quit an in-place scene change, the cartridge's own; this does the
+   same for the online world, in two halves.
+
+   AT THE QUIT (tests/walk_window.cpp port_front_end_quit_poll asks port_online_leave_refusal, then calls port_online_leave_begin): the
+   save is already written (the save menu writes before it asks for scene 1), so the save medium goes back to the single player save
+   at once (ntr::backup::select_online, NAME1's run-time switch) and the title the ROM builds next reads its files from it. The quit
+   poll then leaves the scene-1 request in place, as for an offline quit, and the ROM's fade and the level-to-scene crossing take the
+   game to the title. The hub keeps running through the fade, so the ghosts stay drawn until the Stage and every body are gone.
+
+   AT THE TITLE (the first game frame with the title live; port_sdat_frame_hook, one call per game frame in every loop, chained):
+     1. the hub is torn down (comms_hub_teardown: the I/O thread stopped and joined, the socket closed, every seat and queue emptied,
+        the install latch forgotten); the ghost layer, the hub body count and presence go back to a process that never joined
+        (comms_sync_leave_reset, comms_conductor_leave_reset, hub_presence_leave_reset), with the ROM's body count and input gate
+        words put back to the solo values;
+     2. the session record is cleared for good (hal/comms_hub.h), and every online name this process holds goes from BOTH copies of the
+        environment (the CRT's, which getenv reads, through _putenv_s; the Win32 block a restart would inherit): the same list the
+        restart clears (k_join_env + k_session_env). The Adventure flag's env latch is read again (host_setting_adventure_env_reread),
+        so the multiplayer mod rule and adventure_ghost_mode() answer as a solo boot does;
+     3. the mods are latched again to the player's offline list (hal/mods.cpp port_mods_relatch_after_level, which also counts the
+        files a level read as held: SEAMMODS1 note c);
+     4. one line says what is now in effect: the save medium, the identity a fresh read gives, the lobby colours, the Loves Me
+        setting, the Adventure flag and the mod rule.
+   ANYTHING THAT CANNOT BE DONE IN PLACE TAKES THE RESTART, AS BEFORE, saying why in one line ("[seamless] in place refused: <why>;
+   restarting"): at the quit a VS / arena / direct-carrier / party / coop session, the lobby colours (read once by hal/fs_mods.cpp), a
+   scene-booted process or a loaded code mod; at the title a hub thread that does not stop or a relatch the mods layer refuses (a code
+   mod or a held file on the offline list, a change in hd_ui / sound / character mods). The title-time restart goes through
+   port_online_leave_restart_hook (tests/walk_window.cpp: the front door, the hand-off wait, the process ends). The join itself still
+   restarts (M4b). */
+}  // namespace port
+
+namespace ntr { namespace backup { void select_online(int on); bool online_selected(); } }
+extern "C" {
+extern void (*port_sdat_frame_hook)(void);                    /* hal/sdat/consumer.cpp: one call per game frame */
+int port_scene_live_id(void);                                 /* hal/scene_boot.cpp: 1 = the title is the live scene */
+int port_mods_relatch_after_level(const char *reason);        /* hal/mods.cpp */
+int port_mods_multiplayer(void);
+int port_mods_count(void);
+const char *port_mods_id(int i);
+const char *port_mods_kind(int i);
+void host_setting_adventure_env_reread(void);                 /* hal/host_settings.cpp */
+int host_setting_lovesme_character(void);
+int host_setting_voice_enabled(void);
+void port_join_settings_rearm(void);                          /* hal/menu_join_plate.cpp */
+int (*port_online_leave_restart_hook)(void) = 0;              /* tests/walk_window.cpp seats it */
+}
+
+namespace port {
+struct CommsTransport;
+const CommsTransport *comms_transport();   /* hal/comms_seam.h: the DS session carrier, null on the hub */
+namespace {
+int g_leave = 0;                      /* 0 none, 1 asked at the quit, 2 done at the title */
+int g_leave_frame = 0;
+void (*g_leave_prev_hook)(void) = 0;
+
+/* a name set in either copy of the environment */
+bool env_any(const char *n)
+{
+    const char *c = std::getenv(n);
+    if (c && *c) return true;
+    char v[4];
+    return GetEnvironmentVariableA(n, v, sizeof v) > 0;
+}
+
+void leave_restart(const char *why)
+{
+    std::fprintf(stderr, "[seamless] in place refused: %s; restarting\n", why);
+    std::fflush(stderr);
+    if (!port_online_leave_restart_hook || !port_online_leave_restart_hook()) {
+        std::fprintf(stderr, "[seamless] the restart could not be started (win32 %lu); this process stays on the title\n",
+                     (unsigned long)GetLastError());
+        std::fflush(stderr);
+    }
+}
+
+void leave_at_title()
+{
+    g_leave = 2;
+    port_sdat_frame_hook = g_leave_prev_hook;
+    std::fprintf(stderr, "[seamless] the title is up (quit at f%d): leaving the online session in this process\n", g_leave_frame);
+    if (!comms_hub_teardown("leaving the online world in place")) {
+        leave_restart("the hub's I/O thread did not stop");
+        return;
+    }
+    comms_sync_leave_reset();
+    comms_conductor_leave_reset();
+    hub_presence_leave_reset();
+    const int fields = online_session_clear();
+    std::string cleared;
+    int names = 0;
+    for (int pass = 0; pass < 2; ++pass) {
+        const char *const *l = pass ? k_session_env : k_join_env;
+        const size_t n = pass ? sizeof k_session_env / sizeof *k_session_env : sizeof k_join_env / sizeof *k_join_env;
+        for (size_t i = 0; i < n; ++i) {
+            if (!env_any(l[i])) continue;
+            SetEnvironmentVariableA(l[i], nullptr);
+            _putenv_s(l[i], "");
+            if (names++) cleared += ' ';
+            cleared += l[i] + 7;
+        }
+    }
+    host_setting_adventure_env_reread();
+    std::fprintf(stderr, "[seamless] session record cleared (%d field(s)); %d online name(s) cleared from both copies of the "
+                 "environment: %s\n", fields, names, names ? cleared.c_str() : "-");
+    std::fflush(stderr);
+    if (!port_mods_relatch_after_level("leaving the online session")) {
+        leave_restart("the mods layer refused the switch back to the offline list");
+        return;
+    }
+    char id[200];
+    comms_sync_identity_text(id, sizeof id);
+    const int lm = host_setting_lovesme_character();
+    std::fprintf(stderr, "[seamless] now solo: save medium %s; identity %s; lobby colours %s; Loves Me %d (%s); adventure %d; "
+                 "multiplayer mod rule %d; %d mod(s) on; hub %s\n",
+                 ntr::backup::online_selected() ? "THE ONLINE SAVE" : "the single player save", id,
+                 env_any("SM64DS_VS_COLORS") ? "SET" : "none (SM64DS_VS_COLORS unset, as a solo boot)",
+                 lm, lm ? "settings.json, read the same as a solo boot" : "Yoshi, the ROM", adventure_ghost_mode() ? 1 : 0,
+                 port_mods_multiplayer(), port_mods_count(), comms_hub_active() ? "STILL ACTIVE" : "off");
+    std::fflush(stderr);
+    port_join_settings_rearm();
+}
+
+void leave_frame()
+{
+    if (g_leave_prev_hook) g_leave_prev_hook();
+    if (g_leave == 1 && port_scene_live_id() == 1) leave_at_title();
+}
+}  // namespace
+}  // namespace port
+
+/* 0 when this process is not an online session at all (the caller keeps its own answer); else 1, with *why 0 when the quit may
+   leave in place, or the reason it may not. */
+extern "C" int port_online_leave_refusal(const char **why)
+{
+    using namespace port;
+    static char buf[200];
+    *why = 0;
+    const bool online = comms_hub_active() || online_session_get(kSessAdventure) || online_session_get(kSessRelay) ||
+                        online_session_get(kSessHubPort);
+    if (!online) return 0;
+    static const char *const k_carrier[] = { "SM64DS_VS_MAP", "SM64DS_VS_PLAYERS", "SM64DS_VS_NETMODE", "SM64DS_COMMS_ROLE",
+        "SM64DS_COMMS_HOST", "SM64DS_COMMS_SLOT", "SM64DS_NETMODE", "SM64DS_PARTY", "SM64DS_COOP", "SM64DS_COOP_HOST" };
+    for (const char *n : k_carrier)
+        if (env_any(n)) {
+            std::snprintf(buf, sizeof buf, "a VS, direct-carrier, party or coop session (%s is set)", n);
+            *why = buf;
+            return 1;
+        }
+    if (comms_hub_arena()) { *why = "a VS arena session"; return 1; }
+    if (comms_hub_active() && comms_hub_room_kind() != kHubRoomWorld) { *why = "a party or coop room"; return 1; }
+    if (comms_transport()) { *why = "a DS session transport is installed"; return 1; }
+    if (env_any("SM64DS_VS_COLORS")) { *why = "the lobby colours were read once at boot (SM64DS_VS_COLORS)"; return 1; }
+    if (env_any("SM64DS_SCENE")) { *why = "a scene-booted process"; return 1; }
+    for (int i = 0; i < port_mods_count(); ++i) {
+        const char *k = port_mods_kind(i);
+        if (k && !std::strcmp(k, "code")) {
+            std::snprintf(buf, sizeof buf, "a code mod is loaded (%s) and a plugin cannot be unloaded", port_mods_id(i));
+            *why = buf;
+            return 1;
+        }
+    }
+    {   /* voice chat keeps its own device and thread (hal/voice_chat.cpp); this leave does not tear them down */
+        const char *va = online_session_get(kSessVoiceAllowed);
+        if (host_setting_voice_enabled() && !(va && !std::strcmp(va, "0"))) { *why = "voice chat is on for this session"; return 1; }
+    }
+    if (!port_online_leave_restart_hook) { *why = "this build has no restart for a refusal at the title"; return 1; }
+    if (g_leave) { *why = "a leave is already under way"; return 1; }
+    return 1;
+}
+
+extern "C" void port_online_leave_begin(int frame)
+{
+    using namespace port;
+    g_leave = 1;
+    g_leave_frame = frame;
+    ntr::backup::select_online(0);
+    comms_hub_reports_off();
+    g_leave_prev_hook = port_sdat_frame_hook;
+    port_sdat_frame_hook = leave_frame;
+    std::fprintf(stderr, "[seamless] f%d leaving the online world in this process: the hub stays up through the fade, the title "
+                 "tears it down\n", frame);
+    std::fflush(stderr);
+}
+
+namespace port {
 
 bool online_join_begin(int file, const char *nick) {
     if (file < 0 || file > 2) file = 0;

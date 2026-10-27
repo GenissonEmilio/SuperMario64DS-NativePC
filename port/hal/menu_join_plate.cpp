@@ -235,9 +235,16 @@ extern "C" int port_join_plate_fast(void)
     return (P.frames & 3u) < (unsigned)kFastKeep;
 }
 
+static int g_settings_done;   /* SEAMHUB1: once per session, re-armed by the in-place leave */
+
+/* SEAMHUB1: an online world left in place (hal/online_join.cpp) is a new solo session in this process: the next level prints the
+   SETTINGS line again (tests/walk_window.cpp, when the quit poll sees a level handed back). */
+extern "C" void port_join_settings_rearm(void) { g_settings_done = 0; }
+extern "C" int port_join_settings_armed(void) { return !g_settings_done; }
+
 extern "C" void port_join_settings_dump(int cw, int ch, int fullscreen, int maximised, int hand_sized)
 {
-    static int done;
+    int &done = g_settings_done;
     if (done) return;
     done = 1;
     char winbuf[32];

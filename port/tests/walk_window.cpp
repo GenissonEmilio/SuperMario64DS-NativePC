@@ -6834,6 +6834,26 @@ static const char *port_quit_in_place_refusal(void)
     return 0;
 }
 
+/* SEAMHUB1: the online world's in-place leave (hal/online_join.cpp). The quit poll asks it before restarting an online session; a
+   leave the title then refuses (the hub thread would not stop, the mods layer refused the offline list) restarts here, the way the
+   course restart of starsel_finish_hook does: the front door, the hand-off wait, and this process ends. */
+extern "C" int port_online_leave_refusal(const char **why);
+extern "C" void port_online_leave_begin(int frame);
+extern "C" int (*port_online_leave_restart_hook)(void);
+extern "C" int port_join_settings_armed(void);   /* hal/menu_join_plate.cpp */
+static void join_settings_dump_once(void);
+static int port_online_leave_restart(void)
+{
+    port_online_quit_offline_env();
+    if (!port_menu_relaunch(-1, -1)) return 0;
+    fprintf(stderr, "[quit] started the game again at its front door (the title), this process is quitting\n");
+    fflush(stderr);
+    port_handoff_wait();
+    ExitProcess(0);
+    return 1;
+}
+static const int port_online_leave_restart_seated = (port_online_leave_restart_hook = port_online_leave_restart, 1);
+
 static int port_front_end_quit_poll(int frame)
 {
     static int seen = -1;       /* the frame the request first appeared */
@@ -6846,6 +6866,7 @@ static int port_front_end_quit_poll(int frame)
         fired = 0;
         seen = -1;
         fprintf(stderr, "[quit] f%d a level was handed back after the in-place quit: the quit rows are armed again\n", frame);
+        if (port_join_settings_armed()) join_settings_dump_once();   /* SEAMHUB1: after an online leave, this level is a new solo session */
     }
     if (fired) return 1;
 #ifndef PORT_ROM_CLEAN
@@ -6867,7 +6888,16 @@ static int port_front_end_quit_poll(int frame)
                 "menu's quit rows. The save, if the row saves, is already "
                 "written.\n", frame);
         if (const char *why = port_quit_in_place_refusal()) {
-            fprintf(stderr, "[seamless] in place refused: %s; restarting\n", why);
+            /* SEAMHUB1: an online world may be left in place too; it takes the same scene change, and the title tears the hub down */
+            const char *lwhy = 0;
+            if (port_online_leave_refusal(&lwhy) && !lwhy) {
+                port_online_leave_begin(frame);
+                port_front_end_in_place = 1;
+                fprintf(stderr, "[quit] f%d returning to the title in this process (the ROM's own scene change), leaving the online "
+                        "session\n", frame);
+                return 0;
+            }
+            fprintf(stderr, "[seamless] in place refused: %s; restarting\n", lwhy ? lwhy : why);
         } else {
             port_front_end_in_place = 1;
             fprintf(stderr, "[quit] f%d returning to the title in this process (the ROM's own scene change)\n", frame);

@@ -895,7 +895,14 @@ void census_note(unsigned id)
 
 struct NoteSet { NoteSet() { port_nitrofs_census_hook = census_note; } } g_note_set;
 
-bool held_at_title(unsigned id) { return id < FAT_IDS && (g_read_phase[id] & (RD_BOOT | RD_TITLE)) != 0; }
+/* SEAMHUB1 (SEAMMODS1 note c): a relatch at the title AFTER A LEVEL (the in-place leave of an online world) cannot tell which of the
+   files a level read the game still keeps across the return to the title, so on that call every one of them counts as held. */
+int g_after_level;
+
+bool held_at_title(unsigned id)
+{
+    return id < FAT_IDS && (g_read_phase[id] & (RD_BOOT | RD_TITLE | (g_after_level ? RD_LATER : 0))) != 0;
+}
 
 /* the ids of the mods in l that ship folder sub (a part counts as its own entry), joined in order */
 std::string ids_with(const std::vector<Mod> &l, const char *sub)
@@ -991,7 +998,8 @@ int relatch(const char *reason, const char *list_json)
             if (held_at_title(it->first)) {
                 const char *cp = port_fs_catalog_path(it->first);
                 snprintf(why, sizeof why, "files/ changes file id %u (%s), which the game read %s and still holds", it->first,
-                         cp ? cp : "an archive member", (g_read_phase[it->first] & RD_BOOT) ? "at boot" : "at the title");
+                         cp ? cp : "an archive member", (g_read_phase[it->first] & RD_BOOT) ? "at boot"
+                         : (g_read_phase[it->first] & RD_TITLE) ? "at the title" : "in a level");
             }
         }
     }
@@ -1123,3 +1131,13 @@ struct DevKnobs {
 }  /* namespace */
 
 extern "C" int port_mods_relatch_at_title(const char *reason) { return relatch(reason, 0); }
+
+/* SEAMHUB1: the same relatch, for a title reached from a level (the in-place leave of an online world): files a level read count as
+   held (note c above held_at_title). */
+extern "C" int port_mods_relatch_after_level(const char *reason)
+{
+    g_after_level = 1;
+    const int r = relatch(reason, 0);
+    g_after_level = 0;
+    return r;
+}
