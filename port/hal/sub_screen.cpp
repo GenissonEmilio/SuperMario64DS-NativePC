@@ -4074,9 +4074,13 @@ static bool page_fit_overlaps(int w, int h)
     if (nx < 0) nx = 0;
     const int N[4] = { nx + ds(24), ds(40), nx + ds(233), ds(191) };
     const double u = H / 192.0;
-    /* MAPARROW1: the arrows' room is above the panel only (they sit inside its width), sized like the arrows themselves */
+    /* The page keeps clear of the panel and of the room around it. Above: the map hint arrows' own room (MAPARROW1), never less than
+       the 20 DS units the page always kept. Beside: 10 DS units, the page's own breathing space (rounds 15 to 19); the arrows do not
+       need it, the page does, or a 4:3 pause page is judged clear and drawn a few pixels from the panel. */
     const int inset_x1 = g_x0 + g_pan_w + (er > 1 ? er : 1), inset_y1 = g_y0 + g_pan_h + (eb > 1 ? eb : 1);
-    const int R[4] = { inset_x0, inset_y0 - port_bounce_arrows_room(inset_x1 - inset_x0, inset_y1 - inset_y0, H), w, h };
+    const int room = port_bounce_arrows_room(inset_x1 - inset_x0, inset_y1 - inset_y0, H);
+    const int above = (int)(20 * u + 0.5) > room ? (int)(20 * u + 0.5) : room;
+    const int R[4] = { inset_x0 - (int)(10 * u + 0.5), inset_y0 - above, w, h };
     int D[4];
     return page_fit_place(w, h, N, R, D, (int)(3 * u + 0.5));
 }
@@ -4129,10 +4133,11 @@ static void page_fit_draw(unsigned int *dst, int w, int h, const int inset[4])
     if (nx < 0) nx = 0;
     const int N[4] = { nx + ds(bx0), ds(by0), nx + ds(bx1 + 1), ds(by1 + 1) };
     const double u = H / 192.0;
-    /* the panel's rectangle (hal_sub_screen_present's own inset rectangle, x0 y0 x1 y1) and the arrows' room above it
-       (MAPARROW1: two small arrows inside the panel's width, so nothing at its sides) */
+    /* the panel's rectangle (hal_sub_screen_present's own inset rectangle, x0 y0 x1 y1) and the room the page keeps from it, as in
+       page_fit_overlaps: above, the arrows' room (MAPARROW1) but never less than 20 DS units; beside, the page's own 10 DS units */
     const int room = port_bounce_arrows_room(inset[2] - inset[0], inset[3] - inset[1], H);
-    const int R[4] = { inset[0], inset[1] - room, w, h };
+    const int above = (int)(20 * u + 0.5) > room ? (int)(20 * u + 0.5) : room;
+    const int R[4] = { inset[0] - (int)(10 * u + 0.5), inset[1] - above, w, h };
     int D[4];
     const bool moved = page_fit_place(w, h, N, R, D, (int)(3 * u + 0.5));
     static int trace = -1;
@@ -4142,8 +4147,8 @@ static void page_fit_draw(unsigned int *dst, int w, int h, const int inset[4])
         const int cur[16] = { bx0, by0, bx1, by1, N[0], N[1], N[2], N[3], R[0], R[1], D[0], D[1], D[2], D[3], moved, w };
         if (memcmp(last, cur, sizeof last)) {
             memcpy(last, cur, sizeof last);
-            std::fprintf(stderr, "[pagefit] cells ds %d,%d..%d,%d  natural %d,%d..%d,%d  panel %d,%d..%d,%d + arrows %d above -> from %d,%d  -> %s %d,%d %dx%d (picture %dx%d)\n",
-                         bx0, by0, bx1, by1, N[0], N[1], N[2], N[3], inset[0], inset[1], inset[2], inset[3], room, R[0], R[1],
+            std::fprintf(stderr, "[pagefit] cells ds %d,%d..%d,%d  natural %d,%d..%d,%d  panel %d,%d..%d,%d + arrows %d, kept %d above -> from %d,%d  -> %s %d,%d %dx%d (picture %dx%d)\n",
+                         bx0, by0, bx1, by1, N[0], N[1], N[2], N[3], inset[0], inset[1], inset[2], inset[3], room, above, R[0], R[1],
                          moved ? "moved to" : "stays at", D[0], D[1], D[2], D[3], w, h);
         }
     }
