@@ -16,6 +16,7 @@ int out_volume_pct(void);   /* hal/sdat/out_win.cpp: the master volume this proc
 extern "C" {
 extern int (*port_title_front_door_hook)(void);   /* hal/title_entry.cpp; tests/walk_window.cpp seats it: start the game again at its front door */
 extern int (*port_online_join_tick_hook)(void);   /* hal/title_entry.cpp; seated below */
+void port_join_plate_raise_black(void);            /* hal/menu_join_plate.cpp (JOINWIN1) */
 }
 
 namespace port {
@@ -239,19 +240,77 @@ int tick_hook() {
 #endif
         online_join_step();
     }
-    return g_state == kJoinEntering;
+    /* JOINWIN1: the successor is started. This window goes black for its last pictures (one more tick is drawn black before this process
+       stops), so the player sees the file select, then black, then the level: the successor is black from its first picture too. */
+    if (g_state == kJoinEntering) {
+        static int black_ticks = 0;
+        if (black_ticks++ == 0) { port_join_plate_raise_black(); return 0; }
+        return 1;
+    }
+    return 0;
 }
 const int g_seated = (port_online_join_tick_hook = tick_hook, 1);
 
 }  // namespace
 
+/* Every name apply_plan sets (SM64DS_VOLUME aside, which is always handed over as the live volume). */
+static const char *const k_join_env[] = { "SM64DS_ADVENTURE", "SM64DS_COMMS_RELAY", "SM64DS_COMMS_CODE", "SM64DS_ROOM_KIND",
+    "SM64DS_VOICE_ALLOWED", "SM64DS_HUB_SEAT", "SM64DS_PLAYER_NAME", "SM64DS_PLAYER_COLOR", "SM64DS_PLAYER_SHOES", "SM64DS_WORLD_NO",
+    "SM64DS_JOIN_QUIET", "SM64DS_BOOT_FILE" };
+
 /* JOINFLOW1: take every name a join sets out of this process again (the restart was refused, or the player cancelled on the Joining plate): the
    solo file select, the mod rule and the hub all read these. One list for both clean-up paths. */
 void online_join_clear_env() {
-    static const char *const k_join_env[] = { "SM64DS_ADVENTURE", "SM64DS_COMMS_RELAY", "SM64DS_COMMS_CODE", "SM64DS_ROOM_KIND",
-        "SM64DS_VOICE_ALLOWED", "SM64DS_HUB_SEAT", "SM64DS_PLAYER_NAME", "SM64DS_PLAYER_COLOR", "SM64DS_PLAYER_SHOES", "SM64DS_WORLD_NO",
-        "SM64DS_JOIN_QUIET", "SM64DS_BOOT_FILE" };
     for (const char *n : k_join_env) SetEnvironmentVariableA(n, nullptr);
+}
+
+/* JOINWIN1: LEAVING AN ONLINE SESSION BY ITS QUIT ROW IS AN OFFLINE START. The level-clear menu's Save and Quit and the pause menu's quit rows end
+   the session through the front door (tests/walk_window.cpp port_front_end_quit_poll), and the restarted game inherits this process's block. In a
+   join successor (or a launcher-started online game) that block still holds the hub: the restart came up as an Adventure Online title with every
+   mod off and the hub installed again (the player's report: "all my settings and mods turned off"). Every name apply_plan sets (k_join_env above)
+   and every online session name the launcher's own start sets (its AlwaysClear and lobby names) goes, so the restart reads the player's own
+   settings.json and mods like any offline boot. The volume is handed over as this process plays it now, the way apply_plan does. A solo process
+   holds none of these names: nothing is printed and nothing changes for it. */
+extern "C" int port_online_quit_offline_env(void)
+{
+    static const char *const k_session_env[] = {
+        "SM64DS_COMMS_HOST", "SM64DS_COMMS_ROLE", "SM64DS_COMMS_SLOT", "SM64DS_COMMS_PORT", "SM64DS_COMMS_INPUT_DELAY",
+        "SM64DS_HUB_PORT", "SM64DS_HUB_DELAY_MS", "SM64DS_PARTY", "SM64DS_PARTY_SHARE_STARS", "SM64DS_NETMODE",
+        "SM64DS_COOP", "SM64DS_COOP_HOST", "SM64DS_COOP_SAVE", "SM64DS_COOP_SAVE_NAME", "SM64DS_COOP_TP",
+        "SM64DS_ROOM_COLLISION", "SM64DS_ROOM_INTERACT", "SM64DS_ROOM_DAMAGE", "SM64DS_ROOM_TP", "SM64DS_ROOM_STARSHARE",
+        "SM64DS_VS_PLAYERS", "SM64DS_VS_NAMES", "SM64DS_VS_COLORS", "SM64DS_VS_NETMODE", "SM64DS_SESSION_DIGEST",
+        "SM64DS_SKIP_MENU" };
+    struct List { const char *const *names; size_t count; };
+    const List lists[2] = { { k_join_env, sizeof k_join_env / sizeof *k_join_env },
+                            { k_session_env, sizeof k_session_env / sizeof *k_session_env } };
+#ifndef PORT_ROM_CLEAN
+    /* SM64DS_JOINWIN_KEEP_ENV=1: keep every name (replays the behaviour before this clean-up, for the before/after proof; compiled out of the kit) */
+    if (const char *keep = std::getenv("SM64DS_JOINWIN_KEEP_ENV")) {
+        if (keep[0] == '1') {
+            std::fprintf(stderr, "[join] SM64DS_JOINWIN_KEEP_ENV: the restart keeps this process's online names (the behaviour before JOINWIN1)\n");
+            return 0;
+        }
+    }
+#endif
+    std::string cleared;
+    int n = 0;
+    char v[8];
+    for (const List &l : lists) {
+        for (size_t i = 0; i < l.count; ++i) {
+            SetLastError(0);
+            if (!GetEnvironmentVariableA(l.names[i], v, sizeof v) && GetLastError() == ERROR_ENVVAR_NOT_FOUND) continue;
+            SetEnvironmentVariableA(l.names[i], nullptr);
+            if (n++) cleared += ' ';
+            cleared += l.names[i] + 7;   /* without the SM64DS_ prefix */
+        }
+    }
+    if (!n) return 0;
+    std::snprintf(v, sizeof v, "%d", out_volume_pct());
+    SetEnvironmentVariableA("SM64DS_VOLUME", v);
+    std::fprintf(stderr, "[join] leaving the online session: the restart is an offline start (%d online name(s) cleared: %s; volume %s)\n",
+                 n, cleared.c_str(), v);
+    std::fflush(stderr);
+    return n;
 }
 
 bool online_join_begin(int file, const char *nick) {

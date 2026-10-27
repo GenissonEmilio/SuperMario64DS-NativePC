@@ -2842,18 +2842,20 @@ u8 *yoshi_rows16_grow(const u8 *d, u32 size, u32 *out_size, const char **why)
     vspal::vs_palette_rows16(rom, picks, rows);
 
     newoff = (size + 3u) & ~3u;
-    nsize = newoff + 1024u;   /* HUB32: 32 rows; rows 16..31 repeat 0..15 */
+    /* HUB32: 32 rows, one per body; rows 16..31 repeat 0..15. JOINWIN1: plus row 32, a copy of row 0, which no body number names: the local
+       player's own Adventure Online pick is drawn from it (hal/comms_sync.cpp port_adventure_local_palette), since rows 0..31 all belong to bodies */
+    nsize = newoff + 1056u;
     *why = "out of host memory";
     n = (u8 *)malloc(nsize);
     if (!n)
         return 0;
     memcpy(n, d, size);
     memset(n + size, 0, newoff - size);
-    for (int r = 0; r < 32; ++r)
+    for (int r = 0; r < 33; ++r)
         for (int i = 0; i < 16; ++i)
-            wr16(n, newoff + (u32)r * 32 + (u32)i * 2, rows[r & 15][i]);
+            wr16(n, newoff + (u32)r * 32 + (u32)i * 2, rows[r & 15][i]);   /* row 32 & 15 = row 0 */
     wr32(n, rec + 4, newoff);
-    wr32(n, rec + 8, 1024);
+    wr32(n, rec + 8, 1056);
     *out_size = nsize;
     *why = 0;
     return n;
@@ -2887,7 +2889,7 @@ u32 yoshi_rows16_filter(unsigned fileID, u8 **data, u32 size)
     if (!g_y16_said++)
         fprintf(stderr, "[mods] yoshi_all_16p_pl grown to 16 rows (128 -> 512 "
                         "bytes at +%u); every VS seat has its own colours\n",
-                nsize - 1024);
+                nsize - 1056);
     return nsize;
 }
 

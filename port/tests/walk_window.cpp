@@ -6764,12 +6764,24 @@ static const int port_vs_lobby_mods_hook_seated =
 extern "C" unsigned short data_02092664;   /* Scene::SetSceneToSpawn's id */
 extern "C" unsigned char data_02092660;    /* MGEXIT1: its "already spawned" latch */
 enum { PORT_FRONT_END_FADE_CAP = 90 };
+extern "C" int port_online_quit_offline_env(void);   /* hal/online_join.cpp (JOINWIN1) */
 
 static int port_front_end_quit_poll(int frame)
 {
     static int seen = -1;       /* the frame the request first appeared */
     static int fired;
     if (fired) return 1;
+#ifndef PORT_ROM_CLEAN
+    {   /* JOINWIN1: SM64DS_JOINWIN_QUIT_AT=<frame> makes the quit rows' own request (scene 1 parked in data_02092664, as StartSceneFade(1, 0, 0)
+           does) on that frame: the proof row for the restart out of an online session (dev only; read once and cleared, so no child inherits it) */
+        static int qa = -2;
+        if (qa == -2) { const char *e = getenv("SM64DS_JOINWIN_QUIT_AT"); qa = e ? atoi(e) : -1; SetEnvironmentVariableA("SM64DS_JOINWIN_QUIT_AT", 0); }
+        if (qa >= 0 && frame == qa && data_02092664 != 1) {
+            fprintf(stderr, "[quit] f%d SM64DS_JOINWIN_QUIT_AT: the quit rows' request for scene 1 is made here\n", frame);
+            data_02092664 = 1;
+        }
+    }
+#endif
     if (data_02092664 != 1) return 0;
     if (seen < 0) {
         seen = frame;
@@ -6799,7 +6811,7 @@ static int port_front_end_quit_poll(int frame)
     if (g_selftest_frames) {
         fprintf(stderr, "[quit] no successor: this run is a %d-frame selftest, "
                 "which has no window to hand over\n", g_selftest_frames);
-    } else if (port_menu_relaunch(-1, -1)) {
+    } else if (port_online_quit_offline_env(), port_menu_relaunch(-1, -1)) {   /* JOINWIN1: out of an online session = an offline start */
         fprintf(stderr, "[quit] started the game again at its front door (the "
                 "title), this process is quitting\n");
     } else {
@@ -9002,12 +9014,24 @@ static int g_present_repeat;
    child opens exactly where the parent was (a maximised or borderless-fullscreen parent gives a maximised or fullscreen child, a
    hand-sized window keeps its size, and an ordinary one keeps its centre). A child that never answers is waited for 10 s and then the
    parent leaves as it always did. SM64DS_HANDOFF_OFF=1 puts the old behaviour back; a frame-budget selftest never hands over. */
+/* JOINWIN1: one clock both processes of a hand-off print (milliseconds since 1970), so the parent's hide and the successor's first picture can
+   be put side by side from the two playlogs */
+static unsigned long long port_handoff_epoch_ms(void)
+{
+    FILETIME ft;
+    GetSystemTimePreciseAsFileTime(&ft);
+    return ((((unsigned long long)ft.dwHighDateTime << 32) | ft.dwLowDateTime) / 10000ull) - 11644473600000ull;
+}
+static void fullscreen_boot(HWND h);    /* JOINWIN1: the successor's fullscreen, before its first show */
 static HANDLE g_hf_ev;                  /* parent: set by the successor once it has drawn */
 static int g_hf_in;                     /* child: a handoff was read */
 static int g_hf_in_full, g_hf_in_zoom, g_hf_in_sized;
 static unsigned long g_hf_parent_pid;
 static RECT g_hf_in_rect;
+static HWND g_hf_hwnd;                  /* JOINWIN1 child: the window made hidden, shown with the first picture */
+static int g_hf_show;                   /* JOINWIN1 child: the show it gets then */
 static void port_handoff_signal(void);
+static void port_handoff_show(void);    /* JOINWIN1 */
 static void join_settings_dump_once(void);   /* JOINFLOW1 */
 
 static void present(void)
@@ -9043,7 +9067,8 @@ static void present_body(void)
        work (hal/gpu_device.h). */
     port_gpu_timer_frame_end();
     ++g_present_n;
-    if (g_present_n == 3) port_handoff_signal();   /* REGRESS093 R2 */
+    if (g_present_n == 1) port_handoff_show();     /* JOINWIN1: the successor's window appears with its first picture */
+    if (g_present_n == 2) port_handoff_signal();   /* REGRESS093 R2; JOINWIN1: at picture 2, the first one is up */
     if (g_present_n == 2) join_settings_dump_once();   /* JOINFLOW1: the settings comparison line */
     if (!g_present_hwnd || !g_present_hdc || !g_present_bi || !g_present_fb)
         return;
@@ -12311,8 +12336,13 @@ static void port_handoff_wait(void)
     LRESULT(WINAPI *dp)(const MSG *) = u ? (LRESULT(WINAPI *)(const MSG *))GetProcAddress(u, "DispatchMessageA") : 0;
     const DWORD t0 = GetTickCount();
     while (GetTickCount() - t0 < 10000) {
-        if (WaitForSingleObject(ev, 25) == WAIT_OBJECT_0) {
-            fprintf(stderr, "[handoff] parent: the successor has drawn after %lu ms, leaving\n", (unsigned long)(GetTickCount() - t0));
+        if (WaitForSingleObject(ev, 5) == WAIT_OBJECT_0) {
+            /* JOINWIN1: ONE WINDOW. The successor's window was hidden until its first picture and is now up where this one is, so this one
+               goes the same instant (no second taskbar entry, no last picture of this process behind it) and the process ends without
+               drawing again. */
+            if (g_present_hwnd && W.ShowWindow_) W.ShowWindow_(g_present_hwnd, SW_HIDE);
+            fprintf(stderr, "[handoff] parent: the successor has drawn after %lu ms; this window hidden at t=%llu, leaving\n",
+                    (unsigned long)(GetTickCount() - t0), port_handoff_epoch_ms());
             break;
         }
         MSG m;
@@ -12352,7 +12382,26 @@ static void port_handoff_signal(void)
     char name[64];
     snprintf(name, sizeof name, "Local\\sm64ds_handoff_%lu", g_hf_parent_pid);
     HANDLE ev = OpenEventA(EVENT_MODIFY_STATE, FALSE, name);
-    if (ev) { SetEvent(ev); CloseHandle(ev); fprintf(stderr, "[handoff] child: told the parent (%s)\n", name); }
+    if (ev) { SetEvent(ev); CloseHandle(ev); fprintf(stderr, "[handoff] child: told the parent (%s) at t=%llu\n", name, port_handoff_epoch_ms()); }
+}
+/* JOINWIN1: THE SUCCESSOR'S WINDOW APPEARS WITH ITS FIRST PICTURE, already in the parent's state. It was made hidden (window creation below), so
+   nothing showed while it booted: before this the player saw a second window open at the parent's place, windowed, beside the parent's for the
+   one and a half seconds until the parent left, and a fullscreen parent's successor went fullscreen only after a few pictures. Now a fullscreen
+   parent's successor goes fullscreen while still hidden, a maximised one shows maximised, and the parent hides on the signal at picture 2. */
+static void port_handoff_show(void)
+{
+    if (!g_hf_hwnd || !W.ShowWindow_) return;
+    HWND h = g_hf_hwnd;
+    g_hf_hwnd = 0;
+    if (g_hf_in_full) fullscreen_boot(h);
+    W.ShowWindow_(h, g_hf_show);
+    RECT r = {0, 0, 0, 0};
+    HMODULE u = GetModuleHandleA("user32.dll");
+    BOOL(WINAPI *grect)(HWND, RECT *) = u ? (BOOL(WINAPI *)(HWND, RECT *))GetProcAddress(u, "GetWindowRect") : 0;
+    BOOL(WINAPI *zoomed)(HWND) = u ? (BOOL(WINAPI *)(HWND))GetProcAddress(u, "IsZoomed") : 0;
+    if (grect) grect(h, &r);
+    fprintf(stderr, "[handoff] child: first picture, window shown at %ld,%ld %ldx%ld fullscreen %d maximised %d (show %d) at t=%llu\n", (long)r.left,
+            (long)r.top, (long)(r.right - r.left), (long)(r.bottom - r.top), g_fullscreen, zoomed && zoomed(h) ? 1 : 0, g_hf_show, port_handoff_epoch_ms());
 }
 
 
@@ -13072,18 +13121,23 @@ static HWND host_window_open(int stacked, HDC *out_hdc, const char *title)
        -- and no ShowWindow is called at all. */
     const int nofocus = nofocus_mode();
     const int show = host_show_mode(nofocus);
+    const int hf_defer = g_hf_in ? 1 : 0;   /* JOINWIN1: a successor's window stays hidden until its first picture (port_handoff_show) */
     HWND hwnd = W.CreateWindowExA_(nofocus ? WS_EX_NOACTIVATE : 0,
                                    "sm64ds_walk", title,
                                    /* the sizing border is here, not in the
                                       AdjustWindowRect above; see that note */
-                                   show >= 0 ? (WS_OVERLAPPEDWINDOW)
-                                             : (WS_OVERLAPPEDWINDOW | WS_VISIBLE),
+                                   (show >= 0 || hf_defer) ? (WS_OVERLAPPEDWINDOW)
+                                                           : (WS_OVERLAPPEDWINDOW | WS_VISIBLE),
                                    wx, wy,
                                    r.right - r.left, r.bottom - r.top, 0, 0,
                                    GetModuleHandleA(0), 0);
     if (!hwnd)
         return 0;
-    if (show >= 0) {
+    if (hf_defer) {
+        g_hf_hwnd = hwnd;
+        g_hf_show = show >= 0 ? show : (g_hf_in_zoom && !g_hf_in_full) ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL;
+        fprintf(stderr, "[handoff] child: window made hidden at t=%llu; it is shown with the first picture\n", port_handoff_epoch_ms());
+    } else if (show >= 0) {
         /* The show the style above withheld. Neither of the two spellings that
            reach here activates the window, so the foreground stays where it
            was, which is the entire ask. */
@@ -18507,7 +18561,7 @@ int main(void)
                         fprintf(stderr, "[loopin2] soft reset: no successor: "
                                 "this run is a %d-frame selftest, which has no "
                                 "window to hand over\n", g_selftest_frames);
-                    } else if (port_menu_relaunch(-1, -1)) {
+                    } else if (port_online_quit_offline_env(), port_menu_relaunch(-1, -1)) {   /* JOINWIN1 */
                         fprintf(stderr, "[loopin2] soft reset: started the "
                                 "game again at its front door (the title), "
                                 "this process is quitting\n");
