@@ -6435,7 +6435,7 @@ static const char *g_relaunch_entrance;
 static const char *g_relaunch_act;
 /* REGRESS093 (R2): the window handoff, defined with the window code below */
 static void port_handoff_prepare(void);
-static void port_handoff_arm(void);
+static void port_handoff_arm(HANDLE child);   /* JOINWIN2: takes the child's process handle */
 static void port_handoff_wait(void);
 static int port_menu_relaunch(int scene_id, int level_id)
 {
@@ -6503,8 +6503,7 @@ static int port_menu_relaunch(int scene_id, int level_id)
         return 0;
     }
     CloseHandle(pi.hThread);
-    CloseHandle(pi.hProcess);
-    port_handoff_arm();
+    port_handoff_arm(pi.hProcess);   /* JOINWIN2: the parent watches the child until its first picture */
     return 1;
 }
 
@@ -6645,8 +6644,7 @@ static int port_menu_relaunch_vs(int vs_map)
         return 0;
     }
     CloseHandle(pi.hThread);
-    CloseHandle(pi.hProcess);
-    port_handoff_arm();
+    port_handoff_arm(pi.hProcess);   /* JOINWIN2: the parent watches the child until its first picture */
     return 1;
 }
 
@@ -6683,8 +6681,7 @@ static int port_vs_lobby_mods_relaunch(void)
         return 0;
     }
     CloseHandle(pi.hThread);
-    CloseHandle(pi.hProcess);
-    port_handoff_arm();
+    port_handoff_arm(pi.hProcess);   /* JOINWIN2: the parent watches the child until its first picture */
     fprintf(stderr, "[mods] VS lobby: relaunched with mods off (SM64DS_MODS=0), this process is quitting\n");
     W.PostQuitMessage_(0);
     return 1;
@@ -9024,6 +9021,12 @@ static unsigned long long port_handoff_epoch_ms(void)
 }
 static void fullscreen_boot(HWND h);    /* JOINWIN1: the successor's fullscreen, before its first show */
 static HANDLE g_hf_ev;                  /* parent: set by the successor once it has drawn */
+static HANDLE g_hf_child;               /* JOINWIN2 parent: the successor's process, watched until it signals */
+static int g_hf_waiting;                /* JOINWIN2 parent: inside port_handoff_wait (a retry does not register a second atexit) */
+static int g_hf_vol = -1;               /* JOINWIN2 parent: the volume before the hand-off muted this process */
+#ifndef PORT_ROM_CLEAN
+static int g_hf_test;                   /* JOINWIN2 child: SM64DS_HANDOFF_TEST, 1 die / 2 hang before the first picture (proof knob, not in the kit) */
+#endif
 static int g_hf_in;                     /* child: a handoff was read */
 static int g_hf_in_full, g_hf_in_zoom, g_hf_in_sized;
 static unsigned long g_hf_parent_pid;
@@ -12280,6 +12283,7 @@ static void port_handoff_prepare(void)
 {
     SetEnvironmentVariableA("SM64DS_HANDOFF_FROM", 0);
     if (g_hf_ev) { CloseHandle(g_hf_ev); g_hf_ev = 0; }
+    if (g_hf_child) { CloseHandle(g_hf_child); g_hf_child = 0; }
     { const char *o = getenv("SM64DS_HANDOFF_OFF"); if ((o && *o == '1') || g_selftest_frames || !g_present_hwnd) return; }
     HMODULE u = GetModuleHandleA("user32.dll");
     BOOL(WINAPI *grect)(HWND, RECT *) = u ? (BOOL(WINAPI *)(HWND, RECT *))GetProcAddress(u, "GetWindowRect") : 0;
@@ -12303,6 +12307,7 @@ static void port_handoff_prepare(void)
     fprintf(stderr, "[handoff] parent: SM64DS_HANDOFF_FROM=%s\n", val);
 }
 extern "C" void out_set_volume_pct(int pct);
+int out_volume_pct(void);   /* hal/sdat/out_win.cpp (JOINWIN2: the volume handed back if the successor fails) */
 /* JOINFLOW1: one line of the effective settings and the window's place, on this process's second picture; the solo game and its join successor print the
    same line so the two can be compared field by field (out/JOINFLOW1 settings table). The window figures are the window's place; a minimised test
    window prints "minimised" (its size is read from the [win] and [handoff] lines). */
@@ -12320,21 +12325,23 @@ static void join_settings_dump_once(void)
     }
     port_join_settings_dump(cw, ch, g_fullscreen, 0, g_user_sized ? 1 : 0);
 }
-static void port_handoff_arm(void)
+static void port_handoff_arm(HANDLE child)
 {
-    if (!g_hf_ev) return;
+    if (!g_hf_ev) { if (child) CloseHandle(child); return; }
+    g_hf_child = child;
+    if (g_hf_vol < 0) g_hf_vol = out_volume_pct();
     out_set_volume_pct(0);               /* the parent lingers on its last picture: two soundtracks at once would be worse than the gap */
-    atexit(port_handoff_wait);
+    if (!g_hf_waiting) atexit(port_handoff_wait);
 }
-static void port_handoff_wait(void)
+/* JOINWIN2: one wait for the successor. 1 = it has drawn (this window is hidden), 2 = it ended before its first picture (*code = its exit
+   code), 0 = neither within 10 s. The child's process is polled on every pass of the wait, so an exit is seen within a few milliseconds. */
+static int port_handoff_wait_one(HANDLE ev, HANDLE child, DWORD *code, DWORD *waited)
 {
-    if (!g_hf_ev) return;
-    HANDLE ev = g_hf_ev;
-    g_hf_ev = 0;
     HMODULE u = GetModuleHandleA("user32.dll");
     BOOL(WINAPI *tr)(const MSG *) = u ? (BOOL(WINAPI *)(const MSG *))GetProcAddress(u, "TranslateMessage") : 0;
     LRESULT(WINAPI *dp)(const MSG *) = u ? (LRESULT(WINAPI *)(const MSG *))GetProcAddress(u, "DispatchMessageA") : 0;
     const DWORD t0 = GetTickCount();
+    int got = 0;
     while (GetTickCount() - t0 < 10000) {
         if (WaitForSingleObject(ev, 5) == WAIT_OBJECT_0) {
             /* JOINWIN1: ONE WINDOW. The successor's window was hidden until its first picture and is now up where this one is, so this one
@@ -12343,6 +12350,13 @@ static void port_handoff_wait(void)
             if (g_present_hwnd && W.ShowWindow_) W.ShowWindow_(g_present_hwnd, SW_HIDE);
             fprintf(stderr, "[handoff] parent: the successor has drawn after %lu ms; this window hidden at t=%llu, leaving\n",
                     (unsigned long)(GetTickCount() - t0), port_handoff_epoch_ms());
+            got = 1;
+            break;
+        }
+        if (child && WaitForSingleObject(child, 0) == WAIT_OBJECT_0) {
+            if (WaitForSingleObject(ev, 0) == WAIT_OBJECT_0) continue;   /* it drew, then ended: the branch above */
+            if (code && !GetExitCodeProcess(child, code)) *code = 0;
+            got = 2;
             break;
         }
         MSG m;
@@ -12351,7 +12365,105 @@ static void port_handoff_wait(void)
             if (dp) dp(&m);
         }
     }
+    if (waited) *waited = GetTickCount() - t0;
+    return got;
+}
+/* JOINWIN2: THE PARENT TAKES ITS WINDOW BACK. Since JOINWIN1 the successor's window is hidden until its first picture, so a successor that
+   dies or hangs while it boots is invisible, and the parent used to leave after 10 s regardless: the player saw the game vanish. Now the
+   parent keeps its window up where it was (showing it again if anything hid it), says why in the log, and starts the solo title through
+   the front door the way a cancelled join does (every online name cleared, so the hub is off, the mods are back and the solo save is used).
+   That start is watched the same way; if it fails too, this window stays up until the player closes it. A hung successor is left running:
+   it may still come up on a slow machine. */
+static void port_handoff_take_back(int why, DWORD code, HANDLE child, DWORD waited)
+{
+    HMODULE u = GetModuleHandleA("user32.dll");
+    BOOL(WINAPI *vis)(HWND) = u ? (BOOL(WINAPI *)(HWND))GetProcAddress(u, "IsWindowVisible") : 0;
+    BOOL(WINAPI *grect)(HWND, RECT *) = u ? (BOOL(WINAPI *)(HWND, RECT *))GetProcAddress(u, "GetWindowRect") : 0;
+    long late = -1;
+    if (why == 2 && child) {
+        FILETIME c, e, k, us;
+        if (GetProcessTimes(child, &c, &e, &k, &us)) {
+            const unsigned long long ex = ((((unsigned long long)e.dwHighDateTime << 32) | e.dwLowDateTime) / 10000ull) - 11644473600000ull;
+            const unsigned long long nw = port_handoff_epoch_ms();
+            late = nw > ex ? (long)(nw - ex) : 0;
+        }
+    }
+    if (g_present_hwnd && W.ShowWindow_ && !(vis && vis(g_present_hwnd))) W.ShowWindow_(g_present_hwnd, SW_SHOWNA);
+    if (g_hf_vol >= 0) out_set_volume_pct(g_hf_vol);
+    RECT r = {0, 0, 0, 0};
+    if (grect && g_present_hwnd) grect(g_present_hwnd, &r);
+    if (why == 2)
+        fprintf(stderr, "[handoff] parent: the new game ended before its first picture (exit %lu): staying here (seen %ld ms after the exit, %lu ms "
+                        "into the wait)\n", (unsigned long)code, late, (unsigned long)waited);
+    else
+        fprintf(stderr, "[handoff] parent: no first picture in 10 s: staying here. The new game is left running; if a second game window appears, "
+                        "close one of them\n");
+    fprintf(stderr, "[handoff] parent: this window shown at %ld,%ld %ldx%ld fullscreen %d visible %d at t=%llu\n", (long)r.left, (long)r.top,
+            (long)(r.right - r.left), (long)(r.bottom - r.top), g_fullscreen, (vis && g_present_hwnd && vis(g_present_hwnd)) ? 1 : 0,
+            port_handoff_epoch_ms());
+    fflush(stderr);
+}
+static void port_handoff_wait(void)
+{
+    if (!g_hf_ev) return;
+    HANDLE ev = g_hf_ev, child = g_hf_child;
+    g_hf_ev = 0;
+    g_hf_child = 0;
+    g_hf_waiting = 1;
+    DWORD code = 0, waited = 0;
+    const int got = port_handoff_wait_one(ev, child, &code, &waited);
     CloseHandle(ev);
+    if (got == 1) { if (child) CloseHandle(child); return; }
+    port_handoff_take_back(got, code, child, waited);
+    if (child) CloseHandle(child);
+    /* the solo title, through the cancelled join's door */
+    port_online_quit_offline_env();
+#ifndef PORT_ROM_CLEAN
+    {
+        /* the proof knob reaches the first successor only; SM64DS_HANDOFF_TEST=die:<0..2> / hang:<0..2> makes the solo title press that file */
+        char t[32] = "";
+        if (GetEnvironmentVariableA("SM64DS_HANDOFF_TEST", t, sizeof t)) {
+            SetEnvironmentVariableA("SM64DS_HANDOFF_TEST", 0);
+            const char *c = strchr(t, ':');
+            if (c && c[1] >= '0' && c[1] <= '2' && !c[2]) { char v[2] = { c[1], 0 }; SetEnvironmentVariableA("SM64DS_BOOT_FILE", v); }
+        }
+        char nm[512];
+        if (GetEnvironmentVariableA("SM64DS_PRESENT_OFFSCREEN_BMP", nm, sizeof nm) && nm[0]) {
+            char *at = strstr(nm, "pic_%d");
+            if (at && strlen(nm) + 2 < sizeof nm) {
+                memmove(at + 5, at + 4, strlen(at + 4) + 1);
+                memcpy(at, "solo_", 5);
+                SetEnvironmentVariableA("SM64DS_PRESENT_OFFSCREEN_BMP", nm);
+            }
+        }
+    }
+#endif
+    fprintf(stderr, "[handoff] parent: starting the solo title\n");
+    fflush(stderr);
+    if (port_menu_relaunch(-1, -1) && g_hf_ev) {
+        ev = g_hf_ev; child = g_hf_child;
+        g_hf_ev = 0; g_hf_child = 0;
+        const int again = port_handoff_wait_one(ev, child, &code, &waited);
+        CloseHandle(ev);
+        if (again == 1) { if (child) CloseHandle(child); return; }
+        port_handoff_take_back(again, code, child, waited);
+        if (child) CloseHandle(child);
+    }
+    fprintf(stderr, "[handoff] parent: the solo title did not come up either; this window stays until it is closed\n");
+    fflush(stderr);
+    HMODULE u = GetModuleHandleA("user32.dll");
+    BOOL(WINAPI *isw)(HWND) = u ? (BOOL(WINAPI *)(HWND))GetProcAddress(u, "IsWindow") : 0;
+    LRESULT(WINAPI *dp)(const MSG *) = u ? (LRESULT(WINAPI *)(const MSG *))GetProcAddress(u, "DispatchMessageA") : 0;
+    for (;;) {
+        MSG m;
+        int quit = 0;
+        while (W.PeekMessageA_ && W.PeekMessageA_(&m, 0, 0, 0, PM_REMOVE)) {
+            if (m.message == WM_QUIT) quit = 1;
+            else if (dp) dp(&m);
+        }
+        if (quit || !g_present_hwnd || (isw && !isw(g_present_hwnd))) break;
+        Sleep(15);
+    }
 }
 /* child: read once, never inherited on */
 static void port_handoff_read(void)
@@ -12369,6 +12481,13 @@ static void port_handoff_read(void)
     SetEnvironmentVariableA("SM64DS_HANDOFF_FROM", 0);
     if (sscanf(buf, "%lu,%ld,%ld,%ld,%ld,%d,%d,%d", &pid, &x, &y, &w, &h, &full, &zoom, &sized) != 8) return;
     g_hf_in = 1;
+#ifndef PORT_ROM_CLEAN
+    /* SM64DS_HANDOFF_TEST=die|hang[:file]: this successor ends (exit 7) or hangs before its first picture (proof knob, compiled out of the kit) */
+    if (const char *t = getenv("SM64DS_HANDOFF_TEST")) {
+        g_hf_test = !strncmp(t, "die", 3) ? 1 : !strncmp(t, "hang", 4) ? 2 : 0;
+        SetEnvironmentVariableA("SM64DS_HANDOFF_TEST", 0);
+    }
+#endif
     g_hf_parent_pid = pid;
     g_hf_in_rect.left = (LONG)x; g_hf_in_rect.top = (LONG)y; g_hf_in_rect.right = (LONG)(x + w); g_hf_in_rect.bottom = (LONG)(y + h);
     g_hf_in_full = full; g_hf_in_zoom = zoom; g_hf_in_sized = sized;
@@ -12390,6 +12509,10 @@ static void port_handoff_signal(void)
    parent's successor goes fullscreen while still hidden, a maximised one shows maximised, and the parent hides on the signal at picture 2. */
 static void port_handoff_show(void)
 {
+#ifndef PORT_ROM_CLEAN
+    if (g_hf_test == 1) { fprintf(stderr, "[handoff] child: SM64DS_HANDOFF_TEST=die: ending before the first picture (exit 7)\n"); fflush(stderr); ExitProcess(7); }
+    if (g_hf_test == 2) { fprintf(stderr, "[handoff] child: SM64DS_HANDOFF_TEST=hang: hanging before the first picture\n"); fflush(stderr); for (;;) Sleep(1000); }
+#endif
     if (!g_hf_hwnd || !W.ShowWindow_) return;
     HWND h = g_hf_hwnd;
     g_hf_hwnd = 0;
