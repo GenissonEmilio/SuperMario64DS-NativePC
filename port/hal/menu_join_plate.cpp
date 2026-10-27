@@ -21,6 +21,7 @@
 #include "ui_text.h"
 #include "host_settings.h"
 #include "mods.h"
+#include "comms_hub.h"   /* SEAMHUB1: the session record */
 
 #include <windows.h>
 #include <stdio.h>
@@ -63,6 +64,8 @@ struct Plate {
     int test_at;                         /* SM64DS_JOIN_QUIET_CANCEL=<frame>[:b|esc] (not in the kit) */
     int test_how;
     int test_file;
+    int inplace;                         /* SEAMJOIN1: raised by an in-place join in this process (hal/online_join.cpp drives it, not the title walk) */
+    int lowering;                        /* SEAMJOIN2: an in-place join's plate is ended and covers one more picture, the world's first */
 } P;
 
 /* JOINWIN1: the join takes longer than this before the corner line shows */
@@ -119,7 +122,7 @@ int do_cancel()
 
 int tick()
 {
-    if (!P.up || P.parent) return 0;
+    if (!P.up || P.parent || P.inplace) return 0;   /* SEAMJOIN1: an in-place join ticks its plate itself (port_join_plate_inplace_tick) */
     if (!P.said) {
         P.said = 1;
         fprintf(stderr, "[joinflow] quiet entry: the window holds black until the adventure is entered (server %d)\n", P.server);
@@ -144,6 +147,7 @@ void ended(const char *why)
 {
     if (!P.up || port_join_quiet_cancelled) return;
     P.up = 0;
+    P.inplace = 0;
     sd_host_mute(0);
     fprintf(stderr, "[joinflow] plate down after %u frames: %s\n", P.frames, why ? why : "");
     fflush(stderr);
@@ -180,11 +184,14 @@ const int g_seated = boot();
 
 extern "C" int port_join_plate_up(void) { return P.up; }
 
+static void plate_lowered(void);   /* SEAMJOIN2: below, with the in-place plate's end */
+
 extern "C" const uint32_t *port_join_plate_picture(int w, int h)
 {
     if (!P.up || w < 32 || h < 32) return nullptr;
     const int line = (!P.parent && GetTickCount64() - P.t0 > kLineMs) ? 1 : 0;
     if (P.pw != w || P.ph != h || P.px.empty() || P.line != line) { P.line = line; build(w, h); }
+    if (P.lowering) plate_lowered();   /* SEAMJOIN2: this picture is the last the plate covers (px stays allocated for this present) */
     return P.px.data();
 }
 
@@ -198,6 +205,82 @@ extern "C" void port_join_plate_raise_black(void)
     P.t0 = GetTickCount64();
     P.px.clear();
     fprintf(stderr, "[joinflow] the successor is starting: this window holds black until it closes\n");
+    fflush(stderr);
+}
+
+/* SEAMJOIN1: THE PLATE OF AN IN-PLACE JOIN. Joining from the online file select no longer starts a successor: this process installs the hub
+   and enters the world itself (hal/online_join.cpp). The player sees what a successor showed: black from the moment the plan is applied until
+   the level, the corner line after 3 s, the title muted, B or Esc cancels. The cancel does not start a solo title any more: online_join.cpp
+   polls it (port_join_plate_inplace_tick), takes the session down in this process and lowers the plate (port_join_plate_inplace_end). */
+extern "C" void port_join_plate_raise_in_place(int server)
+{
+    P.up = 1;
+    P.parent = 0;
+    P.inplace = 1;
+    P.lowering = 0;
+    P.server = server;
+    P.t0 = GetTickCount64();
+    P.frames = 0;
+    P.said = 0;
+    P.cancel = 0;
+    P.armed = 0;
+    P.prev_esc = P.prev_b = 0;
+    P.line = 0;
+    P.px.clear();
+    P.test_at = -1;
+    P.test_file = -1;
+#ifndef PORT_ROM_CLEAN
+    static int drilled;   /* the drill cancels the first in-place join only, so the row can join again afterwards */
+    const char *t = drilled ? 0 : getenv("SM64DS_JOIN_QUIET_CANCEL");
+    if (t) {   /* the successor's cancel drill, read here for the in-place join */
+        drilled = 1;
+        P.test_at = atoi(t);
+        const char *c = strchr(t, ':');
+        P.test_how = (c && !_stricmp(c + 1, "esc")) ? 1 : 0;
+    }
+#endif
+    sd_host_mute(1);
+    fprintf(stderr, "[joinflow] in place: the window holds black until the adventure is entered (server %d)\n", server);
+    fflush(stderr);
+}
+
+/* once a game frame while an in-place join waits for the world: 1 = the player asked to cancel */
+extern "C" int port_join_plate_inplace_tick(void)
+{
+    if (!P.up || !P.inplace || P.lowering) return 0;
+    ++P.frames;
+    sd_host_mute(1);
+#ifndef PORT_ROM_CLEAN
+    if (!P.cancel && P.test_at >= 0 && (int)P.frames == P.test_at) {
+        if (P.test_how == 1) port_join_plate_input(1, 0);
+        else port_join_plate_input(0, 1);
+        fprintf(stderr, "[joinflow] test cancel injected at frame %u (%s)\n", P.frames, P.test_how == 1 ? "Esc" : "B");
+    }
+#endif
+    return P.cancel ? 1 : 0;
+}
+
+extern "C" int port_join_plate_inplace_up(void) { return P.up && P.inplace && !P.lowering; }
+
+/* SEAMJOIN2: THE PLATE COVERS THE WORLD'S FIRST PICTURE, as a successor's does. The end is called on the game frame the title hands the game
+   to the level, and lowering the plate there let the next picture through: a full white frame where the restart path still shows black,
+   then the same pictures on both paths from the second on. So the end keeps the plate for one more picture and port_join_plate_picture
+   takes it down after drawing it; the sound comes back here, at the end, as before. */
+static void plate_lowered(void)
+{
+    P.up = 0;
+    P.inplace = 0;
+    P.lowering = 0;
+    P.cancel = 0;
+}
+
+extern "C" void port_join_plate_inplace_end(const char *why)
+{
+    if (!P.up || !P.inplace || P.lowering) return;
+    P.lowering = 1;
+    P.cancel = 0;
+    sd_host_mute(0);
+    fprintf(stderr, "[joinflow] plate down after %u frames (it covers one more picture): %s\n", P.frames, why ? why : "");
     fflush(stderr);
 }
 
@@ -226,6 +309,7 @@ extern "C" void port_join_plate_input(int esc_down, int b_down)
 extern "C" int port_join_plate_fast(void)
 {
     if (!P.up || port_join_quiet_cancelled) return 0;
+    if (P.inplace) return 0;                 /* SEAMJOIN1: nothing is hidden behind an in-place join's black: the frames keep their pace */
 #ifndef PORT_ROM_CLEAN
     static int off = -1;
     if (off < 0) { const char *e = getenv("SM64DS_JOIN_QUIET_PACED"); off = (e && *e) ? 1 : 0; }
@@ -234,9 +318,16 @@ extern "C" int port_join_plate_fast(void)
     return (P.frames & 3u) < (unsigned)kFastKeep;
 }
 
+static int g_settings_done;   /* SEAMHUB1: once per session, re-armed by the in-place leave */
+
+/* SEAMHUB1: an online world left in place (hal/online_join.cpp) is a new solo session in this process: the next level prints the
+   SETTINGS line again (tests/walk_window.cpp, when the quit poll sees a level handed back). */
+extern "C" void port_join_settings_rearm(void) { g_settings_done = 0; }
+extern "C" int port_join_settings_armed(void) { return !g_settings_done; }
+
 extern "C" void port_join_settings_dump(int cw, int ch, int fullscreen, int maximised, int hand_sized)
 {
-    static int done;
+    int &done = g_settings_done;
     if (done) return;
     done = 1;
     char winbuf[32];
@@ -257,7 +348,7 @@ extern "C" void port_join_settings_dump(int cw, int ch, int fullscreen, int maxi
             "one_screen_menus=%d hud_layout=%d volume=%d draw_distance=%d camera_mode=%d start_fullscreen=%d adventure_ghosts=%d name_tags=%d "
             "improved_minimap=%d save_menu_on_top=%d character_strip=%d keep_lives=%d skip_menu=%d skip_intro=%d aspect_env=%s dual_screen_env=%s "
             "mods_in_file=%s mods_in_effect=%d[%s] multiplayer=%d\n",
-            getenv("SM64DS_ADVENTURE") ? "adventure" : "solo", winbuf, fullscreen, maximised, hand_sized,
+            port::online_session_get(port::kSessAdventure) ? "adventure" : "solo", winbuf, fullscreen, maximised, hand_sized,
             host_setting_frame_rate(), host_setting_smooth_motion(), host_setting_render_scale(), host_setting_hd_textures(),
             host_setting_smooth_models(), host_setting_texture_filter(), host_setting_anti_aliasing(), host_setting_present_backend(),
             host_setting_present_filter(), host_setting_vsync(), host_setting_renderer(), host_setting_one_screen_menus(), host_setting_hud_layout(),

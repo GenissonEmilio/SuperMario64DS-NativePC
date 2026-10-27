@@ -166,6 +166,11 @@ void *port_stage_a_boot(void *mc, int spawn);
    level load that ends the new-file opening (hal/comms_sync.cpp). A no-op
    unless the hub's opening hold is on. */
 void port_adventure_hub_level_seat(void);
+/* SEAMJOIN2: the opening's step 1 (hal/comms_sync.cpp), which the title
+   fall-through in tests/walk_window.cpp makes on a fresh process; the
+   crossing below makes it too (port_level_scene_crossing, g_cross_opening). */
+int  port_adventure_hub_opening_begin(void);
+int  port_intro_suppressed(void);        /* hal/level_boot.cpp */
 void port_level_reset_host(void);        /* hal/level_boot.cpp (also captures the
                                             outgoing level's orphaned KCL image --
                                             the ~108KB re-entry leak -- for
@@ -1127,6 +1132,7 @@ extern signed char   data_0209f310[];
 extern short data_0209f358[];        /* the coin counter GiveCoins increments */
 extern unsigned char data_0209f21c;  /* the player count */
 extern unsigned char data_0209f2d8;  /* game mode: 1 = VS */
+extern int data_0209caa0[];  /* the open save file; word 2 bit 7 = the opening seen (SEAMJOIN2; int[] as everywhere in this file) */
 int SublevelToLevel(int i);
 }
 
@@ -1923,6 +1929,7 @@ static void port_level_scene_interlude(void)
 }
 
 static int g_crossed_scenes;
+static int g_cross_opening;   /* SEAMJOIN2: a crossing handed back a new file's opening on the hub */
 extern "C" int port_level_crossed_scenes(void);
 extern "C" void *port_stage_create(void);   /* hal/stage_bridges.cpp */
 
@@ -2073,6 +2080,13 @@ extern "C" int port_level_change_apply(void)
        one-player seat (tests/walk_window.cpp's title fall-through); its closing
        level load is this one, and it spawns the hub's four bodies. */
     port_adventure_hub_level_seat();
+    /* SEAMJOIN2: the opening off a crossing (port_level_scene_crossing) takes
+       the one-player seat here, after the seat above so that this boot keeps
+       it, before the boot that spawns the opening's cast. */
+    if (g_cross_opening) {
+        g_cross_opening = 0;
+        port_adventure_hub_opening_begin();
+    }
     port_stage_a_boot((char *)stage + 0x91c, 1);
 
     g_crossed_scenes = 0;
@@ -2881,6 +2895,21 @@ static int port_level_scene_crossing(void)
            no for a used file (CONTINUE reads bit 7 set), for SM64DS_SKIP_INTRO,
            and for a mode other than 0; the ROM's gate decides the rest. */
         port_intro_arm_for_entry();
+        /* SEAMJOIN2: THE HUB'S NEW-FILE OPENING BOOTS ON THE ONE-PLAYER SEAT
+           ON THIS ENTRY TOO. A process that joined the world, left it in place
+           and joins again from the title the leave brought up reaches the
+           opening here, not through the title fall-through in
+           tests/walk_window.cpp that makes port_adventure_hub_opening_begin on
+           a fresh process. Without it the opening's cast spawned with the hub's
+           32 bodies counted and faulted in SharedFilePtr::LoadFile under
+           StartIntroCutscene. Same test as the fall-through (game mode 0, the
+           picked file's opening-seen bit clear, not suppressed), taken after
+           StartFile and the arm, like there; the call itself is made by
+           port_level_change_apply after port_adventure_hub_level_seat, so the
+           level load this crossing hands to is the opening's own and the hub's
+           bodies come back with its closing load. A no-op off the hub. */
+        g_cross_opening = (data_0209f2d8 == 0 && !(data_0209caa0[2] & 0x80) &&
+                           !port_intro_suppressed()) ? 1 : 0;
         /* the level boots in a window shaped for a level again */
         if (port_crossing_scene_layout_hook)
             port_crossing_scene_layout_hook(-1);

@@ -1029,6 +1029,7 @@ extern int (*port_interlude_frame_hook)(int frame);
    flag unset every one of them answers 0 without reading anything else. */
 int port_title_entry_armed(void);
 int port_title_entry_should_stop(void);
+extern "C" int (*port_online_join_tick_hook)(void);   /* hal/title_entry.cpp (SEAMJOIN2: port_interlude_frame asks it too) */
 int port_title_entry_commit(void);
 int port_title_entry_taken(void);
 int port_title_entry_run(void);
@@ -6841,6 +6842,26 @@ static const char *port_quit_in_place_refusal(void)
     return 0;
 }
 
+/* SEAMHUB1: the online world's in-place leave (hal/online_join.cpp). The quit poll asks it before restarting an online session; a
+   leave the title then refuses (the hub thread would not stop, the mods layer refused the offline list) restarts here, the way the
+   course restart of starsel_finish_hook does: the front door, the hand-off wait, and this process ends. */
+extern "C" int port_online_leave_refusal(const char **why);
+extern "C" void port_online_leave_begin(int frame);
+extern "C" int (*port_online_leave_restart_hook)(void);
+extern "C" int port_join_settings_armed(void);   /* hal/menu_join_plate.cpp */
+static void join_settings_dump_once(void);
+static int port_online_leave_restart(void)
+{
+    port_online_quit_offline_env();
+    if (!port_menu_relaunch(-1, -1)) return 0;
+    fprintf(stderr, "[quit] started the game again at its front door (the title), this process is quitting\n");
+    fflush(stderr);
+    port_handoff_wait();
+    ExitProcess(0);
+    return 1;
+}
+static const int port_online_leave_restart_seated = (port_online_leave_restart_hook = port_online_leave_restart, 1);
+
 static int port_front_end_quit_poll(int frame)
 {
     static int seen = -1;       /* the frame the request first appeared */
@@ -6853,13 +6874,28 @@ static int port_front_end_quit_poll(int frame)
         fired = 0;
         seen = -1;
         fprintf(stderr, "[quit] f%d a level was handed back after the in-place quit: the quit rows are armed again\n", frame);
+        if (port_join_settings_armed()) join_settings_dump_once();   /* SEAMHUB1: after an online leave, this level is a new solo session */
     }
+    if (port_join_settings_armed()) join_settings_dump_once();   /* SEAMJOIN1: a world joined in place is a new online session: its line */
     if (fired) return 1;
 #ifndef PORT_ROM_CLEAN
     {   /* JOINWIN1: SM64DS_JOINWIN_QUIT_AT=<frame> makes the quit rows' own request (scene 1 parked in data_02092664, as StartSceneFade(1, 0, 0)
            does) on that frame: the proof row for the restart out of an online session (dev only; read once and cleared, so no child inherits it) */
-        static int qa = -2;
-        if (qa == -2) { const char *e = getenv("SM64DS_JOINWIN_QUIT_AT"); qa = e ? atoi(e) : -1; SetEnvironmentVariableA("SM64DS_JOINWIN_QUIT_AT", 0); }
+        /* SEAMJOIN1: a comma list (<frame>[,<frame>...], up to four) for the rows that join and leave twice in one process */
+        static int qa_list[4] = { -2, -1, -1, -1 };
+        if (qa_list[0] == -2) {
+            qa_list[0] = -1;
+            const char *e = getenv("SM64DS_JOINWIN_QUIT_AT");
+            for (int i = 0; e && *e && i < 4; ++i) {
+                qa_list[i] = atoi(e);
+                e = strchr(e, ',');
+                if (e) ++e;
+            }
+            SetEnvironmentVariableA("SM64DS_JOINWIN_QUIT_AT", 0);
+        }
+        int qa = -1;
+        for (int i = 0; i < 4; ++i)
+            if (qa_list[i] >= 0 && frame == qa_list[i]) qa = qa_list[i];
         if (qa >= 0 && frame == qa && data_02092664 != 1) {
             fprintf(stderr, "[quit] f%d SM64DS_JOINWIN_QUIT_AT: the quit rows' request for scene 1 is made here\n", frame);
             data_02092664 = 1;
@@ -6874,7 +6910,16 @@ static int port_front_end_quit_poll(int frame)
                 "menu's quit rows. The save, if the row saves, is already "
                 "written.\n", frame);
         if (const char *why = port_quit_in_place_refusal()) {
-            fprintf(stderr, "[seamless] in place refused: %s; restarting\n", why);
+            /* SEAMHUB1: an online world may be left in place too; it takes the same scene change, and the title tears the hub down */
+            const char *lwhy = 0;
+            if (port_online_leave_refusal(&lwhy) && !lwhy) {
+                port_online_leave_begin(frame);
+                port_front_end_in_place = 1;
+                fprintf(stderr, "[quit] f%d returning to the title in this process (the ROM's own scene change), leaving the online "
+                        "session\n", frame);
+                return 0;
+            }
+            fprintf(stderr, "[seamless] in place refused: %s; restarting\n", lwhy ? lwhy : why);
         } else {
             port_front_end_in_place = 1;
             fprintf(stderr, "[quit] f%d returning to the title in this process (the ROM's own scene change)\n", frame);
@@ -14502,6 +14547,15 @@ extern "C" int port_interlude_frame(int f)
     if (!quit) {
         port_scene_tick(f, !menu_on);
         scene_host_present_frame(g_present_hwnd, stacked, sfb);
+        /* SEAMJOIN2: A JOIN THAT RESTARTS FROM THIS TITLE ENDS THIS PROCESS, as it does from the boot title. The title a leave or a quit
+           brings up runs here, inside hal/level_change.cpp's crossing, and that loop never asked the join's tick
+           (port_title_entry_should_stop asks it on the boot title): after a refused in-place join started the successor this window kept
+           drawing beside the successor's until the player closed one. Now the crossing ends the process the way a closed window does, and
+           the hand-off's atexit wait (port_handoff_wait) hides this window on the successor's first picture. */
+        if (port_online_join_tick_hook && port_online_join_tick_hook()) {
+            fprintf(stderr, "[handoff] parent: a join started the game again from the title in this crossing; leaving it\n");
+            quit = 1;
+        }
         /* the paused frames' sound, scene_window_run's rule exactly: the game's
            frames were pumped inside the tick, the paused ones are pumped here,
            and no frame is pumped twice */

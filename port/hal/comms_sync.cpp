@@ -127,6 +127,8 @@ void SetNumPlayers(int n);
 // data_020a0e40 at its own slot (hal/level_boot.cpp's a2 seat: 1 when more
 // than one body is seated, 0 for one), for the hub's opening hold.
 extern int data_0209fc68[];
+// SEAMJOIN1: my comms slot (src/func_0203da9c.c: return data_020a0f10), for the a2 seat's bring-up made again in place
+int func_0203da9c(void);
 // The file's save block (FileSaveData); byte 8 bit 7 is the opening-seen bit,
 // for the end of the hub opening's hand-over.
 extern unsigned char data_0209caa0[];
@@ -935,6 +937,7 @@ unsigned char g_gw_prev_dkind = 0;   // GHOSTDOOR1: the last tick's door kind
 int      g_gw_v[3];
 unsigned g_gw_last_report_ms = 0;
 unsigned g_gw_frame = 0;
+bool     g_gw_quiet = false;       // SEAMHUB1: no periodic report (an in-place leave is under way)
 
 // Who I am on the wire. SM64DS_PLAYER_NAME (1..24 bytes, 0x20..0x7e),
 // SM64DS_PLAYER_COLOR / SM64DS_PLAYER_SHOES (six hex digits, the lobby's colour
@@ -965,10 +968,9 @@ int gw_hex(char c) {
 }
 
 // true when the variable was there and was six hex digits (out is then it)
-bool gw_rgb_env(const char *var, unsigned char out[3],
+bool gw_rgb_env(const char *var, const char *e, unsigned char out[3],
                 unsigned char r, unsigned char g, unsigned char b) {
     out[0] = r; out[1] = g; out[2] = b;
-    const char *e = std::getenv(var);
     if (!e) return false;
     if (std::strlen(e) != 6) {
         std::fprintf(stderr, "[ghost] %s ignored: not six hex digits\n", var);
@@ -993,7 +995,8 @@ void gw_me_read() {
     g_gw_me.read = true;
     g_gw_me.name[0] = 0;
     g_gw_me.name_len = 0;
-    if (const char *e = std::getenv("SM64DS_PLAYER_NAME")) {
+    /* SEAMHUB1: the name and both colours come from the session record (hal/comms_hub.h), which the in-place leave clears */
+    if (const char *e = online_session_get(kSessPlayerName)) {
         const size_t n = std::strlen(e);
         bool ok = n >= 1 && n <= (size_t)kHubIdentNameMax;
         for (size_t i = 0; ok && i < n; ++i)
@@ -1010,9 +1013,9 @@ void gw_me_read() {
     /* GHOSTLOOK1: a pick is the PAIR, the launcher's both-or-neither rule
        (LobbyLaunch IdentityEnv): one without the other is no pick */
     const bool b_ok =
-        gw_rgb_env("SM64DS_PLAYER_COLOR", g_gw_me.body, 0xff, 0xff, 0xff);
+        gw_rgb_env("SM64DS_PLAYER_COLOR", online_session_get(kSessPlayerColor), g_gw_me.body, 0xff, 0xff, 0xff);
     const bool s_ok =
-        gw_rgb_env("SM64DS_PLAYER_SHOES", g_gw_me.shoes, 0x80, 0x40, 0x20);
+        gw_rgb_env("SM64DS_PLAYER_SHOES", online_session_get(kSessPlayerShoes), g_gw_me.shoes, 0x80, 0x40, 0x20);
     g_gw_me.colours = b_ok && s_ok;
     /* A build id for the identity record: FNV-1a of this TU's build stamp.
        Display / diagnosis only (design 6.2: never parsed for meaning). */
@@ -2348,7 +2351,7 @@ void gw_tick() {
                   : (g_cfg.report ? 5 : 0);
         if (every < 0) every = 0;
     }
-    if (every > 0) {
+    if (every > 0 && !g_gw_quiet) {   /* SEAMHUB1: the in-place leave stops the report at the quit */
         if (!g_gw_last_report_ms) g_gw_last_report_ms = now;
         if ((unsigned)(now - g_gw_last_report_ms) >= (unsigned)every * 1000u) {
             g_gw_last_report_ms = now;
@@ -4703,6 +4706,191 @@ bool comms_sync_ghost_look(int seat, unsigned *anim, unsigned *character) {
     if (anim) *anim = g_gw_last[seat].anim;
     if (character) *character = g_gw_last[seat].character;
     return true;
+}
+
+// ===========================================================================
+// THE IN-PLACE LEAVE (run after093, lane SEAMHUB1; the one-process plan's M-e
+// and H-a). Leaving an Adventure Online world to the title in this process:
+// hal/online_join.cpp calls this at the title, once the Stage (and with it
+// every ghost body) is gone and comms_hub_teardown has stopped the hub. Every
+// file global of the sync and ghost layers goes back to the value a process
+// that never joined starts with, so nothing of the session is drawn, sent or
+// counted again: the layer is off (g_enabled, g_hub), the configuration is
+// parsed again on the next decide, the read-once identity (g_gw_me: name and
+// colours) is read again from the session record (empty after the leave), the
+// own colour row (g_own) is forgotten, and the opening hold is off.
+//
+// THE ROM'S BODY WORDS. The hub seats 32 bodies through the ROM's own setter
+// and opens the per-player input gate (data_0209fc68[0] = 1, what
+// hal/level_boot.cpp does for more than one player). The title's StartFile
+// puts the count back to 1 on the next file pick (src/StartFile.c), but the
+// gate is the port's: it goes back to 0 here, and the count is put to the
+// solo value through the same setter now, so the title runs with the words a
+// solo boot has. Environment knobs latched in function statics (probe and
+// tuning knobs) mean the same before and after and are kept.
+// ===========================================================================
+template <class T, size_t N> static void leave_zero(T (&a)[N]) {
+    for (size_t i = 0; i < N; ++i) a[i] = T();
+}
+
+static void sync_globals_reset();
+
+void comms_sync_leave_reset() {
+    int bodies = 0;
+    for (int i = 0; i < kPortBodySlots; ++i)
+        if (data_0209f394[i]) ++bodies;
+    const int was_count = (int)data_0209f21c, was_rom = (int)data_0208a0e0, was_gate = data_0209fc68[0];
+
+    sync_globals_reset();
+
+    /* the Stage's teardown destroyed every body, but the ROM's per-player actor table keeps the pointers (each Player seats itself
+       there at spawn and nothing clears the slot on its way out); a solo title has none of them, and the hub's 31 ghost slots are
+       never seated by a solo spawn, so they would point at freed actors for the rest of the process */
+    for (int i = 0; i < kPortBodySlots; ++i) data_0209f394[i] = 0;
+    data_0209fc68[0] = 0;
+    SetNumPlayers(1);
+    data_0209f21c = data_0208a0e0;
+    std::fprintf(stderr, "[seamless] ghost layer reset: off, identity and own colour row forgotten; "
+                 "body words: count %d -> %d (ROM %d -> %d), input gate %d -> %d, %d stale body pointer(s) cleared\n",
+                 was_count, (int)data_0209f21c, was_rom, (int)data_0208a0e0, was_gate, data_0209fc68[0], bodies);
+    std::fflush(stderr);
+}
+
+// SEAMJOIN1: every file global of the sync and ghost layers back to a process that never joined (the leave's half above, without
+// the ROM's body words, which the join leaves to the level boot exactly as a restarted game does).
+static void sync_globals_reset() {
+    g_cfg = SyncCfg();
+    g_send_every = 1;
+    g_frame = 0;
+    g_parsed = false;
+    g_enabled = false;
+    g_said_refusal = false;
+    g_stats = SyncStats();
+    leave_zero(g_delayq);
+    g_dq_head = 0;
+    g_dq_count = 0;
+    g_last_ping_ms = 0;
+    g_ev_tokens = kEvBurst;
+    g_ev_seeded = false;
+    g_ev_anim = 0;
+    g_ev_ground = 0;
+    leave_zero(g_arr_seen);
+    leave_zero(g_arr_anim);
+    leave_zero(g_ph_id);
+    leave_zero(g_ph_hw);
+    leave_zero(g_gtarget);
+    leave_zero(g_ganim);
+    leave_zero(g_gcursor);
+    leave_zero(g_ganim_have);
+    leave_zero(g_peer_level);
+    leave_zero(g_peer_seen_ms);
+    leave_zero(g_peer_present);
+    g_vel_seeded = false;
+    leave_zero(g_vel_prev);
+    leave_zero(g_vel);
+    g_warp_pending = false;
+
+    leave_zero(g_gw);
+    g_hub = false;
+    g_gws = GwStats();
+    g_gw_t0 = 0;
+    g_gw_f0 = 0;
+    g_gw_t0_set = false;
+    g_gw_sent = HubGhostFrame();
+    g_gw_sent_have = false;
+    g_gw_last_seq = 0xffffffffu;
+    g_gw_last_send_ms = 0;
+    g_gw_last_ident_ms = 0;
+    g_gw_ident_sent = false;
+    g_gw_roster = 0;
+    g_gw_beh_last = 0;
+    g_gw_beh_seeded = false;
+    g_gw_frozen = 0;
+    leave_zero(g_gw_fz);
+    g_gw_prev_have = false;
+    leave_zero(g_gw_prev);
+    g_gw_prev_level = -1;
+    g_gw_warp = false;
+    g_gw_prev_dkind = 0;
+    leave_zero(g_gw_v);
+    g_gw_last_report_ms = 0;
+    g_gw_frame = 0;
+    g_gw_quiet = false;
+    g_gw_me = GwMe();
+    leave_zero(g_body_seat);
+    leave_zero(g_body_since);
+    g_assign_init = false;
+    g_gw_myseat_seen = 0xffffffffu;
+    leave_zero(g_gw_last);
+    leave_zero(g_row_seen);
+    std::memset(g_row_last, 0, sizeof g_row_last);
+    leave_zero(g_row_last_have);
+    g_gw_follow_n = 1;
+    leave_zero(g_drawpos_have);
+    leave_zero(g_gw_pal);
+    leave_zero(g_gw_pal_body);
+    std::memset(g_drawpos, 0, sizeof g_drawpos);
+    leave_zero(g_gtongue);
+    leave_zero(g_gblink);
+    g_hub_opening = false;
+    g_hub_opening_spawn = false;
+    g_hub_handover = false;
+    g_hub_handover_level = -1;
+    g_follow_diag = -1;
+    g_follow_fcount = 0;
+    g_own = OwnRow();
+    g_gated_now = false;
+}
+
+// ===========================================================================
+// THE IN-PLACE JOIN'S HALF (run after093, lane SEAMJOIN1; the one-process
+// plan's M4b). A restarted join successor decides the ghost layer once, at its
+// first pad publish (hal/comms_conductor.cpp comms_publish_pad -> sync_decide),
+// with the hub already installed by main(). A process joining in place made
+// that decision long ago as a solo game (the layer off), and nothing asks
+// again. So, once hal/online_join.cpp has the hub installed from the session
+// record: every global back to a process that never joined (the leave's
+// reset), then the same decision, now on the hub's arm (gw_decide: g_hub,
+// g_enabled, the identity read from the record). The body count needs nothing
+// here: the level boot asks vs_player_count() (hub_body_count: 32) at the
+// spawn, as it does in a restarted successor, and the own colour row is filled
+// from g_gw_me the first time a body draws.
+// ===========================================================================
+bool comms_sync_join_in_place() {
+    sync_globals_reset();
+    sync_decide();
+    /* THE BRING-UP THE A2 SEAT MAKES ONCE PER PROCESS (hal/level_boot.cpp port_a2_seat_body, at boot, before the title). In a successor
+       it ran with the hub installed: the per-player input gate open, the ROM's count and live bytes at the hub's bodies through the ROM's
+       own setter, the window copy of the count, and my comms slot. This process ran it as a solo game, so the same four words are made
+       here, in the same order, with the hub now installed; the title's StartFile then takes the count to 1 and the hub seat repair puts
+       it back at the level's spawn, as in a successor. */
+    const int bodies = vs_player_count();
+    const int was_gate = data_0209fc68[0], was_count = (int)data_0208a0e0;
+    data_0209fc68[0] = (bodies > 1) ? 1 : 0;
+    SetNumPlayers(bodies);
+    data_0209f21c = (unsigned char)bodies;
+    data_0209f250 = (unsigned char)func_0203da9c();
+    std::fprintf(stderr, "[seamless] the a2 seat's player words made again for the hub: input gate %d -> %d, count %d -> %d, "
+                 "I am slot %d\n", was_gate, data_0209fc68[0], was_count, (int)data_0208a0e0, (int)data_0209f250);
+    std::fprintf(stderr, "[seamless] ghost layer decided again in this process: %s; identity name \"%s\", colours %s "
+                 "%02x%02x%02x / %02x%02x%02x; the level boot seats %d bodies\n",
+                 g_hub && g_enabled ? "ON on the hub" : "OFF", g_gw_me.name, g_gw_me.colours ? "picked" : "none (the file's own)",
+                 g_gw_me.body[0], g_gw_me.body[1], g_gw_me.body[2], g_gw_me.shoes[0], g_gw_me.shoes[1], g_gw_me.shoes[2],
+                 vs_player_count());
+    std::fflush(stderr);
+    return g_hub && g_enabled;
+}
+
+void comms_sync_reports_off() {
+    g_gw_quiet = true;
+}
+
+void comms_sync_identity_text(char *out, int cap) {
+    gw_me_read();
+    std::snprintf(out, (size_t)cap, "name \"%s\" (%d byte(s)), colours %s %02x%02x%02x / %02x%02x%02x, own row %s",
+                  g_gw_me.name, g_gw_me.name_len, g_gw_me.colours ? "picked" : "none (the file's own)",
+                  g_gw_me.body[0], g_gw_me.body[1], g_gw_me.body[2], g_gw_me.shoes[0], g_gw_me.shoes[1],
+                  g_gw_me.shoes[2], g_own.have ? "held" : "none");
 }
 
 }  // namespace port

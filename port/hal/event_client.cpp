@@ -725,3 +725,9 @@ extern "C" void port_event_frame(void) {
         }
     }
 }
+
+// SEAMJOIN1 (run after093): a hub torn down in place (comms_hub_teardown) dropped every hub_on_kind handler, this file's event handler
+// with them; the next hub of this process (a join in place) must get it registered again, so the registration is forgotten here.
+namespace port {
+void event_client_hub_reset() { g_registered = false; }
+}  // namespace port

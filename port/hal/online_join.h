@@ -13,9 +13,9 @@
    whose stamp is not its request's, deletes the plan file once read, and applies the plan THE WAY THE
    ENV PATH DOES: it sets the same SM64DS_* names the launcher sets for an Adventure Online start and starts
    the game again at its front door (the successor the launcher's session loop already adopts), which boots
-   straight into the chosen file with the hub installed. An in-process hub install was rejected: the game
-   heap is carved once at boot with the hub's extra bytes (tests/walk_window.cpp, hub_game_heap_extra), so a
-   hub opened later could not seat 32 bodies.
+   straight into the chosen file with the hub installed. That restart is now the refusal path: the join is
+   made in this process when it can be (SEAMJOIN1, join_in_place in hal/online_join.cpp; the game heap is
+   carved at the online size on every boot, hub_game_heap_extra), and restarts only when it cannot.
 
    Usage from a screen: online_join_begin(file, nick), then online_join_step() once per frame until it
    returns something other than kJoinWaiting. kJoinEntering means the successor has been started and this
