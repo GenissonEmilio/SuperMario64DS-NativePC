@@ -111,6 +111,14 @@
    back gives the same four numbers. */
 extern "C" void hal_present_fit(int cw, int ch, int sw, int sh, int *x,
                                 int *y, int *w, int *h);
+/* The lost card's other halves (run after093, lane MGFREEZE2), bare
+   declarations for the same reason: hal/gpu_device.cpp makes a new device,
+   hal/presenter.cpp abandons its own, hal/gpu_raster.cpp hears and reports a
+   removed card. */
+extern "C" int port_gpu_device_renew(void);
+extern "C" void presenter_abandon_device(void);
+extern "C" void port_gpu_raster_set_lost_hook(void (*f)(long));
+extern "C" void port_gpu_raster_device_lost(long hr);
 
 /* Older SDKs spell the flip model in a later dxgi header; the value is fixed. */
 #ifndef DXGI_SWAP_EFFECT_FLIP_DISCARD
@@ -176,6 +184,48 @@ int g_up_refused_run;           /* refusals in a row */
 int g_up_refused;               /* refusals this run */
 int g_up_skipped_said;
 int g_uploads;                  /* pictures uploaded this run */
+/* ---- THE LOST CARD PATH IS REBUILT, NOT GIVEN UP (run after093, lane
+   MGFREEZE2) ----------------------------------------------------------------
+   A permanent failure used to end the card path for the run: fall_back handed
+   the window to the ordinary Windows path, and Windows kept showing the last
+   picture of the flip-model swap chain over it, so a tester saw a frozen game
+   that was still running (5 of her 11 sessions: DXGI_ERROR_DEVICE_REMOVED
+   right after the out-of-memory). Handing the window back would need the swap
+   chain destroyed mid-run, and every way of doing that (release, then flush
+   the presenter's queue) crashed the AMD driver's own worker thread.
+   So two things change.
+   THE SWAP CHAIN LIVES ON A CHILD WINDOW that fills the game window's client
+   area (disabled and transparent to the mouse, so every click, key and cursor
+   still belongs to the game window). A swap chain is never destroyed: on a
+   loss the child is hidden and the chain, the presenter's device and, when
+   the card itself was removed, the shared device are ABANDONED (no release,
+   no flush); the next picture rebuilds everything through the same path the
+   first picture took, on a fresh child window, so the one-flip-chain-per-
+   window rule never comes up. The game sees one or two pictures go by on the
+   ordinary path, hidden under the child.
+   ONLY WHEN THE REBUILD FAILS TWICE IN A ROW (or the run has rebuilt
+   RECOVERIES_MAX times) does the run go to the ordinary Windows path, and
+   then the child is hidden first, so the game window's own picture is what
+   Windows shows. */
+enum { RECOVERIES_MAX = 8, REBUILD_FAILS_MAX = 2 };
+HWND g_parent;                  /* the game window the card path presents for */
+HWND g_child;                   /* the window the swap chain is made on (0: the game window itself) */
+int g_lost;                     /* a rebuild is under way */
+HRESULT g_lost_hr;
+long long g_lost_at;
+int g_renew;                    /* the shared device is gone too: make a new one first */
+int g_rebuild_fails;            /* failed rebuilds in a row */
+int g_recoveries;               /* rebuilds finished this run */
+int g_giving_up;
+#ifndef PORT_ROM_CLEAN
+/* DEVELOPER DRILLS, compiled out of the kit. SM64DS_PRESENT_LOST_AT=<n>: at
+   picture n the run acts as if the card had been removed (the whole rebuild,
+   a new shared device included, and the renderer told). With
+   SM64DS_PRESENT_REBUILD_FAIL=<k> the first k rebuilds fail on purpose, so the
+   give-up after two failures can be watched too. */
+int g_lost_drill_at;
+int g_rebuild_fail_drill;
+#endif
 #ifndef PORT_ROM_CLEAN
 /* DEVELOPER KNOBS, compiled out of the kit (run after093, lane MGFREEZE1).
    SM64DS_GPU_MEMTRACE=1 prints the adapter's own memory account once a second
@@ -289,10 +339,16 @@ int env_int(const char *name, int dflt)
 /* ONE LINE, AND THEN THIS RUN IS ON THE GDI PATH FOR GOOD. Never an exit, never
    a stall: the caller returns 0 and its own StretchDIBits draws the frame that
    was about to be drawn here, so not even one picture is lost. */
+void child_hide();
+bool lose(const char *why, HRESULT hr);
+
 void fall_back(const char *why, HRESULT hr)
 {
     if (g_down) return;
+    /* once the card path has shown pictures, a failure is a loss to rebuild */
+    if (!g_giving_up && g_presents > 0 && (g_child || g_lost) && lose(why, hr)) return;
     g_down = 1;
+    child_hide();
     presenter_end();
     port_gpu_raster_present_down();
     if (hr)
@@ -352,6 +408,8 @@ void read_settings()
     g_memtrace = env_int("SM64DS_GPU_MEMTRACE", 0);
     g_fail_at = env_int("SM64DS_PRESENT_FAIL_AT", 0);
     g_fail_at_once = env_int("SM64DS_PRESENT_FAIL_AT_ONCE", 0);
+    g_lost_drill_at = env_int("SM64DS_PRESENT_LOST_AT", 0);
+    g_rebuild_fail_drill = env_int("SM64DS_PRESENT_REBUILD_FAIL", 0);
 #endif
     if (g_inflight_max < 0) g_inflight_max = 0;
     if (g_inflight_max > FENCE_RING - 1) g_inflight_max = FENCE_RING - 1;
@@ -640,7 +698,10 @@ bool upload(const void *pixels, int stride_px, int w, int h)
     }
     if (FAILED(hr) || !m.pData) {
         ++g_up_refused;
-        if (++g_up_refused_run >= UPLOAD_REFUSALS_MAX) {
+        /* a removed card never takes another upload: no point waiting out
+           the sixty (run after093, lane MGFREEZE2) */
+        if (++g_up_refused_run >= UPLOAD_REFUSALS_MAX ||
+            g_dev->GetDeviceRemovedReason() != S_OK) {
             fall_back("the upload was refused", hr);
             return false;
         }
@@ -824,6 +885,179 @@ bool make_swapchain(HWND hwnd, int w, int h)
     g_sc_w = w;
     g_sc_h = h;
     return make_backbuffer_view();
+}
+
+/* ---- the surface window and the rebuild (run after093, lane MGFREEZE2) ---
+   See the banner over RECOVERIES_MAX for why they exist. */
+
+typedef BOOL (WINAPI *ShowWindow_t)(HWND, int);
+typedef BOOL (WINAPI *SetWindowPos_t)(HWND, HWND, int, int, int, int, UINT);
+DefWindowProcA_t g_defproc;
+ShowWindow_t g_showwin;
+SetWindowPos_t g_setpos;
+CreateWindowExA_t g_crewin;
+int g_child_class;      /* 1 registered, -1 it could not be: the swap chain goes on the game window */
+
+LRESULT CALLBACK surface_proc(HWND h, UINT m, WPARAM w, LPARAM l)
+{
+    /* the game window answers the mouse; this window only carries the picture */
+    if (m == WM_NCHITTEST) return HTTRANSPARENT;
+    if (m == WM_ERASEBKGND) return 1;
+    return g_defproc ? g_defproc(h, m, w, l) : 0;
+}
+
+/* The child that carries the swap chain: the game window's whole client area,
+   disabled (so it never takes the keyboard or a click) and transparent to the
+   mouse's hit test (so the cursor and the touch screen stay the game
+   window's). user32 hand-loaded, the rule this file keeps. */
+HWND make_child(HWND parent, int w, int h)
+{
+    if (g_child_class < 0 || !g_user32) return 0;
+    if (!g_child_class) {
+        RegisterClassA_t reg = (RegisterClassA_t)GetProcAddress(g_user32, "RegisterClassA");
+        g_crewin = (CreateWindowExA_t)GetProcAddress(g_user32, "CreateWindowExA");
+        g_defproc = (DefWindowProcA_t)GetProcAddress(g_user32, "DefWindowProcA");
+        g_showwin = (ShowWindow_t)GetProcAddress(g_user32, "ShowWindow");
+        g_setpos = (SetWindowPos_t)GetProcAddress(g_user32, "SetWindowPos");
+        WNDCLASSA wc;
+        memset(&wc, 0, sizeof wc);
+        wc.lpfnWndProc = surface_proc;
+        wc.hInstance = GetModuleHandleA(0);
+        wc.lpszClassName = "sm64ds_card_surface";
+        if (!reg || !g_crewin || !g_defproc || !g_showwin || !g_setpos || !reg(&wc)) {
+            g_child_class = -1;
+            fputs("[present] no surface window class; the swap chain goes on the game window\n", stderr);
+            return 0;
+        }
+        g_child_class = 1;
+    }
+    return g_crewin(WS_EX_NOPARENTNOTIFY, "sm64ds_card_surface", "",
+                    WS_CHILD | WS_VISIBLE | WS_DISABLED | WS_CLIPSIBLINGS,
+                    0, 0, w, h, parent, 0, GetModuleHandleA(0), 0);
+}
+
+void child_hide()
+{
+    if (g_child && g_showwin) g_showwin(g_child, SW_HIDE);
+}
+
+void child_size(int w, int h)
+{
+    if (g_child && g_setpos)
+        g_setpos(g_child, 0, 0, 0, w, h,
+                 SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+}
+
+/* Everything the lost path showed through is left alone: the presenter's
+   thread is stopped and its ring freed as before any resize, then its device,
+   the swap chain, its view and the child window are abandoned (the child
+   hidden), never released and never flushed. The next picture makes them all
+   again through the path the first picture took. */
+void abandon_card_path()
+{
+    presenter_abandon_device();
+    child_hide();
+    g_child = 0;
+    g_scrtv = 0;
+    g_sc1 = 0;
+    g_sc = 0;
+    g_sc_w = g_sc_h = 0;
+    g_sc_hwnd = 0;
+    g_sc_dev = 0;
+    g_parent = 0;
+    g_pres_off = 0;
+    g_up_refused_run = 0;
+    if (!g_renew && g_tex) {
+        /* the upload texture, and every copy the driver keeps of it, goes;
+           the next picture makes it again */
+        if (g_srv) { g_srv->Release(); g_srv = 0; }
+        g_tex->Release();
+        g_tex = 0;
+        g_tex_w = g_tex_h = 0;
+    }
+}
+
+/* True when the loss is taken up by a rebuild; false gives the run up. */
+bool lose(const char *why, HRESULT hr)
+{
+    if (g_lost) {
+        if (++g_rebuild_fails >= REBUILD_FAILS_MAX) {
+            fprintf(stderr, "[present] the graphics card path could not be rebuilt (%s, "
+                    "code %08x, %d tries in a row)\n", why, (unsigned)hr, g_rebuild_fails);
+            g_giving_up = 1;
+            return false;
+        }
+    } else {
+        if (g_recoveries >= RECOVERIES_MAX) {
+            fprintf(stderr, "[present] the graphics card path was lost again (%s, code %08x) "
+                    "after %d rebuilds\n", why, (unsigned)hr, g_recoveries);
+            g_giving_up = 1;
+            return false;
+        }
+        g_lost = 1;
+        g_lost_hr = hr;
+        g_lost_at = qpc();
+        g_rebuild_fails = 0;
+        fprintf(stderr, "[present] the graphics card path was lost (%s, code %08x); "
+                "rebuilding it\n", why, (unsigned)hr);
+    }
+    /* the card itself removed or reset: nothing made on the shared device works */
+    if (g_dev && g_dev->GetDeviceRemovedReason() != S_OK) g_renew = 1;
+    abandon_card_path();
+    return true;
+}
+
+void recovered()
+{
+    if (!g_lost) return;
+    g_lost = 0;
+    g_rebuild_fails = 0;
+    ++g_recoveries;
+    fprintf(stderr, "[present] the graphics card path was lost (code %08x) and came back "
+            "after %.0f ms\n", (unsigned)g_lost_hr, ms_between(g_lost_at, qpc()));
+}
+
+/* The renderer heard first that the card is gone (hal/gpu_raster.cpp). */
+void lost_hook(long hr)
+{
+    if (g_down || !g_dev) return;
+    g_renew = 1;
+    fall_back("the graphics card was lost", (HRESULT)hr);
+}
+
+/* The rebuild's first step when the card itself was lost: the renderer draws
+   on the processor from here on (any lost card does that), everything this
+   file made on the old device is abandoned with it, a new device is made on
+   the same adapter, and the pipeline is made again on it. */
+bool renew_device()
+{
+    g_renew = 0;
+    port_gpu_raster_device_lost((long)(g_lost_hr ? g_lost_hr : (HRESULT)0x887A0005L));
+    g_vs = 0;
+    g_ps = 0;
+    g_cb = 0;
+    g_smp_point = g_smp_linear = 0;
+    g_rast = 0;
+    g_tex = 0;
+    g_srv = 0;
+    g_tex_w = g_tex_h = 0;
+    memset(g_fence, 0, sizeof g_fence);
+    g_fence_head = g_fence_n = 0;
+    g_off_rt = g_off_stage = 0;
+    g_off_rtv = 0;
+    g_off_rt_w = g_off_rt_h = 0;
+#ifndef PORT_ROM_CLEAN
+    g_ad3 = 0;
+    g_ad3_tried = 0;
+#endif
+    if (!port_gpu_device_renew()) {
+        fall_back("no new Direct3D device would start", 0);
+        return false;
+    }
+    g_dev = (ID3D11Device *)port_gpu_device();
+    g_ctx = (ID3D11DeviceContext *)port_gpu_device_context();
+    if (!g_dev || !g_ctx) { fall_back("the new Direct3D device went missing", 0); return false; }
+    return make_pipeline();
 }
 
 /* ---- the offscreen proof path -------------------------------------------- */
@@ -1299,6 +1533,9 @@ void at_exit()
                 "retr%s, %d recovered; %d picture(s) skipped\n", g_uploads, g_inflight_max,
                 g_fence_deep, g_fence_waits, g_fence_wait_ms, g_oom_retries,
                 g_oom_retries == 1 ? "y" : "ies", g_oom_recovered, g_up_refused);
+    if (g_recoveries || g_lost)
+        fprintf(stderr, "[present] the graphics card path was rebuilt %d time(s) this run%s\n",
+                g_recoveries, g_lost ? "; the last rebuild had not finished" : "");
     address_rows("exit  ");
     /* THE EXIT RULE (hal/gpu_device.h): stop the presenter thread and leave
        every Direct3D object to the system. Releasing them here crashed the
@@ -1347,6 +1584,7 @@ bool start()
             g_filter >= 2 ? "sharp" : (g_filter == 1 ? "smooth" : "nearest"),
             g_vsync_key ? "on" : "off");
     if (!make_pipeline()) { release_all(); return false; }
+    port_gpu_raster_set_lost_hook(lost_hook);
     address_rows("after ");
     atexit(at_exit);
     return true;
@@ -1584,9 +1822,27 @@ static int present_impl(void *hwnd, const void *pixels, int stride_px,
         fprintf(stderr, "[present] SM64DS_PRESENT_FAIL_AFTER=%d reached after "
                 "%d picture(s); forcing the fallback on purpose\n",
                 g_fail_after, g_presents);
+        g_giving_up = 1;            /* the plain fallback, not a rebuild */
         fall_back("a test asked for it", 0);
         return 0;
     }
+#ifndef PORT_ROM_CLEAN
+    if (g_lost_drill_at > 0 && g_presents == g_lost_drill_at) {
+        g_lost_drill_at = 0;
+        fprintf(stderr, "[present] SM64DS_PRESENT_LOST_AT: picture %d acts as if the card "
+                "had been removed\n", g_presents);
+        g_renew = 1;
+        fall_back("the card was removed", (HRESULT)0x887A0005L);
+        return 0;
+    }
+    if (g_lost && !g_sc && g_rebuild_fail_drill > 0) {
+        --g_rebuild_fail_drill;
+        fprintf(stderr, "[present] SM64DS_PRESENT_REBUILD_FAIL: this rebuild fails on purpose\n");
+        fall_back("a test asked the rebuild to fail", E_FAIL);
+        return 0;
+    }
+#endif
+    if (g_renew && !renew_device()) return 0;
 
     /* THE PRESENTER THREAD (run hunt8, lane PRESENTER1): the swap chain lives
        on the presenter's own device and belongs to its thread; this thread
@@ -1595,21 +1851,28 @@ static int present_impl(void *hwnd, const void *pixels, int stride_px,
        the game thread's own present, below. */
     for (int again = 0; again < 2; ++again) {
         const bool want_pres = presenter_enabled() && !g_pres_off;
-        if (!g_sc || g_sc_hwnd != (HWND)hwnd) {
+        if (!g_sc || g_parent != (HWND)hwnd) {
             presenter_end();
             release_swapchain();
+            if (g_child && g_parent != (HWND)hwnd) { child_hide(); g_child = 0; }
             g_sc_dev = g_dev;
             if (want_pres) {
                 if (void *d2 = presenter_swap_device(g_dev)) g_sc_dev = (ID3D11Device *)d2;
                 else g_pres_off = 1;
             }
-            if (!make_swapchain((HWND)hwnd, client_w, client_h)) return 0;
+            /* the swap chain goes on a child of the game window (see the
+               banner over RECOVERIES_MAX) */
+            if (!g_child) g_child = make_child((HWND)hwnd, client_w, client_h);
+            else child_size(client_w, client_h);
+            g_parent = (HWND)hwnd;
+            if (!make_swapchain(g_child ? g_child : (HWND)hwnd, client_w, client_h)) return 0;
         } else if (g_sc_w != client_w || g_sc_h != client_h) {
             /* the window changed size: a drag on the border, a maximise, or the
                F12 borderless toggle. The back buffers follow it. The presenter
                thread holds a back buffer and textures of the old size, so it is
                ended first and started again below. */
             presenter_end();
+            child_size(client_w, client_h);
             if (g_scrtv) { g_scrtv->Release(); g_scrtv = 0; }
             const HRESULT hr = g_sc->ResizeBuffers(0, (UINT)client_w, (UINT)client_h,
                                                    DXGI_FORMAT_UNKNOWN, 0);
@@ -1662,6 +1925,7 @@ static int present_impl(void *hwnd, const void *pixels, int stride_px,
         const long long p2 = qpc();
         presenter_publish(g_repeat);
         ++g_presents;
+        recovered();
         g_up_ms += ms_between(p0, p1);
         g_draw_ms += ms_between(p1, p2);
         ++g_cost_n;
@@ -1703,6 +1967,7 @@ static int present_impl(void *hwnd, const void *pixels, int stride_px,
 
     presenter_stat_note(t2, !g_repeat);
     ++g_presents;
+    recovered();
     g_up_ms += ms_between(t0, t1);
     g_draw_ms += ms_between(t1, t2);
     g_block_ms += ms_between(t2, t3);
