@@ -67,6 +67,10 @@ int  menu_online_touch(int kind, int down, int sx, int sy);
 void menu_online_pad_frame(int kind, int cursor);          /* PADNAV1: once a frame on the title main page / file select: forget a host focus the mouse or a page change left behind */
 int  menu_online_dir(int kind, int cursor, unsigned dirs);   /* a D-pad step the ROM cursor has nowhere to go with: wrench + left, or the file row + up, opens the ? text */
 int  menu_online_help_pad(int kind);                     /* X / Y on a page that has the ? button: 1 = taken */
+int  menu_online_padfocus(void);                         /* TITLEUI1: the host plank the pad focus is on (ONL_PF_*), 0 = the ROM cursor is the focus */
+/* TITLEUI1: a mouse hover on a page of `kind` (1 main page, 2 file select): pf = ONL_PF_HELP / ONL_PF_NAME lands the pad focus on that host plank (the arrow
+   moves there, as a D-pad step would put it), 0 hands the focus back to the ROM cursor (a hover on the wrench or a ROM plank). cursor = the ROM cursor element. */
+void menu_online_hover_focus(int kind, int pf, int cursor);
 int  menu_online_modal_up(void);                         /* a ? text, the VS note or the wait screen is up (INPUTMATRIX1: the pad is modal for it) */
 int  menu_online_back(int kind);                         /* the back key: 1 = taken (closes a screen or turns the planks back) */
 
