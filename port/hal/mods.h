@@ -58,6 +58,13 @@ const char *port_mods_bundle(void);
    own art). <rel> is a plain relative path with no "..". Documented at the definition in mods.cpp. */
 int port_mods_ui_file(const char *rel, char *out, unsigned cap);
 
+/* Switch the mod list IN PLACE at the title, with no level loaded (run after093, lane SEAMMODS1; one-process plan M3a): reads
+   EnabledMods again (and the multiplayer rule as it stands), rebuilds the files/ layer the card serves, re-indexes textures_hd and
+   drops the texture caches. Refuses, changing nothing, when a code mod is on either side, when the set of mods shipping hd_ui/,
+   sound/ or a character changes, or when files/ would change a file the game read before or at the title; returns 1 switched,
+   0 refused (the caller then restarts the way it does today). Logs one line either way. Game thread only. */
+int port_mods_relatch_at_title(const char *reason);
+
 #ifdef __cplusplus
 }
 #endif
