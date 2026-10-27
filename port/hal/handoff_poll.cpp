@@ -406,14 +406,14 @@ void dev_frame(unsigned title_frame)
         const char *n = std::getenv("SM64DS_VS_FORCE_NOBODY");
         if (n && *n == '1') port_vs_force_nobody = 1;
     }
-    /* SM64DS_VS_AFTER_FILE=<0..2>: at a title reached by a VS match that ended in place, walk it the way hal/title_entry.cpp's
+    /* SM64DS_TITLE_PICK_FILE=<0..2>: at a title reached by a VS match that ended in place, walk it the way hal/title_entry.cpp's
        port_title_skip_tick walks the boot title for SM64DS_BOOT_FILE (the touch on the title screen, the ROM's own menu choice 9, then
        the file's own button handler), so the R7 rows can pick a file after the match with no pad timing. The same after an accepted
        "adventure" hand-off that leaves the game at the title (the player's own file pick in a launcher-started online game), and at a
        title reached by an in-place quit (the reference rows: an offline quit's title, then the same file). */
     static int af = -2, af_step = 0;
     if (af == -2) {
-        const char *e = std::getenv("SM64DS_VS_AFTER_FILE");
+        const char *e = std::getenv("SM64DS_TITLE_PICK_FILE");
         af = e && e[0] >= '0' && e[0] <= '2' && !e[1] ? e[0] - '0' : -1;
     }
     if (af >= 0 && af_step < 3 && (port_vs_matches_ended_in_place() > 0 || g_accepted || port_front_end_in_place) && data_ov007_0210342c) {
@@ -425,20 +425,20 @@ void dev_frame(unsigned title_frame)
             if (af_step == 0 && state == 11 && sf >= 8) {
                 af_step = 1;
                 port_touch_force_press(128, 96, 2);
-                std::fprintf(stderr, "[seamless] title frame %u SM64DS_VS_AFTER_FILE: the title screen is touched\n", title_frame);
+                std::fprintf(stderr, "[seamless] title frame %u SM64DS_TITLE_PICK_FILE: the title screen is touched\n", title_frame);
             } else if (af_step <= 1 && state == 0 && req == -1 && !*(int *)(g + 0x10) && *(char **)(g + 0x28) && sf >= 8 &&
                        !(ep && *(short *)ep == 5)) {
                 af_step = 2;
                 func_ov007_020aec94(9);
-                std::fprintf(stderr, "[seamless] title frame %u SM64DS_VS_AFTER_FILE: the menu's file select row chosen "
+                std::fprintf(stderr, "[seamless] title frame %u SM64DS_TITLE_PICK_FILE: the menu's file select row chosen "
                              "(func_ov007_020aec94(9))\n", title_frame);
             } else if (state == 0 && req == -1 && ep && *(short *)ep == 5 && *(short *)(ep + 2) == -1 && sf >= 8) {
                 af_step = 3;
-                std::fprintf(stderr, "[seamless] title frame %u SM64DS_VS_AFTER_FILE: before the press: data_020a0f10 %u data_0209f250 %u "
+                std::fprintf(stderr, "[seamless] title frame %u SM64DS_TITLE_PICK_FILE: before the press: data_020a0f10 %u data_0209f250 %u "
                              "data_0208a0e0 %u data_0209fc68 %u data_0209f2d8 %u\n", title_frame, (unsigned)data_020a0f10[0],
                              (unsigned)data_0209f250[0], (unsigned)data_0208a0e0, (unsigned)data_0209fc68[0], (unsigned)data_0209f2d8);
                 func_ov007_020b6134(af);
-                std::fprintf(stderr, "[seamless] title frame %u SM64DS_VS_AFTER_FILE: file %c pressed through func_ov007_020b6134(%d)\n",
+                std::fprintf(stderr, "[seamless] title frame %u SM64DS_TITLE_PICK_FILE: file %c pressed through func_ov007_020b6134(%d)\n",
                              title_frame, 'A' + af, af);
             }
             std::fflush(stderr);
