@@ -61,6 +61,7 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#include <psapi.h>
 
 #include "mods.h"
 #include "char_registry.h"
@@ -1015,9 +1016,13 @@ int relatch(const char *reason, const char *list_json)
     const int tex = ntr::hdtex_reindex();
     ntr::gx_invalidate_textures();
     g_mods_prev.swap(old_mods);
+    PROCESS_MEMORY_COUNTERS pmc;
+    memset(&pmc, 0, sizeof pmc);
+    K32GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof pmc);
     fprintf(stderr, "[mods] relatched at the title (%s): %u mod(s) %s (was %s); %u ROM file id(s) overridden (was %u, %u changed); "
-            "fs cache %lu byte(s) dropped; textures_hd %d name(s) indexed\n", reason, (unsigned)g_mods.size(), list_text(g_mods).c_str(),
-            list_text(g_mods_prev).c_str(), (unsigned)g_override.size(), (unsigned)old_override.size(), changed, dropped, tex);
+            "fs cache %lu byte(s) dropped; textures_hd %d name(s) indexed; working set %lu KB\n", reason, (unsigned)g_mods.size(),
+            list_text(g_mods).c_str(), list_text(g_mods_prev).c_str(), (unsigned)g_override.size(), (unsigned)old_override.size(), changed,
+            dropped, tex, (unsigned long)(pmc.WorkingSetSize / 1024));
     fflush(stderr);
     return 1;
 }
