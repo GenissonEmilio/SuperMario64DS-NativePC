@@ -490,6 +490,19 @@ int env_int(const char *name, int dflt)
     return (end != e) ? (int)v : dflt;
 }
 
+/* A LOST CARD IS ALSO THE PRESENT PATH'S BUSINESS (run after093, lane
+   MGFREEZE2). The renderer and the present path share one device; when a
+   readback here is the first to hear the card was removed or reset, the
+   present path is told at once, so it rebuilds itself on a new device instead
+   of refusing its next sixty uploads. A hook and not a call, because the smoke
+   runner links this file without hal/gpu_present.cpp. */
+void (*g_lost_hook)(long);
+bool lost_code(HRESULT hr)
+{
+    return hr == (HRESULT)0x887A0005L || hr == (HRESULT)0x887A0006L ||
+           hr == (HRESULT)0x887A0007L || hr == (HRESULT)0x887A0020L;
+}
+
 /* ONE LINE, AND THEN THIS RUN DRAWS IN SOFTWARE FOR GOOD. Never an exit, never
    a stall: the caller returns 0 and gx.cpp's own opaque pass draws the frame
    that was about to be drawn here, so not even one picture is lost. */
@@ -497,6 +510,7 @@ void fall_back(const char *why, HRESULT hr)
 {
     if (g_down) return;
     g_down = 1;
+    if (lost_code(hr) && g_lost_hook) g_lost_hook((long)hr);
     if (hr)
         fprintf(stderr, "[renderer] the graphics card stopped drawing the 3D "
                         "picture (%s, code %08x). This run goes back to drawing "
@@ -5060,7 +5074,35 @@ extern "C" void port_gpu_card_set_fade(int evy, int white)
 
 extern "C" void *port_gpu_card_compose(const unsigned int *overlay, int stride_px)
 {
+#ifndef PORT_ROM_CLEAN
+    /* SM64DS_RENDERER_LOST_AT=<n> (developer drill, not in the kit): the nth
+       composite answers as a readback on a removed card does, so the
+       renderer's own lost-card path and the present path's rebuild after it
+       are exercised rather than assumed (run after093, lane MGFREEZE2). */
+    static int lost_at = -1, composed;
+    if (lost_at < 0) {
+        const char *e = getenv("SM64DS_RENDERER_LOST_AT");
+        lost_at = (e && *e) ? atoi(e) : 0;
+    }
+    if (lost_at > 0 && !g_down && ++composed == lost_at) {
+        fprintf(stderr, "[renderer] SM64DS_RENDERER_LOST_AT=%d: this composite answers as a removed card does\n", lost_at);
+        fall_back("the picture could not be read back", (HRESULT)0x887A0005L);
+        return 0;
+    }
+#endif
     return cp_compose((const uint32_t *)overlay, stride_px);
+}
+
+/* The present path's half of the lost card (see g_lost_hook): it registers
+   here; it may also tell the renderer the card is gone, which puts the 3D
+   picture on the processor for the rest of the run, as any lost card does. */
+extern "C" void port_gpu_raster_set_lost_hook(void (*f)(long)) { g_lost_hook = f; }
+extern "C" void port_gpu_raster_device_lost(long hr)
+{
+    void (*f)(long) = g_lost_hook;
+    g_lost_hook = 0;            /* the present path asked: do not call it back */
+    fall_back("the graphics card was lost", (HRESULT)hr);
+    g_lost_hook = f;
 }
 
 /* The finished composite of the last tick composited ahead of the pictures
