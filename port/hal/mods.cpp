@@ -1383,8 +1383,10 @@ void census_dump(const char *when)
 
 void census_at_exit(void) { census_dump("at exit"); }
 
+void (*g_dev_prev_hook)(void) = 0;   /* SEAMCLEAN1 (item 32): the hook that was seated before this one, called first */
 void dev_frame(void)
 {
+    if (g_dev_prev_hook) g_dev_prev_hook();
     if (port_scene_live_id() != 1) return;
     const unsigned t = g_title_ticks++;
     if ((int)t == g_census_tick) census_dump("at the title");
@@ -1451,7 +1453,10 @@ struct DevKnobs {
             atexit(census_at_exit);
         }
         if (!g_steps.empty() || g_census_tick >= 0)
+        {
+            g_dev_prev_hook = port_sdat_frame_hook;
             port_sdat_frame_hook = dev_frame;
+        }
     }
 } g_dev_knobs;
 #endif
