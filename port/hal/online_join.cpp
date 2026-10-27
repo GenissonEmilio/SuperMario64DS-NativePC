@@ -396,6 +396,7 @@ extern "C" {
 extern void (*port_sdat_frame_hook)(void);                    /* hal/sdat/consumer.cpp: one call per game frame */
 int port_scene_live_id(void);                                 /* hal/scene_boot.cpp: 1 = the title is the live scene */
 int port_mods_relatch_after_level(const char *reason);        /* hal/mods.cpp */
+int port_mods_relatch_forced(const char *reason);             /* hal/mods.cpp (SEAMCLEAN1) */
 int port_mods_multiplayer(void);
 int port_mods_count(void);
 const char *port_mods_id(int i);
@@ -425,14 +426,34 @@ bool env_any(const char *n)
     return GetEnvironmentVariableA(n, v, sizeof v) > 0;
 }
 
-void leave_restart(const char *why)
+/* cleared: the hub is down and the record and the environment are cleared (a refusal of the mods relatch, or a later one), so the
+   process is a solo title with the ONLINE mod list latched. If the restart then fails to start, the title must still be playable
+   as the player left it: the offline list goes on anyway (SEAMCLEAN1; a code mod still cannot, and then the line says so). */
+void leave_restart(const char *why, bool cleared = false)
 {
     std::fprintf(stderr, "[seamless] in place refused: %s; restarting\n", why);
     std::fflush(stderr);
-    if (!port_online_leave_restart_hook || !port_online_leave_restart_hook()) {
+    bool started = false;
+#ifndef PORT_ROM_CLEAN
+    /* dev knob: the successor "could not be started" (row proof only) */
+    const bool fake_fail = std::getenv("SM64DS_LEAVE_RESTART_FAIL") != nullptr;
+    if (fake_fail) std::fprintf(stderr, "[seamless] SM64DS_LEAVE_RESTART_FAIL: the restart is not attempted\n");
+    if (!fake_fail)
+#endif
+        started = port_online_leave_restart_hook && port_online_leave_restart_hook();
+    if (!started) {
         std::fprintf(stderr, "[seamless] the restart could not be started (win32 %lu); this process stays on the title\n",
                      (unsigned long)GetLastError());
         std::fflush(stderr);
+        if (cleared) {
+            if (port_mods_relatch_forced("the restart could not be started"))
+                std::fprintf(stderr, "[seamless] the title stays playable: the offline mod list is latched (%d mod(s) on)\n",
+                             port_mods_count());
+            else
+                std::fprintf(stderr, "[seamless] the title stays on the online mod list (%d mod(s) on); close the game and start it "
+                             "again for the full list\n", port_mods_count());
+            std::fflush(stderr);
+        }
     }
 }
 
@@ -467,7 +488,7 @@ void leave_at_title()
                  "environment: %s\n", fields, names, names ? cleared.c_str() : "-");
     std::fflush(stderr);
     if (!port_mods_relatch_after_level("leaving the online session")) {
-        leave_restart("the mods layer refused the switch back to the offline list");
+        leave_restart("the mods layer refused the switch back to the offline list", true);
         return;
     }
     char id[200];
@@ -689,7 +710,7 @@ void ip_take_down(const char *why)
     hub_presence_leave_reset();
     ip_undo_env();
     if (!relatch("the online join did not go through"))
-        leave_restart("the mods layer refused the switch back to the offline list");
+        leave_restart("the mods layer refused the switch back to the offline list", true);
 }
 
 void ip_frame()

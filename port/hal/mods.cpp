@@ -1064,6 +1064,8 @@ std::string list_text(const std::vector<Mod> &l)
 
 std::vector<Mod> g_mods_prev;   /* the list before the last relatch, kept one relatch long for a reader mid-call */
 
+int g_force_held = 0;   /* SEAMCLEAN1: the title-time restart failed; accept a file a level read (see port_mods_relatch_forced) */
+
 int relatch(const char *reason, const char *list_json)
 {
     char why[600] = "";
@@ -1144,9 +1146,15 @@ int relatch(const char *reason, const char *list_json)
             const std::string ov = o == old_override.end() ? "" : o->second, nv = n == g_override.end() ? "" : n->second;
             if (ov == nv) continue;
             ++changed;
-            if (held_at_title(it->first))
+            if (held_at_title(it->first)) {
+                if (g_force_held) {
+                    fprintf(stderr, "[mods] forced: file id %u (%s) was read %s; the new list serves it from its next read\n", it->first,
+                            held_path(it->first).c_str(), held_when(it->first));
+                    continue;
+                }
                 snprintf(why, sizeof why, "files/ changes file id %u (%s), which the game read %s and still holds", it->first,
                          held_path(it->first).c_str(), held_when(it->first));
+            }
         }
     }
     if (why[0]) {
@@ -1454,6 +1462,17 @@ extern "C" int port_mods_relatch_after_level(const char *reason)
     g_after_level = 1;
     const int r = relatch(reason, 0);
     g_after_level = 0;
+    return r;
+}
+
+/* SEAMCLEAN1: the last resort of an online leave whose relatch was refused and whose restart then failed to start: the player is on
+   a title with the online mod list and no other way out, so the offline list goes on anyway, accepting files a level read (they show
+   from their next read; the title holds no level). A code mod still refuses (a plugin cannot be unloaded). */
+extern "C" int port_mods_relatch_forced(const char *reason)
+{
+    g_force_held = 1;
+    const int r = port_mods_relatch_after_level(reason);
+    g_force_held = 0;
     return r;
 }
 
