@@ -225,7 +225,10 @@ extern "C" void port_join_plate_raise_in_place(int server)
     P.test_at = -1;
     P.test_file = -1;
 #ifndef PORT_ROM_CLEAN
-    if (const char *t = getenv("SM64DS_JOIN_QUIET_CANCEL")) {   /* the successor's cancel drill, read here for the in-place join */
+    static int drilled;   /* the drill cancels the first in-place join only, so the row can join again afterwards */
+    const char *t = drilled ? 0 : getenv("SM64DS_JOIN_QUIET_CANCEL");
+    if (t) {   /* the successor's cancel drill, read here for the in-place join */
+        drilled = 1;
         P.test_at = atoi(t);
         const char *c = strchr(t, ':');
         P.test_how = (c && !_stricmp(c + 1, "esc")) ? 1 : 0;
