@@ -501,7 +501,11 @@ void swap_fade_host(MenuLayout *L, int from, int a)
     for (int i = from; i < L->np; ++i) {
         MenuPiece &p = L->p[i];
         if (p.nodraw || p.src == SRC_TOP_PIC || p.src == SRC_SUB) continue;
-        if (a <= 0) { p.nodraw = 1; continue; }
+        /* TITLEART2: a code drawn piece (custom: the planks, the arrow and the ? without their pictures) is drawn by menu_piece_draw before it looks at
+           nodraw, so at the swap's peak (whiteness 0x1000, alpha 0: the change tick 0 / 6 and the first top-state 5 tick)
+           they were hidden in name only and drawn at full strength over the white page for two ticks. A custom piece has no touch of its own, so it
+           loses its draw call here as well. */
+        if (a <= 0) { p.nodraw = 1; p.custom = nullptr; continue; }
         const int own = p.alpha ? p.alpha : 255;
         const int na = own * a / 255;
         p.alpha = (uint8_t)(na < 1 ? 1 : na);
@@ -682,6 +686,7 @@ void build_main(MenuLayout *L, bool intro)
     const int np_ov = L->np;
     { const OnlFacts *of = onl_facts_of(L); online_overlays(L, true, of && of->on); }     /* NAME1: the ? button and the modal screen */
     { const OnlFacts *of = onl_facts_of(L); if (cs.swap_a >= 0 && !(of && of->scr != ONL_SCR_NONE)) swap_fade_host(L, np_ov, cs.swap_a); }     /* TITLEART1: the ? too */
+    if (cs.swap_a >= 0 && hal_menu_trace_on()) fprintf(stderr, "[swapfade-host] f%d level %d alpha %d\n", t_f ? t_f->frame : -1, cs.swap_lv, cs.swap_a);      /* TITLEART2 */
 }
 
 
