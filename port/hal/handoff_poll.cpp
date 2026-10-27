@@ -298,6 +298,7 @@ void refuse(const std::string &nonce, const char *why)
 void (*g_prev)(void) = 0;
 unsigned g_frames = 0;        /* frames of a live title, counted over the whole process */
 bool g_done = false;          /* a refusal is quitting this process: no second pickup */
+int g_accepted = 0;           /* hand-offs this process has taken */
 
 /* 0 = a request may be picked up now; else why not */
 const char *busy()
@@ -382,6 +383,7 @@ void take()
         refuse(r.nonce, why);
         return;
     }
+    ++g_accepted;
     respond(r.nonce, "accepted", 0);
     std::fprintf(stderr, "[handoff] accepted: kind %s nonce %s; the running game takes the match (response written)\n", r.kind.c_str(),
                  r.nonce.c_str());
@@ -404,13 +406,14 @@ void dev_frame(unsigned title_frame)
     }
     /* SM64DS_VS_AFTER_FILE=<0..2>: at a title reached by a VS match that ended in place, walk it the way hal/title_entry.cpp's
        port_title_skip_tick walks the boot title for SM64DS_BOOT_FILE (the touch on the title screen, the ROM's own menu choice 9, then
-       the file's own button handler), so the R7 rows can pick a file after the match with no pad timing. */
+       the file's own button handler), so the R7 rows can pick a file after the match with no pad timing. The same after an accepted
+       "adventure" hand-off that leaves the game at the title (the player's own file pick in a launcher-started online game). */
     static int af = -2, af_step = 0;
     if (af == -2) {
         const char *e = std::getenv("SM64DS_VS_AFTER_FILE");
         af = e && e[0] >= '0' && e[0] <= '2' && !e[1] ? e[0] - '0' : -1;
     }
-    if (af >= 0 && af_step < 3 && port_vs_matches_ended_in_place() > 0 && data_ov007_0210342c) {
+    if (af >= 0 && af_step < 3 && (port_vs_matches_ended_in_place() > 0 || g_accepted) && data_ov007_0210342c) {
         char *g = data_ov007_0210342c;
         char *sp = *(char **)(g + 8);
         char *ep = *(char **)(g + 4);
