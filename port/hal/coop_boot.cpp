@@ -1084,6 +1084,7 @@ bool env_any(const char *n) {
 }
 
 void coop_frame_hook();
+void reread_files(const char *why);
 
 void lv_chain() {
     if (g_lv_chained) return;
@@ -1186,6 +1187,7 @@ void leave_at_title() {
                  "name(s) cleared from both copies of the environment: %s\n", fields, names, names ? cleared.c_str() : "-");
     std::fflush(stderr);
     ntr::backup::select_coop(0);
+    reread_files("the single player save");   // the title was built from the coop medium; a solo pick must read the solo files
     unsigned extra = 0;
     const bool after_level = hub_game_heap_carved(&extra);
     const int ok = after_level ? port_mods_relatch_after_level("leaving the coop room")
