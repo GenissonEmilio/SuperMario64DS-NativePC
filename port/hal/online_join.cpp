@@ -283,7 +283,9 @@ static const char *const k_session_env[] = {
     "SM64DS_SKIP_MENU",
     /* JOINWIN2: the launcher's VS child also carries the arena and its star target (hal/comms_hub.cpp and hal/comms_loopback.cpp read
        both); a VS_MAP left set makes the restart a VS boot instead of the title */
-    "SM64DS_VS_MAP", "SM64DS_VS_STAR_TARGET" };
+    "SM64DS_VS_MAP", "SM64DS_VS_STAR_TARGET",
+    /* SEAMHUB1 (REVINT100K): a king match and Luigi Infection carry three more (LobbyLaunch.cs) */
+    "SM64DS_VS_KING_TARGET", "SM64DS_VS_LUIGI_INFECTION", "SM64DS_VS_LUIGI_SEED" };
 
 extern "C" int port_online_quit_offline_env(void)
 {
