@@ -1055,8 +1055,13 @@ unsigned hub_game_heap_extra() {
        from. So the online world hub (the hub installed, not the arena, not a party or coop room) gets 4096
        bytes per body slot on top: 128 KB at 32. Offline, VS and the small rooms get 0, byte for byte as before.
        SM64DS_HUB_HEAP_EXTRA=<bytes> overrides (0 = the old fixed heap). Asked at the carve, before any
-       room code has run, so it reads the same env the body count does. */
-    if (!comms_hub_active() || comms_hub_arena()) return hub_heap_carved(0);
+       room code has run, so it reads the same env the body count does.
+       SEAMJOIN2: AND AN OFFLINE BOOT CARVES THE SAME SIZE. The heap is carved once per process, and since the
+       join in place a process that played offline first can go online without restarting; with 0x3b000 it
+       could not seat 32 bodies and the join had to restart. One player is sized never to run short of the
+       ROM's 0x3b000, so the bigger heap changes nothing a solo game does (the lane gate == n1 on this build);
+       only the "[heap] ... free after boot" line moves (241592 -> 372664). The VS arena keeps 0. */
+    if (comms_hub_active() && comms_hub_arena()) return hub_heap_carved(0);
     return hub_heap_carved(hub_heap_need());
 }
 
