@@ -1081,10 +1081,10 @@ float logo_bounce(int tb)
 }
 
 /* TITLEUI1: pieces [from, L->np) at alpha a (0..255) on top of their own: a = 255 leaves them, 0 hides them (their touch maps stay) */
-void swap_fade(MenuLayout *L, int from, int a)
+void swap_fade_span(MenuLayout *L, int from, int to, int a)      /* TITLEART2: pieces [from, to) only */
 {
     if (a >= 255) return;
-    for (int i = from; i < L->np; ++i) {
+    for (int i = from; i < to; ++i) {
         MenuPiece &p = L->p[i];
         if (p.nodraw) continue;
         if (a <= 0) { p.nodraw = 1; continue; }
@@ -1093,6 +1093,7 @@ void swap_fade(MenuLayout *L, int from, int a)
         p.alpha = (uint8_t)(na < 1 ? 1 : na);
     }
 }
+void swap_fade(MenuLayout *L, int from, int a) { swap_fade_span(L, from, L->np, a); }
 /* TITLEUI1: one line a tick across the face swap (SM64DS_MENU_TRACE): the ROM's level and the alpha each kind of piece is drawn at (255 = whole, 0 = hidden,
    -2 = no such piece this tick) */
 void swap_trace(const MenuLayout *L, const Chore &c, int from, int to)
@@ -1327,28 +1328,35 @@ void build_main_pc(MenuLayout *L, bool intro)
         small_a = 255;
     }
     if (c.skip) { big_a = 0; small_a = 255; }
-    if (big_a > 0) {
-        const int lt = ltune(0, 26), lh = ltune(1, 112), ldx = ltune(2, 0);
-        const int dhb = U(lh), dwb = (int)((long long)dhb * iw / ih);
-        const int dhs = U(ctune(2, 40)), dws = (int)((long long)dhs * iw / ih);
-        const int dh = dhb + (int)((float)(dhs - dhb) * mv), dw = (int)((long long)dh * iw / ih);
-        const int fx0 = (w - dwb) / 2 + U(ldx), fx1 = U(ctune(3, 6)), fy0 = U(lt) + Uf(dy), fy1 = U(ctune(4, 6));
-        (void)dws;
-        MenuPiece lg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
-        lg.bg = 1; lg.hostimg = MENU_IMG_LOGO; lg.nofade = 1; lg.alpha = (uint8_t)(big_a >= 255 ? 0 : big_a);
-        lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
-        lg.fx = (short)(fx0 + (int)((float)(fx1 - fx0) * mv)); lg.fy = (short)(fy0 + (int)((float)(fy1 - fy0) * mv));
-        menu_add_piece(L, lg);
-    }
-    if (small_a > 0) {
-        const int lh = ctune(2, 40), mx = ctune(3, 6), my = ctune(4, 6);
-        const int dh = U(lh), dw = (int)((long long)dh * iw / ih);
-        MenuPiece lg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
-        lg.bg = 1; lg.hostimg = MENU_IMG_LOGO; lg.nofade = 1; lg.alpha = (uint8_t)(small_a >= 255 ? 0 : small_a);
-        lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
-        lg.fx = (short)U(mx); lg.fy = (short)U(my);
-        menu_add_piece(L, lg);
-    }
+    /* TITLEART2: the PC logo is always above the head. On the intro the head fades in (from the swap tick, about t341 of the real route) while the
+       big logo still hovers centred; with the logo pieces added before the face piece any face alpha above 0 drew the head over the logo, the hat
+       first. The logos are now added after the face, the head's touch map and the wrench, and before the planks, and the face swap's fade skips them
+       as it did before (they were outside its span). */
+    auto add_logos = [&]() {
+        if (big_a > 0) {
+            const int lt = ltune(0, 26), lh = ltune(1, 112), ldx = ltune(2, 0);
+            const int dhb = U(lh), dwb = (int)((long long)dhb * iw / ih);
+            const int dhs = U(ctune(2, 40)), dws = (int)((long long)dhs * iw / ih);
+            const int dh = dhb + (int)((float)(dhs - dhb) * mv), dw = (int)((long long)dh * iw / ih);
+            const int fx0 = (w - dwb) / 2 + U(ldx), fx1 = U(ctune(3, 6)), fy0 = U(lt) + Uf(dy), fy1 = U(ctune(4, 6));
+            (void)dws;
+            MenuPiece lg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            lg.bg = 1; lg.hostimg = MENU_IMG_LOGO; lg.nofade = 1; lg.alpha = (uint8_t)(big_a >= 255 ? 0 : big_a);
+            lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
+            lg.fx = (short)(fx0 + (int)((float)(fx1 - fx0) * mv)); lg.fy = (short)(fy0 + (int)((float)(fy1 - fy0) * mv));
+            menu_add_piece(L, lg);
+        }
+        if (small_a > 0) {
+            const int lh = ctune(2, 40), mx = ctune(3, 6), my = ctune(4, 6);
+            const int dh = U(lh), dw = (int)((long long)dh * iw / ih);
+            MenuPiece lg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            lg.bg = 1; lg.hostimg = MENU_IMG_LOGO; lg.nofade = 1; lg.alpha = (uint8_t)(small_a >= 255 ? 0 : small_a);
+            lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
+            lg.fx = (short)U(mx); lg.fy = (short)U(my);
+            menu_add_piece(L, lg);
+        }
+    };
+    if (intro) add_logos();
     const int np_swap = L->np;      /* TITLEUI1: the pieces from here to the overlays are the lower screen's: the face swap fades them (swap_fade) */
     if (!intro) {
         /* the face (the whole lower 3D layer minus the wrench corner, round 4's piece) at the swap's alpha */
@@ -1423,6 +1431,9 @@ void build_main_pc(MenuLayout *L, bool intro)
             hot(L, iwr, wr_ids, 1);
         }
         }
+        const int np_logo = L->np;
+        add_logos();
+        const int np_logo_end = L->np;
         /* the planks, each rising from the bottom edge with an overshoot, staggered */
         static const int kPlateId[3] = { 1, 0, 2 };
         static const int kPlankImg[3] = { MENU_IMG_BTN_MP, MENU_IMG_BTN_ADV, MENU_IMG_BTN_REC };
@@ -1458,7 +1469,7 @@ void build_main_pc(MenuLayout *L, bool intro)
             const int ip = menu_add_piece(L, pl);
             if (!toy) menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
         }
-        if (c.swap_a >= 0) swap_fade(L, np_swap, c.swap_a);      /* TITLEUI1: the face, the wrench and the planks take the ROM's fade level */
+        if (c.swap_a >= 0) { swap_fade_span(L, np_swap, np_logo, c.swap_a); swap_fade(L, np_logo_end, c.swap_a); }      /* TITLEUI1: the face, the wrench and the planks take the ROM's fade level (TITLEART2: not the logos) */
         const int np_arrow = L->np;
         /* the selection arrow, once the planks have landed */
         const OnlFacts *pfl = onl_facts_of(L);      /* PADNAV1: no cursor arrow here while the pad focus is on the ? */
