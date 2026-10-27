@@ -562,7 +562,8 @@ extern "C" void port_online_leave_begin(int frame)
         first live frame), and the ghost layer is reset and decided again on the hub (comms_sync_join_in_place: the identity, the own
         colour row and the 32 bodies the level boot seats come from the record, as in a successor);
      5. the Joining plate keeps JOINWIN1's look: black until the level, the corner line after 3 s, muted; B / Esc cancels IN PLACE;
-     6. once the relay has given a seat (or 5 s have passed, about what a successor's hidden title walk takes) and the file select is
+     6. once the relay has given a seat and 1 s has passed (so B / Esc on the black can still cancel; without a seat 5 s, about what a
+        successor's hidden title walk takes) and the file select is
         settled, the file is pressed through func_ov007_020b6134, the ROM's own handler for the A / B / C buttons: the same call, on the
         same file select, that the successor makes, and from there dScDSMT_c's func_02013c84 and StartFile take the game into the world
         exactly as in the successor (the title's fall-through to the level boot on the first title of the process, the level-to-scene
@@ -593,6 +594,7 @@ void star_tally_session_reset();  /* hal/star_tally.cpp: the name hash and table
 namespace {
 enum { kIpNone = 0, kIpWaiting = 1, kIpPressed = 2, kIpEntered = 3 };
 const ULONGLONG kIpSeatMs = 5000;       /* press without a seat after this long (the successor never waited for one) */
+const ULONGLONG kIpHoldMs = 1000;       /* and never sooner than this: B / Esc on the black can still cancel (a successor's black lasts several seconds) */
 const ULONGLONG kIpSettleMs = 15000;    /* the file select must be settled by then, or the join is withdrawn */
 int g_ip = kIpNone;
 ULONGLONG g_ip_t0 = 0;
@@ -695,7 +697,7 @@ void ip_frame()
         if (port_join_plate_inplace_tick()) { join_in_place_cancel("the player cancelled on the Joining plate"); return; }
         const ULONGLONG el = GetTickCount64() - g_ip_t0;
         const bool seated = comms_hub_state() == kHubLive;
-        if (!seated && el < kIpSeatMs) return;
+        if (el < kIpHoldMs || (!seated && el < kIpSeatMs)) return;
         int st = -1, el5 = -1;
         if (!file_select_settled(&st, &el5)) {
             if (el >= kIpSettleMs) join_in_place_cancel("the file select did not settle for the press");
@@ -808,7 +810,8 @@ const char *join_in_place(const JoinPlan &p)
         port_sdat_frame_hook = ip_frame;
     }
     std::fprintf(stderr, "[seamless] joining in place: hub up, ghosts on the hub, the online save, %d mod(s) on; the file is pressed "
-                 "once the relay gives a seat (at most %u s)\n", port_mods_count(), (unsigned)(kIpSeatMs / 1000));
+                 "once the relay gives a seat (not before %u ms, at most %u s)\n", port_mods_count(), (unsigned)kIpHoldMs,
+                 (unsigned)(kIpSeatMs / 1000));
     std::fflush(stderr);
     return 0;
 }
