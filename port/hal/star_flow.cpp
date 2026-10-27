@@ -2501,6 +2501,10 @@ static void vs_latches_reset(void)
     g_vs_names_read = 0;
     g_vs_frame = -1;
     g_mep_on = g_mep_want_scene = g_mep_want_exit = g_mep_grace = g_mep_star_target = -1;
+    /* the ROM's "the VS clock ran out" latch (src/ui/hud/d_meter.cpp sets it at 0; Stage::InitResources:288 writes 0 for a new Stage on
+       the boot path, and a fresh process has 0). A Stage the level-to-scene crossing builds kept the 1 of the match before, and the
+       next match's clock read as run out 1.5 s after its start: back to 0 with the rest of the match. */
+    data_0209f204 = 0;
 }
 
 static const char *vs_end_refusal(void)
