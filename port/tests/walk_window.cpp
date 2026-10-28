@@ -2955,6 +2955,10 @@ static void present(void);   /* the blit, defined with the window code below */
 static int g_ip_on = -1;
 static int g_ip_tick_ok;
 static unsigned g_ip_serial;   /* commits so far: a tick's identity in traces */
+/* run after093, lane SMOOTHTAGS1: the level tick whose name tags went into the 3D layer's snapshot (g_ip_p3); the pictures
+   between it and the next tick paint the tags themselves at the blended place. 0 = none. */
+static unsigned g_ip_tag_for;
+static unsigned long long g_ip_tag_pics;
 static long long g_ip_t0;
 static long long g_ip_tick_t0, g_ip_tick_len;
 /* The tick's own picture handed to the presentation clock rather than drawn
@@ -10013,7 +10017,7 @@ static int ip_build_b(IpPend *P)
            keeps its 3D and the card's own compose */
         if (tw && tw_card != 2) { port_gpu_card_inter_cut(tw_outer, tw_inner); port_gpu_card_inter_cut_closing(twc); }
         /* SM64DS_TWEEN_CARD=2 is the 0.9.3 round 4b behaviour, kept for before/after rows only: the card refuses a box tick */
-        const int card_done = !(tw && tw_card == 2) && !(gl_note && gl_note->n > 0 && alpha < 0.999) && !ts_D && port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
+        const int card_done = !(tw && tw_card == 2) && !(gl_note && gl_note->n > 0 && alpha < 0.999) && !ts_D && !(g_ip_tag_for && g_ip_tag_for == g_ip_serial) && port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
         port_gpu_card_inter_cut(0, 0);
         port_gpu_card_inter_cut_closing(0);
         port_gpu_card_inter_fade_off();
@@ -10042,6 +10046,11 @@ static int ip_build_b(IpPend *P)
         ip_snap(g_ip_p2, *g_ip_level_fb);
         ip_snap(g_ip_p4, *g_ip_level_fb);
         ip_snap(g_ip_p5, *g_ip_level_fb);
+    }
+    /* run after093, lane SMOOTHTAGS1: the name tags at this picture's place, over its replayed 3D and under the tick's 2D */
+    if (g_ip_tag_for && g_ip_tag_for == g_ip_serial) {
+        nt_paint(ovl_surface(o), alpha);
+        ++g_ip_tag_pics;
     }
     ++g_ip_cpu_pics;
     if (tw) ++g_ip_tween_pics;
@@ -10280,6 +10289,7 @@ static void ip_note(double build_ms, double pres_ms)
             sb[IP_WIN - 1], g_ip_sum_replay / IP_WIN, g_ip_sum_raster / IP_WIN,
             g_ip_sum_compose / IP_WIN, ap / IP_WIN, sp[(IP_WIN * 95) / 100],
             sp[IP_WIN - 1], g_ip_pictures, g_ip_blended, g_ip_plain, g_ip_card_pics, g_ip_cpu_pics);
+    if (g_ip_tag_pics) fprintf(stderr, "[interp] name tags painted on %llu pictures between ticks\n", g_ip_tag_pics);
     if (g_ip_menu_n) fprintf(stderr, "[interp] menu re-draw in %u of those pictures: %.2f ms each (inside '2D')\n", g_ip_menu_n, g_ip_sum_menu / g_ip_menu_n);
     g_ip_sum_menu = 0; g_ip_menu_n = 0;
     g_ip_sum_replay = g_ip_sum_raster = g_ip_sum_compose = 0;
@@ -23056,6 +23066,13 @@ int main(void)
             return (e && !strcmp(e, "old")) ? 1 : 0;
         }();
         if (!tag_old_order && !rb_skip_render()) nt_draw(ovl_surface(fb));
+        /* run after093, lane SMOOTHTAGS1: the same tags into the 3D layer's snapshot, so the pictures between this tick and
+           the next do not carry the tick's tag pixels as 2D; ip_build_b paints them on each picture at the blended place */
+        if (!tag_old_order && !rb_skip_render() && nt_smooth_on() && g_ip_on > 0 && g_ip_snapstage >= 1 &&
+            g_nt_items > 0) {
+            nt_paint(ovl_surface(*g_ip_p3), -1.0);
+            g_ip_tag_for = g_ip_serial;
+        }
         pt_mark(PS_COMP_A);
         if (!rb_skip_render())
             port_message_composite_engine_a(&fb);

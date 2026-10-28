@@ -648,11 +648,11 @@ static int nt_test_at(float xs[8], float ys[8])
 }
 
 /* ---- the tags -------------------------------------------------------------
-   Called once per frame from the level loop, right after the 3D raster and
-   BEFORE the engine-A 2D composite (tests/walk_window.cpp), so the HUD, the
-   dialogue box, the bottom-screen panel and the fade draw over the tags and
-   bubbles; the chat box, the ping readout and the menus draw after, on top.
-   Reads only. */
+   nt_draw is called once per frame from the level loop, right after the 3D
+   raster and BEFORE the engine-A 2D composite (tests/walk_window.cpp), so the
+   HUD, the dialogue box, the bottom-screen panel and the fade draw over the
+   tags and bubbles; the chat box, the ping readout and the menus draw after,
+   on top. Reads only. */
 struct NtBody {
     int i;               /* the body (player slot) */
     int seat;            /* its chat seat, -1 when it has none */
@@ -660,24 +660,77 @@ struct NtBody {
     int bp[3];
 };
 
-static void nt_draw(const OvlSurface &fb)
+/* ---- SMOOTH MOTION (run after093, lane SMOOTHTAGS1) -----------------------
+   The game ticks at 30 Hz and SmoothMotion draws the pictures between two
+   ticks by replaying the tick's 3D with blended matrices. The tags used to be
+   painted into the tick's framebuffer only, so every picture between ticks
+   carried them as part of the tick's 2D: the bodies glided and the names over
+   them stepped 30 times a second.
+
+   So the tags are worked out ONCE A TICK (nt_collect: who, what text, which
+   colour, where on screen this tick AND where the same body's tag was on the
+   tick before) and painted per picture (nt_paint): the tick's own picture at
+   this tick's place, a picture between ticks at the place blended by the same
+   alpha the 3D replay used. walk_window paints the tick's tags into the 3D
+   layer's snapshot too, so the in-between picture's "where the 2D differs from
+   the 3D" merge does not carry the tick's tag pixels; the HUD, the dialogue box
+   and the panel still go over the tags exactly as they do on the tick.
+
+   A body that had no tag on the tick before, or that moved further than a
+   body can walk in one tick (a warp, a respawn), takes this tick's place on
+   every picture: a snap, never a slide across the level.
+   SM64DS_TAG_SMOOTH=0 is the kill switch: the tick's tags on every picture. */
+static int nt_smooth_on(void)
 {
+    static int v = -1;
+    if (v < 0) {
+        const char *e = getenv("SM64DS_TAG_SMOOTH");
+        v = (e && e[0] == '0') ? 0 : 1;
+    }
+    return v;
+}
+
+struct NtItem {
+    int i;
+    float sx, sy, d;     /* this tick's anchor (the head) on the screen */
+    float px, py;        /* the same body's anchor on the tick before (= sx, sy on a snap) */
+    int alpha;
+    int adventure;
+    int tagged;
+    char who[32];
+    char sline[24];
+    unsigned name_rgb;
+    int have;
+    int rows;
+    port::ChatBubble bub;
+};
+static NtItem g_nt_item[kPortBodySlots * 8];
+static int g_nt_items;
+/* the tick before's anchor per body, and the tick it was taken on */
+static float g_nt_last_x[kPortBodySlots], g_nt_last_y[kPortBodySlots];
+static int g_nt_last_bp[kPortBodySlots][3];
+static unsigned g_nt_last_tick[kPortBodySlots];
+static unsigned g_nt_tick;
+/* a body that moved further than this between two ticks snapped (world units):
+   Mario's fastest run is under 100 a tick, a warp is thousands */
+enum { NT_SNAP_WORLD = 640 };
+
+/* who is tagged this tick, and where: reads only, prints the probe lines */
+static int nt_collect(void)
+{
+    g_nt_items = 0;
+    ++g_nt_tick;
     /* A VS match OR an adventure-ghost session -- both draw a tag over every
        remote body. Adventure is not VS (data_0209f2d8 stays 0), so the gate is
        the two modes, not the one flag. */
     const bool adventure = port::adventure_ghost_mode();
-    if (data_0209f2d8 != 1 && !adventure) return;
+    if (data_0209f2d8 != 1 && !adventure) return 0;
     /* The Name Tags setting turns the two tag lines off; a chat bubble still
        draws with it off (lane BUBBLE1). */
     const bool tags_on = host_setting_name_tags() != 0;
     const int my_seat = port::chat_my_seat();
-    if (!tags_on && my_seat < 0) return;
-    if (!nt_font_build()) return;
-    /* this reads and blends the 3D's pixels: a frame held on the graphics card
-       (run cardfull) is made an ordinary one first. The card's one-frame
-       permission already excludes both modes that reach here, so this is the
-       tag protecting itself, as ovl_shade does. */
-    ntr::gx_card_settle();
+    if (!tags_on && my_seat < 0) return 0;
+    if (!nt_font_build()) return 0;
 
     const int me = (int)data_0209f250;
     const unsigned vs_live = adventure ? 0u : port_vs_seat_live_mask();
@@ -727,6 +780,31 @@ static void nt_draw(const OvlSurface &fb)
         e.seat = seat;
         ++nb;
     }
+    /* the tick before's place of every body tagged now (before the test knob
+       below moves copies around, which never slide) */
+    float pxs[kPortBodySlots], pys[kPortBodySlots];
+    for (int k = 0; k < nb; ++k) {
+        const NtBody &e = bodies[k];
+        const int i = e.i;
+        pxs[k] = e.sx;
+        pys[k] = e.sy;
+        if (g_nt_last_tick[i] == g_nt_tick - 1u) {
+            const double dx = (double)(e.bp[0] - g_nt_last_bp[i][0]) / 4096.0;
+            const double dy = (double)(e.bp[1] - g_nt_last_bp[i][1]) / 4096.0;
+            const double dz = (double)(e.bp[2] - g_nt_last_bp[i][2]) / 4096.0;
+            if (dx * dx + dy * dy + dz * dz <
+                (double)NT_SNAP_WORLD * (double)NT_SNAP_WORLD) {
+                pxs[k] = g_nt_last_x[i];
+                pys[k] = g_nt_last_y[i];
+            }
+        }
+        g_nt_last_tick[i] = g_nt_tick;
+        g_nt_last_x[i] = e.sx;
+        g_nt_last_y[i] = e.sy;
+        g_nt_last_bp[i][0] = e.bp[0];
+        g_nt_last_bp[i][1] = e.bp[1];
+        g_nt_last_bp[i][2] = e.bp[2];
+    }
     {
         /* the test knob above: copies of the first remote body, one per place */
         float tx[8], ty[8];
@@ -742,6 +820,8 @@ static void nt_draw(const OvlSurface &fb)
                 bodies[nb] = src;
                 bodies[nb].sx = tx[k] * 0.001f * (float)ntr::active_w;
                 bodies[nb].sy = ty[k] * 0.001f * (float)ntr::active_h;
+                pxs[nb] = bodies[nb].sx;
+                pys[nb] = bodies[nb].sy;
                 ++nb;
             }
         }
@@ -753,6 +833,11 @@ static void nt_draw(const OvlSurface &fb)
             const NtBody t = bodies[b];
             bodies[b] = bodies[b - 1];
             bodies[b - 1] = t;
+            const float tx2 = pxs[b], ty2 = pys[b];
+            pxs[b] = pxs[b - 1];
+            pys[b] = pys[b - 1];
+            pxs[b - 1] = tx2;
+            pys[b - 1] = ty2;
         }
 
     static unsigned s_said[kPortBodySlots];     /* the probe's last bubble line */
@@ -762,13 +847,9 @@ static void nt_draw(const OvlSurface &fb)
         const int *bp = e.bp;
         const float sx = e.sx, sy = e.sy, d = e.d;
 
-        /* SIZE. The VS tag steps up one size when the player is close (a
-           continuous scale shimmers as it rounds to whole pixels; the w<200
-           threshold is scene units, an arena films its others at w 100..130).
-           A ghost tag is a touch smaller and does not take the close step, so a
-           crowd of ghosts stays legible without shouting. */
-        /* CAMTAGS C2 (field 093G): ONE small size at every distance. The close step
-           (x2 under w 200) made a tag fill the screen when people piled up. */
+        /* SIZE. CAMTAGS C2 (field 093G): ONE small size at every distance. The
+           close step (x2 under w 200) made a tag fill the screen when people
+           piled up. */
         const int scale = OVL_SCALE;
         const int lh = NT_GH * scale + 2 * scale;
 
@@ -797,44 +878,40 @@ static void nt_draw(const OvlSurface &fb)
             if (alpha <= 0) continue;   /* out of prox-chat range: no tag */
             if (nt_test_pos) alpha = 255;   /* SM64DS_TAG_AT: a test places the tag, full strength */
         }
-        /* OFF THE SCREEN ENTIRELY, with a whole tag's margin so a name that is
-           half on does not flicker at the edge -- and TESTED IN FLOATS, BEFORE
-           THE CASTS, because the cast is the thing that has to be made safe.
-           Rounding first and testing the int afterwards is the wrong order: by
-           then the conversion has already happened, and a float outside int
-           range converts to an unspecified value rather than to a big number
-           the test would catch. Written positive so a NaN falls out here too. */
+        /* this tick's place on the screen at all (nt_paint tests each
+           picture's own place the same way); the probe speaks only for a tag
+           this tick's picture shows */
         const float star_yf = sy - 2.0f * (float)lh;
-        if (!(sx >= -256.0f && sx <= (float)ntr::SCREEN_W + 256.0f))
-            continue;
-        if (!(star_yf >= -2.0f * (float)lh && star_yf <= (float)ntr::SCREEN_H))
-            continue;
+        const bool on_screen =
+            (sx >= -256.0f && sx <= (float)ntr::SCREEN_W + 256.0f) &&
+            (star_yf >= -2.0f * (float)lh && star_yf <= (float)ntr::SCREEN_H);
 
-        /* TWO LINES, and the order flips by mode. VS keeps its shipped stack,
-           stars on top and name under. A ghost wants the name first and the
-           server star count beneath it, so name takes the top row and stars
-           the bottom. Both rows sit above the head anchor either way. */
-        const int cx = (int)(sx + 0.5f);
-        const int y_top = (int)(sy + 0.5f) - 2 * lh;
-        const int y_bot = (int)(sy + 0.5f) - lh;
-        const bool tagged = tags_on && i != me;
-        if (tagged) {
-            const int name_y = adventure ? y_top : y_bot;
-            const int star_y = adventure ? y_bot : y_top;
-
+        NtItem &it = g_nt_item[g_nt_items];
+        it.i = i;
+        it.sx = sx;
+        it.sy = sy;
+        it.d = d;
+        it.px = pxs[k];
+        it.py = pys[k];
+        it.alpha = alpha;
+        it.adventure = adventure ? 1 : 0;
+        it.tagged = tags_on && i != me;
+        it.who[0] = 0;
+        it.sline[0] = 0;
+        it.name_rgb = 0xFFFFFFFFu;
+        if (it.tagged) {
             /* A HUB GHOST (run mp1 lane GHOSTWIRE1) is labelled from its own
                wire: the name its SYNI carries (already cut down to printable
                ASCII), the save's star total its SYNG carries, and the name
                drawn in its body colour. Anything else keeps the VS facts. */
             const int gseat = adventure ? port_adventure_ghost_seat(i) : -1;
-            char who[32];
             const char *nick = gseat >= 0 ? port_adventure_ghost_name(i)
                                           : port_vs_slot_name(i);
             if (gseat >= 0 && !(nick && nick[0])) continue;   /* a ghost with no name yet: no tag */
             if (nick && nick[0])
-                snprintf(who, sizeof who, "%s", nick);
+                snprintf(it.who, sizeof it.who, "%s", nick);
             else
-                snprintf(who, sizeof who, "PLAYER %d",
+                snprintf(it.who, sizeof it.who, "PLAYER %d",
                          (gseat >= 0 ? gseat : i) + 1);
 
             /* The star count is port_vs_slot_stars, the per-server VS score,
@@ -845,20 +922,15 @@ static void nt_draw(const OvlSurface &fb)
                 const int gs = port_adventure_ghost_stars(i);
                 stars = gs >= 0 ? gs : 0;
             }
-            char sline[24];
-            snprintf(sline, sizeof sline, "%d STAR%s", stars, stars == 1 ? "" : "S");
-            unsigned name_rgb = 0xFFFFFFFFu;
+            snprintf(it.sline, sizeof it.sline, "%d STAR%s", stars, stars == 1 ? "" : "S");
             if (gseat >= 0) {
                 const unsigned rgb = port_adventure_ghost_rgb(i);
-                if (rgb) name_rgb = rgb;
+                if (rgb) it.name_rgb = rgb;
             }
 
-            nt_text_centred(fb, cx, star_y, sline, scale, 0xFFFFE060u, alpha);
-            nt_text_centred(fb, cx, name_y, who, scale, name_rgb, alpha);
-
-            if (nt_probe()) {
+            if (nt_probe() && on_screen) {
                 fprintf(stderr, "[tag] slot %d \"%s\" %s at (%.0f,%.0f) w=%.2f "
-                        "scale %d\n", i, who, sline, sx, sy, d, scale);
+                        "scale %d\n", i, it.who, it.sline, sx, sy, d, scale);
                 if (nt_probe() >= 2) {
                     const int fp[3] = {bp[0], bp[1], bp[2]};
                     float fx = 0, fy = 0, fd = 0;
@@ -875,7 +947,7 @@ static void nt_draw(const OvlSurface &fb)
            (your own body, or tags switched off): one height over every head,
            so a bubble never lands on the tag of a body standing where you
            stand. */
-        port::ChatBubble bub;
+        port::ChatBubble &bub = it.bub;
         int have = e.seat >= 0 && port::chat_bubble(e.seat, &bub);
         /* TEST ONLY: SM64DS_TAG_TEXT="..." gives every placed tag a full-strength bubble with that text, so a
            proof does not depend on the chat's wall clock */
@@ -890,12 +962,10 @@ static void nt_draw(const OvlSurface &fb)
                 have = 1;
             }
         }
-        if (have) {
-            const int bottom = y_top - 2 * scale;
-            nt_bubble_draw(fb, cx, bottom, bub, scale, alpha,
-                           d < 200.0f ? NT_BUBBLE_ROWS : 1);
-        }
-        if (nt_probe()) {
+        it.have = have;
+        it.rows = d < 200.0f ? NT_BUBBLE_ROWS : 1;
+        ++g_nt_items;
+        if (nt_probe() && on_screen) {
             /* one line when a body's bubble changes, not one per frame */
             unsigned sig = !have ? 0u : bub.typing ? 1u : 2166136261u;
             if (have && !bub.typing)
@@ -916,6 +986,67 @@ static void nt_draw(const OvlSurface &fb)
             }
         }
     }
+    return 1;
+}
+
+/* Paint the collected tags. `blend` < 0 is the tick's own picture (this
+   tick's places, the same arithmetic the single-pass draw always did); a
+   picture between two ticks passes the alpha its 3D replay used, and each tag
+   stands that far from the tick before's place to this tick's. */
+static void nt_paint(const OvlSurface &fb, double blend)
+{
+    const int scale = OVL_SCALE;
+    const int lh = NT_GH * scale + 2 * scale;
+    for (int k = 0; k < g_nt_items; ++k) {
+        const NtItem &it = g_nt_item[k];
+        float sx = it.sx, sy = it.sy;
+        if (blend >= 0.0 && blend < 1.0) {
+            sx = (float)(it.px + (it.sx - it.px) * blend);
+            sy = (float)(it.py + (it.sy - it.py) * blend);
+        }
+        /* OFF THE SCREEN ENTIRELY, with a whole tag's margin so a name that is
+           half on does not flicker at the edge -- and TESTED IN FLOATS, BEFORE
+           THE CASTS, because the cast is the thing that has to be made safe.
+           Rounding first and testing the int afterwards is the wrong order: by
+           then the conversion has already happened, and a float outside int
+           range converts to an unspecified value rather than to a big number
+           the test would catch. Written positive so a NaN falls out here too. */
+        const float star_yf = sy - 2.0f * (float)lh;
+        if (!(sx >= -256.0f && sx <= (float)ntr::SCREEN_W + 256.0f))
+            continue;
+        if (!(star_yf >= -2.0f * (float)lh && star_yf <= (float)ntr::SCREEN_H))
+            continue;
+
+        /* TWO LINES, and the order flips by mode. VS keeps its shipped stack,
+           stars on top and name under. A ghost wants the name first and the
+           server star count beneath it, so name takes the top row and stars
+           the bottom. Both rows sit above the head anchor either way. */
+        const int cx = (int)(sx + 0.5f);
+        const int y_top = (int)(sy + 0.5f) - 2 * lh;
+        const int y_bot = (int)(sy + 0.5f) - lh;
+        if (it.tagged) {
+            const int name_y = it.adventure ? y_top : y_bot;
+            const int star_y = it.adventure ? y_bot : y_top;
+            nt_text_centred(fb, cx, star_y, it.sline, scale, 0xFFFFE060u, it.alpha);
+            nt_text_centred(fb, cx, name_y, it.who, scale, it.name_rgb, it.alpha);
+        }
+        if (it.have) {
+            const int bottom = y_top - 2 * scale;
+            nt_bubble_draw(fb, cx, bottom, it.bub, scale, it.alpha, it.rows);
+        }
+    }
+}
+
+/* The tick's tags, worked out and painted on the tick's own picture. */
+static void nt_draw(const OvlSurface &fb)
+{
+    if (!nt_collect()) return;
+    /* this reads and blends the 3D's pixels: a frame held on the graphics card
+       (run cardfull) is made an ordinary one first. The card's one-frame
+       permission already excludes both modes that reach here, so this is the
+       tag protecting itself, as ovl_shade does. */
+    ntr::gx_card_settle();
+    nt_paint(fb, -1.0);
 }
 
 #endif /* PORT_TESTS_NAMETAG_H */
