@@ -10748,6 +10748,10 @@ static void ip_present_plain_or_skip(int *presented, long long deadline)
         ++g_ip_pictures;
         ++g_ip_plain;
         ip_note_cam(1.0);
+        /* run after093, lane SMOOTHTAGS1 (proof instrument): with SM64DS_PICDUMP_LEVEL=1 the level path's dump carries the
+           tick's own picture too, in the order it is shown, so a dump steps through every picture the window gets */
+        { static int lv = -1; if (lv < 0) lv = getenv("SM64DS_PICDUMP_LEVEL") ? 1 : 0;
+          if (lv && g_present_fb) { g_si_pic_tick = (unsigned)port_rom_frame(); si_pic('t', 1.0, g_present_fb, g_present_stack); } }
         /* run hunt8, lane PRESENTER1B: the tick's own picture follows whatever
            was drawn ahead for this tick (-1), or is shown at once when
            nothing is waiting */
