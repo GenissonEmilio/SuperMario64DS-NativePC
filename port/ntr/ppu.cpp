@@ -9,6 +9,7 @@
 // 2K screen block. Those two shifts are the ones most likely to be wrong, so they
 // are taken from code that is byte-verified against the ROM rather than from docs.
 
+#include <vector>
 #include "ntr/ppu.h"
 
 /* for ntr::gx_aa_preimage: the display capture reads the frame as it was
@@ -579,16 +580,21 @@ bool ppu_write_bmp_px(const char *path, const uint32_t *px, int w, int h) {
     std::memcpy(hdr + 34, &img, 4);
     std::fwrite(hdr, 1, sizeof hdr, f);
 
-    const uint8_t zero[3] = {0, 0, 0};
+    // ONE WRITE A ROW (run after093, lane SMOOTHTAGS1): the same bytes, but a
+    // 3-byte fwrite per pixel cost tens of milliseconds a picture, which made a
+    // SmoothMotion picture dump starve the very pictures it was recording.
+    std::vector<uint8_t> line((size_t)stride + pad, 0);
     for (int y = h - 1; y >= 0; --y) {                 // BMP rows run bottom-up
         const uint32_t *row = px + (size_t)y * (size_t)w;
+        uint8_t *o = line.data();
         for (int x = 0; x < w; ++x) {
             const uint32_t c = row[x];
-            const uint8_t bgr[3] = {static_cast<uint8_t>(c), static_cast<uint8_t>(c >> 8),
-                                    static_cast<uint8_t>(c >> 16)};
-            std::fwrite(bgr, 1, 3, f);
+            o[0] = static_cast<uint8_t>(c);
+            o[1] = static_cast<uint8_t>(c >> 8);
+            o[2] = static_cast<uint8_t>(c >> 16);
+            o += 3;
         }
-        if (pad) std::fwrite(zero, 1, pad, f);
+        std::fwrite(line.data(), 1, line.size(), f);
     }
     std::fclose(f);
     return true;
