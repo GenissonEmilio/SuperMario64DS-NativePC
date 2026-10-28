@@ -384,17 +384,42 @@ struct TitleHookInit { TitleHookInit() { g_port_title_draw_skip = title_skip; } 
    struct data_ov007_02103360 points to; 0 = ADVENTURE, 1 = VS, 2 = REC ROOM, 7 = the wrench, 0xff = the cursor is not shown yet: the ROM
    shows it on the first non-B key, src/func_ov007_020b3190.c), and whether it is being pressed: the DS A key (0x0001, which
    menu_title_pad_map writes into the held word) is down, or the page has already taken a choice (top-state request). */
+/* GLITCHFIX1: THE PRESS IS HELD UNTIL THE PAGE LEAVES. Read tick by tick, "pressed" was the A key held, or the request word set while the page is at
+   rest; between the key's release and the request, and again once the request (one tick long) had turned into the page's way out (top-state 6, the
+   white fade), neither held, so the chosen plank blinked up and down on a confirm. The press is now held from the tick it is seen: across the bridge
+   from the release to the ROM's request (at most kPressBridge ticks; a press the ROM never takes lets go), and from the request on for as long as the
+   main family is the page (the leave ends it: the file select, the Rec Room, the drawing page and the wrench's page are other pages). The plank it
+   was taken on stays the lit one while it is held. Called once per tick (menu_title_facts). */
+enum { kPressBridge = 12 };
 void rom_cursor(int *cursor, int *pressed)
 {
+    static int lat = -1, lat_wait = 0;
     *cursor = -1; *pressed = 0;
-    if (!data_ov007_02103360) return;
-    const short *p0 = *(const short **)data_ov007_02103360;
-    if (!p0 || (p0[0] != 7 && (p0[0] < 0 || p0[0] > 2))) return;      /* 7 = the wrench (ASSET3) */
-    *cursor = p0[0];
-    int top, elem, req;
-    if (port_title_page_state(&top, &elem, &req) && top == 0 && req != -1) *pressed = 1;
-    const unsigned short *held = (const unsigned short *)((char *)data_020a0e58_ref() + data_020a0e40_ref() * 4);
-    if (*held & 0x0001) *pressed = 1;
+    if (!(g_last == V_MAIN || g_last == V_INTRO)) lat = -1;
+    int top = -1, elem = -1, req = -1;
+    const bool st = port_title_page_state(&top, &elem, &req) != 0;
+    const short *p0 = data_ov007_02103360 ? *(const short **)data_ov007_02103360 : 0;
+    /* the idle face swap asks for top-state 6 through the same request word as a choice; its own request (the title global + 0x10) is 8
+       (TITLEART1 (J)), and no plank was pressed for it: it neither shows nor holds a press */
+    const bool face_swap = data_ov007_0210342c && data_ov007_0210342c[4] == 8;
+    if (p0 && (p0[0] == 7 || (p0[0] >= 0 && p0[0] <= 2))) {      /* 7 = the wrench (ASSET3) */
+        *cursor = p0[0];
+        if (st && top == 0 && req != -1 && !face_swap) *pressed = 1;
+        const unsigned short *held = (const unsigned short *)((char *)data_020a0e58_ref() + data_020a0e40_ref() * 4);
+        if (*held & 0x0001) *pressed = 1;
+    }
+    if (*pressed && *cursor >= 0 && st && top == 0) { lat = *cursor; lat_wait = 0; }      /* a press on the page at rest (not the intro's skip) */
+    else if (lat >= 0) {
+        const bool taken = st && (req != -1 || top != 0);      /* the ROM took the choice: its request, or the page on its way out (6, 4, 8) */
+        if (taken) lat_wait = 0;
+        else if (++lat_wait > kPressBridge || (*cursor >= 0 && *cursor != lat)) lat = -1;
+    }
+#ifndef PORT_ROM_CLEAN
+    { static int tr = -1; if (tr < 0) tr = getenv("SM64DS_GF1_TRACE") ? 1 : 0;
+      if (tr) fprintf(stderr, "[gf1-cur] f%d top=%d elem=%d req=%d raw_cur=%d raw_prs=%d lat=%d wait=%d\n", data_ov007_0210342c ? data_ov007_0210342c[0] : -1,
+                      top, elem, req, *cursor, *pressed, lat, lat_wait); }
+#endif
+    if (lat >= 0) { *cursor = lat; *pressed = 1; }
 }
 
 /* FACE1: THE FACE'S SCALE ON THE MAIN MENU. The head (the whole 3D layer minus the wrench corner) is drawn at kn/kd of the DS layer, its chin
