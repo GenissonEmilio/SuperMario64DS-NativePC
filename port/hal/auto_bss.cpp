@@ -220,13 +220,7 @@ int data_0209f27c[8];
 int data_0209f284[8];
 int data_0209f294[8];
 int data_0209f2c4[8];
-/* the red-coin counter NumRedCoins reads. Sized against the symbol table
-   rather than left at this file's generic int[8]: config puts data_0209f310
-   at 0x0209f310, so the extent is 3 bytes, and 32 was 29 bytes of slack over
-   the next four symbols. Gate 32 defined its own copy of this in
-   hal/bob_enemy_bridges.cpp; the definition lives here, which is where the
-   link sweep grows BSS. */
-unsigned char data_0209f30d[4];
+/* data_0209f30d moved below, pinned behind data_0209f30c (the red-coin pair). */
 /* run mg16 lane MP3: FULL-EXTENT, 0x18 * 4 bytes. These are per-player Ctrl
    fields (stick nx at Ctrl+0x0a, ny at +0x0c, world angle at +0x0e) and
    every matched reader indexes them by player * 0x18 as BYTES -- e.g.
@@ -457,11 +451,23 @@ unsigned char data_0209f298[4];
    share, the red-coin counter, and the VS-mode 'results are up' flag. All
    kind:bss, so zero is the boot value. */
 unsigned char data_0209f2d4[4];
-/* PER-PLAYER red-coin counter, indexed by src/GiveRedCoins.c as
-   data_0209f30c[i]. run vs16: sixteen. Note that
-   src/_ZN5Stage13InitResourcesEv.cpp:29 already DECLARES this [16] -- the
-   host copy was the short one, not the ROM's own view of it. */
-unsigned char data_0209f30c[kPortBodySlots];
+/* PER-PLAYER red-coin counter: ONE array on the cartridge, two names.
+   src/GiveRedCoins.c writes data_0209f30c[i] for player i; src/NumRedCoins.c
+   reads data_0209f30c and then data_0209f30d[0 .. count-2], so the DS has
+   data_0209f30d == data_0209f30c + 1. As two plain globals (30c[32] and a
+   separate 30d[4]) an online world (count 32) summed 27 bytes of unrelated
+   globals into the red-coin total, the coin's number popup asked for a digit
+   frame that does not exist and TextureSequence's frame check stopped the
+   game on every console in the room; a red coin from player i >= 1 also
+   landed in a cell the sum never read. Pinned like the touch block above:
+   one-byte head, the tail name owns the rest, align(1), so the linker lays
+   them end to end inside the captured span. 1 + kPortBodySlots bytes covers
+   data_0209f30c[0 .. kPortBodySlots] (GiveRedCoins up to player 31,
+   Stage::InitResources' sixteen-byte clear). The same store-on-one-name /
+   load-on-the-other caveat as the touch block applies: none of the readers
+   and writers share a function. */
+__pragma(section(".dsstate$redc0000", read, write)) __declspec(allocate(".dsstate$redc0000")) __declspec(align(1)) unsigned char data_0209f30c[1] = { 0 };
+__pragma(section(".dsstate$redc0001", read, write)) __declspec(allocate(".dsstate$redc0001")) __declspec(align(1)) unsigned char data_0209f30d[kPortBodySlots] = { 0 };
 unsigned char data_0209fc9c[4];
 unsigned char data_0209f248[4];
 /* gate 25: the bottom screen. The three SetSubBgyOffset scroll shadows and
