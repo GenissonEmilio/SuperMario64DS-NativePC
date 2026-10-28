@@ -400,6 +400,22 @@ int g_embed_set;
 int g_nosave_focus;     /* the quit-without-saving page's cursor was put on NO once for this visit */
 int g_air_hold;         /* V_AIR: the pointer went down on the Resume plank and is still held there */
 int g_air_resume;       /* V_AIR: a click on the Resume plank, delivered to the ROM as its Start on the next pad frame */
+int g_press_latch;      /* GLITCHFIX1: a plank press the ROM took, held until its page is gone (press_latched) */
+int g_press_latch_v;    /* the page it was taken on */
+
+/* GLITCHFIX1: THE PRESSED PLANK STAYS DOWN UNTIL ITS PAGE IS GONE. A press sets the ROM's confirm wait (data_0209f22c, 8 ticks: Stage::PS_Update
+   sel1_0 and its siblings) or, on the air page, the plate's flash (data_0209f244, 4 ticks, case 0xb), and with it the page's way out: the close
+   (data_0209f2c4 = 2, done by dScStage_c::Behavior's PS_Cleanup on the first tick the wait reads 0) or the next state (data_0209f1ec, taken by
+   PS_Update on the tick after the wait ran out). The wait reaches 0 one tick before either happens, so a plank drawn pressed only while it runs
+   popped back up for that last tick. The press is held from the wait's start for as long as that way out is still pending on the same page. */
+int press_latched(int v, int rom_press)
+{
+    if (v != g_press_latch_v) { g_press_latch = 0; g_press_latch_v = v; }
+    const bool pending = data_0209f2c4 == 2 || data_0209f1ec != data_0209f248;
+    if (rom_press) g_press_latch = 1;
+    else if (!pending) g_press_latch = 0;
+    return g_press_latch;
+}
 
 int pause_cursor_live(void)
 {
@@ -496,7 +512,8 @@ void pause_facts(MenuFacts *mf)
     f->show_red = f->red > 0;
     f->status = data_0209f2b8 != 0 && data_0209f2b8 <= 0x3c;
     f->nslots = nslots_of(v);
-    f->pressed = data_0209f22c != 0 || (settings_page_press_look() == 1 && data_0209f2e0 == 2);   /* HUDMENU2 (H4): a pad confirm on Options shows the plate's press too */
+    const int latched = press_latched(v, v == V_AIR ? data_0209f244 != 0 : data_0209f22c != 0);     /* GLITCHFIX1 */
+    f->pressed = latched || (settings_page_press_look() == 1 && data_0209f2e0 == 2);   /* HUDMENU2 (H4): a pad confirm on Options shows the plate's press too */
     int hs = -1;
     if (v == V_NOSAVE) {
         /* touch only: the lit plank is the pad / hover cursor (hotspot 0 = NO, slot 1; hotspot 1 = YES, slot 0) */
@@ -505,7 +522,7 @@ void pause_facts(MenuFacts *mf)
         f->sel_slot = slot_of_rom(v, data_0209f2e0);
     } else if (v == V_AIR) {
         f->sel_slot = 0;                                   /* one plank: always the lit one */
-        f->pressed = data_0209f244 != 0 || g_air_hold;     /* the ROM's resume flash (case 0xb), or the pointer held on the plank */
+        f->pressed = latched || g_air_hold;     /* the ROM's resume flash (case 0xb) until the page closes, or the pointer held on the plank */
     } else f->sel_slot = -1;
     f->event_n = port::event_pause_lines(f->event, 2);     /* EVENTS3 */
     f->rom_art = !pause_art_present();     /* PAUSEFULL1: no mod planks, the ROM's own plates */
