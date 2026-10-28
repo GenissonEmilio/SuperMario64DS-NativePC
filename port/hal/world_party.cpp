@@ -663,6 +663,13 @@ void world_party_hint(WparHint *out) {
     const int my_seat = comms_hub_my_seat();
     if (my_seat < 0 || my_seat >= kHubMaxSeats) return;
     out->shown = true;
+    /* the live player count under the D-pad (Tango 10-28): every seat the hub has present, me included */
+    out->online = 1;
+    for (int s = 0; s < kHubMaxSeats; ++s) {
+        if (s == my_seat) continue;
+        HubSeatInfo si;
+        if (comms_hub_seat_info(s, &si) && si.present) ++out->online;
+    }
     const unsigned now = comms_hub_now_ms();
     const bool confirming = g.confirm_until && (int)(g.confirm_until - now) > 0;
     const bool incoming = g.in_seat >= 0 && (int)(g.in_until - now) > 0;

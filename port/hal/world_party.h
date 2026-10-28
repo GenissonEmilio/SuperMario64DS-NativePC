@@ -155,6 +155,7 @@ struct WparHint {
     bool shown;
     char up[12];
     char down[12];
+    int online;         /* players on this server, me included (0: not known) */
 };
 void world_party_hint(WparHint *out);
 

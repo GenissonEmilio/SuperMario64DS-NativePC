@@ -14,6 +14,8 @@
 //               ("Invite", "Accept", "Leave" ...), the rest stay dark. Clear of
 //               the star / coin counters above, the corner map and the ping box
 //               below, and the chat and lists on the left.
+//   the count   (Tango 10-28) "N online" right under the cross, right-aligned
+//               with it: everyone on this server, me included.
 // Draw-only: it writes overlay pixels after the game has finished the frame.
 
 #ifndef PORT_HAL_WORLD_PARTY_PAINT_H
@@ -99,12 +101,18 @@ static void world_party_dpad_draw(const OvlSurface &fb)
             const int w = wpar_text_w(lab[k], rom, scale);
             if (w > lw) lw = w;
         }
-    /* never over the corner map or the ping box: lift the whole icon above it */
+    /* the player count's line under the cross */
+    char cnt[24] = {0};
+    if (h.online > 0) snprintf(cnt, sizeof cnt, "%d online", h.online);
+    const int cnt_w = cnt[0] ? wpar_text_w(cnt, rom, scale) : 0;
+    const int cnt_h = cnt[0] ? 3 * scale + row_h : 0;
+    /* never over the corner map or the ping box: lift the whole icon (and its count) above it */
     int panel[4];
     if (hal_sub_screen_inset_rect(panel)) {
-        const int left = cx - (lw ? lw + 5 * scale : 0);
-        if (cy + 3 * a > panel[1] && cy < panel[3] && cx + 3 * a > panel[0] && left < panel[2])
-            cy = panel[1] - 3 * a - 2 * scale;
+        int left = cx - (lw ? lw + 5 * scale : 0);
+        if (cx + 3 * a - cnt_w - 2 * scale < left) left = cx + 3 * a - cnt_w - 2 * scale;
+        if (cy + 3 * a + cnt_h > panel[1] && cy < panel[3] && cx + 3 * a > panel[0] && left < panel[2])
+            cy = panel[1] - 3 * a - cnt_h - 2 * scale;
         if (cy < 0) cy = 0;
     }
     /* a light rim round the cross, so its shape reads over any sky or wall */
@@ -124,6 +132,11 @@ static void world_party_dpad_draw(const OvlSurface &fb)
         const int tx = cx - 4 * scale - w;
         ovl_shade(fb, tx - 2 * scale, ys[k] - scale, w + 4 * scale, row_h);
         wpar_text(fb, tx, ys[k], lab[k], rom, scale, 0xFFFFFFFFu, 255);
+    }
+    if (cnt[0]) {
+        const int tx = cx + 3 * a - cnt_w, ty = cy + 3 * a + 3 * scale;
+        ovl_shade(fb, tx - 2 * scale, ty - scale, cnt_w + 4 * scale, row_h);
+        wpar_text(fb, tx, ty, cnt, rom, scale, 0xFFFFFFFFu, 255);
     }
 }
 
