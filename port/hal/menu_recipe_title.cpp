@@ -95,6 +95,8 @@ struct Chore {
     int released;        /* INTRO2: a tick without a touch / click went by since the family was entered (the press that started the intro is over) */
     int swap_a;          /* TITLEUI1: 255 - the ROM's brightness fade level (0..255) while the face swap's fade runs on the main page, -1 = none (rom_swap_level) */
     int swap_lv;         /* TITLEUI1: that level as the ROM holds it (0..0x1000), for the trace */
+    int leave_w;         /* GLITCHFIX1: the ROM's white fade on the way out of the main page (top-state 6 to the file select / Rec Room), 0..255 whiteness */
+    int head_t;          /* GLITCHFIX1: ticks since the intro's head arrived (its entrance lerp at rest), -1 = not yet */
 } g_ch;
 static int g_press_tick;      /* INTRO2: a touch / click went into the ROM this tick */
 /* INTRO2: the swap (sw_t counts it) is the logo's 2 s trip in the intro and the planks' own rise on a return; the planks start at their own tick */
@@ -890,7 +892,7 @@ void chore_step(int variant, int top, int elem, int req)
     const bool fam = variant == V_INTRO || variant == V_MAIN;
     if (!fam) {
         g_face_swap = 0;
-        c.in_fam = 0; c.mode = CH_NONE; c.prev_variant = variant;
+        c.in_fam = 0; c.mode = CH_NONE; c.prev_variant = variant; c.leave_w = 0;
         if (variant == V_ATTRACT && data_ov007_0210342c) {
             const char *sp = *(const char *const *)((const char *)data_ov007_0210342c + 8);
             c.attract_t = sp ? *(const int *)(sp + 0xc) : 0;
@@ -976,6 +978,19 @@ void chore_step(int variant, int top, int elem, int req)
         if (hal_menu_trace_on()) fprintf(stderr, "[chore] face swap: the way back enters once (top 5)\n");
     }
     if (g_face_swap == 2 && c.sw_t < 0) c.face_a = 0;
+    /* GLITCHFIX1: THE WAY OUT GOES WHITE WITH THE ROM. Leaving for the file select or the Rec Room, top-state 6 runs the same white brightness fade as the
+       face swap (RequestScreenFade(1, 0, ..), rom_swap_level), but the main page with the mod's art is the port's own picture, drawn over the faded one,
+       so it stayed in full colour until the cut to the ROM's white page (one picture from mean 159 to 248). The page now takes the ROM's level, tick for tick. */
+    c.leave_w = 0;
+    if (!g_face_swap && top == 6 && elem == 0) {
+        const int lv = rom_swap_level();
+        if (lv > 0) c.leave_w = (lv * 255 + 0x800) / 0x1000;
+    }
+#ifndef PORT_ROM_CLEAN
+    { static int tr = -1; if (tr < 0) tr = getenv("SM64DS_GF1_TRACE") ? 1 : 0;     /* GLITCHFIX1 proof instrument */
+      if (tr) fprintf(stderr, "[gf1-chore] f%d top=%d elem=%d req=%d sw_t=%d face_a=%d head_t=%d leave_w=%d lv=%d\n", data_ov007_0210342c ? data_ov007_0210342c[0] : -1,
+                      top, elem, req, c.sw_t, c.face_a, c.head_t, c.leave_w, rom_swap_level()); }
+#endif
     c.prev_variant = variant;
 }
 
@@ -1420,6 +1435,23 @@ static void egg_trim_head(MenuLayout *L, int hi, int lx, int ly, int lw, int lh)
     }
 }
 
+/* GLITCHFIX1: the leave's white fade over the finished page (Chore::leave_w): every pixel moves toward white by the piece's alpha, as the DS's
+   brightness-up fade moves each colour toward white by its level */
+void white_veil(const MenuLayout *L, int piece, uint32_t *dst, int w, int h, int stride)
+{
+    const unsigned a = L->p[piece].alpha;
+    if (!a) return;
+    unsigned char lut[256];
+    for (unsigned v = 0; v < 256; ++v) lut[v] = (unsigned char)(v + ((255u - v) * a + 127u) / 255u);
+    for (int y = 0; y < h; ++y) {
+        uint32_t *row = dst + (size_t)y * stride;
+        for (int x = 0; x < w; ++x) {
+            const uint32_t o = row[x];
+            row[x] = (o & 0xff000000u) | ((uint32_t)lut[(o >> 16) & 255] << 16) | ((uint32_t)lut[(o >> 8) & 255] << 8) | lut[o & 255];
+        }
+    }
+}
+
 void build_main_pc(MenuLayout *L, bool intro)
 {
     Chore c = t_f ? t_f->ch : Chore();      /* a copy: build() never writes the clock */
@@ -1692,6 +1724,13 @@ void build_main_pc(MenuLayout *L, bool intro)
         ir.alpha = (uint8_t)(255 * (14 - c.fam_t) / 14);      /* TITLE092 (3b): the page fades IN from the black of the ROM's closing iris (the veil used to grow darker and drop away: the dark flash) */
         if (ir.alpha == 0) ir.alpha = 1;
         menu_add_piece(L, ir);
+    }
+    if (c.leave_w > 0) {      /* GLITCHFIX1: the way out to the file select / Rec Room whitens with the ROM's own fade, over everything */
+        MenuPiece wv = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        wv.bg = 1; wv.fixdest = 1; wv.fx = 0; wv.fy = 0; wv.fw = (short)w; wv.fh = (short)h;
+        wv.custom = white_veil;
+        wv.alpha = (uint8_t)(c.leave_w > 255 ? 255 : c.leave_w);
+        menu_add_piece(L, wv);
     }
 }
 
