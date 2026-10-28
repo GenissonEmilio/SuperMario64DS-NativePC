@@ -75,6 +75,7 @@ void _ZN10dScStage_c17UpdateMenuButtonsEb(int b);
 void func_02012790(int id);
 void pause_page_draw(const MenuLayout *lay, int piece, uint32_t *dst, int w, int h, int stride);   /* hal/settings_page.cpp (pause_page.inc) */
 int pause_page_art(int w, int h, int idx, int *id, int *dw, int *dh);
+int port_rom_frame(void);              /* hal/rom_frame.cpp */
 }
 
 namespace {
@@ -402,6 +403,7 @@ int g_air_hold;         /* V_AIR: the pointer went down on the Resume plank and 
 int g_air_resume;       /* V_AIR: a click on the Resume plank, delivered to the ROM as its Start on the next pad frame */
 int g_press_latch;      /* GLITCHFIX1: a plank press the ROM took, held until its page is gone (press_latched) */
 int g_press_latch_v;    /* the page it was taken on */
+int g_press_latch_f = -100;     /* the ROM frame of the last call: a pause opened again starts with no press */
 
 /* GLITCHFIX1: THE PRESSED PLANK STAYS DOWN UNTIL ITS PAGE IS GONE. A press sets the ROM's confirm wait (data_0209f22c, 8 ticks: Stage::PS_Update
    sel1_0 and its siblings) or, on the air page, the plate's flash (data_0209f244, 4 ticks, case 0xb), and with it the page's way out: the close
@@ -410,7 +412,9 @@ int g_press_latch_v;    /* the page it was taken on */
    popped back up for that last tick. The press is held from the wait's start for as long as that way out is still pending on the same page. */
 int press_latched(int v, int rom_press)
 {
-    if (v != g_press_latch_v) { g_press_latch = 0; g_press_latch_v = v; }
+    const int now = port_rom_frame();
+    if (v != g_press_latch_v || now - g_press_latch_f > 2 || now < g_press_latch_f) { g_press_latch = 0; g_press_latch_v = v; }
+    g_press_latch_f = now;
     const bool pending = data_0209f2c4 == 2 || data_0209f1ec != data_0209f248;
     if (rom_press) g_press_latch = 1;
     else if (!pending) g_press_latch = 0;
