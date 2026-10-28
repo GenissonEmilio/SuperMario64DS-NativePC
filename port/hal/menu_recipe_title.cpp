@@ -902,7 +902,7 @@ void chore_step(int variant, int top, int elem, int req)
     if (!c.in_fam) {              /* entering the main family */
         c.in_fam = 1;
         c.mode = (c.prev_variant == V_ATTRACT) ? CH_INTRO : CH_RETURN;
-        c.ct = -1; c.fam_t = 0; c.sw_t = -1; c.face_a = 0; c.skip = 0; c.iris_covered = 0; c.ff2_done = 0; c.fly_t = 0; c.released = 0;
+        c.ct = -1; c.fam_t = 0; c.sw_t = -1; c.face_a = 0; c.skip = 0; c.iris_covered = 0; c.ff2_done = 0; c.fly_t = 0; c.released = 0; c.head_t = -1;
         if (hal_menu_trace_on()) fprintf(stderr, "[chore] enter family mode=%s top=%d\n", c.mode == CH_INTRO ? "intro" : "return", top);
     }
     ++c.fam_t;
@@ -947,6 +947,18 @@ void chore_step(int variant, int top, int elem, int req)
         c.face_a += step; if (c.face_a > 255) c.face_a = 255;
     } else {
         c.face_a -= 40; if (c.face_a < 0) c.face_a = 0;
+    }
+    /* GLITCHFIX1: THE HEAD HAS ARRIVED when the ROM's entrance is over (top-state 0, its scale word g+0xff8 settled at 0x1000: src/func_ov007_020b1b74.c
+       ramps it over the 30 ticks of top-state 1 and leaves it there) and the head is drawn whole (face_a at 255, the end of the pop's smoothing).
+       The big logo stays solid until then (build_main_pc): its fade used to start on the swap's first tick, so the head arrived behind a logo already
+       4 to 15 percent see-through. */
+    if (c.mode == CH_INTRO && c.sw_t >= 0) {
+        const int ff8 = data_ov007_0210342c ? *(const int *)((const char *)data_ov007_0210342c + 0xff8) : 0x1000;
+        if (c.head_t >= 0) ++c.head_t;
+        else if (top == 0 && ff8 == 0x1000 && c.face_a >= 255) {
+            c.head_t = 0;
+            if (hal_menu_trace_on()) fprintf(stderr, "[chore] the head has arrived (sw_t %d): the big logo's fade starts\n", c.sw_t);
+        }
     }
     /* TITLEUI1: the face swap (top-state 6, the change tick 0 / 6, top-state 5): the head, the wrench and every port plank take the ROM's own fade
        level (rom_swap_level) tick for tick, so the face is not faded a second time by the port's own clock */
@@ -1504,7 +1516,9 @@ void build_main_pc(MenuLayout *L, bool intro)
                fading out as it goes, while the small logo fades in at its own place: one logo that becomes the small one */
             const float u = c.sw_t >= CH_LOGO_MOVE ? 1.f : (float)c.sw_t / (float)CH_LOGO_MOVE;
             mv = smooth01(u);
-            big_a = (int)((float)big_a * (1.f - smooth01(u / 0.8f)) + 0.5f);
+            /* GLITCHFIX1: the big logo's fade runs on its own clock from the head's arrival (Chore::head_t); solid until then */
+            const float uf = c.head_t < 0 ? 0.f : c.head_t >= CH_LOGO_MOVE ? 1.f : (float)c.head_t / (float)CH_LOGO_MOVE;
+            big_a = (int)((float)big_a * (1.f - smooth01(uf / 0.8f)) + 0.5f);
             small_a = (int)(255.f * smooth01((u - 0.2f) / 0.8f) + 0.5f);
         }
     } else {
