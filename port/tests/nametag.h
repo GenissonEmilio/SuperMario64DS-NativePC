@@ -474,13 +474,15 @@ enum { NT_HEAD_UP = 200 * 4096 };
    off screen". =2 adds the RULER: the same body's FEET projected beside its
    head, which is how NT_HEAD_UP above was sized instead of guessed -- the
    pixel gap between the two is what a chosen world-unit offset is actually
-   worth on screen at the distance the game films from. Off unless asked. */
+   worth on screen at the distance the game films from. =3 adds a [tagpic]
+   line per tag per painted picture (SmoothMotion's pictures between ticks
+   included). Off unless asked. */
 static int nt_probe(void)
 {
     static int on = -1;
     if (on < 0) {
         const char *e = getenv("SM64DS_TAG_PROBE");
-        on = e ? (e[0] == '2' ? 2 : 1) : 0;
+        on = e ? (e[0] == '2' ? 2 : e[0] == '3' ? 3 : 1) : 0;
     }
     return on;
 }
@@ -1024,6 +1026,9 @@ static void nt_paint(const OvlSurface &fb, double blend)
         const int cx = (int)(sx + 0.5f);
         const int y_top = (int)(sy + 0.5f) - 2 * lh;
         const int y_bot = (int)(sy + 0.5f) - lh;
+        /* SM64DS_TAG_PROBE=3: one line per tag per painted picture (the tick's own: blend -1), the frame-step proof */
+        if (nt_probe() >= 3)
+            fprintf(stderr, "[tagpic] blend %.3f slot %d at (%d,%d)\n", blend, it.i, cx, (int)(sy + 0.5f));
         if (it.tagged) {
             const int name_y = it.adventure ? y_top : y_bot;
             const int star_y = it.adventure ? y_bot : y_top;
