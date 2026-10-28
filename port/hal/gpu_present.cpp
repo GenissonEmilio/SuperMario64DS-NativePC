@@ -205,11 +205,20 @@ int g_uploads;                  /* pictures uploaded this run */
    first picture took, on a fresh child window, so the one-flip-chain-per-
    window rule never comes up. The game sees one or two pictures go by on the
    ordinary path, hidden under the child.
-   ONLY WHEN THE REBUILD FAILS TWICE IN A ROW (or the run has rebuilt
-   RECOVERIES_MAX times) does the run go to the ordinary Windows path, and
-   then the child is hidden first, so the game window's own picture is what
-   Windows shows. */
-enum { RECOVERIES_MAX = 8, REBUILD_FAILS_MAX = 2 };
+   ONLY WHEN THE REBUILD FAILS REBUILD_FAILS_MAX TIMES IN A ROW (or the run
+   has rebuilt RECOVERIES_MAX times) does the run go to the ordinary Windows
+   path, and then the child is hidden first, so the game window's own picture
+   is what Windows shows.
+   THE TRIES ARE SPREAD OUT (0.9.3.1 field report: a driver reset while
+   another game started). The first rebuild still runs on the next picture.
+   A failed one waits before the next: 1, 2, 4, 8 and then 16 s, about half a
+   minute in all, because a driver that is still resetting refuses every try
+   made in the same second (the report's two back-to-back tries both got
+   887a0005 and the run stayed on the processor for good). The ordinary
+   Windows path draws the pictures in between, as it does during any
+   rebuild. Each failed try abandons what it made, so the count stays small. */
+enum { RECOVERIES_MAX = 8, REBUILD_FAILS_MAX = 6 };
+static int rebuild_wait_ms(int fails) { return fails >= 5 ? 16000 : 1000 << (fails - 1); }
 /* SEAMCLEAN1: a rebuild in a LEVEL keeps about 80 MB (measured by MGFREEZE3's reviewer: AMD +83 MB, NVIDIA +68 local and +14
    non-local), against 36 to 39 MB from a minigame screen, because the level's renderer objects stay behind with the abandoned
    device. Eight of those would be 640 MB, so a level gives the card path up after three (about 240 MB) and the ordinary Windows
@@ -223,6 +232,7 @@ HRESULT g_lost_hr;
 long long g_lost_at;
 int g_renew;                    /* the shared device is gone too: make a new one first */
 int g_rebuild_fails;            /* failed rebuilds in a row */
+long long g_retry_at;           /* no rebuild before this qpc time (0: the next picture) */
 int g_recoveries;               /* rebuilds finished this run */
 int g_giving_up;
 int g_tell_renderer;            /* the shared device is new: the renderer may come back to the card */
@@ -1174,10 +1184,15 @@ bool lose(const char *why, HRESULT hr)
     if (g_lost) {
         if (++g_rebuild_fails >= REBUILD_FAILS_MAX) {
             fprintf(stderr, "[present] the graphics card path could not be rebuilt (%s, "
-                    "code %08x, %d tries in a row)\n", why, (unsigned)hr, g_rebuild_fails);
+                    "code %08x, %d tries in a row over %.0f ms)\n", why, (unsigned)hr, g_rebuild_fails,
+                    ms_between(g_lost_at, qpc()));
             g_giving_up = 1;
             return false;
         }
+        const int wait = rebuild_wait_ms(g_rebuild_fails);
+        g_retry_at = qpc() + (g_qpf ? (long long)wait * g_qpf / 1000 : 0);
+        fprintf(stderr, "[present] rebuild try %d did not work (%s, code %08x); the next one in %d ms\n",
+                g_rebuild_fails, why, (unsigned)hr, wait);
     } else {
         if (g_recoveries >= recoveries_cap()) {
             if (g_kept_n)
@@ -1194,6 +1209,7 @@ bool lose(const char *why, HRESULT hr)
         g_lost_hr = hr;
         g_lost_at = qpc();
         g_rebuild_fails = 0;
+        g_retry_at = 0;
         g_use_have0 = card_usage(&g_use_lo0, &g_use_nl0) ? 1 : 0;
         g_since_rebuild = -1;
         fprintf(stderr, "[present] the graphics card path was lost (%s, code %08x); "
@@ -1210,6 +1226,7 @@ void recovered()
     if (!g_lost) return;
     g_lost = 0;
     g_rebuild_fails = 0;
+    g_retry_at = 0;
     ++g_recoveries;
     g_since_rebuild = 0;
 #ifndef PORT_ROM_CLEAN
@@ -2036,6 +2053,8 @@ static int present_impl(void *hwnd, const void *pixels, int stride_px,
         fall_back("a test asked for it", 0);
         return 0;
     }
+    /* a rebuild that failed waits its turn; the ordinary path draws until then */
+    if (g_lost && g_retry_at && qpc() < g_retry_at) return 0;
 #ifndef PORT_ROM_CLEAN
     if (g_lost_drill_at > 0 && g_presents == g_lost_drill_at) {
         g_lost_drill_at = g_lost_drill_every > 0 ? -1 : 0;
