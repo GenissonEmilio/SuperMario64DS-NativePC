@@ -63,4 +63,26 @@ void cdskin_strip_geom(int w, int h, int n, CsGeom *g);
 /* focus / hover: slot index or -1; the name plaque goes over the focus slot, else the hover slot. */
 void cdskin_strip_draw(uint32_t *px, int stride, int w, int h, const CsGeom *g, const CdItem *it, int n, int focus, int hover);
 
+/* STARSEL2 (run after093): the star select's character PANEL (hal/char_strip.cpp), which replaced the strip. A tab with an arrow sits on the
+   picture's right edge, vertically centred; the panel slides out from that edge with the tab riding on its left side. The heads are in columns
+   of four (slot i: column i / 4, row i % 4), so five to eight characters make a second column and the panel comes out further. open is how far
+   it is out (0 closed, 1 fully out, eased by the caller). One unit is a 192nd of the picture height, so every aspect shows the same panel. */
+struct CpGeom {
+    float k;                        /* picture pixels per DS pixel (h / 192) */
+    int n, cols, rows;              /* slots, columns, rows of the first column */
+    int px, py, pw, ph;             /* the panel (pw is its full width; px moves with open) */
+    int tx, ty, tw, th;             /* the tab */
+    int sx0, sy0, sw, sh;           /* slot 0's corner and a slot's size */
+    int pitch_x, pitch_y;           /* the distance between columns / rows */
+};
+void cdskin_panel_geom(int w, int h, int n, float open, CpGeom *g);
+/* the slot under picture pixel (x, y), or -1 */
+int  cdskin_panel_slot_at(const CpGeom *g, int x, int y);
+/* 1 when (x, y) is on the tab or the panel */
+int  cdskin_panel_hit(const CpGeom *g, int x, int y);
+/* focus / hover: slot index or -1; the name plaque goes beside the focus slot, else the hover slot. tab_lit: the tab under the pointer. */
+void cdskin_panel_draw(uint32_t *px, int stride, int w, int h, const CpGeom *g, const CdItem *it, int n, int focus, int hover, int tab_lit);
+/* the number of cached pictures (pieces) the skin holds now: proof rows of the size-change prune */
+int  cdskin_piece_count(void);
+
 #endif

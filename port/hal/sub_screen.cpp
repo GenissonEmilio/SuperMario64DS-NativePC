@@ -2399,6 +2399,34 @@ void poll_touch(void)
        hand reaches. Unarmed this costs one load and nothing else. */
     const int inj = g_inj_armed;
     if (inj) ++g_inj_frames;
+    /* STARSEL2 (proof rows only): SM64DS_MENU_CLICK_AT="x,y@a-b;..." holds the stylus at PICTURE pixel (x, y) on this function's own calls a..b.
+       SM64DS_HOST_CLICK counts the window loop's frames, which stand still while the star select runs inside the level process, so its presses
+       arrive after the screen is gone; this one is counted here, where the touch is read, and goes through the same inverse a hand's click
+       takes (the menu's touch pieces). Never in a kit. */
+    int mc_on = 0, mc_x = 0, mc_y = 0;
+#ifndef PORT_ROM_CLEAN
+    {
+        static int mc_read, mc_n, mc_calls;
+        static int mc_v[8][4];
+        if (!mc_read) {
+            mc_read = 1;
+            const char *e = getenv("SM64DS_MENU_CLICK_AT");
+            while (e && *e && mc_n < 8) {
+                int x = 0, y = 0, a = 0, b = 0;
+                if (sscanf(e, "%d,%d@%d-%d", &x, &y, &a, &b) == 4) { mc_v[mc_n][0] = x; mc_v[mc_n][1] = y; mc_v[mc_n][2] = a; mc_v[mc_n][3] = b; ++mc_n; }
+                while (*e && *e != ';') ++e;
+                if (*e == ';') ++e;
+            }
+            if (mc_n) fprintf(stderr, "[menuclick] %d scripted press(es) at the touch seam\n", mc_n);
+        }
+        ++mc_calls;
+        for (int i = 0; i < mc_n; ++i)
+            if (mc_calls >= mc_v[i][2] && mc_calls <= mc_v[i][3]) {
+                mc_on = 1; mc_x = mc_v[i][0]; mc_y = mc_v[i][1];
+                if (mc_calls == mc_v[i][2]) fprintf(stderr, "[menuclick] call %d: press at picture (%d,%d), menu live %d\n", mc_calls, mc_x, mc_y, hal_menu_live());
+            }
+    }
+#endif
     /* THE OS BUTTON IS MACHINE-GLOBAL, so it only counts as the stylus while
        this window is the foreground one and the press began while it already
        was. GetAsyncKeyState(VK_LBUTTON) reads the physical button for the
@@ -2417,7 +2445,7 @@ void poll_touch(void)
        back with the button still held does not revive it. SM64DS_TOUCH_PROBE,
        the in-process stylus and SM64DS_SKIP_MENU never come through here. */
     int btn;
-    if (inj) {
+    if (inj || mc_on) {
         btn = 1;
     } else {
         static int raw_was, focus_was, hold_ok;
@@ -2436,10 +2464,14 @@ void poll_touch(void)
         /* and a resize that was in progress is finished and written down */
         handle_release();
     }
-    if (btn && (inj || (GetCursorPos_ && ScreenToClient_))) {
+    if (btn && (inj || mc_on || (GetCursorPos_ && ScreenToClient_))) {
         POINT p;
         int got;
-        if (inj) {
+        if (mc_on) {
+            p.x = 0;
+            p.y = 0;
+            got = 1;
+        } else if (inj) {
             p.x = g_inj_cx;
             p.y = g_inj_cy;
             got = 1;
@@ -2468,6 +2500,7 @@ void poll_touch(void)
                    the clamp puts it, so the inside answer gates the press */
                 on_picture =
                     hal_present_client_to_fb((int)p.x, (int)p.y, &bx, &by);
+                if (mc_on) { bx = mc_x; by = mc_y; on_picture = 1; }     /* STARSEL2: the scripted press is already a picture pixel */
                 /* panel pixels back to DS pixels. The forward direction is
                    DS * num / den (hal_sub_panel_geometry), so the inverse is
                    * den / num, and with the option off num is 1 and den is

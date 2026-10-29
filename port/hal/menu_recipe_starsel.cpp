@@ -28,8 +28,11 @@
 
 #include "menu_hostimg.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
+#include "char_strip.h"
 
 extern "C" {
 int  SublevelToLevel(int);
@@ -92,6 +95,26 @@ void starsel_facts(MenuFacts *f)
     f->spare[0] = 1 + ob(o, 0x115);       /* the selected act index + 1 (0 = nothing read) */
     { static int calls; f->spare[2] = ++calls; }     /* a per-tick counter for the pointer's bob */
     f->spare[1] = ob(o, 0x135);           /* the input phase: 0 intro, 1 waiting for the pad to come up, 2 live */
+    f->spare[4] = port_char_strip_up();   /* STARSEL2: the character panel is part of this screen */
+    f->spare[5] = port_char_strip_focus();   /* STARSEL2: the panel has the cursor (the star pointer steps aside) */
+    /* STARSEL2: YOSHI'S CAPS ROW (the cartridge's own character choice on the lower screen, Render :555-585): with Yoshi and more than one
+       character (STRIP_MODE +0x130 > 1) the ROM draws a speech bubble with a cap for each unlocked character i < 3 at CHAR_X / CHAR_Y
+       (+0x124 + i / +0x128 + i), and its yellow cursor left of the one under CHAR_CURSOR when CURSOR_MODE (+0x133) is 1. It is shown when the
+       panel is not (the CharacterStrip setting off), the panel being the other way to make the same choice. */
+    for (int i = 0; i < 3; ++i) { f->blob[i] = ob(o, 0x124 + i); f->blob[3 + i] = ob(o, 0x128 + i); }
+    f->blob[6] = (data_0209caa0[0x41] == 3 && ob(o, 0x130) > 1 && !f->spare[4]) ? 1 : 0;
+    f->blob[7] = (unsigned char)(*(int *)(data_0209caa0 + 8) & 7);
+#ifndef PORT_ROM_CLEAN
+    {
+        static unsigned last = 0xffffffffu;
+        const unsigned now = (unsigned)f->blob[0] | (unsigned)f->blob[1] << 6 | (unsigned)f->blob[2] << 12 | (unsigned)f->blob[3] << 18 | (unsigned)f->blob[6] << 31;
+        if (now != last && f->blob[6]) {
+            last = now;
+            fprintf(stderr, "[ss2] caps row: x %d %d %d y %d %d %d, unlocked %x, strip mode %d, cursor mode %d\n", f->blob[0], f->blob[1], f->blob[2],
+                    f->blob[3], f->blob[4], f->blob[5], f->blob[7], ob(o, 0x130), ob(o, 0x133));
+        }
+    }
+#endif
 }
 
 /* STARSEL093 (D7): the keys of the star select while the one-screen menu is up. The lower screen is not drawn, so the ROM's states
@@ -167,6 +190,77 @@ void starsel_keys(uint16_t *pressed, int)
    varies and the rect is the widest it gets. Half extents in tenths of a DS pixel. */
 const int kBigHalfW10 = 150, kBigHalfH10 = 145, kBigSelHalfW10 = 188, kBigSelHalfH10 = 181, kBigCy10 = 345;
 
+/* STARSEL2 (Tango 10-28): THE STAR SELECT LAYOUT. Tango's picture: the numbers and the big stars on top, a band under them for the caps row,
+   then the star's name, the coin score and the course medal lower down, and one bottom row with the lives counter against the left edge of the
+   window, the course name in the middle and the star total against the right edge, at every aspect. The 2D of the upper screen is engine A's
+   (src/game/stages/d_s_star_sel_methods.cpp Render :455-480 and the counters :203-300): BG2 is the course medal, BG3 the text (the star name,
+   SCORE, the course name), OBJ the star numbers, the coin record, the medal's number, the lives and the star total. Those three layers are
+   lifted out of the picture and put back band by band; the big stars are the 3D layer and stay where the ROM draws them, so every star rect,
+   the pointer and the clicks are unchanged. Bands in DS rows, measured on the 4:3 picture (STARSEL2 shots): numbers 4..11, star name
+   56..66, SCORE and the coins 76..91, the medal 96..155, the course name 160..170, the counters 171..187. One unit is a DS pixel at h / 192,
+   scale 1 everywhere (the DS pixels stay square and whole). */
+struct SsBand { short y0, y1, x0, x1; short dy; uint8_t ax; };
+const SsBand kSsBands[] = {
+    {   0,  54,   0, 256,   0, MENU_AX_C },    /* the star numbers: where the ROM has them, over the 3D stars */
+    {  54,  72,   0, 256,  24, MENU_AX_C },    /* the star's name: under the caps row's band (rows 80..90) */
+    {  72,  94,   0, 256,  19, MENU_AX_C },    /* SCORE, the coin and the record (rows 95..110) */
+    {  94, 158,  40, 216,  16, MENU_AX_C },    /* the course medal and its number (rows 112..171) */
+    { 158, 171,  40, 216,  14, MENU_AX_C },    /* the course name: the middle of the bottom row (rows 172..185) */
+    { 171, 192,   2,  96,   0, MENU_AX_L },    /* the lives counter, against the left edge */
+    { 171, 192, 160, 254,   0, MENU_AX_R },    /* the star total, against the right edge */
+};
+
+void starsel2_layout(MenuLayout *L)
+{
+    for (unsigned i = 0; i < sizeof kSsBands / sizeof kSsBands[0]; ++i) {
+        const SsBand &b = kSsBands[i];
+        MenuPiece p = menu_piece_make(SRC_TOP_2D, b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0, b.ax, MENU_AY_T, 0, b.y0 + b.dy, 1, 1);
+        p.layers = MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ;
+        p.bg = 1;
+        menu_add_piece(L, p);
+    }
+    L->lift_owners = MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ;
+}
+
+/* STARSEL2: the caps row's bubbles, lifted from the lower screen's sprites (OBJ only, the backdrop keyed out) at 2/3 size into the band under
+   the stars: Luigi's bubble under star 2, Mario's under star 4, Wario's under star 6 (Tango's picture), centred on canvas x 58 / 128 / 198
+   (the 7-star row's stars 2 / 4 / 6). CHAR_X / CHAR_Y are per character (i = 0 Mario, 1 Luigi, 2 Wario). A bubble the ROM left at x 0 is one
+   InitResources never placed (measured: a save with all three has Mario at x 92, Luigi at 164 and Wario at 0, strip mode 3; the cartridge
+   draws that one at the lower screen's corner, mostly off it) and is left out. Each rect holds the bubble and the ROM's cursor left of it, so the cursor shows
+   when the row has it. Touch pieces: a click on a bubble is the ROM's own touch on it. */
+const int kCapBoxL = 40, kCapBoxR = 26, kCapBoxT = 22, kCapBoxB = 22, kCapRowY = 51;
+void starsel2_caps(MenuLayout *L)
+{
+    const MenuFacts &F = L->facts;
+    if (!F.starsel_valid || !F.blob[6]) return;
+    static const int order[3] = { 1, 0, 2 }, slot_x[3] = { 58, 128, 198 };
+    for (int k = 0; k < 3; ++k) {
+        const int c = order[k];
+        if (!((F.blob[7] >> c) & 1) || F.blob[c] == 0) continue;
+        int sx = F.blob[c] - kCapBoxL, sy = F.blob[3 + c] - kCapBoxT, sw = kCapBoxL + kCapBoxR, sh = kCapBoxT + kCapBoxB;
+        if (sx < 0) { sw += sx; sx = 0; }
+        if (sy < 0) { sh += sy; sy = 0; }
+        if (sx + sw > 256) sw = 256 - sx;
+        if (sy + sh > 192) sh = 192 - sy;
+        if (sw <= 0 || sh <= 0) continue;
+        /* the piece is centred on the canvas by MENU_AX_C; move it so the bubble's own centre (CHAR_X) lands on the slot */
+        const int bub = F.blob[c] - sx;                       /* the bubble's centre inside the rect, DS pixels */
+        const int dx = (slot_x[k] - 128) - ((2 * bub - sw) * 2) / (2 * 3);
+        MenuPiece p = menu_piece_make(SRC_SUB, sx, sy, sw, sh, MENU_AX_C, MENU_AY_T, dx, kCapRowY, 2, 3);
+        p.layers = MENU_L_OBJ;
+        p.key_backdrop = 1;
+        p.touch = 1;
+        const int pi = menu_add_piece(L, p);
+        if (pi >= 0) menu_add_hotspot(L, pi, sx, sy, sw, sh, -1);
+    }
+}
+
+/* STARSEL2: the character panel (hal/char_strip.cpp draws it, hal/char_door_skin.cpp paints it), one custom piece drawn on every picture */
+void starsel2_panel(const MenuLayout *, int, uint32_t *dst, int w, int h, int stride)
+{
+    port_char_strip_panel_draw(dst, stride, w, h);
+}
+
 bool big_star_rect(const MenuFacts &F, int w, int h, int star, int out[4])
 {
     if (!F.starsel_valid || star < 0 || star >= F.starsel_n || star >= 8 || w <= 0 || h <= 0) return false;
@@ -183,7 +277,7 @@ bool big_star_rect(const MenuFacts &F, int w, int h, int star, int out[4])
 
 void build_starsel(int variant, MenuLayout *L)
 {
-    if (variant == 2) {
+    if (variant == 2 && !L->facts.blob[6]) {
         /* the character row: the whole bottom screen, half size, low and centred (a scale-down of the fallback) */
         MenuPiece p = menu_piece_make(SRC_SUB, 0, 0, 256, 192, MENU_AX_C, MENU_AY_B, 0, -4, 1, 2);
         p.touch = 1;
@@ -196,6 +290,8 @@ void build_starsel(int variant, MenuLayout *L)
     }
     const MenuFacts &F = L->facts;       /* the live object's fields, read once per tick by starsel_facts */
     L->no_focus_paint = 1;
+    starsel2_layout(L);
+    starsel2_caps(L);
     {
         /* no live facts (the layout selftest, a course without a star row): one invisible touch rect on the centre star,
            so the layout is never empty */
@@ -227,7 +323,7 @@ void build_starsel(int variant, MenuLayout *L)
         }
         /* THE POINTER: the game's own small blue triangle (menu_hostimg.h) over the selected star, bobbing on the
            8-frame cadence. It is a backdrop piece: a click goes through to the star under it. */
-        if (F.starsel_valid && cur >= 0 && cur < n && menu_hostimg_ready(MENU_IMG_ARROW_DOWN)) {
+        if (F.starsel_valid && cur >= 0 && cur < n && !F.spare[5] && variant != 2 && menu_hostimg_ready(MENU_IMG_ARROW_DOWN)) {
             static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };       /* half units */
             int iw = 1, ih = 1;
             menu_hostimg_size(MENU_IMG_ARROW_DOWN, &iw, &ih);
@@ -241,6 +337,12 @@ void build_starsel(int variant, MenuLayout *L)
             ar.fy = (short)top;
             menu_add_piece(L, ar);
         }
+    }
+    if (F.spare[4]) {
+        MenuPiece cp = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        cp.bg = 1; cp.lden = 1; cp.lnum = 1; cp.fx = 0; cp.fy = 0; cp.fw = (short)L->w; cp.fh = (short)L->h;
+        cp.custom = starsel2_panel;
+        menu_add_piece(L, cp);
     }
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;

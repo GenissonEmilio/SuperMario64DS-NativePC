@@ -863,3 +863,212 @@ extern "C" int port_char_door_hd_ui_reset(void)
     g_pieces.clear();
     return was;
 }
+
+/* ================================================================ STARSEL2: the star select's character panel =============== */
+
+namespace {
+Img g_tab[2];              /* the HD UI mod's wooden edge tabs (menu/pause3/tab_l.png, tab_r.png): the blue arrow pointing left / right */
+int g_tab_tried;
+
+void load_tabs(void)
+{
+    if (g_tab_tried) return;
+    g_tab_tried = 1;
+    static const char *const n[2] = { "menu/pause3/tab_l.png", "menu/pause3/tab_r.png" };
+    for (int i = 0; i < 2; ++i) {
+        std::string p;
+        if (ui_file(n[i], &p)) load_file(p.c_str(), &g_tab[i]);
+    }
+    fprintf(stderr, "[charpanel] tab art: %s\n", g_tab[0].ok() && g_tab[1].ok() ? "HD UI Textures pause tabs" : "drawn (no HD tab art)");
+}
+
+/* the tab picture at tw x th: the wooden tab of the pause page cut to its arrow (the star and the shoulder label below it left out). Source rows
+   (192 x 340 art): top rim 0..28, the arrow 28..112, plain wood 112..150 as the filler above and below the arrow, bottom rim 305..340. */
+const Piece *tab_piece(int side, int tw, int th)
+{
+    const Img &I = g_tab[side & 1];
+    if (!I.ok() || tw < 4 || th < 4) return 0;
+    if (Piece *p = find_piece(5, side, tw, th)) return p;
+    const double f = (double)tw / I.w, sy = (double)I.h / 340.0;
+    const int a = (int)(28 * f + 0.5), b = (int)(84 * f + 0.5), c = (int)(35 * f + 0.5);
+    int fill = (th - a - b - c) / 2;
+    if (fill < 0) fill = 0;
+    const int seg_h[5] = { a, fill, b, th - a - b - c - fill, c };
+    const double seg_s[5][2] = { { 0, 28 }, { 112, 150 }, { 28, 112 }, { 112, 150 }, { 305, 340 } };
+    Piece *p = new_piece(5, side, tw, th);
+    p->px.assign((size_t)tw * th, 0);
+    std::vector<uint32_t> tmp;
+    int y = 0;
+    for (int i = 0; i < 5; ++i) {
+        if (seg_h[i] < 1) continue;
+        scale_rect(I, 0, seg_s[i][0] * sy, I.w, (seg_s[i][1] - seg_s[i][0]) * sy, tw, seg_h[i], &tmp);
+        for (int j = 0; j < seg_h[i] && y + j < th; ++j)
+            memcpy(&p->px[(size_t)(y + j) * tw], &tmp[(size_t)j * tw], (size_t)tw * 4);
+        y += seg_h[i];
+    }
+    return p;
+}
+
+/* the plain skin's tab: a wooden rounded board with a blue triangle (the DS menus' blue arrow); right = the arrow points right */
+void plain_tab(const Surf &s, int x, int y, int w, int h, int right, float k)
+{
+    const int edge = k * 1.2f < 2 ? 2 : (int)(k * 1.2f);
+    framed(s, x, y, w, h, 4.0f * k, edge, 0xE4B658u, C_EDGE);
+    const float cx = x + w * 0.5f, cy = y + h * 0.5f, hh = 6.0f * k, ww = 7.0f * k;
+    for (int yy = (int)floorf(cy - hh) - 1; yy <= (int)ceilf(cy + hh) + 1; ++yy)
+        for (int xx = (int)floorf(cx - ww * 0.5f); xx <= (int)ceilf(cx + ww * 0.5f); ++xx) {
+            const float t = ((xx + 0.5f) - (cx - ww * 0.5f)) / ww;      /* 0 left, 1 right */
+            if (t < 0 || t > 1) continue;
+            const float tip = right ? 1.0f - t : t;                     /* 0 at the point, 1 at the base */
+            const float half = hh * tip;
+            const float d = fabsf((yy + 0.5f) - cy);
+            if (d > half + 0.5f) continue;
+            const int a = d > half - 0.5f ? (int)((half + 0.5f - d) * 255) : 255;
+            if (xx < 0 || yy < 0 || xx >= s.w || yy >= s.h || a <= 0) continue;
+            const bool rim = d > half - 1.2f * k || tip > 0.85f;
+            const uint32_t col = rim ? 0x10207Au : 0x2F6BF0u;
+            s.px[(size_t)yy * s.stride + xx] = over(s.px[(size_t)yy * s.stride + xx], ((col >> 16) & 255) * a / 255, ((col >> 8) & 255) * a / 255, (col & 255) * a / 255, a);
+        }
+}
+}  // namespace
+
+void cdskin_panel_geom(int w, int h, int n, float open, CpGeom *g)
+{
+    memset(g, 0, sizeof *g);
+    const float k = h / 192.0f;
+    auto K = [&](float v) { return (int)(v * k + 0.5f); };
+    if (open < 0) open = 0;
+    if (open > 1) open = 1;
+    g->k = k;
+    g->n = n;
+    g->rows = n < 4 ? (n > 0 ? n : 1) : 4;
+    g->cols = n > 0 ? (n + 3) / 4 : 1;
+    /* REVSTARSEL2 fix: compact enough that at 4:3 with two columns out the panel and its tab stay right of the coin score (its last digit
+       ends near DS x 193) and above the star total (row 171): two columns are 51 units wide (x 205 at 4:3), four rows run 47..144 */
+    g->sw = K(20); g->sh = K(19);
+    g->pitch_x = K(23); g->pitch_y = K(22);
+    const int pad = K(4);
+    g->pw = 2 * pad + (g->cols - 1) * g->pitch_x + g->sw;
+    g->ph = 2 * pad + (g->rows - 1) * g->pitch_y + g->sh;
+    g->py = (h - g->ph) / 2;
+    g->px = w - (int)(g->pw * open + 0.5f);
+    g->sx0 = g->px + pad;
+    g->sy0 = g->py + pad;
+    g->tw = K(16); g->th = K(36);
+    /* centred on the right edge (Tango's picture); on a narrow picture (4:3, 16:10: under 300 units wide) the tab sits lower, centred on
+       row 110, so with the panel out its left end (DS x 193 at 4:3) is clear of the star name (rows 80..90) and the coin score (rows 95..110) */
+    const bool narrow = (long long)w * 192 < 300LL * h;
+    g->ty = narrow ? K(110) - g->th / 2 : (h - g->th) / 2;
+    g->tx = g->px - g->tw + K(4);
+}
+
+int cdskin_panel_slot_at(const CpGeom *g, int x, int y)
+{
+    for (int i = 0; i < g->n; ++i) {
+        const int sx = g->sx0 + (i / 4) * g->pitch_x, sy = g->sy0 + (i % 4) * g->pitch_y;
+        if (x >= sx - g->k && x < sx + g->sw + g->k && y >= sy - 2 * g->k && y < sy + g->sh + g->k) return i;
+    }
+    return -1;
+}
+
+int cdskin_panel_hit(const CpGeom *g, int x, int y)
+{
+    if (x >= g->tx && x < g->tx + g->tw && y >= g->ty && y < g->ty + g->th) return 1;
+    if (x >= g->px && y >= g->py && y < g->py + g->ph) return 1;
+    return 0;
+}
+
+int cdskin_piece_count(void) { return (int)g_pieces.size(); }
+
+void cdskin_panel_draw(uint32_t *px, int stride, int w, int h, const CpGeom *gp, const CdItem *it, int n, int focus, int hover, int tab_lit)
+{
+    decide_skin();
+    {   /* REVSTARSEL2: every cached piece is keyed by its pixel size, so a picture that changes size (a window being dragged) would leave the
+           old sizes behind until the 80-piece reset. A new picture size drops them; the door's picker is shut while the star select is up. */
+        static int last_w, last_h;
+        if (w != last_w || h != last_h) {
+            if (last_w) {
+                static const bool tr = getenv("SM64DS_CHARPANEL_TRACE") != 0;
+                if (tr) fprintf(stderr, "[charpanel] picture %dx%d -> %dx%d: %d cached piece(s) dropped\n", last_w, last_h, w, h, (int)g_pieces.size());
+                g_pieces.clear();
+            }
+            last_w = w; last_h = h;
+        }
+    }
+    const CpGeom &g = *gp;
+    const Surf s = { px, stride, w, h };
+    const bool hd = g_hd != 0;
+    if (hd) load_tabs();
+    Font f;
+    f.hd = hd;
+    f.u = g.k * 0.5f;
+    const float k = g.k;
+    auto K = [&](float v) { return (int)(v * k + 0.5f); };
+    const bool out = g.px < w;
+    /* the tab first: the panel lies over its right end, so the tab reads as the panel's own handle */
+    {
+        const int side = (g.px <= w - g.pw / 2) ? 1 : 0;      /* past half way out: the arrow points back to the edge */
+        const int ty = g.ty - (tab_lit ? K(1) : 0);
+        rrect(s, g.tx + K(1), ty + K(2), g.tw, g.th, 4.0f * k, 0x000000u, 60);
+        const Piece *tp = hd && g_tab[0].ok() && g_tab[1].ok() ? tab_piece(side, g.tw, g.th) : 0;
+        if (tp) blit(s, g.tx, ty, *tp);
+        else plain_tab(s, g.tx, ty, g.tw, g.th, side, k);
+        if (tab_lit) rrect(s, g.tx + K(1), ty + K(1), g.tw - K(2), g.th - K(2), 3.5f * k, 0xFFFFFFu, 45);
+    }
+    if (!out) return;
+    /* the panel: the picker's parchment sheet with its brown edge, its right side past the picture's edge */
+    {
+        const int ext = K(10), pw = g.pw + ext;
+        const float r = 7.0f * k;
+        const int edge = k * 1.5f < 2 ? 2 : (int)(k * 1.5f);
+        rrect(s, g.px + K(1), g.py + K(3), pw, g.ph, r, 0x000000u, 60);
+        if (hd) {
+            Piece *p = find_piece(6, 0, pw - 2 * edge, g.ph - 2 * edge);
+            if (!p) {
+                p = new_piece(6, 0, pw - 2 * edge, g.ph - 2 * edge);
+                const Img &I = g_art[A_PARCH];
+                const double ar = (double)(pw - 2 * edge) / (g.ph - 2 * edge);
+                double cw = I.w, ch = I.w / ar;
+                if (ch > I.h) { ch = I.h; cw = I.h * ar; }
+                scale_rect(I, (I.w - cw) / 2, (I.h - ch) / 2, cw, ch, pw - 2 * edge, g.ph - 2 * edge, &p->px);
+            }
+            rrect(s, g.px, g.py, pw, g.ph, r, C_EDGE, 255);
+            rrect(s, g.px + edge, g.py + edge, pw - 2 * edge, g.ph - 2 * edge, r - edge, 0, 255, p);
+        } else {
+            framed(s, g.px, g.py, pw, g.ph, r, edge, C_SHEET, C_EDGE);
+        }
+    }
+    const int lit = focus >= 0 ? focus : hover;
+    for (int i = 0; i < n && i < g.n; ++i) {
+        const CdItem &m = it[i];
+        const bool on = i == lit;
+        const int x = g.sx0 + (i / 4) * g.pitch_x;
+        const int y = g.sy0 + (i % 4) * g.pitch_y - (on ? K(2) : 0);
+        if (x >= w) continue;
+        rrect(s, x + K(1), y + K(2), g.sw, g.sh, g.sh * 0.32f, 0x000000u, 70);
+        draw_plank(s, f, hd, x, y, g.sw, g.sh, m.current ? 1 : 0, 1.0f);
+        if (on) {
+            const int e = k < 1 ? 1 : (int)k;
+            rrect(s, x + e, y + e, g.sw - 2 * e, g.sh - 2 * e, g.sh * 0.3f, 0xFFFFFFu, 95);
+        }
+        const int isz = g.sh - K(5);
+        if (const Img *I = icon_for(m)) {
+            int ox = 0, oy = 0;
+            if (const Piece *p = fitted(image_id(m, I) + 400, *I, isz, isz, &ox, &oy)) blit(s, x + (g.sw - isz) / 2 + ox, y + (g.sh - isz) / 2 + oy, *p);
+        }
+        if (m.current) star(s, (float)(x + g.sw - K(3)), (float)(y + K(3)), 4.2f * k, 0xFFD23Cu, 0x8A4B08u);
+    }
+    /* the name of the slot the cursor or the pointer is on, on a cream plaque to the left of the panel, level with the slot */
+    if (lit >= 0 && lit < n && lit < g.n) {
+        const CdItem &m = it[lit];
+        const float em = 15.0f;
+        const float tw = f.width(m.label, em);
+        const int pw = (int)tw + K(12), ph = K(15);
+        /* under the panel, flush with the picture's right edge (REVSTARSEL2: beside the panel it lay over the coin score at 4:3) */
+        int px0 = w - K(3) - pw;
+        if (px0 < K(2)) px0 = K(2);
+        const int py0 = g.py + g.ph + K(3);
+        draw_plank(s, f, hd, px0, py0, pw, ph, 1, 1.0f);
+        f.draw(s, (float)(px0 + (pw - tw) / 2), py0 + (ph - f.cap(em)) / 2, m.label, em, C_TEXT);
+    }
+}
