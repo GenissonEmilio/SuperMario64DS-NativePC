@@ -1703,17 +1703,28 @@ inline void ck_straight(int why) { g_ck.curved = 0; g_ck.why = why; }
 /* THE WELD BOOK's normals (ntr/smooth.h) into view space: each slot by the
    matrix its own corner rode, so a seam stitched across two bones turns each
    end with that end's bone. A zero slot is a straight edge and stays zero.
-   False when a corner's matrix has aged out of the ring. */
-bool weld_view_en(const float wo[6][3], const GxRaw *const r[3], float en[6][3]) {
+   The ring's matrix is used whether or not it passed the similarity check (a
+   SmoothMotion in-between loads blended matrices, which are only nearly
+   similar; the result is normalised either way, and both sides of a seam turn
+   a shared corner by the same matrix). A corner whose matrix has aged out of
+   the ring falls back to its own view-space normal, so the triangle is never
+   drawn unwelded because of it. */
+bool weld_view_en(const float wo[6][3], const GxRaw *const r[3], const SmoothVertex sv[3], float en[6][3]) {
     static const int corner[6] = {0, 1, 1, 2, 0, 2};
     for (int i = 0; i < 6; ++i) {
         if (wo[i][0] == 0.0f && wo[i][1] == 0.0f && wo[i][2] == 0.0f) {
             en[i][0] = en[i][1] = en[i][2] = 0.0f;
             continue;
         }
-        const Mat *m = mtx_for_gen(r[corner[i]]->mgen);
-        if (!m) return false;
-        const Vec4 v = mul(Vec4{wo[i][0], wo[i][1], wo[i][2], 0.0f}, *m);
+        const uint32_t gen = r[corner[i]]->mgen;
+        const int slot = static_cast<int>(gen & (MTX_RING - 1));
+        Vec4 v;
+        if (g_mtx_ring_gen[slot] == gen) {
+            v = mul(Vec4{wo[i][0], wo[i][1], wo[i][2], 0.0f}, g_mtx_ring[slot]);
+        } else {
+            const SmoothVertex &c = sv[corner[i]];
+            v = Vec4{c.nx, c.ny, c.nz, 0.0f};
+        }
         const float l = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
         if (l <= 1e-20f) return false;
         en[i][0] = v.x / l; en[i][1] = v.y / l; en[i][2] = v.z / l;
@@ -2016,7 +2027,7 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
         float ven[6][3];
         if (smooth_cracks_on()) {
             g_ck.book = 1;
-            if (!weld_view_en(wo, wr, g_ck.en)) g_ck.book = 0;
+            if (!weld_view_en(wo, wr, s, g_ck.en)) g_ck.book = 0;
         }
         if (!smooth_live_mode() && store_eligible(ra, rb, rc)) {
             SmoothOverride wov;
@@ -2026,7 +2037,7 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
             if (smooth_try_store(s, ra, rb, rc, tf, pol, prof, &wov, weld_keyx(wid)))
                 return 1;
         }
-        if (weld_view_en(wo, wr, ven)) {
+        if (weld_view_en(wo, wr, s, ven)) {
             smooth_store_count(SMOOTH_STORE_LIVE, 1);
             float pts[SMOOTH_MAX_GRID * 3];
             smooth_grid_positions_edges(s[0], s[1], s[2], ven, tf, pts);
@@ -9705,6 +9716,7 @@ int gx_interp_begin(float alpha) {
     ++pic;
     g_ip_replaying = 1;
     g_wm_cursor = 0;          /* SMOOTHWELD1: the replay reads the tick's weld answers from the top */
+    if (smooth_cracks_on()) smooth_crack_picture();
     uint32_t tmp[32];
     int last_group = -1;
     const bool gfast = !C.gpair.empty() && g_ipr[g_ip_p].gt_ok && g_gf_override != 0;

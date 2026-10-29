@@ -621,8 +621,11 @@ struct SmoothCrackTri {
     int16_t raw[3][3];
     uint32_t mg[3];
     uint32_t nrm[3];
+    uint32_t pic;         // which picture of the tick (0 = the tick's own, then each in-between)
 };
 int smooth_cracks_on();
+// A SmoothMotion in-between starts: the crack book pairs edges only within one picture.
+void smooth_crack_picture();
 void smooth_crack_tri(const SmoothCrackTri &t);
 
 // ---------------------------------------------------------------------------

@@ -1449,7 +1449,7 @@ const char *ck_cause_name(int c, char *buf) {
 }
 
 void crack_report(uint64_t frame) {
-    std::map<EKey, std::vector<CkSide> > edges;
+    std::map<std::pair<uint32_t, EKey>, std::vector<CkSide> > edges;
     static const int E0[3] = {0, 1, 2};
     static const int E1[3] = {1, 2, 0};
     for (size_t i = 0; i < g_ck_tris.size(); ++i) {
@@ -1463,7 +1463,7 @@ void crack_report(uint64_t frame) {
             sd.tri = (int)i; sd.a = a; sd.b = b;
             ck_side_curve(t, a, b, sd.c);
             EKey ek; ek.a = ka; ek.b = kb;
-            edges[ek].push_back(sd);
+            edges[std::make_pair(t.pic, ek)].push_back(sd);
         }
     }
     int n_cause[CK_NCAUSE] = {0}, n_cause1[CK_NCAUSE] = {0}, n_tj[CK_NCAUSE] = {0};
@@ -1471,7 +1471,7 @@ void crack_report(uint64_t frame) {
     std::vector<CkHit> hits;
     std::vector<const std::vector<CkSide> *> elist;
     int shared = 0, with_curved = 0;
-    for (std::map<EKey, std::vector<CkSide> >::const_iterator it = edges.begin();
+    for (std::map<std::pair<uint32_t, EKey>, std::vector<CkSide> >::const_iterator it = edges.begin();
          it != edges.end(); ++it) {
         const std::vector<CkSide> &s = it->second;
         if (s.size() < 2) continue;
@@ -1572,8 +1572,11 @@ int smooth_cracks_on() {
     return g_cracks;
 }
 
+uint32_t g_ck_pic = 0;
+void smooth_crack_picture() { ++g_ck_pic; }
+
 void smooth_crack_tri(const SmoothCrackTri &t) {
-    if (g_ck_tris.size() < 400000) g_ck_tris.push_back(t);
+    if (g_ck_tris.size() < 400000) { g_ck_tris.push_back(t); g_ck_tris.back().pic = g_ck_pic; }
 }
 
 namespace { void topo_report(uint64_t frame); }
