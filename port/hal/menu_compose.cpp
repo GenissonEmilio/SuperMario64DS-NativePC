@@ -742,6 +742,7 @@ void draw_hostgrad(const MenuLayout *L, int i, const MenuSources *S, uint32_t *d
     }
 }
 
+static float g_bob_frac[MENU_MAX_PIECES]; /* ARROWSLOW1: this picture's sub-pixel part of a bob piece's dest y (0 for every other piece) */
 void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
 {
     const MenuPiece &P = L->p[i];
@@ -749,6 +750,26 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
     const uint32_t *src = menu_hostimg_scaled(P.hostimg, d[2], d[3]);
     if (!src) return;
     const size_t stride = (size_t)stride_of(w);
+    /* ARROWSLOW1: a bob piece drawn bf of a pixel lower than its dest rect: each row is the premultiplied mix of the picture's row and the
+       one above it, one row taller, so the arrow glides between whole pixels instead of stepping */
+    int rows = d[3];
+    const float bf = P.bob && i < MENU_MAX_PIECES ? g_bob_frac[i] : 0.f;
+    if (bf > 1.f / 512.f && d[2] > 0 && d[3] > 0) {
+        static thread_local std::vector<uint32_t> sh;
+        const unsigned f8 = (unsigned)(bf * 256.f + 0.5f), g8 = 256 - f8;
+        const int W = d[2], H = d[3];
+        sh.resize((size_t)W * (H + 1));
+        for (int r = 0; r <= H; ++r)
+            for (int x = 0; x < W; ++x) {
+                const uint32_t c = r < H ? src[(size_t)r * W + x] : 0u, q = r > 0 ? src[(size_t)(r - 1) * W + x] : 0u;
+                uint32_t o = 0;
+                for (int k = 0; k < 32; k += 8)
+                    o |= (((((c >> k) & 255u) * g8 + ((q >> k) & 255u) * f8 + 128u) >> 8) & 255u) << k;
+                sh[(size_t)r * W + x] = o;
+            }
+        src = sh.data();
+        rows = H + 1;
+    }
     int f256 = (P.hostimg == MENU_IMG_LOGO && !P.nofade) ? (int)(g_fade * 256.f + 0.5f) : 256;
     if (P.hostimg == MENU_IMG_GO_GRAD || P.hostimg == MENU_IMG_GO_CLICK || (P.hostimg >= MENU_IMG_GO_L0 && P.hostimg <= MENU_IMG_GO_L7))
         f256 = (int)(g_go_fade * 256.f + 0.5f);   /* HDART1/2: fades in with the ROM's own gradient (the lettering and the text are engine A's too) */
@@ -769,7 +790,7 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
         if (sel) boost = no_pulse ? 292 : 292 + pulse[g_draw_frame & 7] * 10;    /* x1.14 .. x1.30 */
         if (prs) { f256 = f256 * 216 / 256; boost = 0; sink = d[3] * 3 / 100; if (sink < 1) sink = 1; }
     }
-    for (int yy = 0; yy < d[3]; ++yy) {
+    for (int yy = 0; yy < rows; ++yy) {
         const int py = d[1] + yy + sink;
         if (py < 0 || py >= h) continue;
         uint32_t *row = dst + (size_t)py * stride;
@@ -2482,12 +2503,17 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
     }
     if (!g_in_relift && !D.L.snap_save) g_snap_old_valid = 0;     /* a tick that does not save drew from g_snap itself */
     /* ARROWSLOW1: a bob piece (the main menu's cursor arrow) is drawn at this picture's own place on its curve: the tick's own picture
-       at a = 1 (its fy), a picture between ticks a of the way from the tick before */
-    for (int i = 0; i < D.L.np; ++i) {
+       at a = 1, a picture between ticks a of the way from the tick before. The whole pixel goes in the dest rect, the fraction in
+       g_bob_frac (the draw shifts the picture down by it), so the arrow moves on every picture and never by more than its own step. */
+    for (int i = 0; i < D.L.np && i < MENU_MAX_PIECES; ++i) {
         const MenuPiece &P = D.L.p[i];
+        g_bob_frac[i] = 0.f;
         if (!P.bob) continue;
         const double a = g_in_relift ? g_relift_alpha : 1.0;
-        D.L.dest[i][1] = P.bob_y0 + (int)floor(P.bob_amp * menu_bob_curve((double)P.bob_t - 1.0 + a) / 4.0 + 0.5);
+        const double y = P.bob_y0 + P.bob_amp * menu_bob_curve((double)P.bob_t - 1.0 + a) / 4.0;
+        const double fl = floor(y);
+        D.L.dest[i][1] = (int)fl;
+        g_bob_frac[i] = (float)(y - fl);
     }
     g_rep.enable = cost_fast(); g_rep.valid = 0;
     if (trace_on()) {
@@ -2517,6 +2543,7 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
 /* MENUINTERP2: the same draw for a picture between ticks (see hal_menu_relift_ok). Never saves the held frame, draws held-frame
    pieces from the one this tick drew from. */
 void hal_menu_set_relift_alpha(double a) { g_relift_alpha = a < 0.0 ? 0.0 : a > 1.0 ? 1.0 : a; }
+float hal_menu_piece_bob_frac(int piece) { return piece >= 0 && piece < MENU_MAX_PIECES ? g_bob_frac[piece] : 0.f; }
 void hal_menu_present_relift(uint32_t *dst, int w, int h, int stage)
 {
     g_in_relift = 1;

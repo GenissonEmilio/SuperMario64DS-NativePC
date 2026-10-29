@@ -437,6 +437,7 @@ int  hal_menu_relift_why(void);                 /* MENUINTERP2: 0 = ok, else 1 m
 void hal_menu_relift_dump(void);                /* MENUINTERP2 debug: one trace line of the bound layout's pieces */
 void hal_menu_present_relift(uint32_t *dst, int w, int h, int stage);   /* MENUINTERP2: hal_menu_present for a picture between ticks */
 void hal_menu_set_relift_alpha(double a);      /* ARROWSLOW1: the next re-draws between ticks are a of the way from the tick before to this tick (bob pieces) */
+float hal_menu_piece_bob_frac(int piece);       /* ARROWSLOW1: the picture being drawn shifts this bob piece down by this fraction of a pixel (0..1) */
 int  hal_menu_key_sentinel(void);               /* MENUS093E: the bound layout wants its masked engine-B planes drawn over a sentinel backdrop (exact key_backdrop) */
 int  hal_menu_needs_picsnap(void);              /* MENUINTERP2: the tick must keep the picture as the menu found it for a re-draw between ticks */
 int  hal_menu_relift_ok(void);                  /* MENUINTERP2: a tick the gate snaps may still blend if every in-between re-draws the menu on its own 3D picture (hal_menu_relift) */
