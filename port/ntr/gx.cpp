@@ -9264,6 +9264,8 @@ void ip_set_up(const int32_t *view) {
     if (g_ip_up_ok) { g_ip_up[0] = x / l; g_ip_up[1] = y / l; g_ip_up[2] = z / l; }
 }
 float g_ip_rot_alpha = 0;
+double g_ip_ref[4];   // the turn of the last matrix of this picture that turned 90 degrees or more (the way it went)
+int g_ip_ref_ok = 0;
 int ip_rot_log() {
     static int on = -1;
     if (on < 0) { const char *e = getenv("SM64DS_IP_ROTBLEND_LOG"); on = (e && *e && *e != '0') ? atoi(e) : 0; }
@@ -9341,7 +9343,7 @@ void ip_quat_mat(const double q[4], double R[3][3]) {
    12: 4x3, 16: 4x4). True when the pair turned past the threshold and out /
    ex hold the turn-aware blend at t (ex unrounded, in word units); false
    leaves the caller to blend word by word, exactly as before. */
-bool ip_rot_blend(const uint32_t *a, const uint32_t *b, int np, double t, uint32_t *out, double *ex) {
+bool ip_rot_blend(const uint32_t *a, const uint32_t *b, int np, double t, uint32_t *out, double *ex, bool chain) {
     if (!ip_rot_mode() || (np != 9 && np != 12 && np != 16)) return false;
     const int stride = np == 16 ? 4 : 3;
     double A[3][3], B[3][3];
@@ -9400,22 +9402,39 @@ bool ip_rot_blend(const uint32_t *a, const uint32_t *b, int np, double t, uint32
     ip_mat_quat(Ua, qa);
     ip_mat_quat(Ub, qb);
     double d = qa[0] * qb[0] + qa[1] * qb[1] + qa[2] * qb[2] + qa[3] * qb[3];
-    /* the way round. A turn of about half a circle (150 to 210 degrees) has two
-       ways that are nearly as short, and the pieces of one body (each bone has
-       its own matrix) would split between them on a little noise: such a turn
-       always goes the same way about the camera's up (the axis of the turn
-       Ua^T Ub is the vector part of conj(qa) qb). Any other turn takes the
-       shorter way. */
-    bool flip = d < 0;
-    if (std::fabs(d) < 0.2588 && g_ip_up_ok) {
-        const double ax = qa[0] * qb[1] - qb[0] * qa[1] - (qa[2] * qb[3] - qa[3] * qb[2]);
-        const double ay = qa[0] * qb[2] - qb[0] * qa[2] - (qa[3] * qb[1] - qa[1] * qb[3]);
-        const double az = qa[0] * qb[3] - qb[0] * qa[3] - (qa[1] * qb[2] - qa[2] * qb[1]);
-        flip = ax * g_ip_up[0] + ay * g_ip_up[1] + az * g_ip_up[2] < 0;
+    /* the way round. Taking the shorter way for each matrix on its own would
+       split a body whose pieces (one matrix a bone) turned close to half a
+       circle: a piece at 179 degrees and one at 181 would go opposite ways, and
+       so would any two pieces on either side of ANY fixed cut (the reviewer's
+       148 / 152 at a 150-degree band edge). No rule on one matrix alone can
+       avoid a cut somewhere, so the cut is moved to where one body never
+       straddles it: the last matrix of the picture that turned 90 degrees or
+       more is the reference, and a matrix whose turn is within 60 degrees of
+       it (quaternion dot 0.866: the pieces of one body differ by their own
+       animation, far less in a tick) goes the same way as it. A matrix with no
+       such reference takes the shorter way, and a turn of 170 to 190 degrees
+       a fixed way about the camera's up, so a body turning right round goes
+       one way, whole. The camera is never a reference (chain false). */
+    /* qd = conj(qa) qb, the turn of the tick (Ub = Ua D, D = Ua^T Ub); its w is d */
+    double qd[4] = {d, qa[0] * qb[1] - qb[0] * qa[1] - (qa[2] * qb[3] - qa[3] * qb[2]),
+                    qa[0] * qb[2] - qb[0] * qa[2] - (qa[3] * qb[1] - qa[1] * qb[3]),
+                    qa[0] * qb[3] - qb[0] * qa[3] - (qa[1] * qb[2] - qa[2] * qb[1])};
+    bool flip;
+    const double rd = qd[0] * g_ip_ref[0] + qd[1] * g_ip_ref[1] + qd[2] * g_ip_ref[2] + qd[3] * g_ip_ref[3];
+    if (chain && g_ip_ref_ok && std::fabs(rd) >= 0.8660) {
+        flip = rd < 0;   // a piece of the body that turned before it: the same way
+    } else {
+        flip = d < 0;    // the shorter way
+        if (std::fabs(d) < 0.0872 && g_ip_up_ok)   // 170 to 190 degrees: a fixed way about the camera's up
+            flip = qd[1] * g_ip_up[0] + qd[2] * g_ip_up[1] + qd[3] * g_ip_up[2] < 0;
     }
     if (flip) {
-        for (int i = 0; i < 4; ++i) qb[i] = -qb[i];
+        for (int i = 0; i < 4; ++i) { qb[i] = -qb[i]; qd[i] = -qd[i]; }
         d = -d;
+    }
+    if (chain && std::fabs(d) < 0.7071) {   // a turn of 90 degrees or more leads the pieces drawn after it
+        for (int i = 0; i < 4; ++i) g_ip_ref[i] = qd[i];
+        g_ip_ref_ok = 1;
     }
     if (d > 0.9995) {
         for (int i = 0; i < 4; ++i) q[i] = qa[i] + (qb[i] - qa[i]) * t;
@@ -9456,7 +9475,7 @@ void ip_cam_setup(const int32_t *vp, const int32_t *vc, double t) {
     ip_set_up(vc);
     uint32_t w[12];
     double ex[12];
-    if (ip_rot_blend((const uint32_t *)vp, (const uint32_t *)vc, 12, t, w, ex)) {
+    if (ip_rot_blend((const uint32_t *)vp, (const uint32_t *)vc, 12, t, w, ex, false)) {
         /* INTERPTURN1: a camera that swung past the threshold in one tick blends as a turn */
         for (int r = 0; r < 3; ++r)
             for (int k = 0; k < 3; ++k) {
@@ -9661,7 +9680,7 @@ void gx_interp_view(float alpha, float eye[3]) {
     uint32_t w[12];
     double ex[12];
     ip_set_up(C.view);
-    if (g_ip_p >= 0 && ip_rot_blend((const uint32_t *)g_ipr[g_ip_p].view, (const uint32_t *)C.view, 12, alpha, w, ex)) {
+    if (g_ip_p >= 0 && ip_rot_blend((const uint32_t *)g_ipr[g_ip_p].view, (const uint32_t *)C.view, 12, alpha, w, ex, false)) {
         for (int i = 0; i < 12; ++i) v[i] = (int32_t)w[i];   // INTERPTURN1: the same turn-aware camera ip_cam_setup builds
     } else
     for (int i = 0; i < 12; ++i)
@@ -9726,6 +9745,7 @@ int gx_interp_begin(float alpha) {
     g_teximage = C.start_teximage;
     g_plttbase = C.start_plttbase;
     g_ip_rot_stat = IpRotStat{};
+    g_ip_ref_ok = 0;   // INTERPTURN1: every picture starts with no reference turn
     g_ip_rot_alpha = alpha;
     ip_cam_setup(P.view, C.view, alpha);
     g_ip_group_tri0.assign(C.groups.size(), 0);
@@ -9782,7 +9802,7 @@ int gx_interp_begin(float alpha) {
                     const double w2 = (1.0 + (double)alpha) * 0.5;
                     const int n = e.np < pe.np ? e.np : pe.np;
                     if (e.np == pe.np && e.mode != MTX_PROJ && e.cmd != 0x1B && e.cmd != 0x1C &&
-                        ip_rot_blend(&P2.par[pe.off], pp, e.np, w2, tmp, g_ip_ex)) {
+                        ip_rot_blend(&P2.par[pe.off], pp, e.np, w2, tmp, g_ip_ex, true)) {
                         /* INTERPTURN1: a turn past the threshold blends as a turn */
                     } else
                     for (int k = 0; k < e.np; ++k) {
@@ -9807,7 +9827,7 @@ int gx_interp_begin(float alpha) {
                     /* TEXTBOX2: a step across a texture wrap blends to the matrix with the wrap taken out (tick N's own at alpha 1) */
                     if (e.mode == MTX_TEX && tex_wrapped && alpha < 1.0f) pp = tex_adj;
                     if (e.np == pe.np && e.mode != MTX_TEX && e.mode != MTX_PROJ && e.cmd != 0x1B && e.cmd != 0x1C &&
-                        ip_rot_blend(&P.par[pe.off], pp, e.np, alpha, tmp, g_ip_ex)) {
+                        ip_rot_blend(&P.par[pe.off], pp, e.np, alpha, tmp, g_ip_ex, true)) {
                         /* INTERPTURN1: a turn past the threshold blends as a turn */
                     } else
                     for (int k = 0; k < e.np; ++k) {
