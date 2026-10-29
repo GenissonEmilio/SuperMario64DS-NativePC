@@ -144,11 +144,11 @@ struct MenuPiece {
   float bob_amp;
   int bob_t;
 };
-/* ARROWSLOW1: the cursor arrow's bob in half units (0..4), one cycle every 32 ticks, eased (a cosine); ph in ticks, fractional
+/* ARROWSLOW1: the cursor arrow's bob in half units (0..4), one cycle every 24 ticks (a third of the ROM's 8-tick pace), eased (a cosine); ph in ticks, fractional
    between ticks */
 static inline double menu_bob_curve(double ph)
 {
-    return 2.0 - 2.0 * cos(ph * (6.283185307179586 / 32.0));
+    return 2.0 - 2.0 * cos(ph * (6.283185307179586 / 24.0));
 }
 
 struct MenuHotspot { uint8_t piece; DsRect box;     /* bottom-screen DS box = the ROM's own touch box */

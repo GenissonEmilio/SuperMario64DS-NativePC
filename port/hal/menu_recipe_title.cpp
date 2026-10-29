@@ -460,8 +460,9 @@ int wrench_dx(const MenuLayout *L)
     return (o && o->on) ? -35 : 0;      /* NAME2: the ? (30 units) and its gap from the window edge (5 units, the same as its gap from the top) */
 }
 
-/* ARROWSLOW1 (Tango 10-28: "not jump so rapidly ... interpolate it and make it .25 speed"): THE MAIN MENU'S BLUE CURSOR ARROW BOBS AT A QUARTER OF
-   THE ROM'S PACE, SMOOTHLY. The ROM's own arrow steps through 0,1,2,3,4,3,2,1 half units on an 8-tick cycle; this one takes 32 ticks over the same
+/* ARROWSLOW1 (Tango 10-28: "not jump so rapidly ... interpolate it and make it .25 speed"): THE MAIN MENU'S BLUE CURSOR ARROW BOBS AT A THIRD OF
+   THE ROM'S PACE, SMOOTHLY (Tango, same evening: "a little bit faster" than a quarter). The ROM's own arrow steps through 0,1,2,3,4,3,2,1 half units
+   on an 8-tick cycle; this one takes 24 ticks over the same
    0 to 4 half units on an eased curve (menu_bob_curve), and with Smooth Motion each picture between ticks is drawn at its own place on that curve
    (hal_menu_present, the piece's bob fields). Without Smooth Motion it steps once a tick. Only the bob changes: the arrow's place when the cursor
    moves to another plank snaps as before. SM64DS_ARROW_BOB=classic draws the ROM's 8-tick cadence (for A/B).
