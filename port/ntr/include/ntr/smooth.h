@@ -664,6 +664,12 @@ enum { SMOOTH_WELD_STRAIGHT = 0, SMOOTH_WELD_CURVED = 1 };
 // they do (for the shape store's key).
 int smooth_weld(const int16_t p[3][3], const uint32_t nrm[3], int kind,
                 const float (*en)[3], float out[6][3], uint32_t *id);
+// The picture counter smooth_frame_mark advances (once a tick).
+uint64_t smooth_frame_no();
+// The weld book's epoch: it moves whenever any edge record changes.
+uint32_t smooth_weld_epoch();
+// The replay memo's own count (SM64DS_SMOOTH_WELD_STATS): an answer read back, or asked again.
+void smooth_weld_memo_count(int hit);
 
 }  // namespace ntr
 

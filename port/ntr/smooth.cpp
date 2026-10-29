@@ -1757,9 +1757,8 @@ int topo_find(int i) {
    `epoch` equals g_topo_epoch. Every write to a class, a finalized flag or a
    mesh's membership bumps the epoch (topo_union, topo_clear, topo_finalize,
    topo_promote), so a kept answer can never outlive the state it read. */
-/* SMOOTHWELD1: the weld book's answer for this triangle rides in the same
-   cache line (see THE WELD BOOK at the end of this file), because the line is
-   hot from the lookup just made. `gen` 0 means "nothing kept". */
+/* SMOOTHWELD1: a kept weld answer (see THE WELD BOOK at the end of this file).
+   `gen` 0 means "nothing kept". */
 struct WeldFront {
     uint32_t nh;          // the three normals, hashed
     uint32_t enh;         // the edge normals the triangle came with, hashed (0 = its own)
@@ -1769,7 +1768,7 @@ struct WeldFront {
     uint16_t slot[3];     // its three edges' records (0xFFFF = none)
     uint16_t ver[3];      // their versions, low 16 bits
 };
-struct alignas(64) TopoFast { int16_t p[9]; int idx; uint32_t epoch; int kind; WeldFront w; };
+struct TopoFast { int16_t p[9]; int idx; uint32_t epoch; int kind; };
 uint32_t g_topo_epoch = 1;
 int topo_register_slow(const int16_t p[3][3], const uint32_t nrm[3], int frame);
 void topo_fast_clear();
@@ -1777,7 +1776,7 @@ enum { TOPO_FAST_N = 1 << 15 };
 TopoFast *g_topo_fast = 0;
 void topo_fast_clear() {
     if (g_topo_fast)
-        for (int i = 0; i < TOPO_FAST_N; ++i) { g_topo_fast[i].idx = -1; g_topo_fast[i].kind = 0; g_topo_fast[i].w.gen = 0; }
+        for (int i = 0; i < TOPO_FAST_N; ++i) { g_topo_fast[i].idx = -1; g_topo_fast[i].kind = 0; }
 }
 inline uint32_t topo_fast_slot(const int16_t *q) {
     uint32_t h = 0x9E3779B1u;
@@ -1835,7 +1834,7 @@ inline EdgeKey make_edge(const int16_t a[3], const int16_t b[3]) {
 
 int topo_register(const int16_t p[3][3], const uint32_t nrm[3], int frame) {
     if (!g_topo_fast) {
-        g_topo_fast = (TopoFast *)_aligned_malloc(sizeof(TopoFast) * TOPO_FAST_N, 64);
+        g_topo_fast = (TopoFast *)malloc(sizeof(TopoFast) * TOPO_FAST_N);
         topo_fast_clear();
     }
     TopoFast &fs = g_topo_fast[topo_fast_slot(&p[0][0])];
@@ -1845,7 +1844,6 @@ int topo_register(const int16_t p[3][3], const uint32_t nrm[3], int frame) {
     fs.idx = idx_found;
     fs.kind = 0;
     fs.epoch = 0;
-    fs.w.gen = 0;          /* a new triangle in this slot: the weld's answer was another's */
     return idx_found;
 }
 
@@ -2602,9 +2600,8 @@ struct WeldOut { float out[6][3]; uint32_t id; };
 enum { WELD_TRI_N = 1 << 15 };
 WeldTri *g_weld_tris = 0;
 WeldOut *g_weld_outs = 0;         // the answers of g_weld_tris, by index
-WeldOut *g_weld_outs_topo = 0;    // the answers kept in g_topo_fast, by index
 uint32_t g_weld_epoch = 1;         // bumped whenever any edge record changes
-uint64_t g_ws_calls, g_ws_fast, g_ws_ver, g_ws_slow, g_ws_slow_topo;
+uint64_t g_ws_calls, g_ws_fast, g_ws_ver, g_ws_slow, g_wm_hit, g_wm_miss;
 
 inline uint32_t weld_fnv(const void *p, size_t n, uint32_t h = 2166136261u) {
     const unsigned char *b = (const unsigned char *)p;
@@ -2674,19 +2671,24 @@ void weld_report(uint64_t frame) {
     static int on = -1;
     if (on < 0) on = getenv("SM64DS_SMOOTH_WELD_STATS") ? 1 : 0;
     if (!on || frame % 100) return;
-    fprintf(stderr, "[smoothweld] f%llu calls %llu settled %llu reconfirmed %llu worked %llu (%llu in the topology "
-            "book's line) edges %u epoch %u time %.3f ms a picture\n",
+    fprintf(stderr, "[smoothweld] f%llu calls %llu settled %llu reconfirmed %llu worked %llu "
+            "edges %u epoch %u time %.3f ms a tick, replays read %llu asked %llu\n",
             (unsigned long long)frame, (unsigned long long)g_ws_calls, (unsigned long long)g_ws_fast,
-            (unsigned long long)g_ws_ver, (unsigned long long)g_ws_slow, (unsigned long long)g_ws_slow_topo,
-            g_weld_count, g_weld_epoch, g_ws_ns / 100.0 / 1e6);
-    g_ws_calls = g_ws_fast = g_ws_ver = g_ws_slow = g_ws_slow_topo = 0;
+            (unsigned long long)g_ws_ver, (unsigned long long)g_ws_slow,
+            g_weld_count, g_weld_epoch, g_ws_ns / 100.0 / 1e6,
+            (unsigned long long)g_wm_hit, (unsigned long long)g_wm_miss);
+    g_ws_calls = g_ws_fast = g_ws_ver = g_ws_slow = g_wm_hit = g_wm_miss = 0;
     g_ws_ns = 0;
 }
+
+uint64_t smooth_frame_no() { return g_counters.frames; }
+uint32_t smooth_weld_epoch() { return g_weld_epoch; }
+void smooth_weld_memo_count(int hit) { if (hit) ++g_wm_hit; else ++g_wm_miss; }
 
 int smooth_weld_on() {
     if (g_weld_on < 0) {
         const char *e = getenv("SM64DS_SMOOTH_WELD");
-        g_weld_on = (e && e[0] == '0') ? 0 : 1;
+        g_weld_on = (e && e[0] == '0') ? 0 : (e && e[0] == '2') ? 2 : 1;   /* 2: book kept, never applied (cost A/B) */
     }
     return g_weld_on;
 }
@@ -2731,32 +2733,17 @@ int weld_impl(const int16_t p[3][3], const uint32_t nrm[3], int kind,
         g_weld_edges = (WeldEdge *)calloc(WELD_EDGE_N, sizeof(WeldEdge));
         g_weld_tris = (WeldTri *)_aligned_malloc(sizeof(WeldTri) * WELD_TRI_N, 64);
         g_weld_outs = (WeldOut *)calloc(WELD_TRI_N, sizeof(WeldOut));
-        g_weld_outs_topo = (WeldOut *)calloc(TOPO_FAST_N, sizeof(WeldOut));
-        if (!g_weld_edges || !g_weld_tris || !g_weld_outs || !g_weld_outs_topo) { g_weld_on = 0; return 0; }
+        if (!g_weld_edges || !g_weld_tris || !g_weld_outs) { g_weld_on = 0; return 0; }
         memset(g_weld_tris, 0, sizeof(WeldTri) * WELD_TRI_N);
     }
     ++g_ws_calls;
     const uint32_t frame = (uint32_t)g_counters.frames;
     /* THE FRONT: this triangle's answer, while none of its edges has changed.
        Looked up BEFORE the normals are decoded: a settled triangle needs none
-       of that. A triangle the topology book has just looked up keeps it in the
-       book's own front line (hot already); every other one in g_weld_tris. */
+       of that. */
     const uint32_t nh = weld_words(nrm, 3) | 1u;
     const uint32_t enh_in = (kind == SMOOTH_WELD_CURVED && en) ? (weld_words((const uint32_t *)&en[0][0], 18) | 1u) : 0u;
-    WeldFront *fw = 0;      // the topology book's line, when it holds this triangle
-    WeldOut *fo = 0;
-    WeldTri *own = 0;       // this file's own front, asked when the line above cannot answer
-    if (g_topo_fast) {
-        const uint32_t ts = topo_fast_slot(&p[0][0]);
-        TopoFast &tf = g_topo_fast[ts];
-        if (tf.idx >= 0 && memcmp(tf.p, &p[0][0], sizeof tf.p) == 0) { fw = &tf.w; fo = &g_weld_outs_topo[ts]; }
-    }
-    {
-        const int r = fw ? weld_front_answer(*fw, *fo, nh, kind, enh_in, out, id) : -1;
-        if (r >= 0) return r;
-    }
-    /* Two triangles that share a slot of the book's line evict each other
-       every picture; the own front keeps both. */
+    WeldTri *own = 0;
     {
         const uint32_t set = weld_tri_hash(&p[0][0], nrm, (uint32_t)kind) & (WELD_TRI_N - 2);
         for (int way = 0; way < 2 && !own; ++way) {
@@ -2767,13 +2754,7 @@ int weld_impl(const int16_t p[3][3], const uint32_t nrm[3], int kind,
         if (own) {
             own->used = frame;
             const int r = weld_front_answer(own->w, g_weld_outs[own - g_weld_tris], nh, kind, enh_in, out, id);
-            if (r >= 0) {
-                if (fw) {   /* the line was this triangle's but stale: bring it up to date */
-                    *fw = own->w;
-                    *fo = g_weld_outs[own - g_weld_tris];
-                }
-                return r;
-            }
+            if (r >= 0) return r;
         } else {
             WeldTri &w0 = g_weld_tris[set], &w1 = g_weld_tris[set + 1];
             own = (w0.w.gen != g_weld_gen) ? &w0 : (w1.w.gen != g_weld_gen) ? &w1
@@ -2783,7 +2764,6 @@ int weld_impl(const int16_t p[3][3], const uint32_t nrm[3], int kind,
         }
     }
     ++g_ws_slow;
-    if (fw) ++g_ws_slow_topo;
 
     /* The six normals this triangle would curve with, raw model space, unit. */
     float in[6][3];
@@ -2937,10 +2917,6 @@ int weld_impl(const int16_t p[3][3], const uint32_t nrm[3], int kind,
     memcpy(own->p, &p[0][0], sizeof own->p);
     own->w = w;
     if (result) g_weld_outs[own - g_weld_tris] = wo;
-    if (fw) {
-        *fw = w;
-        if (result) *fo = wo;
-    }
     return result;
 }
 }  // namespace

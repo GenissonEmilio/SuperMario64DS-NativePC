@@ -1724,6 +1724,85 @@ bool weld_view_en(const float wo[6][3], const GxRaw *const r[3], float en[6][3])
    the book's flag, so a triangle whose edges are welded keeps its own grid. */
 inline uint32_t weld_keyx(uint32_t id) { return 0x200u | (id << 12); }
 
+/* THE WELD'S ANSWERS IN SEQUENCE. The game submits its triangles in the same
+   order tick after tick (the same display lists, walked the same way), and a
+   SmoothMotion replay submits the tick's own triangles again in that order.
+   So each answer is kept in submission order with a check of the triangle it
+   was for and the book's epoch it was given at: a replay reads the tick's
+   answers back, and a tick reads the previous tick's, both in sequence, which
+   costs a sequential read instead of a lookup. An answer is reused only while
+   the book has not changed since it was given (the epoch) and the check
+   matches; a stream that does not line up looks a few places ahead, then asks
+   the book. */
+struct WeldMemo { uint32_t check; uint32_t epoch; int result; uint32_t id; int out; };
+std::vector<WeldMemo> g_wm, g_wm_prev;
+std::vector<float> g_wm_out, g_wm_prev_out;   // 18 floats for each answer that changed something
+uint64_t g_wm_frame = ~0ull;
+size_t g_wm_cursor = 0;          // into g_wm during a replay
+size_t g_wm_prev_cursor = 0;     // into g_wm_prev during a tick
+inline uint32_t weld_check(const int16_t p[3][3], const uint32_t n[3], int kind, const float (*en)[3]) {
+    const uint32_t *w = (const uint32_t *)&p[0][0];
+    uint32_t h = 0x811C9DC5u ^ (uint32_t)kind;
+    for (int i = 0; i < 4; ++i) h = (h ^ w[i]) * 0x01000193u;
+    h = (h ^ (uint16_t)p[2][2]) * 0x01000193u;
+    for (int i = 0; i < 3; ++i) h = (h ^ n[i]) * 0x01000193u;
+    if (en) {
+        const uint32_t *e = (const uint32_t *)&en[0][0];
+        for (int i = 0; i < 18; ++i) h = (h ^ e[i]) * 0x01000193u;
+    }
+    return h;
+}
+inline int weld_memo_use(const WeldMemo &m, const std::vector<float> &outs, float wo[6][3], uint32_t *wid) {
+    if (m.result) {
+        std::memcpy(wo, &outs[(size_t)m.out * 18], sizeof(float) * 18);
+        *wid = m.id;
+    }
+    return m.result;
+}
+int weld_call(const int16_t p[3][3], const uint32_t n[3], int kind, const float (*en)[3],
+              float wo[6][3], uint32_t *wid) {
+    const uint32_t chk = weld_check(p, n, kind, en);
+    const uint32_t ep = smooth_weld_epoch();
+    if (g_ip_replaying) {
+        if (g_wm_cursor < g_wm.size() && g_wm[g_wm_cursor].check == chk && g_wm[g_wm_cursor].epoch == ep) {
+            smooth_weld_memo_count(1);
+            return weld_memo_use(g_wm[g_wm_cursor++], g_wm_out, wo, wid);
+        }
+        smooth_weld_memo_count(0);
+        return smooth_weld(p, n, kind, en, wo, wid);
+    }
+    const uint64_t f = smooth_frame_no();
+    if (f != g_wm_frame) {
+        g_wm_frame = f;
+        g_wm_prev.swap(g_wm); g_wm_prev_out.swap(g_wm_out);
+        g_wm.clear(); g_wm_out.clear();
+        g_wm_prev_cursor = 0;
+    }
+    int r = -1;
+    for (size_t look = 0; look < 8 && g_wm_prev_cursor + look < g_wm_prev.size(); ++look) {
+        const WeldMemo &m = g_wm_prev[g_wm_prev_cursor + look];
+        if (m.check != chk) continue;
+        g_wm_prev_cursor += look + 1;
+        if (m.epoch == ep) {
+            smooth_weld_memo_count(1);
+            r = weld_memo_use(m, g_wm_prev_out, wo, wid);
+        }
+        break;
+    }
+    if (r < 0) {
+        smooth_weld_memo_count(0);
+        r = smooth_weld(p, n, kind, en, wo, wid);
+    }
+    WeldMemo m;
+    m.check = chk; m.epoch = smooth_weld_epoch(); m.result = r; m.id = r ? *wid : 0; m.out = -1;
+    if (r) {
+        m.out = (int)(g_wm_out.size() / 18);
+        g_wm_out.insert(g_wm_out.end(), &wo[0][0], &wo[0][0] + 18);
+    }
+    g_wm.push_back(m);
+    return r;
+}
+
 int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
                const GxRaw &ra, const GxRaw &rb, const GxRaw &rc) {
     const SmoothPolicy &pol = smooth_policy();
@@ -1847,7 +1926,7 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
                 if (tf > 1) smooth_topo_count(ov.cls == SMOOTH_CLASS_FACET
                                               ? SMOOTH_TOPO_FACET : SMOOTH_TOPO_FLATKEEP);
                 ck_straight(ov.cls == SMOOTH_CLASS_FACET ? SMOOTH_CKWHY_FACET : SMOOTH_CKWHY_BOOKFLAT);
-                if (weld) smooth_weld(wp, wn, SMOOTH_WELD_STRAIGHT, 0, wo, &wid);
+                if (weld) weld_call(wp, wn, SMOOTH_WELD_STRAIGHT, 0, wo, &wid);
                 return 0;
             }
             int level = pol.level;
@@ -1858,7 +1937,7 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
             if (!g_ip_replaying) smooth_count(SMOOTH_COUNT_DEMAND, 1);
             smooth_topo_count(ov.cls == SMOOTH_CLASS_FAN ? SMOOTH_TOPO_FAN : SMOOTH_TOPO_BOX);
             uint32_t okeyx = 0;
-            if (weld && smooth_weld(wp, wn, SMOOTH_WELD_CURVED, ov.en, wo, &wid)) {
+            if (weld && weld_call(wp, wn, SMOOTH_WELD_CURVED, ov.en, wo, &wid) && weld == 1) {
                 std::memcpy(ov.en, wo, sizeof ov.en);
                 okeyx = weld_keyx(wid);
             }
@@ -1908,14 +1987,14 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
         if (smooth_topo_cross(tp, ra.mgen, rb.mgen, rc.mgen)) {
             smooth_topo_count(SMOOTH_TOPO_FLATKEEP);
             ck_straight(SMOOTH_CKWHY_CROSSKEEP);
-            if (weld) smooth_weld(wp, wn, SMOOTH_WELD_STRAIGHT, 0, wo, &wid);
+            if (weld) weld_call(wp, wn, SMOOTH_WELD_STRAIGHT, 0, wo, &wid);
             return 0;
         }
     }
     if (tf <= 1) {
         smooth_counters_for(why);
         ck_straight(why);
-        if (weld) smooth_weld(wp, wn, SMOOTH_WELD_STRAIGHT, 0, wo, &wid);
+        if (weld) weld_call(wp, wn, SMOOTH_WELD_STRAIGHT, 0, wo, &wid);
         return 0;
     }
 
@@ -1933,7 +2012,7 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
        whose normals differ there, or with a side drawn straight, is drawn by
        the edge's own rule, the same from both sides. Corners stay put. */
     if (weld && ra.nrm && rb.nrm && rc.nrm &&
-        smooth_weld(wp, wn, SMOOTH_WELD_CURVED, 0, wo, &wid)) {
+        weld_call(wp, wn, SMOOTH_WELD_CURVED, 0, wo, &wid) && weld == 1) {
         float ven[6][3];
         if (smooth_cracks_on()) {
             g_ck.book = 1;
@@ -9624,6 +9703,7 @@ int gx_interp_begin(float alpha) {
     static int pic = 0;
     ++pic;
     g_ip_replaying = 1;
+    g_wm_cursor = 0;          /* SMOOTHWELD1: the replay reads the tick's weld answers from the top */
     uint32_t tmp[32];
     int last_group = -1;
     const bool gfast = !C.gpair.empty() && g_ipr[g_ip_p].gt_ok && g_gf_override != 0;
