@@ -1025,16 +1025,21 @@ void ppu_display_capture(const uint32_t *src, int w, int h) {
     /* The running hash is kept in a local across the two loops and stored once
        at the end: a global read-modify-write per pixel would be the only thing
        in this loop the compiler cannot keep in a register. */
+    /* THE CENTRE OF EACH DS PIXEL, not its top-left host pixel (GAPFILL1). The DS rasterizes at pixel centres, and above RenderScale 1
+       the top-left host pixel of a ry x rx block sits 3/8 of a DS pixel up and left of that centre. The dual-screen minigames show the
+       live 3D on one screen and this capture on the other, swapping every tick, so an edge the capture rounded the other way from the
+       live picture jumped one DS row every tick (scene 372's whole sky and its top row). At ratio 1 the offset is 0: unchanged. */
+    const int cy0 = ry > 0 ? ry / 2 : 0, cx0 = rx > 0 ? rx / 2 : 0;
     unsigned long long h1 = g_cap_hash;
     for (int y = 0; y < ch; ++y) {
-        const int sy = ry > 0 ? y * ry : (y * h) / SUB_H;
+        const int sy = ry > 0 ? y * ry + cy0 : (y * h) / SUB_H;
         /* w/h are the LIVE image extent; the framebuffer's row stride is always
            SCREEN_W (the buffer max), which equals w on every fixed tier and is
            1024 on NTR_WIDE_RT with a 512-wide active image. Index by the stride,
            sample within the extent. */
         const uint32_t *row = src + (size_t)(sy < h ? sy : h - 1) * (size_t)SCREEN_W + (size_t)cap_x0;
         for (int x = 0; x < cw; ++x) {
-            const int sx = rx > 0 ? x * rx : (x * w) / SUB_W;
+            const int sx = rx > 0 ? x * rx + cx0 : (x * w) / SUB_W;
             const uint32_t p = row[sx < w ? sx : w - 1];
             /* ARGB8888 -> BGR555, and BIT 15 SET. On hardware the captured
                alpha bit says "this pixel was opaque"; engine A's finished
