@@ -78,6 +78,11 @@ enum { CH_LOGO_POP = 22, CH_BOUNCE_LEN = 40, CH_FACE_FADE = 24, CH_LOGO_OUT = 24
        CH_PLANK_START = 4, CH_FLY = 14, CH_VEIL = 10,
        /* INTRO2 (Tango 10-24): the logo's trip to the top left takes 2 s (120 ticks) after the head has flown in; the planks rise during it */
        CH_LOGO_MOVE = 120, CH_PLANK_START_INTRO = 40,
+       /* LOGOFADE1: the longest the logo waits for the head's arrival after the swap began before its hand-over starts anyway */
+       CH_HEAD_WAIT = 90,
+       /* LOGOFADE1: the head's own animation frame at which its entrance (the drop in and the bounce back up) is over and the head is at rest:
+          measured on the picture under the logos (SM64DS_LF1_NOLOGO): the drop t323-333, the bounce t334-345, the settle to t357, frame 34 at t358 */
+       CH_HEAD_REST_FRAME = 34,
        CH_PLANKS_END = CH_PLANK_START + 2 * CH_PLANK_GAP + CH_PLANK_DUR, CH_PLANKS_END_INTRO = CH_PLANK_START_INTRO + 2 * CH_PLANK_GAP + CH_PLANK_DUR };
 struct Chore {
     int mode;            /* CH_* */
@@ -101,6 +106,10 @@ struct Chore {
 static int g_press_tick;      /* INTRO2: a touch / click went into the ROM this tick */
 /* INTRO2: the swap (sw_t counts it) is the logo's 2 s trip in the intro and the planks' own rise on a return; the planks start at their own tick */
 static inline int swap_end(const Chore &c) { return c.mode == CH_INTRO ? (int)CH_LOGO_MOVE : (int)CH_PLANKS_END; }
+/* LOGOFADE1: the intro's logo hand-over (Chore::head_t's clock) can outlast the swap: the intro is not over (no skip window closed, no page at
+   rest) until the logo has landed */
+bool pc_assets_ready();
+static inline bool intro_logo_busy(const Chore &c) { return c.mode == CH_INTRO && !c.skip && c.sw_t >= 0 && c.head_t < (int)CH_LOGO_MOVE && pc_assets_ready(); }
 static inline int plank_start(const Chore &c) { return c.mode == CH_INTRO ? (int)CH_PLANK_START_INTRO : (int)CH_PLANK_START; }
 static inline int planks_end(const Chore &c) { return c.mode == CH_INTRO ? (int)CH_PLANKS_END_INTRO : (int)CH_PLANKS_END; }
 
@@ -270,6 +279,15 @@ extern int *data_ov007_0210342c;
 extern char *data_ov007_02104bd8;     /* the title's screen-fade manager (src/func_ov007_020bf690.c) */
 }
 namespace {
+/* LOGOFADE1: the frame of the title head's animation (the head object at the title global + 0xf4, its animation at + 0x18, the frame at + 0x10
+   and the frame count at + 0x12 as src/unnamed/ov007/func_ov007_020b1718.c reads them); -1 when there is none */
+static inline int head_anim_frame()
+{
+    if (!data_ov007_0210342c) return -1;
+    const char *F = *(const char *const *)((const char *)data_ov007_0210342c + 0xf4);
+    const char *A = F ? *(const char *const *)(F + 0x18) : 0;
+    return A ? (int)*(const unsigned short *)(A + 0x10) : -1;
+}
 int g_tk_frame = -1, g_tk_idx = 0;
 int g_up_stamp = -1;          /* the title Render counter at which menu_title_up last answered (the composite of that frame) */
 
@@ -619,7 +637,7 @@ static bool egg_page_ok(const MenuLayout *L, bool intro)
 {
     if (intro || !t_f || t_f->toy_v > 0) return false;
     const Chore &c = t_f->ch;
-    if (!(c.sw_t >= swap_end(c) - 4 || c.skip || c.mode == CH_NONE)) return false;
+    if (!(c.sw_t >= swap_end(c) - 4 || c.skip || c.mode == CH_NONE) || intro_logo_busy(c)) return false;
     const OnlFacts *of = onl_facts_of(L);
     return !(of && of->scr != ONL_SCR_NONE);
 }
@@ -990,12 +1008,19 @@ void chore_step(int variant, int top, int elem, int req)
        ramps it over the 30 ticks of top-state 1 and leaves it there) and the head is drawn whole (face_a at 255, the end of the pop's smoothing).
        The big logo stays solid until then (build_main_pc): its fade used to start on the swap's first tick, so the head arrived behind a logo already
        4 to 15 percent see-through. */
+    /* LOGOFADE1: the scale word is at g+0xf8 (the ROM's stores: str [r0, #0xf8] at 020b1c2c / 020b1cac / 020b1cdc; the shadow struct's member is
+       named ff8 for its offset, 0xf8). GLITCHFIX1 read g+0xff8, a word that is never 0x1000 there, so the check never fired. */
     if (c.mode == CH_INTRO && c.sw_t >= 0) {
-        const int ff8 = data_ov007_0210342c ? *(const int *)((const char *)data_ov007_0210342c + 0xff8) : 0x1000;
-        if (c.head_t >= 0) ++c.head_t;
-        else if (top == 0 && ff8 == 0x1000 && c.face_a >= 255) {
+        const int ff8 = data_ov007_0210342c ? *(const int *)((const char *)data_ov007_0210342c + 0xf8) : 0x1000;
+        if (c.skip && c.head_t < CH_LOGO_MOVE) c.head_t = CH_LOGO_MOVE;
+        else if (c.head_t >= 0) ++c.head_t;
+        else if (top == 0 && ff8 == 0x1000 && c.face_a >= 255 && head_anim_frame() >= CH_HEAD_REST_FRAME) {
             c.head_t = 0;
-            if (hal_menu_trace_on()) fprintf(stderr, "[chore] the head has arrived (sw_t %d): the big logo's fade starts\n", c.sw_t);
+            if (hal_menu_trace_on()) fprintf(stderr, "[chore] the head has arrived (sw_t %d): the logo's hand-over starts\n", c.sw_t);
+        } else if (c.sw_t >= CH_HEAD_WAIT) {
+            c.head_t = 0;      /* never hold the intro on a solid logo */
+            if (hal_menu_trace_on()) fprintf(stderr, "[chore] the head has not arrived by sw_t %d: the logo's hand-over starts anyway (top %d ff8 %d face_a %d)\n",
+                                             c.sw_t, top, ff8, c.face_a);
         }
     }
     /* TITLEUI1: the face swap (top-state 6, the change tick 0 / 6, top-state 5): the head, the wrench and every port plank take the ROM's own fade
@@ -1040,6 +1065,15 @@ void chore_step(int variant, int top, int elem, int req)
     { static int tr = -1; if (tr < 0) tr = getenv("SM64DS_GF1_TRACE") ? 1 : 0;     /* GLITCHFIX1 proof instrument */
       if (tr) fprintf(stderr, "[gf1-chore] f%d top=%d elem=%d req=%d sw_t=%d face_a=%d head_t=%d leave_w=%d lv=%d\n", data_ov007_0210342c ? data_ov007_0210342c[0] : -1,
                       top, elem, req, c.sw_t, c.face_a, c.head_t, c.leave_w, rom_swap_level()); }
+    { static int tr = -1; if (tr < 0) tr = getenv("SM64DS_LF1_TRACE") ? 1 : 0;     /* LOGOFADE1 proof instrument: the head's entrance state */
+      if (tr && data_ov007_0210342c) {
+          const char *g = (const char *)data_ov007_0210342c;
+          const char *F = *(const char *const *)(g + 0xf4);
+          const char *A = F ? *(const char *const *)(F + 0x18) : 0;
+          fprintf(stderr, "[lf1] f%d top=%d sw_t=%d head_t=%d g1c=%d g20=%d gec=%d gf8=%d F18=%s c=%d fr=%u n=%u w0=%d\n", data_ov007_0210342c[0], top, c.sw_t,
+                  c.head_t, *(const int *)(g + 0x1c), *(const int *)(g + 0x20), *(const int *)(g + 0xec), *(const int *)(g + 0xf8), A ? "y" : "n",
+                  A ? *(const short *)(A + 0xc) : 0, A ? *(const unsigned short *)(A + 0x10) : 0u, A ? *(const unsigned short *)(A + 0x12) : 0u, A ? *(const int *)A : 0);
+      } }
 #endif
     c.prev_variant = variant;
 }
@@ -1149,7 +1183,7 @@ extern "C" void port_title_press_seen(void)
 {
     cut_begin();
     g_press_tick = 1;
-    if (g_ch.in_fam && g_ch.mode == CH_INTRO && g_ch.released && g_ch.sw_t < swap_end(g_ch)) g_ch.skip = 1;      /* INTRO2: any new click skips the intro too */
+    if (g_ch.in_fam && g_ch.mode == CH_INTRO && g_ch.released && (g_ch.sw_t < swap_end(g_ch) || intro_logo_busy(g_ch))) g_ch.skip = 1;      /* INTRO2: any new click skips the intro too */
 }   /* the ROM's gate reads input from its frame 4 on */     /* sub_screen.cpp: a touch / click is going into the ROM this frame */
 
 void chore_rom_writes(int top, int req)
@@ -1550,14 +1584,15 @@ void build_main_pc(MenuLayout *L, bool intro)
             dy = logo_bounce(tb);
         }
         if (c.sw_t >= 0) {
-            /* INTRO2 (Tango 10-24): the big logo travels to the top left and shrinks to the small one's size and place over 2 s (smoothstep),
-               fading out as it goes, while the small logo fades in at its own place: one logo that becomes the small one */
-            const float u = c.sw_t >= CH_LOGO_MOVE ? 1.f : (float)c.sw_t / (float)CH_LOGO_MOVE;
+            /* INTRO2 (Tango 10-24): the big logo travels to the top left and shrinks to the small one's size and place over 2 s (smoothstep):
+               one logo that becomes the small one.
+               LOGOFADE1: the whole hand-over runs on ONE clock, the head's arrival (Chore::head_t): the big logo stays solid and in place until the
+               head has arrived, then travels. It stays solid on the way (a see-through logo over the head is the clipping Tango reported), and on
+               the tick it lands it IS the small logo, same size and place (add_logos: mv 1 gives the small one's U(ctune(2..4)) box), so the
+               small logo takes over on that tick: two logos are never on the picture at once. */
+            const float u = c.head_t < 0 ? 0.f : c.head_t >= CH_LOGO_MOVE ? 1.f : (float)c.head_t / (float)CH_LOGO_MOVE;
             mv = smooth01(u);
-            /* GLITCHFIX1: the big logo's fade runs on its own clock from the head's arrival (Chore::head_t); solid until then */
-            const float uf = c.head_t < 0 ? 0.f : c.head_t >= CH_LOGO_MOVE ? 1.f : (float)c.head_t / (float)CH_LOGO_MOVE;
-            big_a = (int)((float)big_a * (1.f - smooth01(uf / 0.8f)) + 0.5f);
-            small_a = (int)(255.f * smooth01((u - 0.2f) / 0.8f) + 0.5f);
+            if (u >= 1.f) { big_a = 0; small_a = 255; }
         }
     } else {
         small_a = 255;
@@ -1568,6 +1603,9 @@ void build_main_pc(MenuLayout *L, bool intro)
        first. The logos are now added after the face, the head's touch map and the wrench, and before the planks, and the face swap's fade skips them
        as it did before (they were outside its span). */
     int egg_small = -1;      /* EGG1: the small logo piece */
+#ifndef PORT_ROM_CLEAN
+    { static const int nl = getenv("SM64DS_LF1_NOLOGO") ? 1 : 0; if (nl) { big_a = 0; small_a = 0; } }     /* LOGOFADE1 proof instrument: the picture under the logos */
+#endif
     auto add_logos = [&]() {
         if (big_a > 0) {
             const int lt = ltune(0, 26), lh = ltune(1, 112), ldx = ltune(2, 0);
@@ -1580,7 +1618,16 @@ void build_main_pc(MenuLayout *L, bool intro)
             lg.bg = 1; lg.hostimg = MENU_IMG_LOGO; lg.nofade = 1; lg.alpha = (uint8_t)(big_a >= 255 ? 0 : big_a);
             lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
             lg.fx = (short)(fx0 + (int)((float)(fx1 - fx0) * mv)); lg.fy = (short)(fy0 + (int)((float)(fy1 - fy0) * mv));
-            menu_add_piece(L, lg);
+            const int ibig = menu_add_piece(L, lg);
+            /* LOGOFADE1: on its trip the logo glides on every picture: the present draws a picture between ticks part of the way from its rect on
+               the tick before (the same smoothstep one head_t earlier) to this tick's (MenuLayout glide, ARROWSLOW1's in-between fraction) */
+            if (c.mode == CH_INTRO && !c.skip && c.head_t >= 1 && c.head_t < CH_LOGO_MOVE && ibig >= 0) {
+                const float mp = smooth01((float)(c.head_t - 1) / (float)CH_LOGO_MOVE);
+                const int dhp = dhb + (int)((float)(dhs - dhb) * mp), dwp = (int)((long long)dhp * iw / ih);
+                L->glide_on = 1; L->glide_piece = (uint8_t)ibig;
+                L->glide_from[0] = (short)(fx0 + (int)((float)(fx1 - fx0) * mp)); L->glide_from[1] = (short)(fy0 + (int)((float)(fy1 - fy0) * mp));
+                L->glide_from[2] = (short)dwp; L->glide_from[3] = (short)dhp;
+            }
         }
         if (small_a > 0) {
             const int lh = ctune(2, 40), mx = ctune(3, 6), my = ctune(4, 6);
@@ -1744,7 +1791,7 @@ void build_main_pc(MenuLayout *L, bool intro)
     egg_note(L, egg_small, small_a >= 255 && !(t_f && t_f->toy_v > 0) && egg_page_ok(L, intro), nullptr);      /* EGG1: once the small logo is fully in */
     if (!intro) {                                              /* NAME1: the ? button (online planks, settled) and the modal screen */
         const OnlFacts *of = onl_facts_of(L);
-        const bool settled = c.sw_t >= swap_end(c) - 4 || c.skip || c.mode == CH_NONE;
+        const bool settled = (c.sw_t >= swap_end(c) - 4 || c.skip || c.mode == CH_NONE) && !intro_logo_busy(c);
         const int np_ov = L->np;
         online_overlays(L, true, of && of->on && settled && !(t_f && t_f->toy_v > 0));
         if (c.swap_a >= 0 && !(of && of->scr != ONL_SCR_NONE)) swap_fade(L, np_ov, c.swap_a);      /* TITLEUI1: the ? and its arrow too */
@@ -2786,7 +2833,7 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
             inject = 1;      /* the held word gets the A edge: the ROM's gate reads an edge */
             if (hal_menu_trace_on()) fprintf(stderr, "[chore] the skip is applied (flight tick %d)\n", g_cut_t);
         }
-        if (g_ch.in_fam && g_ch.sw_t < swap_end(g_ch) && ((*pressed & MENU_PAD_CONFIRM) || g_ch.skip)) {
+        if (g_ch.in_fam && (g_ch.sw_t < swap_end(g_ch) || intro_logo_busy(g_ch)) && ((*pressed & MENU_PAD_CONFIRM) || g_ch.skip)) {
             if (!g_ch.skip && hal_menu_trace_on()) fprintf(stderr, "[chore] confirm during the choreography: finishing it\n");
             g_ch.skip = 1;
         }
