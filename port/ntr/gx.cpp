@@ -1711,23 +1711,61 @@ inline void ck_straight(int why) { g_ck.curved = 0; g_ck.why = why; }
    drawn unwelded because of it. */
 bool weld_view_en(const float wo[6][3], const GxRaw *const r[3], const SmoothVertex sv[3], float en[6][3]) {
     static const int corner[6] = {0, 1, 1, 2, 0, 2};
+    /* A slot the weld left as the corner's own normal is turned EXACTLY as
+       the unwelded path turns it (the corner's own view-space normal, from the
+       vector matrix), so a side that kept an edge and the side across it that
+       was never welded build the same curve even where the position matrix is
+       not a similarity (a menu's wide zoom). Only a slot the weld changed goes
+       through the ring. Each edge is decided as a pair: if either end of a
+       changed edge has no matrix in the ring, the whole edge falls back to its
+       own normals. */
+    float own[3][3];
+    for (int c = 0; c < 3; ++c) {
+        const int32_t a = static_cast<int32_t>(r[c]->nrm << 22) >> 22;
+        const int32_t bb = static_cast<int32_t>((r[c]->nrm >> 10) << 22) >> 22;
+        const int32_t d = static_cast<int32_t>((r[c]->nrm >> 20) << 22) >> 22;
+        const float v[3] = {a / 512.0f, bb / 512.0f, d / 512.0f};
+        const float l = std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+        const float il = l > 1e-12f ? 1.0f / l : 0.0f;
+        own[c][0] = v[0] * il; own[c][1] = v[1] * il; own[c][2] = v[2] * il;
+    }
+    bool keep[6];
     for (int i = 0; i < 6; ++i) {
-        if (wo[i][0] == 0.0f && wo[i][1] == 0.0f && wo[i][2] == 0.0f) {
-            en[i][0] = en[i][1] = en[i][2] = 0.0f;
+        const float *o = own[corner[i]];
+        keep[i] = wo[i][0] == o[0] && wo[i][1] == o[1] && wo[i][2] == o[2];
+    }
+    for (int e = 0; e < 3; ++e) {
+        const int i0 = e * 2, i1 = e * 2 + 1;
+        const bool z0 = wo[i0][0] == 0.0f && wo[i0][1] == 0.0f && wo[i0][2] == 0.0f;
+        const bool z1 = wo[i1][0] == 0.0f && wo[i1][1] == 0.0f && wo[i1][2] == 0.0f;
+        if (z0 && z1) {                       /* a straight edge needs no matrix */
+            for (int q = 0; q < 3; ++q) en[i0][q] = en[i1][q] = 0.0f;
             continue;
         }
-        const uint32_t gen = r[corner[i]]->mgen;
-        const int slot = static_cast<int>(gen & (MTX_RING - 1));
-        Vec4 v;
-        if (g_mtx_ring_gen[slot] == gen) {
-            v = mul(Vec4{wo[i][0], wo[i][1], wo[i][2], 0.0f}, g_mtx_ring[slot]);
-        } else {
-            const SmoothVertex &c = sv[corner[i]];
-            v = Vec4{c.nx, c.ny, c.nz, 0.0f};
+        bool ring_ok = true;
+        for (int k = 0; k < 2; ++k) {
+            const int i = k ? i1 : i0;
+            if (keep[i]) continue;
+            const uint32_t gen = r[corner[i]]->mgen;
+            if (g_mtx_ring_gen[gen & (MTX_RING - 1)] != gen) ring_ok = false;
         }
-        const float l = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-        if (l <= 1e-20f) return false;
-        en[i][0] = v.x / l; en[i][1] = v.y / l; en[i][2] = v.z / l;
+        for (int k = 0; k < 2; ++k) {
+            const int i = k ? i1 : i0;
+            Vec4 v;
+            if (keep[i] || !ring_ok) {
+                const SmoothVertex &c = sv[corner[i]];
+                v = Vec4{c.nx, c.ny, c.nz, 0.0f};
+            } else {
+                const uint32_t gen = r[corner[i]]->mgen;
+                v = mul(Vec4{wo[i][0], wo[i][1], wo[i][2], 0.0f}, g_mtx_ring[gen & (MTX_RING - 1)]);
+            }
+            /* unit_normal's own arithmetic (smooth.cpp), so a kept slot is the
+               same float the unwelded patch builds from */
+            const float l2 = v.x * v.x + v.y * v.y + v.z * v.z;
+            if (l2 <= 1e-16f) return false;
+            const float inv = 1.0f / sqrtf(l2);
+            en[i][0] = v.x * inv; en[i][1] = v.y * inv; en[i][2] = v.z * inv;
+        }
     }
     return true;
 }
@@ -1951,7 +1989,7 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
             if (!g_ip_replaying) smooth_count(SMOOTH_COUNT_DEMAND, 1);
             smooth_topo_count(ov.cls == SMOOTH_CLASS_FAN ? SMOOTH_TOPO_FAN : SMOOTH_TOPO_BOX);
             uint32_t okeyx = 0;
-            if (weld && weld_call(wp, wn, SMOOTH_WELD_CURVED, ov.en, wo, &wid) && weld == 1) {
+            if (weld && weld_call(wp, wn, SMOOTH_WELD_CURVED, ov.en, wo, &wid) && weld == 1 && !smooth_weld_guarded()) {
                 std::memcpy(ov.en, wo, sizeof ov.en);
                 okeyx = weld_keyx(wid);
             }
@@ -1977,7 +2015,7 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
                similarity; the ring's matrix serves here as it does for the
                weld, so a box model is not drawn flat in the in-betweens only. */
             const Mat *mm = mtx_for_gen(rc.mgen);
-            if (!mm && weld) {
+            if (!mm && weld && !smooth_weld_guarded()) {
                 const int ms = static_cast<int>(rc.mgen & (MTX_RING - 1));
                 if (g_mtx_ring_gen[ms] == rc.mgen) mm = &g_mtx_ring[ms];
             }
@@ -2036,7 +2074,7 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
        whose normals differ there, or with a side drawn straight, is drawn by
        the edge's own rule, the same from both sides. Corners stay put. */
     if (weld && ra.nrm && rb.nrm && rc.nrm &&
-        weld_call(wp, wn, SMOOTH_WELD_CURVED, 0, wo, &wid) && weld == 1) {
+        weld_call(wp, wn, SMOOTH_WELD_CURVED, 0, wo, &wid) && weld == 1 && !smooth_weld_guarded()) {
         float ven[6][3];
         if (smooth_cracks_on()) {
             g_ck.book = 1;

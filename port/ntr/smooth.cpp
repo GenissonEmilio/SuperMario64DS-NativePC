@@ -2605,7 +2605,8 @@ struct WeldOut { float out[6][3]; uint32_t id; };
 enum { WELD_TRI_N = 1 << 15 };
 WeldTri *g_weld_tris = 0;
 WeldOut *g_weld_outs = 0;         // the answers of g_weld_tris, by index
-uint32_t g_weld_epoch = 1;         // bumped whenever any edge record changes
+uint32_t g_weld_epoch = 1;
+uint32_t g_weld_flips = 0;        // a recorded side changed, or an edge overflowed: churn, not growth         // bumped whenever any edge record changes
 uint64_t g_ws_calls, g_ws_fast, g_ws_ver, g_ws_slow, g_wm_hit, g_wm_miss;
 uint64_t g_ws_overflow;            // edges that met a fifth side, since boot
 uint64_t g_ws_clears;              // books emptied by a scene change, since boot
@@ -2675,12 +2676,50 @@ inline bool weld_same(const float a[3], const float b[3]) {
 }  // namespace
 
 long long g_ws_ns;     // time inside smooth_weld, SM64DS_SMOOTH_PROF only
+/* THE CHURN GUARD (smooth.h). Measured per tick at the frame mark: how many
+   recorded sides CHANGED (or edges overflowed) during the tick just drawn. New
+   sides are growth (a level loading, an object coming into view) and do not
+   count; sides that keep changing are churn, and churn is what lets two sides
+   of one seam take answers from different book states in one picture. Above the threshold the next
+   SM64DS_SMOOTH_WELD_HOLD ticks (default 3, and their in-betweens) draw unwelded, the plain path the
+   game had before the weld; every tick of churn re-arms the hold. The book keeps
+   learning meanwhile, so the weld comes back on a settled book.
+   SM64DS_SMOOTH_WELD_CHURN sets the threshold (changed sides a tick). */
+uint32_t g_guard_ep = 0;
+uint32_t g_guard_ep2 = 0;
+int g_guard_grow_run = 0;
+int g_guard_hold = 0;
+uint32_t g_guard_max = 0;          // largest move a tick in the report window
+uint64_t g_guard_ticks = 0;        // guarded ticks in the report window
+int weld_churn_limit() {
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_SMOOTH_WELD_CHURN"); v = (e && *e) ? atoi(e) : 200; }
+    return v;
+}
+int weld_guard_hold() {
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_SMOOTH_WELD_HOLD"); v = (e && *e) ? atoi(e) : 3; }
+    return v;
+}
 void weld_frame(uint64_t frame) {
     (void)frame;
+    const uint32_t moved = g_weld_flips - g_guard_ep;
+    const uint32_t grew = g_weld_epoch - g_guard_ep2;
+    if (moved > g_guard_max) g_guard_max = moved;
+    /* growth that does not stop: a mesh whose raw vertices move every tick
+       (a model animated by vertex, a menu page) makes new edges every tick,
+       and the two sides of a seam on it are answered from different book
+       states. A level loading grows the book for a tick or two and stops. */
+    g_guard_grow_run = ((int)grew > weld_churn_limit()) ? g_guard_grow_run + 1 : 0;
+    if ((int)moved > weld_churn_limit() || g_guard_grow_run >= 3) g_guard_hold = weld_guard_hold();
+    else if (g_guard_hold > 0) --g_guard_hold;
+    if (g_guard_hold > 0) ++g_guard_ticks;
     if (g_weld_scene_pending) {
         g_weld_scene_pending = 0;
         if (g_weld_edges && g_weld_count) { weld_clear(); ++g_ws_clears; }
     }
+    g_guard_ep = g_weld_flips;
+    g_guard_ep2 = g_weld_epoch;
 }
 
 void weld_report(uint64_t frame) {
@@ -2688,18 +2727,23 @@ void weld_report(uint64_t frame) {
     if (on < 0) on = getenv("SM64DS_SMOOTH_WELD_STATS") ? 1 : 0;
     if (!on || frame % 100) return;
     fprintf(stderr, "[smoothweld] f%llu calls %llu settled %llu reconfirmed %llu worked %llu "
-            "edges %u epoch %u time %.3f ms a tick, replays read %llu asked %llu, overflow edges %llu, scene clears %llu\n",
+            "edges %u epoch %u time %.3f ms a tick, replays read %llu asked %llu, overflow edges %llu, scene clears %llu, "
+            "churn max %u a tick, guarded ticks %llu\n",
             (unsigned long long)frame, (unsigned long long)g_ws_calls, (unsigned long long)g_ws_fast,
             (unsigned long long)g_ws_ver, (unsigned long long)g_ws_slow,
             g_weld_count, g_weld_epoch, g_ws_ns / 100.0 / 1e6,
             (unsigned long long)g_wm_hit, (unsigned long long)g_wm_miss,
-            (unsigned long long)g_ws_overflow, (unsigned long long)g_ws_clears);
+            (unsigned long long)g_ws_overflow, (unsigned long long)g_ws_clears,
+            g_guard_max, (unsigned long long)g_guard_ticks);
+    g_guard_max = 0;
+    g_guard_ticks = 0;
     g_ws_calls = g_ws_fast = g_ws_ver = g_ws_slow = g_wm_hit = g_wm_miss = 0;
     g_ws_ns = 0;
 }
 
 uint64_t smooth_frame_no() { return g_counters.frames; }
 uint32_t smooth_weld_epoch() { return g_weld_epoch; }
+int smooth_weld_guarded() { return g_guard_hold > 0; }
 void smooth_weld_scene_change() { g_weld_scene_pending = 1; }
 uint64_t smooth_weld_overflow() { return g_ws_overflow; }
 void smooth_weld_memo_count(int hit) { if (hit) ++g_wm_hit; else ++g_wm_miss; }
@@ -2856,7 +2900,7 @@ int weld_impl(const int16_t p[3][3], const uint32_t nrm[3], int kind,
         int j = 0;
         while (j < e.nside && e.side[j].id != sid) ++j;
         if (j < e.nside) {
-            if (memcmp(&e.side[j], &me, sizeof me) != 0) { e.side[j] = me; ++e.ver; ++g_weld_epoch; }
+            if (memcmp(&e.side[j], &me, sizeof me) != 0) { e.side[j] = me; ++e.ver; ++g_weld_epoch; ++g_weld_flips; }
         } else if (e.nside < WELD_SIDES) {
             e.side[e.nside++] = me;
             ++e.ver;
@@ -2869,6 +2913,7 @@ int weld_impl(const int16_t p[3][3], const uint32_t nrm[3], int kind,
             ++e.ver;
             ++g_weld_epoch;
             ++g_ws_overflow;
+            ++g_weld_flips;
             {   /* SM64DS_SMOOTH_WELD_STATS: the first few crowded edges, for the report */
                 static int said = 0;
                 if (getenv("SM64DS_SMOOTH_WELD_STATS") && said < 12) {

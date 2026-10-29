@@ -671,6 +671,11 @@ int smooth_weld(const int16_t p[3][3], const uint32_t nrm[3], int kind,
 uint64_t smooth_frame_no();
 // The weld book's epoch: it moves whenever any edge record changes.
 uint32_t smooth_weld_epoch();
+// THE CHURN GUARD. 1 while the book is still moving a lot from one tick to the
+// next (many bodies arriving, a crowd of instances): the weld's answers are
+// kept up to date but not applied, so those pictures are drawn exactly as
+// without the weld (never worse than it). See weld_frame in smooth.cpp.
+int smooth_weld_guarded();
 // The textures were dropped (a model or level load, ntr::gx_invalidate_textures):
 // the weld book is emptied at the next frame mark, so sides remembered from an
 // earlier level can never straighten or average an unrelated later model whose
