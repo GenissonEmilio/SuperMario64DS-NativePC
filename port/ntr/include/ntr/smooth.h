@@ -596,6 +596,96 @@ int smooth_census_on();
 void smooth_census_tri(const SmoothVertex &a, const SmoothVertex &b,
                        const SmoothVertex &c, int tf);
 
+// THE CRACK BOOK (SM64DS_SMOOTH_CRACKS=<N>, every N pictures; off by default
+// and then one compare). The census above compares NORMALS; this compares the
+// EDGES AS DRAWN: every triangle the geometry stage handled is booked with
+// what actually happened to it (curved from its corner normals, curved from
+// substituted edge normals, or left as the DS drew it, and why), each shared
+// edge's two sides are rebuilt as the curves they were drawn along, and the
+// worst opening is reported in view units and in pixels, sorted by cause.
+enum {
+    SMOOTH_CK_STRAIGHT = 0,    // drawn as the DS drew it: the edge is a line
+    SMOOTH_CK_CURVED,          // curved, edges from the six normals given
+    // why a straight side stayed straight, beyond the SMOOTH_WHY_* reasons
+    SMOOTH_CKWHY_MODE3 = 10, SMOOTH_CKWHY_ORTHO, SMOOTH_CKWHY_W,
+    SMOOTH_CKWHY_FACET = 20, SMOOTH_CKWHY_BOOKFLAT, SMOOTH_CKWHY_CROSSKEEP
+};
+struct SmoothCrackTri {
+    float p[3][3];        // view-space corners
+    float clip[3][3];     // clip x, y, w of the corners (for the picture position)
+    float en[6][3];       // the six edge normals the patch was built from (curved)
+    int curved;           // SMOOTH_CK_*
+    int why;              // SMOOTH_WHY_* / SMOOTH_CKWHY_* for a straight side
+    int book;             // 1 = edge normals came from the topology book or the weld
+    int tf;
+    int16_t raw[3][3];
+    uint32_t mg[3];
+    uint32_t nrm[3];
+    uint32_t pic;         // which picture of the tick (0 = the tick's own, then each in-between)
+};
+int smooth_cracks_on();
+// A SmoothMotion in-between starts: the crack book pairs edges only within one picture.
+void smooth_crack_picture();
+void smooth_crack_tri(const SmoothCrackTri &t);
+
+// ---------------------------------------------------------------------------
+// THE WELD BOOK (SMOOTHWELD1). An edge's curve depends only on its two ends
+// and the two normals the patch hands it there, so two triangles that share an
+// edge draw the same curve exactly when they hand it the same pair. Inside one
+// smooth mesh they do. Where two pieces of a model meet (a belly against a
+// body, a shoe against a leg), the artist gave each piece its own normals at
+// the shared corners, and where one side is left as the DS drew it (flat, kept
+// by the topology book) its edge is a straight line: in both cases the two
+// curves part and the background shows through the seam.
+//
+// The book remembers, per edge of the model's own raw geometry (the two VTX
+// positions, so the record outlives every bone matrix and animation frame),
+// every triangle that has been drawn along it and how. A triangle about to be
+// curved then draws each of its edges by the edge's rule, which every side
+// computes from the same record and so agrees on bit for bit:
+//   * a side drawn straight          -> the edge is straight on every side
+//                                       (the curved side bends inside only);
+//   * normals more than 45 degrees apart at an end (the topology book's
+//     crease angle)                  -> a real crease: straight on every side;
+//   * normals that differ less       -> both sides use one normal per end,
+//                                       the sum of every side's, in the
+//                                       order of the sides' ids;
+//   * normals that agree exactly     -> left alone (every edge inside a mesh).
+// Corners never move: only the edge's inner control points change. A triangle
+// none of whose edges needs a rule returns 0 and is drawn exactly as before.
+// SM64DS_SMOOTH_WELD=0 turns the book off.
+// ---------------------------------------------------------------------------
+int smooth_weld_on();
+enum { SMOOTH_WELD_STRAIGHT = 0, SMOOTH_WELD_CURVED = 1 };
+// Enter one triangle's side of its three edges and, for a curved one, say how
+// its edges are to be drawn. `en` is the six edge normals the triangle would
+// curve with (b210, b120, b021, b012, b201, b102, in the raw model space of the
+// corner each one sits at: 0,1,1,2,0,2); null for a straight triangle, or for a
+// plain curved one (the authored normals are decoded from `nrm`). On a return
+// of 1, `out` holds the six normals to draw with, in the same spaces, a zero
+// vector meaning "this edge is straight", and `*id` a number that changes when
+// they do (for the shape store's key).
+int smooth_weld(const int16_t p[3][3], const uint32_t nrm[3], int kind,
+                const float (*en)[3], float out[6][3], uint32_t *id);
+// The picture counter smooth_frame_mark advances (once a tick).
+uint64_t smooth_frame_no();
+// The weld book's epoch: it moves whenever any edge record changes.
+uint32_t smooth_weld_epoch();
+// THE CHURN GUARD. 1 while the book is still moving a lot from one tick to the
+// next (many bodies arriving, a crowd of instances): the weld's answers are
+// kept up to date but not applied, so those pictures are drawn exactly as
+// without the weld (never worse than it). See weld_frame in smooth.cpp.
+int smooth_weld_guarded();
+// The textures were dropped (a model or level load, ntr::gx_invalidate_textures):
+// the weld book is emptied at the next frame mark, so sides remembered from an
+// earlier level can never straighten or average an unrelated later model whose
+// raw edge happens to fall on the same coordinates.
+void smooth_weld_scene_change();
+// Edges that met more sides than the book records (a fifth), since boot.
+uint64_t smooth_weld_overflow();
+// The replay memo's own count (SM64DS_SMOOTH_WELD_STATS): an answer read back, or asked again.
+void smooth_weld_memo_count(int hit);
+
 }  // namespace ntr
 
 #endif  // NTR_SMOOTH_H
