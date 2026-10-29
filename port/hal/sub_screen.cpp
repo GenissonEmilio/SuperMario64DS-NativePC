@@ -4961,6 +4961,24 @@ void wide_backdrop_apply(unsigned *img, const ntr::StackLayout &lay)
     wide_fill_screen(img, lay.w, lay.top_y, lay.top_h, lay.pan_x0, lay.pan_x0 + lay.pan_w, k);
     std::snprintf(k, sizeof k, "%s_bottom", key);
     wide_fill_screen(img, lay.w, lay.bottom_y, lay.pan_h, lay.pan_x0, lay.pan_x0 + lay.pan_w, k);
+    /* THE GAP BAND'S SIDES (GAPFILL1). The compose blacks the band's margins and the two calls above fill only the screens' own rows,
+       so a black block sat beside the band on both sides. Each margin column runs from the top screen's last filled row to the bottom
+       screen's first one across the band, the same vertical blend the band's own ambient wash uses, so each side is one fill. */
+    if (lay.band_h > 0 && lay.band_y > lay.top_y && lay.bottom_y < lay.h) {
+        const unsigned *a = img + (size_t)(lay.band_y - 1) * lay.w, *b = img + (size_t)lay.bottom_y * lay.w;
+        const int den = 2 * lay.band_h;
+        for (int x = 0; x < lay.w; ++x) {
+            if (x >= lay.pan_x0 && x < lay.pan_x0 + lay.pan_w) continue;
+            const unsigned ta = a[x], tb = b[x];
+            for (int r = 0; r < lay.band_h; ++r) {
+                const int num = 2 * r + 1;
+                unsigned c = 0xFF000000u;
+                for (int sh = 0; sh <= 16; sh += 8)
+                    c |= (unsigned)(((int)((ta >> sh) & 255) * (den - num) + (int)((tb >> sh) & 255) * num) / den) << sh;
+                img[(size_t)(lay.band_y + r) * lay.w + x] = c;
+            }
+        }
+    }
 }
 
 } // namespace
