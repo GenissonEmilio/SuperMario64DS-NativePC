@@ -142,6 +142,7 @@
 // registers and a vectored exception handler. Same plain include ten other
 // hal TUs already use (hal/os_arena.cpp, hal/oam_lists.cpp, ...).
 #include <windows.h>
+#include "hal/pc_vtable_probe.h"
 
 #include "ntr/gx.h"
 #include "ntr/mmio.h"
@@ -1973,16 +1974,19 @@ extern "C" void __cdecl l2_eb2c_s08_body(void *s)
    main's ProcessKuppaScript calls it as a virtual of its local fader view (thiscall, the
    receiver in ECX, nothing on the stack). A thiscall caller leaves a FADER in ECX (its first
    word is this table); a cdecl caller leaves the vtable or an unrelated word there. */
+extern "C" int __cdecl pc_color_fader_receiver(void *s)
+{ return pc_has_readable_vtable(s,_ZTV10dFdColor_c) ? 1 : 0; }
+
 __declspec(naked) static void l2_eb2c_s08(void)
 {
     __asm {
-        cmp  ecx, 0x10000000
-        jb   shape_cdecl
-        cmp  ecx, 0x40000000
-        jae  shape_cdecl
-        mov  eax, dword ptr [ecx]
-        cmp  eax, offset _ZTV10dFdColor_c
-        jne  shape_cdecl
+        push ecx                         /* retain the possible thiscall receiver across the safe probe */
+        push ecx
+        call pc_color_fader_receiver
+        add  esp, 4
+        pop  ecx
+        test eax, eax
+        jz   shape_cdecl
         push ecx                        /* __thiscall: the receiver in ECX, callee cleans nothing */
         call l2_eb2c_s08_body
         add  esp, 4

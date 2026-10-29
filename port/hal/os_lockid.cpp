@@ -35,9 +35,14 @@ static volatile unsigned int *lock_words(void)
 
 void port_os_lock_words_seed(void)
 {
+    // The host's NitroFS initializer runs before ROM pre-main. Seed before that first
+    // allocation and never reset the bitmap later: doing so would reuse a live card lock.
+    static bool seeded = false;
+    if (seeded) return;
     volatile unsigned int *w = lock_words();
     w[0] = 0xffffffffu;   /* ids 0x40..0x5f all free */
     w[1] = 0xffff0000u;   /* ids 0x60..0x6f free, 0x70..0x7f reserved */
+    seeded = true;
 }
 
 // PORT_HOST_ABI: ARM `clz` primitive (func_02057020, OS_GetLockID): the ROM

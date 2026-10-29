@@ -156,6 +156,7 @@ void func_0205c7c4(int *archive, int proc, int flags);   /* FS_SetArchiveProc */
 int  func_0205cb68(int *archive, int base, int fat, int fat_size,
                    int fnt, int fnt_size, int read_fn, int write_fn);
 void func_0205d89c(int dma);                             /* the once-guard    */
+void port_os_lock_words_seed(void); // Host ordering: NitroFS initializes before ROM pre-main.
 int  func_0205db24(void);                                /* the write stub    */
 
 /* ---- hal/nitrofs_boot.cpp -------------------------------------------------
@@ -1109,6 +1110,7 @@ struct NitroFsNamesBoot {
            read-back after the guard is the proof that the ROM's own
            func_0205cb68 laid them into the archive record. */
         port_nitrofs_header_mirror_seed();
+        port_os_lock_words_seed();
         func_0205d89c(-1);
         port_nitrofs_boot_report();
         /* The read trace's tap (traced_read above): both read slots, only
