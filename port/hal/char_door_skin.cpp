@@ -943,18 +943,23 @@ void cdskin_panel_geom(int w, int h, int n, float open, CpGeom *g)
     g->n = n;
     g->rows = n < 4 ? (n > 0 ? n : 1) : 4;
     g->cols = n > 0 ? (n + 3) / 4 : 1;
-    g->sw = K(24); g->sh = K(22);
-    g->pitch_x = K(28); g->pitch_y = K(26);
-    const int pad = K(6);
+    /* REVSTARSEL2 fix: compact enough that at 4:3 with two columns out the panel and its tab stay right of the coin score (its last digit
+       ends near DS x 193) and above the star total (row 171): two columns are 51 units wide (x 205 at 4:3), four rows run 47..144 */
+    g->sw = K(20); g->sh = K(19);
+    g->pitch_x = K(23); g->pitch_y = K(22);
+    const int pad = K(4);
     g->pw = 2 * pad + (g->cols - 1) * g->pitch_x + g->sw;
     g->ph = 2 * pad + (g->rows - 1) * g->pitch_y + g->sh;
     g->py = (h - g->ph) / 2;
     g->px = w - (int)(g->pw * open + 0.5f);
     g->sx0 = g->px + pad;
     g->sy0 = g->py + pad;
-    g->tw = K(22); g->th = K(40);
-    g->ty = (h - g->th) / 2;
-    g->tx = g->px - g->tw + K(5);
+    g->tw = K(16); g->th = K(36);
+    /* centred on the right edge (Tango's picture); on a narrow picture (4:3, 16:10: under 300 units wide) the tab sits lower, centred on
+       row 110, so with the panel out its left end (DS x 193 at 4:3) is clear of the star name (rows 80..90) and the coin score (rows 95..110) */
+    const bool narrow = (long long)w * 192 < 300LL * h;
+    g->ty = narrow ? K(110) - g->th / 2 : (h - g->th) / 2;
+    g->tx = g->px - g->tw + K(4);
 }
 
 int cdskin_panel_slot_at(const CpGeom *g, int x, int y)
@@ -973,9 +978,23 @@ int cdskin_panel_hit(const CpGeom *g, int x, int y)
     return 0;
 }
 
+int cdskin_piece_count(void) { return (int)g_pieces.size(); }
+
 void cdskin_panel_draw(uint32_t *px, int stride, int w, int h, const CpGeom *gp, const CdItem *it, int n, int focus, int hover, int tab_lit)
 {
     decide_skin();
+    {   /* REVSTARSEL2: every cached piece is keyed by its pixel size, so a picture that changes size (a window being dragged) would leave the
+           old sizes behind until the 80-piece reset. A new picture size drops them; the door's picker is shut while the star select is up. */
+        static int last_w, last_h;
+        if (w != last_w || h != last_h) {
+            if (last_w) {
+                static const bool tr = getenv("SM64DS_CHARPANEL_TRACE") != 0;
+                if (tr) fprintf(stderr, "[charpanel] picture %dx%d -> %dx%d: %d cached piece(s) dropped\n", last_w, last_h, w, h, (int)g_pieces.size());
+                g_pieces.clear();
+            }
+            last_w = w; last_h = h;
+        }
+    }
     const CpGeom &g = *gp;
     const Surf s = { px, stride, w, h };
     const bool hd = g_hd != 0;
@@ -1045,10 +1064,10 @@ void cdskin_panel_draw(uint32_t *px, int stride, int w, int h, const CpGeom *gp,
         const float em = 15.0f;
         const float tw = f.width(m.label, em);
         const int pw = (int)tw + K(12), ph = K(15);
-        const int right = (g.tx < g.px ? g.tx : g.px) - K(2);
-        int px0 = right - pw;
+        /* under the panel, flush with the picture's right edge (REVSTARSEL2: beside the panel it lay over the coin score at 4:3) */
+        int px0 = w - K(3) - pw;
         if (px0 < K(2)) px0 = K(2);
-        const int py0 = g.sy0 + (lit % 4) * g.pitch_y + (g.sh - ph) / 2;
+        const int py0 = g.py + g.ph + K(3);
         draw_plank(s, f, hd, px0, py0, pw, ph, 1, 1.0f);
         f.draw(s, (float)(px0 + (pw - tw) / 2), py0 + (ph - f.cap(em)) / 2, m.label, em, C_TEXT);
     }

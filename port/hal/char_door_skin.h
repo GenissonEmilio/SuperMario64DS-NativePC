@@ -82,5 +82,7 @@ int  cdskin_panel_slot_at(const CpGeom *g, int x, int y);
 int  cdskin_panel_hit(const CpGeom *g, int x, int y);
 /* focus / hover: slot index or -1; the name plaque goes beside the focus slot, else the hover slot. tab_lit: the tab under the pointer. */
 void cdskin_panel_draw(uint32_t *px, int stride, int w, int h, const CpGeom *g, const CdItem *it, int n, int focus, int hover, int tab_lit);
+/* the number of cached pictures (pieces) the skin holds now: proof rows of the size-change prune */
+int  cdskin_piece_count(void);
 
 #endif

@@ -531,6 +531,22 @@ void port_char_strip_panel_draw(uint32_t *px, int stride, int w, int h)
         static double last = -1.0;
         if (tr && open != last) { fprintf(stderr, "[charpanel] pic t %.1f open %.4f panel x %d tab x %d\n", t, open, gm.px, gm.tx); last = open; }
     }
+    {   /* SM64DS_CHARPANEL_SIZESWEEP=1: once, the open panel drawn on a scratch picture at 40 sizes (a window dragged wider and back) and the
+           skin's cached piece count printed after each, then once more at the real size: proof rows of the size-change prune */
+        static int done;
+        if (!done && getenv("SM64DS_CHARPANEL_SIZESWEEP")) {
+            done = 1;
+            std::vector<uint32_t> scratch((size_t)(w + 400) * (h + 200), 0xFF000000u);
+            fprintf(stderr, "[charpanel] sweep: %d piece(s) before\n", cdskin_piece_count());
+            for (int i = 0; i < 40; ++i) {
+                const int sw = w + (i < 20 ? i : 39 - i) * 20, sh = h + (i < 20 ? i : 39 - i) * 10;
+                CpGeom sg;
+                cdskin_panel_geom(sw, sh, g_nslots, 1.0f, &sg);
+                cdskin_panel_draw(&scratch[0], sw, sw, sh, &sg, g_slot, g_nslots, 0, -1, 1);
+                fprintf(stderr, "[charpanel] sweep %d: %dx%d -> %d piece(s)\n", i, sw, sh, cdskin_piece_count());
+            }
+        }
+    }
 #endif
     cdskin_panel_draw(px, stride, w, h, &gm, g_slot, g_nslots, g_focus ? g_cursor : -1, g_hover, g_tab_hover || g_focus);
 }
