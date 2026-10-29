@@ -4811,7 +4811,8 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
     /* EACH DS ROW IS READ AT ITS CENTRE HOST ROW (GAPFILL1). Above RenderScale 1 the live 3D can leave host row 0 at the clear colour (a
        polygon edge a quarter DS row down, which the DS's own pixel grid covers), and on the dual-screen minigames each screen is the live
        4x picture one tick and the 1x capture the next, so a side bar fed from the host rows blinked at the top and shimmered along the
-       edges. Reading every DS row at its centre (where the capture samples too) makes the two agree. At RenderScale 1 this is every row. */
+       edges. Reading the 3 outermost DS columns of every DS row at their centre host pixels (where the capture samples too) makes the
+       two agree. At RenderScale 1 this is the 3 outermost columns of every row, as before. */
     const int ds_s = (rows % 192 == 0 && rows / 192 > 1) ? rows / 192 : 1;
     for (int side = 0; side < 2; ++side) {
         unsigned *e = E[side];
@@ -4819,7 +4820,7 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
             const unsigned *row = img + (size_t)(y0 + (r / ds_s) * ds_s + ds_s / 2) * iw;
             unsigned sr = 0, sg = 0, sb = 0;
             for (int k = 0; k < 3; ++k) {
-                const int x = side == 0 ? cx0 + k : cx1 - 1 - k;
+                const int x = side == 0 ? cx0 + k * ds_s + ds_s / 2 : cx1 - (k + 1) * ds_s + ds_s / 2;   /* the 3 outermost DS columns' centres */
                 const unsigned c = row[x];
                 sr += (c >> 16) & 255; sg += (c >> 8) & 255; sb += c & 255;
             }
