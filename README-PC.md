@@ -1,6 +1,6 @@
 # Super Mario 64 DS PC — uma tela
 
-Projeto independente de adaptação **nativa** para Windows, mantido em [GenissonEmilio/SuperMario64DSPC](https://github.com/GenissonEmilio/SuperMario64DSPC). Parte do port C++ do [tangosdev/sm64ds-decomp](https://github.com/tangosdev/sm64ds-decomp), ramo `release/game-0.9.3.3`, revisão `f18be6bddb638cfe01882dfcf9a99f019ffa0a88`. O código do jogo é compilado para o PC; não usamos melonDS ou outro núcleo de emulação como runtime. Histórico, licença e créditos da base estão preservados. Veja [UPSTREAM.md](UPSTREAM.md) para incorporar atualizações da base ao nosso projeto.
+Projeto independente de adaptação **nativa** para Windows, mantido em [GenissonEmilio/SuperMario64DS-NativePC](https://github.com/GenissonEmilio/SuperMario64DS-NativePC). Parte do port C++ do [tangosdev/sm64ds-decomp](https://github.com/tangosdev/sm64ds-decomp), ramo `release/game-0.9.3.3`, revisão `f18be6bddb638cfe01882dfcf9a99f019ffa0a88`. O código do jogo é compilado para o PC; não usamos melonDS ou outro núcleo de emulação como runtime. Histórico, licença e créditos da base estão preservados. Veja [UPSTREAM.md](UPSTREAM.md) para incorporar atualizações da base ao nosso projeto.
 
 ## Adaptações deste projeto
 
@@ -19,8 +19,8 @@ WASD move, Espaço pula, X ataca/usa a língua, Ctrl agacha, Shift corre. Segure
 Requer Windows x64 com as ferramentas **C++ x86** do Visual Studio (o jogo usa ponteiros de 32 bits), CMake/Ninja do mesmo pacote, PowerShell e Python 3. A ROM compatível com essa base é **Europe ASMP, revisão 0**, SHA-256 `ce5829aaa79f06c67140ed1f45cbca738b0a9d0180538c8c1498472d859db032`. A ROM USA não é intercambiável com ela.
 
 ```powershell
-git clone --branch pc-single-screen https://github.com/GenissonEmilio/SuperMario64DSPC.git
-cd SuperMario64DSPC
+git clone --branch pc-single-screen https://github.com/GenissonEmilio/SuperMario64DS-NativePC.git
+cd SuperMario64DS-NativePC
 python -m venv .venv
 ./.venv/Scripts/python.exe -m pip install -r pc/requirements.txt
 ```

@@ -1,6 +1,6 @@
 # Base original e atualizações
 
-**SuperMario64DSPC é um repositório independente mantido em [GenissonEmilio](https://github.com/GenissonEmilio/SuperMario64DSPC).** O desenvolvimento e as releases deste projeto são geridos aqui. O código deriva do port nativo e da decompilação de [tangosdev/sm64ds-decomp](https://github.com/tangosdev/sm64ds-decomp).
+**SuperMario64DS-NativePC é um repositório independente mantido em [GenissonEmilio](https://github.com/GenissonEmilio/SuperMario64DS-NativePC).** O desenvolvimento e as releases deste projeto são geridos aqui. O código deriva do port nativo e da decompilação de [tangosdev/sm64ds-decomp](https://github.com/tangosdev/sm64ds-decomp).
 
 Base inicial das adaptações de uma tela:
 

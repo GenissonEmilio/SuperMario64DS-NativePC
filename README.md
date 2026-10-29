@@ -1,6 +1,6 @@
 # Super Mario 64 DS PC — GenissonEmilio
 
-Projeto independente de adaptação **nativa de uma tela**, mantido em [GenissonEmilio/SuperMario64DSPC](https://github.com/GenissonEmilio/SuperMario64DSPC), com HUD integrado, mapa por M / botão e controles de PC. **[Instruções, testes e limitações: README-PC.md](README-PC.md).**
+Projeto independente de adaptação **nativa de uma tela**, mantido em [GenissonEmilio/SuperMario64DS-NativePC](https://github.com/GenissonEmilio/SuperMario64DS-NativePC), com HUD integrado, mapa por M / botão e controles de PC. **[Instruções, testes e limitações: README-PC.md](README-PC.md).**
 
 A base é o port C++ de [tangosdev/sm64ds-decomp](https://github.com/tangosdev/sm64ds-decomp), ramo jogável `release/game-0.9.3.3`. Preservamos o histórico, a licença MIT e os créditos dos autores. [Origem da base e procedimento de atualização: UPSTREAM.md](UPSTREAM.md).
 
