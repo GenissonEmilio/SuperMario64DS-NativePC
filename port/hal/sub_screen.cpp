@@ -4808,10 +4808,15 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
     int flat[2] = { 0, 0 };
     unsigned flatc[2] = { 0, 0 };
     /* per row, per side: the edge colour (mean of the 3 outermost picture columns), then blurred down the picture */
+    /* EACH DS ROW IS READ AT ITS CENTRE HOST ROW (GAPFILL1). Above RenderScale 1 the live 3D can leave host row 0 at the clear colour (a
+       polygon edge a quarter DS row down, which the DS's own pixel grid covers), and on the dual-screen minigames each screen is the live
+       4x picture one tick and the 1x capture the next, so a side bar fed from the host rows blinked at the top and shimmered along the
+       edges. Reading every DS row at its centre (where the capture samples too) makes the two agree. At RenderScale 1 this is every row. */
+    const int ds_s = (rows % 192 == 0 && rows / 192 > 1) ? rows / 192 : 1;
     for (int side = 0; side < 2; ++side) {
         unsigned *e = E[side];
         for (int r = 0; r < rows; ++r) {
-            const unsigned *row = img + (size_t)(y0 + r) * iw;
+            const unsigned *row = img + (size_t)(y0 + (r / ds_s) * ds_s + ds_s / 2) * iw;
             unsigned sr = 0, sg = 0, sb = 0;
             for (int k = 0; k < 3; ++k) {
                 const int x = side == 0 ? cx0 + k : cx1 - 1 - k;
@@ -4963,8 +4968,16 @@ void wide_backdrop_apply(unsigned *img, const ntr::StackLayout &lay)
     wide_fill_screen(img, lay.w, lay.bottom_y, lay.pan_h, lay.pan_x0, lay.pan_x0 + lay.pan_w, k);
     /* THE GAP BAND'S SIDES (GAPFILL1). The compose blacks the band's margins and the two calls above fill only the screens' own rows,
        so a black block sat beside the band on both sides. Each margin column runs from the top screen's last filled row to the bottom
-       screen's first one across the band, the same vertical blend the band's own ambient wash uses, so each side is one fill. */
-    if (lay.band_h > 0 && lay.band_y > lay.top_y && lay.bottom_y < lay.h) {
+       screen's first one across the band, the same vertical blend the band's own ambient wash uses, so each side is one fill.
+       A SOLID band stays solid edge to edge (lead's ruling): its margins take the band's own colour (black by default, as before). */
+    if (lay.band_h > 0 && !lay.peek && !lay.world_band && lay.fill_mode == ntr::GAP_FILL_SOLID) {
+        const unsigned c = 0xFF000000u | lay.fill_color;
+        for (int r = 0; r < lay.band_h; ++r) {
+            unsigned *row = img + (size_t)(lay.band_y + r) * lay.w;
+            for (int x = 0; x < lay.w; ++x)
+                if (x < lay.pan_x0 || x >= lay.pan_x0 + lay.pan_w) row[x] = c;
+        }
+    } else if (lay.band_h > 0 && lay.band_y > lay.top_y && lay.bottom_y < lay.h) {
         const unsigned *a = img + (size_t)(lay.band_y - 1) * lay.w, *b = img + (size_t)lay.bottom_y * lay.w;
         const int den = 2 * lay.band_h;
         for (int x = 0; x < lay.w; ++x) {
