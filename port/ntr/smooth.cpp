@@ -54,6 +54,7 @@
 //     edge, a rolling hill turns them a little over a long one.
 
 #include "ntr/smooth.h"
+#include "ntr/ppu.h"
 
 #include <emmintrin.h>
 #include <intrin.h>
@@ -1377,6 +1378,203 @@ void smooth_prof_add(int bucket, long long dt_ns, unsigned n) {
     g_prof_n[bucket] += n;
 }
 
+// --- THE CRACK BOOK (smooth.h, SM64DS_SMOOTH_CRACKS) -----------------------
+namespace {
+int g_cracks = -1;
+std::vector<SmoothCrackTri> g_ck_tris;
+
+const char *ck_why_name(int w) {
+    switch (w) {
+        case SMOOTH_WHY_LEVEL: return "level";
+        case SMOOTH_WHY_NO_NORMAL: return "nonormal";
+        case SMOOTH_WHY_FLAT: return "flat";
+        case SMOOTH_WHY_EDGE: return "edge";
+        case SMOOTH_WHY_RADIUS: return "radius";
+        case SMOOTH_CKWHY_MODE3: return "mode3";
+        case SMOOTH_CKWHY_ORTHO: return "ortho";
+        case SMOOTH_CKWHY_W: return "w";
+        case SMOOTH_CKWHY_FACET: return "facet";
+        case SMOOTH_CKWHY_BOOKFLAT: return "bookflat";
+        case SMOOTH_CKWHY_CROSSKEEP: return "crosskeep";
+        default: return "other";
+    }
+}
+
+struct CkSide { int tri; int a, b; float c[4][3]; };
+
+void ck_side_curve(const SmoothCrackTri &t, int a, int b, float c[4][3]) {
+    for (int k = 0; k < 3; ++k) { c[0][k] = t.p[a][k]; c[3][k] = t.p[b][k]; }
+    if (t.curved == SMOOTH_CK_STRAIGHT) {
+        for (int k = 0; k < 3; ++k) {
+            c[1][k] = (t.p[a][k] * 2.0f + t.p[b][k]) * (1.0f / 3.0f);
+            c[2][k] = (t.p[a][k] + t.p[b][k] * 2.0f) * (1.0f / 3.0f);
+        }
+        return;
+    }
+    // en slots: edge 0-1 -> 0 (at 0), 1 (at 1); 1-2 -> 2 (at 1), 3 (at 2);
+    // 0-2 -> 4 (at 0), 5 (at 2)
+    int sa = -1, sb = -1;
+    if ((a == 0 && b == 1)) { sa = 0; sb = 1; }
+    else if (a == 1 && b == 0) { sa = 1; sb = 0; }
+    else if (a == 1 && b == 2) { sa = 2; sb = 3; }
+    else if (a == 2 && b == 1) { sa = 3; sb = 2; }
+    else if (a == 0 && b == 2) { sa = 4; sb = 5; }
+    else { sa = 5; sb = 4; }
+    pn_edge(t.p[a], t.p[b], t.en[sa], c[1]);
+    pn_edge(t.p[b], t.p[a], t.en[sb], c[2]);
+}
+
+void ck_screen(const SmoothCrackTri &t, int i, float o[2]) {
+    const float w = t.clip[i][2] != 0.0f ? t.clip[i][2] : 1.0f;
+    o[0] = (t.clip[i][0] / w * 0.5f + 0.5f) * (float)active_w;
+    o[1] = (0.5f - t.clip[i][1] / w * 0.5f) * (float)active_h;
+}
+
+struct CkHit {
+    float px, units, sx, sy;
+    int cause;     // index into ck_cause_name
+    int e;         // the edge's slot in the edge list
+};
+enum { CK_STRAIGHT_BASE = 0, CK_BOOK = 40, CK_XMESH, CK_SPLITN, CK_SAMEN, CK_NCAUSE };
+const char *ck_cause_name(int c, char *buf) {
+    if (c < CK_BOOK) { sprintf(buf, "straight_%s", ck_why_name(c)); return buf; }
+    switch (c) {
+        case CK_BOOK: return "book";
+        case CK_XMESH: return "xmesh_splitn";
+        case CK_SPLITN: return "splitn";
+        case CK_SAMEN: return "samen";
+        default: return "other";
+    }
+}
+
+void crack_report(uint64_t frame) {
+    std::map<EKey, std::vector<CkSide> > edges;
+    static const int E0[3] = {0, 1, 2};
+    static const int E1[3] = {1, 2, 0};
+    for (size_t i = 0; i < g_ck_tris.size(); ++i) {
+        const SmoothCrackTri &t = g_ck_tris[i];
+        for (int e = 0; e < 3; ++e) {
+            int a = E0[e], b = E1[e];
+            QKey ka = qkey(t.p[a]), kb = qkey(t.p[b]);
+            if (kb < ka) { int s = a; a = b; b = s; QKey q = ka; ka = kb; kb = q; }
+            if (!(ka < kb)) continue;   // degenerate
+            CkSide sd;
+            sd.tri = (int)i; sd.a = a; sd.b = b;
+            ck_side_curve(t, a, b, sd.c);
+            EKey ek; ek.a = ka; ek.b = kb;
+            edges[ek].push_back(sd);
+        }
+    }
+    int n_cause[CK_NCAUSE] = {0}, n_cause1[CK_NCAUSE] = {0}, n_tj[CK_NCAUSE] = {0};
+    float worst_cause[CK_NCAUSE] = {0};
+    std::vector<CkHit> hits;
+    std::vector<const std::vector<CkSide> *> elist;
+    int shared = 0, with_curved = 0;
+    for (std::map<EKey, std::vector<CkSide> >::const_iterator it = edges.begin();
+         it != edges.end(); ++it) {
+        const std::vector<CkSide> &s = it->second;
+        if (s.size() < 2) continue;
+        ++shared;
+        bool any_curved = false;
+        for (size_t j = 0; j < s.size(); ++j)
+            if (g_ck_tris[s[j].tri].curved) any_curved = true;
+        if (!any_curved) continue;
+        ++with_curved;
+        // worst gap between any two sides
+        float worst = 0.0f; size_t wa = 0, wb = 1;
+        for (size_t x = 0; x < s.size(); ++x)
+            for (size_t y = x + 1; y < s.size(); ++y)
+                for (int k = 1; k < 16; ++k) {
+                    const float tt = (float)k / 16.0f;
+                    float p0[3], p1[3], d[3];
+                    edge_eval(s[x].c, tt, p0);
+                    edge_eval(s[y].c, tt, p1);
+                    v_sub(p0, p1, d);
+                    const float g = sqrtf(v_dot(d, d));
+                    if (g > worst) { worst = g; wa = x; wb = y; }
+                }
+        const SmoothCrackTri &ta = g_ck_tris[s[wa].tri], &tb = g_ck_tris[s[wb].tri];
+        // pixels per view unit along this edge, from side wa's corners
+        float sa[2], sb[2];
+        ck_screen(ta, s[wa].a, sa); ck_screen(ta, s[wa].b, sb);
+        float dv[3]; v_sub(ta.p[s[wa].a], ta.p[s[wa].b], dv);
+        const float lv = sqrtf(v_dot(dv, dv));
+        const float ls = sqrtf((sa[0] - sb[0]) * (sa[0] - sb[0]) + (sa[1] - sb[1]) * (sa[1] - sb[1]));
+        const float pxs = lv > 1e-12f ? ls / lv : 0.0f;
+        const float gpx = worst * pxs;
+        int cause;
+        if (!ta.curved || !tb.curved) {
+            const SmoothCrackTri &st = !ta.curved ? ta : tb;
+            cause = st.why >= 0 && st.why < CK_BOOK ? st.why : 39;
+        } else if (ta.book || tb.book) {
+            cause = CK_BOOK;
+        } else {
+            const uint32_t ma0 = ta.mg[s[wa].a], ma1 = ta.mg[s[wa].b];
+            const uint32_t mb0 = tb.mg[s[wb].a], mb1 = tb.mg[s[wb].b];
+            const bool samen = ta.nrm[s[wa].a] == tb.nrm[s[wb].a] && ta.nrm[s[wa].b] == tb.nrm[s[wb].b];
+            if (samen) cause = CK_SAMEN;
+            else cause = (ma0 != mb0 || ma1 != mb1 || ta.mg[0] != tb.mg[0]) ? CK_XMESH : CK_SPLITN;
+        }
+        if (gpx <= 0.05f) { if (!ta.curved || !tb.curved) ++n_tj[cause]; continue; }
+        ++n_cause[cause];
+        if (gpx > 1.0f) ++n_cause1[cause];
+        if (gpx > worst_cause[cause]) worst_cause[cause] = gpx;
+        CkHit h;
+        h.px = gpx; h.units = worst; h.cause = cause; h.e = (int)elist.size();
+        h.sx = (sa[0] + sb[0]) * 0.5f; h.sy = (sa[1] + sb[1]) * 0.5f;
+        elist.push_back(&s);
+        hits.push_back(h);
+        (void)wb;
+    }
+    char nb[64];
+    fprintf(stderr, "[smoothck] f%llu tris %d shared_edges %d with_curved %d opening %d (picture %dx%d)\n",
+            (unsigned long long)frame, (int)g_ck_tris.size(), shared, with_curved,
+            (int)hits.size(), active_w, active_h);
+    for (int c = 0; c < CK_NCAUSE; ++c)
+        if (n_cause[c] || n_tj[c])
+            fprintf(stderr, "[smoothck] f%llu cause %-20s open %4d over1px %4d worst %.2f px  tjunction_only %d\n",
+                    (unsigned long long)frame, ck_cause_name(c, nb), n_cause[c], n_cause1[c],
+                    (double)worst_cause[c], n_tj[c]);
+    // the worst openings, with enough to find them in the picture
+    std::vector<int> ord(hits.size());
+    for (size_t i = 0; i < ord.size(); ++i) ord[i] = (int)i;
+    for (size_t i = 0; i < ord.size(); ++i)
+        for (size_t j = i + 1; j < ord.size(); ++j)
+            if (hits[ord[j]].px > hits[ord[i]].px) { int q = ord[i]; ord[i] = ord[j]; ord[j] = q; }
+    static int top = -1;
+    if (top < 0) { const char *e = getenv("SM64DS_SMOOTH_CRACKS_TOP"); top = e ? atoi(e) : 20; }
+    for (size_t r = 0; r < ord.size() && (int)r < top; ++r) {
+        const CkHit &h = hits[ord[r]];
+        const std::vector<CkSide> &s = *elist[h.e];
+        fprintf(stderr, "[smoothck] f%llu hit %.2f px %.4f u at %.0f,%.0f %s sides %d:",
+                (unsigned long long)frame, (double)h.px, (double)h.units, (double)h.sx, (double)h.sy,
+                ck_cause_name(h.cause, nb), (int)s.size());
+        for (size_t j = 0; j < s.size() && j < 4; ++j) {
+            const SmoothCrackTri &t = g_ck_tris[s[j].tri];
+            fprintf(stderr, " [%s%s raw %d,%d,%d/%d,%d,%d mg %u/%u n %08x/%08x]",
+                    t.curved ? "curved" : ck_why_name(t.why), t.book ? "+book" : "",
+                    t.raw[s[j].a][0], t.raw[s[j].a][1], t.raw[s[j].a][2],
+                    t.raw[s[j].b][0], t.raw[s[j].b][1], t.raw[s[j].b][2],
+                    t.mg[s[j].a], t.mg[s[j].b], t.nrm[s[j].a], t.nrm[s[j].b]);
+        }
+        fprintf(stderr, "\n");
+    }
+}
+}  // namespace
+
+int smooth_cracks_on() {
+    if (g_cracks < 0) {
+        const char *e = getenv("SM64DS_SMOOTH_CRACKS");
+        g_cracks = (e && *e) ? atoi(e) : 0;
+        if (g_cracks < 0) g_cracks = 0;
+    }
+    return g_cracks;
+}
+
+void smooth_crack_tri(const SmoothCrackTri &t) {
+    if (g_ck_tris.size() < 400000) g_ck_tris.push_back(t);
+}
+
 namespace { void topo_report(uint64_t frame); }
 
 void smooth_frame_mark() {
@@ -1386,6 +1584,10 @@ void smooth_frame_mark() {
        coming picture will be drawn at. */
     budget_pick();
     if (smooth_census_on()) census_report(g_counters.frames);
+    if (smooth_cracks_on()) {
+        if (g_counters.frames % (uint64_t)smooth_cracks_on() == 0) crack_report(g_counters.frames);
+        g_ck_tris.clear();
+    }
     if (counters_on()) { counters_report(g_counters.frames); topo_report(g_counters.frames); }
     if (smooth_prof_on()) prof_report(g_counters.frames);
     /* HERE rather than inside counters_report, because the audit's own

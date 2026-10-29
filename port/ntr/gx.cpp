@@ -1694,9 +1694,16 @@ int smooth_try_store(const SmoothVertex s[3], const GxRaw &ra, const GxRaw &rb,
     return 1;
 }
 
+/* THE CRACK BOOK'S NOTE OF WHAT smooth_try DID (SM64DS_SMOOTH_CRACKS, ntr/smooth.h).
+   Written only while the book is on; emit_tri hands it over with the corners. */
+struct CkNote { int curved, why, book, tf; float en[6][3]; };
+CkNote g_ck;
+inline void ck_straight(int why) { g_ck.curved = 0; g_ck.why = why; }
+
 int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
                const GxRaw &ra, const GxRaw &rb, const GxRaw &rc) {
     const SmoothPolicy &pol = smooth_policy();
+    g_ck.curved = 0; g_ck.why = -1; g_ck.book = 0; g_ck.tf = 1;
     const long long t_pre = smooth_prof_on() ? smooth_prof_ticks() : 0;
 
     /* A mode-3 polygon is a shadow volume. Its stencil protocol compares the
@@ -1704,12 +1711,14 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
        same geometry; a curved shadow volume would not close. */
     if (((g.poly_attr >> 4) & 3) == 3) {
         smooth_count(SMOOTH_COUNT_MODE3, 1);
+        ck_straight(SMOOTH_CKWHY_MODE3);
         return 0;
     }
     /* A constant-w projection is an ortho one: the HUD's own 3D geometry and
        every 2D framing trick in the port. No view volume, no surface. */
     if (g.proj.m[3] == 0.0f && g.proj.m[7] == 0.0f && g.proj.m[11] == 0.0f) {
         smooth_count(SMOOTH_COUNT_ORTHO, 1);
+        ck_straight(SMOOTH_CKWHY_ORTHO);
         return 0;
     }
     /* A non-affine position matrix would make the view-space positions below
@@ -1718,6 +1727,7 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
        here so that stays a measured fact rather than an assumption. */
     if (a.vw != 1.0f || b.vw != 1.0f || c.vw != 1.0f) {
         smooth_count(SMOOTH_COUNT_W, 1);
+        ck_straight(SMOOTH_CKWHY_W);
         return 0;
     }
 
@@ -1801,6 +1811,7 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
                 /* Left as the DS drew it. */
                 if (tf > 1) smooth_topo_count(ov.cls == SMOOTH_CLASS_FACET
                                               ? SMOOTH_TOPO_FACET : SMOOTH_TOPO_FLATKEEP);
+                ck_straight(ov.cls == SMOOTH_CLASS_FACET ? SMOOTH_CKWHY_FACET : SMOOTH_CKWHY_BOOKFLAT);
                 return 0;
             }
             int level = pol.level;
@@ -1810,6 +1821,17 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
             smooth_count(SMOOTH_COUNT_SUBDIVIDED, 1);
             if (!g_ip_replaying) smooth_count(SMOOTH_COUNT_DEMAND, 1);
             smooth_topo_count(ov.cls == SMOOTH_CLASS_FAN ? SMOOTH_TOPO_FAN : SMOOTH_TOPO_BOX);
+            if (smooth_cracks_on()) {
+                const Mat *cm = mtx_for_gen(rc.mgen);
+                g_ck.curved = 1; g_ck.book = 1; g_ck.tf = otf;
+                for (int i = 0; i < 6; ++i) {
+                    if (!cm) { g_ck.en[i][0] = g_ck.en[i][1] = g_ck.en[i][2] = 0.0f; continue; }
+                    const Vec4 v = mul(Vec4{ov.en[i][0], ov.en[i][1], ov.en[i][2], 0.0f}, *cm);
+                    const float l = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+                    const float il = l > 1e-20f ? 1.0f / l : 0.0f;
+                    g_ck.en[i][0] = v.x * il; g_ck.en[i][1] = v.y * il; g_ck.en[i][2] = v.z * il;
+                }
+            }
             if (!smooth_live_mode() && store_eligible(ra, rb, rc) &&
                 smooth_try_store(s, ra, rb, rc, otf, pol, prof, &ov))
                 return 1;
@@ -1840,14 +1862,17 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
                                   {rc.x, rc.y, rc.z}};
         if (smooth_topo_cross(tp, ra.mgen, rb.mgen, rc.mgen)) {
             smooth_topo_count(SMOOTH_TOPO_FLATKEEP);
+            ck_straight(SMOOTH_CKWHY_CROSSKEEP);
             return 0;
         }
     }
     if (tf <= 1) {
         smooth_counters_for(why);
+        ck_straight(why);
         return 0;
     }
 
+    g_ck.curved = 1; g_ck.tf = tf;
     smooth_count(SMOOTH_COUNT_SUBDIVIDED, 1);
     /* THE BUDGET'S DEMAND (ntr/smooth.h, THE BUDGET): one curved triangle
        the tick's own picture asked for. A SmoothMotion replay walks the same
@@ -1880,6 +1905,39 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
     return 1;
 }
 
+/* Hand one triangle and what smooth_try did with it to the crack book. */
+void smooth_crack_book(const GxVertex &a, const GxVertex &b, const GxVertex &c,
+                       const GxRaw &ra, const GxRaw &rb, const GxRaw &rc, int took) {
+    SmoothCrackTri t;
+    std::memset(&t, 0, sizeof t);
+    const GxVertex *v[3] = {&a, &b, &c};
+    const GxRaw *r[3] = {&ra, &rb, &rc};
+    for (int i = 0; i < 3; ++i) {
+        t.p[i][0] = v[i]->vx; t.p[i][1] = v[i]->vy; t.p[i][2] = v[i]->vz;
+        t.clip[i][0] = v[i]->x; t.clip[i][1] = v[i]->y; t.clip[i][2] = v[i]->w;
+        t.raw[i][0] = r[i]->x; t.raw[i][1] = r[i]->y; t.raw[i][2] = r[i]->z;
+        t.mg[i] = r[i]->mgen; t.nrm[i] = r[i]->nrm;
+    }
+    t.curved = took && g_ck.curved ? SMOOTH_CK_CURVED : SMOOTH_CK_STRAIGHT;
+    t.why = g_ck.why;
+    t.book = g_ck.book;
+    t.tf = g_ck.tf;
+    if (t.curved && g_ck.book) {
+        std::memcpy(t.en, g_ck.en, sizeof t.en);
+    } else if (t.curved) {
+        float n[3][3];
+        for (int i = 0; i < 3; ++i) {
+            const float l = std::sqrt(v[i]->nx * v[i]->nx + v[i]->ny * v[i]->ny + v[i]->nz * v[i]->nz);
+            const float il = l > 1e-8f ? 1.0f / l : 0.0f;
+            n[i][0] = v[i]->nx * il; n[i][1] = v[i]->ny * il; n[i][2] = v[i]->nz * il;
+        }
+        static const int en_corner[6] = {0, 1, 1, 2, 0, 2};
+        for (int k = 0; k < 6; ++k)
+            for (int q = 0; q < 3; ++q) t.en[k][q] = n[en_corner[k]][q];
+    }
+    smooth_crack_tri(t);
+}
+
 void emit_tri(const GxVertex &a, const GxVertex &b, const GxVertex &c,
               const GxRaw &ra, const GxRaw &rb, const GxRaw &rc) {
     smooth_count(SMOOTH_COUNT_IN, 1);
@@ -1891,6 +1949,7 @@ void emit_tri(const GxVertex &a, const GxVertex &b, const GxVertex &c,
         const long long t0 = pf ? smooth_prof_ticks() : 0;
         const int took = smooth_try(a, b, c, ra, rb, rc);
         if (pf) smooth_prof_add(SMOOTH_PROF_TRY, smooth_prof_ticks() - t0, 1);
+        if (smooth_cracks_on()) smooth_crack_book(a, b, c, ra, rb, rc, took);
         if (took) return;
         if (pf) {
             const long long t1 = smooth_prof_ticks();

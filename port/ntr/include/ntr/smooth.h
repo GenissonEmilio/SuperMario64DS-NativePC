@@ -596,6 +596,35 @@ int smooth_census_on();
 void smooth_census_tri(const SmoothVertex &a, const SmoothVertex &b,
                        const SmoothVertex &c, int tf);
 
+// THE CRACK BOOK (SM64DS_SMOOTH_CRACKS=<N>, every N pictures; off by default
+// and then one compare). The census above compares NORMALS; this compares the
+// EDGES AS DRAWN: every triangle the geometry stage handled is booked with
+// what actually happened to it (curved from its corner normals, curved from
+// substituted edge normals, or left as the DS drew it, and why), each shared
+// edge's two sides are rebuilt as the curves they were drawn along, and the
+// worst opening is reported in view units and in pixels, sorted by cause.
+enum {
+    SMOOTH_CK_STRAIGHT = 0,    // drawn as the DS drew it: the edge is a line
+    SMOOTH_CK_CURVED,          // curved, edges from the six normals given
+    // why a straight side stayed straight, beyond the SMOOTH_WHY_* reasons
+    SMOOTH_CKWHY_MODE3 = 10, SMOOTH_CKWHY_ORTHO, SMOOTH_CKWHY_W,
+    SMOOTH_CKWHY_FACET = 20, SMOOTH_CKWHY_BOOKFLAT, SMOOTH_CKWHY_CROSSKEEP
+};
+struct SmoothCrackTri {
+    float p[3][3];        // view-space corners
+    float clip[3][3];     // clip x, y, w of the corners (for the picture position)
+    float en[6][3];       // the six edge normals the patch was built from (curved)
+    int curved;           // SMOOTH_CK_*
+    int why;              // SMOOTH_WHY_* / SMOOTH_CKWHY_* for a straight side
+    int book;             // 1 = edge normals came from the topology book or the weld
+    int tf;
+    int16_t raw[3][3];
+    uint32_t mg[3];
+    uint32_t nrm[3];
+};
+int smooth_cracks_on();
+void smooth_crack_tri(const SmoothCrackTri &t);
+
 }  // namespace ntr
 
 #endif  // NTR_SMOOTH_H
