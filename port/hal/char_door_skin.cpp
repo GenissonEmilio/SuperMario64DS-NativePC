@@ -1030,7 +1030,7 @@ void cdskin_panel_draw(uint32_t *px, int stride, int w, int h, const CpGeom *gp,
         draw_plank(s, f, hd, x, y, g.sw, g.sh, m.current ? 1 : 0, 1.0f);
         if (on) {
             const int e = k < 1 ? 1 : (int)k;
-            rrect(s, x + e, y + e, g.sw - 2 * e, g.sh - 2 * e, g.sh * 0.3f, 0xFFFFFFu, 55);
+            rrect(s, x + e, y + e, g.sw - 2 * e, g.sh - 2 * e, g.sh * 0.3f, 0xFFFFFFu, 95);
         }
         const int isz = g.sh - K(5);
         if (const Img *I = icon_for(m)) {
