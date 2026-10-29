@@ -61,6 +61,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <malloc.h>
 
 #include <chrono>
 #include <map>
@@ -1576,6 +1577,7 @@ void smooth_crack_tri(const SmoothCrackTri &t) {
 }
 
 namespace { void topo_report(uint64_t frame); }
+void weld_report(uint64_t frame);
 
 void smooth_frame_mark() {
     ++g_counters.frames;
@@ -1584,6 +1586,7 @@ void smooth_frame_mark() {
        coming picture will be drawn at. */
     budget_pick();
     if (smooth_census_on()) census_report(g_counters.frames);
+    weld_report(g_counters.frames);
     if (smooth_cracks_on()) {
         if (g_counters.frames % (uint64_t)smooth_cracks_on() == 0) crack_report(g_counters.frames);
         g_ck_tris.clear();
@@ -1754,7 +1757,19 @@ int topo_find(int i) {
    `epoch` equals g_topo_epoch. Every write to a class, a finalized flag or a
    mesh's membership bumps the epoch (topo_union, topo_clear, topo_finalize,
    topo_promote), so a kept answer can never outlive the state it read. */
-struct TopoFast { int16_t p[9]; int idx; uint32_t epoch; int kind; };
+/* SMOOTHWELD1: the weld book's answer for this triangle rides in the same
+   cache line (see THE WELD BOOK at the end of this file), because the line is
+   hot from the lookup just made. `gen` 0 means "nothing kept". */
+struct WeldFront {
+    uint32_t nh;          // the three normals, hashed
+    uint32_t enh;         // the edge normals the triangle came with, hashed (0 = its own)
+    uint32_t ep;          // the book's epoch the answer was last confirmed at
+    uint32_t gen;         // the book's generation the answer belongs to
+    uint8_t kind, result;
+    uint16_t slot[3];     // its three edges' records (0xFFFF = none)
+    uint16_t ver[3];      // their versions, low 16 bits
+};
+struct alignas(64) TopoFast { int16_t p[9]; int idx; uint32_t epoch; int kind; WeldFront w; };
 uint32_t g_topo_epoch = 1;
 int topo_register_slow(const int16_t p[3][3], const uint32_t nrm[3], int frame);
 void topo_fast_clear();
@@ -1762,7 +1777,7 @@ enum { TOPO_FAST_N = 1 << 15 };
 TopoFast *g_topo_fast = 0;
 void topo_fast_clear() {
     if (g_topo_fast)
-        for (int i = 0; i < TOPO_FAST_N; ++i) { g_topo_fast[i].idx = -1; g_topo_fast[i].kind = 0; }
+        for (int i = 0; i < TOPO_FAST_N; ++i) { g_topo_fast[i].idx = -1; g_topo_fast[i].kind = 0; g_topo_fast[i].w.gen = 0; }
 }
 inline uint32_t topo_fast_slot(const int16_t *q) {
     uint32_t h = 0x9E3779B1u;
@@ -1820,7 +1835,7 @@ inline EdgeKey make_edge(const int16_t a[3], const int16_t b[3]) {
 
 int topo_register(const int16_t p[3][3], const uint32_t nrm[3], int frame) {
     if (!g_topo_fast) {
-        g_topo_fast = (TopoFast *)malloc(sizeof(TopoFast) * TOPO_FAST_N);
+        g_topo_fast = (TopoFast *)_aligned_malloc(sizeof(TopoFast) * TOPO_FAST_N, 64);
         topo_fast_clear();
     }
     TopoFast &fs = g_topo_fast[topo_fast_slot(&p[0][0])];
@@ -1830,6 +1845,7 @@ int topo_register(const int16_t p[3][3], const uint32_t nrm[3], int frame) {
     fs.idx = idx_found;
     fs.kind = 0;
     fs.epoch = 0;
+    fs.w.gen = 0;          /* a new triangle in this slot: the weld's answer was another's */
     return idx_found;
 }
 
@@ -2571,18 +2587,24 @@ WeldEdge *g_weld_edges = 0;
 uint32_t g_weld_count = 0;
 uint32_t g_weld_gen = 1;           // bumped whenever the edge table is emptied
 
-struct WeldTri {
+/* THE FRONT. One cache line a triangle, two ways a set, so a scene of a few
+   thousand triangles does not evict itself. `ep` is the book's epoch the
+   answer was last confirmed at: while no edge anywhere has changed, that one
+   compare is the whole check. When something has changed, the triangle's own
+   three edges are asked (their versions, low 16 bits) and only a triangle one
+   of whose edges moved is worked out again. */
+struct alignas(64) WeldTri {
     int16_t p[9];
-    uint32_t n[3];
-    uint32_t kind, enh, gen;
-    int32_t slot[3];
-    uint32_t ver[3];
-    int result;
-    uint32_t id;
-    float out[6][3];
+    uint32_t used;
+    WeldFront w;
 };
+struct WeldOut { float out[6][3]; uint32_t id; };
 enum { WELD_TRI_N = 1 << 15 };
 WeldTri *g_weld_tris = 0;
+WeldOut *g_weld_outs = 0;         // the answers of g_weld_tris, by index
+WeldOut *g_weld_outs_topo = 0;    // the answers kept in g_topo_fast, by index
+uint32_t g_weld_epoch = 1;         // bumped whenever any edge record changes
+uint64_t g_ws_calls, g_ws_fast, g_ws_ver, g_ws_slow, g_ws_slow_topo;
 
 inline uint32_t weld_fnv(const void *p, size_t n, uint32_t h = 2166136261u) {
     const unsigned char *b = (const unsigned char *)p;
@@ -2594,6 +2616,30 @@ void weld_clear() {
     for (int i = 0; i < WELD_EDGE_N; ++i) g_weld_edges[i].used = 0;
     g_weld_count = 0;
     ++g_weld_gen;
+    ++g_weld_epoch;
+}
+
+// A word-at-a-time mix for the front's checks. The corners are compared in
+// full; the normals and the edge normals only by this 32-bit mix, which over a
+// scene of a few thousand triangles does not collide in practice.
+inline uint32_t weld_words(const uint32_t *w, int n) {
+    uint32_t h = 0x9E3779B1u;
+    for (int i = 0; i < n; ++i) { h = (h ^ w[i]) * 0x85EBCA6Bu; h ^= h >> 15; }
+    return h;
+}
+
+inline uint32_t weld_tri_hash(const int16_t *q, const uint32_t *n, uint32_t salt) {
+    const uint32_t *w = (const uint32_t *)q;     // eighteen bytes: four words and one short
+    uint32_t h = 0x9E3779B1u ^ salt;
+    h = (h ^ w[0]) * 0x85EBCA6Bu; h ^= h >> 15;
+    h = (h ^ w[1]) * 0xC2B2AE35u; h ^= h >> 13;
+    h = (h ^ w[2]) * 0x27D4EB2Fu; h ^= h >> 15;
+    h = (h ^ w[3]) * 0x165667B1u; h ^= h >> 16;
+    h = (h ^ (uint32_t)(uint16_t)q[8]) * 0x9E3779B1u; h ^= h >> 15;
+    h = (h ^ n[0]) * 0x85EBCA6Bu; h ^= h >> 13;
+    h = (h ^ n[1]) * 0xC2B2AE35u; h ^= h >> 15;
+    h = (h ^ n[2]) * 0x27D4EB2Fu; h ^= h >> 16;
+    return h;
 }
 
 // The edge's slot, found or made. -1 when the table is full around it.
@@ -2623,6 +2669,20 @@ inline bool weld_same(const float a[3], const float b[3]) {
 
 }  // namespace
 
+long long g_ws_ns;     // time inside smooth_weld, SM64DS_SMOOTH_PROF only
+void weld_report(uint64_t frame) {
+    static int on = -1;
+    if (on < 0) on = getenv("SM64DS_SMOOTH_WELD_STATS") ? 1 : 0;
+    if (!on || frame % 100) return;
+    fprintf(stderr, "[smoothweld] f%llu calls %llu settled %llu reconfirmed %llu worked %llu (%llu in the topology "
+            "book's line) edges %u epoch %u time %.3f ms a picture\n",
+            (unsigned long long)frame, (unsigned long long)g_ws_calls, (unsigned long long)g_ws_fast,
+            (unsigned long long)g_ws_ver, (unsigned long long)g_ws_slow, (unsigned long long)g_ws_slow_topo,
+            g_weld_count, g_weld_epoch, g_ws_ns / 100.0 / 1e6);
+    g_ws_calls = g_ws_fast = g_ws_ver = g_ws_slow = g_ws_slow_topo = 0;
+    g_ws_ns = 0;
+}
+
 int smooth_weld_on() {
     if (g_weld_on < 0) {
         const char *e = getenv("SM64DS_SMOOTH_WELD");
@@ -2631,20 +2691,107 @@ int smooth_weld_on() {
     return g_weld_on;
 }
 
+namespace {
+int weld_impl(const int16_t p[3][3], const uint32_t nrm[3], int kind,
+              const float (*en)[3], float out[6][3], uint32_t *id);
+}
+
 int smooth_weld(const int16_t p[3][3], const uint32_t nrm[3], int kind,
                 const float (*en)[3], float out[6][3], uint32_t *id) {
+    if (!smooth_prof_on()) return weld_impl(p, nrm, kind, en, out, id);
+    const long long t0 = smooth_prof_ticks();
+    const int r = weld_impl(p, nrm, kind, en, out, id);
+    g_ws_ns += smooth_prof_ticks() - t0;
+    return r;
+}
+
+namespace {
+/* A kept answer, if it is still good: -1 when it is not this triangle's or an
+   edge it was worked out against has changed since. */
+inline int weld_front_answer(WeldFront &fw, const WeldOut &fo, uint32_t nh, int kind, uint32_t enh,
+                             float out[6][3], uint32_t *id) {
+    if (fw.gen != g_weld_gen || fw.nh != nh || fw.kind != (uint8_t)kind || fw.enh != enh) return -1;
+    if (fw.ep == g_weld_epoch) {
+        ++g_ws_fast;
+    } else {
+        for (int k = 0; k < 3; ++k)
+            if (fw.slot[k] != 0xFFFF && (uint16_t)g_weld_edges[fw.slot[k]].ver != fw.ver[k]) return -1;
+        fw.ep = g_weld_epoch;
+        ++g_ws_ver;
+    }
+    if (fw.result) { memcpy(out, fo.out, sizeof fo.out); *id = fo.id; }
+    return fw.result;
+}
+}  // namespace
+
+namespace {
+int weld_impl(const int16_t p[3][3], const uint32_t nrm[3], int kind,
+              const float (*en)[3], float out[6][3], uint32_t *id) {
     if (!g_weld_edges) {
         g_weld_edges = (WeldEdge *)calloc(WELD_EDGE_N, sizeof(WeldEdge));
-        g_weld_tris = (WeldTri *)calloc(WELD_TRI_N, sizeof(WeldTri));
-        if (!g_weld_edges || !g_weld_tris) { g_weld_on = 0; return 0; }
+        g_weld_tris = (WeldTri *)_aligned_malloc(sizeof(WeldTri) * WELD_TRI_N, 64);
+        g_weld_outs = (WeldOut *)calloc(WELD_TRI_N, sizeof(WeldOut));
+        g_weld_outs_topo = (WeldOut *)calloc(TOPO_FAST_N, sizeof(WeldOut));
+        if (!g_weld_edges || !g_weld_tris || !g_weld_outs || !g_weld_outs_topo) { g_weld_on = 0; return 0; }
+        memset(g_weld_tris, 0, sizeof(WeldTri) * WELD_TRI_N);
     }
+    ++g_ws_calls;
+    const uint32_t frame = (uint32_t)g_counters.frames;
+    /* THE FRONT: this triangle's answer, while none of its edges has changed.
+       Looked up BEFORE the normals are decoded: a settled triangle needs none
+       of that. A triangle the topology book has just looked up keeps it in the
+       book's own front line (hot already); every other one in g_weld_tris. */
+    const uint32_t nh = weld_words(nrm, 3) | 1u;
+    const uint32_t enh_in = (kind == SMOOTH_WELD_CURVED && en) ? (weld_words((const uint32_t *)&en[0][0], 18) | 1u) : 0u;
+    WeldFront *fw = 0;      // the topology book's line, when it holds this triangle
+    WeldOut *fo = 0;
+    WeldTri *own = 0;       // this file's own front, asked when the line above cannot answer
+    if (g_topo_fast) {
+        const uint32_t ts = topo_fast_slot(&p[0][0]);
+        TopoFast &tf = g_topo_fast[ts];
+        if (tf.idx >= 0 && memcmp(tf.p, &p[0][0], sizeof tf.p) == 0) { fw = &tf.w; fo = &g_weld_outs_topo[ts]; }
+    }
+    {
+        const int r = fw ? weld_front_answer(*fw, *fo, nh, kind, enh_in, out, id) : -1;
+        if (r >= 0) return r;
+    }
+    /* Two triangles that share a slot of the book's line evict each other
+       every picture; the own front keeps both. */
+    {
+        const uint32_t set = weld_tri_hash(&p[0][0], nrm, (uint32_t)kind) & (WELD_TRI_N - 2);
+        for (int way = 0; way < 2 && !own; ++way) {
+            WeldTri &c = g_weld_tris[set + way];
+            if (c.w.gen == g_weld_gen && c.w.nh == nh && c.w.kind == (uint8_t)kind &&
+                memcmp(c.p, &p[0][0], sizeof c.p) == 0) own = &c;
+        }
+        if (own) {
+            own->used = frame;
+            const int r = weld_front_answer(own->w, g_weld_outs[own - g_weld_tris], nh, kind, enh_in, out, id);
+            if (r >= 0) {
+                if (fw) {   /* the line was this triangle's but stale: bring it up to date */
+                    *fw = own->w;
+                    *fo = g_weld_outs[own - g_weld_tris];
+                }
+                return r;
+            }
+        } else {
+            WeldTri &w0 = g_weld_tris[set], &w1 = g_weld_tris[set + 1];
+            own = (w0.w.gen != g_weld_gen) ? &w0 : (w1.w.gen != g_weld_gen) ? &w1
+                : ((int32_t)(w0.used - w1.used) <= 0 ? &w0 : &w1);
+            own->w.gen = 0;
+            own->used = frame;
+        }
+    }
+    ++g_ws_slow;
+    if (fw) ++g_ws_slow_topo;
+
     /* The six normals this triangle would curve with, raw model space, unit. */
     float in[6][3];
     uint32_t enh = 0;
     if (kind == SMOOTH_WELD_CURVED) {
         if (en) {
             memcpy(in, en, sizeof in);
-            enh = weld_fnv(in, sizeof in) | 1u;
+            enh = weld_words((const uint32_t *)&in[0][0], 18) | 1u;
         } else {
             static const int corner[6] = {0, 1, 1, 2, 0, 2};
             float n[3][3];
@@ -2658,21 +2805,6 @@ int smooth_weld(const int16_t p[3][3], const uint32_t nrm[3], int kind,
                 n[c][0] = v[0] * il; n[c][1] = v[1] * il; n[c][2] = v[2] * il;
             }
             for (int s = 0; s < 6; ++s) for (int q = 0; q < 3; ++q) in[s][q] = n[corner[s]][q];
-        }
-    }
-
-    /* THE FRONT: this triangle's answer, while none of its edges has changed. */
-    uint32_t th = weld_fnv(&p[0][0], 18);
-    th = weld_fnv(nrm, 12, th);
-    WeldTri &ft = g_weld_tris[(th ^ (uint32_t)kind ^ enh) & (WELD_TRI_N - 1)];
-    if (ft.gen == g_weld_gen && ft.kind == (uint32_t)kind && ft.enh == enh &&
-        memcmp(ft.p, &p[0][0], sizeof ft.p) == 0 && memcmp(ft.n, nrm, sizeof ft.n) == 0) {
-        bool ok = true;
-        for (int k = 0; k < 3 && ok; ++k)
-            if (ft.slot[k] >= 0 && g_weld_edges[ft.slot[k]].ver != ft.ver[k]) ok = false;
-        if (ok) {
-            if (ft.result) { memcpy(out, ft.out, sizeof ft.out); *id = ft.id; }
-            return ft.result;
         }
     }
 
@@ -2720,10 +2852,11 @@ int smooth_weld(const int16_t p[3][3], const uint32_t nrm[3], int kind,
         int j = 0;
         while (j < e.nside && e.side[j].id != sid) ++j;
         if (j < e.nside) {
-            if (memcmp(&e.side[j], &me, sizeof me) != 0) { e.side[j] = me; ++e.ver; }
+            if (memcmp(&e.side[j], &me, sizeof me) != 0) { e.side[j] = me; ++e.ver; ++g_weld_epoch; }
         } else if (e.nside < WELD_SIDES) {
             e.side[e.nside++] = me;
             ++e.ver;
+            ++g_weld_epoch;
         }
     }
 
@@ -2782,22 +2915,34 @@ int smooth_weld(const int16_t p[3][3], const uint32_t nrm[3], int kind,
     }
 
     /* Keep the answer against the edges' versions as they stand now. */
-    memcpy(ft.p, &p[0][0], sizeof ft.p);
-    memcpy(ft.n, nrm, sizeof ft.n);
-    ft.kind = (uint32_t)kind;
-    ft.enh = enh;
-    ft.gen = g_weld_gen;
+    WeldFront w;
+    memset(&w, 0, sizeof w);
+    w.nh = nh;
+    w.enh = enh;
+    w.kind = (uint8_t)kind;
+    w.gen = g_weld_gen;
+    w.ep = g_weld_epoch;
     for (int k = 0; k < 3; ++k) {
-        ft.slot[k] = slot[k];
-        ft.ver[k] = slot[k] >= 0 ? g_weld_edges[slot[k]].ver : 0;
+        w.slot[k] = slot[k] >= 0 ? (uint16_t)slot[k] : (uint16_t)0xFFFF;
+        w.ver[k] = slot[k] >= 0 ? (uint16_t)g_weld_edges[slot[k]].ver : 0;
     }
-    ft.result = result;
+    w.result = (uint8_t)result;
+    WeldOut wo;
+    memset(&wo, 0, sizeof wo);
     if (result) {
-        memcpy(ft.out, out, sizeof ft.out);
-        ft.id = weld_fnv(out, sizeof ft.out);
-        *id = ft.id;
+        memcpy(wo.out, out, sizeof wo.out);
+        wo.id = weld_fnv(out, sizeof wo.out);
+        *id = wo.id;
+    }
+    memcpy(own->p, &p[0][0], sizeof own->p);
+    own->w = w;
+    if (result) g_weld_outs[own - g_weld_tris] = wo;
+    if (fw) {
+        *fw = w;
+        if (result) *fo = wo;
     }
     return result;
 }
+}  // namespace
 
 }  // namespace ntr
