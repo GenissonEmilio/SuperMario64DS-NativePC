@@ -2458,7 +2458,10 @@ void band_edge_update(const uint32_t *dst, int dst_w, const StackLayout &lay)
     band_edge_obj_masks(g_edge_obj[0], g_edge_obj[1], lay.main_lower);
     const uint32_t *row[2] = {dst + (size_t)(lay.band_y - 1) * dst_w,
                               dst + (size_t)lay.bottom_y * dst_w};
-    const int rx = dst_w / 256 > 0 ? dst_w / 256 : 1;
+    /* THE BAND'S OWN WIDTH, not the image stride (GAPFILL1). At 16:9 the band is composed on the centred 4:3 column (lay.w is the panel,
+       dst_w the whole wide row), so dst_w / 256 read DS columns 192..255 out of the black right margin and the band's settled colour
+       there went dark. On every 4:3 extent the two are the same number. */
+    const int rx = lay.w / 256 > 0 ? lay.w / 256 : 1;
     for (int e = 0; e < 2; ++e)
         for (int x = 0; x < 256; ++x)
             g_edge_live[e][x] = edge_col(row[e], x, rx);
