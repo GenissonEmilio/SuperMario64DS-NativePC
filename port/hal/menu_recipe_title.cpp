@@ -460,6 +460,36 @@ int wrench_dx(const MenuLayout *L)
     return (o && o->on) ? -35 : 0;      /* NAME2: the ? (30 units) and its gap from the window edge (5 units, the same as its gap from the top) */
 }
 
+/* ARROWSLOW1 (Tango 10-28: "not jump so rapidly ... interpolate it and make it .25 speed"): THE MAIN MENU'S BLUE CURSOR ARROW BOBS AT A THIRD OF
+   THE ROM'S PACE, SMOOTHLY (Tango, same evening: "a little bit faster" than a quarter). The ROM's own arrow steps through 0,1,2,3,4,3,2,1 half units
+   on an 8-tick cycle; this one takes 24 ticks over the same
+   0 to 4 half units on an eased curve (menu_bob_curve), and with Smooth Motion each picture between ticks is drawn at its own place on that curve
+   (hal_menu_present, the piece's bob fields). Without Smooth Motion it steps once a tick. Only the bob changes: the arrow's place when the cursor
+   moves to another plank snaps as before. SM64DS_ARROW_BOB=classic draws the ROM's 8-tick cadence (for A/B).
+   base2 = the arrow's top at bob 0, in half units; sub = host pixels taken off after the scale (the arrow's height when it hangs above a plank). */
+static bool arrow_bob_classic()
+{
+    static int v = -1;
+    if (v < 0) {
+        const char *e = getenv("SM64DS_ARROW_BOB");
+        v = (e && strcmp(e, "classic") == 0) ? 1 : 0;
+    }
+    return v != 0;
+}
+static void arrow_bob_place(MenuPiece &ar, int base2, int sub, int un, int ud, int fr)
+{
+    if (arrow_bob_classic()) {
+        static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };       /* the plank pulse's cadence, in half units */
+        ar.fy = (short)(((base2 + kBob[fr & 7]) * un) / (2 * ud) - sub);
+        return;
+    }
+    ar.bob = 1;
+    ar.bob_y0 = (short)((int)floor((double)base2 * un / (2.0 * ud) + 0.5) - sub);
+    ar.bob_amp = (float)(2.0 * un / ud);                              /* 4 half units in host pixels */
+    ar.bob_t = fr;
+    ar.fy = (short)(ar.bob_y0 + (int)floor(ar.bob_amp * menu_bob_curve((double)fr) / 4.0 + 0.5));
+}
+
 /* NAME1 (run after093): THE ONLINE PLANKS. Plank k of the main page (0 = the MP slot, now ONLINE; 1 = ADVENTURE; 2 = REC ROOM) is in its solo or online
    state, or turning between them (menu_online_plank_state). An online-family plank (ONLINE, ADVENTURE ONLINE, VS) is added here, from the mod's
    picture or drawn in code (hal/menu_online_draw.cpp), over the ROM's own box; the function answers 1 when it did. A solo plank is the caller's own
@@ -736,9 +766,7 @@ void build_main(MenuLayout *L, bool intro)
     const bool art_arrows = planks && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN);
     const OnlFacts *pfm = onl_facts_of(L);     /* PADNAV1: no arrow over the wrench while the pad focus is on the ? */
     if ((cur == 7 || (cur >= 0 && cur <= 2)) && !(pfm && pfm->padfocus)) {
-        static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };       /* the plank pulse's cadence, in half units */
-        const int fr = t_f ? t_f->frame : 0;
-        const int bob2 = kBob[fr & 7];
+        const int fr = t_f ? t_f->frame : 0;                           /* ARROWSLOW1: the bob is arrow_bob_place's */
         const int aimg = cur == 7 ? MENU_IMG_ARROW_UP : MENU_IMG_ARROW_DOWN;
         int iw = 22, ih = 15;
         if (art_arrows) menu_hostimg_size(aimg, &iw, &ih);
@@ -750,20 +778,30 @@ void build_main(MenuLayout *L, bool intro)
             Box wb;
             if (!box_of(7, &wb)) wb = kBoxes[7];
             ar.fx = (short)(L->w - (256 - (wb.x0 + wb.x1) / 2 - wrench_dx(L)) * L->unum / L->uden - dw / 2);
-            ar.fy = (short)((wb.y1 * 2 + 2 + bob2) * L->unum / (2 * L->uden));
+            arrow_bob_place(ar, wb.y1 * 2 + 2, 0, L->unum, L->uden, fr);
         } else {
             /* ASSET4 (Tango): ONE arrow, centred on the plank, pointing down. ARROWFIX1: raised 2 units so the flat tip no longer sinks into the
                plank's dark top border and reads as cut off (it bobs from 1 unit above the border to 1 unit into it) */
             Box bx;
             if (box_of(cur, &bx)) {
                 if (!art_arrows) bx = rest_box(cur, bx);      /* TITLEART1: the code arrow names the code plank, which stands on its rest box */
-                ar.fy = (short)(((bx.y0 * 2 - 2 + bob2) * L->unum) / (2 * L->uden) - dh);
+                arrow_bob_place(ar, bx.y0 * 2 - 2, dh, L->unum, L->uden, fr);
                 ar.fx = (short)(L->w / 2 + ((bx.x0 + bx.x1) / 2 - 128) * L->unum / L->uden - dw / 2);
             } else {
                 ar.fx = -1000;
             }
         }
-        if (ar.fx > -1000) { if (art_arrows) menu_add_piece(L, ar); else menu_online_add_arrow(L, cur == 7 ? 1 : 0, ar.fx, ar.fy, dw, dh); }
+        if (ar.fx > -1000) {
+            if (art_arrows) menu_add_piece(L, ar);
+            else {
+                const int np0 = L->np;
+                menu_online_add_arrow(L, cur == 7 ? 1 : 0, ar.fx, ar.fy, dw, dh);
+                if (L->np == np0 + 1) {      /* ARROWSLOW1: the code arrow bobs the same way */
+                    MenuPiece &cp = L->p[np0];
+                    cp.bob = ar.bob; cp.bob_y0 = ar.bob_y0; cp.bob_amp = ar.bob_amp; cp.bob_t = ar.bob_t;
+                }
+            }
+        }
     }
     const Chore cs = t_f ? t_f->ch : Chore();
     if (cs.swap_a >= 0) swap_fade_host(L, np_swap, cs.swap_a);      /* TITLEART1: the code planks and the arrow take the ROM's swap fade */
@@ -1678,9 +1716,7 @@ void build_main_pc(MenuLayout *L, bool intro)
         /* the selection arrow, once the planks have landed */
         const OnlFacts *pfl = onl_facts_of(L);      /* PADNAV1: no cursor arrow here while the pad focus is on the ? */
         if (landed && !(pfl && pfl->padfocus) && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) && (cur == 7 || (cur >= 0 && cur <= 2))) {
-            static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
-            const int fr = t_f ? t_f->frame : 0;
-            const int bob2 = kBob[fr & 7];
+            const int fr = t_f ? t_f->frame : 0;                       /* ARROWSLOW1: the bob is arrow_bob_place's */
             const int aimg = cur == 7 ? MENU_IMG_ARROW_UP : MENU_IMG_ARROW_DOWN;
             int aw = 1, ah = 1;
             menu_hostimg_size(aimg, &aw, &ah);
@@ -1692,12 +1728,12 @@ void build_main_pc(MenuLayout *L, bool intro)
                 Box wb;
                 if (!box_of(7, &wb)) wb = kBoxes[7];
                 ar.fx = (short)(w - (256 - (wb.x0 + wb.x1) / 2 - wrench_dx(L)) * un / ud - dw / 2);
-                ar.fy = (short)((wb.y1 * 2 + 2 + bob2) * un / (2 * ud));
+                arrow_bob_place(ar, wb.y1 * 2 + 2, 0, un, ud, fr);
                 menu_add_piece(L, ar);
             } else {
                 Box bx;
                 if (box_of(cur, &bx)) {
-                    ar.fy = (short)(((bx.y0 * 2 - 2 + bob2) * un) / (2 * ud) - dh);
+                    arrow_bob_place(ar, bx.y0 * 2 - 2, dh, un, ud, fr);
                     ar.fx = (short)(w / 2 + ((bx.x0 + bx.x1) / 2 - 128) * un / ud - dw / 2);
                     menu_add_piece(L, ar);
                 }

@@ -36,6 +36,7 @@
 #define MENU_COMPOSE_H
 
 #include <stdint.h>
+#include <math.h>
 
 #define MENU_WIDE_CANVAS 300      /* canvas_w at or above this takes the wide variant */
 #define MENU_MAX_PIECES  24
@@ -135,7 +136,20 @@ struct MenuPiece {
      and nothing else is drawn for it; the callback reads only the layout (L->facts, L->w / L->h) and the picture, so it stays on the draw side of
      the decide / draw contract. A custom piece has no source, no touch and no hotspot of its own. */
   void (*custom)(const struct MenuLayout *L, int piece, uint32_t *dst, int w, int h, int stride);
+  /* ARROWSLOW1 (appended): bob = a fixed host rect piece that bobs (the main menu's cursor arrow). Its dest y is drawn as
+     bob_y0 + bob_amp * menu_bob_curve(bob_t - 1 + a) / 4 host pixels, a = the picture's place between the tick before and this tick
+     (1 on the tick's own picture), so every picture between ticks shows its own place. fy holds the tick's own (a = 1). */
+  uint8_t bob;
+  short bob_y0;
+  float bob_amp;
+  int bob_t;
 };
+/* ARROWSLOW1: the cursor arrow's bob in half units (0..4), one cycle every 24 ticks (a third of the ROM's 8-tick pace), eased (a cosine); ph in ticks, fractional
+   between ticks */
+static inline double menu_bob_curve(double ph)
+{
+    return 2.0 - 2.0 * cos(ph * (6.283185307179586 / 24.0));
+}
 
 struct MenuHotspot { uint8_t piece; DsRect box;     /* bottom-screen DS box = the ROM's own touch box */
                      int8_t rom_index;              /* >=0 ROM cursor index, -1 touch only */
@@ -422,6 +436,8 @@ int  hal_menu_interp_mode(void);                /* MENUFOLD1: SM64DS_MENU_INTERP
 int  hal_menu_relift_why(void);                 /* MENUINTERP2: 0 = ok, else 1 mode/fallback, 2 stage or the drawing page's held frame (snap_save) */
 void hal_menu_relift_dump(void);                /* MENUINTERP2 debug: one trace line of the bound layout's pieces */
 void hal_menu_present_relift(uint32_t *dst, int w, int h, int stage);   /* MENUINTERP2: hal_menu_present for a picture between ticks */
+void hal_menu_set_relift_alpha(double a);      /* ARROWSLOW1: the next re-draws between ticks are a of the way from the tick before to this tick (bob pieces) */
+float hal_menu_piece_bob_frac(int piece);       /* ARROWSLOW1: the picture being drawn shifts this bob piece down by this fraction of a pixel (0..1) */
 int  hal_menu_key_sentinel(void);               /* MENUS093E: the bound layout wants its masked engine-B planes drawn over a sentinel backdrop (exact key_backdrop) */
 int  hal_menu_needs_picsnap(void);              /* MENUINTERP2: the tick must keep the picture as the menu found it for a re-draw between ticks */
 int  hal_menu_relift_ok(void);                  /* MENUINTERP2: a tick the gate snaps may still blend if every in-between re-draws the menu on its own 3D picture (hal_menu_relift) */

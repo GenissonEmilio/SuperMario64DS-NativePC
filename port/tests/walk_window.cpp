@@ -9639,6 +9639,7 @@ extern "C" int hal_menu_relift_why(void);
 extern "C" void hal_menu_relift_dump(void);
 extern "C" const uint32_t *hal_menu_pic_snapshot(void);
 extern "C" int hal_menu_relift(unsigned int *dst, int w, int h);
+extern "C" void hal_menu_set_relift_alpha(double a);
 
 /* The blended pictures' own cost, for SM64DS_INTERP_TRACE's line and the
    gate's frame-time rows: build (replay + raster + 2D) and present apart. */
@@ -10219,6 +10220,7 @@ static int ip_build_b(IpPend *P)
        the replay, not from the tick) */
     if (g_ip_menu_relift) {
         const long long tm = ip_qpc();
+        hal_menu_set_relift_alpha(alpha);      /* ARROWSLOW1: the main menu's cursor arrow is drawn at this picture's own place */
         { HITCH_SCOPE(HK_TP_IPRL); hal_menu_relift(&o.px[0][0], ntr::active_w, ntr::active_h); }
         g_ip_sum_menu += ip_ms_since(tm);
         ++g_ip_menu_n;

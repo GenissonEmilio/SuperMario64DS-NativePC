@@ -339,6 +339,25 @@ void arrow_draw(const MenuLayout *L, int piece, uint32_t *dst, int w, int h, int
         return;
     }
     const unsigned int *art = P.wtw ? kArrowUpArt : kArrowDownArt;
+    const float bf = P.bob ? hal_menu_piece_bob_frac(piece) : 0.f;
+    if (bf > 1.f / 512.f) {
+        /* ARROWSLOW1: the main menu's code arrow bf of a pixel lower than its rect: each row mixes the art's row with the one above it
+           (premultiplied, one row taller), so it glides between whole pixels as the HD one does */
+        for (int y = 0; y <= H; ++y)
+            for (int x = 0; x < W; ++x) {
+                const int ax = x * 22 / W;
+                const unsigned int c = y < H ? art[(y * 15 / H) * 22 + ax] : 0u, q = y > 0 ? art[((y - 1) * 15 / H) * 22 + ax] : 0u;
+                const float wc = (c >> 24) ? 1.f - bf : 0.f, wq = (q >> 24) ? bf : 0.f, wa = wc + wq;
+                if (wa <= 0.f) continue;
+                unsigned int rgb = 0;
+                for (int k = 0; k < 24; k += 8) {
+                    const float v = (((c >> k) & 255u) * wc + ((q >> k) & 255u) * wq) / wa;
+                    rgb |= (unsigned int)(v + 0.5f > 255.f ? 255 : (int)(v + 0.5f)) << k;
+                }
+                put(dst, stride, w, h, X + x, Y + y, rgb, (int)(wa * a + 0.5f));
+            }
+        return;
+    }
     for (int y = 0; y < H; ++y)
         for (int x = 0; x < W; ++x) {
             const unsigned int c = art[(y * 15 / H) * 22 + (x * 22 / W)];
