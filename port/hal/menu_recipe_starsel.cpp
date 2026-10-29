@@ -223,18 +223,19 @@ void starsel2_layout(MenuLayout *L)
 }
 
 /* STARSEL2: the caps row's bubbles, lifted from the lower screen's sprites (OBJ only, the backdrop keyed out) at 2/3 size into the band under
-   the stars, slot k (the ROM's strip slot, CHAR_X / CHAR_Y + k) centred on canvas x 58 / 128 / 198 (the 7-star row's stars 2 / 4 / 6): the
-   ROM's slots hold Luigi's, Mario's and Wario's caps in that order, as in Tango's picture. A slot the ROM drew at x 0 is one it never placed
-   (its strip has fewer slots than characters) and is left out. Each rect holds the bubble and the ROM's cursor left of it, so the cursor shows
+   the stars: Luigi's bubble under star 2, Mario's under star 4, Wario's under star 6 (Tango's picture), centred on canvas x 58 / 128 / 198
+   (the 7-star row's stars 2 / 4 / 6). CHAR_X / CHAR_Y are per character (i = 0 Mario, 1 Luigi, 2 Wario). A bubble the ROM left at x 0 is one
+   InitResources never placed (measured: a save with all three has Mario at x 92, Luigi at 164 and Wario at 0, strip mode 3; the cartridge
+   draws that one at the lower screen's corner, mostly off it) and is left out. Each rect holds the bubble and the ROM's cursor left of it, so the cursor shows
    when the row has it. Touch pieces: a click on a bubble is the ROM's own touch on it. */
-const int kCapBoxL = 40, kCapBoxR = 26, kCapBoxT = 22, kCapBoxB = 22, kCapRowY = 52;
+const int kCapBoxL = 40, kCapBoxR = 26, kCapBoxT = 22, kCapBoxB = 22, kCapRowY = 51;
 void starsel2_caps(MenuLayout *L)
 {
     const MenuFacts &F = L->facts;
     if (!F.starsel_valid || !F.blob[6]) return;
-    static const int slot_x[3] = { 58, 128, 198 };
+    static const int order[3] = { 1, 0, 2 }, slot_x[3] = { 58, 128, 198 };
     for (int k = 0; k < 3; ++k) {
-        const int c = k;
+        const int c = order[k];
         if (!((F.blob[7] >> c) & 1) || F.blob[c] == 0) continue;
         int sx = F.blob[c] - kCapBoxL, sy = F.blob[3 + c] - kCapBoxT, sw = kCapBoxL + kCapBoxR, sh = kCapBoxT + kCapBoxB;
         if (sx < 0) { sw += sx; sx = 0; }
