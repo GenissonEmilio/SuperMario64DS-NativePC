@@ -668,6 +668,13 @@ int smooth_weld(const int16_t p[3][3], const uint32_t nrm[3], int kind,
 uint64_t smooth_frame_no();
 // The weld book's epoch: it moves whenever any edge record changes.
 uint32_t smooth_weld_epoch();
+// The textures were dropped (a model or level load, ntr::gx_invalidate_textures):
+// the weld book is emptied at the next frame mark, so sides remembered from an
+// earlier level can never straighten or average an unrelated later model whose
+// raw edge happens to fall on the same coordinates.
+void smooth_weld_scene_change();
+// Edges that met more sides than the book records (a fifth), since boot.
+uint64_t smooth_weld_overflow();
 // The replay memo's own count (SM64DS_SMOOTH_WELD_STATS): an answer read back, or asked again.
 void smooth_weld_memo_count(int hit);
 

@@ -1528,9 +1528,9 @@ void crack_report(uint64_t frame) {
         (void)wb;
     }
     char nb[64];
-    fprintf(stderr, "[smoothck] f%llu tris %d shared_edges %d with_curved %d opening %d (picture %dx%d)\n",
+    fprintf(stderr, "[smoothck] f%llu tris %d shared_edges %d with_curved %d opening %d (picture %dx%d) weld_overflow_edges %llu\n",
             (unsigned long long)frame, (int)g_ck_tris.size(), shared, with_curved,
-            (int)hits.size(), active_w, active_h);
+            (int)hits.size(), active_w, active_h, (unsigned long long)smooth_weld_overflow());
     for (int c = 0; c < CK_NCAUSE; ++c)
         if (n_cause[c] || n_tj[c])
             fprintf(stderr, "[smoothck] f%llu cause %-20s open %4d over1px %4d worst %.2f px  tjunction_only %d\n",
@@ -1578,6 +1578,7 @@ void smooth_crack_tri(const SmoothCrackTri &t) {
 
 namespace { void topo_report(uint64_t frame); }
 void weld_report(uint64_t frame);
+void weld_frame(uint64_t frame);
 
 void smooth_frame_mark() {
     ++g_counters.frames;
@@ -1586,6 +1587,7 @@ void smooth_frame_mark() {
        coming picture will be drawn at. */
     budget_pick();
     if (smooth_census_on()) census_report(g_counters.frames);
+    weld_frame(g_counters.frames);
     weld_report(g_counters.frames);
     if (smooth_cracks_on()) {
         if (g_counters.frames % (uint64_t)smooth_cracks_on() == 0) crack_report(g_counters.frames);
@@ -2575,7 +2577,7 @@ struct WeldSide {
 enum { WELD_SIDES = 4 };
 struct WeldEdge {
     int16_t k[6];      // low end, high end (pos_gt order)
-    uint16_t used;
+    uint16_t used;     // 1 = slot holds an edge; | 2 = a side beyond WELD_SIDES came (overflow)
     uint16_t nside;
     uint32_t ver;
     WeldSide side[WELD_SIDES];
@@ -2602,6 +2604,9 @@ WeldTri *g_weld_tris = 0;
 WeldOut *g_weld_outs = 0;         // the answers of g_weld_tris, by index
 uint32_t g_weld_epoch = 1;         // bumped whenever any edge record changes
 uint64_t g_ws_calls, g_ws_fast, g_ws_ver, g_ws_slow, g_wm_hit, g_wm_miss;
+uint64_t g_ws_overflow;            // edges that met a fifth side, since boot
+uint64_t g_ws_clears;              // books emptied by a scene change, since boot
+int g_weld_scene_pending = 0;
 
 inline uint32_t weld_fnv(const void *p, size_t n, uint32_t h = 2166136261u) {
     const unsigned char *b = (const unsigned char *)p;
@@ -2667,22 +2672,33 @@ inline bool weld_same(const float a[3], const float b[3]) {
 }  // namespace
 
 long long g_ws_ns;     // time inside smooth_weld, SM64DS_SMOOTH_PROF only
+void weld_frame(uint64_t frame) {
+    (void)frame;
+    if (g_weld_scene_pending) {
+        g_weld_scene_pending = 0;
+        if (g_weld_edges && g_weld_count) { weld_clear(); ++g_ws_clears; }
+    }
+}
+
 void weld_report(uint64_t frame) {
     static int on = -1;
     if (on < 0) on = getenv("SM64DS_SMOOTH_WELD_STATS") ? 1 : 0;
     if (!on || frame % 100) return;
     fprintf(stderr, "[smoothweld] f%llu calls %llu settled %llu reconfirmed %llu worked %llu "
-            "edges %u epoch %u time %.3f ms a tick, replays read %llu asked %llu\n",
+            "edges %u epoch %u time %.3f ms a tick, replays read %llu asked %llu, overflow edges %llu, scene clears %llu\n",
             (unsigned long long)frame, (unsigned long long)g_ws_calls, (unsigned long long)g_ws_fast,
             (unsigned long long)g_ws_ver, (unsigned long long)g_ws_slow,
             g_weld_count, g_weld_epoch, g_ws_ns / 100.0 / 1e6,
-            (unsigned long long)g_wm_hit, (unsigned long long)g_wm_miss);
+            (unsigned long long)g_wm_hit, (unsigned long long)g_wm_miss,
+            (unsigned long long)g_ws_overflow, (unsigned long long)g_ws_clears);
     g_ws_calls = g_ws_fast = g_ws_ver = g_ws_slow = g_wm_hit = g_wm_miss = 0;
     g_ws_ns = 0;
 }
 
 uint64_t smooth_frame_no() { return g_counters.frames; }
 uint32_t smooth_weld_epoch() { return g_weld_epoch; }
+void smooth_weld_scene_change() { g_weld_scene_pending = 1; }
+uint64_t smooth_weld_overflow() { return g_ws_overflow; }
 void smooth_weld_memo_count(int hit) { if (hit) ++g_wm_hit; else ++g_wm_miss; }
 
 int smooth_weld_on() {
@@ -2837,6 +2853,14 @@ int weld_impl(const int16_t p[3][3], const uint32_t nrm[3], int kind,
             e.side[e.nside++] = me;
             ++e.ver;
             ++g_weld_epoch;
+        } else if (!(e.used & 2)) {
+            /* A FIFTH SIDE is not recorded. The edge is then drawn straight
+               on every side (the rule below reads the flag), which is the
+               one answer every side can agree on without knowing the fifth. */
+            e.used |= 2;
+            ++e.ver;
+            ++g_weld_epoch;
+            ++g_ws_overflow;
         }
     }
 
@@ -2847,8 +2871,8 @@ int weld_impl(const int16_t p[3][3], const uint32_t nrm[3], int kind,
         for (int k = 0; k < 3; ++k) {
             if (slot[k] < 0) continue;
             const WeldEdge &e = g_weld_edges[slot[k]];
-            if (e.nside < 2) continue;
-            bool straight = false;
+            bool straight = (e.used & 2) != 0;
+            if (e.nside < 2 && !straight) continue;
             for (int j = 0; j < e.nside; ++j)
                 if (e.side[j].kind != SMOOTH_WELD_CURVED) straight = true;
             float w[2][3];

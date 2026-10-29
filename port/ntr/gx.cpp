@@ -3351,6 +3351,7 @@ void gx_invalidate_textures() {
        texture never names another. */
     g_tex_ids.clear();
     ++g_tex_generation;
+    smooth_weld_scene_change();   /* SMOOTHWELD1: the weld book starts over with the new models */
 }
 
 uint32_t gx_texture_generation() { return g_tex_generation; }
