@@ -47,6 +47,8 @@ unsigned port_char_strip_frame(const struct SpInput *in);
 void port_char_strip_idle(void);
 /* the picture overlay: draws onto the finished upper picture (0x00RRGGBB / 0xFFRRGGBB, stride pixels a row); does nothing when the strip is not up */
 void port_char_strip_draw(uint32_t *px, int stride, int w, int h);
+/* STARSEL2: the character panel and its tab on a picture of the star select (the one-screen recipe calls it for every picture it draws) */
+void port_char_strip_panel_draw(uint32_t *px, int stride, int w, int h);
 /* after a frame: -1 nothing picked, else the id picked (0..3 plain, 4 + n custom n); read once */
 int  port_char_strip_take_pick(void);
 /* the id the strip shows as the one being played (0..3, 4 + n) */

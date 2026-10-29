@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <vector>
+#include <chrono>
+#include <math.h>
 
 #include "char_strip.h"
 #include "char_door_skin.h"
@@ -47,7 +49,7 @@ namespace {
 
 const char *const ROM_NAME[4] = { "Mario", "Luigi", "Wario", "Yoshi" };
 enum { MENU_KEY_ONE_SCREEN = 2 };          /* hal/menu_compose.h MENU_KEY_ONE_SCREEN_MENUS */
-enum { PER_PAGE = 3, MAX_SLOTS = 8 };
+enum { PER_PAGE = 3, MAX_SLOTS = 24 };
 
 /* what the picture is showing now */
 int g_up;                  /* 1 while the strip is part of the screen */
@@ -106,35 +108,28 @@ int current_id(void)
     return a >= 0 ? 4 + a : (data_0209caa0[0x41] & 3);
 }
 
-/* the slots of page p: page 0 is the ROM's characters, the others three costumes each; a last slot (the arrow) when any costume is installed */
+/* STARSEL2: the panel lists every character in one list (the ROM characters the save has, then every open custom character), four to a
+   column; there are no pages and no arrow slot any more. p is kept for the old callers and ignored. */
 void build_page(int p)
 {
+    (void)p;
     g_nslots = 0;
     const int cur = current_id();
-    if (p == 0) {
-        for (int i = 0; i < g_nrom; ++i) {
-            const int c = g_rom[i];
-            CdItem &m = g_slot[g_nslots++];
-            memset(&m, 0, sizeof m);
-            m.id = c; m.base = c; m.current = c == cur;
-            snprintf(m.label, sizeof m.label, "%s", ROM_NAME[c]);
-        }
-    } else {
-        for (int i = (p - 1) * PER_PAGE; i < p * PER_PAGE && i < g_ncust; ++i) {
-            CdItem &m = g_slot[g_nslots++];
-            memset(&m, 0, sizeof m);
-            m.id = 4 + i; m.base = port_char_base(i) & 3; m.custom = 1; m.current = 4 + i == cur;
-            snprintf(m.label, sizeof m.label, "%s", port_char_name(i));
-            snprintf(m.plays, sizeof m.plays, "Plays as %s", ROM_NAME[m.base]);
-            m.preview = port_char_preview(i);
-            m.icon = port_char_icon(i);
-        }
-    }
-    if (g_ncust > 0) {
+    for (int i = 0; i < g_nrom && g_nslots < MAX_SLOTS; ++i) {
+        const int c = g_rom[i];
         CdItem &m = g_slot[g_nslots++];
         memset(&m, 0, sizeof m);
-        m.id = -1;
-        snprintf(m.label, sizeof m.label, "More");
+        m.id = c; m.base = c; m.current = c == cur;
+        snprintf(m.label, sizeof m.label, "%s", ROM_NAME[c]);
+    }
+    for (int i = 0; i < g_ncust && g_nslots < MAX_SLOTS; ++i) {
+        CdItem &m = g_slot[g_nslots++];
+        memset(&m, 0, sizeof m);
+        m.id = 4 + i; m.base = port_char_base(i) & 3; m.custom = 1; m.current = 4 + i == cur;
+        snprintf(m.label, sizeof m.label, "%s", port_char_name(i));
+        snprintf(m.plays, sizeof m.plays, "Plays as %s", ROM_NAME[m.base]);
+        m.preview = port_char_preview(i);
+        m.icon = port_char_icon(i);
     }
 }
 
@@ -156,9 +151,8 @@ void build_lists(void)
     g_open = host_setting_chars_from_start() || port_char_save_unlocked(port_char_save_slot());
     g_ncust = g_open ? port_char_count() : 0;
     if (g_ncust > 16) g_ncust = 16;
-    g_npages = 1 + (g_ncust + PER_PAGE - 1) / PER_PAGE;
-    g_page = page_of(current_id());
-    if (g_page >= g_npages) g_page = 0;
+    g_npages = 1;
+    g_page = 0;
     build_page(g_page);
     g_built = 1;
     fprintf(stderr, "[strip] built: %d ROM character(s), %d custom%s, %d page(s); page %d, %d slot(s), current %d\n", g_nrom, g_ncust, g_open ? "" : (port_char_count() > 0 ? " (locked: no unlock yet)" : ""), g_npages, g_page, g_nslots, current_id());
@@ -183,21 +177,50 @@ int wanted(void)
     return w == 0;
 }
 
-CsGeom geom(void)
+/* STARSEL2: THE SLIDE. 0 closed (only the tab on the right edge), 1 fully out. It is a function of the wall clock (an eased move from where
+   it was when the target last changed), so the picture side reads the same value on every Smooth Motion picture between two ticks and the
+   panel glides at the picture rate; with Smooth Motion off it steps once a tick along the same curve. */
+const double kSlideMs = 220.0;
+double g_sl_from, g_sl_to, g_sl_t0;
+int g_mouse_open;          /* the pointer opened it (it closes when the pointer leaves) */
+int g_tab_hover;           /* the pointer is on the tab */
+
+double now_ms(void)
 {
-    CsGeom g;
-    cdskin_strip_geom(g_pw, g_ph, g_nslots, &g);
+    return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+double slide_at(double t)
+{
+    const double from = g_sl_from, to = g_sl_to, t0 = g_sl_t0;
+    if (to == from) return to;
+    double p = (t - t0) / (kSlideMs * fabs(to - from));
+    if (p >= 1.0) return to;
+    if (p < 0.0) p = 0.0;
+    const double q = 1.0 - p;
+    return from + (to - from) * (1.0 - q * q * q);
+}
+
+void slide_to(double target, const char *why)
+{
+    if (target == g_sl_to) return;
+    const double t = now_ms();
+    g_sl_from = slide_at(t);
+    g_sl_t0 = t;
+    g_sl_to = target;
+    fprintf(stderr, "[charpanel] %s (%s), from %.2f\n", target > 0.5 ? "opens" : "closes", why, g_sl_from);
+}
+
+void slide_snap(double v) { g_sl_from = g_sl_to = v; g_sl_t0 = now_ms(); }
+
+CpGeom geom_at(double open)
+{
+    CpGeom g;
+    cdskin_panel_geom(g_pw, g_ph, g_nslots, (float)open, &g);
     return g;
 }
 
-int slot_at(const CsGeom &g, int x, int y)
-{
-    for (int i = 0; i < g.n; ++i) {
-        const int sx = g.x0 + i * g.pitch;
-        if (x >= sx && x < sx + g.sw && y >= g.y0 - (int)(2 * g.k) && y < g.y0 + g.sh) return i;
-    }
-    return -1;
-}
+CpGeom geom(void) { return geom_at(slide_at(now_ms())); }
 
 void move_cursor(int to)
 {
@@ -211,15 +234,6 @@ void move_cursor(int to)
 int activate(int i)
 {
     if (i < 0 || i >= g_nslots) return 0;
-    if (g_slot[i].id < 0) {
-        g_page = (g_page + 1) % g_npages;
-        build_page(g_page);
-        g_cursor = g_nslots - 1;      /* the arrow: A again goes on */
-        host_menu_cursor_sound();
-        fprintf(stderr, "[strip] arrow: page %d of %d, %d slot(s)\n", g_page, g_npages, g_nslots);
-        log_slots();
-        return 0;
-    }
     g_pick = g_slot[i].id;
     port_char_strip_pick_sound(g_slot[i].base & 3);
     {   /* the star select's own life counter (its icon index, +0x116) follows the pick, as it does when the screen is entered as that character */
@@ -311,6 +325,7 @@ void capture(const uint32_t *, int, int, int) {}
 void forget(void)
 {
     g_up = 0; g_frames = 0; g_built = 0; g_focus = 0; g_hover = -1; g_pick = -1; g_swallow = 0; g_ready = 0; g_begun = 0;
+    g_mouse_open = 0; g_tab_hover = 0; slide_snap(0.0);
     g_cur_set = 0;
     g_prev_keys = 0; g_prev_mouse_l = 0; g_hold_key = g_hold_frames = 0; g_last_hover = -1;
 }
@@ -354,8 +369,10 @@ unsigned port_char_strip_frame(const struct SpInput *in0)
     if (g_nrom + g_ncust <= 1) return 0;    /* nothing to choose: one character and no costume */
     const unsigned char *o = (const unsigned char *)port_scene_live_object();
     ++g_frames;
-    if (ob(o, 0x139) != 0) {                 /* the act is chosen and the screen is leaving: the strip goes with it */
+    if (ob(o, 0x139) != 0) {                 /* the act is chosen and the screen is leaving: the panel goes with it */
         g_focus = 0;
+        g_mouse_open = 0;
+        slide_snap(0.0);
         return 0;
     }
     g_up = 1;
@@ -374,8 +391,8 @@ unsigned port_char_strip_frame(const struct SpInput *in0)
         return hide;
     }
     unsigned act = edge;
-    {   /* repeat on left / right while held */
-        const unsigned lr = k & (SPK_LEFT | SPK_RIGHT);
+    {   /* repeat on the d-pad while held */
+        const unsigned lr = k & (SPK_LEFT | SPK_RIGHT | SPK_UP | SPK_DOWN);
         if (lr && lr == (unsigned)g_hold_key) {
             ++g_hold_frames;
             if (g_hold_frames > 18 && (g_hold_frames % 4) == 0) act |= lr;
@@ -384,36 +401,70 @@ unsigned port_char_strip_frame(const struct SpInput *in0)
             g_hold_frames = 0;
         }
     }
-    const CsGeom gm = geom();
+    /* STARSEL2: THE PANEL'S KEYS. Right on the last star the ROM can select moves onto the tab: the panel slides out and the cursor is on the
+       character being played. In the panel Up / Down walk a column, Right goes to the next column, Left to the one before; Left on the first
+       column, B or Escape close it and give the cursor back to the stars; A, Enter or Space pick (the pick closes it too). */
     if (!g_focus) {
-        if (act & SPK_DOWN) {
-            g_focus = 1;
-            g_cursor = 0;
-            for (int i = 0; i < g_nslots; ++i) if (g_slot[i].current) g_cursor = i;
-            host_menu_cursor_sound();
-            fprintf(stderr, "[strip] cursor on the strip: %d: %s\n", g_cursor, g_slot[g_cursor].id < 0 ? "(arrow)" : g_slot[g_cursor].label);
+        if ((act & SPK_RIGHT) && ob(o, 0x133) == 0) {
+            const int nst = ob(o, 0x114), cur = ob(o, 0x115), mask = ob(o, 0x131);
+            int last = -1;
+            for (int i = 0; i < nst && i < 8; ++i) if ((mask >> i) & 1) last = i;
+            if (cur == last) {
+                g_focus = 1;
+                g_cursor = 0;
+                for (int i = 0; i < g_nslots; ++i) if (g_slot[i].current) g_cursor = i;
+                g_swallow = 1;
+                slide_to(1.0, "pad: right past the last star");
+                host_menu_cursor_sound();
+                fprintf(stderr, "[strip] cursor on the panel: %d: %s\n", g_cursor, g_slot[g_cursor].label);
+            }
         }
     } else {
-        if (act & SPK_LEFT) move_cursor(g_cursor - 1);
-        if (act & SPK_RIGHT) move_cursor(g_cursor + 1);
-        if (act & SPK_ACCEPT) {
-            if (activate(g_cursor)) { g_focus = 0; g_swallow = 1; }      /* a pick gives the cursor back to the stars */
+        const int col = g_cursor / 4, row = g_cursor % 4, cols = (g_nslots + 3) / 4;
+        if (act & SPK_UP) { if (row > 0) move_cursor(g_cursor - 1); }
+        else if (act & SPK_DOWN) { if (row < 3 && g_cursor + 1 < g_nslots) move_cursor(g_cursor + 1); }
+        else if (act & SPK_RIGHT) {
+            if (col + 1 < cols) move_cursor(g_cursor + 4 < g_nslots ? g_cursor + 4 : g_nslots - 1);
+        } else if (act & SPK_LEFT) {
+            if (col > 0) move_cursor(g_cursor - 4);
+            else { g_focus = 0; g_swallow = 1; if (!g_mouse_open) slide_to(0.0, "pad: left out of the panel"); fprintf(stderr, "[strip] cursor back on the stars\n"); }
         }
-        if (act & (SPK_UP | SPK_BACK)) { g_focus = 0; g_swallow = 1; fprintf(stderr, "[strip] cursor back on the stars\n"); }
+        if (g_focus && (act & SPK_ACCEPT)) {
+            if (activate(g_cursor)) { g_focus = 0; g_swallow = 1; g_mouse_open = 0; slide_to(0.0, "pad: picked"); }
+        }
+        if (g_focus && (act & SPK_BACK)) { g_focus = 0; g_swallow = 1; if (!g_mouse_open) slide_to(0.0, "pad: back"); fprintf(stderr, "[strip] cursor back on the stars\n"); }
     }
+    /* THE POINTER. On the tab or the panel: it slides out (and stays while the pointer is on it); off both: a panel the pointer opened slides
+       back. A click on a head picks it (the panel stays out while the pointer is still on it); a click on the tab opens or closes it, which is
+       also what a stylus tap does (a touch screen has no hover). */
     g_hover = -1;
+    g_tab_hover = 0;
     if (in->mouse_valid) {
         const int mx = in->mouse_x, my = in->mouse_y;
-        const int s = slot_at(gm, mx, my);
+        const CpGeom gm = geom();
+        const bool open = g_sl_to > 0.5;
+        const int s = open ? cdskin_panel_slot_at(&gm, mx, my) : -1;
+        const bool on_tab = mx >= gm.tx && mx < gm.tx + gm.tw && my >= gm.ty && my < gm.ty + gm.th;
+        const bool inside = cdskin_panel_hit(&gm, mx, my) != 0;
+        const bool moved = mx != g_prev_mx || my != g_prev_my;
         g_hover = s;
-        if (s != g_last_hover && (mx != g_prev_mx || my != g_prev_my)) {
+        g_tab_hover = on_tab ? 1 : 0;
+        if (s != g_last_hover && moved) {
             g_last_hover = s;
-            if (s >= 0) { host_menu_cursor_sound(); fprintf(stderr, "[strip] hover slot %d\n", s); }
+            if (s >= 0) { host_menu_cursor_sound(); fprintf(stderr, "[strip] hover slot %d: %s\n", s, g_slot[s].label); }
         }
         if (mclick && s >= 0) {
             g_cursor = s;
             activate(s);
+            g_focus = 0;
             g_swallow = 1;
+        } else if (mclick && on_tab) {
+            g_swallow = 1;
+            if (open) { g_mouse_open = 0; g_focus = 0; slide_to(0.0, "pointer: tab clicked"); }
+            else { g_mouse_open = 1; slide_to(1.0, "pointer: tab clicked"); }
+        } else if (moved) {
+            if (inside && !open) { g_mouse_open = 1; slide_to(1.0, "pointer: on the tab"); }
+            else if (!inside && open && g_mouse_open && !g_focus) { g_mouse_open = 0; slide_to(0.0, "pointer: left the panel"); }
         }
         g_prev_mx = mx;
         g_prev_my = my;
@@ -435,9 +486,10 @@ void port_char_strip_idle(void)
 
 void port_char_strip_draw(uint32_t *px, int stride, int w, int h)
 {
-    if (!g_up && px && hal_menu_starsel_up()) {
-        /* CAPSTOGGLE1 proof: SM64DS_STRIP_BMP also writes the picture of the DS star select with the setting off (the frames counted here);
-           CHARLOCK1: and with no strip because the file has one character and no costume open */
+    /* STARSEL2: the panel is a piece of the star select's one-screen recipe (port_char_strip_panel_draw, every picture); this per-tick
+       host-UI hook only writes the proof picture now (SM64DS_STRIP_BMP), with or without a panel. */
+    if (!px || !hal_menu_starsel_up()) return;
+    if (!g_up) {
         static int off_frames;
         const int sv = g_frames;
         g_frames = ++off_frames;
@@ -445,13 +497,28 @@ void port_char_strip_draw(uint32_t *px, int stride, int w, int h)
         g_frames = sv;
         return;
     }
-    if (!g_up || !px) return;
+    g_pw = w;
+    g_ph = h;
+    capture(px, stride, w, h);
+}
+
+/* STARSEL2: the panel and its tab on a picture of the star select (the recipe's custom piece calls this for every picture it draws) */
+void port_char_strip_panel_draw(uint32_t *px, int stride, int w, int h)
+{
+    if (!g_up || !px || w <= 0 || h <= 0) return;
     g_pw = w;
     g_ph = h;
     if (!g_begun) { g_begun = 1; cdskin_begin(); }
-    const CsGeom gm = geom();
-    cdskin_strip_draw(px, stride, w, h, &gm, g_slot, g_nslots, g_focus ? g_cursor : -1, g_hover);
-    capture(px, stride, w, h);
+    const double t = now_ms(), open = slide_at(t);
+    const CpGeom gm = geom_at(open);
+#ifndef PORT_ROM_CLEAN
+    {   /* SM64DS_CHARPANEL_TRACE=1: one line per picture the panel is drawn on while it moves (proof rows: the slide steps every picture) */
+        static const bool tr = getenv("SM64DS_CHARPANEL_TRACE") != 0;
+        static double last = -1.0;
+        if (tr && open != last) { fprintf(stderr, "[charpanel] pic t %.1f open %.4f panel x %d tab x %d\n", t, open, gm.px, gm.tx); last = open; }
+    }
+#endif
+    cdskin_panel_draw(px, stride, w, h, &gm, g_slot, g_nslots, g_focus ? g_cursor : -1, g_hover, g_tab_hover || g_focus);
 }
 
 }  // extern "C"

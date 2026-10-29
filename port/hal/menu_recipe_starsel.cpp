@@ -31,6 +31,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "char_strip.h"
+
 extern "C" {
 int  SublevelToLevel(int);
 extern signed char data_02092110;
@@ -92,6 +94,7 @@ void starsel_facts(MenuFacts *f)
     f->spare[0] = 1 + ob(o, 0x115);       /* the selected act index + 1 (0 = nothing read) */
     { static int calls; f->spare[2] = ++calls; }     /* a per-tick counter for the pointer's bob */
     f->spare[1] = ob(o, 0x135);           /* the input phase: 0 intro, 1 waiting for the pad to come up, 2 live */
+    f->spare[4] = port_char_strip_up();   /* STARSEL2: the character panel is part of this screen */
 }
 
 /* STARSEL093 (D7): the keys of the star select while the one-screen menu is up. The lower screen is not drawn, so the ROM's states
@@ -167,6 +170,44 @@ void starsel_keys(uint16_t *pressed, int)
    varies and the rect is the widest it gets. Half extents in tenths of a DS pixel. */
 const int kBigHalfW10 = 150, kBigHalfH10 = 145, kBigSelHalfW10 = 188, kBigSelHalfH10 = 181, kBigCy10 = 345;
 
+/* STARSEL2 (Tango 10-28): THE STAR SELECT LAYOUT. Tango's picture: the numbers and the big stars on top, a band under them for the caps row,
+   then the star's name, the coin score and the course medal lower down, and one bottom row with the lives counter against the left edge of the
+   window, the course name in the middle and the star total against the right edge, at every aspect. The 2D of the upper screen is engine A's
+   (src/game/stages/d_s_star_sel_methods.cpp Render :455-480 and the counters :203-300): BG2 is the course medal, BG3 the text (the star name,
+   SCORE, the course name), OBJ the star numbers, the coin record, the medal's number, the lives and the star total. Those three layers are
+   lifted out of the picture and put back band by band; the big stars are the 3D layer and stay where the ROM draws them, so every star rect,
+   the pointer and the clicks are unchanged. Bands in DS rows, measured on the 4:3 picture (STARSEL2 shots): numbers 4..11, star name
+   56..66, SCORE and the coins 76..91, the medal 96..155, the course name 160..170, the counters 171..187. One unit is a DS pixel at h / 192,
+   scale 1 everywhere (the DS pixels stay square and whole). */
+struct SsBand { short y0, y1, x0, x1; short dy; uint8_t ax; };
+const SsBand kSsBands[] = {
+    {   0,  54,   0, 256,   0, MENU_AX_C },    /* the star numbers: where the ROM has them, over the 3D stars */
+    {  54,  72,   0, 256,  21, MENU_AX_C },    /* the star's name: under the caps row's band (rows 77..87) */
+    {  72,  94,   0, 256,  19, MENU_AX_C },    /* SCORE, the coin and the record (rows 95..110) */
+    {  94, 158,  40, 216,  16, MENU_AX_C },    /* the course medal and its number (rows 112..171) */
+    { 158, 171,  40, 216,  14, MENU_AX_C },    /* the course name: the middle of the bottom row (rows 172..185) */
+    { 171, 192,   2,  96,   0, MENU_AX_L },    /* the lives counter, against the left edge */
+    { 171, 192, 160, 254,   0, MENU_AX_R },    /* the star total, against the right edge */
+};
+
+void starsel2_layout(MenuLayout *L)
+{
+    for (unsigned i = 0; i < sizeof kSsBands / sizeof kSsBands[0]; ++i) {
+        const SsBand &b = kSsBands[i];
+        MenuPiece p = menu_piece_make(SRC_TOP_2D, b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0, b.ax, MENU_AY_T, 0, b.y0 + b.dy, 1, 1);
+        p.layers = MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ;
+        p.bg = 1;
+        menu_add_piece(L, p);
+    }
+    L->lift_owners = MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ;
+}
+
+/* STARSEL2: the character panel (hal/char_strip.cpp draws it, hal/char_door_skin.cpp paints it), one custom piece drawn on every picture */
+void starsel2_panel(const MenuLayout *, int, uint32_t *dst, int w, int h, int stride)
+{
+    port_char_strip_panel_draw(dst, stride, w, h);
+}
+
 bool big_star_rect(const MenuFacts &F, int w, int h, int star, int out[4])
 {
     if (!F.starsel_valid || star < 0 || star >= F.starsel_n || star >= 8 || w <= 0 || h <= 0) return false;
@@ -196,6 +237,7 @@ void build_starsel(int variant, MenuLayout *L)
     }
     const MenuFacts &F = L->facts;       /* the live object's fields, read once per tick by starsel_facts */
     L->no_focus_paint = 1;
+    starsel2_layout(L);
     {
         /* no live facts (the layout selftest, a course without a star row): one invisible touch rect on the centre star,
            so the layout is never empty */
@@ -241,6 +283,12 @@ void build_starsel(int variant, MenuLayout *L)
             ar.fy = (short)top;
             menu_add_piece(L, ar);
         }
+    }
+    if (F.spare[4]) {
+        MenuPiece cp = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        cp.bg = 1; cp.lden = 1; cp.lnum = 1; cp.fx = 0; cp.fy = 0; cp.fw = (short)L->w; cp.fh = (short)L->h;
+        cp.custom = starsel2_panel;
+        menu_add_piece(L, cp);
     }
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
