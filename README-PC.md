@@ -1,8 +1,8 @@
 # Super Mario 64 DS PC — uma tela
 
-Projeto de adaptação **nativa** para Windows, no perfil [GenissonEmilio](https://github.com/GenissonEmilio/SuperMario64DSPC). Parte do port C++ do [tangosdev/sm64ds-decomp](https://github.com/tangosdev/sm64ds-decomp), ramo `release/game-0.9.3.3`, revisão `f18be6bddb638cfe01882dfcf9a99f019ffa0a88`. O código do jogo é compilado para o PC; não usamos melonDS ou outro núcleo de emulação como runtime.
+Projeto independente de adaptação **nativa** para Windows, mantido em [GenissonEmilio/SuperMario64DSPC](https://github.com/GenissonEmilio/SuperMario64DSPC). Parte do port C++ do [tangosdev/sm64ds-decomp](https://github.com/tangosdev/sm64ds-decomp), ramo `release/game-0.9.3.3`, revisão `f18be6bddb638cfe01882dfcf9a99f019ffa0a88`. O código do jogo é compilado para o PC; não usamos melonDS ou outro núcleo de emulação como runtime. Histórico, licença e créditos da base estão preservados. Veja [UPSTREAM.md](UPSTREAM.md) para incorporar atualizações da base ao nosso projeto.
 
-## O que muda neste fork
+## Adaptações deste projeto
 
 - A aventura usa a cena principal com o HUD original do port integrado: vidas, moedas, estrelas e saúde. O perfil inicial centraliza as moedas e usa a câmera analógica.
 - **M** ou o botão **MAPA** abre o mapa sobre a cena. **M**, **FECHAR** ou Esc fecha; voltar a mover o personagem também dispensa o painel. O mapa é uma sobreposição e **não pausa a simulação**.
@@ -52,6 +52,6 @@ Na build local, os quatro replays nativos em Castle Grounds terminaram sem erro:
 
 ## Estado e limites
 
-Este é um fork em desenvolvimento, focado na campanha e em seus menus. **Não é uma certificação de toda a campanha nem uma adaptação concluída dos 30 minigames.** Os minigames ainda seguem os layouts e limitações do upstream, incluindo os que dependem de duas superfícies; exigem adaptação própria de jogo e interface. O mapa não recebe essa superfície de toque à força, preservando a jogabilidade enquanto essa etapa está pendente. Multiplayer também não foi certificado neste fork.
+Este projeto está em desenvolvimento, focado na campanha e em seus menus. **Não é uma certificação de toda a campanha nem uma adaptação concluída dos 30 minigames.** Os minigames ainda seguem os layouts e limitações do upstream, incluindo os que dependem de duas superfícies; exigem adaptação própria de jogo e interface. Multiplayer também não foi certificado neste projeto.
 
-A decompilação, os modelos de câmera/física, renderizadores, áudio, salvamento e menus nativos existentes são trabalho do upstream e dos autores listados em [CREDITS.md](CREDITS.md). As mudanças deste fork ficam em `port/` e `pc/`, preservando `src/` e a compilação byte a byte do projeto original. Licença MIT original preservada em [LICENSE](LICENSE); ela não concede direitos sobre material da Nintendo.
+A decompilação, os modelos de câmera/física, renderizadores, áudio, salvamento e menus nativos existentes são trabalho do upstream e dos autores listados em [CREDITS.md](CREDITS.md). As adaptações de jogo deste projeto ficam em `port/` e `pc/`, preservando `src/` e a compilação byte a byte do projeto original. Licença MIT original preservada em [LICENSE](LICENSE); ela não concede direitos sobre material da Nintendo.
