@@ -1,4 +1,10 @@
-# Super Mario 64 DS Decompilation
+# Super Mario 64 DS PC — GenissonEmilio
+
+Fork para a adaptação **nativa de uma tela**, baseado no ramo jogável `release/game-0.9.3.3` do tangosdev. HUD integrado, mapa por M / botão e controles de PC. **[Instruções, testes e limitações deste fork: README-PC.md](README-PC.md).**
+
+O projeto está em desenvolvimento; os minigames ainda não foram todos adaptados para uma tela. ROM e assets não acompanham o código. A documentação e os créditos originais seguem abaixo.
+
+# Super Mario 64 DS Decompilation — upstream
 
 [![Discord Server][discord-badge]][discord]
 

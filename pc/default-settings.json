@@ -1,0 +1,22 @@
+{
+  "OneScreenMenus": true,
+  "SaveMenuOnTop": true,
+  "CoinsMiddle": true,
+  "KeyMap": 77,
+  "KeyUp": 87,
+  "KeyDown": 83,
+  "KeyLeft": 65,
+  "KeyRight": 68,
+  "KeyJump": 32,
+  "KeyAttack": 88,
+  "KeyCrouch": 17,
+  "KeyRun": 16,
+  "CameraMode": "analog",
+  "MouseCapture": false,
+  "Volume": 60,
+  "Aspect": 1.7777777778,
+  "RunMode": "button",
+  "DebugMenu": false,
+  "SendCrashReports": false,
+  "AutoUpdate": false
+}

@@ -1,0 +1,20 @@
+name: Native PC single-screen checks
+on:
+  push:
+    branches: [pc-single-screen]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  map-and-layout:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Create isolated build environment
+        run: python -m venv .venv
+      - name: Compile actual native map action and layout tests (no ROM)
+        shell: pwsh
+        run: ./pc/build.ps1 -TestsOnly

@@ -18,6 +18,8 @@
  * (data_0209f2d8 != 1).
  */
 #include "hal/menu_bigmap.h"
+#include "hal/pc_map_ui.h"
+#include <atomic>
 
 #include <chrono>
 #include <stdio.h>
@@ -51,6 +53,8 @@ public:
 namespace {
 
 int g_up;            /* latched by the tick, read by the draw */
+int g_available;
+std::atomic<int> g_request(0);
 int g_level_was = -99;
 unsigned g_tick;
 
@@ -76,9 +80,19 @@ int enabled()
 } // namespace
 
 extern "C" int menu_bigmap_up(void) { return g_up; }
+extern "C" int menu_bigmap_available(void) { return g_available; }
+extern "C" void menu_bigmap_request_toggle(void) { g_request.fetch_xor(1); }
+extern "C" int menu_bigmap_click(int x, int y, int w, int h)
+{
+    if (!g_available || !pc_map_button_hit(x,y,w,h)) return 0;
+    menu_bigmap_request_toggle();
+    return 1;
+}
 
 extern "C" int menu_bigmap_pad_seam(void)
 {
+    const int requested = g_request.exchange(0);
+    g_available = 0;
     if (!enabled()) { g_up = 0; return 0; }
     ++g_tick;
     const int scene = port_scene_live_id();
@@ -112,10 +126,11 @@ extern "C" int menu_bigmap_pad_seam(void)
     const int rom_would_pause_ok =
         data_0209f294 == 0 && data_0209d660 == 0 && data_0209d4b0 == 0 && data_02092110 < 0
         && dScStage_c::CanPause() != 0 && dScStage_c::IsPauseDisabled() == 0;
+    g_available = rom_would_pause_ok;
 
     const int sel = ((*pressed | *split) & 0x4) != 0;
     const int start = ((*pressed | *split) & 0x8) != 0;
-    if (sel) {
+    if (sel || requested) {
         /* the ROM never sees this Select, whether or not the map can open */
         *pressed &= (unsigned short)~0x4;
         *split &= (unsigned short)~0x4;
@@ -174,8 +189,8 @@ inline uint32_t lerp(uint32_t a, uint32_t b, int w)      /* w of b, 0..256 */
 extern "C" void menu_bigmap_draw(const uint32_t *sub, uint32_t *dst, int w, int h, int stride, int *rect_out)
 {
     const auto t0 = std::chrono::steady_clock::now();
-    /* the map is 4:3; about 85 percent of the height, or 90 percent of the width, whichever is smaller */
-    int th = h * 85 / 100;
+    /* the map is 4:3; about 80 percent of the height, or 90 percent of the width, whichever is smaller */
+    int th = h * 80 / 100;   // leave space for the native FECHAR button below the map
     int tw = th * 256 / 192;
     if (tw > w * 90 / 100) { tw = w * 90 / 100; th = tw * 192 / 256; }
     if (tw < 128 || th < 96) { if (rect_out) rect_out[0] = rect_out[1] = rect_out[2] = rect_out[3] = 0; return; }

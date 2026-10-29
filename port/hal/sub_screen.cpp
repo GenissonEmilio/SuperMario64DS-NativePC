@@ -91,6 +91,7 @@
 #include "ntr/gx.h"       /* ASSET1: gx_coverage for keycover menu pieces */
 #include "hal/menu_compose.h"   /* run menu1 lane HOOK1: the one-screen menu compose layer */
 #include "hal/menu_bigmap.h"    /* run menu1 lane MAP1: Select shows the big map */
+#include "hal/pc_map_ui.h"
 #include "hal/ui_art.h"          /* run hunt8 lane UIMOD1: the HD UI Textures mod lookup */
 #include "hal/gpu_raster.h"      /* SAVEOVL1: the menu layer on the card */
 #include "hal/comms_seam.h"   /* run mg16 lane MP3: touch_ring_index/advance */
@@ -287,7 +288,7 @@ int g_pan_num = 1, g_pan_den = 2;   /* panel size as a fraction of a DS screen *
 int g_pan_w, g_pan_h;               /* the drawn panel, in framebuffer pixels */
 int g_pan_margin = kMargin;         /* what was left of the margin (see below) */
 
-bool g_on = true;
+bool g_on = false;   // PC default: HUD on the game view; map is a deliberate action.
 /* POLISH1A: a DS bottom-screen menu (pause plates, the save screen's choices, game over's CONTINUE / QUIT) is up while no one-screen recipe
    owns it (OneScreenMenus off, or a pause variant no recipe covers): the corner panel is the only place those plates show, so the panel
    is forced on for as long as the menu is up even with the panel option off. Set on the decide side each tick, read on the draw side. */
@@ -3087,7 +3088,7 @@ void hal_sub_screen_init_hw(void *hwnd, int zoom)
 
     g_hwnd = (HWND)hwnd;
     g_zoom = zoom > 0 ? zoom : 1;
-    g_on = env_flag("SM64DS_SUB_PANEL", 1) != 0;
+    g_on = env_flag("SM64DS_SUB_PANEL", 0) != 0;
     /* NO WINDOW, NO INTERACTIVE KEYBOARD -- and this clause is here because
        splitting the function created the case that needs it.
 
@@ -3473,7 +3474,7 @@ void hal_sub_screen_frame_begin(void)
        leaning on the keyboard. The window size is fixed at creation for the
        same reason, so there is nothing for a toggle to fall back to. */
     static int tab_was;
-    if (GetAsyncKeyState_ && !g_headless && !hal_sub_screen_stacked()) {
+    if (std::getenv("SM64DS_LEGACY_PANEL_TOGGLE") && GetAsyncKeyState_ && !g_headless && !hal_sub_screen_stacked()) {
         if (!hal_window_focused()) {
             tab_was = 1;
         } else {
@@ -3932,7 +3933,12 @@ static void menu_pad_seam_impl(void)
         if (back && settings_page_swallow_back()) back = 0;   /* SETPAGEFIX1: the Backspace that is the page's Back is not the ROM's */
         if (back && menu_pause_slide_busy()) back = 0;        /* PAUSE43FIX2: dropped, not queued */
     }
-    menu_bigmap_pad_seam();   /* MAP1: Select shows / hides the big map; the ROM never sees that Select (OneScreenMenus on) */
+    // The scripted host-key reader is the same native action as a window key press; no desktop input is generated.
+    static int map_script_was;
+    const int map_script = port_host_key_script(host_setting_key(HOST_KEY_MAP));
+    if (map_script && !map_script_was) menu_bigmap_request_toggle();
+    map_script_was = map_script;
+    menu_bigmap_pad_seam();   /* Select remains a controller fallback; M and the PC button request the same action. */
     if (!hal_menu_live() || menu_pause_rom_fallback()) {
         /* OneScreenMenus off (or no mod art for the new pause): the ROM's own pause on two screens; its plate cursor and confirm get the keys and the pad */
         const int s0 = seam_slot;
@@ -4573,6 +4579,10 @@ void hal_sub_screen_present(unsigned int *dst, int w, int h)
             menu_prepare_sources(dst, w, h);
             hal_menu_present(dst, w, h, MENU_STAGE_POST_FADE);
         }
+    }
+    if (!hal_sub_screen_stacked() && menu_bigmap_available() && !hal_menu_draw_live()) {
+        ntr::gx_card_settle_because("native PC map control");
+        pc_map_button_draw(dst,w,h,ntr::SCREEN_W,menu_bigmap_up());
     }
 }
 

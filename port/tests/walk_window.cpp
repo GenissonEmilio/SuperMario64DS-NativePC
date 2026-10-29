@@ -414,6 +414,7 @@ static bool winapi_load(void)
 #include "fault_probe.h"
 #include "overlay_font.h"
 #include "hal/host_settings.h"   /* settings.json, the launcher's file */
+#include "hal/menu_bigmap.h"
 extern "C" void host_menu_cursor_sound_flush(void);   /* hal/menu_compose.cpp: one ROM cursor sound a frame at most */
 #include "hal/char_registry.h"    /* CHARSLOT1: custom characters (costumes on the four) */
 #include "hal/char_save.h"        /* CHARSAVE1: the pick survives quitting (save/characters.json) */
@@ -12853,6 +12854,14 @@ static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l)
        and they were always the other way out: they arrive as WM_CLOSE, the
        default handler destroys the window, and WM_DESTROY above posts the quit
        message escape used to post directly. */
+    // Native map controls share the normal window focus and rebind/chat gates above.
+    if (m == WM_KEYDOWN && !(l & (1 << 30))) {
+        if (!menu_on && menu_bigmap_available() && ((int)w == host_setting_key(HOST_KEY_MAP) || ((int)w == VK_ESCAPE && menu_bigmap_up()))) {
+            menu_bigmap_request_toggle();
+            if ((int)w == VK_ESCAPE) key_stale[VK_ESCAPE] = 1;
+            return 0;
+        }
+    }
     switch (m) {
     case WM_DEVICECHANGE:
         /* a controller came or went: the pad backend's worker scans now
@@ -12907,6 +12916,9 @@ static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l)
         }
         return 0;
     case WM_LBUTTONDOWN: {
+        int map_x=0,map_y=0;
+        if (!menu_on && hal_present_client_to_fb((short)LOWORD(l),(short)HIWORD(l),&map_x,&map_y)
+            && menu_bigmap_click(map_x,map_y,ntr::active_w,ntr::active_h)) return 0;
         /* JOINFLOW1: the Joining plate takes the click (BACK cancels the join); nothing reaches the title walk under it */
         if (port_join_plate_up() && port_join_plate_click((short)LOWORD(l), (short)HIWORD(l))) return 0;
         /* CLIENT PIXELS BACK TO FRAMEBUFFER PIXELS, and it is no longer a
@@ -13255,6 +13267,9 @@ static int nofocus_mode(void)
  * keeps. */
 static int host_show_mode(int nofocus)
 {
+    // Offscreen verification keeps the real native renderer and input replay, without displaying a window.
+    if (getenv("SM64DS_PC_VERIFY_HIDDEN") && (getenv("SM64DS_WINDOW_SELFTEST") || getenv("SM64DS_SCENE_FRAMES")))
+        return SW_HIDE;
     int want = -1;
     if (!W.ShowWindow_)
         return -1;      /* no show call available; keep WS_VISIBLE */
@@ -13507,7 +13522,7 @@ static HWND host_window_open(int stacked, HDC *out_hdc, const char *title)
         W.ShowWindow_(hwnd, show);
         fprintf(stderr, "[win] shown with %s%s; this window does not take the "
                 "foreground%s\n",
-                show == SW_SHOWMINNOACTIVE ? "SW_SHOWMINNOACTIVE"
+                show == SW_HIDE ? "SW_HIDE" : show == SW_SHOWMINNOACTIVE ? "SW_SHOWMINNOACTIVE"
                                            : "SW_SHOWNOACTIVATE",
                 nofocus ? " and WS_EX_NOACTIVATE (SM64DS_NO_FOCUS)"
                         : " (the launcher's own STARTUPINFO asked for it)",

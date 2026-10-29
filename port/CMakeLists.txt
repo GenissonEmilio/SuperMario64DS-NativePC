@@ -25659,7 +25659,8 @@ target_sources(smoke_player PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_pa
 # MENU1 / MAP1 (run menu1): Select shows the bottom-screen map big over the picture (hal/menu_bigmap.h). Own block.
 foreach(_tmap1 walk_window walk_window_hires smoke_player)
     target_sources(${_tmap1} PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_bigmap.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_bigmap.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/pc_map_ui.cpp")
 endforeach()
 # MENU1 / STARHOOK1 (run menu1): the star select big-star rect query for mp1 (hal/menu_starsel_api.h). Own block.
 foreach(_tstarhook1 walk_window walk_window_hires smoke_player)

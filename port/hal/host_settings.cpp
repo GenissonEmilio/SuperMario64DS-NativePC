@@ -570,6 +570,7 @@ const BindKey KEY_BIND[HOST_KEY_COUNT] = {
     { "KeyCamZoomOut", 0 },
     { "KeyPartyInvite", 0x42 },   /* B: world party invite / accept */
     { "KeyPartyLeave",  0x4e },   /* N: world party leave (press twice) */
+    { "KeyMap",         0x4d },   /* M: native single-screen map */
 };
 const BindKey PAD_BIND[HOST_PAD_COUNT] = {
     { "PadJump",   0x1000 },      /* A */

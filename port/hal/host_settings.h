@@ -165,6 +165,7 @@ enum {
     HOST_KEY_CAM_CENTER, HOST_KEY_CAM_LEFT, HOST_KEY_CAM_RIGHT, HOST_KEY_CAM_MODE,
     HOST_KEY_CAM_UP, HOST_KEY_CAM_DOWN, HOST_KEY_CAM_ZOOM_IN, HOST_KEY_CAM_ZOOM_OUT,
     HOST_KEY_PARTY_INVITE, HOST_KEY_PARTY_LEAVE,     /* WPARTY2: in-world party invite / accept, leave (hal/world_party.h) */
+    HOST_KEY_MAP,                               /* M: native map panel, separate from DS Select */
     HOST_KEY_COUNT
 };
 enum {

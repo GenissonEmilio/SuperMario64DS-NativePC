@@ -41,6 +41,7 @@ static const SlInfo INFO[] = {
     { "KeyCamZoomOut", SL_KIND_KEY, 0, 255, 0, 0, 1 },
     { "KeyPartyInvite", SL_KIND_KEY, 0, 255, 0x42, 0, 1 },
     { "KeyPartyLeave",  SL_KIND_KEY, 0, 255, 0x4e, 0, 1 },
+    { "KeyMap",         SL_KIND_KEY, 0, 255, 0x4d, 0, 1 },
     /* pads, in HOST_PAD_ order */
     { "PadJump",     SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x1000, 0, 1 },
     { "PadAttack",   SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x2000, 0, 1 },

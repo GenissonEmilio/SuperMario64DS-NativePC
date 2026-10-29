@@ -20,6 +20,10 @@ extern "C" {
 
 int menu_bigmap_pad_seam(void);
 int menu_bigmap_up(void);
+int menu_bigmap_available(void);
+/* Host intent is queued and validated by the game-thread pad seam. No synthetic DS key is sent. */
+void menu_bigmap_request_toggle(void);
+int menu_bigmap_click(int x, int y, int w, int h);
 /* sub: the 256x192 scan-out (0xAARRGGBB, row stride 256); dst: the picture, extent w x h, row stride dst_stride.
    rect_out (4 ints: x0 y0 x1 y1) receives the map's rectangle, frame included. */
 void menu_bigmap_draw(const uint32_t *sub, uint32_t *dst, int w, int h, int dst_stride, int *rect_out);
