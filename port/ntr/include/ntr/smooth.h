@@ -625,6 +625,46 @@ struct SmoothCrackTri {
 int smooth_cracks_on();
 void smooth_crack_tri(const SmoothCrackTri &t);
 
+// ---------------------------------------------------------------------------
+// THE WELD BOOK (SMOOTHWELD1). An edge's curve depends only on its two ends
+// and the two normals the patch hands it there, so two triangles that share an
+// edge draw the same curve exactly when they hand it the same pair. Inside one
+// smooth mesh they do. Where two pieces of a model meet (a belly against a
+// body, a shoe against a leg), the artist gave each piece its own normals at
+// the shared corners, and where one side is left as the DS drew it (flat, kept
+// by the topology book) its edge is a straight line: in both cases the two
+// curves part and the background shows through the seam.
+//
+// The book remembers, per edge of the model's own raw geometry (the two VTX
+// positions, so the record outlives every bone matrix and animation frame),
+// every triangle that has been drawn along it and how. A triangle about to be
+// curved then draws each of its edges by the edge's rule, which every side
+// computes from the same record and so agrees on bit for bit:
+//   * a side drawn straight          -> the edge is straight on every side
+//                                       (the curved side bends inside only);
+//   * normals more than 45 degrees apart at an end (the topology book's
+//     crease angle)                  -> a real crease: straight on every side;
+//   * normals that differ less       -> both sides use one normal per end,
+//                                       the sum of every side's, in the
+//                                       order of the sides' ids;
+//   * normals that agree exactly     -> left alone (every edge inside a mesh).
+// Corners never move: only the edge's inner control points change. A triangle
+// none of whose edges needs a rule returns 0 and is drawn exactly as before.
+// SM64DS_SMOOTH_WELD=0 turns the book off.
+// ---------------------------------------------------------------------------
+int smooth_weld_on();
+enum { SMOOTH_WELD_STRAIGHT = 0, SMOOTH_WELD_CURVED = 1 };
+// Enter one triangle's side of its three edges and, for a curved one, say how
+// its edges are to be drawn. `en` is the six edge normals the triangle would
+// curve with (b210, b120, b021, b012, b201, b102, in the raw model space of the
+// corner each one sits at: 0,1,1,2,0,2); null for a straight triangle, or for a
+// plain curved one (the authored normals are decoded from `nrm`). On a return
+// of 1, `out` holds the six normals to draw with, in the same spaces, a zero
+// vector meaning "this edge is straight", and `*id` a number that changes when
+// they do (for the shape store's key).
+int smooth_weld(const int16_t p[3][3], const uint32_t nrm[3], int kind,
+                const float (*en)[3], float out[6][3], uint32_t *id);
+
 }  // namespace ntr
 
 #endif  // NTR_SMOOTH_H

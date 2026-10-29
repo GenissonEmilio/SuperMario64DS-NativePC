@@ -1595,7 +1595,7 @@ bool store_eligible(const GxRaw &ra, const GxRaw &rb, const GxRaw &rc) {
    through to building the grid in view space. */
 int smooth_try_store(const SmoothVertex s[3], const GxRaw &ra, const GxRaw &rb,
                      const GxRaw &rc, int tf, const SmoothPolicy &pol,
-                     int prof, const SmoothOverride *ov = 0) {
+                     int prof, const SmoothOverride *ov = 0, uint32_t keyx = 0) {
     const Mat *xform = mtx_for_gen(rc.mgen);
     if (!xform) {
         smooth_store_count(SMOOTH_STORE_NONSIM, 1);
@@ -1617,7 +1617,7 @@ int smooth_try_store(const SmoothVertex s[3], const GxRaw &ra, const GxRaw &rb,
     }
     /* A patch built from the topology book's edge normals is a different
        patch from the one the authored normals make for the same corners. */
-    key.level = static_cast<uint32_t>(pol.level) | (ov ? 0x100u : 0u);
+    key.level = static_cast<uint32_t>(pol.level) | (ov ? 0x100u : 0u) | keyx;
 
     const long long t_sub = prof ? smooth_prof_ticks() : 0;
     const long long t_fd = prof ? smooth_prof_ticks() : 0;
@@ -1700,6 +1700,30 @@ struct CkNote { int curved, why, book, tf; float en[6][3]; };
 CkNote g_ck;
 inline void ck_straight(int why) { g_ck.curved = 0; g_ck.why = why; }
 
+/* THE WELD BOOK's normals (ntr/smooth.h) into view space: each slot by the
+   matrix its own corner rode, so a seam stitched across two bones turns each
+   end with that end's bone. A zero slot is a straight edge and stays zero.
+   False when a corner's matrix has aged out of the ring. */
+bool weld_view_en(const float wo[6][3], const GxRaw *const r[3], float en[6][3]) {
+    static const int corner[6] = {0, 1, 1, 2, 0, 2};
+    for (int i = 0; i < 6; ++i) {
+        if (wo[i][0] == 0.0f && wo[i][1] == 0.0f && wo[i][2] == 0.0f) {
+            en[i][0] = en[i][1] = en[i][2] = 0.0f;
+            continue;
+        }
+        const Mat *m = mtx_for_gen(r[corner[i]]->mgen);
+        if (!m) return false;
+        const Vec4 v = mul(Vec4{wo[i][0], wo[i][1], wo[i][2], 0.0f}, *m);
+        const float l = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+        if (l <= 1e-20f) return false;
+        en[i][0] = v.x / l; en[i][1] = v.y / l; en[i][2] = v.z / l;
+    }
+    return true;
+}
+/* The store key's share of a weld: its id in the bits above the level and
+   the book's flag, so a triangle whose edges are welded keeps its own grid. */
+inline uint32_t weld_keyx(uint32_t id) { return 0x200u | (id << 12); }
+
 int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
                const GxRaw &ra, const GxRaw &rb, const GxRaw &rc) {
     const SmoothPolicy &pol = smooth_policy();
@@ -1739,6 +1763,17 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
         s[i].u = in[i]->u; s[i].v = in[i]->v;
         s[i].color = in[i]->color;
     }
+
+    /* THE WELD BOOK sees every triangle that gets this far, curved or not:
+       a straight side is what tells its curved neighbour to straighten the
+       edge they share. */
+    const int weld = smooth_weld_on();
+    const int16_t wp[3][3] = {{ra.x, ra.y, ra.z}, {rb.x, rb.y, rb.z},
+                              {rc.x, rc.y, rc.z}};
+    const uint32_t wn[3] = {ra.nrm, rb.nrm, rc.nrm};
+    const GxRaw *const wr[3] = {&ra, &rb, &rc};
+    float wo[6][3];
+    uint32_t wid = 0;
 
     /* STEP-0 PROFILER (SM64DS_SMOOTH_PROF; ntr/smooth.h has the contract).
        Off, this is one compare on a cached int inside a path that only runs
@@ -1812,6 +1847,7 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
                 if (tf > 1) smooth_topo_count(ov.cls == SMOOTH_CLASS_FACET
                                               ? SMOOTH_TOPO_FACET : SMOOTH_TOPO_FLATKEEP);
                 ck_straight(ov.cls == SMOOTH_CLASS_FACET ? SMOOTH_CKWHY_FACET : SMOOTH_CKWHY_BOOKFLAT);
+                if (weld) smooth_weld(wp, wn, SMOOTH_WELD_STRAIGHT, 0, wo, &wid);
                 return 0;
             }
             int level = pol.level;
@@ -1821,6 +1857,11 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
             smooth_count(SMOOTH_COUNT_SUBDIVIDED, 1);
             if (!g_ip_replaying) smooth_count(SMOOTH_COUNT_DEMAND, 1);
             smooth_topo_count(ov.cls == SMOOTH_CLASS_FAN ? SMOOTH_TOPO_FAN : SMOOTH_TOPO_BOX);
+            uint32_t okeyx = 0;
+            if (weld && smooth_weld(wp, wn, SMOOTH_WELD_CURVED, ov.en, wo, &wid)) {
+                std::memcpy(ov.en, wo, sizeof ov.en);
+                okeyx = weld_keyx(wid);
+            }
             if (smooth_cracks_on()) {
                 const Mat *cm = mtx_for_gen(rc.mgen);
                 g_ck.curved = 1; g_ck.book = 1; g_ck.tf = otf;
@@ -1833,7 +1874,7 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
                 }
             }
             if (!smooth_live_mode() && store_eligible(ra, rb, rc) &&
-                smooth_try_store(s, ra, rb, rc, otf, pol, prof, &ov))
+                smooth_try_store(s, ra, rb, rc, otf, pol, prof, &ov, okeyx))
                 return 1;
             /* The stored path would not take it (a normal latched under an
                older matrix, a matrix that has aged out of the ring): build
@@ -1843,6 +1884,10 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
             if (!mm) return 0;
             float en[6][3];
             for (int i = 0; i < 6; ++i) {
+                if (okeyx && ov.en[i][0] == 0.0f && ov.en[i][1] == 0.0f && ov.en[i][2] == 0.0f) {
+                    en[i][0] = en[i][1] = en[i][2] = 0.0f;     /* a straight edge */
+                    continue;
+                }
                 const Vec4 v = mul(Vec4{ov.en[i][0], ov.en[i][1], ov.en[i][2], 0.0f}, *mm);
                 const float l = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
                 if (l <= 1e-20f) return 0;
@@ -1863,12 +1908,14 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
         if (smooth_topo_cross(tp, ra.mgen, rb.mgen, rc.mgen)) {
             smooth_topo_count(SMOOTH_TOPO_FLATKEEP);
             ck_straight(SMOOTH_CKWHY_CROSSKEEP);
+            if (weld) smooth_weld(wp, wn, SMOOTH_WELD_STRAIGHT, 0, wo, &wid);
             return 0;
         }
     }
     if (tf <= 1) {
         smooth_counters_for(why);
         ck_straight(why);
+        if (weld) smooth_weld(wp, wn, SMOOTH_WELD_STRAIGHT, 0, wo, &wid);
         return 0;
     }
 
@@ -1881,6 +1928,34 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
        the level the picture is drawn at (the floor is 1), so this is a
        property of the scene. */
     if (!g_ip_replaying) smooth_count(SMOOTH_COUNT_DEMAND, 1);
+
+    /* THE WELD (ntr/smooth.h): an edge this triangle shares with a piece
+       whose normals differ there, or with a side drawn straight, is drawn by
+       the edge's own rule, the same from both sides. Corners stay put. */
+    if (weld && ra.nrm && rb.nrm && rc.nrm &&
+        smooth_weld(wp, wn, SMOOTH_WELD_CURVED, 0, wo, &wid)) {
+        float ven[6][3];
+        if (smooth_cracks_on()) {
+            g_ck.book = 1;
+            if (!weld_view_en(wo, wr, g_ck.en)) g_ck.book = 0;
+        }
+        if (!smooth_live_mode() && store_eligible(ra, rb, rc)) {
+            SmoothOverride wov;
+            wov.cls = SMOOTH_CLASS_NONE;
+            wov.flat = 0;
+            std::memcpy(wov.en, wo, sizeof wov.en);
+            if (smooth_try_store(s, ra, rb, rc, tf, pol, prof, &wov, weld_keyx(wid)))
+                return 1;
+        }
+        if (weld_view_en(wo, wr, ven)) {
+            smooth_store_count(SMOOTH_STORE_LIVE, 1);
+            float pts[SMOOTH_MAX_GRID * 3];
+            smooth_grid_positions_edges(s[0], s[1], s[2], ven, tf, pts);
+            smooth_emit_grid(pts, tf, s, 0);
+            return 1;
+        }
+        g_ck.book = 0;
+    }
 
     /* THE GEOMETRY is what the store remembers, and this is where a triangle
        that has been seen before costs a lookup instead of a patch. */

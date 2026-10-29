@@ -2542,4 +2542,262 @@ void topo_report(uint64_t frame) {
 }
 }  // namespace
 
+// ---------------------------------------------------------------------------
+// THE WELD BOOK (smooth.h has the contract). Two fixed tables and nothing
+// allocated per frame: the edges, open-addressed on the raw edge, and a
+// direct-mapped front on the raw triangle that keeps each triangle's answer
+// until one of its three edges changes. In a settled scene a triangle costs
+// one probe of the front and three version compares.
+// ---------------------------------------------------------------------------
+namespace {
+
+int g_weld_on = -1;
+
+struct WeldSide {
+    uint32_t id;       // the triangle (its sorted corners and normals)
+    uint32_t kind;     // SMOOTH_WELD_*
+    float n[2][3];     // its normal at the edge's low end, at its high end
+};
+enum { WELD_SIDES = 4 };
+struct WeldEdge {
+    int16_t k[6];      // low end, high end (pos_gt order)
+    uint16_t used;
+    uint16_t nside;
+    uint32_t ver;
+    WeldSide side[WELD_SIDES];
+};
+enum { WELD_EDGE_N = 1 << 16, WELD_PROBE = 64 };
+WeldEdge *g_weld_edges = 0;
+uint32_t g_weld_count = 0;
+uint32_t g_weld_gen = 1;           // bumped whenever the edge table is emptied
+
+struct WeldTri {
+    int16_t p[9];
+    uint32_t n[3];
+    uint32_t kind, enh, gen;
+    int32_t slot[3];
+    uint32_t ver[3];
+    int result;
+    uint32_t id;
+    float out[6][3];
+};
+enum { WELD_TRI_N = 1 << 15 };
+WeldTri *g_weld_tris = 0;
+
+inline uint32_t weld_fnv(const void *p, size_t n, uint32_t h = 2166136261u) {
+    const unsigned char *b = (const unsigned char *)p;
+    for (size_t i = 0; i < n; ++i) { h ^= b[i]; h *= 16777619u; }
+    return h;
+}
+
+void weld_clear() {
+    for (int i = 0; i < WELD_EDGE_N; ++i) g_weld_edges[i].used = 0;
+    g_weld_count = 0;
+    ++g_weld_gen;
+}
+
+// The edge's slot, found or made. -1 when the table is full around it.
+int weld_slot(const int16_t lo[3], const int16_t hi[3]) {
+    int16_t k[6] = {lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]};
+    uint32_t h = weld_fnv(k, sizeof k) & (WELD_EDGE_N - 1);
+    for (int q = 0; q < WELD_PROBE; ++q) {
+        WeldEdge &e = g_weld_edges[(h + q) & (WELD_EDGE_N - 1)];
+        if (!e.used) {
+            memcpy(e.k, k, sizeof k);
+            e.used = 1; e.nside = 0; e.ver = 1;
+            ++g_weld_count;
+            return (int)((h + q) & (WELD_EDGE_N - 1));
+        }
+        if (memcmp(e.k, k, sizeof k) == 0) return (int)((h + q) & (WELD_EDGE_N - 1));
+    }
+    return -1;
+}
+
+// The corners of edge k and the slots of the six edge normals they own.
+const int kWeldCa[3] = {0, 1, 2}, kWeldCb[3] = {1, 2, 0};
+const int kWeldSa[3] = {0, 2, 5}, kWeldSb[3] = {1, 3, 4};
+
+inline bool weld_same(const float a[3], const float b[3]) {
+    return a[0] == b[0] && a[1] == b[1] && a[2] == b[2];
+}
+
+}  // namespace
+
+int smooth_weld_on() {
+    if (g_weld_on < 0) {
+        const char *e = getenv("SM64DS_SMOOTH_WELD");
+        g_weld_on = (e && e[0] == '0') ? 0 : 1;
+    }
+    return g_weld_on;
+}
+
+int smooth_weld(const int16_t p[3][3], const uint32_t nrm[3], int kind,
+                const float (*en)[3], float out[6][3], uint32_t *id) {
+    if (!g_weld_edges) {
+        g_weld_edges = (WeldEdge *)calloc(WELD_EDGE_N, sizeof(WeldEdge));
+        g_weld_tris = (WeldTri *)calloc(WELD_TRI_N, sizeof(WeldTri));
+        if (!g_weld_edges || !g_weld_tris) { g_weld_on = 0; return 0; }
+    }
+    /* The six normals this triangle would curve with, raw model space, unit. */
+    float in[6][3];
+    uint32_t enh = 0;
+    if (kind == SMOOTH_WELD_CURVED) {
+        if (en) {
+            memcpy(in, en, sizeof in);
+            enh = weld_fnv(in, sizeof in) | 1u;
+        } else {
+            static const int corner[6] = {0, 1, 1, 2, 0, 2};
+            float n[3][3];
+            for (int c = 0; c < 3; ++c) {
+                const int32_t a = static_cast<int32_t>(nrm[c] << 22) >> 22;
+                const int32_t b = static_cast<int32_t>((nrm[c] >> 10) << 22) >> 22;
+                const int32_t d = static_cast<int32_t>((nrm[c] >> 20) << 22) >> 22;
+                const float v[3] = {a / 512.0f, b / 512.0f, d / 512.0f};
+                const float l = sqrtf(v_dot(v, v));
+                const float il = l > 1e-12f ? 1.0f / l : 0.0f;
+                n[c][0] = v[0] * il; n[c][1] = v[1] * il; n[c][2] = v[2] * il;
+            }
+            for (int s = 0; s < 6; ++s) for (int q = 0; q < 3; ++q) in[s][q] = n[corner[s]][q];
+        }
+    }
+
+    /* THE FRONT: this triangle's answer, while none of its edges has changed. */
+    uint32_t th = weld_fnv(&p[0][0], 18);
+    th = weld_fnv(nrm, 12, th);
+    WeldTri &ft = g_weld_tris[(th ^ (uint32_t)kind ^ enh) & (WELD_TRI_N - 1)];
+    if (ft.gen == g_weld_gen && ft.kind == (uint32_t)kind && ft.enh == enh &&
+        memcmp(ft.p, &p[0][0], sizeof ft.p) == 0 && memcmp(ft.n, nrm, sizeof ft.n) == 0) {
+        bool ok = true;
+        for (int k = 0; k < 3 && ok; ++k)
+            if (ft.slot[k] >= 0 && g_weld_edges[ft.slot[k]].ver != ft.ver[k]) ok = false;
+        if (ok) {
+            if (ft.result) { memcpy(out, ft.out, sizeof ft.out); *id = ft.id; }
+            return ft.result;
+        }
+    }
+
+    if (g_weld_count > (uint32_t)(WELD_EDGE_N / 4 * 3)) weld_clear();
+
+    /* The side's id: its corners in a fixed order and their normals, so the
+       same triangle has the same id whichever way the list walks it. */
+    uint32_t sid;
+    {
+        int ord[3];
+        sort3(p, ord);
+        sid = 2166136261u;
+        for (int i = 0; i < 3; ++i) {
+            sid = weld_fnv(p[ord[i]], 6, sid);
+            sid = weld_fnv(&nrm[ord[i]], 4, sid);
+        }
+    }
+
+    /* ENTER the three sides. */
+    int slot[3];
+    int lo_is_a[3];
+    for (int k = 0; k < 3; ++k) {
+        const int ca = kWeldCa[k], cb = kWeldCb[k];
+        slot[k] = -1;
+        lo_is_a[k] = 1;
+        if (same_pos(p[ca], p[cb])) continue;
+        lo_is_a[k] = pos_gt(p[ca], p[cb]) ? 0 : 1;
+        const int16_t *lo = lo_is_a[k] ? p[ca] : p[cb];
+        const int16_t *hi = lo_is_a[k] ? p[cb] : p[ca];
+        const int s = weld_slot(lo, hi);
+        /* a full neighbourhood: empty the book (every answer kept against it
+           goes with the generation) and draw this one as planned */
+        if (s < 0) { weld_clear(); return 0; }
+        slot[k] = s;
+        WeldEdge &e = g_weld_edges[s];
+        WeldSide me;
+        me.id = sid;
+        me.kind = (uint32_t)kind;
+        memset(me.n, 0, sizeof me.n);
+        if (kind == SMOOTH_WELD_CURVED) {
+            const float *na = in[kWeldSa[k]], *nb = in[kWeldSb[k]];
+            const float *nl = lo_is_a[k] ? na : nb, *nh = lo_is_a[k] ? nb : na;
+            for (int q = 0; q < 3; ++q) { me.n[0][q] = nl[q]; me.n[1][q] = nh[q]; }
+        }
+        int j = 0;
+        while (j < e.nside && e.side[j].id != sid) ++j;
+        if (j < e.nside) {
+            if (memcmp(&e.side[j], &me, sizeof me) != 0) { e.side[j] = me; ++e.ver; }
+        } else if (e.nside < WELD_SIDES) {
+            e.side[e.nside++] = me;
+            ++e.ver;
+        }
+    }
+
+    /* DECIDE each edge, the same way from every side of it. */
+    int result = 0;
+    if (kind == SMOOTH_WELD_CURVED) {
+        memcpy(out, in, sizeof in);
+        for (int k = 0; k < 3; ++k) {
+            if (slot[k] < 0) continue;
+            const WeldEdge &e = g_weld_edges[slot[k]];
+            if (e.nside < 2) continue;
+            bool straight = false;
+            for (int j = 0; j < e.nside; ++j)
+                if (e.side[j].kind != SMOOTH_WELD_CURVED) straight = true;
+            float w[2][3];
+            bool weld[2] = {false, false};
+            for (int end = 0; end < 2 && !straight; ++end) {
+                bool agree = true;
+                for (int j = 1; j < e.nside; ++j)
+                    if (!weld_same(e.side[j].n[end], e.side[0].n[end])) agree = false;
+                if (agree) continue;
+                for (int a = 0; a < e.nside && !straight; ++a)
+                    for (int b = a + 1; b < e.nside; ++b)
+                        if (v_dot(e.side[a].n[end], e.side[b].n[end]) < (float)kCreaseCos) {
+                            straight = true; break;
+                        }
+                if (straight) break;
+                /* the sum in the order of the sides' ids: every side adds
+                   the same floats in the same order and gets the same bits */
+                int ord[WELD_SIDES];
+                for (int j = 0; j < e.nside; ++j) ord[j] = j;
+                for (int a = 1; a < e.nside; ++a)
+                    for (int b = a; b > 0 && e.side[ord[b]].id < e.side[ord[b - 1]].id; --b) {
+                        const int t = ord[b]; ord[b] = ord[b - 1]; ord[b - 1] = t;
+                    }
+                float sum[3] = {0.0f, 0.0f, 0.0f};
+                for (int j = 0; j < e.nside; ++j)
+                    for (int q = 0; q < 3; ++q) sum[q] += e.side[ord[j]].n[end][q];
+                const float l = sqrtf(v_dot(sum, sum));
+                if (l < 1e-6f) { straight = true; break; }
+                for (int q = 0; q < 3; ++q) w[end][q] = sum[q] / l;
+                weld[end] = true;
+            }
+            const int sa = kWeldSa[k], sb = kWeldSb[k];
+            if (straight) {
+                memset(out[sa], 0, sizeof out[sa]);
+                memset(out[sb], 0, sizeof out[sb]);
+                result = 1;
+                continue;
+            }
+            /* end 0 is the low end: corner a when lo_is_a */
+            const int ea = lo_is_a[k] ? 0 : 1, eb = 1 - ea;
+            if (weld[ea]) { for (int q = 0; q < 3; ++q) out[sa][q] = w[ea][q]; result = 1; }
+            if (weld[eb]) { for (int q = 0; q < 3; ++q) out[sb][q] = w[eb][q]; result = 1; }
+        }
+    }
+
+    /* Keep the answer against the edges' versions as they stand now. */
+    memcpy(ft.p, &p[0][0], sizeof ft.p);
+    memcpy(ft.n, nrm, sizeof ft.n);
+    ft.kind = (uint32_t)kind;
+    ft.enh = enh;
+    ft.gen = g_weld_gen;
+    for (int k = 0; k < 3; ++k) {
+        ft.slot[k] = slot[k];
+        ft.ver[k] = slot[k] >= 0 ? g_weld_edges[slot[k]].ver : 0;
+    }
+    ft.result = result;
+    if (result) {
+        memcpy(ft.out, out, sizeof ft.out);
+        ft.id = weld_fnv(out, sizeof ft.out);
+        *id = ft.id;
+    }
+    return result;
+}
+
 }  // namespace ntr
