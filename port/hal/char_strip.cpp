@@ -463,6 +463,7 @@ unsigned port_char_strip_frame(const struct SpInput *in0)
             g_last_hover = s;
             if (s >= 0) { host_menu_cursor_sound(); fprintf(stderr, "[strip] hover slot %d: %s\n", s, g_slot[s].label); }
         }
+        if (mclick) fprintf(stderr, "[strip] click at %d,%d: %s\n", mx, my, s >= 0 ? g_slot[s].label : (on_tab ? "the tab" : (inside ? "the panel" : "outside")));
         if (mclick && s >= 0) {
             g_cursor = s;
             activate(s);
