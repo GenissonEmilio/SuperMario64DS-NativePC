@@ -1943,7 +1943,10 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
             int level = pol.level;
             if (level > SMOOTH_MAX_LEVEL) level = SMOOTH_MAX_LEVEL;
             const int otf = 1 << level;
-            if (otf <= 1) return 0;
+            if (otf <= 1) {
+                if (weld) weld_call(wp, wn, SMOOTH_WELD_STRAIGHT, 0, wo, &wid);
+                return 0;
+            }
             smooth_count(SMOOTH_COUNT_SUBDIVIDED, 1);
             if (!g_ip_replaying) smooth_count(SMOOTH_COUNT_DEMAND, 1);
             smooth_topo_count(ov.cls == SMOOTH_CLASS_FAN ? SMOOTH_TOPO_FAN : SMOOTH_TOPO_BOX);
@@ -1970,8 +1973,18 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
                older matrix, a matrix that has aged out of the ring): build
                the patch in view space, turning the book's model-space edge
                normals by the matrix each corner rode. */
+            /* SMOOTHWELD1: an in-between's blended matrix is only nearly a
+               similarity; the ring's matrix serves here as it does for the
+               weld, so a box model is not drawn flat in the in-betweens only. */
             const Mat *mm = mtx_for_gen(rc.mgen);
-            if (!mm) return 0;
+            if (!mm && weld) {
+                const int ms = static_cast<int>(rc.mgen & (MTX_RING - 1));
+                if (g_mtx_ring_gen[ms] == rc.mgen) mm = &g_mtx_ring[ms];
+            }
+            if (!mm) {
+                if (weld) weld_call(wp, wn, SMOOTH_WELD_STRAIGHT, 0, wo, &wid);
+                return 0;
+            }
             float en[6][3];
             for (int i = 0; i < 6; ++i) {
                 if (okeyx && ov.en[i][0] == 0.0f && ov.en[i][1] == 0.0f && ov.en[i][2] == 0.0f) {

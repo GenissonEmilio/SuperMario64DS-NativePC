@@ -2820,6 +2820,11 @@ int weld_impl(const int16_t p[3][3], const uint32_t nrm[3], int kind,
             sid = weld_fnv(p[ord[i]], 6, sid);
             sid = weld_fnv(&nrm[ord[i]], 4, sid);
         }
+        /* the kind is part of the side: one raw triangle drawn twice in a
+           picture, once curved and once left flat (a menu's mirrored copy, an
+           in-between whose matrix the book refused), is two sides, and the
+           edge then stays straight for both instead of flipping between them */
+        sid = weld_fnv(&kind, sizeof kind, sid);
     }
 
     /* ENTER the three sides. */
@@ -2864,6 +2869,16 @@ int weld_impl(const int16_t p[3][3], const uint32_t nrm[3], int kind,
             ++e.ver;
             ++g_weld_epoch;
             ++g_ws_overflow;
+            {   /* SM64DS_SMOOTH_WELD_STATS: the first few crowded edges, for the report */
+                static int said = 0;
+                if (getenv("SM64DS_SMOOTH_WELD_STATS") && said < 12) {
+                    ++said;
+                    fprintf(stderr, "[smoothweld] crowded edge %d,%d,%d/%d,%d,%d sides", e.k[0], e.k[1], e.k[2], e.k[3], e.k[4], e.k[5]);
+                    for (int q = 0; q < e.nside; ++q) fprintf(stderr, " %08x/k%u", e.side[q].id, e.side[q].kind);
+                    fprintf(stderr, " new %08x/k%d tri %d,%d,%d %d,%d,%d %d,%d,%d nrm %08x %08x %08x\n", sid, kind,
+                            p[0][0], p[0][1], p[0][2], p[1][0], p[1][1], p[1][2], p[2][0], p[2][1], p[2][2], nrm[0], nrm[1], nrm[2]);
+                }
+            }
         }
     }
 
