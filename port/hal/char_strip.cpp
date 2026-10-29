@@ -185,8 +185,18 @@ double g_sl_from, g_sl_to, g_sl_t0;
 int g_mouse_open;          /* the pointer opened it (it closes when the pointer leaves) */
 int g_tab_hover;           /* the pointer is on the tab */
 
+#ifndef PORT_ROM_CLEAN
+/* SM64DS_CHARPANEL_CLOCK_MS=<ms>: proof rows only. The slide's clock is a picture count (each picture the panel is drawn on is <ms> later
+   than the one before), so a picture dump, which slows the game far below the display rate, still shows the slide picture by picture as a
+   display at 1000 / <ms> pictures a second would. */
+double g_fake_step = -1.0, g_fake_now = 1000.0;
+#endif
 double now_ms(void)
 {
+#ifndef PORT_ROM_CLEAN
+    if (g_fake_step < 0.0) { const char *e = getenv("SM64DS_CHARPANEL_CLOCK_MS"); g_fake_step = e ? atof(e) : 0.0; }
+    if (g_fake_step > 0.0) return g_fake_now;
+#endif
     return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
@@ -509,6 +519,9 @@ void port_char_strip_panel_draw(uint32_t *px, int stride, int w, int h)
     g_pw = w;
     g_ph = h;
     if (!g_begun) { g_begun = 1; cdskin_begin(); }
+#ifndef PORT_ROM_CLEAN
+    if (g_fake_step > 0.0) g_fake_now += g_fake_step;
+#endif
     const double t = now_ms(), open = slide_at(t);
     const CpGeom gm = geom_at(open);
 #ifndef PORT_ROM_CLEAN
