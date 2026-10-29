@@ -196,6 +196,9 @@ struct MenuLayout { int w, h, unum, uden, canvas_w; /* unit = h/192 reduced; can
                     /* FACE2 (appended): save the composed picture after this frame's pieces are drawn (the snapshot a snap piece draws) */
                     uint8_t snap_save;
                     uint8_t key_sentinel;
+                    /* LOGOFADE1 (appended): glide_on = piece glide_piece (placed in host pixels, lden) glides between ticks: a picture between ticks
+                       draws it a of the way (hal_menu_set_relift_alpha) from glide_from, its rect on the tick before, to its own fx, fy, fw, fh */
+                    uint8_t glide_on; uint8_t glide_piece; short glide_from[4];
                     int wz; };                     /* MENUS093E: permille the page behind the touch piece is zoomed by about the canvas centre (a wide window's file pages), 0 = none: a touch that is not on a hotspot is the point of the ZOOMED page, so the water's ripple (the ROM places it at the touch) lands under the pointer */       /* MENUS093E: key_backdrop pieces key a sentinel backdrop, not palette entry 0 (see hal_menu_key_sentinel) */
 
 enum { MENU_DRV_NATIVE = 0, MENU_DRV_ROM_CURSOR = 1, MENU_DRV_TOUCH = 2, MENU_DRV_MIXED = 3 };
@@ -422,6 +425,7 @@ int  hal_menu_interp_mode(void);                /* MENUFOLD1: SM64DS_MENU_INTERP
 int  hal_menu_relift_why(void);                 /* MENUINTERP2: 0 = ok, else 1 mode/fallback, 2 stage or the drawing page's held frame (snap_save) */
 void hal_menu_relift_dump(void);                /* MENUINTERP2 debug: one trace line of the bound layout's pieces */
 void hal_menu_present_relift(uint32_t *dst, int w, int h, int stage);   /* MENUINTERP2: hal_menu_present for a picture between ticks */
+void hal_menu_set_relift_alpha(double a);      /* ARROWSLOW1: the next re-draws between ticks are a of the way from the tick before to this tick (bob pieces) */
 int  hal_menu_key_sentinel(void);               /* MENUS093E: the bound layout wants its masked engine-B planes drawn over a sentinel backdrop (exact key_backdrop) */
 int  hal_menu_needs_picsnap(void);              /* MENUINTERP2: the tick must keep the picture as the menu found it for a re-draw between ticks */
 int  hal_menu_relift_ok(void);                  /* MENUINTERP2: a tick the gate snaps may still blend if every in-between re-draws the menu on its own 3D picture (hal_menu_relift) */

@@ -1061,6 +1061,7 @@ int g_snap_w, g_snap_h;
    drew them from, i.e. the held frame as it stood before this tick's own save. g_snap_old is that, kept when the tick saves. */
 std::vector<uint32_t> g_snap_old;
 int g_snap_old_valid, g_in_relift;
+static double g_relift_alpha = 1.0;      /* ARROWSLOW1: the place between ticks of the pictures hal_menu_present_relift draws next (a bob piece's dest y follows it) */
 
 void snap_save(const uint32_t *dst, int w, int h)
 {
@@ -2436,6 +2437,20 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
         }
         if (again) { menu_layout_dest(&D.L); amended = 1; }
     }
+    /* LOGOFADE1: the glide piece (the intro's big logo on its trip to the top left) is drawn at this picture's own place: the tick's own
+       picture at its fx, fy, fw, fh, a picture between ticks a of the way from the tick before (g_relift_alpha, ARROWSLOW1's fraction).
+       Set from the piece every picture, so the bound layout's rect is never left at an in-between's place. */
+    if (D.L.glide_on && D.L.glide_piece < D.L.np) {
+        const MenuPiece &P = D.L.p[D.L.glide_piece];
+        const double a = g_in_relift ? g_relift_alpha : 1.0;
+        const int to[4] = { P.fx, P.fy, P.fw, P.fh };
+        int *d = D.L.dest[D.L.glide_piece];
+        for (int k = 0; k < 4; ++k) d[k] = D.L.glide_from[k] + (int)floor((double)(to[k] - D.L.glide_from[k]) * a + 0.5);
+#ifndef PORT_ROM_CLEAN
+        { static const int tr = getenv("SM64DS_LF1_TRACE") ? 1 : 0;     /* LOGOFADE1 proof instrument: the logo's rect on every picture */
+          if (tr) fprintf(stderr, "[lf1-glide] %s a=%.4f rect %d,%d %dx%d\n", g_in_relift ? "between" : "tick", a, d[0], d[1], d[2], d[3]); }
+#endif
+    }
     if (D.L.backdrop == MENU_BACKDROP_DIM_AUTO && S && !S->rom_dimming) menu_dim(dst, w, h, 8);
     {
         /* ASSET4 measurement (SM64DS_MENU_COVBBOX=1): the 3D coverage bounding box per frame in lower-screen DS pixels, the
@@ -2507,6 +2522,7 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
 
 /* MENUINTERP2: the same draw for a picture between ticks (see hal_menu_relift_ok). Never saves the held frame, draws held-frame
    pieces from the one this tick drew from. */
+void hal_menu_set_relift_alpha(double a) { g_relift_alpha = a < 0.0 ? 0.0 : a > 1.0 ? 1.0 : a; }
 void hal_menu_present_relift(uint32_t *dst, int w, int h, int stage)
 {
     g_in_relift = 1;

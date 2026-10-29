@@ -1580,7 +1580,16 @@ void build_main_pc(MenuLayout *L, bool intro)
             lg.bg = 1; lg.hostimg = MENU_IMG_LOGO; lg.nofade = 1; lg.alpha = (uint8_t)(big_a >= 255 ? 0 : big_a);
             lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
             lg.fx = (short)(fx0 + (int)((float)(fx1 - fx0) * mv)); lg.fy = (short)(fy0 + (int)((float)(fy1 - fy0) * mv));
-            menu_add_piece(L, lg);
+            const int ibig = menu_add_piece(L, lg);
+            /* LOGOFADE1: on its trip the logo glides on every picture: the present draws a picture between ticks part of the way from its rect on
+               the tick before (the same smoothstep one head_t earlier) to this tick's (MenuLayout glide, ARROWSLOW1's in-between fraction) */
+            if (c.mode == CH_INTRO && !c.skip && c.head_t >= 1 && c.head_t < CH_LOGO_MOVE && ibig >= 0) {
+                const float mp = smooth01((float)(c.head_t - 1) / (float)CH_LOGO_MOVE);
+                const int dhp = dhb + (int)((float)(dhs - dhb) * mp), dwp = (int)((long long)dhp * iw / ih);
+                L->glide_on = 1; L->glide_piece = (uint8_t)ibig;
+                L->glide_from[0] = (short)(fx0 + (int)((float)(fx1 - fx0) * mp)); L->glide_from[1] = (short)(fy0 + (int)((float)(fy1 - fy0) * mp));
+                L->glide_from[2] = (short)dwp; L->glide_from[3] = (short)dhp;
+            }
         }
         if (small_a > 0) {
             const int lh = ctune(2, 40), mx = ctune(3, 6), my = ctune(4, 6);
