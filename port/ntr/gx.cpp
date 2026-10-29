@@ -9224,6 +9224,226 @@ int32_t ip_lerp(uint32_t a, uint32_t b, double t) {
     return (int32_t)(v < 0 ? v - 0.5 : v + 0.5);
 }
 
+/* INTERPTURN1: a matrix that turns a lot in one tick. The words of two
+   rotations blended one by one are not a rotation: halfway between facing +x
+   and facing -x the 3x3 part is close to zero along the turn, so a player who
+   turned round in one tick was drawn as a sheet seen edge on (a thin dark
+   line: the normals shrink with it) in the pictures between the two ticks.
+   Such a pair is split into a turn and a stretch (M = S U, S symmetric, U a
+   rotation; the DS matrices carry scale and squash in S), U is blended along
+   the shortest arc, S and the translation word by word, and the product is
+   rebuilt. A pair whose three rows each turned less than 2 degrees in the
+   tick keeps the word blend (what every picture used before): its shrink is
+   1 - cos(1 degree) at most, under a tenth of a pixel at the edge of a
+   1364-pixel picture, and a still scene stays bit for bit what it was.
+   SM64DS_IP_ROTBLEND=0 is the old blend everywhere, for a measurement;
+   SM64DS_IP_ROTBLEND_DEG moves the threshold; SM64DS_IP_ROTBLEND_LOG=1
+   prints, a picture at a time, how many matrices took each path. */
+int ip_rot_mode() {
+    static int m = -1;
+    if (m < 0) { const char *e = getenv("SM64DS_IP_ROTBLEND"); m = (e && e[0] == '0') ? 0 : 1; }
+    return m;
+}
+double ip_rot_cos() {
+    static double c = 2.0;
+    if (c > 1.5) {
+        const char *e = getenv("SM64DS_IP_ROTBLEND_DEG");
+        const double d = e ? atof(e) : 2.0;
+        c = std::cos(d * 3.14159265358979323846 / 180.0);
+    }
+    return c;
+}
+struct IpRotStat { uint32_t mats, rot, back, hist[8]; };
+IpRotStat g_ip_rot_stat;
+double g_ip_up[3];   // the world's up as the camera of the picture sees it (row 1 of tick N's view)
+int g_ip_up_ok = 0;
+void ip_set_up(const int32_t *view) {
+    const double x = view[3], y = view[4], z = view[5];
+    const double l = std::sqrt(x * x + y * y + z * z);
+    g_ip_up_ok = l > 1.0;
+    if (g_ip_up_ok) { g_ip_up[0] = x / l; g_ip_up[1] = y / l; g_ip_up[2] = z / l; }
+}
+float g_ip_rot_alpha = 0;
+int ip_rot_log() {
+    static int on = -1;
+    if (on < 0) { const char *e = getenv("SM64DS_IP_ROTBLEND_LOG"); on = (e && *e && *e != '0') ? atoi(e) : 0; }
+    return on;
+}
+
+/* U = the rotation part of M (M = S U), by Higham's iteration U <- (U + U^-T) / 2.
+   False if M is too close to flat to have one. */
+bool ip_polar(const double M[3][3], double U[3][3]) {
+    for (int r = 0; r < 3; ++r)
+        for (int k = 0; k < 3; ++k) U[r][k] = M[r][k];
+    for (int it = 0; it < 30; ++it) {
+        double C[3][3];
+        C[0][0] = U[1][1] * U[2][2] - U[1][2] * U[2][1];
+        C[0][1] = U[1][2] * U[2][0] - U[1][0] * U[2][2];
+        C[0][2] = U[1][0] * U[2][1] - U[1][1] * U[2][0];
+        C[1][0] = U[0][2] * U[2][1] - U[0][1] * U[2][2];
+        C[1][1] = U[0][0] * U[2][2] - U[0][2] * U[2][0];
+        C[1][2] = U[0][1] * U[2][0] - U[0][0] * U[2][1];
+        C[2][0] = U[0][1] * U[1][2] - U[0][2] * U[1][1];
+        C[2][1] = U[0][2] * U[1][0] - U[0][0] * U[1][2];
+        C[2][2] = U[0][0] * U[1][1] - U[0][1] * U[1][0];
+        const double det = U[0][0] * C[0][0] + U[0][1] * C[0][1] + U[0][2] * C[0][2];
+        if (std::fabs(det) < 1e-9) return false;
+        double dmax = 0;
+        for (int r = 0; r < 3; ++r)
+            for (int k = 0; k < 3; ++k) {
+                const double n = 0.5 * (U[r][k] + C[r][k] / det);
+                const double dd = std::fabs(n - U[r][k]);
+                if (dd > dmax) dmax = dd;
+                U[r][k] = n;
+            }
+        if (dmax < 1e-12) break;
+    }
+    return true;
+}
+
+void ip_mat_quat(const double R[3][3], double q[4]) {
+    const double tr = R[0][0] + R[1][1] + R[2][2];
+    if (tr > 0) {
+        const double s = std::sqrt(tr + 1.0) * 2.0;
+        q[0] = 0.25 * s;
+        q[1] = (R[2][1] - R[1][2]) / s;
+        q[2] = (R[0][2] - R[2][0]) / s;
+        q[3] = (R[1][0] - R[0][1]) / s;
+    } else if (R[0][0] > R[1][1] && R[0][0] > R[2][2]) {
+        const double s = std::sqrt(1.0 + R[0][0] - R[1][1] - R[2][2]) * 2.0;
+        q[0] = (R[2][1] - R[1][2]) / s;
+        q[1] = 0.25 * s;
+        q[2] = (R[0][1] + R[1][0]) / s;
+        q[3] = (R[0][2] + R[2][0]) / s;
+    } else if (R[1][1] > R[2][2]) {
+        const double s = std::sqrt(1.0 + R[1][1] - R[0][0] - R[2][2]) * 2.0;
+        q[0] = (R[0][2] - R[2][0]) / s;
+        q[1] = (R[0][1] + R[1][0]) / s;
+        q[2] = 0.25 * s;
+        q[3] = (R[1][2] + R[2][1]) / s;
+    } else {
+        const double s = std::sqrt(1.0 + R[2][2] - R[0][0] - R[1][1]) * 2.0;
+        q[0] = (R[1][0] - R[0][1]) / s;
+        q[1] = (R[0][2] + R[2][0]) / s;
+        q[2] = (R[1][2] + R[2][1]) / s;
+        q[3] = 0.25 * s;
+    }
+}
+
+void ip_quat_mat(const double q[4], double R[3][3]) {
+    const double w = q[0], x = q[1], y = q[2], z = q[3];
+    R[0][0] = 1 - 2 * (y * y + z * z); R[0][1] = 2 * (x * y - z * w);     R[0][2] = 2 * (x * z + y * w);
+    R[1][0] = 2 * (x * y + z * w);     R[1][1] = 1 - 2 * (x * x + z * z); R[1][2] = 2 * (y * z - x * w);
+    R[2][0] = 2 * (x * z - y * w);     R[2][1] = 2 * (y * z + x * w);     R[2][2] = 1 - 2 * (x * x + y * y);
+}
+
+/* a (tick N-1) and b (tick N) are the np words of one matrix command (9: 3x3,
+   12: 4x3, 16: 4x4). True when the pair turned past the threshold and out /
+   ex hold the turn-aware blend at t (ex unrounded, in word units); false
+   leaves the caller to blend word by word, exactly as before. */
+bool ip_rot_blend(const uint32_t *a, const uint32_t *b, int np, double t, uint32_t *out, double *ex) {
+    if (!ip_rot_mode() || (np != 9 && np != 12 && np != 16)) return false;
+    const int stride = np == 16 ? 4 : 3;
+    double A[3][3], B[3][3];
+    for (int r = 0; r < 3; ++r)
+        for (int k = 0; k < 3; ++k) {
+            A[r][k] = (int32_t)a[r * stride + k] / 4096.0;
+            B[r][k] = (int32_t)b[r * stride + k] / 4096.0;
+        }
+    IpRotStat &st = g_ip_rot_stat;
+    ++st.mats;
+    /* the cheap test: how far each row (the image of one axis) turned */
+    double cmin = 1.0;
+    for (int r = 0; r < 3; ++r) {
+        const double la = A[r][0] * A[r][0] + A[r][1] * A[r][1] + A[r][2] * A[r][2];
+        const double lb = B[r][0] * B[r][0] + B[r][1] * B[r][1] + B[r][2] * B[r][2];
+        if (la < 1e-8 || lb < 1e-8) return false;   // a part scaled to nothing (hidden): the word blend is right for it
+        const double c = (A[r][0] * B[r][0] + A[r][1] * B[r][1] + A[r][2] * B[r][2]) / std::sqrt(la * lb);
+        if (c < cmin) cmin = c;
+    }
+    if (ip_rot_log()) {
+        const double deg = std::acos(cmin < -1 ? -1 : cmin) * (180.0 / 3.14159265358979323846);
+        static const double edge[7] = {1, 2, 5, 10, 20, 45, 90};
+        int h = 0;
+        while (h < 7 && deg >= edge[h]) ++h;
+        ++st.hist[h];
+    }
+    if (cmin >= ip_rot_cos()) return false;
+    if (ip_rot_log() >= 2)
+        std::fprintf(stderr, "[iprot2] np %d deg %.1f a %d %d %d / %d %d %d / %d %d %d t %d %d %d\n", np,
+                     std::acos(cmin < -1 ? -1 : cmin) * (180.0 / 3.14159265358979323846), (int32_t)a[0], (int32_t)a[1], (int32_t)a[2],
+                     (int32_t)a[stride], (int32_t)a[stride + 1], (int32_t)a[stride + 2], (int32_t)a[2 * stride], (int32_t)a[2 * stride + 1],
+                     (int32_t)a[2 * stride + 2], np == 9 ? 0 : (int32_t)a[3 * stride], np == 9 ? 0 : (int32_t)a[3 * stride + 1],
+                     np == 9 ? 0 : (int32_t)a[3 * stride + 2]);
+    double Ua[3][3], Ub[3][3];
+    if (!ip_polar(A, Ua) || !ip_polar(B, Ub)) { ++st.back; return false; }
+    auto det3 = [](const double m[3][3]) {
+        return m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
+               m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+    };
+    const double da = det3(Ua), db = det3(Ub);
+    if ((da < 0) != (db < 0)) { ++st.back; return false; }   // a mirror on one side only: no turn joins them
+    const double sg = da < 0 ? -1.0 : 1.0;   // a mirrored pair: blend -U (a rotation); S = M U^T takes the sign, so S U is still M
+    double Sa[3][3], Sb[3][3];
+    for (int r = 0; r < 3; ++r)
+        for (int k = 0; k < 3; ++k) {
+            Ua[r][k] *= sg;
+            Ub[r][k] *= sg;
+        }
+    /* S = M U^T */
+    for (int r = 0; r < 3; ++r)
+        for (int k = 0; k < 3; ++k) {
+            Sa[r][k] = A[r][0] * Ua[k][0] + A[r][1] * Ua[k][1] + A[r][2] * Ua[k][2];
+            Sb[r][k] = B[r][0] * Ub[k][0] + B[r][1] * Ub[k][1] + B[r][2] * Ub[k][2];
+        }
+    double qa[4], qb[4], q[4];
+    ip_mat_quat(Ua, qa);
+    ip_mat_quat(Ub, qb);
+    double d = qa[0] * qb[0] + qa[1] * qb[1] + qa[2] * qb[2] + qa[3] * qb[3];
+    /* the way round. A turn of about half a circle (150 to 210 degrees) has two
+       ways that are nearly as short, and the pieces of one body (each bone has
+       its own matrix) would split between them on a little noise: such a turn
+       always goes the same way about the camera's up (the axis of the turn
+       Ua^T Ub is the vector part of conj(qa) qb). Any other turn takes the
+       shorter way. */
+    bool flip = d < 0;
+    if (std::fabs(d) < 0.2588 && g_ip_up_ok) {
+        const double ax = qa[0] * qb[1] - qb[0] * qa[1] - (qa[2] * qb[3] - qa[3] * qb[2]);
+        const double ay = qa[0] * qb[2] - qb[0] * qa[2] - (qa[3] * qb[1] - qa[1] * qb[3]);
+        const double az = qa[0] * qb[3] - qb[0] * qa[3] - (qa[1] * qb[2] - qa[2] * qb[1]);
+        flip = ax * g_ip_up[0] + ay * g_ip_up[1] + az * g_ip_up[2] < 0;
+    }
+    if (flip) {
+        for (int i = 0; i < 4; ++i) qb[i] = -qb[i];
+        d = -d;
+    }
+    if (d > 0.9995) {
+        for (int i = 0; i < 4; ++i) q[i] = qa[i] + (qb[i] - qa[i]) * t;
+    } else {
+        const double th = std::acos(d), s = std::sin(th);
+        const double wa = std::sin((1.0 - t) * th) / s, wb = std::sin(t * th) / s;
+        for (int i = 0; i < 4; ++i) q[i] = qa[i] * wa + qb[i] * wb;
+    }
+    const double qn = std::sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
+    for (int i = 0; i < 4; ++i) q[i] /= qn;
+    double U[3][3];
+    ip_quat_mat(q, U);
+    for (int i = 0; i < np; ++i) {   // every word the turn does not own (translation, the 4x4's fourth column)
+        ex[i] = (double)(int32_t)a[i] * (1.0 - t) + (double)(int32_t)b[i] * t;
+        out[i] = (uint32_t)ip_lerp(a[i], b[i], t);
+    }
+    for (int r = 0; r < 3; ++r)
+        for (int k = 0; k < 3; ++k) {
+            double v = 0;
+            for (int j = 0; j < 3; ++j) v += ((1.0 - t) * Sa[r][j] + t * Sb[r][j]) * U[j][k];
+            const double w = v * 4096.0;
+            ex[r * stride + k] = w;
+            out[r * stride + k] = (uint32_t)(int32_t)(w < 0 ? w - 0.5 : w + 0.5);
+        }
+    ++st.rot;
+    return true;
+}
+
 /* The blended camera and what re-views an unpaired LOAD through it. */
 struct IpCam {
     double RN[3][3], tN[3];     // tick N's view
@@ -9233,6 +9453,22 @@ IpCam g_ip_cam;
 
 void ip_cam_setup(const int32_t *vp, const int32_t *vc, double t) {
     IpCam &c = g_ip_cam;
+    ip_set_up(vc);
+    uint32_t w[12];
+    double ex[12];
+    if (ip_rot_blend((const uint32_t *)vp, (const uint32_t *)vc, 12, t, w, ex)) {
+        /* INTERPTURN1: a camera that swung past the threshold in one tick blends as a turn */
+        for (int r = 0; r < 3; ++r)
+            for (int k = 0; k < 3; ++k) {
+                c.RN[r][k] = vc[r * 3 + k] / 4096.0;
+                c.Rt[r][k] = ex[r * 3 + k] / 4096.0;
+            }
+        for (int k = 0; k < 3; ++k) {
+            c.tN[k] = vc[9 + k] / 4096.0;
+            c.tt[k] = ex[9 + k] / 4096.0;
+        }
+        return;
+    }
     for (int r = 0; r < 3; ++r)
         for (int k = 0; k < 3; ++k) {
             c.RN[r][k] = vc[r * 3 + k] / 4096.0;
@@ -9422,6 +9658,12 @@ void gx_interp_view(float alpha, float eye[3]) {
     if (g_ip_c < 0) return;
     int32_t v[12];
     const IpRec &C = g_ipr[g_ip_c];
+    uint32_t w[12];
+    double ex[12];
+    ip_set_up(C.view);
+    if (g_ip_p >= 0 && ip_rot_blend((const uint32_t *)g_ipr[g_ip_p].view, (const uint32_t *)C.view, 12, alpha, w, ex)) {
+        for (int i = 0; i < 12; ++i) v[i] = (int32_t)w[i];   // INTERPTURN1: the same turn-aware camera ip_cam_setup builds
+    } else
     for (int i = 0; i < 12; ++i)
         v[i] = (g_ip_p >= 0) ? ip_lerp((uint32_t)g_ipr[g_ip_p].view[i],
                                        (uint32_t)C.view[i], alpha)
@@ -9483,6 +9725,8 @@ int gx_interp_begin(float alpha) {
     g.strip_raw.clear();
     g_teximage = C.start_teximage;
     g_plttbase = C.start_plttbase;
+    g_ip_rot_stat = IpRotStat{};
+    g_ip_rot_alpha = alpha;
     ip_cam_setup(P.view, C.view, alpha);
     g_ip_group_tri0.assign(C.groups.size(), 0);
     g_ip_group_tri1.assign(C.groups.size(), 0);
@@ -9537,6 +9781,10 @@ int gx_interp_begin(float alpha) {
                     const IpEv &pe = P2.ev[b2];
                     const double w2 = (1.0 + (double)alpha) * 0.5;
                     const int n = e.np < pe.np ? e.np : pe.np;
+                    if (e.np == pe.np && e.mode != MTX_PROJ && e.cmd != 0x1B && e.cmd != 0x1C &&
+                        ip_rot_blend(&P2.par[pe.off], pp, e.np, w2, tmp, g_ip_ex)) {
+                        /* INTERPTURN1: a turn past the threshold blends as a turn */
+                    } else
                     for (int k = 0; k < e.np; ++k) {
                         tmp[k] = k < n ? (uint32_t)ip_lerp(P2.par[pe.off + k], pp[k], w2) : pp[k];
                         g_ip_ex[k] = k < n ? (double)(int32_t)P2.par[pe.off + k] * (1.0 - w2) +
@@ -9558,6 +9806,10 @@ int gx_interp_begin(float alpha) {
                     const int n = e.np < pe.np ? e.np : pe.np;
                     /* TEXTBOX2: a step across a texture wrap blends to the matrix with the wrap taken out (tick N's own at alpha 1) */
                     if (e.mode == MTX_TEX && tex_wrapped && alpha < 1.0f) pp = tex_adj;
+                    if (e.np == pe.np && e.mode != MTX_TEX && e.mode != MTX_PROJ && e.cmd != 0x1B && e.cmd != 0x1C &&
+                        ip_rot_blend(&P.par[pe.off], pp, e.np, alpha, tmp, g_ip_ex)) {
+                        /* INTERPTURN1: a turn past the threshold blends as a turn */
+                    } else
                     for (int k = 0; k < e.np; ++k) {
                         tmp[k] = k < n ? (uint32_t)ip_lerp(P.par[pe.off + k], pp[k], alpha)
                                        : pp[k];
@@ -9644,6 +9896,12 @@ void gx_ghost_fast_override(int v) { g_gf_override = v; }
 
 void gx_interp_end() {
     if (!g_ip_open) return;
+    if (ip_rot_log()) {
+        const IpRotStat &rs = g_ip_rot_stat;
+        std::fprintf(stderr, "[iprot] tick %d alpha %.3f mats %u rot %u back %u deg<1 %u <2 %u <5 %u <10 %u <20 %u <45 %u <90 %u >=90 %u\n",
+                     g_ip_tick_no, (double)g_ip_rot_alpha, rs.mats, rs.rot, rs.back, rs.hist[0], rs.hist[1], rs.hist[2], rs.hist[3],
+                     rs.hist[4], rs.hist[5], rs.hist[6], rs.hist[7]);
+    }
     IpSaved &s = g_ip_saved;
     g_ip_tris = std::move(g.tris);
     g_ip_grids = std::move(g.grids);
@@ -9684,6 +9942,11 @@ int gx_interp_group_box(int group, float box[4]) {
             if (q.y > mxy) mxy = q.y;
         }
     box[0] = mnx; box[1] = mny; box[2] = mxx; box[3] = mxy;
+    {
+        static int lg = -1;   // INTERPTURN1 measurement: every box the probe asks for
+        if (lg < 0) lg = getenv("SM64DS_IP_BOX_LOG") ? 1 : 0;
+        if (lg) std::fprintf(stderr, "[ipbox] g%d n%u x %.2f %.2f y %.2f %.2f\n", group, b - a, mnx, mxx, mny, mxy);
+    }
     return (int)(b - a);
 }
 
