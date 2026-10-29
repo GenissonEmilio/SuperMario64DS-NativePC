@@ -1061,6 +1061,7 @@ int g_snap_w, g_snap_h;
    drew them from, i.e. the held frame as it stood before this tick's own save. g_snap_old is that, kept when the tick saves. */
 std::vector<uint32_t> g_snap_old;
 int g_snap_old_valid, g_in_relift;
+static double g_relift_alpha = 1.0;      /* ARROWSLOW1: the place between ticks of the pictures hal_menu_present_relift draws next (a bob piece's dest y follows it) */
 
 void snap_save(const uint32_t *dst, int w, int h)
 {
@@ -2480,6 +2481,14 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
         }
     }
     if (!g_in_relift && !D.L.snap_save) g_snap_old_valid = 0;     /* a tick that does not save drew from g_snap itself */
+    /* ARROWSLOW1: a bob piece (the main menu's cursor arrow) is drawn at this picture's own place on its curve: the tick's own picture
+       at a = 1 (its fy), a picture between ticks a of the way from the tick before */
+    for (int i = 0; i < D.L.np; ++i) {
+        const MenuPiece &P = D.L.p[i];
+        if (!P.bob) continue;
+        const double a = g_in_relift ? g_relift_alpha : 1.0;
+        D.L.dest[i][1] = P.bob_y0 + (int)floor(P.bob_amp * menu_bob_curve((double)P.bob_t - 1.0 + a) / 4.0 + 0.5);
+    }
     g_rep.enable = cost_fast(); g_rep.valid = 0;
     if (trace_on()) {
         for (int i = 0; i < D.L.np; ++i) {
@@ -2507,6 +2516,7 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
 
 /* MENUINTERP2: the same draw for a picture between ticks (see hal_menu_relift_ok). Never saves the held frame, draws held-frame
    pieces from the one this tick drew from. */
+void hal_menu_set_relift_alpha(double a) { g_relift_alpha = a < 0.0 ? 0.0 : a > 1.0 ? 1.0 : a; }
 void hal_menu_present_relift(uint32_t *dst, int w, int h, int stage)
 {
     g_in_relift = 1;
